@@ -1,5 +1,7 @@
 # ESTADO da missão autónoma W2b→W11 (coordenador relê depois de cada compactação)
 
+> ⭐ **30/10 — LINHA REABERTA** sobre o main `422fec2027` (W2b–W11 + smoke do dono 28/10 integrados no main 29/10, `037a8d877a`; +436 commits de outras linhas depois). Branch = main, árvore limpa, `ph2d-app-kanban` compila. Próxima onda: por ordem do dono. Abertos: [`BLOQUEIOS.md`](BLOQUEIOS.md) (JSON real do Trello, NAT entre duas máquinas, «‖» na consola, Photos do fundo sem as imagens do projeto). Handoff da integração: [`HANDOFF_INTEGRACAO_…_W2b_a_W11.md`](../handoffs/HANDOFF_INTEGRACAO_line_TrelloClone_2026-10-28_W2b_a_W11.md) §10. O histórico abaixo é da missão W2b→W11 (fechada).
+
 - Worktree `Worktrees/line-TrelloClone` · branch `line/TrelloClone` · base = main `c3662cd8e4` (0 atrás, 28/10)
 - Roteiro: `../handoffs/PROMPT_LOOP_AUTONOMO_W2b_a_W11.md` · plano `../01_plano.md` §6
 - Hook de aprovação instalado em `.claude/settings.local.json` da worktree (git-ignorado)

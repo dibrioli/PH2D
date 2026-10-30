@@ -713,7 +713,11 @@ fn sonda_miniatura_antiga_e_de_hoje() {
                 }
             }
         }
-        let nome = rel.rsplit('/').next().unwrap().replace(".ph2d-brush.png", "");
+        let nome = rel
+            .rsplit('/')
+            .next()
+            .unwrap()
+            .replace(".ph2d-brush.png", "");
         std::fs::write(format!("{dir}/{nome}.ppm"), v).unwrap();
         relato += &format!("{nome}: sobre o branco, a maior diferença {pior} níveis\n");
     }

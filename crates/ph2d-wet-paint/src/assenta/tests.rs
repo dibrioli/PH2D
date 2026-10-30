@@ -457,5 +457,8 @@ fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
     assert!(la < antes.1, "o branco que sai da cor vira transparência");
     // Sem as duas camadas, ou numa lei que compõe dentro das tintas, nada muda.
     assert_eq!(na_caixa_das_tintas(e, antes, sc, uc, 0.0, a_f), antes);
-    assert_eq!(na_caixa_das_tintas(Ecra::Porto, antes, sc, uc, a_s, a_f), antes);
+    assert_eq!(
+        na_caixa_das_tintas(Ecra::Porto, antes, sc, uc, a_s, a_f),
+        antes
+    );
 }

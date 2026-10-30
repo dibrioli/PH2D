@@ -245,7 +245,10 @@ pub fn na_caixa_das_tintas(
     if a >= la || a <= 0.0 {
         return (c, la);
     }
-    (c.map(|v| (255.0 - la * (255.0 - v) / a).clamp(0.0, 255.0)), a)
+    (
+        c.map(|v| (255.0 - la * (255.0 - v) / a).clamp(0.0, 255.0)),
+        a,
+    )
 }
 
 /// O que a célula mostra sobre o papel branco — o que assentar e re-molhar preservam.

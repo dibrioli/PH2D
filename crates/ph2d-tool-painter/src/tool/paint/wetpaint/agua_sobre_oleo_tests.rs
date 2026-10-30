@@ -26,6 +26,11 @@ pub(super) fn ponteiro(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
 
 /// A tela: papel de cor, um traço de óleo (Dabber) em `y = 90`, assentado.
 pub(super) fn com_oleo() -> PainterTool {
+    com_oleo_em(false)
+}
+
+/// [`com_oleo`] com o traço de óleo na horizontal (`y = 90`) ou na VERTICAL (`x = 120`, de `y = 20` a `140`).
+pub(super) fn com_oleo_em(vertical: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -38,12 +43,22 @@ pub(super) fn com_oleo() -> PainterTool {
         .expect("o meio");
     t.set_brush_size_px(30.0);
     t.set_brush_color_srgb8([40, 90, 220]);
-    t.on_canvas_pointer(ponteiro(40.0, 90.0, PointerPhase::Down));
+    let ponto = |k: usize| {
+        if vertical {
+            (120.0, 20.0 + 3.0 * k as f32)
+        } else {
+            (40.0 + 4.0 * k as f32, 90.0)
+        }
+    };
+    let (x, y) = ponto(0);
+    t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Down));
     for k in 1..=40 {
-        t.on_canvas_pointer(ponteiro(40.0 + 4.0 * k as f32, 90.0, PointerPhase::Move));
+        let (x, y) = ponto(k);
+        t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Move));
         t.on_tick(1000.0 / 60.0);
     }
-    t.on_canvas_pointer(ponteiro(200.0, 90.0, PointerPhase::Up));
+    let (x, y) = ponto(40);
+    t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Up));
     for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
@@ -74,7 +89,11 @@ pub(super) fn relato(l: String) {
     let dir = std::env::var("PH2D_SONDA_DIR").unwrap_or_default();
     if !dir.is_empty() {
         use std::io::Write;
-        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(format!("{dir}/relato.txt")).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(format!("{dir}/relato.txt"))
+            .unwrap();
         writeln!(f, "{l}").unwrap();
     }
 }
@@ -213,8 +232,8 @@ fn o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas() {
             }
             mistas += 1;
             let px = &row[(cx - 1) * 4..cx * 4];
-            for k in 0..3 {
-                let excesso = f32::from(px[k]) - g.sett_rgb[i][k].max(g.susp_rgb[i][k]);
+            for (k, &v) in px.iter().take(3).enumerate() {
+                let excesso = f32::from(v) - g.sett_rgb[i][k].max(g.susp_rgb[i][k]);
                 if excesso > 1.0 {
                     fora += 1;
                     if excesso > pior.0 {
@@ -225,9 +244,13 @@ fn o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas() {
             }
         }
     }
-    assert!(mistas > 500, "a cena tem só {mistas} células assentado + água");
+    assert!(
+        mistas > 500,
+        "a cena tem só {mistas} células assentado + água"
+    );
     assert_eq!(
-        fora, 0,
+        fora,
+        0,
         "{fora} de {mistas} células com a cor mais clara que as duas tintas (pior +{:.0} em {:?})",
         pior.0,
         (pior.1, pior.2)
@@ -272,7 +295,9 @@ fn diag_a_agua_sobre_o_oleo_a_meio_do_traco() {
         let mut pior = (0.0f32, 0, 0);
         for i in 0..W * H {
             let m = lum(&img[i * 4..i * 4 + 4]);
-            let teto = lum(&fim[i * 4..i * 4 + 4]).max(lum(&oleo[i * 4..i * 4 + 4])).max(papel);
+            let teto = lum(&fim[i * 4..i * 4 + 4])
+                .max(lum(&oleo[i * 4..i * 4 + 4]))
+                .max(papel);
             if m > teto + 20.0 {
                 n += 1;
                 if m - teto > pior.0 {
@@ -322,14 +347,21 @@ fn diag_grain_colors_no_papel_de_cor() {
     t.set_texture_ramp_enabled(std::env::var("PH2D_SONDA_SEM_RAMPA").is_err());
     if let Some(r) = t.rampa_da_aguada() {
         for g in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
-            relato(format!("rampa no grão {g}: {:?}", r.cor(None, Some(g), 1.0)));
+            relato(format!(
+                "rampa no grão {g}: {:?}",
+                r.cor(None, Some(g), 1.0)
+            ));
         }
     }
     let traco = |t: &mut PainterTool, y0: f32, y1: f32, ate: usize| {
         t.on_canvas_pointer(ponteiro(30.0, y0, PointerPhase::Down));
         for k in 1..=ate {
             let f = k as f32 / 40.0;
-            t.on_canvas_pointer(ponteiro(30.0 + 180.0 * f, y0 + (y1 - y0) * f, PointerPhase::Move));
+            t.on_canvas_pointer(ponteiro(
+                30.0 + 180.0 * f,
+                y0 + (y1 - y0) * f,
+                PointerPhase::Move,
+            ));
             t.on_tick(1000.0 / 60.0);
         }
     };
@@ -364,7 +396,11 @@ fn diag_grain_colors_no_papel_de_cor() {
     grava("g_meio", &meio);
     grava("g_fim", &fim);
     let papel = lum(&[PAPEL[0], PAPEL[1], PAPEL[2]]);
-    let claros = |img: &[u8]| (0..W * H).filter(|&i| lum(&img[i * 4..i * 4 + 4]) > papel + 40.0).count();
+    let claros = |img: &[u8]| {
+        (0..W * H)
+            .filter(|&i| lum(&img[i * 4..i * 4 + 4]) > papel + 40.0)
+            .count()
+    };
     relato(format!(
         "grain colors: píxeis mais claros que o papel (+40) — a meio {} · assentado {}",
         claros(&meio),
@@ -379,7 +415,15 @@ pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
     let mut t = com_oleo();
     t.wet_bring_home();
     let antes: Vec<f32> = {
-        let g = &t.paint.wetpaint.session.as_ref().expect("a sessão").engine.layers[0].grid;
+        let g = &t
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .expect("a sessão")
+            .engine
+            .layers[0]
+            .grid;
         (0..g.cells).map(|i| g.sett[i] + g.susp[i]).collect()
     };
     let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
@@ -405,7 +449,15 @@ pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
         t.on_tick(1000.0 / 60.0);
     }
     t.wet_bring_home();
-    let g = &t.paint.wetpaint.session.as_ref().expect("a sessão").engine.layers[0].grid;
+    let g = &t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão")
+        .engine
+        .layers[0]
+        .grid;
     let (mut massa, mut celulas, mut miolo) = (0.0f64, 0, 0);
     for (k, o) in orla.iter().enumerate() {
         let Some(o) = *o else { continue };
@@ -456,4 +508,91 @@ fn a_agua_nao_sobe_a_ladeira_do_oleo() {
         folga < 34_000.0 && celulas < 50,
         "a 4 px da parede: {folga:.0} de massa nova no miolo do óleo, {celulas} células > 50"
     );
+    // O eixo `x` (a parede de LADO; a de cima só prova o `y` — a prova de mutação deixou o `x` vivo): a 4 px, sem a
+    // ladeira 588 227, sem o eixo `x` 400 279, com ela 4 975.
+    let (lado, celulas, _) = agua_que_sobe_de_lado(4.0);
+    assert!(
+        lado < 40_000.0 && celulas < 100,
+        "de lado, a 4 px da parede: {lado:.0} de massa nova no miolo do óleo, {celulas} células > 50"
+    );
+}
+
+/// [`agua_que_sobe`] DE LADO: o óleo vertical de [`com_oleo_em`] e o traço aguado vertical à esquerda da parede (o pé a
+/// `folga` px da orla); o miolo = células com óleo a ≥ 4 px da orla da esquerda da sua linha. Prova o eixo `x` da ladeira.
+pub(super) fn agua_que_sobe_de_lado(folga: f32) -> (f64, usize, usize) {
+    let mut t = com_oleo_em(true);
+    t.wet_bring_home();
+    let antes: Vec<f32> = {
+        let g = &t
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .expect("a sessão")
+            .engine
+            .layers[0]
+            .grid;
+        (0..g.cells).map(|i| g.sett[i] + g.susp[i]).collect()
+    };
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let gs = s.engine.layers[0].grid.s;
+    let (gw, gh) = s.grid;
+    let orla: Vec<Option<usize>> = (1..=gh)
+        .map(|cy| (1..=gw).find(|&cx| antes[cx + cy * gs] > 1000.0))
+        .collect();
+    let esquerda = orla[80].expect("o óleo no meio") as f32 - 1.0;
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(20.0);
+    t.set_brush_color_srgb8([240, 130, 60]);
+    let x = esquerda - 10.0 - folga;
+    t.on_canvas_pointer(ponteiro(x, 30.0, PointerPhase::Down));
+    for k in 1..=30 {
+        t.on_canvas_pointer(ponteiro(x, 30.0 + 3.0 * k as f32, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(ponteiro(x, 120.0, PointerPhase::Up));
+    for _ in 0..600 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.wet_bring_home();
+    let g = &t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão")
+        .engine
+        .layers[0]
+        .grid;
+    let (mut massa, mut celulas, mut miolo) = (0.0f64, 0, 0);
+    for (k, o) in orla.iter().enumerate() {
+        let Some(o) = *o else { continue };
+        let cy = k + 1;
+        for cx in o + 4..=gw {
+            let i = cx + cy * gs;
+            if antes[i] <= 1000.0 {
+                continue;
+            }
+            miolo += 1;
+            let nova = f64::from(g.sett[i] + g.susp[i] - antes[i]).max(0.0);
+            massa += nova;
+            if nova > 50.0 {
+                celulas += 1;
+            }
+        }
+    }
+    (massa, celulas, miolo)
+}
+
+/// SONDA — o eixo `x` da ladeira (a parede de lado).
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_agua_sobe_a_ladeira_de_lado() {
+    for folga in [0.0f32, 4.0] {
+        let (m, c, n) = agua_que_sobe_de_lado(folga);
+        relato(format!(
+            "de lado, folga {folga} px: massa nova no miolo {m:.0} · {c} de {n} células com > 50"
+        ));
+    }
 }

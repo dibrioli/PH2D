@@ -3,7 +3,6 @@
 //! traço e assentada. A família: uma cor composta que leva BRANCO embutido — invisível no papel branco, onde todos os
 //! outros portões pintam.
 
-use super::*;
 use crate::tool::PainterTool;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
@@ -23,7 +22,11 @@ fn presets() -> Vec<(String, std::path::PathBuf)> {
             if p.is_dir() {
                 fila.push(p);
             } else if p.to_string_lossy().ends_with(".ph2d-brush.png") {
-                let nome = p.strip_prefix(&raiz).unwrap().to_string_lossy().replace(".ph2d-brush.png", "");
+                let nome = p
+                    .strip_prefix(&raiz)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace(".ph2d-brush.png", "");
                 v.push((nome, p));
             }
         }
@@ -48,15 +51,22 @@ fn mostrada(t: &mut PainterTool) -> Vec<u8> {
 }
 
 /// `(a meio, assentada, pintados)`: os píxeis com luminosidade acima da do papel e das duas tintas (+30).
-pub(super) fn censo_de(caminho: &std::path::Path, oleo: bool, relevo: bool) -> (usize, usize, usize) {
+pub(super) fn censo_de(
+    caminho: &std::path::Path,
+    oleo: bool,
+    relevo: bool,
+) -> (usize, usize, usize) {
     cena(caminho, oleo, relevo).1
 }
+
+/// `(a meio, assentada, pintados)` de [`censo_de`].
+type Censo = (usize, usize, usize);
 
 fn cena(
     caminho: &std::path::Path,
     oleo: bool,
     relevo: bool,
-) -> (Option<(PainterTool, Vec<u8>)>, (usize, usize, usize)) {
+) -> (Option<(PainterTool, Vec<u8>)>, Censo) {
     let p = ph2d_brush_presets::ler(&std::fs::read(caminho).unwrap()).unwrap();
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
@@ -76,7 +86,10 @@ fn cena(
         }
         t.set_brush_size_px(24.0);
         if !relevo {
-            t.paint.wetpaint.knobs.set(ph2d_wet_paint::tuning::Knob::Emboss, 0.0);
+            t.paint
+                .wetpaint
+                .knobs
+                .set(ph2d_wet_paint::tuning::Knob::Emboss, 0.0);
         }
         true
     };
@@ -102,7 +115,11 @@ fn cena(
     t.set_brush_color_srgb8(TINTAS[1]);
     t.on_canvas_pointer(ponteiro(30.0, 85.0, PointerPhase::Down));
     for k in 1..=24 {
-        t.on_canvas_pointer(ponteiro(30.0 + 4.0 * k as f32, 85.0 - 1.5 * k as f32, PointerPhase::Move));
+        t.on_canvas_pointer(ponteiro(
+            30.0 + 4.0 * k as f32,
+            85.0 - 1.5 * k as f32,
+            PointerPhase::Move,
+        ));
         tick(&mut t);
     }
     let meio = mostrada(&mut t);
@@ -111,7 +128,8 @@ fn cena(
         tick(&mut t);
     }
     let fim = mostrada(&mut t);
-    let lum = |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
+    let lum =
+        |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
     let teto = lum(&PAPEL).max(lum(&TINTAS[0])).max(lum(&TINTAS[1]));
     let claros = |img: &[u8]| img.chunks(4).filter(|px| lum(px) > teto + 30.0).count();
     let pintados = fim
@@ -128,15 +146,21 @@ fn cena(
 fn diag_a_celula_mais_clara_do_censo() {
     let rel = std::env::var("PH2D_SONDA_PRESET").expect("PH2D_SONDA_PRESET");
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
-    let (Some((mut t, fim)), n) = cena(&raiz.join(format!("{rel}.ph2d-brush.png")), false, false) else {
+    let (Some((mut t, fim)), n) = cena(&raiz.join(format!("{rel}.ph2d-brush.png")), false, false)
+    else {
         panic!("o preset");
     };
-    let lum = |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
+    let lum =
+        |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
     let i = (0..W * H)
         .max_by(|&a, &b| lum(&fim[a * 4..a * 4 + 4]).total_cmp(&lum(&fim[b * 4..b * 4 + 4])))
         .unwrap();
     let (x, y) = (i % W, i / W);
-    let mut l = format!("{rel} {n:?}: ({x},{y}) mostrada {:?} camada {:?}\n", &fim[i * 4..i * 4 + 4], &t.canvas_rgba[i * 4..i * 4 + 4]);
+    let mut l = format!(
+        "{rel} {n:?}: ({x},{y}) mostrada {:?} camada {:?}\n",
+        &fim[i * 4..i * 4 + 4],
+        &t.canvas_rgba[i * 4..i * 4 + 4]
+    );
     t.wet_bring_home();
     if let Some(s) = t.paint.wetpaint.session.as_ref() {
         let r = usize::from(s.ratio);
@@ -145,7 +169,11 @@ fn diag_a_celula_mais_clara_do_censo() {
             let c = (x / r + 1) + (y / r + 1) * g.s;
             l += &format!(
                 "  camada {k}: sett {:.0} {:?} susp {:.0} {:?} vela {:?}\n",
-                g.sett[c], g.sett_rgb[c], g.susp[c], g.susp_rgb[c], g.vela.get(c)
+                g.sett[c],
+                g.sett_rgb[c],
+                g.susp[c],
+                g.susp_rgb[c],
+                g.vela.get(c)
             );
         }
     }
@@ -182,7 +210,10 @@ fn censo_do_papel_de_cor_na_fabrica() {
     });
     linhas.sort();
     linhas.reverse();
-    let txt = format!("  meio assent pintados  preset (píxeis com luminosidade > a do papel e das tintas + 30)\n{}\n", linhas.join("\n"));
+    let txt = format!(
+        "  meio assent pintados  preset (píxeis com luminosidade > a do papel e das tintas + 30)\n{}\n",
+        linhas.join("\n")
+    );
     eprintln!("{txt}");
     if let Ok(d) = std::env::var("PH2D_SONDA_DIR") {
         std::fs::write(format!("{d}/censo.txt"), txt).unwrap();
@@ -214,7 +245,10 @@ fn nenhum_pincel_de_fabrica_clareia_o_papel_de_cor() {
                     f.iter()
                         .filter_map(|(n, p)| {
                             let (m, a, q) = censo_de(p, false, false);
-                            assert!(m == usize::MAX || q > 1000, "{n}: o traço quase não pintou ({q} px)");
+                            assert!(
+                                m == usize::MAX || q > 1000,
+                                "{n}: o traço quase não pintou ({q} px)"
+                            );
                             (m != usize::MAX && (m > 0 || a > 0))
                                 .then(|| format!("{n}: a meio {m}, assentado {a}"))
                         })
@@ -225,7 +259,10 @@ fn nenhum_pincel_de_fabrica_clareia_o_papel_de_cor() {
         h.into_iter().flat_map(|h| h.join().unwrap()).collect()
     });
     // A catraca: só encolhe. Curar um ABERTO reprova até ele sair da lista.
-    let nomes: Vec<&str> = culpados.iter().map(|l| l.split(':').next().unwrap()).collect();
+    let nomes: Vec<&str> = culpados
+        .iter()
+        .map(|l| l.split(':').next().unwrap())
+        .collect();
     assert_eq!(
         nomes,
         ABERTOS,

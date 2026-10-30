@@ -240,7 +240,11 @@ fn a_cor_do_papel_muda_ao_vivo_e_nao_entra_no_desfazer() {
         "o papel não seguiu a cor ao vivo"
     );
     assert!(t.undo_last(), "o traço");
-    assert_ne!(mostrado(&mut t, 64, 64), traco, "o 1.º desfazer não tirou o traço");
+    assert_ne!(
+        mostrado(&mut t, 64, 64),
+        traco,
+        "o 1.º desfazer não tirou o traço"
+    );
     assert_eq!(
         mostrado(&mut t, 64, 20),
         [120, 200, 255, 255],
@@ -280,8 +284,15 @@ fn nenhuma_propriedade_do_cartao_paper_entra_no_desfazer() {
         )
     };
     let depois = estado(&t);
-    assert_eq!(depois.0, Some([120, 200, 255]), "o seletor não mudou o papel");
-    assert!(!t.undo_last(), "uma propriedade do cartão Paper entrou no desfazer");
+    assert_eq!(
+        depois.0,
+        Some([120, 200, 255]),
+        "o seletor não mudou o papel"
+    );
+    assert!(
+        !t.undo_last(),
+        "uma propriedade do cartão Paper entrou no desfazer"
+    );
     assert_eq!(estado(&t), depois);
     t.set_brush_color_srgb8([30, 60, 220]);
     t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
@@ -292,8 +303,15 @@ fn nenhuma_propriedade_do_cartao_paper_entra_no_desfazer() {
         "90,90,90".into(),
     ));
     assert!(t.undo_last(), "o traço");
-    assert_eq!(t.papel(), Some([90, 90, 90]), "desfazer o traço reverteu a cor do papel");
-    assert!(!t.undo_last(), "a cor do papel entrou no desfazer depois do traço");
+    assert_eq!(
+        t.papel(),
+        Some([90, 90, 90]),
+        "desfazer o traço reverteu a cor do papel"
+    );
+    assert!(
+        !t.undo_last(),
+        "a cor do papel entrou no desfazer depois do traço"
+    );
 }
 
 /// **O PAPEL VIAJA COM O DOCUMENTO** — trocar de sprite e voltar devolve o papel ao seu documento, e

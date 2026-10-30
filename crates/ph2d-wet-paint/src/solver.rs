@@ -207,7 +207,9 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             let mut lx = if wx {
                 0.0
             } else {
-                let o = ladeira.as_ref().map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
+                let o = ladeira
+                    .as_ref()
+                    .map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
                 (film_m[kfl] as f64 - film_m[kfr] as f64 + o) * level_k * dif
             };
             if lx > level_clamp {

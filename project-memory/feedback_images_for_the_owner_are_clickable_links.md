@@ -12,6 +12,8 @@ respondeu: «as imagens devem ter link clicável. coloque isso como regra».
 No VSCode só o link markdown abre o ficheiro com um clique.
 
 **How to apply:** em toda mensagem ao dono, cada imagem vai como `[nome curto](caminho/relativo/à/raiz.png)`
-— relativo à raiz do workspace aberto (numa worktree, a raiz É a worktree), sem crases em volta. Vale
+— relativo à raiz do VSCode do dono, que é SEMPRE a árvore primária `/home/enio/Documentos/Projetos/PH2D`,
+mesmo quando a janela trabalha numa worktree: o ficheiro de uma linha linka-se como
+`Worktrees/line-<módulo>/docs/…` (medido 30/10: o link relativo à worktree «não abre»). Sem crases em volta. Vale
 para pranchas, fotos de smoke e simulações; ficheiro fora do repo (scratchpad) copia-se para `pranchas/`
 antes de linkar. Ver [[feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is]].

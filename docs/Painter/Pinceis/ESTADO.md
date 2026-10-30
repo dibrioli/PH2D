@@ -21,7 +21,18 @@
 
 - **Dívida da J7** `1a7c1aa31c`: o #53 mudou 2 portões ao byte que a J7 não correu (`shape_color_tests` cena 6, `opcoes_tests` S inclinado); sobre o branco ≤ 2 níveis ⇒ regravados.
 - **Item 2 OKLCH** `3c283ce666`: `layers::rampa_nova()` (Grain Colors, Shape Color, camada de textura, Reset); `ColorRamp::default()` fica RGB; preset/projeto antigo traz o modo gravado.
-- **Item 1 Over Oil** `1e9a32d0af` (dono: «A, B e C viram um dropdown»; [simulação](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg) → [construído](pranchas/J8_over_oil_tint_mix_blend.jpg)): Tint · **Mix** (fábrica, verde) · Blend; a escolha mora em `OleoCelula::aguada` (só sobre óleo). ABERTO #54: a faixa fina abaixo do óleo onde a tinta escorreu SEM óleo segue creme. **Smoke do dono 30/10: REPROVADO como mescla realista** (chapado, borda em degraus, píxeis pretos) ⇒ [handoff J8](HANDOFF_JANELA_8.md): o Rebelle como oráculo.
+- **Item 1 Over Oil** `1e9a32d0af` : Tint · **Mix** (fábrica) · Blend em `OleoCelula::aguada`. **Smoke do dono 30/10: REPROVADO** (chapado, degraus, pretos) ⇒ [handoff J8](HANDOFF_JANELA_8.md).
+
+## J9 (30/10): o Over Oil contra o Rebelle — À ESPERA DO «SERVE» DO DONO
+
+- **Oráculo** (fixture `NewFeaturesWetPaint/fixtures/rebelle/over_oil/` + `cabecalho.json`; `over_oil_rebelle{,_tela}.{py,sh}`):
+  a cena da sonda no Rebelle (papel BRANCO: a cor não entra pela porta). Lei: a aguada sobre o óleo é α-SOBRE (doc 47),
+  com o α do papel a meio (0,35 × 0,38) e ~0,55× assentada (0,20, espalha 0,07–0,45: junta-se nos vales); molhado = seco.
+- **Régua** `over_oil_regua.py`, cruzamento, a meio: Rebelle cor `[110,147,159]` desvio 35,5 (= o do óleo) transição 8,4 px
+  escuros 0 · nós Mix `[71,132,101]` (K-M escurece) transição **1,3 px** (corte) escuros 5–60. Os escuros: célula com fio de
+  óleo invisível (cor de papel) + K-M ⇒ `[58,54,42]` — as hipóteses (b) e (c) do handoff J8 confirmadas; a sombra do Real Oil não.
+- **Simulação** `over_oil_simula.py` (A hoje · B véu · C + vales · **D** + o #54 no papel): D escuros 0, sem creme;
+  [prancha](pranchas/J9_over_oil_hoje_proposta_rebelle.jpg). A sonda grava também no branco (`b_*`).
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 
@@ -45,13 +56,7 @@
 
 ## J6 — pedidos do dono no smoke (28/10): fechados 29/10 (`a5e727f203` `b17f8d64c3` `1d0ccb1524` `eabfc63ccd`).
 
-## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
-
-- Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (porquê: HANDOFF_JANELA_6 §1). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos.
-- Canetas/marcadores Wet ✅ (`221fb75e43` `9dfb735b24` `095a508bfa`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen, Wood Stick, Marker Chisel, Dry Marker curados não aprovados.
-- Aguarela/texturas ✅ (`6999f3ec3d` `3cc04a5d93`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon APROVADO**; I-10, K-9, Spatter curados não aprovados; motor I-9, I-11.
-- **LOTE DE PROMOÇÃO** (no fim, uma regeração): Wax Crayon.
-- Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
+## J6 passo 3 — pincel a pincel: [movido para o handoff da J6](HANDOFF_JANELA_6.md#movido-do-estado-j9--j6-passo-3--pincel-a-pincel-16-só-por-valores-16-travados-por-motor-7-sem-oráculo)
 
 ## Bancada
 

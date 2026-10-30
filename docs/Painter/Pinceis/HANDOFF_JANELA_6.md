@@ -52,3 +52,13 @@
 - Mistura em luz linear: FORA (dono). Pendentes do dono: decisões 5 e 8, no PDF.
 
 Docs: [digital](exames/digital_j6.md) · [guache](exames/guache.md) · [texturas](exames/texturas.md) · [pontas](J6_pontas_rectas.md) · [bancada](04_BANCADA.md).
+
+<!-- movido do ESTADO.md em 30/10 (J9, teto de 8 KB) -->
+## Movido do ESTADO (J9) — J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
+
+- Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (porquê: HANDOFF_JANELA_6 §1). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos.
+- Canetas/marcadores Wet ✅ (`221fb75e43` `9dfb735b24` `095a508bfa`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen, Wood Stick, Marker Chisel, Dry Marker curados não aprovados.
+- Aguarela/texturas ✅ (`6999f3ec3d` `3cc04a5d93`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon APROVADO**; I-10, K-9, Spatter curados não aprovados; motor I-9, I-11.
+- **LOTE DE PROMOÇÃO** (no fim, uma regeração): Wax Crayon.
+- Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
+

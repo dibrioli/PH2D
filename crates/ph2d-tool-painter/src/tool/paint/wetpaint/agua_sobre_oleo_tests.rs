@@ -31,13 +31,18 @@ pub(super) fn com_oleo() -> PainterTool {
 
 /// [`com_oleo`] com o traço de óleo na horizontal (`y = 90`) ou na VERTICAL (`x = 120`, de `y = 20` a `140`).
 pub(super) fn com_oleo_em(vertical: bool) -> PainterTool {
+    com_oleo_sobre(vertical, PAPEL)
+}
+
+/// [`com_oleo_em`] sobre o papel `papel` (o branco: a cena do Rebelle, que não recebe a cor do papel pela porta).
+pub(super) fn com_oleo_sobre(vertical: bool, papel: [u8; 3]) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     t.handle_panel_event(PanelEvent::SelectOption(
         crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
-        format!("{},{},{}", PAPEL[0], PAPEL[1], PAPEL[2]),
+        format!("{},{},{}", papel[0], papel[1], papel[2]),
     ));
     t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
         .expect("o meio");
@@ -606,6 +611,9 @@ fn diag_aguada_por_cima_do_oleo() {
         let (meio, fim) = aguada_por_cima_do_oleo(v);
         grava(&format!("p_meio_v{v}"), &meio);
         grava(&format!("p_fim_v{v}"), &fim);
+        let (meio, fim) = aguada_por_cima_do_oleo_sobre(v, [255; 3]);
+        grava(&format!("b_meio_v{v}"), &meio);
+        grava(&format!("b_fim_v{v}"), &fim);
         relato(format!(
             "Over Oil {v}: a meio {:?} · assentada {:?}",
             na_faixa(&meio),
@@ -615,6 +623,8 @@ fn diag_aguada_por_cima_do_oleo() {
     let mut t = com_oleo();
     let antes = mostrada(&mut t);
     grava("p_antes", &antes);
+    let mut t = com_oleo_sobre(false, [255; 3]);
+    grava("b_antes", &mostrada(&mut t));
     relato(format!("antes {:?}", na_faixa(&antes)));
 }
 
@@ -638,7 +648,12 @@ pub(super) fn na_faixa(px: &[u8]) -> ([u32; 3], usize) {
 
 /// A aguada amarela do Wet Flat por cima do óleo azul de [`com_oleo`], com o **Over Oil** `v`: (a meio, assentada).
 pub(super) fn aguada_por_cima_do_oleo(v: u8) -> (Vec<u8>, Vec<u8>) {
-    let mut t = com_oleo();
+    aguada_por_cima_do_oleo_sobre(v, PAPEL)
+}
+
+/// [`aguada_por_cima_do_oleo`] sobre o papel `papel`.
+pub(super) fn aguada_por_cima_do_oleo_sobre(v: u8, papel: [u8; 3]) -> (Vec<u8>, Vec<u8>) {
+    let mut t = com_oleo_sobre(false, papel);
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
     t.set_wet_sobre_oleo(v);

@@ -1,0 +1,19 @@
+{
+ "oraculo": "Rebelle 8.3.4 Pro (teste) sob Wine 11, kwin --virtual, porta WebSocket Motion IO",
+ "data": "2026-10-30",
+ "cena": "over_oil_rebelle.py: óleo OIL_AND_ACRYLIC Dabber/Dabber 30 px (40,90,220) y=90 x 40→200 passo 4, SIMULATION 120 (+DRY no seco); aguada WATERCOLOR Watercolor/Round 40 px (220,200,40) x=120 y 30→142 passo 2,8; RELEASE + SIMULATION 600. Deslocada (+380,+240) numa tela 1000×640; recorte 240×160 = a sonda diag_aguada_por_cima_do_oleo",
+ "papel": "Default/EX00 White Simple BRANCO — a cor do NEW_ARTWORK (150,130,100) é ignorada pela porta (medido 30/10); o papel compõe por baixo pelo alfa (doc 47)",
+ "fotos": "<variante>_oleo (o óleo só) · _meio (o ponteiro em baixo) · _fim (+600 passos); variantes molhado · seco · nenhum (controlo)",
+ "comando": "bash docs/Painter/NewFeaturesWetPaint/ferramentas/gotas_inicia.sh & (Registration → Rebelle 8 Pro; New Artwork cancelado) ; bash over_oil_rebelle_tela.sh <saída> <variante> --oleo <variante>",
+ "sha256": {
+  "molhado_fim.png": "f04bb822252acf281bf0518283f3fc4e0abd2b9806028d850e451660eb1a8731",
+  "molhado_meio.png": "6b2f47257ac67ccad7a9aa635247cb3e2cfabe8167d848471db7d3d6c0ab39b2",
+  "molhado_oleo.png": "5c53e1f960d1ae971cc8532b0027eef86780c9c5d299fe7cace2d10ba3bdf439",
+  "nenhum_fim.png": "ccc6850ad26d2dcea39550d425350f60280d0abbbedfebaeeabf3dfc6b238ecf",
+  "nenhum_meio.png": "e00eae3c9deeff50a6323cfad9ca991b4ddadc7574114cbfaaf5b9fc2fa15551",
+  "nenhum_oleo.png": "aec2d1e96c58b879c55ed0d0d42df64b0442778f77406533f42005f16534c2e8",
+  "seco_fim.png": "1be66f56671876bbd2065478346a5afb45309e441105c6a48e934b8c9bf849cc",
+  "seco_meio.png": "4cb0e297261f8a3ec467c07795649e0aa8252a5945bd02d26da274fa8d902c26",
+  "seco_oleo.png": "20db1acf8ca8561f14742d3dd5225ae8c3673cd2ea4caf9b402656c765eb5fc1"
+ }
+}

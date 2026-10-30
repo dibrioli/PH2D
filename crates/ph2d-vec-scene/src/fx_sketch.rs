@@ -227,7 +227,7 @@ pub fn sketch_path(
         for p in 0..passes {
             let table = noise_table(spec.seed, p, ci, detail);
             if let Some(v) = sketch_pass(&ap, total, closed, &table, amplitude, falloff) {
-                produced.push((v, closed));
+                produced.push((crate::fx_zigzag::corta::sem_nos(v, closed), closed));
             }
         }
     }

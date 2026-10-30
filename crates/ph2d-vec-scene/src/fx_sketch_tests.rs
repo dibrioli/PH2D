@@ -186,3 +186,50 @@ fn probe_sketch_smoke() {
         );
     }
 }
+
+/// **G35 — o nó de cada passada num vale é cortado** (F40, a lei C do Zig Zag; F33 §2.5: o Sketch
+/// na Nuvem dobrava). Entre as forças varridas há passadas com nó antes do corte, e nenhuma fica.
+#[test]
+fn o_no_de_cada_passada_num_vale_e_cortado() {
+    use crate::fx_zigzag::corta::cruzamentos;
+    let k = crate::ShapeKind::Cloud;
+    let forma = crate::cook(k, [0.0, 0.0], [120.0, 80.0], &k.defaults());
+    let r = FxCtx::of(&forma).ref_size;
+    let ap = ArcPath::from_contour(&forma.verts, true).unwrap();
+    let mut com_no = 0;
+    for roughness in [8.0, 16.0] {
+        for detail in [6, 24] {
+            for seed in 1..=3 {
+                for p in 0..2 {
+                    let table = noise_table(seed, p, 0, detail);
+                    let v = sketch_pass(&ap, ap.total(), true, &table, roughness / 100.0 * r, None)
+                        .unwrap();
+                    com_no += usize::from(cruzamentos(&v, true) > 0);
+                }
+                let spec = SketchSpec {
+                    roughness,
+                    detail: f64::from(u32::try_from(detail).unwrap()),
+                    seed,
+                    ..SketchSpec::default()
+                };
+                let out = sketch_path(&forma, &spec, r, None);
+                assert_eq!(
+                    cruzamentos(&out.verts, true),
+                    0,
+                    "{roughness} {detail} {seed}"
+                );
+                for c in &out.subpaths {
+                    assert_eq!(
+                        cruzamentos(&c.verts, true),
+                        0,
+                        "{roughness} {detail} {seed}"
+                    );
+                }
+            }
+        }
+    }
+    assert!(
+        com_no > 0,
+        "a varredura já não tem nó nenhum: não prova o corte"
+    );
+}

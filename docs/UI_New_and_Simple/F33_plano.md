@@ -106,9 +106,11 @@ gancho do vale some e a quina fica igual à da forma sem efeito. Os gates são o
 
 ## 6 — Fora desta onda
 
-- **Zig Zag / Sketch num vale côncavo** (§2.5): deslocar pela normal cruza os pontos. Curar é mudar
-  a LEI do efeito (limitar a amplitude pelo raio local, ou o modo do Illustrator) — decisão de
-  desenho, com o produto de referência a correr como oráculo.
+- ✅ **Zig Zag / Sketch num vale côncavo** (§2.5) — **F40, dono 30/10: lei C, o nó é cortado** (opções
+  A/B/C em [`img_F40/zigzag_opcoes.png`](handoffs/img_F40/zigzag_opcoes.png); antes e depois em
+  [`zigzag_C_antes_depois.png`](handoffs/img_F40/zigzag_C_antes_depois.png)). O laço até ¼ do contorno
+  sai pelo cruzamento (quina) e a crista fica — também em cada passada do Sketch
+  (`ph2d-vec-scene/src/fx_zigzag_corta.rs`, gates G34/G35).
 - **Pucker & Bloat**: as pétalas com bico são o efeito (§2.4).
 
 Os abertos 2–4 do handoff F32 §6 (pose dos estados por índice; chave sobre `from`/`to`; F31/F30).

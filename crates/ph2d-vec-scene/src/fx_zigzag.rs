@@ -155,22 +155,34 @@ pub fn zigzag_contour(
     ref_size: f64,
     falloff: Option<&Falloff>,
 ) -> (Vec<VecVertex>, bool) {
+    match onda(verts, closed, spec, ref_size, falloff) {
+        Some(out) => (corta::sem_nos(out, closed), closed),
+        None => (verts.to_vec(), closed),
+    }
+}
+
+/// A onda antes do corte dos nós; `None` = o neutro.
+pub(crate) fn onda(
+    verts: &[VecVertex],
+    closed: bool,
+    spec: &ZigZagSpec,
+    ref_size: f64,
+    falloff: Option<&Falloff>,
+) -> Option<Vec<VecVertex>> {
     let n = verts.len();
     // Sem referência de tamanho não há distância a construir — e é a mesma resposta do neutro.
     if n < 2 || spec.is_neutral() || ref_size <= EPS {
-        return (verts.to_vec(), closed);
+        return None;
     }
     // `100` = a média das dimensões da forma. É aqui, e só aqui, que a percentagem vira mundo.
     let amplitude = spec.amplitude / 100.0 * ref_size;
     // O percurso por arco vem da porta única (`crate::arc_path`), partilhada com quem mais
     // precisar de "onde fica o arco `s` neste caminho" — o walker privado que vivia aqui era a
     // primeira das duas cópias que sempre acabam por divergir.
-    let Some(ap) = ArcPath::from_contour(verts, closed) else {
-        return (verts.to_vec(), closed);
-    };
+    let ap = ArcPath::from_contour(verts, closed)?;
     let total = ap.total();
     if total <= EPS {
-        return (verts.to_vec(), closed);
+        return None;
     }
 
     // Uma crista sobe e a seguinte desce: são DUAS amostras por crista.
@@ -189,7 +201,7 @@ pub fn zigzag_contour(
     let grade = (0..grid_n).map(|k| (k as f64 * step).min(total));
     let at = fx_resample::amostras(&ap, grade, total * MERGE_FRACTION, MAX_SAMPLES);
     if at.len() < 2 {
-        return (verts.to_vec(), closed);
+        return None;
     }
 
     let mut state = spec.rough_seed.unwrap_or(0);
@@ -227,13 +239,13 @@ pub fn zigzag_contour(
             VecVertex::corner(anchor)
         });
     }
-    (out, closed)
+    Some(out)
 }
+
+/// O corte do nó num vale (F40) — do Zig Zag e de cada passada do Sketch.
+#[path = "fx_zigzag_corta.rs"]
+pub(crate) mod corta;
 
 #[cfg(test)]
 #[path = "fx_zigzag_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "fx_zigzag_vale_sonda.rs"]
-mod sonda_vale;

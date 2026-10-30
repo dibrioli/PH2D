@@ -337,15 +337,12 @@ fn a_second_zigzag_rides_on_the_first_instead_of_erasing_it() {
 
     // As DUAS direções: o 2º mais grosso (o caso que apagava) e o 2º mais fino.
     for r2 in [4.0, 8.0, 32.0] {
-        let two = zz(
-            &one,
-            true,
-            &ZigZagSpec {
-                ridges: r2,
-                ..spec(4.0)
-            },
-        )
-        .0;
+        // Mede-se a REAMOSTRAGEM: a onda antes do corte dos nós (F40), que tira laços e os picos neles.
+        let s2 = ZigZagSpec {
+            ridges: r2,
+            ..spec(4.0)
+        };
+        let two = onda(&one, true, &s2, ref_of(&one), None).unwrap();
         let stacked = len_of(&two);
         assert!(
             stacked >= first,

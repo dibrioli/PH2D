@@ -13,7 +13,8 @@
 //! ele. **Escolher a cor no seletor aplica o papel** (o botão que existiu saiu, 2026-10-06): a 1.ª
 //! cor separa o papel da tinta na camada de fundo ([`separa_o_branco`]: o branco puro vira
 //! transparente e a orla de cada traço volta a ser a tinta dele com o alfa que tinha, a tinta opaca do
-//! miolo fica) — e as seguintes repintam-no ao vivo; o arrasto inteiro é um passo de desfazer.
+//! miolo fica) — e as seguintes repintam-no ao vivo. A COR não entra no desfazer (dono 30/10), só a separação
+//! dos píxeis ([`PainterTool::poe_o_papel`]).
 //! Pintar e depois escolher o papel dá a imagem de escolher o papel e depois pintar, ±1 nível (BUGS
 //! #42: antes só o branco PURO saía, e a orla AA guardava a mistura — um fio claro sobre papel de cor).
 //!
@@ -280,20 +281,10 @@ impl PainterTool {
     }
 
     /// **Aplica o papel com a cor do seletor** — a porta programática (o produto aplica pelo próprio
-    /// seletor, [`Self::papel_segue_a_cor`]). Um passo de desfazer.
+    /// seletor, [`Self::papel_segue_a_cor`]). Mesma lei de desfazer que o seletor.
     pub fn aplica_o_papel(&mut self) {
-        let (w, h) = self.source_size;
-        if w == 0 || h == 0 {
-            return;
-        }
-        let before = self.snapshot_model();
-        if self.papel.is_none() {
-            self.tira_o_branco_do_fundo();
-        }
-        self.papel = Some(self.paper_color_rgb8());
-        self.edited_since_bind = true;
-        self.commit_structural_edit(before);
-        self.invalidate_composite();
+        let nova = self.paper_color_rgb8();
+        self.poe_o_papel(nova);
     }
 
     /// A camada raster de baixo deixa o branco do papel ([`separa_o_branco`]) — onde o papel aparece.
@@ -323,26 +314,38 @@ impl PainterTool {
 
     /// **A cor do papel mudou no SELETOR: o papel segue-a ao vivo** (dono, 2026-10-06: *«o botão apply
     /// to paper parece supérfluo. não seria melhor aplicar ao usar o próprio seletor de cor?»*). A 1.ª
-    /// cor aplica o papel (o branco puro do fundo sai), as seguintes repintam-no; a rajada inteira do
-    /// arrasto — a aplicação incluída — é UM passo de desfazer
-    /// ([`crate::undo::CoalesceKind::CorDoPapel`]). Branco num documento sem papel não faz nada (o
-    /// branco do fundo já é esse papel).
+    /// cor aplica o papel (o branco puro do fundo sai), as seguintes repintam-no. Branco num documento
+    /// sem papel não faz nada (o branco do fundo já é esse papel).
     pub(crate) fn papel_segue_a_cor(&mut self) {
         let nova = self.paper_color_rgb8();
-        if self.papel == Some(nova) || (self.papel.is_none() && nova == [255, 255, 255]) {
+        if self.papel.is_none() && nova == PAPEL_BRANCO {
+            return;
+        }
+        self.poe_o_papel(nova);
+    }
+
+    /// ⭐ **A COR do papel não é história; a EXISTÊNCIA dele é** (dono, smoke 30/10: mudar a cor do papel
+    /// não entra no Desfazer — como as outras propriedades do cartão Paper). Mudar a cor de um papel que já
+    /// existe não grava passo nenhum e nenhum desfazer a reverte ([`Self::restore_model`] só repõe o
+    /// papel quando um dos lados é `None`). Aplicar o 1.º papel sobre arte que chegou SEM papel muda os
+    /// píxeis da camada de fundo ([`separa_o_branco`]) — esse é um passo de desfazer, porque os píxeis o são.
+    fn poe_o_papel(&mut self, nova: [u8; 3]) {
+        if self.papel == Some(nova) {
             return;
         }
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
         }
-        let before = self.snapshot_model();
-        if self.papel.is_none() {
-            self.tira_o_branco_do_fundo();
-        }
-        self.papel = Some(nova);
         self.edited_since_bind = true;
-        self.commit_structural_edit_coalesced(crate::undo::CoalesceKind::CorDoPapel, before);
+        if self.papel.is_some() {
+            self.papel = Some(nova);
+        } else {
+            let before = self.snapshot_model();
+            self.tira_o_branco_do_fundo();
+            self.papel = Some(nova);
+            self.commit_structural_edit(before);
+        }
         self.invalidate_composite();
     }
 }

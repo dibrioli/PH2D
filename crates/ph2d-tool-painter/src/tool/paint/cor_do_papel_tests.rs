@@ -219,13 +219,15 @@ fn o_papel_aplicado_e_o_chao_nos_quatro_meios() {
     }
 }
 
-/// **A COR MUDA AO VIVO E DESFAZ-SE NUM PASSO** — com o papel aplicado, três mudanças seguidas no
-/// seletor (um arrasto) repintam o papel; um desfazer volta à 1.ª cor, o seguinte desfaz o traço e o último tira o papel
-/// e devolve o branco da camada.
+/// ⭐ **A COR MUDA AO VIVO E NÃO ENTRA NO DESFAZER** (dono, smoke 30/10) — sobre arte que chegou SEM papel, a 1.ª
+/// cor separa o branco da camada (um passo, porque os píxeis o são) e o traço vem depois; três mudanças seguidas no
+/// seletor repintam o papel sem passo nenhum. O 1.º desfazer tira o TRAÇO e o papel fica com a última cor; o
+/// seguinte desfaz a separação e devolve o branco da camada.
 #[test]
-fn a_cor_do_papel_muda_ao_vivo_e_desfaz_num_passo() {
+fn a_cor_do_papel_muda_ao_vivo_e_nao_entra_no_desfazer() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = com_papel(PaintMedia::Digital, CREME, true);
+    let traco = mostrado(&mut t, 64, 64);
     for c in ["200,220,240", "180,210,250", "120,200,255"] {
         t.handle_panel_event(PanelEvent::SelectOption(
             crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
@@ -237,22 +239,61 @@ fn a_cor_do_papel_muda_ao_vivo_e_desfaz_num_passo() {
         [120, 200, 255, 255],
         "o papel não seguiu a cor ao vivo"
     );
-    // O traço veio DEPOIS da 1.ª cor, então o arrasto é um passo e a 1.ª cor outro; o arrasto
-    // é o último passo.
-    assert!(t.undo_last(), "há o que desfazer");
+    assert!(t.undo_last(), "o traço");
+    assert_ne!(mostrado(&mut t, 64, 64), traco, "o 1.º desfazer não tirou o traço");
     assert_eq!(
         mostrado(&mut t, 64, 20),
-        [CREME[0], CREME[1], CREME[2], 255],
-        "um desfazer não voltou à 1.ª cor"
+        [120, 200, 255, 255],
+        "um desfazer reverteu a cor do papel"
     );
-    assert!(t.undo_last(), "o traço");
-    assert!(t.undo_last(), "a 1.ª cor");
-    assert_eq!(t.papel(), None, "o desfazer da 1.ª cor não tirou o papel");
+    assert!(t.undo_last(), "a separação do branco");
+    assert_eq!(t.papel(), None, "o desfazer da separação não tirou o papel");
     assert_eq!(
         mostrado(&mut t, 64, 20),
         [255, 255, 255, 255],
         "o branco da camada não voltou"
     );
+}
+
+/// ⭐ **NENHUMA propriedade do cartão Paper entra no desfazer** (dono, smoke 30/10; a família num bloco) — num
+/// documento que nasce com papel (toda sprite branca), Color, Relief, Roughness e Kind mudam a tela e a fila de
+/// desfazer continua vazia; um traço depois e o seu desfazer não revertem nenhuma delas.
+#[test]
+fn nenhuma_propriedade_do_cartao_paper_entra_no_desfazer() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = tool(128, PaintMedia::Digital, 10.0);
+    t.abre_a_sprite(vec![255u8; 128 * 128 * 4], 128, 128);
+    assert_eq!(t.papel(), Some(super::super::papel::PAPEL_BRANCO));
+    t.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        "120,200,255".into(),
+    ));
+    t.set_substrate_depth(0.7);
+    t.set_substrate_roughness(0.4);
+    t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+    let estado = |t: &PainterTool| {
+        (
+            t.papel(),
+            t.paint.substrate_depth,
+            t.paint.substrate_rough,
+            t.paint.brush.paper,
+        )
+    };
+    let depois = estado(&t);
+    assert_eq!(depois.0, Some([120, 200, 255]), "o seletor não mudou o papel");
+    assert!(!t.undo_last(), "uma propriedade do cartão Paper entrou no desfazer");
+    assert_eq!(estado(&t), depois);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 64.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        "90,90,90".into(),
+    ));
+    assert!(t.undo_last(), "o traço");
+    assert_eq!(t.papel(), Some([90, 90, 90]), "desfazer o traço reverteu a cor do papel");
+    assert!(!t.undo_last(), "a cor do papel entrou no desfazer depois do traço");
 }
 
 /// **O PAPEL VIAJA COM O DOCUMENTO** — trocar de sprite e voltar devolve o papel ao seu documento, e
@@ -468,13 +509,12 @@ fn o_use_as_ve_o_papel() {
     assert_eq!(lum[20 * w as usize + 64], 203, "o «Use as» não vê o papel");
 }
 
-/// ⭐ **O SELETOR APLICA O PAPEL, E O ARRASTO INTEIRO É UM DESFAZER** (dono, 2026-10-06: *«o botão
-/// apply to paper parece supérfluo. não seria melhor aplicar ao usar o próprio seletor de cor?»*) —
-/// a 1.ª cor aplica o papel (o branco puro do fundo sai), as seguintes repintam-no; um Ctrl+Z desfaz
-/// o arrasto todo, a aplicação incluída, e devolve o branco da camada. Branco num documento sem papel
-/// não faz nada.
+/// ⭐ **O SELETOR APLICA O PAPEL** (dono, 2026-10-06: *«o botão apply to paper parece supérfluo. não seria melhor
+/// aplicar ao usar o próprio seletor de cor?»*) — a 1.ª cor aplica o papel (o branco puro do fundo sai: um passo de
+/// desfazer, os píxeis mudaram), as seguintes repintam-no sem passo (dono 30/10); um Ctrl+Z desfaz a separação e
+/// devolve o branco da camada. Branco num documento sem papel não faz nada.
 #[test]
-fn o_seletor_aplica_o_papel_e_o_arrasto_e_um_desfazer() {
+fn o_seletor_aplica_o_papel_e_so_a_separacao_e_um_desfazer() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = tool(128, PaintMedia::Digital, 10.0);
     let cor = |t: &mut PainterTool, c: &str| {
@@ -503,7 +543,8 @@ fn o_seletor_aplica_o_papel_e_o_arrasto_e_um_desfazer() {
         "o papel não é a cor do seletor"
     );
     assert!(t.undo_last(), "há o que desfazer");
-    assert_eq!(t.papel(), None, "um desfazer não desfez o arrasto inteiro");
+    assert_eq!(t.papel(), None, "um desfazer não desfez a separação");
+    assert!(!t.undo_last(), "as cores seguintes entraram no desfazer");
     assert_eq!(
         mostrado(&mut t, 64, 64),
         [255, 255, 255, 255],

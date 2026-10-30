@@ -152,7 +152,8 @@ impl PainterTool {
         );
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
-        if self.papel != m.papel {
+        // A cor do papel não é história, a existência dele é ([`Self::poe_o_papel`]).
+        if self.papel.is_none() != m.papel.is_none() {
             self.papel = m.papel;
             self.invalidate_composite(); // o papel cobre a tela inteira
         }

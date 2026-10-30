@@ -15,6 +15,9 @@
 /// A cor do papel em cada meio (pedido do dono, 2026-10-05).
 #[path = "cor_do_papel_tests.rs"]
 mod cor_do_papel_tests;
+/// O censo do papel de COR na fábrica (dono 30/10, a família do BUGS #53).
+#[path = "papel_de_cor_censo_tests.rs"]
+mod papel_de_cor_censo_tests;
 /// As Grain Colors nos quatro meios (dono 22/10).
 #[path = "grain_colors_tests.rs"]
 mod grain_colors_tests;

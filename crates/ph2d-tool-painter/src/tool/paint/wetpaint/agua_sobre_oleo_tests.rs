@@ -371,3 +371,69 @@ fn diag_grain_colors_no_papel_de_cor() {
         claros(&fim)
     ));
 }
+
+/// O que a água pousou DENTRO do óleo: com o óleo de [`com_oleo`], um traço aguado só no papel acima da parede (o pé a
+/// `folga` px da orla). Devolve `(massa nova dentro, células dentro com > 50 de massa nova, células do miolo)`; o
+/// miolo = células com óleo (massa > 1000) a ≥ 4 px da orla de cima da sua coluna.
+pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
+    let mut t = com_oleo();
+    t.wet_bring_home();
+    let antes: Vec<f32> = {
+        let g = &t.paint.wetpaint.session.as_ref().expect("a sessão").engine.layers[0].grid;
+        (0..g.cells).map(|i| g.sett[i] + g.susp[i]).collect()
+    };
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let gs = s.engine.layers[0].grid.s;
+    let (gw, gh) = s.grid;
+    // A orla de cima de cada coluna (a 1.ª célula com massa > 1000) e o topo do óleo no meio.
+    let orla: Vec<Option<usize>> = (1..=gw)
+        .map(|cx| (1..=gh).find(|&cy| antes[cx + cy * gs] > 1000.0))
+        .collect();
+    let topo = orla[120].expect("o óleo no meio") as f32 - 1.0;
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(20.0);
+    t.set_brush_color_srgb8([240, 130, 60]);
+    let y = topo - 10.0 - folga;
+    t.on_canvas_pointer(ponteiro(40.0, y, PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(ponteiro(40.0 + 4.0 * k as f32, y, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(ponteiro(200.0, y, PointerPhase::Up));
+    for _ in 0..600 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.wet_bring_home();
+    let g = &t.paint.wetpaint.session.as_ref().expect("a sessão").engine.layers[0].grid;
+    let (mut massa, mut celulas, mut miolo) = (0.0f64, 0, 0);
+    for (k, o) in orla.iter().enumerate() {
+        let Some(o) = *o else { continue };
+        let cx = k + 1;
+        for cy in o + 4..=gh {
+            let i = cx + cy * gs;
+            if antes[i] <= 1000.0 {
+                continue;
+            }
+            miolo += 1;
+            let nova = f64::from(g.sett[i] + g.susp[i] - antes[i]).max(0.0);
+            massa += nova;
+            if nova > 50.0 {
+                celulas += 1;
+            }
+        }
+    }
+    (massa, celulas, miolo)
+}
+
+/// SONDA — a água sobe a ladeira do óleo? (Bug 2 do smoke do dono 30/10.)
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_agua_sobe_a_ladeira_do_oleo() {
+    for folga in [0.0f32, 4.0] {
+        let (m, c, n) = agua_que_sobe(folga);
+        relato(format!(
+            "folga {folga} px: massa nova no miolo do óleo {m:.0} · {c} de {n} células com > 50"
+        ));
+    }
+}

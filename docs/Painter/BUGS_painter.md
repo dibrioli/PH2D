@@ -480,6 +480,24 @@ Gate verde que não via: todos os portões e a fábrica pintam sobre BRANCO. Gat
 `a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda`. 11 miniaturas regeradas, uma a uma: ≤ 2 níveis sobre
 o branco cada (`sonda_miniatura_antiga_e_de_hoje`).
 
+## Bug #54 (ABERTO, decisão do dono) — o ASSENTAR guarda branco opaco num papel de COR (a família do #53)
+
+Achado pelo censo `nenhum_pincel_de_fabrica_clareia_o_papel_de_cor` (66 presets, 2.º traço sobre um Wet Flat azul, papel
+bege, sem Real Oil nem Emboss; validado: sem a cura do #53 acusa 11 presets a meio). Depois do #53 sobra só o **Marker
+Bullet assentado** (593 px): `assenta` (Ecra::Cobre) preserva o ponto SOBRE O BRANCO enquanto a cobertura sobe a ~1, e o
+branco que se via através vira cor opaca (sett `1703` `[239,236,201]` sob laranja/azul). Cura SIMULADA (a caixa das tintas
+no retorno do `assenta`): o censo vai a 0, mas 25 miniaturas mudam até 10 níveis sobre o branco (Knife Dry 10, Filbert 7,
+Knife Stain 7, Dabber 4 6, Knife Smooth 3 6, Knife Textured 6…) e reprovam `assentar_guarda_o_ecra_com_o_glaze` e
+`com_o_glaze_assentar_guarda_o_ecra_seco` — mexe em aprovados, logo é do dono pela foto. Revertida; o censo é catraca
+(`ABERTOS`) até lá. Sondas: `diag_a_celula_mais_clara_do_censo`, `sonda_miniatura_antiga_e_de_hoje`.
+
+## Grain Colors esbranquiçadas (smoke 30/10) — medido: NÃO é defeito do motor
+
+`diag_grain_colors_no_papel_de_cor`: com as cores do dono (azul → amarelo em 0,304, RGB) cada célula guarda a cor exacta
+da rampa (`[250,220,40]`). O claro vem da rampa: o modo **RGB** interpola em luz linear e o meio de azul→amarelo é um
+cinza claro (`[0.78,0.83,0.75]` a meio de cores claras); e o azul misturado no amarelo dá cinza. OKLCH roda pela matiz
+(azul → verde → amarelo).
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

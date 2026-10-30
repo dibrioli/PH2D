@@ -41,7 +41,10 @@ fn a_vec_scene_v24_le_com_vertices_regras_e_pilha_por_atribuir() {
     let PathEffect::Trim(t) = &trim.effect else {
         panic!("Trim primeiro");
     };
-    assert_eq!((t.start, t.end, t.offset, trim.enabled), (0.1, 0.8, 0.2, true));
+    assert_eq!(
+        (t.start, t.end, t.offset, trim.enabled),
+        (0.1, 0.8, 0.2, true)
+    );
     let PathEffect::ZigZag(z) = &zig.effect else {
         panic!("ZigZag depois");
     };
@@ -81,5 +84,8 @@ fn a_vec_scene_v24_le_com_vertices_regras_e_pilha_por_atribuir() {
 
     let nova = cena.to_bytes().expect("grava");
     assert_eq!(nova[0], u8::try_from(VEC_SCENE_SCHEMA_VERSION).unwrap());
-    assert_eq!(VecScene::from_bytes(&nova).expect("o degrau novo abre"), cena);
+    assert_eq!(
+        VecScene::from_bytes(&nova).expect("o degrau novo abre"),
+        cena
+    );
 }

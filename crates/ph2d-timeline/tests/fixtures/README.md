@@ -12,7 +12,9 @@
 | `timeline_doc_v21.json` | o MESMO documento em `serde_json` — a régua da migração v21 → v22 (`tests/it/canal_textos.rs`) | idem |
 | `timeline_doc_v23.bin` | um `TimelineDoc` **v23** (o último com a `FieldKey` de 4 campos, sem `item`): um documento novo, 7 campos do vetor no dono 7 (`wire_id` 44), 2 chaves cada — tinta da entrada 0 (`i` 1) e opacidade da entrada 1 (`i` 2), tinta de base (`i` 0), parâmetro 2 do efeito 1, raio do filtro 0, ponto 3 do contorno 1, e tinta do traço da entrada 2 (`i` 3) | `TimelineDoc::to_bytes` sobre `36c29f1e5e` (antes da v24), por um teste `#[ignore]` de uma corrida só, apagado a seguir |
 | `timeline_doc_v23.json` | o MESMO documento em `serde_json` — a régua da leitura v23 → v24 (`tests/it/canal_item.rs`) | idem |
+| `timeline_doc_v24.bin` | um `TimelineDoc` **v24** (o último com a caixa `View::Toggle` na ordem da declaração: `0` = ligada): 3 trilhas no dono 7 (`wire_id` 44) — a caixa do 9-slice do Image, a caixa «só este objecto» do item 9 da vigia, e o tamanho do 9-slice (controlo) — chaves em 0/1/2 s com a caixa marcada/desmarcada/marcada, `rest` = marcada | `TimelineDoc::to_bytes` sobre `c531ef677c` (antes da v25), por um teste `#[ignore]` de uma corrida só, apagado a seguir |
+| `timeline_doc_v24.json` | o MESMO documento em `serde_json` (legível) — a régua da migração v24 → v25 (`tests/it/caixa_ordem.rs`) | idem |
 
-⛔ Não regenere: depois da v19 o código já não escreve v18, e depois da v20 já não escreve v19, e depois da v21 já não escreve v20, e depois da v22 já não escreve v21, e depois da v24 já não escreve v23. As
+⛔ Não regenere: depois da v19 o código já não escreve v18, e depois da v20 já não escreve v19, e depois da v21 já não escreve v20, e depois da v22 já não escreve v21, e depois da v24 já não escreve v23, e depois da v25 já não escreve v24. As
 migrações (`doc_v18.rs`, `doc_v19.rs`) são provadas contra estes bytes em `tests/it/clip_owner.rs` e
 `tests/it/clip_entry.rs`.

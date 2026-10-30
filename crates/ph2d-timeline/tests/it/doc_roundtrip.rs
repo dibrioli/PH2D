@@ -159,8 +159,10 @@ fn schema_version_is_nineteen() {
     //      os bytes da v22, re-carimbados (provado contra a fixtura em `canal_textos.rs`).
     // v24 = a IDENTIDADE na chave (`FieldKey.item`, F31 §A): a v23 lê-se pelo âmbito da chave
     //      antiga (provado contra a fixtura em `canal_item.rs`).
-    assert_eq!(DOC_VERSION, 24);
-    assert_eq!(TimelineDoc::new().version, 24);
+    // v25 = a caixa (`View::Toggle`) no canal é 0 = desligada, 1 = ligada: as trilhas de caixa de
+    //      uma v24 viram `1 − v` (`doc_v24.rs`, provado contra a fixtura em `caixa_ordem.rs`).
+    assert_eq!(DOC_VERSION, 25);
+    assert_eq!(TimelineDoc::new().version, 25);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

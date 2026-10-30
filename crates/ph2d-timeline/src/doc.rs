@@ -140,12 +140,17 @@ mod clip_paths;
 /// `tests/fixtures/timeline_doc_v23.bin`); a troca `i` → id é semântica e corre no `upkeep` do
 /// `ph2d-timeline-persist`, que tem o mundo.
 ///
+/// v25: **a caixa do cartão (`View::Toggle`) no canal é `0` = desligada, `1` = ligada**, como um
+/// `Bool`; até à v24 era a ordem da declaração (`1.ª opção` = ligada = `0`, e a timeline dizia
+/// «Off» numa caixa marcada). Os bytes não mudam: a migração (`doc_v24.rs`, provada contra
+/// `tests/fixtures/timeline_doc_v24.bin`) troca `v → 1 − v` nas trilhas de caixa.
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 24;
+pub const DOC_VERSION: u32 = 25;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -440,13 +445,16 @@ impl TimelineDoc {
             Ok(v19::VERSION) => v19::migrate(bytes)?,
             Ok(v20::VERSION) => v20::migrate(bytes)?,
             Ok(v21::VERSION) => v21::migrate(bytes)?,
-            Ok(22 | 23) => TimelineDoc {
+            Ok(22..=24) => TimelineDoc {
                 version: DOC_VERSION,
                 ..postcard::from_bytes(bytes).map_err(|e| e.to_string())?
             },
             _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
         };
         doc.normaliza_textos();
+        if matches!(versao, Ok(v) if v < 25) {
+            doc.desvira_caixas();
+        }
         if doc.version != DOC_VERSION {
             return Err(format!(
                 "timeline schema version {} != {DOC_VERSION}",
@@ -633,3 +641,5 @@ mod v19;
 mod v20;
 #[path = "doc_v21.rs"]
 mod v21;
+#[path = "doc_v24.rs"]
+mod v24;

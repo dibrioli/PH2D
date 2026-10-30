@@ -16,6 +16,7 @@ mod arrange_is_independent;
 mod auto_orient;
 #[cfg(feature = "skeleton")]
 mod bone_bend_channels;
+mod caixa_ordem;
 mod canal_field;
 mod canal_item;
 mod canal_textos;

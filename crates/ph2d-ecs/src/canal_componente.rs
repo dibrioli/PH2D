@@ -258,6 +258,13 @@ pub fn chave_da_opcao(k: FieldKey, i: u64) -> Option<&'static str> {
     }
 }
 
+/// A chave nomeia uma caixa do cartão sobre um enum (`View::Toggle`): `0` = desligada, `1` = ligada.
+/// Até à v24 do `TimelineDoc` a ordem era a da declaração (a migração usa isto).
+#[must_use]
+pub fn e_caixa(k: FieldKey) -> bool {
+    campo_de(k).is_some_and(|f| matches!(f.view, View::Toggle(..)))
+}
+
 /// O identificador guardado de uma opção (`options!` escreve-o como código: `Full`, `0`, `null`).
 fn opcao(s: &str) -> Value {
     serde_json::from_str(s).unwrap_or_else(|_| Value::String(s.to_owned()))
@@ -266,7 +273,8 @@ fn opcao(s: &str) -> Value {
 fn escolhas(f: &FieldDesc) -> Option<Vec<Value>> {
     match f.view {
         View::Options(o) => Some(o.iter().map(|x| opcao(x.valor)).collect()),
-        View::Toggle(off, on) => Some(vec![opcao(off), opcao(on)]),
+        // `Toggle(ligado, desligado)`: o índice 0 é a caixa DESLIGADA, como no `Bool` (v25).
+        View::Toggle(ligado, desligado) => Some(vec![opcao(desligado), opcao(ligado)]),
         _ => None,
     }
 }

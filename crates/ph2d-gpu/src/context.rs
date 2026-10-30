@@ -259,20 +259,31 @@ fn blocos_do_alocador(escolha: Option<&str>) -> wgpu::MemoryHints {
 }
 
 fn relata_erros_do_dispositivo(device: &wgpu::Device) {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static VISTOS: AtomicU64 = AtomicU64::new(0);
-    device.on_uncaptured_error(std::sync::Arc::new(|e: wgpu::Error| {
-        if matches!(e, wgpu::Error::OutOfMemory { .. }) {
-            crate::memoria::anota_falta_de_memoria();
-        }
-        let n = VISTOS.fetch_add(1, Ordering::Relaxed) + 1;
-        if n <= 3 || n.e_potencia_de_dez() || std::env::var_os("PH2D_GPU_ERROS_TODOS").is_some() {
-            eprintln!(
-                "[gpu-erro] #{n} — o dispositivo recusou trabalho. Se o ecra' ficou vazio e nao \
-                 volta, e' isto:\n[gpu-erro] {e}"
-            );
-        }
-    }));
+    device.on_uncaptured_error(std::sync::Arc::new(relata_erro));
+}
+
+static ERROS_VISTOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// O `[gpu-erro]` do dispositivo — também o destino de um erro que um escopo apanhou e devolve
+/// ([`crate::memoria::sob_escopo_de_memoria`]).
+pub(crate) fn relata_erro(e: wgpu::Error) {
+    if matches!(e, wgpu::Error::OutOfMemory { .. }) {
+        crate::memoria::anota_falta_de_memoria();
+    }
+    let n = ERROS_VISTOS.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+    if n <= 3 || n.e_potencia_de_dez() || std::env::var_os("PH2D_GPU_ERROS_TODOS").is_some() {
+        eprintln!(
+            "[gpu-erro] #{n} — o dispositivo recusou trabalho. Se o ecra' ficou vazio e nao \
+             volta, e' isto:\n[gpu-erro] {e}"
+        );
+    }
+}
+
+/// Quantos `[gpu-erro]` o processo já contou — diagnóstico e gate.
+#[doc(hidden)]
+#[must_use]
+pub fn erros_relatados() -> u64 {
+    ERROS_VISTOS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// `n` é uma potência de dez — a escada de silêncio do [`relata_erros_do_dispositivo`].

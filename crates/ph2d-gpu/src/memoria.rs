@@ -122,17 +122,43 @@ pub fn geracao() -> u64 {
 
 /// Corre `f` sob um escopo de `OutOfMemory`: a recusa é ANOTADA e devolvida em vez de ir ao
 /// observador de erros do dispositivo (o chamador decide o que fazer, ex.: refazer o renderer).
+///
+/// ⭐ E sob um de `Validation` por fora: o recurso recusado volta INVÁLIDO e quem o usa no mesmo
+/// `f` (um bind group do Vello) dá um erro de validação que é a MESMA recusa — com o wgpu 30 eram
+/// 100 `[gpu-erro]` a cada nova tentativa (F40, cena 41 com 476 MiB livres). Sem recusa, a validação
+/// vai ao `[gpu-erro]` como antes ([`destino`]).
 pub fn sob_escopo_de_memoria<R>(
     device: &wgpu::Device,
     f: impl FnOnce() -> R,
 ) -> (R, Option<wgpu::Error>) {
+    let validacao = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let escopo = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
     let r = f();
     let erro = pollster::block_on(escopo.pop());
+    let invalido = pollster::block_on(validacao.pop());
     if erro.is_some() {
         anota_falta_de_memoria();
     }
+    if let Destino::Relata(e) = destino(erro.is_some(), invalido) {
+        crate::context::relata_erro(e);
+    }
     (r, erro)
+}
+
+/// Para onde vai o erro de validação de um [`sob_escopo_de_memoria`].
+#[derive(Debug)]
+pub(crate) enum Destino {
+    /// Nenhum, ou a consequência da recusa de memória do mesmo escopo.
+    Nenhum,
+    /// Um erro próprio: vai ao `[gpu-erro]`.
+    Relata(wgpu::Error),
+}
+
+pub(crate) fn destino(recusou: bool, invalido: Option<wgpu::Error>) -> Destino {
+    match invalido {
+        Some(e) if !recusou => Destino::Relata(e),
+        _ => Destino::Nenhum,
+    }
 }
 
 /// Quanto o arranque do editor espera, no máximo, que outro programa liberte a placa (o `ollama`
@@ -175,6 +201,10 @@ pub fn tenta_enquanto_falta_memoria<T>(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "memoria_escopo_tests.rs"]
+mod escopo_tests;
 
 #[cfg(test)]
 mod tests {

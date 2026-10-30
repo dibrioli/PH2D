@@ -2157,7 +2157,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    a nascer ABERTA sob a Image (decisão do dono, GEF 15 D2; o cartão GEF 07/08). ⚠️ Medido SOZINHO
     //    (um processo por teste, como o nextest): no `cargo test` de um processo só o registo partilhado
     //    herda o estado de outros testes e leu `1 656`.
-    ("inspector", 1485.0),
+    // ⬆️ `1 485 → 1 488` em 2026-10-30 (subida do parley 0.11 → 0.12, commit `0341c1704d`), e NÃO é uma
+    //    secção a nascer aberta: com `quantize` o parley 0.12 arredonda ascent/descent/leading antes de
+    //    somar (como o Chrome) — Inter 12 px dá linha de `15` em vez de `14,53`. Medido antes × depois
+    //    rect a rect: os mesmos 163 widgets, x/w/h idênticos, só os y passam a inteiros (`1 484,58 → 1 488`).
+    ("inspector", 1488.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.

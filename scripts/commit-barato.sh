@@ -13,7 +13,7 @@
 #                      architecture_widget_loc_cap · shells/desktop file_loc_caps (+ marcador morto)
 #   tecto de função:   architecture_panel_loc_cap · shells/desktop fn_loc_caps (o mesmo parser)
 #   HR-15:             no_literal_color · no_magic_numeric · hr15_no_hardcoded_ui_strings
-#   formato:           `rustfmt --check` por stdin (não segue `mod`), com o `rustfmt.toml` da raiz
+#   formato:           `rustfmt --check` por stdin (não segue `mod`), com o `rustfmt.toml` mais próximo
 #   nextest:           cada `test(…)`/`package(…)` NOVO em `.config/nextest.toml` existe no fonte
 # Exit: 0 verde · 1 ✗ (lista `ficheiro:linha — porquê`) · outro = erro do próprio espelho (o hook deixa passar).
 # Desligar num commit (só move código entre ficheiros, por exemplo): `PH2D_COMMIT_BARATO=0`.
@@ -671,7 +671,7 @@ def hr15(rel, src):
             erros.append((rel, ln, f"{n} texto(s) fixo(s) `.label(\"…\")`/`.placeholder(\"…\")`, o baseline deixa {t} — i18n (HR-15) [{os.path.basename(GS15)}]"))
 
 
-# ── rustfmt por stdin (não segue `mod`, lê o rustfmt.toml da raiz) ────────────────────────────────
+# ── rustfmt por stdin (não segue `mod`, lê o rustfmt.toml mais próximo) ────────────────────────────────
 def edicao():
     try:
         m = re.search(r'^edition\s*=\s*"(\d+)"', open(os.path.join(raiz, "Cargo.toml")).read(), re.M)
@@ -684,8 +684,16 @@ def fmt(rel, src, ed):
     if b"@generated" in b"\n".join(src.split(b"\n")[:5]):
         return None  # o `cargo fmt` salta-os (`format_generated_files = false`, 5 linhas)
     cmd =["rustfmt", "--check", "--edition", ed]
-    if os.path.exists(os.path.join(raiz, "rustfmt.toml")):
-        cmd += ["--config-path", os.path.join(raiz, "rustfmt.toml")]
+    # O `rustfmt.toml` MAIS PRÓXIMO, como o `cargo fmt`: um vendorizado traz o seu
+    # (`disable_all_formatting`), e o da raiz reprovava 46 ficheiros do wgpu-core (30/10).
+    d = os.path.dirname(os.path.join(raiz, rel))
+    while True:
+        if os.path.exists(os.path.join(d, "rustfmt.toml")):
+            cmd += ["--config-path", os.path.join(d, "rustfmt.toml")]
+            break
+        if os.path.realpath(d) == os.path.realpath(raiz) or os.path.dirname(d) == d:
+            break
+        d = os.path.dirname(d)
     try:
         p = subprocess.run(cmd, input=src, capture_output=True, cwd=raiz, timeout=8)
     except (OSError, subprocess.TimeoutExpired):

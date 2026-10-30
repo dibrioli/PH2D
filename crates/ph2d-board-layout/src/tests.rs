@@ -141,9 +141,16 @@ fn backspace_takes_one_character_and_ctrl_backspace_a_word() {
     e.motion(&mut ts, Move::TextEnd, false);
     e.backspace(&mut ts, false);
     assert_eq!(e.text(), "uma ideia s", "o «ó» tem 2 bytes e sai inteiro");
-    // A fronteira de palavra do parley (a mesma do `PlainEditor` de antes) leva o espaço também.
+    // Uma palavra só, como nos navegadores — no FIM do texto também (o parley 0.12 levava duas).
     e.backspace(&mut ts, true);
-    assert_eq!(e.text(), "uma ideia");
+    assert_eq!(e.text(), "uma ideia ");
+    e.backspace(&mut ts, true);
+    assert_eq!(
+        e.text(),
+        "uma ",
+        "o espaço antes do cursor vai com a palavra"
+    );
+    e.insert(&mut ts, "ideia");
     e.motion(&mut ts, Move::TextStart, false);
     e.delete(&mut ts, false);
     assert_eq!(e.text(), "ma ideia");

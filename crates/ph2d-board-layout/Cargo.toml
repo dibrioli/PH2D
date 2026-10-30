@@ -16,6 +16,8 @@ parley = "0.12.0"
 ph2d-board-model = { path = "../ph2d-board-model" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
+# Ctrl+Backspace: a palavra anterior pelas fronteiras UAX #29 (o parley 0.12 salta duas no fim do texto).
+unicode-segmentation = "1.13"
 
 [lints]
 workspace = true

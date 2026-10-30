@@ -11,6 +11,7 @@ use std::ops::Range;
 use parley::{Affinity, Cursor, Layout, LayoutContext, Selection};
 use ph2d_board_model::{Mark, Marks, Rgba, RichText};
 use ph2d_text::TextSystem;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::Ink;
 
@@ -190,7 +191,7 @@ impl TextEdit {
         let focus = self.sel.focus();
         let end = focus.index();
         let start = if word {
-            focus.previous_logical_word(&self.layout).index()
+            inicio_da_palavra_anterior(self.rich.as_str(), end)
         } else {
             let Some(cluster) = focus.logical_clusters(&self.layout)[0] else {
                 return;
@@ -381,4 +382,15 @@ impl TextEdit {
         let b = self.sel.focus().geometry(&self.layout, caret_w);
         (sel, Some([b.x0, b.y0, b.x1, b.y1]))
     }
+}
+
+/// O início da palavra antes de `fim` (Ctrl+Backspace), como nos navegadores: salta o espaço e
+/// apaga UMA palavra pelas fronteiras UAX #29. ⛔ Não o `Cursor::previous_logical_word` do parley
+/// 0.12: no fim do texto ele parte do grafema antes do cursor e salta duas palavras.
+fn inicio_da_palavra_anterior(texto: &str, fim: usize) -> usize {
+    texto[..fim]
+        .split_word_bound_indices()
+        .rev()
+        .find(|(_, w)| !w.chars().all(char::is_whitespace))
+        .map_or(0, |(i, _)| i)
 }

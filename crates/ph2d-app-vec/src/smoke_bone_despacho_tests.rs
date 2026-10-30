@@ -47,3 +47,14 @@ fn os_dois_tempos_despacham_os_efeitos() {
         "a cena dos EFEITOS deixou de ser alcancavel dos DOIS tempos"
     );
 }
+
+/// ⭐ **E O LOSANGO também** (`=8`), pela mesma razão.
+#[test]
+fn os_dois_tempos_despacham_o_losango() {
+    const FONTE: &str = include_str!("smoke_bone.rs");
+    assert_eq!(
+        FONTE.matches("crate::smoke_bone_losango::").count(),
+        2,
+        "a cena do LOSANGO deixou de ser alcancavel dos DOIS tempos"
+    );
+}

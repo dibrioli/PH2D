@@ -81,11 +81,11 @@ impl crate::App {
                             ph2d_app_vec::smoke_bone::nivel(),
                         );
                         if let Some(hero) = gfx.hero_screen.as_mut() {
-                            if pro.timeline_fechada {
+                            if pro.timeline_fechada || pro.timeline_aberta {
                                 <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                                     hero,
                                     <ph2d_panel_timeline::TimelinePanel as ph2d_editor_core::panel::Panel>::ID,
-                                    false,
+                                    pro.timeline_aberta,
                                 );
                             }
                             // ⭐ O painel de ossos, ANTES do enquadramento: ele é uma coluna
@@ -132,45 +132,14 @@ impl crate::App {
                                         &mut gfx.tools,
                                         ph2d_tool_bone::BoneAction::Weight,
                                     );
-                                    // ⚠️ **Pelo NOME, e nunca «o primeiro que a iteracao der».**
-                                    //
-                                    // ⛔⛔ **E a razao escrita aqui estava REFUTADA, com o numero:**
-                                    // ela dizia que *«o osso do MEIO de uma cadeia de tres nao possui
-                                    // nada nesta arte»*, e medido pelo reticulo do produto
-                                    // (`diag_qual_osso_mostra_mais`) os TRES chegam a `1,000` na
-                                    // barra. O que os separa e' **onde** o quente cai:
-                                    //
-                                    // | osso | `x` do maximo | o canvas corta em `x ≈ −6,5` |
-                                    // |---|---|---|
-                                    // | `Bone 1` | `−8,21` | **atras do painel** |
-                                    // | `Bone 2` | `−5,09` | a` vista |
-                                    // | `Bone 3` | `−2,97` | a` vista |
-                                    //
-                                    // ⇒ a foto e' tirada com o do MEIO, que e' o unico cuja rampa
-                                    // inteira cabe no enquadramento — *a mesma lei que a nota do
-                                    // `=2` ja' escrevia para o braco pintado, aplicada ao contrario
-                                    // por uma premissa que ninguem tinha medido*.
-                                    let escolhido = gfx
-                                        .sim
-                                        .world()
-                                        .iter_entities()
-                                        .find(|er| {
-                                            er.get::<ph2d_skeleton_ecs::Bone>().is_some()
-                                                && er.get::<ph2d_ecs::Name>().is_some_and(|n| {
-                                                    n.0 == if std::env::var("PH2D_VEC_WEIGHT_PROBE")
-                                                        .as_deref()
-                                                        == Ok("2")
-                                                    {
-                                                        "Bone 14"
-                                                    } else {
-                                                        "Bone 2"
-                                                    }
-                                                })
-                                        })
-                                        .map(|er| er.id().to_bits());
-                                    if let Some(b) = escolhido {
-                                        hero.gizmo.selection = Some(b);
-                                    }
+                                }
+                                // ⭐ O osso em foco: o da cena (`=8`) ou o da sonda, pelo NOME
+                                // (`smoke_bone::osso_em_foco`).
+                                if let Some(b) = ph2d_app_vec::smoke_bone_losango::osso_em_foco(
+                                    &gfx.sim,
+                                    &mut self.vec,
+                                ) {
+                                    hero.gizmo.selection = Some(b);
                                 }
                             }
                             if pro.enquadrar {
@@ -181,6 +150,9 @@ impl crate::App {
                                 );
                             }
                         }
+                    }
+                    if ph2d_app_vec::smoke_bone_losango::toca_no_arranque() {
+                        self.playhead.play();
                     }
                 }
             }

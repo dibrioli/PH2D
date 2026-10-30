@@ -246,6 +246,8 @@ pub mod smoke_bone_copias;
 /// ⭐⭐⭐ Seis barras presas COM EFEITO — `PH2D_VEC_BONE_SMOKE=5` (F50).
 pub mod smoke_bone_efeitos;
 pub mod smoke_bone_envelope;
+/// ⭐⭐ O losango do painel do esqueleto — `PH2D_VEC_BONE_SMOKE=8` (F40).
+pub mod smoke_bone_losango;
 /// ⭐⭐⭐ Um canvas do Painter PRESO a ossos e dobrado — a cena que faltava à cura das guias chatas.
 pub mod smoke_bone_media;
 /// ⭐⭐⭐ Os três modos do esqueleto — `PH2D_VEC_BONE_SMOKE=7` (A14).

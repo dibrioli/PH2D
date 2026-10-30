@@ -30,7 +30,7 @@ pub(super) fn cadeia_em_ordem(
 /// ⚠️ **Porque o MEIO e não a ponta:** medido por fotografia (2026-09-19) — da ponta, a parte
 /// visível do braço pintado lê-se quase toda azul, porque a zona que ela governa sozinha cai atrás
 /// do painel. O do meio tem território dos dois lados, e a rampa inteira cabe no enquadramento.
-pub(super) fn osso_do_meio(
+pub(crate) fn osso_do_meio(
     sim: &ph2d_ecs::SimWorld,
     raiz: ph2d_ecs::Entity,
 ) -> Option<ph2d_ecs::Entity> {

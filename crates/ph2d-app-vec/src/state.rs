@@ -123,6 +123,8 @@ pub struct VecState {
     /// uma terceira peça ou de arranjar um id falso para a que lhe falta. *Um número de uma cena
     /// escrito no estado partilhado é o estado a mandar na cena.*
     pub bone_smoke_pend: Option<Vec<(ph2d_vec_scene::VecPathId, Option<ph2d_ecs::Entity>)>>,
+    /// O osso que o prólogo da cena dos ossos põe em foco (a `=8` escolhe o do meio). Lido 1×.
+    pub bone_smoke_foco: Option<u64>,
 
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.

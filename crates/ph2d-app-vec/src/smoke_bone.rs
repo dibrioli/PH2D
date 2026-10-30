@@ -54,10 +54,11 @@ use ph2d_skeleton_demo::{
 ///   iguais (F50, 2026-10-02). Ver [`crate::smoke_bone_efeitos`].
 /// - **`=6`** — AS CÓPIAS NA DOBRA FORTE (A6, 2026-10-04). Ver [`crate::smoke_bone_copias`].
 /// - **`=7`** — OS TRÊS MODOS DO ESQUELETO (A14, 2026-10-05). Ver [`crate::smoke_bone_modos`].
+/// - **`=8`** — O LOSANGO DO PAINEL DO ESQUELETO (F40). Ver [`crate::smoke_bone_losango`].
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 7;
+pub const NIVEIS: u32 = 8;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -129,20 +130,13 @@ pub fn build(
     ppm: f32,
     st: &mut crate::state::VecState,
 ) {
-    if nivel() == 2 {
-        crate::smoke_bone_envelope::build(scene, sim, st);
-        return;
-    }
-    if nivel() == 5 {
-        crate::smoke_bone_efeitos::build(scene, sim, st);
-        return;
-    }
-    if nivel() == 6 {
-        crate::smoke_bone_copias::build(scene, sim, st);
-        return;
-    }
-    if nivel() == 7 {
-        return crate::smoke_bone_modos::build(scene, sim, st);
+    match nivel() {
+        2 => return crate::smoke_bone_envelope::build(scene, sim, st),
+        5 => return crate::smoke_bone_efeitos::build(scene, sim, st),
+        6 => return crate::smoke_bone_copias::build(scene, sim, st),
+        7 => return crate::smoke_bone_modos::build(scene, sim, st),
+        8 => return crate::smoke_bone_losango::build(scene, sim, st),
+        _ => {}
     }
     if nivel() >= 3 {
         crate::smoke_bone_par::build(scene, sim, renderer, assets, ppm, nivel(), st);
@@ -252,20 +246,13 @@ pub fn bind(
     ppm: f32,
     st: &mut crate::state::VecState,
 ) {
-    if nivel() == 2 {
-        crate::smoke_bone_envelope::bind(scene, sim, st);
-        return;
-    }
-    if nivel() == 5 {
-        crate::smoke_bone_efeitos::bind(scene, sim, st);
-        return;
-    }
-    if nivel() == 6 {
-        crate::smoke_bone_copias::bind(scene, sim, st);
-        return;
-    }
-    if nivel() == 7 {
-        return crate::smoke_bone_modos::bind(st);
+    match nivel() {
+        2 => return crate::smoke_bone_envelope::bind(scene, sim, st),
+        5 => return crate::smoke_bone_efeitos::bind(scene, sim, st),
+        6 => return crate::smoke_bone_copias::bind(scene, sim, st),
+        7 => return crate::smoke_bone_modos::bind(st),
+        8 => return crate::smoke_bone_losango::bind(scene, sim, doc, st),
+        _ => {}
     }
     if nivel() >= 3 {
         crate::smoke_bone_par::bind(scene, sim, assets, ppm, nivel(), st);
@@ -689,7 +676,8 @@ fn arm_pixels() -> Vec<u8> {
 /// A corrente da cena (a cadeia pela ordem, o osso do meio), num irmão pelo tecto de LOC.
 #[path = "smoke_bone_corrente.rs"]
 mod corrente;
-use corrente::{cadeia_em_ordem, osso_do_meio};
+use corrente::cadeia_em_ordem;
+pub(crate) use corrente::osso_do_meio;
 
 #[cfg(test)]
 #[path = "smoke_bone_despacho_tests.rs"]

@@ -144,6 +144,8 @@ fn passo() -> f64 {
 pub struct Prologo {
     /// A timeline tem de estar **fechada**: com ela aberta o *Frame All* corta sempre.
     pub timeline_fechada: bool,
+    /// A timeline tem de estar **aberta** (a `=8`: o Play e a régua dos quadros são a lição).
+    pub timeline_aberta: bool,
     /// Pedir o *Frame All* — ⚠️ **depois** de a fechar.
     pub enquadrar: bool,
     /// ⭐⭐⭐ **Abrir o painel de ossos** — a FOTO de 2026-09-19 obrigou-o.
@@ -170,7 +172,8 @@ pub struct Prologo {
 pub const fn prologo_do_nivel(n: u32) -> Prologo {
     Prologo {
         // ⭐ A `=3` (o PAR) fecha a timeline também — com ela aberta a peça de baixo fica atrás dela.
-        timeline_fechada: n >= 2,
+        timeline_fechada: n >= 2 && n != 8,
+        timeline_aberta: n == 8,
         // ⛔⛔ **Mas NÃO enquadra, e a FOTO é que o disse (2026-09-29):** o `Frame All` de então
         // contava só IMAGENS e deixou o desenho de cima FORA do ecrã. ⇒ a `=3` abre na câmera de
         // omissão, dimensionada para lá caber (gate no `smoke_bone_par`). Desde a F8 (10/10) o

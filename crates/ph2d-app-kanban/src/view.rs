@@ -169,6 +169,7 @@ pub(crate) fn paint(
     retarget(tab, &target);
     let lod = at.lod;
     tab.to_screen = at.to_screen;
+    tab.buttons = lod == KanbanLod::High;
     // D11 — o fundo (a pré-visualização do seletor da gaveta por cima do gravado).
     let shown = tab
         .bg

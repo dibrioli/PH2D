@@ -350,6 +350,18 @@ impl KanbanElementInput for Input {
         (inside || tab.back.is_some() || tab.w6.open()).then(|| crate::surface::look_of(tab))
     }
 
+    fn button_at(&mut self, el: ElementId, at: [f64; 2], view: &KanbanBoardView) -> bool {
+        let c = self.0.borrow();
+        let Some(tab) = c.tabs.get(&el) else {
+            return false;
+        };
+        let (x, y) = to_view(at, zoom_of(view));
+        let l = &tab.layout;
+        let head =
+            l.star.contains(x, y) || l.board_menu.contains(x, y) || tab.w6.hit(x, y).is_some();
+        (l.header.contains(x, y) && head) || crate::bars::hit(l, x, y).is_some()
+    }
+
     fn captures(&mut self, _surfaces: &mut Surfaces, el: ElementId) -> bool {
         self.0
             .borrow()

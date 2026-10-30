@@ -70,6 +70,8 @@ pub(crate) struct Layout {
     pub add_list_close: Option<Rect>,
     /// A largura do conteúdo (o fundo da rolagem horizontal).
     pub content_w: f32,
+    /// A calha da barra do quadro.
+    pub hbar: Rect,
 }
 
 impl Layout {
@@ -272,6 +274,7 @@ pub(crate) fn targets(ask: &Arrange<'_>, heights: &mut dyn Heights) -> Layout {
         add_list_close,
         // As duas margens: a da esquerda (a origem das listas) e a da direita, depois do «Add list».
         content_w: x + m::LIST_W + 2.0 * m::BOARD_PAD,
+        hbar: crate::bars::board_track(board, top + max_h),
     }
 }
 

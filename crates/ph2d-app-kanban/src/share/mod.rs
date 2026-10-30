@@ -4,16 +4,15 @@
 //! Kanban da aba (e a AGENDA do projecto); quem entra por link recebe-o numa aba nova. A cada imagem
 //! [`KanbanDocs::share_tick`] serve a rede, a minha presença e o que o ecrã mostra ([`Look`]).
 
-mod net_io;
 pub(crate) mod sheet;
 pub(crate) mod smoke;
 
 use crate::docs::KanbanDocs;
-use ph2d_kanban_model::{CardId, KanbanId, Member};
-use ph2d_kanban_sync::{Viewers, port};
+use ph2d_kanban_model::{CardId, KanbanId};
+use ph2d_kanban_sync::port;
 use std::collections::BTreeMap;
 
-pub(crate) use net_io::{JoinRefusal, Session};
+pub(crate) use ph2d_kanban_live::{JoinRefusal, Seen, Session, seen_of};
 
 /// Um alvo do popover «Share».
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,16 +42,6 @@ pub(crate) enum Role {
     Joining,
     /// Dentro da sala de outro; `kanban` = o Kanban dela no meu projecto.
     Guest { kanban: Option<KanbanId> },
-}
-
-/// Quem está a ver um Kanban (id local): os avatares, os cartões abertos, os cursores.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct Seen {
-    pub people: Vec<Member>,
-    pub cards: BTreeMap<CardId, Vec<Member>>,
-    pub cursors: Vec<(Member, [f64; 2])>,
-    /// J4 — o fio caiu e a sala está a voltar (o selo «Reconnecting…»).
-    pub reconnecting: bool,
 }
 
 /// O que se pinta da partilha neste quadro.
@@ -93,36 +82,6 @@ pub(crate) fn now_ms() -> u64 {
             .as_millis(),
     )
     .unwrap_or(u64::MAX)
-}
-
-/// Quem vê cada Kanban de uma sala (`kanbans` = pares (sessão, local)): eu primeiro, depois os
-/// colegas, os cartões que têm abertos e os cursores.
-pub(crate) fn seen_of(
-    viewers: &Viewers,
-    names: &BTreeMap<u64, String>,
-    kanbans: &[(KanbanId, KanbanId)],
-    me: &Member,
-    now: u64,
-) -> BTreeMap<KanbanId, Seen> {
-    let mut out = BTreeMap::new();
-    for (wire, local) in kanbans {
-        let mut s = Seen {
-            people: vec![me.clone()],
-            ..Seen::default()
-        };
-        for peer in viewers.on_kanban(*wire) {
-            let who = Member(names.get(&peer).cloned().unwrap_or_default());
-            if let Some(c) = viewers.get(peer).and_then(|p| p.card) {
-                s.cards.entry(c).or_default().push(who.clone());
-            }
-            if let Some(at) = viewers.cursor(peer, now) {
-                s.cursors.push((who.clone(), at));
-            }
-            s.people.push(who);
-        }
-        out.insert(*local, s);
-    }
-    out
 }
 
 /// A sonda da presença: os cartões abertos por colegas (com quem) e os cursores deles.

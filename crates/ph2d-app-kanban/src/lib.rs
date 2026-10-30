@@ -14,6 +14,7 @@ mod anim;
 mod archive;
 mod auto;
 mod back;
+mod bars;
 mod bg;
 mod canvas;
 mod docs;

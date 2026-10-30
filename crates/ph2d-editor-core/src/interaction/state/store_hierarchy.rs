@@ -1,5 +1,16 @@
 use super::*;
 
+/// ⭐ Kanban D13 — **que objectos podem ser o fundo de um Kanban**: os que têm PÍXEIS (a sprite e o
+/// quadro actual do Flip). O vector fica de fora: o fundo do Kanban é uma imagem descodificada.
+/// Mora aqui, com o menu que a lê (a fundação: `interaction` não sobe a `screens`).
+#[must_use]
+pub const fn goes_to_kanban_background(kind: ph2d_component_desc::ObjectKind) -> bool {
+    matches!(
+        kind,
+        ph2d_component_desc::ObjectKind::Image | ph2d_component_desc::ObjectKind::Flip
+    )
+}
+
 impl WidgetStore {
     /// Read the hierarchy display order (empty = use fixture's
     /// default order).
@@ -198,9 +209,7 @@ impl WidgetStore {
                 let of = self.hierarchy_board_rows.get(&row).copied();
                 (id == crate::ids::CTX_MENU_HIER_SEND_TO_BOARD && of.is_none())
                     || (id == crate::ids::CTX_MENU_HIER_KANBAN_BACKGROUND
-                        && !of.is_some_and(
-                            crate::screens::hero::send_to_board::goes_to_kanban_background,
-                        ))
+                        && !of.is_some_and(goes_to_kanban_background))
             }
             _ => false,
         }

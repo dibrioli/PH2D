@@ -16,6 +16,8 @@ pub(crate) const ICON_PX: f32 = 16.0;
 
 // ── O quadro e as listas ──
 pub(crate) const BOARD_PAD: f32 = 12.0;
+/// A espessura das barras de rolagem: cabe na margem de baixo do quadro e na direita da lista.
+pub(crate) const SCROLL_BAR: f32 = 6.0;
 pub(crate) const LIST_GAP: f32 = 12.0;
 pub(crate) const LIST_W: f32 = 272.0;
 pub(crate) const LIST_RADIUS: f32 = 12.0;

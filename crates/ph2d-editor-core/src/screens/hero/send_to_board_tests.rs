@@ -261,7 +261,9 @@ fn the_kanban_background_row_and_modal_list_the_kanbans() {
             "{kind:?}"
         );
     }
-    assert!(goes_to_kanban_background(ObjectKind::Flip));
+    assert!(
+        crate::interaction::state::store_hierarchy::goes_to_kanban_background(ObjectKind::Flip)
+    );
     let k: Vec<u64> = ["Short film", "Game jam"]
         .into_iter()
         .map(|n| hero.documents.kanbans_shared().borrow_mut().create(n).0)

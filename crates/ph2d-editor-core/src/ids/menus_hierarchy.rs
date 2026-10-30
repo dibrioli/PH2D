@@ -122,7 +122,7 @@ pub const CTX_MENU_HIER_EXPORT_IMAGE: NodeId = hash_node_id("ctx_menu_hier_expor
 pub const CTX_MENU_HIER_SEND_TO_BOARD: NodeId = hash_node_id("ctx_menu_hier_send_to_board");
 /// ⭐ **«Use as Kanban background…»** (Kanban D13, dono 30/10) — a imagem ou o Flip da linha vira o
 /// fundo de um Kanban escolhido no MESMO modal do «Send to board» (a lista são os Kanbans). Só para
-/// os tipos de [`crate::screens::hero::send_to_board::goes_to_kanban_background`].
+/// os tipos de [`crate::interaction::state::store_hierarchy::goes_to_kanban_background`].
 pub const CTX_MENU_HIER_KANBAN_BACKGROUND: NodeId = hash_node_id("ctx_menu_hier_kanban_background");
 /// O campo de busca do modal «Send to board».
 pub const CTX_SEND_BOARD_SEARCH: NodeId = hash_node_id("ctx_send_board_search");

@@ -9,7 +9,8 @@
 use super::*;
 use ph2d_app_board::send_to_board::{Content, Sent, ask, deliver, gather, posed_sprite};
 use ph2d_component_desc::ObjectKind;
-use ph2d_editor_core::screens::hero::send_to_board::{goes_to_board, goes_to_kanban_background};
+use ph2d_editor_core::interaction::state::store_hierarchy::goes_to_kanban_background;
+use ph2d_editor_core::screens::hero::send_to_board::goes_to_board;
 use ph2d_i18n::tr;
 
 impl crate::App {

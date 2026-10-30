@@ -295,3 +295,84 @@ fn o_ime_escreve_no_campo_do_canvas_e_o_ponteiro_segue_o_que_esta_por_baixo() {
         "só seleccionado: o ponteiro é do Quadro"
     );
 }
+
+/// O «…» do cabeçalho do Kanban no Quadro abre o menu ao 1.º clique, mesmo sem o Kanban seleccionado
+/// nem activo (smoke do dono 30/10: «o menu "..." do kanban dentro do board não funciona»); o fundo
+/// do Kanban continua a pedir os dois cliques (seleccionar, entrar).
+#[test]
+fn o_menu_do_cabecalho_abre_ao_primeiro_clique_no_quadro() {
+    let (mut d, _, el) = Duas::new();
+    board_view::select(&mut d.hero, []);
+    d.quadros(2);
+    let p = fundo(&mut d, el);
+    d.clica(p);
+    assert_eq!(kb::active(&d.hero), None, "o fundo só selecciona");
+    board_view::select(&mut d.hero, []);
+    d.quadros(2);
+    let (r, _) = d.docs().probe_canvas(el.0).unwrap().board_menu;
+    let p = d.ecra(el, r);
+    d.clica(p);
+    assert_eq!(kb::active(&d.hero), Some(el));
+    assert!(
+        d.docs().probe_canvas(el.0).unwrap().board_menu.1,
+        "o menu abriu"
+    );
+}
+
+/// As barras de rolagem (smoke do dono 30/10): arrastar o polegar de uma lista rola-a; carregar no
+/// fim da calha do quadro leva o polegar — e a rolagem — lá.
+#[test]
+fn as_barras_de_rolagem_rolam_a_lista_e_o_quadro() {
+    let (mut d, id, el) = activo();
+    let backlog = d.lista(id, "Backlog");
+    let barra = |d: &mut Duas, l| d.docs().probe_canvas_bar(el.0, l).expect("a barra");
+    let (_, thumb) = barra(&mut d, Some(backlog));
+    let de = d.ecra(el, thumb);
+    let para = d.ecra(el, Rect::new(thumb.x, thumb.y + 40.0, thumb.w, thumb.h));
+    assert!(d.rato(PointerKind::Down, de));
+    d.move_(para);
+    d.rato(PointerKind::Up, para);
+    d.quadro();
+    let y = vista(&d, el).scroll_y.get(&backlog).copied().unwrap_or(0.0);
+    assert!(y > 0.0, "a lista rolou: {y}");
+    assert!(
+        barra(&mut d, Some(backlog)).1.y > thumb.y,
+        "o polegar desceu"
+    );
+    let (track, _) = barra(&mut d, None);
+    d.clica(d.ecra(
+        el,
+        Rect::new(track.x + track.w - 4.0, track.y, 2.0, track.h),
+    ));
+    let x = vista(&d, el).scroll_x;
+    assert!(x > 0.0, "o quadro rolou: {x}");
+}
+
+/// 📷 As barras no Quadro (a da lista agarrada) e o mesmo Kanban a meia distância (sem a estrela e o
+/// «…»), em `docs/TrelloClone/smoke/D15/`. `#[ignore]`: a placa.
+#[test]
+#[ignore = "a placa: fotos para docs/TrelloClone/smoke/D15/"]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn d15_foto_barras_e_meia_distancia() {
+    use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
+    let foto = |d: &mut Duas, nome: &str| {
+        let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        let mut s = ph2d_vector::VectorScene::new();
+        paint_hero_screen(&mut d.hero, vp, &mut s, &mut d.ts);
+        let wh = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
+        crate::j2_fotos::grava("D15", nome, wh, &s);
+    };
+    let (mut d, id, el) = activo();
+    d.ts = ph2d_text::TextSystem::new();
+    let backlog = d.lista(id, "Backlog");
+    let (_, thumb) = d.docs().probe_canvas_bar(el.0, Some(backlog)).unwrap();
+    d.rato(PointerKind::Down, d.ecra(el, thumb));
+    d.move_(d.ecra(el, Rect::new(thumb.x, thumb.y + 30.0, thumb.w, thumb.h)));
+    d.quadros(20);
+    foto(&mut d, "quadro_barras");
+    d.rato(PointerKind::Up, (0.0, 0.0));
+    board_view::select(&mut d.hero, []);
+    d.hero.documents.active_board_mut().unwrap().camera.zoom = 0.4;
+    d.quadros(20);
+    foto(&mut d, "quadro_meia_distancia");
+}

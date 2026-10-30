@@ -4,9 +4,9 @@
 
 use super::*;
 use crate::widget::{
-    CALENDAR_CELLS, Calendar, CalendarCell, CalendarDate, CalendarLayout, DatePicker,
+    AxisBar, CALENDAR_CELLS, Calendar, CalendarCell, CalendarDate, CalendarLayout, DatePicker,
     DatePickerLabels, DatePickerLayout, DateSlot, Reminder, RichEditor, RichEditorLabels,
-    paint_calendar, paint_date_picker, paint_rich_editor, paint_rich_editor_menu,
+    ScrollList, paint_calendar, paint_date_picker, paint_rich_editor, paint_rich_editor_menu,
 };
 use ph2d_richdoc::{Block, BlockKind, Inline, Mark, RichDoc};
 use std::cell::RefCell;
@@ -172,6 +172,27 @@ pub(super) fn paint_card_back_widgets(
     let ph = DatePickerLayout::preferred_height();
     paint_date_picker(&picker, Rect::new(x, y, w, ph), scene, text_system, theme);
     y += ph + gap;
+
+    // As barras de um eixo: a da lista suspensa (vertical) e a do quadro do Kanban (horizontal).
+    let row = ph2d_tokens::ROW_H_PX;
+    let body = Rect::new(x, y, w, 3.0 * row);
+    let mut list = ScrollList::default();
+    list.set(body, 9.0 * row);
+    list.scroll_by(2.0 * row);
+    let _ = list.paint_bar(body, false, scene, theme);
+    y += body.h + gap;
+    let bar = AxisBar {
+        track: Rect::new(x, y, w, Spacing::Sm.px()),
+        horizontal: true,
+        content: 3.0 * w,
+        visible: w,
+    };
+    let colors = (
+        crate::paint::resolve(ColorToken::Bg3, theme),
+        crate::paint::resolve(ColorToken::BorderEmph, theme),
+    );
+    bar.paint(w, colors, scene);
+    y += bar.track.h + gap;
 
     EDITOR.with(|cell| {
         let mut cell = cell.borrow_mut();

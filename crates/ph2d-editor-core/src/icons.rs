@@ -102,6 +102,7 @@ pub enum IconId {
     CadHorizontal,
     CadRadius,
     CadVertical,
+    Calendar,
     Camera,
     CapButt,
     CapRound,

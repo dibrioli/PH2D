@@ -215,6 +215,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::CadHorizontal,
     IconId::CadRadius,
     IconId::CadVertical,
+    IconId::Calendar,
     IconId::Camera,
     IconId::CapButt,
     IconId::CapRound,

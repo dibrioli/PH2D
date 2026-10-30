@@ -42,6 +42,8 @@ pub(crate) enum Hit {
     TemplateBtn(ListId),
     /// W6 — um alvo de um painel (filtro, pesquisa, edição rápida, diálogo).
     W6(crate::w6::Act),
+    /// A barra de rolagem de uma lista (`None` = a do quadro).
+    Bar(Option<ListId>),
 }
 
 /// O que o arrasto leva.
@@ -108,6 +110,8 @@ pub(crate) struct Tab {
     pub hover: Option<Hit>,
     pub press: Option<Press>,
     pub drag: Option<Drag>,
+    /// A barra de rolagem agarrada.
+    pub bar: Option<crate::bars::Grab>,
     pub field: Option<Field>,
     /// O cartão com o foco do teclado (o anel).
     pub focus: Option<CardId>,
@@ -146,6 +150,9 @@ pub(crate) struct Tab {
     pub views: ph2d_kanban_views::Views,
     /// J1 — px da vista → ecrã no último quadro, e onde o rato esteve (px da vista: a presença).
     pub to_screen: ph2d_vector::Affine,
+    /// Os botões e as barras pintam-se (no Quadro, a meia distância não: não se entra no Kanban a
+    /// esse zoom — sem eles não há controlo morto).
+    pub buttons: bool,
     pub cursor: Option<(f32, f32)>,
 }
 
@@ -166,6 +173,7 @@ impl Tab {
             hover: None,
             press: None,
             drag: None,
+            bar: None,
             field: None,
             focus: None,
             menu: None,
@@ -187,6 +195,7 @@ impl Tab {
             other: None,
             views: ph2d_kanban_views::Views::default(),
             to_screen: ph2d_vector::Affine::IDENTITY,
+            buttons: true,
             cursor: None,
         }
     }
@@ -396,5 +405,6 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
         add_list_field: target.add_list_field.map(|r| shift(r, ox, 0.0)),
         add_list_close: target.add_list_close.map(|r| shift(r, ox, 0.0)),
         content_w: target.content_w,
+        hbar: target.hbar,
     }
 }

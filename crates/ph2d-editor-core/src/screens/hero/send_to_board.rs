@@ -42,13 +42,6 @@ pub const fn goes_to_board(kind: ObjectKind) -> bool {
     )
 }
 
-/// ⭐ Kanban D13 — **que objectos podem ser o fundo de um Kanban**: os que têm PÍXEIS (a sprite e o
-/// quadro actual do Flip). O vector fica de fora: o fundo do Kanban é uma imagem descodificada.
-#[must_use]
-pub const fn goes_to_kanban_background(kind: ObjectKind) -> bool {
-    matches!(kind, ObjectKind::Image | ObjectKind::Flip)
-}
-
 /// Abre o modal para a linha `row`: a busca limpa e com o teclado.
 pub fn open(store: &mut WidgetStore, row: NodeId) {
     open_kind(store, ContextMenuKind::SendToBoard { row });

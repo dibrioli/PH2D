@@ -5840,6 +5840,7 @@ dependencies = [
  "ph2d-kanban-hooks",
  "ph2d-kanban-import",
  "ph2d-kanban-links",
+ "ph2d-kanban-live",
  "ph2d-kanban-md",
  "ph2d-kanban-model",
  "ph2d-kanban-scenes",
@@ -7783,6 +7784,18 @@ dependencies = [
  "ph2d-kanban-model",
  "ph2d-richdoc",
  "ph2d-tokens",
+]
+
+[[package]]
+name = "ph2d-kanban-live"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-internet",
+ "ph2d-board-net",
+ "ph2d-board-sync",
+ "ph2d-i18n",
+ "ph2d-kanban-model",
+ "ph2d-kanban-sync",
 ]
 
 [[package]]

@@ -1,8 +1,9 @@
-//! A sala e o fio: o anfitrião (rede local + a entrada da internet, preparada numa thread como no
-//! Quadro) e o convidado (a ligação por link numa thread). Tudo o que vem da rede passa pela sala da
-//! `ph2d-kanban-sync`.
+//! ⭐ **O Kanban ao vivo pelo transporte do Quadro** (W5, ADR-0195 §3 sobre o ADR-0181): a sala da
+//! `ph2d-kanban-sync` (pura) servida pela rede local (`ph2d-board-net`) e pela internet com o link com
+//! chave (`ph2d-board-internet`, QUIC + DHT) — o anfitrião (a entrada da internet preparada numa
+//! thread, como no Quadro) e o convidado (a ligação por link numa thread). E quem está a ver cada
+//! Kanban ([`Seen`]). A UI («Share», avatares, cursores) é da `ph2d-app-kanban`.
 
-use super::Seen;
 use ph2d_board_internet::{DhtMode, InternetConfig, InternetHost};
 use ph2d_board_net as net;
 use ph2d_board_sync::To;
@@ -42,7 +43,7 @@ enum Internet {
     Done,
 }
 
-pub(crate) struct HostSide {
+pub struct HostSide {
     net: net::Host,
     s: KanbanHost,
     internet: Internet,
@@ -81,7 +82,7 @@ fn dial(d: &Dial, local: bool) -> Dialing {
     rx
 }
 
-pub(crate) struct GuestSide {
+pub struct GuestSide {
     net: Option<net::Guest>,
     dialing: Option<Dialing>,
     g: KanbanGuest,
@@ -93,7 +94,7 @@ pub(crate) struct GuestSide {
 
 /// Porque o texto colado não abre a sala do Kanban.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum JoinRefusal {
+pub enum JoinRefusal {
     /// Nem link nem `endereço código`.
     Bad,
     /// O convite de um QUADRO: vai para o «Join» do Quadro.
@@ -101,14 +102,14 @@ pub(crate) enum JoinRefusal {
 }
 
 /// Uma sala aberta (uma de cada vez).
-pub(crate) enum Session {
+pub enum Session {
     Host(Box<HostSide>),
     Guest(Box<GuestSide>),
 }
 
 /// O que uma imagem da sala conta ao ecrã.
 #[derive(Default)]
-pub(crate) struct Tick {
+pub struct Tick {
     pub arrived: Vec<KanbanId>,
     pub welcomed: bool,
     pub link: Option<String>,
@@ -306,7 +307,7 @@ impl Session {
                     .unwrap_or_default(),
             ),
         };
-        super::seen_of(viewers, &names, &kanbans, me, now)
+        seen_of(viewers, &names, &kanbans, me, now)
     }
 }
 
@@ -372,7 +373,7 @@ impl HostSide {
 
 impl GuestSide {
     /// Os testes: o fio cai (como o Wi-Fi que soluça) — o anfitrião vê a saída e eu volto sozinho.
-    pub(crate) fn drop_link(&mut self) {
+    pub fn drop_link(&mut self) {
         if self.net.take().is_some() {
             self.lost = Some(net::Redial::new(Instant::now()));
         }
@@ -504,4 +505,44 @@ impl GuestSide {
             let _ = n.send(m.encode());
         }
     }
+}
+
+/// Quem está a ver um Kanban (id local): os avatares, os cartões abertos, os cursores.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Seen {
+    pub people: Vec<Member>,
+    pub cards: BTreeMap<CardId, Vec<Member>>,
+    pub cursors: Vec<(Member, [f64; 2])>,
+    /// J4 — o fio caiu e a sala está a voltar (o selo «Reconnecting…»).
+    pub reconnecting: bool,
+}
+
+/// Quem vê cada Kanban de uma sala (`kanbans` = pares (sessão, local)): eu primeiro, depois os
+/// colegas, os cartões que têm abertos e os cursores.
+pub fn seen_of(
+    viewers: &Viewers,
+    names: &BTreeMap<u64, String>,
+    kanbans: &[(KanbanId, KanbanId)],
+    me: &Member,
+    now: u64,
+) -> BTreeMap<KanbanId, Seen> {
+    let mut out = BTreeMap::new();
+    for (wire, local) in kanbans {
+        let mut s = Seen {
+            people: vec![me.clone()],
+            ..Seen::default()
+        };
+        for peer in viewers.on_kanban(*wire) {
+            let who = Member(names.get(&peer).cloned().unwrap_or_default());
+            if let Some(c) = viewers.get(peer).and_then(|p| p.card) {
+                s.cards.entry(c).or_default().push(who.clone());
+            }
+            if let Some(at) = viewers.cursor(peer, now) {
+                s.cursors.push((who.clone(), at));
+            }
+            s.people.push(who);
+        }
+        out.insert(*local, s);
+    }
+    out
 }

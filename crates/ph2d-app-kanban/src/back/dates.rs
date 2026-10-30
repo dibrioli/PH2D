@@ -114,6 +114,39 @@ pub(crate) fn read(p: &Picker) -> (Option<Moment>, Option<(Moment, Option<u32>)>
     p.read(&zone())
 }
 
+/// O seletor de datas do cartão, de um item ou de um campo de data.
+pub(crate) fn pop(docs: &mut crate::docs::KanbanDocs, id: u64, item: super::DatesFor) {
+    use super::DatesFor as D;
+    let now = crate::actions::now();
+    let Some((card, start, due)) = super::click::read(docs, id, |k, c| match item {
+        D::Card => (c.id, c.start, c.due.map(|d| (d.at, d.remind_before_min))),
+        D::Item(i) => (
+            c.id,
+            None,
+            k.items.get(&i).and_then(|i| i.due).map(|d| (d, None)),
+        ),
+        D::Field(f) => (
+            c.id,
+            None,
+            match c.fields.get(&f) {
+                Some(ph2d_kanban_model::FieldValue::Date(d)) => Some((*d, None)),
+                _ => None,
+            },
+        ),
+    }) else {
+        return;
+    };
+    let mut picker = picker(card, start, due, now);
+    if item != D::Card {
+        let name = super::click::read(docs, id, |k, _| match item {
+            D::Field(f) => k.fields.get(&f).map(|d| d.name.clone()),
+            _ => None,
+        });
+        picker = picker.due_only(name.flatten());
+    }
+    super::click::open_pop(docs, id, super::Pop::Dates(item, Box::new(picker)));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

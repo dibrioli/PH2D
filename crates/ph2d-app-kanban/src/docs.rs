@@ -24,6 +24,8 @@ pub struct CanvasProbe {
     pub back: Option<CardId>,
     /// O texto do campo aberto no lugar (título, cartão novo).
     pub field: Option<String>,
+    /// O «…» do cabeçalho e se há um menu aberto.
+    pub board_menu: (Rect, bool),
 }
 
 /// O id da aba «Kanbans» (o início): nenhum `KanbanId` chega lá (contam de 1).
@@ -322,6 +324,19 @@ impl KanbanDocs {
         })
     }
 
+    /// ⚠️ SONDA: a calha e o polegar da barra de rolagem da lista `list` (`None` = a do quadro).
+    #[must_use]
+    pub fn probe_bar(&self, id: u64, list: Option<ListId>) -> Option<(Rect, Rect)> {
+        crate::bars::probe(self.tabs.iter().find(|t| t.id() == id)?, list)
+    }
+
+    /// ⚠️ SONDA: a barra de rolagem `list` do Kanban do elemento `el` do Quadro.
+    #[must_use]
+    pub fn probe_canvas_bar(&self, el: u64, list: Option<ListId>) -> Option<(Rect, Rect)> {
+        let c = self.canvas.borrow();
+        crate::bars::probe(c.tabs.get(&ph2d_board_model::ElementId(el))?, list)
+    }
+
     /// ⚠️ SONDA: o «Add a card», o recolher e o «…» da lista `list`.
     #[must_use]
     pub fn probe_list_buttons(&self, id: u64, list: ListId) -> Option<(Rect, Rect, Rect)> {
@@ -352,6 +367,7 @@ impl KanbanDocs {
             lists: t.layout.lists.iter().map(|l| (l.id, l.rect)).collect(),
             back: t.back.as_ref().map(|b| b.card),
             field: t.field.as_ref().map(|f| f.text.clone()),
+            board_menu: (t.layout.board_menu, t.menu.is_some()),
         })
     }
 

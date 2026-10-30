@@ -623,7 +623,7 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
             ui.field(r, &e.field, "");
             ui.hit(r, BackHit::EditField);
             if let Some((c, bg)) = calendar {
-                ui.icon_button(c, IconId::Timer, BackHit::FieldDate(f.id), false, bg);
+                ui.icon_button(c, IconId::Calendar, BackHit::FieldDate(f.id), false, bg);
             }
             continue;
         }
@@ -655,7 +655,7 @@ fn fields(ui: &mut Ui<'_>, back: &Back, cx: &Ctx<'_>, x: f32, y: f32, w: f32) ->
             }
         }
         if let Some((c, bg)) = calendar {
-            ui.icon_button(c, IconId::Timer, BackHit::FieldDate(f.id), false, bg);
+            ui.icon_button(c, IconId::Calendar, BackHit::FieldDate(f.id), false, bg);
         }
         if matches!(f.kind, FieldKind::Dropdown(_)) {
             let meta = ui.meta();

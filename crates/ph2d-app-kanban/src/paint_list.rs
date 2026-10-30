@@ -117,22 +117,25 @@ pub(crate) fn list(
         fill_rounded_rect(scene, r, m::LIMIT_RADIUS, pbg);
         pill_text(scene, ts, r, &text, pfg);
     }
-    hover_fill(
-        scene,
-        lb.collapse,
-        tab.hover == Some(Hit::Collapse(lb.id)),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    collapse_glyph(scene, lb.collapse, true, meta);
-    hover_fill(
-        scene,
-        lb.menu,
-        tab.hover == Some(Hit::ListMenu(lb.id)),
-        theme,
-        m::BUTTON_RADIUS,
-    );
-    icon(scene, IconId::MoreHorizontal, lb.menu, meta);
+    if tab.buttons {
+        let hov = |h| tab.hover == Some(h);
+        hover_fill(
+            scene,
+            lb.collapse,
+            hov(Hit::Collapse(lb.id)),
+            theme,
+            m::BUTTON_RADIUS,
+        );
+        collapse_glyph(scene, lb.collapse, true, meta);
+        hover_fill(
+            scene,
+            lb.menu,
+            hov(Hit::ListMenu(lb.id)),
+            theme,
+            m::BUTTON_RADIUS,
+        );
+        icon(scene, IconId::MoreHorizontal, lb.menu, meta);
+    }
     // Os cartões, recortados ao corpo: só os que se vêem são pintados (milhares cabem).
     scene.push_clip(&rect_to_vello(lb.body));
     let ink = Ink::of(theme);
@@ -228,7 +231,7 @@ pub(crate) fn list(
                 lb.add.w - (x - lb.add.x),
                 meta,
             );
-            if let Some(r) = lb.template {
+            if let Some(r) = lb.template.filter(|_| tab.buttons) {
                 hover_fill(
                     scene,
                     r,

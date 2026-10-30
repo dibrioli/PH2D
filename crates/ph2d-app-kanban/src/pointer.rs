@@ -71,6 +71,9 @@ pub(crate) fn hit(tab: &Tab, k: &Kanban, ts: &mut TextSystem, x: f32, y: f32) ->
     } else if l.add_list.contains(x, y) {
         return Some(Hit::AddList);
     }
+    if let Some(h) = crate::bars::hit(l, x, y) {
+        return Some(h);
+    }
     if let Some(lb) = l.lists.iter().find(|lb| lb.rect.contains(x, y)) {
         if lb.collapsed {
             return Some(Hit::ListHead(lb.id));
@@ -242,6 +245,9 @@ pub(crate) fn down(
         }
         return true;
     }
+    if crate::bars::press(tab, h, (x, y)) {
+        return true;
+    }
     tab.press = Some(Press { at: (x, y), hit: h });
     true
 }
@@ -253,6 +259,9 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32,
     let Some(tab) = docs.tabs.iter_mut().find(|t| t.id() == id) else {
         return false;
     };
+    if crate::bars::drag(tab, (x, y)) {
+        return true;
+    }
     if let Some(d) = tab.drag.as_mut() {
         d.at = (x, y);
         tab.smoke_hold = None;
@@ -332,6 +341,9 @@ pub(crate) fn up(
     let Some(tab) = docs.tab_mut(id) else {
         return false;
     };
+    if tab.bar.take().is_some() {
+        return true;
+    }
     let press = tab.press.take();
     if let Some(d) = tab.drag.take() {
         land(docs, id, d);
@@ -456,7 +468,7 @@ fn click(docs: &mut KanbanDocs, id: u64, h: Hit, now_ns: u128) {
                 open_field(t, Target::NewList, "");
             }
         }
-        Hit::Field | Hit::Board => {}
+        Hit::Field | Hit::Board | Hit::Bar(_) => {}
         Hit::Menu(row) => menu_row(docs, id, row),
         Hit::Panel(row) => panel_row(docs, id, row),
     }

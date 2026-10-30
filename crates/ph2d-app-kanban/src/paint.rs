@@ -118,6 +118,9 @@ pub(crate) fn board(
     }
     let light = ph2d_board_render::kanban_floor_is_light(theme, tone);
     paint_list::add_list(scene, ts, theme, tab, light);
+    if tab.buttons {
+        crate::bars::paint(scene, theme, tab, light);
+    }
     scene.pop_layer();
     flying(scene, ts, theme, k, tab, looks);
 }
@@ -173,6 +176,9 @@ fn header(
                 fg,
             );
         }
+    }
+    if !tab.buttons {
+        return;
     }
     hover_fill(
         scene,

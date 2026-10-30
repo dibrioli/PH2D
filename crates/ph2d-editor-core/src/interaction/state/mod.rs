@@ -49,7 +49,7 @@ pub use slider_curve::{fracao_para_pista, pista_para_fracao};
 pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
 mod store_census;
 mod store_core;
-mod store_hierarchy;
+pub mod store_hierarchy;
 mod timeline_ops;
 mod tool_bars_ops;
 mod widget_accessors;

@@ -110,6 +110,10 @@ pub trait KanbanElementInput {
     fn captures(&mut self, _surfaces: &mut Surfaces, _el: ElementId) -> bool {
         false
     }
+    /// Em `at` (LOCAL) há um BOTÃO do cabeçalho do Kanban: o 1.º clique já é dele (entra e carrega).
+    fn button_at(&mut self, _el: ElementId, _at: [f64; 2], _view: &KanbanBoardView) -> bool {
+        false
+    }
 }
 
 #[path = "board_kanban_link.rs"]
@@ -388,6 +392,20 @@ pub(crate) fn pointer_down(
             return None;
         }
         let at = frames.local(id, p)?;
+        frames.active = Some(id);
+        Some((id, at))
+    });
+    let target = target.or_else(|| {
+        // Um botão do cabeçalho («…», a estrela, o filtro) responde ao 1.º clique, sem entrar antes.
+        if button != PointerButton::Primary {
+            return None;
+        }
+        let (id, at) = frames.on_screen.iter().rev().find_map(|(id, pl)| {
+            let view = &board.doc.get(*id)?.kanban()?.view;
+            let at = frames.local(*id, p)?;
+            (pl.lod == KanbanLod::High && hook()?.borrow_mut().button_at(*id, at, view))
+                .then_some((*id, at))
+        })?;
         frames.active = Some(id);
         Some((id, at))
     });

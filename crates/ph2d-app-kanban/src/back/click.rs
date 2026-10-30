@@ -223,7 +223,7 @@ pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, (x, y): (f32, f32), dy: f32)
     true
 }
 
-fn open_pop(docs: &mut KanbanDocs, id: u64, pop: Pop) {
+pub(crate) fn open_pop(docs: &mut KanbanDocs, id: u64, pop: Pop) {
     if let Some(b) = back_mut(docs, id) {
         let same = b
             .pop
@@ -242,39 +242,6 @@ fn edit(docs: &mut KanbanDocs, id: u64, at: EditAt, text: &str) {
             field: LineField::new(text),
         });
     }
-}
-
-/// O seletor de datas do cartão, de um item ou de um campo de data.
-pub(crate) fn dates_pop(docs: &mut KanbanDocs, id: u64, item: super::DatesFor) {
-    use super::DatesFor as D;
-    let now = crate::actions::now();
-    let Some((card, start, due)) = read(docs, id, |k, c| match item {
-        D::Card => (c.id, c.start, c.due.map(|d| (d.at, d.remind_before_min))),
-        D::Item(i) => (
-            c.id,
-            None,
-            k.items.get(&i).and_then(|i| i.due).map(|d| (d, None)),
-        ),
-        D::Field(f) => (
-            c.id,
-            None,
-            match c.fields.get(&f) {
-                Some(FieldValue::Date(d)) => Some((*d, None)),
-                _ => None,
-            },
-        ),
-    }) else {
-        return;
-    };
-    let mut picker = super::dates::picker(card, start, due, now);
-    if item != D::Card {
-        let name = read(docs, id, |k, _| match item {
-            D::Field(f) => k.fields.get(&f).map(|d| d.name.clone()),
-            _ => None,
-        });
-        picker = picker.due_only(name.flatten());
-    }
-    open_pop(docs, id, Pop::Dates(item, Box::new(picker)));
 }
 
 pub(crate) fn picker_events(docs: &mut KanbanDocs, id: u64, events: Vec<DatePickerEvent>) {
@@ -457,12 +424,14 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
         BackHit::CoverButton | BackHit::Side(Side::Cover) => open_pop(docs, id, Pop::Cover),
         BackHit::MemberAdd | BackHit::Side(Side::Members) => open_pop(docs, id, Pop::Members(None)),
         BackHit::LabelAdd | BackHit::Side(Side::Labels) => open_pop(docs, id, Pop::Labels),
-        BackHit::Dates | BackHit::Side(Side::Dates) => dates_pop(docs, id, super::DatesFor::Card),
+        BackHit::Dates | BackHit::Side(Side::Dates) => {
+            super::dates::pop(docs, id, super::DatesFor::Card)
+        }
         BackHit::DueDone => {
             write::toggle_done(docs, id, card);
         }
         BackHit::FieldValue(f) => field_click(docs, id, card, f),
-        BackHit::FieldDate(f) => dates_pop(docs, id, super::DatesFor::Field(f)),
+        BackHit::FieldDate(f) => super::dates::pop(docs, id, super::DatesFor::Field(f)),
         BackHit::DescEdit => {
             if let Some(b) = back_mut(docs, id) {
                 b.desc.editing = true;
@@ -496,7 +465,7 @@ pub(crate) fn click(docs: &mut KanbanDocs, id: u64, h: BackHit) {
             edit(docs, id, EditAt::Item(i), &t);
         }
         BackHit::ItemMember(i) => open_pop(docs, id, Pop::Members(Some(i))),
-        BackHit::ItemDue(i) => dates_pop(docs, id, super::DatesFor::Item(i)),
+        BackHit::ItemDue(i) => super::dates::pop(docs, id, super::DatesFor::Item(i)),
         BackHit::ItemConvert(i) => {
             write::convert(docs, id, i);
         }

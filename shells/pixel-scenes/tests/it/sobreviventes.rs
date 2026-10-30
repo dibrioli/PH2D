@@ -18,9 +18,9 @@ use ph2d_tool_vector::shape_handles_face::Glyph;
 use ph2d_vector::VectorScene;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{PPM, WINDOW, spawn_root};
-use crate::selecao::Palco;
-use crate::viva::Mesa;
+use crate::comum::Mesa;
+use crate::comum::Palco;
+use crate::comum::{PPM, WINDOW, spawn_root};
 
 const CLEAR: [u8; 4] = [0, 0, 0, 0];
 const WHITE: [u8; 4] = [255, 255, 255, 255];
@@ -170,7 +170,7 @@ fn ctrl_z_mid_handle_drag_is_swallowed() {
     m.desenha(Tool::RECTANGLE, (4, 4), (24, 20));
     let alca = m.alca(Glyph::Corner);
     m.press(alca);
-    let c = crate::edit::canvas(&m.sim, &m.cam, m.bits);
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
     let dentro = m.celula((12, 12));
     assert!(input::moved(&mut m.app, &c, dentro, Mods::default()));
     let r = raio(&m);
@@ -238,7 +238,7 @@ fn esc_mid_box_drag_puts_the_box_back() {
     let antes = m.app.live_shape().expect("viva").info();
     let (de, para) = (m.ponto(14.0, 14.0), m.ponto(25.0, 25.0));
     m.press(de);
-    let c = crate::edit::canvas(&m.sim, &m.cam, m.bits);
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
     assert!(input::moved(&mut m.app, &c, para, Mods::default()));
     assert_ne!(
         m.app.live_shape().expect("viva").info(),

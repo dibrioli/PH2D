@@ -16,7 +16,7 @@ use ph2d_render::Camera2d;
 use serde_json::Value;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{PPM, WINDOW, spawn_root};
+use crate::comum::{PPM, WINDOW, spawn_root};
 
 fn oraculo() -> Value {
     serde_json::from_str(include_str!("../fixtures/oracle_trial_timeline.json")).expect("fixtura")

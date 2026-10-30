@@ -1,7 +1,7 @@
 # Oráculo da timeline (onda P6h) — Aseprite Trial 1.3.18.6, caixa preta
 
 Medido em 2026-10-30. Condutor: [`trial_timeline.py`](trial_timeline.py) (docstring = uso e arranque).
-Fixtura: [`crates/ph2d-app-pixel/tests/fixtures/oracle_trial_timeline.json`](../../../crates/ph2d-app-pixel/tests/fixtures/oracle_trial_timeline.json).
+Fixtura: [`shells/pixel-scenes/tests/fixtures/oracle_trial_timeline.json`](../../../shells/pixel-scenes/tests/fixtures/oracle_trial_timeline.json).
 
 **Entrada NOSSA** `tl.ase` (`trial_timeline.py gera`): 16×16, 6 quadros de 100…600 ms, cor do quadro
 na camada A (de baixo, NÃO contínua), camada B (de cima, contínua) com cels só em 1 e 3, tag `walk` 2..4.

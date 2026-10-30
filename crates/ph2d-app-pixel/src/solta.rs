@@ -1,12 +1,7 @@
-//! **A moldura solta** (P6, a ferramenta Transform `V`/`Ctrl+T`, Ctrl+arrasto com uma selecção e o
-//! Paste): as células
-//! levantadas viajam numa matriz afim com pivô (`ph2d_pixel_core::affine`). O gizmo é o do SPRITE da
-//! casa (dono 26/10, ADR-0196 §12): a mesma pintura, as mesmas alças, as zonas de giro fora dos
-//! cantos e o pivô ([`ph2d_editor_core::gizmo`]); a conta do arrasto é a do núcleo, que assenta em
-//! células inteiras; a inclinação é pelo campo Skew. O
-//! documento NÃO muda até ao `Enter` (ou um clique fora): aí o assentar é UM passo
-//! (`edit::commit`, ou `edit::paste` para o que veio da área de transferência); o `Esc` larga tudo.
-//! A pré-visualização é o MESMO op de assentar, mostrado como um traço de valores prontos.
+//! **A moldura solta** (P6: Transform `V`/`Ctrl+T`, Ctrl+arrasto, Paste): as células levantadas numa
+//! matriz afim com pivô (`ph2d_pixel_core::affine`), sob o gizmo do SPRITE da casa
+//! ([`ph2d_editor_core::gizmo`], ADR-0196 §12). O documento NÃO muda até ao `Enter`/clique fora (UM
+//! passo, `edit::commit`/`edit::paste`); `Esc` larga. A pré-visualização é o MESMO op de assentar.
 
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::gizmo::{GizmoView, ids as g, sprite_gizmo_hit_at};

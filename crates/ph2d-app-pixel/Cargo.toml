@@ -38,9 +38,5 @@ winit = "0.30"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"
 
-[dev-dependencies]
-# A fixtura do oráculo da linha do tempo (P6h): `tests/fixtures/oracle_trial_timeline.json`.
-serde_json = "1"
-
 [lints]
 workspace = true

@@ -12,6 +12,7 @@ members = [
     "shells/desktop",
     "shells/code-scenes",
     "shells/game-scenes",
+    "shells/pixel-scenes",
     "tests/spike",
 ]
 # Vendored third-party code (ADR-0123 W7): the DeepFilterNet `libDF` runner, copied

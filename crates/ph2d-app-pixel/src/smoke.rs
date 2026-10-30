@@ -1,48 +1,20 @@
-//! **As cenas de smoke** (`PH2D_PIXEL_SMOKE=n`).
+//! **As cenas de smoke** (`PH2D_PIXEL_SMOKE=n`); o porquê de cada uma vive no handoff da onda.
 //!
-//! 1 — um Pixel Sprite 32 × 32 já em Draw, com uma cara desenhada em QUATRO traços (quatro passos
-//! do desfazer, para o `Ctrl+Z` ter o que mostrar). O dono desenha por cima, desfaz, grava e reabre.
-//! 2 — P1: um Pixel Sprite 64 × 48 em Draw com uma casa feita SÓ com as ferramentas novas, cada
-//! forma um passo do desfazer: paredes (Rectangle), telhado (Polygon), porta (Rectangle com Fill, de
-//! canto redondo), sol (Ellipse com Fill), chão (Line), fumo (Curve). As paredes FECHAM — o balde
-//! enche a casa sem vazar —, e a Rectangle fica na mão.
-//! 3 — P2: um Pixel Sprite 64 × 48 INDEXED com a DB32: céu em degradê (seis azuis), chão, e uma bola
-//! laranja sombreada com a rampa 4‥7 da DB32. As quatro amostras da rampa vêm seleccionadas e a tinta
-//! Shading na mão: pintar a bola com o esquerdo clareia um degrau, o direito escurece, o céu (fora
-//! da rampa) não muda. O Color Mode… e o menu da paleta estão no painel PIXEL.
-//! 4 — P2, o Color Mode que SE VÊ: um Pixel Sprite 96 × 64 **RGBA** em Draw, pintado com degradês
-//! que nenhuma paleta pequena exprime — o céu do azul fundo ao laranja do pôr do sol (cada linha
-//! uma cor), uma esfera iluminada (centenas de cores) e uma faixa arco-íris em baixo — sobre a
-//! paleta de fábrica, a **DB32** (32 cores: medido, a do Game Boy apagava os dithers ordenados —
-//! 3 % de células entre 2×2 e 4×4, 0 % entre 4×4 e 8×8, contra 10 % e 2 % na DB32 — porque com
-//! quatro verdes longe do céu o par do dither é quase sempre a mesma cor). Indexed sem dither dá
-//! faixas chapadas; Floyd–Steinberg, grão; Ordered 2×2/4×4/8×8, tramas regulares diferentes; Old,
-//! outras tramas; Grayscale, a imagem cinza; `Ctrl+Z` volta à imagem lisa. (A cena 3 é Indexed só
-//! com cores da paleta: lá RGBA ↔ Indexed é idêntico byte a byte e nenhum dither muda nada.)
-//! 5 — a cena 4 com o diálogo Color Mode ABERTO (Indexed + Floyd–Steinberg escolhidos), para a foto.
-//! 6 — a cena 4 já convertida para Indexed com Ordered 4×4 (um passo do desfazer), para a foto.
-//! 7 — P3, as camadas que SE VÊEM ([`crate::smoke_camadas`]): os 19 modos lado a lado, opacidade,
-//! escondida, trancada, referência e grupo.
-//! 8 — P4, os frames que SE VÊEM ([`crate::smoke_quadros`]): 16 frames, 4 tags (uma por direcção,
-//! com passadas), o frame que segura, o z, o cel a 50 %, o chão ligado e o papel vegetal.
-//! 9 — P6, a selecção e a transformação que SE VÊEM ([`crate::smoke_selecao`]): retângulo, elipse,
-//! laço e varinha com as formigas, o traço que só pinta dentro, Fast × RotSprite a 30°, espelho,
-//! Shift com volta, Nearest × Bilinear.
-//! 10 — P6b, as quatro correcções do smoke da P6 ([`crate::smoke_formas`]): o ícone da varinha, as
-//! selecções num botão com triângulo, o gizmo do sprite com giro e a ferramenta Transform, e as
-//! formas do Vector (fillet, pizza, hexágono, estrela) em células.
-//! 11 — P6c, as três correcções do smoke da P6b ([`crate::smoke_ferramentas`]): o ícone do laço
-//! poligonal, as formas num botão com triângulo (o «Fill» no painel no lugar das cheias) e a coluna
-//! sem o Move (o `V` escolhe o Transform).
-//! 12 — P6d, a forma VIVA ([`crate::smoke_viva`]): uma estrela girada com a caixa do gizmo do sprite
-//! e as alças do Vector, à espera do `Enter`, ao lado de duas formas já assentadas.
-//! 13 — P6e, o catálogo inteiro do Vector ([`crate::smoke_catalogo`]): uma amostra assentada de cada
-//! família (as abertas em traço) e uma engrenagem viva com as alças.
-//! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]): uma estrela viva girada com a
-//! etiqueta das pontas, a barra da moldura, um ajuste para o `Ctrl+Z` desfazer, e gravar assenta.
-//! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]): uma moldura solta inclinada pelo gizmo,
-//! duas camadas para a varinha «Visible» e o Auto Select Layer, o «Paste as New Sprite» e o flyout
-//! das selecções numa linha.
+//! 1 — 32 × 32 em Draw, uma cara em QUATRO traços (quatro passos do desfazer).
+//! 2 — P1: 64 × 48, uma casa SÓ com as ferramentas de forma (cada forma um passo); as paredes FECHAM.
+//! 3 — P2: 64 × 48 INDEXED com a DB32, a bola sombreada pela rampa 4‥7 e a tinta Shading na mão.
+//! 4 — P2: 96 × 64 RGBA em degradês sobre a DB32 — o Color Mode e os dithers que SE VÊEM.
+//! 5 — a cena 4 com o diálogo Color Mode ABERTO (Indexed + Floyd–Steinberg).
+//! 6 — a cena 4 já em Indexed com Ordered 4×4 (um passo do desfazer).
+//! 7 — P3, as camadas ([`crate::smoke_camadas`]): 19 modos, opacidade, escondida, trancada, grupo.
+//! 8 — P4, os frames ([`crate::smoke_quadros`]): 16 frames, 4 tags, cel a 50 %, papel vegetal.
+//! 9 — P6, selecção e transformação ([`crate::smoke_selecao`]).
+//! 10 — P6b, as correcções do smoke da P6 ([`crate::smoke_formas`]): formas do Vector em células.
+//! 11 — P6c, as correcções do smoke da P6b ([`crate::smoke_ferramentas`]).
+//! 12 — P6d, a forma VIVA ([`crate::smoke_viva`]): estrela girada com o gizmo, à espera do `Enter`.
+//! 13 — P6e, o catálogo do Vector ([`crate::smoke_catalogo`]) e uma engrenagem viva.
+//! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]).
+//! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]).
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};

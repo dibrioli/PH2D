@@ -1,21 +1,10 @@
-//! **A forma VIVA** (P6d, dono 27/10: *«os ajustes devem ser em tempo real no gizmo igual ao módulo
-//! vector»*): largar o arrasto de um Retângulo, Elipse, Polígono ou Estrela não grava — a forma
-//! flutua sobre o cel com a caixa do gizmo do sprite (a MESMA da moldura solta,
-//! [`crate::solta::gizmo_of`]) e as alças próprias da forma, cuja LEI é a do Vector
-//! ([`ph2d_tool_vector::shape_handles`]) e cuja pintura é a dele
-//! ([`ph2d_vec_render::draw_shape_handles`]). Os valores moram nos campos do painel
-//! (`Options::shapes`): alça e campo são duas mãos sobre o MESMO número, e qualquer das duas
-//! re-cozinha a forma na hora. `Enter`, outra ferramenta, um clique fora ou sair do Draw assentam-na
-//! em células (UM passo); `Esc` larga-a (a meio de um arrasto, só desfaz o arrasto).
-//!
-//! P6f: a meio do arrasto de uma alça a caixa fica só com o contorno e a ETIQUETA do Vector
-//! («Points: 7») segue o cursor; a barra da moldura (X/Y/W/H/ângulo) mostra-a e edita-a com a conta
-//! da moldura solta; `Ctrl+Z` desfaz o último AJUSTE dela (um arrasto = um passo, a lei do Vector) e,
-//! sem ajustes, larga-a — `Ctrl+Shift+Z` refaz. Gravar o projecto assenta-a antes.
-//!
-//! Espaço LOCAL = o do Vector: centrado, Y para cima, em células; [`Geo::xf`] leva-o à imagem
-//! (cantos das células, Y para baixo) com o giro da caixa e escala 1 — esticar a caixa muda a
-//! largura e a altura da forma, nunca os raios dela.
+//! **A forma VIVA** (P6d, dono 27/10): largar o arrasto de uma forma não grava — ela flutua com a
+//! caixa do gizmo do sprite ([`crate::solta::gizmo_of`]) e as alças cuja LEI e pintura são as do
+//! Vector ([`ph2d_tool_vector::shape_handles`], [`ph2d_vec_render::draw_shape_handles`]). Alça e
+//! campo do painel (`Options::shapes`) mexem o MESMO número. `Enter`, outra ferramenta, um clique
+//! fora ou sair do Draw assentam-na (UM passo); `Esc` larga-a. P6f: etiqueta do Vector, barra da
+//! moldura, `Ctrl+Z` por AJUSTE; gravar assenta-a antes. Espaço LOCAL = o do Vector (centrado, Y
+//! para cima); [`Geo::xf`] leva-o à imagem com o giro da caixa e escala 1.
 
 use ph2d_editor_core::DocPx;
 use ph2d_editor_core::pixel_panel::{

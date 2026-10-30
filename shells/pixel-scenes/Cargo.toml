@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-host-pixel-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ Os gates do PIXEL ART sobre a cena MONTADA (`PH2D_PIXEL_SMOKE`): a linha do tempo contra o oráculo
+# do Aseprite Trial (`tests/fixtures/oracle_trial_timeline.json`) e os sobreviventes das mutações, pelo
+# ponteiro e pelas teclas que a shell entrega. Moram aqui e não em `crates/ph2d-app-pixel` porque a
+# catraca `the_shell_only_shrinks_and_every_app_crate_too` conta as linhas de `src/` E de `tests/` de
+# cada crate app — o precedente é `shells/game-scenes` (e `shells/code-scenes`).
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+ph2d-app-pixel = { path = "../../crates/ph2d-app-pixel" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+ph2d-host = { path = "../../crates/ph2d-host" }
+ph2d-pixel-core = { path = "../../crates/ph2d-pixel-core" }
+ph2d-render = { path = "../../crates/ph2d-render" }
+ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
+ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
+ph2d-vector = { path = "../../crates/ph2d-vector" }
+serde_json = "1"
+winit = "0.30"
+
+[lints]
+workspace = true

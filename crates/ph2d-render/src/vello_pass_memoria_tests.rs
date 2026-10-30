@@ -161,3 +161,107 @@ fn sonda_da_placa_cheia() {
         t.elapsed()
     );
 }
+
+/// Um episódio de falta inteiro no vigia do processo: a geração sobe uma vez.
+fn acaba_um_episodio() {
+    use ph2d_gpu::memoria::{JANELA_MS, VIGIA, geracao};
+    let _ = VIGIA.mudou_em(u64::MAX / 2);
+    let g = geracao();
+    VIGIA.anota_em(0);
+    assert_eq!(VIGIA.mudou_em(0), Some(true));
+    assert_eq!(VIGIA.mudou_em(JANELA_MS), Some(false));
+    assert_eq!(geracao(), g + 1, "o episódio devia ter acabado");
+}
+
+/// Uma cena com um quadrado verde opaco em `(8..24)²`.
+fn quadrado_verde() -> vello::Scene {
+    let mut cena = vello::Scene::new();
+    cena.fill(
+        vello::peniko::Fill::NonZero,
+        Affine::IDENTITY,
+        vello::peniko::Color::from_rgba8(0, 255, 0, 255),
+        None,
+        &vello::kurbo::Rect::new(8.0, 8.0, 24.0, 24.0),
+    );
+    cena
+}
+
+/// **G32 (placa) — a intermédia que a placa recusa num resize NÃO é instalada** (F40, cena 41 com a
+/// placa cheia: `create_view`/readback sobre a «vello intermediate» inválida). Fica a de antes,
+/// válida; o pedido não se repete no mesmo episódio; nenhum trabalho de placa sobre ela (o render e a
+/// leitura recusam) e zero `[gpu-erro]`.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_refused_intermediate_resize_keeps_the_valid_one_and_does_no_gpu_work() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    let erros = ph2d_gpu::context::erros_relatados();
+    let mut vp = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, (32, 32)).expect("vello");
+    let cena = quadrado_verde();
+    vp.render_and_readback(&gpu, &cena, (32, 32))
+        .expect("antes");
+    crate::renasce::testes::forca_recusas(1);
+    assert!(
+        vp.render_and_readback(&gpu, &cena, (64, 48)).is_err(),
+        "a leitura de um tamanho recusado devolveu pixels"
+    );
+    assert!(vp.em_recusa());
+    let t = vp.intermediate_texture();
+    assert_eq!(
+        (t.width(), t.height()),
+        (32, 32),
+        "a intermédia recusada foi instalada"
+    );
+    // O mesmo episódio não volta a pedir (a próxima forçada ficaria por consumir).
+    crate::renasce::testes::forca_recusas(1);
+    assert!(vp.render_and_readback(&gpu, &cena, (64, 48)).is_err());
+    assert!(
+        crate::renasce::testes::consome_recusa_forcada(),
+        "o mesmo episódio voltou a pedir a intermédia"
+    );
+    let px = vp
+        .render_and_readback(&gpu, &cena, (32, 32))
+        .expect("o tamanho de antes");
+    let i = ((16 * 32 + 16) * 4) as usize;
+    assert_eq!(
+        &px[i..i + 4],
+        &[0, 255, 0, 255],
+        "a intermédia de antes deixou de desenhar"
+    );
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    assert_eq!(
+        ph2d_gpu::context::erros_relatados(),
+        erros,
+        "a recusa da intermédia deu [gpu-erro]"
+    );
+}
+
+/// **G33 (placa) — no fim do episódio a intermédia renasce no tamanho pedido e desenha.**
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_refused_intermediate_is_reborn_at_the_requested_size_when_the_episode_ends() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    crate::renasce::testes::forca_recusas(1);
+    let mut vp = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, (64, 48)).expect("vello");
+    assert!(
+        vp.em_recusa(),
+        "a intermédia recusada à nascença não ficou em recusa"
+    );
+    let cena = quadrado_verde();
+    assert!(vp.render_and_readback(&gpu, &cena, (64, 48)).is_err());
+    acaba_um_episodio();
+    let px = vp
+        .render_and_readback(&gpu, &cena, (64, 48))
+        .expect("depois do episódio");
+    let t = vp.intermediate_texture();
+    assert_eq!((t.width(), t.height()), (64, 48));
+    let i = ((16 * 64 + 16) * 4) as usize;
+    assert_eq!(
+        &px[i..i + 4],
+        &[0, 255, 0, 255],
+        "a intermédia renascida não desenha"
+    );
+}

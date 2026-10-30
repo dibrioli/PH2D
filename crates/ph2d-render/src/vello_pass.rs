@@ -44,6 +44,8 @@ pub struct VelloPass {
     meus: std::collections::BTreeSet<u64>,
     /// Este episódio de falta já foi dito ao chamador (um `Err` por episódio, não um por quadro).
     falta_dita: bool,
+    /// A geração em que a placa recusou a intermédia (F40): até ela mudar, nenhum pedido novo.
+    recusa: Option<u64>,
 }
 
 /// O intervalo entre tentativas de refazer o renderer: refazê-lo custa ~6–10 ms
@@ -61,7 +63,9 @@ impl VelloPass {
     ) -> Result<Self, String> {
         let partilhado = crate::vello_partilhado::da_placa(&gpu.device)?;
 
-        let (intermediate, intermediate_view) = create_intermediate(&gpu.device, initial_size);
+        // F40: recusada, a intermédia nasce substituta de 1×1 e o tamanho fica por cumprir.
+        let (intermediate, recusa) = create_intermediate(&gpu.device, initial_size);
+        let intermediate_view = intermediate.create_view(&wgpu::TextureViewDescriptor::default());
         // Pre-multiplied alpha blending: the intermediate texture has
         // a transparent background (Color::TRANSPARENT in render()) so
         // sprites underneath stay visible where the editor scene is
@@ -74,15 +78,16 @@ impl VelloPass {
 
         Ok(Self {
             partilhado,
-            intermediate,
             intermediate_view,
             blitter,
-            last_size: initial_size,
+            last_size: (intermediate.width(), intermediate.height()),
+            intermediate,
             surface_format,
             keepalive: crate::vello_keepalive::KeepAlive::new(),
             fundo: None,
             meus: std::collections::BTreeSet::new(),
             falta_dita: false,
+            recusa,
         })
     }
 
@@ -92,13 +97,36 @@ impl VelloPass {
         if size == self.last_size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        // Sob recusa de memória o tamanho fica por cumprir (ver `GameRt::ensure_size`, F35 §2).
-        let ((tex, view), falta) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || {
-            create_intermediate(&gpu.device, size)
-        });
+        // F40: recusada, a intermédia de antes FICA (válida) e o tamanho fica por cumprir até ao
+        // fim do episódio — nenhum pedido por quadro, nenhuma textura inválida instalada.
+        if self.em_recusa() {
+            return;
+        }
+        let (tex, recusa) = create_intermediate(&gpu.device, size);
+        self.recusa = recusa;
+        if recusa.is_some() {
+            return;
+        }
+        self.intermediate_view = tex.create_view(&wgpu::TextureViewDescriptor::default());
         self.intermediate = tex;
-        self.intermediate_view = view;
-        self.last_size = if falta.is_some() { (0, 0) } else { size };
+        self.last_size = size;
+    }
+
+    /// `true` enquanto a placa recusou a intermédia neste episódio de falta (F40).
+    #[must_use]
+    pub fn em_recusa(&self) -> bool {
+        self.recusa == Some(ph2d_gpu::memoria::geracao())
+    }
+
+    /// O pedido de `size` ficou por cumprir (recusa): nenhum trabalho de placa sobre a intermédia.
+    fn por_cumprir(&self, size: (u32, u32)) -> Result<(), String> {
+        if size == self.last_size {
+            return Ok(());
+        }
+        Err(format!(
+            "a placa recusou a intermédia de {}x{} (fica a de {}x{} até ao fim do episódio)",
+            size.0, size.1, self.last_size.0, self.last_size.1
+        ))
     }
 
     pub fn surface_format(&self) -> wgpu::TextureFormat {
@@ -248,6 +276,7 @@ impl VelloPass {
         bg_color: Color,
     ) -> Result<(), String> {
         self.ensure_size(gpu, size);
+        self.por_cumprir(size)?;
         let params = RenderParams {
             base_color: bg_color,
             width: self.last_size.0,
@@ -284,6 +313,7 @@ impl VelloPass {
         size: (u32, u32),
     ) -> Result<(), String> {
         self.ensure_size(gpu, size);
+        self.por_cumprir(size)?;
         let mut fundo = self
             .fundo
             .take()
@@ -425,7 +455,10 @@ impl VelloPass {
         };
         // ⛔⛔⛔ A MESMA porta que o `render_to_intermediate` — as duas entregas ao Vello passam
         // por ela, ou o defeito volta pela que ficou de fora (`vello_keepalive`, F35 §2).
-        self.entrega(gpu, scene, &params)?;
+        // F40: intermédia recusada = o quadro de antes, sem render.
+        if self.por_cumprir(size).is_ok() {
+            self.entrega(gpu, scene, &params)?;
+        }
 
         let mut encoder = gpu
             .device
@@ -452,11 +485,14 @@ impl Drop for VelloPass {
     }
 }
 
-fn create_intermediate(
-    device: &wgpu::Device,
-    size: (u32, u32),
-) -> (wgpu::Texture, wgpu::TextureView) {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
+/// A intermédia, sob o escopo de memória ([`crate::nasce_sob_escopo`]): `Some(geração)` = recusada
+/// (é a substituta de 1×1, válida).
+fn create_intermediate(device: &wgpu::Device, size: (u32, u32)) -> (wgpu::Texture, Option<u64>) {
+    crate::nasce_sob_escopo(device, || intermediate_texture(device, size))
+}
+
+fn intermediate_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-render vello intermediate"),
         size: wgpu::Extent3d {
             width: size.0.max(1),
@@ -477,9 +513,7 @@ fn create_intermediate(
             | wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    (texture, view)
+    })
 }
 
 #[cfg(test)]

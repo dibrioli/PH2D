@@ -34,8 +34,13 @@ pub(crate) fn sobra(cap: (u32, u32), preciso: (u32, u32)) -> bool {
 }
 
 /// A textura REGISTADA de uma forma: só recebe cópias (a pilha escreve na `saida`), e o Vello copia-a
-/// para o atlas (`COPY_SRC`, `Rgba8Unorm`).
-pub(super) fn textura_mostrada(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
+/// para o atlas (`COPY_SRC`, `Rgba8Unorm`). Sob o escopo de memória: `None` = a placa recusou-a (F40).
+pub(super) fn textura_mostrada(gpu: &GpuContext, w: u32, h: u32) -> Option<wgpu::Texture> {
+    let (t, recusada) = ph2d_render::nasce_sob_escopo(&gpu.device, || cria_mostrada(gpu, w, h));
+    recusada.is_none().then_some(t)
+}
+
+fn cria_mostrada(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
     gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-app-vec::fx_live::textura_mostrada"),
         size: wgpu::Extent3d {

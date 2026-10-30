@@ -40,6 +40,17 @@ pub(crate) fn nasce_textura(
     (substituta, true)
 }
 
+/// [`nasce_textura`] para as crates de fora: `Some(geração)` = recusada nesse episódio (é a
+/// substituta de 1×1); o dono só volta a pedir quando [`crate::saida_renasce`] o disser.
+#[must_use]
+pub fn nasce_sob_escopo(
+    device: &wgpu::Device,
+    cria: impl FnOnce() -> wgpu::Texture,
+) -> (wgpu::Texture, Option<u64>) {
+    let (t, recusada) = nasce_textura(device, cria);
+    (t, recusada.then(ph2d_gpu::memoria::geracao))
+}
+
 #[cfg(test)]
 pub(crate) mod testes {
     use std::cell::Cell;

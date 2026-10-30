@@ -385,7 +385,11 @@ impl FxLive {
         //    renderer principal (`&mut vello_pass`), e é a única parte do lote que o toca.
         for cell in &batch.cells {
             let job = &jobs[miss[cell.index]];
-            self.ensure_output(gpu, vello_pass, job);
+            if self.stack.as_ref().is_some_and(FxStackPass::em_recusa)
+                || !self.ensure_output(gpu, vello_pass, job)
+            {
+                break;
+            }
         }
 
         // 4. A PILHA de cada forma, lendo a CÉLULA dela do atlas. Tudo a jusante do ingest fala em
@@ -493,14 +497,20 @@ impl FxLive {
     }
 
     /// (Re)aloca a textura de saída de uma forma e mantém o id ESTÁVEL no renderer principal.
-    fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) {
+    /// `false` = a placa recusou-a (F40): a forma fica com a de antes e a pilha entra em recusa.
+    fn ensure_output(&mut self, gpu: &GpuContext, vello_pass: &mut VelloPass, job: &Job) -> bool {
         let [x0, y0, x1, y1] = job.key.mostra;
         let (w, h) = (x1 - x0, y1 - y0);
         if matches!(self.paths.get(&job.id), Some(p) if serve(p.tex.width(), w) && serve(p.tex.height(), h))
         {
-            return;
+            return true;
         }
-        let tex = textura_mostrada(gpu, capacidade(w), capacidade(h));
+        let Some(tex) = textura_mostrada(gpu, capacidade(w), capacidade(h)) else {
+            self.stack
+                .get_or_insert_with(|| FxStackPass::new(gpu))
+                .anota_recusa();
+            return false;
+        };
         match self.paths.get_mut(&job.id) {
             // Resize: RE-registra (id novo com as dims certas) e agenda o desregistro do antigo.
             // ⚠️ `override_image` só troca a textura e NÃO atualiza width/height da `ImageData` —
@@ -534,6 +544,7 @@ impl FxLive {
                 );
             }
         }
+        true
     }
 
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira, e os `VecPathId`

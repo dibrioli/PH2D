@@ -205,4 +205,30 @@ mod tests {
         };
         assert_eq!(f.resolution(), [CUSTOM_MIN_PX, CUSTOM_MAX_PX]);
     }
+
+    /// ⭐ Cada edição de VISTA (onda 18) escreve o SEU campo e só ele; as outras não são de vista.
+    #[test]
+    fn cada_edicao_de_vista_escreve_o_seu_campo() {
+        use crate::CameraFieldEdit as E;
+        let mut v = CameraCanvasView::default();
+        assert!(v.aplica(&E::DimOutside(true)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: true,
+                follows: false
+            }
+        );
+        assert!(v.aplica(&E::ViewFollows(true)));
+        assert!(v.aplica(&E::DimOutside(false)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: false,
+                follows: true
+            }
+        );
+        assert!(!v.aplica(&E::Preview(true)));
+        assert!(!v.aplica(&E::Frame(true)));
+    }
 }

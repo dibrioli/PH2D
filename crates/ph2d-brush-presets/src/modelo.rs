@@ -94,6 +94,10 @@ pub struct Parametros {
     /// **A Borda que pesa** do Wet Paint (W1g, `0..1`). `None` = um preset de antes dela (não mexe).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub heavy_edge: Option<f64>,
+    /// **Over Oil** do Wet Paint (dono 30/10): como a aguada se comporta por cima do óleo — `0` Tint · `1` Mix ·
+    /// `2` Blend. `None` = o de fábrica (Mix): o pincel de antes dela e o que não a mexeu.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub over_oil: Option<u8>,
     /// **A Shape Color do pincel** (prompt 45, B13 do dono): as rampas Texture Color + Falloff Color, a ordem,
     /// o Blend, a Opacity de cada uma e o B&W, por NOME. `None` = sem rampa: aplicar o pincel TIRA a do
     /// anterior (um preset é o pincel inteiro). O meio lê-a; o formato não sobe de versão.
@@ -133,6 +137,7 @@ impl Parametros {
             tilt: None,
             live_water: None,
             heavy_edge: None,
+            over_oil: None,
             shape_color: None,
             grain_color: None,
             library_folder: None,

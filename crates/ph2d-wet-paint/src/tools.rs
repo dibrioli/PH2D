@@ -199,6 +199,7 @@ pub fn apply_wet(
         sett_rgb,
         vela,
         aparencia,
+        oleo,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -240,7 +241,8 @@ pub fn apply_wet(
                         p.glaze,
                         p.ecra
                             .com_vela(vela[i])
-                            .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
+                            .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i))
+                            .com_oleo(crate::grid::oleo_celula::da_celula(oleo, i)),
                         &mut out,
                     );
                 }

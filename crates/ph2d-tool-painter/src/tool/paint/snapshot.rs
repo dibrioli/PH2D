@@ -494,6 +494,7 @@ impl PainterTool {
                 .map(|v| v as f32),
             wet_live_water: self.paint.wetpaint.agua_viva,
             wet_heavy_edge: self.paint.wetpaint.borda_que_pesa as f32,
+            wet_sobre_oleo: self.paint.wetpaint.sobre_oleo.to_u8(),
             wet_km_mixing: self.paint.wetpaint.km_mixing,
             wet_km_glaze: self.paint.wetpaint.km_glaze,
             wet_tuning_open: self.paint.wetpaint.tuning_open,

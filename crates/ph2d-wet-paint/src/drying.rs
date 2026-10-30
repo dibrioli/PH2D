@@ -148,6 +148,7 @@ pub(crate) fn dry_cell(
     count: u32,
     vela: f32,
     vidrado: f32,
+    oleo: crate::grid::oleo_celula::OleoCelula,
     film: &mut f32,
     susp: &mut f32,
     sett: &mut f32,
@@ -163,7 +164,7 @@ pub(crate) fn dry_cell(
     let mut susp_rgb_c = *susp_rgb;
     let mut sett_rgb_c = *sett_rgb;
     let mix = c.mix;
-    let ecra = c.ecra.com_vela(vela).com_vidrado(vidrado);
+    let ecra = c.ecra.com_vela(vela).com_vidrado(vidrado).com_oleo(oleo);
 
     // Edge factor: fraction of the 3x3 neighbourhood carrying pigment. A full
     // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
@@ -329,6 +330,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
                 count,
                 g.vela[i],
                 crate::grid::aparencia::vidrado(&g.aparencia, i),
+                crate::grid::oleo_celula::da_celula(&g.oleo, i),
                 &mut film,
                 &mut susp,
                 &mut sett,
@@ -470,6 +472,7 @@ pub fn drying_pass_jacobi_rows(
         paper,
         vela,
         aparencia,
+        oleo,
         row_lo,
         row_hi,
         spans_enabled,
@@ -482,6 +485,7 @@ pub fn drying_pass_jacobi_rows(
     let paper: &[f32] = paper;
     let vela: &[f32] = vela;
     let aparencia: &[crate::grid::aparencia::AparenciaCelula] = aparencia;
+    let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     crate::par::walk_rows5(
         mode,
@@ -512,6 +516,7 @@ pub fn drying_pass_jacobi_rows(
                     u32::from(edge[i]),
                     vela[i],
                     crate::grid::aparencia::vidrado(aparencia, i),
+                    crate::grid::oleo_celula::da_celula(oleo, i),
                     &mut a,
                     &mut b,
                     &mut d,

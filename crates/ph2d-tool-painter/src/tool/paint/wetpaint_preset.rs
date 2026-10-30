@@ -396,6 +396,11 @@ impl PainterTool {
         if let Some(v) = prm.heavy_edge {
             self.set_wet_borda_que_pesa(v);
         }
+        // O Over Oil: o do pincel, ou o de fábrica — um preset é o pincel inteiro.
+        self.paint.wetpaint.sobre_oleo = prm
+            .over_oil
+            .map(ph2d_wet_paint::assenta::MisturaSobreOleo::from_u8)
+            .unwrap_or_default();
         // A Shape Color (prompt 45): a do pincel, ou NENHUMA — ausente tira a do pincel anterior.
         let mut sc = super::shape_ramp::EstadoDaShapeColor::default();
         if let Some(v) = &prm.shape_color {
@@ -531,6 +536,8 @@ impl PainterTool {
         });
         p.live_water = Some(w.agua_viva);
         p.heavy_edge = Some(w.borda_que_pesa);
+        p.over_oil = (w.sobre_oleo != ph2d_wet_paint::assenta::MisturaSobreOleo::default())
+            .then(|| w.sobre_oleo.to_u8());
         p.shape_color = self.shape_color_estado().para_json_se_mexida();
         p.grain_color = self.grain_color_para_json();
         // A lei da largura do pincel de onde ele veio (W2): um pincel mexido guarda a do preset-base.

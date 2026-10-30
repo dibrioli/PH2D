@@ -75,6 +75,7 @@ pub fn apply_smear(
         film,
         vela,
         aparencia,
+        oleo,
         material,
         nivelado,
         wet,
@@ -217,7 +218,8 @@ pub fn apply_smear(
                             p.glaze,
                             p.ecra
                                 .com_vela(vela[i])
-                                .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i)),
+                                .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i))
+                                .com_oleo(crate::grid::oleo_celula::da_celula(oleo, i)),
                             &mut out,
                         );
                     }

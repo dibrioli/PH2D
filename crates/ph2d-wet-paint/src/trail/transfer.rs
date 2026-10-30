@@ -247,7 +247,8 @@ impl Trail {
                             let e = p
                                 .ecra
                                 .com_vela(g.vela[i])
-                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i));
+                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i))
+                                .com_oleo(crate::grid::oleo_celula::da_celula(&g.oleo, i));
                             crate::grid::settle_composite(g, i, dm, p.mix, p.glaze, e, &mut out);
                             // A camada que vai para BAIXO leva a sua água (a fracção que assentou): deixada no
                             // filme, a orla do traço novo (que quase nada pousa) virava água LIMPA ao lado do azul
@@ -650,7 +651,8 @@ impl Trail {
                             p.glaze,
                             p.ecra
                                 .com_vela(g.vela[i])
-                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i)),
+                                .com_vidrado(crate::grid::aparencia::vidrado(&g.aparencia, i))
+                                .com_oleo(crate::grid::oleo_celula::da_celula(&g.oleo, i)),
                             &mut out,
                         );
                     }

@@ -56,6 +56,9 @@ pub struct Params {
     pub textura: f32,
     /// O **Real Oil** do pincel ([`Sim::oleo`]): `1` = ligado. Pousa na célula ([`crate::grid::oleo_celula`]).
     pub oleo: f32,
+    /// [`Sim::sobre_oleo`] — `None` com o Real Oil na mão: pousa na célula ([`crate::grid::aparencia`]) e o óleo
+    /// sobre o óleo segue a lei da obra.
+    pub sobre_oleo: Option<crate::assenta::MisturaSobreOleo>,
     /// [`Sim::semente_do_po`].
     pub semente_do_po: u32,
     /// [`Sim::relevo_do_tamanho`].
@@ -155,6 +158,9 @@ pub struct Sim {
     /// **O Real Oil do pincel** (dono 28/10: é do TRAÇO): pousa na célula ([`Params::oleo`]); o composite corre a
     /// óptica do óleo onde a célula o tem — ligá-lo ou desligá-lo não muda a tinta pousada.
     pub oleo: bool,
+    /// **Como a aguada se comporta por cima do óleo** ([`crate::assenta::MisturaSobreOleo`], dono 30/10): a escolha
+    /// do pincel, lida em cada célula com óleo debaixo ([`crate::assenta::Ecra::com_oleo`]).
+    pub sobre_oleo: crate::assenta::MisturaSobreOleo,
     /// **A semente do PÓ deste dab** ([`Knob::Dust`]): o hospedeiro sorteia-a por dab do fluxo do traço
     /// (dabs parados no mesmo lugar pousam pontos novos); o motor mistura-lhe o centro do dab.
     pub semente_do_po: u32,
@@ -251,6 +257,7 @@ impl Default for Sim {
             camadas_transparentes: false,
             textura: false,
             oleo: false,
+            sobre_oleo: crate::assenta::MisturaSobreOleo::default(),
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
             px_por_celula: 1.0,
@@ -349,11 +356,13 @@ impl Sim {
                     esconde: self.esconde,
                     molhada: self.molhada_escurece,
                     vela: 0.0,
+                    oleo: 0.0,
                 },
             },
             vidrado: if self.camadas_transparentes { 1.0 } else { 0.0 },
             textura: if self.textura { 1.0 } else { 0.0 },
             oleo: if self.oleo { 1.0 } else { 0.0 },
+            sobre_oleo: (!self.oleo).then_some(self.sobre_oleo),
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
             px_por_celula: self.px_por_celula,

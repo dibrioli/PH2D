@@ -15,6 +15,7 @@ const COBRE: Ecra = Ecra::Cobre {
     esconde: 5.0,
     molhada: 1.0,
     vela: 0.0,
+    oleo: 0.0,
 };
 
 /// A fracção multiplicada é a MEDIDA no Rebelle (16/10, sRGB por canal): a mesma tinta 0,48–0,51, amarelo sobre

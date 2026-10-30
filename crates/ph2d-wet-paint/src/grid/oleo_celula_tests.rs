@@ -35,6 +35,7 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
                 oleo: 1.0,
                 profundidade: 1.0,
                 brilho: c.brilho,
+                aguada: 0,
             };
         }
     }
@@ -68,6 +69,7 @@ fn a_parede_entre_traços_de_depth_diferentes_e_uma_rampa_sem_degrau() {
         oleo: 1.0,
         profundidade: 1.0,
         brilho: 1.0,
+        aguada: 0,
     };
     for (nome, b) in [
         (
@@ -101,6 +103,7 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
         oleo: 1.0,
         profundidade: 1.0,
         brilho: 1.0,
+        aguada: 0,
     };
     let g = duas(um, um);
     let mut antes = g.clone();
@@ -131,10 +134,11 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
 }
 
 /// O pouso: a NEUTRA (sem óleo) não aloca; a tinta com óleo aloca e mistura-se pela massa; a orla virgem veste-se;
-/// o desfazer que deixa a grade sem óleo LARGA o campo; o custo é 12 B por célula.
+/// o desfazer que deixa a grade sem óleo LARGA o campo; o custo é 16 B por célula (12 + o Over Oil, J8), só nas grades
+/// com óleo.
 #[test]
 fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
-    assert_eq!(std::mem::size_of::<OleoCelula>(), 12);
+    assert_eq!(std::mem::size_of::<OleoCelula>(), 16);
     let mut g = Grid::new(32, 32);
     let i = 10 + 10 * g.s;
     pousa(&mut g, i, 0.0, OleoCelula::NEUTRA, 5.0);
@@ -143,6 +147,7 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
         oleo: 1.0,
         profundidade: 3.0,
         brilho: 0.0,
+        aguada: 0,
     };
     pousa(&mut g, i, 0.0, fundo, 5.0);
     g.sett[i] = 5.0;
@@ -158,4 +163,33 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
     assert_eq!(da_celula(&g.oleo, i), m, "a célula pintada não se veste");
     restaura_janela(&mut g, (1, 1, 32, 32), &[]);
     assert!(g.oleo.is_empty(), "o desfazer sem óleo não largou o campo");
+}
+
+/// ⭐ **O Over Oil só se grava SOBRE óleo** (J8): a aguada sobre o papel não aloca; sobre o óleo grava a escolha
+/// INTEIRA (não pela massa); o óleo que pousa por cima volta à lei da obra; a orla virgem nunca a recebe.
+#[test]
+fn o_over_oil_so_se_grava_sobre_o_oleo() {
+    let aguada = OleoCelula {
+        aguada: 3,
+        ..OleoCelula::NEUTRA
+    };
+    let oleo = OleoCelula {
+        oleo: 1.0,
+        profundidade: 1.0,
+        brilho: 1.0,
+        aguada: 0,
+    };
+    let mut g = Grid::new(32, 32);
+    let i = 10 + 10 * g.s;
+    pousa(&mut g, i, 0.0, aguada, 5.0);
+    assert!(g.oleo.is_empty(), "a aguada sobre o papel alocou o campo");
+    pousa(&mut g, i, 0.0, oleo, 50.0);
+    pousa(&mut g, i, 50.0, aguada, 1.0);
+    assert_eq!(da_celula(&g.oleo, i).aguada, 3, "a última aguada manda");
+    pousa(&mut g, i + 2, 0.0, aguada, 1.0);
+    assert_eq!(da_celula(&g.oleo, i + 2).aguada, 0, "sem óleo debaixo");
+    pousa(&mut g, i, 51.0, oleo, 5.0);
+    assert_eq!(da_celula(&g.oleo, i).aguada, 0, "o óleo por cima");
+    veste_virgens(&mut g, (12, 12, 12, 12), aguada);
+    assert_eq!(da_celula(&g.oleo, 13 + 12 * g.s).aguada, 0, "a orla virgem");
 }

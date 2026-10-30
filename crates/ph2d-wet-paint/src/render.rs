@@ -491,7 +491,8 @@ fn pigment_row(
                 let uc = lg.susp_rgb[i];
                 let ([cr, cg, cb], la) = crate::assenta::cor_e_alfa(
                     lei.com_vela(lg.vela[i])
-                        .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i)),
+                        .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i))
+                        .com_oleo(crate::grid::oleo_celula::da_celula(&lg.oleo, i)),
                     sc.map(f64::from),
                     uc.map(f64::from),
                     a_s,

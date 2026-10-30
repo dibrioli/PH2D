@@ -322,6 +322,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_oleo_material: ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_MATERIAL_NEUTRO,
     wet_live_water: false,
     wet_heavy_edge: 0.0,
+    wet_sobre_oleo: 1,
     wet_km_mixing: false,
     wet_km_glaze: false,
     wet_tuning_open: false,

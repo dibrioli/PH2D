@@ -18,9 +18,6 @@ mod cor_do_papel_tests;
 /// As Grain Colors nos quatro meios (dono 22/10).
 #[path = "grain_colors_tests.rs"]
 mod grain_colors_tests;
-/// As rampas novas do Painter em OKLCH (dono 30/10).
-#[path = "rampa_oklch_tests.rs"]
-mod rampa_oklch_tests;
 #[path = "grain_same_as_paper_tests.rs"]
 mod grain_same_as_paper_tests;
 #[path = "impasto_pool_tests.rs"]
@@ -48,6 +45,9 @@ mod papel_nasce_tests;
 /// O fio claro dos traços pintados antes do papel (decisão do dono, 2026-10-06, BUGS #42).
 #[path = "papel_orla_tests.rs"]
 mod papel_orla_tests;
+/// As rampas novas do Painter em OKLCH (dono 30/10).
+#[path = "rampa_oklch_tests.rs"]
+mod rampa_oklch_tests;
 #[path = "ribbon_probe.rs"]
 mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "solid_deposit_tests.rs"]

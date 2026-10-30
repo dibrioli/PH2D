@@ -140,6 +140,8 @@ pub(crate) struct WetPaintState {
     pub(super) agua_viva: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento desce mais que a água na tela inclinada. `0` = a W1f, ao byte.
     pub(super) borda_que_pesa: f64,
+    /// **Over Oil** (dono 30/10): como a aguada se comporta por cima do óleo — do pincel.
+    pub(super) sobre_oleo: ph2d_wet_paint::assenta::MisturaSobreOleo,
     /// **Opacity** (`0..1`, o volume do preset): a QUANTIDADE de pigmento de cada dab (`sliders.pigmento`,
     /// pelo reconcile) — a tinta clareia por ter pouco pigmento e acumula até à cor escolhida (dono 10/10).
     /// É do Wet Paint: a força do pincel é partilhada entre os meios.
@@ -225,6 +227,7 @@ impl Default for WetPaintState {
             oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal::default(),
             agua_viva: false,
             borda_que_pesa: 0.0,
+            sobre_oleo: ph2d_wet_paint::assenta::MisturaSobreOleo::default(),
             opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,
             km_mixing: false,
             km_glaze: false,
@@ -453,6 +456,8 @@ mod shape_color_tests; // prompt 41: a Shape Color pinta cada célula do depósi
 #[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
 mod showwet_tests;
+#[cfg(test)]
+mod sobre_oleo_tests; // Over Oil (dono 30/10): a aguada por cima do óleo — Tint, Mix, Blend
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]

@@ -597,14 +597,51 @@ fn diag_a_agua_sobe_a_ladeira_de_lado() {
     }
 }
 
-/// SONDA — a aguada amarela POR CIMA do óleo azul (dono 30/10, depois da ladeira: «a aguada lava a tinta do relevo e
-/// deixa o relevo sem cor»): a imagem a meio e assentada.
+/// SONDA — a aguada amarela POR CIMA do óleo azul (dono 30/10: «o melhor dos dois mundos»), nas três escolhas do
+/// **Over Oil** (`0` Tint · `1` Mix · `2` Blend): a imagem a meio e assentada, e o óleo antes.
 #[test]
 #[ignore = "diagnóstico"]
 fn diag_aguada_por_cima_do_oleo() {
+    for v in 0..3u8 {
+        let (meio, fim) = aguada_por_cima_do_oleo(v);
+        grava(&format!("p_meio_v{v}"), &meio);
+        grava(&format!("p_fim_v{v}"), &fim);
+        relato(format!(
+            "Over Oil {v}: a meio {:?} · assentada {:?}",
+            na_faixa(&meio),
+            na_faixa(&fim)
+        ));
+    }
+    let mut t = com_oleo();
+    let antes = mostrada(&mut t);
+    grava("p_antes", &antes);
+    relato(format!("antes {:?}", na_faixa(&antes)));
+}
+
+/// Na faixa da aguada sobre o óleo (`x` 105..135, `y` 82..98): a cor média e os píxeis CREME (os três canais > 170).
+pub(super) fn na_faixa(px: &[u8]) -> ([u32; 3], usize) {
+    let (mut soma, mut n, mut creme) = ([0u32; 3], 0u32, 0usize);
+    for y in 82..98 {
+        for x in 105..135 {
+            let p = &px[(y * W + x) * 4..(y * W + x) * 4 + 3];
+            for k in 0..3 {
+                soma[k] += u32::from(p[k]);
+            }
+            n += 1;
+            if p.iter().all(|&c| c > 170) {
+                creme += 1;
+            }
+        }
+    }
+    (soma.map(|v| v / n), creme)
+}
+
+/// A aguada amarela do Wet Flat por cima do óleo azul de [`com_oleo`], com o **Over Oil** `v`: (a meio, assentada).
+pub(super) fn aguada_por_cima_do_oleo(v: u8) -> (Vec<u8>, Vec<u8>) {
     let mut t = com_oleo();
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
+    t.set_wet_sobre_oleo(v);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([220, 200, 40]);
     t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
@@ -618,6 +655,5 @@ fn diag_aguada_por_cima_do_oleo() {
         t.on_tick(1000.0 / 60.0);
     }
     let fim = mostrada(&mut t);
-    grava("p_meio", &meio);
-    grava("p_fim", &fim);
+    (meio, fim)
 }

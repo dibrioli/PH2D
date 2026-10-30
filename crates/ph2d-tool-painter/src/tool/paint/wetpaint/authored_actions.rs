@@ -15,6 +15,7 @@ impl PainterTool {
             km_glaze: w.km_glaze,
             textura: w.paper_visual,
             oleo: w.oleo_real.is_some(),
+            sobre_oleo: w.sobre_oleo,
             opacidade: w.opacidade,
             tooth: self
                 .paint

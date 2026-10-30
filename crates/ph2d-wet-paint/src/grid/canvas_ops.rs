@@ -56,7 +56,8 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta:
             if dm > 0.0 {
                 let e = ecra
                     .com_vela(g.vela[i])
-                    .com_vidrado(super::aparencia::vidrado(&g.aparencia, i));
+                    .com_vidrado(super::aparencia::vidrado(&g.aparencia, i))
+                    .com_oleo(super::oleo_celula::da_celula(&g.oleo, i));
                 settle_composite(g, i, dm, mix, glaze, e, &mut out);
                 g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                 g.susp[i] = 0.0;

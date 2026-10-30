@@ -56,6 +56,7 @@ fn a_mesma_tinta_nao_muda() {
     assert_eq!(assenta(e, [0.0; 3], AM, 0.0, 0.8, 0.3, 0.7), AM);
     let cobre = Ecra::Cobre {
         vela: 0.0,
+        oleo: 0.0,
         filme: 0.2,
         esconde: 3.0,
         molhada: 1.0,
@@ -83,6 +84,7 @@ fn secar_de_vez_fica_com_a_cor_que_se_via() {
 fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
     let e = Ecra::Cobre {
         vela: 0.0,
+        oleo: 0.0,
         filme: 0.2,
         esconde: 3.0,
         molhada: 1.6,
@@ -116,6 +118,7 @@ fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
 fn assentar_azul_sobre_azul_nao_muda_o_tom() {
     let e = Ecra::Cobre {
         vela: 0.0,
+        oleo: 0.0,
         filme: 0.0,
         esconde: 5.0,
         molhada: 1.0,
@@ -175,6 +178,7 @@ fn o_ecra_fica_na_caixa_das_tintas() {
     for esconde in [5.0, 2.0] {
         let e = Ecra::Cobre {
             vela: 0.0,
+            oleo: 0.0,
             filme: 0.0,
             esconde,
             molhada: 1.0,
@@ -225,6 +229,7 @@ fn as_transferencias_verticais_ficam_na_caixa_das_tintas() {
     let tintas = [AZUL, AM, VERMELHO, QUASE_BRANCO];
     let ecra = |esconde| Ecra::Cobre {
         vela: 0.0,
+        oleo: 0.0,
         filme: crate::colorops::VELATURA_DO_FILME,
         esconde,
         molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
@@ -280,6 +285,7 @@ fn re_molhar_tinta_seca_leva_a_cor_do_assentado() {
     ] {
         let e = Ecra::Cobre {
             vela: 0.0,
+            oleo: 0.0,
             filme: crate::colorops::VELATURA_DO_FILME,
             esconde,
             molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
@@ -309,18 +315,21 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
             esconde: crate::colorops::TINTA_ESCONDE,
             molhada: 1.0,
             vela: 0.0,
+            oleo: 0.0,
         },
         Ecra::Cobre {
             filme: 0.2,
             esconde: 3.0,
             molhada: 1.0,
             vela: 0.6,
+            oleo: 0.0,
         },
         Ecra::Cobre {
             filme: 0.0,
             esconde: 2.0,
             molhada: 1.8,
             vela: 1.0,
+            oleo: 0.0,
         },
     ];
     let cores = [
@@ -357,6 +366,7 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
         esconde: 5.0,
         molhada: 1.0,
         vela: 0.0,
+        oleo: 0.0,
     };
     assert_eq!(tapa(e, 0.3).to_bits(), (1.0 - 0.7f64.powf(5.0)).to_bits());
     assert_eq!(tapa(Ecra::Porto, 0.3), 0.0);
@@ -374,6 +384,7 @@ fn sonda_o_custo_da_lei_do_rebelle() {
         esconde: crate::colorops::TINTA_ESCONDE,
         molhada: 1.0,
         vela: 0.0,
+        oleo: 0.0,
     };
     let mut s = 0x9e37_79b9_u64;
     let mut r = || {
@@ -436,6 +447,7 @@ fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
         esconde: 2.0,
         molhada: 1.0,
         vela: 0.0,
+        oleo: 0.0,
     };
     let sc = [34.9, 96.7, 241.1];
     let uc = [240.0, 130.0, 60.0];

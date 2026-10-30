@@ -206,6 +206,28 @@ pub const PAINTER_WETPAINT_LIVE_WATER: NodeId = hash_node_id("painter_brush.wetp
 /// pesa na orla de baixo (`Sim::sedimenta`). Sem Tilt não faz nada.
 pub const PAINTER_WETPAINT_HEAVY_EDGE: NodeId = hash_node_id("painter_brush.wetpaint_heavy_edge");
 
+/// **Over Oil** chip (dono 30/10): como a aguada se comporta por cima do óleo
+/// (`ph2d_wet_paint::assenta::MisturaSobreOleo`; wire = `to_u8`: `0` Tint · `1` Mix · `2` Blend). Pintado
+/// abaixo da [`PAINTER_WETPAINT_HEAVY_EDGE`].
+pub const PAINTER_WETPAINT_SOBRE_OLEO: NodeId = hash_node_id("painter_brush.wetpaint_sobre_oleo");
+/// Número de opções do **Over Oil** (as variantes de `MisturaSobreOleo`).
+pub const PAINTER_WETPAINT_SOBRE_OLEO_COUNT: u8 = 3;
+
+#[test]
+fn cada_opcao_do_over_oil_e_uma_variante_da_mistura() {
+    use ph2d_wet_paint::assenta::MisturaSobreOleo as M;
+    for i in 0..PAINTER_WETPAINT_SOBRE_OLEO_COUNT {
+        assert_eq!(M::from_u8(i).to_u8(), i);
+    }
+    assert_eq!(M::default().to_u8(), 1, "o de fábrica é o Mix");
+}
+
+/// Opção `i` do popover do **Over Oil**.
+#[must_use]
+pub fn painter_wetpaint_sobre_oleo_option_id(i: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.wetpaint_sobre_oleo_opt.{i}"))
+}
+
 /// **Tuning** checkbox — shows/hides the side panel with the full knob table.
 pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
 

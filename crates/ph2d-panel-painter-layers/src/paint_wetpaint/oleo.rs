@@ -179,6 +179,7 @@ thread_local! {
 
 /// O popover do **Environment** (chamado de `paint_brush_popovers`, depois do clip do corpo).
 pub(crate) fn paint_wetpaint_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
+    crate::paint_wetpaint_tilt::paint_sobre_oleo_popover(ctx, theme);
     if let Some((r, cur)) = PENDING_AMBIENTE_DD.with(std::cell::Cell::take) {
         let opcoes = (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE_COUNT)
             .map(|i| {

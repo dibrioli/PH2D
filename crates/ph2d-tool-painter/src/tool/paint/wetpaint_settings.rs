@@ -650,6 +650,16 @@ impl PainterTool {
                 v.parse::<u8>()
                     .is_ok_and(|i| self.set_wet_oleo_ambiente_indice(i))
             }
+            PanelEvent::SelectOption(id, v) if *id == crate::ids::PAINTER_WETPAINT_SOBRE_OLEO => {
+                // Do TRAÇO (pousa ao assentar): vale para os seguintes; a tela não se recompõe.
+                v.parse::<u8>()
+                    .ok()
+                    .filter(|&i| i < crate::ids::PAINTER_WETPAINT_SOBRE_OLEO_COUNT)
+                    .is_some_and(|i| {
+                        self.set_wet_sobre_oleo(i);
+                        true
+                    })
+            }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
                 self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);
                 true

@@ -262,6 +262,9 @@ impl crate::App {
                 self.game_camera_preview = *on;
                 continue;
             }
+            if hero.view.camera_canvas.aplica(edit) {
+                continue; // as de VISTA (onda 18): o editor, não o documento
+            }
             if ph2d_app_game::formato_do_jogo::aplica_formato(&mut hero.project, edit) {
                 self.title_dirty = true;
                 continue;

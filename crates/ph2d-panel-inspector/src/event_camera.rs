@@ -173,6 +173,27 @@ fn format_click(
         }
         return true;
     }
+    // As duas fileiras de VISTA (onda 18): a opção já escolhida não pede nada.
+    let c = info.canvas;
+    for (opcoes, agora, edit) in [
+        (
+            crate::ids::INSP_CAMERA_OUTSIDE,
+            c.dim_outside,
+            CameraFieldEdit::DimOutside as fn(bool) -> CameraFieldEdit,
+        ),
+        (
+            crate::ids::INSP_CAMERA_VIEW,
+            c.follows,
+            CameraFieldEdit::ViewFollows,
+        ),
+    ] {
+        if let Some(i) = opcoes.iter().position(|&o| o == id) {
+            if (i == 1) != agora {
+                push(host, bits, edit(i == 1));
+            }
+            return true;
+        }
+    }
     false
 }
 

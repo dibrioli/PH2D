@@ -246,6 +246,7 @@ impl crate::App {
             hero.project.game_format = c.formato;
             (gfx.camera.center, gfx.camera.height_world) = c.vista;
             self.game_camera_preview = c.olhar;
+            hero.view.camera_canvas = c.canvas;
         }
         if plano.foto.do_plano_13()
             && let Some(hero) = gfx.hero_screen.as_mut()

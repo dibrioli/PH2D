@@ -163,6 +163,28 @@ pub enum CameraFrameShow {
     Selected,
 }
 
+/// ⭐ **Como o canvas mostra a câmera do jogo** (onda 18) — gestos do EDITOR, como o «Look through»: não são
+/// documento, não gravam nem desfazem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct CameraCanvasView {
+    /// Escurece o que fica fora da moldura (A7).
+    pub dim_outside: bool,
+    /// A vista do editor segue o centro da câmera do jogo e guarda o zoom do artista.
+    pub follows: bool,
+}
+
+impl CameraCanvasView {
+    /// Aplica uma edição de VISTA da secção Camera. `true` = era de vista (consumida).
+    pub fn aplica(&mut self, e: &crate::CameraFieldEdit) -> bool {
+        match *e {
+            crate::CameraFieldEdit::DimOutside(on) => self.dim_outside = on,
+            crate::CameraFieldEdit::ViewFollows(on) => self.follows = on,
+            _ => return false,
+        }
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

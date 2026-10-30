@@ -143,6 +143,7 @@ impl crate::App {
                     em_edicao: self.undo.camera_no_canvas.em_edicao,
                     canvas: [viewport.x, viewport.y, viewport.w, viewport.h],
                     ponteiro: self.last_pointer,
+                    escurecer: hero.view.camera_canvas.dim_outside,
                 },
                 hero.theme,
                 camera,

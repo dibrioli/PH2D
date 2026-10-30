@@ -66,6 +66,7 @@ fn info(
         format: ph2d_editor_core::GameFormat::default(),
         frame: ph2d_editor_core::CameraFrameShow::Always,
         icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
+        canvas: ph2d_editor_core::CameraCanvasView::default(),
     }
 }
 
@@ -439,6 +440,55 @@ fn o_icone_e_os_dois_offset_chegam_ao_barramento() {
             })
             .collect();
         assert_eq!(edits, vec![esperado]);
+    }
+    set_current_inspector_camera(None);
+}
+
+/// ⭐ **As duas fileiras de VISTA estão vivas sob o dedo** (onda 18): «Outside · Dimmed» e «Editor View · Follows»
+/// mandam a sua edição; com o snapshot já ligado, o mesmo clique não pede nada e o «off» manda
+/// desligar.
+///
+/// **Mutações que devem sangrar:** tirar uma fileira do `VISTA` · o registo no `populate_camera` · ler o store em vez
+/// do snapshot (`(i == 1) != agora`).
+#[test]
+fn as_tres_vistas_chegam_ao_barramento() {
+    use ph2d_panel_inspector::ids::{INSP_CAMERA_OUTSIDE, INSP_CAMERA_VIEW};
+    let casos = [
+        (
+            INSP_CAMERA_OUTSIDE,
+            CameraFieldEdit::DimOutside(true),
+            CameraFieldEdit::DimOutside(false),
+        ),
+        (
+            INSP_CAMERA_VIEW,
+            CameraFieldEdit::ViewFollows(true),
+            CameraFieldEdit::ViewFollows(false),
+        ),
+    ];
+    let mut t = SEC;
+    for (ids, liga, desliga) in casos {
+        let (mut h, mut st) = host(info(None, None, false));
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        assert_eq!(carrega(&mut h, &mut st, &rects, ids[1], t), vec![liga]);
+        assert_eq!(carrega(&mut h, &mut st, &rects, ids[0], t + SEC), vec![]);
+        let tudo = ph2d_editor_core::CameraCanvasView {
+            dim_outside: true,
+            follows: true,
+        };
+        let (mut h, mut st) = host(InspectorCameraInfo {
+            canvas: tudo,
+            ..info(None, None, false)
+        });
+        let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        assert_eq!(
+            carrega(&mut h, &mut st, &rects, ids[1], t + 2 * SEC),
+            vec![]
+        );
+        assert_eq!(
+            carrega(&mut h, &mut st, &rects, ids[0], t + 3 * SEC),
+            vec![desliga]
+        );
+        t += 10 * SEC;
     }
     set_current_inspector_camera(None);
 }

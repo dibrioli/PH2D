@@ -50,6 +50,10 @@ pub enum Foto {
     /// Onda 18: o formato passa a Game Boy pelo barramento do Inspector, e Ctrl+Z / Ctrl+Y — o `stderr` diz o
     /// formato depois de cada um.
     CameraDesfaz,
+    /// Onda 18: «Outside: Dimmed» — o canvas fora da moldura escurecido (com a zona morta pintada).
+    CameraFora,
+    /// Onda 18: «Editor View: Follows» com a vista afastada (30 m) — a câmera do jogo no meio do canvas.
+    CameraSegue,
 }
 
 #[must_use]
@@ -85,6 +89,8 @@ pub fn foto() -> Option<Foto> {
         "camera_olhar_arrasta" => Some(Foto::CameraOlharArrasta),
         "camera_chave" => Some(Foto::CameraChave),
         "camera_desfaz" => Some(Foto::CameraDesfaz),
+        "camera_fora" => Some(Foto::CameraFora),
+        "camera_segue" => Some(Foto::CameraSegue),
         _ => None,
     }
 }
@@ -129,6 +135,8 @@ impl Foto {
                 | Self::CameraOlharArrasta
                 | Self::CameraChave
                 | Self::CameraDesfaz
+                | Self::CameraFora
+                | Self::CameraSegue
         )
     }
 
@@ -157,6 +165,8 @@ pub struct FotoDaCamera {
     pub formato: ph2d_editor_core::GameFormat,
     pub olhar: bool,
     pub vista: ([f32; 2], f32),
+    /// Onda 18: escurecer fora e a vista que segue.
+    pub canvas: ph2d_editor_core::CameraCanvasView,
 }
 
 /// A vista do editor nas fotos da câmera: a câmera do nível ao lado do vão, com margem à volta.
@@ -209,6 +219,10 @@ pub fn plano_da_foto(
             formato: ph2d_editor_core::GameFormat::default(),
             olhar: matches!(foto, Foto::CameraOlhar | Foto::CameraOlharArrasta),
             vista: VISTA_DA_CAMERA,
+            canvas: ph2d_editor_core::CameraCanvasView {
+                dim_outside: foto == Foto::CameraFora,
+                follows: foto == Foto::CameraSegue,
+            },
         };
         plano.alvo = camara.to_bits();
         match foto {
@@ -224,6 +238,7 @@ pub fn plano_da_foto(
                 c.vista = ([-2.0, 4.0], 20.0);
             }
             Foto::CameraBorda => c.vista = ([2.0, 4.0], 27.0),
+            Foto::CameraSegue => c.vista = ([20.0, -10.0], 30.0),
             _ => {}
         }
         plano.camera = Some(c);
@@ -262,7 +277,9 @@ pub fn plano_da_foto(
         | Foto::CameraCanto
         | Foto::CameraOlharArrasta
         | Foto::CameraChave
-        | Foto::CameraDesfaz => unreachable!("as fotos da câmera voltam antes"),
+        | Foto::CameraDesfaz
+        | Foto::CameraFora
+        | Foto::CameraSegue => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

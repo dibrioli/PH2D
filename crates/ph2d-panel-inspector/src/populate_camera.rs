@@ -97,6 +97,8 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     // `Dropdown`, e ele guarda o `open`, nunca a escolha (essa vem do snapshot).
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_FORMAT_OPT);
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_FRAME);
+    crate::populate::register_button_ids(store, &ids::INSP_CAMERA_OUTSIDE);
+    crate::populate::register_button_ids(store, &ids::INSP_CAMERA_VIEW);
     store.register(
         ids::INSP_CAMERA_FORMAT_PICK,
         InteractiveState::Dropdown {

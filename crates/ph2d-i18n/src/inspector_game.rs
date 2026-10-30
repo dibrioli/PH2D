@@ -581,6 +581,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // «When Selected» cortava no degrau estreito do dock (o par reparte a coluna); «Frame:
         // Always | Selected» diz o mesmo.
         "panel.inspector.camera.frame_selected" => "Selected",
+        "panel.inspector.camera.outside" => "Outside",
+        "panel.inspector.camera.outside_normal" => "Normal",
+        "panel.inspector.camera.outside_dimmed" => "Dimmed",
+        "panel.inspector.camera.view" => "Editor View",
+        "panel.inspector.camera.view_free" => "Free",
+        "panel.inspector.camera.view_follows" => "Follows",
         // ph2d-migrar-texto:end
         _ => return None,
     })

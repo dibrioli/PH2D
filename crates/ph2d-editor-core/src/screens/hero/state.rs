@@ -116,6 +116,8 @@ pub struct ViewState {
     /// O PALCO do jogo (ecrã cheio ou janela): o canvas ocupa tudo e o editor não se pinta.
     /// A shell liga-o enquanto o jogo corre.
     pub palco_do_jogo: bool,
+    /// Como o canvas mostra a câmera do jogo (onda 18): escurecer fora e a vista que segue.
+    pub camera_canvas: crate::CameraCanvasView,
 }
 
 impl Default for ViewState {
@@ -131,6 +133,7 @@ impl Default for ViewState {
             jogo_com_o_teclado: false,
             game_stage: crate::game_stage::GameStage::default(),
             palco_do_jogo: false,
+            camera_canvas: crate::CameraCanvasView::default(),
         }
     }
 }

@@ -4,6 +4,7 @@
 mod comp;
 mod jogo_camara;
 mod jogo_moldura;
+mod jogo_moldura_lei;
 mod jogo_moldura_ponteiro;
 mod jogo_object_add;
 mod jogo_smoke;

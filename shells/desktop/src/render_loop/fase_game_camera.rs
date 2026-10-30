@@ -47,6 +47,9 @@ impl crate::App {
             )
         };
         let aspecto = formato.aspect();
+        let segue = hero_screen
+            .as_ref()
+            .is_some_and(|h| h.view.camera_canvas.follows);
 
         // ⭐ **O herói da cena de smoke da câmera anda AQUI**, imediatamente antes do passe dela —
         // ver o doc do [`ph2d_app_components::camera_2d_smoke`] sobre porque ele é movido pelo TECLADO e não pelo
@@ -112,6 +115,14 @@ impl crate::App {
             camera.center = centro;
             camera.height_world = altura;
             camera.cull_mask = v.cull_mask;
+        } else if segue && let Some(v) = vista_da_cena {
+            // «Editor View: Follows» (onda 18): o centro é o do jogo, o zoom fica o do artista.
+            camera.center = ph2d_app_game::encaixe::centro_que_segue(
+                v.center,
+                camera.height_world,
+                janela,
+                canvas,
+            );
         }
         // ⭐ O rectângulo que o fora-do-ecrã mede, derivado da MESMA vista que o extract desenha —
         // ⛔ e não de uma segunda leitura da câmera, que divergiria no dia em que uma delas mudasse.

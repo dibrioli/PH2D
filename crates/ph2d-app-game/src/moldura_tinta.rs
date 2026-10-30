@@ -3,7 +3,7 @@
 //! canvas, os cantos, os limites, a alça sob o ponteiro e — com `follow` — o fio até ao alvo e a mira.
 //! Em espaço de TELA: o traço e o texto ficam nítidos em qualquer zoom.
 
-use crate::moldura::{AGARRE_PX, Moldura, alca_em, caixa, cantos};
+use crate::moldura::{AGARRE_PX, Moldura, alca_em, caixa, caixa_da_zona, cantos, pegas_da_zona};
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{CameraFrameShow, icons::IconId};
@@ -22,6 +22,10 @@ const ALCA_SOB_PX: f64 = 6.0; // LITERAL-PX-OK: meia-alça sob o ponteiro
 const MIRA_PX: f64 = 5.0; // LITERAL-PX-OK: meio braço da cruz da mira
 const ROTULO_FOLGA_PX: f32 = 4.0; // LITERAL-PX-OK: entre o rótulo e a moldura
 const ROTULO_MAX_PX: f32 = 420.0; // LITERAL-PX-OK: largura máxima do rótulo
+/// A tinta da moldura FORA da zona morta (onda 18): leve, o mundo lê-se por baixo; a zona fica limpa (livre).
+const ZONA_TINTA: f32 = 0.14; // LITERAL-PX-OK: opacidade de overlay
+/// O escuro de fora da moldura (onda 18, «Outside: Dimmed»): o mundo ainda se lê, a moldura manda.
+const FORA_TINTA: f32 = 0.55; // LITERAL-PX-OK: opacidade de overlay
 
 /// As molduras que se veem: todas com «Sempre», só a selecionada com «Só selecionada».
 pub fn visiveis(ms: &[Moldura], mostrar: CameraFrameShow) -> impl Iterator<Item = &Moldura> {
@@ -42,6 +46,8 @@ pub struct Pintura {
     pub canvas: [f32; 4],
     /// O ponteiro (px da vista), para acender a alça sob ele.
     pub ponteiro: (f32, f32),
+    /// «Outside: Dimmed» (onda 18): escurecer o canvas fora da moldura da selecionada (ou da activa).
+    pub escurecer: bool,
 }
 
 /// O rectângulo do ícone de uma câmera em `pose`, em px da vista.
@@ -82,6 +88,25 @@ pub fn desenhar(
         let (x, y) = camera.world_to_screen(q, window);
         (f64::from(x), f64::from(y))
     };
+    if p.escurecer
+        && let Some(m) = ms
+            .iter()
+            .find(|m| m.selecionada)
+            .or_else(|| ms.iter().find(|m| m.ativa))
+    {
+        let (lo, hi) = caixa(m);
+        let r = retangulo(tela([lo[0], hi[1]]), tela([hi[0], lo[1]]));
+        let [x, y, w, h] = p.canvas;
+        let fora =
+            ph2d_editor_core::paint::resolve(ColorToken::BgScrim, theme).with_alpha(FORA_TINTA);
+        let canvas = ph2d_vector::Rect::new(
+            f64::from(x),
+            f64::from(y),
+            f64::from(x + w),
+            f64::from(y + h),
+        );
+        moldura_vazada(cena, canvas, r, fora);
+    }
     for m in ms {
         let r = icone(m.centro, p.icone_px, camera, window);
         ph2d_editor_core::paint_icon(cena, IconId::Camera, r, selecao, TRACO_PX[1] as f32);
@@ -115,11 +140,28 @@ pub fn desenhar(
         if !forte {
             continue;
         }
+        let acesa = alca_em(m, sob.0, sob.1);
+        let realce = |c: [f32; 2]| alca_em(m, c, 0.0) == acesa && acesa.is_some();
+        if let Some((zlo, zhi)) = caixa_da_zona(m) {
+            let z = retangulo(tela([zlo[0], zhi[1]]), tela([zhi[0], zlo[1]]));
+            moldura_vazada(cena, rect, z, selecao.multiply_alpha(ZONA_TINTA));
+            cena.inner_mut().stroke(
+                &Stroke::new(TRACO_PX[0]).with_dashes(0.0, TRACEJADO_PX),
+                Affine::IDENTITY,
+                cor,
+                None,
+                &z,
+            );
+            for (i, c) in pegas_da_zona(m, sob.1).into_iter().enumerate() {
+                let acesa_aqui = acesa == Some(crate::moldura::Alca::ZonaMorta(i as u8));
+                if let Some(c) = c {
+                    alca(cena, tela(c), selecao, fundo, acesa_aqui);
+                }
+            }
+        }
         if let Some(s) = m.segue.as_ref() {
             fio_do_follow(m, s, cor, &tela, cena, texto);
         }
-        let acesa = alca_em(m, sob.0, sob.1);
-        let realce = |c: [f32; 2]| alca_em(m, c, 0.0) == acesa && acesa.is_some();
         for c in cantos(lo, hi) {
             alca(cena, tela(c), fundo, selecao, realce(c));
         }
@@ -231,6 +273,32 @@ fn fio_do_follow(
         ROTULO_MAX_PX,
         cor,
     );
+}
+
+/// Pinta `fora` menos `dentro` (quatro faixas; `dentro` cortado a `fora`) — o escuro de fora e a tinta da zona morta.
+fn moldura_vazada(
+    cena: &mut VectorScene,
+    fora: ph2d_vector::Rect,
+    dentro: ph2d_vector::Rect,
+    cor: Color,
+) {
+    let d = dentro.intersect(fora);
+    let d = if d.width() > 0.0 && d.height() > 0.0 {
+        d
+    } else {
+        ph2d_vector::Rect::new(fora.x0, fora.y0, fora.x0, fora.y0)
+    };
+    let s = cena.inner_mut();
+    for r in [
+        ph2d_vector::Rect::new(fora.x0, fora.y0, fora.x1, d.y0),
+        ph2d_vector::Rect::new(fora.x0, d.y1, fora.x1, fora.y1),
+        ph2d_vector::Rect::new(fora.x0, d.y0, d.x0, d.y1),
+        ph2d_vector::Rect::new(d.x1, d.y0, fora.x1, d.y1),
+    ] {
+        if r.width() > 0.0 && r.height() > 0.0 {
+            s.fill(Fill::NonZero, Affine::IDENTITY, cor, None, &r);
+        }
+    }
 }
 
 fn retangulo(a: (f64, f64), b: (f64, f64)) -> ph2d_vector::Rect {

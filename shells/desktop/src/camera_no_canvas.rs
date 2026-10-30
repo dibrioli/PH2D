@@ -104,8 +104,8 @@ impl crate::App {
         Some(match alca {
             Alca::Canto(i) | Alca::LimiteCanto(i) if i % 2 == 0 => C::NeswResize,
             Alca::Canto(_) | Alca::LimiteCanto(_) => C::NwseResize,
-            Alca::LimiteBorda(0 | 1) => C::EwResize,
-            Alca::LimiteBorda(_) => C::NsResize,
+            Alca::LimiteBorda(0 | 1) | Alca::ZonaMorta(0 | 1) => C::EwResize,
+            Alca::LimiteBorda(_) | Alca::ZonaMorta(_) => C::NsResize,
             Alca::Dentro | Alca::LimiteCentro => C::Move,
         })
     }

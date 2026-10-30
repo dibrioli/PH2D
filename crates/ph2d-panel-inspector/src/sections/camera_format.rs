@@ -9,12 +9,36 @@ use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
-/// Os rótulos das três fileiras — entram na medição da coluna da secção.
-pub(crate) const ROTULOS: [&str; 4] = [
+/// Os rótulos das fileiras — entram na medição da coluna da secção.
+pub(crate) const ROTULOS: [&str; 6] = [
     "panel.inspector.camera.format",
     "panel.inspector.camera.custom_size",
     "panel.inspector.camera.frame",
     "panel.inspector.camera.icon_size",
+    "panel.inspector.camera.outside",
+    "panel.inspector.camera.view",
+];
+
+/// As duas fileiras de VISTA (onda 18), cada uma `(rótulo, grupo, opções, [chave off, chave on])`.
+const VISTA: [(usize, ph2d_a11y::NodeId, [ph2d_a11y::NodeId; 2], [&str; 2]); 2] = [
+    (
+        4,
+        ids::INSP_CAMERA_OUTSIDE_GROUP,
+        ids::INSP_CAMERA_OUTSIDE,
+        [
+            "panel.inspector.camera.outside_normal",
+            "panel.inspector.camera.outside_dimmed",
+        ],
+    ),
+    (
+        5,
+        ids::INSP_CAMERA_VIEW_GROUP,
+        ids::INSP_CAMERA_VIEW,
+        [
+            "panel.inspector.camera.view_free",
+            "panel.inspector.camera.view_follows",
+        ],
+    ),
 ];
 
 /// As 15 entradas do seletor, na ordem de `GamePreset::ALL` (a posição é a tag).
@@ -89,7 +113,7 @@ pub(super) fn format_rows(
         &labels,
         selected,
     );
-    super::rows::fields_row(
+    let mut cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
@@ -103,7 +127,27 @@ pub(super) fn format_rows(
         4.0, // LITERAL-PX-OK: passo de 4 px de tela
         Some(ph2d_editor_core::widget::Unit::Px),
         seccao,
-    )
+    );
+    let ligado = [info.canvas.dim_outside, info.canvas.follows];
+    for ((rotulo, grupo, opcoes, chaves), on) in VISTA.iter().zip(ligado) {
+        let labels = chaves.map(tr);
+        cur_y = super::rows::seg_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            TextKey::new(ROTULOS[*rotulo]),
+            *grupo,
+            opcoes,
+            &labels,
+            u8::from(on),
+        );
+    }
+    cur_y
 }
 
 /// O seletor do formato — um chip, como o do barramento do áudio. Devolve o `y` seguinte.

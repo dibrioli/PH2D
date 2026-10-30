@@ -176,3 +176,21 @@ pub const INSP_CAMERA_FRAME: [NodeId; 2] = [
     hash_node_id("insp_camera_frame_always"),
     hash_node_id("insp_camera_frame_selected"),
 ];
+
+/// A fileira «Outside» (onda 18): Normal | Dimmed — escurecer fora da moldura.
+pub const INSP_CAMERA_OUTSIDE_GROUP: NodeId = hash_node_id("insp_camera_outside_group");
+
+/// As duas opções do lado de fora — `[Normal, Dimmed]`.
+pub const INSP_CAMERA_OUTSIDE: [NodeId; 2] = [
+    hash_node_id("insp_camera_outside_normal"),
+    hash_node_id("insp_camera_outside_dimmed"),
+];
+
+/// A fileira «Editor View» (onda 18): Free | Follows — a vista do editor segue a câmera do jogo.
+pub const INSP_CAMERA_VIEW_GROUP: NodeId = hash_node_id("insp_camera_view_group");
+
+/// As duas opções da vista — `[Free, Follows]`.
+pub const INSP_CAMERA_VIEW: [NodeId; 2] = [
+    hash_node_id("insp_camera_view_free"),
+    hash_node_id("insp_camera_view_follows"),
+];

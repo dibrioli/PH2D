@@ -214,7 +214,7 @@ pub mod vida_edits;
 /// ⭐⭐⭐ **O vocabulário da ARMA** — ver o cabeçalho dele; nasce já no molde dos irmãos mais novos.
 pub mod weapon_edits;
 pub use floating_panel::{FloatingPanel, PanelAction, PanelAnchor, PanelControl, PanelTab, ToolId};
-pub use game_format::{CameraFrameShow, GameFormat, GamePreset};
+pub use game_format::{CameraCanvasView, CameraFrameShow, GameFormat, GamePreset};
 pub use gizmo::{
     GizmoCamera, GizmoDragKind, GizmoDragState, GizmoHit, GizmoModifiers, GizmoSnap, GizmoTarget,
     GizmoView, GroupDragSnapshot, HANDLE_SIZE_PX, PointGizmoView, TransformSnapshot,

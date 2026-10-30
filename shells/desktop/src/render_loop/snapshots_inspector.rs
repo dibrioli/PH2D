@@ -337,6 +337,10 @@ fn late(
             hero.project.camera_icon_px,
             game_camera_preview,
         )
+        .map(|i| ph2d_editor_core::screens::hero::InspectorCameraInfo {
+            canvas: hero.view.camera_canvas,
+            ..i
+        })
     });
     // ⭐ As secções FACTORY e LIFECYCLE — `None` para quem não tem nenhum dos três (ADR-0166).
     //

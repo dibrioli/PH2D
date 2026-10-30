@@ -39,6 +39,8 @@ pub struct Segue {
     pub alvo: Option<[f32; 2]>,
     /// O offset do `follow` (entra na mira, antes da cerca).
     pub offset: [f32; 2],
+    /// A zona morta, em fracção da meia-janela por eixo (`0..=1`).
+    pub zona: [f32; 2],
 }
 
 /// Uma câmera da cena, como o canvas a desenha.
@@ -99,6 +101,7 @@ pub fn molduras(
                 alvo: alvo_do_follow(world, e).map(|a| a.1),
                 nome: f.target.trim().to_string(),
                 offset: f.offset,
+                zona: f.dead_zone,
             });
             Moldura {
                 camera: e.to_bits(),
@@ -145,6 +148,9 @@ pub enum Alca {
     LimiteBorda(u8),
     /// A alça do centro dos limites: mover a cerca inteira.
     LimiteCentro,
+    /// Uma borda da zona morta (onda 18, a mesma ordem de [`Alca::LimiteBorda`]): o eixo dela cresce ou encolhe,
+    /// simétrico.
+    ZonaMorta(u8),
 }
 
 /// Os quatro cantos de uma caixa `(min, max)`, na ordem de [`Alca::Canto`].
@@ -166,6 +172,12 @@ pub fn alca_em(m: &Moldura, p: [f32; 2], tol: f32) -> Option<Alca> {
     let (lo, hi) = caixa(m);
     if let Some(i) = cantos(lo, hi).iter().position(|c| perto(*c, p, tol)) {
         return Some(Alca::Canto(i as u8));
+    }
+    if let Some(i) = pegas_da_zona(m, tol)
+        .iter()
+        .position(|c| c.is_some_and(|c| perto(c, p, tol)))
+    {
+        return Some(Alca::ZonaMorta(i as u8));
     }
     if let Some((min, max)) = m.limites {
         if let Some(i) = cantos(min, max).iter().position(|c| perto(*c, p, tol)) {
@@ -196,6 +208,49 @@ pub fn alca_em(m: &Moldura, p: [f32; 2], tol: f32) -> Option<Alca> {
         .then_some(Alca::Dentro)
 }
 
+/// O centro da zona morta: a ÂNCORA da lei (`dead_zone_goal`), que com o relógio parado é a mira (o alvo mais o
+/// offset do `follow`, ANTES da cerca). ⚠️ Não o centro da moldura: presa a um limite, a moldura não diz até onde o
+/// alvo anda antes de a câmera se mexer.
+#[must_use]
+pub fn centro_da_zona(m: &Moldura) -> [f32; 2] {
+    m.mira
+}
+
+/// `(min, max)` da zona morta de quem segue.
+#[must_use]
+pub fn caixa_da_zona(m: &Moldura) -> Option<([f32; 2], [f32; 2])> {
+    let s = m.segue.as_ref()?;
+    let c = centro_da_zona(m);
+    let h = [
+        m.meia[0] * s.zona[0].clamp(0.0, 1.0), // CLAMP-OK: a fracção da lei (`dead_zone_goal`)
+        m.meia[1] * s.zona[1].clamp(0.0, 1.0), // CLAMP-OK: a fracção da lei
+    ];
+    Some(([c[0] - h[0], c[1] - h[1]], [c[0] + h[0], c[1] + h[1]]))
+}
+
+/// As pegas da zona morta nos meios das bordas (esquerda · direita · baixo · cima). ⭐ Uma zona estreita (ou zero)
+/// abre as pegas a [`ZONA_PEGA_MIN`] agarres do centro: debaixo do ícone nenhuma se agarraria.
+#[must_use]
+pub fn pegas_da_zona(m: &Moldura, tol: f32) -> [Option<[f32; 2]>; 4] {
+    let Some((lo, hi)) = caixa_da_zona(m) else {
+        return [None; 4];
+    };
+    let c = centro_da_zona(m);
+    let d = tol * ZONA_PEGA_MIN;
+    let x = [(c[0] - lo[0]).max(d), (hi[0] - c[0]).max(d)];
+    let y = [(c[1] - lo[1]).max(d), (hi[1] - c[1]).max(d)];
+    [
+        Some([c[0] - x[0], c[1]]),
+        Some([c[0] + x[1], c[1]]),
+        Some([c[0], c[1] - y[0]]),
+        Some([c[0], c[1] + y[1]]),
+    ]
+}
+
+/// A que distância do centro (em agarres) ficam as pegas de uma zona morta estreita: fora do ícone de fábrica
+/// (44 px = 4 agarres de lado).
+pub const ZONA_PEGA_MIN: f32 = 3.0;
+
 /// `(min, max)` do que a câmera filma.
 #[must_use]
 pub fn caixa(m: &Moldura) -> ([f32; 2], [f32; 2]) {
@@ -224,6 +279,10 @@ pub struct Arrasto {
     offset: [f32; 2],
     /// O offset do `follow` no `Down` — com ele o miolo move o offset e não a pose.
     follow0: Option<[f32; 2]>,
+    /// A zona morta e o centro dela no `Down` (só quem segue).
+    zona0: [f32; 2],
+    centro_zona: [f32; 2],
+    meia: [f32; 2],
     /// Onde o `Down` caiu na tela, e se o arrasto já andou o limiar (o miolo nasce por armar).
     ecra0: (f32, f32),
     armado: bool,
@@ -252,6 +311,9 @@ impl Arrasto {
             mira0: m.mira,
             offset: m.offset,
             follow0: m.segue.as_ref().map(|s| s.offset),
+            zona0: m.segue.as_ref().map_or([0.0; 2], |s| s.zona),
+            centro_zona: centro_da_zona(m),
+            meia: m.meia,
             ecra0,
             armado: alca != Alca::Dentro,
         }
@@ -295,6 +357,8 @@ pub enum Escrita {
     FollowOffset([f32; 2]),
     /// `CameraLimits { min, max }` — nunca invertidos.
     Limites([f32; 2], [f32; 2]),
+    /// `CameraFollow::dead_zone` (fracção da meia-janela, `0..=1`).
+    ZonaMorta([f32; 2]),
 }
 
 /// A edição que uma escrita manda pela porta do Inspector (a pose escreve-se directa no `Transform`). ⚠️ Uma
@@ -305,6 +369,7 @@ pub fn edicoes(e: Escrita) -> Option<CameraFieldEdit> {
         Escrita::Altura(h) => Some(CameraFieldEdit::Height(h)),
         Escrita::FollowOffset(o) => Some(CameraFieldEdit::FollowOffset(o)),
         Escrita::Limites(min, max) => Some(CameraFieldEdit::Limits(min, max)),
+        Escrita::ZonaMorta(z) => Some(CameraFieldEdit::DeadZone(z)),
         Escrita::Pose(_) => None,
     }
 }
@@ -326,6 +391,16 @@ pub fn arrastar(a: &Arrasto, p: [f32; 2]) -> Escrita {
             Some(o) => Escrita::FollowOffset([o[0] + d[0], o[1] + d[1]]),
             None => Escrita::Pose(pose_local(a, d)),
         },
+        Alca::ZonaMorta(i) => {
+            let eixo = usize::from(i / 2);
+            let mut z = a.zona0;
+            z[eixo] = if a.meia[eixo] > 0.0 {
+                ((p[eixo] - a.centro_zona[eixo]).abs() / a.meia[eixo]).clamp(0.0, 1.0) // CLAMP-OK: a fracção da lei
+            } else {
+                z[eixo]
+            };
+            Escrita::ZonaMorta(z)
+        }
         Alca::LimiteCentro => Escrita::Limites(
             [min[0] + d[0], min[1] + d[1]],
             [max[0] + d[0], max[1] + d[1]],
@@ -408,7 +483,3 @@ fn altura_do_canto(a: &Arrasto, i: u8, p: [f32; 2]) -> f32 {
     };
     por_eixo(0).max(por_eixo(1))
 }
-
-#[cfg(test)]
-#[path = "moldura_tests.rs"]
-mod tests;

@@ -315,6 +315,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/camera_format.rs::format_rows",
+        NaoAnimavel,
+        &[],
+        "gesto do EDITOR (onda 18: «Outside» e «Editor View», `CameraCanvasView`), como o «Look through»: nem documento nem cena, nada a animar",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/camera_format.rs::format_row",
         NaoAnimavel,
         &[],

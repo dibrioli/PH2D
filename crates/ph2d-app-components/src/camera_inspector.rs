@@ -119,6 +119,7 @@ pub fn build_camera_info(
         format,
         frame,
         icon_px,
+        canvas: ph2d_editor_core::CameraCanvasView::default(),
     })
 }
 
@@ -179,7 +180,9 @@ pub fn apply_camera_edit(
         | CameraFieldEdit::Format(_)
         | CameraFieldEdit::CustomSize(_)
         | CameraFieldEdit::Frame(_)
-        | CameraFieldEdit::IconSize(_) => {}
+        | CameraFieldEdit::IconSize(_)
+        | CameraFieldEdit::DimOutside(_)
+        | CameraFieldEdit::ViewFollows(_) => {}
 
         CameraFieldEdit::Height(_)
         | CameraFieldEdit::Offset(_)

@@ -70,6 +70,26 @@ pub fn na_janela(
     )
 }
 
+/// ⭐ **A vista do editor que SEGUE a câmera** (onda 18, «Editor View: Follows»): o centro da câmara da janela que põe
+/// `centro` (o do jogo) no meio do `canvas`, com a altura `altura_da_janela` do ARTISTA — o zoom é dele.
+#[must_use]
+pub fn centro_que_segue(
+    centro: [f32; 2],
+    altura_da_janela: f32,
+    janela: [f32; 2],
+    canvas: [f32; 4],
+) -> [f32; 2] {
+    if janela[1] <= 0.0 {
+        return centro;
+    }
+    let s = altura_da_janela / janela[1];
+    let (cx, cy) = (canvas[0] + canvas[2] * 0.5, canvas[1] + canvas[3] * 0.5);
+    [
+        centro[0] + (janela[0] * 0.5 - cx) * s,
+        centro[1] - (janela[1] * 0.5 - cy) * s,
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +161,20 @@ mod tests {
         assert_eq!(tamanho_da_janela(formato(P::GameBoy)), [960, 864]);
         assert_eq!(tamanho_da_janela(formato(P::Pico8)), [896, 896]);
         assert_eq!(tamanho_da_janela(formato(P::Phone9x16)), [506, 900]);
+    }
+
+    /// ⭐ Seguir põe o centro do jogo no MEIO do canvas (entre os painéis) e não mexe no zoom do artista.
+    #[test]
+    fn seguir_poe_o_centro_do_jogo_no_meio_do_canvas_com_o_zoom_do_artista() {
+        let janela = [1600.0, 900.0];
+        let canvas = [300.0, 60.0, 960.0, 700.0];
+        let altura = 23.0;
+        let c = centro_que_segue([5.0, 2.0], altura, janela, canvas);
+        let p = px((c, altura), janela, [5.0, 2.0]);
+        assert!(
+            (p[0] - 780.0).abs() < 1e-3 && (p[1] - 410.0).abs() < 1e-3,
+            "{p:?}"
+        );
     }
 
     #[test]

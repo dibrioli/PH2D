@@ -94,6 +94,8 @@ pub struct InspectorCameraInfo {
     pub frame: crate::CameraFrameShow,
     /// O lado do ícone da câmera no canvas (px de tela) — definição do PROJECTO.
     pub icon_px: f32,
+    /// Como o canvas mostra a câmera (onda 18) — estado de VISTA do editor, como o `preview_on`.
+    pub canvas: crate::CameraCanvasView,
 }
 
 /// Uma edição de um campo da secção CAMERA.
@@ -134,4 +136,8 @@ pub enum CameraFieldEdit {
     CustomSize([u32; 2]),
     /// A moldura no canvas: `true` = só com a câmera selecionada. ⚠️ Definição do PROJECTO.
     Frame(bool),
+    /// Escurecer fora da moldura (onda 18). ⚠️ Gesto do EDITOR: não escreve nada no documento.
+    DimOutside(bool),
+    /// A vista do editor segue a câmera do jogo (onda 18). ⚠️ Gesto do EDITOR.
+    ViewFollows(bool),
 }

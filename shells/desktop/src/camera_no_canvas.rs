@@ -38,7 +38,12 @@ impl crate::App {
             .get::<ph2d_ecs::Transform>(e)
             .map_or([0.0, 0.0], |t| [t.translation.x, t.translation.y]);
         let aspecto = hero.project.game_format.aspect();
-        estado.arrasto = Some(Arrasto::novo(m, alca, p, aspecto, pose, (sx, sy)));
+        let mut a = Arrasto::novo(m, alca, p, aspecto, pose, (sx, sy));
+        // Filha de outro objecto: o miolo anda no MUNDO e a local sai da inversa do pai (rodado, escalado).
+        if gfx.sim.world().get::<ph2d_ecs::ChildOf>(e).is_some() {
+            a = a.com_pai(ph2d_ecs::parent_world_transform(gfx.sim.world(), e));
+        }
+        estado.arrasto = Some(a);
         estado.vista_do_down = Some(gfx.camera);
         true
     }

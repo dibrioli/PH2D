@@ -23,8 +23,8 @@ use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 pub struct CameraNoCanvas {
     pub molduras: Vec<Moldura>,
     pub arrasto: Option<Arrasto>,
-    /// As alças só vivem com o editor parado no início (17b A8): a correr — ou pausado a meio — a moldura é o
-    /// jogo, e um arrasto escreveria no documento a meio da corrida.
+    /// As alças só vivem com o relógio parado (17b A8, onda 18): a tocar a moldura é o jogo; pausado em
+    /// qualquer instante é autoria (com o Auto Key, a chave cai ali).
     pub em_edicao: bool,
     /// A vista do editor no `Down` (17b A5): com o «Look through» a vista anda com a câmera, e converter o
     /// ponteiro por ela realimentaria o arrasto.
@@ -214,6 +214,10 @@ pub struct Arrasto {
     aspecto: f32,
     /// A translação LOCAL da câmera no `Down`.
     pose0: [f32; 2],
+    /// Onde a câmera está no mundo no `Down`, e a pose de mundo do PAI (com pai): o miolo leva a câmera a
+    /// `pose_mundo0 + delta` no MUNDO e devolve a translação local pela inversa do pai.
+    pose_mundo0: [f32; 2],
+    pai: Option<ph2d_ecs::Transform>,
     limites0: ([f32; 2], [f32; 2]),
     limites: Option<([f32; 2], [f32; 2])>,
     mira0: [f32; 2],
@@ -241,6 +245,8 @@ impl Arrasto {
             p0,
             aspecto,
             pose0: pose_local,
+            pose_mundo0: m.pose,
+            pai: None,
             limites0: m.limites.unwrap_or_default(),
             limites: m.limites,
             mira0: m.mira,
@@ -249,6 +255,13 @@ impl Arrasto {
             ecra0,
             armado: alca != Alca::Dentro,
         }
+    }
+
+    /// A pose de mundo do pai da câmera — com ela o miolo segue o ponteiro com o pai rodado ou escalado.
+    #[must_use]
+    pub fn com_pai(mut self, pai: ph2d_ecs::Transform) -> Self {
+        self.pai = Some(pai);
+        self
     }
 
     /// O ponteiro está em `ecra`: o miolo arma-se depois de andar o limiar. `true` = o arrasto escreve.
@@ -311,7 +324,7 @@ pub fn arrastar(a: &Arrasto, p: [f32; 2]) -> Escrita {
         Alca::Canto(i) => Escrita::Altura(altura_do_canto(a, i, p)),
         Alca::Dentro => match a.follow0 {
             Some(o) => Escrita::FollowOffset([o[0] + d[0], o[1] + d[1]]),
-            None => Escrita::Pose([a.pose0[0] + d[0], a.pose0[1] + d[1]]),
+            None => Escrita::Pose(pose_local(a, d)),
         },
         Alca::LimiteCentro => Escrita::Limites(
             [min[0] + d[0], min[1] + d[1]],
@@ -342,6 +355,20 @@ pub fn arrastar(a: &Arrasto, p: [f32; 2]) -> Escrita {
             Escrita::Limites(min, max)
         }
     }
+}
+
+/// A translação local que põe a câmera em `pose_mundo0 + d`. Sem pai, mundo = local. Com um pai que não se inverte
+/// (escala zero), a pose fica onde estava.
+fn pose_local(a: &Arrasto, d: [f32; 2]) -> [f32; 2] {
+    let Some(pai) = a.pai else {
+        return [a.pose0[0] + d[0], a.pose0[1] + d[1]];
+    };
+    let mundo = ph2d_ecs::Transform {
+        translation: ph2d_core::Vec2::new(a.pose_mundo0[0] + d[0], a.pose_mundo0[1] + d[1]),
+        ..ph2d_ecs::Transform::default()
+    };
+    ph2d_ecs::Transform::inverse_compose(pai, mundo)
+        .map_or(a.pose0, |l| [l.translation.x, l.translation.y])
 }
 
 /// ⭐ **A altura que põe o canto `i` sob o ponteiro** (17b A7), com o centro que a CERCA dá a cada altura — e não

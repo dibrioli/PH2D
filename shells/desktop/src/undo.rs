@@ -102,6 +102,11 @@ pub(crate) struct ProjectState {
     /// põe-nas aqui antes do `apply_project`), e a forma gravada do estado não muda.
     #[serde(skip)]
     pub(crate) regras: Regras,
+    /// ⭐ **O FORMATO DO JOGO** (onda 18) — [`crate::project_settings::FormatoDoJogo`]. ⚠️ Fora do ficheiro (o
+    /// blob `jogo` é a casa dele, com versão própria): `None` num estado lido, e o restauro só o põe quando o
+    /// passo o trouxe — abrir um projecto não pisa o formato que o `install_jogo` acabou de ler.
+    #[serde(skip)]
+    pub(crate) formato_do_jogo: Option<crate::project_settings::FormatoDoJogo>,
 }
 
 /// O AUTORADO das regras do mundo (`PhysicsBridge::settings`) e da mesa (`mesa_doc::autorado`) — a
@@ -236,6 +241,7 @@ impl ProjectState {
             tags: tags.to_vec(),
             // As regras vêm da ponte e do recurso, fora do mundo: põe-nas quem as tem (`undo_app`).
             regras: Regras::default(),
+            formato_do_jogo: None,
         }
     }
 
@@ -312,6 +318,9 @@ impl ProjectState {
         }
         if self.regras != other.regras {
             v.push("regras");
+        }
+        if self.formato_do_jogo != other.formato_do_jogo {
+            v.push("formato_do_jogo");
         }
         v
     }

@@ -27,7 +27,9 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
         // Por dentro da moldura (sobre o céu): 6 m para a direita — o offset do `follow` anda.
-        Foto::CameraArrasta | Foto::CameraOlharArrasta => ([-3.0, 4.0], [3.0, 4.0]),
+        Foto::CameraArrasta | Foto::CameraOlharArrasta | Foto::CameraChave => {
+            ([-3.0, 4.0], [3.0, 4.0])
+        }
         // O mesmo sítio, sem mexer: o clique é da seleção.
         Foto::CameraClique => ([-3.0, 4.0], [-3.0, 4.0]),
         // A borda esquerda dos limites, 3 m para fora.

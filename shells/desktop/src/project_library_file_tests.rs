@@ -43,6 +43,7 @@ fn the_library_travels_in_the_file() {
         library,
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     };
     let bytes = postcard::to_allocvec(&state).unwrap();
     let back: ProjectState = postcard::from_bytes(&bytes).unwrap();

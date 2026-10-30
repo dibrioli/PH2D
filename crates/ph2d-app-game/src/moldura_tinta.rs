@@ -36,7 +36,7 @@ pub struct Pintura {
     pub unidade: DisplayUnit,
     pub pixels_per_meter: f32,
     pub icone_px: f32,
-    /// O editor parado no início: alças e rótulo. Senão a moldura é o jogo (ténue, sem alças).
+    /// O relógio parado (em qualquer instante): alças e rótulo. Senão a moldura é o jogo (ténue, sem alças).
     pub em_edicao: bool,
     /// O rectângulo do canvas visível `[x, y, w, h]` (px de janela) — o rótulo fica dentro dele.
     pub canvas: [f32; 4],

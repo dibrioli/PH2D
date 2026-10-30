@@ -150,3 +150,49 @@ fn as_alcas_dos_limites_nunca_invertem() {
         Escrita::Limites([-19.0, -7.0], [31.0, 13.0])
     );
 }
+
+/// ⭐ **Com um pai rodado e escalado, o miolo leva a câmera com o ponteiro no MUNDO** (onda 18): a translação local
+/// sai da inversa do pai, e o pai a compor devolve a pose de mundo do `Down` mais o delta. Somar o delta à local
+/// (o que era) poria a câmera a 90° do ponteiro e a meia distância.
+#[test]
+fn com_pai_rodado_e_escalado_o_miolo_segue_o_ponteiro_no_mundo() {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::Transform;
+    let pai = Transform {
+        translation: Vec2::new(3.0, -1.0),
+        rotation: std::f32::consts::FRAC_PI_2,
+        scale: Vec2::new(2.0, 2.0),
+        ..Transform::default()
+    };
+    let local = Transform {
+        translation: Vec2::new(1.5, 0.5),
+        ..Transform::default()
+    };
+    let mundo = Transform::compose(pai, local);
+    let m = Moldura {
+        pose: [mundo.translation.x, mundo.translation.y],
+        ..selecionada()
+    };
+    let p0 = m.centro;
+    let mut a =
+        Arrasto::novo(&m, Alca::Dentro, p0, 16.0 / 9.0, [1.5, 0.5], (0.0, 0.0)).com_pai(pai);
+    assert!(a.arma((40.0, 0.0)));
+    let Escrita::Pose(l) = arrastar(&a, [p0[0] + 4.0, p0[1] + 2.0]) else {
+        panic!("sem follow o miolo escreve a pose");
+    };
+    let volta = Transform::compose(
+        pai,
+        Transform {
+            translation: Vec2::new(l[0], l[1]),
+            ..Transform::default()
+        },
+    );
+    let quer = [mundo.translation.x + 4.0, mundo.translation.y + 2.0];
+    assert!(
+        (volta.translation.x - quer[0]).abs() < 1e-4
+            && (volta.translation.y - quer[1]).abs() < 1e-4,
+        "a câmera foi para ({}, {}) com o ponteiro a pedir {quer:?}",
+        volta.translation.x,
+        volta.translation.y
+    );
+}

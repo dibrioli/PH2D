@@ -103,6 +103,10 @@ impl crate::App {
         camadas.repor(&gfx.sim, &mut gfx.flip, vivo_flip);
         corpos.repor(&mut gfx.sim, &gfx.component_registry, vivo_corpos);
         foto.regras = crate::undo::Regras::de(&gfx.physics, &gfx.sim);
+        foto.formato_do_jogo = gfx
+            .hero_screen
+            .as_ref()
+            .map(|h| crate::project_settings::FormatoDoJogo::de(&h.project));
         Some(foto)
     }
 
@@ -191,6 +195,9 @@ impl crate::App {
         // ⭐ As regras do mundo e da mesa voltam (F41); a física, sem a condução da curva do passo.
         if state.regras.repor(&mut gfx.physics, &mut gfx.sim) {
             self.physics.mundo = Default::default();
+        }
+        if let (Some(f), Some(h)) = (state.formato_do_jogo, gfx.hero_screen.as_mut()) {
+            f.instala(&mut h.project);
         }
         // ⭐ A seleção que não é caminho volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
         let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);

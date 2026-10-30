@@ -44,6 +44,12 @@ pub enum Foto {
     CameraCanto,
     /// O miolo arrastado com o «Look through» ligado (17b A5): a vista anda com a câmera.
     CameraOlharArrasta,
+    /// Onda 18: o miolo arrastado com o Auto Key ligado e o relógio parado em `PH2D_GAME_SMOKE_TEMPO` (s, 1 por
+    /// omissão) — o `Up` conta as chaves da câmera.
+    CameraChave,
+    /// Onda 18: o formato passa a Game Boy pelo barramento do Inspector, e Ctrl+Z / Ctrl+Y — o `stderr` diz o
+    /// formato depois de cada um.
+    CameraDesfaz,
 }
 
 #[must_use]
@@ -77,8 +83,19 @@ pub fn foto() -> Option<Foto> {
         "camera_borda" => Some(Foto::CameraBorda),
         "camera_canto" => Some(Foto::CameraCanto),
         "camera_olhar_arrasta" => Some(Foto::CameraOlharArrasta),
+        "camera_chave" => Some(Foto::CameraChave),
+        "camera_desfaz" => Some(Foto::CameraDesfaz),
         _ => None,
     }
+}
+
+/// O instante (s) em que a foto `camera_chave` pára o relógio — `PH2D_GAME_SMOKE_TEMPO`, 1 por omissão.
+#[must_use]
+pub fn tempo_da_chave() -> f64 {
+    std::env::var("PH2D_GAME_SMOKE_TEMPO")
+        .ok()
+        .and_then(|t| t.trim().parse().ok())
+        .unwrap_or(1.0)
 }
 
 /// Onde a foto «largada» põe a «Platform»: entre as duas plataformas do nível 2, à altura da alta.
@@ -110,6 +127,8 @@ impl Foto {
                 | Self::CameraBorda
                 | Self::CameraCanto
                 | Self::CameraOlharArrasta
+                | Self::CameraChave
+                | Self::CameraDesfaz
         )
     }
 
@@ -201,7 +220,9 @@ pub fn plano_da_foto(
             }
             Foto::CameraLimites => c.vista = ([2.0, 4.0], 27.0),
             Foto::CameraRetro => c.formato.preset = ph2d_editor_core::GamePreset::GameBoy,
-            Foto::CameraArrasta | Foto::CameraCanto => c.vista = ([-2.0, 4.0], 20.0),
+            Foto::CameraArrasta | Foto::CameraCanto | Foto::CameraChave => {
+                c.vista = ([-2.0, 4.0], 20.0);
+            }
             Foto::CameraBorda => c.vista = ([2.0, 4.0], 27.0),
             _ => {}
         }
@@ -239,7 +260,9 @@ pub fn plano_da_foto(
         | Foto::CameraClique
         | Foto::CameraBorda
         | Foto::CameraCanto
-        | Foto::CameraOlharArrasta => unreachable!("as fotos da câmera voltam antes"),
+        | Foto::CameraOlharArrasta
+        | Foto::CameraChave
+        | Foto::CameraDesfaz => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

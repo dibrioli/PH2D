@@ -121,6 +121,31 @@ pub(crate) fn install(dst: &mut ProjectSettings, saved: &SavedSettings) {
     dst.display_angle = display_angle_from_u8(saved.display_angle);
 }
 
+/// ⭐ **O formato do jogo no DESFAZER** (onda 18): a resolução, a moldura e o ícone da câmera são autoria do
+/// projecto — trocar o formato ou o ícone desfaz-se. A escala e as unidades de leitura ficam fora (o cabeçalho).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct FormatoDoJogo {
+    game_format: GameFormat,
+    camera_frame: CameraFrameShow,
+    camera_icon_px: f32,
+}
+
+impl FormatoDoJogo {
+    pub(crate) fn de(p: &ProjectSettings) -> Self {
+        Self {
+            game_format: p.game_format,
+            camera_frame: p.camera_frame,
+            camera_icon_px: p.camera_icon_px,
+        }
+    }
+
+    pub(crate) fn instala(self, dst: &mut ProjectSettings) {
+        dst.game_format = self.game_format;
+        dst.camera_frame = self.camera_frame;
+        dst.camera_icon_px = self.camera_icon_px;
+    }
+}
+
 /// A versão do blob do formato do jogo (v198, plano GEF 17; v2 = o lado do ícone da câmera, 17b).
 const JOGO_VERSAO: u8 = 2;
 

@@ -130,6 +130,7 @@ fn push_undo_then_undo_redo_alternate() {
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     };
     // ⭐⭐ **A marca da SELEÇÃO viaja com o passo** (2026-09-04) — duas diferentes, para o gate
     // poder dizer qual voltou. Ver [`crate::undo::SelectionMark`].
@@ -596,4 +597,35 @@ fn a_edicao_que_espera_fica_fora_da_fotografia_do_desfazer() {
     let (aplica, novo_base) = espera.restaurado(&base, &editado);
     assert_eq!(aplica.macro_de(id), editado.macro_de(id), "a edição fica");
     assert!(novo_base == base, "o baseline fica sem ela");
+}
+
+/// ⭐ **O formato do jogo é um passo, e não pesa no ficheiro** (onda 18): dois estados que só diferem no formato
+/// diferem para a fila (o Ctrl+Z desfá-lo), e os bytes gravados são os mesmos — o blob `jogo` continua a casa
+/// dele, sem degrau do `PROJECT_SCHEMA`. A prova pela tecla real é a foto `camera_desfaz`.
+#[test]
+fn o_formato_do_jogo_e_um_passo_e_nao_muda_o_ficheiro() {
+    use crate::project_settings::FormatoDoJogo;
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let mut a = capture(&mut sim, &vec, &reg);
+    let mut b = a.clone();
+    let mut p = ph2d_editor_core::project::ProjectSettings::default();
+    a.formato_do_jogo = Some(FormatoDoJogo::de(&p));
+    p.game_format.preset = ph2d_editor_core::GamePreset::GameBoy;
+    b.formato_do_jogo = Some(FormatoDoJogo::de(&p));
+    assert_ne!(a, b, "a fila não veria a troca de formato");
+    assert_eq!(a.parts_that_differ(&b), vec!["formato_do_jogo"]);
+    let mut lido = a.clone();
+    lido.formato_do_jogo = None;
+    assert_eq!(
+        postcard::to_allocvec(&a).unwrap(),
+        postcard::to_allocvec(&lido).unwrap(),
+        "o formato entrou nos bytes do ficheiro"
+    );
+    let mut volta = ph2d_editor_core::project::ProjectSettings::default();
+    b.formato_do_jogo.unwrap().instala(&mut volta);
+    assert_eq!(
+        volta.game_format.preset,
+        ph2d_editor_core::GamePreset::GameBoy
+    );
 }

@@ -162,6 +162,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
                 // build sem tags nenhumas, logo ele não tem árvore a declarar. Ver o degrau 129.
                 tags: Vec::new(),
                 regras: Default::default(),
+                formato_do_jogo: None,
             },
             assets: old.assets,
             painted: old.painted.into_iter().map(Into::into).collect(),
@@ -263,6 +264,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
         // árvore vazia, calado — ver `ph2d_app_components::tags_doc::restore`.
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     };
     let actions = migrate_signal_action_blobs(&mut state.world);
     let cameras = migrate_game_camera_blobs(&mut state.world);

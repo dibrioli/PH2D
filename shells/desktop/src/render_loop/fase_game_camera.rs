@@ -129,9 +129,9 @@ impl crate::App {
             aspecto,
             selecao,
         );
-        // As alças só com o editor parado no início (17b A8) — o mesmo invariante do rebobinar.
-        self.undo.camera_no_canvas.em_edicao =
-            !self.playhead.is_playing() && self.playhead.time() <= 0.0;
+        // As alças com o relógio PARADO, em qualquer instante (onda 18, medido no app real): a tocar a moldura é o
+        // jogo (17b A8); pausado a meio é onde o Auto Key anima — presas ao zero, o arrasto ia para a seleção.
+        self.undo.camera_no_canvas.em_edicao = !self.playhead.is_playing();
         // ⚠️ **Fala uma vez por MUDANÇA, nunca por quadro** — a mesma lei da linha do som.
         if self.signal_readers.logging() && camera_report != self.last_camera_report {
             self.last_camera_report = camera_report.clone();

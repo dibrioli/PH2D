@@ -36,6 +36,7 @@ pub(super) fn empty_state() -> ProjectState {
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     }
 }
 
@@ -342,6 +343,7 @@ fn the_ui_states_travel_in_the_file() {
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     };
     let bytes = postcard::to_allocvec(&state).unwrap();
     let back: ProjectState = postcard::from_bytes(&bytes).unwrap();
@@ -390,6 +392,7 @@ fn project_file_round_trips_through_postcard() {
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
         regras: Default::default(),
+        formato_do_jogo: None,
     };
     // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
     // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja

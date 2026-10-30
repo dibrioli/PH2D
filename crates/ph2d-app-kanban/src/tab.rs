@@ -112,6 +112,12 @@ pub(crate) struct Tab {
     pub drag: Option<Drag>,
     /// A barra de rolagem agarrada.
     pub bar: Option<crate::bars::Grab>,
+    /// O compositor de cartão do último quadro: a lista e o fundo dele (mudou = rolar até ele).
+    pub composer_seen: Option<(ListId, f32)>,
+    /// Onde começam os botões da direita do cabeçalho (o «Filters», medido ao pintar) e se o
+    /// «Board ▾» está só com os ícones: o quadro seguinte encolhe o título para lá ([`crate::header::fit`]).
+    pub head_right: Option<f32>,
+    pub views_compact: bool,
     pub field: Option<Field>,
     /// O cartão com o foco do teclado (o anel).
     pub focus: Option<CardId>,
@@ -174,6 +180,9 @@ impl Tab {
             press: None,
             drag: None,
             bar: None,
+            composer_seen: None,
+            head_right: None,
+            views_compact: false,
             field: None,
             focus: None,
             menu: None,

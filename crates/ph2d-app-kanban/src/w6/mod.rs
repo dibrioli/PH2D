@@ -292,6 +292,7 @@ pub(crate) fn paint(
     tab.w6.hits.borrow_mut().clear();
     tab.w6.sheets.borrow_mut().clear();
     tab.w6.dialog_from.set(None);
+    tab.head_right = None;
     if lod != KanbanLod::High {
         return;
     }
@@ -306,6 +307,7 @@ pub(crate) fn paint(
             head.right,
         ),
     );
+    tab.head_right = Some(anchors.0.x);
     let area = above(tab.layout.area, floor);
     if tab.w6.quick.is_some() {
         quick_edit::paint(scene, ts, theme, k, tab);

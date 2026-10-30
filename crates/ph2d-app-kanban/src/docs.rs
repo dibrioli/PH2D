@@ -26,6 +26,8 @@ pub struct CanvasProbe {
     pub field: Option<String>,
     /// O «…» do cabeçalho e se há um menu aberto.
     pub board_menu: (Rect, bool),
+    /// As caixas do cabeçalho pintadas: o título, a estrela, o «…» e os botões da W6.
+    pub header: Vec<Rect>,
 }
 
 /// O id da aba «Kanbans» (o início): nenhum `KanbanId` chega lá (contam de 1).
@@ -368,6 +370,11 @@ impl KanbanDocs {
             back: t.back.as_ref().map(|b| b.card),
             field: t.field.as_ref().map(|f| f.text.clone()),
             board_menu: (t.layout.board_menu, t.menu.is_some()),
+            header: [t.layout.title, t.layout.star, t.layout.board_menu]
+                .into_iter()
+                .chain(t.w6.hits.borrow().iter().map(|h| h.0))
+                .filter(|r| r.y < t.layout.header.y + t.layout.header.h)
+                .collect(),
         })
     }
 

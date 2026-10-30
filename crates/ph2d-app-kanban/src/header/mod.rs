@@ -46,6 +46,32 @@ fn text_w(ts: &mut TextSystem, s: &str) -> f32 {
 }
 
 /// ⭐ Pinta o seletor, o «Share» e os avatares; regista os alvos.
+/// A largura do «Board ▾» (`compact` = só os ícones).
+fn views_w(ts: &mut TextSystem, tab: &Tab, compact: bool) -> f32 {
+    let text = if compact {
+        0.0
+    } else {
+        text_w(ts, view_name(tab.other))
+    };
+    m::BUTTON_PAD_X * 2.0 + m::ICON_PX * 2.0 + m::LIST_ICON_GAP * 2.0 + text
+}
+
+/// ⭐ O cabeçalho estreito: a largura do título (o `title_full` medido) e se o «Board ▾» fica só com
+/// os ícones — o título guarda [`m::HEADER_TITLE_MIN`] antes de qualquer botão se sobrepor. A
+/// direita (`tab.head_right`, o «Filters» do último quadro) não depende da esquerda: sem oscilação.
+pub(crate) fn fit(ts: &mut TextSystem, tab: &Tab, title_full: f32) -> (f32, bool) {
+    let Some(right) = tab.head_right else {
+        return (title_full, false);
+    };
+    let l = &tab.layout;
+    let room = |views: f32| (right - 3.0 * m::HEADER_GAP - views - l.star.w - l.title.x).max(0.0);
+    let full = room(views_w(ts, tab, false));
+    if full >= title_full.min(m::HEADER_TITLE_MIN) {
+        return (title_full.min(full), false);
+    }
+    (title_full.min(room(views_w(ts, tab, true))), true)
+}
+
 pub(crate) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -60,7 +86,7 @@ pub(crate) fn paint(
     let mut hits = Vec::new();
     // «Board ▾» depois da estrela (aceso: é a vista à vista).
     let name = view_name(tab.other);
-    let w = m::BUTTON_PAD_X * 2.0 + m::ICON_PX * 2.0 + m::LIST_ICON_GAP * 2.0 + text_w(ts, name);
+    let w = views_w(ts, tab, tab.views_compact);
     let views = Rect::new(
         l.star.x + l.star.w + m::HEADER_GAP,
         l.star.y,
@@ -88,7 +114,9 @@ pub(crate) fn paint(
     );
     x += m::ICON_PX + m::LIST_ICON_GAP;
     let ty = text_top(ts, views.y, views.h, m::BUTTON_TEXT_PX);
-    paint_text_title_elided(ts, scene, name, x, ty, m::BUTTON_TEXT_PX, w, ink);
+    if !tab.views_compact {
+        paint_text_title_elided(ts, scene, name, x, ty, m::BUTTON_TEXT_PX, w, ink);
+    }
     let chev = Rect::new(
         views.x + views.w - m::BUTTON_PAD_X - m::ICON_PX,
         views.y,

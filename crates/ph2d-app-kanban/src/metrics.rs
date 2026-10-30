@@ -8,6 +8,8 @@ pub(crate) const HEADER_PAD_L: f32 = 16.0;
 pub(crate) const HEADER_PAD_R: f32 = 12.0;
 pub(crate) const HEADER_GAP: f32 = 8.0;
 pub(crate) const HEADER_TITLE_PX: f32 = 18.0;
+/// O título do Kanban guarda isto antes de o «Board ▾» perder o texto (o cabeçalho estreito).
+pub(crate) const HEADER_TITLE_MIN: f32 = 140.0;
 pub(crate) const BUTTON_H: f32 = 32.0;
 pub(crate) const BUTTON_RADIUS: f32 = 6.0;
 pub(crate) const BUTTON_PAD_X: f32 = 10.0;

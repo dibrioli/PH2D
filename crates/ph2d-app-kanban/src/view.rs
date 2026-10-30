@@ -139,8 +139,10 @@ pub(crate) fn paint(
         others: &others,
         lod: at.lod,
     };
-    let title_w =
+    let full =
         crate::docs::title_width(ts, &k.header.name, m::HEADER_TITLE_PX) + 2.0 * m::FIELD_PAD_X;
+    let (title_w, compact) = crate::header::fit(ts, tab, full);
+    tab.views_compact = compact;
     let lifted = lifted(tab, &fronts, ts);
     let mut cache = std::mem::take(&mut tab.heights);
     let target = {
@@ -164,6 +166,7 @@ pub(crate) fn paint(
     };
     tab.heights = cache;
     clamp_scroll(tab, &target);
+    reveal_composer(tab, &target);
     let seen = crate::tab::place(tab, target.clone(), cx.dt, cx.law);
     tab.layout = seen;
     retarget(tab, &target);
@@ -302,6 +305,29 @@ fn clamp_scroll(tab: &mut Tab, target: &Layout) {
             *v = v.clamp(0.0, max_y);
         }
     }
+}
+
+/// O compositor de cartão fica à vista com o cartão logo acima dele (o acabado de criar): quando ele
+/// aparece ou desce, a lista rola até eles (smoke do dono 30/10).
+fn reveal_composer(tab: &mut Tab, target: &Layout) {
+    let now = target.lists.iter().find_map(|lb| Some((lb, lb.composer?)));
+    let key = now.map(|(lb, r)| (lb.id, r.y + r.h));
+    if key == tab.composer_seen {
+        return;
+    }
+    tab.composer_seen = key;
+    let Some((lb, r)) = now else {
+        return;
+    };
+    let above = lb.cards.iter().map(|c| c.rect.y).filter(|y| *y < r.y);
+    let top = above.reduce(f32::max).unwrap_or(r.y);
+    let vh = (lb.body.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
+    let s = tab.scroll_y(lb.id);
+    let low = r.y + r.h - vh;
+    let want = s.max(low).min(top.max(low));
+    tab.view
+        .scroll_y
+        .insert(lb.id, f64::from(want.clamp(0.0, layout::max_scroll_y(lb))));
 }
 
 /// A fundura `0 → 1` de `p` na faixa junto à borda `[lo, hi]` (negativa = a de baixo/esquerda).

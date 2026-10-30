@@ -98,3 +98,51 @@ fn add_a_card_cria_no_fim_e_o_segundo_enter_depois_dele() {
         .collect();
     assert_eq!(&fim[fim.len() - 2..], ["Rig the fox", "Rig the owl"]);
 }
+
+/// Numa lista que já rola, cada cartão criado pelo compositor fica à vista com ele: a lista desce até
+/// o último criado (smoke do dono 30/10).
+#[test]
+fn o_cartao_criado_numa_lista_longa_fica_a_vista() {
+    let (mut m, id) = Mesa::cena1();
+    let todo = m.lista(id, "To Do");
+    let (add, _, _) = m.docs().probe_list_buttons(id.0, todo).expect("botões");
+    m.clica(centro(add));
+    for i in 0..8 {
+        m.escreve(&format!("Shot {i}"));
+        m.enter();
+        m.quadros(30);
+        let novo = *m.cartoes(id, todo).last().unwrap();
+        let (r, lista) = (m.rect_cartao(id, novo), m.rect_lista(id, todo));
+        assert!(
+            r.y >= lista.y && r.y + r.h <= lista.y + lista.h,
+            "«Shot {i}» à vista: {r:?} dentro de {lista:?}"
+        );
+    }
+    assert!(
+        m.docs()
+            .probe_view(id.0)
+            .unwrap()
+            .scroll_y
+            .get(&todo)
+            .copied()
+            .unwrap_or(0.0)
+            > 0.0
+    );
+}
+
+/// 📷 A lista longa depois de criar oito cartões: o último e o compositor à vista. `#[ignore]`: a placa.
+#[test]
+#[ignore = "a placa: foto para docs/TrelloClone/smoke/D15/"]
+fn d15_foto_cartao_criado_a_vista() {
+    let (mut m, id) = Mesa::cena1();
+    m.ts = ph2d_text::TextSystem::new();
+    let todo = m.lista(id, "To Do");
+    let (add, _, _) = m.docs().probe_list_buttons(id.0, todo).expect("botões");
+    m.clica(centro(add));
+    for i in 0..8 {
+        m.escreve(&format!("Shot {i}"));
+        m.enter();
+    }
+    m.quadros(40);
+    crate::j2_fotos::grava_em("D15", "lista_longa_cartao_criado", &m.cena());
+}

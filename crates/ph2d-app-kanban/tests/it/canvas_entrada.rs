@@ -376,3 +376,22 @@ fn d15_foto_barras_e_meia_distancia() {
     d.quadros(20);
     foto(&mut d, "quadro_meia_distancia");
 }
+
+/// Num Kanban estreito (ampliado por dentro) o título encolhe para os botões do cabeçalho caberem:
+/// nenhuma caixa se sobrepõe a outra (smoke do dono 30/10, foto `D15/quadro_barras.png`).
+#[test]
+fn o_cabecalho_estreito_nao_sobrepoe_botoes_ao_titulo() {
+    let (mut d, _, el) = activo();
+    d.quadros(3);
+    let h = d.docs().probe_canvas(el.0).unwrap().header;
+    assert!(
+        h.len() >= 5,
+        "título, estrela, «…», vistas, Share, Filters: {h:?}"
+    );
+    for (i, a) in h.iter().enumerate() {
+        for b in &h[i + 1..] {
+            let fora = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+            assert!(fora, "{a:?} sobrepõe {b:?}");
+        }
+    }
+}

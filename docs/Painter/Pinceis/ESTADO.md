@@ -1,4 +1,4 @@
-# ESTADO da missão Pincéis — MISSÃO 2 — linha FECHADA 29/10, integração por ordem do dono (≤ 8 KB)
+# ESTADO da missão Pincéis — MISSÃO 2 — linha REABERTA 30/10 (J7: bugs do smoke) (≤ 8 KB)
 
 > **Handoff de integração:** [`HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md`](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md) (mudanças, abertos, smoke). Abaixo: J6 (28/10).
 
@@ -14,6 +14,13 @@
 ## Decisões de produto
 
 1–18 em [`HANDOFF_JANELA_5.md`](HANDOFF_JANELA_5.md#decisões-de-produto-movidas-do-estado-em-2810-j6). Valem: (1) lâmina FIXA no eixo — confirmado na J6; (2) matriz é triagem, veredito = prancha + cega; (12) «diferença visível» = confiança média/alta. Pendentes do dono: 5 (cauda do taper), 8 (tecto de tamanho), no PDF.
+
+## J7 — bugs do smoke do dono (30/10), linha reaberta sobre o main `422fec2027`
+
+- **Bug 3** cor do papel fora do Desfazer `0d18a1e9ad` (só a separação do branco é passo; o resto do cartão Paper já não entrava).
+- **Bug 1** manchas brancas do molhado sobre tinta fina num papel de cor `cd07881b37` (BUGS #53, `na_caixa_das_tintas`; 11 miniaturas ≤ 2 níveis).
+- **Família** `b1b0cdb513`: censo `nenhum_pincel_de_fabrica_clareia_o_papel_de_cor` (66 presets, ~2 s). ABERTO #54: Marker Bullet assentado guarda branco opaco; cura simulada muda 25 miniaturas até 10 níveis ⇒ decisão do dono. Grain Colors: medido, o claro é a rampa RGB (OKLCH resolve).
+- **Bug 2** a água não sobe o óleo `9318d76827` (BUGS #55, `solver::ladeira_do_oleo`; massa no miolo 1 003 372 → 40 511; fábrica ao bit).
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 
@@ -32,27 +39,18 @@
 
 ## J6 — óleo, grão fino (`9fba4165d8` `37529e35de` `b00ee7cbdc`)
 
-`borda_suave` só suaviza borda RECTA (`ESCADA_ERRO_MAX` 0,10; gate `o_grao_de_um_px_sobrevive_ao_oleo`). Régua (sem óleo /
-antes / depois): K. Stain 336/194/322 · Dabber 4 344/302/318 · K. Grainy 274/222/226 · Metallic Flat 373/335/335; os 5
-aprovados mantêm ou sobem. **METODOLOGIA** (dono 28/10): [`REGRAS_DE_CUSTO.md`](REGRAS_DE_CUSTO.md); folha do dono feita
-(`tutorial/J6_folha_do_dono.html`); exame do óleo 10× mais rápido e Oil/* regerados (fecho 29/10).
+`borda_suave` só suaviza borda RECTA (gate `o_grao_de_um_px_sobrevive_ao_oleo`); números e METODOLOGIA no
+[handoff](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-29_PINCEIS2.md) e em [`REGRAS_DE_CUSTO.md`](REGRAS_DE_CUSTO.md).
 
-## J6 — pedidos do dono no smoke (28/10)
-
-Wax Crayon na fábrica `a5e727f203` · Paper Press `b17f8d64c3` · Same as Paper `1d0ccb1524` · exame do óleo 10× `eabfc63ccd`: fechados 29/10.
+## J6 — pedidos do dono no smoke (28/10): fechados 29/10 (`a5e727f203` `b17f8d64c3` `1d0ccb1524` `eabfc63ccd`).
 
 ## J6 passo 3 — pincel a pincel (16 só por valores; 16 travados por motor; 7 sem oráculo)
 
 - Digital ✅ (`8a9703db68` `07c644af37` `c8d4ad953d`, [`exames/digital_j6.md`](exames/digital_j6.md)): C-4 Studio Pen (Hard Round 0,283) e C-6 Technical Pen (Pixel 1px 0,330) FUNDEM; K-1 Clouds curado não aprovado; motor B-6 (rampa sob o tecto), L-5 (blur puxa o papel); M-7 sem oráculo. **Cega Digital: B-7 Rough Sketch e I-12 Optical Wash curados NÃO aprovados** (porquê: HANDOFF_JANELA_6 §1). ⚠️ Biblioteca `j6_wet` incompleta (28/66) ⇒ d antigos suspeitos.
-- Canetas/marcadores Wet ✅ (`221fb75e43`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen, Wood Stick, Marker Chisel, Dry Marker curados não aprovados. Dual na ponta achatada (`9dfb735b24` `095a508bfa`; Reed Pen w0·w90 34·21, Rebelle 34·23; Wood Stick régua 392) — pontas redondas a 200 px, espiral cheia. Fila: tamanho em pé · velocidade→tamanho no Wet · riscas do carimbo.
-- Aguarela/texturas ✅ (`6999f3ec3d`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon
-  APROVADO** (cega: o Rebelle nunca achado — chamado «imitação» nas 6 linhas; o nosso tomado pela referência em 3,
-  média/alta; régua 436, Graphite 8B d 0,783) ⇒ sobe no lote. I-10 Fringe Bloom curado não aprovado (achado em todas).
-  K-9 Grunge curado (riscas contínuas × traços partidos). Motor: I-9 Granulation (poros de 1–2 px), I-11 Spatter
-  ✅ spray do Wet (`3cc04a5d93` `057b4d22ab`): a tabela de largura media UMA gota (p99 317 → 40 px) e cada gota abria
-  uma lane sem a soltar (645 lanes → 1; tabela 24 G+ → ≤ 4,1 GiB). Spatter curado não aprovado (gotas grandes e escuras).
+- Canetas/marcadores Wet ✅ (`221fb75e43` `9dfb735b24` `095a508bfa`, [`exames/canetas_j6.md`](exames/canetas_j6.md)): Reed Pen, Wood Stick, Marker Chisel, Dry Marker curados não aprovados.
+- Aguarela/texturas ✅ (`6999f3ec3d` `3cc04a5d93`, [`exames/aguarela_texturas_j6.md`](exames/aguarela_texturas_j6.md)): **F-10 Wax Crayon APROVADO**; I-10, K-9, Spatter curados não aprovados; motor I-9, I-11.
 - **LOTE DE PROMOÇÃO** (no fim, uma regeração): Wax Crayon.
-- Aprovados pela cega sobem à fábrica num lote único no fim. Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 cerdas que esgotam (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
+- Sem oráculo: C-13, C-14, D-2, D-4, G-13, J-4, M-5. Motor: CAP-19 (C-11, G-9, G-11, I-13), L17, L15, L20, L10.
 
 ## Bancada
 

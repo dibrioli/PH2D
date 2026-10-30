@@ -532,7 +532,20 @@
 /// `project_pixel_tests`. Registos de componentes: ecs `+1` (`PixelSprite`), espelhos `+1`.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 209;
+///
+/// # `209 → 210` — **o Follow Value sobre uma CAIXA** (`line/UIUX`, F41, 2026-10-30)
+///
+/// O `TimelineDoc` v25 pôs o canal de uma caixa (`View::Toggle`) em `0` = desligada, `1` = ligada; as
+/// faixas que um Follow Value (`ph2d_constraints::Valor`) guarda sobre o canal de uma caixa estavam na
+/// convenção antiga. ⭐ **COM migração de CONTEÚDO:** a forma do `ProjectFile` não muda; num `<= 209` cada
+/// componente com conversão registada (`ComponentRegistry::register_caixas_v209`, hoje só `Constraints`)
+/// passa pela lei `Valor::desvira_caixas`. Gate sobre bytes gravados pelo código de antes:
+/// `ph2d-app-constraints` `tests/it/valor_caixa_v209.rs`; o braço: `project_caixas_tests`. Registos de
+/// componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 210;
+
+/// O último degrau com o Follow Value sobre caixas na convenção antiga (`0` = ligada).
+pub(crate) const PROJECT_SCHEMA_CAIXA_ANTIGA: u32 = 209;
 
 /// O último degrau sem os Pixel Sprites — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_PIXEL: u32 = 208;

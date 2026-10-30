@@ -5,6 +5,7 @@
 //! se guarda*. A lei de cada tipo é da `ph2d-constraints`.
 
 mod avalia;
+mod caixas;
 pub mod cola;
 pub mod comportamento;
 mod curva;
@@ -105,10 +106,12 @@ impl Constraints {
 }
 
 pub use avalia::bind_on_create;
+pub use caixas::desvira_caixas;
 
 /// Regista os componentes desta crate. Sem isto o `WorldSnapshot` (undo + gravar) descarta a pilha
 /// em silêncio.
 pub fn register_constraint_components(reg: &mut ComponentRegistry) {
     reg.register_default::<Constraints>(CONSTRAINTS_TYPE_NAME);
     reg.register_default::<Colas>(COLAS_TYPE_NAME);
+    reg.register_caixas_v209(CONSTRAINTS_TYPE_NAME, caixas::desvira_blob);
 }

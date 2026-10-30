@@ -2,7 +2,10 @@
 //! o inicial mais os passos até `t`, em ids locais. A física não está aqui: o [`Simula`] diz só QUANDO
 //! correu; quem a recoze é o palco.
 
-use super::formato::{ErroDeLeitura, Evento, Inicial, Mudanca, Objeto, Quem, Recurso, Simula};
+use super::formato::{
+    ErroDeLeitura, Evento, Inicial, Mudanca, Objeto, Quem, Recurso, Simula, caixas_antigas,
+};
+use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_macro::{MacroTime, Track};
 use std::collections::BTreeMap;
 
@@ -28,17 +31,26 @@ pub struct Lida {
 }
 
 impl Lida {
+    /// Os componentes gravados antes da v2 passam pela conversão das caixas de `reg`
+    /// ([`super::formato::caixas_antigas`]); um registo vazio só confere que os bytes se leem.
+    ///
     /// # Errors
     /// Os bytes do inicial ou de um passo não se leem.
-    pub fn de(t: &Track) -> Result<Self, ErroDeLeitura> {
-        Ok(Self {
-            inicial: Inicial::le(&t.initial)?,
-            eventos: t
-                .events
-                .iter()
-                .map(|e| Evento::le(&e.payload).map(|v| (e.t, v)))
-                .collect::<Result<_, _>>()?,
-        })
+    pub fn de(t: &Track, reg: &ComponentRegistry) -> Result<Self, ErroDeLeitura> {
+        let mut inicial = Inicial::le(&t.initial)?;
+        if caixas_antigas(&t.initial) {
+            inicial.desvira_caixas(reg);
+        }
+        let eventos = (t.events.iter())
+            .map(|e| {
+                let mut v = Evento::le(&e.payload)?;
+                if caixas_antigas(&e.payload) {
+                    v.desvira_caixas(reg);
+                }
+                Ok((e.t, v))
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self { inicial, eventos })
     }
 
     /// As corridas da física, com o instante em que cada uma começa.

@@ -28,8 +28,8 @@ pub use commands::{
 };
 pub use diff::{LinhaMudada, linhas_que_mudam};
 pub use registry::{
-    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
-    stable_type_id,
+    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, DesviraFn, RegistryError,
+    register_ecs_components, stable_type_id,
 };
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 pub use save_v1::{

@@ -130,7 +130,7 @@ pub fn erro_de(bits: u64) -> Option<ErroDaMacroView> {
     com(|p| p.erro_de(bits))
 }
 
-fn le_as_trilhas(doc: &[u8]) -> BTreeMap<u32, Trilha> {
+fn le_as_trilhas(doc: &[u8], reg: &ComponentRegistry) -> BTreeMap<u32, Trilha> {
     let Ok(d) = ph2d_macro::codec::read(doc) else {
         return BTreeMap::new();
     };
@@ -141,7 +141,7 @@ fn le_as_trilhas(doc: &[u8]) -> BTreeMap<u32, Trilha> {
         // As edições de tempo das etapas (espera, deslocação) ouvem-se: toca a trilha efectiva.
         .filter_map(|(k, t)| {
             let t = t.tocavel(&crate::etapas_mundo::LeitorDoMundo).ok()?;
-            Some((u32::try_from(k).ok()?, Trilha::de(Lida::de(&t).ok()?)))
+            Some((u32::try_from(k).ok()?, Trilha::de(Lida::de(&t, reg).ok()?)))
         })
         .collect()
 }
@@ -215,7 +215,7 @@ impl PalcosDoMundo {
                 });
                 if d.doc != m.doc {
                     d.doc.clone_from(&m.doc);
-                    d.trilhas = le_as_trilhas(&d.doc);
+                    d.trilhas = le_as_trilhas(&d.doc, cx.registo);
                 }
                 let t = MacroTime::from_secs_f64(s);
                 for tr in d.trilhas.values_mut() {

@@ -121,4 +121,33 @@ impl Valor {
         c.set(&mut p, self.compoe(c.of(dono), out, forca));
         p
     }
+
+    /// ⭐ **A caixa passou a `0` = desligada, `1` = ligada** (`TimelineDoc` v25,
+    /// `PROJECT_SCHEMA` `209 → 210`): a faixa que lê uma caixa vira `1 − v`; a que a escreve vira
+    /// `1 − v` (`Replace`) ou `−v` (`Add`, que soma ao valor de agora, também virado). A saída
+    /// fica o MESMO estado da caixa. `e_caixa` diz se um campo é caixa (a crate é folha).
+    /// Uma faixa de entrada nula é o degrau `v >= a`: virado é `v' > 1 − a` (o float seguinte) com
+    /// a faixa de saída trocada. ⚠️ Uma saída no meio exato (`0,5`) muda de estado: o arredondamento
+    /// da caixa (`canal_palavra::prende`) não é simétrico, e nenhuma faixa o desfaz.
+    pub fn desvira_caixas(&mut self, e_caixa: impl Fn([u16; 4]) -> bool) -> bool {
+        let caixa = |p: Prop| matches!(p, Prop::Campo(k) if e_caixa(k));
+        let (fonte, destino) = (caixa(self.fonte), caixa(self.destino));
+        if fonte {
+            let [a, b] = self.de_faixa;
+            if a == b {
+                let x = (1.0 - a).next_up();
+                self.de_faixa = [x, x];
+                self.para_faixa.swap(0, 1);
+            } else {
+                self.de_faixa = [1.0 - a, 1.0 - b];
+            }
+        }
+        if destino {
+            self.para_faixa = match self.mix {
+                Mix::Replace => self.para_faixa.map(|v| 1.0 - v),
+                Mix::Add => self.para_faixa.map(|v| -v),
+            };
+        }
+        fonte || destino
+    }
 }

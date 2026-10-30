@@ -53,6 +53,7 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 
 [dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }
 # O gate da cena 11 corre o solver do arranjo sobre as caixas da cena.
 ph2d-hud-layout = { path = "../ph2d-hud-layout" }
 # A cola pelo caminho real: o clique no cartão do Inspector.

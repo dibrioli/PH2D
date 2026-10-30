@@ -14,6 +14,10 @@ mod mesa;
 #[path = "project_itens_tests.rs"]
 mod itens;
 
+/// **O Follow Value sobre uma CAIXA no arquivo** (F41, v210) — neta pela mesma razão.
+#[path = "project_caixas_tests.rs"]
+mod caixas;
+
 /// ⭐ **As marcas e os Kanbans atravessam o arquivo** — os bytes que o palco deu voltam iguais ao abrir.
 #[test]
 fn as_marcas_do_artista_atravessam_o_arquivo() {

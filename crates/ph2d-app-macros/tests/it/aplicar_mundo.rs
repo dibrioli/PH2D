@@ -197,7 +197,7 @@ fn aplicar_novo_faz_nascer_com_ids_novos_e_juntas_remapeadas() {
     // A trilha instalada fala do projecto de destino: o `original` de cada objecto é o novo.
     let d = doc_de(&b, novos[0]);
     assert_eq!(d.tracks[0].target, sid(&b, raiz));
-    let lida = Lida::de(&d.tracks[0]).expect("lê");
+    let lida = Lida::de(&d.tracks[0], &ph2d_ecs::scene::ComponentRegistry::new()).expect("lê");
     let o: Vec<u64> = lida.objetos().map(|o| o.original).collect();
     assert_eq!(o.len(), 5);
     assert_eq!(o[0], sid(&b, raiz));
@@ -286,7 +286,7 @@ fn aplicar_por_cima_poe_o_collider_no_alvo() {
         "o alvo guarda o nome"
     );
     let d = doc_de(&b2, novos[0]);
-    let lida = Lida::de(&d.tracks[1]).expect("lê");
+    let lida = Lida::de(&d.tracks[1], &ph2d_ecs::scene::ComponentRegistry::new()).expect("lê");
     let o: Vec<u64> = lida.objetos().map(|o| o.original).collect();
     assert_eq!(o, vec![sid(&b2, Entity::from_bits(novos[0])), sid(&b2, e)]);
     // E novo: o Collider vai para a imagem que a trilha 0 faz nascer.
@@ -421,7 +421,7 @@ fn o_apagado_na_gravacao_nao_nasce_nem_aponta_um_alheio() {
     assert_eq!(dentro.len(), 1, "só o vivo nasce");
     let s_vivo = sid(&b, dentro[0]);
     let d = doc_de(&b, novos[0]);
-    let lida = Lida::de(&d.tracks[0]).expect("lê");
+    let lida = Lida::de(&d.tracks[0], &ph2d_ecs::scene::ComponentRegistry::new()).expect("lê");
     let o: BTreeMap<u32, u64> = lida.objetos().map(|o| (o.id, o.original)).collect();
     assert_eq!(o[&1], 0, "o apagado não tem objecto no destino");
     assert_eq!(o[&2], s_vivo, "controlo: o vivo é o nascido");
@@ -682,7 +682,9 @@ fn a_imagem_importada_do_atlas_volta_igual_noutro_projecto() {
         nasce: None,
         continua: None,
     };
-    let fim = Lida::de(&t).expect("lê").no_fim();
+    let fim = Lida::de(&t, &ph2d_ecs::scene::ComponentRegistry::new())
+        .expect("lê")
+        .no_fim();
     assert!(
         fim.values()
             .all(|o| !o.componentes.contains_key("ph2d::render::Sprite")),

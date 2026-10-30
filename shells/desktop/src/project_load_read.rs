@@ -201,6 +201,11 @@ impl crate::App {
             }
         };
         migra_depois_de_ler(&mut file, ver, fio);
+        if ver <= crate::project_schema::PROJECT_SCHEMA_CAIXA_ANTIGA {
+            let reg = crate::init::build_component_registry();
+            let n = reg.desvira_caixas_do_mundo(&mut file.state.world);
+            eprintln!("[proj] v{ver}: {n} pilha(s) com o Follow Value sobre caixas virado");
+        }
         Some((file, migrated_counter))
     }
 }

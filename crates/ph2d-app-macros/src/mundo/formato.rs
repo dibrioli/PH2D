@@ -8,8 +8,10 @@
 use serde::{Deserialize, Serialize};
 
 pub const FAMILIA: &str = ph2d_macro::codec::FAMILIA_MUNDO;
-/// A versão dos bytes desta família (dentro do `exige "mundo"` do núcleo).
-pub const VERSAO: u16 = 1;
+/// A versão dos bytes desta família (dentro do `exige "mundo"` do núcleo). `2` (F41): a mesma forma;
+/// os componentes de uma `1` guardam números no canal de uma caixa na convenção antiga
+/// ([`caixas_antigas`]).
+pub const VERSAO: u16 = 2;
 /// O objecto Macro.
 pub const RAIZ: u32 = 0;
 
@@ -139,8 +141,29 @@ fn em_dia(nome: &str, bytes: &mut Vec<u8>) {
 }
 
 fn linha_em_dia(l: &mut Linha) {
+    cada_blob_da_linha(l, &mut em_dia);
+}
+
+fn cada_blob_da_linha(l: &mut Linha, f: &mut impl FnMut(&str, &mut Vec<u8>)) {
     for c in &mut l.componentes {
-        em_dia(&c.nome, &mut c.bytes);
+        f(&c.nome, &mut c.bytes);
+    }
+}
+
+/// ⭐ **Os bytes `b` (um inicial ou um evento) vêm de antes da v25 da caixa** (`TimelineDoc` v25,
+/// `PROJECT_SCHEMA` `209 → 210`): quem os lê passa cada componente pela conversão do registo
+/// ([`ph2d_ecs::scene::ComponentRegistry::desvira_caixas`]) — [`super::estado::Lida::de`].
+#[must_use]
+pub fn caixas_antigas(b: &[u8]) -> bool {
+    b.get(..2)
+        .is_some_and(|v| u16::from_le_bytes([v[0], v[1]]) < 2)
+}
+
+fn desvira(reg: &ph2d_ecs::scene::ComponentRegistry) -> impl FnMut(&str, &mut Vec<u8>) + '_ {
+    |nome, bytes| {
+        if let Some(b) = reg.desvira_caixas(nome, bytes) {
+            *bytes = b;
+        }
     }
 }
 
@@ -157,6 +180,13 @@ impl Inicial {
         i.linhas.iter_mut().for_each(linha_em_dia);
         Ok(i)
     }
+    /// As caixas dos componentes na convenção de agora ([`caixas_antigas`]).
+    pub fn desvira_caixas(&mut self, reg: &ph2d_ecs::scene::ComponentRegistry) {
+        let mut f = desvira(reg);
+        for l in &mut self.linhas {
+            cada_blob_da_linha(l, &mut f);
+        }
+    }
 }
 
 impl Evento {
@@ -169,22 +199,32 @@ impl Evento {
     /// [`ErroDeLeitura`].
     pub fn le(b: &[u8]) -> Result<Self, ErroDeLeitura> {
         let mut e: Self = le(b)?;
-        if let Evento::Passo { mudancas, .. } = &mut e {
-            for m in mudancas {
-                match m {
-                    Mudanca::Nasce(l) => linha_em_dia(l),
-                    Mudanca::Muda { componentes, .. } => {
-                        for (nome, b) in componentes.iter_mut() {
-                            if let Some(b) = b {
-                                em_dia(nome, b);
-                            }
+        e.cada_blob(&mut em_dia);
+        Ok(e)
+    }
+
+    /// As caixas dos componentes na convenção de agora ([`caixas_antigas`]).
+    pub fn desvira_caixas(&mut self, reg: &ph2d_ecs::scene::ComponentRegistry) {
+        self.cada_blob(&mut desvira(reg));
+    }
+
+    fn cada_blob(&mut self, f: &mut impl FnMut(&str, &mut Vec<u8>)) {
+        let Evento::Passo { mudancas, .. } = self else {
+            return;
+        };
+        for m in mudancas {
+            match m {
+                Mudanca::Nasce(l) => cada_blob_da_linha(l, f),
+                Mudanca::Muda { componentes, .. } => {
+                    for (nome, b) in componentes.iter_mut() {
+                        if let Some(b) = b {
+                            f(nome, b);
                         }
                     }
-                    Mudanca::Morre(_) => {}
                 }
+                Mudanca::Morre(_) => {}
             }
         }
-        Ok(e)
     }
 }
 

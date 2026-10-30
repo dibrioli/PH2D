@@ -31,9 +31,9 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 bevy_ecs = "0.20"
 serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
 
 [dev-dependencies]
-postcard = { version = "1", features = ["alloc"] }
 serde_json = "1"
 
 [lints]

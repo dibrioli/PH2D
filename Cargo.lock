@@ -5745,6 +5745,7 @@ dependencies = [
  "ph2d-vec-text",
  "ph2d-vector",
  "ph2d-vector-font",
+ "postcard",
  "serde_json",
 ]
 

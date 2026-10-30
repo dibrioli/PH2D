@@ -18,6 +18,7 @@ fn palco(n: usize) -> (SimWorld, Vec<u64>, u64) {
                     vec![Tendon {
                         bone: ph2d_ecs::StableId::NONE,
                         rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                        comprimento: 0.0,
                     }],
                 ),
             ))

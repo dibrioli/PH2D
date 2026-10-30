@@ -18,6 +18,7 @@ pub mod bone_limit;
 pub mod bone_pick;
 pub mod bone_pose;
 pub mod canais_osso;
+pub mod comprimento;
 pub mod curve_tip;
 /// ⭐ *Mirror Branch* — o espelho do esqueleto, sem a IK do original.
 pub mod espelho;

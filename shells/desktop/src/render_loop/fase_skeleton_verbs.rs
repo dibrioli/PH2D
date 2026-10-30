@@ -278,11 +278,9 @@ impl crate::App {
         }
         if let Some((knob, v)) = pending_bone_knob
             && let Some(bits) = osso_selecionado
-            && let Some(mut osso) = sim
-                .world_mut()
-                .get_mut::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(bits))
         {
-            ph2d_app_skeleton::knobs::apply(&mut osso, knob, v);
+            // O comprimento empurra os filhos (dono 30/10).
+            ph2d_app_skeleton::comprimento::aplica(sim, ph2d_ecs::Entity::from_bits(bits), knob, v);
         }
         // ⭐⭐⭐ **A ÂNCORA DE IK** — os dois verbos e os três números, aplicados aqui como os do
         // esqueleto: o dreno acima só CAPTURA.

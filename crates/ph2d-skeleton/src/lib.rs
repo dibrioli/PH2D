@@ -143,25 +143,56 @@ impl SkinBone {
         tendon: u32,
         out: &mut Vec<Self>,
     ) {
-        let Some(base) = Self::new(
+        Self::bent_esticado(
             rest,
+            spec,
             spec.length,
-            spec.strength,
             bone_world,
             shape_world_inv,
-        ) else {
+            tendon,
+            out,
+        );
+    }
+
+    /// ⭐⭐ **[`Self::bent`] com o comprimento do BIND** — o osso que cresceu ESTICA a arte ao longo
+    /// do eixo (dono 30/10, como o Blender/Spine): `pose = S⁻¹ ∘ B ∘ F_k ∘ diag(L/L_bind, 1) ∘ rest⁻¹`.
+    /// O eixo de repouso e o alcance (logo os pesos) são os do bind; os frames do *bendy bone* são
+    /// os do comprimento de agora. `comprimento_bind <= 0` ou igual ao de agora ⇒ o [`Self::bent`]
+    /// de sempre, ao bit.
+    pub fn bent_esticado(
+        rest: Xform,
+        spec: bend::BoneSpec,
+        comprimento_bind: f64,
+        bone_world: Xform,
+        shape_world_inv: Xform,
+        tendon: u32,
+        out: &mut Vec<Self>,
+    ) {
+        let estica = (comprimento_bind > 0.0 && comprimento_bind != spec.length)
+            .then(|| Xform([spec.length / comprimento_bind, 0.0, 0.0, 1.0, 0.0, 0.0]));
+        let eixo = if estica.is_some() {
+            comprimento_bind
+        } else {
+            spec.length
+        };
+        let Some(base) = Self::new(rest, eixo, spec.strength, bone_world, shape_world_inv) else {
             return;
         };
         let base = Self { tendon, ..base };
-        if spec.is_rigid() {
-            out.push(base);
-            return;
-        }
-        let n = bend::segments_of(spec.segments);
         // O inverso já existiu dentro da `new` — se ela devolveu algo, este `else` é inalcançável.
         let Some(rest_inv) = rest.inverse() else {
             return;
         };
+        let rest_inv = estica.map_or(rest_inv, |d| rest_inv.then(&d));
+        if spec.is_rigid() {
+            let pose = match estica {
+                Some(_) => rest_inv.then(&bone_world).then(&shape_world_inv),
+                None => base.pose,
+            };
+            out.push(Self { pose, ..base });
+            return;
+        }
+        let n = bend::segments_of(spec.segments);
         // ⚠️ **UMA chamada para os `n` frames**, e não `n` chamadas ao [`bend::frame`]: desde a
         // equalização por arco (2026-09-16) cada frame precisa da tabela de comprimento, e pedi-la
         // por sub-osso construiria `n` tabelas para as mesmas `n` respostas.
@@ -613,3 +644,7 @@ mod correccao_tests;
 #[cfg(test)]
 #[path = "correccao_alvo_tests.rs"]
 mod correccao_alvo_tests;
+
+#[cfg(test)]
+#[path = "esticao_tests.rs"]
+mod esticao_tests;

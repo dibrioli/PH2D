@@ -148,6 +148,13 @@ pub fn degraus() -> Vec<Degrau> {
             Degrau::de::<crate::Tweens, v::TweensV196>("ph2d::ecs::Tweens", 206),
             Degrau::de::<crate::PathFollow, v::PathFollowV196>("ph2d::ecs::PathFollow", 206),
         ])
+        .chain(
+            DEGRAUS_DE_FORA
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .iter()
+                .copied(),
+        )
         .collect();
     d.sort_by_key(|x| x.ate);
     d
@@ -234,6 +241,22 @@ pub fn regista(p: Passe) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     if !v.iter().any(|x| x.canonical == p.canonical) {
         v.push(p);
+    }
+}
+
+static DEGRAUS_DE_FORA: Mutex<Vec<Degrau>> = Mutex::new(Vec::new());
+
+/// Regista um degrau de FORMA de um componente de outra crate, sem itens (idempotente, pelo nome
+/// canónico e `ate`) — ex.: a `SkinBind` `210 → 211`.
+pub fn regista_degrau(d: Degrau) {
+    let mut v = DEGRAUS_DE_FORA
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if !v
+        .iter()
+        .any(|x| x.canonical == d.canonical && x.ate == d.ate)
+    {
+        v.push(d);
     }
 }
 

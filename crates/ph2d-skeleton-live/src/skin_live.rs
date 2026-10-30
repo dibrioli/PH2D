@@ -247,10 +247,12 @@ fn resolve_with(
             clippy::cast_possible_truncation,
             reason = "o número de tendões de uma pele é o número de ossos do esqueleto"
         )]
-        SkinBone::bent(
+        SkinBone::bent_esticado(
             Xform(b.rest),
             // ⚠️ **A porta que resolve o `Auto`** — ver [`effective_spec`].
             crate::bend_live::effective_spec(sim, e).unwrap_or_else(|| vb.spec()),
+            // ⭐ O osso que cresceu estica a arte (`0` = bind antigo ⇒ não estica).
+            b.comprimento,
             poses(e),
             shape_inv,
             j as u32,

@@ -10,7 +10,7 @@ use ph2d_ecs::canal_osso as o;
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld};
 use ph2d_editor_core::ids as painel;
 use ph2d_editor_core::{NodeId, widget::key_mark::KeyMark};
-use ph2d_preview_drive::PreviewDrive;
+use ph2d_preview_drive::{Driven, PreviewDrive};
 use ph2d_skeleton_ecs::Bone;
 use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 
@@ -117,6 +117,13 @@ pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive) -> bool {
         mudou |= was != now;
         let ch = [chave(kk.campo)];
         ph2d_timeline_preview::declara_osso(sim.world(), e, &was, &now, &ch, drive);
+        // ⭐ O comprimento empurra os filhos — também pré-visualização (o undo vê o autorado).
+        for (f, antes, depois) in crate::comprimento::empurra_filhos(sim, e, was.length, now.length)
+        {
+            if !ph2d_ecs::is_transient(sim.world(), f) {
+                drive.driven(f, Driven::SolverPose(antes), Driven::SolverPose(depois));
+            }
+        }
     }
     let w = sim.world_mut();
     let mut lidos = w.get_resource_or_insert_with(CanaisLidos::default);

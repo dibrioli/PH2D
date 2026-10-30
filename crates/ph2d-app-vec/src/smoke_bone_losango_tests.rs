@@ -61,3 +61,85 @@ fn a_cena_do_losango_anima_o_length_do_osso_do_meio() {
         }
     }
 }
+
+/// O ponto local `p` de `e`, em mundo.
+fn mundo(sim: &SimWorld, e: Entity, p: [f64; 2]) -> [f64; 2] {
+    ph2d_vec_entities::transform::xform_of_transform(ph2d_vec_entities::transform::world_transform(
+        sim, e,
+    ))
+    .apply(p)
+}
+
+/// A largura da barra em mundo (o maior `x` menos o menor).
+fn largura(scene: &VecScene) -> f64 {
+    let xs: Vec<f64> = (scene.paths().iter())
+        .flat_map(|p| p.verts.iter().map(|v| v.anchor[0]))
+        .collect();
+    xs.iter().copied().fold(f64::MIN, f64::max) - xs.iter().copied().fold(f64::MAX, f64::min)
+}
+
+/// ⭐⭐ **No Play o *Length* EMPURRA o osso seguinte e ESTICA a barra** (dono 30/10): nos três
+/// quadros das chaves a raiz do filho é a ponta do meio, e a barra é mais larga no quadro 24.
+/// ⛔ CONTROLO: sem o empurrão (só o `Bone.length`, a lei velha) a raiz do filho NÃO está na ponta.
+#[test]
+fn no_play_o_length_empurra_o_filho_e_estica_a_barra() {
+    let mut scene = VecScene::new();
+    let mut sim = SimWorld::default();
+    let mut doc = TimelineDoc::default();
+    let mut st = crate::state::VecState::default();
+    build(&mut scene, &mut sim, &mut st);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut st.entities);
+    bind(&mut scene, &mut sim, &mut doc, &mut st);
+    let meio = Entity::from_bits(st.bone_smoke_foco.expect("foco"));
+    let filho = *(sim.world().get::<ph2d_ecs::Children>(meio))
+        .and_then(|f| {
+            f.iter()
+                .find(|&&c| sim.world().get::<ph2d_skeleton_ecs::Bone>(c).is_some())
+        })
+        .expect("o osso seguinte");
+    let comp = |sim: &SimWorld| {
+        sim.world()
+            .get::<ph2d_skeleton_ecs::Bone>(meio)
+            .expect("osso")
+            .length
+    };
+    let l0 = comp(&sim);
+    let junta = |sim: &SimWorld| {
+        let (p, c) = (
+            mundo(sim, meio, [comp(sim), 0.0]),
+            mundo(sim, filho, [0.0, 0.0]),
+        );
+        (p[0] - c[0]).hypot(p[1] - c[1])
+    };
+    let poe = |sim: &mut SimWorld, l: f64, empurra: bool| {
+        let antes = comp(sim);
+        sim.world_mut()
+            .get_mut::<ph2d_skeleton_ecs::Bone>(meio)
+            .expect("osso")
+            .length = l;
+        if empurra {
+            ph2d_skeleton_live::comprimento::empurra_filhos(sim, meio, antes, l);
+        }
+    };
+    let mut larguras = Vec::new();
+    for l in [l0, l0 * CRESCE, l0] {
+        poe(&mut sim, l, true);
+        assert!(
+            junta(&sim) < 1e-4,
+            "a raiz do filho saiu da ponta: {}",
+            junta(&sim)
+        );
+        ph2d_skeleton_live::skin_live::recook(&sim, &mut scene);
+        larguras.push(largura(&scene));
+    }
+    assert!(
+        larguras[1] > larguras[0] + 0.1,
+        "a barra não esticou: {larguras:?}"
+    );
+    assert!(
+        (larguras[2] - larguras[0]).abs() < 1e-6,
+        "a barra não voltou: {larguras:?}"
+    );
+    poe(&mut sim, l0 * CRESCE, false);
+    assert!(junta(&sim) > 0.1, "controlo: sem o empurrão a junta abre");
+}

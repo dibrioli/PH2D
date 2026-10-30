@@ -9,10 +9,11 @@
 //! | **A coluna de losangos** à direita de *Length*, *Segments* e das 4 alças da curva | cada losango diz se aquele número tem animação: cheio = há chave neste quadro · contorno = animado entre chaves · vazio = sem animação |
 //! | **A animação já gravada** | *Length* tem chave no quadro 0 (o comprimento desenhado), no 24 (1,5×) e no 48 (volta): no Play o osso azul do meio cresce e encolhe |
 //!
-//! ⚠️ **Fotografado (F40):** no Play o osso do meio cresce e o número *Length* anda (2,133 → 2,969
-//! no quadro 29); o filho e a barra ficam. É a LEI e não um defeito: a edição à MÃO do *Length*
-//! (`fase_skeleton_verbs` → `knobs::apply`) só escreve `Bone.length`, e a curva
-//! (`canais_osso::escrever`) chama a MESMA `knobs::apply` — o Auto Key repete o que a mão faz.
+//! ⭐ **A LEI (dono 30/10, como o Blender/Spine):** no Play o osso do meio cresce, EMPURRA o osso
+//! seguinte (a raiz dele fica na ponta nova) e ESTICA a barra presa ao longo do eixo. A mão
+//! (`ph2d_app_skeleton::comprimento::aplica`) e a curva (`canais_osso::aplicar`) correm a MESMA lei
+//! (`ph2d_skeleton_live::comprimento::empurra_filhos`); a pele estica por `agora / bind`
+//! (`Tendon::comprimento`). ⛔ Até F40 o filho e a barra ficavam — a cena ensinava a lei velha.
 //!
 //! ⚠️ O osso do meio nasce com 4 segmentos: com 1 a curva é inerte e o painel esconde as alças
 //! (`section_campos`), e a cena não as mostraria.
@@ -88,8 +89,8 @@ pub(crate) fn bind(
          [vec-bone-smoke] 1) Ao lado de «Length» o losango esta' CHEIO: ha' chave neste quadro \
          (0). «Segments» e as 4 alcas da curva tem o losango VAZIO: sem animacao.\n\
          [vec-bone-smoke] 2) Carregue Play na Timeline: o osso azul do meio cresce ate' 1,5x no \
-         quadro 24 e volta no 48 -- e' so' o osso que muda de tamanho (o seguinte e a barra ficam, \
-         igual a escrever o numero a' mao); entre chaves o losango de «Length» fica so' com o \
+         quadro 24 e volta no 48 -- ele EMPURRA o osso seguinte e ESTICA a barra laranja junto \
+         (igual a escrever o numero a' mao); entre chaves o losango de «Length» fica so' com o \
          contorno.\n\
          [vec-bone-smoke] 3) Pare num quadro sem chave, clique no losango vazio de «Segments»: ele \
          enche (chave nova)."

@@ -251,8 +251,9 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
         );
         eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
     }
-    // Os itens das listas (`<= 204`), os filtros da forma (`<= 205`) e os relógios (`<= 206`).
-    if ver <= crate::project_schema::PROJECT_SCHEMA_RELOGIO_POR_POSICAO {
+    // Os degraus de FORMA: os itens das listas (`<= 204`), os filtros da forma (`<= 205`), os
+    // relógios (`<= 206`) e o tendão da pele (`<= 210`). Antes do `migra_fio`, que lê a pele viva.
+    if ver <= crate::project_schema::PROJECT_SCHEMA_TENDAO_SEM_COMPRIMENTO {
         let m = ph2d_ecs::item_id::migra(&mut file.state.world, ver);
         eprintln!(
             "[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)",

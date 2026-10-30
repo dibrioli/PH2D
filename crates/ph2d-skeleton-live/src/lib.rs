@@ -33,8 +33,10 @@ mod ancora_da_mancha;
 #[cfg(test)]
 #[path = "barra_da_cena_tests_support.rs"]
 mod barra_da_cena_tests_support;
+
 pub mod bend_live;
 pub mod bone;
+pub mod comprimento;
 #[cfg(test)]
 #[path = "entalhe_tests.rs"]
 mod entalhe_tests;
@@ -61,6 +63,10 @@ pub mod recusa_do_osso;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
 pub mod skin_bake;
 pub mod skin_bake_cache;
+/// O degrau `210 → 211` da pele: bytes da forma antiga (tendão sem comprimento) abrem sem esticar.
+#[cfg(test)]
+#[path = "skin_bind_v210_tests.rs"]
+mod skin_bind_v210_tests;
 pub mod skin_budget;
 /// ⭐⭐⭐ **O DESENHO DA FORMA PRESA** — a gaveta por bind e o bake que se VÊ (2026-09-29).
 pub mod skin_desenho;
@@ -141,6 +147,7 @@ pub mod test_support {
                 .map(|bone| ph2d_skeleton_ecs::Tendon {
                     bone: *bone,
                     rest: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    comprimento: 0.0,
                 })
                 .collect(),
         )

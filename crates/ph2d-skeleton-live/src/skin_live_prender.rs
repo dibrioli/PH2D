@@ -205,6 +205,7 @@ pub(crate) fn tendons_and_axes(
                 tendon: Tendon {
                     bone: ph2d_ecs::stable_id_of(sim.world(), e)?,
                     rest: rest.0,
+                    comprimento,
                 },
                 a: rest.apply([0.0, 0.0]),
                 b: rest.apply([comprimento, 0.0]),
@@ -226,7 +227,12 @@ pub(crate) fn eixos_do_bind(
         .tendons
         .iter()
         .map(|t| {
-            let comprimento = sim.world().get::<Bone>(*index.get(&t.bone)?)?.length;
+            // O comprimento do BIND: os pesos não mudam quando o osso cresce.
+            let comprimento = if t.comprimento > 0.0 {
+                t.comprimento
+            } else {
+                sim.world().get::<Bone>(*index.get(&t.bone)?)?.length
+            };
             let rest = Xform(t.rest);
             Some(ph2d_skin_weights::Handle {
                 a: rest.apply([0.0, 0.0]),

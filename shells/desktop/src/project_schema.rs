@@ -542,7 +542,21 @@
 /// passa pela lei `Valor::desvira_caixas`. Gate sobre bytes gravados pelo código de antes:
 /// `ph2d-app-constraints` `tests/it/valor_caixa_v209.rs`; o braço: `project_caixas_tests`. Registos de
 /// componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 210;
+///
+/// # `210 → 211` — **o tendão guarda o comprimento do bind** (`line/UIUX`, F41, 2026-10-30)
+///
+/// O `Length` animado empurra o osso seguinte e ESTICA o desenho preso (dono 30/10, como o
+/// Blender/Spine): `ph2d_skeleton_ecs::Tendon` ganhou `comprimento: f64` no FIM (o do osso ao
+/// prender). ⭐ **COM migração de FORMA:** a `SkinBind` gravada num `<= 210` lê-se pela forma
+/// congelada `skin_bind_v210::SkinBindV210` (degrau registado por `register_skeleton_components` →
+/// `ph2d_ecs::item_id::regista_degrau`; o mesmo serve as macros, `migra_blob`) com `comprimento = 0` =
+/// não estica — o ficheiro antigo continua igual. Gate sobre bytes montados campo a campo:
+/// `ph2d-skeleton-live` `skin_bind_v210_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê
+/// este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 211;
+
+/// O último degrau com o tendão da pele sem o comprimento do bind.
+pub(crate) const PROJECT_SCHEMA_TENDAO_SEM_COMPRIMENTO: u32 = 210;
 
 /// O último degrau com o Follow Value sobre caixas na convenção antiga (`0` = ligada).
 pub(crate) const PROJECT_SCHEMA_CAIXA_ANTIGA: u32 = 209;

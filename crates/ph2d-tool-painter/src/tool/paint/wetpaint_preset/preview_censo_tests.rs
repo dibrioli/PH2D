@@ -244,10 +244,6 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
         "o das ferramentas FORA da mão: o preview pinta o da mão (`oleo_real`)",
     ),
     (
-        "sobre_oleo",
-        "o Over Oil só age onde há ÓLEO debaixo da aguada; o preview pinta um traço sobre o papel limpo",
-    ),
-    (
         "oleo_na_tela",
         "a tela da OBRA tem óleo (o composite escreve-o): o preview pinta a tela dele",
     ),

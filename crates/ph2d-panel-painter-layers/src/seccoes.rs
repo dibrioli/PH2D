@@ -446,7 +446,6 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_wet_cartao.absorbency",
     "panel.painter_layers.wetpaint.erase_strength",
     "panel.painter_layers.wetpaint.heavy_edge",
-    "panel.painter_layers.wetpaint.sobre_oleo",
     "panel.painter_layers.paper.texture_on_paint",
     "panel.painter_layers.wetpaint.oleo_shadow",
     "panel.painter_layers.wetpaint.oleo_light_height",

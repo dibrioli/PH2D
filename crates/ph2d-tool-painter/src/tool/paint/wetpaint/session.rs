@@ -21,8 +21,6 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) textura: bool,
     /// A caixa **Real Oil**: do TRAÇO (dono 28/10), pousa na célula (`grid::oleo_celula`).
     pub(in crate::tool::paint) oleo: bool,
-    /// **Over Oil**: como a aguada se comporta por cima do óleo ([`ph2d_wet_paint::assenta::MisturaSobreOleo`]).
-    pub(in crate::tool::paint) sobre_oleo: ph2d_wet_paint::assenta::MisturaSobreOleo,
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
     /// re-assar quando só ele mexe (o papel do artista re-semeia pela [`PaperKey`]).
     pub(in crate::tool::paint) tooth: f32,
@@ -42,7 +40,6 @@ impl WetEngineFacts {
         km_glaze: false,
         textura: false,
         oleo: false,
-        sobre_oleo: ph2d_wet_paint::assenta::MisturaSobreOleo::Mistura,
         opacidade: 1.0,
         tooth: 1.0,
         agua_viva: false,
@@ -267,9 +264,6 @@ impl WetSession {
         }
         if f.oleo != a.oleo {
             e.sim.oleo = f.oleo;
-        }
-        if f.sobre_oleo != a.sobre_oleo {
-            e.sim.sobre_oleo = f.sobre_oleo;
         }
         if f.agua_viva != a.agua_viva {
             e.sim.sim_while_painting = f.agua_viva;

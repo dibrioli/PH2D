@@ -55,8 +55,8 @@ fn a_mesma_tinta_nao_muda() {
     assert!(perto(s2, AM, 0.01), "{s2:?}");
     assert_eq!(assenta(e, [0.0; 3], AM, 0.0, 0.8, 0.3, 0.7), AM);
     let cobre = Ecra::Cobre {
-        vela: 0.0,
         oleo: 0.0,
+        vela: 0.0,
         filme: 0.2,
         esconde: 3.0,
         molhada: 1.0,
@@ -83,8 +83,8 @@ fn secar_de_vez_fica_com_a_cor_que_se_via() {
 #[test]
 fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
     let e = Ecra::Cobre {
-        vela: 0.0,
         oleo: 0.0,
+        vela: 0.0,
         filme: 0.2,
         esconde: 3.0,
         molhada: 1.6,
@@ -117,8 +117,8 @@ fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
 #[test]
 fn assentar_azul_sobre_azul_nao_muda_o_tom() {
     let e = Ecra::Cobre {
-        vela: 0.0,
         oleo: 0.0,
+        vela: 0.0,
         filme: 0.0,
         esconde: 5.0,
         molhada: 1.0,
@@ -177,8 +177,8 @@ fn o_ecra_fica_na_caixa_das_tintas() {
     let mut pior = (0.0f64, String::new());
     for esconde in [5.0, 2.0] {
         let e = Ecra::Cobre {
-            vela: 0.0,
             oleo: 0.0,
+            vela: 0.0,
             filme: 0.0,
             esconde,
             molhada: 1.0,
@@ -228,8 +228,8 @@ fn as_transferencias_verticais_ficam_na_caixa_das_tintas() {
     const QUASE_BRANCO: [f64; 3] = [248.0, 246.0, 240.0];
     let tintas = [AZUL, AM, VERMELHO, QUASE_BRANCO];
     let ecra = |esconde| Ecra::Cobre {
-        vela: 0.0,
         oleo: 0.0,
+        vela: 0.0,
         filme: crate::colorops::VELATURA_DO_FILME,
         esconde,
         molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
@@ -284,8 +284,8 @@ fn re_molhar_tinta_seca_leva_a_cor_do_assentado() {
         crate::colorops::TINTA_ESCONDE_EM_VELATURA,
     ] {
         let e = Ecra::Cobre {
-            vela: 0.0,
             oleo: 0.0,
+            vela: 0.0,
             filme: crate::colorops::VELATURA_DO_FILME,
             esconde,
             molhada: crate::colorops::TINTA_MOLHADA_ESCURECE,
@@ -311,25 +311,25 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
         Ecra::Porto,
         Ecra::PorCima(0.35),
         Ecra::Cobre {
+            oleo: 0.0,
             filme: 0.35,
             esconde: crate::colorops::TINTA_ESCONDE,
             molhada: 1.0,
             vela: 0.0,
-            oleo: 0.0,
         },
         Ecra::Cobre {
+            oleo: 0.0,
             filme: 0.2,
             esconde: 3.0,
             molhada: 1.0,
             vela: 0.6,
-            oleo: 0.0,
         },
         Ecra::Cobre {
+            oleo: 0.0,
             filme: 0.0,
             esconde: 2.0,
             molhada: 1.8,
             vela: 1.0,
-            oleo: 0.0,
         },
     ];
     let cores = [
@@ -362,11 +362,11 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
     assert_eq!(casos, 5 * 36 * 64);
     // O valor do tapar, não só a igualdade das duas rotas (que um erro comum às duas passaria).
     let e = Ecra::Cobre {
+        oleo: 0.0,
         filme: 0.35,
         esconde: 5.0,
         molhada: 1.0,
         vela: 0.0,
-        oleo: 0.0,
     };
     assert_eq!(tapa(e, 0.3).to_bits(), (1.0 - 0.7f64.powf(5.0)).to_bits());
     assert_eq!(tapa(Ecra::Porto, 0.3), 0.0);
@@ -380,11 +380,11 @@ fn sonda_o_custo_da_lei_do_rebelle() {
     use std::hint::black_box as bb;
     use std::time::Instant;
     let e = Ecra::Cobre {
+        oleo: 0.0,
         filme: 0.35,
         esconde: crate::colorops::TINTA_ESCONDE,
         molhada: 1.0,
         vela: 0.0,
-        oleo: 0.0,
     };
     let mut s = 0x9e37_79b9_u64;
     let mut r = || {
@@ -443,11 +443,11 @@ fn sonda_o_custo_da_lei_do_rebelle() {
 #[test]
 fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
     let e = Ecra::Cobre {
+        oleo: 0.0,
         filme: 0.0,
         esconde: 2.0,
         molhada: 1.0,
         vela: 0.0,
-        oleo: 0.0,
     };
     let sc = [34.9, 96.7, 241.1];
     let uc = [240.0, 130.0, 60.0];
@@ -472,5 +472,189 @@ fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
     assert_eq!(
         na_caixa_das_tintas(Ecra::Porto, antes, sc, uc, a_s, a_f),
         antes
+    );
+}
+
+/// ⭐ **Sobre o óleo o tapar extra não traz BRANCO** (dono 30/10: «a mistura do main, sem áreas brancas ou bege»; o
+/// Rebelle: a aguada sobre o óleo é véu, sem branco): o claro que cobre o escuro dilui-se na tinta mais clara das duas —
+/// o ponto sobre o branco fica no SEGMENTO entre o assentado visto (`t_s`) e a tinta de cima. Com o diluente branco, a aguada amarela fina sobre o óleo azul saía creme
+/// (`[239,236,201]` no papel de cor, BUGS #54). 6 × 6 tintas, `a_s` 0,2–0,99, `a_f` 0,02–0,95, sem Glaze nem filme.
+#[test]
+fn o_tapar_extra_fica_no_segmento_das_tintas() {
+    let tintas = [
+        [35.0, 125.0, 207.0],
+        [19.0, 74.0, 125.0],
+        [220.0, 60.0, 60.0],
+        AM,
+        AZ,
+        [220.0, 200.0, 40.0],
+    ];
+    let mut pior = (0.0f64, String::new());
+    for esconde in [5.0, 2.0] {
+        let e = Ecra::Cobre {
+            oleo: 1.0,
+            vela: 0.0,
+            filme: 0.0,
+            esconde,
+            molhada: 1.0,
+        };
+        for sc in tintas {
+            for uc in tintas {
+                for a_s in [0.2, 0.6, 0.9, 0.99] {
+                    for a_f in [0.02, 0.1, 0.2, 0.3, 0.5, 0.8, 0.95] {
+                        let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
+                        let v = sobre_branco(e, sc, uc, a_s, a_f);
+                        let d = fora_do_segmento(v, t_s, uc);
+                        if d > pior.0 {
+                            pior = (
+                                d,
+                                format!("{sc:?} sob {uc:?} a_s {a_s} a_f {a_f} → {v:.0?}"),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        pior.0 <= 0.5,
+        "o ponto saiu do segmento das tintas {:.1} níveis: {}",
+        pior.0,
+        pior.1
+    );
+    // CONTROLO: sem óleo (entre aguarelas) o branco do Rebelle fica — a régua vê-o, e é a lei de antes ao bit.
+    let sem = Ecra::Cobre {
+        oleo: 0.0,
+        vela: 0.0,
+        filme: 0.0,
+        esconde: 5.0,
+        molhada: 1.0,
+    };
+    let (sc, uc, a_s, a_f) = (AM, AZ, 0.99, 0.3);
+    let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
+    assert!(fora_do_segmento(sobre_branco(sem, sc, uc, a_s, a_f), t_s, uc) > 50.0);
+    assert_eq!(
+        sem.com_oleo(crate::grid::oleo_celula::OleoCelula::NEUTRA),
+        sem
+    );
+}
+
+/// A distância (níveis) de `x` ao segmento `a`–`b` em RGB.
+fn fora_do_segmento(x: [f64; 3], a: [f64; 3], b: [f64; 3]) -> f64 {
+    let d = [0, 1, 2].map(|k| b[k] - a[k]);
+    let dd: f64 = d.iter().map(|v| v * v).sum();
+    let t = if dd > 0.0 {
+        ((0..3).map(|k| (x[k] - a[k]) * d[k]).sum::<f64>() / dd).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (0..3)
+        .map(|k| (x[k] - a[k] - t * d[k]).powi(2))
+        .sum::<f64>()
+        .sqrt()
+}
+
+/// Sobre o óleo ([`Ecra::com_oleo`]) assentar continua a não mudar o ecrã (≤ 1,5 níveis, a barra de
+/// [`na_lei_do_rebelle_assentar_preserva_o_ecra_seco`]): sem o tapar extra a cobertura é a do pigmento. Amarelo sobre azul e o contrário, sem óleo (o controlo: a lei de antes), a meia rampa e cheio.
+#[test]
+fn sobre_o_oleo_assentar_preserva_o_ecra_seco() {
+    let mut pior = (0.0f64, String::new());
+    for oleo in [0.0, 0.5, 1.0] {
+        let e = Ecra::Cobre {
+            oleo,
+            vela: 0.0,
+            filme: 0.2,
+            esconde: 3.0,
+            molhada: 1.6,
+        };
+        for (sc, uc) in [(AZ, AM), (AM, AZ), (AZ, [220.0, 200.0, 40.0])] {
+            for (a_s, a_f, d) in [
+                (0.9, 0.95, 0.05),
+                (0.6, 0.5, 0.05),
+                (0.99, 0.3, 0.03),
+                (0.2, 0.1, 0.05),
+            ] {
+                let a_s2 = 1.0 - (1.0 - a_s) * (1.0 - d);
+                let a_f2 = 1.0 - (1.0 - a_f) / (1.0 - d);
+                let antes = sobre_branco(e.seco(), sc, uc, a_s, a_f);
+                let s2 = assenta(e, sc, uc, a_s, a_f, a_s2, a_f2);
+                let depois = sobre_branco(e.seco(), s2, uc, a_s2, a_f2);
+                let m = (0..3)
+                    .map(|k| (antes[k] - depois[k]).abs())
+                    .fold(0.0, f64::max);
+                if m > pior.0 {
+                    pior = (
+                        m,
+                        format!(
+                            "óleo {oleo} {sc:?} sob {uc:?} {a_s},{a_f}: {antes:.1?} → {depois:.1?}"
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    assert!(
+        pior.0 <= 1.5,
+        "assentar sobre o óleo mudou o ecrã {:.2} níveis: {}",
+        pior.0,
+        pior.1
+    );
+}
+
+/// ⭐ **O tapar extra AFASTA a tinta de baixo — não pinta branco** (dono 30/10: a faixa creme abaixo do óleo, onde a
+/// aguada levou o azul do óleo sem o óleo; a família do #53/#54). O Rebelle (doc 47): a tinta guarda o seu alfa e o papel
+/// compõe-se por baixo — o que o claro esconde do escuro deixa ver o PAPEL. A célula medida
+/// (`diag_a_faixa_abaixo_do_oleo`, `(120,124)` a meio): azul assentado 786 sob o amarelo em suspensão 206 mostrava
+/// `[212,198,176]` no papel `[150,130,100]` — mais claro que o papel tingido pelo amarelo. Agora não passa dele (≤ 2
+/// níveis de luminância) e sobre o BRANCO o píxel é o mesmo (≤ 1e-9).
+#[test]
+fn o_tapar_extra_nao_pinta_branco_no_papel_de_cor() {
+    let e = Ecra::Cobre {
+        oleo: 0.0,
+        vela: 0.0,
+        filme: 0.0,
+        esconde: 3.0,
+        molhada: 1.0,
+    };
+    let papel = [150.0, 130.0, 100.0];
+    let lum = |c: [f64; 3]| 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    let mut pior = (f64::MIN, String::new());
+    for (sc, ms) in [
+        ([32.3, 89.2, 224.1], 786.0),
+        (AZ, 400.0),
+        ([220.0, 60.0, 60.0], 600.0),
+    ] {
+        for (uc, mf) in [
+            ([220.0, 200.0, 40.0], 206.0),
+            (AM, 120.0),
+            ([248.0, 246.0, 240.0], 300.0),
+        ] {
+            let (a_s, a_f) = (
+                crate::opacity::alpha_of_mass(ms),
+                crate::opacity::alpha_of_mass(mf),
+            );
+            let (c0, la0) = cor_e_alfa(e, sc, uc, a_s, a_f);
+            let (c, la) = na_caixa_das_tintas(e, (c0, la0), sc, uc, a_s, a_f);
+            for k in 0..3 {
+                let b0 = 255.0 * (1.0 - la0) + c0[k] * la0;
+                let b = 255.0 * (1.0 - la) + c[k] * la;
+                assert!((b - b0).abs() < 1e-9, "sobre o branco mudou: {b0} → {b}");
+            }
+            let v = [0, 1, 2].map(|k| papel[k] * (1.0 - la) + c[k] * la);
+            let tingido = [0, 1, 2].map(|k| papel[k] * (1.0 - a_f) + uc[k] * a_f);
+            let m = lum(v) - lum(tingido).max(lum(papel));
+            if m > pior.0 {
+                pior = (
+                    m,
+                    format!("{sc:?} sob {uc:?}: {v:.0?}, o papel tingido {tingido:.0?}"),
+                );
+            }
+        }
+    }
+    assert!(
+        pior.0 <= 2.0,
+        "o tapar pintou branco no papel de cor (+{:.1}): {}",
+        pior.0,
+        pior.1
     );
 }

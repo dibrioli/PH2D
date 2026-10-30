@@ -505,8 +505,6 @@ pub struct BrushSettings {
     pub wet_live_water: bool,
     /// **Heavy Edge** (W1g, `0..1`): o pigmento pesa na orla de baixo da tela inclinada.
     pub wet_heavy_edge: f32,
-    /// **Over Oil** (dono 30/10): `0` Tint · `1` Mix · `2` Blend ([`ph2d_wet_paint::assenta::MisturaSobreOleo`]).
-    pub wet_sobre_oleo: u8,
     /// Experimental K-M flags (mixing = sim-side, glaze = composite-side).
     pub wet_km_mixing: bool,
     pub wet_km_glaze: bool,

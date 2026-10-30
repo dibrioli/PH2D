@@ -10,7 +10,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// O óleo da tinta de uma célula (16 B: 12 + o [`Self::aguada`], alinhado; só nas grades com óleo).
+/// O óleo da tinta de uma célula (12 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OleoCelula {
     /// A fracção da tinta pousada com o **Real Oil** ligado (`1` = toda; mistura-se pela massa).
@@ -19,10 +19,6 @@ pub struct OleoCelula {
     pub profundidade: f32,
     /// [`Knob::OilGloss`]: a força do brilho especular desta tinta.
     pub brilho: f32,
-    /// O **Over Oil** da aguada que pousou por cima deste óleo ([`crate::assenta::MisturaSobreOleo`], dono 30/10):
-    /// `0` = a lei da obra (sem aguada, ou óleo sobre óleo), `1 + MisturaSobreOleo::to_u8`. NÃO se mistura pela massa:
-    /// a última aguada manda (a fina sobre o óleo grosso pesava ~5 %). Só existe onde há óleo — onde ele age.
-    pub aguada: u8,
 }
 
 impl OleoCelula {
@@ -31,7 +27,6 @@ impl OleoCelula {
         oleo: 0.0,
         profundidade: 1.0,
         brilho: 1.0,
-        aguada: 0,
     };
 }
 
@@ -45,16 +40,12 @@ impl Default for OleoCelula {
 #[must_use]
 pub fn do_pincel(p: &Params) -> OleoCelula {
     if p.oleo <= 0.0 {
-        return OleoCelula {
-            aguada: p.sobre_oleo.map_or(0, |m| 1 + m.to_u8()),
-            ..OleoCelula::NEUTRA
-        };
+        return OleoCelula::NEUTRA;
     }
     OleoCelula {
         oleo: p.oleo,
         profundidade: p.k(Knob::OilDepth) as f32,
         brilho: p.k(Knob::OilGloss) as f32,
-        aguada: 0,
     }
 }
 
@@ -77,21 +68,12 @@ pub fn da_celula(campo: &[OleoCelula], i: usize) -> OleoCelula {
 /// relevo); o papel limpo recebe a do pincel. Sem o campo, a NEUTRA não o aloca.
 pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
     if g.oleo.is_empty() {
-        if nova.oleo <= 0.0 {
+        if nova == OleoCelula::NEUTRA {
             return;
         }
         g.oleo = vec![OleoCelula::NEUTRA; g.cells];
     }
     let a = g.oleo[i];
-    // O Over Oil: o da aguada que pousa SOBRE óleo; o óleo que pousa (ou o papel sem óleo) volta à lei da obra.
-    let nova = OleoCelula {
-        aguada: if nova.oleo <= 0.0 && a.oleo > 0.0 {
-            nova.aguada
-        } else {
-            0
-        },
-        ..nova
-    };
     if a != nova {
         g.oleo[i] = if m_old > 0.0 {
             let t = v / (m_old + v);
@@ -100,7 +82,6 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
                 oleo: m(a.oleo, nova.oleo),
                 profundidade: m(a.profundidade, nova.profundidade),
                 brilho: m(a.brilho, nova.brilho),
-                aguada: nova.aguada,
             }
         } else {
             nova
@@ -122,7 +103,6 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
     let r = ORLA_VIRGEM;
     let (x0, y0) = ((x0 - r).max(1), (y0 - r).max(1));
     let (x1, y1) = ((x1 + r).min(g.w as i32), (y1 + r).min(g.h as i32));
-    let nova = OleoCelula { aguada: 0, ..nova };
     for y in y0..=y1 {
         let o = y as usize * g.s;
         for i in o + x0 as usize..=o + x1 as usize {

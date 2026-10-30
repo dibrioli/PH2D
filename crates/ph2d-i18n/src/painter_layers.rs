@@ -32,10 +32,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              slowest frame goes from 2-4 ms to 14-45 ms"
         }
         "panel.painter_layers.wetpaint.heavy_edge" => "Heavy Edge",
-        "panel.painter_layers.wetpaint.sobre_oleo" => "Over Oil",
-        "panel.painter_layers.wetpaint.sobre_oleo_tint" => "Tint",
-        "panel.painter_layers.wetpaint.sobre_oleo_mix" => "Mix",
-        "panel.painter_layers.wetpaint.sobre_oleo_blend" => "Blend",
         // ⭐⭐ O NOME DO PAINEL (o `Panel::TITLE`, a aba do encaixe): a chave segue o id do painel, o
         //    texto é o que o artista lê no menu *Window*.
         "panel.painter_layers.title" => "Painter",

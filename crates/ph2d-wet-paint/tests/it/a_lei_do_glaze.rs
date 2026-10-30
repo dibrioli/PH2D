@@ -11,11 +11,11 @@ use ph2d_wet_paint::trail::{Dab, Trail, TrailMode};
 use ph2d_wet_paint::tuning::Knob;
 
 const COBRE: Ecra = Ecra::Cobre {
+    oleo: 0.0,
     filme: 0.0,
     esconde: 5.0,
     molhada: 1.0,
     vela: 0.0,
-    oleo: 0.0,
 };
 
 /// A fracção multiplicada é a MEDIDA no Rebelle (16/10, sRGB por canal): a mesma tinta 0,48–0,51, amarelo sobre

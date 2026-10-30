@@ -12,7 +12,6 @@ use super::decode::{
     decode_texture_ramp_alpha_option, decode_texture_ramp_interp_option,
     decode_texture_ramp_mode_option, decode_wet_oleo_ambiente_option, decode_wet_policy_option,
     decode_wet_quick_opacity_option, decode_wet_quick_size_option, decode_wet_quick_water_option,
-    decode_wet_sobre_oleo_option,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
@@ -29,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 36] = [
+    let routes: [OptionRoute; 35] = [
         (
             decode_composite_add_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD_KIND,
@@ -159,10 +158,6 @@ pub(super) fn route_brush_dropdown_option(
         (
             decode_wet_oleo_ambiente_option,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE,
-        ),
-        (
-            decode_wet_sobre_oleo_option,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SOBRE_OLEO,
         ),
         (
             decode_wet_quick_size_option,

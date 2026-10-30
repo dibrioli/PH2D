@@ -31,7 +31,15 @@
 - **Dono 30/10 recusa o véu (D) e dá a LEI:** óleo e aguada são a MESMA tinta com diluições diferentes; misturam pela
   QUANTIDADE (a pouco diluída dilui, a muito diluída engrossa); sem creme, preto nem degraus. Simulação **E**
   (`mistura`: `f = q_w/(q_o+q_w)`, subtractiva, papel fora da média, relevo × `1 − f`): escuros 0, transição 6 px;
-  [prancha](pranchas/J9_over_oil_mistura_do_dono.jpg). À espera do «serve».
+  [prancha](pranchas/J9_over_oil_mistura_do_dono.jpg).
+- **Dono 30/10 (ordem final): «a versão do MAIN, sem áreas brancas ou bege».** Over Oil REVERTIDO (`1e9a32d0af`); lei do
+  main + duas curas em `assenta`: (1) sobre o óleo (`Ecra::com_oleo`, rampa `OLEO_PLENO` 0,04, sem o Real Oil na mão:
+  `PINCEL_DE_OLEO`) o tapar extra sai — a cobertura é a do pigmento (Rebelle: véu); (2) `na_caixa_das_tintas`: o branco
+  do tapar extra vira transparência (o papel aparece; no branco o mesmo píxel). Gates `o_tapar_extra_fica_no_segmento_das_tintas`,
+  `sobre_o_oleo_assentar_preserva_o_ecra_seco`, `o_tapar_extra_nao_pinta_branco_no_papel_de_cor` (célula medida, +31 → ≤ 2).
+  Cena bege: claros 2 972 → 186 a meio (brilhos do óleo), 447 → 0 assentada. Barras do Rebelle verdes. [Prancha](pranchas/J9_main_sem_branco.jpg).
+  **FALTA** (depois do «serve»): regravar 11 miniaturas (1 nível no branco) e 2 impressões ao byte (`opcoes_tests` S·bancada,
+  `shape_color_tests` secção desligada), mutação das 2 curas, censo do papel de cor (#54), BUGS #54, smoke.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

@@ -50,80 +50,56 @@ pub enum Ecra {
         /// (lida da cor de agora, caía 0,94 → 0,77 enquanto o assentado absorvia o filme e o cruzamento clareava
         /// +14 níveis ao secar). `0` = a lei da obra.
         vela: f64,
-        /// **A aguada MISTURA com o óleo debaixo** ([`MisturaSobreOleo::Mistura`], dono 30/10): a fracção do tapar extra
-        /// pintada com a mistura K-M das duas tintas em vez da tinta diluída em BRANCO (amarelo sobre azul = verde,
-        /// nunca creme). `0` = a lei da obra; só [`Ecra::com_oleo`] a liga, pelo óleo da célula.
+        /// **O óleo debaixo** ([`Ecra::com_oleo`], dono 30/10): tira esta fracção do tapar extra — `0` = a lei da obra
+        /// (entre aguarelas o tapar e o seu branco são os do Rebelle), `1` = sobre óleo, a cobertura é a do pigmento.
         oleo: f64,
     },
-}
-
-/// **Como a aguada se comporta por cima do óleo** (dono 30/10, a escolha do pincel): só vale nas células com óleo
-/// debaixo ([`crate::grid::Grid::oleo`]) e com um pincel SEM o Real Oil na mão. Prancha:
-/// `docs/Painter/Pinceis/pranchas/J8_aguada_sobre_oleo_4_variantes.jpg`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum MisturaSobreOleo {
-    /// A: a aguada TINGE o óleo — o Glaze total (a multiplicação das duas camadas).
-    Tinge,
-    /// B: as tintas MISTURAM-SE — o tapar extra pinta a mistura K-M (amarelo sobre azul = verde).
-    #[default]
-    Mistura,
-    /// C: o meio-termo — a mistura K-M com metade do Glaze.
-    MeioTermo,
-}
-
-impl MisturaSobreOleo {
-    #[must_use]
-    pub fn from_u8(v: u8) -> Self {
-        match v {
-            0 => Self::Tinge,
-            2 => Self::MeioTermo,
-            _ => Self::Mistura,
-        }
-    }
-
-    #[must_use]
-    pub fn to_u8(self) -> u8 {
-        match self {
-            Self::Tinge => 0,
-            Self::Mistura => 1,
-            Self::MeioTermo => 2,
-        }
-    }
-
-    /// (o Glaze sobre o óleo, a fracção K-M do tapar extra) — o que a célula guarda
-    /// ([`crate::grid::aparencia::AparenciaCelula::tinge_oleo`]).
-    #[must_use]
-    pub fn par(self) -> (f32, f32) {
-        match self {
-            Self::Tinge => (1.0, 0.0),
-            Self::Mistura => (0.0, 1.0),
-            Self::MeioTermo => (0.5, 1.0),
-        }
-    }
 }
 
 impl Ecra {
     /// A mesma lei vista SECA — assentar e re-molhar preservam o ecrã seco, e (desde 11/10, ordem do dono) o
     /// render desenha com ela também a tinta molhada: o que se vê ao pintar é o que fica.
     #[must_use]
-    pub fn seco(mut self) -> Self {
-        if let Ecra::Cobre { molhada, .. } = &mut self {
-            *molhada = 1.0;
+    pub fn seco(self) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                vela,
+                oleo,
+                ..
+            } => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada: 1.0,
+                vela,
+                oleo,
+            },
+            e => e,
         }
-        self
     }
 
     /// A lei da CÉLULA: a da sessão com o Glaze da tinta que lá está ([`crate::grid::Grid::vela`]). Só a lei do
     /// Rebelle o lê; `0` devolve a da sessão ao bit.
     #[inline]
     #[must_use]
-    pub fn com_vela(mut self, v: f32) -> Self {
-        if let Ecra::Cobre { vela, .. } = &mut self
-            && v > 0.0
-        {
-            *vela = f64::from(v);
+    pub fn com_vela(self, v: f32) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                oleo,
+                ..
+            } if v > 0.0 => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela: f64::from(v),
+                oleo,
+            },
+            e => e,
         }
-        self
     }
 
     /// A lei da CÉLULA com o «Glaze layering» que a tinta dela pousou ([`crate::grid::aparencia`], W3b): o tapar vai
@@ -131,37 +107,60 @@ impl Ecra {
     /// bit, `1` dá a de velatura ao bit.
     #[inline]
     #[must_use]
-    pub fn com_vidrado(mut self, v: f32) -> Self {
-        if let Ecra::Cobre { esconde, .. } = &mut self
-            && v > 0.0
-        {
-            *esconde = if v >= 1.0 {
-                crate::colorops::TINTA_ESCONDE_EM_VELATURA
-            } else {
-                *esconde + (crate::colorops::TINTA_ESCONDE_EM_VELATURA - *esconde) * f64::from(v)
-            };
+    pub fn com_vidrado(self, v: f32) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+                oleo,
+            } if v > 0.0 => Ecra::Cobre {
+                filme,
+                esconde: if v >= 1.0 {
+                    crate::colorops::TINTA_ESCONDE_EM_VELATURA
+                } else {
+                    esconde + (crate::colorops::TINTA_ESCONDE_EM_VELATURA - esconde) * f64::from(v)
+                },
+                molhada,
+                vela,
+                oleo,
+            },
+            e => e,
         }
-        self
     }
 
-    /// A lei da CÉLULA com o óleo debaixo: o **Over Oil** que a aguada pousou sobre ele
-    /// ([`crate::grid::oleo_celula::OleoCelula::aguada`]); sem óleo ou sem aguada, a lei ao bit. Qualquer óleo vale a
-    /// escolha INTEIRA: a orla fina do traço de óleo guarda 4–12 % (a massa que escorreu sem ele) e, pesada pela
-    /// fracção, ficava creme no papel de cor (sonda J8).
+    /// A lei da CÉLULA com o óleo que ela tem debaixo ([`crate::grid::oleo_celula`], dono 30/10): sobre o óleo o tapar
+    /// extra sai: a aguada cobre pela quantidade de pigmento, sem o branco. `0` devolve a da sessão ao bit.
     #[inline]
     #[must_use]
-    pub fn com_oleo(mut self, c: crate::grid::oleo_celula::OleoCelula) -> Self {
-        if c.oleo <= 0.0 || c.aguada == 0 {
-            return self;
+    pub fn com_oleo(self, c: crate::grid::oleo_celula::OleoCelula) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+                oleo: o,
+            } if c.oleo > 0.0 && o >= 0.0 => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+                oleo: (f64::from(c.oleo) / OLEO_PLENO).min(1.0),
+            },
+            e => e,
         }
-        let (glaze, km) = MisturaSobreOleo::from_u8(c.aguada - 1).par();
-        if let Ecra::Cobre { vela, oleo, .. } = &mut self {
-            *vela = vela.max(f64::from(glaze));
-            *oleo = f64::from(km);
-        }
-        self
     }
 }
+
+/// O [`Ecra::Cobre::oleo`] da SESSÃO com o Real Oil na mão: o pincel de óleo cobre o óleo pela lei da obra (as
+/// miniaturas Oil/* mudavam até 11 níveis sem isto) — [`Ecra::com_oleo`] não o troca e as contas leem-no como `0`.
+pub const PINCEL_DE_OLEO: f64 = -1.0;
+
+/// A fracção de óleo a partir da qual o tapar extra sai todo: a orla fina do Dabber guarda 4–12 % de
+/// óleo (medido no J8, `oleo_celula_tests`) e é óleo à vista; abaixo, a rampa liga ao branco sem degrau.
+const OLEO_PLENO: f64 = 0.04;
 
 /// A cor da camada e a sua cobertura (o que o render compõe): `sc` assentado (`a_s`) sob `uc` em
 /// suspensão (`a_f`). ⛔ Uma porta só — o render e as transferências verticais passam por aqui.
@@ -233,21 +232,12 @@ fn cor_e_alfa_tapando(
     } else {
         crate::colorops::diferenca_de_pigmento(sc, uc)
     };
-    let a_e = a_t + (h - a_t).max(0.0) * d;
+    // Sobre o ÓLEO não há tapar extra (dono 30/10: a aguada é a mesma tinta mais diluída e cobre pela quantidade de
+    // pigmento; o Rebelle: sobre o óleo a aguada tem a cobertura que tem no papel, 0,35 × 0,38): o extra era pintado
+    // com a tinta diluída em BRANCO — o creme sobre o óleo e no papel de cor.
+    let a_e = a_t + (h - a_t).max(0.0) * d * (1.0 - oleo.max(0.0));
     let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
-    let mut c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
-    // A aguada sobre o ÓLEO ([`MisturaSobreOleo`], dono 30/10): a fracção `oleo` do tapar extra pinta a mistura K-M
-    // das duas tintas — amarelo sobre azul = verde, nunca o creme da tinta diluída em branco.
-    if oleo > 0.0 && a_e > 0.0 {
-        let w = a_t / a_e;
-        for k in 0..3 {
-            let km = crate::colorops::srgb255_of_linear(crate::colorops::reflectance_of_ks(
-                w * crate::colorops::ks_of_srgb255(uc[k])
-                    + (1.0 - w) * crate::colorops::ks_of_srgb255(sc[k]),
-            ));
-            c_eff[k] += oleo * (km - c_eff[k]);
-        }
-    }
+    let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
     // ⛔ A CAIXA das tintas (Bug #50): o tapar extra pinta-se com a tinta diluída em BRANCO — é o que faz o claro
     // cobrir o escuro como no Rebelle, mas onde o filme é mais ESCURO o branco clareava o ponto além das duas
     // tintas (a orla esbranquiçada). Cada canal pára na mais clara das duas: o Rebelle nunca passa dela (as
@@ -275,7 +265,9 @@ fn cor_e_alfa_tapando(
 /// tintas (azul fino sob laranja: `[239,194,168]`, o laranja é `[240,130,60]`) — o branco que a conta embutiu na COR,
 /// que só o papel branco esconde. Re-exprime o MESMO ponto sobre o branco com a cobertura que põe cada canal na caixa
 /// (`≤` a mais clara das duas): o resto do branco passa a ser transparência, e o papel de cor aparece por ela.
-/// Sobre o branco, o mesmo píxel; uma célula sem as duas camadas não muda.
+/// E o branco do TAPAR extra (dono 30/10, `o_tapar_extra_nao_pinta_branco_no_papel_de_cor`): o que o claro esconde do
+/// escuro é a tinta de baixo afastada — o papel aparece por ela, como no Rebelle (doc 47), nunca branco pintado.
+/// Sobre o branco, o mesmo píxel; uma célula sem as duas camadas não muda. `e` é a lei da CÉLULA (o Glaze, o óleo).
 #[inline]
 #[must_use]
 pub fn na_caixa_das_tintas(
@@ -286,7 +278,16 @@ pub fn na_caixa_das_tintas(
     a_s: f64,
     a_f: f64,
 ) -> ([f64; 3], f64) {
-    if !matches!(e, Ecra::Cobre { .. }) || a_s <= 0.0 || a_f <= 0.0 || la <= 0.0 {
+    let Ecra::Cobre {
+        molhada,
+        vela,
+        oleo,
+        ..
+    } = e
+    else {
+        return (c, la);
+    };
+    if a_s <= 0.0 || a_f <= 0.0 || la <= 0.0 {
         return (c, la);
     }
     let mut a = la;
@@ -296,6 +297,22 @@ pub fn na_caixa_das_tintas(
             a = a.min(la * (255.0 - c[k]) / (255.0 - teto));
         }
     }
+    // O BRANCO do tapar extra (`(a_e − a_t)·255` no ponto sobre o branco) é a tinta de baixo AFASTADA, não pigmento:
+    // passa a transparência e o papel aparece (dono 30/10, a faixa creme; doc 47). Só na lei seca (a do render).
+    if molhada == 1.0 {
+        let d = if vela > 0.0 && crate::colorops::a_mesma_tinta_filtrada(sc, uc) {
+            0.0
+        } else {
+            crate::colorops::diferenca_de_pigmento(sc, uc)
+        };
+        let extra = (tapa(e, a_f) - a_f).max(0.0) * d * (1.0 - oleo.max(0.0));
+        a = a.min(la - extra);
+    }
+    // A cor re-expressa não desce de 0: o branco que sai é no máximo o que a cor tem.
+    let piso = c
+        .iter()
+        .fold(0.0f64, |m, &v| m.max(la * (255.0 - v) / 255.0));
+    let a = a.max(piso);
     if a >= la || a <= 0.0 {
         return (c, la);
     }

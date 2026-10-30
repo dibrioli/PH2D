@@ -112,7 +112,7 @@ pub(crate) fn paint_tilt_card(
         .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
     // Heavy Edge (W1g) — com a tela inclinada o pigmento pesa na orla de baixo; `0` de fábrica (esmaece
     // com o Tilt desligado: `Dependente::BordaSemTilt`).
-    let y = crate::card::card_row(
+    crate::card::card_row(
         ctx,
         theme,
         x,
@@ -125,69 +125,7 @@ pub(crate) fn paint_tilt_card(
         1.0,
         crate::number_field::FINE_STEP,
         2,
-    );
-    // Over Oil (dono 30/10) — como a aguada se comporta por cima do óleo; do pincel SEM o Real Oil.
-    let cur = brush.wet_sobre_oleo;
-    let (y, open) = crate::paint_brush_rows::paint_dropdown_row_de_caixa(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.wetpaint.sobre_oleo",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SOBRE_OLEO,
-        cur,
-        nome_sobre_oleo(cur),
-    );
-    if let Some(r) = open {
-        PENDING_SOBRE_OLEO_DD.with(|c| c.set(Some((r, cur))));
-    }
-    y
-}
-
-/// Os rótulos do **Over Oil**, pelo wire de `MisturaSobreOleo` (`0` Tint · `1` Mix · `2` Blend).
-const SOBRE_OLEO: [&str; ph2d_tool_painter::ids::PAINTER_WETPAINT_SOBRE_OLEO_COUNT as usize] = [
-    "panel.painter_layers.wetpaint.sobre_oleo_tint",
-    "panel.painter_layers.wetpaint.sobre_oleo_mix",
-    "panel.painter_layers.wetpaint.sobre_oleo_blend",
-];
-
-fn nome_sobre_oleo(i: u8) -> &'static str {
-    ph2d_i18n::tr(
-        SOBRE_OLEO
-            .get(usize::from(i))
-            .copied()
-            .unwrap_or(SOBRE_OLEO[1]),
     )
-}
-
-thread_local! {
-    /// O menu do Over Oil aberto neste quadro (o chip e o wire de agora), pintado por cima do corpo.
-    static PENDING_SOBRE_OLEO_DD: std::cell::Cell<Option<(Rect, u8)>> =
-        const { std::cell::Cell::new(None) };
-}
-
-/// O popover do **Over Oil** (chamado de `paint_wetpaint_popovers`, depois do clip do corpo).
-pub(crate) fn paint_sobre_oleo_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
-    if let Some((r, cur)) = PENDING_SOBRE_OLEO_DD.with(std::cell::Cell::take) {
-        let opcoes = (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_SOBRE_OLEO_COUNT)
-            .map(|i| {
-                ph2d_editor_core::widget::DropdownOption::new(
-                    ph2d_tool_painter::ids::painter_wetpaint_sobre_oleo_option_id(i),
-                    i,
-                    nome_sobre_oleo(i),
-                )
-            })
-            .collect();
-        crate::dropdown_popover::paint_dropdown_popover(
-            ctx,
-            theme,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SOBRE_OLEO,
-            opcoes,
-            r,
-            cur,
-        );
-    }
 }
 
 /// The `event.rs` drain arm's body (kept HERE so the event router stays at

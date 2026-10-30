@@ -158,18 +158,6 @@ impl PainterTool {
         self.paint.wetpaint.borda_que_pesa
     }
 
-    /// **Over Oil** (dono 30/10): como a aguada se comporta por cima do óleo — `0` Tint · `1` Mix · `2` Blend
-    /// ([`ph2d_wet_paint::assenta::MisturaSobreOleo`]). Fora da faixa = Mix.
-    pub fn set_wet_sobre_oleo(&mut self, v: u8) {
-        self.paint.wetpaint.sobre_oleo = ph2d_wet_paint::assenta::MisturaSobreOleo::from_u8(v);
-    }
-
-    /// O **Over Oil** de agora (o wire do dropdown).
-    #[must_use]
-    pub fn wet_sobre_oleo(&self) -> u8 {
-        self.paint.wetpaint.sobre_oleo.to_u8()
-    }
-
     /// The authored knob values (the panel snapshot's source).
     #[must_use]
     pub fn wet_knobs(&self) -> WetKnobs {

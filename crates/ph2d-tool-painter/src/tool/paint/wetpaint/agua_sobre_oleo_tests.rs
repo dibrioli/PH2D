@@ -602,61 +602,45 @@ fn diag_a_agua_sobe_a_ladeira_de_lado() {
     }
 }
 
-/// SONDA — a aguada amarela POR CIMA do óleo azul (dono 30/10: «o melhor dos dois mundos»), nas três escolhas do
-/// **Over Oil** (`0` Tint · `1` Mix · `2` Blend): a imagem a meio e assentada, e o óleo antes.
+/// SONDA — a aguada amarela POR CIMA do óleo azul (dono 30/10: a mistura do main, sem branco nem bege), no papel
+/// de cor (`p_*`) e no branco (`b_*`, a cena do Rebelle): a imagem a meio e assentada, e o óleo antes.
 #[test]
 #[ignore = "diagnóstico"]
 fn diag_aguada_por_cima_do_oleo() {
-    for v in 0..3u8 {
-        let (meio, fim) = aguada_por_cima_do_oleo(v);
-        grava(&format!("p_meio_v{v}"), &meio);
-        grava(&format!("p_fim_v{v}"), &fim);
-        let (meio, fim) = aguada_por_cima_do_oleo_sobre(v, [255; 3]);
-        grava(&format!("b_meio_v{v}"), &meio);
-        grava(&format!("b_fim_v{v}"), &fim);
+    for (pre, papel) in [("p", PAPEL), ("b", [255; 3])] {
+        let mut t = com_oleo_sobre(false, papel);
+        grava(&format!("{pre}_antes"), &mostrada(&mut t));
+        let (meio, fim) = aguada_por_cima_do_oleo_sobre(papel);
+        grava(&format!("{pre}_meio"), &meio);
+        grava(&format!("{pre}_fim"), &fim);
         relato(format!(
-            "Over Oil {v}: a meio {:?} · assentada {:?}",
-            na_faixa(&meio),
-            na_faixa(&fim)
+            "papel {papel:?}: claros a meio {} · assentada {}",
+            mais_claros(&meio, papel),
+            mais_claros(&fim, papel)
         ));
     }
-    let mut t = com_oleo();
-    let antes = mostrada(&mut t);
-    grava("p_antes", &antes);
-    let mut t = com_oleo_sobre(false, [255; 3]);
-    grava("b_antes", &mostrada(&mut t));
-    relato(format!("antes {:?}", na_faixa(&antes)));
 }
 
-/// Na faixa da aguada sobre o óleo (`x` 105..135, `y` 82..98): a cor média e os píxeis CREME (os três canais > 170).
-pub(super) fn na_faixa(px: &[u8]) -> ([u32; 3], usize) {
-    let (mut soma, mut n, mut creme) = ([0u32; 3], 0u32, 0usize);
-    for y in 82..98 {
-        for x in 105..135 {
+/// Os píxeis da aguada mais CLAROS que o papel e a aguada juntos (o branco/creme): azul acima dos dois e luz acima do papel.
+pub(super) fn mais_claros(px: &[u8], papel: [u8; 3]) -> usize {
+    let lum =
+        |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
+    let lp = lum(&papel);
+    (0..H)
+        .flat_map(|y| (95..145).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
             let p = &px[(y * W + x) * 4..(y * W + x) * 4 + 3];
-            for k in 0..3 {
-                soma[k] += u32::from(p[k]);
-            }
-            n += 1;
-            if p.iter().all(|&c| c > 170) {
-                creme += 1;
-            }
-        }
-    }
-    (soma.map(|v| v / n), creme)
+            let [r, b] = [i32::from(p[0]), i32::from(p[2])];
+            b > i32::from(papel[2].max(40)) + 25 && r > 150 && lum(p) > lp + 15.0 && r > b + 10
+        })
+        .count()
 }
 
-/// A aguada amarela do Wet Flat por cima do óleo azul de [`com_oleo`], com o **Over Oil** `v`: (a meio, assentada).
-pub(super) fn aguada_por_cima_do_oleo(v: u8) -> (Vec<u8>, Vec<u8>) {
-    aguada_por_cima_do_oleo_sobre(v, PAPEL)
-}
-
-/// [`aguada_por_cima_do_oleo`] sobre o papel `papel`.
-pub(super) fn aguada_por_cima_do_oleo_sobre(v: u8, papel: [u8; 3]) -> (Vec<u8>, Vec<u8>) {
+/// A aguada amarela do Wet Flat por cima do óleo de [`com_oleo_sobre`], com o ponteiro ainda em baixo.
+fn aguada_a_meio(papel: [u8; 3]) -> PainterTool {
     let mut t = com_oleo_sobre(false, papel);
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
-    t.set_wet_sobre_oleo(v);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([220, 200, 40]);
     t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
@@ -664,6 +648,23 @@ pub(super) fn aguada_por_cima_do_oleo_sobre(v: u8, papel: [u8; 3]) -> (Vec<u8>, 
         t.on_canvas_pointer(ponteiro(120.0, 30.0 + 2.8 * k as f32, PointerPhase::Move));
         t.on_tick(1000.0 / 60.0);
     }
+    t
+}
+
+/// SONDA — as células da faixa creme abaixo do óleo, a meio da aguada (papel de cor).
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_faixa_abaixo_do_oleo() {
+    let mut t = aguada_a_meio(PAPEL);
+    let m = mostrada(&mut t);
+    for y in [121, 124, 127] {
+        despeja(&mut t, 120, y, &m);
+    }
+}
+
+/// A aguada amarela do Wet Flat por cima do óleo azul de [`com_oleo_sobre`]: (a meio, assentada).
+pub(super) fn aguada_por_cima_do_oleo_sobre(papel: [u8; 3]) -> (Vec<u8>, Vec<u8>) {
+    let mut t = aguada_a_meio(papel);
     let meio = mostrada(&mut t);
     t.on_canvas_pointer(ponteiro(120.0, 142.0, PointerPhase::Up));
     for _ in 0..600 {

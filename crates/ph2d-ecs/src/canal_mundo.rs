@@ -6,8 +6,8 @@
 //! `o_vocabulario_do_mundo_nao_renumera`).
 //!
 //! O valor é o do campo: m/s², Hz, s; os sub-passos e as iterações são inteiros; adormecer é 0/1
-//! (o sinal do limiar angular). ⛔ Fora: a matriz de camadas (36 bits que o painel liga um a um —
-//! sem controlo de campo; plano F30 §B).
+//! (o sinal do limiar angular). A matriz de camadas ([`CAMADAS`], F41) é UM grupo de [`CELULAS`]
+//! canais 0/1, `i` = o índice da célula no painel (`ph2d_panel_physics::ids::physics_layer_cell_index`).
 
 use crate::canal::{CampoInfo, Especie};
 
@@ -27,8 +27,13 @@ pub const AR: u16 = 8;
 pub const SONO_VELOCIDADE: u16 = 9;
 pub const SONO_DEMORA: u16 = 10;
 pub const ADORMECE: u16 = 11;
+/// Uma célula da matriz de camadas (colidem as camadas do par? 0/1), `i` = a célula.
+pub const CAMADAS: u16 = 12;
+/// As células da matriz: o triângulo de `MAX_LAYERS = 8` com a diagonal (gate em
+/// `ph2d-app-physics`, que vê as duas pontas).
+pub const CELULAS: u16 = 36;
 
-/// Todos os campos, na ordem do vocabulário.
+/// Os campos de UM valor (`i = 0`), na ordem do vocabulário — a matriz ([`CAMADAS`]) fica à parte.
 pub const CAMPOS: [u16; 11] = [
     GRAVIDADE_X,
     GRAVIDADE_Y,
@@ -67,6 +72,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         SONO_VELOCIDADE => c("canal.mundo.sono_velocidade", campo, Continuo),
         SONO_DEMORA => c("canal.mundo.sono_demora", campo, Continuo),
         ADORMECE => c("canal.mundo.adormece", campo, Ligado),
+        CAMADAS => c("canal.mundo.camadas", campo, Ligado),
         _ => return None,
     })
 }

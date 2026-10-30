@@ -16,10 +16,27 @@ use std::collections::BTreeMap;
 use ph2d_ecs::canal::familia::MUNDO;
 use ph2d_ecs::canal_mundo as m;
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey, SimWorld};
-use ph2d_physics_ecs::{PhysicsBridge, PhysicsSettings};
+use ph2d_physics_ecs::{LayerMatrix, MAX_LAYERS, PhysicsBridge, PhysicsSettings};
 
 const fn k(campo: u16) -> FieldKey {
     FieldKey::new(MUNDO, campo, 0, 0)
+}
+
+/// A célula `i` da matriz de camadas (`m::CAMADAS`).
+#[must_use]
+pub const fn kc(i: u16) -> FieldKey {
+    FieldKey::new(MUNDO, m::CAMADAS, i, 0)
+}
+
+/// ⭐ **As células da matriz**: `(i do canal, camada a, camada b)`, `i` = o índice da célula no
+/// painel (o triângulo de baixo com a diagonal).
+pub fn celulas() -> impl Iterator<Item = (u16, usize, usize)> {
+    (0..MAX_LAYERS).flat_map(|a| {
+        (0..=a).map(move |b| {
+            let i = ph2d_panel_physics::ids::physics_layer_cell_index(a, b);
+            (u16::try_from(i).expect("36 células"), a, b)
+        })
+    })
 }
 
 /// Quanto vale `campo` em `s` — `None` fora do vocabulário.
@@ -90,13 +107,18 @@ pub fn publicar(sim: &mut SimWorld, ponte: &PhysicsBridge) {
             lidos.publicar(c, k(campo), v);
         }
     }
+    let mx = LayerMatrix::from_rows(s.layer_matrix);
+    for (i, a, b) in celulas() {
+        lidos.publicar(c, kc(i), f32::from(u8::from(mx.collides(a, b))));
+    }
 }
 
 /// **O autorado que este funil viu no quadro anterior**, por campo — a diferença é a MÃO (o painel
 /// mudou o autorado entre dois quadros), e nesse quadro a mão ganha à curva.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ConducaoMundo {
-    visto: BTreeMap<u16, f32>,
+    /// Por `(campo, i)`: `i` só não é `0` nas células da matriz.
+    visto: BTreeMap<(u16, u16), f32>,
 }
 
 /// ⭐ **Aplica ao mundo vivo o que a curva mandou neste quadro** (sem limpar o anel) e regista o eco.
@@ -108,27 +130,36 @@ pub fn aplicar(sim: &mut SimWorld, ponte: &mut PhysicsBridge, cond: &mut Conduca
         .map(|mut w| w.drenar(MUNDO))
         .unwrap_or_default();
     let Some(c) = cena(sim) else { return false };
-    let curva: BTreeMap<u16, f32> = escritas
+    let curva: BTreeMap<(u16, u16), f32> = escritas
         .into_iter()
-        .filter(|&(e, kk, _)| e == c && kk.i == 0 && kk.j == 0)
-        .map(|(_, kk, v)| (kk.campo, v))
+        .filter(|&(e, kk, _)| e == c && kk.j == 0 && (kk.i == 0 || kk.campo == m::CAMADAS))
+        .map(|(_, kk, v)| ((kk.campo, kk.i), v))
         .collect();
     let autorado = ponte.settings();
     let mut alvo = autorado;
-    let mut ecos = Vec::with_capacity(m::CAMPOS.len());
+    let mut ecos = Vec::with_capacity(m::CAMPOS.len() + usize::from(m::CELULAS));
+    // A mão ganha à curva no quadro em que muda o autorado; senão a curva manda (e o eco di-lo).
+    let mut conduz = |chave: FieldKey, a: f32| -> Option<f32> {
+        let mao = (cond.visto.insert((chave.campo, chave.i), a)).is_some_and(|antes| antes != a);
+        let v = curva.get(&(chave.campo, chave.i)).copied().filter(|_| !mao);
+        ecos.push((chave, v.unwrap_or(a), a));
+        v
+    };
     for campo in m::CAMPOS {
-        let Some(a) = ler(&autorado, campo) else {
-            continue;
-        };
-        let mao = cond.visto.insert(campo, a).is_some_and(|antes| antes != a);
-        match curva.get(&campo) {
-            Some(&v) if !mao => {
-                escrever(&mut alvo, campo, v);
-                ecos.push((k(campo), v, a));
-            }
-            _ => ecos.push((k(campo), a, a)),
+        if let Some(a) = ler(&autorado, campo)
+            && let Some(v) = conduz(k(campo), a)
+        {
+            escrever(&mut alvo, campo, v);
         }
     }
+    let feito = LayerMatrix::from_rows(autorado.layer_matrix);
+    let mut mx = feito;
+    for (i, a, b) in celulas() {
+        if let Some(v) = conduz(kc(i), f32::from(u8::from(feito.collides(a, b)))) {
+            mx.set(a, b, v >= 0.5);
+        }
+    }
+    alvo.layer_matrix = mx.rows();
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);

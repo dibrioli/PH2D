@@ -35,6 +35,16 @@ pub(super) fn paint(
 
     let mut y = y_in;
 
+    // ⭐ O losango da matriz (canal MUNDO `CAMADAS`, F41): UM, no canto das legendas — a matriz é
+    // um controlo e as 36 células gravam-se juntas.
+    let canto = Rect::new(x, y, label_w, font + gap);
+    let cells = &crate::ids::PHYSICS_LAYER_CELL;
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(ctx.scene, theme, canto, cells)
+    {
+        ctx.host.hit_index_mut().register(alvo, canto);
+    }
+
     // Column headers, offset by the label gutter. Only as many as the widest
     // row needs — the last row is the only one with all eight.
     for j in 0..MAX_LAYERS {

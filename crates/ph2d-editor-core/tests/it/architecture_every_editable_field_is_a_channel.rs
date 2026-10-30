@@ -1391,6 +1391,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-physics",
+        "paint/matrix.rs::paint",
+        Canal,
+        &["PHYSICS_LAYER_CELL"],
+        "a matriz de camadas é UM losango sobre as 36 células (canal MUNDO `CAMADAS`, F41)",
+    ),
+    (
+        "ph2d-panel-physics",
         "paint.rs::paint_irow",
         NaoAnimavel,
         &[],

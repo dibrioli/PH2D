@@ -67,6 +67,8 @@ pub const CAMPOS: &[(u16, &[NodeId])] = &[
         &[painel::PHYSICS_SLEEP_DELAY, painel::PHYSICS_SLEEP_DELAY_NUM],
     ),
     (m::ADORMECE, &[painel::PHYSICS_SLEEP_SPIN]),
+    // A matriz é UM controlo (um losango no canto): as 36 células, um grupo (F41).
+    (m::CAMADAS, &painel::PHYSICS_LAYER_CELL),
 ];
 
 fn marca(f: Forca) -> KeyMark {
@@ -84,6 +86,11 @@ pub fn canal_do_campo(id: NodeId) -> Vec<PropKind> {
     let Some(&(campo, _)) = CAMPOS.iter().find(|(_, ids)| ids.contains(&id)) else {
         return Vec::new();
     };
+    if campo == m::CAMADAS {
+        return (0..m::CELULAS)
+            .map(|i| PropKind::Field(crate::canais_mundo::kc(i)))
+            .collect();
+    }
     let kk = FieldKey::new(MUNDO, campo, 0, 0);
     CAMPOS
         .iter()

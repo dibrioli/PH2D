@@ -159,3 +159,51 @@ fn cada_campo_do_mundo_le_o_que_escreveu() {
         }
     }
 }
+
+/// ⭐⭐ **A curva liga e desliga uma célula da matriz** (F41): o mundo VIVO muda e o autorado não;
+/// publicar põe as 36 células do autorado; e no quadro em que a MÃO muda a célula, a mão ganha.
+#[test]
+fn a_curva_conduz_uma_celula_da_matriz_e_a_mao_lhe_ganha() {
+    let (mut sim, _, mut ponte) = queda();
+    let mut cond = ConducaoMundo::default();
+    let (i, a, b) = celulas().nth(4).expect("célula");
+    let c = cena(&sim).expect("cena");
+    let celula = |sim: &mut SimWorld, v: f32| {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(c, kc(i), v);
+    };
+    let liga = |s: PhysicsSettings| LayerMatrix::from_rows(s.layer_matrix).collides(a, b);
+    assert!(liga(ponte.settings()), "controlo: de fábrica tudo colide");
+    publicar(&mut sim, &ponte);
+    let lidos = sim.world().resource::<CanaisLidos>();
+    assert_eq!(
+        (0..m::CELULAS)
+            .filter(|&j| lidos.valor(c, kc(j)) == Some(1.0))
+            .count(),
+        36
+    );
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    celula(&mut sim, 0.0);
+    assert!(aplicar(&mut sim, &mut ponte, &mut cond), "o mundo mudou");
+    assert!(
+        !liga(ponte.settings_vivos()),
+        "a curva desligou o par no mundo vivo"
+    );
+    assert!(liga(ponte.settings()), "o autorado não muda pela curva");
+    // A mão desliga-o no autorado e a curva manda ligar: neste quadro, a mão.
+    let mut s = ponte.settings();
+    let mut mx = LayerMatrix::from_rows(s.layer_matrix);
+    mx.set(a, b, false);
+    s.layer_matrix = mx.rows();
+    ponte.set_settings(s);
+    celula(&mut sim, 1.0);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert!(
+        !liga(ponte.settings_vivos()),
+        "a mão ganhou no quadro em que mudou"
+    );
+    celula(&mut sim, 1.0);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert!(liga(ponte.settings_vivos()), "no seguinte, a curva");
+}

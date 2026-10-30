@@ -130,6 +130,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.mundo.sono_velocidade" => "Sleep Speed",
         "canal.mundo.sono_demora" => "Sleep Delay",
         "canal.mundo.adormece" => "Bodies Sleep",
+        "canal.mundo.camadas" => "Collision Layers",
         "canal.mundo.cena" => "Scene",
         // O osso (`ph2d_ecs::canal_osso`, F40).
         "canal.osso.comprimento" => "Bone Length",

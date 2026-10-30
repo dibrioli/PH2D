@@ -26,6 +26,22 @@ fn o_vocabulario_do_mundo_nao_renumera() {
     for (atual, gravado) in fixos {
         assert_eq!(atual, gravado, "o campo {gravado} do mundo foi renumerado");
     }
+    assert_eq!(
+        (CAMADAS, CELULAS),
+        (12, 36),
+        "a matriz de camadas foi renumerada"
+    );
+}
+
+/// ⭐ A matriz de camadas é UM grupo 0/1 da Cena: todas as células no mesmo grupo (um losango), e
+/// nenhuma no grupo de um campo de um valor.
+#[test]
+fn as_celulas_da_matriz_sao_um_grupo_ligado() {
+    let cel = |i: u16| FieldKey::new(familia::MUNDO, CAMADAS, i, 0);
+    let info = cel(0).info().expect("info");
+    assert!(info.discreto() && !info.por_i && cel(0).da_cena());
+    assert!((0..CELULAS).all(|i| cel(i).mesmo_grupo(cel(0))));
+    assert!(CAMPOS.iter().all(|&c| !k(c).mesmo_grupo(cel(3))));
 }
 
 /// Inteiros e o interruptor são discretos; a gravidade é UM grupo de dois eixos; todo campo é da
@@ -52,7 +68,7 @@ fn cada_campo_do_mundo_diz_o_que_e() {
     assert!(k(GRAVIDADE_X).mesmo_grupo(k(GRAVIDADE_Y)));
     assert_ne!(k(GRAVIDADE_X).membro(), k(GRAVIDADE_Y).membro());
     assert!(!k(AMORT_LINEAR).mesmo_grupo(k(AMORT_ANGULAR)));
-    assert!(k(12).info().is_none(), "buraco no vocabulário");
+    assert!(k(13).info().is_none(), "buraco no vocabulário");
     assert!(
         !FieldKey::new(familia::FISICA, 6, 0, 0).da_cena(),
         "o corpo é de um objecto"

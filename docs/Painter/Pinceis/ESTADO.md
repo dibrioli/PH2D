@@ -25,14 +25,9 @@
 
 ## J9 (30/10): o Over Oil contra o Rebelle — À ESPERA DO «SERVE» DO DONO
 
-- **Oráculo** (fixture `NewFeaturesWetPaint/fixtures/rebelle/over_oil/` + `cabecalho.json`; `over_oil_rebelle{,_tela}.{py,sh}`):
-  a cena da sonda no Rebelle (papel BRANCO: a cor não entra pela porta). Lei: a aguada sobre o óleo é α-SOBRE (doc 47),
-  com o α do papel a meio (0,35 × 0,38) e ~0,55× assentada (0,20, espalha 0,07–0,45: junta-se nos vales); molhado = seco.
-- **Régua** `over_oil_regua.py`, cruzamento, a meio: Rebelle cor `[110,147,159]` desvio 35,5 (= o do óleo) transição 8,4 px
-  escuros 0 · nós Mix `[71,132,101]` (K-M escurece) transição **1,3 px** (corte) escuros 5–60. Os escuros: célula com fio de
-  óleo invisível (cor de papel) + K-M ⇒ `[58,54,42]` — as hipóteses (b) e (c) do handoff J8 confirmadas; a sombra do Real Oil não.
-- **Simulação** `over_oil_simula.py` (A hoje · B véu · C + vales · **D** + o #54 no papel): D escuros 0, sem creme;
-  [prancha](pranchas/J9_over_oil_hoje_proposta_rebelle.jpg). A sonda grava também no branco (`b_*`).
+- **Oráculo** (`fixtures/rebelle/over_oil/` + cabeçalho; `over_oil_{rebelle,regua,simula}`): no Rebelle a aguada é
+  um VÉU (α-sobre, α 0,35 como no papel; assentada 0,20, nos vales), escuros 0, transição 8 px. Nós (Mix): K-M escurece,
+  corte de 1,3 px, escuros = fio de óleo invisível + K-M (hipóteses b, c do J8 confirmadas). Véu simulado (D): [prancha](pranchas/J9_over_oil_hoje_proposta_rebelle.jpg).
 - **Dono 30/10 recusa o véu (D) e dá a LEI:** óleo e aguada são a MESMA tinta com diluições diferentes; misturam pela
   QUANTIDADE (a pouco diluída dilui, a muito diluída engrossa); sem creme, preto nem degraus. Simulação **E**
   (`mistura`: `f = q_w/(q_o+q_w)`, subtractiva, papel fora da média, relevo × `1 − f`): escuros 0, transição 6 px;

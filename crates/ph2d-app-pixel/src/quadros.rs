@@ -7,7 +7,7 @@ use ph2d_editor_core::pixel_panel::{
 };
 use ph2d_pixel_core::frames::{self, NewFrame};
 use ph2d_pixel_core::play::{Play, PlayOptions};
-use ph2d_pixel_core::{Direction, FrameId, LayerId, Onion, Op, Sprite, layers};
+use ph2d_pixel_core::{Direction, FrameId, LayerId, Onion, Op, Sprite};
 
 use crate::PixelApp;
 

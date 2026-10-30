@@ -21,7 +21,7 @@
 
 - **Dívida da J7** `1a7c1aa31c`: o #53 mudou 2 portões ao byte que a J7 não correu (`shape_color_tests` cena 6, `opcoes_tests` S inclinado); sobre o branco ≤ 2 níveis ⇒ regravados.
 - **Item 2 OKLCH** `3c283ce666`: `layers::rampa_nova()` (Grain Colors, Shape Color, camada de textura, Reset); `ColorRamp::default()` fica RGB; preset/projeto antigo traz o modo gravado.
-- **Item 1 Over Oil** `1e9a32d0af` (dono: «A, B e C viram um dropdown»; [simulação](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg) → [construído](pranchas/J8_over_oil_tint_mix_blend.jpg)): Tint · **Mix** (fábrica, verde) · Blend; a escolha mora em `OleoCelula::aguada` (só sobre óleo). ABERTO #54: a faixa fina abaixo do óleo onde a tinta escorreu SEM óleo segue creme.
+- **Item 1 Over Oil** `1e9a32d0af` (dono: «A, B e C viram um dropdown»; [simulação](pranchas/J8_aguada_sobre_oleo_4_variantes.jpg) → [construído](pranchas/J8_over_oil_tint_mix_blend.jpg)): Tint · **Mix** (fábrica, verde) · Blend; a escolha mora em `OleoCelula::aguada` (só sobre óleo). ABERTO #54: a faixa fina abaixo do óleo onde a tinta escorreu SEM óleo segue creme. **Smoke do dono 30/10: REPROVADO como mescla realista** (chapado, borda em degraus, píxeis pretos) ⇒ [handoff J8](HANDOFF_JANELA_8.md): o Rebelle como oráculo.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

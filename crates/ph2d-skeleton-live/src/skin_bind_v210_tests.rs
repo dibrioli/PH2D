@@ -95,3 +95,49 @@ fn a_pele_gravada_sem_comprimento_abre_e_nao_estica() {
         pior(&repouso, &antiga_crescida)
     );
 }
+
+/// ⭐ **O bind grava o comprimento de CADA osso, igual ao do osso** — não só «algum positivo».
+#[test]
+fn o_bind_grava_o_comprimento_de_cada_osso() {
+    let (sim, _scene, map, id, ossos) = barra_da_cena_com(false);
+    let skin = (sim.world().get::<SkinBind>(Entity::from_bits(map[&id]))).expect("pele");
+    assert_eq!(skin.tendons.len(), ossos.len(), "um tendão por osso");
+    let index = crate::skin_live::bone_index(&sim);
+    for t in &skin.tendons {
+        let osso = sim.world().get::<Bone>(index[&t.bone]).expect("osso");
+        assert!(osso.length > 0.0, "controlo: o osso tem comprimento");
+        assert_eq!(
+            t.comprimento, osso.length,
+            "o tendão guarda o Length do bind"
+        );
+    }
+}
+
+/// ⭐ **Os eixos do bind (os dos pesos) não mudam quando o osso cresce depois.** ⛔ CONTROLO: o osso
+/// cresceu mesmo, e um tendão sem comprimento (v210) lê o Length de agora.
+#[test]
+fn os_eixos_do_bind_nao_crescem_com_o_osso() {
+    let (mut sim, _scene, map, id, ossos) = barra_da_cena_com(false);
+    let skin = (sim.world().get::<SkinBind>(Entity::from_bits(map[&id])))
+        .expect("pele")
+        .clone();
+    let index = crate::skin_live::bone_index(&sim);
+    let antes = crate::skin_live::eixos_do_bind(&sim, &skin, &index);
+    assert_eq!(antes.len(), ossos.len());
+    let ponta = *ossos.last().expect("osso");
+    let l0 = sim.world().get::<Bone>(ponta).expect("osso").length;
+    sim.world_mut().get_mut::<Bone>(ponta).expect("osso").length = l0 * 1.5;
+    assert_eq!(
+        sim.world().get::<Bone>(ponta).expect("osso").length,
+        l0 * 1.5
+    );
+    let depois = crate::skin_live::eixos_do_bind(&sim, &skin, &index);
+    assert_eq!(depois, antes, "os eixos do bind seguiram o osso");
+    let mut sem = skin.clone();
+    sem.tendons.iter_mut().for_each(|t| t.comprimento = 0.0);
+    assert_ne!(
+        crate::skin_live::eixos_do_bind(&sim, &sem, &index),
+        antes,
+        "controlo: o Length de agora mudaria os eixos"
+    );
+}

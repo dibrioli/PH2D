@@ -18,6 +18,10 @@ mod itens;
 #[path = "project_caixas_tests.rs"]
 mod caixas;
 
+/// **O tendão da pele no arquivo** (F41, v211) — neta pela mesma razão.
+#[path = "project_pele_tests.rs"]
+mod pele;
+
 /// ⭐ **As marcas e os Kanbans atravessam o arquivo** — os bytes que o palco deu voltam iguais ao abrir.
 #[test]
 fn as_marcas_do_artista_atravessam_o_arquivo() {

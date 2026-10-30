@@ -33,6 +33,10 @@
   óleo invisível (cor de papel) + K-M ⇒ `[58,54,42]` — as hipóteses (b) e (c) do handoff J8 confirmadas; a sombra do Real Oil não.
 - **Simulação** `over_oil_simula.py` (A hoje · B véu · C + vales · **D** + o #54 no papel): D escuros 0, sem creme;
   [prancha](pranchas/J9_over_oil_hoje_proposta_rebelle.jpg). A sonda grava também no branco (`b_*`).
+- **Dono 30/10 recusa o véu (D) e dá a LEI:** óleo e aguada são a MESMA tinta com diluições diferentes; misturam pela
+  QUANTIDADE (a pouco diluída dilui, a muito diluída engrossa); sem creme, preto nem degraus. Simulação **E**
+  (`mistura`: `f = q_w/(q_o+q_w)`, subtractiva, papel fora da média, relevo × `1 − f`): escuros 0, transição 6 px;
+  [prancha](pranchas/J9_over_oil_mistura_do_dono.jpg). À espera do «serve».
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

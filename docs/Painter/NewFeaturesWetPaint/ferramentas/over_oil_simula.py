@@ -59,13 +59,48 @@ def simula(o, a, papel, assentada, vales, todo_papel):
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def mistura(o, a, papel):
+    """E — a lei do DONO (30/10): as duas são a MESMA tinta com diluições diferentes e misturam-se pela quantidade.
+    `q_o` = a cobertura do óleo (projecção de `o` entre o papel e o óleo puro), `q_w` = o α da aguada na coluna;
+    `f = q_w / (q_o + q_w)`; a tinta = mistura subtractiva (média geométrica da reflectância) óleo↔aguada por `f`;
+    cobre o papel com `1 − (1 − q_o)(1 − q_w)` (o papel não é tinta: não entra na média); o relevo do óleo (o resto
+    de `o` fora da sua cor plana) fica × `(1 − f)` — o óleo diluído aplana."""
+    L = np.array([0.2126, 0.7152, 0.0722])
+    mo0 = (o[..., 2] - o[..., 0] > 60) & (o[..., 2] > 120)
+    puro = o[mo0 & (o @ L < np.percentile(o[mo0] @ L, 60))].mean(0)
+    d = puro - papel
+    q_o = np.clip(((o - papel) @ d) / (d @ d), 0, 1)
+    plano_o = papel * (1 - q_o[..., None]) + puro * q_o[..., None]
+    relevo = o - plano_o
+    q_w = np.broadcast_to(alfa_coluna(a, papel), o.shape[:2])
+    f = (q_w / np.maximum(q_o + q_w, 1e-6))[..., None]
+    tinta = 255.0 * np.power(np.clip(puro / 255, 1e-3, 1), 1 - f) * np.power(Y / 255, f)
+    q_t = (1 - (1 - q_o) * (1 - q_w))[..., None]
+    novo = papel * (1 - q_t) + tinta * q_t + relevo * (1 - f)
+    out = a.copy()
+    alvo = (q_o > 0.02) & (q_w > 0.03)
+    for _ in range(2):
+        alvo = alvo | np.roll(alvo, 1, 0) | np.roll(alvo, -1, 0)
+    alvo &= (q_w > 0.03)
+    esperado = papel * (1 - q_w[..., None]) + Y * q_w[..., None]
+    errado = (a[..., 2] > np.maximum(papel[2], Y[2]) + 15) | (a @ L < np.minimum(papel @ L, esperado @ L) - 20)
+    perto = np.zeros(o.shape[:2], bool)
+    ys = np.where(q_o.max(1) > 0.02)[0]
+    perto[max(0, ys.min() - 4):ys.max() + 30] = True
+    alvo |= errado & perto & (q_w > 0.03)
+    out[alvo] = novo[alvo]
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def main():
     antes, meio, fim, papel, saida = sys.argv[1:6]
     papel = np.array([float(c) for c in papel.split(",")])
     o, m, f = le(antes), le(meio), le(fim)
     linhas = []
-    for nome, lei in [("A", None), ("B", (False, False)), ("C", (True, False)), ("D", (True, True))]:
-        if lei is None:
+    for nome, lei in [("A", None), ("B", (False, False)), ("C", (True, False)), ("D", (True, True)), ("E", "dono")]:
+        if lei == "dono":
+            par = [mistura(o, m, papel), mistura(o, f, papel)]
+        elif lei is None:
             par = [m.astype(np.uint8), f.astype(np.uint8)]
         else:
             v, t = lei

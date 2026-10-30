@@ -82,6 +82,8 @@ struct FlowConst {
     level_clamp: f64,
     /// As paredes entre traços neste passo ([`crate::sim::Sim::paredes`]; a lei é da tinta).
     isola: bool,
+    /// O pincel na mão tem o Real Oil: sem a ladeira do óleo ([`super::ladeira_do_oleo::do_passe`]).
+    oleo_na_mao: bool,
     cap_k: f64,
     cap_gate: f64,
     visc_threshold: f64,
@@ -121,6 +123,7 @@ impl FlowConst {
             level_k: p.k(Knob::Leveling),
             level_clamp: p.k(Knob::LevelClamp),
             isola: p.paredes,
+            oleo_na_mao: p.oleo > 0.0,
             cap_k: p.k(Knob::Capillary),
             cap_gate: p.k(Knob::CapillaryGate),
             visc_threshold: p.k(Knob::Viscosity),
@@ -186,6 +189,8 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         return;
     }
     let spans_on = g.spans_enabled;
+    let ladeira = super::ladeira_do_oleo::do_passe(g, by0, by1, c.oleo_na_mao);
+    let ladeira = ladeira.as_ref();
     let Grid {
         frow_lo: row_lo,
         frow_hi: row_hi,
@@ -288,7 +293,8 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 let mut lx = if wx {
                     0.0
                 } else {
-                    (film_m[kfl] as f64 - film_m[kfr] as f64) * c.level_k * c.dif
+                    let o = ladeira.map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
+                    (film_m[kfl] as f64 - film_m[kfr] as f64 + o) * c.level_k * c.dif
                 };
                 if lx > c.level_clamp {
                     lx = c.level_clamp;
@@ -298,7 +304,10 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 let mut ly = if wy {
                     0.0
                 } else {
-                    (film_u[kf] as f64 - film_d[kf] as f64) * c.level_k * c.dif
+                    let o = ladeira.map_or(0.0, |l| {
+                        l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf)
+                    });
+                    (film_u[kf] as f64 - film_d[kf] as f64 + o) * c.level_k * c.dif
                 };
                 if ly > c.level_clamp {
                     ly = c.level_clamp;

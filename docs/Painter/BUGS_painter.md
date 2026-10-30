@@ -480,6 +480,19 @@ Gate verde que não via: todos os portões e a fábrica pintam sobre BRANCO. Gat
 `a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda`. 11 miniaturas regeradas, uma a uma: ≤ 2 níveis sobre
 o branco cada (`sonda_miniatura_antiga_e_de_hoje`).
 
+## Bug #55 (fechado 30/10) — a água SOBE a ladeira do óleo
+
+Smoke do dono 30/10: tinta aguada junto a um óleo de alto relevo espalhava-se por cima dele como por papel liso. Medido
+(`diag_a_agua_sobe_a_ladeira_do_oleo`): o nivelamento (`flow_jacobi::flow_rows`, e a rota serial) corria só pela altura
+da ÁGUA e o capilar pelo dente do papel; a altura do óleo (`Grid::oleo` × `sett`) não entrava em passe nenhum — «a tinta
+seca não é parede» (`grid::traco::separa`) valia também para o óleo. Cura: `solver::ladeira_do_oleo` — a superfície
+nivelada é água + óleo assentado (`sett × espessura × Depth·Real Oil / 1000`, em unidades de `film`), só com o pincel na
+mão SEM o Real Oil. ⛔ Medido e recusado: a ladeira também no traço de óleo — as 10 miniaturas Oil/* mudavam 82–230
+níveis (o óleo escorria pela própria parede). Massa nova no miolo do óleo: encostado 1 003 372 → 40 511 (o que sobra é
+onde o pincel pousa em cima), a 4 px 685 617 → 3 468. Fábrica ao bit. Gate `a_agua_nao_sobe_a_ladeira_do_oleo`.
+Aberto: pintar POR CIMA do óleo continua a misturar no assentado (é um glaze por cima; «o óleo não embebe» como regra
+de secagem não foi construída).
+
 ## Bug #54 (ABERTO, decisão do dono) — o ASSENTAR guarda branco opaco num papel de COR (a família do #53)
 
 Achado pelo censo `nenhum_pincel_de_fabrica_clareia_o_papel_de_cor` (66 presets, 2.º traço sobre um Wet Flat azul, papel

@@ -437,3 +437,23 @@ fn diag_a_agua_sobe_a_ladeira_do_oleo() {
         ));
     }
 }
+
+/// ⭐ **A água não sobe a ladeira do óleo** (Bug 2 do smoke do dono 30/10): um traço aguado (Wet Flat) pintado só no
+/// papel, ao pé de um Oil ▸ Dabber assentado, num papel de cor. Mecanismo: o nivelamento corria só pela altura da
+/// água e a do óleo não entrava em passe nenhum (`solver::ladeira_do_oleo`). Medido antes da cura, massa nova no
+/// miolo do óleo (≥ 4 px da orla): encostado 1 003 372 (4 341 células > 50), a 4 px 685 617 (4 014); depois 40 511
+/// (116, onde o próprio pincel pousa) e 3 468 (10).
+#[test]
+fn a_agua_nao_sobe_a_ladeira_do_oleo() {
+    let (encostado, celulas, miolo) = agua_que_sobe(0.0);
+    assert!(miolo > 5000, "o miolo do óleo tem só {miolo} células");
+    assert!(
+        encostado < 100_000.0 && celulas < 400,
+        "encostado à parede: {encostado:.0} de massa nova no miolo do óleo, {celulas} células > 50"
+    );
+    let (folga, celulas, _) = agua_que_sobe(4.0);
+    assert!(
+        folga < 34_000.0 && celulas < 50,
+        "a 4 px da parede: {folga:.0} de massa nova no miolo do óleo, {celulas} células > 50"
+    );
+}

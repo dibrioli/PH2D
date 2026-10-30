@@ -101,6 +101,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     let (gbx0, by0, gbx1, by1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), geom.rf);
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
+    let ladeira = ladeira_do_oleo::do_passe(g, by0, by1, p.oleo > 0.0);
     // Split-borrow the fields once — the loop body reads/writes through
     // locals instead of re-projecting `g.` per access.
     let Grid {
@@ -206,7 +207,8 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             let mut lx = if wx {
                 0.0
             } else {
-                (film_m[kfl] as f64 - film_m[kfr] as f64) * level_k * dif
+                let o = ladeira.as_ref().map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
+                (film_m[kfl] as f64 - film_m[kfr] as f64 + o) * level_k * dif
             };
             if lx > level_clamp {
                 lx = level_clamp;
@@ -216,7 +218,10 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             let mut ly = if wy {
                 0.0
             } else {
-                (film_u[kf] as f64 - film_d[kf] as f64) * level_k * dif
+                let o = ladeira.as_ref().map_or(0.0, |l| {
+                    l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf)
+                });
+                (film_u[kf] as f64 - film_d[kf] as f64 + o) * level_k * dif
             };
             if ly > level_clamp {
                 ly = level_clamp;
@@ -603,6 +608,7 @@ mod advect;
 mod advect_jacobi;
 mod flow_jacobi;
 mod gota; // a lei da GOTA (W1e, F1) — instrumento das sondas, filho por LOC
+mod ladeira_do_oleo; // Bug 2 (dono 30/10): a altura do óleo assentado entra no nivelamento da água
 mod project;
 mod sedimenta;
 pub use active_region::{rebuild_active_region, rebuild_active_region_rows};

@@ -60,6 +60,9 @@ impl PainterTool {
         let sozinho = self.paint.tracos_fora == 0;
         if sozinho {
             self.begin_undo_step();
+            if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+                self.wet_guarda_o_passo(); // o undo deste passo devolve a tinta viva de agora
+            }
         }
         // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.72): este `before` DESCREVE os três planos em
         // vez de os segurar, e é isso que deixa o 1º dab escrever no lugar — a porta de fork copia

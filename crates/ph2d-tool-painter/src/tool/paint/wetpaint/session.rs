@@ -171,6 +171,9 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) marca: Option<u64>,
     /// O PÓ SOLTO do traço aberto ([`super::po`]): zerado quando o traço abre.
     pub(super) po: super::po::PoDoTraco,
+    /// ⭐ **A tinta viva de antes de cada traço** (smoke do dono 30/10, «o undo mata a tinta viva»): as grades do
+    /// motor no pen-down de cada passo, pela profundidade do undo. Desfazer o passo devolve-as e a sessão VIVE.
+    pub(super) antes_do_passo: Vec<(usize, Vec<ph2d_wet_paint::grid::GridSnapshot>)>,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -323,6 +326,7 @@ impl Clone for WetSession {
             ritmo,
             marca,
             po,
+            antes_do_passo,
         } = self;
         assert!(
             worker.is_none(),
@@ -357,6 +361,7 @@ impl Clone for WetSession {
             ritmo: ritmo.clone(),
             marca: *marca,
             po: po.clone(),
+            antes_do_passo: antes_do_passo.clone(),
         }
     }
 }

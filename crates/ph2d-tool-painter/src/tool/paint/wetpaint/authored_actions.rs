@@ -98,6 +98,7 @@ impl PainterTool {
             ritmo: self.paint.wetpaint.ritmo.clone(),
             marca,
             po: super::po::PoDoTraco::default(),
+            antes_do_passo: Vec::new(),
         });
         true
     }

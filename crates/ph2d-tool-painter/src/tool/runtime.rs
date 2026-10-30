@@ -88,12 +88,18 @@ impl PainterTool {
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.undo.peek_confined_region(false);
-        if let Some(model) = self.undo.undo(&live) {
+        // A tinta viva sai do caminho do restore (que acaba a sessão) e volta com as grades de antes do passo.
+        let viva = self.wet_solta_para_o_undo();
+        let desfez = if let Some(model) = self.undo.undo(&live) {
             self.restore_model_confined(*model, confined);
             true
         } else {
             false
+        };
+        if let Some(v) = viva {
+            self.wet_volta_do_undo(v, desfez);
         }
+        desfez
     }
 
     /// Redo the most recently undone edit on the unified timeline. Returns `true` if an edit was redone.

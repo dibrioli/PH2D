@@ -42,6 +42,9 @@ mod fx_stack_borrao_grupo;
 mod fx_stack_camada;
 /// O WGSL da pilha de FX (irmão do `fx_stack` pelo teto de LOC — o que o device executa).
 mod fx_stack_field;
+#[cfg(test)]
+#[path = "fx_stack_memoria_tests.rs"]
+mod fx_stack_memoria_tests;
 mod fx_stack_modulos;
 mod fx_stack_noise;
 mod fx_stack_op;
@@ -149,7 +152,7 @@ pub use fx_stack::{
     FxOpGpu, FxStackPass, Origem, retangulo_da_camada, stack_reach, stack_read,
     stack_read_por_lado, stack_read_por_lado_com,
 };
-pub use fx_stack_res::make_output_texture;
+pub use fx_stack_res::{make_output_texture, nasce_saida, saida_renasce};
 pub use game_rt::GameRt;
 pub use image_filter::{
     ImageFilterMode, create_sprite_sampler, filter_tag_magnifies_by_point, wgpu_filter,

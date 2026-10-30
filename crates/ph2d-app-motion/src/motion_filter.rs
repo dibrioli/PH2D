@@ -56,8 +56,11 @@ struct Alvos {
     /// ([`ph2d_render::retangulo_da_camada`]).
     saida: wgpu::Texture,
     saida_view: wgpu::TextureView,
-    /// Os `Each Shape` sobre as formas do Vello (sRGB reto) — nasce no primeiro quadro que o pede.
-    vello_cada: Option<(wgpu::Texture, wgpu::TextureView)>,
+    /// A geração em que a placa recusou a `saida` (é a substituta; F40) — renasce no fim dele.
+    saida_recusada: Option<u64>,
+    /// Os `Each Shape` sobre as formas do Vello (sRGB reto) — nasce no primeiro quadro que o pede;
+    /// o terceiro campo é o da `saida_recusada`.
+    vello_cada: Option<(wgpu::Texture, wgpu::TextureView, Option<u64>)>,
 }
 
 struct Placa {
@@ -262,7 +265,7 @@ impl Alvos {
         let vista = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
         let linear = vista(&camada_de(gpu, (w, h), "motion_filtro_linear"));
         let camada = camada_de(gpu, (w, h), "motion_filtro_camada");
-        let saida = ph2d_render::make_output_texture(gpu, w.max(1), h.max(1));
+        let (saida, saida_recusada) = ph2d_render::nasce_saida(gpu, w.max(1), h.max(1));
         Self {
             tamanho: (w, h),
             linear,
@@ -270,6 +273,7 @@ impl Alvos {
             camada,
             saida_view: vista(&saida),
             saida,
+            saida_recusada,
             vello_cada: None,
         }
     }
@@ -278,8 +282,12 @@ impl Alvos {
 impl Alvos {
     /// A saída da pilha com `w × h` (o retângulo da camada muda com os painéis, raramente).
     fn saida_para(&mut self, gpu: &ph2d_gpu::GpuContext, (w, h): (u32, u32)) {
-        if (self.saida.width(), self.saida.height()) != (w, h) {
-            self.saida = ph2d_render::make_output_texture(gpu, w, h);
+        let refaz = match self.saida_recusada {
+            Some(_) => ph2d_render::saida_renasce(self.saida_recusada),
+            None => (self.saida.width(), self.saida.height()) != (w, h),
+        };
+        if refaz {
+            (self.saida, self.saida_recusada) = ph2d_render::nasce_saida(gpu, w, h);
             self.saida_view = self
                 .saida
                 .create_view(&wgpu::TextureViewDescriptor::default());
@@ -527,10 +535,17 @@ impl MotionState {
                 // ⭐ O Vello não tem células: os `Each Shape` correm sobre o CONJUNTO das formas
                 // dele (o cartão di-lo — [`formas_no_vello`]).
                 Some(Ok(v)) => {
-                    let (tex, vista) = alvos.vello_cada.get_or_insert_with(|| {
-                        let t = ph2d_render::make_output_texture(e.gpu, tamanho.0, tamanho.1);
+                    if alvos
+                        .vello_cada
+                        .as_ref()
+                        .is_some_and(|c| ph2d_render::saida_renasce(c.2))
+                    {
+                        alvos.vello_cada = None;
+                    }
+                    let (tex, vista, _) = alvos.vello_cada.get_or_insert_with(|| {
+                        let (t, recusada) = ph2d_render::nasce_saida(e.gpu, tamanho.0, tamanho.1);
                         let v = t.create_view(&wgpu::TextureViewDescriptor::default());
-                        (t, v)
+                        (t, v, recusada)
                     });
                     let origem =
                         Origem::Ponto(origem_do_mundo(e.camera, e.window, e.scene_viewport));

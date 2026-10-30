@@ -53,7 +53,7 @@ pub(crate) mod testes {
         FORCADAS.with(|c| c.set(n));
     }
 
-    pub(super) fn consome_recusa_forcada() -> bool {
+    pub(crate) fn consome_recusa_forcada() -> bool {
         FORCADAS.with(|c| {
             let n = c.get();
             c.set(n.saturating_sub(1));

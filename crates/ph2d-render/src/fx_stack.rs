@@ -143,6 +143,9 @@ pub struct FxStackPass {
     ramps: wgpu::Buffer,
     ramps_cap: u64,
     work: Option<[Tex; 4]>,
+    /// A geração da placa em que o conjunto de trabalho foi RECUSADO (F40): nesse episódio a pilha
+    /// não faz trabalho de placa nem volta a pedir memória; no fim dele tenta de novo.
+    recusa: Option<u64>,
 }
 
 use crate::fx_stack_modulos::module_sources;
@@ -239,6 +242,7 @@ impl FxStackPass {
             ramps,
             ramps_cap: segs_cap,
             work: None,
+            recusa: None,
         }
     }
 
@@ -375,8 +379,8 @@ impl FxStackPass {
         ops: &[FxOpGpu],
         geom: &[[f32; 4]],
         origem: Origem<'_>,
-    ) {
-        self.run_with(gpu, src, src_org, dst, w, h, ops, geom, false, origem);
+    ) -> bool {
+        self.run_with(gpu, src, src_org, dst, w, h, ops, geom, false, origem)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -392,21 +396,20 @@ impl FxStackPass {
         geom: &[[f32; 4]],
         premul: bool,
         origem: Origem<'_>,
-    ) {
-        if w == 0 || h == 0 {
-            return;
+    ) -> bool {
+        // A substituta de uma saída recusada (`nasce_saida`) não cabe o resultado: zero trabalho.
+        if w == 0 || h == 0 || self.em_recusa() || dst.width() < w || dst.height() < h {
+            return false;
         }
-        self.ensure_work(gpu, w, h);
-        self.ensure_segments(gpu, geom);
-        let rampas =
-            crate::fx_stack_res::ensure_ramps(gpu, &mut self.ramps, &mut self.ramps_cap, ops);
         // Slot 0 é o INGEST (sempre) · depois os ops · o resolve é o último.
         let op_passes: usize = ops
             .iter()
             .map(|o| plan_of(o, geom.is_empty()).passes())
             .sum();
         let total_slots = op_passes + 2;
-        self.ensure_globals(gpu, total_slots);
+        let Some(rampas) = self.reserva(gpu, (w, h), ops, geom, total_slots) else {
+            return false;
+        };
 
         // Os globals de TODOS os passes, escritos de uma vez e indexados por offset dinâmico.
         let mut blob = vec![0u8; total_slots * UNIFORM_STRIDE as usize];
@@ -609,6 +612,7 @@ impl FxStackPass {
         let p = (&self.pipeline_out, "fx.resolve");
         dispatch(&mut encoder, p, &bg_out, slot, gx, gy);
         gpu.queue.submit([encoder.finish()]);
+        true
     }
 
     pub(crate) fn bind(
@@ -679,6 +683,9 @@ impl FxStackPass {
         self.work = None;
     }
 }
+
+#[path = "fx_stack_memoria.rs"]
+mod memoria;
 
 #[cfg(test)]
 #[path = "fx_stack_tests.rs"]

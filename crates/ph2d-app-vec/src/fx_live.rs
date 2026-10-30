@@ -54,7 +54,7 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, SimWorld, VecFilter};
 use ph2d_gpu::GpuContext;
-use ph2d_render::{FxStackPass, VelloPass, make_output_texture};
+use ph2d_render::{FxStackPass, VelloPass, nasce_saida};
 use ph2d_vec_render::{FxImage, FxImages, LiveGeometry};
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 use ph2d_vector::{Affine, Color, ImageData, Rect, StableImage, VectorScene};
@@ -413,7 +413,6 @@ impl FxLive {
             // aqui (e não no `ensure_output`, que sai cedo quando o tamanho não muda) porque um
             // re-cook comum não mexe na textura — e era exactamente por isso que a chave antiga
             // atualizava só a pilha.
-            pfx.key = job.key.clone();
             // Só os segmentos que ALCANÇAM a janela: o campo é `O(texels × segmentos)` (F34). Com
             // recorte o `job_for` já os achatou (decidem a margem); aqui só se deslocam.
             let geom = if let Some((o, segs)) = &job.geom {
@@ -458,15 +457,29 @@ impl FxLive {
             ];
             let (w, h) = (job.key.w, job.key.h);
             let origem = ph2d_render::Origem::Ponto(job.ruido);
+            // F40: a placa recusou a memória da pilha (ou a saída) neste episódio — nenhum trabalho de
+            // placa; a forma fica com a imagem de antes e o fim do episódio (`geracao`) re-coze tudo.
+            if stack.em_recusa() {
+                break;
+            }
             if saida
                 .as_ref()
                 .is_none_or(|t| t.width() < w || t.height() < h)
             {
                 let (cw, ch) = saida.as_ref().map_or((0, 0), |t| (t.width(), t.height()));
-                *saida = Some(make_output_texture(gpu, cw.max(w), ch.max(h)));
+                let (t, recusada) = nasce_saida(gpu, cw.max(w), ch.max(h));
+                if recusada.is_some() {
+                    *saida = None;
+                    stack.anota_recusa();
+                    break;
+                }
+                *saida = Some(t);
             }
             let fora = saida.as_ref().expect("saida garantida");
-            stack.run_from_com_origem(gpu, src, org, fora, w, h, &job.key.ops, &geom, origem);
+            if !stack.run_from_com_origem(gpu, src, org, fora, w, h, &job.key.ops, &geom, origem) {
+                break;
+            }
+            pfx.key = job.key.clone();
             copia_o_que_mostra(gpu, fora, &pfx.tex, job.key.mostra);
             // ⛔⛔ **O aviso ao Vello, e ele é obrigatório desde a `vello` 0.10.** O atlas de
             // imagens deixou de ser limpo a cada render: sem esta marca, os pixels que a linha

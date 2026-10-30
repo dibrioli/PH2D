@@ -98,6 +98,8 @@ struct Atlas {
     camada_view: wgpu::TextureView,
     saida: wgpu::Texture,
     saida_view: wgpu::TextureView,
+    /// A geração em que a placa recusou a `saida` (é a substituta; F40) — renasce no fim dele.
+    saida_recusada: Option<u64>,
     mapa: wgpu::TextureView,
 }
 
@@ -123,7 +125,7 @@ impl Atlas {
         };
         let vista = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
         let camada = tex("fx_cells camada", FORMATO);
-        let saida = ph2d_render::make_output_texture(gpu, w, h);
+        let (saida, saida_recusada) = ph2d_render::nasce_saida(gpu, w, h);
         Self {
             tamanho: (w, h),
             linear: vista(&tex("fx_cells linear", FORMATO)),
@@ -132,6 +134,7 @@ impl Atlas {
             camada,
             saida_view: vista(&saida),
             saida,
+            saida_recusada,
             mapa: vista(&tex("fx_cells mapa", FORMATO_MAPA)),
         }
     }
@@ -328,11 +331,11 @@ impl Celulas {
         let precisa = paginas.iter().fold((1u32, 1u32), |(w, h), p| {
             (w.max(p.tamanho[0]), h.max(p.tamanho[1]))
         });
-        if self
-            .atlas
-            .as_ref()
-            .is_none_or(|a| a.tamanho.0 < precisa.0 || a.tamanho.1 < precisa.1)
-        {
+        if self.atlas.as_ref().is_none_or(|a| {
+            a.tamanho.0 < precisa.0
+                || a.tamanho.1 < precisa.1
+                || ph2d_render::saida_renasce(a.saida_recusada)
+        }) {
             let (w, h) = self.atlas.as_ref().map_or(precisa, |a| {
                 (a.tamanho.0.max(precisa.0), a.tamanho.1.max(precisa.1))
             });

@@ -296,6 +296,7 @@ pub(crate) fn ensure_uniform(gpu: &GpuContext, buf: &mut wgpu::Buffer, cap: &mut
     *cap = need;
 }
 
+#[derive(Clone)]
 pub(crate) struct Tex {
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
@@ -331,10 +332,28 @@ pub(crate) fn make_tex(gpu: &GpuContext, w: u32, h: u32, format: wgpu::TextureFo
 }
 
 /// Cria uma textura de SAÍDA para o FX (o chamador a mantém viva por-forma — o Vello a copia no
-/// render, DEPOIS do recook). `Rgba8Unorm` com os usos que o `register_texture` exige.
+/// render, DEPOIS do recook). `Rgba8Unorm` com os usos que o `register_texture` exige. Recusada pela
+/// placa, é a SUBSTITUTA de 1×1 ([`nasce_saida`]): a pilha não lhe faz trabalho nenhum.
 #[must_use]
 pub fn make_output_texture(gpu: &GpuContext, w: u32, h: u32) -> wgpu::Texture {
-    make_tex(gpu, w, h, wgpu::TextureFormat::Rgba8Unorm).texture
+    nasce_saida(gpu, w, h).0
+}
+
+/// A saída do FX nascida sob o escopo de memória (F40, a lei de [`crate::renasce::nasce_textura`]):
+/// `Some(geração)` = a placa recusou-a nesse episódio e ela é a substituta de 1×1; o dono refá-la
+/// quando [`saida_renasce`] o disser.
+#[must_use]
+pub fn nasce_saida(gpu: &GpuContext, w: u32, h: u32) -> (wgpu::Texture, Option<u64>) {
+    let (t, recusada) = crate::renasce::nasce_textura(&gpu.device, || {
+        make_tex(gpu, w, h, wgpu::TextureFormat::Rgba8Unorm).texture
+    });
+    (t, recusada.then(ph2d_gpu::memoria::geracao))
+}
+
+/// `true` = a saída recusada no episódio `recusada` deve renascer: o episódio acabou.
+#[must_use]
+pub fn saida_renasce(recusada: Option<u64>) -> bool {
+    recusada.is_some_and(|g| g != ph2d_gpu::memoria::geracao())
 }
 
 /// Escreve os globals do passe `slot` no blob, no offset dinâmico dele.

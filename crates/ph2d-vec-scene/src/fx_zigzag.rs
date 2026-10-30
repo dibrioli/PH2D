@@ -233,3 +233,7 @@ pub fn zigzag_contour(
 #[cfg(test)]
 #[path = "fx_zigzag_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "fx_zigzag_vale_sonda.rs"]
+mod sonda_vale;

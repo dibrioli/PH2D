@@ -54,8 +54,8 @@ pub use paint_choose::choose_image_for;
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, CatalogRename,
     catalog_row_pick, last_content_h, last_visible_h, payload_at, probe_catalogs,
-    probe_first_texture, probe_index_summary, probe_painted_at, set_current_catalogs,
-    set_current_index,
+    probe_first_texture, probe_index_summary, probe_painted_at, published_images,
+    set_current_catalogs, set_current_index,
 };
 
 use ph2d_a11y::NodeId;

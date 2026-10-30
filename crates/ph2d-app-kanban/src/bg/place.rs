@@ -72,14 +72,27 @@ pub(crate) fn place(d: &Drawer, bg: Background, board: Rect) -> Placed {
         hue = Some(Rect::new(x, *y, w, m::BG_HUE_H));
         *y += m::BG_HUE_H + m::MENU_PAD / 2.0;
     };
-    // As fotografias: «Upload…» e a actual.
+    // As fotografias: «Upload…», a actual e as imagens do projecto.
     section("kanban.bg.photos", &mut y, &mut sections);
-    let photo = matches!(bg, Background::Image(_));
-    let tiles = grid(x, &mut y, w, 2, 1 + usize::from(photo), m::BG_PHOTO_H);
-    rows.push((Row::Upload, tiles[0]));
+    // A imagem actual que é do projecto marca-se na lista dela, sem repetir.
+    let photo =
+        matches!(bg, Background::Image(_)) && !d.project.iter().any(|p| Some(p.asset) == d.current);
+    let mine = d.project.len().min(usize::from(u16::MAX));
+    let tiles = grid(
+        x,
+        &mut y,
+        w,
+        2,
+        1 + usize::from(photo) + mine,
+        m::BG_PHOTO_H,
+    );
+    let mut tiles = tiles.into_iter();
+    rows.extend(tiles.next().map(|r| (Row::Upload, r)));
     if photo {
-        rows.push((Row::Photo, tiles[1]));
+        rows.extend(tiles.next().map(|r| (Row::Photo, r)));
     }
+    #[allow(clippy::cast_possible_truncation)]
+    rows.extend(tiles.enumerate().map(|(i, r)| (Row::Project(i as u16), r)));
     // As cores: os dez matizes, os nove gradientes do Trello e a cor livre.
     section("kanban.bg.colors", &mut y, &mut sections);
     let n = ph2d_board_render::KANBAN_GRADIENTS.len();

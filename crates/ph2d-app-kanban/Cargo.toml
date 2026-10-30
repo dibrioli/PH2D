@@ -47,6 +47,9 @@ ph2d-kanban-import = { path = "../ph2d-kanban-import" }
 # W3 — a capa de IMAGEM descodifica-se pela MESMA porta que a cena e o Quadro usam
 # (`ph2d_asset::decode_image`, com os tectos e as recusas do registo `imageio`), fora do fio do desenho.
 ph2d-asset = { path = "../ph2d-asset" }
+# A secção «Photos» do fundo lista as imagens do projecto: o MESMO índice do navegador de assets.
+ph2d-asset-index = { path = "../ph2d-asset-index" }
+ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
 # W3, lote D3 — anexar ficheiros: o diálogo nativo (pela porta `ph2d_app_host::modal`, como o Quadro) e o
 # tamanho natural de uma imagem pelo CABEÇALHO (os mesmos formatos que a `ph2d-asset` já compila).
 rfd = "0.17"

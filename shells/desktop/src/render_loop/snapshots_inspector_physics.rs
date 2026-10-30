@@ -61,7 +61,8 @@ pub(super) fn physics(
         // ⭐ O retrato de um prefab põe cada peça onde a TELA a põe, e o pivô autorado converte-se
         // com o `pixels_per_meter` do projecto (`Sprite::resolve_anchor`).
         hero.project.pixels_per_meter,
-        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
+        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID)
+            || ph2d_app_kanban::wants_project_images(hero),
     );
     // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
     // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a

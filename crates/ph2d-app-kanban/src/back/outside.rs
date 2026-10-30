@@ -34,13 +34,22 @@ pub trait World {
     }
     /// Abre `target` (um link ou um caminho) no programa do sistema. `false` = não abriu.
     fn open(&mut self, target: &str) -> bool;
+    /// O ficheiro da imagem `asset` do projecto (a gaveta do fundo). `None` = o mundo não a tem.
+    fn project_image(&mut self, _asset: [u8; 32]) -> Option<Vec<u8>> {
+        None
+    }
 }
 
-/// O mundo real: o `rfd` pela porta dos diálogos modais (que declara o congelamento) e a porta
-/// única de abrir fora (`ph2d_app_host::open`: links da web; ficheiros só do temporário).
-pub struct System;
+/// O mundo real: o `rfd` pela porta dos diálogos modais (que declara o congelamento), a porta
+/// única de abrir fora (`ph2d_app_host::open`: links da web; ficheiros só do temporário) e as
+/// imagens do projecto.
+pub struct System<'a>(pub Option<&'a ph2d_asset::AssetDb>);
 
-impl World for System {
+impl World for System<'_> {
+    fn project_image(&mut self, asset: [u8; 32]) -> Option<Vec<u8>> {
+        crate::bg::project::file_bytes(self.0?, asset)
+    }
+
     fn pick_files(&mut self) -> Option<Vec<PathBuf>> {
         let dialog = rfd::FileDialog::new().set_title(tr("kanban.back.attach_computer"));
         ph2d_app_host::modal::pick_files(dialog)

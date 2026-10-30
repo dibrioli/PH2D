@@ -35,7 +35,7 @@ impl crate::App {
             && let Some(h) = g.hero_screen.as_mut()
         {
             ph2d_app_board::io::service(h, Some(g.surface.gpu()), &mut g.text_system);
-            ph2d_app_kanban::service(h);
+            ph2d_app_kanban::service(h, &g.asset_db);
             // W23 — o que um BOTÃO copiou (o link do quadro, do cartão) sai a cada imagem, não só depois de uma tecla.
             ph2d_app_host::clipboard::hand_over(&mut h.store, g.clipboard.as_mut());
         }

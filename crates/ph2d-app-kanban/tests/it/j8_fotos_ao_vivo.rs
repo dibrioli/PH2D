@@ -74,7 +74,7 @@ fn j8_foto_reconectar_e_parar_de_partilhar() {
         ate(&mut a, &mut b, "a Bia vê o fim", |_, b| {
             b.docs().probe_share(deles.0).0 == "Off"
         });
-        ph2d_app_kanban::service(&mut b.hero);
+        ph2d_app_kanban::service(&mut b.hero, &ph2d_asset::AssetDb::new());
         b.quadros(2);
         assert_eq!(
             b.hero.documents.told(),

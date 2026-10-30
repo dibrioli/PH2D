@@ -86,6 +86,19 @@ pub(crate) fn with_index<R>(f: impl FnOnce(&AssetIndex) -> R) -> R {
     CURRENT.with(|c| f(&c.borrow()))
 }
 
+/// ⭐ As IMAGENS do índice publicado (a mesma lista que a grade mostra), para outro consumidor — a
+/// gaveta do fundo do Kanban. O índice só se publica com quem o lê aberto.
+#[must_use]
+pub fn published_images() -> Vec<ph2d_asset_index::AssetEntry> {
+    with_index(|ix| {
+        ix.entries()
+            .iter()
+            .filter(|e| e.kind() == ph2d_asset_index::AssetKind::Texture)
+            .cloned()
+            .collect()
+    })
+}
+
 /// Alguém já publicou um índice nesta sessão?
 pub(crate) fn is_published() -> bool {
     PUBLISHED.with(std::cell::Cell::get)

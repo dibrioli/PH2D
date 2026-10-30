@@ -283,7 +283,7 @@ fn foto_tutorial_parte_10_importar_e_exportar() {
                 .apply_event(WidgetEvent::Click(KanbanDocs::CMD_IMPORT))
         );
         m.quadros(2);
-        ph2d_app_kanban::service(&mut m.hero);
+        ph2d_app_kanban::service(&mut m.hero, &ph2d_asset::AssetDb::new());
         foto(&mut m, &format!("10_2_{tag}"));
         // 10.3 — File → «Export Kanban…» → CSV: o aviso no topo.
         m.tecla(BoardKey::Escape, sem(), None);
@@ -296,7 +296,7 @@ fn foto_tutorial_parte_10_importar_e_exportar() {
                 .apply_event(WidgetEvent::Click(KanbanDocs::CMD_EXPORT))
         );
         m.quadros(2);
-        ph2d_app_kanban::service(&mut m.hero);
+        ph2d_app_kanban::service(&mut m.hero, &ph2d_asset::AssetDb::new());
         m.quadros(2);
         println!("aviso: {:?}", m.hero.documents.told());
         let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());

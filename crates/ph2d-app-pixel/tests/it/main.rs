@@ -10,4 +10,5 @@ mod paleta;
 mod pontas;
 mod quadros;
 mod selecao;
+mod sobreviventes;
 mod viva;

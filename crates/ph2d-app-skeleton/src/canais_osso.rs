@@ -1,14 +1,16 @@
 //! ⭐⭐ **A família OSSO** (F40): [`publicar`]/[`aplicar`] o comprimento, a força e os segmentos do
 //! `Bone` (pelas cercas do painel), e o losango do painel ([`CAMPOS`], [`marcas`], [`clique`]); as
-//! alças são `PropKind::BoneBend*`. Sem driver de pré-visualização, como as alças (handoff F40).
+//! alças são `PropKind::BoneBend*`. A curva é pré-visualização por campo (`FieldDrive`).
 
 use std::collections::BTreeMap;
 
 use ph2d_ecs::canal::familia::OSSO;
+use ph2d_ecs::canal_constraint as c;
 use ph2d_ecs::canal_osso as o;
 use ph2d_ecs::{CanaisEscritos, CanaisLidos, Entity, FieldKey, SimWorld};
 use ph2d_editor_core::ids as painel;
 use ph2d_editor_core::{NodeId, widget::key_mark::KeyMark};
+use ph2d_preview_drive::PreviewDrive;
 use ph2d_skeleton_ecs::Bone;
 use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 
@@ -80,8 +82,18 @@ pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
     }
 }
 
-/// ⭐ **Aplica ao osso o que a curva mandou neste quadro** e regista o eco; `true` se mudou.
-pub fn aplicar(sim: &mut SimWorld) -> bool {
+/// A chave do registo (`slot_in`) de `campo`.
+const fn chave(campo: u16) -> &'static str {
+    match campo {
+        o::FORCA => "strength",
+        o::SEGMENTOS => "segments",
+        _ => "length",
+    }
+}
+
+/// ⭐ **Aplica ao osso o que a curva mandou neste quadro**, regista o eco e declara a escrita à
+/// pré-visualização POR CAMPO (`campo_do_osso`): o undo e o save fotografam o autorado.
+pub fn aplicar(sim: &mut SimWorld, drive: &mut PreviewDrive) -> bool {
     let Some(escritas) =
         (sim.world_mut().get_resource_mut::<CanaisEscritos>()).map(|mut w| w.drenar(OSSO))
     else {
@@ -96,12 +108,15 @@ pub fn aplicar(sim: &mut SimWorld) -> bool {
         let Some(mut os) = sim.world_mut().get_mut::<Bone>(e) else {
             continue;
         };
-        let antes = ler(&os, kk.campo);
+        let was = *os;
         escrever(&mut os, kk.campo, v);
-        if let Some(ficou) = ler(&os, kk.campo) {
-            mudou |= antes != Some(ficou);
+        let now = *os;
+        if let Some(ficou) = ler(&now, kk.campo) {
             ecos.push((b, kk, v, ficou));
         }
+        mudou |= was != now;
+        let ch = [chave(kk.campo)];
+        ph2d_timeline_preview::declara_osso(sim.world(), e, &was, &now, &ch, drive);
     }
     let w = sim.world_mut();
     let mut lidos = w.get_resource_or_insert_with(CanaisLidos::default);
@@ -111,10 +126,27 @@ pub fn aplicar(sim: &mut SimWorld) -> bool {
     mudou
 }
 
+/// ⭐ **Os números da ÂNCORA** → o campo do item dela na família CONSTRAINT (pelo `Item::id`).
+pub const ANCORA: &[(u16, NodeId)] = &[
+    (c::FORCA, painel::VECTOR_BONE_IK_MIX),
+    (c::SUAVIDADE, painel::VECTOR_BONE_IK_SOFTNESS),
+    (c::CORRENTE, painel::VECTOR_BONE_IK_CHAIN),
+    (c::DESVIO, painel::VECTOR_BONE_IK_OFFSET),
+];
+
 /// O canal que o campo `id` do painel mostra.
 #[must_use]
 pub fn canal_do_campo(id: NodeId) -> Option<PropKind> {
     CAMPOS.iter().find(|&&(_, n)| n == id).map(|&(p, _)| p)
+}
+
+/// As linhas do osso `e`: [`CAMPOS`] e, com âncora, as [`ANCORA`] sobre o item dela.
+fn linhas(sim: &SimWorld, e: u64) -> Vec<(PropKind, NodeId)> {
+    let item = ph2d_constraints_ecs::ancora_de(sim.world(), Entity::from_bits(e)).map(|a| a.0);
+    let ancora = ANCORA
+        .iter()
+        .filter_map(|&(f, n)| Some((PropKind::Field(c::chave(f, item?)), n)));
+    CAMPOS.iter().copied().chain(ancora).collect()
 }
 
 /// ⭐ **O mapa do quadro** para os números do osso escolhido em `sel`.
@@ -136,8 +168,8 @@ pub fn marcas(
         Forca::Chave => KeyMark::Chave,
         Forca::Mudado => KeyMark::Mudado,
     };
-    (CAMPOS.iter())
-        .map(|&(p, n)| (n, marca(lig.estado(&[p], &valor).0)))
+    (linhas(sim, e).into_iter())
+        .map(|(p, n)| (n, marca(lig.estado(&[p], &valor).0)))
         .collect()
 }
 
@@ -154,10 +186,11 @@ pub fn clique(
     valor: impl Fn(u64, PropKind) -> Option<f32>,
     autorar: impl Fn(u64, PropKind) -> Option<TimelineIntent>,
 ) -> Vec<TimelineIntent> {
-    let (Some(p), Some(e)) = (
-        campos.iter().find_map(|&n| canal_do_campo(n)),
-        crate::bone_gesture::selected_bone(sim, sel.iter().copied()),
-    ) else {
+    let Some(e) = crate::bone_gesture::selected_bone(sim, sel.iter().copied()) else {
+        return Vec::new();
+    };
+    let ls = linhas(sim, e);
+    let Some(&(p, _)) = ls.iter().find(|(_, n)| campos.contains(n)) else {
         return Vec::new();
     };
     ph2d_timeline::clique_no_grupo(doc, &[p], &[e], inst, lidos, valor, autorar)

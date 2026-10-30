@@ -157,12 +157,6 @@ pub fn grabbed_the_joint(
     corpo(sim, bits).is_some_and(|pts| {
         let a = pts[0];
         // ⚠️ O raio é o da BOLINHA DESENHADA, pela porta única
-        // ([`ph2d_skeleton_render::joint_radius_px`]): são duas perguntas — *acertei o osso?* e
-        // *acertei a junta DELE?* — mas a bolinha que o dedo procura tem de ser exactamente a
-        // que o olho vê, senão o realce acende num sítio e o clique pega noutro.
-        //
-        // ⚠️ **O comprimento entra em píxeis de TELA**, que é onde a lei da bolinha vive: o
-        // `px_to_world` é a régua, e dividir por ele é o que leva o osso do mundo para lá.
         (a[0] - world[0]).hypot(a[1] - world[1])
             <= ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world
     })
@@ -191,11 +185,6 @@ pub fn hover(
 ) -> Option<ph2d_skeleton_render::BoneHover> {
     use ph2d_skeleton_render::{BoneHover, BonePart};
     // ⭐⭐⭐ **O PINCEL DE PESO não agarra osso nenhum, e por isso não REALÇA nenhum.**
-    //
-    // ⛔⛔ Sem esta linha ele caía no ramo das alças, e o artista veria a alça da força e as
-    // paredes do limite acenderem-se sob o dedo num verbo cujo press **nunca** as honra — *uma
-    // alça agarrável onde nada acontece é pior que uma alça ausente*, que é a lei que o próprio
-    // comentário abaixo já escreve para o caso simétrico.
     if action == ph2d_tool_bone::BoneAction::Weight {
         return None;
     }
@@ -206,20 +195,6 @@ pub fn hover(
         });
     }
     // ⭐⭐⭐ **AS TRÊS ALÇAS DO OSSO EM FOCO COMPETEM POR PROXIMIDADE, e não por ordem.**
-    //
-    // São a alça da FORÇA (o quadrado na borda da mancha) e as DUAS PAREDES do limite de ângulo (os
-    // triângulos nas pontas do arco). Todas se desenham só para o osso em foco, então o dedo faz
-    // exactamente a mesma pergunta — ⛔ uma alça agarrável onde nada está desenhado é pior que uma
-    // alça ausente.
-    //
-    // ⚠️⚠️ **A 1.ª redacção testava-as por ORDEM (força, depois paredes) e o gate apanhou-a:** com
-    // `strength ≈ 1` e uma parede perto de 90° as duas caem a menos de um dedo uma da outra, e a
-    // parede ficava **inalcançável** — o artista via o triângulo e agarrava o quadrado. Reordenar
-    // só trocaria quem fica inalcançável.
-    //
-    // ⇒ **ganha a mais PERTO do ponteiro.** É determinístico, não tem lado arbitrário, e é a única
-    // regra que não escolhe uma vítima. As alças vivem FORA do eixo do osso, logo elas continuam a
-    // vir antes do corpo: se o corpo ganhasse, um osso vizinho largo engoliria a alça deste.
     if let Some(f) = focused {
         let mut alcas: Vec<([f64; 2], BonePart)> = Vec::new();
         if let Some((r, a, b)) = ph2d_skeleton_live::skin_live::influence_region(sim, f)
@@ -232,15 +207,6 @@ pub fn hover(
             .map(|(p, q)| ((p[0] - world[0]).hypot(p[1] - world[1]), q))
             .collect::<Vec<_>>();
         // ⭐⭐⭐ **A PAREDE INTEIRA é agarrável, e não só o triângulo na ponta dela.**
-        //
-        // ⛔⛔ **Report do dono (2026-09-08): *«não consigo mover os gizmos dos ângulos»*.** Depois
-        // de a alça sair para fora do alcance do osso, o único alvo ficou a `17 px` ALÉM da borda
-        // do setor — e é a borda do setor que se lê como *«a parede»*. O artista mirava no que via
-        // e não havia alvo nenhum ali: um triângulo de `5 px` a `17 px` do sítio para onde a mão
-        // vai. *Um alvo que não está onde a coisa PARECE estar é um alvo ausente.*
-        //
-        // ⇒ o alvo é o **SEGMENTO** do vértice até a alça, que é exactamente o traço desenhado.
-        // Ele é grande, está debaixo do que o artista vê, e passa pelo triângulo por construção.
         if let Some(arc) = crate::bone_limit::arc(sim, Entity::from_bits(f), px_to_world) {
             for (e, q) in [
                 (arc.handle_min, BonePart::LimitMin),
@@ -253,15 +219,6 @@ pub fn hover(
             }
         }
         // ⭐⭐⭐ **AS DUAS ALÇAS DE CURVATURA, na mesma competição por proximidade.**
-        //
-        // ⚠️ **Elas só entram onde são DESENHADAS** — o [`ph2d_skeleton_live::skin_live::bend_handles`]
-        // devolve `None` num osso sem segmentos, e é a mesma porta que o overlay chama. *Uma alça
-        // agarrável onde nada está pintado é pior que uma alça ausente*, e o contrário — pintada e
-        // não agarrável — foi o report *«não consigo mover os gizmos dos ângulos»* deste módulo.
-        //
-        // ⚠️ **O alvo é a BOLINHA e não a haste**, ao contrário das paredes do limite: a haste da
-        // alça de curvatura nasce na junta e na ponta, que já são alvos com outros verbos, e um
-        // segmento agarrável por cima delas roubaria os dois.
         if let Some(([inn, out], _)) = ph2d_skeleton_live::skin_live::bend_handles(sim, f) {
             for (p, q) in [(inn, BonePart::BendIn), (out, BonePart::BendOut)] {
                 perto.push(((p[0] - world[0]).hypot(p[1] - world[1]), q));
@@ -278,13 +235,6 @@ pub fn hover(
             .into_iter()
             .filter(|&(d, q)| {
                 // ⛔⛔ **A alça de CURVATURA é a única que ignora o `d_osso`, e é obrigatório:** no
-                // ponto NEUTRO ela está **em cima do eixo** (é o ponto de controlo no terço), logo
-                // `d ≈ d_osso ≈ 0` e a comparação estrita tornava-a **inalcançável no único estado
-                // em que todo osso nasce**. *Uma alça que só se agarra depois de já ter sido
-                // movida não se agarra nunca.*
-                //
-                // ⇒ em troca ela paga um raio APERTADO ([`BEND_HIT_PX`]), que é o que deixa o
-                // resto do osso a executar o verbo de girar.
                 let curvatura = matches!(q, BonePart::BendIn | BonePart::BendOut);
                 let raio = if curvatura { BEND_HIT_PX } else { BONE_HIT_PX };
                 d <= raio * px_to_world && (curvatura || d < d_osso)
@@ -295,15 +245,6 @@ pub fn hover(
         }
     }
     // ⭐⭐⭐ **A ÂNCORA vem ANTES do [`hit`], e a razão é geométrica:** ela pode estar longe de todo
-    // osso (fora de alcance, ou porque o artista a arrastou para lá), e o `hit` só devolve um osso
-    // quando o ponteiro está a `BONE_HIT_PX` do **segmento**. Testá-la depois tornaria a alça
-    // inalcançável exactamente quando ela mais se distingue da ponta.
-    //
-    // ⭐⭐⭐ **E ela é um ANEL, não um disco** (report do dono, 2026-09-07: *«o losango do IK e o
-    // círculo do outro osso ficam sobrepostos»*). Uma âncora criada no MEIO de uma corrente nasce
-    // em cima da junta do osso seguinte — dois alvos concêntricos com verbos diferentes. A regra é
-    // a que ele propôs: **por fora da bolinha pega a ÂNCORA, por dentro pega o osso**, e é o furo
-    // no meio deste teste que deixa o clique de dentro chegar ao [`hit`] lá abaixo.
     if let Some((b, ..)) = crate::goal::anchors(sim)
         .into_iter()
         .find(|&(bits, a, o, p)| {

@@ -23,13 +23,13 @@ fn a_curva_escreve_o_osso_pelas_cercas_do_painel() {
     manda(&mut sim, b, o::COMPRIMENTO, 42.0);
     manda(&mut sim, b, o::FORCA, 2.5);
     manda(&mut sim, b, o::SEGMENTOS, 3.6);
-    assert!(aplicar(&mut sim));
+    assert!(aplicar(&mut sim, &mut PreviewDrive::default()));
     let os = osso(&sim, b);
     assert!((os.length - 42.0).abs() < 1e-6, "{}", os.length);
     assert!((os.strength - 2.5).abs() < 1e-6, "{}", os.strength);
     assert_eq!(os.segments, 4);
     manda(&mut sim, b, o::COMPRIMENTO, -5.0);
-    aplicar(&mut sim);
+    aplicar(&mut sim, &mut PreviewDrive::default());
     assert!(osso(&sim, b).length.abs() < f64::EPSILON);
 }
 
@@ -95,8 +95,65 @@ fn o_clique_grava_no_osso_escolhido() {
         "controlo: com osso grava"
     );
     assert!(clica(&[outro]).is_empty());
-    assert_eq!(
-        marcas(&doc, &sim, &[osso], inst, |_, _| Some(1.0)).len(),
-        CAMPOS.len()
+    let mix = |sim: &SimWorld| {
+        let autorar = |_: u64, _: PropKind| Some(TimelineIntent::BeginEdit);
+        let campo = [painel::VECTOR_BONE_IK_MIX];
+        clique(
+            &doc,
+            &campo,
+            sim,
+            &[osso],
+            inst,
+            |_| Vec::new(),
+            |_, _| Some(1.0),
+            autorar,
+        )
+    };
+    assert!(mix(&sim).is_empty(), "sem âncora a linha não existe");
+    let ik = ph2d_constraints::Ik::default();
+    let e = Entity::from_bits(osso);
+    let id = ph2d_constraints_ecs::por_ik(sim.world_mut(), e, ph2d_ecs::StableId::NONE, ik, 1.0);
+    assert!(!mix(&sim).is_empty(), "a âncora grava no item {id}");
+    let m = marcas(&doc, &sim, &[osso], inst, |_, _| Some(1.0));
+    assert_eq!(m.len(), CAMPOS.len() + ANCORA.len());
+}
+
+/// ⭐⭐ **A curva é pré-visualização** (F40): com o comprimento (OSSO) e uma alça (`BoneBend`)
+/// conduzidos sobre valores postos à mão, o `substitute` (o que o undo e o save fotografam) lê o
+/// AUTORADO, e o `restore` devolve o vivo.
+#[test]
+fn o_substitute_le_o_autorado_e_o_restore_o_vivo() {
+    let (mut sim, b) = cena();
+    let e = Entity::from_bits(b);
+    let mao = |os: &mut Bone| {
+        os.length = 5.0;
+        os.curve.inn[1] = 0.25;
+    };
+    mao(&mut sim.world_mut().get_mut::<Bone>(e).expect("osso"));
+    let mut drive = PreviewDrive::default();
+    manda(&mut sim, b, o::COMPRIMENTO, 42.0);
+    assert!(aplicar(&mut sim, &mut drive));
+    let was = osso(&sim, b);
+    sim.world_mut().get_mut::<Bone>(e).expect("osso").curve.inn[1] = 0.75;
+    let antes = ph2d_timeline_preview::BoundBefore {
+        entity: e,
+        pose: None,
+        alpha: None,
+        morph_t: None,
+        joint: None,
+        bone: Some(was),
+    };
+    ph2d_timeline_preview::declare_timeline_writes(sim.world(), &[antes], &mut drive);
+    let vivo = drive.substitute(&mut sim);
+    let autorado = osso(&sim, b);
+    assert!((autorado.length - 5.0).abs() < 1e-9, "{}", autorado.length);
+    assert!(
+        (autorado.curve.inn[1] - 0.25).abs() < 1e-9,
+        "{}",
+        autorado.curve.inn[1]
     );
+    PreviewDrive::restore(&mut sim, &vivo);
+    let de_novo = osso(&sim, b);
+    assert!((de_novo.length - 42.0).abs() < 1e-9, "{}", de_novo.length);
+    assert!((de_novo.curve.inn[1] - 0.75).abs() < 1e-9);
 }

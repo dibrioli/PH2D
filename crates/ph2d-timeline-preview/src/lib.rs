@@ -40,7 +40,7 @@
 //! campo, e a curva pode keyar qualquer um dos parâmetros dele.
 
 use ph2d_ecs::{Entity, Transform, World};
-use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
+use ph2d_preview_drive::{Driven, Driver, FieldRef, PreviewDrive};
 use ph2d_timeline::TimelineDoc;
 
 /// O que uma entidade keyada tinha **antes** do `apply` — os quatro factos que as curvas escrevem.
@@ -53,6 +53,60 @@ pub struct BoundBefore {
     pub alpha: Option<f32>,
     pub morph_t: Option<f32>,
     pub joint: Option<ph2d_physics_ecs::PhysicsJoint>,
+    /// F40: o `Bone` — as quatro alças (`PropKind::BoneBend*`) vão ao ledger POR CAMPO.
+    pub bone: Option<ph2d_skeleton_ecs::Bone>,
+}
+
+/// As chaves (`slot_in`) das quatro alças do `Bone`, na ordem `InX, InY, OutX, OutY`.
+pub const CHAVES_DAS_ALCAS: [&str; 4] = [
+    "curve/inn[0]",
+    "curve/inn[1]",
+    "curve/out[0]",
+    "curve/out[1]",
+];
+
+/// ⭐ **O campo `key` do `Bone` para o `FieldDrive`** (F40): a curva que escreve um número do osso é
+/// pré-visualização POR CAMPO — o undo e o save fotografam o autorado, e uma edição à mão de outro
+/// campo do mesmo osso não é reposta. As funções do registo saem do `register_skeleton_components`
+/// (a mesma entrada que a shell regista).
+#[must_use]
+pub fn campo_do_osso(key: &'static str) -> FieldRef {
+    static BASE: std::sync::OnceLock<FieldRef> = std::sync::OnceLock::new();
+    let base = *BASE.get_or_init(|| {
+        let mut reg = ph2d_ecs::scene::registry::ComponentRegistry::new();
+        ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+        let e = reg.get_by_name("ph2d::skeleton::Bone");
+        FieldRef::of(e.expect("o Bone está registado"), "")
+    });
+    FieldRef { key, ..base }
+}
+
+/// O valor do campo `key` de um `Bone`, como o registo o lê.
+#[must_use]
+pub fn valor_do_osso(b: &ph2d_skeleton_ecs::Bone, key: &str) -> Option<serde_json::Value> {
+    let mut v = serde_json::to_value(b).ok()?;
+    ph2d_ecs::scene::property::slot_in(&mut v, key).cloned()
+}
+
+/// Declara ao `FieldDrive` cada campo `chaves` do osso `e` que mudou entre `was` e `now`.
+pub fn declara_osso(
+    world: &World,
+    e: Entity,
+    was: &ph2d_skeleton_ecs::Bone,
+    now: &ph2d_skeleton_ecs::Bone,
+    chaves: &[&'static str],
+    drive: &mut PreviewDrive,
+) {
+    if ph2d_ecs::is_transient(world, e) {
+        return;
+    }
+    for &k in chaves {
+        if let (Some(a), Some(d)) = (valor_do_osso(was, k), valor_do_osso(now, k))
+            && a != d
+        {
+            drive.fields.conduzido_pela_curva(e, campo_do_osso(k), a, d);
+        }
+    }
 }
 
 /// O estado de cada entidade que o documento anima — **uma entrada por entidade**, mesmo que ela
@@ -81,6 +135,7 @@ pub fn state_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<BoundBefore> {
                 alpha: world.get::<ph2d_render::Sprite>(entity).map(|s| s.tint[3]),
                 morph_t: world.get::<ph2d_ecs::VecMorph>(entity).map(|m| m.t),
                 joint: world.get::<ph2d_physics_ecs::PhysicsJoint>(entity).copied(),
+                bone: world.get::<ph2d_skeleton_ecs::Bone>(entity).copied(),
             })
         })
         .collect()
@@ -137,6 +192,9 @@ pub fn declare_timeline_writes(world: &World, before: &[BoundBefore], drive: &mu
         ) && was != now
         {
             drive.driven(e, Driven::JointParams(was), Driven::JointParams(now));
+        }
+        if let (Some(was), Some(now)) = (b.bone, world.get::<ph2d_skeleton_ecs::Bone>(e)) {
+            declara_osso(world, e, &was, now, &CHAVES_DAS_ALCAS, drive);
         }
     }
 }

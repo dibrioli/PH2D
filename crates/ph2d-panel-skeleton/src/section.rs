@@ -422,7 +422,7 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
     for (id, label, step, _valor) in campos_da_ancora().unwrap_or_else(|| {
         unreachable!("a âncora existe: o `let Some(..) = current_bone_ik()` acima devolveu cedo")
     }) {
-        y = r.labeled_number_field(label, id, step, y);
+        y = crate::section_campos::linha_com_losango(r, label, id, step, y);
     }
     // ⛔ **E o lado da dobra sai com o resto no apontar:** não há cotovelo num osso só, logo não há
     // lado para dobrar — medido inerte na `sonda_do_apontar_tests`.

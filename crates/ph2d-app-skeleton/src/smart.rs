@@ -362,15 +362,6 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
             continue;
         };
         // ⭐⭐⭐ **UM CONTROLO NÃO PERCORRE A ACÇÃO QUE ESTÁ ABERTA** — ali o artista está a
-        // GRAVÁ-LA, e não a vê-la correr. É a lei do Moho: dentro de uma *smart bone action* o
-        // relógio é o do editor, não o ângulo do osso.
-        //
-        // ⛔⛔ **Sem isto a feature é inutilizável, e não é uma nicety:** os dois escrevem o mesmo
-        // objecto no mesmo quadro e o controlo corre DEPOIS do passe da timeline ⇒ arrastar o
-        // playhead não move nada (o ângulo repõe sempre o mesmo instante) e a pose que o artista
-        // acabou de pôr é reposta antes de ele a ver. ⚠️ E o autokey corre ainda mais tarde: com o
-        // objecto seleccionado, ele leria a saída do próprio controlo como *«o artista mexeu»* e
-        // cunharia chaves a partir dela — um laço fechado.
         if i == doc.active_index() {
             if log {
                 eprintln!(
@@ -382,26 +373,12 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
             continue;
         }
         // ⚠️⚠️ **`clip_end_seconds`, e NUNCA o `duration()` cru.** Um clip acabado de criar nasce
-        // com `duration = 0` e o artista grava as chaves sem lhe tocar: multiplicar por esse zero
-        // deixa a acção presa no instante `0` para todo ângulo — o controlo pinta, o gate de
-        // escrita conta `1` e nada se move. **Medido** ao construir este passe (`dur = 0.0`,
-        // `feitas = 1`, `x = 0`).
-        //
-        // ⭐ A porta certa já existia e responde à pergunta inteira: ela lê o override de duração,
-        // senão a extensão das CHAVES, e trata o clip só-de-expressão. *A grandeza crua e a
-        // pergunta têm nomes parecidos e respostas diferentes.*
         conduzidas.extend(driven_by(sim.world(), doc, &sb, e));
         let dur = doc.clip_end_seconds(i);
         let quando = ph2d_skeleton::action_time(t, sb.from, sb.to, dur);
         let escritas = ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);
         if log {
             // ⭐⭐⭐ **A LINHA QUE RESPONDE A PERGUNTA INTEIRA** — report do dono (2026-09-08:
-            // *«tudo configurado e a animação não rodou»*). ⚠️ Um controlo mudo tem **seis** causas
-            // que se leem exactamente igual de fora, e a linha nomeia todas de uma vez: o ângulo,
-            // a faixa, a duração (um clip sem chaves dá `0` e prende a acção no instante zero), o
-            // instante derivado, e **quantas** propriedades a acção conseguiu escrever contra
-            // quantas ela TEM. *Sem a segunda metade dessa razão, `0 escritas` não distingue «o
-            // clip está vazio» de «o objecto que ele anima já não existe».*
             let tracks = doc.clips()[i].clip.tracks().len();
             eprintln!(
                 "[bone] osso inteligente {e:?}: accao \"{}\" (clip {i}, activo {}) | rot {:+.2}° \
@@ -432,17 +409,6 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
     // ⭐ E a declaração é UMA, no fim: o ledger compara o antes de todos com o depois de todos.
     ph2d_timeline_preview::declare_timeline_writes(sim.world(), &antes, preview);
     // ⭐⭐⭐ **E OS CONTROLOS DIZEM QUE AINDA ESTÃO A CONDUZIR, mesmo com o valor parado.**
-    //
-    // ⛔⛔ **Report do dono (2026-09-09):** *«Remove Smart Bone não devolve o objeto animado à
-    // posição inicial»*. Medido: com o osso parado, o ledger largava o objecto **no quadro 1** —
-    // o `declare_timeline_writes` só declara quem MUDOU, e um controlo em repouso escreve o mesmo
-    // valor todo quadro ⇒ a `settle` lia a constância como *«o motor largou»* e promovia a
-    // pré-visualização a documento.
-    //
-    // ⚠️ **A lei do «só quem mudou» está CERTA para a timeline** (uma reprodução que pára tem de
-    // deixar o valor virar documento — é isso que faz *«desfazer a corrida»* ser um passo). O que
-    // muda aqui é a ESPÉCIE do motor: um controlo é **persistente**, e para ele *«não mudou»* e
-    // *«acabou»* são factos diferentes com a mesma forma.
     for e in conduzidas {
         for d in ph2d_timeline_preview::DRIVERS {
             preview.still_driving(e, d);

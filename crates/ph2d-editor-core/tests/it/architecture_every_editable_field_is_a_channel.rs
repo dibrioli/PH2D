@@ -302,8 +302,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "VECTOR_BONE_CURVE_IN_Y",
             "VECTOR_BONE_CURVE_OUT_X",
             "VECTOR_BONE_CURVE_OUT_Y",
+            "VECTOR_BONE_IK_MIX",
+            "VECTOR_BONE_IK_SOFTNESS",
+            "VECTOR_BONE_IK_CHAIN",
+            "VECTOR_BONE_IK_OFFSET",
         ],
-        "os números do osso (`campos_do_osso`): família OSSO e as alças `PropKind::BoneBend*` (F40)",
+        "os números do osso (`campos_do_osso`: família OSSO e as alças `PropKind::BoneBend*`) e da \
+         âncora (`campos_da_ancora`: o item dela na família CONSTRAINT) (F40)",
     ),
     (
         "ph2d-panel-inspector",

@@ -24,11 +24,13 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// outra vez a 11/10 pela mesma caixa com o filme VAZIO (re-molhar tinta seca leva a cor do assentado, não a
 /// cor guardada de um filme sem massa — `assenta::tests::re_molhar_tinta_seca_leva_a_cor_do_assentado`); e
 /// outra vez a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada desenha-se com a lei
-/// SECA — as três cenas com tinta ainda molhada na foto mudaram; as opções continuam a não mexer um byte).
+/// SECA — as três cenas com tinta ainda molhada na foto mudaram; as opções continuam a não mexer um byte); e o S
+/// inclinado outra vez a 30/10 pela caixa das tintas na COR que se compõe (BUGS #53, `cd07881b37`: a camada guarda o
+/// branco como transparência — sobre o branco ≤ 1 nível, 1 297 de 3 840 000 canais).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
     ("S", None, 0x0c40_166e_7ff6_349e),
-    ("S", Some(4), 0x22c0_2335_8ed1_8846),
-    ("S", Some(8), 0xcc1f_3e85_9945_2d2f),
+    ("S", Some(4), 0x1955_ff12_6aed_e58d),
+    ("S", Some(8), 0x3479_68b2_db28_97d7),
     ("bancada", None, 0xd2b1_6237_cdc7_cf56),
     ("bancada", Some(4), 0x35ba_eaf8_e89b_b371),
     ("bancada", Some(8), 0xca21_be05_b952_3af7),

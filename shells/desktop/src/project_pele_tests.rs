@@ -49,9 +49,8 @@ fn um_v210_abre_a_pele_sem_comprimento() {
     let antiga = pele_v210();
     // ⛔ CONTROLO: o tipo vivo não lê a forma antiga — sem o degrau, o blob ficava ilegível.
     assert!(postcard::from_bytes::<SkinBind>(&antiga).is_err());
-    // ⚠️ O degrau regista-se ao montar o registo, o que o app faz ao abrir a JANELA
-    // (`build_initial_state`) — o `headless_app` não a abre, logo monta-se aqui como o arranque.
-    let _ = crate::init::build_component_registry();
+    // Sem montar o registo à mão: o `headless_app` não abre a janela, e o load tem de garantir o
+    // degrau sozinho (era o defeito: um load sem janela deixava a pele por migrar).
     let blob = ph2d_asset::ComponentBlob {
         type_id: ph2d_ecs::scene::registry::stable_type_id(SKIN_TYPE_NAME),
         data: antiga,

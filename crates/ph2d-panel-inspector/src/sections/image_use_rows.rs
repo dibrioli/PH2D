@@ -129,18 +129,26 @@ pub(crate) fn paint_image_use(
                 sec,
             );
             match anim {
-                Some((an, selected)) => super::anim::paint_anim_section(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    x,
-                    w,
-                    y,
-                    an,
-                    selected,
-                ),
+                Some((an, selected)) => {
+                    // Fora da moldura `begin_section` (mora na Visibility, sem pega): o cabeçalho regista-se aqui
+                    // ou a seta pinta-se morta.
+                    hit_index.register(
+                        ph2d_editor_core::ids::INSP_LIVE_ANIM_SECTION,
+                        Rect::new(x, y, w, super::anim::anim_header_h()),
+                    );
+                    super::anim::paint_anim_section(
+                        scene,
+                        text_system,
+                        theme,
+                        hit_index,
+                        store,
+                        x,
+                        w,
+                        y,
+                        an,
+                        selected,
+                    )
+                }
                 None => y,
             }
         }

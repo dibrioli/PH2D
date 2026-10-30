@@ -392,6 +392,11 @@ fn advanced_group(
     adv.fecha(store, scene, hit_index, cur_y)
 }
 
+/// A banda do cabeçalho da §11 — a mesma para a moldura e para quem a pinta dentro de outra secção.
+pub(crate) fn anim_header_h() -> f32 {
+    TypeToken::Md.px() + Spacing::Md.px() // LITERAL-PX-OK: banda do cabeçalho
+}
+
 /// Pinta a §11 e devolve o `y` a seguir a ela.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_anim_section(
@@ -406,7 +411,7 @@ pub(crate) fn paint_anim_section(
     info: &InspectorAnimInfo,
     selected: usize,
 ) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
+    let header_h = anim_header_h();
     let title = if info.rows.is_empty() {
         String::from(tr("component.field.sprite_animator.0"))
     } else {

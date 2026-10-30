@@ -321,3 +321,56 @@ fn largura_pede_a_accao() {
         }]
     );
 }
+
+/// ⭐ A seta da Animation de uma ANIMADA dobra pelo despacho do produto (Down/Up no cabeçalho): a lista sai e
+/// volta. A secção mora dentro da Visibility, fora da moldura `begin_section` — sem registar o cabeçalho, a seta
+/// pinta-se e o clique cai no vazio.
+#[test]
+fn a_seta_da_animation_de_uma_animada_dobra() {
+    use ph2d_editor_core::ids::INSP_LIVE_ANIM_SECTION;
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    let info = com(InspectorImageUse::Animated, [4, 1], InspectorDraw::Fixed);
+    // O app inteiro: a dobra das secções vivas declara-se no `pre_populate` do ecrã, não no painel.
+    let mut host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    publica(&info);
+    let pinta = |h: &mut MockPanelHost, st: &mut InspectorState| {
+        h.settle_section_folds();
+        h.paint::<InspectorPanel>(st, Rect::new(0.0, 0.0, 320.0, 3000.0))
+            .into_iter()
+            .filter(|(_, r)| r.w > 0.0 && r.h > 0.0)
+            .collect::<Vec<_>>()
+    };
+    let clica = |h: &mut MockPanelHost, st: &mut InspectorState, t: u128| {
+        let r = pinta(h, st)
+            .into_iter()
+            .find(|(n, _)| *n == INSP_LIVE_ANIM_SECTION)
+            .map(|(_, r)| r)
+            .expect("o cabeçalho da Animation não está no índice de acerto");
+        let ev = |kind, t| PointerEvent {
+            kind,
+            x: r.x + r.w * 0.5,
+            y: r.y + r.h * 0.5,
+            button: PointerButton::Primary,
+            source: PointerSource::Mouse,
+            pressure: 1.0,
+            timestamp_ns: t,
+        };
+        let mut evs = h.dispatch_pointer_event(ev(PointerKind::Down, t));
+        evs.extend(h.dispatch_pointer_event(ev(PointerKind::Up, t + 10_000_000)));
+        for e in evs {
+            h.apply_panel_event::<InspectorPanel>(st, e);
+        }
+    };
+    assert!(tem(&pinta(&mut host, &mut state), INSP_ANIM_ROW[0]));
+    clica(&mut host, &mut state, 1_000_000_000);
+    assert!(
+        !tem(&pinta(&mut host, &mut state), INSP_ANIM_ROW[0]),
+        "o clique na seta não fechou a Animation"
+    );
+    clica(&mut host, &mut state, 3_000_000_000);
+    assert!(
+        tem(&pinta(&mut host, &mut state), INSP_ANIM_ROW[0]),
+        "o segundo clique não reabriu a Animation"
+    );
+}

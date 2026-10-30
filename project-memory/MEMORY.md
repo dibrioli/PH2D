@@ -64,6 +64,7 @@
 - ⭐⭐ [Chave e texto do MESMO tipo é defeito à espera](feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
 - ⛔⛔⛔ [Smoke do Motion = FORMAS + SIMULAÇÃO; fotografe antes](feedback_a_motion_smoke_scene_needs_shapes_and_simulation.md)
 - ⛔ [Smoke ao dono explica o que cada coisa na tela É; cada passo conduzido e fotografado](feedback_a_smoke_for_the_owner_explains_what_each_thing_on_screen_is.md)
+- ⛔ [Imagem ao dono = link CLICÁVEL em markdown, nunca caminho em texto (30/10)](feedback_images_for_the_owner_are_clickable_links.md)
 - ⛔⛔ [NUNCA `spectacle` em `kwin --virtual` (fotografa o ecrã REAL); `import -window`](feedback_spectacle_in_a_virtual_kwin_photographs_the_owners_real_screen.md)
 - ⛔ [Só o Wet Paint evolui (07/10): Digital/Impasto/Watercolor ficam](project_wet_paint_is_the_only_painter_mode_to_evolve_2026_10_07.md)
 - ⭐ [Óleo Real (26/10): o mais importante é relevo, shader, luz e sombra realistas](project_oleo_real_priority_relief_shader_light_2026_10_26.md)

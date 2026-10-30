@@ -10,7 +10,10 @@ fn fontes(dir: &Path, saida: &mut Vec<PathBuf>) {
     for e in entradas.flatten() {
         let p = e.path();
         if p.is_dir() {
-            if p.file_name().is_some_and(|n| n != "target" && n != ".git") {
+            // `vendor/`: código de terceiros (o wgpu-core vendorizado É a implementação do pedido).
+            if p.file_name()
+                .is_some_and(|n| n != "target" && n != ".git" && n != "vendor")
+            {
                 fontes(&p, saida);
             }
         } else if p.extension().is_some_and(|x| x == "rs") {

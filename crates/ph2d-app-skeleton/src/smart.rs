@@ -361,7 +361,7 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
             }
             continue;
         };
-        // ⭐⭐⭐ **UM CONTROLO NÃO PERCORRE A ACÇÃO QUE ESTÁ ABERTA** — ali o artista está a
+        // ⭐⭐⭐ **UM CONTROLO NÃO PERCORRE A ACÇÃO QUE ESTÁ ABERTA** — ali o artista GRAVA-A.
         if i == doc.active_index() {
             if log {
                 eprintln!(
@@ -372,13 +372,13 @@ pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) 
             }
             continue;
         }
-        // ⚠️⚠️ **`clip_end_seconds`, e NUNCA o `duration()` cru.** Um clip acabado de criar nasce
+        // ⚠️⚠️ **`clip_end_seconds`, e NUNCA o `duration()` cru.** Um clip novo tem `duration = 0`.
         conduzidas.extend(driven_by(sim.world(), doc, &sb, e));
         let dur = doc.clip_end_seconds(i);
         let quando = ph2d_skeleton::action_time(t, sb.from, sb.to, dur);
         let escritas = ph2d_timeline::apply_one_clip(sim.world_mut(), doc, i, quando);
         if log {
-            // ⭐⭐⭐ **A LINHA QUE RESPONDE A PERGUNTA INTEIRA** — report do dono (2026-09-08:
+            // ⭐⭐⭐ **A LINHA QUE RESPONDE A PERGUNTA INTEIRA** — as seis causas do controlo mudo.
             let tracks = doc.clips()[i].clip.tracks().len();
             eprintln!(
                 "[bone] osso inteligente {e:?}: accao \"{}\" (clip {i}, activo {}) | rot {:+.2}° \

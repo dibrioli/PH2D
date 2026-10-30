@@ -156,7 +156,7 @@ pub fn grabbed_the_joint(
     };
     corpo(sim, bits).is_some_and(|pts| {
         let a = pts[0];
-        // ⚠️ O raio é o da BOLINHA DESENHADA, pela porta única
+        // ⚠️ O raio é o da BOLINHA DESENHADA (`joint_radius_px`): o clique pega onde o olho vê.
         (a[0] - world[0]).hypot(a[1] - world[1])
             <= ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world
     })
@@ -234,7 +234,7 @@ pub fn hover(
         let melhor = perto
             .into_iter()
             .filter(|&(d, q)| {
-                // ⛔⛔ **A alça de CURVATURA é a única que ignora o `d_osso`, e é obrigatório:** no
+                // ⛔⛔ **A alça de CURVATURA ignora o `d_osso`:** no neutro está no eixo.
                 let curvatura = matches!(q, BonePart::BendIn | BonePart::BendOut);
                 let raio = if curvatura { BEND_HIT_PX } else { BONE_HIT_PX };
                 d <= raio * px_to_world && (curvatura || d < d_osso)
@@ -244,7 +244,7 @@ pub fn hover(
             return Some(BoneHover { bone: f, part });
         }
     }
-    // ⭐⭐⭐ **A ÂNCORA vem ANTES do [`hit`], e a razão é geométrica:** ela pode estar longe de todo
+    // ⭐⭐⭐ **A ÂNCORA vem ANTES do [`hit`]:** longe dos ossos o `hit` não a vê.
     if let Some((b, ..)) = crate::goal::anchors(sim)
         .into_iter()
         .find(|&(bits, a, o, p)| {

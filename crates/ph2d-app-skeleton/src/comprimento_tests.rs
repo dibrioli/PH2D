@@ -82,12 +82,3 @@ fn a_curva_empurra_os_filhos_e_o_undo_ve_o_autorado() {
     PreviewDrive::restore(&mut sim, &vivo);
     assert_empurrado(&sim, ponta, meio, 20.0);
 }
-
-/// ⛔ CONTROLO da lei: sem eixo de onde medir (`l0 = 0`) nada anda — e um osso parado também não.
-#[test]
-fn sem_eixo_nada_empurra() {
-    let (mut sim, pai, ponta, meio) = cena();
-    assert!(empurra_filhos(&mut sim, pai, 0.0, 5.0).is_empty());
-    assert!(empurra_filhos(&mut sim, pai, 10.0, 10.0).is_empty());
-    assert_empurrado(&sim, ponta, meio, 10.0);
-}

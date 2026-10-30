@@ -6,39 +6,15 @@
 //! release→ nasce o osso: origem no press, comprimento e ângulo no arrasto
 //! ```
 //!
-//! ⭐⭐⭐ **O PARENTESCO É UM SÍTIO NA TELA, e não o estado da selecção** (ordem do dono,
-//! 2026-09-09: *«para criar um osso como filho de outro o clique deve acontecer na ponta do osso
-//! pai e o usuário arrasta o mouse definindo tamanho e direção do novo osso»*).
-//!
-//! ⛔⛔ **A lei anterior lia a SELECÇÃO, e isso tornava um gesto legítimo INEXPRIMÍVEL:** com um
-//! osso aceso, todo arrasto nascia colado à ponta dele — logo *«não se pode criar ossos fora da
-//! cadeia»* (o report). Para fazer uma raiz nova era preciso primeiro desmarcar, que é um gesto de
-//! cerimónia que nenhum dos alvos (Spine, Moho, Blender) pede.
-//!
-//! ⇒ hoje a pergunta é **geométrica e local**: a ponta é a porta, e ela está desenhada. Ramificar
-//! do meio de uma corrente — a espinha que dá dois braços — passa a ser o mesmo gesto que
-//! continuar uma, o que na lei antiga exigia escolher o pai na Hierarquia.
-//!
-//! ⚠️ **A pose é LOCAL do pai, e é derivada levando os DOIS pontos ao espaço dele.** Compor ângulos
-//! e comprimentos à mão (`rot − rot_do_pai`, `len / escala_do_pai`) só está certo com um pai
-//! conforme; transformar os pontos está certo com qualquer afim, e é a mesma regra-mãe do pen —
-//! *o que se aponta é MUNDO; o que o documento guarda é LOCAL*.
-//!
-//! ⚠️ **O que o dedo APONTA mora ao lado, em [`crate::bone_pick`]** — o corte é de 2026-09-09 e é
-//! por RESPONSABILIDADE, não por tamanho: aqui *o gesto que faz um osso*, ali *o que o ponteiro
-//! significa*. ⛔ Continuam a ser uma lei só: o [`press`] daqui pergunta ao `hover` de lá, e há gate
-//! a compará-los ponto a ponto nos dois verbos.
+//! O parentesco é um SÍTIO na tela (a ponta do pai), não a selecção (dono 2026-09-09). A pose é
+//! LOCAL do pai, derivada levando os dois pontos ao espaço dele. O que o dedo aponta mora em
+//! [`crate::bone_pick`]; o [`press`] pergunta ao `hover` de lá.
 
 use crate::bone_pick::{BONE_HIT_PX, hover, tip_of};
 use ph2d_ecs::{ChildOf, Entity, RootOrder, SimWorld};
 use ph2d_skeleton_ecs::Bone;
 
-/// **O que o press do modo Osso DECIDE** — a porta única, para a decisão ser observável.
-///
-/// ⚠️ **Ela nasceu de um report** (Enio, 2026-09-06: *"o bind não funciona"*): a decisão vivia
-/// dentro do `input_dispatch`, onde nenhum teste a alcança, e faltava-lhe metade — apontar uma
-/// forma nunca a SELECCIONAVA, então o botão *Bind* (que age sobre a selecção de formas) só sabia
-/// recusar. *Uma decisão que só existe dentro do dispatch é uma decisão que nenhum gate lê.*
+/// **O que o press do modo Osso DECIDE** — a porta única, observável de um teste.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BonePress {
     /// **Transformar:** acertou um osso — selecciona-o e ARMA o verbo que a `part` diz.
@@ -46,13 +22,7 @@ pub enum BonePress {
         bone: u64,
         part: ph2d_skeleton_render::BonePart,
     },
-    /// **Criar:** arma o osso que vai nascer ([`BoneBirth`] diz de onde e de quem é filho) e diz
-    /// que FORMA estava sob o cursor, que é a metade que o *Bind* precisa.
-    ///
-    /// ⛔ **Não há um `Select` ao lado dele.** Ele existiu enquanto a selecção decidia o
-    /// parentesco (*«é assim que se escolhe onde ramificar»*); com a ponta a decidir, um press
-    /// sobre o CORPO de um osso não tem nada de próprio a fazer em *Criar* — e trocar a selecção
-    /// ali arrancaria o artista do verbo em que ele está (a aresta do foco arma *Transform*).
+    /// **Criar:** arma o osso que vai nascer e diz que FORMA estava sob o cursor (para o *Bind*).
     Start {
         birth: BoneBirth,
         pick: Option<ph2d_vec_scene::VecPathId>,
@@ -62,22 +32,12 @@ pub enum BonePress {
     Pick {
         path: Option<ph2d_vec_scene::VecPathId>,
     },
-    /// ⭐⭐⭐ **Peso:** o traço vai pintar a influência do osso aceso sobre esta arte presa.
-    ///
-    /// `alvo` são os bits da coisa que o dedo apanhou — `None` quando ele não caiu em arte presa
-    /// nenhuma, e nesse caso o gesto **não começa** (a recusa é do [`ph2d_skeleton_live::peso_a_mao`],
-    /// que a diz com o nome da entrada que falta).
-    ///
-    /// ⛔ **Ele não toca na selecção.** O sujeito do pincel é o OSSO em foco, e trocar a selecção
-    /// no press arrancaria o artista do osso que ele está a corrigir.
+    /// **Peso:** o traço pinta a influência do osso aceso sobre a arte presa `alvo` (`None` ⇒ o
+    /// gesto não começa). Não toca na selecção.
     Weight { alvo: Option<u64> },
 }
 
-/// ⭐⭐ **O PINCEL DE PESO** — o que o [`press`] precisa de saber para achar a arte sob o dedo.
-///
-/// ⚠️ **Ele viaja como ARGUMENTO e não é lido de um estado global**, e é a mesma razão de o
-/// `action` o ser: *a decisão do press tem de ser observável de um teste*, e um `OnceLock` ali
-/// tornaria o verbo impossível de medir sem montar a shell inteira.
+/// **O pincel de peso** — viaja como argumento para o press ser observável de um teste.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pincel {
     /// O `pixels_per_meter` do projecto — só a mídia IMAGEM o lê.
@@ -87,22 +47,14 @@ pub struct Pincel {
 }
 
 impl Pincel {
-    /// ⚠️ **O pincel de quem NÃO está a pintar peso** — raio nulo ⇒ nenhuma arte é apanhada.
-    ///
-    /// Ele existe para os dois outros verbos e para os gates deles: *um argumento que um braço não
-    /// lê ainda tem de ter um valor que diga isso em voz alta*.
+    /// O pincel de quem NÃO está a pintar peso — raio nulo ⇒ nenhuma arte é apanhada.
     pub const INERTE: Self = Self {
         ppm: 1.0,
         raio: 0.0,
     };
 }
 
-/// ⭐⭐⭐ **O OSSO QUE ESTÁ A NASCER** — de onde ele parte, e de quem é filho.
-///
-/// ⚠️ **Os dois viajam JUNTOS porque são a mesma decisão**, tomada no press e lida no release. A
-/// 1.ª redacção desta wave guardava só a origem e ia buscar o pai à selecção no `Up` — que é
-/// exactamente a lei que o dono mandou tirar, sobrevivendo no outro extremo do gesto. *Um facto
-/// decidido no press e re-derivado no release é duas respostas para a mesma pergunta.*
+/// **O osso que está a nascer** — origem e pai, decididos JUNTOS no press e lidos no release.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoneBirth {
     /// A origem, em MUNDO — a ponta do pai, ou o ponto onde a mão pousou.
@@ -111,12 +63,7 @@ pub struct BoneBirth {
     pub parent: Option<u64>,
 }
 
-/// A decisão do press, sem tocar em nada.
-///
-/// ⭐⭐⭐ **O `action` é o que resolve a ambiguidade do PONTEIRO** (Enio, 2026-09-07: *«do modo como
-/// está fica confuso para o usuário»*). Antes, o mesmo arrasto criava OU posava consoante o que
-/// estava por baixo do cursor — e isso torna inalcançáveis dois gestos legítimos: começar um osso
-/// **em cima** de outro, e posar um osso **sem medo** de criar um por engano.
+/// A decisão do press, sem tocar em nada; o `action` resolve a ambiguidade do ponteiro.
 #[expect(
     clippy::too_many_arguments,
     reason = "os oito sao o que a DECISAO do press precisa, e a alternativa e' a decisao viver \
@@ -133,9 +80,7 @@ pub fn press(
     pincel: Pincel,
 ) -> BonePress {
     use ph2d_tool_bone::BoneAction;
-    // ⭐⭐⭐ **O PESO é o primeiro braço porque ele não pergunta nada ao rig** — o sujeito dele é a
-    // ARTE presa, e o osso vem do foco. ⛔ Cair no `hover` antes disto poria o dedo a competir com
-    // as alças de um osso que este verbo nunca move.
+    // O peso não pergunta nada ao rig: o sujeito é a arte presa.
     if action == BoneAction::Weight {
         return BonePress::Weight {
             alvo: ph2d_skeleton_live::peso_a_mao::pele_sob_o_cursor(
@@ -147,8 +92,7 @@ pub fn press(
             .map(ph2d_ecs::Entity::to_bits),
         };
     }
-    // ⭐⭐⭐ **O clique PERGUNTA AO REALCE** — não é uma segunda varredura que um gate compara com a
-    // primeira: é a MESMA função. O que o artista vê aceso é, por construção, o que ele vai pegar.
+    // O clique pergunta ao realce: o que está aceso é o que se pega.
     let foco = selected_bone(sim, selected);
     let alvo = hover(sim, world, px_to_world, foco, action);
     if action == BoneAction::Transform {
@@ -157,29 +101,17 @@ pub fn press(
                 bone: h.bone,
                 part: h.part,
             },
-            // ⛔ Em *Transformar* um press no vazio **não arma osso nenhum** — ele só aponta a
-            // forma, que é o que o *Bind* precisa. É esta linha que faz o verbo ser um só.
+            // Em *Transformar* um press no vazio só aponta a forma.
             None => BonePress::Pick {
                 path: pen.path_at(scene, world, BONE_HIT_PX * px_to_world),
             },
         };
     }
-    // ⭐⭐⭐ **EM *CRIAR* TODO PRESS ARMA UM OSSO — o que a ponta decide é de QUEM ele é filho.**
-    //
-    // ⛔⛔ **A lei anterior era o oposto e o dono reportou-a:** a origem saía da PONTA DO OSSO
-    // ACESO, sempre, logo com um esqueleto na cena não havia press nenhum que fizesse uma raiz
-    // nova. Aqui o encaixe é **local** — ele acontece onde a mão está, e a ponta que o oferece está
-    // desenhada —, e é isso que o torna alcançável nos dois sentidos.
-    //
-    // ⚠️ **O `alvo` já é a resposta**: em *Criar* o [`hover`] devolve `Tip`, e só isso. Ir buscar a
-    // ponta uma segunda vez aqui seria a segunda resposta à mesma pergunta — e o realce e o clique
-    // divergiriam no primeiro ajuste do raio.
+    // Em *Criar* todo press arma um osso; a ponta sob o dedo (o `hover` devolve `Tip`) é o pai.
     let parent = alvo.map(|h| h.bone);
     let origin = parent
         .and_then(|b| tip_of(sim, b))
-        // ⛔ Sem pai, a origem é o ponto CRU. ⚠️ Um press sobre o corpo de outro osso cai aqui de
-        // propósito: começar um osso em cima de outro é um gesto legítimo, e era inexprimível
-        // enquanto o corpo consumia o press para trocar a selecção.
+        // Sem pai, a origem é o ponto cru (começar sobre o corpo de outro osso é legítimo).
         .unwrap_or(world);
     BonePress::Start {
         birth: BoneBirth { origin, parent },
@@ -187,50 +119,21 @@ pub fn press(
     }
 }
 
-/// ⭐⭐⭐ **A MIRA** — que rotação LOCAL este osso precisa de ter para apontar a `world`?
-///
-/// ⚠️ **Porta única de dois consumidores**: o gesto que gira um osso à mão ([`pose`]) e a restrição
-/// que o gira a cada quadro ([`crate::goal`]). Escrita duas vezes, ela divergiria na
-/// primeira vez que alguém corrigisse a composição do espaço do pai — e o sintoma seria o osso a
-/// saltar entre o que o dedo faz e o que a âncora faz, que é indistinguível de um defeito da
-/// própria cinemática.
-///
-/// ⚠️ **A pose é LOCAL do pai, e deriva-se levando o PONTO ao espaço dele** — nunca subtraindo
-/// ângulos. Compor `rot − rot_do_pai` só está certo com um pai conforme; transformar o ponto está
-/// certo com qualquer afim.
-///
-/// `None` quando o pai é singular, ou quando `world` cai **sobre a própria origem** do osso: ali não
-/// há direcção nenhuma, e apontar para lá daria um ângulo arbitrário — o osso saltaria.
+/// **A mira** — a rotação LOCAL que faz o osso apontar a `world` (porta do [`pose`] e do
+/// [`crate::goal`]). `None` com pai singular ou `world` sobre a origem do osso.
 #[must_use]
 pub fn aim_rotation(sim: &SimWorld, bone: Entity, world: [f64; 2]) -> Option<f64> {
     ph2d_skeleton_live::bone::aim_rotation(sim, bone, world)
 }
 
-/// **A selecção do gizmo é um OSSO?** — a porta única da pergunta.
-///
-/// ⚠️ **Não há um "osso activo" à parte**, e é essa ausência que faz o gizmo de sprite POSAR o osso
-/// no modo Select sem uma linha de código própria, e o pai do próximo osso ser exactamente o que
-/// está aceso na Hierarquia. *Um segundo estado de selecção divergiria do primeiro no primeiro
-/// clique.*
+/// **A selecção do gizmo é um OSSO?** — o primeiro osso da selecção INTEIRA (não só o primário).
 pub fn selected_bone(sim: &SimWorld, selection: impl IntoIterator<Item = u64>) -> Option<u64> {
-    // ⚠️ **A selecção INTEIRA, e não só o primário**: prender uma forma a UM esqueleto entre vários
-    // faz-se escolhendo os dois (a forma e um osso dele) na Hierarquia, e o primário é a forma. Ler
-    // só o primário tornaria essa desambiguação inexprimível.
     selection
         .into_iter()
         .find(|&b| sim.world().get::<Bone>(Entity::from_bits(b)).is_some())
 }
 
-/// **O segmento de MUNDO de um osso** — a fixtura que os dois módulos de teste partilham.
-///
-/// ⚠️ Ela vive aqui, e não num deles, porque os dois a usam: uma cópia por ficheiro divergiria no
-/// primeiro ajuste, e é o mesmo defeito que este módulo já curou no raio da junta.
-// ⚠️ **`test-support`, e não `cfg(test)`** (HOWTO §2.5): um `#[cfg(test)]` é **invisível** do outro
-// lado de uma crate, e o `skeleton_shell_seam_tests` da shell lê esta função — o erro seria
-// *«não encontrado»* sobre algo que está à vista no ficheiro que ele cita.
-// ⛔ **Ela tem o tamanho do que ATRAVESSA, e nada mais**: de duas fixturas deste módulo, atravessa
-// **uma** — o `test_chain` fica em `cfg(test)`, porque só a crate o usa. Abrir a mais paga
-// `dead_code` do lado de cá.
+/// **O segmento de MUNDO de um osso** — fixtura partilhada; `test-support` porque a shell a lê.
 #[cfg(any(test, feature = "test-support"))]
 pub fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
     ph2d_skeleton_live::skin_live::bone_segments(sim)
@@ -258,16 +161,8 @@ pub fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
 #[path = "bone_gesture_tests.rs"]
 mod tests;
 
-/// ⭐⭐⭐ **A CORRENTE ALCANÇA `goal`** — cinemática inversa sobre a cadeia que acaba em `tip`.
-///
-/// ⚠️⚠️ **A escrita de volta passa pela MESMA porta que a rotação à mão** (`pose(.., Body)`), osso
-/// a osso e **do pai para o filho**. É isso que garante três coisas de graça: os comprimentos ficam
-/// (uma rotação não estica), a pose guardada continua a ser LOCAL do pai, e o que a IK escreve é
-/// indistinguível do que o artista escreveria a rodar cada osso — logo o undo, o save e a timeline
-/// não precisam de saber que a IK existe.
-///
-/// ⛔ **A ordem pai→filho é load-bearing**: cada `pose` lê o mundo do pai para converter o alvo para
-/// local, e um filho resolvido antes do pai leria um mundo que ainda vai mudar.
+/// **A corrente alcança `goal`** — IK sobre a cadeia que acaba em `tip`, escrita pela mesma porta
+/// da rotação à mão (`pose(.., Body)`), do pai para o filho (cada `pose` lê o mundo do pai).
 pub fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
     let cadeia = ph2d_skeleton_live::skin_live::chain_to(sim, tip.to_bits());
     let segs = ph2d_skeleton_live::skin_live::bone_segments(sim);
@@ -295,29 +190,14 @@ pub fn reach_chain(sim: &mut SimWorld, tip: Entity, goal: [f64; 2]) -> bool {
     mexeu
 }
 
-/// ⭐⭐⭐ **ESTE ARRASTO CHEGA A FAZER UM OSSO?** — a porta única do `Up` e da pré-visualização.
-///
-/// ⛔ Um arrasto mais curto que o raio das alças **não** faz osso: um osso de comprimento zero não
-/// tem eixo, logo não pesa ponto nenhum e é invisível — seria lixo que só o `Delete` da Hierarquia
-/// acha. O limiar é em píxeis de TELA, então basta aproximar o zoom para fazer um menor.
-///
-/// ⚠️⚠️ **Ela existe porque a PRÉ-VISUALIZAÇÃO nasceu** (Enio, 2026-09-07). Enquanto o osso só
-/// aparecia no `Up`, esta decisão podia viver lá dentro; com o desenho vivo, a mesma pergunta passa
-/// a ter **dois** leitores — e o `CLAUDE.md` §5.0 diz o que acontece quando eles divergem: *uma
-/// cena que ensina o contrário do que acontece é pior que uma cena ausente*. O artista veria um
-/// osso a crescer e o `Up` não faria nada.
+/// **Este arrasto chega a fazer um osso?** — porta do `Up` e da pré-visualização; mais curto que o
+/// raio das alças (em píxeis de tela) não faz osso.
 #[must_use]
 pub fn drag_makes_a_bone(origin: [f64; 2], tip: [f64; 2], px_to_world: f64) -> bool {
     (tip[0] - origin[0]).hypot(tip[1] - origin[1]) >= BONE_HIT_PX * px_to_world
 }
 
-/// ⭐⭐⭐ **O QUE ESTE ARRASTO SIGNIFICA AGORA** — o que se DESENHA e o que o release vai FAZER.
-///
-/// ⚠️⚠️ **Os dois consumidores lêem esta estrutura, e é isso que os mantém de acordo**: a
-/// pré-visualização ([`crate::App::refresh_bone_hover`]) e o release ([`crate::input_dispatch`]).
-/// Enquanto cada um resolvesse as três coisas por si, os dois responderiam certo à própria pergunta
-/// e errado um ao outro — e o sintoma seria o pior desta família: *o osso encaixa na tela e nasce
-/// noutro sítio*.
+/// **O que este arrasto significa agora** — lido pela pré-visualização e pelo release.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoneDragNow {
     /// A corrente solta que o release vai ADOPTAR, e a base dela em mundo. `None` = sem emenda.
@@ -337,36 +217,18 @@ pub fn drag_now(
     px_to_world: f64,
 ) -> BoneDragNow {
     let splice = splice_target(sim, pointer, px_to_world, birth);
-    // ⭐ **O ENCAIXE vê-se antes de acontecer** — é a mesma lei do press na ponta do pai.
     let tip = splice.map_or(pointer, |(_, base)| base);
     BoneDragNow {
         splice,
         tip,
-        // ⚠️ **Sobre a ponta ENCAIXADA, nunca sobre o ponteiro**: o osso que vai nascer é o
-        // encaixado, e medir o outro armaria a pré-visualização num comprimento que ninguém faz.
+        // Sobre a ponta ENCAIXADA: é esse o osso que nasce.
         armed: drag_makes_a_bone(birth.origin, tip, px_to_world),
     }
 }
 
-/// ⭐⭐⭐ **ESTE ARRASTO ACABA A JUNTAR DUAS CORRENTES?** — a porta ÚNICA da emenda (ordem do dono,
-/// 2026-09-09: *«tornar possível criar uma cadeia de ossos a partir de dois ossos separados ligando
-/// a ponta de um com o fundo de outro ao criar um osso intermediário»*).
-///
-/// Devolve o osso que vai ser **ADOPTADO** e a base dele, em mundo — que é para onde a ponta do osso
-/// novo encaixa.
-///
-/// ⚠️⚠️ **A pré-visualização e o `Up` perguntam ESTA função, e é isso que os mantém de acordo.** O
-/// artista vê o osso novo saltar para a base do outro *porque é exactamente ali que ele vai nascer*;
-/// uma segunda leitura do lado do release prometeria uma emenda que o gesto não faz.
-///
-/// ⛔ **A recusa do CICLO vive aqui e não no [`connect`]**, e a diferença é observável: se ela
-/// vivesse lá, a pré-visualização prometeria a emenda e o release faria o osso **sem** ela — *um
-/// gesto que promete duas coisas e entrega uma*. Aqui o alvo simplesmente não existe, e o desenho
-/// diz isso.
-///
-/// ⚠️ O `alvo` seria filho do osso NOVO, cujo pai é o `birth.parent` — logo o ciclo é *«o alvo já
-/// está acima de mim»*, e testa-se subindo a árvore INTEIRA (não só a corrente de ossos): um osso
-/// pendurado num grupo que descende do alvo fecharia o laço na mesma.
+/// **Este arrasto junta duas correntes?** — a porta única da emenda (dono 2026-09-09): o osso a
+/// ADOPTAR e a base dele em mundo. A recusa do ciclo vive aqui para a pré-visualização e o `Up`
+/// recusarem o mesmo gesto.
 #[must_use]
 pub fn splice_target(
     sim: &SimWorld,
@@ -378,11 +240,7 @@ pub fn splice_target(
     (!adopting_would_cycle(sim, alvo, birth.parent)).then_some((alvo, base))
 }
 
-/// **Adoptar `alvo` sob um osso novo filho de `novo_pai` fecharia um laço?**
-///
-/// ⚠️ É `alvo == novo_pai` **ou** `alvo` acima dele: o osso novo herda a linhagem do pai, então pôr
-/// ali dentro alguém que já a contém torna a árvore cíclica — e uma travessia de `Transform` sobre
-/// uma árvore cíclica não devolve, ela **pendura o app**.
+/// **Adoptar `alvo` sob um osso novo filho de `novo_pai` fecharia um laço?** (sobe a árvore inteira)
 #[must_use]
 fn adopting_would_cycle(sim: &SimWorld, alvo: u64, novo_pai: Option<u64>) -> bool {
     let Some(alvo) = Entity::try_from_bits(alvo) else {
@@ -398,19 +256,8 @@ fn adopting_would_cycle(sim: &SimWorld, alvo: u64, novo_pai: Option<u64>) -> boo
     false
 }
 
-/// ⭐⭐⭐ **PENDURA `child` em `parent` SEM O MOVER** — o acto que junta as duas correntes.
-///
-/// ⚠️ **A pose de mundo do adoptado NÃO pode mudar.** Ele é uma corrente inteira que o artista já
-/// posicionou; um `ChildOf` cru somaria a pose do pai novo e o esqueleto todo saltaria. A porta que
-/// devolve a pose local certa já existe ([`ph2d_vec_entities::transform::reparent_keeping_world`]) e é a
-/// mesma que a Hierarquia usa — ⛔ escrever a conta aqui seria a segunda resposta à mesma pergunta.
-///
-/// ⚠️ **O `RootOrder` SAI**, e não é cosmética: ele é o desempate entre RAÍZES, e o adoptado deixou
-/// de ser uma. Deixá-lo faria a árvore carregar uma ordem que descreve o que ele já não é — e há
-/// gate a dizer que *«um filho não leva `RootOrder`»* desde que o osso existe.
-///
-/// ⛔ **Ele não pergunta pelo ciclo** — quem o faz é o [`splice_target`], para que a
-/// pré-visualização e o release recusem o MESMO gesto. Ver a nota lá.
+/// **Pendura `child` em `parent` sem o mover** ([`ph2d_vec_entities::transform::reparent_keeping_world`])
+/// e tira o `RootOrder` (um filho não o leva). O ciclo é recusado no [`splice_target`].
 pub fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
     let (Some(c), Some(p)) = (Entity::try_from_bits(child), Entity::try_from_bits(parent)) else {
         return false;
@@ -424,11 +271,7 @@ pub fn connect(sim: &mut SimWorld, child: u64, parent: u64) -> bool {
     true
 }
 
-/// **Faz um osso** de `origin` a `tip` (mundo), filho de `parent`. Devolve os bits dele.
-///
-/// ⭐ Hoje uma delegação de uma linha para [`ph2d_skeleton_live::bone::create`] — a lei é pura
-/// sobre o `SimWorld` e saiu para a folha do esqueleto (Fase B, 2.ª volta), porque a cena
-/// `PH2D_VEC_BONE_SMOKE` a chama e não podia sair da shell enquanto ela aqui estivesse.
+/// **Faz um osso** de `origin` a `tip` (mundo), filho de `parent` — delega a [`ph2d_skeleton_live::bone::create`].
 pub fn create(
     sim: &mut SimWorld,
     parent: Option<Entity>,

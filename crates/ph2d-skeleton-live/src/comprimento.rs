@@ -17,7 +17,7 @@ pub fn empurra_filhos(
     l0: f64,
     l1: f64,
 ) -> Vec<(Entity, Transform, Transform)> {
-    if !(l0 > 0.0) || l0 == l1 {
+    if l0.is_nan() || l0 <= 0.0 || l0 == l1 {
         return Vec::new();
     }
     let filhos: Vec<Entity> = (sim.world().get::<Children>(osso))
@@ -44,3 +44,7 @@ pub fn empurra_filhos(
     }
     mudaram
 }
+
+#[cfg(test)]
+#[path = "comprimento_tests.rs"]
+mod tests;

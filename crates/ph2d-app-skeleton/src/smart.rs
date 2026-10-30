@@ -1,28 +1,8 @@
 //! ⭐⭐⭐ **OS OSSOS INTELIGENTES, vivos** — girar um osso percorre uma animação inteira.
 //!
-//! É o *Smart Bone* do Moho e o *Action Constraint* do Blender. O mecanismo, o porquê da forma e as
-//! referências estão no doc do [`ph2d_skeleton_ecs::SmartBone`]; aqui mora o **passe**, que é o que
-//! só existe com um mundo ECS e um documento de timeline.
-//!
-//! # ⚠️ O que ele escreve é PRÉ-VISUALIZAÇÃO
-//!
-//! A mesma lei da âncora de IK: *o documento é o valor **AUTORADO** — o ângulo do osso de controlo e
-//! as chaves do clip; o que a acção escreve agora **vê-se, não se guarda nem se desfaz**.* Sem isto,
-//! cada clique com um controlo fora do repouso empilharia um passo de undo cujo conteúdo é *«a acção
-//! correu»*.
-//!
-//! ⭐ E o ledger é o **do timeline** ([`ph2d_timeline_preview`]), não um novo: o que a acção
-//! escreve é literalmente o que a timeline escreveria, e aquela porta já cobre os **quatro** factos
-//! (pose · alfa da sprite · `t` do morph · params de junta). ⛔ Um ledger próprio poria dois memos
-//! sobre o mesmo componente, e quem ganharia seria a ordem do `BTreeMap` — o defeito que o
-//! `skeleton_goal` já nomeia no cabeçalho dele.
-//!
-//! # ⚠️ A ORDEM no quadro, e por que ela é esta
-//!
-//! O passe corre **antes** da âncora de IK. Um osso inteligente move a pose de base (ele é a
-//! correcção autorada); a IK é a restrição que persegue um alvo e tem de ver a pose já corrigida.
-//! ⛔ Ao contrário, a IK resolveria sobre uma pose que a acção ainda vai mudar, e o alvo deixaria de
-//! ser alcançado no mesmo quadro.
+//! O *Smart Bone* do Moho / *Action Constraint* do Blender (doc em [`ph2d_skeleton_ecs::SmartBone`]);
+//! aqui mora o PASSE. O que ele escreve é PRÉ-VISUALIZAÇÃO, pelo ledger do timeline
+//! ([`ph2d_timeline_preview`]), e corre ANTES da âncora de IK (a IK vê a pose já corrigida).
 
 use ph2d_ecs::{Entity, Name, SimWorld, StableId, Transform, World};
 use ph2d_skeleton_ecs::SmartBone;
@@ -32,13 +12,8 @@ use ph2d_preview_drive::PreviewDrive;
 
 /// ⭐⭐⭐ **O PICK DO ALVO RESOLVEU** — escreve no controlo de `osso` o NOME de `alvo`.
 ///
-/// ⚠️⚠️ **UMA porta para DUAS maneiras de achar o objecto**, e é o que impede as duas de divergirem:
-/// o clique no **canvas** resolve por hit-test (modal, ele consome o press) e o clique na
-/// **Hierarquia** resolve porque a selecção mudou. *Como se acha* é genuinamente diferente; *o que
-/// se faz com o que se achou* tem de ser uma coisa só.
-///
-/// Devolve `false` quando o alvo não tem `Name` ou o osso já não é um controlo — nos dois casos o
-/// chamador mantém o pick armado, porque desarmar sobre uma recusa lê-se como *«funcionou»*.
+/// Uma porta para o clique no canvas e na Hierarquia. `false` (sem `Name`, ou o osso já não é um
+/// controlo) ⇒ o chamador mantém o pick armado.
 #[must_use]
 pub fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
     let Some(nome) = sim
@@ -58,24 +33,9 @@ pub fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
 
 /// ⭐⭐⭐ **AS ACÇÕES QUE ESTE CONTROLO PODE OFERECER** — todas, ou só as que animam o ALVO dele.
 ///
-/// ⚠️⚠️ **Report do dono (2026-09-08):** *«se ouverem milhares de objetos animado a lista action
-/// fica impossível. Só deve aparecer as animações relacionadas ao objeto selecionado»*. ⚠️ **A
-/// medição corrige metade da premissa e confirma a outra:** a lista não cresce com os OBJECTOS — ela
-/// lista **clips**, e o documento recusa mais que [`ph2d_timeline::MAX_CLIPS`] (`16`). O que ela
-/// ganha aqui não é tamanho, é **relevância**: *quais destas animações tocam este objecto* é a única
-/// pergunta que separa as `16`.
-///
-/// ⚠️⚠️ **UM filtro que esvaziaria a lista NÃO se aplica**, e é lei, não conforto. Um alvo vazio, um
-/// alvo cujo objecto foi apagado, ou um objecto que nunca foi animado dariam um selector com zero
-/// opções — *um controlo que só sabe recusar é pior que um controlo ausente*, e ali o artista não
-/// teria gesto nenhum que o curasse (o alvo escolhe-se no canvas, não na lista).
-///
-/// ⚠️ O alvo resolve-se pelo **NOME** (a referência durável desta casa), o que custa uma varredura
-/// do mundo — paga só quando um controlo está em foco, que é um gesto interactivo.
-///
-/// ⭐ **E o universo é a ANIMAÇÃO onde o osso vive** (doc ObjectsAndComponents 01 §6): a do primeiro
-/// ancestral dele que tenha uma, ou a da Cena. O tecto de clips passou a ser POR animação, então o
-/// documento inteiro já não cabe no pool de [`ph2d_timeline::MAX_CLIPS`] ids — uma animação cabe.
+/// O que filtra é RELEVÂNCIA (a lista é de clips, ≤ [`ph2d_timeline::MAX_CLIPS`] por animação, a
+/// do ancestral do osso ou a da Cena). Um filtro que esvaziaria a lista NÃO se aplica. O alvo
+/// resolve-se pelo NOME.
 #[must_use]
 pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Vec<String> {
     let animacao = doc.animation_of(world, osso);
@@ -115,16 +75,8 @@ pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entit
 
 /// ⭐⭐⭐ **A ACÇÃO NA POSIÇÃO `i` DA LISTA QUE O PAINEL PINTOU.**
 ///
-/// ⛔⛔ **Ela existe por um report do dono** (2026-09-08: *«ao selecionar na lista de actions … não
-/// consegue selecionar o clip desejado»*), e o defeito foi meu, na mesma jornada: o clique devolve
-/// uma **POSIÇÃO** no pool de ids, e a shell resolvia-a contra `doc.clips()` — a lista **INTEIRA**.
-/// Isso estava certo enquanto o painel mostrava todas; deixou de estar no instante em que o alvo
-/// passou a **FILTRAR**. Com um filtro activo, escolher a 1.ª linha escrevia o 1.º clip do
-/// documento, que é outra coisa.
-///
-/// ⇒ *uma posição só significa alguma coisa ao lado da lista que a produziu*, e por isso quem
-/// indexa é a MESMA porta que constrói ([`actions_for`]) — não uma segunda leitura que concorde por
-/// acidente enquanto ninguém filtrar.
+/// Uma posição só significa algo ao lado da lista que a produziu: quem indexa é a MESMA porta que
+/// constrói ([`actions_for`]).
 #[must_use]
 pub fn action_at(
     world: &World,
@@ -138,9 +90,7 @@ pub fn action_at(
 
 /// ⭐⭐⭐ **O CLIP QUE ESTE OSSO PERCORRE** — o nome dele DENTRO da animação onde o osso vive.
 ///
-/// ⛔ O nome é único por animação, não no documento (onda 4, item 2): a cópia de um Prefab tem o
-/// seu «andar», e resolver sobre `doc.clips()` inteiro punha o osso da cópia a tocar o do ORIGINAL.
-/// Sem esse nome ali o controlo fica inerte — nunca cai para o homónimo de outro dono.
+/// O nome é único por ANIMAÇÃO (a cópia de um Prefab tem o seu); sem ele o controlo fica inerte.
 #[must_use]
 pub fn clip_of(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Option<usize> {
     doc.clip_named(doc.animation_of(world, osso), &sb.clip)
@@ -148,15 +98,8 @@ pub fn clip_of(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -
 
 /// ⭐⭐⭐ **ESCOLHER A ACÇÃO NA POSIÇÃO `i` DA LISTA PINTADA** — a porta que o dreno do painel chama.
 ///
-/// Devolve `Some(nome)` quando escreveu, e diz se essa acção está **ABERTA** na timeline (o
-/// chamador avisa; ver o report de 2026-09-08).
-///
-/// ⛔⛔ **Ela existe porque o gate estava do lado errado da porta** (auditoria de 2026-09-08): a lei
-/// *«uma posição só significa alguma coisa ao lado da lista que a produziu»* estava gateada sobre o
-/// [`action_at`], e o defeito do report vivia no **chamador** — trocar a chamada por
-/// `doc.clips().get(i)` deixava a suíte inteira verde e o defeito voltava ao bit. *Um gate sobre a
-/// porta não cobre quem a ignora* — que é, letra por letra, a lição que esta linha escreveu no gate
-/// do gizmo e não aplicou aqui.
+/// Devolve `Some(nome)` quando escreveu, e se essa acção está ABERTA na timeline. Quem indexa é
+/// o [`action_at`], nunca `doc.clips().get(i)`.
 pub fn choose_action(
     sim: &mut SimWorld,
     doc: &TimelineDoc,
@@ -176,19 +119,8 @@ pub fn choose_action(
 
 /// ⭐⭐⭐ **OS CONTROLOS QUE NASCERAM MUDOS** — os ossos inteligentes cujo ângulo é **DERIVADO**.
 ///
-/// ⛔⛔ **Report do dono (2026-09-08): *«tudo configurado e a animação não rodou ao rotacionar o
-/// bone»*.** Um osso governado por uma âncora tem a rotação **reescrita pelo solver DEPOIS** do
-/// passe do controlo ⇒ girar não muda o ângulo e a acção congela. Medido: osso livre
-/// `rot +21,8° → +95,1°`; osso governado **preso** em `+30,4°`, quadro após quadro.
-///
-/// ⚠️⚠️ **É a PERGUNTA que é uma só, e é isso que cura o achado da auditoria:** o aviso vivia dentro
-/// do *Add Smart Bone*, logo só disparava na ordem **IK → Smart**. Nas outras duas — pôr a âncora
-/// **depois** do controlo, e **alargar o `Chain`** até ele — o app ficava calado sobre exactamente
-/// o mesmo facto. *Um aviso pendurado num VERBO responde por uma ordem; pendurado no FACTO, responde
-/// por todas — incluindo as que ninguém enumerou.*
-///
-/// ⚠️ Ela varre as âncoras da cena, que são um punhado, para cada controlo — a mesma escala do
-/// [`crate::goal::is_governed`], e paga-se só quando um verbo do esqueleto corre.
+/// Um osso governado por âncora tem a rotação reescrita pelo solver DEPOIS do controlo ⇒ a acção
+/// congela. O aviso pende do FACTO, não do verbo, para responder por todas as ordens.
 #[must_use]
 pub fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
     sim.world()
@@ -201,21 +133,8 @@ pub fn governed_controls(sim: &SimWorld) -> Vec<Entity> {
 
 /// ⭐⭐⭐ **ANEXA O CONTROLO VAZIO a este osso.** `true` quando ele ainda não era um.
 ///
-/// ⚠️⚠️ **ELE NÃO CRIA NADA** (ordem do dono, 2026-09-08: *«porque criar Bone Action no inspector e
-/// na timeline? Melhor não criar nada»*) — o gesto anexa o controlo e mais nada; quem lhe dá sujeito
-/// são as duas linhas do painel (*Pick Object* e o selector *Action*). ⛔ E adoptar o clip **aberto**
-/// era pior: um documento novo tem **uma** acção chamada `"Main"`, logo todo controlo casava com a
-/// animação principal da cena, calado.
-///
-/// ⛔⛔ **Ela nasceu na SHELL e veio para cá pelo censo dos verbos** (2026-09-19): era a única das
-/// catorze rotas cujo efeito estava escrito **dentro da fase do quadro** (um `insert` de uma linha),
-/// logo a única que o censo não conseguia correr sem re-escrever a lei — *e uma régua que re-escreve
-/// a lei mede outro programa*. A shell decide a ORDEM; **o que** um verbo faz é conhecimento de quem
-/// possui o componente (a mesma lei do [`crate::knobs`]).
-///
-/// ⚠️ **O `false` não é uma recusa a mostrar:** anexar duas vezes não é um erro do artista — o
-/// painel já não oferece o botão a um osso que tem controlo. Ele existe para o censo poder afirmar
-/// que a 2.ª chamada **não** mexe no mundo.
+/// Não cria nada (dono 2026-09-08): quem dá sujeito são *Pick Object* e o selector *Action*. O
+/// `false` não é recusa a mostrar — existe para o censo afirmar que a 2.ª chamada não mexe.
 pub fn add(sim: &mut SimWorld, osso: Entity) -> bool {
     if sim.world().get::<SmartBone>(osso).is_some() {
         return false;
@@ -228,26 +147,8 @@ pub fn add(sim: &mut SimWorld, osso: Entity) -> bool {
 
 /// ⭐⭐⭐ **APAGA o controlo deste osso E DEVOLVE A POSE QUE O ARTISTA AUTOROU.** `true` se havia um.
 ///
-/// ⛔⛔ **Achado da auditoria de 2026-09-08 (o irmão já o fazia e este não):** o *Remove Smart Bone*
-/// só tirava o componente, e o objecto ficava **assado no instante da acção** em que o controlo o
-/// tinha deixado. É letra por letra o report de 2026-09-07 sobre o *Remove IK* — *«não funciona
-/// plenamente»* — noutro verbo, e contradiz a lei que este módulo escreveu: *o que um motor escreve
-/// vê-se, não se guarda*.
-///
-/// ⚠️ **A [`ph2d_preview_drive::PreviewDrive::settle`] NÃO serve** (a mesma nota do
-/// [`crate::goal::remove`]): ela é para um motor que **largou**, e aí o vivo *é* o
-/// documento; aqui o motor foi **desligado**, e o vivo é dele.
-///
-/// # ⚠️ Por que o preço é uma LISTA e não uma corrente
-///
-/// A âncora larga a **corrente** que ela governava — uma cadeia de ossos, que ela sabe nomear. Um
-/// controlo conduz o que a **ACÇÃO** dele anima, que é `N` objectos × os quatro factos que uma
-/// curva escreve ([`ph2d_timeline_preview::DRIVERS`]). ⛔ Largar «tudo o que o ledger tem» apagaria
-/// a reprodução da própria timeline, que partilha aqueles motores — por isso a lista sai do **clip
-/// deste controlo**, e de mais nada.
-///
-/// ⚠️ **As entidades lêem-se ANTES de o componente sair**, pela razão do irmão: depois dele o nome
-/// da acção já não está em lado nenhum.
+/// O motor foi DESLIGADO, não largou (o `settle` não serve, como em [`crate::goal::remove`]); o
+/// preço é a LISTA do clip deste controlo, lida ANTES de o componente sair.
 pub fn remove(
     sim: &mut SimWorld,
     doc: &TimelineDoc,
@@ -269,11 +170,7 @@ pub fn remove(
 
 /// **As entidades que a acção deste controlo anima.**
 ///
-/// ⚠️ **`try_from_bits`, NUNCA `from_bits`** — os bits vêm de uma binding gravada, e o `from_bits`
-/// **aborta o processo** com bits de outra sessão. É a lei que a `ph2d-timeline` escreve duas vezes.
-///
-/// ⚠️ Uma binding pendurada (o objecto foi apagado) some do censo, como no `state_of_bindings`: não
-/// há pose para lhe devolver.
+/// `try_from_bits`, nunca `from_bits` (bits gravados); binding pendurada some do censo.
 #[must_use]
 fn driven_by(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Vec<Entity> {
     let Some(c) = clip_of(world, doc, sb, osso).map(|i| &doc.clips()[i]) else {
@@ -300,9 +197,7 @@ fn driven_by(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> 
 
 /// **Os ossos inteligentes da cena**, em ordem determinística.
 ///
-/// ⚠️ **A ordem é o [`StableId`], nunca o `to_bits`** — dois controlos que percorram acções que
-/// escrevem o MESMO objecto compõem-se por ordem, e um desempate por id de alocação mudaria a pose
-/// entre sessões. É a mesma lei da agenda das âncoras.
+/// A ordem é o [`StableId`], nunca o `to_bits` (a composição tem de ser estável entre sessões).
 fn controls(sim: &SimWorld) -> Vec<(StableId, Entity, SmartBone)> {
     let mut out: Vec<(StableId, Entity, SmartBone)> = sim
         .world()
@@ -324,22 +219,17 @@ fn controls(sim: &SimWorld) -> Vec<(StableId, Entity, SmartBone)> {
 
 /// ⭐⭐⭐ **UM QUADRO DE OSSOS INTELIGENTES** — devolve quantas propriedades foram escritas.
 ///
-/// ⚠️ **Sai cedo quando não há nenhum**, e a guarda é a primeira coisa: sem ela toda cena pagaria
-/// uma varredura do mundo por quadro para descobrir que não tem controlo nenhum. É a mesma lei que o
-/// passe da âncora já segue, e o preço dela lá está medido em `0,098 %` de um quadro.
+/// Sai cedo quando não há nenhum (sem varredura do mundo por quadro).
 pub fn drive(sim: &mut SimWorld, doc: &TimelineDoc, preview: &mut PreviewDrive) -> usize {
     let ossos = controls(sim);
     if ossos.is_empty() {
         return 0;
     }
     let log = std::env::var_os("PH2D_BONE_LOG").is_some();
-    // ⚠️ **O estado ANTES é lido UMA vez, para todos** — as acções compõem-se, e fotografar entre
-    // cada uma faria o memo do segundo controlo guardar o que o primeiro escreveu (que é
-    // pré-visualização, não o autorado).
+    // O antes lê-se UMA vez: as acções compõem-se.
     let antes = ph2d_timeline_preview::state_of_bindings(sim.world(), doc);
     let mut feitas = 0;
-    // ⚠️ **A união das entidades que os controlos deste quadro conduzem** — a mesma porta que o
-    // [`remove`] usa, para as duas metades (manter vivo · devolver) nunca discordarem sobre quem.
+    // A união dos conduzidos é a mesma porta do [`remove`].
     let mut conduzidas: Vec<Entity> = Vec::new();
     for (_, e, sb) in ossos {
         let Some(t) = sim

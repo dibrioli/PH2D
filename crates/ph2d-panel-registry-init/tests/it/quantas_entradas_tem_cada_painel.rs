@@ -251,6 +251,7 @@ fn classifica(c: &mut Contagem, s: &InteractiveState) {
         | InteractiveState::GraphSurface { .. }
         | InteractiveState::TimelineSurface { .. }
         | InteractiveState::FlipStripSurface { .. }
+        | InteractiveState::PixelTimelineSurface { .. }
         | InteractiveState::Modal { .. }
         | InteractiveState::Plain => c.outros += 1,
     }

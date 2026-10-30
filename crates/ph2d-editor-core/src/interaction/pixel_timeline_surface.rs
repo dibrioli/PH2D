@@ -148,8 +148,10 @@ mod tests {
             kind,
             x,
             y: 10.0,
+            pressure: 1.0,
+            source: ph2d_host::PointerSource::Mouse,
             button: PointerButton::Primary,
-            ..PointerEvent::default()
+            timestamp_ns: 0,
         }
     }
 
@@ -188,7 +190,7 @@ mod tests {
             g.iter()
                 .all(|g| g.kind == PixelTimelineHitKind::Header { frame: 3 })
         );
-        assert_eq!(s.active(), None, "o Up larga a captura");
+        assert_eq!(s.active_id(), None, "o Up larga a captura");
     }
 
     #[test]

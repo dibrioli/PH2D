@@ -37,6 +37,16 @@ pub struct TextureLayer {
     pub ramp_alpha_mode: u8,
 }
 
+/// ⭐ **A rampa NOVA do Painter** (dono 30/10): a de fábrica do `ph2d-color` (preto → branco, Linear) em OKLCH — o
+/// meio de duas cores roda pela matiz em vez de passar por um cinza (azul → amarelo = verde). A partilhada fica RGB;
+/// o que um preset ou projeto gravou traz o seu modo.
+#[must_use]
+pub fn rampa_nova() -> ColorRamp {
+    let mut r = ColorRamp::default();
+    r.color_mode = ph2d_color::RampColorMode::Oklch;
+    r
+}
+
 impl Default for TextureLayer {
     /// A soft, immediately-visible default: billowy **Clouds** recoloured by the ramp's default
     /// black→white gradient (so the layer reads as a neutral grayscale cloud and any ramp edit colours
@@ -53,7 +63,7 @@ impl Default for TextureLayer {
             size: [1.0, 1.0],
             offset: [0.0, 0.0],
             ramp_enabled: true,
-            ramp: ColorRamp::default(),
+            ramp: rampa_nova(),
             ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None.to_u8(),
         }
     }

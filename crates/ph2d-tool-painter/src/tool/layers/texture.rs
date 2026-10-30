@@ -166,7 +166,7 @@ impl PainterTool {
             return;
         };
         if let Some(t) = self.layers.texture_mut(id) {
-            t.ramp = ph2d_color::ColorRamp::default();
+            t.ramp = crate::layers::rampa_nova();
             t.ramp_enabled = false;
             t.ramp_alpha_mode = RampAlphaMode::None.to_u8();
         }

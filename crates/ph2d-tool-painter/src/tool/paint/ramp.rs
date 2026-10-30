@@ -94,7 +94,7 @@ impl PainterTool {
     /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, B&W off. Flags
     /// the LUT dirty so the next ramped stamp re-bakes.
     pub fn reset_brush_color_ramp(&mut self) {
-        self.paint.texture_ramp = ph2d_color::ColorRamp::default();
+        self.paint.texture_ramp = crate::layers::rampa_nova();
         self.paint.texture_ramp_enabled = false;
         self.paint.texture_ramp_bw = false;
         self.paint.texture_ramp_dirty = true;
@@ -156,7 +156,7 @@ impl PainterTool {
         let p = &self.paint;
         let json = |ligada: bool, bw: bool, rampa: &ph2d_color::ColorRamp| serde_json::json!({ "ligada": ligada, "bw": bw, "rampa": rampa });
         let v = json(p.texture_ramp_enabled, p.texture_ramp_bw, &p.texture_ramp);
-        (v != json(false, false, &ph2d_color::ColorRamp::default())).then_some(v)
+        (v != json(false, false, &crate::layers::rampa_nova())).then_some(v)
     }
 
     /// Instala as Grain Colors de um preset: as de `v`, ou as de FÁBRICA — `None` tira as do pincel anterior
@@ -165,7 +165,7 @@ impl PainterTool {
         let p = &mut self.paint;
         p.texture_ramp = v
             .and_then(|v| serde_json::from_value(v["rampa"].clone()).ok())
-            .unwrap_or_default();
+            .unwrap_or_else(crate::layers::rampa_nova);
         p.texture_ramp_enabled = v.and_then(|v| v["ligada"].as_bool()).unwrap_or(false);
         p.texture_ramp_bw = v.and_then(|v| v["bw"].as_bool()).unwrap_or(false);
         p.texture_ramp_dirty = true;

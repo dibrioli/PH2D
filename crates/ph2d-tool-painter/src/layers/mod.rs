@@ -25,7 +25,7 @@ use ph2d_painter_effects::BlendMode;
 use ph2d_painter_effects::adjustments::AdjustmentLayer;
 use serde::{Deserialize, Serialize};
 
-pub use texture::TextureLayer;
+pub use texture::{TextureLayer, rampa_nova};
 
 /// Maximum group nesting depth (§2.6). A would-be level-9 group folds to
 /// level 8 (the deeper insert is rejected).

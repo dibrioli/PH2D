@@ -18,6 +18,9 @@ mod cor_do_papel_tests;
 /// As Grain Colors nos quatro meios (dono 22/10).
 #[path = "grain_colors_tests.rs"]
 mod grain_colors_tests;
+/// As rampas novas do Painter em OKLCH (dono 30/10).
+#[path = "rampa_oklch_tests.rs"]
+mod rampa_oklch_tests;
 #[path = "grain_same_as_paper_tests.rs"]
 mod grain_same_as_paper_tests;
 #[path = "impasto_pool_tests.rs"]

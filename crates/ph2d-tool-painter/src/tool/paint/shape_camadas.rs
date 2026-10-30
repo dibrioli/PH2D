@@ -32,7 +32,7 @@ impl Default for CamadasDoShape {
             // pincel sem textura (onde ela não tem o que colorir) pinta a Falloff Color — a lei de sempre.
             textura: true,
             queda: true,
-            queda_rampa: ColorRamp::default(),
+            queda_rampa: crate::layers::rampa_nova(),
             queda_primeiro: false,
             blend: BrushBlend::Mix,
             opacidade_textura: 1.0,

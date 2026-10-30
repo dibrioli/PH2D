@@ -149,12 +149,23 @@ impl PainterTool {
 
 /// The Shape Color section as one value (on, B&W, the Texture Color ramp, the layers). `Default` = the
 /// factory one: the ramp off, the default gradients, B&W off, the Texture Color on top.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(super) struct EstadoDaShapeColor {
     ligada: bool,
     bw: bool,
     rampa: ph2d_color::ColorRamp,
     camadas: super::shape_camadas::CamadasDoShape,
+}
+
+impl Default for EstadoDaShapeColor {
+    fn default() -> Self {
+        Self {
+            ligada: false,
+            bw: false,
+            rampa: crate::layers::rampa_nova(),
+            camadas: super::shape_camadas::CamadasDoShape::default(),
+        }
+    }
 }
 
 impl EstadoDaShapeColor {

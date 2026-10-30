@@ -236,7 +236,7 @@ fn labels(
         let chip = Rect::new(x, y, w, row_h);
         fill_rounded_rect(scene, chip, m::LABEL_RADIUS, fill);
         if text && !name.is_empty() {
-            let ty = text_top(ts, y, row_h, m::SMALL_PX);
+            let ty = text_top(ts, y, row_h, m::SMALL_PX) - m::LABEL_TEXT_LIFT;
             paint_text_elided(
                 ts,
                 scene,

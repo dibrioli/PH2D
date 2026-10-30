@@ -70,6 +70,9 @@ pub(crate) const CARD_PAD_Y: f32 = 8.0;
 pub(crate) const CARD_ROW_GAP: f32 = 6.0;
 pub(crate) const CARD_TITLE_PX: f32 = 14.0;
 pub(crate) const LABEL_H: f32 = 16.0;
+/// Quanto o nome sobe dentro da etiqueta de [`LABEL_H`]: a caixa da linha centra o texto com a
+/// tinta 1 px abaixo do meio (medido 30/10 na foto do dono e na placa: 5 px acima, 3 abaixo).
+pub(crate) const LABEL_TEXT_LIFT: f32 = 1.0;
 pub(crate) const LABEL_MIN_W: f32 = 48.0;
 pub(crate) const LABEL_PAD_X: f32 = 8.0;
 pub(crate) const LABEL_RADIUS: f32 = 4.0;

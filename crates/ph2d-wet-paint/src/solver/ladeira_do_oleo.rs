@@ -4,12 +4,29 @@
 //! do pé da parede corre para longe dela, a que está em cima do óleo desce. Só a tinta ASSENTADA com o Real Oil tem
 //! altura (`sett × espessura × Depth·Real Oil`, a massa do campo de `oleo_real`); sem o campo do óleo na grade, `None`
 //! e o fluxo de sempre, ao bit.
+//!
+//! Smoke do dono 30/10: com o Real Oil na mão, a ladeira é a do
+//! óleo de ANTES do traço ([`Grid::oleo_antes`], fotografada no início do traço) — o óleo que se pinta corre como
+//! sempre e a água do traço novo respeita o relevo dos anteriores. Sonda: `queda_na_ladeira_tests`.
 
 use crate::grid::Grid;
 
 /// A altura de água (`film`) que uma unidade de massa de óleo assentado ergue. MEDIDO (`diag_a_agua_sobe_a_ladeira_do_oleo`):
 /// o miolo de um Dabber tem `~3000` de massa e a água de um Wet Flat `film` `1–4`; a parede tem de ganhar da água.
 pub(crate) const FILME_POR_MASSA: f64 = 1.0 / 1000.0;
+
+/// A altura do óleo assentado na célula fina `i`, em unidades de `film`.
+fn altura(g: &Grid, i: usize) -> f32 {
+    let m = f64::from(g.sett[i]);
+    if m <= 0.0 {
+        return 0.0;
+    }
+    let k = crate::grid::oleo_celula::ganho(&g.oleo, i);
+    if k <= 0.0 {
+        return 0.0;
+    }
+    (m * crate::grid::espessura::factor(g, i) * k * FILME_POR_MASSA) as f32
+}
 
 /// A altura do óleo nas linhas FINAS `r0..=r1` (as que o passe de fluxo amostra), em unidades de `film`.
 pub(crate) struct LadeiraDoOleo {
@@ -19,29 +36,27 @@ pub(crate) struct LadeiraDoOleo {
 }
 
 impl LadeiraDoOleo {
-    /// `None` sem o campo do óleo (nenhum traço com o Real Oil nesta grade).
-    pub(crate) fn de(g: &Grid, r0: usize, r1: usize) -> Option<Self> {
-        if g.oleo.is_empty() || r1 < r0 {
+    /// `None` sem o campo do óleo (nenhum traço com o Real Oil nesta grade) ou sem altura nenhuma nas linhas; `antes` =
+    /// a altura fotografada no início do traço ([`Grid::oleo_antes`]) em vez da de agora.
+    pub(crate) fn de(g: &Grid, r0: usize, r1: usize, antes: bool) -> Option<Self> {
+        if g.oleo.is_empty() || r1 < r0 || (antes && g.oleo_antes.len() != g.cells) {
             return None;
         }
         let s = g.s;
         let r1 = r1.min(g.cells / s - 1);
         let mut h = vec![0f32; (r1 + 1 - r0) * s];
+        let mut alguma = false;
         for y in r0..=r1 {
             for x in 0..s {
                 let i = y * s + x;
-                let m = f64::from(g.sett[i]);
-                if m <= 0.0 {
-                    continue;
-                }
-                let k = crate::grid::oleo_celula::ganho(&g.oleo, i);
-                if k > 0.0 {
-                    h[(y - r0) * s + x] =
-                        (m * crate::grid::espessura::factor(g, i) * k * FILME_POR_MASSA) as f32;
+                let v = if antes { g.oleo_antes[i] } else { altura(g, i) };
+                if v > 0.0 {
+                    h[(y - r0) * s + x] = v;
+                    alguma = true;
                 }
             }
         }
-        Some(Self { r0, s, h })
+        alguma.then_some(Self { r0, s, h })
     }
 
     /// A altura na célula fina `fi` (`0` fora das linhas).
@@ -53,15 +68,27 @@ impl LadeiraDoOleo {
     }
 }
 
-/// A ladeira das linhas finas que o passe de fluxo das linhas de FLUXO `by0..=by1` amostra — só quando o pincel na mão
-/// NÃO tem o Real Oil (`oleo_na_mao`): é a água de um traço novo que não sobe o óleo de antes; o óleo que se pinta corre
-/// como sempre (MEDIDO: com a ladeira também nele, as 10 miniaturas Oil/* mudavam 82–230 níveis).
+/// A ladeira das linhas finas que o passe de fluxo das linhas de FLUXO `by0..=by1` amostra. Sem o Real Oil na mão, a
+/// altura de agora; com ele (`oleo_na_mao`), só a do óleo de ANTES do traço — o óleo que se pinta corre como sempre
+/// (MEDIDO: com a ladeira também nele, as 10 miniaturas Oil/* mudavam 82–230 níveis; a miniatura é um traço só, a
+/// fotografia dela é vazia ⇒ `None`, ao bit).
 pub(crate) fn do_passe(g: &Grid, by0: i32, by1: i32, oleo_na_mao: bool) -> Option<LadeiraDoOleo> {
-    if g.oleo.is_empty() || oleo_na_mao {
+    if g.oleo.is_empty() {
         return None;
     }
     let (gh, rf) = (g.h as i32, g.flow.rf);
     let r0 = crate::flow::flow_probe(by0 - 1, gh, rf).max(0) as usize;
     let r1 = crate::flow::flow_probe(by1 + 1, gh, rf).max(0) as usize;
-    LadeiraDoOleo::de(g, r0, r1)
+    LadeiraDoOleo::de(g, r0, r1, oleo_na_mao)
+}
+
+/// No início de um traço: com o Real Oil na mão e óleo na grade, fotografa a altura do óleo dos traços anteriores; senão
+/// esvazia a fotografia. Custa uma passagem pela grade só quando se pinta óleo sobre óleo.
+pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
+    if !oleo_na_mao || g.oleo.is_empty() {
+        g.oleo_antes = Vec::new();
+        return;
+    }
+    let h: Vec<f32> = (0..g.cells).map(|i| altura(g, i)).collect();
+    g.oleo_antes = h;
 }

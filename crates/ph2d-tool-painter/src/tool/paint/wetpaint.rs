@@ -425,8 +425,6 @@ mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
-mod remolha_tests; // J10 (dono 30/10): a aguada re-molha o óleo solúvel (Re-wet × Solubility)
-#[cfg(test)]
 mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
 #[cfg(test)]
 mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
@@ -450,6 +448,10 @@ mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o 
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
+#[cfg(test)]
+mod queda_na_ladeira_tests; // smoke do dono 30/10: a queda na ladeira do óleo pela diluição e com o Real Oil
+#[cfg(test)]
+mod remolha_tests; // J10 (dono 30/10): a aguada re-molha o óleo solúvel (Re-wet × Solubility)
 #[cfg(test)]
 mod shape_color_tests; // prompt 41: a Shape Color pinta cada célula do depósito; desligada, ao byte
 #[cfg(test)]

@@ -98,6 +98,10 @@ pub struct Grid {
     /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
     /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
     pub oleo: Vec<oleo_celula::OleoCelula>,
+    /// **A ladeira do óleo de ANTES do traço vivo** (smoke do dono 30/10, `solver::ladeira_do_oleo`): a altura do óleo
+    /// (em `film`) que os traços anteriores deixaram, fotografada no início de um traço com o Real Oil na mão. VAZIA sem
+    /// óleo na grade ou com um pincel sem o Real Oil.
+    pub oleo_antes: Vec<f32>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -270,6 +274,7 @@ impl Grid {
             material: Vec::new(),
             aparencia: Vec::new(),
             oleo: Vec::new(),
+            oleo_antes: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],

@@ -82,6 +82,11 @@ impl Engine {
         // tinta guarda ([`crate::grid::Grid::traco`]) — o `0` fica para «nenhum».
         if lane == 0 {
             self.sim.traco_actual = self.sim.traco_actual.wrapping_add(1).max(1);
+            let oleo_na_mao = self.sim.oleo;
+            crate::solver::fotografa_a_ladeira(
+                &mut self.layers[self.active_layer].grid,
+                oleo_na_mao,
+            );
         }
         while self.lane_trails.len() <= lane {
             self.lane_trails.push(Trail::default());

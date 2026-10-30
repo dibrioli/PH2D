@@ -23,23 +23,11 @@
 - **Item 2 OKLCH** `3c283ce666`: `layers::rampa_nova()` (Grain Colors, Shape Color, camada de textura, Reset); `ColorRamp::default()` fica RGB; preset/projeto antigo traz o modo gravado.
 - **Item 1 Over Oil** `1e9a32d0af` : Tint · **Mix** (fábrica) · Blend em `OleoCelula::aguada`. **Smoke do dono 30/10: REPROVADO** (chapado, degraus, pretos) ⇒ [handoff J8](HANDOFF_JANELA_8.md).
 
-## J9 (30/10): o Over Oil contra o Rebelle — À ESPERA DO «SERVE» DO DONO
+## J9 (30/10, [handoff](HANDOFF_JANELA_9.md)): o Over Oil
 
-- **Oráculo** (`fixtures/rebelle/over_oil/` + cabeçalho; `over_oil_{rebelle,regua,simula}`): no Rebelle a aguada é
-  um VÉU (α-sobre, α 0,35 como no papel; assentada 0,20, nos vales), escuros 0, transição 8 px. Nós (Mix): K-M escurece,
-  corte de 1,3 px, escuros = fio de óleo invisível + K-M (hipóteses b, c do J8 confirmadas). Véu simulado (D): [prancha](pranchas/J9_over_oil_hoje_proposta_rebelle.jpg).
-- **Dono 30/10 recusa o véu (D) e dá a LEI:** óleo e aguada são a MESMA tinta com diluições diferentes; misturam pela
-  QUANTIDADE (a pouco diluída dilui, a muito diluída engrossa); sem creme, preto nem degraus. Simulação **E**
-  (`mistura`: `f = q_w/(q_o+q_w)`, subtractiva, papel fora da média, relevo × `1 − f`): escuros 0, transição 6 px;
-  [prancha](pranchas/J9_over_oil_mistura_do_dono.jpg).
-- **Dono 30/10 (ordem final): «a versão do MAIN, sem áreas brancas ou bege».** Over Oil REVERTIDO (`1e9a32d0af`); lei do
-  main + duas curas em `assenta`: (1) sobre o óleo (`Ecra::com_oleo`, rampa `OLEO_PLENO` 0,04, sem o Real Oil na mão:
-  `PINCEL_DE_OLEO`) o tapar extra sai — a cobertura é a do pigmento (Rebelle: véu); (2) `na_caixa_das_tintas`: o branco
-  do tapar extra vira transparência (o papel aparece; no branco o mesmo píxel). Gates `o_tapar_extra_fica_no_segmento_das_tintas`,
-  `sobre_o_oleo_assentar_preserva_o_ecra_seco`, `o_tapar_extra_nao_pinta_branco_no_papel_de_cor` (célula medida, +31 → ≤ 2).
-  Cena bege: claros 2 972 → 186 a meio (brilhos do óleo), 447 → 0 assentada. Barras do Rebelle verdes. [Prancha](pranchas/J9_main_sem_branco.jpg).
-  **Smoke do dono 30/10: a versão ATUAL fica (melhor que o main); pedidos A (arrasto durante o traço), B (mistura
-  molhada pela média das consistências, borda com transição) e C (New Image: papel texturizado)** ⇒ [handoff J9](HANDOFF_JANELA_9.md).
+- Rebelle como oráculo (`ba682757d1`: a aguada sobre o óleo é véu, o óleo insolúvel); Over Oil revertido e a lei atual sem
+  branco nem preto (`776a9ff173`). **Smoke do dono: a versão ATUAL fica.** Próxima: A arrasto do óleo pela aguada durante o
+  traço · B mistura molhada pela média das consistências, borda com transição · C New Image «papel texturizado».
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

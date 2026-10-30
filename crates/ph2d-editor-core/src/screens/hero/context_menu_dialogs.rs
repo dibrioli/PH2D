@@ -324,6 +324,11 @@ pub(super) fn paint_new_image_dialog(
             tr("chrome.dialog.white"),
             2u8,
         ),
+        (
+            ids::CTX_MENU_NEW_IMAGE_BG_PAPER,
+            tr("chrome.dialog.textured_paper"),
+            ids::NEW_IMAGE_BG_PAPER,
+        ),
     ];
     let m = bgs.len() as f32;
     let bgw = ((inner_w - gap * (m - 1.0)) / m).max(1.0);

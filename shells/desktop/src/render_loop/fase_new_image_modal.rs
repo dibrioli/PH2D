@@ -22,6 +22,7 @@ impl crate::App {
             hero_screen,
             next_import_cell,
             atlas_asset_map,
+            tools,
             ..
         } = FrameGfx::of(gfx);
 
@@ -46,6 +47,7 @@ impl crate::App {
                 Ok((label, bits)) => {
                     *next_import_cell = next_import_cell.saturating_add(1);
                     ph2d_app_macros::com(|m| m.nasceu(sim, bits));
+                    ph2d_app_painter::paint_mode::new_image_nasceu(tools, bits, bg);
                     hero.gizmo.replace_selection(Some(bits));
                     hero.bus
                         .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {

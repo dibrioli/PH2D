@@ -45,6 +45,9 @@ mod papel_nasce_tests;
 /// O fio claro dos traços pintados antes do papel (decisão do dono, 2026-10-06, BUGS #42).
 #[path = "papel_orla_tests.rs"]
 mod papel_orla_tests;
+/// O «Textured Paper» do New Image nasce com o Paper do dono (30/10).
+#[path = "papel_texturizado_tests.rs"]
+mod papel_texturizado_tests;
 /// As rampas novas do Painter em OKLCH (dono 30/10).
 #[path = "rampa_oklch_tests.rs"]
 mod rampa_oklch_tests;

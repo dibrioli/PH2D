@@ -110,6 +110,8 @@ pub const CTX_MENU_NEW_IMAGE_BG_TRANSPARENT: NodeId =
     hash_node_id("ctx_menu_new_image_bg_transparent");
 pub const CTX_MENU_NEW_IMAGE_BG_BLACK: NodeId = hash_node_id("ctx_menu_new_image_bg_black");
 pub const CTX_MENU_NEW_IMAGE_BG_WHITE: NodeId = hash_node_id("ctx_menu_new_image_bg_white");
+/// «Textured Paper» (dono 30/10): branca, e o Painter abre-a com o Paper Cold Press bege do dono.
+pub const CTX_MENU_NEW_IMAGE_BG_PAPER: NodeId = hash_node_id("ctx_menu_new_image_bg_paper");
 pub const CTX_MENU_NEW_IMAGE_SIZE_32: NodeId = hash_node_id("ctx_menu_new_image_size_32");
 pub const CTX_MENU_NEW_IMAGE_SIZE_64: NodeId = hash_node_id("ctx_menu_new_image_size_64");
 pub const CTX_MENU_NEW_IMAGE_SIZE_128: NodeId = hash_node_id("ctx_menu_new_image_size_128");
@@ -138,12 +140,16 @@ pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 8] = [
     // usam. O atlas cresce sob demanda, então não há teto novo a declarar aqui.
     (4096, CTX_MENU_NEW_IMAGE_SIZE_4096),
 ];
-/// The 3 background choices, paired `(bg wire u8, button id)` — `0` transparent, `1` black, `2` white.
-pub const CTX_MENU_NEW_IMAGE_BGS: [(u8, NodeId); 3] = [
+/// The background choices, paired `(bg wire u8, button id)` — `0` transparent, `1` black, `2` white,
+/// `3` textured paper ([`NEW_IMAGE_BG_PAPER`]).
+pub const CTX_MENU_NEW_IMAGE_BGS: [(u8, NodeId); 4] = [
     (0, CTX_MENU_NEW_IMAGE_BG_TRANSPARENT),
     (1, CTX_MENU_NEW_IMAGE_BG_BLACK),
     (2, CTX_MENU_NEW_IMAGE_BG_WHITE),
+    (NEW_IMAGE_BG_PAPER, CTX_MENU_NEW_IMAGE_BG_PAPER),
 ];
+/// O fundo «Textured Paper» do New Image: a tela nasce branca e o Painter dá-lhe o papel do dono.
+pub const NEW_IMAGE_BG_PAPER: u8 = 3;
 
 // **O modal de resolução da folha** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
 // resolução deve aparecer antes da criação"*). Abre-se ao escolher "Pack into Sheet" e a criação

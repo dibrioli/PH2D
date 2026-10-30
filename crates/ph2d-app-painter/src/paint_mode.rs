@@ -87,6 +87,16 @@ fn painter(tools: &mut ToolRegistry) -> Option<&mut PainterTool> {
         .downcast_mut::<PainterTool>()
 }
 
+/// A imagem `entity` nasceu do *New Image…* com o fundo `bg`: o «Textured Paper» abre no Painter com
+/// o papel do dono (`PainterTool::agenda_papel_texturizado`).
+pub fn new_image_nasceu(tools: &mut ToolRegistry, entity: u64, bg: u8) {
+    if bg == ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER
+        && let Some(p) = painter(tools)
+    {
+        p.agenda_papel_texturizado(entity);
+    }
+}
+
 /// O Painter está em mãos **sobre uma imagem**.
 #[must_use]
 pub fn holds_an_image(tools: &mut ToolRegistry) -> bool {

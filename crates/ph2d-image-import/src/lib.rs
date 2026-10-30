@@ -251,11 +251,12 @@ pub fn spawn_blank_canvas(
         .checked_mul(size_px as usize)
         .and_then(|n| n.checked_mul(4))
         .ok_or_else(|| format!("canvas {size_px}² overflows a pixel buffer"))?;
-    // Background fill: 0 = transparent, 1 = black, 2 = white (the New-image modal's choices).
+    // Background fill: 0 = transparent, 1 = black, 2 = white, 3 = textured paper — white, whose paper the
+    // Painter gives when it opens it (the New-image modal's choices).
     let fill: [u8; 4] = match bg {
-        1 => [0, 0, 0, 255],       // LITERAL-COLOR-OK: opaque black canvas
-        2 => [255, 255, 255, 255], // LITERAL-COLOR-OK: opaque white canvas
-        _ => [0, 0, 0, 0],         // LITERAL-COLOR-OK: fully-transparent canvas
+        1 => [0, 0, 0, 255],           // LITERAL-COLOR-OK: opaque black canvas
+        2 | 3 => [255, 255, 255, 255], // LITERAL-COLOR-OK: opaque white canvas
+        _ => [0, 0, 0, 0],             // LITERAL-COLOR-OK: fully-transparent canvas
     };
     let mut pixels = vec![0u8; px_count];
     for px in pixels.as_chunks_mut::<4>().0.iter_mut() {

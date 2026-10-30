@@ -186,6 +186,8 @@ pub struct PainterTool {
     pub(crate) sem_vidro: bool,
     /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
     papel: Option<[u8; 3]>,
+    /// A imagem nascida «Textured Paper» que ainda não abriu ([`papel_texturizado`]).
+    papel_texturizado_para: Option<u64>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
     /// [`Self::canvas_rgba`] and the three relief planes rather than in `PaintState` (which holds
     /// settings and per-stroke bookkeeping). `None` whenever nothing is painting through a gate,
@@ -389,6 +391,7 @@ impl Default for PainterTool {
             #[cfg(test)]
             sem_vidro: false,
             papel: None,
+            papel_texturizado_para: None,
             gate: None,
             mask_scratch_gen: 0,
             composited: None,
@@ -465,6 +468,7 @@ mod layer_edit;
 mod marca_do_artista; // onde o artista escreveu depois da gravação (W9)
 /// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
 pub(crate) mod papel;
+mod papel_texturizado; // o «Textured Paper» do New Image (dono 30/10)
 mod reescrita_da_gravacao; // editar uma etapa da macro reescreve a imagem (W8 item 2b)
 mod runtime;
 mod trait_impls;

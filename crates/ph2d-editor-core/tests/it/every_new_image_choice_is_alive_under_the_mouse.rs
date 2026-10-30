@@ -74,3 +74,20 @@ fn choosing_the_largest_size_lands_in_the_store() {
         "escolher {px} tem de deixar {px} no store — e o que o Create le"
     );
 }
+
+/// **O «Textured Paper» chega ao pedido do Create** (dono 30/10) — o fundo `3` que a shell entrega ao
+/// Painter (`ph2d_app_painter::paint_mode::new_image_nasceu`).
+#[test]
+fn choosing_textured_paper_lands_in_the_create_request() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    let handled = hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
+        ids::CTX_MENU_NEW_IMAGE_BG_PAPER,
+    ));
+    assert!(handled, "o clique no Textured Paper tem de ser consumido");
+    assert_eq!(hero.store.new_image_bg(), ids::NEW_IMAGE_BG_PAPER);
+    hero.store.request_new_image();
+    assert_eq!(
+        hero.store.take_new_image_request(),
+        Some((hero.store.new_image_size(), ids::NEW_IMAGE_BG_PAPER))
+    );
+}

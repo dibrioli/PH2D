@@ -160,7 +160,10 @@ impl PainterTool {
         self.bound_doc = Some(entity);
         match self.doc_cache.remove(&entity) {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
-            None => self.abre_a_sprite(rgba, width, height), // fresh (or the sprite's flat texture)
+            None => {
+                self.abre_a_sprite(rgba, width, height); // fresh (or the sprite's flat texture)
+                self.serve_papel_texturizado(entity);
+            }
         }
         // A marca do artista é da imagem: quem mostra a macro dá a desta (W9).
         self.undo.marca.poe(None);

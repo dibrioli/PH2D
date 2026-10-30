@@ -80,6 +80,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.dialog.transparent" => "Transparent",
         "chrome.dialog.black" => "Black",
         "chrome.dialog.white" => "White",
+        "chrome.dialog.textured_paper" => "Textured Paper",
         "chrome.dialog.create" => "Create",
         "chrome.dialog.create_sheet" => "Create Sheet",
         "chrome.topbar.pill.forge" => "Forge",

@@ -156,6 +156,24 @@ pub(crate) fn campos_da_ancora() -> Option<Vec<(ph2d_a11y::NodeId, &'static str,
     Some(campos)
 }
 
+/// ⭐ **Um número do osso COM o losango** (F40): o campo rotulado e, na coluna de animação, o
+/// losango do canal dele (`ph2d_app_skeleton::marcas_osso`) — o clique regista-se no alvo.
+pub(crate) fn linha_com_losango(
+    r: &mut ph2d_editor_core::panel::rows::RowCtx,
+    label: &str,
+    id: ph2d_a11y::NodeId,
+    step: f64,
+    y: f32,
+) -> f32 {
+    let dot = ph2d_editor_core::widget::property_row_columns(r.inner_x, r.inner_w, y, r.row_h).dot;
+    if let Some(alvo) =
+        ph2d_editor_core::widget::key_mark::paint_decorator_for(r.scene, r.theme, dot, &[id])
+    {
+        r.hit_index.register(alvo, dot);
+    }
+    r.labeled_number_field(label, id, step, y)
+}
+
 /// Passo do campo de comprimento, no domínio do DOCUMENTO (unidades de mundo).
 pub(crate) const LENGTH_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 

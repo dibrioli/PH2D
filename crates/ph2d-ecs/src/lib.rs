@@ -111,6 +111,7 @@ pub mod canal_lista;
 pub mod canal_mesa;
 pub mod canal_mundo;
 pub mod canal_objeto;
+pub mod canal_osso;
 pub mod canal_palavra;
 pub mod canal_script;
 pub mod canal_vetor;

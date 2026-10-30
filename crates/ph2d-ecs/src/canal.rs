@@ -122,6 +122,7 @@ impl FieldKey {
             familia::LISTA => crate::canal_lista::membro(self),
             familia::MUNDO => crate::canal_mundo::membro(self.campo),
             familia::MESA => crate::canal_mesa::membro(self.campo),
+            familia::OSSO => crate::canal_osso::membro(self.campo),
             _ => None,
         }
     }
@@ -288,6 +289,8 @@ pub mod familia {
     pub const MUNDO: u16 = 11;
     /// A MESA DE SOM (`ph2d_audio::Mesa`) sobre a entidade da Cena — `crate::canal_mesa`.
     pub const MESA: u16 = 12;
+    /// O OSSO (`ph2d_skeleton_ecs::Bone`) sobre a entidade dele — `crate::canal_osso`.
+    pub const OSSO: u16 = 13;
 }
 
 /// ⭐ **A porta única de «o que é este campo»** — `None` = endereço que nenhuma família declara (um
@@ -307,6 +310,7 @@ pub fn info(k: FieldKey) -> Option<CampoInfo> {
         familia::LISTA => crate::canal_lista::info(k),
         familia::MUNDO => crate::canal_mundo::info(k.campo),
         familia::MESA => crate::canal_mesa::info(k.campo),
+        familia::OSSO => crate::canal_osso::info(k.campo),
         _ => None,
     }
 }

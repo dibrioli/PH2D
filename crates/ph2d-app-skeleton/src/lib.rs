@@ -1,45 +1,23 @@
 //! ⭐⭐⭐ **A família `skeleton` da shell, fora da shell** — W2/L4 Fase C.
 //!
-//! # Porque ela é família PRÓPRIA, e não parte da `vec`
+//! Módulo próprio desde o [ADR-0169]; esta crate é a metade de **AUTORIA** (o gesto que nasce um
+//! osso, o pick, o limite, a âncora de IK, os Smart Bones); a lei pura é a [`ph2d_skeleton_live`].
 //!
-//! O Esqueleto é **módulo desde o [ADR-0169]** (*«the skeleton is its own module, and each medium
-//! answers only what a point is»*), com quatro crates de motor já suas — [`ph2d_affine`],
-//! [`ph2d_skeleton`], [`ph2d_skeleton_ecs`], [`ph2d_skeleton_render`] — e painel próprio
-//! ([`ph2d_panel_skeleton`]). Os nomes canónicos dele são **sem «vec»**, de propósito: um osso
-//! deforma uma forma vectorial *e* uma imagem, e amanhã uma malha.
+//! ⛔ Ela não pode ser a [`ph2d_skeleton_ecs`]: prender uma forma precisa da [`ph2d_vec_entities`],
+//! que já depende dela (ciclo medido). Uma família consome motores, nunca é um.
 //!
-//! ⇒ a metade-shell dele é uma família da W2 como as outras cinco, e não um apêndice da `vec`.
-//! O que a `line/app-vec` tirou daqui na 2.ª volta foi a **lei pura** ([`ph2d_skeleton_live`]);
-//! esta crate é a metade de **AUTORIA** — o gesto que nasce um osso, o pick, o limite de ângulo,
-//! a âncora de IK e os Smart Bones.
+//! O que ficou na shell (sondas `impl crate::App`, fachadas, testes do smoke e da `ProjectState`) e
+//! porquê: `docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md` §2.6.
 //!
-//! # ⛔⛔ O CICLO que decide de quem esta crate pode depender
-//!
-//! Ela **não pode** ser a [`ph2d_skeleton_ecs`], e o motivo foi medido na 2.ª volta: prender uma
-//! forma aos ossos precisa da [`ph2d_vec_entities`], **que já depende** da `ph2d-skeleton-ecs`.
-//! Uma família é um consumidor de motores, nunca um motor — e é isso que a mantém acíclica.
-//!
-//! # ⚠️ O que FICOU na shell, e porquê
-//!
-//! | ficheiro | razão |
-//! |---|---|
-//! | `bone_smart_probe.rs` · `bone_undo_probe.rs` | são `impl crate::App` — sondas de diagnóstico que leem o `gfx` inteiro |
-//! | `skeleton_live.rs` · `skeleton_skin_image.rs` | fachadas de uma linha para [`ph2d_skeleton_live`], que mantêm os sítios de chamada byte a byte iguais |
-//! | `skeleton_live_tests.rs` | o sujeito dele é a **sequência do smoke**, que é da shell |
-//! | `skeleton_shell_seam_tests.rs` | dois gates cujo sujeito é a `ProjectState::capture` e o gizmo de grupo — *o teste segue o SUJEITO* (HOWTO §2.6) |
-//!
-//! # ⚠️ A família NÃO declara roteador, e a ausência é DECLARADA
-//!
-//! Ver [`FAMILY`]: a cena do osso é `PH2D_VEC_BONE_SMOKE` e o corpo dela vive na
-//! `ph2d_app_vec::smoke_bone` — ⛔ **uma família não declara o roteador de outra**, senão o
-//! registo tem duas respostas para a mesma env. Um `routers: &[]` com o nome na catraca é a forma
-//! de dizer *«não tenho»* em voz alta.
+//! A família NÃO declara roteador ([`FAMILY`]): a cena do osso (`PH2D_VEC_BONE_SMOKE`) é da
+//! `ph2d_app_vec::smoke_bone`.
 
 pub mod bone_bridge;
 pub mod bone_gesture;
 pub mod bone_limit;
 pub mod bone_pick;
 pub mod bone_pose;
+pub mod canais_osso;
 pub mod curve_tip;
 /// ⭐ *Mirror Branch* — o espelho do esqueleto, sem a IK do original.
 pub mod espelho;

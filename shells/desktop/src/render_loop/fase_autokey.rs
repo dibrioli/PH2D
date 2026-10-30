@@ -4,6 +4,7 @@
 use super::*;
 use ph2d_app_audio::marcas_mesa;
 use ph2d_app_physics::marcas_mundo;
+use ph2d_app_skeleton::canais_osso as marcas_osso;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -59,6 +60,7 @@ impl crate::App {
         ph2d_app_flip::canais_camada::publicar(sim, flip, &publicar);
         ph2d_app_constraints::canais::publicar(sim, &publicar);
         ph2d_app_audio::canais_mesa::publicar(sim);
+        ph2d_app_skeleton::canais_osso::publicar(sim, &publicar);
         let sel: Vec<u64> = hero.gizmo.iter_selected().collect();
         let (solo, t_raw) = (self.timeline.keys_mode, autokey_clock.time());
         let inst = ph2d_timeline::Instante {
@@ -133,6 +135,9 @@ impl crate::App {
             if intents.is_empty() {
                 intents = marcas_mesa::clique(tl, &c.fields, sim.world(), inst, lidos, valor, k);
             }
+            if intents.is_empty() {
+                intents = marcas_osso::clique(tl, &c.fields, sim, &sel, inst, lidos, valor, k);
+            }
             self.timeline_intents.extend(intents);
         }
         let mut marcas = ph2d_app_vec::marcas::marcas(tl, ctx, &sel, inst, valor);
@@ -149,6 +154,7 @@ impl crate::App {
         ));
         marcas.extend(marcas_mundo::marcas(tl, sim.world(), inst, valor));
         marcas.extend(marcas_mesa::marcas(tl, sim.world(), inst, valor));
+        marcas.extend(marcas_osso::marcas(tl, sim, &sel, inst, valor));
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

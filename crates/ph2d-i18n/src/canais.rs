@@ -131,6 +131,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.mundo.sono_demora" => "Sleep Delay",
         "canal.mundo.adormece" => "Bodies Sleep",
         "canal.mundo.cena" => "Scene",
+        // O osso (`ph2d_ecs::canal_osso`, F40).
+        "canal.osso.comprimento" => "Bone Length",
+        "canal.osso.forca" => "Bone Strength",
+        "canal.osso.segmentos" => "Bone Segments",
         // A mesa de som sobre a Cena (`ph2d_ecs::canal_mesa`, F30 §B2).
         "canal.mesa.ganho" => "Master Gain",
         "canal.mesa.corte_alto" => "Master Cutoff",

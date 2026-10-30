@@ -96,6 +96,9 @@ const ESCOPO: &[(&str, Option<&[&str]>)] = &[
     ("ph2d-panel-physics", None),
     // ⭐ F30 §B2: a MESA DE SOM é documento e canal da Cena (`ph2d_app_audio::marcas_mesa`).
     ("ph2d-panel-audio-mixer", None),
+    // ⭐ F40: os números do OSSO (`ph2d_app_skeleton::marcas_osso`); o resto do painel do esqueleto
+    // segue em `SEM_COLUNA_FORA`.
+    ("ph2d-panel-skeleton", Some(&["section_campos.rs"])),
 ];
 
 /// As tabelas de canais (caminhos a partir de `crates/`).
@@ -107,6 +110,7 @@ const TABELAS: &[&str] = &[
     "ph2d-app-constraints/src/marcas.rs",
     "ph2d-app-physics/src/marcas_mundo.rs",
     "ph2d-app-audio/src/marcas_mesa.rs",
+    "ph2d-app-skeleton/src/canais_osso.rs",
 ];
 
 /// Os helpers de LINHA de cada painel: recebem o id do chamador e repassam-no a uma porta — a
@@ -286,6 +290,21 @@ const CANAL_DO_ITEM: &str = "canal_item::regista";
 /// canal). ⭐ `ficheiro.rs::fn` (F27 B2) nomeia UMA função e vale para todas as chamadas dela — o
 /// rótulo vem de uma tabela, mesmo com o id literal.
 const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
+    (
+        "ph2d-panel-skeleton",
+        "section_campos.rs::linha_com_losango",
+        Canal,
+        &[
+            "VECTOR_BONE_LENGTH",
+            "VECTOR_BONE_STRENGTH",
+            "VECTOR_BONE_SEGMENTS",
+            "VECTOR_BONE_CURVE_IN_X",
+            "VECTOR_BONE_CURVE_IN_Y",
+            "VECTOR_BONE_CURVE_OUT_X",
+            "VECTOR_BONE_CURVE_OUT_Y",
+        ],
+        "os números do osso (`campos_do_osso`): família OSSO e as alças `PropKind::BoneBend*` (F40)",
+    ),
     (
         "ph2d-panel-inspector",
         "sections/camera_format.rs::format_row",
@@ -1928,17 +1947,18 @@ fn toda_crate_que_pinta_campos_escolheu_o_seu_lado() {
         .collect();
     todas.sort();
     for k in &todas {
-        let dentro =
-            ESCOPO.iter().any(|(e, _)| e == k) || DIVIDA_CRATE.iter().any(|(d, ..)| d == k);
-        if dentro {
+        // ⭐ Uma crate no ESCOPO só por alguns ficheiros (`Some`) responde pelo resto aqui (F40).
+        let so = ESCOPO.iter().find(|(e, _)| e == k).map(|&(_, so)| so);
+        if so == Some(None) || DIVIDA_CRATE.iter().any(|(d, ..)| d == k) {
             continue;
         }
-        if pinta_porta(k) {
+        if so.is_none() && pinta_porta(k) {
             erros.push(format!(
                 "{k} pinta campos com losango e não está no ESCOPO nem em DIVIDA_CRATE"
             ));
         }
-        for (f, func, p) in sem(k) {
+        let no_escopo = |f: &str| so.flatten().is_some_and(|fs| fs.contains(&f));
+        for (f, func, p) in sem(k).into_iter().filter(|(f, ..)| !no_escopo(f)) {
             let lado = SEM_COLUNA_FORA
                 .iter()
                 .position(|&(c, ff, ..)| c == k && ff == format!("{f}::{func}"));

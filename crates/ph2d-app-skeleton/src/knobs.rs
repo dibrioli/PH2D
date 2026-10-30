@@ -1,13 +1,5 @@
-//! ⭐⭐⭐ **O QUE CADA NÚMERO DO PAINEL SIGNIFICA PARA UM OSSO** — a tradução `id → campo` e a
-//! aplicação dela.
-//!
-//! ⚠️ **Ela mora na FAMÍLIA e não na fase do quadro**, pela lei do CLAUDE.md §2: a shell decide a
-//! ORDEM em que as coisas acontecem; *o que* um controlo faz é conhecimento de quem possui o
-//! componente. ⛔ Escrita na fase, ela cresceria com cada campo novo dentro da unidade de compilação
-//! mais cara do repo.
-//!
-//! ⚠️ **O `BoneKnob` era um `bool`** (`true` = força), e os cinco campos da F8 não cabem num bit —
-//! *um booleano que distingue dois casos é uma enumeração à espera do terceiro*.
+//! **O que cada número do painel significa para um osso** — a tradução `id → campo` e a aplicação
+//! dela, na FAMÍLIA e não na fase do quadro (CLAUDE.md §2).
 
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::ids;
@@ -33,12 +25,8 @@ pub enum BoneKnob {
 }
 
 impl BoneKnob {
-    /// **Todos os números do osso** — a população do censo de knobs.
-    ///
-    /// ⚠️ **Escrita à mão e guardada por um `match` EXAUSTIVO** (o gate
-    /// `a_lista_todos_cobre_o_enum`): um `enum` não se enumera sozinho, e uma variante nova que não
-    /// venha aqui deixaria o censo a medir uma população mais pequena **em silêncio** — que é
-    /// exactamente como um controlo morto passa despercebido.
+    /// **Todos os números do osso** — a população do censo de knobs (o `match` exaustivo de
+    /// `a_lista_todos_cobre_o_enum` guarda-a).
     pub const TODOS: [Self; 7] = [
         Self::Length,
         Self::Strength,
@@ -51,10 +39,7 @@ impl BoneKnob {
 }
 
 /// ⭐⭐ **Que número do osso este id é.**
-///
-/// ⚠️ **Devolve `Option` e é isso que a mantém honesta:** um id que não seja do osso cai fora e
-/// segue a cadeia do despacho. ⛔ Um braço `_ => Length` mandaria todo campo desconhecido escrever o
-/// comprimento — a forma mais cara de um controlo parecer vivo.
+/// `None` para um id que não é do osso (nunca um `_ => Length`).
 #[must_use]
 pub fn of_id(id: NodeId) -> Option<BoneKnob> {
     Some(match id {
@@ -72,21 +57,11 @@ pub fn of_id(id: NodeId) -> Option<BoneKnob> {
 /// ⭐⭐ **Escreve o número no osso**, com as cercas de cada campo.
 pub fn apply(bone: &mut Bone, knob: BoneKnob, v: f64) {
     match knob {
-        // ⛔ Os dois são PISOS, não tetos: um comprimento negativo viraria o osso do avesso e uma
-        // força negativa daria peso negativo. O tecto é o do documento — §0.0: um limite legítimo
-        // diz de que recurso é, e não há recurso nenhum a limitar aqui.
+        // PISOS, não tetos: negativo viraria o osso do avesso / o peso negativo.
         BoneKnob::Length => bone.length = v.max(0.0),
         BoneKnob::Strength => bone.strength = v.max(0.0),
-        // ⭐ Os SEGMENTOS têm tecto, e ele é MEDIDO: a `Skin::weights_at` percorre todos os ossos
-        // por ponto, então `N` segmentos multiplicam por `N` o custo deste osso. A tabela do custo
-        // vive no doc do `MAX_SEGMENTS`. ⚠️ Guarda-se o número **já saturado** para o campo do
-        // painel não mostrar um valor que a lei nunca honra.
+        // Os segmentos: o `as u8` satura e o `segments_of` é a porta do tecto MEDIDO (`MAX_SEGMENTS`).
         BoneKnob::Segments => {
-            // ⚠️⚠️ **UMA porta e não duas.** A 1.ª redacção fazia `v.clamp(1, MAX)` ANTES do cast, e
-            // a prova de mutação mostrou que aquele `clamp` é **redundante**: em Rust o `as u8`
-            // SATURA (`1000.0 → 255`, `−5.0 → 0`) e o `segments_of` fecha os dois lados a seguir.
-            // *Duas respostas à mesma pergunta divergem no dia em que alguém mexe numa delas* — e a
-            // que manda é a da lei, que é onde o tecto é medido.
             #[expect(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
@@ -132,10 +107,7 @@ mod todos_tests {
                 | BoneKnob::CurveOutY => {}
             }
         }
-        // ⛔⛔ **DISTINTOS, e não só a contagem — foi uma MUTAÇÃO que o exigiu.** Trocar um item
-        // por uma cópia de outro (`Strength` → `Length`) mantém o comprimento em `7`, **compila**,
-        // e tira uma variante da população **sem ninguém ver**: o censo passa a medir um knob duas
-        // vezes e outro nenhuma. *Uma lista guardada só pelo tamanho não é uma população.*
+        // DISTINTOS, e não só a contagem: uma cópia de outro item manteria os `7` (mutação).
         let distintos: std::collections::BTreeSet<String> = BoneKnob::TODOS
             .into_iter()
             .map(|k| format!("{k:?}"))

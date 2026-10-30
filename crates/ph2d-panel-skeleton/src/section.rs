@@ -318,7 +318,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
             y = r.action_button(id, label, y);
         }
         for (id, label, step, _valor) in campos {
-            y = r.labeled_number_field(label, id, step, y);
+            y = crate::section_campos::linha_com_losango(r, label, id, step, y);
         }
         y = handles_row(r, y);
         y = crate::section_tip::tip_row(r, y);

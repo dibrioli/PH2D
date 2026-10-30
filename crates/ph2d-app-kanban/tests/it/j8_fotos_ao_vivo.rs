@@ -13,20 +13,8 @@ use ph2d_vector::VectorScene;
 
 const TEMAS: [(Theme, &str); 2] = [(Theme::Light, "claro"), (Theme::Dark, "escuro")];
 
-fn grava(nome: &str, (w, h): (u32, u32), scene: &VectorScene) {
-    let gpu =
-        ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).expect("gpu");
-    let mut pass = ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (w, h))
-        .expect("pass");
-    let px = pass
-        .render_and_readback(&gpu, scene.inner(), (w, h))
-        .expect("readback");
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/TrelloClone/smoke/tutorial");
-    std::fs::create_dir_all(&dir).expect("pasta");
-    let path = dir.join(format!("{nome}.png"));
-    image::save_buffer(&path, &px, w, h, image::ExtendedColorType::Rgba8).expect("png");
-    println!("foto: {}", path.display());
+fn grava(nome: &str, wh: (u32, u32), scene: &VectorScene) {
+    crate::j2_fotos::grava("tutorial", nome, wh, scene);
 }
 
 #[test]

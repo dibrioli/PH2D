@@ -266,7 +266,14 @@ pub(crate) fn dates_pop(docs: &mut KanbanDocs, id: u64, item: super::DatesFor) {
     }) else {
         return;
     };
-    let picker = super::dates::picker(card, start, due, now);
+    let mut picker = super::dates::picker(card, start, due, now);
+    if item != D::Card {
+        let name = read(docs, id, |k, _| match item {
+            D::Field(f) => k.fields.get(&f).map(|d| d.name.clone()),
+            _ => None,
+        });
+        picker = picker.due_only(name.flatten());
+    }
     open_pop(docs, id, Pop::Dates(item, Box::new(picker)));
 }
 

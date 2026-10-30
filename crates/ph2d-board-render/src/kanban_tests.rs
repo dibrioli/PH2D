@@ -180,3 +180,42 @@ fn the_level_of_detail_follows_the_screen_scale() {
     assert_eq!(KanbanLod::at(0.5), KanbanLod::Mid);
     assert_eq!(KanbanLod::at(1.0), KanbanLod::High);
 }
+
+/// O gancho que recusa o nível baixo mas pinta o fundo de imagem (só a família a descodifica).
+struct ImageBg(Vec<Background>);
+
+impl KanbanPainter for ImageBg {
+    fn paint(&mut self, _p: KanbanPaint<'_>) -> bool {
+        false
+    }
+
+    fn paint_background(
+        &mut self,
+        _scene: &mut VectorScene,
+        _theme: Theme,
+        _set: &KanbanSet,
+        bg: &crate::kanban_bg::KanbanBg<'_>,
+    ) -> bool {
+        self.0.push(bg.bg);
+        true
+    }
+}
+
+/// ⭐ D11: de longe (nível baixo) um fundo de IMAGEM pede-se ao gancho — antes pintava o azul liso.
+#[test]
+fn far_away_an_image_background_is_painted_by_the_hook_not_as_plain_blue() {
+    let (src, b, k) = fixture();
+    let img = Background::Image(ph2d_kanban_model::FileId::of(b"foto"));
+    let mut header = src.borrow().get(k).unwrap().header.clone();
+    header.background = img;
+    src.borrow_mut().apply(k, vec![KanbanOp::Header(header)]);
+    install_kanbans(src);
+    let hook = Rc::new(RefCell::new(ImageBg(Vec::new())));
+    install_kanban_painter(hook.clone());
+    force_kanban_lod(Some(KanbanLod::Low));
+    let o = ops(&b, &mut RenderCache::default());
+    force_kanban_lod(None);
+    assert_eq!(hook.borrow().0, vec![img], "o gancho recebeu o fundo");
+    let blue = crate::token(ColorToken::KanbanBoardBg, Theme::Forge);
+    assert_eq!(fills(&o, blue), 0, "nada de azul liso por baixo da imagem");
+}

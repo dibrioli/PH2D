@@ -50,7 +50,7 @@ impl Look {
         let t = &self.image.as_ref()?.0;
         let rows = &t.row_max;
         // As linhas da miniatura que caem na faixa do cabeçalho (o recorte `cover` sobre `area`).
-        let d = cover_dest(t.size, area);
+        let d = crate::paint_card::cover::cover_dest(t.size, area);
         #[allow(clippy::cast_precision_loss)]
         let n = rows.len() as f32;
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -73,6 +73,18 @@ impl Look {
     /// Quão claro é o fundo pintado em `area` (o véu do cabeçalho e o chão claro).
     pub(crate) fn tone(&self, theme: Theme, area: Rect) -> BgTone {
         kanban_bg_tone(theme, self.bg, self.img(area).as_ref())
+    }
+
+    /// O fundo do nível baixo do Quadro (o gancho): `false` enquanto a imagem não chegou.
+    pub(crate) fn paint_on_board(&self, s: &mut VectorScene, t: Theme, b: &KanbanBg<'_>) -> bool {
+        #[allow(clippy::cast_possible_truncation)]
+        let area = Rect::new(0.0, 0.0, b.rect.width() as f32, b.rect.height() as f32);
+        let image = self.img(area);
+        let ok = image.is_some();
+        if ok {
+            paint_kanban_bg(s, t, &KanbanBg { image, ..*b });
+        }
+        ok
     }
 
     /// ⭐ Pinta o fundo em `r` (px da vista; `scale` = px de ecrã por px da vista).
@@ -141,15 +153,6 @@ pub(crate) struct Drawer {
     pub pick: bool,
     /// O tema do último quadro pintado (a cor de um matiz, para o seletor partir dela).
     pub theme: Theme,
-}
-
-/// O destino da imagem de `size` que enche `r` sem deformar, centrada (o `cover` da lei).
-fn cover_dest(size: [u32; 2], r: Rect) -> Rect {
-    #[allow(clippy::cast_precision_loss)]
-    let (w, h) = (size[0].max(1) as f32, size[1].max(1) as f32);
-    let s = (r.w / w).max(r.h / h);
-    let (dw, dh) = (w * s, h * s);
-    Rect::new(r.x + (r.w - dw) / 2.0, r.y + (r.h - dh) / 2.0, dw, dh)
 }
 
 /// O padrão actual (ou um novo, nas cores de nascença).

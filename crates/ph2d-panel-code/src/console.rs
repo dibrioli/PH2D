@@ -8,6 +8,7 @@ mod problems;
 pub use problems::{PaintedProblem, ProblemRow, problem_label, problems_title};
 
 use crate::chrome::{self, Ui};
+use crate::display::DisplayLine;
 use crate::status::Tone;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::icons::IconId;
@@ -37,6 +38,15 @@ pub trait ConsoleSource {
     fn row(&self, i: usize) -> ConsoleRow<'_>;
 }
 
+/// O texto de uma linha como se pinta: as tabulações expandidas até à paragem.
+fn shown(text: &str, tab: usize) -> std::borrow::Cow<'_, str> {
+    if text.contains('\t') {
+        std::borrow::Cow::Owned(DisplayLine::build(text, tab, None, &[]).text)
+    } else {
+        std::borrow::Cow::Borrowed(text)
+    }
+}
+
 /// O separador activo da faixa.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BandTab {
@@ -58,6 +68,9 @@ pub struct Band<'a> {
     pub problems: &'a [ProblemRow<'a>],
     /// A linha realçada (o F8), índice em `problems`.
     pub current: Option<usize>,
+    /// Largura de uma tabulação, em colunas: o `print` separa os valores com `\t`, e o console
+    /// expande-o como o editor (a fonte não tem glifo para ela).
+    pub tab_width: usize,
 }
 
 /// Onde caiu um clique na faixa.
@@ -246,7 +259,9 @@ impl ConsoleView {
         );
         scene.push_clip(&rect_to_vello(body));
         match band.tab {
-            BandTab::Console => self.paint_console(band.console, body, scene, ts, &ui),
+            BandTab::Console => {
+                self.paint_console(band.console, band.tab_width, body, scene, ts, &ui);
+            }
             BandTab::Problems => {
                 self.paint_problems(band.problems, band.current, body, scene, ts, &ui);
             }
@@ -304,6 +319,7 @@ impl ConsoleView {
     fn paint_console(
         &mut self,
         rows: &dyn ConsoleSource,
+        tab_width: usize,
         body: Rect,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
@@ -328,6 +344,7 @@ impl ConsoleView {
         for (k, i) in (start..end).enumerate() {
             let r = Rect::new(body.x, body.y + k as f32 * h, body.w, h);
             let row = rows.row(i);
+            let shown = shown(row.text, tab_width);
             let color = match row.tone {
                 Tone::Plain | Tone::Success => ui.text1,
                 Tone::Warning => ui.warn,
@@ -339,7 +356,7 @@ impl ConsoleView {
             chrome::label_in(
                 scene,
                 ts,
-                row.text,
+                &shown,
                 Rect::new(r.x + pad, r.y, (r.w - pad * 2.0).max(0.0), r.h),
                 color,
             );
@@ -440,5 +457,17 @@ impl ConsoleView {
         }
         self.problems_a11y(doc, &mut roots, &mut out);
         (roots, out)
+    }
+}
+
+#[cfg(test)]
+mod tab_tests {
+    #[test]
+    fn a_print_tab_is_painted_as_spaces_to_the_tab_stop() {
+        assert_eq!(super::shown("a\tbc\td", 4), "a   bc  d");
+        assert!(matches!(
+            super::shown("sem tab", 4),
+            std::borrow::Cow::Borrowed(_)
+        ));
     }
 }

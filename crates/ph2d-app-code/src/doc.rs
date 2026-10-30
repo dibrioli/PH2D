@@ -569,6 +569,7 @@ impl CodeDoc {
             problem_count: problems.len(),
             problems: &rows,
             current,
+            tab_width: TAB,
         };
         self.console_view.paint(band, console_r, scene, ts, theme);
     }

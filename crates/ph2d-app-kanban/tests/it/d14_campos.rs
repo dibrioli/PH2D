@@ -136,7 +136,10 @@ fn d14_the_date_field_has_a_calendar_in_its_corner() {
     let hoje = ph2d_kanban_dates::civil(ph2d_kanban_model::Moment(now()).0, &z).date;
     let dia = celula(&mut m, id, hoje.year, hoje.month, 15);
     m.clica(dia);
-    let save = DatePickerLayout::of(alvo(&mut m, id, "Pop(Picker)")).save;
+    // Uma data só: sem «Start date» nem lembrete — o painel curto.
+    let r = alvo(&mut m, id, "Pop(Picker)");
+    assert_eq!(r.h, DatePickerLayout::preferred_height_for(true));
+    let save = DatePickerLayout::of_mode(r, true).save;
     m.clica(pega(save));
     let Some(FieldValue::Date(at)) = valor(&m, id, c, DATA) else {
         panic!("a data gravou-se: {:?}", valor(&m, id, c, DATA));
@@ -246,4 +249,3 @@ fn d14_foto_campos() {
     toca(&mut m, id, &format!("FieldDate({DATA:?})"));
     foto(&mut m, "verso_calendario_do_campo");
 }
-

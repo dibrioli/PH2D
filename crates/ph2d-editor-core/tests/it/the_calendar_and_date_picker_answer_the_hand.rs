@@ -311,3 +311,39 @@ fn both_widgets_paint_every_theme_and_close_what_they_open() {
         assert!(enc.n_paths > 0, "{theme:?}: nada pintado");
     }
 }
+
+/// D14: UMA data (o campo de data, o item da checklist) — sem o início, a marca e o lembrete; o
+/// painel encolhe e o clique só chega ao que se pinta.
+#[test]
+fn a_due_only_picker_has_no_start_no_check_and_no_reminder() {
+    let mut p = picker();
+    p.due_only();
+    let (full, short) = (
+        DatePickerLayout::preferred_height(),
+        DatePickerLayout::preferred_height_for(true),
+    );
+    assert!(short < full, "{short} < {full}");
+    assert_eq!(p.preferred_height(), short);
+    let r = Rect::new(10.0, 10.0, 304.0, short);
+    let l = DatePickerLayout::of_mode(r, true);
+    for gone in [
+        l.start_label,
+        l.start_check,
+        l.start_field,
+        l.due_check,
+        l.reminder,
+    ] {
+        assert_eq!((gone.w, gone.h), (0.0, 0.0));
+    }
+    let full_l = DatePickerLayout::of_mode(r, false);
+    assert!(l.due_field.y < full_l.due_field.y && l.due_field.x < full_l.due_field.x);
+    assert!(l.save.y < full_l.save.y, "o painel subiu sem o lembrete");
+    assert!(l.remove.y + l.remove.h <= r.y + r.h);
+    let (x, y) = (l.due_field.x + 1.0, l.due_field.y + 1.0);
+    assert!(p.pointer_down(r, x, y).is_empty());
+    assert_eq!(p.editing, Some(DateField::Due));
+    assert!(!p.start_on && p.due_on && p.reminder == Reminder::None);
+    let mut scene = VectorScene::new();
+    let mut ts = TextSystem::without_system_fonts();
+    paint_date_picker(&p, r, &mut scene, &mut ts, Theme::Forge);
+}

@@ -9,7 +9,7 @@ use crate::metrics as m;
 use crate::paint::label;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect};
-use ph2d_editor_core::widget::{DatePickerLayout, LineField, paint_date_picker};
+use ph2d_editor_core::widget::{LineField, paint_date_picker};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_kanban_model::LabelColor;
@@ -66,7 +66,7 @@ pub(crate) fn paint(ui: &mut Ui<'_>, back: &mut Back, cx: &Ctx<'_>) {
         .find(|(_, h)| *h == pop.anchor())
         .map(|(r, _)| *r);
     if let Some(Pop::Dates(_, picker)) = back.pop.as_ref() {
-        let r = place(back, anchor, u::POP_W, DatePickerLayout::preferred_height());
+        let r = place(back, anchor, u::POP_W, picker.widget.preferred_height());
         paint_date_picker(&picker.widget, r, ui.scene, ui.ts, ui.theme);
         ui.hit(r, BackHit::Pop(PopHit::Picker));
         return;

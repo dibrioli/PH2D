@@ -118,6 +118,17 @@ pub trait KanbanPainter {
     fn paint(&mut self, p: KanbanPaint<'_>) -> bool;
     /// Pinta o que vai por cima de todo o quadro (o verso aberto). Sem nada a pintar, nada.
     fn paint_over(&mut self, _o: KanbanOver<'_>) {}
+    /// O fundo do nível baixo (`bg.image` vem vazio: só a família descodifica a imagem). `false` =
+    /// não pintou (o board-render pinta a cor de espera).
+    fn paint_background(
+        &mut self,
+        _scene: &mut VectorScene,
+        _theme: Theme,
+        _set: &KanbanSet,
+        _bg: &crate::kanban_bg::KanbanBg<'_>,
+    ) -> bool {
+        false
+    }
 }
 
 thread_local! {
@@ -291,18 +302,23 @@ pub(crate) fn paint(
         let kb = set.as_ref().and_then(|s| s.get(k.kanban));
         let bg = kb.map_or(Background::Color(Hue::Blue), |kb| kb.header.background);
         let kz = k.view.zoom.max(f64::EPSILON);
-        crate::kanban_bg::paint_kanban_bg(
-            scene,
-            theme,
-            &crate::kanban_bg::KanbanBg {
-                bg,
-                // Em px do KANBAN (o ladrilho do padrão é o mesmo que a aba pinta).
-                rect: Rect::new(0.0, 0.0, el.w / kz, el.h / kz),
-                to_scene: t * Affine::scale(kz),
-                screen_scale: zoom * kz,
-                image: None,
-            },
-        );
+        let back = crate::kanban_bg::KanbanBg {
+            bg,
+            // Em px do KANBAN (o ladrilho do padrão é o mesmo que a aba pinta).
+            rect: Rect::new(0.0, 0.0, el.w / kz, el.h / kz),
+            to_scene: t * Affine::scale(kz),
+            screen_scale: zoom * kz,
+            image: None,
+        };
+        let hooked = match (&painter, &set, bg) {
+            (Some(p), Some(set), Background::Image(_)) => {
+                p.borrow_mut().paint_background(scene, theme, set, &back)
+            }
+            _ => false,
+        };
+        if !hooked {
+            crate::kanban_bg::paint_kanban_bg(scene, theme, &back);
+        }
         if let Some(kb) = kb {
             low(scene, ts, cache, (el, &k.view, t, zoom), kb, theme, board);
         }

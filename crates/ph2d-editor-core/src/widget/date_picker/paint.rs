@@ -81,12 +81,35 @@ impl DatePickerLayout {
     /// A altura que o painel pede.
     #[must_use]
     pub fn preferred_height() -> f32 {
-        let r = Self::of(Rect::new(0.0, 0.0, CalendarLayout::preferred_height(), 0.0));
+        Self::preferred_height_for(false)
+    }
+
+    /// A altura que o painel pede no modo `due_only` ([`DatePicker::due_only`]) ou completo.
+    #[must_use]
+    pub fn preferred_height_for(due_only: bool) -> f32 {
+        let r = Self::of_mode(
+            Rect::new(0.0, 0.0, CalendarLayout::preferred_height(), 0.0),
+            due_only,
+        );
         r.remove.y + r.remove.h + pad()
     }
 
+    /// O painel completo (início, entrega, lembrete).
     #[must_use]
     pub fn of(rect: Rect) -> Self {
+        Self::of_mode(rect, false)
+    }
+
+    /// O painel de `p`, no modo dele.
+    #[must_use]
+    pub fn of_picker(p: &DatePicker, rect: Rect) -> Self {
+        Self::of_mode(rect, p.due_only)
+    }
+
+    /// `due_only`: sem o início, sem a marca da entrega e sem o lembrete — as caixas que somem
+    /// ficam com tamanho zero (nem se pintam nem se clicam).
+    #[must_use]
+    pub fn of_mode(rect: Rect, due_only: bool) -> Self {
         let (p, g, lh, row) = (pad(), gap(), label_h(), ROW_H_PX);
         let x = rect.x + p;
         let w = (rect.w - p * 2.0).max(0.0);
@@ -96,24 +119,41 @@ impl DatePickerLayout {
         y += row + g;
         let calendar = Rect::new(x, y, w, CalendarLayout::preferred_height());
         y += calendar.h + g;
-        let field_x = x + row + g;
-        let rest = (w - row - g).max(0.0);
+        let none = |y: f32| Rect::new(x, y, 0.0, 0.0);
+        let check = if due_only { 0.0 } else { row + g };
+        let field_x = x + check;
+        let rest = (w - check).max(0.0);
         let half = ((rest - g) * 0.5).max(0.0);
-        let start_label = Rect::new(x, y, w, lh);
-        y += lh;
-        let start_check = Rect::new(x, y, row, row);
-        let start_field = Rect::new(field_x, y, half, row);
-        y += row + g;
+        let (start_label, start_check, start_field) = if due_only {
+            (none(y), none(y), none(y))
+        } else {
+            let label = Rect::new(x, y, w, lh);
+            y += lh;
+            let r = (Rect::new(x, y, row, row), Rect::new(field_x, y, half, row));
+            y += row + g;
+            (label, r.0, r.1)
+        };
         let due_label = Rect::new(x, y, w, lh);
         y += lh;
-        let due_check = Rect::new(x, y, row, row);
+        let due_check = if due_only {
+            none(y)
+        } else {
+            Rect::new(x, y, row, row)
+        };
         let due_field = Rect::new(field_x, y, half, row);
         let time_field = Rect::new(field_x + half + g, y, half, row);
-        y += row + g;
-        let reminder_label = Rect::new(x, y, w, lh);
-        y += lh;
-        let reminder = Rect::new(x, y, w, row);
-        y += row + p;
+        y += row;
+        let (reminder_label, reminder) = if due_only {
+            (none(y), none(y))
+        } else {
+            y += g;
+            let label = Rect::new(x, y, w, lh);
+            y += lh;
+            let r = Rect::new(x, y, w, row);
+            y += row;
+            (label, r)
+        };
+        y += p;
         let save = Rect::new(x, y, w, row);
         y += row + g;
         let remove = Rect::new(x, y, w, row);
@@ -245,7 +285,7 @@ pub fn paint_date_picker(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
-    let l = DatePickerLayout::of(rect);
+    let l = DatePickerLayout::of_picker(p, rect);
     paint_popover(&Popover::new(p.id), rect, scene, theme);
     let lb = &p.labels;
 
@@ -280,33 +320,37 @@ pub fn paint_date_picker(
     paint_calendar(&p.calendar, l.calendar, scene, ts, theme);
 
     let hov = |h| p.hover == Some(h);
-    paint_label(ts, scene, &lb.start, l.start_label, theme);
-    paint_check(
-        p.start_on,
-        hov(DatePickerHit::Check(DateSlot::Start)),
-        l.start_check,
-        scene,
-        theme,
-    );
-    paint_field(
-        p,
-        DateField::Start,
-        p.start_on,
-        l.start_field,
-        1,
-        scene,
-        ts,
-        theme,
-    );
+    if !p.due_only {
+        paint_label(ts, scene, &lb.start, l.start_label, theme);
+        paint_check(
+            p.start_on,
+            hov(DatePickerHit::Check(DateSlot::Start)),
+            l.start_check,
+            scene,
+            theme,
+        );
+        paint_field(
+            p,
+            DateField::Start,
+            p.start_on,
+            l.start_field,
+            1,
+            scene,
+            ts,
+            theme,
+        );
+    }
 
     paint_label(ts, scene, &lb.due, l.due_label, theme);
-    paint_check(
-        p.due_on,
-        hov(DatePickerHit::Check(DateSlot::Due)),
-        l.due_check,
-        scene,
-        theme,
-    );
+    if !p.due_only {
+        paint_check(
+            p.due_on,
+            hov(DatePickerHit::Check(DateSlot::Due)),
+            l.due_check,
+            scene,
+            theme,
+        );
+    }
     paint_field(
         p,
         DateField::Due,
@@ -328,9 +372,11 @@ pub fn paint_date_picker(
         theme,
     );
 
-    paint_label(ts, scene, &lb.reminder, l.reminder_label, theme);
     let menu = reminder_menu(Some(p));
-    paint_dropdown_chip(&menu, l.reminder, scene, ts, theme);
+    if !p.due_only {
+        paint_label(ts, scene, &lb.reminder, l.reminder_label, theme);
+        paint_dropdown_chip(&menu, l.reminder, scene, ts, theme);
+    }
 
     let save =
         Button::new(NodeId(p.id.0.wrapping_add(4)), lb.save.clone()).kind(ButtonKind::Accent);

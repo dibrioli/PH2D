@@ -139,3 +139,37 @@ fn d11_foto_vistas_sobre_fundo_claro() {
         }
     }
 }
+
+/// 📷 D11 (30/10): o Kanban no Quadro visto de LONGE (o nível baixo) com um fundo de imagem — antes
+/// o desenho de reserva pintava-o azul liso.
+#[test]
+#[ignore = "a placa: fotos para docs/TrelloClone/smoke/D11/"]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn d11_foto_quadro_de_longe_com_imagem() {
+    use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
+    for (theme, tag) in [(Theme::Light, "claro"), (Theme::Dark, "escuro")] {
+        let (mut d, id, el) = crate::duas_janelas::Duas::new();
+        (d.hero.theme, d.ts) = (theme, ph2d_text::TextSystem::new());
+        let set = d.hero.documents.kanbans_shared();
+        let f = set
+            .borrow_mut()
+            .put_file(foto(1600, 1000), Some([1600, 1000]));
+        let mut header = set.borrow().get(id).expect("kanban").header.clone();
+        header.background = ph2d_kanban_model::Background::Image(f);
+        set.borrow_mut()
+            .apply(id, vec![ph2d_kanban_model::KanbanOp::Header(header)]);
+        let b = d.hero.documents.active_board_mut().expect("quadro");
+        let k = b.doc.get(el).expect("elemento").clone();
+        (b.camera.center_x, b.camera.center_y) = (k.x + k.w / 2.0, k.y + k.h / 2.0);
+        b.camera.zoom = 0.22;
+        for _ in 0..60 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            d.quadros(1);
+        }
+        let vp = ph2d_editor_core::zones::Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        let mut s = ph2d_vector::VectorScene::new();
+        paint_hero_screen(&mut d.hero, vp, &mut s, &mut d.ts);
+        let wh = (HERO_VIEWPORT_W as u32, HERO_VIEWPORT_H as u32);
+        crate::j2_fotos::grava("D11", &format!("quadro_de_longe_imagem_{tag}"), wh, &s);
+    }
+}

@@ -211,6 +211,17 @@ impl Picker {
         Self { widget: p, month }
     }
 
+    /// O seletor de UMA data (a entrega com hora, sem início nem lembrete), com o rótulo `label`
+    /// por cima da caixa — o campo de data e o item da checklist.
+    #[must_use]
+    pub fn due_only(mut self, label: Option<String>) -> Self {
+        self.widget.due_only();
+        if let Some(l) = label {
+            self.widget.labels.due = l;
+        }
+        self
+    }
+
     /// Um evento de mês: o seletor mostra o mês pedido.
     pub fn month_event(&mut self, ev: CalendarEvent, now: Moment, zone: &Zone) {
         self.month = match ev {

@@ -385,7 +385,7 @@ fn badges(
     }
 }
 
-mod cover;
+pub(crate) mod cover;
 pub(crate) mod probe;
 
 #[cfg(test)]

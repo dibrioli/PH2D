@@ -145,6 +145,9 @@ pub struct DatePicker {
     pub reminder: Reminder,
     pub reminder_open: bool,
     pub hover: Option<DatePickerHit>,
+    /// Uma data só (a entrega, com hora): sem o início, a marca e o lembrete — o campo de data e
+    /// o item da checklist. Ver [`DatePicker::due_only`].
+    pub due_only: bool,
 }
 
 impl DatePicker {
@@ -165,9 +168,27 @@ impl DatePicker {
             reminder: Reminder::None,
             reminder_open: false,
             hover: None,
+            due_only: false,
         };
         p.sync();
         p
+    }
+
+    /// Passa ao modo de UMA data: a entrega fica sempre ligada e o início desliga-se.
+    pub fn due_only(&mut self) {
+        self.due_only = true;
+        self.start_on = false;
+        self.due_on = true;
+        self.active = DateSlot::Due;
+        self.reminder = Reminder::None;
+        self.reminder_open = false;
+        self.sync();
+    }
+
+    /// A altura que este painel pede.
+    #[must_use]
+    pub fn preferred_height(&self) -> f32 {
+        DatePickerLayout::preferred_height_for(self.due_only)
     }
 
     fn field_mut(&mut self, f: DateField) -> &mut LineField {
@@ -282,7 +303,7 @@ impl DatePicker {
     /// Um clique em `(x, y)` dentro de `rect`. Um clique que sai de uma caixa em edição confirma-a
     /// primeiro (esse evento vem antes, e o do clique perde-se só se for o mesmo sítio).
     pub fn pointer_down(&mut self, rect: Rect, x: f32, y: f32) -> Vec<DatePickerEvent> {
-        let l = DatePickerLayout::of(rect);
+        let l = DatePickerLayout::of_picker(self, rect);
         let mut out = Vec::new();
         if self.reminder_open {
             self.reminder_open = false;
@@ -337,7 +358,7 @@ impl DatePicker {
     }
 
     pub fn pointer_move(&mut self, rect: Rect, x: f32, y: f32) -> bool {
-        let l = DatePickerLayout::of(rect);
+        let l = DatePickerLayout::of_picker(self, rect);
         let h = l.hit(x, y);
         let cal = self.calendar.pointer_move(l.calendar, x, y);
         let changed = h != self.hover;

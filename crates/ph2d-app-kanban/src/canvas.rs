@@ -12,7 +12,7 @@ use crate::docs::KanbanDocs;
 use crate::tab::Tab;
 use crate::view::{At, ViewCtx};
 use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
-use ph2d_board_render::{KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
+use ph2d_board_render::{KanbanBg, KanbanLod, KanbanOver, KanbanPaint, KanbanPainter};
 use ph2d_editor_core::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
 use ph2d_editor_core::documents::SharedKanbans;
 use ph2d_editor_core::screens::hero::board_video::kanban::{
@@ -20,8 +20,10 @@ use ph2d_editor_core::screens::hero::board_video::kanban::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerKind;
+use ph2d_kanban_model::KanbanSet;
 use ph2d_text::TextSystem;
-use ph2d_vector::Affine;
+use ph2d_tokens::Theme;
+use ph2d_vector::{Affine, VectorScene};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -149,6 +151,16 @@ impl KanbanPainter for Painter {
         crate::view::paint(p.scene, p.ts, p.theme, at, &mut tab, p.set, &cx);
         c.tabs.insert(p.element, tab);
         true
+    }
+
+    fn paint_background(
+        &mut self,
+        scene: &mut VectorScene,
+        theme: Theme,
+        set: &KanbanSet,
+        bg: &KanbanBg<'_>,
+    ) -> bool {
+        crate::bg::Look::of(set, bg.bg).paint_on_board(scene, theme, bg)
     }
 
     fn paint_over(&mut self, o: KanbanOver<'_>) {

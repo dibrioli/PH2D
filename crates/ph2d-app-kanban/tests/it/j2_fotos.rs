@@ -9,14 +9,18 @@ use ph2d_kanban_model::KanbanId;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-fn grava(nome: &str, scene: &VectorScene) {
+fn grava_w8(nome: &str, scene: &VectorScene) {
     grava_em("W8", nome, scene);
 }
 
 /// A foto da cena em `docs/TrelloClone/smoke/<pasta>/<nome>.png`.
 pub(crate) fn grava_em(pasta: &str, nome: &str, scene: &VectorScene) {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let (w, h) = (AREA.w as u32, AREA.h as u32);
+    grava(pasta, nome, (AREA.w as u32, AREA.h as u32), scene);
+}
+
+/// ⭐ A única foto dos testes: `scene` a `w×h` na placa, em `docs/TrelloClone/smoke/<pasta>/<nome>.png`.
+pub(crate) fn grava(pasta: &str, nome: &str, (w, h): (u32, u32), scene: &VectorScene) {
     let gpu =
         ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).expect("gpu");
     let mut pass = ph2d_render::VelloPass::new(&gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (w, h))
@@ -52,16 +56,16 @@ fn j2_foto_verso_painel_e_construtor() {
             m.roda(AREA.w / 2.0, AREA.h / 2.0, -16.0);
         }
         let s = m.cena();
-        grava(&format!("verso_botoes_e_ligacoes_{tag}"), &s);
+        grava_w8(&format!("verso_botoes_e_ligacoes_{tag}"), &s);
         // O painel nas regras: duas regras e a sugestão.
         toca_v(&mut m, id, "Side(AddButton)");
         toca_auto(&mut m, id, "Auto(Tab(Rule))");
         let s = m.cena();
-        grava(&format!("painel_regras_{tag}"), &s);
+        grava_w8(&format!("painel_regras_{tag}"), &s);
         // O construtor: editar uma regra, com o menu da acção aberto.
         toca_auto(&mut m, id, "Auto(Edit(");
         toca_auto(&mut m, id, "Auto(Chip(Head(Action(0))))");
         let s = m.cena();
-        grava(&format!("construtor_{tag}"), &s);
+        grava_w8(&format!("construtor_{tag}"), &s);
     }
 }

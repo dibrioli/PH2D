@@ -92,7 +92,7 @@ pub fn sprite_mesh_para_a_placa(
     size: [f32; 2],
     correcoes: &[Correccao],
 ) -> Option<SpriteMesh> {
-    if pele.mistura() != ph2d_skeleton::MisturaDoAngulo::MeioAngulo {
+    if pele.mistura() != ph2d_skeleton::MisturaDoAngulo::MeioAngulo || pele.tem_esticao() {
         return crate::skin_image::posed_sprite_mesh_corrigida(
             mesh, p2l, pele, pesos, anchor, size, correcoes,
         );

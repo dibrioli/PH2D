@@ -93,3 +93,45 @@ fn o_osso_curvo_estica_pelos_sub_ossos() {
         assert!(perto(a, b), "junta {k}: {a:?} × {b:?}");
     }
 }
+
+/// ⭐⭐ **O ÚLTIMO osso da corrente que cresceu estica TAMBÉM os pontos que partilha com o pai**
+/// (report do dono 30/10: *«aumentar o tamanho do último osso deforma erroneamente o path»*).
+///
+/// Dois ossos em fila, sem rotação nenhuma: `A = [0, 4]` e a folha `B = [4, 8]`, que cresce de `4`
+/// para `6`. Sem rotação entre os ossos a mistura em torno da junta não tem nada a corrigir ⇒ ela
+/// tem de ser a LINEAR (`Σ wᵢ Mᵢ p`). ⛔ Antes: `R(θ̄)·(p − c)` é rígida, e um ponto com `80 %` da
+/// folha ficava onde estava (só o de peso `1` esticava — a arte rasgava na fronteira).
+#[test]
+fn a_folha_que_cresce_estica_os_pontos_misturados_com_o_pai() {
+    let mut ossos = Vec::new();
+    let em = |x: f64| Xform([1.0, 0.0, 0.0, 1.0, x, 0.0]);
+    let recto = |l: f64| bend::BoneSpec::straight(l, 1.0);
+    SkinBone::bent_esticado(
+        em(0.0),
+        recto(4.0),
+        4.0,
+        em(0.0),
+        Xform::IDENTITY,
+        0,
+        &mut ossos,
+    );
+    SkinBone::bent_esticado(
+        em(4.0),
+        recto(6.0),
+        4.0,
+        em(4.0),
+        Xform::IDENTITY,
+        1,
+        &mut ossos,
+    );
+    let pele = Skin::new(ossos).expect("pele");
+    for (p, w) in [([7.0, 0.5], [0.2, 0.8]), ([5.0, -0.3], [0.5, 0.5])] {
+        let (misturado, linear) = (pele.blend(p, &w), pele.blend_linear(p, &w));
+        assert!(
+            perto(misturado, linear),
+            "{p:?}: {misturado:?} × {linear:?}"
+        );
+    }
+    // ⛔ CONTROLO: o ponto de peso 1 na folha estica pelo `k = 1,5` (a lei da folha sozinha).
+    assert!(perto(pele.blend([7.0, 0.5], &[0.0, 1.0]), [8.5, 0.5]));
+}

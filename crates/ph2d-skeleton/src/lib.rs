@@ -223,6 +223,9 @@ pub struct Skin {
     /// `(θ, cos θ, sin θ)` de cada osso, θ o [`SkinBone::angulo_da_pose`] — a mistura lia-os por
     /// PONTO (três `atan2` e três `sin_cos` por ponto posado; A10, fila §F60).
     angulos: Vec<(f64, f64, f64)>,
+    /// `S_i = R(θ_i)ᵀ·L_i` — o que a parte linear da pose tem ALÉM da rotação (o esticão do
+    /// comprimento, a escala); `None` quando ela é uma rotação (o caminho rígido, ao bit).
+    esticoes: Vec<Option<[f64; 4]>>,
     /// A [`Skin::tabela_de_juntas`], calculada na 1.ª mistura que a pede (`O(n²)` — só quando há
     /// pontos a misturar).
     juntas: std::sync::OnceLock<Vec<[f64; 2]>>,
@@ -262,14 +265,26 @@ impl Skin {
                 let t = b.angulo_da_pose();
                 (t, t.cos(), t.sin())
             })
+            .collect::<Vec<_>>();
+        let esticoes = bones
+            .iter()
+            .zip(&angulos)
+            .map(|(b, &(_, co, si))| centro::esticao(b.pose, co, si))
             .collect();
         (!bones.is_empty()).then_some(Self {
             bones,
             angulos,
+            esticoes,
             juntas: std::sync::OnceLock::new(),
             meios: std::sync::OnceLock::new(),
             mistura,
         })
+    }
+
+    /// Algum osso tem esticão (comprimento ou escala) — o shader só sabe rodar, e recusa.
+    #[must_use]
+    pub fn tem_esticao(&self) -> bool {
+        self.esticoes.iter().any(Option::is_some)
     }
 
     /// Que lei do ângulo esta pele usa.

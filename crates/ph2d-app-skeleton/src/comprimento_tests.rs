@@ -82,3 +82,27 @@ fn a_curva_empurra_os_filhos_e_o_undo_ve_o_autorado() {
     PreviewDrive::restore(&mut sim, &vivo);
     assert_empurrado(&sim, ponta, meio, 20.0);
 }
+
+/// ⭐ Smoke do dono 30/10 (`PH2D_VEC_BONE_SMOKE=8`): arrastar Length até ao 0 e voltar devolve os
+/// filhos — em 0 o osso não tem eixo de onde medir e o empurrão de volta recusava-se (`l0 <= 0`),
+/// os filhos ficavam colapsados na raiz para sempre.
+#[test]
+fn arrastar_o_comprimento_ate_zero_e_voltar_devolve_os_filhos() {
+    let (mut sim, pai, ponta, meio) = cena();
+    let (p0, m0) = (pose(&sim, ponta), pose(&sim, meio));
+    for v in [6.0, 0.0, -3.0, 0.0, 10.0] {
+        assert!(aplica(&mut sim, pai, BoneKnob::Length, v));
+    }
+    let (p, m) = (pose(&sim, ponta), pose(&sim, meio));
+    assert!(
+        (p.translation.x - p0.translation.x).abs() < 1e-4,
+        "a ponta: {}",
+        p.translation.x
+    );
+    assert!(
+        (m.translation.x - m0.translation.x).abs() < 1e-4,
+        "o meio: {}",
+        m.translation.x
+    );
+    assert_eq!(m.translation.y, m0.translation.y);
+}

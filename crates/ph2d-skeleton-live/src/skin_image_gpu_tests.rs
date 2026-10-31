@@ -472,3 +472,24 @@ fn a_porta_entrega_a_da_cpu(outra: &Skin, omissao: &Skin) {
          deixou de distinguir os dois caminhos"
     );
 }
+
+/// ⭐⭐ **Um osso ESTICADO vai pela CPU; o rígido continua na placa** (dono 30/10, comprimento do
+/// osso): o `sprite.wgsl` só roda, logo com esticão a porta entrega a malha posada da CPU, bit a
+/// bit e sem a tabela do dispositivo — a mesma lei da mistura que o shader não exprime. Controlo:
+/// a pele rígida da mesma corrente tem de continuar a subir à placa.
+#[test]
+fn um_osso_esticado_vai_pela_cpu_e_o_rigido_pela_placa() {
+    let mut ossos = pele().bones().to_vec();
+    // O 2.º osso a 1,5× ao longo do eixo, em torno da junta `(0,2, 0)`.
+    ossos[1].pose = Xform([1.5, 0.0, 0.0, 1.0, 0.2 - 0.3, 0.0]);
+    let esticada = Skin::new(ossos).expect("pele");
+    assert!(esticada.tem_esticao(), "fixtura: o osso está esticado");
+    let rigida = pele();
+    assert!(!rigida.tem_esticao(), "controlo: a pele rodada é rígida");
+    assert_eq!(
+        esticada.mistura(),
+        rigida.mistura(),
+        "a mesma lei — só o esticão difere"
+    );
+    a_porta_entrega_a_da_cpu(&esticada, &rigida);
+}

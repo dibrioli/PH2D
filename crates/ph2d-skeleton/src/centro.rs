@@ -131,6 +131,28 @@ impl SkinBone {
     }
 }
 
+/// Abaixo disto `LᵀL − I` é arredondamento de uma rotação composta (`~1e-15`), e não um esticão.
+const RIGIDA: f64 = 1e-12;
+
+/// `S = R(θ)ᵀ·L` da parte linear `L` da `pose` (`θ` do [`SkinBone::angulo_da_pose`], logo
+/// `R(θ)·S = L` exacto e o ponto de peso `1` vai para onde o osso o quer); `None` se `L` é uma
+/// rotação. Colunas: `[s00, s10, s01, s11]`, a ordem do [`Xform`](ph2d_affine::Xform).
+pub(crate) fn esticao(pose: ph2d_affine::Xform, co: f64, si: f64) -> Option<[f64; 4]> {
+    let [a, b, c, d, ..] = pose.0;
+    let desvio = (a.mul_add(a, b * b) - 1.0)
+        .abs()
+        .max((c.mul_add(c, d * d) - 1.0).abs())
+        .max(a.mul_add(c, b * d).abs());
+    (desvio > RIGIDA).then(|| {
+        [
+            co.mul_add(a, si * b),
+            co.mul_add(b, -si * a),
+            co.mul_add(c, si * d),
+            co.mul_add(d, -si * c),
+        ]
+    })
+}
+
 /// A junta que dois sub-ossos partilham, em repouso — a **ponta mais próxima** de um ao outro.
 ///
 /// ⭐ Para um par pai→filho e para dois sub-ossos consecutivos ela é **exacta** (as duas pontas
@@ -326,11 +348,32 @@ impl Skin {
             return self.blend_linear(p, w);
         };
         let base = self.blend_linear(c, w);
-        let d = [p[0] - c[0], p[1] - c[1]];
+        let d = self.estica_o_braco([p[0] - c[0], p[1] - c[1]], w);
         [
             si.mul_add(-d[1], co.mul_add(d[0], base[0])),
             si.mul_add(d[0], co.mul_add(d[1], base[1])),
         ]
+    }
+
+    /// ⭐⭐ **O braço `d = p − c` pelo esticão MÉDIO** `Σ wᵢ Sᵢ d / Σ wᵢ` (dono 30/10: o osso que
+    /// cresce estica a arte TODA dele, não só a de peso `1`). Sem esticão nenhum devolve `d` ao bit.
+    fn estica_o_braco(&self, d: [f64; 2], w: &[f64]) -> [f64; 2] {
+        if !(self.esticoes.iter().zip(w)).any(|(s, &peso)| peso != 0.0 && s.is_some()) {
+            return d;
+        }
+        let (mut out, mut soma) = ([0.0_f64; 2], 0.0_f64);
+        for (s, &peso) in self.esticoes.iter().zip(w) {
+            if peso == 0.0 {
+                continue;
+            }
+            let q = s.map_or(d, |[a, b, c, e]| {
+                [a.mul_add(d[0], c * d[1]), b.mul_add(d[0], e * d[1])]
+            });
+            out[0] = peso.mul_add(q[0], out[0]);
+            out[1] = peso.mul_add(q[1], out[1]);
+            soma += peso;
+        }
+        [out[0] / soma, out[1] / soma]
     }
 
     /// O `(cos θ̄, sin θ̄)` da rotação média, ou `None` quando a lei não tem resposta e o chamador

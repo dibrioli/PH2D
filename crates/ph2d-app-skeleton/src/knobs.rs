@@ -54,11 +54,17 @@ pub fn of_id(id: NodeId) -> Option<BoneKnob> {
     })
 }
 
+/// O piso do comprimento: em `0` o osso não tem eixo e o empurrão dos filhos não tem de onde voltar
+/// (`empurra_filhos` recusa `l0 <= 0`) — arrastar Length até 0 colapsava-os na raiz para sempre
+/// (smoke 30/10). `1e-3` é invisível e mantém a ida-e-volta do `f32` (o filho a meio volta ao bit
+/// de `1e-4`, `comprimento_tests`).
+pub const COMPRIMENTO_MINIMO: f64 = 1e-3;
+
 /// ⭐⭐ **Escreve o número no osso**, com as cercas de cada campo.
 pub fn apply(bone: &mut Bone, knob: BoneKnob, v: f64) {
     match knob {
         // PISOS, não tetos: negativo viraria o osso do avesso / o peso negativo.
-        BoneKnob::Length => bone.length = v.max(0.0),
+        BoneKnob::Length => bone.length = v.max(COMPRIMENTO_MINIMO),
         BoneKnob::Strength => bone.strength = v.max(0.0),
         // Os segmentos: o `as u8` satura e o `segments_of` é a porta do tecto MEDIDO (`MAX_SEGMENTS`).
         BoneKnob::Segments => {

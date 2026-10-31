@@ -30,6 +30,8 @@ Ordem aprovada: (1) régua comparável — a MESMA aguada no PH2D e no Rebelle (
 do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px). Rebelle no ecrã real = pedir de novo ao dono.
 | item | estado | agente | commits | número |
 |---|---|---|---|---|
-| 1 régua comparável | script PRONTO, não corrido: `~/Apps/rebelle/oraculo/mede_passo_agua.sh` (wash + SIMULATION K=50/200, relógio = título da janela numa tela-marca; SAVE recusado); `R=3 bash … passo1`; pede ecrã do dono + máquina calma | general-purpose | — | Rebelle ms/passo: nunca medido |
-| 2 secagem | sonda FEITA ([SECAGEM_diagnostico.md](SECAGEM_diagnostico.md)): LADO+CANAL+MEMO ao bit 348→245 ms/passagem (−30 %); a aplicar no produto + SALTA-LEVANTA (98,9 % das células) | general-purpose | ver git log | passo médio −13 % estimado |
-| 3 memória | aguarda 1–2 | — | — | — |
+| 1 régua comparável | FEITA ([D2_rebelle_passo_agua.md](D2_rebelle_passo_agua.md)) | general-purpose | ver git log | Rebelle 4K 37,3 ms/passo (21 núcleos, 75 ns·núcleo/px), 1K 3,9 ms; PH2D 4K 100,5 ms (~278 ns·núcleo/px) ⇒ META < 37 ms |
+| 2 secagem | FEITA no produto, ao bit (05b3830f34 3a931fccb8 6b152bd6ad 85c0a42c5b) | general-purpose | ver acima | passo 4K 128 → 100,5 ms (+27 % passos/s) |
+| 3 memória (P1) | undo só do que o traço muda (78 % do RSS é o histórico 6×56 B/px) — em construção | general-purpose | — | 428 B/px hoje |
+| 4 advecção (P2) | cortes ao bit: outflow 2 linhas, take_scale 1×, prepare⊂momentum, dst SoA — em construção | general-purpose | — | advecção ~43 ms |
+| 5 pincéis | catálogo FEITO: CAP-01 ponta que gira destrava Tilted Shade, Compressed Charcoal, Marker Chisel, Filbert Dry, Flat Bristle, Broad Nib; depois pontas a direito, borda molhada, fio do arrasto | — | — | depois da performance |

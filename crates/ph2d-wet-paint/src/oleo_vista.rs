@@ -330,6 +330,36 @@ impl<'a> PreparoVista<'a> {
         Eixo::de(u + 1.0 - c0 as f64, n)
     }
 
+    /// A geometria da altura no pixel `(x, y)` da vista, em unidades do DOCUMENTO: `[h, hx, hy, hxx, hyy, hxy]` —
+    /// o que [`Self::linha`] dá à óptica.
+    pub(crate) fn geometria(&self, x: usize, y: usize) -> [f64; 6] {
+        let Vista { x0, y0, s, .. } = self.vista;
+        let centro = |o0: f64, k: usize| o0 + (k as f64 + 0.5) / s - 0.5 + 1.0;
+        self.spline(centro(x0, x), centro(y0, y))
+    }
+
+    /// A pilha antes da luz ([`PreLuz`]) interpolada no pixel `(x, y)` da vista — a que [`Self::linha`] fecha.
+    pub(crate) fn pre_do_pixel(&self, x: usize, y: usize) -> PreLuz {
+        let Vista { x0, y0, .. } = self.vista;
+        let e = &self.eixo(y0, y as isize, self.cy0, self.ch);
+        let ex = &self.eixo(x0, x as isize, self.cx0, self.cw);
+        self.pre_em(ex, e)
+    }
+
+    fn pre_em(&self, ex: &Eixo, e: &Eixo) -> PreLuz {
+        let idx = |ix: usize, iy: usize| ix + iy * self.cw;
+        PreLuz {
+            pr: cr(ex, e, &|i, j| self.pre[idx(i, j)].pr),
+            pg: cr(ex, e, &|i, j| self.pre[idx(i, j)].pg),
+            pb: cr(ex, e, &|i, j| self.pre[idx(i, j)].pb),
+            pa_sem: cr(ex, e, &|i, j| self.pre[idx(i, j)].pa_sem),
+            pa: cr(ex, e, &|i, j| self.pre[idx(i, j)].pa),
+            tinta: cr(ex, e, &|i, j| self.pre[idx(i, j)].tinta),
+            pe: cr(ex, e, &|i, j| self.pre[idx(i, j)].pe),
+            w: cr(ex, e, &|i, j| self.pre[idx(i, j)].w),
+        }
+    }
+
     /// A linha `y` da vista (`w × 4` bytes RGBA). Pura: as linhas podem correr em paralelo.
     pub fn linha(&self, y: usize, out: &mut [u8]) {
         let Vista { x0, y0, w, s, .. } = self.vista;
@@ -340,22 +370,11 @@ impl<'a> PreparoVista<'a> {
         let (cw, ch) = (self.cw, self.ch);
         let e = &self.eixo(y0, y as isize, self.cy0, ch);
         let idx = |ix: usize, iy: usize| ix + iy * cw;
-        let centro = |o0: f64, k: usize| o0 + (k as f64 + 0.5) / s - 0.5 + 1.0;
-        let cy_f = centro(y0, y);
         for x in 0..w {
             let ex = &self.eixo(x0, x as isize, self.cx0, cw);
-            let q = PreLuz {
-                pr: cr(ex, e, &|i, j| self.pre[idx(i, j)].pr),
-                pg: cr(ex, e, &|i, j| self.pre[idx(i, j)].pg),
-                pb: cr(ex, e, &|i, j| self.pre[idx(i, j)].pb),
-                pa_sem: cr(ex, e, &|i, j| self.pre[idx(i, j)].pa_sem),
-                pa: cr(ex, e, &|i, j| self.pre[idx(i, j)].pa),
-                tinta: cr(ex, e, &|i, j| self.pre[idx(i, j)].tinta),
-                pe: cr(ex, e, &|i, j| self.pre[idx(i, j)].pe),
-                w: cr(ex, e, &|i, j| self.pre[idx(i, j)].w),
-            };
+            let q = self.pre_em(ex, e);
             let px = if q.pa_sem > 0.0 && q.w > 0.0 {
-                let [_, fx, fy, hxx, hyy, hxy] = self.spline(centro(x0, x), cy_f);
+                let [_, fx, fy, hxx, hyy, hxy] = self.geometria(x, y);
                 // O papel é plano onde as 16 células à volta não têm relevo (a spline oscila perto da orla).
                 let papel = ex.i.iter().all(|&i| {
                     e.i.iter().all(|&j| {
@@ -456,6 +475,80 @@ pub mod prova {
             e.pentear_rebordo(c[0], c[1], [14.0, 14.0], &sil, rumo, 4.0, 1.0);
         }
         e
+    }
+
+    /// A [`super::PreparoVista::geometria`] da vista `v` sobre a faca com a ALTURA trocada por `f(cx, cy)` (células):
+    /// para medir a escala da curvatura contra uma altura analítica.
+    #[must_use]
+    pub fn geometria_analitica(
+        f: &dyn Fn(f64, f64) -> f64,
+        v: super::Vista,
+        pixels: &[(usize, usize)],
+    ) -> Vec<[f64; 6]> {
+        let e = faca();
+        let o = crate::oleo_real::OleoReal::default();
+        let c = campo(&e, &o);
+        let mut pv = super::PreparoVista::novo(None, &camadas(&e), VISUAL, &o, &c, v);
+        let sh = pv.coef.len() / pv.sw;
+        let (ox, oy) = (
+            pv.cx0 as f64 - super::MARGEM_SPLINE as f64,
+            pv.cy0 as f64 - super::MARGEM_SPLINE as f64,
+        );
+        for j in 0..sh {
+            for i in 0..pv.sw {
+                pv.coef[i + j * pv.sw] = f(ox + i as f64, oy + j as f64);
+            }
+        }
+        super::prefiltro_2d(&mut pv.coef, pv.sw, sh);
+        pixels.iter().map(|&(x, y)| pv.geometria(x, y)).collect()
+    }
+
+    /// A [`super::PreparoVista::pre_do_pixel`] e a `geometria` da faca nos `pixels` da vista `v`, e o [`PreLuz`] e a
+    /// altura fina das CÉLULAS `celulas` (1-based) pela linha de hoje.
+    #[must_use]
+    pub fn alinhamento(
+        v: super::Vista,
+        pixels: &[(usize, usize)],
+        celulas: &[(usize, usize)],
+    ) -> (Vec<(crate::render::PreLuz, f64)>, Vec<(crate::render::PreLuz, f64)>) {
+        let e = faca();
+        let o = crate::oleo_real::OleoReal::default();
+        let c = campo(&e, &o);
+        let cam = camadas(&e);
+        let pv = super::PreparoVista::novo(None, &cam, VISUAL, &o, &c, v);
+        let vista = pixels.iter().map(|&(x, y)| (pv.pre_do_pixel(x, y), pv.geometria(x, y)[0])).collect();
+        let gw = e.active_grid().w;
+        let (mut linha, mut pre) = (vec![0u8; gw * 4], vec![crate::render::PreLuz::default(); gw]);
+        let hoje = celulas
+            .iter()
+            .map(|&(cx, cy)| {
+                crate::render::render_pigment_row_oleo_pre(
+                    None, &cam, VISUAL, &o, &c, cy, cx, cx, &mut linha, &mut pre,
+                );
+                (pre[cx - 1], c.at_fina(cx as isize, cy as isize))
+            })
+            .collect();
+        (vista, hoje)
+    }
+
+    /// Uma grade `lado × lado` COBERTA de tinta uniforme (até à borda) e a vista `v` dela.
+    #[must_use]
+    pub fn uniforme(lado: usize, v: super::Vista) -> Vec<u8> {
+        let mut g = crate::grid::Grid::new(lado, lado);
+        for y in 1..=lado {
+            for x in 1..=lado {
+                g.sett[x + y * g.s] = 3000.0;
+            }
+        }
+        g.sett_rgb.fill([200.0, 110.0, 50.0]);
+        let o = crate::oleo_real::OleoReal::default();
+        let c = crate::oleo_real::CampoAltura::de(&[(&g, true)], &o, 1, 1, 1, lado, lado);
+        let cam = [crate::render::RenderLayer {
+            grid: &g,
+            opacity: 1.0,
+            visible: true,
+        }];
+        super::PreparoVista::novo(None, &cam, VISUAL, &o, &c, v).render()
     }
 
     /// As camadas da linha (a grade activa, opaca, visível) e o visual do produto (relevo, sem papel).

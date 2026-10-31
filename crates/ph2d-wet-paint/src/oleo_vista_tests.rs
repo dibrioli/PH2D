@@ -79,3 +79,83 @@ fn a_vista_a_400_por_cento_nao_tem_mais_pontinhos_que_a_ampliacao() {
     eprintln!("outliers 6σ 400 %: bilinear de hoje {ob:.5} · vista nova {on:.5}");
     assert!(on <= 1.5 * ob, "outliers {on:.5} × bilinear {ob:.5}");
 }
+
+/// ⭐ A ESCALA da curvatura: sobre uma altura analítica (o parabolóide `h = a·((x−50)² + (y−50)²)`, que a B-spline
+/// cúbica reproduz exactamente), a `geometria` que a vista dá à óptica a s = 2, 3, 4 é a do DOCUMENTO: `hx = 2a(x−50)`,
+/// `hxx = hyy = 2a`, `hxy = 0`, seja qual for o zoom. Tolerância `1e-6`: o único erro é o espelho da borda, que o
+/// pré-filtro amortece por `|z|^8 ≈ 2,6·10⁻⁵` sobre um declive de borda ≤ 1 (medido: ver o `eprintln!`).
+#[test]
+fn a_curvatura_da_vista_esta_em_unidades_do_documento_a_qualquer_zoom() {
+    let a = 0.01;
+    let f = move |x: f64, y: f64| a * ((x - 50.0) * (x - 50.0) + (y - 50.0) * (y - 50.0));
+    for s in [2.0, 3.0, 4.0] {
+        let v = vista(s);
+        let k = s as usize;
+        let pixels: Vec<(usize, usize)> = (8..56)
+            .step_by(7)
+            .flat_map(|i| (8..56).step_by(11).map(move |j| (i * k, j * k)))
+            .collect();
+        let g = super::prova::geometria_analitica(&f, v, &pixels);
+        let mut pior = 0.0f64;
+        for (&(x, y), q) in pixels.iter().zip(&g) {
+            let cx = v.x0 + (x as f64 + 0.5) / s - 0.5 + 1.0;
+            let cy = v.y0 + (y as f64 + 0.5) / s - 0.5 + 1.0;
+            let esperado = [f(cx, cy), 2.0 * a * (cx - 50.0), 2.0 * a * (cy - 50.0), 2.0 * a, 2.0 * a, 0.0];
+            for (c, (&qv, &ev)) in q.iter().zip(&esperado).enumerate() {
+                pior = pior.max((qv - ev).abs());
+                assert!((qv - ev).abs() < 1e-6, "s={s} pixel ({x},{y}) componente {c}: {qv} × {ev}");
+            }
+        }
+        eprintln!("s={s}: pior erro da geometria {pior:.2e}");
+    }
+}
+
+/// ⭐ O MEIO PIXEL: a s = 3 os pixels `x = 3k + 1` têm o centro num centro de célula (`u` inteiro); aí a cor da pilha
+/// ([`crate::render::PreLuz`]) é a da célula AO BIT e a altura é a fina da célula (a spline interpola; `1e-9`). As
+/// estatísticas da nitidez são invariantes a uma translação de meio pixel: esta régua não.
+#[test]
+fn a_vista_alinha_os_centros_dos_pixels_com_os_das_celulas() {
+    let v = vista(3.0);
+    let (x0, y0) = (RECORTE.0, RECORTE.1);
+    let ks: Vec<(usize, usize)> = (4..60).step_by(5).flat_map(|i| (4..60).step_by(3).map(move |j| (i, j))).collect();
+    let pixels: Vec<(usize, usize)> = ks.iter().map(|&(i, j)| (3 * i + 1, 3 * j + 1)).collect();
+    let celulas: Vec<(usize, usize)> = ks.iter().map(|&(i, j)| (x0 + i + 1, y0 + j + 1)).collect();
+    let (nova, hoje) = super::prova::alinhamento(v, &pixels, &celulas);
+    let pintados = hoje.iter().filter(|(p, _)| p.pa_sem > 0.0).count();
+    assert!(pintados > 50, "a amostra cai na tinta: {pintados}");
+    for ((k, (pn, hn)), (ph, hh)) in ks.iter().zip(&nova).zip(&hoje) {
+        assert_eq!(pn, ph, "célula {k:?}: a cor da vista não é a da célula");
+        assert!((hn - hh).abs() <= 1e-9 * hh.abs().max(1.0), "célula {k:?}: altura {hn} × {hh}");
+    }
+}
+
+/// ⭐ A BORDA: uma tela coberta até à borda, vista a 400 % encostada a `(0, 0)` e ao fim do documento — a primeira
+/// coluna/linha tem a cor e a cobertura da segunda (a borda é PRESA, não zero). Tolerância 1 nível de 8 bits: a tinta
+/// é uniforme e o campo dela também (medido: diferença 0).
+#[test]
+fn a_vista_encostada_a_borda_nao_escurece() {
+    let lado = 32;
+    for (x0, y0) in [(0.0, 0.0), (16.0, 16.0)] {
+        let v = Vista { x0, y0, w: 64, h: 64, s: 4.0 };
+        let img = super::prova::uniforme(lado, v);
+        let px = |x: usize, y: usize| &img[(x + y * 64) * 4..(x + y * 64) * 4 + 4];
+        let media = |f: &dyn Fn(usize) -> [u8; 4]| {
+            (0..64).fold([0.0f64; 4], |mut m, k| {
+                for (c, q) in f(k).iter().enumerate() {
+                    m[c] += f64::from(*q) / 64.0;
+                }
+                m
+            })
+        };
+        for (borda, dentro) in [(0usize, 1usize), (63, 62)] {
+            let col = (media(&|k| px(borda, k).try_into().unwrap()), media(&|k| px(dentro, k).try_into().unwrap()));
+            let lin = (media(&|k| px(k, borda).try_into().unwrap()), media(&|k| px(k, dentro).try_into().unwrap()));
+            for (a, b) in [col, lin] {
+                for c in 0..4 {
+                    assert!((a[c] - b[c]).abs() <= 1.0, "origem ({x0},{y0}) borda {borda}: {a:?} × {b:?}");
+                }
+            }
+        }
+        assert!(img.chunks(4).all(|p| p[3] > 0), "origem ({x0},{y0}): um pixel ficou sem tinta");
+    }
+}

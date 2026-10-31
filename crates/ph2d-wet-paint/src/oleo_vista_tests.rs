@@ -28,7 +28,10 @@ fn a_vista_a_100_por_cento_e_a_linha_de_hoje_ao_byte() {
     let o = OleoReal::default();
     let c = campo(&e, &o);
     let antes = hoje(&e, &o, &c, RECORTE);
-    assert!(antes.chunks(4).filter(|p| p[3] > 0).count() > 1000, "a faca tem tinta no recorte");
+    assert!(
+        antes.chunks(4).filter(|p| p[3] > 0).count() > 1000,
+        "a faca tem tinta no recorte"
+    );
     let nova = PreparoVista::novo(None, &camadas(&e), VISUAL, &o, &c, vista(1.0)).render();
     let dif = antes.iter().zip(&nova).filter(|(a, b)| a != b).count();
     assert_eq!(dif, 0, "{dif} bytes diferem");
@@ -45,8 +48,14 @@ fn a_vista_a_400_por_cento_tem_o_detalhe_que_a_ampliacao_nao_tem() {
     let (_, _, w, h) = RECORTE;
     let ampliada = bilinear(&hoje(&e, &o, &c, RECORTE), w, h, 4);
     let nova = PreparoVista::novo(None, &camadas(&e), VISUAL, &o, &c, vista(4.0)).render();
-    let (vb, vn) = (var_laplaciano(&ampliada, w * 4, h * 4), var_laplaciano(&nova, w * 4, h * 4));
-    eprintln!("var laplaciano 400 %: bilinear de hoje {vb:.3} · vista nova {vn:.3} · razão {:.2}", vn / vb);
+    let (vb, vn) = (
+        var_laplaciano(&ampliada, w * 4, h * 4),
+        var_laplaciano(&nova, w * 4, h * 4),
+    );
+    eprintln!(
+        "var laplaciano 400 %: bilinear de hoje {vb:.3} · vista nova {vn:.3} · razão {:.2}",
+        vn / vb
+    );
     assert!(vn >= 3.0 * vb, "bilinear {vb:.3} × nova {vn:.3}");
 }
 
@@ -66,7 +75,10 @@ fn as_duas_a_400() -> (Vec<u8>, Vec<u8>, usize, usize) {
 #[test]
 fn a_vista_a_400_por_cento_nao_tem_padrao_ao_passo_da_celula() {
     let (ampliada, nova, w, h) = as_duas_a_400();
-    let (pb, pn) = (pico_da_celula(&ampliada, w, h, 4), pico_da_celula(&nova, w, h, 4));
+    let (pb, pn) = (
+        pico_da_celula(&ampliada, w, h, 4),
+        pico_da_celula(&nova, w, h, 4),
+    );
     eprintln!("pico da célula 400 %: bilinear de hoje {pb:.3} · vista nova {pn:.3}");
     assert!(pn <= 1.5, "pico da célula {pn:.3} (bilinear {pb:.3})");
 }
@@ -75,7 +87,10 @@ fn a_vista_a_400_por_cento_nao_tem_padrao_ao_passo_da_celula() {
 #[test]
 fn a_vista_a_400_por_cento_nao_tem_mais_pontinhos_que_a_ampliacao() {
     let (ampliada, nova, w, h) = as_duas_a_400();
-    let (ob, on) = (fraccao_outliers(&ampliada, w, h), fraccao_outliers(&nova, w, h));
+    let (ob, on) = (
+        fraccao_outliers(&ampliada, w, h),
+        fraccao_outliers(&nova, w, h),
+    );
     eprintln!("outliers 6σ 400 %: bilinear de hoje {ob:.5} · vista nova {on:.5}");
     assert!(on <= 1.5 * ob, "outliers {on:.5} × bilinear {ob:.5}");
 }
@@ -100,10 +115,20 @@ fn a_curvatura_da_vista_esta_em_unidades_do_documento_a_qualquer_zoom() {
         for (&(x, y), q) in pixels.iter().zip(&g) {
             let cx = v.x0 + (x as f64 + 0.5) / s - 0.5 + 1.0;
             let cy = v.y0 + (y as f64 + 0.5) / s - 0.5 + 1.0;
-            let esperado = [f(cx, cy), 2.0 * a * (cx - 50.0), 2.0 * a * (cy - 50.0), 2.0 * a, 2.0 * a, 0.0];
+            let esperado = [
+                f(cx, cy),
+                2.0 * a * (cx - 50.0),
+                2.0 * a * (cy - 50.0),
+                2.0 * a,
+                2.0 * a,
+                0.0,
+            ];
             for (c, (&qv, &ev)) in q.iter().zip(&esperado).enumerate() {
                 pior = pior.max((qv - ev).abs());
-                assert!((qv - ev).abs() < 1e-6, "s={s} pixel ({x},{y}) componente {c}: {qv} × {ev}");
+                assert!(
+                    (qv - ev).abs() < 1e-6,
+                    "s={s} pixel ({x},{y}) componente {c}: {qv} × {ev}"
+                );
             }
         }
         eprintln!("s={s}: pior erro da geometria {pior:.2e}");
@@ -117,7 +142,10 @@ fn a_curvatura_da_vista_esta_em_unidades_do_documento_a_qualquer_zoom() {
 fn a_vista_alinha_os_centros_dos_pixels_com_os_das_celulas() {
     let v = vista(3.0);
     let (x0, y0) = (RECORTE.0, RECORTE.1);
-    let ks: Vec<(usize, usize)> = (4..60).step_by(5).flat_map(|i| (4..60).step_by(3).map(move |j| (i, j))).collect();
+    let ks: Vec<(usize, usize)> = (4..60)
+        .step_by(5)
+        .flat_map(|i| (4..60).step_by(3).map(move |j| (i, j)))
+        .collect();
     let pixels: Vec<(usize, usize)> = ks.iter().map(|&(i, j)| (3 * i + 1, 3 * j + 1)).collect();
     let celulas: Vec<(usize, usize)> = ks.iter().map(|&(i, j)| (x0 + i + 1, y0 + j + 1)).collect();
     let (nova, hoje) = super::prova::alinhamento(v, &pixels, &celulas);
@@ -125,7 +153,10 @@ fn a_vista_alinha_os_centros_dos_pixels_com_os_das_celulas() {
     assert!(pintados > 50, "a amostra cai na tinta: {pintados}");
     for ((k, (pn, hn)), (ph, hh)) in ks.iter().zip(&nova).zip(&hoje) {
         assert_eq!(pn, ph, "célula {k:?}: a cor da vista não é a da célula");
-        assert!((hn - hh).abs() <= 1e-9 * hh.abs().max(1.0), "célula {k:?}: altura {hn} × {hh}");
+        assert!(
+            (hn - hh).abs() <= 1e-9 * hh.abs().max(1.0),
+            "célula {k:?}: altura {hn} × {hh}"
+        );
     }
 }
 
@@ -136,7 +167,13 @@ fn a_vista_alinha_os_centros_dos_pixels_com_os_das_celulas() {
 fn a_vista_encostada_a_borda_nao_escurece() {
     let lado = 32;
     for (x0, y0) in [(0.0, 0.0), (16.0, 16.0)] {
-        let v = Vista { x0, y0, w: 64, h: 64, s: 4.0 };
+        let v = Vista {
+            x0,
+            y0,
+            w: 64,
+            h: 64,
+            s: 4.0,
+        };
         let img = super::prova::uniforme(lado, v);
         let px = |x: usize, y: usize| &img[(x + y * 64) * 4..(x + y * 64) * 4 + 4];
         let media = |f: &dyn Fn(usize) -> [u8; 4]| {
@@ -148,14 +185,26 @@ fn a_vista_encostada_a_borda_nao_escurece() {
             })
         };
         for (borda, dentro) in [(0usize, 1usize), (63, 62)] {
-            let col = (media(&|k| px(borda, k).try_into().unwrap()), media(&|k| px(dentro, k).try_into().unwrap()));
-            let lin = (media(&|k| px(k, borda).try_into().unwrap()), media(&|k| px(k, dentro).try_into().unwrap()));
+            let col = (
+                media(&|k| px(borda, k).try_into().unwrap()),
+                media(&|k| px(dentro, k).try_into().unwrap()),
+            );
+            let lin = (
+                media(&|k| px(k, borda).try_into().unwrap()),
+                media(&|k| px(k, dentro).try_into().unwrap()),
+            );
             for (a, b) in [col, lin] {
                 for c in 0..4 {
-                    assert!((a[c] - b[c]).abs() <= 1.0, "origem ({x0},{y0}) borda {borda}: {a:?} × {b:?}");
+                    assert!(
+                        (a[c] - b[c]).abs() <= 1.0,
+                        "origem ({x0},{y0}) borda {borda}: {a:?} × {b:?}"
+                    );
                 }
             }
         }
-        assert!(img.chunks(4).all(|p| p[3] > 0), "origem ({x0},{y0}): um pixel ficou sem tinta");
+        assert!(
+            img.chunks(4).all(|p| p[3] > 0),
+            "origem ({x0},{y0}): um pixel ficou sem tinta"
+        );
     }
 }

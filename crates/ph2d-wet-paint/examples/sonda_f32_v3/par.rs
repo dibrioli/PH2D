@@ -16,7 +16,10 @@ where
     F: Fn(usize, &mut [T]) + Send + Sync,
 {
     match mode {
-        Mode::Serial => a.chunks_mut(stride).enumerate().for_each(|(r, ra)| f(r, ra)),
+        Mode::Serial => a
+            .chunks_mut(stride)
+            .enumerate()
+            .for_each(|(r, ra)| f(r, ra)),
         Mode::Parallel => a
             .par_chunks_mut(stride)
             .enumerate()

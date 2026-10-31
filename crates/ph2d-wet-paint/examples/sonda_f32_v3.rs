@@ -21,6 +21,8 @@
 //! Sem a cfg (o `cargo build --all-targets` de sempre) compila sob o `forbid` e corre só o C.1.
 
 #![allow(unexpected_cfgs)]
+// A cópia verbatim de `kern.rs` herda as isenções que `src/lib.rs:23-24` dá ao original.
+#![allow(clippy::explicit_counter_loop, clippy::manual_clamp)]
 
 #[path = "sonda_f32_v3/k32.rs"]
 mod k32;
@@ -46,7 +48,6 @@ const ROUNDS: usize = 7;
 const BLOCK: usize = 3;
 const N_HASH: usize = 12;
 const N_DEV: [usize; 2] = [12, 96];
-
 
 /// VERBATIM `tests/util/mod.rs::drive_stroke` (o módulo de teste não é visível a um example).
 fn drive_stroke(e: &mut Engine, x0: f64, y0: f64, x1: f64, y1: f64, ppf: f64, after: usize) {
@@ -104,7 +105,7 @@ enum V {
     OrigSer,
     K64Ser,
     K32Ser,
-    V3Ser,
+    SerV3,
 }
 
 struct Ctx {
@@ -180,7 +181,7 @@ fn step(v: V, g: &mut Grid, c: &Ctx, adv: bool, dry: bool) {
                 k32::drying_pass_jacobi_rows(g, &c.p, c.evap, c.rewet, c.bypass, m);
             }
         }
-        V::V3Ser => {
+        V::SerV3 => {
             #[cfg(sonda_v3)]
             // SAFETY: só chega aqui com `v3_available()` (as seis features detectadas em execução).
             unsafe {
@@ -234,9 +235,7 @@ fn stats(v: &mut [f64]) -> (f64, f64) {
 fn dev(a: &Grid, b: &Grid, win: (i32, i32, i32, i32)) {
     let (x0, y0, x1, y1) = win;
     let s = a.s;
-    let idx = || {
-        (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| x as usize + y as usize * s))
-    };
+    let idx = || (y0..=y1).flat_map(move |y| (x0..=x1).map(move |x| x as usize + y as usize * s));
     let one = |name: &str, fa: &dyn Fn(usize) -> f32, fb: &dyn Fn(usize) -> f32| {
         let (mut mx, mut sum, mut n, mut big, mut diff) = (0.0f64, 0.0f64, 0usize, 0.0f64, 0usize);
         for i in idx() {
@@ -260,8 +259,12 @@ fn dev(a: &Grid, b: &Grid, win: (i32, i32, i32, i32)) {
     one("vel_x", &|i| a.vel_x[i], &|i| b.vel_x[i]);
     one("vel_y", &|i| a.vel_y[i], &|i| b.vel_y[i]);
     for k in 0..3 {
-        one(&format!("susp_rgb{k}"), &|i| a.susp_rgb[i][k], &|i| b.susp_rgb[i][k]);
-        one(&format!("sett_rgb{k}"), &|i| a.sett_rgb[i][k], &|i| b.sett_rgb[i][k]);
+        one(&format!("susp_rgb{k}"), &|i| a.susp_rgb[i][k], &|i| {
+            b.susp_rgb[i][k]
+        });
+        one(&format!("sett_rgb{k}"), &|i| a.sett_rgb[i][k], &|i| {
+            b.sett_rgb[i][k]
+        });
     }
 }
 
@@ -310,7 +313,7 @@ fn main() {
         V::K32Ser,
     ];
     if v3_available() {
-        vs.push(V::V3Ser);
+        vs.push(V::SerV3);
     } else {
         println!("C.2: v3 indisponível (sem --cfg sonda_v3 ou CPU sem as features)");
     }
@@ -359,7 +362,9 @@ fn main() {
             }
         }
     }
-    println!("ms por chamada, {ROUNDS} rodadas × {BLOCK}: advect (mín / mediana) · drying (mín / mediana)");
+    println!(
+        "ms por chamada, {ROUNDS} rodadas × {BLOCK}: advect (mín / mediana) · drying (mín / mediana)"
+    );
     for (vi, v) in vs.iter().enumerate() {
         let (a0, a1) = stats(&mut ma[vi]);
         let (d0, d1) = stats(&mut md[vi]);

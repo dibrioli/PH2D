@@ -28,7 +28,11 @@ fn crc32(d: &[u8]) -> u32 {
     for &b in d {
         c ^= u32::from(b);
         for _ in 0..8 {
-            c = if c & 1 != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 };
+            c = if c & 1 != 0 {
+                0xEDB8_8320 ^ (c >> 1)
+            } else {
+                c >> 1
+            };
         }
     }
     !c
@@ -124,7 +128,10 @@ fn prancha() {
             img[d..d + q * 4].copy_from_slice(&quadro[y * q * 4..(y + 1) * q * 4]);
         }
     }
-    let raiz = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/Painter/49_realshader/capturas");
+    let raiz = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/Painter/49_realshader/capturas"
+    );
     std::fs::create_dir_all(raiz).expect("pasta");
     let p = format!("{raiz}/a1_prancha.png");
     std::fs::write(&p, png(&img, lado, lado)).expect("png");

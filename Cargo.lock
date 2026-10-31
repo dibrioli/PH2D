@@ -5606,8 +5606,6 @@ dependencies = [
  "png",
  "rfd",
  "serde_json",
- "zune-core",
- "zune-jpeg",
 ]
 
 [[package]]
@@ -6629,8 +6627,11 @@ dependencies = [
  "ph2d-vec-layout",
  "ph2d-vec-render",
  "ph2d-vector",
+ "png",
  "serde_json",
  "wgpu",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]

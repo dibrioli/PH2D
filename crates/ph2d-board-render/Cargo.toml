@@ -27,6 +27,11 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # W15 — o preto e branco das imagens pela luminância e pela curva sRGB canónicas.
 ph2d-color = { path = "../ph2d-color" }
+# W18 — o salvador (`salvage.rs`): o PNG linha a linha até ao erro e o JPEG pelo `zune-jpeg` tolerante
+# (pára no erro, como os navegadores); as mesmas versões que o `image` já puxa.
+png = "0.18"
+zune-jpeg = "0.5"
+zune-core = "0.5"
 
 [dev-dependencies]
 # A régua da W8 (`tests/it/measure_team_cost.rs`): o custo de uma versão comprimida.

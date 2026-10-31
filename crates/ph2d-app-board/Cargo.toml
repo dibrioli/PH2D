@@ -59,10 +59,6 @@ ph2d-imageio-svg = { path = "../ph2d-imageio-svg" }
 # W16 — e os quadros de um GIF em sequência (o animador do quadro).
 image = { version = "0.25", default-features = false, features = ["gif"] }
 png = "0.18"
-# W18 — o JPEG CORTADO mostra as linhas de cima (o tolerante pára no erro, como os navegadores); as
-# mesmas versões que o `image` já puxa.
-zune-jpeg = "0.5"
-zune-core = "0.5"
 # W18 — os quadros de um GIF num iterador `Send` (um passo no grupo de fios do desenho); a versão que o
 # `image` já puxa.
 gif = "0.14"

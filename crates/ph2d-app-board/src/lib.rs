@@ -16,9 +16,6 @@ pub mod live;
 /// As imagens a entrar no quadro (W14): a porta de entrada e o descodificador do desenho.
 pub mod images;
 
-/// W18 — o que se lê de uma imagem estragada (o salvador do desenho).
-pub mod salvage;
-
 /// W18 — o vídeo do quadro: as miniaturas e o tocador no navegador da pessoa.
 pub mod video;
 

@@ -20,6 +20,8 @@ mod mind;
 mod note;
 mod overlay;
 mod private;
+/// W18 — o que se lê de uma imagem estragada (o salvador que o editor instala por [`install_salvager`]).
+pub mod salvage;
 mod sketch;
 mod tags;
 mod theme_ink;

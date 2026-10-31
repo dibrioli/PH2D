@@ -52,6 +52,20 @@ fn what_is_not_an_image_is_refused() {
     );
 }
 
+/// W18 — o descodificador inteiro recusa o PNG e o JPEG cortados (só o salvador do desenho,
+/// `ph2d_board_render::salvage`, lê as linhas de cima — e o quadro avisa).
+#[test]
+fn a_truncated_png_or_jpeg_is_refused_by_the_whole_decoder() {
+    let ent = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/MiroClone/ferramentas/excalidraw_oracle/entradas/"
+    );
+    for f in ["w17_png_truncado.png", "w17_jpeg_truncado.jpg"] {
+        let bytes = std::fs::read(format!("{ent}{f}")).unwrap();
+        assert!(decode(&bytes, None).is_none(), "{f}: o inteiro recusa-o");
+    }
+}
+
 const SVG_DISC: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 4 2"><circle cx="2" cy="1" r="1" fill="#00ff00"/><text>oi</text></svg>"##;
 
 /// ⭐ W15 — um SVG entra como IMAGEM: os bytes como chegaram (o SVG exportado e o `.excalidraw`

@@ -1,5 +1,6 @@
 //! W18 — o que se lê de uma imagem cortada, contra o Chromium (`excalidraw_oracle/saidas/w17`, sonda
-//! `D01_cena_*_truncado`, a coluna x=520: a imagem 400×300 desenhada a 1:1 em y=180).
+//! `D01_cena_*_truncado`, a coluna x=520: a imagem 400×300 desenhada a 1:1 em y=180). Que o
+//! descodificador INTEIRO os recusa prova-o o `ph2d-app-board` (`images_tests`), que é quem o tem.
 
 use super::*;
 
@@ -20,10 +21,6 @@ fn rows_read(px: &Pixels, x: u32) -> u32 {
 #[test]
 fn a_truncated_png_shows_the_rows_it_has_like_the_browser() {
     let bytes = std::fs::read(format!("{ENT}w17_png_truncado.png")).unwrap();
-    assert!(
-        crate::images::decode(&bytes, None).is_none(),
-        "o inteiro recusa-o"
-    );
     let px = salvage(&bytes).expect("lê as linhas de cima");
     assert_eq!(px.size, [400, 300]);
     let n = rows_read(&px, 120);
@@ -42,10 +39,6 @@ fn a_truncated_png_shows_the_rows_it_has_like_the_browser() {
 #[test]
 fn a_truncated_jpeg_shows_the_rows_it_has_like_the_browser() {
     let bytes = std::fs::read(format!("{ENT}w17_jpeg_truncado.jpg")).unwrap();
-    assert!(
-        crate::images::decode(&bytes, None).is_none(),
-        "o inteiro recusa-o"
-    );
     let px = salvage(&bytes).expect("lê as linhas de cima");
     let n = rows_read(&px, 120);
     assert!((126..=158).contains(&n), "Chromium: 142 linhas; nós {n}");

@@ -108,8 +108,8 @@ fn the_w18_scene_does_what_its_lessons_say() {
     let gaps = ph2d_imageio_svg::raster::text_gaps(SVG_TEXT.as_bytes());
     assert_eq!(gaps.missing_families, vec!["No Such Font PH2D".to_owned()]);
     // Lição 5: a cortada mostra as linhas de cima, e o quadro avisa que está estragada.
-    let saved =
-        crate::salvage::salvage(&super::super::w17::damaged_png()).expect("as linhas de cima");
+    let saved = ph2d_board_render::salvage::salvage(&super::super::w17::damaged_png())
+        .expect("as linhas de cima");
     let rows = (0..saved.size[1])
         .take_while(|&y| saved.rgba[((y * saved.size[0]) * 4 + 3) as usize] != 0)
         .count();

@@ -605,3 +605,13 @@ fn re_caixa() {
     atomicStore(&caixa[13], min(atomicLoad(&caixa[b + 3]) + 5, u.h));
     atomicStore(&caixa[14], 1);
 }
+
+// O `vmax` da advecção (`prepare`): máx |u| por componente nas células ativas da caixa. f32 ≥ 0 ordena
+// como i32 pelos bits ⇒ `atomicMax` sobre `caixa[15]` (zerado pela CPU antes do plano).
+@compute @workgroup_size(16, 16, 1)
+fn vmax_red(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = cell(g);
+    if !c.ok || act[c.i] == 0u { return; }
+    let v = uv[c.i];
+    atomicMax(&caixa[15], bitcast<i32>(max(abs(v.x), abs(v.y))));
+}

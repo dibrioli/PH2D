@@ -137,7 +137,10 @@ fn o_passo_placa_sobre_o_engine_casa_com_a_cpu_na_cor() {
     let mut p = PassoPlaca::new(&gpu, &e.layers[idx].grid, &e.sim, &e.tuning);
     {
         let Engine {
-            sim, layers, tuning, ..
+            sim,
+            layers,
+            tuning,
+            ..
         } = &mut e;
         for _ in 0..passos {
             p.passo(&gpu, sim, &mut layers[idx].grid, tuning);
@@ -147,7 +150,10 @@ fn o_passo_placa_sobre_o_engine_casa_com_a_cpu_na_cor() {
     let tg = t.elapsed().as_secs_f64();
     let gg = &e.layers[idx].grid;
     assert_eq!(e.sim.frame, sc.frame, "o relógio do passo");
-    assert_eq!(e.sim.dry_every, sc.dry_every, "a cadência da secagem (vmax)");
+    assert_eq!(
+        e.sim.dry_every, sc.dry_every,
+        "a cadência da secagem (vmax)"
+    );
     let pr = sc.gather_params(&e.tuning);
     let (mx, p999, n05) = desvio_cor(&gc, &ver(&gc, &pr), &ver(gg, &pr));
     let massa = |g: &Grid| -> f64 {
@@ -165,4 +171,81 @@ fn o_passo_placa_sobre_o_engine_casa_com_a_cpu_na_cor() {
     );
     assert!(mx <= MAX_NIVEIS, "cor máx {mx} > {MAX_NIVEIS}");
     assert!(p999 <= P999_NIVEIS, "cor p99.9 {p999} > {P999_NIVEIS}");
+    // A devolução: depois do `desce` a CPU continua (faixas vivas, caixa, cadência) — 12 passos dos dois lados.
+    let mut gd = gg.clone();
+    let mut sd = e.sim.clone();
+    for _ in 0..12 {
+        sim_step(&mut sc, &mut gc, &e.tuning);
+        sim_step(&mut sd, &mut gd, &e.tuning);
+    }
+    let (mx2, p2, _) = desvio_cor(&gc, &ver(&gc, &pr), &ver(&gd, &pr));
+    eprintln!("DEVOLVIDO +12 passos na CPU: máx {mx2:.4} · p99.9 {p2:.4}");
+    assert!(mx2 <= MAX_NIVEIS, "devolvido: cor máx {mx2} > {MAX_NIVEIS}");
+    assert!(
+        p2 <= P999_NIVEIS,
+        "devolvido: cor p99.9 {p2} > {P999_NIVEIS}"
+    );
+}
+
+fn espera(gpu: &GpuContext) {
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+}
+
+/// Medida (4) de LIGACAO_PLACA.md: ms por passo do [`PassoPlaca`] sobre o Engine a 4096×2560 contra o
+/// `sim_step` da CPU, e o custo de subir/descer a grade (o que o worker paga por traço). Mínimo de rondas.
+#[test]
+#[ignore = "placa — medida, corra com --ignored --nocapture"]
+fn mede_o_passo_placa_a_4k() {
+    let Some(gpu) = contexto() else { return };
+    let (w, h) = (4096usize, 2560usize);
+    let t = Instant::now();
+    let mut e = aguada(w, h);
+    let idx = e.active_layer;
+    eprintln!("aguada {w}×{h} em {:.1} s", t.elapsed().as_secs_f64());
+    assert!(placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning));
+    let (sim0, g0) = (e.sim.clone(), e.layers[idx].grid.clone());
+    let mut p = PassoPlaca::new(&gpu, &g0, &sim0, &e.tuning);
+    espera(&gpu);
+    let mn = |v: &[f64]| v.iter().copied().fold(f64::INFINITY, f64::min);
+    let (mut sobe, mut desce, mut placa, mut cpu) = (vec![], vec![], vec![], vec![]);
+    const N: usize = 12;
+    for r in 0..4 {
+        let t = Instant::now();
+        p.sobe(&gpu, &g0);
+        espera(&gpu);
+        let ms_sobe = t.elapsed().as_secs_f64() * 1e3;
+        let (mut s, mut g) = (sim0.clone(), g0.clone());
+        let t = Instant::now();
+        for _ in 0..N {
+            p.passo(&gpu, &mut s, &mut g, &e.tuning);
+        }
+        let ms_p = t.elapsed().as_secs_f64() * 1e3 / N as f64;
+        let t = Instant::now();
+        p.desce(&gpu, &mut g);
+        let ms_desce = t.elapsed().as_secs_f64() * 1e3;
+        let (mut s, mut g) = (sim0.clone(), g0.clone());
+        let t = Instant::now();
+        for _ in 0..N {
+            sim_step(&mut s, &mut g, &e.tuning);
+        }
+        let ms_c = t.elapsed().as_secs_f64() * 1e3 / N as f64;
+        if r > 0 {
+            sobe.push(ms_sobe);
+            desce.push(ms_desce);
+            placa.push(ms_p);
+            cpu.push(ms_c);
+        }
+    }
+    eprintln!(
+        "MEDE {w}×{h} (mínimo de 3, {N} passos): placa {:.2} ms/passo · CPU {:.2} ms/passo · sobe {:.1} ms · desce {:.1} ms · \
+         caixa {:?} · loadavg {}",
+        mn(&placa),
+        mn(&cpu),
+        mn(&sobe),
+        mn(&desce),
+        (g0.bx0, g0.by0, g0.bx1, g0.by1),
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
 }

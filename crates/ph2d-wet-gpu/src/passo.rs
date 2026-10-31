@@ -5,7 +5,7 @@
 use crate::seca::{SecaGpu, SecaU};
 use crate::{
     AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, Rect, Uniforms, pack_state, read, unpack_state,
+    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, pack_state, read, unpack_state,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
@@ -85,6 +85,11 @@ impl PassoPlaca {
         g.active = a.iter().map(|&v| v as u8).collect();
         let w = self.adv.readback_wet(gpu);
         g.wet = w.iter().map(|&v| v as u8).collect();
+        // A placa não tem faixas vivas: a linha inteira é o superconjunto declarado (`active ⊆ faixa`);
+        // o próximo rebuild da CPU reaperta-as.
+        let full = g.s as i32 - 1;
+        g.row_lo.fill(0);
+        g.row_hi.fill(full);
     }
 
     /// UM passo (o `sim_step` da CPU). `g` só guarda a caixa e o `has_fluid` (o resto está na placa).
@@ -136,8 +141,10 @@ impl PassoPlaca {
         if n.is_multiple_of(3) {
             plano.extend(PLANO_PROJETA);
         }
+        plano.extend(PLANO_VMAX);
+        self.adv.zera_vmax(gpu);
         self.adv.step_plano(gpu, &u, 1, &plano);
-        if self.vmax(gpu) < 0.5 {
+        if self.adv.readback_vmax(gpu) < 0.5 {
             sim.dry_every = 6;
             sim.evap_scale = 0.001;
             sim.rewet_base = 0.0001;
@@ -173,17 +180,5 @@ impl PassoPlaca {
             0,
             bytemuck::cast_slice(&pack_state(&film, &susp)),
         );
-    }
-
-    /// O `vmax` do `prepare`: máx |u| por componente sobre as células ativas (o `uv` já em f32).
-    fn vmax(&self, gpu: &GpuContext) -> f64 {
-        let n = self.adv.cells as u64;
-        let uv: Vec<[f32; 2]> = read(gpu, &self.adv._scratch[0], n * 8);
-        let act = self.adv.readback_active(gpu);
-        uv.iter()
-            .zip(&act)
-            .filter(|(_, a)| **a != 0)
-            .map(|(v, _)| f64::from(v[0].abs().max(v[1].abs())))
-            .fold(0.0, f64::max)
     }
 }

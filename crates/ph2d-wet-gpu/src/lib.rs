@@ -179,6 +179,10 @@ pub const PLANO_PROJETA: [usize; 5] = [10, 11, 12, 13, 9];
 pub const PLANO_SEDIMENTA: [usize; 2] = [14, 3];
 /// `rebuild_active_region`: a máscara e a caixa nova (lida por [`AdvectGpu::readback_caixa`]).
 pub const PLANO_REBUILD: [usize; 5] = [15, 16, 17, 18, 19];
+/// O `vmax` da advecção reduzido na placa (`caixa[15]`, ver [`AdvectGpu::zera_vmax`]/[`AdvectGpu::readback_vmax`]).
+pub const PASSADA_VMAX: [&str; 1] = ["vmax_red"];
+/// O índice de [`PASSADA_VMAX`] em `pipes`.
+pub const PLANO_VMAX: [usize; 1] = [20];
 
 /// O passo SEM SECAGEM do quadro `n` (1-based, o `Sim::frame`): estágios 0, 2, 3, 4, 5 do
 /// `sim_step_stage` — rebuild (`n % 2`), campo (`n % 4`) ou suave, advecção, sedimenta (se
@@ -375,7 +379,7 @@ impl AdvectGpu {
             (17, &caixa),
         ];
         // Os bindings que cada passada usa (o layout automático só inclui esses).
-        let usa: [&[u32]; 20] = [
+        let usa: [&[u32]; 21] = [
             &[0, 1, 2, 4],
             &[0, 3, 4, 5],
             &[0, 3, 4, 5, 6, 7, 8, 9],
@@ -396,6 +400,7 @@ impl AdvectGpu {
             &[0, 6, 16, 17],
             &[0, 16, 17],
             &[0, 17],
+            &[0, 3, 4, 17],
         ];
         let mut pipes = Vec::new();
         let mut groups = Vec::new();
@@ -404,6 +409,7 @@ impl AdvectGpu {
             .chain(&PASSADAS_FLUXO)
             .chain(&PASSADAS_CAMPO)
             .chain(&PASSADAS_PASSO)
+            .chain(&PASSADA_VMAX)
             .enumerate()
         {
             let pipe = gpu
@@ -562,6 +568,19 @@ impl AdvectGpu {
         (c[10], c[11], c[12], c[13], c[14] != 0)
     }
 
+    /// Zera o `vmax` da placa (`caixa[15]`) antes de um plano que acaba em [`PLANO_VMAX`].
+    pub fn zera_vmax(&self, gpu: &GpuContext) {
+        gpu.queue
+            .write_buffer(&self.caixa, 60, bytemuck::bytes_of(&0i32));
+    }
+
+    /// O `vmax` reduzido por [`PLANO_VMAX`]: máx |u| por componente nas células ativas da caixa (4 B lidos).
+    #[must_use]
+    pub fn readback_vmax(&self, gpu: &GpuContext) -> f32 {
+        let c: Vec<i32> = read(gpu, &self.caixa, 64);
+        f32::from_bits(c[15] as u32)
+    }
+
     /// A máscara `active` de volta (`u32` por célula).
     #[must_use]
     pub fn readback_active(&self, gpu: &GpuContext) -> Vec<u32> {
@@ -613,7 +632,7 @@ impl AdvectGpu {
 fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
     let d = |a: i32, b: i32| (b - a + 1).max(0) as u32;
     let (c, r) = match k {
-        0..=3 | 14 => (d(u.x0, u.x1), d(u.y0, u.y1)),
+        0..=3 | 14 | 20 => (d(u.x0, u.x1), d(u.y0, u.y1)),
         4..=7 | 11..=13 => (d(u.fx0, u.fx1), d(u.fy0, u.fy1)),
         10 => (d(u.fx0, u.fx1) + 2, d(u.fy0, u.fy1) + 2),
         8 | 16 | 17 => ((u.w + 2) as u32, (u.h + 2) as u32),

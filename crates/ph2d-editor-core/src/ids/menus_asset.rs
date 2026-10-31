@@ -71,6 +71,10 @@ pub const CTX_MENU_ASSET_USED_BY: NodeId = hash_node_id("ctx_menu_asset_used_by"
 /// dissolve-se, **ou** ela volta à cena por ser a última cópia — vive em
 /// `shells/desktop/src/instance_unmake.rs`.
 pub const CTX_MENU_ASSET_REMOVE: NodeId = hash_node_id("ctx_menu_asset_remove");
+/// D17 — **Abrir** o documento (Kanban, Quadro) do cartão, na aba dele: o mesmo que o duplo-clique.
+pub const CTX_MENU_ASSET_OPEN: NodeId = hash_node_id("ctx_menu_asset_open");
+/// D17 — **Apagar** o documento do cartão do projecto: abre a pergunta (desfaz-se com Ctrl+Z).
+pub const CTX_MENU_ASSET_DELETE: NodeId = hash_node_id("ctx_menu_asset_delete");
 
 /// ⭐⭐⭐ **TROCAR o que está seleccionado por este componente** (ADR-0164 / plano F5, o último
 /// critério) — **sem levar excepção nenhuma**, que é o `None` do `ObjectMatchMode` do Unity.

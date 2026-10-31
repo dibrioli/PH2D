@@ -562,6 +562,8 @@ pub struct WidgetStore {
     pub(super) asset_drag_label: Option<String>,
     /// Os cartões que o navegador de assets pinta agora (`id → índice`), republicados por quadro.
     pub(super) asset_cells: std::collections::BTreeMap<NodeId, usize>,
+    /// D17 — os cartões de `asset_cells` que são documentos (Kanban, Quadro).
+    pub(super) asset_doc_cells: std::collections::BTreeSet<NodeId>,
     /// M14.6B: every NodeId currently displayed as a hierarchy row.
     /// Painter republishes the set each frame (fixture + live
     /// modes). Dispatch reads this to decide "this Down is on a

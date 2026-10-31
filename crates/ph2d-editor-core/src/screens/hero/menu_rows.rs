@@ -93,6 +93,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::HierarchyRow { .. } => menu_tables::HIERARCHY_ROW_ROWS,
         ContextMenuKind::CatalogRow { .. } => menu_tables::CATALOG_ROW_ROWS,
         ContextMenuKind::AssetCard { .. } => menu_tables::ASSET_CARD_ROWS,
+        ContextMenuKind::AssetDocCard { .. } => menu_tables::ASSET_DOC_CARD_ROWS,
         ContextMenuKind::FalloffPointHandle => menu_tables::FALLOFF_POINT_HANDLE_ROWS,
         ContextMenuKind::CurvePointHandle => menu_tables::CURVE_POINT_HANDLE_ROWS,
         ContextMenuKind::MotionPathAnchor { .. } => menu_tables::MOTION_PATH_ANCHOR_ROWS,

@@ -209,6 +209,11 @@ pub enum ContextMenuKind {
     AssetCard {
         cell: NodeId,
     },
+    /// D17 — botão direito num cartão de DOCUMENTO (Kanban, Quadro) nos Assets: Open · Delete….
+    /// Carrega a célula pela mesma cerca do [`Self::AssetCard`].
+    AssetDocCard {
+        cell: NodeId,
+    },
     /// ⭐⭐ **Botão direito numa LINHA DE CATÁLOGO** da coluna do navegador (wave A3).
     ///
     /// ⚠️ Carrega a LINHA pelo mesmo motivo que a irmã carrega a célula: o `CatalogId` é `u128` e
@@ -463,6 +468,7 @@ impl ContextMenuKind {
         Self::SceneList,
         Self::HierarchyRow { row: NodeId(1) },
         Self::AssetCard { cell: NodeId(1) },
+        Self::AssetDocCard { cell: NodeId(1) },
         Self::CatalogRow { row: NodeId(1) },
         Self::NewImageDialog,
         Self::SheetSizeDialog,

@@ -10,6 +10,7 @@ use crate::ids;
 use crate::state::AssetBrowserState;
 use ph2d_asset_index::{AssetRef, Relation, SortBy};
 use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -195,15 +196,16 @@ pub(crate) fn apply_event(
             match cell_target_of(cell) {
                 Some(r) => {
                     let asset = crate::state::payload_of(r);
-                    if !ask_delete(host, asset, verb) {
-                        host.bus_mut()
-                            .push(EditorAction::AssetCardVerb { asset, verb });
-                    }
+                    host.bus_mut()
+                        .push(EditorAction::AssetCardVerb { asset, verb });
                     EventOutcome::Consumed
                 }
                 None => EventOutcome::Ignored,
             }
         }
+
+        // ── D17 — O MENU DO DOCUMENTO (Kanban, Quadro): Open · Delete… ─────────────────────────
+        WidgetEvent::Click(id) if is_doc_verb(id) => apply_doc_verb(host, id),
 
         // ── ⭐⭐ OS CATÁLOGOS (etapa D) ────────────────────────────────────────────────────────
         //
@@ -216,30 +218,43 @@ pub(crate) fn apply_event(
     }
 }
 
-/// D17 — tirar um Kanban ou um Quadro dos Assets é APAGÁ-LO do projecto: primeiro a pergunta (a
-/// mesma da aba do quadro), cujo «Delete» se desfaz com Ctrl+Z. `false` = não é um documento.
-fn ask_delete(host: &mut dyn PanelHostInternal, asset: DragPayload, verb: AssetCardAction) -> bool {
-    let Some(kind) = confirm_delete_of(asset, verb) else {
-        return false;
+/// D17 — `id` é um item do menu de documento (Open · Delete…)?
+fn is_doc_verb(id: ph2d_a11y::NodeId) -> bool {
+    id == core_ids::CTX_MENU_ASSET_OPEN || id == core_ids::CTX_MENU_ASSET_DELETE
+}
+
+/// D17 — o item do menu de documento: consome o pedido (tem de ser `AssetDocCard`) e abre o
+/// documento na aba dele (o mesmo que o duplo-clique) ou faz a pergunta de apagar (a mesma da aba
+/// do quadro, cujo «Delete» se desfaz com Ctrl+Z).
+fn apply_doc_verb(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> EventOutcome {
+    let delete = id == core_ids::CTX_MENU_ASSET_DELETE;
+    let Some(req) = host.store_mut().consume_last_context_menu() else {
+        return EventOutcome::Ignored;
+    };
+    let ContextMenuKind::AssetDocCard { cell } = req.kind else {
+        return EventOutcome::Ignored;
+    };
+    // A mesma janela de obsolescência do menu do prefab: sem documento na célula, nada.
+    let Some(asset) = cell_target_of(cell)
+        .filter(|r| crate::state::is_document(*r))
+        .map(crate::state::payload_of)
+    else {
+        return EventOutcome::Ignored;
+    };
+    if !delete {
+        host.bus_mut().push(EditorAction::OpenAsset(asset));
+        return EventOutcome::Consumed;
+    }
+    let kind = match asset {
+        DragPayload::Kanban { id } => ContextMenuKind::ConfirmDeleteKanban { kanban: id },
+        DragPayload::Board { id } => ContextMenuKind::ConfirmDeleteBoard { board: id },
+        _ => return EventOutcome::Ignored,
     };
     // A pergunta pinta-se ao centro; o ponto só cumpre o pedido.
     let [x, y] = host.store_mut().last_pointer().unwrap_or_default();
     host.store_mut()
         .open_context_menu(ContextMenuRequest { x, y, kind });
-    true
-}
-
-/// D17 — a pergunta de apagar que «Remove from Library» abre num documento (Kanban, Quadro).
-fn confirm_delete_of(asset: DragPayload, verb: AssetCardAction) -> Option<ContextMenuKind> {
-    match (verb, asset) {
-        (AssetCardAction::RemoveFromLibrary, DragPayload::Kanban { id }) => {
-            Some(ContextMenuKind::ConfirmDeleteKanban { kanban: id })
-        }
-        (AssetCardAction::RemoveFromLibrary, DragPayload::Board { id }) => {
-            Some(ContextMenuKind::ConfirmDeleteBoard { board: id })
-        }
-        _ => None,
-    }
+    EventOutcome::Consumed
 }
 
 /// O verbo que este id de menu representa. ⚠️ **Uma tabela, não três `if`** — ela é o par exacto

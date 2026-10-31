@@ -42,6 +42,20 @@ impl WidgetStore {
         self.asset_cells.get(&id).copied()
     }
 
+    /// D17 — quais dos cartões pintados são DOCUMENTOS (Kanban, Quadro): o botão direito abre-lhes
+    /// o menu de documento (Open · Delete…), nunca o do prefab. Republicado com o
+    /// [`Self::set_asset_cells`], pelo mesmo painter.
+    pub fn set_asset_doc_cells(&mut self, cells: std::collections::BTreeSet<NodeId>) {
+        self.asset_doc_cells = cells;
+    }
+
+    /// `id` é um cartão pintado agora E um documento? (O censo de cartões manda: painel fechado ⇒
+    /// `false`, mesmo que o conjunto de documentos tenha ficado para trás.)
+    #[must_use]
+    pub fn is_asset_doc_cell(&self, id: NodeId) -> bool {
+        self.is_asset_cell(id) && self.asset_doc_cells.contains(&id)
+    }
+
     /// Começa um arrasto de asset — **ainda não armado**, porque isto ainda pode ser um clique.
     pub fn begin_asset_drag(&mut self, payload: DragPayload, x: f32, y: f32) {
         self.asset_drag_origin = (x, y);

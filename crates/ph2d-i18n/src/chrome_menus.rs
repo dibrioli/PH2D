@@ -251,6 +251,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.detach_from_prefab" => "Detach from Prefab",
         "chrome.menu.remove_from_library" => "Remove from Library",
         "chrome.menu.delete" => "Delete",
+        "chrome.menu.delete_document" => "Delete…",
         "chrome.menu.select_users" => "Select users",
         "chrome.menu.show_what_it_uses" => "Show what it uses",
         "chrome.menu.show_what_uses_it" => "Show what uses it",

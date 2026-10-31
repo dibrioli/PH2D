@@ -193,10 +193,16 @@ pub(super) fn handle_down_menus(
                 kind: ContextMenuKind::CatalogRow { row },
             });
         } else if let Some(cell) = asset_cell_id {
+            // D17 — um documento (Kanban, Quadro) tem o menu dele; os verbos de prefab nele mentem.
+            let kind = if store.is_asset_doc_cell(cell) {
+                ContextMenuKind::AssetDocCard { cell }
+            } else {
+                ContextMenuKind::AssetCard { cell }
+            };
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,
-                kind: ContextMenuKind::AssetCard { cell },
+                kind,
             });
         } else if let Some(note_index) = note_slot
             && let Some(panel) = panel_under

@@ -154,6 +154,16 @@ pub fn payload_of(
     }
 }
 
+/// D17 — este asset é um DOCUMENTO do projecto (abre-se numa aba, apaga-se), e não um prefab/imagem?
+#[must_use]
+pub(crate) fn is_document(key: ph2d_asset_index::AssetRef) -> bool {
+    use ph2d_asset_index::AssetRef;
+    match key {
+        AssetRef::Kanban { .. } | AssetRef::Board { .. } => true,
+        AssetRef::Component { .. } | AssetRef::Texture { .. } => false,
+    }
+}
+
 /// **Só para os gates:** o endereço que a célula `index` desenhou neste quadro.
 ///
 /// ⚠️ Ela existe porque a costura *estado → consulta → grade* só é mensurável no que o `paint`

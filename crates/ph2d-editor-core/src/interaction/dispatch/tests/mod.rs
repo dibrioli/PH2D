@@ -278,6 +278,7 @@ fn focused_text_input(text: &str, caret: usize, anchor: Option<usize>) -> Widget
     store
 }
 
+mod asset_doc_menu;
 mod blur;
 mod caret_doors;
 mod clipboard;

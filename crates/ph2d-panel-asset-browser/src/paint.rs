@@ -501,6 +501,13 @@ fn paint_grid(
     // rolados para fora do corpo. Hoje o laço enche `painted_cells`, então a lista é o que ela diz
     // ser. *Um comentário que nomeia uma propriedade que o código não tem é a próxima armadilha.*
     crate::paint_thumb::retain_painted(&keys);
+    // D17 — e quais deles são documentos, para o botão direito abrir o menu certo.
+    let docs = painted_cells
+        .iter()
+        .filter(|(_, i)| keys.get(**i).is_some_and(|k| crate::state::is_document(*k)))
+        .map(|(id, _)| *id)
+        .collect();
+    ctx.host.store_mut().set_asset_doc_cells(docs);
     ctx.host.store_mut().set_asset_cells(painted_cells);
     crate::state::set_painted(keys);
     crate::state::set_last_content_h(content_h);

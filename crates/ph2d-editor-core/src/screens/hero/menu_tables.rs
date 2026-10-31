@@ -623,6 +623,12 @@ pub(super) const ASSET_CARD_ROWS: &[MenuRow] = &[
     ),
 ];
 
+/// As linhas de `ContextMenuKind::AssetDocCard { .. }` (D17): um documento abre-se ou apaga-se.
+pub(super) const ASSET_DOC_CARD_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_ASSET_OPEN, "chrome.menu.open"),
+    menu_row(ids::CTX_MENU_ASSET_DELETE, "chrome.menu.delete_document"),
+];
+
 // Painter Falloff curve point handle (Blender per-point handle types).
 /// As linhas de `ContextMenuKind::FalloffPointHandle`.
 pub(super) const FALLOFF_POINT_HANDLE_ROWS: &[MenuRow] = &[

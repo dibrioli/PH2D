@@ -86,6 +86,27 @@ impl WidgetStore {
         true
     }
 
+    /// O ponteiro que a linha do tempo do Pixel pede (D2/D3, smoke 31/10): a captura em curso
+    /// manda, senão o que está sob o rato (`hover`) — a ponta da tag estica de lado, a moldura do
+    /// intervalo agarra-se.
+    #[must_use]
+    pub fn pixel_timeline_look(
+        &self,
+        hover: Option<NodeId>,
+    ) -> Option<crate::doc_surface::PointerLook> {
+        use crate::doc_surface::PointerLook as L;
+        let agarrada = self
+            .active_id()
+            .and_then(|a| self.pixel_timeline_surface_at_id(a));
+        let (_, kind) = agarrada.or_else(|| self.pixel_timeline_surface_at_id(hover?))?;
+        match kind {
+            PixelTimelineHitKind::TagEdge { .. } => Some(L::ResizeEw),
+            PixelTimelineHitKind::RangeOutline if agarrada.is_some() => Some(L::Grabbing),
+            PixelTimelineHitKind::RangeOutline => Some(L::Grab),
+            _ => None,
+        }
+    }
+
     /// O Down (botão esquerdo) sobre uma superfície: captura e `Begin`. `false` = não é dela.
     pub(crate) fn pixel_timeline_down(
         &mut self,
@@ -202,5 +223,38 @@ mod tests {
         assert!(!s.pixel_timeline_down(Some((id, r)), &direito));
         assert!(!s.pixel_timeline_down(Some((NodeId(99), r)), &ev(PointerKind::Down, 5.0)));
         assert!(s.drain_pixel_timeline_gestures().next().is_none());
+    }
+
+    /// D2/D3 (smoke 31/10): a ponta da tag estica de lado; a moldura é mão aberta sob o rato e
+    /// fechada enquanto se agarra — mesmo com o rato fora dela (a captura manda).
+    #[test]
+    fn the_tag_end_and_the_range_outline_ask_for_their_pointer() {
+        use crate::doc_surface::PointerLook as L;
+        let mut s = WidgetStore::with_capacity(0);
+        let (ponta, moldura) = (NodeId(21), NodeId(22));
+        for (id, kind) in [
+            (
+                ponta,
+                PixelTimelineHitKind::TagEdge {
+                    index: 0,
+                    right: true,
+                },
+            ),
+            (moldura, PixelTimelineHitKind::RangeOutline),
+        ] {
+            let parent = NodeId(1);
+            s.register(
+                id,
+                super::super::InteractiveState::PixelTimelineSurface { parent, kind },
+            );
+        }
+        assert_eq!(s.pixel_timeline_look(Some(ponta)), Some(L::ResizeEw));
+        assert_eq!(s.pixel_timeline_look(Some(moldura)), Some(L::Grab));
+        assert_eq!(s.pixel_timeline_look(None), None);
+        let r = Rect::new(0.0, 0.0, 20.0, 20.0);
+        assert!(s.pixel_timeline_down(Some((moldura, r)), &ev(PointerKind::Down, 5.0)));
+        assert_eq!(s.pixel_timeline_look(None), Some(L::Grabbing));
+        assert!(s.pixel_timeline_up(moldura, &ev(PointerKind::Up, 90.0)));
+        assert_eq!(s.pixel_timeline_look(Some(moldura)), Some(L::Grab));
     }
 }

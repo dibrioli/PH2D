@@ -199,23 +199,23 @@ pub fn move_to(s: &Sprite, id: FrameId, to: usize) -> Option<Op> {
 #[must_use]
 pub fn move_block(s: &Sprite, ids: &[FrameId], before: usize) -> Option<Op> {
     let all = s.frames();
-    let before = before.min(all.len());
-    let block: Vec<Frame> = all
-        .iter()
-        .filter(|f| ids.contains(&f.id))
-        .copied()
-        .collect();
-    if block.is_empty() || block.len() == all.len() {
+    let block = all.iter().filter(|f| ids.contains(&f.id)).count();
+    if block == 0 || block == all.len() {
         return None;
     }
-    let at = before - all[..before].iter().filter(|f| ids.contains(&f.id)).count();
-    let mut frames: Vec<Frame> = all
-        .iter()
-        .filter(|f| !ids.contains(&f.id))
-        .copied()
-        .collect();
-    frames.splice(at..at, block);
+    let frames = block_order(all, |f| ids.contains(&f.id), before);
     (frames != all).then(|| op(frames, Vec::new(), s.tags().to_vec()))
+}
+
+/// A ordem depois de largar os de `em` (na ordem de `all`) na fronteira `before` (`0..=n`): a lei
+/// do [`move_block`], que a pré-visualização da linha do tempo também pinta.
+#[must_use]
+pub fn block_order<T: Copy>(all: &[T], em: impl Fn(&T) -> bool, before: usize) -> Vec<T> {
+    let before = before.min(all.len());
+    let at = before - all[..before].iter().filter(|f| em(f)).count();
+    let mut out: Vec<T> = all.iter().filter(|f| !em(f)).copied().collect();
+    out.splice(at..at, all.iter().filter(|f| em(f)).copied());
+    out
 }
 
 /// A tecla Delete sobre um intervalo de cels: os cels saem, os quadros ficam.

@@ -35,6 +35,9 @@ ph2d-vec-render = { path = "../ph2d-vec-render" }
 # A etiqueta do arrasto da forma viva (P6f): a ficha da casa (`ph2d_editor_core::readout`) mede o texto.
 ph2d-text = { path = "../ph2d-text" }
 winit = "0.30"
+# A foto do gesto a meio da cena 16 (`smoke_intervalo::conduz`): os ids da grelha e a arena do despacho.
+ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline" }
+bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"
 

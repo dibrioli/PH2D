@@ -528,6 +528,7 @@ fn the_wheel_never_pushes_a_toast_and_the_footer_reads_the_level() {
             window: WINDOW,
             ppm: PPM,
             editing: Some(bits),
+            typing: false,
         };
         assert!(app.wheel_event(
             &mut v,

@@ -50,7 +50,7 @@ impl crate::App {
         eaten
     }
 
-    /// As teclas do Draw, salvo com um campo de texto a escrever.
+    /// As teclas do Draw; com um campo de texto a escrever a família cede-as (`View::typing`).
     pub(crate) fn pixel_owns_the_keyboard(&mut self, key: PhysicalKey, s: ElementState) -> bool {
         if self.surface_owns_the_keyboard() {
             return false;

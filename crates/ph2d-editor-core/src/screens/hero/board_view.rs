@@ -146,10 +146,14 @@ pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
     ed.cursor_at(&board.doc, p)
 }
 
-/// ⭐ O ponteiro que a área central quer em `(x, y)`: o da aba de família activa, ou o do Kanban
+/// ⭐ O ponteiro que a área central quer em `(x, y)`: o da linha do tempo do Pixel (as pontas e a
+/// moldura, que também valem a meio do arrasto), o da aba de família activa, ou o do Kanban
 /// activo do quadro (a mão nos cartões, o I no texto). A janela traduz para o do sistema.
 #[must_use]
 pub fn pointer_look(hero: &HeroScreen, x: f32, y: f32) -> Option<crate::doc_surface::PointerLook> {
+    if let Some(look) = hero.store.pixel_timeline_look(hero.chrome_hit(x, y)) {
+        return Some(look);
+    }
     if hero.documents.surface_active().is_some() {
         return hero.documents.surface_pointer_look(x, y);
     }

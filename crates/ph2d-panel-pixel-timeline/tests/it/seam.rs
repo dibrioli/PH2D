@@ -388,3 +388,46 @@ fn constant_frame_rate_turns_the_duration_into_all_frames_and_tag_ends_are_base_
         },
     );
 }
+
+/// **D2 (smoke 31/10): a meio do arrasto o bloco VÊ-SE a mover** — a grelha pinta a ordem prevista
+/// (a lei do `move_block`: o vão onde o bloco cai) e nada se pede antes de largar.
+#[test]
+fn mid_drag_the_grid_paints_the_block_where_it_will_land() {
+    use ph2d_editor_core::interaction::{
+        GestureMods, GesturePhase, PixelTimelineGesture, PixelTimelineHitKind as H,
+    };
+    let mut i = info();
+    i.range = faixa(K::Frames, vec![], vec![10]);
+    let mut p = Palco::novo(i);
+    let antes = p.rect(ids::header_id(12)).expect("pintado");
+    let (x0, y) = p.meio(ids::RANGE_EDGES[1]);
+    let mut passo = |phase, x| {
+        p.host
+            .store_mut()
+            .push_pixel_timeline_gesture(PixelTimelineGesture {
+                surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+                kind: H::RangeOutline,
+                phase,
+                x,
+                y,
+                button: ph2d_host::PointerButton::Primary,
+                mods: GestureMods::default(),
+            });
+        p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+        p.host.drained_actions()
+    };
+    assert!(passo(GesturePhase::Begin, x0).is_empty());
+    let a = passo(GesturePhase::Update, antes.x + antes.w);
+    assert!(
+        !a.iter()
+            .any(|e| matches!(e, EditorAction::Pixel(PixelRequest::RangeMove { .. }))),
+        "a meio do arrasto nada se move: {a:?}"
+    );
+    let vao = p.rect(ids::header_id(10)).expect("pintado");
+    assert!(
+        (vao.x - antes.x).abs() < 0.5,
+        "o quadro 10 pinta-se onde vai cair (x {} ≠ {})",
+        vao.x,
+        antes.x
+    );
+}

@@ -391,3 +391,47 @@ fn esc_clears_the_range_and_keeps_the_active_frame() {
     assert!(info.range.is_empty());
     assert_eq!(info.active_frame, activo);
 }
+
+/// **D1 (smoke 31/10): o Enter que fecha a duração não toca.** A porta é a da shell
+/// (`PixelApp::keyboard` com a `View` lida do `hero`); o controlo é o mesmo Enter sem o foco.
+#[test]
+fn enter_in_a_focused_field_is_the_fields_and_does_not_play() {
+    use ph2d_app_pixel::compose::{Mods, View};
+    use ph2d_editor_core::InteractiveState;
+    use ph2d_editor_core::widget::TextInputState;
+    use winit::keyboard::PhysicalKey;
+    let enter = |p: &mut Palco| {
+        let mut cam = Camera2d::default();
+        let mut v = View::of(p.sim.world(), &p.hero, &mut cam, &mut p.toasts, WINDOW);
+        let comeu = (p.app).keyboard(
+            &mut v,
+            PhysicalKey::Code(KeyCode::Enter),
+            true,
+            Mods::default(),
+        );
+        (comeu, p.quadro().playing)
+    };
+    let mut livre = Palco::novo();
+    assert_eq!(
+        enter(&mut livre),
+        (true, true),
+        "controlo: sem foco o Enter toca"
+    );
+
+    let mut p = Palco::novo();
+    let campo = ph2d_editor_core::NodeId(9_999);
+    p.hero.store.register(
+        campo,
+        InteractiveState::NumberInput {
+            state: TextInputState::Focused,
+            value: 100.0,
+            buffer: "250".into(),
+            caret: 3,
+            last_committed: 100.0,
+            selection_anchor: None,
+        },
+    );
+    p.hero.store.set_focus(Some(campo));
+    assert!(p.hero.text_entry_focused(), "o campo tem o teclado");
+    assert_eq!(enter(&mut p), (false, false), "o Enter é do campo");
+}

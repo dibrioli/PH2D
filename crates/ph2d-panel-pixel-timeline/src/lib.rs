@@ -19,6 +19,7 @@ pub mod ids;
 mod paint;
 mod paint_grid;
 mod paint_props;
+mod paint_voo;
 mod state;
 
 pub use state::{PixelTimelinePanelState, current_pixel, set_current_pixel};

@@ -132,6 +132,12 @@ pub enum PointerLook {
     Text,
     /// Sobre o que um clique leva a algum sítio: a mão.
     Hand,
+    /// Sobre o que se agarra e arrasta: a mão aberta.
+    Grab,
+    /// A agarrar (o botão premido): a mão fechada.
+    Grabbing,
+    /// Sobre uma ponta que estica de lado: ↔.
+    ResizeEw,
 }
 
 /// O que um evento do rato traz além da posição.

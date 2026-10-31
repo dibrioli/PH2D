@@ -6093,12 +6093,14 @@ dependencies = [
 name = "ph2d-app-pixel"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-app-host",
  "ph2d-component-desc",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-panel-pixel-timeline",
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-render",
@@ -9784,8 +9786,10 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-pixel-core",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-ui-testkit",

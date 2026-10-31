@@ -12,7 +12,7 @@ use ph2d_editor_core::interaction::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::pixel_panel::{
-    PixelPanelInfo, PixelRange, PixelRangeKind as K, PixelRequest,
+    PixelFrameCol, PixelPanelInfo, PixelRange, PixelRangeKind as K, PixelRequest,
 };
 
 /// A geometria da grelha pintada (colunas e filas), guardada pelo pintor.
@@ -57,7 +57,7 @@ impl Geo {
 }
 
 /// O arrasto em curso.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Arrasto {
     /// Pelos cabeçalhos, desde a coluna `origem`.
     Cabecalhos { origem: usize },
@@ -69,8 +69,9 @@ pub(crate) enum Arrasto {
         right: bool,
         alvo: usize,
     },
-    /// A moldura do intervalo, agora sobre a fronteira `alvo`.
-    Bloco { alvo: usize },
+    /// A moldura do intervalo, agora sobre a fronteira `alvo`; o rato premiu em `de` e está em `x`
+    /// (o bloco voa com ele, [`crate::paint_grid`]).
+    Bloco { alvo: usize, de: f32, x: f32 },
 }
 
 /// A tag `index` como fica com o arrasto em curso (a pré-visualização da barra).
@@ -95,6 +96,26 @@ pub(crate) fn tag_previsto(
         }
         _ => (from, to),
     }
+}
+
+/// Durante o arrasto do bloco: a ordem prevista (a lei de `move_block`), o rato e onde premiu.
+pub(crate) fn bloco_previsto(
+    st: &PixelTimelinePanelState,
+    info: &PixelPanelInfo,
+) -> Option<(PixelPanelInfo, f32, f32)> {
+    let Some(Arrasto::Bloco { alvo, de, x }) = st.arrasto else {
+        return None;
+    };
+    let em = |f: &PixelFrameCol| info.range.frames.contains(&f.id);
+    let frames = ph2d_pixel_core::frames::block_order(&info.frames, em, alvo);
+    Some((
+        PixelPanelInfo {
+            frames,
+            ..info.clone()
+        },
+        de,
+        x,
+    ))
 }
 
 fn pos(info: &PixelPanelInfo, frame: u32) -> Option<usize> {
@@ -190,6 +211,8 @@ fn pedidos(
         (H::RangeOutline, GesturePhase::Begin) => {
             st.arrasto = Some(Arrasto::Bloco {
                 alvo: geo.fronteira(g.x, n),
+                de: g.x,
+                x: g.x,
             });
             Vec::new()
         }
@@ -227,9 +250,9 @@ fn pedidos(
                         PixelRequest::TagRange { index, from, to }
                     })
                 }
-                Some(Arrasto::Bloco { .. }) => {
+                Some(Arrasto::Bloco { de, .. }) => {
                     let alvo = geo.fronteira(g.x, n);
-                    st.arrasto = Some(Arrasto::Bloco { alvo });
+                    st.arrasto = Some(Arrasto::Bloco { alvo, de, x: g.x });
                     fim.then(|| PixelRequest::RangeMove {
                         before: u32::try_from(alvo).unwrap_or(u32::MAX),
                     })

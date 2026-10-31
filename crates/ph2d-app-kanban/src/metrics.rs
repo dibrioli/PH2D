@@ -100,18 +100,16 @@ pub(crate) const EDIT_INSET: f32 = 6.0;
 pub(crate) const COVER_COLOR_H: f32 = 36.0;
 pub(crate) const FOCUS_RING: f32 = 2.0;
 pub(crate) const FOCUS_OFFSET: f32 = 2.0;
-/// O cartão em voo inclina 4° (o Trello) e roda em torno de `(50 %, 60 %)`.
-pub(crate) const FLIGHT_TILT_DEG: f64 = 4.0;
-pub(crate) const FLIGHT_PIVOT_Y: f64 = 0.6;
+/// O cartão em voo: a lei partilhada com a linha do tempo do Pixel (`paint_flight`).
+pub(crate) use ph2d_editor_core::paint_flight::{
+    FLIGHT_TILT_DEG, SHADOW_FLIGHT_DARK, SHADOW_FLIGHT_NEAR,
+};
 
 // ── Sombras: `(dy, desfoque)` de cada camada; as cores são `kanban-shadow-*` ──
 pub(crate) const SHADOW_NEAR: (f64, f64) = (1.0, 1.0);
 pub(crate) const SHADOW_RIM: (f64, f64) = (0.0, 1.0);
 /// A sombra de pairar no claro (no escuro é um anel de 1 px).
 pub(crate) const SHADOW_HOVER_LIGHT: (f64, f64) = (4.0, 8.0);
-pub(crate) const SHADOW_FLIGHT_DARK: (f64, f64) = (14.0, 30.0);
-pub(crate) const SHADOW_FLIGHT_LIGHT: (f64, f64) = (16.0, 32.0);
-pub(crate) const SHADOW_FLIGHT_NEAR: (f64, f64) = (3.0, 8.0);
 pub(crate) const HOVER_RING: f32 = 1.0;
 
 // ── O gesto ──

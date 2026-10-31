@@ -364,21 +364,7 @@ fn last_line(ts: &mut TextSystem, prefix: &str, px: f32, width: f32) -> (usize, 
 }
 
 /// Uma camada de sombra desfocada por baixo de `r`.
-pub(crate) fn shadow(
-    scene: &mut VectorScene,
-    r: Rect,
-    radius: f32,
-    color: Color,
-    (dy, blur): (f64, f64),
-) {
-    let rr = ph2d_vector::Rect::new(
-        f64::from(r.x),
-        f64::from(r.y) + dy,
-        f64::from(r.x + r.w),
-        f64::from(r.y + r.h) + dy,
-    );
-    scene.blurred_rounded_rect(Affine::IDENTITY, rr, color, f64::from(radius), blur / 2.0);
-}
+pub(crate) use ph2d_editor_core::paint_flight::shadow;
 
 /// ⭐ O que voa: o cartão (ou a lista) agarrado, inclinado, com a sombra de voo, por cima de tudo.
 fn flying(
@@ -430,12 +416,7 @@ fn flying(
         }
         Lift::Pan { .. } => return,
     }
-    let pivot = (f64::from(r.w) / 2.0, f64::from(r.h) * m::FLIGHT_PIVOT_Y);
-    let t = Affine::translate((f64::from(r.x), f64::from(r.y)))
-        * Affine::translate(pivot)
-        * Affine::rotate(tab.springs.tilt.pos.to_radians())
-        * Affine::translate((-pivot.0, -pivot.1));
-    scene.append_transformed(&s, t);
+    ph2d_editor_core::paint_flight::fly(scene, &s, r, tab.springs.tilt.pos);
 }
 
 /// A lista `lb` deslocada (para pintar a que voa na origem).

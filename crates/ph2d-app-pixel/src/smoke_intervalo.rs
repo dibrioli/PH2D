@@ -6,6 +6,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::pixel_panel::{PixelRange, PixelRangeKind};
+use ph2d_host::{PointerEvent, PointerKind};
 use ph2d_pixel_core::frames::{self, NewFrame};
 use ph2d_pixel_core::{Background, ColorMode, NewSprite, Rect, layers};
 
@@ -74,4 +75,47 @@ pub(crate) fn stage(
         frames: RANGE.iter().map(|&i| ids[i].0).collect(),
     };
     Some(bits as u32)
+}
+
+/// A foto do gesto a meio (`PH2D_PIXEL_SMOKE_GESTO=bloco|ponta`, cena 16): premir na moldura (ou na
+/// ponta direita da «walk») e andar duas colunas SEM largar, pelo despacho do produto — os eventos
+/// sintéticos não chegam à janela da tela virtual (`fotografa_cena.sh`).
+pub(crate) fn conduz(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    use ph2d_panel_pixel_timeline::ids;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    let alvo = match std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() {
+        Ok("bloco") => ids::RANGE_EDGES[1],
+        Ok("ponta") => ids::tag_edge_id(0, true),
+        _ => return,
+    };
+    let rect = |id| hero.hit_index.rect_for(id);
+    let (Some(r), Some(bloco)) = (rect(alvo), rect(ids::RANGE_EDGES[0])) else {
+        return;
+    };
+    if crate::smoke::armed_level() != Some(16) || FEITO.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let arena = bumpalo::Bump::new();
+    for (kind, x) in [
+        (PointerKind::Down, x),
+        (PointerKind::Move, x + bloco.w * 1.1),
+    ] {
+        let event = PointerEvent {
+            kind,
+            x,
+            y,
+            pressure: 1.0,
+            source: ph2d_host::PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
+            timestamp_ns: 0,
+        };
+        let _ = ph2d_editor_core::interaction::dispatch_pointer(
+            &mut hero.store,
+            &hero.hit_index,
+            event,
+            &arena,
+        );
+    }
 }

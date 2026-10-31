@@ -273,6 +273,9 @@ impl crate::App {
                     match ph2d_editor_core::screens::hero::board_view::pointer_look(h, x, y) {
                         Some(PointerLook::Text) => CursorIcon::Text,
                         Some(PointerLook::Hand) => CursorIcon::Pointer,
+                        Some(PointerLook::Grab) => CursorIcon::Grab,
+                        Some(PointerLook::Grabbing) => CursorIcon::Grabbing,
+                        Some(PointerLook::ResizeEw) => CursorIcon::EwResize,
                         Some(PointerLook::Arrow) | None => CursorIcon::Default,
                     }
                 }

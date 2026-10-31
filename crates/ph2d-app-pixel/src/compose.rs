@@ -23,6 +23,8 @@ pub struct View<'a> {
     pub ppm: f32,
     /// O objecto em Pixel Sprite ▸ Draw, se há.
     pub editing: Option<u64>,
+    /// Um campo de texto da interface tem o teclado (`HeroScreen::text_entry_focused`).
+    pub typing: bool,
 }
 
 impl<'a> View<'a> {
@@ -44,6 +46,7 @@ impl<'a> View<'a> {
             window,
             ppm,
             editing,
+            typing: hero.text_entry_focused(),
         }
     }
 
@@ -136,12 +139,16 @@ impl PixelApp {
         input::wheel(self, v.world, v.camera, v.window, v.ppm, v.editing, notch)
     }
 
-    /// As teclas do Draw (B, E, I, H, X, Espaço, Ctrl+Z…). A shell já descartou o campo de texto
-    /// com o foco. `true` = consumida.
+    /// As teclas do Draw (B, E, I, H, X, Espaço, Ctrl+Z…). `true` = consumida. Com um campo de
+    /// texto a escrever a tecla premida é DELE (o Enter que fecha a duração não toca); largar
+    /// passa, para o Espaço premido antes do foco não deixar o pan preso.
     pub fn keyboard(&mut self, v: &mut View<'_>, key: PhysicalKey, pressed: bool, m: Mods) -> bool {
         let PhysicalKey::Code(code) = key else {
             return false;
         };
+        if v.typing && pressed {
+            return false;
+        }
         if diag() {
             eprintln!(
                 "[pixel-diag] tecla {code:?} premida={pressed} {m:?} draw={} gesto={}",

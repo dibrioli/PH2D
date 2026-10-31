@@ -22,6 +22,7 @@ fn ponteiro(p: &mut Palco, k: PointerKind, b: PointerButton, c: (i32, i32), free
         window: WINDOW,
         ppm: PPM,
         editing: Some(p.bits),
+        typing: false,
     };
     p.app.pointer(&mut v, k, b, xy, Mods::default(), free)
 }
@@ -36,6 +37,7 @@ fn move_sem_botao(p: &mut Palco, c: (i32, i32)) -> bool {
         window: WINDOW,
         ppm: PPM,
         editing: Some(p.bits),
+        typing: false,
     };
     p.app.pointer_moved(&v, xy, Mods::default())
 }
@@ -140,6 +142,7 @@ fn hovering_the_symmetry_axis_tells_the_panel() {
         window: WINDOW,
         ppm: PPM,
         editing: Some(p.bits),
+        typing: false,
     };
     p.app.pointer_moved(&v, meio, Mods::default());
     assert!(p.quadro().on_axis, "sobre o eixo");

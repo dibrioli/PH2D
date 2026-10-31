@@ -28,7 +28,9 @@ pub const WET: &[Receita] = &[
         nasce_de: Some("Charcoal"),
         ..CHARCOAL
     },
-    // O marcador de bisel: 45° fixo, a tinta que multiplica do Marker Bullet, as pontas que esbatem.
+    // O marcador de bisel: 45° fixo, a tinta que multiplica do Marker Bullet A MEIO (glaze 0,5), as pontas que esbatem.
+    // Glaze 1 clareava o papel de cor (BUGS #54, o mesmo assentar do Bullet): censo assentado 204 px; 0,8 → 9; 0,6 → 0
+    // à justa; 0,5 → 0 com ~24 de folga de luminosidade (`nenhum_pincel_de_fabrica_clareia_o_papel_de_cor`, 31/10).
     Receita {
         meio: "Marker",
         grupo: "Marker",
@@ -37,7 +39,7 @@ pub const WET: &[Receita] = &[
         size_px: Some(30.0),
         achatado: Some((0.85, 45)),
         extras: &[
-            ("glaze", 1.0),
+            ("glaze", 0.5),
             ("tipClean", 1.0),
             ("drag", 0.0),
             ("pressureSize", 0.0),

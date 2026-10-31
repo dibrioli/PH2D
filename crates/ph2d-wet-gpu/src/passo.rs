@@ -15,6 +15,8 @@ use ph2d_wet_paint::tuning::{Knob, Tuning};
 
 /// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/óleo/ladeira, sem
 /// fingering/backrun/difusão, passo Jacobi (degraus 3–5). As paredes entre traços a placa sabe (`traco`).
+/// A tinta OPACA (`Knob::Opaque`, o tecto no segmento das tintas da `Ecra::com_opaca`) a placa NÃO sabe: o pincel
+/// opaco ou uma célula com ela fica na CPU — nunca diverge.
 #[must_use]
 pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
     let p = sim.gather_params(tuning);
@@ -29,6 +31,8 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         && p.oleo == 0.0
         && sim.drip_head == 0.0
         && g.oleo.is_empty()
+        && p.k(Knob::Opaque) == 0.0
+        && g.aparencia.iter().all(|a| a.opaca == 0.0)
         && ext
 }
 

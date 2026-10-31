@@ -57,6 +57,9 @@ pub enum Ecra {
         /// **O óleo debaixo** ([`Ecra::com_oleo`], dono 30/10): tira esta fracção do tapar extra — `0` = a lei da obra
         /// (entre aguarelas o tapar e o seu branco são os do Rebelle), `1` = sobre óleo, a cobertura é a do pigmento.
         oleo: f64,
+        /// **A tinta OPACA da célula** ([`Ecra::com_opaca`], dono 31/10): a fracção com que o ponto fica preso ao
+        /// SEGMENTO entre as duas tintas (o claro cobre o escuro sem o branco do tapar extra). `0` = a lei do Rebelle.
+        opaca: f64,
     },
 }
 
@@ -71,6 +74,7 @@ impl Ecra {
                 esconde,
                 vela,
                 oleo,
+                opaca,
                 ..
             } => Ecra::Cobre {
                 filme,
@@ -78,6 +82,7 @@ impl Ecra {
                 molhada: 1.0,
                 vela,
                 oleo,
+                opaca,
             },
             e => e,
         }
@@ -94,6 +99,7 @@ impl Ecra {
                 esconde,
                 molhada,
                 oleo,
+                opaca,
                 ..
             } if v > 0.0 => Ecra::Cobre {
                 filme,
@@ -101,6 +107,7 @@ impl Ecra {
                 molhada,
                 vela: f64::from(v),
                 oleo,
+                opaca,
             },
             e => e,
         }
@@ -119,6 +126,7 @@ impl Ecra {
                 molhada,
                 vela,
                 oleo,
+                opaca,
             } if v > 0.0 => Ecra::Cobre {
                 filme,
                 esconde: if v >= 1.0 {
@@ -129,6 +137,7 @@ impl Ecra {
                 molhada,
                 vela,
                 oleo,
+                opaca,
             },
             e => e,
         }
@@ -146,12 +155,40 @@ impl Ecra {
                 molhada,
                 vela,
                 oleo: o,
+                opaca,
             } if c.oleo > 0.0 && o >= 0.0 => Ecra::Cobre {
                 filme,
                 esconde,
                 molhada,
                 vela,
                 oleo: (f64::from(c.oleo) / OLEO_PLENO).min(1.0),
+                opaca,
+            },
+            e => e,
+        }
+    }
+
+    /// A lei da CÉLULA com a tinta OPACA que ela pousou ([`crate::grid::aparencia::opaca`],
+    /// [`crate::tuning::Knob::Opaque`], dono 31/10: «amarelo sobre azul seco fica com bordas brancas»): o ponto fica no
+    /// SEGMENTO entre as duas tintas. `0` devolve a da sessão ao bit.
+    #[inline]
+    #[must_use]
+    pub fn com_opaca(self, o: f32) -> Self {
+        match self {
+            Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+                oleo,
+                ..
+            } if o > 0.0 => Ecra::Cobre {
+                filme,
+                esconde,
+                molhada,
+                vela,
+                oleo,
+                opaca: f64::from(o).min(1.0),
             },
             e => e,
         }

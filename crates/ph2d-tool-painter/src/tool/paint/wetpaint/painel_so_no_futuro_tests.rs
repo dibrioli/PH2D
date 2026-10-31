@@ -269,7 +269,7 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         "controlo: há tinta"
     );
     assert!(g.aparencia.is_empty(), "a fábrica alocou a aparência");
-    // O custo de quem sai da fábrica: 16 B por célula (com a Paint Texture do traço, 28/10), contra os bytes que a grade já retém por célula.
+    // O custo de quem sai da fábrica: 20 B por célula (com a Paint Texture do traço, 28/10, e a tinta opaca, 31/10), contra os bytes que a grade já retém por célula.
     let base = g.bytes_retidos();
     let cells = g.cells;
     t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.4);
@@ -284,14 +284,14 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         .engine
         .layers[0]
         .grid;
-    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 16);
+    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 20);
     assert_eq!(
         g.bytes_retidos() - base,
-        16 * cells,
-        "o campo custa 16 B por célula"
+        20 * cells,
+        "o campo custa 20 B por célula"
     );
     eprintln!(
-        "APARENCIA: grade {} B/célula, campo +16 B/célula",
+        "APARENCIA: grade {} B/célula, campo +20 B/célula",
         base as f64 / cells as f64
     );
 }

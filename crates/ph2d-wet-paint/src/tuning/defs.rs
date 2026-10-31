@@ -343,4 +343,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::TuftArc, KnobGroup::Bristles, "tuftArc", 0.0, 1.0, 0.01, 0.0, None),
     // 31/10 (Water Brush): a água arrasta o suspenso pelo traço — no cartão da ferramenta da água; neutro 0 = ao bit
     k(Knob::WaterDrag, KnobGroup::Hidden, "waterDrag", 0.0, 1.0, 0.01, 0.0, None),
+    // 31/10 (a tinta opaca): o ponto no segmento das duas tintas — por preset de fábrica; neutro 0 = a aguarela, ao bit
+    k(Knob::Opaque, KnobGroup::Hidden, "opaque", 0.0, 1.0, 0.01, 0.0, None),
 ];

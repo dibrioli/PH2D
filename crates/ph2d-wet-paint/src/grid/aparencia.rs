@@ -9,7 +9,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// A aparência da tinta de uma célula (16 B).
+/// A aparência da tinta de uma célula (20 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AparenciaCelula {
     /// [`Knob::PaperVisibility`] da tinta (o mestre do papel impresso nela).
@@ -22,6 +22,9 @@ pub struct AparenciaCelula {
     /// A fracção da tinta pousada com a **Paint Texture** (o papel impresso na tinta; dono 28/10: é do TRAÇO):
     /// `1` = imprime o papel pela [`Self::papel`]/[`Self::grao`] dela, `0` = não imprime (a de fábrica).
     pub textura: f32,
+    /// [`Knob::Opaque`] da tinta: a fracção com que o ecrã a prende ao segmento das duas tintas
+    /// ([`crate::assenta::Ecra::com_opaca`]); `0` = a lei da aguarela.
+    pub opaca: f32,
 }
 
 impl AparenciaCelula {
@@ -31,6 +34,7 @@ impl AparenciaCelula {
         grao: 1.0,
         vidrado: 0.0,
         textura: 0.0,
+        opaca: 0.0,
     };
 }
 
@@ -48,6 +52,7 @@ pub fn do_pincel(p: &Params) -> AparenciaCelula {
         grao: p.k(Knob::VisualGrain) as f32,
         vidrado: p.vidrado,
         textura: p.textura,
+        opaca: p.k(Knob::Opaque) as f32,
     }
 }
 
@@ -63,6 +68,13 @@ pub fn da_celula(campo: &[AparenciaCelula], i: usize) -> AparenciaCelula {
 #[must_use]
 pub fn vidrado(campo: &[AparenciaCelula], i: usize) -> f32 {
     campo.get(i).map_or(0.0, |a| a.vidrado)
+}
+
+/// A opacidade da célula `i` ([`crate::assenta::Ecra::com_opaca`]).
+#[inline]
+#[must_use]
+pub fn opaca(campo: &[AparenciaCelula], i: usize) -> f32 {
+    campo.get(i).map_or(0.0, |a| a.opaca)
 }
 
 /// Pousa `v` de massa com a aparência `nova` sobre a célula `i`, que tinha `m_old` (susp + sett): a média pela massa
@@ -84,6 +96,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
                 grao: m(a.grao, nova.grao),
                 vidrado: m(a.vidrado, nova.vidrado),
                 textura: m(a.textura, nova.textura),
+                opaca: m(a.opaca, nova.opaca),
             }
         } else {
             nova

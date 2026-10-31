@@ -355,9 +355,14 @@ pub enum Knob {
     /// passa do total que ela ou a origem já tinham. Só o suspenso e nunca o papel: o assentado chega pela porta do
     /// `WetLift`. `0` (omissão) = a água de sempre, ao bit.
     WaterDrag,
+    /// ⭐ **A tinta OPACA não mostra branco que não seja das tintas** (dono 31/10: «amarelo sobre azul seco fica com
+    /// bordas brancas»): pousa na célula ([`crate::grid::aparencia::AparenciaCelula::opaca`]) e o ecrã prende o ponto
+    /// ao SEGMENTO entre o assentado e a tinta de cima ([`crate::assenta::Ecra::com_opaca`]) — o claro cobre o escuro
+    /// sem a diluição em branco do tapar extra. `0` (omissão) = a lei do Rebelle (a aguarela), ao bit.
+    Opaque,
 }
 
-pub const KNOB_COUNT: usize = 143;
+pub const KNOB_COUNT: usize = 144;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

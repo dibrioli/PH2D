@@ -272,7 +272,8 @@ fn smear_com(
                             p.ecra
                                 .com_vela(vela[i])
                                 .com_vidrado(crate::grid::aparencia::vidrado(aparencia, i))
-                                .com_oleo(crate::grid::oleo_celula::da_celula(oleo, i)),
+                                .com_oleo(crate::grid::oleo_celula::da_celula(oleo, i))
+                                .com_opaca(crate::grid::aparencia::opaca(aparencia, i)),
                             &mut out,
                         );
                     }

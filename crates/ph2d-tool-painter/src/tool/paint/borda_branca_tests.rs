@@ -62,6 +62,7 @@ fn mostrada(t: &mut PainterTool) -> Vec<[u8; 3]> {
 pub(super) fn cena(
     caminho: &std::path::Path,
     relevo: bool,
+    extra: &[(ph2d_wet_paint::tuning::Knob, f64)],
 ) -> Option<(Vec<[u8; 3]>, Vec<[u8; 3]>, usize)> {
     let p = ph2d_brush_presets::ler(&std::fs::read(caminho).unwrap()).unwrap();
     let mut t = PainterTool::default();
@@ -73,6 +74,9 @@ pub(super) fn cena(
             return false;
         }
         t.set_brush_size_px(24.0);
+        for &(k, v) in extra {
+            t.paint.wetpaint.knobs.set(k, v);
+        }
         if !relevo {
             t.paint
                 .wetpaint
@@ -142,13 +146,20 @@ fn grava(p: &std::path::Path, px: &[[u8; 3]]) {
     .expect("png");
 }
 
-/// SONDA — a fábrica toda (`PH2D_SONDA_DIR` grava os PNG; `PH2D_SEM_RELEVO=1` sem o Emboss).
+/// SONDA — a fábrica toda (`PH2D_SONDA_DIR` grava os PNG; `PH2D_SEM_RELEVO=1` sem o Emboss; `PH2D_SONDA_OPACO=1`).
 #[test]
 #[ignore = "sonda: corre-se à mão"]
 fn sonda_borda_branca_na_fabrica() {
     let relevo = std::env::var("PH2D_SEM_RELEVO").is_err();
     let dir = std::env::var("PH2D_SONDA_DIR").ok();
     let filtro = std::env::var("PH2D_SONDA_FILTRO").ok();
+    // `PH2D_SONDA_OPACO=1`: a tinta opaca ligada em todos (o «depois» antes de regerar os presets).
+    let extra: Vec<_> = std::env::var("PH2D_SONDA_OPACO")
+        .ok()
+        .map(|_| (ph2d_wet_paint::tuning::Knob::Opaque, 1.0))
+        .into_iter()
+        .collect();
+    let extra = &extra;
     let lista: Vec<_> = presets()
         .into_iter()
         .filter(|(n, _)| filtro.as_ref().is_none_or(|f| n.contains(f.as_str())))
@@ -161,7 +172,7 @@ fn sonda_borda_branca_na_fabrica() {
                 let dir = dir.clone();
                 s.spawn(move || {
                     f.iter()
-                        .map(|(n, p)| match cena(p, relevo) {
+                        .map(|(n, p)| match cena(p, relevo, &extra) {
                             None => format!("     -  {n}"),
                             Some((_, depois, orla)) => {
                                 if let Some(d) = &dir {
@@ -186,5 +197,99 @@ fn sonda_borda_branca_na_fabrica() {
     eprintln!("{txt}");
     if let Some(d) = dir {
         std::fs::write(format!("{d}/orla_relevo_{relevo}.txt"), txt).unwrap();
+    }
+}
+
+/// Os píxeis da faixa azul (`x` 36..124, as linhas onde a faixa é azul) que NENHUMA mistura das duas tintas explica:
+/// mais claros, em todos os canais, que o ponto mais próximo do segmento entre o azul seco da linha (mediana de
+/// `x` 124..136, fora do amarelo) e o amarelo sobre o papel (mediana de `x` 54..67 × `y` 92..101) — `> 20` níveis.
+fn brancos_a_mais(px: &[[u8; 3]]) -> usize {
+    let med = |v: Vec<[u8; 3]>| -> [f64; 3] {
+        std::array::from_fn(|k| {
+            let mut c: Vec<u8> = v.iter().map(|p| p[k]).collect();
+            c.sort_unstable();
+            f64::from(c[c.len() / 2])
+        })
+    };
+    let am = med((54..67)
+        .flat_map(|x| (92..101).map(move |y| px[y * W + x]))
+        .collect());
+    let mut n = 0;
+    for y in 36..66 {
+        let az = med((124..136).map(|x| px[y * W + x]).collect());
+        if az[2] <= az[0] + 30.0 {
+            continue;
+        }
+        for x in 36..124 {
+            let c = px[y * W + x];
+            let e = (0..=50)
+                .map(|i| {
+                    let t = f64::from(i) / 50.0;
+                    (0..3)
+                        .map(|k| f64::from(c[k]) - (t * am[k] + (1.0 - t) * az[k]))
+                        .fold(f64::MIN, f64::max)
+                })
+                .fold(f64::MAX, f64::min);
+            if e > 20.0 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// ⭐ **A tinta OPACA não mostra branco que não seja das tintas** (dono 31/10: «amarelo sobre azul seco fica com bordas
+/// brancas»; `Knob::Opaque`, a lei do segmento em `assenta/ponto.rs`). A Gouache Flat (a orla `[194,198,200]` e o miolo
+/// pêssego) e a Gouache Opaque: com `opaque` 0 (a lei da aguarela — o CONTROLO, a régua vê o defeito) há píxeis de
+/// branco a mais; com `opaque` 1, zero, na orla e no miolo.
+#[test]
+fn a_tinta_opaca_nao_mostra_branco_entre_as_tintas() {
+    use ph2d_wet_paint::tuning::Knob;
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/brushes/WetPainter");
+    let casos = [
+        (
+            "Gouache Flat",
+            raiz.join("Watercolor/Gouache/Gouache Flat.ph2d-brush.png"),
+            &[][..],
+        ),
+        // ⚠️ Sem o `dryCover`: com ele ficam 6 px (e ≤ 22) que NÃO são do ecrã — o `cobre_o_assentado` afasta o azul
+        // assente pela fracção da tinta nova no pouso, e onde o filme amarelo depois afina o papel volta a aparecer
+        // (medido 31/10: `dryCover` 0 → 0 px). Aberto na lei do Dry cover, não nesta.
+        (
+            "Gouache Opaque",
+            raiz.join("Watercolor/Gouache/Gouache Opaque.ph2d-brush.png"),
+            &[(Knob::DryCover, 0.0)][..],
+        ),
+    ];
+    let linhas: Vec<(String, usize, usize)> = std::thread::scope(|s| {
+        let h: Vec<_> = casos
+            .iter()
+            .flat_map(|(n, p, extra)| {
+                [0.0, 1.0].map(|o| {
+                    s.spawn(move || {
+                        let mut ks = vec![(Knob::Opaque, o)];
+                        ks.extend_from_slice(extra);
+                        let (_, depois, _) = cena(p, true, &ks).expect("o preset pinta no Wet");
+                        (n.to_string(), o as usize, brancos_a_mais(&depois))
+                    })
+                })
+            })
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    eprintln!("{linhas:?}");
+    for (n, o, b) in &linhas {
+        if *o == 0 {
+            assert!(
+                *b > 0,
+                "controlo: {n} com opaque 0 já não mostra branco a mais — a régua não vê o defeito"
+            );
+        } else {
+            assert_eq!(
+                *b, 0,
+                "{n} opaca mostra {b} px de branco que nenhuma mistura das duas tintas explica"
+            );
+        }
     }
 }

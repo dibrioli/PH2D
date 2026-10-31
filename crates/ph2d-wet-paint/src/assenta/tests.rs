@@ -55,6 +55,7 @@ fn a_mesma_tinta_nao_muda() {
     assert!(perto(s2, AM, 0.01), "{s2:?}");
     assert_eq!(assenta(e, [0.0; 3], AM, 0.0, 0.8, 0.3, 0.7), AM);
     let cobre = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: 0.2,
@@ -83,6 +84,7 @@ fn secar_de_vez_fica_com_a_cor_que_se_via() {
 #[test]
 fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: 0.2,
@@ -117,6 +119,7 @@ fn na_lei_do_rebelle_assentar_preserva_o_ecra_seco() {
 #[test]
 fn assentar_azul_sobre_azul_nao_muda_o_tom() {
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: 0.0,
@@ -177,6 +180,7 @@ fn o_ecra_fica_na_caixa_das_tintas() {
     let mut pior = (0.0f64, String::new());
     for esconde in [5.0, 2.0] {
         let e = Ecra::Cobre {
+            opaca: 0.0,
             oleo: 0.0,
             vela: 0.0,
             filme: 0.0,
@@ -228,6 +232,7 @@ fn as_transferencias_verticais_ficam_na_caixa_das_tintas() {
     const QUASE_BRANCO: [f64; 3] = [248.0, 246.0, 240.0];
     let tintas = [AZUL, AM, VERMELHO, QUASE_BRANCO];
     let ecra = |esconde| Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: crate::colorops::VELATURA_DO_FILME,
@@ -284,6 +289,7 @@ fn re_molhar_tinta_seca_leva_a_cor_do_assentado() {
         crate::colorops::TINTA_ESCONDE_EM_VELATURA,
     ] {
         let e = Ecra::Cobre {
+            opaca: 0.0,
             oleo: 0.0,
             vela: 0.0,
             filme: crate::colorops::VELATURA_DO_FILME,
@@ -311,6 +317,7 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
         Ecra::Porto,
         Ecra::PorCima(0.35),
         Ecra::Cobre {
+            opaca: 0.0,
             oleo: 0.0,
             filme: 0.35,
             esconde: crate::colorops::TINTA_ESCONDE,
@@ -318,6 +325,7 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
             vela: 0.0,
         },
         Ecra::Cobre {
+            opaca: 0.0,
             oleo: 0.0,
             filme: 0.2,
             esconde: 3.0,
@@ -325,6 +333,7 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
             vela: 0.6,
         },
         Ecra::Cobre {
+            opaca: 0.0,
             oleo: 0.0,
             filme: 0.0,
             esconde: 2.0,
@@ -362,6 +371,7 @@ fn o_tapar_de_uma_vez_e_o_de_cada_avaliacao() {
     assert_eq!(casos, 5 * 36 * 64);
     // O valor do tapar, não só a igualdade das duas rotas (que um erro comum às duas passaria).
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         filme: 0.35,
         esconde: 5.0,
@@ -380,6 +390,7 @@ fn sonda_o_custo_da_lei_do_rebelle() {
     use std::hint::black_box as bb;
     use std::time::Instant;
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         filme: 0.35,
         esconde: crate::colorops::TINTA_ESCONDE,
@@ -443,6 +454,7 @@ fn sonda_o_custo_da_lei_do_rebelle() {
 #[test]
 fn a_cor_composta_fica_na_caixa_das_tintas_e_o_branco_nao_muda() {
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         filme: 0.0,
         esconde: 2.0,
@@ -492,6 +504,7 @@ fn o_tapar_extra_fica_no_segmento_das_tintas() {
     let mut pior = (0.0f64, String::new());
     for esconde in [5.0, 2.0] {
         let e = Ecra::Cobre {
+            opaca: 0.0,
             oleo: 1.0,
             vela: 0.0,
             filme: 0.0,
@@ -524,6 +537,7 @@ fn o_tapar_extra_fica_no_segmento_das_tintas() {
     );
     // CONTROLO: sem óleo (entre aguarelas) o branco do Rebelle fica — a régua vê-o, e é a lei de antes ao bit.
     let sem = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: 0.0,
@@ -561,6 +575,7 @@ fn sobre_o_oleo_assentar_preserva_o_ecra_seco() {
     let mut pior = (0.0f64, String::new());
     for oleo in [0.0, 0.5, 1.0] {
         let e = Ecra::Cobre {
+            opaca: 0.0,
             oleo,
             vela: 0.0,
             filme: 0.2,
@@ -610,6 +625,7 @@ fn sobre_o_oleo_assentar_preserva_o_ecra_seco() {
 #[test]
 fn o_tapar_extra_nao_pinta_branco_no_papel_de_cor() {
     let e = Ecra::Cobre {
+        opaca: 0.0,
         oleo: 0.0,
         vela: 0.0,
         filme: 0.0,

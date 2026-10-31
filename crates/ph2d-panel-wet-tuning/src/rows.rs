@@ -406,7 +406,7 @@ mod tests {
             "extGrainDither",
             "extEdgeTint",
         ];
-        const CALIBRACAO: [&str; 8] = [
+        const CALIBRACAO: [&str; 9] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)
             "pigmentSpacing",
             // passo, tecto e arredondamento do sub-dab da cápsula: amostragem e custo
@@ -418,6 +418,8 @@ mod tests {
             "embossSizeRef",
             "thinStrokeFade",
             "thinStrokeRef",
+            // a tinta opaca (31/10): o ponto no segmento das duas tintas, declarado pelo preset de fábrica
+            "opaque",
         ];
         let hidden: BTreeSet<&str> = KNOB_DEFS
             .iter()

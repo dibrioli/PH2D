@@ -59,6 +59,7 @@ fn cena(p: &mut Params, g: &mut Grid, k: usize) {
         } = p.ecra
         {
             p.ecra = Ecra::Cobre {
+                opaca: 0.0,
                 filme: 0.3,
                 esconde,
                 molhada,

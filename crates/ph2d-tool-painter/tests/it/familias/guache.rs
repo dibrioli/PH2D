@@ -31,6 +31,7 @@ pub const WET: &[Receita] = &[
             ("pressureOpacityCurve", 1.0),
             ("wetCover", 1.0),
             ("dryCover", 1.0),
+            ("opaque", 1.0),
             ("levelingOwnStroke", 1.0),
             ("retention", 0.97),
             ("extWetSheen", 0.0),
@@ -64,6 +65,8 @@ const GOUACHE_FLAT: Receita = Receita {
         ("pressureSize", 0.3),
         ("pressureOpacity", 1.0),
         ("pressureOpacityCurve", CURVA_DA_GUACHE),
+        // a tinta OPACA (31/10, «amarelo sobre azul seco fica com bordas brancas»): o ponto no segmento das tintas
+        ("opaque", 1.0),
     ],
     grao: None,
     achatado: Some((0.2, 90)),

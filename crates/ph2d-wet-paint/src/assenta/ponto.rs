@@ -65,6 +65,8 @@ pub(super) struct Ponto {
     uc: [f64; 3],
     vela: f64,
     k_vel: Option<f64>,
+    /// A tinta OPACA ([`Ecra::com_opaca`]): o tecto de cada canal sobre o branco no SEGMENTO das duas tintas.
+    teto: Option<[f64; 3]>,
 }
 
 /// MOLHADA: a COBERTURA do ponto inteiro (a tinta de cima e a seca debaixo da água) vale a densidade
@@ -91,6 +93,13 @@ impl Ponto {
     /// O canal `k` da cor da camada.
     #[inline]
     fn canal(&self, k: usize) -> f64 {
+        let r = self.na_caixa(k);
+        molha_canal(self.teto.map_or(r, |t| r.min(t[k])), self.la)
+    }
+
+    /// O canal `k` do ponto sobre o branco, na caixa das tintas.
+    #[inline]
+    fn na_caixa(&self, k: usize) -> f64 {
         let (t_s, c_eff) = (self.t_s[k], self.c_eff[k]);
         let mut r = t_s * (1.0 - self.a_e) + c_eff * self.a_e;
         if let Some(kv) = self.k_vel {
@@ -107,9 +116,40 @@ impl Ponto {
         // tintas (a orla esbranquiçada). Cada canal pára na mais clara das duas: o Rebelle nunca passa dela (as
         // bordas do óleo sobre o azul seco, `fixtures/rebelle/{oil,express}.png`).
         // ⚠️ Isto prende o ponto SOBRE O BRANCO; a COR que se compõe prende-se em [`na_caixa_das_tintas`] (o render).
-        let r = r.min(t_s.max(self.uc[k]));
-        molha_canal(r, self.la)
+        r.min(t_s.max(self.uc[k]))
     }
+}
+
+/// ⭐ **A tinta OPACA fica no SEGMENTO das duas tintas** (dono 31/10: «amarelo sobre azul seco fica com bordas brancas»).
+/// A caixa por canal deixa passar o BRANCO entre complementares (amarelo × azul: `[245,205,220]`): o tapar extra é
+/// pintado com a tinta diluída em branco, e na orla, onde o filme é fino, o extra domina. O tecto é o ponto
+/// `t_s + s·(uc − t_s)` que menos baixa o ponto (o máximo de `Σ min(r_k, seg_k(s))`, côncava por troços: um
+/// quebra-ponto ou um extremo), puxado para o branco pela fracção `1 − opaca`. A AGUARELA (`opaca` 0) não passa aqui.
+fn teto_no_segmento(r: [f64; 3], t_s: [f64; 3], uc: [f64; 3], opaca: f64) -> [f64; 3] {
+    let seg = |s: f64| [0, 1, 2].map(|k| t_s[k] + s * (uc[k] - t_s[k]));
+    let soma = |s: f64| {
+        let g = seg(s);
+        (0..3).map(|k| r[k].min(g[k])).sum::<f64>()
+    };
+    let mut melhor = (soma(0.0), 0.0);
+    let mut prova = |s: f64| {
+        let v = soma(s);
+        if v > melhor.0 {
+            melhor = (v, s);
+        }
+    };
+    prova(1.0);
+    for k in 0..3 {
+        let dk = uc[k] - t_s[k];
+        if dk != 0.0 {
+            let s = (r[k] - t_s[k]) / dk;
+            if s > 0.0 && s < 1.0 {
+                prova(s);
+            }
+        }
+    }
+    let g = seg(melhor.1);
+    [0, 1, 2].map(|k| g[k] + (255.0 - g[k]) * (1.0 - opaca))
 }
 
 impl Prep {
@@ -155,6 +195,7 @@ pub(super) fn prepara(
         molhada,
         vela,
         oleo,
+        opaca,
         ..
     } = e
     else {
@@ -184,7 +225,7 @@ pub(super) fn prepara(
     let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
     let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
     let la = a_s + a_e * (1.0 - a_s);
-    Prep::Ponto(Ponto {
+    let mut ponto = Ponto {
         a_t,
         a_e,
         la,
@@ -194,5 +235,11 @@ pub(super) fn prepara(
         uc,
         vela,
         k_vel: velatura_k(a_e, filme, 1.0, t_s, c_eff),
-    })
+        teto: None,
+    };
+    if opaca > 0.0 {
+        let r = [0, 1, 2].map(|k| ponto.na_caixa(k));
+        ponto.teto = Some(teto_no_segmento(r, t_s, uc, opaca));
+    }
+    Prep::Ponto(ponto)
 }

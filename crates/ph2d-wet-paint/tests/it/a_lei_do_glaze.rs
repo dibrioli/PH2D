@@ -11,6 +11,7 @@ use ph2d_wet_paint::trail::{Dab, Trail, TrailMode};
 use ph2d_wet_paint::tuning::Knob;
 
 const COBRE: Ecra = Ecra::Cobre {
+    opaca: 0.0,
     oleo: 0.0,
     filme: 0.0,
     esconde: 5.0,

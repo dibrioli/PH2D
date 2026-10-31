@@ -167,6 +167,7 @@ fn main() {
             } = pc.ecra
             {
                 pc.ecra = ph2d_wet_paint::assenta::Ecra::Cobre {
+                    opaca: 0.0,
                     filme: 0.3,
                     esconde,
                     molhada,

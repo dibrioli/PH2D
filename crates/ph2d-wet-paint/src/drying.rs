@@ -148,6 +148,7 @@ pub(crate) fn dry_cell(
     nb: f64,
     vela: f32,
     vidrado: f32,
+    opaca: f32,
     oleo: crate::grid::oleo_celula::OleoCelula,
     film: &mut f32,
     susp: &mut f32,
@@ -164,7 +165,12 @@ pub(crate) fn dry_cell(
     let mut susp_rgb_c = *susp_rgb;
     let mut sett_rgb_c = *sett_rgb;
     let mix = c.mix;
-    let ecra = c.ecra.com_vela(vela).com_vidrado(vidrado).com_oleo(oleo);
+    let ecra = c
+        .ecra
+        .com_vela(vela)
+        .com_vidrado(vidrado)
+        .com_oleo(oleo)
+        .com_opaca(opaca);
 
     // Edge factor: fraction of the 3x3 neighbourhood carrying pigment. A full
     // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
@@ -346,6 +352,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
                 count,
                 g.vela[i],
                 crate::grid::aparencia::vidrado(&g.aparencia, i),
+                crate::grid::aparencia::opaca(&g.aparencia, i),
                 crate::grid::oleo_celula::da_celula(&g.oleo, i),
                 &mut film,
                 &mut susp,
@@ -551,6 +558,7 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
                     P::nb(edge, soft, i),
                     vela[i],
                     crate::grid::aparencia::vidrado(aparencia, i),
+                    crate::grid::aparencia::opaca(aparencia, i),
                     crate::grid::oleo_celula::da_celula(oleo, i),
                     &mut a,
                     &mut b,

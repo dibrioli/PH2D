@@ -116,6 +116,8 @@ const FAN_BRUSH: Receita = Receita {
         ("pressureOpacity", 0.6),
         ("pressureOpacityCurve", 1.0),
         ("tuftArc", 0.8),
+        // a acrílica é OPACA (31/10): o ponto no segmento das tintas, sem o branco do tapar extra
+        ("opaque", 1.0),
     ],
     grao: None,
     achatado: Some((0.75, 90)),

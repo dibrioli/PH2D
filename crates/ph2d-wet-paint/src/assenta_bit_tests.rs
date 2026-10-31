@@ -20,6 +20,7 @@ const COB: [f64; 5] = [0.0, 0.05, 0.3, 0.7, 1.0];
 
 fn ecras() -> Vec<Ecra> {
     let c = |filme, esconde, molhada, vela, oleo| Ecra::Cobre {
+        opaca: 0.0,
         filme,
         esconde,
         molhada,

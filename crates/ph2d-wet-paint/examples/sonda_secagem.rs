@@ -1135,6 +1135,7 @@ fn main() {
                 } = cc.p.ecra
             {
                 cc.p.ecra = Ecra::Cobre {
+                    opaca: 0.0,
                     filme: 0.3,
                     esconde,
                     molhada,

@@ -35,3 +35,11 @@ do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px).
 | 3 memória (P1) | undo só do que o traço muda (78 % do RSS é o histórico 6×56 B/px) — em construção | general-purpose | — | 428 B/px hoje |
 | 4 advecção (P2) | cortes ao bit: outflow 2 linhas, take_scale 1×, prepare⊂momentum, dst SoA — em construção | general-purpose | — | advecção ~43 ms |
 | 5 pincéis | catálogo FEITO: CAP-01 ponta que gira destrava Tilted Shade, Compressed Charcoal, Marker Chisel, Filbert Dry, Flat Bristle, Broad Nib; depois pontas a direito, borda molhada, fio do arrasto | — | — | depois da performance |
+
+## Janelas de reserva (dono 31/10) — ramos próprios a partir de 6ba5d06493; o coordenador junta-os à linha no fim
+| janela | worktree / ramo | missão | relatório |
+|---|---|---|---|
+| ph2d-be (reserva 01) | line-PainterWatercolor-r1 | borda molhada (Wet Liner/Wash/Mop), fio do arrasto (Smudge Finger), Water/Fan/Gouache | docs/Painter/Pinceis/R1_RELATORIO.md |
+| ph2d-56 (reserva 02) | line-PainterWatercolor-r2 | pontas (Charcoal/Wax Scrape/Square Hard), grão no óleo, Spray/Splatter, Dry Marker, Rake | docs/Painter/Pinceis/R2_RELATORIO.md |
+| ph2d-6a (reserva 03) | line-PainterWatercolor-r3 | velocidade de PINTAR (dab serial ~4,7 núcleos), óleo composite | docs/Painter/49_realshader/R3_PINTAR_RELATORIO.md |
+Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecção (advect_jacobi, scratch, par, sedimenta), CAP-01 + 6 pincéis (painter-brush spec/footprint/pen, mao.rs, inercia/).

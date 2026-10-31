@@ -76,3 +76,4 @@ motor neutras. Abaixo de 1/h ⇒ reavaliar com o dono antes de outra ronda.
 - ⚠️ Hook `prazo-do-agente.sh:47` recusa qualquer comando com `PH2D_REGERA_`, até o `fila-pesada.sh pôr` que ele manda usar.
 - **Total da R2:** 5 presets de fábrica mudados ou novos (Charcoal, Wax Scrape, Square Hard melhorados; Splatter e Thick
   Impasto novos), nenhum por revisão cega — para o smoke do dono.
+- ⚠️ `a_largura_e_a_prometida` (fábrica inteira) foi morto (143) sob load ~47 sem veredito — correr na integração.

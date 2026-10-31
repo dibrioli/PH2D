@@ -19,6 +19,8 @@ use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 mod bico; // o BICO: a auto-limpeza, a recolha da cor e o reservatório (passos 1–2 do transfer)
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
 pub mod espalha; // o óleo molhado espalha o relevo de baixo (queixa dos grumos, 31/10)
+#[cfg(test)]
+mod espalha_tests;
 mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca a soma
 mod janela;
 mod medida; // as portas de MEDIÇÃO da janela (só os gates as leem)

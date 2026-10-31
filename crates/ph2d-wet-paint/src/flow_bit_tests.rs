@@ -101,7 +101,11 @@ fn flow_step_bits_are_the_recorded_ones() {
     assert_eq!(got, GRAVADO, "o passo da água mudou de bits: {s:?}");
 }
 
-const GRAVADO: [u64; 2] = [0xf959_f6a5_7bbf_c1b2, 0x4650_940d_d0f2_d7fd];
+/// Regravado 31/10 (E4, `7a4bc540b7`): a receita × quantidade recalcula o pigmento e a água de cada dab por
+/// `painter/receita.rs` (φ·h) em vez de `PigmentPerDab`/`water²÷pressão` — iguais à pressão de referência até ao
+/// arredondamento (`receita_tests`, < 1e-6 por dab); o passo da água não mudou (as rotas 1 e 2 dão o mesmo par).
+/// Antes: `[0xf959_f6a5_7bbf_c1b2, 0x4650_940d_d0f2_d7fd]`. Doc: `docs/Painter/Arquitetura/FECHO_31_10.md`.
+const GRAVADO: [u64; 2] = [0x0abe_64da_e119_8a5b, 0xabd1_73df_e10f_26da];
 
 /// Duas faixas largas separadas por linhas SECAS dentro da bbox: as linhas sem faixa viva (`row_lo > row_hi`,
 /// sentinelas `i32::MAX`/`MIN`) são contadas pelo `commit_rows` — `hi − lo + 1` transbordava (30/10, o

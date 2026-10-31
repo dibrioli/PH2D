@@ -36,43 +36,16 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         && ext
 }
 
-/// O `st` entrelaçado (film, susp) do advect ⇄ os `film`/`susp` da secagem, NA placa (defeito 1).
-const ENTRELACA: &str = r"
-@group(0) @binding(0) var<storage, read_write> st: array<vec2<f32>>;
-@group(0) @binding(1) var<storage, read_write> film: array<f32>;
-@group(0) @binding(2) var<storage, read_write> susp: array<f32>;
-fn idx(g: vec3<u32>, n: vec3<u32>) -> u32 { return g.x + g.y * n.x * 256u; }
-@compute @workgroup_size(256)
-fn separa(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) n: vec3<u32>) {
-    let i = idx(g, n);
-    if i >= arrayLength(&film) { return; }
-    film[i] = st[i].x;
-    susp[i] = st[i].y;
-}
-@compute @workgroup_size(256)
-fn junta(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) n: vec3<u32>) {
-    let i = idx(g, n);
-    if i >= arrayLength(&film) { return; }
-    st[i] = vec2(film[i], susp[i]);
-}
-";
+mod fatias;
+mod hashes;
+mod wgsl;
 
-/// A porta do `has_fluid` NA placa (item 3 de LIGACAO_PLACA.md): depois do rebuild, os grupos de cada passada
-/// do resto do passo = os da CPU se `caixa[14]` (has_fluid), senão 0 — o passo inteiro num submit e numa espera.
-const PORTA: &str = r"
-@group(0) @binding(0) var<storage, read> caixa: array<i32>;
-@group(0) @binding(1) var<storage, read> base: array<u32>;
-@group(0) @binding(2) var<storage, read_write> args: array<u32>;
-@compute @workgroup_size(64)
-fn porta(@builtin(global_invocation_id) g: vec3<u32>) {
-    if g.x >= arrayLength(&base) { return; }
-    args[g.x] = select(0u, base[g.x], caixa[14] != 0);
-}
-";
+use fatias::{Despacho, Fatias, MAX_CARIMBOS};
+use hashes::{finas_de, fluxo_de, hash_fina, hash_fluxo, hashes};
+use wgsl::{ENTRELACA, PORTA};
+
 /// Passadas no máximo num passo depois do rebuild (campo 7 + sedimenta 2 + bordas 2 + projecção 5 + vmax 1).
 const MAX_PLANO: usize = 24;
-/// Carimbos por passo: 2 por passada (rebuild 5 + porta 1 + secagem 4 + plano 24 = 34 ⇒ 68).
-const MAX_CARIMBOS: u32 = 96;
 /// O orçamento de UMA submissão, em workgroups de 256 fios: corta-se antes da passada que o passaria
 /// (uma passada maior que ele vai sozinha). 4K = 41 k grupos por passada de folha ⇒ cada uma vai só.
 /// Medido (PLACA_degrau6.md, Radeon 610M, 4096×2560): maior submissão 93,3 → 22,6 ms (= a maior passada,
@@ -82,89 +55,6 @@ pub const ORCAMENTO_GRUPOS: u64 = 40_000;
 /// ~9× a maior submissão extrapolada para a RTX (2,8 ms); na Radeon 610M a maior passada já é 22,6 ms — lá
 /// a guarda pode disparar sob carga, e a CPU é ~10× mais rápida nessa placa (LIGACAO_PLACA.md ronda 3).
 pub const TETO_MS: f64 = 25.0;
-
-enum Despacho<'a> {
-    Direto(u32, u32),
-    Indireto(&'a wgpu::Buffer, u64),
-}
-
-/// As submissões de um passo, cortadas pelo orçamento; cada passada leva carimbos de início e fim.
-struct Fatias<'g> {
-    gpu: &'g GpuContext,
-    enc: wgpu::CommandEncoder,
-    custo: u64,
-    orcamento: u64,
-    qs: Option<wgpu::QuerySet>,
-    q: u32,
-    ini: u32,
-    /// `(1.º carimbo, último)` de cada submissão já cortada.
-    cortes: Vec<(u32, u32)>,
-}
-
-impl<'g> Fatias<'g> {
-    fn new(gpu: &'g GpuContext, orcamento: u64, qs: Option<wgpu::QuerySet>) -> Self {
-        Fatias {
-            gpu,
-            enc: gpu.device.create_command_encoder(&Default::default()),
-            custo: 0,
-            orcamento,
-            qs,
-            q: 0,
-            ini: 0,
-            cortes: Vec::new(),
-        }
-    }
-
-    fn passada(
-        &mut self,
-        pipe: &wgpu::ComputePipeline,
-        bg: &wgpu::BindGroup,
-        d: Despacho<'_>,
-        custo: u64,
-    ) {
-        if self.custo > 0 && self.custo + custo > self.orcamento {
-            self.corta();
-        }
-        let tw = self
-            .qs
-            .as_ref()
-            .filter(|_| self.q + 2 <= MAX_CARIMBOS)
-            .map(|qs| wgpu::ComputePassTimestampWrites {
-                query_set: qs,
-                beginning_of_pass_write_index: Some(self.q),
-                end_of_pass_write_index: Some(self.q + 1),
-            });
-        if tw.is_some() {
-            self.q += 2;
-        }
-        let mut p = self.enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: None,
-            timestamp_writes: tw,
-        });
-        p.set_pipeline(pipe);
-        p.set_bind_group(0, bg, &[]);
-        match d {
-            Despacho::Direto(c, r) => p.dispatch_workgroups(c, r, 1),
-            Despacho::Indireto(args, o) => p.dispatch_workgroups_indirect(args, o),
-        }
-        drop(p);
-        self.custo += custo;
-    }
-
-    /// Fecha a submissão corrente (se tem passadas) e abre outra.
-    fn corta(&mut self) {
-        let enc = std::mem::replace(
-            &mut self.enc,
-            self.gpu.device.create_command_encoder(&Default::default()),
-        );
-        self.gpu.queue.submit([enc.finish()]);
-        if self.q > self.ini {
-            self.cortes.push((self.ini, self.q - 1));
-        }
-        self.ini = self.q;
-        self.custo = 0;
-    }
-}
 
 pub struct PassoPlaca {
     /// `porta`: os grupos de base (CPU) → os indirectos (`args`, INDIRECT) pela `caixa[14]`.
@@ -195,92 +85,6 @@ pub struct PassoPlaca {
     /// ms de placa de cada submissão do último passo, e de cada passada (pelos carimbos).
     ms_sub: Vec<f64>,
     ms_passada: Vec<f64>,
-}
-
-/// Hash de uma linha: multiplica-e-roda sobre palavras de 8 B (não é cripto; a colisão de 64 bits é desprezável).
-fn mistura(mut h: u64, d: &[u8]) -> u64 {
-    let (palavras, resto) = d.as_chunks::<8>();
-    for c in palavras {
-        let w = u64::from_le_bytes(*c);
-        h = (h ^ w).wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(31);
-    }
-    for &b in resto {
-        h = (h ^ u64::from(b))
-            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
-            .rotate_left(31);
-    }
-    h
-}
-
-/// Os hashes das linhas `0..n` por `f(linha)`, em paralelo (fatias de linhas por núcleo).
-fn hashes(n: usize, f: &(dyn Fn(usize) -> u64 + Sync)) -> Vec<u64> {
-    let mut v = vec![0u64; n];
-    let nt = std::thread::available_parallelism()
-        .map_or(4, |k| k.get())
-        .min(16);
-    let por = n.div_ceil(nt).max(1);
-    std::thread::scope(|sc| {
-        for (k, ch) in v.chunks_mut(por).enumerate() {
-            sc.spawn(move || {
-                for (j, h) in ch.iter_mut().enumerate() {
-                    *h = f(k * por + j);
-                }
-            });
-        }
-    });
-    v
-}
-
-/// O hash de uma linha FINA de tudo o que a placa espelha.
-fn hash_fina(g: &Grid, y: usize) -> u64 {
-    let (a, b) = (y * g.s, (y + 1) * g.s);
-    let c = bytemuck::cast_slice::<f32, u8>;
-    let mut h = mistura(y as u64, c(&g.film[a..b]));
-    h = mistura(h, c(&g.susp[a..b]));
-    h = mistura(h, bytemuck::cast_slice(&g.susp_rgb[a..b]));
-    h = mistura(h, c(&g.sett[a..b]));
-    h = mistura(h, bytemuck::cast_slice(&g.sett_rgb[a..b]));
-    h = mistura(h, c(&g.paper[a..b]));
-    h = mistura(h, &g.active[a..b]);
-    h = mistura(h, &g.wet[a..b]);
-    if !g.traco.is_empty() {
-        h = mistura(h, bytemuck::cast_slice(&g.traco[a..b]));
-    }
-    if !g.vela.is_empty() {
-        h = mistura(h, c(&g.vela[a..b]));
-    }
-    if !g.aparencia.is_empty() {
-        let v: Vec<f32> = (a..b)
-            .map(|i| ph2d_wet_paint::grid::aparencia::vidrado(&g.aparencia, i))
-            .collect();
-        h = mistura(h, c(&v));
-    }
-    h
-}
-
-/// O hash de uma linha da grade de FLUXO (velocidade e fluxo).
-fn hash_fluxo(g: &Grid, y: usize) -> u64 {
-    let (a, b) = (y * g.flow.s, (y + 1) * g.flow.s);
-    let c = bytemuck::cast_slice::<f32, u8>;
-    let mut h = mistura(y as u64, c(&g.vel_x[a..b]));
-    h = mistura(h, c(&g.vel_y[a..b]));
-    h = mistura(h, c(&g.flow_x[a..b]));
-    mistura(h, c(&g.flow_y[a..b]))
-}
-
-/// As linhas de fluxo que cobrem as finas `y0..=y1` (com uma de folga de cada lado).
-fn fluxo_de(g: &Grid, y0: usize, y1: usize) -> (usize, usize) {
-    let rf = g.flow.rf;
-    (
-        y0.saturating_sub(1) / rf,
-        (y1 / rf + 1).min(g.flow.rows - 1),
-    )
-}
-
-/// As linhas finas que uma linha de fluxo cobre (com folga).
-fn finas_de(g: &Grid, f: usize) -> (usize, usize) {
-    let rf = g.flow.rf;
-    (f.saturating_sub(1) * rf, ((f + 1) * rf).min(g.rows - 1))
 }
 
 impl PassoPlaca {

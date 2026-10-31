@@ -459,9 +459,27 @@ fn fio_do_trilho(cena: &CenaDoPreview) -> Option<&'static str> {
 /// a ferramenta Paint), da altura do S (`2 · AMPLITUDE`, o S atravessa-lhe as duas orlas); depois a ferramenta volta
 /// e o S passa por cima. Os pincéis que pintam nunca chegam aqui (a miniatura deles é a de sempre, ao byte).
 /// O pigmento por dab da faixa no Wet — o da Acrylic Round de fábrica (a tinta cheia que as ferramentas movem).
-const PIGMENTO_DA_FAIXA: f64 = 500.0;
+pub(super) const PIGMENTO_DA_FAIXA: f64 = 500.0;
 /// …e a água dela (o volume Water da Acrylic Round: a tinta de corpo, não a aguada).
-const AGUA_DA_FAIXA: f64 = 0.05;
+pub(super) const AGUA_DA_FAIXA: f64 = 0.05;
+
+/// Os knobs da faixa: os do pincel SEM preset com o pigmento e a água da Acrylic Round, pela receita da E4
+/// (ADR-0197 §1.1) — a faixa pousa o MESMO pigmento e a MESMA água por dab que na lei velha (`PIGMENTO_DA_FAIXA` ×
+/// a Opacity, a água de `AGUA_DA_FAIXA`), como a Acrylic Round migrada ([`super::migra_a_receita`]).
+pub(super) fn knobs_da_faixa(opacidade: f64) -> WetKnobs {
+    use ph2d_wet_paint::tuning::Knob;
+    let mut k = WetKnobs::DEFAULT;
+    k.water = AGUA_DA_FAIXA;
+    let (pig, carga) = ph2d_wet_paint::painter::receita::migra_da_lei_velha(
+        PIGMENTO_DA_FAIXA,
+        k.get(Knob::WaterPerDab),
+        AGUA_DA_FAIXA,
+        opacidade,
+    );
+    k.set(Knob::PigmentPerDab, pig);
+    k.set(Knob::Intensity, carga);
+    k
+}
 
 fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f32, cy: f32) {
     use super::super::wetpaint_settings::WetTool;
@@ -481,12 +499,7 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.paint.brush.texture.kind = ph2d_painter_brush::TextureKind::None;
     (t.paint.brush.flow, t.paint.brush.accumulate) = (1.0, false);
     // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
-    t.paint.wetpaint.knobs = WetKnobs::DEFAULT;
-    t.paint
-        .wetpaint
-        .knobs
-        .set(Knob::PigmentPerDab, PIGMENTO_DA_FAIXA);
-    t.paint.wetpaint.knobs.water = AGUA_DA_FAIXA;
+    t.paint.wetpaint.knobs = knobs_da_faixa(f64::from(t.paint.wetpaint.opacidade));
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
     t.paint.brush.radius_px = AMPLITUDE;

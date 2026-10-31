@@ -36,8 +36,8 @@ Achado: o balanço `Σh depois − Σh antes − Σh traço 2` dá −0,18 nesta
 |---|---|---|
 | `ph2d-wet-paint` `flow::flow_bit_tests::flow_step_bits_are_the_recorded_ones` | (a) E4: a receita recalcula pigmento/água de cada dab por φ·h (`doors.rs`/`deposit.rs`), igual à pressão de referência a < 1e-6 por dab (`receita_tests`); a cena não tem óleo (Bingham e piso fora). Rotas 1 e 2 dão o mesmo par. Diferença em 8-bit não medida (hash de estado f32) | **regravado** `GRAVADO` com o porquê |
 | `ph2d-tool-painter` `presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` — Fan Brush (Acrylic) | (a) 1 px | PNG: não regravado (ordem) |
-| idem — Blender Dots/Hard/Soft/Textured | **(b)** 24 337–33 382 px por miniatura: mudança real. Suspeita: a receita E4 dos pincéis de mistura (pigmento ~0 ⇒ φ/h diferentes da lei velha) ou a migração `migra_da_lei_velha`; não bissecado | por decidir (dono/linha) |
-| idem — Oil Dabber, Dabber 4 | **(b)** 11 841 / 8 649 px: mudança real; candidatos: Bingham (`ladeira_do_oleo::bingham`) ou o piso do espalhar (`trail/espalha.rs`), se o preset tem Real Oil; não bissecado | por decidir |
+| idem — Blender Dots/Hard/Soft/Textured | **(b) → REGRESSÃO da E4, curada** (§5): 28 886 / 24 337 / 25 129 / 33 382 px | curado: 0 px |
+| idem — Oil Dabber, Dabber 4 | **(b) → Bingham** (§5): 11 841 / 8 649 px, cura esperada | regerar (coordenador) |
 | `a_agua_nao_sobe_a_ladeira_do_oleo` | (c) vermelho anterior (HANDOFF_AUDITORIA_OLEO_SOBRE_OLEO §4) | nenhuma |
 | `mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada` | (c) | nenhuma |
 | `o_traco_seguinte_usa_o_depth_o_gloss_e_a_caixa_novos` | (c) | nenhuma |
@@ -50,8 +50,49 @@ Filtros `aquarela watercolor guache gouache backrun edge_dark`: `ph2d-wet-paint`
 `ph2d-tool-painter` 227 verdes na lib (os 4 vermelhos são os da classe (c)), `tests/it` 8 verdes + a miniatura acima.
 Nenhum vermelho de aquarela/guache.
 
+## 5. Bissecção das miniaturas classe (b) (agente MINIATURAS)
+
+Teste temporário sobre `miniatura_do_preset`, interruptores em execução no mesmo processo: `PAPEL_BINGHAM = −1`
+(sem τ_y), `trail::sonda::SEM_PISO`, e para a E4 um interruptor provisório com a lei velha exacta de `pressure_dab`
+(força × `Intensity`, água pela pressão invertida, `PPD × Opacity`) e sem a migração. Controlo: Fan Brush 1 px → 0 e
+Wet Round 0 → 0 com a lei velha (a emulação é exacta). Px diferentes da miniatura de fábrica:
+
+| pincel | produto | sem Bingham | sem piso | lei velha E4 | causa |
+|---|---|---|---|---|---|
+| Blender Dots | 28 886 | 28 886 | 28 886 | **0** | E4 |
+| Blender Hard | 24 337 | 24 337 | 24 337 | **0** | E4 |
+| Blender Soft | 25 129 | 25 129 | 25 129 | **0** | E4 |
+| Blender Textured | 33 382 | 33 382 | 33 382 | **0** | E4 |
+| Oil Dabber | 11 841 | **0** | 11 841 | 11 841 | Bingham |
+| Oil Dabber 4 | 8 649 | **0** | 8 649 | 8 649 | Bingham |
+
+**Blender — regressão da migração, curada.** A miniatura de uma ferramenta da água pinta primeiro a FAIXA vermelha
+(`preview.rs::faixa_da_ferramenta`) com uma receita da lei velha escrita à mão: `WetKnobs::DEFAULT` + PPD 500 +
+Water 0,05, sobre a carga `Intensity 0,4505` do Wet Round (calibrada para PPD 78 · Water 1). Medido por dab: água
+`0,00087 → 0,00075` e pigmento `500 → φ·h ≈ 427` — a faixa saía mais clara, e o Blender mistura-a. Os presets
+Blender em si migram certo (PPD 78, Water 1, Opacity 1 ⇒ carga 0,4505, água igual à velha). Cura:
+`preview::knobs_da_faixa(opacidade)` migra a faixa por `migra_da_lei_velha` (como a Acrylic Round de fábrica).
+Teste novo `receita_e4_tests::a_faixa_das_ferramentas_da_agua_pousa_o_mesmo_que_na_lei_velha` (Opacity 1 / 0,6 /
+0,25, tolerância 1e-6; sem a cura pousaria 427 de 500). Depois: as quatro Blender **0 px**, Fan Brush 1 px (ruído
+f64 da receita, 0 com a lei velha).
+
+**Dabbers — Bingham, cura esperada.** Nem o piso nem a E4 os mexem; τ_y sozinho dá a diferença inteira. A crista e
+o S são os mesmos; muda a orla texturada (a pasta deixa de escorrer para as franjas) — máx. 168/195 por canal em
+píxeis isolados da orla. Fotos (fábrica · produto · |dif|×4):
+[`oil_dabber`](fotos/fecho_31_10/oil_dabber_fabrica_x_bingham_x_dif4.png) ·
+[`oil_dabber_4`](fotos/fecho_31_10/oil_dabber_4_fabrica_x_bingham_x_dif4.png). Ação: regerar estas duas (e o Fan
+Brush) — só o coordenador.
+
+## 6. `ph2d-wet-paint/src/render.rs` partido (move puro)
+
+| ficheiro | LOC | o que é |
+|---|---|---|
+| `render.rs` | 696 | o compositor, as linhas de pigmento (era 754, tecto 700) |
+| `render/pre_luz.rs` | 64 | `PreLuz` (`fecha_oleo`, `fecha_sem_oleo`), reexportado `pub use pre_luz::PreLuz` |
+
+`architecture_workspace_file_loc_cap` e `architecture_no_orphan_source_file` verdes (`ph2d-editor-core`).
+
 ## Por fazer
 
-- Bissecar os Blender e os Dabber (classe b) pelos interruptores em execução (`solver::PAPEL_BINGHAM`,
-  `trail::sonda::SEM_PISO`, `espalha::sobrepoe(Some(0.0))`) sobre `miniatura_do_preset`, e só então regerar a fábrica.
-- Portões de LOC/órfão sobre o corte do `passo.rs`.
+- Regerar as miniaturas Oil Dabber, Dabber 4 (Bingham) e Fan Brush (1 px) — coordenador; depois o portão
+  `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` fica verde.

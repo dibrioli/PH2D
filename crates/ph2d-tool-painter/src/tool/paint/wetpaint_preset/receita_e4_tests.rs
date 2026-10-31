@@ -134,3 +134,33 @@ fn o_wet_paint_sem_preset_pousa_o_mesmo_que_na_lei_velha() {
         d.get(Knob::Intensity)
     );
 }
+
+/// A FAIXA vermelha da miniatura das ferramentas da água (Blend, Smear, Water Brush, Blur…): os knobs dela eram uma
+/// receita da lei velha escrita à mão (PPD 500, Water 0,05) sobre a carga do Wet Round — sem a migração pousava
+/// `φ·h ≈ 427` em vez de `500` de pigmento (e a água `0,00075` em vez de `0,00087`): as quatro miniaturas Blender
+/// mudaram 24–33 mil px (FECHO_31_10 §3). Pousa o mesmo que na lei velha, a qualquer Opacity.
+#[test]
+fn a_faixa_das_ferramentas_da_agua_pousa_o_mesmo_que_na_lei_velha() {
+    use super::preview::{AGUA_DA_FAIXA, PIGMENTO_DA_FAIXA, knobs_da_faixa};
+    for op in [1.0, 0.6, 0.25] {
+        let k = knobs_da_faixa(op);
+        let r = receita(&Controlos {
+            pigmento: k.get(Knob::PigmentPerDab),
+            agua: k.water,
+            agua_por_dab: k.get(Knob::WaterPerDab),
+            volume: op,
+            carga: k.get(Knob::Intensity),
+            meio: 0.0,
+        });
+        let (pig, agua) = (
+            PIGMENTO_DA_FAIXA * op,
+            veiculo(AGUA_DA_FAIXA, k.get(Knob::WaterPerDab)),
+        );
+        assert!(
+            (r.pigmento() / pig - 1.0).abs() < TOL && (r.agua() / agua - 1.0).abs() < TOL,
+            "Opacity {op}: pigmento {:.4} (velha {pig:.4}) · água {:.6} (velha {agua:.6})",
+            r.pigmento(),
+            r.agua()
+        );
+    }
+}

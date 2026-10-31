@@ -64,6 +64,7 @@ pub const WET: &[Receita] = &[
     },
     DABBER,
     FILBERT,
+    THICK_IMPASTO,
     KNIFE_SMOOTH_3,
     KNIFE_OILY,
     KNIFE_GRAINY,
@@ -755,39 +756,39 @@ pub(crate) const FILBERT: Receita = Receita {
 
 pub const MEIOS: &[ReceitaMeio] = &[];
 
-/// - G-10 Thick Impasto: o relevo GRANULOSO do meio Impasto (grumos, cabeças redondas com sombra) é outro pincel que o
-///   `Flat/Thick` do Rebelle (riscas e fiapos com pouco relevo) e que o `ThickGloss` do ArtRage (o tubo liso e brilhante
-///   com estrias): os revisores escolheram o nosso como «a tinta grossa de verdade» mas listaram o relevo, as pontas e o
-///   cruzamento como diferenças (média). Régua 370/454 (Rebelle) · 166/227 (ArtRage).
 /// - G-7 Palette Knife: a lâmina no eixo certo (α 172°) e a carga em degradê dão o Knife Oily como o 1.º dos 228 do
 ///   Rebelle (d 1,03), mas os dois revisores (r1 baixa, r2 média, ambos acharam o Rebelle) repetem: o dele mostra os
 ///   CARIMBOS (escamas em arco a 200 px, contas a 5 px, a borda mole esfiapada) e corta em bico/cunha diagonal; o
 ///   nosso é um degradê liso de pontas rectas.
-pub const EM_ESTUDO_MEIOS: &[ReceitaMeio] = &[THICK_IMPASTO, PALETTE_KNIFE];
+pub const EM_ESTUDO_MEIOS: &[ReceitaMeio] = &[PALETTE_KNIFE];
 
-/// **G-10 Thick Impasto** (J4, contra o Rebelle `Oil/Flat/Thick`, 64 px; no meio IMPASTO — a tinta tem altura): a
-/// pegada redonda que segue o traço, a orla sem dureza e um pouco espalhada (jitter 0,1), o relevo baixo (0,3) e
-/// GRANULOSO — a altura vem do grão (`Clouds`, a fonte `Grain`), os grumos da tinta grossa em vez do tubo liso do
-/// exemplo da J2; o corpo 0,3. A carga pela mão (pressão → opacidade 0,4, a do exemplo).
-const THICK_IMPASTO: ReceitaMeio = ReceitaMeio {
-    pincel: &[
-        ("dab_flatten", "0.0"),
-        ("hardness", "0.0"),
-        ("jitter", "0.1"),
-        ("impasto_depth", "0.3"),
-        ("impasto_body", "0.3"),
-        ("impasto_shine", "0.5"),
-        ("impasto_source", "\"Grain\""),
-        ("texture", GRUMOS),
+/// **G-10 Thick Impasto** (R2-D, contra o Rebelle `Oil/Flat/Thick`; `docs/Painter/Pinceis/R2_D_thick.md`): COMPOSIÇÃO sobre
+/// o Filbert, sem motor — o Real Oil alto (0,9: o relevo grosso e a sombra no papel), o brilho 0,5 (os reflexos), as
+/// faixas de 3 px (os sulcos escuros ao longo), o emboss das cerdas baixo (0,3: a 0,6 a escada «pixelada»), e a ORLA
+/// em nuvens — a dureza 0,3 e o grão `Clouds` de 48 px (a 24 px o relevo esburacava). A J4 fazia-o no meio Impasto
+/// (grumos redondos, «outro pincel», régua 370/454) e saiu de `EM_ESTUDO_MEIOS`.
+const THICK_IMPASTO: Receita = Receita {
+    grupo: "Flat",
+    nome: "Thick Impasto",
+    pigment: 600.0,
+    hardness: 0.3,
+    extras: &[
+        ("oilDepth", 0.9),
+        ("oilGloss", 0.5),
+        ("bristleLaneWidth", 3.0),
+        ("emboss", 0.3),
     ],
-    mao: &[("pressureOpacity", 0.4)],
-    size_px: Some(64.0),
-    opacity: Some(1.0),
-    ..ReceitaMeio::impasto("Oil", "Flat", "Thick Impasto")
+    pincel: &[
+        ("dab_quina", "0.0"),
+        ("jitter", "0.15"),
+        ("texture", NUVENS_DO_THICK),
+    ],
+    nasce_de: Some("Filbert"),
+    ..FILBERT
 };
 
-/// Os grumos da tinta grossa: nuvens (`Clouds`) presas à tela a 24 px, tom neutro.
-const GRUMOS: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [24.0, 24.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// A orla e o corpo em nuvens do Thick Impasto (`Clouds` presas à tela a 48 px, tom neutro).
+const NUVENS_DO_THICK: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 // ⚠️ Os três do óleo levam os valores que o DONO afinou a olho contra o Rebelle (11/10, «vamos deixar esses
 // valores»); a régua reprovava Textura do Oil Bristle (8,46 contra 5,86) e da Acrylic Round (30,4 contra 3,13)

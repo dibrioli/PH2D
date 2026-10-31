@@ -183,6 +183,15 @@ fn tapa(e: Ecra, a_f: f64) -> f64 {
     }
 }
 
+/// O [`tapa`] de `a_f2` reaproveitando o de `a_f` se o alvo o calculou e a cobertura repete (o mesmo `powf`, ao bit).
+#[inline]
+fn tapa_de_novo(e: Ecra, h_af: Option<f64>, a_f: f64, a_f2: f64) -> f64 {
+    match h_af {
+        Some(h) if a_f2.to_bits() == a_f.to_bits() => h,
+        _ => tapa(e, a_f2),
+    }
+}
+
 /// [`cor_e_alfa`] com o [`tapa`] de `a_f` à mão.
 #[inline]
 fn cor_e_alfa_tapando(
@@ -387,13 +396,14 @@ pub fn assenta(
         // O filme `uc` fica parado: a sua metade de `d` faz-se uma vez, e `d(sc, uc)` é o MESMO no alvo e no palpite.
         let par = Parada::de(vela, uc);
         let mut d_scuc = None;
+        let mut h_af = None;
         let alvo = prepara(
             e,
             sc,
             uc,
             a_s,
             a_f,
-            || tapa(e, a_f),
+            || *h_af.get_or_insert_with(|| tapa(e, a_f)),
             || *d_scuc.get_or_insert_with(|| par.d(vela, sc)),
         )
         .sobre_branco();
@@ -441,7 +451,7 @@ pub fn assenta(
             }
         }
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
-        let h2 = tapa(e, a_f2);
+        let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
         let ecra = |x: [f64; 3]| prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x));
         return resolve(
             x0,
@@ -502,14 +512,24 @@ fn levanta_cobre(
         _ => 0.0,
     };
     let par = Parada::de(vela, sc);
-    let alvo = prepara(e, sc, uc, a_s, a_f, || tapa(e, a_f), || par.d(vela, uc)).sobre_branco();
+    let mut h_af = None;
+    let alvo = prepara(
+        e,
+        sc,
+        uc,
+        a_s,
+        a_f,
+        || *h_af.get_or_insert_with(|| tapa(e, a_f)),
+        || par.d(vela, uc),
+    )
+    .sobre_branco();
     let x0 = if a_f <= 0.0 {
         sc
     } else {
         let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
         [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
     };
-    let h2 = tapa(e, a_f2);
+    let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
     let ecra = |x: [f64; 3]| prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x));
     resolve(
         x0,

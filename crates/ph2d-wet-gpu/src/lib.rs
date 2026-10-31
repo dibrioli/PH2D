@@ -671,30 +671,9 @@ pub(crate) fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
     (c.div_ceil(16), r.div_ceil(16))
 }
 
-/// Copia `bytes` de `src` para um buffer mapeável e devolve-o tipado.
-#[must_use]
-pub fn read<T: Pod>(gpu: &GpuContext, src: &wgpu::Buffer, bytes: u64) -> Vec<T> {
-    let stage = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("wet-gpu readback"),
-        size: bytes,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = gpu.device.create_command_encoder(&Default::default());
-    enc.copy_buffer_to_buffer(src, 0, &stage, 0, bytes);
-    gpu.queue.submit([enc.finish()]);
-    stage
-        .slice(..)
-        .map_async(wgpu::MapMode::Read, |r| r.expect("map"));
-    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let v = {
-        let d = stage.slice(..).get_mapped_range().expect("mapped range");
-        bytemuck::cast_slice::<u8, T>(&d).to_vec()
-    };
-    stage.unmap();
-    v
-}
+pub use transfere::{read, read_at};
 
 pub mod cena;
 pub mod passo;
 pub mod seca;
+mod transfere;

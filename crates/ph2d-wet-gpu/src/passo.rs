@@ -5,7 +5,7 @@
 use crate::seca::{SecaGpu, SecaU};
 use crate::{
     AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read,
+    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read, read_at,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
@@ -84,6 +84,98 @@ pub struct PassoPlaca {
     w: usize,
     h: usize,
     rf: usize,
+    /// O ESPELHO: o hash de cada linha fina e de fluxo da CPU quando placa e CPU eram iguais (depois de subir ou
+    /// descer). Vazio = não há espelho (sobe tudo). O `sobe_sujo` sobe só as linhas cujo hash mudou.
+    hash_fina: Vec<u64>,
+    hash_fluxo: Vec<u64>,
+    /// As linhas finas que a placa pode ter mudado desde a subida (a união das caixas): o `desce_suja` desce só elas.
+    suja: Option<(i32, i32)>,
+}
+
+/// Hash de uma linha: multiplica-e-roda sobre palavras de 8 B (não é cripto; a colisão de 64 bits é desprezável).
+fn mistura(mut h: u64, d: &[u8]) -> u64 {
+    let mut it = d.chunks_exact(8);
+    for c in &mut it {
+        let w = u64::from_le_bytes(c.try_into().unwrap_or([0; 8]));
+        h = (h ^ w).wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(31);
+    }
+    for &b in it.remainder() {
+        h = (h ^ u64::from(b))
+            .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            .rotate_left(31);
+    }
+    h
+}
+
+/// Os hashes das linhas `0..n` por `f(linha)`, em paralelo (fatias de linhas por núcleo).
+fn hashes(n: usize, f: &(dyn Fn(usize) -> u64 + Sync)) -> Vec<u64> {
+    let mut v = vec![0u64; n];
+    let nt = std::thread::available_parallelism()
+        .map_or(4, |k| k.get())
+        .min(16);
+    let por = n.div_ceil(nt).max(1);
+    std::thread::scope(|sc| {
+        for (k, ch) in v.chunks_mut(por).enumerate() {
+            sc.spawn(move || {
+                for (j, h) in ch.iter_mut().enumerate() {
+                    *h = f(k * por + j);
+                }
+            });
+        }
+    });
+    v
+}
+
+/// O hash de uma linha FINA de tudo o que a placa espelha.
+fn hash_fina(g: &Grid, y: usize) -> u64 {
+    let (a, b) = (y * g.s, (y + 1) * g.s);
+    let c = bytemuck::cast_slice::<f32, u8>;
+    let mut h = mistura(y as u64, c(&g.film[a..b]));
+    h = mistura(h, c(&g.susp[a..b]));
+    h = mistura(h, bytemuck::cast_slice(&g.susp_rgb[a..b]));
+    h = mistura(h, c(&g.sett[a..b]));
+    h = mistura(h, bytemuck::cast_slice(&g.sett_rgb[a..b]));
+    h = mistura(h, c(&g.paper[a..b]));
+    h = mistura(h, &g.active[a..b]);
+    h = mistura(h, &g.wet[a..b]);
+    if !g.traco.is_empty() {
+        h = mistura(h, bytemuck::cast_slice(&g.traco[a..b]));
+    }
+    if !g.vela.is_empty() {
+        h = mistura(h, c(&g.vela[a..b]));
+    }
+    if !g.aparencia.is_empty() {
+        let v: Vec<f32> = (a..b)
+            .map(|i| ph2d_wet_paint::grid::aparencia::vidrado(&g.aparencia, i))
+            .collect();
+        h = mistura(h, c(&v));
+    }
+    h
+}
+
+/// O hash de uma linha da grade de FLUXO (velocidade e fluxo).
+fn hash_fluxo(g: &Grid, y: usize) -> u64 {
+    let (a, b) = (y * g.flow.s, (y + 1) * g.flow.s);
+    let c = bytemuck::cast_slice::<f32, u8>;
+    let mut h = mistura(y as u64, c(&g.vel_x[a..b]));
+    h = mistura(h, c(&g.vel_y[a..b]));
+    h = mistura(h, c(&g.flow_x[a..b]));
+    mistura(h, c(&g.flow_y[a..b]))
+}
+
+/// As linhas de fluxo que cobrem as finas `y0..=y1` (com uma de folga de cada lado).
+fn fluxo_de(g: &Grid, y0: usize, y1: usize) -> (usize, usize) {
+    let rf = g.flow.rf;
+    (
+        y0.saturating_sub(1) / rf,
+        (y1 / rf + 1).min(g.flow.rows - 1),
+    )
+}
+
+/// As linhas finas que uma linha de fluxo cobre (com folga).
+fn finas_de(g: &Grid, f: usize) -> (usize, usize) {
+    let rf = g.flow.rf;
+    (f.saturating_sub(1) * rf, ((f + 1) * rf).min(g.rows - 1))
 }
 
 impl PassoPlaca {
@@ -192,7 +284,11 @@ impl PassoPlaca {
             w: g.w,
             h: g.h,
             rf: g.flow.rf,
+            hash_fina: Vec::new(),
+            hash_fluxo: Vec::new(),
+            suja: None,
         };
+        let mut s = s;
         s.sobe(gpu, g);
         s
     }
@@ -203,15 +299,116 @@ impl PassoPlaca {
         (self.w, self.h, self.rf) == (g.w, g.h, g.flow.rf)
     }
 
-    /// Sobe a grade INTEIRA (o estado da CPU passa a ser o da placa).
-    pub fn sobe(&self, gpu: &GpuContext, g: &Grid) {
+    /// Sobe a grade INTEIRA (o estado da CPU passa a ser o da placa) e grava o espelho.
+    pub fn sobe(&mut self, gpu: &GpuContext, g: &Grid) {
         self.adv
             .upload(gpu, g, &Uniforms::from_grid(g, 0.0, Rect::full(g)));
         self.seca.upload(gpu, g);
+        self.hash_fina = hashes(g.rows, &|y| hash_fina(g, y));
+        self.hash_fluxo = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
+        self.suja = g.has_fluid.then_some((g.by0, g.by1));
+    }
+
+    /// A placa deixa de espelhar a CPU (a CPU vai andar o passo): a próxima subida é inteira.
+    pub fn esquece(&mut self) {
+        self.hash_fina.clear();
+        self.hash_fluxo.clear();
+    }
+
+    /// Sobe só a FAIXA de linhas que a CPU mudou desde a última subida/descida (hash por linha); sem espelho, tudo.
+    /// Devolve as linhas finas subidas (`None` = nada mudou).
+    pub fn sobe_sujo(&mut self, gpu: &GpuContext, g: &Grid) -> Option<(usize, usize)> {
+        if self.hash_fina.len() != g.rows || self.hash_fluxo.len() != g.flow.rows {
+            self.sobe(gpu, g);
+            return Some((0, g.rows - 1));
+        }
+        let nf = hashes(g.rows, &|y| hash_fina(g, y));
+        let nv = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
+        let mut faixa: Option<(usize, usize)> = None;
+        let mut junta = |a: usize, b: usize| {
+            faixa = Some(faixa.map_or((a, b), |(x, y)| (x.min(a), y.max(b))));
+        };
+        for y in (0..g.rows).filter(|&y| nf[y] != self.hash_fina[y]) {
+            junta(y, y);
+        }
+        for f in (0..g.flow.rows).filter(|&f| nv[f] != self.hash_fluxo[f]) {
+            let (a, b) = finas_de(g, f);
+            junta(a, b);
+        }
+        self.hash_fina = nf;
+        self.hash_fluxo = nv;
+        self.suja = g.has_fluid.then_some((g.by0, g.by1));
+        let (y0, y1) = faixa?;
+        self.adv
+            .upload_linhas(gpu, g, (y0, y1), fluxo_de(g, y0, y1));
+        self.seca.upload_linhas(gpu, g, y0, y1);
+        Some((y0, y1))
+    }
+
+    /// Desce só as linhas que a placa pode ter mudado (a união das caixas desde a subida, e as duas de borda de
+    /// cada lado — o dreno das `bordas`) e actualiza o espelho delas.
+    pub fn desce_suja(&mut self, gpu: &GpuContext, g: &mut Grid) {
+        if self.hash_fina.len() != g.rows {
+            self.desce(gpu, g);
+            return;
+        }
+        let ult = g.rows - 1;
+        let mut faixas = vec![(0, 1), (ult - 1, ult)];
+        if let Some((a, b)) = self.suja {
+            faixas.push(((a.max(0) as usize).min(ult), (b.max(0) as usize).min(ult)));
+        }
+        for (y0, y1) in faixas {
+            self.desce_linhas(gpu, g, y0, y1);
+            let (f0, f1) = fluxo_de(g, y0, y1);
+            for y in y0..=y1 {
+                self.hash_fina[y] = hash_fina(g, y);
+            }
+            for f in f0..=f1 {
+                self.hash_fluxo[f] = hash_fluxo(g, f);
+            }
+        }
+        let full = g.s as i32 - 1;
+        g.row_lo.fill(0);
+        g.row_hi.fill(full);
+        self.suja = g.has_fluid.then_some((g.by0, g.by1));
+    }
+
+    /// Desce as linhas finas `y0..=y1` e as de fluxo que as cobrem.
+    fn desce_linhas(&self, gpu: &GpuContext, g: &mut Grid, y0: usize, y1: usize) {
+        let (a, b) = (y0 * g.s, (y1 + 1) * g.s);
+        let n = (b - a) as u64;
+        let st: Vec<[f32; 2]> = read_at(gpu, &self.adv.st, a as u64 * 8, n * 8);
+        for (k, v) in st.iter().enumerate() {
+            g.film[a + k] = v[0];
+            g.susp[a + k] = v[1];
+        }
+        let rgb: Vec<[f32; 3]> = read_at(gpu, &self.adv.rgb, a as u64 * 12, n * 12);
+        g.susp_rgb[a..b].copy_from_slice(&rgb);
+        let sett: Vec<f32> = read_at(gpu, &self.adv.sett, a as u64 * 4, n * 4);
+        g.sett[a..b].copy_from_slice(&sett);
+        let trgb: Vec<[f32; 3]> = read_at(gpu, &self.seca.trgb, a as u64 * 12, n * 12);
+        g.sett_rgb[a..b].copy_from_slice(&trgb);
+        let act: Vec<u32> = read_at(gpu, &self.adv.active, a as u64 * 4, n * 4);
+        for (d, &v) in g.active[a..b].iter_mut().zip(&act) {
+            *d = v as u8;
+        }
+        let wet: Vec<u32> = read_at(gpu, &self.adv.wet, a as u64 * 4, n * 4);
+        for (d, &v) in g.wet[a..b].iter_mut().zip(&wet) {
+            *d = v as u8;
+        }
+        let (f0, f1) = fluxo_de(g, y0, y1);
+        let (fa, fb) = (f0 * g.flow.s, (f1 + 1) * g.flow.s);
+        let rf = |buf: &wgpu::Buffer| -> Vec<f32> {
+            read_at(gpu, buf, fa as u64 * 4, (fb - fa) as u64 * 4)
+        };
+        g.vel_x[fa..fb].copy_from_slice(&rf(&self.adv.vel_x));
+        g.vel_y[fa..fb].copy_from_slice(&rf(&self.adv.vel_y));
+        g.flow_x[fa..fb].copy_from_slice(&rf(&self.adv.flow_x));
+        g.flow_y[fa..fb].copy_from_slice(&rf(&self.adv.flow_y));
     }
 
     /// Desce a grade INTEIRA para a CPU (film, susp, cores, sett, vel, flow, active, wet).
-    pub fn desce(&self, gpu: &GpuContext, g: &mut Grid) {
+    pub fn desce(&mut self, gpu: &GpuContext, g: &mut Grid) {
         let e = self.adv.readback(gpu);
         g.film = e.film;
         g.susp = e.susp;
@@ -230,6 +427,17 @@ impl PassoPlaca {
         let full = g.s as i32 - 1;
         g.row_lo.fill(0);
         g.row_hi.fill(full);
+        self.hash_fina = hashes(g.rows, &|y| hash_fina(g, y));
+        self.hash_fluxo = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
+        self.suja = g.has_fluid.then_some((g.by0, g.by1));
+    }
+
+    /// A caixa entra na faixa suja (o que a placa pode mudar).
+    fn suja_junta(&mut self, g: &Grid) {
+        if g.has_fluid {
+            let (a, b) = (g.by0, g.by1);
+            self.suja = Some(self.suja.map_or((a, b), |(x, y)| (x.min(a), y.max(b))));
+        }
     }
 
     /// UM passo (o `sim_step` da CPU). `g` só guarda a caixa e o `has_fluid` (o resto está na placa).
@@ -243,6 +451,7 @@ impl PassoPlaca {
         if !g.has_fluid {
             return false;
         }
+        self.suja_junta(g);
         let p = sim.gather_params(tuning);
         let grav = sim.gravity(tuning);
         sim.frame += 1;
@@ -266,6 +475,7 @@ impl PassoPlaca {
             gpu.queue.submit([enc.finish()]);
             let c = self.le_caixa(gpu);
             (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
+            self.suja_junta(g);
             if !g.has_fluid {
                 return false;
             }
@@ -317,6 +527,7 @@ impl PassoPlaca {
         let c = self.le_caixa(gpu);
         if porta {
             (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
+            self.suja_junta(g);
             if !g.has_fluid {
                 return false;
             }

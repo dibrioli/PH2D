@@ -260,6 +260,7 @@ fn mede_o_passo_placa_a_4k() {
     espera(&gpu);
     let mn = |v: &[f64]| v.iter().copied().fold(f64::INFINITY, f64::min);
     let (mut sobe, mut desce, mut placa, mut cpu) = (vec![], vec![], vec![], vec![]);
+    let (mut sobe_s, mut desce_s, mut faixa) = (vec![], vec![], None);
     const N: usize = 12;
     for r in 0..4 {
         let t = Instant::now();
@@ -275,6 +276,24 @@ fn mede_o_passo_placa_a_4k() {
         let t = Instant::now();
         p.desce(&gpu, &mut g);
         let ms_desce = t.elapsed().as_secs_f64() * 1e3;
+        // A descida SUJA (a união das caixas) e a subida SUJA de um traço de 64 linhas (o que o worker paga).
+        p.sobe(&gpu, &g0);
+        let (mut s, mut g) = (sim0.clone(), g0.clone());
+        for _ in 0..N {
+            p.passo(&gpu, &mut s, &mut g, &e.tuning);
+        }
+        let t = Instant::now();
+        p.desce_suja(&gpu, &mut g);
+        desce_s.push(t.elapsed().as_secs_f64() * 1e3);
+        let y = g.by1 as usize + 100;
+        for i in y * g.s..(y + 64) * g.s {
+            g.film[i] += 0.5;
+        }
+        let t = Instant::now();
+        let fx = p.sobe_sujo(&gpu, &g);
+        espera(&gpu);
+        sobe_s.push(t.elapsed().as_secs_f64() * 1e3);
+        faixa = fx;
         let (mut s, mut g) = (sim0.clone(), g0.clone());
         let t = Instant::now();
         for _ in 0..N {
@@ -290,14 +309,98 @@ fn mede_o_passo_placa_a_4k() {
     }
     eprintln!(
         "MEDE {w}×{h} (mínimo de 3, {N} passos): placa {:.2} ms/passo · CPU {:.2} ms/passo · sobe {:.1} ms · desce {:.1} ms · \
-         caixa {:?} · loadavg {}",
+         sobe SUJO {:.1} ms (faixa {faixa:?}) · desce SUJA {:.1} ms · caixa {:?} · loadavg {}",
         mn(&placa),
         mn(&cpu),
         mn(&sobe),
         mn(&desce),
+        mn(&sobe_s),
+        mn(&desce_s),
         (g0.bx0, g0.by0, g0.bx1, g0.by1),
         std::fs::read_to_string("/proc/loadavg")
             .unwrap_or_default()
             .trim()
+    );
+}
+
+/// Item 2 de LIGACAO_PLACA.md — o ciclo do WORKER com subida/descida só das linhas sujas: N passos na placa,
+/// `desce_suja`, um traço NOVO na CPU (com as paredes), `sobe_sujo` (só a faixa do traço), N passos, `desce_suja`;
+/// contra a CPU que faz o mesmo. Cor ao mesmo limiar, e a faixa subida é menor que a folha.
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn a_subida_e_a_descida_so_das_linhas_sujas_casam_com_a_cpu() {
+    let Some(gpu) = contexto() else { return };
+    let (w, h, n) = (512usize, 320usize, 30usize);
+    let mut e = aguada_com_paredes(w, h);
+    let idx = e.active_layer;
+    let mut c = e.clone();
+    let mut p = PassoPlaca::new(&gpu, &e.layers[idx].grid, &e.sim, &e.tuning);
+    let anda = |p: &mut PassoPlaca, e: &mut Engine| {
+        let Engine {
+            sim,
+            layers,
+            tuning,
+            ..
+        } = e;
+        for _ in 0..n {
+            p.passo(&gpu, sim, &mut layers[idx].grid, tuning);
+        }
+        p.desce_suja(&gpu, &mut layers[idx].grid);
+    };
+    let anda_cpu = |c: &mut Engine| {
+        let Engine {
+            sim,
+            layers,
+            tuning,
+            ..
+        } = c;
+        for _ in 0..n {
+            sim_step(sim, &mut layers[idx].grid, tuning);
+        }
+    };
+    anda(&mut p, &mut e);
+    anda_cpu(&mut c);
+    for m in [&mut e, &mut c] {
+        m.sim.traco_actual += 1;
+        m.color = [0.2, 0.7, 0.2];
+        traco(m, 0.3 * w as f64, 0.6 * w as f64, 0.7 * h as f64);
+    }
+    let faixa = p.sobe_sujo(&gpu, &e.layers[idx].grid);
+    eprintln!(
+        "SUJO: faixa subida {faixa:?} de {} linhas",
+        e.layers[idx].grid.rows
+    );
+    let (y0, y1) = faixa.expect("o traço mudou linhas");
+    assert!(
+        y1 - y0 + 1 < e.layers[idx].grid.rows,
+        "a faixa é a folha inteira"
+    );
+    anda(&mut p, &mut e);
+    anda_cpu(&mut c);
+    let (gg, gc) = (&e.layers[idx].grid, &c.layers[idx].grid);
+    assert_eq!(e.sim.frame, c.sim.frame, "o relógio do passo");
+    let pr = c.sim.gather_params(&c.tuning);
+    let (mx, p999, n05) = desvio_cor(gc, &ver(gc, &pr), &ver(gg, &pr));
+    eprintln!("SUJO COR: máx {mx:.4} · p99.9 {p999:.4} · Δ>0,5 {n05}");
+    assert!(mx <= MAX_NIVEIS, "cor máx {mx} > {MAX_NIVEIS}");
+    assert!(p999 <= P999_NIVEIS, "cor p99.9 {p999} > {P999_NIVEIS}");
+    // A devolução: a CPU continua dos dois lados.
+    for m in [&mut e, &mut c] {
+        let Engine {
+            sim,
+            layers,
+            tuning,
+            ..
+        } = m;
+        for _ in 0..12 {
+            sim_step(sim, &mut layers[idx].grid, tuning);
+        }
+    }
+    let (gg, gc) = (&e.layers[idx].grid, &c.layers[idx].grid);
+    let (mx2, p2, _) = desvio_cor(gc, &ver(gc, &pr), &ver(gg, &pr));
+    eprintln!("SUJO DEVOLVIDO +12: máx {mx2:.4} · p99.9 {p2:.4}");
+    assert!(
+        mx2 <= MAX_NIVEIS && p2 <= P999_NIVEIS,
+        "devolvido: {mx2} / {p2}"
     );
 }

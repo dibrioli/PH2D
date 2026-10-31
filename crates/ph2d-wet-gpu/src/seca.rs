@@ -221,6 +221,30 @@ impl SecaGpu {
         q.write_buffer(&self.faixa, 0, bytemuck::cast_slice(&fx));
     }
 
+    /// Sobe só as linhas finas `y0..=y1` (o que a CPU mudou desde a última descida, [`crate::passo`]).
+    pub fn upload_linhas(&self, gpu: &GpuContext, g: &Grid, y0: usize, y1: usize) {
+        let q = &gpu.queue;
+        let (a, b) = (y0 * g.s, (y1 + 1) * g.s);
+        let w = |buf: &wgpu::Buffer, d: &[u8], k: usize| q.write_buffer(buf, (a * k) as u64, d);
+        w(&self.film, bytemuck::cast_slice(&g.film[a..b]), 4);
+        w(&self.susp, bytemuck::cast_slice(&g.susp[a..b]), 4);
+        w(&self.sett, bytemuck::cast_slice(&g.sett[a..b]), 4);
+        w(&self.srgb, bytemuck::cast_slice(&g.susp_rgb[a..b]), 12);
+        w(&self.trgb, bytemuck::cast_slice(&g.sett_rgb[a..b]), 12);
+        w(&self.paper, bytemuck::cast_slice(&g.paper[a..b]), 4);
+        let aux: Vec<[f32; 4]> = (a..b)
+            .map(|i| {
+                [
+                    g.vela.get(i).copied().unwrap_or(0.0),
+                    aparencia::vidrado(&g.aparencia, i),
+                    oleo_celula::da_celula(&g.oleo, i).oleo,
+                    0.0,
+                ]
+            })
+            .collect();
+        w(&self.aux, bytemuck::cast_slice(&aux), 16);
+    }
+
     pub fn set_u(&mut self, gpu: &GpuContext, u: SecaU) {
         self.u = u;
         gpu.queue.write_buffer(&self.ub, 0, bytemuck::bytes_of(&u));

@@ -1,8 +1,8 @@
 //! A água na PLACA dentro do worker (degraus A+B, docs/Painter/49_realshader/LIGACAO_PLACA.md).
 //!
 //! Todo caminho que lê ou escreve o motor passa por `bring_home`, isto é, o worker devolve-o: por isso
-//! a placa só é dona do estado enquanto o motor está COM o worker. Ao receber: sobe a grade inteira
-//! (depois de qualquer escrita da CPU); ao devolver: desce a grade inteira (antes de qualquer leitura).
+//! a placa só é dona do estado enquanto o motor está COM o worker. Ao receber: sobe as linhas que a CPU
+//! mudou (hash por linha contra o espelho); ao devolver: desce as linhas da união das caixas (e as bordas).
 //! Sem `PH2D_WET_GPU=1` = a CPU de sempre, ao byte (nada aqui corre).
 
 use ph2d_wet_paint::painter::Engine;
@@ -53,8 +53,10 @@ impl Placa {
             // A história: o passo da placa não sabe a caixa de antemão — marca a grade inteira.
             let _ = e.active_grid_mut();
             let g = &e.layers[idx].grid;
-            match &self.passo {
-                Some(p) if p.serve(g) => p.sobe(gpu, g),
+            match &mut self.passo {
+                Some(p) if p.serve(g) => {
+                    let _ = p.sobe_sujo(gpu, g);
+                }
                 _ => {
                     self.passo = Some(ph2d_wet_gpu::passo::PassoPlaca::new(
                         gpu, g, &e.sim, &e.tuning,
@@ -98,16 +100,16 @@ impl Placa {
         None
     }
 
-    /// O motor vai voltar à UI: desce a grade inteira.
+    /// O motor vai voltar à UI: desce as linhas que a placa pode ter mudado.
     #[cfg_attr(not(feature = "gpu"), allow(clippy::needless_return))] // o `return` cobre o bloco `#[cfg(feature = "gpu")]` a seguir
     pub(super) fn devolve(&mut self, e: &mut Engine) {
         if !std::mem::take(&mut self.viva) {
             return;
         }
         #[cfg(feature = "gpu")]
-        if let (Some(gpu), Some(p)) = (CONTEXTO.get(), &self.passo) {
+        if let (Some(gpu), Some(p)) = (CONTEXTO.get(), &mut self.passo) {
             let idx = e.active_layer;
-            p.desce(gpu, &mut e.layers[idx].grid);
+            p.desce_suja(gpu, &mut e.layers[idx].grid);
         }
     }
 }

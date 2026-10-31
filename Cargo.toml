@@ -203,6 +203,12 @@ incremental = true
 codegen-units = 1
 incremental = false
 
+# O motor Wet Paint idem (31/10): o passo da água no `smoke` media ~1,8× o do `release` no caminho sem memo
+# (docs/Painter/49_realshader/MEDIDA_31_10_RODADA5.md) — e o `smoke` é o binário em que o dono pinta.
+[profile.smoke.package.ph2d-wet-paint]
+codegen-units = 1
+incremental = false
+
 # CI-tuned test profile. Used by the workflow's `cargo nextest run
 # --cargo-profile ci-test` and `cargo test --doc --profile ci-test`
 # calls instead of `--release`.

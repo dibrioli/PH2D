@@ -103,6 +103,12 @@ const SPLATTER: &[(&str, Option<Gota>)] = &[
     // Ronda 2: a gota com TECTO na tela (`particle_max_px`), para a 200 px não virar disco gigante.
     ("s4", Some(("3", "0.7", "0.8", 0.45, 0.0, 1.0))),
     ("s5", Some(("4", "0.9", "0.9", 0.3, 0.15, 2.5))),
+    // Volta 3: a MANCHA recortada de hoje (rodada e espelhada), opaca, com o véu e o tecto da s5.
+    ("m1", Some(("4", "0.9", "0.9", 0.3, 0.15, 2.5))),
+    ("m2", Some(("3", "0.7", "0.8", 0.45, 0.15, 2.0))),
+    ("m3", Some(("6", "1.0", "0.9", 0.25, 0.2, 3.0))),
+    // m4 = m3 com o tecto a 72 px (a mancha ocupa ~½ da caixa da imagem).
+    ("m4", Some(("6", "1.0", "0.9", 0.25, 0.2, 3.0))),
 ];
 
 #[test]
@@ -125,21 +131,27 @@ fn sonda_r2f_splatter() {
         let mut p = base.clone();
         if let Some((n, jit, js, particle, veu, veu_escala)) = gota {
             let b = &mut p.parametros.brush;
-            b.insert("shape".into(), json!({"kind": "None"}));
+            let mancha = nome.starts_with('m');
+            if !mancha {
+                b.insert("shape".into(), json!({"kind": "None"}));
+            }
             b.insert("spray_count".into(), serde_json::from_str(n).unwrap());
             b.insert("jitter".into(), serde_json::from_str(jit).unwrap());
             b.insert("jitter_scale".into(), serde_json::from_str(js).unwrap());
             b.insert(
                 "dab_jitter".into(),
-                json!({"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0,
+                json!({"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": if mancha { 0.5 } else { 0.0 }, "flip_y": 0.0,
                        "opacity": 0.0, "particle": particle, "roundness": 0.0, "veu": veu,
                        "veu_escala": veu_escala, "veu_opacidade": 1.0}),
             );
-            if nome >= "s4" {
-                b.get_mut("dab_jitter").unwrap()["particle_max_px"] = json!(36.0);
+            if mancha || nome >= "s4" {
+                b.get_mut("dab_jitter").unwrap()["particle_max_px"] =
+                    json!(if nome == "m4" { 72.0 } else { 36.0 });
             }
             p.parametros.volumes.opacity = Some(1.0);
-            p.texturas.clear();
+            if !mancha {
+                p.texturas.clear();
+            }
         }
         let pincel = Pincel {
             nome: nome.into(),

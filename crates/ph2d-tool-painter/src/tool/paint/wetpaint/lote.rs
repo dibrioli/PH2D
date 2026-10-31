@@ -79,20 +79,28 @@ impl PainterTool {
 /// a capsule composed host-side either dilutes under the gate or widens past it (measured).
 /// O sub-passo é o do raio do PINCEL — o do dab traz a pressão e a caneta deitada (×3,3), e o traçador sempre
 /// espaçou pelo do pincel —, um inteiro de células ([`ph2d_painter_brush::capsula::sub_passo_sem_batimento`]).
+/// O sub-passo da cápsula ANTES do arredondamento a células inteiras: a fracção `capsuleSpacing` do diâmetro, com o
+/// tecto `capsuleMaxPx`. É o passo a que a receita do pincel foi afinada — [`super::pousa_o_dab`] pesa cada sub-dab
+/// por `caminho ÷ este`, para o arredondamento (até 2× mais sub-dabs por célula, que cresciam o grumo do óleo entre
+/// raio 24 e 40) não mudar a tinta por área (gate `o_impasto_nao_encaroca_em_tamanho_nenhum`, 31/10).
+pub(super) fn sub_passo_natural(tuning: &ph2d_wet_paint::tuning::Tuning, brush: &BrushSpec) -> f32 {
+    let sub_da_capsula = tuning.get(ph2d_wet_paint::tuning::Knob::CapsuleSpacing) as f32;
+    let tecto_da_capsula = tuning.get(ph2d_wet_paint::tuning::Knob::CapsuleMaxPx) as f32;
+    let n = ph2d_painter_brush::capsula::sub_passo_px_a(brush.clamped_radius(), sub_da_capsula);
+    if tecto_da_capsula > 0.0 {
+        n.min(tecto_da_capsula)
+    } else {
+        n
+    }
+}
+
 pub(super) fn sub_passo_do_lote(
     tuning: &ph2d_wet_paint::tuning::Tuning,
     brush: &BrushSpec,
     ratio: u8,
 ) -> f32 {
-    let sub_da_capsula = tuning.get(ph2d_wet_paint::tuning::Knob::CapsuleSpacing) as f32;
-    let tecto_da_capsula = tuning.get(ph2d_wet_paint::tuning::Knob::CapsuleMaxPx) as f32;
     let mais_perto = tuning.get(ph2d_wet_paint::tuning::Knob::CapsuleRoundNearest) > 0.5;
-    let n = ph2d_painter_brush::capsula::sub_passo_px_a(brush.clamped_radius(), sub_da_capsula);
-    let n = if tecto_da_capsula > 0.0 {
-        n.min(tecto_da_capsula)
-    } else {
-        n
-    };
+    let n = sub_passo_natural(tuning, brush);
     let cel = f32::from(ratio).max(1.0);
     if mais_perto {
         ph2d_painter_brush::capsula::sub_passo_mais_perto(n, cel)

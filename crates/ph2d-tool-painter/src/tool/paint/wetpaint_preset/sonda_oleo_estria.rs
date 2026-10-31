@@ -57,6 +57,59 @@ pub(super) struct Estria {
     pub fios: f64,
     /// A rugosidade (desvio-padrão do resíduo) da altura fina.
     pub rug: f64,
+    /// A correlação do detalhe a 8 px AO LONGO do traço e ATRAVÉS (a estria: alta ao longo, ~0 através).
+    pub ct8: f64,
+    pub cn8: f64,
+    /// Os picos isolados (máximo 5×5 com proeminência > 0,5) por 1000 px² do miolo — o grumo.
+    pub picos: f64,
+}
+
+/// A régua do grumo sobre o detalhe `v` (passa-alto): correlação a `lag` px ao longo/através e picos por área.
+fn grumo(v: &[f64], gw: usize, gh: usize, r: f32, raio: f32, lag: f32) -> (f64, f64, f64) {
+    let at = |p: [f32; 2]| -> Option<f64> {
+        let (x, y) = ((p[0] / r).floor() as isize, (p[1] / r).floor() as isize);
+        (x >= 0 && y >= 0 && (x as usize) < gw && (y as usize) < gh)
+            .then(|| v[x as usize + y as usize * gw])
+    };
+    let (mut v2, mut ct, mut cn, mut n, mut picos) = (0.0, 0.0, 0.0, 0usize, 0usize);
+    for y in 2..gh - 2 {
+        for x in 2..gw - 2 {
+            let p = [(x as f32 + 0.5) * r, (y as f32 + 0.5) * r];
+            let (dx, dy) = (p[0] - C[0], p[1] - C[1]);
+            let dist = dx.hypot(dy);
+            if dx.atan2(-dy).abs() >= 0.7 * ABRE || (dist - R).abs() >= 0.5 * raio {
+                continue;
+            }
+            let (nx, ny) = (dx / dist, dy / dist);
+            let a = v[x + y * gw];
+            let (Some(t), Some(q)) = (
+                at([p[0] - ny * lag, p[1] + nx * lag]),
+                at([p[0] + nx * lag, p[1] + ny * lag]),
+            ) else {
+                continue;
+            };
+            v2 += a * a;
+            ct += a * t;
+            cn += a * q;
+            n += 1;
+            let viz = (-2isize..=2).flat_map(|j| (-2isize..=2).map(move |i| (i, j)));
+            let (mut mn, mut mx) = (f64::INFINITY, f64::NEG_INFINITY);
+            for (i, j) in viz {
+                let w = v[(x as isize + i) as usize + (y as isize + j) as usize * gw];
+                mn = mn.min(w);
+                mx = mx.max(w);
+            }
+            if a >= mx && a - mn > 0.5 {
+                picos += 1;
+            }
+        }
+    }
+    let area = n as f64 * f64::from(r * r) / 1000.0;
+    (
+        ct / v2.max(1e-12),
+        cn / v2.max(1e-12),
+        picos as f64 / area.max(1e-9),
+    )
 }
 
 /// Os campos por célula: (altura fina, massa, altura dos fios, gw, gh, razão).
@@ -223,18 +276,18 @@ pub(super) fn arco(
     traco(&mut t, &|s| no_arco(-ABRE + 2.0 * ABRE * s), 2.0 * ABRE * R);
     espera(&mut t, 30);
     let (h, m, a, gw, gh, r) = campos(&mut t);
-    let (fina, rug) = anis(
-        &passa_alto(&h, gw, gh, (4.0 / r).ceil() as isize),
-        gw,
-        gh,
-        r,
-        raio,
-    );
+    let hp = passa_alto(&h, gw, gh, (4.0 / r).ceil() as isize);
+    let (fina, rug) = anis(&hp, gw, gh, r, raio);
+    let hp8 = passa_alto(&h, gw, gh, (8.0 / r).ceil() as isize);
+    let (ct8, cn8, picos) = grumo(&hp8, gw, gh, r, raio, 8.0);
     let e = Estria {
         fina,
         massa: anis(&m, gw, gh, r, raio).0,
         fios: anis(&a, gw, gh, r, raio).0,
         rug,
+        ct8,
+        cn8,
+        picos,
     };
     if let Some((dir, rot)) = grava {
         t.wet_recomposite_full();
@@ -287,15 +340,16 @@ fn sonda_oleo_estria() {
     // As variantes no MESMO processo: um knob do motor sobreposto ao de fábrica.
     let variantes: Vec<(&str, Vec<(&str, f64)>)> = vec![
         ("fabrica", vec![]),
-        ("altura0", vec![("bristleHeight", 0.0)]),
-        ("jitter0", vec![("@jitter", 0.0)]),
         ("pig250", vec![("pigmentPerDab", 250.0)]),
-        ("emboss0", vec![("embossSizeExp", 0.0)]),
-        ("visgrain0", vec![("visualGrain", 0.0)]),
-        ("spacing1", vec![("@spacing", 0.05)]),
+        ("capmax0", vec![("capsuleMaxPx", 0.0)]),
+        ("capmax2", vec![("capsuleMaxPx", 2.0)]),
+        ("capmax8", vec![("capsuleMaxPx", 8.0)]),
+        ("capsp05", vec![("capsuleSpacing", 0.05)]),
+        ("capsp01", vec![("capsuleSpacing", 0.0125)]),
+        ("capperto", vec![("capsuleRoundNearest", 1.0)]),
     ];
     let filtro = std::env::var("PH2D_SONDA_VAR").unwrap_or_default();
-    for raio in [32.0f32, 50.0] {
+    for raio in [16.0f32, 24.0, 32.0, 40.0, 50.0, 64.0] {
         for (tag, kn) in &variantes {
             if !tag.contains(&filtro) {
                 continue;
@@ -313,9 +367,32 @@ fn sonda_oleo_estria() {
             let rot = format!("{tag}_r{raio:02}");
             let (e, (pr, es)) = arco(&p, raio, dir.as_deref().map(|d| (d, rot.as_str())));
             println!(
-                "[estria] {rot:<16} anis fina {:>6.2} massa {:>6.2} fios {:>6.2} rug {:>6.3} pretos {pr:>5} escuros {es:>5}",
-                e.fina, e.massa, e.fios, e.rug
+                "[estria] {rot:<16} anis fina {:>6.2} massa {:>6.2} fios {:>6.2} rug {:>6.3} ct8 {:>5.2} cn8 {:>5.2} picos/kpx² {:>5.2} pretos {pr:>5} escuros {es:>5}",
+                e.fina, e.massa, e.fios, e.rug, e.ct8, e.cn8, e.picos
             );
         }
+    }
+}
+
+/// ⭐ **A LEI (smoke do dono 31/10, Size 64 = raio 32)**: o Thick Impasto não escurece em grumos em tamanho nenhum. O
+/// sub-passo da cápsula arredondado a células inteiras pousava até 2× mais sub-dabs por célula entre raio 24 e 40
+/// (64 a r32 e 80 a r40 contra 50 a r50), e com eles a tinta e o grumo; a cura pesa cada sub-dab pelo sub-passo natural.
+/// Px escuros por px de raio, arco + cruzamento: antes r16 4,2 · r32 16,1 · r40 24,1 · r50 6,4 · r64 11,0; depois
+/// 4,2 · 3,9 · 4,9 · 4,7 · 2,5. Pretos: 0 antes e depois.
+#[test]
+fn o_impasto_nao_encaroca_em_tamanho_nenhum() {
+    let b = Biblioteca::carregar(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
+        None,
+    );
+    let p = thick_impasto(&b);
+    for raio in [16.0f32, 32.0, 64.0] {
+        let (_, (pretos, escuros)) = arco(&p, raio, None);
+        assert_eq!(pretos, 0, "raio {raio}");
+        let densidade = escuros as f32 / raio;
+        assert!(
+            densidade <= 7.0,
+            "raio {raio}: {escuros} px escuros ({densidade:.1} por px de raio)"
+        );
     }
 }

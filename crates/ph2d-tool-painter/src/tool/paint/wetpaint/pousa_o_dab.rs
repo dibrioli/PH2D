@@ -150,9 +150,17 @@ pub(super) fn pousa_o_dab(
         super::lote::escala_o_grao(&mut spec.texture, escala_tex);
     }
     super::lote::escala_as_cerdas(&mut spec.shape, escala_cerdas);
+    // Sem Pigment Spacing, a cápsula pesa cada sub-dab pelo sub-passo NATURAL (antes do arredondamento a células):
+    // a tinta por área não depende de onde o diâmetro cai na grelha ([`super::lote::sub_passo_natural`]).
+    let peso_da_capsula = if capsulas && passo_do_pigmento <= 0.0 && lane_prev.is_some() {
+        let w = caminho / super::lote::sub_passo_natural(&sess.engine.tuning, brush);
+        if (w - 1.0).abs() < 1e-3 { 1.0 } else { w }
+    } else {
+        1.0
+    };
     let peso = lane_prev
         .filter(|_| passo_do_pigmento > 0.0)
-        .map_or(1.0, |_| {
+        .map_or(peso_da_capsula, |_| {
             let w = caminho / brush.passo_ao_longo_px(passo_do_pigmento, d.dir);
             // O passo do PRÓPRIO Spacing de afinação é o dab inteiro, ao byte (a corda sai dos centros em f32).
             if (w - 1.0).abs() < 1e-3 {

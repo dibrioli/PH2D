@@ -68,3 +68,43 @@ fn o_papel_texturizado_e_so_da_imagem_que_o_pediu() {
         "e a que o pediu, texturizado"
     );
 }
+
+/// ⛔ **BUG dono 31/10** (`docs/Painter/Arquitetura/BUG_papel_so_no_draw.md`): *«ao criar o papel
+/// texturizado, ele só fica texturizado ao entrar no modo Draw»*. O Object mostra os píxeis da SPRITE, e
+/// ela nascia branca lisa — o papel só existia quando o Painter abria o documento. A sprite nasce agora
+/// com o assado do documento novo, e abrir no Draw compõe o MESMO bit (sem dente dobrado).
+#[test]
+fn o_papel_texturizado_ja_se_ve_no_object_sem_entrar_no_draw() {
+    use super::papel_nasce_tests::{imagem, lum};
+    let lado = LADO as u32;
+    let nascida = PainterTool::pixeis_do_papel_texturizado(lado, lado);
+    let l: Vec<f32> = nascida.as_chunks::<4>().0.iter().map(|p| lum(p)).collect();
+    let media = l.iter().sum::<f32>() / l.len() as f32;
+    let desvio = (l.iter().map(|v| (v - media).powi(2)).sum::<f32>() / l.len() as f32).sqrt();
+    assert!(
+        desvio > 1.0,
+        "o Object mostra a sprite LISA (desvio de luminância {desvio:.3} níveis, média {media:.1}): \
+         o papel só aparece ao entrar no Draw"
+    );
+    let mut t = PainterTool::default();
+    t.agenda_papel_texturizado(ENTIDADE);
+    t.bind_document(ENTIDADE, nascida.clone(), lado, lado);
+    assert_eq!(t.papel(), Some([0xE6, 0xD9, 0xCC]), "o papel do dono");
+    let draw = imagem(&mut t);
+    let (pior, n) = super::papel_nasce_tests::compara(&draw, &nascida, 0);
+    assert_eq!(
+        (pior, n),
+        (0, 0),
+        "o Draw tem de compor o MESMO bit que o Object mostra"
+    );
+    // Sair sem pintar e voltar (a sprite foi assada com o mesmo bit): o papel não se dobra.
+    let mut t2 = PainterTool::default();
+    t2.bind_document(ENTIDADE, nascida.clone(), lado, lado);
+    assert_eq!(
+        t2.papel(),
+        Some([0xE6, 0xD9, 0xCC]),
+        "reaberta, o papel do dono"
+    );
+    let (pior, n) = super::papel_nasce_tests::compara(&imagem(&mut t2), &nascida, 0);
+    assert_eq!((pior, n), (0, 0), "reaberta sem pintura, o mesmo bit");
+}

@@ -97,6 +97,58 @@ pub fn new_image_nasceu(tools: &mut ToolRegistry, entity: u64, bg: u8) {
     }
 }
 
+/// Os píxeis com que a sprite de um *New Image…* `size`² com o fundo `bg` nasce, quando é o Painter que
+/// os decide: o «Textured Paper» nasce JÁ texturizado (o assado do documento que o Draw abre), para o
+/// Object o mostrar sem entrar no Draw (BUG dono 31/10, `docs/Painter/Arquitetura/BUG_papel_so_no_draw.md`).
+/// `None` = o fundo liso de sempre (`spawn_blank_canvas`).
+#[must_use]
+pub fn pixeis_da_imagem_nova(size: u32, bg: u8) -> Option<Vec<u8>> {
+    (bg == ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER)
+        .then(|| PainterTool::pixeis_do_papel_texturizado(size, size))
+}
+
+/// **A sprite de um *New Image…*** `size`² com o fundo `bg`, no centro do mundo: pelos píxeis de
+/// [`pixeis_da_imagem_nova`] quando o Painter os decide, senão o fundo liso. A porta da shell.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_imagem_nova(
+    sim: &mut ph2d_ecs::SimWorld,
+    renderer: &mut ph2d_render::SpriteRenderer,
+    asset_db: &ph2d_asset::AssetDb,
+    cell: u32,
+    size: u32,
+    bg: u8,
+    ppm: f32,
+    atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+) -> Result<(String, u64), String> {
+    let centro = ph2d_core::Vec2::new(0.0, 0.0);
+    match pixeis_da_imagem_nova(size, bg) {
+        Some(px) => ph2d_image_import::spawn_rgba(
+            sim,
+            renderer,
+            asset_db,
+            cell,
+            size,
+            size,
+            px,
+            centro,
+            ppm,
+            atlas_asset_map,
+            "Canvas",
+        ),
+        None => ph2d_image_import::spawn_blank_canvas(
+            sim,
+            renderer,
+            asset_db,
+            cell,
+            size,
+            bg,
+            centro,
+            ppm,
+            atlas_asset_map,
+        ),
+    }
+}
+
 /// O Painter está em mãos **sobre uma imagem**.
 #[must_use]
 pub fn holds_an_image(tools: &mut ToolRegistry) -> bool {

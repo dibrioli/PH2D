@@ -33,14 +33,14 @@ impl crate::App {
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
-            match crate::image_import::spawn_blank_canvas(
+            // O «Textured Paper» nasce já texturizado (o Object mostra-o sem entrar no Draw).
+            match ph2d_app_painter::paint_mode::spawn_imagem_nova(
                 sim,
                 renderer,
                 asset_db,
                 cell,
                 size,
                 bg,
-                ph2d_core::Vec2::new(0.0, 0.0),
                 ppm,
                 atlas_asset_map,
             ) {

@@ -472,6 +472,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 let a = c.p.sedimenta * (gx * gx + gy * gy).sqrt();
                 crate::solver::sedimenta(g, a, gx, gy, c.p.km_mixing);
             }
+            crate::estreito::arredonda(g);
         }
         4 => apply_boundaries(g, false),
         5 => {
@@ -493,6 +494,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 sim.evap_scale = 0.00025;
                 sim.rewet_base = 0.000025;
             }
+            crate::estreito::arredonda(g);
             return Some(true);
         }
     }

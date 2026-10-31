@@ -51,6 +51,7 @@ mod perf_experimental;
 mod product_doors;
 mod product_rewet;
 mod product_tool_doors;
+mod regua_estreita;
 mod resumable_step;
 mod solver_symmetry;
 mod spans;

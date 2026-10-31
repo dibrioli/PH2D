@@ -78,8 +78,10 @@ def km_camada(kt, st, rg):
     a = 1 + kt[q] / st[q]
     b = np.sqrt(a * a - 1)
     bs = np.minimum(b * st[q], 50.0)
-    coth = 1 / np.tanh(np.maximum(bs, 1e-12))
-    out[q] = (1 - rg[q] * (a - b * coth)) / (a - rg[q] + b * coth)
+    # b·coth(b𝒮) → 1/𝒮 quando b𝒮 → 0 (K = 0, só espalhamento); sem isto dava R = 1 ou nan (achado pelo F4-1).
+    pequeno = bs < 1e-6
+    bcoth = np.where(pequeno, 1 / st[q], b / np.tanh(np.maximum(bs, 1e-300)))
+    out[q] = (1 - rg[q] * (a - bcoth)) / (a - rg[q] + bcoth)
     return out
 
 
@@ -248,7 +250,59 @@ def provas():
     print("provas: 4000 casos — R ∈ [fundo, R∞_mistura] e diluir é monótono: OK")
 
 
+# ---------------------------------------------------------------- fixture (paridade da crate ph2d-paint-tinta)
+def grava_fixture(caminho):
+    """Grava casos (entradas e R por banda) que a crate Rust compara. Não muda a lei: só a CHAMA.
+    Linhas: `P` pigmento (R∞ e S) · `C` caso de mistura sobre fundo (R e cobertura C por banda) ·
+    `K` chamada crua de km_camada (os regimes numéricos, incluindo 𝒮 → 0)."""
+    import datetime
+    import hashlib
+    import sys
+
+    with open(os.path.abspath(__file__), "rb") as f:
+        versao = hashlib.sha256(f.read()).hexdigest()[:16]
+    linhas = [
+        "# fixture da lei única (oráculo nosso, ADR-0197 §4.2) — NÃO editar à mão",
+        "# comando: python3 docs/Painter/Arquitetura/ferramentas/lei_unica.py --fixture " + caminho,
+        f"# data: {datetime.date.today().isoformat()}",
+        f"# versão: lei_unica.py sha256[:16]={versao} · numpy {np.__version__} · python {sys.version.split()[0]}",
+        "# P nome rinf0 rinf1 rinf2 s0 s1 s2",
+        "# C v_azul v_amarelo m molhado rg0 rg1 rg2 R0 R1 R2 C0 C1 C2",
+        "# K kt st rg R",
+    ]
+    pig = {"AZUL": AZUL, "AMARELO": AMARELO}
+    for nome, p in pig.items():
+        linhas.append("\t".join(["P", nome] + [repr(float(x)) for x in (*p["Rinf"], *p["S"])]))
+    vols = [0.0, 0.01, 0.5, 5.0, 30.0, 80.0, 300.0]
+    fundos = [np.array([0.0, 0.0, 0.0]), np.array([1.0, 1.0, 1.0]), PAPEL, np.array([0.03, 0.5, 0.9])]
+    for va in vols:
+        for vb in vols:
+            for m in [0.0, 0.5, 0.85, 1.0]:
+                for molhado in [False, True]:
+                    kt, st = totais([(AZUL, va), (AMARELO, vb)], m, molhado)
+                    c = cobertura(kt, st)
+                    for rg in fundos:
+                        r = km_camada(kt, st, rg)
+                        linhas.append("\t".join(
+                            ["C", repr(va), repr(vb), repr(m), str(int(molhado))]
+                            + [repr(float(x)) for x in (*rg, *r, *c)]))
+    for kt in [0.0, 1e-6, 1e-3, 0.1, 1.0, 10.0, 60.0]:
+        for st in [0.0, 1e-12, 1e-6, 1e-3, 0.1, 1.0, 10.0, 100.0]:
+            for rg in [0.0, 0.3, 1.0]:
+                r = float(km_camada(kt, st, rg))
+                linhas.append("\t".join(["K", repr(kt), repr(st), repr(rg), repr(r)]))
+    os.makedirs(os.path.dirname(os.path.abspath(caminho)), exist_ok=True)
+    with open(caminho, "w", encoding="utf-8") as f:
+        f.write("\n".join(linhas) + "\n")
+    print(f"fixture: {len(linhas)} linhas em {caminho}")
+
+
 if __name__ == "__main__":
+    import sys as _sys
+
+    if len(_sys.argv) == 3 and _sys.argv[1] == "--fixture":
+        grava_fixture(_sys.argv[2])
+        raise SystemExit(0)
     os.makedirs(SAIDA, exist_ok=True)
     provas()
     e, f = figura_a()

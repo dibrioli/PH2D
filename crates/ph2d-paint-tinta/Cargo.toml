@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-paint-tinta"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A área TINTA do ADR-0197: a lei única de pigmento em volumes (Duncan 1940 + Kubelka 1948).
+# Folha sem dependências do Painter; o consumidor (wet-paint) liga-a no passo seguinte da F4.
+# Doc: docs/Painter/Arquitetura/F4_1_tinta.md
+
+[dependencies]
+# Os transcendentais (`expm1f`, `powf`) vêm do libm PINADO, nunca do sistema: o mesmo bit em todo SO
+# e uma implementação que o backend GPU pode portar linha a linha (ADR-0197 §4.3). Mesmo pin do
+# `ph2d-pigment`/`ph2d-wet-paint`.
+libm = { version = "=0.2.16", default-features = false }
+
+[lints]
+workspace = true

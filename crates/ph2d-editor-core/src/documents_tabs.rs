@@ -226,6 +226,9 @@ impl Documents {
         let ids: Vec<BoardId> = self.boards.boards().iter().map(|b| b.id).collect();
         let mut refs = Vec::new();
         for b in ids {
+            if let Some(h) = self.live.histories.get_mut(&b) {
+                h.forget_redo_putting(|e| e.kanban().is_some_and(|r| r.kanban == id));
+            }
             let Some(board) = self.boards.get_mut(b) else {
                 continue;
             };

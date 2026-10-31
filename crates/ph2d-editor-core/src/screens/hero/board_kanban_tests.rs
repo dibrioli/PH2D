@@ -303,3 +303,181 @@ fn deleting_a_board_from_the_assets_is_the_tab_delete_and_undo_restores_it() {
     assert!(t.hero.documents.undo_tab(false).is_some());
     assert!(t.hero.documents.boards().get(b).is_some());
 }
+
+/// «Delete» no menu de um Kanban nos Assets, confirmado (o caminho real da pergunta).
+fn delete_from_assets(t: &mut T, k: KanbanId) {
+    t.hero
+        .store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::ConfirmDeleteKanban { kanban: k.0 },
+        });
+    let confirm = WidgetEvent::Click(crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM);
+    assert!(crate::screens::hero::document_tabs_menu::apply_event(
+        &mut t.hero,
+        confirm
+    ));
+    t.paint();
+}
+
+/// `Ctrl+Z` (ou `Ctrl+Y`) pelo teclado do quadro activo.
+fn undo_key(t: &mut T, redo: bool) {
+    let c = if redo { 'y' } else { 'z' };
+    assert!(t.key(BoardKey::Char(c), CTRL, None), "Ctrl+{c}");
+}
+
+/// A posição da referência a `k` no quadro `b` (`None` = não está lá).
+fn ref_at(t: &T, b: ph2d_board_model::BoardId, k: KanbanId) -> Option<[f64; 2]> {
+    let board = t.hero.documents.boards().get(b)?;
+    let el = board
+        .doc
+        .live()
+        .find(|e| e.kanban().is_some_and(|r| r.kanban == k))?;
+    Some([el.x, el.y])
+}
+
+/// ⭐ D17 — pôr, mover, apagar o Kanban pelos Assets; cada `Ctrl+Z` desfaz UM passo pela ordem
+/// inversa (o documento e a referência, onde foi movida; o mover; o pôr — o documento fica) e cada
+/// `Ctrl+Y` refá-lo até ao apagado.
+#[test]
+fn a_moved_kanban_deleted_from_the_assets_undoes_and_redoes_step_by_step() {
+    let mut t = T::new();
+    let b = t.hero.documents.active().unwrap();
+    t.click_bar(Item::Kanban);
+    let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
+    let born = ref_at(&t, b, k).unwrap();
+    assert!(t.key(BoardKey::Right, Modifiers::default(), None));
+    let moved = ref_at(&t, b, k).unwrap();
+    assert_ne!(moved, born, "o empurrão moveu");
+    delete_from_assets(&mut t, k);
+    let has_doc = |t: &T| t.hero.documents.kanbans().get(k).is_some();
+    assert!(!has_doc(&t) && ref_at(&t, b, k).is_none());
+    undo_key(&mut t, false);
+    assert!(has_doc(&t), "o documento voltou");
+    assert_eq!(
+        ref_at(&t, b, k),
+        Some(moved),
+        "a referência, onde foi movida"
+    );
+    undo_key(&mut t, false);
+    assert_eq!(ref_at(&t, b, k), Some(born), "o mover desfez-se");
+    undo_key(&mut t, false);
+    assert_eq!(ref_at(&t, b, k), None, "o pôr desfez-se");
+    assert!(has_doc(&t), "o documento fica no projecto");
+    undo_key(&mut t, true);
+    assert_eq!(ref_at(&t, b, k), Some(born));
+    undo_key(&mut t, true);
+    assert_eq!(ref_at(&t, b, k), Some(moved));
+    undo_key(&mut t, true);
+    assert!(
+        !has_doc(&t) && ref_at(&t, b, k).is_none(),
+        "apagado outra vez"
+    );
+    undo_key(&mut t, true);
+    assert!(
+        !has_doc(&t) && ref_at(&t, b, k).is_none(),
+        "nada mais a refazer"
+    );
+}
+
+/// ⭐ D17 — o Kanban em dois quadros, apagado; uma nota no quadro A depois: o 1.º `Ctrl+Z` em A tira a
+/// nota, o 2.º devolve o Kanban e as referências em A e em B.
+#[test]
+fn a_kanban_on_two_boards_deleted_then_a_note_undoes_note_first_then_both_references() {
+    let mut t = T::new();
+    let a = t.hero.documents.active().unwrap();
+    t.click_bar(Item::Kanban);
+    let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
+    let bb = t.hero.documents.create("B".into());
+    crate::screens::hero::document_tabs::register_board(&mut t.hero.store, bb);
+    t.paint();
+    assert!(kb::link::place(&mut t.hero, k).is_some_and(|(b, _)| b == bb));
+    let (on_a, on_b) = (ref_at(&t, a, k).unwrap(), ref_at(&t, bb, k).unwrap());
+    delete_from_assets(&mut t, k);
+    assert!(ref_at(&t, a, k).is_none() && ref_at(&t, bb, k).is_none());
+    t.hero.documents.activate(Some(a));
+    t.paint();
+    let note = t.put_note([-400.0, -400.0], "after", 0);
+    undo_key(&mut t, false);
+    let on = |t: &T| {
+        t.hero
+            .documents
+            .boards()
+            .get(a)
+            .unwrap()
+            .doc
+            .get(note)
+            .is_some()
+    };
+    assert!(!on(&t), "a nota saiu primeiro");
+    assert!(t.hero.documents.kanbans().get(k).is_none());
+    undo_key(&mut t, false);
+    assert!(
+        t.hero.documents.kanbans().get(k).is_some(),
+        "o documento voltou"
+    );
+    assert_eq!(ref_at(&t, a, k), Some(on_a));
+    assert_eq!(
+        ref_at(&t, bb, k),
+        Some(on_b),
+        "e a referência no outro quadro"
+    );
+    undo_key(&mut t, true);
+    assert!(ref_at(&t, a, k).is_none() && ref_at(&t, bb, k).is_none());
+    undo_key(&mut t, true);
+    assert!(on(&t), "a nota volta");
+}
+
+fn doc(t: &mut T) -> &mut ph2d_board_model::BoardDoc {
+    &mut t.hero.documents.active_board_mut().unwrap().doc
+}
+
+/// ⭐ D17 — num quadro ao vivo, o par recebe a referência a sair (apagar o Kanban) e a voltar
+/// (`Ctrl+Z`): as mudanças da sessão levam-na, e a `version` cresce sempre (o par aceita-a).
+#[test]
+fn a_live_board_sends_the_reference_leaving_and_coming_back() {
+    let mut t = T::new();
+    let b = t.hero.documents.active().unwrap();
+    t.click_bar(Item::Kanban);
+    let el = kanban_el(&t).unwrap();
+    let k = el.kanban().unwrap().kanban;
+    assert_eq!(t.hero.documents.active(), Some(b));
+    doc(&mut t).set_session(Some(7));
+    let _ = doc(&mut t).take_changes();
+    delete_from_assets(&mut t, k);
+    let sent = doc(&mut t).take_changes();
+    assert!(sent.iter().any(|(id, _)| *id == el.id), "o par vê-a sair");
+    let gone = doc(&mut t).get_any(el.id).cloned().unwrap();
+    assert!(gone.deleted && gone.version > el.version);
+    undo_key(&mut t, false);
+    let sent = doc(&mut t).take_changes();
+    assert!(sent.iter().any(|(id, _)| *id == el.id), "o par vê-a voltar");
+    let back = doc(&mut t).get_any(el.id).cloned().unwrap();
+    assert!(!back.deleted && back.version > gone.version);
+}
+
+/// ⭐ D17 — pôr o Kanban e desfazê-lo (o documento fica, o refazer espera), apagá-lo pelos Assets:
+/// o `Ctrl+Y` do quadro já não ressuscita uma referência a um Kanban que não existe (apagar é um
+/// gesto NOVO); o `Ctrl+Z` devolve o documento.
+#[test]
+fn a_board_redo_never_brings_back_a_reference_to_a_deleted_kanban() {
+    let mut t = T::new();
+    let b = t.hero.documents.active().unwrap();
+    t.click_bar(Item::Kanban);
+    let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
+    undo_key(&mut t, false);
+    assert!(ref_at(&t, b, k).is_none());
+    delete_from_assets(&mut t, k);
+    undo_key(&mut t, true);
+    let has_doc = t.hero.documents.kanbans().get(k).is_some();
+    assert!(
+        has_doc || ref_at(&t, b, k).is_none(),
+        "uma referência órfã voltou"
+    );
+    undo_key(&mut t, false);
+    assert!(
+        t.hero.documents.kanbans().get(k).is_some(),
+        "o documento volta"
+    );
+}

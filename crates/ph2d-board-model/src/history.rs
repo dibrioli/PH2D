@@ -193,6 +193,20 @@ impl History {
         true
     }
 
+    /// Esquece o refazer se um passo dele PÕE um elemento que `f` escolhe: um gesto de fora deste
+    /// quadro (apagar o Kanban que a referência mostra) é um gesto novo, e refazer por cima dele
+    /// traria um elemento órfão. `true` = esqueceu.
+    pub fn forget_redo_putting(&mut self, f: impl Fn(&Element) -> bool) -> bool {
+        let hit = self.redo.iter().any(|(_, s)| {
+            matches!(s, Step::Doc(ops, ..)
+                if ops.iter().any(|op| matches!(op, BoardOp::Put(e) if f(e))))
+        });
+        if hit {
+            self.redo.clear();
+        }
+        hit
+    }
+
     #[must_use]
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()

@@ -49,7 +49,12 @@ pub struct Rect {
 impl Rect {
     #[must_use]
     pub fn full(g: &Grid) -> Self {
-        Rect { x0: 1, y0: 1, x1: g.w as i32, y1: g.h as i32 }
+        Rect {
+            x0: 1,
+            y0: 1,
+            x1: g.w as i32,
+            y1: g.h as i32,
+        }
     }
     #[must_use]
     pub fn cols(&self) -> u32 {
@@ -161,10 +166,12 @@ impl AdvectGpu {
         let rgb = storage(gpu, "wet-gpu rgb", n * 12);
         let dst = storage(gpu, "wet-gpu dst", n * 8);
         let drgb = storage(gpu, "wet-gpu drgb", n * 12);
-        let module = gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("wet-gpu advect"),
-            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-        });
+        let module = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("wet-gpu advect"),
+                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+            });
         let all: [(u32, &wgpu::Buffer); 10] = [
             (0, &ub),
             (1, &flow_x),
@@ -233,8 +240,16 @@ impl AdvectGpu {
         q.write_buffer(&self.ub, 0, bytemuck::bytes_of(u));
         q.write_buffer(&self.flow_x, 0, bytemuck::cast_slice(&g.flow_x));
         q.write_buffer(&self.flow_y, 0, bytemuck::cast_slice(&g.flow_y));
-        q.write_buffer(&self.active, 0, bytemuck::cast_slice(&pack_active(&g.active)));
-        q.write_buffer(&self.st, 0, bytemuck::cast_slice(&pack_state(&g.film, &g.susp)));
+        q.write_buffer(
+            &self.active,
+            0,
+            bytemuck::cast_slice(&pack_active(&g.active)),
+        );
+        q.write_buffer(
+            &self.st,
+            0,
+            bytemuck::cast_slice(&pack_state(&g.film, &g.susp)),
+        );
         q.write_buffer(&self.rgb, 0, bytemuck::cast_slice(&g.susp_rgb));
     }
 
@@ -327,7 +342,11 @@ pub mod cena {
     pub fn poca(w: usize, h: usize, rf: usize, amp: f32) -> Grid {
         let mut g = Grid::with_flow_ratio(w, h, rf);
         let (wf, hf) = (w as f32, h as f32);
-        let manchas = [(0.3f32, 0.4f32, 0.18f32), (0.62, 0.55, 0.22), (0.45, 0.75, 0.12)];
+        let manchas = [
+            (0.3f32, 0.4f32, 0.18f32),
+            (0.62, 0.55, 0.22),
+            (0.45, 0.75, 0.12),
+        ];
         for y in 1..=h {
             for x in 1..=w {
                 let i = x + y * g.s;
@@ -365,7 +384,10 @@ pub mod cena {
     /// A grade espelhada em x: célula `x → w+1−x`, fluxo `ux → −ux` (exige `rf = 1`).
     #[must_use]
     pub fn espelha_x(g: &Grid) -> Grid {
-        assert_eq!(g.flow.rf, 1, "o espelho exato da amostragem do fluxo exige rf = 1");
+        assert_eq!(
+            g.flow.rf, 1,
+            "o espelho exato da amostragem do fluxo exige rf = 1"
+        );
         let mut m = g.clone();
         for y in 0..g.rows {
             for x in 1..=g.w {

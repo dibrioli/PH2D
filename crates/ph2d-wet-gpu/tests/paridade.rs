@@ -6,7 +6,9 @@
 //! ```
 
 use ph2d_gpu::GpuContext;
-use ph2d_wet_gpu::{AdvectGpu, Estado, Rect, Uniforms, cena, pack_active, pack_state, unpack_state};
+use ph2d_wet_gpu::{
+    AdvectGpu, Estado, Rect, Uniforms, cena, pack_active, pack_state, unpack_state,
+};
 use ph2d_wet_paint::grid::Grid;
 use ph2d_wet_paint::par::Rows;
 use ph2d_wet_paint::sim::Sim;
@@ -28,7 +30,11 @@ fn cpu(g: &Grid, n: usize) -> Estado {
     for _ in 0..n {
         advect_jacobi_rows(&mut g, &p, 0.0, 0.0, Rows::Serial);
     }
-    Estado { film: g.film, susp: g.susp, rgb: g.susp_rgb }
+    Estado {
+        film: g.film,
+        susp: g.susp,
+        rgb: g.susp_rgb,
+    }
 }
 
 fn gpu_run(gpu: &GpuContext, g: &Grid, n: u32) -> Estado {
@@ -83,12 +89,27 @@ fn o_empacotamento_e_os_uniformes_casam_com_a_grade() {
     assert_eq!(st.len(), g.cells);
     let (f, m) = unpack_state(&st);
     assert_eq!((f, m), (g.film.clone(), g.susp.clone()));
-    assert!(pack_active(&g.active).iter().zip(&g.active).all(|(a, b)| *a == u32::from(*b)));
-    assert_eq!(std::mem::size_of::<Uniforms>(), 64, "o struct U do WGSL tem 16 × 4 B");
+    assert!(
+        pack_active(&g.active)
+            .iter()
+            .zip(&g.active)
+            .all(|(a, b)| *a == u32::from(*b))
+    );
+    assert_eq!(
+        std::mem::size_of::<Uniforms>(),
+        64,
+        "o struct U do WGSL tem 16 × 4 B"
+    );
     let u = Uniforms::from_grid(&g, 1.0, Rect::full(&g));
     assert_eq!((u.w, u.h, u.s), (40, 24, 42));
-    assert_eq!((u.fs, u.fw, u.fh, u.rf, u.half), (g.flow.s as i32, 10, 6, 4, 1));
-    assert_eq!(u.reach, 2, "maxVelocity 1 ⇒ alcance ceil(1)+1 (destination_reach)");
+    assert_eq!(
+        (u.fs, u.fw, u.fh, u.rf, u.half),
+        (g.flow.s as i32, 10, 6, 4, 1)
+    );
+    assert_eq!(
+        u.reach, 2,
+        "maxVelocity 1 ⇒ alcance ceil(1)+1 (destination_reach)"
+    );
     assert_eq!((u.x0, u.y0, u.x1, u.y1), (1, 1, 40, 24));
     // O `vec3` do rgb sobe como 3 × f32 contíguos — o índice `3·i` do shader.
     let b: &[f32] = bytemuck::cast_slice(&g.susp_rgb);
@@ -118,7 +139,10 @@ fn a_placa_casa_com_a_cpu_conserva_e_e_simetrica() {
                 let (mx, md) = desvio(&g, a, b);
                 eprintln!("| {rf} | {n} | {nome} | {mx:.3e} | {md:.3e} |");
                 if n == 1 {
-                    assert!(mx <= EPS_1PASSO, "rf {rf}: {nome} desvia {mx:e} > {EPS_1PASSO:e}");
+                    assert!(
+                        mx <= EPS_1PASSO,
+                        "rf {rf}: {nome} desvia {mx:e} > {EPS_1PASSO:e}"
+                    );
                 }
             }
             let rel = |a: f64, b: f64| ((a - b) / b).abs();
@@ -130,7 +154,10 @@ fn a_placa_casa_com_a_cpu_conserva_e_e_simetrica() {
                 rel(cs, m0s),
                 rel(ps, m0s)
             );
-            assert!(rel(pf, m0f) <= EPS_MASSA && rel(ps, m0s) <= EPS_MASSA, "a placa não conserva");
+            assert!(
+                rel(pf, m0f) <= EPS_MASSA && rel(ps, m0s) <= EPS_MASSA,
+                "a placa não conserva"
+            );
         }
     }
     // Simetria: a cena espelhada dá o resultado espelhado.

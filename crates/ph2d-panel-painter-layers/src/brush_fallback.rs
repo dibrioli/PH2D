@@ -224,6 +224,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dab_flatten: 0.0,
     dab_quina: 0.0,
     dab_rotation_lag: 0.0,
+    dab_follows_stroke: false,
     pontas_rectas: false,
     pontas_alem: 0.0,
     pontas_esbate: 0.0,

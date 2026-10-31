@@ -384,6 +384,8 @@ pub struct BrushSettings {
     pub dab_quina: f32,
     /// **Rotation smoothing** (L3; `0` = the heading of always) — `BrushSpec::dab_rotation_lag`.
     pub dab_rotation_lag: f32,
+    /// Whether the dab frame follows the stroke (`BrushSpec::follows_stroke`): only then the smoothing acts.
+    pub dab_follows_stroke: bool,
     /// **Flat ends** (J6; `false` = the round ends of the dab) — `BrushSpec::pontas_rectas`.
     pub pontas_rectas: bool,
     /// How far the flat cut passes the end centres, in dab radii — `BrushSpec::pontas_alem`.

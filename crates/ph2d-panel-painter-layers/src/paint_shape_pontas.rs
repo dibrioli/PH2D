@@ -93,7 +93,7 @@ pub(crate) fn paint_pontas_do_molhado(
         tr("panel.painter_layers.shape.ends_fade"),
         ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE,
         brush.pontas_esbate,
-        0.0,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE_MIN,
         ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE_MAX,
         crate::number_field::FINE_STEP,
         2,

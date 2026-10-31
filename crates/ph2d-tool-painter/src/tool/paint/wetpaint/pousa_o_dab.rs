@@ -128,7 +128,7 @@ pub(super) fn pousa_o_dab(
     };
     let tampa = pontas.then(|| super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem));
     let corte = tampa.flatten();
-    let esbate = (esbate_e > 0.0).then(|| {
+    let esbate = (esbate_e != 0.0).then(|| {
         super::esbate::Esbate::do_dab(d, &mut sess.lanes[li], lote, esbate_e, pontas, filme_liso)
     });
     let peso_esbate = esbate.flatten().filter(|w| !w.trivial());

@@ -582,7 +582,10 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             b.pontas_alem = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ALEM_MAX);
         }
         "pontas_esbate" => {
-            b.pontas_esbate = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ESBATE_MAX);
+            b.pontas_esbate = f(v, 0.0).clamp(
+                crate::ids::PAINTER_BRUSH_PONTAS_ESBATE_MIN,
+                ph2d_painter_brush::PONTAS_ESBATE_MAX,
+            );
         }
         "dab_curve" => b.dab_curve = pegada_de_json(v, b.dab_curve),
         "color_jitter_enabled" => b.color_jitter_enabled = booleano(v, b.color_jitter_enabled),
@@ -644,7 +647,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
         .filter(|&&c| !(c == "grain_same_as_paper" && !b.grain_same_as_paper))
         .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
-        .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate <= 0.0))
+        // O esbate negativo (as pontas que CARREGAM, R2-A) viaja: só o `0` sai.
+        .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate == 0.0))
         .filter(|&&c| !(c == "dab_rotation_lag" && b.dab_rotation_lag <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()

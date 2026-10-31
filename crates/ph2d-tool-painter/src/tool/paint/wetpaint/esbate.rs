@@ -18,7 +18,11 @@
 //!   mesmo [`alvo`] ao longo da cauda.
 //!
 //! As posições medem-se na CORDA local da pegada redonda (`√(R² − v²)` a `v` do eixo): a tampa esbate até à borda
-//! redonda, e a soma renormalizada é exacta a toda a largura. `e = 0`: nada disto corre (ao bit). Gate: `esbate_tests`.
+//! redonda, e a soma renormalizada é exacta a toda a largura. Com as pontas rectas a ENTRADA mede-se no EIXO (o corte é
+//! a direito: a corda arredondava a esquina, R2-A). `e = 0`: nada disto corre (ao bit). Gate: `esbate_tests`.
+//! - `e < 0` (R2-A, `docs/Painter/Pinceis/R2_A_pontas.md`): a MESMA lei a subir — as pontas CARREGAM (`1 + |e|/8` no
+//!   centro da ponta, `1 + |e|` na borda da tampa) e a janela do rasto POUSA ao soltar (`ciclo.rs`): o fim redondo e
+//!   cheio do carvão e da cera do Rebelle, onde o nosso esmaecia num raio.
 
 use ph2d_painter_brush::Dab;
 
@@ -69,6 +73,8 @@ pub(super) struct Esbate {
     perfil: Option<([f32; 2], [f32; 2], f32, bool)>,
     /// A carga do dab (os do fecho das pontas rectas; 1 os outros).
     carga: f32,
+    /// A entrada mede-se no EIXO (as pontas rectas: o corte é a direito, a esquina cheia).
+    eixo: bool,
 }
 
 impl Esbate {
@@ -100,6 +106,7 @@ impl Esbate {
             inicio: perto.then_some((lane.inicio, lane.rumo0, raio0)),
             perfil: (!rectas).then_some((d.center, rumo, raio, filme)),
             carga,
+            eixo: rectas,
         })
     }
 
@@ -114,7 +121,12 @@ impl Esbate {
         let p = [x, y];
         let mut w = self.carga;
         if let Some((o, n, r)) = self.inicio {
-            w *= alvo(self.e, na_corda(p, o, n, r));
+            let a = if self.eixo {
+                ((p[0] - o[0]) * n[0] + (p[1] - o[1]) * n[1]) / r
+            } else {
+                na_corda(p, o, n, r)
+            };
+            w *= alvo(self.e, a);
         }
         if let Some((c, n, r, filme)) = self.perfil {
             let u = na_corda(p, c, n, r).clamp(-1.0, 1.0);

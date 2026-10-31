@@ -69,10 +69,17 @@ impl PainterTool {
         if self.paint.tracos_fora > 0 {
             return; // a água é dos traços abertos: o último fecha-a (W16)
         }
+        let carrega = self.paint.brush.pontas_esbate < 0.0 && !self.paint.eraser;
         if let Some(sess) = self.paint.wetpaint.session.as_mut()
             && sess.stroke_open
         {
             sess.bring_home();
+            // As pontas que CARREGAM (`pontas_esbate < 0`, [`super::esbate`]): a janela que sobra pousa — sem isto o
+            // último raio do traço caía e esmaecia.
+            if carrega {
+                let todas: Vec<usize> = (0..sess.lanes.len()).collect();
+                sess.engine.land_direct_remainders(&todas);
+            }
             sess.engine.end_direct_stroke();
             sess.stroke_open = false;
             sess.lanes.clear();

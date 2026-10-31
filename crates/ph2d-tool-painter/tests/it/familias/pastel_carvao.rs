@@ -35,6 +35,10 @@ pub const WET: &[Receita] = &[
             ("shape", MARMORE_DO_CARVAO),
             ("size_max_px", TECTO_DO_CARVAO),
             ("dab_jitter", PO_DO_CARVAO),
+            // R2-A: as pontas CARREGAM (o Rebelle acaba-o redondo e cheio; o nosso esmaecia num raio): o fim do recto de
+            // 200 a ½·¼·0,1 da largura 0,21·0,07·0,03 do corpo → 0,32·0,15·0,08 (Rebelle 0,31·0,18·0,06); −2 passa a 40
+            // px (0,58 contra 0,37). `docs/Painter/Pinceis/R2_A_pontas.md`.
+            ("pontas_esbate", "-1.0"),
         ],
         ..CHARCOAL
     },
@@ -143,7 +147,13 @@ pub const WET: &[Receita] = &[
             ("pressureOpacity", 0.75),
             ("pressureOpacityCurve", 1.5),
         ],
-        pincel: &[("dab_quina", "0.0"), ("shape", TRACOS_DA_CERA)],
+        pincel: &[
+            ("dab_quina", "0.0"),
+            ("shape", TRACOS_DA_CERA),
+            // R2-A: as pontas CARREGAM — o fim do recto de 200 0,64·0,28·0,09 → 0,82·0,55·0,32 do corpo (Rebelle
+            // 0,84·0,63·0,48); −4 esvazia a entrada (0,54 → 0,39). `docs/Painter/Pinceis/R2_A_pontas.md`.
+            ("pontas_esbate", "-2.5"),
+        ],
         nasce_de: Some("Soft Pastel"),
         ..SOFT_PASTEL
     },

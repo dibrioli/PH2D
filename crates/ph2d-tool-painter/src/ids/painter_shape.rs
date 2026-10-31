@@ -234,10 +234,14 @@ pub const PAINTER_BRUSH_PONTAS_RECTAS: NodeId = hash_node_id("painter_brush.pont
 pub const PAINTER_BRUSH_PONTAS_ALEM: NodeId = hash_node_id("painter_brush.pontas_alem");
 /// O tecto do campo de [`PAINTER_BRUSH_PONTAS_ALEM`] (a faixa do produto, `ph2d_painter_brush::PONTAS_ALEM_MAX`).
 pub const PAINTER_BRUSH_PONTAS_ALEM_MAX: f32 = ph2d_painter_brush::PONTAS_ALEM_MAX;
-/// **Ends fade** value sink (`0..8`, J6t). `SetValue` → `set_brush_pontas_esbate`.
+/// **Ends fade** value sink (`−4..8`, J6t; below `0` the ends load, R2-A). `SetValue` → `set_brush_pontas_esbate`.
 pub const PAINTER_BRUSH_PONTAS_ESBATE: NodeId = hash_node_id("painter_brush.pontas_esbate");
 /// O tecto do campo de [`PAINTER_BRUSH_PONTAS_ESBATE`] (`ph2d_painter_brush::PONTAS_ESBATE_MAX`).
 pub const PAINTER_BRUSH_PONTAS_ESBATE_MAX: f32 = ph2d_painter_brush::PONTAS_ESBATE_MAX;
+/// O chão do campo de [`PAINTER_BRUSH_PONTAS_ESBATE`]: abaixo de `0` as pontas CARREGAM (R2-A). Uma FAIXA do produto,
+/// medida (`docs/Painter/Pinceis/R2_A_pontas.md`): a `−4` a borda da tampa pousa 5× e a ponta da cera já passa o
+/// Rebelle; mais fundo a tampa vira um anel escuro.
+pub const PAINTER_BRUSH_PONTAS_ESBATE_MIN: f32 = -4.0;
 
 /// Dab **rotation** value sink (whole degrees). `SetValue` → `set_brush_dab_angle`.
 pub const PAINTER_BRUSH_DAB_ANGLE: NodeId = hash_node_id("painter_brush.dab_angle");

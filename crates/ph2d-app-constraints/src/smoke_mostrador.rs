@@ -15,12 +15,11 @@ use ph2d_ecs::canal_objeto::OPACIDADE;
 use ph2d_ecs::{ChildOf, GlobalTransform, Name, SimWorld, Transform};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_render::{DISC_TILE_KEY, WHITE_TILE_KEY};
 use ph2d_timeline::{
     AnimValue, Easing, EasingFamily, EasingMode, Interp, PropKind, TimelineIntent, TimelineState,
 };
 
-use crate::smoke::{peca, pilha};
+use crate::smoke::{bloco, disco, pilha};
 
 /// A altura da bóia: `(quadro, y)` — sobe depressa, espera, desce depressa, espera.
 pub const BOIA: [(i64, f32); 5] = [(0, -1.5), (6, 1.5), (30, 1.5), (36, -1.5), (60, -1.5)];
@@ -32,48 +31,34 @@ static FEITA: AtomicBool = AtomicBool::new(false);
 
 /// ⭐ Monta a cena 9. Devolve o ponteiro.
 pub(crate) fn mostrador(world: &mut World) -> Entity {
-    let boia = peca(
+    let boia = disco(
         world,
         "Bóia",
-        DISC_TILE_KEY,
         [-3.0, BOIA[0].1],
-        0.0,
         [0.7, 0.7],
-        [0.2, 0.6, 0.95, 1.0],
+        [0.2, 0.6, 0.95],
     );
-    let _ = peca(
+    let _ = disco(
         world,
         "Mostrador",
-        DISC_TILE_KEY,
         [0.5, 0.0],
-        0.0,
         [3.4, 3.4],
-        [0.25, 0.25, 0.28, 1.0],
+        [0.25, 0.25, 0.28],
     );
     let mut t = Transform::IDENTITY;
     t.translation.x = 0.5;
     let ponteiro = world
         .spawn((Name::new("Ponteiro"), t, GlobalTransform::from_transform(t)))
         .id();
-    let agulha = peca(
+    let agulha = bloco(
         world,
         "Agulha",
-        WHITE_TILE_KEY,
         [COMPRIMENTO / 2.0, 0.0],
-        0.0,
         [COMPRIMENTO, 0.12],
-        [0.95, 0.35, 0.2, 1.0],
+        [0.95, 0.35, 0.2],
     );
     world.entity_mut(agulha).insert(ChildOf(ponteiro));
-    let lampada = peca(
-        world,
-        "Lâmpada",
-        DISC_TILE_KEY,
-        [3.5, 0.0],
-        0.0,
-        [1.0, 1.0],
-        [1.0, 0.85, 0.3, 1.0],
-    );
+    let lampada = disco(world, "Lâmpada", [3.5, 0.0], [1.0, 1.0], [1.0, 0.85, 0.3]);
     let [baixo, cima] = [BOIA[0].1, BOIA[1].1].map(f64::from);
     let ponteiro_segue = Valor {
         fonte: Prop::Pose(Canal::Y),

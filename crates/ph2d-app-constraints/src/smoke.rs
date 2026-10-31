@@ -14,6 +14,7 @@
 //! | 10 | **Recreio** — os *behaviours*: o ÍMAN vai e volta (curva da timeline) e a LIMALHA é atraída por ele (Attract); a MOEDA treme mais quando o íman passa perto (Shake com Weight By); o BALÃO flutua (Float); a LUA orbita o PLANETA (Orbit) (`smoke_recreio`) |
 //! | 11 | **Painel do jogo** — o HUD que se arruma: a PONTUAÇÃO sobe com o Play e a MOEDA fica colada ao lado; estreite a janela e a pontuação ENCOLHE antes de a moeda invadir o MINIMAPA; a ferramenta **HUD Layout** do Vetor mostra e edita as setas (`smoke_painel`) |
 //! | 12 | **Partículas e mola** — a BOLA anda montada numa partícula da FONTE (Motion: formas, gravidade e um redemoinho; Copy Particle) e fica na pose dela quando a partícula morre; com a timeline PARADA, arraste o CORPO da antena e a PONTA balança e assenta (a mola ao vivo) (`smoke_particula`) |
+//! | 13 | **Interruptor e lâmpada** — a caixa «Enable 9-slice» do SWITCH liga no 30 e desliga no 60 (e ele sobe enquanto ela está marcada): a LAMP acende com a caixa (Follow Value caixa → opacidade, 0,2 … 1) e a caixa DELA marca-se com a altura do Switch (Follow Value altura → caixa) (`smoke_interruptor`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;
@@ -28,7 +29,7 @@ use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
 /// O roteador desta família — o maior nível que [`encenar`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_CONSTRAINT_SMOKE",
-    max_level: 12,
+    max_level: 13,
 }];
 
 /// O raio do olho da cena 2 e a folga da pupila dentro dele (o número que a sonda mede).
@@ -73,6 +74,7 @@ pub fn encenar(world: &mut World, nivel: u32) -> bool {
         9 => crate::smoke_mostrador::mostrador(world),
         10 => crate::smoke_recreio::recreio(world),
         12 => crate::smoke_particula::particulas_e_mola(world),
+        13 => crate::smoke_interruptor::interruptor(world),
         _ => return false,
     };
     world.insert_resource(Escolher(sujeito.to_bits()));
@@ -95,6 +97,7 @@ pub fn passo(
         .or_else(|| crate::smoke_recreio::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_painel::step(sim, hero, tl, ph))
         .or_else(|| crate::smoke_particula::step(sim, hero, tl, ph))
+        .or_else(|| crate::smoke_interruptor::step(sim, hero, tl, ph))
 }
 
 /// A cena abre com o sujeito escolhido e o cartão Constraints à vista — uma vez só.
@@ -140,6 +143,18 @@ pub(crate) fn peca(
         .id()
 }
 
+type Rgb = [f32; 3];
+
+/// Um disco opaco sem rotação.
+pub(crate) fn disco(w: &mut World, n: &str, c: [f32; 2], l: [f32; 2], [r, g, b]: Rgb) -> Entity {
+    peca(w, n, DISC_TILE_KEY, c, 0.0, l, [r, g, b, 1.0])
+}
+
+/// Um rectângulo opaco sem rotação.
+pub(crate) fn bloco(w: &mut World, n: &str, c: [f32; 2], l: [f32; 2], [r, g, b]: Rgb) -> Entity {
+    peca(w, n, WHITE_TILE_KEY, c, 0.0, l, [r, g, b, 1.0])
+}
+
 /// Empilha `kinds` em `dono`, cada um com o alvo `alvo` (por identidade durável).
 pub(crate) fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Entity>, f64)]) {
     assign_missing_stable_ids(world);
@@ -156,42 +171,10 @@ pub(crate) fn pilha(world: &mut World, dono: Entity, itens: &[(Kind, Option<Enti
 /// Cena 2 — **Olho.** Abre com a pupila escolhida.
 fn olho(world: &mut World) -> Entity {
     let d = 2.0 * RAIO_DO_OLHO;
-    let olho = peca(
-        world,
-        "Olho",
-        DISC_TILE_KEY,
-        [0.0, 0.0],
-        0.0,
-        [d, d],
-        [0.95, 0.95, 0.92, 1.0],
-    );
-    let bola = peca(
-        world,
-        "Bola",
-        DISC_TILE_KEY,
-        [3.0, 1.2],
-        0.0,
-        [0.5, 0.5],
-        [0.9, 0.15, 0.1, 1.0],
-    );
-    let pupila = peca(
-        world,
-        "Pupila",
-        DISC_TILE_KEY,
-        [0.0, 0.0],
-        0.0,
-        [0.7, 0.7],
-        [0.08, 0.08, 0.1, 1.0],
-    );
-    let seta = peca(
-        world,
-        "Seta",
-        WHITE_TILE_KEY,
-        [-3.0, -1.5],
-        0.0,
-        [1.4, 0.18],
-        [0.2, 0.45, 0.9, 1.0],
-    );
+    let olho = disco(world, "Olho", [0.0, 0.0], [d, d], [0.95, 0.95, 0.92]);
+    let bola = disco(world, "Bola", [3.0, 1.2], [0.5, 0.5], [0.9, 0.15, 0.1]);
+    let pupila = disco(world, "Pupila", [0.0, 0.0], [0.7, 0.7], [0.08, 0.08, 0.1]);
+    let seta = bloco(world, "Seta", [-3.0, -1.5], [1.4, 0.18], [0.2, 0.45, 0.9]);
     let copia = Kind::CopyTransform(CopyTransform {
         canais: Canais::LOCATION,
         space: Space::World,
@@ -216,34 +199,22 @@ fn olho(world: &mut World) -> Entity {
 
 /// Cena 3 — **Ponteiros.** Abre com o ponteiro do limite escolhido.
 fn ponteiros(world: &mut World) -> Entity {
-    let lado = [2.0, 0.2];
-    let limitado = peca(
-        world,
-        "Ponteiro com limite",
-        WHITE_TILE_KEY,
-        [0.0, 1.5],
-        170.0,
-        lado,
-        [0.9, 0.55, 0.1, 1.0],
-    );
-    let meio = peca(
-        world,
-        "Ponteiro a meio",
-        WHITE_TILE_KEY,
-        [0.0, -1.5],
-        170.0,
-        lado,
-        [0.2, 0.7, 0.35, 1.0],
-    );
-    let guia = peca(
-        world,
-        "Guia",
-        WHITE_TILE_KEY,
-        [3.5, -1.5],
-        -170.0,
-        lado,
-        [0.6, 0.6, 0.6, 1.0],
-    );
+    let [limitado, meio, guia] = [
+        ("Ponteiro com limite", [0.0, 1.5], 170.0, [0.9, 0.55, 0.1]),
+        ("Ponteiro a meio", [0.0, -1.5], 170.0, [0.2, 0.7, 0.35]),
+        ("Guia", [3.5, -1.5], -170.0, [0.6, 0.6, 0.6]),
+    ]
+    .map(|(nome, c, graus, [r, g, b])| {
+        peca(
+            world,
+            nome,
+            WHITE_TILE_KEY,
+            c,
+            graus,
+            [2.0, 0.2],
+            [r, g, b, 1.0],
+        )
+    });
     let q = std::f64::consts::FRAC_PI_4;
     let limite = Kind::Limit(Limit {
         rot: Some([-q, q]),
@@ -277,15 +248,7 @@ pub const ESPADA_NO_CHAO: [f32; 2] = [-1.0, -1.25];
 /// Cena 1 — **Mão e espada.** A espada tem um Child Of na mão a força 0; abre escolhida. A curva da
 /// mão é da timeline: a cena conduzida ([`crate::smoke_pega`]) grava-a.
 fn mao_e_espada(world: &mut World) -> Entity {
-    let _ = peca(
-        world,
-        "Chão",
-        WHITE_TILE_KEY,
-        [0.5, -1.4],
-        0.0,
-        [10.0, 0.12],
-        [0.35, 0.3, 0.25, 1.0],
-    );
+    let _ = bloco(world, "Chão", [0.5, -1.4], [10.0, 0.12], [0.35, 0.3, 0.25]);
     let (_, x, y, r) = MAO[0];
     let mao = peca(
         world,
@@ -296,14 +259,12 @@ fn mao_e_espada(world: &mut World) -> Entity {
         [0.5, 0.5],
         [0.95, 0.75, 0.6, 1.0],
     );
-    let espada = peca(
+    let espada = bloco(
         world,
         "Espada",
-        WHITE_TILE_KEY,
         ESPADA_NO_CHAO,
-        0.0,
         [1.6, 0.16],
-        [0.75, 0.8, 0.9, 1.0],
+        [0.75, 0.8, 0.9],
     );
     pilha(
         world,
@@ -349,16 +310,8 @@ fn osso(
 }
 
 /// A arte presa a um osso (filha dele, no espaço dele).
-fn arte(
-    world: &mut World,
-    osso: Entity,
-    nome: &str,
-    tile: u32,
-    centro: [f32; 2],
-    lado: [f32; 2],
-    cor: [f32; 4],
-) {
-    let e = peca(world, nome, tile, centro, 0.0, lado, cor);
+fn arte(world: &mut World, osso: Entity, nome: &str, c: [f32; 2], lado: [f32; 2], rgb: [f32; 3]) {
+    let e = bloco(world, nome, c, lado, rgb);
     world.entity_mut(e).insert(ph2d_ecs::ChildOf(osso));
 }
 
@@ -367,21 +320,12 @@ fn arte(
 fn braco(world: &mut World) -> Entity {
     let ombro = osso(world, "Ombro", [-2.0, -1.0], 20.0, None);
     let antebraco = osso(world, "Antebraço", [OSSO, 0.0], 40.0, Some(ombro));
-    let pele = [0.95, 0.75, 0.6, 1.0];
-    arte(
-        world,
-        ombro,
-        "Braço",
-        WHITE_TILE_KEY,
-        [OSSO / 2.0, 0.0],
-        [OSSO, 0.35],
-        pele,
-    );
+    let pele = [0.95, 0.75, 0.6];
+    arte(world, ombro, "Braço", [OSSO / 2.0, 0.0], [OSSO, 0.35], pele);
     arte(
         world,
         antebraco,
         "Antebraço (arte)",
-        WHITE_TILE_KEY,
         [OSSO / 2.0, 0.0],
         [OSSO, 0.3],
         pele,
@@ -390,20 +334,11 @@ fn braco(world: &mut World) -> Entity {
         world,
         antebraco,
         "Dedo",
-        WHITE_TILE_KEY,
         [OSSO + 0.3, 0.0],
         [0.6, 0.12],
-        [0.85, 0.6, 0.45, 1.0],
+        [0.85, 0.6, 0.45],
     );
-    let bola = peca(
-        world,
-        "Bola",
-        DISC_TILE_KEY,
-        BOLA,
-        0.0,
-        [0.45, 0.45],
-        [0.9, 0.15, 0.1, 1.0],
-    );
+    let bola = disco(world, "Bola", BOLA, [0.45, 0.45], [0.9, 0.15, 0.1]);
     let rodador = peca(
         world,
         "Rodador",
@@ -451,23 +386,13 @@ fn antena(world: &mut World) -> Entity {
 
 /// A antena com o corpo em `[x, y]`: devolve `(corpo, ponta)` (a cena 12 reusa-a parada).
 pub(crate) fn antena_em(world: &mut World, [x, y]: [f32; 2]) -> (Entity, Entity) {
-    let corpo = peca(
-        world,
-        "Corpo",
-        WHITE_TILE_KEY,
-        [x, y],
-        0.0,
-        [1.2, 1.0],
-        [0.3, 0.55, 0.85, 1.0],
-    );
-    let ponta = peca(
+    let corpo = bloco(world, "Corpo", [x, y], [1.2, 1.0], [0.3, 0.55, 0.85]);
+    let ponta = disco(
         world,
         "Ponta",
-        DISC_TILE_KEY,
         PONTA_NO_CORPO,
-        0.0,
         [0.4, 0.4],
-        [0.95, 0.35, 0.2, 1.0],
+        [0.95, 0.35, 0.2],
     );
     world.entity_mut(ponta).insert(ph2d_ecs::ChildOf(corpo));
     let comprimento = PONTA_NO_CORPO[1] - BASE_NO_CORPO[1];
@@ -495,10 +420,9 @@ pub(crate) fn antena_em(world: &mut World, [x, y]: [f32; 2]) -> (Entity, Entity)
         world,
         haste,
         "Haste (arte)",
-        WHITE_TILE_KEY,
         [comprimento / 2.0, 0.0],
         [comprimento, 0.12],
-        [0.95, 0.85, 0.35, 1.0],
+        [0.95, 0.85, 0.35],
     );
     let mola = Spring {
         duracao: 0.7,

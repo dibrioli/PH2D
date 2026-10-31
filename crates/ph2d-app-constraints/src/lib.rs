@@ -23,6 +23,7 @@ pub mod smoke;
 pub mod smoke_antena;
 pub mod smoke_braco;
 pub mod smoke_caixa;
+pub mod smoke_interruptor;
 pub mod smoke_mostrador;
 pub mod smoke_painel;
 pub mod smoke_particula;

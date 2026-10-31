@@ -16,7 +16,6 @@ use ph2d_core::Playhead;
 use ph2d_ecs::{GlobalTransform, MotionGenerator, Name, SimWorld, Transform};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_render::DISC_TILE_KEY;
 use ph2d_timeline::TimelineState;
 
 /// O nome do objecto Motion — o smoke do Motion procura-o por ele.
@@ -43,15 +42,7 @@ pub(crate) fn particulas_e_mola(world: &mut World) -> Entity {
             MotionGenerator,
         ))
         .id();
-    let bola = crate::smoke::peca(
-        world,
-        "Bola",
-        DISC_TILE_KEY,
-        BOLA_EM,
-        0.0,
-        [0.8, 0.8],
-        [1.0, 0.5, 0.1, 1.0],
-    );
+    let bola = crate::smoke::disco(world, "Bola", BOLA_EM, [0.8, 0.8], [1.0, 0.5, 0.1]);
     crate::smoke::pilha(
         world,
         bola,

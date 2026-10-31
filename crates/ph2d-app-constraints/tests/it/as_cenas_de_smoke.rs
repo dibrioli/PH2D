@@ -700,3 +700,58 @@ fn the_fountain_name_and_particle_are_the_same_in_motion_and_constraints() {
     let gate = include_str!("../../../ph2d-app-motion/src/motion_objeto_smoke_particula_tests.rs");
     assert_eq!(lido(gate, "const PARTICULA: u32 = "), PARTICULA.to_string());
 }
+
+/// ⭐ Cena 13 (o Follow Value sobre uma caixa, v25): pelas chaves da cena, no quadro 10 a caixa do
+/// Switch está desmarcada, ele em baixo, a Lamp a 0,2 e a caixa dela desmarcada; no 45 tudo ligado
+/// (a Lamp a 1 e a caixa dela marcada).
+#[test]
+fn the_switch_scene_lights_the_lamp_and_ticks_its_box_while_the_switch_box_is_ticked() {
+    use ph2d_app_constraints::smoke_interruptor::{LAMP, LUZ, SWITCH, caixa, chaves_do_switch};
+    use ph2d_core::Playhead;
+    use ph2d_ecs::canal::familia::OBJETO;
+    use ph2d_ecs::canal_objeto::OPACIDADE;
+    use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
+    use ph2d_timeline::TimelineState;
+    let (mut sim, _) = cena(13);
+    let (switch, lamp) = (chamada(&mut sim, SWITCH), chamada(&mut sim, LAMP));
+    let (mut tl, mut ph) = (TimelineState::default(), Playhead::default());
+    for i in chaves_do_switch(switch.to_bits(), tl.doc.fps_display) {
+        ph2d_timeline::apply_intent(&mut tl, &mut ph, i);
+    }
+    let (luz, k) = (FieldKey::new(OBJETO, OPACIDADE, 0, 0), caixa());
+    for (quadro, ligado) in [(10, false), (45, true)] {
+        let t = f64::from(quadro) / tl.doc.fps_display;
+        let w = sim.world_mut();
+        let marcada = ph2d_timeline::field_at(w, &tl.doc, switch.to_bits(), k, t).expect("a curva");
+        assert_eq!(
+            marcada,
+            f32::from(u8::from(ligado)),
+            "q{quadro}: a caixa do Switch"
+        );
+        let y = ph2d_timeline::world_pose_at(w, &tl.doc, switch.to_bits(), t)
+            .expect("a altura")
+            .translation
+            .y;
+        w.get_mut::<Transform>(switch).unwrap().translation.y = y;
+        let mut esc = CanaisEscritos::default();
+        esc.escrever(switch.to_bits(), k, marcada);
+        w.insert_resource(esc);
+        let mut lidos = CanaisLidos::default();
+        lidos.publicar(lamp.to_bits(), luz, 0.5);
+        lidos.publicar(lamp.to_bits(), k, 0.0);
+        w.insert_resource(lidos);
+        ph2d_app_constraints::valor::valores(&mut sim, None);
+        let e = sim.world().resource::<CanaisEscritos>();
+        let (opaca, caixa_dela) = (e.valor(lamp.to_bits(), luz), e.valor(lamp.to_bits(), k));
+        let quer = LUZ[usize::from(ligado)];
+        assert!(
+            opaca.is_some_and(|v| (f64::from(v) - quer).abs() < 1e-6),
+            "q{quadro}: a Lamp {opaca:?}, devia {quer}"
+        );
+        assert_eq!(
+            caixa_dela,
+            Some(f32::from(u8::from(ligado))),
+            "q{quadro}: a caixa da Lamp"
+        );
+    }
+}

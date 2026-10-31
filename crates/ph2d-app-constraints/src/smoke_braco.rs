@@ -9,9 +9,9 @@ use ph2d_constraints::Pose2;
 use ph2d_constraints_cola::Cola;
 use ph2d_constraints_ecs::Colas;
 use ph2d_ecs::{Locked, Transform, assign_missing_stable_ids, stable_id_of};
-use ph2d_render::{DISC_TILE_KEY, WHITE_TILE_KEY};
+use ph2d_render::WHITE_TILE_KEY;
 
-use crate::smoke::peca;
+use crate::smoke::{disco, peca};
 
 /// As medidas do oráculo (`fixtures/freecad_1_1_4_assembly_cola.json`): chão 4, manivela 1, biela 3,5, balancim 3.
 pub const CHAO: f64 = 4.0;
@@ -83,14 +83,12 @@ pub(crate) fn braco_articulado(world: &mut World) -> Entity {
         clippy::cast_possible_truncation,
         reason = "o `Transform` da casa é f32"
     )]
-    let mao = peca(
+    let mao = disco(
         world,
         "Mão",
-        DISC_TILE_KEY,
         [ponta[0] as f32, ponta[1] as f32],
-        0.0,
         [0.6, 0.6],
-        [0.95, 0.8, 0.6, 1.0],
+        [0.95, 0.8, 0.6],
     );
 
     assign_missing_stable_ids(world);

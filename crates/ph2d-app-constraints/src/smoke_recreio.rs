@@ -14,12 +14,11 @@ use ph2d_core::Playhead;
 use ph2d_ecs::{Name, SimWorld, stable_id_of};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_render::{DISC_TILE_KEY, WHITE_TILE_KEY};
 use ph2d_timeline::{
     AnimValue, Easing, EasingFamily, EasingMode, Interp, PropKind, TimelineIntent, TimelineState,
 };
 
-use crate::smoke::{peca, pilha};
+use crate::smoke::{bloco, disco, pilha};
 
 /// O x do íman: `(quadro, x)` — atravessa a cena e volta.
 pub const IMA: [(i64, f32); 3] = [(0, -4.5), (60, 4.5), (120, -4.5)];
@@ -34,60 +33,24 @@ static FEITA: AtomicBool = AtomicBool::new(false);
 
 /// ⭐ Monta a cena 10. Devolve a moeda.
 pub(crate) fn recreio(world: &mut World) -> Entity {
-    let ima = peca(
+    let ima = bloco(
         world,
         "Íman",
-        WHITE_TILE_KEY,
         [IMA[0].1, IMA_Y],
-        0.0,
         [0.6, 0.6],
-        [0.9, 0.2, 0.2, 1.0],
+        [0.9, 0.2, 0.2],
     );
-    let limalha = peca(
+    let limalha = disco(
         world,
         "Limalha",
-        DISC_TILE_KEY,
         [0.0, IMA_Y + 1.0],
-        0.0,
         [0.3, 0.3],
-        [0.4, 0.9, 0.5, 1.0],
+        [0.4, 0.9, 0.5],
     );
-    let moeda = peca(
-        world,
-        "Moeda",
-        DISC_TILE_KEY,
-        MOEDA,
-        0.0,
-        [0.6, 0.6],
-        [1.0, 0.8, 0.2, 1.0],
-    );
-    let balao = peca(
-        world,
-        "Balão",
-        DISC_TILE_KEY,
-        [-3.5, 1.5],
-        0.0,
-        [0.8, 1.0],
-        [0.3, 0.75, 0.95, 1.0],
-    );
-    let planeta = peca(
-        world,
-        "Planeta",
-        DISC_TILE_KEY,
-        [2.5, 1.5],
-        0.0,
-        [1.2, 1.2],
-        [0.25, 0.5, 0.9, 1.0],
-    );
-    let lua = peca(
-        world,
-        "Lua",
-        WHITE_TILE_KEY,
-        [4.0, 1.5],
-        0.0,
-        [0.35, 0.2],
-        [0.85, 0.85, 0.8, 1.0],
-    );
+    let moeda = disco(world, "Moeda", MOEDA, [0.6, 0.6], [1.0, 0.8, 0.2]);
+    let balao = disco(world, "Balão", [-3.5, 1.5], [0.8, 1.0], [0.3, 0.75, 0.95]);
+    let planeta = disco(world, "Planeta", [2.5, 1.5], [1.2, 1.2], [0.25, 0.5, 0.9]);
+    let lua = bloco(world, "Lua", [4.0, 1.5], [0.35, 0.2], [0.85, 0.85, 0.8]);
     // A limalha cola-se ao íman: desenha-se por cima dele, senão some debaixo do quadrado.
     world
         .entity_mut(limalha)

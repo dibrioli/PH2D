@@ -73,6 +73,8 @@ pub(crate) fn prewarm(
 ) {
     if session_slot.is_none() {
         *session_slot = Some(PainterGpuPreview::new(renderer.gpu()));
+        // A água do Wet Paint corre no MESMO device (LIGACAO_PLACA.md).
+        ph2d_tool_painter::PainterTool::instala_placa_do_wet(renderer.gpu());
     }
     // ⚠️ E os RECURSOS do COMPOSITOR e do premul, que nascem do TAMANHO DO CANVAS e que só a 1ª
     // execução aloca — medido em `ph2d-render/tests/it/measure_first_stroke_pipelines.rs`.
@@ -302,6 +304,7 @@ pub(super) fn drive(
         release_slot(renderer, painter_preview_gpu);
         seed_full = true;
     }
+    ph2d_tool_painter::PainterTool::instala_placa_do_wet(renderer.gpu());
     let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
 
     // The composite region: the WHOLE canvas on a seed frame (so the persistent

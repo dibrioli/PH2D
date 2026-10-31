@@ -226,6 +226,18 @@ impl SecaGpu {
         gpu.queue.write_buffer(&self.ub, 0, bytemuck::bytes_of(&u));
     }
 
+    /// As faixas = a caixa inteira em cada linha (o `span_x_of` com faixas desligadas).
+    pub fn faixas_da_caixa(&self, gpu: &GpuContext, g: &Grid) {
+        let fx: Vec<[i32; 2]> = (0..g.rows as i32)
+            .map(|y| {
+                let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, false, g.bx0, g.bx1, y);
+                [lo, hi]
+            })
+            .collect();
+        gpu.queue
+            .write_buffer(&self.faixa, 0, bytemuck::cast_slice(&fx));
+    }
+
     /// Grava `n` secagens (borda → seca) num codificador.
     pub fn encode(&self, enc: &mut wgpu::CommandEncoder, n: u32) {
         if self.u.by0 > self.u.by1 || self.u.bx0 > self.u.bx1 {

@@ -38,6 +38,7 @@
 
 use super::fita::{self, Divergencia, MarcaDaAgua, Pergunta, RespostaDoWorker, RitmoDaAgua};
 use super::offthread_ritmo::{self, Ritmado};
+mod placa; // a água na PLACA no worker (LIGACAO_PLACA.md)
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -261,7 +262,9 @@ fn worker_loop(
     // [`crate::wet_diag`] — sem eles o log do produto imprimia `sim 0.00ms x0`,
     // e a pergunta *"a água lenta é trabalho ou agendamento?"* não tinha número.
     let mut step_us: u64 = 0;
+    let mut placa = placa::Placa::default();
     while let Ok(mut engine) = rx.recv() {
+        placa.recebe(&mut engine);
         crate::wet_diag::note_away_closed();
         loop {
             if want.swap(false, Ordering::AcqRel) {
@@ -272,6 +275,7 @@ fn worker_loop(
                 // creditada às janelas que ela ATRAVESSA, não àquela em que
                 // fecha (`wet_diag::note_away_open`).
                 crate::wet_diag::note_away_open();
+                placa.devolve(&mut engine);
                 if tx.send(engine).is_err() {
                     return;
                 }
@@ -289,7 +293,7 @@ fn worker_loop(
                 continue;
             }
             let t = Instant::now();
-            let closed = engine.step_stage().is_some();
+            let closed = placa.passo(&mut engine).is_some() || engine.step_stage().is_some();
             let spent = t.elapsed().as_micros() as u64;
             step_us += spent;
             crate::wet_diag::note_busy(spent);

@@ -10785,6 +10785,7 @@ dependencies = [
  "ph2d-pigment",
  "ph2d-tool-registry",
  "ph2d-vector",
+ "ph2d-wet-gpu",
  "ph2d-wet-paint",
  "postcard",
  "rayon",

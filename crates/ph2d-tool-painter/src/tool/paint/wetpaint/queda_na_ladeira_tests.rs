@@ -5,7 +5,6 @@
 use super::agua_sobre_oleo_tests::{com_oleo, ponteiro, preset, relato};
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
-use ph2d_wet_paint::tuning::Knob;
 
 /// O tique da tela.
 const TIQUE: f32 = 1000.0 / 60.0;
@@ -102,22 +101,12 @@ fn diag_a_queda_na_ladeira() {
     }
 }
 
-/// Uma variante da sonda J11: a lei da [`ph2d_wet_paint::solver::sonda_da_queda`] (`0` hoje · `3` hoje contado ·
-/// `1` tecto × `w` · `2` ladeira × `w` · `4` ladeira × `r`, linear) e um factor GLOBAL num knob (`None` = o de sempre).
-#[derive(Clone, Copy)]
-struct Variante {
-    nome: &'static str,
-    lei: u8,
-    knob: Option<(&'static str, Knob, f64)>,
-}
-
-/// O que a sonda J11 lê de uma corrida: a massa nova fora do óleo nas `marcas`, a distância média dessa massa ao eixo
-/// do óleo (células) em cada marca, o `film` médio no óleo ao soltar e a fracção de termos no tecto do nivelamento.
+/// O que uma corrida J11 lê: a massa nova fora do óleo nas `marcas`, a distância média dessa massa ao eixo do óleo
+/// (células) em cada marca, o `film` médio no óleo ao soltar e a imagem mostrada no fim.
 struct Leitura {
     fora: Vec<f64>,
     dist: Vec<f64>,
     film: f64,
-    tecto: f64,
     imagem: Vec<u8>,
 }
 
@@ -135,9 +124,8 @@ fn grade(t: &mut PainterTool) -> (usize, Vec<f32>) {
     (g.s, (0..g.cells).map(|i| g.sett[i] + g.susp[i]).collect())
 }
 
-fn queda_v(escala: f64, v: Variante, fref: f32, marcas: &[usize]) -> Leitura {
-    use ph2d_wet_paint::solver::sonda_da_queda as sd;
-    use std::sync::atomic::Ordering::Relaxed;
+/// Um Wet Flat (água `escala` × a do preset, Real Oil ligado) ao longo da crista do Dabber assentado.
+fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
     let mut t = com_oleo();
     let (s, antes) = grade(&mut t);
     // O eixo do óleo: a linha média das células com óleo.
@@ -156,18 +144,6 @@ fn queda_v(escala: f64, v: Variante, fref: f32, marcas: &[usize]) -> Leitura {
     t.set_wet_oleo_real_ligado(true);
     t.set_brush_size_px(12.0);
     t.set_brush_color_srgb8([240, 130, 60]);
-    if let Some((chave, k, f)) = v.knob {
-        let alvo = t.paint.wetpaint.knobs.get(k) * f;
-        t.paint.wetpaint.knobs.set(k, alvo);
-        assert!(
-            (t.paint.wetpaint.knobs.get(k) - alvo).abs() < 1e-9,
-            "o knob {chave} chegou"
-        );
-    }
-    sd::FREF.store(fref.to_bits(), Relaxed);
-    sd::VARIANTE.store(v.lei, Relaxed);
-    sd::N_LADEIRA.store(0, Relaxed);
-    sd::N_TECTO.store(0, Relaxed);
     t.on_canvas_pointer(ponteiro(60.0, 90.0, PointerPhase::Down));
     for k in 1..=30 {
         t.on_canvas_pointer(ponteiro(60.0 + 4.0 * k as f32, 90.0, PointerPhase::Move));
@@ -176,21 +152,6 @@ fn queda_v(escala: f64, v: Variante, fref: f32, marcas: &[usize]) -> Leitura {
     t.on_canvas_pointer(ponteiro(180.0, 90.0, PointerPhase::Up));
     let film = {
         t.wet_bring_home();
-        if let Some((chave, k, _)) = v.knob {
-            let vivo = t
-                .paint
-                .wetpaint
-                .session
-                .as_ref()
-                .expect("a sessão")
-                .engine
-                .tuning
-                .get(k);
-            assert!(
-                (vivo - t.paint.wetpaint.knobs.get(k)).abs() < 1e-9,
-                "o knob {chave} chegou ao motor"
-            );
-        }
         let g = &t
             .paint
             .wetpaint
@@ -225,86 +186,58 @@ fn queda_v(escala: f64, v: Variante, fref: f32, marcas: &[usize]) -> Leitura {
         fora.push(mm);
         dist.push(md / mm.max(1e-9));
     }
-    let nl = sd::N_LADEIRA.load(Relaxed);
-    let tecto = sd::N_TECTO.load(Relaxed) as f64 / nl.max(1) as f64;
-    sd::VARIANTE.store(0, Relaxed);
     let imagem = super::agua_sobre_oleo_tests::mostrada(&mut t);
     Leitura {
         fora,
         dist,
         film,
-        tecto,
         imagem,
     }
 }
 
-/// SONDA J11 — a queda pela diluição (HANDOFF_JANELA_10 «Aberto 1»): quem manda na velocidade (o tecto do
-/// nivelamento × o `MaxVelocity`) e ≤ 4 leis simuladas EM EXECUÇÃO, intercaladas num só processo. Grava a prancha
-/// em `PH2D_SONDA_DIR` (`J11_<escala>_<variante>.ppm`).
+/// A massa fora do óleo aos 240 tiques com água ×0,15 na lei ANTERIOR à J11 (a ladeira inteira, qualquer que fosse a
+/// água): `23 654` (commit `6e466569d2`, prancha `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`).
+const POUCA_ANTES_J11: f64 = 23_654.0;
+
+/// ⭐ **A queda cresce com a diluição** (dono 30/10, J11 — escolheu a V3 da prancha
+/// `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`): sobre a crista do óleo, o pincel quase seco não escorre
+/// (≤ 10 % do que escorria) e a massa que desce cresce com a água: pouca < média < muita.
+/// Vermelho visto na lei anterior: pouca 23 654 (e 12 618 na árvore de 30/10 22 h, com o `PINCEL_DE_OLEO` de volta);
+/// com a lei: 1 438 · 70 270 · 120 564.
 #[test]
-#[ignore = "diagnóstico J11 (sonda, não é lei): corre-se à mão com PH2D_SONDA_DIR"]
+fn a_queda_cresce_com_a_diluicao() {
+    let q: Vec<f64> = [0.15, 0.5, 1.0]
+        .iter()
+        .map(|e| queda_j11(*e, &[240]).fora[0])
+        .collect();
+    let (pouca, media, muita) = (q[0], q[1], q[2]);
+    assert!(
+        pouca < media && media < muita,
+        "pouca {pouca:.0} < média {media:.0} < muita {muita:.0}"
+    );
+    assert!(
+        pouca <= 0.10 * POUCA_ANTES_J11,
+        "o pincel quase seco ainda escorre: {pouca:.0} > 10 % de {POUCA_ANTES_J11:.0}"
+    );
+}
+
+/// SONDA J11 — a queda pela diluição na lei do produto (tabela do relatório; grava `J11_<escala>.ppm` em
+/// `PH2D_SONDA_DIR`).
+#[test]
+#[ignore = "diagnóstico J11: corre-se à mão com PH2D_SONDA_DIR"]
 fn diag_a_queda_pela_diluicao() {
     const M: [usize; 4] = [15, 60, 120, 240];
-    let hoje = Variante {
-        nome: "hoje",
-        lei: 3,
-        knob: None,
-    };
-    let vs = [
-        hoje,
-        Variante {
-            nome: "MaxVel×0,5",
-            lei: 3,
-            knob: Some(("maxVelocity", Knob::MaxVelocity, 0.5)),
-        },
-        Variante {
-            nome: "LevelClamp×0,5",
-            lei: 3,
-            knob: Some(("levelClamp", Knob::LevelClamp, 0.5)),
-        },
-        Variante {
-            nome: "V1 tecto×w",
-            lei: 1,
-            knob: None,
-        },
-        Variante {
-            nome: "V2 ladeira×w",
-            lei: 2,
-            knob: None,
-        },
-        Variante {
-            nome: "V3 ladeira×r",
-            lei: 4,
-            knob: None,
-        },
-    ];
-    // O `film` de referência = o do pincel cheio (água ×1), lido HOJE neste mesmo processo.
-    let fref = queda_v(1.0, hoje, 1.0, &[0]).film as f32;
-    relato(format!(
-        "J11 fref (film no óleo, água ×1) = {fref:.3}; marcas {M:?}"
-    ));
-    let escalas = [0.15, 0.5, 1.0];
-    for (r, escala) in escalas.iter().enumerate() {
-        for j in 0..vs.len() {
-            let v = vs[(j + r) % vs.len()];
-            let l = queda_v(*escala, v, fref, &M);
-            let f: Vec<String> = l.fora.iter().map(|x| format!("{x:.0}")).collect();
-            let d: Vec<String> = l.dist.iter().map(|x| format!("{x:.1}")).collect();
-            relato(format!(
-                "água ×{escala} {:<15} film {:.3} tecto {:.0}% | massa fora {} | dist {}",
-                v.nome,
-                l.film,
-                100.0 * l.tecto,
-                f.join(" · "),
-                d.join(" · ")
-            ));
-            let nome = v
-                .nome
-                .split(' ')
-                .next()
-                .unwrap_or(v.nome)
-                .replace(['×', ','], "_");
-            super::agua_sobre_oleo_tests::grava(&format!("J11_{escala}_{nome}"), &l.imagem);
-        }
+    relato(format!("J11 marcas {M:?}"));
+    for escala in [0.15, 0.5, 1.0] {
+        let l = queda_j11(escala, &M);
+        let f: Vec<String> = l.fora.iter().map(|x| format!("{x:.0}")).collect();
+        let d: Vec<String> = l.dist.iter().map(|x| format!("{x:.1}")).collect();
+        relato(format!(
+            "água ×{escala} film {:.3} | massa fora {} | dist {}",
+            l.film,
+            f.join(" · "),
+            d.join(" · ")
+        ));
+        super::agua_sobre_oleo_tests::grava(&format!("J11_{escala}"), &l.imagem);
     }
 }

@@ -33,44 +33,14 @@ pub(crate) struct LadeiraDoOleo {
     r0: usize,
     s: usize,
     h: Vec<f32>,
-    /// A variante da [`sonda`] lida uma vez por passe, e o `film` de referência.
-    sonda: (u8, f64),
 }
 
-/// **SONDA da queda pela diluição** (J11, `queda_na_ladeira_tests::diag_a_queda_pela_diluicao`): variantes de lei
-/// trocadas em EXECUÇÃO (nunca `const` recompilada), com `w = min(1, film ÷ FREF)²` (lubrificação: a água fina
-/// corre devagar). `0` = a lei de sempre, ao bit · `1` = o tecto do nivelamento × `w` · `2` = a ladeira × `w` ·
-/// `3` = a de sempre, contada · `4` = a ladeira × `film ÷ FREF` (linear). Os contadores só correm com variante ≠ 0.
-/// Não é a lei do produto — o dono escolhe pela prancha `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`.
-#[doc(hidden)]
-pub mod sonda {
-    use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering::Relaxed};
-
-    /// A variante viva.
-    pub static VARIANTE: AtomicU8 = AtomicU8::new(0);
-    /// O `film` de referência (`f32` em bits).
-    pub static FREF: AtomicU32 = AtomicU32::new(0x3F80_0000);
-    /// Termos de célula com ladeira ≠ 0.
-    pub static N_LADEIRA: AtomicU64 = AtomicU64::new(0);
-    /// … desses, os que bateram no tecto do nivelamento.
-    pub static N_TECTO: AtomicU64 = AtomicU64::new(0);
-
-    pub(super) fn agora() -> (u8, f64) {
-        (
-            VARIANTE.load(Relaxed),
-            f64::from(f32::from_bits(FREF.load(Relaxed))).max(1e-6),
-        )
-    }
-
-    pub(super) fn conta(com_ladeira: bool, no_tecto: bool) {
-        if com_ladeira {
-            N_LADEIRA.fetch_add(1, Relaxed);
-            if no_tecto {
-                N_TECTO.fetch_add(1, Relaxed);
-            }
-        }
-    }
-}
+/// O `film` do Wet Flat CHEIO sobre a crista do óleo (água ×1), MEDIDO pela sonda J11 (`diag_a_queda_pela_diluicao`):
+/// `0,983`. A ladeira que EMPURRA a água ladeira abaixo pesa `min(1, film ÷ FILM_CHEIO)` — o pincel quase seco não
+/// escorre, o diluído sim (dono 30/10 escolheu a V3 da prancha `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`).
+/// A ladeira que SEGURA (contra a diferença de água, a parede ao pé do óleo) fica inteira: pesá-la deixava a água fina
+/// subir o óleo (`a_agua_nao_sobe_a_ladeira_do_oleo`: 106 213 de massa no miolo, vermelho).
+pub(crate) const FILM_CHEIO: f64 = 0.983;
 
 impl LadeiraDoOleo {
     /// `None` sem o campo do óleo (nenhum traço com o Real Oil nesta grade) ou sem altura nenhuma nas linhas; `antes` =
@@ -93,16 +63,11 @@ impl LadeiraDoOleo {
                 }
             }
         }
-        alguma.then_some(Self {
-            r0,
-            s,
-            h,
-            sonda: sonda::agora(),
-        })
+        alguma.then_some(Self { r0, s, h })
     }
 
-    /// O termo de nivelamento de um eixo (`dfilm` = a diferença de `film` entre os vizinhos, `o` = a da ladeira, `f` =
-    /// o `film` desta célula), já clampado. Variante 0 da [`sonda`] = a lei de sempre, ao bit.
+    /// O termo de nivelamento de um eixo, já clampado: `dfilm` = a diferença de `film` entre os vizinhos, `o` = a da
+    /// ladeira — pesada pela água desta célula (`f`) quando não se opõe a `dfilm` (ver [`FILM_CHEIO`]).
     #[inline]
     pub(crate) fn termo(
         &self,
@@ -113,21 +78,12 @@ impl LadeiraDoOleo {
         dif: f64,
         clamp: f64,
     ) -> f64 {
-        let (v, fref) = self.sonda;
-        if v == 0 {
-            return ((dfilm + o) * level_k * dif).clamp(-clamp, clamp);
-        }
-        let r = (f / fref).clamp(0.0, 1.0);
-        let w = r * r;
-        let (o, clamp) = match v {
-            1 => (o, clamp * w),
-            2 => (o * w, clamp),
-            4 => (o * r, clamp),
-            _ => (o, clamp),
+        let o = if o * dfilm < 0.0 {
+            o
+        } else {
+            o * (f / FILM_CHEIO).clamp(0.0, 1.0)
         };
-        let lx = (dfilm + o) * level_k * dif;
-        sonda::conta(o != 0.0, lx.abs() >= clamp);
-        lx.clamp(-clamp, clamp)
+        ((dfilm + o) * level_k * dif).clamp(-clamp, clamp)
     }
 
     /// A altura na célula fina `fi` (`0` fora das linhas).

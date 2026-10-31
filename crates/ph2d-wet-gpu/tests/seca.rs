@@ -133,7 +133,11 @@ fn ramos_da_secagem(g: &Grid, c: &Grid, p: &Grid, u: &SecaU) -> (usize, f64) {
     for y in 1..=H {
         for x in 1..=W {
             let i = x + y * g.s;
-            for (a, b) in [(c.film[i], p.film[i]), (c.susp[i], p.susp[i]), (c.sett[i], p.sett[i])] {
+            for (a, b) in [
+                (c.film[i], p.film[i]),
+                (c.susp[i], p.susp[i]),
+                (c.sett[i], p.sett[i]),
+            ] {
                 rel = rel.max(f64::from((a - b).abs()) / f64::from(a.abs()).max(1.0));
             }
             let d = (0..3)
@@ -175,7 +179,8 @@ fn ramos_da_secagem(g: &Grid, c: &Grid, p: &Grid, u: &SecaU) -> (usize, f64) {
             let dm64 = (s * (1.0 - (n64 / f).clamp(0.0, 1.0)) * bias).min(s);
             let (f3, s3, t3) = (g.film[i], g.susp[i], g.sett[i]);
             let ev3 = ev as f32;
-            let mut n32 = f3 * u.retention - u.evap_base * ((1.0 - ev3) * u.edge_dark + u.base_evap);
+            let mut n32 =
+                f3 * u.retention - u.evap_base * ((1.0 - ev3) * u.edge_dark + u.base_evap);
             if n32 < 0.0001 {
                 n32 = 0.0;
             }
@@ -249,7 +254,10 @@ fn a_secagem_na_placa_casa_com_a_cpu() {
             "cena {k} · 1 secagem: massa rel. máx {rel:.2e} · células com Δrgb > 1 nível: {ramos} · ecrã Δ máx {ecra1:.4}"
         );
         assert!(rel <= EPS_MASSA_REL, "cena {k}: massa relativa {rel:.2e}");
-        assert!(ecra1 <= EPS_ECRA_1, "cena {k}: ecrã após 1 secagem Δ {ecra1:.4}");
+        assert!(
+            ecra1 <= EPS_ECRA_1,
+            "cena {k}: ecrã após 1 secagem Δ {ecra1:.4}"
+        );
         assert!(
             ramos * RAMOS_POR <= W * H,
             "cena {k}: {ramos} células viram de ramo (tecto 1 em {RAMOS_POR})"

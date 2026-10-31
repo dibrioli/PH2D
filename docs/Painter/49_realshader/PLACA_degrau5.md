@@ -37,6 +37,53 @@ Leitura: o cancelamento do `entre_perfis` era 2/3 do p99.9; com Lagrange o f32 f
 sob Glaze. O `sett_rgb` 66 numa célula a 1 secagem (cena 1) é um ramo do Newton que vira (cego/clamp) — não
 sobrevive à cor final; o gate de campos de 1 secagem ainda NÃO afirma ε (só imprime).
 
+## Ronda 2 (31/10)
+
+**Radeon** = `VK_ICD_FILENAMES`/`VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json` (README §2b).
+
+### Secagem única — tolerâncias asseridas (`tests/seca.rs`, 512×320)
+
+| placa | cena | massa rel. máx (tecto 1e-4) | células Δrgb > 1 (tecto 1/400) | ecrã Δ máx (tecto 1,0) | 150: máx · p99.9 |
+|---|---|---|---|---|---|
+| RTX | 0 | 2,3e-5 | 0 | 0,18 | 0,70 · 0,10 |
+| RTX | 1 Glaze | 2,3e-5 | 148 / 163 840 | 0,64 | 0,63 · 0,11 |
+| Radeon | 0 | 1,9e-5 | 0 | 0,22 | 0,70 · 0,10 |
+| Radeon | 1 Glaze | 1,9e-5 | 126 / 163 840 | 0,64 | 0,63 · 0,10 |
+
+Porquê o ramo vira: o teste refaz a massa nas células divergentes. `sett+dm` e `susp−dm` caem no MESMO índice
+truncado de `alpha_of_mass` em f32 e em f64, por isso não é a massa. Todas são `assenta` com `a_s = 0` (sett 0),
+Glaze 0,8 e `a_s2 = α(9..30)` pequeno: a cor guardada mal muda o ecrã (`∂ecrã/∂x` perto de
+**`CEGO_COM_GLAZE = 0,01`**), e o Newton pára a 0,01 nível do ecrã. O canal decide «cego / não cego» nesse
+limiar, por f32 × f64; o resultado são 3–45 níveis de cor GUARDADA que quase não se veem. Na cena 0 (sem Glaze)
+o ecrã Δ 0,18–0,22 vem do outro limiar: a massa de ±1 ulp (2,4e-4) que muda de índice truncado da tabela de
+opacidade (um degrau = 0,002 × 255 = 0,51 nível).
+
+### ms (parede, mínimo de 7 rondas, aguada 4096×2560, `examples/mede_seca.rs`)
+
+| placa | secagem | passo sem secagem (ciclo 12) | **PASSO com secagem 1 em 6** | loadavg |
+|---|---|---|---|---|
+| RTX 5060 Ti | **5,16** | 7,95 | **9,24** | 10–30 |
+| Radeon RADV | 85,7 | 133,3 | 142,2 | 17–30 |
+
+CPU (sonda, rodada 3): ~243 ms por secagem 4K com SEM; passo médio ~100 ms. A secagem e o passo usam buffers
+SEPARADOS (`SecaGpu` × `AdvectGpu`): a soma é a de passadas em série; no produto partilharão o estado (o custo
+cai, nunca sobe).
+
+### Gate de cor na cena 4K (4096×2560, 150 secagens, `SECA_COR=1`)
+
+| placa | cena | máx | p99.9 | p99 | u8 máx | Δ>0,5 | veredito |
+|---|---|---|---|---|---|---|---|
+| RTX | 0 | 0,873 | 0,103 | 2e-4 | 1 | 151 | ✓ |
+| RTX | 1 filme+Glaze | **1,0055** | 0,116 | 9e-4 | 1 | 345 | ⛔ máx (por 0,006) |
+| Radeon | 0 | 0,703 | 0,107 | 2e-4 | 1 | 119 | ✓ |
+| Radeon | 1 filme+Glaze | **1,0057** | 0,118 | 9e-4 | 1 | 402 | ⛔ máx (por 0,006) |
+
+⛔ Na cena 4K com Glaze, o máx passa o critério por 0,006 nível nas duas placas, com o p99.9 5× abaixo. Não baixei
+o critério. Os candidatos são o mesmo ramo da secagem única, acumulado (uma célula), e não um erro difuso: o p99
+é 9e-4. Por isso o Kahan / double-float das somas (a), (b) NÃO atacam isto. Falta medir e tentar: (1) a decisão
+`|d| < cego` com histerese/margem idêntica nas duas (mudaria a CPU — não), ou (2) a derivada e o passo do Newton
+em double-float SÓ quando `|d|` está a 2× do `cego` (imita a decisão da CPU); localizar a célula do máx primeiro.
+
 ## Falta (por ordem)
 
 1. **Radeon**: `WGPU_ADAPTER_NAME=radeon` não escolhe a placa (o `GpuContext::new` ignora) — correr o gate

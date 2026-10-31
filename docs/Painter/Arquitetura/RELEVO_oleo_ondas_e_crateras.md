@@ -54,7 +54,22 @@ Thick Impasto — o pior pincel:
 | par | 0,2 | bingham1 | 2 691 | 89 | 1,13 | 0,023 | −0,52 |
 
 Knife Smooth 3 (perp): Water 0,2 prod `crat_out 31 · deriva 0,035` → bingham1 `4 · 0,002` (= Water 0); Water 0,5 prod
-`253 · 0,069`. Os restantes pincéis (Filbert, Flat Bristle) e a grelha inteira: correr a sonda com as variáveis da §1.
+`253 · 0,069`.
+
+Filbert e Flat Bristle (`crat_out` · `ondas` · `deriva_max`):
+
+| pincel | cruz | Water | prod | sem_level | bingham1 |
+|---|---|---|---|---|---|
+| Filbert | perp | 0,2 | 370 · 0,85 · 0,52 | 3 461 · 0,93 · 1,82 | **2** · 6,13 · 0,25 |
+| Filbert | perp | 0,5 | **1 811** · 3,64 · 0,40 | 1 727 · 1,08 · 0,74 | **2** · 8,24 · 0,26 |
+| Flat Bristle | perp | 0,5 | 149 · 1,22 · 0,19 | 2 993 · 1,10 · 0,96 | **2** · 1,10 · 0,21 |
+| Flat Bristle | perp | 0,2 | 74 · 0,72 · 0,37 | 5 461 · 0,62 · 2,14 | **3** · 1,63 · 0,24 |
+
+⚠️ Nestes dois pincéis `Knob::Leveling = 0` PIORA (até 5 461): o knob não é «sem escoamento». Num pincel com pouca
+tinta, o nivelamento é o que espalha a água; sem ele, a água fica acumulada e escorre por outro caminho. A prova de
+que o mal é ESCOAMENTO DA TINTA, e não um termo em particular, é a Bingham: zera `crat_out` (2–3 células, a borda da
+pegada) e a deriva (= Water 0) em TODOS os pincéis e Waters, incluindo Water 0,5 nestes dois. O `ondas` do Filbert
+(6,1 já com Water 0 e com qualquer variante) é o relevo das cerdas do próprio dab, não escoamento.
 
 **Mecanismo 1 — ondas, crateras e deriva FORA do contacto = o NIVELAMENTO DA ÁGUA a carregar a tinta grossa.**
 `solver/flow_jacobi.rs` (o termo `lx`/`ly` de *Leveling*, `(dfilm)·level_k·dif`, e com a ladeira
@@ -85,7 +100,7 @@ mover a tinta onde toca.
 Antes × depois (Thick Impasto perp, Water 0,2): `crat_out 4 686 → 64`, `ondas 2,97 → 0,99`, `deriva 0,232 → 0,003` — o
 mesmo que Water 0, ou seja, zero escoamento fora do contacto. `τ₀ ∈ {0,3; 1; 3}` dão o mesmo número a Water 0,2.
 
-**Aberto na cura:** a Water 0,5 o factor `(1 − film/FILM_CHEIO)²` já é pequeno e a cura quase não actua
+**Aberto na cura:** no Thick Impasto (e só nele) a Water 0,5 o factor `(1 − film/FILM_CHEIO)²` já é pequeno e a cura quase não actua
 (`crat_out 3 080 → 2 923`), enquanto `sem_level` dá 338. A dependência de `τ_y` com a água tem de ser calibrada pela
 grandeza da F2 (`F2_grandezas_fisicas.md` §2: `τ_y(φ, m, água)` — a fracção de diluente da RECEITA, não o `film`
 instantâneo da célula). É exactamente o lugar do E7 (escoamento por somas).

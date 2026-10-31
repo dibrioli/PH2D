@@ -1,0 +1,280 @@
+//! DIAGNÓSTICO (31/10, não comitar): `PH2D_OLEO_APP=1` — reproduz no APP o «óleo sobre óleo» do dono:
+//! N passadas em vaivém/cruzadas de AZUL sobre a mesma zona, depois M passadas de AMARELO numa faixa
+//! diagonal por cima, um evento de ponteiro por vez ao ritmo dos quadros reais (relógio real).
+//! Grava o documento composto (o que a tela mostra, com a luz do relevo) em PNG:
+//! `<OUT>/c1.png` (1 passada = controlo), `<OUT>/azul.png`, `<OUT>/amarelo.png`; depois imprime FIM.
+//! Env: PRESET (caminho sob assets/brushes) · RAIO · N_AZUL · N_AMARELO · LADO · EVQ · PASSO · GAP · OUT.
+
+use super::*;
+use std::sync::Mutex;
+
+struct St {
+    fase: u32,
+    quadros: u32,
+    bits: u64,
+    k: u32,
+    passada: u32,
+    dump: u32,
+}
+
+static ST: Mutex<St> = Mutex::new(St {
+    fase: 0,
+    quadros: 0,
+    bits: 0,
+    k: 0,
+    passada: 0,
+    dump: 0,
+});
+
+fn env_f(n: &str, d: f32) -> f32 {
+    std::env::var(n).ok().and_then(|v| v.parse().ok()).unwrap_or(d)
+}
+
+/// A recta da passada `i` (0-based) da cor `cor` (0 azul, 1 amarelo), em px da tela.
+fn recta(i: u32, cor: u32, l: f32) -> ([f32; 2], [f32; 2]) {
+    let c = [0.5 * l, 0.5 * l];
+    let z = 0.42 * l;
+    if cor == 0 {
+        // vaivém: horizontais desfasadas, alternando o sentido; a cada 3.ª uma cruzada (±35°)
+        let off = (((i as f32) * 0.618_034).fract() - 0.5) * 0.8 * z;
+        let ang: f32 = match i % 3 {
+            2 => if (i / 3) % 2 == 0 { 0.61 } else { -0.61 },
+            _ => 0.0,
+        };
+        let (s, co) = ang.sin_cos();
+        let n = [-s, co];
+        let m = [c[0] + n[0] * off, c[1] + n[1] * off];
+        let a = [m[0] - co * z * 0.5, m[1] - s * z * 0.5];
+        let b = [m[0] + co * z * 0.5, m[1] + s * z * 0.5];
+        if i % 2 == 0 { (a, b) } else { (b, a) }
+    } else {
+        // faixa diagonal (45°) que corta a mancha azul e sai para o papel, em vaivém
+        let off = (((i as f32) * 0.618_034).fract() - 0.5) * 0.25 * z;
+        let (s, co) = (0.7071_f32, -0.7071_f32);
+        let n = [-s, co];
+        let m = [c[0] - 0.12 * l + n[0] * off, c[1] + 0.05 * l + n[1] * off];
+        let a = [m[0] - co * z * 0.7, m[1] - s * z * 0.7];
+        let b = [m[0] + co * z * 0.7, m[1] + s * z * 0.7];
+        if i % 2 == 0 { (a, b) } else { (b, a) }
+    }
+}
+
+impl crate::App {
+    pub(super) fn oleo_app_smoke(&mut self) {
+        if std::env::var_os("PH2D_OLEO_APP").is_none() {
+            return;
+        }
+        use ph2d_editor_core::Tool;
+        use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
+        let Some(gfx) = self.gfx.as_mut() else { return };
+        let mut st = ST.lock().unwrap();
+        st.quadros += 1;
+        let lado = env_f("PH2D_OLEO_APP_LADO", 800.0) as u32;
+        let out = std::env::var("PH2D_OLEO_APP_OUT").unwrap_or_else(|_| "/tmp".into());
+        if st.fase == 0 {
+            if st.quadros < 30 {
+                return;
+            }
+            let FrameGfx {
+                renderer,
+                sim,
+                asset_db,
+                hero_screen,
+                next_import_cell,
+                atlas_asset_map,
+                ..
+            } = FrameGfx::of(gfx);
+            let Some(hero) = hero_screen.as_mut() else { return };
+            let ppm = hero.project.pixels_per_meter;
+            match ph2d_image_import::spawn_blank_canvas(
+                sim,
+                renderer,
+                asset_db,
+                *next_import_cell,
+                lado,
+                2,
+                ph2d_core::Vec2::new(0.0, 0.0),
+                ppm,
+                atlas_asset_map,
+            ) {
+                Ok((_, bits)) => {
+                    *next_import_cell = next_import_cell.saturating_add(1);
+                    ph2d_app_painter::composite_smoke::arm_hero(hero, bits);
+                    st.bits = bits;
+                    st.fase = 1;
+                    println!("[oleo_app] tela {lado}² criada");
+                }
+                Err(e) => eprintln!("[oleo_app] {e}"),
+            }
+            return;
+        }
+        let bits = st.bits;
+        let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools) else {
+            return;
+        };
+        if p.needs_document_bind(bits) {
+            return;
+        }
+        let raio = env_f("PH2D_OLEO_APP_RAIO", 32.0);
+        let por_quadro = env_f("PH2D_OLEO_APP_EVQ", 4.0) as u32;
+        let passo = env_f("PH2D_OLEO_APP_PASSO", 6.0);
+        let gap = env_f("PH2D_OLEO_APP_GAP", 3.0) as u32;
+        let n_azul = env_f("PH2D_OLEO_APP_N_AZUL", 20.0) as u32;
+        let n_amarelo = env_f("PH2D_OLEO_APP_N_AMARELO", 10.0) as u32;
+        // `_` vale espaço (a env passa por um shell que parte palavras)
+        let preset = std::env::var("PH2D_OLEO_APP_PRESET")
+            .map(|v| v.replace('_', " "))
+            .unwrap_or_else(|_| "WetPainter/Oil/Flat/Thick Impasto.ph2d-brush.png".into());
+        let l = lado as f32;
+        let pressao = env_f("PH2D_OLEO_APP_PRESSAO", 1.0);
+        let cp = |pos, phase| CanvasPointer {
+            pos,
+            pressure: pressao,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        let azul = [0x2f, 0x8f, 0xd8];
+        let amarelo = [0xf5, 0xdc, 0x10];
+        // fases: 1 arma · 2 cor azul · 3 riscar · 4 intervalo · 6 grava · 7 cor amarelo · 9 FIM
+        match st.fase {
+            1 => {
+                p.handle_panel_event(PanelEvent::SelectOption(
+                    ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
+                    ph2d_tool_painter::PaintMedia::WetPaint.to_u8().to_string(),
+                ));
+                p.handle_panel_event(PanelEvent::SelectOption(
+                    ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET,
+                    preset.clone(),
+                ));
+                st.fase = 2;
+                st.quadros = 0;
+            }
+            2 if st.quadros > 20 => {
+                p.set_brush_size_px(raio);
+                p.set_brush_color_srgb8(azul);
+                if let Ok(a) = std::env::var("PH2D_OLEO_APP_AGUA")
+                    && let Ok(a) = a.parse::<f64>()
+                {
+                    p.handle_panel_event(PanelEvent::SetValue(
+                        ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER,
+                        a,
+                    ));
+                }
+                if let Ok(r) = std::env::var("PH2D_OLEO_APP_RELEVO")
+                    && let Ok(r) = r.parse::<f64>()
+                {
+                    p.handle_panel_event(PanelEvent::SetValue(
+                        ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF,
+                        r,
+                    ));
+                }
+                println!(
+                    "[oleo_app] armado preset={preset} raio={} n_azul={n_azul} n_amarelo={n_amarelo}",
+                    p.brush_size_px()
+                );
+                st.fase = 3;
+                st.k = 0;
+                st.passada = 0;
+            }
+            3 => {
+                let cor = u32::from(st.passada >= n_azul);
+                let i = if cor == 0 { st.passada } else { st.passada - n_azul };
+                let (a, b) = recta(i, cor, l);
+                let len = ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt();
+                let n = (len / passo).ceil().max(1.0) as u32;
+                for _ in 0..por_quadro {
+                    let s = (st.k as f32 / n as f32).min(1.0);
+                    let ph = if st.k == 0 {
+                        PointerPhase::Down
+                    } else if st.k >= n {
+                        PointerPhase::Up
+                    } else {
+                        PointerPhase::Move
+                    };
+                    let pos = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s];
+                    p.on_canvas_pointer(cp(pos, ph));
+                    st.k += 1;
+                    if st.k > n {
+                        st.passada += 1;
+                        st.k = 0;
+                        st.quadros = 0;
+                        st.fase = 4;
+                        break;
+                    }
+                }
+            }
+            4 if st.quadros > gap => {
+                let ps = st.passada;
+                if ps == 1 || ps == n_azul || ps == n_azul + n_amarelo {
+                    st.fase = 5; // assentar e gravar
+                    st.quadros = 0;
+                } else {
+                    st.fase = 3;
+                }
+            }
+            5 if st.quadros > 90 => {
+                let nome = if st.passada == 1 && st.dump == 0 {
+                    "c1"
+                } else if st.passada == n_azul {
+                    "azul"
+                } else {
+                    "amarelo"
+                };
+                // o preview que a ponte drenou e a tela mostra (o mesmo Arc do `take_preview_arc`)
+                let px = self
+                    .painter_preview
+                    .as_ref()
+                    .filter(|c| c.entity_bits == bits)
+                    .map(|c| (c.rgba.as_ref().clone(), c.width, c.height));
+                // com o relevo do papel o preview não passa por esse cache: drena-o directamente
+                let px = px.or_else(|| {
+                    (st.quadros > 150)
+                        .then(|| p.take_preview_arc().map(|(a, w, h)| (a.as_ref().clone(), w, h)))
+                        .flatten()
+                });
+                if px.is_none() && st.quadros > 400 {
+                    eprintln!("[oleo_app] sem preview para gravar; sigo sem PNG");
+                    st.dump += 1;
+                    st.quadros = 0;
+                    let ps = st.passada;
+                    if ps == n_azul + n_amarelo {
+                        st.fase = 9;
+                        println!("[oleo_app] FIM");
+                    } else {
+                        if ps == n_azul {
+                            p.set_brush_color_srgb8(amarelo);
+                        }
+                        st.fase = 3;
+                    }
+                    return;
+                }
+                if let Some((v, w, h)) = px {
+                    let path = format!("{out}/{nome}.png");
+                    match image::save_buffer(&path, &v, w, h, image::ExtendedColorType::Rgba8) {
+                        Ok(()) => println!("[oleo_app] gravado {path} {w}x{h}"),
+                        Err(e) => eprintln!("[oleo_app] png {e}"),
+                    }
+                    st.dump += 1;
+                    let ps = st.passada;
+                    // c1 também pode ser o fim do azul (n_azul == 1)
+                    if nome == "c1" && ps == n_azul {
+                        let path2 = format!("{out}/azul.png");
+                        let _ = image::save_buffer(&path2, &v, w, h, image::ExtendedColorType::Rgba8);
+                    }
+                    st.quadros = 0;
+                    if ps == n_azul + n_amarelo {
+                        st.fase = 9;
+                        println!("[oleo_app] FIM");
+                    } else if ps == n_azul {
+                        p.set_brush_color_srgb8(amarelo);
+                        st.fase = 3;
+                    } else {
+                        st.fase = 3;
+                    }
+                }
+            }
+            9 if st.quadros > 600 => std::process::exit(0),
+            _ => {}
+        }
+    }
+}

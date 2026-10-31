@@ -77,3 +77,12 @@ Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecç
 | stores não-temporais | RECUSADOS (unsafe proibido) | 5b356e4ff4 |
 | placa: submissões ≤ 40 000 grupos, TETO_MS 25 ms, descida numa espera | FEITO: maior 93,3 → 22,6 ms Radeon (~2,8 RTX estimado) | aed309a84e ([PLACA_degrau6.md](PLACA_degrau6.md)) |
 | aberto | medir RTX livre; outflow por faixas/área da tinta; 2.ª espera da secagem; placa por omissão (única que passa o Rebelle, 9,24 ms); Thick Impasto raio 24–32 (cn8); smoke do dono do build novo; vermelhos de óleo (Real Oil toggle, oil_bristle 14,3<15, 3 pré-existentes) | — |
+
+## 31/10 tarde — auditoria do óleo sobre óleo ([HANDOFF_AUDITORIA_OLEO_SOBRE_OLEO.md](HANDOFF_AUDITORIA_OLEO_SOBRE_OLEO.md))
+| item | estado | commits |
+|---|---|---|
+| branco/papel no óleo sobre óleo (Real Oil na mão) | CURADO: mistura K-M como a opaca, sem transparência | 6032edee62 |
+| caroços (ladeira da fotografia) | CURADO: a que segura presa a \|dfilm\| (Thick Impasto p99 106,5 → 31,1) | ce913b3909 |
+| orla ferrugem com pressão baixa | CURADA: mistura das tintas puras, parte de cada uma | c87ef602f9 |
+| miniaturas (16) · clippy/fmt | FEITO | c4d63789dc 0bd0c31aa4 |
+| aberto | smoke do dono; a_agua_nao_sobe_a_ladeira_do_oleo «a 4 px» (anterior); Flat Bristle lento no app | — |

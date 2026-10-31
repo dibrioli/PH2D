@@ -1,0 +1,20 @@
+diff --git a/shells/desktop/src/render_loop/mod.rs b/shells/desktop/src/render_loop/mod.rs
+index 3c1d196356..7235ce160f 100644
+--- a/shells/desktop/src/render_loop/mod.rs
++++ b/shells/desktop/src/render_loop/mod.rs
+@@ -282,6 +282,7 @@ mod fase_object_mode;
+ mod fase_open_recipe;
+ /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).
+ mod fase_painter_brush_smokes;
++mod oleo_app_smoke;
+ /// Fase do quadro: o Painter: persistir, despachar e medir.
+ mod fase_painter_dispatch;
+ mod fase_paralaxe;
+@@ -507,6 +508,7 @@ impl crate::App {
+         self.fase_sprite_inspector_smokes();
+         self.fase_sprite_pixel_smokes();
+         self.fase_painter_brush_smokes();
++        self.oleo_app_smoke();
+         self.fase_new_image_modal();
+         self.fase_script_gc();
+         self.fase_surface_resize();

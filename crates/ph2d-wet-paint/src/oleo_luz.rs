@@ -91,9 +91,28 @@ pub fn difuso(o: &OleoReal, t: &Termos, a: f64, c: usize) -> f64 {
         // O céu visto DIRECTAMENTE tem o ganho do sector; o que as paredes devolvem (`mr − V`) é o céu
         // médio delas (`oraculo/README.md` §E2: o ganho do sector também no rebote e o rebote da lâmpada
         // pioraram a régua).
-        Some(d) => ceu * (d[c] * t.vis + (multi_ricochete(t.vis, a) - t.vis)) + t.sol,
+        Some(d) => {
+            ceu * (piso_do_ganho(d[c]) * t.vis + (multi_ricochete(t.vis, a) - t.vis)) + t.sol
+        }
     }
 }
+
+/// O piso do GANHO do céu do HDRI (dono 31/10, «pontos pretos» do Thick Impasto): a janela do Estúdio é baixa, e
+/// uma crista de 1–2 unidades tapa-a numa célula quase plana (`vis` 0,7–0,8, `nz` 0,9) — o ganho caía a 0,01 e a
+/// tinta ficava preta (`max < 70`). A parede que tapa a janela está ILUMINADA por ela e devolve-a: o sector tapado
+/// nunca é preto. Joelho C¹ em `2·PISO`: acima dele o ganho é o de antes ao bit.
+#[must_use]
+pub fn piso_do_ganho(d: f64) -> f64 {
+    if d >= 2.0 * PISO_GANHO_CEU {
+        d
+    } else {
+        PISO_GANHO_CEU + d.max(0.0) * d.max(0.0) / (4.0 * PISO_GANHO_CEU)
+    }
+}
+
+/// O piso de [`piso_do_ganho`]: o ganho de 0,01 sobe a 0,25 (o vermelho mais escuro da cena do dono, albedo 173,
+/// passa de 40 a > 70).
+pub const PISO_GANHO_CEU: f64 = 0.25;
 
 /// A visibilidade com a FORÇA `f` da fenda: as CHANCES de oclusão `(1−V)/V` multiplicam-se por `f`
 /// (`V' = V / (V + f·(1−V))`). `0` = céu inteiro, `1` = `V` (bit a bit), acima escurece o meio-tom e a fenda
@@ -241,4 +260,10 @@ pub(super) fn normal(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
     let fy = (h(-1, 1) + 2.0 * h(0, 1) + h(1, 1) - h(-1, -1) - 2.0 * h(0, -1) - h(1, -1)) / 8.0;
     let inv = 1.0 / exato::sqrt(fx * fx + fy * fy + 1.0);
     [-fx * inv, -fy * inv, inv]
+}
+
+/// SONDA: a [`normal`] para as medições de fora.
+#[doc(hidden)]
+pub fn normal_publica(campo: &CampoAltura, x: isize, y: isize) -> [f64; 3] {
+    normal(campo, x, y)
 }

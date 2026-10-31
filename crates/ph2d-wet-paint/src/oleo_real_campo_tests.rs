@@ -15,6 +15,9 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         // é a mesma ao bit; o papel sob a orla parcial é plano. Antes: Clássico `0xd577_67fb_dd93_1d70` (os dois) · Estúdio `0x9f6c_0278_7b71_e6fd` ·
         // `0xc068_69bd_7caf_a607` · Interior `0x47f6_a218_9632_b47f` · `0xb01e_6c58_f436_56d4` · Pátio
         // `0xbb89_005a_1c61_c90d` · `0x3ae1_6642_c9fd_624e`.
+        // Dono 31/10 (pontos pretos): o piso do ganho do HDRI (`piso_do_ganho`) muda os três HDRI por desenho; o
+        // Clássico fica ao bit. Antes: Estúdio `0x00f8_7fc3_815d_244b` · `0x75ef_0c73_92b8_506a` · Interior
+        // `0xa2f9_d113_c2ae_d806` · `0x6b3a_c14b_d041_dee3` · Pátio `0x598b_2ac4_2f05_c2b9` · `0x537e_b935_9fbb_cc13`.
         (
             Ambiente::Classico,
             0x47c1_f5e4_7399_15f8u64,
@@ -22,18 +25,18 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         ),
         (
             Ambiente::Estudio,
-            0x00f8_7fc3_815d_244bu64,
-            0x75ef_0c73_92b8_506au64,
+            0x03c8_d0c8_5dc1_62fdu64,
+            0x1b0c_d582_4ea7_dfc3u64,
         ),
         (
             Ambiente::Interior,
-            0xa2f9_d113_c2ae_d806u64,
-            0x6b3a_c14b_d041_dee3u64,
+            0x098a_d848_eafe_0558u64,
+            0x1539_eaf7_a31b_5abdu64,
         ),
         (
             Ambiente::Patio,
-            0x598b_2ac4_2f05_c2b9u64,
-            0x537e_b935_9fbb_cc13u64,
+            0x39ae_7d6d_e887_a7cau64,
+            0x155b_c697_578a_d5adu64,
         ),
     ] {
         // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).

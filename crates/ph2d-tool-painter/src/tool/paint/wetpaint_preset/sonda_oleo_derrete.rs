@@ -291,3 +291,71 @@ fn o_traco_longe_do_cruzamento_nao_derrete() {
         cr.h_longe.2
     );
 }
+
+/// Px pretos da tela composta (31/10): `(px de tinta opaca, px com max(R,G,B) < 70)` — a tinta azul `[20, 90, 200]`
+/// numa fenda funda fica azul-escura, nunca abaixo de 70 no canal dela.
+fn pretos(t: &mut PainterTool) -> (usize, usize) {
+    t.wet_recomposite_full();
+    let (w, h) = (W as usize, H as usize);
+    let (mut n, mut p) = (0, 0);
+    for q in t.canvas_rgba[..w * h * 4].chunks(4) {
+        if q[3] > 240 {
+            n += 1;
+            p += usize::from(q[0].max(q[1]).max(q[2]) < 70);
+        }
+    }
+    (n, p)
+}
+
+/// SONDA dos pontos pretos (31/10): o traço ÚNICO de Thick Impasto (Water do preset e Water 0,03) e o cruzamento.
+/// `PH2D_SONDA_OUT=<pasta> … --lib sonda_oleo_pretos -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda — corre-se à mão no perfil smoke"]
+fn sonda_oleo_pretos() {
+    let b = biblioteca();
+    let dir = std::env::var("PH2D_SONDA_OUT")
+        .ok()
+        .map(std::path::PathBuf::from);
+    if let Some(d) = &dir {
+        std::fs::create_dir_all(d).expect("pasta");
+    }
+    let rel = "WetPainter/Oil/Flat/Thick Impasto.ph2d-brush.png";
+    let p = b
+        .entradas
+        .iter()
+        .find(|e| e.relativo == rel)
+        .expect("preset")
+        .preset
+        .clone();
+    for (rot, agua, cruza) in [
+        ("unico", None, false),
+        ("unico_agua003", Some(0.03), false),
+        ("cruza", None, true),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![250u8; (W * H * 4) as usize], W, H);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.set_wet_relogio_fixo(true);
+        t.set_semente_dos_tracos(0);
+        assert!(t.wet_preset_aplicar(&p).is_empty());
+        if let Some(a) = agua {
+            t.paint.wetpaint.knobs.water = a;
+        }
+        t.set_brush_size_px(64.0);
+        t.set_brush_color_srgb8([20, 90, 200]);
+        traco(&mut t, [30.0, 140.0], [390.0, 140.0]);
+        espera(&mut t, 60);
+        if cruza {
+            traco(&mut t, [200.0, 40.0], [200.0, 240.0]);
+            traco(&mut t, [240.0, 240.0], [240.0, 40.0]);
+            traco(&mut t, [160.0, 60.0], [280.0, 220.0]);
+        }
+        espera(&mut t, 600);
+        let (n, pr) = pretos(&mut t);
+        grava(&mut t, dir.as_deref(), &format!("pretos_{rot}"));
+        println!(
+            "[pretos] {rot:<16} tinta {n:>6} · pretos {pr:>5} ({:.2} %)",
+            100.0 * pr as f64 / n.max(1) as f64
+        );
+    }
+}

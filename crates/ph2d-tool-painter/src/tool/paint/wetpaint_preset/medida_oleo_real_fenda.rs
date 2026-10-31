@@ -439,3 +439,80 @@ fn medida_oleo_real_bordas() {
         }
     }
 }
+
+/// SONDA (31/10, pontos pretos): os termos de luz das células vermelhas escuras do Estúdio na cena do dono.
+#[test]
+#[ignore = "sonda"]
+fn sonda_pontos_pretos_termos() {
+    use ph2d_wet_paint::colorops::transfer::srgb255_to_linear as lin;
+    use ph2d_wet_paint::oleo_real::{Ambiente, OleoReal};
+    let mut t = pinta_cena_do_dono();
+    for fenda in [1.0] {
+        let o = OleoReal {
+            fenda,
+            ambiente: Ambiente::Estudio,
+            ..OleoReal::default()
+        };
+        let px = render_da_cena(&mut t, &o);
+        let s = t.paint.wetpaint.session.as_mut().expect("sessão");
+        let (gw, gh) = s.grid;
+        let grades: Vec<(&ph2d_wet_paint::grid::Grid, bool)> = s
+            .engine
+            .layers
+            .iter()
+            .map(|l| (&l.grid, l.visible))
+            .collect();
+        let campo = ph2d_wet_paint::oleo_real::CampoAltura::de(
+            &grades,
+            &o,
+            usize::from(s.ratio),
+            1,
+            1,
+            gw,
+            gh,
+        );
+        let mut n = 0;
+        for (k, (fim, alb, a)) in px.iter().enumerate() {
+            if !(f64::from(*a) / 255.0 > 0.9
+                && lin(f64::from(alb[0])) > 0.4
+                && lin(f64::from(alb[1])) < 0.05)
+            {
+                continue;
+            }
+            if fim[0].max(fim[1]).max(fim[2]) >= 70 {
+                continue;
+            }
+            n += 1;
+            if n % 40 != 1 {
+                continue;
+            }
+            let (x, y) = (k % gw + 1, k / gw + 1);
+            let al = alb.map(|c| lin(f64::from(c)));
+            let tt = ph2d_wet_paint::oleo_real::termos_com(
+                &o,
+                &campo,
+                x,
+                y,
+                &campo.material_em(x, y),
+                al,
+            );
+            let n3 = ph2d_wet_paint::oleo_real::normal_publica(&campo, x as isize, y as isize);
+            let h = |dx: isize, dy: isize| campo.at_fina(x as isize + dx, y as isize + dy);
+            eprintln!(
+                "({x},{y}) fim {fim:?} alb {alb:?} vis {:.3} luz {:.3} sol {:.3} dir {:?} espec {:.3} nz {:.3} h {:.2} viz [{:.2} {:.2} {:.2} {:.2}]",
+                tt.vis,
+                tt.luz,
+                tt.sol,
+                tt.dir.map(|d| d.map(|v| (v * 100.0).round() / 100.0)),
+                tt.espec[0],
+                n3[2],
+                h(0, 0),
+                h(-1, 0),
+                h(1, 0),
+                h(0, -1),
+                h(0, 1)
+            );
+        }
+        eprintln!("total escuros {n}");
+    }
+}

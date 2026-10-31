@@ -3,7 +3,7 @@
 > 31/10. Paragem do dono: **aprovar o cartão ANTES da primeira tela** (prompt
 > [§F5](../49_realshader/PROMPT_REFATORACAO_WETPAINT_E_AJUDA.md), precedente Kanban 27/10). Áreas do painel pelo
 > [ADR-0197 §3](../../architecture/decisions/0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md):
-> Tinta · Pincel · Superfície · Tempo · Luz. Cores, raios, espaços e tipos = `docs/design/styles/tokens.css`
+> Tinta · Pincel · Superfície · Tempo · Luz. Todo o texto da maquete (cartão e painel) está em Plain English (§1). Cores, raios, espaços e tipos = `docs/design/styles/tokens.css`
 > (tema `forge-sdf`, acento `magenta`); a fonte Inter não está instalada nesta máquina, por isso o texto cai na
 > sans do sistema. Nada de código do produto foi tocado.
 
@@ -11,20 +11,31 @@
 
 | ficheiro | o que é |
 |---|---|
-| [`variante_A_compacto.png`](fotos/f5_maquete/variante_A_compacto.png) | **A — compacto.** 300 px à direita do controlo: título, UMA frase, 3 miniaturas pequenas com «pouco · médio · muito» e o valor. A miniatura mais próxima do valor actual leva a moldura do acento. Sem nome da área. |
-| [`variante_B_largo.png`](fotos/f5_maquete/variante_B_largo.png) | **B — largo, com a área no topo.** 500 px: selo da área («TINTA»), título, 2 frases, 3 imagens grandes lado a lado com «pouco · médio · muito» e o valor, rodapé «a mesma pincelada, só muda X — pintada agora pelo motor (pincel)» e «F1 = ajuda completa». |
-| [`variante_C_animado.png`](fotos/f5_maquete/variante_C_animado.png) · [`C_animado_3_quadros.png`](fotos/f5_maquete/C_animado_3_quadros.png) | **C — animado.** Uma imagem GRANDE que passa sozinha por pouco → médio → muito (1 s por valor, em ciclo), com um marcador a andar na régua e a fita dos 3 quadros por baixo. A fita mostra os 3 quadros fixos. |
-| [`B_pigmento.png`](fotos/f5_maquete/B_pigmento.png) · [`B_pressao.png`](fotos/f5_maquete/B_pressao.png) | B aplicada a «Pigmento» (área Tinta) e «Pressão» (área Pincel). |
-| [`comparacao.png`](fotos/f5_maquete/comparacao.png) | A · B · C lado a lado, todas sobre «Água». |
+| [`variante_A_compacto.png`](fotos/f5_maquete/variante_A_compacto.png) | **A — compacto.** 300 px à direita do controlo: título, UMA frase, 3 miniaturas pequenas com «low · medium · high» e o valor. A miniatura mais próxima do valor actual leva a moldura do acento. Sem nome da área. |
+| [`variante_B_largo.png`](fotos/f5_maquete/variante_B_largo.png) | **B — largo, com a área no topo.** 500 px: selo da área («PAINT»), título, 2 frases, 3 imagens grandes lado a lado com «low · medium · high» e o valor, rodapé «Same stroke, only X changes. Painted live by the engine.» e «F1 = full help». |
+| [`variante_C_animado.png`](fotos/f5_maquete/variante_C_animado.png) · [`C_animado_3_quadros.png`](fotos/f5_maquete/C_animado_3_quadros.png) | **C — animado.** Uma imagem GRANDE que passa sozinha por low → medium → high (1 s por valor, em ciclo), com um marcador a andar na régua e a fita dos 3 quadros por baixo. A fita mostra os 3 quadros fixos. |
+| [`B_pigmento.png`](fotos/f5_maquete/B_pigmento.png) · [`B_pressao.png`](fotos/f5_maquete/B_pressao.png) | B aplicada a «Pigment» (área PAINT) e «Pressure» (área BRUSH). |
+| [`comparacao.png`](fotos/f5_maquete/comparacao.png) | A · B · C lado a lado, todas sobre «Water». |
 
-Texto (PT-BR, para o `ph2d-i18n`):
+### Requisito do cartão: **Plain English** (dono 31/10: o app é EXCLUSIVAMENTE em inglês)
 
-- **Água** — «Quanta água vai misturada na tinta. Pouca água: a tinta sai grossa e cobre. Muita água: ela fica mais
-  solta e mistura com o que já está na tela.»
-- **Pigmento** — «Quanta cor vai no pincel. Pouco pigmento deixa a pincelada clara e transparente; muito deixa a cor
-  forte e tapa o que está por baixo.»
-- **Pressão** — «Quanto a força da caneta muda a pincelada. Com mais força o pincel larga mais tinta e a marca fica
-  mais cheia.»
+Inglês fácil para qualquer usuário de qualquer país: **cada frase ≤ 20 palavras**, só vocabulário comum, sem
+gíria, sem termos técnicos (nada de «opacity», «Kubelka», «impasto», «viscosity» no cartão). Entra pelo
+`ph2d-i18n` como toda string (HR-15). Rótulos sob as imagens: **«low · medium · high»** — escolhidos em vez de
+«little · some · lots» porque servem a QUALQUER controlo (Pressure, Depth, Dry time…, não só quantidades), são as
+palavras que qualquer interface já usa para um slider, e «some» é vago para quem não é nativo.
+
+Textos finais:
+
+| área | título | frase |
+|---|---|---|
+| PAINT | Water | How much water is mixed into the paint. Little water: thick paint that covers. Lots of water: loose paint that blends with what is already on the canvas. |
+| PAINT | Pigment | How much color is on the brush. Low: a light stroke you can see through. High: strong color that hides what is under it. |
+| BRUSH | Pressure | How much your pen pressure changes the stroke. Press harder to put down more paint and make a fuller mark. |
+
+Nomes das áreas: PAINT (Tinta) · BRUSH (Pincel) · PAPER (Superfície) · TIME (Tempo) · LIGHT (Luz). Rodapé:
+«Same stroke, only <Control> changes. Painted live by the engine.» · «F1 = full help». Na C: «Plays by itself:
+low → medium → high.» Os valores usam ponto decimal (0.5).
 
 ## 2. De onde vem cada imagem (pinceladas REAIS do motor de hoje)
 
@@ -49,7 +60,7 @@ que a frase diz, **muda-se a lei ou a frase, nunca a imagem** — é exactamente
 ## 3. Recomendação: **B** (com a animação de C como opção ligada por omissão só em F1)
 
 - **B** é a única que mostra as 3 pinceladas grandes o bastante para ver a diferença (no A, a 92 px de largura,
-  Água 0,5 e 1 são indistinguíveis — a ajuda passa a não ensinar nada), e traz o nome da área, que é o que ensina
+  Água 0,5 e 1 são indistinguíveis — a ajuda passa a não ensinar nada), e traz o nome da área (PAINT/BRUSH/PAPER/TIME/LIGHT), que é o que ensina
   as 5 áreas novas ao dono sem um manual.
 - **A** cabe em painéis estreitos, mas corta a 2.ª frase e as miniaturas ficam pequenas demais para pinceladas
   (que diferem no relevo e na mistura, não só no tamanho).
@@ -79,7 +90,7 @@ Gate proposto (`painter_ajuda_e_o_que_o_motor_pinta`): para cada controlo com aj
 repinta as 3 células com o motor do HEAD e compara com as imagens guardadas da ajuda; **reprova** se alguma
 diferir para além do ruído da máquina (mesmo bit por placa, como as miniaturas). Segunda metade, a que apanha o
 caso da Água acima: a tripla tem de ser **monótona na grandeza que a frase promete** (ex.: Pigmento ⇒ a
-cobertura/escuridão média sobe de pouco → médio → muito; Água ⇒ a mistura com o fundo sobe) e as 3 células
+cobertura/escuridão média sobe de low → medium → high; Água ⇒ a mistura com o fundo sobe) e as 3 células
 **distintas entre si** (diferença média acima de um piso medido) — um controlo cuja tripla sai igual é um
 controlo morto ou saturado, e a ajuda não o pode esconder.
 

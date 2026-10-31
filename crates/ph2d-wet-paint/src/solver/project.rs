@@ -10,6 +10,10 @@ use crate::tuning::Knob;
 /// leaves the uniform downward drift intact so drips survive. The divergence
 /// and pressure scratch fields reuse the transient-flow arrays (rebuilt next
 /// frame anyway).
+/// Override EM EXECUÇÃO da sonda da rodada 9 (`MEDIDA_31_10_RODADA9.md`): `1` (produto) = zero e
+/// divergência numa passada; `0` = as duas passadas antigas. Ao bit nas duas.
+pub static PROJECT_FUNDE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
+
 pub fn project(g: &mut Grid, p: &Params) {
     let (fbx0, fby0, fbx1, fby1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let rows = (fby1 - fby0 + 1).max(0) as usize;
@@ -83,14 +87,18 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
         }
         y0 as usize * s..(y1 as usize + 1) * s
     };
-    {
+    // Divergência de UMA célula (a mesma expressão nas duas rotas).
+    let div_at = |velx: &[f32], vely: &[f32], i: usize| -> f32 {
+        ((velx[i - 1] as f64 - velx[i + 1] as f64 + vely[i - s] as f64 - vely[i + s] as f64) * dif)
+            as f32
+    };
+    if PROJECT_FUNDE.load(std::sync::atomic::Ordering::Relaxed) != 0 {
+        // Rodada 9: o zero e a divergência numa passada só. Cada linha escreve só a SUA linha
+        // de `div`/`prs` e a divergência lê `vel` (que nada aqui escreve) ⇒ zerar e depois
+        // escrever a divergência linha a linha dá os mesmos bits que as duas passadas.
+        let velx: &[f32] = vel_x;
+        let vely: &[f32] = vel_y;
         let z = band(zy0, zy1);
-        // neighbours of active cells must read 0 — e "vizinhos de células
-        // ativas" é exatamente a faixa viva com margem 1: `div`/`prs` só são
-        // LIDOS em `i±1` / `i±s` a partir de uma célula ativa (laços 3 e 4),
-        // e `active ⊆ faixa`. O que sobra do rascunho fora daí não é lido por
-        // ninguém — o `flow` é reconstruído todo frame nas células ativas e o
-        // fingerprint da sessão não o inclui, por ser transiente.
         par::walk_rows2(mode, &mut div[z.clone()], &mut prs[z], s, |r, dr, pr| {
             let y = zy0 + r as i32;
             let (zx0, zx1) = span1(y);
@@ -99,28 +107,54 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
             }
             dr[zx0 as usize..=zx1 as usize].fill(0.0);
             pr[zx0 as usize..=zx1 as usize].fill(0.0);
-        });
-    }
-    {
-        let velx: &[f32] = vel_x;
-        let vely: &[f32] = vel_y;
-        par::walk_rows(mode, &mut div[band(gby0, gby1)], s, |r, dr| {
-            let y = gby0 + r as i32;
-            let (bx0, bx1) = live(y);
-            if bx0 > bx1 {
+            if y < gby0 || y > gby1 {
                 return;
             }
+            let (bx0, bx1) = live(y);
             let base = y as usize * s;
             for x in bx0..=bx1 {
-                let i = x as usize + base;
                 if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] != 0 {
-                    dr[x as usize] = ((velx[i - 1] as f64 - velx[i + 1] as f64
-                        + vely[i - s] as f64
-                        - vely[i + s] as f64)
-                        * dif) as f32;
+                    dr[x as usize] = div_at(velx, vely, x as usize + base);
                 }
             }
         });
+    } else {
+        {
+            let z = band(zy0, zy1);
+            // neighbours of active cells must read 0 — e "vizinhos de células
+            // ativas" é exatamente a faixa viva com margem 1: `div`/`prs` só são
+            // LIDOS em `i±1` / `i±s` a partir de uma célula ativa (laços 3 e 4),
+            // e `active ⊆ faixa`. O que sobra do rascunho fora daí não é lido por
+            // ninguém — o `flow` é reconstruído todo frame nas células ativas e o
+            // fingerprint da sessão não o inclui, por ser transiente.
+            par::walk_rows2(mode, &mut div[z.clone()], &mut prs[z], s, |r, dr, pr| {
+                let y = zy0 + r as i32;
+                let (zx0, zx1) = span1(y);
+                if zx0 > zx1 {
+                    return;
+                }
+                dr[zx0 as usize..=zx1 as usize].fill(0.0);
+                pr[zx0 as usize..=zx1 as usize].fill(0.0);
+            });
+        }
+        {
+            let velx: &[f32] = vel_x;
+            let vely: &[f32] = vel_y;
+            par::walk_rows(mode, &mut div[band(gby0, gby1)], s, |r, dr| {
+                let y = gby0 + r as i32;
+                let (bx0, bx1) = live(y);
+                if bx0 > bx1 {
+                    return;
+                }
+                let base = y as usize * s;
+                for x in bx0..=bx1 {
+                    let i = x as usize + base;
+                    if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] != 0 {
+                        dr[x as usize] = div_at(velx, vely, i);
+                    }
+                }
+            });
+        }
     }
     {
         let div_ro: &[f32] = div;

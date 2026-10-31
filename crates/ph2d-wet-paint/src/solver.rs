@@ -625,5 +625,5 @@ pub use advect_jacobi::{advect_jacobi, advect_jacobi_rows, destination_reach};
 pub use flow_jacobi::{build_flow_field_jacobi, build_flow_field_jacobi_rows};
 pub use gota::ALTURA_DA_GOTA;
 pub(crate) use gota::Gota;
-pub use project::{apply_boundaries, project, project_rows};
+pub use project::{PROJECT_FUNDE, apply_boundaries, project, project_rows};
 pub use sedimenta::{SEDIMENTA_MAX, sedimenta, sedimenta_rows};

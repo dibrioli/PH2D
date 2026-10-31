@@ -46,3 +46,11 @@ no ESTADO, anterior à R2; nenhuma lei da R2 corre neles. Fica para a integraç�
 
 ~1 h 40 de agentes (3 × ~30 min + 3 retomas): 3 pincéis melhorados, 0 aprovados por cega (não corrida), 3 leis de
 motor neutras. Abaixo de 1/h ⇒ reavaliar com o dono antes de outra ronda.
+
+## Ronda 2 (coordenador 31/10): Thick Impasto · Oil Grunge · Blender Grainy · Splatter
+
+- **Blender Grainy** (R2-F, `c4b060c5bd`, [relatório](R2_F_blender_grainy.md), [prancha](pranchas/r2_blender_grainy.png)): os grumos vinham do
+  grão da máscara (ruído de lado 24 ⇒ manchas de ~24 px com buracos); grão 4 + toque 0,35 tira-os. ⛔ NÃO promovido
+  (coordenador R2, olhando a prancha): o «depois» é uma nuvem pálida e larga (1,5× a do Rebelle, miolo 80 × 350 px
+  opacos); o Rebelle tem LASCAS escuras recortadas — o «antes» tinha mais o carácter dele. Candidato para o smoke do
+  dono com as duas receitas; a próxima tentativa é grão médio (lado ~10) com o toque cheio, não mais fino.

@@ -511,6 +511,18 @@ fn levanta_cobre(
         Ecra::Cobre { vela, .. } => vela,
         _ => 0.0,
     };
+    let x0 = if a_f <= 0.0 {
+        sc
+    } else {
+        let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
+        [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
+    };
+    // SALTA (31/10, ao bit): coberturas IGUAIS (o `alpha_of_mass` saturado — 98,9 % das células do wash) ⇒ `w = 0`,
+    // `x0 = uc`, e o avaliador em `x0` é a conta do alvo com os mesmos argumentos (o mesmo `powf`; os produtos do
+    // ângulo comutam) ⇒ a 1.ª verificação do [`resolve`] sai e devolve `x0`. Sem o alvo e sem o Newton.
+    if a_f > 0.0 && a_f.to_bits() == a_f2.to_bits() && a_s.to_bits() == a_s2.to_bits() {
+        return x0;
+    }
     let par = Parada::de(vela, sc);
     let mut h_af = None;
     let alvo = prepara(
@@ -523,12 +535,6 @@ fn levanta_cobre(
         || par.d(vela, uc),
     )
     .sobre_branco();
-    let x0 = if a_f <= 0.0 {
-        sc
-    } else {
-        let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
-        [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
-    };
     let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
     let ecra = |x: [f64; 3]| prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x));
     resolve(

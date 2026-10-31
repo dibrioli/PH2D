@@ -123,7 +123,7 @@ fn sonda_r2f_splatter() {
     let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
     let so = std::env::var("SONDA_R2F").unwrap_or_default();
-    let base = crate::presets_de_fabrica::preset_do_meio(&crate::familias::aerografo::EM_ESTUDO[0]);
+    let base = crate::presets_de_fabrica::preset_do_meio(&crate::familias::aerografo::MEIOS[0]);
     for &(nome, gota) in SPLATTER
         .iter()
         .filter(|v| so.is_empty() || so.split(',').any(|x| x == v.0))

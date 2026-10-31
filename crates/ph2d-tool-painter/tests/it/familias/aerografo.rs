@@ -70,29 +70,24 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // listam a sombra fraca, a borda esfarelada e o grão que enche; forte (fluxo 1, ou o modo Height) as revisões 3–4
     // escolhem o AIRBRUSH como «o sombreador granulado» e lêem o nosso como pontilhado de giz. Saiu da fábrica.
 
-];
-/// J-3 Splatter e J-5 Stipple REEXAMINADOS na J4 pela família `texturas` (`docs/Painter/Pinceis/exames/texturas.md`):
-/// o motor que pediam existe agora (a partícula em PÍXEIS, o viés da cor, as imagens desenhadas na receita), mas as
-/// revisões cegas da última ronda ainda acharam o oráculo — ficam fora da fábrica com a receita da última ronda.
-pub const EM_ESTUDO: &[ReceitaMeio] = &[
-    // J-3 — o SALPICO, REEXAMINADO na J4 pela família `texturas` (`exames/texturas.md`), contra o Rebelle «Watercolor/Spatter/Splats», a lei L4: dabs isolados, ⊥ sd 0,61–0,92·D, 5–8 por 100 px,
-    // diâmetro cv 0,31–0,61 e ×2,8 da pressão fraca à forte, opacidade por dab cv ≤ 0,2): a mancha NOSSA ([`mancha`]) —
-    // o miolo, os raios e as gotículas soltas — rodada ao acaso.
+    // J-3 Splatter VOLTA à fábrica na R2 (31/10, `docs/Painter/Pinceis/R2_F_splatter.md`, m4): a mancha NOSSA
+    // ([`mancha`]: miolo, raios, gotículas) OPACA, 6 por dab, a 2.ª população do véu para as gotas grandes e o tecto
+    // de 72 px por gota na tela — salpicos opacos com coroa, de vários tamanhos, longe do traço.
     ReceitaMeio {
         pincel: &[
             ("hardness", "1.0"),
             ("falloff", "\"Constant\""),
             ("borda_px", "0.0"),
             ("shape", super::texturas::IMAGEM),
-            ("spray_count", "1"),
+            ("spray_count", "6"),
             ("spacing", "0.3"),
-            ("jitter", "0.4"),
-            ("jitter_scale", "0.7"),
+            ("jitter", "1.0"),
+            ("jitter_scale", "0.9"),
             ("jitter_rotate", "1.0"),
             ("continuous_spacing", "false"),
             (
                 "dab_jitter",
-                r#"{"across": 1.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.5, "flip_y": 0.0, "opacity": 0.15, "particle": 1.0, "roundness": 0.0}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.5, "flip_y": 0.0, "opacity": 0.0, "particle": 0.25, "roundness": 0.0, "veu": 0.2, "veu_escala": 3.0, "veu_opacidade": 1.0, "particle_max_px": 72.0}"#,
             ),
         ],
         // A pressão no tamanho e o tamanho = os do preset do Rebelle (`pressure_size_influence` 0,6, Size 84).
@@ -102,10 +97,15 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("pressureOpacity", 0.6),
         ],
         size_px: Some(84.0),
-        opacity: Some(0.55),
+        opacity: Some(1.0),
         texturas: &[("shape", super::texturas::mancha)],
         ..ReceitaMeio::digital("Splatter", "Splatter", "Splatter")
     },
+];
+/// J-3 Splatter e J-5 Stipple REEXAMINADOS na J4 pela família `texturas` (`docs/Painter/Pinceis/exames/texturas.md`):
+/// o motor que pediam existe agora (a partícula em PÍXEIS, o viés da cor, as imagens desenhadas na receita), mas as
+/// revisões cegas da última ronda ainda acharam o oráculo — ficam fora da fábrica com a receita da última ronda.
+pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // J-5 — o PONTILHISMO, REEXAMINADO na J4 pela família `texturas` (`exames/texturas.md`), contra o Krita
     // «v) Texture Pointillism» (114 px): pontos de tamanho FIXO na tela (`particle_px`, o motor da J4 — a 5 px um
     // cordão de pontos maiores que o pincel, a 200 px grupos soltos), em grupos espalhados ao longo do traço, elipses
@@ -563,7 +563,7 @@ fn sonda_r2c_spray_e_marcador() {
     let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
     let so = std::env::var("PH2D_R2C_SO").unwrap_or_default();
     let mut lista: Vec<(String, ph2d_brush_presets::Preset, f64)> = Vec::new();
-    let spray = crate::presets_de_fabrica::preset_do_meio(&EM_ESTUDO[2]);
+    let spray = crate::presets_de_fabrica::preset_do_meio(&EM_ESTUDO[1]);
     for (v, dj, flow, n) in SPRAY_R2C {
         let mut p = spray.clone();
         for (k, x) in [("dab_jitter", dj), ("flow", flow), ("spray_count", n)] {

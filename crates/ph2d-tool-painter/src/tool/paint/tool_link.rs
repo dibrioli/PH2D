@@ -51,6 +51,12 @@ impl PainterTool {
                 w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
             }
         }
+        // …e o Water do topo pela mesma regra: a ferramenta Wet lê-o como o Pincel, e o preset dela (o Water Brush)
+        // escreve-o — sem o slot, voltava ao Pincel com a água dela.
+        w.agua_por_slot[old] = w.knobs.water;
+        if [old, new].iter().any(|s| *s >= super::WET_TOOL_SLOT0) {
+            w.knobs.water = w.agua_por_slot[new];
+        }
         // Falloff provenance for the freshly loaded brush: any value the arming TABLE can install
         // (factory Smooth + Smoother/Sphere/Pow4) is presumed armable, so re-entering a mode keeps
         // its verbs re-armable; anything else in a slot is presumed the artist's. The ambiguity —
@@ -98,6 +104,7 @@ impl PainterTool {
             w.glaze_por_slot.fill(w.km_glaze);
             w.oleo_por_slot.fill(w.oleo_real.is_some());
             w.textura_por_slot.fill(w.paper_visual);
+            w.agua_por_slot.fill(w.knobs.water);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

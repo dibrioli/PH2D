@@ -183,6 +183,9 @@ pub(crate) struct WetPaintState {
     pub(super) glaze_por_slot: [bool; super::SLOT_COUNT],
     /// O [`Self::paper_visual`] de cada slot do pincel (`switch_brush_slot`).
     pub(super) textura_por_slot: [bool; super::SLOT_COUNT],
+    /// O Water do topo (`knobs.water`) de cada slot do pincel: a ferramenta Wet lê-o como o Pincel
+    /// ([`crate::LinhaDaFerramenta::AguaDoVolume`]), e o preset dela não o pode deixar no Pincel (`switch_brush_slot`).
+    pub(super) agua_por_slot: [f64; super::SLOT_COUNT],
     /// A fita da macro ([`fita`]) que cada sessão nova herda.
     pub(super) fita: Option<fita::FitaPartilhada>,
     /// O ritmo escrito do worker ([`fita::RitmoDaAgua`]) que cada sessão nova herda — só gates.
@@ -240,6 +243,7 @@ impl Default for WetPaintState {
             knobs_por_slot: [super::WetKnobs::DEFAULT.knobs; super::SLOT_COUNT],
             glaze_por_slot: [false; super::SLOT_COUNT],
             textura_por_slot: [false; super::SLOT_COUNT],
+            agua_por_slot: [super::WetKnobs::DEFAULT.water; super::SLOT_COUNT],
             fita: None,
             ritmo: None,
             composta: None,

@@ -240,6 +240,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
         "o das ferramentas FORA da mão: o preview pinta o da mão (`paper_visual`)",
     ),
     (
+        "agua_por_slot",
+        "o das ferramentas FORA da mão: o preview pinta o da mão (`knobs.water`)",
+    ),
+    (
         "oleo_por_slot",
         "o das ferramentas FORA da mão: o preview pinta o da mão (`oleo_real`)",
     ),

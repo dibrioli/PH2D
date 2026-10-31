@@ -32,9 +32,9 @@ do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px).
 |---|---|---|---|---|
 | 1 régua comparável | FEITA ([D2_rebelle_passo_agua.md](D2_rebelle_passo_agua.md)) | general-purpose | ver git log | Rebelle 4K 37,3 ms/passo (21 núcleos, 75 ns·núcleo/px), 1K 3,9 ms; PH2D 4K 100,5 ms (~278 ns·núcleo/px) ⇒ META < 37 ms |
 | 2 secagem | FEITA no produto, ao bit (05b3830f34 3a931fccb8 6b152bd6ad 85c0a42c5b) | general-purpose | ver acima | passo 4K 128 → 100,5 ms (+27 % passos/s) |
-| 3 memória (P1) | undo só do que o traço muda (78 % do RSS é o histórico 6×56 B/px) — em construção | general-purpose | — | 428 B/px hoje |
-| 4 advecção (P2) | cortes ao bit: outflow 2 linhas, take_scale 1×, prepare⊂momentum, dst SoA — em construção | general-purpose | — | advecção ~43 ms |
-| 5 pincéis | catálogo FEITO: CAP-01 ponta que gira destrava Tilted Shade, Compressed Charcoal, Marker Chisel, Filbert Dry, Flat Bristle, Broad Nib; depois pontas a direito, borda molhada, fio do arrasto | — | — | depois da performance |
+| 3 memória (P1) | FEITA b4119a7af0: undo COW por blocos 64×64 — histórico 330 → 4,8 B/px; processo 428 → **177 B/px** (Rebelle ~230–260) ✓ | general-purpose | b4119a7af0 | [MEDIDA_31_10_RODADA2.md](MEDIDA_31_10_RODADA2.md) |
+| 4 advecção (P2) + fluxo | FEITA: outflow bt, take_scale, dst 3 planos, bt⊂prepare, commit por TROCA (−19..33 ms; c6ea88ad3a cura transbordo i32); secagem SEM (Newton pára sem correcção, −36 % na sonda, 46199a6a7c); tolerâncias da secagem RECUSADAS (erro acumula sob Glaze) | general-purpose | ver git log | sob carga (load 50–110) as réguas não resolvem cortes < 5 ms; falta rodada calma |
+| 5 pincéis | CAP-01 inércia (329564e0ed, 12a87ecfbb) + 6 de fábrica (48848924ec, afinados 5d29d7d8ec, regerar); prancha [cap01](../Pinceis/pranchas/cap01_seis_pinceis.png). R2: Charcoal/Wax Scrape/Square Hard ✓; Knife Stain/Grainy/Spray/Dry Marker/Blender Grainy mecanismo registado. R1: Wet Wash/Liner ✓ por valores; Smudge tecto recusado; edgeSoftMass em curso | vários | ramos r1/r2 por juntar | fábrica 72 |
 
 ## Janelas de reserva (dono 31/10) — ramos próprios a partir de 6ba5d06493; o coordenador junta-os à linha no fim
 | janela | worktree / ramo | missão | relatório |
@@ -43,3 +43,5 @@ do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px).
 | ph2d-56 (reserva 02) | line-PainterWatercolor-r2 | pontas (Charcoal/Wax Scrape/Square Hard), grão no óleo, Spray/Splatter, Dry Marker, Rake | docs/Painter/Pinceis/R2_RELATORIO.md |
 | ph2d-6a (reserva 03) | line-PainterWatercolor-r3 | velocidade de PINTAR (dab serial ~4,7 núcleos), óleo composite | docs/Painter/49_realshader/R3_PINTAR_RELATORIO.md |
 Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecção (advect_jacobi, scratch, par, sedimenta), CAP-01 + 6 pincéis (painter-brush spec/footprint/pen, mao.rs, inercia/).
+
+## Próxima alavanca (estudo 31/10, explorador): a água na PLACA = 3–4 janelas (ADR-0146 PROPOSTA; paridade passa à forma Jacobi do ADR-0147, épsilon por placa). 1.º degrau numa janela: advecção na placa com leitura de volta, ms RTX/Radeon. CPU restante: secagem ~46 % (aritmética K–M por avaliação), advecção ~20 %, fluxo ~10 %.

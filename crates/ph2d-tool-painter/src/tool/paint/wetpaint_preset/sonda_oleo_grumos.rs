@@ -215,7 +215,10 @@ pub(super) fn grava_png(p: &std::path::Path, rgba: &[u8], w: usize, h: usize) {
 pub(super) const AZ: [u8; 3] = [20, 90, 200];
 pub(super) const OC: [u8; 3] = [210, 140, 40];
 
-pub(super) fn cenas() -> Vec<(&'static str, Vec<&'static str>, Vec<[u8; 3]>, bool)> {
+/// `(nome, presets, cores, cruz)` de uma cena de [`cenas`].
+pub(super) type CenaGrumos = (&'static str, Vec<&'static str>, Vec<[u8; 3]>, bool);
+
+pub(super) fn cenas() -> Vec<CenaGrumos> {
     vec![
         ("filbert_ida_volta", vec!["Flat/Filbert"], vec![AZ], false),
         (

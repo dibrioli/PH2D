@@ -45,10 +45,6 @@ fn traco(e: &mut Engine, pts: &[(f64, f64)]) {
 
 /// Três traços: um em diagonal pelo meio, um colado à borda esquerda e ao topo, um no canto de baixo
 /// à direita — a água toca as quatro bordas da folha.
-fn cena() -> Engine {
-    cena_rf(1)
-}
-
 fn cena_rf(rf: usize) -> Engine {
     let mut e = Engine::with_flow_ratio(W, H, rf);
     e.sliders.water = 1.0;

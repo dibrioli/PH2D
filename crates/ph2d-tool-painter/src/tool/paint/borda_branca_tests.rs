@@ -57,13 +57,16 @@ fn mostrada(t: &mut PainterTool) -> Vec<[u8; 3]> {
         .collect()
 }
 
+/// `(antes, depois, orla)` de [`cena`].
+pub(super) type CenaBorda = (Vec<[u8; 3]>, Vec<[u8; 3]>, usize);
+
 /// `(antes, depois, orla)`: a faixa azul seca, a cena com o amarelo assentado e os píxeis da faixa mais claros que
 /// ambas as tintas (canal a canal, +4). `None` = o preset não pinta no Wet.
 pub(super) fn cena(
     caminho: &std::path::Path,
     relevo: bool,
     extra: &[(ph2d_wet_paint::tuning::Knob, f64)],
-) -> Option<(Vec<[u8; 3]>, Vec<[u8; 3]>, usize)> {
+) -> Option<CenaBorda> {
     let p = ph2d_brush_presets::ler(&std::fs::read(caminho).unwrap()).unwrap();
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
@@ -172,11 +175,11 @@ fn sonda_borda_branca_na_fabrica() {
                 let dir = dir.clone();
                 s.spawn(move || {
                     f.iter()
-                        .map(|(n, p)| match cena(p, relevo, &extra) {
+                        .map(|(n, p)| match cena(p, relevo, extra) {
                             None => format!("     -  {n}"),
                             Some((_, depois, orla)) => {
                                 if let Some(d) = &dir {
-                                    let f = n.replace('/', "_").replace(' ', "_");
+                                    let f = n.replace(['/', ' '], "_");
                                     grava(
                                         &std::path::Path::new(d).join(format!("{f}.png")),
                                         &depois,

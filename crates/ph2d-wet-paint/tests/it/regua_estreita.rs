@@ -94,7 +94,13 @@ impl Par {
         render(&self.a, &mut self.buf_a);
         render(&self.b, &mut self.buf_b);
         let mut hist = [0u64; 256];
-        for (pa, pb) in self.buf_a.chunks_exact(4).zip(self.buf_b.chunks_exact(4)) {
+        for (pa, pb) in self
+            .buf_a
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(self.buf_b.as_chunks::<4>().0)
+        {
             for c in 0..3 {
                 hist[pa[c].abs_diff(pb[c]) as usize] += 1;
             }
@@ -298,7 +304,8 @@ fn regua_estreita() {
             estreito::VEL_F16 | estreito::RGB_U16 | estreito::MASSA_U16,
         ],
     };
-    let cenas: &[(&str, fn(usize) -> bool)] = &[
+    type Cena = (&'static str, fn(usize) -> bool);
+    let cenas: &[Cena] = &[
         ("impasto", cena_impasto),
         ("aguarela", cena_aguarela),
         ("wash", cena_wash),

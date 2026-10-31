@@ -39,6 +39,9 @@ mod organize;
 #[path = "smoke_guides.rs"]
 mod guides;
 
+/// A cena 31 (TrelloClone D17: Quadros e Kanbans nos Assets), num ficheiro filho.
+#[path = "smoke_d17_assets.rs"]
+mod d17_assets;
 /// A cena 8 (W6), num ficheiro filho.
 #[path = "smoke_mind.rs"]
 mod mind;
@@ -61,9 +64,6 @@ mod w24_bars;
 /// A cena 30 (TrelloClone W4), num ficheiro filho.
 #[path = "smoke_w4_kanban.rs"]
 mod w4_kanban;
-/// A cena 31 (TrelloClone D17: Quadros e Kanbans nos Assets), num ficheiro filho.
-#[path = "smoke_d17_assets.rs"]
-mod d17_assets;
 
 /// A cena 9 (W7), num ficheiro filho.
 #[path = "smoke_facilitate.rs"]

@@ -49,7 +49,10 @@ fn start_and_due_read_as_a_range_and_start_alone_says_starts() {
         ("Starts: Oct 30", DueTone::Neutral)
     );
     let today = due_badge(None, Some((now + 2 * HOUR, false)), now, &z).expect("hoje");
-    assert_eq!(today.text, "Today 2:00 PM", "a frente diz o prazo como o verso");
+    assert_eq!(
+        today.text, "Today 2:00 PM",
+        "a frente diz o prazo como o verso"
+    );
 }
 
 #[test]

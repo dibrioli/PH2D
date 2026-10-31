@@ -194,7 +194,9 @@ pub(crate) fn due_badge(
     now: i64,
     zone: &Zone,
 ) -> Option<DueBadge> {
-    let day = |ms: i64| ph2d_kanban_views::datepick::due_text(date_label(day_of(ms, zone), day_of(now, zone)));
+    let day = |ms: i64| {
+        ph2d_kanban_views::datepick::due_text(date_label(day_of(ms, zone), day_of(now, zone)))
+    };
     let (text, tone) = match (start, due) {
         (None, None) => return None,
         (Some(s), None) => {

@@ -373,9 +373,19 @@ pub fn paint_confirm_delete(
     let Some((title, hint)) = confirm_text(docs, store.context_menu().map(|r| r.kind)) else {
         return;
     };
+    let kanban = matches!(
+        store.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::ConfirmDeleteKanban { .. })
+    );
+    // O aviso é uma linha por `\n` (o do Kanban com quadros tem duas): uma linha só cortava-se.
+    let lines: Vec<(&str, ColorToken)> = std::iter::once((title.as_str(), ColorToken::Text1))
+        .chain(hint.lines().map(|l| (l, ColorToken::Text3)))
+        .collect();
     let gap = Spacing::Xs.px();
     let w = super::context_menu_dialogs::DIALOG_W;
-    let h = pad_y() * 2.0 + ROW_H * 3.0 + gap * 2.0; // LITERAL-PX-OK: 3 linhas (título · aviso · botões), 2 vãos
+    #[allow(clippy::cast_precision_loss)]
+    let rows = (lines.len() + 1) as f32;
+    let h = pad_y() * 2.0 + ROW_H * rows + gap * (rows - 1.0);
     let rect = Rect::new(
         (viewport.x + (viewport.w - w) * 0.5).max(viewport.x),
         (viewport.y + (viewport.h - h) * 0.5).max(viewport.y),
@@ -397,10 +407,7 @@ pub fn paint_confirm_delete(
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
     let font = TypeToken::Sm.px();
     let mut y = rect.y + pad_y();
-    for (text, token) in [
-        (title.as_str(), ColorToken::Text1),
-        (hint.as_str(), ColorToken::Text3),
-    ] {
+    for (text, token) in lines {
         let ty = y + (ROW_H - font) * 0.5;
         paint_text(
             text_system,
@@ -427,7 +434,11 @@ pub fn paint_confirm_delete(
         (
             ids::CTX_MENU_BOARD_DELETE_CONFIRM,
             delete,
-            tr("board.dialog.delete"),
+            tr(if kanban {
+                "board.dialog.delete_kanban"
+            } else {
+                "board.dialog.delete"
+            }),
             true,
         ),
     ];

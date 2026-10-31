@@ -86,7 +86,11 @@ pub fn due_text(l: DueLabel) -> String {
         ),
         DueLabel::DateWithYear { year, month, day } => tr_with(
             "kanban.back.day_year",
-            &[("mon", &month_name(month, false)), ("d", &day), ("y", &year)],
+            &[
+                ("mon", &month_name(month, false)),
+                ("d", &day),
+                ("y", &year),
+            ],
         ),
     }
 }

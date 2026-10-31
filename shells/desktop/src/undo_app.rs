@@ -325,6 +325,7 @@ impl crate::App {
                 None => (state, None),
             };
             self.aplica_e_conta_as_macros(&aplica, &mark);
+            self.autokey.esquece_o_quadro();
             if base.is_some() {
                 self.undo_baseline = base;
             }

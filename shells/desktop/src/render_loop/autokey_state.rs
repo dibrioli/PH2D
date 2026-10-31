@@ -74,3 +74,13 @@ pub(crate) struct AutokeyState {
     /// se MUDOU).
     pub(crate) base_campos: BTreeMap<u64, BTreeMap<ph2d_ecs::FieldKey, f32>>,
 }
+
+impl AutokeyState {
+    /// ⛔ **Um desfazer/refazer não é a mão**: sem base, o quadro seguinte não lê o valor restaurado
+    /// como «mudou» e não recria a chave que o mesmo Ctrl+Z acabou de tirar (o que ainda esvaziava
+    /// a fila do refazer).
+    pub(crate) fn esquece_o_quadro(&mut self) {
+        self.baseline.clear();
+        self.base_campos.clear();
+    }
+}

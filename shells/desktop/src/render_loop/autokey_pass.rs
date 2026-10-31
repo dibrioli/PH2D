@@ -549,6 +549,9 @@ mod bone_tests;
 #[cfg(test)]
 #[path = "autokey_cut_clock_tests.rs"]
 mod cut_clock_tests;
+#[cfg(test)]
+#[path = "autokey_desfazer_tests.rs"]
+mod desfazer_tests;
 /// `PH2D_AUTOKEY_LOG=1` — o que o Auto Key viu, uma linha quando muda (plano 34: o report do dono
 /// de 19/10 de que ele não gravava formas vetoriais).
 fn sonda(linha: impl FnOnce() -> String) {

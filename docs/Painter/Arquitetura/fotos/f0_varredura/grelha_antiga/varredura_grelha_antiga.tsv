@@ -1,0 +1,278 @@
+pincel	pigment	water	pressao	n	km_max	km_p99	manchas_pct	manchas_azul_pct	ferrugem_pct	furos_pct	rug	p99_altura	ref_azul	png
+Oil/Flat/Thick Impasto	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	thick_impasto_p40_w0_pr0.2_n1.png
+Oil/Flat/Thick Impasto	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.004	0.03	NaN	thick_impasto_p40_w0_pr0.2_n3.png
+Oil/Flat/Thick Impasto	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.030	0.44	NaN	thick_impasto_p40_w0_pr0.6_n1.png
+Oil/Flat/Thick Impasto	40	0	0.6	3	37.2	33.4	0.00	0.00	0.00	55.94	0.092	1.67	NaN	thick_impasto_p40_w0_pr0.6_n3.png
+Oil/Flat/Thick Impasto	40	0	1	1	52.2	44.4	0.14	0.00	0.00	45.00	0.105	2.20	99.8	thick_impasto_p40_w0_pr1_n1.png
+Oil/Flat/Thick Impasto	40	0	1	3	68.1	42.1	2.14	8.07	0.00	0.00	0.155	5.20	91.8	thick_impasto_p40_w0_pr1_n3.png
+Oil/Flat/Thick Impasto	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	thick_impasto_p40_w0.5_pr0.2_n1.png
+Oil/Flat/Thick Impasto	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.54	100.00	0.004	0.03	NaN	thick_impasto_p40_w0.5_pr0.2_n3.png
+Oil/Flat/Thick Impasto	40	0.5	0.6	1	29.2	29.2	0.00	0.00	0.00	100.00	0.026	0.38	NaN	thick_impasto_p40_w0.5_pr0.6_n1.png
+Oil/Flat/Thick Impasto	40	0.5	0.6	3	55.7	49.9	0.00	0.00	0.00	99.43	0.092	1.53	NaN	thick_impasto_p40_w0.5_pr0.6_n3.png
+Oil/Flat/Thick Impasto	40	0.5	1	1	59.7	51.1	0.00	0.00	0.00	49.90	0.103	1.96	NaN	thick_impasto_p40_w0.5_pr1_n1.png
+Oil/Flat/Thick Impasto	40	0.5	1	3	134.7	46.9	6.16	5.58	0.00	0.00	0.131	3.56	98.1	thick_impasto_p40_w0.5_pr1_n3.png
+Oil/Flat/Thick Impasto	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	thick_impasto_p40_w1_pr0.2_n1.png
+Oil/Flat/Thick Impasto	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.003	0.03	NaN	thick_impasto_p40_w1_pr0.2_n3.png
+Oil/Flat/Thick Impasto	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.023	0.32	NaN	thick_impasto_p40_w1_pr0.6_n1.png
+Oil/Flat/Thick Impasto	40	1	0.6	3	34.4	34.4	0.00	0.00	0.00	99.90	0.066	1.00	NaN	thick_impasto_p40_w1_pr0.6_n3.png
+Oil/Flat/Thick Impasto	40	1	1	1	39.6	37.5	0.00	0.00	0.00	100.00	0.078	1.38	NaN	thick_impasto_p40_w1_pr1_n1.png
+Oil/Flat/Thick Impasto	40	1	1	3	81.8	34.7	5.85	7.81	0.00	0.00	0.134	4.05	97.1	thick_impasto_p40_w1_pr1_n3.png
+Oil/Flat/Thick Impasto	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.052	0.83	NaN	thick_impasto_p600_w0_pr0.2_n1.png
+Oil/Flat/Thick Impasto	600	0	0.2	3	43.0	32.8	7.77	8.22	0.00	0.00	0.111	2.71	98.2	thick_impasto_p600_w0_pr0.2_n3.png
+Oil/Flat/Thick Impasto	600	0	0.6	1	171.5	68.1	10.60	24.09	0.00	0.00	0.296	9.39	93.4	thick_impasto_p600_w0_pr0.6_n1.png
+Oil/Flat/Thick Impasto	600	0	0.6	3	197.7	93.9	10.43	28.37	0.00	0.00	0.387	14.19	94.3	thick_impasto_p600_w0_pr0.6_n3.png
+Oil/Flat/Thick Impasto	600	0	1	1	232.0	145.0	12.39	44.06	0.00	0.00	0.869	27.69	105.6	thick_impasto_p600_w0_pr1_n1.png
+Oil/Flat/Thick Impasto	600	0	1	3	210.0	141.8	11.18	44.34	0.00	0.00	1.087	39.91	106.9	thick_impasto_p600_w0_pr1_n3.png
+Oil/Flat/Thick Impasto	600	0.5	0.2	1	48.7	47.6	0.00	0.00	0.10	99.97	0.072	0.85	102.1	thick_impasto_p600_w0.5_pr0.2_n1.png
+Oil/Flat/Thick Impasto	600	0.5	0.2	3	92.0	57.9	1.13	10.63	0.01	3.54	0.115	2.55	100.1	thick_impasto_p600_w0.5_pr0.2_n3.png
+Oil/Flat/Thick Impasto	600	0.5	0.6	1	168.1	60.7	4.55	9.74	0.00	0.00	0.155	6.80	91.1	thick_impasto_p600_w0.5_pr0.6_n1.png
+Oil/Flat/Thick Impasto	600	0.5	0.6	3	210.4	75.9	6.05	11.36	0.00	0.00	0.352	13.01	89.0	thick_impasto_p600_w0.5_pr0.6_n3.png
+Oil/Flat/Thick Impasto	600	0.5	1	1	214.2	134.2	9.93	29.99	0.04	0.00	0.729	22.85	93.4	thick_impasto_p600_w0.5_pr1_n1.png
+Oil/Flat/Filbert	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_p40_w0_pr0.2_n1.png
+Oil/Flat/Filbert	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_p40_w0_pr0.2_n3.png
+Oil/Flat/Filbert	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.008	0.06	NaN	filbert_p40_w0_pr0.6_n1.png
+Oil/Flat/Filbert	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.030	0.28	NaN	filbert_p40_w0_pr0.6_n3.png
+Oil/Flat/Filbert	40	0	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.038	0.35	NaN	filbert_p40_w0_pr1_n1.png
+Oil/Flat/Filbert	40	0	1	3	50.4	41.6	2.64	6.55	0.00	1.69	0.068	1.05	99.0	filbert_p40_w0_pr1_n3.png
+Oil/Flat/Filbert	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_p40_w0.5_pr0.2_n1.png
+Oil/Flat/Filbert	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_p40_w0.5_pr0.2_n3.png
+Oil/Flat/Filbert	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.007	0.06	NaN	filbert_p40_w0.5_pr0.6_n1.png
+Oil/Flat/Filbert	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.025	0.24	NaN	filbert_p40_w0.5_pr0.6_n3.png
+Oil/Flat/Filbert	40	0.5	1	1	40.4	40.4	0.00	0.00	0.00	99.87	0.033	0.36	NaN	filbert_p40_w0.5_pr1_n1.png
+Oil/Flat/Filbert	40	0.5	1	3	46.9	39.7	0.00	0.00	0.00	84.71	0.057	0.69	NaN	filbert_p40_w0.5_pr1_n3.png
+Oil/Flat/Filbert	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_p40_w1_pr0.2_n1.png
+Oil/Flat/Filbert	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_p40_w1_pr0.2_n3.png
+Oil/Flat/Filbert	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.006	0.05	NaN	filbert_p40_w1_pr0.6_n1.png
+Oil/Flat/Filbert	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.018	0.12	NaN	filbert_p40_w1_pr0.6_n3.png
+Oil/Flat/Filbert	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.024	0.18	NaN	filbert_p40_w1_pr1_n1.png
+Oil/Flat/Filbert	40	1	1	3	43.6	36.8	0.06	0.00	0.00	66.46	0.055	0.64	103.8	filbert_p40_w1_pr1_n3.png
+Oil/Flat/Filbert	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.016	0.13	NaN	filbert_p600_w0_pr0.2_n1.png
+Oil/Flat/Filbert	600	0	0.2	3	29.4	27.9	0.00	0.00	0.00	91.90	0.043	0.52	NaN	filbert_p600_w0_pr0.2_n3.png
+Oil/Flat/Filbert	600	0	0.6	1	76.4	64.9	5.08	12.23	0.00	0.00	0.104	1.98	95.0	filbert_p600_w0_pr0.6_n1.png
+Oil/Flat/Filbert	600	0	0.6	3	62.2	49.4	2.98	13.39	0.00	0.00	0.102	2.89	91.3	filbert_p600_w0_pr0.6_n3.png
+Oil/Flat/Filbert	600	0	1	1	77.6	64.3	7.33	18.98	0.00	0.00	0.211	4.74	92.1	filbert_p600_w0_pr1_n1.png
+Oil/Flat/Filbert	600	0	1	3	92.3	67.2	4.26	18.12	0.00	0.00	0.180	5.69	91.3	filbert_p600_w0_pr1_n3.png
+Oil/Flat/Filbert	600	0.5	0.2	1	0.0	NaN	0.00	0.00	5.49	100.00	0.017	0.14	NaN	filbert_p600_w0.5_pr0.2_n1.png
+Oil/Flat/Filbert	600	0.5	0.2	3	38.3	36.0	0.00	0.00	0.05	96.90	0.046	0.49	100.2	filbert_p600_w0.5_pr0.2_n3.png
+Oil/Flat/Filbert	600	0.5	0.6	1	75.4	50.7	4.71	10.31	0.00	0.29	0.095	1.78	95.7	filbert_p600_w0.5_pr0.6_n1.png
+Oil/Flat/Filbert	600	0.5	0.6	3	104.9	51.3	3.85	4.76	0.00	0.00	0.109	2.97	90.0	filbert_p600_w0.5_pr0.6_n3.png
+Oil/Flat/Filbert	600	0.5	1	1	122.5	52.7	7.08	12.50	0.00	0.00	0.210	3.96	90.6	filbert_p600_w0.5_pr1_n1.png
+Oil/Flat/Filbert	600	0.5	1	3	223.0	63.6	4.35	12.65	0.00	0.00	0.145	5.02	89.3	filbert_p600_w0.5_pr1_n3.png
+Oil/Flat/Filbert Dry	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_dry_p40_w0_pr0.2_n1.png
+Oil/Flat/Filbert Dry	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_dry_p40_w0_pr0.2_n3.png
+Oil/Flat/Filbert Dry	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.009	0.05	NaN	filbert_dry_p40_w0_pr0.6_n1.png
+Oil/Flat/Filbert Dry	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.031	0.29	NaN	filbert_dry_p40_w0_pr0.6_n3.png
+Oil/Flat/Filbert Dry	40	0	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.039	0.32	NaN	filbert_dry_p40_w0_pr1_n1.png
+Oil/Flat/Filbert Dry	40	0	1	3	47.6	33.7	1.19	3.78	0.00	1.88	0.068	1.07	100.5	filbert_dry_p40_w0_pr1_n3.png
+Oil/Flat/Filbert Dry	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_dry_p40_w0.5_pr0.2_n1.png
+Oil/Flat/Filbert Dry	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_dry_p40_w0.5_pr0.2_n3.png
+Oil/Flat/Filbert Dry	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.008	0.05	NaN	filbert_dry_p40_w0.5_pr0.6_n1.png
+Oil/Flat/Filbert Dry	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.027	0.21	NaN	filbert_dry_p40_w0.5_pr0.6_n3.png
+Oil/Flat/Filbert Dry	40	0.5	1	1	39.1	39.1	0.00	0.00	0.00	99.95	0.034	0.30	NaN	filbert_dry_p40_w0.5_pr1_n1.png
+Oil/Flat/Filbert Dry	40	0.5	1	3	47.0	39.8	0.00	0.00	0.00	90.18	0.056	0.68	NaN	filbert_dry_p40_w0.5_pr1_n3.png
+Oil/Flat/Filbert Dry	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	filbert_dry_p40_w1_pr0.2_n1.png
+Oil/Flat/Filbert Dry	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	filbert_dry_p40_w1_pr0.2_n3.png
+Oil/Flat/Filbert Dry	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.006	0.04	NaN	filbert_dry_p40_w1_pr0.6_n1.png
+Oil/Flat/Filbert Dry	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.018	0.12	NaN	filbert_dry_p40_w1_pr0.6_n3.png
+Oil/Flat/Filbert Dry	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.025	0.17	NaN	filbert_dry_p40_w1_pr1_n1.png
+Oil/Flat/Filbert Dry	40	1	1	3	40.5	35.9	0.00	0.00	0.00	93.75	0.053	0.53	102.5	filbert_dry_p40_w1_pr1_n3.png
+Oil/Flat/Filbert Dry	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.016	0.12	NaN	filbert_dry_p600_w0_pr0.2_n1.png
+Oil/Flat/Filbert Dry	600	0	0.2	3	34.7	32.7	0.00	0.00	0.00	81.56	0.043	0.55	NaN	filbert_dry_p600_w0_pr0.2_n3.png
+Oil/Flat/Filbert Dry	600	0	0.6	1	67.4	54.0	4.57	9.10	0.00	0.00	0.109	2.02	94.7	filbert_dry_p600_w0_pr0.6_n1.png
+Oil/Flat/Filbert Dry	600	0	0.6	3	69.5	46.7	3.54	12.46	0.00	0.00	0.099	2.72	91.0	filbert_dry_p600_w0_pr0.6_n3.png
+Oil/Flat/Filbert Dry	600	0	1	1	82.9	62.4	7.75	18.61	0.00	0.00	0.219	4.50	92.0	filbert_dry_p600_w0_pr1_n1.png
+Oil/Flat/Filbert Dry	600	0	1	3	89.8	67.1	5.66	21.52	0.00	0.00	0.175	5.32	91.9	filbert_dry_p600_w0_pr1_n3.png
+Oil/Flat/Filbert Dry	600	0.5	0.2	1	0.0	NaN	0.00	0.00	3.47	100.00	0.019	0.13	NaN	filbert_dry_p600_w0.5_pr0.2_n1.png
+Oil/Flat/Filbert Dry	600	0.5	0.2	3	36.3	34.6	0.00	0.00	0.09	94.14	0.048	0.53	105.0	filbert_dry_p600_w0.5_pr0.2_n3.png
+Oil/Flat/Filbert Dry	600	0.5	0.6	1	77.8	50.1	4.02	8.34	0.00	0.08	0.091	1.74	95.3	filbert_dry_p600_w0.5_pr0.6_n1.png
+Oil/Flat/Filbert Dry	600	0.5	0.6	3	77.4	48.3	3.85	4.76	0.00	0.00	0.107	3.03	90.1	filbert_dry_p600_w0.5_pr0.6_n3.png
+Oil/Flat/Filbert Dry	600	0.5	1	1	77.3	57.5	7.01	9.55	0.00	0.00	0.214	4.00	91.1	filbert_dry_p600_w0.5_pr1_n1.png
+Oil/Flat/Filbert Dry	600	0.5	1	3	99.0	59.9	4.71	12.84	0.00	0.00	0.162	5.02	89.7	filbert_dry_p600_w0.5_pr1_n3.png
+Oil/Flat/Filbert Dry	600	1	0.2	1	0.0	NaN	0.00	0.00	0.84	100.00	0.017	0.13	NaN	filbert_dry_p600_w1_pr0.2_n1.png
+Oil/Flat/Filbert Dry	600	1	0.2	3	45.0	42.3	0.00	0.00	0.03	100.00	0.042	0.44	NaN	filbert_dry_p600_w1_pr0.2_n3.png
+Oil/Flat/Flat Bristle	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	flat_bristle_p40_w0_pr0.2_n1.png
+Oil/Flat/Flat Bristle	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	flat_bristle_p40_w0_pr0.2_n3.png
+Oil/Flat/Flat Bristle	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.013	0.10	NaN	flat_bristle_p40_w0_pr0.6_n1.png
+Oil/Flat/Flat Bristle	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.037	0.42	NaN	flat_bristle_p40_w0_pr0.6_n3.png
+Oil/Flat/Flat Bristle	40	0	1	1	39.6	39.6	0.00	0.00	0.00	99.61	0.052	0.50	NaN	flat_bristle_p40_w0_pr1_n1.png
+Oil/Flat/Flat Bristle	40	0	1	3	42.1	30.1	1.16	3.51	0.00	0.47	0.071	1.33	98.7	flat_bristle_p40_w0_pr1_n3.png
+Oil/Flat/Flat Bristle	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	flat_bristle_p40_w0.5_pr0.2_n1.png
+Oil/Flat/Flat Bristle	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	flat_bristle_p40_w0.5_pr0.2_n3.png
+Oil/Flat/Flat Bristle	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.012	0.09	NaN	flat_bristle_p40_w0.5_pr0.6_n1.png
+Oil/Flat/Flat Bristle	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.033	0.29	NaN	flat_bristle_p40_w0.5_pr0.6_n3.png
+Oil/Flat/Flat Bristle	40	0.5	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.043	0.38	NaN	flat_bristle_p40_w0.5_pr1_n1.png
+Oil/Flat/Flat Bristle	40	0.5	1	3	39.0	29.7	0.00	0.00	0.00	4.58	0.061	0.83	NaN	flat_bristle_p40_w0.5_pr1_n3.png
+Oil/Flat/Flat Bristle	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	flat_bristle_p40_w1_pr0.2_n1.png
+Oil/Flat/Flat Bristle	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	flat_bristle_p40_w1_pr0.2_n3.png
+Oil/Flat/Flat Bristle	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.009	0.05	NaN	flat_bristle_p40_w1_pr0.6_n1.png
+Oil/Flat/Flat Bristle	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.023	0.18	NaN	flat_bristle_p40_w1_pr0.6_n3.png
+Oil/Flat/Flat Bristle	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.035	0.26	NaN	flat_bristle_p40_w1_pr1_n1.png
+Oil/Flat/Flat Bristle	40	1	1	3	39.6	30.4	0.00	1.27	0.00	8.75	0.065	0.93	101.1	flat_bristle_p40_w1_pr1_n3.png
+Oil/Flat/Flat Bristle	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.023	0.20	NaN	flat_bristle_p600_w0_pr0.2_n1.png
+Oil/Flat/Flat Bristle	600	0	0.2	3	28.1	25.1	0.00	0.00	0.00	53.07	0.049	0.74	NaN	flat_bristle_p600_w0_pr0.2_n3.png
+Oil/Flat/Flat Bristle	600	0	0.6	1	79.0	50.5	4.40	7.65	0.00	0.00	0.136	2.64	93.4	flat_bristle_p600_w0_pr0.6_n1.png
+Oil/Flat/Flat Bristle	600	0	0.6	3	79.0	48.5	3.98	11.58	0.00	0.00	0.110	3.06	90.6	flat_bristle_p600_w0_pr0.6_n3.png
+Oil/Flat/Flat Bristle	600	0	1	1	90.5	68.0	8.71	18.08	0.00	0.00	0.262	5.73	91.2	flat_bristle_p600_w0_pr1_n1.png
+Oil/Flat/Flat Bristle	600	0	1	3	157.7	73.5	5.78	19.44	0.00	0.00	0.210	6.79	91.6	flat_bristle_p600_w0_pr1_n3.png
+Oil/Flat/Flat Bristle	600	0.5	0.2	1	0.0	NaN	0.00	0.00	2.13	100.00	0.027	0.22	NaN	flat_bristle_p600_w0.5_pr0.2_n1.png
+Oil/Flat/Flat Bristle	600	0.5	0.2	3	39.9	35.4	0.00	2.44	0.02	60.00	0.055	0.70	101.0	flat_bristle_p600_w0.5_pr0.2_n3.png
+Oil/Flat/Flat Bristle	600	0.5	0.6	1	85.0	48.2	4.71	5.20	0.00	0.00	0.107	2.36	93.3	flat_bristle_p600_w0.5_pr0.6_n1.png
+Oil/Flat/Flat Bristle	600	0.5	0.6	3	80.7	53.9	3.38	4.81	0.00	0.00	0.123	3.59	89.2	flat_bristle_p600_w0.5_pr0.6_n3.png
+Oil/Flat/Flat Bristle	600	0.5	1	1	150.2	67.3	7.81	11.01	0.00	0.00	0.233	4.67	91.0	flat_bristle_p600_w0.5_pr1_n1.png
+Oil/Flat/Flat Bristle	600	0.5	1	3	166.7	70.9	6.35	16.03	0.00	0.00	0.199	5.85	90.1	flat_bristle_p600_w0.5_pr1_n3.png
+Oil/Flat/Flat Bristle	600	1	0.2	1	0.0	NaN	0.00	0.00	1.19	100.00	0.023	0.19	NaN	flat_bristle_p600_w1_pr0.2_n1.png
+Oil/Flat/Flat Bristle	600	1	0.2	3	39.9	33.4	0.00	0.00	0.01	82.11	0.048	0.61	100.9	flat_bristle_p600_w1_pr0.2_n3.png
+Oil/Flat/Flat Bristle	600	1	0.6	1	65.2	45.0	4.21	4.36	0.00	0.03	0.109	1.88	93.1	flat_bristle_p600_w1_pr0.6_n1.png
+Oil/Flat/Tilted Shade	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	tilted_shade_p40_w0_pr0.2_n1.png
+Oil/Flat/Tilted Shade	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	tilted_shade_p40_w0_pr0.2_n3.png
+Oil/Flat/Tilted Shade	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.010	0.07	NaN	tilted_shade_p40_w0_pr0.6_n1.png
+Oil/Flat/Tilted Shade	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.032	0.33	NaN	tilted_shade_p40_w0_pr0.6_n3.png
+Oil/Flat/Tilted Shade	40	0	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.044	0.39	NaN	tilted_shade_p40_w0_pr1_n1.png
+Oil/Flat/Tilted Shade	40	0	1	3	35.2	30.7	1.64	2.86	0.00	3.67	0.069	1.16	100.3	tilted_shade_p40_w0_pr1_n3.png
+Oil/Flat/Tilted Shade	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	tilted_shade_p40_w0.5_pr0.2_n1.png
+Oil/Flat/Tilted Shade	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	tilted_shade_p40_w0.5_pr0.2_n3.png
+Oil/Flat/Tilted Shade	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.009	0.06	NaN	tilted_shade_p40_w0.5_pr0.6_n1.png
+Oil/Flat/Tilted Shade	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.028	0.22	NaN	tilted_shade_p40_w0.5_pr0.6_n3.png
+Oil/Flat/Tilted Shade	40	0.5	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.036	0.31	NaN	tilted_shade_p40_w0.5_pr1_n1.png
+Oil/Flat/Tilted Shade	40	0.5	1	3	39.5	33.6	0.00	0.00	0.00	74.22	0.057	0.68	NaN	tilted_shade_p40_w0.5_pr1_n3.png
+Oil/Flat/Tilted Shade	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	tilted_shade_p40_w1_pr0.2_n1.png
+Oil/Flat/Tilted Shade	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.00	NaN	tilted_shade_p40_w1_pr0.2_n3.png
+Oil/Flat/Tilted Shade	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.007	0.04	NaN	tilted_shade_p40_w1_pr0.6_n1.png
+Oil/Flat/Tilted Shade	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.018	0.12	NaN	tilted_shade_p40_w1_pr0.6_n3.png
+Oil/Flat/Tilted Shade	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.027	0.19	NaN	tilted_shade_p40_w1_pr1_n1.png
+Oil/Flat/Tilted Shade	40	1	1	3	37.5	32.8	0.00	0.00	0.00	77.24	0.056	0.63	NaN	tilted_shade_p40_w1_pr1_n3.png
+Oil/Flat/Tilted Shade	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.019	0.15	NaN	tilted_shade_p600_w0_pr0.2_n1.png
+Oil/Flat/Tilted Shade	600	0	0.2	3	28.3	26.9	0.00	0.00	0.00	75.18	0.044	0.61	NaN	tilted_shade_p600_w0_pr0.2_n3.png
+Oil/Flat/Tilted Shade	600	0	0.6	1	65.1	55.8	4.10	8.68	0.00	0.00	0.118	2.26	94.2	tilted_shade_p600_w0_pr0.6_n1.png
+Oil/Flat/Tilted Shade	600	0	0.6	3	67.2	46.5	3.32	11.14	0.00	0.00	0.103	2.83	90.8	tilted_shade_p600_w0_pr0.6_n3.png
+Oil/Flat/Tilted Shade	600	0	1	1	90.3	63.5	6.99	18.58	0.00	0.00	0.233	4.91	91.9	tilted_shade_p600_w0_pr1_n1.png
+Oil/Flat/Tilted Shade	600	0	1	3	92.8	65.8	4.98	19.47	0.00	0.00	0.187	5.92	91.5	tilted_shade_p600_w0_pr1_n3.png
+Oil/Flat/Tilted Shade	600	0.5	0.2	1	0.0	NaN	0.00	0.00	2.94	100.00	0.022	0.16	NaN	tilted_shade_p600_w0.5_pr0.2_n1.png
+Oil/Flat/Tilted Shade	600	0.5	0.2	3	36.6	32.3	0.00	0.00	0.05	91.38	0.050	0.57	103.0	tilted_shade_p600_w0.5_pr0.2_n3.png
+Oil/Flat/Tilted Shade	600	0.5	0.6	1	84.3	51.6	3.58	5.72	0.00	0.21	0.094	1.92	94.3	tilted_shade_p600_w0.5_pr0.6_n1.png
+Oil/Flat/Tilted Shade	600	0.5	0.6	3	79.2	45.6	3.39	4.42	0.00	0.00	0.111	3.16	89.7	tilted_shade_p600_w0.5_pr0.6_n3.png
+Oil/Flat/Tilted Shade	600	0.5	1	1	86.9	60.2	7.27	9.14	0.00	0.00	0.223	4.21	91.2	tilted_shade_p600_w0.5_pr1_n1.png
+Oil/Flat/Tilted Shade	600	0.5	1	3	151.0	64.4	4.63	13.47	0.00	0.00	0.171	5.19	89.7	tilted_shade_p600_w0.5_pr1_n3.png
+Oil/Flat/Tilted Shade	600	1	0.2	1	0.0	NaN	0.00	0.00	2.42	100.00	0.019	0.14	NaN	tilted_shade_p600_w1_pr0.2_n1.png
+Oil/Flat/Tilted Shade	600	1	0.2	3	38.3	35.6	0.00	0.00	0.01	99.71	0.043	0.48	NaN	tilted_shade_p600_w1_pr0.2_n3.png
+Oil/Flat/Tilted Shade	600	1	0.6	1	73.0	50.2	3.13	3.63	0.00	0.03	0.100	1.70	94.3	tilted_shade_p600_w1_pr0.6_n1.png
+Oil/Dabber/Dabber	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0_pr0.2_n1.png
+Oil/Dabber/Dabber	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0_pr0.2_n3.png
+Oil/Dabber/Dabber	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0_pr0.6_n1.png
+Oil/Dabber/Dabber	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.002	0.02	NaN	dabber_p40_w0_pr0.6_n3.png
+Oil/Dabber/Dabber	40	0	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.008	0.09	NaN	dabber_p40_w0_pr1_n1.png
+Oil/Dabber/Dabber	40	0	1	3	0.0	NaN	0.00	0.00	0.00	100.00	0.034	0.40	NaN	dabber_p40_w0_pr1_n3.png
+Oil/Dabber/Dabber	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0.5_pr0.2_n1.png
+Oil/Dabber/Dabber	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0.5_pr0.2_n3.png
+Oil/Dabber/Dabber	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w0.5_pr0.6_n1.png
+Oil/Dabber/Dabber	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.002	0.02	NaN	dabber_p40_w0.5_pr0.6_n3.png
+Oil/Dabber/Dabber	40	0.5	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.006	0.08	NaN	dabber_p40_w0.5_pr1_n1.png
+Oil/Dabber/Dabber	40	0.5	1	3	0.0	NaN	0.00	0.00	0.00	100.00	0.027	0.31	NaN	dabber_p40_w0.5_pr1_n3.png
+Oil/Dabber/Dabber	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w1_pr0.2_n1.png
+Oil/Dabber/Dabber	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w1_pr0.2_n3.png
+Oil/Dabber/Dabber	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p40_w1_pr0.6_n1.png
+Oil/Dabber/Dabber	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	dabber_p40_w1_pr0.6_n3.png
+Oil/Dabber/Dabber	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.005	0.05	NaN	dabber_p40_w1_pr1_n1.png
+Oil/Dabber/Dabber	40	1	1	3	0.0	NaN	0.00	0.00	0.00	100.00	0.014	0.15	NaN	dabber_p40_w1_pr1_n3.png
+Oil/Dabber/Dabber	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w0_pr0.2_n1.png
+Oil/Dabber/Dabber	600	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w0_pr0.2_n3.png
+Oil/Dabber/Dabber	600	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.043	0.53	NaN	dabber_p600_w0_pr0.6_n1.png
+Oil/Dabber/Dabber	600	0	0.6	3	54.4	44.0	0.00	10.00	0.00	63.98	0.102	1.98	106.4	dabber_p600_w0_pr0.6_n3.png
+Oil/Dabber/Dabber	600	0	1	1	191.2	78.0	7.72	23.52	0.00	0.76	0.181	4.53	99.1	dabber_p600_w0_pr1_n1.png
+Oil/Dabber/Dabber	600	0	1	3	229.7	95.3	6.82	22.80	0.00	0.00	0.222	7.45	95.0	dabber_p600_w0_pr1_n3.png
+Oil/Dabber/Dabber	600	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w0.5_pr0.2_n1.png
+Oil/Dabber/Dabber	600	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w0.5_pr0.2_n3.png
+Oil/Dabber/Dabber	600	0.5	0.6	1	42.8	41.8	0.00	0.00	1.45	99.66	0.050	0.59	NaN	dabber_p600_w0.5_pr0.6_n1.png
+Oil/Dabber/Dabber	600	0.5	0.6	3	101.5	64.8	0.27	7.01	0.02	73.36	0.125	2.18	106.3	dabber_p600_w0.5_pr0.6_n3.png
+Oil/Dabber/Dabber	600	0.5	1	1	112.1	61.5	3.97	14.61	0.07	2.42	0.138	3.88	100.7	dabber_p600_w0.5_pr1_n1.png
+Oil/Dabber/Dabber	600	0.5	1	3	230.6	82.2	3.46	12.36	0.00	0.00	0.137	6.45	93.2	dabber_p600_w0.5_pr1_n3.png
+Oil/Dabber/Dabber	600	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w1_pr0.2_n1.png
+Oil/Dabber/Dabber	600	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p600_w1_pr0.2_n3.png
+Oil/Dabber/Dabber	600	1	0.6	1	42.2	34.5	0.00	0.00	0.01	99.27	0.034	0.47	NaN	dabber_p600_w1_pr0.6_n1.png
+Oil/Dabber/Dabber	600	1	0.6	3	49.2	38.0	0.00	0.00	0.00	91.77	0.091	1.86	NaN	dabber_p600_w1_pr0.6_n3.png
+Oil/Dabber/Dabber	600	1	1	1	98.9	53.4	7.18	8.00	0.00	0.00	0.106	3.23	101.3	dabber_p600_w1_pr1_n1.png
+Oil/Dabber/Dabber	600	1	1	3	232.3	117.9	7.04	13.42	0.00	0.00	0.139	5.30	93.5	dabber_p600_w1_pr1_n3.png
+Oil/Dabber/Dabber	2000	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_p2000_w0_pr0.2_n1.png
+Oil/Dabber/Dabber 4	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0_pr0.2_n1.png
+Oil/Dabber/Dabber 4	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0_pr0.2_n3.png
+Oil/Dabber/Dabber 4	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0_pr0.6_n1.png
+Oil/Dabber/Dabber 4	40	0	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0_pr0.6_n3.png
+Oil/Dabber/Dabber 4	40	0	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	dabber_4_p40_w0_pr1_n1.png
+Oil/Dabber/Dabber 4	40	0	1	3	0.0	NaN	0.00	0.00	0.00	100.00	0.007	0.05	NaN	dabber_4_p40_w0_pr1_n3.png
+Oil/Dabber/Dabber 4	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0.5_pr0.2_n1.png
+Oil/Dabber/Dabber 4	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0.5_pr0.2_n3.png
+Oil/Dabber/Dabber 4	40	0.5	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0.5_pr0.6_n1.png
+Oil/Dabber/Dabber 4	40	0.5	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w0.5_pr0.6_n3.png
+Oil/Dabber/Dabber 4	40	0.5	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	dabber_4_p40_w0.5_pr1_n1.png
+Oil/Dabber/Dabber 4	40	0.5	1	3	0.0	NaN	0.00	0.00	0.04	100.00	0.005	0.03	NaN	dabber_4_p40_w0.5_pr1_n3.png
+Oil/Dabber/Dabber 4	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w1_pr0.2_n1.png
+Oil/Dabber/Dabber 4	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w1_pr0.2_n3.png
+Oil/Dabber/Dabber 4	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w1_pr0.6_n1.png
+Oil/Dabber/Dabber 4	40	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p40_w1_pr0.6_n3.png
+Oil/Dabber/Dabber 4	40	1	1	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	dabber_4_p40_w1_pr1_n1.png
+Oil/Dabber/Dabber 4	40	1	1	3	0.0	NaN	0.00	0.00	0.00	100.00	0.004	0.02	NaN	dabber_4_p40_w1_pr1_n3.png
+Oil/Dabber/Dabber 4	600	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w0_pr0.2_n1.png
+Oil/Dabber/Dabber 4	600	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w0_pr0.2_n3.png
+Oil/Dabber/Dabber 4	600	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.006	0.06	NaN	dabber_4_p600_w0_pr0.6_n1.png
+Oil/Dabber/Dabber 4	600	0	0.6	3	19.1	19.1	0.00	0.00	0.00	100.00	0.029	0.23	NaN	dabber_4_p600_w0_pr0.6_n3.png
+Oil/Dabber/Dabber 4	600	0	1	1	84.4	61.1	1.36	7.68	0.00	60.60	0.087	0.71	99.9	dabber_4_p600_w0_pr1_n1.png
+Oil/Dabber/Dabber 4	600	0	1	3	96.0	46.4	4.56	12.76	0.00	6.33	0.201	1.35	93.1	dabber_4_p600_w0_pr1_n3.png
+Oil/Dabber/Dabber 4	600	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w0.5_pr0.2_n1.png
+Oil/Dabber/Dabber 4	600	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w0.5_pr0.2_n3.png
+Oil/Dabber/Dabber 4	600	0.5	0.6	1	18.9	18.9	0.00	0.00	5.36	100.00	0.005	0.05	NaN	dabber_4_p600_w0.5_pr0.6_n1.png
+Oil/Dabber/Dabber 4	600	0.5	0.6	3	30.5	30.5	0.00	0.00	0.25	100.00	0.021	0.21	NaN	dabber_4_p600_w0.5_pr0.6_n3.png
+Oil/Dabber/Dabber 4	600	0.5	1	1	58.9	47.8	0.07	0.00	0.03	85.13	0.053	0.63	102.0	dabber_4_p600_w0.5_pr1_n1.png
+Oil/Dabber/Dabber 4	600	0.5	1	3	77.4	35.0	1.21	7.15	0.09	0.00	0.075	1.39	95.5	dabber_4_p600_w0.5_pr1_n3.png
+Oil/Dabber/Dabber 4	600	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w1_pr0.2_n1.png
+Oil/Dabber/Dabber 4	600	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p600_w1_pr0.2_n3.png
+Oil/Dabber/Dabber 4	600	1	0.6	1	0.0	NaN	0.00	0.00	0.46	100.00	0.004	0.04	NaN	dabber_4_p600_w1_pr0.6_n1.png
+Oil/Dabber/Dabber 4	600	1	0.6	3	49.6	40.1	0.00	0.00	0.09	100.00	0.018	0.18	NaN	dabber_4_p600_w1_pr0.6_n3.png
+Oil/Dabber/Dabber 4	600	1	1	1	58.0	48.7	0.00	0.00	0.00	97.45	0.046	0.57	NaN	dabber_4_p600_w1_pr1_n1.png
+Oil/Dabber/Dabber 4	600	1	1	3	50.5	28.4	4.07	4.33	0.00	0.00	0.072	1.26	96.9	dabber_4_p600_w1_pr1_n3.png
+Oil/Dabber/Dabber 4	2000	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w0_pr0.2_n1.png
+Oil/Dabber/Dabber 4	2000	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w0_pr0.2_n3.png
+Oil/Dabber/Dabber 4	2000	0	0.6	1	63.7	57.0	0.29	0.00	0.00	95.36	0.042	0.38	99.8	dabber_4_p2000_w0_pr0.6_n1.png
+Oil/Dabber/Dabber 4	2000	0	0.6	3	67.3	46.9	4.52	11.15	0.00	18.15	0.129	0.92	96.4	dabber_4_p2000_w0_pr0.6_n3.png
+Oil/Dabber/Dabber 4	2000	0	1	1	104.0	65.1	5.54	16.52	0.00	8.02	0.235	1.76	93.3	dabber_4_p2000_w0_pr1_n1.png
+Oil/Dabber/Dabber 4	2000	0	1	3	112.2	59.9	4.95	17.29	0.00	5.34	0.323	2.11	90.9	dabber_4_p2000_w0_pr1_n3.png
+Oil/Dabber/Dabber 4	2000	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w0.5_pr0.2_n1.png
+Oil/Dabber/Dabber 4	2000	0.5	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w0.5_pr0.2_n3.png
+Oil/Dabber/Dabber 4	2000	0.5	0.6	1	59.5	41.7	0.00	0.00	0.33	98.05	0.030	0.36	99.5	dabber_4_p2000_w0.5_pr0.6_n1.png
+Oil/Dabber/Dabber 4	2000	0.5	0.6	3	101.2	51.2	1.15	9.41	0.08	7.86	0.062	0.97	98.3	dabber_4_p2000_w0.5_pr0.6_n3.png
+Oil/Dabber/Dabber 4	2000	0.5	1	1	75.1	45.2	2.37	8.58	0.00	0.05	0.091	1.84	93.0	dabber_4_p2000_w0.5_pr1_n1.png
+Oil/Dabber/Dabber 4	2000	0.5	1	3	61.8	38.7	0.46	4.75	0.00	0.00	0.088	3.00	88.4	dabber_4_p2000_w0.5_pr1_n3.png
+Oil/Dabber/Dabber 4	2000	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w1_pr0.2_n1.png
+Oil/Dabber/Dabber 4	2000	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.000	0.00	NaN	dabber_4_p2000_w1_pr0.2_n3.png
+Oil/Knife/Knife Oily	40	0	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.004	0.04	NaN	knife_oily_p40_w0_pr0.2_n1.png
+Oil/Knife/Knife Oily	40	0	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.047	0.61	NaN	knife_oily_p40_w0_pr0.2_n3.png
+Oil/Knife/Knife Oily	40	0	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.095	1.83	NaN	knife_oily_p40_w0_pr0.6_n1.png
+Oil/Knife/Knife Oily	40	0	0.6	3	70.3	54.9	10.97	24.60	0.00	0.00	0.181	4.85	97.1	knife_oily_p40_w0_pr0.6_n3.png
+Oil/Knife/Knife Oily	40	0	1	1	91.9	67.8	8.93	12.48	0.00	0.00	0.201	4.94	96.8	knife_oily_p40_w0_pr1_n1.png
+Oil/Knife/Knife Oily	40	0	1	3	129.2	106.6	7.44	24.25	0.00	0.00	0.224	7.91	94.8	knife_oily_p40_w0_pr1_n3.png
+Oil/Knife/Knife Oily	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.008	0.11	NaN	knife_oily_p40_w0.5_pr0.2_n1.png
+Oil/Knife/Knife Oily	40	0.5	0.2	3	35.4	35.4	0.00	0.00	0.00	100.00	0.046	0.66	NaN	knife_oily_p40_w0.5_pr0.2_n3.png
+Oil/Knife/Knife Oily	40	0.5	0.6	1	60.4	60.4	0.00	0.00	0.00	99.92	0.098	1.96	NaN	knife_oily_p40_w0.5_pr0.6_n1.png
+Oil/Knife/Knife Oily	40	0.5	0.6	3	96.2	61.2	2.04	20.03	0.00	2.29	0.174	3.55	95.4	knife_oily_p40_w0.5_pr0.6_n3.png
+Oil/Knife/Knife Oily	40	0.5	1	1	164.7	79.4	1.55	4.81	0.00	0.00	0.187	4.21	102.3	knife_oily_p40_w0.5_pr1_n1.png
+Oil/Knife/Knife Oily	40	0.5	1	3	172.3	70.8	7.71	18.80	0.00	0.00	0.194	6.53	94.9	knife_oily_p40_w0.5_pr1_n3.png
+Oil/Knife/Knife Oily	40	1	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.009	0.14	NaN	knife_oily_p40_w1_pr0.2_n1.png
+Oil/Knife/Knife Oily	40	1	0.2	3	0.0	NaN	0.00	0.00	0.00	100.00	0.033	0.55	NaN	knife_oily_p40_w1_pr0.2_n3.png
+Oil/Knife/Knife Oily	40	1	0.6	1	0.0	NaN	0.00	0.00	0.00	100.00	0.071	1.18	NaN	knife_oily_p40_w1_pr0.6_n1.png
+Oil/Knife/Knife Oily	40	1	0.6	3	79.1	60.2	7.56	13.32	0.00	2.37	0.175	3.92	100.1	knife_oily_p40_w1_pr0.6_n3.png
+Oil/Knife/Knife Oily	40	1	1	1	90.8	61.2	1.38	18.84	0.00	0.94	0.159	3.83	97.8	knife_oily_p40_w1_pr1_n1.png
+Oil/Knife/Knife Oily	40	1	1	3	168.5	67.4	7.03	21.55	0.00	0.00	0.209	7.77	94.8	knife_oily_p40_w1_pr1_n3.png
+Oil/Knife/Knife Oily	600	0	0.2	1	105.4	72.4	18.14	23.55	0.00	20.78	0.315	4.15	96.3	knife_oily_p600_w0_pr0.2_n1.png
+Oil/Knife/Knife Oily	600	0	0.2	3	142.7	102.9	17.59	32.66	0.00	0.00	0.397	8.62	97.5	knife_oily_p600_w0_pr0.2_n3.png
+Oil/Knife/Knife Oily	600	0	0.6	1	161.0	119.7	16.28	37.56	0.00	0.00	0.797	20.86	100.9	knife_oily_p600_w0_pr0.6_n1.png
+Oil/Knife/Knife Oily	600	0	0.6	3	233.5	171.5	15.50	41.89	0.00	0.00	1.062	31.03	109.2	knife_oily_p600_w0_pr0.6_n3.png
+Oil/Knife/Knife Oily	600	0	1	1	232.6	172.1	12.38	37.62	0.00	0.00	1.587	54.64	101.3	knife_oily_p600_w0_pr1_n1.png
+Oil/Knife/Knife Oily	600	0	1	3	233.0	162.4	11.01	39.28	0.00	0.00	1.878	69.82	107.4	knife_oily_p600_w0_pr1_n3.png
+Oil/Knife/Knife Oily	600	0.5	0.2	1	177.7	79.7	11.55	16.93	0.02	0.42	0.185	3.91	96.4	knife_oily_p600_w0.5_pr0.2_n1.png
+Oil/Knife/Knife Oily	600	0.5	0.2	3	198.5	95.8	6.83	19.81	0.00	0.00	0.226	7.77	90.2	knife_oily_p600_w0.5_pr0.2_n3.png
+Oil/Knife/Knife Oily	600	0.5	0.6	1	231.4	78.4	14.08	8.63	0.00	0.00	0.413	15.26	90.1	knife_oily_p600_w0.5_pr0.6_n1.png
+Oil/Knife/Knife Oily	600	0.5	0.6	3	190.4	95.7	13.02	22.68	0.11	0.00	0.603	23.15	89.7	knife_oily_p600_w0.5_pr0.6_n3.png
+Oil/Knife/Knife Oily	600	0.5	1	1	210.3	110.2	13.67	31.58	0.01	0.00	1.474	42.51	91.4	knife_oily_p600_w0.5_pr1_n1.png
+Oil/Knife/Knife Oily	600	0.5	1	3	232.8	134.7	14.25	37.13	0.07	0.00	1.563	55.56	91.8	knife_oily_p600_w0.5_pr1_n3.png
+Oil/Knife/Knife Oily	600	1	0.2	1	171.1	77.0	6.29	14.29	0.00	0.03	0.195	4.70	95.4	knife_oily_p600_w1_pr0.2_n1.png
+Oil/Knife/Knife Oily	600	1	0.2	3	183.6	66.5	10.53	23.01	0.00	0.00	0.258	7.80	91.7	knife_oily_p600_w1_pr0.2_n3.png
+Oil/Knife/Knife Oily	600	1	0.6	1	163.8	98.4	15.84	14.32	0.00	0.03	0.427	16.59	90.8	knife_oily_p600_w1_pr0.6_n1.png

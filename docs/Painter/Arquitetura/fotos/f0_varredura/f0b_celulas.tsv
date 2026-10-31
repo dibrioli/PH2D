@@ -1,0 +1,22 @@
+pincel	pigment	water	pressao	n	km_max	km_p99	manchas_pct	manchas_azul_pct	ferrugem_pct	furos_pct	rug	p99_altura	ref_azul	png	km_p99_plano	km_max_plano	manchas_plano	manchas_azul_plano	ferrugem_plano	ref_azul_plano	degraus_y	degraus_x	degraus_y_plano	degraus_x_plano	pausa	papel	ordem
+Oil/Flat/Thick Impasto	20	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.031	0.36	NaN	thick_impasto_p20_w1_pr0.6_n3_s30_pa0.5_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	10	2	10	1	30	0.5	ay
+Oil/Flat/Thick Impasto	20	1	1	3	43.2	33.7	15.93	22.39	0.00	10.73	0.109	2.15	112.5	thick_impasto_p20_w1_pr1_n3_s30_pa0.5_ay.png	33.3	42.6	15.80	22.39	0.00	112.5	11	0	11	0	30	0.5	ay
+Oil/Flat/Thick Impasto	20	1	0.6	3	26.4	26.4	0.00	0.00	0.00	100.00	0.048	0.72	NaN	thick_impasto_p20_w1_pr0.6_n3_s30_pa0.5_aya.png	NaN	0.0	0.00	0.00	0.00	NaN	7	0	7	0	30	0.5	aya
+Oil/Flat/Thick Impasto	20	1	1	3	67.8	40.4	76.29	22.39	0.00	0.00	0.123	3.23	112.5	thick_impasto_p20_w1_pr1_n3_s30_pa0.5_aya.png	40.2	67.8	76.43	22.39	0.00	112.5	16	2	16	2	30	0.5	aya
+Oil/Knife/Knife Oily	20	1	1	3	83.1	59.2	5.39	18.23	0.00	0.00	0.186	6.03	99.8	knife_oily_p20_w1_pr1_n3_s30_pa0.5_ay.png	58.9	83.1	5.38	18.34	0.00	99.8	11	0	11	0	30	0.5	ay
+Oil/Knife/Knife Oily	20	0	1	3	80.4	57.3	7.99	21.85	0.00	0.00	0.209	6.15	95.8	knife_oily_p20_w0_pr1_n3_s30_pa0.5_ay.png	57.3	80.4	7.99	21.85	0.00	95.8	27	0	27	0	30	0.5	ay
+Oil/Knife/Knife Oily	40	1	1	3	187.1	70.9	7.57	24.94	0.00	0.00	0.230	8.94	94.6	knife_oily_p40_w1_pr1_n3_s30_pa0.5_ay.png	70.9	187.1	7.57	24.94	0.00	94.6	14	0	14	0	30	0.5	ay
+Oil/Knife/Knife Oily	40	0	1	3	129.2	106.6	7.44	24.25	0.00	0.00	0.224	7.91	94.8	knife_oily_p40_w0_pr1_n3_s30_pa0.5_ay.png	106.6	129.2	7.44	24.25	0.00	94.8	16	0	16	0	30	0.5	ay
+Oil/Flat/Thick Impasto	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.001	0.01	NaN	thick_impasto_p40_w0.5_pr0.2_n1_s300_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	0	0	0	0	300	0	ay
+Oil/Flat/Thick Impasto	40	0.5	0.2	3	0.0	NaN	0.00	0.00	0.54	100.00	0.004	0.03	NaN	thick_impasto_p40_w0.5_pr0.2_n3_s300_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	0	1	0	0	300	0	ay
+Oil/Flat/Thick Impasto	600	0.5	0.2	1	48.7	47.6	0.00	0.00	0.10	99.97	0.072	0.85	102.1	thick_impasto_p600_w0.5_pr0.2_n1_s300_pa0_ay.png	46.0	48.7	0.00	0.00	0.10	102.1	10	5	10	5	300	0	ay
+Oil/Flat/Thick Impasto	600	0.5	0.2	3	92.0	57.9	1.13	10.63	0.01	3.54	0.115	2.55	100.1	thick_impasto_p600_w0.5_pr0.2_n3_s300_pa0_ay.png	57.2	92.0	1.13	10.62	0.01	100.1	16	35	16	35	300	0	ay
+Oil/Knife/Knife Oily	40	0.5	0.2	1	0.0	NaN	0.00	0.00	0.00	100.00	0.008	0.11	NaN	knife_oily_p40_w0.5_pr0.2_n1_s300_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	3	0	2	0	300	0	ay
+Oil/Knife/Knife Oily	40	0.5	0.2	3	35.4	35.4	0.00	0.00	0.00	100.00	0.046	0.66	NaN	knife_oily_p40_w0.5_pr0.2_n3_s300_pa0_ay.png	NaN	0.0	0.00	0.00	0.02	NaN	10	13	14	113	300	0	ay
+Oil/Knife/Knife Oily	600	0.5	0.2	1	177.7	79.7	11.55	16.93	0.02	0.42	0.185	3.91	96.4	knife_oily_p600_w0.5_pr0.2_n1_s300_pa0_ay.png	78.7	177.7	12.11	17.00	0.02	96.3	7	9	7	4	300	0	ay
+Oil/Knife/Knife Oily	600	0.5	0.2	3	198.5	95.8	6.83	19.81	0.00	0.00	0.226	7.77	90.2	knife_oily_p600_w0.5_pr0.2_n3_s300_pa0_ay.png	95.8	199.2	6.81	19.67	0.00	90.1	9	4	9	4	300	0	ay
+Oil/Flat/Filbert	600	0.5	0.2	1	0.0	NaN	0.00	0.00	5.49	100.00	0.017	0.14	NaN	filbert_p600_w0.5_pr0.2_n1_s300_pa0_ay.png	NaN	0.0	0.00	0.00	5.53	NaN	9	39	7	34	300	0	ay
+Oil/Flat/Thick Impasto	10	1	0.6	3	0.0	NaN	0.00	0.00	0.00	100.00	0.011	0.10	NaN	thick_impasto_p10_w1_pr0.6_n3_s60_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	4	3	1	0	60	0	ay
+Oil/Flat/Thick Impasto	10	1	1	3	8.9	8.9	0.00	0.00	0.00	100.00	0.061	0.85	NaN	thick_impasto_p10_w1_pr1_n3_s60_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	12	0	10	0	60	0	ay
+Oil/Flat/Thick Impasto	20	1	0.6	3	22.9	22.9	0.00	0.00	0.00	100.00	0.030	0.35	NaN	thick_impasto_p20_w1_pr0.6_n3_s60_pa0_ay.png	NaN	0.0	0.00	0.00	0.00	NaN	10	1	10	0	60	0	ay
+Oil/Flat/Thick Impasto	20	1	1	3	43.4	33.6	0.00	0.00	0.00	15.62	0.107	2.15	98.4	thick_impasto_p20_w1_pr1_n3_s60_pa0_ay.png	33.4	42.2	0.00	0.00	0.00	98.4	12	0	12	0	60	0	ay

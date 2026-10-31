@@ -1,0 +1,5 @@
+pincel	pigment	water	pressao	n	km_max	km_p99	manchas_pct	manchas_azul_pct	ferrugem_pct	furos_pct	rug	p99_altura	ref_azul	png
+Oil/Flat/Thick Impasto	40	1	1	3	81.8	34.7	5.85	7.81	0.00	0.00	0.134	4.05	97.1	thick_impasto_p40_w1_pr1_n3.png
+Oil/Flat/Thick Impasto	40	0.1	1	3	147.5	55.4	2.97	10.59	0.06	0.00	0.119	4.61	93.1	thick_impasto_p40_w0.1_pr1_n3.png
+Oil/Flat/Thick Impasto	600	1	1	3	209.8	130.4	12.80	38.15	0.00	0.00	0.866	32.84	93.8	thick_impasto_p600_w1_pr1_n3.png
+Oil/Flat/Thick Impasto	600	0.1	1	3	232.5	137.7	10.72	35.75	0.11	0.00	0.541	31.74	94.7	thick_impasto_p600_w0.1_pr1_n3.png

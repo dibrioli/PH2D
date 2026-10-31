@@ -42,6 +42,7 @@ pub mod lamina;
 pub mod material;
 pub mod oleo_ambiente;
 pub mod oleo_real;
+pub mod oleo_vista;
 pub mod opacity;
 pub mod painter;
 pub mod paper;

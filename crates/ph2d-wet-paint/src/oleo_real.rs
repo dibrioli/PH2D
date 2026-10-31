@@ -452,6 +452,57 @@ pub fn termos(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) -> Termos
     termos_com(o, campo, cx, cy, &MaterialCelula::NEUTRO, [0.5; 3])
 }
 
+/// As peças da óptica que variam DENTRO da célula (A.1, [`crate::oleo_vista`]): a normal, a hessiana da altura fina
+/// (`hxx`, `hyy`, `hxy`, em unidades da célula), a luz e o céu, e o Gloss. A célula inteira dá-as
+/// [`Amostra::da_celula`]; a vista dá-as do campo ampliado.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Amostra {
+    pub n: [f64; 3],
+    pub hxx: f64,
+    pub hyy: f64,
+    pub hxy: f64,
+    pub lc: LuzCeu,
+    pub brilho: f64,
+}
+
+impl Amostra {
+    /// As peças da célula `(x, y)`, as de sempre.
+    pub(crate) fn da_celula(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize) -> Self {
+        let hf = |dx: isize, dy: isize| campo.at_fina(x + dx, y + dy);
+        Self {
+            n: normal(campo, x, y),
+            hxx: hf(1, 0) - 2.0 * hf(0, 0) + hf(-1, 0),
+            hyy: hf(0, 1) - 2.0 * hf(0, 0) + hf(0, -1),
+            hxy: (hf(1, 1) - hf(1, -1) - hf(-1, 1) + hf(-1, -1)) / 4.0,
+            lc: luz_ceu_da_celula(o, campo, x, y),
+            brilho: campo.brilho_em(x as usize, y as usize),
+        }
+    }
+}
+
+/// A [`LuzCeu`] da célula `(x, y)`: a guardada no campo ou contada de raiz.
+pub(crate) fn luz_ceu_da_celula(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize) -> LuzCeu {
+    campo
+        .luz_ceu_em(o, x, y)
+        .unwrap_or_else(|| luz_ceu(o, campo, x, y))
+}
+
+/// A cor sRGB `0..255` da tinta `rgb` com a [`Amostra`] `am`; o material, a Subsurface e o reflexo livre são os da
+/// célula `(cx, cy)`. Com `Amostra::da_celula` é [`ilumina`] bit a bit.
+pub(crate) fn cor_da_amostra(
+    o: &OleoReal,
+    campo: &CampoAltura,
+    cx: usize,
+    cy: usize,
+    rgb: [f64; 3],
+    cobertura: f64,
+    am: &Amostra,
+) -> [f64; 3] {
+    let a = rgb.map(srgb255_to_linear);
+    let t = termos_da_amostra(o, campo, cx, cy, &campo.material_em(cx, cy), a, am);
+    cor_dos_termos(o, &t, a, cobertura)
+}
+
 /// Os [`Termos`] da célula `(cx, cy)` com o material `mat` dela e a cor LINEAR `a` (o F0 do metal e o tint).
 pub fn termos_com(
     o: &OleoReal,
@@ -461,12 +512,26 @@ pub fn termos_com(
     mat: &MaterialCelula,
     a: [f64; 3],
 ) -> Termos {
+    let am = Amostra::da_celula(o, campo, cx as isize, cy as isize);
+    termos_da_amostra(o, campo, cx, cy, mat, a, &am)
+}
+
+/// [`termos_com`] com as peças de dentro da célula dadas por `am`.
+pub(crate) fn termos_da_amostra(
+    o: &OleoReal,
+    campo: &CampoAltura,
+    cx: usize,
+    cy: usize,
+    mat: &MaterialCelula,
+    a: [f64; 3],
+    am: &Amostra,
+) -> Termos {
     let af = &o.af;
     let m = crate::material::efectivo(mat, &o.material);
     // O Gloss: o da tinta da célula (dono 28/10) sobre o ganho do motor (`1` no produto).
-    let brilho = o.brilho * campo.brilho_em(cx, cy);
+    let brilho = o.brilho * am.brilho;
     let (x, y) = (cx as isize, cy as isize);
-    let n = normal(campo, x, y);
+    let n = am.n;
     let l = para_a_luz(o);
     let escala = escala_do_horizonte(o);
     // W2 E2: com HDRI o DIFUSO do céu é a irradiância do SECTOR que cada fatia vê (nunca a do HDRI × a
@@ -475,9 +540,7 @@ pub fn termos_com(
         luz,
         v: v_bruta,
         dir,
-    } = campo
-        .luz_ceu_em(o, x, y)
-        .unwrap_or_else(|| luz_ceu(o, campo, x, y));
+    } = am.lc;
     let vis = forca_da_fenda(v_bruta, o.fenda);
     let forca = o.forca_ambiente;
 
@@ -491,10 +554,7 @@ pub fn termos_com(
     let ndh = ((n[0] * hv[0] + n[1] * hv[1] + n[2] * hv[2]) / hn).max(0.0);
     // Antisserrilhado do brilho (Kaplanyan 2016): o lobo alarga-se pela variação da normal dentro da célula
     // (a hessiana da altura fina) — numa encosta estreita o pico de GGX saturava em pontos brancos.
-    let hf = |dx: isize, dy: isize| campo.at_fina(x + dx, y + dy);
-    let hxx = hf(1, 0) - 2.0 * hf(0, 0) + hf(-1, 0);
-    let hyy = hf(0, 1) - 2.0 * hf(0, 0) + hf(0, -1);
-    let hxy = (hf(1, 1) - hf(1, -1) - hf(-1, 1) + hf(-1, -1)) / 4.0;
+    let (hxx, hyy, hxy) = (am.hxx, am.hyy, am.hxy);
     let var = 0.25 * (hxx * hxx + hyy * hyy + 2.0 * hxy * hxy) * n[2] * n[2];
     // A Roughness ABSOLUTA do material (célula ∘ cartão; no neutro a `RUGOSIDADE_PADRAO`, bit a bit).
     let aa = (2.0 * var * af.antisserrilhado).min(VARIANCIA_MAX_BRILHO);

@@ -368,7 +368,7 @@ pub fn render_pigment_row_visual(
     x1: usize,
     out: &mut [u8],
 ) {
-    pigment_row(p, layers, visual, None, cy, x0, x1, out, None);
+    pigment_row(p, layers, visual, None, cy, x0, x1, out, None, None);
 }
 
 /// [`render_pigment_row_visual`] com o **Óleo Real** ([`crate::oleo_real`]): a óptica da altura substitui o
@@ -395,6 +395,7 @@ pub fn render_pigment_row_oleo(
         x0,
         x1,
         out,
+        None,
         None,
     );
 }
@@ -426,6 +427,7 @@ pub fn render_pigment_row_oleo_com_sombra(
         x1,
         out,
         Some((sombra, feita)),
+        None,
     );
 }
 
@@ -440,6 +442,7 @@ fn pigment_row(
     x1: usize,
     out: &mut [u8],
     mut sombra: Option<(&mut [u8], &mut [bool])>,
+    mut pre: Option<&mut [PreLuz]>,
 ) {
     let g0 = layers[0].grid;
     let s = g0.s;
@@ -573,6 +576,19 @@ fn pigment_row(
                 pe = pe * (1.0 - la) + emb_cam * la;
                 pa += la * (1.0 - pa);
             }
+            if let Some(q) = pre.as_deref_mut() {
+                let borda = oleo.map_or(1.0, |(_, c)| c.cobertura_da_borda(cx, cy));
+                q[cx - 1] = PreLuz {
+                    pr,
+                    pg,
+                    pb,
+                    pa_sem: pa,
+                    pa: (pa * borda).min(1.0),
+                    tinta: (pa_tinta * borda).min(1.0),
+                    pe,
+                    w: w_oleo,
+                };
+            }
             if let (true, Some((ol, campo))) = (pa > 0.0 && w_oleo > 0.0, oleo) {
                 let rgb = [pr / pa, pg / pa, pb / pa];
                 // §BUG-bordas: na orla a tinta cobre a fracção da célula dentro do contorno sub-célula.
@@ -605,20 +621,18 @@ fn pigment_row(
                     }
                     None => crate::oleo_real::ilumina(ol, campo, cx, cy, rgb, tinta),
                 };
-                if w_oleo < 1.0 {
-                    // A mistura com a tinta SEM óleo (a de baixo da fronteira, ou molhada com ela): a cor e a
-                    // cobertura de cada uma pela fracção.
-                    let (q, sem) = (1.0 - w_oleo, |c: f64| (c + pe) / pa_sem);
-                    out[o] = clamp_u8(w_oleo * r + q * sem(pr));
-                    out[o + 1] = clamp_u8(w_oleo * g + q * sem(pg));
-                    out[o + 2] = clamp_u8(w_oleo * b + q * sem(pb));
-                    out[o + 3] = clamp_u8((w_oleo * pa + q * pa_sem) * 255.0);
-                } else {
-                    out[o] = clamp_u8(r);
-                    out[o + 1] = clamp_u8(g);
-                    out[o + 2] = clamp_u8(b);
-                    out[o + 3] = clamp_u8(pa * 255.0);
+                let px = PreLuz {
+                    pr,
+                    pg,
+                    pb,
+                    pa_sem,
+                    pa,
+                    tinta,
+                    pe,
+                    w: w_oleo,
                 }
+                .fecha_oleo([r, g, b]);
+                out[o..o + 4].copy_from_slice(&px);
             } else if pa > 0.0 {
                 if let (Some((s, f)), true) = (sombra.as_mut(), oleo.is_some()) {
                     // A tinta sem óleo numa tela com óleo: sem a sombra dele, nem a do papel por baixo dela.
@@ -639,6 +653,95 @@ fn pigment_row(
             o += 4;
         }
     }
+}
+
+/// O que a linha do óleo tem de UMA célula antes da luz (A.1, [`crate::oleo_vista`]): a cor pré-multiplicada da pilha,
+/// a cobertura antes (`pa_sem`) e depois da orla (`pa`), a do filme (`tinta`), o emboss da parte sem óleo (`pe`) e a
+/// fracção com óleo (`w`). A vista interpola-o e fecha cada pixel com [`PreLuz::fecha_oleo`], a conta da linha.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PreLuz {
+    pub pr: f64,
+    pub pg: f64,
+    pub pb: f64,
+    pub pa_sem: f64,
+    pub pa: f64,
+    pub tinta: f64,
+    pub pe: f64,
+    pub w: f64,
+}
+
+impl PreLuz {
+    /// O pixel RGBA da tinta com óleo de cor iluminada `[r, g, b]` (sRGB 0..255): a mistura com a parte sem óleo.
+    #[must_use]
+    pub fn fecha_oleo(&self, [r, g, b]: [f64; 3]) -> [u8; 4] {
+        let PreLuz {
+            pr,
+            pg,
+            pb,
+            pa_sem,
+            pa,
+            pe,
+            w: w_oleo,
+            ..
+        } = *self;
+        if w_oleo < 1.0 {
+            // A mistura com a tinta SEM óleo (a de baixo da fronteira, ou molhada com ela): a cor e a
+            // cobertura de cada uma pela fracção.
+            let (q, sem) = (1.0 - w_oleo, |c: f64| (c + pe) / pa_sem);
+            [
+                clamp_u8(w_oleo * r + q * sem(pr)),
+                clamp_u8(w_oleo * g + q * sem(pg)),
+                clamp_u8(w_oleo * b + q * sem(pb)),
+                clamp_u8((w_oleo * pa + q * pa_sem) * 255.0),
+            ]
+        } else {
+            [clamp_u8(r), clamp_u8(g), clamp_u8(b), clamp_u8(pa * 255.0)]
+        }
+    }
+
+    /// O pixel RGBA da tinta SEM óleo (o ramo `pa > 0` da linha), ou transparente.
+    #[must_use]
+    pub fn fecha_sem_oleo(&self) -> [u8; 4] {
+        let pa = self.pa_sem;
+        if pa > 0.0 {
+            [
+                clamp_u8(self.pr / pa),
+                clamp_u8(self.pg / pa),
+                clamp_u8(self.pb / pa),
+                clamp_u8(pa * 255.0),
+            ]
+        } else {
+            [0; 4]
+        }
+    }
+}
+
+/// A linha do óleo que também devolve o [`PreLuz`] de cada célula `x0..=x1` em `pre[cx - 1]` (A.1).
+#[allow(clippy::too_many_arguments)]
+pub fn render_pigment_row_oleo_pre(
+    p: Option<&Params>,
+    layers: &[RenderLayer<'_>],
+    visual: PigmentVisual,
+    oleo: &crate::oleo_real::OleoReal,
+    campo: &crate::oleo_real::CampoAltura,
+    cy: usize,
+    x0: usize,
+    x1: usize,
+    out: &mut [u8],
+    pre: &mut [PreLuz],
+) {
+    pigment_row(
+        p,
+        layers,
+        visual,
+        Some((oleo, campo)),
+        cy,
+        x0,
+        x1,
+        out,
+        None,
+        Some(pre),
+    );
 }
 
 /// A Transparency da tinta da célula `i` (só da célula: o cartão não a tem): `0` sem o campo do material.

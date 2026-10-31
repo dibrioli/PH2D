@@ -110,7 +110,7 @@ fn main() {
         leitura.unmap();
         out.map(|v| v / f64::from(BLOCO))
     };
-    let nq6 = BLOCO * 7 * 2;
+    let nq6 = BLOCO * 24 * 2;
     let qs6 = gpu.device.create_query_set(&wgpu::QuerySetDescriptor {
         label: Some("mede_advect suave"),
         ty: wgpu::QueryType::Timestamp,
@@ -156,6 +156,13 @@ fn main() {
     };
     let suave = |r: Rect| quadro(r, &ph2d_wet_gpu::PLANO_SUAVE);
     let campo = |r: Rect| quadro(r, &ph2d_wet_gpu::PLANO_CAMPO);
+    // O passo sem secagem inteiro, médio sobre o ciclo de 12 quadros (mmc de 2, 3 e 4).
+    let passo = |r: Rect| -> f64 {
+        (1..=12u64)
+            .map(|n| quadro(r, &ph2d_wet_gpu::plano_passo(n, false)))
+            .sum::<f64>()
+            / 12.0
+    };
     let st_full = pack_state(&g.film, &g.susp);
     let upload_cheia = || {
         let t = Instant::now();
@@ -227,7 +234,7 @@ fn main() {
     let _ = bloco(suja);
     let _ = suave(cheia);
     let _ = campo(cheia);
-    let mut v: Vec<Vec<f64>> = vec![Vec::new(); 20];
+    let mut v: Vec<Vec<f64>> = vec![Vec::new(); 23];
     for _ in 0..RONDAS {
         let c = bloco(cheia);
         let s = bloco(suja);
@@ -250,6 +257,10 @@ fn main() {
         v[18].push(campo(suja));
         let t = campo(suja);
         v[19].push(t + readback_suja());
+        v[20].push(passo(cheia));
+        v[21].push(passo(suja));
+        let t = passo(suja);
+        v[22].push(t + readback_suja());
     }
     // A CPU (a rota do produto) depois — o estado da placa não depende dela.
     let mut cpu = Vec::new();
@@ -278,6 +289,9 @@ fn main() {
                 "placa 4096×2560 quadro de campo (campo+carimbo+momentum+advecção)",
                 "placa suja 1024² quadro de campo",
                 "quadro de campo suja 1024² + readback da região (parede)",
+                "placa 4096×2560 PASSO sem secagem (média do ciclo de 12)",
+                "placa suja 1024² PASSO sem secagem",
+                "PASSO sem secagem suja 1024² + readback da região (parede)",
             ]
             .map(String::from),
         )

@@ -1,7 +1,7 @@
 //! W4 do Kanban, lote V — **as ligações entre a aba e o quadro** (ADR-0195 §3.2): «Show on board» e
 //! «Place on board» pedidos da aba (o canal [`request`] → [`serve`], molde do `install_tab_opener`: a
-//! família pede, o editor serve no quadro seguinte, sem ciclo), e o desfazer de «inserir Kanban» que
-//! leva o documento com a referência se ele ficou intocado ([`born`] → [`after_history`]).
+//! família pede, o editor serve no quadro seguinte, sem ciclo). O desfazer de «inserir Kanban» tira
+//! só a referência: o documento fica no projecto até ser APAGADO (dono 30/10, D17).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
@@ -33,17 +33,8 @@ pub struct Placement {
     pub board_name: String,
 }
 
-/// Um Kanban que nasceu com a referência dele.
-struct Born {
-    set: Weak<RefCell<KanbanSet>>,
-    pristine: Kanban,
-    /// Levado por um desfazer (o refazer repõe-no).
-    stash: Option<Kanban>,
-}
-
 thread_local! {
     static REQUESTS: RefCell<Vec<BoardRequest>> = const { RefCell::new(Vec::new()) };
-    static BORN: RefCell<BTreeMap<KanbanId, Born>> = const { RefCell::new(BTreeMap::new()) };
     static LAST_BOARD: Cell<Option<BoardId>> = const { Cell::new(None) };
 }
 
@@ -133,8 +124,6 @@ pub(crate) fn place(hero: &mut HeroScreen, kanban: KanbanId) -> Option<(BoardId,
         }
     };
     hero.documents.activate(Some(target));
-    // Posta noutro sítio, a referência já não é só do gesto que a criou.
-    BORN.with(|b| b.borrow_mut().remove(&kanban));
     let view = hero.last_layout.map(|l| area_of(area(&l)));
     let theme = hero.theme;
     let (board, live) = hero.documents.active_parts()?;
@@ -147,19 +136,6 @@ pub(crate) fn place(hero: &mut HeroScreen, kanban: KanbanId) -> Option<(BoardId,
     Some((board.id, el))
 }
 
-/// O Kanban `k` acabou de nascer com a referência dele.
-pub(crate) fn born(set: &SharedKanbans, k: KanbanId) {
-    let Some(pristine) = set.borrow().get(k).cloned() else {
-        return;
-    };
-    let b = Born {
-        set: Rc::downgrade(set),
-        pristine,
-        stash: None,
-    };
-    BORN.with(|m| m.borrow_mut().insert(k, b));
-}
-
 /// Os Kanbans referidos no quadro.
 #[must_use]
 pub(crate) fn refs(doc: &BoardDoc) -> BTreeSet<KanbanId> {
@@ -168,26 +144,3 @@ pub(crate) fn refs(doc: &BoardDoc) -> BTreeSet<KanbanId> {
         .collect()
 }
 
-/// ⭐ Depois de um desfazer/refazer do quadro (`before` = os referidos antes): o Kanban nascido com a
-/// referência que o desfazer tirou, ainda intocado, sai do projecto com ela; o refazer repõe-no.
-pub(crate) fn after_history(doc: &BoardDoc, before: &BTreeSet<KanbanId>) {
-    let now = refs(doc);
-    BORN.with(|m| {
-        let mut m = m.borrow_mut();
-        m.retain(|_, b| b.set.strong_count() > 0);
-        for k in before.difference(&now) {
-            let Some(b) = m.get_mut(k) else { continue };
-            let Some(set) = b.set.upgrade() else { continue };
-            let untouched = set.borrow().get(*k) == Some(&b.pristine);
-            if untouched && b.stash.is_none() {
-                b.stash = set.borrow_mut().remove(*k);
-            }
-        }
-        for k in now.difference(before) {
-            let Some(b) = m.get_mut(k) else { continue };
-            if let (Some(set), Some(kb)) = (b.set.upgrade(), b.stash.take()) {
-                set.borrow_mut().insert(kb);
-            }
-        }
-    });
-}

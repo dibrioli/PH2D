@@ -195,8 +195,8 @@ fn hook() -> Option<Rc<RefCell<dyn KanbanElementInput>>> {
 }
 
 /// ⭐ Um Kanban novo no quadro activo: o documento no `KanbanSet` do projecto (o MESMO `Rc` da aba) e a
-/// referência no meio da vista, seleccionada; UM passo de desfazer, que leva o documento com ele se
-/// ficou intocado ([`link::born`]).
+/// referência no meio da vista, seleccionada; UM passo de desfazer, que tira só a REFERÊNCIA: o
+/// documento fica no projecto (e nos Assets) até ser apagado — decisão do dono 30/10.
 pub(crate) fn insert(hero: &mut HeroScreen) -> Option<ElementId> {
     let view = hero.last_layout.map(|l| area_of(area(&l)));
     let theme = hero.theme;
@@ -205,7 +205,6 @@ pub(crate) fn insert(hero: &mut HeroScreen) -> Option<ElementId> {
     let kanban = kanbans
         .borrow_mut()
         .create(ph2d_i18n::tr("board.kanban.new_name"));
-    link::born(&kanbans, kanban);
     let z = board.camera.zoom;
     let fit = view.map_or([f64::INFINITY; 2], |v| [v[2] / z / 2.0, v[3] / z / 2.0]);
     let center = [board.camera.center_x, board.camera.center_y];

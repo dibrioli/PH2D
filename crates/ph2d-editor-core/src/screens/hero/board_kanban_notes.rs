@@ -2,7 +2,7 @@
 //! cartões nascem na lista escolhida (e o inverso), sem cópia que divirja. O gesto é UM passo da
 //! história do Quadro; o lado do Kanban acompanha-o em [`serve`]: desfeito o passo, os cartões que
 //! nasceram e ficaram intocados saem (a nota volta); refeito, voltam. Um cartão já mexido fica —
-//! nunca se apaga trabalho (a lei do `board_kanban_link::after_history`).
+//! nunca se apaga trabalho.
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};

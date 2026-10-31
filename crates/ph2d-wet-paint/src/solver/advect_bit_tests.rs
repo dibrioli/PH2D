@@ -140,7 +140,10 @@ fn advect_jacobi_bits_are_the_recorded_ones() {
     let mut got = Vec::new();
     for (mv, km, mode) in casos {
         let (h, vtop) = hash_da_advecao(mv, km, mode);
-        assert!(vtop >= mv * 0.999, "a cena não chega ao tecto {mv}: vmax {vtop}");
+        assert!(
+            vtop >= mv * 0.999,
+            "a cena não chega ao tecto {mv}: vmax {vtop}"
+        );
         got.push(h);
     }
     // A rota não muda a resposta (contrato da paralela).

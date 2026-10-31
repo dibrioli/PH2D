@@ -7,7 +7,7 @@
 //! trava célula a célula na entrada do seco, 05 §4b). Conservativo (gather: quem recebe lê o que a
 //! fonte dá), independente de ordem, e `a = 0` ou `|g| = 0` não toca num byte.
 use crate::colorops::km_weighted_mean_color;
-use crate::grid::{AdvCell, Grid, span_x_of};
+use crate::grid::{Grid, span_x_of};
 use crate::par::{self, Rows};
 
 /// O tecto da fracção por passo: a soma dos dois eixos fica `≤ 0,45·√2 < 1` (a célula nunca dá o que
@@ -124,55 +124,59 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
         let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
         let (film, susp, rgb): (&[f32], &[f32], &[[f32; 3]]) = (film, susp, susp_rgb);
         let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
-        par::walk_rows(mode, &mut scratch.dst[band.clone()], s, |ri, row| {
-            let y = by0 + ri as i32;
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            let mut cores = [0.0f64; 12];
-            let mut pesos = [0.0f64; 4];
-            let mut km_out = [0.0f64; 3];
-            for x in lo..=hi {
-                let i = p.at(x, y);
-                let (ox, oy) = p.da(film, x, y);
-                let fica = f64::from(susp[i]) * (1.0 - ox - oy);
-                // O que entra: das vizinhas de CIMA (a montante), a fracção que elas dão a esta.
-                let mut ent = [(rgb[i], fica), ([0.0; 3], 0.0), ([0.0; 3], 0.0)];
-                if p.dx != 0 && p.dentro(x - p.dx, y) {
-                    let j = p.at(x - p.dx, y);
-                    ent[1] = (rgb[j], f64::from(susp[j]) * p.da(film, x - p.dx, y).0);
-                }
-                if p.dy != 0 && p.dentro(x, y - p.dy) {
-                    let j = p.at(x, y - p.dy);
-                    ent[2] = (rgb[j], f64::from(susp[j]) * p.da(film, x, y - p.dy).1);
-                }
-                let total = fica + ent[1].1 + ent[2].1;
-                let mut c = rgb[i];
-                if ent[1].1 + ent[2].1 > 0.0 && total > 0.0 {
-                    let inv = 1.0 / total;
-                    let out = if km {
-                        for (k, (cc, w)) in ent.iter().enumerate() {
-                            cores[3 * k..3 * k + 3].copy_from_slice(&cc.map(f64::from));
-                            pesos[k] = *w;
-                        }
-                        km_weighted_mean_color(&cores, &pesos, 3, inv, &mut km_out);
-                        km_out
-                    } else {
-                        let mut o = [0.0; 3];
-                        for (cc, w) in ent {
-                            for (o, v) in o.iter_mut().zip(cc) {
-                                *o += f64::from(v) * w;
+        // Só `susp` e a cor mudam: o `dst_film` não é escrito nem lido.
+        par::walk_rows2(
+            mode,
+            &mut scratch.dst_susp[band.clone()],
+            &mut scratch.dst_rgb[band.clone()],
+            s,
+            |ri, sr, cr| {
+                let y = by0 + ri as i32;
+                let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+                let mut cores = [0.0f64; 12];
+                let mut pesos = [0.0f64; 4];
+                let mut km_out = [0.0f64; 3];
+                for x in lo..=hi {
+                    let i = p.at(x, y);
+                    let (ox, oy) = p.da(film, x, y);
+                    let fica = f64::from(susp[i]) * (1.0 - ox - oy);
+                    // O que entra: das vizinhas de CIMA (a montante), a fracção que elas dão a esta.
+                    let mut ent = [(rgb[i], fica), ([0.0; 3], 0.0), ([0.0; 3], 0.0)];
+                    if p.dx != 0 && p.dentro(x - p.dx, y) {
+                        let j = p.at(x - p.dx, y);
+                        ent[1] = (rgb[j], f64::from(susp[j]) * p.da(film, x - p.dx, y).0);
+                    }
+                    if p.dy != 0 && p.dentro(x, y - p.dy) {
+                        let j = p.at(x, y - p.dy);
+                        ent[2] = (rgb[j], f64::from(susp[j]) * p.da(film, x, y - p.dy).1);
+                    }
+                    let total = fica + ent[1].1 + ent[2].1;
+                    let mut c = rgb[i];
+                    if ent[1].1 + ent[2].1 > 0.0 && total > 0.0 {
+                        let inv = 1.0 / total;
+                        let out = if km {
+                            for (k, (cc, w)) in ent.iter().enumerate() {
+                                cores[3 * k..3 * k + 3].copy_from_slice(&cc.map(f64::from));
+                                pesos[k] = *w;
                             }
-                        }
-                        o.map(|v| v * inv)
-                    };
-                    c = out.map(|v| v as f32);
+                            km_weighted_mean_color(&cores, &pesos, 3, inv, &mut km_out);
+                            km_out
+                        } else {
+                            let mut o = [0.0; 3];
+                            for (cc, w) in ent {
+                                for (o, v) in o.iter_mut().zip(cc) {
+                                    *o += f64::from(v) * w;
+                                }
+                            }
+                            o.map(|v| v * inv)
+                        };
+                        c = out.map(|v| v as f32);
+                    }
+                    sr[x as usize] = total as f32;
+                    cr[x as usize] = c;
                 }
-                row[x as usize] = AdvCell {
-                    film: film[i],
-                    susp: total as f32,
-                    rgb: c,
-                };
-            }
-        });
+            },
+        );
     }
     let Grid {
         scratch,
@@ -186,7 +190,7 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let dst: &[AdvCell] = &scratch.dst;
+    let (ds, dc): (&[f32], &[[f32; 3]]) = (&scratch.dst_susp, &scratch.dst_rgb);
     par::walk_rows2(
         mode,
         &mut susp[band.clone()],
@@ -198,11 +202,10 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
             if lo > hi {
                 return;
             }
-            let base = y as usize * s;
-            for x in lo as usize..=hi as usize {
-                sr[x] = dst[base + x].susp;
-                cr[x] = dst[base + x].rgb;
-            }
+            let (lo, hi) = (lo as usize, hi as usize);
+            let (a, b) = (y as usize * s + lo, y as usize * s + hi);
+            sr[lo..=hi].copy_from_slice(&ds[a..=b]);
+            cr[lo..=hi].copy_from_slice(&dc[a..=b]);
         },
     );
 }

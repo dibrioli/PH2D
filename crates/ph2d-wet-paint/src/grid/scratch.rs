@@ -7,12 +7,9 @@
 //! reescrito inteiro dentro de um passe, então não há nada que um histórico
 //! pudesse preservar.
 
-/// O registro de destino do [`crate::solver::advect_jacobi`] — as três
-/// grandezas que a advecção move, num só plano.
-///
-/// ⚠️ **Intercalado de propósito.** O *commit* lê os três de uma vez; três
-/// planos separados fariam três passadas sobre a mesma janela usando um terço
-/// de cada linha de cache.
+/// As três grandezas que a advecção move, numa célula — a vista por célula do destino. O rascunho
+/// guarda-as em planos ([`SolverScratch::dst_film`] & irmãos, 31/10): o *commit* é então uma cópia
+/// contígua por plano para os planos do `Grid`, que têm a mesma forma.
 #[derive(Clone, Copy, Default)]
 pub struct AdvCell {
     pub film: f32,
@@ -48,7 +45,11 @@ pub struct SolverScratch {
     /// linhas candidatas por um byte em vez de um retro-traço inteiro.
     pub bt: Vec<i8>,
     /// O estado de destino, antes do *commit*.
-    pub dst: Vec<AdvCell>,
+    pub dst_film: Vec<f32>,
+    /// O `susp` de destino (o mesmo rascunho serve a [`crate::solver::sedimenta`]).
+    pub dst_susp: Vec<f32>,
+    /// A cor de destino, na forma do `Grid::susp_rgb`.
+    pub dst_rgb: Vec<[f32; 3]>,
     /// Quantos dos nove vizinhos carregam pigmento, **lidos ANTES** de a
     /// secagem escrever qualquer célula ([`crate::drying::drying_pass`]).
     ///
@@ -88,7 +89,9 @@ impl SolverScratch {
             self.uv = vec![[0.0; 2]; n];
             self.outflow = vec![0.0; n];
             self.bt = vec![Self::BT_NADA; n];
-            self.dst = vec![AdvCell::default(); n];
+            self.dst_film = vec![0.0; n];
+            self.dst_susp = vec![0.0; n];
+            self.dst_rgb = vec![[0.0; 3]; n];
             self.edge = vec![0; n];
         }
     }

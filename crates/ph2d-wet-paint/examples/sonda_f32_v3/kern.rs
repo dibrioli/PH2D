@@ -10,7 +10,7 @@ use crate::par::{self, Mode};
 use ph2d_wet_paint::assenta::Ecra;
 use ph2d_wet_paint::colorops::{ColorMix, km_weighted_mean_color};
 use ph2d_wet_paint::flow::{FlowRowSampler, flow_at_cell, flow_at_point, flow_bbox, flow_probe};
-use ph2d_wet_paint::grid::{AdvCell, Grid, aparencia, oleo_celula, span_x_of};
+use ph2d_wet_paint::grid::{Grid, aparencia, oleo_celula, span_x_of};
 use ph2d_wet_paint::jsmath::clamp01;
 use ph2d_wet_paint::opacity::alpha_of_mass;
 use ph2d_wet_paint::sim::Params;
@@ -299,7 +299,9 @@ fn transport_rows(g: &mut Grid, p: &Params, mode: Mode) {
     let outflow: &[f32] = &scratch.outflow;
     let uv: &[[f32; 2]] = &scratch.uv;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
-    par::walk_rows(mode, &mut scratch.dst[band], s, |ri, row| {
+    // Rascunho em planos (31/10, o produto deixou o `AdvCell` intercalado): os mesmos valores.
+    let (dfm, dsm, dcm) = (&mut scratch.dst_film, &mut scratch.dst_susp, &mut scratch.dst_rgb);
+    par::walk_rows3(mode, &mut dfm[band.clone()], &mut dsm[band.clone()], &mut dcm[band], s, |ri, fr, sr, cr| {
         let y = by0 + ri as i32;
         let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
         if lo > hi {
@@ -386,11 +388,9 @@ fn transport_rows(g: &mut Grid, p: &Params, mode: Mode) {
                         + film[i11] as F * k11;
                 }
             }
-            row[x as usize] = AdvCell {
-                film: new_film as f32,
-                susp: new_susp as f32,
-                rgb: new_rgb,
-            };
+            fr[x as usize] = new_film as f32;
+            sr[x as usize] = new_susp as f32;
+            cr[x as usize] = new_rgb;
             i += 1;
         }
     });
@@ -413,7 +413,8 @@ fn commit_rows(g: &mut Grid, mode: Mode) {
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let dst: &[AdvCell] = &scratch.dst;
+    let (df, ds, dc): (&[f32], &[f32], &[[f32; 3]]) =
+        (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     par::walk_rows3(
         mode,
@@ -429,10 +430,9 @@ fn commit_rows(g: &mut Grid, mode: Mode) {
             }
             let base = y as usize * s;
             for x in lo as usize..=hi as usize {
-                let c = dst[base + x];
-                fr[x] = c.film;
-                sr[x] = c.susp;
-                cr[x] = c.rgb;
+                fr[x] = df[base + x];
+                sr[x] = ds[base + x];
+                cr[x] = dc[base + x];
             }
         },
     );

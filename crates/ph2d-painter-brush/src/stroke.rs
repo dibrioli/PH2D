@@ -659,4 +659,6 @@ mod warmup;
 mod abertura;
 
 #[cfg(test)]
+mod rotacao_tests;
+#[cfg(test)]
 mod tests;

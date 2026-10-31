@@ -86,7 +86,20 @@ impl Stroke {
         }
         let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
         let smooth_len = crate::heading::smooth_len(2.0 * self.spec.clamped_radius());
-        self.heading = crate::heading::advance(self.heading, dir, seg, smooth_len);
+        self.heading = self.rumo_avanca(dir, seg, smooth_len);
+    }
+
+    /// O rumo depois de `len` px na direcção `dir` — a porta ÚNICA da inércia (L3, [`BrushSpec::dab_rotation_lag`]):
+    /// com lag a média estica `lag` diâmetros e o rumo é um eixo; sem lag é o [`crate::heading::advance`] de sempre.
+    pub(super) fn rumo_avanca(&self, dir: [f32; 2], len: f32, smooth_len: f32) -> [f32; 2] {
+        let lag = self.spec.dab_rotation_lag;
+        if lag > 0.0 {
+            let d = 2.0 * self.spec.clamped_radius();
+            let l = smooth_len + lag.min(crate::heading::ROTATION_LAG_MAX) * d;
+            crate::heading::advance_axial(self.heading, dir, len, l)
+        } else {
+            crate::heading::advance(self.heading, dir, len, smooth_len)
+        }
     }
 
     /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the

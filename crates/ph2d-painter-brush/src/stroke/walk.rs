@@ -155,8 +155,7 @@ impl Stroke {
             // Fold in exactly the path travelled since the heading was last advanced, so the dab is
             // stamped with the heading as of ITS position and the smoothing length is honoured in arc
             // length, independent of dab density and of the flattener's chord size.
-            self.heading =
-                crate::heading::advance(self.heading, dir, traveled - advanced, smooth_len);
+            self.heading = self.rumo_avanca(dir, traveled - advanced, smooth_len);
             advanced = traveled;
             if self.spec.dash_on(self.tot_samples) {
                 self.stamp_at(pos, pressure, overlap, base_arc + traveled, out);
@@ -173,7 +172,7 @@ impl Stroke {
         // The rest of the chord still happened — fold it in, so a chord that emits NO dab (the common
         // case: the Catmull-Rom flattener chops at ~3 px while the spacing can be tens of px) still steers
         // the heading. Without this the EMA only ever saw the sub-chord slivers around the dabs it did emit.
-        self.heading = crate::heading::advance(self.heading, dir, seg - advanced, smooth_len);
+        self.heading = self.rumo_avanca(dir, seg - advanced, smooth_len);
         self.arc_len = base_arc + seg; // arc at `to` = arc at `from` + the full chord length
         self.last_pos = to;
         self.last_pressure = target.pressure;

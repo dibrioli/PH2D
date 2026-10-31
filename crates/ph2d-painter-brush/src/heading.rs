@@ -89,6 +89,27 @@ pub fn advance(heading: [f32; 2], tangent: [f32; 2], step_len: f32, smooth_len: 
     }
 }
 
+/// Tecto de [`crate::BrushSpec::dab_rotation_lag`] (diâmetros de caminho): a `4` a ponta leva ~4 larguras para
+/// rodar `1 − 1/e` — mais que isso a curva de um traço não a move (uma faixa do produto, não de recurso).
+pub const ROTATION_LAG_MAX: f32 = 4.0;
+
+/// [`advance`] com o rumo como EIXO (a ponta chata é simétrica a 180°): a tangente que aponta para trás vira-se antes
+/// da média, então inverter o gesto não salta nem atravessa o zero — a lâmina segue de onde estava.
+#[must_use]
+pub fn advance_axial(
+    heading: [f32; 2],
+    tangent: [f32; 2],
+    step_len: f32,
+    smooth_len: f32,
+) -> [f32; 2] {
+    let t = if heading[0] * tangent[0] + heading[1] * tangent[1] < 0.0 {
+        [-tangent[0], -tangent[1]]
+    } else {
+        tangent
+    };
+    advance(heading, t, step_len, smooth_len)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{advance, rotate, smooth_len};

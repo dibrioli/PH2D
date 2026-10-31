@@ -333,6 +333,10 @@ pub struct BrushSpec {
     /// ([`crate::footprint::FootprintDeform::with_quina`]) — `0` o disco de sempre, `1` o quadrado no
     /// referencial do Flatten/Angle. Medido e porquê: `docs/Painter/NewFeaturesWetPaint/44_medicao_as_formas.md`.
     pub dab_quina: f32,
+    /// ⭐ **A ponta que GIRA com inércia** (L3, `docs/Painter/Pinceis/03_MOTORES.md`): o rumo que roda a pegada segue a
+    /// tangente com um atraso de `lag` diâmetros de caminho, como um eixo (inverter não salta) e parado nas pausas.
+    /// `0` = o rumo de sempre, ao bit. Faixa `0..`[`crate::heading::ROTATION_LAG_MAX`].
+    pub dab_rotation_lag: f32,
     /// ⭐ **As PONTAS RECTAS do traço** (J6, `docs/Painter/Pinceis/J6_pontas_rectas.md`): o traço começa e acaba
     /// cortado a direito, perpendicular ao rumo, como uma fita — o pastel e o carvão do Rebelle — em vez da meia-lua de
     /// um dab redondo. Não muda a pegada (a [`Self::dab_quina`] é a quina de CADA dab); só o Wet Paint a lê. `false` =

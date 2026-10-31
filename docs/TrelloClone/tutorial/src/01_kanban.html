@@ -525,16 +525,55 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
 </ol>
 </div>
 
+<!-- ============================================================ 13 -->
+<div class="sec">
+<h2>13 · Quadros e Kanbans guardados no projeto
+  <small>eles ficam até você os apagar, e aparecem no painel de Assets</small></h2>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TrelloClone &amp;&amp; PH2D_BOARD_SMOKE=31 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><div>O programa abre no Quadro <code class="ui">Production board</code>, com o painel <code class="ui">Assets</code> aberto à direita. Nos botões de cima do painel há dois novos: <code class="ui">Kanban</code> e <code class="ui">Board</code>. Clique em <code class="ui">Kanban</code>.
+    <p class="out">Ficam só os Kanbans do projeto: <code class="ui">Short film — production</code> e <code class="ui">Character sheets</code> (este está vazio, sem nenhuma lista, e mesmo assim está guardado). Cada um tem o desenho de quatro quadradinhos.</p>
+    <p class="bad">não há os botões <code class="ui">Kanban</code>/<code class="ui">Board</code>, o Kanban vazio não aparece, ou o painel abre escondido atrás do Inspector.</p></div>
+    <div class="shot"><img src="../../smoke/D17/assets_quadros_e_kanbans.png"><div class="cap">o painel de Assets com o Kanban vazio «Character sheets»</div></div></li>
+  <li><div>Clique em <code class="ui">Board</code> e dê dois cliques em <code class="ui">Ideas</code>.
+    <p class="out">Antes do duplo clique, a lista mostra os dois Quadros, <code class="ui">Production board</code> e <code class="ui">Ideas</code>. Depois, a aba <code class="ui">Ideas</code> fica à frente (um quadro vazio). Dois cliques num Kanban abrem a aba dele.</p>
+    <p class="bad">nada acontece, ou abre outro quadro.</p></div>
+    <div class="shot"><img src="../../smoke/D17/assets_quadros_e_kanbans.png"><div class="cap">as abas <code>Production board</code> e <code>Ideas</code> lá em cima</div></div></li>
+  <li><div>Volte à aba <code class="ui">Production board</code>. No painel, clique em <code class="ui">Kanban</code> e arraste <code class="ui">Character sheets</code> para um espaço vazio do quadro (abaixo do Kanban grande). Depois aperte <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+    <p class="out">Enquanto arrasta, o cursor diz que pode largar. Ao largar, o Kanban aparece onde você soltou o rato, já selecionado. O <kbd>Ctrl</kbd>+<kbd>Z</kbd> tira-o do quadro, mas ele continua no painel de Assets.</p>
+    <p class="bad">o Kanban aparece noutro sítio, não aparece, ou some também dos Assets. Largar em cima da barra de ferramentas do quadro não deve fazer nada.</p></div>
+    <div class="shot"><img src="../../smoke/D17/kanban_largado_no_quadro.png"><div class="cap">o Kanban largado no quadro</div></div></li>
+  <li><div>Na barra da esquerda do quadro, clique no botão <code class="ui">Kanban</code> (cria um novo) e depois aperte <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+    <p class="out">O Kanban novo sai do quadro, mas continua guardado: aparece nos Assets com o nome <code class="ui">Kanban</code>. Antes, ele era apagado junto.</p>
+    <p class="bad">o Kanban novo some dos Assets.</p></div>
+    <div class="shot"><img src="../../smoke/D17/assets_quadros_e_kanbans.png"><div class="cap">os Kanbans ficam no painel</div></div></li>
+  <li><div>No painel, clique com o botão direito em <code class="ui">Short film — production</code>.
+    <p class="out">Abre um menu com duas linhas só: <code class="ui">Open</code> e <code class="ui">Delete…</code>.</p>
+    <p class="bad">aparece o menu comprido dos Prefabs (<code class="ui">Edit Prefab</code>, <code class="ui">Instantiate</code>…).</p></div>
+    <div class="shot"><img src="../../smoke/D17/menu_do_kanban_nos_assets.png"><div class="cap">o menu de um Kanban</div></div></li>
+  <li><div>Escolha <code class="ui">Delete…</code>, leia a pergunta e confirme. Depois aperte <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+    <p class="out">A pergunta diz em quantos quadros o Kanban está. Ao confirmar, ele some dos Assets, do quadro e a aba dele fecha. O <kbd>Ctrl</kbd>+<kbd>Z</kbd> devolve tudo: o Kanban, com os cartões, de volta aos Assets e ao quadro, no mesmo sítio. Com um Quadro é igual (o mesmo que apagar pela aba).</p>
+    <p class="bad">apaga sem perguntar, ou o <kbd>Ctrl</kbd>+<kbd>Z</kbd> não traz de volta o Kanban ou o lugar dele no quadro.</p></div>
+    <div class="shot"><img src="../../smoke/D17/apagar_kanban_pergunta.png"><div class="cap">a pergunta antes de apagar</div></div></li>
+  <li><div>Na lista <code class="ui">TO DO</code> do Kanban grande, segure o botão do rato na setinha de baixo da barra de rolagem (à direita da lista).
+    <p class="out">A lista dá um passo, espera um instante e continua a descer sozinha até ao fim, enquanto você segurar. Igual na setinha de cima e na barra de baixo do quadro.</p>
+    <p class="bad">só desce um passo por clique.</p></div>
+    <div class="shot"><img src="../../smoke/D16/lista_longa_barra.png"><div class="cap">a barra com as setas</div></div></li>
+  <li><div>Olhe para a data amarela de <code class="ui">Clean up shot 08</code> e depois abra o cartão.
+    <p class="out">A frente e o verso escrevem a hora do mesmo jeito (por exemplo <code class="ui">Tomorrow 2:56 AM</code>). Antes, a frente dizia 24 h e o verso AM/PM.</p>
+    <p class="bad">a frente e o verso escrevem a hora de jeitos diferentes.</p></div>
+    <div class="shot"><img src="../../smoke/D17/assets_quadros_e_kanbans.png"><div class="cap">«Tomorrow … AM» na frente do cartão</div></div></li>
+</ol>
+</div>
+
 <!-- ============================================================ fim -->
 <div class="sec">
 <h2>O que ficou de fora</h2>
 <ul class="plain">
-  <li><b>Um quadro seu do Trello.</b> A importação foi testada só com um quadro de exemplo feito por nós.
-    Para fechar: exporte um quadro seu (Menu → Export as JSON) e mande o ficheiro — ele vira o teste.</li>
-  <li><b>Ao vivo entre duas casas.</b> O trabalho ao vivo foi provado só na mesma máquina. Falta experimentar
-    entre duas redes de casa diferentes — é a mesma pendência do Quadro.</li>
-  <li><b>Pequenos acabamentos ao vivo:</b> o «Join» do Quadro ainda não aceita o link do Kanban; avatares não
-    esmaecem enquanto se religa; ver quem está num Kanban dentro da sessão de um Quadro.</li>
+  <li><b>Ao vivo entre duas casas</b> — adiado por você (30/10). O trabalho ao vivo foi provado na mesma
+    máquina; falta experimentar entre duas redes de casa diferentes, a mesma pendência do Quadro.</li>
+  <li><b>Imagens dos Assets no Quadro.</b> Arrastar uma imagem do painel de Assets para o Quadro ainda não a põe
+    lá (largar um ficheiro do computador no Quadro continua a funcionar).</li>
 </ul>
 
 <h2>As decisões que tomámos por você</h2>
@@ -558,12 +597,10 @@ carregar <kbd>Ctrl</kbd>+<kbd>S</kbd> nele nessa sessão.</div>
 
 <h2>O que precisa do seu «sim» para entrar no programa principal</h2>
 <ul class="plain">
-  <li><b>Este teste.</b> Faça as 12 partes; diga o que falhou (o número da parte e do passo bastam).</li>
+  <li><b>Este teste.</b> Faça as 13 partes; diga o que falhou (o número da parte e do passo bastam).</li>
   <li><b>As decisões acima.</b> Silêncio = ficam como estão. «Muda» em qualquer uma = mudamos antes de juntar.</li>
   <li><b>A ordem para juntar.</b> O Kanban, o Planner e as mudanças no Quadro e no editor de scripts só entram no
     programa principal quando você disser «pode juntar».</li>
-  <li><b>Opcional, mas fecha duas pendências:</b> o JSON de um quadro seu do Trello, e uma tarde para experimentar
-    o ao vivo entre a sua casa e outra.</li>
 </ul>
-<footer>PH2D · Kanban · tutorial do teste final · 28/10/2026 · fonte: docs/TrelloClone/tutorial/src/01_kanban.html</footer>
+<footer>PH2D · Kanban · tutorial do teste final · 30/10/2026 · fonte: docs/TrelloClone/tutorial/src/01_kanban.html</footer>
 </div>

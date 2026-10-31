@@ -185,3 +185,117 @@ fn historia_cow_seis_tracos_pequenos_retem_pouco() {
         "o histórico reteve {agora} B, mais de 10 % de {hoje}"
     );
 }
+
+type Tiles = std::collections::BTreeSet<(usize, usize)>;
+
+/// Os tiles que um plano tem de volta no valor da base (0) depois de tudo ir a 1: cada tile inteiro, ou nada.
+fn tiles_devolvidos(v: &[f32], s: usize, rows: usize) -> Tiles {
+    let t = crate::grid::TILE;
+    let mut out = Tiles::new();
+    for ty in 0..rows.div_ceil(t) {
+        for tx in 0..s.div_ceil(t) {
+            let cel = (ty * t..((ty + 1) * t).min(rows))
+                .flat_map(|y| (tx * t..((tx + 1) * t).min(s)).map(move |x| v[y * s + x]));
+            let zeros = cel.clone().filter(|c| *c == 0.0).count();
+            assert!(
+                zeros == 0 || zeros == cel.count(),
+                "tile ({tx}, {ty}) meio devolvido"
+            );
+            if zeros > 0 {
+                out.insert((tx, ty));
+            }
+        }
+    }
+    out
+}
+
+/// `marca` num rectângulo, tudo a 1, `restaura`: que tiles (finos, de fluxo) o registo guardou.
+fn guardados(x0: i64, y0: i64, x1: i64, y1: i64) -> (Tiles, Tiles) {
+    let mut g = crate::grid::Grid::new(190, 190);
+    let mut r = crate::grid::Registo::abre(&g);
+    r.marca(&g, x0, y0, x1, y1);
+    g.film.fill(1.0);
+    g.vel_x.fill(1.0);
+    r.restaura(&mut g, None);
+    let (fs, frows) = (g.flow.s, g.flow.rows);
+    (
+        tiles_devolvidos(&g.film, g.s, g.rows),
+        tiles_devolvidos(&g.vel_x, fs, frows),
+    )
+}
+
+fn ts(v: &[(usize, usize)]) -> Tiles {
+    v.iter().copied().collect()
+}
+
+/// **O registo guarda EXACTAMENTE os tiles que o rectângulo `[x0, x1) × [y0, y1)` toca** — nas fronteiras de 64
+/// (fim exclusivo a 64 não toca o tile seguinte; começo a 63 toca o anterior), vazio não guarda nada, e o fluxo
+/// leva a folga −2/+3 (grade de fluxo colada, `rf = 1`, 192 × 192 = 3 × 3 tiles).
+#[test]
+fn historia_cow_marca_guarda_exactamente_os_tiles_tocados() {
+    let g = crate::grid::Grid::new(190, 190);
+    assert_eq!((g.s, g.rows, g.flow.s, g.flow.rows), (192, 192, 192, 192));
+    let todos = ts(&[
+        (0, 0),
+        (1, 0),
+        (2, 0),
+        (0, 1),
+        (1, 1),
+        (2, 1),
+        (0, 2),
+        (1, 2),
+        (2, 2),
+    ]);
+    let quad = ts(&[(0, 0), (1, 0), (0, 1), (1, 1)]);
+    let casos: [((i64, i64, i64, i64), Tiles, Tiles); 8] = [
+        ((0, 0, 64, 64), ts(&[(0, 0)]), quad.clone()),
+        ((63, 63, 65, 65), quad.clone(), quad.clone()),
+        ((64, 64, 128, 128), ts(&[(1, 1)]), todos.clone()),
+        ((0, 0, 65, 1), ts(&[(0, 0), (1, 0)]), ts(&[(0, 0), (1, 0)])),
+        ((10, 10, 10, 40), Tiles::new(), Tiles::new()),
+        ((10, 40, 30, 40), Tiles::new(), Tiles::new()),
+        (
+            (-5, 130, 500, 140),
+            ts(&[(0, 2), (1, 2), (2, 2)]),
+            ts(&[(0, 2), (1, 2), (2, 2)]),
+        ),
+        // Fluxo 64..128: só o tile do meio; um a mais de cada lado (63..129) já toca os nove.
+        ((66, 66, 125, 125), ts(&[(1, 1)]), ts(&[(1, 1)])),
+    ];
+    for ((x0, y0, x1, y1), finos, fluxo) in casos {
+        assert_eq!(
+            guardados(x0, y0, x1, y1),
+            (finos, fluxo),
+            "marca({x0}, {y0}, {x1}, {y1}): (finos, fluxo)"
+        );
+    }
+    assert_eq!(guardados(65, 65, 126, 126), (ts(&[(1, 1)]), todos));
+}
+
+/// **O refazer devolve também os tiles do `extra`** (escritos desde o último evento e que o registo não guarda),
+/// nos planos finos E nos de fluxo; e o fluxo TRANSITÓRIO (`flow_x`/`flow_y`) volta a zero, como no
+/// `restore_grid`.
+#[test]
+fn historia_cow_restaura_usa_o_extra_e_zera_o_fluxo_transitorio() {
+    let mut g = crate::grid::Grid::new(190, 190);
+    let mut reg = crate::grid::Registo::abre(&g);
+    reg.marca(&g, 0, 0, 10, 10);
+    let mut desde = crate::grid::Registo::abre(&g);
+    desde.marca(&g, 140, 140, 150, 150);
+    let i = 145 * g.s + 145;
+    g.film[i] = 5.0;
+    g.vel_x[i] = 5.0;
+    g.vel_y[i] = 6.0;
+    g.flow_x.fill(3.0);
+    g.flow_y.fill(4.0);
+    reg.restaura(&mut g, Some(&desde));
+    assert_eq!(
+        (g.film[i], g.vel_x[i], g.vel_y[i]),
+        (0.0, 0.0, 0.0),
+        "o tile do `extra` não voltou"
+    );
+    assert!(
+        g.flow_x.iter().chain(&g.flow_y).all(|v| *v == 0.0),
+        "o fluxo transitório ficou do estado desfeito"
+    );
+}

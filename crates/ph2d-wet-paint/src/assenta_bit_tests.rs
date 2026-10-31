@@ -138,3 +138,33 @@ fn assenta_bit_as_secagens_nao_mudam_um_bit() {
         hash_das_secagens()
     );
 }
+
+/// O memo do assentar (rodada 4, `assenta/memo.rs`): pela tabela do fio, fria e quente (duas voltas), com cores
+/// `f32` (o caminho da tabela) e `f64` (o que a contorna), os MESMOS bits que a porta.
+#[test]
+fn assenta_bit_o_memo_da_os_bits_da_porta() {
+    let f32_de = |c: [f64; 3]| c.map(|v| f64::from(v as f32));
+    for _volta in 0..2 {
+        for e in ecras() {
+            for sc0 in CORES {
+                for uc0 in CORES {
+                    for (sc, uc) in [(f32_de(sc0), f32_de(uc0)), (sc0, uc0)] {
+                        for a_s in COB {
+                            for a_f in COB {
+                                for (a_s2, a_f2) in depois(a_s, a_f) {
+                                    let m = super::assenta_memo(e, sc, uc, a_s, a_f, a_s2, a_f2);
+                                    let p = assenta(e, sc, uc, a_s, a_f, a_s2, a_f2);
+                                    assert_eq!(
+                                        m.map(f64::to_bits),
+                                        p.map(f64::to_bits),
+                                        "{e:?} {sc:?} {uc:?}"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

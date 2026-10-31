@@ -213,7 +213,7 @@ pub(crate) fn dry_cell(
         let a_sett = alpha_of_mass(sett_c as f64);
         let a_in = alpha_of_mass(dm);
         if ecra != crate::assenta::Ecra::Porto {
-            sett_rgb_c = crate::assenta::assenta(
+            sett_rgb_c = crate::assenta::assenta_memo(
                 ecra,
                 sett_rgb_c.map(f64::from),
                 susp_rgb_c.map(f64::from),

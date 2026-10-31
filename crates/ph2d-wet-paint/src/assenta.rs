@@ -14,6 +14,9 @@ use crate::colorops::{km_glaze_channel_linear, velatura};
 #[path = "assenta/ponto.rs"]
 mod ponto;
 use ponto::{Parada, d_de, prepara};
+#[path = "assenta/memo.rs"]
+mod memo;
+pub use memo::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, assenta_memo, memo_esquece};
 
 /// A lei do ecrã para o filme molhado sobre o assentado, que as transferências verticais preservam.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]

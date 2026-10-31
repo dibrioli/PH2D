@@ -49,6 +49,8 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     let mut k = knob_defaults();
     // O pincel sem preset é o Wet Round de fábrica (o pigmento e a orla calibrados contra o Rebelle, 10/10).
     k[Knob::PigmentPerDab as usize] = 78.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 600
+    // A carga-base de `h` (E4, receita × quantidade): a que pousa o MESMO pigmento e água que o PPD 78 de antes.
+    k[Knob::Intensity as usize] = 0.4505; // LITERAL-OK: E4 migration of PPD 78 · Opacity 1 (docs/Painter/Arquitetura/E4_receita_e_quantidade.md)
     k[Knob::EdgeDarkening as usize] = 12.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 50
     k[Knob::PaperGate as usize] = 0.4; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.6
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01

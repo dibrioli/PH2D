@@ -18,6 +18,32 @@ use crate::grid::Grid;
 #[doc(hidden)]
 pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
+/// Protótipo da lei de Bingham para o óleo grosso, em execução (`sonda_relevo_oleo`, variante `bingham`):
+/// `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md`. Os bits de um `f32`: a tensão de cedência `τ₀` em
+/// fracção de `MaxVelocity`; `0` = o produto, ao bit.
+#[doc(hidden)]
+pub static PAPEL_BINGHAM: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// A lei de Bingham sobre o incremento de velocidade `(ex, ey)` numa célula com óleo: `τ_y = τ₀·max_v·(1 − f/FILM_CHEIO)²`
+/// (a água dilui a tensão de cedência); abaixo dela nada escoa, acima escoa o excesso.
+#[inline]
+pub(crate) fn bingham(ex: f64, ey: f64, f: f64, max_v: f64) -> (f64, f64) {
+    let t0 = f64::from(f32::from_bits(
+        PAPEL_BINGHAM.load(std::sync::atomic::Ordering::Relaxed),
+    ));
+    if t0 <= 0.0 {
+        return (ex, ey);
+    }
+    let seco = 1.0 - (f / FILM_CHEIO).clamp(0.0, 1.0);
+    let tau = t0 * max_v * seco * seco;
+    let v = (ex * ex + ey * ey).sqrt();
+    if v <= tau {
+        return (0.0, 0.0);
+    }
+    let k = (v - tau) / v;
+    (ex * k, ey * k)
+}
+
 fn rota() -> u8 {
     match LADEIRA_ROTA.load(std::sync::atomic::Ordering::Relaxed) {
         0 => 7,

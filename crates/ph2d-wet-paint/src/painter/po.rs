@@ -22,14 +22,11 @@ impl Engine {
         opacidade: f64,
         sil: crate::brush::CellFn<'_>,
     ) {
-        let mut p = self
-            .sim
-            .gather_params(&self.tuning)
-            .com_pigmento(self.sliders.pigmento);
+        let mut p = self.params_do_deposito();
         p.agua_do_dab = self.agua_do_dab;
         let (mut dab, _) = self.pressure_dab(&p, x, y, b, r);
         dab.opacity = opacidade;
-        dab.water_amount *= self.agua_do_dab;
+        dab.water_amount = super::receita::agua_do_traco_fino(dab.water_amount, self.agua_do_dab);
         // A silhueta do grão tem a orla de AA de uma célula além do raio.
         dab.reach = (r + 1.5) / r.max(1e-3);
         dab.window_reach = dab.reach;

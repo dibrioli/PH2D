@@ -46,9 +46,8 @@ pub struct Sliders {
     pub pressure: f64,
     pub water: f64,
     pub erase: f64,
-    /// **A quantidade de pigmento** do pincel (a Opacity do produto, `0..1`): multiplica o pigmento que cada
-    /// dab pousa ([`crate::sim::Params::com_pigmento`]) — a tinta fica clara por ter POUCO pigmento e acumula
-    /// até à cor escolhida (dono 10/10). `1` = o port, ao bit.
+    /// **A quantidade de tinta** do pincel (a Opacity do produto, `0..1`): multiplica a tinta que cada
+    /// dab pousa — desde a E4 é o **Volume**: só a quantidade `h`, nunca a receita ([`receita`], ADR-0197 §1.1).
     pub pigmento: f64,
 }
 
@@ -281,10 +280,7 @@ impl Engine {
     /// slider's `2 + size*33`. The engine's own [`Self::dispatch_dab`] is a
     /// thin wrapper, so there is exactly one §9 to diverge.
     pub fn dispatch_pressure_dab(&mut self, x: f64, y: f64, b: f64, r: f64) {
-        let p = self
-            .sim
-            .gather_params(&self.tuning)
-            .com_pigmento(self.sliders.pigmento);
+        let p = self.params_do_deposito();
         let (dab, water_unit) = self.pressure_dab(&p, x, y, b, r);
         self.finish_dispatch(p, dab, b, water_unit);
     }
@@ -683,6 +679,7 @@ mod instantaneo; // `Clone`: a cópia do motor para os instantâneos de uma macr
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
 mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter)
 mod po; // a porta do GRÃO de pó solto, à parte do rasto (J4 pastel_carvao)
+pub mod receita; // E4: Pigmento + Água → a receita φ, Volume → a quantidade h (ADR-0197 §1.1)
 mod relevo; // a porta do RELEVO dos fios (W3): o dab penteia a altura
 mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split
 

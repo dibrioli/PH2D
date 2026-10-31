@@ -206,9 +206,13 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         active,
         bloom,
         traco,
+        oleo,
         ..
     } = g;
     let traco_full: &[u32] = traco;
+    let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
+    let bingham_on = !oleo.is_empty()
+        && super::ladeira_do_oleo::PAPEL_BINGHAM.load(std::sync::atomic::Ordering::Relaxed) != 0;
     let isola = c.isola && !traco_full.is_empty();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o
     // compilador o verifica em vez de um comentário o prometer.
@@ -457,6 +461,9 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
 
                 if let Some(gt) = c.gota {
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
+                }
+                if bingham_on && crate::grid::oleo_celula::ganho(oleo, fi) > 0.0 {
+                    (ex, ey) = super::ladeira_do_oleo::bingham(ex, ey, f, c.max_v);
                 }
                 fxr[x as usize] = if wx {
                     0.0

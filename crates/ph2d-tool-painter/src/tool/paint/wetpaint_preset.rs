@@ -38,6 +38,8 @@ mod pedido;
 mod preview;
 mod preview_borracha;
 #[cfg(test)]
+mod receita_e4_tests;
+#[cfg(test)]
 mod shape_color_tests;
 #[cfg(test)]
 mod sonda_custo_oleo;
@@ -49,6 +51,8 @@ mod sonda_oleo_estria;
 mod sonda_oleo_furos;
 #[cfg(test)]
 mod sonda_oleo_grumos;
+#[cfg(test)]
+mod sonda_relevo_oleo;
 #[cfg(test)]
 mod sonda_varredura_oleo;
 #[cfg(test)]
@@ -90,10 +94,38 @@ pub(in crate::tool::paint) fn de_fabrica_ou_candidato(nome: &str) -> Preset {
         .unwrap_or_else(|| panic!("o preset {nome:?}: nem na fábrica nem candidato"))
 }
 
+/// **A migração da E4** (ADR-0197 §1.1): um preset da lei velha pousa o MESMO pigmento e a MESMA água por dab
+/// (à pressão de referência), agora como receita (`pigmentPerDab`) × quantidade (`intensity`). A Water e a
+/// Opacity são as do preset, ou as de agora quando ele não as fixa.
+pub(super) fn migra_a_receita(k: &mut WetKnobs, prm: &Parametros, agua: f64, opacidade: f64) {
+    use ph2d_wet_paint::tuning::Knob;
+    let agua = prm
+        .volumes
+        .water
+        .filter(|w| w.is_finite())
+        .map_or(agua, |w| w.clamp(0.0, 1.0));
+    let opacidade = prm
+        .volumes
+        .opacity
+        .filter(|o| o.is_finite())
+        .map_or(opacidade, |o| o.clamp(0.0, 1.0));
+    let (pig, carga) = ph2d_wet_paint::painter::receita::migra_da_lei_velha(
+        k.get(Knob::PigmentPerDab),
+        k.get(Knob::WaterPerDab),
+        agua,
+        opacidade,
+    );
+    k.set(Knob::PigmentPerDab, pig);
+    k.set(Knob::Intensity, carga);
+}
+
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";
 /// A pasta-raiz da família em `assets/brushes/` e em `~/.local/share/ph2d/brushes/`.
 pub const MOTOR_DOS_PRESETS: &str = "WetPainter";
+/// A marca da lei da E4 no mapa `engine` (`1`): `pigmentPerDab` é a parte de pigmento da receita e `intensity` a
+/// carga (a quantidade). Ausente = um preset da lei velha, que [`migra_a_receita`] traduz ao carregar.
+pub(super) const CHAVE_RECEITA: &str = "receitaE4";
 /// A chave da borracha molhada no mapa `engine` (não é knob do registo: é o slider `erase` do motor).
 const CHAVE_ERASE: &str = "erase";
 /// O **Glaze layering (K-M)** no mapa `engine` (não é knob do registo: é do traço, `km_glaze`). Gravado só LIGADO
@@ -330,6 +362,9 @@ impl PainterTool {
             };
         }
         k.water = water;
+        if !prm.engine.contains_key(CHAVE_RECEITA) {
+            migra_a_receita(&mut k, prm, water, f64::from(self.paint.wetpaint.opacidade));
+        }
         // Um preset de antes da W2 do plano 27 traz as cerdas no mapa do MOTOR e o Shape vazio: elas passam
         // ao Shape, com os mesmos valores (o traço é o mesmo, ao bit — a miniatura de fábrica é o portão).
         // Um preset gravado depois já não as traz no mapa ([`Self::wet_preset_capturar`]).
@@ -509,6 +544,7 @@ impl PainterTool {
             p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
         p.engine.insert(CHAVE_ERASE.to_owned(), k.erase);
+        p.engine.insert(CHAVE_RECEITA.to_owned(), 1.0);
         if self.paint.wetpaint.km_glaze {
             p.engine.insert(CHAVE_GLAZE.to_owned(), 1.0);
         } else {

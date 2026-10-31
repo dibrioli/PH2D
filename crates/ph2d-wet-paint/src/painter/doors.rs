@@ -18,15 +18,10 @@ impl Engine {
         r: f64,
     ) -> (Dab, f64) {
         let s = self.sliders;
-        let pressure_base = 0.2 + 0.7 * s.pressure; // even minimum pressure deposits
-        let mut intensity = b * 0.5 * pressure_base;
-        intensity = intensity.clamp(0.0, 3.0);
-        intensity *= p.k(Knob::Intensity); // knob applied post-clamp
+        // E4 (ADR-0197 §1.1): a pressão só toca a força do carimbo; a água é a da receita.
+        let intensity = receita::forca_do_carimbo(b, s.pressure);
         let water_unit = s.water * 0.35;
-        // Pressure-INVERSE water: a light touch is wetter, a heavy stroke
-        // denser.
-        let water_amount =
-            (2.0 * water_unit * water_unit) / (pressure_base + 0.01) * p.k(Knob::WaterPerDab);
+        let water_amount = self.receita_do_dab(p).agua();
         let mut h = 0.5 * b;
         if h < 1.0 {
             h = 1.0;
@@ -168,14 +163,11 @@ impl Engine {
         padrao: Option<crate::brush::CellFn<'_>>,
         cor: Option<crate::brush::ColorFn<'_>>,
     ) {
-        let mut p = self
-            .sim
-            .gather_params(&self.tuning)
-            .com_pigmento(self.sliders.pigmento);
+        let mut p = self.params_do_deposito();
         p.agua_do_dab = self.agua_do_dab;
         let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         dab.opacity = opacidade;
-        dab.water_amount *= self.agua_do_dab;
+        dab.water_amount = receita::agua_do_traco_fino(dab.water_amount, self.agua_do_dab);
         if sil.is_some() {
             [dab.reach, dab.window_reach] = self.silhouette_reach;
         }
@@ -461,10 +453,7 @@ impl Engine {
     /// acaba cheio até ao corte — com a janela caída, o último pedaço (até `window_size` dabs) esmaecia. Chama-se
     /// antes de [`Self::end_direct_stroke`]; quem não a chama vê o traço de sempre, ao bit.
     pub fn land_direct_remainders(&mut self, lanes: &[usize]) {
-        let mut p = self
-            .sim
-            .gather_params(&self.tuning)
-            .com_pigmento(self.sliders.pigmento);
+        let mut p = self.params_do_deposito();
         p.agua_do_dab = self.agua_do_dab;
         // A janela do misturador pousa pela SUA lei, com os parâmetros da porta dele (`dispatch_pressure_dab_lane_blend_grao`).
         let p_mistura = self.sim.gather_params(&self.tuning);

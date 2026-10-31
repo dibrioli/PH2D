@@ -120,7 +120,7 @@ pub(super) struct DepositLaw {
 impl DepositLaw {
     pub(super) fn new(p: &Params, dab: &Dab, ext_bypass: bool) -> Self {
         Self {
-            gain: p.k(Knob::PigmentPerDab),
+            gain: p.pigmento_por_deposito(),
             gate: p.k(Knob::PaperGate),
             pig_cap: p.k(Knob::GateSaturation),
             ext_dry_brush: p.k(Knob::ExtDryBrush),

@@ -42,13 +42,10 @@ impl Engine {
         if r <= 0.0 {
             return;
         }
-        let p = self
-            .sim
-            .gather_params(&self.tuning)
-            .com_pigmento(self.sliders.pigmento);
+        let p = self.params_do_deposito();
         let (mut dab, _water_unit) = self.pressure_dab(&p, x, y, b, r);
         dab.opacity = peso;
-        dab.water_amount *= peso.recip();
+        dab.water_amount = super::receita::agua_do_traco_fino(dab.water_amount, peso.recip());
         let ext_bypass = self.sim.ext_bypass;
         self.texture();
         let tex = self.brush_tex.take().unwrap();

@@ -70,6 +70,9 @@ pub struct Params {
     /// dobra na opacidade): o FILME do traço ([`crate::tuning::Knob::StrokeFilm`]) desfá-lo para ter a mesma espessura a
     /// todo o tamanho. `1` fora da porta do produto.
     pub agua_do_dab: f64,
+    /// O pigmento por unidade de depósito da RECEITA (`φ·h`, [`crate::painter::receita`]); `None` = o
+    /// `PigmentPerDab` cru (quem não passa pela receita).
+    pub pigmento_do_dab: Option<f64>,
 }
 
 impl Params {
@@ -78,16 +81,20 @@ impl Params {
         self.values[knob as usize]
     }
 
-    /// **A quantidade de pigmento** do pincel (a Opacity do produto, `Sliders::pigmento`): escala SÓ o
-    /// pigmento que cada célula recebe (`PigmentPerDab`). O carimbo, a água e o portão do papel ficam —
-    /// escalar o carimbo deixava o portão (uma subtracção absoluta) comer a tinta clara (medido 10/10: a
-    /// 0,26 o miolo ia `2 → 12` em 12 passadas, a cor diluída `13 → 57`). `1` = o port, ao bit.
+    /// **A receita do dab** ([`crate::painter::receita`], E4): o depósito pousa `φ·h` de pigmento por unidade.
+    /// O `PigmentPerDab` cru fica — é a parte de pigmento da receita, nunca a quantidade.
     #[must_use]
-    pub fn com_pigmento(mut self, pigmento: f64) -> Self {
-        if pigmento != 1.0 {
-            self.values[Knob::PigmentPerDab as usize] *= pigmento;
-        }
+    pub fn com_receita(mut self, r: &crate::painter::receita::Receita) -> Self {
+        self.pigmento_do_dab = Some(r.pigmento());
         self
+    }
+
+    /// O pigmento por unidade de depósito: o da receita, ou o `PigmentPerDab` cru.
+    #[inline]
+    #[must_use]
+    pub fn pigmento_por_deposito(&self) -> f64 {
+        self.pigmento_do_dab
+            .unwrap_or(self.values[Knob::PigmentPerDab as usize])
     }
 }
 
@@ -367,6 +374,7 @@ impl Sim {
             traco_actual: self.traco_actual,
             paredes: self.paredes,
             agua_do_dab: 1.0,
+            pigmento_do_dab: None,
         }
     }
 }

@@ -613,7 +613,7 @@ mod advect_jacobi;
 mod flow_jacobi;
 mod gota; // a lei da GOTA (W1e, F1) — instrumento das sondas, filho por LOC
 mod ladeira_do_oleo; // Bug 2 (dono 30/10): a altura do óleo assentado entra no nivelamento da água
-pub use ladeira_do_oleo::LADEIRA_ROTA;
+pub use ladeira_do_oleo::{LADEIRA_ROTA, PAPEL_BINGHAM};
 pub(crate) use ladeira_do_oleo::fotografa as fotografa_a_ladeira;
 mod project;
 mod sedimenta;

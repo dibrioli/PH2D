@@ -136,6 +136,12 @@ que a regera. A ajuda ilustrada (F5) usa as MESMAS imagens geradas pelo motor (a
 
 ## Em aberto (decide-se por MEDIÇÃO na F4)
 
+- ⛔ **A lei de MISTURA de cor está SUSPENSA (dono 31/10):** *«o modo de mistura … é experimental … veja como apps de
+  sucesso como Procreate preferem a mescla de cor; vamos usar o que traz resultados consistentes e robustos mais
+  garantidos.»* O §1 separa-se em duas: a lei de CAMADA em volumes (cobertura derivada, conservação, zero inversas —
+  fica) e a lei de MISTURA (K-M 3 bandas é a PROPOSTA, não a decisão). Decide-a
+  [`F2b_mistura_de_cor_nos_apps.md`](../../Painter/Arquitetura/F2b_mistura_de_cor_nos_apps.md) por robustez medida.
+
 - **Bandas:** 3 bastam para o teorema; o modelo a 3 bandas dá verdes mais baços (`fotos/f2_lei_unica/a_*.png`). 8
   bandas (IMPaSTo) ou pigmentos latentes — medir custo × limpeza e mostrar ao dono.
 - **Calibração $(K,S)$** por pigmento a partir da cor escolhida + transparência; o Óleo Real e a guache calibrada

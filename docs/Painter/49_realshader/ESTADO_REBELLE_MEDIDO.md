@@ -65,3 +65,15 @@ Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecç
 | aberto | rodada calma A/B/C; célula Glaze 4K; 33 leituras numa espera; Mop e Smudge Finger (motor); lista R2; BUGS #54 | — |
 
 - (anterior) Fecho por fazer: regerar 22 miniaturas (em curso, coordenador); Borracha Wet controlo inerte (agente); clippy assenta/ponto.rs:38 e fmt advect_* (R1 apontou); testes lentos do painel já lentos na base (cada_ferramenta_da_agua…, cada_linha_visivel…); fmt/clippy das crates tocadas; mutação nos gates novos (assenta_bit, flow_bit, advect_bit, historia_cow, paridade placa); handoff HANDOFF_SUPERAR_REBELLE.md; rodada calma A/B/C do nucleos_wash.
+
+## 31/10 manhã — depois de 2c10300493 (HEAD aed309a84e; handoff §8)
+| item | estado | commits |
+|---|---|---|
+| PC travou 07:24 (RTX Xid 109, falhava desde 02:43 Xid 62); reboot do dono | ⛔ sem testes na NVIDIA até medir o passo partido com o PC livre e `journalctl -k \| grep -i xid` | — |
+| miniaturas (fábrica 77) e gates da fábrica | FEITO, verdes | 026ab2ae87 975aa286b6 bfe9b3793e 10d55f174d e6cd58b2fb |
+| defeitos do smoke: grumos, undo grande, borda branca opaca, óleo derrete, pontos pretos, Size 64, Blow, célula 16 B, censo | CURADOS | 611591d423 fcc3c46112 a1d8b75767 e5efa2d206 3570226c1e a6796fd570 4279ba26eb d070dcaf85 26f87c39b2 fc56456c43 |
+| CPU 4K ms/passo | 85,0 → 63,5 → 54,9 → 50,3 → 50,58 (Rebelle 37,3) | aeb67ca906 8b629bdc21 fb8ff6eec7 5b356e4ff4 9a4480553f |
+| planos estreitos f16/u16 | RECUSADOS (régua invisível) | b1d456636a |
+| stores não-temporais | RECUSADOS (unsafe proibido) | 5b356e4ff4 |
+| placa: submissões ≤ 40 000 grupos, TETO_MS 25 ms, descida numa espera | FEITO: maior 93,3 → 22,6 ms Radeon (~2,8 RTX estimado) | aed309a84e ([PLACA_degrau6.md](PLACA_degrau6.md)) |
+| aberto | medir RTX livre; outflow por faixas/área da tinta; 2.ª espera da secagem; placa por omissão (única que passa o Rebelle, 9,24 ms); Thick Impasto raio 24–32 (cn8); smoke do dono do build novo; vermelhos de óleo (Real Oil toggle, oil_bristle 14,3<15, 3 pré-existentes) | — |

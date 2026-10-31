@@ -1,7 +1,7 @@
 # HANDOFF — «superar o Rebelle» (linha PainterWatercolor, 30–31/10)
 
 Leitor: próxima LLM / integrador. Tabela viva: [ESTADO_REBELLE_MEDIDO.md](ESTADO_REBELLE_MEDIDO.md). Continuação: [PROMPT_CONTINUACAO_SUPERAR_REBELLE.md](PROMPT_CONTINUACAO_SUPERAR_REBELLE.md). Anterior: [HANDOFF_REBELLE_MEDIDO.md](HANDOFF_REBELLE_MEDIDO.md).
-**NÃO integrado no main, sem push.** HEAD `d070dcaf85` (ramo `line/PainterWatercolor`).
+**NÃO integrado no main, sem push.** HEAD `aed309a84e` (ramo `line/PainterWatercolor`); §3–§7 descrevem `d070dcaf85`, a **§8 é o que veio depois** (`2c10300493..HEAD`, 26 commits) e prevalece onde diverge (§4 miniaturas/gates, §5, §6 RTX, §7 aberto).
 
 ## 1. Superfície de colisão (para o integrador)
 - Crates: `ph2d-wet-gpu` (nova, água na placa), `ph2d-wet-paint` (advecção/secagem/COW/dryCover/tuftArc/waterDrag, `tuning`), `ph2d-tool-painter` (receitas, painel Wet), `ph2d-app-painter` (ligação da placa, PH2D_WET_GPU).
@@ -40,3 +40,20 @@ Xid 109 CTX SWITCH TIMEOUT às 03:36 de 31/10 («GPU is probably locked»): o Vu
 4. Mop e Smudge Finger precisam de motor. Lista não-promovida do R2.
 5. Cura de raiz BUGS #54. Constante 0,25 do dryCover por medir em grelha.
 6. Miniaturas (§5) e os 3 gates vermelhos. Smoke do dono não feito (missão autónoma).
+
+## 8. Depois de `2c10300493` (31/10 manhã, HEAD `aed309a84e`)
+**Máquina.** O PC travou às 07:24 (RTX Xid 109 «GPU is probably locked»; a placa já falhava desde 02:43 com Xid 62); reboot pelo dono. ⛔ Nada de testes na NVIDIA até o passo partido (§8.4) ser medido com o PC livre e `journalctl -k | grep -i xid` vigiado.
+
+**8.1 Miniaturas e gates (fecha §4/§5).** Todas regeradas e comitadas: `026ab2ae87`, `975aa286b6`, `bfe9b3793e`, `10d55f174d`. Fábrica **77**. Verdes: `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`, `cada_preset_de_fabrica_e_a_sua_receita`, `the_factory_presets_are_counted`, `volta_ao_byte`, `cada_ferramenta_tem…`, `aplicar_um_preset_da_agua…` (esta após `e6cd58b2fb`). Regerar rápido com a máquina livre (15 em 43 min); lento sob carga.
+
+**8.2 Defeitos do smoke do dono, curados.** Grumos do óleo sobreposto `611591d423` (espalha) · undo/redo matava a tinta em tela grande `fcc3c46112` (histórico por blocos ligado ao app) · borda branca amarelo/azul nas tintas OPACAS `a1d8b75767` + `e5efa2d206` (`Knob::Opaque`, mistura K-M na célula opaca; Gouache Flat/Opaque/Fan Brush opacos; o marcador fica de fora; sonda `ef1026bdcd`) · óleo derretia o traço ao cruzar `3570226c1e` (ladeira pesa pela fracção assente) · pontos pretos nas fendas `a6796fd570` (piso do ganho do céu) · tinta a mais no Size 64 `4279ba26eb` (sub-passo natural da cápsula) · Pigment mixing escondido da Blow `d070dcaf85` · célula de óleo 16 B `26f87c39b2` · censo `composite_pendente` `fc56456c43` · Water do topo por slot `e6cd58b2fb`.
+
+**8.3 Performance CPU 4K (ms/passo, 16 fios; Rebelle 37,3).** 85,0 (rodada 3, `042137034f`) → 63,5 memo do assentar `aeb67ca906` → 54,9 levanta + memo em linha de cache `8b629bdc21` → 50,3 advecção fundida em blocos de 16 linhas `fb8ff6eec7`/`5b356e4ff4` → 50,58 projecção `9a4480553f` (ao bit, hash 6/42/78). Advecção na banda de memória (transporte 14,3 contra chão 11,6 ms; `9ef95d36a7`). `f126dd0dc7`: smoke com codegen-units=1 no `ph2d-wet-paint`. **Recusados medidos:** planos estreitos f16/u16 (régua invisível, `b1d456636a`, `tests/it/regua_estreita.rs`), stores não-temporais (unsafe proibido), inline do `flow_at_point`, fundida abaixo de 4 M células. Docs: MEDIDA_31_10_RODADA3..10.md.
+
+**8.4 Placa.** `aed309a84e`: passo partido em submissões ≤ 40 000 grupos — maior submissão 93,3 → 22,6 ms na Radeon (~2,8 ms estimado na RTX), guarda `TETO_MS` (25 ms) devolve a água à CPU, descida suja numa espera (33 → 1). Ver [PLACA_degrau6.md](PLACA_degrau6.md). A placa continua opt-in e é a ÚNICA alavanca que passa o Rebelle (9,24 ms isolado).
+
+**8.5 ABERTO (substitui §7).**
+1. Medir na RTX com o PC livre (Xid vigiado); partir o `outflow_pass` por faixas ou despachar só a área da tinta; tirar a 2.ª espera da secagem; depois decidir a placa por omissão.
+2. Smoke: o Thick Impasto a raio 24–32 (Size 48–64) ainda encaroça menos estriado que a raio 50 (sonda `sonda_oleo_estria.rs`, régua cn8). O dono ainda NÃO testou o build novo: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo run -p ph2d-host-desktop --profile smoke`.
+3. Vermelhos: `mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada` no toggle Real Oil (de `776a9ff173`, decisão da família do óleo); `os_fios_do_oil_bristle_aparecem_e_somem` (14,3<15, anterior); 3 de óleo pré-existentes (`o_traco_seguinte…`, `a_aguada_re_molha…`, Blender×Cycles). A fenda forte está verde.
+4. Do §7 seguem: célula Glaze 4K (1,0055 > 1 nível), Mop e Smudge Finger (motor), BUGS #54 de raiz, constante 0,25 do dryCover por medir. (Itens 1 e 3 do §7 cumpridos: rodadas 3–10 e descida numa espera.)

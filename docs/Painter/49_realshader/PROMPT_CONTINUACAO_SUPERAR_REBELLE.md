@@ -7,12 +7,12 @@ docs/Painter/49_realshader/ESTADO_REBELLE_MEDIDO.md (a tabela de tudo, commits e
 agentes fazem leitura, construção, medição (≤ 3 subagentes; briefing com a linha ⛔ «cd X && … · bash -c/sh -c · rm -rf com
 variável/glob · kill de PID não gravado · escrever em .git/.claude/ · AskUserQuestion · push · tocar fora dos seus paths»).
 
-## Onde está AGORA (31/10 madrugada, HEAD d070dcaf85) — leia primeiro
-Handoff técnico: docs/Painter/49_realshader/HANDOFF_SUPERAR_REBELLE.md (substitui o «31/10 noite» abaixo, que fica como história).
-Feito: placa ligada (PH2D_WET_GPU opt-in), dryCover/tuftArc/waterDrag, Water/Fan/Gouache (fábrica 77), mutação e clippy dos portões novos, censo da água.
-Pendente do COORDENADOR: regerar miniaturas (7 antigas + Water Brush, Fan Brush, Gouache Opaque, Marker Chisel); até lá 3 gates vermelhos (`cada_preset_de_fabrica_e_a_sua_receita`, `the_factory_presets_are_counted`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`).
-Aberto: rodada calma A/B/C do nucleos_wash; célula Glaze 4K; 33 leituras numa espera; Mop e Smudge Finger (motor); BUGS #54 de raiz.
-RTX: Vulkan NVIDIA fora até reboot (Xid 109); antes da placa por omissão, partir despachos 4K longos. NÃO integrar, sem push.
+## Onde está AGORA (31/10 manhã, HEAD aed309a84e) — leia primeiro
+Handoff técnico: docs/Painter/49_realshader/HANDOFF_SUPERAR_REBELLE.md §8 (o resto fica como história).
+⛔ O PC travou às 07:24 (RTX Xid 109; falhava desde 02:43): NADA de teste na NVIDIA até o passo partido ser medido com o PC livre e `journalctl -k | grep -i xid` vigiado.
+Feito: miniaturas todas regeradas (fábrica 77, gates da fábrica verdes); defeitos do smoke do dono curados (óleo, undo grande, borda branca opaca, pontos pretos, Size 64); CPU 4K 85,0 → 50,58 ms/passo (Rebelle 37,3; planos estreitos e stores não-temporais RECUSADOS); placa em submissões ≤ 40 000 grupos (Radeon 93,3 → 22,6 ms; guarda TETO_MS 25 ms cai para CPU).
+Falta, por ordem: (1) medir na RTX com o PC livre; (2) partir o outflow_pass por faixas ou despachar só a área da tinta; (3) tirar a 2.ª espera da secagem; (4) decidir a placa por omissão — a ÚNICA alavanca que passa o Rebelle (9,24 ms isolado); (5) Thick Impasto a raio 24–32 ainda encaroça menos estriado que a raio 50 (sonda_oleo_estria.rs, régua cn8); (6) vermelhos de óleo: mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada (toggle Real Oil, 776a9ff173, decisão da família do óleo), os_fios_do_oil_bristle_aparecem_e_somem (14,3<15), 3 pré-existentes; (7) célula Glaze 4K, Mop/Smudge Finger, BUGS #54.
+O dono ainda não testou o build novo: cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && cargo run -p ph2d-host-desktop --profile smoke. NÃO integrar, sem push.
 
 ## Onde estava (31/10 noite — história)
 - Rebelle: 37,3 ms/passo água 4K (D2_rebelle_passo_agua.md). PH2D: ~100 → menos (secagem −27 % passo, SEM −36 % da secagem,

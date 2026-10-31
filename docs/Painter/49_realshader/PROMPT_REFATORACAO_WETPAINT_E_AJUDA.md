@@ -2,6 +2,8 @@
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor` · `pwd` · `git branch --show-current`
 (= `line/PainterWatercolor`) ANTES de ler. Base: `b8265acf42` (fim da auditoria do óleo sobre óleo).
+**Backup pré-refatoração** (dono 31/10, `ff14de8aa4`): ramo `backup/line-PainterWatercolor-pre-refatoracao-com-problemas-2026-10-31`
++ etiqueta `painter-pre-refatoracao-com-problemas-2026-10-31` — a régua «antes» de toda comparação; nunca apagar.
 
 ## 0. A queixa e a proposta (verbatim)
 

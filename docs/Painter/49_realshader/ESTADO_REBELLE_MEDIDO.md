@@ -30,6 +30,6 @@ Ordem aprovada: (1) régua comparável — a MESMA aguada no PH2D e no Rebelle (
 do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px). Rebelle no ecrã real = pedir de novo ao dono.
 | item | estado | agente | commits | número |
 |---|---|---|---|---|
-| 1 régua comparável | explorador a procurar medições antigas e o relógio «água parou» | explorador | — | — |
-| 2 secagem | diagnóstico + sonda de cortes AO BIT (`examples/sonda_secagem.rs`) | general-purpose | — | — |
+| 1 régua comparável | script PRONTO, não corrido: `~/Apps/rebelle/oraculo/mede_passo_agua.sh` (wash + SIMULATION K=50/200, relógio = título da janela numa tela-marca; SAVE recusado); `R=3 bash … passo1`; pede ecrã do dono + máquina calma | general-purpose | — | Rebelle ms/passo: nunca medido |
+| 2 secagem | sonda FEITA ([SECAGEM_diagnostico.md](SECAGEM_diagnostico.md)): LADO+CANAL+MEMO ao bit 348→245 ms/passagem (−30 %); a aplicar no produto + SALTA-LEVANTA (98,9 % das células) | general-purpose | ver git log | passo médio −13 % estimado |
 | 3 memória | aguarda 1–2 | — | — | — |

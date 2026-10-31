@@ -17,6 +17,14 @@ const DRYER_IN_PAINT: f64 = 0.25;
 /// levar ao papel seco nem à franja rasa. Somas por tabela integral (O(área) por dab, qualquer `L`). `0` = nada a
 /// fazer, ao bit; o 1.º dab (sem `prev`) não nivela.
 pub fn apply_dry_level(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
+    // F4-2 E6b: a soma segue a massa na caixa que o nível escreve (`r` em volta do dab).
+    super::tinta::com_foto(g, p, (dab.x, dab.y, dab.r + 2.0), |g| {
+        nivela(g, p, dab, prev)
+    })
+}
+
+/// O corpo de [`apply_dry_level`].
+fn nivela(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let l = p.k(Knob::DryerLevel);
     let r = dab.r;
     if l <= 0.0 || r <= 0.0 || (dab.x - prev[0]).hypot(dab.y - prev[1]) < 1e-6 {

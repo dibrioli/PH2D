@@ -48,8 +48,8 @@ fn imagem(g: &Grid, p: &Params) -> Vec<u8> {
             Some(p),
             &camadas,
             PigmentVisual::default(),
-            1,
             y + 1,
+            1,
             g.w,
             linha,
         );
@@ -181,7 +181,7 @@ fn fechar_e_o_que_se_via() {
     let e = Engine::new(8, 8);
     let mut p = params(&e);
     p.tinta = LeiDaTinta::Pigmento;
-    // Opacas saturadas (α = 1 − R_w) e uma transparente; o branco à parte (ver abaixo).
+    // Opacas saturadas, uma transparente e o branco opaco.
     let mut g = grade_de_oleo(&[
         ([0.1, 0.2, 0.7], 0.0, 2.0),
         ([0.9, 0.2, 0.1], 0.0, 0.3),
@@ -198,14 +198,13 @@ fn fechar_e_o_que_se_via() {
         let (wa, wd) = (sobre_branco(a), sobre_branco(d));
         let dw = (0..3).map(|j| (wa[j] - wd[j]).abs()).fold(0.0, f64::max);
         println!("[e8] célula {k}: antes {a:?} depois {d:?} · sobre branco Δ {dw:.3}");
-        // Sobre branco é o mesmo (o fecho de `ph2d-paint-tinta` é exacto).
+        // O fundo fecha sobre o branco E sobre o preto (`r_g`, `r_g0`): cor e cobertura são as de antes, em TODAS
+        // (a opaca espessa e o branco tinham `α` pela cobertura, não por `1 − R_w`).
         assert!(dw <= 1.5, "célula {k}: sobre branco mudou {dw}");
-        if k < 4 {
-            assert!(
-                (0..4).all(|j| a[j].abs_diff(d[j]) <= 1),
-                "célula {k}: o pixel mudou no fecho"
-            );
-        }
+        assert!(
+            (0..4).all(|j| a[j].abs_diff(d[j]) <= 1),
+            "célula {k}: o pixel mudou no fecho"
+        );
     }
 }
 

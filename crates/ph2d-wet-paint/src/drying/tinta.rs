@@ -7,7 +7,7 @@ use super::edge_window::EdgePlane;
 use super::{DryConst, dry_cell};
 use crate::grid::Grid;
 use crate::grid::tinta::{CelulaTinta, srgb_0_255};
-use ph2d_paint_tinta::{Bandas, fecha, s_fator, transfere};
+use ph2d_paint_tinta::{Bandas, Soma, camada, fecha, optica_celula, s_fator, transfere};
 use rayon::prelude::*;
 
 /// A cura do óleo puro (`m = 1`), em segundos do relógio da simulação (F2 §2: «τ(1) ≈ horas», escala artística).
@@ -195,8 +195,15 @@ pub fn cura(g: &mut Grid, dt_s: f32) {
 /// O fecho de UMA célula (sem as condições de [`cura`]): o aberto passa a fundo e a massa dele sai de `sett`.
 pub(crate) fn fecha_celula(c: &mut CelulaTinta, sett: &mut f32) {
     c.altura_fechada += c.aberto.v;
+    let s = s_fator(c.m, false);
+    // O fundo sobre o preto fecha com a MESMA óptica (a cobertura do fechado = a de antes, ao bit).
+    c.r_g0 = camada(
+        &optica_celula(&Soma::default(), &c.aberto, s),
+        &Bandas(c.r_g0),
+    )
+    .0;
     let mut rg = Bandas(c.r_g);
-    fecha(&mut rg, &mut c.aberto, s_fator(c.m, false));
+    fecha(&mut rg, &mut c.aberto, s);
     c.r_g = rg.0;
     c.o = 1.0;
     *sett = 0.0;

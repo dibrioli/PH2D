@@ -66,7 +66,9 @@ pub fn apply_erase(
     dab: &Dab,
     erase_slider: f64,
 ) -> Option<TouchedRect> {
-    apply_erase_impl(g, p, tex, dab, erase_slider, None, None)
+    tinta::com_foto(g, p, raio_da_borracha(dab), |g| {
+        apply_erase_impl(g, p, tex, dab, erase_slider, None, None)
+    })
 }
 
 /// [`apply_erase`] with the HOST's silhouette + optional grain (the shaped
@@ -82,7 +84,14 @@ pub fn apply_erase_shaped(
     sil: crate::brush::CellFn<'_>,
     grain: Option<crate::brush::CellFn<'_>>,
 ) -> Option<TouchedRect> {
-    apply_erase_impl(g, p, tex, dab, erase_slider, Some(sil), grain)
+    tinta::com_foto(g, p, raio_da_borracha(dab), |g| {
+        apply_erase_impl(g, p, tex, dab, erase_slider, Some(sil), grain)
+    })
+}
+
+/// A caixa que a borracha pode tocar (as duas formas do carimbo).
+fn raio_da_borracha(dab: &Dab) -> (f64, f64, f64) {
+    (dab.x, dab.y, dab.r * dab.reach.max(1.0) + 2.0)
 }
 
 fn apply_erase_impl(
@@ -189,6 +198,10 @@ pub fn apply_wet(
     let mut out = [0.0f64; 3];
     let clamp_i = dab.intensity.min(3.0);
     let mut touched = false;
+    // F4-2 E6b: com Pigmento o levantar move a soma do aberto ao filme pela MESMA fracção (E8 `levanta`).
+    if p.tinta == crate::sim::LeiDaTinta::Pigmento && lift_gain > 0.0 {
+        crate::grid::tinta::garante(g);
+    }
     let Grid {
         s,
         w,
@@ -203,6 +216,7 @@ pub fn apply_wet(
         vela,
         aparencia,
         oleo,
+        tinta,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -233,7 +247,15 @@ pub fn apply_wet(
             // follows gravity and answers the Blow/Smear tools.
             if lift_gain > 0.0 && sett[i] > 0.0 {
                 let b = clamp01(stamp * lift_gain);
-                if b > 0.0 {
+                if b > 0.0 && !tinta.is_empty() && p.tinta == crate::sim::LeiDaTinta::Pigmento {
+                    crate::drying::tinta::levanta(
+                        &mut tinta[i],
+                        b,
+                        &mut susp[i],
+                        &mut sett[i],
+                        &mut susp_rgb[i],
+                    );
+                } else if b > 0.0 {
                     lift_settled(
                         b,
                         &mut susp[i],

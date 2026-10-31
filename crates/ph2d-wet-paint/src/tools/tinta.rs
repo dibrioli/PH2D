@@ -67,6 +67,32 @@ impl Foto {
     }
 }
 
+/// A ferramenta `f` com a [`Foto`] da caixa de raio `raio` em volta de `(x, y)` (a caixa tem de cobrir TODA célula
+/// cuja massa a ferramenta escreve); a lei velha não paga nada.
+pub(crate) fn com_foto<R>(
+    g: &mut Grid,
+    p: &crate::sim::Params,
+    (x, y, raio): (f64, f64, f64),
+    f: impl FnOnce(&mut Grid) -> R,
+) -> R {
+    let caixa = [x - raio, y - raio, x + raio, y + raio];
+    let foto = Foto::tira(
+        g,
+        p,
+        [
+            caixa[0].floor() as i64 - 1,
+            caixa[1].floor() as i64 - 1,
+            caixa[2].ceil() as i64 + 1,
+            caixa[3].ceil() as i64 + 1,
+        ],
+    );
+    let r = f(g);
+    if let Some(foto) = foto {
+        foto.segue(g);
+    }
+    r
+}
+
 /// A fatia `s` cuja massa passou de `antes` a `depois`.
 fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: Option<Tinta>) {
     if depois < antes {
@@ -88,3 +114,7 @@ fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: Option<Tinta>) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "tinta_invariante_tests.rs"]
+mod invariante_tests;

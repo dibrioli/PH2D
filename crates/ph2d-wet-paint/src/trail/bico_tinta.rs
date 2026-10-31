@@ -32,6 +32,9 @@ impl Trail {
         };
         garante(g);
         let reservatorio = p.k(Knob::TipReservoir);
+        if reservatorio > 0.0 {
+            self.mistura_as_somas_da_ponta();
+        }
         let (tip_retain, dabs) = (1.0 - p.k(Knob::Pickup), self.dab_count.max(1) as i32);
         let assentado = assentado(p, reservatorio) as f32;
         // O que a ponta SOLTA onde pousa: a mesma fracção por janela que ela troca (também sobre o papel branco).
@@ -93,6 +96,31 @@ impl Trail {
                     }
                 }
             }
+        }
+    }
+
+    /// O reservatório na lei nova (o par de `mistura_o_reservatorio`): cada texel da pegada (`pig > 0`) passa a
+    /// MÉDIA das somas da pegada — soma ÷ n em cada componente extensiva, logo o total da ponta conserva-se.
+    fn mistura_as_somas_da_ponta(&mut self) {
+        let (lx0, lx1, size) = (self.lx0, self.lx1, self.size);
+        let pegada: Vec<usize> = (self.ly0..=self.ly1)
+            .flat_map(|ly| (lx0..=lx1).map(move |lx| (lx + ly * size) as usize))
+            .filter(|&l| self.pig.get(l).is_some_and(|&v| v > 0.0) && l < self.ponta_tinta.len())
+            .collect();
+        if pegada.is_empty() {
+            return;
+        }
+        let total = pegada
+            .iter()
+            .fold(Soma::default(), |a, &l| a.junta(self.ponta_tinta[l]));
+        let k = 1.0 / pegada.len() as f32;
+        let media = Soma {
+            v: total.v * k,
+            lab: total.lab.map(|x| x * k),
+            t: total.t * k,
+        };
+        for l in pegada {
+            self.ponta_tinta[l] = media;
         }
     }
 }

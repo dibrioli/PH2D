@@ -72,25 +72,35 @@ fn o_interruptor_da_tinta_nao_muda_um_pixel_com_a_lei_velha() {
     use LeiDaTinta::{Pigmento, Velha};
     let base = sessao(Velha, Velha, 40);
     assert!(pixeis(&base).iter().any(|&b| b != 0), "a cena pinta");
-    assert_eq!(pixeis(&sessao(Velha, Velha, 40)), pixeis(&base));
-    // E6a: com `Pigmento` o depósito escreve as somas e espelha a cor em `susp_rgb`/`sett_rgb` (sem `mix.mix`) —
-    // a cor e os píxeis mudam de propósito; a MASSA e a água seguem a lei velha (sem `WetCover`/`DryCover` na cena).
-    for (a, d) in [(Pigmento, Pigmento), (Pigmento, Velha), (Velha, Pigmento)] {
+    let outra = sessao(Velha, Velha, 40);
+    assert_eq!(pixeis(&outra), pixeis(&base));
+    assert_eq!(
+        planos_velhos(&outra.layers[0].grid),
+        planos_velhos(&base.layers[0].grid)
+    );
+    assert!(base.layers[0].grid.tinta.is_empty());
+    // Com `Pigmento` a MASSA deixa de ser a da lei velha DE PROPÓSITO (E6b: a ponta recolhe a tinta da tela pela
+    // soma, e o depósito soma o que ela solta); o que a lei nova tem de garantir é o invariante soma ↔ massa.
+    // `Pigmento → Velha` fica de fora: a lei velha não move as somas (o campo fica PARADO; aberto no doc E6b).
+    for (a, d) in [(Pigmento, Pigmento), (Velha, Pigmento)] {
         let e = sessao(a, d, 40);
-        assert_eq!(
-            massas(&e.layers[0].grid),
-            massas(&base.layers[0].grid),
-            "{a:?}→{d:?}: a massa mudou"
-        );
+        let g = &e.layers[0].grid;
+        if g.tinta.is_empty() {
+            continue;
+        }
+        let pior = pior_invariante(g);
+        assert!(pior <= 1e-3, "{a:?}→{d:?}: soma ≠ massa ({pior:e})");
     }
 }
 
-fn massas(g: &Grid) -> Vec<u32> {
-    let mut v = Vec::new();
-    for p in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
-        v.extend(p.iter().map(|x| x.to_bits()));
-    }
-    v
+/// A pior violação por célula de `|v·M_UM − massa| / max(1, massa)` nas duas fatias.
+pub(crate) fn pior_invariante(g: &Grid) -> f64 {
+    let rel = |v: f32, m: f32| {
+        (f64::from(v) * f64::from(M_UM) - f64::from(m)).abs() / f64::from(m).max(1.0)
+    };
+    (0..g.cells)
+        .map(|i| rel(g.tinta[i].filme.v, g.susp[i]).max(rel(g.tinta[i].aberto.v, g.sett[i])))
+        .fold(0.0, f64::max)
 }
 
 #[test]
@@ -236,5 +246,5 @@ fn medida_rss_da_tinta() {
         (g.tinta.len() * std::mem::size_of::<CelulaTinta>()) >> 20,
         std::mem::size_of::<CelulaTinta>()
     );
-    assert_eq!(std::mem::size_of::<CelulaTinta>(), 64);
+    assert_eq!(std::mem::size_of::<CelulaTinta>(), 76);
 }

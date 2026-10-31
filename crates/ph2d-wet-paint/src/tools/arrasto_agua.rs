@@ -18,6 +18,22 @@ pub fn apply_water_drag(
     prev_x: f64,
     prev_y: f64,
 ) -> Option<TouchedRect> {
+    // F4-2 E6b: a soma segue a massa (a caixa cobre a origem e o destino `+ (dab − prev)`).
+    let raio = dab.r + (dab.x - prev_x).hypot(dab.y - prev_y) + 2.0;
+    super::tinta::com_foto(g, p, (dab.x, dab.y, raio), |g| {
+        arrasta(g, p, tex, dab, prev_x, prev_y)
+    })
+}
+
+/// O corpo de [`apply_water_drag`].
+fn arrasta(
+    g: &mut Grid,
+    p: &Params,
+    tex: &[f32],
+    dab: &Dab,
+    prev_x: f64,
+    prev_y: f64,
+) -> Option<TouchedRect> {
     let force = p.k(Knob::WaterDrag);
     let (dx, dy) = (dab.x - prev_x, dab.y - prev_y);
     if force <= 0.0 || dx.hypot(dy) < 1e-6 || dab.r <= 0.0 {

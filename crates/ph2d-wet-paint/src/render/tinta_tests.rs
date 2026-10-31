@@ -7,7 +7,7 @@ use crate::painter::Engine;
 use crate::render::{PigmentVisual, RenderLayer, render_pigment_row_visual};
 use crate::sim::{LeiDaTinta, Params};
 use ph2d_paint_tinta::oklab::srgb_para_linear;
-use ph2d_paint_tinta::{Soma, Tinta, camada};
+use ph2d_paint_tinta::{Soma, Tinta, camada, ecra_sobre_branco};
 
 const W: usize = 6;
 const H: usize = 1;
@@ -83,8 +83,20 @@ fn linha(g: &Grid, p: &Params) -> Vec<u8> {
 fn esperado(g: &Grid, i: usize) -> ([f32; 3], f32, [f32; 3]) {
     let c = tinta::em(g, i);
     let o = optica_celula(&c.filme, &c.aberto, s_fator(c.m, g.film[i] > 0.0));
-    let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
-    (cor.0, a, camada(&o, &Bandas(c.r_g)).0)
+    if c.r_g == [1.0; 3] {
+        let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
+        return (cor.0, a, camada(&o, &Bandas(c.r_g)).0);
+    }
+    // Com fundo curado (E8): a cobertura é a da PILHA, eq. (3) com o fundo sobre branco (`r_g`) e preto (`r_g0`).
+    let (rw, rb) = (camada(&o, &Bandas(c.r_g)).0, camada(&o, &Bandas(c.r_g0)).0);
+    let falta = rw.map(|r| 1.0 - r);
+    let cob: [f32; 3] = core::array::from_fn(|b| 1.0 - (rw[b] - rb[b]));
+    let a = falta[0]
+        .max(falta[1])
+        .max(falta[2])
+        .max(((cob[0] + cob[1]) + cob[2]) / 3.0)
+        .clamp(0.0, 1.0);
+    (falta.map(|f| (1.0 - f / a).clamp(0.0, 1.0)), a, rw)
 }
 
 #[test]

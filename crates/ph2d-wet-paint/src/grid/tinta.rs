@@ -8,7 +8,7 @@ use super::Grid;
 use ph2d_paint_tinta::oklab::oklab_para_srgb;
 use ph2d_paint_tinta::{Soma, Tinta};
 
-/// A tinta de uma célula na lei nova (64 B).
+/// A tinta de uma célula na lei nova (76 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CelulaTinta {
     /// A fatia MOLHADA (o filme): volume `vᶠ` e as somas pesadas por ele.
@@ -17,6 +17,9 @@ pub struct CelulaTinta {
     pub aberto: Soma,
     /// A reflectância do fundo já CURADO por banda (`1` = o branco de referência).
     pub r_g: [f32; 3],
+    /// O MESMO fundo curado sobre o PRETO (`0` sem fundo): com `r_g` dá a cobertura do que já fechou,
+    /// `C = 1 − (R|branco − R|preto)` — sem ele o fecho de uma tinta opaca clara perdia o `α` (E8).
+    pub r_g0: [f32; 3],
     /// O meio `m ∈ [0,1]`, médio pelo volume.
     pub m: f32,
     /// A abertura `o ∈ [0,1]`: `1` = fresco; `o → 0` fecha o aberto sobre `r_g`.
@@ -39,6 +42,7 @@ impl CelulaTinta {
             t: 0.0,
         },
         r_g: [1.0; 3],
+        r_g0: [0.0; 3],
         m: 0.0,
         o: 1.0,
         altura_fechada: 0.0,

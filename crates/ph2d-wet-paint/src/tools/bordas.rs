@@ -31,6 +31,13 @@ const WATER_DRAG: f64 = 0.5;
 /// que o lento. Sobre a tinta SECA (a água não passa da pegada de nenhum lado) arrasta pelo traço o que o `WetLift`
 /// dissolveu ([`WATER_DRAG`]). O 1.º dab (sem `prev`) não empurra.
 pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
+    // F4-2 E6b: a soma segue a massa; a caixa cobre a faixa (`alcance`) e o destino (até outra `alcance`).
+    let raio = dab.r * (2.0 * WATER_FRONT_RADII + 1.0) + 3.0;
+    super::tinta::com_foto(g, p, (dab.x, dab.y, raio), |g| empurra(g, p, dab, prev))
+}
+
+/// O corpo de [`apply_wet_push`].
+fn empurra(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let push = p.k(Knob::WaterPush);
     let (dx, dy) = (dab.x - prev[0], dab.y - prev[1]);
     let passo = dx.hypot(dy);
@@ -203,6 +210,15 @@ const DRYER_RING_RADII: f64 = 0.15;
 /// por fora um claro de 0,84). As duas em `e` por diâmetro de caminho, pelos lados do traço (o `prev` dá a normal).
 /// `0` = o secador de sempre, ao bit. O 1.º dab (sem `prev`) não faz nada.
 pub fn apply_dry_edge(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
+    // F4-2 E6b: a soma segue a massa; a orla pousa a `2r − |s|` do eixo, o nível na caixa de `r + 0,2 r`.
+    let r = dab.r;
+    let raio =
+        3.0 * r + (DRYER_RING_RADII * r).max(2.0) + (DRYER_LEVEL_RADII * r).round().max(1.0) + 3.0;
+    super::tinta::com_foto(g, p, (dab.x, dab.y, raio), |g| orla(g, p, dab, prev))
+}
+
+/// O corpo de [`apply_dry_edge`].
+fn orla(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let e = p.k(Knob::DryerEdge);
     let (dx, dy) = (dab.x - prev[0], dab.y - prev[1]);
     let passo = dx.hypot(dy);

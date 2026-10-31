@@ -5,7 +5,7 @@
 use crate::grid::Grid;
 use crate::grid::tinta::{self, CelulaTinta};
 use ph2d_paint_tinta::oklab::linear_para_srgb;
-use ph2d_paint_tinta::{Bandas, ecra_sobre_branco, optica_celula, s_fator};
+use ph2d_paint_tinta::{Bandas, Optica, camada, optica_celula, s_fator};
 
 /// A cor sRGB `0..255` e a cobertura `α` da célula `i` pela lei da tinta («exacto sobre branco», F4-2 §3.2);
 /// `None` sem tinta (`α == 0`). O «molhado escurece» é `s_fator(m, film > 0)`.
@@ -14,13 +14,35 @@ pub(crate) fn ecra_da_celula(lg: &Grid, i: usize) -> Option<([f64; 3], f64)> {
     let c = tinta::em(lg, i);
     let molhado = lg.film.get(i).is_some_and(|&w| w > 0.0);
     let o = optica_celula(&c.filme, &c.aberto, s_fator(c.m, molhado));
-    let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
+    let (cor, a) = ecra_sobre_o_fundo(&o, &c);
     (a > 0.0).then(|| {
         (
             cor.0.map(|v| f64::from(linear_para_srgb(v)) * 255.0),
             f64::from(a),
         )
     })
+}
+
+/// `ecra_sobre_branco` com a cobertura da PILHA (o aberto/filme sobre o fundo curado): `C = 1 − (R|branco − R|preto)`
+/// com o fundo `r_g` e `r_g0`. Sem fundo (`r_g = 1`, `r_g0 = 0`) é a mesma conta, ao bit.
+fn ecra_sobre_o_fundo(o: &Optica<3>, c: &CelulaTinta) -> (Bandas<3>, f32) {
+    let rw = camada(o, &Bandas(c.r_g));
+    let rb = camada(o, &Bandas(c.r_g0));
+    let cob: [f32; 3] = core::array::from_fn(|b| 1.0 - (rw.0[b] - rb.0[b]));
+    let falta = rw.0.map(|r| 1.0 - r);
+    let media_c = ((cob[0] + cob[1]) + cob[2]) / 3.0;
+    let alfa = falta[0]
+        .max(falta[1])
+        .max(falta[2])
+        .max(media_c)
+        .clamp(0.0, 1.0);
+    if alfa <= 0.0 {
+        return (rw, 0.0);
+    }
+    (
+        Bandas(falta.map(|f| (1.0 - f / alfa).clamp(0.0, 1.0))),
+        alfa,
+    )
 }
 
 /// A altura que já curou, em unidades de MASSA (as do campo de altura do Óleo Real): o fecho tira a massa de `sett`

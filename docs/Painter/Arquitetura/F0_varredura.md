@@ -67,16 +67,17 @@ Mosaico: linhas = Pigment × Water, colunas = N × pressão; legenda por célula
 
 ## 3. Resultado
 
-⚠️ **Estado no fecho do agente F0 (45 min): a grelha INTEIRA não acabou.** O débito real foi ~11 células/min em 8
-processos (load 28 com outras linhas), ≈ 70 min para as 810. A corrida ficou a gravar em
-`/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/b289fefd-0e44-4e9a-852a-6f0399faba0a/scratchpad/f0full/g*.tsv` (incremental, uma linha por célula); o parcial no fecho (65 células, as primeiras de
-cada grupo — Pigment 40, Water 0) está em [`fotos/f0_varredura/varredura_parcial.tsv`](fotos/f0_varredura/varredura_parcial.tsv).
-**Próximo passo:** juntar os `g*.tsv` (o fim de `corre_f0.sh` já o faz) e correr `mosaico_f0.py` + `resumo_f0.py`
-para encher esta secção — ou repartir em mais processos numa máquina calma.
+**Corrida do F0 (a 1.ª, `corre_f0.sh`, 8 × `timeout 1500`), fechada:** **564 de 810 células**, juntas em
+[`fotos/f0_varredura/varredura.tsv`](fotos/f0_varredura/varredura.tsv). Os mosaicos (um PNG por pincel, `<pincel>.png`,
+ex. [`thick_impasto.png`](fotos/f0_varredura/thick_impasto.png)) estão na mesma pasta. A grelha está COMPLETA (54) em 9
+pincéis: Thick Impasto, Filbert, Filbert Dry, Flat Bristle, Tilted Shade, Dabber, Dabber 4, Knife Oily e Express Oil (52).
+Os outros foram cortados pelo timeout: Knife Smooth 3 27, Knife Textured 14, Knife Grainy 12, Metallic Flat 11, Knife
+Stain 8, Knife Dry 8. A pior célula por pincel está na §3.2. Os cortados retomam-se com `PH2D_SONDA_PINCEIS=<pincel>`,
+um processo por pincel.
 
 **F0b (31/10):** a grelha antiga voltou a correr (8 processos, `timeout 1500`) e no fecho do F0b tinha **277 células**
-(Pigment 40 e 600 quase completos em 8 pincéis; P2000 e os outros 7 pincéis por correr). Mosaicos e TSV desse
-parcial: [`fotos/f0_varredura/grelha_antiga/`](fotos/f0_varredura/grelha_antiga/) — um PNG por pincel; linhas =
+(Pigment 40 e 600 quase completos em 8 pincéis; P2000 e os outros 7 pincéis por correr). Os mosaicos desse parcial
+(`grelha_antiga/`) saíram no commit seguinte — substituídos pelos da grelha completa (um PNG por pincel na pasta); linhas =
 Pigment × Water, colunas = N × pressão, legenda `M<manchas %> F<ferrugem %> K<km_p99>` por célula (só com luz: é a
 sonda de ANTES do render plano). Pior célula por pincel nesse parcial:
 
@@ -162,27 +163,37 @@ Thick Impasto, N = 3, pressão 1 ([TSV](fotos/f0_varredura/thick_impasto_dono6.t
   por cima: `manchas_azul` ≥ `manchas` nas células com N = 3 (com N = 1 ambas ≈ 0). Com Pigment 600 a régua lê 36–38 %, mas aí a
   maior parte é SOMBRA do relevo (p99 altura 32 contra 4) — a régua de luminância não separa pigmento amontoado de
   sombra; ver §4.
-- **Defeito (2) — ferrugem na orla: NÃO reproduz** (≤ 0,11 % em toda a grelha medida; na parcial, 0,0 em todos os
-  pincéis). O que difere da cena do dono: (a) papel — a sonda não tem a textura do papel (a do dono tem relevo forte
-  e o castanho aparece onde o azul fino assenta nas cavas); (b) ordem — no dono o amarelo passa sobre a ORLA fina do
-  azul a secar (o azul em `dono_6` é uma aguada fina, alfa baixo), aqui a orla do azul tem a passada inteira por
-  baixo; (c) relógio — a sonda usa `set_wet_relogio_fixo` e 300 ticks; o dono pausa em tempo real e a evaporação
-  corre com o relógio de parede. Variar (a) exige ligar o papel do app na sonda (`set_wet_paper…`), não testado.
+- **Defeito (2) — ferrugem na orla: REPRODUZ na grelha completa** (corrige a leitura do parcial, que só tinha W 0).
+  Aparece no regime de tinta FINA, com Water 0,5 e pressão baixa:
+  - Filbert `P600/W0.5/pr0.2/N1`: **5,5 %**, uma tira salmão/laranja entre o verde e o amarelo
+    ([foto](fotos/f0_varredura/ferrugem_filbert_P600_W0.5_pr0.2_N1.png));
+  - Dabber 4 `P600/W0.5/pr0.6/N1`: 5,4 % ([foto](fotos/f0_varredura/ferrugem_dabber4_P600_W0.5_pr0.6_N1.png));
+  - Filbert Dry 3,5 % · Tilted Shade 2,9 % · Flat Bristle 2,1 % · Dabber 1,4 %;
+  - no Thick Impasto só 0,5 % (`P40/W0.5/pr0.2/N3`), e o F0b (§3.0) mostra que é luz.
 - **Defeito (3) — verde em degraus: visível no mosaico** (as faixas de N = 3 têm 3 verdes distintos na
   sobreposição), mas nenhuma métrica o mede ainda; proposta abaixo.
 
-### 3.2 Pior célula por pincel (parcial: só Pigment 40 · Water 0)
+### 3.2 Pior célula por pincel (grelha do F0, 564 células, só COM LUZ; a leitura plana é a do F0b, §3.0)
 
-| pincel | km_p99 | manchas % | manchas azul % | ferrugem % | furos % | rug |
+Os pincéis cortados (Knife Stain, Knife Dry, Knife Textured, Knife Grainy, Metallic Flat, Knife Smooth 3) só têm Pigment 40 e alguma Pigment 600: o máximo deles é parcial.
+
+| pincel | km_p99 | manchas_pct | manchas_azul_pct | ferrugem_pct | furos_pct | rug |
 |---|---|---|---|---|---|---|
-| Flat/Thick Impasto | 44.4 `P40/W0/pr1/N1` | 2.1 `P40/W0/pr1/N3` | 8.1 `P40/W0/pr1/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.2 |
-| Flat/Filbert | 41.6 `P40/W0/pr1/N3` | 2.6 `P40/W0/pr1/N3` | 6.5 `P40/W0/pr1/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.1 |
-| Flat/Filbert Dry | 33.7 `P40/W0/pr1/N3` | 1.2 `P40/W0/pr1/N3` | 3.8 `P40/W0/pr1/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.1 |
-| Flat/Flat Bristle | 39.6 `P40/W0/pr1/N1` | 1.2 `P40/W0/pr1/N3` | 3.5 `P40/W0/pr1/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.1 |
-| Flat/Tilted Shade | 30.7 `P40/W0/pr1/N3` | 1.6 `P40/W0/pr1/N3` | 2.9 `P40/W0/pr1/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.1 |
-| Dabber/Dabber | — (nada coberto) | 0.0 | 0.0 | 0.0 | 100 | 0.0 |
-| Dabber/Dabber 4 | — (nada coberto) | 0.0 | 0.0 | 0.0 | 100 | 0.0 |
-| Knife/Knife Oily | **106.6** `P40/W0/pr1/N3` | **11.0** `P40/W0/pr0.6/N3` | **24.6** `P40/W0/pr0.6/N3` | 0.0 | 100 `P40/W0/pr0.2/N1` | 0.2 |
+| Flat/Thick Impasto | 145.0 `P600/W0/pr1/N1` | 22.8 `P2000/W1/pr1/N1` | 44.3 `P600/W0/pr1/N3` | 0.5 `P40/W0.5/pr0.2/N3` | 100.0 `P40/W0/pr0.2/N1` | 5.8 `P2000/W0.5/pr1/N1` |
+| Knife/Knife Stain | — | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr1/N3` |
+| Flat/Filbert | 145.8 `P2000/W1/pr1/N3` | 13.1 `P2000/W1/pr1/N1` | 37.2 `P2000/W1/pr1/N3` | 5.5 `P600/W0.5/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.6 `P2000/W0.5/pr1/N3` |
+| Knife/Knife Dry | 57.4 `P40/W0/pr1/N1` | 9.6 `P40/W0/pr0.6/N3` | 16.1 `P40/W0/pr1/N1` | 0.0 `P40/W0.5/pr0.2/N3` | 100.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr1/N3` |
+| Flat/Filbert Dry | 129.1 `P2000/W0/pr1/N3` | 12.5 `P2000/W0/pr1/N1` | 37.6 `P2000/W0/pr1/N3` | 3.5 `P600/W0.5/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.6 `P2000/W0.5/pr1/N1` |
+| Knife/Knife Textured | — | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr1/N3` |
+| Flat/Flat Bristle | 158.9 `P2000/W1/pr1/N3` | 12.5 `P2000/W0/pr1/N1` | 38.3 `P2000/W1/pr1/N3` | 2.1 `P600/W0.5/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.7 `P2000/W0/pr1/N1` |
+| Metallic/Metallic Flat | 36.0 `P40/W0.5/pr0.2/N1` | 0.1 `P40/W0/pr1/N3` | 0.5 `P40/W0.5/pr0.2/N3` | 0.0 `P40/W0/pr0.2/N1` | 97.3 `P40/W0.5/pr0.2/N1` | 0.1 `P40/W0/pr1/N1` |
+| Flat/Tilted Shade | 139.8 `P2000/W0/pr1/N3` | 12.5 `P2000/W1/pr1/N1` | 35.4 `P2000/W1/pr1/N3` | 2.9 `P600/W0.5/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.6 `P2000/W0/pr1/N1` |
+| Round/Express Oil | 43.5 `P40/W1/pr1/N3` | 25.8 `P40/W0.5/pr1/N3` | 21.7 `P2000/W0/pr1/N3` | 0.0 `P40/W0/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | — |
+| Dabber/Dabber | 169.3 `P2000/W0/pr1/N3` | 10.9 `P2000/W0/pr1/N1` | 38.9 `P2000/W0/pr1/N3` | 1.4 `P600/W0.5/pr0.6/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.6 `P2000/W0/pr1/N3` |
+| Dabber/Dabber 4 | 65.1 `P2000/W0/pr1/N1` | 5.5 `P2000/W0/pr1/N1` | 17.3 `P2000/W0/pr1/N3` | 5.4 `P600/W0.5/pr0.6/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.3 `P2000/W0/pr1/N3` |
+| Knife/Knife Smooth 3 | 132.1 `P600/W0/pr1/N3` | 20.4 `P600/W0/pr0.2/N3` | 34.6 `P600/W0/pr1/N3` | 0.1 `P600/W0.5/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.7 `P600/W0/pr1/N3` |
+| Knife/Knife Oily | 193.4 `P2000/W0/pr0.2/N3` | 27.6 `P2000/W0/pr0.2/N1` | 44.5 `P2000/W1/pr1/N1` | 0.2 `P600/W1/pr0.6/N3` | 100.0 `P40/W0/pr0.2/N1` | 18.6 `P2000/W1/pr1/N3` |
+| Knife/Knife Grainy | 29.2 `P40/W0.5/pr1/N3` | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 0.0 `P40/W0/pr0.2/N1` | 100.0 `P40/W0/pr0.2/N1` | 0.1 `P40/W0/pr1/N3` |
 
 `furos = 100 %` a pressão 0,2 com Pigment 40 não é furo: é tinta fina (alfa < 0,9 em todo o miolo). A régua de furos
 tem de se restringir às células onde o MESMO pincel cobre a pressão 1 (ver §4).

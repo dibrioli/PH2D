@@ -18,6 +18,7 @@ use crate::brush::{CellFn, ColorFn, for_each_stamp_pixel};
 
 mod bico; // o BICO: a auto-limpeza, a recolha da cor e o reservatório (passos 1–2 do transfer)
 mod deposit; // o que um dab POUSA — a lei da célula e o caminho por linhas (ADR-0175)
+pub mod espalha; // o óleo molhado espalha o relevo de baixo (queixa dos grumos, 31/10)
 mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca a soma
 mod janela;
 mod medida; // as portas de MEDIÇÃO da janela (só os gates as leem)
@@ -135,6 +136,8 @@ pub struct Trail {
     /// para células secas, e essas não contam. No primeiro toque a tinta de lá vira a camada de baixo — também a mesma
     /// tinta (doc 42 §7).
     por_assentar: Vec<bool>,
+    /// As células que o traço vivo já tocou, para o óleo espalhar a espessura de baixo ([`espalha`]).
+    espalha: espalha::Espalha,
     /// O traço ainda não tirou o [`Self::por_assentar`] da grade.
     por_assentar_pendente: bool,
     /// O máximo por célula do traço vivo ([`Knob::StrokeFilm`]); vazio sem a lei.
@@ -253,6 +256,7 @@ impl Default for Trail {
             tinta_na_janela: false,
             por_assentar: Vec::new(),
             por_assentar_pendente: false,
+            espalha: espalha::Espalha::default(),
             remolha_inicio: transfer::remolha::Inicio::default(),
             ultimo_dab: None,
             filme: filme::Filme::default(),
@@ -275,6 +279,7 @@ impl Trail {
         self.limpo.fill(1.0);
         self.mat_ponta.clear();
         self.por_assentar_pendente = true;
+        self.espalha.traco_novo();
         self.remolha_inicio.traco_novo();
         self.ultimo_dab = None;
         self.base_r = color[0];

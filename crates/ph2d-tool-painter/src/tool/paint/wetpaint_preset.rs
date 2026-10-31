@@ -42,6 +42,8 @@ mod shape_color_tests;
 #[cfg(test)]
 mod sonda_custo_oleo;
 #[cfg(test)]
+mod sonda_oleo_grumos;
+#[cfg(test)]
 mod tests;
 
 use campos::{AQUARELA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO, POR_DAB, VOLUME};

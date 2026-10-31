@@ -170,6 +170,10 @@ impl Trail {
                     continue;
                 }
                 let i = cx as usize + cy as usize * s;
+                // O óleo molhado espalha o relevo de baixo no 1.º toque do traço ([`super::espalha`]).
+                if p.oleo > 0.0 {
+                    self.espalha.primeiro_toque(g, i);
+                }
                 // A espessura recebe o `v` inteiro, antes do tecto ([`crate::grid::espessura`]).
                 let espessura = crate::grid::espessura::em(g, i) + v;
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.

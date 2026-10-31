@@ -5,7 +5,7 @@
 use crate::seca::{SecaGpu, SecaU};
 use crate::{
     AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, pack_state, read, unpack_state,
+    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, read,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
@@ -33,9 +33,33 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         && ext
 }
 
+/// O `st` entrelaçado (film, susp) do advect ⇄ os `film`/`susp` da secagem, NA placa (defeito 1).
+const ENTRELACA: &str = r"
+@group(0) @binding(0) var<storage, read_write> st: array<vec2<f32>>;
+@group(0) @binding(1) var<storage, read_write> film: array<f32>;
+@group(0) @binding(2) var<storage, read_write> susp: array<f32>;
+fn idx(g: vec3<u32>, n: vec3<u32>) -> u32 { return g.x + g.y * n.x * 256u; }
+@compute @workgroup_size(256)
+fn separa(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) n: vec3<u32>) {
+    let i = idx(g, n);
+    if i >= arrayLength(&film) { return; }
+    film[i] = st[i].x;
+    susp[i] = st[i].y;
+}
+@compute @workgroup_size(256)
+fn junta(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) n: vec3<u32>) {
+    let i = idx(g, n);
+    if i >= arrayLength(&film) { return; }
+    st[i] = vec2(film[i], susp[i]);
+}
+";
+
 pub struct PassoPlaca {
     adv: AdvectGpu,
     seca: SecaGpu,
+    /// `[separa, junta]` com o mesmo grupo (st, film, susp).
+    entrelaca: [wgpu::ComputePipeline; 2],
+    entrelaca_bg: [wgpu::BindGroup; 2],
     w: usize,
     h: usize,
     rf: usize,
@@ -46,9 +70,52 @@ impl PassoPlaca {
     pub fn new(gpu: &GpuContext, g: &Grid, sim: &Sim, tuning: &Tuning) -> Self {
         let p = sim.gather_params(tuning);
         let u = SecaU::new(g, &p, sim.evap_scale, sim.rewet_base, sim.ext_bypass);
+        let adv = AdvectGpu::new(gpu, g);
+        let seca = SecaGpu::new(gpu, g, u);
+        let module = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("wet-gpu entrelaca"),
+                source: wgpu::ShaderSource::Wgsl(ENTRELACA.into()),
+            });
+        let mk = |entry: &str| {
+            let pipe = gpu
+                .device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some(entry),
+                    layout: None,
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: None,
+                });
+            let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some(entry),
+                layout: &pipe.get_bind_group_layout(0),
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: adv.st.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: seca.film.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: seca.susp.as_entire_binding(),
+                    },
+                ],
+            });
+            (pipe, bg)
+        };
+        let (p0, b0) = mk("separa");
+        let (p1, b1) = mk("junta");
         let s = PassoPlaca {
-            adv: AdvectGpu::new(gpu, g),
-            seca: SecaGpu::new(gpu, g, u),
+            adv,
+            seca,
+            entrelaca: [p0, p1],
+            entrelaca_bg: [b0, b1],
             w: g.w,
             h: g.h,
             rf: g.flow.rf,
@@ -126,7 +193,7 @@ impl PassoPlaca {
         if n.is_multiple_of(sim.dry_every) {
             let evap = sim.evap_scale * p.k(Knob::Evaporation);
             let rewet = sim.rewet_base * p.k(Knob::Rewet);
-            self.seca_ida_e_volta(gpu, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
+            self.seca_na_placa(gpu, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
         }
         let mut plano = Vec::with_capacity(20);
         plano.extend_from_slice(if n.is_multiple_of(4) {
@@ -156,29 +223,28 @@ impl PassoPlaca {
         true
     }
 
-    /// A secagem: o estado `st` (entrelaçado) passa pela CPU; `rgb` e `sett` copiam-se na placa.
+    /// A secagem toda na placa: `st` → film/susp (separa), `rgb`/`sett` copiados, as secagens, e de volta.
     /// As faixas = a caixa inteira (a placa não tem as faixas vivas; a caixa as contém).
-    fn seca_ida_e_volta(&mut self, gpu: &GpuContext, g: &Grid, u: SecaU) {
+    fn seca_na_placa(&mut self, gpu: &GpuContext, g: &Grid, u: SecaU) {
         let n = g.cells as u64;
-        let (film, susp) = unpack_state(&read::<[f32; 2]>(gpu, &self.adv.st, n * 8));
-        let q = &gpu.queue;
         self.seca.set_u(gpu, u);
         self.seca.faixas_da_caixa(gpu, g);
-        q.write_buffer(&self.seca.film, 0, bytemuck::cast_slice(&film));
-        q.write_buffer(&self.seca.susp, 0, bytemuck::cast_slice(&susp));
+        let grupos = (g.cells as u32).div_ceil(256);
+        let (gx, gy) = (grupos.min(65_535), grupos.div_ceil(65_535));
         let mut enc = gpu.device.create_command_encoder(&Default::default());
+        let entrelaca = |enc: &mut wgpu::CommandEncoder, k: usize| {
+            let mut cp = enc.begin_compute_pass(&Default::default());
+            cp.set_pipeline(&self.entrelaca[k]);
+            cp.set_bind_group(0, &self.entrelaca_bg[k], &[]);
+            cp.dispatch_workgroups(gx, gy, 1);
+        };
+        entrelaca(&mut enc, 0);
         enc.copy_buffer_to_buffer(&self.adv.rgb, 0, &self.seca.srgb, 0, n * 12);
         enc.copy_buffer_to_buffer(&self.adv.sett, 0, &self.seca.sett, 0, n * 4);
         self.seca.encode(&mut enc, 1);
         enc.copy_buffer_to_buffer(&self.seca.srgb, 0, &self.adv.rgb, 0, n * 12);
         enc.copy_buffer_to_buffer(&self.seca.sett, 0, &self.adv.sett, 0, n * 4);
-        q.submit([enc.finish()]);
-        let film: Vec<f32> = read(gpu, &self.seca.film, n * 4);
-        let susp: Vec<f32> = read(gpu, &self.seca.susp, n * 4);
-        q.write_buffer(
-            &self.adv.st,
-            0,
-            bytemuck::cast_slice(&pack_state(&film, &susp)),
-        );
+        entrelaca(&mut enc, 1);
+        gpu.queue.submit([enc.finish()]);
     }
 }

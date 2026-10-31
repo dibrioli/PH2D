@@ -52,6 +52,7 @@ pub fn dispatch(
     show_colliders: bool,
     interaction: &mut InteractionSettings,
     run: RunTapes<'_>,
+    mundo: &mut crate::canais_mundo::ConducaoMundo,
 ) -> bool {
     // ── 1. Publish. Every row reads this; the panel keeps no copy. ──
     ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot {
@@ -81,7 +82,7 @@ pub fn dispatch(
             // `set_settings` clamps, pushes into rapier, and drops the scrub
             // cache — and is a no-op when nothing changed, which matters here
             // because this runs every frame.
-            PhysicsIntent::SetSettings(s) => physics.set_settings(s),
+            PhysicsIntent::SetSettings(s, toque) => settings_do_painel(physics, mundo, s, toque),
             PhysicsIntent::ToggleColliders => colliders = !colliders,
             // Clamped on the way in, by the same door the model uses: a NaN
             // stiffness would reach the solver and poison the pose, the
@@ -99,4 +100,17 @@ pub fn dispatch(
         }
     }
     colliders
+}
+
+/// ⭐ **O que o painel escreveu no mundo** (F41): o autorado muda, e os campos que o controlo mexeu
+/// NO QUE SE VIA ([`ph2d_panel_physics::Toque`]) ficam a mão no próximo `canais_mundo::aplicar` —
+/// o Auto Key grava o que se viu, mesmo quando o autorado já valia o pedido.
+pub fn settings_do_painel(
+    physics: &mut PhysicsBridge,
+    mundo: &mut crate::canais_mundo::ConducaoMundo,
+    s: ph2d_physics_ecs::PhysicsSettings,
+    toque: ph2d_panel_physics::Toque,
+) {
+    mundo.tocar(&toque.visto, &toque.pedido);
+    physics.set_settings(s);
 }

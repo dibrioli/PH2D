@@ -106,6 +106,15 @@ impl Default for PhysicsSnapshot {
     }
 }
 
+/// ⭐⭐ **A edição aplicada ao que o painel MOSTRAVA** (F41): `visto` é o vivo pintado, `pedido` é
+/// ele com a MESMA edição que o autorado levou. Os campos em que diferem são a mão — exactos, porque
+/// os dois saem do mesmo instantâneo (comparar com o vivo do quadro seguinte marcava a curva a andar).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Toque {
+    pub visto: PhysicsSettings,
+    pub pedido: PhysicsSettings,
+}
+
 /// An edit the artist made, for the shell to apply.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PhysicsIntent {
@@ -115,7 +124,10 @@ pub enum PhysicsIntent {
     /// complete `PhysicsSettings` (the snapshot) and edits one field of it, so
     /// per-knob variants would be ten ways to say the same thing and ten places
     /// for the shell to forget one.
-    SetSettings(PhysicsSettings),
+    ///
+    /// ⭐ O [`Toque`] diz o que o artista mexeu NO QUE VIA (F41): sob a curva da Cena o autorado
+    /// pode não mudar e mesmo assim o clique é a mão.
+    SetSettings(PhysicsSettings, Toque),
     /// Flip the collider overlay — routed to the shell's `App.show_colliders`,
     /// the flag the `B` key owns.
     ToggleColliders,

@@ -155,7 +155,8 @@ pub(super) fn layers_section(
     let inner = super::matrix::paint(
         ctx,
         theme,
-        ph2d_physics_ecs::LayerMatrix::from_rows(snapshot.settings.layer_matrix),
+        // O vivo, como as linhas: com a curva da Cena a matriz anima (F41).
+        ph2d_physics_ecs::LayerMatrix::from_rows(snapshot.vivo.layer_matrix),
         x,
         y,
     );

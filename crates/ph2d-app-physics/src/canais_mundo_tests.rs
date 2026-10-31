@@ -207,3 +207,147 @@ fn a_curva_conduz_uma_celula_da_matriz_e_a_mao_lhe_ganha() {
     aplicar(&mut sim, &mut ponte, &mut cond);
     assert!(liga(ponte.settings_vivos()), "no seguinte, a curva");
 }
+
+/// ⭐⭐ **O clique do painel sobre uma célula que a curva esconde é a MÃO** (smoke do dono F41).
+/// O autorado já vale LIGADO, a curva desliga o par, o painel mostra o vivo e o clique pede ligado
+/// (`o_clique_na_matriz_vira_o_par_que_se_ve_sob_a_curva`): o autorado não muda, e mesmo assim o
+/// mundo e o que o Auto Key lê têm de ficar com o que o artista escolheu — pela porta do painel
+/// (`panel_bridge::settings_do_painel`), a mesma que o `dispatch` usa.
+#[test]
+fn o_clique_sob_a_curva_e_a_mao_mesmo_sem_mudar_o_autorado() {
+    let (mut sim, _, mut ponte) = queda();
+    let mut cond = ConducaoMundo::default();
+    let (i, a, b) = celulas().nth(4).expect("célula");
+    let c = cena(&sim).expect("cena");
+    let celula = |sim: &mut SimWorld, v: f32| {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(c, kc(i), v);
+    };
+    let liga = |s: PhysicsSettings| LayerMatrix::from_rows(s.layer_matrix).collides(a, b);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    celula(&mut sim, 0.0);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert!(!liga(ponte.settings_vivos()), "controlo: a curva desligou");
+    assert!(liga(ponte.settings()), "controlo: o autorado diz ligado");
+    // O painel vira o par que se vê: LIGADO, o que o autorado já era.
+    painel(&mut ponte, &mut cond, |s| {
+        let mut mx = LayerMatrix::from_rows(s.layer_matrix);
+        mx.set(a, b, true);
+        PhysicsSettings {
+            layer_matrix: mx.rows(),
+            ..s
+        }
+    });
+    celula(&mut sim, 0.0);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert!(
+        liga(ponte.settings_vivos()),
+        "a mão ganhou no quadro do clique"
+    );
+    publicar(&mut sim, &ponte);
+    assert_eq!(
+        sim.world().resource::<CanaisLidos>().valor(c, kc(i)),
+        Some(1.0),
+        "o Auto Key lê o que o artista escolheu, não a curva"
+    );
+}
+
+/// O painel escreve `editar` com o mundo a mostrar o vivo — a porta do `dispatch`.
+fn painel(
+    ponte: &mut PhysicsBridge,
+    cond: &mut ConducaoMundo,
+    editar: impl Fn(PhysicsSettings) -> PhysicsSettings,
+) {
+    let visto = ponte.settings_vivos();
+    let toque = ph2d_panel_physics::Toque {
+        visto,
+        pedido: editar(visto),
+    };
+    let autorado = editar(ponte.settings());
+    crate::panel_bridge::settings_do_painel(ponte, cond, autorado, toque);
+}
+
+/// ⭐⭐ **Todo controlo do painel é a mão sob a curva, mesmo sem mudar o autorado** (F41, a família
+/// da matriz): a caixa de adormecer, o slider inteiro dos sub-passos levado ao valor autorado, e o
+/// *Reset to Defaults* sobre um autorado que já é o de fábrica. A curva esconde o autorado, o
+/// controlo pede-o, e o mundo e o Auto Key ficam com o que o artista escolheu.
+#[test]
+fn todo_controlo_do_painel_e_a_mao_sob_a_curva() {
+    type Editar = fn(PhysicsSettings) -> PhysicsSettings;
+    let casos: [(&str, u16, f32, Editar); 3] = [
+        // O painel lê o vivo (desligado pela curva) e pede `!vivo` aos dois.
+        ("adormecer", m::ADORMECE, 0.0, |s| {
+            s.with_sleep_enabled(true)
+        }),
+        ("sub-passos", m::SUBPASSOS, 9.0, |s| PhysicsSettings {
+            substeps: PhysicsSettings::default().substeps,
+            ..s
+        }),
+        ("reset", m::GRAVIDADE_Y, 3.0, |_| PhysicsSettings::default()),
+    ];
+    for (nome, campo, na_curva, editar) in casos {
+        let (mut sim, _, mut ponte) = queda();
+        let mut cond = ConducaoMundo::default();
+        let autorado = ler(&ponte.settings(), campo).expect("campo");
+        assert_ne!(
+            autorado, na_curva,
+            "{nome}: controlo — a curva esconde o autorado"
+        );
+        aplicar(&mut sim, &mut ponte, &mut cond);
+        curva(&mut sim, campo, na_curva);
+        aplicar(&mut sim, &mut ponte, &mut cond);
+        assert_eq!(
+            ler(&ponte.settings_vivos(), campo),
+            Some(na_curva),
+            "{nome}: a curva"
+        );
+        painel(&mut ponte, &mut cond, editar);
+        assert_eq!(
+            ler(&ponte.settings(), campo),
+            Some(autorado),
+            "{nome}: autorado igual"
+        );
+        curva(&mut sim, campo, na_curva);
+        aplicar(&mut sim, &mut ponte, &mut cond);
+        assert_eq!(
+            ler(&ponte.settings_vivos(), campo),
+            Some(autorado),
+            "{nome}: a mão ganhou no quadro do clique"
+        );
+        assert_eq!(
+            lido(&mut sim, &ponte, campo),
+            autorado,
+            "{nome}: o Auto Key lê a mão"
+        );
+    }
+}
+
+/// ⭐ **Mexer num campo não toca nos outros que a curva conduz.** A gravidade muda pelo painel com
+/// a curva a desligar uma célula da matriz: a célula continua da curva. (Comparar o pedido com o vivo
+/// — e não com o que o painel MOSTRAVA — marcava todas as células conduzidas como mão.)
+#[test]
+fn mexer_num_campo_nao_toca_nos_outros_que_a_curva_conduz() {
+    let (mut sim, _, mut ponte) = queda();
+    let mut cond = ConducaoMundo::default();
+    let (i, a, b) = celulas().nth(4).expect("célula");
+    let c = cena(&sim).expect("cena");
+    let celula = |sim: &mut SimWorld| {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(c, kc(i), 0.0);
+    };
+    let liga = |s: PhysicsSettings| LayerMatrix::from_rows(s.layer_matrix).collides(a, b);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    celula(&mut sim);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert!(!liga(ponte.settings_vivos()), "controlo: a curva desligou");
+    painel(&mut ponte, &mut cond, |s| PhysicsSettings {
+        gravity_y: 1.5,
+        ..s
+    });
+    celula(&mut sim);
+    aplicar(&mut sim, &mut ponte, &mut cond);
+    assert_eq!(ponte.settings_vivos().gravity_y, 1.5, "a mão na gravidade");
+    assert!(!liga(ponte.settings_vivos()), "a célula continua da curva");
+}

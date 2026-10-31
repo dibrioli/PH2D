@@ -34,7 +34,7 @@ pub mod state;
 mod event;
 
 pub use state::{
-    PhysicsIntent, PhysicsPanelState, PhysicsSnapshot, drain_intents, last_content_h,
+    PhysicsIntent, PhysicsPanelState, PhysicsSnapshot, Toque, drain_intents, last_content_h,
     last_visible_h, set_current_physics,
 };
 

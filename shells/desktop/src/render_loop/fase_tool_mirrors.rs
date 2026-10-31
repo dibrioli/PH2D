@@ -66,6 +66,7 @@ impl crate::App {
                 stash: &mut self.discarded_run,
                 fixed_dt: self.fixed_step.fixed_dt(),
             },
+            &mut self.physics.mundo,
         );
         Some(vec_cfg)
     }

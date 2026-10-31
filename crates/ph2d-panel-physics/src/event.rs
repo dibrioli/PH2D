@@ -21,6 +21,20 @@ fn cell_pair(index: usize) -> (usize, usize) {
     (i, remaining)
 }
 
+/// ⭐ **Toda escrita do painel sobre o mundo** (F41): a MESMA edição vai ao autorado (o que o save
+/// grava) e ao vivo que a linha mostrava ([`state::Toque`]) — uma porta, para que nenhum controlo
+/// esqueça a mão escondida pela curva.
+fn editar(f: impl Fn(PhysicsSettings) -> PhysicsSettings) {
+    let snap = state::current();
+    state::push_intent(PhysicsIntent::SetSettings(
+        f(snap.settings),
+        state::Toque {
+            visto: snap.vivo,
+            pedido: f(snap.vivo),
+        },
+    ));
+}
+
 pub(crate) fn apply_event(
     _state: &mut crate::state::PhysicsPanelState,
     host: &mut dyn PanelHostInternal,
@@ -39,9 +53,11 @@ pub(crate) fn apply_event(
                     true
                 } else {
                     let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-                    let mut settings = state::current().settings;
-                    (row.set)(&mut settings, row.value_of(track));
-                    state::push_intent(PhysicsIntent::SetSettings(settings));
+                    let v = row.value_of(track);
+                    editar(|mut s| {
+                        (row.set)(&mut s, v);
+                        s
+                    });
                     true
                 }
             } else if let Some(row) = interact::irow_for(id) {
@@ -128,13 +144,18 @@ pub(crate) fn apply_event(
                 .position(|&c| c == id)
                 .expect("guard matched");
             let (a, b) = cell_pair(idx);
-            let settings = state::current().settings;
-            let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(settings.layer_matrix);
-            m.set(a, b, !m.collides(a, b));
-            state::push_intent(PhysicsIntent::SetSettings(PhysicsSettings {
-                layer_matrix: m.rows(),
-                ..settings
-            }));
+            // ⭐ A matriz MOSTRA o vivo (a curva da Cena, F41): o clique vira o par que se vê, e só
+            // esse par — as outras células do autorado ficam como estavam.
+            let on = !ph2d_physics_ecs::LayerMatrix::from_rows(state::current().vivo.layer_matrix)
+                .collides(a, b);
+            editar(|s| {
+                let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(s.layer_matrix);
+                m.set(a, b, on);
+                PhysicsSettings {
+                    layer_matrix: m.rows(),
+                    ..s
+                }
+            });
             true
         }
         // ⭐ **O interruptor de adormecer** (2026-08-30). Era um slider sobre
@@ -144,9 +165,8 @@ pub(crate) fn apply_event(
         // ⭐ Caixa de marcar desde 2026-09-24: o despacho vira-a e emite `Toggled`. O valor NOVO
         //    sai do MODELO (`!on`), nunca do store — a lei da `paint_check_row`.
         WidgetEvent::Toggled(id) if id == crate::ids::PHYSICS_SLEEP_SPIN => {
-            let snap = state::current();
-            let (settings, on) = (snap.settings, snap.vivo.sleep_enabled());
-            state::push_intent(PhysicsIntent::SetSettings(settings.with_sleep_enabled(!on)));
+            let on = state::current().vivo.sleep_enabled();
+            editar(|s| s.with_sleep_enabled(!on));
             true
         }
         WidgetEvent::Toggled(id) if id == crate::ids::PHYSICS_SHOW_COLLIDERS => {
@@ -168,7 +188,7 @@ pub(crate) fn apply_event(
         }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_RESET_DEFAULTS => {
             seam_reset_button(host, id);
-            state::push_intent(PhysicsIntent::SetSettings(PhysicsSettings::default()));
+            editar(|_| PhysicsSettings::default());
             true
         }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_CLOSE => {

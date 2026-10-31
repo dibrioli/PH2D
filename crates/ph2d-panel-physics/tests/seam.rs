@@ -107,7 +107,7 @@ fn every_row_reaches_the_world_settings() {
         );
 
         let intents = drain_intents();
-        let PhysicsIntent::SetSettings(got) = intents.first().unwrap_or_else(|| {
+        let PhysicsIntent::SetSettings(got, _) = intents.first().unwrap_or_else(|| {
             panic!(
                 "row `{}` consumed the edit but queued NO intent — the seam ends \
                  inside the panel and the world never hears about it",
@@ -284,7 +284,13 @@ fn reset_restores_the_engine_defaults() {
     );
     assert_eq!(
         drain_intents(),
-        vec![PhysicsIntent::SetSettings(PhysicsSettings::default())],
+        vec![PhysicsIntent::SetSettings(
+            PhysicsSettings::default(),
+            ph2d_panel_physics::Toque {
+                visto: edited,
+                pedido: PhysicsSettings::default(),
+            }
+        )],
         "Reset to Defaults did not publish the defaults"
     );
 }
@@ -548,7 +554,7 @@ fn every_matrix_cell_toggles_its_own_pair() {
             );
 
             let intents = drain_intents();
-            let Some(PhysicsIntent::SetSettings(got)) = intents.first() else {
+            let Some(PhysicsIntent::SetSettings(got, _)) = intents.first() else {
                 panic!("matrix cell ({i},{j}) queued no settings intent: {intents:?}");
             };
             let m = ph2d_physics_ecs::LayerMatrix::from_rows(got.layer_matrix);
@@ -578,6 +584,176 @@ fn every_matrix_cell_toggles_its_own_pair() {
             }
         }
     }
+}
+
+/// ⭐⭐ **Com a curva da Cena a conduzir a matriz, o clique vira o que se VÊ** (smoke do dono F41:
+/// *«os retângulos não guardaram o estado que escolhi»*). O autorado diz ligado, a curva desligou o
+/// par no vivo, e a matriz mostra o vivo: clicar pede LIGADO. Virar o autorado pedia desligado —
+/// o que já se via —, e nada mudava nem se gravava.
+#[test]
+fn o_clique_na_matriz_vira_o_par_que_se_ve_sob_a_curva() {
+    let (i, j) = (3, 1);
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let mut vivo = PhysicsSettings::default();
+    let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(vivo.layer_matrix);
+    m.set(i, j, false);
+    vivo.layer_matrix = m.rows();
+    set_current_physics(Some(PhysicsSnapshot {
+        settings: PhysicsSettings::default(),
+        vivo,
+        pixels_per_meter: 100.0,
+        show_colliders: true,
+        body_count: 3,
+        interaction: InteractionSettings::default(),
+        recorded_run_seconds: 0.0,
+        discarded_run_seconds: 0.0,
+    }));
+    let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
+    host.apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::Click(id));
+    let intents = drain_intents();
+    let Some(PhysicsIntent::SetSettings(got, _)) = intents.first() else {
+        panic!("a célula não pediu nada: {intents:?}");
+    };
+    let got = ph2d_physics_ecs::LayerMatrix::from_rows(got.layer_matrix);
+    assert!(
+        got.collides(i, j),
+        "o par via-se desligado; o clique tem de o LIGAR"
+    );
+}
+
+/// O painel com o autorado `settings` e o mundo a correr `vivo` (a curva da Cena por cima).
+fn mostrar(settings: PhysicsSettings, vivo: PhysicsSettings) {
+    set_current_physics(Some(PhysicsSnapshot {
+        settings,
+        vivo,
+        pixels_per_meter: 100.0,
+        show_colliders: true,
+        body_count: 3,
+        interaction: InteractionSettings::default(),
+        recorded_run_seconds: 0.0,
+        discarded_run_seconds: 0.0,
+    }));
+    let _ = drain_intents();
+}
+
+fn sem_par(i: usize, j: usize) -> PhysicsSettings {
+    let mut s = PhysicsSettings::default();
+    let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(s.layer_matrix);
+    m.set(i, j, false);
+    s.layer_matrix = m.rows();
+    s
+}
+
+/// ⭐⭐ **A matriz PINTA o vivo** (F41): com a curva a desligar um par, a célula pinta-se desligada
+/// mesmo com o autorado ligado — e ao contrário. Régua: os dados de desenho do Vello; controlo:
+/// desligar o par muda-os (a régua vê a célula).
+#[test]
+fn a_matriz_pinta_o_vivo_e_nao_o_autorado() {
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let mut pinta = |settings, vivo| {
+        mostrar(settings, vivo);
+        host.paint_draw_data::<PhysicsPanel>(&mut state, VIEWPORT)
+    };
+    let (liga, desliga) = (PhysicsSettings::default(), sem_par(3, 1));
+    let (so_liga, so_desliga) = (pinta(liga, liga), pinta(desliga, desliga));
+    assert_ne!(
+        so_liga, so_desliga,
+        "controlo: a régua vê o estado da célula"
+    );
+    assert_eq!(
+        pinta(liga, desliga),
+        so_desliga,
+        "a curva desligou: pinta-se desligada"
+    );
+    assert_eq!(
+        pinta(desliga, liga),
+        so_liga,
+        "a curva ligou: pinta-se ligada"
+    );
+}
+
+/// ⭐⭐ **A caixa de adormecer vira o que se VÊ sob a curva** e o toque di-lo (F41, a lei da
+/// matriz): o autorado diz ligado, a curva desligou; o clique pede LIGADO — o autorado não muda, e o
+/// [`ph2d_panel_physics::Toque`] marca o campo do adormecer como mexido, e só ele.
+#[test]
+fn o_clique_no_adormecer_vira_o_que_se_ve_sob_a_curva() {
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let autorado = PhysicsSettings::default();
+    assert!(autorado.sleep_enabled(), "fixture: o de fábrica adormece");
+    let vivo = PhysicsSettings {
+        gravity_y: 2.0,
+        ..sem_par(3, 1).with_sleep_enabled(false)
+    };
+    mostrar(autorado, vivo);
+    host.apply_panel_event::<PhysicsPanel>(
+        &mut state,
+        WidgetEvent::Toggled(ids::PHYSICS_SLEEP_SPIN),
+    );
+    let intents = drain_intents();
+    let Some(PhysicsIntent::SetSettings(got, toque)) = intents.first() else {
+        panic!("a caixa não pediu nada: {intents:?}");
+    };
+    assert!(got.sleep_enabled(), "via-se desligado; o clique LIGA");
+    assert_eq!(*got, autorado, "o resto do autorado fica");
+    assert_eq!(toque.visto, vivo, "o toque parte do que se via");
+    assert_eq!(
+        toque.pedido,
+        vivo.with_sleep_enabled(true),
+        "o toque mexe no adormecer, e só nele"
+    );
+}
+
+/// ⭐ **Todo controlo do mundo toca no que se via só no SEU campo** — o slider de cada linha, cada
+/// célula da matriz e a caixa de adormecer, com o vivo diferente do autorado em tudo o que a curva
+/// conduz. Um toque que levasse o autorado num campo alheio marcava-o como mão.
+#[test]
+fn cada_controlo_toca_no_que_se_via_so_no_seu_campo() {
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let autorado = PhysicsSettings::default();
+    let vivo = PhysicsSettings {
+        gravity_x: 1.0,
+        gravity_y: 2.0,
+        substeps: 7,
+        air_drag: 0.3,
+        ..sem_par(3, 1).with_sleep_enabled(false)
+    };
+    let mut toque_de = |ev: WidgetEvent| {
+        mostrar(autorado, vivo);
+        host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
+        match drain_intents().first() {
+            Some(PhysicsIntent::SetSettings(_, t)) => *t,
+            other => panic!("{ev:?} não pediu settings: {other:?}"),
+        }
+    };
+    for row in rows::rows() {
+        host_slider(&mut toque_de, row);
+    }
+    let t = toque_de(WidgetEvent::Toggled(ids::PHYSICS_SLEEP_SPIN));
+    assert_eq!(t.pedido, vivo.with_sleep_enabled(true), "adormecer");
+    for i in 0..ph2d_physics_ecs::MAX_LAYERS {
+        for j in 0..=i {
+            let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
+            let t = toque_de(WidgetEvent::Click(id));
+            let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(vivo.layer_matrix);
+            m.set(i, j, !m.collides(i, j));
+            let want = PhysicsSettings {
+                layer_matrix: m.rows(),
+                ..vivo
+            };
+            assert_eq!((t.visto, t.pedido), (vivo, want), "célula ({i},{j})");
+        }
+    }
+}
+
+/// Um slider de `row` a meio do curso: o toque é o vivo com SÓ esse campo movido.
+fn host_slider(
+    toque_de: &mut impl FnMut(WidgetEvent) -> ph2d_panel_physics::Toque,
+    row: &rows::Row,
+) {
+    let t = toque_de(WidgetEvent::ValueChanged(row.slider));
+    let mut want = t.visto;
+    (row.set)(&mut want, (row.get)(&t.pedido));
+    assert_eq!(t.pedido, want, "linha `{}` mexeu noutro campo", row.label);
 }
 
 /// **Every matrix cell answers a REAL pointer at its painted centre.**
@@ -1243,7 +1419,7 @@ fn the_sleep_switch_writes_the_sign_the_solver_reads() {
         let got = drain_intents()
             .iter()
             .find_map(|it| match it {
-                PhysicsIntent::SetSettings(s) => Some(*s),
+                PhysicsIntent::SetSettings(s, _) => Some(*s),
                 _ => None,
             })
             .expect("o clique no interruptor de adormecer nao levantou intent nenhum");

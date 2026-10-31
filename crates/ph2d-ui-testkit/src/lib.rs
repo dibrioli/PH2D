@@ -434,6 +434,27 @@ impl MockPanelHost {
         layout: HeroLayout,
         viewport: Rect,
     ) -> (u32, u32) {
+        let scene = self.paint_scene::<P>(state, layout, viewport);
+        let enc = scene.inner().encoding();
+        (
+            u32::try_from(enc.resources.glyphs.len()).unwrap_or(u32::MAX),
+            enc.n_path_segments,
+        )
+    }
+
+    /// ⭐ **O que a pintura DESENHOU, como dados de desenho** (cores e pincéis do Vello) — a régua
+    /// para «o estado pintado segue X»: duas pinturas com a mesma arte dão a mesma sequência.
+    pub fn paint_draw_data<P: Panel>(&mut self, state: &mut P::State, viewport: Rect) -> Vec<u32> {
+        let scene = self.paint_scene::<P>(state, HeroLayout::for_viewport(viewport), viewport);
+        scene.inner().encoding().draw_data.clone()
+    }
+
+    fn paint_scene<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        layout: HeroLayout,
+        viewport: Rect,
+    ) -> VectorScene {
         self.set_panel_visible(P::ID, true);
         self.hit_index.clear_for_frame();
         let mut scene = VectorScene::new();
@@ -444,8 +465,6 @@ impl MockPanelHost {
                 layout: &layout,
                 // ⚠️ O MESMO idioma das outras duas construções deste ficheiro, e não uma terceira
                 // conta: `SlotSet::of(…)`, nunca `ANY_DOCK` — ver o comentário longo em `paint`.
-                // (O campo nasceu na `line/UIUX` e este arnês veio da `line/components`: cada uma
-                // compilava sozinha.)
                 slot: layout
                     .slot_rects(SlotSet::of(P::DEFAULT_SLOT))
                     .get(P::DEFAULT_SLOT),
@@ -455,11 +474,7 @@ impl MockPanelHost {
             };
             P::paint(state, &mut ctx);
         }
-        let enc = scene.inner().encoding();
-        (
-            u32::try_from(enc.resources.glyphs.len()).unwrap_or(u32::MAX),
-            enc.n_path_segments,
-        )
+        scene
     }
 
     pub fn paint_with_layout<P: Panel>(

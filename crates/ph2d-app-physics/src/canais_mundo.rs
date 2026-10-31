@@ -119,6 +119,28 @@ pub fn publicar(sim: &mut SimWorld, ponte: &PhysicsBridge) {
 pub struct ConducaoMundo {
     /// Por `(campo, i)`: `i` só não é `0` nas células da matriz.
     visto: BTreeMap<(u16, u16), f32>,
+    /// Os `(campo, i)` que o painel mexeu no que MOSTRAVA ([`Self::tocar`]): a mão ganha neles
+    /// mesmo quando o autorado já valia o que se pediu (a curva escondia-o).
+    tocadas: std::collections::BTreeSet<(u16, u16)>,
+}
+
+impl ConducaoMundo {
+    /// ⭐ **O painel mostrava `visto` e pediu `pedido`** — todo campo e célula em que diferem é a
+    /// mão (ver `panel_bridge::settings_do_painel`).
+    pub fn tocar(&mut self, visto: &PhysicsSettings, pedido: &PhysicsSettings) {
+        let campos = m::CAMPOS
+            .into_iter()
+            .filter(|&campo| ler(visto, campo) != ler(pedido, campo))
+            .map(|campo| (campo, 0));
+        let (v, n) = (
+            LayerMatrix::from_rows(visto.layer_matrix),
+            LayerMatrix::from_rows(pedido.layer_matrix),
+        );
+        let celulas = celulas()
+            .filter(|&(_, a, b)| v.collides(a, b) != n.collides(a, b))
+            .map(|(i, _, _)| (m::CAMADAS, i));
+        self.tocadas.extend(campos.chain(celulas));
+    }
 }
 
 /// ⭐ **Aplica ao mundo vivo o que a curva mandou neste quadro** (sem limpar o anel) e regista o eco.
@@ -140,7 +162,9 @@ pub fn aplicar(sim: &mut SimWorld, ponte: &mut PhysicsBridge, cond: &mut Conduca
     let mut ecos = Vec::with_capacity(m::CAMPOS.len() + usize::from(m::CELULAS));
     // A mão ganha à curva no quadro em que muda o autorado; senão a curva manda (e o eco di-lo).
     let mut conduz = |chave: FieldKey, a: f32| -> Option<f32> {
-        let mao = (cond.visto.insert((chave.campo, chave.i), a)).is_some_and(|antes| antes != a);
+        let tocada = cond.tocadas.remove(&(chave.campo, chave.i));
+        let mao = (cond.visto.insert((chave.campo, chave.i), a)).is_some_and(|antes| antes != a)
+            || tocada;
         let v = curva.get(&(chave.campo, chave.i)).copied().filter(|_| !mao);
         ecos.push((chave, v.unwrap_or(a), a));
         v

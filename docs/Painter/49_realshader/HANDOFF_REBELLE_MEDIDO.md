@@ -82,3 +82,13 @@ drying contra a cópia); o rayon não herda o `target_feature` ⇒ no caminho pa
 - Catmull-Rom para a ALTURA na vista: hessiana C1 ⇒ listras ao passo da célula (prancha r1).
 - Régua só de variância do laplaciano: premeia artefacto — exige as anti-artefacto (pico da célula, outliers 6σ).
 - f32/v3 «por velocidade» sem os números acima.
+
+## D — Rebelle 4K
+Tela 3840×2160 criada FORA do relógio das pinceladas, R=3 intercalado, RealShader ligado, ecrã real. Detalhe: [D_rebelle_4k.md](D_rebelle_4k.md).
+
+| variante (×3) | span | CPU acima do ocioso | núcleos pico | placa mediana / máx |
+|---|---|---|---|---|
+| criação 4K | 1–2 s | 3,2–3,3 s | 2,95–3,44 | 4 % / 33–94 % |
+| 20 pinceladas | 8 s | 9,1–11,4 s | 1,72–2,46 | 4 % / 22–25 % |
+
+Resposta: **as pinceladas pesam ~3× a criação da tela 4K**. ⚠️ A régua de calma do script bate no tecto de 90 s quando o ocioso do Rebelle (~0,1 núcleo em 4K) encosta ao limiar — o tempo real saiu do traço de CPU por segundo.

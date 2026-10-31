@@ -155,6 +155,13 @@ impl App {
         // Dragging the colour onto the canvas is what ACTIVATES Fill (a plain click never does — it only
         // opens the picker): the delivery enters a MOMENTARY ColorDrop (returning to `prev_mode`) only when
         // that Down lands in the footprint, so a drag that stays off the sprite switches nothing.
+        // ⚠️ O drop só COMEÇA fora do chrome (smoke do dono 30/10): com a imagem por baixo da barra da
+        // esquerda, o tremor do clique no próprio C&F caía «na tela» e o Fill enchia o fundo vazio com a
+        // cor do pincel — «o C&F muda a cor do papel». Sobre o chrome o arrasto continua armado e o
+        // soltar ali é o clique (abre o seletor).
+        if !st.on_canvas && crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+            return true;
+        }
         let (phase, colordrop) = if st.on_canvas {
             (PointerPhase::Move, None)
         } else {

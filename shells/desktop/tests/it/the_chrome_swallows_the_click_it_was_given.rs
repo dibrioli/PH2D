@@ -74,6 +74,13 @@ const CANVAS_CONSUMERS: &[(&str, &str)] = &[
         "shells/desktop/src/input_dispatch/protect_brush.rs",
         "try_add_area_click",
     ),
+    // ⭐ O arrasto do C&F (Enio, smoke 30/10: «o C&F muda a cor do papel»): com a imagem a passar por
+    // baixo da barra da esquerda, o tremor do clique no próprio botão já caía «na tela» — o ColorDrop
+    // começava ali e o Fill enchia o fundo vazio inteiro com a cor do pincel. O drop só começa FORA do chrome.
+    (
+        "shells/desktop/src/input_dispatch/fill_drag.rs",
+        "fill_drag_move",
+    ),
 ];
 
 /// The source of one `fn`, from its signature to the start of the next one at the same level.

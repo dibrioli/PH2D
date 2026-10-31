@@ -399,7 +399,10 @@ fn assenta_c<const C: u8, const N: bool>(
         fixa(uc, vela, true)
     } else {
         Fixa {
-            l: Lado { p: [0.0; 3], n: 0.0 },
+            l: Lado {
+                p: [0.0; 3],
+                n: 0.0,
+            },
             lod: None,
             uc: true,
         }
@@ -461,7 +464,8 @@ fn assenta_c<const C: u8, const N: bool>(
     let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
     // ⚠️ O original calcula o `h2` aqui, sempre (assenta.rs:484) — o memo só o reaproveita.
     let h2 = tapa_m::<C, N>(m, esconde, a_f2);
-    let canal = |x: [f64; 3], ch: usize| sobre_branco_canal::<C, N>(e, x, uc, a_s2, a_f2, h2, &fx, ch);
+    let canal =
+        |x: [f64; 3], ch: usize| sobre_branco_canal::<C, N>(e, x, uc, a_s2, a_f2, h2, &fx, ch);
     resolve::<N>(
         x0,
         alvo,
@@ -498,7 +502,10 @@ fn levanta_c<const C: u8, const N: bool>(
             fixa(sc, vela, false)
         } else {
             Fixa {
-                l: Lado { p: [0.0; 3], n: 0.0 },
+                l: Lado {
+                    p: [0.0; 3],
+                    n: 0.0,
+                },
                 lod: None,
                 uc: false,
             }
@@ -1010,7 +1017,9 @@ fn main() {
         g.by1,
         c.p.ecra,
         rayon::current_num_threads(),
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
 
     // Contagem (série, 1 secagem sobre o instantâneo).
@@ -1075,7 +1084,9 @@ fn main() {
     }
     println!(
         "loadavg fim {} · total {:.1} s",
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim(),
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim(),
         t0.elapsed().as_secs_f64()
     );
 }

@@ -1,8 +1,7 @@
 # R2-A — as pontas de Charcoal, Wax Scrape e Square Hard (31/10)
 
-Régua (`tamanhos` A, recto de 40 em y 190 e de 200 em y 440; o eixo ±35 % da largura ÷ o corpo; `ini`/`fim` = a
-fracção do corpo nas faixas ½–¼ · ¼–0,1 · 0,1–0 da largura a partir da borda; canto = a altura a 0,08 W da borda ÷ a do
-corpo). Sonda por nome no processo de teste (a bancada inteira é pesada: fila).
+Régua (`tamanhos` A, rectos de 40 e 200; eixo ±35 % da largura ÷ corpo nas faixas ½–¼ · ¼–0,1 · 0,1–0 da largura
+desde a borda; canto = altura a 0,08 W da borda ÷ a do corpo). Sonda por nome (a bancada é pesada: fila).
 
 ## O que mudou (commit `2620df8f6d`)
 
@@ -43,7 +42,7 @@ Pranchas (antes | depois | Rebelle; em baixo: entrada e fim do 200, fim e entrad
   trabalho dos irmãos; o Wet Liner tem `pontas_esbate 0` (nada desta lei corre) — conferir na integração.
 - Square Hard GRÃO (pontinhos brancos grossos × o grão fino e escuro dele, que adensa com o tamanho): já teve as duas
   rondas (J5 r4, J6 r2); só com uma lei de motor da carga/grão pelo DIÂMETRO — não começada.
-- Wax Scrape: as bordas LATERAIS do Rebelle são duras e esfarrapadas, as nossas uma névoa de pó (dureza 0 + pó).
+- Wax Scrape: as bordas laterais dele são duras e esfarrapadas; as nossas, névoa de pó.
 
 ## Necessidade em `spec.rs` (não tocado)
 

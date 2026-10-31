@@ -48,8 +48,6 @@ fn grade() -> Grid {
         g.sett[i] = 777.0;
         g.film[i] = w;
     }
-    let i6 = W + s;
-    g.susp[i6] = 3000.0; // a lei velha pintaria esta
     let t = garante(&mut g);
     for (k, &(f, a, rg, _)) in celulas.iter().enumerate() {
         let c = &mut t[(k + 1) + s];
@@ -57,6 +55,8 @@ fn grade() -> Grid {
         c.aberto = a;
         c.r_g = rg;
     }
+    // Depois do `garante` (que migra a massa velha): massa sem somas, que a lei velha pintaria.
+    g.susp[W + s] = 3000.0;
     g
 }
 

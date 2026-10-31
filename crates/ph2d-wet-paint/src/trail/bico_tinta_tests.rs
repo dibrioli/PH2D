@@ -96,10 +96,17 @@ fn a_ponta_suja_pousa_a_mistura_pela_soma() {
     t.ponta_tinta = vec![azul; (t.size * t.size) as usize];
     let c = (t.half + t.half * t.size) as usize;
     t.pig[c] = 600.0;
+    // Com água: a ponta SECA (janela sem água) pousa no aberto, não no filme.
+    t.water[c] = 300.0;
     t.transfer_paint(&mut g, &p);
-    let i = 32 * g.s + 32;
-    let pousou = g.tinta[i].filme;
-    assert!(pousou.v > 0.0);
+    // A célula onde o texel central da ponta pousou (o mapeamento rasto→grade é do `transfer_paint`).
+    let pousou = g
+        .tinta
+        .iter()
+        .map(|c| c.filme)
+        .max_by(|a, b| a.v.total_cmp(&b.v))
+        .expect("grade");
+    assert!(pousou.v > 0.0, "nada pousou");
     let l = pousou.lab[0] / pousou.v;
     let la = azul.lab[0] / azul.v;
     let ly = Tinta::de_srgb(AMARELO.map(|c| (c / 255.0) as f32), 0.0).lab[0];

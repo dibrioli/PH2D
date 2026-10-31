@@ -4,6 +4,9 @@
 //! papel creme. Por célula: distância à curva K-M azul–amarelo (máx e p99), manchas de concentração (mais escuras
 //! que o azul sozinho), ferrugem (matiz fora do segmento azul–verde–amarelo), furos e rugosidade. Grava TSV e PNG.
 //! `PH2D_SONDA_OUT=<dir> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib sonda_varredura_oleo -- --ignored --nocapture`
+#[path = "portao_mae_f0.rs"]
+mod portao_mae_f0;
+
 use super::sonda_oleo_grumos::{alturas, mede};
 use super::*;
 use crate::PaintMedia;
@@ -280,8 +283,41 @@ pub(super) struct Cena {
     pub papel: f32,
     /// Azul → amarelo → azul (a 3.ª mão volta pela orla).
     pub aya: bool,
-    /// A lei da tinta (`PH2D_SONDA_LEI`, F4-2 E2): posta no motor depois de cada preset (o preset não a toca).
+    /// A lei da tinta (`PH2D_SONDA_LEI`), pela porta do produto `set_wet_lei_da_tinta`.
     pub lei: ph2d_wet_paint::sim::LeiDaTinta,
+    /// O papel do documento (`PH2D_SONDA_PAPEIS`).
+    pub fundo: Papel,
+}
+
+/// O papel do documento da célula (E9; dono 31/10: o portão-mãe decide-se sobre o PADRÃO).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum Papel {
+    /// O «Textured Paper» do New Image (`PAPEL_TEXTURIZADO`, Cold Press `#E6D9CC`), pelo caminho do produto:
+    /// a sprite nascida (`pixeis_do_papel_texturizado`) aberta como documento (`abre_a_sprite_nova`).
+    #[default]
+    Padrao,
+    /// Sem papel (tela transparente, o caminho da F0).
+    Liso,
+}
+
+impl Papel {
+    pub(super) const fn nome(self) -> &'static str {
+        match self {
+            Self::Padrao => "padrao",
+            Self::Liso => "liso",
+        }
+    }
+}
+
+impl std::str::FromStr for Papel {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            "padrao" => Ok(Self::Padrao),
+            "liso" => Ok(Self::Liso),
+            o => Err(format!("papel desconhecido: {o:?} (padrao|liso)")),
+        }
+    }
 }
 
 /// Uma célula da grelha. Grava o recorte com luz em `png` (e o plano ao lado, `…_plano.png`) se pedido.
@@ -298,21 +334,36 @@ pub(super) fn celula(
     png: Option<&std::path::Path>,
 ) -> Celula {
     let mut t = PainterTool::default();
-    t.set_source(vec![0u8; (W * H * 4) as usize], W, H);
+    match cena.fundo {
+        Papel::Liso => t.set_source(vec![0u8; (W * H * 4) as usize], W, H),
+        Papel::Padrao => {
+            const SPRITE: u64 = 1;
+            let px = PainterTool::pixeis_do_papel_texturizado(W, H);
+            t.agenda_papel_texturizado(SPRITE);
+            t.abre_a_sprite_nova(SPRITE, px, W, H);
+            assert!(
+                t.papel().is_some(),
+                "o papel padrão não chegou ao documento"
+            );
+        }
+    }
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
     t.set_semente_dos_tracos(0);
     if cena.papel > 0.0 {
         t.set_substrate_depth(cena.papel);
     }
+    t.set_wet_lei_da_tinta(cena.lei);
     let p = preset(b, pincel);
     let passadas = |t: &mut PainterTool, cor: [u8; 3], y0: f32| {
         for k in 0..n {
             let erros = t.wet_preset_aplicar(&p);
             assert!(erros.is_empty(), "{erros:?}");
-            if let Some(s) = t.paint.wetpaint.session.as_mut() {
-                s.engine.sim.set_tinta(cena.lei);
-            }
+            assert_eq!(
+                t.wet_lei_da_tinta(),
+                Some(cena.lei),
+                "a lei não sobreviveu ao preset"
+            );
             for (id, v) in [
                 (crate::ids::PAINTER_WETPAINT_PIGMENT, pig),
                 (crate::ids::PAINTER_WETPAINT_WATER, agua),
@@ -423,6 +474,7 @@ fn sonda_varredura_oleo() {
     let pressoes = lista("PH2D_SONDA_PRESSOES", &PRESSOES);
     let ns = lista("PH2D_SONDA_NS", &NS);
     let leis = lista("PH2D_SONDA_LEI", &[ph2d_wet_paint::sim::LeiDaTinta::Velha]);
+    let papeis = lista("PH2D_SONDA_PAPEIS", &[Papel::Padrao, Papel::Liso]);
     let assenta: u32 = std::env::var("PH2D_SONDA_ASSENTA")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -434,12 +486,13 @@ fn sonda_varredura_oleo() {
             .unwrap_or(0.0),
         aya: std::env::var("PH2D_SONDA_ORDEM").is_ok_and(|v| v == "aya"),
         lei: ph2d_wet_paint::sim::LeiDaTinta::Velha,
+        fundo: Papel::Padrao,
     };
     let tsv_path =
         dir.join(std::env::var("PH2D_SONDA_TSV").unwrap_or_else(|_| "varredura.tsv".into()));
     let mut tsv = String::from(
         "pincel\tpigment\twater\tpressao\tn\tkm_max\tkm_p99\tmanchas_pct\tmanchas_azul_pct\tferrugem_pct\tfuros_pct\trug\tp99_altura\tref_azul\tpng\
-         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel\tordem\tlei\n",
+         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel_depth\tordem\tlei\tpapel\n",
     );
     for pincel in &pinceis {
         let slug = pincel
@@ -452,13 +505,20 @@ fn sonda_varredura_oleo() {
             for &agua in &aguas {
                 for &pr in &pressoes {
                     for &n in &ns {
-                        for &lei in &leis {
-                            let cena = Cena { lei, ..cena0 };
+                        for (&fundo, &lei) in
+                            papeis.iter().flat_map(|f| leis.iter().map(move |l| (f, l)))
+                        {
+                            let cena = Cena {
+                                lei,
+                                fundo,
+                                ..cena0
+                            };
                             let ordem = if cena.aya { "aya" } else { "ay" };
                             let nome = format!(
-                                "{slug}_p{pig}_w{agua}_pr{pr}_n{n}_s{assenta}_pa{}_{ordem}_{}.png",
+                                "{slug}_p{pig}_w{agua}_pr{pr}_n{n}_s{assenta}_pa{}_{ordem}_{}_{}.png",
                                 cena.papel,
-                                lei.nome()
+                                lei.nome(),
+                                fundo.nome()
                             );
                             let t0 = std::time::Instant::now();
                             let c = celula(
@@ -475,7 +535,7 @@ fn sonda_varredura_oleo() {
                             let (l, q) = (c.luz, c.plano);
                             let linha = format!(
                                 "{pincel}\t{pig}\t{agua}\t{pr}\t{n}\t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:.1}\t{nome}\
-                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\t{}\n",
+                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\t{}\t{}\n",
                                 l.km_max,
                                 l.km_p99,
                                 l.manchas,
@@ -496,7 +556,8 @@ fn sonda_varredura_oleo() {
                                 q.degraus_y,
                                 q.degraus_x,
                                 cena.papel,
-                                lei.nome()
+                                lei.nome(),
+                                fundo.nome()
                             );
                             print!("[f0 {:>5.1}s] {linha}", t0.elapsed().as_secs_f64());
                             tsv.push_str(&linha);

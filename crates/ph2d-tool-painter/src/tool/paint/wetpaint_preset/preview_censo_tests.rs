@@ -217,6 +217,7 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("live_gesture", TRACO),
     ("pending_deposit", TRACO),
     ("deposit_pass", TRACO),
+    ("composite_pendente", TRACO),
     (
         "tool",
         "o preview pinta o PINCEL (`o_preview_pinta_o_pincel_mesmo_com_o_smear_ativo`)",

@@ -4,13 +4,14 @@
 //! pixel da vista pede o documento em `u = x0 + (x + 0,5)/s − 0,5` (centros) e:
 //! - a cor da pilha antes da luz ([`PreLuz`]), a luz e o céu ([`LuzCeu`]) e o Gloss vêm por **Catmull-Rom 4×4**
 //!   separável, presos ao mínimo/máximo dos 16 vizinhos (sem anel) e com a borda presa;
-//! - a altura fina também, e a normal e a hessiana saem do **Sobel sobre a altura AMPLIADA**, com o passo da vista
-//!   (o declive ×`s`, a hessiana ×`s²`: unidades do documento);
+//! - a altura fina vem da **B-spline cúbica INTERPOLANTE** (pré-filtro recursivo de Unser, polo `√3 − 2`, janela +
+//!   8 células, borda espelhada): C2, por isso a normal e a hessiana são as ANALÍTICAS da spline e contínuas através
+//!   das células (o Catmull-Rom é só C1: a hessiana saltava a cada célula e desenhava listras ao passo `s`);
 //! - o material, a Subsurface e o reflexo livre são os da célula mais próxima;
 //! - e fecha-se com a MESMA óptica ([`crate::oleo_real::cor_da_amostra`]) e a MESMA mistura ([`PreLuz::fecha_oleo`]).
 //!
-//! Lei de identidade: com `s = 1` e origem inteira cada pixel cai num centro, o Catmull-Rom devolve a amostra exacta
-//! e a saída é a linha de hoje ([`crate::render::render_pigment_row_oleo`]) AO BYTE. `s < 1` (afastar) fica FORA:
+//! Lei de identidade: com `s = 1` e origem inteira a vista É a linha de hoje
+//! ([`crate::render::render_pigment_row_oleo`]), ao byte por construção. `s < 1` (afastar) fica FORA:
 //! aí a vista quer um filtro de redução (mip), não interpolação. A grade é a do documento com `ratio` 1 (com outro
 //! `ratio` quem chama passa `s` em células). A sombra NO PAPEL (o buffer do composite) não é desta porta.
 //! Nada se guarda em resolução maior: só a região pedida, e por linha (as linhas são independentes — o rayon é de
@@ -44,7 +45,75 @@ pub struct PreparoVista<'a> {
     pre: Vec<PreLuz>,
     lc: Vec<LuzCeu>,
     brilho: Vec<f64>,
-    fina: Vec<f64>,
+    /// Os coeficientes da B-spline cúbica interpolante da altura fina (`sw` de largura; janela + [`MARGEM_SPLINE`]).
+    coef: Vec<f64>,
+    sw: usize,
+    /// A vista a `s = 1` com origem inteira: a imagem de hoje.
+    identidade: Option<Vec<u8>>,
+}
+
+/// A margem (células) do pré-filtro da spline à volta da janela: o polo `z = √3 − 2` cai a `|z|⁸ ≈ 3·10⁻⁵`.
+const MARGEM_SPLINE: usize = 8;
+
+/// O polo do pré-filtro da B-spline cúbica (Unser 1991).
+const POLO: f64 = -0.267_949_192_431_122_7;
+
+/// O pré-filtro recursivo causal + anti-causal de Unser num sinal de passo `passo`, borda ESPELHADA: amostras →
+/// coeficientes da B-spline cúbica que INTERPOLA as amostras.
+fn prefiltro_1d(v: &mut [f64], n: usize, passo: usize) {
+    if n < 2 {
+        return;
+    }
+    let z = POLO;
+    let at = |k: usize| k * passo;
+    for k in 0..n {
+        v[at(k)] *= (1.0 - z) * (1.0 - 1.0 / z);
+    }
+    // Início causal (espelho, truncado onde |z|^k < 1e-12).
+    let corte = n.min(22);
+    let (mut soma, mut zk) = (v[at(0)], z);
+    for k in 1..corte {
+        soma += zk * v[at(k)];
+        zk *= z;
+    }
+    v[at(0)] = soma;
+    for k in 1..n {
+        v[at(k)] += z * v[at(k - 1)];
+    }
+    v[at(n - 1)] = (z / (z * z - 1.0)) * (v[at(n - 1)] + z * v[at(n - 2)]);
+    for k in (0..n - 1).rev() {
+        v[at(k)] = z * (v[at(k + 1)] - v[at(k)]);
+    }
+}
+
+/// O pré-filtro separável: as linhas e depois as colunas.
+fn prefiltro_2d(c: &mut [f64], w: usize, h: usize) {
+    for y in 0..h {
+        prefiltro_1d(&mut c[y * w..(y + 1) * w], w, 1);
+    }
+    for x in 0..w {
+        prefiltro_1d(&mut c[x..], h, w);
+    }
+}
+
+/// Os pesos da B-spline cúbica em `t ∈ [0, 1)` para os coeficientes `−1..=2`: (valor, 1.ª, 2.ª derivada).
+#[inline]
+fn bspline(t: f64) -> [(f64, f64, f64); 4] {
+    let (t2, t3, u) = (t * t, t * t * t, 1.0 - t);
+    [
+        (u * u * u / 6.0, -u * u / 2.0, u),
+        (
+            (3.0 * t3 - 6.0 * t2 + 4.0) / 6.0,
+            (3.0 * t2 - 4.0 * t) / 2.0,
+            3.0 * t - 2.0,
+        ),
+        (
+            (-3.0 * t3 + 3.0 * t2 + 3.0 * t + 1.0) / 6.0,
+            (-3.0 * t2 + 2.0 * t + 1.0) / 2.0,
+            -3.0 * t + 1.0,
+        ),
+        (t3 / 6.0, t2 / 2.0, t),
+    ]
 }
 
 /// Os pesos de Catmull-Rom em `t ∈ [0, 1)` para as amostras `−1, 0, 1, 2`.
@@ -138,8 +207,45 @@ impl<'a> PreparoVista<'a> {
         let cy0 = prende(c_de(v_min).floor() - 1.0, g.h);
         let cy1 = prende(c_de(v_max).floor() + 2.0, g.h);
         let (cw, ch) = (cx1 + 1 - cx0, cy1 + 1 - cy0);
-        let mut pre = vec![PreLuz::default(); cw * ch];
         let (mut linha, mut pre_linha) = (vec![0u8; g.w * 4], vec![PreLuz::default(); g.w]);
+        // s = 1 com a origem num centro: a linha de hoje, ao byte por construção.
+        let identidade = (vista.s == 1.0 && vista.x0.fract() == 0.0 && vista.y0.fract() == 0.0).then(|| {
+            let (ox, oy) = (vista.x0 as usize, vista.y0 as usize);
+            let mut img = vec![0u8; vista.w * vista.h * 4];
+            for (y, l) in img.chunks_mut(vista.w * 4).enumerate() {
+                crate::render::render_pigment_row_oleo(
+                    p,
+                    layers,
+                    visual,
+                    oleo,
+                    campo,
+                    oy + y + 1,
+                    ox + 1,
+                    ox + vista.w,
+                    &mut linha,
+                );
+                l.copy_from_slice(&linha[ox * 4..(ox + vista.w) * 4]);
+            }
+            img
+        });
+        if identidade.is_some() {
+            return Self {
+                oleo,
+                campo,
+                vista,
+                cx0,
+                cy0,
+                cw,
+                ch,
+                pre: Vec::new(),
+                lc: Vec::new(),
+                brilho: Vec::new(),
+                coef: Vec::new(),
+                sw: 0,
+                identidade,
+            };
+        }
+        let mut pre = vec![PreLuz::default(); cw * ch];
         for (j, cy) in (cy0..=cy1).enumerate() {
             render_pigment_row_oleo_pre(
                 p,
@@ -156,15 +262,24 @@ impl<'a> PreparoVista<'a> {
             pre[j * cw..(j + 1) * cw].copy_from_slice(&pre_linha[cx0 - 1..cx1]);
         }
         let mut lc = Vec::with_capacity(cw * ch);
-        let (mut brilho, mut fina) = (Vec::with_capacity(cw * ch), Vec::with_capacity(cw * ch));
+        let mut brilho = Vec::with_capacity(cw * ch);
         for cy in cy0..=cy1 {
             for cx in cx0..=cx1 {
                 let (x, y) = (cx as isize, cy as isize);
                 lc.push(luz_ceu_da_celula(oleo, campo, x, y));
                 brilho.push(campo.brilho_em(cx, cy));
-                fina.push(campo.at_fina(x, y));
             }
         }
+        let (sw, sh) = (cw + 2 * MARGEM_SPLINE, ch + 2 * MARGEM_SPLINE);
+        let mut coef = Vec::with_capacity(sw * sh);
+        for j in 0..sh {
+            for i in 0..sw {
+                let x = (cx0 + i) as isize - MARGEM_SPLINE as isize;
+                let y = (cy0 + j) as isize - MARGEM_SPLINE as isize;
+                coef.push(campo.at_fina(x, y));
+            }
+        }
+        prefiltro_2d(&mut coef, sw, sh);
         Self {
             oleo,
             campo,
@@ -176,8 +291,37 @@ impl<'a> PreparoVista<'a> {
             pre,
             lc,
             brilho,
-            fina,
+            coef,
+            sw,
+            identidade,
         }
+    }
+
+    /// A altura fina pela B-spline cúbica INTERPOLANTE em `(cx, cy)` (células, 1-based), com o gradiente e a hessiana
+    /// ANALÍTICOS (C2: contínuos através das células): `(h, hx, hy, hxx, hyy, hxy)` em unidades da célula.
+    fn spline(&self, cx: f64, cy: f64) -> [f64; 6] {
+        let bx = cx - (self.cx0 as f64 - MARGEM_SPLINE as f64);
+        let by = cy - (self.cy0 as f64 - MARGEM_SPLINE as f64);
+        let (fx, fy) = (bx.floor(), by.floor());
+        let (wx, wy) = (bspline(bx - fx), bspline(by - fy));
+        let (ix, iy) = (fx as usize - 1, fy as usize - 1);
+        let mut r = [0.0; 6];
+        for (j, (b0, b1, b2)) in wy.iter().enumerate() {
+            let linha = &self.coef[(iy + j) * self.sw + ix..(iy + j) * self.sw + ix + 4];
+            let (mut a0, mut a1, mut a2) = (0.0, 0.0, 0.0);
+            for (i, (c0, c1, c2)) in wx.iter().enumerate() {
+                a0 += c0 * linha[i];
+                a1 += c1 * linha[i];
+                a2 += c2 * linha[i];
+            }
+            r[0] += b0 * a0;
+            r[1] += b0 * a1;
+            r[2] += b1 * a0;
+            r[3] += b0 * a2;
+            r[4] += b2 * a0;
+            r[5] += b1 * a1;
+        }
+        r
     }
 
     /// Os eixos do pixel da vista `k` (pode ser `−1` ou `w`: a margem do Sobel) num eixo de origem `o0`.
@@ -186,28 +330,20 @@ impl<'a> PreparoVista<'a> {
         Eixo::de(u + 1.0 - c0 as f64, n)
     }
 
-    fn altura(&self, ex: &Eixo, ey: &Eixo) -> f64 {
-        cr_com(ex, ey, &|ix, iy| self.fina[ix + iy * self.cw], false)
-    }
-
     /// A linha `y` da vista (`w × 4` bytes RGBA). Pura: as linhas podem correr em paralelo.
     pub fn linha(&self, y: usize, out: &mut [u8]) {
         let Vista { x0, y0, w, s, .. } = self.vista;
-        let (cw, ch) = (self.cw, self.ch);
-        let ey = [-1isize, 0, 1].map(|d| self.eixo(y0, y as isize + d, self.cy0, ch));
-        let ex_de = |x: isize| self.eixo(x0, x, self.cx0, cw);
-        // As três linhas da altura ampliada com a margem de 1 px (o Sobel com o passo da vista).
-        let mut h = [vec![0.0; w + 2], vec![0.0; w + 2], vec![0.0; w + 2]];
-        let exs: Vec<Eixo> = (-1..=w as isize).map(ex_de).collect();
-        for (r, e) in ey.iter().enumerate() {
-            for (k, ex) in exs.iter().enumerate() {
-                h[r][k] = self.altura(ex, e);
-            }
+        if let Some(img) = &self.identidade {
+            out[..w * 4].copy_from_slice(&img[y * w * 4..(y + 1) * w * 4]);
+            return;
         }
-        let e = &ey[1];
-        let (s2, idx) = (s * s, |ix: usize, iy: usize| ix + iy * cw);
+        let (cw, ch) = (self.cw, self.ch);
+        let e = &self.eixo(y0, y as isize, self.cy0, ch);
+        let idx = |ix: usize, iy: usize| ix + iy * cw;
+        let centro = |o0: f64, k: usize| o0 + (k as f64 + 0.5) / s - 0.5 + 1.0;
+        let cy_f = centro(y0, y);
         for x in 0..w {
-            let ex = &exs[x + 1];
+            let ex = &self.eixo(x0, x as isize, self.cx0, cw);
             let q = PreLuz {
                 pr: cr(ex, e, &|i, j| self.pre[idx(i, j)].pr),
                 pg: cr(ex, e, &|i, j| self.pre[idx(i, j)].pg),
@@ -219,22 +355,17 @@ impl<'a> PreparoVista<'a> {
                 w: cr(ex, e, &|i, j| self.pre[idx(i, j)].w),
             };
             let px = if q.pa_sem > 0.0 && q.w > 0.0 {
-                let hh = |dx: isize, dy: isize| h[(1 + dy) as usize][(x as isize + 1 + dx) as usize];
-                let n = if hh(0, 0) == 0.0 {
+                let [_, fx, fy, hxx, hyy, hxy] = self.spline(centro(x0, x), cy_f);
+                // O papel é plano onde as 16 células à volta não têm relevo (a spline oscila perto da orla).
+                let papel = ex.i.iter().all(|&i| {
+                    e.i.iter().all(|&j| {
+                        let (cx, cy) = (self.cx0 + i, self.cy0 + j);
+                        self.campo.at_fina(cx as isize, cy as isize) == 0.0
+                    })
+                });
+                let n = if papel {
                     [-0.0, -0.0, 1.0]
                 } else {
-                    let fx = (hh(1, -1) + 2.0 * hh(1, 0) + hh(1, 1)
-                        - hh(-1, -1)
-                        - 2.0 * hh(-1, 0)
-                        - hh(-1, 1))
-                        / 8.0
-                        * s;
-                    let fy = (hh(-1, 1) + 2.0 * hh(0, 1) + hh(1, 1)
-                        - hh(-1, -1)
-                        - 2.0 * hh(0, -1)
-                        - hh(1, -1))
-                        / 8.0
-                        * s;
                     let inv = 1.0 / (fx * fx + fy * fy + 1.0).sqrt();
                     [-fx * inv, -fy * inv, inv]
                 };
@@ -254,9 +385,9 @@ impl<'a> PreparoVista<'a> {
                 });
                 let am = Amostra {
                     n,
-                    hxx: (hh(1, 0) - 2.0 * hh(0, 0) + hh(-1, 0)) * s2,
-                    hyy: (hh(0, 1) - 2.0 * hh(0, 0) + hh(0, -1)) * s2,
-                    hxy: (hh(1, 1) - hh(1, -1) - hh(-1, 1) + hh(-1, -1)) / 4.0 * s2,
+                    hxx,
+                    hyy,
+                    hxy,
                     lc: LuzCeu {
                         luz: cr(ex, e, &|i, j| self.lc[idx(i, j)].luz),
                         v: cr(ex, e, &|i, j| self.lc[idx(i, j)].v),
@@ -405,6 +536,72 @@ pub mod prova {
             }
         }
         out
+    }
+
+    /// O laplaciano (4 vizinhos) da luminância sobre o BRANCO, no interior (`(w−2) × (h−2)`, por linhas).
+    #[must_use]
+    pub fn laplaciano(rgba: &[u8], w: usize, h: usize) -> Vec<f64> {
+        let lum = |x: usize, y: usize| {
+            let p = &rgba[(x + y * w) * 4..(x + y * w) * 4 + 4];
+            let a = f64::from(p[3]) / 255.0;
+            let l = 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
+            l * a + 255.0 * (1.0 - a)
+        };
+        let mut v = Vec::with_capacity(w * h);
+        for y in 1..h - 1 {
+            for x in 1..w - 1 {
+                v.push(
+                    lum(x + 1, y) + lum(x - 1, y) + lum(x, y + 1) + lum(x, y - 1) - 4.0 * lum(x, y),
+                );
+            }
+        }
+        v
+    }
+
+    /// O PICO da célula: no laplaciano, a média da |DFT| 1D no bin do período `s` px (`n/s`) ÷ a média dos bins
+    /// vizinhos (`±1..=±3`), por linha e por coluna; devolve o maior dos dois. Detalhe verdadeiro ≈ 1; um padrão
+    /// periódico ao passo da célula sobe acima.
+    #[must_use]
+    pub fn pico_da_celula(rgba: &[u8], w: usize, h: usize, s: usize) -> f64 {
+        let l = laplaciano(rgba, w, h);
+        let (lw, lh) = (w - 2, h - 2);
+        let mag = |sinal: &dyn Fn(usize) -> f64, n: usize, k: usize| {
+            let (mut re, mut im) = (0.0, 0.0);
+            for j in 0..n {
+                let a = -2.0 * core::f64::consts::PI * (k * j) as f64 / n as f64;
+                re += sinal(j) * a.cos();
+                im += sinal(j) * a.sin();
+            }
+            re.hypot(im)
+        };
+        let razao = |linhas: usize, n: usize, at: &dyn Fn(usize, usize) -> f64| {
+            let k0 = (n as f64 / s as f64).round() as usize;
+            let (mut pico, mut viz) = (0.0, 0.0);
+            for r in 0..linhas {
+                let f = |j: usize| at(r, j);
+                pico += mag(&f, n, k0);
+                for d in 1..=3 {
+                    viz += (mag(&f, n, k0 - d) + mag(&f, n, k0 + d)) / 6.0;
+                }
+            }
+            pico / viz
+        };
+        let por_linha = razao(lh, lw, &|r, j| l[j + r * lw]);
+        let por_coluna = razao(lw, lh, &|r, j| l[r + j * lw]);
+        por_linha.max(por_coluna)
+    }
+
+    /// A fracção de pixels com `|lap − mediana| > 6 σ` robusto (`σ = 1,4826 · MAD`).
+    #[must_use]
+    pub fn fraccao_outliers(rgba: &[u8], w: usize, h: usize) -> f64 {
+        let l = laplaciano(rgba, w, h);
+        let mediana = |v: &mut Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        let med = mediana(&mut l.clone());
+        let sigma = 1.4826 * mediana(&mut l.iter().map(|q| (q - med).abs()).collect());
+        l.iter().filter(|q| (*q - med).abs() > 6.0 * sigma).count() as f64 / l.len() as f64
     }
 
     /// A variância do laplaciano (4 vizinhos) da luminância sobre o BRANCO de `rgba` (`w × h`), o interior.

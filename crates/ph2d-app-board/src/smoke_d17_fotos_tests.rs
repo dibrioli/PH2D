@@ -137,34 +137,114 @@ fn foto_d17_menu_and_delete_question() {
     shots.shot(&mut h, "apagar_kanban_pergunta");
 }
 
+/// 📷 Vista afastada (zoom 0,5), `place` larga no canvas vazio por cima do Kanban da cena 30, pinta até
+/// as imagens assentarem (o desenho descodifica fora do fio) e fotografa.
+fn shot_dropped(name: &str, place: impl FnOnce(&mut HeroScreen, [f32; 2])) {
+    let mut shots = crate::smoke::shots::Shots::new(DIR);
+    let (mut h, mut ts) = staged();
+    crate::images::install();
+    h.documents.active_board_mut().unwrap().camera.zoom = 0.5;
+    frame(&mut h, &mut ts);
+    place(&mut h, [HERO_VIEWPORT_W * 0.5, HERO_VIEWPORT_H * 0.17]);
+    let t0 = std::time::Instant::now();
+    while h.documents.images_pending() && t0.elapsed().as_secs() < 20 {
+        frame(&mut h, &mut ts);
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    for _ in 0..30 {
+        frame(&mut h, &mut ts);
+    }
+    shots.shot(&mut h, name);
+}
+
 /// 📷 O Kanban vazio largado no canvas do Quadro (a ponta da queda: `link::place_at`).
 #[test]
 #[ignore = "fotos: precisa da placa"]
 fn foto_d17_kanban_dropped_on_the_board() {
-    let mut shots = crate::smoke::shots::Shots::new(DIR);
+    shot_dropped("kanban_largado_no_quadro", |h, at| {
+        let empty = h
+            .documents
+            .asset_listing()
+            .into_iter()
+            .find_map(|(p, n)| match p {
+                DragPayload::Kanban { id } if n == tr("board.smoke.d17.empty_kanban") => Some(id),
+                _ => None,
+            });
+        let link = ph2d_editor_core::screens::hero::board_video::kanban::link::place_at;
+        assert!(link(h, empty.unwrap(), at.map(f64::from)).is_some());
+    });
+}
+
+/// 📷 A «Clouds» dos Assets largada no canvas vazio do «Production board», seleccionada.
+#[test]
+#[ignore = "fotos: precisa da placa"]
+fn foto_d17_image_dropped_on_the_board() {
+    shot_dropped("imagem_largada_no_quadro", |h, at| {
+        let (db, clouds) = factory_clouds();
+        assert!(crate::images::drop_asset(h, &db, clouds, at).is_none());
+    });
+}
+
+/// A arte de fábrica no `AssetDb` como a app a regista, e o blake3 da «Clouds».
+fn factory_clouds() -> (ph2d_asset::AssetDb, [u8; 32]) {
+    let (db, mut atlas) = (ph2d_asset::AssetDb::new(), Default::default());
+    ph2d_render::factory_images::register(&db, &mut atlas);
+    (db, *atlas[&ph2d_render::CLOUDS_TILE_KEY].as_bytes())
+}
+
+fn images(h: &HeroScreen) -> Vec<ph2d_board_model::Element> {
+    let live = h.documents.active_board().unwrap().doc.live();
+    live.filter(|e| e.image().is_some()).cloned().collect()
+}
+
+/// ⭐ D17 — a «Clouds» dos Assets largada no Quadro: UMA imagem com o meio no ponto, os píxeis do asset
+/// (PNG embutido) no tamanho dele, seleccionada (a barra dela pinta-se); `Ctrl+Z` tira-a e o asset fica.
+/// Sem píxeis no `AssetDb`, avisa e nada entra.
+#[test]
+fn asset_image_dropped_on_the_board_lands_selected_and_undoes() {
+    use ph2d_editor_core::screens::hero::{board_bar, board_keys};
     let (mut h, mut ts) = staged();
-    let empty = h
-        .documents
-        .asset_listing()
-        .into_iter()
-        .find_map(|(p, n)| match p {
-            DragPayload::Kanban { id } if n == tr("board.smoke.d17.empty_kanban") => Some(id),
-            _ => None,
-        })
-        .expect("o Kanban vazio");
-    if let Some(b) = h.documents.active_board_mut() {
-        b.camera.zoom = 0.5;
-    }
+    let (db, clouds) = factory_clouds();
+    let corners = board_bar::node(board_bar::Item::Round(true));
+    let bar = |h: &HeroScreen| {
+        (0..400 * 400)
+            .any(|i| h.hit_index.hit((i % 400 * 4) as f32, (i / 400 * 4) as f32) == Some(corners))
+    };
+    let before = images(&h);
+    assert!(!bar(&h));
+    let missing = crate::images::drop_asset(&mut h, &ph2d_asset::AssetDb::new(), [3; 32], [9.0; 2]);
+    assert!(missing.is_some_and(|t| t.message == tr("board.images.asset_missing")));
+    let at = [HERO_VIEWPORT_W * 0.5, HERO_VIEWPORT_H * 0.2];
+    assert!(crate::images::drop_asset(&mut h, &db, clouds, at).is_none());
+    let mut new = images(&h);
+    new.retain(|e| !before.iter().any(|o| o.id == e.id));
+    assert_eq!(new.len(), 1, "UMA imagem");
+    let (e, c, b) = (&new[0], h.last_canvas, h.documents.active_board().unwrap());
+    let s = b
+        .camera
+        .to_screen([c.x, c.y, c.w, c.h].map(f64::from), e.center());
+    assert!(
+        (0..2).all(|i| (s[i] - f64::from(at[i])).abs() < 1e-6),
+        "{s:?}"
+    );
+    let id = ph2d_asset::AssetId::from_digest(clouds);
+    let asset = db.get(&id).unwrap();
+    let (w, hh, px) = asset.image_rgba8().unwrap();
+    let file = b.file(e.image().unwrap().file).expect("os bytes no quadro");
+    assert_eq!((file.size, file.mime()), ([w, hh], Some("image/png")));
+    assert_eq!(
+        crate::images::decode(&file.bytes.0, None).unwrap().rgba,
+        *px
+    );
+    assert!((e.w / e.h - f64::from(w) / f64::from(hh)).abs() < 1e-6);
     frame(&mut h, &mut ts);
-    // O canvas vazio por cima do Kanban da cena 30, fora dos Assets.
-    let at = [
-        f64::from(HERO_VIEWPORT_W) * 0.5,
-        f64::from(HERO_VIEWPORT_H) * 0.17,
-    ];
-    let link = ph2d_editor_core::screens::hero::board_video::kanban::link::place_at;
-    assert!(link(&mut h, empty, at).is_some(), "a referência nasceu");
-    for _ in 0..30 {
-        frame(&mut h, &mut ts);
-    }
-    shots.shot(&mut h, "kanban_largado_no_quadro");
+    assert!(bar(&h), "a barra da imagem largada não está à vista");
+    let ctrl = ph2d_host::Modifiers {
+        ctrl: true,
+        ..Default::default()
+    };
+    let z = board_keys::BoardKey::Char('z');
+    assert!(board_keys::key(&mut h, &mut ts, z, ctrl, true, None, None).consumed);
+    assert_eq!(images(&h).len(), before.len(), "Ctrl+Z tira-a");
+    assert!(db.get(&id).is_some(), "o asset fica");
 }

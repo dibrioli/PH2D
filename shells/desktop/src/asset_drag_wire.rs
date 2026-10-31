@@ -277,6 +277,15 @@ impl crate::App {
             DropAction::SpawnImage { asset, world } => {
                 self.drop_spawn_image(asset, world);
             }
+            DropAction::PlaceImage { asset, at } => {
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(hero) = gfx.hero_screen.as_mut()
+                    && let Some(t) =
+                        ph2d_app_board::images::drop_asset(hero, &gfx.asset_db, asset, at)
+                {
+                    gfx.toasts.push(t);
+                }
+            }
             DropAction::Filecatalog { payload, catalog } => {
                 // ⚠️ Pelo BARRAMENTO, como todo verbo de catálogo: quem muta a taxonomia é o dreno,
                 // num sítio só. Mutá-la aqui seria a segunda porta.

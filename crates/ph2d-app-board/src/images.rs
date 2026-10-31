@@ -203,6 +203,27 @@ pub fn paste(hero: &mut HeroScreen, text: Option<&str>, size: [u32; 2], rgba: Ve
     insert_images(hero, vec![ImageFile::new(png, size)], None) > 0
 }
 
+/// ⭐ D17 — uma imagem dos Assets largada no quadro activo em `at` (ecrã): entra como o [`paste`] — PNG
+/// embutido (o quadro guarda bytes), pela lei de [`insert_images`]. `Some(aviso)` = sem píxeis.
+pub fn drop_asset(
+    h: &mut HeroScreen,
+    db: &ph2d_asset::AssetDb,
+    id: [u8; 32],
+    at: [f32; 2],
+) -> Option<Toast> {
+    let a = db.get(&ph2d_asset::AssetId::from_digest(id));
+    let file = a.as_deref().and_then(|a| {
+        let (w, hh, px) = a.image_rgba8()?;
+        let png = encode_png(&Pixels {
+            size: [w, hh],
+            rgba: px.into_owned(),
+        })?;
+        Some(ImageFile::new(png, [w, hh]))
+    });
+    let placed = file.map_or(0, |f| insert_images(h, vec![f], Some(at.map(f64::from))));
+    (placed == 0).then(|| Toast::warning(tr("board.images.asset_missing")))
+}
+
 /// O que o `Ctrl+V` num quadro fez ([`paste_clipboard`]).
 #[derive(Debug)]
 pub enum Paste {

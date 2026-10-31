@@ -124,6 +124,9 @@ pub enum DropAction {
     /// ⭐ D17 — uma referência NOVA ao Kanban `kanban` no quadro aberto, com o meio no ponto de ecrã
     /// `at`, seleccionada (UM passo de desfazer, que tira só a referência).
     PlaceKanban { kanban: u64, at: [f32; 2] },
+    /// ⭐ D17 — a imagem `asset` entra no quadro aberto com o meio no ponto de ecrã `at`, como uma imagem
+    /// largada do sistema (`ph2d_app_board::images::drop_asset`), seleccionada, UM passo de desfazer.
+    PlaceImage { asset: [u8; 32], at: [f32; 2] },
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
@@ -204,7 +207,11 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
             catalog,
         },
         (DragPayload::Kanban { .. } | DragPayload::Board { .. }, _) => DropAction::Refuse,
-        // ⛔ O quadro só recebe Kanbans dos Assets (as imagens chegam-lhe do sistema, `input_drop`).
+        // ⭐ D17 — e uma imagem dos Assets entra nele no ponto, como a do sistema.
+        (DragPayload::Image { asset }, DropTarget::BoardCanvas { at }) => {
+            DropAction::PlaceImage { asset, at }
+        }
+        // ⛔ Um prefab não tem elemento no quadro.
         (_, DropTarget::BoardCanvas { .. }) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
         (_, DropTarget::ScriptObject { .. }) => DropAction::Refuse,
@@ -319,8 +326,8 @@ mod tests {
         );
     }
 
-    /// ⭐ D17 — no Quadro aberto, um Kanban nasce no ponto; um Quadro (não há quadro dentro de quadro),
-    /// um prefab e uma imagem recusam, e a recusa do Quadro di-lo.
+    /// ⭐ D17 — no Quadro aberto, um Kanban e uma imagem nascem no ponto; um Quadro (não há quadro
+    /// dentro de quadro) e um prefab recusam, e a recusa do Quadro di-lo.
     #[test]
     fn asset_drop_on_the_board_canvas_places_a_kanban_and_refuses_a_board() {
         let on = DropTarget::BoardCanvas { at: [5.0, 6.0] };
@@ -331,10 +338,16 @@ mod tests {
                 at: [5.0, 6.0]
             }
         );
+        assert_eq!(
+            resolve(DragPayload::Image { asset: [7; 32] }, on),
+            DropAction::PlaceImage {
+                asset: [7; 32],
+                at: [5.0, 6.0]
+            }
+        );
         for p in [
             DragPayload::Board { id: 1 },
             DragPayload::Prefab { stable_id: 1 },
-            DragPayload::Image { asset: [0; 32] },
         ] {
             assert_eq!(resolve(p, on), DropAction::Refuse);
         }

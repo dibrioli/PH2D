@@ -4,6 +4,10 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "board.images.skipped" => "Skipped {count}: not an image",
+        // D17 — uma imagem dos Assets cujos píxeis já não estão no projeto.
+        "board.images.asset_missing" => {
+            "That image's pixels are missing: it cannot go on the board"
+        }
         // W17 — o cabeçalho leu-se, os dados não: a imagem fica partida no quadro.
         "board.images.unreadable" => "A picture on this board is damaged and cannot be shown",
         "board.video.covered" => {

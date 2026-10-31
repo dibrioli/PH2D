@@ -292,9 +292,12 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 }));
                 let mut lx = if wx {
                     0.0
+                } else if let Some(l) = ladeira {
+                    let o = l.em(frow + kfl) - l.em(frow + kfr);
+                    let d = film_m[kfl] as f64 - film_m[kfr] as f64;
+                    l.termo(d, o, f, c.level_k, c.dif, c.level_clamp)
                 } else {
-                    let o = ladeira.map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
-                    (film_m[kfl] as f64 - film_m[kfr] as f64 + o) * c.level_k * c.dif
+                    (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * c.level_k * c.dif
                 };
                 if lx > c.level_clamp {
                     lx = c.level_clamp;
@@ -303,11 +306,12 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 }
                 let mut ly = if wy {
                     0.0
+                } else if let Some(l) = ladeira {
+                    let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
+                    let d = film_u[kf] as f64 - film_d[kf] as f64;
+                    l.termo(d, o, f, c.level_k, c.dif, c.level_clamp)
                 } else {
-                    let o = ladeira.map_or(0.0, |l| {
-                        l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf)
-                    });
-                    (film_u[kf] as f64 - film_d[kf] as f64 + o) * c.level_k * c.dif
+                    (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * c.level_k * c.dif
                 };
                 if ly > c.level_clamp {
                     ly = c.level_clamp;

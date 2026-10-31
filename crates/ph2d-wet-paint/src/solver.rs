@@ -206,11 +206,12 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             }));
             let mut lx = if wx {
                 0.0
+            } else if let Some(l) = ladeira.as_ref() {
+                let o = l.em(frow + kfl) - l.em(frow + kfr);
+                let d = film_m[kfl] as f64 - film_m[kfr] as f64;
+                l.termo(d, o, f, level_k, dif, level_clamp)
             } else {
-                let o = ladeira
-                    .as_ref()
-                    .map_or(0.0, |l| l.em(frow + kfl) - l.em(frow + kfr));
-                (film_m[kfl] as f64 - film_m[kfr] as f64 + o) * level_k * dif
+                (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * level_k * dif
             };
             if lx > level_clamp {
                 lx = level_clamp;
@@ -219,11 +220,12 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             }
             let mut ly = if wy {
                 0.0
+            } else if let Some(l) = ladeira.as_ref() {
+                let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
+                let d = film_u[kf] as f64 - film_d[kf] as f64;
+                l.termo(d, o, f, level_k, dif, level_clamp)
             } else {
-                let o = ladeira.as_ref().map_or(0.0, |l| {
-                    l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf)
-                });
-                (film_u[kf] as f64 - film_d[kf] as f64 + o) * level_k * dif
+                (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * level_k * dif
             };
             if ly > level_clamp {
                 ly = level_clamp;
@@ -612,6 +614,8 @@ mod flow_jacobi;
 mod gota; // a lei da GOTA (W1e, F1) — instrumento das sondas, filho por LOC
 mod ladeira_do_oleo; // Bug 2 (dono 30/10): a altura do óleo assentado entra no nivelamento da água
 pub(crate) use ladeira_do_oleo::fotografa as fotografa_a_ladeira;
+#[doc(hidden)]
+pub use ladeira_do_oleo::sonda as sonda_da_queda; // J11: variantes da queda pela diluição, em execução
 mod project;
 mod sedimenta;
 pub use active_region::{rebuild_active_region, rebuild_active_region_rows};

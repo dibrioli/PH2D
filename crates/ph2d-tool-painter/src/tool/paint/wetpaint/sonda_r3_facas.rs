@@ -23,7 +23,8 @@ const FACAS: [&str; 6] = [
 #[ignore = "sonda R3: o preço da composição nas facas 4K"]
 fn sonda_r3_facas() {
     let (w, h) = (3840u32, 2160u32);
-    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes/WetPainter/Oil/Knife");
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/brushes/WetPainter/Oil/Knife");
     let presets: Vec<_> = FACAS
         .iter()
         .map(|n| {
@@ -47,7 +48,10 @@ fn sonda_r3_facas() {
         assert!(t.wet_preset_aplicar(&presets[k % FACAS.len()]).is_empty());
         t.set_brush_size_px(45.0);
         t.set_brush_color_srgb8([20, 150, 230]);
-        let (x0, y) = (if k % 10 < 5 { 70.0 } else { 650.0 }, 90.0 + 150.0 * (k % 5) as f32);
+        let (x0, y) = (
+            if k % 10 < 5 { 70.0 } else { 650.0 },
+            90.0 + 150.0 * (k % 5) as f32,
+        );
         let p = |x: f32, phase| CanvasPointer {
             pos: [x, y],
             pressure: 1.0,
@@ -73,7 +77,11 @@ fn sonda_r3_facas() {
                 sujo(&t),
                 b.paper.is_active(),
                 b.paper_depth,
-                t.paint.wetpaint.session.as_ref().map(|s| s.paper_key.is_some())
+                t.paint
+                    .wetpaint
+                    .session
+                    .as_ref()
+                    .map(|s| s.paper_key.is_some())
             );
         }
         t.on_canvas_pointer(p(x0, PointerPhase::Down));
@@ -89,7 +97,11 @@ fn sonda_r3_facas() {
                 && k < 2
                 && i < 40
             {
-                println!("  faca {k} move {i}: sujo {}×{} em ({x0},{y0})", x1 - x0 + 1, y1 - y0 + 1);
+                println!(
+                    "  faca {k} move {i}: sujo {}×{} em ({x0},{y0})",
+                    x1 - x0 + 1,
+                    y1 - y0 + 1
+                );
             }
             if i % 8 == 0 {
                 let _ = t.take_preview_arc();
@@ -104,7 +116,9 @@ fn sonda_r3_facas() {
         let _ = t.take_preview_arc();
         let (n1, m1, r1) = contagem::take();
         if k < 3 {
-            println!("  faca {k}: traço {n0} composições, {m0} células · drenagem do Up {n1}: {m1}/{r1}");
+            println!(
+                "  faca {k}: traço {n0} composições, {m0} células · drenagem do Up {n1}: {m1}/{r1}"
+            );
         }
         acum.0 += n0 + n1;
         acum.1 += m0 + m1;
@@ -117,6 +131,8 @@ fn sonda_r3_facas() {
         "sonda_r3_facas: {ms:.0} ms · {quadros} quadros · {n} composições · células/composição: motor {} render {} · campo {campo:.0} ms · pigmento {pig:.0} ms · sombra {som:.0} ms · loadavg {}",
         motor / n.max(1),
         render / n.max(1),
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
 }

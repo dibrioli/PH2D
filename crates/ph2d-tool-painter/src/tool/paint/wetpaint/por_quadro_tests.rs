@@ -65,7 +65,10 @@ fn confere(oleo: bool) {
     assert_ne!(evento[0], evento[evento.len() - 2], "a cena não pintou");
     for (i, (a, b)) in evento.iter().zip(&quadro).enumerate() {
         let n = a.iter().zip(b).filter(|(x, y)| x != y).count();
-        assert_eq!(n, 0, "foto {i} (óleo {oleo}): {n} bytes diferem entre evento e quadro");
+        assert_eq!(
+            n, 0,
+            "foto {i} (óleo {oleo}): {n} bytes diferem entre evento e quadro"
+        );
     }
 }
 
@@ -102,7 +105,10 @@ fn com_o_hospedeiro_a_drenar_o_move_nao_compoe() {
     }
     assert!(adiou, "nenhum Move adiou a composição");
     let _ = t.take_preview_arc();
-    assert!(!t.paint.wetpaint.composite_pendente, "a drenagem não compôs o pendente");
+    assert!(
+        !t.paint.wetpaint.composite_pendente,
+        "a drenagem não compôs o pendente"
+    );
     t.on_canvas_pointer(p(50.0, PointerPhase::Up));
 }
 
@@ -126,7 +132,10 @@ fn trocar_um_knob_de_render_entre_tracos_nao_recompoe_a_tela() {
     t.set_wet_relogio_fixo(true);
     t.set_wet_oleo_real_ligado(true);
     let mut emboss = Vec::new();
-    for (k, nome) in ["Knife Smooth 3", "Knife Textured", "Knife Smooth 3"].iter().enumerate() {
+    for (k, nome) in ["Knife Smooth 3", "Knife Textured", "Knife Smooth 3"]
+        .iter()
+        .enumerate()
+    {
         assert!(t.wet_preset_aplicar(&faca(nome)).is_empty());
         t.set_brush_size_px(20.0);
         let y = 40.0 + 40.0 * k as f32;
@@ -139,7 +148,14 @@ fn trocar_um_knob_de_render_entre_tracos_nao_recompoe_a_tela() {
         t.on_canvas_pointer(p(20.0, PointerPhase::Down));
         t.on_canvas_pointer(p(24.0, PointerPhase::Move));
         if k > 0 {
-            let sujo = t.paint.wetpaint.session.as_ref().expect("sessão").engine.dirty;
+            let sujo = t
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .expect("sessão")
+                .engine
+                .dirty;
             assert!(
                 !matches!(sujo, ph2d_wet_paint::painter::Dirty::Full),
                 "a troca para {nome} sujou a tela inteira"
@@ -151,14 +167,27 @@ fn trocar_um_knob_de_render_entre_tracos_nao_recompoe_a_tela() {
         t.on_canvas_pointer(p(200.0, PointerPhase::Up));
         let _ = t.take_preview_arc();
         emboss.push(
-            t.paint.wetpaint.session.as_ref().expect("sessão").engine.tuning.get(ph2d_wet_paint::tuning::Knob::Emboss),
+            t.paint
+                .wetpaint
+                .session
+                .as_ref()
+                .expect("sessão")
+                .engine
+                .tuning
+                .get(ph2d_wet_paint::tuning::Knob::Emboss),
         );
     }
     // Controlo: o knob mudou de facto entre os traços.
-    assert!(emboss[0] != emboss[1] && emboss[1] != emboss[2], "o Emboss não mudou: {emboss:?}");
+    assert!(
+        emboss[0] != emboss[1] && emboss[1] != emboss[2],
+        "o Emboss não mudou: {emboss:?}"
+    );
     let antes = t.imagem_aplicada().expect("tela").0;
     t.wet_recomposite_full();
     let depois = t.imagem_aplicada().expect("tela").0;
     let d = antes.iter().zip(&depois).filter(|(a, b)| a != b).count();
-    assert_eq!(d, 0, "a recomposição inteira mudou {d} bytes — o knob de render é lido globalmente");
+    assert_eq!(
+        d, 0,
+        "a recomposição inteira mudou {d} bytes — o knob de render é lido globalmente"
+    );
 }

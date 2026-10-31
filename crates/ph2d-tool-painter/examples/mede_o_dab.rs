@@ -73,7 +73,10 @@ fn tela(m: Motor, quadro: bool) -> PainterTool {
         t.set_wet_oleo_real_ligado(true);
         let o = t.wet_oleo_real().expect("o Óleo Real não ligou");
         if std::env::var_os("MEDE_ALCANCE").is_some() {
-            println!("alcance do óleo: {} células", ph2d_wet_paint::oleo_real::alcance(&o));
+            println!(
+                "alcance do óleo: {} células",
+                ph2d_wet_paint::oleo_real::alcance(&o)
+            );
         }
     }
     t.set_brush_color_srgb8([20, 150, 230]);
@@ -134,7 +137,10 @@ fn facas(presets: &[ph2d_brush_presets::Preset], quadro: bool) -> (f64, u64, u64
             assert!(falhas.is_empty(), "texturas por ler: {falhas:?}");
             t.set_brush_size_px(45.0);
             t.set_brush_color_srgb8([20, 150, 230]);
-            let (x0, y) = (if k < 5 { 70.0 } else { 650.0 }, 90.0 + 150.0 * (k % 5) as f32);
+            let (x0, y) = (
+                if k < 5 { 70.0 } else { 650.0 },
+                90.0 + 150.0 * (k % 5) as f32,
+            );
             t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
             let mut x = x0;
             for i in 0..MOVES {
@@ -169,11 +175,17 @@ fn cpu_s() -> f64 {
 }
 
 fn loadavg() -> String {
-    std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim().to_owned()
+    std::fs::read_to_string("/proc/loadavg")
+        .unwrap_or_default()
+        .trim()
+        .to_owned()
 }
 
 fn main() {
-    let rondas: usize = std::env::args().nth(1).and_then(|s| s.parse().ok()).unwrap_or(5);
+    let rondas: usize = std::env::args()
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5);
     let so = std::env::args().nth(2).unwrap_or_default();
     println!(
         "mede_o_dab {W}x{H} · rondas {rondas} · rayon {} · loadavg antes {}",
@@ -183,7 +195,7 @@ fn main() {
 
     // Variantes: (motor, modo) — cada uma na sua tela; modo `quadro` = a tela compõe na drenagem.
     let modos = [false, true];
-    if so != "facas" {
+    if so != "facas" && so != "janela" {
         let motores = [Motor::Digital, Motor::Wet, Motor::Oleo];
         // `MOTOR=Wet` · `MODO=quadro` · `RAIO=10`: só essas variantes (o `perf record` de uma).
         let motor_env = std::env::var("MOTOR").ok();
@@ -192,7 +204,11 @@ fn main() {
             .iter()
             .flat_map(|&m| modos.map(|q| (m, q)))
             .filter(|(m, _)| motor_env.as_ref().is_none_or(|e| *e == format!("{m:?}")))
-            .filter(|(_, q)| modo_env.as_ref().is_none_or(|e| e.starts_with("quadro") == *q))
+            .filter(|(_, q)| {
+                modo_env
+                    .as_ref()
+                    .is_none_or(|e| e.starts_with("quadro") == *q)
+            })
             .collect();
         let mut telas: Vec<PainterTool> = telas_de.iter().map(|&(m, q)| tela(m, q)).collect();
         let n = telas.len() * RAIOS.len();
@@ -218,7 +234,10 @@ fn main() {
                 let t = &mut telas[ti];
                 t.set_brush_size_px(RAIOS[ri]);
                 // Cada (raio, ronda) pinta tela FRESCA: faixas de 300 px, colunas por raio.
-                let (x0, y) = (40.0 + 900.0 * ri as f32, 140.0 + (300.0 * ronda as f32) % 1800.0);
+                let (x0, y) = (
+                    40.0 + 900.0 * ri as f32,
+                    140.0 + (300.0 * ronda as f32) % 1800.0,
+                );
                 let (ms, dabs, dep, comp) = traco(t, x0, y);
                 am[v].push((
                     1e3 * ms / MOVES as f64,
@@ -229,7 +248,9 @@ fn main() {
                 ));
             }
         }
-        println!("motor   modo    raio | µs/move min (med) | dabs/traço | µs/dab | depósito µs/dab | composite µs/move");
+        println!(
+            "motor   modo    raio | µs/move min (med) | dabs/traço | µs/dab | depósito µs/dab | composite µs/move"
+        );
         for (v, a) in am.iter().enumerate().filter(|(_, a)| !a.is_empty()) {
             let (ti, ri) = (v / RAIOS.len(), v % RAIOS.len());
             let col = |f: fn(&(f64, f64, f64, f64, f64)) -> f64| {
@@ -250,10 +271,44 @@ fn main() {
         }
         for (ti, t) in telas.iter_mut().enumerate() {
             let (m, q) = telas_de[ti];
-            println!("hash {m:?} {} {:016x}", if q { "quadro" } else { "evento" }, hash_da_tela(t));
+            println!(
+                "hash {m:?} {} {:016x}",
+                if q { "quadro" } else { "evento" },
+                hash_da_tela(t)
+            );
         }
     }
 
+    if so == "janela" {
+        // O pincel de 10 px numa tela onde só ele passou × numa onde antes passou um de 120 px (a janela do rasto).
+        let mut telas = [tela(Motor::Wet, true), tela(Motor::Wet, true)];
+        telas[1].set_brush_size_px(120.0);
+        let _ = traco(&mut telas[1], 40.0, 2000.0);
+        let mut am: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+        for t in &mut telas {
+            t.set_brush_size_px(10.0);
+            let _ = traco(t, 40.0, 1800.0);
+        }
+        for ronda in 0..rondas {
+            for k in 0..2 {
+                let ti = (k + ronda) % 2;
+                let (_, dabs, dep, _) = traco(
+                    &mut telas[ti],
+                    40.0 + 500.0 * (ronda % 7) as f32,
+                    100.0 + 200.0 * (ronda / 7) as f32,
+                );
+                am[ti].push(1e3 * dep / dabs.max(1) as f64);
+            }
+        }
+        for (ti, nome) in ["só o de 10", "depois do de 120"].iter().enumerate() {
+            let (mn, md) = min_med(&am[ti]);
+            println!("janela: raio 10 {nome}: depósito {mn:.1} µs/dab min ({md:.1} med)");
+        }
+        for (ti, t) in telas.iter_mut().enumerate() {
+            println!("hash janela {ti} {:016x}", hash_da_tela(t));
+        }
+        return;
+    }
     if so != "raios" {
         let presets: Vec<_> = NOMES.iter().map(|n| faca(n)).collect();
         // (nome, por quadro, dentro do pool)

@@ -26,6 +26,36 @@ fn recentra<T: Copy>(v: &mut Vec<T>, s0: usize, s1: usize, fill: T) {
 }
 
 impl Trail {
+    /// **A janela volta ao PISO** no início do traço (R3): o `start_stroke` repõe-na toda (pigmento 0, ponta na base,
+    /// limpo 1), e um texel que este pincel nunca toque fica assim (a limpeza é ponto fixo na base) — a janela que um
+    /// pincel largo deixou só fazia o fino pagar por ela (1 017 contra 262 µs por dab a 1 fio). O dab que precisa dela
+    /// cresce-a no lugar ([`Self::ensure_fits`]), como numa sessão nova. A tinta por célula e o `limpo` (alocados só
+    /// com a cor por célula) encolhem com o resto: a tinta de um texel com pigmento 0 é sobrescrita
+    /// (`deposit::pousa_a_tinta`), e o `limpo` o `start_stroke` repõe.
+    pub(super) fn volta_ao_piso(&mut self) {
+        if self.half <= super::TRAIL_HALF {
+            return;
+        }
+        self.half = super::TRAIL_HALF;
+        self.size = super::TRAIL_SIZE;
+        let n = (super::TRAIL_SIZE * super::TRAIL_SIZE) as usize;
+        for plano in [
+            &mut self.pig,
+            &mut self.water,
+            &mut self.mask,
+            &mut self.tip_r,
+            &mut self.tip_g,
+            &mut self.tip_b,
+            &mut self.limpo,
+            &mut self.tinta_r,
+            &mut self.tinta_g,
+            &mut self.tinta_b,
+        ] {
+            plano.truncate(n);
+            plano.shrink_to_fit();
+        }
+    }
+
     /// Cresce a janela até à meia-largura `half` (no-op se já cabe), com a âncora FIXA: cada plano é
     /// recentrado — o pigmento, a água e a máscara com zero à volta, o bico com a cor base e a fração limpa
     /// com `1` (o que um texel novo seria depois do `start_stroke`).

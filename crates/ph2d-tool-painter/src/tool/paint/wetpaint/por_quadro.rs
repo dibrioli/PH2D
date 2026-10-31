@@ -48,7 +48,10 @@ impl PainterTool {
     /// pool os passes dividem-se pela fila do próprio fio e quem chama trabalha. As contas são as mesmas, no
     /// mesmo fio ou noutro (as linhas de cada passe são independentes por contrato), logo os bytes também.
     /// Nos testes corre no fio do teste (os interruptores de teste são `thread_local!`).
-    pub(in crate::tool::paint) fn no_pool<R: Send>(&mut self, f: impl FnOnce(&mut Self) -> R + Send) -> R {
+    pub(in crate::tool::paint) fn no_pool<R: Send>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> R + Send,
+    ) -> R {
         if cfg!(test)
             || rayon::current_thread_index().is_some()
             || !crate::wet_diag::NO_POOL.load(std::sync::atomic::Ordering::Relaxed)

@@ -265,6 +265,7 @@ impl Default for Trail {
 
 impl Trail {
     pub fn start_stroke(&mut self, x: f64, y: f64, color: [f64; 3], mode: TrailMode) {
+        self.volta_ao_piso();
         self.pig.fill(0.0);
         self.water.fill(0.0);
         self.mask.fill(0.0);

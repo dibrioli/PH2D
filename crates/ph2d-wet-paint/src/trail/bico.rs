@@ -25,6 +25,7 @@ impl Trail {
         }
         let size = self.size as usize;
         let (base_r, base_g, base_b) = (self.base_r, self.base_g, self.base_b);
+        let base32 = [base_r as f32, base_g as f32, base_b as f32];
         let (half, ax, ay) = (self.half, self.anchor_x, self.anchor_y);
         let (s, w, h) = (g.s, g.w as i32, g.h as i32);
         let tip_retain = 1.0 - p.k(Knob::Pickup);
@@ -49,7 +50,14 @@ impl Trail {
             // pincel nunca mais limpava. Num pincel dentro do teto do modelo os
             // dois números coincidem ⇒ o fingerprint segue byte-idêntico POR
             // CONSTRUÇÃO. Gate: `the_tip_cleaning_covers_the_live_window_…`.
-            if clean > 0.0 {
+            // Uma linha toda na cor base (e limpa) é ponto fixo da limpeza com `clean ≤ 1`: `f32(b) + (b − f32(b))·k`
+            // fica em `[f32(b), b]` e arredonda de volta a `f32(b)` (R3: a janela do traço largo é quase toda assim).
+            let na_base = clean <= 1.0
+                && tr.iter().all(|&v| v == base32[0])
+                && tg.iter().all(|&v| v == base32[1])
+                && tb.iter().all(|&v| v == base32[2])
+                && limpo.as_deref().is_none_or(|w| w.iter().all(|&v| v == 1.0));
+            if clean > 0.0 && !na_base {
                 for l in 0..tr.len() {
                     tr[l] = (tr[l] as f64 + (base_r - tr[l] as f64) * clean) as f32;
                     tg[l] = (tg[l] as f64 + (base_g - tg[l] as f64) * clean) as f32;

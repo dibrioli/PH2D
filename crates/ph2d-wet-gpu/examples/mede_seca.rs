@@ -327,7 +327,7 @@ fn diag(
                 .map(|c| (cpu.sett_rgb[i][c] - livre.sett_rgb[i][c]).abs())
                 .fold(0.0f32, f32::max);
             if dr <= 0.002 {
-                eprintln!("  secagem {k}: lockstep ≤ 0,002 · livre sett_rgb gap {gap:.4} sett {} susp {} film {}", cpu.sett[i], cpu.susp[i], cpu.film[i]);
+                eprintln!("  secagem {k}: lockstep ≤ 0,002 · livre sett_rgb gap {gap:.4} · CPU sett {} susp {} film {} · placa livre sett {} susp {} film {}", cpu.sett[i], cpu.susp[i], cpu.film[i], livre.sett[i], livre.susp[i], livre.film[i]);
                 continue;
             }
             eprintln!("  livre gap {gap:.4}");

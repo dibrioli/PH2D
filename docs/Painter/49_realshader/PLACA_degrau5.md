@@ -106,6 +106,23 @@ arredondar a f32 no fim ⇒ massas ao bit (quase sempre) com a CPU ⇒ sem deriv
 igual. Depois: gate de cor 4K nas duas placas, 1 secagem e 512×320 verdes, ms da secagem 4K (≤ +10 % de 5,15).
 ms 4K nesta ronda (RTX, sem mudança de código no shader): secagem 5,15 · passo 7,94 · com secagem 9,16.
 
+## Ronda 4 (31/10) — confirmado o degrau; o double-float das massas NÃO pegou (revertido)
+
+**Confirmado** (`SECA_DIAG`, massas do estado livre): na saída da secagem 17 a CPU tem sett **393,00015**
+(índice 393) e a placa **392,99988** (índice 392) — a secagem 18 lê `a_s` noutro degrau da tabela e o
+`sett_rgb` salta 2,83. A deriva vem do `film` (1 ulp: 0,31373724 × 0,313737) e daí `lost`/`dm`.
+
+**Tentado e revertido** (cópia em `scratchpad/seca_df.wgsl`): as massas em double-float (two-sum, Dekker/
+`fma`, `ddiv` com 2 resíduos, `alpha_dd` pelo df, parte `lo` dos 7 parâmetros no `SecaU`, `um = 1` opaco
+contra a simplificação do driver). Emulado em numpy f32 o df dá a CPU ao bit; **na placa (RADV) nada muda**:
+massa 1 secagem 2,0e-5 → 1,9e-5, 40 438 células com `film` ≠, gate 4K máx **1,0055** igual, ms 5,15 → 5,45.
+Célula 1507 (512×320): a referência f64 refeita no teste = a CPU ao bit (film 0,50435275, sett 32,67882);
+o f32 INGÉNUO emulado também dá film 0,50435275 — a placa dá **0,5043527**, pior que o f32 ingénuo, com
+ou sem df. ⇒ o erro da placa NÃO é a aritmética das massas tal como escrita: suspeita = o compilador do
+driver (contracção em `fma`/reassociação sem `NoContraction` — o naga não decora) ou outra entrada.
+**Próximo:** um shader-sonda de 1 célula que grave os intermédios (`ev`, `f·ret`, `nf` hi/lo) num buffer,
+nas duas placas, para ver qual operação a placa arredonda diferente; só então escolher a cura.
+
 ## Falta (por ordem)
 
 1. **Radeon**: `WGPU_ADAPTER_NAME=radeon` não escolhe a placa (o `GpuContext::new` ignora) — correr o gate

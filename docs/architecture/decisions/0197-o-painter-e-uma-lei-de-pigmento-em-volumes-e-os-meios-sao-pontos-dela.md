@@ -136,7 +136,15 @@ que a regera. A ajuda ilustrada (F5) usa as MESMAS imagens geradas pelo motor (a
 
 ## Em aberto (decide-se por MEDIÇÃO na F4)
 
-- ⛔ **A lei de MISTURA de cor está SUSPENSA (dono 31/10):** *«o modo de mistura … é experimental … veja como apps de
+- ✅ **DECIDIDA (31/10, pelo critério do dono — robustez acima de realismo):** mistura por omissão = **Oklab pesado pelo
+  VOLUME** (associativa: N passadas = uma; deriva 0 em 20 vidrados; nunca abaixo da mais escura; ganho de ruído 1,0×;
+  [`F2b`](../../Painter/Arquitetura/F2b_mistura_de_cor_nos_apps.md), `fotos/f2b_misturas/`). A eq. (1) passa a ter
+  como estado o volume total + a cor Oklab média pesada pelo volume; $(K,S)$ por banda DERIVAM da cor misturada (+
+  transparência) só para a CAMADA (2)–(3), que fica. Lema 1 vale «em L Oklab». Opcional por pincel «Pigment mix»
+  (azul + amarelo = verde): WGM 10 bandas (libmypaint, ISC, já em `espectral.rs`) — só se o dono o pedir.
+  ⛔ Recusas MEDIDAS: K-M 3 bandas (abaixo da mais escura 38,9 %, 9/13 pares não monótonos, ruído 20×, azul+amarelo
+  `1,48,1`), Mixbox (CC BY-NC — licença), peso por luminância (preto+branco = branco). As 5 leis de mistura colapsam em 1.
+- (histórico) **A lei de MISTURA de cor estava SUSPENSA (dono 31/10):** *«o modo de mistura … é experimental … veja como apps de
   sucesso como Procreate preferem a mescla de cor; vamos usar o que traz resultados consistentes e robustos mais
   garantidos.»* O §1 separa-se em duas: a lei de CAMADA em volumes (cobertura derivada, conservação, zero inversas —
   fica) e a lei de MISTURA (K-M 3 bandas é a PROPOSTA, não a decisão). Decide-a

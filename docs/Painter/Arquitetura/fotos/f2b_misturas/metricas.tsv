@@ -1,0 +1,9 @@
+# gerado por docs/Painter/Arquitetura/ferramentas/misturas.py (F2b, 31/10); semente 31102026
+lei	fora_de_gama_amostras	fora_de_gama_max	extremos_dE	L_abaixo_do_mais_escuro_x100	pares_L_nao_monotona	lama_min_C_meio_rel	azul+amarelo_meio_srgb	azul+amarelo_hue	azul+amarelo_C	ruido_ganho_max	ruido_dE_max	identidade_dE_max	deriva_20x_dE_max	deriva_20x_L_medio_x100	vidrado20_escurece_alem_x100	vidrado20_dist_final_dE	custo_ns_por_mistura_numpy
+sRGB	0	0	0	9.35	3	0.122	(126, 122, 66)	105	0.0765	6.14	0.395	0	0	0	9.47	9.33	6.64
+RGB linear	0	0	0	0	0	0.128	(185, 156, 96)	84.5	0.0857	1.14	0.408	2.22e-14	0	0	0	12.9	39.6
+Oklab	7	0.00206	6.78e-14	0	0	0.103	(118, 131, 123)	160	0.0179	1	3.36	9.76e-14	0	0	0	12.1	69.1
+K-M 3b	0	0	4.64	38.9	9	0.304	(1, 48, 1)	143	0.09	20.2	2.65	4.64	0	0	39.3	100	48.5
+WGM 10b	34	0.0456	0.391	7.88	3	0.0869	(48, 104, 83)	166	0.0696	4.44	1.48	0.391	0	0	7.79	25.2	159
+K-M 10b	130	0.206	1.21	16.5	6	0.196	(0, 69, 67)	192	0.0606	3.67	1.73	1.21	0.997	-0.000729	16.6	100	192
+K-M 10b L	92	0.205	1.21	16.5	6	0.0357	(31, 154, 58)	146	0.171	3.8	13.3	1.21	0.822	-0.00305	16.4	42.6	229

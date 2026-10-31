@@ -382,6 +382,8 @@ pub struct BrushSettings {
     pub dab_angle_deg: u16,
     /// **Square tip** (`0..1`; `0` = round) — the corner of the footprint (prompt 44).
     pub dab_quina: f32,
+    /// **Rotation smoothing** (L3; `0` = the heading of always) — `BrushSpec::dab_rotation_lag`.
+    pub dab_rotation_lag: f32,
     /// **Flat ends** (J6; `false` = the round ends of the dab) — `BrushSpec::pontas_rectas`.
     pub pontas_rectas: bool,
     /// How far the flat cut passes the end centres, in dab radii — `BrushSpec::pontas_alem`.

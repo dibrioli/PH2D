@@ -408,6 +408,7 @@ impl PainterTool {
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
             dab_quina: b.dab_quina,
+            dab_rotation_lag: b.dab_rotation_lag,
             pontas_rectas: b.pontas_rectas,
             pontas_alem: b.pontas_alem,
             pontas_esbate: b.pontas_esbate,

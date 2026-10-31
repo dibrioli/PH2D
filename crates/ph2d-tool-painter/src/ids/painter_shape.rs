@@ -222,6 +222,11 @@ pub const PAINTER_BRUSH_DAB_FLATTEN: NodeId = hash_node_id("painter_brush.dab_fl
 /// Dab **Square tip** value sink (`0..1`, prompt 44). `SetValue` → `set_brush_dab_quina`.
 pub const PAINTER_BRUSH_DAB_QUINA: NodeId = hash_node_id("painter_brush.dab_quina");
 
+/// **Rotation smoothing** value sink (`0..4` diameters, L3). `SetValue` → `set_brush_dab_rotation_lag`.
+pub const PAINTER_BRUSH_DAB_ROTATION_LAG: NodeId = hash_node_id("painter_brush.dab_rotation_lag");
+/// O tecto do campo de [`PAINTER_BRUSH_DAB_ROTATION_LAG`] (`ph2d_painter_brush::heading::ROTATION_LAG_MAX`).
+pub const PAINTER_BRUSH_DAB_ROTATION_LAG_MAX: f32 = ph2d_painter_brush::heading::ROTATION_LAG_MAX;
+
 /// **Flat ends** checkbox (J6). `Click` → `toggle_brush_pontas_rectas`.
 pub const PAINTER_BRUSH_PONTAS_RECTAS: NodeId = hash_node_id("painter_brush.pontas_rectas");
 

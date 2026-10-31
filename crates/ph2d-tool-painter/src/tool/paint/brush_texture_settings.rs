@@ -208,6 +208,13 @@ impl PainterTool {
         self.paint.brush.dab_quina = v.clamp(0.0, 1.0);
     }
 
+    /// Set the **Rotation smoothing** (L3, diameters of travel, clamped to `heading::ROTATION_LAG_MAX`): the tip
+    /// turns after the stroke with inertia ([`ph2d_painter_brush::BrushSpec::dab_rotation_lag`]); `0` = as before.
+    pub fn set_brush_dab_rotation_lag(&mut self, v: f32) {
+        self.paint.brush.dab_rotation_lag =
+            v.clamp(0.0, ph2d_painter_brush::heading::ROTATION_LAG_MAX);
+    }
+
     /// **Flat ends** on/off (J6) — the stroke starts and ends cut straight across its heading
     /// ([`ph2d_painter_brush::BrushSpec::pontas_rectas`]; only the Wet Paint reads it).
     pub fn toggle_brush_pontas_rectas(&mut self) {

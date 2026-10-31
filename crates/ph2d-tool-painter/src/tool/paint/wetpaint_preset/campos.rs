@@ -2,7 +2,7 @@
 //! de `wetpaint_preset` por LOC.
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 41] = [
+pub const CAMPOS_DO_PINCEL: [&str; 42] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -32,6 +32,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 41] = [
     "dab_flatten",
     "dab_angle_deg",
     "dab_quina",
+    // A ponta que gira com inércia (L3): gravada só ligada.
+    "dab_rotation_lag",
     // As pontas rectas do traço (J6): gravadas só ligadas.
     "pontas_rectas",
     "pontas_alem",

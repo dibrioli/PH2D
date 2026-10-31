@@ -35,6 +35,22 @@ pub(crate) fn paint_pontas_do_molhado(
         2,
         sec,
     );
+    // A ponta que GIRA com inércia (L3): quantos diâmetros de caminho a ponta leva a seguir a curva.
+    y = crate::number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.shape.rotation_smoothing"),
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_ROTATION_LAG,
+        brush.dab_rotation_lag,
+        0.0,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_ROTATION_LAG_MAX,
+        crate::number_field::FINE_STEP,
+        2,
+        sec,
+    );
     // As pontas RECTAS do traço (J6): o início e o fim cortados a direito — a fita do pastel, não a meia-lua.
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,

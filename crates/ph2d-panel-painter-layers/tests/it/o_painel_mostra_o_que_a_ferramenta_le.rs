@@ -127,8 +127,10 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 18] = [
+const DEPOSITO_MOLHADO: [NodeId; 19] = [
     PAINTER_BRUSH_DAB_QUINA,
+    // A ponta que gira com inércia (L3).
+    PAINTER_BRUSH_DAB_ROTATION_LAG,
     // As pontas rectas (J6): o corte do traço que o pincel pousa.
     PAINTER_BRUSH_PONTAS_RECTAS,
     PAINTER_BRUSH_PONTAS_ALEM,

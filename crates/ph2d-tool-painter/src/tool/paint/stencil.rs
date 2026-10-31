@@ -400,6 +400,9 @@ impl PainterTool {
             x if x == crate::ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
             x if x == crate::ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
             x if x == crate::ids::PAINTER_BRUSH_DAB_QUINA => self.set_brush_dab_quina(v),
+            x if x == crate::ids::PAINTER_BRUSH_DAB_ROTATION_LAG => {
+                self.set_brush_dab_rotation_lag(v);
+            }
             x if x == crate::ids::PAINTER_BRUSH_PONTAS_ALEM => self.set_brush_pontas_alem(v),
             x if x == crate::ids::PAINTER_BRUSH_PONTAS_ESBATE => self.set_brush_pontas_esbate(v),
             x if x == crate::ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),

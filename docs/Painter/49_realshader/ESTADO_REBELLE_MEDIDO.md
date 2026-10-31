@@ -45,3 +45,9 @@ do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px).
 Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecção (advect_jacobi, scratch, par, sedimenta), CAP-01 + 6 pincéis (painter-brush spec/footprint/pen, mao.rs, inercia/).
 
 ## Próxima alavanca (estudo 31/10, explorador): a água na PLACA = 3–4 janelas (ADR-0146 PROPOSTA; paridade passa à forma Jacobi do ADR-0147, épsilon por placa). 1.º degrau numa janela: advecção na placa com leitura de volta, ms RTX/Radeon. CPU restante: secagem ~46 % (aritmética K–M por avaliação), advecção ~20 %, fluxo ~10 %.
+
+## 31/10 tarde — feito e aberto
+- Placa (crates/ph2d-wet-gpu): passo inteiro da água com secagem 1 em 6 = **9,24 ms 4K RTX** (Radeon 142) vs Rebelle 37,3 CPU; paridade por placa (PLACA_degrau1..5.md). ⛔ aberto: 1 célula 1,0055 > 1 nível na cena 4K Glaze (driver arredonda f32 diferente; double-float não pegou; próximo: shader de 1 célula com intermédios — PLACA_degrau5 ronda 4).
+- Ligação ao app (degraus A+B, PH2D_WET_GPU) — agente em curso → LIGACAO_PLACA.md.
+- R3 pintar 4K 20 facas: 17,9 → **5,4 s** (Rebelle 8 s) ao bit. R1 Wet Wash/Liner + EdgeSoftMass. R2 Charcoal/Wax/Square Hard, Splatter, Thick Impasto. Juntados: 5a48fc7fc6 8c792f0330 8c1f5881cd e881e53ad9 (fábrica 74).
+- Fecho por fazer: regerar 22 miniaturas (em curso, coordenador); Borracha Wet controlo inerte (agente); clippy assenta/ponto.rs:38 e fmt advect_* (R1 apontou); testes lentos do painel já lentos na base (cada_ferramenta_da_agua…, cada_linha_visivel…); fmt/clippy das crates tocadas; mutação nos gates novos (assenta_bit, flow_bit, advect_bit, historia_cow, paridade placa); handoff HANDOFF_SUPERAR_REBELLE.md; rodada calma A/B/C do nucleos_wash.

@@ -338,6 +338,7 @@ fn resolve(
     alvo: [f64; 3],
     cego: f64,
     ecra: impl Fn([f64; 3]) -> [f64; 3],
+    canal: impl Fn([f64; 3], usize) -> f64,
 ) -> [f64; 3] {
     const H: f64 = 0.5;
     let mut y = ecra(x);
@@ -352,7 +353,8 @@ fn resolve(
             } else {
                 x[c] - H
             };
-            let d = (ecra(xh)[c] - y[c]) / (xh[c] - x[c]);
+            // A derivada lê só o canal `c`: `canal(x, c) == ecra(x)[c]` ao bit (31/10, `assenta_bit_tests`).
+            let d = (canal(xh, c) - y[c]) / (xh[c] - x[c]);
             // Onde o ecrã quase não vê esta cor (o filme grosso esconde o assentado) o palpite físico
             // fica: corrigi-lo ali escrevia uma cor ESCONDIDA que aparecia quando o filme afinava
             // (medido: o miolo esverdeava +24 ao secar).
@@ -440,9 +442,14 @@ pub fn assenta(
         }
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
         let h2 = tapa(e, a_f2);
-        return resolve(x0, alvo, cego, |x| {
-            prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x)).sobre_branco()
-        });
+        let ecra = |x: [f64; 3]| prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x));
+        return resolve(
+            x0,
+            alvo,
+            cego,
+            |x| ecra(x).sobre_branco(),
+            |x, c| ecra(x).sobre_branco_canal(c),
+        );
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_f2 <= 0.0 {
@@ -470,7 +477,8 @@ pub fn assenta(
                 };
                 [0, 1, 2].map(|c| sc[c] + (uc[c] - sc[c]) * w)
             };
-            resolve(x0, alvo, CEGO, |x| cor(e, x, uc, a_s2, a_f2))
+            let ecra = |x| cor(e, x, uc, a_s2, a_f2);
+            resolve(x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
         }
     }
 }
@@ -502,9 +510,14 @@ fn levanta_cobre(
         [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
     };
     let h2 = tapa(e, a_f2);
-    resolve(x0, alvo, CEGO, |x| {
-        prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x)).sobre_branco()
-    })
+    let ecra = |x: [f64; 3]| prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x));
+    resolve(
+        x0,
+        alvo,
+        CEGO,
+        |x| ecra(x).sobre_branco(),
+        |x, c| ecra(x).sobre_branco_canal(c),
+    )
 }
 
 /// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a
@@ -564,7 +577,8 @@ pub fn levanta(
                 let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
                 [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
             };
-            resolve(x0, alvo, CEGO, |x| cor(e, sc, x, a_s2, a_f2))
+            let ecra = |x| cor(e, sc, x, a_s2, a_f2);
+            resolve(x0, alvo, CEGO, ecra, |x, c| ecra(x)[c])
         }
     }
 }

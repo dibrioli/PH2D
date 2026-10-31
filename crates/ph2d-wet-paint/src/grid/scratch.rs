@@ -27,7 +27,7 @@ pub struct AdvCell {
 /// razão que aqueles não entram — o conteúdo dele é reescrito inteiro dentro
 /// de um passe, então não há nada que um histórico pudesse preservar.
 ///
-/// ⚠️ **Alocado PREGUIÇOSAMENTE** ([`SolverScratch::ensure`]): são 24 B por
+/// ⚠️ **Alocado PREGUIÇOSAMENTE** ([`SolverScratch::ensure`]): são 25 B por
 /// célula, e um `Grid` que nunca dá um passo (o carimbo de um dab, uma
 /// restauração de histórico) não os paga.
 #[derive(Default)]
@@ -43,6 +43,10 @@ pub struct SolverScratch {
     /// A fração da massa que DEIXA cada célula neste passo — a soma dos pesos
     /// com que os destinos da vizinhança a puxam.
     pub outflow: Vec<f32>,
+    /// A linha-base do retro-traço de cada destino, como `y − floor(y − uy)` (cabe em `i8`: `|uy| ≤ 3`);
+    /// [`Self::BT_NADA`] para o inativo ou o que sai da folha. Deixa o `outflow_rows` filtrar as `2·alcance+1`
+    /// linhas candidatas por um byte em vez de um retro-traço inteiro.
+    pub bt: Vec<i8>,
     /// O estado de destino, antes do *commit*.
     pub dst: Vec<AdvCell>,
     /// Quantos dos nove vizinhos carregam pigmento, **lidos ANTES** de a
@@ -74,12 +78,16 @@ impl Clone for SolverScratch {
 }
 
 impl SolverScratch {
+    /// O [`Self::bt`] de quem não puxa nada.
+    pub const BT_NADA: i8 = i8::MIN;
+
     /// Garante os planos com `n` células. Idempotente e sem realocar depois da
     /// primeira vez.
     pub fn ensure(&mut self, n: usize) {
         if self.outflow.len() != n {
             self.uv = vec![[0.0; 2]; n];
             self.outflow = vec![0.0; n];
+            self.bt = vec![Self::BT_NADA; n];
             self.dst = vec![AdvCell::default(); n];
             self.edge = vec![0; n];
         }

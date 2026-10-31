@@ -56,7 +56,7 @@
 
 use crate::colorops::km_weighted_mean_color;
 use crate::flow::{flow_at_cell, flow_at_point};
-use crate::grid::{AdvCell, Grid, span_x_of};
+use crate::grid::{AdvCell, Grid, SolverScratch, span_x_of};
 use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::tuning::Knob;
@@ -328,8 +328,32 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let uv: &[[f32; 2]] = &scratch.uv;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
+    // A linha-base de cada destino, 1× (antes: um retro-traço por linha candidata, `2·alcance+1`).
+    {
+        let uv: &[[f32; 2]] = &scratch.uv;
+        let active: &[u8] = active;
+        par::walk_rows(mode, &mut scratch.bt[band.clone()], s, |ri, row| {
+            let y = by0 + ri as i32;
+            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+            let mut di = lo.max(0) as usize + y as usize * s;
+            for x in lo..=hi {
+                // ⚠️ `active ⊆ faixa` (invariante do `verify_spans`), então todo destino que passa daqui
+                // teve o `uv` escrito pelo `prepare_rows`.
+                let uvd = uv[di];
+                row[x as usize] = match backtrace(x, y, f64::from(uvd[0]), f64::from(uvd[1]), wf, hf)
+                {
+                    Some((_, _, y0, _)) if active[di] != 0 => {
+                        i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
+                    }
+                    _ => SolverScratch::BT_NADA,
+                };
+                di += 1;
+            }
+        });
+    }
+    let uv: &[[f32; 2]] = &scratch.uv;
+    let bt: &[i8] = &scratch.bt;
     par::walk_rows(mode, &mut scratch.outflow[band], s, |ri, row| {
         let y = by0 + ri as i32;
         let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
@@ -343,13 +367,13 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
             if slo > shi {
                 continue;
             }
+            // O destino puxa desta linha se a base dele é `y` (`ny − y0 = ny − y`) ou `y − 1`.
+            let (d_base, d_cima) = ((ny - y) as i8, (ny - y + 1) as i8);
             let rowbase = ny as usize * s;
             for nx in slo..=shi {
                 let di = nx as usize + rowbase;
-                // ⚠️ `active ⊆ faixa` (invariante do `verify_spans`), então
-                // todo destino que passa daqui teve o `uv` escrito pelo
-                // `prepare_rows`.
-                if active[di] == 0 {
+                let d = bt[di];
+                if d != d_base && d != d_cima {
                     continue;
                 }
                 let uvd = uv[di];

@@ -188,6 +188,21 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
         },
         modo: "Smear",
     },
+    // NOSSO (missão «superar o Rebelle», 31/10): o PINCEL DE ÁGUA limpa — a ferramenta Wet (sem pigmento) que re-molha o
+    // que está no papel, LEVANTA o assente (`wetLift` 0,25 → 0,7: a tinta volta a correr e a sangrar) e EMPURRA a frente
+    // da água com o gesto (`waterPush` 0,35, o arrasto). Água por dab acima da de omissão (1,5). Sem motor novo.
+    // ⚠️ A água muita sobre o molhado abriu anel escuro no Mop (R1 §2): o 1.º botão do smoke é `waterPerDab`.
+    ReceitaFerramenta {
+        receita: Receita {
+            meio: "Water",
+            grupo: "Clean",
+            nome: "Water Brush",
+            extras: &[("waterPerDab", 1.5), ("wetLift", 0.7), ("waterPush", 0.35)],
+            nasce_de: Some("Blender Soft"),
+            ..BLENDER_SOFT
+        },
+        modo: "Wet",
+    },
 ];
 
 pub const MEIOS: &[ReceitaMeio] = &[
@@ -736,10 +751,10 @@ fn aplicar_um_preset_da_agua_nao_mexe_no_pincel() {
         let antes = t.retrato_do_pincel_da_agua();
         t.preset_aplicar(&crate::midias_de_fabrica::de_fabrica(nome))
             .unwrap();
-        let esperada = if f.modo == "Smear" {
-            F::SmearMolhado
-        } else {
-            F::BlendMolhado
+        let esperada = match f.modo {
+            "Smear" => F::SmearMolhado,
+            "Wet" => F::Molhar,
+            _ => F::BlendMolhado,
         };
         if t.ferramenta_dos_presets() != Some(esperada) {
             falhas.push(format!(
@@ -900,7 +915,7 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
     };
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
-    let esperado: [(F, &[&str]); 6] = [
+    let esperado: [(F, &[&str]); 7] = [
         (
             F::Borracha,
             &["Hard Eraser", "Kneaded Eraser", "Texture Eraser"],
@@ -927,6 +942,7 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
                 "Blender Textured",
             ],
         ),
+        (F::Molhar, &["Water Brush"]),
     ];
     for (f, nomes) in esperado {
         let mut achados: Vec<&str> = b

@@ -73,7 +73,55 @@ pub const WET: &[Receita] = &[
     KNIFE_STAIN,
     DABBER_4,
     METALLIC_FLAT,
+    FAN_BRUSH,
 ];
+
+/// NOSSO (missão «superar o Rebelle», 31/10): o LEQUE de folhagem e textura — cerdas finas e ESPAÇADAS numa pegada larga
+/// através do traço, que somem e voltam em troços curtos (o traço partido). Sem Real Oil nem relevo (≠ o «Fan» óleo do
+/// `EM_ESTUDO_W2`, reprovado pela régua da cerda). Composto sem motor novo sobre os tufos do Express Oil (a Shape de
+/// cerdas dele): fios de 1,5 px que crescem com o pincel, desvio de cada fio da faixa, pressão por fio forte que muda a
+/// cada 30 px e a mão leve que os levanta, ponta desfiada. ⚠️ O ARCO do leque (fios em curva) não existe no motor: a
+/// pegada é a elipse achatada a 90°. Afinação no smoke do dono.
+const FAN_BRUSH: Receita = Receita {
+    meio: "Acrylic",
+    grupo: "Fan",
+    nome: "Fan Brush",
+    water: 0.3,
+    opacity: 0.9,
+    pigment: 140.0,
+    pickup: 1.0,
+    gate: 0.2,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 7.0,
+    bristle_count: 300.0,
+    hardness: 0.9,
+    size_px: Some(48.0),
+    extras: &[
+        ("felt", 0.0),
+        ("emboss", 0.05),
+        ("bristleStrength", 2.0),
+        ("bristleLaneWidth", 1.5),
+        ("bristleLaneSizeExp", 0.8),
+        ("bristleSpan", 2.0),
+        ("bristleSpanLength", 20.0),
+        ("bristlePressure", 3.0),
+        ("bristleNoiseLength", 30.0),
+        ("bristleLift", 1.5),
+        ("bristleTipRagged", 0.6),
+        ("bristleOscillation", 1.0),
+        ("dabRotation", 0.0),
+        ("pressureSize", 0.3),
+        ("pressureOpacity", 0.6),
+        ("pressureOpacityCurve", 1.0),
+    ],
+    grao: None,
+    achatado: Some((0.75, 90)),
+    pincel: &[("jitter", "0.0")],
+    nasce_de: Some("Express Oil"),
+    real_oil: false,
+};
 
 // `dabberc_032` (prompt 53): o Oil Bristle de cerdas largas, mais relevo e a ponta espalhada (jitter) — a esponja.
 // L13 (J2, 20/10): a esponja é REDONDA (o vertical do Rebelle tem a largura do deitado: 38/38) e morde o papel; a

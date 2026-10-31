@@ -7,38 +7,68 @@ use super::prelude::*;
 const PIGMENTO_DA_GUACHE: f64 = 100.0;
 /// A curva da pressão → opacidade (prompt 45, doc 45 §2): a rampa da cena seca contra o Rebelle — 0,42 (0,43).
 const CURVA_DA_GUACHE: f64 = 2.0;
+const SEM_KM: (&str, f64) = crate::presets_de_fabrica::SEM_KM;
 
 pub const WET: &[Receita] = &[
     // A guache FLAT do Rebelle (`gouacheflat`, Gouache › Gouache Flat): a ponta do Wet Flat, mais alta que larga, e o
     // DOBRO da tinta (cobertura 0,50 × 0,32). A Gouache Round não entra: no Rebelle ela é o nosso Round (18 §4.3).
+    GOUACHE_FLAT,
+    // NOSSO (missão «superar o Rebelle», 31/10): a guache OPACA — cobre o escuro, borda firme, seca plana e mate. Composta
+    // sem motor novo: a ponta redonda dura da Flat, o dobro da tinta, a cobertura do molhado (`wetCover` 1, J6 lacuna 7),
+    // sem orla nem dente do papel (seca plana), parede no próprio traço (não empurra o que está por baixo), seca depressa
+    // e sem o brilho do molhado. Afinação no smoke do dono. ⚠️ Não é a «Gouache Round» do `EM_ESTUDO` (nome distinto).
     Receita {
-        meio: "Watercolor",
-        grupo: "Gouache",
-        nome: "Gouache Flat",
-        water: 1.0,
-        opacity: 1.0,
-        pigment: PIGMENTO_DA_GUACHE,
-        pickup: 1.0,
-        gate: 0.4,
-        evaporation: 1.0,
-        edge: 12.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.9,
-        size_px: None,
+        nome: "Gouache Opaque",
+        pigment: 2.0 * PIGMENTO_DA_GUACHE,
+        gate: 0.0,
+        edge: 0.0,
+        hardness: 0.95,
+        achatado: None,
         extras: &[
-            ("pressureSize", 0.3),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", CURVA_DA_GUACHE),
+            ("pressureSize", 0.4),
+            ("pressureOpacity", 0.5),
+            ("pressureOpacityCurve", 1.0),
+            ("wetCover", 1.0),
+            ("levelingOwnStroke", 1.0),
+            ("retention", 0.97),
+            ("extWetSheen", 0.0),
+            ("felt", 0.0),
+            SEM_KM,
         ],
-        grao: None,
-        achatado: Some((0.2, 90)),
-        pincel: &[("dab_quina", "1.0")],
-        nasce_de: None,
-        real_oil: false,
+        pincel: &[("dab_quina", "0.0"), ("dab_flatten", "0.0")],
+        nasce_de: Some("Gouache Flat"),
+        ..GOUACHE_FLAT
     },
 ];
+
+/// A Gouache Flat de fábrica, base das guaches que nascem dela.
+const GOUACHE_FLAT: Receita = Receita {
+    meio: "Watercolor",
+    grupo: "Gouache",
+    nome: "Gouache Flat",
+    water: 1.0,
+    opacity: 1.0,
+    pigment: PIGMENTO_DA_GUACHE,
+    pickup: 1.0,
+    gate: 0.4,
+    evaporation: 1.0,
+    edge: 12.0,
+    tilt: DIREITA,
+    bristle_size: 2.0,
+    bristle_count: 2000.0,
+    hardness: 0.9,
+    size_px: None,
+    extras: &[
+        ("pressureSize", 0.3),
+        ("pressureOpacity", 1.0),
+        ("pressureOpacityCurve", CURVA_DA_GUACHE),
+    ],
+    grao: None,
+    achatado: Some((0.2, 90)),
+    pincel: &[("dab_quina", "1.0")],
+    nasce_de: None,
+    real_oil: false,
+};
 
 /// ⛔ Os REPROVADOS da J4 (`docs/Painter/Pinceis/exames/guache.md`): a receita medida fica para quando o motor que lhes
 /// falta existir — sem ficheiro de preset (a fábrica são os aprovados e os pré-existentes).

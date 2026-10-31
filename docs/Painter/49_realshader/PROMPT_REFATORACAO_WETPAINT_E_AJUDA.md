@@ -48,7 +48,9 @@ quem escreve · quem lê · o leitor DECIDE? · faixa · em que meios age · uni
 
 **F2 — Literatura → grandezas físicas.** Kubelka–Munk (mistura e camada fina sobre fundo), Curtis et al. 1997
 (aquarela: água, pigmento em suspensão/depositado, granulação), Baxter IMPaSTo 2004 e dAb (óleo: volume, empasto,
-pick-up/deposit), Rebelle como ORÁCULO que se corre (`reference_rebelle_trial_installed_under_wine`). Saída: a tabela
+pick-up/deposit). ⛔ **Dono 31/10 noite: o Rebelle DEIXA de ser referência** — *«podemos nos tornar nós mesmos como
+nossa própria cara, buscando o melhor a partir de nós»*: a régua é a física + a varredura + o olho do dono; portões
+de paridade com o Rebelle viram candidatos a reescrever/sair (o ADR diz quais). Saída: a tabela
 «controlo ↔ grandeza ↔ equação ↔ fonte», e a lista do que NÃO tem grandeza (candidato a sair ou a fundir).
 
 **F3 — ADR da arquitetura nova.** Proposta de partida (a validar pela F1/F2):

@@ -457,11 +457,20 @@ fn transport_rows(g: &mut Grid, p: &Params, mode: Rows) {
                     let w10 = fx * (1.0 - fy);
                     let w01 = (1.0 - fx) * fy;
                     let w11 = fx * fy;
-                    // ⚠️ A escala é a da FONTE — ver o módulo.
-                    let k00 = w00 * take_scale(outflow[i00] as f64);
-                    let k10 = w10 * take_scale(outflow[i10] as f64);
-                    let k01 = w01 * take_scale(outflow[i01] as f64);
-                    let k11 = w11 * take_scale(outflow[i11] as f64);
+                    // ⚠️ A escala é a da FONTE — ver o módulo. Com as quatro saídas ≤ 1 (o caso
+                    // comum) a escala é `1` e `w · 1 == w` ao bit: um teste em vez de quatro.
+                    let (o00, o10, o01, o11) =
+                        (outflow[i00], outflow[i10], outflow[i01], outflow[i11]);
+                    let (k00, k10, k01, k11) = if o00.max(o10).max(o01.max(o11)) <= 1.0 {
+                        (w00, w10, w01, w11)
+                    } else {
+                        (
+                            w00 * take_scale(o00 as f64),
+                            w10 * take_scale(o10 as f64),
+                            w01 * take_scale(o01 as f64),
+                            w11 * take_scale(o11 as f64),
+                        )
+                    };
                     let p00 = susp[i00] as f64 * k00;
                     let p10 = susp[i10] as f64 * k10;
                     let p01 = susp[i01] as f64 * k01;

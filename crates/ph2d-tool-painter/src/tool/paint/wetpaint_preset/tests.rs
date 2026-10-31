@@ -173,6 +173,7 @@ fn pincel_mexido() -> BrushSpec {
         dab_flatten: 0.3,
         dab_angle_deg: 25,
         dab_quina: 0.6,
+        dab_rotation_lag: 1.5,
         pontas_rectas: true,
         pontas_alem: 0.5,
         pontas_esbate: 1.25,

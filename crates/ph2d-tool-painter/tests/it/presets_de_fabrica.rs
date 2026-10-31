@@ -15,6 +15,7 @@
 mod memoria;
 mod portoes;
 pub(crate) mod regua_da_largura;
+mod sonda_miniatura_oleo;
 mod sondas;
 
 use super::receitas_de_fabrica::{

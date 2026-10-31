@@ -92,6 +92,44 @@ Brush) — só o coordenador.
 
 `architecture_workspace_file_loc_cap` e `architecture_no_orphan_source_file` verdes (`ph2d-editor-core`).
 
+## 7. Miniaturas do óleo pelo caminho EXATO do portão (agente MINIATURAS-ÓLEO)
+
+A §5 bissectou por outro caminho e só viu 6 pincéis. Sonda `#[ignore]`
+`presets_de_fabrica::sonda_miniatura_oleo::sonda_miniaturas_bingham_x_piso` (`tests/it/presets_de_fabrica/sonda_miniatura_oleo.rs`):
+percorre os MESMOS `ficheiros_de_fabrica()` com o MESMO `miniatura_do_preset` do portão, e em cada um que difere pinta
+4 variantes no mesmo processo (`PAPEL_BINGHAM = −1` = sem τ_y; `trail::sonda::SEM_PISO`). HEAD `b7f54356d6` (Dabber,
+Dabber 4, Fan Brush já regerados). Correr:
+`PH2D_SONDA_FOTOS=<pasta> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --test it sonda_miniaturas_bingham_x_piso -- --ignored --nocapture` (30 s).
+
+**O portão reprova 11 pincéis, não 9** (a saída cortava Knife Textured e Metallic Flat). Px diferentes da fábrica:
+
+| pincel | produto | sem Bingham | sem piso | sem os dois | máx Δ canal | causa | julgamento |
+|---|---|---|---|---|---|---|---|
+| Oil/Flat/Filbert | 18 013 | **0** | 18 013 | 0 | 69 | Bingham | cura: o sal das franjas some, ficam as estrias das cerdas — **regerar** |
+| Oil/Flat/Flat Bristle | 31 046 | **0** | 31 046 | 0 | 63 | Bingham | idem — **regerar** |
+| Oil/Flat/Tilted Shade | 25 312 | **0** | 25 312 | 0 | 54 | Bingham | idem — **regerar** |
+| Oil/Flat/Thick Impasto | 19 919 | **0** | 19 919 | 0 | 185 | Bingham | ⚠️ o relevo do miolo fica MAIS picado: mais vincos e covas escuras na metade de baixo (o commit `191b3ff` já dizia: Bingham não cura as crateras do Thick Impasto W 0,5) — **NÃO regerar** |
+| Oil/Knife/Knife Dry | 16 700 | **0** | 16 700 | 0 | 132 | Bingham | só a orla pontilhada; corpo igual — **regerar** |
+| Oil/Knife/Knife Grainy | 13 552 | **0** | 13 552 | 0 | 155 | Bingham | grão mantido, diferença espalhada e fraca — **regerar** |
+| Oil/Knife/Knife Oily | 20 184 | **0** | 20 184 | 0 | 161 | Bingham | a crosta pontilhada some, ficam os vincos lisos e o brilho da aresta (cura); ⚠️ as duas pontas ficam moles/esbatidas em vez de cortadas — **regerar, com a ressalva ao dono** |
+| Oil/Knife/Knife Smooth 3 | 13 911 | **0** | 13 911 | 0 | 153 | Bingham | quase invisível — **regerar** |
+| Oil/Knife/Knife Stain | 4 345 | **0** | 4 345 | 0 | 222 | Bingham | o padrão de furos é o mesmo; Δ em píxeis isolados — **regerar** |
+| Oil/Knife/Knife Textured | 6 588 | **0** | 6 588 | 0 | 88 | Bingham | ruído fino — **regerar** |
+| Oil/Metallic/Metallic Flat | 16 945 | **0** | 16 945 | 0 | 146 | Bingham | ⚠️ perde TODO o grão (o «brilho» de flocos da orla) e vira traço de aerógrafo liso com pontas esbatidas — o carácter metálico da miniatura some — **NÃO regerar sem o dono** |
+
+**Causa única: Bingham.** O piso do espalhar não move nenhum (sem piso = produto, ao px); a E4 não entra (sem
+Bingham = 0 px, logo a receita nova pinta estes pincéis igual à fábrica). Nenhum pincel fica fora de 0 com alguma
+variante. Nenhum mostra furo novo, perda de cor do corpo nem borda partida; o que muda é a orla (o pontilhado da tinta
+que escorria para as franjas deixa de existir) — e em dois o desaparecimento desse pontilhado leva o carácter junto.
+
+Fotos (fábrica · produto · |dif|×4), em [`fotos/fecho_31_10/oleo/`](fotos/fecho_31_10/oleo/):
+`filbert`, `flat_bristle`, `thick_impasto`, `tilted_shade`, `knife_dry`, `knife_grainy`, `knife_oily`,
+`knife_smooth_3`, `knife_stain`, `knife_textured`, `metallic_flat` (`<nome>_fabrica_x_bingham_x_dif4.png`).
+
+**Para o coordenador:** `PH2D_REGERA_SO="Filbert,Flat Bristle,Tilted Shade,Knife Dry,Knife Grainy,Knife Oily,Knife Smooth 3,Knife Stain,Knife Textured"`.
+**Não regerar** Thick Impasto (relevo mais picado — o defeito de crateras é da E7 por fechar) nem Metallic Flat
+(perde o carácter) — com eles por regerar o portão fica vermelho em 2, e isso é verdade: decide o dono / a E7.
+
 ## Por fazer
 
 - Regerar as miniaturas Oil Dabber, Dabber 4 (Bingham) e Fan Brush (1 px) — coordenador; depois o portão

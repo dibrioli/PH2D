@@ -5,6 +5,7 @@
 
 use super::prelude::*;
 
+mod arrasto_agua;
 mod motor;
 mod secador;
 mod sonda_agua;
@@ -190,14 +191,20 @@ pub const WET_FERRAMENTAS: &[ReceitaFerramenta] = &[
     },
     // NOSSO (missão «superar o Rebelle», 31/10): o PINCEL DE ÁGUA limpa — a ferramenta Wet (sem pigmento) que re-molha o
     // que está no papel, LEVANTA o assente (`wetLift` 0,25 → 0,7: a tinta volta a correr e a sangrar) e EMPURRA a frente
-    // da água com o gesto (`waterPush` 0,35, o arrasto). Água por dab acima da de omissão (1,5). Sem motor novo.
+    // da água com o gesto (`waterPush` 0,35) e LEVA o levantado pelo traço (`waterDrag` 0,8, `arrasto_agua.rs`: a cor
+    // esbate na direcção do gesto, a origem clareia). Água por dab acima da de omissão (1,5).
     // ⚠️ A água muita sobre o molhado abriu anel escuro no Mop (R1 §2): o 1.º botão do smoke é `waterPerDab`.
     ReceitaFerramenta {
         receita: Receita {
             meio: "Water",
             grupo: "Clean",
             nome: "Water Brush",
-            extras: &[("waterPerDab", 1.5), ("wetLift", 0.7), ("waterPush", 0.35)],
+            extras: &[
+                ("waterPerDab", 1.5),
+                ("wetLift", 0.7),
+                ("waterPush", 0.35),
+                ("waterDrag", 0.8),
+            ],
             nasce_de: Some("Blender Soft"),
             ..BLENDER_SOFT
         },

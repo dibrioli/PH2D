@@ -350,9 +350,10 @@ pub enum Knob {
     /// toca primeiro e as laterais só com pressão. `0` (omissão) = a pegada de sempre, ao bit.
     TuftArc,
     /// ⭐ **A água ARRASTA o que levantou** (31/10, missão «superar o Rebelle», o Water Brush): o dab da ferramenta Wet
-    /// leva o pigmento SUSPENSO do dab anterior para o actual com a força `WaterDrag × carimbo` (`tools/smear.rs`
-    /// `apply_water_drag`) — a cor esbate na direcção do gesto e a origem clareia (o rasto puxa o vazio de trás). Só o
-    /// suspenso e nunca o papel: o assentado chega pela porta do `WetLift`. `0` (omissão) = a água de sempre, ao bit.
+    /// TRANSPORTA a fracção `WaterDrag × carimbo` do pigmento SUSPENSO pelo passo do traço (`tools/arrasto_agua.rs`
+    /// `apply_water_drag`) — a cor esbate na direcção do gesto e a origem clareia; a massa conserva-se e nenhuma célula
+    /// passa do total que ela ou a origem já tinham. Só o suspenso e nunca o papel: o assentado chega pela porta do
+    /// `WetLift`. `0` (omissão) = a água de sempre, ao bit.
     WaterDrag,
 }
 

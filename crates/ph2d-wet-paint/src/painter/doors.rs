@@ -359,6 +359,11 @@ impl Engine {
         let rect = match tool {
             Tool::Wet => {
                 let agua = apply_wet(&mut layer.grid, &p, &tex, &dab, water_unit);
+                // A água que ARRASTA o que levantou ([`Knob::WaterDrag`]; `0` = nada a fazer, ao byte).
+                let arrasta = prev.and_then(|pv| {
+                    crate::tools::apply_water_drag(&mut layer.grid, &p, &tex, &dab, pv[0], pv[1])
+                });
+                let agua = crate::trail::TouchedRect::union(agua, arrasta);
                 // A água que EMPURRA ([`Knob::WaterPush`]; `0` = nada a fazer, ao byte).
                 let empurra =
                     prev.and_then(|pv| crate::tools::apply_wet_push(&mut layer.grid, &p, &dab, pv));

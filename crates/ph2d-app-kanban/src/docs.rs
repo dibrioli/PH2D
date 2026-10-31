@@ -43,6 +43,8 @@ pub struct KanbanDocs {
     pub(crate) focus: Option<u64>,
     /// O relógio do chrome (ns) no último quadro, o do quadro anterior, e a lei das molas.
     pub(crate) clock: (u128, u128),
+    /// D17 — há uma seta de barra segura: pede quadros sem eventos.
+    pub(crate) held: bool,
     pub(crate) law: Option<Spring>,
     /// A área da aba no último quadro.
     pub(crate) area: Rect,
@@ -76,6 +78,7 @@ impl Default for KanbanDocs {
             histories: BTreeMap::new(),
             focus: None,
             clock: (0, 0),
+            held: false,
             law: Some(Spring::default()),
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
             over: None,

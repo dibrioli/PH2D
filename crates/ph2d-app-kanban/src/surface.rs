@@ -247,7 +247,7 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn wants_frame(&self) -> bool {
-        crate::front::cover::pending() || crate::back::attach::loading()
+        crate::front::cover::pending() || crate::back::attach::loading() || self.held
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -313,7 +313,9 @@ impl KanbanDocs {
             };
         }
         match kind {
-            PointerKind::Down => crate::pointer::down(self, id, input.text, button, x, y),
+            PointerKind::Down => {
+                crate::pointer::down(self, id, input.text, button, (x, y, input.now_ns))
+            }
             PointerKind::Up => crate::pointer::up(self, id, input.text, input.now_ns, x, y),
             PointerKind::Move => crate::pointer::moved(self, id, input.text, x, y),
         }

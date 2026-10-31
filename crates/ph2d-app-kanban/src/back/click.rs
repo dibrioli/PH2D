@@ -121,7 +121,7 @@ pub(crate) fn down(
         }
         Some(BackHit::Pop(PopHit::ChoiceBar)) => {
             if let Some(Pop::Choice(c)) = b.pop.as_mut() {
-                c.s.press_bar(y);
+                c.s.press_bar(y, now_ns);
             }
         }
         Some(BackHit::Pop(PopHit::Picker)) => {
@@ -189,7 +189,7 @@ pub(crate) fn up(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
     b.desc.pointer_up();
     b.comment.pointer_up();
     if let Some(Pop::Choice(c)) = b.pop.as_mut() {
-        c.s.grab = None;
+        c.s.release();
     }
     let press = b.press.take();
     let now = b.hit(x, y);

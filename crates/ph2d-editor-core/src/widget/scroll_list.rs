@@ -5,6 +5,7 @@
 use super::scrollbar::{
     ScrollbarState, delta_for_drag, is_needed, thumb_color, thumb_rect, track_rect,
 };
+use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::paint_shapes::fill_polygon;
 use crate::zones::Rect;
@@ -24,6 +25,51 @@ pub struct AxisBar {
     /// Setas ▲/▼ (◀/▶) nas pontas da calha, cada uma rola `step` (D16, a barra do Trello).
     pub arrows: bool,
     pub step: f32,
+}
+
+/// ⭐ **Segurar = repetir** (D17, o idioma do Chrome e do Trello): o carregar já deu um passo; depois
+/// do atraso, um passo a cada intervalo, até largar. Os tempos são a lei de segurar do app — os da
+/// seta da caixa numérica ([`STEPPER_HOLD_INITIAL_DELAY_NS`], [`STEPPER_REPEAT_INTERVAL_NS`]); o
+/// atraso de 250 ms é também o do Chromium nas setas da barra. O relógio é injectado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HoldRepeat {
+    since: u128,
+    fired: u128,
+}
+
+impl HoldRepeat {
+    /// Armada no carregar, em `now_ns`.
+    #[must_use]
+    pub const fn new(now_ns: u128) -> Self {
+        Self {
+            since: now_ns,
+            fired: 0,
+        }
+    }
+
+    /// Os passos vencidos até `now_ns` e ainda não dados. `on = false` (o rato saiu do alvo) deita-os
+    /// fora: o relógio continua e a repetição retoma quando o rato volta, como no Chrome.
+    pub fn due(&mut self, now_ns: u128, on: bool) -> u32 {
+        let t = now_ns.saturating_sub(self.since);
+        let total = t
+            .checked_sub(STEPPER_HOLD_INITIAL_DELAY_NS)
+            .map_or(0, |r| 1 + r / STEPPER_REPEAT_INTERVAL_NS);
+        let n = total.saturating_sub(self.fired);
+        self.fired = self.fired.max(total);
+        if on {
+            u32::try_from(n).unwrap_or(u32::MAX)
+        } else {
+            0
+        }
+    }
+}
+
+/// Uma seta da [`AxisBar`] segura: a direcção, onde o rato está agora e o relógio da repetição.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ArrowHold {
+    pub dir: f32,
+    pub at: (f32, f32),
+    pub rep: HoldRepeat,
 }
 
 /// O comprimento de cada ponta com seta, por espessura da barra — medido na captura do Trello do dono
@@ -112,6 +158,25 @@ impl AxisBar {
         ((a - v.y) / v.h.max(1.0) * self.content - self.visible / 2.0).clamp(0.0, self.max())
     }
 
+    /// [`Self::press`] em `now_ns`, e a seta segura se carregou numa.
+    #[must_use]
+    pub fn press_held(&self, p: (f32, f32), scroll: f32, now_ns: u128) -> (f32, Option<ArrowHold>) {
+        let hold = self.arrow_at(p).map(|dir| ArrowHold {
+            dir,
+            at: p,
+            rep: HoldRepeat::new(now_ns),
+        });
+        (self.press(p, scroll), hold)
+    }
+
+    /// A seta segura em `now_ns`: os passos vencidos, só com o rato sobre ela. A rolagem nova.
+    #[must_use]
+    pub fn repeat(&self, h: &mut ArrowHold, scroll: f32, now_ns: u128) -> f32 {
+        let n = h.rep.due(now_ns, self.arrow_at(h.at) == Some(h.dir));
+        let n = f32::from(u16::try_from(n).unwrap_or(u16::MAX));
+        (scroll + h.dir * self.step * n).clamp(0.0, self.max())
+    }
+
     /// O arrasto do polegar agarrado em `from` (com a rolagem `s0` de então) até `to`.
     #[must_use]
     pub fn drag(&self, from: (f32, f32), s0: f32, to: (f32, f32)) -> f32 {
@@ -167,6 +232,8 @@ impl AxisBar {
 pub struct ScrollList {
     pub scroll: f32,
     pub grab: Option<(f32, f32)>,
+    /// A seta segura (D17).
+    pub hold: Option<ArrowHold>,
     pub view: Rect,
     pub track: Option<Rect>,
     pub content_h: f32,
@@ -200,21 +267,44 @@ impl ScrollList {
         }
     }
 
-    /// Carregar na barra: numa seta rola uma linha; no polegar agarra-o; na calha salta o polegar
-    /// para lá, e agarra.
-    pub fn press_bar(&mut self, y: f32) {
+    /// Carregar na barra em `now_ns`: numa seta rola uma linha e segura-a; no polegar agarra-o; na
+    /// calha salta o polegar para lá, e agarra.
+    pub fn press_bar(&mut self, y: f32, now_ns: u128) {
         let Some(track) = self.track else {
             return;
         };
-        let bar = self.bar(track);
-        self.scroll = bar.press((track.x, y), self.scroll);
-        if bar.arrow_at((track.x, y)).is_none() {
+        let (s, hold) = self
+            .bar(track)
+            .press_held((track.x, y), self.scroll, now_ns);
+        self.scroll = s;
+        self.hold = hold;
+        if hold.is_none() {
             self.grab = Some((y, self.scroll));
         }
     }
 
-    /// O arrasto do polegar até `y`.
+    /// Cada quadro: a seta segura repete ([`AxisBar::repeat`]). `true` = há uma seta segura (o
+    /// chamador pede quadros enquanto for).
+    pub fn tick(&mut self, now_ns: u128) -> bool {
+        let (Some(mut h), Some(track)) = (self.hold, self.track) else {
+            return false;
+        };
+        self.scroll = self.bar(track).repeat(&mut h, self.scroll, now_ns);
+        self.hold = Some(h);
+        true
+    }
+
+    /// Largar a barra: solta o polegar e a seta.
+    pub fn release(&mut self) {
+        self.grab = None;
+        self.hold = None;
+    }
+
+    /// O arrasto do polegar até `y` (com uma seta segura, só o sítio do rato).
     pub fn drag_bar(&mut self, y: f32) {
+        if let (Some(h), Some(track)) = (self.hold.as_mut(), self.track) {
+            h.at = (track.x, y);
+        }
         let (Some((y0, s0)), Some(track)) = (self.grab, self.track) else {
             return;
         };
@@ -307,5 +397,58 @@ mod tests {
         assert_eq!(b.thumb(0.0).y, 12.0, "a ponta de 12 / 9 da espessura");
         let t = b.thumb(b.max());
         assert_eq!(t.y + t.h, 288.0);
+    }
+
+    const D: u128 = STEPPER_HOLD_INITIAL_DELAY_NS;
+    const I: u128 = STEPPER_REPEAT_INTERVAL_NS;
+
+    /// D17 — a lei de segurar: nada antes do atraso; no atraso o 1.º passo, depois um a cada
+    /// intervalo; um quadro atrasado recebe todos os vencidos; fora do alvo deita-os fora e retoma.
+    #[test]
+    fn holding_repeats_after_the_delay_at_the_interval_and_pauses_off_target() {
+        let mut h = HoldRepeat::new(1_000);
+        assert_eq!(h.due(1_000 + D - 1, true), 0, "nada antes do atraso");
+        assert_eq!(h.due(1_000 + D, true), 1, "o 1.º passo no atraso");
+        assert_eq!(h.due(1_000 + D + I - 1, true), 0);
+        assert_eq!(h.due(1_000 + D + 3 * I, true), 3, "os vencidos de uma vez");
+        assert_eq!(h.due(1_000 + D + 5 * I, false), 0, "fora da seta, nada");
+        assert_eq!(h.due(1_000 + D + 5 * I, true), 0, "e os de fora não voltam");
+        assert_eq!(h.due(1_000 + D + 6 * I, true), 1, "de volta à seta, retoma");
+    }
+
+    fn list_with_arrows() -> (ScrollList, Rect) {
+        let mut l = ScrollList::default();
+        let body = Rect::new(0.0, 0.0, 200.0, 4.0 * ROW_H_PX);
+        l.set(body, 20.0 * ROW_H_PX);
+        l.track = Some(track_rect(body));
+        let t = l.track.unwrap();
+        (l, t)
+    }
+
+    /// D17 — a lista suspensa: segurar ▼ dá um passo no carregar, repete pela lei e pára ao largar;
+    /// sair da seta pausa; o polegar não fica agarrado.
+    #[test]
+    fn holding_the_dropdown_arrow_keeps_scrolling_until_release() {
+        let (mut l, t) = list_with_arrows();
+        let down = t.y + t.h - 1.0;
+        l.press_bar(down, 0);
+        assert_eq!(l.scroll, ROW_H_PX, "o carregar é um passo");
+        assert!(l.grab.is_none(), "a seta não agarra o polegar");
+        assert!(l.tick(D - 1));
+        assert_eq!(l.scroll, ROW_H_PX, "nada antes do atraso");
+        assert!(l.tick(D + 2 * I));
+        assert_eq!(l.scroll, 4.0 * ROW_H_PX, "1 + 3 passos");
+        l.drag_bar(t.y + t.h / 2.0);
+        assert!(l.tick(D + 4 * I));
+        assert_eq!(l.scroll, 4.0 * ROW_H_PX, "fora da seta, pausa");
+        l.drag_bar(down);
+        assert!(l.tick(D + 5 * I));
+        assert_eq!(l.scroll, 5.0 * ROW_H_PX, "de volta, retoma");
+        l.release();
+        assert!(!l.tick(D + 50 * I), "largou: não pede mais quadros");
+        assert_eq!(l.scroll, 5.0 * ROW_H_PX);
+        l.press_bar(down, 0);
+        assert!(l.tick(D + 1_000 * I));
+        assert_eq!(l.scroll, l.max(), "pára no fim");
     }
 }

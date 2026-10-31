@@ -26,6 +26,7 @@ pub fn frame(hero: &mut HeroScreen) {
     };
     docs.follow_project(shared);
     docs.set_clock(now, law);
+    crate::bars::tick_all(docs);
     docs.follow_active(ours);
     // J3 — as reações que ficaram, os scripts de Kanban pedidos pelo editor e a agenda do Butler.
     crate::hooks::frame(docs);

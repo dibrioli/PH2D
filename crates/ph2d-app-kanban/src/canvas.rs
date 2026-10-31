@@ -244,7 +244,7 @@ impl KanbanElementInput for Input {
                         return crate::back::down(docs, id, ts, scr(screen), mods, now_ns);
                     }
                     let (x, y) = to_view(at, z);
-                    crate::pointer::down(docs, id, ts, button, x, y)
+                    crate::pointer::down(docs, id, ts, button, (x, y, now_ns))
                 }
                 KanbanPointer::Move { at, screen } => {
                     if modal {

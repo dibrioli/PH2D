@@ -102,3 +102,24 @@ fn d16_foto_barra_da_lista() {
     m.quadros(4);
     crate::j2_fotos::grava_em("D16", "lista_longa_barra_sob_o_rato", &m.cena());
 }
+
+/// D17 — segurar ▲ (o Chrome, o Trello): um passo no carregar, nada antes do atraso, depois repete
+/// e pára no começo; largar pára.
+#[test]
+fn segurar_a_seta_rola_ate_ao_fim_e_para() {
+    let (mut m, id, todo) = longa();
+    let s0 = rolagem(&mut m, id, todo);
+    let (track, _) = m.docs().probe_bar(id.0, Some(todo)).unwrap();
+    m.carrega(track.x + 4.0, track.y + 2.0);
+    m.quadros(2);
+    assert!(
+        (s0 - 40.0 - rolagem(&mut m, id, todo)).abs() < 1e-3,
+        "um passo antes do atraso"
+    );
+    m.quadros(20);
+    assert!(rolagem(&mut m, id, todo) < s0 - 80.0, "segurar repete");
+    m.quadros(300);
+    m.larga(track.x + 4.0, track.y + 2.0);
+    m.quadros(30);
+    assert_eq!(rolagem(&mut m, id, todo), 0.0, "pára no começo");
+}

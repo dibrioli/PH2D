@@ -7,20 +7,20 @@ use crate::layout::{Layout, ListBox};
 use crate::metrics as m;
 use crate::paint::c;
 use crate::tab::{Hit, Tab};
-use ph2d_editor_core::widget::AxisBar;
+use ph2d_editor_core::widget::{ArrowHold, AxisBar};
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::ListId;
 use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::VectorScene;
 
 /// Uma barra agarrada: a de uma lista (`None` = a do quadro), onde agarrou e a rolagem de então;
-/// `arrow` = carregou-se numa seta (o arrasto não mexe; o largar é da barra).
+/// `hold` = a seta segura (o arrasto só move o rato; segurar repete, D17).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Grab {
     pub list: Option<ListId>,
     pub from: (f32, f32),
     pub s0: f32,
-    pub arrow: bool,
+    pub hold: Option<ArrowHold>,
 }
 
 /// A calha do quadro: na margem de baixo, por baixo das listas.
@@ -109,30 +109,60 @@ pub(crate) fn hit(l: &Layout, x: f32, y: f32) -> Option<Hit> {
 
 /// Carregar numa barra: na seta rola um passo; senão agarra-a (na calha, o polegar salta lá
 /// primeiro). `false` = não era barra.
-pub(crate) fn press(tab: &mut Tab, h: Hit, p: (f32, f32)) -> bool {
+pub(crate) fn press(tab: &mut Tab, h: Hit, p: (f32, f32), now_ns: u128) -> bool {
     let Hit::Bar(list) = h else {
         return false;
     };
     let Some(b) = bar(&tab.layout, list) else {
         return false;
     };
-    let s = b.press(p, scroll(tab, list));
-    set(tab, list, s);
+    let (s0, hold) = b.press_held(p, scroll(tab, list), now_ns);
+    set(tab, list, s0);
     tab.bar = Some(Grab {
         list,
         from: p,
-        s0: s,
-        arrow: b.arrow_at(p).is_some(),
+        s0,
+        hold,
     });
     true
 }
 
+/// Cada quadro, as setas seguras repetem ([`AxisBar::repeat`]): nas abas, no canvas do Quadro e
+/// na lista suspensa do verso; enquanto houver uma, a família pede quadros.
+pub(crate) fn tick_all(docs: &mut crate::docs::KanbanDocs) {
+    let (mut held, now) = (false, docs.clock.0);
+    let mut canvas = docs.canvas.borrow_mut();
+    for t in docs.tabs.iter_mut().chain(canvas.tabs.values_mut()) {
+        if let Some(
+            g @ Grab {
+                hold: Some(mut h), ..
+            },
+        ) = t.bar
+        {
+            if let Some(b) = bar(&t.layout, g.list) {
+                set(t, g.list, b.repeat(&mut h, scroll(t, g.list), now));
+            }
+            (t.bar, held) = (Some(Grab { hold: Some(h), ..g }), true);
+        }
+        if let Some(crate::back::Pop::Choice(c)) = t.back.as_mut().and_then(|b| b.pop.as_mut()) {
+            held |= c.s.tick(now);
+        }
+    }
+    drop(canvas);
+    docs.held = held;
+}
+
 /// O arrasto da barra agarrada. `false` = nenhuma agarrada.
 pub(crate) fn drag(tab: &mut Tab, p: (f32, f32)) -> bool {
-    let Some(g) = tab.bar else {
+    let Some(g) = tab.bar.as_mut() else {
         return false;
     };
-    if let Some(b) = bar(&tab.layout, g.list).filter(|_| !g.arrow) {
+    if let Some(h) = g.hold.as_mut() {
+        h.at = p;
+        return true;
+    }
+    let g = *g;
+    if let Some(b) = bar(&tab.layout, g.list) {
         set(tab, g.list, b.drag(g.from, g.s0, p));
     }
     true

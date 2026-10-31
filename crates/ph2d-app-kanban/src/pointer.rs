@@ -211,8 +211,7 @@ pub(crate) fn down(
     id: u64,
     ts: &mut TextSystem,
     button: PointerButton,
-    x: f32,
-    y: f32,
+    (x, y, now_ns): (f32, f32, u128),
 ) -> bool {
     let set = docs.set();
     let set = set.borrow();
@@ -245,7 +244,7 @@ pub(crate) fn down(
         }
         return true;
     }
-    if crate::bars::press(tab, h, (x, y)) {
+    if crate::bars::press(tab, h, (x, y), now_ns) {
         return true;
     }
     tab.press = Some(Press { at: (x, y), hit: h });

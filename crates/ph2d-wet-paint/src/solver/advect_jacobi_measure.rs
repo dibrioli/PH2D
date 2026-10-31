@@ -100,7 +100,7 @@ fn measure_what_an_advect_is_made_of_by_sub_pass() {
     out.push((
         "prepare_rows",
         time(g, &mut |g| {
-            prepare_rows(g, mode);
+            prepare_rows(g, &p, mode);
         }),
     ));
     // ⚠️ Os três seguintes CONSOMEM o que os anteriores escreveram, então cada
@@ -111,7 +111,7 @@ fn measure_what_an_advect_is_made_of_by_sub_pass() {
             restore_grid(g, &snap);
             g.scratch.ensure(g.cells);
             momentum_rows(g, &p, grav[0], grav[1], mode);
-            prepare_rows(g, mode);
+            prepare_rows(g, &p, mode);
             if upto >= 1 {
                 if upto == 1 {
                     let t0 = Instant::now();

@@ -58,7 +58,38 @@ fn cena() -> Engine {
     e
 }
 
+/// Segura a rota de FASES enquanto vive (os gates que hasheiam o rascunho da grelha inteira).
+struct Fases;
+impl Fases {
+    fn new() -> Self {
+        ADVECT_FASES.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Fases
+    }
+}
+impl Drop for Fases {
+    fn drop(&mut self) {
+        ADVECT_FASES.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 fn hash_da_advecao(max_v: f64, km: bool, mode: Rows) -> (u64, f64) {
+    hash_rota(max_v, km, mode, None)
+}
+
+/// `fundida = None`: a rota de fases, rascunho incluído no hash; `Some(linhas)`: a fundida com esse
+/// bloco, e o hash só da GRELHA (o rascunho da grelha inteira ela não escreve).
+fn hash_rota(max_v: f64, km: bool, mode: Rows, fundida: Option<usize>) -> (u64, f64) {
+    hash_rota_com(max_v, km, mode, fundida, fundida.is_none())
+}
+
+fn hash_rota_com(
+    max_v: f64,
+    km: bool,
+    mode: Rows,
+    fundida: Option<usize>,
+    rascunho: bool,
+) -> (u64, f64) {
+    let _fases = Fases::new();
     let mut e = cena();
     e.tuning.set(Knob::MaxVelocity, max_v);
     let mut p = e.sim.gather_params(&e.tuning);
@@ -96,7 +127,11 @@ fn hash_da_advecao(max_v: f64, km: bool, mode: Rows) -> (u64, f64) {
         }
         // Gravidade forte e a rodar: as velocidades batem no tecto em x e em y, nos dois sentidos.
         let a = k as f64 * 0.9;
-        let vmax = advect_jacobi_rows(g, &p, 2.5 * a.cos(), 2.5 * a.sin(), mode);
+        let (gx, gy) = (2.5 * a.cos(), 2.5 * a.sin());
+        let vmax = match fundida {
+            None => advect_jacobi_rows(g, &p, gx, gy, mode),
+            Some(n) => fundida::advect_fundida_rows(g, &p, gx, gy, mode, n),
+        };
         vtop = vtop.max(vmax);
         if k == 0 {
             let s = g.s;
@@ -121,12 +156,37 @@ fn hash_da_advecao(max_v: f64, km: bool, mode: Rows) -> (u64, f64) {
         }
         h.f32s(&g.vel_x);
         h.f32s(&g.vel_y);
-        h.f32s(&g.scratch.outflow);
-        for c in &g.scratch.uv {
-            h.f32s(c);
+        if rascunho {
+            h.f32s(&g.scratch.outflow);
+            for c in &g.scratch.uv {
+                h.f32s(c);
+            }
         }
     }
     (h.0, vtop)
+}
+
+/// **A rota FUNDIDA por blocos dá a GRELHA da rota de fases ao bit** (rodada 7): os quatro casos do gate
+/// acima (tecto 1 e 3, mistura KM ou não, série e paralela), com blocos de 1, 3, 7 e 32 linhas — o halo
+/// derivado do alcance tem de cobrir tudo em cada fronteira de bloco.
+#[test]
+fn advect_jacobi_fundida_bits_equal_the_phases() {
+    let casos = [
+        (1.0, false, Rows::Serial),
+        (1.0, true, Rows::Parallel),
+        (3.0, false, Rows::Parallel),
+        (3.0, true, Rows::Serial),
+    ];
+    for (mv, km, mode) in casos {
+        let fases = hash_rota_com(mv, km, mode, None, false).0;
+        for linhas in [1, 3, 7, 32] {
+            let fundida = hash_rota(mv, km, mode, Some(linhas)).0;
+            assert_eq!(
+                fundida, fases,
+                "tecto {mv} km {km} {mode:?} bloco {linhas}: a fundida mudou bits"
+            );
+        }
+    }
 }
 
 #[test]

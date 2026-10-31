@@ -139,11 +139,101 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
     }
     g.scratch.ensure(g.cells);
     momentum_rows(g, p, gx, gy, mode);
-    let vmax = prepare_rows(g, mode);
-    outflow_rows(g, p, mode);
-    transport_rows(g, p, mode);
+    let vmax = if fundida::usa_fundida(mode) {
+        fundida::fused_rows(
+            g,
+            p,
+            mode,
+            BLOCO_LINHAS.load(std::sync::atomic::Ordering::Relaxed),
+        )
+    } else {
+        let vmax = prepare_rows(g, p, mode);
+        outflow_rows(g, p, mode);
+        transport_rows(g, p, mode);
+        vmax
+    };
     commit_rows(g, mode);
     vmax
+}
+
+/// As fatias e constantes que as fases por linha leem — todas do estado do INÍCIO do passo (ADR-0147).
+pub(super) struct Ctx<'a> {
+    pub(super) s: usize,
+    wf: f64,
+    hf: f64,
+    pub(super) gh: i32,
+    pub(super) reach: i32,
+    km_mean: bool,
+    pub(super) by0: i32,
+    pub(super) by1: i32,
+    geom: crate::flow::FlowGeom,
+    flow_x: &'a [f32],
+    flow_y: &'a [f32],
+    film: &'a [f32],
+    susp: &'a [f32],
+    susp_rgb: &'a [[f32; 3]],
+    active: &'a [u8],
+    row_lo: &'a [i32],
+    row_hi: &'a [i32],
+    spans_enabled: bool,
+    bx0: i32,
+    bx1: i32,
+}
+
+impl Ctx<'_> {
+    #[inline]
+    fn span(&self, y: i32) -> (i32, i32) {
+        span_x_of(
+            self.row_lo,
+            self.row_hi,
+            self.spans_enabled,
+            self.bx0,
+            self.bx1,
+            y,
+        )
+    }
+}
+
+/// O grid partido em leitura ([`Ctx`]) e rascunho (escrita).
+pub(super) fn split<'a>(g: &'a mut Grid, p: &Params) -> (Ctx<'a>, &'a mut SolverScratch) {
+    let (s, gh, wf, hf) = (g.s, g.h as i32, g.w as f64, g.h as f64);
+    let (by0, by1, bx0, bx1) = (g.by0, g.by1, g.bx0, g.bx1);
+    let (spans_enabled, geom) = (g.spans_enabled, g.flow);
+    let Grid {
+        scratch,
+        film,
+        susp,
+        susp_rgb,
+        active,
+        flow_x,
+        flow_y,
+        row_lo,
+        row_hi,
+        ..
+    } = g;
+    let c = Ctx {
+        s,
+        wf,
+        hf,
+        gh,
+        reach: destination_reach(p.k(Knob::MaxVelocity)),
+        km_mean: p.km_mixing,
+        by0,
+        by1,
+        geom,
+        flow_x,
+        flow_y,
+        film,
+        susp,
+        susp_rgb,
+        active,
+        row_lo,
+        row_hi,
+        spans_enabled,
+        bx0,
+        bx1,
+    };
+    (c, scratch)
 }
 
 /// **O fluxo fino, materializado uma vez** — e o `vmax` de carona.
@@ -153,70 +243,54 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
 /// vezes por célula**, e a rota serial do gather custava **180,8 ms contra
 /// 36,0 do Gauss-Seidel** (medido, `Flow 4`). O amostrador é o mesmo
 /// [`crate::flow::FlowRowSampler`] que o serial usa — uma resposta só.
-fn prepare_rows(g: &mut Grid, mode: Rows) -> f64 {
-    let geom = g.flow;
-    let (wf, hf) = (g.w as f64, g.h as f64);
-    let s = g.s;
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        scratch,
-        flow_x,
-        flow_y,
-        active,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let band = by0 as usize * s..(by1 as usize + 1) * s;
+fn prepare_rows(g: &mut Grid, p: &Params, mode: Rows) -> f64 {
+    let (c, scratch) = split(g, p);
+    let band = c.by0 as usize * c.s..(c.by1 as usize + 1) * c.s;
     walk_rows2_reduce(
         mode,
         &mut scratch.uv[band.clone()],
         &mut scratch.bt[band],
-        s,
+        c.s,
         0.0f64,
-        |ri, row, bt| {
-            let y = by0 + ri as i32;
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            if lo > hi {
-                return 0.0;
-            }
-            let mut sampler = crate::flow::FlowRowSampler::new(&geom, y);
-            let mut vmax = 0.0f64;
-            let mut i = lo as usize + y as usize * s;
-            for x in lo..=hi {
-                let (ux, uy) = sampler.at(flow_x, flow_y, x, i, geom.s);
-                let uvf = [ux as f32, uy as f32];
-                row[x as usize] = uvf;
-                // A linha-base do retro-traço, do `uv` JÁ arredondado — o que o `outflow_rows` lê.
-                bt[x as usize] = match backtrace(x, y, f64::from(uvf[0]), f64::from(uvf[1]), wf, hf)
-                {
-                    Some((_, _, y0, _)) if active[i] != 0 => {
-                        i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
-                    }
-                    _ => SolverScratch::BT_NADA,
-                };
-                // O `vmax` é o do SERIAL: só célula ativa, e antes da checagem
-                // de sair da folha.
-                if active[i] != 0 {
-                    let axv = ux.abs();
-                    let ayv = uy.abs();
-                    if axv > vmax {
-                        vmax = axv;
-                    }
-                    if ayv > vmax {
-                        vmax = ayv;
-                    }
-                }
-                i += 1;
-            }
-            vmax
-        },
+        |ri, row, bt| prepare_row(&c, c.by0 + ri as i32, row, bt),
         f64::max,
     )
+}
+
+/// Uma linha do [`prepare_rows`]: `row`/`bt` são a linha `y` inteira (índice = coluna).
+pub(super) fn prepare_row(c: &Ctx, y: i32, row: &mut [[f32; 2]], bt: &mut [i8]) -> f64 {
+    let (lo, hi) = c.span(y);
+    if lo > hi {
+        return 0.0;
+    }
+    let mut sampler = crate::flow::FlowRowSampler::new(&c.geom, y);
+    let mut vmax = 0.0f64;
+    let mut i = lo as usize + y as usize * c.s;
+    for x in lo..=hi {
+        let (ux, uy) = sampler.at(c.flow_x, c.flow_y, x, i, c.geom.s);
+        let uvf = [ux as f32, uy as f32];
+        row[x as usize] = uvf;
+        // A linha-base do retro-traço, do `uv` JÁ arredondado — o que o `outflow_rows` lê.
+        bt[x as usize] = match backtrace(x, y, f64::from(uvf[0]), f64::from(uvf[1]), c.wf, c.hf) {
+            Some((_, _, y0, _)) if c.active[i] != 0 => {
+                i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
+            }
+            _ => SolverScratch::BT_NADA,
+        };
+        // O `vmax` é o do SERIAL: só célula ativa, e antes da checagem de sair da folha.
+        if c.active[i] != 0 {
+            let axv = ux.abs();
+            let ayv = uy.abs();
+            if axv > vmax {
+                vmax = axv;
+            }
+            if ayv > vmax {
+                vmax = ayv;
+            }
+        }
+        i += 1;
+    }
+    vmax
 }
 
 /// **A velocidade persistente**, na grade de FLUXO: o fluxo amostrado na
@@ -324,364 +398,236 @@ fn momentum_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
 /// as rotas serial e paralela produzem o MESMO `f64` — e é isso que faz o gate
 /// de identidade valer apesar de a soma ser em ponto flutuante.
 fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
-    let s = g.s;
-    let gh = g.h as i32;
-    let (wf, hf) = (g.w as f64, g.h as f64);
-    let reach = destination_reach(p.k(Knob::MaxVelocity));
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        scratch,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let band = by0 as usize * s..(by1 as usize + 1) * s;
-    let uv: &[[f32; 2]] = &scratch.uv;
-    let bt: &[i8] = &scratch.bt;
-    par::walk_rows(mode, &mut scratch.outflow[band], s, |ri, row| {
-        let y = by0 + ri as i32;
-        let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-        if lo > hi {
-            return;
+    let (c, scratch) = split(g, p);
+    let band = c.by0 as usize * c.s..(c.by1 as usize + 1) * c.s;
+    let SolverScratch {
+        uv, bt, outflow, ..
+    } = scratch;
+    let (uv, bt): (&[[f32; 2]], &[i8]) = (uv, bt);
+    par::walk_rows(mode, &mut outflow[band], c.s, |ri, row| {
+        outflow_row(&c, c.by0 + ri as i32, row, uv, bt, 0, 1, c.gh);
+    });
+}
+
+/// Uma linha do [`outflow_rows`]. `uv`/`bt` guardam as linhas `ny_lo..=ny_hi` a partir do índice global
+/// `ubase` (`0` = a grelha inteira); só elas são candidatas.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn outflow_row(
+    c: &Ctx,
+    y: i32,
+    row: &mut [f32],
+    uv: &[[f32; 2]],
+    bt: &[i8],
+    ubase: usize,
+    ny_lo: i32,
+    ny_hi: i32,
+) {
+    let (lo, hi) = c.span(y);
+    if lo > hi {
+        return;
+    }
+    let (lo_u, hi_u) = (lo as usize, hi as usize);
+    row[lo_u..=hi_u].fill(0.0);
+    for ny in (y - c.reach).max(ny_lo)..=(y + c.reach).min(ny_hi) {
+        let (slo, shi) = c.span(ny);
+        if slo > shi {
+            continue;
         }
-        let (lo_u, hi_u) = (lo as usize, hi as usize);
-        row[lo_u..=hi_u].fill(0.0);
-        for ny in (y - reach).max(1)..=(y + reach).min(gh) {
-            let (slo, shi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, ny);
-            if slo > shi {
+        // O destino puxa desta linha se a base dele é `y` (`ny − y0 = ny − y`) ou `y − 1`.
+        let (d_base, d_cima) = ((ny - y) as i8, (ny - y + 1) as i8);
+        let rowbase = ny as usize * c.s - ubase;
+        for nx in slo..=shi {
+            let di = nx as usize + rowbase;
+            let d = bt[di];
+            if d != d_base && d != d_cima {
                 continue;
             }
-            // O destino puxa desta linha se a base dele é `y` (`ny − y0 = ny − y`) ou `y − 1`.
-            let (d_base, d_cima) = ((ny - y) as i8, (ny - y + 1) as i8);
-            let rowbase = ny as usize * s;
-            for nx in slo..=shi {
-                let di = nx as usize + rowbase;
-                let d = bt[di];
-                if d != d_base && d != d_cima {
-                    continue;
-                }
-                let uvd = uv[di];
-                let Some((x0, fx, y0, fy)) =
-                    backtrace(nx, ny, f64::from(uvd[0]), f64::from(uvd[1]), wf, hf)
-                else {
-                    continue;
-                };
-                let wy = corner_weight(i64::from(y), y0, fy);
-                if wy == 0.0 {
-                    continue;
-                }
-                // As duas colunas-fonte deste destino. Fora da faixa desta
-                // linha não há massa (invariante), então o peso perdido
-                // multiplicaria zero.
-                let c0 = x0 as usize;
-                if x0 >= lo as i64 && x0 <= hi as i64 {
-                    row[c0] += ((1.0 - fx) * wy) as f32;
-                }
-                if x0 >= lo as i64 - 1 && x0 < hi as i64 {
-                    row[c0 + 1] += (fx * wy) as f32;
-                }
+            let uvd = uv[di];
+            let Some((x0, fx, y0, fy)) =
+                backtrace(nx, ny, f64::from(uvd[0]), f64::from(uvd[1]), c.wf, c.hf)
+            else {
+                continue;
+            };
+            let wy = corner_weight(i64::from(y), y0, fy);
+            if wy == 0.0 {
+                continue;
+            }
+            // As duas colunas-fonte deste destino. Fora da faixa desta
+            // linha não há massa (invariante), então o peso perdido
+            // multiplicaria zero.
+            let c0 = x0 as usize;
+            if x0 >= lo as i64 && x0 <= hi as i64 {
+                row[c0] += ((1.0 - fx) * wy) as f32;
+            }
+            if x0 >= lo as i64 - 1 && x0 < hi as i64 {
+                row[c0 + 1] += (fx * wy) as f32;
             }
         }
-    });
+    }
 }
 
 /// **O novo estado**, no rascunho.
 fn transport_rows(g: &mut Grid, p: &Params, mode: Rows) {
-    let s = g.s;
-    let (wf, hf) = (g.w as f64, g.h as f64);
-    let km_mean = p.km_mixing;
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        scratch,
-        film,
-        susp,
-        susp_rgb,
-        active,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
+    let (c, scratch) = split(g, p);
+    let band = c.by0 as usize * c.s..(c.by1 as usize + 1) * c.s;
+    let SolverScratch {
+        uv,
+        outflow,
+        dst_film,
+        dst_susp,
+        dst_rgb,
         ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let outflow: &[f32] = &scratch.outflow;
-    let uv: &[[f32; 2]] = &scratch.uv;
-    let band = by0 as usize * s..(by1 as usize + 1) * s;
+    } = scratch;
+    let (uv, outflow): (&[[f32; 2]], &[f32]) = (uv, outflow);
     par::walk_rows3(
         mode,
-        &mut scratch.dst_film[band.clone()],
-        &mut scratch.dst_susp[band.clone()],
-        &mut scratch.dst_rgb[band],
-        s,
-        |ri, fr, sr, cr| {
-            let y = by0 + ri as i32;
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            if lo > hi {
-                return;
-            }
-            let mut km_colors = [0.0f64; 12];
-            let mut km_weights = [0.0f64; 4];
-            let mut km_out = [0.0f64; 3];
-            let mut i = lo as usize + y as usize * s;
-            for x in lo..=hi {
-                let f0 = film[i] as f64;
-                let m0 = susp[i] as f64;
-                // O que SAI (vale para toda célula com massa, ativa ou não —
-                // um canto inativo é drenado por quem o alcança).
-                let of = outflow[i] as f64;
-                let leave = if of > 1.0 { 1.0 } else { of };
-                let mut new_film = f0 - f0 * leave;
-                let mut new_susp = m0 - m0 * leave;
-                let mut new_rgb = susp_rgb[i];
-                // O que ENTRA (só quem é ativo puxa).
-                if active[i] != 0 {
-                    let uvc = uv[i];
-                    let (ux, uy) = (f64::from(uvc[0]), f64::from(uvc[1]));
-                    if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, wf, hf) {
-                        let i00 = x0 as usize + y0 as usize * s;
-                        let i10 = i00 + 1;
-                        let i01 = i00 + s;
-                        let i11 = i01 + 1;
-                        let w00 = (1.0 - fx) * (1.0 - fy);
-                        let w10 = fx * (1.0 - fy);
-                        let w01 = (1.0 - fx) * fy;
-                        let w11 = fx * fy;
-                        // ⚠️ A escala é a da FONTE — ver o módulo. Com as quatro saídas ≤ 1 (o caso
-                        // comum) a escala é `1` e `w · 1 == w` ao bit: um teste em vez de quatro.
-                        let (o00, o10, o01, o11) =
-                            (outflow[i00], outflow[i10], outflow[i01], outflow[i11]);
-                        let (k00, k10, k01, k11) = if o00.max(o10).max(o01.max(o11)) <= 1.0 {
-                            (w00, w10, w01, w11)
-                        } else {
-                            (
-                                w00 * take_scale(o00 as f64),
-                                w10 * take_scale(o10 as f64),
-                                w01 * take_scale(o01 as f64),
-                                w11 * take_scale(o11 as f64),
-                            )
-                        };
-                        let p00 = susp[i00] as f64 * k00;
-                        let p10 = susp[i10] as f64 * k10;
-                        let p01 = susp[i01] as f64 * k01;
-                        let p11 = susp[i11] as f64 * k11;
-                        let want = p00 + p10 + p01 + p11;
-                        if want > 0.0 {
-                            let inv = 1.0 / want;
-                            let c00 = susp_rgb[i00];
-                            let c10 = susp_rgb[i10];
-                            let c01 = susp_rgb[i01];
-                            let c11 = susp_rgb[i11];
-                            let (r_in, g_in, b_in);
-                            if km_mean {
-                                km_colors[0] = c00[0] as f64;
-                                km_colors[1] = c00[1] as f64;
-                                km_colors[2] = c00[2] as f64;
-                                km_colors[3] = c10[0] as f64;
-                                km_colors[4] = c10[1] as f64;
-                                km_colors[5] = c10[2] as f64;
-                                km_colors[6] = c01[0] as f64;
-                                km_colors[7] = c01[1] as f64;
-                                km_colors[8] = c01[2] as f64;
-                                km_colors[9] = c11[0] as f64;
-                                km_colors[10] = c11[1] as f64;
-                                km_colors[11] = c11[2] as f64;
-                                km_weights[0] = p00;
-                                km_weights[1] = p10;
-                                km_weights[2] = p01;
-                                km_weights[3] = p11;
-                                km_weighted_mean_color(
-                                    &km_colors,
-                                    &km_weights,
-                                    4,
-                                    inv,
-                                    &mut km_out,
-                                );
-                                r_in = km_out[0];
-                                g_in = km_out[1];
-                                b_in = km_out[2];
-                            } else {
-                                r_in = (c00[0] as f64 * p00
-                                    + c10[0] as f64 * p10
-                                    + c01[0] as f64 * p01
-                                    + c11[0] as f64 * p11)
-                                    * inv;
-                                g_in = (c00[1] as f64 * p00
-                                    + c10[1] as f64 * p10
-                                    + c01[1] as f64 * p01
-                                    + c11[1] as f64 * p11)
-                                    * inv;
-                                b_in = (c00[2] as f64 * p00
-                                    + c10[2] as f64 * p10
-                                    + c01[2] as f64 * p01
-                                    + c11[2] as f64 * p11)
-                                    * inv;
-                            }
-                            new_susp += want;
-                            new_rgb = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
-                        }
-                        new_film += film[i00] as f64 * k00
-                            + film[i10] as f64 * k10
-                            + film[i01] as f64 * k01
-                            + film[i11] as f64 * k11;
-                    }
-                }
-                fr[x as usize] = new_film as f32;
-                sr[x as usize] = new_susp as f32;
-                cr[x as usize] = new_rgb;
-                i += 1;
-            }
-        },
+        &mut dst_film[band.clone()],
+        &mut dst_susp[band.clone()],
+        &mut dst_rgb[band],
+        c.s,
+        |ri, fr, sr, cr| transport_row(&c, c.by0 + ri as i32, fr, sr, cr, outflow, 0, uv, 0),
     );
 }
 
-/// **O rascunho vira o grid.** Com a faixa viva a cobrir quase a folha (o wash), TROCA os três planos com o
-/// rascunho e copia de volta só o COMPLEMENTO (o que a faixa não reescreveu); senão copia a faixa. As duas
-/// rotas dão o mesmo grid ao bit (`flow_bit_tests`, `advect_bit_tests`) — o rascunho é derivado.
-/// A rota lê [`crate::flow::COMMIT_ROTA`] (0 = pela faixa, o produto; 1/2 forçam, gates e sonda).
-fn commit_rows(g: &mut Grid, mode: Rows) {
-    let s = g.s;
-    let (by0, by1) = (g.by0, g.by1);
-    let viva: usize = (by0..=by1)
-        .map(|y| {
-            let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
-            // Linha sem faixa: as sentinelas `i32::MAX`/`MIN` fazem `hi − lo` transbordar.
-            if lo > hi { 0 } else { (hi - lo + 1) as usize }
-        })
-        .sum();
-    let auto = (g.cells - viva) * 4 <= viva;
-    let rota = crate::flow::COMMIT_ROTA.load(std::sync::atomic::Ordering::Relaxed);
-    if !match rota {
-        1 => false,
-        2 => true,
-        _ => auto,
-    } {
-        commit_copia(g, mode);
+/// Uma linha do [`transport_rows`]: `fr`/`sr`/`cr` são a linha `y` inteira; `outflow` e `uv` começam no
+/// índice global `obase`/`ubase`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn transport_row(
+    c: &Ctx,
+    y: i32,
+    fr: &mut [f32],
+    sr: &mut [f32],
+    cr: &mut [[f32; 3]],
+    outflow: &[f32],
+    obase: usize,
+    uv: &[[f32; 2]],
+    ubase: usize,
+) {
+    let s = c.s;
+    let (film, susp, susp_rgb) = (c.film, c.susp, c.susp_rgb);
+    let (lo, hi) = c.span(y);
+    if lo > hi {
         return;
     }
-    let Grid {
-        scratch,
-        film,
-        susp,
-        susp_rgb,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    std::mem::swap(film, &mut scratch.dst_film);
-    std::mem::swap(susp, &mut scratch.dst_susp);
-    std::mem::swap(susp_rgb, &mut scratch.dst_rgb);
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let (of, os, oc): (&[f32], &[f32], &[[f32; 3]]) =
-        (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
-    par::walk_rows3(mode, film, susp, susp_rgb, s, |r, fr, sr, cr| {
-        let y = r as i32;
-        let base = r * s;
-        let (lo, hi) = if y < by0 || y > by1 {
-            (1, 0)
-        } else {
-            span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y)
-        };
-        let mut volta = |a: usize, b: usize| {
-            fr[a..b].copy_from_slice(&of[base + a..base + b]);
-            sr[a..b].copy_from_slice(&os[base + a..base + b]);
-            cr[a..b].copy_from_slice(&oc[base + a..base + b]);
-        };
-        if lo > hi {
-            volta(0, s);
-        } else {
-            volta(0, lo as usize);
-            volta(hi as usize + 1, s);
-        }
-    });
-}
-
-/// A rota de cópia do [`commit_rows`]: três cópias contíguas de plano por linha da faixa.
-fn commit_copia(g: &mut Grid, mode: Rows) {
-    let s = g.s;
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        scratch,
-        film,
-        susp,
-        susp_rgb,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let (df, ds, dc): (&[f32], &[f32], &[[f32; 3]]) =
-        (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
-    let band = by0 as usize * s..(by1 as usize + 1) * s;
-    par::walk_rows3(
-        mode,
-        &mut film[band.clone()],
-        &mut susp[band.clone()],
-        &mut susp_rgb[band],
-        s,
-        |ri, fr, sr, cr| {
-            let y = by0 + ri as i32;
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            if lo > hi {
-                return;
+    let mut km_colors = [0.0f64; 12];
+    let mut km_weights = [0.0f64; 4];
+    let mut km_out = [0.0f64; 3];
+    let mut i = lo as usize + y as usize * s;
+    for x in lo..=hi {
+        let f0 = film[i] as f64;
+        let m0 = susp[i] as f64;
+        // O que SAI (vale para toda célula com massa, ativa ou não —
+        // um canto inativo é drenado por quem o alcança).
+        let of = outflow[i - obase] as f64;
+        let leave = if of > 1.0 { 1.0 } else { of };
+        let mut new_film = f0 - f0 * leave;
+        let mut new_susp = m0 - m0 * leave;
+        let mut new_rgb = susp_rgb[i];
+        // O que ENTRA (só quem é ativo puxa).
+        if c.active[i] != 0 {
+            let uvc = uv[i - ubase];
+            let (ux, uy) = (f64::from(uvc[0]), f64::from(uvc[1]));
+            if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, c.wf, c.hf) {
+                let i00 = x0 as usize + y0 as usize * s;
+                let i10 = i00 + 1;
+                let i01 = i00 + s;
+                let i11 = i01 + 1;
+                let w00 = (1.0 - fx) * (1.0 - fy);
+                let w10 = fx * (1.0 - fy);
+                let w01 = (1.0 - fx) * fy;
+                let w11 = fx * fy;
+                // ⚠️ A escala é a da FONTE — ver o módulo. Com as quatro saídas ≤ 1 (o caso
+                // comum) a escala é `1` e `w · 1 == w` ao bit: um teste em vez de quatro.
+                let (o00, o10, o01, o11) = (
+                    outflow[i00 - obase],
+                    outflow[i10 - obase],
+                    outflow[i01 - obase],
+                    outflow[i11 - obase],
+                );
+                let (k00, k10, k01, k11) = if o00.max(o10).max(o01.max(o11)) <= 1.0 {
+                    (w00, w10, w01, w11)
+                } else {
+                    (
+                        w00 * take_scale(o00 as f64),
+                        w10 * take_scale(o10 as f64),
+                        w01 * take_scale(o01 as f64),
+                        w11 * take_scale(o11 as f64),
+                    )
+                };
+                let p00 = susp[i00] as f64 * k00;
+                let p10 = susp[i10] as f64 * k10;
+                let p01 = susp[i01] as f64 * k01;
+                let p11 = susp[i11] as f64 * k11;
+                let want = p00 + p10 + p01 + p11;
+                if want > 0.0 {
+                    let inv = 1.0 / want;
+                    let c00 = susp_rgb[i00];
+                    let c10 = susp_rgb[i10];
+                    let c01 = susp_rgb[i01];
+                    let c11 = susp_rgb[i11];
+                    let (r_in, g_in, b_in);
+                    if c.km_mean {
+                        km_colors[0] = c00[0] as f64;
+                        km_colors[1] = c00[1] as f64;
+                        km_colors[2] = c00[2] as f64;
+                        km_colors[3] = c10[0] as f64;
+                        km_colors[4] = c10[1] as f64;
+                        km_colors[5] = c10[2] as f64;
+                        km_colors[6] = c01[0] as f64;
+                        km_colors[7] = c01[1] as f64;
+                        km_colors[8] = c01[2] as f64;
+                        km_colors[9] = c11[0] as f64;
+                        km_colors[10] = c11[1] as f64;
+                        km_colors[11] = c11[2] as f64;
+                        km_weights[0] = p00;
+                        km_weights[1] = p10;
+                        km_weights[2] = p01;
+                        km_weights[3] = p11;
+                        km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
+                        r_in = km_out[0];
+                        g_in = km_out[1];
+                        b_in = km_out[2];
+                    } else {
+                        r_in = (c00[0] as f64 * p00
+                            + c10[0] as f64 * p10
+                            + c01[0] as f64 * p01
+                            + c11[0] as f64 * p11)
+                            * inv;
+                        g_in = (c00[1] as f64 * p00
+                            + c10[1] as f64 * p10
+                            + c01[1] as f64 * p01
+                            + c11[1] as f64 * p11)
+                            * inv;
+                        b_in = (c00[2] as f64 * p00
+                            + c10[2] as f64 * p10
+                            + c01[2] as f64 * p01
+                            + c11[2] as f64 * p11)
+                            * inv;
+                    }
+                    new_susp += want;
+                    new_rgb = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
+                }
+                new_film += film[i00] as f64 * k00
+                    + film[i10] as f64 * k10
+                    + film[i01] as f64 * k01
+                    + film[i11] as f64 * k11;
             }
-            let (lo, hi) = (lo as usize, hi as usize);
-            let (a, b) = (y as usize * s + lo, y as usize * s + hi);
-            fr[lo..=hi].copy_from_slice(&df[a..=b]);
-            sr[lo..=hi].copy_from_slice(&ds[a..=b]);
-            cr[lo..=hi].copy_from_slice(&dc[a..=b]);
-        },
-    );
-}
-
-/// [`par::walk_rows_reduce`] sobre DOIS planos (a mesma lei da redução) — aqui e não em `par` pelo tecto
-/// de LOC daquele ficheiro.
-fn walk_rows2_reduce<T: Send, U: Send, R: Send + Sync + Copy>(
-    mode: Rows,
-    a: &mut [T],
-    b: &mut [U],
-    stride: usize,
-    ident: R,
-    f: impl Fn(usize, &mut [T], &mut [U]) -> R + Send + Sync,
-    red: impl Fn(R, R) -> R + Send + Sync,
-) -> R {
-    debug_assert_eq!(a.len(), b.len(), "os dois planos tem faixas diferentes");
-    let g = |(r, (ra, rb)): (usize, (&mut [T], &mut [U]))| f(r, ra, rb);
-    match mode {
-        Rows::Serial => a
-            .chunks_mut(stride)
-            .zip(b.chunks_mut(stride))
-            .enumerate()
-            .map(g)
-            .fold(ident, &red),
-        Rows::Parallel => a
-            .par_chunks_mut(stride)
-            .zip(b.par_chunks_mut(stride))
-            .enumerate()
-            .map(g)
-            .reduce(|| ident, &red),
-        Rows::Medida(piso) => par::medida_reduce(
-            a.chunks_mut(stride)
-                .zip(b.chunks_mut(stride))
-                .enumerate()
-                .collect(),
-            piso,
-            ident,
-            g,
-            red,
-        ),
+        }
+        fr[x as usize] = new_film as f32;
+        sr[x as usize] = new_susp as f32;
+        cr[x as usize] = new_rgb;
+        i += 1;
     }
 }
+
+#[path = "advect_commit.rs"]
+mod commit;
+use commit::{commit_rows, walk_rows2_reduce};
+
+#[path = "advect_fundida.rs"]
+mod fundida;
+#[doc(hidden)]
+pub use fundida::{ADVECT_FASES, BLOCO_LINHAS};
 
 #[cfg(test)]
 #[path = "advect_jacobi_measure.rs"]

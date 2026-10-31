@@ -1,14 +1,18 @@
 //! O caso `dono_6.png` (ADR-0197 Contexto): Thick Impasto (óleo `m = 0,85`, seco), amarelo sobre azul
-//! assentado (30 µm, metade aberto), grelha pigmento φ × água — a MESMA da figura (a) do oráculo.
-//! E a monotonia em N passadas (sem degraus).
+//! assentado (30 µm, metade aberto), grelha pigmento φ × água — a mesma da figura (a) do oráculo.
+//! Com a mistura Oklab: nada mais escuro que o azul puro em L e nenhum matiz fora do arco
+//! azul→amarelo (sem ferrugem). E a monotonia em N passadas (sem degraus).
 
-use ph2d_paint_tinta::{Bandas, camada, dilui, mistura, s_fator};
+use ph2d_paint_tinta::oklab::linear_para_oklab;
+use ph2d_paint_tinta::{Bandas, Soma, camada, dilui, optica, s_fator};
 
 const M: f32 = 0.85;
 const V_AZUL: f32 = 30.0;
 const ABERTURA: f32 = 0.5;
 const CARGA: f32 = 40.0;
 const EPS: f32 = 2.0e-6;
+/// Abaixo deste croma Oklab o matiz não está definido (ruído de `f32` no neutro).
+const CROMA_MIN: f32 = 0.01;
 
 fn linspace(a: f32, b: f32, n: usize) -> Vec<f32> {
     (0..n)
@@ -17,60 +21,49 @@ fn linspace(a: f32, b: f32, n: usize) -> Vec<f32> {
 }
 
 fn pinta(phi: f32, agua: f32, n: u32) -> Bandas<3> {
-    let (azul, amarelo) = (crate::azul(), crate::amarelo());
     let s = s_fator(M, false);
-    let r_fech = camada(
-        &mistura(&[(&azul, (1.0 - ABERTURA) * V_AZUL)], s),
-        &crate::PAPEL,
-    );
+    let fechado = Soma::de(crate::azul(), (1.0 - ABERTURA) * V_AZUL);
+    let r_fech = camada(&optica(&fechado, s), &crate::PAPEL);
     let v_am = n as f32 * CARGA * dilui(phi, agua);
-    camada(
-        &mistura(&[(&azul, ABERTURA * V_AZUL), (&amarelo, v_am)], s),
-        &r_fech,
-    )
+    let aberto = Soma::de(crate::azul(), ABERTURA * V_AZUL).junta(Soma::de(crate::amarelo(), v_am));
+    camada(&optica(&aberto, s), &r_fech)
+}
+
+fn matiz(lab: [f32; 3]) -> f32 {
+    libm::atan2f(lab[2], lab[1]).to_degrees().rem_euclid(360.0)
 }
 
 #[test]
 fn amarelo_sobre_azul_nunca_escurece_nem_enferruja() {
-    let s = s_fator(M, false);
-    let (azul_puro, amar_puro) = (crate::azul().masstone(s), crate::amarelo().masstone(s));
-    let ferrugem_amarelo = (amar_puro.0[0] - amar_puro.0[1]).max(0.0);
-    let (mut pior_escuro, mut pior_rg, mut pior_ferrugem) =
-        (f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY);
+    let (az, am) = (crate::azul().lab, crate::amarelo().lab);
+    let (h_az, h_am) = (matiz(az), matiz(am));
+    // O arco CURTO entre os dois matizes (azul ≈ 269°, amarelo ≈ 102°: passa pelo verde, 180°);
+    // a ferrugem (laranja-vermelho, ~40°) fica fora dele.
+    let (lo, hi) = (h_az.min(h_am), h_az.max(h_am));
+    assert!(hi - lo < 180.0);
+    let (mut pior_l, mut pior_arco, mut n) = (f32::INFINITY, f32::INFINITY, 0);
     for &agua in &linspace(0.0, 0.9, 8) {
         for &phi in &linspace(0.05, 0.6, 8) {
-            for n in [1, 3, 6] {
-                let r = pinta(phi, agua, n);
-                // O critério do oráculo: nunca mais escuro que o azul puro nas três bandas.
-                let d = (0..3)
-                    .map(|b| r.0[b] - azul_puro.0[b])
-                    .fold(f32::NEG_INFINITY, f32::max);
-                pior_escuro = pior_escuro.min(d);
-                // Por banda onde o amarelo é mais claro que o azul (R e G): R ≥ azul puro.
-                for b in 0..2 {
-                    pior_rg = pior_rg.min(r.0[b] - azul_puro.0[b]);
+            for k in [1, 3, 6, 24] {
+                let lab = linear_para_oklab(pinta(phi, agua, k).0);
+                pior_l = pior_l.min(lab[0] - az[0]);
+                if lab[1].hypot(lab[2]) >= CROMA_MIN {
+                    let h = matiz(lab);
+                    pior_arco = pior_arco.min((h - lo).min(hi - h));
                 }
-                // Por banda em todas (o teorema): R ≥ min dos masstones (o fundo é azul sobre papel ≥ azul).
-                for b in 0..3 {
-                    assert!(
-                        r.0[b] >= azul_puro.0[b].min(amar_puro.0[b]) - EPS,
-                        "teorema, banda {b}"
-                    );
-                }
-                pior_ferrugem = pior_ferrugem.max((r.0[0] - r.0[1]) - ferrugem_amarelo);
+                n += 1;
             }
         }
     }
     println!(
-        "dono_6: min max_banda(R − azul) = {pior_escuro:+.4} · min_{{R,G}}(R − azul) = {pior_rg:+.4} · \
-         max ferrugem = {pior_ferrugem:+.4}"
+        "dono_6: {n} células · min (L − L_azul) = {pior_l:+.4} · folga mínima ao arco \
+         [{lo:.1}°, {hi:.1}°] = {pior_arco:+.2}°"
     );
+    assert!(pior_l > 0.0, "uma célula ficou mais escura que o azul puro");
     assert!(
-        pior_escuro > 0.0,
-        "uma célula ficou mais escura que o azul puro"
+        pior_arco >= 0.0,
+        "matiz fora do arco azul→amarelo (ferrugem)"
     );
-    assert!(pior_rg >= -EPS, "R ou G abaixo do azul puro: {pior_rg}");
-    assert!(pior_ferrugem <= 1e-6, "ferrugem: {pior_ferrugem}");
 }
 
 #[test]

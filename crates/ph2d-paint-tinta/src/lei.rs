@@ -1,7 +1,8 @@
-//! A lei: mistura (Duncan), camada (Kubelka 1948), cobertura e diluição. F2 §3.2 eq. (1)–(3).
+//! A lei de CAMADA: óptica de uma fatia (a partir da cor misturada), camada (Kubelka 1948),
+//! cobertura e diluição. F2 §3.2 eq. (2)–(3); a eq. (1) de mistura vive em `soma.rs`.
 
 use crate::bandas::Bandas;
-use crate::pigmento::Pigmento;
+use crate::soma::Soma;
 
 /// Índice de refração do pigmento (orgânico típico) — o mesmo `N_PIG` do oráculo.
 const N_PIG: f32 = 1.75;
@@ -33,26 +34,60 @@ pub struct Optica<const N: usize> {
     pub s: Bandas<N>,
 }
 
-/// Eq. (1), Duncan 1940: `𝒦 = Σ v_i K_i`, `𝒮 = s · Σ v_i S_i`, somados na ORDEM do slice.
-/// `v_i` em µm de pigmento puro, `≥ 0` (debug-assert: um volume negativo é a «cor negativa» que o
-/// teorema exclui).
+/// Piso do masstone: `R∞ = 0` daria `K/S = ∞`. A `1e-3` o `K/S` é ~`499`, finito em `f32` e abaixo
+/// de qualquer preto de tubo real (negro de fumo ≈ `0,03` sRGB-linear).
+pub const R_INF_MIN: f32 = 1.0e-3;
+/// `S` (µm⁻¹) da tinta com transparência `0` (opaca). PROVISÓRIO — ver F4_1 §calibração.
+pub const S_OPACO: f32 = 2.0;
+/// `S` da tinta com transparência `1`. Nunca `0`: `K = S·(1−R∞)²/2R∞` anular-se-ia com ele.
+pub const S_TRANSPARENTE: f32 = 0.02;
+
+/// `S` por µm de pigmento puro a partir da transparência `t ∈ [0,1]`: `S_OPACO·(S_TRANSPARENTE/S_OPACO)^t`
+/// (duas décadas, em escala log). Com `t` médio pelo volume é a média GEOMÉTRICA dos `S`.
 #[must_use]
-pub fn mistura<const N: usize>(itens: &[(&Pigmento<N>, f32)], s_fator: f32) -> Optica<N> {
-    let mut k = [0.0f32; N];
-    let mut s = [0.0f32; N];
-    for &(p, v) in itens {
-        debug_assert!(v >= 0.0 && v.is_finite(), "volume inválido: {v}");
-        for b in 0..N {
-            k[b] += v * p.k.0[b];
-            s[b] += v * p.s.0[b];
-        }
-    }
-    for sb in &mut s {
-        *sb *= s_fator;
-    }
+pub fn s_de_transparencia(t: f32) -> f32 {
+    S_OPACO * libm::powf(S_TRANSPARENTE / S_OPACO, t.clamp(0.0, 1.0))
+}
+
+/// Espessuras ópticas de uma camada de volume `v` (µm) de UMA tinta de masstone `r_inf` (linear, por
+/// banda) e espalhamento `s_um` (µm⁻¹), no veículo de factor `s_fator`:
+/// `𝒦_b = v·(s_um·q_b)`, `q_b = (1−R∞_b)²/(2R∞_b)` (Kubelka–Munk), `𝒮_b = s_fator·(v·s_um)`.
+/// `R∞` é cortado a `[R_INF_MIN, 1]` (a cor misturada em Oklab pode sair da gama por ~2e-3, F2b §4.3).
+#[must_use]
+pub fn optica_de_rinf<const N: usize>(
+    r_inf: Bandas<N>,
+    s_um: f32,
+    v: f32,
+    s_fator: f32,
+) -> Optica<N> {
+    debug_assert!(v >= 0.0 && v.is_finite() && s_um > 0.0, "v={v} s={s_um}");
+    let vs = v * s_um;
     Optica {
-        k: Bandas(k),
-        s: Bandas(s),
+        k: r_inf.mapa(|_, r| {
+            let r = r.clamp(R_INF_MIN, 1.0);
+            let um_menos = 1.0 - r;
+            v * (s_um * ((um_menos * um_menos) / (2.0 * r)))
+        }),
+        s: Bandas::uniforme(s_fator * vs),
+    }
+}
+
+/// Eq. (1) decidida (ADR-0197, 31/10): a óptica de uma fatia sai da COR MISTURADA (Oklab pesado pelo
+/// volume → RGB linear = `R∞` por banda) e da transparência média; a espessura sai do VOLUME `v`.
+/// Sem pigmento → óptica nula (a camada devolve o fundo).
+#[must_use]
+pub fn optica(soma: &Soma, s_fator: f32) -> Optica<3> {
+    match soma.cor() {
+        None => Optica {
+            k: Bandas::default(),
+            s: Bandas::default(),
+        },
+        Some(c) => optica_de_rinf(
+            Bandas(c.linear()),
+            s_de_transparencia(c.transparencia),
+            soma.v,
+            s_fator,
+        ),
     }
 }
 

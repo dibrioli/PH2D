@@ -250,11 +250,68 @@ def provas():
     print("provas: 4000 casos — R ∈ [fundo, R∞_mistura] e diluir é monótono: OK")
 
 
+# ---------------------------------------------------------------- mistura Oklab pesada pelo VOLUME (ADR-0197 decidida 31/10)
+# A eq. (1) de MISTURA deixou de ser Duncan (Σv K) — K-M 3 bandas como mistura foi RECUSADO na F2b
+# (azul+amarelo ≈ preto, ruído 20×). Estado de uma fatia = (V = Σv, Σv·Lab, Σv·t); cor = Σv·Lab / V.
+# A CAMADA continua Kubelka 1948: (K,S) por banda DERIVAM da cor misturada (→ R∞ linear) e da
+# transparência média; a espessura óptica sai de V. Matrizes: Björn Ottosson 2020 (domínio público/MIT),
+# inversas PUBLICADAS (as mesmas da crate, `crates/ph2d-paint-tinta/src/oklab.rs`).
+OK_M1 = np.array([[0.4122214708, 0.5363325363, 0.0514459929],
+                  [0.2119034982, 0.6806995451, 0.1073969566],
+                  [0.0883024619, 0.2817188376, 0.6299787005]])
+OK_M2 = np.array([[0.2104542553, 0.7936177850, -0.0040720468],
+                  [1.9779984951, -2.4285922050, 0.4505937099],
+                  [0.0259040371, 0.7827717662, -0.8086757660]])
+OK_M2I = np.array([[1.0, 0.3963377774, 0.2158037573],
+                   [1.0, -0.1055613458, -0.0638541728],
+                   [1.0, -0.0894841775, -1.2914855480]])
+OK_M1I = np.array([[4.0767416621, -3.3077115913, 0.2309699292],
+                   [-1.2684380046, 2.6097574011, -0.3413193965],
+                   [-0.0041960863, -0.7034186147, 1.7076147010]])
+R_INF_MIN, S_OPACO, S_TRANSPARENTE = 1e-3, 2.0, 0.02
+
+
+def lin2oklab(c):
+    return OK_M2 @ np.cbrt(OK_M1 @ np.asarray(c, float))
+
+
+def oklab2lin(o):
+    return OK_M1I @ ((OK_M2I @ np.asarray(o, float)) ** 3)
+
+
+def soma_oklab(itens):
+    """itens = [(rgb_linear, transparência, v)] → (V, Σv·Lab, Σv·t)."""
+    V = sum(v for _, _, v in itens)
+    lab = sum((v * lin2oklab(c) for c, _, v in itens), np.zeros(3))
+    t = sum(v * tt for _, tt, v in itens)
+    return V, lab, t
+
+
+def optica_oklab(soma, m, molhado):
+    """(𝒦, 𝒮) por banda a partir da cor Oklab média e do volume total (a lei de camada fica)."""
+    V, lab, t = soma
+    if V <= 0:
+        return np.zeros(3), np.zeros(3)
+    r = np.clip(oklab2lin(lab / V), R_INF_MIN, 1.0)
+    s_um = S_OPACO * (S_TRANSPARENTE / S_OPACO) ** np.clip(t / V, 0, 1)
+    return V * (s_um * (1 - r) ** 2 / (2 * r)), s_fator(m, molhado) * (V * s_um) * np.ones(3)
+
+
+TINTAS = {  # rgb linear, transparência
+    "AZUL": ([0.030, 0.060, 0.300], 0.35),
+    "AMARELO": ([0.800, 0.650, 0.035], 0.11),
+    "PRETO": ([0.0, 0.0, 0.0], 0.0),
+    "BRANCO": ([0.9, 0.9, 0.9], 0.0),
+    "MAGENTA": ([0.8, 0.0, 0.6], 0.5),
+    "VERDE": ([0.0, 0.5, 0.05], 0.2),
+}
+
+
 # ---------------------------------------------------------------- fixture (paridade da crate ph2d-paint-tinta)
 def grava_fixture(caminho):
-    """Grava casos (entradas e R por banda) que a crate Rust compara. Não muda a lei: só a CHAMA.
-    Linhas: `P` pigmento (R∞ e S) · `C` caso de mistura sobre fundo (R e cobertura C por banda) ·
-    `K` chamada crua de km_camada (os regimes numéricos, incluindo 𝒮 → 0)."""
+    """Grava casos que a crate Rust compara. Só CHAMA as funções acima.
+    Linhas: `T` tinta · `O` lin→Oklab · `M` mistura de duas (Oklab médio e t) · `C` mistura sobre fundo
+    (R e cobertura C por banda) · `K` chamada crua de km_camada (os regimes numéricos, incluindo 𝒮 → 0)."""
     import datetime
     import hashlib
     import sys
@@ -262,30 +319,42 @@ def grava_fixture(caminho):
     with open(os.path.abspath(__file__), "rb") as f:
         versao = hashlib.sha256(f.read()).hexdigest()[:16]
     linhas = [
-        "# fixture da lei única (oráculo nosso, ADR-0197 §4.2) — NÃO editar à mão",
+        "# fixture da lei única — mistura Oklab pesada pelo volume + camada Kubelka (oráculo nosso, ADR-0197) — NÃO editar à mão",
         "# comando: python3 docs/Painter/Arquitetura/ferramentas/lei_unica.py --fixture " + caminho,
         f"# data: {datetime.date.today().isoformat()}",
         f"# versão: lei_unica.py sha256[:16]={versao} · numpy {np.__version__} · python {sys.version.split()[0]}",
-        "# P nome rinf0 rinf1 rinf2 s0 s1 s2",
-        "# C v_azul v_amarelo m molhado rg0 rg1 rg2 R0 R1 R2 C0 C1 C2",
+        "# T nome lin0 lin1 lin2 t",
+        "# O lin0 lin1 lin2 L a b",
+        "# M A va B vb L a b t",
+        "# C A va B vb m molhado rg0 rg1 rg2 R0 R1 R2 C0 C1 C2",
         "# K kt st rg R",
     ]
-    pig = {"AZUL": AZUL, "AMARELO": AMARELO}
-    for nome, p in pig.items():
-        linhas.append("\t".join(["P", nome] + [repr(float(x)) for x in (*p["Rinf"], *p["S"])]))
+    f8 = lambda xs: [repr(float(x)) for x in xs]  # noqa: E731
+    for nome, (c, t) in TINTAS.items():
+        linhas.append("\t".join(["T", nome] + f8((*c, t))))
+    for c in [(0, 0, 0), (1, 1, 1), (0.5, 0.5, 0.5), (1, 0, 0), (0, 1, 0), (0, 0, 1), (0.03, 0.06, 0.3),
+              (0.8, 0.65, 0.035), (1e-4, 0.2, 0.9), (0.18, 0.18, 0.18)]:
+        linhas.append("\t".join(["O"] + f8((*c, *lin2oklab(c)))))
+    pares = [("AZUL", "AMARELO"), ("PRETO", "BRANCO"), ("MAGENTA", "VERDE")]
     vols = [0.0, 0.01, 0.5, 5.0, 30.0, 80.0, 300.0]
     fundos = [np.array([0.0, 0.0, 0.0]), np.array([1.0, 1.0, 1.0]), PAPEL, np.array([0.03, 0.5, 0.9])]
-    for va in vols:
-        for vb in vols:
-            for m in [0.0, 0.5, 0.85, 1.0]:
-                for molhado in [False, True]:
-                    kt, st = totais([(AZUL, va), (AMARELO, vb)], m, molhado)
-                    c = cobertura(kt, st)
-                    for rg in fundos:
-                        r = km_camada(kt, st, rg)
-                        linhas.append("\t".join(
-                            ["C", repr(va), repr(vb), repr(m), str(int(molhado))]
-                            + [repr(float(x)) for x in (*rg, *r, *c)]))
+    for na, nb in pares:
+        (ca, ta), (cb, tb) = TINTAS[na], TINTAS[nb]
+        for va in vols:
+            for vb in vols:
+                soma = soma_oklab([(ca, ta, va), (cb, tb, vb)])
+                if soma[0] > 0:
+                    linhas.append("\t".join(["M", na, repr(va), nb, repr(vb)]
+                                            + f8((*(soma[1] / soma[0]), soma[2] / soma[0]))))
+                for m in [0.0, 0.5, 0.85, 1.0]:
+                    for molhado in [False, True]:
+                        kt, st = optica_oklab(soma, m, molhado)
+                        c = cobertura(kt, st)
+                        for rg in fundos:
+                            r = km_camada(kt, st, rg)
+                            linhas.append("\t".join(
+                                ["C", na, repr(va), nb, repr(vb), repr(m), str(int(molhado))]
+                                + f8((*rg, *r, *c))))
     for kt in [0.0, 1e-6, 1e-3, 0.1, 1.0, 10.0, 60.0]:
         for st in [0.0, 1e-12, 1e-6, 1e-3, 0.1, 1.0, 10.0, 100.0]:
             for rg in [0.0, 0.3, 1.0]:

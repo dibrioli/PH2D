@@ -358,7 +358,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 27] = [
+        const NOUTRA_SUPERFICIE: [&str; 28] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -388,6 +388,7 @@ mod tests {
             "extStaining",
             "glaze",
             "wetCover",
+            "dryCover",
             "extWetSoften",
             "rewetPaint",
             "solubility",

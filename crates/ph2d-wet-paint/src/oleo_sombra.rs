@@ -103,6 +103,10 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
                     }
                     let q = (x + ox, y + oy);
                     let dh = campo.at_fina(q.0, q.1) - h0;
+                    // `e` começa em `0`: uma amostra que não sobe nunca é a parede (ao bit, também `NaN`).
+                    if dh <= 0.0 || dh.is_nan() {
+                        continue;
+                    }
                     let sen = dh / exato::sqrt(dh * dh + d * d);
                     if sen > e {
                         (e, parede) = (sen, q);

@@ -163,6 +163,10 @@ pub(super) fn visibilidade_com(
                     continue;
                 }
                 let dh = campo.at_fina(x + ox, y + oy) - h0;
+                // O horizonte começa no plano (`0`): uma amostra que não sobe não o move (ao bit, também `NaN`).
+                if dh <= 0.0 || dh.is_nan() {
+                    continue;
+                }
                 s[j] = s[j].max(dh / exato::sqrt(dh * dh + d * d));
             }
         }
@@ -291,6 +295,9 @@ pub(super) fn reflexo_livre(
             continue;
         }
         let dh = campo.at_fina(x + ox as isize, y + oy as isize) - h0;
+        if dh <= 0.0 || dh.is_nan() {
+            continue;
+        }
         sen = sen.max(dh / exato::sqrt(dh * dh + dist * dist));
     }
     ((r[2] - sen) / rug.max(0.05) + 0.5).clamp(0.0, 1.0)

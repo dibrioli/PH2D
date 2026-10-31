@@ -91,6 +91,56 @@ pub const EM_ESTUDO_J6_WET: &[Receita] = &[
     },
 ];
 
+/// R2-C (31/10): as riscas do marcador gasto pelo GRÃO preso à tela (`Stripes`, `Tiled`) — o Rebelle `Marker/Dry` a
+/// 200 px: período 8 px, ±0,025 de cobertura (`docs/Painter/Pinceis/R2_C_spray_marker.md`).
+const DRY_R2C: [(&str, f64, f64, f64); 3] = [
+    ("W8", 115.0, 8.0, 0.9),
+    ("W6", 115.0, 6.0, 1.0),
+    ("W8h", 115.0, 8.0, 1.0),
+];
+
+/// Os presets das variantes R2-C do Dry Marker (Wet), feitos como o gerador os faz (a tabela da largura MEDIDA).
+pub fn variantes_r2c() -> Vec<(&'static str, ph2d_brush_presets::Preset)> {
+    let mut v: Vec<(&'static str, ph2d_brush_presets::Preset)> = DRY_R2C
+        .iter()
+        .map(|&(v, pigment, spacing, hardness)| {
+            let extras: &'static [(&'static str, f64)] = Box::leak(
+                EM_ESTUDO_J6_WET[1]
+                    .extras
+                    .iter()
+                    .map(|&(k, x)| (k, if k == "spacing" { spacing } else { x }))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            );
+            let r = Receita {
+                pigment,
+                hardness,
+                extras,
+                ..EM_ESTUDO_J6_WET[1]
+            };
+            let mut p = ph2d_brush_presets::Preset {
+                parametros: crate::presets_de_fabrica::parametros(&r),
+                origem: ph2d_brush_presets::Origem::Fabrica,
+                miniatura: ph2d_brush_presets::Miniatura {
+                    largura: 1,
+                    altura: 1,
+                    rgba: vec![255; 4],
+                },
+                texturas: Default::default(),
+            };
+            p.parametros.width_table = crate::presets_de_fabrica::tabela_de_largura(&p);
+            (v, p)
+        })
+        .collect();
+    v.push((
+        "Dig",
+        crate::presets_de_fabrica::preset_do_meio(
+            EM_ESTUDO.iter().find(|r| r.nome == "Dry Marker").unwrap(),
+        ),
+    ));
+    v
+}
+
 pub const MEIOS: &[ReceitaMeio] = &[
     // E-2 — o marcador de BISEL de borda firme (Rebelle `Marker/Liner`): a ponta fixa na tela (L3: eixo longo deitado — o
     // ajuste dá 4°, a régua prefere 0° —, L 0,94·D × T 0,37·D: achatado 0,55 com a borda macia, que alarga o lado fino; a

@@ -499,3 +499,92 @@ fn o_aerografo_parado_pousa_um_sopro() {
         "o Airbrush parado acumula: {pouco:.3} → {muito:.3} (o Rebelle não)"
     );
 }
+
+// ── R2-C (31/10): a sonda das variantes do Spray Can e do Dry Marker (`docs/Painter/Pinceis/R2_C_spray_marker.md`) ──
+
+/// Variantes da R2-C do Spray Can (as gotas com tecto em px, a tinta por gota que sorteia o escuro, sem os discos do véu).
+/// Ronda 2: a população principal ESCURA e opaca (fluxo alto, menos gotas) e o «véu» feito a 2.ª população de
+/// gotas MAIORES e meias — as gotas do Krita a 200 px opacas, os salpicos escuros por cima.
+const SPRAY_R2C: [(&str, &str, &str, &str); 3] = [
+    (
+        "D",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.03, "roundness": 0.0, "veu": 0.6, "veu_escala": 3.0, "veu_opacidade": 0.5, "subpixel_area": true}"#,
+        "0.85",
+        "16",
+    ),
+    (
+        "E",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.04, "roundness": 0.2, "veu": 0.5, "veu_escala": 2.5, "veu_opacidade": 0.7, "subpixel_area": true}"#,
+        "0.7",
+        "14",
+    ),
+    (
+        "F",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.2, "veu": 0.35, "veu_escala": 0.3, "veu_opacidade": 1.0, "subpixel_area": true}"#,
+        "0.75",
+        "10",
+    ),
+];
+
+/// A sonda (ignorada): as cenas `gestos` e `tamanhos` (foto A) de cada variante em `$PH2D_EXAME_DIR/<v>_<cena>.ppm`.
+#[test]
+#[ignore = "sonda R2-C: PH2D_EXAME_DIR"]
+fn sonda_r2c_spray_e_marcador() {
+    use crate::exame_bancada::{Fonte, Pincel, bateria, pinta_cena};
+    let dir = std::path::PathBuf::from(std::env::var("PH2D_EXAME_DIR").expect("PH2D_EXAME_DIR"));
+    std::fs::create_dir_all(&dir).unwrap();
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let so = std::env::var("PH2D_R2C_SO").unwrap_or_default();
+    let mut lista: Vec<(String, ph2d_brush_presets::Preset, f64)> = Vec::new();
+    let spray = crate::presets_de_fabrica::preset_do_meio(&EM_ESTUDO[2]);
+    for (v, dj, flow, n) in SPRAY_R2C {
+        let mut p = spray.clone();
+        for (k, x) in [("dab_jitter", dj), ("flow", flow), ("spray_count", n)] {
+            p.parametros
+                .brush
+                .insert(k.into(), serde_json::from_str(x).unwrap());
+        }
+        lista.push((format!("spray_{v}"), p, 0.975));
+    }
+    for (v, p) in super::caligrafia_marcadores::variantes_r2c() {
+        lista.push((format!("dry_{v}"), p, 0.744));
+    }
+    for (nome, preset, escala) in lista {
+        if !so.is_empty() && !nome.starts_with(&so) {
+            continue;
+        }
+        let pincel = Pincel {
+            nome: nome.clone(),
+            fonte: Fonte::Preset {
+                preset: Box::new(preset),
+                relativo: format!("r2c/{nome}.ph2d-brush.png"),
+            },
+        };
+        for cn in ["gestos", "tamanhos"] {
+            let mut cena = bat["cenas"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["nome"] == cn)
+                .unwrap()
+                .clone();
+            for op in cena["ops"].as_array_mut().unwrap() {
+                if let Some(d) = op.get("size_px").and_then(serde_json::Value::as_f64) {
+                    op["size_px"] = serde_json::json!(d * escala);
+                }
+            }
+            let px = pinta_cena(&pincel, None, &cena, tela, papel, 0).1;
+            let mut out = format!("P6\n{} {}\n255\n", tela[0], tela[1]).into_bytes();
+            out.extend(
+                px.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .flat_map(|p| [p[0], p[1], p[2]]),
+            );
+            std::fs::write(dir.join(format!("{nome}_{cn}.ppm")), out).unwrap();
+            println!("[r2c] {nome} {cn}");
+        }
+    }
+}

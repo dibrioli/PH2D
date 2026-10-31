@@ -45,7 +45,19 @@ pub struct MotionLente {
     geracao_na_placa: Option<u64>,
 }
 
+/// O passe da lente POR VISTA (o tamanho dele é o do alvo) e a LUT que ele já carregou.
+#[derive(Default)]
+pub(crate) struct VistaDaLente {
+    passe: Option<ph2d_render::LensPass>,
+    geracao_na_placa: Option<u64>,
+}
+
 impl MotionLente {
+    pub(crate) fn troca_a_vista(&mut self, v: &mut VistaDaLente) {
+        std::mem::swap(&mut self.passe, &mut v.passe);
+        std::mem::swap(&mut self.geracao_na_placa, &mut v.geracao_na_placa);
+    }
+
     /// **Por quadro, no passo do Motion**: o nó, o tique e a LUT.
     pub fn prepara(&mut self, graph: &Graph, tique: u64) {
         self.lido = ph2d_node_fx_lens::from_graph(graph);

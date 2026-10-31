@@ -126,3 +126,61 @@ fn o_palco_segue_o_relogio_e_so_renasce_quando_o_macro_muda() {
     palcos.segue(sim.world_mut(), &mundo, None);
     assert_eq!(palcos.quantos(), 0, "a entidade saiu: o palco sai");
 }
+
+/// ⭐ **A miniatura da câmera (GEF A6) troca a placa e a camada de CADA palco** com as da vista, e o palco (o
+/// relógio) fica um só: a vista não re-simula. Duas trocas devolvem o do editor; o palco que sai leva as dele.
+/// *Mutações: não trocar a placa · não trocar a camada · não podar a vista de um palco que saiu.*
+#[test]
+fn a_vista_da_camera_troca_a_placa_e_a_camada_de_cada_palco() {
+    let (bytes, _) = gravada(0);
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((macro_de(bytes), MacroTempo { segundos: em(10) }))
+        .id();
+    let (mundo, mut palcos) = (MundoDaCena::default(), PalcosDasMacros::default());
+    palcos.segue(sim.world_mut(), &mundo, None);
+    let marca = |palcos: &mut PalcosDasMacros| {
+        for (m, p) in palcos.fontes_mut() {
+            p.sem_contorno();
+            let r = ph2d_vector::Rect::new(0.0, 0.0, 4.0, 4.0);
+            m.filtro
+                .cena_da_camada_sempre()
+                .fill_rect(r, ph2d_vector::Color::WHITE);
+        }
+    };
+    let do_editor = |palcos: &PalcosDasMacros| {
+        let (m, p) = palcos.fontes().next().expect("o palco toca");
+        (p.esta_sem_contorno(), m.cena_da_camada_codificada())
+    };
+    marca(&mut palcos);
+    let tempo = palcos.tempo(e.to_bits());
+    let mut vista = super::palcos::VistaDosPalcos::default();
+
+    palcos.troca_a_vista(&mut vista);
+    assert_eq!(
+        do_editor(&palcos),
+        (false, false),
+        "na vista, a placa e a camada são as DELA"
+    );
+    assert_eq!(
+        palcos.tempo(e.to_bits()),
+        tempo,
+        "o relógio do palco é um só"
+    );
+    palcos.troca_a_vista(&mut vista);
+    assert_eq!(
+        do_editor(&palcos),
+        (true, true),
+        "duas trocas devolvem as do editor"
+    );
+
+    sim.world_mut().despawn(e);
+    palcos.segue(sim.world_mut(), &mundo, None);
+    palcos.troca_a_vista(&mut vista);
+    assert_eq!(
+        vista.quantos(),
+        0,
+        "o palco saiu: a vista larga a placa dele"
+    );
+}

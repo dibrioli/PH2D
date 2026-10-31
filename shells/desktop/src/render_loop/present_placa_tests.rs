@@ -89,7 +89,7 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
     let bandas = include_str!("fase_vector_bands.rs");
     assert!(bandas.contains(".decide(surface.gpu(), ligadas, cam_affine);"));
     let overlays = include_str!("fase_vector_overlays.rs");
-    assert!(overlays.contains("if do_editor || self.motion_shell.palcos.tocam() {"));
+    assert!(overlays.contains("if do_editor || da_vista || self.motion_shell.palcos.tocam() {"));
     assert!(overlays.contains("palcos.codifica(&mut art, cam_affine, Some(janela), filtro);"));
     let present = include_str!("present.rs");
     assert!(present.contains("let palcos = self.motion_shell.palcos.liga();"));
@@ -135,4 +135,64 @@ fn as_macros_do_painter_trocam_a_sprite_antes_do_extract_e_a_frente_do_editor() 
     );
     let insumos = include_str!("fase_extract_inputs.rs");
     assert!(insumos.contains("            .chain(do_editor)\n"));
+}
+
+/// ⭐ **A miniatura da câmera leva os palcos das macros e as formas do Motion fora da placa** (A6, plano 18
+/// §«Fora da miniatura»): cada palco decide, codifica, desenha, pousa e aplica a lente com a placa e a camada DA
+/// VISTA (trocadas à volta de cada porta), e as formas do editor que a placa não leva vão na cena da vista, colada
+/// por cima do mundo dela antes de a troca as devolver. *Mutações: repor um `if !na_vista` nos palcos (somem da
+/// miniatura) · apagar uma troca à volta do `decide`/`codifica` (o palco com a câmera do editor) · colar depois da
+/// troca de volta (a cena da vista no mundo do EDITOR).*
+#[test]
+fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
+    let vista = include_str!("vista_da_camera.rs");
+    assert!(vista.contains("gfx.motion.troca_a_vista(&mut self.motion);"));
+    assert!(vista.contains("shell.palcos.troca_a_vista(&mut self.palcos);"));
+    let em_vista = |agulha: &str| vista.rfind(agulha).expect(agulha);
+    assert!(
+        em_vista("vista.cola_o_motion(gfx);")
+            < em_vista("vista.troca(gfx, &mut self.motion_shell);"),
+        "a cena do Motion da vista cola-se no mundo DELA, antes de a troca o devolver ao editor"
+    );
+    for (nome, codigo, porta) in [
+        (
+            "fase_vector_bands.rs",
+            include_str!("fase_vector_bands.rs"),
+            "palcos.decide(gpu, ligadas, cam);",
+        ),
+        (
+            "fase_vector_overlays.rs",
+            include_str!("fase_vector_overlays.rs"),
+            "palcos.codifica(&mut art, cam, janela, filtro);",
+        ),
+    ] {
+        let troca = "palcos.troca_a_vista(&mut v.palcos);\n";
+        let em = codigo
+            .find(porta)
+            .unwrap_or_else(|| panic!("{nome}: {porta}"));
+        let antes = codigo[..em].rfind(troca).expect("a troca de ida");
+        let depois = em + codigo[em..].find(troca).expect("a troca de volta");
+        assert!(
+            !codigo[antes + troca.len()..em].contains(';')
+                && !codigo[em + porta.len()..depois].contains(';'),
+            "{nome}: a porta dos palcos corre ENTRE as duas trocas"
+        );
+    }
+    let overlays = include_str!("fase_vector_overlays.rs");
+    assert!(overlays.contains("let cena = v.motion.alvo_da_cena("));
+    for (nome, codigo) in [
+        ("present.rs", include_str!("present.rs")),
+        ("present_chrome.rs", include_str!("present_chrome.rs")),
+    ] {
+        for linha in codigo.lines().filter(|l| l.contains("palcos.")) {
+            assert!(
+                !linha.contains("na_vista"),
+                "{nome}: os palcos sem guarda da vista: {linha}"
+            );
+        }
+        assert!(
+            !codigo.contains("if !na_vista {\n            palcos."),
+            "{nome}: um palco saltado na vista da câmera"
+        );
+    }
 }

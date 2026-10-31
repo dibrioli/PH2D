@@ -43,6 +43,14 @@ pub struct PalcosDasMacros {
     lidos: BTreeMap<(u64, usize), Lido>,
 }
 
+/// ⭐ **O estado de desenho de cada palco POR VISTA** (a miniatura da câmera, `docs/GameEngineFuncional/18`): a
+/// placa e a camada de cada um, trocadas com as do editor à volta da passagem da vista
+/// ([`PalcosDasMacros::troca_a_vista`]). O palco (o estado de reprodução) é UM só: uma 2.ª instância re-simularia.
+#[derive(Default)]
+pub struct VistaDosPalcos {
+    por_palco: BTreeMap<(u64, usize), (PlacaDeFormas, crate::motion_filter::VistaDoMotion)>,
+}
+
 /// Como o palco toca; `None` = não há palco (no tutorial «fazer» o objecto mostra o que o aluno fez).
 fn modo(m: ModoDaMacro) -> Option<Modo> {
     match m {
@@ -182,6 +190,19 @@ impl PalcosDasMacros {
             .map(|p| (p.em_cena.palco_mut(), &mut p.placa))
     }
 
+    /// Troca a placa e a camada de cada palco com as de `v` (duas trocas = nada); um palco que saiu leva as dele.
+    pub fn troca_a_vista(&mut self, v: &mut VistaDosPalcos) {
+        v.por_palco.retain(|k, _| self.lidos.contains_key(k));
+        for (k, l) in &mut self.lidos {
+            let Ok(Some(p)) = &mut l.palco else {
+                continue;
+            };
+            let (placa, motion) = v.por_palco.entry(*k).or_default();
+            std::mem::swap(&mut p.placa, placa);
+            p.em_cena.palco_mut().troca_a_vista(motion);
+        }
+    }
+
     /// Algum palco toca neste quadro.
     #[must_use]
     pub fn tocam(&self) -> bool {
@@ -305,6 +326,13 @@ impl PalcosDasMacros {
             .collect();
         todas.extend(palcos.iter_mut().map(|o| o as &mut dyn CamadaDeOclusao));
         grava(&mut todas)
+    }
+}
+
+#[cfg(test)]
+impl VistaDosPalcos {
+    pub(crate) fn quantos(&self) -> usize {
+        self.por_palco.len()
     }
 }
 

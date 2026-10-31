@@ -216,7 +216,7 @@ impl crate::App {
             cam_affine,
             frost_front_scene,
         );
-        // ⭐ A VISTA DA CÂMERA (A6): o mesmo documento, a luz e a placa do Motion com a câmera dela, nas cenas dela —
+        // ⭐ A VISTA DA CÂMERA (A6): o mesmo documento, a luz e as placas do Motion com a câmera dela, nas cenas dela —
         // sempre em faixas (o mundo dela acaba no acumulador). A receita aberta vai por cima, na última faixa.
         let t0 = std::time::Instant::now();
         if let Some(v) = miniatura.pedida() {
@@ -234,6 +234,10 @@ impl crate::App {
                 ligadas_do_motion,
                 cam,
             );
+            let palcos = &mut self.motion_shell.palcos;
+            palcos.troca_a_vista(&mut v.palcos);
+            palcos.decide(gpu, ligadas, cam);
+            palcos.troca_a_vista(&mut v.palcos);
             let skins = crate::widget_live::build(
                 vec_scene,
                 sim,

@@ -3,8 +3,9 @@
 //! alvo do tamanho do canto; o acumulador dela passa a um retrato `Rgba8Unorm` que a cena do chrome desenha como
 //! imagem registada (a fase da selecção, por cima das molduras).
 //!
-//! Por vista: a câmera, os alvos do tamanho dela, as cenas do documento por faixa, a luz 2D, o Flip e a placa do
-//! Motion. Partilhado (lido): o mundo, o renderer, o cozimento do Motion, o documento do Flip.
+//! Por vista: a câmera, os alvos do tamanho dela, as cenas do documento por faixa, a luz 2D, o Flip, a placa e a
+//! camada do Motion e as de cada palco de uma macro. Partilhado (lido): o mundo, o renderer, o cozimento do Motion,
+//! os palcos (UM estado de reprodução), o documento do Flip.
 
 use crate::AppGfx;
 use ph2d_render::{Camera2d, GameRt, MotionFx, Tonemap, VelloPass, WorldRt};
@@ -55,6 +56,10 @@ pub(crate) struct Vista {
     flip_render: ph2d_flip_render::FlipRenderer,
     flip_compose: ph2d_flip_render::FlipCompose,
     pub(crate) placa: ph2d_app_motion::motion_shape_placa::PlacaDeFormas,
+    pub(crate) motion: ph2d_app_motion::motion_filter::VistaDoMotion,
+    pub(crate) palcos: ph2d_app_motion::macro_track::palcos::VistaDosPalcos,
+    /// As formas do Motion que a placa não leva — no editor vão na cena do chrome; aqui colam-se por cima do mundo.
+    pub(crate) cena_do_motion: ph2d_vector::VectorScene,
     retrato: Retrato,
 }
 
@@ -139,6 +144,9 @@ impl Vista {
             flip_render: ph2d_flip_render::FlipRenderer::new(&gpu.device, GameRt::FORMAT),
             flip_compose: ph2d_flip_render::FlipCompose::new(&gpu.device, GameRt::FORMAT),
             placa: Default::default(),
+            motion: Default::default(),
+            palcos: Default::default(),
+            cena_do_motion: ph2d_vector::VectorScene::new(),
             retrato: Retrato::new(gpu, editor, tamanho),
         })
     }
@@ -178,11 +186,11 @@ impl Vista {
         }
     }
 
-    /// Troca o que é por vista com o `AppGfx` (e a placa do Motion, que mora no estado da família).
+    /// Troca o que é por vista com o `AppGfx` (e as placas do Motion, que moram no estado da família).
     fn troca(
         &mut self,
         gfx: &mut AppGfx,
-        placa: &mut ph2d_app_motion::motion_shape_placa::PlacaDeFormas,
+        shell: &mut ph2d_app_motion::motion_shell_state::MotionShellState,
     ) {
         std::mem::swap(&mut self.camera, &mut gfx.camera);
         std::mem::swap(&mut self.game_rt, &mut gfx.game_rt);
@@ -194,7 +202,32 @@ impl Vista {
         std::mem::swap(&mut self.luz2d, &mut gfx.luz2d);
         std::mem::swap(&mut self.flip_render, &mut gfx.flip_render);
         std::mem::swap(&mut self.flip_compose, &mut gfx.flip_compose);
-        std::mem::swap(&mut self.placa, placa);
+        std::mem::swap(&mut self.placa, &mut shell.placa);
+        gfx.motion.troca_a_vista(&mut self.motion);
+        shell.palcos.troca_a_vista(&mut self.palcos);
+    }
+
+    /// As formas do Motion que a placa não leva, por cima do mundo da vista (o lugar da cena do chrome no editor).
+    fn cola_o_motion(&self, gfx: &mut AppGfx) {
+        if self.cena_do_motion.inner().encoding().is_empty() {
+            return;
+        }
+        let gpu = gfx.surface.gpu();
+        let pintou = gfx.vello_pass.render_to_intermediate(
+            gpu,
+            self.cena_do_motion.inner(),
+            self.tamanho,
+            ph2d_vector::Color::TRANSPARENT,
+        );
+        match pintou {
+            Ok(()) => gfx.band_blit.blit(
+                gpu,
+                gfx.world_rt.blend_view(),
+                gfx.vello_pass.intermediate_view(),
+                ph2d_render::BandSource::Vector,
+            ),
+            Err(e) => eprintln!("[miniatura] as formas do Motion: {e}"),
+        }
     }
 }
 
@@ -258,7 +291,7 @@ impl crate::App {
             let g = gfx.surface.gpu();
             ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.miniatura")
         };
-        vista.troca(gfx, &mut self.motion_shell.placa);
+        vista.troca(gfx, &mut self.motion_shell);
         let janela = vista.janela();
         self.na_vista_da_camera = true;
         let vazio = ph2d_render::LiftedInstances::default();
@@ -270,7 +303,8 @@ impl crate::App {
         }
         self.na_vista_da_camera = false;
         if let Some(gfx) = self.gfx.as_mut() {
-            vista.troca(gfx, &mut self.motion_shell.placa);
+            vista.cola_o_motion(gfx);
+            vista.troca(gfx, &mut self.motion_shell);
             vista.retrato.copia_de(gfx.surface.gpu(), &vista.world_rt);
             // O atlas do Vello é persistente: sem a marca ele serve o retrato do 1.º quadro (`mark_texture_dirty`).
             gfx.vello_pass.mark_texture_dirty(&vista.retrato.registo);

@@ -38,6 +38,7 @@ impl crate::App {
             hero_screen,
             motion,
             sim,
+            miniatura,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -46,7 +47,14 @@ impl crate::App {
         // sprites, pelo mesmo `cam_affine`). ⭐⭐⭐ Na PLACA (doc 121, W2) o presente cola-as; as dos
         // palcos das macros (ADR-0186) vão na camada de cada um, com a MESMA arte.
         let do_editor = motion_tool_active && !self.motion_shell.placa.ativa();
-        if do_editor || self.motion_shell.palcos.tocam() {
+        let mut vista = miniatura.pedida();
+        if let Some(v) = vista.as_deref_mut() {
+            v.cena_do_motion.reset();
+        }
+        let da_vista = vista
+            .as_ref()
+            .is_some_and(|v| motion_tool_active && !v.placa.ativa());
+        if do_editor || da_vista || self.motion_shell.palcos.tocam() {
             // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
             // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
             // [`ph2d_app_motion::motion_leaf_images`] porque cada leitura PARA a GPU.
@@ -78,6 +86,39 @@ impl crate::App {
                     hero.project.image_filter,
                     motion.filtro.alvo_da_cena(motion_tool_active, vector_scene),
                 );
+            }
+            // ⭐ E a vista da câmera (A6): as mesmas formas com a câmera DELA — os palcos na camada de cada um (a da
+            // vista), as do editor na camada dela ou na cena que a vista cola por cima do mundo.
+            if let Some(v) = vista {
+                let alvo = v.janela();
+                let (cam, janela) = (
+                    v.afim(),
+                    Some(ph2d_vector::Rect::new(
+                        0.0,
+                        0.0,
+                        f64::from(alvo.width),
+                        f64::from(alvo.height),
+                    )),
+                );
+                palcos.troca_a_vista(&mut v.palcos);
+                palcos.codifica(&mut art, cam, janela, filtro);
+                palcos.troca_a_vista(&mut v.palcos);
+                if da_vista {
+                    let cena = v.motion.alvo_da_cena(
+                        &motion.filtro,
+                        motion_tool_active,
+                        &mut v.cena_do_motion,
+                    );
+                    ph2d_app_motion::motion_shape_gen::encode(
+                        &motion.pump.vector_instances,
+                        &motion.shape_store,
+                        &mut art,
+                        cam,
+                        janela,
+                        filtro,
+                        cena,
+                    );
+                }
             }
             // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele são `268 MB`, retidos pela
             // vida do processo. Os RECORTES ficam (a resposta memoizada, pequena).

@@ -556,6 +556,11 @@ impl PlacaDeFormas {
         self.sem_contorno = true;
     }
 
+    #[cfg(test)]
+    pub(crate) fn esta_sem_contorno(&self) -> bool {
+        self.sem_contorno
+    }
+
     /// O passe desta placa com a `variante` (doc 121 §9.16) — antes do 1.º desenho.
     #[cfg(test)]
     pub(crate) fn com_variante(&mut self, variante: ph2d_shape_gpu::VarianteDoPasse) {

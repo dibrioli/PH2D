@@ -459,9 +459,7 @@ impl crate::App {
             placa, gpu, tamanho, motion, renderer, filtro,
         );
         let palcos = &mut self.motion_shell.palcos;
-        if !na_vista {
-            palcos.desenha(gpu, tamanho, renderer, filtro);
-        }
+        palcos.desenha(gpu, tamanho, renderer, filtro);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

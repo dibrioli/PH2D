@@ -71,29 +71,25 @@ impl crate::App {
             let alvo = world_rt.blend_view();
             ph2d_app_motion::motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);
         }
-        // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor.
-        // ⚠️ Não na vista da câmera: a placa de cada palco é codificada com a câmera do editor (ver o plano 18).
+        // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor — na vista da
+        // câmera, a camada DELA (`vista_da_camera::Vista::troca`).
         let palcos = &mut self.motion_shell.palcos;
-        if !na_vista {
-            palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
-                gpu: surface.gpu(),
-                renderer,
-                camera,
-                window: window_size,
-                scene_viewport,
-                mundo: world_rt,
-                band_blit,
-            });
-        }
+        palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
+            gpu: surface.gpu(),
+            renderer,
+            camera,
+            window: window_size,
+            scene_viewport,
+            mundo: world_rt,
+            band_blit,
+        });
         // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
         let cena = hero_screen
             .as_ref()
             .filter(|_| !na_vista)
             .and_then(|h| h.cena_visivel(scene_viewport));
         motion.lente.aplica(surface.gpu(), world_rt, cena);
-        if !na_vista {
-            palcos.lentes(surface.gpu(), world_rt, cena);
-        }
+        palcos.lentes(surface.gpu(), world_rt, cena);
     }
 
     /// Os passes 2 a 4 do quadro adquirido: o mundo por cima ([`Self::present_mundo_por_cima`]), o vidro, o chrome

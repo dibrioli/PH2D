@@ -94,6 +94,55 @@ pub struct MotionFiltro {
     placa: Option<Placa>,
 }
 
+/// O que a camada filtrada guarda POR VISTA: a cena do Vello (codificada com a câmera de quem vê), os alvos do
+/// tamanho dela e a resposta do [`formas_no_vello`]. A pilha e as pousas são do grafo — as mesmas nas duas.
+#[derive(Default)]
+struct VistaDoFiltro {
+    formas_no_vello: bool,
+    cena: VectorScene,
+    placa: Option<Placa>,
+}
+
+/// ⭐ **O estado de desenho do Motion POR VISTA** (a miniatura da câmera, `docs/GameEngineFuncional/18`): a vista
+/// da câmera troca-o com o do editor à volta da passagem dela ([`MotionState::troca_a_vista`]); duas trocas = nada.
+#[derive(Default)]
+pub struct VistaDoMotion {
+    filtro: VistaDoFiltro,
+    lente: crate::motion_lens::VistaDaLente,
+}
+
+impl VistaDoMotion {
+    /// **Onde a shell codifica, para ESTA vista, as formas que a placa não leva** — a pergunta do
+    /// [`MotionFiltro::alvo_da_cena`] com a pilha do grafo (`filtro`): na camada desta vista, ou em `do_quadro`.
+    pub fn alvo_da_cena<'a>(
+        &'a mut self,
+        filtro: &MotionFiltro,
+        desenha: bool,
+        do_quadro: &'a mut VectorScene,
+    ) -> &'a mut VectorScene {
+        if desenha && !filtro.pilha.is_empty() {
+            self.filtro.cena.reset();
+            &mut self.filtro.cena
+        } else {
+            do_quadro
+        }
+    }
+}
+
+impl MotionState {
+    /// Troca o estado de desenho por vista com `v` (a camada filtrada e a lente).
+    pub fn troca_a_vista(&mut self, v: &mut VistaDoMotion) {
+        self.filtro.troca_a_vista(&mut v.filtro);
+        self.lente.troca_a_vista(&mut v.lente);
+    }
+
+    /// A cena do Vello da camada (o gate da troca).
+    #[cfg(test)]
+    pub(crate) fn cena_da_camada_codificada(&self) -> bool {
+        !self.filtro.cena.inner().encoding().is_empty()
+    }
+}
+
 /// **Formas do Motion foram à camada pelo VELLO?** — há cópias vectoriais neste quadro e a placa
 /// não as desenhou. Na camada, mas fora das células: um `Each Shape` vê-as como uma peça só.
 #[must_use]
@@ -239,6 +288,12 @@ impl MotionFiltro {
     #[must_use]
     pub fn pousa(&self) -> Pousa {
         self.pousas.first().copied().unwrap_or_default()
+    }
+
+    fn troca_a_vista(&mut self, v: &mut VistaDoFiltro) {
+        std::mem::swap(&mut self.formas_no_vello, &mut v.formas_no_vello);
+        std::mem::swap(&mut self.cena, &mut v.cena);
+        std::mem::swap(&mut self.placa, &mut v.placa);
     }
 
     fn placa<'p>(

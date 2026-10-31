@@ -24,6 +24,9 @@
 
 ## Estado
 
+> **Janela 1 fechada (31/10, noite):** [HANDOFF_31_10_noite.md](HANDOFF_31_10_noite.md) · continuar por
+> [PROMPT_CONTINUACAO_REFATORACAO.md](PROMPT_CONTINUACAO_REFATORACAO.md). A tabela abaixo é a de abertura.
+
 | fase | estado |
 |---|---|
 | F0 varredura | manchas escuras reproduzidas no motor; ferrugem e degraus em curso |

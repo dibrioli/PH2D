@@ -52,6 +52,10 @@ fn hash_do_estado(gravidade: bool) -> u64 {
     traco(&mut e, &[(30.0, 30.0), (270.0, 180.0)]);
     traco(&mut e, &[(2.0, 200.0), (2.0, 2.0), (200.0, 2.0)]);
     traco(&mut e, &[(298.0, 120.0), (298.0, 210.0), (180.0, 210.0)]);
+    hash_dos_passos(e, gravidade)
+}
+
+fn hash_dos_passos(mut e: Engine, gravidade: bool) -> u64 {
     if gravidade {
         e.sim.gravity_override = Some([0.4, 0.7]);
     }
@@ -82,8 +86,10 @@ fn hash_do_estado(gravidade: bool) -> u64 {
 
 #[test]
 fn flow_step_bits_are_the_recorded_ones() {
-    for rota in [1u8, 2] {
+    // As rotas antigas todas juntas, e as novas forçadas.
+    for (rota, cortes) in [(1u8, 0u32), (2, u32::MAX)] {
         crate::flow::COMMIT_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
+        crate::flow::CORTES.store(cortes, std::sync::atomic::Ordering::Relaxed);
         let got = [hash_do_estado(false), hash_do_estado(true)];
         assert_eq!(
             got, GRAVADO,
@@ -91,6 +97,7 @@ fn flow_step_bits_are_the_recorded_ones() {
         );
     }
     crate::flow::COMMIT_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
+    crate::flow::CORTES.store(u32::MAX, std::sync::atomic::Ordering::Relaxed);
     let got = [hash_do_estado(false), hash_do_estado(true)];
     let s = got.iter().map(|h| format!("{h:#018x}")).collect::<Vec<_>>();
     println!("hashes {s:?}");
@@ -98,3 +105,28 @@ fn flow_step_bits_are_the_recorded_ones() {
 }
 
 const GRAVADO: [u64; 2] = [0xf959_f6a5_7bbf_c1b2, 0x4650_940d_d0f2_d7fd];
+
+/// Duas faixas largas separadas por linhas SECAS dentro da bbox: as linhas sem faixa viva (`row_lo > row_hi`,
+/// sentinelas `i32::MAX`/`MIN`) são contadas pelo `commit_rows` — `hi − lo + 1` transbordava (30/10, o
+/// `parallel_rows`). As três rotas do commit dão o mesmo estado.
+#[test]
+fn flow_step_bits_with_dry_rows_inside_the_bbox() {
+    let cena = || {
+        let mut e = Engine::new(W, H);
+        e.sliders.water = 1.0;
+        e.sliders.size = 1.0;
+        traco(&mut e, &[(20.0, 20.0), (280.0, 24.0)]);
+        traco(&mut e, &[(20.0, 190.0), (280.0, 186.0)]);
+        e
+    };
+    let mut got = Vec::new();
+    for rota in [1u8, 2, 0] {
+        crate::flow::COMMIT_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
+        got.push(hash_dos_passos(cena(), false));
+    }
+    crate::flow::COMMIT_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
+    assert!(
+        got.iter().all(|&h| h == got[0]),
+        "as rotas do commit divergem: {got:x?}"
+    );
+}

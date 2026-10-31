@@ -549,7 +549,8 @@ fn commit_rows(g: &mut Grid, mode: Rows) {
     let viva: usize = (by0..=by1)
         .map(|y| {
             let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
-            (hi - lo + 1).max(0) as usize
+            // Linha sem faixa: as sentinelas `i32::MAX`/`MIN` fazem `hi − lo` transbordar.
+            if lo > hi { 0 } else { (hi - lo + 1) as usize }
         })
         .sum();
     let auto = (g.cells - viva) * 4 <= viva;

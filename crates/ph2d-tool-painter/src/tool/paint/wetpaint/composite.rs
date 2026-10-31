@@ -28,6 +28,8 @@ impl PainterTool {
     /// [`Self::wetpaint_composite`] with the show-wet veil explicit — the
     /// end-session door forces `false` so the veil never bakes.
     pub(super) fn wetpaint_composite_veiled(&mut self, veil: bool) {
+        // Qualquer composição leva o sujo inteiro do motor — o pendente do quadro também ([`super::por_quadro`]).
+        self.paint.wetpaint.composite_pendente = false;
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
         let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();

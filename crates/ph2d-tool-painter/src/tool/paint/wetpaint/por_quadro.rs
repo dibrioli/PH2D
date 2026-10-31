@@ -1,0 +1,44 @@
+//! **A tela do Wet Paint compõe-se UMA vez por quadro** (R3, 31/10) — a lei da pilha
+//! ([`super::super::composite_por_quadro`]) levada ao fluido. Medição: `docs/Painter/49_realshader/R3_PINTAR_RELATORIO.md`.
+//!
+//! Cada lote de dabs recompunha a região suja do motor no próprio evento; com o Óleo Real ela cresce pelo
+//! alcance da luz (~32 células de cada lado) e um traço de faca de 3 px por evento refazia a mesma área dezenas
+//! de vezes. O depósito continua dab a dab, no evento; só a escrita na tela espera pela drenagem, e o sujo do
+//! motor ACUMULA a união até lá. A composição é uma função das grades sobre a região (crescida pelo alcance de
+//! quem a lê), logo compor a união uma vez dá os bytes que a última composição de cada píxel daria.
+//!
+//! Adia só com o hospedeiro a drenar por quadro e sem leitor da tela no caminho do carimbo — o MESMO predicado
+//! da pilha ([`PainterTool::pilha_pode_adiar`]). As portas que compõem o pendente são as da pilha
+//! ([`PainterTool::compoe_o_pendente`]: as drenagens, o pen-down seguinte, o fecho do traço…) e o tique, antes
+//! de o motor ir para o worker. Qualquer composição limpa o pendente (`wetpaint_composite_veiled`).
+
+use super::*;
+
+impl PainterTool {
+    /// O fim do lote: compor já, ou deixar para a drenagem do quadro.
+    pub(in crate::tool::paint) fn wet_compoe_ou_adia(&mut self) {
+        if self.pilha_pode_adiar() {
+            self.paint.wetpaint.composite_pendente = true;
+            self.preview_dirty = true;
+        } else {
+            self.wetpaint_composite();
+        }
+    }
+
+    /// Compor o que os lotes deste quadro deixaram por compor. Com o motor no worker não espera: a composição do
+    /// tique que o trouxer leva a união (o sujo do motor não se perde).
+    pub(in crate::tool::paint) fn wet_compoe_o_pendente(&mut self) {
+        if !std::mem::take(&mut self.paint.wetpaint.composite_pendente) {
+            return;
+        }
+        if self
+            .paint
+            .wetpaint
+            .session
+            .as_mut()
+            .is_some_and(WetSession::try_bring_home_now)
+        {
+            self.wetpaint_composite();
+        }
+    }
+}

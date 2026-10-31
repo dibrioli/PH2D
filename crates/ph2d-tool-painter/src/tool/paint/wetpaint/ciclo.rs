@@ -153,6 +153,8 @@ impl PainterTool {
             }
             return;
         }
+        // Os dabs dos eventos deste quadro entram na tela ANTES de o motor ir para o worker.
+        self.wet_compoe_o_pendente();
         self.wet_varre_oleo();
         if let Some(divida) = self.paint.wetpaint.relogio_fixo.as_mut() {
             *divida += f64::from(dt_s) / offthread::STEP_S;

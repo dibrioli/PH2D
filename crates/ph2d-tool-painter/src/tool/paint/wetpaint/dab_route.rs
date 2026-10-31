@@ -348,7 +348,7 @@ impl PainterTool {
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
         let t_comp = std::time::Instant::now();
-        self.wetpaint_composite();
+        self.wet_compoe_ou_adia();
         crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);
         // A ABERTURA das pontas rectas: as lanes que conheceram o 1.º rumo neste lote ([`super::tampa`]).
         if pontas && !virtual_ {

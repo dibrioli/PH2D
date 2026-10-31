@@ -108,6 +108,8 @@ impl PainterTool {
     /// **Compor o que os eventos deste quadro deixaram por compor.** Sem pendente é um no-op, logo
     /// as portas que o chamam não pagam nada fora de um traço da pilha.
     pub(crate) fn compoe_o_pendente(&mut self) {
+        // O Wet Paint adia pela MESMA lei e é composto pelas MESMAS portas (`wetpaint::por_quadro`).
+        self.wet_compoe_o_pendente();
         let Some(caixa) = self.paint.pilha.pendente.take() else {
             return;
         };

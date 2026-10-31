@@ -191,6 +191,8 @@ pub(crate) struct WetPaintState {
     pub(super) composta: Option<fita::MarcaDaAgua>,
     /// A recomposição que o painel pediu e o tick ainda varre ([`oleo_no_quadro`]).
     pub(super) varredura: oleo_no_quadro::Varredura,
+    /// Os dabs deste quadro deixaram a tela por compor ([`por_quadro`]): o sujo do motor acumula a união.
+    pub(super) composite_pendente: bool,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -242,6 +244,7 @@ impl Default for WetPaintState {
             ritmo: None,
             composta: None,
             varredura: oleo_no_quadro::Varredura::default(),
+            composite_pendente: false,
         }
     }
 }
@@ -376,6 +379,9 @@ pub(in crate::tool::paint) mod grao_no_filme; // W3b: o dente do papel assado na
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
 pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 mod oleo_plano;
+mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união dos dabs dele
+#[cfg(test)]
+mod por_quadro_tests;
 mod veu; // o véu do Show-wet sobre o composite — filho por LOC // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
 pub(in crate::tool::paint) use oleo_plano::{

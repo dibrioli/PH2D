@@ -1490,3 +1490,128 @@ fn sonda_r2b_grao_do_oleo() {
         }
     });
 }
+
+/// K-9 o **Oil Grunge** (R2-E, Rebelle «Oil › Grunge › Grunge»): as riscas de cerda do Express Oil, cheias, partidas
+/// em MANCHAS deitadas ao longo do traço (a Shape Noise em Flow, várias px através — sobrevive a qualquer óleo) e a
+/// ponta esfiapada. O Rebelle não tem relevo nele (foto): sem o Real Oil. `docs/Painter/Pinceis/R2_E_grunge.md`.
+const OIL_GRUNGE: Receita = Receita {
+    meio: "ExpressOil",
+    grupo: "Grunge",
+    nome: "Oil Grunge",
+    water: 0.0,
+    opacity: 1.0,
+    pigment: 120.0,
+    pickup: 1.0,
+    gate: 0.3,
+    evaporation: 1.0,
+    edge: 0.0,
+    tilt: DIREITA,
+    bristle_size: 3.0,
+    bristle_count: 600.0,
+    hardness: 0.9,
+    size_px: None,
+    extras: &[
+        ("felt", 0.0),
+        ("bristleStrength", 2.5),
+        ("bristlePressure", 2.5),
+        ("bristleLaneWidth", 2.0),
+        ("bristleLift", 0.3),
+        ("bristleNoiseLength", 300.0),
+        ("bristleStreak", 0.6),
+        ("bristleStreakCut", 0.5),
+        ("bristleStreakLength", 200.0),
+        ("bristleTipRagged", 0.6),
+        ("pressureSizeCurve", 0.5),
+        ("pressureOpacity", 0.5),
+    ],
+    grao: None,
+    achatado: None,
+    pincel: &[("shape", MANCHAS_DO_GRUNGE)],
+    nasce_de: Some("Express Oil"),
+    real_oil: false,
+};
+/// As manchas rasgadas do Grunge: Noise em Flow, longo ao longo e fino através — r2 «C» da sonda: furos 0,057 no
+/// recto de 200 (Rebelle 0,054).
+const MANCHAS_DO_GRUNGE: &str = r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.8, 0.85, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [2.0, 18.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+/// As variantes da sonda R2-E (≤ 4): a Shape das manchas e a cerda.
+const SONDA_R2E: &[Receita] = &[
+    Receita {
+        nome: "Grunge A",
+        pincel: &[(
+            "shape",
+            r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.8, 0.8, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [3.0, 25.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#,
+        )],
+        ..OIL_GRUNGE
+    },
+    Receita {
+        nome: "Grunge B",
+        pincel: &[(
+            "shape",
+            r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.6, 0.85, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [3.0, 25.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#,
+        )],
+        ..OIL_GRUNGE
+    },
+    OIL_GRUNGE,
+    Receita {
+        nome: "Grunge D",
+        pincel: &[(
+            "shape",
+            r#"{"angle_deg": 0, "flow": true, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [1.0, 0.8, 0.0, 0.5, 0.5, 0.5], "rake": false, "size": [4.0, 30.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#,
+        )],
+        ..OIL_GRUNGE
+    },
+];
+
+#[test]
+#[ignore = "sonda R2-E: pinta o Grunge (sem óleo); corre-se à mão"]
+fn sonda_r2e_grunge() {
+    use crate::exame_bancada::{Fases, Fonte, Oleo, Pincel, bateria, pinta_cena_oleo};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let dir = std::env::var("PH2D_SONDA_DIR").expect("PH2D_SONDA_DIR");
+    let cenas: Vec<serde_json::Value> = bat["cenas"].as_array().unwrap().clone();
+    std::thread::scope(|s| {
+        for r in SONDA_R2E {
+            let (cenas, dir) = (&cenas, &dir);
+            s.spawn(move || {
+                let mut p = ph2d_brush_presets::Preset {
+                    parametros: crate::presets_de_fabrica::parametros(r),
+                    origem: ph2d_brush_presets::Origem::Fabrica,
+                    miniatura: ph2d_brush_presets::Miniatura {
+                        largura: 1,
+                        altura: 1,
+                        rgba: vec![255; 4],
+                    },
+                    texturas: Default::default(),
+                };
+                p.parametros.width_table = crate::presets_de_fabrica::tabela_de_largura(&p);
+                let pincel = Pincel {
+                    nome: r.nome.to_owned(),
+                    fonte: Fonte::Preset {
+                        preset: Box::new(p),
+                        relativo: String::new(),
+                    },
+                };
+                for c in cenas.iter() {
+                    let mut f = Fases::default();
+                    let (_, g) = pinta_cena_oleo(
+                        &pincel,
+                        None,
+                        c,
+                        tela,
+                        papel,
+                        0,
+                        false,
+                        Oleo::Desligado,
+                        &mut f,
+                    );
+                    let nome = c["nome"].as_str().unwrap();
+                    let n = format!("{dir}/{}_{nome}.rgba", r.nome.replace(' ', "_"));
+                    std::fs::write(n, &g).unwrap();
+                }
+            });
+        }
+    });
+}

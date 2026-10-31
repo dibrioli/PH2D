@@ -59,7 +59,7 @@ impl Editor {
         }
         let hits: Vec<ElementId> = doc
             .live()
-            .filter(|el| !el.locked())
+            .filter(|el| !el.locked() && !el.kanban_missing())
             .filter(|el| {
                 let route = el.connector().map(|_| routes.get(el.id));
                 let b = match route {

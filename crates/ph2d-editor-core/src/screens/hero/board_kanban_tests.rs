@@ -481,3 +481,6 @@ fn a_board_redo_never_brings_back_a_reference_to_a_deleted_kanban() {
         "o documento volta"
     );
 }
+
+#[path = "board_kanban_orphan_tests.rs"]
+mod orphan;

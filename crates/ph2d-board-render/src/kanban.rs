@@ -25,8 +25,7 @@ use ph2d_vector::{
 
 use crate::{GREEK_ALPHA, READ_PX, RenderCache, token};
 
-/// Os Kanbans do projecto, partilhados com o editor e a aba.
-pub type KanbanSource = Rc<RefCell<KanbanSet>>;
+pub use ph2d_board_model::{KanbanSource, install_kanbans};
 
 /// A geometria da aba do Kanban a zoom 1 (`ph2d-app-kanban/src/metrics.rs`), em unidades do Kanban:
 /// o nível baixo tem a MESMA silhueta que o Kanban inteiro (trocar de nível não salta).
@@ -132,7 +131,6 @@ pub trait KanbanPainter {
 }
 
 thread_local! {
-    static SOURCE: RefCell<Option<KanbanSource>> = const { RefCell::new(None) };
     static PAINTER: RefCell<Option<Rc<RefCell<dyn KanbanPainter>>>> = const { RefCell::new(None) };
     static FORCE: std::cell::Cell<Option<KanbanLod>> = const { std::cell::Cell::new(None) };
 }
@@ -144,11 +142,6 @@ pub fn force_kanban_lod(lod: Option<KanbanLod>) {
     FORCE.with(|f| f.set(lod));
 }
 
-/// Os Kanbans que o desenho deste fio lê (o editor instala o `Rc` do projecto).
-pub fn install_kanbans(set: KanbanSource) {
-    SOURCE.with(|s| *s.borrow_mut() = Some(set));
-}
-
 /// O gancho de pintura deste fio (a família Kanban instala-o ao arrancar).
 pub fn install_kanban_painter(p: Rc<RefCell<dyn KanbanPainter>>) {
     PAINTER.with(|s| *s.borrow_mut() = Some(p));
@@ -157,11 +150,9 @@ pub fn install_kanban_painter(p: Rc<RefCell<dyn KanbanPainter>>) {
 /// O nome do Kanban `id` nos Kanbans deste fio (o export para `.excalidraw` escreve-o).
 #[must_use]
 pub fn kanban_name(id: KanbanId) -> Option<String> {
-    SOURCE.with(|s| {
-        let set = s.borrow().clone()?;
-        let set = set.borrow();
-        set.get(id).map(|k| k.header.name.clone())
-    })
+    let set = ph2d_board_model::installed_kanbans()?;
+    let set = set.borrow();
+    set.get(id).map(|k| k.header.name.clone())
 }
 
 /// Há gancho de pintura (sem ele o Kanban do quadro não é interactivo).
@@ -279,7 +270,7 @@ pub(crate) fn paint(
     }
     scene.push_layer_shape(VelloBlend::default(), 1.0, t, &outer);
     let frame = Rect::new(0.0, 0.0, el.w, el.h);
-    let source = SOURCE.with(|s| s.borrow().clone());
+    let source = ph2d_board_model::installed_kanbans();
     let painter = PAINTER.with(|s| s.borrow().clone());
     let set = source.as_ref().map(|s| s.borrow());
     let painted = match (&painter, &set) {

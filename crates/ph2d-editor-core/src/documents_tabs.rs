@@ -165,13 +165,19 @@ impl Documents {
             TabStep::Restore {
                 board,
                 at,
-                history,
+                mut history,
                 focus,
             } => {
                 let id = board.id;
                 if !self.boards.restore(at, *board) {
                     return None;
                 }
+                // D17 — um Kanban apagado enquanto o quadro estava fora: o refazer dele não o repõe.
+                let set = self.kanbans.borrow();
+                history.forget_redo_putting(|e| {
+                    e.kanban().is_some_and(|k| set.get(k.kanban).is_none())
+                });
+                drop(set);
                 self.live.histories.insert(id, history);
                 if focus {
                     self.activate(Some(id));
@@ -254,6 +260,14 @@ impl Documents {
         }
         crate::screens::hero::board_video::kanban::link::request_close(id);
         Some((kanban, refs))
+    }
+
+    /// Troca os dois passos de abas de cima: uma ordem que a pilha não deixa chegar (o guarda do
+    /// [`TabStep::Restore`] prova-se nela).
+    #[cfg(test)]
+    pub(crate) fn swap_tab_undo_top(&mut self) {
+        let n = self.tabs.undo.len();
+        self.tabs.undo.swap(n - 2, n - 1);
     }
 
     pub(crate) fn position(&self, id: BoardId) -> Option<usize> {

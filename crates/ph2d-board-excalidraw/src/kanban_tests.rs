@@ -40,3 +40,16 @@ fn a_kanban_exports_as_a_named_rounded_rectangle_and_comes_back() {
     // Sem nomes, o rectângulo sai sem texto (nunca um nome inventado).
     assert!(!write(&b).contains("\"type\":\"text\""));
 }
+
+/// ⭐ D17 — com os Kanbans do projecto instalados, uma referência a um Kanban que lá não está é
+/// INERTE: o export salta-a (nem rectângulo vazio, nem `customData`).
+#[test]
+fn a_reference_to_a_missing_kanban_is_skipped_by_the_export() {
+    let b = board();
+    let set = std::rc::Rc::new(std::cell::RefCell::new(
+        ph2d_board_model::KanbanSet::default(),
+    ));
+    ph2d_board_model::install_kanbans(set);
+    let v: Value = serde_json::from_str(&write(&b)).unwrap();
+    assert!(v["elements"].as_array().unwrap().is_empty(), "{v}");
+}

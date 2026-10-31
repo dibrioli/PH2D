@@ -77,7 +77,7 @@ pub fn placements(docs: &Documents, kanban: KanbanId) -> Vec<Placement> {
     let mut out = Vec::new();
     for b in docs.boards().boards() {
         for el in b.doc.live() {
-            if el.kanban().is_some_and(|k| k.kanban == kanban) {
+            if el.kanban().is_some_and(|k| k.kanban == kanban) && !el.kanban_missing() {
                 out.push(Placement {
                     board: b.id,
                     element: el.id,

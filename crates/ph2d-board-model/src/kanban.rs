@@ -5,10 +5,11 @@
 //!
 //! [ADR-0195]: ../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 
-pub use ph2d_kanban_model::{KanbanId, ListId};
+pub use ph2d_kanban_model::{KanbanId, KanbanSet, ListId};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{BoardDoc, Element, ElementId, ElementKind, FracKey, Style};
@@ -120,7 +121,42 @@ impl BoardKanban {
     }
 }
 
+/// Os Kanbans do projecto, partilhados com o editor, o desenho e a aba.
+pub type KanbanSource = Rc<RefCell<KanbanSet>>;
+
+thread_local! {
+    static SOURCE: RefCell<Option<KanbanSource>> = const { RefCell::new(None) };
+}
+
+/// Os Kanbans do projecto que este fio lê (o editor instala o `Rc` do projecto a cada quadro).
+pub fn install_kanbans(set: KanbanSource) {
+    SOURCE.with(|s| *s.borrow_mut() = Some(set));
+}
+
+/// Os Kanbans instalados neste fio (`None` = nenhum).
+#[must_use]
+pub fn installed_kanbans() -> Option<KanbanSource> {
+    SOURCE.with(|s| s.borrow().clone())
+}
+
 impl Element {
+    /// ⭐ D17 — uma referência a um Kanban que o projecto NÃO tem (apagado, ou de um quadro vindo de
+    /// fora) é INERTE: não se pinta, não se apanha, não se exporta — mas fica no documento, com a
+    /// caixa e as chaves, e revive se o Kanban volta (o `Ctrl+Z` do apagar). Sem Kanbans instalados
+    /// (ou com o registo emprestado) nada é inerte.
+    #[must_use]
+    pub fn kanban_missing(&self) -> bool {
+        let Some(k) = self.kanban() else {
+            return false;
+        };
+        SOURCE.with(|s| {
+            s.borrow()
+                .as_ref()
+                .and_then(|set| set.try_borrow().ok().map(|set| set.get(k.kanban).is_none()))
+                .unwrap_or(false)
+        })
+    }
+
     /// Um Kanban na caixa `[x, y, w, h]` (a referência; o documento é de quem chama).
     #[must_use]
     pub fn new_kanban(id: ElementId, z: FracKey, k: BoardKanban, bx: [f64; 4]) -> Self {

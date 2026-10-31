@@ -398,7 +398,11 @@ pub fn write(board: &Board) -> String {
 pub fn write_with_names(board: &Board, names: &dyn Fn(KanbanId) -> Option<String>) -> String {
     let mut routes = RouteCache::default();
     routes.sync(&board.doc);
-    let mut els: Vec<&Element> = board.doc.live_with_hidden().collect();
+    let mut els: Vec<&Element> = board
+        .doc
+        .live_with_hidden()
+        .filter(|e| !e.kanban_missing())
+        .collect();
     els.sort_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)));
     // Os frames primeiro (atrás de tudo, como no nosso desenho), depois o resto pelo z.
     els.sort_by_key(|e| e.as_frame().is_none());

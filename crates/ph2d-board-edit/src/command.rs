@@ -65,7 +65,7 @@ impl Editor {
                 // Os travados ficam de fora (o Miro e o oráculo E).
                 self.selection = doc
                     .live()
-                    .filter(|el| !el.locked())
+                    .filter(|el| !el.locked() && !el.kanban_missing())
                     .map(|el| el.id)
                     .collect();
                 true

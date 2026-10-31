@@ -537,7 +537,10 @@ impl Trail {
             },
         );
         (self.molhado.pig, self.molhado.agua, self.molhado.cor) = (pig, agua, cor);
-        self.molhado_levanta(g, p, m, mode)
+        let antes = crate::solver::tinta_transporte::fotografa_susp(p, g); // F4_2 E7
+        let tocou = self.molhado_levanta(g, p, m, mode);
+        crate::solver::tinta_transporte::tira_pelo_susp(g, antes);
+        tocou
     }
 
     /// A outra tinta molhada debaixo do tubo perde a fracção `WetOpenPush × outra_tinta` (a borda macia como a do

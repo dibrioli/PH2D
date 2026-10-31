@@ -102,6 +102,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
     let ladeira = ladeira_do_oleo::do_passe(g, by0, by1, p.oleo > 0.0);
+    let pigmento = tinta_transporte::liga(p, g);
     // Split-borrow the fields once — the loop body reads/writes through
     // locals instead of re-projecting `g.` per access.
     let Grid {
@@ -121,6 +122,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         active,
         bloom,
         traco,
+        tinta,
         ..
     } = g;
     let traco_full: &[u32] = traco;
@@ -392,6 +394,9 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
                             susp_rgb[nb] = [out[0] as f32, out[1] as f32, out[2] as f32];
                             susp[nb] = (susp[nb] as f64 + lift) as f32;
                             sett[nb] = (sett[nb] as f64 - lift) as f32;
+                            if pigmento {
+                                tinta_transporte::levanta(tinta, nb, 0.1);
+                            }
                         }
                     }
                 }
@@ -556,6 +561,7 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
     let s = g.s;
     let mut out = [0.0f64; 3];
     let rate_knob = p.k(Knob::ExtDiffusion);
+    let pigmento = tinta_transporte::liga(p, g);
     for y in g.by0..=g.by1 {
         // Faixa viva: fora dela `active` é 0 e o corpo já era um `continue`.
         let (bx0, bx1) = g.span_x(y);
@@ -594,6 +600,10 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
                     &mut out,
                 );
                 g.susp_rgb[to] = [out[0] as f32, out[1] as f32, out[2] as f32];
+                if pigmento {
+                    let f = dm / g.susp[from] as f64;
+                    tinta_transporte::move_filme(&mut g.tinta, from, to, f);
+                }
                 g.susp[from] = (g.susp[from] as f64 - dm) as f32;
                 g.susp[to] = (g.susp[to] as f64 + dm) as f32;
             }
@@ -610,6 +620,7 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
 mod active_region;
 mod advect;
 mod advect_jacobi;
+pub(crate) use advect_jacobi::tinta as tinta_transporte; // F4_2 E7: as somas vão com a massa
 #[cfg(test)]
 mod bingham_tests;
 mod flow_jacobi;

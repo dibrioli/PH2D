@@ -178,6 +178,21 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
             },
         );
     }
+    if super::tinta_transporte::existe(g) {
+        // F4_2 E7: as somas pela MESMA combinação linear que a massa.
+        let celulas = super::tinta_transporte::celulas_da_faixa(g);
+        super::tinta_transporte::gather_linear(g, celulas.into_iter(), |g, i, t| {
+            let (x, y) = ((i % s) as i32, (i / s) as i32);
+            let (ox, oy) = p.da(&g.film, x, y);
+            t.push((i, 1.0 - ox - oy));
+            if p.dx != 0 && p.dentro(x - p.dx, y) {
+                t.push((p.at(x - p.dx, y), p.da(&g.film, x - p.dx, y).0));
+            }
+            if p.dy != 0 && p.dentro(x, y - p.dy) {
+                t.push((p.at(x, y - p.dy), p.da(&g.film, x, y - p.dy).1));
+            }
+        });
+    }
     let Grid {
         scratch,
         susp,

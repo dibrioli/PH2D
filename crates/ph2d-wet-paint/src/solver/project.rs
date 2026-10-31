@@ -253,6 +253,7 @@ pub fn apply_boundaries(g: &mut Grid, velocity_only: bool) {
                 g.wet[b + x] = 1;
             }
         }
+        super::tinta_transporte::drena_o_anel(g);
     }
     let geom = g.flow;
     let s = geom.s;

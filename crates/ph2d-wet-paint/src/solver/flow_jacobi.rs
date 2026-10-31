@@ -170,7 +170,9 @@ pub fn build_flow_field_jacobi_rows(
     flow_rows(g, &c, mode);
     wet_stamp_rows(g, mode);
     if c.backrun {
+        let antes = super::tinta_transporte::fotografa_sett(p, g); // F4_2 E7
         backrun::backrun_rows(g, &c, mode);
+        super::tinta_transporte::levanta_pelo_sett(g, antes);
     }
 }
 

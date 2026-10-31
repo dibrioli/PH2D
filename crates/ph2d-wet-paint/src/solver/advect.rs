@@ -28,6 +28,7 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
     let mut km_weights = [0.0f64; 4];
     let mut km_out = [0.0f64; 3];
     let mut vmax = 0.0f64;
+    let pigmento = super::tinta_transporte::liga(p, g); // F4_2 E7
     for y in by0..=by1 {
         // ⚠️ Este é o ÚNICO passe cujo ramo inativo NÃO é um `continue` puro:
         // ele ZERA a velocidade persistente da célula que deixou de ser água.
@@ -210,6 +211,10 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
                 g.susp[i11] = (m11 - p11) as f32;
                 g.susp[i] = (g.susp[i] as f64 + want) as f32;
                 g.susp_rgb[i] = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
+                if pigmento {
+                    let (c, w) = ([i00, i10, i01, i11], [w00, w10, w01, w11]);
+                    super::tinta_transporte::junta_cantos(&mut g.tinta, i, c, w);
+                }
             }
             // Water moves the same way (no color, no threshold).
             let f00 = g.film[i00] as f64;

@@ -213,7 +213,7 @@ fn medida<I: Send>(mut itens: Vec<I>, piso_ns: u64, f: impl Fn(I) + Send + Sync)
 }
 
 /// [`medida`] com uma redução (`red` associativa e comutativa, a regra de [`walk_rows_reduce`]).
-fn medida_reduce<I: Send, R: Send + Sync + Copy>(
+pub(crate) fn medida_reduce<I: Send, R: Send + Sync + Copy>(
     mut itens: Vec<I>,
     piso_ns: u64,
     ident: R,

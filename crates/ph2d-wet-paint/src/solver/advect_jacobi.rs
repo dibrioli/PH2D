@@ -60,6 +60,7 @@ use crate::grid::{Grid, SolverScratch, span_x_of};
 use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::tuning::Knob;
+use rayon::prelude::*;
 
 /// **A que distância pode estar um destino que puxa massa DAQUI**, em células.
 ///
@@ -154,6 +155,7 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
 /// [`crate::flow::FlowRowSampler`] que o serial usa — uma resposta só.
 fn prepare_rows(g: &mut Grid, mode: Rows) -> f64 {
     let geom = g.flow;
+    let (wf, hf) = (g.w as f64, g.h as f64);
     let s = g.s;
     let (by0, by1) = (g.by0, g.by1);
     let Grid {
@@ -170,12 +172,13 @@ fn prepare_rows(g: &mut Grid, mode: Rows) -> f64 {
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
     let band = by0 as usize * s..(by1 as usize + 1) * s;
-    par::walk_rows_reduce(
+    walk_rows2_reduce(
         mode,
-        &mut scratch.uv[band],
+        &mut scratch.uv[band.clone()],
+        &mut scratch.bt[band],
         s,
         0.0f64,
-        |ri, row| {
+        |ri, row, bt| {
             let y = by0 + ri as i32;
             let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
             if lo > hi {
@@ -186,7 +189,16 @@ fn prepare_rows(g: &mut Grid, mode: Rows) -> f64 {
             let mut i = lo as usize + y as usize * s;
             for x in lo..=hi {
                 let (ux, uy) = sampler.at(flow_x, flow_y, x, i, geom.s);
-                row[x as usize] = [ux as f32, uy as f32];
+                let uvf = [ux as f32, uy as f32];
+                row[x as usize] = uvf;
+                // A linha-base do retro-traço, do `uv` JÁ arredondado — o que o `outflow_rows` lê.
+                bt[x as usize] = match backtrace(x, y, f64::from(uvf[0]), f64::from(uvf[1]), wf, hf)
+                {
+                    Some((_, _, y0, _)) if active[i] != 0 => {
+                        i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
+                    }
+                    _ => SolverScratch::BT_NADA,
+                };
                 // O `vmax` é o do SERIAL: só célula ativa, e antes da checagem
                 // de sair da folha.
                 if active[i] != 0 {
@@ -319,7 +331,6 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
     let (by0, by1) = (g.by0, g.by1);
     let Grid {
         scratch,
-        active,
         row_lo,
         row_hi,
         spans_enabled,
@@ -329,29 +340,6 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
     let band = by0 as usize * s..(by1 as usize + 1) * s;
-    // A linha-base de cada destino, 1× (antes: um retro-traço por linha candidata, `2·alcance+1`).
-    {
-        let uv: &[[f32; 2]] = &scratch.uv;
-        let active: &[u8] = active;
-        par::walk_rows(mode, &mut scratch.bt[band.clone()], s, |ri, row| {
-            let y = by0 + ri as i32;
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            let mut di = lo.max(0) as usize + y as usize * s;
-            for x in lo..=hi {
-                // ⚠️ `active ⊆ faixa` (invariante do `verify_spans`), então todo destino que passa daqui
-                // teve o `uv` escrito pelo `prepare_rows`.
-                let uvd = uv[di];
-                row[x as usize] =
-                    match backtrace(x, y, f64::from(uvd[0]), f64::from(uvd[1]), wf, hf) {
-                        Some((_, _, y0, _)) if active[di] != 0 => {
-                            i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
-                        }
-                        _ => SolverScratch::BT_NADA,
-                    };
-                di += 1;
-            }
-        });
-    }
     let uv: &[[f32; 2]] = &scratch.uv;
     let bt: &[i8] = &scratch.bt;
     par::walk_rows(mode, &mut scratch.outflow[band], s, |ri, row| {
@@ -590,6 +578,45 @@ fn commit_rows(g: &mut Grid, mode: Rows) {
             cr[lo..=hi].copy_from_slice(&dc[a..=b]);
         },
     );
+}
+
+/// [`par::walk_rows_reduce`] sobre DOIS planos (a mesma lei da redução) — aqui e não em `par` pelo tecto
+/// de LOC daquele ficheiro.
+fn walk_rows2_reduce<T: Send, U: Send, R: Send + Sync + Copy>(
+    mode: Rows,
+    a: &mut [T],
+    b: &mut [U],
+    stride: usize,
+    ident: R,
+    f: impl Fn(usize, &mut [T], &mut [U]) -> R + Send + Sync,
+    red: impl Fn(R, R) -> R + Send + Sync,
+) -> R {
+    debug_assert_eq!(a.len(), b.len(), "os dois planos tem faixas diferentes");
+    let g = |(r, (ra, rb)): (usize, (&mut [T], &mut [U]))| f(r, ra, rb);
+    match mode {
+        Rows::Serial => a
+            .chunks_mut(stride)
+            .zip(b.chunks_mut(stride))
+            .enumerate()
+            .map(g)
+            .fold(ident, &red),
+        Rows::Parallel => a
+            .par_chunks_mut(stride)
+            .zip(b.par_chunks_mut(stride))
+            .enumerate()
+            .map(g)
+            .reduce(|| ident, &red),
+        Rows::Medida(piso) => par::medida_reduce(
+            a.chunks_mut(stride)
+                .zip(b.chunks_mut(stride))
+                .enumerate()
+                .collect(),
+            piso,
+            ident,
+            g,
+            red,
+        ),
+    }
 }
 
 #[cfg(test)]

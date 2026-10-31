@@ -79,24 +79,23 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
             l
         }
     };
-    // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade).
-    let int =
-        |a: f64, g: f64| 0.25 * (-libm::cos(2.0 * a - g) + libm::cos(g) + 2.0 * a * libm::sin(g));
+    // `∫₀^a cos(θ − g)·sin θ dθ`: o peso pelo cosseno de um arco da fatia (o da visibilidade). A normal é a do
+    // papel: a projecção, `g`, os seus senos e o integral até ao tecto do arco vêm das [`Amostras`] (R3).
+    debug_assert!(super::oleo_horizonte::e_o_papel(n));
     Amostras::com(escala, |am| {
         let mut soma = 0.0;
         for k in 0..FATIAS {
             let (dx, dy) = am.dir[k];
-            let no = -n[0] * dy + n[1] * dx;
-            let np = [n[0] + no * dy, n[1] - no * dx, n[2]];
-            let len = exato::sqrt(np[0] * np[0] + np[1] * np[1] + np[2] * np[2]);
-            if len < 1e-9 {
+            let Some(plano) = am.papel[k] else {
                 continue;
-            }
-            let g = libm::acos((np[2] / len).clamp(-1.0, 1.0)).copysign(np[0] * dx + np[1] * dy);
-            for (sgn, lado) in [1.0, -1.0].into_iter().zip(&am.desloc[k]) {
-                let gs = sgn * g;
-                // O limite da meia-esfera da normal deste lado (abaixo da horizontal se ela pende para cá).
-                let fim = FRAC_PI_2 + gs;
+            };
+            let len = plano.len;
+            for ((sgn, lado), ls) in [1.0, -1.0]
+                .into_iter()
+                .zip(&am.desloc[k])
+                .zip(&am.papel_lados[k])
+            {
+                let gs = ls.gs;
                 let (mut e, mut parede) = (0.0f64, (x, y));
                 for &(ox, oy, d) in lado {
                     if d == 0.0 {
@@ -111,12 +110,13 @@ pub fn rebote_no_papel(o: &OleoReal, campo: &CampoAltura, cx: usize, cy: usize) 
                 }
                 let mut luz = 0.0;
                 if e > 0.0 {
-                    let (a, b) = (FRAC_PI_2 - libm::asin(e), fim.min(FRAC_PI_2));
+                    let (a, b) = (FRAC_PI_2 - libm::asin(e), ls.b);
                     if b > a {
                         // A face olha de volta para o papel: normal horizontal `−(dx, dy)·sgn`.
                         let ndl = -(sgn * dx * l[0] + sgn * dy * l[1]);
                         let face = 0.5 * forca + (1.0 - forca) * ndl.max(0.0) / l[2];
-                        luz += (int(b, gs) - int(a, gs)) * lum(parede) * face;
+                        let int_a = LadoDoPapel::int_com(a, gs, ls.cgs, ls.sgs);
+                        luz += (ls.int_b - int_a) * lum(parede) * face;
                     }
                 }
                 soma += len * luz;

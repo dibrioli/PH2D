@@ -5,12 +5,46 @@ use super::*;
 
 /// O vector unitário PARA a luz (x direita, y baixo, z para fora da tela).
 pub(super) fn para_a_luz(o: &OleoReal) -> [f64; 3] {
-    let c = libm::cos(o.altitude);
-    [
-        c * libm::cos(o.azimute),
-        c * libm::sin(o.azimute),
-        libm::sin(o.altitude),
-    ]
+    direccao(o).l
+}
+
+/// A direcção da luz e o que a marcha da sombra tira dela — função só do azimute e da altitude do cartão.
+#[derive(Clone, Copy)]
+struct Direccao {
+    l: [f64; 3],
+    /// A direcção no plano da tela, unitária.
+    dxy: (f64, f64),
+    /// `tan` da altitude: a elevação da luz.
+    sobe: f64,
+}
+
+/// A [`Direccao`] de `o`, guardada por fio (a última pedida): as MESMAS contas que cada célula fazia, ao bit
+/// (R3: 4 trigonométricas, um `hypot` e um `tan` por célula sombreada).
+fn direccao(o: &OleoReal) -> Direccao {
+    thread_local! {
+        static GUARDADA: core::cell::Cell<Option<((u64, u64), Direccao)>> =
+            const { core::cell::Cell::new(None) };
+    }
+    let chave = (o.altitude.to_bits(), o.azimute.to_bits());
+    GUARDADA.with(|g| match g.get() {
+        Some((k, d)) if k == chave => d,
+        _ => {
+            let c = libm::cos(o.altitude);
+            let l = [
+                c * libm::cos(o.azimute),
+                c * libm::sin(o.azimute),
+                libm::sin(o.altitude),
+            ];
+            let lxy = libm::hypot(l[0], l[1]).max(1e-9);
+            let d = Direccao {
+                l,
+                dxy: (l[0] / lxy, l[1] / lxy),
+                sobe: libm::tan(o.altitude),
+            };
+            g.set(Some((chave, d)));
+            d
+        }
+    })
 }
 
 /// Os termos da óptica numa célula, antes da cor: a visibilidade do céu `0..1` (GTAO pelo cosseno; plano
@@ -174,13 +208,14 @@ pub(super) fn luz_directa(o: &OleoReal, campo: &CampoAltura, x: isize, y: isize,
     if o.sombra <= 0.0 {
         return 1.0;
     }
-    let l = para_a_luz(o);
-    let lxy = libm::hypot(l[0], l[1]).max(1e-9);
-    let (dx, dy) = (l[0] / lxy, l[1] / lxy);
+    let Direccao {
+        dxy: (dx, dy),
+        sobe,
+        ..
+    } = direccao(o);
     // O horizonte na direcção da luz (tangente da elevação do obstáculo mais alto visto daqui); a luz
     // apaga-se ao longo de `penumbra` (em tangente) abaixo da elevação dela. Em papel livre o horizonte
     // é 0 e a luz é cheia — a forma `k·folga/t` limitava-a a `k·tan(alt)` também no papel livre.
-    let sobe = libm::tan(o.altitude);
     let mut horizonte = f64::NEG_INFINITY;
     for t in 1..=PASSOS_SOMBRA {
         let t = t as f64;

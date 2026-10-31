@@ -91,3 +91,39 @@ folha inteira, com 2–3 esperas por passo (`step_plano` + `readback_caixa` + `r
 (c) com o pincel normal a placa nem corre (paredes). Antes de pensar na omissão: paredes na placa; subir/descer só a caixa
 suja (não a grade inteira); juntar as esperas do passo num único submit com a leitura da caixa e do vmax num só mapa;
 e medir na RTX numa cena de aguada que encha a folha.
+
+## Ronda 3 (31/10) — paredes na placa, só as linhas sujas, uma espera por passo
+
+Commits `2fe3400624` (paredes) · `0f3fa93d0c` (uma espera) · `c2460bc455` (linhas sujas). Só a Radeon 610M (RADV):
+a RTX continua sem Vulkan (`VK_ICD_FILENAMES=…/nvidia_icd.json vulkaninfo` → `ERROR_INITIALIZATION_FAILED`).
+
+1. **Paredes** (defeito 5 fechado): `advect.wgsl` lê `traco` (binding 18) e `K.isola` (= `p.paredes && !traco.is_empty()`);
+   `parede()` = `solver::parede_do_traco` no `campo` (nivelamento + escrita final) e na `suaviza` (escrita final).
+   `placa_sabe` já não exige `!paredes` ⇒ o pincel normal vai à placa com `PH2D_WET_GPU=1`.
+   ⭐ **Mecanismo** da 1.ª divergência (máx 9,5 níveis): o retro-traço com `d = −1e-10` arredondava a fração a `1` em f32
+   e o canto de baixo perdia o peso `1e-10` que a CPU (f64) lhe dá ⇒ resíduo `susp > 0` na CPU, `0` na placa ⇒ a parede
+   (`susp > 0` dos dois lados) liga/desliga. Cura: `gx = (fl+1) − d` (complemento exacto), sem o embrulho `f ≥ 1 ⇒ base+1`.
+   Gate `o_passo_placa_com_paredes_casa_com_a_cpu_na_cor` (6 528 células com vizinho separado, 60 passos):
+   **máx 0,4009 · p99.9 0,0002 · Δ>0,5 = 0**, devolvido +12 igual. Os gates antigos (`passo`, `paridade`) verdes.
+2. **Só as linhas sujas**: espelho por **hash de linha** (fina e de fluxo) da CPU quando placa = CPU. `sobe_sujo` sobe a faixa
+   cujo hash mudou (dab, undo, troca de camada — sem depender de marcas de dirty); `desce_suja` desce a união das caixas desde
+   a subida + 2 linhas de borda de cada lado. O worker usa os dois. Gate `a_subida_e_a_descida_so_das_linhas_sujas_casam_com_a_cpu`
+   (paredes, traço novo na CPU entre duas tandas de 30 passos, faixa 185..263 de 322): máx 0,4064 · p99.9 0,0002.
+   ⚠️ Faixa = linhas inteiras (não o rectângulo): uma escrita por buffer. A `momentum` da placa zera `vel` nas células inactivas
+   da folha toda e essas linhas fora da faixa não descem — a CPU fica com a `vel` antiga onde não há água (igual ao que a placa
+   já fazia; o gate devolvido não o vê).
+3. **Uma espera por passo**: o rebuild e o resto num submit; a passada `porta` escreve os grupos indirectos (os da CPU, ou 0 se
+   `caixa[14] = 0`); caixa + `vmax` numa cópia de 64 B. Excepção: passo par COM secagem (`n % 6`) espera 2× (a secagem precisa
+   da caixa na CPU para as faixas e os grupos — próxima cura: faixas/grupos da secagem também por indirecto).
+
+**Medida** (`mede_o_passo_placa_a_4k`, 4096×2560, caixa 3340×900, mínimo de 3, loadavg 9–16):
+
+| | antes (ronda 2 + paredes) | depois |
+|---|---|---|
+| placa ms/passo | 73,9 | 78,6 (CPU no mesmo processo 8,7 → 6,7: ruído de carga; a espera não era o gargalo na 610M) |
+| subir por traço | 205,6 ms (grade) | **17,9 ms** (traço de 64 linhas; o grosso é o hash paralelo das 2 560 linhas) |
+| descer por traço | 234–288 ms (grade) | **109 ms** (900 linhas da caixa, 11 leituras × 3 faixas, uma espera cada) |
+
+**Recomendação**: continua **NÃO inverter a omissão** — na 610M a placa anda ~10× mais lenta que a CPU por passo (o
+cálculo, não a espera). Falta: medir na RTX (degrau 3: 6,6 ms o quadro de campo 4K); a descida num codificador só (uma espera
+em vez de 33); a secagem por indirecto.

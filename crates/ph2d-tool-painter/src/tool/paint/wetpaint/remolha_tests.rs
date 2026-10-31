@@ -10,6 +10,25 @@ use ph2d_wet_paint::tuning::Knob;
 
 /// O óleo azul (Solubility `soluvel`) e, por cima, a aguada amarela (Re-wet `dissolve`, Drag `arrasto`), a meio.
 fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64, arrasto: f64) -> PainterTool {
+    cena_com(papel, soluvel, dissolve, arrasto, false, false)
+}
+
+/// A [`cena`] com o Real Oil (`oleo`) e o Pigment mixing (`km`) ligados à mão na aguada (smoke do dono 30/10).
+fn cena_com(
+    papel: [u8; 3],
+    soluvel: f64,
+    dissolve: f64,
+    arrasto: f64,
+    oleo: bool,
+    km: bool,
+) -> PainterTool {
+    let mut t = oleo_azul(papel, soluvel);
+    aguada(&mut t, dissolve, arrasto, oleo, km);
+    t
+}
+
+/// O óleo azul do Dabber (Solubility `soluvel`), pousado e com 2 s de repouso.
+fn oleo_azul(papel: [u8; 3], soluvel: f64) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -32,10 +51,21 @@ fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64, arrasto: f64) -> PainterToo
     for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
+    t
+}
+
+/// A aguada amarela do Wet Flat (Re-wet `dissolve`, Drag `arrasto`, Real Oil `oleo`, Pigment mixing `km`) a meio.
+fn aguada(t: &mut PainterTool, dissolve: f64, arrasto: f64, oleo: bool, km: bool) {
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
     t.paint.wetpaint.knobs.set(Knob::Dissolve, dissolve);
     t.paint.wetpaint.knobs.set(Knob::RewetDrag, arrasto);
+    if oleo {
+        t.set_wet_oleo_real_ligado(true);
+    }
+    if km {
+        t.paint.wetpaint.km_mixing = true;
+    }
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([220, 200, 40]);
     t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
@@ -43,7 +73,6 @@ fn cena(papel: [u8; 3], soluvel: f64, dissolve: f64, arrasto: f64) -> PainterToo
         t.on_canvas_pointer(ponteiro(120.0, 30.0 + 2.8 * k as f32, PointerPhase::Move));
         t.on_tick(1000.0 / 60.0);
     }
-    t
 }
 
 /// Acaba o traço da [`cena`] e deixa assentar.
@@ -152,6 +181,73 @@ fn diag_a_aguada_re_molha_o_oleo() {
             relato(format!(
                 "{pre} Re-wet {d} Drag {a}: azul sob a aguada {oleo:.0} · azul fora do óleo {fora:.0}"
             ));
+        }
+    }
+}
+
+/// A cor MOSTRADA média de uma caixa `x0..x1 × y0..y1` e quantos píxeis são claros (todos os canais ≥ 190: o
+/// branco-rosado do smoke; o amarelo tem b 40, o azul r 40).
+fn caixa(px: &[u8], x0: usize, x1: usize, y0: usize, y1: usize) -> ([f64; 3], usize) {
+    let (mut s, mut claros, mut n) = ([0.0; 3], 0, 0.0);
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let p = &px[(y * W + x) * 4..][..3];
+            for k in 0..3 {
+                s[k] += f64::from(p[k]);
+            }
+            claros += usize::from(p.iter().all(|&v| v >= 190));
+            n += 1.0;
+        }
+    }
+    (s.map(|v| v / n), claros)
+}
+
+/// ⛔ **O Real Oil na mão não empalidece a aguada sobre o óleo** (smoke do dono 30/10, J11 item 0): a lei do pincel de
+/// óleo guardava o tapar extra (o branco) sobre o óleo e a caixa das tintas mostrava-o como papel — o miolo
+/// branco-rosado. Assentada, a caixa sobre o óleo fica a ≤ 6 níveis da de sem o Real Oil (medido antes da cura:
+/// 87,125,195 → 126,147,205, claros 1 → 11).
+#[test]
+fn o_real_oil_na_mao_nao_empalidece_a_aguada_sobre_o_oleo() {
+    let fotografa = |oleo: bool| {
+        let mut t = cena_com(PAPEL, 1.0, 0.35, 0.15, oleo, false);
+        assenta(&mut t);
+        caixa(&mostrada(&mut t), 108, 132, 78, 102)
+    };
+    let ((sem, claros_sem), (com, claros_com)) = (fotografa(false), fotografa(true));
+    let d = (0..3).map(|k| (com[k] - sem[k]).abs()).fold(0.0, f64::max);
+    assert!(
+        d <= 6.0 && claros_com <= claros_sem + 4,
+        "o Real Oil empalideceu a aguada: {com:.0?} (claros {claros_com}) contra {sem:.0?} (claros {claros_sem})"
+    );
+}
+
+/// SONDA (J11, item 0 + 1) — «Real Oil empalidece» e «a água tingida sai verde com Pigment mixing»: a cena do smoke
+/// (Solubility 1, Re-wet 0,35, Drag 0,15) com o Real Oil e o Pigment mixing ligados ou não na aguada; a caixa sobre o
+/// óleo (`108..132 × 78..102`) e a aguada abaixo dele (`112..140`), a meio e assentada.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_real_oil_e_pigment_mixing_na_aguada() {
+    for (pre, papel) in [("p", PAPEL), ("b", [255; 3])] {
+        for (nome, oleo, km) in [
+            ("hoje", false, false),
+            ("oleo", true, false),
+            ("km", false, true),
+            ("oleo_km", true, true),
+        ] {
+            for (fase, assentar) in [("meio", false), ("fim", true)] {
+                let mut t = cena_com(papel, 1.0, 0.35, 0.15, oleo, km);
+                if assentar {
+                    assenta(&mut t);
+                }
+                let px = mostrada(&mut t);
+                grava(&format!("{pre}_{nome}_{fase}"), &px);
+                let (c, claros) = caixa(&px, 108, 132, 78, 102);
+                let (d, _) = caixa(&px, 108, 132, 112, 140);
+                relato(format!(
+                    "{pre} {nome:8} {fase}: sobre o óleo {:.0},{:.0},{:.0} claros {claros:3} · abaixo {:.0},{:.0},{:.0}",
+                    c[0], c[1], c[2], d[0], d[1], d[2]
+                ));
+            }
         }
     }
 }

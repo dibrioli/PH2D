@@ -345,12 +345,8 @@ impl Sim {
                 crate::assenta::Lei::PorCima => crate::assenta::Ecra::PorCima(self.glaze_filme),
                 crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
                 crate::assenta::Lei::Cobre => crate::assenta::Ecra::Cobre {
-                    // Com o Real Oil na mão, o óleo sobre o óleo cobre pela lei da obra ([`Ecra::com_oleo`]).
-                    oleo: if self.oleo {
-                        crate::assenta::PINCEL_DE_OLEO
-                    } else {
-                        0.0
-                    },
+                    // O óleo é da CÉLULA ([`Ecra::com_oleo`]), nunca do pincel na mão (J11: o Real Oil empalidecia).
+                    oleo: 0.0,
                     filme: self.glaze_filme,
                     esconde: self.esconde,
                     molhada: self.molhada_escurece,

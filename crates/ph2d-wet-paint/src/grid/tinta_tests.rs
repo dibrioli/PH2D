@@ -72,15 +72,25 @@ fn o_interruptor_da_tinta_nao_muda_um_pixel_com_a_lei_velha() {
     use LeiDaTinta::{Pigmento, Velha};
     let base = sessao(Velha, Velha, 40);
     assert!(pixeis(&base).iter().any(|&b| b != 0), "a cena pinta");
+    assert_eq!(pixeis(&sessao(Velha, Velha, 40)), pixeis(&base));
+    // E6a: com `Pigmento` o depósito escreve as somas e espelha a cor em `susp_rgb`/`sett_rgb` (sem `mix.mix`) —
+    // a cor e os píxeis mudam de propósito; a MASSA e a água seguem a lei velha (sem `WetCover`/`DryCover` na cena).
     for (a, d) in [(Pigmento, Pigmento), (Pigmento, Velha), (Velha, Pigmento)] {
         let e = sessao(a, d, 40);
-        assert_eq!(pixeis(&e), pixeis(&base), "{a:?}→{d:?}: os píxeis mudaram");
         assert_eq!(
-            planos_velhos(&e.layers[0].grid),
-            planos_velhos(&base.layers[0].grid),
-            "{a:?}→{d:?}: o estado velho mudou"
+            massas(&e.layers[0].grid),
+            massas(&base.layers[0].grid),
+            "{a:?}→{d:?}: a massa mudou"
         );
     }
+}
+
+fn massas(g: &Grid) -> Vec<u32> {
+    let mut v = Vec::new();
+    for p in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
+        v.extend(p.iter().map(|x| x.to_bits()));
+    }
+    v
 }
 
 #[test]
@@ -98,7 +108,8 @@ fn os_campos_da_tinta_nova_nao_existem_na_lei_velha() {
         g.cells,
         "com Pigmento o passo aloca a grade inteira"
     );
-    assert!(g.tinta.iter().all(|c| *c == CelulaTinta::NEUTRA));
+    // E6a: o campo nasce MIGRADO da tinta já pousada (não NEUTRO): trocar de lei não apaga a tela.
+    assert!(g.tinta.iter().any(|c| c.filme.v > 0.0 || c.aberto.v > 0.0));
 }
 
 /// Uma tinta reconhecível por célula (ninguém a escreve ainda: E4–E8).

@@ -107,8 +107,9 @@ pub(super) struct DepositLaw {
     intensity: f64,
     dry_gate: f64,
     pub(super) water_amount: f64,
-    /// A mistura da tinta, para a cor POR CÉLULA que dois dabs da mesma janela pousam na ponta.
-    mix: ColorMix,
+    /// A mistura da tinta, para a cor POR CÉLULA que dois dabs da mesma janela pousam na ponta; `None` = a lei
+    /// `Pigmento` (F4-2 E6a): Oklab pesado pela massa, a soma da [`ph2d_paint_tinta::Soma`].
+    mix: Option<ColorMix>,
     /// O pó deste dab — `None` com o [`Knob::Dust`] a 0 (o carimbo contínuo, ao byte).
     po: Option<Po>,
     /// [`Dab::opacity`]: multiplica o que pousa, como o `sv`.
@@ -129,7 +130,7 @@ impl DepositLaw {
             intensity: dab.intensity,
             dry_gate: dab.dry_gate,
             water_amount: dab.water_amount,
-            mix: p.mix,
+            mix: (p.tinta == crate::sim::LeiDaTinta::Velha).then_some(p.mix),
             po: Po::de(p.k(Knob::Dust), p.k(Knob::DustDrop), p.semente_do_po, dab),
             opacidade: dab.opacity,
             grao_da_pressao: p.k(Knob::PressureGrain),
@@ -236,7 +237,7 @@ fn pousa_a_tinta(
     antes: f64,
     soma: f64,
     c: [f32; 4],
-    mix: ColorMix,
+    mix: Option<ColorMix>,
 ) {
     if antes <= 0.0 {
         for k in 0..3 {
@@ -244,6 +245,20 @@ fn pousa_a_tinta(
         }
         return;
     }
+    let Some(mix) = mix else {
+        let lab = |rgb: [f32; 3], m: f64| {
+            let x = ph2d_paint_tinta::Tinta::de_srgb(rgb.map(|v| v / 255.0), 0.0);
+            ph2d_paint_tinta::Soma::de(x, m as f32)
+        };
+        let velha = [0, 1, 2].map(|k| tinta[k][l]);
+        let s = lab(velha, antes).junta(lab([c[0], c[1], c[2]], soma));
+        if let Some(rgb) = crate::grid::tinta::srgb_0_255(&s) {
+            for k in 0..3 {
+                tinta[k][l] = rgb[k];
+            }
+        }
+        return;
+    };
     let mut out = [0.0f64; 3];
     let [r, g, b] = [0, 1, 2].map(|k| f64::from(tinta[k][l]));
     let w = soma / (antes + soma);

@@ -8,35 +8,14 @@ mod cobre;
 #[cfg(test)]
 mod cobre_tests;
 use cobre::{cobre_a_outra, cobre_o_assentado};
+mod deposito_tinta; // F4-2 E6a: o depósito da lei Pigmento (somas) e a ponta seca da velha
+use deposito_tinta::pousa_seco;
 mod perto;
 pub(crate) mod remolha; // a água que re-molha a tinta solúvel debaixo dela (Knob::Dissolve, J10) // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela // a lei da tinta que cobre (Knob::WetCover)
 
 /// O piso de água de uma célula que recebeu tinta (`transfer_paint_impl`, «the wet map must know»): até
 /// ele a célula está SECA.
 const FILM_TRACO: f32 = 0.00001;
-
-/// **Pousa `v` de pigmento da ponta SECA na camada assente** da célula `i` — a mesma composição de
-/// opacidade e a mesma mistura do pigmento suspenso, sobre `sett`.
-fn pousa_seco(g: &mut Grid, i: usize, v: f64, tip: [f32; 3], p: &Params, out: &mut [f64; 3]) {
-    let old = g.sett[i] as f64;
-    if old <= 0.0 {
-        g.sett_rgb[i] = tip;
-        g.sett[i] = v as f32;
-        return;
-    }
-    let (in_a, a_old) = (alpha_of_mass(v), alpha_of_mass(old));
-    let e9 = a_old * (1.0 - in_a);
-    if e9 + in_a > 0.0 {
-        let wgt = in_a / (e9 + in_a);
-        let uc = g.sett_rgb[i].map(f64::from);
-        let tip = tip.map(f64::from);
-        p.mix
-            .mix(uc[0], uc[1], uc[2], tip[0], tip[1], tip[2], wgt, out);
-        crate::colorops::velatura(out, wgt, p.glaze, a_old, uc, tip);
-        g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
-    }
-    g.sett[i] = (old + v) as f32;
-}
 
 impl Trail {
     /// Land the paint window on the canvas (SPEC §10 "transfer"), then roll
@@ -150,6 +129,12 @@ impl Trail {
             self.por_assentar.clear();
             self.por_assentar.extend(g.susp.iter().map(|&m| m > 0.0));
         }
+        let pigmento = (p.tinta == crate::sim::LeiDaTinta::Pigmento).then(|| {
+            crate::grid::tinta::garante(g);
+            #[rustfmt::skip]
+            let d = deposito_tinta::Pigmento { vela, dissolve, shed_pig, shed_water, water_cap, filme, mix, glaze: p.glaze };
+            d
+        });
         let mut rx0 = w;
         let mut ry0 = h;
         let mut rx1 = 0;
@@ -218,7 +203,13 @@ impl Trail {
                 let primeiro = vela > 0.0
                     && (self.por_assentar.get_mut(i)).is_some_and(|f| std::mem::replace(f, false));
                 let seco = ponta_seca && g.film[i] <= FILM_TRACO;
-                if seco {
+                if let Some(d) = &pigmento {
+                    let (agua, transparencia) =
+                        (self.water[l].into(), mat.transparencia.clamp(0.0, 1.0));
+                    #[rustfmt::skip]
+                    let x = deposito_tinta::Pouso { v, agua, ponta, transparencia, seco, primeiro };
+                    d.pousa(g, i, &x, &mut self.remolha_inicio, &mut out);
+                } else if seco {
                     pousa_seco(g, i, v, ponta, p, &mut out);
                     if g.sett[i] as f64 > 3000.0 && !super::sonda::sem_teto() {
                         let ns = g.sett[i] as f64 - shed_pig;
@@ -420,6 +411,9 @@ impl Trail {
                     }
                     if !had_sett && g.sett[i] > 0.0 {
                         g.sett_rgb[i] = g.sett_rgb[si];
+                    }
+                    if pigmento.is_some() {
+                        deposito_tinta::arrasta(g, i, si, drag);
                     }
                     // Integer byte weights sum to < 256 on purpose: each
                     // transfer leaks ~0.8% of the wetness (a float lerp

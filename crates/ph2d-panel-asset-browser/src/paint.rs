@@ -67,13 +67,31 @@ fn gap() -> f32 {
 ///
 /// ⚠️ **Mais largo que alto**, ao contrário dos irmãos: uma grade precisa de colunas, e um painel
 /// estreito degenera na lista que ele veio substituir.
+///
+/// ⛔ Encosta à direita da ÁREA LIVRE ([`between_columns`]), nunca da janela: encostado à
+/// janela nascia por baixo da coluna do Inspector, com a grade inteira tapada (foto D17, 30/10).
 #[must_use]
-pub fn default_rect(viewport_w: f32, viewport_h: f32) -> Rect {
-    let w = 420.0_f32.min(viewport_w - 16.0).max(300.0); // LITERAL-PX-OK: largura do navegador + margem/piso (chrome)
-    let h = 520.0_f32.min(viewport_h - 16.0).max(320.0); // LITERAL-PX-OK: altura do navegador + margem/piso (chrome)
-    let x = (viewport_w - w - 24.0).max(8.0); // LITERAL-PX-OK: encosta à direita, onde o pill vive
-    let y = ((viewport_h - h) * 0.5).max(8.0); // LITERAL-PX-OK: inset de borda
+pub fn default_rect(area: Rect) -> Rect {
+    let w = 420.0_f32.min(area.w - 16.0).max(300.0); // LITERAL-PX-OK: largura do navegador + margem/piso (chrome)
+    let h = 520.0_f32.min(area.h - 16.0).max(320.0); // LITERAL-PX-OK: altura do navegador + margem/piso (chrome)
+    let x = (area.x + area.w - w - 24.0).max(area.x + 8.0); // LITERAL-PX-OK: encosta à direita da área
+    let y = (area.y + (area.h - h) * 0.5).max(area.y + 8.0); // LITERAL-PX-OK: inset de borda
     Rect::new(x, y, w, h)
+}
+
+/// A área de desenho entre as duas colunas laterais. ⚠️ Pelos RECTS das colunas e não pelo
+/// `docks`: no 1.º quadro (quando o painel calcula o seu lugar uma vez) o `docks` ainda diz «vazias»
+/// com o Inspector e a Hierarquia à vista (medido: `docks` falso, colunas em 0–308 e 1626–1930).
+fn between_columns(l: &ph2d_editor_core::screens::layout::HeroLayout) -> Rect {
+    let (a, b) = (l.hierarchy, l.inspector);
+    let (left, right) = if a.x <= b.x { (a, b) } else { (b, a) };
+    let d = l.draw_area;
+    let x0 = d.x.max(left.x + left.w);
+    let x1 = (d.x + d.w).min(right.x);
+    if x1 <= x0 {
+        return d;
+    }
+    Rect::new(x0, d.y, x1 - x0, d.h)
 }
 
 pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
@@ -105,7 +123,7 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
     let base = match state.rect {
         Some(r) => r,
         None => {
-            let r = default_rect(ctx.layout.viewport.w, ctx.layout.viewport.h);
+            let r = default_rect(between_columns(ctx.layout));
             state.rect = Some(r);
             r
         }

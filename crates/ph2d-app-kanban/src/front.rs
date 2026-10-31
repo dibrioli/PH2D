@@ -12,8 +12,8 @@ pub(crate) mod cover;
 
 use crate::metrics as m;
 use cover::ThumbRef;
-use ph2d_i18n::{tr, tr_with};
-use ph2d_kanban_dates::{DueLabel, DueTone, Zone, date_label, day_of, due_label, due_tone};
+use ph2d_i18n::tr_with;
+use ph2d_kanban_dates::{DueTone, Zone, date_label, day_of, due_label, due_tone};
 use ph2d_kanban_model::{
     CardId, CoverFill, FieldKind, FieldValue, FileId, Hue, Kanban, KanbanSet, LabelColor, Member,
 };

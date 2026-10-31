@@ -4,13 +4,11 @@
 //! só a referência: o documento fica no projecto até ser APAGADO (dono 30/10, D17).
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet};
-use std::rc::{Rc, Weak};
+use std::collections::BTreeSet;
 
 use ph2d_board_model::{BoardDoc, BoardId, ElementId, KanbanId};
-use ph2d_kanban_model::{Kanban, KanbanSet};
 
-use crate::documents::{Documents, SharedKanbans};
+use crate::documents::Documents;
 use crate::screens::hero::HeroScreen;
 use crate::screens::hero::board_view::{area, area_of, editor};
 

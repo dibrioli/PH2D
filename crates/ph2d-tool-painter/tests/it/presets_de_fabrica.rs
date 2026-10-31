@@ -55,6 +55,9 @@ const QUADROS_DA_LEI: u32 = 480;
 /// A caixa Real Oil no `engine` do preset (`wetpaint_preset::CHAVE_OLEO`, gravada só ligada). Que é ESTA a chave que o
 /// motor lê prova-o `os_oleos_de_fabrica_vem_com_o_real_oil`, aplicando cada ficheiro.
 const CHAVE_REAL_OIL: &str = "realOil";
+/// A caixa **Pigment mixing** DESLIGADA no ficheiro (J11: ligada de fábrica, gravada só desligada) — o extra de uma
+/// receita que mistura como o Rebelle (R1: o azul sobre o vermelho molhado é lilás, não o quase-preto do K-M).
+pub(crate) const SEM_KM: (&str, f64) = ("pigmentMixing", 0.0);
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
@@ -174,11 +177,12 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
     .chain(r.extras.iter().copied())
     {
         // Um knob que o ficheiro ainda não grava (a pressão do pincel, prompt 44) entra também — desde que
-        // seja do REGISTO.
+        // seja do REGISTO — ou a caixa Pigment mixing do pincel, que o preset grava no mesmo mapa só desligada (J11).
         assert!(
-            ph2d_wet_paint::tuning::KNOB_DEFS
-                .iter()
-                .any(|d| d.key == chave),
+            (chave == SEM_KM.0 && v == SEM_KM.1)
+                || ph2d_wet_paint::tuning::KNOB_DEFS
+                    .iter()
+                    .any(|d| d.key == chave),
             "knob {chave} existe"
         );
         p.engine.insert(chave.to_owned(), v);

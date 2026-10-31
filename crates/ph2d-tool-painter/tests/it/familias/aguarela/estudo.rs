@@ -97,8 +97,10 @@ fn escreve_os_estudos_da_aguarela() {
             }
         }
         for (k, v) in e["engine"].as_object().into_iter().flatten() {
+            // `pigmentMixing` não é um knob: é a caixa do pincel que o preset grava no mesmo mapa (J11).
             assert!(
-                ph2d_wet_paint::tuning::KNOB_DEFS.iter().any(|d| d.key == k),
+                k == "pigmentMixing"
+                    || ph2d_wet_paint::tuning::KNOB_DEFS.iter().any(|d| d.key == k),
                 "knob {k}?"
             );
             p.parametros.engine.insert(k.clone(), v.as_f64().unwrap());

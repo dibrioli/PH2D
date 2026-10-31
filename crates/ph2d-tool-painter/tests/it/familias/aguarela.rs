@@ -42,22 +42,28 @@ const MANCHA_DO_WASH: [(&str, f64); 2] = [("wetOpen", 0.15), ("wetOpenPush", 0.4
 /// 0,93), `Mop` quase chato (0,97 · 0,98 · 0,94).
 const DOMO: (&str, f64) = ("strokeFilmDome", 0.3);
 /// J6 2.ª ronda (revisor cego: «a ref esbate o traço grosso, a imitação tem contorno duro»): as tampas do filme largo
-/// esbatem (`Knob::StrokeFilmEnds`) — a ponta do Wash a 200 px 0,94 → 0,83 do meio (Rebelle ~0,5).
-const TAMPAS: (&str, f64) = ("strokeFilmEnds", 0.8);
-/// As curas da J6 sobre o preset de fábrica — por aplicar até à revisão cega (o coordenador): a bancada escreve o
-/// estudo com `"cura": "<nome>"` (`estudo.rs`).
-pub const CURAS_J6: &[(&str, &[(&str, f64)])] = &[
-    ("Wet Liner", &[("wetOpenEdge", 28.0), DOMO, TAMPAS]),
-    // A pena NÃO serve ao Wash (medido J6: com a orla 100 a frente da água esticada risca a mancha de fios escuros e a
-    // pena larga levanta o vermelho numa caixa branca): só o domo.
-    ("Wet Wash", &[DOMO, TAMPAS]),
-];
+/// esbatem (`Knob::StrokeFilmEnds`) — a ponta do Wash a 200 px 0,94 → 0,83 do meio (Rebelle ~0,5). R1: 1 (a tampa
+/// toda; com a orla baixa o aro já não a risca).
+const TAMPAS: (&str, f64) = ("strokeFilmEnds", 1.0);
+/// As curas da J6 sobre o preset de fábrica (a bancada escreve o estudo com `"cura": "<nome>"`, `estudo.rs`). R1 (31/10):
+/// as do Wet Liner e do Wet Wash ENTRARAM nas receitas de [`WET`] (`docs/Painter/Pinceis/R1_RELATORIO.md`) — a lista
+/// fica vazia para a próxima cura.
+pub const CURAS_J6: &[(&str, &[(&str, f64)])] = &[];
 /// Os campos do PINCEL das curas da J6 (a mesma regra: por aplicar até à revisão cega). J6t: as pontas ESBATEM ao comprido
 /// (`docs/Painter/Pinceis/J6t_pontas_esbatem.md`) — o Wash a 1 (RMS dos perfis das pontas ao Rebelle 0,182 → 0,096; 1,3 ·
 /// 2: 0,135 · 0,214; régua 384 = 384). ⛔ O Liner NÃO: 0,5 · 1 · 1,6 → 0,086 · 0,102 · 0,196 contra 0,084 sem (a 40 px o
 /// Rebelle Liner é cheio até à tampa; régua 429 → 426).
-pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] =
-    &[("Wet Wash", &[("pontas_esbate", "1.0")])];
+pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] = &[];
+
+/// ⭐ R1 (31/10, `docs/Painter/Pinceis/R1_RELATORIO.md`) — a BORDA MOLHADA do Rebelle por valores, medida na cena
+/// `tamanhos` A (perfil através do recto de 200 px, × o miolo: aro · +4 · +6 · +20 · +30 px) e vista nas pranchas `r1_*`:
+/// o escurecimento da borda é que desenhava o contorno duro e os fios escuros na TAMPA (com 0 a tampa esbate como a do
+/// Rebelle, mas perde o aro dos lados); o K-M fazia o cruzamento azul × vermelho molhado quase preto (o Rebelle: lilás).
+/// Wash Round Rebelle 1,15 · 0,71 · 0,74 · 0,84 · 0,89 — orla 50 + domo 0,5: 1,27 · 0,73 · 0,72 · 0,81 · 0,85 (orla 100
+/// + domo 0,3: 1,84 · 0,72 · 0,73 · 0,85; orla 30: sem aro, 0,89). Liner Rebelle 1,06 · 0,89 · 0,87 · 0,91 — orla 100 +
+/// pigmento 20: domo 0,15 0,91 · 0,85 · 0,89 · 0,97, domo 0,5 0,65 junto da borda ⇒ o [`DOMO`] da J6 (0,3). ⛔ As pontas
+/// que esbatem NÃO no Liner (a 40 px o Rebelle é cheio até à tampa, J6t).
+const SEM_KM: (&str, f64) = crate::presets_de_fabrica::SEM_KM;
 
 pub const WET: &[Receita] = &[
     // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores
@@ -74,7 +80,7 @@ pub const WET: &[Receita] = &[
         pickup: 0.0,
         gate: 0.0,
         evaporation: 0.7,
-        edge: 100.0,
+        edge: 50.0,
         tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
@@ -90,10 +96,13 @@ pub const WET: &[Receita] = &[
             VIDRADO,
             MANCHA_DO_WASH[0],
             MANCHA_DO_WASH[1],
+            ("strokeFilmDome", 0.5),
+            TAMPAS,
+            SEM_KM,
         ],
         grao: None,
         achatado: None,
-        pincel: &[],
+        pincel: &[("pontas_esbate", "2.0")],
         nasce_de: None,
         real_oil: false,
     },
@@ -163,11 +172,11 @@ pub const WET: &[Receita] = &[
         nome: "Wet Liner",
         water: 0.5,
         opacity: 1.0,
-        pigment: 17.0,
+        pigment: 20.0,
         pickup: 0.0,
         gate: 0.0,
         evaporation: 1.0,
-        edge: 200.0,
+        edge: 100.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
@@ -182,6 +191,10 @@ pub const WET: &[Receita] = &[
             POUCA_AGUA[1],
             MANCHA_DO_LINER[0],
             MANCHA_DO_LINER[1],
+            ("wetOpenEdge", 28.0),
+            DOMO,
+            TAMPAS,
+            SEM_KM,
         ],
         grao: None,
         achatado: None,

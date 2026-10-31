@@ -6,6 +6,7 @@ use crate::colorops::{
     Perfil, a_mesma_tinta_filtrada, diferenca_de_pigmento, entre_perfis, filtrada_entre_perfis,
     velatura_canal, velatura_k,
 };
+use crate::colorops::{ks_of_srgb255, reflectance_of_ks, srgb255_of_linear};
 
 /// O `d` do tapar extra de [`Ecra::Cobre`]: a diferença de pigmento, `0` sob o Glaze se é a mesma tinta filtrada.
 #[inline]
@@ -65,8 +66,9 @@ pub(super) struct Ponto {
     uc: [f64; 3],
     vela: f64,
     k_vel: Option<f64>,
-    /// A tinta OPACA ([`Ecra::com_opaca`]): o tecto de cada canal sobre o branco no SEGMENTO das duas tintas.
-    teto: Option<[f64; 3]>,
+    /// A tinta OPACA ([`Ecra::com_opaca`]): `(c, opaca)` — a concentração da tinta de cima na mistura SUBTRACTIVA
+    /// ([`mistura_opaca`]) e a fracção com que o ponto vai para ela (`opaca × d`).
+    opaca: Option<(f64, f64)>,
 }
 
 /// MOLHADA: a COBERTURA do ponto inteiro (a tinta de cima e a seca debaixo da água) vale a densidade
@@ -94,7 +96,11 @@ impl Ponto {
     #[inline]
     fn canal(&self, k: usize) -> f64 {
         let r = self.na_caixa(k);
-        molha_canal(self.teto.map_or(r, |t| r.min(t[k])), self.la)
+        let r = match self.opaca {
+            Some((c, o)) => r + (mistura_opaca(self.t_s[k], self.uc[k], c) - r) * o,
+            None => r,
+        };
+        molha_canal(r, self.la)
     }
 
     /// O canal `k` do ponto sobre o branco, na caixa das tintas.
@@ -120,37 +126,29 @@ impl Ponto {
     }
 }
 
-/// ⭐ **A tinta OPACA fica no SEGMENTO das duas tintas** (dono 31/10: «amarelo sobre azul seco fica com bordas brancas»).
-/// A caixa por canal deixa passar o BRANCO entre complementares (amarelo × azul: `[245,205,220]`): o tapar extra é
-/// pintado com a tinta diluída em branco, e na orla, onde o filme é fino, o extra domina. O tecto é o ponto
-/// `t_s + s·(uc − t_s)` que menos baixa o ponto (o máximo de `Σ min(r_k, seg_k(s))`, côncava por troços: um
-/// quebra-ponto ou um extremo), puxado para o branco pela fracção `1 − opaca`. A AGUARELA (`opaca` 0) não passa aqui.
-fn teto_no_segmento(r: [f64; 3], t_s: [f64; 3], uc: [f64; 3], opaca: f64) -> [f64; 3] {
-    let seg = |s: f64| [0, 1, 2].map(|k| t_s[k] + s * (uc[k] - t_s[k]));
-    let soma = |s: f64| {
-        let g = seg(s);
-        (0..3).map(|k| r[k].min(g[k])).sum::<f64>()
-    };
-    let mut melhor = (soma(0.0), 0.0);
-    let mut prova = |s: f64| {
-        let v = soma(s);
-        if v > melhor.0 {
-            melhor = (v, s);
-        }
-    };
-    prova(1.0);
-    for k in 0..3 {
-        let dk = uc[k] - t_s[k];
-        if dk != 0.0 {
-            let s = (r[k] - t_s[k]) / dk;
-            if s > 0.0 && s < 1.0 {
-                prova(s);
-            }
-        }
-    }
-    let g = seg(melhor.1);
-    [0, 1, 2].map(|k| g[k] + (255.0 - g[k]) * (1.0 - opaca))
+/// ⭐ **A tinta OPACA mistura-se SUBTRACTIVAMENTE com a de baixo** (dono 31/10: «amarelo sobre azul seco fica com
+/// bordas brancas»; o coordenador sobre o segmento RGB: «cinzento»). O tapar extra da aguarela pinta a tinta diluída em
+/// BRANCO, e a recta entre complementares no RGB passa pelo cinzento; a tinta real mistura pigmento: o canal é a média
+/// em K/S (Kubelka–Munk, a mesma porta da mistura do motor, [`crate::colorops::km_weighted_mean_color`]) do assentado
+/// visto `t_s` e da tinta de cima `uc` pela concentração `c` — amarelo fino sobre azul → verde, espesso → amarelo,
+/// nunca branco nem cinzento.
+#[inline]
+fn mistura_opaca(t_s: f64, uc: f64, c: f64) -> f64 {
+    let ks = (1.0 - c) * ks_of_srgb255(t_s) + c * ks_of_srgb255(uc);
+    srgb255_of_linear(reflectance_of_ks(ks))
 }
+
+/// A concentração da tinta de cima na [`mistura_opaca`] para a cobertura `a` do que ela tapa: a opaca vai DEPRESSA
+/// para a cor dela (`1 − (1 − a)^k`) — em K/S o pigmento de baixo domina até perto de `1` (o azul a 3 % ainda
+/// esverdeia o amarelo).
+#[inline]
+fn concentracao_opaca(a: f64) -> f64 {
+    1.0 - (1.0 - a.clamp(0.0, 1.0)).powi(CONCENTRACAO_OPACA_K)
+}
+
+/// O expoente de [`concentracao_opaca`] — escolhido, NÃO varrido: com ele a cena do amarelo sobre o azul seco
+/// (`borda_branca_tests::a_tinta_opaca_mistura_como_pigmento`) dá o miolo da Gouache Flat (222,204,42) e a orla verde.
+const CONCENTRACAO_OPACA_K: i32 = 3;
 
 impl Prep {
     #[inline]
@@ -235,11 +233,11 @@ pub(super) fn prepara(
         uc,
         vela,
         k_vel: velatura_k(a_e, filme, 1.0, t_s, c_eff),
-        teto: None,
+        opaca: None,
     };
-    if opaca > 0.0 {
-        let r = [0, 1, 2].map(|k| ponto.na_caixa(k));
-        ponto.teto = Some(teto_no_segmento(r, t_s, uc, opaca));
+    // Pela diferença de pigmento `d`, como o tapar extra: a mesma tinta sobre si só soma pigmento (a lei da aguarela).
+    if opaca > 0.0 && d > 0.0 {
+        ponto.opaca = Some((concentracao_opaca(a_e), opaca * d));
     }
     Prep::Ponto(ponto)
 }

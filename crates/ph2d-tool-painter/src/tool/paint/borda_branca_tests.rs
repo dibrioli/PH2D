@@ -238,40 +238,86 @@ fn brancos_a_mais(px: &[[u8; 3]]) -> usize {
     n
 }
 
-/// ⭐ **A tinta OPACA não mostra branco que não seja das tintas** (dono 31/10: «amarelo sobre azul seco fica com bordas
-/// brancas»; `Knob::Opaque`, a lei do segmento em `assenta/ponto.rs`). A Gouache Flat (a orla `[194,198,200]` e o miolo
-/// pêssego) e a Gouache Opaque: com `opaque` 0 (a lei da aguarela — o CONTROLO, a régua vê o defeito) há píxeis de
-/// branco a mais; com `opaque` 1, zero, na orla e no miolo.
+/// O que a régua do [`a_tinta_opaca_mistura_como_pigmento`] lê de uma cena: `(brancos, cinzentos, miolo, verdes)`.
+/// Cinzento = um píxel da faixa azul que a tinta nova MUDOU (> 10 níveis contra o azul seco sozinho) com a saturação
+/// (`(max − min) ÷ max`) abaixo de [`SATURACAO_CINZENTA`]; verde = mudado, com `G > R + 10` e `G > B + 40`; o miolo = a mediana de
+/// `x` 54..67 × `y` 46..55 (o 1.º traço amarelo sobre o meio da faixa).
+fn regua_opaca(antes: &[[u8; 3]], depois: &[[u8; 3]]) -> (usize, usize, [u8; 3], usize) {
+    let (mut cinza, mut verde) = (0, 0);
+    for y in 36..66 {
+        for x in 36..124 {
+            let i = y * W + x;
+            let (a, d) = (antes[i], depois[i]);
+            let azul = i16::from(a[2]) > i16::from(a[0]) + 30;
+            let mudou = (0..3).any(|k| (i16::from(a[k]) - i16::from(d[k])).abs() > 10);
+            if !azul || !mudou {
+                continue;
+            }
+            let (mx, mn) = (*d.iter().max().unwrap(), *d.iter().min().unwrap());
+            if f64::from(mx - mn) < SATURACAO_CINZENTA * f64::from(mx) {
+                cinza += 1;
+            }
+            if i16::from(d[1]) > i16::from(d[0]) + 10 && i16::from(d[1]) > i16::from(d[2]) + 40 {
+                verde += 1;
+            }
+        }
+    }
+    let miolo: [u8; 3] = std::array::from_fn(|k| {
+        let mut c: Vec<u8> = (54..67)
+            .flat_map(|x| (46..55).map(move |y| depois[y * W + x][k]))
+            .collect();
+        c.sort_unstable();
+        c[c.len() / 2]
+    });
+    (brancos_a_mais(depois), cinza, miolo, verde)
+}
+
+/// A saturação (`(max − min) ÷ max`) abaixo da qual um píxel mudado é CINZENTO. Medido 31/10: o amarelo (245,205,25)
+/// 0,90, o azul (40,90,220) 0,82; a orla fina da mistura subtractiva é um verde-azulado ESCURO e ainda saturado —
+/// (66,110,111) 0,41, o pior da Gouache Flat opaca —, o miolo (222,204,42) 0,81; o cinzento do segmento RGB
+/// (194,198,200) 0,03 e o branco a mais da aguarela (239,205,138) 0,42 no miolo pêssego. (O croma `max − min` não serve:
+/// 45 no verde escuro, que é o que a tinta real faz.)
+const SATURACAO_CINZENTA: f64 = 0.25;
+
+/// ⭐ **A tinta OPACA mistura-se como PIGMENTO com a de baixo** (dono 31/10: «amarelo sobre azul seco fica com bordas
+/// brancas»; `Knob::Opaque`, a lei subtractiva em `assenta/ponto.rs` `mistura_opaca`). A Gouache Flat (a orla
+/// `[194,198,200]` e o miolo pêssego) e a Gouache Opaque (com o `dryCover`): com `opaque` 0 (a lei da aguarela — o
+/// CONTROLO) há branco a mais; com `opaque` 1: zero brancos, zero cinzentos ([`SATURACAO_CINZENTA`]), o miolo espesso
+/// AMARELO (R e G > 180, B < 100) e a orla fina esverdeada (verdes > 0, onde o pincel esbate). Medido 31/10
+/// (brancos, cinzentos, miolo, verdes): Flat 0 → (173, 172, (239,205,138), 0), 1 → (0, 0, (222,204,42), 232); Opaque
+/// 0 → (66, 0, …), 1 → (0, 0, (246,208,40), 0) — com o `dryCover` ligado: a mistura cobre também o papel que ele afasta.
 #[test]
-fn a_tinta_opaca_nao_mostra_branco_entre_as_tintas() {
+fn a_tinta_opaca_mistura_como_pigmento() {
     use ph2d_wet_paint::tuning::Knob;
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../assets/brushes/WetPainter");
     let casos = [
+        // `true` = tem orla FINA (a Flat esbate; a Opaque tem a borda firme, `gate` 0 e dureza 0,95 — sem orla).
         (
             "Gouache Flat",
             raiz.join("Watercolor/Gouache/Gouache Flat.ph2d-brush.png"),
-            &[][..],
+            true,
         ),
-        // ⚠️ Sem o `dryCover`: com ele ficam 6 px (e ≤ 22) que NÃO são do ecrã — o `cobre_o_assentado` afasta o azul
-        // assente pela fracção da tinta nova no pouso, e onde o filme amarelo depois afina o papel volta a aparecer
-        // (medido 31/10: `dryCover` 0 → 0 px). Aberto na lei do Dry cover, não nesta.
         (
             "Gouache Opaque",
             raiz.join("Watercolor/Gouache/Gouache Opaque.ph2d-brush.png"),
-            &[(Knob::DryCover, 0.0)][..],
+            false,
         ),
     ];
-    let linhas: Vec<(String, usize, usize)> = std::thread::scope(|s| {
+    let linhas: Vec<_> = std::thread::scope(|s| {
         let h: Vec<_> = casos
             .iter()
-            .flat_map(|(n, p, extra)| {
+            .flat_map(|(n, p, fina)| {
                 [0.0, 1.0].map(|o| {
                     s.spawn(move || {
-                        let mut ks = vec![(Knob::Opaque, o)];
-                        ks.extend_from_slice(extra);
-                        let (_, depois, _) = cena(p, true, &ks).expect("o preset pinta no Wet");
-                        (n.to_string(), o as usize, brancos_a_mais(&depois))
+                        let (antes, depois, _) =
+                            cena(p, true, &[(Knob::Opaque, o)]).expect("o preset pinta no Wet");
+                        (
+                            n.to_string(),
+                            o as usize,
+                            *fina,
+                            regua_opaca(&antes, &depois),
+                        )
                     })
                 })
             })
@@ -279,17 +325,26 @@ fn a_tinta_opaca_nao_mostra_branco_entre_as_tintas() {
         h.into_iter().map(|h| h.join().unwrap()).collect()
     });
     eprintln!("{linhas:?}");
-    for (n, o, b) in &linhas {
-        if *o == 0 {
-            assert!(
-                *b > 0,
-                "controlo: {n} com opaque 0 já não mostra branco a mais — a régua não vê o defeito"
-            );
-        } else {
+    let controlo: usize = linhas.iter().filter(|l| l.1 == 0).map(|l| l.3.0).sum();
+    assert!(
+        controlo > 0,
+        "controlo: com opaque 0 já não há branco a mais — a régua não vê o defeito"
+    );
+    for (n, o, fina, (brancos, cinza, miolo, verde)) in &linhas {
+        if *o == 1 {
             assert_eq!(
-                *b, 0,
-                "{n} opaca mostra {b} px de branco que nenhuma mistura das duas tintas explica"
+                *brancos, 0,
+                "{n} opaca: {brancos} px de branco que nenhuma mistura explica"
             );
+            assert_eq!(
+                *cinza, 0,
+                "{n} opaca: {cinza} px cinzentos (saturação < {SATURACAO_CINZENTA})"
+            );
+            assert!(
+                miolo[0] > 180 && miolo[1] > 180 && miolo[2] < 100,
+                "{n} opaca: o miolo espesso {miolo:?} não é amarelo"
+            );
+            assert!(!fina || *verde > 0, "{n} opaca: a orla fina não esverdeia");
         }
     }
 }

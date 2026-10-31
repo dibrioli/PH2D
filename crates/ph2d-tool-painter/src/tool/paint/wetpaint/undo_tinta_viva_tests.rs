@@ -327,3 +327,162 @@ fn diag_custo_da_ladeira_no_inicio_do_traco() {
         );
     }
 }
+
+/// Queixa do dono 31/10 («undo/redo voltou a matar a tinta»): A, B, e `passo` (0 nada · 1 desfaz o B · 2 desfaz e
+/// refaz o B), com o hospedeiro a compor por quadro como o app. Devolve a ferramenta logo depois.
+fn viva_depois(passo: u8, quadro: bool) -> PainterTool {
+    let mut t = base("Watercolor/Fluid/Wet Flat.ph2d-brush.png", [40, 90, 220]);
+    t.set_compor_por_quadro(quadro);
+    traco(&mut t, 40.0, 60.0);
+    tick(&mut t, 5);
+    if passo != 1 {
+        traco(&mut t, 40.0, 120.0);
+    } else {
+        traco(&mut t, 40.0, 120.0);
+        assert!(t.undo_last(), "havia o B para desfazer");
+    }
+    if passo == 2 {
+        assert!(t.undo_last(), "havia o B para desfazer");
+        assert!(t.redo_last(), "havia o B para refazer");
+    }
+    t
+}
+
+/// O que o artista vê sem forçar a recomposição (a tela que o quadro mostra).
+fn vista(t: &mut PainterTool) -> Vec<u8> {
+    t.take_preview_arc()
+        .map(|(p, _, _)| p.to_vec())
+        .unwrap_or_default()
+}
+
+fn estado(t: &mut PainterTool) -> (Option<Grade>, bool) {
+    let g = grade(t);
+    let f = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .is_some_and(|s| s.engine.layers[0].grid.has_fluid);
+    (g, f)
+}
+
+/// ⭐ Depois de desfazer/refazer a tinta molhada continua VIVA: a sessão sobrevive, ainda tem fluido, a água
+/// continua a andar nos quadros seguintes, e tela e grade são as da linha do tempo sem o par desfaz/refaz.
+#[test]
+fn undo_redo_deixa_a_tinta_viva_a_andar() {
+    for quadro in [false, true] {
+        let mut sem = viva_depois(0, quadro);
+        let mut com = viva_depois(2, quadro);
+        assert!(
+            com.paint.wetpaint.session.is_some(),
+            "quadro={quadro}: o redo acabou a sessão (tinta morta)"
+        );
+        let (g0, f0) = estado(&mut com);
+        assert!(f0, "quadro={quadro}: depois do redo a grade não tem fluido");
+        assert_eq!(
+            estado(&mut sem),
+            (g0.clone(), f0),
+            "quadro={quadro}: o estado logo depois do redo difere"
+        );
+        let _ = (vista(&mut sem), vista(&mut com));
+        tick(&mut sem, 30);
+        tick(&mut com, 30);
+        let (g1, _) = estado(&mut com);
+        assert!(
+            g1 != g0,
+            "quadro={quadro}: a água não andou em 30 quadros depois do redo (tinta morta)"
+        );
+        assert!(
+            estado(&mut sem).0 == g1,
+            "quadro={quadro}: a água depois do redo evolui diferente da sem undo"
+        );
+        let (vs, vc) = (vista(&mut sem), vista(&mut com));
+        let dif = vs.iter().zip(&vc).filter(|(a, b)| a != b).count();
+        assert_eq!(
+            dif, 0,
+            "quadro={quadro}: a tela mostrada depois do redo difere ({dif} bytes)"
+        );
+        // E o undo do B: a tinta do A volta viva e continua a andar.
+        let mut u = viva_depois(1, quadro);
+        assert!(
+            u.paint.wetpaint.session.is_some(),
+            "quadro={quadro}: o undo acabou a sessão"
+        );
+        let (h0, fu) = estado(&mut u);
+        assert!(fu, "quadro={quadro}: depois do undo a grade não tem fluido");
+        let _ = vista(&mut u);
+        tick(&mut u, 30);
+        assert!(
+            estado(&mut u).0 != h0,
+            "quadro={quadro}: a água do A não andou depois do undo"
+        );
+    }
+}
+
+/// O mesmo com a água no WORKER (relógio do app, não o fixo): a tinta continua viva depois de desfazer/refazer.
+#[test]
+fn undo_redo_com_o_worker_deixa_a_tinta_viva() {
+    fn real(t: &mut PainterTool, n: usize) {
+        for _ in 0..n {
+            std::thread::sleep(std::time::Duration::from_millis(16));
+            t.on_tick(1000.0 / 60.0);
+        }
+    }
+    for passo in [1u8, 2] {
+        let mut t = base("Watercolor/Fluid/Wet Flat.ph2d-brush.png", [40, 90, 220]);
+        t.set_wet_relogio_fixo(false);
+        t.set_compor_por_quadro(true);
+        traco(&mut t, 40.0, 60.0);
+        real(&mut t, 5);
+        traco(&mut t, 40.0, 120.0);
+        real(&mut t, 3);
+        assert!(t.undo_last(), "havia o B");
+        if passo == 2 {
+            real(&mut t, 3);
+            assert!(t.redo_last(), "havia o B para refazer");
+        }
+        assert!(
+            t.paint.wetpaint.session.is_some(),
+            "passo {passo}: a sessão morreu no undo/redo"
+        );
+        let (g0, f0) = estado(&mut t);
+        assert!(f0, "passo {passo}: sem fluido depois do undo/redo");
+        real(&mut t, 20);
+        assert!(
+            t.paint.wetpaint.session.is_some(),
+            "passo {passo}: a sessão morreu depois"
+        );
+        let (g1, _) = estado(&mut t);
+        assert!(
+            g1 != g0,
+            "passo {passo}: a água não andou depois do undo/redo (tinta morta)"
+        );
+    }
+}
+
+/// ⭐ Regressão 31/10 («undo/redo voltou a matar a tinta»): a fotografia de UM passo tem de caber no orçamento até
+/// 4096², ou o undo acaba a sessão. Medido com a grade inteira (63 B/célula): 4096×2560 662 MB × 604 MB, não cabia.
+/// O pior caso conta o óleo (a ladeira `oleo_antes` cheia).
+#[test]
+fn a_foto_do_passo_cabe_ate_4096() {
+    let mut e = ph2d_wet_paint::painter::Engine::new(256, 256);
+    let n = e.layers[0].grid.cells;
+    e.layers[0].grid.oleo_antes = vec![0.0; n];
+    let bpc = super::undo_vivo::FotoDoMotor::bytes_de_para_sonda(&e) as f64 / n as f64;
+    for (w, h) in [
+        (1920usize, 1080usize),
+        (3840, 2160),
+        (4096, 2560),
+        (4096, 4096),
+    ] {
+        let foto = bpc * ((w + 2) * (h + 2)) as f64;
+        let teto = super::undo_vivo::orcamento_das_fotos(w, h) as f64;
+        // antes + depois de UM passo, e ainda um segundo passo: três fotografias.
+        assert!(
+            3.0 * foto <= teto,
+            "{w}x{h}: 3 fotos {:.0} MB > orçamento {:.0} MB ({bpc:.1} B/célula)",
+            3.0 * foto / 1e6,
+            teto / 1e6
+        );
+    }
+}

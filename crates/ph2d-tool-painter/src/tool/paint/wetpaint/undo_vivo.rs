@@ -1,13 +1,17 @@
 //! ⭐ **O undo não mata a tinta viva** (smoke do dono 30/10) — filho de [`super`] por LOC.
 //!
 //! Antes, todo undo/redo acabava a sessão (`restore_model_confined` → `wetpaint_end_session`): a tinta que ficava na
-//! tela virava `base` seca de uma sessão nova. Agora o pen-down de cada passo fotografa o motor (grades, ladeira do
-//! óleo, relógio da sim) pela CHAVE do passo ([`crate::undo::UndoController::chave_do_topo`]); o undo desse passo
-//! fotografa o «depois» e devolve o «antes», o redo devolve o «depois». Sem a fotografia a sessão acaba como sempre.
-//! As fotografias somam até [`orcamento_das_fotos`]; as mais velhas saem primeiro.
+//! tela virava `base` seca de uma sessão nova. Agora o pen-down de cada passo abre um registo no histórico
+//! copy-on-write do motor ([`Engine::capture_history`], tiles 64²) e fotografa o que fica FORA das grades (o fluxo, a
+//! ladeira do óleo, o relógio da sim) pela CHAVE do passo ([`crate::undo::UndoController::chave_do_topo`]); o undo
+//! desse passo devolve as grades pelo [`Engine::undo`] e o resto pela fotografia, o redo pelo [`Engine::redo`].
+//!
+//! ⛔ Regressão 31/10 («undo/redo voltou a matar a tinta»): a fotografia era a grade INTEIRA (63 B/célula) contra o
+//! orçamento da história — a 4096×2560 não cabia UMA (662 MB × 604 MB) e todo undo acabava a sessão; a 3840×2160
+//! cabia um passo só. O histórico por tiles guarda só o que o passo escreveu.
 
 use super::*;
-use ph2d_wet_paint::grid::{GridSnapshot, restore_grid, snapshot_grid};
+use ph2d_wet_paint::painter::{Engine, HISTORY_DEPTH};
 
 /// O estado do motor fora das grades que a física lê entre dois traços (a cadência da secagem, o nº do traço).
 #[derive(Clone, Copy)]
@@ -20,12 +24,12 @@ pub(crate) struct Relogio {
     semente_do_po: u32,
 }
 
-/// O motor num instante: as grades de cada camada, a ladeira do óleo e o relógio.
+/// O motor num instante, FORA das grades (essas voltam pelo histórico do motor): a ladeira do óleo, o fluxo e o
+/// relógio.
 #[derive(Clone)]
 pub(crate) struct FotoDoMotor {
-    grades: Vec<GridSnapshot>,
     oleo_antes: Vec<Vec<f32>>,
-    /// O fluxo do último passo: o `restore_grid` zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
+    /// O fluxo do último passo: o restauro zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
     fluxo: Vec<(Vec<f32>, Vec<f32>)>,
     relogio: Relogio,
 }
@@ -38,46 +42,19 @@ pub(crate) struct PassoVivo {
     depois: Option<FotoDoMotor>,
 }
 
-/// A sessão tirada do caminho do restore, com a fotografia a devolver.
-pub(crate) struct SessaoNoUndo(WetSession, FotoDoMotor);
+/// A sessão tirada do caminho do restore, com a fotografia a devolver e o sentido (`true` = refazer).
+pub(crate) struct SessaoNoUndo(WetSession, FotoDoMotor, bool);
 
 /// **O tecto das fotografias** (RAM): o mesmo orçamento da história de undo do documento
-/// ([`crate::undo::history_budget_bytes`]). Medido em `diag_bytes_da_foto_por_passo`: ~55 B por célula da grade.
+/// ([`crate::undo::history_budget_bytes`]).
 pub(crate) fn orcamento_das_fotos(w: usize, h: usize) -> usize {
     crate::undo::history_budget_bytes(w as u32, h as u32)
 }
 
-fn bytes_da_grade(s: &GridSnapshot) -> usize {
-    use std::mem::size_of_val as b;
-    b(&s.film[..])
-        + b(&s.susp[..])
-        + b(&s.susp_rgb[..])
-        + b(&s.sett[..])
-        + b(&s.sett_rgb[..])
-        + b(&s.relevo[..])
-        + b(&s.altura[..])
-        + b(&s.espessura[..])
-        + b(&s.crista[..])
-        + b(&s.nivelado[..])
-        + b(&s.traco[..])
-        + b(&s.vela[..])
-        + b(&s.material[..])
-        + b(&s.aparencia[..])
-        + b(&s.oleo[..])
-        + b(&s.vel_x[..])
-        + b(&s.vel_y[..])
-        + b(&s.wet[..])
-        + b(&s.active[..])
-        + b(&s.bloom[..])
-        + b(&s.row_lo[..])
-        + b(&s.row_hi[..])
-}
-
 impl FotoDoMotor {
-    fn de(e: &ph2d_wet_paint::painter::Engine) -> Self {
+    fn de(e: &Engine) -> Self {
         let s = &e.sim;
         Self {
-            grades: e.layers.iter().map(|l| snapshot_grid(&l.grid)).collect(),
             oleo_antes: e.layers.iter().map(|l| l.grid.oleo_antes.clone()).collect(),
             fluxo: e
                 .layers
@@ -95,9 +72,9 @@ impl FotoDoMotor {
         }
     }
 
-    fn repoe(&self, e: &mut ph2d_wet_paint::painter::Engine) {
-        for ((l, f), o) in e.layers.iter_mut().zip(&self.grades).zip(&self.oleo_antes) {
-            restore_grid(&mut l.grid, f);
+    /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo).
+    fn repoe(&self, e: &mut Engine) {
+        for (l, o) in e.layers.iter_mut().zip(&self.oleo_antes) {
             l.grid.oleo_antes.clone_from(o);
         }
         for (l, (fx, fy)) in e.layers.iter_mut().zip(&self.fluxo) {
@@ -115,45 +92,20 @@ impl FotoDoMotor {
     }
 
     /// Os bytes que a fotografia do motor `e` seguraria, sem a tirar.
-    fn bytes_de(e: &ph2d_wet_paint::painter::Engine) -> usize {
+    fn bytes_de(e: &Engine) -> usize {
         use std::mem::size_of_val as b;
         e.layers
             .iter()
             .map(|l| {
                 let g = &l.grid;
-                b(&g.film[..])
-                    + b(&g.susp[..])
-                    + b(&g.susp_rgb[..])
-                    + b(&g.sett[..])
-                    + b(&g.sett_rgb[..])
-                    + b(&g.relevo[..])
-                    + b(&g.altura[..])
-                    + b(&g.espessura[..])
-                    + b(&g.crista[..])
-                    + b(&g.nivelado[..])
-                    + b(&g.traco[..])
-                    + b(&g.vela[..])
-                    + b(&g.material[..])
-                    + b(&g.aparencia[..])
-                    + b(&g.oleo[..])
-                    + b(&g.vel_x[..])
-                    + b(&g.vel_y[..])
-                    + b(&g.wet[..])
-                    + b(&g.active[..])
-                    + b(&g.bloom[..])
-                    + b(&g.row_lo[..])
-                    + b(&g.row_hi[..])
-                    + b(&g.oleo_antes[..])
-                    + b(&g.flow_x[..])
-                    + b(&g.flow_y[..])
+                b(&g.oleo_antes[..]) + b(&g.flow_x[..]) + b(&g.flow_y[..])
             })
             .sum()
     }
 
     /// Os bytes que a fotografia segura.
     pub(crate) fn bytes(&self) -> usize {
-        self.grades.iter().map(bytes_da_grade).sum::<usize>()
-            + self.oleo_antes.iter().map(|o| o.len() * 4).sum::<usize>()
+        self.oleo_antes.iter().map(|o| o.len() * 4).sum::<usize>()
             + self
                 .fluxo
                 .iter()
@@ -169,7 +121,8 @@ impl PassoVivo {
 }
 
 impl PainterTool {
-    /// Pen-down de um passo novo com a sessão viva: fotografa o motor com a chave do passo, dentro do orçamento.
+    /// Pen-down de um passo novo com a sessão viva: abre o registo do passo no histórico do motor e fotografa o
+    /// resto com a chave do passo, dentro do orçamento.
     pub(crate) fn wet_guarda_o_passo(&mut self) {
         let chave = self.undo.chave_do_topo();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
@@ -182,15 +135,18 @@ impl PainterTool {
             sess.antes_do_passo.clear(); // não cabe UMA: o undo acaba a sessão, como antes
             return;
         }
+        // O registo copy-on-write do passo: daqui em diante toda escrita no grid marca os seus tiles nele.
+        sess.engine.capture_history();
         let antes = FotoDoMotor::de(&sess.engine);
         let mut soma = antes.bytes();
-        let mut corte = sess.antes_do_passo.len();
-        for (i, p) in sess.antes_do_passo.iter().enumerate().rev() {
+        // O motor guarda HISTORY_DEPTH registos: um passo mais velho já não tem as suas grades.
+        let mut corte = sess.antes_do_passo.len().saturating_sub(HISTORY_DEPTH - 1);
+        for (i, p) in sess.antes_do_passo.iter().enumerate().skip(corte).rev() {
             soma += p.bytes();
             if soma > teto {
+                corte = i + 1;
                 break;
             }
-            corte = i;
         }
         sess.antes_do_passo.drain(..corte);
         sess.antes_do_passo.push(PassoVivo {
@@ -210,24 +166,43 @@ impl PainterTool {
         };
         self.wetpaint_guard();
         let sess = self.paint.wetpaint.session.as_mut()?;
+        sess.antes_do_passo.iter().find(|p| p.chave == chave)?;
+        sess.bring_home();
+        let pode = if refaz {
+            sess.engine.can_redo()
+        } else {
+            sess.engine.can_undo()
+        };
+        if !pode {
+            return None;
+        }
+        let depois = (!refaz).then(|| FotoDoMotor::de(&sess.engine));
         let p = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave)?;
         let foto = if refaz {
             p.depois.take()?
         } else {
-            sess.bring_home();
-            let p = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave)?;
-            p.depois = Some(FotoDoMotor::de(&sess.engine));
+            p.depois = depois;
             p.antes.clone()
         };
         let sess = self.paint.wetpaint.session.take()?;
-        Some(SessaoNoUndo(sess, foto))
+        Some(SessaoNoUndo(sess, foto, refaz))
     }
 
-    /// Depois do undo/redo: a sessão volta com o motor da fotografia, presa à tela restaurada.
+    /// Depois do undo/redo: a sessão volta com o motor do passo (grades pelo histórico do motor, o resto pela
+    /// fotografia), presa à tela restaurada.
     pub(crate) fn wet_volta_do_undo(&mut self, solta: SessaoNoUndo, aplicou: bool) {
-        let SessaoNoUndo(mut sess, foto) = solta;
+        let SessaoNoUndo(mut sess, foto, refaz) = solta;
         if aplicou {
             sess.bring_home();
+            let feito = if refaz {
+                sess.engine.redo()
+            } else {
+                sess.engine.undo()
+            };
+            debug_assert!(
+                feito,
+                "o histórico do motor tinha o passo (verificado ao soltar)"
+            );
             foto.repoe(&mut sess.engine);
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
             sess.stroke_open = false;

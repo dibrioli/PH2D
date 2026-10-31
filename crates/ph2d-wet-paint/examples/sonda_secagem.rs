@@ -105,6 +105,9 @@ fn wash() -> Engine {
 const LADO: u8 = 1;
 const CANAL: u8 = 2;
 const MEMO: u8 = 4;
+/// `levanta` com coberturas iguais devolve o palpite `x0` sem Newton (o alvo e o avaliador em `x0 = uc` são a
+/// mesma conta ⇒ a 1.ª verificação sai).
+const SALTA: u8 = 8;
 
 /// A metade de `diferenca_de_pigmento` que só lê uma das cores (verbatim, as mesmas somas).
 #[derive(Clone, Copy)]
@@ -510,6 +513,19 @@ fn levanta_c<const C: u8, const N: bool>(
                 uc: false,
             }
         };
+        let x0 = if a_f <= 0.0 {
+            sc
+        } else {
+            let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
+            [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
+        };
+        if C & SALTA != 0
+            && a_f > 0.0
+            && a_f.to_bits() == a_f2.to_bits()
+            && a_s.to_bits() == a_s2.to_bits()
+        {
+            break 'l x0;
+        }
         let alvo = sobre_branco_c::<C, N>(
             e,
             sc,
@@ -520,12 +536,6 @@ fn levanta_c<const C: u8, const N: bool>(
             None,
             &fx,
         );
-        let x0 = if a_f <= 0.0 {
-            sc
-        } else {
-            let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
-            [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
-        };
         let h2 = tapa_m::<C, N>(m, esconde, a_f2);
         let canal =
             |x: [f64; 3], ch: usize| sobre_branco_canal::<C, N>(e, sc, x, a_s2, a_f2, h2, &fx, ch);
@@ -947,8 +957,9 @@ enum V {
     Lado,
     LadoCanal,
     Tudo,
+    Salta,
 }
-const VS: [V; 5] = [V::Orig, V::Copia, V::Lado, V::LadoCanal, V::Tudo];
+const VS: [V; 6] = [V::Orig, V::Copia, V::Lado, V::LadoCanal, V::Tudo, V::Salta];
 
 fn dry(v: V, g: &mut Grid, c: &Ctx, par: bool) {
     let (p, ev, rw, by) = (&c.p, c.evap, c.rewet, c.bypass);
@@ -965,6 +976,7 @@ fn dry(v: V, g: &mut Grid, c: &Ctx, par: bool) {
         V::Lado => drying_copy::<LADO, false>(g, p, ev, rw, by, par),
         V::LadoCanal => drying_copy::<{ LADO | CANAL }, false>(g, p, ev, rw, by, par),
         V::Tudo => drying_copy::<{ LADO | CANAL | MEMO }, false>(g, p, ev, rw, by, par),
+        V::Salta => drying_copy::<{ LADO | CANAL | MEMO | SALTA }, false>(g, p, ev, rw, by, par),
     }
 }
 

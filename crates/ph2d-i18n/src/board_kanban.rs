@@ -12,6 +12,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.w4k.n1" => "Pitch to the studio on Friday",
         "board.smoke.w4k.n2" => "Animatic \u{2014} v2",
         "board.smoke.w4k.n3" => "Voice \u{2014} schedule",
+        // Cena 31 do Quadro (D17): um Kanban vazio e um 2.º Quadro, com os Assets abertos.
+        "board.smoke.d17.empty_kanban" => "Character sheets",
+        "board.smoke.d17.second_board" => "Ideas",
         // W4, lote V — o «…» da aba do Kanban liga-a ao Quadro.
         "kanban.menu.show_on_board" => "Show on board",
         "kanban.menu.place_on_board" => "Place on board",

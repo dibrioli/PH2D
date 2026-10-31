@@ -80,4 +80,12 @@ paredes do fio num só traço (o eixo amostra o papel do início do traço) — 
 
 ## Commits
 
-(preenchido no fecho)
+- `a8df93dfed` Wet Wash e Wet Liner por valores (orla, domo, tampas, K-M off), fábrica regerada; Smudge recusado.
+- `94df46567d` a lei `EdgeSoftMass` (borda graduada), Wash k 4 + orla 40 + pontas 1, Liner orla 200, portões presos, pranchas.
+
+## Fila (não feito)
+
+1. Mop: o anel escuro + rasto branco no cruzamento molhado (água muita + parede) — motor.
+2. Smudge Finger: juntar as duas paredes do fio num só traço (o eixo amostra o papel do início do traço) — outra lei.
+3. Liner: a mancha molhada de fábrica 1,67 × a largura (Rebelle 1,42) — pigmento 20 × 17 a decidir pela cega/dono.
+4. Item 3 da missão (Water Brush, Fan Brush, Gouache Dry/Wash) — não começado.

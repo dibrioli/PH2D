@@ -1,10 +1,6 @@
 # R2-B — o óleo que derrete o grão fino (31/10)
 
-Sonda: `sonda_r2b_grao_do_oleo` (`tests/it/familias/oleo_acrilica.rs`, ignorada; ~13 s). Pinta a cena `tamanhos`
-(foto A) por pincel e caso (`Desligado`, `Sempre`, `SemLuz` = pousa com o óleo e fotografa sem a óptica, `Sombra0`/`Prof0`/
-`Fenda0`/`Ceu0`/`Brilho0`) e variantes de receita (`PH2D_SONDA_VARIANTES`). Mede no recto de 200 px (y 355..530,
-x 150..850): a mediana da escuridão, os furos (< 35 % da mediana) e o grão (|px − caixa 3×3| ×1000). Ganchos neutros na
-bancada: `SEM_LUZ_NA_FOTO`, `AJUSTA_OLEO` (por omissão a foto de sempre).
+Sonda `sonda_r2b_grao_do_oleo` (`familias/oleo_acrilica.rs`, ignorada, ~13 s): cena `tamanhos` A por caso (`Desligado`, `Sempre`, `SemLuz`, knobs a 0) e variante de receita; no recto de 200 px a mediana da escuridão, os furos e o grão (|px − caixa 3×3| ×1000). Ganchos neutros: `SEM_LUZ_NA_FOTO`, `AJUSTA_OLEO`.
 
 ## Knife Stain — o grão morre NA ÓPTICA, no entalhe
 | caso | mediana | furos | grão |
@@ -20,18 +16,14 @@ Mecanismo: `sem_entalhes` (`oleo_borda.rs`) enche a célula rala até à mediana
 Stain cada célula rala entre grãos cheios é um «entalhe»: o alfa enchido pinta de azul o papel entre os grãos
 (13,8 % dos px que eram papel ficam com tinta). A cura J6 (`borda_suave`) não tocava isto.
 
-Ronda 1 (simulada no motor): alfa preso à crua (`borda.min(1)`), altura enchida. Stain volta ao grão fino (prancha);
-gate novo verde; **mas** `a_orla_rasgada_nao_tem_pontinhos_escuros` reprova (Estúdio: 5 pontinhos) e os dois
-`o_smooth_edges_*` comparam com a lei de antes. Ronda 2: só no GRÃO (≥ 3 ralas com pigmento nas 3×3): pontinhos 1 e o
-grão sintético reprova. Duas rondas ⇒ PAREI; o motor ficou como estava (nada comitado nele).
+Ronda 1: alfa preso à crua, altura enchida — Stain volta ao grão (prancha), mas `a_orla_rasgada_nao_tem_pontinhos_escuros`
+reprova (Estúdio 5). Ronda 2 (≥ 3 ralas nas 3×3): pontinhos 1, o grão reprova. Motor intacto.
 
 Gate vermelho registado (ignorado, com o número): `o_grao_ralo_nao_engorda_no_oleo` (+0,85 de cobertura sobre a crua
-nas células ralas). Medida: `medida_r2b_crua_dos_entalhes` — na orla do Dabber, 171 das 492 células que o entalhe enche
-têm crua < 0,1 (o limiar pela crua não separa orla de grão).
+nas células ralas). `medida_r2b_crua_dos_entalhes`: na orla do Dabber 171/492 células enchidas têm crua < 0,1.
 
 **Necessidade (para o coordenador):** separar o entalhe da ORLA RASGADA (o alfa enche, contra os pontinhos) do do GRÃO
-(o alfa fica na crua). Pista não medida: na orla a célula rala tem papel nu nas 3×3; no grão sintético não. Ficheiros
-`oleo_borda.rs`/`oleo_campo.rs` (livres). Depois: regerar Oil/* (as miniaturas mudam) pela fila pesada.
+(o alfa fica na crua). Depois: regerar Oil/* (as miniaturas mudam) pela fila pesada.
 
 **Ronda pedida pelo coordenador (31/10, «borda × grão»), 4 critérios no MESMO processo** (seletor de teste num
 `GRAO_CRITERIO`, revertido): o entalhe de GRÃO guarda o alfa cru, o de BORDA enche como hoje.
@@ -44,8 +36,8 @@ têm crua < 0,1 (o limiar pela crua não separa orla de grão).
 | 4 = nenhuma vizinha 3×3 < 0,02 | +0,0005 | 0 · 0 | 0 · **5** |
 Os 5 pontinhos do Estúdio são os MESMOS nos quatro: células ralas do INTERIOR da orla do Dabber (sem papel por perto),
 que com o alfa cru ficam escuras — a distância ao papel não separa o pontinho do grão. Nenhuma variante passou ⇒
-revertido. Hipótese por medir: o escuro vem da sombra NO PAPEL que se vê pela fracção não coberta da célula rala;
-a cura seria a sombra do papel sob uma célula de altura enchida (não o alfa).
+revertido. **Última tentativa (critério 1 + papel sem sombra):** com a sombra a 0 os 5 somem (são sombra); tirar a sombra do papel
+na célula de grão deixa 3, e nas 3×3 dela 2 — o resto é a sombra na própria TINTA vizinha ao furo novo ⇒ revertido.
 
 ## Knife Grainy — o grão morre NO DEPÓSITO (receita), não no óleo
 | caso | mediana | furos | grão |
@@ -62,10 +54,9 @@ não furos até ao papel: nenhuma das 4+4 variantes o dá ⇒ curado-não-aprova
 profundidade por dab (`ba68f2166f`) com Clouds largo, medido pela mesma sonda.
 
 ## Grunge
-Não há receita de «Oil Grunge» em `oleo_acrilica.rs` (nem em `EM_ESTUDO_W2`); não comecei.
+Sem receita em `oleo_acrilica.rs`; não comecei.
 
 ## Pranchas (Real Oil ligado; antes | depois simulado | Rebelle, ×1 e ×2)
 `pranchas/r2_knife_stain.png` · `pranchas/r2_knife_grainy.png`.
 
-## Fila pesada
-A bancada não corre em subagente (hook): pus na fila o exame de Stain e Grainy para quando a lei entrar.
+Fila pesada: o exame do Stain, para quando a lei entrar.

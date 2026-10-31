@@ -80,8 +80,8 @@ pub const WET: &[Receita] = &[
 /// através do traço, que somem e voltam em troços curtos (o traço partido). Sem Real Oil nem relevo (≠ o «Fan» óleo do
 /// `EM_ESTUDO_W2`, reprovado pela régua da cerda). Composto sem motor novo sobre os tufos do Express Oil (a Shape de
 /// cerdas dele): fios de 1,5 px que crescem com o pincel, desvio de cada fio da faixa, pressão por fio forte que muda a
-/// cada 30 px e a mão leve que os levanta, ponta desfiada. ⚠️ O ARCO do leque (fios em curva) não existe no motor: a
-/// pegada é a elipse achatada a 90°. Afinação no smoke do dono.
+/// cada 30 px e a mão leve que os levanta, ponta desfiada. O ARCO do leque (`tuftArc` 0,8, `bristles_arco`): no eixo
+/// maior da elipse achatada a 90° as pontas fazem a parábola e a mão leve só pousa os tufos do meio. Afinação no smoke.
 const FAN_BRUSH: Receita = Receita {
     meio: "Acrylic",
     grupo: "Fan",
@@ -115,6 +115,7 @@ const FAN_BRUSH: Receita = Receita {
         ("pressureSize", 0.3),
         ("pressureOpacity", 0.6),
         ("pressureOpacityCurve", 1.0),
+        ("tuftArc", 0.8),
     ],
     grao: None,
     achatado: Some((0.75, 90)),

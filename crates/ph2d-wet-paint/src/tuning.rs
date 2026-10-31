@@ -345,9 +345,18 @@ pub enum Knob {
     /// o claro opaco cobre o escuro seco, como o [`Knob::WetCover`] cobre o molhado. `0` (omissão) = a tinta de sempre,
     /// ao bit.
     DryCover,
+    /// ⭐ **O ARCO dos tufos** (31/10, o Fan Brush; [`crate::bristles_arco::Arco`]): a curvatura `0..1` com que as
+    /// cerdas se abrem em leque no referencial da pegada (segue a rotação da ponta) — as pontas numa parábola, o meio
+    /// toca primeiro e as laterais só com pressão. `0` (omissão) = a pegada de sempre, ao bit.
+    TuftArc,
+    /// ⭐ **A água ARRASTA o que levantou** (31/10, missão «superar o Rebelle», o Water Brush): o dab da ferramenta Wet
+    /// leva o pigmento SUSPENSO do dab anterior para o actual com a força `WaterDrag × carimbo` (`tools/smear.rs`
+    /// `apply_water_drag`) — a cor esbate na direcção do gesto e a origem clareia (o rasto puxa o vazio de trás). Só o
+    /// suspenso e nunca o papel: o assentado chega pela porta do `WetLift`. `0` (omissão) = a água de sempre, ao bit.
+    WaterDrag,
 }
 
-pub const KNOB_COUNT: usize = 141;
+pub const KNOB_COUNT: usize = 143;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

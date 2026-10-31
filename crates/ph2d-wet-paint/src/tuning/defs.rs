@@ -339,4 +339,8 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::EdgeSoftMass, KnobGroup::Water, "edgeSoftMass", 0.0, 8.0, 0.1, 0.0, None),
     // 31/10 (guache opaca): a tinta nova cobre a ASSENTE de outra cor — neutro 0 = a tinta de sempre, ao bit
     k(Knob::DryCover, KnobGroup::Hidden, "dryCover", 0.0, 1.0, 0.01, 0.0, None),
+    // 31/10 (o leque): os tufos num arco — neutro 0 = a pegada de sempre, ao bit
+    k(Knob::TuftArc, KnobGroup::Hidden, "tuftArc", 0.0, 1.0, 0.01, 0.0, None),
+    // 31/10 (Water Brush): a água arrasta o suspenso pelo traço — no cartão da ferramenta da água; neutro 0 = ao bit
+    k(Knob::WaterDrag, KnobGroup::Hidden, "waterDrag", 0.0, 1.0, 0.01, 0.0, None),
 ];

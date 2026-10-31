@@ -29,6 +29,7 @@
 #![allow(clippy::should_implement_trait)]
 
 pub mod assenta;
+pub mod bristles_arco;
 pub mod bristles_cor;
 pub mod bristles_fios;
 pub mod bristles_relevo;

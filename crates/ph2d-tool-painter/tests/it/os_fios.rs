@@ -395,3 +395,69 @@ fn cada_knob_dos_fios_morde() {
     n.sort_unstable();
     assert_eq!(n, todos, "cada knob dos fios tem o seu caso");
 }
+
+/// ⭐ **O ARCO dos tufos** (31/10, o Fan Brush; `ph2d_wet_paint::bristles_arco`): no Express Oil achatado a 90° (o eixo
+/// maior através do traço horizontal), `tuftArc 0` dá o traço de antes AO BYTE; com o arco a mão LEVE só pousa os tufos
+/// do meio (a faixa pintada estreita) e a inteira pousa o leque todo (a largura volta).
+#[test]
+fn o_arco_dos_tufos_so_pousa_o_meio_na_mao_leve() {
+    use super::sonda_gestos::{AZUL, fnv1a, gesto};
+    use ph2d_editor_core::tool::RasterEditTool;
+    let mut base = sem_oleo("Express Oil");
+    base.parametros
+        .brush
+        .insert("dab_flatten".to_owned(), serde_json::json!(0.75));
+    base.parametros
+        .brush
+        .insert("dab_angle_deg".to_owned(), serde_json::json!(90));
+    base.parametros
+        .engine
+        .insert("pressureSize".to_owned(), 0.3);
+    let com_arco = |a: f64| {
+        let mut p = base.clone();
+        p.parametros.engine.insert("tuftArc".to_owned(), a);
+        p
+    };
+    // (a altura pintada em px — linhas com qualquer tinta —, o hash) de um traço recto à pressão `pr`. Medido 31/10:
+    // leve sem 89 · arco 57; forte sem 109 · arco 97 (as pontas da elipse levam pouca tinta e o crescente guarda 60 %).
+    let traco = |p: &ph2d_brush_presets::Preset, pr: f32| -> (usize, u64) {
+        let (w, h) = (360u32, 140u32);
+        let mut t = ph2d_tool_painter::PainterTool::default();
+        t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(p).is_empty());
+        t.set_brush_size_px(60.0);
+        t.set_brush_color_srgb8(AZUL);
+        gesto(&mut t, &[[60.0, 70.0], [300.0, 70.0]], 3.0, |_| pr);
+        for _ in 0..30 {
+            ph2d_editor_core::Tool::on_tick(&mut t, 1000.0 / 60.0);
+        }
+        let px = t.run_full().0;
+        let linhas = (0..h as usize)
+            .filter(|&y| {
+                (150..210).any(|x| {
+                    let i = (y * w as usize + x) * 4;
+                    px[i..i + 3].iter().any(|&c| c < 245)
+                })
+            })
+            .count();
+        (linhas, fnv1a(&px))
+    };
+    let (sem_leve, h_sem) = traco(&base, 0.2);
+    let (zero_leve, h_zero) = traco(&com_arco(0.0), 0.2);
+    let (arco_leve, _) = traco(&com_arco(0.8), 0.2);
+    let (sem_forte, _) = traco(&base, 1.0);
+    let (arco_forte, _) = traco(&com_arco(0.8), 1.0);
+    eprintln!(
+        "leve: sem {sem_leve} · 0 {zero_leve} · arco {arco_leve}; forte: sem {sem_forte} · arco {arco_forte}"
+    );
+    assert_eq!(h_zero, h_sem, "tuftArc 0 mudou o traço");
+    assert!(
+        (arco_leve as f64) < 0.75 * sem_leve as f64,
+        "a mão leve com o arco não estreitou: {arco_leve} × {sem_leve}"
+    );
+    assert!(
+        (arco_forte as f64) > 0.85 * sem_forte as f64,
+        "a mão inteira com o arco não pousou o leque todo: {arco_forte} × {sem_forte}"
+    );
+}

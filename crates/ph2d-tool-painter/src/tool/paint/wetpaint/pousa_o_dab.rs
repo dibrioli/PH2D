@@ -541,6 +541,24 @@ pub(super) fn pousa_o_dab(
     let padrao_arg = padrao_esbate
         .as_ref()
         .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+    // O ARCO dos tufos (o leque, `bristles_arco`): no referencial da pegada (a rotação da ponta), depois do portão.
+    let tun = &sess.engine.tuning;
+    let arco = ph2d_wet_paint::bristles_arco::Arco {
+        curvatura: tun.get(ph2d_wet_paint::tuning::Knob::TuftArc),
+    };
+    let pressao_arco = ph2d_wet_paint::bristles_arco::Arco::pressao_do_contacto(
+        contacto,
+        tun.get(ph2d_wet_paint::tuning::Knob::PressureSize),
+    );
+    let padrao_arco = (!arco.neutro()).then_some(move |cx: i32, cy: i32| -> f64 {
+        let k = px_cel / f64::from(d.radius_px.max(0.01));
+        let u = [f64::from(cx) - centro_x, f64::from(cy) - centro_y].map(|v| (v * k) as f32);
+        let f = fp.apply(u).map(f64::from);
+        arco.no_ponto(f, pressao_arco) * padrao_arg.map_or(1.0, |p| p(cx, cy))
+    });
+    let padrao_arg = padrao_arco
+        .as_ref()
+        .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
     let cor_esbate = cor_arg.zip(peso_esbate).map(|(c, w)| {
         move |cx: i32, cy: i32, queda: f64| -> [f32; 4] {
             let x = grid_map::cell_subsample_px(cx, ratio, 0, f32::from(ratio));

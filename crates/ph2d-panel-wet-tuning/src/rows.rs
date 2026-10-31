@@ -358,7 +358,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 28] = [
+        const NOUTRA_SUPERFICIE: [&str; 29] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -384,6 +384,7 @@ mod tests {
             "blow",
             "smear",
             "smearWater",
+            "waterDrag",
             // o cartão Wet Paint do pincel (ordem do dono 30/10): Staining, Glaze, Cover, Wet soften e a Drag (J10)
             "extStaining",
             "glaze",
@@ -420,9 +421,12 @@ mod tests {
             .filter(|d| d.group == KnobGroup::Hidden)
             .map(|d| d.key)
             .collect();
+        // Da RECEITA do preset, à espera da linha no Tuning › Bristles (o rótulo vive no `ph2d-i18n`): o arco do leque.
+        const DA_RECEITA: [&str; 1] = ["tuftArc"];
         let lista: BTreeSet<&str> = NOUTRA_SUPERFICIE
             .iter()
             .chain(CALIBRACAO.iter())
+            .chain(DA_RECEITA.iter())
             .chain(MORTOS.iter())
             .copied()
             .collect();

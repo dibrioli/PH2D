@@ -22,6 +22,11 @@ impl PainterTool {
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
+        // O lote corre dentro do pool do rayon ([`Self::no_pool`]): os passes paralelos dele dividem-se ali.
+        self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush));
+    }
+
+    fn stamp_dabs_wetpaint_corpo(&mut self, dabs: &[Dab], brush: &BrushSpec) {
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
             // O lote VIRTUAL (as pontas rectas) leva a lane de cada dab em `fecho`, paralela ao lote: cada corrida lê a

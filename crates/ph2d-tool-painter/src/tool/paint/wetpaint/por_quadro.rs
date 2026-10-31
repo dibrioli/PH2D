@@ -38,7 +38,23 @@ impl PainterTool {
             .as_mut()
             .is_some_and(WetSession::try_bring_home_now)
         {
-            self.wetpaint_composite();
+            self.no_pool(Self::wetpaint_composite);
         }
+    }
+
+    /// **Corre `f` num fio do pool do rayon** (R3): o lote e a composição lançam dezenas de passes paralelos
+    /// pequenos, e cada um lançado de FORA do pool entra pela fila global, acorda os fios e adormece quem
+    /// chamou no trinco — medido nas facas 4K: o fio do evento trabalhava 2,9 s em 13,6 s de parede. Dentro do
+    /// pool os passes dividem-se pela fila do próprio fio e quem chama trabalha. As contas são as mesmas, no
+    /// mesmo fio ou noutro (as linhas de cada passe são independentes por contrato), logo os bytes também.
+    /// Nos testes corre no fio do teste (os interruptores de teste são `thread_local!`).
+    pub(in crate::tool::paint) fn no_pool<R: Send>(&mut self, f: impl FnOnce(&mut Self) -> R + Send) -> R {
+        if cfg!(test)
+            || rayon::current_thread_index().is_some()
+            || !crate::wet_diag::NO_POOL.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            return f(self);
+        }
+        rayon::join(|| f(self), || ()).0
     }
 }

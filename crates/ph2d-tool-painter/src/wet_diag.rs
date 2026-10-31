@@ -270,6 +270,10 @@ pub fn take_cells() -> u64 {
 // do ponteiro). Sem esta metade o log do produto não sabia dizer se um quadro lento de pintar é o
 // DEPÓSITO dos dabs ou o COMPOSITE que o carimbo faz a seguir.
 
+/// `false` = o lote e a composição do Wet correm no fio de quem chama, como antes de R3 (a variante da sonda
+/// `examples/mede_o_dab.rs`; o produto deixa-o `true`).
+pub static NO_POOL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
 static STAMP_DABS: AtomicU64 = AtomicU64::new(0);
 static STAMP_DEP_US: AtomicU64 = AtomicU64::new(0);
 static STAMP_COMP_US: AtomicU64 = AtomicU64::new(0);

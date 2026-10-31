@@ -192,7 +192,7 @@ fn main() {
             .iter()
             .flat_map(|&m| modos.map(|q| (m, q)))
             .filter(|(m, _)| motor_env.as_ref().is_none_or(|e| *e == format!("{m:?}")))
-            .filter(|(_, q)| modo_env.as_ref().is_none_or(|e| (e == "quadro") == *q))
+            .filter(|(_, q)| modo_env.as_ref().is_none_or(|e| e.starts_with("quadro") == *q))
             .collect();
         let mut telas: Vec<PainterTool> = telas_de.iter().map(|&(m, q)| tela(m, q)).collect();
         let n = telas.len() * RAIOS.len();
@@ -256,30 +256,40 @@ fn main() {
 
     if so != "raios" {
         let presets: Vec<_> = NOMES.iter().map(|n| faca(n)).collect();
-        let mut am: [Vec<(f64, f64)>; 2] = [Vec::new(), Vec::new()];
-        let mut hashes: [Vec<u64>; 2] = [Vec::new(), Vec::new()];
+        // (nome, por quadro, dentro do pool)
+        let variantes = [
+            ("evento", false, false),
+            ("quadro-fio", true, false),
+            ("quadro-pool", true, true),
+        ];
+        let n = variantes.len();
+        let mut am: Vec<Vec<(f64, f64)>> = vec![Vec::new(); n];
+        let mut hashes: Vec<Vec<u64>> = vec![Vec::new(); n];
         let mut dabs = 0;
         for ronda in 0..rondas.min(3) {
-            for k in 0..2 {
-                let qi = (k + ronda) % 2;
-                // `MODO=quadro|evento`: só essa variante (o `perf record` de uma).
-                if std::env::var("MODO").is_ok_and(|m| (m == "quadro") != modos[qi]) {
+            for k in 0..n {
+                let vi = (k + ronda) % n;
+                let (nome, quadro, pool) = variantes[vi];
+                // `MODO=<nome>`: só essa variante (o `perf record` de uma).
+                if std::env::var("MODO").is_ok_and(|m| m != nome) {
                     continue;
                 }
+                wet_diag::NO_POOL.store(pool, std::sync::atomic::Ordering::Relaxed);
                 let c0 = cpu_s();
-                let (m, d, h) = facas(&presets, modos[qi]);
-                am[qi].push((m, cpu_s() - c0));
-                hashes[qi].push(h);
+                let (m, d, h) = facas(&presets, quadro);
+                am[vi].push((m, cpu_s() - c0));
+                hashes[vi].push(h);
                 dabs = d;
             }
         }
-        for qi in (0..2).filter(|&q| !am[q].is_empty()) {
-            let (mn, md) = min_med(&am[qi].iter().map(|x| x.0).collect::<Vec<_>>());
-            let (cpu, _) = min_med(&am[qi].iter().map(|x| x.1).collect::<Vec<_>>());
-            let h = &hashes[qi];
+        wet_diag::NO_POOL.store(true, std::sync::atomic::Ordering::Relaxed);
+        for vi in (0..n).filter(|&v| !am[v].is_empty()) {
+            let (mn, md) = min_med(&am[vi].iter().map(|x| x.0).collect::<Vec<_>>());
+            let (cpu, _) = min_med(&am[vi].iter().map(|x| x.1).collect::<Vec<_>>());
+            let h = &hashes[vi];
             println!(
-                "facas {} 20 pinceladas ({} eventos, {dabs} dabs): {mn:.0} ms min ({md:.0} med) · CPU {cpu:.1} s · Rebelle span 8 s, CPU 9,1–11,4 s · hash {:016x} (iguais: {})",
-                if modos[qi] { "quadro" } else { "evento" },
+                "facas {:<11} 20 pinceladas ({} eventos, {dabs} dabs): {mn:.0} ms min ({md:.0} med) · CPU {cpu:.1} s · Rebelle span 8 s, CPU 9,1–11,4 s · hash {:016x} (iguais: {})",
+                variantes[vi].0,
                 2 * NOMES.len() * (MOVES + 2),
                 h[0],
                 h.iter().all(|&x| x == h[0])

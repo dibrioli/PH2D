@@ -620,7 +620,7 @@ mod sedimenta;
 pub use active_region::{rebuild_active_region, rebuild_active_region_rows};
 pub use advect::advect;
 #[doc(hidden)]
-pub use advect_jacobi::{ADVECT_FASES, BLOCO_LINHAS};
+pub use advect_jacobi::{ADVECT_FASES, BLOCO_LINHAS, MOMENTO_FORA};
 pub use advect_jacobi::{advect_jacobi, advect_jacobi_rows, destination_reach};
 pub use flow_jacobi::{build_flow_field_jacobi, build_flow_field_jacobi_rows};
 pub use gota::ALTURA_DA_GOTA;

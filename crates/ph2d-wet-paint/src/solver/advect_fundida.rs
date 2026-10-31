@@ -12,7 +12,7 @@
 //! fases lia o rascunho velho, que só multiplica massa zero (ver o módulo pai); aqui conta zero.
 //! O `momentum` fica fora: escreve só `vel_x/vel_y`, que nenhuma das três lê.
 
-use super::{Ctx, outflow_row, prepare_row, split, transport_row};
+use super::{Ctx, momentum_row, outflow_row, prepare_row, split_vel, transport_row};
 use crate::grid::{Grid, SolverScratch};
 use crate::par::Rows;
 use crate::sim::Params;
@@ -28,6 +28,16 @@ pub static ADVECT_FASES: AtomicUsize = AtomicUsize::new(0);
 #[doc(hidden)]
 pub static BLOCO_LINHAS: AtomicUsize = AtomicUsize::new(16);
 
+/// `> 0` (o produto) deixa o `momentum` num passe à parte; `0` funde-o nos blocos (só `rf = 1`). Medido na
+/// rodada 8 (4K, bloco 16, 16 fios): dentro 51,27 × fora 50,30 ms/passo — não ganha; fica atrás do override.
+#[doc(hidden)]
+pub static MOMENTO_FORA: AtomicUsize = AtomicUsize::new(1);
+
+/// O `momentum` corre dentro dos blocos?
+pub(super) fn momento_no_bloco(g: &Grid) -> bool {
+    g.flow.is_identity() && MOMENTO_FORA.load(Relaxed) == 0
+}
+
 /// Os planos do bloco, um conjunto por fio, reutilizados de passo a passo.
 #[derive(Default)]
 struct Blocos {
@@ -40,44 +50,85 @@ thread_local! {
     static BLOCOS: RefCell<Blocos> = RefCell::new(Blocos::default());
 }
 
-/// A rota fundida corre em `Serial`/`Parallel`; a `Medida` (janelas médias) fica nas fases.
-pub(super) fn usa_fundida(mode: Rows) -> bool {
-    ADVECT_FASES.load(Relaxed) == 0 && !matches!(mode, Rows::Medida(_))
+/// Células da faixa a partir das quais a fundida ganha (rodada 8, 16 fios, mínimo de 8 rondas, fases ×
+/// fundida bloco 16): 10,5 M → 52,1 × 50,3 ms · 2,6 M → 13,03 × 13,16 · 1,3 M → 6,50 × 6,89 · 0,4 M → 2,58 ×
+/// 2,73. Abaixo da cache cheia as fases já moram na L3 e o halo recalculado só custa.
+pub const MIN_CELULAS_FUNDIDA: usize = 4 << 20;
+
+/// A rota do produto: fundida só nas faixas GRANDES em `Serial`/`Parallel` (a `Medida` é de janela média).
+pub(super) fn usa_fundida(mode: Rows, celulas: usize) -> bool {
+    ADVECT_FASES.load(Relaxed) == 0
+        && celulas >= MIN_CELULAS_FUNDIDA
+        && !matches!(mode, Rows::Medida(_))
 }
 
-type Bloco<'a> = (usize, ((&'a mut [f32], &'a mut [f32]), &'a mut [[f32; 3]]));
+/// Um bloco: índice, os três planos de destino e (grade de fluxo idêntica) as duas linhas de velocidade.
+struct Item<'a> {
+    k: usize,
+    fr: &'a mut [f32],
+    sr: &'a mut [f32],
+    cr: &'a mut [[f32; 3]],
+    vx: &'a mut [f32],
+    vy: &'a mut [f32],
+}
 
-/// `prepare + outflow + transport` por blocos; devolve o `vmax` (o mesmo do [`super::prepare_rows`]).
-pub(super) fn fused_rows(g: &mut Grid, p: &Params, mode: Rows, linhas: usize) -> f64 {
-    let (c, scratch) = split(g, p);
+/// `(momentum +) prepare + outflow + transport` por blocos; devolve o `vmax` (o mesmo do
+/// [`super::prepare_rows`]). O `momentum` entra no bloco só com a grade de fluxo IDÊNTICA à fina (`rf = 1`,
+/// a do wash): aí a linha de fluxo `y` é escrita pela linha fina `y` e o bloco fino é o bloco de fluxo.
+pub(super) fn fused_rows(
+    g: &mut Grid,
+    p: &Params,
+    mode: Rows,
+    grav: (f64, f64),
+    linhas: usize,
+) -> f64 {
+    let momento = momento_no_bloco(g);
+    let (c, scratch, vel_x, vel_y) = split_vel(g, p);
     let s = c.s;
     let n = linhas.max(1) * s;
     let band = c.by0 as usize * s..(c.by1 as usize + 1) * s;
+    let com_momentum = momento && c.fb.0 <= c.fb.2;
     let SolverScratch {
         dst_film,
         dst_susp,
         dst_rgb,
         ..
     } = scratch;
-    let job = |(k, ((fr, sr), cr)): Bloco| {
-        let a = c.by0 + (k * n / s) as i32;
-        BLOCOS.with(|t| bloco(&c, a, fr, sr, cr, &mut t.borrow_mut()))
+    let mut vxs: Vec<&mut [f32]> = Vec::new();
+    let mut vys: Vec<&mut [f32]> = Vec::new();
+    if com_momentum {
+        debug_assert_eq!(c.geom.s, s);
+        vxs = vel_x[band.clone()].chunks_mut(n).collect();
+        vys = vel_y[band.clone()].chunks_mut(n).collect();
+    }
+    let (mut vxs, mut vys) = (vxs.into_iter(), vys.into_iter());
+    let itens: Vec<Item> = dst_film[band.clone()]
+        .chunks_mut(n)
+        .zip(dst_susp[band.clone()].chunks_mut(n))
+        .zip(dst_rgb[band].chunks_mut(n))
+        .enumerate()
+        .map(|(k, ((fr, sr), cr))| Item {
+            k,
+            fr,
+            sr,
+            cr,
+            vx: vxs.next().unwrap_or_default(),
+            vy: vys.next().unwrap_or_default(),
+        })
+        .collect();
+    let job = |it: Item| {
+        let a = c.by0 + (it.k * n / s) as i32;
+        if com_momentum {
+            for (r, (vx, vy)) in it.vx.chunks_mut(s).zip(it.vy.chunks_mut(s)).enumerate() {
+                momentum_row(&c, a + r as i32, vx, vy, grav.0, grav.1);
+            }
+        }
+        BLOCOS.with(|t| bloco(&c, a, it.fr, it.sr, it.cr, &mut t.borrow_mut()))
     };
     match mode {
-        Rows::Serial => dst_film[band.clone()]
-            .chunks_mut(n)
-            .zip(dst_susp[band.clone()].chunks_mut(n))
-            .zip(dst_rgb[band].chunks_mut(n))
-            .enumerate()
-            .map(job)
-            .fold(0.0f64, f64::max),
-        _ => dst_film[band.clone()]
-            .par_chunks_mut(n)
-            .zip(dst_susp[band.clone()].par_chunks_mut(n))
-            .zip(dst_rgb[band].par_chunks_mut(n))
-            .enumerate()
-            .map(job)
-            .reduce(|| 0.0f64, f64::max),
+        Rows::Serial => itens.into_iter().map(job).fold(0.0f64, f64::max),
+        Rows::Parallel => itens.into_par_iter().map(job).reduce(|| 0.0f64, f64::max),
+        Rows::Medida(piso) => crate::par::medida_reduce(itens, piso, 0.0f64, job, f64::max),
     }
 }
 
@@ -155,8 +206,10 @@ pub(super) fn advect_fundida_rows(
         return 0.0;
     }
     g.scratch.ensure(g.cells);
-    super::momentum_rows(g, p, gx, gy, mode);
-    let vmax = fused_rows(g, p, mode, linhas);
+    if !momento_no_bloco(g) {
+        super::momentum_rows(g, p, gx, gy, mode);
+    }
+    let vmax = fused_rows(g, p, mode, (gx, gy), linhas);
     super::commit_rows(g, mode);
     vmax
 }

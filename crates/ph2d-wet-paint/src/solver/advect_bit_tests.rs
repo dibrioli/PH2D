@@ -46,7 +46,11 @@ fn traco(e: &mut Engine, pts: &[(f64, f64)]) {
 /// Três traços: um em diagonal pelo meio, um colado à borda esquerda e ao topo, um no canto de baixo
 /// à direita — a água toca as quatro bordas da folha.
 fn cena() -> Engine {
-    let mut e = Engine::new(W, H);
+    cena_rf(1)
+}
+
+fn cena_rf(rf: usize) -> Engine {
+    let mut e = Engine::with_flow_ratio(W, H, rf);
     e.sliders.water = 1.0;
     e.sliders.size = 0.25;
     traco(&mut e, &[(30.0, 30.0), (270.0, 180.0)]);
@@ -56,6 +60,19 @@ fn cena() -> Engine {
         e.step_simulation();
     }
     e
+}
+
+/// Funde o `momentum` nos blocos enquanto vive (contador: `MOMENTO_FORA` volta ao valor do produto no fim).
+struct MomentoDentro(usize);
+impl MomentoDentro {
+    fn new() -> Self {
+        MomentoDentro(fundida::MOMENTO_FORA.swap(0, std::sync::atomic::Ordering::SeqCst))
+    }
+}
+impl Drop for MomentoDentro {
+    fn drop(&mut self) {
+        fundida::MOMENTO_FORA.store(self.0, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 /// Segura a rota de FASES enquanto vive (os gates que hasheiam o rascunho da grelha inteira).
@@ -79,7 +96,7 @@ fn hash_da_advecao(max_v: f64, km: bool, mode: Rows) -> (u64, f64) {
 /// `fundida = None`: a rota de fases, rascunho incluído no hash; `Some(linhas)`: a fundida com esse
 /// bloco, e o hash só da GRELHA (o rascunho da grelha inteira ela não escreve).
 fn hash_rota(max_v: f64, km: bool, mode: Rows, fundida: Option<usize>) -> (u64, f64) {
-    hash_rota_com(max_v, km, mode, fundida, fundida.is_none())
+    hash_rota_com(max_v, km, mode, fundida, fundida.is_none(), 1)
 }
 
 fn hash_rota_com(
@@ -88,9 +105,10 @@ fn hash_rota_com(
     mode: Rows,
     fundida: Option<usize>,
     rascunho: bool,
+    rf: usize,
 ) -> (u64, f64) {
     let _fases = Fases::new();
-    let mut e = cena();
+    let mut e = cena_rf(rf);
     e.tuning.set(Knob::MaxVelocity, max_v);
     let mut p = e.sim.gather_params(&e.tuning);
     p.km_mixing = km;
@@ -133,7 +151,8 @@ fn hash_rota_com(
             Some(n) => fundida::advect_fundida_rows(g, &p, gx, gy, mode, n),
         };
         vtop = vtop.max(vmax);
-        if k == 0 {
+        // A cobertura dos ramos é a da cena GRAVADA (fases, `rf = 1`; a fundida não escreve o rascunho).
+        if k == 0 && rf == 1 && fundida.is_none() {
             let s = g.s;
             let n = |f: &dyn Fn(usize) -> bool| (0..g.cells).filter(|&i| f(i)).count();
             let excesso = n(&|i| g.scratch.outflow[i] > 1.0);
@@ -172,15 +191,25 @@ fn hash_rota_com(
 #[test]
 fn advect_jacobi_fundida_bits_equal_the_phases() {
     let casos = [
-        (1.0, false, Rows::Serial),
-        (1.0, true, Rows::Parallel),
-        (3.0, false, Rows::Parallel),
-        (3.0, true, Rows::Serial),
+        (1.0, false, Rows::Serial, 1),
+        (1.0, true, Rows::Parallel, 1),
+        (3.0, false, Rows::Parallel, 1),
+        (3.0, true, Rows::Serial, 1),
+        (1.0, false, Rows::Medida(0), 1),
+        (3.0, true, Rows::Medida(u64::MAX), 1),
+        (1.0, true, Rows::Parallel, 4),
+        (3.0, false, Rows::Medida(0), 3),
     ];
-    for (mv, km, mode) in casos {
-        let fases = hash_rota_com(mv, km, mode, None, false).0;
+    for (mv, km, mode, rf) in casos {
+        let fases = hash_rota_com(mv, km, mode, None, false, rf).0;
         for linhas in [1, 3, 7, 32] {
-            let fundida = hash_rota(mv, km, mode, Some(linhas)).0;
+            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf).0;
+            assert_eq!(
+                fundida, fases,
+                "tecto {mv} km {km} {mode:?} bloco {linhas}: a fundida mudou bits"
+            );
+            let _dentro = MomentoDentro::new();
+            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf).0;
             assert_eq!(
                 fundida, fases,
                 "tecto {mv} km {km} {mode:?} bloco {linhas}: a fundida mudou bits"

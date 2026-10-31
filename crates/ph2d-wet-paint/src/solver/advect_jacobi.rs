@@ -138,12 +138,16 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
         return 0.0;
     }
     g.scratch.ensure(g.cells);
-    momentum_rows(g, p, gx, gy, mode);
-    let vmax = if fundida::usa_fundida(mode) {
+    let fundir = fundida::usa_fundida(mode, (g.by1 - g.by0 + 1) as usize * g.s);
+    if !(fundir && fundida::momento_no_bloco(g)) {
+        momentum_rows(g, p, gx, gy, mode);
+    }
+    let vmax = if fundir {
         fundida::fused_rows(
             g,
             p,
             mode,
+            (gx, gy),
             BLOCO_LINHAS.load(std::sync::atomic::Ordering::Relaxed),
         )
     } else {
@@ -178,6 +182,10 @@ pub(super) struct Ctx<'a> {
     spans_enabled: bool,
     bx0: i32,
     bx1: i32,
+    gw: i32,
+    max_v: f64,
+    /// A bbox na grade de FLUXO ([`crate::flow::flow_bbox`]).
+    fb: (i32, i32, i32, i32),
 }
 
 impl Ctx<'_> {
@@ -196,7 +204,18 @@ impl Ctx<'_> {
 
 /// O grid partido em leitura ([`Ctx`]) e rascunho (escrita).
 pub(super) fn split<'a>(g: &'a mut Grid, p: &Params) -> (Ctx<'a>, &'a mut SolverScratch) {
+    let (c, scratch, _, _) = split_vel(g, p);
+    (c, scratch)
+}
+
+/// [`split`] com os planos da velocidade persistente (o que o [`momentum_row`] escreve).
+pub(super) fn split_vel<'a>(
+    g: &'a mut Grid,
+    p: &Params,
+) -> (Ctx<'a>, &'a mut SolverScratch, &'a mut [f32], &'a mut [f32]) {
     let (s, gh, wf, hf) = (g.s, g.h as i32, g.w as f64, g.h as f64);
+    let gw = g.w as i32;
+    let fb = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let (by0, by1, bx0, bx1) = (g.by0, g.by1, g.bx0, g.bx1);
     let (spans_enabled, geom) = (g.spans_enabled, g.flow);
     let Grid {
@@ -209,6 +228,8 @@ pub(super) fn split<'a>(g: &'a mut Grid, p: &Params) -> (Ctx<'a>, &'a mut Solver
         flow_y,
         row_lo,
         row_hi,
+        vel_x,
+        vel_y,
         ..
     } = g;
     let c = Ctx {
@@ -232,8 +253,11 @@ pub(super) fn split<'a>(g: &'a mut Grid, p: &Params) -> (Ctx<'a>, &'a mut Solver
         spans_enabled,
         bx0,
         bx1,
+        gw,
+        max_v: p.k(Knob::MaxVelocity),
+        fb,
     };
-    (c, scratch)
+    (c, scratch, vel_x, vel_y)
 }
 
 /// **O fluxo fino, materializado uma vez** — e o `vmax` de carona.
@@ -300,86 +324,71 @@ pub(super) fn prepare_row(c: &Ctx, y: i32, row: &mut [[f32; 2]], bt: &mut [i8]) 
 /// e cada linha de fluxo tem exatamente uma linha fina probe ⇒ as linhas são
 /// disjuntas.
 fn momentum_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
-    let geom = g.flow;
-    let s = g.s;
-    let (gw, gh) = (g.w as i32, g.h as i32);
-    let (wf, hf) = (g.w as f64, g.h as f64);
-    let max_v = p.k(Knob::MaxVelocity);
-    let (fbx0, fby0, fbx1, fby1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), geom.rf);
-    if fby0 > fby1 || fbx0 > fbx1 {
+    let (c, _, vel_x, vel_y) = split_vel(g, p);
+    let (_, fby0, _, fby1) = c.fb;
+    if fby0 > fby1 || c.fb.0 > c.fb.2 {
         return;
     }
-    let (by0, by1) = (g.by0, g.by1);
-    let Grid {
-        vel_x,
-        vel_y,
-        flow_x,
-        flow_y,
-        film,
-        active,
-        row_lo,
-        row_hi,
-        spans_enabled,
-        bx0,
-        bx1,
-        ..
-    } = g;
-    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
-    let band = fby0 as usize * geom.s..(fby1 as usize + 1) * geom.s;
+    let band = fby0 as usize * c.geom.s..(fby1 as usize + 1) * c.geom.s;
     par::walk_rows2(
         mode,
         &mut vel_x[band.clone()],
         &mut vel_y[band],
-        geom.s,
-        |r, vx, vy| {
-            let cy = fby0 + r as i32;
-            let py = crate::flow::flow_probe(cy, gh, geom.rf);
-            if py < by0 || py > by1 {
-                return;
-            }
-            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, py);
-            if lo > hi {
-                return;
-            }
-            for cx in fbx0..=fbx1 {
-                let px = crate::flow::flow_probe(cx, gw, geom.rf);
-                if px < lo || px > hi {
-                    continue;
-                }
-                let i = px as usize + py as usize * s;
-                let c = cx as usize;
-                if active[i] == 0 {
-                    vx[c] = 0.0;
-                    vy[c] = 0.0;
-                    continue;
-                }
-                let (ux, uy) = flow_at_cell(flow_x, flow_y, &geom, px, py, i);
-                // Sai da folha ⇒ o serial faz `continue` ANTES de escrever a
-                // velocidade: uma gota que alcança a borda mantém o momento.
-                if backtrace(px, py, ux, uy, wf, hf).is_none() {
-                    continue;
-                }
-                let sx = f64::from(px) - ux;
-                let sy = f64::from(py) - uy;
-                let f = film[i] as f64;
-                let (sfx, sfy) = flow_at_point(flow_x, flow_y, &geom, sx, sy);
-                let mut nvx = sfx + gx * f;
-                let mut nvy = sfy + gy * f;
-                if nvx > max_v {
-                    nvx = max_v;
-                } else if nvx < -max_v {
-                    nvx = -max_v;
-                }
-                if nvy > max_v {
-                    nvy = max_v;
-                } else if nvy < -max_v {
-                    nvy = -max_v;
-                }
-                vx[c] = nvx as f32;
-                vy[c] = nvy as f32;
-            }
-        },
+        c.geom.s,
+        |r, vx, vy| momentum_row(&c, fby0 + r as i32, vx, vy, gx, gy),
     );
+}
+
+/// Uma linha de FLUXO `cy` do [`momentum_rows`]; `vx`/`vy` são a linha inteira. Lê `film`/`active` só na
+/// linha fina probe dela e o fluxo no retro-traço — nada do que as outras fases escrevem.
+pub(super) fn momentum_row(c: &Ctx, cy: i32, vx: &mut [f32], vy: &mut [f32], gx: f64, gy: f64) {
+    let (fbx0, _, fbx1, _) = c.fb;
+    let (s, geom, max_v) = (c.s, &c.geom, c.max_v);
+    let py = crate::flow::flow_probe(cy, c.gh, geom.rf);
+    if py < c.by0 || py > c.by1 {
+        return;
+    }
+    let (lo, hi) = c.span(py);
+    if lo > hi {
+        return;
+    }
+    for cx in fbx0..=fbx1 {
+        let px = crate::flow::flow_probe(cx, c.gw, geom.rf);
+        if px < lo || px > hi {
+            continue;
+        }
+        let i = px as usize + py as usize * s;
+        let col = cx as usize;
+        if c.active[i] == 0 {
+            vx[col] = 0.0;
+            vy[col] = 0.0;
+            continue;
+        }
+        let (ux, uy) = flow_at_cell(c.flow_x, c.flow_y, geom, px, py, i);
+        // Sai da folha ⇒ o serial faz `continue` ANTES de escrever a
+        // velocidade: uma gota que alcança a borda mantém o momento.
+        if backtrace(px, py, ux, uy, c.wf, c.hf).is_none() {
+            continue;
+        }
+        let sx = f64::from(px) - ux;
+        let sy = f64::from(py) - uy;
+        let f = c.film[i] as f64;
+        let (sfx, sfy) = flow_at_point(c.flow_x, c.flow_y, geom, sx, sy);
+        let mut nvx = sfx + gx * f;
+        let mut nvy = sfy + gy * f;
+        if nvx > max_v {
+            nvx = max_v;
+        } else if nvx < -max_v {
+            nvx = -max_v;
+        }
+        if nvy > max_v {
+            nvy = max_v;
+        } else if nvy < -max_v {
+            nvy = -max_v;
+        }
+        vx[col] = nvx as f32;
+        vy[col] = nvy as f32;
+    }
 }
 
 /// **Quanto sai de cada célula** — a soma dos pesos com que os destinos da
@@ -627,7 +636,7 @@ use commit::{commit_rows, walk_rows2_reduce};
 #[path = "advect_fundida.rs"]
 mod fundida;
 #[doc(hidden)]
-pub use fundida::{ADVECT_FASES, BLOCO_LINHAS};
+pub use fundida::{ADVECT_FASES, BLOCO_LINHAS, MOMENTO_FORA};
 
 #[cfg(test)]
 #[path = "advect_jacobi_measure.rs"]

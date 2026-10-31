@@ -340,9 +340,14 @@ pub enum Knob {
     /// em vez de `susp > 10`, e a borda que esbate devagar (a tampa do traço largo) deixa de ter a linha onde o
     /// escurecimento salta. `0` (omissão) = o limiar binário de sempre, ao bit.
     EdgeSoftMass,
+    /// ⭐ **A guache COBRE a tinta já ASSENTE** (31/10, missão «superar o Rebelle»): a cada pouso molhado, o assentado de
+    /// OUTRA cor na célula perde a fracção `DryCover × outra × peso` (`trail/transfer/cobre.rs` `cobre_o_assentado`) —
+    /// o claro opaco cobre o escuro seco, como o [`Knob::WetCover`] cobre o molhado. `0` (omissão) = a tinta de sempre,
+    /// ao bit.
+    DryCover,
 }
 
-pub const KNOB_COUNT: usize = 140;
+pub const KNOB_COUNT: usize = 141;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

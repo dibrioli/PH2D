@@ -337,4 +337,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // 31/10 (aguarela, a tampa do Wet Wash): o fator de borda graduado — neutro 0 = o limiar binário, ao bit; tecto 8 =
     // a fracção satura a 90 de massa (9× o limiar), acima do miolo de um Wash (~40–80), onde o aro já não existe
     k(Knob::EdgeSoftMass, KnobGroup::Water, "edgeSoftMass", 0.0, 8.0, 0.1, 0.0, None),
+    // 31/10 (guache opaca): a tinta nova cobre a ASSENTE de outra cor — neutro 0 = a tinta de sempre, ao bit
+    k(Knob::DryCover, KnobGroup::Hidden, "dryCover", 0.0, 1.0, 0.01, 0.0, None),
 ];

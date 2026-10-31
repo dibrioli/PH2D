@@ -46,3 +46,35 @@ fn a_mesma_tinta_nao_se_cobre() {
     assert_eq!(cobre_a_outra(&mut g, i, 1.0, 0.3, AZUL), 0.0);
     assert_eq!(g.susp[i], 400.0);
 }
+
+const BRANCO: [f32; 3] = [255.0, 255.0, 255.0];
+
+fn assente(rgb: [f32; 3], massa: f32) -> (Grid, usize) {
+    let mut g = Grid::new(8, 8);
+    let i = 4 + 4 * g.s;
+    g.sett[i] = massa;
+    g.sett_rgb[i] = rgb;
+    (g, i)
+}
+
+/// ⭐ O BRANCO sobre o azul assente afasta a parte `peso` dele (o seno dos perfis dá `0` ao branco — por isso a
+/// diferença de canal); a metade da força afasta metade; a MESMA tinta não se afasta.
+#[test]
+fn o_claro_afasta_o_escuro_assente() {
+    let (m, in_a) = (400.0_f32, 0.3);
+    let (mut g, i) = assente(AZUL, m);
+    super::cobre_o_assentado(&mut g, i, 1.0, in_a, BRANCO);
+    let peso = in_a / (alpha_of_mass(f64::from(m)) * (1.0 - in_a) + in_a);
+    let esperado = f64::from(m) * (1.0 - peso);
+    assert!(
+        (f64::from(g.sett[i]) - esperado).abs() < 1e-3,
+        "o azul assente não saiu: {} (esperado {esperado:.1})",
+        g.sett[i]
+    );
+    let (mut h, j) = assente(AZUL, m);
+    super::cobre_o_assentado(&mut h, j, 0.5, in_a, BRANCO);
+    assert!(h.sett[j] > g.sett[i] && h.sett[j] < m);
+    let (mut k, l) = assente(AZUL, m);
+    super::cobre_o_assentado(&mut k, l, 1.0, in_a, AZUL);
+    assert_eq!(k.sett[l], m, "a mesma tinta afastou-se");
+}

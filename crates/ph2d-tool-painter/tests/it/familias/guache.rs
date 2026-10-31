@@ -14,7 +14,8 @@ pub const WET: &[Receita] = &[
     // DOBRO da tinta (cobertura 0,50 × 0,32). A Gouache Round não entra: no Rebelle ela é o nosso Round (18 §4.3).
     GOUACHE_FLAT,
     // NOSSO (missão «superar o Rebelle», 31/10): a guache OPACA — cobre o escuro, borda firme, seca plana e mate. Composta
-    // sem motor novo: a ponta redonda dura da Flat, o dobro da tinta, a cobertura do molhado (`wetCover` 1, J6 lacuna 7),
+    // sem motor novo: a ponta redonda dura da Flat, o dobro da tinta, a cobertura do molhado (`wetCover` 1, J6 lacuna 7) e
+    // a do SECO (`dryCover` 1, 31/10: o claro cobre o escuro assente),
     // sem orla nem dente do papel (seca plana), parede no próprio traço (não empurra o que está por baixo), seca depressa
     // e sem o brilho do molhado. Afinação no smoke do dono. ⚠️ Não é a «Gouache Round» do `EM_ESTUDO` (nome distinto).
     Receita {
@@ -29,6 +30,7 @@ pub const WET: &[Receita] = &[
             ("pressureOpacity", 0.5),
             ("pressureOpacityCurve", 1.0),
             ("wetCover", 1.0),
+            ("dryCover", 1.0),
             ("levelingOwnStroke", 1.0),
             ("retention", 0.97),
             ("extWetSheen", 0.0),
@@ -400,5 +402,128 @@ fn os_fios_da_guache_seca_crescem_com_o_pincel() {
     assert!(
         rc > 7.0,
         "os fios não crescem com o pincel: {c40} → {c320} ({rc:.2}×, sem a lei {rs:.2}×)"
+    );
+}
+
+/// A cor `claro` da receita `nome` (com o mapa `engine` sobreposto) cruzando, em x 500, uma faixa azul SECA (y 200)
+/// pintada pela mesma receita: `[cruzamento, a cor no papel, azul longe]` em RGB médio 9×9, foto depois de secar.
+fn claro_sobre_azul_seco(
+    nome: &str,
+    engine: &[(&str, f64)],
+    claro: [u8; 3],
+    pressao: f64,
+) -> [[f64; 3]; 3] {
+    use crate::exame_bancada::{Fonte, Pincel, pinta_cena};
+    let r = WET.iter().find(|r| r.nome == nome).unwrap();
+    let mut preset = ph2d_brush_presets::Preset {
+        parametros: crate::presets_de_fabrica::parametros(r),
+        origem: ph2d_brush_presets::Origem::Fabrica,
+        miniatura: ph2d_brush_presets::Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
+        texturas: Default::default(),
+    };
+    for (k, v) in engine {
+        preset.parametros.engine.insert((*k).to_owned(), *v);
+    }
+    let p = Pincel {
+        nome: r.nome.to_owned(),
+        fonte: Fonte::Preset {
+            preset: Box::new(preset),
+            relativo: String::new(),
+        },
+    };
+    let horiz: Vec<serde_json::Value> = (0..294)
+        .map(|i| serde_json::json!([60.0 + 3.0 * f64::from(i), 200.0, 1.0]))
+        .collect();
+    let vert: Vec<serde_json::Value> = (0..174)
+        .map(|i| serde_json::json!([500.0, 60.0 + 3.0 * f64::from(i), pressao]))
+        .collect();
+    let cena = serde_json::json!({"nome": "cobre_seco", "ops": [
+        {"op": "pincel", "quem": "preset"},
+        {"op": "cor", "rgb": [23, 101, 179]},
+        {"op": "traco", "nome": "azul", "size_px": 60, "passo": 3.0, "pts": horiz},
+        {"op": "simula", "quadros": 240},
+        {"op": "seca"},
+        {"op": "cor", "rgb": claro},
+        {"op": "traco", "nome": "branco", "size_px": 40, "passo": 3.0, "pts": vert},
+        {"op": "simula", "quadros": 240},
+        {"op": "seca"},
+        {"op": "foto", "nome": "A"},
+    ]});
+    let w = 1000;
+    let px = pinta_cena(&p, None, &cena, [1000, 640], [255; 3], 0).1;
+    let caixa = |x: usize, y: usize| {
+        let mut s = [0.0; 3];
+        for yy in y - 4..=y + 4 {
+            for xx in x - 4..=x + 4 {
+                for (k, c) in s.iter_mut().enumerate() {
+                    *c += f64::from(px[(yy * w + xx) * 4 + k]) / 81.0;
+                }
+            }
+        }
+        s
+    };
+    [caixa(500, 200), caixa(500, 500), caixa(800, 200)]
+}
+
+/// ⭐ **A guache opaca COBRE o escuro SECO** (`Knob::DryCover`, 31/10): a Gouache Opaque clara sobre o azul já assente
+/// fica perto da sua cor no papel (a guache real: claro sobre escuro, opaco). CONTROLO: a mesma receita com `dryCover` 0
+/// deixa o azul atravessar; o azul longe do cruzamento não muda.
+#[test]
+fn a_guache_opaca_cobre_o_azul_seco() {
+    const PRESSAO: f64 = 0.3;
+    const CLAROS: [[u8; 3]; 4] = [
+        [255, 255, 255],
+        [250, 230, 120],
+        [170, 200, 235],
+        [240, 180, 190],
+    ];
+    let d = |a: [f64; 3], b: [f64; 3]| (0..3).map(|k| (a[k] - b[k]).powi(2)).sum::<f64>().sqrt();
+    let r: Vec<_> = std::thread::scope(|s| {
+        let h: Vec<_> = CLAROS
+            .iter()
+            .flat_map(|&c| {
+                [
+                    s.spawn(move || claro_sobre_azul_seco("Gouache Opaque", &[], c, PRESSAO)),
+                    s.spawn(move || {
+                        claro_sobre_azul_seco("Gouache Opaque", &[("dryCover", 0.0)], c, PRESSAO)
+                    }),
+                ]
+            })
+            .collect();
+        h.into_iter().map(|j| j.join().unwrap()).collect()
+    });
+    for (n, c) in CLAROS.iter().enumerate() {
+        let ([com, pc, lc], [sem, ps, ls]) = (r[2 * n], r[2 * n + 1]);
+        let (dc, ds) = (d(com, pc), d(sem, ps));
+        println!(
+            "[cobre seco] {c:?}: cruzamento a {dc:.1} da cor no papel com a lei · {ds:.1} sem · {com:?} · {sem:?} · papel {pc:?}"
+        );
+        assert!(
+            d(lc, ls) < 2.0,
+            "a lei mexeu no azul longe: {lc:?} contra {ls:?}"
+        );
+        assert!(
+            d(pc, ps) < 2.0,
+            "a lei mexeu na cor sobre o papel: {pc:?} contra {ps:?}"
+        );
+        // A lei: o cruzamento é a cor no papel (o azul fica coberto), e nunca mais longe dela que sem a lei.
+        // Medido 31/10 (pressão 0,3; com · sem): branco 12,0 · 42,0 — amarelo 3,6 · 6,4 — azul claro 12,0 · 39,4 —
+        // rosa 5,0 · 16,5. A lei põe o cruzamento perto da cor no papel e sempre mais perto que sem ela.
+        assert!(
+            dc < 13.0 && dc < 0.6 * ds,
+            "{c:?} não cobre o azul seco: {dc:.1} (sem a lei {ds:.1})"
+        );
+    }
+    // O CONTROLO: sem a lei o branco e o azul claro velam (o azul atravessa).
+    let ds = |n: usize| d(r[2 * n + 1][0], r[2 * n + 1][1]);
+    assert!(
+        ds(0) > 30.0 && ds(2) > 30.0,
+        "o controlo já cobre: branco {:.1} · azul claro {:.1}",
+        ds(0),
+        ds(2)
     );
 }

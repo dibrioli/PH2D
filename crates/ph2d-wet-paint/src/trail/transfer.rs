@@ -4,8 +4,10 @@
 
 use super::*;
 
+mod cobre;
 #[cfg(test)]
 mod cobre_tests;
+use cobre::{cobre_a_outra, cobre_o_assentado};
 mod perto;
 pub(crate) mod remolha; // a água que re-molha a tinta solúvel debaixo dela (Knob::Dissolve, J10) // o misturador PERTO da tinta (Knob::BlendReach): a média local, não a da janela // a lei da tinta que cobre (Knob::WetCover)
 
@@ -34,23 +36,6 @@ fn pousa_seco(g: &mut Grid, i: usize, v: f64, tip: [f32; 3], p: &Params, out: &m
         g.sett_rgb[i] = [out[0] as f32, out[1] as f32, out[2] as f32];
     }
     g.sett[i] = (old + v) as f32;
-}
-
-/// ⭐ **A tinta nova COBRE a molhada de outra cor** ([`Knob::WetCover`], J6 lacuna 7): `q = cobre × outra_tinta`; o
-/// suspenso da célula `i` perde a fracção `q × peso` (`peso` = a parte da tinta nova na mistura de opacidade logo
-/// abaixo: o que ela esconde sai), e devolve `q` — a mistura dá à cor nova `1 − (1 − peso)(1 − q)` (o que fica por
-/// baixo não tinge a de cima). ⛔ Medido: só a massa (sem a cor) deixava o cruzamento lilás claro (a 1.ª mistura já
-/// púrpura deixa de ser «outra»: resto 0,36 → 0,50); a massa inteira à 1.ª passagem abria o papel (0,77).
-fn cobre_a_outra(g: &mut Grid, i: usize, cobre: f64, in_a: f64, tip: [f32; 3]) -> f64 {
-    let old = f64::from(g.susp[i]);
-    let outra = crate::colorops::outra_tinta(g.susp_rgb[i].map(f64::from), tip.map(f64::from));
-    let e9 = alpha_of_mass(old) * (1.0 - in_a);
-    if outra <= 0.0 || e9 + in_a <= 0.0 {
-        return 0.0;
-    }
-    let q = (cobre * outra).min(1.0);
-    g.susp[i] = (old * (1.0 - q * in_a / (e9 + in_a))) as f32;
-    q
 }
 
 impl Trail {
@@ -142,6 +127,8 @@ impl Trail {
         }
         let vela = p.k(Knob::Glaze) as f32;
         let cobre = p.k(Knob::WetCover);
+        // A guache que cobre o ASSENTADO (31/10): `0` = nenhuma célula é tocada, ao bit.
+        let cobre_seco = p.k(Knob::DryCover);
         // A água que RE-MOLHA (J10): `0` = nenhuma célula é tocada, ao bit.
         let dissolve = p.k(Knob::Dissolve);
         // O MATERIAL da tinta (W2 E3): o da ponta (suja do que apanhou) ou, sem ela, o do pincel; Lock = não muda o pousado.
@@ -273,6 +260,9 @@ impl Trail {
                             g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                             g.susp[i] = (g.susp[i] as f64 - dm) as f32;
                         }
+                    }
+                    if cobre_seco > 0.0 && g.sett[i] > 0.0 {
+                        cobre_o_assentado(g, i, cobre_seco, in_a, ponta);
                     }
                     let tinge = if cobre > 0.0 && g.susp[i] > 0.0 {
                         cobre_a_outra(g, i, cobre, in_a, ponta)

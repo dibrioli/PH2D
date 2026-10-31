@@ -55,6 +55,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.bristleStreakLight" => "Light streaks",
         "panel.wet_tuning.knob.bristleStreakLength" => "Streak length",
         "panel.wet_tuning.knob.bristleStreakCut" => "Streak rarity",
+        // O leque (31/10): os tufos abrem-se num arco.
+        "panel.wet_tuning.knob.tuftArc" => "Tufts fan out in an arc",
         // Stroke — como o traço pousa a tinta.
         "panel.wet_tuning.knob.extDryBrush" => "Dry brush",
         "panel.wet_tuning.knob.extWetSoften" => "Softer on wet paint",

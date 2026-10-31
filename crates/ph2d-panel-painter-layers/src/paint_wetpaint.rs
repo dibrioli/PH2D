@@ -144,7 +144,7 @@ pub(crate) fn paint_wetpaint_section(
             ),
         ];
         // A borracha da água não pousa: o Pigment, o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta
-        // (Wet bloom, Tip pickup, Re-wet, Drag, Solubility, Glaze, Cover, Wet soften) saem (`DepositoMolhado`).
+        // (Wet bloom, Tip pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften) saem (`DepositoMolhado`).
         let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
         let do_deposito = [
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
@@ -157,6 +157,7 @@ pub(crate) fn paint_wetpaint_section(
             ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_GLAZE,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_COVER,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_COVER,
             ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
         ];
         for (label, id, value, min, max, step, decimals) in rows {
@@ -186,6 +187,7 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_wet_cartao.staining",
             "panel.painter_wet_cartao.glaze",
             "panel.painter_wet_cartao.cover",
+            "panel.painter_wet_cartao.dry_cover",
             "panel.painter_wet_cartao.wet_soften",
         ];
         for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {

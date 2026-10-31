@@ -336,6 +336,10 @@ pub const PAINTER_WETPAINT_GLAZE: NodeId = hash_node_id("painter_brush.wetpaint_
 /// dono 30/10).
 pub const PAINTER_WETPAINT_COVER: NodeId = hash_node_id("painter_brush.wetpaint_cover");
 
+/// **Dry cover** — quanto a tinta nova TAPA a já ASSENTE de outra cor (knob `dryCover`, 31/10: a guache opaca), ao lado
+/// do Cover.
+pub const PAINTER_WETPAINT_DRY_COVER: NodeId = hash_node_id("painter_brush.wetpaint_dry_cover");
+
 /// **Wet soften** — a orla do traço amacia sobre o papel molhado (knob `extWetSoften`; saiu do Tuning, dono 30/10).
 pub const PAINTER_WETPAINT_WET_SOFTEN: NodeId = hash_node_id("painter_brush.wetpaint_wet_soften");
 
@@ -355,13 +359,15 @@ pub const PAINTER_WETPAINT_BLEND_STRENGTH: NodeId =
 /// **Dry › Absorbency** (knob `dryer`).
 pub const PAINTER_WETPAINT_DRY_ABSORBENCY: NodeId =
     hash_node_id("painter_brush.wetpaint_dry_absorbency");
+/// **Wet › Drag** (knob `waterDrag`, 31/10: o Water Brush leva o levantado pelo traço).
+pub const PAINTER_WETPAINT_WATER_DRAG: NodeId = hash_node_id("painter_brush.wetpaint_water_drag");
 /// **Blow › Strength** (knob `blow`).
 pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
     hash_node_id("painter_brush.wetpaint_blow_strength");
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 35] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 37] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -386,6 +392,7 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 35] = [
     PAINTER_WETPAINT_STAINING,
     PAINTER_WETPAINT_GLAZE,
     PAINTER_WETPAINT_COVER,
+    PAINTER_WETPAINT_DRY_COVER,
     PAINTER_WETPAINT_WET_SOFTEN,
     PAINTER_WETPAINT_ERASE,
     PAINTER_WETPAINT_SMEAR_STRENGTH,
@@ -393,6 +400,7 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 35] = [
     PAINTER_WETPAINT_BLEND_STRENGTH,
     PAINTER_WETPAINT_DRY_ABSORBENCY,
     PAINTER_WETPAINT_BLOW_STRENGTH,
+    PAINTER_WETPAINT_WATER_DRAG,
     super::PAINTER_WETPAINT_VOL_SIZE,
     super::PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_HEAVY_EDGE,

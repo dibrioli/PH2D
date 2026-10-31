@@ -335,16 +335,17 @@ mod tests {
     /// nível do secador no Tools (+1). Mais 1 (J6 mistura, lacuna 6): o alcance do misturador no Tools (+1). Mais 1 (J6 guache, lacuna 7): a tinta que cobre a molhada no
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
     /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8). Contagem refeita do código a 31/10: 98 → 95 (o cartão Wet Paint levou Staining, Glaze, Cover e Wet soften de Paint/Stroke/Wet effects para Hidden a 30/10 sem este teste; Paint 24 → 22, Stroke 13 → 12, Wet effects 5 → 4).
+    /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 95);
+        assert_eq!(rows().len(), 96);
         for g in [
             (KnobGroup::Paint, 22),
             (KnobGroup::Water, 8),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
-            (KnobGroup::Bristles, 20),
+            (KnobGroup::Bristles, 21),
             (KnobGroup::Stroke, 12),
             (KnobGroup::WetEffects, 4),
             (KnobGroup::Material, 16),
@@ -384,11 +385,13 @@ mod tests {
             "blow",
             "smear",
             "smearWater",
+            // a linha do Wet (31/10): o Drag
             "waterDrag",
             // o cartão Wet Paint do pincel (ordem do dono 30/10): Staining, Glaze, Cover, Wet soften e a Drag (J10)
             "extStaining",
             "glaze",
             "wetCover",
+            // e o Dry cover ao lado do Cover (31/10)
             "dryCover",
             "extWetSoften",
             "rewetPaint",
@@ -421,12 +424,9 @@ mod tests {
             .filter(|d| d.group == KnobGroup::Hidden)
             .map(|d| d.key)
             .collect();
-        // Da RECEITA do preset, à espera da linha no Tuning › Bristles (o rótulo vive no `ph2d-i18n`): o arco do leque.
-        const DA_RECEITA: [&str; 1] = ["tuftArc"];
         let lista: BTreeSet<&str> = NOUTRA_SUPERFICIE
             .iter()
             .chain(CALIBRACAO.iter())
-            .chain(DA_RECEITA.iter())
             .chain(MORTOS.iter())
             .copied()
             .collect();

@@ -598,6 +598,7 @@ fn mistura_do_cartao_chega_ao_knob() {
         ),
         (crate::ids::PAINTER_WETPAINT_GLAZE, Knob::Glaze, 0.41),
         (crate::ids::PAINTER_WETPAINT_COVER, Knob::WetCover, 0.57),
+        (crate::ids::PAINTER_WETPAINT_DRY_COVER, Knob::DryCover, 0.48),
         (
             crate::ids::PAINTER_WETPAINT_WET_SOFTEN,
             Knob::ExtWetSoften,

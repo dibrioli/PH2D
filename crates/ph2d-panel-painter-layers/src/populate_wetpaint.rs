@@ -87,6 +87,14 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             "panel.painter_wet_cartao.cover_tip",
         ),
         (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_COVER,
+            "panel.painter_wet_cartao.dry_cover_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER_DRAG,
+            "panel.painter_wet_cartao.water_drag_tip",
+        ),
+        (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
             "panel.painter_wet_cartao.wet_soften_tip",
         ),

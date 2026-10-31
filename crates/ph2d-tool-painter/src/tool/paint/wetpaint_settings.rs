@@ -257,7 +257,7 @@ impl WetKnobs {
     /// Os knobs da FÍSICA da água que moram no cartão Wet Paint (saíram do Tuning a 13/10): `(id do
     /// cartão, valor, mín, máx, passo)` — a faixa e o passo da `KNOB_DEFS` do motor, a mesma fonte do Tuning.
     #[must_use]
-    pub fn knobs_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 17] {
+    pub fn knobs_no_cartao(&self) -> [(ph2d_a11y::NodeId, f64, f64, f64, f64); 18] {
         KNOBS_NO_CARTAO.map(|(id, knob)| {
             let d = &KNOB_DEFS[knob as usize];
             (id, self.get(knob), d.min, d.max, d.step)
@@ -265,7 +265,7 @@ impl WetKnobs {
     }
 
     /// ⭐ **A linha da ferramenta na mão** (dono 25/10, o painel do Rebelle): `(id, chave do rótulo, valor, mín,
-    /// máx, passo)` dos knobs que o leitor de `tool` lê — vazia para o Pincel e o Wet (o Water deles é o do topo).
+    /// máx, passo)` dos knobs que o leitor de `tool` lê — vazia para o Pincel; o Wet só tem o Drag (o Water dele é o do topo).
     #[must_use]
     pub fn knobs_da_ferramenta(
         &self,

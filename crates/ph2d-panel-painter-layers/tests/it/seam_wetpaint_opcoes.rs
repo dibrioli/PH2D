@@ -209,10 +209,10 @@ fn as_dicas_das_opcoes() {
 #[test]
 fn as_dicas_dos_knobs_do_pincel() {
     use ph2d_tool_painter::ids::{
-        PAINTER_WETPAINT_COVER, PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_GLAZE,
-        PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_REWET_DRAG, PAINTER_WETPAINT_SOLUBILITY,
-        PAINTER_WETPAINT_STAINING, PAINTER_WETPAINT_TIP_PICKUP, PAINTER_WETPAINT_WET_BLOOM,
-        PAINTER_WETPAINT_WET_SOFTEN,
+        PAINTER_WETPAINT_COVER, PAINTER_WETPAINT_DIFFUSION, PAINTER_WETPAINT_DRY_COVER,
+        PAINTER_WETPAINT_GLAZE, PAINTER_WETPAINT_REWET, PAINTER_WETPAINT_REWET_DRAG,
+        PAINTER_WETPAINT_SOLUBILITY, PAINTER_WETPAINT_STAINING, PAINTER_WETPAINT_TIP_PICKUP,
+        PAINTER_WETPAINT_WATER_DRAG, PAINTER_WETPAINT_WET_BLOOM, PAINTER_WETPAINT_WET_SOFTEN,
     };
     let (host, _, _) = pinta(&molhado());
     for (id, chave) in [
@@ -245,6 +245,14 @@ fn as_dicas_dos_knobs_do_pincel() {
         ),
         (PAINTER_WETPAINT_GLAZE, "panel.painter_wet_cartao.glaze_tip"),
         (PAINTER_WETPAINT_COVER, "panel.painter_wet_cartao.cover_tip"),
+        (
+            PAINTER_WETPAINT_DRY_COVER,
+            "panel.painter_wet_cartao.dry_cover_tip",
+        ),
+        (
+            PAINTER_WETPAINT_WATER_DRAG,
+            "panel.painter_wet_cartao.water_drag_tip",
+        ),
         (
             PAINTER_WETPAINT_WET_SOFTEN,
             "panel.painter_wet_cartao.wet_soften_tip",

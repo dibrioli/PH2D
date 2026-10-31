@@ -80,7 +80,7 @@ const CERDAS: [Knob; 6] = [
 ];
 
 /// Os knobs de cada ferramenta da água: o id do cartão, o knob, a ferramenta que o lê e o rótulo.
-pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str); 5] = [
+pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str); 6] = [
     (
         crate::ids::PAINTER_WETPAINT_SMEAR_STRENGTH,
         Knob::Smear,
@@ -111,6 +111,13 @@ pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str);
         WetTool::Blow,
         "panel.painter_wet_cartao.strength",
     ),
+    // A água que arrasta o que levantou (31/10, o Water Brush): o leitor é `tools::apply_water_drag`, só no dab do Wet.
+    (
+        crate::ids::PAINTER_WETPAINT_WATER_DRAG,
+        Knob::WaterDrag,
+        WetTool::Wet,
+        "panel.painter_wet_cartao.water_drag",
+    ),
 ];
 
 /// Os knobs do motor que saíram do Tuning para o cartão: Leveling · Level Clamp · Capillary · Brake (dono 13/10) e
@@ -118,7 +125,7 @@ pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str);
 /// o preset; o Pigment diffusion pedido no smoke) saíram também do Tuning: o que está no cartão não se repete lá
 /// (R3). O `ExtDryBrush` ficou de fora: o `dry_gate` é 0 nos 29 presets de fábrica (medido 25/10); só a cobertura
 /// que cai (a velocidade → opacidade) o abre (`o_extdrybrush_so_mexe_com_dry_gate_positivo`).
-pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 17] = [
+pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 18] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),
     (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary),
@@ -141,5 +148,7 @@ pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 17] = [
     (crate::ids::PAINTER_WETPAINT_STAINING, Knob::ExtStaining),
     (crate::ids::PAINTER_WETPAINT_GLAZE, Knob::Glaze),
     (crate::ids::PAINTER_WETPAINT_COVER, Knob::WetCover),
+    // A guache que tapa a ASSENTE (31/10): o leitor é `trail/transfer/cobre.rs` `cobre_o_assentado`, no pouso.
+    (crate::ids::PAINTER_WETPAINT_DRY_COVER, Knob::DryCover),
     (crate::ids::PAINTER_WETPAINT_WET_SOFTEN, Knob::ExtWetSoften),
 ];

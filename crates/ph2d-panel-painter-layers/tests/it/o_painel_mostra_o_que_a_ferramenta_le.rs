@@ -127,7 +127,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 20] = [
+const DEPOSITO_MOLHADO: [NodeId; 21] = [
     PAINTER_BRUSH_DAB_QUINA,
     // A ponta que gira com inércia (L3).
     PAINTER_BRUSH_DAB_ROTATION_LAG,
@@ -153,6 +153,7 @@ const DEPOSITO_MOLHADO: [NodeId; 20] = [
     // A tinta que filtra, tapa e amacia no molhado (dono 30/10): lidas no pouso.
     PAINTER_WETPAINT_GLAZE,
     PAINTER_WETPAINT_COVER,
+    PAINTER_WETPAINT_DRY_COVER,
     PAINTER_WETPAINT_WET_SOFTEN,
 ];
 

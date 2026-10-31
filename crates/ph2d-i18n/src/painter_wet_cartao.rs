@@ -46,6 +46,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.cover_tip" => {
             "How much this paint hides WET paint of another colour under it instead of mixing with it, like gouache"
         }
+        "panel.painter_wet_cartao.dry_cover" => "Dry cover",
+        "panel.painter_wet_cartao.dry_cover_tip" => {
+            "How much this paint hides DRY paint of another colour under it, like opaque gouache over a dried layer"
+        }
         "panel.painter_wet_cartao.wet_soften" => "Wet soften",
         "panel.painter_wet_cartao.wet_soften_tip" => {
             "How much the edge of the stroke softens on wet paper"
@@ -54,6 +58,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.strength" => "Strength",
         "panel.painter_wet_cartao.smear_water" => "Water",
         "panel.painter_wet_cartao.absorbency" => "Absorbency",
+        "panel.painter_wet_cartao.water_drag" => "Drag",
+        "panel.painter_wet_cartao.water_drag_tip" => {
+            "How much the water carries the pigment it lifted along the stroke: the colour fades in the direction of the gesture"
+        }
         _ => return None,
     })
 }

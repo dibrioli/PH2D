@@ -615,7 +615,7 @@ fn o_po_do_pincel_edita_se_pelo_cartao() {
 }
 
 /// As linhas da ferramenta da água e o fio dela.
-const DA_FERRAMENTA: [(NodeId, &str); 5] = [
+const DA_FERRAMENTA: [(NodeId, &str); 6] = [
     (
         ph2d_tool_painter::ids::PAINTER_WETPAINT_SMEAR_STRENGTH,
         "wet_smear",
@@ -635,6 +635,10 @@ const DA_FERRAMENTA: [(NodeId, &str); 5] = [
     (
         ph2d_tool_painter::ids::PAINTER_WETPAINT_BLOW_STRENGTH,
         "wet_blow",
+    ),
+    (
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER_DRAG,
+        "wet_water",
     ),
 ];
 

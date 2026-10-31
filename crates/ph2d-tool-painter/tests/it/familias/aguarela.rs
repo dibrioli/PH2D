@@ -59,8 +59,8 @@ pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] = &[];
 /// `tamanhos` A (perfil através do recto de 200 px, × o miolo: aro · +4 · +6 · +20 · +30 px) e vista nas pranchas `r1_*`:
 /// o escurecimento da borda é que desenhava o contorno duro e os fios escuros na TAMPA (com 0 a tampa esbate como a do
 /// Rebelle, mas perde o aro dos lados); o K-M fazia o cruzamento azul × vermelho molhado quase preto (o Rebelle: lilás).
-/// Wash Round Rebelle 1,15 · 0,71 · 0,74 · 0,84 · 0,89 — orla 50 + domo 0,5: 1,27 · 0,73 · 0,72 · 0,81 · 0,85 (orla 100
-/// + domo 0,3: 1,84 · 0,72 · 0,73 · 0,85; orla 30: sem aro, 0,89). Liner Rebelle 1,06 · 0,89 · 0,87 · 0,91 — pigmento 20:
+/// Wash Round Rebelle 1,15 · 0,71 · 0,74 · 0,84 · 0,89 — orla 50 + domo 0,5: 1,27 · 0,73 · 0,72 · 0,81 · 0,85
+/// (orla 100 + domo 0,3: 1,84 · 0,72 · 0,73 · 0,85; orla 30: sem aro, 0,89). Liner Rebelle 1,06 · 0,89 · 0,87 · 0,91 — pigmento 20:
 /// domo 0,15 0,91 · 0,85 · 0,89 · 0,97, domo 0,5 0,65 junto da borda ⇒ o [`DOMO`] da J6 (0,3); a orla FICA 200 (a 200 px
 /// 100 e 200 dão o mesmo aro, ~0,9; a 40 px a 100 tira o fio escuro do Rebelle, 1,247: 1,07 — `o_liner_tem_o_fio_escuro_da_borda`). ⛔ As pontas
 /// que esbatem NÃO no Liner (a 40 px o Rebelle é cheio até à tampa, J6t).

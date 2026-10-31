@@ -982,10 +982,6 @@ struct Ctx {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum V {
     Orig,
-    Copia,
-    Lado,
-    LadoCanal,
-    Tudo,
     Salta,
     Sem,
     Tol,
@@ -1015,10 +1011,6 @@ fn dry(v: V, g: &mut Grid, c: &Ctx, par: bool) {
             by,
             if par { Rows::Parallel } else { Rows::Serial },
         ),
-        V::Copia => drying_copy::<0, false>(g, p, ev, rw, by, par),
-        V::Lado => drying_copy::<LADO, false>(g, p, ev, rw, by, par),
-        V::LadoCanal => drying_copy::<{ LADO | CANAL }, false>(g, p, ev, rw, by, par),
-        V::Tudo => drying_copy::<{ LADO | CANAL | MEMO }, false>(g, p, ev, rw, by, par),
         V::Salta => drying_copy::<B, false>(g, p, ev, rw, by, par),
         V::Sem => drying_copy::<{ B | SEM }, false>(g, p, ev, rw, by, par),
         V::Tol => drying_copy::<{ B | SEM | TOL }, false>(g, p, ev, rw, by, par),
@@ -1134,22 +1126,21 @@ fn main() {
                 rewet: c.rewet,
                 bypass: c.bypass,
             };
-            if cena == 1 {
-                if let Ecra::Cobre {
+            if cena == 1
+                && let Ecra::Cobre {
                     esconde,
                     molhada,
                     oleo,
                     ..
                 } = cc.p.ecra
-                {
-                    cc.p.ecra = Ecra::Cobre {
-                        filme: 0.3,
-                        esconde,
-                        molhada,
-                        vela: 0.0,
-                        oleo,
-                    };
-                }
+            {
+                cc.p.ecra = Ecra::Cobre {
+                    filme: 0.3,
+                    esconde,
+                    molhada,
+                    vela: 0.0,
+                    oleo,
+                };
             }
             let ver = |g: &Grid, cc: &Ctx| -> Vec<[f64; 3]> {
                 (0..g.film.len())

@@ -22,7 +22,7 @@ impl crate::PainterTool {
 /// correu — LIGACAO_PLACA.md); a omissão passa a placa quando ele estiver verde.
 pub(super) fn ligada() -> bool {
     static L: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *L.get_or_init(|| std::env::var("PH2D_WET_GPU").map_or(false, |v| v.trim() == "1"))
+    *L.get_or_init(|| std::env::var("PH2D_WET_GPU").is_ok_and(|v| v.trim() == "1"))
 }
 
 /// O estado da placa de UM worker.
@@ -37,6 +37,7 @@ pub(super) struct Placa {
 #[cfg_attr(not(feature = "gpu"), allow(unused_variables))]
 impl Placa {
     /// O motor chegou: decide placa × CPU e, se placa, sobe a grade.
+    #[cfg_attr(not(feature = "gpu"), allow(clippy::needless_return))] // o `return` cobre o bloco `#[cfg(feature = "gpu")]` a seguir
     pub(super) fn recebe(&mut self, e: &mut Engine) {
         self.viva = false;
         if !ligada() {
@@ -98,6 +99,7 @@ impl Placa {
     }
 
     /// O motor vai voltar à UI: desce a grade inteira.
+    #[cfg_attr(not(feature = "gpu"), allow(clippy::needless_return))] // o `return` cobre o bloco `#[cfg(feature = "gpu")]` a seguir
     pub(super) fn devolve(&mut self, e: &mut Engine) {
         if !std::mem::take(&mut self.viva) {
             return;

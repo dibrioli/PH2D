@@ -199,7 +199,7 @@ fn mede_o_passo_placa_a_4k() {
     let Some(gpu) = contexto() else { return };
     let (w, h) = (4096usize, 2560usize);
     let t = Instant::now();
-    let mut e = aguada(w, h);
+    let e = aguada(w, h);
     let idx = e.active_layer;
     eprintln!("aguada {w}×{h} em {:.1} s", t.elapsed().as_secs_f64());
     assert!(placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning));

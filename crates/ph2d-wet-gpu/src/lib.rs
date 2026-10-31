@@ -319,6 +319,9 @@ fn storage(gpu: &GpuContext, label: &str, bytes: u64) -> wgpu::Buffer {
     })
 }
 
+/// O conjunto de timestamps e o índice de cada (passo, passada).
+pub type Carimbos<'a> = (&'a wgpu::QuerySet, &'a dyn Fn(u32, u32) -> u32);
+
 impl AdvectGpu {
     /// Aloca os buffers à medida de `g` e compila as quatro pipelines.
     #[must_use]
@@ -506,7 +509,7 @@ impl AdvectGpu {
         enc: &mut wgpu::CommandEncoder,
         r: Rect,
         n: u32,
-        ts: Option<(&wgpu::QuerySet, &dyn Fn(u32, u32) -> u32)>,
+        ts: Option<Carimbos<'_>>,
     ) {
         let (gx, gy) = (r.cols().div_ceil(16), r.rows().div_ceil(16));
         for step in 0..n {

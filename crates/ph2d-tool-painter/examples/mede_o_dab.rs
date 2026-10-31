@@ -23,6 +23,8 @@ use std::time::Instant;
 const W: u32 = 3840;
 const H: u32 = 2160;
 const RAIOS: [f32; 4] = [10.0, 30.0, 60.0, 120.0];
+/// Uma amostra de (µs/move, µs/dab, depósito µs/dab, composite µs/move, dabs).
+type Amostra = (f64, f64, f64, f64, f64);
 /// Um traço da varredura por raio: os MESMOS 150 movimentos de 3 px das facas.
 const MOVES: usize = 150;
 const PASSO: f32 = 3.0;
@@ -213,7 +215,7 @@ fn main() {
         let mut telas: Vec<PainterTool> = telas_de.iter().map(|&(m, q)| tela(m, q)).collect();
         let n = telas.len() * RAIOS.len();
         // (tela, raio) → amostras de (µs/move, µs/dab, depósito µs/dab, composite µs/move, dabs)
-        let mut am: Vec<Vec<(f64, f64, f64, f64, f64)>> = vec![Vec::new(); n];
+        let mut am: Vec<Vec<Amostra>> = vec![Vec::new(); n];
         // Aquecimento fora da régua: um traço por variante, numa faixa só dele.
         for (ti, t) in telas.iter_mut().enumerate() {
             for (ri, &r) in RAIOS.iter().enumerate() {

@@ -35,10 +35,13 @@ impl Parada {
 
     #[inline]
     pub(super) fn d(&self, vela: f64, var: [f64; 3]) -> f64 {
-        if let (true, Some(lod)) = (vela > 0.0, &self.lod) {
-            if filtrada_entre_perfis(&Perfil::de_od(var), lod) {
-                return 0.0;
-            }
+        if vela > 0.0
+            && self
+                .lod
+                .as_ref()
+                .is_some_and(|lod| filtrada_entre_perfis(&Perfil::de_od(var), lod))
+        {
+            return 0.0;
         }
         entre_perfis(&Perfil::de(var), &self.l)
     }

@@ -255,8 +255,7 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Mode) {
                     continue;
                 }
                 let uvd = uv[di];
-                let Some((x0, fx, y0, fy)) =
-                    backtrace(nx, ny, uvd[0] as F, uvd[1] as F, wf, hf)
+                let Some((x0, fx, y0, fy)) = backtrace(nx, ny, uvd[0] as F, uvd[1] as F, wf, hf)
                 else {
                     continue;
                 };
@@ -300,100 +299,117 @@ fn transport_rows(g: &mut Grid, p: &Params, mode: Mode) {
     let uv: &[[f32; 2]] = &scratch.uv;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     // Rascunho em planos (31/10, o produto deixou o `AdvCell` intercalado): os mesmos valores.
-    let (dfm, dsm, dcm) = (&mut scratch.dst_film, &mut scratch.dst_susp, &mut scratch.dst_rgb);
-    par::walk_rows3(mode, &mut dfm[band.clone()], &mut dsm[band.clone()], &mut dcm[band], s, |ri, fr, sr, cr| {
-        let y = by0 + ri as i32;
-        let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-        if lo > hi {
-            return;
-        }
-        let mut km_colors = [0.0f64; 12];
-        let mut km_weights = [0.0f64; 4];
-        let mut km_out = [0.0f64; 3];
-        let mut i = lo as usize + y as usize * s;
-        for x in lo..=hi {
-            let f0 = film[i] as F;
-            let m0 = susp[i] as F;
-            let of = outflow[i] as F;
-            let leave = if of > 1.0 { 1.0 } else { of };
-            let mut new_film = f0 - f0 * leave;
-            let mut new_susp = m0 - m0 * leave;
-            let mut new_rgb = susp_rgb[i];
-            if active[i] != 0 {
-                let uvc = uv[i];
-                let (ux, uy) = (uvc[0] as F, uvc[1] as F);
-                if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, wf, hf) {
-                    let i00 = x0 as usize + y0 as usize * s;
-                    let i10 = i00 + 1;
-                    let i01 = i00 + s;
-                    let i11 = i01 + 1;
-                    let w00 = (1.0 - fx) * (1.0 - fy);
-                    let w10 = fx * (1.0 - fy);
-                    let w01 = (1.0 - fx) * fy;
-                    let w11 = fx * fy;
-                    let k00 = w00 * take_scale(outflow[i00] as F);
-                    let k10 = w10 * take_scale(outflow[i10] as F);
-                    let k01 = w01 * take_scale(outflow[i01] as F);
-                    let k11 = w11 * take_scale(outflow[i11] as F);
-                    let p00 = susp[i00] as F * k00;
-                    let p10 = susp[i10] as F * k10;
-                    let p01 = susp[i01] as F * k01;
-                    let p11 = susp[i11] as F * k11;
-                    let want = p00 + p10 + p01 + p11;
-                    if want > 0.0 {
-                        let inv = 1.0 / want;
-                        let c00 = susp_rgb[i00];
-                        let c10 = susp_rgb[i10];
-                        let c01 = susp_rgb[i01];
-                        let c11 = susp_rgb[i11];
-                        let (r_in, g_in, b_in): (F, F, F);
-                        if km_mean {
-                            for k in 0..3 {
-                                km_colors[k] = c00[k] as f64;
-                                km_colors[3 + k] = c10[k] as f64;
-                                km_colors[6 + k] = c01[k] as f64;
-                                km_colors[9 + k] = c11[k] as f64;
-                            }
-                            km_weights[0] = d(p00);
-                            km_weights[1] = d(p10);
-                            km_weights[2] = d(p01);
-                            km_weights[3] = d(p11);
-                            km_weighted_mean_color(&km_colors, &km_weights, 4, d(inv), &mut km_out);
-                            r_in = w(km_out[0]);
-                            g_in = w(km_out[1]);
-                            b_in = w(km_out[2]);
-                        } else {
-                            r_in = (c00[0] as F * p00
-                                + c10[0] as F * p10
-                                + c01[0] as F * p01
-                                + c11[0] as F * p11)
-                                * inv;
-                            g_in = (c00[1] as F * p00
-                                + c10[1] as F * p10
-                                + c01[1] as F * p01
-                                + c11[1] as F * p11)
-                                * inv;
-                            b_in = (c00[2] as F * p00
-                                + c10[2] as F * p10
-                                + c01[2] as F * p01
-                                + c11[2] as F * p11)
-                                * inv;
-                        }
-                        new_susp += want;
-                        new_rgb = [r_in as f32, g_in as f32, b_in as f32];
-                    }
-                    new_film += film[i00] as F * k00
-                        + film[i10] as F * k10
-                        + film[i01] as F * k01
-                        + film[i11] as F * k11;
-                }
+    let (dfm, dsm, dcm) = (
+        &mut scratch.dst_film,
+        &mut scratch.dst_susp,
+        &mut scratch.dst_rgb,
+    );
+    par::walk_rows3(
+        mode,
+        &mut dfm[band.clone()],
+        &mut dsm[band.clone()],
+        &mut dcm[band],
+        s,
+        |ri, fr, sr, cr| {
+            let y = by0 + ri as i32;
+            let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+            if lo > hi {
+                return;
             }
-            fr[x as usize] = new_film as f32;
-            sr[x as usize] = new_susp as f32;
-            cr[x as usize] = new_rgb;
-            i += 1;
-        }
-    });
+            let mut km_colors = [0.0f64; 12];
+            let mut km_weights = [0.0f64; 4];
+            let mut km_out = [0.0f64; 3];
+            let mut i = lo as usize + y as usize * s;
+            for x in lo..=hi {
+                let f0 = film[i] as F;
+                let m0 = susp[i] as F;
+                let of = outflow[i] as F;
+                let leave = if of > 1.0 { 1.0 } else { of };
+                let mut new_film = f0 - f0 * leave;
+                let mut new_susp = m0 - m0 * leave;
+                let mut new_rgb = susp_rgb[i];
+                if active[i] != 0 {
+                    let uvc = uv[i];
+                    let (ux, uy) = (uvc[0] as F, uvc[1] as F);
+                    if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, wf, hf) {
+                        let i00 = x0 as usize + y0 as usize * s;
+                        let i10 = i00 + 1;
+                        let i01 = i00 + s;
+                        let i11 = i01 + 1;
+                        let w00 = (1.0 - fx) * (1.0 - fy);
+                        let w10 = fx * (1.0 - fy);
+                        let w01 = (1.0 - fx) * fy;
+                        let w11 = fx * fy;
+                        let k00 = w00 * take_scale(outflow[i00] as F);
+                        let k10 = w10 * take_scale(outflow[i10] as F);
+                        let k01 = w01 * take_scale(outflow[i01] as F);
+                        let k11 = w11 * take_scale(outflow[i11] as F);
+                        let p00 = susp[i00] as F * k00;
+                        let p10 = susp[i10] as F * k10;
+                        let p01 = susp[i01] as F * k01;
+                        let p11 = susp[i11] as F * k11;
+                        let want = p00 + p10 + p01 + p11;
+                        if want > 0.0 {
+                            let inv = 1.0 / want;
+                            let c00 = susp_rgb[i00];
+                            let c10 = susp_rgb[i10];
+                            let c01 = susp_rgb[i01];
+                            let c11 = susp_rgb[i11];
+                            let (r_in, g_in, b_in): (F, F, F);
+                            if km_mean {
+                                for k in 0..3 {
+                                    km_colors[k] = c00[k] as f64;
+                                    km_colors[3 + k] = c10[k] as f64;
+                                    km_colors[6 + k] = c01[k] as f64;
+                                    km_colors[9 + k] = c11[k] as f64;
+                                }
+                                km_weights[0] = d(p00);
+                                km_weights[1] = d(p10);
+                                km_weights[2] = d(p01);
+                                km_weights[3] = d(p11);
+                                km_weighted_mean_color(
+                                    &km_colors,
+                                    &km_weights,
+                                    4,
+                                    d(inv),
+                                    &mut km_out,
+                                );
+                                r_in = w(km_out[0]);
+                                g_in = w(km_out[1]);
+                                b_in = w(km_out[2]);
+                            } else {
+                                r_in = (c00[0] as F * p00
+                                    + c10[0] as F * p10
+                                    + c01[0] as F * p01
+                                    + c11[0] as F * p11)
+                                    * inv;
+                                g_in = (c00[1] as F * p00
+                                    + c10[1] as F * p10
+                                    + c01[1] as F * p01
+                                    + c11[1] as F * p11)
+                                    * inv;
+                                b_in = (c00[2] as F * p00
+                                    + c10[2] as F * p10
+                                    + c01[2] as F * p01
+                                    + c11[2] as F * p11)
+                                    * inv;
+                            }
+                            new_susp += want;
+                            new_rgb = [r_in as f32, g_in as f32, b_in as f32];
+                        }
+                        new_film += film[i00] as F * k00
+                            + film[i10] as F * k10
+                            + film[i01] as F * k01
+                            + film[i11] as F * k11;
+                    }
+                }
+                fr[x as usize] = new_film as f32;
+                sr[x as usize] = new_susp as f32;
+                cr[x as usize] = new_rgb;
+                i += 1;
+            }
+        },
+    );
 }
 
 #[inline(always)]
@@ -429,11 +445,10 @@ fn commit_rows(g: &mut Grid, mode: Mode) {
                 return;
             }
             let base = y as usize * s;
-            for x in lo as usize..=hi as usize {
-                fr[x] = df[base + x];
-                sr[x] = ds[base + x];
-                cr[x] = dc[base + x];
-            }
+            let (lo, hi) = (lo as usize, hi as usize);
+            fr[lo..=hi].copy_from_slice(&df[base + lo..=base + hi]);
+            sr[lo..=hi].copy_from_slice(&ds[base + lo..=base + hi]);
+            cr[lo..=hi].copy_from_slice(&dc[base + lo..=base + hi]);
         },
     );
 }

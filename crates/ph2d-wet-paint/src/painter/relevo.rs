@@ -37,6 +37,7 @@ impl Engine {
         mode: Option<Rows>,
     ) {
         let (ax, ay) = (meia[0].ceil() as i32 + 1, meia[1].ceil() as i32 + 1);
+        self.marca_dab(x, y, f64::from(ax.max(ay)));
         let g = &mut self.layers[self.active_layer].grid;
         let (cx, cy) = (x.round() as i32, y.round() as i32);
         let (x0, x1) = ((cx - ax).max(1), (cx + ax).min(g.w as i32));

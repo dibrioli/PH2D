@@ -5,9 +5,7 @@
 //! render dirty-rect bookkeeping.
 
 use crate::brush::{BristleKnobs, build_bristle_texture};
-use crate::grid::{
-    Grid, GridSnapshot, clear_canvas, dry_canvas, restore_grid, snapshot_grid, wet_canvas,
-};
+use crate::grid::{Grid, Registo, clear_canvas, dry_canvas, wet_canvas};
 use crate::jsmath::clamp01;
 use crate::paper::{PaperKnobs, PaperPreset, bake_paper};
 use crate::sim::{Sim, sim_fast_dry, sim_step};
@@ -71,8 +69,14 @@ pub struct Layer {
     pub grid: Grid,
     pub opacity: f64,
     pub visible: bool,
-    undo: Vec<GridSnapshot>,
-    redo: Vec<GridSnapshot>,
+    /// O último é o registo ABERTO: recebe as marcas de toda escrita até o próximo evento.
+    undo: Vec<Registo>,
+    redo: Vec<Registo>,
+    /// As escritas desde o último desfazer/refazer, para o refazer seguinte (só com `redo` cheio).
+    desde: Option<Registo>,
+    /// O retângulo dos dabs desde o último passo completo do sim: a caixa viva só os vê no rebuild do
+    /// passo seguinte, então o passo marca a união dela com este.
+    agua_nova: Option<[i64; 4]>,
 }
 
 /// Pending render invalidation (cell coords, [1..W] x [1..H]).
@@ -197,6 +201,8 @@ impl Engine {
             visible: true,
             undo: Vec::new(),
             redo: Vec::new(),
+            desde: None,
+            agua_nova: None,
         });
         engine.rebake_paper();
         engine.brush_tex = Some(build_bristle_texture(engine.bristle_knobs()));
@@ -207,7 +213,9 @@ impl Engine {
         &self.layers[self.active_layer].grid
     }
 
+    /// ⚠️ Escrita sem retângulo conhecido: marca o grid INTEIRO no registo aberto do histórico.
     pub fn active_grid_mut(&mut self) -> &mut Grid {
+        self.marca_tudo();
         &mut self.layers[self.active_layer].grid
     }
 
@@ -296,6 +304,7 @@ impl Engine {
         // alongside a mutable borrow of the layer grid.
         self.texture();
         let tex = self.brush_tex.take().unwrap();
+        self.marca_dab(x, y, dab.r);
         let layer = &mut self.layers[self.active_layer];
         let rect: Option<TouchedRect> = match self.tool {
             Tool::Paint => {
@@ -489,7 +498,9 @@ impl Engine {
         } else {
             None
         };
+        self.marca_passo();
         let ran = sim_step(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
+        self.layers[idx].agua_nova = None;
         if ran || had_fluid {
             if let Some((x0, y0, x1, y1)) = pre {
                 self.merge_dirty(x0, y0, x1, y1);
@@ -544,6 +555,7 @@ impl Engine {
     /// [`Self::action_fast_dry`] without the history capture (product door).
     pub fn fast_dry_now(&mut self) {
         self.drain_step();
+        self.marca_tudo();
         let idx = self.active_layer;
         sim_fast_dry(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.mark_dirty_full();
@@ -575,6 +587,8 @@ impl Engine {
             visible: true,
             undo: Vec::new(),
             redo: Vec::new(),
+            desde: None,
+            agua_nova: None,
         });
         self.select_layer(self.layers.len() - 1);
         true
@@ -663,6 +677,8 @@ impl Engine {
 
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 mod historia; // o desfazer/refazer POR CAMADA (SPEC §15) — filho por LOC
+#[cfg(test)]
+mod historia_tests;
 mod instantaneo; // `Clone`: a cópia do motor para os instantâneos de uma macro
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
 mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter)

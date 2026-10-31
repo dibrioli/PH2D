@@ -52,6 +52,7 @@ impl Engine {
         let ext_bypass = self.sim.ext_bypass;
         self.texture();
         let tex = self.brush_tex.take().unwrap();
+        self.marca_tudo();
         let layer = &mut self.layers[self.active_layer];
         // ⚠️ **Sem grão do hospedeiro, a máscara é LISA** — e não as cerdas do pincel: num traço as
         // cerdas andam com o dab e cobrem tudo; num dab parado do tamanho da região elas ficam

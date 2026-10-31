@@ -15,8 +15,10 @@ impl Engine {
             return;
         }
         let idx = self.active_layer;
+        self.marca_passo();
         let (sim, tuning) = (&mut self.sim, &self.tuning);
         sim.drain_step(&mut self.layers[idx].grid, tuning);
+        self.layers[idx].agua_nova = None;
     }
 
     /// Roda **UM estágio** do passo corrente; `Some(ran)` quando o passo completou.
@@ -34,8 +36,12 @@ impl Engine {
         } else {
             None
         };
+        self.marca_passo();
         let done =
             crate::sim::sim_step_stage(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
+        if done.is_some() {
+            self.layers[idx].agua_nova = None;
+        }
         // O dirty é marcado a cada estágio: um estágio JÁ mexeu no grid, e o host composita quando o
         // passo completa — mas a bbox pode ter crescido em qualquer um deles.
         if done.is_some_and(|ran| ran) || had_fluid {

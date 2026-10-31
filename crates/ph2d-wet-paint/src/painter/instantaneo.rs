@@ -211,7 +211,8 @@ impl Engine {
                     + l.undo
                         .iter()
                         .chain(&l.redo)
-                        .map(crate::grid::GridSnapshot::bytes_retidos)
+                        .chain(&l.desde)
+                        .map(crate::grid::Registo::bytes_retidos)
                         .sum::<usize>()
             })
             .sum();

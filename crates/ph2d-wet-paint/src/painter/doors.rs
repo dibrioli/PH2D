@@ -83,6 +83,7 @@ impl Engine {
         if lane == 0 {
             self.sim.traco_actual = self.sim.traco_actual.wrapping_add(1).max(1);
             let oleo_na_mao = self.sim.oleo;
+            self.marca_tudo();
             crate::solver::fotografa_a_ladeira(
                 &mut self.layers[self.active_layer].grid,
                 oleo_na_mao,
@@ -184,6 +185,7 @@ impl Engine {
         let ext_bypass = self.sim.ext_bypass;
         self.texture();
         let tex = self.brush_tex.take().unwrap();
+        self.marca_dab(dab.x, dab.y, dab.r);
         let layer = &mut self.layers[self.active_layer];
         let Some(trail) = self.lane_trails.get_mut(lane) else {
             self.brush_tex = Some(tex);
@@ -250,6 +252,7 @@ impl Engine {
         self.texture();
         let tex = self.brush_tex.take().unwrap();
         let erase = self.sliders.erase * taxa;
+        self.marca_dab(dab.x, dab.y, dab.r);
         let layer = &mut self.layers[self.active_layer];
         let rect = match sil {
             Some(sil) => {
@@ -306,6 +309,7 @@ impl Engine {
         };
         self.texture();
         let tex = self.brush_tex.take().unwrap();
+        self.marca_dab(dab.x, dab.y, dab.r);
         let layer = &mut self.layers[self.active_layer];
         let Some(trail) = self.lane_trails.get_mut(lane) else {
             self.brush_tex = Some(tex);
@@ -350,6 +354,7 @@ impl Engine {
         }
         self.texture();
         let tex = self.brush_tex.take().unwrap();
+        self.marca_dab(dab.x, dab.y, dab.r);
         let layer = &mut self.layers[self.active_layer];
         let rect = match tool {
             Tool::Wet => {
@@ -458,6 +463,7 @@ impl Engine {
         p.agua_do_dab = self.agua_do_dab;
         // A janela do misturador pousa pela SUA lei, com os parâmetros da porta dele (`dispatch_pressure_dab_lane_blend_grao`).
         let p_mistura = self.sim.gather_params(&self.tuning);
+        self.marca_tudo();
         let layer = &mut self.layers[self.active_layer];
         let mut rect = None;
         for &i in lanes {

@@ -38,6 +38,7 @@ impl Engine {
         let tex = self.brush_tex.take().unwrap();
         trail.start_stroke(x, y, color, TrailMode::Paint);
         let lisa = |_: i32, _: i32| -> f64 { 1.0 };
+        self.marca_tudo();
         let layer = &mut self.layers[self.active_layer];
         let acc = trail.accumulate_paint_shaped_cor(
             &mut layer.grid,

@@ -375,7 +375,7 @@ const ESTUQUE_DO_DABBER_4: &str = r#"{"angle_deg": 0, "flow": false, "kind": "St
 /// - G-9 Rake: régua 390/454, a 0,83 do Filbert; o 1.º revisor escolheu o nosso como original (baixa), o 2.º achou o
 ///   Rebelle nas 6 linhas (média) e os dois listam as PONTAS (as do Rebelle cortadas a direito, as nossas desfiadas
 ///   cerda a cerda) e, a 200 px, as ~15 riscas escuras espaçadas dele contra o nosso campo denso de estrias.
-pub const EM_ESTUDO: &[Receita] = &[FLAT_BRISTLE, RAKE];
+pub const EM_ESTUDO: &[Receita] = &[RAKE]; // o Flat Bristle foi para a fábrica na CAP-01 (`familias/cap01.rs`)
 
 /// Os CURADOS-NÃO-APROVADOS da W2 do Óleo Real (E4): o ficheiro de cada um vive em `docs/Painter/Pinceis/W2_<grupo>_candidatos/`
 /// (a bancada lê-o pelo caminho) e a receita aqui o refaz ([`os_candidatos_da_w2_sao_as_suas_receitas`]); nenhum entra
@@ -630,7 +630,7 @@ const RAKE: Receita = Receita {
 /// 39 × 8,5 px a 40 — `06_LEIS_DAS_LACUNAS` §1) mas a tinta RALA e translúcida (a cobertura 0,67 contra 0,91 do Bristle
 /// Flat): pouco pigmento (200), os fios macios (força 1, sem o sorteio de cor), o relevo baixo, um feltro que fecha as
 /// falhas; a largura não responde à pressão (Rebelle `pressure_size_influence` 0), a carga sim.
-const FLAT_BRISTLE: Receita = Receita {
+pub(crate) const FLAT_BRISTLE: Receita = Receita {
     grupo: "Flat",
     nome: "Flat Bristle",
     pigment: 200.0,
@@ -711,7 +711,7 @@ const CARGA_DA_LAMINA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Gradie
 /// sem a quina; os fios do óleo com as pontas DESFIADAS em dedos (o ρ 1,6, o dobro do Oil Bristle) e a tinta mais rala
 /// que satura menos (pigmento 250: a cobertura 0,85 do Rebelle); a mão não levanta os fios (a largura quase não muda
 /// com a pressão, a carga sim — a lei do dono).
-const FILBERT: Receita = Receita {
+pub(crate) const FILBERT: Receita = Receita {
     grupo: "Flat",
     nome: "Filbert",
     pigment: 250.0,

@@ -6,7 +6,7 @@
 use super::prelude::*;
 
 /// A ponta LISA (sem a forma de cerdas do Wet: as franjas e os fiapos nas pontas que o Rebelle não tem).
-const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+pub(crate) const SEM_FORMA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// A tinta que ACABA de um lado da ponta (o Dry Marker): a rampa `Gradient` uma só vez através do dab (Size ½, Offset
 /// ½ ⇒ `u ∈ [0, 1]`), ao longo do eixo LONGO da ponta (Angle 180 no referencial da pegada) — cheia em cima, nada em baixo.
@@ -54,65 +54,13 @@ pub const WET: &[Receita] = &[
 
 /// Os REPROVADOS no exame (J3, `docs/Painter/Pinceis/exames/caligrafia_marcadores.md`): receitas medidas, fora da
 /// fábrica (nenhum ficheiro), à espera do motor que falta a cada um. O Broad Nib (Wet).
-pub const EM_ESTUDO_WET: &[Receita] = &[
-    // D-3 Ink › Nib › Broad Nib (MyPaint `classic/calligraphy`): o bico CHATO a ângulo fixo (L3: eixo longo a 48°, T
-    // 0,05·L) — a largura sai da DIREÇÃO (fino ao longo do bico, cheio através), a tinta lisa do Ink Bullet e o corte
-    // recto da ponta (quina 0,8); a tinta cobre (glaze 0: o azul sobre o vermelho é azul, como no MyPaint) e não arrasta. O
-    // Fountain Square do Rebelle NÃO é isto (L 25 × T 19: quase redondo).
-    Receita {
-        meio: "Ink",
-        grupo: "Nib",
-        nome: "Broad Nib",
-        water: 0.1,
-        opacity: 1.0,
-        pigment: 2000.0,
-        pickup: 0.0,
-        gate: 0.0,
-        evaporation: 1.0,
-        edge: 0.0,
-        tilt: DIREITA,
-        bristle_size: 2.0,
-        bristle_count: 2000.0,
-        hardness: 0.6,
-        size_px: None,
-        extras: &[("glaze", 0.0), ("tipClean", 1.0), ("drag", 0.0)],
-        grao: None,
-        achatado: Some((0.95, 48)),
-        pincel: &[("shape", SEM_FORMA), ("dab_quina", "0.8")],
-        nasce_de: Some("Ink Bullet"),
-        real_oil: false,
-    },
-];
+pub const EM_ESTUDO_WET: &[Receita] = &[]; // o Broad Nib foi para a fábrica na CAP-01 (`familias/cap01.rs`)
 
 /// J6w — os biséis do Wet Paint EM ESTUDO (fora da fábrica; o coordenador promove os aprovados): o Marker Chisel (E-3)
 /// e o Dry Marker (E-4) de volta ao Wet (a tinta do marcador que multiplica A MEIO é o glaze do Wet; os J3 Digitais
 /// reprovaram nela) com as pontas rectas/esbatidas da J6. Exame: `docs/Painter/Pinceis/exames/canetas_j6.md`.
 pub const EM_ESTUDO_J6_WET: &[Receita] = &[
-    // E-3 Marker › Marker › Marker Chisel (Rebelle `Marker/Chisel`): o bisel FIXO deitado (L3: 4°, L 0,94·D × T 0,37·D
-    // ⇒ achatado 0,61), a tinta do Marker Bullet (glaze 1), a pressão SÓ pela tinta, as pontas cortadas a direito que
-    // esbatem ao comprido.
-    Receita {
-        nome: "Marker Chisel",
-        hardness: 0.3,
-        achatado: Some((0.61, 4)),
-        extras: &[
-            ("glaze", 1.0),
-            ("tipClean", 1.0),
-            ("drag", 0.0),
-            ("pressureSize", 0.0),
-            ("pressureOpacity", 1.0),
-            ("pressureOpacityCurve", 3.0),
-        ],
-        pincel: &[
-            ("shape", SEM_FORMA),
-            ("dab_quina", "0.8"),
-            ("pontas_rectas", "true"),
-            ("pontas_alem", "0.3"),
-            ("pontas_esbate", "4.0"),
-        ],
-        nasce_de: Some("Marker Bullet"),
-        ..WET[0]
-    },
+    // E-3 Marker Chisel: foi para a fábrica na CAP-01 (`familias/cap01.rs`).
     // E-4 Marker › Marker › Dry Marker (Rebelle `Marker/Dry`): o bisel de PÉ (L3: 100°), a tinta que ACABA de um lado
     // (a rampa `Gradient` na pegada: cheia em cima), os carimbos que SOMAM (L8: k 2,66 — sem tecto por traço) e cujas
     // juntas riscam a 200 px, a pressão pela tinta.

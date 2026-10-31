@@ -9,6 +9,7 @@ pub mod aguarela;
 pub mod basicos;
 pub mod caligrafia_marcadores;
 pub mod canetas;
+pub mod cap01;
 pub mod efeitos;
 pub mod grafite;
 pub mod guache;
@@ -61,7 +62,7 @@ macro_rules! familia {
 pub const FERRAMENTAS_WET: &[&[crate::receitas_de_fabrica::ReceitaFerramenta]] =
     &[mistura::WET_FERRAMENTAS];
 
-pub const FAMILIAS: [Familia; 14] = [
+pub const FAMILIAS: [Familia; 15] = [
     familia!(basicos),
     familia!(grafite),
     familia!(lapis),
@@ -76,6 +77,7 @@ pub const FAMILIAS: [Familia; 14] = [
     familia!(texturas),
     familia!(mistura),
     familia!(efeitos),
+    familia!(cap01),
 ];
 
 /// Cada família listada é um ficheiro `familias/<nome>.rs` e cada ficheiro uma família listada (o agregador não esquece

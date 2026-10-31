@@ -211,13 +211,35 @@ pub fn velatura(
     baixo: [f64; 3],
     cima: [f64; 3],
 ) {
-    if glaze <= 0.0 || a_baixo <= 0.0 {
+    let Some(k) = velatura_k(w, glaze, a_baixo, baixo, cima) else {
         return;
-    }
-    let k = w * glaze * a_baixo * diferenca_de_pigmento(baixo, cima);
+    };
     for c in 0..3 {
-        out[c] = (out[c] - k * cima[c] * (1.0 - baixo[c] / 255.0)).max(0.0);
+        out[c] = velatura_canal(out[c], k, baixo[c], cima[c]);
     }
+}
+
+/// A força de [`velatura`] (`None`: não vela) — partida para o Newton da secagem avaliar UM canal.
+#[inline]
+#[must_use]
+pub fn velatura_k(
+    w: f64,
+    glaze: f64,
+    a_baixo: f64,
+    baixo: [f64; 3],
+    cima: [f64; 3],
+) -> Option<f64> {
+    if glaze <= 0.0 || a_baixo <= 0.0 {
+        return None;
+    }
+    Some(w * glaze * a_baixo * diferenca_de_pigmento(baixo, cima))
+}
+
+/// Um canal de [`velatura`] com a força `k` de [`velatura_k`].
+#[inline]
+#[must_use]
+pub fn velatura_canal(v: f64, k: f64, baixo: f64, cima: f64) -> f64 {
+    (v - k * cima * (1.0 - baixo / 255.0)).max(0.0)
 }
 
 /// **O Glaze de uma camada sobre outra** (prompt 42): a fracção do ponto que é o PRODUTO das duas camadas sobre o
@@ -292,17 +314,53 @@ pub const OUTRA_TINTA_MINIMA: f64 = 0.1;
 /// γ 0,20 (Rebelle 0,42–0,51) porque o claro e o claro ficam «perto». O papel branco (perfil nulo) dá `0`.
 #[inline]
 pub fn diferenca_de_pigmento(a: [f64; 3], b: [f64; 3]) -> f64 {
-    let (pa, pb) = (a.map(|v| 255.0 - v), b.map(|v| 255.0 - v));
-    let (na, nb) = (
-        pa.iter().map(|v| v * v).sum::<f64>(),
-        pb.iter().map(|v| v * v).sum::<f64>(),
-    );
-    if na < 1e-9 || nb < 1e-9 {
+    entre_perfis(&Perfil::de(a), &Perfil::de(b))
+}
+
+/// A metade de [`diferenca_de_pigmento`] que só lê UMA das cores (o perfil `255 − cor` e a sua norma²): o Newton da
+/// secagem ([`crate::assenta`]) avalia muitas vezes contra a MESMA cor e calcula-a uma vez (31/10, ao bit).
+#[derive(Clone, Copy, Debug)]
+pub struct Perfil {
+    p: [f64; 3],
+    n: f64,
+}
+
+impl Perfil {
+    #[inline]
+    #[must_use]
+    pub fn de(a: [f64; 3]) -> Self {
+        let p = a.map(|v| 255.0 - v);
+        Perfil {
+            p,
+            n: p.iter().map(|v| v * v).sum::<f64>(),
+        }
+    }
+
+    /// O perfil da densidade óptica de [`a_mesma_tinta_filtrada`].
+    #[inline]
+    #[must_use]
+    pub fn de_od(c: [f64; 3]) -> Self {
+        Perfil::de(c.map(|v| 255.0 + (v.max(1.0) / 255.0).min(1.0).ln()))
+    }
+}
+
+/// [`diferenca_de_pigmento`] entre dois perfis já feitos.
+#[inline]
+#[must_use]
+pub fn entre_perfis(a: &Perfil, b: &Perfil) -> f64 {
+    if a.n < 1e-9 || b.n < 1e-9 {
         return 0.0;
     }
-    let dot = (0..3).map(|c| pa[c] * pb[c]).sum::<f64>();
-    let cos2 = (dot * dot / (na * nb)).min(1.0);
+    let dot = (0..3).map(|c| a.p[c] * b.p[c]).sum::<f64>();
+    let cos2 = (dot * dot / (a.n * b.n)).min(1.0);
     (1.0 - cos2).sqrt()
+}
+
+/// [`a_mesma_tinta_filtrada`] entre dois perfis [`Perfil::de_od`] já feitos.
+#[inline]
+#[must_use]
+pub fn filtrada_entre_perfis(a: &Perfil, b: &Perfil) -> bool {
+    VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * entre_perfis(a, b) < OUTRA_TINTA_MINIMA
 }
 
 /// **A mesma tinta FILTRADA por si** (smoke do dono 17/10, doc 42 §8): `c` e o produto `c·c/255` da camada de Glaze
@@ -312,9 +370,7 @@ pub fn diferenca_de_pigmento(a: [f64; 3], b: [f64; 3]) -> f64 {
 #[inline]
 pub fn a_mesma_tinta_filtrada(a: [f64; 3], b: [f64; 3]) -> bool {
     // `255 − od`: a mesma conta do ângulo de [`diferenca_de_pigmento`], sobre o perfil `od`.
-    let od = |c: [f64; 3]| c.map(|v| 255.0 + (v.max(1.0) / 255.0).min(1.0).ln());
-    VELA_POR_DIFERENCA / (1.0 - VELA_DA_MESMA_TINTA) * diferenca_de_pigmento(od(a), od(b))
-        < OUTRA_TINTA_MINIMA
+    filtrada_entre_perfis(&Perfil::de_od(a), &Perfil::de_od(b))
 }
 
 /// K–M weighted mean of up to 4 engine colors (the advection's incoming-color

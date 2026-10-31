@@ -11,6 +11,10 @@
 use crate::colorops::transfer::{srgb255_of_linear, srgb255_to_linear};
 use crate::colorops::{km_glaze_channel_linear, velatura};
 
+#[path = "assenta/ponto.rs"]
+mod ponto;
+use ponto::{Parada, d_de, prepara};
+
 /// A lei do ecrã para o filme molhado sobre o assentado, que as transferências verticais preservam.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Lei {
@@ -170,7 +174,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
 }
 
 /// O tapar da [`Ecra::Cobre`] a cobertura `a_f`, `h = 1 − (1 − a_f)^esconde` — só lê `a_f`, e o Newton do [`resolve`]
-/// avalia o ecrã muitas vezes à MESMA cobertura: a potência calcula-se uma vez por célula ([`sobre_branco_tapando`]).
+/// avalia o ecrã muitas vezes à MESMA cobertura: a potência calcula-se uma vez por célula ([`prepara`]).
 #[inline]
 fn tapa(e: Ecra, a_f: f64) -> f64 {
     match e {
@@ -179,7 +183,7 @@ fn tapa(e: Ecra, a_f: f64) -> f64 {
     }
 }
 
-/// [`cor_e_alfa`] com o [`tapa`] de `a_f` à mão (pedido só onde a conta o usa).
+/// [`cor_e_alfa`] com o [`tapa`] de `a_f` à mão.
 #[inline]
 fn cor_e_alfa_tapando(
     e: Ecra,
@@ -189,74 +193,11 @@ fn cor_e_alfa_tapando(
     a_f: f64,
     tapa: impl FnOnce() -> f64,
 ) -> ([f64; 3], f64) {
-    let Ecra::Cobre {
-        filme,
-        molhada,
-        vela,
-        oleo,
-        ..
-    } = e
-    else {
-        return (cor(e, sc, uc, a_s, a_f), a_s + a_f * (1.0 - a_s));
+    let vela = match e {
+        Ecra::Cobre { vela, .. } => vela,
+        _ => 0.0,
     };
-    if a_f <= 0.0 {
-        return (sc, a_s);
-    }
-    // MOLHADA: a COBERTURA do ponto inteiro (a tinta de cima e a seca debaixo da água) vale a densidade
-    // `1 + (molhada − 1)·a_f`, com a cor da camada fixa — o papel molhado escurece tudo por igual e só até à
-    // cor pura (o Rebelle: o cruzamento (131,124,201) → (194,188,224), seno do ângulo dos perfis 0,05; e o
-    // amarelo molhado acumulado é a própria tinta, (245,205,25)). ⛔ Escalar a densidade da COR passava da
-    // cor pura: o amarelo molhado ficava mais escuro que a tinta (0,90 do azul seco nas camadas).
-    let p = 1.0 + (molhada - 1.0) * a_f;
-    // `r` é o ponto sobre o branco; devolve a cor da camada e a cobertura que o compõem.
-    let molha = |r: [f64; 3], la: f64| {
-        let c = r.map(|v| ((v - 255.0 * (1.0 - la)) / la).clamp(0.0, 255.0));
-        let la_w = if p == 1.0 {
-            la
-        } else {
-            1.0 - (1.0 - la).powf(p)
-        };
-        (c, la_w)
-    };
-    let a_t = a_f;
-    if a_s <= 0.0 {
-        return molha(uc.map(|v| 255.0 - a_t * (255.0 - v)), a_t);
-    }
-    // O tapar EXTRA é da diferença de pigmento: a mesma tinta sobre si mesma só soma pigmento (sem ele,
-    // re-molhar o azul para dentro de um filme azul clareava-o — medido no teste das transferências).
-    let h = tapa();
-    // Sob o Glaze, a mesma tinta filtrada por si não é OUTRA a tapar: com o extra, cada filme fino que a água traz
-    // clareava o assentado escuro e o assentar guardava-o — as linhas claras na orla (doc 42 §8).
-    let d = if vela > 0.0 && crate::colorops::a_mesma_tinta_filtrada(sc, uc) {
-        0.0
-    } else {
-        crate::colorops::diferenca_de_pigmento(sc, uc)
-    };
-    // Sobre o ÓLEO não há tapar extra (dono 30/10: a aguada é a mesma tinta mais diluída e cobre pela quantidade de
-    // pigmento; o Rebelle: sobre o óleo a aguada tem a cobertura que tem no papel, 0,35 × 0,38): o extra era pintado
-    // com a tinta diluída em BRANCO — o creme sobre o óleo e no papel de cor.
-    let a_e = a_t + (h - a_t).max(0.0) * d * (1.0 - oleo.max(0.0));
-    let t_s = sc.map(|v| 255.0 - a_s * (255.0 - v));
-    let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
-    // ⛔ A CAIXA das tintas (Bug #50): o tapar extra pinta-se com a tinta diluída em BRANCO — é o que faz o claro
-    // cobrir o escuro como no Rebelle, mas onde o filme é mais ESCURO o branco clareava o ponto além das duas
-    // tintas (a orla esbranquiçada). Cada canal pára na mais clara das duas: o Rebelle nunca passa dela (as
-    // bordas do óleo sobre o azul seco, `fixtures/rebelle/{oil,express}.png`).
-    // ⚠️ Isto prende o ponto SOBRE O BRANCO; a COR que se compõe prende-se em [`na_caixa_das_tintas`] (o render).
-    let mut r = [0, 1, 2].map(|k| t_s[k] * (1.0 - a_e) + c_eff[k] * a_e);
-    velatura(&mut r, a_e, filme, 1.0, t_s, c_eff);
-    // O GLAZE do pincel: o filme FILTRA o assentado — a fracção `m` do ponto é o produto das duas camadas sobre o
-    // branco. Uma vez por camada (o filme e o assentado), nunca por carimbo: é o que não leva ao preto.
-    if vela > 0.0 {
-        let m = vela;
-        for k in 0..3 {
-            let f = 255.0 - a_t * (255.0 - uc[k]);
-            r[k] += m * (t_s[k] * f / 255.0 - r[k]);
-        }
-    }
-    let r = [0, 1, 2].map(|k| r[k].min(t_s[k].max(uc[k])));
-    let la = a_s + a_e * (1.0 - a_s);
-    molha(r, la)
+    prepara(e, sc, uc, a_s, a_f, tapa, || d_de(vela, sc, uc)).cor_e_alfa()
 }
 
 /// ⭐ **A caixa das tintas na COR que se compõe** (smoke do dono 30/10: as manchas brancas do molhado sobre tinta fina,
@@ -300,11 +241,7 @@ pub fn na_caixa_das_tintas(
     // O BRANCO do tapar extra (`(a_e − a_t)·255` no ponto sobre o branco) é a tinta de baixo AFASTADA, não pigmento:
     // passa a transparência e o papel aparece (dono 30/10, a faixa creme; doc 47). Só na lei seca (a do render).
     if molhada == 1.0 {
-        let d = if vela > 0.0 && crate::colorops::a_mesma_tinta_filtrada(sc, uc) {
-            0.0
-        } else {
-            crate::colorops::diferenca_de_pigmento(sc, uc)
-        };
+        let d = d_de(vela, sc, uc);
         let extra = (tapa(e, a_f) - a_f).max(0.0) * d * (1.0 - oleo.max(0.0));
         a = a.min(la - extra);
     }
@@ -329,8 +266,8 @@ pub fn sobre_branco(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> 
     c.map(|v| 255.0 * (1.0 - la) + v * la)
 }
 
-/// [`sobre_branco`] com o [`tapa`] de `a_f` já calculado — a avaliação que o [`resolve`] repete.
-#[inline]
+/// [`sobre_branco`] com o [`tapa`] de `a_f` já calculado (a porta que os testes medem; o [`resolve`] usa [`prepara`]).
+#[cfg(test)]
 fn sobre_branco_tapando(
     e: Ecra,
     sc: [f64; 3],
@@ -445,7 +382,19 @@ pub fn assenta(
 ) -> [f64; 3] {
     let e = e.seco();
     if let Ecra::Cobre { vela, .. } = e {
-        let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+        // O filme `uc` fica parado: a sua metade de `d` faz-se uma vez, e `d(sc, uc)` é o MESMO no alvo e no palpite.
+        let par = Parada::de(vela, uc);
+        let mut d_scuc = None;
+        let alvo = prepara(
+            e,
+            sc,
+            uc,
+            a_s,
+            a_f,
+            || tapa(e, a_f),
+            || *d_scuc.get_or_insert_with(|| par.d(vela, sc)),
+        )
+        .sobre_branco();
         if a_s <= 0.0 && a_f2 <= 0.0 {
             return uc;
         }
@@ -460,7 +409,16 @@ pub fn assenta(
         let mut x0 = if a_s <= 0.0 || a_s2 <= 0.0 {
             uc
         } else {
-            let r = sobre_branco(e, sc, uc, a_s, a_dm);
+            let r = prepara(
+                e,
+                sc,
+                uc,
+                a_s,
+                a_dm,
+                || tapa(e, a_dm),
+                || *d_scuc.get_or_insert_with(|| par.d(vela, sc)),
+            )
+            .sobre_branco();
             r.map(|v| (255.0 - (255.0 - v) / a_s2).clamp(0.0, 255.0))
         };
         // O GLAZE (prompt 42): a parte multiplicada tem inversa FECHADA — o assentado novo é o de antes vezes o
@@ -483,7 +441,7 @@ pub fn assenta(
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
         let h2 = tapa(e, a_f2);
         return resolve(x0, alvo, cego, |x| {
-            sobre_branco_tapando(e, x, uc, a_s2, a_f2, h2)
+            prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x)).sobre_branco()
         });
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
@@ -530,7 +488,13 @@ fn levanta_cobre(
     if a_f2 <= 0.0 {
         return uc;
     }
-    let alvo = sobre_branco(e, sc, uc, a_s, a_f);
+    // O assentado `sc` fica parado: a sua metade de `d` faz-se uma vez.
+    let vela = match e {
+        Ecra::Cobre { vela, .. } => vela,
+        _ => 0.0,
+    };
+    let par = Parada::de(vela, sc);
+    let alvo = prepara(e, sc, uc, a_s, a_f, || tapa(e, a_f), || par.d(vela, uc)).sobre_branco();
     let x0 = if a_f <= 0.0 {
         sc
     } else {
@@ -539,7 +503,7 @@ fn levanta_cobre(
     };
     let h2 = tapa(e, a_f2);
     resolve(x0, alvo, CEGO, |x| {
-        sobre_branco_tapando(e, sc, x, a_s2, a_f2, h2)
+        prepara(e, sc, x, a_s2, a_f2, || h2, || par.d(vela, x)).sobre_branco()
     })
 }
 

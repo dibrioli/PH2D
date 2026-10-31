@@ -18,9 +18,13 @@ pub const HISTORY_CAP: usize = 128;
 #[derive(Debug, Default, Clone)]
 pub struct TimelineHistory {
     /// Cada passo leva a hora do relógio único das pilhas (`undo_tick`): o Ctrl+Z vai à fila mais nova.
-    undo: Vec<(u64, TimelineDoc)>,
-    redo: Vec<(u64, TimelineDoc)>,
+    /// O 3.º campo é a transação que liga o passo ao passo GLOBAL do mesmo gesto
+    /// ([`Self::liga_gesto_da_cena`]): um Ctrl+Z desfaz os dois.
+    undo: Vec<(u64, TimelineDoc, Option<u64>)>,
+    redo: Vec<(u64, TimelineDoc, Option<u64>)>,
     pending: Option<TimelineDoc>,
+    /// A hora do passo que um gesto da CENA escreveu (o Auto Key), à espera do passo global dele.
+    gesto_da_cena: Option<u64>,
     /// Keys moved inside the open gesture ([`Self::note_moved`]).
     moved: Vec<SelectedKey>,
     /// ⭐ As covas das purgas de donos mortos ([`ph2d_ecs::graveyard`]) — o undo global que devolve
@@ -57,12 +61,46 @@ impl TimelineHistory {
 
     /// Close a gesture: if `doc` differs from the [`begin`](Self::begin)
     /// snapshot, push an undo step (and clear redo); otherwise discard it.
-    pub fn commit_if_changed(&mut self, doc: &TimelineDoc) {
+    pub fn commit_if_changed(&mut self, doc: &TimelineDoc) -> bool {
         if let Some(pre) = self.pending.take()
             && &pre != doc
         {
             self.push(pre);
+            return true;
         }
+        false
+    }
+
+    /// [`Self::commit_if_changed`] de um passo que um gesto da CENA escreveu (o Auto Key): ele
+    /// espera o passo global do mesmo gesto para se ligar a ele ([`Self::liga_gesto_da_cena`]).
+    pub fn commit_da_cena(&mut self, doc: &TimelineDoc) -> bool {
+        let fez = self.commit_if_changed(doc);
+        if fez {
+            self.gesto_da_cena = self.undo.last().map(|s| s.0);
+        }
+        fez
+    }
+
+    /// O passo global do gesto registou-se: se o passo que a cena escreveu ainda é o topo, os dois
+    /// ficam UMA transação (devolvida, para o passo global a levar).
+    pub fn liga_gesto_da_cena(&mut self) -> Option<u64> {
+        let hora = self.gesto_da_cena.take()?;
+        let topo = self.undo.last_mut().filter(|s| s.0 == hora)?;
+        let t = *topo.2.get_or_insert_with(undo_tick);
+        Some(t)
+    }
+
+    /// O gesto da cena não deu passo global (nada mudou no documento): o passo fica sozinho.
+    pub fn esquece_gesto_da_cena(&mut self) {
+        self.gesto_da_cena = None;
+    }
+
+    /// A transação do passo que o próximo desfazer (`redo = false`) ou refazer tiraria.
+    #[must_use]
+    pub fn transacao_do_topo(&self, redo: bool) -> Option<u64> {
+        if redo { &self.redo } else { &self.undo }
+            .last()
+            .and_then(|s| s.2)
     }
 
     /// Discard the pending snapshot without making a step (cancelled gesture).
@@ -84,7 +122,7 @@ impl TimelineHistory {
         if self.undo.len() >= HISTORY_CAP {
             self.undo.remove(0);
         }
-        self.undo.push((undo_tick(), pre));
+        self.undo.push((undo_tick(), pre, None));
         self.redo.clear();
     }
 
@@ -134,15 +172,15 @@ impl TimelineHistory {
 
     /// Undo: return the previous doc; push `current` onto redo.
     pub fn undo(&mut self, current: &TimelineDoc) -> Option<TimelineDoc> {
-        let (_, prev) = self.undo.pop()?;
-        self.redo.push((undo_tick(), current.clone()));
+        let (_, prev, t) = self.undo.pop()?;
+        self.redo.push((undo_tick(), current.clone(), t));
         Some(prev)
     }
 
     /// Redo: return the next doc; push `current` back onto undo.
     pub fn redo(&mut self, current: &TimelineDoc) -> Option<TimelineDoc> {
-        let (_, next) = self.redo.pop()?;
-        self.undo.push((undo_tick(), current.clone()));
+        let (_, next, t) = self.redo.pop()?;
+        self.undo.push((undo_tick(), current.clone(), t));
         Some(next)
     }
 }
@@ -176,6 +214,62 @@ mod tests {
         );
         h.commit_if_changed(&doc);
         assert!(h.can_undo());
+    }
+
+    fn chave(doc: &mut TimelineDoc, v: f32) {
+        doc.upsert_key(
+            1,
+            PropKind::Rotation,
+            secs(0.0),
+            AnimValue::Float(v),
+            Interp::Hold,
+        );
+    }
+
+    /// ⭐ A chave que o Auto Key escreveu num gesto da cena liga-se ao passo global desse gesto
+    /// (smoke do dono 30/10: Gravity Y + Ctrl+Z «não acontece nada»), e a ligação viaja com o passo.
+    #[test]
+    fn a_chave_do_gesto_da_cena_liga_se_ao_passo_global_e_viaja() {
+        let mut doc = TimelineDoc::new();
+        let mut h = TimelineHistory::new();
+        h.begin(&doc);
+        chave(&mut doc, 1.0);
+        assert!(h.commit_da_cena(&doc));
+        let t = h.liga_gesto_da_cena().expect("ligou");
+        assert_eq!(h.transacao_do_topo(false), Some(t));
+        assert_eq!(h.liga_gesto_da_cena(), None, "uma ligação por gesto");
+        let back = h.undo(&doc).unwrap();
+        assert_eq!(
+            (h.transacao_do_topo(false), h.transacao_do_topo(true)),
+            (None, Some(t))
+        );
+        h.redo(&back).unwrap();
+        assert_eq!(
+            h.transacao_do_topo(false),
+            Some(t),
+            "o refazer volta ligado"
+        );
+    }
+
+    /// Um passo da timeline por cima do da cena (editou-se na dope sheet) ou um gesto sem passo
+    /// global deixam a chave sozinha — nunca se liga a um passo global de OUTRO gesto.
+    #[test]
+    fn a_chave_da_cena_nao_se_liga_a_outro_gesto() {
+        let mut doc = TimelineDoc::new();
+        let mut h = TimelineHistory::new();
+        h.begin(&doc);
+        chave(&mut doc, 1.0);
+        h.commit_da_cena(&doc);
+        h.begin(&doc);
+        chave(&mut doc, 2.0);
+        h.commit_if_changed(&doc);
+        assert_eq!(h.liga_gesto_da_cena(), None, "o topo já é outro passo");
+        h.begin(&doc);
+        chave(&mut doc, 3.0);
+        h.commit_da_cena(&doc);
+        h.esquece_gesto_da_cena();
+        assert_eq!(h.liga_gesto_da_cena(), None, "o gesto não deu passo global");
+        assert_eq!(h.transacao_do_topo(false), None);
     }
 
     #[test]

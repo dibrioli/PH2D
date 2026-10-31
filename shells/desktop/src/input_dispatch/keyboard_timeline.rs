@@ -39,10 +39,15 @@ impl App {
                 || (matches!(code, KeyCode::KeyZ) && self.modifiers.shift_key());
             let undo = matches!(code, KeyCode::KeyZ) && !self.modifiers.shift_key();
             // A timeline só fica com o acorde se o passo dela é o MAIS NOVO (auditoria F31).
+            // Um passo LIGADO ao global (a chave do Auto Key do mesmo gesto) anda pela fila global.
             let h = &self.timeline.history;
+            let so_dela = |r: bool| {
+                h.transacao_do_topo(r)
+                    .is_none_or(|t| self.undo.linha_do_topo(r) != Some(t))
+            };
             let (undo, redo) = (
-                undo && h.mais_novo_que(false, self.undo.top_at(false)),
-                redo && h.mais_novo_que(true, self.undo.top_at(true)),
+                undo && so_dela(false) && h.mais_novo_que(false, self.undo.top_at(false)),
+                redo && so_dela(true) && h.mais_novo_que(true, self.undo.top_at(true)),
             );
             if redo && self.timeline.history.can_redo() {
                 self.timeline_intents

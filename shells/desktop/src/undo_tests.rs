@@ -167,6 +167,47 @@ fn push_undo_then_undo_redo_alternate() {
     assert_eq!(topos(&stack), (Some(42), None));
 }
 
+/// ⭐ Gravity Y com Auto Key (smoke 30/10): o passo global e a chave do MESMO gesto são uma transação
+/// — o Ctrl+Z da timeline cede-o à fila global, e o global desfaz/refaz a chave com ele.
+#[test]
+fn o_passo_global_leva_a_chave_do_auto_key_do_mesmo_gesto() {
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let s0 = capture(&mut sim, &vec, &reg);
+    let mark = crate::undo::SelectionMark::default;
+    let mut tl = ph2d_timeline::TimelineState::new();
+    tl.history.begin(&tl.doc);
+    tl.doc.upsert_key(
+        1,
+        ph2d_timeline::PropKind::Rotation,
+        Default::default(),
+        ph2d_anim::AnimValue::Float(1.0),
+        ph2d_timeline::Interp::Hold,
+    );
+    assert!(tl.history.commit_da_cena(&tl.doc));
+    let mut stack = ProjectUndo::default();
+    stack.push_linked(
+        s0.clone(),
+        mark(),
+        None,
+        None,
+        tl.history.liga_gesto_da_cena(),
+    );
+    for redo in [false, true] {
+        let t = tl.history.transacao_do_topo(redo);
+        assert!(
+            t.is_some() && stack.linha_do_topo(redo) == t,
+            "ligados (redo={redo})"
+        );
+        let _ = if redo {
+            stack.redo(s0.clone(), mark())
+        } else {
+            stack.undo(s0.clone(), mark())
+        };
+        let _ = if redo { tl.redo() } else { tl.undo() };
+    }
+}
+
 /// ⭐ **O elo do marcador viaja com o degrau** (CodeEditor I10, `ph2d_editor_core::undo_link`): o
 /// degrau desfeito leva-o para o refazer e volta com ele; um degrau novo que limpa o refazer deixa-o
 /// de guardar (a família fica a saber pelos `links`).
@@ -180,7 +221,7 @@ fn the_undo_link_travels_with_its_step_and_dies_with_the_redo() {
     let l = UndoLink::fresh();
     let mut stack = ProjectUndo::default();
     stack.push_undo(s0.clone(), mark());
-    stack.push_linked(s0.clone(), mark(), None, Some(l));
+    stack.push_linked(s0.clone(), mark(), None, Some(l), None);
     assert_eq!(stack.top_link(false), Some(l));
     assert_eq!(stack.top_link(true), None);
     let _ = stack.undo(s0.clone(), mark()).unwrap();

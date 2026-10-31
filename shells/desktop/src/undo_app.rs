@@ -309,6 +309,7 @@ impl crate::App {
         let antes = self.undo.espera.espera().then(|| current.clone());
         let agora = self.field_selection_mark();
         let transacao = self.undo.transacao_do_topo(redo);
+        let linha = self.undo.linha_do_topo(redo);
         let restored = if redo {
             self.undo.redo(current, agora)
         } else {
@@ -340,6 +341,14 @@ impl crate::App {
                 } else {
                     p.undo_last()
                 };
+            }
+            // A chave que o Auto Key escreveu no MESMO gesto vai junto (a fila da timeline).
+            if linha.is_some() && self.timeline.history.transacao_do_topo(redo) == linha {
+                self.timeline_intents.push(if redo {
+                    ph2d_timeline::TimelineIntent::Redo
+                } else {
+                    ph2d_timeline::TimelineIntent::Undo
+                });
             }
             if let Some(links) = self.undo_links() {
                 links.end_undo(link, redo);
@@ -530,6 +539,7 @@ impl crate::App {
         // Um elo pendente faz nascer o passo mesmo sem diff: a metade dele está fora do documento.
         let pending = self.undo_links().is_some_and(|l| l.pending.is_some());
         if self.undo_baseline.as_ref() == Some(&current) && !pending {
+            self.timeline.history.esquece_gesto_da_cena();
             return; // nada mudou desde o último passo (salvo a edição que espera)
         }
         if Self::undo_log_on() {

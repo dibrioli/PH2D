@@ -74,7 +74,8 @@ impl crate::App {
                 .as_mut()
                 .and_then(|g| g.painter_macros.toma_a_transacao());
             let link = self.undo_links().and_then(|l| l.pending.take());
-            self.undo.push_linked(base, mark, t, link);
+            let linha = self.timeline.history.liga_gesto_da_cena();
+            self.undo.push_linked(base, mark, t, link, linha);
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                 h.documents.scene_stepped();
             }

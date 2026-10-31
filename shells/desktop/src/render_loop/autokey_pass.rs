@@ -140,7 +140,7 @@ pub(crate) fn propagar_topologia(timeline: &mut TimelineState, ak: &AutokeyState
         ph2d_app_vec::canais_topologia::propagar(&mut timeline.doc, e, antes, agora);
         if proprio {
             let doc = timeline.doc.clone();
-            timeline.history.commit_if_changed(&doc);
+            timeline.history.commit_da_cena(&doc);
         }
     }
 }
@@ -525,7 +525,7 @@ pub(crate) fn apply_samples(
         }
         if discrete {
             let doc = timeline.doc.clone();
-            timeline.history.commit_if_changed(&doc);
+            timeline.history.commit_da_cena(&doc);
         }
     }
 
@@ -538,7 +538,7 @@ pub(crate) fn apply_samples(
         simplify_recorded(timeline, &ak.record, REC_SMOOTH_PASSES, REC_SIMPLIFY_REL);
         ak.record.clear();
         let doc = timeline.doc.clone();
-        timeline.history.commit_if_changed(&doc);
+        timeline.history.commit_da_cena(&doc);
     }
     ak.drag_active = drag_now;
 }

@@ -59,3 +59,9 @@ motor neutras. Abaixo de 1/h ⇒ reavaliar com o dono antes de outra ronda.
   opacas de vários tamanhos sem motor novo. ⛔ NÃO promovido (coordenador R2, na prancha): círculos perfeitos = bolinhas,
   sem coroa nem cauda. A próxima: a MANCHA recortada do «antes» (que já tem coroa) opaca, com a 2.ª população e o tecto
   da s5. Blender Grainy: o preset de estudo ficou na v7; a J6 volta por `git checkout 0319d50dcf -- docs/Painter/Pinceis/pranchas/mistura/presets/blender_grainy.ph2d-brush.png`.
+- **Oil Grunge** (R2-E, `5ee08084ee` `ed6c053a7a`, [relatório](R2_E_grunge.md), [prancha](pranchas/r2_oil_grunge.png)): o Grunge do
+  Rebelle não tem relevo ⇒ Real Oil desligado (o `sem_entalhes` não entra). Receita `OIL_GRUNGE` (cerdas «Grunge C» +
+  Shape de ruído no Flow), 2 rondas: furos 0,057 × 0,054, mas o corpo é opaco e chapado (contraste das estrias 0,056 ×
+  0,117; o vermelho vê-se através no Rebelle), fendas duras, traços quase pretos do `bristleStreakCut`. ⛔ Fora da
+  fábrica. Próximo a simular: pigmento 40–60 com menos opacidade, Shape a contraste 0,3–0,5, sem `bristleStreakCut`;
+  senão, motor: Shape que modula a CARGA em vez do alfa.

@@ -10,8 +10,8 @@ use crate::ids;
 use crate::state::AssetBrowserState;
 use ph2d_asset_index::{AssetRef, Relation, SortBy};
 use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
-use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
 pub(crate) fn apply_event(
@@ -194,10 +194,11 @@ pub(crate) fn apply_event(
             // e a janela em que isto acontece é a de um artista a rolar a grade com o menu aberto.
             match cell_target_of(cell) {
                 Some(r) => {
-                    host.bus_mut().push(EditorAction::AssetCardVerb {
-                        asset: crate::state::payload_of(r),
-                        verb,
-                    });
+                    let asset = crate::state::payload_of(r);
+                    if !ask_delete(host, asset, verb) {
+                        host.bus_mut()
+                            .push(EditorAction::AssetCardVerb { asset, verb });
+                    }
                     EventOutcome::Consumed
                 }
                 None => EventOutcome::Ignored,
@@ -212,6 +213,32 @@ pub(crate) fn apply_event(
         // tudo o que fala de taxonomia vive junto —, e a guarda do painel fechado fica ANTES desta
         // linha, logo continua a valer para os seis.
         other => crate::event_catalog::apply(state, host, other),
+    }
+}
+
+/// D17 — tirar um Kanban ou um Quadro dos Assets é APAGÁ-LO do projecto: primeiro a pergunta (a
+/// mesma da aba do quadro), cujo «Delete» se desfaz com Ctrl+Z. `false` = não é um documento.
+fn ask_delete(host: &mut dyn PanelHostInternal, asset: DragPayload, verb: AssetCardAction) -> bool {
+    let Some(kind) = confirm_delete_of(asset, verb) else {
+        return false;
+    };
+    // A pergunta pinta-se ao centro; o ponto só cumpre o pedido.
+    let [x, y] = host.store_mut().last_pointer().unwrap_or_default();
+    host.store_mut()
+        .open_context_menu(ContextMenuRequest { x, y, kind });
+    true
+}
+
+/// D17 — a pergunta de apagar que «Remove from Library» abre num documento (Kanban, Quadro).
+fn confirm_delete_of(asset: DragPayload, verb: AssetCardAction) -> Option<ContextMenuKind> {
+    match (verb, asset) {
+        (AssetCardAction::RemoveFromLibrary, DragPayload::Kanban { id }) => {
+            Some(ContextMenuKind::ConfirmDeleteKanban { kanban: id })
+        }
+        (AssetCardAction::RemoveFromLibrary, DragPayload::Board { id }) => {
+            Some(ContextMenuKind::ConfirmDeleteBoard { board: id })
+        }
+        _ => None,
     }
 }
 

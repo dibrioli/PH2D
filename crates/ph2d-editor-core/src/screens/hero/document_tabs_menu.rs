@@ -25,7 +25,7 @@ use crate::interaction::{
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
-use ph2d_board_model::BoardId;
+use ph2d_board_model::{BoardId, KanbanId};
 use ph2d_host::{PointerButton, PointerEvent, PointerKind};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -221,6 +221,45 @@ fn menu_board(store: &WidgetStore) -> Option<BoardId> {
     }
 }
 
+/// D17 — o Kanban da pergunta de apagar aberta (ou que o Down acabou de fechar).
+fn menu_kanban(store: &WidgetStore) -> Option<u64> {
+    match store
+        .context_menu()
+        .or_else(|| store.last_context_menu())?
+        .kind
+    {
+        ContextMenuKind::ConfirmDeleteKanban { kanban } => Some(kanban),
+        _ => None,
+    }
+}
+
+/// O título e o aviso da pergunta de apagar aberta: um quadro, ou um Kanban (com os quadros que o
+/// mostram e que o perdem com ele).
+fn confirm_text(docs: &Documents, kind: Option<ContextMenuKind>) -> Option<(String, String)> {
+    let (name, hint) = match kind? {
+        ContextMenuKind::ConfirmDeleteBoard { board } => {
+            let name = docs.boards().get(BoardId(board))?.name.clone();
+            (name, tr("board.dialog.delete_hint").to_owned())
+        }
+        ContextMenuKind::ConfirmDeleteKanban { kanban } => {
+            let k = KanbanId(kanban);
+            let name = docs.kanbans().get(k)?.header.name.clone();
+            let n = super::board_video::kanban::link::boards_showing(docs, k);
+            let hint = if n == 0 {
+                tr("board.dialog.delete_kanban_hint").to_owned()
+            } else {
+                tr_with("board.dialog.delete_kanban_hint_boards", &[("n", &n)])
+            };
+            (name, hint)
+        }
+        _ => return None,
+    };
+    Some((
+        tr_with("board.dialog.delete_title", &[("name", &name)]),
+        hint,
+    ))
+}
+
 /// O campo de renomear, as linhas do menu e os botões da pergunta. Corre no pré-despacho.
 pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let id = match event {
@@ -249,6 +288,14 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     ];
     if !rows.contains(&id) {
         return false;
+    }
+    if let Some(k) = menu_kanban(&hero.store) {
+        hero.store.close_context_menu();
+        hero.store.consume_last_context_menu();
+        if id == ids::CTX_MENU_BOARD_DELETE_CONFIRM {
+            hero.documents.remove_kanban(KanbanId(k));
+        }
+        return true;
     }
     let board = menu_board(&hero.store);
     hero.store.close_context_menu();
@@ -323,11 +370,7 @@ pub fn paint_confirm_delete(
     store: &WidgetStore,
     viewport: Rect,
 ) {
-    let Some(ContextMenuKind::ConfirmDeleteBoard { board }) = store.context_menu().map(|r| r.kind)
-    else {
-        return;
-    };
-    let Some(name) = docs.boards().get(BoardId(board)).map(|b| b.name.as_str()) else {
+    let Some((title, hint)) = confirm_text(docs, store.context_menu().map(|r| r.kind)) else {
         return;
     };
     let gap = Spacing::Xs.px();
@@ -354,10 +397,9 @@ pub fn paint_confirm_delete(
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
     let font = TypeToken::Sm.px();
     let mut y = rect.y + pad_y();
-    let title = tr_with("board.dialog.delete_title", &[("name", &name)]);
     for (text, token) in [
         (title.as_str(), ColorToken::Text1),
-        (tr("board.dialog.delete_hint"), ColorToken::Text3),
+        (hint.as_str(), ColorToken::Text3),
     ] {
         let ty = y + (ROW_H - font) * 0.5;
         paint_text(

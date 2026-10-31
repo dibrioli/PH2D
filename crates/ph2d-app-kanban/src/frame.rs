@@ -40,6 +40,16 @@ pub fn frame(hero: &mut HeroScreen) {
     for k in kb::take_open_requests() {
         docs.open(k);
     }
+    for k in kb::link::take_close_requests() {
+        let gone: Vec<u64> = docs
+            .tabs
+            .iter()
+            .filter(|t| t.view.kanban == k)
+            .map(|t| t.id())
+            .collect();
+        gone.into_iter()
+            .for_each(|id| ph2d_editor_core::doc_surface::DocumentSurface::close(docs, id));
+    }
     // O verso pedido por outra família (o Planner, «My cards», o sino).
     for c in ph2d_kanban_hooks::take_open_cards() {
         docs.open(c.kanban);

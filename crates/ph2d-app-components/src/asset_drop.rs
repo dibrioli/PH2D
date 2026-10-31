@@ -70,6 +70,9 @@ pub enum DropTarget {
     /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
     /// `on_text` = o cursor está sobre o TEXTO (a aba mostra onde cairia); na calha ou na barra, não.
     Code { on_text: bool },
+    /// ⭐ D17 — sobre o canvas de um QUADRO aberto, no ponto de ECRÃ `at` (a câmara do quadro
+    /// converte-o; é o mesmo ponto que a queda de imagens do sistema usa).
+    BoardCanvas { at: [f32; 2] },
     /// Sobre o chrome (um painel, a barra, o rail) — nada aqui sabe receber um asset.
     Chrome,
     /// ⭐ **De volta ao painel de onde saiu** — isto é um CANCELAR, não uma recusa.
@@ -118,6 +121,9 @@ pub enum DropAction {
         row: u16,
         stable_id: u64,
     },
+    /// ⭐ D17 — uma referência NOVA ao Kanban `kanban` no quadro aberto, com o meio no ponto de ecrã
+    /// `at`, seleccionada (UM passo de desfazer, que tira só a referência).
+    PlaceKanban { kanban: u64, at: [f32; 2] },
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
@@ -141,8 +147,11 @@ impl DropAction {
             DragPayload::Property { .. } => {
                 tr("shell.asset_drop.drop_an_object_on_a_script").to_string()
             }
-            DragPayload::Kanban { .. } | DragPayload::Board { .. } => {
-                tr("shell.asset_drop.drop_a_document_on_a_catalog").to_string()
+            DragPayload::Kanban { .. } => {
+                tr("shell.asset_drop.drop_a_kanban_on_a_board").to_string()
+            }
+            DragPayload::Board { .. } => {
+                tr("shell.asset_drop.a_board_does_not_go_on_a_board").to_string()
             }
         }
     }
@@ -181,8 +190,12 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
         (DragPayload::Property { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (DragPayload::Property { .. }, _) => DropAction::Cancel,
-        // ⛔ D17 — um Kanban ou um Quadro só se ARRUMA (gaveta); a cena, a ranhura e o texto recusam.
-        // Largá-lo num Quadro aberto é a fase 1b (`board_kanban_link`).
+        // ⭐ D17 — um Kanban largado num Quadro aberto põe lá uma referência, no ponto.
+        (DragPayload::Kanban { id }, DropTarget::BoardCanvas { at }) => {
+            DropAction::PlaceKanban { kanban: id, at }
+        }
+        // ⛔ D17 — fora disso um Kanban ou um Quadro só se ARRUMA (gaveta); a cena, a ranhura, o texto
+        // e um Quadro dentro de um Quadro (não há esse elemento) recusam.
         (
             p @ (DragPayload::Kanban { .. } | DragPayload::Board { .. }),
             DropTarget::CatalogRow { catalog },
@@ -191,6 +204,8 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
             catalog,
         },
         (DragPayload::Kanban { .. } | DragPayload::Board { .. }, _) => DropAction::Refuse,
+        // ⛔ O quadro só recebe Kanbans dos Assets (as imagens chegam-lhe do sistema, `input_drop`).
+        (_, DropTarget::BoardCanvas { .. }) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
         (_, DropTarget::ScriptObject { .. }) => DropAction::Refuse,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
@@ -302,6 +317,29 @@ mod tests {
                 world: [3.0, 4.0]
             }
         );
+    }
+
+    /// ⭐ D17 — no Quadro aberto, um Kanban nasce no ponto; um Quadro (não há quadro dentro de quadro),
+    /// um prefab e uma imagem recusam, e a recusa do Quadro di-lo.
+    #[test]
+    fn asset_drop_on_the_board_canvas_places_a_kanban_and_refuses_a_board() {
+        let on = DropTarget::BoardCanvas { at: [5.0, 6.0] };
+        assert_eq!(
+            resolve(DragPayload::Kanban { id: 3 }, on),
+            DropAction::PlaceKanban {
+                kanban: 3,
+                at: [5.0, 6.0]
+            }
+        );
+        for p in [
+            DragPayload::Board { id: 1 },
+            DragPayload::Prefab { stable_id: 1 },
+            DragPayload::Image { asset: [0; 32] },
+        ] {
+            assert_eq!(resolve(p, on), DropAction::Refuse);
+        }
+        let line = DropAction::refusal_line(DragPayload::Board { id: 1 });
+        assert!(line.contains("inside a Board"), "{line}");
     }
 
     /// ⛔ **Fora do canvas, RECUSA** — as duas cargas, e cada uma com a sua frase.

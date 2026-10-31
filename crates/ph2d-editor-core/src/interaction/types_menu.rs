@@ -375,6 +375,10 @@ pub enum ContextMenuKind {
     ConfirmDeleteBoard {
         board: u64,
     },
+    /// D17 — a pergunta *«apagar este Kanban?»* (Assets), com os mesmos botões e o mesmo pintor.
+    ConfirmDeleteKanban {
+        kanban: u64,
+    },
     /// ⭐ O modal *«Send to board»* (W15): escolhe o quadro que recebe o conteúdo da linha `row` da
     /// Hierarquia — desenha o próprio corpo (`send_to_board::paint`, que conhece os quadros).
     SendToBoard {
@@ -505,6 +509,7 @@ impl ContextMenuKind {
         Self::BoardNote,
         Self::NotesToCard,
         Self::ConfirmDeleteBoard { board: 0 },
+        Self::ConfirmDeleteKanban { kanban: 0 },
         Self::SendToBoard { row: NodeId(1) },
         Self::SendSelection {
             from: 0,

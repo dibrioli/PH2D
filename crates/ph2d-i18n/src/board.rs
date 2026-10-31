@@ -15,6 +15,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.menu.delete" => "Delete…",
         "board.dialog.delete_title" => "Delete “{name}”?",
         "board.dialog.delete_hint" => "Everything on this board will be lost.",
+        "board.dialog.delete_kanban_hint" => {
+            "Its lists and cards will be lost (Ctrl+Z brings it back)."
+        }
+        "board.dialog.delete_kanban_hint_boards" => {
+            "Its lists and cards will be lost, and it leaves the {n} board(s) that show it (Ctrl+Z brings it back)."
+        }
         "board.dialog.delete" => "Delete board",
         "board.dialog.cancel" => "Cancel",
         "board.tool.select" => "Select (V)",

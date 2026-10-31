@@ -151,8 +151,8 @@ impl crate::App {
     /// fosse corrigida.
     ///
     /// ⚠️ **A ORDEM é a lei**: um alvo que sabe receber pergunta-se ANTES dos que só desistem ou
-    /// recusam. A ranhura da textura e a linha de catálogo ganham ao *«de volta ao painel»* e ao
-    /// chrome — sem isso, largar numa gaveta seria indistinguível de não fazer nada.
+    /// recusam (a gaveta e a ranhura ganham ao painel de origem e ao chrome); um Quadro aberto
+    /// tapa a cena, então fora dos painéis o alvo é ele.
     fn drop_target_at(&mut self, x: f32, y: f32) -> Option<DropTarget> {
         // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
@@ -160,7 +160,7 @@ impl crate::App {
         let campo = self.chrome_id_under(x, y).and_then(script_object_slot_pick);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
-        let (on_canvas, world, code, home) = {
+        let (on_canvas, world, code, home, board) = {
             let gfx = self.gfx.as_mut()?;
             let window = gfx.scene_window();
             let hero = gfx.hero_screen.as_mut()?;
@@ -173,6 +173,7 @@ impl crate::App {
             // largar sobre a barra de cima caía no ramo do canvas e **re-texturava a sprite
             // escondida por trás dela**, em silêncio.
             let on_canvas = panel.is_none() && hero.chrome_hit(x, y).is_none();
+            let board = panel.is_none() && hero.documents.active().is_some();
             let world = gfx.camera.screen_to_world((x, y), window);
             let libs = object_drag::Libraries {
                 sim: &mut gfx.sim,
@@ -180,7 +181,7 @@ impl crate::App {
                 atlas: &gfx.atlas_asset_map,
             };
             let code = object_drag::hover_code(hero, libs, (x, y), on_canvas, mods);
-            (on_canvas, world, code, home)
+            (on_canvas, world, code, home, board)
         };
         Some(if let Some(entity_bits) = inspector_slot {
             DropTarget::InspectorTexture { entity_bits }
@@ -192,6 +193,8 @@ impl crate::App {
             DropTarget::Source
         } else if let Some(on_text) = code {
             DropTarget::Code { on_text }
+        } else if board {
+            DropTarget::BoardCanvas { at: [x, y] }
         } else if !on_canvas {
             DropTarget::Chrome
         } else {
@@ -250,7 +253,7 @@ impl crate::App {
     pub(crate) fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
         match action {
             // ⭐ Desistir não diz nada — ver a lei.
-            DropAction::Cancel | DropAction::WriteCode => {}
+            DropAction::Cancel | DropAction::WriteCode | DropAction::PlaceKanban { .. } => {}
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {

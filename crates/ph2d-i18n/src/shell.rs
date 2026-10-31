@@ -65,8 +65,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drop an image on a sprite to retexture it, or on empty canvas"
         }
         "shell.asset_drop.drop_a_prefab_on_the" => "Drop a prefab on the canvas to place it",
-        "shell.asset_drop.drop_a_document_on_a_catalog" => {
-            "Drop a Kanban or a Board on a catalog to file it; double-click opens it"
+        "shell.asset_drop.drop_a_kanban_on_a_board" => {
+            "Drop a Kanban on an open Board to show it there, or on a catalog to file it"
+        }
+        "shell.asset_drop.a_board_does_not_go_on_a_board" => {
+            "A Board cannot go inside a Board: drop it on a catalog to file it; double-click opens it"
         }
         "shell.asset_drop.drop_an_object_on_a_script" => {
             "Drop an object on a script to write the code that points at it"

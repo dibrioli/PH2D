@@ -6,7 +6,8 @@
 //! último passo dele e a última operação de abas — as horas são as do
 //! [`ph2d_board_model::undo_tick`]. Um quadro apagado guarda-se com o desfazer dele: volta inteiro.
 
-use ph2d_board_model::{Board, BoardId, History, MAX_STEPS, undo_tick};
+use ph2d_board_model::{Board, BoardId, BoardOp, Element, History, MAX_STEPS, undo_tick};
+use ph2d_kanban_model::{Kanban, KanbanId};
 
 use super::Documents;
 
@@ -31,6 +32,13 @@ pub(crate) enum TabStep {
         history: History,
         focus: bool,
     },
+    /// D17 — põe de volta um Kanban apagado e as referências dele em cada quadro (mesmas chaves).
+    KanbanBack {
+        kanban: Box<Kanban>,
+        refs: Vec<(BoardId, Element)>,
+    },
+    /// D17 — apaga outra vez o Kanban (o refazer de [`TabStep::KanbanBack`]).
+    KanbanGone(KanbanId),
 }
 
 /// Uma pilha das abas: cada passo com a sua hora.
@@ -176,7 +184,73 @@ impl Documents {
                     TabChange::Back(id),
                 )
             }
+            TabStep::KanbanBack { kanban, refs } => {
+                let id = kanban.id;
+                if self.kanbans.borrow().get(id).is_some() {
+                    return None;
+                }
+                self.kanbans.borrow_mut().insert(*kanban);
+                for (b, el) in refs {
+                    if let Some(board) = self.boards.get_mut(b) {
+                        let _ = BoardOp::Put(el).apply(&mut board.doc);
+                    }
+                }
+                (TabStep::KanbanGone(id), TabChange::Same)
+            }
+            TabStep::KanbanGone(id) => {
+                let (kanban, refs) = self.take_kanban(id)?;
+                let kanban = Box::new(kanban);
+                (TabStep::KanbanBack { kanban, refs }, TabChange::Same)
+            }
         })
+    }
+
+    /// ⭐ D17 (dono 30/10) — apaga o Kanban `id` do projecto (o menu do cartão nos Assets). As
+    /// referências dele em cada quadro saem no MESMO passo (um elemento sem documento não teria o que
+    /// mostrar) e a aba dele fecha; o `Ctrl+Z` devolve o documento e cada referência, com as mesmas
+    /// chaves. `false` = não existe (ou é a agenda, que não se apaga).
+    pub fn remove_kanban(&mut self, id: KanbanId) -> bool {
+        let Some((kanban, refs)) = self.take_kanban(id) else {
+            return false;
+        };
+        let kanban = Box::new(kanban);
+        self.record_tab(TabStep::KanbanBack { kanban, refs });
+        true
+    }
+
+    fn take_kanban(&mut self, id: KanbanId) -> Option<(Kanban, Vec<(BoardId, Element)>)> {
+        if id == KanbanId::AGENDA {
+            return None;
+        }
+        let kanban = self.kanbans.borrow_mut().remove(id)?;
+        let ids: Vec<BoardId> = self.boards.boards().iter().map(|b| b.id).collect();
+        let mut refs = Vec::new();
+        for b in ids {
+            let Some(board) = self.boards.get_mut(b) else {
+                continue;
+            };
+            let gone: Vec<Element> = board
+                .doc
+                .live()
+                .filter(|e| e.kanban().is_some_and(|k| k.kanban == id))
+                .cloned()
+                .collect();
+            for el in &gone {
+                let _ = BoardOp::Delete(el.id).apply(&mut board.doc);
+            }
+            if self.active == Some(b)
+                && let Some(ed) = self.live.editor.as_mut()
+            {
+                let keep: Vec<_> = ed.selection().iter().copied().collect();
+                ed.select(
+                    &board.doc,
+                    keep.into_iter().filter(|e| gone.iter().all(|g| g.id != *e)),
+                );
+            }
+            refs.extend(gone.into_iter().map(|el| (b, el)));
+        }
+        crate::screens::hero::board_video::kanban::link::request_close(id);
+        Some((kanban, refs))
     }
 
     pub(crate) fn position(&self, id: BoardId) -> Option<usize> {

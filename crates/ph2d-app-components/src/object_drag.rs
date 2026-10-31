@@ -178,6 +178,13 @@ pub fn write_code(
     at: (f32, f32),
     mods: Modifiers,
 ) -> bool {
+    // D17 — um Kanban largado no Quadro aberto: a referência nasce no ponto (a câmara do quadro).
+    if let DropAction::PlaceKanban { kanban, at } = action {
+        let at = [f64::from(at[0]), f64::from(at[1])];
+        let _ =
+            ph2d_editor_core::screens::hero::board_video::kanban::link::place_at(hero, kanban, at);
+        return true;
+    }
     // Um objecto largado no campo de objecto do cartão Script (8c) também se resolve aqui.
     if let DropAction::SetScriptObject {
         entity_bits,

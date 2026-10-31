@@ -152,6 +152,7 @@ pub fn paint_context_menu_overlay(
     if matches!(
         req.kind,
         ContextMenuKind::ConfirmDeleteBoard { .. }
+            | ContextMenuKind::ConfirmDeleteKanban { .. }
             | ContextMenuKind::SendToBoard { .. }
             | ContextMenuKind::SendSelection { .. }
             | ContextMenuKind::KanbanBackground { .. }

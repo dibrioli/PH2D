@@ -214,3 +214,92 @@ fn the_right_click_menu_of_a_kanban_opens_it_in_a_tab() {
         .apply_event(crate::interaction::WidgetEvent::Click(open));
     assert_eq!(kb::take_open_requests(), vec![el.kanban().unwrap().kanban]);
 }
+
+/// ⭐ D17 — um Kanban largado dos Assets sobre o quadro nasce com o meio no ponto do ecrã; o `Ctrl+Z`
+/// tira só a referência (o documento fica no projecto).
+#[test]
+fn a_kanban_dropped_from_the_assets_lands_on_the_point_and_undo_keeps_the_document() {
+    let mut t = T::new();
+    let shared = t.hero.documents.kanbans_shared();
+    let k = shared.borrow_mut().create("K");
+    let p = t.at(0.3, 0.4);
+    let el = kb::link::place_at(&mut t.hero, k.0, [p.0.into(), p.1.into()]).unwrap();
+    t.paint();
+    let e = kanban_el(&t).unwrap();
+    assert_eq!((e.id, e.kanban().unwrap().kanban), (el, k));
+    let b = t.hero.documents.active_board().unwrap();
+    let area = board_view::area_of(board_view::area(t.hero.last_layout.as_ref().unwrap()));
+    let c = b.camera.to_screen(area, e.center());
+    assert!((c[0] - f64::from(p.0)).abs() < 1e-3 && (c[1] - f64::from(p.1)).abs() < 1e-3);
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert!(kanban_el(&t).is_none(), "a referência saiu");
+    assert!(shared.borrow().get(k).is_some(), "o documento FICA");
+}
+
+/// ⭐ D17 — apagar um Kanban (a pergunta dos Assets → Delete) tira-o do projecto, da lista dos Assets
+/// e dos quadros, e fecha a aba; o `Ctrl+Z` devolve o documento e a referência com as mesmas chaves.
+#[test]
+fn deleting_a_kanban_takes_its_references_and_undo_brings_both_back() {
+    let mut t = T::new();
+    t.click_bar(Item::Kanban);
+    let before = kanban_el(&t).unwrap();
+    let k = before.kanban().unwrap().kanban;
+    let doc = t.hero.documents.kanbans().get(k).cloned();
+    assert_eq!(kb::link::boards_showing(&t.hero.documents, k), 1);
+    let _ = kb::link::take_close_requests();
+    t.hero
+        .store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::ConfirmDeleteKanban { kanban: k.0 },
+        });
+    let confirm = WidgetEvent::Click(crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM);
+    assert!(crate::screens::hero::document_tabs_menu::apply_event(
+        &mut t.hero,
+        confirm
+    ));
+    let listed =
+        |t: &T| {
+            t.hero.documents.asset_listing().iter().any(|(p, _)| {
+                *p == crate::interaction::drag_payload::DragPayload::Kanban { id: k.0 }
+            })
+        };
+    assert!(t.hero.documents.kanbans().get(k).is_none());
+    assert!(!listed(&t), "saiu dos Assets");
+    assert!(kanban_el(&t).is_none(), "a referência saiu com ele");
+    assert_eq!(kb::link::take_close_requests(), vec![k], "a aba fecha");
+    assert!(t.hero.documents.undo_tab(false).is_some());
+    assert_eq!(t.hero.documents.kanbans().get(k).cloned(), doc);
+    assert!(listed(&t));
+    let after = kanban_el(&t).expect("a referência voltou");
+    let shape = |e: &Element| (e.id, e.kanban().map(|k| k.kanban), [e.x, e.y, e.w, e.h]);
+    assert_eq!(
+        shape(&after),
+        shape(&before),
+        "a mesma referência, a mesma chave"
+    );
+}
+
+/// ⭐ D17 — um Quadro apagado pelos Assets usa a pergunta e o `Documents::remove` da aba: o `Ctrl+Z`
+/// devolve-o.
+#[test]
+fn deleting_a_board_from_the_assets_is_the_tab_delete_and_undo_restores_it() {
+    let mut t = T::new();
+    let b = t.hero.documents.active().unwrap();
+    t.hero
+        .store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::ConfirmDeleteBoard { board: b.0 },
+        });
+    let confirm = WidgetEvent::Click(crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM);
+    assert!(crate::screens::hero::document_tabs_menu::apply_event(
+        &mut t.hero,
+        confirm
+    ));
+    assert!(t.hero.documents.boards().get(b).is_none());
+    assert!(t.hero.documents.undo_tab(false).is_some());
+    assert!(t.hero.documents.boards().get(b).is_some());
+}

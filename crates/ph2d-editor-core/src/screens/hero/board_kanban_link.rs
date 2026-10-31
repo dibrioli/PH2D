@@ -36,6 +36,29 @@ pub struct Placement {
 thread_local! {
     static REQUESTS: RefCell<Vec<BoardRequest>> = const { RefCell::new(Vec::new()) };
     static LAST_BOARD: Cell<Option<BoardId>> = const { Cell::new(None) };
+    static CLOSE: RefCell<Vec<KanbanId>> = const { RefCell::new(Vec::new()) };
+}
+
+/// D17 — o Kanban apagado fecha a aba dele (a família esvazia [`take_close_requests`] a cada quadro).
+pub(crate) fn request_close(k: KanbanId) {
+    CLOSE.with(|q| q.borrow_mut().push(k));
+}
+
+/// Os Kanbans apagados desde a última vez (as abas deles fecham).
+#[must_use]
+pub fn take_close_requests() -> Vec<KanbanId> {
+    CLOSE.with(|q| std::mem::take(&mut *q.borrow_mut()))
+}
+
+/// Quantos quadros mostram o Kanban `kanban` (a pergunta de apagar di-lo).
+#[must_use]
+pub fn boards_showing(docs: &Documents, kanban: KanbanId) -> usize {
+    let mut b: Vec<_> = placements(docs, kanban)
+        .into_iter()
+        .map(|p| p.board)
+        .collect();
+    b.dedup();
+    b.len()
 }
 
 /// O último quadro que esteve activo (ainda vivo) — a escolha de «o da última vez».
@@ -124,12 +147,37 @@ pub(crate) fn place(hero: &mut HeroScreen, kanban: KanbanId) -> Option<(BoardId,
         }
     };
     hero.documents.activate(Some(target));
+    put(hero, kanban, None)
+}
+
+/// ⭐ D17 — um Kanban largado dos Assets sobre o quadro ACTIVO: a referência nasce com o meio no ponto
+/// do ecrã `at` (o mesmo ponto que a queda de imagens do sistema usa), seleccionada; UM passo de
+/// desfazer, que tira só a referência. `kanban` = a chave crua da carga do arrasto. `None` = sem
+/// quadro activo, ou o Kanban já não existe.
+pub fn place_at(hero: &mut HeroScreen, kanban: u64, at: [f64; 2]) -> Option<ElementId> {
+    let kanban = KanbanId(kanban);
+    if hero.documents.kanbans().get(kanban).is_none() {
+        return None;
+    }
+    put(hero, kanban, Some(at)).map(|(_, el)| el)
+}
+
+/// A referência no quadro activo: no ponto de ecrã `at` (sem área desenhada, ou `None`: o meio da
+/// câmara), reduzida a meia vista.
+fn put(
+    hero: &mut HeroScreen,
+    kanban: KanbanId,
+    at: Option<[f64; 2]>,
+) -> Option<(BoardId, ElementId)> {
     let view = hero.last_layout.map(|l| area_of(area(&l)));
     let theme = hero.theme;
     let (board, live) = hero.documents.active_parts()?;
     let z = board.camera.zoom;
     let fit = view.map_or([f64::INFINITY; 2], |v| [v[2] / z / 2.0, v[3] / z / 2.0]);
-    let center = [board.camera.center_x, board.camera.center_y];
+    let center = match (at, view) {
+        (Some(p), Some(v)) => board.camera.to_world(v, p),
+        _ => [board.camera.center_x, board.camera.center_y],
+    };
     let history = live.histories.entry(board.id).or_default();
     let ed = editor(&mut live.editor, theme);
     let el = ed.insert_kanban(&mut board.doc, history, kanban, center, fit);
@@ -143,4 +191,3 @@ pub(crate) fn refs(doc: &BoardDoc) -> BTreeSet<KanbanId> {
         .filter_map(|e| e.kanban().map(|k| k.kanban))
         .collect()
 }
-

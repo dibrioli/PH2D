@@ -343,7 +343,8 @@ pub(super) fn click_belongs_to_the_open_menu(
         ContextMenuKind::NotesToCard => {
             id == crate::ids::CTX_NOTE_CARD_SEARCH || crate::ids::CTX_NOTE_CARD_ROWS.contains(&id)
         }
-        ContextMenuKind::ConfirmDeleteBoard { .. } => {
+        ContextMenuKind::ConfirmDeleteBoard { .. }
+        | ContextMenuKind::ConfirmDeleteKanban { .. } => {
             id == crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM
                 || id == crate::ids::CTX_MENU_BOARD_DELETE_CANCEL
         }

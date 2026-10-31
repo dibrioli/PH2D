@@ -33,9 +33,11 @@
 Drag (arrasto do Smear) `6c243555f0` · undo não mata a tinta viva `7bb6110ac5` · ladeira com Real Oil `f70ea44cd9` · Staining/Glaze/
 Cover/Wet soften no cartão `e42174cc5a`. Smoke do dono feito (`d040bdd8f0`).
 
-## J11 (30/10): 0 Real Oil empalidece: cura `43b535277b` REVERTIDA (o óleo deixava de cobrir o óleo, até 78 níveis); próxima: variante B à prancha · C&F `0f0a714481` · 2 queda: sonda
-`6e466569d2`, [prancha](pranchas/J11_queda_diluicao.png), V3 recomendada, ESPERA o dono · 3 undo `340513dcb4` (a 4096² ainda seca) ·
-1 Pigment mixing: [prancha](pranchas/J11_pigment_mixing.png) (20/45 miniaturas ≤ 14 níveis), ESPERA o dono · 4–5 depois.
+## J11 (30/10): C&F `0f0a714481` · undo/redo `340513dcb4` (4096² ainda seca) · queda V3 (dono) `847b472b3d` (segurar fica; muita
+água 1/2 de hoje) · Pigment mixing do pincel, ligado de fábrica, caixa no cartão `3eb13d38db` (dono) · Real Oil empalidece: cura
+`43b535277b` revertida `a4c8c80e3d` (óleo deixava de cobrir); com o K-M de fábrica não empalidece ([prancha](pranchas/J11_real_oil_empalidece_B.png)).
+Smoke do dono PENDENTE. Fecho: miniaturas (24 mudam), `a_aguada_re_molha_o_oleo_soluvel` 0,462, `mudar_o_painel_do_pincel_nao_muda_a_tinta_pousada`
+(real_oil), fenda (54<70) e Blender×Cycles vermelhos de antes; `ELIDEM_POR_LARGURA`; valores Re-wet/Drag/Solubility.
 
 ## J6 ([`JANELA_6.md`](JANELA_6.md)): a fila
 

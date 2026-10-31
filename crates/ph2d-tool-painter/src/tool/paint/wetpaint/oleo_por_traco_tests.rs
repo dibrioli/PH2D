@@ -175,7 +175,8 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte() {
     d.sort_unstable();
     let (maior, p99) = (d[d.len() - 1], d[d.len() * 99 / 100]);
     assert_eq!(
-        difs, 0,
+        difs,
+        0,
         "a tela toda com óleo difere da lei de antes em {difs} de {} píxeis (maior {maior}, p99 {p99})",
         d.len()
     );

@@ -220,7 +220,9 @@ fn main() {
             dif.iter().filter(|&&d| d > 0.5).count()
         );
         if k == 1 && std::env::var_os("SECA_DIAG").is_some() {
-            diag(&gpu, &mut s, &g, &pc, &bc, &bg, &gc, &gg, w, h, passes, evap, rewet, by);
+            diag(
+                &gpu, &mut s, &g, &pc, &bc, &bg, &gc, &gg, w, h, passes, evap, rewet, by,
+            );
         }
     }
 }
@@ -238,7 +240,11 @@ fn rasto(e: Ecra, x0: [f64; 3], uc: [f64; 3], alvo: [f64; 3], a_s2: f64, a_f2: f
         let mut mexeu = false;
         for c in 0..3 {
             let mut xh = x;
-            xh[c] = if x[c] + 0.5 <= 255.0 { x[c] + 0.5 } else { x[c] - 0.5 };
+            xh[c] = if x[c] + 0.5 <= 255.0 {
+                x[c] + 0.5
+            } else {
+                x[c] - 0.5
+            };
             let d = (ec(xh)[c] - y[c]) / (xh[c] - x[c]);
             eprintln!(
                 "      it {it} c {c}: x {:.4} y {:.4} alvo {:.4} d {d:.6} (cego {cego}) {}",
@@ -283,7 +289,9 @@ fn diag(
     for y in 1..=h {
         for x in 1..=w {
             let i = x + y * g0.s;
-            let d = (0..3).map(|c| (bc[i][c] - bg[i][c]).abs()).fold(0.0, f64::max);
+            let d = (0..3)
+                .map(|c| (bc[i][c] - bg[i][c]).abs())
+                .fold(0.0, f64::max);
             if d > 0.9 {
                 cel.push((d, i));
             }
@@ -294,8 +302,19 @@ fn diag(
     for &(d, i) in &cel {
         eprintln!(
             "MAX ({}, {}) Δ {d:.4} vela {} · CPU sett {} susp {} film {} rgb {:?}/{:?} · placa sett {} susp {} film {} rgb {:?}/{:?}",
-            i % g0.s, i / g0.s, gc.vela[i], gc.sett[i], gc.susp[i], gc.film[i], gc.sett_rgb[i], gc.susp_rgb[i],
-            gg.sett[i], gg.susp[i], gg.film[i], gg.sett_rgb[i], gg.susp_rgb[i]
+            i % g0.s,
+            i / g0.s,
+            gc.vela[i],
+            gc.sett[i],
+            gc.susp[i],
+            gc.film[i],
+            gc.sett_rgb[i],
+            gc.susp_rgb[i],
+            gg.sett[i],
+            gg.susp[i],
+            gg.film[i],
+            gg.sett_rgb[i],
+            gg.susp_rgb[i]
         );
     }
     // Passo a passo, re-sincronizado: a placa parte do estado da CPU em cada secagem.
@@ -314,7 +333,14 @@ fn diag(
         s.upload(gpu, &cpu);
         s.step(gpu, 1);
         s.readback(gpu, &mut gp);
-        ph2d_wet_paint::drying::drying_pass_jacobi_rows(&mut cpu, pc, evap, rewet, by, Rows::Parallel);
+        ph2d_wet_paint::drying::drying_pass_jacobi_rows(
+            &mut cpu,
+            pc,
+            evap,
+            rewet,
+            by,
+            Rows::Parallel,
+        );
         for &(_, i) in &cel {
             let dr = (0..3)
                 .map(|c| {
@@ -327,42 +353,83 @@ fn diag(
                 .map(|c| (cpu.sett_rgb[i][c] - livre.sett_rgb[i][c]).abs())
                 .fold(0.0f32, f32::max);
             if dr <= 0.002 {
-                eprintln!("  secagem {k}: lockstep ≤ 0,002 · livre sett_rgb gap {gap:.4} · CPU sett {} susp {} film {} · placa livre sett {} susp {} film {}", cpu.sett[i], cpu.susp[i], cpu.film[i], livre.sett[i], livre.susp[i], livre.film[i]);
+                eprintln!(
+                    "  secagem {k}: lockstep ≤ 0,002 · livre sett_rgb gap {gap:.4} · CPU sett {} susp {} film {} · placa livre sett {} susp {} film {}",
+                    cpu.sett[i],
+                    cpu.susp[i],
+                    cpu.film[i],
+                    livre.sett[i],
+                    livre.susp[i],
+                    livre.film[i]
+                );
                 continue;
             }
             eprintln!("  livre gap {gap:.4}");
             let (t, u, f) = (pre.sett[i], pre.susp[i], pre.film[i]);
             eprintln!(
                 "  secagem {k} célula ({}, {}): Δrgb {dr:.3} · antes sett {t} susp {u} film {f} rgb {:?}/{:?} · depois CPU sett {} susp {} rgb {:?}/{:?} · placa sett {} susp {} rgb {:?}/{:?}",
-                i % g0.s, i / g0.s, pre.sett_rgb[i], pre.susp_rgb[i],
-                cpu.sett[i], cpu.susp[i], cpu.sett_rgb[i], cpu.susp_rgb[i],
-                gp.sett[i], gp.susp[i], gp.sett_rgb[i], gp.susp_rgb[i]
+                i % g0.s,
+                i / g0.s,
+                pre.sett_rgb[i],
+                pre.susp_rgb[i],
+                cpu.sett[i],
+                cpu.susp[i],
+                cpu.sett_rgb[i],
+                cpu.susp_rgb[i],
+                gp.sett[i],
+                gp.susp[i],
+                gp.sett_rgb[i],
+                gp.susp_rgb[i]
             );
             // O `assenta` da CPU, re-traçado (massa da CPU: dm = sett depois − sett antes).
             let dm = f64::from(cpu.sett[i]) - f64::from(t);
             let e = pc.ecra.com_vela(pre.vela[i]).seco();
-            let (sc, uc) = (pre.sett_rgb[i].map(f64::from), pre.susp_rgb[i].map(f64::from));
+            let (sc, uc) = (
+                pre.sett_rgb[i].map(f64::from),
+                pre.susp_rgb[i].map(f64::from),
+            );
             let (a_s, a_f) = (alpha_of_mass(f64::from(t)), alpha_of_mass(f64::from(u)));
-            let (a_s2, a_f2) = (alpha_of_mass(f64::from(t) + dm), alpha_of_mass(f64::from(u) - dm));
+            let (a_s2, a_f2) = (
+                alpha_of_mass(f64::from(t) + dm),
+                alpha_of_mass(f64::from(u) - dm),
+            );
             let alvo = sobre_branco(e, sc, uc, a_s, a_f);
-            eprintln!("    assenta a_s {a_s} a_f {a_f} a_s2 {a_s2} a_f2 {a_f2} alvo {alvo:?} (palpite x0 = CPU não exposto; rasto a partir da saída da placa e da CPU)");
-            let a_dm = if a_s < 1.0 { (1.0 - (1.0 - a_s2) / (1.0 - a_s)).clamp(0.0, 1.0) } else { 0.0 };
+            eprintln!(
+                "    assenta a_s {a_s} a_f {a_f} a_s2 {a_s2} a_f2 {a_f2} alvo {alvo:?} (palpite x0 = CPU não exposto; rasto a partir da saída da placa e da CPU)"
+            );
+            let a_dm = if a_s < 1.0 {
+                (1.0 - (1.0 - a_s2) / (1.0 - a_s)).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
             let mut x0 = if a_s <= 0.0 || a_s2 <= 0.0 {
                 uc
             } else {
-                sobre_branco(e, sc, uc, a_s, a_dm).map(|v| (255.0 - (255.0 - v) / a_s2).clamp(0.0, 255.0))
+                sobre_branco(e, sc, uc, a_s, a_dm)
+                    .map(|v| (255.0 - (255.0 - v) / a_s2).clamp(0.0, 255.0))
             };
             let vela = f64::from(pre.vela[i]);
             if vela > 0.0 && a_s > 0.0 && a_s2 > 0.0 {
                 for q in 0..3 {
                     let t_s = 255.0 - a_s * (255.0 - sc[q]);
-                    let (f1, f2) = (255.0 - a_f * (255.0 - uc[q]), 255.0 - a_f2 * (255.0 - uc[q]));
+                    let (f1, f2) = (
+                        255.0 - a_f * (255.0 - uc[q]),
+                        255.0 - a_f2 * (255.0 - uc[q]),
+                    );
                     let t_s2 = if f2 > 0.0 { t_s * f1 / f2 } else { t_s };
                     let produto = (255.0 - (255.0 - t_s2) / a_s2).clamp(0.0, 255.0);
                     x0[q] += vela * (produto - x0[q]);
                 }
             }
-            rasto(e, x0, uc, alvo, a_s2, a_f2, if vela > 0.0 { 0.01 } else { 0.1 });
+            rasto(
+                e,
+                x0,
+                uc,
+                alvo,
+                a_s2,
+                a_f2,
+                if vela > 0.0 { 0.01 } else { 0.1 },
+            );
         }
     }
 }

@@ -173,9 +173,19 @@ fn as_pontas_carregam_com_o_esbate_negativo() {
     let (q, t) = perfil(&recto(Caso::Redondo, -2.5), &c0);
     eprintln!("sem {q0:.3?} · com {q:.3?}; tinta {:.4}", t / t0);
     let sobe = (0..2).map(|k| q[1][k] - q0[1][k]).fold(f64::MIN, f64::max);
-    assert!(sobe >= 0.05, "o fim tem de carregar: {:.3?} contra {:.3?}", q[1], q0[1]);
+    assert!(
+        sobe >= 0.05,
+        "o fim tem de carregar: {:.3?} contra {:.3?}",
+        q[1],
+        q0[1]
+    );
     for lado in 0..2 {
-        assert!((q[lado][4] - q0[lado][4]).abs() <= 0.03, "um raio e meio para dentro: {:.3?} · {:.3?}", q[lado], q0[lado]);
+        assert!(
+            (q[lado][4] - q0[lado][4]).abs() <= 0.03,
+            "um raio e meio para dentro: {:.3?} · {:.3?}",
+            q[lado],
+            q0[lado]
+        );
     }
     assert!((0.97..=1.03).contains(&(t / t0)), "o miolo: {:.4}", t / t0);
 }
@@ -190,11 +200,16 @@ fn a_entrada_das_pontas_rectas_tem_a_esquina_cheia() {
     let col = |x: usize| (0..H).map(|y| c[y * W + x]).collect::<Vec<_>>();
     let altura = |x: usize, lim: f64| col(x).iter().filter(|&&v| v >= lim).count() as f64;
     let meio = (220..300).map(|x| c[Y as usize * W + x]).sum::<f64>() / 80.0;
-    let p0 = (0..W).find(|&x| c0[Y as usize * W + x] >= 0.5 * meio).unwrap();
+    let p0 = (0..W)
+        .find(|&x| c0[Y as usize * W + x] >= 0.5 * meio)
+        .unwrap();
     // A altura a meia escuridão do PRÓPRIO eixo da coluna: a esquina recta é a coluna chata (a da corda é redonda).
     let relativa = |x: usize| altura(x, 0.5 * c[Y as usize * W + x]);
     let corpo = relativa(260);
     let esquina = relativa(p0 + (0.3 * R) as usize);
     eprintln!("corpo {corpo} · esquina {esquina} (p0 {p0})");
-    assert!(esquina >= 0.915 * corpo, "a esquina da entrada arredonda: {esquina} de {corpo}");
+    assert!(
+        esquina >= 0.915 * corpo,
+        "a esquina da entrada arredonda: {esquina} de {corpo}"
+    );
 }

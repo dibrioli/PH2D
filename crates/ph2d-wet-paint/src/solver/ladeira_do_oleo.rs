@@ -11,13 +11,26 @@
 
 use crate::grid::Grid;
 
+/// A rota da ladeira, em execução (sonda `sonda_oleo_derrete`): `0` = o produto (= `5`), `1` = a de 30/10 sem peso,
+/// `2` = desligada, `3` = fotografia com a massa inteira (assente + suspensa), sem peso, `4` = peso pela fracção
+/// assente de AGORA, `5` = peso pela fracção assente da FOTOGRAFIA, `6` = `3` + `5`.
+#[doc(hidden)]
+pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+fn rota() -> u8 {
+    match LADEIRA_ROTA.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => 5,
+        r => r,
+    }
+}
+
 /// A altura de água (`film`) que uma unidade de massa de óleo assentado ergue. MEDIDO (`diag_a_agua_sobe_a_ladeira_do_oleo`):
 /// o miolo de um Dabber tem `~3000` de massa e a água de um Wet Flat `film` `1–4`; a parede tem de ganhar da água.
 pub(crate) const FILME_POR_MASSA: f64 = 1.0 / 1000.0;
 
 /// A altura do óleo assentado na célula fina `i`, em unidades de `film`.
-fn altura(g: &Grid, i: usize) -> f32 {
-    let m = f64::from(g.sett[i]);
+fn altura(g: &Grid, i: usize, inteira: bool) -> f32 {
+    let m = f64::from(g.sett[i]) + if inteira { f64::from(g.susp[i]) } else { 0.0 };
     if m <= 0.0 {
         return 0.0;
     }
@@ -33,6 +46,8 @@ pub(crate) struct LadeiraDoOleo {
     r0: usize,
     s: usize,
     h: Vec<f32>,
+    /// A fracção ASSENTADA da massa de cada célula, `sett ÷ (sett + susp)` (`1` sem tinta): o peso da ladeira.
+    assente: Vec<f32>,
 }
 
 /// O `film` do Wet Flat CHEIO sobre a crista do óleo (água ×1), MEDIDO pela sonda J11 (`diag_a_queda_pela_diluicao`):
@@ -52,18 +67,31 @@ impl LadeiraDoOleo {
         let s = g.s;
         let r1 = r1.min(g.cells / s - 1);
         let mut h = vec![0f32; (r1 + 1 - r0) * s];
+        let mut assente = vec![1f32; (r1 + 1 - r0) * s];
         let mut alguma = false;
         for y in r0..=r1 {
             for x in 0..s {
                 let i = y * s + x;
-                let v = if antes { g.oleo_antes[i] } else { altura(g, i) };
+                let k = (y - r0) * s + x;
+                match rota() {
+                    4 => assente[k] = fraccao_assente(g, i),
+                    5 | 6 if antes => {
+                        assente[k] = g.oleo_antes_assente.get(i).copied().unwrap_or(1.0);
+                    }
+                    _ => {}
+                }
+                let v = if antes {
+                    g.oleo_antes[i]
+                } else {
+                    altura(g, i, false)
+                };
                 if v > 0.0 {
                     h[(y - r0) * s + x] = v;
                     alguma = true;
                 }
             }
         }
-        alguma.then_some(Self { r0, s, h })
+        alguma.then_some(Self { r0, s, h, assente })
     }
 
     /// O termo de nivelamento de um eixo, já clampado: `dfilm` = a diferença de `film` entre os vizinhos, `o` = a da
@@ -86,6 +114,18 @@ impl LadeiraDoOleo {
         ((dfilm + o) * level_k * dif).clamp(-clamp, clamp)
     }
 
+    /// O peso da ladeira na célula fina `fi`: a fracção assentada da tinta de lá (`1` fora das linhas).
+    /// ⛔ **A tinta molhada não escorre com a água** (queixa do dono 31/10, `sonda_oleo_derrete`): sobre óleo ainda
+    /// em suspensão a ladeira move a água e a advecção leva a massa com ela — o traço inteiro derretia (altura longe do
+    /// cruzamento 20,0 → 13,5, as estrias somem, buracos escuros). Pesar só o empurrão não chega (13,9); a ladeira
+    /// inteira pesa a tinta ASSENTADA.
+    #[inline]
+    pub(crate) fn assente(&self, fi: usize) -> f64 {
+        fi.checked_sub(self.r0 * self.s)
+            .and_then(|k| self.assente.get(k))
+            .map_or(1.0, |v| f64::from(*v))
+    }
+
     /// A altura na célula fina `fi` (`0` fora das linhas).
     #[inline]
     pub(crate) fn em(&self, fi: usize) -> f64 {
@@ -100,7 +140,7 @@ impl LadeiraDoOleo {
 /// (MEDIDO: com a ladeira também nele, as 10 miniaturas Oil/* mudavam 82–230 níveis; a miniatura é um traço só, a
 /// fotografia dela é vazia ⇒ `None`, ao bit).
 pub(crate) fn do_passe(g: &Grid, by0: i32, by1: i32, oleo_na_mao: bool) -> Option<LadeiraDoOleo> {
-    if g.oleo.is_empty() {
+    if g.oleo.is_empty() || rota() == 2 {
         return None;
     }
     let (gh, rf) = (g.h as i32, g.flow.rf);
@@ -114,8 +154,17 @@ pub(crate) fn do_passe(g: &Grid, by0: i32, by1: i32, oleo_na_mao: bool) -> Optio
 pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
     if !oleo_na_mao || g.oleo.is_empty() {
         g.oleo_antes = Vec::new();
+        g.oleo_antes_assente = Vec::new();
         return;
     }
-    let h: Vec<f32> = (0..g.cells).map(|i| altura(g, i)).collect();
+    let inteira = matches!(rota(), 3 | 6);
+    let h: Vec<f32> = (0..g.cells).map(|i| altura(g, i, inteira)).collect();
     g.oleo_antes = h;
+    g.oleo_antes_assente = (0..g.cells).map(|i| fraccao_assente(g, i)).collect();
+}
+
+/// `sett ÷ (sett + susp)` da célula `i` (`1` sem tinta em suspensão).
+fn fraccao_assente(g: &Grid, i: usize) -> f32 {
+    let (se, su) = (g.sett[i].max(0.0), g.susp[i]);
+    if su > 0.0 { se / (se + su) } else { 1.0 }
 }

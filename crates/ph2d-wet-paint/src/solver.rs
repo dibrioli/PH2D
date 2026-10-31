@@ -209,7 +209,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             } else if let Some(l) = ladeira.as_ref() {
                 let o = l.em(frow + kfl) - l.em(frow + kfr);
                 let d = film_m[kfl] as f64 - film_m[kfr] as f64;
-                l.termo(d, o, f, level_k, dif, level_clamp)
+                l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
             } else {
                 (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * level_k * dif
             };
@@ -223,7 +223,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             } else if let Some(l) = ladeira.as_ref() {
                 let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
                 let d = film_u[kf] as f64 - film_d[kf] as f64;
-                l.termo(d, o, f, level_k, dif, level_clamp)
+                l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
             } else {
                 (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * level_k * dif
             };
@@ -613,6 +613,7 @@ mod advect_jacobi;
 mod flow_jacobi;
 mod gota; // a lei da GOTA (W1e, F1) — instrumento das sondas, filho por LOC
 mod ladeira_do_oleo; // Bug 2 (dono 30/10): a altura do óleo assentado entra no nivelamento da água
+pub use ladeira_do_oleo::LADEIRA_ROTA;
 pub(crate) use ladeira_do_oleo::fotografa as fotografa_a_ladeira;
 mod project;
 mod sedimenta;

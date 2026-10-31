@@ -295,7 +295,14 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 } else if let Some(l) = ladeira {
                     let o = l.em(frow + kfl) - l.em(frow + kfr);
                     let d = film_m[kfl] as f64 - film_m[kfr] as f64;
-                    l.termo(d, o, f, c.level_k, c.dif, c.level_clamp)
+                    l.termo(
+                        d,
+                        o * l.assente(frow + kf),
+                        f,
+                        c.level_k,
+                        c.dif,
+                        c.level_clamp,
+                    )
                 } else {
                     (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * c.level_k * c.dif
                 };
@@ -309,7 +316,14 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 } else if let Some(l) = ladeira {
                     let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
                     let d = film_u[kf] as f64 - film_d[kf] as f64;
-                    l.termo(d, o, f, c.level_k, c.dif, c.level_clamp)
+                    l.termo(
+                        d,
+                        o * l.assente(frow + kf),
+                        f,
+                        c.level_k,
+                        c.dif,
+                        c.level_clamp,
+                    )
                 } else {
                     (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * c.level_k * c.dif
                 };

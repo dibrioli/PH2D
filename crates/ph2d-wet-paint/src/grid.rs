@@ -102,6 +102,9 @@ pub struct Grid {
     /// (em `film`) que os traços anteriores deixaram, fotografada no início de um traço com o Real Oil na mão. VAZIA sem
     /// óleo na grade ou com um pincel sem o Real Oil.
     pub oleo_antes: Vec<f32>,
+    /// A fracção ASSENTADA (`sett ÷ massa`) de cada célula na mesma fotografia ([`Self::oleo_antes`]): o peso da
+    /// ladeira — sobre óleo que ainda estava molhado no início do traço a água não é segurada nem empurrada.
+    pub oleo_antes_assente: Vec<f32>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -275,6 +278,7 @@ impl Grid {
             aparencia: Vec::new(),
             oleo: Vec::new(),
             oleo_antes: Vec::new(),
+            oleo_antes_assente: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],

@@ -600,3 +600,39 @@ fn a_receita_com_macro_aparece_como_macro_no_indice() {
     assert_eq!(index.counts().get(&AssetKind::Macro), Some(&1));
     assert_eq!(index.counts().get(&AssetKind::Component), None);
 }
+
+/// D17 (dono 30/10) — os Kanbans (até VAZIOS, nunca a agenda) e os Quadros do projecto entram nos
+/// Assets pelo nome e pela família.
+#[test]
+fn the_index_lists_the_projects_kanbans_and_boards_but_not_the_agenda() {
+    let mut docs = ph2d_editor_core::documents::Documents::default();
+    let k = docs.kanbans_shared().borrow_mut().create("Sprint");
+    let b = docs.create("Ideias".into());
+    let mut index = AssetIndex::new();
+    super::push_documents(
+        &mut index,
+        &docs.asset_listing(),
+        &ph2d_asset_index::CatalogTree::new(),
+    );
+    let got: Vec<_> = index
+        .entries()
+        .iter()
+        .map(|e| (e.key, e.name.clone(), e.kind()))
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            (
+                AssetRef::Kanban { id: k.0 },
+                "Sprint".to_owned(),
+                AssetKind::Kanban
+            ),
+            (
+                AssetRef::Board { id: b.0 },
+                "Ideias".to_owned(),
+                AssetKind::Board
+            ),
+        ],
+        "o Kanban vazio e o Quadro tinham de estar lá, e a agenda não"
+    );
+}

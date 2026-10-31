@@ -50,6 +50,12 @@ pub(super) fn paint_card(
     // atrás dela, e o que está atrás é o mesmo fundo em que o objecto pousa na tela.
     if let Some(t) = thumb_img {
         crate::paint_thumb::paint_thumb(ctx, key, t, thumb, inset);
+    } else if let Some(icon) = doc_icon(key) {
+        // D17 — um documento não tem pixels: o ícone da família, no meio do quadrado.
+        let side = thumb.w / 2.0;
+        let r = Rect::new(thumb.x + side / 2.0, thumb.y + side / 2.0, side, side);
+        let ink = resolve(ColorToken::Text2, theme);
+        ph2d_editor_core::paint::paint_icon(ctx.scene, icon, r, ink, StrokeToken::Default.px());
     }
     // ⭐ Pela porta do TEMA: a miniatura é plana num tema moderno (sem moldura em repouso).
     ph2d_editor_core::paint::stroke_frame(
@@ -100,4 +106,14 @@ pub(super) fn paint_card(
     // ⚠️ **O rectângulo de gesto é o CARTÃO INTEIRO**, não só a miniatura — o nome faz parte do
     // alvo, que é o que todo navegador de ficheiros faz.
     ctx.host.hit_index_mut().register(id, rect);
+}
+
+/// O ícone de um documento (D17): o do botão «Kanban» da barra do Quadro e o da apresentação.
+fn doc_icon(key: ph2d_asset_index::AssetRef) -> Option<ph2d_editor_core::icons::IconId> {
+    use ph2d_editor_core::icons::IconId;
+    match key {
+        ph2d_asset_index::AssetRef::Kanban { .. } => Some(IconId::LayoutGrid),
+        ph2d_asset_index::AssetRef::Board { .. } => Some(IconId::Presentation),
+        _ => None,
+    }
 }

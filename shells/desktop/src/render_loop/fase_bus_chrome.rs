@@ -135,26 +135,23 @@ impl crate::App {
     pub(super) fn fase_bus_topbar(&mut self, action: EditorAction) -> Option<()> {
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
-            surface, renderer, ..
+            surface,
+            renderer,
+            hero_screen,
+            ..
         } = FrameGfx::of(gfx);
         match action {
+            // D17 — o duplo-clique num Kanban ou num Quadro dos Assets abre a aba dele.
+            EditorAction::OpenAsset(doc) => {
+                hero_screen.as_mut()?.documents.open_asset(doc);
+            }
             EditorAction::SetImageFilter { mode } => {
-                // Single global image-filter toggle. Rebuilds the
-                // atlas + individual samplers and their bind groups
-                // so EVERY sprite samples with the new mode; no
-                // texture re-upload. The Vello BG-Removal preview
-                // reads `hero.project.image_filter` directly (set by
-                // the editor before this action), so both stay in
-                // sync.
+                // One global toggle: rebuilds the samplers (no re-upload); the BG-Removal
+                // preview reads `hero.project.image_filter`, so both stay in sync.
                 renderer.set_filter_mode(mode);
             }
             EditorAction::SetPresentMode { vsync } => {
-                // Config → Display toggle. VSync (Fifo) = smooth
-                // hardware-paced motion; Immediate = non-blocking
-                // (no mouse-stutter). Reconfigures the swap chain
-                // in place. Both modes are available on this
-                // backend (boot log confirms); Fifo is the
-                // universal fallback.
+                // VSync (Fifo, the universal fallback) = paced; Immediate = no mouse-stutter.
                 surface.set_present_mode(if vsync {
                     wgpu::PresentMode::Fifo
                 } else {
@@ -162,13 +159,8 @@ impl crate::App {
                 });
             }
             EditorAction::Transport(cmd) => {
-                // TopBar Play/Pause/Reset drive the ONE clock
-                // (`Playhead`, W4.T7). Physics, Motion, Timeline and
-                // Flip all ride it, so one click moves every
-                // time-based subsystem at once. The single door
-                // `transport::apply` is unit-tested headless. NOTE:
-                // physics scrub-back — the ball flying back up — is
-                // W1.5; here Reset only returns the clock to 0.
+                // TopBar Play/Pause/Reset drive the ONE clock (`Playhead`, W4.T7) every
+                // time-based subsystem rides; Reset only returns it to 0 (scrub-back is W1.5).
                 ph2d_transport::apply(cmd, &mut self.playhead);
                 // ⭐ O Play de CIMA põe a cena a CORRER (a Animação de cada objecto, em qualquer aba —
                 // o Autoplay do Godot); o Reset de cima sai. O Pause só pausa (onda 4, item 1).
@@ -176,14 +168,7 @@ impl crate::App {
                     self.timeline_intents.push(i);
                 }
             }
-            // (Bgremoval bake leftover handled inside the
-            // `OneShotImageOp` arm above — defers to the
-            // image_edit drain site so `bgremoval_active` is
-            // observed AFTER any same-frame ActivateTool fires.)
-            // EditorAction is `#[non_exhaustive]`. A future
-            // variant landing in `ph2d-editor` shouldn't break
-            // the shell — drop it silently here until a
-            // dispatch site is wired up.
+            // `EditorAction` is `#[non_exhaustive]`: a variant with no dispatch site yet drops here.
             _ => {}
         }
         Some(())

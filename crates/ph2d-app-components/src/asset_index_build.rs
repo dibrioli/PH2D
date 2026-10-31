@@ -87,11 +87,16 @@ pub fn publish_for_frame(
     // Ver o parâmetro homónimo do [`build`].
     ppm: f32,
     visible: bool,
+    // D17 — os Kanbans e os Quadros do projecto (`Documents::asset_listing`).
+    documents: &[(
+        ph2d_editor_core::interaction::drag_payload::DragPayload,
+        String,
+    )],
 ) {
     if !visible {
         return;
     }
-    let index = SWATCHES.with(|sw| {
+    let mut index = SWATCHES.with(|sw| {
         LIBRARY.with(|lib| {
             build(
                 sim,
@@ -104,7 +109,32 @@ pub fn publish_for_frame(
             )
         })
     });
+    push_documents(&mut index, documents, catalogs);
     ph2d_panel_asset_browser::set_current_index(index);
+}
+
+/// ⭐ D17 (dono 30/10) — **os documentos do projecto entram nos Assets por referência**, como as
+/// imagens: um Kanban VAZIO também (existe até ser apagado). Sem pixels: o cartão pinta o ícone.
+pub(crate) fn push_documents(
+    index: &mut AssetIndex,
+    documents: &[(
+        ph2d_editor_core::interaction::drag_payload::DragPayload,
+        String,
+    )],
+    catalogs: &ph2d_asset_index::CatalogTree,
+) {
+    use ph2d_editor_core::interaction::drag_payload::DragPayload;
+    for (doc, name) in documents {
+        let key = match *doc {
+            DragPayload::Kanban { id } => AssetRef::Kanban { id },
+            DragPayload::Board { id } => AssetRef::Board { id },
+            _ => continue,
+        };
+        let mut e = AssetEntry::new(key, name.clone());
+        e.detail = tr(key.kind().label_key()).to_string();
+        e.catalog = catalogs.catalog_of(&key);
+        index.push(e);
+    }
 }
 
 /// Reconstrói o índice a partir do mundo + do `AssetDb`.

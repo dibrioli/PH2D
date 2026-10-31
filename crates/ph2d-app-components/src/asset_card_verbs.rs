@@ -42,7 +42,10 @@ pub(crate) fn users_of(
 ) -> Vec<u64> {
     let mut out: Vec<(u64, u64)> = match asset {
         // Um objecto da cena não é um asset: ninguém o «usa».
-        DragPayload::Object { .. } | DragPayload::Property { .. } => Vec::new(),
+        DragPayload::Object { .. }
+        | DragPayload::Property { .. }
+        | DragPayload::Kanban { .. }
+        | DragPayload::Board { .. } => Vec::new(),
         DragPayload::Prefab { stable_id } => {
             let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
             q.iter(sim.world())
@@ -122,6 +125,9 @@ pub fn drain(
         // ⛔ Um objecto da cena nunca é um cartão da biblioteca (a carga dele nasce na Hierarquia):
         // nenhum verbo de cartão o recebe.
         (_, DragPayload::Object { .. } | DragPayload::Property { .. }) => false,
+        // D17 — um documento (Kanban, Quadro) não tem verbo de receita; os dele (abrir, apagar)
+        // são o duplo-clique e a fase 1b.
+        (_, DragPayload::Kanban { .. } | DragPayload::Board { .. }) => false,
         // ── Editar a receita ───────────────────────────────────────────────────────────────────
         //
         // ⭐⭐⭐ **Ele SELECCIONA, e mais nada** (report do Enio, 2026-09-05: *«não tem como editar
@@ -214,7 +220,9 @@ pub fn drain(
                     DragPayload::Prefab { .. } => tr("shell.asset_card_verbs.no_copies_of_this"),
                     DragPayload::Image { .. }
                     | DragPayload::Object { .. }
-                    | DragPayload::Property { .. } => {
+                    | DragPayload::Property { .. }
+                    | DragPayload::Kanban { .. }
+                    | DragPayload::Board { .. } => {
                         tr("shell.asset_card_verbs.nothing_is_using_this")
                     }
                 }));

@@ -132,7 +132,10 @@ fn library_name(payload: DragPayload, libs: &mut Libraries<'_>) -> Option<String
             let names = crate::library_names::session_library(libs.sim, libs.db, libs.atlas);
             names.get(&AssetId::from_digest(asset)).cloned()
         }
-        DragPayload::Object { .. } | DragPayload::Property { .. } => None,
+        DragPayload::Object { .. }
+        | DragPayload::Property { .. }
+        | DragPayload::Kanban { .. }
+        | DragPayload::Board { .. } => None,
     }
 }
 

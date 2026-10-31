@@ -136,12 +136,21 @@ pub fn probe_set_painted(keys: Vec<ph2d_asset_index::AssetRef>) {
 pub fn payload_at(
     index: usize,
 ) -> Option<ph2d_editor_core::interaction::drag_payload::DragPayload> {
+    Some(payload_of(painted_at(index)?))
+}
+
+/// O endereço de um asset no vocabulário de chrome — UMA tabela para o arrasto, o menu e o abrir.
+#[must_use]
+pub fn payload_of(
+    key: ph2d_asset_index::AssetRef,
+) -> ph2d_editor_core::interaction::drag_payload::DragPayload {
+    use ph2d_asset_index::AssetRef;
     use ph2d_editor_core::interaction::drag_payload::DragPayload;
-    match painted_at(index)? {
-        ph2d_asset_index::AssetRef::Component { stable_id } => {
-            Some(DragPayload::Prefab { stable_id })
-        }
-        ph2d_asset_index::AssetRef::Texture { asset } => Some(DragPayload::Image { asset }),
+    match key {
+        AssetRef::Component { stable_id } => DragPayload::Prefab { stable_id },
+        AssetRef::Texture { asset } => DragPayload::Image { asset },
+        AssetRef::Kanban { id } => DragPayload::Kanban { id },
+        AssetRef::Board { id } => DragPayload::Board { id },
     }
 }
 
@@ -311,7 +320,7 @@ pub fn probe_first_texture() -> Option<[u8; 32]> {
     with_index(|ix| {
         ix.entries().iter().find_map(|e| match e.key {
             ph2d_asset_index::AssetRef::Texture { asset } => Some(asset),
-            ph2d_asset_index::AssetRef::Component { .. } => None,
+            _ => None,
         })
     })
 }

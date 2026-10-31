@@ -17,6 +17,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "asset.kind.component" => "Prefab",
         "asset.kind.texture" => "Image",
         "asset.kind.macro" => "Macro",
+        "asset.kind.kanban" => "Kanban",
+        "asset.kind.board" => "Board",
         "asset.sort.kind" => "Type",
         "asset.sort.name" => "Name",
         "asset.sort.recent" => "Recent",

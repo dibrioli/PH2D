@@ -57,14 +57,16 @@ pub const ASSET_SORT: [NodeId; ASSET_SORT_MODES] = [
 ];
 
 /// Quantos filtros de família a fileira endereça: **todas, mais uma por família**.
-pub const ASSET_KIND_FILTERS: usize = 4;
+pub const ASSET_KIND_FILTERS: usize = 6;
 
-/// Os chips de família (`All` · `Prefab` · `Image` · `Macro`).
+/// Os chips de família (`All` · `Prefab` · `Image` · `Macro` · `Kanban` · `Board`).
 pub const ASSET_KIND: [NodeId; ASSET_KIND_FILTERS] = [
     hash_node_id("asset_browser.kind.0"),
     hash_node_id("asset_browser.kind.1"),
     hash_node_id("asset_browser.kind.2"),
     hash_node_id("asset_browser.kind.3"),
+    hash_node_id("asset_browser.kind.4"),
+    hash_node_id("asset_browser.kind.5"),
 ];
 
 /// **Quantos cartões a grade endereça de uma vez.**

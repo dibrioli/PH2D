@@ -49,6 +49,10 @@ pub enum AssetKind {
     /// Uma receita cuja raiz tem uma `Macro` (W18, `docs/Macros/16_W18_plano.md` §2.6): o mesmo
     /// endereço de um [`Self::Component`], marcado por [`AssetEntry::receita_de_macro`].
     Macro,
+    /// Um Kanban do projecto (D17, decisão do dono 30/10): fica até ser apagado, por referência.
+    Kanban,
+    /// Um Quadro do projecto (D17): idem.
+    Board,
 }
 
 impl AssetKind {
@@ -83,14 +87,21 @@ impl AssetKind {
             AssetKind::Component => "asset.kind.component",
             AssetKind::Texture => "asset.kind.texture",
             AssetKind::Macro => "asset.kind.macro",
+            AssetKind::Kanban => "asset.kind.kanban",
+            AssetKind::Board => "asset.kind.board",
         }
     }
 
     /// Todas as famílias, na ordem de apresentação. **É a fonte** — um filtro por família deriva
     /// daqui, nunca de uma lista escrita à mão ao lado (memória
     /// `feedback_a_hand_written_list_beside_a_predicate_is_two_answers`).
-    pub const ALL: &'static [AssetKind] =
-        &[AssetKind::Component, AssetKind::Texture, AssetKind::Macro];
+    pub const ALL: &'static [AssetKind] = &[
+        AssetKind::Component,
+        AssetKind::Texture,
+        AssetKind::Macro,
+        AssetKind::Kanban,
+        AssetKind::Board,
+    ];
 }
 
 /// **O endereço durável de um asset** — e note-se que ele é de tipos DIFERENTES por família.
@@ -104,6 +115,10 @@ pub enum AssetRef {
     Component { stable_id: u64 },
     /// O `AssetId` (blake3) dos pixels.
     Texture { asset: [u8; 32] },
+    /// O `KanbanId` do documento (D17).
+    Kanban { id: u64 },
+    /// O `BoardId` do Quadro (D17).
+    Board { id: u64 },
 }
 
 impl AssetRef {
@@ -114,6 +129,8 @@ impl AssetRef {
         match self {
             AssetRef::Component { .. } => AssetKind::Component,
             AssetRef::Texture { .. } => AssetKind::Texture,
+            AssetRef::Kanban { .. } => AssetKind::Kanban,
+            AssetRef::Board { .. } => AssetKind::Board,
         }
     }
 }

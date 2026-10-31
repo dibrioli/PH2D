@@ -112,6 +112,12 @@ pub(crate) fn apply_event(
             // cena é a queda num alvo (wave B3), porque *qual* objecto a recebe é o que a queda
             // responde e um duplo-clique não. Fazer nascer uma sprite nova seria inventar um
             // gesto que o artista não pediu.
+            // D17 — um Kanban ou um Quadro abre-se na aba dele.
+            Some(r @ (AssetRef::Kanban { .. } | AssetRef::Board { .. })) => {
+                host.bus_mut()
+                    .push(EditorAction::OpenAsset(crate::state::payload_of(r)));
+                EventOutcome::Consumed
+            }
             Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
         },
 
@@ -187,16 +193,9 @@ pub(crate) fn apply_event(
             // sem sujeito não tem endereço nenhum para carregar. Dizê-lo pede uma acção própria —
             // e a janela em que isto acontece é a de um artista a rolar a grade com o menu aberto.
             match cell_target_of(cell) {
-                Some(AssetRef::Component { stable_id }) => {
+                Some(r) => {
                     host.bus_mut().push(EditorAction::AssetCardVerb {
-                        asset: DragPayload::Prefab { stable_id },
-                        verb,
-                    });
-                    EventOutcome::Consumed
-                }
-                Some(AssetRef::Texture { asset }) => {
-                    host.bus_mut().push(EditorAction::AssetCardVerb {
-                        asset: DragPayload::Image { asset },
+                        asset: crate::state::payload_of(r),
                         verb,
                     });
                     EventOutcome::Consumed

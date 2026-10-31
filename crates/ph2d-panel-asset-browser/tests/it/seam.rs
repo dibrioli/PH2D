@@ -975,3 +975,35 @@ fn the_catalog_scrollbar_thumb_is_grabbable_where_it_is_drawn() {
         first_row.y
     );
 }
+
+/// D17 — o duplo-clique num Kanban ou num Quadro pede a aba dele; o arrasto leva a carga certa.
+///
+/// **Mutação que deve sangrar:** trocar `AssetRef::Kanban` por `AssetRef::Board` no `payload_of`.
+#[test]
+fn a_double_click_on_a_kanban_or_board_card_opens_it() {
+    use ph2d_editor_core::interaction::drag_payload::DragPayload;
+    for (key, doc, kind) in [
+        (
+            AssetRef::Kanban { id: 5 },
+            DragPayload::Kanban { id: 5 },
+            AssetKind::Kanban,
+        ),
+        (
+            AssetRef::Board { id: 6 },
+            DragPayload::Board { id: 6 },
+            AssetKind::Board,
+        ),
+    ] {
+        let (mut host, mut st) = open_host();
+        ph2d_panel_asset_browser::state::probe_set_painted(vec![key]);
+        let out = host.apply_panel_event::<AssetBrowserPanel>(
+            &mut st,
+            WidgetEvent::DoubleClick(ph2d_editor_core::ids::asset_cell_id(0)),
+        );
+        assert_eq!(out, EventOutcome::Consumed);
+        let pushed: Vec<EditorAction> = host.bus().iter().cloned().collect();
+        assert_eq!(pushed, vec![EditorAction::OpenAsset(doc)]);
+        assert_eq!(ph2d_panel_asset_browser::state::payload_at(0), Some(doc));
+        assert_eq!(key.kind(), kind);
+    }
+}

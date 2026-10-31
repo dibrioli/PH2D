@@ -43,6 +43,10 @@ pub enum DragPayload {
     /// (`begin_named_drag`). `script` = o `ScriptId` da biblioteca quando a linha é uma propriedade
     /// declarada por esse script (no texto dele vira `self.<nome>`), `0` quando é de um componente.
     Property { script: u64 },
+    /// Um **Kanban** do projecto, dos Assets (D17) — o `KanbanId`.
+    Kanban { id: u64 },
+    /// Um **Quadro** do projecto, dos Assets (D17) — o `BoardId`.
+    Board { id: u64 },
 }
 
 impl DragPayload {
@@ -54,6 +58,8 @@ impl DragPayload {
             DragPayload::Image { .. } => tr("chrome.interaction.image"),
             DragPayload::Object { .. } => tr("chrome.interaction.object"),
             DragPayload::Property { .. } => tr("chrome.interaction.property"),
+            DragPayload::Kanban { .. } => tr("chrome.interaction.kanban"),
+            DragPayload::Board { .. } => tr("chrome.interaction.board"),
         }
     }
 }

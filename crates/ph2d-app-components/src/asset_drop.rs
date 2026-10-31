@@ -141,6 +141,9 @@ impl DropAction {
             DragPayload::Property { .. } => {
                 tr("shell.asset_drop.drop_an_object_on_a_script").to_string()
             }
+            DragPayload::Kanban { .. } | DragPayload::Board { .. } => {
+                tr("shell.asset_drop.drop_a_document_on_a_catalog").to_string()
+            }
         }
     }
 }
@@ -178,6 +181,16 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
         (DragPayload::Property { .. }, DropTarget::Code { on_text: true }) => DropAction::WriteCode,
         (DragPayload::Property { .. }, _) => DropAction::Cancel,
+        // ⛔ D17 — um Kanban ou um Quadro só se ARRUMA (gaveta); a cena, a ranhura e o texto recusam.
+        // Largá-lo num Quadro aberto é a fase 1b (`board_kanban_link`).
+        (
+            p @ (DragPayload::Kanban { .. } | DragPayload::Board { .. }),
+            DropTarget::CatalogRow { catalog },
+        ) => DropAction::Filecatalog {
+            payload: p,
+            catalog,
+        },
+        (DragPayload::Kanban { .. } | DragPayload::Board { .. }, _) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
         (_, DropTarget::ScriptObject { .. }) => DropAction::Refuse,
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);

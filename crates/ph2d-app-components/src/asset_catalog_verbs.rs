@@ -105,6 +105,9 @@ pub fn drain(
                 DragPayload::Image { asset } => {
                     ph2d_asset_index::AssetRef::Texture { asset: *asset }
                 }
+                // D17 — um Kanban e um Quadro arrumam-se numa gaveta como qualquer asset.
+                DragPayload::Kanban { id } => ph2d_asset_index::AssetRef::Kanban { id: *id },
+                DragPayload::Board { id } => ph2d_asset_index::AssetRef::Board { id: *id },
             };
             match catalog {
                 Some(c) => {

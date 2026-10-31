@@ -52,6 +52,40 @@ fn an_unreadable_blob_opens_empty_instead_of_exploding() {
     assert!(super::restore(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF]).is_empty());
 }
 
+/// D17 — um Kanban e um Quadro arrumados numa gaveta voltam do ficheiro (v3).
+#[test]
+fn a_kanban_and_a_board_in_a_catalog_reopen_in_it() {
+    let mut t = CatalogTree::new();
+    let docs = t.create("Docs");
+    let (k, b) = (AssetRef::Kanban { id: 3 }, AssetRef::Board { id: 4 });
+    t.assign(k, docs);
+    t.assign(b, docs);
+    let back = super::restore(&super::collect(&t));
+    assert_eq!(back, t);
+    assert_eq!(
+        (back.catalog_of(&k), back.catalog_of(&b)),
+        (Some(docs), Some(docs))
+    );
+}
+
+/// D17 — um ficheiro da v2 (sem os campos do Kanban e do Quadro) ainda abre com as gavetas dele.
+#[test]
+fn a_version_2_taxonomy_still_opens() {
+    let cat = super::SavedCatalog {
+        id: 1,
+        path: "A".into(),
+    };
+    let row = (Some(7_u64), None::<[u8; 32]>, 1_u128);
+    let blob = postcard::to_allocvec(&(2_u32, vec![cat], vec![row], 2_u128)).expect("v2");
+    let back = super::restore(&blob);
+    let prefab = AssetRef::Component { stable_id: 7 };
+    assert_eq!(
+        back.catalog_of(&prefab).map(|c| c.0),
+        Some(1),
+        "a v2 perdeu a gaveta"
+    );
+}
+
 /// ⭐ **O `next_id` sobrevive ao ficheiro** — um catálogo criado depois de abrir não pode sentar-se
 /// em cima de um carregado, senão os assets dele apareceriam dentro do novo.
 ///
@@ -69,11 +103,6 @@ fn a_reopened_taxonomy_never_hands_out_an_id_it_already_has() {
 
 /// ⭐⭐⭐ **QUANTO CUSTA pôr a taxonomia na captura do undo** — a medição que a decisão de a manter
 /// fora do `ProjectState` nunca fez.
-///
-/// ⚠️ O doc deste módulo AFIRMAVA que metê-la ali *«faria toda renomeação de gaveta reescrever o
-/// snapshot do mundo inteiro»*. Isso é falso desde a F2: a captura do mundo é **incremental** e
-/// custa o tamanho da EDIÇÃO. O que uma taxonomia na captura custa é o `collect` dela, por quadro
-/// com input — e é isso que este número mede.
 ///
 /// Corra com:
 /// `cargo test -p ph2d-host-desktop --bins measure_catalog_capture_cost -- --ignored --nocapture`

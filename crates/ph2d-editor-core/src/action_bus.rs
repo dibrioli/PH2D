@@ -631,6 +631,9 @@ pub enum EditorAction {
         /// Qual dos três.
         verb: AssetCardAction,
     },
+    /// D17 — abrir um documento do projecto a partir dos Assets (duplo-clique): o Quadro na aba
+    /// dele, o Kanban pedido à aba da família. Quem o executa: [`crate::documents::Documents::open_asset`].
+    OpenAsset(crate::interaction::drag_payload::DragPayload),
     /// O painel MACROS e a linha de etapas da Timeline (ADR-0186, W5d).
     Macro(crate::macro_edits::MacroRequest),
     /// O painel PIXEL (ADR-0196): ferramenta, cores, trocar.

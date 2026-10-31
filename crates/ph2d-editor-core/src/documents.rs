@@ -9,8 +9,10 @@
 //! ao gravar ([`Documents::boards`]) e escreve-o ao carregar
 //! ([`crate::screens::hero::document_tabs::load`]).
 
+use crate::interaction::drag_payload::DragPayload;
 use ph2d_board_model::{Board, BoardId, History};
 pub use ph2d_board_model::{BoardSet, undo_tick};
+use ph2d_kanban_model::KanbanId;
 pub use ph2d_kanban_model::KanbanSet;
 use std::collections::BTreeMap;
 
@@ -310,6 +312,37 @@ impl Documents {
         let id = self.active?;
         let board = self.boards.get_mut(id)?;
         Some((board, &mut self.live))
+    }
+
+    /// D17 (dono 30/10) — os Kanbans (sem a agenda) e os Quadros, como os Assets os listam: `(endereço, nome)`.
+    #[must_use]
+    pub fn asset_listing(&self) -> Vec<(DragPayload, String)> {
+        let kanbans = self.kanbans.borrow();
+        let k = kanbans.iter().map(|k| {
+            let id = DragPayload::Kanban { id: k.id.0 };
+            (id, k.header.name.clone())
+        });
+        let b = self.boards.boards().iter();
+        let b = b.map(|b| (DragPayload::Board { id: b.id.0 }, b.name.clone()));
+        k.collect::<Vec<_>>().into_iter().chain(b).collect()
+    }
+
+    /// D17 — abrir um documento dos Assets: o Quadro na aba dele, o Kanban pedido à aba da família
+    /// (sem quem a abra, o aviso). `false` = não é um documento, ou já não existe.
+    pub fn open_asset(&mut self, doc: DragPayload) -> bool {
+        match doc {
+            DragPayload::Board { id } if self.boards.get(BoardId(id)).is_some() => {
+                self.activate(Some(BoardId(id)));
+                true
+            }
+            DragPayload::Kanban { id } if self.kanbans.borrow().get(KanbanId(id)).is_some() => {
+                crate::screens::hero::board_video::kanban::request_open(
+                    &mut self.live,
+                    KanbanId(id),
+                )
+            }
+            _ => false,
+        }
     }
 
     /// Cria um quadro vazio no fim das abas e torna-o activo.

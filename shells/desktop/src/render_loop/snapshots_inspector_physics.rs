@@ -54,14 +54,13 @@ pub(super) fn physics(
     ph2d_app_components::asset_index_build::publish_for_frame(
         sim,
         asset_db,
-        // ⭐⭐ Ele já chegava a esta função — o que faltava era chegar ao índice. É o mapa que
-        // separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
         atlas_asset_map,
         catalogs,
         // ⭐ O retrato de um prefab põe cada peça onde a TELA a põe, e o pivô autorado converte-se
         // com o `pixels_per_meter` do projecto (`Sprite::resolve_anchor`).
         hero.project.pixels_per_meter,
         hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
+        &hero.documents.asset_listing(), // D17: os Kanbans e os Quadros
     );
     // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
     // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a

@@ -5,7 +5,7 @@
 use crate::seca::{SecaGpu, SecaU};
 use crate::{
     AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, read,
+    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
@@ -53,7 +53,29 @@ fn junta(@builtin(global_invocation_id) g: vec3<u32>, @builtin(num_workgroups) n
 }
 ";
 
+/// A porta do `has_fluid` NA placa (item 3 de LIGACAO_PLACA.md): depois do rebuild, os grupos de cada passada
+/// do resto do passo = os da CPU se `caixa[14]` (has_fluid), senão 0 — o passo inteiro num submit e numa espera.
+const PORTA: &str = r"
+@group(0) @binding(0) var<storage, read> caixa: array<i32>;
+@group(0) @binding(1) var<storage, read> base: array<u32>;
+@group(0) @binding(2) var<storage, read_write> args: array<u32>;
+@compute @workgroup_size(64)
+fn porta(@builtin(global_invocation_id) g: vec3<u32>) {
+    if g.x >= arrayLength(&base) { return; }
+    args[g.x] = select(0u, base[g.x], caixa[14] != 0);
+}
+";
+/// Passadas no máximo num passo depois do rebuild (campo 7 + sedimenta 2 + bordas 2 + projecção 5 + vmax 1).
+const MAX_PLANO: usize = 24;
+
 pub struct PassoPlaca {
+    /// `porta`: os grupos de base (CPU) → os indirectos (`args`, INDIRECT) pela `caixa[14]`.
+    porta: wgpu::ComputePipeline,
+    porta_bg: wgpu::BindGroup,
+    base: wgpu::Buffer,
+    args: wgpu::Buffer,
+    /// 64 B mapeáveis: a caixa e o `vmax` lidos numa só cópia no fim do passo.
+    stage: wgpu::Buffer,
     adv: AdvectGpu,
     seca: SecaGpu,
     /// `[separa, junta]` com o mesmo grupo (st, film, susp).
@@ -110,7 +132,59 @@ impl PassoPlaca {
         };
         let (p0, b0) = mk("separa");
         let (p1, b1) = mk("junta");
+        use wgpu::BufferUsages as B;
+        let buf = |label: &str, size: u64, usage: B| {
+            gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size,
+                usage,
+                mapped_at_creation: false,
+            })
+        };
+        let n_args = (MAX_PLANO * 12) as u64;
+        let base = buf("wet-gpu porta base", n_args, B::STORAGE | B::COPY_DST);
+        let args = buf("wet-gpu porta args", n_args, B::STORAGE | B::INDIRECT);
+        let stage = buf("wet-gpu caixa stage", 64, B::COPY_DST | B::MAP_READ);
+        let pm = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("wet-gpu porta"),
+                source: wgpu::ShaderSource::Wgsl(PORTA.into()),
+            });
+        let porta = gpu
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("porta"),
+                layout: None,
+                module: &pm,
+                entry_point: Some("porta"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
+        let porta_bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("porta"),
+            layout: &porta.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: adv.caixa.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: base.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: args.as_entire_binding(),
+                },
+            ],
+        });
         let s = PassoPlaca {
+            porta,
+            porta_bg,
+            base,
+            args,
+            stage,
             adv,
             seca,
             entrelaca: [p0, p1],
@@ -180,20 +254,29 @@ impl PassoPlaca {
         let mut k = Knobs::from_params(&p, g.flow.rf).com_sedimenta(p.sedimenta, grav[0], grav[1]);
         k.isola = i32::from(p.paredes && !g.traco.is_empty());
         self.adv.set_knobs(gpu, &k);
-        if n.is_multiple_of(2) {
-            self.adv.step_plano(gpu, &u, 1, &PLANO_REBUILD);
-            let (bx0, bx1, by0, by1, hf) = self.adv.readback_caixa(gpu);
-            (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (bx0, bx1, by0, by1, hf);
-            if !hf {
+        let par = n.is_multiple_of(2);
+        let seca = n.is_multiple_of(sim.dry_every);
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        if par {
+            self.adv.encode_plano(&mut enc, &u, 1, &PLANO_REBUILD, None);
+        }
+        // Passo de rebuild COM secagem: a secagem precisa da caixa nova na CPU (faixas e grupos) — a 2.ª espera.
+        if par && seca {
+            enc.copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
+            gpu.queue.submit([enc.finish()]);
+            let c = self.le_caixa(gpu);
+            (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
+            if !g.has_fluid {
                 return false;
             }
+            enc = gpu.device.create_command_encoder(&Default::default());
         }
-        if n.is_multiple_of(sim.dry_every) {
+        if seca {
             let evap = sim.evap_scale * p.k(Knob::Evaporation);
             let rewet = sim.rewet_base * p.k(Knob::Rewet);
             self.seca_na_placa(gpu, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
         }
-        let mut plano = Vec::with_capacity(20);
+        let mut plano = Vec::with_capacity(MAX_PLANO);
         plano.extend_from_slice(if n.is_multiple_of(4) {
             &PLANO_CAMPO[..]
         } else {
@@ -208,8 +291,37 @@ impl PassoPlaca {
         }
         plano.extend(PLANO_VMAX);
         self.adv.zera_vmax(gpu);
-        self.adv.step_plano(gpu, &u, 1, &plano);
-        if self.adv.readback_vmax(gpu) < 0.5 {
+        // Rebuild sem secagem no mesmo submit: o resto do passo passa pela porta do `has_fluid` (indirecto).
+        let porta = par && !seca;
+        if porta {
+            let base: Vec<[u32; 3]> = plano
+                .iter()
+                .map(|&k| {
+                    let (c, r) = grupos(&u, k);
+                    [c, r, 1]
+                })
+                .collect();
+            gpu.queue
+                .write_buffer(&self.base, 0, bytemuck::cast_slice(&base));
+            let mut cp = enc.begin_compute_pass(&Default::default());
+            cp.set_pipeline(&self.porta);
+            cp.set_bind_group(0, &self.porta_bg, &[]);
+            cp.dispatch_workgroups(1, 1, 1);
+            drop(cp);
+            self.adv.encode_plano_indireto(&mut enc, &plano, &self.args);
+        } else {
+            self.adv.encode_plano(&mut enc, &u, 1, &plano, None);
+        }
+        enc.copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
+        gpu.queue.submit([enc.finish()]);
+        let c = self.le_caixa(gpu);
+        if porta {
+            (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
+            if !g.has_fluid {
+                return false;
+            }
+        }
+        if f32::from_bits(c[15] as u32) < 0.5 {
             sim.dry_every = 6;
             sim.evap_scale = 0.001;
             sim.rewet_base = 0.0001;
@@ -219,6 +331,21 @@ impl PassoPlaca {
             sim.rewet_base = 0.000025;
         }
         true
+    }
+
+    /// A ÚNICA espera: mapeia os 64 B que o submit copiou para `stage` (caixa 10..14, `vmax` 15).
+    fn le_caixa(&self, gpu: &GpuContext) -> [i32; 16] {
+        let sl = self.stage.slice(..);
+        sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let c = {
+            let d = sl.get_mapped_range().expect("mapped range");
+            let mut c = [0i32; 16];
+            c.copy_from_slice(bytemuck::cast_slice(&d));
+            c
+        };
+        self.stage.unmap();
+        c
     }
 
     /// A secagem toda na placa: `st` → film/susp (separa), `rgb`/`sett` copiados, as secagens, e de volta.

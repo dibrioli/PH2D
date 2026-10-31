@@ -574,6 +574,22 @@ impl AdvectGpu {
     }
 
     /// A caixa publicada pelo último rebuild: `(bx0, bx1, by0, by1, has_fluid)`.
+    /// O plano com `dispatch_workgroups_indirect`: a passada `j` lê os seus grupos em `args[12·j..]` (a porta do
+    /// `has_fluid` na placa, [`crate::passo`]).
+    pub fn encode_plano_indireto(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        plano: &[usize],
+        args: &wgpu::Buffer,
+    ) {
+        for (j, &k) in plano.iter().enumerate() {
+            let mut p = enc.begin_compute_pass(&Default::default());
+            p.set_pipeline(&self.pipes[k]);
+            p.set_bind_group(0, &self.groups[k], &[]);
+            p.dispatch_workgroups_indirect(args, 12 * j as u64);
+        }
+    }
+
     #[must_use]
     pub fn readback_caixa(&self, gpu: &GpuContext) -> (i32, i32, i32, i32, bool) {
         let c: Vec<i32> = read(gpu, &self.caixa, 64);
@@ -641,7 +657,7 @@ impl AdvectGpu {
 /// Os workgroups da passada `k`: o retângulo fino (`0..=3`, `14`), o de fluxo (`4..=7`,
 /// `11..=13`), o de fluxo com margem 1 (`10`), a folha fina inteira com o anel (`8`, `16`, `17`),
 /// a de fluxo inteira (`9`), uma thread por coluna (`18`, workgroup 64) ou uma thread só.
-fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
+pub(crate) fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
     let d = |a: i32, b: i32| (b - a + 1).max(0) as u32;
     let (c, r) = match k {
         0..=3 | 14 | 20 => (d(u.x0, u.x1), d(u.y0, u.y1)),

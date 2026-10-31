@@ -24,3 +24,12 @@ os factos do Rebelle usados são os que o prompt transcreve.
 - C (poça 4096², smoke, mín/med): advect paralelo f64 5,21 / f32 5,17 ms (−1 %); série: f32 −3,9 %, v3 −8,5 % (só série; o rayon não herda v3).
   f32 após 12 passos: sett máx 8,1 (de 294) em 1,36 % das células; **cor infinita em 1–1,6 % (1/want estoura em f32)**.
   v3: **zero bits mudam** (Rust não funde a*b+c; mul_add já exacto). v3 exige `unsafe` (workspace proíbe).
+
+## Onda 2 (dono 30/10 «sim»): mais rápido que hoje
+Ordem aprovada: (1) régua comparável — a MESMA aguada no PH2D e no Rebelle («somos X× mais lentos»); (2) secagem (≈ metade
+do passo) mais leve sem mudar a cor; (3) memória por ponto (428 → ~220 B/px). Rebelle no ecrã real = pedir de novo ao dono.
+| item | estado | agente | commits | número |
+|---|---|---|---|---|
+| 1 régua comparável | explorador a procurar medições antigas e o relógio «água parou» | explorador | — | — |
+| 2 secagem | diagnóstico + sonda de cortes AO BIT (`examples/sonda_secagem.rs`) | general-purpose | — | — |
+| 3 memória | aguarda 1–2 | — | — | — |

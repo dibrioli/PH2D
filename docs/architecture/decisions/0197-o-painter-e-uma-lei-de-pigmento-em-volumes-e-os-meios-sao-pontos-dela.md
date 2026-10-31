@@ -56,6 +56,23 @@ Somem como casos de (1)–(5): `Ecra::{Porto,Cobre,…}` e os campos `filme·esc
 clamp por canal à tinta mais clara, a ladeira do óleo com 8 rotas num `AtomicU8` (fica UMA lei de escoamento com
 $\tau_y$ — Orchard), a velatura que depende do Live Water.
 
+### 1.1 Um controlo, uma grandeza — a ORTOGONALIDADE (dono 31/10)
+
+> *«o volume de tinta que vai ao papel não pode ser definido nem pelo pigmento nem pela água pois essas duas vão
+> definir a diluição da tinta e não o quanto da mistura vai pro papel. isso é só um exemplo que hoje está errado.»*
+
+- **Pigmento + Água → só a RECEITA** da tinta no pincel: concentração $\phi=V_{pig}/(V_{pig}+V_{veic})$ (e o meio $m$
+  diz QUE veículo). Não mudam quanto se deposita.
+- **Volume (carga) → só a QUANTIDADE**: espessura $h$ depositada por área; a pressão entra por $A_c(p)$ e por $h$, nunca
+  pela receita. Pigmento por área $= \phi\,h$ — o produto é a CONSEQUÊNCIA, nenhum knob o fixa diretamente.
+- Hoje está errado: carga $=$ `PigmentPerDab × Opacity × Intensity × PressureOpacity` (D1, 46 pincéis dependem de >1
+  membro) e água $=$ `Water × WaterPerDab` com a pressão invertida (`painter/doors.rs:25-29`, D4).
+- **Regra geral:** cada controlo do painel mexe em UMA grandeza com unidade, e nenhuma grandeza tem dois controlos;
+  as 22 famílias de duplicados do censo resolvem-se assim (tabela 177 → N em `F3_controlos.md`).
+- **Portão (entra no §4):** com Volume fixo, varrer Pigmento × Água não muda o volume depositado (só a cor); com
+  Pigmento × Água fixos, varrer Volume não muda a concentração (só a espessura/cobertura). Idem para cada par de
+  controlos da tabela: o jacobiano controlo → grandeza é diagonal.
+
 ### 2. Os meios são PONTOS (dados), não ramos
 
 `Meio` passa a ser um TIPO com uma tabela de dados (crate/pasta `paint-meios`), nunca 3 flags + predicados no tronco:

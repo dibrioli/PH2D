@@ -23,6 +23,38 @@ use crate::tuning::{KNOB_COUNT, Knob, Tuning};
 
 pub const SIM_HZ: f64 = 40.0;
 
+/// **Qual lei da TINTA o motor corre** (F4-2 §5, ADR-0197): `Velha` = massa + cor por célula (a única que
+/// pinta hoje); `Pigmento` = volumes e somas ópticas ([`crate::grid::tinta`]). Fora de [`Sim::lei`], que o
+/// preset reescreve a cada aplicação. Enquanto nenhuma porta a lê (E4–E8), `Pigmento` só aloca os campos.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LeiDaTinta {
+    #[default]
+    Velha,
+    Pigmento,
+}
+
+impl LeiDaTinta {
+    /// O nome da sonda (`PH2D_SONDA_LEI`).
+    #[must_use]
+    pub const fn nome(self) -> &'static str {
+        match self {
+            Self::Velha => "velha",
+            Self::Pigmento => "pigmento",
+        }
+    }
+}
+
+impl std::str::FromStr for LeiDaTinta {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim() {
+            "velha" => Ok(Self::Velha),
+            "pigmento" => Ok(Self::Pigmento),
+            o => Err(format!("lei da tinta desconhecida: {o:?} (velha|pigmento)")),
+        }
+    }
+}
+
 /// Snapshot of every knob the solver reads, taken once per step so inner
 /// loops never touch the registry (the JS `gatherParams`), plus the color
 /// mixer routing.
@@ -73,6 +105,8 @@ pub struct Params {
     /// O pigmento por unidade de depósito da RECEITA (`φ·h`, [`crate::painter::receita`]); `None` = o
     /// `PigmentPerDab` cru (quem não passa pela receita).
     pub pigmento_do_dab: Option<f64>,
+    /// [`Sim::tinta`].
+    pub tinta: LeiDaTinta,
 }
 
 impl Params {
@@ -144,6 +178,8 @@ pub struct Sim {
     /// **Assentar e re-molhar preservam o ecrã?** ([`crate::assenta`]) `Porto` = as junções de antes; o
     /// produto liga a lei do Rebelle (`Cobre`).
     pub lei: crate::assenta::Lei,
+    /// **A lei da tinta** ([`LeiDaTinta`]); muda-se em execução por [`Sim::set_tinta`]. `Velha` por omissão.
+    pub tinta: LeiDaTinta,
     /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
     /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
     /// Assentar preserva o ecrã SECO ([`crate::assenta`]), então o traço clareia aos poucos ao secar sem
@@ -253,6 +289,7 @@ impl Default for Sim {
             sedimenta: 0.0,
             pickup_assentado: 0.5,
             lei: crate::assenta::Lei::Porto,
+            tinta: LeiDaTinta::Velha,
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
@@ -271,6 +308,11 @@ impl Default for Sim {
 }
 
 impl Sim {
+    /// Troca a lei da tinta em execução (o preset não a toca). Os campos da lei nova nascem no próximo passo.
+    pub fn set_tinta(&mut self, lei: LeiDaTinta) {
+        self.tinta = lei;
+    }
+
     /// Há um passo interrompido em voo?
     #[must_use]
     pub const fn step_pending(&self) -> bool {
@@ -375,6 +417,7 @@ impl Sim {
             paredes: self.paredes,
             agua_do_dab: 1.0,
             pigmento_do_dab: None,
+            tinta: self.tinta,
         }
     }
 }
@@ -410,6 +453,9 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             // Começo de passo: o guard, os params (UMA vez — ver `StepCursor`) e o relógio.
             if !g.has_fluid {
                 return Some(false);
+            }
+            if sim.tinta == LeiDaTinta::Pigmento {
+                crate::grid::tinta::garante(g);
             }
             let p = sim.gather_params(tuning);
             let grav = sim.gravity(tuning);

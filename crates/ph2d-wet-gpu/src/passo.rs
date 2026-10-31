@@ -10,13 +10,12 @@ use crate::{
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
 use ph2d_wet_paint::grid::Grid;
-use ph2d_wet_paint::sim::Sim;
+use ph2d_wet_paint::sim::{LeiDaTinta, Sim};
 use ph2d_wet_paint::tuning::{Knob, Tuning};
 
-/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/óleo/ladeira, sem
-/// fingering/backrun/difusão, passo Jacobi (degraus 3–5). As paredes entre traços a placa sabe (`traco`).
-/// A tinta OPACA (`Knob::Opaque`, o tecto no segmento das tintas da `Ecra::com_opaca`) a placa NÃO sabe: o pincel
-/// opaco ou uma célula com ela fica na CPU — nunca diverge.
+/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/óleo/ladeira, sem fingering/backrun/difusão, passo
+/// Jacobi (degraus 3–5); as paredes entre traços sabe (`traco`). A tinta OPACA (`Knob::Opaque`, `Ecra::com_opaca`) e a
+/// lei `Pigmento` (até à E11) a placa NÃO sabe: o pincel opaco ou uma célula com ela fica na CPU — nunca diverge.
 #[must_use]
 pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
     let p = sim.gather_params(tuning);
@@ -25,6 +24,7 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
             && p.k(Knob::ExtBackrun) == 0.0
             && p.k(Knob::ExtDiffusion) == 0.0);
     sim.order_invariant
+        && sim.tinta == LeiDaTinta::Velha
         && !sim.step_pending()
         && matches!(p.ecra, Ecra::Cobre { .. })
         && !p.km_mixing

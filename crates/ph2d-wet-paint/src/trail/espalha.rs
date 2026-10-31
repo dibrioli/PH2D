@@ -6,6 +6,12 @@
 //! espessura que lá estava baixa a `(1 − ESPALHA)` dela antes de a tinta nova pousar. Com `E` por passada o relevo
 //! tende a `E ÷ ESPALHA` (satura), e o traço único sobre a tela limpa não muda um bit (nenhuma célula tem tinta
 //! antes do 1.º toque).
+//!
+//! ⛔ **O espalhar nunca CAVA** (Mecanismo 2 de `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md`, 31/10): o
+//! que o 1.º toque leva é o que o pincel RECOLHE, e um pincel carregado só recolhe o que deposita — a célula acaba em
+//! `max(t₀, t₀·(1 − ESPALHA) + Σv)`, nunca abaixo da altura `t₀` que tinha antes do traço ([`Espalha::piso`]). Sem o
+//! piso o traço 2 meio sobreposto a um óleo grosso deixava 2 609 crateras no contacto e −42 % do volume. Abaixo da
+//! saturação (`t₀ ≤ Σv ÷ ESPALHA`) é a lei de antes, ao bit.
 
 use crate::grid::Grid;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -31,6 +37,8 @@ fn fraccao() -> f64 {
 #[derive(Debug, Clone, Default)]
 pub(super) struct Espalha {
     tocada: Vec<bool>,
+    /// A espessura que cada célula tocada tinha ANTES do traço (`0` nas virgens) — o piso do depósito.
+    piso: Vec<f32>,
     sujo: bool,
 }
 
@@ -38,6 +46,7 @@ impl Espalha {
     pub(super) fn traco_novo(&mut self) {
         if self.sujo {
             self.tocada.fill(false);
+            self.piso.fill(0.0);
             self.sujo = false;
         }
     }
@@ -54,13 +63,21 @@ impl Espalha {
         let a = fraccao();
         if m > 0.0 && a > 0.0 {
             let t = crate::grid::espessura::em(g, i);
+            self.piso[i] = t as f32;
             crate::grid::espessura::nivela(g, i, t * (1.0 - a));
         }
+    }
+
+    /// A espessura que a célula `i` tinha antes deste traço a tocar (`0` sem ela): o depósito nunca a deixa abaixo.
+    #[inline]
+    pub(super) fn piso(&self, i: usize) -> f64 {
+        self.piso.get(i).map_or(0.0, |&t| f64::from(t))
     }
 
     fn marca(&mut self, n: usize, i: usize) {
         if self.tocada.len() != n {
             self.tocada = vec![false; n];
+            self.piso = vec![0.0; n];
         }
         self.tocada[i] = true;
         self.sujo = true;

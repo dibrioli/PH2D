@@ -489,3 +489,22 @@ fn mede_as_submissoes_a_4k() {
         );
     }
 }
+
+/// F4-2 E2: a lei `Pigmento` da tinta fica na CPU até a paridade por placa (E11) — sem placa nenhuma.
+#[test]
+fn a_placa_recusa_a_lei_pigmento() {
+    use ph2d_wet_paint::sim::LeiDaTinta;
+    let mut e = aguada(64, 48);
+    let idx = e.active_layer;
+    assert!(
+        placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning),
+        "a aguada é da placa com a lei velha"
+    );
+    e.sim.set_tinta(LeiDaTinta::Pigmento);
+    assert!(
+        !placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning),
+        "a placa recusa a lei Pigmento"
+    );
+    e.sim.set_tinta(LeiDaTinta::Velha);
+    assert!(placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning));
+}

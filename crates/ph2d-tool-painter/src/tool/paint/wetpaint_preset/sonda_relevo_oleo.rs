@@ -5,7 +5,7 @@
 //! crateras (altura final < a da camada 1 − limiar) dentro e fora do contacto do pincel 2, ondas (RMS do passa-alto
 //! ao longo do traço 2 ÷ o do traço 2 sozinho), deriva fora do contacto e o balanço de massa. Variantes no MESMO
 //! processo (`PH2D_SONDA_VAR`): `prod`, `sem_ladeira` (rota 2), `sem_rewet` (Knob Rewet 0), `sem_level`
-//! (Knob Leveling 0), `bingham` (a cura, `PAPEL_BINGHAM`). Doc: `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md`.
+//! (Knob Leveling 0), `sem_bingham` (a lei antes da E7), `b<τ₀>_<φ_c>` (outras constantes de Bingham). Doc: `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md`.
 //! `PH2D_SONDA_OUT=<dir> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib sonda_relevo_oleo -- --ignored --nocapture`
 use super::sonda_oleo_grumos::{alturas, grava_png};
 use super::*;
@@ -40,29 +40,57 @@ fn preset(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
         .clone()
 }
 
+thread_local! {
+    /// A lei da tinta da célula (`PH2D_SONDA_LEI`, F4-2 E2), posta a cada traço e tique — o preset não a toca.
+    static LEI: std::cell::Cell<ph2d_wet_paint::sim::LeiDaTinta> = const { std::cell::Cell::new(ph2d_wet_paint::sim::LeiDaTinta::Velha) };
+}
+
 fn var_aplica(t: &mut PainterTool, var: &str) {
     let Some(s) = t.paint.wetpaint.session.as_mut() else {
         return;
     };
     let e = &mut s.engine;
-    match var {
-        "sem_rewet" => {
-            e.tuning.set(Knob::Rewet, 0.0);
+    e.sim.set_tinta(LEI.get());
+    for var in var.split('+') {
+        match var {
+            "sem_rewet" => {
+                e.tuning.set(Knob::Rewet, 0.0);
+            }
+            "sem_level" => {
+                e.tuning.set(Knob::Leveling, 0.0);
+            }
+            "sem_pickup" => {
+                e.tuning.set(Knob::Pickup, 0.0);
+            }
+            "sem_smear" => {
+                e.tuning.set(Knob::Smear, 0.0);
+            }
+            "sem_lift" => {
+                e.tuning.set(Knob::WetLift, 0.0);
+            }
+            "sem_drag" => {
+                e.tuning.set(Knob::Drag, 0.0);
+            }
+            "sem_wetopen" => {
+                e.tuning.set(Knob::WetOpen, 0.0);
+            }
+            "sem_dissolve" => {
+                e.tuning.set(Knob::Dissolve, 0.0);
+            }
+            _ => {}
         }
-        "sem_level" => {
-            e.tuning.set(Knob::Leveling, 0.0);
-        }
-        "sem_pickup" => {
-            e.tuning.set(Knob::Pickup, 0.0);
-        }
-        "sem_smear" => {
-            e.tuning.set(Knob::Smear, 0.0);
-        }
-        "sem_lift" => {
-            e.tuning.set(Knob::WetLift, 0.0);
-        }
-        _ => {}
     }
+}
+
+/// Os interruptores do DEPÓSITO (Mecanismo 2): `sem_espalha` (o 1.º toque não baixa a espessura de baixo),
+/// `sem_teto` (o tecto suave de 3000 desligado), `sem_piso` (a lei antes da cura: o espalhar podia cavar). Combinam-se com `+`.
+fn var_globais(var: &str) {
+    let tem = |n: &str| var.split('+').any(|v| v == n);
+    ph2d_wet_paint::trail::espalha::sobrepoe(tem("sem_espalha").then_some(0.0));
+    ph2d_wet_paint::trail::sonda::SEM_TETO
+        .store(tem("sem_teto"), std::sync::atomic::Ordering::Relaxed);
+    ph2d_wet_paint::trail::sonda::SEM_PISO
+        .store(tem("sem_piso"), std::sync::atomic::Ordering::Relaxed);
 }
 
 fn tique(t: &mut PainterTool, var: &str) {
@@ -184,6 +212,8 @@ struct Relevo {
     massa: f64,
     /// Mediana da altura da camada 1 (unidades do campo).
     med1: f64,
+    /// O mesmo balanço de [`Relevo::massa`] sobre o VOLUME (Σ altura, o que a luz lê; a massa tem o tecto da cor).
+    vol: f64,
 }
 
 fn falsa_cor(dir: &std::path::Path, nome: &str, h: &[f64], gw: usize, gh: usize, teto: f64) {
@@ -205,14 +235,26 @@ fn falsa_cor(dir: &std::path::Path, nome: &str, h: &[f64], gw: usize, gh: usize,
 }
 
 fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &str)>) -> Relevo {
+    var_globais(var);
     let rota = if var == "sem_ladeira" { 2 } else { 0 };
     ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
-    let tau: f32 = var
-        .strip_prefix("bingham")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.0);
+    // `sem_bingham` = a lei de antes da E7 (sem tensão de cedência); `b<τ₀>_<φ_c>` = outras constantes; o resto = o produto.
+    let (tau, phic): (f32, f32) = if var.starts_with("sem_bingham") {
+        (-1.0, 0.0)
+    } else if let Some(v) = var.strip_prefix('b') {
+        let mut it = v.split('_').map(|x| x.parse().unwrap_or(0.0));
+        (it.next().unwrap_or(0.0), it.next().unwrap_or(0.0))
+    } else {
+        (0.0, 0.0)
+    };
     ph2d_wet_paint::solver::PAPEL_BINGHAM
         .store(tau.to_bits(), std::sync::atomic::Ordering::Relaxed);
+    ph2d_wet_paint::solver::BINGHAM_PHI_C
+        .store(phic.to_bits(), std::sync::atomic::Ordering::Relaxed);
+    ph2d_wet_paint::solver::BINGHAM_COM_SETT.store(
+        u8::from(var.ends_with("sett")),
+        std::sync::atomic::Ordering::Relaxed,
+    );
     let p = preset(b, q.pincel);
     let (a2, z2) = traco2(q);
     // O traço 2 sozinho: a pegada (contacto) e a referência das ondas e da massa.
@@ -261,6 +303,9 @@ fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &st
     let (h2, m2, ..) = alturas(&mut t);
     ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
     ph2d_wet_paint::solver::PAPEL_BINGHAM.store(0, std::sync::atomic::Ordering::Relaxed);
+    ph2d_wet_paint::solver::BINGHAM_PHI_C.store(0, std::sync::atomic::Ordering::Relaxed);
+    ph2d_wet_paint::solver::BINGHAM_COM_SETT.store(0, std::sync::atomic::Ordering::Relaxed);
+    var_globais("prod");
     let m1max = m1.iter().copied().fold(0.0, f64::max);
     let banda: Vec<usize> = (0..gw * gh).filter(|i| m1[*i] > 0.05 * m1max).collect();
     let mut hs: Vec<f64> = banda.iter().map(|i| h1[*i]).collect();
@@ -296,6 +341,8 @@ fn cena(b: &Biblioteca, q: Pedido, var: &str, out: Option<(&std::path::Path, &st
     let soma = |v: &[f64]| v.iter().sum::<f64>();
     let mcs = soma(&mc).max(1e-9);
     rl.massa = (soma(&m2) - soma(&m1) - mcs) / mcs;
+    let hcs = soma(&hc).max(1e-9);
+    rl.vol = (soma(&h2) - soma(&h1) - hcs) / hcs;
     if let Some((d, rot)) = out {
         t.wet_recomposite_full();
         grava_png(
@@ -351,6 +398,7 @@ fn sonda_relevo_oleo() {
         "Oil/Flat/Thick Impasto,Oil/Knife/Knife Smooth 3,Oil/Flat/Filbert,Oil/Flat/Flat Bristle",
     );
     let vars: Vec<String> = lista("PH2D_SONDA_VAR", "prod");
+    let leis: Vec<ph2d_wet_paint::sim::LeiDaTinta> = lista("PH2D_SONDA_LEI", "velha");
     let aguas: Vec<f64> = lista("PH2D_SONDA_AGUA", "0,0.2,0.5");
     let pressoes: Vec<f32> = lista("PH2D_SONDA_PRESSAO", "1");
     let ns: Vec<usize> = lista("PH2D_SONDA_N", "1");
@@ -358,7 +406,7 @@ fn sonda_relevo_oleo() {
     let cruzes: Vec<String> = lista("PH2D_SONDA_CRUZ", "perp,par");
     let fotos = std::env::var("PH2D_SONDA_FOTOS").is_ok();
     println!(
-        "[relevo] pincel\tcruz\tagua\tpressao\tn\tpausa\tvar\tcrat_in\tcrat_out\tfundo_in\tfundo_out\tondas\tderiva_med\tderiva_max\tmassa\tmed1"
+        "[relevo] pincel\tcruz\tagua\tpressao\tn\tpausa\tvar\tcrat_in\tcrat_out\tfundo_in\tfundo_out\tondas\tderiva_med\tderiva_max\tmassa\tmed1\tvol"
     );
     for pincel in &pinceis {
         for cruz in &cruzes {
@@ -372,7 +420,10 @@ fn sonda_relevo_oleo() {
                     for &n in &ns {
                         for &pausa in &pausas {
                             // As variantes INTERCALADAS dentro da mesma célula.
-                            for var in &vars {
+                            for (var, lei) in
+                                vars.iter().flat_map(|v| leis.iter().map(move |l| (v, *l)))
+                            {
+                                LEI.set(lei);
                                 let q = Pedido {
                                     pincel,
                                     agua,
@@ -397,7 +448,8 @@ fn sonda_relevo_oleo() {
                                 };
                                 let r = cena(&b, q, var, o);
                                 println!(
-                                    "[relevo] {pincel}\t{cruz}\t{agua}\t{pressao}\t{n}\t{pausa}\t{var}\t{}\t{}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:+.2}\t{:.3}",
+                                    "[relevo] {pincel}\t{cruz}\t{agua}\t{pressao}\t{n}\t{pausa}\t{var}@{}\t{}\t{}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:+.2}\t{:.3}\t{:+.2}",
+                                    lei.nome(),
                                     r.crat_in,
                                     r.crat_out,
                                     r.fundo_in,
@@ -406,7 +458,8 @@ fn sonda_relevo_oleo() {
                                     r.deriva_med,
                                     r.deriva_max,
                                     r.massa,
-                                    r.med1
+                                    r.med1,
+                                    r.vol
                                 );
                             }
                         }

@@ -18,24 +18,80 @@ use crate::grid::Grid;
 #[doc(hidden)]
 pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
-/// Protótipo da lei de Bingham para o óleo grosso, em execução (`sonda_relevo_oleo`, variante `bingham`):
-/// `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md`. Os bits de um `f32`: a tensão de cedência `τ₀` em
-/// fracção de `MaxVelocity`; `0` = o produto, ao bit.
+/// ⭐ **A LEI DE BINGHAM do óleo grosso** (E7, queixa do dono 31/10: «mesmo com pouca água se comportam como líquidos e
+/// provocam ondas e crateras»). A tinta com óleo tem TENSÃO DE CEDÊNCIA (Orchard 1962, F2 §2: escoa só se a força
+/// passar de `τ_y`, e `τ_y` cresce com a concentração `φ` e o óleo `m`): abaixo dela nada escoa, acima escoa o excesso.
+/// `τ_y` vem da RECEITA que está na célula, não do `film` instantâneo:
+///
+/// `φ = M ÷ (M + K_W·film)` (`M = susp + sett`, a mesma grandeza de `painter::receita`) ·
+/// `τ_y = τ₀ · MaxVelocity · m · ((φ − φ_c) ÷ (1 − φ_c))₊ⁿ` (`m` = a fracção de Real Oil da célula).
+///
+/// Sem óleo (`m = 0`: aquarela, guache, tudo sem o Real Oil) `τ_y = 0` e o fluxo é o de sempre, ao bit; a tinta aguada
+/// (`φ ≤ φ_c`) também. Constantes MEDIDAS na régua `sonda_relevo_oleo`:
+/// `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md` §6.
+pub(crate) const TAU0: f64 = 3.0;
+/// O limiar de percolação da rede de partículas (abaixo dele a tinta não tem estrutura: escoa como líquido).
+pub(crate) const PHI_C: f64 = 0.2;
+/// O expoente da lei de potência `τ_y ∝ φⁿ` das suspensões floculadas.
+pub(crate) const EXPOENTE: i32 = 2;
+
+/// Ferramenta de MEDIÇÃO (régua `sonda_relevo_oleo`), nunca o produto: os bits de um `f32` — `0` = `TAU0` (o produto),
+/// `> 0` = outro `τ₀`, `< 0` = sem tensão de cedência (a lei de antes da E7, para o antes × depois).
 #[doc(hidden)]
 pub static PAPEL_BINGHAM: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// Ferramenta de MEDIÇÃO: os bits de um `f32` — `0` = `PHI_C`, senão outro `φ_c`.
+#[doc(hidden)]
+pub static BINGHAM_PHI_C: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// A lei de Bingham sobre o incremento de velocidade `(ex, ey)` numa célula com óleo: `τ_y = τ₀·max_v·(1 − f/FILM_CHEIO)²`
-/// (a água dilui a tensão de cedência); abaixo dela nada escoa, acima escoa o excesso.
+/// Ferramenta de MEDIÇÃO: `1` = `M` conta também o `sett` (o óleo assentado por baixo); `0` = só o `susp` (o produto).
+#[doc(hidden)]
+pub static BINGHAM_COM_SETT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+/// A massa de pigmento da tinta que ESCOA na célula (`M` de `φ`): o `susp`. O assentado é o chão — não dá tensão de
+/// cedência à tinta fresca por cima (o Wet Flat aguado com Real Oil sobre a crista seca do Dabber escorre, J11).
 #[inline]
-pub(crate) fn bingham(ex: f64, ey: f64, f: f64, max_v: f64) -> (f64, f64) {
-    let t0 = f64::from(f32::from_bits(
-        PAPEL_BINGHAM.load(std::sync::atomic::Ordering::Relaxed),
-    ));
-    if t0 <= 0.0 {
+#[must_use]
+pub(crate) fn massa_movel(susp: f32, sett: f32) -> f64 {
+    let m = f64::from(susp);
+    if BINGHAM_COM_SETT.load(std::sync::atomic::Ordering::Relaxed) != 0 {
+        m + f64::from(sett)
+    } else {
+        m
+    }
+}
+
+fn medida(a: &std::sync::atomic::AtomicU32, omissao: f64) -> f64 {
+    match a.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => omissao,
+        b => f64::from(f32::from_bits(b)),
+    }
+}
+
+/// O `τ₀` em vigor (`≤ 0` = desligado, só pela régua).
+#[inline]
+pub(crate) fn tau0() -> f64 {
+    medida(&PAPEL_BINGHAM, TAU0)
+}
+
+/// A tensão de cedência da célula, em unidades de velocidade: `m` o óleo, `massa` o pigmento (`susp + sett`), `f` a água.
+#[inline]
+#[must_use]
+pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64, max_v: f64) -> f64 {
+    if t0 <= 0.0 || m <= 0.0 || massa <= 0.0 {
+        return 0.0;
+    }
+    let phi = massa / (massa + crate::painter::receita::K_W * f.max(0.0));
+    let pc = medida(&BINGHAM_PHI_C, PHI_C);
+    let x = ((phi - pc) / (1.0 - pc)).max(0.0);
+    t0 * max_v * m.min(1.0) * x.powi(EXPOENTE)
+}
+
+/// Aplica `τ_y` ao incremento de velocidade `(ex, ey)`: abaixo dela nada escoa, acima escoa o excesso.
+#[inline]
+pub(crate) fn bingham(ex: f64, ey: f64, tau: f64) -> (f64, f64) {
+    if tau <= 0.0 {
         return (ex, ey);
     }
-    let seco = 1.0 - (f / FILM_CHEIO).clamp(0.0, 1.0);
-    let tau = t0 * max_v * seco * seco;
     let v = (ex * ex + ey * ey).sqrt();
     if v <= tau {
         return (0.0, 0.0);

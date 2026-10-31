@@ -39,6 +39,8 @@ pub mod nivelado;
 pub mod oleo_celula;
 #[path = "grid/patch.rs"]
 mod patch;
+#[path = "grid/tinta.rs"]
+pub mod tinta;
 #[path = "grid/traco.rs"]
 pub mod traco; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
@@ -105,6 +107,9 @@ pub struct Grid {
     /// A fracção ASSENTADA (`sett ÷ massa`) de cada célula na mesma fotografia ([`Self::oleo_antes`]): o peso da
     /// ladeira — sobre óleo que ainda estava molhado no início do traço a água não é segurada nem empurrada.
     pub oleo_antes_assente: Vec<f32>,
+    /// **A tinta da lei ÚNICA** (F4-2 E3, [`tinta`]): somas do filme e do aberto, `R_g`, meio, abertura e altura
+    /// curada. VAZIA com [`crate::sim::LeiDaTinta::Velha`]; alocada pelo passo com `Pigmento` ([`tinta::garante`]).
+    pub tinta: Vec<tinta::CelulaTinta>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -279,6 +284,7 @@ impl Grid {
             oleo: Vec::new(),
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),
+            tinta: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],

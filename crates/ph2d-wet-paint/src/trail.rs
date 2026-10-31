@@ -23,6 +23,7 @@ mod filme; // o filme do traço (Knob::StrokeFilm): o máximo por célula, nunca
 mod janela;
 mod medida; // as portas de MEDIÇÃO da janela (só os gates as leem)
 mod molhado; // molhado × molhado (Knob::WetOpen): o tubo por onde o traço passa sobre a outra tinta molhada
+pub mod sonda; // interruptores só das sondas (relevo do óleo, 31/10)
 mod transfer; // the window-landing half of §10 (LOC-cap split) // a janela cresce NO LUGAR para caber cada dab (smoke do dono 16/10)
 use crate::grid::Grid;
 use crate::jsmath::js_round;

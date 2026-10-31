@@ -174,8 +174,11 @@ impl Trail {
                 if p.oleo > 0.0 {
                     self.espalha.primeiro_toque(g, i);
                 }
-                // A espessura recebe o `v` inteiro, antes do tecto ([`crate::grid::espessura`]).
-                let espessura = crate::grid::espessura::em(g, i) + v;
+                // A espessura recebe o `v` inteiro, antes do tecto; o óleo nunca fica abaixo do piso ([`super::espalha`]).
+                let piso =
+                    (p.oleo > 0.0 && !super::sonda::sem_piso()).then(|| self.espalha.piso(i));
+                let espessura =
+                    (crate::grid::espessura::em(g, i) + v).max(piso.unwrap_or(f64::MIN));
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
                 if let Some(t) = traco {
                     g.traco[i] = t;
@@ -217,7 +220,7 @@ impl Trail {
                 let seco = ponta_seca && g.film[i] <= FILM_TRACO;
                 if seco {
                     pousa_seco(g, i, v, ponta, p, &mut out);
-                    if g.sett[i] as f64 > 3000.0 {
+                    if g.sett[i] as f64 > 3000.0 && !super::sonda::sem_teto() {
                         let ns = g.sett[i] as f64 - shed_pig;
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
                     }
@@ -339,7 +342,7 @@ impl Trail {
                         }
                         // Soft cap: past 3000 the cell sheds the window mean
                         // instead of clamping, so heavy paint hovers at the cap.
-                        let nm = if old < 3000.0 {
+                        let nm = if old < 3000.0 || super::sonda::sem_teto() {
                             old + v
                         } else {
                             old + v - shed_pig
@@ -354,7 +357,7 @@ impl Trail {
                             g.film[i] = (g.film[i] as f64 + self.water[l] as f64) as f32;
                         }
                     }
-                    if g.sett[i] as f64 > 3000.0 {
+                    if g.sett[i] as f64 > 3000.0 && !super::sonda::sem_teto() {
                         let ns = g.sett[i] as f64 - shed_pig;
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
                     }

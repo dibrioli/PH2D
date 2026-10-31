@@ -112,6 +112,7 @@ impl crate::grid::Grid {
             oleo,
             oleo_antes,
             oleo_antes_assente,
+            tinta,
             flow: _,
             vel_x,
             vel_y,
@@ -154,6 +155,7 @@ impl crate::grid::Grid {
             + de(oleo)
             + de(oleo_antes)
             + de(oleo_antes_assente)
+            + de(tinta)
             + de(vel_x)
             + de(vel_y)
             + de(flow_x)
@@ -189,6 +191,7 @@ impl crate::grid::GridSnapshot {
             + de(&self.material)
             + de(&self.aparencia)
             + de(&self.oleo)
+            + de(&self.tinta)
             + de(&self.vel_x)
             + de(&self.vel_y)
             + de(&self.wet)

@@ -11227,6 +11227,7 @@ name = "ph2d-wet-paint"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-paint-tinta",
  "ph2d-pigment",
  "rayon",
 ]

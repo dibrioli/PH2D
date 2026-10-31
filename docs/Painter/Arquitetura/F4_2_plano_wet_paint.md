@@ -67,12 +67,16 @@ saturante até `OPACITY_TABLE_MAX = 3000`) faz massa → cobertura; `PigmentPerD
 | `film` (fica) | `f32` | veículo `w` (µm) |
 | `susp` (fica, unidade muda) | `f32` | `vᶠ = Σᵢ vᵢᶠ` (µm de pigmento) |
 | `sett` (fica, unidade muda) | `f32` | `vᵃ = Σᵢ vᵢᵃ` |
-| `filme_ks` | `[f32; 6]` | `Σᵢ vᵢᶠ Kᵢ` e `Σᵢ vᵢᶠ Sᵢ` por banda (3+3) |
-| `aberto_ks` | `[f32; 6]` | `Σᵢ vᵢᵃ Kᵢ`, `Σᵢ vᵢᵃ Sᵢ` |
-| `fechado` | `[f32; 3]` | `R_g` por banda (init `1,0` = branco de referência; §3.2) |
+| `filme` | `Soma` (5 f32) | `{v: vᶠ, lab: Σ vᵢᶠ·Labᵢ, t: Σ vᵢᶠ·tᵢ}` — a mistura é Oklab pesado pelo volume (ADR-0197 «Em aberto» ✅ decidida, F4-1) |
+| `aberto` | `Soma` (5 f32) | o mesmo para `vᵃ` |
+| `r_g` | `[f32; 3]` | `R_g` por banda (init `1,0` = branco de referência; §3.2) |
 | `altura_fechada` | `f32` | volume que já curou (o relevo não pode sumir no fecho: `oleo_campo.rs:67` lê hoje `sett+susp`) |
-| `meio` | `f32` | `m ∈ [0,1]`, médio pelo volume (substitui `oleo` fracção, `vidrado`, `opaca`, `vela`) |
-| `abertura` | `f32` | `o ∈ [0,1]`, decai por `τ(m)`; `o → 0` ⇒ fecho |
+| `m` | `f32` | meio `∈ [0,1]`, médio pelo volume (substitui `oleo` fracção, `vidrado`, `opaca`, `vela`) |
+| `o` | `f32` | abertura `∈ [0,1]` (init `1`), decai por `τ(m)`; `o → 0` ⇒ fecho |
+
+✅ **E3 (31/10):** os seis vivem numa `CelulaTinta` de **64 B** num ÚNICO plano preguiçoso `Grid::tinta`
+(`wp/grid/tinta.rs:12`, `NEUTRA` `:29`, `garante` `:48`). Um plano, não seis: o histórico/recorte/clone levam-no por
+uma porta só. `susp`/`sett` continuam a ser os da lei velha até a E4/E6 os mudarem de unidade.
 
 Somem (E12): `susp_rgb`, `sett_rgb`, `vela`, `aparencia.{vidrado,opaca}`, `oleo` (fracção; Depth/Gloss vão para Luz),
 `oleo_antes*`, `relevo` (o relevo é `h`).
@@ -88,7 +92,7 @@ o «pigmento latente» do ADR (Em aberto) levado ao limite.
 |---|---|---|---|
 | hoje (`susp,sett` + 2×rgb) | 32 | — | inversa de Newton |
 | paleta global + K=4 slots `(u16 idx, vᶠ, vᵃ)` + `R_g` + `m` + `o` + `altura_fechada` | 8 + 48 + 12 + 12 = 80 | 4 pigmentos | transbordo: (a) slot livre; (b) fechar o aberto da célula; (c) fundir o par mais próximo por Duncan (exacto sob transferências proporcionais) |
-| **somas** (escolhido) | 8 + 48 + 12 + 12 = **80** | **nenhum** | nenhuma |
+| **somas** (escolhido; plano E3: as somas são `Soma{v,lab,t}` da F4-1, 2 × 20 B, e o `v` já está nelas) | 40 + 12 + 12 = **64** | **nenhum** | nenhuma |
 
 Mesmo custo, sem tecto, sem transbordo, sem tabela a crescer, e o GPU lê vec4 alinhados. **Quando a escolha muda:** se
 uma lei futura tornar uma transferência dependente do pigmento (granulação por pigmento, `Staining` por pigmento), a
@@ -114,9 +118,20 @@ com a Transparency do pincel (`render.rs:750 transparencia_da_celula` hoje é co
 | | B/célula | total |
 |---|---|---|
 | pigmento hoje (`susp,sett,susp_rgb,sett_rgb`) | 32 | 537 MB |
-| alvo (somas, §2.1, sem `film`) | 80 | 1,34 GB |
-| líquido depois da E12 | +48 | +805 MB |
+| alvo (somas, §2.1, sem `film`) | 64 | 1,07 GB |
+| líquido depois da E12 | +32 | +537 MB |
 | durante o interruptor | só quem liga paga (campos vazios) | |
+
+**Medido (E3, 31/10, 2048², um traço + 4 passos, `wp/grid/tinta_tests.rs` `medida_rss_da_tinta`, `--profile smoke`):**
+
+| lei | RSS do processo | grade (`bytes_retidos`) | `Grid::tinta` |
+|---|---|---|---|
+| `Velha` | 154 MiB | 268 MiB | **0 B** (vazio) |
+| `Pigmento` (o mesmo motor depois de 4 passos) | 412 MiB (**+258 MiB**) | 525 MiB | 256 MiB = 4,2 M células × 64 B |
+
+O RSS da velha fica abaixo dos `bytes_retidos` porque os planos `vec![0; n]` nascem por `calloc` (páginas não tocadas);
+a `NEUTRA` tem `r_g = 1`, `o = 1`, logo escreve todas as páginas. Alavanca medível se morder: guardar `1 − r_g` e
+`1 − o` (a célula vazia vira zeros e o `calloc` volta a não pagar as páginas vazias).
 
 Tecto: **não se escreve** antes de medir RSS no traço cheio a 4096² nas duas leis (CLAUDE §0). Alavancas medidas
 depois, se o RSS morder: `R_g` em `u16` (passo `1,5e-5` ≪ 8 bits; quebra o «fecho ao bit» de `tt` — medir), ou
@@ -249,8 +264,9 @@ Paridade: mesmo bit por placa (ADR §4.3) — o transporte de somas é linear (f
 | E | objetivo | ficheiros | teste por NOME que prova | risco | depende |
 |---|---|---|---|---|---|
 | **E1** ∥E2 | `Soma<N>{v,k,s}`, `transfere_soma`, `optica_de_somas`, `fecha_somas`, `ecra_sobre_branco` (§3.2) na crate tinta | `tt/src/soma.rs` (novo), `tt/src/lib.rs`, `tt/tests/it/soma.rs` | `somas_e_paleta_dao_a_mesma_optica`, `transfere_soma_conserva`, `sobre_branco_a_composicao_devolve_r_w`, `alfa_deixa_a_cor_em_0_1` | baixo | — |
-| **E2** ∥E1 | interruptor `LeiDaTinta` + setter + sonda com `PH2D_SONDA_LEI` + `placa_sabe` | `wp/sim.rs`, `tp/wetpaint.rs`, `tp/wetpaint_preset/sonda_varredura_oleo.rs`, `gpu/passo.rs` | `o_preset_nao_apaga_a_lei_da_tinta`, `a_placa_recusa_a_lei_pigmento` | baixo (o preset reescrever) | — |
-| **E3** | campos novos vazios + `garante` + histórico/ladrilhos/instantâneo | `wp/grid.rs`, `wp/grid/tinta.rs` (novo), `wp/grid/snapshot.rs:51,87`, `wp/grid/patch.rs`, `wp/painter/instantaneo.rs`, `wp/grid/canvas_ops.rs` (cópias) | `o_historico_leva_a_tinta_nova`, `a_lei_velha_nao_aloca_a_tinta` | médio: snapshot é «formato gravado»? (só em memória — conferir `ph2d-app-painter` persistência do grid) | E1, E2 |
+| **E2** ✅ 31/10 ∥E1 | interruptor `LeiDaTinta` + setter + sonda com `PH2D_SONDA_LEI` + `placa_sabe` | `wp/sim.rs`, `tp/wetpaint.rs`, `tp/wetpaint_preset/sonda_varredura_oleo.rs`, `gpu/passo.rs` | `o_preset_nao_apaga_a_lei_da_tinta`, `a_placa_recusa_a_lei_pigmento` | baixo (o preset reescrever) | — |
+| **E3** ✅ 31/10 | ver «Feito» abaixo | | | | |
+| **E3** (plano original) | campos novos vazios + `garante` + histórico/ladrilhos/instantâneo | `wp/grid.rs`, `wp/grid/tinta.rs` (novo), `wp/grid/snapshot.rs:51,87`, `wp/grid/patch.rs`, `wp/painter/instantaneo.rs`, `wp/grid/canvas_ops.rs` (cópias) | `o_historico_leva_a_tinta_nova`, `a_lei_velha_nao_aloca_a_tinta` | médio: snapshot é «formato gravado»? (só em memória — conferir `ph2d-app-painter` persistência do grid) | E1, E2 |
 | **E4** | **receita × quantidade** (ADR §1.1, regra do dono) — §7.1 | `wp/painter/receita.rs` (novo), `wp/painter/doors.rs:12-55,171-178`, `wp/painter.rs:287`, `wp/painter/po.rs:28-32`, `wp/painter/mascara.rs:48-51`, `wp/sim.rs:86`, `wp/trail/deposit.rs:121-140`, `wp/trail.rs:523,565-566,614`; `m` por célula (R11/R12) | `volume_fixo_varrer_pigmento_e_agua_nao_muda_o_volume_depositado`, `pigmento_e_agua_fixos_varrer_volume_nao_muda_a_concentracao`, `a_pressao_so_toca_a_quantidade` | ALTO: muda o sentido de 2 sliders; a calibração `M_UM` (§2.3) | E3 |
 | **E5** ∥E6b,E7 | ecrã com `Pigmento` (§3.2) + Óleo Real (§3.3) + orla | `wp/render.rs:435-657`, `wp/oleo_borda.rs:20`, `wp/oleo_campo.rs` (altura) | `o_ecra_da_celula_e_a_lei_da_tinta_ao_bit`, `celula_vazia_e_transparente`, `oleo_real_plano_e_a_identidade` | médio: emboss `:521-568` ainda soma cinza à cor | E1, E3 |
 | **E6a** | depósito no filme por somas; morrem `mix.mix`, `cobre.rs`, `transfer.rs:174` | `wp/trail/transfer.rs:20-420`, `wp/trail/transfer/cobre.rs`, `wp/trail/deposit.rs:298-410`, `wp/trail/filme.rs` | `o_deposito_conserva_volume_e_somas`, `n_passadas_monotonas_no_motor` | ALTO (o maior ficheiro) | E4 |
@@ -262,6 +278,27 @@ Paridade: mesmo bit por placa (ADR §4.3) — o transporte de somas é linear (f
 | **E11** | GPU com `Pigmento` (§6) | `gpu/*.wgsl`, `gpu/lib.rs`, `gpu/seca.rs`, `gpu/passo.rs` | `paridade_da_tinta_por_placa` | médio (FMA no compilador de shaders) | E9 |
 | **E12** | a lei velha SAI no mesmo bloco | `wp/assenta.rs`, `wp/assenta/`, `wp/colorops.rs:101-410`, `wp/opacity.rs` (como cobertura), campos §2.1 «somem», `ladeira` rotas, `session.rs:258-283`, `authored_actions.rs:59-65`, `gpu/` caminhos velhos | toda a bateria por nome do diff + `censo` dos controlos | ALTO (largura) — partir em E12a `wp` / E12b `tp`+`gpu` | E9, E10, E11 |
 | **E13** ∥E12b | portões Rebelle reescritos/fora (§8) | os ficheiros de §8 | os nomes novos de §8 | médio | E9 |
+
+**Feito E2 (31/10).** `wp/sim.rs:30 LeiDaTinta {Velha, Pigmento}` (+ `FromStr`, `nome`), `Sim::tinta` `:182` (por
+omissão `Velha`, `:292`), `Sim::set_tinta` `:312` (em execução; o preset só escreve `Sim::lei`), copiado para
+`Params::tinta` `:109`/`:420`. A placa: `gpu/passo.rs:29` `&& sim.tinta == LeiDaTinta::Velha`. Sondas: F0
+`tp/wetpaint_preset/sonda_varredura_oleo.rs` `Cena::lei` `:284`, posta depois de cada `wet_preset_aplicar`,
+`PH2D_SONDA_LEI` `:425` no laço mais interno (coluna `lei` no TSV, sufixo no PNG); relevo `sonda_relevo_oleo.rs:45`
+(`thread_local LEI`, lida em `var_aplica`; o laço `:421` cruza `PH2D_SONDA_VAR × PH2D_SONDA_LEI`, a coluna `var` sai
+`<var>@<lei>`). O setter na ferramenta (`tp/wetpaint.rs set_wet_lei_da_tinta`) NÃO foi feito (fora dos paths da E2
+desta ronda): as sondas escrevem `session.engine.sim` directamente. Prova inerte: F0 Thick Impasto p600 w0,5 pr1 n3
+s60 com `velha,pigmento` = TSV idêntico e PNG idêntico ao byte (`cmp`).
+
+**Feito E3 (31/10).** `wp/grid.rs:112 Grid::tinta: Vec<CelulaTinta>` (vazio no `with_flow_ratio`); alocado SÓ no início
+de um passo com `Pigmento` (`wp/sim.rs:457`). Acompanha: fotografia `wp/grid/snapshot.rs:28/70/106`; registo por tiles
+`:200` (`tile_fino`), `:214` (comprimento na base) e `:388` (`ajusta`); recorte `wp/grid/patch.rs:63/191/229`
+(`tinta::restaura_janela`); `clear_canvas` `wp/grid/canvas_ops.rs:155`; clone/`bytes_retidos`
+`wp/painter/instantaneo.rs:115/158/194`. **Não é gravado:** a crate não tem `serde` e o grid do Wet Paint não vai ao
+`.ph2dproj` (o projeto guarda os píxeis da camada) — nenhuma versão de formato; reconfirmar quando a lei nova pintar.
+Testes (`wp/grid/tinta_tests.rs`): `o_interruptor_da_tinta_nao_muda_um_pixel_com_a_lei_velha` (Velha × Pigmento ×
+trocas a meio: píxeis e planos velhos ao bit), `os_campos_da_tinta_nova_nao_existem_na_lei_velha`,
+`a_retoma_e_o_desfazer_levam_os_campos_da_tinta_nova` (fotografia, registo + inverso, base sem campo, recorte, clone,
+estágios = atómico); `gpu/tests/passo.rs a_placa_recusa_a_lei_pigmento`.
 
 Paralelos: {E1, E2} · {E5, E6b, E7} depois de E3 (+E4 para E6a) · {E12b, E13}. Série obrigatória: E3 → E4 → E6a → E8 → E9
 (cada uma muda o estado que a seguinte lê).

@@ -280,6 +280,8 @@ pub(super) struct Cena {
     pub papel: f32,
     /// Azul → amarelo → azul (a 3.ª mão volta pela orla).
     pub aya: bool,
+    /// A lei da tinta (`PH2D_SONDA_LEI`, F4-2 E2): posta no motor depois de cada preset (o preset não a toca).
+    pub lei: ph2d_wet_paint::sim::LeiDaTinta,
 }
 
 /// Uma célula da grelha. Grava o recorte com luz em `png` (e o plano ao lado, `…_plano.png`) se pedido.
@@ -308,6 +310,9 @@ pub(super) fn celula(
         for k in 0..n {
             let erros = t.wet_preset_aplicar(&p);
             assert!(erros.is_empty(), "{erros:?}");
+            if let Some(s) = t.paint.wetpaint.session.as_mut() {
+                s.engine.sim.set_tinta(cena.lei);
+            }
             for (id, v) in [
                 (crate::ids::PAINTER_WETPAINT_PIGMENT, pig),
                 (crate::ids::PAINTER_WETPAINT_WATER, agua),
@@ -417,22 +422,24 @@ fn sonda_varredura_oleo() {
     let aguas = lista("PH2D_SONDA_AGUAS", &AGUAS);
     let pressoes = lista("PH2D_SONDA_PRESSOES", &PRESSOES);
     let ns = lista("PH2D_SONDA_NS", &NS);
+    let leis = lista("PH2D_SONDA_LEI", &[ph2d_wet_paint::sim::LeiDaTinta::Velha]);
     let assenta: u32 = std::env::var("PH2D_SONDA_ASSENTA")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(300);
-    let cena = Cena {
+    let cena0 = Cena {
         papel: std::env::var("PH2D_SONDA_PAPEL")
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(0.0),
         aya: std::env::var("PH2D_SONDA_ORDEM").is_ok_and(|v| v == "aya"),
+        lei: ph2d_wet_paint::sim::LeiDaTinta::Velha,
     };
     let tsv_path =
         dir.join(std::env::var("PH2D_SONDA_TSV").unwrap_or_else(|_| "varredura.tsv".into()));
     let mut tsv = String::from(
         "pincel\tpigment\twater\tpressao\tn\tkm_max\tkm_p99\tmanchas_pct\tmanchas_azul_pct\tferrugem_pct\tfuros_pct\trug\tp99_altura\tref_azul\tpng\
-         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel\tordem\n",
+         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel\tordem\tlei\n",
     );
     for pincel in &pinceis {
         let slug = pincel
@@ -445,51 +452,56 @@ fn sonda_varredura_oleo() {
             for &agua in &aguas {
                 for &pr in &pressoes {
                     for &n in &ns {
-                        let ordem = if cena.aya { "aya" } else { "ay" };
-                        let nome = format!(
-                            "{slug}_p{pig}_w{agua}_pr{pr}_n{n}_s{assenta}_pa{}_{ordem}.png",
-                            cena.papel
-                        );
-                        let t0 = std::time::Instant::now();
-                        let c = celula(
-                            &b,
-                            pincel,
-                            pig,
-                            agua,
-                            pr,
-                            n,
-                            assenta,
-                            cena,
-                            Some(&dir.join("celulas").join(&nome)),
-                        );
-                        let (l, q) = (c.luz, c.plano);
-                        let linha = format!(
-                            "{pincel}\t{pig}\t{agua}\t{pr}\t{n}\t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:.1}\t{nome}\
-                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\n",
-                            l.km_max,
-                            l.km_p99,
-                            l.manchas,
-                            l.manchas_azul,
-                            l.ferrugem,
-                            c.furos,
-                            c.rug,
-                            c.p99_altura,
-                            l.ref_azul,
-                            q.km_p99,
-                            q.km_max,
-                            q.manchas,
-                            q.manchas_azul,
-                            q.ferrugem,
-                            q.ref_azul,
-                            l.degraus_y,
-                            l.degraus_x,
-                            q.degraus_y,
-                            q.degraus_x,
-                            cena.papel
-                        );
-                        print!("[f0 {:>5.1}s] {linha}", t0.elapsed().as_secs_f64());
-                        tsv.push_str(&linha);
-                        std::fs::write(&tsv_path, &tsv).expect("tsv");
+                        for &lei in &leis {
+                            let cena = Cena { lei, ..cena0 };
+                            let ordem = if cena.aya { "aya" } else { "ay" };
+                            let nome = format!(
+                                "{slug}_p{pig}_w{agua}_pr{pr}_n{n}_s{assenta}_pa{}_{ordem}_{}.png",
+                                cena.papel,
+                                lei.nome()
+                            );
+                            let t0 = std::time::Instant::now();
+                            let c = celula(
+                                &b,
+                                pincel,
+                                pig,
+                                agua,
+                                pr,
+                                n,
+                                assenta,
+                                cena,
+                                Some(&dir.join("celulas").join(&nome)),
+                            );
+                            let (l, q) = (c.luz, c.plano);
+                            let linha = format!(
+                                "{pincel}\t{pig}\t{agua}\t{pr}\t{n}\t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:.1}\t{nome}\
+                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\t{}\n",
+                                l.km_max,
+                                l.km_p99,
+                                l.manchas,
+                                l.manchas_azul,
+                                l.ferrugem,
+                                c.furos,
+                                c.rug,
+                                c.p99_altura,
+                                l.ref_azul,
+                                q.km_p99,
+                                q.km_max,
+                                q.manchas,
+                                q.manchas_azul,
+                                q.ferrugem,
+                                q.ref_azul,
+                                l.degraus_y,
+                                l.degraus_x,
+                                q.degraus_y,
+                                q.degraus_x,
+                                cena.papel,
+                                lei.nome()
+                            );
+                            print!("[f0 {:>5.1}s] {linha}", t0.elapsed().as_secs_f64());
+                            tsv.push_str(&linha);
+                            std::fs::write(&tsv_path, &tsv).expect("tsv");
+                        }
                     }
                 }
             }

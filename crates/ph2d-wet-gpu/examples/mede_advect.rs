@@ -110,6 +110,48 @@ fn main() {
         leitura.unmap();
         out.map(|v| v / f64::from(BLOCO))
     };
+    let nq6 = BLOCO * 6 * 2;
+    let qs6 = gpu.device.create_query_set(&wgpu::QuerySetDescriptor {
+        label: Some("mede_advect suave"),
+        ty: wgpu::QueryType::Timestamp,
+        count: nq6,
+    });
+    let resolve6 = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("resolve6"),
+        size: u64::from(nq6) * 8,
+        usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    });
+    let leitura6 = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("leitura6"),
+        size: u64::from(nq6) * 8,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    // O quadro de suavização inteiro (smooth → momentum → advecção): ms de placa por passo.
+    let suave = |r: Rect| -> f64 {
+        let mut u = Uniforms::from_grid(&g, mv, r);
+        u.gy = 0.012;
+        a.set_uniforms(&gpu, &u);
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        a.encode_plano(&mut enc, &u, BLOCO, &ph2d_wet_gpu::PLANO_SUAVE, Some(&qs6));
+        enc.resolve_query_set(&qs6, 0..nq6, &resolve6, 0);
+        enc.copy_buffer_to_buffer(&resolve6, 0, &leitura6, 0, u64::from(nq6) * 8);
+        gpu.queue.submit([enc.finish()]);
+        leitura6
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+        espera(&gpu);
+        let soma: u64 = {
+            let d = leitura6.slice(..).get_mapped_range().expect("mapped");
+            let ts: &[u64] = bytemuck::cast_slice(&d);
+            (0..nq6 as usize / 2)
+                .map(|i| ts[2 * i + 1].saturating_sub(ts[2 * i]))
+                .sum()
+        };
+        leitura6.unmap();
+        soma as f64 * periodo / 1e6 / f64::from(BLOCO)
+    };
     let st_full = pack_state(&g.film, &g.susp);
     let upload_cheia = || {
         let t = Instant::now();
@@ -179,7 +221,8 @@ fn main() {
     // Aquecer.
     let _ = bloco(cheia);
     let _ = bloco(suja);
-    let mut v: Vec<Vec<f64>> = vec![Vec::new(); 14];
+    let _ = suave(cheia);
+    let mut v: Vec<Vec<f64>> = vec![Vec::new(); 17];
     for _ in 0..RONDAS {
         let c = bloco(cheia);
         let s = bloco(suja);
@@ -193,6 +236,11 @@ fn main() {
         v[11].push(readback_suja());
         v[12].push(c.iter().sum());
         v[13].push(s.iter().sum());
+        v[14].push(suave(cheia));
+        v[15].push(suave(suja));
+        // O quadro do produto: passo suave na região + readback só da região suja.
+        let t = suave(suja);
+        v[16].push(t + readback_suja());
     }
     // A CPU (a rota do produto) depois — o estado da placa não depende dela.
     let mut cpu = Vec::new();
@@ -215,6 +263,9 @@ fn main() {
                 "readback suja 1024² (por linha)",
                 "placa 4096×2560 passo inteiro",
                 "placa suja 1024² passo inteiro",
+                "placa 4096×2560 quadro suave (smooth+momentum+advecção)",
+                "placa suja 1024² quadro suave",
+                "quadro suave suja 1024² + readback da região (parede)",
             ]
             .map(String::from),
         )

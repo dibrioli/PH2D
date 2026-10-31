@@ -97,8 +97,8 @@ fn o_empacotamento_e_os_uniformes_casam_com_a_grade() {
     );
     assert_eq!(
         std::mem::size_of::<Uniforms>(),
-        64,
-        "o struct U do WGSL tem 16 × 4 B"
+        96,
+        "o struct U do WGSL tem 24 × 4 B"
     );
     let u = Uniforms::from_grid(&g, 1.0, Rect::full(&g));
     assert_eq!((u.w, u.h, u.s), (40, 24, 42));
@@ -178,4 +178,115 @@ fn a_placa_casa_com_a_cpu_conserva_e_e_simetrica() {
         eprintln!("simetria 8 passos {nome}: máx {mx:.3e} médio {md:.3e}");
         assert!(mx <= 8.0 * EPS_1PASSO, "{nome}: o espelho desvia {mx:e}");
     }
+}
+
+/// Gravidade do gate da cadeia (inclinação leve, para o `momentum` ter o que somar).
+const GRAV: (f64, f64) = (0.004, 0.012);
+
+/// O quadro de suavização na CPU: `smooth_velocity` → `advect_jacobi` (com `momentum`).
+fn cpu_suave(g: &Grid, n: usize, gx: f64) -> Grid {
+    let p = params();
+    let mut g = g.clone();
+    for _ in 0..n {
+        ph2d_wet_paint::solver::smooth_velocity_rows(&mut g, &p, Rows::Serial);
+        advect_jacobi_rows(&mut g, &p, gx, GRAV.1, Rows::Serial);
+    }
+    g
+}
+
+fn gpu_suave(gpu: &GpuContext, g: &Grid, n: u32, gx: f64) -> (Estado, [Vec<f32>; 4]) {
+    let mv = params().k(Knob::MaxVelocity);
+    let a = AdvectGpu::new(gpu, g);
+    let mut u = Uniforms::from_grid(g, mv, Rect::full(g));
+    u.gx = gx as f32;
+    u.gy = GRAV.1 as f32;
+    a.upload(gpu, g, &u);
+    a.step_plano(gpu, &u, n, &ph2d_wet_gpu::PLANO_SUAVE);
+    (a.readback(gpu), a.readback_fluxo(gpu, g.flow.cells))
+}
+
+fn desvio_grade(w: usize, h: usize, s: usize, a: &[f32], b: &[f32]) -> (f64, f64) {
+    let (mut mx, mut soma) = (0.0f64, 0.0f64);
+    for y in 1..=h {
+        for x in 1..=w {
+            let d = (f64::from(a[x + y * s]) - f64::from(b[x + y * s])).abs();
+            mx = mx.max(d);
+            soma += d;
+        }
+    }
+    (mx, soma / (w * h) as f64)
+}
+
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn o_quadro_de_suavizacao_na_placa_casa_com_a_cpu() {
+    let Some(gpu) = contexto() else { return };
+    eprintln!("| rf | passos | campo | desvio máx | desvio médio |");
+    eprintln!("|---|---|---|---|---|");
+    for rf in [1usize, 4] {
+        let g = cena::poca(320, 200, rf, 0.9);
+        let (m0f, m0s) = (soma(&g.film), soma(&g.susp));
+        for n in [1usize, 8, 64] {
+            let c = cpu_suave(&g, n, GRAV.0);
+            let (p, fl) = gpu_suave(&gpu, &g, n as u32, GRAV.0);
+            let fg = g.flow;
+            let fino: [(&str, &[f32], &[f32]); 2] =
+                [("film", &c.film, &p.film), ("susp", &c.susp, &p.susp)];
+            let fluxo: [(&str, &[f32], &[f32]); 4] = [
+                ("vel_x", &c.vel_x, &fl[0]),
+                ("vel_y", &c.vel_y, &fl[1]),
+                ("flow_x", &c.flow_x, &fl[2]),
+                ("flow_y", &c.flow_y, &fl[3]),
+            ];
+            let mut piores = Vec::new();
+            for (nome, a, b) in fino {
+                let d = desvio_grade(g.w, g.h, g.s, a, b);
+                eprintln!("| {rf} | {n} | {nome} | {:.3e} | {:.3e} |", d.0, d.1);
+                piores.push((nome, d.0));
+            }
+            let (cr, pr) = (canal(&c.susp_rgb, 0), canal(&p.rgb, 0));
+            let d = desvio_grade(g.w, g.h, g.s, &cr, &pr);
+            eprintln!("| {rf} | {n} | r | {:.3e} | {:.3e} |", d.0, d.1);
+            piores.push(("r", d.0));
+            for (nome, a, b) in fluxo {
+                let d = desvio_grade(fg.w, fg.h, fg.s, a, b);
+                eprintln!("| {rf} | {n} | {nome} | {:.3e} | {:.3e} |", d.0, d.1);
+                piores.push((nome, d.0));
+            }
+            let rel = |a: f64, b: f64| ((a - b) / b).abs();
+            let (pf, ps) = (soma(&p.film), soma(&p.susp));
+            eprintln!(
+                "massa rf {rf} n {n}: Σfilm cpu {:.2e} placa {:.2e} · Σsusp cpu {:.2e} placa {:.2e}",
+                rel(soma(&c.film), m0f),
+                rel(pf, m0f),
+                rel(soma(&c.susp), m0s),
+                rel(ps, m0s)
+            );
+            if n == 1 {
+                for (nome, mx) in &piores {
+                    assert!(
+                        *mx <= EPS_1PASSO,
+                        "rf {rf}: {nome} desvia {mx:e} após 1 quadro"
+                    );
+                }
+            }
+            assert!(
+                rel(pf, m0f) <= EPS_MASSA * n as f64 && rel(ps, m0s) <= EPS_MASSA * n as f64,
+                "a placa não conserva"
+            );
+        }
+    }
+    let g = cena::poca(320, 200, 1, 0.9);
+    let m = cena::espelha_x(&g);
+    let (a, _) = gpu_suave(&gpu, &g, 8, GRAV.0);
+    let (b, _) = gpu_suave(&gpu, &m, 8, -GRAV.0);
+    let mut am = a.film.clone();
+    for y in 0..g.rows {
+        for x in 1..=g.w {
+            am[(g.w + 1 - x) + y * g.s] = a.film[x + y * g.s];
+        }
+    }
+    let (mx, md) = desvio_grade(g.w, g.h, g.s, &am, &b.film);
+    eprintln!("simetria quadro suave 8 passos film: máx {mx:.3e} médio {md:.3e}");
+    assert!(mx <= 8.0 * EPS_1PASSO, "o espelho desvia {mx:e}");
 }

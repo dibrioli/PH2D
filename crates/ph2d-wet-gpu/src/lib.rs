@@ -15,7 +15,7 @@ use ph2d_wet_paint::grid::Grid;
 /// O shader — público para o exemplo de medida e para a validação naga dos testes.
 pub const WGSL: &str = include_str!("advect.wgsl");
 
-/// Os uniformes do shader; o layout casa com `struct U` do WGSL (16 × 4 B).
+/// Os uniformes do shader; o layout casa com `struct U` do WGSL (24 × 4 B).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct Uniforms {
@@ -33,8 +33,18 @@ pub struct Uniforms {
     pub rf: i32,
     pub half: i32,
     pub inv_rf: f32,
-    pub _p0: f32,
-    pub _p1: f32,
+    /// Gravidade do passo (`Sim::gravity`) — o `momentum`.
+    pub gx: f32,
+    pub gy: f32,
+    pub max_v: f32,
+    pub _p2: f32,
+    pub _p3: f32,
+    pub _p4: f32,
+    /// O retângulo na grade de FLUXO (`flow::flow_bbox` do retângulo fino).
+    pub fx0: i32,
+    pub fy0: i32,
+    pub fx1: i32,
+    pub fy1: i32,
 }
 
 /// Retângulo inclusivo de células (`1..=w`, `1..=h`).
@@ -71,6 +81,7 @@ impl Uniforms {
     #[must_use]
     pub fn from_grid(g: &Grid, max_velocity: f64, r: Rect) -> Self {
         let f = &g.flow;
+        let (fx0, fy0, fx1, fy1) = ph2d_wet_paint::flow::flow_bbox((r.x0, r.y0, r.x1, r.y1), f.rf);
         Uniforms {
             w: g.w as i32,
             h: g.h as i32,
@@ -86,8 +97,16 @@ impl Uniforms {
             rf: f.rf as i32,
             half: ((f.rf - 1) / 2) as i32,
             inv_rf: f.inv_rf as f32,
-            _p0: 0.0,
-            _p1: 0.0,
+            gx: 0.0,
+            gy: 0.0,
+            max_v: max_velocity as f32,
+            _p2: 0.0,
+            _p3: 0.0,
+            _p4: 0.0,
+            fx0,
+            fy0,
+            fx1,
+            fy1,
         }
     }
 }
@@ -121,6 +140,13 @@ pub struct Estado {
 /// As quatro passadas, na ordem. O índice é o da pipeline em [`AdvectGpu::pipes`].
 pub const PASSADAS: [&str; 4] = ["prepare", "outflow_pass", "transport", "commit"];
 
+/// As passadas na grade de FLUXO, depois das quatro: `smooth` (= `smooth_velocity`, escreve
+/// `flow`) e `momentum` (= `momentum_rows`, escreve `vel`). Índices `4` e `5` em `pipes`.
+pub const PASSADAS_FLUXO: [&str; 2] = ["suaviza", "momentum"];
+
+/// Um passo de «quadro de suavização» sem secagem: smooth → momentum → advecção.
+pub const PLANO_SUAVE: [usize; 6] = [4, 5, 0, 1, 2, 3];
+
 /// Os buffers e as pipelines de uma grade.
 pub struct AdvectGpu {
     pub cells: usize,
@@ -130,6 +156,8 @@ pub struct AdvectGpu {
     pub active: wgpu::Buffer,
     pub st: wgpu::Buffer,
     pub rgb: wgpu::Buffer,
+    pub vel_x: wgpu::Buffer,
+    pub vel_y: wgpu::Buffer,
     pub pipes: Vec<wgpu::ComputePipeline>,
     pub groups: Vec<wgpu::BindGroup>,
     _scratch: Vec<wgpu::Buffer>,
@@ -166,13 +194,15 @@ impl AdvectGpu {
         let rgb = storage(gpu, "wet-gpu rgb", n * 12);
         let dst = storage(gpu, "wet-gpu dst", n * 8);
         let drgb = storage(gpu, "wet-gpu drgb", n * 12);
+        let vel_x = storage(gpu, "wet-gpu vel_x", fnc * 4);
+        let vel_y = storage(gpu, "wet-gpu vel_y", fnc * 4);
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("wet-gpu advect"),
                 source: wgpu::ShaderSource::Wgsl(WGSL.into()),
             });
-        let all: [(u32, &wgpu::Buffer); 10] = [
+        let all: [(u32, &wgpu::Buffer); 12] = [
             (0, &ub),
             (1, &flow_x),
             (2, &flow_y),
@@ -183,17 +213,21 @@ impl AdvectGpu {
             (7, &rgb),
             (8, &dst),
             (9, &drgb),
+            (10, &vel_x),
+            (11, &vel_y),
         ];
         // Os bindings que cada passada usa (o layout automático só inclui esses).
-        let usa: [&[u32]; 4] = [
+        let usa: [&[u32]; 6] = [
             &[0, 1, 2, 4],
             &[0, 3, 4, 5],
             &[0, 3, 4, 5, 6, 7, 8, 9],
             &[0, 6, 7, 8, 9],
+            &[0, 1, 2, 3, 6, 10, 11],
+            &[0, 1, 2, 3, 6, 10, 11],
         ];
         let mut pipes = Vec::new();
         let mut groups = Vec::new();
-        for (k, entry) in PASSADAS.iter().enumerate() {
+        for (k, entry) in PASSADAS.iter().chain(&PASSADAS_FLUXO).enumerate() {
             let pipe = gpu
                 .device
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -228,6 +262,8 @@ impl AdvectGpu {
             active,
             st,
             rgb,
+            vel_x,
+            vel_y,
             pipes,
             groups,
             _scratch: vec![uv, outflow, dst, drgb],
@@ -251,6 +287,8 @@ impl AdvectGpu {
             bytemuck::cast_slice(&pack_state(&g.film, &g.susp)),
         );
         q.write_buffer(&self.rgb, 0, bytemuck::cast_slice(&g.susp_rgb));
+        q.write_buffer(&self.vel_x, 0, bytemuck::cast_slice(&g.vel_x));
+        q.write_buffer(&self.vel_y, 0, bytemuck::cast_slice(&g.vel_y));
     }
 
     /// Só os uniformes (troca de retângulo).
@@ -269,7 +307,7 @@ impl AdvectGpu {
     ) {
         let (gx, gy) = (r.cols().div_ceil(16), r.rows().div_ceil(16));
         for step in 0..n {
-            for (k, (pipe, bg)) in self.pipes.iter().zip(&self.groups).enumerate() {
+            for (k, (pipe, bg)) in self.pipes.iter().zip(&self.groups).take(4).enumerate() {
                 let tw = ts.map(|(qs, f)| {
                     let i = f(step, k as u32);
                     wgpu::ComputePassTimestampWrites {
@@ -287,6 +325,65 @@ impl AdvectGpu {
                 p.dispatch_workgroups(gx, gy, 1);
             }
         }
+    }
+
+    /// `n` passos do `plano` (índices de `pipes`) sobre `r`, sem timestamps; as passadas de
+    /// fluxo (`≥ 4`) despacham sobre o retângulo de fluxo `u.fx0..fx1`.
+    pub fn encode_plano(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        u: &Uniforms,
+        n: u32,
+        plano: &[usize],
+        ts: Option<&wgpu::QuerySet>,
+    ) {
+        let fino = (
+            (u.x1 - u.x0 + 1).max(0) as u32,
+            (u.y1 - u.y0 + 1).max(0) as u32,
+        );
+        let fluxo = (
+            (u.fx1 - u.fx0 + 1).max(0) as u32,
+            (u.fy1 - u.fy0 + 1).max(0) as u32,
+        );
+        for step in 0..n {
+            for (j, &k) in plano.iter().enumerate() {
+                let (c, r) = if k >= 4 { fluxo } else { fino };
+                // Com `ts`: início/fim de cada passada em `2·(step·len + j)` e `+1`.
+                let q = 2 * (step * plano.len() as u32 + j as u32);
+                let tw = ts.map(|qs| wgpu::ComputePassTimestampWrites {
+                    query_set: qs,
+                    beginning_of_pass_write_index: Some(q),
+                    end_of_pass_write_index: Some(q + 1),
+                });
+                let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: None,
+                    timestamp_writes: tw,
+                });
+                p.set_pipeline(&self.pipes[k]);
+                p.set_bind_group(0, &self.groups[k], &[]);
+                p.dispatch_workgroups(c.div_ceil(16), r.div_ceil(16), 1);
+            }
+        }
+    }
+
+    /// `n` passos do `plano`, esperando a placa.
+    pub fn step_plano(&self, gpu: &GpuContext, u: &Uniforms, n: u32, plano: &[usize]) {
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        self.encode_plano(&mut enc, u, n, plano, None);
+        gpu.queue.submit([enc.finish()]);
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    }
+
+    /// Lê `vel` e `flow` (a grade de fluxo) de volta: `(vel_x, vel_y, flow_x, flow_y)`.
+    #[must_use]
+    pub fn readback_fluxo(&self, gpu: &GpuContext, fcells: usize) -> [Vec<f32>; 4] {
+        let b = fcells as u64 * 4;
+        [
+            read(gpu, &self.vel_x, b),
+            read(gpu, &self.vel_y, b),
+            read(gpu, &self.flow_x, b),
+            read(gpu, &self.flow_y, b),
+        ]
     }
 
     /// `n` passos sobre `r`, esperando a placa.
@@ -372,6 +469,8 @@ pub mod cena {
                 g.flow_y[i] = amp * (dx * 1.6 + 0.35 * (11.0 * nx).cos()).clamp(-1.0, 1.0);
             }
         }
+        g.vel_x.clone_from(&g.flow_x);
+        g.vel_y.clone_from(&g.flow_y);
         g.bx0 = 1;
         g.by0 = 1;
         g.bx1 = w as i32;
@@ -398,6 +497,8 @@ pub mod cena {
                 m.active[j] = g.active[i];
                 m.flow_x[j] = -g.flow_x[i];
                 m.flow_y[j] = g.flow_y[i];
+                m.vel_x[j] = -g.vel_x[i];
+                m.vel_y[j] = g.vel_y[i];
             }
         }
         m

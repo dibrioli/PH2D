@@ -9,12 +9,15 @@ struct U {
     x0: i32, y0: i32, x1: i32, y1: i32,
     // Grade de fluxo: stride, largura, altura, razão fina/fluxo.
     fs: i32, fw: i32, fh: i32, rf: i32,
-    half: i32, inv_rf: f32, _p0: f32, _p1: f32,
+    half: i32, inv_rf: f32, gx: f32, gy: f32,
+    max_v: f32, _p2: f32, _p3: f32, _p4: f32,
+    // Retângulo na grade de fluxo, inclusivo.
+    fx0: i32, fy0: i32, fx1: i32, fy1: i32,
 }
 
 @group(0) @binding(0) var<uniform> u: U;
-@group(0) @binding(1) var<storage, read> flow_x: array<f32>;
-@group(0) @binding(2) var<storage, read> flow_y: array<f32>;
+@group(0) @binding(1) var<storage, read_write> flow_x: array<f32>;
+@group(0) @binding(2) var<storage, read_write> flow_y: array<f32>;
 @group(0) @binding(3) var<storage, read> act: array<u32>;
 @group(0) @binding(4) var<storage, read_write> uv: array<vec2<f32>>;
 @group(0) @binding(5) var<storage, read_write> outflow: array<f32>;
@@ -22,16 +25,45 @@ struct U {
 @group(0) @binding(7) var<storage, read_write> rgb: array<f32>;
 @group(0) @binding(8) var<storage, read_write> dst: array<vec2<f32>>;
 @group(0) @binding(9) var<storage, read_write> drgb: array<f32>;
+@group(0) @binding(10) var<storage, read_write> vel_x: array<f32>;
+@group(0) @binding(11) var<storage, read_write> vel_y: array<f32>;
 
 // A coordenada na grade de fluxo, em inteiro + fração (exata: sem `x·inv_rf` em f32 a 4096).
+// A posição fina é `b + f` (`b` inteiro, `f ∈ [0,1)`); `n` = largura da grade de fluxo.
 struct Fc { i0: i32, a: f32 }
-fn flow_coord(c: i32, n: i32) -> Fc {
-    let t = c - 1 - u.half;
-    if t < 0 { return Fc(1, 0.0); }
-    let q = t / u.rf;
-    let i0 = q + 1;
+fn flow_coord_frac(b: i32, f: f32, n: i32) -> Fc {
+    let t = b - 1 - u.half;
+    var q = t / u.rf;
+    if t < 0 && q * u.rf != t { q = q - 1; } // divisão de piso
+    var i0 = q + 1;
+    var a = (f32(t - q * u.rf) + f) * u.inv_rf;
+    if a >= 1.0 { a = 0.0; i0 = i0 + 1; }
+    if i0 < 1 { return Fc(1, 0.0); }
     if i0 >= n { return Fc(n, 0.0); }
-    return Fc(i0, f32(t - q * u.rf) * u.inv_rf);
+    return Fc(i0, a);
+}
+fn flow_coord(c: i32, n: i32) -> Fc { return flow_coord_frac(c, 0.0, n); }
+
+// O fluxo bilinear numa posição de fluxo (a ordem de termos do `flow_at_point`).
+fn flow_bilin(cx: Fc, cy: Fc) -> vec2<f32> {
+    let i00 = cx.i0 + cy.i0 * u.fs;
+    let a = cx.a;
+    let b = cy.a;
+    let w00 = (1.0 - a) * (1.0 - b);
+    let w10 = a * (1.0 - b);
+    let w01 = (1.0 - a) * b;
+    let w11 = a * b;
+    let ux = flow_x[i00] * w00 + flow_x[i00 + 1] * w10 + flow_x[i00 + u.fs] * w01 + flow_x[i00 + u.fs + 1] * w11;
+    let uy = flow_y[i00] * w00 + flow_y[i00 + 1] * w10 + flow_y[i00 + u.fs] * w01 + flow_y[i00 + u.fs + 1] * w11;
+    return vec2<f32>(ux, uy);
+}
+
+// `flow::flow_probe`: a célula fina que representa a célula de fluxo `c`.
+fn flow_probe(c: i32, w: i32) -> i32 {
+    if c <= 0 { return 0; }
+    let fw = (w + u.rf - 1) / u.rf;
+    if c > fw { return w + 1; }
+    return min((c - 1) * u.rf + 1 + u.half, w);
 }
 
 // O retro-traço `s = c − uv`: base inteira + fração, tirados de `−uv` (pequeno) e não de
@@ -76,18 +108,7 @@ fn cell(g: vec3<u32>) -> Cell {
 fn prepare(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = cell(g);
     if !c.ok { return; }
-    let cx = flow_coord(c.x, u.fw);
-    let cy = flow_coord(c.y, u.fh);
-    let i00 = cx.i0 + cy.i0 * u.fs;
-    let a = cx.a;
-    let b = cy.a;
-    let w00 = (1.0 - a) * (1.0 - b);
-    let w10 = a * (1.0 - b);
-    let w01 = (1.0 - a) * b;
-    let w11 = a * b;
-    let ux = flow_x[i00] * w00 + flow_x[i00 + 1] * w10 + flow_x[i00 + u.fs] * w01 + flow_x[i00 + u.fs + 1] * w11;
-    let uy = flow_y[i00] * w00 + flow_y[i00 + 1] * w10 + flow_y[i00 + u.fs] * w01 + flow_y[i00 + u.fs + 1] * w11;
-    uv[c.i] = vec2<f32>(ux, uy);
+    uv[c.i] = flow_bilin(flow_coord(c.x, u.fw), flow_coord(c.y, u.fh));
 }
 
 @compute @workgroup_size(16, 16, 1)
@@ -177,4 +198,55 @@ fn commit(@builtin(global_invocation_id) g: vec3<u32>) {
     rgb[3 * i] = drgb[3 * i];
     rgb[3 * i + 1] = drgb[3 * i + 1];
     rgb[3 * i + 2] = drgb[3 * i + 2];
+}
+
+// ---- grade de FLUXO ------------------------------------------------------------------------
+
+struct FCell { ok: bool, x: i32, y: i32, i: i32 }
+fn fcell(g: vec3<u32>) -> FCell {
+    let x = u.fx0 + i32(g.x);
+    let y = u.fy0 + i32(g.y);
+    return FCell(x <= u.fx1 && y <= u.fy1, x, y, x + y * u.fs);
+}
+
+// `smooth_velocity_rows` sem gota e sem paredes: média de 5 pontos da velocidade persistente.
+@compute @workgroup_size(16, 16, 1)
+fn suaviza(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok { return; }
+    let fi = flow_probe(c.x, u.w) + flow_probe(c.y, u.h) * u.s;
+    if act[fi] == 0u { return; }
+    let i = c.i;
+    var fx = vel_x[i];
+    var fy = vel_y[i];
+    // A CPU compara `film as f64 > 0.05`: o menor f32 acima de 0,05 (f64) é 0,05f32.
+    if st[fi].x >= 0.05 {
+        fx = 0.2 * vel_x[i] + 0.2 * (vel_x[i - 1] + vel_x[i + 1] + vel_x[i - u.fs] + vel_x[i + u.fs]);
+        fy = 0.2 * vel_y[i] + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
+    }
+    flow_x[i] = clamp(fx, -u.max_v, u.max_v);
+    flow_y[i] = clamp(fy, -u.max_v, u.max_v);
+}
+
+// `momentum_rows`: o fluxo na origem do retro-traço + gravidade × água daqui.
+@compute @workgroup_size(16, 16, 1)
+fn momentum(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok { return; }
+    let px = flow_probe(c.x, u.w);
+    let py = flow_probe(c.y, u.h);
+    if py < u.y0 || py > u.y1 || px < u.x0 || px > u.x1 { return; }
+    let i = px + py * u.s;
+    if act[i] == 0u {
+        vel_x[c.i] = 0.0;
+        vel_y[c.i] = 0.0;
+        return;
+    }
+    let v = flow_bilin(flow_coord(px, u.fw), flow_coord(py, u.fh));
+    let t = backtrace(px, py, v);
+    if !t.ok { return; }
+    let sf = flow_bilin(flow_coord_frac(t.x0, t.fx, u.fw), flow_coord_frac(t.y0, t.fy, u.fh));
+    let f = st[i].x;
+    vel_x[c.i] = clamp(sf.x + u.gx * f, -u.max_v, u.max_v);
+    vel_y[c.i] = clamp(sf.y + u.gy * f, -u.max_v, u.max_v);
 }

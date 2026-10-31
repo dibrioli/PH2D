@@ -27,13 +27,30 @@ antigo). Não precisa do invariante «fora da faixa = 0»: o complemento é copi
 da faixa de antes. Override em execução: `flow::COMMIT_ROTA` (0 produto · 1 cópia · 2 troca).
 Hash igual nas três rotas; `advect_jacobi_bits`, `order_invariant`, `sim_resumable` verdes.
 
-⚠️ Ganho em ms **por medir** (sonda `sonda_fluxo` não feita — prazo). Estimativa pelo perfil: ~70 % de
-12,3 ms ≈ 8 ms/passo no wash 4K.
+Fix `c6ea88ad3a`: linha seca dentro da bbox (sentinelas `i32::MAX/MIN`) transbordava `hi − lo + 1`
+(panic em debug no `parallel_rows`); gate `flow_step_bits_with_dry_rows_inside_the_bbox`.
+
+## Sonda `examples/sonda_fluxo.rs` (wash 4K, blocos de 6 passos completos, intercalados, mínimo)
+
+| variante | ronda A (10×, load 106–110) | ronda B (12×, load 71–89) |
+|---|---|---|
+| commit cópia (antigo) | 221,3 ms | 196,6 ms |
+| commit troca (3d5e69a39c) | **188,7** | **177,9** |
+| Δ | 32,6 | 18,7 |
+| + projecção fundida (zerar+escrever numa passada) | — | 194,2 (−16,3: **recusado**) |
+
+⚠️ Sob load 70–110 o bloco varia ±50 ms: a régua decide o corte do commit (o mínimo e 9/10 rondas da A
+a favor), mas **não resolve 1 ms**. Corte de 1 ms só se decide com load < ~10.
+
+## ⛔ Recusas MEDIDAS
+
+- Projecção: zerar `div`/`prs` dentro das passadas de escrita (em vez de uma passada de zero) — ao bit,
+  sem ganho mensurável (−16 ms, ruído). Não levado.
 
 ## Por fazer
 
-- `examples/sonda_fluxo.rs`: rotas 1×2 intercaladas no mesmo processo (MEDIR_VELOCIDADE).
 - `flow_at_point` (2,4 % self): chamado por célula no `momentum_rows` (`advect_jacobi.rs` ~291) com
   ponto retro-traçado arbitrário — não iça por linha como o `FlowRowSampler`; o ramo `rf=1` pode ler
   directo sem clamp/`half`.
-- `flow_rows`, suavizar, projecção: não tocados.
+- `flow_rows` (3 `flow_probe` por célula, rota `rf = 1` especializável), `smooth_velocity`: não tocados —
+  a régua sob esta carga não resolveria o critério de 1 ms.

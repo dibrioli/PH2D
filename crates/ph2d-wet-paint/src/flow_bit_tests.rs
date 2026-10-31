@@ -86,10 +86,8 @@ fn hash_dos_passos(mut e: Engine, gravidade: bool) -> u64 {
 
 #[test]
 fn flow_step_bits_are_the_recorded_ones() {
-    // As rotas antigas todas juntas, e as novas forçadas.
-    for (rota, cortes) in [(1u8, 0u32), (2, u32::MAX)] {
+    for rota in [1u8, 2] {
         crate::flow::COMMIT_ROTA.store(rota, std::sync::atomic::Ordering::Relaxed);
-        crate::flow::CORTES.store(cortes, std::sync::atomic::Ordering::Relaxed);
         let got = [hash_do_estado(false), hash_do_estado(true)];
         assert_eq!(
             got, GRAVADO,
@@ -97,7 +95,6 @@ fn flow_step_bits_are_the_recorded_ones() {
         );
     }
     crate::flow::COMMIT_ROTA.store(0, std::sync::atomic::Ordering::Relaxed);
-    crate::flow::CORTES.store(u32::MAX, std::sync::atomic::Ordering::Relaxed);
     let got = [hash_do_estado(false), hash_do_estado(true)];
     let s = got.iter().map(|h| format!("{h:#018x}")).collect::<Vec<_>>();
     println!("hashes {s:?}");

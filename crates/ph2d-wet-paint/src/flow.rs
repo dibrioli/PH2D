@@ -378,13 +378,6 @@ impl FlowRowSampler {
 #[doc(hidden)]
 pub static COMMIT_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
-/// Os cortes do fluxo ligados, em execução (bits `CORTE_*`; todos por omissão). Desligar um volta à rotina
-/// antiga — é a variante da sonda `sonda_fluxo`; as duas rotas dão o mesmo grid ao bit (`flow_bit_tests`).
-#[doc(hidden)]
-pub static CORTES: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(u32::MAX);
-/// A projecção zera e escreve cada plano numa passada só (`solver/project.rs`).
-pub const CORTE_PROJ_FUNDE: u32 = 1;
-
 /// Esta célula FINA é a que a sua célula de fluxo AMOSTRA?
 ///
 /// É quem responde *"quem escreve a velocidade deste bloco?"*: exatamente uma

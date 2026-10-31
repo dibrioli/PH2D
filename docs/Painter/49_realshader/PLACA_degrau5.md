@@ -84,6 +84,28 @@ o critério. Os candidatos são o mesmo ramo da secagem única, acumulado (uma c
 `|d| < cego` com histerese/margem idêntica nas duas (mudaria a CPU — não), ou (2) a derivada e o passo do Newton
 em double-float SÓ quando `|d|` está a 2× do `cego` (imita a decisão da CPU); localizar a célula do máx primeiro.
 
+## Ronda 3 (31/10) — a célula do máx 4K (diagnóstico; ⛔ ainda NÃO curado)
+
+`SECA_COR=1 SECA_DIAG=1 … --example mede_seca` (RTX): o máx 1,0055 é a célula **(493, 655)** e as suas
+cópias a cada 512 px em x (a cena repete-se), vela 0,8. Estado final: sett 817,316 · susp 0 · film 0 (tudo
+assentado); `sett_rgb` R **CPU 49,30 × placa 50,55** (o ecrã vê 1,0055 nível).
+
+**NÃO é o `cego` nem um degrau do Newton.** Re-sincronizado (a placa parte do estado da CPU em cada secagem)
+a célula diverge ≤ 0,002 em TODAS as 150 secagens. Livre (a placa sobre o próprio estado): gap 5e-4 até à
+secagem 17 e salta para **2,83 na secagem 18** (depois 0,83 → 1,25 e congela quando o filme seca, ~34).
+⇒ uma descontinuidade da PRÓPRIA lei (a CPU também saltaria) tocada pelo estado da placa que derivou
+~1 ulp/secagem nas MASSAS. Na secagem 18 a CPU tem `susp − dm` = **396,9906** — a 0,009 do degrau 397 do
+`alpha_of_mass` truncado (`a_f2` muda um degrau da tabela). Hipótese mais forte (falta imprimir as massas
+do estado livre para fechar): a massa da placa (f32 acumulado) passou o 397 e a da CPU não.
+
+**Próximo passo (a cura que imita a CPU):** a CPU guarda `film`/`susp`/`sett` em f32 mas calcula-os em f64
+(`dm`, `susp − dm`, `sett + dm`, `lift`, `new_film/f`) e só arredonda no fim. Fazer essas ~10 operações de
+massa em **double-float** no `seca.wgsl` (two-sum/two-prod com `fma`; `retention`, `evap_base`,
+`edge_dark`, `base_evap`, `ext_gran`, `rewet_base` com a parte `lo` no uniforme — `SecaU` cresce) e
+arredondar a f32 no fim ⇒ massas ao bit (quase sempre) com a CPU ⇒ sem deriva ⇒ o índice da tabela decide
+igual. Depois: gate de cor 4K nas duas placas, 1 secagem e 512×320 verdes, ms da secagem 4K (≤ +10 % de 5,15).
+ms 4K nesta ronda (RTX, sem mudança de código no shader): secagem 5,15 · passo 7,94 · com secagem 9,16.
+
 ## Falta (por ordem)
 
 1. **Radeon**: `WGPU_ADAPTER_NAME=radeon` não escolhe a placa (o `GpuContext::new` ignora) — correr o gate

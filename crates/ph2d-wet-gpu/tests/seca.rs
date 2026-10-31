@@ -108,6 +108,102 @@ fn maxdif(a: &[f32], b: &[f32]) -> f64 {
         .fold(0.0, f64::max)
 }
 
+/// Massa (film, susp, sett) placa × CPU após 1 secagem, relativa a `max(|v|, 1)`.
+/// Medido 31/10: RTX 2,3e-5, Radeon 1,9e-5 (o arredondamento f32 de `susp − dm` com `dm ≈ susp`).
+const EPS_MASSA_REL: f64 = 1e-4;
+/// Células cujo rgb (a cor GUARDADA) diverge > 1 nível após 1 secagem: no máximo 1 em `RAMOS_POR`.
+/// Medido 31/10, cena Glaze: RTX 148, Radeon 126 em 163 840 (≈ 1 em 1 100); cena 0: 0. O ramo é
+/// o `assenta` com `a_s = 0` e `a_s2` pequeno sob Glaze: a cor guardada mal se vê no ecrã
+/// (`∂ecrã/∂x ≈ CEGO_COM_GLAZE = 0,01`), o Newton pára a 0,01 nível do ecrã e o canal cego vira por
+/// f32 × f64 — a cor guardada difere, o ecrã não (`EPS_ECRA_1`).
+const RAMOS_POR: usize = 400;
+/// O ecrã seco placa × CPU após 1 secagem, em níveis: UM degrau da tabela de opacidade (0,002 × 255);
+/// a massa que cai noutro índice truncado de `alpha_of_mass` (f32 × f64) é o limiar. Medido RTX 0,18, Radeon 0,22 (cena 0); cena Glaze 0,64 nas DUAS (o ramo, visto com a molhada da vista) — tecto = o critério invisível (1 nível).
+const EPS_ECRA_1: f64 = 1.0;
+
+fn trunc_idx(m: f64) -> i32 {
+    if m < 1.0 { 0 } else { (m as i32).min(3000) }
+}
+
+/// Conta as células cujo rgb diverge > 1 nível e, para cada uma, refaz a decisão de massa da CPU
+/// (f64) e da placa (f32): o índice truncado de `alpha_of_mass` em `sett+dm` / `susp−dm`.
+fn ramos_da_secagem(g: &Grid, c: &Grid, p: &Grid, u: &SecaU) -> (usize, f64) {
+    let mut rel = 0.0f64;
+    let mut ramos = 0;
+    for y in 1..=H {
+        for x in 1..=W {
+            let i = x + y * g.s;
+            for (a, b) in [(c.film[i], p.film[i]), (c.susp[i], p.susp[i]), (c.sett[i], p.sett[i])] {
+                rel = rel.max(f64::from((a - b).abs()) / f64::from(a.abs()).max(1.0));
+            }
+            let d = (0..3)
+                .map(|k| {
+                    (c.susp_rgb[i][k] - p.susp_rgb[i][k])
+                        .abs()
+                        .max((c.sett_rgb[i][k] - p.sett_rgb[i][k]).abs())
+                })
+                .fold(0.0f32, f32::max);
+            if d <= 1.0 {
+                continue;
+            }
+            ramos += 1;
+            if ramos > 4 {
+                continue;
+            }
+            let mut cnt = 0;
+            for dy in [-1i64, 0, 1] {
+                for dx in [-1i64, 0, 1] {
+                    let j = (i as i64 + dx + dy * g.s as i64) as usize;
+                    cnt += u32::from(g.susp[j] > 10.0);
+                }
+            }
+            let ev = if cnt == 9 { 1.0 } else { f64::from(cnt) / 9.0 };
+            let f = f64::from(g.film[i]);
+            let paper = f64::from(g.paper[i]);
+            let (s, t) = (f64::from(g.susp[i]), f64::from(g.sett[i]));
+            let nf = |r: f64, eb: f64, ed: f64, be: f64| {
+                let v = f * r - eb * ((1.0 - ev) * ed + be);
+                if v < 0.0001 { 0.0 } else { v }
+            };
+            let n64 = nf(
+                f64::from(u.retention),
+                f64::from(u.evap_base),
+                f64::from(u.edge_dark),
+                f64::from(u.base_evap),
+            );
+            let bias = (1.0 + f64::from(u.ext_gran) * 0.6 * (0.5 - paper) * 2.0).clamp(0.3, 1.7);
+            let dm64 = (s * (1.0 - (n64 / f).clamp(0.0, 1.0)) * bias).min(s);
+            let (f3, s3, t3) = (g.film[i], g.susp[i], g.sett[i]);
+            let ev3 = ev as f32;
+            let mut n32 = f3 * u.retention - u.evap_base * ((1.0 - ev3) * u.edge_dark + u.base_evap);
+            if n32 < 0.0001 {
+                n32 = 0.0;
+            }
+            let b3 = (1.0 + u.ext_gran * 0.6 * (0.5 - g.paper[i]) * 2.0).clamp(0.3, 1.7);
+            let dm32 = (s3 * (1.0 - (n32 / f3).clamp(0.0, 1.0)) * b3).min(s3);
+            eprintln!(
+                "  ramo ({x},{y}) Δ {d:.1}: sett {t:.4} susp {s:.4} · f64 sett+dm {:.6} [{}] susp−dm {:.6} [{}] · f32 sett+dm {:.6} [{}] susp−dm {:.6} [{}] · rgb CPU {:?}/{:?} placa {:?}/{:?} antes {:?}/{:?} vela {}",
+                t + dm64,
+                trunc_idx(t + dm64),
+                s - dm64,
+                trunc_idx(s - dm64),
+                t3 + dm32,
+                trunc_idx(f64::from(t3 + dm32)),
+                s3 - dm32,
+                trunc_idx(f64::from(s3 - dm32)),
+                c.sett_rgb[i],
+                c.susp_rgb[i],
+                p.sett_rgb[i],
+                p.susp_rgb[i],
+                g.sett_rgb[i],
+                g.susp_rgb[i],
+                g.vela[i]
+            );
+        }
+    }
+    (ramos, rel)
+}
+
 #[test]
 fn a_secagem_na_placa_casa_com_a_cpu() {
     let Some(gpu) = contexto() else { return };
@@ -141,6 +237,22 @@ fn a_secagem_na_placa_casa_com_a_cpu() {
             maxdif(&c1.sett, &g1.sett),
             maxdif(&rgb(&c1.susp_rgb), &rgb(&g1.susp_rgb)),
             maxdif(&rgb(&c1.sett_rgb), &rgb(&g1.sett_rgb)),
+        );
+        let (ramos, rel) = ramos_da_secagem(&g, &c1, &g1, &u);
+        let (e1c, e1g) = (ver(&c1, &p), ver(&g1, &p));
+        let ecra1 = e1c
+            .iter()
+            .zip(&e1g)
+            .flat_map(|(a, b)| (0..3).map(move |ch| (a[ch] - b[ch]).abs()))
+            .fold(0.0f64, f64::max);
+        eprintln!(
+            "cena {k} · 1 secagem: massa rel. máx {rel:.2e} · células com Δrgb > 1 nível: {ramos} · ecrã Δ máx {ecra1:.4}"
+        );
+        assert!(rel <= EPS_MASSA_REL, "cena {k}: massa relativa {rel:.2e}");
+        assert!(ecra1 <= EPS_ECRA_1, "cena {k}: ecrã após 1 secagem Δ {ecra1:.4}");
+        assert!(
+            ramos * RAMOS_POR <= W * H,
+            "cena {k}: {ramos} células viram de ramo (tecto 1 em {RAMOS_POR})"
         );
         // A aguada inteira: `passes` secagens, cor final.
         let mut cn = c1;

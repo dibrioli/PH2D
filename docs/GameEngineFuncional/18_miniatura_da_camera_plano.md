@@ -93,7 +93,43 @@ Código novo em crate (`ph2d-app-game` / `ph2d-render`); a shell só encolhe (`t
   Leitura a load 31 (descartada, CPU sem fatia): 23 ms / 43 fps. ⇒ o custo é a LUZ da vista, que tem um piso de
   grade acima do tamanho do alvo — aberto, sem limite escrito (§0: ainda não pesa no quadro desta placa).
 
-## ⛔ Fora da miniatura (aberto, com o porquê)
+## Fechado (31/10) — os palcos e as formas do Motion fora da placa (commit `5e5c09111a`)
+
+A mesma família (o que o Motion codificava com a câmera do editor fora da placa), num bloco, pelo estado POR VISTA
+trocado à volta da passagem da vista — o desenho da A6 aplicado ao resto do Motion:
+
+- `ph2d_app_motion::motion_filter::VistaDoMotion` — a camada filtrada (cena do Vello, alvos, `formas_no_vello`) e o
+  passe da lente, por vista (`MotionState::troca_a_vista`). De graça: os alvos da camada e da lente deixaram de se
+  realocar a cada quadro (os dois tamanhos alternavam no MESMO estado).
+- `macro_track::palcos::VistaDosPalcos` — a placa e a camada de CADA palco por vista; o palco (o relógio) é um só,
+  nada re-simula. `decide`/`codifica` correm na vista entre duas trocas; saíram os três `if !na_vista` dos palcos.
+- As formas do editor que a placa não leva: a afim da vista, na camada da vista ou na `Vista::cena_do_motion`, colada
+  por cima do mundo da vista antes de a troca o devolver.
+- Prova no app real: `fotos_18/nivel_4_miniatura_motion_fora_da_placa{_ANTES,}.png` (`PH2D_GAME_SMOKE=4
+  PH2D_GAME_SMOKE_FOTO=camera PH2D_MOTION_OBJETO_SMOKE=1 PH2D_FORMAS_NA_PLACA=0`): a pilha falta ANTES e está no sítio
+  DEPOIS. Gates: `a_vista_da_camera_troca_a_placa_e_a_camada_de_cada_palco`,
+  `a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa`.
+- ⚠️ **Os palcos na miniatura não se veem hoje** (medido na foto): a macro só toca com a cena em RUNTIME, e o Play
+  desenha só o jogo — na janela própria o editor deixa de se desenhar (a surface é a do jogo), no palco
+  (`palco_do_jogo`) a miniatura não existe. O código fica certo para quando a cena correr no canvas do editor.
+
+## Medido (31/10) — o piso da grade da luz da vista
+
+`PH2D_LIGHT2D_CUSTO=1 PH2D_MINIATURA_CUSTO=1 PH2D_FLUID_PROFILE=1`, cena `PH2D_GAME_SMOKE=4` + `PH2D_LIGHT2D_SMOKE=8`,
+1930×1040, as duas luzes no MESMO processo, mínimo e mediana de 60 leituras, 5 janelas, load 14–21:
+
+| | janela | grade | região da janela na fluência | luz total min / med |
+|---|---|---|---|---|
+| editor | 1930×1012 | 1280×704 | 1834×963 de 2560×1408 | 4,07 / 5,02 ms |
+| vista da câmera | 366×205 | 512×320 | 232×130 de 512×320 (18 %) | 0,91 / 1,30 ms |
+| `render.miniatura` (span da placa, a vista inteira) | | | | 3,46–3,83 ms |
+
+Quadro a 59–62 fps (vsync). A grade da vista é a margem da luz de fora pela borda + o arredondamento ao bloco das
+cascatas; uma grade justa ao alvo pouparia no máximo a parte variável da luz da vista (< 1 ms). ⇒ **Não pesa no
+quadro desta placa: nada mudou e nenhum limite foi escrito** (§0). A leitura de 30/10 (3,29 ms) foi a load 18 e
+noutra cena; a de hoje é a régua.
+
+## Histórico — o que ficou fora da miniatura em 30/10 (fechado acima)
 
 - **Os palcos das macros** (`motion_shell.palcos`): a placa de cada palco é codificada com a câmera do editor e
   tem estado de reprodução por instância — uma 2.ª instância por vista re-simularia. A vista salta-os (`na_vista`).

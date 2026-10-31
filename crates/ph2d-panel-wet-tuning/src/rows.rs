@@ -334,19 +334,19 @@ mod tests {
     /// borda da mancha molhada no Wet effects (3 → 4). Mais 1 (J6): as tampas do filme no Stroke (12 → 13). Mais 1 (J6 mistura): o
     /// nível do secador no Tools (+1). Mais 1 (J6 mistura, lacuna 6): o alcance do misturador no Tools (+1). Mais 1 (J6 guache, lacuna 7): a tinta que cobre a molhada no
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
-    /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8).
+    /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8). Contagem refeita do código a 31/10: 98 → 95 (o cartão Wet Paint levou Staining, Glaze, Cover e Wet soften de Paint/Stroke/Wet effects para Hidden a 30/10 sem este teste; Paint 24 → 22, Stroke 13 → 12, Wet effects 5 → 4).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 99);
+        assert_eq!(rows().len(), 95);
         for g in [
-            (KnobGroup::Paint, 24),
+            (KnobGroup::Paint, 22),
             (KnobGroup::Water, 8),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 20),
-            (KnobGroup::Stroke, 13),
-            (KnobGroup::WetEffects, 5),
+            (KnobGroup::Stroke, 12),
+            (KnobGroup::WetEffects, 4),
             (KnobGroup::Material, 16),
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
@@ -358,7 +358,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 20] = [
+        const NOUTRA_SUPERFICIE: [&str; 27] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -384,6 +384,14 @@ mod tests {
             "blow",
             "smear",
             "smearWater",
+            // o cartão Wet Paint do pincel (ordem do dono 30/10): Staining, Glaze, Cover, Wet soften e a Drag (J10)
+            "extStaining",
+            "glaze",
+            "wetCover",
+            "extWetSoften",
+            "rewetPaint",
+            "solubility",
+            "rewetDrag",
         ];
         // Controlos MORTOS no produto (W3b): só o `render::render_region` os lê, e nenhum caminho do produto o chama.
         const MORTOS: [&str; 5] = [

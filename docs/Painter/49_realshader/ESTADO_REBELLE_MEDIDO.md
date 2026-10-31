@@ -50,4 +50,18 @@ Subagentes na linha principal: P1 undo (painter/*, grid/snapshot.rs), P2 advecç
 - Placa (crates/ph2d-wet-gpu): passo inteiro da água com secagem 1 em 6 = **9,24 ms 4K RTX** (Radeon 142) vs Rebelle 37,3 CPU; paridade por placa (PLACA_degrau1..5.md). ⛔ aberto: 1 célula 1,0055 > 1 nível na cena 4K Glaze (driver arredonda f32 diferente; double-float não pegou; próximo: shader de 1 célula com intermédios — PLACA_degrau5 ronda 4).
 - Ligação ao app (degraus A+B, PH2D_WET_GPU) — agente em curso → LIGACAO_PLACA.md.
 - R3 pintar 4K 20 facas: 17,9 → **5,4 s** (Rebelle 8 s) ao bit. R1 Wet Wash/Liner + EdgeSoftMass. R2 Charcoal/Wax/Square Hard, Splatter, Thick Impasto. Juntados: 5a48fc7fc6 8c792f0330 8c1f5881cd e881e53ad9 (fábrica 74).
-- Fecho por fazer: regerar 22 miniaturas (em curso, coordenador); Borracha Wet controlo inerte (agente); clippy assenta/ponto.rs:38 e fmt advect_* (R1 apontou); testes lentos do painel já lentos na base (cada_ferramenta_da_agua…, cada_linha_visivel…); fmt/clippy das crates tocadas; mutação nos gates novos (assenta_bit, flow_bit, advect_bit, historia_cow, paridade placa); handoff HANDOFF_SUPERAR_REBELLE.md; rodada calma A/B/C do nucleos_wash.
+## 31/10 madrugada — fecho (handoff: [HANDOFF_SUPERAR_REBELLE.md](HANDOFF_SUPERAR_REBELLE.md))
+| item | estado | commits |
+|---|---|---|
+| clippy/fmt wet-gpu, wet-paint, tool-painter | FEITO, verde | ac01f7c653 |
+| mutação nos portões novos | FEITA: 24/36 sangraram, sobreviventes fechados; nenhum defeito real | 96df9bc5f1 7480217f5e f05808adb8 |
+| dryCover / tuftArc / waterDrag (KNOB_COUNT 140→143) | FEITOS, a 0 bit-idêntico | 4cce472f3e 8317139b72 560bce5a22 |
+| painel dos três | FEITO | 68f5c856c1 48c186b5f9 |
+| Water Brush, Fan Brush, Gouache Opaque (fábrica 77) | FEITOS | d30872a44d |
+| censo da água / Pigment mixing no Blow | FEITO | d070dcaf85 |
+| Marker Chisel glaze 0,5 | FEITO (raiz BUGS #54 aberta) | 13c264ac48 |
+| miniaturas | 15/22 regeradas; 7 + 4 novas PENDENTE DO COORDENADOR (3 gates vermelhos até lá) | 6579e829ee 5400a16388 |
+| RTX | Xid 109 às 03:36, Vulkan NVIDIA fora até reboot (dono); medição in-app pendente | — |
+| aberto | rodada calma A/B/C; célula Glaze 4K; 33 leituras numa espera; Mop e Smudge Finger (motor); lista R2; BUGS #54 | — |
+
+- (anterior) Fecho por fazer: regerar 22 miniaturas (em curso, coordenador); Borracha Wet controlo inerte (agente); clippy assenta/ponto.rs:38 e fmt advect_* (R1 apontou); testes lentos do painel já lentos na base (cada_ferramenta_da_agua…, cada_linha_visivel…); fmt/clippy das crates tocadas; mutação nos gates novos (assenta_bit, flow_bit, advect_bit, historia_cow, paridade placa); handoff HANDOFF_SUPERAR_REBELLE.md; rodada calma A/B/C do nucleos_wash.

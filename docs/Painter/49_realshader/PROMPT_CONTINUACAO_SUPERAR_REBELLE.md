@@ -7,7 +7,14 @@ docs/Painter/49_realshader/ESTADO_REBELLE_MEDIDO.md (a tabela de tudo, commits e
 agentes fazem leitura, construção, medição (≤ 3 subagentes; briefing com a linha ⛔ «cd X && … · bash -c/sh -c · rm -rf com
 variável/glob · kill de PID não gravado · escrever em .git/.claude/ · AskUserQuestion · push · tocar fora dos seus paths»).
 
-## Onde está (31/10 noite)
+## Onde está AGORA (31/10 madrugada, HEAD d070dcaf85) — leia primeiro
+Handoff técnico: docs/Painter/49_realshader/HANDOFF_SUPERAR_REBELLE.md (substitui o «31/10 noite» abaixo, que fica como história).
+Feito: placa ligada (PH2D_WET_GPU opt-in), dryCover/tuftArc/waterDrag, Water/Fan/Gouache (fábrica 77), mutação e clippy dos portões novos, censo da água.
+Pendente do COORDENADOR: regerar miniaturas (7 antigas + Water Brush, Fan Brush, Gouache Opaque, Marker Chisel); até lá 3 gates vermelhos (`cada_preset_de_fabrica_e_a_sua_receita`, `the_factory_presets_are_counted`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`).
+Aberto: rodada calma A/B/C do nucleos_wash; célula Glaze 4K; 33 leituras numa espera; Mop e Smudge Finger (motor); BUGS #54 de raiz.
+RTX: Vulkan NVIDIA fora até reboot (Xid 109); antes da placa por omissão, partir despachos 4K longos. NÃO integrar, sem push.
+
+## Onde estava (31/10 noite — história)
 - Rebelle: 37,3 ms/passo água 4K (D2_rebelle_passo_agua.md). PH2D: ~100 → menos (secagem −27 % passo, SEM −36 % da secagem,
   advecção 5 cortes + commit por TROCA −19..33 ms) — FALTA uma rodada calma (load < 10) A/B/C do nucleos_wash com o HEAD
   (MEDIDA_31_10_RODADA2.md tem o método). Memória 177 B/px < Rebelle ✓.

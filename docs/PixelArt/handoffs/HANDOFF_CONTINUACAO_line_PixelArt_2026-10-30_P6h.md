@@ -32,7 +32,22 @@ Lei medida no **Aseprite Trial 1.3.18.6 CORRIDO** em Xvfb próprio. Entrada = `t
 6. **Cena `PH2D_PIXEL_SMOKE=16`** (`ph2d-app-pixel/src/smoke_intervalo.rs`; a entrada do oráculo, quadros 2..3 escolhidos). A sonda de nível desconhecido passou ao **17**. Fotos `smoke_P6h_cena16_2026-10-30.png` e `_dono_` (layout.txt do dono igual antes/depois); foto da cena 9 com a lei Fast da P6g, `smoke_P6h_cena9_fast_2026-10-30.png` e `_dono_` (o F do Fast muda poucas células; RotSprite igual).
 7. **Mutações P6d–P6g**: 49 corridas, 31 sangraram, 18 sobreviveram; 13 fechadas por testes (`shells/pixel-scenes/tests/it/sobreviventes.rs`). EQUIVALENTES provadas: `escolhe_sob` `!is_group` (`op.rs:282-284` recusa célula em grupo); `carrega_msk` `count()==0` (select vazio em Replace já deselecciona, `selection.rs:528`); `cheia && is_closed()` (formas abertas só dão contornos abertos).
 
-## 3. Smoke do dono — POR FAZER
+## 3. Smoke do dono — FEITO 31/10: OK salvo três defeitos (a próxima onda começa por eles)
+
+- **D1 — Enter dá Play.** Escrever a duração no campo e carregar Enter também liga o tocar
+  (`input_teclas.rs`: `Enter → FrameAction::Play`). O Enter que fecha um campo numérico do painel
+  chega à família como tecla. Procure o mecanismo (a ordem foco/blur × despacho de teclas na shell,
+  `input_dispatch/despacho_pixel.rs`), não remende o sintoma; teste de costura com o campo focado.
+- **D2 — a moldura do intervalo não se dá a ver.** Pedido do dono: o cursor muda no hover (mão
+  aberta) e ao premir (mão fechada); durante o arrasto o bloco arrastado VÊ-SE a mover (como os
+  cartões do Kanban/TrelloClone quando arrastados — reuse essa pintura/lei, `ph2d-app-kanban`).
+  Hoje só há a linha de inserção (`paint_grid.rs`, `Arrasto::Bloco`).
+- **D3 — a ponta da barra da tag («walk») não é evidente em nada.** O mesmo pedido: cursor no hover
+  e ao premir (redimensionar), a ponta realçada, e a barra a esticar visível durante o arrasto (a
+  pré-visualização `gestos::tag_previsto` existe; falta dar-lhe corpo e o cursor).
+- O resto do smoke (escolher, Shift+clique, Esc, Alt+I, contínua, Constant Frame Rate, Delete) OK.
+
+### Passos que o dono correu (para refazer depois das curas)
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=16 ./target/smoke/ph2d-host-desktop`
 2. Na linha do tempo, os quadros 2 e 3 vêm escolhidos: contorno colorido à volta, título «Frames [2...3]» no painel de baixo.
@@ -75,5 +90,9 @@ Lei medida no **Aseprite Trial 1.3.18.6 CORRIDO** em Xvfb próprio. Entrada = `t
 - Fecho da linha: `/pd-linha-fechar`, `bash scripts/agent-loop-profile.sh`, `rm -rf target/*/incremental`.
 
 ## 7. Próximo item
+
+D1–D3 (§3) num bloco, cena 16 refotografada; depois o resto do §6.
+
+<!-- antes do smoke: -->
 
 Smoke da cena 16 pelo dono; depois o dono escolhe a onda (as mutações P6b/P6c e os sobreviventes podem ir num bloco com o fecho da linha).

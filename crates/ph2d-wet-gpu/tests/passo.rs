@@ -404,3 +404,88 @@ fn a_subida_e_a_descida_so_das_linhas_sujas_casam_com_a_cpu() {
         "devolvido: {mx2} / {p2}"
     );
 }
+
+/// Degrau 6 (PLACA_degrau6.md): as submissões do passo cortadas pelo orçamento × um submit por passo (o de antes),
+/// intercaladas no mesmo processo a 4096×2560. Afirma o MESMO bit (film, susp, cor, sett) e imprime, por variante, o
+/// número de submissões por passo e os ms de placa da maior (carimbos), e a maior passada sozinha.
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn mede_as_submissoes_a_4k() {
+    use ph2d_wet_gpu::passo::{ORCAMENTO_GRUPOS, TETO_MS};
+    let Some(gpu) = contexto() else { return };
+    let (w, h) = (4096usize, 2560usize);
+    let e = aguada(w, h);
+    let idx = e.active_layer;
+    let (sim0, g0) = (e.sim.clone(), e.layers[idx].grid.clone());
+    let mut p = PassoPlaca::new(&gpu, &g0, &sim0, &e.tuning);
+    espera(&gpu);
+    const N: usize = 12;
+    let variantes = [("um submit", u64::MAX), ("fatiado", ORCAMENTO_GRUPOS)];
+    // por variante: (min ms/passo de relógio, máx submissões/passo, máx ms da maior submissão, máx ms de uma passada)
+    let mut res = [(f64::INFINITY, 0usize, 0.0f64, 0.0f64); 2];
+    for r in 0..4 {
+        let mut finais = Vec::new();
+        for k in [r % 2, 1 - r % 2] {
+            p.afina(variantes[k].1, TETO_MS);
+            p.sobe(&gpu, &g0);
+            espera(&gpu);
+            let (mut s, mut g) = (sim0.clone(), g0.clone());
+            let t = Instant::now();
+            for _ in 0..N {
+                p.passo(&gpu, &mut s, &mut g, &e.tuning);
+                let subs = p.ms_por_submissao();
+                let pas = p.ms_por_passada();
+                let o = &mut res[k];
+                o.1 = o.1.max(subs.len());
+                o.2 = subs.iter().copied().fold(o.2, f64::max);
+                o.3 = pas.iter().copied().fold(o.3, f64::max);
+            }
+            let ms = t.elapsed().as_secs_f64() * 1e3 / N as f64;
+            if r == 3 {
+                let v: Vec<String> = p
+                    .ms_por_passada()
+                    .iter()
+                    .map(|m| format!("{m:.2}"))
+                    .collect();
+                let u: Vec<String> = p
+                    .ms_por_submissao()
+                    .iter()
+                    .map(|m| format!("{m:.2}"))
+                    .collect();
+                eprintln!(
+                    "PASSADAS {} (passo 12): [{}] · submissões [{}]",
+                    variantes[k].0,
+                    v.join(" "),
+                    u.join(" ")
+                );
+            }
+            if r > 0 {
+                res[k].0 = res[k].0.min(ms);
+            }
+            p.desce(&gpu, &mut g);
+            finais.push((k, g));
+        }
+        finais.sort_by_key(|f| f.0);
+        let (a, b) = (&finais[0].1, &finais[1].1);
+        let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(&a.film), bits(&b.film), "film ao bit");
+        assert_eq!(bits(&a.susp), bits(&b.susp), "susp ao bit");
+        assert_eq!(bits(&a.sett), bits(&b.sett), "sett ao bit");
+        assert!(
+            a.susp_rgb == b.susp_rgb && a.sett_rgb == b.sett_rgb,
+            "cores ao bit"
+        );
+    }
+    let i = gpu.adapter.get_info();
+    for (k, (nome, orc)) in variantes.iter().enumerate() {
+        let (ms, n, sub, pas) = res[k];
+        eprintln!(
+            "SUBMISSOES {nome} (orçamento {orc}): {ms:.2} ms/passo (mín de 3) · até {n} submissões/passo · maior submissão \
+             {sub:.2} ms · maior passada {pas:.2} ms · {} · loadavg {}",
+            i.name,
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+    }
+}

@@ -23,7 +23,11 @@ impl crate::PainterTool {
 pub(super) fn ligada() -> bool {
     static L: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *L.get_or_init(|| std::env::var("PH2D_WET_GPU").is_ok_and(|v| v.trim() == "1"))
+        && !ESTOUROU.load(std::sync::atomic::Ordering::Relaxed)
 }
+
+/// A guarda do degrau 6 (PLACA_degrau6.md): uma submissão acima de `TETO_MS` desliga a placa até fechar o app.
+static ESTOUROU: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// O estado da placa de UM worker.
 #[derive(Default)]
@@ -86,6 +90,15 @@ impl Placa {
                 ..
             } = e;
             let ran = p.passo(gpu, sim, &mut layers[idx].grid, tuning);
+            if let Some(ms) = p.estourou() {
+                eprintln!(
+                    "⚠️ [wet-gpu] uma submissão levou {ms:.1} ms (tecto {:.0} ms) — a água volta à CPU",
+                    ph2d_wet_gpu::passo::TETO_MS
+                );
+                ESTOUROU.store(true, std::sync::atomic::Ordering::Relaxed);
+                p.desce_suja(gpu, &mut layers[idx].grid);
+                self.viva = false;
+            }
             if let Some((x0, y0, x1, y1)) = pre {
                 e.merge_dirty(x0, y0, x1, y1);
             }

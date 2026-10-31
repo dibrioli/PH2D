@@ -75,6 +75,9 @@ impl SecaU {
     }
 }
 
+/// Uma passada da secagem: o pipeline e o seu grupo.
+pub(crate) type Passada = (wgpu::ComputePipeline, wgpu::BindGroup);
+
 pub struct SecaGpu {
     pub ub: wgpu::Buffer,
     pub film: wgpu::Buffer,
@@ -277,6 +280,17 @@ impl SecaGpu {
                 cp.dispatch_workgroups(gx, gy, 1);
             }
         }
+    }
+
+    /// As duas passadas (borda → seca) e os grupos sobre a caixa, para quem fatia as submissões
+    /// ([`crate::passo`]); `None` = caixa vazia (o [`Self::encode`] também não grava nada).
+    pub(crate) fn passadas(&self) -> Option<(&[Passada; 2], u32, u32)> {
+        if self.u.by0 > self.u.by1 || self.u.bx0 > self.u.bx1 {
+            return None;
+        }
+        let gx = (self.u.bx1 - self.u.bx0 + 1).div_ceil(16);
+        let gy = (self.u.by1 - self.u.by0 + 1).div_ceil(16);
+        Some((&self.pipes, gx, gy))
     }
 
     pub fn step(&self, gpu: &GpuContext, n: u32) {

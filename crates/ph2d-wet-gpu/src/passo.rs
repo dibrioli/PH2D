@@ -5,7 +5,7 @@
 use crate::seca::{SecaGpu, SecaU};
 use crate::{
     AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read, read_at,
+    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read,
 };
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
@@ -71,6 +71,100 @@ fn porta(@builtin(global_invocation_id) g: vec3<u32>) {
 ";
 /// Passadas no máximo num passo depois do rebuild (campo 7 + sedimenta 2 + bordas 2 + projecção 5 + vmax 1).
 const MAX_PLANO: usize = 24;
+/// Carimbos por passo: 2 por passada (rebuild 5 + porta 1 + secagem 4 + plano 24 = 34 ⇒ 68).
+const MAX_CARIMBOS: u32 = 96;
+/// O orçamento de UMA submissão, em workgroups de 256 fios: corta-se antes da passada que o passaria
+/// (uma passada maior que ele vai sozinha). 4K = 41 k grupos por passada de folha ⇒ cada uma vai só.
+/// Medido (PLACA_degrau6.md, Radeon 610M, 4096×2560): maior submissão 93,3 → 22,6 ms (= a maior passada,
+/// `outflow_pass`) ⇒ ~2,8 ms na RTX 5060 Ti (8,0× no passo inteiro, 74 × 9,24 ms), ao bit.
+pub const ORCAMENTO_GRUPOS: u64 = 40_000;
+/// A guarda: uma submissão acima disto (carimbos da placa) ⇒ [`PassoPlaca::estourou`] e o worker volta à CPU.
+/// ~9× a maior submissão extrapolada para a RTX (2,8 ms); na Radeon 610M a maior passada já é 22,6 ms — lá
+/// a guarda pode disparar sob carga, e a CPU é ~10× mais rápida nessa placa (LIGACAO_PLACA.md ronda 3).
+pub const TETO_MS: f64 = 25.0;
+
+enum Despacho<'a> {
+    Direto(u32, u32),
+    Indireto(&'a wgpu::Buffer, u64),
+}
+
+/// As submissões de um passo, cortadas pelo orçamento; cada passada leva carimbos de início e fim.
+struct Fatias<'g> {
+    gpu: &'g GpuContext,
+    enc: wgpu::CommandEncoder,
+    custo: u64,
+    orcamento: u64,
+    qs: Option<wgpu::QuerySet>,
+    q: u32,
+    ini: u32,
+    /// `(1.º carimbo, último)` de cada submissão já cortada.
+    cortes: Vec<(u32, u32)>,
+}
+
+impl<'g> Fatias<'g> {
+    fn new(gpu: &'g GpuContext, orcamento: u64, qs: Option<wgpu::QuerySet>) -> Self {
+        Fatias {
+            gpu,
+            enc: gpu.device.create_command_encoder(&Default::default()),
+            custo: 0,
+            orcamento,
+            qs,
+            q: 0,
+            ini: 0,
+            cortes: Vec::new(),
+        }
+    }
+
+    fn passada(
+        &mut self,
+        pipe: &wgpu::ComputePipeline,
+        bg: &wgpu::BindGroup,
+        d: Despacho<'_>,
+        custo: u64,
+    ) {
+        if self.custo > 0 && self.custo + custo > self.orcamento {
+            self.corta();
+        }
+        let tw = self
+            .qs
+            .as_ref()
+            .filter(|_| self.q + 2 <= MAX_CARIMBOS)
+            .map(|qs| wgpu::ComputePassTimestampWrites {
+                query_set: qs,
+                beginning_of_pass_write_index: Some(self.q),
+                end_of_pass_write_index: Some(self.q + 1),
+            });
+        if tw.is_some() {
+            self.q += 2;
+        }
+        let mut p = self.enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: None,
+            timestamp_writes: tw,
+        });
+        p.set_pipeline(pipe);
+        p.set_bind_group(0, bg, &[]);
+        match d {
+            Despacho::Direto(c, r) => p.dispatch_workgroups(c, r, 1),
+            Despacho::Indireto(args, o) => p.dispatch_workgroups_indirect(args, o),
+        }
+        drop(p);
+        self.custo += custo;
+    }
+
+    /// Fecha a submissão corrente (se tem passadas) e abre outra.
+    fn corta(&mut self) {
+        let enc = std::mem::replace(
+            &mut self.enc,
+            self.gpu.device.create_command_encoder(&Default::default()),
+        );
+        self.gpu.queue.submit([enc.finish()]);
+        if self.q > self.ini {
+            self.cortes.push((self.ini, self.q - 1));
+        }
+        self.ini = self.q;
+        self.custo = 0;
+    }
+}
 
 pub struct PassoPlaca {
     /// `porta`: os grupos de base (CPU) → os indirectos (`args`, INDIRECT) pela `caixa[14]`.
@@ -94,6 +188,13 @@ pub struct PassoPlaca {
     hash_fluxo: Vec<u64>,
     /// As linhas finas que a placa pode ter mudado desde a subida (a união das caixas): o `desce_suja` desce só elas.
     suja: Option<(i32, i32)>,
+    /// Carimbos por passada (`None` = a placa não tem `TIMESTAMP_QUERY`: sem guarda) e o destino resolvido.
+    qs: Option<(wgpu::QuerySet, wgpu::Buffer)>,
+    orcamento: u64,
+    teto_ms: f64,
+    /// ms de placa de cada submissão do último passo, e de cada passada (pelos carimbos).
+    ms_sub: Vec<f64>,
+    ms_passada: Vec<f64>,
 }
 
 /// Hash de uma linha: multiplica-e-roda sobre palavras de 8 B (não é cripto; a colisão de 64 bits é desprezável).
@@ -240,7 +341,23 @@ impl PassoPlaca {
         let n_args = (MAX_PLANO * 12) as u64;
         let base = buf("wet-gpu porta base", n_args, B::STORAGE | B::COPY_DST);
         let args = buf("wet-gpu porta args", n_args, B::STORAGE | B::INDIRECT);
-        let stage = buf("wet-gpu caixa stage", 64, B::COPY_DST | B::MAP_READ);
+        let n_ts = u64::from(MAX_CARIMBOS) * 8;
+        let stage = buf("wet-gpu caixa stage", 64 + n_ts, B::COPY_DST | B::MAP_READ);
+        let qs = gpu
+            .device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+            .then(|| {
+                let q = gpu.device.create_query_set(&wgpu::QuerySetDescriptor {
+                    label: Some("wet-gpu carimbos"),
+                    ty: wgpu::QueryType::Timestamp,
+                    count: MAX_CARIMBOS,
+                });
+                (
+                    q,
+                    buf("wet-gpu carimbos", n_ts, B::QUERY_RESOLVE | B::COPY_SRC),
+                )
+            });
         let pm = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -291,6 +408,11 @@ impl PassoPlaca {
             hash_fina: Vec::new(),
             hash_fluxo: Vec::new(),
             suja: None,
+            qs,
+            orcamento: ORCAMENTO_GRUPOS,
+            teto_ms: TETO_MS,
+            ms_sub: Vec::new(),
+            ms_passada: Vec::new(),
         };
         let mut s = s;
         s.sobe(gpu, g);
@@ -361,8 +483,8 @@ impl PassoPlaca {
         if let Some((a, b)) = self.suja {
             faixas.push(((a.max(0) as usize).min(ult), (b.max(0) as usize).min(ult)));
         }
+        self.desce_faixas(gpu, g, &faixas);
         for (y0, y1) in faixas {
-            self.desce_linhas(gpu, g, y0, y1);
             let (f0, f1) = fluxo_de(g, y0, y1);
             for y in y0..=y1 {
                 self.hash_fina[y] = hash_fina(g, y);
@@ -377,38 +499,85 @@ impl PassoPlaca {
         self.suja = g.has_fluid.then_some((g.by0, g.by1));
     }
 
-    /// Desce as linhas finas `y0..=y1` e as de fluxo que as cobrem.
-    fn desce_linhas(&self, gpu: &GpuContext, g: &mut Grid, y0: usize, y1: usize) {
-        let (a, b) = (y0 * g.s, (y1 + 1) * g.s);
-        let n = (b - a) as u64;
-        let st: Vec<[f32; 2]> = read_at(gpu, &self.adv.st, a as u64 * 8, n * 8);
-        for (k, v) in st.iter().enumerate() {
-            g.film[a + k] = v[0];
-            g.susp[a + k] = v[1];
+    /// Desce as linhas finas de cada faixa e as de fluxo que as cobrem: as 10 cópias de cada faixa num
+    /// codificador, num buffer, numa espera (antes: uma espera por cópia, 33 por descida suja).
+    fn desce_faixas(&self, gpu: &GpuContext, g: &mut Grid, faixas: &[(usize, usize)]) {
+        let a = &self.adv;
+        let fino: [(&wgpu::Buffer, u64); 6] = [
+            (&a.st, 8),
+            (&a.rgb, 12),
+            (&a.sett, 4),
+            (&self.seca.trgb, 12),
+            (&a.active, 4),
+            (&a.wet, 4),
+        ];
+        let fluxo = [&a.vel_x, &a.vel_y, &a.flow_x, &a.flow_y];
+        // (origem, offset na origem, bytes, offset no stage)
+        let mut copias: Vec<(&wgpu::Buffer, u64, u64, u64)> = Vec::new();
+        let mut tam = 0u64;
+        for &(y0, y1) in faixas {
+            let (ca, cb) = ((y0 * g.s) as u64, ((y1 + 1) * g.s) as u64);
+            for &(b, k) in &fino {
+                copias.push((b, ca * k, (cb - ca) * k, tam));
+                tam += (cb - ca) * k;
+            }
+            let (f0, f1) = fluxo_de(g, y0, y1);
+            let (fa, fb) = ((f0 * g.flow.s) as u64, ((f1 + 1) * g.flow.s) as u64);
+            for b in fluxo {
+                copias.push((b, fa * 4, (fb - fa) * 4, tam));
+                tam += (fb - fa) * 4;
+            }
         }
-        let rgb: Vec<[f32; 3]> = read_at(gpu, &self.adv.rgb, a as u64 * 12, n * 12);
-        g.susp_rgb[a..b].copy_from_slice(&rgb);
-        let sett: Vec<f32> = read_at(gpu, &self.adv.sett, a as u64 * 4, n * 4);
-        g.sett[a..b].copy_from_slice(&sett);
-        let trgb: Vec<[f32; 3]> = read_at(gpu, &self.seca.trgb, a as u64 * 12, n * 12);
-        g.sett_rgb[a..b].copy_from_slice(&trgb);
-        let act: Vec<u32> = read_at(gpu, &self.adv.active, a as u64 * 4, n * 4);
-        for (d, &v) in g.active[a..b].iter_mut().zip(&act) {
-            *d = v as u8;
+        if tam == 0 {
+            return;
         }
-        let wet: Vec<u32> = read_at(gpu, &self.adv.wet, a as u64 * 4, n * 4);
-        for (d, &v) in g.wet[a..b].iter_mut().zip(&wet) {
-            *d = v as u8;
+        let stage = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("wet-gpu desce"),
+            size: tam,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        for &(b, o, n, d) in &copias {
+            enc.copy_buffer_to_buffer(b, o, &stage, d, n);
         }
-        let (f0, f1) = fluxo_de(g, y0, y1);
-        let (fa, fb) = (f0 * g.flow.s, (f1 + 1) * g.flow.s);
-        let rf = |buf: &wgpu::Buffer| -> Vec<f32> {
-            read_at(gpu, buf, fa as u64 * 4, (fb - fa) as u64 * 4)
-        };
-        g.vel_x[fa..fb].copy_from_slice(&rf(&self.adv.vel_x));
-        g.vel_y[fa..fb].copy_from_slice(&rf(&self.adv.vel_y));
-        g.flow_x[fa..fb].copy_from_slice(&rf(&self.adv.flow_x));
-        g.flow_y[fa..fb].copy_from_slice(&rf(&self.adv.flow_y));
+        gpu.queue.submit([enc.finish()]);
+        let sl = stage.slice(..);
+        sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        {
+            let d = sl.get_mapped_range().expect("mapped range");
+            let mut it = copias
+                .iter()
+                .map(|&(_, _, n, o)| &d[o as usize..(o + n) as usize]);
+            let mut prox = || it.next().expect("uma cópia por destino");
+            for &(y0, y1) in faixas {
+                let (ca, cb) = (y0 * g.s, (y1 + 1) * g.s);
+                let st: &[[f32; 2]] = bytemuck::cast_slice(prox());
+                for (k, v) in st.iter().enumerate() {
+                    g.film[ca + k] = v[0];
+                    g.susp[ca + k] = v[1];
+                }
+                g.susp_rgb[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
+                g.sett[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
+                g.sett_rgb[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
+                let act: &[u32] = bytemuck::cast_slice(prox());
+                for (o, &v) in g.active[ca..cb].iter_mut().zip(act) {
+                    *o = v as u8;
+                }
+                let wet: &[u32] = bytemuck::cast_slice(prox());
+                for (o, &v) in g.wet[ca..cb].iter_mut().zip(wet) {
+                    *o = v as u8;
+                }
+                let (f0, f1) = fluxo_de(g, y0, y1);
+                let (fa, fb) = (f0 * g.flow.s, (f1 + 1) * g.flow.s);
+                g.vel_x[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
+                g.vel_y[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
+                g.flow_x[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
+                g.flow_y[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
+            }
+        }
+        stage.unmap();
     }
 
     /// Desce a grade INTEIRA para a CPU (film, susp, cores, sett, vel, flow, active, wet).
@@ -469,27 +638,6 @@ impl PassoPlaca {
         self.adv.set_knobs(gpu, &k);
         let par = n.is_multiple_of(2);
         let seca = n.is_multiple_of(sim.dry_every);
-        let mut enc = gpu.device.create_command_encoder(&Default::default());
-        if par {
-            self.adv.encode_plano(&mut enc, &u, 1, &PLANO_REBUILD, None);
-        }
-        // Passo de rebuild COM secagem: a secagem precisa da caixa nova na CPU (faixas e grupos) — a 2.ª espera.
-        if par && seca {
-            enc.copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
-            gpu.queue.submit([enc.finish()]);
-            let c = self.le_caixa(gpu);
-            (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
-            self.suja_junta(g);
-            if !g.has_fluid {
-                return false;
-            }
-            enc = gpu.device.create_command_encoder(&Default::default());
-        }
-        if seca {
-            let evap = sim.evap_scale * p.k(Knob::Evaporation);
-            let rewet = sim.rewet_base * p.k(Knob::Rewet);
-            self.seca_na_placa(gpu, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
-        }
         let mut plano = Vec::with_capacity(MAX_PLANO);
         plano.extend_from_slice(if n.is_multiple_of(4) {
             &PLANO_CAMPO[..]
@@ -504,31 +652,76 @@ impl PassoPlaca {
             plano.extend(PLANO_PROJETA);
         }
         plano.extend(PLANO_VMAX);
+        // As escritas da fila aplicam-se antes da PRÓXIMA submissão: todas antes da primeira (como num submit só).
         self.adv.zera_vmax(gpu);
-        // Rebuild sem secagem no mesmo submit: o resto do passo passa pela porta do `has_fluid` (indirecto).
+        // Rebuild sem secagem no mesmo passo: o resto passa pela porta do `has_fluid` (indirecto).
         let porta = par && !seca;
+        let base: Vec<[u32; 3]> = plano
+            .iter()
+            .map(|&k| {
+                let (c, r) = grupos(&u, k);
+                [c, r, 1]
+            })
+            .collect();
         if porta {
-            let base: Vec<[u32; 3]> = plano
-                .iter()
-                .map(|&k| {
-                    let (c, r) = grupos(&u, k);
-                    [c, r, 1]
-                })
-                .collect();
             gpu.queue
                 .write_buffer(&self.base, 0, bytemuck::cast_slice(&base));
-            let mut cp = enc.begin_compute_pass(&Default::default());
-            cp.set_pipeline(&self.porta);
-            cp.set_bind_group(0, &self.porta_bg, &[]);
-            cp.dispatch_workgroups(1, 1, 1);
-            drop(cp);
-            self.adv.encode_plano_indireto(&mut enc, &plano, &self.args);
-        } else {
-            self.adv.encode_plano(&mut enc, &u, 1, &plano, None);
         }
-        enc.copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
-        gpu.queue.submit([enc.finish()]);
-        let c = self.le_caixa(gpu);
+        let mut f = Fatias::new(gpu, self.orcamento, self.qs.as_ref().map(|q| q.0.clone()));
+        let custo = |c: u32, r: u32| u64::from(c) * u64::from(r);
+        if par {
+            for &k in &PLANO_REBUILD {
+                let (c, r) = grupos(&u, k);
+                let (pipe, bg) = (&self.adv.pipes[k], &self.adv.groups[k]);
+                f.passada(pipe, bg, Despacho::Direto(c, r), custo(c, r));
+            }
+        }
+        // Passo de rebuild COM secagem: a secagem precisa da caixa nova na CPU (faixas e grupos) — a 2.ª espera.
+        if par && seca {
+            f.enc
+                .copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
+            f.corta();
+            let (c, _) = self.le_stage(gpu, 0);
+            (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
+            self.suja_junta(g);
+            if !g.has_fluid {
+                return false;
+            }
+        }
+        if seca {
+            let evap = sim.evap_scale * p.k(Knob::Evaporation);
+            let rewet = sim.rewet_base * p.k(Knob::Rewet);
+            self.seca_na_placa(&mut f, g, SecaU::new(g, &p, evap, rewet, sim.ext_bypass));
+        }
+        if porta {
+            f.passada(&self.porta, &self.porta_bg, Despacho::Direto(1, 1), 1);
+            for (j, &k) in plano.iter().enumerate() {
+                let (pipe, bg) = (&self.adv.pipes[k], &self.adv.groups[k]);
+                let d = Despacho::Indireto(&self.args, 12 * j as u64);
+                f.passada(pipe, bg, d, custo(base[j][0], base[j][1]));
+            }
+        } else {
+            for (j, &k) in plano.iter().enumerate() {
+                let (pipe, bg) = (&self.adv.pipes[k], &self.adv.groups[k]);
+                let (c, r) = (base[j][0], base[j][1]);
+                f.passada(pipe, bg, Despacho::Direto(c, r), custo(c, r));
+            }
+        }
+        f.enc
+            .copy_buffer_to_buffer(&self.adv.caixa, 0, &self.stage, 0, 64);
+        let nq = f.q;
+        if let Some((qs, res)) = &self.qs
+            && nq > 0
+        {
+            f.enc.resolve_query_set(qs, 0..nq, res, 0);
+            f.enc
+                .copy_buffer_to_buffer(res, 0, &self.stage, 64, u64::from(nq) * 8);
+        }
+        f.corta();
+        let cortes = std::mem::take(&mut f.cortes);
+        drop(f);
+        let (c, ts) = self.le_stage(gpu, nq);
+        self.carimba(&ts, &cortes, gpu);
         if porta {
             (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
             self.suja_junta(g);
@@ -548,43 +741,92 @@ impl PassoPlaca {
         true
     }
 
-    /// A ÚNICA espera: mapeia os 64 B que o submit copiou para `stage` (caixa 10..14, `vmax` 15).
-    fn le_caixa(&self, gpu: &GpuContext) -> [i32; 16] {
+    /// ms de placa por submissão e por passada do último passo, a partir dos carimbos.
+    fn carimba(&mut self, ts: &[u64], cortes: &[(u32, u32)], gpu: &GpuContext) {
+        self.ms_sub.clear();
+        self.ms_passada.clear();
+        if ts.is_empty() {
+            return;
+        }
+        let per = f64::from(gpu.queue.get_timestamp_period()) * 1e-6;
+        let ms = |a: u32, b: u32| ts[b as usize].saturating_sub(ts[a as usize]) as f64 * per;
+        self.ms_sub = cortes.iter().map(|&(a, b)| ms(a, b)).collect();
+        self.ms_passada = (0..ts.len() as u32 / 2)
+            .map(|j| ms(2 * j, 2 * j + 1))
+            .collect();
+    }
+
+    /// ms de placa de cada submissão do último passo (vazio sem `TIMESTAMP_QUERY`).
+    #[must_use]
+    pub fn ms_por_submissao(&self) -> &[f64] {
+        &self.ms_sub
+    }
+
+    /// ms de placa de cada passada do último passo, na ordem de gravação.
+    #[must_use]
+    pub fn ms_por_passada(&self) -> &[f64] {
+        &self.ms_passada
+    }
+
+    /// A guarda: `Some(ms)` = a maior submissão do último passo passou do tecto ([`TETO_MS`]).
+    #[must_use]
+    pub fn estourou(&self) -> Option<f64> {
+        let m = self.ms_sub.iter().copied().fold(0.0, f64::max);
+        (m > self.teto_ms).then_some(m)
+    }
+
+    /// O orçamento por submissão em workgroups (`u64::MAX` = um submit por passo, o de antes) e o tecto da guarda.
+    pub fn afina(&mut self, orcamento: u64, teto_ms: f64) {
+        self.orcamento = orcamento.max(1);
+        self.teto_ms = teto_ms;
+    }
+
+    /// A espera: mapeia os 64 B que o submit copiou para `stage` (caixa 10..14, `vmax` 15) e os `nq` carimbos.
+    fn le_stage(&self, gpu: &GpuContext, nq: u32) -> ([i32; 16], Vec<u64>) {
         let sl = self.stage.slice(..);
         sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        let c = {
+        let r = {
             let d = sl.get_mapped_range().expect("mapped range");
             let mut c = [0i32; 16];
-            c.copy_from_slice(bytemuck::cast_slice(&d));
-            c
+            c.copy_from_slice(bytemuck::cast_slice(&d[..64]));
+            let ts: Vec<u64> = bytemuck::cast_slice(&d[64..64 + nq as usize * 8]).to_vec();
+            (c, ts)
         };
         self.stage.unmap();
-        c
+        r
     }
 
     /// A secagem toda na placa: `st` → film/susp (separa), `rgb`/`sett` copiados, as secagens, e de volta.
     /// As faixas = a caixa inteira (a placa não tem as faixas vivas; a caixa as contém).
-    fn seca_na_placa(&mut self, gpu: &GpuContext, g: &Grid, u: SecaU) {
+    fn seca_na_placa(&mut self, f: &mut Fatias<'_>, g: &Grid, u: SecaU) {
         let n = g.cells as u64;
-        self.seca.set_u(gpu, u);
-        self.seca.faixas_da_caixa(gpu, g);
+        self.seca.set_u(f.gpu, u);
+        self.seca.faixas_da_caixa(f.gpu, g);
         let grupos = (g.cells as u32).div_ceil(256);
         let (gx, gy) = (grupos.min(65_535), grupos.div_ceil(65_535));
-        let mut enc = gpu.device.create_command_encoder(&Default::default());
-        let entrelaca = |enc: &mut wgpu::CommandEncoder, k: usize| {
-            let mut cp = enc.begin_compute_pass(&Default::default());
-            cp.set_pipeline(&self.entrelaca[k]);
-            cp.set_bind_group(0, &self.entrelaca_bg[k], &[]);
-            cp.dispatch_workgroups(gx, gy, 1);
-        };
-        entrelaca(&mut enc, 0);
-        enc.copy_buffer_to_buffer(&self.adv.rgb, 0, &self.seca.srgb, 0, n * 12);
-        enc.copy_buffer_to_buffer(&self.adv.sett, 0, &self.seca.sett, 0, n * 4);
-        self.seca.encode(&mut enc, 1);
-        enc.copy_buffer_to_buffer(&self.seca.srgb, 0, &self.adv.rgb, 0, n * 12);
-        enc.copy_buffer_to_buffer(&self.seca.sett, 0, &self.adv.sett, 0, n * 4);
-        entrelaca(&mut enc, 1);
-        gpu.queue.submit([enc.finish()]);
+        let ent = u64::from(grupos);
+        let (p0, b0) = (&self.entrelaca[0], &self.entrelaca_bg[0]);
+        f.passada(p0, b0, Despacho::Direto(gx, gy), ent);
+        f.enc
+            .copy_buffer_to_buffer(&self.adv.rgb, 0, &self.seca.srgb, 0, n * 12);
+        f.enc
+            .copy_buffer_to_buffer(&self.adv.sett, 0, &self.seca.sett, 0, n * 4);
+        if let Some((pipes, sx, sy)) = self.seca.passadas() {
+            for (pipe, bg) in pipes {
+                f.passada(
+                    pipe,
+                    bg,
+                    Despacho::Direto(sx, sy),
+                    u64::from(sx) * u64::from(sy),
+                );
+            }
+        }
+        f.enc
+            .copy_buffer_to_buffer(&self.seca.srgb, 0, &self.adv.rgb, 0, n * 12);
+        f.enc
+            .copy_buffer_to_buffer(&self.seca.sett, 0, &self.adv.sett, 0, n * 4);
+        let (p1, b1) = (&self.entrelaca[1], &self.entrelaca_bg[1]);
+        f.passada(p1, b1, Despacho::Direto(gx, gy), ent);
     }
 }

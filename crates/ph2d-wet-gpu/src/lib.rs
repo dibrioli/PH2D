@@ -154,7 +154,58 @@ pub const PASSADAS_CAMPO: [&str; 2] = ["campo", "carimbo"];
 /// Um «quadro de campo» sem secagem (`n % 4 == 0`): campo → carimbo → momentum → advecção.
 pub const PLANO_CAMPO: [usize; 7] = [6, 7, 5, 0, 1, 2, 3];
 
-/// Os knobs do `campo`; o layout casa com `struct K` do WGSL (8 × 4 B).
+/// As passadas do resto do passo sem secagem (índices `8..=19` em `pipes`): `bordas_*`
+/// (`apply_boundaries`), `proj_*` (`project`), `sedimenta`, `re_*` (`rebuild_active_region`).
+pub const PASSADAS_PASSO: [&str; 12] = [
+    "bordas_massa",
+    "bordas_vel",
+    "proj_zera",
+    "proj_div",
+    "proj_prs",
+    "proj_corr",
+    "sedimenta",
+    "re_zera",
+    "re_limpa",
+    "re_passe1",
+    "re_saia",
+    "re_caixa",
+];
+
+/// `apply_boundaries(g, false)`.
+pub const PLANO_BORDAS: [usize; 2] = [8, 9];
+/// `project` + `apply_boundaries(g, true)`.
+pub const PLANO_PROJETA: [usize; 5] = [10, 11, 12, 13, 9];
+/// `sedimenta` + `commit` (o `dst` leva o film inalterado).
+pub const PLANO_SEDIMENTA: [usize; 2] = [14, 3];
+/// `rebuild_active_region`: a máscara e a caixa nova (lida por [`AdvectGpu::readback_caixa`]).
+pub const PLANO_REBUILD: [usize; 5] = [15, 16, 17, 18, 19];
+
+/// O passo SEM SECAGEM do quadro `n` (1-based, o `Sim::frame`): estágios 0, 2, 3, 4, 5 do
+/// `sim_step_stage` — rebuild (`n % 2`), campo (`n % 4`) ou suave, advecção, sedimenta (se
+/// `sed`), bordas, projeção (`n % 3`).
+#[must_use]
+pub fn plano_passo(n: u64, sed: bool) -> Vec<usize> {
+    let mut v = Vec::with_capacity(24);
+    if n.is_multiple_of(2) {
+        v.extend(PLANO_REBUILD);
+    }
+    if n.is_multiple_of(4) {
+        v.extend(PLANO_CAMPO);
+    } else {
+        v.extend(PLANO_SUAVE);
+    }
+    if sed {
+        v.extend(PLANO_SEDIMENTA);
+    }
+    v.extend(PLANO_BORDAS);
+    if n.is_multiple_of(3) {
+        v.extend(PLANO_PROJETA);
+    }
+    v
+}
+
+/// Os knobs do `campo`, do `project` e da `sedimenta`; o layout casa com `struct K` do WGSL
+/// (16 × 4 B).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct Knobs {
@@ -167,6 +218,14 @@ pub struct Knobs {
     pub brake_bias: f32,
     pub brake_reach: f32,
     pub dif: f32,
+    pub projection: f32,
+    pub sed_ax: f32,
+    pub sed_ay: f32,
+    pub _k0: f32,
+    pub sed_dx: i32,
+    pub sed_dy: i32,
+    pub _k1: i32,
+    pub _k2: i32,
 }
 
 /// O menor f32 cujo valor f64 é `> x` — o limiar `>=` em f32 que casa com `> x` em f64.
@@ -194,7 +253,33 @@ impl Knobs {
             brake_bias: p.k(Knob::Brake) as f32,
             brake_reach: p.k(Knob::BrakeReach) as f32,
             dif: ph2d_wet_paint::flow::diff_scale(rf) as f32,
+            projection: p.k(Knob::Projection) as f32,
+            ..Zeroable::zeroed()
         }
+    }
+
+    /// A geometria da `sedimenta` de um passo — a de `solver::sedimenta_rows` com
+    /// `a = p.sedimenta·|g|`.
+    #[must_use]
+    pub fn com_sedimenta(mut self, sedimenta: f64, gx: f64, gy: f64) -> Self {
+        let n = (gx * gx + gy * gy).sqrt();
+        let a = (sedimenta * n).min(ph2d_wet_paint::solver::SEDIMENTA_MAX);
+        let sentido = |v: f64| {
+            if v > 1e-12 * n {
+                1
+            } else if v < -1e-12 * n {
+                -1
+            } else {
+                0
+            }
+        };
+        if a > 0.0 && n > 0.0 {
+            self.sed_ax = (a * (gx / n).abs()) as f32;
+            self.sed_ay = (a * (gy / n).abs()) as f32;
+            self.sed_dx = sentido(gx);
+            self.sed_dy = sentido(gy);
+        }
+        self
     }
 }
 
@@ -213,6 +298,8 @@ pub struct AdvectGpu {
     pub wet: wgpu::Buffer,
     pub sett: wgpu::Buffer,
     pub kb: wgpu::Buffer,
+    /// A caixa do rebuild (16 × i32, ver o WGSL).
+    pub caixa: wgpu::Buffer,
     pub pipes: Vec<wgpu::ComputePipeline>,
     pub groups: Vec<wgpu::BindGroup>,
     _scratch: Vec<wgpu::Buffer>,
@@ -260,13 +347,14 @@ impl AdvectGpu {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let caixa = storage(gpu, "wet-gpu caixa", 64);
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("wet-gpu advect"),
                 source: wgpu::ShaderSource::Wgsl(WGSL.into()),
             });
-        let all: [(u32, &wgpu::Buffer); 16] = [
+        let all: [(u32, &wgpu::Buffer); 18] = [
             (0, &ub),
             (1, &flow_x),
             (2, &flow_y),
@@ -283,9 +371,11 @@ impl AdvectGpu {
             (13, &wet),
             (14, &sett),
             (15, &kb),
+            (16, &active),
+            (17, &caixa),
         ];
         // Os bindings que cada passada usa (o layout automático só inclui esses).
-        let usa: [&[u32]; 8] = [
+        let usa: [&[u32]; 20] = [
             &[0, 1, 2, 4],
             &[0, 3, 4, 5],
             &[0, 3, 4, 5, 6, 7, 8, 9],
@@ -294,6 +384,18 @@ impl AdvectGpu {
             &[0, 1, 2, 3, 6, 10, 11],
             &[0, 1, 2, 3, 6, 10, 11, 12, 13, 14, 15],
             &[0, 3, 6, 12, 13],
+            &[0, 6, 13],
+            &[0, 1, 2, 10, 11],
+            &[0, 1, 2],
+            &[0, 1, 3, 10, 11, 15],
+            &[0, 1, 2, 3],
+            &[0, 2, 3, 10, 11, 15],
+            &[0, 6, 7, 8, 9, 15],
+            &[0, 17],
+            &[0, 16],
+            &[0, 6, 16, 17],
+            &[0, 16, 17],
+            &[0, 17],
         ];
         let mut pipes = Vec::new();
         let mut groups = Vec::new();
@@ -301,6 +403,7 @@ impl AdvectGpu {
             .iter()
             .chain(&PASSADAS_FLUXO)
             .chain(&PASSADAS_CAMPO)
+            .chain(&PASSADAS_PASSO)
             .enumerate()
         {
             let pipe = gpu
@@ -343,6 +446,7 @@ impl AdvectGpu {
             wet,
             sett,
             kb,
+            caixa,
             pipes,
             groups,
             _scratch: vec![uv, outflow, dst, drgb],
@@ -430,17 +534,9 @@ impl AdvectGpu {
         plano: &[usize],
         ts: Option<&wgpu::QuerySet>,
     ) {
-        let fino = (
-            (u.x1 - u.x0 + 1).max(0) as u32,
-            (u.y1 - u.y0 + 1).max(0) as u32,
-        );
-        let fluxo = (
-            (u.fx1 - u.fx0 + 1).max(0) as u32,
-            (u.fy1 - u.fy0 + 1).max(0) as u32,
-        );
         for step in 0..n {
             for (j, &k) in plano.iter().enumerate() {
-                let (c, r) = if k >= 4 { fluxo } else { fino };
+                let (c, r) = grupos(u, k);
                 // Com `ts`: início/fim de cada passada em `2·(step·len + j)` e `+1`.
                 let q = 2 * (step * plano.len() as u32 + j as u32);
                 let tw = ts.map(|qs| wgpu::ComputePassTimestampWrites {
@@ -454,9 +550,22 @@ impl AdvectGpu {
                 });
                 p.set_pipeline(&self.pipes[k]);
                 p.set_bind_group(0, &self.groups[k], &[]);
-                p.dispatch_workgroups(c.div_ceil(16), r.div_ceil(16), 1);
+                p.dispatch_workgroups(c, r, 1);
             }
         }
+    }
+
+    /// A caixa publicada pelo último rebuild: `(bx0, bx1, by0, by1, has_fluid)`.
+    #[must_use]
+    pub fn readback_caixa(&self, gpu: &GpuContext) -> (i32, i32, i32, i32, bool) {
+        let c: Vec<i32> = read(gpu, &self.caixa, 64);
+        (c[10], c[11], c[12], c[13], c[14] != 0)
+    }
+
+    /// A máscara `active` de volta (`u32` por célula).
+    #[must_use]
+    pub fn readback_active(&self, gpu: &GpuContext) -> Vec<u32> {
+        read(gpu, &self.active, self.cells as u64 * 4)
     }
 
     /// `n` passos do `plano`, esperando a placa.
@@ -498,6 +607,23 @@ impl AdvectGpu {
     }
 }
 
+/// Os workgroups da passada `k`: o retângulo fino (`0..=3`, `14`), o de fluxo (`4..=7`,
+/// `11..=13`), o de fluxo com margem 1 (`10`), a folha fina inteira com o anel (`8`, `16`, `17`),
+/// a de fluxo inteira (`9`), uma thread por coluna (`18`, workgroup 64) ou uma thread só.
+fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
+    let d = |a: i32, b: i32| (b - a + 1).max(0) as u32;
+    let (c, r) = match k {
+        0..=3 | 14 => (d(u.x0, u.x1), d(u.y0, u.y1)),
+        4..=7 | 11..=13 => (d(u.fx0, u.fx1), d(u.fy0, u.fy1)),
+        10 => (d(u.fx0, u.fx1) + 2, d(u.fy0, u.fy1) + 2),
+        8 | 16 | 17 => ((u.w + 2) as u32, (u.h + 2) as u32),
+        9 => ((u.fw + 2) as u32, (u.fh + 2) as u32),
+        18 => return (((u.w + 2) as u32).div_ceil(64), 1),
+        _ => return (1, 1),
+    };
+    (c.div_ceil(16), r.div_ceil(16))
+}
+
 /// Copia `bytes` de `src` para um buffer mapeável e devolve-o tipado.
 #[must_use]
 pub fn read<T: Pod>(gpu: &GpuContext, src: &wgpu::Buffer, bytes: u64) -> Vec<T> {
@@ -522,103 +648,4 @@ pub fn read<T: Pod>(gpu: &GpuContext, src: &wgpu::Buffer, bytes: u64) -> Vec<T> 
     v
 }
 
-/// Cenas de teste e de medida — partilhadas pelo gate de paridade e pelo `mede_advect`.
-pub mod cena {
-    use ph2d_wet_paint::grid::Grid;
-
-    /// Uma poça com três manchas e um redemoinho + cisalhamento no fluxo, cobrindo a folha
-    /// inteira (`active = 1`, bbox = folha, faixas desligadas). `|uv| ≤ amp`.
-    #[must_use]
-    pub fn poca(w: usize, h: usize, rf: usize, amp: f32) -> Grid {
-        let mut g = Grid::with_flow_ratio(w, h, rf);
-        let (wf, hf) = (w as f32, h as f32);
-        let manchas = [
-            (0.3f32, 0.4f32, 0.18f32),
-            (0.62, 0.55, 0.22),
-            (0.45, 0.75, 0.12),
-        ];
-        for y in 1..=h {
-            for x in 1..=w {
-                let i = x + y * g.s;
-                let (nx, ny) = (x as f32 / wf, y as f32 / hf);
-                let mut f = 0.05f32;
-                for (cx, cy, r) in manchas {
-                    let d2 = ((nx - cx).powi(2) + (ny - cy).powi(2)) / (r * r);
-                    f += (-d2).exp();
-                }
-                g.film[i] = f;
-                g.susp[i] = 0.3 * f * (0.5 + 0.5 * (7.0 * nx).sin().abs());
-                g.susp_rgb[i] = [nx, ny, 1.0 - 0.5 * (nx + ny)];
-                g.active[i] = 1;
-            }
-        }
-        let fl = g.flow;
-        for cy in 1..=fl.h {
-            for cx in 1..=fl.w {
-                let (nx, ny) = (cx as f32 / fl.w as f32, cy as f32 / fl.h as f32);
-                let (dx, dy) = (nx - 0.5, ny - 0.5);
-                let i = cx + cy * fl.s;
-                g.flow_x[i] = amp * (-dy * 1.6 + 0.35 * (9.0 * ny).sin()).clamp(-1.0, 1.0);
-                g.flow_y[i] = amp * (dx * 1.6 + 0.35 * (11.0 * nx).cos()).clamp(-1.0, 1.0);
-            }
-        }
-        g.vel_x.clone_from(&g.flow_x);
-        g.vel_y.clone_from(&g.flow_y);
-        g.bx0 = 1;
-        g.by0 = 1;
-        g.bx1 = w as i32;
-        g.by1 = h as i32;
-        g.has_fluid = true;
-        g.spans_enabled = false;
-        g
-    }
-
-    /// [`poca`] com papel de dente, pigmento assentado, `wet` semeado e uma mancha FUNDA
-    /// (`film > 3`: o carimbo de umidade dispara) — exercita capilar, freio e carimbo.
-    #[must_use]
-    pub fn poca_papel(w: usize, h: usize, rf: usize, amp: f32) -> Grid {
-        let mut g = poca(w, h, rf, amp);
-        let (wf, hf) = (w as f32, h as f32);
-        for y in 1..=h {
-            for x in 1..=w {
-                let i = x + y * g.s;
-                let (nx, ny) = (x as f32 / wf, y as f32 / hf);
-                g.paper[i] = 0.5 + 0.25 * (31.0 * nx).sin() * (23.0 * ny).cos();
-                g.sett[i] = 0.02 * (1.0 + (13.0 * nx + 5.0 * ny).sin());
-                let d2 = ((nx - 0.3).powi(2) + (ny - 0.4).powi(2)) / 0.01;
-                g.film[i] += 3.5 * (-d2).exp();
-                if (x + 2 * y) % 3 == 0 {
-                    g.wet[i] = ((x * 7 + y * 13) % 256) as u8;
-                }
-            }
-        }
-        g
-    }
-
-    /// A grade espelhada em x: célula `x → w+1−x`, fluxo `ux → −ux` (exige `rf = 1`).
-    #[must_use]
-    pub fn espelha_x(g: &Grid) -> Grid {
-        assert_eq!(
-            g.flow.rf, 1,
-            "o espelho exato da amostragem do fluxo exige rf = 1"
-        );
-        let mut m = g.clone();
-        for y in 0..g.rows {
-            for x in 1..=g.w {
-                let (i, j) = (x + y * g.s, (g.w + 1 - x) + y * g.s);
-                m.film[j] = g.film[i];
-                m.susp[j] = g.susp[i];
-                m.susp_rgb[j] = g.susp_rgb[i];
-                m.active[j] = g.active[i];
-                m.flow_x[j] = -g.flow_x[i];
-                m.flow_y[j] = g.flow_y[i];
-                m.vel_x[j] = -g.vel_x[i];
-                m.vel_y[j] = g.vel_y[i];
-                m.paper[j] = g.paper[i];
-                m.sett[j] = g.sett[i];
-                m.wet[j] = g.wet[i];
-            }
-        }
-        m
-    }
-}
+pub mod cena;

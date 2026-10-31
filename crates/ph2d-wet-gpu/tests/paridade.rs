@@ -479,3 +479,169 @@ fn o_quadro_de_campo_na_placa_casa_com_a_cpu() {
         "o espelho da placa ({mx:e}) não é o da CPU ({cmx:e})"
     );
 }
+
+// ---- o PASSO SEM SECAGEM inteiro (degrau 4) ----------------------------------------------
+
+/// `n` passos sem secagem na CPU (estágios 0, 2, 3, 4, 5 do `sim_step_stage`, rotas seriais).
+fn cpu_passos(g: &Grid, n: usize, sed: f64, primeiro: usize) -> Grid {
+    use ph2d_wet_paint::solver as s;
+    let mut p = params();
+    p.sedimenta = sed;
+    let (gx, gy) = GRAV;
+    let mut g = g.clone();
+    for k in primeiro..primeiro + n {
+        if k.is_multiple_of(2) {
+            s::rebuild_active_region_rows(&mut g, Rows::Serial);
+            assert!(g.has_fluid, "a cena secou");
+        }
+        if e_campo(k) {
+            s::build_flow_field_jacobi_rows(&mut g, &p, gx, gy, false, Rows::Serial);
+        } else {
+            s::smooth_velocity_rows(&mut g, &p, Rows::Serial);
+        }
+        advect_jacobi_rows(&mut g, &p, gx, gy, Rows::Serial);
+        if p.sedimenta > 0.0 {
+            let a = p.sedimenta * (gx * gx + gy * gy).sqrt();
+            s::sedimenta_rows(&mut g, a, gx, gy, p.km_mixing, Rows::Serial);
+        }
+        s::apply_boundaries(&mut g, false);
+        if k.is_multiple_of(3) {
+            s::project_rows(&mut g, &p, Rows::Serial);
+            s::apply_boundaries(&mut g, true);
+        }
+    }
+    g
+}
+
+struct Placa {
+    e: Estado,
+    fl: [Vec<f32>; 4],
+    active: Vec<u32>,
+    caixa: (i32, i32, i32, i32, bool),
+}
+
+fn gpu_passos(gpu: &GpuContext, g: &Grid, n: usize, sed: f64, primeiro: usize) -> Placa {
+    let p = params();
+    let a = AdvectGpu::new(gpu, g);
+    let mut u = Uniforms::from_grid(g, p.k(Knob::MaxVelocity), Rect::full(g));
+    u.gx = GRAV.0 as f32;
+    u.gy = GRAV.1 as f32;
+    a.upload(gpu, g, &u);
+    a.set_knobs(
+        gpu,
+        &ph2d_wet_gpu::Knobs::from_params(&p, g.flow.rf).com_sedimenta(sed, GRAV.0, GRAV.1),
+    );
+    for k in primeiro..primeiro + n {
+        a.step_plano(gpu, &u, 1, &ph2d_wet_gpu::plano_passo(k as u64, sed > 0.0));
+    }
+    Placa {
+        e: a.readback(gpu),
+        fl: a.readback_fluxo(gpu, g.flow.cells),
+        active: a.readback_active(gpu),
+        caixa: a.readback_caixa(gpu),
+    }
+}
+
+/// Cor pesada pela massa suspensa após 8 e 64 passos. Medido 31/10 RTX (rf 1 e 4, com e sem
+/// sedimenta): pior 3,5e-7 a 64 passos; Radeon 5,7e-7 (PLACA_degrau4.md); o tecto ~5–10× acima.
+const EPS_COR_PASSO: f64 = 3e-6;
+/// Film médio (não o máximo: o `trunc` do freio, degrau 3) após 8 e 64 passos. Medido RTX: pior
+/// 2,6e-7 (rf 1, 64 passos; máx 8,8e-5); Radeon 3,0e-7 (máx 2,9e-4).
+const EPS_FILM_MEDIO: f64 = 3e-6;
+
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn o_passo_sem_secagem_na_placa_casa_com_a_cpu() {
+    let Some(gpu) = contexto() else { return };
+    // A cena tem de exercitar os três passes novos: o rebuild muda a máscara, a sedimenta muda o
+    // susp e a projeção muda a velocidade (quadro 6 = n % 3).
+    let g0 = cena::poca_papel(320, 200, 1, 0.9);
+    let um = cpu_passos(&g0, 1, 0.0, 4);
+    assert!(um.active != g0.active, "o rebuild não mexeu na máscara");
+    let (s0, s1) = (cpu_passos(&g0, 8, 0.0, 4), cpu_passos(&g0, 8, 20.0, 4));
+    assert!(s0.susp != s1.susp, "a sedimenta não mexeu no susp");
+    let mut sem_proj = g0.clone();
+    let p = params();
+    ph2d_wet_paint::solver::project_rows(&mut sem_proj, &p, Rows::Serial);
+    assert!(
+        sem_proj.vel_x != g0.vel_x,
+        "a projeção não mexeu na velocidade"
+    );
+    eprintln!("| rf | sed | passos | campo | desvio máx | desvio médio |");
+    eprintln!("|---|---|---|---|---|---|");
+    for rf in [1usize, 4] {
+        for sed in [0.0f64, 20.0] {
+            let g = cena::poca_papel(320, 200, rf, 0.9);
+            for n in [1usize, 8, 64] {
+                let c = cpu_passos(&g, n, sed, 4);
+                let pl = gpu_passos(&gpu, &g, n, sed, 4);
+                let fg = g.flow;
+                let mut piores = Vec::new();
+                for (nome, a, b) in [("film", &c.film, &pl.e.film), ("susp", &c.susp, &pl.e.susp)] {
+                    let d = desvio_grade(g.w, g.h, g.s, a, b);
+                    eprintln!(
+                        "| {rf} | {sed} | {n} | {nome} | {:.3e} | {:.3e} |",
+                        d.0, d.1
+                    );
+                    piores.push((nome, d.0, d.1));
+                }
+                for (nome, a, b) in [
+                    ("vel_x", &c.vel_x, &pl.fl[0]),
+                    ("vel_y", &c.vel_y, &pl.fl[1]),
+                    ("flow_x", &c.flow_x, &pl.fl[2]),
+                    ("flow_y", &c.flow_y, &pl.fl[3]),
+                ] {
+                    let d = desvio_grade(fg.w, fg.h, fg.s, a, b);
+                    eprintln!(
+                        "| {rf} | {sed} | {n} | {nome} | {:.3e} | {:.3e} |",
+                        d.0, d.1
+                    );
+                    piores.push((nome, d.0, d.1));
+                }
+                let cor = desvio_cor_pesado(&g, &c.susp, &c.susp_rgb, &pl.e.rgb);
+                let act_dif = c
+                    .active
+                    .iter()
+                    .zip(&pl.active)
+                    .filter(|(a, b)| u32::from(**a) != **b)
+                    .count();
+                let rel = |a: f64, b: f64| ((a - b) / b).abs();
+                let (mf, ms) = (
+                    rel(soma(&pl.e.film), soma(&c.film)),
+                    rel(soma(&pl.e.susp), soma(&c.susp)),
+                );
+                eprintln!(
+                    "| {rf} | {sed} | {n} | cor pesada {cor:.3e} · active ≠ {act_dif} · Σfilm rel {mf:.2e} · Σsusp rel {ms:.2e} | — | — |"
+                );
+                let caixa_cpu = (c.bx0, c.bx1, c.by0, c.by1, c.has_fluid);
+                assert_eq!(
+                    pl.caixa, caixa_cpu,
+                    "rf {rf} sed {sed} n {n}: a caixa diverge"
+                );
+                assert_eq!(act_dif, 0, "rf {rf} sed {sed} n {n}: a máscara diverge");
+                if n == 1 {
+                    for (nome, mx, _) in &piores {
+                        assert!(
+                            *mx <= EPS_1PASSO,
+                            "rf {rf} sed {sed}: {nome} desvia {mx:e} após 1 passo"
+                        );
+                    }
+                } else {
+                    assert!(
+                        cor <= EPS_COR_PASSO,
+                        "rf {rf} sed {sed} n {n}: cor pesada {cor:e}"
+                    );
+                    let film_md = piores[0].2;
+                    assert!(
+                        film_md <= EPS_FILM_MEDIO,
+                        "rf {rf} sed {sed} n {n}: film médio {film_md:e}"
+                    );
+                }
+                assert!(
+                    mf <= EPS_MASSA * n as f64 && ms <= EPS_MASSA * n as f64,
+                    "rf {rf} sed {sed} n {n}: massa placa × CPU {mf:e} / {ms:e}"
+                );
+            }
+        }
+    }
+}

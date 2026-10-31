@@ -259,6 +259,9 @@ struct K {
     level_k: f32, level_clamp: f32, cap_k: f32, cap_gate: f32,
     // `visc_t`: o menor f32 cujo f64 passa `> viscosity` (a CPU compara em f64) — compara-se `>=`.
     visc_t: f32, brake_bias: f32, brake_reach: f32, dif: f32,
+    // `project`: o knob `Projection`. `sedimenta`: fracções por eixo e sentido (−1/0/1).
+    projection: f32, sed_ax: f32, sed_ay: f32, _k0: f32,
+    sed_dx: i32, sed_dy: i32, _k1: i32, _k2: i32,
 }
 @group(0) @binding(12) var<storage, read> paper: array<f32>;
 @group(0) @binding(13) var<storage, read_write> wet: array<u32>;
@@ -331,4 +334,274 @@ fn carimbo(@builtin(global_invocation_id) g: vec3<u32>) {
     if st[fi].x > 3.0 {
         wet[fi] = u32(clamp(2.0 - 2.0 * paper[fi], 0.0, 1.0) * 255.0);
     }
+}
+
+// ---- bordas (`apply_boundaries`): o dreno de duas células em cada lado -----------------------
+
+// A metade FINA (massa): film = susp = 0, wet = 1 nas linhas 0,1,h,h+1 e colunas 0,1,w,w+1.
+@compute @workgroup_size(16, 16, 1)
+fn bordas_massa(@builtin(global_invocation_id) g: vec3<u32>) {
+    let x = i32(g.x);
+    let y = i32(g.y);
+    if x > u.w + 1 || y > u.h + 1 { return; }
+    if !(y <= 1 || y >= u.h || x <= 1 || x >= u.w) { return; }
+    let i = x + y * u.s;
+    st[i] = vec2<f32>(0.0, 0.0);
+    wet[i] = 1u;
+}
+
+// A metade de FLUXO (vel e flow): tangencial a 0, depois a normal para FORA a 0,1 — na ordem da CPU
+// (topo → base, esquerda → direita: o último escrito vence nos cantos).
+@compute @workgroup_size(16, 16, 1)
+fn bordas_vel(@builtin(global_invocation_id) g: vec3<u32>) {
+    let x = i32(g.x);
+    let y = i32(g.y);
+    if x > u.fw + 1 || y > u.fh + 1 { return; }
+    let topo = y <= 1;
+    let base = y >= u.fh;
+    let esq = x <= 1;
+    let dir = x >= u.fw;
+    if !(topo || base || esq || dir) { return; }
+    let i = x + y * u.fs;
+    var vx = vel_x[i];
+    var fx = flow_x[i];
+    var vy = vel_y[i];
+    var fy = flow_y[i];
+    if topo || base { vx = 0.0; fx = 0.0; }
+    if esq || dir { vy = 0.0; fy = 0.0; }
+    if topo { vy = -0.1; fy = -0.1; }
+    if base { vy = 0.1; fy = 0.1; }
+    if esq { vx = -0.1; fx = -0.1; }
+    if dir { vx = 0.1; fx = 0.1; }
+    vel_x[i] = vx;
+    flow_x[i] = fx;
+    vel_y[i] = vy;
+    flow_y[i] = fy;
+}
+
+// ---- `project` (n % 3 == 0): div em flow_x, pressão em flow_y, correção em vel ----------------
+
+fn ativo_fluxo(x: i32, y: i32) -> bool {
+    return act[flow_probe(x, u.w) + flow_probe(y, u.h) * u.s] != 0u;
+}
+
+// O rascunho a zero no retângulo de fluxo com a margem de 1 que o estêncil pede.
+@compute @workgroup_size(16, 16, 1)
+fn proj_zera(@builtin(global_invocation_id) g: vec3<u32>) {
+    let x = u.fx0 - 1 + i32(g.x);
+    let y = u.fy0 - 1 + i32(g.y);
+    if x < 0 || y < 0 || x > min(u.fx1 + 1, u.fs - 1) || y > min(u.fy1 + 1, u.fh + 1) { return; }
+    let i = x + y * u.fs;
+    flow_x[i] = 0.0;
+    flow_y[i] = 0.0;
+}
+
+@compute @workgroup_size(16, 16, 1)
+fn proj_div(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok || !ativo_fluxo(c.x, c.y) { return; }
+    let i = c.i;
+    flow_x[i] = (vel_x[i - 1] - vel_x[i + 1] + vel_y[i - u.fs] - vel_y[i + u.fs]) * k.dif;
+}
+
+@compute @workgroup_size(16, 16, 1)
+fn proj_prs(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok || !ativo_fluxo(c.x, c.y) { return; }
+    let i = c.i;
+    flow_y[i] = (flow_x[i] + 0.25 * (flow_x[i - 1] + flow_x[i + 1] + flow_x[i - u.fs] + flow_x[i + u.fs])) * 0.25;
+}
+
+@compute @workgroup_size(16, 16, 1)
+fn proj_corr(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok || !ativo_fluxo(c.x, c.y) { return; }
+    let i = c.i;
+    var nvx = vel_x[i] - 0.5 * (flow_y[i + 1] - flow_y[i - 1]) * k.dif * k.projection;
+    var nvy = vel_y[i] - 0.5 * (flow_y[i + u.fs] - flow_y[i - u.fs]) * k.dif * k.projection;
+    if f32(c.x) - nvx < 1.0 || f32(c.x) - nvx > f32(u.fw) { nvx = 0.0; }
+    if f32(c.y) - nvy < 1.0 || f32(c.y) - nvy > f32(u.fh) { nvy = 0.0; }
+    vel_x[i] = nvx;
+    vel_y[i] = nvy;
+}
+
+// ---- `sedimenta` (só com `p.sedimenta > 0`): o pigmento desce mais que a água -----------------
+// Escreve `dst = (film, susp')` e `drgb`; o `commit` copia de volta (film inalterado).
+
+fn liga(fc: f32, fd: f32) -> f32 {
+    if fc <= 0.0 { return 0.0; }
+    return max(min(fc, fd), 0.0) / fc;
+}
+fn sed_dentro(x: i32, y: i32) -> bool {
+    return x >= 1 && x <= u.w && y >= 1 && y <= u.h;
+}
+fn sed_da(x: i32, y: i32) -> vec2<f32> {
+    let i = x + y * u.s;
+    var fx = 0.0;
+    var fy = 0.0;
+    if k.sed_dx != 0 && sed_dentro(x + k.sed_dx, y) {
+        fx = k.sed_ax * liga(st[i].x, st[i + k.sed_dx].x);
+    }
+    if k.sed_dy != 0 && sed_dentro(x, y + k.sed_dy) {
+        fy = k.sed_ay * liga(st[i].x, st[i + k.sed_dy * u.s].x);
+    }
+    return vec2<f32>(fx, fy);
+}
+fn cor(i: i32) -> vec3<f32> {
+    return vec3<f32>(rgb[3 * i], rgb[3 * i + 1], rgb[3 * i + 2]);
+}
+
+@compute @workgroup_size(16, 16, 1)
+fn sedimenta(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = cell(g);
+    if !c.ok { return; }
+    let i = c.i;
+    let o = sed_da(c.x, c.y);
+    let fica = st[i].y * (1.0 - o.x - o.y);
+    var e1 = 0.0;
+    var j1 = i;
+    var e2 = 0.0;
+    var j2 = i;
+    if k.sed_dx != 0 && sed_dentro(c.x - k.sed_dx, c.y) {
+        j1 = i - k.sed_dx;
+        e1 = st[j1].y * sed_da(c.x - k.sed_dx, c.y).x;
+    }
+    if k.sed_dy != 0 && sed_dentro(c.x, c.y - k.sed_dy) {
+        j2 = i - k.sed_dy * u.s;
+        e2 = st[j2].y * sed_da(c.x, c.y - k.sed_dy).y;
+    }
+    let total = fica + e1 + e2;
+    var col = cor(i);
+    if e1 + e2 > 0.0 && total > 0.0 {
+        col = (cor(i) * fica + cor(j1) * e1 + cor(j2) * e2) * (1.0 / total);
+    }
+    dst[i] = vec2<f32>(st[i].x, total);
+    drgb[3 * i] = col.x;
+    drgb[3 * i + 1] = col.y;
+    drgb[3 * i + 2] = col.z;
+}
+
+// ---- `rebuild_active_region` (n % 2 == 0) --------------------------------------------------
+// A máscara e a caixa nova. A SAIA é sequencial de cima para baixo, mas só dentro da COLUNA
+// (lê e escreve `i−s, i, i+s`): uma thread por coluna, laço em y — a mesma ordem da CPU.
+// `caixa`: 0..3 extensão do passe 1 (min x, max x, min y, max y) · 4 disparou · 5..8 a da saia ·
+// 9 a saia disparou · 10..13 a caixa publicada (bx0, bx1, by0, by1) · 14 has_fluid.
+
+@group(0) @binding(16) var<storage, read_write> act_w: array<u32>;
+@group(0) @binding(17) var<storage, read_write> caixa: array<atomic<i32>>;
+
+struct Janela { px0: i32, px1: i32, py0: i32, py1: i32 }
+fn janela() -> Janela {
+    return Janela(max(u.x0 - 2, 1), min(u.x1 + 2, u.w), max(u.y0 - 2, 1), min(u.y1 + 2, u.h));
+}
+
+@compute @workgroup_size(1, 1, 1)
+fn re_zera() {
+    atomicStore(&caixa[0], u.w + 1);
+    atomicStore(&caixa[1], 0);
+    atomicStore(&caixa[2], u.h + 1);
+    atomicStore(&caixa[3], 0);
+    atomicStore(&caixa[4], 0);
+    atomicStore(&caixa[5], u.w + 1);
+    atomicStore(&caixa[6], 0);
+    atomicStore(&caixa[7], u.h + 1);
+    atomicStore(&caixa[8], 0);
+    atomicStore(&caixa[9], 0);
+}
+
+// Limpa a caixa anterior ±2 (até o anel quando ela toca a borda).
+@compute @workgroup_size(16, 16, 1)
+fn re_limpa(@builtin(global_invocation_id) g: vec3<u32>) {
+    let x = i32(g.x);
+    let y = i32(g.y);
+    let j = janela();
+    var cx0 = j.px0;
+    if j.px0 == 1 { cx0 = 0; }
+    var cx1 = j.px1;
+    if j.px1 == u.w { cx1 = u.w + 1; }
+    var cy0 = j.py0;
+    if j.py0 == 1 { cy0 = 0; }
+    var cy1 = j.py1;
+    if j.py1 == u.h { cy1 = u.h + 1; }
+    if x < cx0 || x > cx1 || y < cy0 || y > cy1 { return; }
+    act_w[x + y * u.s] = 0u;
+}
+
+// Passe 1 em GATHER: a célula é ativa se algum trio horizontal centrado em x−1, x ou x+1 molha.
+// O film é ≥ 0, então `a + b + c > 0` em f32 é o mesmo predicado da soma f64 da CPU.
+@compute @workgroup_size(16, 16, 1)
+fn re_passe1(@builtin(global_invocation_id) g: vec3<u32>) {
+    let x = i32(g.x);
+    let y = i32(g.y);
+    let j = janela();
+    let sx0 = max(j.px0, 2);
+    let sx1 = min(j.px1, u.w - 1);
+    let sy0 = max(j.py0, 3);
+    let sy1 = min(j.py1, u.h - 2);
+    if y < sy0 || y > sy1 || x < sx0 - 1 || x > sx1 + 1 { return; }
+    var liga_aqui = false;
+    for (var cx = x - 1; cx <= x + 1; cx++) {
+        if cx < sx0 || cx > sx1 { continue; }
+        let i = cx + y * u.s;
+        if st[i - 1].x + st[i].x + st[i + 1].x > 0.0 {
+            liga_aqui = true;
+            if cx == x {
+                atomicMin(&caixa[0], x);
+                atomicMax(&caixa[1], x);
+                atomicMin(&caixa[2], y);
+                atomicMax(&caixa[3], y);
+                atomicStore(&caixa[4], 1);
+            }
+        }
+    }
+    if liga_aqui { act_w[x + y * u.s] = 1u; }
+}
+
+@compute @workgroup_size(64, 1, 1)
+fn re_saia(@builtin(global_invocation_id) g: vec3<u32>) {
+    if atomicLoad(&caixa[4]) == 0 { return; }
+    let x = i32(g.x);
+    let kx0 = max(atomicLoad(&caixa[0]) - 2, 1);
+    let kx1 = min(atomicLoad(&caixa[1]) + 2, u.w);
+    let ky0 = max(atomicLoad(&caixa[2]) - 2, 1);
+    let ky1 = min(atomicLoad(&caixa[3]) + 2, u.h);
+    if x < kx0 || x > kx1 { return; }
+    var y_lo = u.h + 1;
+    var y_hi = 0;
+    for (var y = ky0; y <= ky1; y++) {
+        let i = x + y * u.s;
+        if act_w[i - u.s] + act_w[i] + act_w[i + u.s] == 1u {
+            act_w[i - u.s] = 2u;
+            act_w[i] = 2u;
+            if act_w[i + u.s] == 0u { act_w[i + u.s] = 2u; }
+            y_lo = min(y_lo, y);
+            y_hi = max(y_hi, y);
+        }
+    }
+    if y_hi > 0 {
+        atomicMin(&caixa[5], x);
+        atomicMax(&caixa[6], x);
+        atomicMin(&caixa[7], y_lo);
+        atomicMax(&caixa[8], y_hi);
+        atomicStore(&caixa[9], 1);
+    }
+}
+
+@compute @workgroup_size(1, 1, 1)
+fn re_caixa() {
+    if atomicLoad(&caixa[4]) == 0 {
+        atomicStore(&caixa[10], 0);
+        atomicStore(&caixa[11], -1);
+        atomicStore(&caixa[12], 0);
+        atomicStore(&caixa[13], -1);
+        atomicStore(&caixa[14], 0);
+        return;
+    }
+    var b = 5;
+    if atomicLoad(&caixa[9]) == 0 { b = 0; }
+    atomicStore(&caixa[10], max(atomicLoad(&caixa[b]) - 5, 1));
+    atomicStore(&caixa[11], min(atomicLoad(&caixa[b + 1]) + 5, u.w));
+    atomicStore(&caixa[12], max(atomicLoad(&caixa[b + 2]) - 5, 1));
+    atomicStore(&caixa[13], min(atomicLoad(&caixa[b + 3]) + 5, u.h));
+    atomicStore(&caixa[14], 1);
 }

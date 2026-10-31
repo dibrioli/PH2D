@@ -115,3 +115,27 @@ fn a_borda_graduada_esbate_a_rampa_sem_degrau() {
         "a borda graduada não tirou o degrau: k=0 {duro}, k=2 {mole}"
     );
 }
+
+/// **Com `k > 0` o valor é ABSOLUTO, nas duas rotas** (gravado no código de 31/10, depois da lei). A `k = 1`
+/// (abaixo de 1,5: a porta da rota Gauss-Seidel é `k > 0`, não um limiar maior) e a `k = 3`. O gate da janela
+/// compara a janela com a forma direta, que divide pelo mesmo 9: só um número gravado vê o divisor.
+#[test]
+fn a_borda_graduada_com_k_positivo_da_os_bits_gravados() {
+    let zero = hash_das_rotas(&params(0.0));
+    let mut got = Vec::new();
+    for k in [1.0, 3.0] {
+        let (gs, jacobi) = hash_das_rotas(&params(k));
+        assert!(
+            gs != zero.0 && jacobi != zero.1,
+            "k={k}: o knob não mudou a secagem — a lei não foi exercida"
+        );
+        got.push((gs, jacobi));
+    }
+    println!("  hashes k>0: {got:#018x?}");
+    assert_eq!(got, GRADUADO, "a secagem graduada mudou de bits");
+}
+
+const GRADUADO: [(u64, u64); 2] = [
+    (0x56fc_2695_f66e_b14b, 0xda68_3999_d3d7_8e61),
+    (0x2886_d9ff_064e_4cde, 0x6cd2_62a6_0859_df55),
+];

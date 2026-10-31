@@ -4,7 +4,7 @@
 
 use ph2d_editor_core::widget::{CalendarEvent, DateField};
 use ph2d_i18n::{tr, tr_with};
-use ph2d_kanban_dates::{DueLabel, Weekday, Zone, civil};
+use ph2d_kanban_dates::{Weekday, Zone, civil};
 use ph2d_kanban_model::{CardId, Moment};
 use ph2d_kanban_views::datepick::{self, Picker};
 
@@ -12,10 +12,6 @@ pub(crate) use datepick::{day_text, parse_date, time_text};
 
 pub(crate) fn zone() -> Zone {
     Zone::system()
-}
-
-fn month_short(m: u8) -> &'static str {
-    datepick::month_name(m, false)
 }
 
 /// O texto do prazo no verso: «Oct 22 – Oct 25, 5:00 PM» (o início, se há, e a entrega com hora).
@@ -41,29 +37,9 @@ pub(crate) fn range_text(start: Option<Moment>, due: Option<Moment>, now: Moment
     }
 }
 
-/// O texto curto de uma data de item («Oct 29», «Today 14:00»).
+/// O texto curto de uma data de item («Oct 29», «Today 2:00 PM»).
 pub(crate) fn short(at: Moment, now: Moment) -> String {
-    let z = zone();
-    let time = |hour, minute| time_text(hour, minute);
-    match ph2d_kanban_dates::due_label(at.0, now.0, &z) {
-        DueLabel::Today { hour, minute } => {
-            tr_with("kanban.back.today_at", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Tomorrow { hour, minute } => {
-            tr_with("kanban.back.tomorrow_at", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Yesterday { hour, minute } => {
-            tr_with("kanban.back.yesterday_at", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Date { month, day } => tr_with(
-            "kanban.back.day",
-            &[("mon", &month_short(month)), ("d", &day)],
-        ),
-        DueLabel::DateWithYear { year, month, day } => tr_with(
-            "kanban.back.day_year",
-            &[("mon", &month_short(month)), ("d", &day), ("y", &year)],
-        ),
-    }
+    datepick::due_text(ph2d_kanban_dates::due_label(at.0, now.0, &zone()))
 }
 
 /// «2 hours ago», «Yesterday at 4:12 PM», «Oct 22 at 9:00 AM».

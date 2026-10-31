@@ -9,7 +9,9 @@ use ph2d_editor_core::widget::{
     DatePickerLabels, DateSlot, Reminder,
 };
 use ph2d_i18n::{tr, tr_with};
-use ph2d_kanban_dates::{CalendarMonth, CivilDate, Weekday, Zone, civil, instant, start_of_day};
+use ph2d_kanban_dates::{
+    CalendarMonth, CivilDate, DueLabel, Weekday, Zone, civil, instant, start_of_day,
+};
 use ph2d_kanban_model::Moment;
 
 /// O sal das ids a11y desta crate.
@@ -66,6 +68,26 @@ pub fn day_text(d: CivilDate, today: CivilDate) -> String {
                 ("y", &d.year),
             ],
         )
+    }
+}
+
+/// ⭐ O texto de um prazo («Today 2:00 PM», «Oct 29», «Oct 29, 2027») — UMA lei para a frente do
+/// cartão, o verso, os campos de data e as frases do Butler.
+#[must_use]
+pub fn due_text(l: DueLabel) -> String {
+    let at = |key, hour, minute| tr_with(key, &[("time", &time_text(hour, minute))]);
+    match l {
+        DueLabel::Today { hour, minute } => at("kanban.back.today_at", hour, minute),
+        DueLabel::Tomorrow { hour, minute } => at("kanban.back.tomorrow_at", hour, minute),
+        DueLabel::Yesterday { hour, minute } => at("kanban.back.yesterday_at", hour, minute),
+        DueLabel::Date { month, day } => tr_with(
+            "kanban.back.day",
+            &[("mon", &month_name(month, false)), ("d", &day)],
+        ),
+        DueLabel::DateWithYear { year, month, day } => tr_with(
+            "kanban.back.day_year",
+            &[("mon", &month_name(month, false)), ("d", &day), ("y", &year)],
+        ),
     }
 }
 

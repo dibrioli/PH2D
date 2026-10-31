@@ -186,52 +186,6 @@ impl Counts {
     }
 }
 
-const MONTHS: [&str; 12] = [
-    "kanban.front.month.1",
-    "kanban.front.month.2",
-    "kanban.front.month.3",
-    "kanban.front.month.4",
-    "kanban.front.month.5",
-    "kanban.front.month.6",
-    "kanban.front.month.7",
-    "kanban.front.month.8",
-    "kanban.front.month.9",
-    "kanban.front.month.10",
-    "kanban.front.month.11",
-    "kanban.front.month.12",
-];
-
-/// O texto de um [`DueLabel`] («Today 14:00», «Oct 28», «Oct 28, 2027»).
-pub(crate) fn label_text(l: DueLabel) -> String {
-    let time = |hour: u8, minute: u8| {
-        let minute = format!("{minute:02}");
-        tr_with("kanban.front.time", &[("hour", &hour), ("minute", &minute)])
-    };
-    let month = |n: u8| tr(MONTHS[usize::from(n.clamp(1, 12)) - 1]);
-    match l {
-        DueLabel::Yesterday { hour, minute } => {
-            tr_with("kanban.front.yesterday", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Today { hour, minute } => {
-            tr_with("kanban.front.today", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Tomorrow { hour, minute } => {
-            tr_with("kanban.front.tomorrow", &[("time", &time(hour, minute))])
-        }
-        DueLabel::Date { month: n, day } => {
-            tr_with("kanban.front.date", &[("month", &month(n)), ("day", &day)])
-        }
-        DueLabel::DateWithYear {
-            year,
-            month: n,
-            day,
-        } => tr_with(
-            "kanban.front.date_year",
-            &[("month", &month(n)), ("day", &day), ("year", &year)],
-        ),
-    }
-}
-
 /// ⭐ O distintivo das datas: início → entrega quando há os dois, «Starts:/Started:» só com o
 /// início; o tom é o da ENTREGA (verde concluída, amarelo a menos de 24 h, vermelho atrasada).
 pub(crate) fn due_badge(
@@ -240,7 +194,7 @@ pub(crate) fn due_badge(
     now: i64,
     zone: &Zone,
 ) -> Option<DueBadge> {
-    let day = |ms: i64| label_text(date_label(day_of(ms, zone), day_of(now, zone)));
+    let day = |ms: i64| ph2d_kanban_views::datepick::due_text(date_label(day_of(ms, zone), day_of(now, zone)));
     let (text, tone) = match (start, due) {
         (None, None) => return None,
         (Some(s), None) => {
@@ -252,7 +206,7 @@ pub(crate) fn due_badge(
             (tr_with(key, &[("date", &day(s))]), DueTone::Neutral)
         }
         (s, Some((at, done))) => {
-            let d = label_text(due_label(at, now, zone));
+            let d = ph2d_kanban_views::datepick::due_text(due_label(at, now, zone));
             let text = match s {
                 Some(s) => tr_with("kanban.front.range", &[("start", &day(s)), ("due", &d)]),
                 None => d,
@@ -303,7 +257,7 @@ fn field_chips(k: &Kanban, id: CardId, now: i64, zone: &Zone) -> Vec<FieldChip> 
                 (FieldValue::Number(n), _) => chip(&d.name, &number(*n), None),
                 (FieldValue::Date(at), _) => {
                     let l = date_label(day_of(at.0, zone), day_of(now, zone));
-                    chip(&d.name, &label_text(l), None)
+                    chip(&d.name, &ph2d_kanban_views::datepick::due_text(l), None)
                 }
                 (FieldValue::Checkbox(true), _) => FieldChip {
                     text: d.name.clone(),

@@ -250,3 +250,85 @@ fn momentum(@builtin(global_invocation_id) g: vec3<u32>) {
     vel_x[c.i] = clamp(sf.x + u.gx * f, -u.max_v, u.max_v);
     vel_y[c.i] = clamp(sf.y + u.gy * f, -u.max_v, u.max_v);
 }
+
+// ---- o CAMPO de fluxo (`build_flow_field_jacobi`, quadros n % 4 == 0) ----------------------
+// O caminho do produto por omissão: sem ladeira do óleo, sem paredes (traço vazio), sem gota
+// (`drip_head = 0`), sem fingering e sem backrun (knobs a 0). Ver PLACA_degrau3.md.
+
+struct K {
+    level_k: f32, level_clamp: f32, cap_k: f32, cap_gate: f32,
+    // `visc_t`: o menor f32 cujo f64 passa `> viscosity` (a CPU compara em f64) — compara-se `>=`.
+    visc_t: f32, brake_bias: f32, brake_reach: f32, dif: f32,
+}
+@group(0) @binding(12) var<storage, read> paper: array<f32>;
+@group(0) @binding(13) var<storage, read_write> wet: array<u32>;
+@group(0) @binding(14) var<storage, read> sett: array<f32>;
+@group(0) @binding(15) var<uniform> k: K;
+
+// `flow_rows`: o núcleo gather — escreve `flow` e mais nada; lê o `wet` do INÍCIO do passo.
+@compute @workgroup_size(16, 16, 1)
+fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok { return; }
+    let px = flow_probe(c.x, u.w);
+    let pl = flow_probe(c.x - 1, u.w);
+    let pr = flow_probe(c.x + 1, u.w);
+    let ym = flow_probe(c.y, u.h) * u.s;
+    let yu = flow_probe(c.y - 1, u.h) * u.s;
+    let yd = flow_probe(c.y + 1, u.h) * u.s;
+    let fi = px + ym;
+    if act[fi] == 0u { return; }
+    let i = c.i;
+    let f = st[fi].x;
+    var ex = vel_x[i];
+    var ey = vel_y[i];
+    // Leveling: do grosso para o fino, clampado por eixo.
+    ex += clamp((st[pl + ym].x - st[pr + ym].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    ey += clamp((st[px + yu].x - st[px + yd].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    // Capilar: só tinta fina segue o dente do papel.
+    if st[fi].y + sett[fi] < k.cap_gate {
+        let pc = paper[fi];
+        let a = paper[pl + ym];
+        let b = paper[pr + ym];
+        var dx: f32;
+        if a > pc { if pc < b { dx = a - b; } else { dx = pc - b; } }
+        else if pc < b { dx = a - pc; } else { dx = a - b; }
+        ex += dx * k.cap_k * k.dif;
+        let up = paper[px + yu];
+        let dn = paper[px + yd];
+        var dy: f32;
+        if up > pc { if pc < dn { dy = up - dn; } else { dy = pc - dn; } }
+        else if pc < dn { dy = up - pc; } else { dy = up - dn; }
+        ey += dy * k.cap_k * k.dif;
+    }
+    // Viscosidade: média de 5 pontos do campo persistente.
+    if f >= k.visc_t {
+        ex = 0.2 * ex + 0.2 * (vel_x[i - 1] + vel_x[i + 1] + vel_x[i - u.fs] + vel_x[i + u.fs]);
+        ey = 0.2 * ey + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
+    }
+    // Freio de absorvência por look-ahead.
+    let s_len = k.brake_reach * k.dif / (sqrt(ex * ex + ey * ey) + 0.01);
+    let dxs = i32(trunc(ex * s_len));
+    let dys = i32(trunc(ey * s_len));
+    let probe = i + dxs + dys * u.fs;
+    let probe_f = fi + dxs * u.rf + dys * u.rf * u.s;
+    if probe >= 0 && probe < i32(arrayLength(&flow_x)) && probe_f >= 0 && probe_f < i32(arrayLength(&act)) {
+        let br = clamp(st[probe_f].x + (3.0 / 255.0) * f32(wet[probe_f]) - k.brake_bias, 0.05, 1.0);
+        ex *= br;
+        ey *= br;
+    }
+    flow_x[i] = clamp(ex, -u.max_v, u.max_v);
+    flow_y[i] = clamp(ey, -u.max_v, u.max_v);
+}
+
+// `wet_stamp_rows`: film fundo marca a folha úmida (corre DEPOIS do `campo`).
+@compute @workgroup_size(16, 16, 1)
+fn carimbo(@builtin(global_invocation_id) g: vec3<u32>) {
+    let c = fcell(g);
+    if !c.ok { return; }
+    let fi = flow_probe(c.x, u.w) + flow_probe(c.y, u.h) * u.s;
+    if act[fi] == 0u { return; }
+    if st[fi].x > 3.0 {
+        wet[fi] = u32(clamp(2.0 - 2.0 * paper[fi], 0.0, 1.0) * 255.0);
+    }
+}

@@ -147,6 +147,57 @@ pub const PASSADAS_FLUXO: [&str; 2] = ["suaviza", "momentum"];
 /// Um passo de «quadro de suavização» sem secagem: smooth → momentum → advecção.
 pub const PLANO_SUAVE: [usize; 6] = [4, 5, 0, 1, 2, 3];
 
+/// As passadas do CAMPO (`build_flow_field_jacobi`): `campo` (= `flow_rows`) e `carimbo`
+/// (= `wet_stamp_rows`). Índices `6` e `7` em `pipes`.
+pub const PASSADAS_CAMPO: [&str; 2] = ["campo", "carimbo"];
+
+/// Um «quadro de campo» sem secagem (`n % 4 == 0`): campo → carimbo → momentum → advecção.
+pub const PLANO_CAMPO: [usize; 7] = [6, 7, 5, 0, 1, 2, 3];
+
+/// Os knobs do `campo`; o layout casa com `struct K` do WGSL (8 × 4 B).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct Knobs {
+    pub level_k: f32,
+    pub level_clamp: f32,
+    pub cap_k: f32,
+    pub cap_gate: f32,
+    /// O menor f32 `t` com `t as f64 > viscosity` — a CPU compara `film as f64 > viscosity`.
+    pub visc_t: f32,
+    pub brake_bias: f32,
+    pub brake_reach: f32,
+    pub dif: f32,
+}
+
+/// O menor f32 cujo valor f64 é `> x` — o limiar `>=` em f32 que casa com `> x` em f64.
+#[must_use]
+pub fn f32_acima(x: f64) -> f32 {
+    let t = x as f32;
+    if f64::from(t) > x {
+        t
+    } else {
+        f32::from_bits(t.to_bits() + 1)
+    }
+}
+
+impl Knobs {
+    /// Os knobs de `p` na grade de fluxo de razão `rf`.
+    #[must_use]
+    pub fn from_params(p: &ph2d_wet_paint::sim::Params, rf: usize) -> Self {
+        use ph2d_wet_paint::tuning::Knob;
+        Knobs {
+            level_k: p.k(Knob::Leveling) as f32,
+            level_clamp: p.k(Knob::LevelClamp) as f32,
+            cap_k: p.k(Knob::Capillary) as f32,
+            cap_gate: p.k(Knob::CapillaryGate) as f32,
+            visc_t: f32_acima(p.k(Knob::Viscosity)),
+            brake_bias: p.k(Knob::Brake) as f32,
+            brake_reach: p.k(Knob::BrakeReach) as f32,
+            dif: ph2d_wet_paint::flow::diff_scale(rf) as f32,
+        }
+    }
+}
+
 /// Os buffers e as pipelines de uma grade.
 pub struct AdvectGpu {
     pub cells: usize,
@@ -158,6 +209,10 @@ pub struct AdvectGpu {
     pub rgb: wgpu::Buffer,
     pub vel_x: wgpu::Buffer,
     pub vel_y: wgpu::Buffer,
+    pub paper: wgpu::Buffer,
+    pub wet: wgpu::Buffer,
+    pub sett: wgpu::Buffer,
+    pub kb: wgpu::Buffer,
     pub pipes: Vec<wgpu::ComputePipeline>,
     pub groups: Vec<wgpu::BindGroup>,
     _scratch: Vec<wgpu::Buffer>,
@@ -196,13 +251,22 @@ impl AdvectGpu {
         let drgb = storage(gpu, "wet-gpu drgb", n * 12);
         let vel_x = storage(gpu, "wet-gpu vel_x", fnc * 4);
         let vel_y = storage(gpu, "wet-gpu vel_y", fnc * 4);
+        let paper = storage(gpu, "wet-gpu paper", n * 4);
+        let wet = storage(gpu, "wet-gpu wet", n * 4);
+        let sett = storage(gpu, "wet-gpu sett", n * 4);
+        let kb = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("wet-gpu K"),
+            size: std::mem::size_of::<Knobs>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("wet-gpu advect"),
                 source: wgpu::ShaderSource::Wgsl(WGSL.into()),
             });
-        let all: [(u32, &wgpu::Buffer); 12] = [
+        let all: [(u32, &wgpu::Buffer); 16] = [
             (0, &ub),
             (1, &flow_x),
             (2, &flow_y),
@@ -215,19 +279,30 @@ impl AdvectGpu {
             (9, &drgb),
             (10, &vel_x),
             (11, &vel_y),
+            (12, &paper),
+            (13, &wet),
+            (14, &sett),
+            (15, &kb),
         ];
         // Os bindings que cada passada usa (o layout automático só inclui esses).
-        let usa: [&[u32]; 6] = [
+        let usa: [&[u32]; 8] = [
             &[0, 1, 2, 4],
             &[0, 3, 4, 5],
             &[0, 3, 4, 5, 6, 7, 8, 9],
             &[0, 6, 7, 8, 9],
             &[0, 1, 2, 3, 6, 10, 11],
             &[0, 1, 2, 3, 6, 10, 11],
+            &[0, 1, 2, 3, 6, 10, 11, 12, 13, 14, 15],
+            &[0, 3, 6, 12, 13],
         ];
         let mut pipes = Vec::new();
         let mut groups = Vec::new();
-        for (k, entry) in PASSADAS.iter().chain(&PASSADAS_FLUXO).enumerate() {
+        for (k, entry) in PASSADAS
+            .iter()
+            .chain(&PASSADAS_FLUXO)
+            .chain(&PASSADAS_CAMPO)
+            .enumerate()
+        {
             let pipe = gpu
                 .device
                 .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -264,6 +339,10 @@ impl AdvectGpu {
             rgb,
             vel_x,
             vel_y,
+            paper,
+            wet,
+            sett,
+            kb,
             pipes,
             groups,
             _scratch: vec![uv, outflow, dst, drgb],
@@ -289,6 +368,20 @@ impl AdvectGpu {
         q.write_buffer(&self.rgb, 0, bytemuck::cast_slice(&g.susp_rgb));
         q.write_buffer(&self.vel_x, 0, bytemuck::cast_slice(&g.vel_x));
         q.write_buffer(&self.vel_y, 0, bytemuck::cast_slice(&g.vel_y));
+        q.write_buffer(&self.paper, 0, bytemuck::cast_slice(&g.paper));
+        q.write_buffer(&self.wet, 0, bytemuck::cast_slice(&pack_active(&g.wet)));
+        q.write_buffer(&self.sett, 0, bytemuck::cast_slice(&g.sett));
+    }
+
+    /// Os knobs do `campo`.
+    pub fn set_knobs(&self, gpu: &GpuContext, k: &Knobs) {
+        gpu.queue.write_buffer(&self.kb, 0, bytemuck::bytes_of(k));
+    }
+
+    /// Lê o `wet` de volta (`u32` por célula, o byte da CPU).
+    #[must_use]
+    pub fn readback_wet(&self, gpu: &GpuContext) -> Vec<u32> {
+        read(gpu, &self.wet, self.cells as u64 * 4)
     }
 
     /// Só os uniformes (troca de retângulo).
@@ -480,6 +573,28 @@ pub mod cena {
         g
     }
 
+    /// [`poca`] com papel de dente, pigmento assentado, `wet` semeado e uma mancha FUNDA
+    /// (`film > 3`: o carimbo de umidade dispara) — exercita capilar, freio e carimbo.
+    #[must_use]
+    pub fn poca_papel(w: usize, h: usize, rf: usize, amp: f32) -> Grid {
+        let mut g = poca(w, h, rf, amp);
+        let (wf, hf) = (w as f32, h as f32);
+        for y in 1..=h {
+            for x in 1..=w {
+                let i = x + y * g.s;
+                let (nx, ny) = (x as f32 / wf, y as f32 / hf);
+                g.paper[i] = 0.5 + 0.25 * (31.0 * nx).sin() * (23.0 * ny).cos();
+                g.sett[i] = 0.02 * (1.0 + (13.0 * nx + 5.0 * ny).sin());
+                let d2 = ((nx - 0.3).powi(2) + (ny - 0.4).powi(2)) / 0.01;
+                g.film[i] += 3.5 * (-d2).exp();
+                if (x + 2 * y) % 3 == 0 {
+                    g.wet[i] = ((x * 7 + y * 13) % 256) as u8;
+                }
+            }
+        }
+        g
+    }
+
     /// A grade espelhada em x: célula `x → w+1−x`, fluxo `ux → −ux` (exige `rf = 1`).
     #[must_use]
     pub fn espelha_x(g: &Grid) -> Grid {
@@ -499,6 +614,9 @@ pub mod cena {
                 m.flow_y[j] = g.flow_y[i];
                 m.vel_x[j] = -g.vel_x[i];
                 m.vel_y[j] = g.vel_y[i];
+                m.paper[j] = g.paper[i];
+                m.sett[j] = g.sett[i];
+                m.wet[j] = g.wet[i];
             }
         }
         m

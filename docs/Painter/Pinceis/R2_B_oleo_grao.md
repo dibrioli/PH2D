@@ -33,6 +33,20 @@ têm crua < 0,1 (o limiar pela crua não separa orla de grão).
 (o alfa fica na crua). Pista não medida: na orla a célula rala tem papel nu nas 3×3; no grão sintético não. Ficheiros
 `oleo_borda.rs`/`oleo_campo.rs` (livres). Depois: regerar Oil/* (as miniaturas mudam) pela fila pesada.
 
+**Ronda pedida pelo coordenador (31/10, «borda × grão»), 4 critérios no MESMO processo** (seletor de teste num
+`GRAO_CRITERIO`, revertido): o entalhe de GRÃO guarda o alfa cru, o de BORDA enche como hoje.
+| critério de GRÃO | grão ralo (≤ 0,01) | pontinhos Clássico (soltos·todos) | Estúdio |
+|---|---|---|---|
+| 0 = lei de hoje | +0,845 | 0 · 0 | 0 · 0 |
+| 1 = sem papel nu nas 3×3 | +0,0005 | 0 · 0 | 0 · **5** |
+| 2 = sem papel nu nas 5×5 (≤ 2 da borda) | +0,0005 | 0 · 0 | 0 · **5** |
+| 3 = ≤ 2 papéis nas 5×5 | +0,0005 | 0 · 0 | 0 · **5** |
+| 4 = nenhuma vizinha 3×3 < 0,02 | +0,0005 | 0 · 0 | 0 · **5** |
+Os 5 pontinhos do Estúdio são os MESMOS nos quatro: células ralas do INTERIOR da orla do Dabber (sem papel por perto),
+que com o alfa cru ficam escuras — a distância ao papel não separa o pontinho do grão. Nenhuma variante passou ⇒
+revertido. Hipótese por medir: o escuro vem da sombra NO PAPEL que se vê pela fracção não coberta da célula rala;
+a cura seria a sombra do papel sob uma célula de altura enchida (não o alfa).
+
 ## Knife Grainy — o grão morre NO DEPÓSITO (receita), não no óleo
 | caso | mediana | furos | grão |
 |---|---|---|---|

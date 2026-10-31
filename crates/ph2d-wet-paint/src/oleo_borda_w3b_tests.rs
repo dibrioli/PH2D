@@ -480,6 +480,18 @@ fn o_grao_de_um_px_sobrevive_ao_oleo() {
 #[test]
 #[ignore = "R2-B: VERMELHO medido (+0,85 sobre a crua) — a lei pendente, ver docs/Painter/Pinceis/R2_B_oleo_grao.md"]
 fn o_grao_ralo_nao_engorda_no_oleo() {
+    for ambiente in [Ambiente::Classico, Ambiente::Estudio] {
+        let excesso = excesso_do_grao_ralo(ambiente);
+        println!("[grão ralo] {ambiente:?}: cobertura a mais que a crua {excesso:.4}");
+        assert!(
+            excesso <= 0.01,
+            "{ambiente:?}: o óleo pinta o papel entre os grãos (cobertura +{excesso:.4} sobre a crua)"
+        );
+    }
+}
+
+/// A cobertura média a mais que a crua nas células RALAS de um grão (massa 60 entre células cheias, 96 × 64).
+fn excesso_do_grao_ralo(ambiente: Ambiente) -> f64 {
     let (w, h) = (96, 64);
     let mut g = Grid::new(w, h);
     let mut crua = vec![0.0; (w + 2) * (h + 2)];
@@ -497,26 +509,16 @@ fn o_grao_ralo_nao_engorda_no_oleo() {
         }
     }
     g.sett_rgb.fill([30.0, 70.0, 210.0]);
-    for ambiente in [Ambiente::Classico, Ambiente::Estudio] {
-        let o = OleoReal {
-            ambiente,
-            ..OleoReal::default()
-        };
-        let px = tela(&g, &o);
-        let excesso = ralas
-            .iter()
-            .map(|&k| (px[k][1] - crua[k]).max(0.0))
-            .sum::<f64>()
-            / ralas.len() as f64;
-        println!(
-            "[grão ralo] {ambiente:?}: {} células ralas, cobertura a mais que a crua {excesso:.4}",
-            ralas.len()
-        );
-        assert!(
-            excesso <= 0.01,
-            "{ambiente:?}: o óleo pinta o papel entre os grãos (cobertura +{excesso:.4} sobre a crua)"
-        );
-    }
+    let o = OleoReal {
+        ambiente,
+        ..OleoReal::default()
+    };
+    let px = tela(&g, &o);
+    ralas
+        .iter()
+        .map(|&k| (px[k][1] - crua[k]).max(0.0))
+        .sum::<f64>()
+        / ralas.len() as f64
 }
 
 #[test]

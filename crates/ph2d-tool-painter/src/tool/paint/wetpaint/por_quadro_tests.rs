@@ -105,3 +105,60 @@ fn com_o_hospedeiro_a_drenar_o_move_nao_compoe() {
     assert!(!t.paint.wetpaint.composite_pendente, "a drenagem não compôs o pendente");
     t.on_canvas_pointer(p(50.0, PointerPhase::Up));
 }
+
+/// R3: um knob `Rebuild::Render` (o Emboss da Knife Smooth 3 → 0,1 da Textured) muda entre dois traços. O produto
+/// lê o da CÉLULA, logo a troca não recompõe a tela inteira — e a recomposição inteira, se corresse, daria os
+/// mesmos bytes (a cura não esconde nada).
+#[test]
+fn trocar_um_knob_de_render_entre_tracos_nao_recompoe_a_tela() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../assets/brushes/WetPainter/Oil/Knife");
+    let faca = |n: &str| {
+        let b = std::fs::read(raiz.join(format!("{n}.ph2d-brush.png"))).expect("faca");
+        ph2d_brush_presets::ler(&b).expect("preset")
+    };
+    let (w, h) = (240usize, 160usize);
+    let mut t = PainterTool::default();
+    t.set_source(vec![250u8; w * h * 4], w as u32, h as u32);
+    // Como o app: a drenagem por quadro deixa o sujo da troca à vista até ela.
+    t.set_compor_por_quadro(true);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    t.set_wet_oleo_real_ligado(true);
+    let mut emboss = Vec::new();
+    for (k, nome) in ["Knife Smooth 3", "Knife Textured", "Knife Smooth 3"].iter().enumerate() {
+        assert!(t.wet_preset_aplicar(&faca(nome)).is_empty());
+        t.set_brush_size_px(20.0);
+        let y = 40.0 + 40.0 * k as f32;
+        let p = |x: f32, phase| CanvasPointer {
+            pos: [x, y],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(p(20.0, PointerPhase::Down));
+        t.on_canvas_pointer(p(24.0, PointerPhase::Move));
+        if k > 0 {
+            let sujo = t.paint.wetpaint.session.as_ref().expect("sessão").engine.dirty;
+            assert!(
+                !matches!(sujo, ph2d_wet_paint::painter::Dirty::Full),
+                "a troca para {nome} sujou a tela inteira"
+            );
+        }
+        for i in 2..=40 {
+            t.on_canvas_pointer(p(20.0 + 4.0 * i as f32, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(p(200.0, PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        emboss.push(
+            t.paint.wetpaint.session.as_ref().expect("sessão").engine.tuning.get(ph2d_wet_paint::tuning::Knob::Emboss),
+        );
+    }
+    // Controlo: o knob mudou de facto entre os traços.
+    assert!(emboss[0] != emboss[1] && emboss[1] != emboss[2], "o Emboss não mudou: {emboss:?}");
+    let antes = t.imagem_aplicada().expect("tela").0;
+    t.wet_recomposite_full();
+    let depois = t.imagem_aplicada().expect("tela").0;
+    let d = antes.iter().zip(&depois).filter(|(a, b)| a != b).count();
+    assert_eq!(d, 0, "a recomposição inteira mudou {d} bytes — o knob de render é lido globalmente");
+}

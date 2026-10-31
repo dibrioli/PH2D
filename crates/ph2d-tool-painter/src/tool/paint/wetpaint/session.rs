@@ -235,7 +235,15 @@ impl WetSession {
         }
         let moved = KNOB_DEFS.iter().zip(&f.knobs.knobs).zip(&a.knobs.knobs);
         for ((def, new), old) in moved {
-            if new != old {
+            if new == old {
+                continue;
+            }
+            // Os knobs `Rebuild::Render` só o `render::render_region` do motor os lê; o composite do produto lê os
+            // da CÉLULA (`grid::aparencia`, `Grid::relevo`). O `set_knob` sujava a tela inteira e cada troca de
+            // pincel recompunha a 4K (R3: 93 % da composição das facas do oráculo) para os mesmos bytes.
+            if def.rebuild == Some(ph2d_wet_paint::tuning::Rebuild::Render) {
+                e.tuning.set(def.knob, *new);
+            } else {
                 e.set_knob(def.knob, *new);
             }
         }

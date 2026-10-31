@@ -382,6 +382,8 @@ mod oleo_plano;
 mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união dos dabs dele
 #[cfg(test)]
 mod por_quadro_tests;
+#[cfg(test)]
+mod sonda_r3_facas; // R3: células e ms da composição nas facas do oráculo 4K
 mod veu; // o véu do Show-wet sobre o composite — filho por LOC // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
 pub(in crate::tool::paint) use oleo_plano::{

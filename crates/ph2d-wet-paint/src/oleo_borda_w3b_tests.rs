@@ -471,3 +471,74 @@ fn o_grao_de_um_px_sobrevive_ao_oleo() {
         );
     }
 }
+
+/// ⭐ R2-B (31/10, Knife Stain com o Real Oil: o recto de 200 px de escuridão mediana 0,269 sem óleo → 0,610 com ele, o
+/// grão fundido em manchas; a mesma tinta fotografada sem a óptica 0,269 — o depósito é o mesmo, a cobertura engorda no
+/// composite): **o grão RALO não engorda no óleo.** Entre células cheias, a célula com pouca tinta (o grão do Stain) é
+/// um «entalhe» para o [`sem_entalhes`], que lhe enchia a ALTURA e o ALFA até à mediana — o papel entre os grãos
+/// pintava-se de tinta. A altura enche-se (sem poço escuro); a cobertura de composição fica na crua.
+#[test]
+#[ignore = "R2-B: VERMELHO medido (+0,85 sobre a crua) — a lei pendente, ver docs/Painter/Pinceis/R2_B_oleo_grao.md"]
+fn o_grao_ralo_nao_engorda_no_oleo() {
+    let (w, h) = (96, 64);
+    let mut g = Grid::new(w, h);
+    let mut crua = vec![0.0; (w + 2) * (h + 2)];
+    let mut ralas = Vec::new();
+    for y in 12..52 {
+        for x in 16..80 {
+            let k = (x * 7_919 + y * 104_729) ^ (x * y * 31);
+            let m: f32 = [60.0, 12_000.0, 12_000.0, 9_000.0, 12_000.0][k % 5];
+            let i = x + y * g.s;
+            g.sett[i] = m;
+            crua[x + y * (w + 2)] = crate::opacity::alpha_of_mass(f64::from(m));
+            if m < 100.0 && (19..77).contains(&x) && (15..49).contains(&y) {
+                ralas.push(x + y * (w + 2));
+            }
+        }
+    }
+    g.sett_rgb.fill([30.0, 70.0, 210.0]);
+    for ambiente in [Ambiente::Classico, Ambiente::Estudio] {
+        let o = OleoReal {
+            ambiente,
+            ..OleoReal::default()
+        };
+        let px = tela(&g, &o);
+        let excesso = ralas
+            .iter()
+            .map(|&k| (px[k][1] - crua[k]).max(0.0))
+            .sum::<f64>()
+            / ralas.len() as f64;
+        println!(
+            "[grão ralo] {ambiente:?}: {} células ralas, cobertura a mais que a crua {excesso:.4}",
+            ralas.len()
+        );
+        assert!(
+            excesso <= 0.01,
+            "{ambiente:?}: o óleo pinta o papel entre os grãos (cobertura +{excesso:.4} sobre a crua)"
+        );
+    }
+}
+
+#[test]
+#[ignore = "medida R2-B: a cobertura crua das células que o entalhe enche"]
+fn medida_r2b_crua_dos_entalhes() {
+    let g = orla_dabber();
+    let (w, h) = (g.w, g.h);
+    let cob: Vec<f64> = (0..w * h)
+        .map(|k| cobertura_da_celula(&[(&g, true)], (1 + k % w) + (1 + k / w) * g.s))
+        .collect();
+    let b = sem_entalhes(&EmSerie, &cob, borda_suave(&EmSerie, &cob, w, h), w, h);
+    let mut hist = [0usize; 10];
+    for (c, f) in cob.iter().zip(&b) {
+        if *f > 1.0 {
+            hist[((c * 10.0) as usize).min(9)] += 1;
+        }
+    }
+    println!("[r2b crua] histograma por décimos da crua das células enchidas acima dela: {hist:?}");
+    println!(
+        "[r2b crua] alpha(60) {:.4} alpha(300) {:.4} alpha(1000) {:.4}",
+        crate::opacity::alpha_of_mass(60.0),
+        crate::opacity::alpha_of_mass(300.0),
+        crate::opacity::alpha_of_mass(1000.0)
+    );
+}

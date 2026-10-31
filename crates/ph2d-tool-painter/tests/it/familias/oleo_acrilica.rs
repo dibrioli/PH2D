@@ -1354,3 +1354,139 @@ fn o_chato_pequeno_esmaece() {
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
+
+/// R2-B (31/10, «o óleo derrete o grão fino»): o recto de 200 px da cena `tamanhos` (foto A, y 355..530, x 150..850)
+/// de cada pincel com o Real Oil DESLIGADO e LIGADO: a fracção de FUROS (escuridão < 35 % da mediana) e o grão (média
+/// |px − caixa 3×3|, ×1000). Grava o RGBA cru em `PH2D_SONDA_DIR` para a prancha.
+#[test]
+#[ignore = "sonda R2-B: pinta o óleo; corre-se à mão"]
+fn sonda_r2b_grao_do_oleo() {
+    use crate::exame_bancada::{Fases, Oleo, bateria, pinceis, pinta_cena_oleo};
+    let bat = bateria();
+    let tela = [0, 1].map(|i| bat["tela"][i].as_u64().unwrap() as u32);
+    let papel = [0, 1, 2].map(|i| bat["papel"][i].as_u64().unwrap() as u8);
+    let cena = bat["cenas"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["nome"] == "tamanhos")
+        .unwrap()
+        .clone();
+    let w = tela[0] as usize;
+    let dir = std::env::var("PH2D_SONDA_DIR").ok();
+    let nomes: Vec<String> = std::env::var("PH2D_SONDA_PINCEIS")
+        .unwrap_or_else(|_| "Knife Grainy,Knife Stain".into())
+        .split(',')
+        .map(str::to_owned)
+        .collect();
+    // Os casos: `Desligado` · `Sempre` · `SemLuz` (pousa com o óleo, a foto sem a óptica — o depósito à parte) · e o
+    // Sempre com um knob do cartão a zero (`Sombra0`, `Prof0`, `Fenda0`, `Ceu0`): a bisseção da óptica.
+    let rotulos: Vec<String> = std::env::var("PH2D_SONDA_CASOS")
+        .unwrap_or_else(|_| "Desligado,Sempre,SemLuz".into())
+        .split(',')
+        .map(str::to_owned)
+        .collect();
+    // As variantes da receita: `rótulo:chave=v;chave=v|…` (knobs do motor; `brush.<campo>=<json>` no pincel); sem
+    // ela, o preset tal qual.
+    let variantes: Vec<(String, Vec<(String, String)>)> = std::env::var("PH2D_SONDA_VARIANTES")
+        .map(|v| {
+            v.split('|')
+                .map(|s| {
+                    let (r, kv) = s.split_once(':').unwrap();
+                    let kv = kv
+                        .split(';')
+                        .map(|p| {
+                            let (k, x) = p.split_once('=').unwrap();
+                            (k.to_owned(), x.to_owned())
+                        })
+                        .collect();
+                    (r.to_owned(), kv)
+                })
+                .collect()
+        })
+        .unwrap_or_else(|_| vec![(String::new(), Vec::new())]);
+    let nv = variantes.len();
+    let casos: Vec<(String, String)> = nomes
+        .iter()
+        .flat_map(|n| {
+            rotulos
+                .iter()
+                .flat_map(move |r| (0..nv).map(move |v| (format!("{n}#{v}"), r.clone())))
+        })
+        .collect();
+    let variantes = &variantes;
+    type Ajuste = fn(&mut ph2d_wet_paint::oleo_real::OleoReal);
+    std::thread::scope(|s| {
+        let hs: Vec<_> = casos
+            .iter()
+            .map(|(n, tag)| {
+                let (cena, dir) = (&cena, &dir);
+                s.spawn(move || {
+                    let ajuste: Option<Ajuste> = match tag.as_str() {
+                        "Sombra0" => Some(|o| o.sombra = 0.0),
+                        "Prof0" => Some(|o| o.profundidade = 0.0),
+                        "Fenda0" => Some(|o| o.fenda = 0.0),
+                        "Ceu0" => Some(|o| o.forca_ambiente = 0.0),
+                        "Brilho0" => Some(|o| o.brilho = 0.0),
+                        _ => None,
+                    };
+                    crate::exame_bancada::AJUSTA_OLEO.set(ajuste);
+                    crate::exame_bancada::SEM_LUZ_NA_FOTO.set(tag == "SemLuz");
+                    let o = &if tag == "Desligado" {
+                        Oleo::Desligado
+                    } else {
+                        Oleo::Sempre
+                    };
+                    let (nome, v) = n.split_once('#').unwrap();
+                    let (vr, kv) = &variantes[v.parse::<usize>().unwrap()];
+                    let mut p = pinceis(nome).remove(0);
+                    if let crate::exame_bancada::Fonte::Preset { preset, .. } = &mut p.fonte {
+                        for (k, x) in kv {
+                            if let Some(c) = k.strip_prefix("brush.") {
+                                let v = serde_json::from_str(x).unwrap();
+                                preset.parametros.brush.insert(c.to_owned(), v);
+                            } else {
+                                preset.parametros.engine.insert(k.clone(), x.parse().unwrap());
+                            }
+                        }
+                    }
+                    let n = &format!("{nome}{}{vr}", if vr.is_empty() { "" } else { "_" });
+                    let mut f = Fases::default();
+                    let (_, g) =
+                        pinta_cena_oleo(&p, None, cena, tela, papel, 0, false, *o, &mut f);
+                    let grao = (356..529)
+                        .flat_map(|y| (151..849).map(move |x| (x, y)))
+                        .map(|(x, y)| {
+                            let c = (0..9)
+                                .map(|k| escuro(&g, w, x + k % 3 - 1, y + k / 3 - 1))
+                                .sum::<f64>()
+                                / 9.0;
+                            (escuro(&g, w, x, y) - c).abs()
+                        })
+                        .sum::<f64>()
+                        / (173.0 * 698.0);
+                    let mut v: Vec<f64> = (355..530)
+                        .flat_map(|y| (150..850).map(move |x| (x, y)))
+                        .map(|(x, y)| escuro(&g, w, x, y))
+                        .collect();
+                    v.sort_by(f64::total_cmp);
+                    let med = v[v.len() / 2];
+                    let furos =
+                        v.iter().filter(|&&e| e < 0.35 * med).count() as f64 / v.len() as f64;
+                    println!(
+                        "[r2b] {n} {tag}: mediana {med:.3} · furos {furos:.4} · grão {:.1} · {:.1} s",
+                        grao * 1000.0,
+                        f.traco + f.simula + f.seca + f.foto
+                    );
+                    if let Some(d) = dir {
+                        let f = format!("{d}/{}_{tag}.rgba", n.replace(' ', "_"));
+                        std::fs::write(f, &g).unwrap();
+                    }
+                })
+            })
+            .collect();
+        for h in hs {
+            h.join().unwrap();
+        }
+    });
+}

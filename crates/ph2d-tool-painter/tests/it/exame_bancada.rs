@@ -422,6 +422,12 @@ std::thread_local! {
     /// bancada adia-a para a foto ([`PainterTool::set_wet_oleo_adiado`]) — o gate
     /// `a_luz_do_oleo_so_na_foto_e_a_de_cada_passo` prova o mesmo bit.
     static LUZ_A_MEIO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `true` = a foto SEM a luz do óleo (a tinta pousada com ele, o composite adiado): separa o depósito da óptica
+    /// (sonda R2-B `sonda_r2b_grao_do_oleo`). Por omissão `false` = a foto de sempre.
+    pub static SEM_LUZ_NA_FOTO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Os números do cartão Real Oil ajustados com o [`Oleo::Sempre`] (sonda R2-B); `None` = os de fábrica.
+    pub static AJUSTA_OLEO: std::cell::Cell<Option<fn(&mut ph2d_wet_paint::oleo_real::OleoReal)>> =
+        const { std::cell::Cell::new(None) };
 }
 
 /// [`pinta_cena_com`] com o [`Oleo`] escolhido e o relógio de cada fase somado em `fases`.
@@ -462,6 +468,11 @@ pub fn pinta_cena_oleo(
                     // O óleo é do traço: forçá-lo é DEPOIS de aplicar (o preset escreve a caixa).
                     if meio == PaintMedia::WetPaint && oleo != Oleo::DoPreset {
                         t.set_wet_oleo_real_ligado(oleo == Oleo::Sempre);
+                        if let (Oleo::Sempre, Some(f)) = (oleo, AJUSTA_OLEO.get()) {
+                            let mut o = t.wet_oleo_real_valores();
+                            f(&mut o);
+                            t.set_wet_oleo_real(Some(o));
+                        }
                     }
                     actual = Some(quem);
                 }
@@ -500,7 +511,9 @@ pub fn pinta_cena_oleo(
             "foto" if vistas == foto => {
                 let t0 = Instant::now();
                 // A luz do óleo UMA vez, aqui (REGRAS_DE_CUSTO §METODOLOGIA 4): a meio ela não muda a tinta.
-                t.set_wet_oleo_adiado(false);
+                if !SEM_LUZ_NA_FOTO.get() {
+                    t.set_wet_oleo_adiado(false);
+                }
                 let px = t.run_full().0;
                 fases.foto += t0.elapsed().as_secs_f64();
                 return (op["nome"].as_str().unwrap().to_owned(), px);

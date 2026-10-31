@@ -72,7 +72,6 @@ pub fn populate(store: &mut WidgetStore) {
         }
     }
     store.mark_collapsible_section(crate::plano::EXPERIMENTAL);
-    button(store, ph2d_tool_painter::ids::WET_TUNING_KM_MIXING);
     button(store, ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE);
     button(store, ph2d_tool_painter::ids::WET_TUNING_CLOSE);
     // ⭐⭐ **A PEGA de dez pontos das secções que se ARRASTAM** (2026-09-30, *«siga com os outros

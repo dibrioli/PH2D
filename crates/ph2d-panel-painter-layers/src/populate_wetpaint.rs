@@ -43,6 +43,10 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_WETPAINT_LIVE_WATER,
         tr("panel.painter_layers.wetpaint.live_water_tip"),
     );
+    store.set_tooltip(
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT_MIXING,
+        tr("panel.painter_layers.wetpaint.pigment_mixing_tip"),
+    );
     // O Wet bloom e o Tip pickup só agem sobre a tinta MOLHADA de outra cor (dono 25/10, R4: «sem efeito»); o
     // Diffusion leva o nome inteiro, «Pigment diffusion».
     for (id, dica) in [

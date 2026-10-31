@@ -275,16 +275,6 @@ fn paint_experimental(
         x,
         w,
         y,
-        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
-        tr("panel.wet_tuning.km_mixing"),
-        brush.wet_km_mixing,
-    );
-    y = checkbox_row(
-        ctx,
-        theme,
-        x,
-        w,
-        y,
         ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
         tr("panel.wet_tuning.km_glaze"),
         brush.wet_km_glaze,
@@ -447,7 +437,8 @@ fn header_row(
     y + ph2d_tokens::row_pitch_px()
 }
 
-/// ⭐ **As duas caixas deste painel, e elas são UMA secção** — o cartão *Experimental*.
+/// ⭐ **A caixa deste painel declara a secção** — o cartão *Experimental* (o Pigment mixing saiu para o cartão Wet
+/// Paint do pincel a 30/10; a medição abaixo é a de quando eram duas).
 ///
 /// ⛔ Sem esta declaração as duas caíam na metade cega da linha, e medido em 2026-09-16 com o
 /// sistema de texto real as duas saíam **cortadas em todo o curso útil do dock**: `Pigment mixing
@@ -455,7 +446,7 @@ fn header_row(
 /// `96,5` a `245` e `110,6` na largura do dono. Medida, a coluna cresce até elas e o corte
 /// desaparece de `273,3` para cima (no mínimo do dock ganha o tecto do campo, que é a troca que o
 /// dono escolheu em 2026-05-24).
-const CAIXAS: &[&str] = &["panel.wet_tuning.km_mixing", "panel.wet_tuning.km_glaze"];
+const CAIXAS: &[&str] = &["panel.wet_tuning.km_glaze"];
 
 #[allow(clippy::too_many_arguments)] // a row is (geometry, id, label, state) — splitting hides the seam
 fn checkbox_row(

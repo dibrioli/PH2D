@@ -98,7 +98,10 @@ fn the_tool_default_reaches_the_engine_exactly() {
     assert_eq!(e.sim.tilt_dir_x.to_bits(), 0.0f64.to_bits());
     assert_eq!(e.sim.tilt_dir_y.to_bits(), 1.0f64.to_bits());
     assert_eq!(e.sim.tilt_scale.to_bits(), 1.0f64.to_bits());
-    assert!(!e.sim.km_mixing);
+    assert!(
+        e.sim.km_mixing,
+        "o Pigment mixing de fábrica (ligado, dono 30/10) chega à sim"
+    );
 }
 
 /// The reconcile's no-op BASELINE (`WetEngineFacts::BOOT`, which the session's `applied` inits to) is the
@@ -393,7 +396,27 @@ fn paper_visual_prints_grain_into_the_paint_and_bakes() {
 fn km_flags_reach_the_sim_and_the_composite() {
     let mut t = wet_tool_fixture();
     stroke(&mut t, 60.0);
-    click(&mut t, crate::ids::WET_TUNING_KM_MIXING);
+    // O Pigment mixing é a caixa do cartão (ligado de fábrica, dono 30/10): o clique desliga-o, na sim, sem
+    // tocar a tinta pousada (o painel só vale para o futuro).
+    t.wetpaint_tick(0.05);
+    t.wet_bring_home();
+    let pousada = t.canvas_rgba.as_ref().clone();
+    click(&mut t, crate::ids::PAINTER_WETPAINT_PIGMENT_MIXING);
+    assert!(
+        !t.paint.wetpaint.km_mixing,
+        "a caixa do cartão escreve o km"
+    );
+    assert_eq!(
+        pousada, *t.canvas_rgba,
+        "a caixa não repinta a tinta pousada"
+    );
+    t.wetpaint_tick(0.05);
+    t.wet_bring_home();
+    {
+        let sess = t.paint.wetpaint.session.as_ref().expect("session");
+        assert!(!sess.engine.sim.km_mixing, "mixing must reach the sim");
+    }
+    click(&mut t, crate::ids::PAINTER_WETPAINT_PIGMENT_MIXING);
     t.wetpaint_tick(0.05);
     t.wet_bring_home();
     {
@@ -448,7 +471,8 @@ fn the_section_reset_restores_the_whole_section() {
     set(&mut t, crate::ids::PAINTER_WETPAINT_TILT_RING, 8.0);
     click(&mut t, crate::ids::PAINTER_WETPAINT_SHOWWET);
     click(&mut t, crate::ids::PAINTER_WETPAINT_TUNING);
-    click(&mut t, crate::ids::WET_TUNING_KM_MIXING);
+    click(&mut t, crate::ids::PAINTER_WETPAINT_PIGMENT_MIXING);
+    assert!(!t.paint.wetpaint.km_mixing);
     click(&mut t, crate::ids::PAINTER_WETPAINT_RESET);
     let w = &t.paint.wetpaint;
     assert!(w.armed, "o Reset não troca o meio");
@@ -460,7 +484,7 @@ fn the_section_reset_restores_the_whole_section() {
     );
     assert!(w.tilt_on);
     assert_eq!((w.tilt_ring, w.tilt_spoke), (4, 3));
-    assert!(!w.show_wet && !w.paper_visual && !w.km_mixing && !w.km_glaze);
+    assert!(!w.show_wet && !w.paper_visual && w.km_mixing && !w.km_glaze);
     assert!(!w.tuning_open);
     let _ = KNOB_COUNT; // vocabulary anchor
 }

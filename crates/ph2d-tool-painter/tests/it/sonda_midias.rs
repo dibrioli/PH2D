@@ -312,8 +312,9 @@ fn variantes() -> Vec<Variante> {
 fn aplica_variante(t: &mut PainterTool, v: &[(String, f64)]) {
     for (k, x) in v {
         match k.as_str() {
-            "obra_km" if *x > 0.0 => {
-                t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_MIXING))
+            // O Pigment mixing vem ligado de fábrica (dono 30/10): `0` desliga-o.
+            "obra_km" if *x <= 0.0 => {
+                t.handle_panel_event(PanelEvent::Click(ids::PAINTER_WETPAINT_PIGMENT_MIXING))
             }
             "obra_glaze" if *x > 0.0 => {
                 t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_GLAZE))
@@ -380,9 +381,8 @@ fn as_midias_com_os_knobs_de_hoje() {
                             // `PH2D_SONDA_KM=1`: as duas caixas K–M da tela (Pigment mixing + Glaze layering)
                             // ligadas — as opções da OBRA que nenhum preset guarda.
                             if std::env::var("PH2D_SONDA_KM").as_deref() == Ok("1") {
-                                for id in [ids::WET_TUNING_KM_MIXING, ids::WET_TUNING_KM_GLAZE] {
-                                    t.handle_panel_event(PanelEvent::Click(id));
-                                }
+                                // O Pigment mixing já vem ligado (dono 30/10): só o Glaze.
+                                t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_GLAZE));
                             }
                             aplica_variante(&mut t, v);
                             // `PH2D_SONDA_SECA=<quadros>`: mais tempo depois dos 8 s da cena (o Rebelle é

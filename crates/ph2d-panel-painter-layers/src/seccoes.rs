@@ -418,6 +418,7 @@ pub(crate) const WATERCOLOR_CARTAO: &[&str] = &[
 pub(crate) const WETPAINT: &[&str] = &[
     "panel.painter_layers.wetpaint.show_wet",
     "panel.painter_layers.wetpaint.live_water",
+    "panel.painter_layers.wetpaint.pigment_mixing",
     "panel.painter_layers.wetpaint.oleo_real",
     "panel.painter_layers.wetpaint.tuning",
     "panel.painter_layers.wetpaint.tilt",

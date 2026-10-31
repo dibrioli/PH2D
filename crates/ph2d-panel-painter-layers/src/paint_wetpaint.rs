@@ -393,6 +393,17 @@ fn paint_display_toggles(
         );
     }
     y = paint_oleo_real(ctx, theme, x, content_w, y, brush);
+    // Pigment mixing (K-M, dono 30/10): do pincel, ligado de fábrica; só vale para a tinta que vier.
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT_MIXING,
+        "panel.painter_layers.wetpaint.pigment_mixing",
+        brush.wet_km_mixing,
+    );
     // Live Water (W1g) — a água corre com o traço; desligada de fábrica (o custo está na dica).
     if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaViva) {
         y = crate::paint_brush_top::paint_checkbox_row(

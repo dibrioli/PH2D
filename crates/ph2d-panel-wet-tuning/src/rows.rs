@@ -301,7 +301,6 @@ mod tests {
         for id in [
             ids::WET_TUNING_PANEL,
             ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
-            ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
             ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
             ph2d_tool_painter::ids::WET_TUNING_DRAG_HANDLE,
             ph2d_tool_painter::ids::WET_TUNING_RESIZE_HANDLE,

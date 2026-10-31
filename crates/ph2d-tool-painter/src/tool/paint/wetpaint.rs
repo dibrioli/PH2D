@@ -144,7 +144,7 @@ pub(crate) struct WetPaintState {
     /// pelo reconcile) — a tinta clareia por ter pouco pigmento e acumula até à cor escolhida (dono 10/10).
     /// É do Wet Paint: a força do pincel é partilhada entre os meios.
     pub(super) opacidade: f32,
-    /// Experimental: K–M pigment mixing (`sim.km_mixing`).
+    /// **Pigment mixing** (K–M, `sim.km_mixing`): do pincel, ligado de fábrica (dono 30/10).
     pub(super) km_mixing: bool,
     /// O **Glaze layering (K-M)** do pincel: é do TRAÇO (pousa na célula como `vidrado`), logo viaja com o preset
     /// e com a ferramenta ([`Self::glaze_por_slot`]), como os knobs.
@@ -226,7 +226,7 @@ impl Default for WetPaintState {
             agua_viva: false,
             borda_que_pesa: 0.0,
             opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,
-            km_mixing: false,
+            km_mixing: true,
             km_glaze: false,
             tuning_open: false,
             grid_ratio: grid_map::DEFAULT_RATIO,

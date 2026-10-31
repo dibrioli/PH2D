@@ -122,10 +122,7 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
         );
         assert!(drained_click(&host.drained_actions(), id));
     }
-    for id in [
-        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
-        ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
-    ] {
+    for id in [ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE] {
         let (mut host, mut st) = host();
         assert_eq!(
             host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(id)),
@@ -262,7 +259,6 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
     }
     for id in [
         ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4],
-        ph2d_tool_painter::ids::WET_TUNING_KM_MIXING,
         ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE,
         ph2d_tool_painter::ids::WET_TUNING_CLOSE,
     ] {

@@ -32,6 +32,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              slowest frame goes from 2-4 ms to 14-45 ms"
         }
         "panel.painter_layers.wetpaint.heavy_edge" => "Heavy Edge",
+        "panel.painter_layers.wetpaint.pigment_mixing" => "Pigment mixing",
+        "panel.painter_layers.wetpaint.pigment_mixing_tip" => {
+            "Wet paints mix like real pigment (blue and yellow make green). Saved with the brush; \
+             applies to the next strokes, paint already on the canvas keeps how it was made"
+        }
         // ⭐⭐ O NOME DO PAINEL (o `Panel::TITLE`, a aba do encaixe): a chave segue o id do painel, o
         //    texto é o que o artista lê no menu *Window*.
         "panel.painter_layers.title" => "Painter",

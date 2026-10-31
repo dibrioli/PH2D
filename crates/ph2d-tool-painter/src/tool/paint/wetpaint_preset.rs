@@ -27,6 +27,8 @@ mod ferramentas;
 mod glaze_no_preset_tests;
 pub(in crate::tool::paint) mod json;
 #[cfg(test)]
+mod km_no_preset_tests;
+#[cfg(test)]
 mod medida_oleo_real;
 #[cfg(test)]
 mod medida_preview;
@@ -87,6 +89,9 @@ const CHAVE_ERASE: &str = "erase";
 /// O **Glaze layering (K-M)** no mapa `engine` (não é knob do registo: é do traço, `km_glaze`). Gravado só LIGADO
 /// (`1`): ausente = desligado, o de fábrica — nenhuma receita de fábrica o liga, e os ficheiros dela ficam ao byte.
 pub(super) const CHAVE_GLAZE: &str = "glazeLayering";
+/// O **Pigment mixing (K-M)** no mapa `engine` (do pincel, `km_mixing`, dono 30/10): ligado de fábrica, por isso
+/// gravado só DESLIGADO (`0`) — ausente = ligado; os ficheiros de fábrica ficam ao byte.
+pub(super) const CHAVE_KM: &str = "pigmentMixing";
 /// A **Paint Texture** no mapa `engine` (do traço, `paper_visual`, dono 28/10): gravada só LIGADA, como o Glaze —
 /// ausente = desligada, a de fábrica; os ficheiros de fábrica ficam ao byte.
 pub(super) const CHAVE_TEXTURA: &str = "paintTexture";
@@ -368,6 +373,8 @@ impl PainterTool {
         self.paint.wetpaint.knobs = k;
         // O Glaze é do traço (U1, auditoria W3b): um preset é o pincel inteiro — ausente = o de fábrica (desligado).
         self.paint.wetpaint.km_glaze = prm.engine.get(CHAVE_GLAZE).is_some_and(|v| *v >= 0.5);
+        // O Pigment mixing é do pincel: ausente = o de fábrica (ligado).
+        self.paint.wetpaint.km_mixing = prm.engine.get(CHAVE_KM).is_none_or(|v| *v >= 0.5);
         self.paint.wetpaint.paper_visual = prm.engine.get(CHAVE_TEXTURA).is_some_and(|v| *v >= 0.5);
         let w = &mut self.paint.wetpaint;
         w.oleo_real = prm
@@ -496,6 +503,11 @@ impl PainterTool {
             p.engine.insert(CHAVE_GLAZE.to_owned(), 1.0);
         } else {
             p.engine.remove(CHAVE_GLAZE);
+        }
+        if self.paint.wetpaint.km_mixing {
+            p.engine.remove(CHAVE_KM);
+        } else {
+            p.engine.insert(CHAVE_KM.to_owned(), 0.0);
         }
         if self.paint.wetpaint.paper_visual {
             p.engine.insert(CHAVE_TEXTURA.to_owned(), 1.0);

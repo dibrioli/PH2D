@@ -24,7 +24,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::TypeToken;
 
 /// Os dois nomes, pelas chaves que o painel pinta.
-const CAIXAS: &[&str] = &["panel.wet_tuning.km_mixing", "panel.wet_tuning.km_glaze"];
+const CAIXAS: &[&str] = &["panel.wet_tuning.km_glaze"];
 
 /// ⏳ **Quantos elidem, por largura de painel — e só ENCOLHE.**
 ///

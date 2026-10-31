@@ -455,7 +455,7 @@ impl PainterTool {
         w.tilt_on = true;
         w.tilt_ring = 4;
         w.tilt_spoke = 3;
-        w.km_mixing = false;
+        w.km_mixing = true;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
         // O Real Oil é do traço (28/10): só os números do cartão, que são da tela, mudam a tinta com óleo pousada.
@@ -658,7 +658,7 @@ impl PainterTool {
                 self.paint.wetpaint.tuning_open = !self.paint.wetpaint.tuning_open;
                 true
             }
-            PanelEvent::Click(id) if *id == crate::ids::WET_TUNING_KM_MIXING => {
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_PIGMENT_MIXING => {
                 // Sim-side: changes how FUTURE mixing happens; nothing on
                 // screen moves until paint does.
                 self.paint.wetpaint.km_mixing = !self.paint.wetpaint.km_mixing;

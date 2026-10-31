@@ -206,13 +206,18 @@ pub const PAINTER_WETPAINT_LIVE_WATER: NodeId = hash_node_id("painter_brush.wetp
 /// pesa na orla de baixo (`Sim::sedimenta`). Sem Tilt não faz nada.
 pub const PAINTER_WETPAINT_HEAVY_EDGE: NodeId = hash_node_id("painter_brush.wetpaint_heavy_edge");
 
+/// **Pigment mixing** checkbox (Kubelka–Munk, `sim.km_mixing`): do pincel, ligado de fábrica, viaja com o preset
+/// (dono 30/10, J11 item 1; saiu do Tuning). Só vale para a tinta que vier: a pousada não muda.
+pub const PAINTER_WETPAINT_PIGMENT_MIXING: NodeId =
+    hash_node_id("painter_brush.wetpaint_pigment_mixing");
+
 /// **Tuning** checkbox — shows/hides the side panel with the full knob table.
 pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint_tuning");
 
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 18] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 19] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TILT_TOGGLE,
     PAINTER_WETPAINT_WETCANVAS,
@@ -222,6 +227,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 18] = [
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_LIVE_WATER,
     PAINTER_WETPAINT_OLEO_REAL,
+    PAINTER_WETPAINT_PIGMENT_MIXING,
     PAINTER_WETPAINT_TUNING,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],

@@ -106,9 +106,6 @@ pub const WET_TUNING_GRUPOS_AVANCADOS: [ph2d_wet_paint::tuning::KnobGroup; 3] = 
     [G::Bristles, G::Stroke, G::WetEffects]
 };
 
-/// Experimental: Kubelka–Munk pigment mixing (`sim.km_mixing`).
-pub const WET_TUNING_KM_MIXING: NodeId = hash_node_id("wet_tuning.km_mixing");
-
 /// Experimental: Kubelka–Munk glaze layering (composite-side).
 pub const WET_TUNING_KM_GLAZE: NodeId = hash_node_id("wet_tuning.km_glaze");
 

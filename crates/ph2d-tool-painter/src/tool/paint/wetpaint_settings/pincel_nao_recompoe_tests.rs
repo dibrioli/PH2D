@@ -87,7 +87,7 @@ fn eventos_do_pincel() -> Vec<(String, PanelEvent)> {
     use crate::ids as i;
     for (nome, id) in [
         ("km_glaze", i::WET_TUNING_KM_GLAZE),
-        ("km_mixing", i::WET_TUNING_KM_MIXING),
+        ("km_mixing", i::PAINTER_WETPAINT_PIGMENT_MIXING),
         ("paint_texture", i::PAINTER_WETPAINT_PAPER_VISUAL),
         ("real_oil", i::PAINTER_WETPAINT_OLEO_REAL),
         ("live_water", i::PAINTER_WETPAINT_LIVE_WATER),

@@ -62,9 +62,8 @@ fn cena(preset: &str, obra: bool) -> u64 {
     assert!(t.wet_preset_aplicar(&de_fabrica(preset)).is_empty());
     t.set_brush_size_px(RAIO_DA_CENA);
     if obra {
-        for id in [ids::WET_TUNING_KM_MIXING, ids::WET_TUNING_KM_GLAZE] {
-            t.handle_panel_event(PanelEvent::Click(id));
-        }
+        // O Pigment mixing já vem ligado de fábrica (dono 30/10): só o Glaze.
+        t.handle_panel_event(PanelEvent::Click(ids::WET_TUNING_KM_GLAZE));
     }
     let (px, _, _) = pinta_cena_ate(&mut t, 480);
     fnv1a(&px)

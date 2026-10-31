@@ -239,7 +239,8 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         po_lado: f(o.get("po_lado"), 0.0).clamp(-1.0, 1.0),
         veu: f(o.get("veu"), 0.0).clamp(0.0, 1.0),
         veu_escala: f(o.get("veu_escala"), 1.0).max(0.05),
-        veu_opacidade: f(o.get("veu_opacidade"), 1.0).clamp(0.0, 1.0),
+        veu_opacidade: f(o.get("veu_opacidade"), 1.0)
+            .clamp(0.0, ph2d_painter_brush::DabJitter::VEU_OPACIDADE_MAX),
         subpixel_area: o
             .get("subpixel_area")
             .and_then(Value::as_bool)

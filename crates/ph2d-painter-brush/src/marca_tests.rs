@@ -547,6 +547,44 @@ fn o_veu_e_uma_segunda_populacao_maior_e_palida() {
     assert!((0.2..=0.4).contains(&f), "véu {veu} de {} ({f})", sem.len());
 }
 
+/// ⭐ **O véu ESCURO** (R2-C, o Spray Can: os salpicos escuros do Texture Spray do Krita): `veu_opacidade > 1` faz da
+/// 2.ª população gotículas MAIS escuras que as gotas (a cobertura × o, saturada em 1); a `1` o véu é a gota AO BIT.
+#[test]
+fn o_veu_acima_de_um_e_a_populacao_escura() {
+    let base = spec_base();
+    let sem = recto(base, 3);
+    let com = |o: f32| {
+        let mut s = base;
+        s.dab_jitter.veu = 0.3;
+        s.dab_jitter.veu_escala = 0.3;
+        s.dab_jitter.veu_opacidade = o;
+        recto(s, 3)
+    };
+    let (um, escuro) = (com(1.0), com(2.5));
+    let mut n = 0;
+    for ((a, u), e) in sem.iter().zip(&um).zip(&escuro) {
+        assert_eq!(u.radius_px, e.radius_px);
+        if u.radius_px == a.radius_px {
+            assert_eq!(e.coverage.to_bits(), a.coverage.to_bits());
+            continue;
+        }
+        n += 1;
+        assert_eq!(
+            u.coverage.to_bits(),
+            a.coverage.to_bits(),
+            "a 1 o véu muda a tinta"
+        );
+        let alvo = (2.5 * a.coverage).min(1.0);
+        assert!(
+            (e.coverage - alvo).abs() < 1e-6 && e.coverage > a.coverage,
+            "o véu a 2,5 pinta {} (a gota {}, alvo {alvo})",
+            e.coverage,
+            a.coverage
+        );
+    }
+    assert!(n > 0, "nenhuma marca do véu: o controlo não mede nada");
+}
+
 /// ⭐ **O PÓ SOLTO** (J4 `texturas`, pedido do `pastel_carvao`; o Soft Pastel do Rebelle: ~0,85 grão por 100 px² da
 /// área do traço, até ~1 meia-largura além da borda): o recto deixa `po/100 × comprimento × diâmetro` grãos (± o
 /// resto), todos do tamanho `po_px` e fora do dab que os larga, dentro do alcance; os dabs do traço ficam AO BIT.

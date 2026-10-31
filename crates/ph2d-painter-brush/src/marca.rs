@@ -77,7 +77,8 @@ pub struct DabJitter {
     pub po_lado: f32,
     /// O raio de uma marca do véu × isto (`> 0`; só com [`Self::veu`]).
     pub veu_escala: f32,
-    /// A cobertura de uma marca do véu × isto (`0..1`; só com [`Self::veu`]).
+    /// A cobertura de uma marca do véu × isto (`0..`[`Self::VEU_OPACIDADE_MAX`], saturada em `1`; só com
+    /// [`Self::veu`]): `< 1` a névoa pálida, `> 1` as gotículas escuras.
     pub veu_opacidade: f32,
     /// ⭐ **A marca abaixo de meio píxel pousa pela ÁREA** (J6 `texturas`): o raio mínimo que se pinta é `0,5 px`; uma
     /// marca que pedia `r < 0,5` pinta esse disco com a cobertura × `(r ÷ 0,5)²` — a MESMA tinta que o disco pedido,
@@ -128,6 +129,10 @@ impl DabJitter {
 
     /// A menor partícula (`5 %` do pincel): abaixo disso o dab do raio mínimo (`0,5 px`) já é o que se pinta.
     pub const PARTICULA_MIN: f32 = 0.05;
+    /// O maior [`Self::veu_opacidade`]: acima de `1` o véu é a população ESCURA (as gotículas do Texture Spray do
+    /// Krita, R2-C). O tecto é o do recurso — a cobertura de um dab satura em `1` —: `1 ÷ fluxo` com o menor fluxo
+    /// de spray das receitas (`0,25`) = `4`; acima disso nenhuma marca muda.
+    pub const VEU_OPACIDADE_MAX: f32 = 4.0;
     /// O maior espalhamento através, em diâmetros (o Spray do Krita mede 1,2·D; o dobro dá a margem do artista).
     pub const ACROSS_MAX: f32 = 2.0;
 

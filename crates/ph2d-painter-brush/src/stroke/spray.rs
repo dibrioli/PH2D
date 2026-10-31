@@ -210,7 +210,14 @@ impl Stroke {
         if crate::jitter::next_f32(&mut self.por_traco.rng_veu) < j.veu.clamp(0.0, 1.0) {
             d.radius_px =
                 (d.radius_px * j.veu_escala.max(0.05)).clamp(0.5, crate::MAX_BRUSH_RADIUS_PX);
-            d.coverage *= j.veu_opacidade.clamp(0.0, 1.0);
+            let o = j
+                .veu_opacidade
+                .clamp(0.0, crate::marca::DabJitter::VEU_OPACIDADE_MAX);
+            if o <= 1.0 {
+                d.coverage *= o;
+            } else {
+                d.coverage = (d.coverage * o).min(1.0);
+            }
         }
     }
 

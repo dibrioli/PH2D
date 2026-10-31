@@ -539,8 +539,71 @@ fn transport_rows(g: &mut Grid, p: &Params, mode: Rows) {
     );
 }
 
-/// **O rascunho vira o grid**: três cópias contíguas de plano por linha.
+/// **O rascunho vira o grid.** Com a faixa viva a cobrir quase a folha (o wash), TROCA os três planos com o
+/// rascunho e copia de volta só o COMPLEMENTO (o que a faixa não reescreveu); senão copia a faixa. As duas
+/// rotas dão o mesmo grid ao bit (`flow_bit_tests`, `advect_bit_tests`) — o rascunho é derivado.
+/// A rota lê [`crate::flow::COMMIT_ROTA`] (0 = pela faixa, o produto; 1/2 forçam, gates e sonda).
 fn commit_rows(g: &mut Grid, mode: Rows) {
+    let s = g.s;
+    let (by0, by1) = (g.by0, g.by1);
+    let viva: usize = (by0..=by1)
+        .map(|y| {
+            let (lo, hi) = span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, g.bx0, g.bx1, y);
+            (hi - lo + 1).max(0) as usize
+        })
+        .sum();
+    let auto = (g.cells - viva) * 4 <= viva;
+    let rota = crate::flow::COMMIT_ROTA.load(std::sync::atomic::Ordering::Relaxed);
+    if !match rota {
+        1 => false,
+        2 => true,
+        _ => auto,
+    } {
+        commit_copia(g, mode);
+        return;
+    }
+    let Grid {
+        scratch,
+        film,
+        susp,
+        susp_rgb,
+        row_lo,
+        row_hi,
+        spans_enabled,
+        bx0,
+        bx1,
+        ..
+    } = g;
+    std::mem::swap(film, &mut scratch.dst_film);
+    std::mem::swap(susp, &mut scratch.dst_susp);
+    std::mem::swap(susp_rgb, &mut scratch.dst_rgb);
+    let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let (of, os, oc): (&[f32], &[f32], &[[f32; 3]]) =
+        (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
+    par::walk_rows3(mode, film, susp, susp_rgb, s, |r, fr, sr, cr| {
+        let y = r as i32;
+        let base = r * s;
+        let (lo, hi) = if y < by0 || y > by1 {
+            (1, 0)
+        } else {
+            span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y)
+        };
+        let mut volta = |a: usize, b: usize| {
+            fr[a..b].copy_from_slice(&of[base + a..base + b]);
+            sr[a..b].copy_from_slice(&os[base + a..base + b]);
+            cr[a..b].copy_from_slice(&oc[base + a..base + b]);
+        };
+        if lo > hi {
+            volta(0, s);
+        } else {
+            volta(0, lo as usize);
+            volta(hi as usize + 1, s);
+        }
+    });
+}
+
+/// A rota de cópia do [`commit_rows`]: três cópias contíguas de plano por linha da faixa.
+fn commit_copia(g: &mut Grid, mode: Rows) {
     let s = g.s;
     let (by0, by1) = (g.by0, g.by1);
     let Grid {

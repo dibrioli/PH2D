@@ -373,6 +373,11 @@ impl FlowRowSampler {
     }
 }
 
+/// A rota do *commit* da advecção, em execução (sonda `sonda_fluxo` e `flow_bit_tests`): `0` = pela faixa
+/// (o produto), `1` = sempre cópia, `2` = sempre troca de planos. As rotas dão o mesmo grid ao bit.
+#[doc(hidden)]
+pub static COMMIT_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
 /// Esta célula FINA é a que a sua célula de fluxo AMOSTRA?
 ///
 /// É quem responde *"quem escreve a velocidade deste bloco?"*: exatamente uma
@@ -435,3 +440,7 @@ pub fn project_spans(
 #[cfg(test)]
 #[path = "flow_tests.rs"]
 mod flow_tests;
+
+#[cfg(test)]
+#[path = "flow_bit_tests.rs"]
+mod flow_bit_tests;

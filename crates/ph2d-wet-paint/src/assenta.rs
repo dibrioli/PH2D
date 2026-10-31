@@ -355,6 +355,7 @@ fn resolve(
         if (0..3).all(|c| (y[c] - alvo[c]).abs() < 0.01) {
             break;
         }
+        let mut mexeu = false;
         for c in 0..3 {
             let mut xh = x;
             xh[c] = if x[c] + H <= 255.0 {
@@ -373,6 +374,11 @@ fn resolve(
             let passo = ((y[c] - alvo[c]) / d).clamp(-48.0, 48.0);
             x[c] = (x[c] - passo).clamp(0.0, 255.0);
             y = ecra(x);
+            mexeu = true;
+        }
+        // SEM (31/10, ao bit): uma volta com todo canal cego não mexe `x` nem `y` — a seguinte seria a mesma conta.
+        if !mexeu {
+            break;
         }
     }
     x

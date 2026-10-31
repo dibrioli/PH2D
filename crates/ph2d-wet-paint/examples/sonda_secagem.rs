@@ -108,6 +108,14 @@ const MEMO: u8 = 4;
 /// `levanta` com coberturas iguais devolve o palpite `x0` sem Newton (o alvo e o avaliador em `x0 = uc` são a
 /// mesma conta ⇒ a 1.ª verificação sai).
 const SALTA: u8 = 8;
+/// AO BIT: uma volta do Newton sem NENHUM canal corrigido (todos cegos) repete-se igual ⇒ sai.
+const SEM: u8 = 16;
+/// TOLERÂNCIA: a paragem do Newton a 0,25 nível do ecrã (era 0,01).
+const TOL: u8 = 32;
+/// TOLERÂNCIA: a derivada de cada canal calcula-se na 1.ª volta e fica (Jacobiano diagonal congelado).
+const FIXA: u8 = 64;
+/// TOLERÂNCIA: uma volta só.
+const UMA: u8 = 128;
 
 /// A metade de `diferenca_de_pigmento` que só lê uma das cores (verbatim, as mesmas somas).
 #[derive(Clone, Copy)]
@@ -310,7 +318,7 @@ fn sobre_branco_canal<const C: u8, const N: bool>(
 
 /// VERBATIM `resolve` (assenta.rs:399), com o avaliador de canal opcional.
 #[inline(always)]
-fn resolve<const N: bool>(
+fn resolve<const C: u8, const N: bool>(
     mut x: [f64; 3],
     alvo: [f64; 3],
     cego: f64,
@@ -320,12 +328,28 @@ fn resolve<const N: bool>(
     const H: f64 = 0.5;
     cnt::<N>(K_EVAL, 1);
     let mut y = ecra(x);
-    for _ in 0..4 {
-        if (0..3).all(|c| (y[c] - alvo[c]).abs() < 0.01) {
+    let tol = if C & TOL != 0 { 0.25 } else { 0.01 };
+    let voltas = if C & UMA != 0 { 1 } else { 4 };
+    let mut dfix = [f64::NAN; 3];
+    for _ in 0..voltas {
+        if (0..3).all(|c| (y[c] - alvo[c]).abs() < tol) {
             break;
         }
         cnt::<N>(K_ITER, 1);
+        let mut mexeu = false;
         for c in 0..3 {
+            if C & FIXA != 0 && !dfix[c].is_nan() {
+                let d = dfix[c];
+                if d.abs() < cego {
+                    continue;
+                }
+                let passo = ((y[c] - alvo[c]) / d).clamp(-48.0, 48.0);
+                x[c] = (x[c] - passo).clamp(0.0, 255.0);
+                cnt::<N>(K_EVAL, 1);
+                y = ecra(x);
+                mexeu = true;
+                continue;
+            }
             let mut xh = x;
             xh[c] = if x[c] + H <= 255.0 {
                 x[c] + H
@@ -338,6 +362,7 @@ fn resolve<const N: bool>(
                 None => ecra(xh)[c],
             };
             let d = (yh - y[c]) / (xh[c] - x[c]);
+            dfix[c] = d;
             if d.abs() < cego {
                 continue;
             }
@@ -345,6 +370,10 @@ fn resolve<const N: bool>(
             x[c] = (x[c] - passo).clamp(0.0, 255.0);
             cnt::<N>(K_EVAL, 1);
             y = ecra(x);
+            mexeu = true;
+        }
+        if C & SEM != 0 && !mexeu {
+            break;
         }
     }
     x
@@ -469,7 +498,7 @@ fn assenta_c<const C: u8, const N: bool>(
     let h2 = tapa_m::<C, N>(m, esconde, a_f2);
     let canal =
         |x: [f64; 3], ch: usize| sobre_branco_canal::<C, N>(e, x, uc, a_s2, a_f2, h2, &fx, ch);
-    resolve::<N>(
+    resolve::<C, N>(
         x0,
         alvo,
         cego,
@@ -539,7 +568,7 @@ fn levanta_c<const C: u8, const N: bool>(
         let h2 = tapa_m::<C, N>(m, esconde, a_f2);
         let canal =
             |x: [f64; 3], ch: usize| sobre_branco_canal::<C, N>(e, sc, x, a_s2, a_f2, h2, &fx, ch);
-        resolve::<N>(
+        resolve::<C, N>(
             x0,
             alvo,
             CEGO,
@@ -958,8 +987,22 @@ enum V {
     LadoCanal,
     Tudo,
     Salta,
+    Sem,
+    Tol,
+    Fixa,
+    Uma,
+    TolFixa,
 }
-const VS: [V; 6] = [V::Orig, V::Copia, V::Lado, V::LadoCanal, V::Tudo, V::Salta];
+const VS: [V; 7] = [
+    V::Orig,
+    V::Salta,
+    V::Sem,
+    V::Tol,
+    V::Fixa,
+    V::Uma,
+    V::TolFixa,
+];
+const B: u8 = LADO | CANAL | MEMO | SALTA;
 
 fn dry(v: V, g: &mut Grid, c: &Ctx, par: bool) {
     let (p, ev, rw, by) = (&c.p, c.evap, c.rewet, c.bypass);
@@ -976,7 +1019,12 @@ fn dry(v: V, g: &mut Grid, c: &Ctx, par: bool) {
         V::Lado => drying_copy::<LADO, false>(g, p, ev, rw, by, par),
         V::LadoCanal => drying_copy::<{ LADO | CANAL }, false>(g, p, ev, rw, by, par),
         V::Tudo => drying_copy::<{ LADO | CANAL | MEMO }, false>(g, p, ev, rw, by, par),
-        V::Salta => drying_copy::<{ LADO | CANAL | MEMO | SALTA }, false>(g, p, ev, rw, by, par),
+        V::Salta => drying_copy::<B, false>(g, p, ev, rw, by, par),
+        V::Sem => drying_copy::<{ B | SEM }, false>(g, p, ev, rw, by, par),
+        V::Tol => drying_copy::<{ B | SEM | TOL }, false>(g, p, ev, rw, by, par),
+        V::Fixa => drying_copy::<{ B | SEM | FIXA }, false>(g, p, ev, rw, by, par),
+        V::Uma => drying_copy::<{ B | SEM | UMA }, false>(g, p, ev, rw, by, par),
+        V::TolFixa => drying_copy::<{ B | SEM | TOL | FIXA }, false>(g, p, ev, rw, by, par),
     }
 }
 
@@ -1056,7 +1104,10 @@ fn main() {
     );
 
     // Hash após N_HASH secagens encadeadas (paralelo e série).
-    for par in [true, false] {
+    for par in [true, false]
+        .into_iter()
+        .filter(|&p| p || std::env::var_os("SONDA_SERIE").is_some())
+    {
         for v in VS {
             restore_grid(g, &snap);
             for _ in 0..N_HASH {
@@ -1070,8 +1121,101 @@ fn main() {
         }
     }
 
+    // Desvio na COR FINAL (tolerância): seca a aguada até ao fim e compara o ecrã seco contra `Orig`.
+    if std::env::var_os("SONDA_COR").is_some() {
+        let passes: usize = std::env::var("SONDA_PASSES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(120);
+        for cena in 0..2 {
+            let mut cc = Ctx {
+                p: c.p.clone(),
+                evap: c.evap,
+                rewet: c.rewet,
+                bypass: c.bypass,
+            };
+            if cena == 1 {
+                if let Ecra::Cobre {
+                    esconde,
+                    molhada,
+                    oleo,
+                    ..
+                } = cc.p.ecra
+                {
+                    cc.p.ecra = Ecra::Cobre {
+                        filme: 0.3,
+                        esconde,
+                        molhada,
+                        vela: 0.0,
+                        oleo,
+                    };
+                }
+            }
+            let ver = |g: &Grid, cc: &Ctx| -> Vec<[f64; 3]> {
+                (0..g.film.len())
+                    .map(|i| {
+                        let e = cc.p.ecra.com_vela(g.vela[i]);
+                        ph2d_wet_paint::assenta::sobre_branco(
+                            e,
+                            g.sett_rgb[i].map(f64::from),
+                            g.susp_rgb[i].map(f64::from),
+                            alpha_of_mass(f64::from(g.sett[i])),
+                            alpha_of_mass(f64::from(g.susp[i])),
+                        )
+                    })
+                    .collect()
+            };
+            let seca = |v: V, g: &mut Grid| {
+                restore_grid(g, &snap);
+                if cena == 1 {
+                    let n = g.vela.len();
+                    for (i, x) in g.vela.iter_mut().enumerate() {
+                        *x = if i < n / 2 { 0.8 } else { 0.0 };
+                    }
+                }
+                let t = Instant::now();
+                let mut k = 0;
+                while k < passes && g.film.iter().any(|&f| f > 0.0) {
+                    dry(v, g, &cc, true);
+                    k += 1;
+                }
+                (k, t.elapsed().as_secs_f64())
+            };
+            let (k0, t0r) = seca(V::Orig, g);
+            let molhado = g.film.iter().filter(|&&f| f > 0.0).count();
+            let base = ver(g, &cc);
+            println!(
+                "COR cena {cena}: Orig {k0} passes ({t0r:.1} s), células ainda molhadas {molhado}"
+            );
+            for v in VS.iter().skip(1) {
+                let (k, tr) = seca(*v, g);
+                let y = ver(g, &cc);
+                let mut dif: Vec<f64> = Vec::with_capacity(y.len() * 3);
+                let mut q8 = 0i32;
+                for (a, b) in base.iter().zip(&y) {
+                    for ch in 0..3 {
+                        dif.push((a[ch] - b[ch]).abs());
+                        q8 = q8.max((a[ch].round() as i32 - b[ch].round() as i32).abs());
+                    }
+                }
+                dif.sort_by(f64::total_cmp);
+                let n = dif.len();
+                println!(
+                    "  {v:?}: {k} passes ({tr:.1} s) · |Δ| máx {:.4} · p99.9 {:.4} · p99 {:.4} · u8 máx {q8} · Δ>0,5 {}",
+                    dif[n - 1],
+                    dif[(n as f64 * 0.999) as usize],
+                    dif[(n as f64 * 0.99) as usize],
+                    dif.iter().filter(|&&d| d > 0.5).count()
+                );
+            }
+        }
+    }
+
     // Régua intercalada: rodada 0 aquece; início rodado; cada medida sobre o instantâneo restaurado.
-    for par in [true, false] {
+    for par in [true, false]
+        .into_iter()
+        .filter(|&p| p || std::env::var_os("SONDA_SERIE").is_some())
+    {
         let rr = if par { rounds } else { rounds.div_ceil(2) };
         let mut md: Vec<Vec<f64>> = vec![Vec::new(); VS.len()];
         for round in 0..=rr {

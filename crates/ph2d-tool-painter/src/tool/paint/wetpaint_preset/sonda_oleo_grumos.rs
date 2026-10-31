@@ -22,7 +22,7 @@ fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-fn preset(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
+pub(super) fn preset(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
     let rel = format!("WetPainter/Oil/{rel}.ph2d-brush.png");
     b.entradas
         .iter()
@@ -65,7 +65,7 @@ fn pct(v: &mut [f64], q: f64) -> f64 {
 }
 
 /// A altura fina por célula da tela inteira (grade `gw×gh`), e a massa visível.
-fn alturas(t: &mut PainterTool) -> (Vec<f64>, Vec<f64>, usize, usize, f32) {
+pub(super) fn alturas(t: &mut PainterTool) -> (Vec<f64>, Vec<f64>, usize, usize, f32) {
     let o = t.wet_oleo_real().expect("o preset liga o Real Oil");
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
@@ -198,7 +198,7 @@ pub(super) fn cena(
     out
 }
 
-fn grava_png(p: &std::path::Path, rgba: &[u8], w: usize, h: usize) {
+pub(super) fn grava_png(p: &std::path::Path, rgba: &[u8], w: usize, h: usize) {
     use crate::tool::paint::tests::look_watercolor_arc::{Canvas, write_png};
     // Sobre o branco do papel: a tinta tem alfa.
     let px = rgba[..w * h * 4]

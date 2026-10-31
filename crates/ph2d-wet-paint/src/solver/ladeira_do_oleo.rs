@@ -11,15 +11,16 @@
 
 use crate::grid::Grid;
 
-/// A rota da ladeira, em execução (sonda `sonda_oleo_derrete`): `0` = o produto (= `5`), `1` = a de 30/10 sem peso,
+/// A rota da ladeira, em execução (sondas `sonda_oleo_derrete`, `sonda_oleo_furos`): `0` = o produto (= `7`), `1` = a de 30/10 sem peso,
 /// `2` = desligada, `3` = fotografia com a massa inteira (assente + suspensa), sem peso, `4` = peso pela fracção
-/// assente de AGORA, `5` = peso pela fracção assente da FOTOGRAFIA, `6` = `3` + `5`.
+/// assente de AGORA, `5` = peso pela fracção assente da FOTOGRAFIA, `6` = `3` + `5`, `7` = `5` com a ladeira que segura
+/// presa a `|dfilm|`.
 #[doc(hidden)]
 pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
 
 fn rota() -> u8 {
     match LADEIRA_ROTA.load(std::sync::atomic::Ordering::Relaxed) {
-        0 => 5,
+        0 => 7,
         r => r,
     }
 }
@@ -48,6 +49,8 @@ pub(crate) struct LadeiraDoOleo {
     h: Vec<f32>,
     /// A fracção ASSENTADA da massa de cada célula, `sett ÷ (sett + susp)` (`1` sem tinta): o peso da ladeira.
     assente: Vec<f32>,
+    /// A ladeira do óleo de ANTES com o óleo na mão: a que segura fica presa a `|dfilm|` ([`LadeiraDoOleo::termo`]).
+    presa: bool,
 }
 
 /// O `film` do Wet Flat CHEIO sobre a crista do óleo (água ×1), MEDIDO pela sonda J11 (`diag_a_queda_pela_diluicao`):
@@ -75,7 +78,7 @@ impl LadeiraDoOleo {
                 let k = (y - r0) * s + x;
                 match rota() {
                     4 => assente[k] = fraccao_assente(g, i),
-                    5 | 6 if antes => {
+                    5..=7 if antes => {
                         assente[k] = g.oleo_antes_assente.get(i).copied().unwrap_or(1.0);
                     }
                     _ => {}
@@ -91,11 +94,22 @@ impl LadeiraDoOleo {
                 }
             }
         }
-        alguma.then_some(Self { r0, s, h, assente })
+        alguma.then_some(Self {
+            r0,
+            s,
+            h,
+            assente,
+            presa: antes && rota() == 7,
+        })
     }
 
     /// O termo de nivelamento de um eixo, já clampado: `dfilm` = a diferença de `film` entre os vizinhos, `o` = a da
     /// ladeira — pesada pela água desta célula (`f`) quando não se opõe a `dfilm` (ver [`FILM_CHEIO`]).
+    /// ⛔ **Óleo sobre óleo** (`presa`, dono 31/10, `smoke_31_10_oleo/dono_4.png`): a que segura pára a água, nunca a
+    /// empurra ao contrário — inteira, o relevo da fotografia movia a tinta grossa (film ≈ 0, o sinal de `dfilm` é
+    /// ruído) e cada passada cavava e empilhava: caroços, p99 da altura 19,7 → 106,5 em 8 passadas do Thick Impasto
+    /// (`sonda_oleo_furos`; sem a ladeira 30,0, presa 31,1; o excesso pesado pela água 54,7 — recusado). Sem o óleo na
+    /// mão (a aguada ao pé do óleo seco, `a_agua_nao_sobe_a_ladeira_do_oleo`) fica inteira.
     #[inline]
     pub(crate) fn termo(
         &self,
@@ -107,7 +121,11 @@ impl LadeiraDoOleo {
         clamp: f64,
     ) -> f64 {
         let o = if o * dfilm < 0.0 {
-            o
+            if self.presa {
+                o.clamp(-dfilm.abs(), dfilm.abs())
+            } else {
+                o
+            }
         } else {
             o * (f / FILM_CHEIO).clamp(0.0, 1.0)
         };

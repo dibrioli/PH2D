@@ -46,6 +46,8 @@ mod sonda_oleo_derrete;
 #[cfg(test)]
 mod sonda_oleo_estria;
 #[cfg(test)]
+mod sonda_oleo_furos;
+#[cfg(test)]
 mod sonda_oleo_grumos;
 #[cfg(test)]
 mod tests;

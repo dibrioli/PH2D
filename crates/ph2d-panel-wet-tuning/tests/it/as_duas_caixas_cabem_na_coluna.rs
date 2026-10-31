@@ -23,7 +23,7 @@
 use ph2d_text::TextSystem;
 use ph2d_tokens::TypeToken;
 
-/// Os dois nomes, pelas chaves que o painel pinta.
+/// O nome (o Pigment mixing saiu para o cartão Wet Paint do pincel a 30/10), pela chave que o painel pinta.
 const CAIXAS: &[&str] = &["panel.wet_tuning.km_glaze"];
 
 /// ⏳ **Quantos elidem, por largura de painel — e só ENCOLHE.**
@@ -32,7 +32,7 @@ const CAIXAS: &[&str] = &["panel.wet_tuning.km_glaze"];
 /// que até ali caía na fonte do SISTEMA (nesta máquina a `NotoSans-Medium`); hoje mede a Inter
 /// embutida, a mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
 const ELIDEM_POR_LARGURA: &[(f32, usize)] =
-    &[(220.0, 2), (245.0, 2), (273.3, 0), (304.0, 0), (720.0, 0)];
+    &[(220.0, 1), (245.0, 1), (273.3, 0), (304.0, 0), (720.0, 0)];
 
 /// A linha de uma caixa deste painel, à largura do painel.
 fn linha(painel: f32) -> f32 {
@@ -83,8 +83,8 @@ fn e_a_metade_cega_cortava_os_dois() {
     let mut ts = TextSystem::new();
     assert_eq!(
         elidem(&mut ts, 273.3, false),
-        2,
-        "a metade cega devia cortar os DOIS na largura do dono — se já não corta, o mecanismo \
+        1,
+        "a metade cega devia cortar o Glaze layering (o Pigment mixing saiu para o cartão do pincel a 30/10) na largura do dono — se já não corta, o mecanismo \
          mudou e a tabela deste ficheiro está a descrever outro painel"
     );
     assert_eq!(elidem(&mut ts, 273.3, true), 0);

@@ -608,3 +608,7 @@ pub fn levanta(
 #[cfg(test)]
 #[path = "assenta/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "assenta_bit_tests.rs"]
+mod assenta_bit_tests;

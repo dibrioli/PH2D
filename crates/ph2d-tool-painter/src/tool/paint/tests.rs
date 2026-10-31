@@ -12,6 +12,9 @@
 //!   para a mesma pergunta;
 //! - a lista dos filhos. O que cada um é está no `//!` dele, não nesta lista.
 
+/// Amarelo sobre azul SECO não deixa borda branca (dono 31/10, a família do BUGS #50).
+#[path = "borda_branca_tests.rs"]
+mod borda_branca_tests;
 /// A cor do papel em cada meio (pedido do dono, 2026-10-05).
 #[path = "cor_do_papel_tests.rs"]
 mod cor_do_papel_tests;

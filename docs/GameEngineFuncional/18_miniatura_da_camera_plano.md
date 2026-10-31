@@ -112,6 +112,8 @@ trocado à volta da passagem da vista — o desenho da A6 aplicado ao resto do M
 - ⚠️ **Os palcos na miniatura não se veem hoje** (medido na foto): a macro só toca com a cena em RUNTIME, e o Play
   desenha só o jogo — na janela própria o editor deixa de se desenhar (a surface é a do jogo), no palco
   (`palco_do_jogo`) a miniatura não existe. O código fica certo para quando a cena correr no canvas do editor.
+- ✅ **Smoke do dono APROVADO (31/10)**: a pilha (Pile) aparece na miniatura, no mesmo sítio. O dono mandou NÃO
+  fechar a linha ainda — a linha continua aberta; o fecho (§1.5.9) espera a ordem dele.
 
 ## Medido (31/10) — o piso da grade da luz da vista
 

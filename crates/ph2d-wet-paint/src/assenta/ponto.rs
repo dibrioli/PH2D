@@ -62,6 +62,8 @@ pub(super) struct Ponto {
     la: f64,
     la_w: f64,
     t_s: [f64; 3],
+    /// O assentado PURO (sem a diluição em branco de `t_s`): a [`mistura_opaca`] faz-se entre as tintas.
+    sc: [f64; 3],
     c_eff: [f64; 3],
     uc: [f64; 3],
     vela: f64,
@@ -97,7 +99,13 @@ impl Ponto {
     fn canal(&self, k: usize) -> f64 {
         let r = self.na_caixa(k);
         let r = match self.opaca {
-            Some((c, o)) => r + (mistura_opaca(self.t_s[k], self.uc[k], c) - r) * o,
+            // A mistura é das TINTAS e cobre `la`: misturar o assentado já diluído em branco e re-expressá-lo pela
+            // cobertura cortava o canal que o pigmento de cima absorve — a orla fina ferrugem (dono 31/10, pressão
+            // baixa: cor da camada (181,48,0) no amarelo fino sobre o azul fino).
+            Some((c, o)) => {
+                let m = 255.0 - self.la * (255.0 - mistura_opaca(self.sc[k], self.uc[k], c));
+                r + (m - r) * o
+            }
             None => r,
         };
         molha_canal(r, self.la)
@@ -224,6 +232,7 @@ pub(super) fn prepara(
     let c_eff = uc.map(|v| 255.0 - (a_t / a_e) * (255.0 - v));
     let la = a_s + a_e * (1.0 - a_s);
     let mut ponto = Ponto {
+        sc,
         a_t,
         a_e,
         la,
@@ -237,7 +246,14 @@ pub(super) fn prepara(
     };
     // Pela diferença de pigmento `d`, como o tapar extra: a mesma tinta sobre si só soma pigmento (a lei da aguarela).
     if opaca > 0.0 && d > 0.0 {
-        ponto.opaca = Some((concentracao_opaca(a_e), opaca * d));
+        // A parte da tinta de cima no PIGMENTO do ponto: sobre o assentado cheio (`a_s = 1`) é `a_e`; sobre o fino,
+        // pouco azul debaixo de pouco amarelo é amarelo (a orla fina da pressão baixa).
+        let parte = if a_s >= 1.0 {
+            a_e
+        } else {
+            a_e / (a_e + a_s * (1.0 - a_e))
+        };
+        ponto.opaca = Some((concentracao_opaca(parte), opaca * d));
     }
     Prep::Ponto(ponto)
 }

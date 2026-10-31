@@ -104,3 +104,33 @@ fn a_pincelada_unica_e_a_lei_sem_o_pincel_de_oleo_nao_mudam() {
         assert_eq!(antes, depois);
     }
 }
+
+/// ⭐ **A orla FINA não enferruja** (dono 31/10, pressão baixa: «se eu passar o amarelo no azul com pouca pressão
+/// aparecem bordas ferrugem»). A mistura opaca fazia-se com o assentado já diluído em BRANCO e re-exprimia-se pela
+/// cobertura: o canal que o amarelo absorve ia a `0` — cor da camada (181,48,0) a `a_s = a_f = 0,02`. A cor da camada
+/// fica na mistura de pigmento das duas tintas, fina ou grossa.
+#[test]
+fn a_orla_fina_do_oleo_sobre_o_oleo_nao_enferruja() {
+    let e = lei(PINCEL_DE_OLEO).com_oleo(OLEO);
+    let mut pior = (0.0f64, String::new());
+    for (sc, uc) in [(AZ, AM), (AM, AZ)] {
+        for a_s in [0.02, 0.05, 0.1, 0.3, 0.7] {
+            for a_f in [0.02, 0.05, 0.1, 0.3] {
+                let (c, la) = cor_e_alfa(e, sc, uc, a_s, a_f);
+                let (c2, _) = na_caixa_das_tintas(e, (c, la), sc, uc, a_s, a_f);
+                for (nome, x) in [("camada", c), ("caixa", c2)] {
+                    let m = fora_da_mistura(x, sc, uc);
+                    if m > pior.0 {
+                        pior = (m, format!("{nome} {sc:?} sob {uc:?} {a_s},{a_f}: {x:.0?}"));
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        pior.0 <= 20.0,
+        "a orla fina saiu da mistura {:.1} níveis: {}",
+        pior.0,
+        pior.1
+    );
+}

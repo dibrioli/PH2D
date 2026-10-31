@@ -178,7 +178,8 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_salvo_o_oleo_sobre_o_oleo() {
     let lum =
         |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
     // O vermelho em y 60 e o azul em y 70, raio 14 (e a água que os leva): fora das linhas pintadas, ao byte. Medido
-    // 31/10: 2 505 píxeis mudam, a luminância −85 … +5,9 (p1 −21,8, p99 +2,2) — escurece pela mistura, nunca clareia.
+    // 31/10: 2 360 píxeis mudam, a luminância −34,6 … +9,4 (a orla fina (128,92,209) → (116,107,226): mais azul,
+    // não mais branca) — escurece pela mistura, nunca embranquece.
     let (mut fora, mut claros, mut mudados, mut escurece) = (0, 0, 0, 0.0f64);
     for (i, (a, b)) in nova.chunks(4).zip(antes.chunks(4)).enumerate() {
         if a == b {
@@ -189,7 +190,8 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_salvo_o_oleo_sobre_o_oleo() {
         }
         mudados += 1;
         let dl = lum(a) - lum(b);
-        if dl > 8.0 {
+        // O BRANCO sobe os três canais; a orla fina que vai para a tinta de cima (o azul) sobe dois e desce um.
+        if (0..3).all(|k| a[k] > b[k].saturating_add(4)) {
             claros += 1;
         }
         escurece = escurece.min(dl);

@@ -677,6 +677,7 @@ mod historia; // o desfazer/refazer POR CAMADA (SPEC §15) — filho por LOC
 mod historia_tests;
 mod instantaneo; // `Clone`: a cópia do motor para os instantâneos de uma macro
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
+mod lei_da_tinta; // a troca da lei da tinta (E9): sair de Pigmento esvazia as somas
 mod mascara; // a porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter)
 mod po; // a porta do GRÃO de pó solto, à parte do rasto (J4 pastel_carvao)
 pub mod receita; // E4: Pigmento + Água → a receita φ, Volume → a quantidade h (ADR-0197 §1.1)

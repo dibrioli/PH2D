@@ -63,6 +63,7 @@ impl PainterTool {
         // cor real»): o render desenha-a com a lei seca, e o `molhada_escurece` fica no neutro (1).
         engine.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
         engine.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
+        engine.set_lei_da_tinta(self.paint.wetpaint.lei_da_tinta);
         let marca = self.undo.marca.nasce_a_molhada(self.papel);
         self.paint.wetpaint.composta = None;
         self.paint.wetpaint.session = Some(WetSession {

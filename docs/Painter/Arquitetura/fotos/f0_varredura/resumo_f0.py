@@ -44,11 +44,18 @@ chave = lambda r, pr: (r['pincel'], r['pigment'], r['water'], pr, r['n'], r.get(
 idx = {chave(r, r['pressao']): r for r in rows}
 
 
+def mistura(r):
+    """A régua da mistura é a da LEI (E9 §5.3): `km_*` na velha, `mix_*` (segmento Oklab) na pigmento.
+    TSV antigo sem `mix_*` cai na km."""
+    return 'mix' if lei(r) == 'pigmento' and 'mix_p99_plano' in r else 'km'
+
+
 def reprova(r):
     """As métricas que reprovam (vazio = passa). NaN não reprova (a régua não mediu: nada com alfa ≥ 0,9)."""
     out = []
-    for col, lim in [('manchas_azul_plano', MANCHAS_AZUL_MAX), ('km_p99_plano', KM_P99_MAX),
-                     ('km_max_plano', KM_MAX_MAX), ('ferrugem_plano', FERRUGEM_MAX)]:
+    mx = mistura(r)
+    for col, lim in [('manchas_azul_plano', MANCHAS_AZUL_MAX), (f'{mx}_p99_plano', KM_P99_MAX),
+                     (f'{mx}_max_plano', KM_MAX_MAX), ('ferrugem_plano', FERRUGEM_MAX)]:
         if f(r, col) > lim:
             out.append(f"{col} {f(r, col):.2f}")
     par = idx.get(chave(r, '1'))
@@ -69,7 +76,7 @@ for r in rows:
     m = reprova(r)
     k = (papel(r), lei(r))
     placar[k][1] += 1
-    sem = math.isnan(f(r, 'km_p99_plano'))
+    sem = math.isnan(f(r, f'{mistura(r)}_p99_plano'))
     placar[k][0] += not m and not sem
     placar[k][2] += sem
     v = '; '.join(m) if m else ('sem medida (alfa < 0,9)' if sem else 'passa')

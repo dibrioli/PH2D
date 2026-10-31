@@ -15,6 +15,7 @@ use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool,
 };
 use ph2d_wet_paint::colorops::{ks_of_srgb255, reflectance_of_ks, srgb255_of_linear};
+use portao_mae_f0::{fora_do_segmento, segmento_oklab};
 
 const W: u32 = 360;
 const H: u32 = 240;
@@ -140,6 +141,9 @@ fn sobre_creme(q: &[u8]) -> ([f64; 3], f64) {
 pub(super) struct Leitura {
     pub km_max: f64,
     pub km_p99: f64,
+    /// A distância ao segmento Oklab azul–amarelo (a mistura da lei `Pigmento`), máx e p99.
+    pub mix_max: f64,
+    pub mix_p99: f64,
     /// % dos píxeis cobertos (alfa ≥ 0,9) mais escuros que o azul sozinho (p50) − 6 níveis.
     pub manchas: f64,
     /// O mesmo, mas no azul SOZINHO antes do amarelo.
@@ -169,8 +173,9 @@ fn pct(v: &mut [f64], q: f64) -> f64 {
     v[((v.len() - 1) as f64 * q).round() as usize]
 }
 
-/// O render PLANO: sem o Real Oil (a luz, o verniz, a sombra da crista) e com o Emboss a 0 — a cor K-M do
-/// assentado. A próxima passada volta a aplicar o preset inteiro (`wet_preset_aplicar`), por isso não se repõe.
+/// O render PLANO: sem o Real Oil (a luz, o verniz, a sombra da crista) e sem relevo — só a cor da tinta.
+/// O óleo e o emboss são da CÉLULA (`Grid::oleo`, `Grid::relevo`/`altura`, dono 28/10), não da caixa: tiram-se da
+/// grade só para este composite e repõem-se logo (o motor que pinta a seguir não muda). E9 §5.2.
 fn render_plano(t: &mut PainterTool) {
     use ph2d_editor_core::Tool;
     t.set_wet_oleo_real(None);
@@ -178,7 +183,32 @@ fn render_plano(t: &mut PainterTool) {
         crate::ids::wet_tuning_slider_id("emboss"),
         0.0,
     ));
+    let guarda = |t: &mut PainterTool| {
+        let s = t.paint.wetpaint.session.as_mut()?;
+        s.bring_home();
+        Some(
+            s.engine
+                .layers
+                .iter_mut()
+                .map(|l| {
+                    let g = &mut l.grid;
+                    let zero = vec![0.0; g.relevo.len()];
+                    (
+                        std::mem::replace(&mut g.relevo, zero),
+                        std::mem::take(&mut g.altura),
+                        std::mem::take(&mut g.oleo),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+    };
+    let guardado = guarda(t);
     t.wet_recomposite_full();
+    if let (Some(v), Some(s)) = (guardado, t.paint.wetpaint.session.as_mut()) {
+        for (l, (r, a, o)) in s.engine.layers.iter_mut().zip(v) {
+            (l.grid.relevo, l.grid.altura, l.grid.oleo) = (r, a, o);
+        }
+    }
 }
 
 /// Luminância de referência do azul sozinho (p50 dos cobertos) e % de manchas.
@@ -222,6 +252,8 @@ fn le_tudo(
     px: Option<&mut Vec<[u8; 3]>>,
 ) -> Leitura {
     let (af, bf) = (AZ.map(f64::from), AM.map(f64::from));
+    let seg = segmento_oklab(af, bf);
+    let mut mix = vec![];
     let (mut km, mut cob, mut tinta, mut esc, mut fer) = (vec![], 0usize, 0usize, 0usize, 0usize);
     let mut px = px;
     let at = |x: usize, y: usize| sobre_creme(&t.canvas_rgba[(x + y * W as usize) * 4..][..4]);
@@ -240,6 +272,7 @@ fn le_tudo(
             if a >= 0.9 {
                 cob += 1;
                 km.push(fora_da_mistura(c, af, bf));
+                mix.push(fora_do_segmento(c, &seg, a));
                 if lum(c) < ref_azul - 6.0 {
                     esc += 1;
                 }
@@ -266,6 +299,8 @@ fn le_tudo(
     Leitura {
         km_max: km.iter().copied().fold(0.0, f64::max),
         km_p99: pct(&mut km, 0.99),
+        mix_max: mix.iter().copied().fold(0.0, f64::max),
+        mix_p99: pct(&mut mix, 0.99),
         manchas: pc(esc, cob),
         manchas_azul,
         ferrugem: pc(fer, tinta),
@@ -333,6 +368,83 @@ pub(super) fn celula(
     cena: Cena,
     png: Option<&std::path::Path>,
 ) -> Celula {
+    let mut refs = (0.0, 0.0, 0.0, 0.0);
+    let mut t = pinta(
+        b,
+        pincel,
+        pig,
+        agua,
+        pressao,
+        n,
+        pausa_assenta,
+        cena,
+        &mut |t| {
+            t.wet_recomposite_full();
+            let (ref_l, man_l) = le_azul(t);
+            render_plano(t);
+            let (ref_p, man_p) = le_azul(t);
+            refs = (ref_l, man_l, ref_p, man_p);
+        },
+    );
+    let (ref_l, man_l, ref_p, man_p) = refs;
+    t.wet_recomposite_full();
+    let mut px_l = Vec::with_capacity((RX.1 - RX.0) * (RY.1 - RY.0));
+    let luz = le_tudo(&t, ref_l, man_l, Some(&mut px_l));
+    let (mut miolo, mut papel) = (0usize, 0usize);
+    for y in 118..142 {
+        for x in 100..260 {
+            miolo += 1;
+            if t.canvas_rgba[(x + y * W as usize) * 4 + 3] < 230 {
+                papel += 1;
+            }
+        }
+    }
+    let (rug, p99_altura) = if t.wet_oleo_real().is_some() {
+        let (h, m, gw, _gh, r) = alturas(&mut t);
+        let md = mede(&h, &m, gw, r);
+        (md.rug, md.p99)
+    } else {
+        (f64::NAN, f64::NAN)
+    };
+    render_plano(&mut t);
+    let mut px_p = Vec::with_capacity(px_l.len());
+    let plano = le_tudo(&t, ref_p, man_p, Some(&mut px_p));
+    if let Some(f) = png {
+        use crate::tool::paint::tests::look_watercolor_arc::{Canvas, write_png};
+        let (w, h) = (RX.1 - RX.0, RY.1 - RY.0);
+        write_png(f, &Canvas { w, h, px: px_l }).expect("png");
+        let fp = f.with_file_name(format!(
+            "{}_plano.png",
+            f.file_stem().and_then(|s| s.to_str()).unwrap_or("c")
+        ));
+        write_png(&fp, &Canvas { w, h, px: px_p }).expect("png");
+    }
+    Celula {
+        luz,
+        plano,
+        furos: if miolo == 0 {
+            0.0
+        } else {
+            100.0 * papel as f64 / miolo as f64
+        },
+        rug,
+        p99_altura,
+    }
+}
+
+/// Pinta a célula (azul, pausa, `apos_azul`, amarelo, [azul], 120 ticks) e devolve a ferramenta.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn pinta(
+    b: &Biblioteca,
+    pincel: &str,
+    pig: f64,
+    agua: f64,
+    pressao: f32,
+    n: usize,
+    pausa_assenta: u32,
+    cena: Cena,
+    apos_azul: &mut dyn FnMut(&mut PainterTool),
+) -> PainterTool {
     let mut t = PainterTool::default();
     match cena.fundo {
         Papel::Liso => t.set_source(vec![0u8; (W * H * 4) as usize], W, H),
@@ -385,10 +497,7 @@ pub(super) fn celula(
     for _ in 0..pausa_assenta {
         t.on_tick(1000.0 / 60.0);
     }
-    t.wet_recomposite_full();
-    let (ref_l, man_l) = le_azul(&t);
-    render_plano(&mut t);
-    let (ref_p, man_p) = le_azul(&t);
+    apos_azul(&mut t);
     passadas(&mut t, AM, 150.0);
     if cena.aya {
         for _ in 0..pausa_assenta {
@@ -399,49 +508,7 @@ pub(super) fn celula(
     for _ in 0..120 {
         t.on_tick(1000.0 / 60.0);
     }
-    t.wet_recomposite_full();
-    let mut px_l = Vec::with_capacity((RX.1 - RX.0) * (RY.1 - RY.0));
-    let luz = le_tudo(&t, ref_l, man_l, Some(&mut px_l));
-    let (mut miolo, mut papel) = (0usize, 0usize);
-    for y in 118..142 {
-        for x in 100..260 {
-            miolo += 1;
-            if t.canvas_rgba[(x + y * W as usize) * 4 + 3] < 230 {
-                papel += 1;
-            }
-        }
-    }
-    let (rug, p99_altura) = if t.wet_oleo_real().is_some() {
-        let (h, m, gw, _gh, r) = alturas(&mut t);
-        let md = mede(&h, &m, gw, r);
-        (md.rug, md.p99)
-    } else {
-        (f64::NAN, f64::NAN)
-    };
-    render_plano(&mut t);
-    let mut px_p = Vec::with_capacity(px_l.len());
-    let plano = le_tudo(&t, ref_p, man_p, Some(&mut px_p));
-    if let Some(f) = png {
-        use crate::tool::paint::tests::look_watercolor_arc::{Canvas, write_png};
-        let (w, h) = (RX.1 - RX.0, RY.1 - RY.0);
-        write_png(f, &Canvas { w, h, px: px_l }).expect("png");
-        let fp = f.with_file_name(format!(
-            "{}_plano.png",
-            f.file_stem().and_then(|s| s.to_str()).unwrap_or("c")
-        ));
-        write_png(&fp, &Canvas { w, h, px: px_p }).expect("png");
-    }
-    Celula {
-        luz,
-        plano,
-        furos: if miolo == 0 {
-            0.0
-        } else {
-            100.0 * papel as f64 / miolo as f64
-        },
-        rug,
-        p99_altura,
-    }
+    t
 }
 
 fn lista<T: std::str::FromStr>(var: &str, omissao: &[T]) -> Vec<T>
@@ -492,7 +559,7 @@ fn sonda_varredura_oleo() {
         dir.join(std::env::var("PH2D_SONDA_TSV").unwrap_or_else(|_| "varredura.tsv".into()));
     let mut tsv = String::from(
         "pincel\tpigment\twater\tpressao\tn\tkm_max\tkm_p99\tmanchas_pct\tmanchas_azul_pct\tferrugem_pct\tfuros_pct\trug\tp99_altura\tref_azul\tpng\
-         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel_depth\tordem\tlei\tpapel\n",
+         \tkm_p99_plano\tkm_max_plano\tmanchas_plano\tmanchas_azul_plano\tferrugem_plano\tref_azul_plano\tdegraus_y\tdegraus_x\tdegraus_y_plano\tdegraus_x_plano\tpausa\tpapel_depth\tordem\tlei\tpapel\tmix_p99\tmix_max\tmix_p99_plano\tmix_max_plano\n",
     );
     for pincel in &pinceis {
         let slug = pincel
@@ -535,7 +602,7 @@ fn sonda_varredura_oleo() {
                             let (l, q) = (c.luz, c.plano);
                             let linha = format!(
                                 "{pincel}\t{pig}\t{agua}\t{pr}\t{n}\t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.3}\t{:.2}\t{:.1}\t{nome}\
-                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\t{}\t{}\n",
+                             \t{:.1}\t{:.1}\t{:.2}\t{:.2}\t{:.2}\t{:.1}\t{}\t{}\t{}\t{}\t{assenta}\t{}\t{ordem}\t{}\t{}\t{:.1}\t{:.1}\t{:.1}\t{:.1}\n",
                                 l.km_max,
                                 l.km_p99,
                                 l.manchas,
@@ -557,7 +624,11 @@ fn sonda_varredura_oleo() {
                                 q.degraus_x,
                                 cena.papel,
                                 lei.nome(),
-                                fundo.nome()
+                                fundo.nome(),
+                                l.mix_p99,
+                                l.mix_max,
+                                q.mix_p99,
+                                q.mix_max
                             );
                             print!("[f0 {:>5.1}s] {linha}", t0.elapsed().as_secs_f64());
                             tsv.push_str(&linha);

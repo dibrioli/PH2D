@@ -196,6 +196,8 @@ pub(crate) struct WetPaintState {
     pub(super) varredura: oleo_no_quadro::Varredura,
     /// Os dabs deste quadro deixaram a tela por compor ([`por_quadro`]): o sujo do motor acumula a união.
     pub(super) composite_pendente: bool,
+    /// A lei da tinta que cada sessão nova herda ([`PainterTool::set_wet_lei_da_tinta`]).
+    pub(super) lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -249,6 +251,7 @@ impl Default for WetPaintState {
             composta: None,
             varredura: oleo_no_quadro::Varredura::default(),
             composite_pendente: false,
+            lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta::Velha,
         }
     }
 }
@@ -264,14 +267,15 @@ impl PainterTool {
 
     /// **A lei da tinta** (F4-2 §5): `Velha` (a de sempre) ou `Pigmento` (volumes e somas ópticas). Vive no
     /// `Sim::tinta` da sessão (criada aqui), fora do `Sim::lei` que cada preset reescreve — sobrevive a
-    /// `wet_preset_aplicar`. ⚠️ Uma sessão NOVA nasce `Velha` (`docs/Painter/Arquitetura/E9_portao_mae.md` §1).
+    /// `wet_preset_aplicar`, e uma sessão NOVA (desfazer, guarda, grid ratio) herda-a (`ensure_wet_session`).
     pub(crate) fn set_wet_lei_da_tinta(&mut self, lei: ph2d_wet_paint::sim::LeiDaTinta) {
+        self.paint.wetpaint.lei_da_tinta = lei;
         if !self.ensure_wet_session() {
             return;
         }
         if let Some(s) = self.paint.wetpaint.session.as_mut() {
             s.bring_home();
-            s.engine.sim.set_tinta(lei);
+            s.engine.set_lei_da_tinta(lei);
         }
     }
 

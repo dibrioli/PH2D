@@ -7,6 +7,9 @@
 > (tema `forge-sdf`, acento `magenta`); a fonte Inter não está instalada nesta máquina, por isso o texto cai na
 > sans do sistema. Nada de código do produto foi tocado.
 
+> ⛔ **Dono 31/10:** as pinceladas do cartão pintam-se sobre o **papel texturizado PADRÃO** do app (nunca liso) — as
+> desta maquete (células da F0, «sem papel») estão erradas nisso e refazem-se na F5 de produto. Texto: Plain English.
+
 ## 1. As variantes
 
 | ficheiro | o que é |

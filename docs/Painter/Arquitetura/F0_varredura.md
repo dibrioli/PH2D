@@ -189,6 +189,9 @@ tem de se restringir às células onde o MESMO pincel cobre a pressão 1 (ver §
 
 ## 4. Proposta de limiar (o que a lei nova tem de passar, em TODA a grelha)
 
+> ⛔ **Dono 31/10:** o portão-mãe corre sobre o **papel texturizado PADRÃO** do app (é onde o artista pinta), não só
+> «sem papel»: a grelha da lei nova leva as duas colunas (padrão · sem papel) e o padrão é o que decide.
+
 Proposta (a confirmar quando a grelha inteira acabar; os números de partida são os medidos acima):
 
 | métrica | limiar do portão | porquê |

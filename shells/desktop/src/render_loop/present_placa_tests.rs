@@ -184,15 +184,18 @@ fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
         ("present.rs", include_str!("present.rs")),
         ("present_chrome.rs", include_str!("present_chrome.rs")),
     ] {
-        for linha in codigo.lines().filter(|l| l.contains("palcos.")) {
-            assert!(
-                !linha.contains("na_vista"),
-                "{nome}: os palcos sem guarda da vista: {linha}"
-            );
+        // Cada porta dos palcos no corpo da função: entre o `fn` e ela, uma chaveta aberta só (sem `if` à volta).
+        for porta in ["palcos.desenha(", "palcos.pousa(", "palcos.lentes("] {
+            let Some(em) = codigo.find(porta) else {
+                continue;
+            };
+            let corpo = &codigo[codigo[..em].rfind(" fn ").expect("a função")..em];
+            let abertas = corpo.matches('{').count() - corpo.matches('}').count();
+            assert_eq!(abertas, 1, "{nome}: `{porta}` sob uma guarda");
         }
         assert!(
-            !codigo.contains("if !na_vista {\n            palcos."),
-            "{nome}: um palco saltado na vista da câmera"
+            !codigo.contains("if na_vista {") && !codigo.contains("if self.na_vista_da_camera {"),
+            "{nome}: um retorno cedo na vista da câmera salta os palcos"
         );
     }
 }

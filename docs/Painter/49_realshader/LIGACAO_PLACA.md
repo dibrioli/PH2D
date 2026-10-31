@@ -54,7 +54,7 @@ aguada sem Glaze + 60 passos, cor final máx ≤ 1 · p99.9 ≤ 0,5. (3) ms do t
 
 | placa | máx | p99.9 | Δ>0,5 | devolvido +12 |
 |---|---|---|---|---|
-| Radeon 780M RADV (Vulkan) | 0,4384 | 0,0002 | 0 | 0,4384 / 0,0002 |
+| Radeon 610M (Granite Ridge) RADV (Vulkan) | 0,4384 | 0,0002 | 0 | 0,4384 / 0,0002 |
 | Radeon radeonsi (GL) | 0,4366 | 0,0001 | 0 | — |
 | **RTX 5060 Ti** | **não medido**: o Vulkan da NVIDIA não inicializa nesta sessão (`vulkaninfo`: `ERROR_INITIALIZATION_FAILED`, `nvidia-smi` responde) — correr de novo quando o driver voltar | | | |
 
@@ -76,7 +76,7 @@ servir o produto falta a parede entre traços na placa (`solver::parede_do_traco
 **Medida (4)** `tests/passo.rs::mede_o_passo_placa_a_4k` (`#[ignore]`, 4096×2560, aguada de 3 traços, caixa
 3340×900, mínimo de 3 rondas de 12 passos, ⚠️ loadavg ~15 — relógio de CPU pouco fiável):
 
-| | placa (Radeon 780M) | CPU (`sim_step`) |
+| | placa (Radeon 610M (Granite Ridge)) | CPU (`sim_step`) |
 |---|---|---|
 | ms/passo, antes dos defeitos 1+2 | 100,2 | 10,1 |
 | ms/passo, depois | **80,0** | **10,6** |

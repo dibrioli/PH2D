@@ -54,3 +54,8 @@ motor neutras. Abaixo de 1/h ⇒ reavaliar com o dono antes de outra ronda.
   (coordenador R2, olhando a prancha): o «depois» é uma nuvem pálida e larga (1,5× a do Rebelle, miolo 80 × 350 px
   opacos); o Rebelle tem LASCAS escuras recortadas — o «antes» tinha mais o carácter dele. Candidato para o smoke do
   dono com as duas receitas; a próxima tentativa é grão médio (lado ~10) com o toque cheio, não mais fino.
+- **Splatter** (R2-F, `61c9ec83cc` `b419869382`, [relatório](R2_F_splatter.md), [prancha](pranchas/r2_splatter.png)): o de hoje é a mancha
+  do Rebelle a 55 % (pálido, um tamanho). s5 (disco opaco + 2.ª população do véu a 1 + tecto 36 px por gota) dá gotas
+  opacas de vários tamanhos sem motor novo. ⛔ NÃO promovido (coordenador R2, na prancha): círculos perfeitos = bolinhas,
+  sem coroa nem cauda. A próxima: a MANCHA recortada do «antes» (que já tem coroa) opaca, com a 2.ª população e o tecto
+  da s5. Blender Grainy: o preset de estudo ficou na v7; a J6 volta por `git checkout 0319d50dcf -- docs/Painter/Pinceis/pranchas/mistura/presets/blender_grainy.ph2d-brush.png`.

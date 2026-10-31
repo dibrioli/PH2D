@@ -17,7 +17,8 @@
 | 2 | `F1_censo_wet_paint.md` | cada controlo do Wet Paint: quem escreve, quem lê, se decide, faixa, unidade, duplicados, mortos |
 | 3 | `F0_varredura.md` | a régua-mãe: o espaço que o painel deixa o artista alcançar, varrido; onde a lei de hoje parte |
 | 4 | `F2_grandezas_fisicas.md` | controlo ↔ grandeza física ↔ equação ↔ fonte (Kubelka–Munk, Curtis 97, IMPaSTo, dAb, Rebelle) |
-| 5 | `F3_lei_nova.md` (+ ADR) | a arquitetura nova: Tinta · Pincel · Superfície · Tempo · Luz, uma lei de camada |
+| 5 | [ADR-0197](../../architecture/decisions/0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md) | a arquitetura nova: Tinta · Pincel · Superfície · Tempo · Luz, uma lei de pigmento em volumes; os meios são pontos |
+| 6 | `F1_presets_de_fabrica.md` | cada pincel de fábrica × cada knob: o que a migração tem de preservar |
 
 `fotos/` guarda as imagens, uma subpasta por doc. Nenhuma foto entra sem o comando que a regera ao lado.
 
@@ -25,9 +26,9 @@
 
 | fase | estado |
 |---|---|
-| F0 varredura | em curso |
-| F1 censo + mapa | em curso |
-| F2 literatura | por fazer |
-| F3 ADR | por fazer |
+| F0 varredura | manchas escuras reproduzidas no motor; ferrugem e degraus em curso |
+| F1 censo + mapa | feitos; matriz dos presets em curso |
+| F2 literatura | feita — lei única com prova + modelo `ferramentas/lei_unica.py` |
+| F3 ADR | ADR-0197 proposto |
 | F4 refatoração | por fazer |
 | F5 ajuda ilustrada | por fazer (maquete ao dono antes da 1.ª tela) |

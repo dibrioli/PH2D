@@ -210,6 +210,7 @@
 | [0194](0194-o-hud-arruma-irmaos-com-cassowary.md) | Accepted — provisório (linha `line/BlenderConstraints`; … | O HUD arruma IRMÃOS com o Cassowary; a âncora ao pai e a raiz continuam procedurais |
 | [0195](0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md) | Accepted. … | O Kanban é um documento do projeto; o Quadro referencia-o e a aba abre-o |
 | [0196](0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) | Accepted — o PRODUTO é decisão do DONO (25/10: módulo NOVO e autocontido, sem Painter; … | O Pixel Art é um módulo próprio, com documento inteiro e desfazer por sprite |
+| [0197](0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md) | Proposed — técnico delegado; produto do dono (31/10: refatoração do Painter, o Rebelle deixa de ser referência) | O Painter é uma lei de pigmento em VOLUMES; os meios são pontos dela, não ramos |
 
 ---
 

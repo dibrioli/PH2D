@@ -140,10 +140,12 @@ fn o_traco_seguinte_usa_o_depth_o_gloss_e_a_caixa_novos() {
     }
 }
 
-/// ⭐ Neutro: pintar a tela TODA com o Real Oil é a imagem de antes (a óptica pela caixa, sobre a tela toda) ao byte;
-/// pintar toda sem ele não aloca o campo e o composite é o de sempre (sem óleo).
+/// ⭐ Neutro: pintar a tela TODA com o Real Oil é a imagem de antes (a óptica pela caixa, sobre a tela toda) ao byte —
+/// salvo onde o óleo cobre OUTRO óleo: lá a tinta é de corpo e mistura pigmento (dono 31/10, `smoke_31_10_oleo/
+/// dono_5.png`, [`ph2d_wet_paint::assenta::Ecra::com_oleo`]), e o píxel nunca fica mais CLARO que o de antes (o branco
+/// do tapar extra era o defeito). Pintar toda sem ele não aloca o campo e o composite é o de sempre (sem óleo).
 #[test]
-fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte() {
+fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_salvo_o_oleo_sobre_o_oleo() {
     super::oleo_plano::sem_cache_do_campo::set(true);
     let mut t = tela(true);
     let nova = recompoe(&mut t);
@@ -158,27 +160,51 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte() {
     let antes = recompoe(&mut t);
     super::oleo_plano::lei_da_caixa::set(false);
     super::oleo_plano::sem_cache_do_campo::set(false);
-    let difs = nova
-        .chunks(4)
-        .zip(antes.chunks(4))
-        .filter(|(a, b)| a != b)
-        .count();
+    if let Some(d) = std::env::var_os("PH2D_SONDA_OUT").map(std::path::PathBuf::from) {
+        for (n, img) in [("nova", &nova), ("antes", &antes)] {
+            use crate::tool::paint::tests::look_watercolor_arc::{Canvas, write_png};
+            let px = img.chunks(4).map(|q| [q[0], q[1], q[2]]).collect();
+            write_png(
+                &d.join(format!("oleo_por_traco_{n}.png")),
+                &Canvas { w: W, h: H, px },
+            )
+            .expect("png");
+        }
+    }
     assert!(
         nova.chunks(4).any(|p| p != [255, 255, 255, 255]),
         "controlo: há tinta"
     );
-    let mut d: Vec<u8> = nova
-        .chunks(4)
-        .zip(antes.chunks(4))
-        .map(|(a, b)| (0..3).map(|k| a[k].abs_diff(b[k])).max().unwrap_or(0))
-        .collect();
-    d.sort_unstable();
-    let (maior, p99) = (d[d.len() - 1], d[d.len() * 99 / 100]);
+    let lum =
+        |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
+    // O vermelho em y 60 e o azul em y 70, raio 14 (e a água que os leva): fora das linhas pintadas, ao byte. Medido
+    // 31/10: 2 505 píxeis mudam, a luminância −85 … +5,9 (p1 −21,8, p99 +2,2) — escurece pela mistura, nunca clareia.
+    let (mut fora, mut claros, mut mudados, mut escurece) = (0, 0, 0, 0.0f64);
+    for (i, (a, b)) in nova.chunks(4).zip(antes.chunks(4)).enumerate() {
+        if a == b {
+            continue;
+        }
+        if !(44..=90).contains(&(i / W)) {
+            fora += 1;
+        }
+        mudados += 1;
+        let dl = lum(a) - lum(b);
+        if dl > 8.0 {
+            claros += 1;
+        }
+        escurece = escurece.min(dl);
+    }
     assert_eq!(
-        difs,
-        0,
-        "a tela toda com óleo difere da lei de antes em {difs} de {} píxeis (maior {maior}, p99 {p99})",
-        d.len()
+        fora, 0,
+        "o óleo mudou {fora} píxeis fora do cruzamento das duas tintas"
+    );
+    assert_eq!(
+        claros, 0,
+        "o óleo sobre o óleo clareou {claros} de {mudados} píxeis (o branco do tapar extra)"
+    );
+    assert!(
+        mudados > 0 && escurece < -10.0,
+        "controlo: a mistura de pigmento não mudou nada"
     );
     let mut t = tela(false);
     let _ = recompoe(&mut t);

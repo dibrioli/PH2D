@@ -148,10 +148,15 @@ impl Ecra {
 
     /// A lei da CÉLULA com o óleo que ela tem debaixo ([`crate::grid::oleo_celula`], dono 30/10): sobre o óleo o tapar
     /// extra sai: a aguada cobre pela quantidade de pigmento, sem o branco. `0` devolve a da sessão ao bit.
+    /// Com o [`PINCEL_DE_OLEO`] o extra fica (a cobertura do óleo sobre o óleo) e a célula mistura como a OPACA
+    /// (dono 31/10, `smoke_31_10_oleo/dono_5.png`: o extra virava papel à vista e bege guardado).
     #[inline]
     #[must_use]
     pub fn com_oleo(self, c: crate::grid::oleo_celula::OleoCelula) -> Self {
         match self {
+            Ecra::Cobre { oleo: o, .. } if c.oleo > 0.0 && o < 0.0 => {
+                self.com_opaca((f64::from(c.oleo) / OLEO_PLENO).min(1.0) as f32)
+            }
             Ecra::Cobre {
                 filme,
                 esconde,
@@ -184,14 +189,14 @@ impl Ecra {
                 molhada,
                 vela,
                 oleo,
-                ..
+                opaca,
             } if o > 0.0 => Ecra::Cobre {
                 filme,
                 esconde,
                 molhada,
                 vela,
                 oleo,
-                opaca: f64::from(o).min(1.0),
+                opaca: opaca.max(f64::from(o).min(1.0)),
             },
             e => e,
         }
@@ -272,6 +277,7 @@ pub fn na_caixa_das_tintas(
         molhada,
         vela,
         oleo,
+        opaca,
         ..
     } = e
     else {
@@ -289,9 +295,11 @@ pub fn na_caixa_das_tintas(
     }
     // O BRANCO do tapar extra (`(a_e − a_t)·255` no ponto sobre o branco) é a tinta de baixo AFASTADA, não pigmento:
     // passa a transparência e o papel aparece (dono 30/10, a faixa creme; doc 47). Só na lei seca (a do render).
+    // A tinta OPACA não afasta: cobre (dono 31/10, o papel por óleo grosso).
     if molhada == 1.0 {
         let d = d_de(vela, sc, uc);
-        let extra = (tapa(e, a_f) - a_f).max(0.0) * d * (1.0 - oleo.max(0.0));
+        let extra =
+            (tapa(e, a_f) - a_f).max(0.0) * d * (1.0 - oleo.max(0.0)) * (1.0 - opaca.min(1.0));
         a = a.min(la - extra);
     }
     // A cor re-expressa não desce de 0: o branco que sai é no máximo o que a cor tem.

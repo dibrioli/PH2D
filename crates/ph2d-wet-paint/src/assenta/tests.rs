@@ -2,6 +2,9 @@
 //! LOC do workspace (prompt 42: o Glaze do pincel levou-o a 721).
 use super::*;
 
+#[path = "oleo_sobre_oleo_tests.rs"]
+mod oleo_sobre_oleo_tests;
+
 const AZ: [f64; 3] = [30.0, 100.0, 220.0];
 const AM: [f64; 3] = [245.0, 205.0, 25.0];
 

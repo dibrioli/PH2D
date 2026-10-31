@@ -22,6 +22,7 @@ use crate::tuning::Knob;
 
 mod pre_luz; // o PreLuz da linha do óleo (A.1) — filho por LOC
 pub use pre_luz::PreLuz;
+pub(crate) mod tinta; // o ecrã pela lei da tinta (F4-2 E5)
 
 const INV_SQRT2: f64 = 0.707_106_781_186_547_6;
 const LIGHT_X: f64 = -INV_SQRT2; // light from top-left
@@ -161,7 +162,7 @@ pub fn render_region(
                     sett_for_alpha = s_mass * (1.0 + valley * 3.0 * (0.5 - pap).max(0.0));
                 }
                 // A Transparency da tinta (dono 27/10): a cobertura de composição × (1 − T), a massa fica.
-                let t = transparencia_da_celula(lgrd, i);
+                let t = tinta::transparencia_da_celula(lgrd, i);
                 let a_s = transparente(alpha_of_mass(sett_for_alpha) * op, t);
                 let a_f = transparente(alpha_of_mass(f_mass) * op, t);
                 let sc = lgrd.sett_rgb[i];
@@ -473,6 +474,7 @@ fn pigment_row(
     // desenha-se com ou sem papel escolhido, com o `Emboss` que a CÉLULA guardou ao receber a tinta
     // ([`Grid::relevo`], Bug #48), nunca o do pincel de agora; `0` = nenhum.
     let com_relevo = p.is_some() && (paper_on || visual.relevo);
+    let tinta_nova = p.is_some_and(|p| p.tinta == crate::sim::LeiDaTinta::Pigmento);
     {
         let mut i = x0 + cy * s;
         let mut o = (x0 - 1) * 4;
@@ -488,33 +490,33 @@ fn pigment_row(
             for layer in layers.iter().filter(|l| l.visible) {
                 let lg = layer.grid;
                 let op = layer.opacity;
-                let a_s = alpha_of_mass(lg.sett[i] as f64) * op;
-                let a_f = alpha_of_mass(lg.susp[i] as f64) * op;
-                if a_s + a_f * (1.0 - a_s) <= 0.0 {
-                    continue;
-                }
-                let sc = lg.sett_rgb[i];
-                let uc = lg.susp_rgb[i];
-                let ecra = lei
-                    .com_vela(lg.vela[i])
-                    .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i))
-                    .com_oleo(crate::grid::oleo_celula::da_celula(&lg.oleo, i))
-                    .com_opaca(crate::grid::aparencia::opaca(&lg.aparencia, i));
-                let ([cr, cg, cb], la) = crate::assenta::cor_e_alfa(
-                    ecra,
-                    sc.map(f64::from),
-                    uc.map(f64::from),
-                    a_s,
-                    a_f,
-                );
-                let ([mut cr, mut cg, mut cb], la) = crate::assenta::na_caixa_das_tintas(
-                    ecra,
-                    ([cr, cg, cb], la),
-                    sc.map(f64::from),
-                    uc.map(f64::from),
-                    a_s,
-                    a_f,
-                );
+                // A lei da tinta (F4-2 E5): `Pigmento` = as somas ópticas; a Transparency é o `S` do pigmento.
+                let ([mut cr, mut cg, mut cb], la, la_comp) = if tinta_nova {
+                    match tinta::ecra_da_celula(lg, i) {
+                        Some((c, a)) => (c, a * op, a * op),
+                        None => continue,
+                    }
+                } else {
+                    let a_s = alpha_of_mass(lg.sett[i] as f64) * op;
+                    let a_f = alpha_of_mass(lg.susp[i] as f64) * op;
+                    if a_s + a_f * (1.0 - a_s) <= 0.0 {
+                        continue;
+                    }
+                    let sc = lg.sett_rgb[i].map(f64::from);
+                    let uc = lg.susp_rgb[i].map(f64::from);
+                    let ecra = lei
+                        .com_vela(lg.vela[i])
+                        .com_vidrado(crate::grid::aparencia::vidrado(&lg.aparencia, i))
+                        .com_oleo(crate::grid::oleo_celula::da_celula(&lg.oleo, i))
+                        .com_opaca(crate::grid::aparencia::opaca(&lg.aparencia, i));
+                    let cl = crate::assenta::cor_e_alfa(ecra, sc, uc, a_s, a_f);
+                    let (c, la) = crate::assenta::na_caixa_das_tintas(ecra, cl, sc, uc, a_s, a_f);
+                    (
+                        c,
+                        la,
+                        transparente(la, tinta::transparencia_da_celula(lg, i)),
+                    )
+                };
                 let emboss_k = if com_relevo && w_oleo < 1.0 {
                     lg.relevo[i] as f64
                 } else {
@@ -572,7 +574,7 @@ fn pigment_row(
                 // A Transparency (dono 27/10): a cobertura de COMPOSIÇÃO da camada × (1 − T) — a cor dela e a
                 // massa ficam; `T = 0` ao bit. `pa_tinta` é a de sempre (o filme).
                 pa_tinta += la * (1.0 - pa_tinta);
-                let la = transparente(la, transparencia_da_celula(lg, i));
+                let la = la_comp;
                 // Over-composite onto the accumulator (premultiplied).
                 pr = pr * (1.0 - la) + cr * la;
                 pg = pg * (1.0 - la) + cg * la;
@@ -685,12 +687,4 @@ pub fn render_pigment_row_oleo_pre(
         None,
         Some(pre),
     );
-}
-
-/// A Transparency da tinta da célula `i` (só da célula: o cartão não a tem): `0` sem o campo do material.
-#[inline]
-fn transparencia_da_celula(g: &Grid, i: usize) -> f64 {
-    g.material
-        .get(i)
-        .map_or(0.0, |m| crate::material::peso(m.transparencia))
 }

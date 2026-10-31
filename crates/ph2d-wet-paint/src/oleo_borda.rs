@@ -12,18 +12,26 @@ pub(super) fn albedo_da_celula(camadas: &[(&Grid, bool)], i: usize) -> [f32; 3] 
         if !visivel {
             continue;
         }
-        let a_s = crate::opacity::alpha_of_mass(f64::from(lg.sett[i]));
-        let a_f = crate::opacity::alpha_of_mass(f64::from(lg.susp[i]));
-        if a_s + a_f * (1.0 - a_s) <= 0.0 {
-            continue;
-        }
-        let (c, la) = crate::assenta::cor_e_alfa(
-            crate::assenta::Ecra::Porto.com_vela(lg.vela[i]),
-            lg.sett_rgb[i].map(f64::from),
-            lg.susp_rgb[i].map(f64::from),
-            a_s,
-            a_f,
-        );
+        // Sem `Params` aqui: a grade com o campo da tinta nova (`Pigmento` correu nela) usa o ecrã da célula (E5).
+        let (c, la) = if !lg.tinta.is_empty() {
+            match crate::render::tinta::ecra_da_celula(lg, i) {
+                Some(cl) => cl,
+                None => continue,
+            }
+        } else {
+            let a_s = crate::opacity::alpha_of_mass(f64::from(lg.sett[i]));
+            let a_f = crate::opacity::alpha_of_mass(f64::from(lg.susp[i]));
+            if a_s + a_f * (1.0 - a_s) <= 0.0 {
+                continue;
+            }
+            crate::assenta::cor_e_alfa(
+                crate::assenta::Ecra::Porto.com_vela(lg.vela[i]),
+                lg.sett_rgb[i].map(f64::from),
+                lg.susp_rgb[i].map(f64::from),
+                a_s,
+                a_f,
+            )
+        };
         for k in 0..3 {
             p[k] = p[k] * (1.0 - la) + c[k] * la;
         }

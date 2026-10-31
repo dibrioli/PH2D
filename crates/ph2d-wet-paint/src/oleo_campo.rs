@@ -64,7 +64,7 @@ impl CampoAltura {
                     if !visivel {
                         continue;
                     }
-                    let m = f64::from(lg.sett[i]) + f64::from(lg.susp[i]);
+                    let m = crate::render::tinta::massa_da_altura(lg, i);
                     // O Depth da tinta (dono 28/10, por célula) escala a massa ANTES do desfoque: a parede entre traços
                     // de Depth diferentes é a rampa do desfoque, sem degrau (doc W3b §Depth e Gloss).
                     let k =

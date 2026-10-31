@@ -57,3 +57,32 @@ não chegou a correr (prazo); a do passo inteiro já mostra −27,5 ms/passo mé
   para `a_f`/`a_f2`, mas `a_dm` não é da tabela; já hoje é ~3 % ⇒ pouco a ganhar.
 - f32 no avaliador do Newton: a tolerância do `resolve` é 0,01 nível; a sonda C (f32) não mediu este caminho.
 - Derivada ANALÍTICA em vez da numérica (muda o resultado — tolerância a medir contra o Rebelle).
+
+## Rodada 3 (31/10) — SEM ao bit + o grupo de tolerância medido
+
+Sonda com `SONDA_COR=1 SONDA_PASSES=150` (`sonda_secagem 4`), paralelo, 7 variantes intercaladas, mínimo de 4 rodadas.
+⚠️ `loadavg` 30 → 112 durante a corrida (outras janelas): o absoluto é sob carga; as razões são a régua.
+
+**SEM (ao bit, no produto em `46199a6a7c`)**: uma volta do Newton em que TODO canal é cego (`|d| < cego`, nenhum
+`x[c]` mexe) deixa `x` e `y` intactos — a volta seguinte seria a mesma conta. O `resolve` sai. Hash N=6
+`1aae71329821396d` igual; `assenta_bit_tests` verde.
+
+**Cor final**: o ecrã seco (`sobre_branco` com a lei da célula) depois de 150 secagens (79 células ainda molhadas de
+10,5 M), comparado com `Orig`, em níveis de 8 bits. Cena 0 = o wash (Cobre, filme 0, vela 0); cena 1 = o mesmo com
+`filme 0,3` e Glaze `vela 0,8` na metade de cima. Critério «invisível»: máx ≤ 1 · p99.9 ≤ 0,5.
+
+| variante (sobre SALTA) | ms/secagem mín · med | cena 0 máx · p99.9 · u8 máx | cena 1 máx · p99.9 · u8 máx | veredito |
+|---|---|---|---|---|
+| Orig (crate antes) | 435,1 · 448,4 | — | — | |
+| SALTA (= produto antes) | 381,8 · 491,7 | 0 | 0 | |
+| **SEM** (ao bit) | **242,7 · 291,6 (−36 %)** | 0 | 0 | **produto** |
+| + TOL (paragem 0,25 nível) | 227,1 · 243,6 | 1,81 · 0,58 · 2 | 11,43 · 3,56 · 12 | ⛔ |
+| + FIXA (derivada da 1.ª volta congelada) | 259,9 · 308,3 | 1,00 · 0,32 · 1 | 21,57 · 0,43 · 22 | ⛔ |
+| + UMA (uma volta só) | 253,4 · 309,7 | 1,06 · 0,22 · 1 | 4,68 · 0,66 · 5 | ⛔ |
+| + TOL + FIXA | 244,0 · 250,3 | 1,81 · 0,59 · 2 | 16,86 · 3,56 · 17 | ⛔ |
+
+Leitura: depois do SEM o Newton já quase não faz voltas inúteis — os cortes de tolerância compram ≤ 7 % (TOL) e
+NENHUM passa o critério: sob o Glaze/filme o erro acumula ao longo das secagens (a cor guardada no assentado é
+reusada em cada passe), até 22 níveis com a derivada congelada. ⛔ Recusas MEDIDAS: TOL 0,25, FIXA, UMA.
+Não medidos (por ordem de promessa): avaliador f32 (o ganho que sobra é por avaliação, não por volta — e o erro
+acumula como acima) · derivada analítica (mesmo nº de avaliações do ecrã que o CANAL; ganha só a constante).

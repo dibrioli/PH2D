@@ -159,3 +159,77 @@ const GRAVADO: [u64; 4] = [
     0xb735_c68b_229b_7a08,
     0xd8e7_013b_c075_8c6a,
 ];
+
+/// **As duas rotas do commit FORÇADAS dão os bits gravados** — a rota 0 escolhe pela faixa, e a cena acima cai
+/// sempre na mesma; aqui cada uma corre (1 = cópia pela faixa, 2 = troca de planos + complemento).
+#[test]
+fn advect_jacobi_bits_by_each_commit_route() {
+    use std::sync::atomic::Ordering::Relaxed;
+    for rota in [1u8, 2] {
+        crate::flow::COMMIT_ROTA.store(rota, Relaxed);
+        let got = [
+            hash_da_advecao(1.0, false, Rows::Serial).0,
+            hash_da_advecao(3.0, true, Rows::Parallel).0,
+        ];
+        crate::flow::COMMIT_ROTA.store(0, Relaxed);
+        assert_eq!(
+            got,
+            [GRAVADO[0], GRAVADO[3]],
+            "rota do commit {rota}: a advecção mudou de bits"
+        );
+    }
+}
+
+/// **O commit escreve a faixa INTEIRA, inclusive a última coluna, e nada fora dela** — célula a célula, nas duas
+/// rotas: o rascunho tem um valor por célula, o grid um sentinela; faixas de larguras diferentes por linha, uma
+/// linha sem faixa (sentinelas) e a faixa a tocar a borda direita da bbox.
+#[test]
+fn advect_jacobi_commit_writes_exactly_the_live_span() {
+    use std::sync::atomic::Ordering::Relaxed;
+    let (w, h) = (20, 10);
+    for rota in [1u8, 2] {
+        let mut g = Grid::new(w, h);
+        let (s, n) = (g.s, g.cells);
+        g.scratch.ensure(n);
+        (g.bx0, g.bx1, g.by0, g.by1) = (2, 19, 2, 8);
+        for y in 2..=8usize {
+            (g.row_lo[y], g.row_hi[y]) = if y == 5 {
+                (i32::MAX, i32::MIN)
+            } else {
+                (2 + (y % 3) as i32, 21 - (y % 4) as i32)
+            };
+        }
+        for i in 0..n {
+            g.film[i] = -1.0;
+            g.susp[i] = -2.0;
+            g.susp_rgb[i] = [-3.0; 3];
+            g.scratch.dst_film[i] = i as f32;
+            g.scratch.dst_susp[i] = 0.5 * i as f32;
+            g.scratch.dst_rgb[i] = [i as f32, 1.0, 2.0];
+        }
+        crate::flow::COMMIT_ROTA.store(rota, Relaxed);
+        commit_rows(&mut g, Rows::Serial);
+        crate::flow::COMMIT_ROTA.store(0, Relaxed);
+        for y in 0..g.rows {
+            let (lo, hi) = if (2..=8).contains(&y) {
+                span_x_of(&g.row_lo, &g.row_hi, g.spans_enabled, 2, 19, y as i32)
+            } else {
+                (1, 0)
+            };
+            for x in 0..s {
+                let i = y * s + x;
+                let dentro = (lo..=hi).contains(&(x as i32));
+                let (f, su, c) = if dentro {
+                    (i as f32, 0.5 * i as f32, [i as f32, 1.0, 2.0])
+                } else {
+                    (-1.0, -2.0, [-3.0; 3])
+                };
+                assert_eq!(
+                    (g.film[i], g.susp[i], g.susp_rgb[i]),
+                    (f, su, c),
+                    "rota {rota}: célula ({x}, {y}) faixa [{lo}, {hi}]"
+                );
+            }
+        }
+    }
+}

@@ -476,6 +476,8 @@ impl Trail {
         let mut out = [0.0f64; 3];
         let mix = p.mix;
         let lift_gain = crate::tools::active_lift_gain(p);
+        let (a0, b0, sz) = (self.anchor_x - self.half, self.anchor_y - self.half, self.size - 1);
+        let foto = crate::tools::tinta::Foto::tira(g, p, [a0, b0, a0 + sz, b0 + sz].map(i64::from));
         // Pass 1: averages.
         let mut n = 0u32;
         let mut s_susp = 0.0f64;
@@ -680,6 +682,9 @@ impl Trail {
             }
         }
         self.roll_window();
+        if let Some(f) = &foto {
+            f.segue(g);
+        }
         if rx1 < rx0 {
             return None;
         }

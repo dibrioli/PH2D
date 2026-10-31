@@ -23,12 +23,11 @@ pub(crate) fn ecra_da_celula(lg: &Grid, i: usize) -> Option<([f64; 3], f64)> {
     })
 }
 
-/// A altura que já curou, em unidades de MASSA (as do campo de altura do Óleo Real).
-// TODO(E8): `altura_fechada · M_UM` quando a E6a definir `M_UM` em `grid/tinta.rs`.
+/// A altura que já curou, em unidades de MASSA (as do campo de altura do Óleo Real): o fecho tira a massa de `sett`
+/// e põe o volume em `altura_fechada` (E8), logo a soma das duas não muda.
 #[must_use]
 pub(crate) fn altura_fechada_em_massa(c: &CelulaTinta) -> f32 {
-    let _ = c;
-    0.0
+    c.altura_fechada * tinta::M_UM
 }
 
 /// A massa que dá a ALTURA do Óleo Real na célula `i` (o ponto único de `oleo_campo.rs`): `sett + susp`, mais a

@@ -150,6 +150,8 @@ pub struct Trail {
     /// O MATERIAL de cada texel da ponta (Óleo Real W2 E3, [`crate::grid::material`]): o do pincel, sujo do que a
     /// ponta apanhou da tela pela MESMA lei da cor ([`bico`]). VAZIO enquanto nem o pincel nem a tela têm material.
     mat_ponta: Vec<crate::material::MaterialCelula>,
+    /// A tinta que a ponta LEVOU da tela por texel (F4-2 E6b, só com `Pigmento`; [`bico`]): vazia sem ela.
+    ponta_tinta: Vec<ph2d_paint_tinta::Soma>,
     /// O material limpo do pincel (o alvo da auto-limpeza e o enchimento de um texel novo).
     mat_base: crate::material::MaterialCelula,
     /// O assentado de cada célula no primeiro toque do traço que re-molha ([`Knob::Dissolve`], J10).
@@ -265,6 +267,7 @@ impl Default for Trail {
             filme: filme::Filme::default(),
             molhado: molhado::Molhado::default(),
             mat_ponta: Vec::new(),
+            ponta_tinta: Vec::new(),
             mat_base: crate::material::MaterialCelula::NEUTRO,
         }
     }
@@ -281,6 +284,7 @@ impl Trail {
         self.tip_b.fill(color[2] as f32);
         self.limpo.fill(1.0);
         self.mat_ponta.clear();
+        self.ponta_tinta.clear();
         self.por_assentar_pendente = true;
         self.espalha.traco_novo();
         self.remolha_inicio.traco_novo();

@@ -54,12 +54,17 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta:
         for _x in 1..=g.w {
             let dm = g.susp[i] as f64;
             if dm > 0.0 {
-                let e = ecra
-                    .com_vela(g.vela[i])
-                    .com_vidrado(super::aparencia::vidrado(&g.aparencia, i))
-                    .com_oleo(super::oleo_celula::da_celula(&g.oleo, i))
-                    .com_opaca(super::aparencia::opaca(&g.aparencia, i));
-                settle_composite(g, i, dm, mix, glaze, e, &mut out);
+                // Lei da tinta (F4-2 E8): o campo existe ⇒ o filme inteiro assenta por soma.
+                if let Some(t) = g.tinta.get_mut(i) {
+                    crate::drying::tinta::assenta(t, 1.0, &mut g.sett_rgb[i]);
+                } else {
+                    let e = ecra
+                        .com_vela(g.vela[i])
+                        .com_vidrado(super::aparencia::vidrado(&g.aparencia, i))
+                        .com_oleo(super::oleo_celula::da_celula(&g.oleo, i))
+                        .com_opaca(super::aparencia::opaca(&g.aparencia, i));
+                    settle_composite(g, i, dm, mix, glaze, e, &mut out);
+                }
                 g.sett[i] = (g.sett[i] as f64 + dm) as f32;
                 g.susp[i] = 0.0;
             }

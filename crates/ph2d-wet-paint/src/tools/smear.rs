@@ -81,6 +81,7 @@ fn smear_com(
     // compound the drag within one dab.
     let pad = 10.0 + reach;
     let r = rect_around_nao_vazio(g, dab.x, dab.y, dab.r + pad)?;
+    let foto = super::tinta::Foto::tira(g, p, [r.x0, r.y0, r.x1, r.y1].map(i64::from));
     let snap_w = (r.x1 - r.x0 + 1) as usize;
     let snap_h = (r.y1 - r.y0 + 1) as usize;
     let n = snap_w * snap_h;
@@ -340,6 +341,9 @@ fn smear_com(
             touched = true;
         },
     );
+    if let Some(f) = foto {
+        f.segue(g);
+    }
     if touched {
         let rr = rect_around(g, dab.x, dab.y, dab.r);
         expand_to(g, &rr);

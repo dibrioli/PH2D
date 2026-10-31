@@ -18,6 +18,9 @@ use crate::tuning::Knob;
 #[path = "drying/edge_window.rs"]
 mod edge_window;
 use edge_window::EdgeWindow;
+#[path = "drying/tinta.rs"]
+pub mod tinta;
+pub use tinta::{PASSOS_DA_CURA, cura};
 
 /// Staining extension: bidirectional lift multiplier, exactly 1 at 0.5.
 /// `pub(crate)`: the doc-23 active lifts (Wet/Smear/Blend tools) apply the
@@ -157,6 +160,7 @@ pub(crate) fn dry_cell(
     susp_rgb: &mut [f32; 3],
     sett_rgb: &mut [f32; 3],
     out: &mut [f64; 3],
+    mut tinta: Option<&mut crate::grid::tinta::CelulaTinta>,
 ) {
     let film0 = *film;
     let f = film0 as f64;
@@ -211,42 +215,46 @@ pub(crate) fn dry_cell(
             }
         }
         // SPEC §6.2 step 3 (the shared settle composite, on locals).
-        let a_sett = alpha_of_mass(sett_c as f64);
-        let a_in = alpha_of_mass(dm);
-        if ecra != crate::assenta::Ecra::Porto {
-            sett_rgb_c = crate::assenta::assenta_memo_f32(
-                ecra,
-                sett_rgb_c,
-                susp_rgb_c,
-                a_sett,
-                alpha_of_mass(s_mass),
-                alpha_of_mass(sett_c as f64 + dm),
-                alpha_of_mass(s_mass - dm),
-            );
-        } else if a_sett > 0.0 {
-            let u = a_sett * (1.0 - a_in);
-            let w = a_in / (u + a_in);
-            mix.mix(
-                sett_rgb_c[0] as f64,
-                sett_rgb_c[1] as f64,
-                sett_rgb_c[2] as f64,
-                susp_rgb_c[0] as f64,
-                susp_rgb_c[1] as f64,
-                susp_rgb_c[2] as f64,
-                w,
-                out,
-            );
-            crate::colorops::velatura(
-                out,
-                w,
-                c.glaze,
-                a_sett,
-                sett_rgb_c.map(f64::from),
-                susp_rgb_c.map(f64::from),
-            );
-            sett_rgb_c = [out[0] as f32, out[1] as f32, out[2] as f32];
+        if let Some(t) = tinta.as_deref_mut() {
+            tinta::assenta(t, dm / s_mass, &mut sett_rgb_c);
         } else {
-            sett_rgb_c = susp_rgb_c;
+            let a_sett = alpha_of_mass(sett_c as f64);
+            let a_in = alpha_of_mass(dm);
+            if ecra != crate::assenta::Ecra::Porto {
+                sett_rgb_c = crate::assenta::assenta_memo_f32(
+                    ecra,
+                    sett_rgb_c,
+                    susp_rgb_c,
+                    a_sett,
+                    alpha_of_mass(s_mass),
+                    alpha_of_mass(sett_c as f64 + dm),
+                    alpha_of_mass(s_mass - dm),
+                );
+            } else if a_sett > 0.0 {
+                let u = a_sett * (1.0 - a_in);
+                let w = a_in / (u + a_in);
+                mix.mix(
+                    sett_rgb_c[0] as f64,
+                    sett_rgb_c[1] as f64,
+                    sett_rgb_c[2] as f64,
+                    susp_rgb_c[0] as f64,
+                    susp_rgb_c[1] as f64,
+                    susp_rgb_c[2] as f64,
+                    w,
+                    out,
+                );
+                crate::colorops::velatura(
+                    out,
+                    w,
+                    c.glaze,
+                    a_sett,
+                    sett_rgb_c.map(f64::from),
+                    susp_rgb_c.map(f64::from),
+                );
+                sett_rgb_c = [out[0] as f32, out[1] as f32, out[2] as f32];
+            } else {
+                sett_rgb_c = susp_rgb_c;
+            }
         }
         sett_c = (sett_c as f64 + dm) as f32;
         let rem = s_mass - dm;
@@ -264,7 +272,9 @@ pub(crate) fn dry_cell(
             b *= staining_multiplier(c.ext_staining);
         }
         b = clamp01(b);
-        if b > 0.0 {
+        if let (true, Some(t)) = (b > 0.0, tinta) {
+            tinta::levanta(t, b, &mut susp_c, &mut sett_c, &mut susp_rgb_c);
+        } else if b > 0.0 {
             lift_settled(
                 b,
                 &mut susp_c,
@@ -316,6 +326,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
     let s = g.s;
     let mut out = [0.0f64; 3];
     let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
+    let pigmento = p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty();
     for y in g.by0..=g.by1 {
         // Faixa viva: ela é publicada a partir de `film > 0 || susp > 0` — o
         // MESMO predicado que gateia este laço —, então fora dela o corpo já
@@ -360,6 +371,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
                 &mut srgb,
                 &mut trgb,
                 &mut out,
+                if pigmento { g.tinta.get_mut(i) } else { None },
             );
             g.film[i] = film;
             g.susp[i] = susp;
@@ -503,6 +515,9 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
 ) {
     let s = g.s;
     let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
+    if p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty() {
+        return tinta::dry_jacobi::<P>(g, &c, mode, soft);
+    }
     let (by0, by1) = (g.by0, g.by1);
     let Grid {
         scratch,
@@ -566,6 +581,7 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
                     &mut e,
                     &mut f,
                     &mut out,
+                    None,
                 );
                 fr[x] = a;
                 sr[x] = b;

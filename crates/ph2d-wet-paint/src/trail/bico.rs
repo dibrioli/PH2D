@@ -4,6 +4,9 @@
 
 use super::*;
 
+#[path = "bico_tinta.rs"]
+mod tinta;
+
 impl Trail {
     /// Steps 1–2 of the transfer — **o BICO**: a auto-limpeza (toda a janela) e a recolha da cor
     /// do canvas (as linhas tocadas), numa passada por linha.
@@ -17,7 +20,7 @@ impl Trail {
     /// ⛔ **Os passos 3 e 4 ficam em série, e não por gosto:** o 3 é uma SOMA em `f64` (a ordem
     /// muda os bits), e o arrasto do 4 lê `susp[si]`/`sett[si]`/`film[si]` de uma célula que o
     /// mesmo laço pode já ter escrito — é Gauss-Seidel, e trocá-lo por Jacobi mudaria a tinta.
-    pub(super) fn tip_rows(&mut self, g: &Grid, p: &Params, mode: Option<crate::par::Rows>) {
+    pub(super) fn tip_rows(&mut self, g: &mut Grid, p: &Params, mode: Option<crate::par::Rows>) {
         let clean = p.k(Knob::TipClean);
         let pickup = (self.lx1 >= self.lx0).then_some((self.lx0, self.ly0, self.lx1, self.ly1));
         if clean <= 0.0 && pickup.is_none() {
@@ -149,6 +152,9 @@ impl Trail {
         self.ponta_material(g, p, clean, pickup);
         if reservatorio > 0.0 && pickup.is_some() {
             self.mistura_o_reservatorio();
+        }
+        if p.tinta == crate::sim::LeiDaTinta::Pigmento {
+            self.ponta_pigmento(g, p, clean, pickup);
         }
     }
 

@@ -494,6 +494,10 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                     drying_pass(g, &c.p, evap, rewet, sim.ext_bypass);
                 }
             }
+            if c.p.tinta == LeiDaTinta::Pigmento && n.is_multiple_of(crate::drying::PASSOS_DA_CURA)
+            {
+                crate::drying::cura(g, crate::drying::PASSOS_DA_CURA as f32 / 40.0);
+            }
         }
         2 => {
             if n.is_multiple_of(4) {

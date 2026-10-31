@@ -168,3 +168,48 @@ fn assenta_bit_o_memo_da_os_bits_da_porta() {
         }
     }
 }
+
+/// O memo de UMA linha (rodada 5, [`super::assenta_memo_f32`]): cores `f32`, coberturas `f32` exactas (o caminho da
+/// tabela) e `f64` (o que a contorna), fria e quente — os bits de `assenta(..)` arredondado a `f32`.
+#[test]
+fn assenta_bit_o_memo_f32_da_os_bits_da_porta() {
+    let f32_de = |c: [f64; 3]| c.map(|v| v as f32);
+    let cob32 = |a: f64| f64::from(a as f32);
+    for _volta in 0..2 {
+        for e in ecras() {
+            for sc0 in CORES {
+                for uc0 in CORES {
+                    let (sc, uc) = (f32_de(sc0), f32_de(uc0));
+                    for a_s in COB {
+                        for a_f in COB {
+                            for (a_s2, a_f2) in depois(a_s, a_f) {
+                                for al in
+                                    [[a_s, a_f, a_s2, a_f2], [a_s, a_f, a_s2, a_f2].map(cob32)]
+                                {
+                                    let m = super::assenta_memo_f32(
+                                        e, sc, uc, al[0], al[1], al[2], al[3],
+                                    );
+                                    let p = assenta(
+                                        e,
+                                        sc.map(f64::from),
+                                        uc.map(f64::from),
+                                        al[0],
+                                        al[1],
+                                        al[2],
+                                        al[3],
+                                    )
+                                    .map(|v| v as f32);
+                                    assert_eq!(
+                                        m.map(f32::to_bits),
+                                        p.map(f32::to_bits),
+                                        "{e:?} {sc:?} {uc:?} {al:?}"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

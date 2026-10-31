@@ -16,7 +16,7 @@ mod ponto;
 use ponto::{Parada, d_de, prepara};
 #[path = "assenta/memo.rs"]
 mod memo;
-pub use memo::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, assenta_memo, memo_esquece};
+pub use memo::{MEMO_ASSENTA, MEMO_BITS, MEMO_CONTA, assenta_memo, assenta_memo_f32, memo_esquece};
 
 /// A lei do ecrã para o filme molhado sobre o assentado, que as transferências verticais preservam.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -563,12 +563,6 @@ fn levanta_cobre(
         let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
         [0, 1, 2].map(|c| uc[c] + (sc[c] - uc[c]) * w)
     };
-    // SALTA (31/10, ao bit): coberturas IGUAIS (o `alpha_of_mass` saturado — 98,9 % das células do wash) ⇒ `w = 0`,
-    // `x0 = uc`, e o avaliador em `x0` é a conta do alvo com os mesmos argumentos (o mesmo `powf`; os produtos do
-    // ângulo comutam) ⇒ a 1.ª verificação do [`resolve`] sai e devolve `x0`. Sem o alvo e sem o Newton.
-    if a_f > 0.0 && a_f.to_bits() == a_f2.to_bits() && a_s.to_bits() == a_s2.to_bits() {
-        return x0;
-    }
     let par = Parada::de(vela, sc);
     let mut h_af = None;
     let alvo = prepara(
@@ -595,6 +589,7 @@ fn levanta_cobre(
 /// **A caixa das tintas** do re-molhar: o filme que a água leva fica, por canal, entre a cor dele (`fica`) e a
 /// do assentado que sobe (`vem`); com o filme vazio, é a do assentado. Sem ela a inversa escrevia, sob filme grosso,
 /// uma cor mais clara que as duas, que a água carregava para onde não havia nada a tapar.
+#[inline(always)]
 fn na_caixa(x: [f64; 3], fica: [f64; 3], vem: [f64; 3], tem_fica: bool) -> [f64; 3] {
     // Sem tinta a ficar (filme vazio), a única tinta é a que vem: a cor guardada do vazio não é tinta.
     if !tem_fica {
@@ -605,7 +600,40 @@ fn na_caixa(x: [f64; 3], fica: [f64; 3], vem: [f64; 3], tem_fica: bool) -> [f64;
 
 /// **RE-MOLHAR:** a cor nova do filme quando ele recebe pigmento do assentado (`sc` não muda de cor; as
 /// coberturas passam a `a_s2`, `a_f2`) — a que mantém [`cor`].
+///
+/// SALTA (31/10, ao bit): na [`Ecra::Cobre`] com coberturas IGUAIS (o `alpha_of_mass` saturado — 98,9 % das células
+/// do wash) ⇒ `w = 0`, `x0 = uc`, e o avaliador em `x0` é a conta do alvo com os mesmos argumentos ⇒ a 1.ª verificação
+/// do [`resolve`] sai e devolve `x0`. Este atalho fica `#[inline]` à frente do resto (`levanta_resto`, fora de linha):
+/// com os arrays à mão no chamador, 70,9 → 45,2 ms por passe de secagem a 4K (rodada 5, `MEDIDA_31_10_RODADA5.md`).
+#[inline(always)]
 pub fn levanta(
+    e: Ecra,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    a_s: f64,
+    a_f: f64,
+    a_s2: f64,
+    a_f2: f64,
+) -> [f64; 3] {
+    if matches!(e, Ecra::Cobre { .. })
+        && a_f > 0.0
+        && a_f.to_bits() == a_f2.to_bits()
+        && a_s.to_bits() == a_s2.to_bits()
+    {
+        let w = ((a_f2 - a_f) / a_f2).clamp(0.0, 1.0);
+        // A caixa das tintas ([`na_caixa`] com filme) por canal, sem arrays intermédios.
+        let mut r = [0.0; 3];
+        for c in 0..3 {
+            let (u, s) = (uc[c], sc[c]);
+            r[c] = (u + (s - u) * w).clamp(u.min(s), u.max(s));
+        }
+        return r;
+    }
+    levanta_resto(e, sc, uc, a_s, a_f, a_s2, a_f2)
+}
+
+#[inline(never)]
+fn levanta_resto(
     e: Ecra,
     sc: [f64; 3],
     uc: [f64; 3],

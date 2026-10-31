@@ -53,16 +53,17 @@ pub(crate) fn lift_settled(
     let lift = st * b;
     if ecra != crate::assenta::Ecra::Porto && lift > 0.0 {
         let sf = *susp as f64;
-        *susp_rgb = crate::assenta::levanta(
+        // Arrays escritos à mão, não `.map`: a régua da rodada 5 mediu ~12 ms por passe de secagem a 4K nas cópias.
+        let r = crate::assenta::levanta(
             ecra,
-            sett_rgb.map(f64::from),
-            susp_rgb.map(f64::from),
+            [sett_rgb[0] as f64, sett_rgb[1] as f64, sett_rgb[2] as f64],
+            [susp_rgb[0] as f64, susp_rgb[1] as f64, susp_rgb[2] as f64],
             alpha_of_mass(st),
             alpha_of_mass(sf),
             alpha_of_mass(st - lift),
             alpha_of_mass(sf + lift),
-        )
-        .map(|v| v as f32);
+        );
+        *susp_rgb = [r[0] as f32, r[1] as f32, r[2] as f32];
         *susp = (sf + lift) as f32;
         *sett = (st - lift) as f32;
         return;
@@ -213,16 +214,15 @@ pub(crate) fn dry_cell(
         let a_sett = alpha_of_mass(sett_c as f64);
         let a_in = alpha_of_mass(dm);
         if ecra != crate::assenta::Ecra::Porto {
-            sett_rgb_c = crate::assenta::assenta_memo(
+            sett_rgb_c = crate::assenta::assenta_memo_f32(
                 ecra,
-                sett_rgb_c.map(f64::from),
-                susp_rgb_c.map(f64::from),
+                sett_rgb_c,
+                susp_rgb_c,
                 a_sett,
                 alpha_of_mass(s_mass),
                 alpha_of_mass(sett_c as f64 + dm),
                 alpha_of_mass(s_mass - dm),
-            )
-            .map(|v| v as f32);
+            );
         } else if a_sett > 0.0 {
             let u = a_sett * (1.0 - a_in);
             let w = a_in / (u + a_in);

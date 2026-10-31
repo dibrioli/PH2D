@@ -49,7 +49,20 @@ struct Entrada {
     lei: u32,
 }
 
+/// A entrada de UMA linha (rodada 5): as coberturas são `f32` exactas (a tabela de `alpha_of_mass` é `f32`) e o
+/// resultado guarda-se já em `f32`, que é o que a secagem escreve — chave e resultado na MESMA linha de cache.
+#[derive(Clone, Copy)]
+#[repr(C, align(64))]
+struct Linha {
+    cor: [u32; 6],
+    a: [u32; 4],
+    val: [f32; 3],
+    ok: u32,
+    lei: u32,
+}
+
 struct Tabela {
+    l: Vec<Linha>,
     e: Vec<Entrada>,
     val: Vec<[f64; 3]>,
     leis: Vec<[u64; 6]>,
@@ -79,6 +92,134 @@ pub fn assenta_memo(
     a_f2: f64,
 ) -> [f64; 3] {
     pela_tabela(0, assenta, e, sc, uc, [a_s, a_f, a_s2, a_f2])
+}
+
+/// [`assenta_memo`] já em `f32` (o que a secagem guarda): a tabela de uma linha por entrada ([`Linha`]). Os bits
+/// são os de `assenta(..).map(|v| v as f32)`.
+#[inline]
+#[must_use]
+pub fn assenta_memo_f32(
+    e: Ecra,
+    sc: [f32; 3],
+    uc: [f32; 3],
+    a_s: f64,
+    a_f: f64,
+    a_s2: f64,
+    a_f2: f64,
+) -> [f32; 3] {
+    let conta = || {
+        let r = assenta(
+            e,
+            [sc[0] as f64, sc[1] as f64, sc[2] as f64],
+            [uc[0] as f64, uc[1] as f64, uc[2] as f64],
+            a_s,
+            a_f,
+            a_s2,
+            a_f2,
+        );
+        [r[0] as f32, r[1] as f32, r[2] as f32]
+    };
+    let Ecra::Cobre {
+        filme,
+        esconde,
+        molhada,
+        vela,
+        oleo,
+        opaca,
+    } = e
+    else {
+        return conta();
+    };
+    let modo = MEMO_ASSENTA.load(Relaxed);
+    match modo {
+        0 => return conta(),
+        3 => return sc,
+        _ => {}
+    }
+    let (Some(a0), Some(a1), Some(a2), Some(a3)) = (
+        f32_exacta(a_s),
+        f32_exacta(a_f),
+        f32_exacta(a_s2),
+        f32_exacta(a_f2),
+    ) else {
+        return conta();
+    };
+    let a = [a0, a1, a2, a3];
+    let cor: [u32; 6] = [
+        sc[0].to_bits(),
+        sc[1].to_bits(),
+        sc[2].to_bits(),
+        uc[0].to_bits(),
+        uc[1].to_bits(),
+        uc[2].to_bits(),
+    ];
+    let lei_k = [
+        filme.to_bits(),
+        esconde.to_bits(),
+        molhada.to_bits(),
+        vela.to_bits(),
+        oleo.to_bits(),
+        opaca.to_bits(),
+    ];
+    let g = GERACAO.load(Relaxed);
+    let bits = u32::from(MEMO_BITS.load(Relaxed).min(BITS_MAX));
+    TABELAS.with(|t| {
+        let mut t = t.borrow_mut();
+        let t = t[0].get_or_insert_with(|| Tabela {
+            l: Vec::new(),
+            e: Vec::new(),
+            val: Vec::new(),
+            leis: Vec::with_capacity(LEIS),
+            geracao: g,
+        });
+        if t.l.is_empty() {
+            t.l = vec![
+                Linha {
+                    cor: [0; 6],
+                    a: [0; 4],
+                    val: [0.0; 3],
+                    ok: 0,
+                    lei: 0,
+                };
+                N
+            ];
+        }
+        if t.geracao != g {
+            t.leis.clear();
+            t.geracao = g;
+        }
+        let lei = match t.leis.iter().position(|l| *l == lei_k) {
+            Some(p) => p,
+            None if t.leis.len() < LEIS => {
+                t.leis.push(lei_k);
+                t.leis.len() - 1
+            }
+            None => return conta(),
+        } as u32;
+        let mut h = u64::from(lei).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        for (k, &v) in cor.iter().chain(a.iter()).enumerate() {
+            h = h.wrapping_add(u64::from(v).wrapping_mul(MULT[k]));
+        }
+        h = (h ^ (h >> 32)).wrapping_mul(0xD6E8_FEB8_6659_FD93);
+        let i = (h >> (64 - bits)) as usize;
+        let en = &t.l[i];
+        let acerta = en.ok == g && en.lei == lei && en.cor == cor && en.a == a;
+        if modo == 2 {
+            MEMO_CONTA[usize::from(!acerta)].fetch_add(1, Relaxed);
+        }
+        if acerta {
+            return en.val;
+        }
+        let r = conta();
+        t.l[i] = Linha {
+            cor,
+            a,
+            val: r,
+            ok: g,
+            lei,
+        };
+        r
+    })
 }
 
 type Porta = fn(Ecra, [f64; 3], [f64; 3], f64, f64, f64, f64) -> [f64; 3];
@@ -126,7 +267,14 @@ fn pela_tabela(
     TABELAS.with(|t| {
         let mut t = t.borrow_mut();
         let t = t[qual].get_or_insert_with(|| Tabela {
-            e: vec![
+            l: Vec::new(),
+            e: Vec::new(),
+            val: Vec::new(),
+            leis: Vec::with_capacity(LEIS),
+            geracao: g,
+        });
+        if t.e.is_empty() {
+            t.e = vec![
                 Entrada {
                     cor: [0; 6],
                     a: [0; 4],
@@ -134,11 +282,9 @@ fn pela_tabela(
                     lei: 0,
                 };
                 N
-            ],
-            val: vec![[0.0; 3]; N],
-            leis: Vec::with_capacity(LEIS),
-            geracao: g,
-        });
+            ];
+            t.val = vec![[0.0; 3]; N];
+        }
         if t.geracao != g {
             t.leis.clear();
             t.geracao = g;

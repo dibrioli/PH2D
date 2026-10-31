@@ -79,6 +79,10 @@ ph2d-host = { path = "../ph2d-host" }
 # O gate da cena 11 lê o ficheiro do dono e mede a ponta contra o contorno.
 ph2d-board-geom = { path = "../ph2d-board-geom" }
 serde_json = "1"
+# D17 — as fotos da cena 31 pintam os Assets: o registo de painéis da app e o índice.
+ph2d-panel-registry-init = { path = "../ph2d-panel-registry-init" }
+ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser" }
+ph2d-asset-index = { path = "../ph2d-asset-index" }
 
 [lints]
 workspace = true

@@ -53,3 +53,7 @@ mod tests {
         assert!(h.documents.active_board().is_some(), "o Quadro à frente");
     }
 }
+
+#[cfg(test)]
+#[path = "smoke_d17_fotos_tests.rs"]
+mod fotos;

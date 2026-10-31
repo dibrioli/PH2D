@@ -11205,6 +11205,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-wet-gpu"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-gpu",
+ "ph2d-wet-paint",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-wet-paint"
 version = "0.0.0"
 dependencies = [

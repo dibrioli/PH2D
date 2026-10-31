@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-wet-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# A água do Wet Paint NA PLACA — 1.º degrau: a advecção Jacobi/gather do ADR-0147
+# (`ph2d_wet_paint::solver::advect_jacobi`) como compute WGSL. A CPU continua CANÓNICA
+# (ADR-0146: o solver da placa é um segundo modelo, reconciliado por ε medido POR PLACA).
+# Desenho, paridade e ms: docs/Painter/49_realshader/PLACA_degrau1.md.
+
+[lib]
+
+[dependencies]
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-wet-paint = { path = "../ph2d-wet-paint" }
+wgpu = "30.0.1"
+bytemuck = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -145,7 +145,7 @@ impl DryConst {
 pub(crate) fn dry_cell(
     c: &DryConst,
     paper: f32,
-    count: u32,
+    nb: f64,
     vela: f32,
     vidrado: f32,
     oleo: crate::grid::oleo_celula::OleoCelula,
@@ -170,7 +170,7 @@ pub(crate) fn dry_cell(
     // block (9/9) reads e=1 (no boost); a rim cell reads e<1.
     let mut e = 1.0;
     if film0 > 0.0 && sett_c < 1000.0 {
-        e = if count == 9 { 1.0 } else { count as f64 / 9.0 };
+        e = nb;
     }
 
     // Evaporate: retention leak + edge-boosted linear loss.
@@ -291,6 +291,22 @@ pub(crate) fn dry_cell(
 /// caminho de referência do ADR-0134; quem o produto roda é o
 /// [`drying_pass_jacobi`].
 pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) {
+    match p.k(Knob::EdgeSoftMass) {
+        k if k > 0.0 => {
+            dry_gs::<edge_window::EdgeWindowSoft>(g, p, evap_base, rewet_base, ext_bypass, k)
+        }
+        _ => dry_gs::<EdgeWindow>(g, p, evap_base, rewet_base, ext_bypass, 0.0),
+    }
+}
+
+fn dry_gs<W: edge_window::EdgeGather>(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+    k: f64,
+) {
     let s = g.s;
     let mut out = [0.0f64; 3];
     let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
@@ -306,7 +322,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
         // A vizinhança 3×3 do fator de borda, deslizante: só a coluna da
         // direita é nova a cada passo (`edge_window.rs`). Ela anda em TODA
         // célula — inclusive nas puladas, que são vizinhas das próximas.
-        let mut win = EdgeWindow::seed(&g.susp, i, s);
+        let mut win = W::seed(&g.susp, i, s, edge_window::soft_den(k));
         for x in bx0..=bx1 {
             // ⚠️ O avanço é no TOPO e carrega a coluna `i + 1`, nunca `i + 2`:
             // o pad da grade é de UMA coluna (`s = w + 2`), então `bx1 + 2`
@@ -318,7 +334,7 @@ pub fn drying_pass(g: &mut Grid, p: &Params, evap_base: f64, rewet_base: f64, ex
                 i += 1;
                 continue;
             }
-            let count = win.count();
+            let count = win.frac();
             let mut film = g.film[i];
             let mut susp = g.susp[i];
             let mut sett = g.sett[i];
@@ -457,8 +473,27 @@ pub fn drying_pass_jacobi_rows(
         return;
     }
     g.scratch.ensure(g.cells);
+    let k = p.k(Knob::EdgeSoftMass);
+    if k > 0.0 {
+        return edge_window::soft_plane(g, mode, k, |g, soft| {
+            dry_jacobi::<edge_window::SoftPlane>(
+                g, p, evap_base, rewet_base, ext_bypass, mode, soft,
+            )
+        });
+    }
     edge_rows(g, mode);
+    dry_jacobi::<edge_window::HardPlane>(g, p, evap_base, rewet_base, ext_bypass, mode, &[]);
+}
 
+fn dry_jacobi<P: edge_window::EdgePlane>(
+    g: &mut Grid,
+    p: &Params,
+    evap_base: f64,
+    rewet_base: f64,
+    ext_bypass: bool,
+    mode: crate::par::Rows,
+    soft: &[f64],
+) {
     let s = g.s;
     let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
     let (by0, by1) = (g.by0, g.by1);
@@ -513,7 +548,7 @@ pub fn drying_pass_jacobi_rows(
                 dry_cell(
                     &c,
                     paper[i],
-                    u32::from(edge[i]),
+                    P::nb(edge, soft, i),
                     vela[i],
                     crate::grid::aparencia::vidrado(aparencia, i),
                     crate::grid::oleo_celula::da_celula(oleo, i),

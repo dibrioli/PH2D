@@ -84,6 +84,161 @@ impl EdgeWindow {
     }
 }
 
+/// A porta das duas janelas para o laço Gauss-Seidel: a escolha é por TIPO, fora do laço (monomorfização), e
+/// [`EdgeWindow`] continua a ser o caminho de hoje sem custo nenhum.
+pub(crate) trait EdgeGather {
+    fn seed(susp: &[f32], i: usize, s: usize, den: f64) -> Self;
+    fn advance(&mut self, susp: &[f32], next_right: usize, s: usize);
+    fn note_write(&mut self, susp_c: f32);
+    /// A fracção da vizinhança que carrega pigmento, `0..=1` — o `e` do escurecimento.
+    fn frac(&self) -> f64;
+}
+
+impl EdgeGather for EdgeWindow {
+    #[inline]
+    fn seed(susp: &[f32], i: usize, s: usize, _den: f64) -> Self {
+        EdgeWindow::seed(susp, i, s)
+    }
+    #[inline]
+    fn advance(&mut self, susp: &[f32], next_right: usize, s: usize) {
+        EdgeWindow::advance(self, susp, next_right, s);
+    }
+    #[inline]
+    fn note_write(&mut self, susp_c: f32) {
+        EdgeWindow::note_write(self, susp_c);
+    }
+    #[inline]
+    fn frac(&self) -> f64 {
+        self.count() as f64 / 9.0
+    }
+}
+
+/// O divisor da borda graduada: a massa a que um vizinho conta INTEIRO, `10·(1+k)`.
+#[inline]
+pub(crate) fn soft_den(k: f64) -> f64 {
+    f64::from(PIGMENT) * (1.0 + k)
+}
+
+/// Quanto um vizinho conta na borda graduada: `min(susp ÷ den, 1)`.
+#[inline]
+fn soft(v: f32, den: f64) -> f64 {
+    (f64::from(v) / den).clamp(0.0, 1.0)
+}
+
+/// **A JANELA GRADUADA** (`edgeSoftMass > 0`): a mesma disciplina da [`EdgeWindow`] — soma por coluna, a linha do
+/// MEIO à parte e reescrita por quem escreve —, com cada vizinho a contar a fracção [`soft`] em vez de `0|1`.
+pub(crate) struct EdgeWindowSoft {
+    ud: [f64; 3],
+    m: [f64; 3],
+    den: f64,
+}
+
+impl EdgeGather for EdgeWindowSoft {
+    #[inline]
+    fn seed(susp: &[f32], i: usize, s: usize, den: f64) -> Self {
+        let mut w = Self {
+            ud: [0.0; 3],
+            m: [0.0; 3],
+            den,
+        };
+        for slot in 0..3 {
+            let j = i + slot - 1;
+            w.ud[slot] = soft(susp[j - s], den) + soft(susp[j + s], den);
+            w.m[slot] = soft(susp[j], den);
+        }
+        w
+    }
+    #[inline]
+    fn advance(&mut self, susp: &[f32], next_right: usize, s: usize) {
+        self.ud[0] = self.ud[1];
+        self.ud[1] = self.ud[2];
+        self.m[0] = self.m[1];
+        self.m[1] = self.m[2];
+        self.ud[2] = soft(susp[next_right - s], self.den) + soft(susp[next_right + s], self.den);
+        self.m[2] = soft(susp[next_right], self.den);
+    }
+    #[inline]
+    fn note_write(&mut self, susp_c: f32) {
+        self.m[1] = soft(susp_c, self.den);
+    }
+    #[inline]
+    fn frac(&self) -> f64 {
+        (self.ud[0] + self.ud[1] + self.ud[2] + self.m[0] + self.m[1] + self.m[2]) / 9.0
+    }
+}
+
+/// O plano materializado da rota Jacobi, lido por célula: a escolha também é por tipo.
+pub(crate) trait EdgePlane {
+    fn nb(edge: &[u8], soft: &[f64], i: usize) -> f64;
+}
+
+/// O plano de hoje: a contagem `u8` do `scratch.edge`.
+pub(crate) struct HardPlane;
+impl EdgePlane for HardPlane {
+    #[inline]
+    fn nb(edge: &[u8], _soft: &[f64], i: usize) -> f64 {
+        f64::from(edge[i]) / 9.0
+    }
+}
+
+/// O plano graduado: a fracção `f64` de [`soft_plane`].
+pub(crate) struct SoftPlane;
+impl EdgePlane for SoftPlane {
+    #[inline]
+    fn nb(_edge: &[u8], soft: &[f64], i: usize) -> f64 {
+        soft[i]
+    }
+}
+
+thread_local! {
+    /// O plano graduado, reaproveitado entre passes (só existe com o knob ligado; o `scratch` não o carrega).
+    static SOFT_PLANE: std::cell::RefCell<Vec<f64>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Materializa o fator de borda GRADUADO antes do passe Jacobi (gather puro, como o `edge_rows`) e entrega-o a `f`.
+pub(crate) fn soft_plane(
+    g: &mut crate::grid::Grid,
+    mode: crate::par::Rows,
+    k: f64,
+    f: impl FnOnce(&mut crate::grid::Grid, &[f64]),
+) {
+    let mut plane = SOFT_PLANE.with(|c| std::mem::take(&mut *c.borrow_mut()));
+    plane.resize(g.cells, 0.0);
+    let den = soft_den(k);
+    let s = g.s;
+    let (by0, by1) = (g.by0, g.by1);
+    let (row_lo, row_hi) = (&g.row_lo, &g.row_hi);
+    let (spans_enabled, bx0, bx1) = (g.spans_enabled, g.bx0, g.bx1);
+    let susp: &[f32] = &g.susp;
+    let band = by0 as usize * s..(by1 as usize + 1) * s;
+    crate::par::walk_rows(mode, &mut plane[band], s, |ri, row| {
+        let y = by0 + ri as i32;
+        let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
+        if lo > hi {
+            return;
+        }
+        let mut i = lo as usize + y as usize * s;
+        let mut win = <EdgeWindowSoft as EdgeGather>::seed(susp, i, s, den);
+        for x in lo..=hi {
+            if x > lo {
+                win.advance(susp, i + 1, s);
+            }
+            row[x as usize] = win.frac();
+            i += 1;
+        }
+    });
+    f(g, &plane);
+    SOFT_PLANE.with(|c| *c.borrow_mut() = plane);
+}
+
+/// A forma direta GRADUADA, nove leituras, agrupada por coluna como a janela — o oráculo do gate de identidade.
+#[cfg(test)]
+pub(crate) fn edge_frac_soft_direct(susp: &[f32], i: usize, s: usize, den: f64) -> f64 {
+    let col = |j: usize| soft(susp[j - s], den) + soft(susp[j + s], den);
+    let (l, c, r) = (col(i - 1), col(i), col(i + 1));
+    (l + c + r + soft(susp[i - 1], den) + soft(susp[i], den) + soft(susp[i + 1], den)) / 9.0
+}
+
 /// **A FORMA DIRETA, congelada** — as nove cargas que o `drying_pass` fazia
 /// antes da janela, verbatim, para o gate de identidade ter um oráculo que não
 /// é o código sob teste.
@@ -162,6 +317,36 @@ mod tests {
                     w.note_write(novo);
                 }
                 i += 1;
+            }
+        }
+    }
+
+    /// **A janela GRADUADA é a forma direta graduada, ao bit**, com a escrita da linha do meio (a mesma condução
+    /// do gate binário acima), a dois `k`.
+    #[test]
+    fn the_soft_sliding_window_is_the_direct_gather() {
+        for k in [0.5, 3.0] {
+            let den = soft_den(k);
+            let (mut susp, s) = fixture(24, 9);
+            for y in 1..8 {
+                let mut i = 1 + y * s;
+                let mut w = <EdgeWindowSoft as EdgeGather>::seed(&susp, i, s, den);
+                for x in 1..=22usize {
+                    if x > 1 {
+                        w.advance(&susp, i + 1, s);
+                    }
+                    assert_eq!(
+                        w.frac().to_bits(),
+                        edge_frac_soft_direct(&susp, i, s, den).to_bits(),
+                        "divergiu em ({x}, {y}) a k={k}"
+                    );
+                    if x % 2 == 0 {
+                        let novo = if susp[i] > PIGMENT { 3.0 } else { 27.0 };
+                        susp[i] = novo;
+                        w.note_write(novo);
+                    }
+                    i += 1;
+                }
             }
         }
     }

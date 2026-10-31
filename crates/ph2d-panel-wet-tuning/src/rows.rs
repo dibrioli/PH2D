@@ -334,13 +334,13 @@ mod tests {
     /// borda da mancha molhada no Wet effects (3 → 4). Mais 1 (J6): as tampas do filme no Stroke (12 → 13). Mais 1 (J6 mistura): o
     /// nível do secador no Tools (+1). Mais 1 (J6 mistura, lacuna 6): o alcance do misturador no Tools (+1). Mais 1 (J6 guache, lacuna 7): a tinta que cobre a molhada no
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
-    /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16).
+    /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 98);
+        assert_eq!(rows().len(), 99);
         for g in [
             (KnobGroup::Paint, 24),
-            (KnobGroup::Water, 7),
+            (KnobGroup::Water, 8),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),

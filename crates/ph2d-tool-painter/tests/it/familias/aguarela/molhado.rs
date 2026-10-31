@@ -322,8 +322,19 @@ pub(super) fn borda(px: &[u8], w: usize) -> (f64, f64) {
 #[test]
 fn a_borda_da_mancha_molhada_esbate() {
     let [(com, w), (sem, _)] = std::thread::scope(|s| {
-        let a = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 28.0)], "sobre", 0));
-        let b = s.spawn(|| foto("Wet Liner", &[("wetOpenEdge".to_owned(), 0.0)], "sobre", 0));
+        // R1: o Liner de fábrica mudou (sem K-M, pigmento 20, domo e tampas) — os dois braços prendem o Liner da J6 (a lei
+        // medida é a pena; na J6 o K-M ainda nascia desligado).
+        let pena = |p: f64| {
+            [
+                ("wetOpenEdge".to_owned(), p),
+                ("pigmentMixing".to_owned(), 0.0),
+                ("pigmentPerDab".to_owned(), 17.0),
+                ("strokeFilmDome".to_owned(), 0.0),
+                ("strokeFilmEnds".to_owned(), 0.0),
+            ]
+        };
+        let a = s.spawn(move || foto("Wet Liner", &pena(28.0), "sobre", 0));
+        let b = s.spawn(move || foto("Wet Liner", &pena(0.0), "sobre", 0));
         [a.join().unwrap(), b.join().unwrap()]
     });
     let ((dl, al), (dc, ac)) = (borda(&com, w), borda(&sem, w));

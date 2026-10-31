@@ -90,7 +90,13 @@ fn o_filme_do_traco_e_liso() {
         let soma = deposito("Wet Liner", &SOMA, diametro, y);
         // (O Drag de omissão puxa a tinta de trás para as células da crista ainda por encher e deixa-as acima do filme:
         // mancha 0,055 com o 0,16, 0,008 sem ele — o pincel de filme leva `drag` 0.)
-        let filme = deposito("Wet Liner", &FILME, diametro, y);
+        // R1: o Liner de fábrica tem o domo da J6 — a lei do filme mede-se CHATA (o domo tem portão próprio).
+        let chato: Vec<(&str, f64)> = FILME
+            .iter()
+            .copied()
+            .chain([("strokeFilmDome", 0.0)])
+            .collect();
+        let filme = deposito("Wet Liner", &chato, diametro, y);
         println!("[filme] {diametro} px · soma {soma:.3?} · filme {filme:.3?}");
         assert!(
             soma[2] > 0.03,
@@ -220,6 +226,17 @@ fn o_filme_nao_tem_o_disco_do_primeiro_toque() {
 
 /// A cena `cena` da bateria (foto A) pintada pelo Wet `nome` com o mapa `engine` sobreposto: os píxeis RGBA e a largura.
 fn foto_a(nome: &str, engine: &[(&str, f64)], cena: &str) -> (Vec<u8>, usize) {
+    foto_a_pincel(nome, engine, &[], cena)
+}
+
+/// [`foto_a`] com campos do PINCEL fixados (`pincel`: o nome do campo e o valor JSON) — o instrumento de um portão que
+/// mede uma lei com o preset de fábrica a prender o que a fábrica mudou depois dele (R1).
+fn foto_a_pincel(
+    nome: &str,
+    engine: &[(&str, f64)],
+    pincel: &[(&str, serde_json::Value)],
+    cena: &str,
+) -> (Vec<u8>, usize) {
     use crate::exame_bancada::{Pincel, bateria, pinta_cena};
     let p = pinceis(nome).remove(0);
     let Fonte::Preset { preset, relativo } = p.fonte else {
@@ -228,6 +245,9 @@ fn foto_a(nome: &str, engine: &[(&str, f64)], cena: &str) -> (Vec<u8>, usize) {
     let mut pr = preset;
     for (k, v) in engine {
         pr.parametros.engine.insert((*k).to_owned(), *v);
+    }
+    for (k, v) in pincel {
+        pr.parametros.brush.insert((*k).to_owned(), v.clone());
     }
     let p = Pincel {
         nome: p.nome,
@@ -431,11 +451,26 @@ fn ponta_200(px: &[u8], w: usize) -> f64 {
 /// ⭐ **As TAMPAS do filme largo esbatem** (`Knob::StrokeFilmEnds`, J6): o Rebelle `Wash Round` a 200 px clareia a ponta
 /// para 0,41–0,60 do meio nas primeiras 10 colunas; a tampa de sempre é cheia (0,8+). Pelo MÁXIMO do filme só o 1.º e o
 /// último dab mostram a queda ao longo — o corpo fica (o meio do traço igual ao sem a lei). CONTROLO: sem as tampas.
+/// R1: o Wash de fábrica passou a ter as pontas que esbatem, a borda graduada e a orla 40 — os dois braços prendem o
+/// Wash da J6 (sem elas, orla 100) para a régua medir só esta lei.
 #[test]
 fn as_tampas_do_filme_largo_esbatem() {
+    let j6 = |tampas: f64| {
+        foto_a_pincel(
+            "Wet Wash",
+            &[
+                ("strokeFilmEnds", tampas),
+                ("edgeSoftMass", 0.0),
+                ("edgeDarkening", 100.0),
+                ("strokeFilmDome", 0.3),
+            ],
+            &[("pontas_esbate", serde_json::json!(0.0))],
+            "tamanhos",
+        )
+    };
     let [(com, w), (sem, _)] = std::thread::scope(|s| {
-        let a = s.spawn(|| foto_a("Wet Wash", &[("strokeFilmEnds", 0.8)], "tamanhos"));
-        let b = s.spawn(|| foto_a("Wet Wash", &[("strokeFilmEnds", 0.0)], "tamanhos"));
+        let a = s.spawn(|| j6(0.8));
+        let b = s.spawn(|| j6(0.0));
         [a.join().unwrap(), b.join().unwrap()]
     });
     let (pc, ps) = (ponta_200(&com, w), ponta_200(&sem, w));

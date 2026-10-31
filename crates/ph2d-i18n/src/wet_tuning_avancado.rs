@@ -68,6 +68,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.textureSizeExp" => "Texture follows brush size",
         "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference",
         "panel.wet_tuning.knob.textureSizeExpAcross" => "Texture follows size across",
+        // Water — a borda graduada da secagem (31/10).
+        "panel.wet_tuning.knob.edgeSoftMass" => "Edge darkening fades with the paint",
         // Wet effects — o que a água faz depois.
         "panel.wet_tuning.knob.extDiffusion" => "Pigment diffusion",
         "panel.wet_tuning.knob.extBackrun" => "Backruns (blooms)",

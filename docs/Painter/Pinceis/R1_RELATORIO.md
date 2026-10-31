@@ -24,13 +24,23 @@ orla 30 (sem aro: 0,89) · orla 100 com tampas (fios escuros na tampa) · domo 0
 `wetOpenEdge 28` no Wash (quadrados de borda no cruzamento, J6 confirmado) · `pontas_esbate` no Liner (a 40 px o Rebelle
 é cheio, J6t).
 
-**Receitas** (`familias/aguarela.rs`, `WET`): Wash = orla 50 + domo 0,5 + tampas 1 + K-M off + `pontas_esbate 2`;
-Liner = pigmento 20 + orla 100 + `wetOpenEdge 28` + domo 0,3 + tampas 1 + K-M off. `CURAS_J6` esvaziada (aplicada).
+**Receitas** (`familias/aguarela.rs`, `WET`): Wash = orla 40 + `edgeSoftMass 4` + domo 0,5 + tampas 1 + K-M off + `pontas_esbate 1` (2 = pontas finas cortadas a direito, tubo; 0 = contorno na tampa larga);
+Liner = pigmento 20 + orla 200 (fica: a 200 px 100 e 200 dão o mesmo aro ~0,9; a 40 px a 100 tirava o fio escuro do Rebelle, 1,247 → 1,07) + `wetOpenEdge 28` + domo 0,3 + tampas 1 + K-M off. `CURAS_J6` esvaziada (aplicada).
 
-**Fica (motor, PEDIDO ao coordenador):** a tampa do Wash ainda tem um contorno fino irregular que o Rebelle não tem. Causa:
-`drying/edge_window.rs` conta vizinhos com `susp > 10` BINÁRIO ⇒ o aro nasce na isolinha 10 mesmo onde a tinta esbate.
-Lei proposta (a «transição de ~10 px», ao bit com 0): fator de borda GRADUADO, cada vizinho conta `min(susp/limiar, 1)`.
-Toca `drying.rs` (reservado ao agente de performance).
+**Lei nova — a borda GRADUADA** (`Knob::EdgeSoftMass`, «Edge darkening fades with the paint», grupo Water, 0..8,
+autorizada pelo coordenador): a tampa do Wash ainda tinha um contorno fino irregular que o Rebelle não tem. Causa: a
+secagem conta vizinhos com `susp > 10` BINÁRIO ⇒ o aro nasce na isolinha 10 mesmo onde a tinta esbate. Com `k > 0` cada
+vizinho conta `min(susp / (10·(1+k)), 1)`; `k = 0` = o caminho de hoje AO BIT e sem custo (a janela escolhe-se pelo tipo
+fora do laço, `EdgeGather`/`EdgePlane` monomorfizados). A lei vive em `drying/edge_window.rs` (`EdgeWindowSoft`,
+`soft_plane` para a rota Jacobi num `thread_local`). Testes (`ph2d-wet-paint`): `a_borda_graduada_a_zero_e_a_secagem_de_antes_ao_bit`
+(hash GS `0x20ba9f7b236930f9` · Jacobi `0xe8e3174d523a6d13`, gravados antes da lei), `a_borda_graduada_esbate_a_rampa_sem_degrau`
+(2.ª diferença do `sett` ÷ média: k=2 1,03 → 0,09; vermelho antes da lei), `the_soft_sliding_window_is_the_direct_gather`.
+**Linhas de `drying.rs` tocadas** (para o merge com o agente de performance): L148 `count: u32` → `nb: f64`; L173
+`e = nb`; L294–309 `drying_pass` escolhe `dry_gs::<EdgeWindowSoft|EdgeWindow>` (o corpo antigo sob `fn dry_gs<W: EdgeGather>`);
+L325 `W::seed(.., soft_den(k))`; L337 `win.frac()`; L476–483 k > 0 ⇒ `soft_plane(.. dry_jacobi::<SoftPlane> ..)`;
+L485–486 `dry_jacobi::<HardPlane>(.., &[])`; L488–496 cabeçalho `fn dry_jacobi<P: EdgePlane>`; L551 `P::nb(edge, soft, i)`.
+Nada movido nem reformatado fora delas. Calibração no Wash (tampa ampliada + perfil): k 0/1 = contorno; k 2 aro 1,38; k 4
+tampa limpa, aro 1,41 ⇒ **k 4 + orla 40: aro 1,33 · +4 0,87 · +20 0,79 · +30 0,85**, tampa sem contorno.
 
 ## 2. Mop — REPROVADO de novo (motor)
 
@@ -49,6 +59,24 @@ coordenador): `BrushSpec::smear_alcance` (tecto do `disp` por pincel) + a tinta 
 (`over`, para não abrir entalhe). Alcance 4/6/8/12 raios: o sulco acaba num fundo CHATO abrupto e o fio entre as faixas
 corta-se em pedaços — pior que hoje. ⇒ revertido inteiro (nenhum ficheiro do pincel mudou). O que falta é juntar as duas
 paredes do fio num só traço (o eixo amostra o papel do início do traço) — outra lei, por medir.
+
+## Portões e fecho
+
+- 4 portões J4/J6 da família usavam o preset de fábrica como CONTROLO e a fábrica passou a ter as curas: os instrumentos
+  prendem agora o estado que medem (`as_tampas_do_filme_largo_esbatem` — o Wash da J6, `foto_a_pincel`;
+  `o_filme_do_traco_e_liso` — o filme chato, domo 0; `a_borda_da_mancha_molhada_esbate` — o Liner da J6 nos dois braços:
+  pigmento 17, sem domo/tampas, K-M desligado — dá os números da J6, 12,5 · 1,034 · 1,45, controlo 2,8 · 1,162);
+  ⚠️ com o Liner de fábrica R1 a mancha molhada mede 1,67–1,73 × a largura (Rebelle 1,42): fila (pigmento 20 × 17).
+  `o_liner_tem_o_fio_escuro_da_borda` reprovou a orla 100 (1,066) ⇒ o Liner volta a 200: 1,141 (Rebelle 1,247).
+- Verdes por nome: `familias::aguarela` (14), `the_factory_presets_are_counted`, `ph2d-wet-paint` `a_borda_graduada` (3) e `drying`.
+- Finais (fábrica regerada): Wash 200 px aro 1,29 · +20 0,77 · +30 0,83; Liner 40 px orla 1,13. Pranchas `r1_Wet_Wash.png`,
+  `r1_Wet_Liner.png` (Rebelle · antes · R1), `r1_Mop.png` (Rebelle · M2 · M4), `r1_Smudge_Finger_alcance.png`.
+- ⚠️ Vermelhos ANTERIORES ao R1 (verificados na base `6ba5d06493`, não curados aqui): `ph2d-panel-wet-tuning`
+  `every_visible_knob_has_a_row` (base 94 × 98; com o knob novo 95 × 99) e `os_escondidos…` (9 knobs `Hidden` fora da
+  lista: extGranulation, extRakeLight, extStaining, extWetSoften, glaze, rewetDrag, rewetPaint, solubility, wetCover);
+  `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` (Blender Dots/Hard/Soft/Textured, Ink Brush… — o ESTADO J11 já
+  dizia «miniaturas (24 mudam)»); clippy `collapsible_if` em `assenta/ponto.rs:38` e fmt em `solver/advect_*`,
+  `oleo_por_traco_tests.rs` — ficheiros que o R1 não toca.
 
 ## Commits
 

@@ -21,10 +21,23 @@ azul-escuros por cima da névoa). Prancha `pranchas/r2_spray_can.png` (antes | F
 Recusas MEDIDAS: o tecto da gota em px (A–C) tira a densidade a 200 px; o jitter de opacidade 0,9 NÃO escurece (0,032);
 o `po` não faz salpicos (só à borda); véu MAIOR (D/E) = exactamente os discos pálidos do veredito. F dá os salpicos
 escuros mas perde a névoa (0,071 × 0,26) e abre buracos a 200 px.
-**Necessidade de motor** (`stroke/spray.rs`, não proibido mas seria a 3.ª ronda): `veu_opacidade` está em
-`clamp(0,1)` (linha 213) — a 2.ª população não pode ser MAIS escura que a 1.ª. Com `veu_opacidade` até ~2,5
-(`coverage.min(1)`; neutro ao bit para ≤ 1), «hoje» + véu 0,2 ×0,3 opacidade 2,5 = névoa de hoje + salpicos escuros.
-Simulação a fazer: essa variante única.
+**Motor construído (ordem do coordenador, `c4564d3294`):** `DabJitter::VEU_OPACIDADE_MAX = 4` (o tecto do recurso:
+a cobertura do dab satura em 1; `1 ÷ fluxo` mínimo 0,25); `stroke/spray.rs` multiplica e satura em 1 só quando
+`o > 1` (a ≤ 1 a mesma conta, ao bit); o leitor do preset (`wetpaint_preset/json.rs`) abre o mesmo tecto (só esse
+hunk comitado — o resto do ficheiro é do irmão). Portão red-first `marca::tests::o_veu_acima_de_um_e_a_populacao_escura`
+(vermelho antes, verde depois; `o_veu_e_uma_segunda_populacao_maior_e_palida` continua verde). Sem painel/slider do véu.
+
+| hoje + véu escuro (fluxo 0,4) | cob 200 | buracos | gestos escuro | pálido |
+|---|---|---|---|---|
+| G 0,2 × 0,3 · H 0,3 × 0,35 · I 0,15 × 0,25 (18 gotas) | 0,837 · 0,811 · 0,848 | ≤ 0,012 | 0,042 · 0,035 · 0,046 | 0,21 |
+| J 0,3 × 0,55 | 0,834 | 0,009 | 0,043 | 0,204 |
+
+**Recusa MEDIDA: a lei não escurece ESTE pincel.** A cobertura do dab é `strength × pressão` (`dab_build.rs:142`) e
+o Spray Can tem opacidade 1: à pressão cheia o dab já está em 1, o véu × 2,5 satura, e o fluxo 0,4 aplica-se DEPOIS
+(no composto) — os salpicos saem do tom das gotas. Prancha `r2_spray_can.png`: J ≈ antes. **Não promovido.**
+O que falta (fila, 1 variante): pôr a tinta na `strength` e não no fluxo (opacidade 0,4, fluxo 1) para o véu × 2,5
+chegar a 1 — muda a acumulação do traço (o tecto da Strength), medir antes; ou um `veu_fluxo` próprio no spray.
+A lei fica (neutra, com portão); o coordenador decide se a mantém sem consumidor de fábrica.
 
 ## J-3 Splatter
 Não tocado (prazo); o diagnóstico J4 continua: orla de aguarela (dono `aguarela`) e lei de potência do tamanho.

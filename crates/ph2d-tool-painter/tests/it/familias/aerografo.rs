@@ -505,7 +505,32 @@ fn o_aerografo_parado_pousa_um_sopro() {
 /// Variantes da R2-C do Spray Can (as gotas com tecto em px, a tinta por gota que sorteia o escuro, sem os discos do véu).
 /// Ronda 2: a população principal ESCURA e opaca (fluxo alto, menos gotas) e o «véu» feito a 2.ª população de
 /// gotas MAIORES e meias — as gotas do Krita a 200 px opacas, os salpicos escuros por cima.
-const SPRAY_R2C: [(&str, &str, &str, &str); 3] = [
+const SPRAY_R2C: [(&str, &str, &str, &str); 7] = [
+    (
+        "J",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.3, "veu_escala": 0.55, "veu_opacidade": 2.5, "subpixel_area": true}"#,
+        "0.4",
+        "16",
+    ),
+    // Ronda 3 (motor R2-C, `DabJitter::VEU_OPACIDADE_MAX`): a receita de hoje + o véu ESCURO de gotículas.
+    (
+        "G",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.2, "veu_escala": 0.3, "veu_opacidade": 2.5, "subpixel_area": true}"#,
+        "0.4",
+        "16",
+    ),
+    (
+        "H",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.3, "veu_escala": 0.35, "veu_opacidade": 2.5, "subpixel_area": true}"#,
+        "0.4",
+        "16",
+    ),
+    (
+        "I",
+        r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.09, "roundness": 0.0, "veu": 0.15, "veu_escala": 0.25, "veu_opacidade": 2.5, "subpixel_area": true}"#,
+        "0.4",
+        "18",
+    ),
     (
         "D",
         r#"{"across": 0.4, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.03, "roundness": 0.0, "veu": 0.6, "veu_escala": 3.0, "veu_opacidade": 0.5, "subpixel_area": true}"#,
@@ -552,7 +577,7 @@ fn sonda_r2c_spray_e_marcador() {
         lista.push((format!("dry_{v}"), p, 0.744));
     }
     for (nome, preset, escala) in lista {
-        if !so.is_empty() && !nome.starts_with(&so) {
+        if !so.is_empty() && !so.split(',').any(|s| nome == s) {
             continue;
         }
         let pincel = Pincel {

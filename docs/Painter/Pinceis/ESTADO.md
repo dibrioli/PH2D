@@ -33,7 +33,7 @@
 Drag (arrasto do Smear) `6c243555f0` · undo não mata a tinta viva `7bb6110ac5` · ladeira com Real Oil `f70ea44cd9` · Staining/Glaze/
 Cover/Wet soften no cartão `e42174cc5a`. Smoke do dono feito (`d040bdd8f0`).
 
-## J11 (30/10): 0 Real Oil empalidece `43b535277b` (sai `PINCEL_DE_OLEO`; Oil/* p99 ≤ 1) · C&F `0f0a714481` · 2 queda: sonda
+## J11 (30/10): 0 Real Oil empalidece: cura `43b535277b` REVERTIDA (o óleo deixava de cobrir o óleo, até 78 níveis); próxima: variante B à prancha · C&F `0f0a714481` · 2 queda: sonda
 `6e466569d2`, [prancha](pranchas/J11_queda_diluicao.png), V3 recomendada, ESPERA o dono · 3 undo `340513dcb4` (a 4096² ainda seca) ·
 1 Pigment mixing: [prancha](pranchas/J11_pigment_mixing.png) (20/45 miniaturas ≤ 14 níveis), ESPERA o dono · 4–5 depois.
 

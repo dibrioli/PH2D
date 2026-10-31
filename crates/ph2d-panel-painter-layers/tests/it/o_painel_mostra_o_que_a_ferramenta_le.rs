@@ -87,6 +87,7 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
         LinhaDaFerramenta::OpacidadePelaVelocidade => &[PAINTER_PEN_SPEED_OPACITY],
         LinhaDaFerramenta::AguaViva => &[PAINTER_WETPAINT_LIVE_WATER],
         LinhaDaFerramenta::GraoDoPapel => &[PAINTER_BRUSH_GRAIN_SAME_AS_PAPER],
+        LinhaDaFerramenta::MisturaDoPigmento => &[PAINTER_WETPAINT_PIGMENT_MIXING],
     }
 }
 
@@ -127,7 +128,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 21] = [
+const DEPOSITO_MOLHADO: [NodeId; 20] = [
     PAINTER_BRUSH_DAB_QUINA,
     // A ponta que gira com inércia (L3).
     PAINTER_BRUSH_DAB_ROTATION_LAG,
@@ -139,8 +140,6 @@ const DEPOSITO_MOLHADO: [NodeId; 21] = [
     PAINTER_WETPAINT_PAPER_VISUAL,
     // A caixa Real Oil é do TRAÇO (dono 28/10): pousa na célula.
     PAINTER_WETPAINT_OLEO_REAL,
-    // O Pigment mixing (K-M, dono 30/10): a mistura da tinta que vier.
-    PAINTER_WETPAINT_PIGMENT_MIXING,
     PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_PIGMENT,
     PAINTER_WETPAINT_PICKUP,

@@ -46,13 +46,20 @@ const FICHEIROS_DE_IDS: [&str; 18] = [
     include_str!("../../../ph2d-tool-painter/src/ids/wet_tuning.rs"),
 ];
 
-/// `NodeId → "CONST (slug)"` a partir dos literais `pub const X: NodeId = hash_node_id("slug")`.
+/// `NodeId → "CONST (slug)"` a partir dos literais `pub const X: NodeId = hash_node_id("slug")` — também os que o
+/// `rustfmt` parte em duas linhas (`=` e o `hash_node_id` na seguinte): sem eles, o `PIGMENT_MIXING` saía em hexa.
 pub(crate) fn nomes() -> BTreeMap<NodeId, String> {
     let mut m = BTreeMap::new();
     for fonte in FICHEIROS_DE_IDS {
-        for linha in fonte.lines() {
+        let linhas: Vec<&str> = fonte.lines().collect();
+        for (i, linha) in linhas.iter().enumerate() {
             let Some(resto) = linha.trim().strip_prefix("pub const ") else {
                 continue;
+            };
+            let resto = if resto.trim_end().ends_with('=') {
+                format!("{resto} {}", linhas.get(i + 1).map_or("", |l| l.trim()))
+            } else {
+                resto.to_owned()
             };
             let Some((nome, depois)) = resto.split_once(':') else {
                 continue;

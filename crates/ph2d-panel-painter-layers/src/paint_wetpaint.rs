@@ -395,9 +395,9 @@ fn paint_display_toggles(
         );
     }
     y = paint_oleo_real(ctx, theme, x, content_w, y, brush);
-    // Pigment mixing (K-M, dono 30/10): do pincel, ligado de fábrica; só vale para a tinta que vier — logo só à
-    // vista de quem a POUSA (a Borracha não pousa: inerte nela).
-    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
+    // Pigment mixing (K-M, dono 30/10): do pincel, ligado de fábrica; lei da sim — à vista de quem MOVE tinta por ela
+    // (o Pincel e o Blow), não da Borracha nem do Smear/Blend/Wet/Dry da água (inertes).
+    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::MisturaDoPigmento) {
         y = crate::paint_brush_top::paint_checkbox_row(
             ctx,
             theme,

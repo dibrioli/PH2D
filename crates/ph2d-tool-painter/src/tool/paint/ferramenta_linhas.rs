@@ -103,6 +103,10 @@ pub enum LinhaDaFerramenta {
     /// recebe o grão (`wetpaint/dab_route.rs`); no Smear, Wet, Dry e Blow ele pinta 0 texels (censo
     /// `cada_ferramenta_da_agua_so_ve_o_que_le`, 29/10).
     GraoDoPapel,
+    /// O Pigment mixing (K-M, `sim.km_mixing`): lei da SIM, não do pouso — a advecção (`solver/advect*.rs`) e a
+    /// sedimentação misturam por ela toda a tinta que se move. O Blow move a tinta molhada (22 texels nas riscas, censo
+    /// `cada_ferramenta_da_agua_so_ve_o_que_le`, 31/10); a Borracha e o Smear/Blend/Wet/Dry da água: 0.
+    MisturaDoPigmento,
 }
 
 use FerramentaDoPincel as F;
@@ -119,7 +123,7 @@ const CURA: [L; 5] = [L::Blend, L::Cor, L::Randomize, L::Composite, L::Flow];
 /// e o Speed → Opacity: o carimbo achatado que sopra gira com o gesto e a opacidade do dab é a força do sopro — medido
 /// pelo `o_carimbo_das_ferramentas_da_agua` desde o 3.º traço do censo (as pontas dentro da tela, 8a19f601f8).
 /// O Per-Layer Color sai com a [`L::Forma`] (mora na parte da Shape que a textura arma).
-const DA_AGUA: [L; 12] = [
+const DA_AGUA: [L; 13] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -129,12 +133,13 @@ const DA_AGUA: [L; 12] = [
     L::Aguada,
     L::Preview,
     L::DepositoMolhado,
+    L::MisturaDoPigmento,
     L::Flow,
     L::Forma,
     L::GraoDoPapel,
 ];
 /// O Smear e o Dry da água: sem o Water do topo e sem o grão (só o Blend o recebe).
-const DA_AGUA_SEM_AGUA_SEM_GRAO: [L; 13] = [
+const DA_AGUA_SEM_AGUA_SEM_GRAO: [L; 14] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -144,12 +149,13 @@ const DA_AGUA_SEM_AGUA_SEM_GRAO: [L; 13] = [
     L::Aguada,
     L::Preview,
     L::DepositoMolhado,
+    L::MisturaDoPigmento,
     L::Flow,
     L::Forma,
     L::AguaDoVolume,
     L::GraoDoPapel,
 ];
-const DA_AGUA_SEM_AGUA: [L; 12] = [
+const DA_AGUA_SEM_AGUA: [L; 13] = [
     L::Blend,
     L::Cor,
     L::Randomize,
@@ -159,6 +165,7 @@ const DA_AGUA_SEM_AGUA: [L; 12] = [
     L::Aguada,
     L::Preview,
     L::DepositoMolhado,
+    L::MisturaDoPigmento,
     L::Flow,
     L::Forma,
     L::AguaDoVolume,
@@ -194,6 +201,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
             L::TracoComoCamada,
             L::Aguada,
             L::DepositoMolhado,
+            L::MisturaDoPigmento,
             L::AguaDoVolume,
         ],
     ),

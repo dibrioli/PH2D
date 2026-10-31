@@ -36,12 +36,20 @@ Hash igual em paralelo e série para os cinco (FNV-1a de film, susp, sett, susp_
 Ganho no passo inteiro (secagem 1 em 6, passo médio ~130 ms): −104 ms por passo que seca ≈ **−17 ms/passo médio
 (~−13 %)**.
 
-## O próximo corte ao bit (provado por leitura, NÃO simulado — o prazo acabou)
+## No produto (31/10, `assenta.rs` + `assenta/ponto.rs` + `colorops::Perfil`)
 
-`levanta` com coberturas iguais (98,9 % das células): `w = 0` ⇒ `x0 = uc` exacto; o alvo e o avaliador recebem os
-mesmos argumentos (o `h` é o mesmo `powf`) ⇒ `y == alvo`, o Newton sai na 1.ª verificação, devolve `uc`, a caixa
-`clamp(uc, min(uc,sc), max(uc,sc)) = uc` e `f64→f32` devolve o `susp_rgb` original. Saltar o `levanta` inteiro
-nesse caso tira 2 avaliações + 2 `powf` por célula. Tem de ser medido (hash + ms) antes de entrar.
+LADO · CANAL · MEMO (por chamada) · **SALTA** (`levanta` com coberturas iguais devolve `x0` sem alvo nem Newton),
+um commit cada. Identidade: `assenta_bit_tests` (hash das portas — 4 leis, Cobre com filme/Glaze/vidrado/óleo,
+coberturas 0…1 iguais e diferentes — e de 6 secagens encadeadas, gravado em `8cf2382d6b` antes dos cortes) verde
+após cada corte; sonda: hash `1aae71329821396d` igual nas 6 variantes em paralelo (crate cortada, cópia, +Salta).
+
+| passo inteiro (`nucleos_wash 12`, smoke, directo, A/B/A/B entre binários) | antes `47d8c108` | depois |
+|---|---|---|
+| passos/s | 7,83 · 7,81 | **9,96 · 9,94 (+27 %)** |
+| ms/passo | 127,8 · 128,0 | **100,4 · 100,6** |
+
+`loadavg` 1,53 no início; sobe com o próprio binário (32 fios, nada mais a correr). A régua ms/secagem da sonda
+não chegou a correr (prazo); a do passo inteiro já mostra −27,5 ms/passo médio, acima dos −17 previstos sem o SALTA.
 
 ## Grupo (b) — só se o (a) não chegar
 

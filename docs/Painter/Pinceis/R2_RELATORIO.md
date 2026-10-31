@@ -65,3 +65,14 @@ motor neutras. Abaixo de 1/h ⇒ reavaliar com o dono antes de outra ronda.
   0,117; o vermelho vê-se através no Rebelle), fendas duras, traços quase pretos do `bristleStreakCut`. ⛔ Fora da
   fábrica. Próximo a simular: pigmento 40–60 com menos opacidade, Shape a contraste 0,3–0,5, sem `bristleStreakCut`;
   senão, motor: Shape que modula a CARGA em vez do alfa.
+- **Splatter** ENTROU na fábrica (`3efdecda4f`, `Digital/Splatter/Splatter`): m4 da 2.ª volta do R2-F — a mancha opaca
+  com coroa, 6 por dab, 2.ª população do véu a 1, tecto 72 px por gota (sem motor novo). Nos gestos finos fica ralo.
+- **Thick Impasto** ENTROU na fábrica (R2-D `adf77b190a`, gerado no preset seguinte; [relatório](R2_D_thick.md),
+  [prancha](pranchas/r2_thick_impasto.png)): composição sobre o Filbert (Real Oil 0,9, brilho 0,5, pigmento 600, emboss
+  0,3, dureza 0,3, Clouds 48 px); sai o estudo homónimo do meio Impasto. Mais relevo e luz que o Rebelle; a ver no smoke:
+  faixa cinza de sombra (~10 px) sob os traços finos (1.º botão: Profundidade 0,6–0,7) e a textura algo carregada.
+  ⚠️ Custo: sonda 8 → 85 s por traço com a Clouds (load 26–82) — medir no app. Geração 9 min (load 47).
+  `the_factory_presets_are_counted`, `cada_preset_de_fabrica_e_a_sua_receita`, `os_reprovados_do_oleo_nao_estao_na_fabrica` verdes.
+- ⚠️ Hook `prazo-do-agente.sh:47` recusa qualquer comando com `PH2D_REGERA_`, até o `fila-pesada.sh pôr` que ele manda usar.
+- **Total da R2:** 5 presets de fábrica mudados ou novos (Charcoal, Wax Scrape, Square Hard melhorados; Splatter e Thick
+  Impasto novos), nenhum por revisão cega — para o smoke do dono.

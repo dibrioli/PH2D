@@ -132,7 +132,6 @@ fn undo_de_outro_traco_nao_mata_o_oleo_soluvel() {
 
 /// ⭐ Aguarela × aguarela: Wet Flat azul, undo de outro traço, Wet Flat amarelo por cima ainda molhado.
 #[test]
-#[ignore = "ABERTO 30/10: a grade volta igual, a imagem depois difere em 13 bytes — o estado do motor fora da grade (relógio/RNG da sim) não volta"]
 fn undo_de_outro_traco_nao_seca_a_aguarela_molhada() {
     compara(
         "Watercolor/Fluid/Wet Flat.ph2d-brush.png",
@@ -141,4 +140,190 @@ fn undo_de_outro_traco_nao_seca_a_aguarela_molhada() {
         [220, 200, 40],
         10,
     );
+}
+
+/// O traço A (Dabber) e o B; `refaz` = desfaz e refaz o B. A grade e a aguada por cima têm de ser as de sem o par.
+fn depois_do_redo(refaz: bool) -> (PainterTool, Option<Grade>) {
+    let mut t = base("Oil/Dabber/Dabber.ph2d-brush.png", [40, 90, 220]);
+    traco(&mut t, 40.0, 90.0);
+    tick(&mut t, 120);
+    traco(&mut t, 40.0, 120.0);
+    if refaz {
+        assert!(t.undo_last(), "havia o B para desfazer");
+        assert!(t.redo_last(), "havia o B para refazer");
+    }
+    let g = grade(&mut t);
+    (t, g)
+}
+
+/// ⭐ O REDO não mata a tinta viva: A, B, undo, redo e a aguada por cima = A, B e a aguada.
+#[test]
+fn redo_nao_mata_a_tinta_viva() {
+    let (mut b, gb) = depois_do_redo(false);
+    let (mut a, ga) = depois_do_redo(true);
+    assert!(gb.is_some(), "a fixture não tem a tinta viva");
+    assert!(
+        ga == gb,
+        "depois do redo a grade da tinta viva NÃO é a de antes do undo (sessão viva: {})",
+        ga.is_some()
+    );
+    aguada(
+        &mut b,
+        "Watercolor/Fluid/Wet Flat.ph2d-brush.png",
+        [220, 200, 40],
+    );
+    aguada(
+        &mut a,
+        "Watercolor/Fluid/Wet Flat.ph2d-brush.png",
+        [220, 200, 40],
+    );
+    let (ib, ia) = (mostrada(&mut b), mostrada(&mut a));
+    let dif = ib.iter().zip(&ia).filter(|(x, y)| x != y).count();
+    assert_eq!(
+        dif, 0,
+        "o traço por cima depois do redo deu outra imagem ({dif} bytes)"
+    );
+}
+
+/// O Dabber, depois o Wet Flat com o Real Oil na mão: com `extra`, um traço a mais e o seu undo.
+fn ladeira_depois(extra: bool) -> Option<Vec<f32>> {
+    let mut t = base("Oil/Dabber/Dabber.ph2d-brush.png", [40, 90, 220]);
+    traco(&mut t, 40.0, 90.0);
+    tick(&mut t, 30);
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_wet_oleo_real_ligado(true);
+    if extra {
+        traco(&mut t, 40.0, 130.0);
+        assert!(t.undo_last(), "havia o traço extra para desfazer");
+    }
+    t.wet_bring_home();
+    let s = t.paint.wetpaint.session.as_ref()?;
+    Some(s.engine.layers[0].grid.oleo_antes.clone())
+}
+
+/// ⭐ O undo devolve a ladeira do óleo de ANTES do passo (`Grid::oleo_antes`), não a do traço desfeito.
+#[test]
+fn undo_devolve_a_ladeira_do_oleo_de_antes() {
+    let b = ladeira_depois(false);
+    let a = ladeira_depois(true);
+    assert!(b.is_some() && a.is_some(), "a sessão morreu");
+    assert!(
+        a == b,
+        "a ladeira do óleo depois do undo ({} células) não é a de sem o traço ({} células)",
+        a.map_or(0, |v| v.len()),
+        b.map_or(0, |v| v.len())
+    );
+}
+
+/// SONDA (c): os bytes e o tempo da fotografia de UM passo a 4096², e quantos passos cabem no orçamento.
+#[test]
+#[ignore = "sonda: corre por nome com --ignored"]
+fn diag_bytes_da_foto_por_passo() {
+    for lado in [1024usize, 2048, 4096] {
+        let e = ph2d_wet_paint::painter::Engine::new(lado, lado);
+        let t0 = std::time::Instant::now();
+        let f = super::undo_vivo::FotoDoMotor::de_para_sonda(&e);
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        let teto = super::undo_vivo::orcamento_das_fotos(lado, lado);
+        eprintln!(
+            "{lado}²: foto {} MB ({:.1} B/célula), {ms:.0} ms; orçamento {} MB = {} passos",
+            f.bytes() >> 20,
+            f.bytes() as f64 / ((lado + 2) * (lado + 2)) as f64,
+            teto >> 20,
+            teto / f.bytes()
+        );
+    }
+}
+
+/// SONDA (a): que campos do motor diferem entre a cena com o undo e a sem, antes da aguada.
+#[test]
+#[ignore = "sonda: corre por nome com --ignored"]
+fn diag_o_que_difere_depois_do_undo() {
+    let m = "Watercolor/Fluid/Wet Flat.ph2d-brush.png";
+    let (mut b, _) = ate_a_aguada(m, [40, 90, 220], false, 10);
+    let (mut a, _) = ate_a_aguada(m, [40, 90, 220], true, 10);
+    fn h<T: std::fmt::Debug>(v: &T) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut s = std::collections::hash_map::DefaultHasher::new();
+        format!("{v:?}").hash(&mut s);
+        s.finish()
+    }
+    let dump = |t: &mut PainterTool| {
+        t.wet_bring_home();
+        let s = t.paint.wetpaint.session.as_ref().expect("sessão");
+        let g = &s.engine.layers[0].grid;
+        let e = &s.engine;
+        vec![
+            ("susp_rgb", h(&g.susp_rgb)),
+            ("sett_rgb", h(&g.sett_rgb)),
+            ("vel", h(&(&g.vel_x, &g.vel_y))),
+            ("flow", h(&(&g.flow_x, &g.flow_y))),
+            ("frow", h(&(&g.frow_lo, &g.frow_hi))),
+            ("row", h(&(&g.row_lo, &g.row_hi))),
+            ("active", h(&g.active)),
+            ("bloom", h(&g.bloom)),
+            ("bbox", h(&(g.bx0, g.by0, g.bx1, g.by1, g.has_fluid))),
+            ("traco", h(&g.traco)),
+            ("relevo", h(&g.relevo)),
+            ("vela", h(&g.vela)),
+            ("oleo_antes", h(&g.oleo_antes)),
+            (
+                "sim",
+                h(&(
+                    e.sim.frame,
+                    e.sim.dry_every,
+                    e.sim.traco_actual,
+                    e.sim.semente_do_po,
+                    e.sim.step_pending(),
+                )),
+            ),
+            ("pigment", h(&s.pigment)),
+            ("sombra", h(&s.sombra)),
+            ("grao", h(&s.grao)),
+            ("lanes", h(&s.lanes.len())),
+            ("adiados", h(&s.adiados.len())),
+            ("lane_trails", h(&e.lane_trails.len())),
+            ("tool_rng", h(&(t.paint.seed, t.paint.tex_rng))),
+        ]
+    };
+    let (db, da) = (dump(&mut b), dump(&mut a));
+    for ((n, x), (_, y)) in db.iter().zip(&da) {
+        eprintln!("{n}: {}", if x == y { "igual" } else { "DIFERE" });
+    }
+}
+
+/// O tecto (c): a conta sem tirar a fotografia é a da fotografia tirada (a que decide se cabe).
+#[test]
+fn a_conta_da_foto_e_a_da_foto_tirada() {
+    let e = ph2d_wet_paint::painter::Engine::new(64, 48);
+    let f = super::undo_vivo::FotoDoMotor::de_para_sonda(&e);
+    assert_eq!(
+        super::undo_vivo::FotoDoMotor::bytes_de_para_sonda(&e),
+        f.bytes()
+    );
+}
+
+/// SONDA (d): o custo da fotografia da ladeira do óleo no início de um traço (a grade inteira), por lado.
+#[test]
+#[ignore = "sonda: corre por nome com --ignored"]
+fn diag_custo_da_ladeira_no_inicio_do_traco() {
+    for lado in [1024usize, 2048, 4096] {
+        let mut e = ph2d_wet_paint::painter::Engine::new(lado, lado);
+        e.sim.oleo = true;
+        let g = &mut e.layers[0].grid;
+        g.oleo = vec![ph2d_wet_paint::grid::oleo_celula::OleoCelula::NEUTRA; g.cells];
+        g.sett.fill(1.0);
+        let mut melhor = f64::MAX;
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            e.begin_direct_stroke(0, 10.0, 10.0);
+            melhor = melhor.min(t0.elapsed().as_secs_f64() * 1e3);
+            e.end_direct_stroke();
+        }
+        eprintln!(
+            "{lado}²: fotografia da ladeira {melhor:.1} ms (mín de 5), {} MB",
+            (e.layers[0].grid.oleo_antes.len() * 4) >> 20
+        );
+    }
 }

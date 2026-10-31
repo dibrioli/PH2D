@@ -89,7 +89,7 @@ impl PainterTool {
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.undo.peek_confined_region(false);
         // A tinta viva sai do caminho do restore (que acaba a sessão) e volta com as grades de antes do passo.
-        let viva = self.wet_solta_para_o_undo();
+        let viva = self.wet_solta_para_o_undo(false);
         let desfez = if let Some(model) = self.undo.undo(&live) {
             self.restore_model_confined(*model, confined);
             true
@@ -143,12 +143,17 @@ impl PainterTool {
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.undo.peek_confined_region(true);
-        if let Some(model) = self.undo.redo(&live) {
+        let viva = self.wet_solta_para_o_undo(true);
+        let refez = if let Some(model) = self.undo.redo(&live) {
             self.restore_model_confined(*model, confined);
             true
         } else {
             false
+        };
+        if let Some(v) = viva {
+            self.wet_volta_do_undo(v, refez);
         }
+        refez
     }
 
     /// **Reconcilia a história com escritas estrangeiras, AGORA** — a porta única dos dois consumidores

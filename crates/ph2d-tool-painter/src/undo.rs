@@ -392,6 +392,8 @@ pub struct UndoController {
     max_bytes: usize,
     /// Soma corrida de [`UndoEntry::heap_bytes`] das DUAS pilhas (o redo retém tanto quanto o undo).
     bytes: usize,
+    /// Passos que o tecto tirou por baixo (e os de um `clear`) — ver [`Self::chave_do_topo`].
+    descartados: usize,
 }
 
 impl Default for UndoController {
@@ -424,6 +426,7 @@ impl UndoController {
             // que não existe.
             max_bytes,
             bytes: 0,
+            descartados: 0,
         }
     }
 
@@ -563,6 +566,7 @@ impl UndoController {
 
     /// Drop the controller's history (e.g. on `set_source` of a fresh canvas).
     pub fn clear(&mut self) {
+        self.descartados += self.undo.len() + self.redo.len() + 1;
         self.undo.clear();
         self.redo.clear();
         self.cursor = None;
@@ -607,7 +611,15 @@ impl UndoController {
         {
             let dropped = self.undo.remove(0);
             self.bytes -= dropped.heap_bytes();
+            self.descartados += 1;
         }
+    }
+
+    /// A chave ABSOLUTA do próximo passo (= profundidade + passos já descartados por baixo): não se repete quando o
+    /// tecto tira o passo mais velho nem depois de um [`Self::clear`].
+    #[must_use]
+    pub fn chave_do_topo(&self) -> usize {
+        self.descartados + self.undo.len()
     }
 }
 

@@ -173,7 +173,7 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) po: super::po::PoDoTraco,
     /// ⭐ **A tinta viva de antes de cada traço** (smoke do dono 30/10, «o undo mata a tinta viva»): as grades do
     /// motor no pen-down de cada passo, pela profundidade do undo. Desfazer o passo devolve-as e a sessão VIVE.
-    pub(super) antes_do_passo: Vec<(usize, Vec<ph2d_wet_paint::grid::GridSnapshot>)>,
+    pub(super) antes_do_passo: Vec<super::undo_vivo::PassoVivo>,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.

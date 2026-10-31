@@ -5,8 +5,7 @@ jitter de opacidade): salpicos pálidos e todos do mesmo tamanho. Falta a gota O
 composição já tem as duas coisas: um disco redondo opaco no spray, mais a 2.ª população do véu (gotas maiores, à
 opacidade 1, que não precisa da lei `VEU_OPACIDADE_MAX`), mais o tecto `particle_max_px` na tela.
 
-Sonda `familias::mistura::sonda_r2f::sonda_r2f_splatter` (#[ignore], `gestos` + `tamanhos`). Fiz 2 rondas, 6
-variantes. Todas começam do disco: `shape None`, opacidade 1, sem texturas, `count 0.6`, `veu_opacidade 1`.
+Sonda `familias::mistura::sonda_r2f::sonda_r2f_splatter` (#[ignore]); 2 rondas, todas do disco opaco sem texturas.
 
 | | spray · jitter · j.escala · particle · véu × escala · tecto | visto |
 |---|---|---|
@@ -18,9 +17,8 @@ variantes. Todas começam do disco: `shape None`, opacidade 1, sem texturas, `co
 
 Prancha `pranchas/r2_splatter.png`: antes | s5 | MyPaint tanda/splatter-04 | deevad/spray2.
 
-**Ressalva.** Nenhum dos dois oráculos é este pincel. O tanda/splatter-04 é um cordão de discos AO LONGO do traço. O
-deevad/spray2 é uma nuvem de discos translúcidos. O s5 segue a definição do coordenador (gotas opacas, de tamanhos
-vários, longe do traço). As gotas têm borda dura e saem redondas demais: falta a borda do salpico (cauda, coroa).
+**Ressalva.** Nenhum oráculo é este pincel: o tanda é um cordão de discos AO LONGO do traço, o deevad uma nuvem
+translúcida. O s5 segue a definição do coordenador. As gotas saem redondas demais: falta a cauda/coroa do salpico.
 
 **Receita pronta (não promovida, `aerografo.rs` não tocado).** Em `EM_ESTUDO[0]`:
 - `shape` → `{"kind":"None"}`, `spray_count` 4, `jitter` 0.9, `jitter_scale` 0.9, `opacity` 1;

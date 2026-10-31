@@ -94,12 +94,12 @@ pub struct PassoPlaca {
 
 /// Hash de uma linha: multiplica-e-roda sobre palavras de 8 B (não é cripto; a colisão de 64 bits é desprezável).
 fn mistura(mut h: u64, d: &[u8]) -> u64 {
-    let mut it = d.chunks_exact(8);
-    for c in &mut it {
-        let w = u64::from_le_bytes(c.try_into().unwrap_or([0; 8]));
+    let (palavras, resto) = d.as_chunks::<8>();
+    for c in palavras {
+        let w = u64::from_le_bytes(*c);
         h = (h ^ w).wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(31);
     }
-    for &b in it.remainder() {
+    for &b in resto {
         h = (h ^ u64::from(b))
             .wrapping_mul(0x9E37_79B9_7F4A_7C15)
             .rotate_left(31);

@@ -73,7 +73,7 @@ fn aguada_com_paredes(w: usize, h: usize) -> Engine {
     e.sliders.size = 1.0;
     let (wf, hf) = (w as f64, h as f64);
     // `pointer_down` não numera o traço (só `begin_direct_stroke`, a porta do produto): numera-se à mão.
-    let mut t = |e: &mut Engine, x0: f64, x1: f64, y: f64| {
+    let t = |e: &mut Engine, x0: f64, x1: f64, y: f64| {
         e.sim.traco_actual += 1;
         traco(e, x0, x1, y);
     };

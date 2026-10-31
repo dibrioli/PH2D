@@ -29,13 +29,23 @@ Programa: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercol
 Fábrica: Re-wet/Drag/Solubility = 0 em todos os presets (ligar à mão: Dabber Solubility 1; Wet Flat Re-wet 0,35, Drag 0,05–0,3).
 Os valores de fábrica são do dono, depois do smoke.
 
+## Smoke do dono (30/10, depois do `e42174cc5a`)
+- Foto [`pranchas/J10_smoke_dono_real_oil_empalidece.png`](pranchas/J10_smoke_dono_real_oil_empalidece.png) (setas):
+  **«Real Oil empalidece a tinta»** — onde a aguada amarela com o Real Oil passa pelo óleo azul o miolo fica branco-rosado/pálido,
+  não azul nem verde. NOVO item 0 do Aberto.
+- **«Cor da água tingida: sai verde se Pigment mixing em Tuning estiver checado»** ⇒ o Aberto 3 (ardósia) é o modo de mistura
+  RGB por omissão, não o motor do re-molhar; decidir com o dono se o Pigment mixing vira omissão do Wet Paint ou vai ao Inspector.
+- Foto anterior (o pincel não mobilizava o Dabber): [`pranchas/J10_smoke_dono_nao_mobiliza.png`](pranchas/J10_smoke_dono_nao_mobiliza.png).
+
 ## Aberto
+0. **Real Oil empalidece** (smoke acima): medir na sonda `remolha_tests` com o Real Oil LIGADO no Wet Flat (o Over Oil revertido
+   da J9 e `Ecra::com_oleo`/`na_caixa_das_tintas` de `776a9ff173` são suspeitos: o branco do tapar extra); red-first.
 1. **Queda pela DILUIÇÃO** (dono: «mesmo tirando muita água do pincel a queda é muito rápida»): a 1.ª lei (pesar a ladeira
    pelo `film`) não mexeu um algarismo ⇒ retirada. Tabela em `f70ea44cd9`/sonda `diag_a_queda_na_ladeira`
    (`queda_na_ladeira_tests.rs`). Próximo: medir `MaxVelocity` e a advecção do suspenso; pode pedir um knob. Testes por escrever.
 2. Undo: aguarela × aguarela difere 13 B (estado fora da grade? `#[ignore]` com motivo); redo ainda mata a sessão; fotografia
    por passo SEM tecto de memória (medir a 4096²). `oleo_antes` não é reposto pelo undo; varre a grade inteira por traço.
-3. Cor: a água tingida sai azul-ardósia (o óleo tem ~5× a massa da aguada), o óleo restante não esverdeia; pontos amarelos sob
+3. Cor (ver smoke: verde com Pigment mixing): a água tingida sai azul-ardósia (o óleo tem ~5× a massa da aguada), o óleo restante não esverdeia; pontos amarelos sob
    o óleo a meio do traço (vistos também no smoke do dono, setas).
 4. Censos por correr sob carga: `o_painel_mostra_o_que_a_ferramenta_le` (2 de 6: `a_cor_escondida_…`, `cada_ferramenta_da_agua_so_ve_…`)
    com `PH2D_TEST_TIMEOUT=1800`.

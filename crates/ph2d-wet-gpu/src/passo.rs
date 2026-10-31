@@ -13,8 +13,8 @@ use ph2d_wet_paint::grid::Grid;
 use ph2d_wet_paint::sim::Sim;
 use ph2d_wet_paint::tuning::{Knob, Tuning};
 
-/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem paredes/gota/óleo/ladeira, sem
-/// fingering/backrun/difusão, passo Jacobi (degraus 3–5).
+/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/óleo/ladeira, sem
+/// fingering/backrun/difusão, passo Jacobi (degraus 3–5). As paredes entre traços a placa sabe (`traco`).
 #[must_use]
 pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
     let p = sim.gather_params(tuning);
@@ -26,7 +26,6 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         && !sim.step_pending()
         && matches!(p.ecra, Ecra::Cobre { .. })
         && !p.km_mixing
-        && !p.paredes
         && p.oleo == 0.0
         && sim.drip_head == 0.0
         && g.oleo.is_empty()
@@ -178,10 +177,9 @@ impl PassoPlaca {
         u.gx = grav[0] as f32;
         u.gy = grav[1] as f32;
         self.adv.set_uniforms(gpu, &u);
-        self.adv.set_knobs(
-            gpu,
-            &Knobs::from_params(&p, g.flow.rf).com_sedimenta(p.sedimenta, grav[0], grav[1]),
-        );
+        let mut k = Knobs::from_params(&p, g.flow.rf).com_sedimenta(p.sedimenta, grav[0], grav[1]);
+        k.isola = i32::from(p.paredes && !g.traco.is_empty());
+        self.adv.set_knobs(gpu, &k);
         if n.is_multiple_of(2) {
             self.adv.step_plano(gpu, &u, 1, &PLANO_REBUILD);
             let (bx0, bx1, by0, by1, hf) = self.adv.readback_caixa(gpu);

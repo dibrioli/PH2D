@@ -68,13 +68,13 @@ fn flow_probe(c: i32, w: i32) -> i32 {
 
 // O retro-traço `s = c − uv`: base inteira + fração, tirados de `−uv` (pequeno) e não de
 // `c − uv` (a 4096 o ulp de f32 seria 5e-4 na fração).
-struct Bt { ok: bool, x0: i32, fx: f32, y0: i32, fy: f32 }
-fn split(c: i32, d: f32) -> vec2<f32> {
+// `gx = 1 − fx` sai de `(fl + 1) − d` e não de `1 − f`: com `d = −1e-10` a fração `f` arredonda a 1 em f32 e o
+// peso do canto de baixo seria 0, quando a CPU (f64) lhe dá 1e-10 — o resíduo que a parede entre traços vê
+// (`susp > 0`). Sem o «embrulho» `f ≥ 1 ⇒ base + 1`: a base fica a da CPU (`floor` em f64).
+struct Bt { ok: bool, x0: i32, fx: f32, y0: i32, fy: f32, gx: f32, gy: f32 }
+fn split(c: i32, d: f32) -> vec3<f32> {
     let fl = floor(d);
-    var f = d - fl;
-    var b = c + i32(fl);
-    if f >= 1.0 { f = 0.0; b = b + 1; }
-    return vec2<f32>(bitcast<f32>(b), f);
+    return vec3<f32>(bitcast<f32>(c + i32(fl)), d - fl, (fl + 1.0) - d);
 }
 fn backtrace(x: i32, y: i32, v: vec2<f32>) -> Bt {
     let sx = split(x, -v.x);
@@ -83,11 +83,11 @@ fn backtrace(x: i32, y: i32, v: vec2<f32>) -> Bt {
     let by = bitcast<i32>(sy.x);
     let fora = bx < 1 || bx > u.w || (bx == u.w && sx.y > 0.0)
         || by < 1 || by > u.h || (by == u.h && sy.y > 0.0);
-    return Bt(!fora, bx, sx.y, by, sy.y);
+    return Bt(!fora, bx, sx.y, by, sy.y, sx.z, sy.z);
 }
 
-fn corner_weight(c: i32, base: i32, frac: f32) -> f32 {
-    if c == base { return 1.0 - frac; }
+fn corner_weight(c: i32, base: i32, frac: f32, comp: f32) -> f32 {
+    if c == base { return comp; }
     if c == base + 1 { return frac; }
     return 0.0;
 }
@@ -127,10 +127,10 @@ fn outflow_pass(@builtin(global_invocation_id) g: vec3<u32>) {
             if act[di] == 0u { continue; }
             let t = backtrace(nx, ny, uv[di]);
             if !t.ok { continue; }
-            let wy = corner_weight(c.y, t.y0, t.fy);
+            let wy = corner_weight(c.y, t.y0, t.fy, t.gy);
             if wy == 0.0 { continue; }
             if t.x0 == c.x {
-                acc += (1.0 - t.fx) * wy;
+                acc += t.gx * wy;
             } else if t.x0 + 1 == c.x {
                 acc += t.fx * wy;
             }
@@ -146,8 +146,11 @@ fn transport(@builtin(global_invocation_id) g: vec3<u32>) {
     let i = c.i;
     let fm = st[i];
     let leave = min(outflow[i], 1.0);
-    var nf = fm.x - fm.x * leave;
-    var nm = fm.y - fm.y * leave;
+    // `m·(1 − leave)`: `1 − leave` é exacto em f32 (Sterbenz, leave ≥ 0,5), e o resíduo de uma célula que quase
+    // se esvazia fica > 0 como o `m − m·leave` em f64 da CPU (o `m − m·leave` em f32 dava 0 — e a parede entre
+    // traços pergunta `susp > 0`).
+    var nf = fm.x * (1.0 - leave);
+    var nm = fm.y * (1.0 - leave);
     var col = vec3<f32>(rgb[3 * i], rgb[3 * i + 1], rgb[3 * i + 2]);
     if act[i] != 0u {
         let t = backtrace(c.x, c.y, uv[i]);
@@ -158,9 +161,11 @@ fn transport(@builtin(global_invocation_id) g: vec3<u32>) {
             let i11 = i01 + 1;
             let fx = t.fx;
             let fy = t.fy;
-            let k00 = (1.0 - fx) * (1.0 - fy) * take_scale(outflow[i00]);
-            let k10 = fx * (1.0 - fy) * take_scale(outflow[i10]);
-            let k01 = (1.0 - fx) * fy * take_scale(outflow[i01]);
+            let gx = t.gx;
+            let gy = t.gy;
+            let k00 = gx * gy * take_scale(outflow[i00]);
+            let k10 = fx * gy * take_scale(outflow[i10]);
+            let k01 = gx * fy * take_scale(outflow[i01]);
             let k11 = fx * fy * take_scale(outflow[i11]);
             let s00 = st[i00];
             let s10 = st[i10];
@@ -209,7 +214,7 @@ fn fcell(g: vec3<u32>) -> FCell {
     return FCell(x <= u.fx1 && y <= u.fy1, x, y, x + y * u.fs);
 }
 
-// `smooth_velocity_rows` sem gota e sem paredes: média de 5 pontos da velocidade persistente.
+// `smooth_velocity_rows` sem gota: média de 5 pontos da velocidade persistente; zero no eixo com parede.
 @compute @workgroup_size(16, 16, 1)
 fn suaviza(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = fcell(g);
@@ -224,8 +229,13 @@ fn suaviza(@builtin(global_invocation_id) g: vec3<u32>) {
         fx = 0.2 * vel_x[i] + 0.2 * (vel_x[i - 1] + vel_x[i + 1] + vel_x[i - u.fs] + vel_x[i + u.fs]);
         fy = 0.2 * vel_y[i] + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
     }
-    flow_x[i] = clamp(fx, -u.max_v, u.max_v);
-    flow_y[i] = clamp(fy, -u.max_v, u.max_v);
+    let pl = flow_probe(c.x - 1, u.w);
+    let pr = flow_probe(c.x + 1, u.w);
+    let px = flow_probe(c.x, u.w);
+    let ym = flow_probe(c.y, u.h) * u.s;
+    let w = parede(fi, pl + ym, pr + ym, px + flow_probe(c.y - 1, u.h) * u.s, px + flow_probe(c.y + 1, u.h) * u.s);
+    flow_x[i] = select(clamp(fx, -u.max_v, u.max_v), 0.0, w.x);
+    flow_y[i] = select(clamp(fy, -u.max_v, u.max_v), 0.0, w.y);
 }
 
 // `momentum_rows`: o fluxo na origem do retro-traço + gravidade × água daqui.
@@ -252,7 +262,7 @@ fn momentum(@builtin(global_invocation_id) g: vec3<u32>) {
 }
 
 // ---- o CAMPO de fluxo (`build_flow_field_jacobi`, quadros n % 4 == 0) ----------------------
-// O caminho do produto por omissão: sem ladeira do óleo, sem paredes (traço vazio), sem gota
+// O caminho do produto por omissão: sem ladeira do óleo, sem gota
 // (`drip_head = 0`), sem fingering e sem backrun (knobs a 0). Ver PLACA_degrau3.md.
 
 struct K {
@@ -261,12 +271,24 @@ struct K {
     visc_t: f32, brake_bias: f32, brake_reach: f32, dif: f32,
     // `project`: o knob `Projection`. `sedimenta`: fracções por eixo e sentido (−1/0/1).
     projection: f32, sed_ax: f32, sed_ay: f32, _k0: f32,
-    sed_dx: i32, sed_dy: i32, _k1: i32, _k2: i32,
+    // `isola`: as paredes entre traços valem neste passo (`p.paredes` e o campo `traco` existe).
+    sed_dx: i32, sed_dy: i32, isola: i32, _k2: i32,
 }
 @group(0) @binding(12) var<storage, read> paper: array<f32>;
 @group(0) @binding(13) var<storage, read_write> wet: array<u32>;
 @group(0) @binding(14) var<storage, read> sett: array<f32>;
 @group(0) @binding(15) var<uniform> k: K;
+@group(0) @binding(18) var<storage, read> traco: array<u32>;
+
+// `grid::traco::separa`: traços diferentes, as duas com tinta molhada (`susp > 0`).
+fn separa(a: i32, b: i32) -> bool {
+    return traco[a] != traco[b] && st[a].y > 0.0 && st[b].y > 0.0;
+}
+// `solver::parede_do_traco`: os eixos `[x, y]` com parede (vizinhos `l, r, u, d`, índices finos).
+fn parede(c: i32, l: i32, r: i32, up: i32, dn: i32) -> vec2<bool> {
+    if k.isola == 0 { return vec2(false, false); }
+    return vec2(separa(c, l) || separa(c, r), separa(c, up) || separa(c, dn));
+}
 
 // `flow_rows`: o núcleo gather — escreve `flow` e mais nada; lê o `wet` do INÍCIO do passo.
 @compute @workgroup_size(16, 16, 1)
@@ -285,9 +307,14 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
     let f = st[fi].x;
     var ex = vel_x[i];
     var ey = vel_y[i];
-    // Leveling: do grosso para o fino, clampado por eixo.
-    ex += clamp((st[pl + ym].x - st[pr + ym].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
-    ey += clamp((st[px + yu].x - st[px + yd].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    // Leveling: do grosso para o fino, clampado por eixo; zero no eixo com parede.
+    let wl = parede(fi, pl + ym, pr + ym, px + yu, px + yd);
+    if !wl.x {
+        ex += clamp((st[pl + ym].x - st[pr + ym].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    }
+    if !wl.y {
+        ey += clamp((st[px + yu].x - st[px + yd].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    }
     // Capilar: só tinta fina segue o dente do papel.
     if st[fi].y + sett[fi] < k.cap_gate {
         let pc = paper[fi];
@@ -320,8 +347,8 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
         ex *= br;
         ey *= br;
     }
-    flow_x[i] = clamp(ex, -u.max_v, u.max_v);
-    flow_y[i] = clamp(ey, -u.max_v, u.max_v);
+    flow_x[i] = select(clamp(ex, -u.max_v, u.max_v), 0.0, wl.x);
+    flow_y[i] = select(clamp(ey, -u.max_v, u.max_v), 0.0, wl.y);
 }
 
 // `wet_stamp_rows`: film fundo marca a folha úmida (corre DEPOIS do `campo`).

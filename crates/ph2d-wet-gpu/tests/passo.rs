@@ -59,8 +59,29 @@ fn aguada(w: usize, h: usize) -> Engine {
     traco(&mut e, 0.2 * wf, 0.8 * wf, 0.5 * hf);
     e.color = [0.1, 0.3, 0.9];
     traco(&mut e, 0.15 * wf, 0.7 * wf, 0.62 * hf);
-    // A placa não tem as paredes entre traços (LIGACAO_PLACA.md defeito 5): o passo das ferramentas que movem tinta.
-    e.sim.paredes = false;
+    e
+}
+
+/// A aguada com as PAREDES entre traços: o pincel com a lei (`LevelingOwnStroke`) marca o `traco` de cada célula e o
+/// passo tem `sim.paredes` ligado (o pincel normal) — o caminho que antes caía na CPU.
+fn aguada_com_paredes(w: usize, h: usize) -> Engine {
+    let mut e = Engine::new(w, h);
+    e.tuning.set(Knob::LevelingOwnStroke, 1.0);
+    e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
+    e.sim.pickup_assentado = 0.0;
+    e.sliders.water = 1.0;
+    e.sliders.size = 1.0;
+    let (wf, hf) = (w as f64, h as f64);
+    // `pointer_down` não numera o traço (só `begin_direct_stroke`, a porta do produto): numera-se à mão.
+    let mut t = |e: &mut Engine, x0: f64, x1: f64, y: f64| {
+        e.sim.traco_actual += 1;
+        traco(e, x0, x1, y);
+    };
+    t(&mut e, 0.1 * wf, 0.9 * wf, 0.3 * hf);
+    e.color = [0.8, 0.2, 0.1];
+    t(&mut e, 0.2 * wf, 0.8 * wf, 0.34 * hf);
+    e.color = [0.1, 0.3, 0.9];
+    t(&mut e, 0.15 * wf, 0.7 * wf, 0.38 * hf);
     e
 }
 
@@ -102,8 +123,39 @@ fn desvio_cor(g: &Grid, a: &[[f64; 3]], b: &[[f64; 3]]) -> (f64, f64, usize) {
 #[ignore = "placa — corra com --ignored --nocapture"]
 fn o_passo_placa_sobre_o_engine_casa_com_a_cpu_na_cor() {
     let Some(gpu) = contexto() else { return };
-    let (w, h, passos) = (512usize, 320usize, 60usize);
-    let mut e = aguada(w, h);
+    compara(&gpu, aguada(512, 320));
+}
+
+/// O mesmo gate com as PAREDES entre traços ligadas (`sim.paredes` do pincel normal + `traco` marcado): três
+/// traços que se tocam molhados, a parede tem de existir (células separadas > 0) e a cor casar ao mesmo limiar.
+#[test]
+#[ignore = "placa — corra com --ignored --nocapture"]
+fn o_passo_placa_com_paredes_casa_com_a_cpu_na_cor() {
+    let Some(gpu) = contexto() else { return };
+    let e = aguada_com_paredes(512, 320);
+    let g = &e.layers[e.active_layer].grid;
+    assert!(e.sim.paredes, "o pincel normal liga as paredes");
+    assert!(!g.traco.is_empty(), "o pincel com a lei marcou o traço");
+    let sep = |a: usize, b: usize| ph2d_wet_paint::grid::traco::separa(&g.traco, &g.susp, a, b);
+    let viz = (1..g.h)
+        .flat_map(|y| (1..g.w).map(move |x| x + y * g.s))
+        .filter(|&i| sep(i, i + 1) || sep(i, i + g.s))
+        .count();
+    let mut ids: Vec<u32> = g.traco.clone();
+    ids.sort_unstable();
+    ids.dedup();
+    eprintln!("PAREDES: {viz} células com vizinho separado · traços {ids:?}");
+    assert!(viz > 0, "a cena tem de ter paredes");
+    compara(&gpu, e);
+}
+
+fn compara(gpu: &GpuContext, mut e: Engine) {
+    let gpu = gpu.clone();
+    let passos = 60usize;
+    let (w, h) = (
+        e.layers[e.active_layer].grid.w,
+        e.layers[e.active_layer].grid.h,
+    );
     let idx = e.active_layer;
     let pp = e.sim.gather_params(&e.tuning);
     assert!(

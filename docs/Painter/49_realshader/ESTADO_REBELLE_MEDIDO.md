@@ -17,7 +17,7 @@ os factos do Rebelle usados são os que o prompt transcreve.
 | C.1 f32 / C.2 v3 | FEITA ([SONDAS_C_f32_v3.md](SONDAS_C_f32_v3.md)) | general-purpose | b393430f66 | ver abaixo |
 | A ronda 3 | mutação: M2/M6/M6a/M7 sobreviveram ⇒ 3 testes (escala da curvatura, meio pixel, borda) | mutacao | 28b374e391 | 10 mutantes, 6 sangraram de início |
 | Fecho | FEITO: handoff [HANDOFF_REBELLE_MEDIDO.md](HANDOFF_REBELLE_MEDIDO.md); fmt/clippy ✓; testes por nome ✓; 5 vermelhos anteriores à missão anotados; mutação 10/10 após r3 | — | ver git log | — |
-| D Rebelle 4K | aguarda AVAL do dono (ocupa o ecrã real) | — | — | — |
+| D Rebelle 4K | FEITA ([D_rebelle_4k.md](D_rebelle_4k.md)); régua «parado» de custo_facas.sh bate no tecto de 90 s em 4K (parado 0,08–0,11 núcleo) — números do traço por segundo; traços em coords 1200×800 (canto da tela) | general-purpose | 4738e697a0 | criação 4K 1–2 s, 3,2 s CPU, pico ~3 núcleos · 20 pinceladas ~8 s, 9–11 s CPU, ~2 núcleos; placa ~4 % |
 
 ## Números
 

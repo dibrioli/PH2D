@@ -299,6 +299,17 @@ pub(crate) fn paint_hierarchy_row(
     );
 }
 
+/// ⭐ Um interruptor da linha (olho, grupo, cadeado) é pintável por arrasto — vertical (outras linhas)
+/// e horizontal (as outras funções da mesma linha): um grupo só para os três (dono 01/11).
+fn pintavel(id: ph2d_a11y::NodeId, ligado: bool, rect: Rect) {
+    ph2d_editor_core::interaction::toggle_paint::celula(
+        id,
+        crate::ids::HIER_TOGGLE_PAINT_GROUP,
+        ligado,
+        rect,
+    );
+}
+
 /// **O OLHO** — o companheiro mais à direita. Saiu do [`paint_hierarchy_row`] pelo tecto de 200
 /// LOC quando a linha ganhou os ícones de componente: recebe o `right_x` e devolve onde acaba.
 fn paint_row_eye(
@@ -333,6 +344,7 @@ fn paint_row_eye(
         let hit_pad = Spacing::Xs.px();
         let hit_rect = row_tall(rect, eye_rect.x - hit_pad, eye_rect.w + hit_pad * 2.0);
         idx.register(ids::hier_eye_companion(row_id), hit_rect);
+        pintavel(ids::hier_eye_companion(row_id), entity.visible, hit_rect);
     }
     right_x - eye_size
 }
@@ -389,6 +401,11 @@ fn paint_row_locks(
         let hit_pad = Spacing::Xs.px();
         let hit_rect = row_tall(rect, group_rect.x - hit_pad, group_rect.w + hit_pad * 2.0);
         idx.register(crate::ids::hier_group_companion(row_id), hit_rect);
+        pintavel(
+            crate::ids::hier_group_companion(row_id),
+            entity.group_locked,
+            hit_rect,
+        );
     }
     right_x -= icon_btn + icon_cluster_gap;
     // ── Lock individual (cadeado) — Enio: "Cadeado trava apenas o
@@ -422,6 +439,11 @@ fn paint_row_locks(
         let hit_pad = Spacing::Xs.px();
         let hit_rect = row_tall(rect, lock_rect.x - hit_pad, lock_rect.w + hit_pad * 2.0);
         idx.register(crate::ids::hier_lock_companion(row_id), hit_rect);
+        pintavel(
+            crate::ids::hier_lock_companion(row_id),
+            entity.locked,
+            hit_rect,
+        );
     }
     right_x -= icon_btn + icon_cluster_gap;
     right_x

@@ -128,6 +128,7 @@ pub mod present;
 /// ⭐⭐⭐ **A reposição do estado VIVO ao rebobinar** — ver o cabeçalho do módulo.
 pub mod rewind_runtime;
 pub mod root_order;
+pub mod row_flag;
 pub mod sampling;
 pub mod scene;
 /// ⭐⭐⭐ **A PARALAXE — um número por objecto** (plano 24, W1). Módulo irmão, append-only: a lei é

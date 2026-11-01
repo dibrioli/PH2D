@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_long_filter_list_scrolls;
+mod dragging_over_the_row_toggles_paints_them;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod hierarchy_apply_event;
 mod hierarchy_context_menu;

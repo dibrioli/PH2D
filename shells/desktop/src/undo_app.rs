@@ -394,6 +394,28 @@ impl crate::App {
         Some(&mut hero.undo_links)
     }
 
+    /// Porque este quadro NÃO regista passo (`None` = regista, se o documento mudou). O botão em
+    /// baixo é o que faz um arrasto inteiro — o gizmo, os interruptores pintados — ser UM passo.
+    pub(crate) fn motivo_da_supressao(&self, had_input: bool) -> Option<&'static str> {
+        if self.undo.jogo.a_correr() {
+            Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
+        } else if self.held_button.is_some() {
+            Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
+        } else if self
+            .flip_state
+            .colorize
+            .live_busy(self.flip_state.style.as_ref())
+        {
+            Some(tr("shell.undo_app.colorize_a_recalcular"))
+        } else if self.ui_state_live {
+            Some(tr("shell.undo_app.transicao_de_estado_de"))
+        } else if !had_input {
+            Some(tr("shell.undo_app.sem_entrada_neste"))
+        } else {
+            None
+        }
+    }
+
     fn post_frame_undo_steps(&mut self) {
         // ⚠️ **PRIMEIRO, e antes de qualquer captura:** o ledger da condução esquece quem os
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
@@ -474,24 +496,7 @@ impl crate::App {
         // AUSÊNCIA de eventos é o último.** *Um diagnóstico que nomeia a causa errada entre duas
         // simultâneas é pior do que não nomear nenhuma.*
         // O que o jogo muda não é do artista: a saída da corrida repõe a fotografia (`undo::jogo`).
-        let motivo = if self.undo.jogo.a_correr() {
-            Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
-        } else if self.held_button.is_some() {
-            Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
-        } else if self
-            .flip_state
-            .colorize
-            .live_busy(self.flip_state.style.as_ref())
-        {
-            Some(tr("shell.undo_app.colorize_a_recalcular"))
-        } else if self.ui_state_live {
-            Some(tr("shell.undo_app.transicao_de_estado_de"))
-        } else if !had_input {
-            Some(tr("shell.undo_app.sem_entrada_neste"))
-        } else {
-            None
-        };
-        if let Some(motivo) = motivo {
+        if let Some(motivo) = self.motivo_da_supressao(had_input) {
             // ⚠️ **A captura só acontece com o log LIGADO** — ela é o passo caro do quadro, e
             // pagá-la em toda supressão seria trocar um diagnóstico por uma regressão de relógio.
             if Self::undo_log_on()

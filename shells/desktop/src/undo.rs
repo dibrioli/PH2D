@@ -572,3 +572,7 @@ mod sharing_tests;
 #[cfg(test)]
 #[path = "undo_selection_tests.rs"]
 mod selection_tests;
+
+#[cfg(test)]
+#[path = "undo_drag_tests.rs"]
+mod drag_tests;

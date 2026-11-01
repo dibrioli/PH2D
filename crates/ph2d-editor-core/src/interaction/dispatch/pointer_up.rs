@@ -22,6 +22,7 @@ pub(super) fn dispatch_up<'frame>(
     // Picker drag ends on Up — clear the anchor so a stray
     // Move after release doesn't drag the picker further.
     store.end_blender_drag();
+    crate::interaction::toggle_paint::soltar();
     // Panel-resize drag also ends on Up.
     store.end_panel_resize();
     // Same for scrollbar drag.

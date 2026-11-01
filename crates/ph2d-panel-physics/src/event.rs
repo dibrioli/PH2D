@@ -24,13 +24,17 @@ fn cell_pair(index: usize) -> (usize, usize) {
 /// ⭐ **Toda escrita do painel sobre o mundo** (F41): a MESMA edição vai ao autorado (o que o save
 /// grava) e ao vivo que a linha mostrava ([`state::Toque`]) — uma porta, para que nenhum controlo
 /// esqueça a mão escondida pela curva.
+/// ⭐ Duas edições no MESMO quadro (o arrasto que pinta a matriz) somam-se: cada uma parte da última
+/// ainda na fila, e não do instantâneo — senão a segunda apagava a primeira.
 fn editar(f: impl Fn(PhysicsSettings) -> PhysicsSettings) {
     let snap = state::current();
+    let (autorado, pedido) =
+        state::ultimo_set_settings().map_or((snap.settings, snap.vivo), |(s, t)| (s, t.pedido));
     state::push_intent(PhysicsIntent::SetSettings(
-        f(snap.settings),
+        f(autorado),
         state::Toque {
             visto: snap.vivo,
-            pedido: f(snap.vivo),
+            pedido: f(pedido),
         },
     ));
 }

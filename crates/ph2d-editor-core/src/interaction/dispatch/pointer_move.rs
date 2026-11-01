@@ -29,6 +29,12 @@ pub(super) fn dispatch_move<'frame>(
     // o app deixaria de saber onde o ponteiro está. *Um facto sobre o ponteiro regista-se onde o
     // ponteiro chega, nunca dentro de um dos ramos que o consomem.*
     crate::text_elide::balao::onde_esta_o_rato(Some((event.x, event.y)));
+    // ⭐ O arrasto que pinta interruptores é dono do `Move` enquanto dura.
+    if crate::interaction::toggle_paint::mover(hit_index, event.x, event.y, |id| {
+        events.push(WidgetEvent::Click(id));
+    }) {
+        return;
+    }
     // ⭐ O arrasto de uma aba (mudar um painel de encaixe, decisão D4) segue o cursor aqui. No-op
     // sem arrasto em curso, e o limiar vive no `tab_being_dragged` — este sítio só transporta.
     store.update_tab_drag(event.x, event.y);

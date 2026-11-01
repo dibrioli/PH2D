@@ -21,9 +21,9 @@ pub(in crate::render_loop) struct DrainOut {
     // ⭐ O pedido de MODO do quadro (spec/06 F2) — o seletor, o `Tab` ou uma aba de cima.
     pub(in crate::render_loop) object_mode_request:
         Option<ph2d_editor_core::object_mode::ModeRequest>,
-    pub(in crate::render_loop) visibility_toggle_row: Option<NodeId>,
-    pub(in crate::render_loop) lock_toggle_row: Option<NodeId>,
-    pub(in crate::render_loop) group_toggle_row: Option<NodeId>,
+    pub(in crate::render_loop) visibility_toggle_row: Vec<NodeId>,
+    pub(in crate::render_loop) lock_toggle_row: Vec<NodeId>,
+    pub(in crate::render_loop) group_toggle_row: Vec<NodeId>,
     pub(in crate::render_loop) reparent_intent:
         Option<ph2d_editor_core::screens::hero::HierReparentIntent>,
     pub(in crate::render_loop) duplicate_row: Option<NodeId>,

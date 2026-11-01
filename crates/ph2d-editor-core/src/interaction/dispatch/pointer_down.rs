@@ -60,6 +60,15 @@ pub(super) fn dispatch_down<'frame>(
         crate::widget::key_mark::pedir(c);
         return;
     }
+    // ⭐ Premir um interruptor pintável vira-o JÁ e começa o arrasto que pinta os outros
+    //    (`interaction::toggle_paint`); o `Up` não emite um segundo clique.
+    if event.button == ph2d_host::PointerButton::Primary
+        && let Some((id, _)) = hit
+        && let Some(t) = crate::interaction::toggle_paint::premir(id, event.x, event.y)
+    {
+        events.push(WidgetEvent::Click(t));
+        return;
+    }
     // ⭐ **Estação 1 do arrasto de linha: SEMEAR.** Ver `dispatch::hierarchy::diag_down` — ela
     // corre ANTES de qualquer triagem de propósito, porque uma pressão que não acerta em widget
     // nenhum é precisamente o caso que o report de 2026-09-07 deixou sem rasto.

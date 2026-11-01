@@ -17,17 +17,17 @@ impl crate::App {
             EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::ToggleVisibility { row },
             ) => {
-                pd.visibility_toggle_row.get_or_insert(row);
+                pd.visibility_toggle_row.push(row);
             }
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::ToggleLock {
                 row,
             }) => {
-                pd.lock_toggle_row.get_or_insert(row);
+                pd.lock_toggle_row.push(row);
             }
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::ToggleGroup {
                 row,
             }) => {
-                pd.group_toggle_row.get_or_insert(row);
+                pd.group_toggle_row.push(row);
             }
             EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::Reparent(
                 intent,
@@ -327,3 +327,7 @@ impl crate::App {
         None
     }
 }
+
+#[cfg(test)]
+#[path = "fase_bus_hierarchy_tests.rs"]
+mod tests;

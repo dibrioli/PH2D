@@ -42,6 +42,7 @@ pub mod flip_strip;
 pub mod hit;
 pub mod press_slop;
 pub mod state;
+pub mod toggle_paint;
 mod tool_bars;
 pub mod touch;
 pub mod types;

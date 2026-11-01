@@ -1441,3 +1441,66 @@ fn the_sleep_switch_writes_the_sign_the_solver_reads() {
         );
     }
 }
+
+/// O centro de uma célula `(i, j)` da matriz, como a pintura a registou.
+fn centro_da_celula(painted: &[(ph2d_a11y::NodeId, Rect)], i: usize, j: usize) -> (f32, f32) {
+    let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
+    let r = painted
+        .iter()
+        .find(|(p, _)| *p == id)
+        .map(|(_, r)| *r)
+        .unwrap_or_else(|| panic!("a célula ({i},{j}) não foi pintada"));
+    (r.x + r.w * 0.5, r.y + r.h * 0.5)
+}
+
+/// ⭐ **Arrastar sobre a matriz pinta** (dono 01/11, o idioma dos olhos do Blender): premir (7,0)
+/// desliga-o, e UM `Move` rápido até (7,7) desliga cada par da linha — o (7,3), que já se via
+/// desligado, fica desligado (posto, não virado) — e tudo chega num único pedido somado.
+#[test]
+fn arrastar_na_matriz_pinta_cada_celula_atravessada_com_o_estado_do_primeiro_clique() {
+    let (mut host, mut state) = arrange(PhysicsSettings::default());
+    let vivo = sem_par(7, 3);
+    mostrar(PhysicsSettings::default(), vivo);
+    let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+    let (x0, y0) = centro_da_celula(&painted, 7, 0);
+    let (x1, y1) = centro_da_celula(&painted, 7, 7);
+    let eventos = host.drag_at(x0, y0, x1, y1);
+    let viradas: Vec<_> = eventos
+        .iter()
+        .filter_map(|e| match e {
+            WidgetEvent::Click(id) => Some(*id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        viradas.len(),
+        7,
+        "premida + 6 atravessadas (o (7,3) já mostrava a tinta): {viradas:?}"
+    );
+    for e in eventos {
+        host.apply_panel_event::<PhysicsPanel>(&mut state, e);
+    }
+    let intents = drain_intents();
+    let Some(PhysicsIntent::SetSettings(got, toque)) = intents
+        .iter()
+        .rev()
+        .find(|i| matches!(i, PhysicsIntent::SetSettings(..)))
+    else {
+        panic!("o arrasto não pediu nada: {intents:?}");
+    };
+    let got = ph2d_physics_ecs::LayerMatrix::from_rows(got.layer_matrix);
+    let pedido = ph2d_physics_ecs::LayerMatrix::from_rows(toque.pedido.layer_matrix);
+    for j in 0..8 {
+        assert!(
+            !pedido.collides(7, j),
+            "o par (7,{j}) tinha de ficar desligado no que se vê"
+        );
+        if j != 3 {
+            assert!(
+                !got.collides(7, j),
+                "o par (7,{j}) tinha de ficar desligado no autorado"
+            );
+        }
+    }
+    assert!(got.collides(6, 0), "uma célula fora do caminho não muda");
+}

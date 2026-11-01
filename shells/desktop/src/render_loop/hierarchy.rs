@@ -47,9 +47,9 @@ pub(super) enum HierarchySelectIntent {
 /// Returns `true` if any dispatch pushed a toast.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
-    visibility_toggle_row: Option<NodeId>,
-    lock_toggle_row: Option<NodeId>,
-    group_toggle_row: Option<NodeId>,
+    visibility_toggle_row: Vec<NodeId>,
+    lock_toggle_row: Vec<NodeId>,
+    group_toggle_row: Vec<NodeId>,
     reparent_intent: Option<HierReparentIntent>,
     duplicate_row: Option<NodeId>,
     add_child_row: Option<NodeId>,
@@ -274,9 +274,9 @@ pub(super) fn dispatch(
 /// devolve se o título ficou sujo.
 #[allow(clippy::too_many_arguments)]
 fn drain_view_and_row_toggles(
-    visibility_toggle_row: Option<NodeId>,
-    lock_toggle_row: Option<NodeId>,
-    group_toggle_row: Option<NodeId>,
+    visibility_toggle_row: Vec<NodeId>,
+    lock_toggle_row: Vec<NodeId>,
+    group_toggle_row: Vec<NodeId>,
     reparent_intent: Option<HierReparentIntent>,
     hero: &mut HeroScreen,
     hero_live: &Option<HeroLive>,
@@ -298,50 +298,15 @@ fn drain_view_and_row_toggles(
     // M14.6A: drain pending hierarchy visibility toggle — resolve row
     // NodeId → ECS Entity via the bridge, flip the `Visibility`
     // component on SimWorld.
-    if let Some(row_id) = visibility_toggle_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row_id)
-    {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        let sim_w = sim.world_mut();
-        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
-            let was_hidden = entry
-                .get::<ph2d_ecs::Visibility>()
-                .is_some_and(|v| v.hidden);
-            entry.insert(ph2d_ecs::Visibility {
-                hidden: !was_hidden,
-            });
-        }
-    }
-    // 2026-05-26 — drain Lock + GroupedChildren toggles. Mesma
-    // pattern do visibility_toggle_row.
-    if let Some(row_id) = lock_toggle_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row_id)
-    {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        let sim_w = sim.world_mut();
-        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
-            if entry.get::<ph2d_ecs::Locked>().is_some() {
-                entry.remove::<ph2d_ecs::Locked>();
-            } else {
-                entry.insert(ph2d_ecs::Locked);
-            }
-        }
-    }
-    if let Some(row_id) = group_toggle_row
-        && let Some(live) = hero_live.as_ref()
-        && let Some(entity_bits) = live.bridge.entity_for(row_id)
-    {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        let sim_w = sim.world_mut();
-        if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
-            if entry.get::<ph2d_ecs::GroupedChildren>().is_some() {
-                entry.remove::<ph2d_ecs::GroupedChildren>();
-            } else {
-                entry.insert(ph2d_ecs::GroupedChildren);
-            }
-        }
+    // ⭐ Os interruptores da linha: vários num quadro (o arrasto que pinta os olhos, `toggle_paint`).
+    if let Some(live) = hero_live.as_ref() {
+        ph2d_ecs::row_flag::aplica(
+            sim.world_mut(),
+            visibility_toggle_row,
+            lock_toggle_row,
+            group_toggle_row,
+            |r| live.bridge.entity_for(r),
+        );
     }
     // M14.6B: drain pending hierarchy reparent intent — translate
     // dragged + new_parent NodeIds via the bridge, then either

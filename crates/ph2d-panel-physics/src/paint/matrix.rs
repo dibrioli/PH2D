@@ -34,6 +34,8 @@ pub(super) fn paint(
     let font = TypeToken::Sm.px();
 
     let mut y = y_in;
+    // ⭐ As células são pintáveis por arrasto (`toggle_paint`): cada uma declara o que MOSTRA.
+    ph2d_editor_core::interaction::toggle_paint::limpa_grupo(crate::ids::PHYSICS_LAYER_PAINT_GROUP);
 
     // ⭐ O losango da matriz (canal MUNDO `CAMADAS`, F41): UM, no canto das legendas — a matriz é
     // um controlo e as 36 células gravam-se juntas.
@@ -104,8 +106,12 @@ pub(super) fn paint(
                     resolve(ColorToken::Text2, theme),
                 );
             }
-            ctx.host.hit_index_mut().register(
-                crate::ids::PHYSICS_LAYER_CELL[crate::ids::physics_layer_cell_index(i, j)],
+            let id = crate::ids::PHYSICS_LAYER_CELL[crate::ids::physics_layer_cell_index(i, j)];
+            ctx.host.hit_index_mut().register(id, cell);
+            ph2d_editor_core::interaction::toggle_paint::celula(
+                id,
+                crate::ids::PHYSICS_LAYER_PAINT_GROUP,
+                on,
                 cell,
             );
         }

@@ -15,3 +15,6 @@ mod rows;
 pub use filter::*;
 pub use menus::*;
 pub use rows::*;
+
+/// O grupo de arrasto dos interruptores da linha (`interaction::toggle_paint`).
+pub const HIER_TOGGLE_PAINT_GROUP: &str = "hierarchy.row_toggles";

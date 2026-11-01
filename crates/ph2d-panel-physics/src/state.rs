@@ -171,6 +171,16 @@ pub(crate) fn push_intent(intent: PhysicsIntent) {
     INTENTS.with(|c| c.borrow_mut().push(intent));
 }
 
+/// O último `SetSettings` ainda na fila (as edições do mesmo quadro somam-se sobre ele).
+pub(crate) fn ultimo_set_settings() -> Option<(PhysicsSettings, Toque)> {
+    INTENTS.with(|c| {
+        c.borrow().iter().rev().find_map(|i| match *i {
+            PhysicsIntent::SetSettings(s, t) => Some((s, t)),
+            _ => None,
+        })
+    })
+}
+
 /// Take everything the artist did since the last frame.
 pub fn drain_intents() -> Vec<PhysicsIntent> {
     INTENTS.with(|c| std::mem::take(&mut *c.borrow_mut()))

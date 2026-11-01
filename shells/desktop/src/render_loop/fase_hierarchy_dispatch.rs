@@ -5,9 +5,9 @@ use super::*;
 
 /// Os pedidos de linha da Hierarquia que o dreno do barramento recolheu neste quadro.
 pub(super) struct HierarchyIntents {
-    pub(super) visibility_toggle_row: Option<NodeId>,
-    pub(super) lock_toggle_row: Option<NodeId>,
-    pub(super) group_toggle_row: Option<NodeId>,
+    pub(super) visibility_toggle_row: Vec<NodeId>,
+    pub(super) lock_toggle_row: Vec<NodeId>,
+    pub(super) group_toggle_row: Vec<NodeId>,
     pub(super) reparent_intent: Option<ph2d_editor_core::screens::hero::HierReparentIntent>,
     pub(super) duplicate_row: Option<NodeId>,
     pub(super) duplicate_made: Option<(u64, u64)>,

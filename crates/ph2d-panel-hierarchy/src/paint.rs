@@ -291,6 +291,8 @@ fn paint_hierarchy_body(
     Rect,
 ) {
     paint_panel_surface(rect, scene, theme);
+    // ⭐ Os interruptores das linhas declaram-se de novo neste quadro (`toggle_paint`).
+    ph2d_editor_core::interaction::toggle_paint::limpa_grupo(crate::ids::HIER_TOGGLE_PAINT_GROUP);
     // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA.
     // Saíram **em par** com o `InteractiveState::BlenderHit` do `pre_populate.rs` — ver o irmão
     // em `ph2d-panel-inspector/src/paint_body.rs`.

@@ -162,6 +162,9 @@ pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
     hi * (hi + 1) / 2 + lo
 }
 
+/// O grupo de arrasto das células (`interaction::toggle_paint`): arrastar pinta só a matriz.
+pub const PHYSICS_LAYER_PAINT_GROUP: &str = "physics.layers";
+
 // ── Debug + commands ────────────────────────────────────────────────────────
 /// "Show Colliders" toggle.
 ///

@@ -17,18 +17,24 @@ crista −71 %).
 
 ## 2. Smoke do dono
 
-App compilado `--profile smoke` no fim da janela (o que mudou no produto: o óleo diluído escorre com o seu meio — mais
-lento que a água, mais fluido que antes; a água sobre óleo seco já não «cola» em cima dele, passa e pinga — o
-contornar continua aberto; o óleo diluído sem Real Oil pinta muito mais leve). Resultado: **por registar** (se o dono
-reportar, anotar aqui).
+**Smoke do dono (01/11): OK** — o óleo diluído escorre como pedido. Fotos [`fotos/j9/smoke_dono_1..5.png`](fotos/j9/)
+(Dabber azul seco, Wet Drip amarelo por cima). Observações, todas para a fila:
+
+- **FPS 70 → 30 só com um traço de Dabber** (óleo com Real Oil): é o §3.2 abaixo (composição do Real Oil a cada tique).
+- **O Wet Drip faz uma ONDA que desloca o óleo do Dabber** (fotos 2 e 4: o amarelo empurra a orla azul e deixa uma
+  faixa amarela dura na borda) — pouco realista.
+- **Rastro PIXELADO de baixa qualidade** (fotos 1, 3, 5: o verde da mistura em pontos/riscas sobre o óleo).
+- ⭐ **A lei do dono para o relevo** (memória `project_watery_paint_against_relief_owner_law_2026_11_01`): relevo alto e
+  tinta concentrada ⇒ a aguada MISTURA-SE com a borda; havendo por onde, escorre pelas LATERAIS; não havendo, EMPOÇA
+  na borda misturando-se com a tinta dela até ter volume para passar POR CIMA da tinta grossa.
 
 ## 3. Aberto (por ordem)
 
-1. **O escorrer contorna o relevo** (observação 1 do dono): hoje a ladeira é um NIVELAMENTO clampado a `LevelClamp`
+1. **O escorrer contorna o relevo pela lei do dono** (§2: mistura na borda → laterais → empoça → transborda com volume), junto com a ONDA que desloca o Dabber e o rastro pixelado (mesma família, um bloco): hoje a ladeira é um NIVELAMENTO clampado a `LevelClamp`
    por passo contra a gravidade que acumula na velocidade. Medir primeiro (força da ladeira × gravidade na orla do
    Dabber, por passo) e depois a lei candidata: o declive do chão como FORÇA no momento. Réguas: `escorre_contorna_tests`
    (abaixo → 0 com o Dabber seco), `a_queda_cresce_com_a_diluicao`, `a_agua_nao_sobe_a_ladeira_do_oleo`, `sonda_oleo_derrete`.
-2. **A composição do óleo com Real Oil** (Filbert Oil d0,9: campo 5,8 s · pigmento 10,2 s · sombra 4,4 s em 120 s,
+2. **A composição do óleo com Real Oil** (o FPS 70 → 30 do smoke) (Filbert Oil d0,9: campo 5,8 s · pigmento 10,2 s · sombra 4,4 s em 120 s,
    26 000 células por tique): não refazer campo/sombra a cada tique enquanto o filme só assenta.
 3. **9 vermelhos antigos** achados nesta janela (J9 §4): `medida_oleo_real_fenda` ×3, `transparencia` ×4,
    `sonda_oleo_furos`, `sonda_oleo_grumos` — bissectar.

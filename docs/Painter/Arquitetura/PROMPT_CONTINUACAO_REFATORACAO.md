@@ -17,10 +17,10 @@ FOTOS do motor nesta pasta. «Não meça esforços.» Já respondido (não reper
 ajuda = **C animado** · «Pigment mix» por pincel ✓ · as 9 perguntas da E10 (F3 §8) · **UMA lei, sem segundo fluido: o
 Medium vira o seletor «Paint type: Water · Oil»; o solvente é sempre líquido** (01/11).
 
-**Ordem desta janela** = o §3 do handoff da janela 9: (1) o escorrer CONTORNA o relevo — medir primeiro a força da
+**Smoke da janela 9: OK** (fotos e observações no §2 do handoff). **Ordem desta janela** = o §3 do handoff da janela 9: (1) o escorrer CONTORNA o relevo pela LEI DO DONO (handoff §2 e a memória `project_watery_paint_against_relief_owner_law_2026_11_01`), no mesmo bloco a onda que desloca o Dabber e o rastro pixelado — medir primeiro a força da
 ladeira contra a gravidade na orla (a ladeira é nivelamento clampado; a gravidade acumula), depois o declive do chão como
 força no momento, num bloco com as quatro réguas do handoff (o dique já foi recusado DUAS vezes — não o refaça); (2) a
-composição do óleo com Real Oil (campo e sombra a cada tique); (3) bissectar os 9 vermelhos antigos da J9 §4.
+composição do óleo com Real Oil (campo e sombra a cada tique; o dono viu o FPS cair de 70 para 30 com um traço de Dabber); (3) bissectar os 9 vermelhos antigos da J9 §4.
 Smoke do dono no fim da onda, em passos numerados, com o app recompilado (`--profile smoke`, Radeon).
 
 **Regras desta linha** (além do CLAUDE.md): coordenador autónomo, sem perguntas salvo aprovação de UI; a UI nova é

@@ -49,6 +49,7 @@ impl PlacaDeFormas {
         self.motivo = None;
         self.fonte.clear();
         self.imagens_cpu.clear();
+        self.fonte_imagens.clear();
         self.pousas.clear();
         let mut segmentos = Segmentos::default();
         // ⚠️ Um handle que o store largou nunca volta (não é reciclado) — a entrada dele é lixo.
@@ -97,6 +98,8 @@ impl PlacaDeFormas {
                     }),
                 }
                 self.imagens_cpu.push(linha_da_imagem(inst));
+                self.fonte_imagens
+                    .push(u32::try_from(k).unwrap_or(u32::MAX));
                 continue;
             }
             match geometrias.veredito(inst.geometry_id, store) {

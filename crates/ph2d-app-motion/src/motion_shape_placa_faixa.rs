@@ -1,11 +1,11 @@
 //! ⭐ GEF 19 E3 — **a placa colada por FAIXA da ordem total** (lei do dono 01/11: a linha de cima
 //! da Hierarchy desenha por baixo). Cada faixa `Family::Motion` cola só as cópias dos objectos dela
-//! (o dono de cada cópia, [`super::luz::donos`]), redesenhando as corridas de cada segmento cortadas
-//! a essas cópias. Uma faixa só com todos os objectos = a colagem de sempre ([`cola_no_mundo`]).
+//! e as imagens de grupo deles (o dono de cada cópia e de cada imagem, [`super::luz::donos`] e
+//! [`super::luz::donos_das_imagens`]), redesenhando as corridas de cada segmento cortadas a elas. Uma
+//! faixa só com todos os objectos = a colagem de sempre ([`cola_no_mundo`]).
 //!
-//! ⚠️ A faixa do TOPO leva também o que não tem dono na ordem (cópias sem objecto vivo e as imagens
-//! de grupo, que não têm `fonte`), a camada filtrada inteira e a lente — à altura do objecto Motion
-//! mais à frente. Com o filtro da camada ligado as outras faixas não colam nada (a camada é uma só).
+//! ⚠️ A faixa do TOPO leva também o que não tem dono na ordem (cópias e imagens sem objecto vivo), a
+//! camada filtrada inteira e a lente — à altura do objecto Motion mais à frente. Com o filtro da camada ligado as outras faixas não colam nada (a camada é uma só).
 
 use std::ops::Range;
 
@@ -77,14 +77,26 @@ impl Colagem<'_> {
         let n = placa
             .do_dispositivo
             .unwrap_or_else(|| u32::try_from(placa.copias.len()).unwrap_or(u32::MAX));
-        let donos = super::luz::donos(motion, placa);
-        let faixa = if topo {
-            complemento(&super::luz::pedidas(&donos, &fora, n), n)
-        } else {
-            super::luz::pedidas(&donos, &ids, n)
+        let n_img = match (placa.do_dispositivo, motion.gpu_cook.imagens_do_grupo()) {
+            (Some(_), Some(i)) => i.len(),
+            (Some(_), None) => 0,
+            (None, _) => u32::try_from(placa.imagens_cpu.len()).unwrap_or(u32::MAX),
         };
+        let das = |donos: &[(u64, Range<u32>)], n| {
+            if topo {
+                complemento(&super::luz::pedidas(donos, &fora, n), n)
+            } else {
+                super::luz::pedidas(donos, &ids, n)
+            }
+        };
+        let faixa = das(&super::luz::donos(motion, placa), n);
+        let imagens = das(&super::luz::donos_das_imagens(motion, placa), n_img);
         for k in 0..placa.segmentos() {
-            let corridas = corta(&placa.corridas[placa.corridas_do_segmento(k)], &faixa, topo);
+            let corridas = corta(
+                &placa.corridas[placa.corridas_do_segmento(k)],
+                &faixa,
+                &imagens,
+            );
             if corridas.is_empty() {
                 continue;
             }
@@ -174,30 +186,24 @@ fn complemento(r: &[Range<u32>], n: u32) -> Vec<Range<u32>> {
     out
 }
 
-/// As `corridas` cortadas às cópias de `faixa`; as imagens ficam só com a faixa do topo.
-fn corta(corridas: &[Corrida], faixa: &[Range<u32>], imagens: bool) -> Vec<Corrida> {
+/// As `corridas` cortadas às cópias de `faixa` e às imagens de `imagens` (o dono de cada uma). Os
+/// pedaços emparelham-se pela ordem: uma corrida ORDENADA (a linha `j` em `copias.start + j` e
+/// `imagens.start + j`) corta as duas pelos mesmos sinks, logo continua alinhada.
+fn corta(corridas: &[Corrida], faixa: &[Range<u32>], imagens: &[Range<u32>]) -> Vec<Corrida> {
+    let pedacos = |de: &Range<u32>, faixa: &[Range<u32>]| -> Vec<Range<u32>> {
+        faixa
+            .iter()
+            .map(|r| de.start.max(r.start)..de.end.min(r.end))
+            .filter(|r| !r.is_empty())
+            .collect()
+    };
     let mut out = Vec::new();
     for c in corridas {
-        let mut leva_imagens = imagens && !c.imagens.is_empty();
-        for r in faixa {
-            let (ini, fim) = (c.copias.start.max(r.start), c.copias.end.min(r.end));
-            if ini < fim {
-                let imagens = if leva_imagens {
-                    c.imagens.clone()
-                } else {
-                    0..0
-                };
-                leva_imagens = false;
-                out.push(Corrida {
-                    copias: ini..fim,
-                    imagens,
-                    ..c.clone()
-                });
-            }
-        }
-        if leva_imagens {
+        let (cs, is) = (pedacos(&c.copias, faixa), pedacos(&c.imagens, imagens));
+        for k in 0..cs.len().max(is.len()) {
             out.push(Corrida {
-                copias: c.copias.start..c.copias.start,
+                copias: cs.get(k).cloned().unwrap_or(c.copias.start..c.copias.start),
+                imagens: is.get(k).cloned().unwrap_or(0..0),
                 ..c.clone()
             });
         }
@@ -217,25 +223,46 @@ mod tests {
         }
     }
 
-    /// ⭐ As corridas partem-se pela faixa: cada faixa leva só as cópias dela, as duas juntas cobrem
-    /// tudo, e as imagens (sem dono) só vão com o topo.
+    /// ⭐ As corridas partem-se pela faixa: cada faixa leva só as cópias e as imagens dos objectos
+    /// dela, e as duas juntas cobrem tudo. (GEF 19 E3 resto c: antes as imagens iam SEMPRE com o topo.)
     #[test]
-    fn as_corridas_cortam_se_pelas_copias_da_faixa() {
-        let cs = [corrida(0..4, 0..2), corrida(4..6, 0..0)];
-        let baixo = [1..3];
-        let topo = complemento(&baixo, 6);
+    fn as_corridas_cortam_se_pelas_copias_e_imagens_da_faixa() {
+        let cs = [
+            corrida(0..4, 0..0),
+            corrida(4..6, 0..0),
+            corrida(6..6, 0..3),
+        ];
+        let (baixo, baixo_img) = ([1..3], [1..2]);
+        let (topo, topo_img) = (complemento(&baixo, 6), complemento(&baixo_img, 3));
         assert_eq!(topo, vec![0..1, 3..6]);
-        assert_eq!(corta(&cs, &baixo, false), vec![corrida(1..3, 0..0)]);
         assert_eq!(
-            corta(&cs, &topo, true),
+            corta(&cs, &baixo, &baixo_img),
+            vec![corrida(1..3, 0..0), corrida(6..6, 1..2)]
+        );
+        assert_eq!(
+            corta(&cs, &topo, &topo_img),
             vec![
-                corrida(0..1, 0..2),
+                corrida(0..1, 0..0),
                 corrida(3..4, 0..0),
-                corrida(4..6, 0..0)
+                corrida(4..6, 0..0),
+                corrida(6..6, 0..1),
+                corrida(6..6, 2..3),
             ]
         );
-        let so_imagens = [corrida(2..2, 0..3)];
-        assert!(corta(&so_imagens, &baixo, false).is_empty());
-        assert_eq!(corta(&so_imagens, &topo, true), vec![corrida(2..2, 0..3)]);
+    }
+
+    /// ⭐ Uma corrida ORDENADA (cópias e imagens alinhadas linha a linha) continua alinhada depois do
+    /// corte: o sink do meio sai das duas listas no mesmo sítio.
+    #[test]
+    fn a_corrida_ordenada_continua_alinhada() {
+        let cs = [corrida(10..16, 20..26)];
+        assert_eq!(
+            corta(&cs, &[10..12, 14..16], &[20..22, 24..26]),
+            vec![corrida(10..12, 20..22), corrida(14..16, 24..26)]
+        );
+        assert_eq!(
+            corta(&cs, &[12..14], &[22..24]),
+            vec![corrida(12..14, 22..24)]
+        );
     }
 }

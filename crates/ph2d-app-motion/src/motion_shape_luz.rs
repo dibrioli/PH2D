@@ -62,9 +62,38 @@ pub fn donos(
             .filter_map(|(sink, r)| Some((dono(*sink)?, r.clone())))
             .collect();
     }
+    pela_fonte(motion, &placa.fonte)
+}
+
+/// GEF 19 E3 resto c — **o dono de cada IMAGEM de grupo** da placa, como o [`donos`] das cópias: no
+/// dispositivo, as faixas das imagens do grupo; na CPU, a faixa `vetores` do sink lida pelo índice de
+/// origem de cada imagem.
+#[must_use]
+pub fn donos_das_imagens(
+    motion: &crate::motion_state::MotionState,
+    placa: &PlacaDeFormas,
+) -> Vec<(u64, Range<u32>)> {
+    if placa.do_dispositivo.is_some() {
+        let dono = |sink| crate::motion_objeto::origem::dono_do_no(motion, sink).map(|d| d.entity);
+        let Some(i) = motion.gpu_cook.imagens_do_grupo() else {
+            return Vec::new();
+        };
+        return i
+            .faixas()
+            .iter()
+            .filter_map(|(sink, r)| Some((dono(*sink)?, r.clone())))
+            .collect();
+    }
+    pela_fonte(motion, &placa.fonte_imagens)
+}
+
+/// Os donos pela faixa `vetores` de cada sink, em índices de uma lista cuja origem em `insts` é
+/// `fonte` (crescente).
+fn pela_fonte(motion: &crate::motion_state::MotionState, fonte: &[u32]) -> Vec<(u64, Range<u32>)> {
+    let dono = |sink| crate::motion_objeto::origem::dono_do_no(motion, sink).map(|d| d.entity);
     let em = |k: usize| {
         let k = u32::try_from(k).unwrap_or(u32::MAX);
-        u32::try_from(placa.fonte.partition_point(|&i| i < k)).unwrap_or(u32::MAX)
+        u32::try_from(fonte.partition_point(|&i| i < k)).unwrap_or(u32::MAX)
     };
     motion
         .pump

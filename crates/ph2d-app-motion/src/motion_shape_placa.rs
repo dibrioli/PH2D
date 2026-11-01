@@ -289,6 +289,8 @@ pub struct PlacaDeFormas {
     fontes: Option<imagens::FontesDasImagens>,
     /// As linhas de imagem da rota da CPU ([`monta`]) e a vista do último desenho.
     imagens_cpu: Vec<ph2d_render::RenderInstance>,
+    /// GEF 19 E3 resto c: o índice em `insts` de cada uma das [`Self::imagens_cpu`] — o dono dela.
+    fonte_imagens: Vec<u32>,
     vista_do_quadro: Option<ShapeView>,
 }
 

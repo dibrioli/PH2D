@@ -202,7 +202,7 @@ fn da_cpu(motion: &MotionState) -> Vec<Copia> {
     fora
 }
 
-/// As cópias do dispositivo: as linhas de sprite e as formas do último cozimento, lidas de volta.
+/// As cópias do dispositivo: as linhas de sprite, as imagens de grupo e as formas do último cozimento.
 fn do_dispositivo(motion: &MotionState, gpu: &GpuContext) -> Vec<Copia> {
     let (faixas_img, faixas_formas) = motion.gpu_cook.faixas_dos_sinks();
     let usize_de = |r: &Range<u32>| r.start as usize..r.end as usize;
@@ -210,6 +210,12 @@ fn do_dispositivo(motion: &MotionState, gpu: &GpuContext) -> Vec<Copia> {
     if let Some(i) = motion.gpu_cook.instances().filter(|i| i.len() > 0) {
         let linhas = ph2d_gpu_cook::read_instances(gpu, i);
         let faixas = faixas_img.iter().map(|(s, r)| (*s, usize_de(r)));
+        com_donos(motion, faixas, &linhas, da_imagem, &mut fora);
+    }
+    // As imagens das saídas em grupo saíram do buffer das sprites para o da placa (P4).
+    if let Some(g) = motion.gpu_cook.imagens_do_grupo() {
+        let linhas = ph2d_gpu_cook::read_imagens_do_grupo(gpu, g);
+        let faixas = g.faixas().iter().map(|(s, r)| (*s, usize_de(r)));
         com_donos(motion, faixas, &linhas, da_imagem, &mut fora);
     }
     if let Some(f) = motion.gpu_cook.formas() {

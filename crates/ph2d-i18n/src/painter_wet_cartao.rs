@@ -78,6 +78,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.hardness_tip" => {
             "How deep the tip reaches into the paper's tooth: 0 = only the peaks, 1 = fills the valleys."
         }
+        "panel.painter_wet_cartao.absorbency_tip" => {
+            "How fast the paper drinks water: high = soft edges and quick soaking, low = paint sits on top."
+        }
         _ => return None,
     })
 }

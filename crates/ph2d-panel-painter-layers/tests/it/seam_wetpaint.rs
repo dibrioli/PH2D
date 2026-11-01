@@ -108,6 +108,8 @@ fn the_knob_rows_are_offered_only_while_armed() {
         .filter(|id| !DA_FERRAMENTA.iter().any(|(i, _)| i == id))
         // D1 W3b: o Smooth Edges é da TELA e mora no cartão Paper (presença e ausência: `seam_papel`).
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES)
+        // E10 D2: a Absorbency é da TELA e mora no cartão Paper, como o Smooth Edges.
+        .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY)
         // E10: o Water do topo é só da ferramenta Wet; no Pincel o slot é a Dilution (`os_valores_rapidos_mudam_o_volume`).
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER)
     {

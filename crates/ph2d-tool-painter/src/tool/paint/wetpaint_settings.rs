@@ -8,6 +8,7 @@
 use super::*;
 use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS, Knob, KnobGroup, knob_defaults};
 
+mod absorcao; // a Absorbency da tela (E10d2) — filho por LOC
 mod controlos_e10; // Dilution · Medium · Volume · Body · Hardness (E10) — filho por LOC
 mod tabelas; // as tabelas dos knobs por ferramenta e por cartão — filho por LOC
 mod tela_e_oleo; // Smooth Edges, Óleo Real, Live Water, Heavy Edge — filho por LOC
@@ -472,6 +473,7 @@ impl PainterTool {
         w.km_mixing = true;
         w.agua_viva = false;
         w.borda_que_pesa = 0.0;
+        w.absorcao = ph2d_wet_paint::sim::ABSORCAO_NEUTRA;
         // O Real Oil é do traço (28/10): só os números do cartão, que são da tela, mudam a tinta com óleo pousada.
         let need_recomposite = w.show_wet
             || w.km_glaze
@@ -574,7 +576,7 @@ impl PainterTool {
             self.set_wet_borda_que_pesa(v);
             return true;
         }
-        if self.set_wet_oleo_knob(id, v) {
+        if self.set_wet_oleo_knob(id, v) || self.set_wet_absorcao_do_painel(id, v) {
             return true;
         }
         let w = &mut self.paint.wetpaint;

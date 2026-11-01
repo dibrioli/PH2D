@@ -7,7 +7,7 @@ use crate::painter::Engine;
 use crate::render::{PigmentVisual, RenderLayer, render_pigment_row_visual};
 use crate::sim::{LeiDaTinta, Params};
 use ph2d_paint_tinta::oklab::linear_para_srgb;
-use ph2d_paint_tinta::{Soma, Tinta, camada, ecra_sobre_branco, optica_celula};
+use ph2d_paint_tinta::{Soma, Tinta, optica_celula};
 
 const W: usize = 6;
 const H: usize = 1;
@@ -79,18 +79,21 @@ fn linha(g: &Grid, p: &Params) -> Vec<u8> {
     out
 }
 
-/// O ecrã da lei para a célula `i`, pelas funções da crate da tinta (a régua).
+/// O ecrã da lei para a célula `i`, pelas funções da crate da tinta (a régua). A cor sai da pilha com o matiz da
+/// camada fina preso (E10d1, [`super::matiz::prende_o_matiz`]); a cobertura, eq. (3) com o fundo sobre branco (`r_g`)
+/// e preto (`r_g0`) da mesma pilha.
 fn esperado(g: &Grid, i: usize) -> ([f32; 3], f32, [f32; 3]) {
     let c = tinta::em(g, i);
     let o = optica_celula(&c.filme, &c.aberto, c.meio(), g.film[i] > 0.0);
-    if c.r_g == [1.0; 3] {
-        let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
-        return (cor.0, a, camada(&o, &Bandas(c.r_g)).0);
-    }
-    // Com fundo curado (E8): a cobertura é a da PILHA, eq. (3) com o fundo sobre branco (`r_g`) e preto (`r_g0`).
-    let (rw, rb) = (camada(&o, &Bandas(c.r_g)).0, camada(&o, &Bandas(c.r_g0)).0);
-    let falta = rw.map(|r| 1.0 - linear_para_srgb(r));
+    let (rw, rb) = super::matiz::pilha_presa(&o, &c, None);
     let cob: [f32; 3] = core::array::from_fn(|b| 1.0 - (rw[b] - rb[b]));
+    let falta = rw.map(|r| {
+        if r >= 1.0 {
+            0.0
+        } else {
+            1.0 - linear_para_srgb(r)
+        }
+    });
     let a = falta[0]
         .max(falta[1])
         .max(falta[2])

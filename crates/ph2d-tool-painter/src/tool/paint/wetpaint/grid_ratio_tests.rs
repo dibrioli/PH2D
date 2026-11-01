@@ -585,7 +585,10 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
 /// amostrador). Gravado com o código do checkbox em `362938a99`; regravado UMA vez a 10/10 pela ordem do
 /// dono sobre o papel (sem Kind, o grão sem desenho em vez do Cold — o traço sem papel mudou de propósito);
 /// e outra vez a 10/10 pela escolha do dono «como o Rebelle» (o pigmento de fábrica 78 e a lei `Cobre`); e
-/// a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada com a lei SECA).
+/// a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada com a lei SECA); e a 01/11 pela E4
+/// `7a4bc540b7` (ADR-0197 §1.1, dono: Pigment + Water = só a diluição, Volume = só a quantidade): bissecção de
+/// árvore inteira — o pai `0eaf6fa1ed` dá os dois hashes antigos, a E4 e o HEAD `e8f35b5710` os dois novos
+/// (`docs/Painter/Arquitetura/E10d3_vermelhos_antigos.md` §3).
 #[test]
 fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     let fnv = |b: &[u8]| {
@@ -593,15 +596,21 @@ fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
             (h ^ u64::from(x)).wrapping_mul(0x0000_0100_0000_01b3)
         })
     };
-    for (ratio, esperado) in [(1u8, 0xf8e0_4b0d_33bb_552bu64), (2, 0xa350_5d05_ebc7_f8b6)] {
+    let tela = |ratio: u8| {
         let mut t = wet_tool(ratio);
         t.paint.wetpaint.smooth_edges = 0.0;
         stroke(&mut t);
         composite_all(&mut t);
-        let h = fnv(&t.canvas_rgba);
-        eprintln!("[smooth] razão {ratio}: {h:#018x}");
-        assert_eq!(h, esperado, "razão {ratio}: o zero mudou a tela");
-    }
+        fnv(&t.canvas_rgba)
+    };
+    // As duas razões medem-se ANTES de asserir: o vermelho mostra as duas (a 1.ª escondia a 2.ª).
+    let h = [tela(1), tela(2)];
+    eprintln!("[smooth] razão 1: {:#018x} · razão 2: {:#018x}", h[0], h[1]);
+    assert_eq!(
+        h,
+        [0xed70_5054_b74a_3349u64, 0x99a8_bc53_e3aa_d95f],
+        "o zero mudou a tela (razão 1, razão 2)"
+    );
 }
 
 /// A aspereza da tela (a soma das diferenças de escuro entre vizinhos) e a tinta total (a soma do escuro).

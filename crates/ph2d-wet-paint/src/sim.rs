@@ -105,6 +105,8 @@ pub struct Params {
     pub tinta: LeiDaTinta,
     /// [`Sim::pigment_mix`].
     pub pigment_mix: f32,
+    /// [`Sim::absorcao`].
+    pub absorcao: f64,
 }
 
 impl Params {
@@ -128,7 +130,29 @@ impl Params {
         self.pigmento_do_dab
             .unwrap_or(self.values[Knob::PigmentPerDab as usize])
     }
+
+    /// **A retenção do filme por passe de secagem, com a Absorbency da tela** (E10d2): `r^A`. A fuga de 1.ª ordem
+    /// do filme (`Knob::Retention`, `r = e^{−kΔt}`) é a água que o papel bebe; `r^A = e^{−A·kΔt}` é a mesma fuga com
+    /// a taxa `A·k` — estável a todo `Δt` (`0 < r^A ≤ 1`) e com a massa que sai a levar o pigmento como hoje.
+    /// `A = 1` devolve `r` sem `powf` (o motor de antes, ao bit).
+    #[inline]
+    #[must_use]
+    pub fn retencao(&self) -> f64 {
+        let r = self.values[Knob::Retention as usize];
+        if self.absorcao == ABSORCAO_NEUTRA {
+            r
+        } else {
+            r.powf(self.absorcao)
+        }
+    }
 }
+
+/// O ponto neutro da Absorbency ([`Sim::absorcao`]): a fuga de hoje, ao bit.
+pub const ABSORCAO_NEUTRA: f64 = 1.0;
+/// O tecto da Absorbency (E10d2, `docs/Painter/Arquitetura/E10d2_absorbency.md` §3): a `r = 0,995` de fábrica,
+/// `r^A` com `A = 64` deixa `0,726` do filme por passe — o papel bebe a poça do Wet Round em ~2 s; acima disso o
+/// filme some antes de o escoamento o mover (não há aguada a medir).
+pub const ABSORCAO_MAX: f64 = 64.0;
 
 /// Sim state that lives OUTSIDE the grid: cadence, tilt, experimental flags.
 /// (The JS holds the grid reference here; in Rust the caller passes the grid
@@ -180,6 +204,9 @@ pub struct Sim {
     pub tinta: LeiDaTinta,
     /// O «Pigment mix» `p ∈ [0,1]` do depósito na lei `Pigmento` (E10c; `0` = Oklab, igual ao bit). Sem painel.
     pub pigment_mix: f32,
+    /// **A Absorbency da TELA** (E10d2): o múltiplo da taxa com que o papel bebe a água do filme
+    /// ([`Params::retencao`]). Da tela, nunca do preset; [`ABSORCAO_NEUTRA`] = o motor de antes, ao bit.
+    pub absorcao: f64,
     /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
     /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
     /// Assentar preserva o ecrã SECO ([`crate::assenta`]), então o traço clareia aos poucos ao secar sem
@@ -284,6 +311,7 @@ impl Default for Sim {
             lei: crate::assenta::Lei::Porto,
             tinta: LeiDaTinta::Velha,
             pigment_mix: 0.0,
+            absorcao: ABSORCAO_NEUTRA,
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
@@ -409,6 +437,7 @@ impl Sim {
             pigmento_do_dab: None,
             tinta: self.tinta,
             pigment_mix: self.pigment_mix,
+            absorcao: self.absorcao,
         }
     }
 }

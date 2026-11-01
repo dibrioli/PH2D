@@ -119,6 +119,10 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS,
             "panel.painter_wet_cartao.hardness_tip",
         ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY,
+            "panel.painter_wet_cartao.absorbency_tip",
+        ),
     ] {
         store.set_tooltip(id, tr(dica));
     }

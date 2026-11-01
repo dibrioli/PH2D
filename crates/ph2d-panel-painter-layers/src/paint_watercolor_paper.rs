@@ -189,6 +189,7 @@ pub(crate) fn paint_paper_section(
             y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
         }
         y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
+        y = paint_absorbency_row(ctx, theme, x, content_w, y, brush);
         return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
     // ── Live preview of the paper pattern (grayscale; reads the Paper slot via a texture-field view) ──
@@ -254,6 +255,7 @@ pub(crate) fn paint_paper_section(
     );
     y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
     y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
+    y = paint_absorbency_row(ctx, theme, x, content_w, y, brush);
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
     let pp = crate::number_field::params_de_padrao(
         kind,
@@ -320,6 +322,36 @@ fn paint_smooth_edges_row(
         brush.wet_smooth_edges,
         0.0,
         1.0,
+        number_field::FINE_STEP,
+        2,
+    )
+}
+
+/// ── Absorbency (só o Wet Paint — os outros três meios não a lêem): da TELA (E10d2), a taxa com que o papel bebe a
+///    água do filme, em múltiplos da de fábrica (`1` = o motor de antes). Nunca viaja no preset.
+fn paint_absorbency_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    if !brush.wetpaint {
+        return y;
+    }
+    let (min, _, max) = ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY_FAIXA;
+    crate::card::card_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "panel.painter_layers.paper.absorbency",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY,
+        brush.wet_absorbency,
+        min as f32,
+        max as f32,
         number_field::FINE_STEP,
         2,
     )

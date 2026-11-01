@@ -123,6 +123,10 @@ pub(crate) struct WetPaintState {
     /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois. É da TELA (D1 W3b, cartão
     /// Paper); com o Óleo Real amacia a silhueta no campo de altura (`oleo_real::amacia_a_silhueta`).
     pub(super) smooth_edges: f32,
+    /// **Absorbency** (E10d2): a taxa com que o papel bebe a água do filme, em múltiplos da de fábrica
+    /// (`Sim::absorcao`, [`ph2d_wet_paint::sim::ABSORCAO_NEUTRA`] = o motor de antes, ao bit). É da TELA (secção
+    /// comum Paper): fora dos `WetKnobs` e de todo preset.
+    pub(super) absorcao: f64,
     /// **Óleo Real** (doc 49): a caixa do PINCEL — do TRAÇO (dono 28/10): pousa na célula (`grid::oleo_celula`), logo
     /// viaja com o preset e com a ferramenta ([`Self::oleo_por_slot`]), como o Glaze. `None` de fábrica.
     pub(super) oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
@@ -221,6 +225,7 @@ impl Default for WetPaintState {
             show_wet: false,
             paper_visual: false,
             smooth_edges: 0.0,
+            absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
             oleo_real: None,
             oleo_na_tela: false,
             oleo_adiado: false,

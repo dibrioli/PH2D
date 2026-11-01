@@ -316,6 +316,7 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.size",
     "panel.painter_layers.paper.tooth",
     "panel.painter_layers.wetpaint.smooth_edges",
+    "panel.painter_layers.paper.absorbency",
     "panel.painter_layers.paper.relief",
     "panel.painter_layers.paper.roughness",
 ];

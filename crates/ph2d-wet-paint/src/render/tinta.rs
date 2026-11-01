@@ -14,16 +14,21 @@ pub(crate) fn ecra_da_celula(lg: &Grid, i: usize) -> Option<([f64; 3], f64)> {
     let molhado = lg.film.get(i).is_some_and(|&w| w > 0.0);
     let o =
         tinta::pigmento::optica_celula(&c.filme, &c.aberto, lg.pigmento.get(i), c.meio(), molhado);
-    let (cor, a) = ecra_sobre_o_fundo(&o, &c);
+    let (cor, a) = ecra_sobre_o_fundo(&o, &c, lg.pigmento.get(i));
     (a > 0.0).then(|| (cor.0.map(|v| f64::from(v) * 255.0), f64::from(a)))
 }
 
 /// `ecra_sobre_branco` com a cobertura da PILHA (o aberto/filme sobre o fundo curado): `C = 1 − (R|branco − R|preto)`
 /// com o fundo `r_g` e `r_g0`, decomposta por [`decompoe`] (cor em sRGB). Sem fundo (`r_g = 1`, `r_g0 = 0`) é a
-/// mesma conta, ao bit.
-fn ecra_sobre_o_fundo(o: &Optica<3>, c: &CelulaTinta) -> (Bandas<3>, f32) {
-    let (rw, media_c) = tinta::pilha(o, c);
-    decompoe(&rw, media_c)
+/// mesma conta. A pilha é a do matiz preso ([`matiz::pilha_presa`], E10d1): a camada fina tem o matiz da cor escolhida.
+fn ecra_sobre_o_fundo(
+    o: &Optica<3>,
+    c: &CelulaTinta,
+    lado: Option<&tinta::pigmento::LadoEspectral>,
+) -> (Bandas<3>, f32) {
+    let (rw, rb) = matiz::pilha_presa(o, c, lado);
+    let cob: [f32; 3] = core::array::from_fn(|b| 1.0 - (rw[b] - rb[b]));
+    decompoe(&Bandas(rw), ((cob[0] + cob[1]) + cob[2]) / 3.0)
 }
 
 /// A altura que já curou, em unidades de MASSA (as do campo de altura do Óleo Real): o fecho tira a massa de `sett`
@@ -53,6 +58,9 @@ pub(super) fn transparencia_da_celula(g: &Grid, i: usize) -> f64 {
         .get(i)
         .map_or(0.0, |m| crate::material::peso(m.transparencia))
 }
+
+#[path = "tinta_matiz.rs"]
+pub(crate) mod matiz; // E10d1: a camada fina prende o matiz
 
 #[cfg(test)]
 #[path = "tinta_tests.rs"]

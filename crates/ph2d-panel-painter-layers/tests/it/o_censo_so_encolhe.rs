@@ -128,6 +128,19 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         PAINTER_WETPAINT_TUNING,
         "não-pixel: mostra o painel lateral dos números da água",
     ));
+    // J10 (84ed24c8fc, 6c243555f0): a água dissolve `Re-wet × Solubility` da tinta ASSENTADA de um traço anterior
+    // (`trail/transfer/remolha.rs`; o Drag arrasta só o solúvel, `tools/smear.rs`). A fábrica do Wet Paint tem os três
+    // a 0 e o censo muda UM controlo de cada vez: sozinho, cada um multiplica pelo outro, que é 0. Vivos pelo portão
+    // `remolha_tests` (tp). Doc: `docs/Painter/Arquitetura/E10d3_vermelhos_antigos.md` §4.
+    let par = "age só em PAR (Re-wet × Solubility da tinta assentada; o Drag arrasta só o solúvel) e a fábrica tem \
+               os três a 0 — o censo muda um de cada vez, e o outro factor é 0";
+    for id in [
+        PAINTER_WETPAINT_REWET,
+        PAINTER_WETPAINT_REWET_DRAG,
+        PAINTER_WETPAINT_SOLUBILITY,
+    ] {
+        v.push((WetPaint, id, par));
+    }
     v
 }
 

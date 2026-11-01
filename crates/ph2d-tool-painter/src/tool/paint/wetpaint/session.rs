@@ -28,6 +28,8 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     /// As opções da W1g: a Água ao vivo e a Borda que pesa (`0..1`).
     pub(in crate::tool::paint) agua_viva: bool,
     pub(in crate::tool::paint) borda_que_pesa: f64,
+    /// A **Absorbency** da tela (E10d2, `Sim::absorcao`).
+    pub(in crate::tool::paint) absorcao: f64,
 }
 
 impl WetEngineFacts {
@@ -45,6 +47,7 @@ impl WetEngineFacts {
         tooth: 1.0,
         agua_viva: false,
         borda_que_pesa: 0.0,
+        absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
     };
 }
 
@@ -285,6 +288,9 @@ impl WetSession {
             } else {
                 ph2d_wet_paint::colorops::VELATURA_DO_FILME
             };
+        }
+        if f.absorcao != a.absorcao {
+            e.sim.absorcao = f.absorcao;
         }
         if f.borda_que_pesa != a.borda_que_pesa {
             e.sim.sedimenta = f.borda_que_pesa * super::SEDIMENTA_DA_BORDA;

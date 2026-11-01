@@ -225,8 +225,8 @@ pub(crate) fn fecha_celula(c: &mut CelulaTinta, l: Option<&mut LadoEspectral>, s
     // sobre o preto fecha com a MESMA óptica (a cobertura do fechado = a de antes, ao bit).
     let so_aberto = l.as_deref().map(|l| [Espectro::default(), l[ABERTO]]);
     let o = optica_celula(&Soma::default(), &c.aberto, so_aberto.as_ref(), m, false);
-    c.r_g0 = camada(&o, &Bandas(c.r_g0)).0;
-    c.r_g = camada(&o, &Bandas(c.r_g)).0;
+    // A camada fina prende o matiz (E10d1, `docs/Painter/Arquitetura/E10d1_camada_fina.md`).
+    (c.r_g, c.r_g0) = crate::render::tinta::matiz::pilha_presa(&o, c, l.as_deref());
     c.aberto = Soma::default();
     if let Some(l) = l {
         l[ABERTO] = Espectro::default();

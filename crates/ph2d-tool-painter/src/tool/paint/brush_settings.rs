@@ -486,6 +486,8 @@ pub struct BrushSettings {
     pub wet_paper_visual: bool,
     /// Smooth Edges do Wet Paint — a intensidade (`0..1`) do meio-tom na silhueta (a lei do Watercolor).
     pub wet_smooth_edges: f32,
+    /// **Absorbency** do Wet Paint (E10d2): da TELA, a taxa com que o papel bebe a água (`1` = a de fábrica).
+    pub wet_absorbency: f32,
     /// **Real Oil** (Óleo Real, doc 49): a caixa ligada.
     pub wet_oleo_real: bool,
     /// A tela tem tinta com óleo (dono 28/10): os números do cartão Real Oil — que são da TELA — mostram-se também com a

@@ -121,7 +121,7 @@ pub(crate) struct DryConst {
 impl DryConst {
     pub fn new(p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) -> Self {
         DryConst {
-            retention: p.k(Knob::Retention),
+            retention: p.retencao(),
             edge_darkening: p.k(Knob::EdgeDarkening),
             base_evaporation: p.k(Knob::BaseEvaporation),
             ext_granulation: p.k(Knob::ExtGranulation),

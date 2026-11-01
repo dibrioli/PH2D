@@ -61,6 +61,17 @@ pub const PAINTER_WETPAINT_PAPER_VISUAL: NodeId =
 pub const PAINTER_WETPAINT_SMOOTH_EDGES: NodeId =
     hash_node_id("painter_brush.wetpaint_smooth_edges");
 
+/// **Absorbency** (E10d2) — da TELA, na secção comum Paper e só com o Wet Paint: o múltiplo da taxa com que o
+/// papel bebe a água do filme (`Sim::absorcao`, `1` = o motor de antes). Nunca viaja no preset.
+pub const PAINTER_WETPAINT_ABSORBENCY: NodeId = hash_node_id("painter_brush.wetpaint_absorbency");
+/// A faixa da [`PAINTER_WETPAINT_ABSORBENCY`] `(mín, neutro, máx)` — a do motor (`ph2d_wet_paint::sim`), medida
+/// em `docs/Painter/Arquitetura/E10d2_absorbency.md` §3.
+pub const PAINTER_WETPAINT_ABSORBENCY_FAIXA: (f64, f64, f64) = (
+    0.0,
+    ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
+    ph2d_wet_paint::sim::ABSORCAO_MAX,
+);
+
 /// **Real Oil** checkbox (Óleo Real, doc 49): a óptica do relevo sobre a mancha (`PainterTool::set_wet_oleo_real`);
 /// desligado de fábrica. Ligado, as linhas de [`PAINTER_WETPAINT_OLEO_FIELDS`] aparecem por baixo. O **Depth** e o
 /// **Gloss** SAÍRAM do cartão (dono 28/10): são do pincel (Tuning › Material, `Knob::OilDepth`/`OilGloss`), na célula.
@@ -381,7 +392,7 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 41] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -422,4 +433,5 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
     super::PAINTER_WETPAINT_VOL_OPACITY,
     PAINTER_WETPAINT_HEAVY_EDGE,
     PAINTER_WETPAINT_SMOOTH_EDGES,
+    PAINTER_WETPAINT_ABSORBENCY,
 ];

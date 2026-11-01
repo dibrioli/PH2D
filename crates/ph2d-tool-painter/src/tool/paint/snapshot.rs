@@ -478,6 +478,7 @@ impl PainterTool {
             wet_show_wet: self.paint.wetpaint.show_wet,
             wet_paper_visual: self.paint.wetpaint.paper_visual,
             wet_smooth_edges: self.paint.wetpaint.smooth_edges,
+            wet_absorbency: self.paint.wetpaint.absorcao as f32,
             wet_oleo_real: self.paint.wetpaint.oleo_real.is_some(),
             wet_oleo_na_tela: self.paint.wetpaint.oleo_na_tela,
             wet_oleo_sombra: self.paint.wetpaint.oleo_real_valores.sombra as f32,

@@ -23,13 +23,12 @@ use ph2d_vec_scene::{Paint, PatternFill, PatternSource, StrokePaint, VecPathId, 
 pub fn pattern_at(scene: &VecScene, id: VecPathId, slot: PatternSlot) -> Option<&PatternFill> {
     let path = scene.path(id)?;
     match slot {
-        PatternSlot::Fill => match path.fill.as_ref() {
+        PatternSlot::Fill => match path.slot_fill(crate::paint_stack::open_slot()) {
             Some(Paint::Pattern(p)) => Some(p),
             _ => None,
         },
         PatternSlot::Stroke => path
-            .stroke
-            .as_ref()
+            .slot_stroke(crate::paint_stack::open_slot())
             .and_then(ph2d_vec_scene::StrokeSpec::pattern),
     }
 }
@@ -46,11 +45,14 @@ fn write_pattern(
         return false;
     };
     match slot {
-        PatternSlot::Fill => {
-            path.fill = Some(Paint::Pattern(Box::new(next)));
-            true
-        }
-        PatternSlot::Stroke => match path.stroke.as_mut() {
+        PatternSlot::Fill => match path.slot_fill_mut(crate::paint_stack::open_slot()) {
+            Some(f) => {
+                *f = Paint::Pattern(Box::new(next));
+                true
+            }
+            None => false,
+        },
+        PatternSlot::Stroke => match path.slot_stroke_mut(crate::paint_stack::open_slot()) {
             Some(s) => {
                 s.paint = StrokePaint::Pattern(Box::new(next));
                 true

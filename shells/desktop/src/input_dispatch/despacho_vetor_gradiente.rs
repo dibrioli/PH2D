@@ -2,9 +2,8 @@
 //! 2026-09-13), com os caminhos `crate::input_dispatch::..` preservados por re-exportação.
 
 use super::*;
-use ph2d_app_vec::gradiente_semente::{
-    gradient_points_from, gradient_stops_from, lerp_color, linear_span,
-};
+use ph2d_app_vec::gradiente_semente::*;
+use ph2d_app_vec::paint_stack::{open_fill, open_fill_mut};
 
 /// Switch the SELECTED path's fill kind (Solid/Linear/Radial), preserving colour(s)
 /// and existing gradient geometry when the kind is unchanged; when entering a
@@ -31,7 +30,7 @@ pub(crate) fn apply_vec_set_fill_kind(
         .paths()
         .iter()
         .find(|p| p.id == sel)
-        .map(|p| p.fill.clone())
+        .map(|p| open_fill(p).cloned())
     else {
         return;
     };
@@ -92,7 +91,7 @@ pub(crate) fn apply_vec_set_fill_kind(
         return;
     }
     if let Some(path) = scene.path_mut(sel) {
-        path.fill = Some(new_fill);
+        crate::vec_paint_stack::put_slot_fill(path, new_fill);
     }
 }
 
@@ -112,7 +111,7 @@ pub(crate) fn apply_vec_set_grad_angle(
         .paths()
         .iter()
         .find(|p| p.id == sel)
-        .is_some_and(|p| matches!(p.fill, Some(Paint::Linear { .. })));
+        .is_some_and(|p| matches!(open_fill(p), Some(Paint::Linear { .. })));
     if !is_linear {
         return;
     }
@@ -120,7 +119,7 @@ pub(crate) fn apply_vec_set_grad_angle(
     let (start, end) = linear_span(lo, hi, degrees);
     if let Some(Paint::Linear {
         start: s, end: e, ..
-    }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    }) = scene.path_mut(sel).and_then(open_fill_mut)
     {
         if *s == start && *e == end {
             return;
@@ -144,7 +143,7 @@ pub(crate) fn apply_vec_grad_add_point(
         return;
     };
     let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut()) {
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(open_fill_mut) {
         let col = points
             .first()
             .map_or(ph2d_vec_scene::Rgba8::new(255, 255, 255, 255), |p| p.color);
@@ -163,7 +162,7 @@ pub(crate) fn apply_vec_grad_remove_point(
     let Some(sel) = pen.selected() else {
         return selected;
     };
-    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(open_fill_mut)
         && points.len() > 1
     {
         let idx = selected
@@ -191,7 +190,7 @@ pub(crate) fn apply_vec_grad_influence(
     let Some(i) = point else {
         return;
     };
-    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(open_fill_mut)
         && let Some(gp) = points.get_mut(i)
         && (gp.influence - value).abs() > 1e-9
     {
@@ -215,7 +214,7 @@ pub(crate) fn apply_vec_grad_jitter(
     let Some(i) = point else {
         return;
     };
-    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+    if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(open_fill_mut)
         && let Some(gp) = points.get_mut(i)
         && (gp.jitter - value).abs() > 1e-9
     {
@@ -230,7 +229,7 @@ fn selected_ramp_stops<'a>(
 ) -> Option<&'a [ph2d_vec_scene::GradientStop]> {
     use ph2d_vec_scene::Paint;
     let sel = pen.selected()?;
-    match &scene.paths().iter().find(|p| p.id == sel)?.fill {
+    match open_fill(scene.paths().iter().find(|p| p.id == sel)?) {
         Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) => Some(stops),
         _ => None,
     }
@@ -265,7 +264,7 @@ pub(crate) fn apply_vec_grad_add_stop(
     let off = (sorted[k].0 + sorted[k + 1].0) * 0.5;
     let col = lerp_color(sorted[k].1, sorted[k + 1].1, 0.5);
     if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
-        scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        scene.path_mut(sel).and_then(open_fill_mut)
     {
         // Insert as an INTERIOR stop (just before the last end stop) so the two ends
         // stay at index 0 / last; return its index to select it.
@@ -289,7 +288,7 @@ pub(crate) fn apply_vec_grad_remove_stop(
         return selected;
     };
     if let Some(Paint::Linear { stops, .. }) | Some(Paint::Radial { stops, .. }) =
-        scene.path_mut(sel).and_then(|p| p.fill.as_mut())
+        scene.path_mut(sel).and_then(open_fill_mut)
         && let Some(i) = selected
         && i > 0
         && i + 1 < stops.len()

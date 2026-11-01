@@ -22,6 +22,8 @@ use std::cell::{Cell, RefCell};
 pub struct PaintRow {
     /// `true` = preenchimento, `false` = contorno. É o que decide o rótulo e se há largura.
     pub is_fill: bool,
+    /// As pontas do degradê (`None` = tinta sólida): a amostra da linha pinta-as em rampa.
+    pub ramp: Option<[[u8; 4]; 2]>,
     /// A cor da swatch, **em bytes** — o formato que o `ColorSwatch` desta casa pinta.
     ///
     /// ⚠️ Ela era `[f32; 4]` e o painel dividia por 255. Isso é uma SEGUNDA régua de *"que cor é
@@ -30,6 +32,8 @@ pub struct PaintRow {
     pub color: [u8; 4],
     /// A largura, num contorno.
     pub width: f64,
+    /// A Position, num contorno (F44b).
+    pub align: ph2d_vec_scene::StrokeAlign,
     /// O olho: desligada, a camada não desenha e os parâmetros ficam.
     pub enabled: bool,
     /// `0..=1`.
@@ -61,6 +65,7 @@ pub struct RowMixed {
     pub offset: bool,
     pub dilate: bool,
     pub dilate_join: bool,
+    pub align: bool,
     /// O olho: a camada visível numas e escondida noutras (F22).
     pub enabled: bool,
 }

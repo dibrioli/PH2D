@@ -122,7 +122,7 @@ impl crate::App {
                     crate::vec_paint_stack::set_dilate(vec_scene, &sel, i, d);
                 }
                 if let Some(j) = pending_paint_join {
-                    crate::vec_paint_stack::set_dilate_join(vec_scene, &sel, i, j);
+                    crate::vec_paint_stack::set_join_or_align(vec_scene, &sel, i, j);
                 }
             }
         }

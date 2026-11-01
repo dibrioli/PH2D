@@ -97,9 +97,14 @@
 /// `25` à da pilha. A v23 e a v24 lêem-se pelo âmbito [`crate::with_pilha_layout_v23`] (ids `NONE`,
 /// atribuídos no 1.º quadro) — o nome é o da linha; vale para todo fio ANTERIOR à pilha com id.
 /// Gate `a_vec_scene_v23_le_com_ids_por_atribuir`.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 25;
+/// v26: o [`crate::VecPath`] ganhou `fill_hidden`/`stroke_hidden` no FIM (`line/UIUX`, F44b) — o OLHO
+/// da tinta de base: escondida, ela sai do `fill`/`stroke` e fica guardada ali, então toda leitura do
+/// documento já a trata como «não pinta» ([`crate::PaintSlot`]). Lê a v25 e anteriores (os dois `None`)
+/// pelo [`crate::with_wire_layout`]. Gate `vec_v25_fixture`, sobre bytes gravados pelo código v25.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 26;
 
 /// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
 pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
 pub(crate) const VEC_SCENE_SCHEMA_V23: u32 = 23;
 pub(crate) const VEC_SCENE_SCHEMA_V24: u32 = 24;
+pub(crate) const VEC_SCENE_SCHEMA_V25: u32 = 25;

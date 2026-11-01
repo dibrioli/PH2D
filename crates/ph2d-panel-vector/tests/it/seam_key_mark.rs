@@ -101,6 +101,8 @@ fn a_entrada_da_pilha_tem_o_losango_da_tinta() {
     use ph2d_panel_vector::state::{self, Appearance, PaintRow};
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     let linha = PaintRow {
+        align: ph2d_vec_scene::StrokeAlign::Centre,
+        ramp: None,
         is_fill: true,
         color: [0xCC, 0x33, 0x33, 0xFF],
         width: 0.0,
@@ -134,9 +136,18 @@ fn a_entrada_da_pilha_tem_o_losango_da_tinta() {
             ph2d_panel_vector::ids::vector_paint_del_id(0),
         )
         .expect("o lixo da entrada");
+    // F44b (dono 01/11): o losango da cor fica COLADO à caixa — antes do `%` — e o «−» não tem
+    // losango nenhum (é o último da linha).
+    let pct = host
+        .painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::ids::vector_paint_row_opacity_id(0),
+        )
+        .expect("o % da entrada");
     assert!(
-        apagar.x + apagar.w <= losango.x + 0.5,
-        "os verbos começam ANTES da coluna do losango: {apagar:?} × {losango:?}"
+        losango.x + losango.w <= pct.x + 0.5 && losango.x < apagar.x,
+        "o losango da cor mora entre a caixa e o `%`: {losango:?} × {pct:?} × {apagar:?}"
     );
     assert_eq!(clica_no_losango(sw, "a entrada"), vec![sw]);
     set_key_marks(BTreeMap::new());

@@ -2,22 +2,20 @@
 //! referências `img_F44/`).
 //!
 //! ```text
-//! Fill                                     +
-//! [■ 808080              ] [100 %]  👁  −  ◇   ← camadas extra (o topo em cima)
-//! [■ Linear              ] [ 80 %]         ◇   ← o preenchimento de BASE
-//! Stroke                                   +
-//! [■ 000000              ] [100 %]      −  ◇
-//! Position          Weight
-//! [▭|▭|▭]           [ 2 px ]           [⚙] ◇   ← a linha FIXA; ⚙ abre «Stroke settings»
+//! Fill                                          +
+//! [■ 808080       ]◇ [100 %]◇ [⚙] [👁]◇ [−]       ← camadas extra (o topo em cima)
+//! [▤ 4682E6       ]◇ [ 80 %]  [⚙] [👁]◇ [−]       ← o preenchimento de BASE (rampa = degradê)
+//! Stroke                                        +
+//! [■ 000000       ]◇ [100 %]  [⚙] [👁]◇ [−]
+//! Position           Weight
+//! [◎|◎|◎]          ◇ [ 2 px ]◇                    ← a linha FIXA do traço de base
 //! ```
 //!
-//! A caixa de uma linha é um `Dropdown`: aberta, as propriedades dela pintam-se à ESQUERDA do
-//! Inspector ([`crate::paint_side`]) — o tipo, o degradê e o token do preenchimento de base; a
-//! largura, o deslocamento, a quina e a mistura de uma camada.
-//!
-//! ⚠️ **A base não tem olho**: o documento não guarda «base escondida» (`fill`/`stroke` são
-//! `Option`), e um olho que não esconde nada seria um controlo morto. O «−» do traço de base é o
-//! «tem traço» de sempre (`VECTOR_STROKE_PRESENT`), e o «+» do título dá-o de volta.
+//! ⭐ **F44b (dono 01/11): TODAS as linhas iguais** — as mesmas colunas, os mesmos botões, e o ⚙ de
+//! cada uma abre à ESQUERDA ([`crate::paint_side`]) os ajustes da tinta DELA. A caixa mostra só a cor
+//! e o hex (o tipo mora no ⚙) e é a amostra inteira. O olho da base guarda a tinta no documento
+//! (`VecPath::fill_hidden`); o «−» tira-a, e o «+» do título dá-a de volta. O losango de um campo
+//! fica colado ao controlo dele, e a coluna fica reservada mesmo sem canal.
 
 use super::*;
 use crate::paint_sections::fx_list::is_open;
@@ -25,11 +23,9 @@ use crate::state::PaintRow;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_icon_group;
 use ph2d_editor_core::widget::{
     ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, NumberInput, SwatchSize, Unit,
-    form_row_columns, paint_color_swatch, paint_icon_button, paint_number_input_with_buffer,
-    paint_swatch_or_mixed,
+    paint_color_swatch, paint_icon_button, paint_number_input_with_buffer, paint_swatch_or_mixed,
 };
 use ph2d_tokens::{Radius, StrokeToken, TypeToken};
 use ph2d_tool_vector::StyleFields;
@@ -61,28 +57,97 @@ fn hex(c: [u8; 4]) -> String {
     format!("{:02X}{:02X}{:02X}", c[0], c[1], c[2])
 }
 
-/// Uma linha da lista: o que muda entre a base e uma camada.
+/// Uma linha da lista. ⭐ **A base e as camadas são a MESMA linha** (F44b, dono 01/11): só os ids e
+/// os canais do Auto Key mudam.
 struct Linha<'a> {
-    /// O `Dropdown` da caixa (abre o painel à esquerda); `None` = caixa sem painel.
-    open: Option<NodeId>,
+    /// O ⚙ (um `Dropdown`): aberto, os ajustes da tinta pintam-se à ESQUERDA. `None` = sem ajustes
+    /// a mostrar (a forma não está selecionada) — o botão pinta-se apagado e não se regista.
+    settings: Option<NodeId>,
     swatch: NodeId,
     color: [u8; 4],
+    /// As pontas do degradê: a amostra pinta a rampa em vez da cor.
+    ramp: Option<[[u8; 4]; 2]>,
     mixed_color: bool,
-    name: &'a str,
     /// O campo `%` e o valor que ele mostra fora do foco.
     opacity: NodeId,
     pct: f64,
     mixed_pct: bool,
+    /// O olho e o «−». `None` = a seleção não tem UMA resposta (vazia ou múltipla): o botão pinta-se
+    /// apagado e sem alvo — um gesto sem sujeito não se oferece.
     eye: Option<(NodeId, IconId)>,
     minus: Option<NodeId>,
-    /// A opacidade é um canal PRÓPRIO (uma camada): losango colado ao campo `%`. O losango da
-    /// coluna (a cor) pinta-o quem chama, com os ids à vista do censo.
-    opacity_key: bool,
-    /// A camada está desligada (o nome a cinzento).
+    /// Os canais do Auto Key: o da cor (colado à caixa), o do `%` e o do olho (colados a eles).
+    /// Vazio = o campo não tem canal próprio — a coluna fica reservada, para alinhar.
+    color_keys: &'a [NodeId],
+    opacity_keys: &'a [NodeId],
+    eye_keys: &'a [NodeId],
+    /// A tinta está escondida (o hex a cinzento).
     off: bool,
 }
 
+/// ⭐ **As colunas de uma linha**, da direita para a esquerda — as MESMAS em toda linha de Fill e
+/// de Stroke (e a linha fixa Position | Weight usa as duas primeiras): `[caixa]◇ [%]◇ [⚙] [👁]◇ [−]`.
+#[derive(Clone, Copy)]
+pub(super) struct Colunas {
+    pub(super) caixa: Rect,
+    pub(super) caixa_key: Rect,
+    pub(super) pct: Rect,
+    pub(super) pct_key: Rect,
+    pub(super) settings: Rect,
+    pub(super) eye: Rect,
+    pub(super) eye_key: Rect,
+    pub(super) minus: Rect,
+}
+
 impl BodyCtx<'_> {
+    /// As colunas da linha em `y`. O losango reserva a largura dele mesmo sem canal (alinhamento).
+    pub(super) fn colunas(&mut self, y: f32) -> Colunas {
+        let h = self.row_h;
+        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
+            ph2d_editor_core::widget::DECORATOR_W
+        } else {
+            0.0
+        };
+        let right = self.inner_x + self.inner_w;
+        // Os três botões encostados (o glifo já tem a folga dele): a caixa do hex fica com a largura.
+        let minus = Rect::new(right - h, y, h, h);
+        let eye_key = Rect::new(minus.x - mw, y, mw, h);
+        let eye = Rect::new(eye_key.x - h, y, h, h);
+        let settings = Rect::new(eye.x - h, y, h, h);
+        let pct_key = Rect::new(settings.x - mw, y, mw, h);
+        let pct_w = self.pct_w();
+        let pct = Rect::new(pct_key.x - pct_w, y, pct_w, h);
+        let caixa_key = Rect::new(pct.x - mw, y, mw, h);
+        let caixa = Rect::new(self.inner_x, y, (caixa_key.x - self.inner_x).max(1.0), h);
+        Colunas {
+            caixa,
+            caixa_key,
+            pct,
+            pct_key,
+            settings,
+            eye,
+            eye_key,
+            minus,
+        }
+    }
+
+    /// ⭐ **A largura do `%`, MEDIDA** — o maior valor («100 %») com a folga e o stepper do campo, nunca
+    /// acima do piso genérico dos números. É o que dá à caixa do hex a largura dos seis dígitos no
+    /// Inspector estreito (o piso de `72 px` é do maior número da casa, e aqui o maior é `100`).
+    fn pct_w(&mut self) -> f32 {
+        let texto = format!("100{}", Unit::Percent.suffix());
+        let medido = self.text_system.prefix_width_weighted(
+            &texto,
+            self.font,
+            ph2d_text::FontWeight::MEDIUM,
+        );
+        let host = Rect::new(0.0, 0.0, self.chip_w, self.row_h);
+        let w = medido
+            + ph2d_editor_core::widget::field_pad_x() * 2.0
+            + ph2d_editor_core::widget::stepper_width(host);
+        w.min(self.chip_w)
+    }
+
     /// O cabeçalho com o «+» (botão simples: o verbo é o id).
     fn list_header(
         &mut self,
@@ -99,7 +164,14 @@ impl BodyCtx<'_> {
 
     /// Um campo `%` (ou `px`) solto, pintado do valor que o chamador traz — salvo com foco, quando
     /// o buffer do store manda (a lei do [`Self::live_number`]).
-    fn loose_number(&mut self, id: NodeId, value: f64, mixed: bool, unit: Unit, rect: Rect) {
+    pub(super) fn loose_number(
+        &mut self,
+        id: NodeId,
+        value: f64,
+        mixed: bool,
+        unit: Unit,
+        rect: Rect,
+    ) {
         let (state, _, buffer, caret, anchor) =
             ph2d_editor_core::widget::showcase::read_number_input(self.store, id);
         let focused = self.store.focus_id() == Some(id);
@@ -120,74 +192,61 @@ impl BodyCtx<'_> {
         self.hit_index.register(id, rect);
     }
 
-    /// A swatch de uma linha: um quadrado dentro da caixa, colado à esquerda dela.
+    /// A amostra de uma linha: um quadrado dentro da caixa, colado à esquerda dela.
     fn line_swatch(&self, y: f32) -> Rect {
         let pad = Spacing::Xs.px();
         let side = (self.row_h - pad * 2.0).max(1.0);
         Rect::new(self.inner_x + pad, y + pad, side, side)
     }
 
-    /// ⭐ **Uma linha**: `[■ nome] [%] 👁 − ◇`. Devolve o `y` seguinte e, se o painel dela está
-    /// aberto, a caixa (a âncora do painel). A swatch fica DENTRO da caixa e ganha o clique dela.
+    /// Um botão de ícone de uma coluna; `id = None` = apagado e sem alvo.
+    fn column_button(&mut self, id: Option<NodeId>, icon: IconId, r: Rect, pressed: bool) {
+        let visual = match id {
+            Some(_) if pressed => (ButtonState::Pressed, 1.0),
+            Some(id) => self.store.button_visual(id),
+            None => (ButtonState::Disabled, 0.0),
+        };
+        paint_icon_button(
+            r,
+            IconGlyph::Builtin(icon),
+            IconButtonStyle::Plain,
+            visual,
+            self.scene,
+            self.theme,
+        );
+        if let Some(id) = id {
+            self.hit_index.register(id, r);
+        }
+    }
+
+    /// ⭐ **Uma linha**: `[■ HEX]◇ [%]◇ [⚙] [👁]◇ [−]`. A caixa inteira é a amostra (abre o seletor
+    /// de cor, como no Figma) e mostra SÓ a cor e o hex — o tipo mora nos ajustes (⚙). Devolve o `y`
+    /// seguinte e, se os ajustes estão abertos, a linha (a âncora do painel à esquerda).
     fn paint_line(&mut self, l: &Linha<'_>, y: f32) -> (f32, Option<Rect>) {
-        let h = self.row_h;
-        let gap = Spacing::Xs.px();
-        let (w, _) = form_row_columns(self.inner_x, self.inner_w, y, h);
-        // ⭐ Cada canal tem o losango dele: o do olho e o da opacidade (de uma camada) colados ao
-        // controlo, como o olho da pilha sempre teve.
-        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
-            ph2d_editor_core::widget::DECORATOR_W
-        } else {
-            0.0
-        };
-        let mut x = self.inner_x + w;
-        for slot in [l.minus.map(|id| (id, IconId::Minus)), l.eye] {
-            x -= h;
-            if let Some((id, icon)) = slot {
-                if icon != IconId::Minus {
-                    x -= mw;
-                    self.decorator(Rect::new(x + h, y, mw, h), &[id]);
-                }
-                let r = Rect::new(x, y, h, h);
-                paint_icon_button(
-                    r,
-                    IconGlyph::Builtin(icon),
-                    IconButtonStyle::Plain,
-                    self.store.button_visual(id),
-                    self.scene,
-                    self.theme,
-                );
-                self.hit_index.register(id, r);
-            }
-            x -= gap;
-        }
-        if l.opacity_key {
-            x -= mw;
-            self.decorator(Rect::new(x, y, mw, h), &[l.opacity]);
-        }
-        x -= self.chip_w;
-        let pr = Rect::new(x, y, self.chip_w, h);
-        self.loose_number(l.opacity, l.pct, l.mixed_pct, Unit::Percent, pr);
-        x -= gap;
-        let field = Rect::new(self.inner_x, y, (x - self.inner_x).max(1.0), h);
-        let open = l.open.is_some_and(|id| is_open(self.store, id));
-        let (bg, edge) = if open {
-            (ColorToken::AccentSoft, ColorToken::Accent)
-        } else {
-            (ColorToken::Bg1, ColorToken::Border)
-        };
+        let c = self.colunas(y);
+        self.decorator(c.caixa_key, l.color_keys);
+        self.decorator(c.pct_key, l.opacity_keys);
+        self.decorator(c.eye_key, l.eye_keys);
+        self.loose_number(l.opacity, l.pct, l.mixed_pct, Unit::Percent, c.pct);
+        let open = l.settings.is_some_and(|id| is_open(self.store, id));
+        self.column_button(l.settings, IconId::StrokeSettings, c.settings, open);
+        let (eye, olho) = l.eye.map_or((None, IconId::Eye), |(id, i)| (Some(id), i));
+        self.column_button(eye, olho, c.eye, false);
+        self.column_button(l.minus, IconId::Minus, c.minus, false);
         let radius = Radius::Sm.px();
-        fill_rounded_rect(self.scene, field, radius, resolve(bg, self.theme));
+        fill_rounded_rect(
+            self.scene,
+            c.caixa,
+            radius,
+            resolve(ColorToken::Bg1, self.theme),
+        );
         stroke_rounded_rect(
             self.scene,
-            field,
+            c.caixa,
             radius,
             StrokeToken::Thin.px(),
-            resolve(edge, self.theme),
+            resolve(ColorToken::Border, self.theme),
         );
-        if let Some(id) = l.open {
-            self.hit_index.register(id, field);
-        }
         let pad = Spacing::Xs.px();
         let sr = self.line_swatch(y);
         let a11y = tr("panel.vector.appearance.layer_color");
@@ -201,6 +260,8 @@ impl BodyCtx<'_> {
                 self.scene,
                 self.theme,
             );
+        } else if let Some(ramp) = l.ramp {
+            self.ramp_swatch(sr, ramp);
         } else {
             paint_color_swatch(
                 &ColorSwatch::new(l.swatch, a11y, l.color).size(SwatchSize::Sm),
@@ -209,24 +270,68 @@ impl BodyCtx<'_> {
                 self.theme,
             );
         }
-        self.hit_index.register(l.swatch, sr);
+        // A caixa inteira é o alvo da amostra: clicar no hex abre o seletor, como no Figma.
+        self.hit_index.register(l.swatch, c.caixa);
+        let name = if l.mixed_color {
+            tr("panel.vector.mixed").to_owned()
+        } else {
+            hex(l.color)
+        };
         let ink = if l.off {
             ColorToken::TextDisabled
         } else {
             ColorToken::Text1
         };
-        let tx = sr.x + sr.w + ph2d_tokens::icon_label_gap_px();
+        // O hex no corpo pequeno, como o Figma: seis dígitos cabem na caixa do Inspector estreito.
+        let font = TypeToken::Sm.px();
+        let tx = sr.x + sr.w + pad;
         paint_text(
             self.text_system,
             self.scene,
-            l.name,
+            &name,
             tx,
-            y + (h - self.font) * 0.5,
-            self.font,
-            (field.x + field.w - pad - tx).max(1.0),
+            y + (self.row_h - font) * 0.5,
+            font,
+            (c.caixa.x + c.caixa.w - pad * 0.5 - tx).max(1.0),
             resolve(ink, self.theme),
         );
-        (y + h + self.row_gap, open.then_some(field))
+        let line = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        (y + self.row_h + self.row_gap, open.then_some(line))
+    }
+
+    /// A amostra de um degradê: as duas pontas em rampa, na moldura da amostra.
+    fn ramp_swatch(&mut self, r: Rect, [a, b]: [[u8; 4]; 2]) {
+        use ph2d_vector::{Affine, Brush, Fill, Gradient, Point, RoundedRect};
+        let radius = Radius::Sm.px();
+        let cor = |c: [u8; 4]| {
+            ph2d_vector::Color::from_rgba8(c[0], c[1], c[2], c[3]) // LITERAL-COLOR-OK: user-color — the artist's gradient stops
+        };
+        let g = Gradient::new_linear(
+            Point::new(f64::from(r.x), f64::from(r.y)),
+            Point::new(f64::from(r.x + r.w), f64::from(r.y)),
+        )
+        .with_stops([cor(a), cor(b)].as_slice());
+        let shape = RoundedRect::new(
+            f64::from(r.x),
+            f64::from(r.y),
+            f64::from(r.x + r.w),
+            f64::from(r.y + r.h),
+            f64::from(radius),
+        );
+        self.scene.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Gradient(g),
+            None,
+            &shape,
+        );
+        stroke_rounded_rect(
+            self.scene,
+            r,
+            radius,
+            StrokeToken::Thin.px(),
+            resolve(ColorToken::Border, self.theme),
+        );
     }
 
     /// As camadas EXTRA de uma espécie (`fills`), do topo para o chão — ou «Mixed layers» quando as
@@ -251,29 +356,22 @@ impl BodyCtx<'_> {
     fn layer_line(&mut self, i: usize, row: &PaintRow, y: f32) -> f32 {
         let opacity = ids::vector_paint_row_opacity_id(i);
         let pct = self.live_number(opacity, f64::from(row.opacity) * 100.0); // LITERAL-PX-OK: fraction→percent
-        let name = if row.mixed.color {
-            tr("panel.vector.mixed").to_owned()
-        } else {
-            hex(row.color)
-        };
-        let (_, dot) = form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
-        self.decorator(dot, &[ids::vector_paint_swatch_id(i)]);
+        let eye = ids::vector_paint_eye_id(i);
         let (y, open) = self.paint_line(
             &Linha {
-                open: Some(ids::vector_paint_row_id(i)),
+                settings: Some(ids::vector_paint_row_id(i)),
                 swatch: ids::vector_paint_swatch_id(i),
                 color: row.color,
+                ramp: row.ramp,
                 mixed_color: row.mixed.color,
-                name: &name,
                 opacity,
                 pct,
                 mixed_pct: row.mixed.opacity,
-                eye: Some((
-                    ids::vector_paint_eye_id(i),
-                    crate::paint_stack_rows::eye_icon(row),
-                )),
+                eye: Some((eye, crate::paint_stack_rows::eye_icon(row))),
                 minus: Some(ids::vector_paint_del_id(i)),
-                opacity_key: true,
+                color_keys: &[ids::vector_paint_swatch_id(i)],
+                opacity_keys: &[opacity],
+                eye_keys: &[eye],
                 off: !row.enabled,
             },
             y,
@@ -291,58 +389,57 @@ impl BodyCtx<'_> {
             .is_some_and(|a| a.layers.len() < ph2d_vec_scene::MAX_PAINT_LAYERS)
     }
 
-    /// ⭐ **A secção FILL**: o «+» (uma camada nova no topo), as camadas e a linha de base.
+    /// ⭐ **A secção FILL**: o «+» (uma camada nova no topo, ou a base de volta), as camadas e a
+    /// linha de base.
     pub(crate) fn fill_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let base = state::base_fill();
+        let (add, live) = if base == Some(state::BasePaint::Absent) {
+            (crate::ids::VECTOR_FILL_PRESENT, true)
+        } else {
+            (ids::VECTOR_PAINT_ADD_FILL, Self::room_for_layer())
+        };
         let (mut y, collapsed) = self.list_header(
             ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
             tr("panel.vector.section.fill"),
-            ids::VECTOR_PAINT_ADD_FILL,
-            Self::room_for_layer(),
+            add,
+            live,
             y,
         );
         if collapsed {
             return y;
         }
         y = self.layer_lines(true, y);
-        let kind = state::current_fill_kind();
-        let mixed = !snap.agrees(StyleFields::FILL_RGB);
-        let name = match kind {
-            Some(state::FillKind::Linear) => tr("panel.vector.arrange.linear").to_owned(),
-            Some(state::FillKind::Radial) => tr("panel.vector.arrange.radial").to_owned(),
-            Some(state::FillKind::MultiPoint) => tr("panel.vector.arrange.multi").to_owned(),
-            Some(state::FillKind::Pattern) => tr("panel.vector.arrange.pattern").to_owned(),
-            _ if mixed => tr("panel.vector.mixed").to_owned(),
-            _ => hex(snap.fill),
-        };
+        if base == Some(state::BasePaint::Absent) {
+            return y;
+        }
         let track = self
             .store
             .slider(ph2d_tool_vector::ids::VECTOR_FILL_OPACITY)
             .map_or_else(|| opacity_to_slider(snap.fill[3]), |(_, v)| v);
-        // Na base a cor e a opacidade são o MESMO canal (a tinta): um losango, na coluna.
-        let (_, dot) = form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
-        self.decorator(
-            dot,
-            &[
-                ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
-                ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
-            ],
-        );
+        let hidden = base == Some(state::BasePaint::Hidden);
+        // Na base a cor e a opacidade são o MESMO canal (a tinta): um losango, colado à caixa.
         let (next, open) = self.paint_line(
             &Linha {
-                // Sem forma selecionada não há tipo, degradê nem token a mostrar: a caixa não abre.
-                open: (kind.is_some() || state::token_bindings().is_some())
-                    .then_some(ids::VECTOR_FILL_ROW),
+                // Sem forma selecionada não há tipo, degradê nem token a mostrar: o ⚙ apaga.
+                settings: (state::current_fill_kind().is_some()
+                    || state::token_bindings().is_some())
+                .then_some(ids::VECTOR_FILL_ROW),
                 swatch: ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
                 color: snap.fill,
-                mixed_color: mixed,
-                name: &name,
+                ramp: state::base_fill_ramp(),
+                mixed_color: !snap.agrees(StyleFields::FILL_RGB),
                 opacity: ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
                 pct: f64::from(track) * 100.0, // LITERAL-PX-OK: fraction→percent
                 mixed_pct: !snap.agrees(StyleFields::FILL_A),
-                eye: None,
-                minus: None,
-                opacity_key: false,
-                off: false,
+                eye: base.map(|_| (crate::ids::VECTOR_FILL_EYE, eye_of(hidden))),
+                minus: base.map(|_| crate::ids::VECTOR_FILL_PRESENT),
+                color_keys: &[
+                    ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
+                    ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
+                ],
+                opacity_keys: &[],
+                eye_keys: &[crate::ids::VECTOR_FILL_EYE],
+                off: hidden,
             },
             y,
         );
@@ -384,13 +481,13 @@ impl BodyCtx<'_> {
         self.stroke_lines(snap, y, false)
     }
 
-    /// As linhas do traço — a secção e o painel da barra ② pintam estas mesmas (`in_bar`: sem o
-    /// botão de ajustes, porque o painel da barra já traz o «Stroke settings» por baixo; e, sem
-    /// traço, o «Add stroke» que no Inspector é o «+» do título).
+    /// As linhas do traço — a secção e o painel da barra ② pintam estas mesmas (`in_bar`: sem o ⚙
+    /// da base, porque o painel da barra já traz o «Stroke settings» por baixo; e, sem traço, o
+    /// «Add stroke» que no Inspector é o «+» do título).
     pub(crate) fn stroke_lines(&mut self, snap: &VectorStyleSnapshot, y: f32, in_bar: bool) -> f32 {
         let mut y = self.layer_lines(false, y);
-        let present = state::stroke_present();
-        if present == Some(false) {
+        let base = state::base_stroke();
+        if state::stroke_present() == Some(false) {
             if in_bar {
                 y = self.action_button(
                     crate::ids::VECTOR_STROKE_PRESENT,
@@ -400,38 +497,30 @@ impl BodyCtx<'_> {
             }
             return y;
         }
-        let mixed = !snap.agrees(StyleFields::STROKE_RGB);
-        let name = if mixed {
-            tr("panel.vector.mixed").to_owned()
-        } else {
-            hex(snap.stroke)
-        };
         let track = self
             .store
             .slider(ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY)
             .map_or_else(|| opacity_to_slider(snap.stroke[3]), |(_, v)| v);
-        let (_, dot) = form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
-        self.decorator(
-            dot,
-            &[
-                ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
-                ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
-            ],
-        );
-        let (next, _) = self.paint_line(
+        let hidden = base == Some(state::BasePaint::Hidden);
+        let (next, open) = self.paint_line(
             &Linha {
-                open: None,
+                settings: (!in_bar).then_some(ids::VECTOR_STROKE_SETTINGS),
                 swatch: ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
                 color: snap.stroke,
-                mixed_color: mixed,
-                name: &name,
+                ramp: None,
+                mixed_color: !snap.agrees(StyleFields::STROKE_RGB),
                 opacity: ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY_NUM,
                 pct: f64::from(track) * 100.0, // LITERAL-PX-OK: fraction→percent
                 mixed_pct: !snap.agrees(StyleFields::STROKE_A),
-                eye: None,
-                minus: (present == Some(true)).then_some(crate::ids::VECTOR_STROKE_PRESENT),
-                opacity_key: false,
-                off: false,
+                eye: base.map(|_| (crate::ids::VECTOR_STROKE_EYE, eye_of(hidden))),
+                minus: state::stroke_present().map(|_| crate::ids::VECTOR_STROKE_PRESENT),
+                color_keys: &[
+                    ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
+                    ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY,
+                ],
+                opacity_keys: &[],
+                eye_keys: &[crate::ids::VECTOR_STROKE_EYE],
+                off: hidden,
             },
             y,
         );
@@ -439,110 +528,18 @@ impl BodyCtx<'_> {
         if state::token_bindings().is_some_and(|b| b.stroke.is_some()) {
             self.token_slash(swatch);
         }
-        self.stroke_position_row(snap, next, !in_bar)
+        if let Some(r) = open {
+            ABERTOS.with(|a| a.borrow_mut().stroke = Some(r));
+        }
+        self.stroke_position_row(snap, next)
     }
+}
 
-    /// ⭐ **A linha FIXA**: Position (Inside · Center · Outside, em glifos) · Weight · ⚙.
-    fn stroke_position_row(&mut self, snap: &VectorStyleSnapshot, y: f32, settings: bool) -> f32 {
-        let h = self.row_h;
-        let gap = Spacing::Xs.px();
-        let font = TypeToken::Sm.px();
-        let (w, _) = form_row_columns(self.inner_x, self.inner_w, y, h);
-        let mut right = self.inner_x + w;
-        if settings {
-            right -= h + gap;
-        }
-        let half = ((right - self.inner_x - gap) / 2.0).max(1.0);
-        let wx = self.inner_x + half + gap;
-        // As legendas por cima, como no Figma.
-        let ink = resolve(ColorToken::Text2, self.theme);
-        for (key, x) in [
-            ("panel.vector.stroke.align", self.inner_x),
-            ("panel.vector.stroke.weight", wx),
-        ] {
-            paint_text(self.text_system, self.scene, tr(key), x, y, font, half, ink);
-        }
-        let y = y + font + Spacing::Xs.px();
-        // Dois canais, dois losangos: a ESPESSURA na coluna da linha, a POSIÇÃO colada aos glifos.
-        let (_, dot) = form_row_columns(self.inner_x, self.inner_w, y, h);
-        self.decorator(
-            dot,
-            &[
-                ph2d_tool_vector::ids::VECTOR_WIDTH,
-                ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
-            ],
-        );
-        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
-            ph2d_editor_core::widget::DECORATOR_W
-        } else {
-            0.0
-        };
-        let seg_w = (half - mw).max(1.0);
-        self.decorator(
-            Rect::new(self.inner_x + seg_w, y, mw, h),
-            &[
-                ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
-                ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
-                ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
-            ],
-        );
-        let agrees = snap.agrees(StyleFields::ALIGN);
-        paint_segmented_icon_group(
-            Rect::new(self.inner_x, y, seg_w, h),
-            &[
-                (
-                    IconId::StrokeInside,
-                    agrees && snap.align == StrokeAlign::Inner,
-                    ph2d_tool_vector::ids::VECTOR_ALIGN_INNER,
-                ),
-                (
-                    IconId::StrokeCenter,
-                    agrees && snap.align == StrokeAlign::Centre,
-                    ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE,
-                ),
-                (
-                    IconId::StrokeOutside,
-                    agrees && snap.align == StrokeAlign::Outer,
-                    ph2d_tool_vector::ids::VECTOR_ALIGN_OUTER,
-                ),
-            ],
-            self.scene,
-            self.text_system,
-            self.theme,
-            self.store,
-            self.hit_index,
-        );
-        let wid = ph2d_tool_vector::ids::VECTOR_WIDTH_NUM;
-        let px = self.store.number_value(wid).unwrap_or(snap.stroke_width_px);
-        let wr = Rect::new(wx, y, half, h);
-        self.loose_number(wid, px, !snap.agrees(StyleFields::WIDTH), Unit::Px, wr);
-        // O TOKEN da espessura risca o número: ele mostra a largura autorada, não a que se desenha.
-        if state::token_bindings().is_some_and(|b| b.width.is_some()) {
-            self.token_slash(wr);
-        }
-        if settings {
-            let id = ids::VECTOR_STROKE_SETTINGS;
-            let open = is_open(self.store, id);
-            let r = Rect::new(right + gap, y, h, h);
-            let visual = if open {
-                (ButtonState::Pressed, 1.0)
-            } else {
-                self.store.button_visual(id)
-            };
-            paint_icon_button(
-                r,
-                IconGlyph::Builtin(IconId::StrokeSettings),
-                IconButtonStyle::Plain,
-                visual,
-                self.scene,
-                self.theme,
-            );
-            self.hit_index.register(id, r);
-            if open {
-                let line = Rect::new(self.inner_x, y, self.inner_w, h);
-                ABERTOS.with(|a| a.borrow_mut().stroke = Some(line));
-            }
-        }
-        y + h + self.row_gap
+/// O olho de uma tinta de base.
+fn eye_of(hidden: bool) -> IconId {
+    if hidden {
+        IconId::EyeClosed
+    } else {
+        IconId::Eye
     }
 }

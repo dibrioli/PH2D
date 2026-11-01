@@ -66,6 +66,11 @@ pub(crate) fn reading_geometry_v23() -> bool {
     reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V23)
 }
 
+/// O path sem a tinta de base escondida (`<= 25`).
+pub(crate) fn reading_path_v25() -> bool {
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V25)
+}
+
 /// A forma v22, campo a campo — ⛔ congelada: mudá-la deixa de ler ficheiros reais.
 #[derive(Deserialize)]
 struct StrokeSpecV22 {

@@ -69,7 +69,7 @@ pub fn publish(
         .and_then(|h| {
             pen.selected()
                 .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| p.fill.as_ref())
+                .and_then(|p| p.slot_fill(crate::paint_stack::open_slot()))
                 .and_then(|f| selected_grad_color(f, h))
                 .map(|c| [c.r, c.g, c.b, c.a])
         })
@@ -260,7 +260,7 @@ pub fn publish(
             match pen
                 .selected()
                 .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| p.fill.as_ref())
+                .and_then(|p| p.slot_fill(crate::paint_stack::open_slot()))
             {
                 Some(Paint::Solid(_)) => (Some(FillKind::Solid), None),
                 Some(Paint::Linear { start, end, .. }) => {
@@ -375,7 +375,7 @@ pub fn publish(
         let sel_point = active_handle.and_then(GradHandle::point).and_then(|i| {
             pen.selected()
                 .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| match &p.fill {
+                .and_then(|p| match p.slot_fill(crate::paint_stack::open_slot()) {
                     Some(Paint::MultiPoint { points }) => points.get(i).copied(),
                     _ => None,
                 })

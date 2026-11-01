@@ -67,9 +67,12 @@ pub use resize_box_state::set_resize_box;
 #[path = "state_stroke.rs"]
 mod stroke_state;
 pub use stroke_state::{
-    StrokePaintKind, set_current_brush, set_stroke_paint_kind, set_stroke_present,
+    BasePaint, StrokePaintKind, set_base_fill_ramp, set_base_paints, set_current_brush,
+    set_stroke_paint_kind, set_stroke_present,
 };
-pub(crate) use stroke_state::{current_brush, stroke_paint_kind, stroke_present};
+pub(crate) use stroke_state::{
+    base_fill, base_fill_ramp, base_stroke, current_brush, stroke_paint_kind, stroke_present,
+};
 
 /// **O ÍMÃ e as RÉGUAS** — irmão pelo teto de 600 LOC dos painéis, e o corte é por assunto: as
 /// cinco chaves respondem *a que a ponta se agarra, e o que a borda do canvas mostra*, e nenhuma

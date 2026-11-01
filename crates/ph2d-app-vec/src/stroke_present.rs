@@ -18,7 +18,101 @@
 //! ⇒ **a criação é um GESTO explícito**, nunca um efeito colateral de um espelhamento.
 
 use ph2d_vec_edit::PenTool;
-use ph2d_vec_scene::VecScene;
+use ph2d_vec_scene::{Paint, VecPath, VecScene};
+
+/// ⭐ **Os quatro gestos da tinta de BASE** (F44b): o «−»/«+» e o olho, do preenchimento e do traço.
+/// ⚠️ O olho GUARDA a tinta (`VecPath::fill_hidden`); o «−» tira-a, e o «+» dá uma nova.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BaseVerb {
+    /// Dá ou tira o preenchimento de base.
+    Fill,
+    /// Dá ou tira o traço de base (a caixa *Stroke* de sempre).
+    Stroke,
+    FillEye,
+    StrokeEye,
+}
+
+/// Que gesto este id pede (`None` se não é da base).
+#[must_use]
+pub fn verb_for_id(id: ph2d_editor_core::NodeId) -> Option<BaseVerb> {
+    use ph2d_panel_vector::ids as p;
+    [
+        (p::VECTOR_FILL_PRESENT, BaseVerb::Fill),
+        (p::VECTOR_STROKE_PRESENT, BaseVerb::Stroke),
+        (p::VECTOR_FILL_EYE, BaseVerb::FillEye),
+        (p::VECTOR_STROKE_EYE, BaseVerb::StrokeEye),
+    ]
+    .into_iter()
+    .find_map(|(k, v)| (k == id).then_some(v))
+}
+
+/// **Aplica o gesto** à forma selecionada. Devolve se o documento mudou.
+pub fn apply(scene: &mut VecScene, pen: &PenTool, verb: BaseVerb) -> bool {
+    match verb {
+        BaseVerb::Stroke => toggle(scene, pen),
+        BaseVerb::Fill => {
+            let cor = pen.style().fill;
+            edit_one(scene, pen, |p| {
+                if p.base_fill().is_some() {
+                    p.remove_base_fill()
+                } else {
+                    p.fill = Some(Paint::solid(cor));
+                    true
+                }
+            })
+        }
+        BaseVerb::FillEye => edit_one(scene, pen, |p| {
+            let esconde = !p.fill_is_hidden();
+            p.set_fill_hidden(esconde)
+        }),
+        BaseVerb::StrokeEye => edit_one(scene, pen, |p| {
+            let esconde = !p.stroke_is_hidden();
+            p.set_stroke_hidden(esconde)
+        }),
+    }
+}
+
+fn edit_one(scene: &mut VecScene, pen: &PenTool, f: impl FnOnce(&mut VecPath) -> bool) -> bool {
+    let [id] = pen.selected_paths() else {
+        return false;
+    };
+    scene.path_mut(*id).is_some_and(f)
+}
+
+/// **O que o painel mostra das duas tintas de base** da forma selecionada (`None` sem resposta) —
+/// e as pontas do degradê da base, para a amostra.
+pub fn publish(scene: &VecScene, pen: &PenTool) {
+    use ph2d_panel_vector::state::BasePaint;
+    let de = |tem: bool, escondida: bool| match (tem, escondida) {
+        (_, true) => BasePaint::Hidden,
+        (true, false) => BasePaint::Shown,
+        (false, false) => BasePaint::Absent,
+    };
+    let p = match pen.selected_paths() {
+        [id] => scene.path(*id),
+        _ => None,
+    };
+    ph2d_panel_vector::state::set_base_paints(p.map(|p| {
+        [
+            de(p.fill.is_some(), p.fill_is_hidden()),
+            de(p.stroke.is_some(), p.stroke_is_hidden()),
+        ]
+    }));
+    ph2d_panel_vector::state::set_base_fill_ramp(p.and_then(|p| ramp(p.base_fill()?)));
+}
+
+/// As duas pontas de um degradê (`None` numa tinta sólida ou num padrão).
+#[must_use]
+pub fn ramp(paint: &Paint) -> Option<[[u8; 4]; 2]> {
+    let c = |c: ph2d_vec_scene::Rgba8| [c.r, c.g, c.b, c.a];
+    match paint {
+        Paint::Linear { stops, .. } | Paint::Radial { stops, .. } => {
+            Some([c(stops.first()?.color), c(stops.last()?.color)])
+        }
+        Paint::MultiPoint { points } => Some([c(points.first()?.color), c(points.last()?.color)]),
+        _ => None,
+    }
+}
 
 /// **A forma selecionada tem traço?** `None` quando não há uma resposta — nada selecionado, ou
 /// selecção múltipla.
@@ -30,7 +124,7 @@ pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> 
     let [id] = pen.selected_paths() else {
         return None;
     };
-    scene.path(*id).map(|p| p.stroke.is_some())
+    scene.path(*id).map(|p| p.base_stroke().is_some())
 }
 
 /// **Inverte o traço da forma selecionada** — dá um se não tem, tira se tem. `true` se mudou.
@@ -51,7 +145,7 @@ pub fn toggle(scene: &mut VecScene, pen: &PenTool) -> bool {
         return false;
     };
     let id = *id;
-    let Some(tem) = scene.path(id).map(|p| p.stroke.is_some()) else {
+    let Some(tem) = scene.path(id).map(|p| p.base_stroke().is_some()) else {
         return false;
     };
     let style = pen.style();
@@ -59,6 +153,8 @@ pub fn toggle(scene: &mut VecScene, pen: &PenTool) -> bool {
     let Some(path) = scene.path_mut(id) else {
         return false;
     };
+    // O «−» tira também a guardada pelo olho (F44b).
+    path.stroke_hidden = None;
     path.stroke = novo;
     true
 }

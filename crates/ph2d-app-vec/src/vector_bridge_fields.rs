@@ -16,7 +16,9 @@ use super::style::{StrokeStyle, recolour_stroke_paint, seed_fill_from_paint};
 use ph2d_tool_vector::StyleFields as F;
 use ph2d_tool_vector::params::DASH_DEFAULT;
 use ph2d_vec_edit::PenTool;
-use ph2d_vec_scene::{DashPattern, MAX_DASH_PAIRS, Paint, Rgba8, StrokeSpec, VecPathId, VecScene};
+use ph2d_vec_scene::{
+    DashPattern, MAX_DASH_PAIRS, Paint, PaintSlot, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene,
+};
 
 /// Os pares do tracejado de um traço — a MESMA leitura que a tool faz ao adotar (`adopt_stroke`).
 fn pairs_of(d: Option<DashPattern>) -> [[f64; 2]; MAX_DASH_PAIRS] {
@@ -137,9 +139,44 @@ pub fn pick_merge(cur: Rgba8, new: Rgba8, campos: F) -> Rgba8 {
     m
 }
 
-/// **Reestiliza SÓ os `campos` do traço de cada caminho selecionado.** Um caminho sem traço fica
-/// como está (ganhar um traço do nada seria a UI a inventar geometria). Devolve quantos traços
-/// foram reescritos.
+/// ⭐ F44b — os campos do traço que são da LINHA fixa (cor, opacidade, Weight, Position): ficam na
+/// BASE seja qual for a linha aberta. O resto (pontas, junções, tracejado, setas) é o CORPO de
+/// ajustes, e segue o [`PaintSlot`] aberto.
+#[must_use]
+pub fn row_fields() -> F {
+    F::STROKE_RGB | F::STROKE_A | F::WIDTH | F::ALIGN
+}
+
+/// **Escreve SÓ os `campos` no traço do caminho**: os da linha ([`row_fields`]) na base (vista ou
+/// escondida), os do corpo na linha `slot`. Devolve se algum traço foi reescrito.
+pub fn restyle_path_fields(
+    path: &mut VecPath,
+    style: &StrokeStyle,
+    width: f64,
+    campos: F,
+    slot: PaintSlot,
+) -> bool {
+    let (linha, corpo) = match slot {
+        PaintSlot::Base => (campos, F::NONE),
+        PaintSlot::Layer(_) => (campos & row_fields(), campos.without(row_fields())),
+    };
+    let mut mudou = false;
+    for (alvo, c) in [(PaintSlot::Base, linha), (slot, corpo)] {
+        if c.is_empty() {
+            continue;
+        }
+        if let Some(s) = path.slot_stroke_mut(alvo) {
+            let novo = style.onto_fields(s, width, c);
+            mudou |= novo != *s;
+            *s = novo;
+        }
+    }
+    mudou
+}
+
+/// **Reestiliza SÓ os `campos` do traço de cada caminho selecionado**, na BASE (vista ou
+/// escondida). Um caminho sem traço fica como está (ganhar um traço do nada seria a UI a inventar
+/// geometria). Devolve quantos traços foram reescritos.
 pub fn restyle_selected_fields(
     scene: &mut VecScene,
     selection: &[VecPathId],
@@ -147,15 +184,27 @@ pub fn restyle_selected_fields(
     width: f64,
     campos: F,
 ) -> usize {
+    restyle_slot_fields(scene, selection, style, width, campos, PaintSlot::Base)
+}
+
+/// O [`restyle_selected_fields`] com o corpo endereçado a `slot` (a linha cujo ⚙ está aberto).
+pub fn restyle_slot_fields(
+    scene: &mut VecScene,
+    selection: &[VecPathId],
+    style: &StrokeStyle,
+    width: f64,
+    campos: F,
+    slot: PaintSlot,
+) -> usize {
     let mut n = 0;
     for &id in selection {
         let Some(path) = scene.path_mut(id) else {
             continue;
         };
-        let Some(old) = path.stroke.as_ref() else {
+        if path.base_stroke().is_none() && path.slot_stroke(slot).is_none() {
             continue;
-        };
-        path.stroke = Some(style.onto_fields(old, width, campos));
+        }
+        restyle_path_fields(path, style, width, campos, slot);
         n += 1;
     }
     n
@@ -193,10 +242,17 @@ pub fn mixed_of(pen: &PenTool, scene: &VecScene) -> F {
             }
         }
     }
-    let strokes: Vec<&StrokeSpec> = paths.iter().filter_map(|p| p.stroke.as_ref()).collect();
-    if let Some(a) = strokes.first() {
-        for b in &strokes[1..] {
-            mixed |= stroke_diff(a, b);
+    // ⭐ F44b: a linha fixa compara as BASES; o corpo compara a linha aberta.
+    let slot = crate::paint_stack::open_slot();
+    for (alvo, campos) in [
+        (PaintSlot::Base, row_fields()),
+        (slot, F::ALL.without(row_fields())),
+    ] {
+        let strokes: Vec<&StrokeSpec> = paths.iter().filter_map(|p| p.slot_stroke(alvo)).collect();
+        if let Some(a) = strokes.first() {
+            for b in &strokes[1..] {
+                mixed |= stroke_diff(a, b) & campos;
+            }
         }
     }
     mixed

@@ -158,3 +158,47 @@ fn the_box_dresses_a_shape_exactly_like_the_tool_draws_one() {
         "a caixa e a ferramenta deixaram de dar o MESMO traco"
     );
 }
+
+/// ⭐⭐ F44b — **o olho da base GUARDA a tinta e devolve a MESMA**; o «−» tira-a, com a escondida.
+/// *Mutação: trocar `set_fill_hidden` por `fill = None` ⇒ o 2.º clique no olho devolve nada.*
+#[test]
+fn o_olho_da_base_esconde_e_devolve_a_mesma_tinta() {
+    let (mut scene, pen, id) = cena(true);
+    let antes = scene.path(id).and_then(|p| p.fill.clone());
+    assert!(apply(&mut scene, &pen, BaseVerb::FillEye));
+    assert!(
+        scene
+            .path(id)
+            .is_some_and(|p| p.fill.is_none() && p.fill_is_hidden())
+    );
+    assert!(apply(&mut scene, &pen, BaseVerb::FillEye));
+    assert_eq!(scene.path(id).and_then(|p| p.fill.clone()), antes);
+    assert!(apply(&mut scene, &pen, BaseVerb::StrokeEye));
+    assert!(traco(&scene, id).is_none());
+    assert!(
+        apply(&mut scene, &pen, BaseVerb::Stroke),
+        "o «−» de um traço escondido tira-o"
+    );
+    assert!(scene.path(id).is_some_and(|p| p.base_stroke().is_none()));
+    assert!(apply(&mut scene, &pen, BaseVerb::Fill));
+    assert!(scene.path(id).is_some_and(|p| p.base_fill().is_none()));
+    assert!(
+        apply(&mut scene, &pen, BaseVerb::Fill),
+        "o «+» dá um preenchimento de volta"
+    );
+    assert!(scene.path(id).is_some_and(|p| p.fill.is_some()));
+}
+
+/// Os quatro ids da base resolvem para o gesto deles, e só eles.
+#[test]
+fn os_ids_da_base_resolvem_o_gesto() {
+    use ph2d_panel_vector::ids as p;
+    assert_eq!(verb_for_id(p::VECTOR_FILL_EYE), Some(BaseVerb::FillEye));
+    assert_eq!(verb_for_id(p::VECTOR_STROKE_EYE), Some(BaseVerb::StrokeEye));
+    assert_eq!(verb_for_id(p::VECTOR_FILL_PRESENT), Some(BaseVerb::Fill));
+    assert_eq!(
+        verb_for_id(p::VECTOR_STROKE_PRESENT),
+        Some(BaseVerb::Stroke)
+    );
+    assert_eq!(verb_for_id(p::VECTOR_FILL_ROW), None);
+}

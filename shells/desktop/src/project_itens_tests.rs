@@ -123,7 +123,8 @@ fn o_projeto_199_le_a_pilha_do_vetor_sem_ids() {
 }
 
 /// ⭐ **Um projecto v196 lê os relógios e as poses sem ids** (F32, `197`): `Tweens`/`PathFollow` sem o
-/// último campo e a pose gravada no âmbito `PoseLayoutV196` abrem com relógio e ids por atribuir.
+/// último campo e a pose gravada no âmbito `PoseLayoutV196` abrem com relógio e ids por atribuir. A
+/// cena vai na forma do fio do `206` (`VecScene` v25, a fixtura real), costurada como no `199`.
 #[test]
 fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
     let tw = ph2d_ecs::Tweens(vec![Default::default()]);
@@ -135,8 +136,10 @@ fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
         assert_eq!(data.pop(), Some(0), "o id NONE do fim é um byte 0");
         blob(nome, data)
     };
-    let mut scene = VecScene::new();
-    let id = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    const V25: &[u8] =
+        include_bytes!("../../../crates/ph2d-vec-scene/tests/it/fixtures/vec_scene_v25_tinta.bin");
+    let scene = VecScene::from_bytes(V25).expect("a fixtura v25 abre");
+    let id = scene.paths()[0].id;
     let mut pose = ph2d_ui_state::ObjectPose::new(id);
     pose.filters = vec![ph2d_ecs::FxOp::new(ph2d_ecs::FxOp::BLUR)];
     let mut st = ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Default);
@@ -160,9 +163,18 @@ fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
         components,
     );
     let v196 = ph2d_ui_state::PoseLayoutV196::enter();
-    let bytes = postcard::to_allocvec(&(206u32, &f)).expect("serializa");
+    let vivo = postcard::to_allocvec(&(206u32, &f)).expect("serializa");
     drop(v196);
+    let cena_viva = postcard::to_allocvec(&*f.state.vec).expect("serializa");
+    let iguais = |w: &&[u8]| *w == cena_viva.as_slice();
+    assert_eq!(vivo.windows(cena_viva.len()).filter(iguais).count(), 1);
+    let at = vivo
+        .windows(cena_viva.len())
+        .position(|w| iguais(&w))
+        .expect("a cena está lá");
+    let bytes = [&vivo[..at], &V25[1..], &vivo[at + cena_viva.len()..]].concat();
     let back = abre("relogios_v196", &bytes);
+    assert_eq!(*back.state.vec, *f.state.vec, "a cena v25 abre igual");
     assert_eq!(componente::<ph2d_ecs::Tweens>(&back, 0), tw);
     assert_eq!(componente::<ph2d_ecs::PathFollow>(&back, 1), pf);
     let pose = &back.state.ui_states.get(id)[0].objects[0];

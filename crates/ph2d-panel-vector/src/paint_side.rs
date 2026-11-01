@@ -79,6 +79,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
     });
     match camada {
         Some((i, line, row, n)) => {
+            let snap = state::current_snapshot();
             let name = tr(if row.is_fill {
                 "panel.vector.paint.fill"
             } else {
@@ -95,6 +96,14 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
                 theme,
                 &mut |b, y| {
                     let y = side_head(b, None, name, ids::VECTOR_PAINT_PROPS_CLOSE, down, up, y);
+                    // ⭐ F44b: o MESMO corpo da base (as edições seguem a camada aberta —
+                    // `PaintSlot`), e por baixo o que só uma camada tem.
+                    let y = if row.is_fill {
+                        b.fill_props_body(y)
+                    } else {
+                        let y = b.layer_position_row(&row, y);
+                        b.stroke_settings_body(&snap, y)
+                    };
                     b.layer_props(&row, y)
                 },
             );

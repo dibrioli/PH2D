@@ -4,7 +4,7 @@ use super::*;
 
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct VectorPanelDispatchIntents {
-    pub(super) pending_stroke_present: bool,
+    pub(super) pending_stroke_present: Option<crate::vec_stroke_present::BaseVerb>,
 }
 
 impl crate::App {
@@ -57,12 +57,10 @@ impl crate::App {
         // ⚠️ **Aqui, e não no dreno de baixo:** a ficha do traço novo sai do `vec_pen`, que o
         // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
         // tarde leria a ficha do quadro anterior.
-        if pending_stroke_present {
-            crate::vec_stroke_present::toggle(vec_scene, &self.vec.pen);
+        if let Some(v) = pending_stroke_present {
+            crate::vec_stroke_present::apply(vec_scene, &self.vec.pen, v);
         }
-        ph2d_panel_vector::state::set_stroke_present(
-            crate::vec_stroke_present::selected_stroke_present(vec_scene, &self.vec.pen),
-        );
+        crate::vec_stroke_present::publish(vec_scene, &self.vec.pen);
         // ⭐ **A TINTA do traço** (plano 35, wave D) — publicada AQUI, ao lado da irmã, e não no
         // `vector_bridge`: o dreno acima pode ter acabado de dar ou tirar o traço, e uma
         // publicação anterior a ele mostraria a fileira de um traço que já não existe.
@@ -77,7 +75,7 @@ impl crate::App {
             self.vec.pen.selected().and_then(|sel| {
                 vec_scene
                     .path(sel)
-                    .and_then(|p| p.stroke.as_ref())
+                    .and_then(|p| p.slot_stroke(crate::vec_paint_stack::open_slot()))
                     .and_then(ph2d_vec_scene::StrokeSpec::brush)
                     .map(|b| ph2d_panel_vector::BrushRow {
                         // ⚠️ *"Tem arte?"* é uma pergunta sobre a CENA, não sobre o campo: um id que

@@ -57,6 +57,12 @@ pub fn row_mixed(
         m.blend |= a.blend != b.blend;
         m.offset |= a.offset != b.offset;
         m.dilate |= a.dilate != b.dilate;
+        // F44b: a Position (só num traço; o preenchimento não tem uma).
+        let align = |e: &ph2d_vec_scene::PaintEntry| match &e.kind {
+            ph2d_vec_scene::PaintKind::Stroke(s) => Some(s.align),
+            ph2d_vec_scene::PaintKind::Fill(_) => None,
+        };
+        m.align |= align(a) != align(b);
         m.dilate_join |= a.dilate_join != b.dilate_join;
         m.enabled |= a.enabled != b.enabled;
     }

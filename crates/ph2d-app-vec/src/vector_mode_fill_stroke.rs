@@ -1,14 +1,16 @@
-//! ⭐ **As cenas 45 e 46** (`PH2D_OBJECT_MODE_SMOKE=45|46`, F44 — Fill e Stroke no layout do Figma).
-//! Um rectângulo com degradê linear (azul → roxo), traço escuro, uma SOMBRA (camada de
-//! preenchimento deslocada) e um segundo traço amarelo por fora, selecionado, com o Inspector rolado
-//! até à secção Fill. A 45 abre o painel do preenchimento de base (o tipo e o degradê, à ESQUERDA do
-//! Inspector); a 46 abre o «Stroke settings» pelo ⚙ (Cap e Join em glifos).
+//! ⭐ **As cenas 45 e 46** (`PH2D_OBJECT_MODE_SMOKE=45|46`, F44 → F44b — Fill e Stroke no layout do
+//! Figma, todas as linhas iguais). Um rectângulo com degradê linear (azul → roxo) de base, traço
+//! escuro de base, e três camadas extra: uma SOMBRA (preenchimento deslocado), um BRILHO radial
+//! (branco → transparente) e um contorno amarelo TRACEJADO por fora — selecionado, com o Inspector
+//! rolado até à secção Fill. A 45 abre o ⚙ do BRILHO (uma camada extra com tipo e degradê, como a
+//! base); a 46 esconde o traço de base pelo olho e abre o ⚙ do contorno amarelo (Position, pontas,
+//! junções, tracejado — o «Stroke settings» de uma camada).
 
 use crate::state::VecState;
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_vec_scene::{
-    GradientStop, Paint, PaintEntry, Rgba8, ShapeKind, StrokeAlign, StrokeSpec, VecPathId, VecScene,
+    DashPattern, GradientStop, Paint, PaintEntry, Rgba8, ShapeKind, StrokeAlign, StrokeSpec,
+    VecPathId, VecScene,
 };
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -22,6 +24,11 @@ const ROXO: Rgba8 = Rgba8::new(150, 80, 210, 255);
 const ESCURO: Rgba8 = Rgba8::new(30, 30, 40, 255);
 const SOMBRA: Rgba8 = Rgba8::new(20, 20, 30, 140);
 const AMARELO: Rgba8 = Rgba8::new(245, 200, 60, 255);
+const BRANCO: Rgba8 = Rgba8::new(255, 255, 255, 200);
+const TRANSPARENTE: Rgba8 = Rgba8::new(255, 255, 255, 0);
+/// A camada que cada cena abre: o brilho (45) e o contorno amarelo (46).
+const BRILHO: usize = 1;
+const FORA: usize = 2;
 
 static PASSO: AtomicU8 = AtomicU8::new(0);
 static ROLAGENS: AtomicU8 = AtomicU8::new(0);
@@ -53,15 +60,28 @@ pub fn step(
             p.stroke = Some(base);
             let mut sombra = PaintEntry::fill(Paint::solid(SOMBRA));
             sombra.offset = [0.15, -0.15];
+            let brilho = PaintEntry::fill(Paint::Radial {
+                stops: vec![
+                    GradientStop::new(0.0, BRANCO),
+                    GradientStop::new(1.0, TRANSPARENTE),
+                ],
+                center: [-0.25, 0.25],
+                radius: 0.6,
+            });
             let mut fora = StrokeSpec::new(AMARELO, 0.05);
             fora.align = StrokeAlign::Outer;
+            fora.dash = Some(DashPattern::single(0.12, 0.06));
             // A sombra por BAIXO de tudo não existe na pilha (ela pinta por cima do chão): fica
             // por cima, deslocada — o «offset print» que motivou a camada.
-            p.paints = vec![sombra, PaintEntry::stroke(fora)];
+            p.paints = vec![sombra, brilho, PaintEntry::stroke(fora)];
+            if traco {
+                p.set_stroke_hidden(true);
+            }
             eprintln!(
-                "[cena {}] rectângulo: degradê azul→roxo, traço escuro, sombra deslocada e traço \
-                 amarelo por fora",
-                if traco { 46 } else { 45 }
+                "[cena {}] rectângulo: degradê azul→roxo de base, traço escuro de base{}, sombra \
+                 deslocada, brilho radial e contorno amarelo tracejado por fora",
+                if traco { 46 } else { 45 },
+                if traco { " ESCONDIDO pelo olho" } else { "" }
             );
             PASSO.store(2, Ordering::Relaxed);
         }
@@ -98,14 +118,9 @@ fn abre(hero: &mut HeroScreen, traco: bool) -> Option<u8> {
             .set_panel_scroll(painel, (s + c.y - alvo).max(0.0));
         return None;
     }
-    let id = if traco {
-        ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS
-    } else {
-        ph2d_panel_vector::ids::VECTOR_FILL_ROW
-    };
-    hero.hit_index.rect_for(id)?;
-    if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(id) {
-        *open = true;
-    }
+    let i = if traco { FORA } else { BRILHO };
+    hero.hit_index
+        .rect_for(ph2d_panel_vector::ids::vector_paint_row_id(i))?;
+    ph2d_panel_vector::open_paint_layer(&mut hero.store, i);
     Some(9)
 }

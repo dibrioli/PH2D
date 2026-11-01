@@ -173,9 +173,8 @@ pub(in crate::render_loop) struct DrainOut {
     // **Resize Box** (plano UI/UX W3b): o clique e' um TOGGLE, entao nao ha' operando —
     // um bool basta para dizer *"houve clique"*.
     pub(in crate::render_loop) pending_resize_box: bool,
-    // ⭐ **Stroke** (plano 34): a caixa que dá/tira o traço da forma selecionada. Também é
-    // um TOGGLE, então um bool basta — o operando é a ficha da ferramenta, e ela não viaja.
-    pub(in crate::render_loop) pending_stroke_present: bool,
+    // ⭐ **A tinta de BASE** (plano 34, F44b): dar/tirar e o olho, do preenchimento e do traço.
+    pub(in crate::render_loop) pending_stroke_present: Option<crate::vec_stroke_present::BaseVerb>,
     pub(in crate::render_loop) pending_layout_field:
         Option<(ph2d_app_vec::layout_edit::LayoutField, f64)>,
     // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou

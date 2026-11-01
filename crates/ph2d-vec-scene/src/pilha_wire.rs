@@ -29,6 +29,19 @@ pub fn with_pilha_layout_v23<T>(f: impl FnOnce() -> T) -> T {
     f()
 }
 
+/// Corre `f` a ler na forma da `VEC_SCENE_SCHEMA_VERSION` `fio` (`None` = a pilha v23 sobre o fio
+/// vivo): a pilha sem id até à v24, o fio de [`crate::with_wire_layout`] se houver. É a porta dos
+/// blobs de `VecPath` regravados no load (Envelope, pele).
+pub fn with_fio_layout<T>(fio: Option<u32>, f: impl FnOnce() -> T) -> T {
+    let _v23 = fio
+        .is_none_or(|v| v <= crate::schema::VEC_SCENE_SCHEMA_V24)
+        .then(PilhaLayoutV23::enter);
+    match fio {
+        Some(v) => crate::with_wire_layout(v, f),
+        None => f(),
+    }
+}
+
 /// O mesmo âmbito como GUARDA (o leitor do `.ph2dproj`).
 #[must_use = "o âmbito fecha quando o guarda cai"]
 pub struct PilhaLayoutV23(());

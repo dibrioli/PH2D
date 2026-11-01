@@ -149,8 +149,9 @@ enum Tinta<'a> {
 fn tinta(p: &VecPath, base: u16, i: u16) -> Option<Tinta<'_>> {
     let preench = base == c::TINTA_PREENCH;
     match i {
-        0 if preench => Some(Tinta::Fill(p.fill.as_ref())),
-        0 => Some(Tinta::Traco(p.stroke.as_ref().map(|s| &s.paint))),
+        // A base escondida pelo olho (F44b) continua a ter a tinta: os canais dela leem-na.
+        0 if preench => Some(Tinta::Fill(p.base_fill())),
+        0 => Some(Tinta::Traco(p.base_stroke().map(|s| &s.paint))),
         _ => match &p.paints.get(usize::from(i) - 1)?.kind {
             PaintKind::Fill(t) if preench => Some(Tinta::Fill(Some(t))),
             PaintKind::Stroke(s) if !preench => Some(Tinta::Traco(Some(&s.paint))),
@@ -171,7 +172,7 @@ fn traco(p: &VecPath, i: u16) -> Option<&StrokeSpec> {
 
 fn traco_mut(p: &mut VecPath, i: u16) -> Option<&mut StrokeSpec> {
     match i {
-        0 => p.stroke.as_mut(),
+        0 => p.base_stroke_mut(),
         _ => match &mut p.paints.get_mut(usize::from(i) - 1)?.kind {
             PaintKind::Stroke(s) => Some(s),
             PaintKind::Fill(_) => None,
@@ -331,6 +332,15 @@ fn ler_interno(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f3
             } else {
                 c::TINTA_TRACO
             };
+            // ⭐ O «existe» da base é o OLHO dela (F44b): à vista = 1, escondida ou ausente = 0.
+            if i == 0 && campo - base == c::OFF_EXISTE {
+                let vista = if base == c::TINTA_PREENCH {
+                    p.fill.is_some()
+                } else {
+                    p.stroke.is_some()
+                };
+                return Some(f32::from(u8::from(vista)));
+            }
             ler_tinta(tinta(p, base, i)?, campo - base, i, ju)
         }
         c::TRACO_LARGURA..=c::TRACO_MARCA_REDONDA => {
@@ -595,15 +605,20 @@ fn escrever_shape(shape: Option<&mut VecShape>, campo: u16, j: usize, v: f32) {
 
 fn escrever_preench(p: &mut VecPath, off: u16, i: u16, j: usize, v: f32) {
     if i == 0 && off == c::OFF_EXISTE {
+        // O olho: esconder GUARDA a tinta; mostrar devolve-a (ou dá uma, se não havia).
         match (v >= 0.5, p.fill.is_some()) {
-            (true, false) => p.fill = Some(Paint::Solid(Rgba8::new(0, 0, 0, 255))),
-            (false, true) => p.fill = None,
+            (true, false) if !p.set_fill_hidden(false) => {
+                p.fill = Some(Paint::Solid(Rgba8::new(0, 0, 0, 255)));
+            }
+            (false, true) => {
+                p.set_fill_hidden(true);
+            }
             _ => {}
         }
         return;
     }
     let alvo = match i {
-        0 => p.fill.as_mut(),
+        0 => p.base_fill_mut(),
         _ => match p.paints.get_mut(usize::from(i) - 1).map(|e| &mut e.kind) {
             Some(PaintKind::Fill(t)) => Some(t),
             _ => None,
@@ -617,8 +632,12 @@ fn escrever_preench(p: &mut VecPath, off: u16, i: u16, j: usize, v: f32) {
 fn escrever_tinta_traco(p: &mut VecPath, off: u16, i: u16, v: f32) {
     if i == 0 && off == c::OFF_EXISTE {
         match (v >= 0.5, p.stroke.is_some()) {
-            (true, false) => p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0)),
-            (false, true) => p.stroke = None,
+            (true, false) if !p.set_stroke_hidden(false) => {
+                p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0));
+            }
+            (false, true) => {
+                p.set_stroke_hidden(true);
+            }
             _ => {}
         }
         return;

@@ -1,4 +1,4 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v163** — a SÉTIMA faixa arquivada.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v165** — a SÉTIMA faixa arquivada.
 //!
 //! ⚠️ **O gatilho é o de sempre: a ACUMULAÇÃO de uma rodada.** Na integração de 2026-10-29
 //! (`line/UIUX` sobre o `main` com a `GameEngineFuncional` e a `BlenderConstraints`) a escada viva
@@ -10,6 +10,10 @@
 //! ⚠️ **Mais um degrau (`162 → 163`) subiu para aqui em 2026-10-29** (rebase da `line/PixelArt` sobre o
 //! `main` em `207`): o degrau `207 → 208` levou a escada viva a `603` / `600`; o excesso medido era `3`
 //! e o corte mínimo é um degrau inteiro, o mais velho da ponta. ⛔ Nunca subir o número.
+//!
+//! ⚠️ **Mais dois degraus (`163 → 165`) subiram para aqui em 2026-11-01** (`line/UIUX`, F44b): o degrau
+//! `211 → 212` levou a escada viva a `632` / `600`; o excesso medido era `32` e o corte mínimo por
+//! degraus inteiros, os mais velhos da ponta, é `38`. ⛔ Nunca subir o número.
 
 //! # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
 //!
@@ -74,3 +78,42 @@
 //! bala sair de um sitio que o artista nao escolheu.
 //!
 //! ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v162 e' recusado em voz alta.
+//!
+//! # `163 → 164` — a PARALAXE: um objecto guarda uma FRACÇÃO do movimento do mundo
+//!
+//! O `ph2d_ecs::ScrollFactor` e' um componente REGISTADO novo (plano 24, W1) ⇒ os tres contadores
+//! do registo sobem **+1** (`103 → 104` no ECS, `104 → 105` nos dois espelhos).
+//!
+//! ⭐⭐⭐ **A lei e' UM numero, e ele NAO e' nosso: tres sistemas independentes convergiram nele**
+//! — `scroll_scale` (Godot, MEDIDO no binario: o declive vale `1 − k`), `scrollFactor` (Phaser),
+//! *Parallax %* (Construct) — e o **nosso multiplano do Flip ja' o tinha** (`FlipLayer::depth`,
+//! ADR-0114), so' que preso dentro daquele modulo. `k = 1` e' o objecto do mundo, `k = 0` e' preso
+//! a` vista (*que e' o que um HUD e'*), e entre eles esta' o fundo.
+//!
+//! ⚠️ **O valor de fabrica e' `[1, 1]` e nao escreve um bit** ⇒ anexar o componente e nao lhe tocar
+//! deixa a cena **byte-identica**, e uma cena ja' gravada comporta-se exactamente como antes.
+//!
+//! ⛔ **Sem `ScrollFactorRuntime`, e a ausencia e' a lei:** a pose deslocada e' funcao PURA da
+//! vista publicada (`autorada + centro·(1 − k)`), logo nao ha' estado para guardar — um scrub e um
+//! rebobinar reconstroem-na sozinhos. *O que nao tem estado nao pode sobreviver errado.*
+//!
+//! ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v163 e' recusado em voz alta.
+//!
+//! # ⭐ 164 → 165 (2026-09-22) — a REPETIÇÃO INFINITA (plano 24, W2)
+//!
+//! `ScrollRepeat { tile: [f32; 2] }` — quanto mede um ladrilho do fundo. O deslocamento da
+//! paralaxe passa a ser corrigido por um número **INTEIRO** de ladrilhos, que é a lei medida no
+//! alvo (a correcção do `Parallax2D` dele é sempre um múltiplo exacto do `repeat_size`) e é o que
+//! faz a costura não poder abrir: a imagem a seguir ao salto é a mesma. ⛔ **Somar um RESTO faria
+//! o erro de `f32` acumular**, e ao décimo milésimo ladrilho a costura estava aberta.
+//!
+//! ⚠️ **Componente SEPARADO e não um campo do `ScrollFactor`** — a razão é a POPULAÇÃO: quase todo
+//! objecto com paralaxe **não** repete (um primeiro plano, uma nuvem solta), e um campo ali seria
+//! um knob morto em todos eles. É a mesma lei que separa o `CameraFollow` do `GameCamera`.
+//!
+//! ⚠️ **O valor de fábrica é `[0, 0]` e não corrige nada** ⇒ anexar e não tocar deixa a cena
+//! byte-idêntica, e o zero é a ausência (a mesma convenção do alvo) — é ela que permite repetir só
+//! em X, que é o caso de quase todo fundo.
+//!
+//! ⛔ **Sem degrau de migração**, pela mesma decisão — um v164 é recusado em voz alta.
+//!

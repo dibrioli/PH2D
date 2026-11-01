@@ -345,7 +345,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // conteúdo). A tripla NÃO vê este degrau.
         // ⚠️ **`211` em 2026-10-30** (`line/UIUX`, F41) — o tendão da pele guarda o comprimento do
         // bind (migração de forma da `SkinBind`). A tripla NÃO vê este degrau.
-        (211, 13, 25),
+        // ⚠️ **`212` em 2026-11-01** (`line/UIUX`, F44b) — a tinta de base escondida pelo olho
+        // (`VecScene` `25 → 26`); os `<= 211` leem-se pela forma do fio deles.
+        (212, 13, 26),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

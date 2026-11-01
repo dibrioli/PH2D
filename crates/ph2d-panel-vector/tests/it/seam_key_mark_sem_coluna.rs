@@ -77,6 +77,8 @@ fn aparencia(layers: Vec<PaintRow>) {
 
 fn entrada() -> PaintRow {
     PaintRow {
+        align: ph2d_vec_scene::StrokeAlign::Centre,
+        ramp: None,
         is_fill: true,
         color: [0xCC, 0x33, 0x33, 0xFF],
         width: 0.0,
@@ -97,10 +99,16 @@ fn entrada() -> PaintRow {
 fn a_caixa_de_marcar_tem_losango() {
     use ph2d_tool_vector::ids::{VECTOR_STROKE_OPACITY, VECTOR_STROKE_SWATCH};
     state::set_stroke_present(Some(true));
-    let (r, c, f) = losango(VECTOR_STROKE_SWATCH, ids::VECTOR_STROKE_PRESENT, "Stroke");
+    // F44b: o losango da cor fica colado à CAIXA (a amostra), e o «−» — sem losango — vem depois.
+    let (r, c, f) = losango(VECTOR_STROKE_SWATCH, VECTOR_STROKE_SWATCH, "Stroke");
     assert!(
         antes(c, r),
-        "o «−» entra na coluna do losango: {c:?} × {r:?}"
+        "a caixa entra na coluna do losango: {c:?} × {r:?}"
+    );
+    let (_, menos, _) = losango(VECTOR_STROKE_SWATCH, ids::VECTOR_STROKE_PRESENT, "Stroke");
+    assert!(
+        r.x < menos.x,
+        "o «−» vem depois do losango: {r:?} × {menos:?}"
     );
     assert_eq!(f, vec![VECTOR_STROKE_SWATCH, VECTOR_STROKE_OPACITY]);
     state::set_stroke_present(None);

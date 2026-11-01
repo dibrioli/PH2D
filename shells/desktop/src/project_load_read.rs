@@ -50,7 +50,7 @@ impl crate::App {
             }
         };
         // ⭐ **O vetor de um ficheiro antigo lê-se pela forma do FIO dele** (F16c `22` até ao `189`;
-        // W4.2 `23` até ao `199`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
+        // W4.2 `23` até ao `199`; F44b `24`/`25` até ao `211`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
         // resto do ficheiro, o tipo do braço. Ver `ph2d_vec_scene::stroke_wire`.
         let fio = crate::project_schema::fio_do_projeto(ver);
         let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);
@@ -270,11 +270,5 @@ fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
         let n = ph2d_app_vec::envelope_live::migra_fio(w, fio)
             + ph2d_skeleton_live::skinned_mesh::migra_fio(w, fio);
         eprintln!("[proj] v{ver}: vetor v{fio} lido; {n} envelope(s)/pele(s) regravado(s)");
-    } else if ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID {
-        // Idem para a pilha sem ids (o `migra_fio` já a lê para os `<= 199`).
-        let w = &mut file.state.world;
-        let n = ph2d_app_vec::envelope_live::migra_pilha_v23(w)
-            + ph2d_skeleton_live::skinned_mesh::migra_pilha_v23(w);
-        eprintln!("[proj] v{ver}: pilha v23 lida; {n} envelope(s)/pele(s) regravado(s)");
     }
 }

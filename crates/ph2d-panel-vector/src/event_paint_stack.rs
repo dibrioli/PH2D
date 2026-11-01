@@ -40,6 +40,10 @@ pub(super) fn is_button(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_PAINT_JOIN_MITER
         || id == ids::VECTOR_PAINT_JOIN_ROUND
         || id == ids::VECTOR_PAINT_JOIN_BEVEL
+        // ⭐ F44b: a Position do traço da camada aberta.
+        || id == ids::VECTOR_PAINT_ALIGN_INNER
+        || id == ids::VECTOR_PAINT_ALIGN_CENTRE
+        || id == ids::VECTOR_PAINT_ALIGN_OUTER
         || (0..ph2d_vec_scene::MAX_PAINT_LAYERS).any(|i| {
             id == ids::vector_paint_eye_id(i)
                 || id == ids::vector_paint_row_id(i)

@@ -28,6 +28,8 @@ fn pintado(h: &mut MockPanelHost, id: NodeId) -> Option<Rect> {
 
 fn camada(is_fill: bool) -> PaintRow {
     PaintRow {
+        align: ph2d_vec_scene::StrokeAlign::Centre,
+        ramp: None,
         is_fill,
         color: [0x33, 0x66, 0xCC, 0xFF],
         width: 2.0,
@@ -51,13 +53,13 @@ fn forma() {
         mixed_blend: false,
         layers_differ: false,
     }));
-    state::set_stroke_present(Some(true));
+    state::set_base_paints(Some([state::BasePaint::Shown; 2]));
     state::set_current_fill(Some(ph2d_panel_vector::FillKind::Linear), None);
 }
 
 fn limpa() {
     state::set_current_appearance(None);
-    state::set_stroke_present(None);
+    state::set_base_paints(None);
     state::set_current_fill(None, None);
     state::close_open_layer();
 }
@@ -205,7 +207,8 @@ fn cap_join_e_position_sao_glifos() {
         "IconId::StrokeCenter",
         "IconId::StrokeOutside",
     ] {
-        assert!(LINHAS.contains(glifo), "falta o glifo {glifo}");
+        // F44b: a linha fixa mudou-se para o ficheiro do traço (tecto de LOC).
+        assert!(SETTINGS.contains(glifo), "falta o glifo {glifo}");
     }
     for palavra in [
         "panel.vector.stroke.butt",
@@ -236,12 +239,67 @@ fn a_linha_fixa_position_weight_ajustes() {
     let mut h = crate::host_aberto();
     let pos = pintado(&mut h, tv::VECTOR_ALIGN_OUTER).expect("Position");
     let peso = pintado(&mut h, tv::VECTOR_WIDTH_NUM).expect("Weight");
-    let ajuste = pintado(&mut h, ids::VECTOR_STROKE_SETTINGS).expect("⚙");
     assert!(
-        (pos.y - peso.y).abs() < 0.5 && (peso.y - ajuste.y).abs() < 0.5,
-        "Position, Weight e ⚙ na MESMA linha"
+        (pos.y - peso.y).abs() < 0.5,
+        "Position e Weight na MESMA linha"
     );
-    assert!(pos.x < peso.x && peso.x < ajuste.x);
+    assert!(pos.x < peso.x);
+    // F44b: o ⚙ do traço de base mudou-se para a linha da COR dele, como o de toda linha; e o
+    // Weight está na coluna do `%`.
+    let pct = pintado(&mut h, tv::VECTOR_STROKE_OPACITY_NUM).expect("% do traço");
+    let ajuste = pintado(&mut h, ids::VECTOR_STROKE_SETTINGS).expect("⚙");
+    assert!((ajuste.y - pct.y).abs() < 0.5, "o ⚙ mora na linha da cor");
+    assert!((peso.x - pct.x).abs() < 0.5 && (peso.w - pct.w).abs() < 0.5);
+    limpa();
+}
+
+/// ⭐⭐ **F44b (dono 01/11): TODAS as linhas iguais** — a base e as camadas, Fill e Stroke, com as
+/// MESMAS colunas: caixa, `%`, ⚙, olho e «−» no mesmo `x` e com a mesma largura. *Mutação: tirar o
+/// olho da base (ou não reservar a coluna de um losango ausente) desloca a caixa dela.*
+#[test]
+fn todas_as_linhas_tem_as_mesmas_colunas() {
+    forma();
+    let mut h = crate::host_aberto();
+    let mut r = |id| pintado(&mut h, id).unwrap_or_else(|| panic!("{id:?} não pintado"));
+    let colunas = [
+        [
+            tv::VECTOR_FILL_SWATCH,
+            tv::VECTOR_FILL_OPACITY_NUM,
+            ids::VECTOR_FILL_ROW,
+            ids::VECTOR_FILL_EYE,
+            ids::VECTOR_FILL_PRESENT,
+        ],
+        [
+            ids::vector_paint_swatch_id(0),
+            ids::vector_paint_row_opacity_id(0),
+            ids::vector_paint_row_id(0),
+            ids::vector_paint_eye_id(0),
+            ids::vector_paint_del_id(0),
+        ],
+        [
+            tv::VECTOR_STROKE_SWATCH,
+            tv::VECTOR_STROKE_OPACITY_NUM,
+            ids::VECTOR_STROKE_SETTINGS,
+            ids::VECTOR_STROKE_EYE,
+            ids::VECTOR_STROKE_PRESENT,
+        ],
+        [
+            ids::vector_paint_swatch_id(1),
+            ids::vector_paint_row_opacity_id(1),
+            ids::vector_paint_row_id(1),
+            ids::vector_paint_eye_id(1),
+            ids::vector_paint_del_id(1),
+        ],
+    ]
+    .map(|linha| linha.map(&mut r));
+    for linha in &colunas[1..] {
+        for (a, b) in colunas[0].iter().zip(linha) {
+            assert!(
+                (a.x - b.x).abs() < 0.5 && (a.w - b.w).abs() < 0.5,
+                "coluna desalinhada: {a:?} × {b:?}"
+            );
+        }
+    }
     limpa();
 }
 

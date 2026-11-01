@@ -258,7 +258,8 @@ impl BodyCtx<'_> {
 
     /// O TOKEN do preenchimento (plano UI/UX W4) — a swatch que ele cobre é a da linha.
     fn fill_token_row(&mut self, y: f32) -> f32 {
-        match state::token_bindings() {
+        // O token cobre a tinta de BASE: no ⚙ de uma camada extra (F44b) não há o que ligar.
+        match state::token_bindings().filter(|_| state::open_layer().is_none()) {
             Some(b) => self.token_row(crate::ids::VECTOR_TOKEN_FILL, b.fill.as_deref(), y),
             None => y,
         }

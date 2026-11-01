@@ -468,19 +468,10 @@ impl crate::App {
         // Um gesto em andamento (botão pressionado) muta a cada Move; espera o fim
         // para não registrar um passo por frame.
         //
-        // ⚠️ **Um recálculo assíncrono pendente conta como gesto em andamento** — é a MESMA
-        // frase acima aplicada a um trabalho que continua depois do botão soltar. O ajuste
-        // Trap/Bleed do Colorize roda fora da thread de UI (`09 §7.2`, 304 ms/tique), então
-        // soltar o slider registraria um passo com o resultado ANTIGO e a chegada do worker
-        // registraria um segundo: dois Ctrl+Z para um arrasto.
-        // ⚠️ **Uma PREVIEW ao vivo tambem conta como gesto em andamento** — e a MESMA frase, num
-        // trabalho que o produto faz sozinho: uma transição de ESTADO de UI (plano UI/UX W7) põe
-        // a cena numa pose DIFERENTE a cada quadro, então sem a supressão um Show de 150 ms
-        // viraria nove passos de undo. Quando ela chega, a cena está numa pose AUTORADA e o diff
-        // registra um — o preço certo de *"eu mostrei o hover"*.
-        // ⭐⭐⭐ **E o motivo tem NOME** (W114) — porque a pergunta que um report de *«o undo pula
-        // etapas»* faz é exactamente *«qual destas quatro comeu o meu passo?»*
-        // (eram cinco; o arrasto do gizmo 3D saiu com o módulo — ADR-0179).
+        // ⚠️ Um recálculo assíncrono pendente (o Trap/Bleed do Colorize, `09 §7.2`) e uma PREVIEW
+        // ao vivo (a transição de ESTADO de UI, W7) contam como gesto em andamento: sem isso um
+        // arrasto seriam dois Ctrl+Z e um Show de 150 ms nove passos. ⭐ O motivo tem NOME (W114):
+        // é a pergunta de um report *«o undo pula etapas»*.
         //
         // ⚠️ **Uma mudança suprimida NÃO se perde: ela funde-se no PRÓXIMO passo**, porque o
         // `undo_baseline` só é substituído quando um passo é registado. ⇒ duas acções viram um

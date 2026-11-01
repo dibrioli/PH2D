@@ -362,3 +362,7 @@ impl VecPath {
         self.paints.iter().any(PaintEntry::is_active)
     }
 }
+
+#[path = "paint_slot.rs"]
+mod slot;
+pub use slot::PaintSlot;

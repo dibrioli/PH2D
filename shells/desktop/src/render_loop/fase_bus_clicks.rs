@@ -248,10 +248,10 @@ impl crate::App {
             // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
             // entao o clique e' da shell — o painel so' mostra o estado.
             pd.pending_resize_box = true;
-        } else if *id == ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT {
-            // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
+        } else if let Some(v) = crate::vec_stroke_present::verb_for_id(*id) {
+            // A tinta de BASE (plano 34, F44b): dar/tirar e o olho mexem no DOCUMENTO,
             // então o clique e' da shell — o painel so' mostra o estado.
-            pd.pending_stroke_present = true;
+            pd.pending_stroke_present = Some(v);
         } else if let Some(e) = crate::vec_component_edit::component_edit_for_id(*id) {
             // OS COMPONENTES (plano UI/UX W5): mestre e instância moram no
             // ECS, entao o clique e' da shell — o painel so' mostra que

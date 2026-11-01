@@ -42,6 +42,8 @@ fn authored() -> VecPath {
         // vazio de `next`».
         paints: vec![segundo_traco()],
         next_vert: 0,
+        fill_hidden: None,
+        stroke_hidden: None,
     }
 }
 
@@ -69,6 +71,8 @@ fn freshly_cooked() -> VecPath {
         blend: ph2d_blend_mode::BlendMode::default(),
         paints: Vec::new(),
         next_vert: 0,
+        fill_hidden: None,
+        stroke_hidden: None,
     }
 }
 

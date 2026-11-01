@@ -30,6 +30,8 @@ fn path_of(verts: Vec<VecVertex>, closed: bool) -> VecPath {
         blend: ph2d_blend_mode::BlendMode::default(),
         paints: Vec::new(),
         next_vert: 0,
+        fill_hidden: None,
+        stroke_hidden: None,
     }
 }
 

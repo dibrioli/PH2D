@@ -18,13 +18,13 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v163 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v165 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
-/// [`super::project_schema_history_v160`] (`v160`..`v163`). O corte é por IDADE e o tecto de 600
+/// [`super::project_schema_history_v160`] (`v160`..`v165`). O corte é por IDADE e o tecto de 600
 /// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
@@ -33,44 +33,6 @@
 /// `main` de que a rodada VIVA nasceu (`git merge-base`), porque abaixo dele estão rodadas
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
-///
-/// # `163 → 164` — a PARALAXE: um objecto guarda uma FRACÇÃO do movimento do mundo
-///
-/// O `ph2d_ecs::ScrollFactor` e' um componente REGISTADO novo (plano 24, W1) ⇒ os tres contadores
-/// do registo sobem **+1** (`103 → 104` no ECS, `104 → 105` nos dois espelhos).
-///
-/// ⭐⭐⭐ **A lei e' UM numero, e ele NAO e' nosso: tres sistemas independentes convergiram nele**
-/// — `scroll_scale` (Godot, MEDIDO no binario: o declive vale `1 − k`), `scrollFactor` (Phaser),
-/// *Parallax %* (Construct) — e o **nosso multiplano do Flip ja' o tinha** (`FlipLayer::depth`,
-/// ADR-0114), so' que preso dentro daquele modulo. `k = 1` e' o objecto do mundo, `k = 0` e' preso
-/// a` vista (*que e' o que um HUD e'*), e entre eles esta' o fundo.
-///
-/// ⚠️ **O valor de fabrica e' `[1, 1]` e nao escreve um bit** ⇒ anexar o componente e nao lhe tocar
-/// deixa a cena **byte-identica**, e uma cena ja' gravada comporta-se exactamente como antes.
-///
-/// ⛔ **Sem `ScrollFactorRuntime`, e a ausencia e' a lei:** a pose deslocada e' funcao PURA da
-/// vista publicada (`autorada + centro·(1 − k)`), logo nao ha' estado para guardar — um scrub e um
-/// rebobinar reconstroem-na sozinhos. *O que nao tem estado nao pode sobreviver errado.*
-///
-/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v163 e' recusado em voz alta.
-///
-/// # ⭐ 164 → 165 (2026-09-22) — a REPETIÇÃO INFINITA (plano 24, W2)
-///
-/// `ScrollRepeat { tile: [f32; 2] }` — quanto mede um ladrilho do fundo. O deslocamento da
-/// paralaxe passa a ser corrigido por um número **INTEIRO** de ladrilhos, que é a lei medida no
-/// alvo (a correcção do `Parallax2D` dele é sempre um múltiplo exacto do `repeat_size`) e é o que
-/// faz a costura não poder abrir: a imagem a seguir ao salto é a mesma. ⛔ **Somar um RESTO faria
-/// o erro de `f32` acumular**, e ao décimo milésimo ladrilho a costura estava aberta.
-///
-/// ⚠️ **Componente SEPARADO e não um campo do `ScrollFactor`** — a razão é a POPULAÇÃO: quase todo
-/// objecto com paralaxe **não** repete (um primeiro plano, uma nuvem solta), e um campo ali seria
-/// um knob morto em todos eles. É a mesma lei que separa o `CameraFollow` do `GameCamera`.
-///
-/// ⚠️ **O valor de fábrica é `[0, 0]` e não corrige nada** ⇒ anexar e não tocar deixa a cena
-/// byte-idêntica, e o zero é a ausência (a mesma convenção do alvo) — é ela que permite repetir só
-/// em X, que é o caso de quase todo fundo.
-///
-/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v164 é recusado em voz alta.
 ///
 /// # ⭐ 165 → 166 (2026-09-22) — o CONFINAMENTO (plano 24, W3)
 ///
@@ -553,7 +515,19 @@
 /// não estica — o ficheiro antigo continua igual. Gate sobre bytes montados campo a campo:
 /// `ph2d-skeleton-live` `skin_bind_v210_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê
 /// este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 211;
+///
+/// # `211 → 212` — **a tinta de base escondida pelo olho** (`line/UIUX`, F44b, 2026-11-01)
+///
+/// `VecPath::fill_hidden`/`stroke_hidden` no FIM (`VEC_SCENE_SCHEMA_VERSION` `25 → 26`): o olho do
+/// Fill/Stroke de base guarda a tinta fora do `fill`/`stroke` ([`ph2d_vec_scene::PaintSlot`]). ⭐ **COM
+/// leitura dos anteriores, sem tipo congelado:** o `fio_do_projeto` passa a dizer `24` até ao `205` e
+/// `25` até ao `211` (os dois `None`); as formas do Envelope e da pele regravam-se no load
+/// (`migra_fio`). Gate sobre bytes gravados pelo código v25: `vec_v25_fixture` (cena). Registos de
+/// componentes: `0`. ⚠️ **A tripla VÊ este degrau** — a forma da `VecScene` muda.
+pub(crate) const PROJECT_SCHEMA: u32 = 212;
+
+/// O último degrau cujo `VecPath` não tem a tinta de base escondida (`VecScene` v25).
+pub(crate) const PROJECT_SCHEMA_SEM_TINTA_ESCONDIDA: u32 = 211;
 
 /// O último degrau com o tendão da pele sem o comprimento do bind.
 pub(crate) const PROJECT_SCHEMA_TENDAO_SEM_COMPRIMENTO: u32 = 210;
@@ -610,6 +584,10 @@ pub(crate) fn fio_do_projeto(ver: u32) -> Option<u32> {
         Some(22)
     } else if ver <= PROJECT_SCHEMA_GEOMETRIA_V23 {
         Some(23)
+    } else if ver <= PROJECT_SCHEMA_FILTROS_SEM_ID {
+        Some(24)
+    } else if ver <= PROJECT_SCHEMA_SEM_TINTA_ESCONDIDA {
+        Some(25)
     } else {
         None
     }

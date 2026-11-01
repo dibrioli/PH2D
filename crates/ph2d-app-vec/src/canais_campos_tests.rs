@@ -436,3 +436,25 @@ fn mover_um_efeito_leva_as_chaves_com_ele() {
         "posicional recusada"
     );
 }
+
+/// ⭐⭐ F44b — **o «existe» da tinta de base é o OLHO dela**: a curva a `0` esconde (a tinta fica
+/// guardada, e os canais dela continuam a lê-la), a `1` devolve a MESMA. *Mutação: voltar a
+/// `fill = None` no `0` ⇒ o `1` devolve um preto em vez do degradê.*
+#[test]
+fn o_existe_da_base_e_o_olho() {
+    let mut p = forma();
+    let antes = p.fill.clone();
+    assert!(antes.is_some(), "a fixtura tem de ter preenchimento");
+    let existe = FieldKey::new(VETOR, c::TINTA_PREENCH + c::OFF_EXISTE, 0, 0);
+    assert_eq!(ler(&p, None, existe), Some(1.0));
+    escrever(&mut p, None, existe, 0.0);
+    assert!(p.fill.is_none() && p.fill_is_hidden());
+    assert_eq!(ler(&p, None, existe), Some(0.0));
+    let cor = FieldKey::new(VETOR, c::TINTA_PREENCH + c::OFF_TIPO, 0, 0);
+    assert!(
+        ler(&p, None, cor).is_some(),
+        "a tinta escondida continua legível"
+    );
+    escrever(&mut p, None, existe, 1.0);
+    assert_eq!(p.fill, antes);
+}

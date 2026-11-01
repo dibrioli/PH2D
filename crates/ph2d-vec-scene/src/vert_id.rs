@@ -12,7 +12,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
     Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
-    VertexKind, effect, paint_stack, stroke_wire::reading_geometry_v23,
+    VertexKind, effect, paint_stack,
+    stroke_wire::{reading_geometry_v23, reading_path_v25},
 };
 
 /// Id de um vértice dentro do seu path (os contornos de `subpaths` partilham o espaço). Monotónico
@@ -260,6 +261,8 @@ impl From<VecPathV23> for VecPath {
             blend: o.blend,
             paints: o.paints,
             next_vert: 0,
+            fill_hidden: None,
+            stroke_hidden: None,
         }
     }
 }
@@ -271,26 +274,47 @@ impl<'de> Deserialize<'de> for VecPath {
             let mut p = Self::from(VecPathV23::deserialize(d)?);
             p.normaliza_ids();
             Ok(p)
+        } else if reading_path_v25() {
+            Ok(Self::from(VecPathV24::deserialize(d)?))
         } else {
-            let o = VecPathV24::deserialize(d)?;
+            let o = VecPathV26::deserialize(d)?;
             Ok(Self {
-                next_vert: o.next_vert,
-                ..Self::from(VecPathV23 {
-                    id: o.id,
-                    verts: o.verts,
-                    closed: o.closed,
-                    fill: o.fill,
-                    stroke: o.stroke,
-                    subpaths: o.subpaths,
-                    fill_rule: o.fill_rule,
-                    effects: o.effects,
-                    opacity: o.opacity,
-                    blend: o.blend,
-                    paints: o.paints,
-                })
+                fill_hidden: o.fill_hidden,
+                stroke_hidden: o.stroke_hidden,
+                ..Self::from(o.v24)
             })
         }
     }
+}
+
+impl From<VecPathV24> for VecPath {
+    fn from(o: VecPathV24) -> Self {
+        Self {
+            next_vert: o.next_vert,
+            ..Self::from(VecPathV23 {
+                id: o.id,
+                verts: o.verts,
+                closed: o.closed,
+                fill: o.fill,
+                stroke: o.stroke,
+                subpaths: o.subpaths,
+                fill_rule: o.fill_rule,
+                effects: o.effects,
+                opacity: o.opacity,
+                blend: o.blend,
+                paints: o.paints,
+            })
+        }
+    }
+}
+
+/// O v26 = o v24 + a tinta de base escondida. ⚠️ O postcard é posicional e uma struct aninhada não
+/// tem prefixo: os campos do `v24` lêem-se em linha, como no `Serialize` derivado do `VecPath`.
+#[derive(Deserialize)]
+struct VecPathV26 {
+    v24: VecPathV24,
+    fill_hidden: Option<Paint>,
+    stroke_hidden: Option<StrokeSpec>,
 }
 
 #[cfg(test)]

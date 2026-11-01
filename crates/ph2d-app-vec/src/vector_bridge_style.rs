@@ -336,6 +336,9 @@ struct StyleSeen {
     id: ph2d_vec_scene::VecPathId,
     fill: Option<Paint>,
     stroke: Option<StrokeSpec>,
+    /// ⭐ F44b: a linha aberta e a tinta dela — abrir o ⚙ de outra linha re-semeia o corpo.
+    slot: ph2d_vec_scene::PaintSlot,
+    layer: Option<ph2d_vec_scene::PaintKind>,
 }
 
 thread_local! {
@@ -347,10 +350,17 @@ thread_local! {
 fn seen_of(pen: &PenTool, scene: &VecScene) -> Option<StyleSeen> {
     let id = pen.selected()?;
     let p = scene.paths().iter().find(|p| p.id == id)?;
+    let slot = crate::paint_stack::open_slot();
+    let layer = match slot {
+        ph2d_vec_scene::PaintSlot::Layer(i) => p.paints.get(i).map(|e| e.kind.clone()),
+        ph2d_vec_scene::PaintSlot::Base => None,
+    };
     Some(StyleSeen {
         id,
-        fill: p.fill.clone(),
-        stroke: p.stroke.clone(),
+        fill: p.base_fill().cloned(),
+        stroke: p.base_stroke().cloned(),
+        slot,
+        layer,
     })
 }
 
@@ -423,27 +433,65 @@ pub fn seed_style_from_selection(
     // inverso. Um gradiente fica QUIETO — ele tem alça própria, e esmagá-lo numa cor só seria a
     // seleção destruindo o que o artista autorou. A lei inteira vive no [`seed_fill_from_paint`],
     // que é o espelho do [`apply_fill_colour`].
-    if let Some(c) = seed_fill_from_paint(path.fill.as_ref()) {
+    if let Some(c) = seed_fill_from_paint(path.base_fill()) {
         tool.adopt_fill(c);
     }
+    let aberta = crate::paint_stack::open_slot();
     let slot = grad_handle
-        .and_then(|h| path.fill.as_ref().and_then(|f| selected_grad_color(f, h)))
+        .and_then(|h| {
+            path.slot_fill(aberta)
+                .and_then(|f| selected_grad_color(f, h))
+        })
         .map(|c| [c.r, c.g, c.b, c.a]);
     reseed_open_picker(
         store,
         ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
         slot.unwrap_or_else(|| tool.fill_rgba()),
     );
-    let Some(stroke) = path.stroke.as_ref() else {
+    let Some(stroke) = adopted_stroke(path, aberta, tool, doc) else {
         return;
     };
-    tool.adopt_stroke(stroke, doc.of_world(stroke.width));
+    tool.adopt_stroke(&stroke, doc.of_world(stroke.width));
     reseed_open_picker(
         store,
         ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH,
         tool.stroke_rgba(),
     );
     reseed_style_sliders(store, tool);
+}
+
+/// ⭐ F44b — **o traço que a tool adota**: a linha fixa (cor, Weight, Position) é a da BASE, o
+/// corpo (pontas, junções, tracejado, setas) é o da linha `slot` aberta. Sem traço de base, a linha
+/// fixa fica a que a tool já tem.
+fn adopted_stroke(
+    path: &ph2d_vec_scene::VecPath,
+    slot: ph2d_vec_scene::PaintSlot,
+    tool: &ph2d_tool_vector::VectorTool,
+    doc: ph2d_editor_core::DocPx,
+) -> Option<StrokeSpec> {
+    let base = path.base_stroke();
+    let corpo = match slot {
+        ph2d_vec_scene::PaintSlot::Layer(_) => path.slot_stroke(slot),
+        ph2d_vec_scene::PaintSlot::Base => None,
+    };
+    let Some(corpo) = corpo else {
+        return base.cloned();
+    };
+    let [r, g, b, a] = tool.stroke_rgba();
+    let (paint, width, align) = base.map_or(
+        (
+            ph2d_vec_scene::StrokePaint::Solid(Rgba8::new(r, g, b, a)),
+            doc.to_world(tool.stroke_width_px()),
+            tool.stroke_align(),
+        ),
+        |b| (b.paint.clone(), b.width, b.align),
+    );
+    Some(StrokeSpec {
+        paint,
+        width,
+        align,
+        ..corpo.clone()
+    })
 }
 
 /// As rows que pintam do STORE — sem isto o painel mostra o valor velho mesmo com a tool já

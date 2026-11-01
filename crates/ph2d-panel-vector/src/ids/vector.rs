@@ -209,3 +209,10 @@ pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.cle
 /// (converter o traço numa forma preenchida). Duas palavras para um conceito e uma palavra para
 /// dois é como um painel passa a mentir.
 pub const VECTOR_STROKE_PRESENT: NodeId = hash_node_id("vector.stroke.present");
+
+/// ⭐ **O «−» e o «+» do preenchimento de BASE** (F44b) — o par do [`VECTOR_STROKE_PRESENT`].
+pub const VECTOR_FILL_PRESENT: NodeId = hash_node_id("vector.fill.present");
+/// ⭐ **O olho do preenchimento de BASE** (F44b): esconde sem perder a tinta (`VecPath::fill_hidden`).
+pub const VECTOR_FILL_EYE: NodeId = hash_node_id("vector.fill.eye");
+/// O olho do traço de base (F44b).
+pub const VECTOR_STROKE_EYE: NodeId = hash_node_id("vector.stroke.eye");

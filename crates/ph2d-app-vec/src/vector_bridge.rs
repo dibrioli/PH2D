@@ -38,7 +38,8 @@ mod fields;
 mod style;
 pub use fields::mixed_of;
 pub use fields::pick_merge;
-use fields::{fill_merge, restyle_selected_fields};
+use fields::{fill_merge, restyle_path_fields};
+pub use fields::{restyle_slot_fields, row_fields};
 use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
@@ -337,10 +338,12 @@ pub fn dispatch(
     // The selected gradient handle, kept only if it still addresses a colour on the
     // current fill (a stale handle after a kind switch resolves to `None` and falls
     // through to the solid-fill path). The picker recolours THIS slot.
+    // ⭐ F44b: a linha aberta (base ou camada) — o corpo de ajustes edita a tinta DELA.
+    let slot = crate::paint_stack::open_slot();
     let active_handle = grad_handle.filter(|&h| {
         pen.selected()
             .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-            .and_then(|p| p.fill.as_ref())
+            .and_then(|p| p.slot_fill(slot))
             .and_then(|f| selected_grad_color(f, h))
             .is_some()
     });
@@ -372,17 +375,15 @@ pub fn dispatch(
         // ⭐ A cor de preenchimento viaja CRUA (W6): a lei da espécie de tinta vive inteira no
         // `apply_fill_colour`; aqui só se compõe o RGB e/ou a alfa novos sobre a cor de CADA forma.
         let fill_of =
-            |p: &ph2d_vec_scene::VecPath| fill_merge(p.fill.as_ref(), rgba(fill), fill_campos);
+            |p: &ph2d_vec_scene::VecPath| fill_merge(p.base_fill(), rgba(fill), fill_campos);
         let differs = |p: &ph2d_vec_scene::VecPath| {
             let stroke_differs = !stroke_campos.is_empty()
-                && p.stroke
-                    .as_ref()
-                    .is_some_and(|s| stroke_style.onto_fields(s, new_w, stroke_campos) != *s);
+                && restyle_path_fields(&mut p.clone(), &stroke_style, new_w, stroke_campos, slot);
             let fill_differs = !fill_campos.is_empty()
                 && if let Some(h) = active_handle {
-                    p.fill.as_ref().and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
+                    p.slot_fill(slot).and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
                 } else {
-                    let mut sondagem = p.fill.clone();
+                    let mut sondagem = p.base_fill().cloned();
                     apply_fill_colour(&mut sondagem, p.closed, fill_of(p))
                 };
             stroke_differs || fill_differs
@@ -392,7 +393,7 @@ pub fn dispatch(
             .any(|&id| scene.path(id).is_some_and(differs));
         if will_change {
             if !stroke_campos.is_empty() {
-                restyle_selected_fields(scene, &sel_ids, &stroke_style, new_w, stroke_campos);
+                restyle_slot_fields(scene, &sel_ids, &stroke_style, new_w, stroke_campos, slot);
             }
             if !fill_campos.is_empty() {
                 for &id in &sel_ids {
@@ -401,13 +402,19 @@ pub fn dispatch(
                     };
                     if let Some(h) = active_handle {
                         // Recolour the selected gradient slot (never converts to solid).
-                        if let Some(paint) = path.fill.as_mut() {
+                        if let Some(paint) = path.slot_fill_mut(slot) {
                             set_selected_grad_color(paint, h, rgba(fill));
                         }
                     } else {
                         let c = fill_of(path);
                         let closed = path.closed;
-                        apply_fill_colour(&mut path.fill, closed, c);
+                        // A cor é da LINHA de base: uma base escondida é editada escondida.
+                        let alvo = if path.fill_is_hidden() {
+                            &mut path.fill_hidden
+                        } else {
+                            &mut path.fill
+                        };
+                        apply_fill_colour(alvo, closed, c);
                     }
                 }
             }

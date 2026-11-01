@@ -49,6 +49,8 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// Uma camada de contorno (a que tem as TRÊS propriedades — a de preenchimento não tem largura).
 fn traco(w: f64) -> PaintRow {
     PaintRow {
+        align: ph2d_vec_scene::StrokeAlign::Centre,
+        ramp: None,
         is_fill: false,
         color: [0x33, 0x66, 0xCC, 0xFF],
         width: w,
@@ -64,6 +66,8 @@ fn traco(w: f64) -> PaintRow {
 
 fn tinta() -> PaintRow {
     PaintRow {
+        align: ph2d_vec_scene::StrokeAlign::Centre,
+        ramp: None,
         is_fill: true,
         color: [0xCC, 0x33, 0x33, 0xFF],
         width: 0.0,

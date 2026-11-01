@@ -453,3 +453,45 @@ fn o_losango_da_entrada_aberta_e_o_do_id() {
         vec![f(v::MISTURA)]
     );
 }
+
+/// ⭐ F44b — com uma camada ABERTA, um campo do corpo de ajustes (pontas, tipo de tinta, a Position
+/// da camada) chave no canal DELA; a linha fixa de base (cor, Weight, Position de base) não muda.
+#[test]
+fn with_a_layer_open_a_body_field_keys_on_that_layers_channel() {
+    let aberta = Contexto {
+        aberta: Some(0),
+        camadas: 2,
+        ..SEM
+    };
+    let canal = |id| canal_posicional(id, aberta);
+    assert_eq!(
+        canal(ferramenta::VECTOR_CAP_ROUND),
+        vec![super::em(v::TRACO_PONTA, 1)]
+    );
+    assert_eq!(
+        canal(ferramenta::VECTOR_DASH_IDS[0]),
+        vec![super::em(v::TRACO_TRACEJADO, 1)]
+    );
+    assert_eq!(
+        canal(ferramenta::VECTOR_FILL_KIND_LINEAR),
+        vec![super::em(v::TINTA_PREENCH + v::OFF_SOLIDA, 1)]
+    );
+    assert_eq!(
+        canal(painel::VECTOR_PAINT_ALIGN_OUTER),
+        vec![super::em(v::TRACO_ALINHAMENTO, 1)]
+    );
+    assert_eq!(
+        canal(ferramenta::VECTOR_WIDTH),
+        vec![campo(v::TRACO_LARGURA)]
+    );
+    assert_eq!(canal(ferramenta::VECTOR_STROKE_SWATCH), vec![COR_DO_TRACO]);
+    assert_eq!(
+        canal(ferramenta::VECTOR_ALIGN_INNER),
+        vec![campo(v::TRACO_ALINHAMENTO)]
+    );
+    assert_eq!(
+        canal_posicional(ferramenta::VECTOR_CAP_ROUND, SEM),
+        vec![campo(v::TRACO_PONTA)],
+        "sem camada aberta o corpo é o da base"
+    );
+}

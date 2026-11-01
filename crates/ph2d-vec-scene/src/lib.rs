@@ -65,9 +65,9 @@ pub use paint_bind::{BoundStyle, Opacity, object_alpha};
 pub mod paint_stack;
 pub use paint_stack::{
     DrawnPaint, JOIN_ROUND, MAX_PAINT_LAYERS, MIN_DILATE, PaintEntry, PaintKind, PaintRef,
+    PaintSlot,
 };
-// ⭐ O vocabulário de MISTURA que o documento guarda (v19), re-exportado para quem lê o documento
-// não precisar de nomear a folha — a mesma cortesia que o `WarpStyle` e o `WidthProfile` já têm.
+// ⭐ O vocabulário de MISTURA do documento (v19), re-exportado como o `WarpStyle`.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};
 mod structure;
 pub use structure::{VecClip, VecClipSpan, VecViewState};
@@ -319,7 +319,7 @@ mod pilha_wire;
 /// A leitura por versão — o âmbito do fio (F16c, W4.2).
 mod stroke_wire;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
-pub use pilha_wire::{PilhaLayoutV23, with_pilha_layout_v23};
+pub use pilha_wire::{PilhaLayoutV23, with_fio_layout, with_pilha_layout_v23};
 pub use stroke_wire::{WireLayout, with_wire_layout};
 
 pub use stroke_style::{
@@ -517,6 +517,10 @@ pub struct VecPath {
     pub paints: Vec<paint_stack::PaintEntry>,
     /// O próximo [`VertId`] deste path (v24, no FIM) — monotónico, nunca reusado.
     pub next_vert: u32,
+    /// O `fill` de base ESCONDIDO pelo olho (v26) — ver [`PaintSlot`].
+    pub fill_hidden: Option<Paint>,
+    /// O `stroke` de base escondido pelo olho (v26).
+    pub stroke_hidden: Option<StrokeSpec>,
 }
 
 /// O id estável por vértice (W4.2).
@@ -683,10 +687,10 @@ impl VecScene {
         let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
         match ver {
             VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
-            schema::VEC_SCENE_SCHEMA_V22 | schema::VEC_SCENE_SCHEMA_V23 => {
+            schema::VEC_SCENE_SCHEMA_V22..=schema::VEC_SCENE_SCHEMA_V24 => {
                 with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
             }
-            schema::VEC_SCENE_SCHEMA_V24 => with_pilha_layout_v23(read).map(|(_, s)| s),
+            schema::VEC_SCENE_SCHEMA_V25 => with_wire_layout(ver, read).map(|(_, s)| s),
             _ => Err(format!(
                 "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
             )),

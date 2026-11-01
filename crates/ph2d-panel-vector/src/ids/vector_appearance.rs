@@ -84,6 +84,15 @@ pub const VECTOR_PAINT_JOIN_ROUND: NodeId = hash_node_id("vector.paint.join.roun
 /// `Bevel`.
 pub const VECTOR_PAINT_JOIN_BEVEL: NodeId = hash_node_id("vector.paint.join.bevel");
 
+/// ⭐ F44b — a POSIÇÃO do traço da camada aberta (o `StrokeSpec::align` dela): `Inside`.
+pub const VECTOR_PAINT_ALIGN_INNER: NodeId = hash_node_id("vector.paint.align.inner");
+
+/// `Center`.
+pub const VECTOR_PAINT_ALIGN_CENTRE: NodeId = hash_node_id("vector.paint.align.centre");
+
+/// `Outside`.
+pub const VECTOR_PAINT_ALIGN_OUTER: NodeId = hash_node_id("vector.paint.align.outer");
+
 /// O chip numérico do slider acima.
 pub const VECTOR_PAINT_OPACITY_NUM: NodeId = hash_node_id("vector.paint.opacity.num");
 

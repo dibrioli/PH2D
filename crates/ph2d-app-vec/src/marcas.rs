@@ -176,6 +176,16 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (ferramenta::VECTOR_FILL_KIND_MULTI, &[PREENCHIMENTO]),
     (ferramenta::VECTOR_FILL_KIND_PATTERN, &[PREENCHIMENTO]),
     (painel::VECTOR_STROKE_PRESENT, &[COR_DO_TRACO]),
+    // ⭐ O olho da base (F44b) é o «existe» da tinta dela — um canal próprio, colado ao olho.
+    (
+        painel::VECTOR_FILL_EYE,
+        &[campo(v::TINTA_PREENCH + v::OFF_EXISTE)],
+    ),
+    (
+        painel::VECTOR_STROKE_EYE,
+        &[campo(v::TINTA_TRACO + v::OFF_EXISTE)],
+    ),
+    (painel::VECTOR_FILL_PRESENT, &[PREENCHIMENTO]),
     (painel::VECTOR_BAR_KIND, &[COR_DO_TRACO]),
     (
         ferramenta::VECTOR_MARKER_START_DD,
@@ -200,7 +210,52 @@ const DA_CAMADA_ABERTA: &[(NodeId, u16)] = &[
     (painel::VECTOR_PAINT_OPACITY, v::PILHA_OPACIDADE),
     (painel::VECTOR_PAINT_OPACITY_NUM, v::PILHA_OPACIDADE),
     (painel::VECTOR_PAINT_BLEND, v::PILHA_MISTURA),
+    // ⭐ F44b: a Position do traço da camada aberta.
+    (painel::VECTOR_PAINT_ALIGN_INNER, v::TRACO_ALINHAMENTO),
+    (painel::VECTOR_PAINT_ALIGN_CENTRE, v::TRACO_ALINHAMENTO),
+    (painel::VECTOR_PAINT_ALIGN_OUTER, v::TRACO_ALINHAMENTO),
 ];
+
+/// ⭐ F44b — os campos da LINHA fixa de base (cor, opacidade, Weight, Position, o «tem traço»):
+/// o canal é sempre o da base, mesmo com uma camada aberta. Todo OUTRO campo de tinta/traço da
+/// [`CAMPOS`] é do CORPO de ajustes e, com uma camada aberta, cai no canal dela ([`na_aberta`]).
+const LINHA_DE_BASE: &[NodeId] = &[
+    ferramenta::VECTOR_FILL_SWATCH,
+    ferramenta::VECTOR_FILL_OPACITY,
+    ferramenta::VECTOR_FILL_OPACITY_NUM,
+    ferramenta::VECTOR_STROKE_SWATCH,
+    ferramenta::VECTOR_STROKE_OPACITY,
+    ferramenta::VECTOR_STROKE_OPACITY_NUM,
+    ferramenta::VECTOR_WIDTH,
+    ferramenta::VECTOR_WIDTH_NUM,
+    ferramenta::VECTOR_ALIGN_INNER,
+    ferramenta::VECTOR_ALIGN_CENTRE,
+    ferramenta::VECTOR_ALIGN_OUTER,
+    painel::VECTOR_STROKE_PRESENT,
+    painel::VECTOR_BAR_KIND,
+    painel::VECTOR_FILL_PRESENT,
+    painel::VECTOR_FILL_EYE,
+    painel::VECTOR_STROKE_EYE,
+];
+
+/// O canal `g` (da base) do campo `id`, re-endereçado à camada ABERTA quando ele é do corpo.
+fn na_aberta(id: NodeId, g: PropKind, ctx: Contexto<'_>) -> PropKind {
+    let (Some(k), PropKind::Field(kk)) = (ctx.aberta, g) else {
+        return g;
+    };
+    let corpo = (v::TINTA_PREENCH..=v::PINCEL_ESPELHO).contains(&kk.campo)
+        && kk.i == 0
+        && kk.item.is_none()
+        && !LINHA_DE_BASE.contains(&id);
+    if corpo {
+        PropKind::Field(FieldKey {
+            i: entrada(k),
+            ..kk
+        })
+    } else {
+        g
+    }
+}
 
 /// Os controlos do padrão de textura que são membros da TINTA (tamanho, vão, origem, ângulo,
 /// reticulado, repetição, desfasamento). ⛔ Fora: a arte e «Use shape» (verbos), os dois elos
@@ -350,10 +405,10 @@ pub fn canal_do_campo(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
 /// O grupo na chave posicional (a tabela e os [`derivados`] guardam a posição da linha).
 fn canal_posicional(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
     if let Some(&(_, g)) = CAMPOS.iter().chain(vivos::CAMPOS).find(|(c, _)| *c == id) {
-        return g.to_vec();
+        return g.iter().map(|&p| na_aberta(id, p, ctx)).collect();
     }
     if let Some(g) = derivado(id) {
-        return vec![g];
+        return vec![na_aberta(id, g, ctx)];
     }
     if id == ph2d_panel_vector::state_cad::VECTOR_CAD_VALUE
         && let Some(p) = ctx.regra

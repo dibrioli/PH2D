@@ -31,6 +31,51 @@ pub(crate) fn stroke_present() -> Option<bool> {
     STROKE_PRESENT.with(Cell::get)
 }
 
+/// ⭐ **O estado de uma tinta de BASE** (F44b): o que o olho e o «−» da linha dela mostram.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BasePaint {
+    /// Não há tinta (o «+» do título dá-a).
+    Absent,
+    Shown,
+    /// Escondida pelo olho: a tinta fica guardada e a linha a cinzento.
+    Hidden,
+}
+
+thread_local! {
+    static BASE_PAINTS: Cell<Option<[BasePaint; 2]>> = const { Cell::new(None) };
+    static BASE_FILL_RAMP: Cell<Option<[[u8; 4]; 2]>> = const { Cell::new(None) };
+}
+
+/// Publica `[preenchimento, traço]` da forma selecionada (`None` sem resposta) — e, por ela, o
+/// «tem traço?» de sempre.
+pub fn set_base_paints(v: Option<[BasePaint; 2]>) {
+    BASE_PAINTS.with(|c| c.set(v));
+    set_stroke_present(v.map(|[_, s]| s != BasePaint::Absent));
+}
+
+/// O preenchimento de base da forma selecionada.
+#[must_use]
+pub(crate) fn base_fill() -> Option<BasePaint> {
+    BASE_PAINTS.with(Cell::get).map(|[f, _]| f)
+}
+
+/// O traço de base da forma selecionada.
+#[must_use]
+pub(crate) fn base_stroke() -> Option<BasePaint> {
+    BASE_PAINTS.with(Cell::get).map(|[_, s]| s)
+}
+
+/// As duas pontas do degradê do preenchimento de base (`None` = tinta sólida) — a amostra da linha
+/// pinta-as em rampa, como o Figma.
+pub fn set_base_fill_ramp(v: Option<[[u8; 4]; 2]>) {
+    BASE_FILL_RAMP.with(|c| c.set(v));
+}
+
+#[must_use]
+pub(crate) fn base_fill_ramp() -> Option<[[u8; 4]; 2]> {
+    BASE_FILL_RAMP.with(Cell::get)
+}
+
 /// ⭐ **Com que TINTA o traço desenha** (plano 35, wave D) — espelho panel-local do `StrokePaint`
 /// da cena, pela MESMA razão que o [`super::FillKind`] o é: o painel não depende da crate do
 /// documento.

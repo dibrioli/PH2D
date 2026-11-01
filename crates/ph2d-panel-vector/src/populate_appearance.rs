@@ -62,6 +62,10 @@ fn populate_paint_stack(store: &mut WidgetStore) {
         ids::VECTOR_FILL_PROPS_CLOSE,
         ids::VECTOR_STROKE_PROPS_CLOSE,
         ids::VECTOR_PAINT_PROPS_CLOSE,
+        // F44b: o olho e o «−» da base, como os das camadas.
+        ids::VECTOR_FILL_PRESENT,
+        ids::VECTOR_FILL_EYE,
+        ids::VECTOR_STROKE_EYE,
     ] {
         button(store, id);
     }
@@ -123,6 +127,9 @@ fn populate_paint_stack(store: &mut WidgetStore) {
         ids::VECTOR_PAINT_JOIN_MITER,
         ids::VECTOR_PAINT_JOIN_ROUND,
         ids::VECTOR_PAINT_JOIN_BEVEL,
+        ids::VECTOR_PAINT_ALIGN_INNER,
+        ids::VECTOR_PAINT_ALIGN_CENTRE,
+        ids::VECTOR_PAINT_ALIGN_OUTER,
     ] {
         button(store, id);
     }

@@ -102,11 +102,16 @@ impl VecPath {
             // O contador é do path que FICA (monotónico); um id da fonte acima dele sobe-o no
             // próximo `normaliza_ids`.
             next_vert: _,
+            // ⭐ O OLHO da base (v26) é autoria do objecto: uma base escondida recebe a tinta
+            // re-cozida na guarda e continua escondida (`settle_hidden`).
+            fill_hidden: _,
+            stroke_hidden: _,
         } = next;
         self.verts = verts;
         self.closed = closed;
         self.fill = fill;
         self.stroke = stroke;
+        self.settle_hidden();
         self.subpaths = subpaths;
         self.fill_rule = fill_rule;
         // `self.id`, `self.effects`, `self.opacity` e `self.blend` sobrevivem — a lei do módulo.
@@ -143,6 +148,8 @@ impl VecPath {
             // O contador é do path que FICA (monotónico); um id da fonte acima dele sobe-o no
             // próximo `normaliza_ids`.
             next_vert: _,
+            fill_hidden: _,
+            stroke_hidden: _,
         } = next;
         self.verts = verts;
         self.closed = closed;

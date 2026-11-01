@@ -33,6 +33,36 @@ pub(crate) fn eye_icon(row: &PaintRow) -> IconId {
 }
 
 impl BodyCtx<'_> {
+    /// ⭐ **A Position de um contorno EXTRA** (F44b) — os glifos da linha fixa da base, com os ids da
+    /// camada aberta.
+    pub(crate) fn layer_position_row(&mut self, row: &PaintRow, y: f32) -> f32 {
+        use ph2d_vec_scene::StrokeAlign;
+        let a = |k: StrokeAlign| !row.mixed.align && row.align == k;
+        self.with_rows(|rc| {
+            rc.icon_segmented(
+                tr("panel.vector.stroke.align"),
+                &[
+                    (
+                        ids::VECTOR_PAINT_ALIGN_INNER,
+                        IconId::StrokeInside,
+                        a(StrokeAlign::Inner),
+                    ),
+                    (
+                        ids::VECTOR_PAINT_ALIGN_CENTRE,
+                        IconId::StrokeCenter,
+                        a(StrokeAlign::Centre),
+                    ),
+                    (
+                        ids::VECTOR_PAINT_ALIGN_OUTER,
+                        IconId::StrokeOutside,
+                        a(StrokeAlign::Outer),
+                    ),
+                ],
+                y,
+            )
+        })
+    }
+
     /// As propriedades da camada ABERTA — o corpo do painel à esquerda (F44).
     pub(crate) fn layer_props(&mut self, row: &PaintRow, y: f32) -> f32 {
         let mut y = y;
@@ -149,6 +179,8 @@ mod tests {
             offset: [0.0, 0.0],
             dilate: 0.0,
             dilate_join: 1,
+            ramp: None,
+            align: ph2d_vec_scene::StrokeAlign::Centre,
             mixed: Default::default(),
         };
         assert_eq!(eye_icon(&row), IconId::Eye);

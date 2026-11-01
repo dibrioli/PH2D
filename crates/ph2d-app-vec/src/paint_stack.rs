@@ -15,7 +15,8 @@
 //! **saltado**, nunca criado.
 
 use ph2d_vec_scene::{
-    MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, Rgba8, StrokeSpec, VecPathId, VecScene,
+    MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, PaintSlot, Rgba8, StrokeAlign, StrokeSpec,
+    VecPathId, VecScene,
 };
 
 /// ⭐⭐⭐ **O QUE UM CLIQUE NA PILHA PEDE** — a metade PURA da ponte, testável sem `App`.
@@ -68,6 +69,11 @@ pub fn join_code_for_id(id: ph2d_editor_core::NodeId) -> Option<u8> {
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_MITER => Some(0),
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_ROUND => Some(1),
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_JOIN_BEVEL => Some(2),
+        // ⭐ F44b: a Position do traço da camada aberta viaja no MESMO canal (códigos `3..=5`,
+        // [`ALIGN_CODE`]); quem os separa é o [`set_join_or_align`].
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_INNER => Some(ALIGN_CODE),
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_CENTRE => Some(ALIGN_CODE + 1),
+        _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_OUTER => Some(ALIGN_CODE + 2),
         _ => None,
     }
 }
@@ -161,6 +167,11 @@ pub fn published(
                     is_fill: matches!(e.kind, PaintKind::Fill(_)),
                     color: [c.r, c.g, c.b, c.a],
                     width: e.width().unwrap_or(0.0),
+                    align: match &e.kind {
+                        PaintKind::Stroke(sp) => sp.align,
+                        PaintKind::Fill(_) => StrokeAlign::default(),
+                    },
+                    ramp: ramp_of(&e.kind),
                     enabled: e.enabled,
                     opacity: e.opacity.get(),
                     blend: e.blend,
@@ -176,6 +187,15 @@ pub fn published(
             })
             .collect(),
     })
+}
+
+/// As pontas do degradê de uma camada de preenchimento (`None` = não é um degradê de paragens).
+fn ramp_of(k: &PaintKind) -> Option<[[u8; 4]; 2]> {
+    let PaintKind::Fill(Paint::Linear { stops, .. } | Paint::Radial { stops, .. }) = k else {
+        return None;
+    };
+    let c = |s: &ph2d_vec_scene::GradientStop| [s.color.r, s.color.g, s.color.b, s.color.a];
+    Some([c(stops.first()?), c(stops.last()?)])
 }
 
 /// **Acrescenta uma camada no TOPO** de cada forma seleccionada. Devolve se alguma mudou.
@@ -324,6 +344,61 @@ pub fn set_color(scene: &mut VecScene, sel: &[VecPathId], i: usize, c: Rgba8) ->
     })
 }
 
+/// O 1.º código da Position no canal do [`join_code_for_id`] (`3` Inside · `4` Center · `5` Outside).
+pub const ALIGN_CODE: u8 = 3;
+
+/// **A linha que o painel tem ABERTA** — a base, ou a camada cujo ⚙ está aberto. É o endereço que
+/// o corpo de ajustes (tipo, degradê, padrão, pontas, junções, tracejado, pincel) edita e mostra.
+#[must_use]
+pub fn open_slot() -> PaintSlot {
+    ph2d_panel_vector::state::open_layer_index().map_or(PaintSlot::Base, PaintSlot::Layer)
+}
+
+/// O preenchimento da linha aberta ([`open_slot`]) de `p`.
+#[must_use]
+pub fn open_fill(p: &ph2d_vec_scene::VecPath) -> Option<&Paint> {
+    p.slot_fill(open_slot())
+}
+
+pub fn open_fill_mut(p: &mut ph2d_vec_scene::VecPath) -> Option<&mut Paint> {
+    p.slot_fill_mut(open_slot())
+}
+
+/// **Põe `paint` no preenchimento da linha aberta** ([`open_slot`]): a base (vista ou escondida;
+/// sem nenhuma, nasce à vista) ou a camada aberta, se ela é um preenchimento — nunca a cria.
+pub fn put_slot_fill(p: &mut ph2d_vec_scene::VecPath, paint: Paint) -> bool {
+    let slot = open_slot();
+    match p.slot_fill_mut(slot) {
+        Some(f) => *f = paint,
+        None if slot == PaintSlot::Base => p.fill = Some(paint),
+        None => return false,
+    }
+    true
+}
+
+/// **A Position (`StrokeSpec::align`) da camada `i`.** No-op numa camada de preenchimento.
+pub fn set_align(scene: &mut VecScene, sel: &[VecPathId], i: usize, a: StrokeAlign) -> bool {
+    edit(scene, sel, |p| {
+        match p.paints.get_mut(i).map(|e| &mut e.kind) {
+            Some(PaintKind::Stroke(s)) if s.align != a => {
+                s.align = a;
+                true
+            }
+            _ => false,
+        }
+    })
+}
+
+/// O canal dos chips da camada aberta: `0..=2` = a QUINA do offset, [`ALIGN_CODE`]`..` = a Position.
+pub fn set_join_or_align(scene: &mut VecScene, sel: &[VecPathId], i: usize, code: u8) -> bool {
+    match code.checked_sub(ALIGN_CODE) {
+        None => set_dilate_join(scene, sel, i, code),
+        Some(0) => set_align(scene, sel, i, StrokeAlign::Inner),
+        Some(1) => set_align(scene, sel, i, StrokeAlign::Centre),
+        Some(_) => set_align(scene, sel, i, StrokeAlign::Outer),
+    }
+}
+
 /// O molde das seis acima: aplica `f` a cada forma da selecção e devolve se alguma mudou.
 fn edit(
     scene: &mut VecScene,
@@ -346,3 +421,7 @@ pub use mixed::{apply_picker, layers_differ, ordered, row_mixed, set_offset_axes
 #[cfg(test)]
 #[path = "paint_stack_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "paint_stack_slot_tests.rs"]
+mod slot_tests;

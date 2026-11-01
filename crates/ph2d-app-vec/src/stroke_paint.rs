@@ -52,7 +52,9 @@ pub fn selected_stroke_paint_kind(scene: &VecScene, pen: &PenTool) -> Option<Str
     let [id] = pen.selected_paths() else {
         return None;
     };
-    let s = scene.path(*id)?.stroke.as_ref()?;
+    let s = scene
+        .path(*id)?
+        .slot_stroke(crate::paint_stack::open_slot())?;
     Some(match s.paint {
         StrokePaint::Solid(_) => StrokePaintKind::Solid,
         StrokePaint::Pattern(_) => StrokePaintKind::Pattern,
@@ -84,7 +86,10 @@ pub fn set_kind(
         return false;
     };
     let id = *id;
-    let Some(cur) = scene.path(id).and_then(|p| p.stroke.as_ref()) else {
+    let Some(cur) = scene
+        .path(id)
+        .and_then(|p| p.slot_stroke(crate::paint_stack::open_slot()))
+    else {
         return false;
     };
     let novo = match (kind, &cur.paint) {
@@ -130,7 +135,7 @@ pub fn set_kind(
     let Some(path) = scene.path_mut(id) else {
         return false;
     };
-    let Some(s) = path.stroke.as_mut() else {
+    let Some(s) = path.slot_stroke_mut(crate::paint_stack::open_slot()) else {
         return false;
     };
     s.paint = novo;
@@ -168,7 +173,7 @@ pub fn set_art(
     }
     let Some(cur) = scene
         .path(host)
-        .and_then(|p| p.stroke.as_ref())
+        .and_then(|p| p.slot_stroke(crate::paint_stack::open_slot()))
         .and_then(ph2d_vec_scene::StrokeSpec::brush)
     else {
         return false;
@@ -178,7 +183,10 @@ pub fn set_art(
     }
     let mut next = cur.clone();
     next.art = Some(art);
-    let Some(s) = scene.path_mut(host).and_then(|p| p.stroke.as_mut()) else {
+    let Some(s) = scene
+        .path_mut(host)
+        .and_then(|p| p.slot_stroke_mut(crate::paint_stack::open_slot()))
+    else {
         return false;
     };
     s.paint = StrokePaint::Brush(Box::new(next));
@@ -211,7 +219,7 @@ pub fn apply(scene: &mut VecScene, pen: &PenTool, cmd: BrushCmd) -> bool {
     };
     let Some(cur) = scene
         .path(sel)
-        .and_then(|p| p.stroke.as_ref())
+        .and_then(|p| p.slot_stroke(crate::paint_stack::open_slot()))
         .and_then(ph2d_vec_scene::StrokeSpec::brush)
     else {
         return false;
@@ -227,7 +235,10 @@ pub fn apply(scene: &mut VecScene, pen: &PenTool, cmd: BrushCmd) -> bool {
     if &next == cur {
         return false;
     }
-    let Some(s) = scene.path_mut(sel).and_then(|p| p.stroke.as_mut()) else {
+    let Some(s) = scene
+        .path_mut(sel)
+        .and_then(|p| p.slot_stroke_mut(crate::paint_stack::open_slot()))
+    else {
         return false;
     };
     s.paint = StrokePaint::Brush(Box::new(next));

@@ -205,6 +205,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // ⭐ **Stroke** (plano 34) — a caixa mexe no DOCUMENTO (`path.stroke`), então o clique é da
         // shell. Fora daqui ela pintaria, acenderia sob o rato e o Click morreria no painel.
         || id == crate::ids::VECTOR_STROKE_PRESENT
+        // F44b: o «−»/«+» do preenchimento de base e os dois olhos da base — a mesma lei.
+        || id == crate::ids::VECTOR_FILL_PRESENT
+        || id == crate::ids::VECTOR_FILL_EYE
+        || id == crate::ids::VECTOR_STROKE_EYE
         // **A SIMETRIA de desenho** (W6.3) — o par que arma, os quatro tipos, o par do Fuse e o
         // Apply. Fora daqui eles pintam, ACENDEM sob o mouse e o Click morre no painel: o artista
         // clicaria "On" e nada aconteceria, com o log a dizer `[hero] unhandled event`. Foi

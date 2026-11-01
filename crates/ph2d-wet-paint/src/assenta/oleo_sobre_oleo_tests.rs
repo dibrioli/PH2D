@@ -140,3 +140,38 @@ fn a_orla_fina_do_oleo_sobre_o_oleo_nao_enferruja() {
         pior.1
     );
 }
+
+/// E10i (`docs/Painter/Arquitetura/E10i_ferrugem_velha.md`): o filme fino do óleo assenta em muitos passes; estados
+/// MEDIDOS na sonda E9 (Flat Bristle P600 W0,5). Antes: o azul sobre si saía `[43,7, 90, 220]` e o amarelo sobre o
+/// azul `[112,7, 68,5, 7,7]` (B abaixo das duas tintas: a ferrugem). A tinta opaca assenta DENTRO da caixa das duas.
+#[test]
+fn assentar_a_tinta_opaca_fica_na_caixa_das_duas_tintas() {
+    let e = Ecra::Cobre {
+        filme: 0.0,
+        esconde: 5.0,
+        molhada: 1.0,
+        vela: 0.0,
+        oleo: 0.0,
+        opaca: 1.0,
+    };
+    let casos = [
+        (AZ, AZ, [0.0880, 0.0450, 0.0989, 0.0354]),
+        (AZ, AZ, [0.1167, 0.0139, 0.1308, 0.0]),
+        (
+            [57.5181, 63.26024, 199.80676],
+            AM,
+            [0.1798, 0.1582, 0.1896, 0.1497],
+        ),
+        (AZ, AM, [0.0354, 0.0450, 0.0450, 0.0354]),
+    ];
+    for (sc, uc, [a_s, a_f, a_s2, a_f2]) in casos {
+        let x = assenta(e, sc, uc, a_s, a_f, a_s2, a_f2);
+        for k in 0..3 {
+            let (lo, hi) = (sc[k].min(uc[k]), sc[k].max(uc[k]));
+            assert!(
+                x[k] >= lo - 1e-9 && x[k] <= hi + 1e-9,
+                "canal {k}: {x:?} fora de {sc:?}..{uc:?}"
+            );
+        }
+    }
+}

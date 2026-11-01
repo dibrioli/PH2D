@@ -257,3 +257,23 @@ pub(super) fn prepara(
     }
     Prep::Ponto(ponto)
 }
+
+/// ⭐ **A tinta OPACA fica no SEGMENTO também ao assentar** (E10i, `docs/Painter/Arquitetura/E10i_ferrugem_velha.md`):
+/// o inverso do ecrã ([`super::assenta`]) extrapola fora das duas tintas (a cobertura não soma na massa), e cada passe
+/// do filme fino do óleo, que seca devagar, juntava o seu resto — o amarelo sobre o azul ia a laranja (B a 0). Prende
+/// cada canal à caixa de `sc` e `uc` na fracção `opaca` (a lei E10e2 §E3.1); sem assentado (`a_s ≤ 0`) não há caixa.
+/// O tapar extra (`opaca = 0`) sai mais claro que as duas por lei, e fica intacto.
+#[inline]
+pub(super) fn na_caixa_opaca(
+    opaca: f64,
+    a_s: f64,
+    sc: [f64; 3],
+    uc: [f64; 3],
+    x: [f64; 3],
+) -> [f64; 3] {
+    if opaca <= 0.0 || a_s <= 0.0 {
+        return x;
+    }
+    let o = opaca.min(1.0);
+    [0, 1, 2].map(|k| x[k] + o * (x[k].clamp(sc[k].min(uc[k]), sc[k].max(uc[k])) - x[k]))
+}

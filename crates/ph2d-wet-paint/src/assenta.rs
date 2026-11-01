@@ -445,7 +445,7 @@ pub fn assenta(
     a_f2: f64,
 ) -> [f64; 3] {
     let e = e.seco();
-    if let Ecra::Cobre { vela, .. } = e {
+    if let Ecra::Cobre { vela, opaca, .. } = e {
         // O filme `uc` fica parado: a sua metade de `d` faz-se uma vez, e `d(sc, uc)` é o MESMO no alvo e no palpite.
         let par = Parada::de(vela, uc);
         let mut d_scuc = None;
@@ -506,13 +506,14 @@ pub fn assenta(
         let cego = if vela > 0.0 { CEGO_COM_GLAZE } else { CEGO };
         let h2 = tapa_de_novo(e, h_af, a_f, a_f2);
         let ecra = |x: [f64; 3]| prepara(e, x, uc, a_s2, a_f2, || h2, || par.d(vela, x));
-        return resolve(
+        let x = resolve(
             x0,
             alvo,
             cego,
             |x| ecra(x).sobre_branco(),
             |x, c| ecra(x).sobre_branco_canal(c),
         );
+        return ponto::na_caixa_opaca(opaca, a_s, sc, uc, x);
     }
     let alvo = cor(e, sc, uc, a_s, a_f);
     if a_f2 <= 0.0 {

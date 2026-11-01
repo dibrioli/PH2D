@@ -160,6 +160,10 @@ impl PixelApp {
                 return true;
             }
         };
+        // Select All limpa o intervalo da linha do tempo (Trial 01/11, `esc_intervalo_e_sel`).
+        if let (S::All, Some(d)) = (a, self.docs.get_mut(&key)) {
+            d.range = PixelRange::default();
+        }
         self.passo(key, op);
         true
     }
@@ -389,7 +393,11 @@ pub(crate) fn key(
             app.laco = None;
             KeyAnswer::Quiet
         }
+        // Um Esc limpa o intervalo E a selecção (Trial 01/11, `esc_sel_e_intervalo`).
         (KeyCode::Escape, _, _) if intervalo => {
+            if mascara {
+                app.pede(PixelRequest::Select(S::Deselect));
+            }
             pede(app, PixelRequest::Range(PixelRange::default()))
         }
         (KeyCode::Escape, _, _) if mascara => pede(app, PixelRequest::Select(S::Deselect)),

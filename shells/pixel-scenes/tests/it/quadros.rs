@@ -15,7 +15,7 @@ use ph2d_pixel_core::{Op, Patch, Purpose, Rect, compose_window};
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{PPM, WINDOW, spawn_root};
+use crate::comum::{PPM, WINDOW, spawn_root};
 
 struct Palco {
     app: PixelApp,

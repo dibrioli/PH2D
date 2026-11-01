@@ -429,9 +429,16 @@ pub enum PixelRequest {
     /// O intervalo novo da linha do tempo (vazio = Esc).
     Range(PixelRange),
     /// Largar o intervalo de quadros arrastado pela moldura: `before` = a posição (na ordem de
-    /// agora) da fronteira onde cai.
+    /// agora) da fronteira onde cai; `copy` = Ctrl ao largar (cópias entram, os originais ficam).
     RangeMove {
         before: u32,
+        copy: bool,
+    },
+    /// Largar um intervalo de CELS: cada `((camada, quadro) de, (camada, quadro) para)`, por cima
+    /// do que lá está; `copy` = Ctrl ao largar (os de origem ficam).
+    CelsMove {
+        pairs: Vec<((u32, u32), (u32, u32))>,
+        copy: bool,
     },
     /// Clique num cabeçalho de frame / num cel: o frame activo (e a camada activa).
     FrameSelect(u32),

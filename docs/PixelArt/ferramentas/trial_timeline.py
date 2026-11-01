@@ -94,7 +94,7 @@ def montagem(d, saida, fotos, caixa):
 def gestos(d, gs):
     for g in gs:
         op, _, a = g.partition(':')
-        n = [int(v) for v in a.split(',')] if op in ('c', 'sc', 'cc', 'd', 'rc', 'dc') else None
+        n = [int(v) for v in a.split(',')] if op in ('c', 'sc', 'cc', 'd', 'dk', 'rc', 'dc') else None
         if op == 'k':
             xdo('key', a); time.sleep(0.4)
         elif op == 't':
@@ -117,6 +117,13 @@ def gestos(d, gs):
             for i in range(1, 7):
                 xdo('mousemove', n[0] + (n[2] - n[0]) * i // 6, n[1] + (n[3] - n[1]) * i // 6); time.sleep(0.05)
             mv_dentro(n[2], n[3]); xdo('mouseup', 1); time.sleep(0.4)
+        elif op == 'dk':  # o arrasto do `d`, com Ctrl premido só ANTES de largar (copiar ao largar)
+            mv_dentro(n[0], n[1]); xdo('mousedown', 1); time.sleep(0.1)
+            for i in range(1, 7):
+                xdo('mousemove', n[0] + (n[2] - n[0]) * i // 6, n[1] + (n[3] - n[1]) * i // 6); time.sleep(0.05)
+            mv_dentro(n[2], n[3]); xdo('keydown', 'ctrl'); time.sleep(0.2)
+            xdo('mousemove', n[2] + 1, n[3]); time.sleep(0.1); xdo('mousemove', n[2], n[3]); time.sleep(0.1)
+            xdo('mouseup', 1); xdo('keyup', 'ctrl'); time.sleep(0.4)
         elif op == 'D':   # D:<prefixo>,<n>: clica o cabecalho de cada quadro e fotografa (a barra de estado diz «ms/total»)
             pre, nq = a.split(',')
             for k in range(int(nq)):
@@ -190,6 +197,23 @@ CASOS = {
     'mover': [*_N, 'd:395,826,419,826', 'd:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],
     'clear_cels': [*_N, 'd:395,874,443,874', 'k:Delete', 'w:0.4', 's:tl'],
     'link_cels': [*_N, 'd:372,874,419,874', 'rc:395,874', 'w:0.5', 's:menu', 'k:l', 'w:0.5', 's:tl', 'k:ctrl+z', 'w:0.4', 's:undo'],
+    # 6. O que a P6h deixou por medir (corrida de 01/11)
+    'mover_ctrl': [*_N, 'd:395,826,419,826', 'dk:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,8', 'k:ctrl+z', 'w:0.4', 's:undo'],
+    'mover_cels': [*_N, 'd:395,874,419,874', 's:sel', 'd:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],
+    'mover_cels_ctrl': [*_N, 'd:395,874,419,874', 'dk:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6', 'k:ctrl+z', 'w:0.4', 's:undo'],
+    'mover_cels_b':[*_N, 'd:372,850,372,850', 's:sel', 'd:378,862,432,862', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],
+    'sel_shift_cel_depois_arrasto': [*_N, 'd:395,874,419,874', 'sc:467,874', 's:cel', 'k:p', 'w:0.5', 's:dlg', 'k:Escape', 'k:Escape',
+                                     'd:395,874,419,874', 'sc:467,850', 's:outra'],
+    'esc_sel_e_intervalo': [*_N, 'k:ctrl+a', 'w:0.3', *_R, 's:antes', 'k:Escape', 'w:0.3', 's:esc1', 'k:Escape', 'w:0.3', 's:esc2'],
+    'esc_intervalo_e_sel': [*_N, *_R, 'k:ctrl+a', 'w:0.3', 's:antes', 'k:Escape', 'w:0.3', 's:esc1', 'k:Escape', 'w:0.3', 's:esc2'],
+    'reverse_picks': [*_N, 'c:395,826', 'sc:443,826', 'sc:491,826', 'c:251,10', 'w:0.4', 's:menu', 'k:Escape', 'k:alt+i', 'w:0.4', 's:tl',
+                      'k:Escape', 'D:dur,6'],
+    'reverse_picks_span': [*_N, 'd:395,826,419,826', 'sc:467,826', 'k:alt+i', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],
+    'clear_cels_undo': [*_N, 'd:395,874,443,874', 'k:Delete', 'w:0.4', 's:tl', 'k:ctrl+z', 'w:0.4', 's:undo1', 'k:ctrl+z', 'w:0.4', 's:undo2'],
+    'clear_cels_duas': [*_N, 'd:372,850,419,874', 'k:Delete', 'w:0.4', 's:tl', 'k:ctrl+z', 'w:0.4', 's:undo1'],
+    # 7. Paste as New Sprite num sprite RGB (sobrevivente #8: a paleta do nascido)
+    'paste_new_sprite_rgb': [*_N, 'k:ctrl+a', 'w:0.3', 'k:ctrl+c', 'w:0.3', 'c:65,10', 'w:0.4', 'c:120,200', 'w:0.5', 'c:510,200',
+                             'w:1.2', 's:novo', 'c:65,10', 'w:0.4', 's:menu', 'k:Escape', 'k:Escape', 'c:120,10', 'w:0.4', 's:sprite', 'k:Escape'],
 }
 
 if __name__ == '__main__':

@@ -218,6 +218,89 @@ pub fn block_order<T: Copy>(all: &[T], em: impl Fn(&T) -> bool, before: usize) -
     out
 }
 
+/// Onde o bloco de `k` quadros cai na fronteira `before`: a 1.ª posição dele DEPOIS de largar
+/// (com `copy` os originais ficam, e nada antes da fronteira sai do caminho).
+#[must_use]
+pub fn landing<T>(all: &[T], em: impl Fn(&T) -> bool, before: usize, copy: bool) -> usize {
+    let before = before.min(all.len());
+    if copy {
+        before
+    } else {
+        before - all[..before].iter().filter(|f| em(f)).count()
+    }
+}
+
+/// A ordem depois de largar com Ctrl: cópias dos de `em` entram na fronteira `before`, os
+/// originais ficam (a pré-visualização pinta-a com os ids dos originais).
+#[must_use]
+pub fn block_copy_order<T: Copy>(all: &[T], em: impl Fn(&T) -> bool, before: usize) -> Vec<T> {
+    let before = before.min(all.len());
+    let mut out = all.to_vec();
+    out.splice(before..before, all.iter().filter(|f| em(f)).copied());
+    out
+}
+
+/// Largar o bloco `ids` com Ctrl (Trial 01/11, `mover_ctrl`): cópias dos quadros, com as durações
+/// e cópias próprias dos cels, entram na fronteira `before`; as tags abrem-se como num quadro novo.
+/// Devolve os ids novos (o intervalo passa a eles).
+pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op, Vec<FrameId>)> {
+    let block: Vec<Frame> = s
+        .frames()
+        .iter()
+        .filter(|f| ids.contains(&f.id))
+        .copied()
+        .collect();
+    if block.is_empty() {
+        return None;
+    }
+    let at = before.min(s.frames().len());
+    let mut frames = s.frames().to_vec();
+    let (mut cels, mut tags, mut novos) = (Vec::new(), s.tags().to_vec(), Vec::new());
+    for (k, src) in block.iter().enumerate() {
+        let id = FrameId(s.reserve_id());
+        frames.insert(at + k, Frame { id, ..*src });
+        tags = tags_after_insert(&tags, (at + k) as u32);
+        for l in s.layers().iter().filter(|l| !l.is_group()) {
+            if let (Some(e), Some(c)) = (s.entry((l.id, src.id)), s.cel((l.id, src.id))) {
+                let cel = Cel {
+                    z: e.z,
+                    link: None,
+                    ..c.clone()
+                };
+                cels.push(((l.id, id), Some(cel)));
+            }
+        }
+        novos.push(id);
+    }
+    Some((op(frames, cels, tags), novos))
+}
+
+/// Largar um intervalo de CELS (Trial 01/11, `mover_cels*`): cada par `(de, para)` leva o cel de
+/// `de` para `para`, por cima do que lá estava (um `de` vazio esvazia o `para`); os `de` que não
+/// são destino ficam vazios, salvo com `copy` (Ctrl). Os quadros e as durações não mexem.
+#[must_use]
+pub fn move_cels(s: &Sprite, pairs: &[(CelKey, CelKey)], copy: bool) -> Option<Op> {
+    if pairs.iter().all(|(a, b)| a == b) {
+        return None;
+    }
+    let destino = |k: CelKey| pairs.iter().any(|p| p.1 == k);
+    let sai = |k: CelKey| destino(k) || (!copy && pairs.iter().any(|p| p.0 == k));
+    let order: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
+    let mut cels = rehome(s, &sai, &order);
+    for &(de, _) in pairs.iter().filter(|p| !copy && !destino(p.0)) {
+        cels.push((de, None));
+    }
+    for &(de, para) in pairs {
+        let cel = s.entry(de).zip(s.cel(de)).map(|(e, c)| Cel {
+            z: e.z,
+            link: None,
+            ..c.clone()
+        });
+        cels.push((para, cel));
+    }
+    Some(op(s.frames().to_vec(), cels, s.tags().to_vec()))
+}
+
 /// A tecla Delete sobre um intervalo de cels: os cels saem, os quadros ficam.
 #[must_use]
 pub fn clear(s: &Sprite, keys: &[CelKey]) -> Option<Op> {

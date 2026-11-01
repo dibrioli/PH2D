@@ -268,3 +268,40 @@ fn leaving_draw_settles_the_live_shape() {
     assert!(m.app.live_shape().is_none());
     assert_eq!(m.v((4, 4)), WHITE, "sair do Draw assenta");
 }
+
+/// **#8 (P6g)** — `born_from_paste` com a paleta só no Indexed passava verde. Trial 01/11
+/// (`born_sprite_palette`, medido no irmão *New Sprite From Selection*: o *Paste as New Sprite*
+/// fica cinzento sob o Xvfb): o sprite que nasce de um pedaço leva a paleta da ORIGEM também em
+/// RGBA (um RGBA novo nasce com a de omissão).
+#[test]
+fn a_sprite_born_from_a_paste_carries_the_source_palette_in_rgba_too() {
+    use ph2d_app_pixel::{mode, object_add};
+    use ph2d_editor_core::pixel_panel::{PixelEditAction as E, PixelLayerAction};
+    let fixtura: serde_json::Value =
+        serde_json::from_str(include_str!("../fixtures/oracle_trial_timeline.json")).expect("json");
+    let regra = fixtura["born_sprite_palette"]["rule"]
+        .as_str()
+        .expect("regra");
+    assert!(regra.contains("RGBA included"), "a fixtura: {regra}");
+    let mut p = Palco::limpo();
+    assert_eq!(p.sprite().mode(), ph2d_pixel_core::ColorMode::Rgba);
+    let colors = vec![[1, 2, 3, 255], [200, 10, 90, 255], [7, 140, 60, 255]];
+    let op = ph2d_pixel_core::Op::Palette {
+        colors: colors.clone(),
+        transparent: 0,
+    };
+    p.app.commit(p.key, op).expect("a paleta própria");
+    p.pede(PixelRequest::Select(S::All));
+    p.pede(PixelRequest::Edit(E::Copy));
+    p.pede(PixelRequest::LayerAction(PixelLayerAction::PasteAsSprite));
+    let bits = object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root)
+        .expect("pedido")
+        .expect("nasce");
+    let (_, key) = mode::sprites(p.sim.world())
+        .into_iter()
+        .find(|(b, _)| *b == bits)
+        .expect("documento");
+    let novo = &p.app.doc(key).expect("doc").sprite;
+    assert_eq!(novo.mode(), ph2d_pixel_core::ColorMode::Rgba);
+    assert_eq!(novo.palette(), colors.as_slice());
+}

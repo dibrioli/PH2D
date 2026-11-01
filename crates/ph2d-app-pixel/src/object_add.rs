@@ -87,8 +87,8 @@ pub fn born_from_paste(
             rect: r,
             pixels: c.data,
         });
-        let paleta_ok = c.mode != ColorMode::Indexed || apply(s, palette).is_ok();
-        if !paleta_ok || apply(s, patch).is_err() {
+        // A paleta da origem vem em TODO modo (Trial 01/11, `paste_new_sprite_rgb`).
+        if apply(s, palette).is_err() || apply(s, patch).is_err() {
             app.docs.remove(&key);
             return Some(Err(ph2d_i18n::tr("object_add.not_born")));
         }

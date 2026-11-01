@@ -14,6 +14,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::pixel_panel::{
     PixelFrameCol, PixelPanelInfo, PixelRange, PixelRangeKind as K, PixelRequest,
 };
+use ph2d_pixel_core::frames;
 
 /// A geometria da grelha pintada (colunas e filas), guardada pelo pintor.
 #[derive(Clone, Debug, PartialEq)]
@@ -69,9 +70,23 @@ pub(crate) enum Arrasto {
         right: bool,
         alvo: usize,
     },
-    /// A moldura do intervalo, agora sobre a fronteira `alvo`; o rato premiu em `de` e está em `x`
-    /// (o bloco voa com ele, [`crate::paint_grid`]).
-    Bloco { alvo: usize, de: f32, x: f32 },
+    /// A moldura do intervalo, agora sobre a fronteira `alvo`; o rato premiu em `de` e está em `a`
+    /// (o bloco voa com ele, [`crate::paint_grid`]); `copy` = Ctrl premido agora.
+    Bloco {
+        alvo: usize,
+        de: (f32, f32),
+        a: (f32, f32),
+        copy: bool,
+    },
+}
+
+/// O bloco agarrado como a grelha o pinta: a ordem prevista, o deslocamento do voo e o vão.
+pub(crate) struct Voo {
+    pub(crate) info: PixelPanelInfo,
+    pub(crate) dx: f32,
+    pub(crate) dy: f32,
+    /// As células `(fila, coluna)` onde cai; `None` = a coluna inteira.
+    pub(crate) vao: Vec<(Option<usize>, usize)>,
 }
 
 /// A tag `index` como fica com o arrasto em curso (a pré-visualização da barra).
@@ -98,24 +113,86 @@ pub(crate) fn tag_previsto(
     }
 }
 
-/// Durante o arrasto do bloco: a ordem prevista (a lei de `move_block`), o rato e onde premiu.
-pub(crate) fn bloco_previsto(
-    st: &PixelTimelinePanelState,
-    info: &PixelPanelInfo,
-) -> Option<(PixelPanelInfo, f32, f32)> {
-    let Some(Arrasto::Bloco { alvo, de, x }) = st.arrasto else {
+/// Durante o arrasto do bloco: a ordem prevista (a lei de `move_block` / `copy_block`; um
+/// intervalo de cels não mexe nos quadros), o voo e o vão.
+pub(crate) fn bloco_previsto(st: &PixelTimelinePanelState, info: &PixelPanelInfo) -> Option<Voo> {
+    let Some(Arrasto::Bloco { alvo, de, a, copy }) = st.arrasto else {
         return None;
     };
+    if info.range.kind == K::Cels {
+        let geo = st.geo.as_ref()?;
+        let pares = cels_pares(info, geo, de, a)?;
+        let fila = |l: u32| info.layers.iter().position(|r| r.id == l);
+        let vao = pares
+            .iter()
+            .filter_map(|&(_, (l, f))| Some((Some(fila(l)?), pos(info, f)?)))
+            .collect();
+        let (dx, dy) = (a.0 - de.0, a.1 - de.1);
+        let info = info.clone();
+        return Some(Voo { info, dx, dy, vao });
+    }
     let em = |f: &PixelFrameCol| info.range.frames.contains(&f.id);
-    let frames = ph2d_pixel_core::frames::block_order(&info.frames, em, alvo);
-    Some((
-        PixelPanelInfo {
+    let k = info.frames.iter().filter(|f| em(f)).count();
+    let at = frames::landing(&info.frames, em, alvo, copy);
+    let frames = if copy {
+        frames::block_copy_order(&info.frames, em, alvo)
+    } else {
+        frames::block_order(&info.frames, em, alvo)
+    };
+    Some(Voo {
+        info: PixelPanelInfo {
             frames,
             ..info.clone()
         },
-        de,
-        x,
-    ))
+        dx: a.0 - de.0,
+        dy: 0.0,
+        vao: (at..at + k).map(|c| (None, c)).collect(),
+    })
+}
+
+/// Os pares `(de, para)` de um intervalo de cels arrastado de `de` até `a`: anda as colunas e as
+/// filas que o rato percorreu (arredondadas — agarra-se a moldura na divisa entre colunas), preso
+/// para caber; `None` se algum destino cai numa fila de grupo.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "colunas e filas da grelha"
+)]
+fn cels_pares(
+    info: &PixelPanelInfo,
+    geo: &Geo,
+    de: (f32, f32),
+    a: (f32, f32),
+) -> Option<Vec<((u32, u32), (u32, u32))>> {
+    let (n, m) = (info.frames.len(), info.layers.len());
+    let cols: Vec<usize> = info
+        .range
+        .frames
+        .iter()
+        .filter_map(|&f| pos(info, f))
+        .collect();
+    let filas: Vec<usize> = (0..m)
+        .filter(|&i| info.range.layers.contains(&info.layers[i].id))
+        .collect();
+    let presa = |d: isize, v: &[usize], len: usize| {
+        let lo = v.iter().min().map_or(0, |&x| -(x as isize));
+        let hi = v.iter().max().map_or(0, |&x| (len - 1 - x) as isize);
+        d.clamp(lo, hi)
+    };
+    let dc = presa(((a.0 - de.0) / geo.col_w).round() as isize, &cols, n);
+    let df = presa(((a.1 - de.1) / geo.pitch).round() as isize, &filas, m);
+    let mut out = Vec::new();
+    for &i in &filas {
+        let destino = &info.layers[i.checked_add_signed(df)?];
+        if destino.group {
+            return None;
+        }
+        for &c in &cols {
+            let para = info.frames[c.checked_add_signed(dc)?].id;
+            out.push(((info.layers[i].id, info.frames[c].id), (destino.id, para)));
+        }
+    }
+    Some(out)
 }
 
 fn pos(info: &PixelPanelInfo, frame: u32) -> Option<usize> {
@@ -211,8 +288,9 @@ fn pedidos(
         (H::RangeOutline, GesturePhase::Begin) => {
             st.arrasto = Some(Arrasto::Bloco {
                 alvo: geo.fronteira(g.x, n),
-                de: g.x,
-                x: g.x,
+                de: (g.x, g.y),
+                a: (g.x, g.y),
+                copy: g.mods.cmd,
             });
             Vec::new()
         }
@@ -251,11 +329,17 @@ fn pedidos(
                     })
                 }
                 Some(Arrasto::Bloco { de, .. }) => {
-                    let alvo = geo.fronteira(g.x, n);
-                    st.arrasto = Some(Arrasto::Bloco { alvo, de, x: g.x });
-                    fim.then(|| PixelRequest::RangeMove {
-                        before: u32::try_from(alvo).unwrap_or(u32::MAX),
-                    })
+                    let (alvo, a, copy) = (geo.fronteira(g.x, n), (g.x, g.y), g.mods.cmd);
+                    st.arrasto = Some(Arrasto::Bloco { alvo, de, a, copy });
+                    if !fim {
+                        None
+                    } else if info.range.kind == K::Cels {
+                        cels_pares(info, &geo, de, a)
+                            .map(|pairs| PixelRequest::CelsMove { pairs, copy })
+                    } else {
+                        let before = u32::try_from(alvo).unwrap_or(u32::MAX);
+                        Some(PixelRequest::RangeMove { before, copy })
+                    }
                 }
                 None => None,
             };

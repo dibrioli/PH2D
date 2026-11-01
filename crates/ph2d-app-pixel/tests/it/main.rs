@@ -8,6 +8,5 @@ mod formas;
 mod painel_e_dialogo;
 mod paleta;
 mod pontas;
-mod quadros;
 mod selecao;
 mod viva;

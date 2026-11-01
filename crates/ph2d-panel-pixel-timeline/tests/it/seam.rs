@@ -354,7 +354,13 @@ fn dragging_the_range_outline_drops_the_block_at_the_nearest_boundary() {
     let h = p.rect(ids::header_id(12)).expect("pintado");
     let (_, y) = p.meio(ids::RANGE_EDGES[1]);
     let a = p.arrasta(ids::RANGE_EDGES[1], (h.x + h.w, y));
-    so(&a, PixelRequest::RangeMove { before: 3 });
+    so(
+        &a,
+        PixelRequest::RangeMove {
+            before: 3,
+            copy: false,
+        },
+    );
 }
 
 /// *Constant Frame Rate* abre: o campo da duração passa a valer para todos (o 1.º quadro), e as
@@ -430,4 +436,68 @@ fn mid_drag_the_grid_paints_the_block_where_it_will_land() {
         vao.x,
         antes.x
     );
+}
+
+/// Larga a moldura de `range` arrastada pelo canal de gestos de `de` até `a`, com `mods`.
+fn larga_moldura(
+    range: PixelRange,
+    a: impl Fn(&Palco, (f32, f32)) -> (f32, f32),
+    mods: ph2d_editor_core::interaction::GestureMods,
+) -> Vec<EditorAction> {
+    use ph2d_editor_core::interaction::{
+        GesturePhase as G, PixelTimelineGesture, PixelTimelineHitKind as H,
+    };
+    let mut i = info();
+    i.range = range;
+    let mut p = Palco::novo(i);
+    let de = p.meio(ids::RANGE_EDGES[1]);
+    let fim = a(&p, de);
+    for (phase, (x, y)) in [(G::Begin, de), (G::Update, fim), (G::End, fim)] {
+        p.host
+            .store_mut()
+            .push_pixel_timeline_gesture(PixelTimelineGesture {
+                surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+                kind: H::RangeOutline,
+                phase,
+                x,
+                y,
+                button: ph2d_host::PointerButton::Primary,
+                mods,
+            });
+        p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    }
+    p.host.drained_actions()
+}
+
+/// **Trial 01/11** (`mover_ctrl`, `mover_cels*`): Ctrl ao largar COPIA o bloco de quadros; a
+/// moldura de um intervalo de CELS leva só os cels (colunas e filas andadas, presas à grelha).
+#[test]
+fn ctrl_at_the_drop_copies_and_a_cel_range_moves_only_its_cels() {
+    use ph2d_editor_core::interaction::GestureMods;
+    let ctrl = GestureMods {
+        cmd: true,
+        ..GestureMods::default()
+    };
+    let col = |p: &Palco| p.rect(ids::header_id(10)).expect("pintado").w;
+    let fim_do_12 = |p: &Palco, (_, y): (f32, f32)| {
+        let h = p.rect(ids::header_id(12)).expect("pintado");
+        (h.x + h.w, y)
+    };
+    let quadros = faixa(K::Frames, vec![], vec![10]);
+    for (mods, copy) in [(GestureMods::default(), false), (ctrl, true)] {
+        let a = larga_moldura(quadros.clone(), fim_do_12, mods);
+        so(&a, PixelRequest::RangeMove { before: 3, copy });
+    }
+    let cels = faixa(K::Cels, vec![2], vec![10]);
+    let dois = |p: &Palco, (x, y): (f32, f32)| (x + 2.0 * col(p), y);
+    for (mods, copy) in [(GestureMods::default(), false), (ctrl, true)] {
+        let a = larga_moldura(cels.clone(), dois, mods);
+        let pairs = vec![((2, 10), (2, 12))];
+        so(&a, PixelRequest::CelsMove { pairs, copy });
+    }
+    let pitch = ph2d_tokens::row_pitch_px();
+    let longe = |p: &Palco, (x, y): (f32, f32)| (x + 9.0 * col(p), y + pitch);
+    let a = larga_moldura(cels, longe, GestureMods::default());
+    let pairs = vec![((2, 10), (1, 12))];
+    so(&a, PixelRequest::CelsMove { pairs, copy: false });
 }

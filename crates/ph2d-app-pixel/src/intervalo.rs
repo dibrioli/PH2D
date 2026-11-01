@@ -70,7 +70,8 @@ impl Doc {
         if fs.is_empty() { vec![self.frame] } else { fs }
     }
 
-    /// As posições `(de, até)` do intervalo se é contíguo e tem 2+ quadros (o Reverse Frames).
+    /// As posições `(de, até)` do envelope do intervalo com 2+ quadros (o Reverse Frames: com
+    /// quadros soltos inverte do 1.º ao último, os de permeio também — Trial 01/11, `reverse_picks`).
     pub(crate) fn range_span(&self) -> Option<(usize, usize)> {
         let pos: Vec<usize> = self
             .range_frames()
@@ -78,7 +79,7 @@ impl Doc {
             .filter_map(|&f| self.sprite.frame_index(f))
             .collect();
         let (&a, &b) = (pos.first()?, pos.last()?);
-        (pos.len() >= 2 && b - a + 1 == pos.len()).then_some((a, b))
+        (a < b).then_some((a, b))
     }
 }
 
@@ -96,13 +97,51 @@ impl PixelApp {
                 }
                 true
             }
-            PixelRequest::RangeMove { before } => {
-                let op = self.docs.get(&key).and_then(|d| {
-                    let ids = d.range_frames();
-                    frames::move_block(&d.sprite, &ids, *before as usize)
-                });
-                if let Some(op) = op {
-                    let _ = self.commit(key, op);
+            PixelRequest::RangeMove { before, copy } => {
+                let Some(doc) = self.docs.get_mut(&key) else {
+                    return true;
+                };
+                let ids = doc.range_frames();
+                let (op, novos) = if *copy {
+                    frames::copy_block(&mut doc.sprite, &ids, *before as usize).unzip()
+                } else {
+                    (
+                        frames::move_block(&doc.sprite, &ids, *before as usize),
+                        None,
+                    )
+                };
+                if let Some(op) = op
+                    && self.commit(key, op).is_ok()
+                    && let (Some(novos), Some(doc)) = (novos, self.docs.get_mut(&key))
+                {
+                    doc.range.frames = novos.iter().map(|f| f.0).collect();
+                }
+                true
+            }
+            PixelRequest::CelsMove { pairs, copy } => {
+                let pares: Vec<_> = pairs
+                    .iter()
+                    .map(|&((l0, f0), (l1, f1))| {
+                        ((LayerId(l0), FrameId(f0)), (LayerId(l1), FrameId(f1)))
+                    })
+                    .collect();
+                let op = self
+                    .docs
+                    .get(&key)
+                    .and_then(|d| frames::move_cels(&d.sprite, &pares, *copy));
+                if let Some(op) = op
+                    && self.commit(key, op).is_ok()
+                    && let Some(doc) = self.docs.get_mut(&key)
+                {
+                    let mut r = PixelRange {
+                        kind: K::Cels,
+                        ..PixelRange::default()
+                    };
+                    for &(_, (l, f)) in &pares {
+                        r.layers.extend((!r.layers.contains(&l.0)).then_some(l.0));
+                        r.frames.extend((!r.frames.contains(&f.0)).then_some(f.0));
+                    }
+                    doc.range = r;
                 }
                 true
             }

@@ -241,7 +241,7 @@ impl PixelApp {
                 None,
             ),
             A::MoveRight => (frames::move_to(s, f, i + 1), None),
-            // Com intervalo: o dele (cels e durações juntos); um quadro só ou soltos = cinzento.
+            // Com intervalo: o envelope dele (cels e durações juntos); um quadro só = cinzento.
             A::Reverse if picks > 0 => (span.and_then(|(a, b)| frames::reverse(s, a, b)), None),
             A::Reverse => {
                 let (a, b) = ph2d_pixel_core::play::tag_at(s.tags(), i)

@@ -3,4 +3,5 @@
 
 mod comum;
 mod intervalo;
+mod quadros;
 mod sobreviventes;

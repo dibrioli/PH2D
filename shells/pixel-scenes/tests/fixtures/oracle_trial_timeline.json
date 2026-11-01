@@ -1,6 +1,6 @@
 {
  "_header": {
-  "date": "2026-10-30",
+  "date": "2026-10-30 (round 1); 2026-11-01 (round 2: the not_measured items, cases mover_ctrl, mover_cels, mover_cels_ctrl, mover_cels_b, sel_shift_cel_depois_arrasto, esc_*, reverse_picks*, clear_cels_*, paste_new_sprite_rgb)",
   "app": "Aseprite Trial 1.3.18.6-x64-trial (AppImage), observed black box, never source",
   "where": "own Xvfb :78 1600x1000x24, isolated HOME, SDL_VIDEODRIVER=x11; never the owner's screen",
   "input": "tl.ase written by docs/PixelArt/ferramentas/trial_timeline.py gera (public .ase spec): 16x16 RGBA, 6 frames, durations_ms [100,200,300,400,500,600], frame colours red,green,yellow,blue,orange,purple (index 0..5) on layer A (bottom, flags 3 = NOT continuous), layer B (top, flags 3|16 = continuous) with cels only on frames 1 and 3, tag 'walk' frames 2..4 (file stores 1..3 base 0)",
@@ -11,7 +11,8 @@
    "durations_ms": "duration of frames 1..N after the gesture",
    "order": "original frame index (0-based, = colour index) found at each position after the gesture",
    "undo_steps": "Ctrl+Z presses that restored the original state"
-  }
+  },
+  "round_2_layout": "timeline splitter dragged from y=741 to y=778 so the round-1 screen map holds (headers y=826, B 850, A 874); dk:<x0,y0,x1,y1> = the d drag with Ctrl pressed only before the release"
  },
  "constant_frame_rate": {
   "cases": [
@@ -186,7 +187,25 @@
   "click_empty_timeline_area": "does NOT clear",
   "outline": "a yellow box is drawn around the bounding box of the selection, also for picks",
   "shift_click_after_drag": "drag headers 2..3 then Shift-click 5 = {2,3,5} ('Multiple Frames'), 4 NOT selected: Shift never fills a span",
-  "shift_click_cel": "click A1 + Shift-click A3: headers 1 and 3 highlighted, 2 not (picks, same rule as headers; read from the header highlight only)"
+  "shift_click_cel": "click A1 + Shift-click A3: headers 1 and 3 highlighted, 2 not (picks, same rule as headers; read from the header highlight only)",
+  "shift_click_cel_after_drag": {
+   "case": "sel_shift_cel_depois_arrasto",
+   "drag": "A2..A3",
+   "shift_click": "A5",
+   "result": "cel picks: frames {2,3,5} (4 not highlighted), layer A; Frame Properties says 'Multiple Frames'",
+   "other_layer": "drag A2..A3 then Shift-click B5: layers B..A, frames {2,3,5}"
+  },
+  "esc_with_mask_and_range": {
+   "case": "esc_sel_e_intervalo",
+   "before": "Ctrl+A (mask) then range 2..4",
+   "esc_1": "clears the range AND the mask (marching ants gone)",
+   "esc_2": "nothing left"
+  },
+  "select_all_clears_range": {
+   "case": "esc_intervalo_e_sel",
+   "before": "range 2..4 then Ctrl+A",
+   "result": "the range box is gone at once; the mask is there; one Esc then deselects"
+  }
  },
  "range_commands": {
   "delete_frame_alt_c": {
@@ -261,7 +280,15 @@
   "clear_delete_key": {
    "case": "clear_cels",
    "range": "A2..A4",
-   "result": "cels removed, frames kept"
+   "result": "cels removed, frames kept",
+   "undo_steps": 1,
+   "undo_restores": "A2..A4 back; a 2nd Ctrl+Z changes nothing visible in the timeline",
+   "two_layers": {
+    "case": "clear_cels_duas",
+    "range": "B1..A3",
+    "result": "B1, B3, A1..A3 removed, frames kept",
+    "undo_steps": 1
+   }
   },
   "move_range": {
    "case": "mover",
@@ -288,12 +315,139 @@
     600
    ],
    "rule": "frames move with their durations and cels; the moved block stays selected (4..5)"
+  },
+  "move_range_ctrl": {
+   "case": "mover_ctrl",
+   "range": [
+    2,
+    3
+   ],
+   "drop": "boundary between frames 5 and 6, Ctrl pressed before release",
+   "frames_after": 8,
+   "durations_ms": [
+    100,
+    200,
+    300,
+    400,
+    500,
+    200,
+    300,
+    600
+   ],
+   "order": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    1,
+    2,
+    5
+   ],
+   "rule": "copies of the frames (durations and cels, B cel of frame 3 copied too) are inserted at the boundary; the originals stay; the copies become the range (6..7); tag 'walk' 2..4 unchanged",
+   "undo_steps": 1
+  },
+  "move_cels": {
+   "case": "mover_cels",
+   "range": "A2..A3 (cel range)",
+   "grab": "range outline at x=408 (column 2|3 edge)",
+   "drop": "x=480 (3 columns right)",
+   "result": "A5 = old A2, A6 = old A3 (old A5, A6 overwritten), A2 and A3 empty; frames and durations unchanged [100..600]; the range follows to A5..A6",
+   "canvas_order": [
+    "R",
+    "-",
+    "-",
+    "B",
+    "G",
+    "Y"
+   ],
+   "rule": "a cel range moves its cels by the columns/rows the pointer travelled, over what is there; frames never move"
+  },
+  "move_cels_ctrl": {
+   "case": "mover_cels_ctrl",
+   "range": "A2..A3",
+   "drop": "as move_cels, Ctrl pressed before release",
+   "result": "A5 = copy of A2, A6 = copy of A3, A2 and A3 kept; durations unchanged; range A5..A6",
+   "canvas_order": [
+    "R",
+    "G",
+    "Y",
+    "B",
+    "G",
+    "Y"
+   ],
+   "undo_steps": 1
+  },
+  "move_cels_other_layer": {
+   "case": "mover_cels_b",
+   "range": "B1",
+   "drop": "row A, column 3 (pointer travelled 1 row down, 2 columns right)",
+   "result": "A3 = old B1 (A3 overwritten), B1 empty, B3 kept; the range follows to A3",
+   "rule": "rows travel too"
+  },
+  "reverse_picks": {
+   "case": "reverse_picks",
+   "picked": [
+    2,
+    4,
+    6
+   ],
+   "menu": "Reverse Frames enabled",
+   "order": [
+    0,
+    5,
+    4,
+    3,
+    2,
+    1
+   ],
+   "durations_ms": [
+    100,
+    600,
+    500,
+    400,
+    300,
+    200
+   ],
+   "rule": "picked (non-contiguous) frames reverse their ENVELOPE first..last, the unpicked frames in between included",
+   "span": {
+    "case": "reverse_picks_span",
+    "picked": [
+     2,
+     3,
+     5
+    ],
+    "order": [
+     0,
+     4,
+     3,
+     2,
+     1,
+     5
+    ],
+    "durations_ms": [
+     100,
+     500,
+     400,
+     300,
+     200,
+     600
+    ]
+   }
   }
  },
  "not_measured": [
-  "Shift+click on a cel (rectangle extension) and Shift+click AFTER a drag range",
-  "Ctrl while dropping a moved range (copy), and moving a cel-only range",
   "click on the header continuous icon (all layers)",
-  "undo step count of the Delete-key clear"
- ]
+  "Paste as New Sprite itself (greyed under Xvfb; the sibling New Sprite From Selection was measured, see born_sprite_palette)",
+  "whether a Ctrl-copied frame block links cels on continuous layers (copies are taken as independent)",
+  "dropping a cel range so it would leave the grid (we clamp the travel to the grid) or onto a group row (we refuse)",
+  "Shift-click on a cel over 3+ layers (rectangle vs set of layers)"
+ ],
+ "born_sprite_palette": {
+  "case": "paste_new_sprite_rgb (+ manual retry on the same screen)",
+  "paste_as_new_sprite": "Edit > Paste Special > Paste as New Sprite stays GREYED in the Trial under Xvfb even after Ctrl+C (Paste itself is enabled): not runnable here",
+  "measured_on": "Edit > New Sprite From Selection (Ctrl+Alt+N) with Ctrl+A on tl.ase (RGBA, palette of 8 entries)",
+  "result": "the new RGBA sprite 'tl-0x0-16x16' carries the SOURCE palette (the same 8 swatches); a File > New RGBA sprite carries the default 32-colour palette",
+  "rule": "a sprite born from a piece of another carries that one's palette in every colour mode, RGBA included"
+ }
 }

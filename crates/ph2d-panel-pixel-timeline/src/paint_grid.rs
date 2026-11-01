@@ -53,7 +53,7 @@ pub(crate) fn paint(
     // ⭐ D2: com o bloco agarrado a grelha pinta a ordem PREVISTA (o vão onde ele cai).
     let voo = crate::gestos::bloco_previsto(st, info);
     let original = info;
-    let info = voo.as_ref().map_or(info, |v| &v.0);
+    let info = voo.as_ref().map_or(info, |v| &v.info);
     let layers_w = ph2d_tokens::chrome::PANEL_MIN_W_PX.min(area.w * 0.5);
     let gx = area.x + layers_w + Spacing::Sm.px();
     let gw = (area.x + area.w - gx).max(0.0);
@@ -142,8 +142,8 @@ pub(crate) fn paint(
     ctx.scene.push_clip(&rect_to_vello(colunas));
     ctx.host.hit_index_mut().push_clip(colunas);
     celulas(ctx, info, &g);
-    if voo.is_some() {
-        crate::paint_voo::vao(ctx, info, &g);
+    if let Some(v) = &voo {
+        crate::paint_voo::vao(ctx, &g, &v.vao);
     }
     moldura(ctx, info, &g);
     ctx.host.hit_index_mut().pop_clip();
@@ -172,8 +172,8 @@ pub(crate) fn paint(
     #[expect(clippy::cast_precision_loss, reason = "o número de camadas")]
     let alto = info.layers.len() as f32 * ph2d_tokens::row_pitch_px();
     ph2d_editor_core::panel::scroll_area::close(rolagem, ctx, alto);
-    if let Some((_, de, x)) = voo {
-        crate::paint_voo::voa(ctx, original, &g, x - de);
+    if let Some(v) = voo {
+        crate::paint_voo::voa(ctx, original, &g, v.dx, v.dy);
     }
 }
 

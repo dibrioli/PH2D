@@ -292,7 +292,10 @@ fn dragging_the_range_outline_moves_frames_with_durations_and_keeps_them_chosen(
     let r = lista(&o["range"]);
     p.escolhe(K::Frames, Vec::new(), &(r[0]..=r[1]).collect::<Vec<_>>());
     // «boundary between frames 5 and 6» = a fronteira na posição 5 (base 0).
-    let info = p.pede(PixelRequest::RangeMove { before: 5 });
+    let info = p.pede(PixelRequest::RangeMove {
+        before: 5,
+        copy: false,
+    });
     assert_eq!(p.ordem(), lista(&o["order"]));
     assert_eq!(p.duracoes(), lista(&o["durations_ms"]));
     assert_eq!(
@@ -434,4 +437,166 @@ fn enter_in_a_focused_field_is_the_fields_and_does_not_play() {
     p.hero.store.set_focus(Some(campo));
     assert!(p.hero.text_entry_focused(), "o campo tem o teclado");
     assert_eq!(enter(&mut p), (false, false), "o Enter é do campo");
+}
+
+impl Palco {
+    /// A imagem do cel `(camada, posição base 1)` (`None` = vazio).
+    fn img(&self, layer: u32, pos: usize) -> Option<Vec<u8>> {
+        let s = &self.app.doc(self.key).expect("doc").sprite;
+        let key = (ph2d_pixel_core::LayerId(layer), s.frames()[pos - 1].id);
+        s.cel(key).map(|c| c.data.clone())
+    }
+}
+
+/// **Trial 01/11, `mover_ctrl`**: Ctrl ao largar COPIA o bloco (durações e cels) para a fronteira,
+/// os originais ficam, as cópias passam a ser o intervalo; um passo de desfazer.
+#[test]
+fn ctrl_at_the_drop_copies_the_block_and_the_copies_become_the_range() {
+    let o = &oraculo()["range_commands"]["move_range_ctrl"];
+    let mut p = Palco::novo();
+    let r = lista(&o["range"]);
+    p.escolhe(K::Frames, Vec::new(), &(r[0]..=r[1]).collect::<Vec<_>>());
+    let (_, b) = p.camadas();
+    let (b3, antes) = (p.img(b, 3), p.passos());
+    let info = p.pede(PixelRequest::RangeMove {
+        before: 5,
+        copy: true,
+    });
+    assert_eq!(p.duracoes(), lista(&o["durations_ms"]));
+    let ids: Vec<u32> = info.frames.iter().map(|f| f.id).collect();
+    assert_eq!(
+        info.range.frames,
+        ids[5..7],
+        "as cópias (6..7) são o intervalo"
+    );
+    assert_eq!(&ids[..5], &p.ids[..5], "os originais ficam");
+    assert_eq!(p.img(b, 7), b3, "o cel de B do quadro 3 vai com a cópia");
+    assert_eq!(p.passos(), antes + 1);
+    assert!(p.app.undo(p.key));
+    assert_eq!(p.duracoes(), DURATIONS.to_vec());
+}
+
+/// **Trial 01/11, `mover_cels*`**: a moldura de um intervalo de CELS leva só os cels, por cima do
+/// que lá está; os quadros e as durações não mexem; com Ctrl os de origem ficam.
+#[test]
+fn a_cel_range_moves_only_its_cels_over_the_target_and_ctrl_keeps_the_sources() {
+    let rc = &oraculo()["range_commands"];
+    for (caso, copy) in [("move_cels", false), ("move_cels_ctrl", true)] {
+        let mut p = Palco::novo();
+        let (a, _) = p.camadas();
+        p.escolhe(K::Cels, vec![a], &[2, 3]);
+        let (a2, a3, antes) = (p.img(a, 2), p.img(a, 3), p.passos());
+        let ids = p.ids.clone();
+        let id = |i: usize| ids[i - 1];
+        let pairs = vec![((a, id(2)), (a, id(5))), ((a, id(3)), (a, id(6)))];
+        let info = p.pede(PixelRequest::CelsMove { pairs, copy });
+        let quer = rc[caso]["canvas_order"].as_array().expect("lista");
+        assert_eq!(quer[1] == "-", !copy, "{caso}: a fixtura");
+        assert_eq!(
+            (p.img(a, 5), p.img(a, 6)),
+            (a2.clone(), a3.clone()),
+            "{caso}"
+        );
+        let fica = if copy { (a2, a3) } else { (None, None) };
+        assert_eq!((p.img(a, 2), p.img(a, 3)), fica, "{caso}: a origem");
+        assert_eq!(
+            p.duracoes(),
+            DURATIONS.to_vec(),
+            "{caso}: os quadros não mexem"
+        );
+        assert_eq!(
+            (info.range.layers.clone(), info.range.frames.clone()),
+            (vec![a], vec![id(5), id(6)]),
+            "{caso}: o intervalo segue"
+        );
+        assert_eq!(p.passos(), antes + 1, "{caso}: um passo");
+    }
+    let mut p = Palco::novo();
+    let (a, b) = p.camadas();
+    let b1 = p.img(b, 1);
+    p.escolhe(K::Cels, vec![b], &[1]);
+    p.pede(PixelRequest::CelsMove {
+        pairs: vec![((b, p.ids[0]), (a, p.ids[2]))],
+        copy: false,
+    });
+    assert_eq!(
+        (p.img(a, 3), p.img(b, 1)),
+        (b1, None),
+        "mover_cels_b: as filas andam"
+    );
+    assert!(p.img(b, 3).is_some(), "mover_cels_b: B3 fica");
+}
+
+/// **Trial 01/11, `reverse_picks*`**: quadros soltos invertem o ENVELOPE (do 1.º ao último).
+#[test]
+fn reverse_frames_on_picked_frames_reverses_their_envelope() {
+    let o = &oraculo()["range_commands"]["reverse_picks"];
+    for v in [o, &o["span"]] {
+        let mut p = Palco::novo();
+        p.escolhe(K::Frames, Vec::new(), &lista(&v["picked"]));
+        p.pede(PixelRequest::FrameAction(A::Reverse));
+        assert_eq!(p.ordem(), lista(&v["order"]));
+        assert_eq!(p.duracoes(), lista(&v["durations_ms"]));
+    }
+}
+
+/// **Trial 01/11, `esc_*`**: um Esc limpa o intervalo E a selecção; Select All limpa o intervalo.
+#[test]
+fn one_esc_clears_the_range_and_the_mask_and_select_all_clears_the_range() {
+    use ph2d_editor_core::pixel_panel::PixelSelectAction as S;
+    let mascara = |p: &Palco| p.app.doc(p.key).expect("doc").sprite.mask().is_some();
+    let mut p = Palco::novo();
+    p.pede(PixelRequest::Select(S::All));
+    p.escolhe(K::Frames, Vec::new(), &[2, 3, 4]);
+    assert!(
+        mascara(&p) && !p.quadro().range.is_empty(),
+        "antes: os dois"
+    );
+    let a = ph2d_app_pixel::input::key(
+        &mut p.app,
+        p.sim.world(),
+        Some(p.bits),
+        KeyCode::Escape,
+        false,
+        false,
+    );
+    assert!(a.is_some());
+    let info = p.quadro();
+    assert_eq!(
+        (info.range.is_empty(), mascara(&p)),
+        (true, false),
+        "um Esc, os dois"
+    );
+    let mut p = Palco::novo();
+    p.escolhe(K::Frames, Vec::new(), &[2, 3, 4]);
+    let info = p.pede(PixelRequest::Select(S::All));
+    assert_eq!((info.range.is_empty(), mascara(&p)), (true, true));
+}
+
+/// **Trial 01/11, `clear_cels_*`**: a tecla Delete sobre cels é UM passo, também em duas camadas.
+#[test]
+fn the_delete_key_on_cels_is_one_undo_step_over_one_or_two_layers() {
+    let o = &oraculo()["range_commands"]["clear_delete_key"];
+    let (um, dois) = (&o["undo_steps"], &o["two_layers"]["undo_steps"]);
+    assert_eq!((um.as_u64(), dois.as_u64()), (Some(1), Some(1)));
+    for duas in [false, true] {
+        let mut p = Palco::novo();
+        let (a, b) = p.camadas();
+        let (camadas, pos) = if duas {
+            (vec![b, a], vec![1, 2, 3])
+        } else {
+            (vec![a], vec![2, 3, 4])
+        };
+        let antes: Vec<_> = (1..=6).flat_map(|i| [p.img(a, i), p.img(b, i)]).collect();
+        p.escolhe(K::Cels, camadas, &pos);
+        let n = p.passos();
+        p.pede(PixelRequest::Edit(PixelEditAction::Clear));
+        assert_eq!(p.passos(), n + 1, "duas camadas: {duas}");
+        assert!(p.app.undo(p.key));
+        let depois: Vec<_> = (1..=6).flat_map(|i| [p.img(a, i), p.img(b, i)]).collect();
+        assert_eq!(
+            depois, antes,
+            "um Ctrl+Z devolve tudo (duas camadas: {duas})"
+        );
+    }
 }

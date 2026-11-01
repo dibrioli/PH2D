@@ -25,7 +25,7 @@ Entrada tl.ase: 16x16 RGBA, 6 quadros com duracoes 100,200,300,400,500,600 ms, d
 """
 import os, struct, subprocess, sys, time, zlib
 
-ENV = dict(os.environ, DISPLAY=':78'); ENV.pop('WAYLAND_DISPLAY', None)
+ENV = dict(os.environ, DISPLAY=os.environ.get('PH2D_TRIAL_DISPLAY', ':78')); ENV.pop('WAYLAND_DISPLAY', None)
 W = H = 16
 DUR = [100, 200, 300, 400, 500, 600]
 COR = [[230, 25, 75], [60, 180, 75], [255, 225, 25], [0, 130, 200], [245, 130, 48], [145, 30, 180]]
@@ -64,6 +64,29 @@ def gera(d):
     hdr += struct.pack('<B3xHBBhhHH', 0, 0, 1, 1, 0, 0, 16, 16)
     hdr += b'\0' * (128 - len(hdr))
     open(os.path.join(d, 'tl.ase'), 'wb').write(hdr + body)
+    gera_grupo(d)
+
+
+def gera_grupo(d):
+    """tl_grupo.ase (ronda 3): a tl.ase com um GRUPO 'G' por cima de B e, dentro dele, a camada 'C'
+    (descontinua) com cel cinzento em todos os quadros. Ordem no ficheiro: A, B, G (tipo 1), C (nivel 1)."""
+    body = b''
+    for f, ms in enumerate(DUR):
+        ch = [profile(), layer('A', 3), layer('B', 3 | 16),
+              chunk(0x2004, struct.pack('<HHHHHHB3x', 3, 1, 0, 0, 0, 0, 255) + string('G')),
+              chunk(0x2004, struct.pack('<HHHHHHB3x', 3, 0, 1, 0, 0, 0, 255) + string('C')),
+              tags([(1, 3, 0, 0, 'walk')])] if f == 0 else []
+        ch.append(cel(0, [COR[f] + [255]] * (W * H)))
+        if f in (0, 2):
+            ch.append(cel(1, [[255, 255, 255, 255] if (x + y) % 4 == 0 else [0, 0, 0, 0]
+                              for y in range(H) for x in range(W)]))
+        ch.append(cel(3, [[90, 90, 90, 255] if x < 4 else [0, 0, 0, 0] for y in range(H) for x in range(W)]))
+        fr = b''.join(ch)
+        body += struct.pack('<IHHH2xI', 16 + len(fr), 0xF1FA, len(ch), ms, len(ch)) + fr
+    hdr = struct.pack('<IHHHHHIHII', 128 + len(body), 0xA5E0, len(DUR), W, H, 32, 1 | 2, 100, 0, 0)
+    hdr += struct.pack('<B3xHBBhhHH', 0, 0, 1, 1, 0, 0, 16, 16)
+    hdr += b'\0' * (128 - len(hdr))
+    open(os.path.join(d, 'tl_grupo.ase'), 'wb').write(hdr + body)
 
 
 def xdo(*a): subprocess.run(['xdotool', *map(str, a)], env=ENV, check=True)
@@ -148,16 +171,16 @@ def acha(nome):
     return None
 
 
-def abre(d):
+def abre(d, nome='tl.ase'):
     """Fecha TODOS os documentos (o Trial abre o mesmo ficheiro duas vezes se ja estiver aberto, e o
-    dialogo «Don't Save» muda de sitio) e reabre tl.ase limpo."""
+    dialogo «Don't Save» muda de sitio) e reabre tl.ase limpo (os casos `grupo_*` abrem tl_grupo.ase)."""
     for _ in range(8):
         xdo('key', 'Escape'); xdo('key', 'Escape'); xdo('key', 'ctrl+w'); time.sleep(0.7)
         p = acha('tl_dont_save')
         if p:
             xdo('mousemove', *p, 'click', 1); time.sleep(0.6)
     xdo('key', 'ctrl+o'); time.sleep(1.2)
-    xdo('type', '--delay', 12, os.path.join(d, 'tl.ase')); time.sleep(0.3)
+    xdo('type', '--delay', 12, os.path.join(d, nome)); time.sleep(0.3)
     xdo('key', 'Return'); time.sleep(1.8)
 
 
@@ -216,6 +239,17 @@ CASOS = {
     # 7. Paste as New Sprite num sprite RGB (sobrevivente #8: a paleta do nascido)
     'paste_new_sprite_rgb': [*_N, 'k:ctrl+a', 'w:0.3', 'k:ctrl+c', 'w:0.3', 'c:65,10', 'w:0.4', 'c:120,200', 'w:0.5', 'c:510,200',
                              'w:1.2', 's:novo', 'c:65,10', 'w:0.4', 's:menu', 'k:Escape', 'k:Escape', 'c:120,10', 'w:0.4', 's:sprite', 'k:Escape'],
+    # 8. Ronda 3 (lacunas, 01/11, Xvfb :79): copia com Ctrl sobre a camada CONTINUA B; bloco de cels largado fora
+    #    da grelha; bloco largado numa fila de GRUPO (entrada tl_grupo.ase)
+    'r3_ctrl_continua': [*_N, 'd:372,826,419,826', 'dk:396,887,480,887', 'w:0.4', 's:tl', 'rc:491,850', 'w:0.5', 's:menu',
+                         'k:Escape', 'k:Escape', 'D:dur,9'],
+    'r3_cels_fora_dir': [*_N, 'd:395,874,419,874', 'd:408,887,570,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,9'],
+    'r3_cels_fora_baixo': [*_N, 'd:395,874,419,874', 'd:408,887,408,940', 'w:0.4', 's:tl', 'k:Escape'],
+    'r3_cels_fora_ambos': [*_N, 'd:395,874,419,874', 'd:408,887,570,940', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,9'],
+    # tl_grupo.ase: filas G (grupo) 850, C (dentro de G) 874, B 898, A 922; cabecalhos 826
+    'grupo_largar': ['c:372,922', 'd:395,922,419,922', 's:sel', 'd:408,935,408,852', 'w:0.4', 's:tl', 'k:ctrl+z', 'w:0.4', 's:undo'],
+    'grupo_largar_c': ['c:372,922', 'd:395,874,419,874', 's:sel', 'd:408,887,408,852', 'w:0.4', 's:tl'],
+    'grupo_largar_dir': ['c:372,922', 'd:395,922,419,922', 'd:408,935,570,852', 'w:0.4', 's:tl'],
 }
 
 if __name__ == '__main__':
@@ -223,7 +257,7 @@ if __name__ == '__main__':
     if cmd == 'gera':
         gera(d)
     elif cmd == 'abre':
-        abre(d)
+        abre(d, *sys.argv[3:4])
     elif cmd == 'g':
         gestos(d, sys.argv[4:]); shot(d, sys.argv[3])
     elif cmd == 'm':   # m <dir> <saida> x0,y0,x1,y1 foto...
@@ -231,7 +265,7 @@ if __name__ == '__main__':
     elif cmd in ('caso', 'todos'):
         fd = os.path.join(d, 'fotos'); os.makedirs(fd, exist_ok=True)
         for nome in ([sys.argv[3]] if cmd == 'caso' else list(CASOS)):
-            abre(d)
+            abre(d, 'tl_grupo.ase' if nome.startswith('grupo_') else 'tl.ase')
             gestos(fd, [g[:2] + f'{nome}_' + g[2:] if g[:2] in ('s:', 'D:') else g for g in CASOS[nome]])
             shot(fd, nome + '_fim')
             print(nome, flush=True)

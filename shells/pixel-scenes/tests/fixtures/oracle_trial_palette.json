@@ -1,0 +1,88 @@
+{
+  "_header": {
+    "app": "Aseprite Trial 1.3.18.6-x64 (caixa preta, so corrido)",
+    "data": "2026-11-01",
+    "condutor": "docs/PixelArt/ferramentas/trial_paleta.py (CASOS)",
+    "entrada": "idx.ase = 8x8 INDEXADO, camada Background, pixel (x,y) = indice x; rgb.ase = a mesma imagem em RGBA; paleta de 8 em ambos: 0 000000, 1 ff0000, 2 00ff00, 3 0000ff, 4 ffff00, 5 00ffff, 6 ff00ff, 7 ffffff; indice transparente 0",
+    "leitura": "fotografia do Xvfb :80 (import -window root), escala de UI 2: canvas a 3200 % (coluna k em x=412+64k, y=700), amostras da barra em x=30+24*(i%5), y=118+24*(i//5); 'canvas' = cor de cada coluna 0..7, 'pal' = cor de cada amostra",
+    "nota": "o Trial nao grava; os valores sao os pixels lidos das fotos (exactos: a barra e o canvas nao passam por gestao de cor)"
+  },
+  "drag_idx": {
+    "gesto": "seleccionar 1 (vermelho), agarrar a BORDA da seleccao e largar sobre a amostra 4",
+    "drag": {"pal": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+             "canvas": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+             "botao_remap_palette": true},
+    "remap": {"pal": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+              "canvas": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"],
+              "botao_remap_palette": false},
+    "undo1": {"pal": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+              "canvas": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"]},
+    "undo2": {"pal": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"],
+              "canvas": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"]},
+    "barra_de_estado_depois_do_undo": "Undid Drag-and-Drop Colors"
+  },
+  "drag_rgb": {
+    "drag": {"pal": ["000000", "00ff00", "0000ff", "ffff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+             "canvas": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"],
+             "botao_remap_palette": false},
+    "undo1": {"pal": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"]}
+  },
+  "drag_ctrl_idx": {
+    "gesto": "o mesmo arrasto com Ctrl premido desde o inicio",
+    "drag": {"pal": ["000000", "ff0000", "00ff00", "0000ff", "ff0000", "ffff00", "00ffff", "ff00ff", "ffffff"],
+             "canvas": ["000000", "ff0000", "00ff00", "0000ff", "ff0000", "ffff00", "00ffff", "ff00ff"],
+             "tamanho": 9, "botao_remap_palette": true},
+    "undo1": {"pal": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"],
+              "canvas": ["000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff"]}
+  },
+  "gradient": {
+    "rgb15_ff0000_a_00ffff": [[255, 0, 0], [192, 63, 63], [128, 127, 127], [64, 191, 191], [0, 255, 255]],
+    "rgb04_000000_a_ffff00": [[0, 0, 0], [63, 63, 0], [127, 127, 0], [191, 191, 0], [255, 255, 0]],
+    "lei": "c_i = a + trunc((b - a) * i / (n - 1)) por canal (divisao inteira com truncagem para zero)",
+    "undo": "1 passo devolve a paleta"
+  },
+  "gradient_hue": {
+    "hue15_ff0000_a_00ffff": [[255, 0, 0], [255, 191, 0], [128, 255, 0], [0, 255, 64], [0, 255, 255]],
+    "lei": "interpolacao em HSV (matiz 0 -> 180 crescente, S e V lineares), canais arredondados ao inteiro mais proximo"
+  },
+  "sort_reverse": {
+    "seleccao": "0..7 (toda a paleta), Ascending",
+    "hue": {"pal": ["000000", "ffffff", "ff0000", "ffff00", "00ff00", "00ffff", "0000ff", "ff00ff"],
+            "canvas": ["000000", "ffffff", "ff0000", "ffff00", "00ff00", "00ffff", "0000ff", "ff00ff"], "botao_remap_palette": true},
+    "rev": {"pal": ["ffffff", "ff00ff", "00ffff", "ffff00", "0000ff", "00ff00", "ff0000", "000000"],
+            "canvas": ["ffffff", "ff00ff", "00ffff", "ffff00", "0000ff", "00ff00", "ff0000", "000000"]},
+    "bri": {"pal": ["000000", "ffffff", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff"],
+            "canvas": ["000000", "ffffff", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff"]},
+    "rev14": {"seleccao": "1..4",
+              "pal": ["000000", "ffff00", "0000ff", "00ff00", "ff0000", "00ffff", "ff00ff", "ffffff"],
+              "canvas": ["000000", "ffff00", "0000ff", "00ff00", "ff0000", "00ffff", "ff00ff", "ffffff"]},
+    "nota": "em INDEXADO os pixels guardam o indice (o canvas troca de cor); cada comando = 1 undo"
+  },
+  "menus": {
+    "menu_hamburguer": ["Edit Palette (A)", "Palette Size", "Select >", "Small Size", "Medium Size (marcado)", "Large Size",
+                        "Color Tint/Shade/Tone (marcado)", "Color Spectrum", "RGB Color Wheel", "RYB Color Wheel",
+                        "Normal Map Color Wheel", "Load Palette", "Load Default Palette", "Save Palette",
+                        "Save Palette as Preset", "Save Palette as Default", "New Palette from Sprite"],
+    "menu_seta": ["Reverse Colors", "Gradient", "Gradient by Hue", "Sort by Hue", "Sort by Saturation",
+                  "Sort by Brightness", "Sort by Luminance", "Sort by Red", "Sort by Green", "Sort by Blue",
+                  "Sort by Alpha", "Ascending (marcado)", "Descending"],
+    "presets_visiveis_sem_rolar": ["A64", "AAP-64", "AAP-Micro12", "AAP-RadiantXV", "AAP-Splendor128", "Apple II",
+                                   "ARNE16", "ARNE32", "ARQ4", "ARQ16", "Atari 2600 NTSC", "Atari 2600 PAL",
+                                   "BubbleGum16", "CGA", "CGA0", "CGA0 High"],
+    "janela_presets": "popup com campo Search, botao de recarregar, lista (nome + tira de amostras), botoes Load e Open Folder"
+  },
+  "seletores": {
+    "tint_shade_tone": {
+      "caixa_fisica": "136 x 116 px (x 10..145, y 744..859), por baixo barra de matiz (y 860..875) e barra de alfa",
+      "lei_aproximada": "plano S x V do HSV na matiz da cor: canto sup-esq branco, sup-dir a matiz pura, base preta; s ~ (x+0.5)/136, v ~ 1-(y+0.5)/116",
+      "erro_do_ajuste": "HSV arredondado: 12 861 de 15 776 pixels a 1, 2 903 a 2, 12 no marcador; nenhum ajuste testado deu 0",
+      "amostras_matiz_azul": {"(0,0)": [251, 251, 253], "(68,0)": [125, 125, 253], "(0,56)": [129, 129, 130],
+                               "(68,56)": [64, 64, 130], "(134,0)": [2, 2, 253], "(0,114)": [2, 2, 2]},
+      "nota": "a cor de base (200,60,40) NAO foi lida: o campo hex do popup nao recebeu o texto sob o xdotool"
+    },
+    "spectrum": "matiz na horizontal (vermelho, amarelo, verde, ciano, azul, magenta, vermelho), branco em cima, saturada a meio, preto em baixo; por baixo barra de saturacao (cinza -> cor) e alfa",
+    "rgb_wheel": "disco de matiz com branco no centro; verde em cima, amarelo em cima-dir, vermelho em baixo-dir, magenta em baixo, azul em baixo-esq, ciano a esq; barra de valor (preto -> cor) e alfa; icone de menu no canto",
+    "ryb_wheel": "disco RYB: amarelo em cima, laranja a dir, vermelho em baixo-dir, magenta em baixo, azul em baixo-esq, verde a esq; branco no centro",
+    "normal_map_wheel": "fundo (128,128,255) aproximado e disco de normais (azul-ciano-magenta), marcador da cor; sem leitura de valores"
+  }
+}

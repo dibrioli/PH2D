@@ -455,5 +455,28 @@
   "measured_on": "Edit > New Sprite From Selection (Ctrl+Alt+N) with Ctrl+A on tl.ase (RGBA, palette of 8 entries)",
   "result": "the new RGBA sprite 'tl-0x0-16x16' carries the SOURCE palette (the same 8 swatches); a File > New RGBA sprite carries the default 32-colour palette",
   "rule": "a sprite born from a piece of another carries that one's palette in every colour mode, RGBA included"
+ },
+ "round3_gaps": {
+  "_header": {
+   "app": "Aseprite Trial 1.3.18.6-x64-trial (AppImage), observed black box, never source",
+   "date": "2026-11-01",
+   "where": "own Xvfb :79 1600x1000x24, isolated HOME, SDL_VIDEODRIVER=x11; timeline shown with Tab, splitter dragged d:1000,746,1000,780",
+   "driver": "docs/PixelArt/ferramentas/trial_timeline.py (PH2D_TRIAL_DISPLAY=:79 ... caso <dir> <case>)",
+   "input": "tl.ase as above; tl_grupo.ase (trial_timeline.py gera): tl.ase plus group G above B with layer C (not continuous, a cel on every frame) inside G; rows G y=850, C 874, B 898, A 922",
+   "reading": "timeline screenshots (cel dots, link bars shown when a cel is clicked), status bar per frame header, canvas of frame 2 after the group drop",
+   "supersedes": "not_measured items 3 and 4"
+  },
+  "ctrl_copy_continuous_layer": {"case": "r3_ctrl_continua", "copied": [1, 3], "dropped_at": "boundary 5|6", "frames_after": 9, "copies_at": [6, 8],
+   "continuous_layer_B": "each copy LINKED to its own original: B1<->B6, B3<->B8 (B1 and B3 stay unlinked)",
+   "non_continuous_layer_A": "independent copies (no link bar)"},
+  "cels_dropped_right_of_last_frame": {"case": "r3_cels_fora_dir", "range": "A2..A3", "moved_by_columns": 7, "frames_after": 10,
+   "result": "missing frames are CREATED; A9/A10 = old A2/A3; A2, A3, A7, A8 empty; B empty on new frames", "new_frame_duration_ms": 600,
+   "new_frame_duration_rule": "the duration of the last frame (total 4.50 s)", "range_after": "A9..A10"},
+  "cels_dropped_below_last_layer": {"case": "r3_cels_fora_baixo", "range": "A2..A3", "moved_rows": 2, "result": "nothing changes: the row clamps to the last layer (the source row)"},
+  "cels_dropped_right_and_below": {"case": "r3_cels_fora_ambos", "result": "as cels_dropped_right_of_last_frame: row clamped to A, frames 6 -> 10, A9/A10"},
+  "cels_dropped_on_group_row": {"cases": ["grupo_largar", "grupo_largar_c", "grupo_largar_dir"],
+   "result": "no refusal, no warning: the source cels (A2..A3, or C2..C3 from inside the group) become empty, the group row shows no cel, frame 2 canvas shows no A colour -> the cels are LOST; range becomes G2..G3",
+   "undo_steps": 1,
+   "right_of_last_frame_on_group_row": "cels lost as well and NO frames are created (still 6); a range box is drawn outside the grid"}
  }
 }

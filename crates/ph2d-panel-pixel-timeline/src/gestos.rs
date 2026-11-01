@@ -135,7 +135,12 @@ pub(crate) fn bloco_previsto(st: &PixelTimelinePanelState, info: &PixelPanelInfo
     let k = info.frames.iter().filter(|f| em(f)).count();
     let at = frames::landing(&info.frames, em, alvo, copy);
     let frames = if copy {
-        frames::block_copy_order(&info.frames, em, alvo)
+        // As cópias ainda não têm id: um id que nada usa, para a moldura ficar só nos originais.
+        let mut v = frames::block_copy_order(&info.frames, em, alvo);
+        for (j, f) in v[at..at + k].iter_mut().enumerate() {
+            f.id = u32::MAX - u32::try_from(j).unwrap_or(0);
+        }
+        v
     } else {
         frames::block_order(&info.frames, em, alvo)
     };

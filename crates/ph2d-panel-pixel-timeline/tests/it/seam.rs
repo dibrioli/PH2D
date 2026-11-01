@@ -501,3 +501,43 @@ fn ctrl_at_the_drop_copies_and_a_cel_range_moves_only_its_cels() {
     let pairs = vec![((2, 10), (1, 12))];
     so(&a, PixelRequest::CelsMove { pairs, copy: false });
 }
+
+/// Foto P6j (cena 16, `copia`): a meio do arrasto com Ctrl as cópias abrem o vão onde caem e a
+/// moldura fica SÓ nos originais (as cópias não herdam o id deles).
+#[test]
+fn mid_ctrl_drag_the_outline_stays_on_the_originals() {
+    use ph2d_editor_core::interaction::{
+        GestureMods, GesturePhase as G, PixelTimelineGesture, PixelTimelineHitKind as H,
+    };
+    let mut i = info();
+    i.range = faixa(K::Frames, vec![], vec![10]);
+    let mut p = Palco::novo(i);
+    let antes = p.rect(ids::RANGE_EDGES[1]).expect("pintada");
+    let h = p.rect(ids::header_id(12)).expect("pintado");
+    let (x0, y) = p.meio(ids::RANGE_EDGES[1]);
+    let mods = GestureMods {
+        cmd: true,
+        ..GestureMods::default()
+    };
+    for (phase, x) in [(G::Begin, x0), (G::Update, h.x + h.w)] {
+        p.host
+            .store_mut()
+            .push_pixel_timeline_gesture(PixelTimelineGesture {
+                surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+                kind: H::RangeOutline,
+                phase,
+                x,
+                y,
+                button: ph2d_host::PointerButton::Primary,
+                mods,
+            });
+        p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    }
+    let depois = p.rect(ids::RANGE_EDGES[1]).expect("pintada");
+    assert!(
+        (depois.x - antes.x).abs() < 0.5,
+        "a moldura não se estica até às cópias (x {} ≠ {})",
+        depois.x,
+        antes.x
+    );
+}

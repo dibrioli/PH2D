@@ -69,24 +69,31 @@ pub(crate) fn stage(
     passo(app, key, |s| frames::new_tag(s, "walk", TAG.0, TAG.1))?;
     let doc = app.docs.get_mut(&key)?;
     (doc.frame, doc.layer) = (ids[RANGE[0]], a);
+    // `PH2D_PIXEL_SMOKE_GESTO=cels`: o intervalo de abertura é o dos cels de A (P6j).
+    let cels = std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() == Ok("cels");
     doc.range = PixelRange {
-        kind: PixelRangeKind::Frames,
-        layers: Vec::new(),
+        kind: if cels {
+            PixelRangeKind::Cels
+        } else {
+            PixelRangeKind::Frames
+        },
+        layers: if cels { vec![a.0] } else { Vec::new() },
         frames: RANGE.iter().map(|&i| ids[i].0).collect(),
     };
     Some(bits as u32)
 }
 
-/// A foto do gesto a meio (`PH2D_PIXEL_SMOKE_GESTO=bloco|ponta`, cena 16): premir na moldura (ou na
+/// A foto do gesto a meio (`PH2D_PIXEL_SMOKE_GESTO=bloco|copia|cels|ponta`, cena 16): premir na moldura (ou na
 /// ponta direita da «walk») e andar duas colunas SEM largar, pelo despacho do produto — os eventos
 /// sintéticos não chegam à janela da tela virtual (`fotografa_cena.sh`).
 pub(crate) fn conduz(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     use ph2d_panel_pixel_timeline::ids;
     use std::sync::atomic::{AtomicBool, Ordering};
     static FEITO: AtomicBool = AtomicBool::new(false);
-    let alvo = match std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() {
-        Ok("bloco") => ids::RANGE_EDGES[1],
-        Ok("ponta") => ids::tag_edge_id(0, true),
+    let (alvo, ctrl) = match std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() {
+        Ok("bloco" | "cels") => (ids::RANGE_EDGES[1], false),
+        Ok("copia") => (ids::RANGE_EDGES[1], true),
+        Ok("ponta") => (ids::tag_edge_id(0, true), false),
         _ => return,
     };
     let rect = |id| hero.hit_index.rect_for(id);
@@ -96,6 +103,7 @@ pub(crate) fn conduz(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     if crate::smoke::armed_level() != Some(16) || FEITO.swap(true, Ordering::Relaxed) {
         return;
     }
+    hero.store.set_cmd_held(ctrl);
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     let arena = bumpalo::Bump::new();
     for (kind, x) in [

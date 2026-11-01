@@ -41,6 +41,13 @@ crista −71 %).
    por píxel e fica a 40×/s). Desenho a medir: refazer só as células cujo relevo MUDOU além de um limiar, e o ritmo
    baixo só onde a tinta apenas assenta (sob o pincel e na água que corre, ritmo cheio). A simulação não muda: a
    composição só desenha. Medir no app (tela real, FPS) antes e depois.
+2b. **Decisões do dono (01/11, depois do smoke)**: (a) NÃO baixar o passo da simulação (medido: a simulação é ~13 % do
+   custo do óleo diluído, 3,0 s contra 20,7 s da composição em 120 s; mudaria os 28 pincéis aprovados); (b) fazer a
+   simulação ADORMECER onde o movimento já é invisível (Filbert Oil d0,9: ~14 000 células vivas aos 120 s); (c) um
+   MARCADOR DISCRETO da carga da simulação ao vivo, ao lado do botão «Dry» que já existe (`chrome.rail.wet_dry`) —
+   UI nova: mostrar ao dono NO APP antes de fechar; (d) «só revive a área pintada»: o motor já simula só as células
+   molhadas (faixa viva) e a composição só redesenha o sujo + o alcance da luz — conferir no app que a tela seca não
+   volta a correr; o que fica vivo é o óleo diluído que não adormece (b).
 3. **9 vermelhos antigos** achados nesta janela (J9 §4): `medida_oleo_real_fenda` ×3, `transparencia` ×4,
    `sonda_oleo_furos`, `sonda_oleo_grumos` — bissectar.
 4. Do §4 da janela 7: E9 ⚑ furos; chip de Dilution; `assenta.rs`/`trail/transfer.rs` em 700 linhas; E10c; E11 GPU

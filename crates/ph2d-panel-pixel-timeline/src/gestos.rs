@@ -155,6 +155,9 @@ pub(crate) fn bloco_previsto(st: &PixelTimelinePanelState, info: &PixelPanelInfo
     })
 }
 
+/// `((camada, quadro) de, (camada, quadro) para)` de um cel largado.
+type ParCel = ((u32, u32), (u32, u32));
+
 /// Os pares `(de, para)` de um intervalo de cels arrastado de `de` até `a`: anda as colunas e as
 /// filas que o rato percorreu (arredondadas — agarra-se a moldura na divisa entre colunas), preso
 /// para caber; `None` se algum destino cai numa fila de grupo.
@@ -168,7 +171,7 @@ fn cels_pares(
     geo: &Geo,
     de: (f32, f32),
     a: (f32, f32),
-) -> Option<Vec<((u32, u32), (u32, u32))>> {
+) -> Option<Vec<ParCel>> {
     let (n, m) = (info.frames.len(), info.layers.len());
     let cols: Vec<usize> = info
         .range

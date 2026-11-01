@@ -45,6 +45,12 @@ pub fn apply_remolha_arrasto(
     smear_com(g, p, tex, dab, prev_x, prev_y, Arrasto::Remolha)
 }
 
+/// A água do Smear ([`Knob::SmearWater`]) → `(arrasta, molha)`: até ao meio, quanto da água o rasto arrasta; acima,
+/// quanto molha. No meio (`0,5`, a fábrica) `(1, 0)` EXACTOS — a lei sem o knob (`film += (src − film)·u`) ao bit.
+fn agua_do_smear(agua: f64) -> (f64, f64) {
+    ((2.0 * agua).min(1.0), (2.0 * agua - 1.0).max(0.0))
+}
+
 /// Quem arrasta: a ferramenta Smear (a força do [`Knob::Smear`], o assentado incluído) ou a água que re-molha.
 #[derive(Clone, Copy, PartialEq)]
 enum Arrasto {
@@ -67,10 +73,7 @@ fn smear_com(
     } else {
         p.k(Knob::Smear)
     };
-    // A água do Smear ([`Knob::SmearWater`]): até ao meio, quanto da água o rasto arrasta; acima, quanto molha.
-    let agua = p.k(Knob::SmearWater);
-    let arrasta_agua = (2.0 * agua).min(1.0);
-    let molha = (2.0 * agua - 1.0).max(0.0);
+    let (arrasta_agua, molha) = agua_do_smear(p.k(Knob::SmearWater));
     let cap = p.k(Knob::WaterCap);
     let sett_gain = 1.0 - p.k(Knob::ExtStaining);
     let clamp_i = dab.intensity.min(3.0);
@@ -350,5 +353,19 @@ fn smear_com(
         Some(rr)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// ⭐ No meio, a lei de antes ao bit: `× 1` e o ramo do molhar desligado (substitui a impressão digital da grade,
+    /// que cada mudança no depósito da faixa movia sem tocar no Smear — `docs/Painter/Arquitetura/J8_vermelhos_antigos.md`).
+    #[test]
+    fn o_water_do_smear_no_meio_e_a_lei_de_antes() {
+        let (arrasta, molha) = super::agua_do_smear(0.5);
+        assert_eq!(arrasta.to_bits(), 1.0f64.to_bits());
+        assert_eq!(molha.to_bits(), 0.0f64.to_bits());
+        assert_eq!(super::agua_do_smear(0.0), (0.0, 0.0));
+        assert_eq!(super::agua_do_smear(1.0), (1.0, 1.0));
     }
 }

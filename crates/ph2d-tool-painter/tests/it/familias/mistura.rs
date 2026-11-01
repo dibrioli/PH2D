@@ -681,11 +681,12 @@ const FOTOS_DA_AGUA: [(&str, &str, Identidade, &[M]); 7] = [
     ("Smear Shattered", "SMUDGE/default_shattered", Identidade { resto: 0.996, largura: 0.0, borda: 0.0, fundo: 0.0, orla_v: -1.0 }, &[M::Resto, M::Fundo]),
 ];
 
-/// ⭐ **Cada preset das ferramentas da água cai na foto do seu Rebelle** (N4, dono 25/10): na cena `sobre`, cada medida
-/// que a foto dele faz cai na tolerância. E o «Smear Wet» (nosso, o Water do Smear): MOLHA o rasto — dissolve a faixa
-/// que o Smear Soft só arrasta (o resto cai mais de 0,2 abaixo do dele).
+/// ⭐ **Cada preset das ferramentas da água tem a sua cara** (N4, dono 25/10; régua redecidida 01/11 — o Rebelle deixou
+/// de ser referência, a foto dele só se imprime): na cena `sobre`, o Blender e o Shattered deixam a faixa (resto
+/// ≥ 0,95) e não arrastam (fundo ≤ 20); o Smear Soft/Spikey/Flat arrasta (fundo ≥ 60 e ≥ 3× o maior fundo do Blender).
+/// E o «Smear Wet» (o Water do Smear) MOLHA o rasto — dissolve a faixa que o Smear Soft só arrasta (resto −0,2).
 #[test]
-fn cada_preset_da_agua_cai_na_foto_do_seu_rebelle() {
+fn cada_preset_da_agua_tem_a_sua_cara() {
     let nomes: Vec<&str> = FOTOS_DA_AGUA
         .iter()
         .map(|f| f.0)
@@ -720,17 +721,29 @@ fn cada_preset_da_agua_cai_na_foto_do_seu_rebelle() {
             ));
         }
     }
-    for (nome, oraculo, foto, ms) in &FOTOS_DA_AGUA {
+    for (nome, oraculo, foto, _) in &FOTOS_DA_AGUA {
+        println!(
+            "[agua] {nome}: {:?}\n       foto {oraculo}: {foto:?}",
+            de(nome)
+        );
+    }
+    let blender = ["Blender Textured", "Blender Dots", "Blender Hard"];
+    let fundo_blend = blender.iter().map(|n| de(n).fundo).fold(0.0, f64::max);
+    for nome in blender.iter().chain(&["Smear Shattered"]) {
         let eu = de(nome);
-        println!("[agua] {nome}: {eu:?}\n       foto {oraculo}: {foto:?}");
-        for &m in *ms {
-            let (v, f) = (m.de(&eu), m.de(foto));
-            if (v - f).abs() > m.tol(f) {
-                falhas.push(format!(
-                    "{nome}: {m:?} {v:.3} fora da foto {f:.3} ± {:.3} ({oraculo})",
-                    m.tol(f)
-                ));
-            }
+        if eu.resto < 0.95 || eu.fundo > 20.0 {
+            falhas.push(format!(
+                "{nome}: resto {:.3} · fundo {:.0} — deixa a faixa e não arrasta",
+                eu.resto, eu.fundo
+            ));
+        }
+    }
+    for nome in ["Smear Soft", "Smear Spikey", "Smear Flat"] {
+        let f = de(nome).fundo;
+        if f < 60.0 || f < 3.0 * fundo_blend {
+            falhas.push(format!(
+                "{nome}: fundo {f:.0} — não arrasta (o Blender {fundo_blend:.0})"
+            ));
         }
     }
     let (molhado, soft) = (de("Smear Wet").resto, de("Smear Soft").resto);

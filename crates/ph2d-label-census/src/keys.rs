@@ -57,6 +57,14 @@ fn code_of(p: &Path) -> Option<String> {
         .map(|s| source::strip_comments(&s).into_iter().collect())
 }
 
+/// `dir` é outra checkout: um `.git` FICHEIRO (worktree) ou pasta com `HEAD`. ⛔ Uma pasta `.git` sem `HEAD` é lixo
+/// (o hook `prazo-do-agente` gravava `.git/ph2d-agentes/` no cwd do agente, 01/11): pular a pasta inteira cegava o
+/// censo — o `tool/paint/` sumia e 38 chaves vivas liam-se órfãs.
+fn outra_checkout(dir: &Path) -> bool {
+    let g = dir.join(".git");
+    g.is_file() || g.join("HEAD").exists()
+}
+
 /// Todas as chaves `<prefix>…` **usadas** na árvore do repo, com o primeiro ficheiro onde aparecem.
 ///
 /// ⚠️ As tabelas declaram; elas não usam — `tables` ficam de fora, senão o censo lê a própria fonte
@@ -75,9 +83,7 @@ pub fn keys_used(repo: &Path, prefix: &str, tables: &[&str]) -> BTreeMap<String,
                 // ⛔ Uma pasta com `.git` dentro é OUTRA checkout (uma worktree de linha, ou a de um
                 //    subagente em `.claude/worktrees/`): o código dela é de outro ramo, e o censo do
                 //    ship de 17/10 acusou chaves que só existiam lá. O nome não basta; a marca sim.
-                if matches!(name, "target" | ".git" | "docs" | "Worktrees")
-                    || p.join(".git").exists()
-                {
+                if matches!(name, "target" | ".git" | "docs" | "Worktrees") || outra_checkout(&p) {
                     continue;
                 }
                 walk(&p, out);

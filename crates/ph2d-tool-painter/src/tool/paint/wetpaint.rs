@@ -268,6 +268,8 @@ impl PainterTool {
     /// **A lei da tinta** (F4-2 §5): `Velha` (a de sempre) ou `Pigmento` (volumes e somas ópticas). Vive no
     /// `Sim::tinta` da sessão (criada aqui), fora do `Sim::lei` que cada preset reescreve — sobrevive a
     /// `wet_preset_aplicar`, e uma sessão NOVA (desfazer, guarda, grid ratio) herda-a (`ensure_wet_session`).
+    /// Só as sondas e os testes a escolhem até a E12 decidir a lei do produto.
+    #[cfg(test)]
     pub(crate) fn set_wet_lei_da_tinta(&mut self, lei: ph2d_wet_paint::sim::LeiDaTinta) {
         self.paint.wetpaint.lei_da_tinta = lei;
         if !self.ensure_wet_session() {
@@ -280,6 +282,7 @@ impl PainterTool {
     }
 
     /// A lei da tinta da sessão viva (`None` = sem sessão).
+    #[cfg(test)]
     pub(crate) fn wet_lei_da_tinta(&mut self) -> Option<ph2d_wet_paint::sim::LeiDaTinta> {
         let s = self.paint.wetpaint.session.as_mut()?;
         s.bring_home();
@@ -483,7 +486,7 @@ mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o 
 #[cfg(test)]
 mod oleo_diluido_tests; // E10g (dono 01/11): o óleo diluído escorre, a tinta do tubo fica
 #[cfg(test)]
-mod opcoes_tests;// as opções da W1g: desligadas = o traço de hoje ao byte
+mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
 #[cfg(test)]

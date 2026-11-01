@@ -1294,3 +1294,166 @@ fn as_duas_portas_da_ancora_sao_oferecidas() {
     }
     limpa();
 }
+
+/// ⛔⛔ **Smoke do dono 01/11 (`PH2D_VEC_BONE_SMOKE=8`): o número escrito no *Length* de um osso não
+/// pode cair no OUTRO osso** quando a selecção muda antes de o campo largar o foco. O campo segura
+/// o texto escrito; a selecção passa a outro osso (o painel semeia o número DELE); o clique fora
+/// compromete o buffer — e a shell aplica o evento ao osso seleccionado AGORA.
+#[test]
+fn a_typed_length_never_lands_on_the_bone_selected_after_it() {
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
+    publica_tudo();
+    state::set_current_bone_subject(Some(4));
+    let r = host
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
+        .expect("Length pintado");
+    let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert_eq!(
+        host.store().focus_id(),
+        Some(ids::VECTOR_BONE_LENGTH),
+        "o campo tem o foco"
+    );
+    {
+        let arena = bumpalo::Bump::new();
+        let store = <MockPanelHost as PanelHostInternal>::store_mut(&mut host);
+        if let Some(ph2d_editor_core::interaction::InteractiveState::NumberInput {
+            buffer,
+            caret,
+            ..
+        }) = store.get_mut(ids::VECTOR_BONE_LENGTH)
+        {
+            buffer.clear();
+            *caret = 0;
+        }
+        for ch in "35".chars() {
+            let _ = ph2d_editor_core::interaction::dispatch_text_input(store, ch, &arena);
+        }
+    }
+    // A selecção muda para outro osso (comprimento 50) e o painel pinta-o.
+    state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(50.0, 1.0)));
+    state::set_current_bone_subject(Some(3));
+    host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
+        .expect("Length pintado");
+    // O clique fora (o canvas) larga o foco.
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 3 * SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, 5.0, 895.0, 3 * SEC + SEC / 100));
+    let (_, v, ..) = host
+        .store()
+        .number_input(ids::VECTOR_BONE_LENGTH)
+        .expect("Length");
+    eprintln!("eventos: {evs:?} valor: {v}");
+    assert!(
+        !evs.iter()
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ids::VECTOR_BONE_LENGTH)),
+        "o 35 escrito no osso de 20 comprometeu-se sobre o osso de 50 (valor {v})"
+    );
+    assert!((v - 50.0).abs() < 1e-9, "o campo mostra o osso novo: {v}");
+    state::set_current_bone_subject(None);
+    limpa();
+}
+
+fn osso(length: f64, segments: u8) -> ph2d_skeleton::bend::BoneSpec {
+    ph2d_skeleton::bend::BoneSpec {
+        segments,
+        ..ph2d_skeleton::bend::BoneSpec::straight(length, 1.0)
+    }
+}
+
+fn mudou(evs: &[WidgetEvent], id: ph2d_a11y::NodeId) -> bool {
+    evs.iter()
+        .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == id))
+}
+
+/// ⛔ A irmã: o campo em edição (uma alça da curva) NÃO existe no osso novo (um segmento só, a
+/// curva escondida) — e mesmo assim o texto não pode cair nele.
+#[test]
+fn a_typed_field_the_new_bone_does_not_show_is_dropped_too() {
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
+    publica_tudo();
+    state::set_current_bone(Some(osso(20.0, 4)));
+    state::set_current_bone_subject(Some(4));
+    let id = ids::VECTOR_BONE_CURVE_IN_Y;
+    let r = host
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+        .expect("a alça pintada num osso de 4 segmentos");
+    let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert_eq!(host.store().focus_id(), Some(id));
+    {
+        let arena = bumpalo::Bump::new();
+        let store = <MockPanelHost as PanelHostInternal>::store_mut(&mut host);
+        if let Some(ph2d_editor_core::interaction::InteractiveState::NumberInput {
+            buffer,
+            caret,
+            ..
+        }) = store.get_mut(id)
+        {
+            buffer.clear();
+            *caret = 0;
+        }
+        for ch in "7".chars() {
+            let _ = ph2d_editor_core::interaction::dispatch_text_input(store, ch, &arena);
+        }
+    }
+    state::set_current_bone(Some(osso(50.0, 1)));
+    state::set_current_bone_subject(Some(3));
+    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 3 * SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, 5.0, 895.0, 3 * SEC + SEC / 100));
+    assert!(!mudou(&evs, id), "o 7 da alça caiu no osso novo: {evs:?}");
+    state::set_current_bone_subject(None);
+    limpa();
+}
+
+/// ⛔ O ARRASTO do *Length*: um arrasto ACABADO e depois outra selecção não escreve nada; um
+/// arrasto A MEIO quando a selecção muda pára de escrever (nem os Moves seguintes nem o Up).
+#[test]
+fn a_length_drag_never_writes_to_the_bone_selected_after_it() {
+    let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+    let mut st = SkeletonPanelState;
+    publica_tudo();
+    state::set_current_bone_subject(Some(4));
+    let id = ids::VECTOR_BONE_LENGTH;
+    let r = host
+        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+        .expect("Length pintado");
+    let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
+    // 1) arrasto acabado sobre o osso 4.
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    let m = host.dispatch_pointer_event(pointer(PointerKind::Move, cx + 30.0, cy, SEC + 1));
+    assert!(mudou(&m, id), "o arrasto escreve no osso dele: {m:?}");
+    host.dispatch_pointer_event(pointer(PointerKind::Up, cx + 30.0, cy, SEC + 2));
+    state::set_current_bone(Some(osso(50.0, 1)));
+    state::set_current_bone_subject(Some(3));
+    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 2 * SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, 5.0, 895.0, 2 * SEC + 1));
+    assert!(
+        !mudou(&evs, id),
+        "o arrasto acabado escreveu no osso novo: {evs:?}"
+    );
+    // 2) arrasto a meio sobre o osso 3 quando a selecção passa ao osso 2.
+    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 3 * SEC));
+    let m = host.dispatch_pointer_event(pointer(PointerKind::Move, cx + 30.0, cy, 3 * SEC + 1));
+    assert!(mudou(&m, id), "o arrasto escreve no osso dele: {m:?}");
+    state::set_current_bone(Some(osso(80.0, 1)));
+    state::set_current_bone_subject(Some(2));
+    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    let mut evs =
+        host.dispatch_pointer_event(pointer(PointerKind::Move, cx + 60.0, cy, 3 * SEC + 2));
+    evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, cx + 60.0, cy, 3 * SEC + 3)));
+    assert!(
+        !mudou(&evs, id),
+        "o arrasto a meio escreveu no osso novo: {evs:?}"
+    );
+    let (_, v, ..) = host.store().number_input(id).expect("Length");
+    assert!((v - 80.0).abs() < 1e-9, "o campo mostra o osso novo: {v}");
+    state::set_current_bone_subject(None);
+    limpa();
+}

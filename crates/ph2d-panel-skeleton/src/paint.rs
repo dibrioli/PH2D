@@ -65,6 +65,14 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     // recebe o store **imutável** — a fileira pinta, não escreve.
     {
         let store = ctx.host.store_mut();
+        // ⛔⛔ **O número escrito e não confirmado é do osso em que foi escrito** (smoke do dono
+        // 01/11): mudar de osso com o campo em edição largava o texto no osso NOVO no clique
+        // seguinte. Ao mudar o sujeito, a edição em curso é abandonada (o `Esc`).
+        // ⚠️ Por TODOS os campos do osso (`VECTOR_BONE_FIELDS`), não pela lista do osso novo — o
+        // campo em edição pode não existir nele — e o arrasto em curso também larga.
+        if state::bone_subject_changed() {
+            abandona_a_edicao_do_osso(store);
+        }
         for (id, _, _, valor) in section_campos::campos_do_osso().into_iter().flatten() {
             store.set_number_value(id, valor);
         }
@@ -130,5 +138,34 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     // ⭐ E a de QUEM MANDA NA PONTA, pela mesma porta e pela mesma razão.
     if let Some(chip_rect) = state::take_pending_bone_tip_dd() {
         crate::section_tip::paint_tip_popover(ctx, chip_rect, theme);
+    }
+}
+
+/// ⛔⛔ **A edição em curso de um campo do osso é DESSE osso** (smoke do dono 01/11): o texto por
+/// confirmar e o arrasto a meio voltam ao último valor comprometido e o foco sai — o `Esc`.
+fn abandona_a_edicao_do_osso(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    use ph2d_editor_core::interaction::{InteractiveState, format_number};
+    let do_osso = |id| ids::VECTOR_BONE_FIELDS.contains(&id);
+    let arrasto = (store.number_input_drag())
+        .map(|d| d.id)
+        .filter(|&id| do_osso(id));
+    if arrasto.is_some() {
+        let _ = store.end_number_input_drag();
+    }
+    let foco = store.focus_id().filter(|&id| do_osso(id));
+    for id in arrasto.into_iter().chain(foco) {
+        if let Some(InteractiveState::NumberInput {
+            buffer,
+            caret,
+            last_committed,
+            ..
+        }) = store.get_mut(id)
+        {
+            *buffer = format_number(*last_committed);
+            *caret = buffer.len();
+        }
+    }
+    if foco.is_some() {
+        store.set_focus(None);
     }
 }

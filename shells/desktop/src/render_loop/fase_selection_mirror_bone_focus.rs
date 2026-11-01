@@ -11,7 +11,10 @@ impl crate::App {
             return;
         };
         let FrameGfx {
-            sim, hero_screen, ..
+            sim,
+            hero_screen,
+            tools,
+            ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let Some(hero) = hero_screen.as_mut() else {
@@ -86,11 +89,10 @@ impl crate::App {
         //
         // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
         // quadro prenderia a aba e o artista não conseguiria olhar para outra.
-        if crate::skeleton_reveal::on_focus(&mut self.skeleton.osso_revelado, osso_em_foco) {
+        if ph2d_app_skeleton::bone_bridge::on_focus(tools, &mut self.skeleton, osso_em_foco) {
             // ⭐⭐⭐ **Escolher um osso ABRE o painel de Bones e trá-lo à frente** (ordem do dono,
-            // 09/09). ⛔ E já NÃO arma o *Transform* (A14, report de 05/10): armar a ferramenta de
-            // osso passou a MUDAR o esqueleto para Pose, e o Bind (Object) ficava inalcançável. O
-            // verbo é do modo; mudar de modo é do artista (`Tab`, *Mode*).
+            // 09/09) e, com a ferramenta na mão, o verbo passa a *Transform* (dono 01/11; fora da
+            // mão nada se arma, A14) — `bone_bridge::on_focus`.
             <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                 hero,
                 <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::ID,
@@ -126,6 +128,7 @@ impl crate::App {
                 );
             }
         }
+        ph2d_panel_skeleton::set_current_bone_subject(osso_em_foco);
         ph2d_panel_skeleton::set_current_bone(osso_em_foco.and_then(|b| {
             sim.world()
                 .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))

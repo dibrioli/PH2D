@@ -144,6 +144,24 @@ pub fn set_current_bone(v: Option<ph2d_skeleton::bend::BoneSpec>) {
     }
 }
 
+thread_local! {
+    /// QUEM é o osso em foco (os bits da entidade) e quem o painel pintou por último.
+    static CURRENT_BONE_SUBJECT: Cell<Option<u64>> = const { Cell::new(None) };
+    static PAINTED_BONE_SUBJECT: Cell<Option<u64>> = const { Cell::new(None) };
+}
+
+/// ⛔ **O osso em foco, por IDENTIDADE** (smoke do dono 01/11): o `BoneSpec` não distingue dois
+/// ossos do mesmo tamanho, e o painel tem de saber que o SUJEITO mudou para largar a edição em curso.
+pub fn set_current_bone_subject(v: Option<u64>) {
+    CURRENT_BONE_SUBJECT.with(|c| c.set(v));
+}
+
+/// O sujeito mudou desde a última pintura? Regista o actual como pintado.
+pub(crate) fn bone_subject_changed() -> bool {
+    let agora = CURRENT_BONE_SUBJECT.with(Cell::get);
+    PAINTED_BONE_SUBJECT.with(|c| c.replace(agora)) != agora
+}
+
 pub(crate) fn current_bone() -> Option<ph2d_skeleton::bend::BoneSpec> {
     CURRENT_HAS_BONE
         .with(Cell::get)

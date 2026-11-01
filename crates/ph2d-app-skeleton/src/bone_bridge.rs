@@ -33,6 +33,22 @@ pub fn arm(tools: &mut ToolRegistry, action: BoneAction) -> bool {
     tool(tools).map(|t| t.set_action(action)).is_some()
 }
 
+/// ⭐⭐ **Escolher um osso JÁ EXISTENTE abre o *Transform*** (dono 01/11): na aresta do foco
+/// ([`crate::reveal::on_focus`]) com a ferramenta de osso na mão, o verbo passa a *Transform*. O osso
+/// acabado de nascer não conta ([`crate::reveal::on_birth`] absorve a aresta) e a ferramenta fora
+/// da mão não é armada (A14: o Object fica Object). Devolve se houve aresta.
+pub fn on_focus(
+    tools: &mut ToolRegistry,
+    st: &mut crate::state::SkeletonState,
+    foco: Option<u64>,
+) -> bool {
+    let novo = crate::reveal::on_focus(&mut st.osso_revelado, foco);
+    if novo && in_hand(tools) && config(tools).action != BoneAction::Transform {
+        let _ = arm(tools, BoneAction::Transform);
+    }
+    novo
+}
+
 #[cfg(test)]
 #[path = "bone_bridge_tests.rs"]
 mod tests;

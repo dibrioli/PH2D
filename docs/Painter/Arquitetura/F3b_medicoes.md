@@ -5,7 +5,7 @@ Presets lidos dos `.ph2d-brush.png` (iTXt `ph2d-brush`) para `PH2D_F3_PRESETS` (
 os 14 `Oil/*` + Wet Liner, Wet Wash, Gouache Opaque (os 15 com `levelingOwnStroke = 1`).
 
 ```
-PH2D_F3_PRESETS=<presets.txt> bash scripts/ph2d-run.sh cargo test -p ph2d-wet-paint --profile smoke \
+PH2D_F3_PRESETS=<presets.txt> PH2D_F3_TINTA=<Ink Brush, Wet Round, Gouache Flat, Wet Dry Brush> bash scripts/ph2d-run.sh cargo test -p ph2d-wet-paint --profile smoke \
   --test f3_medicoes -- --ignored --nocapture --test-threads 1
 ```
 
@@ -127,28 +127,111 @@ por preset que esconde a espessura real. A migração C está certa como LEI, ma
 a cura é pousar MENOS tinta (Volume), nunca devolver o ganho. ⚑ por medir: a foto (luz real, `oleo_campo`), e Fan
 Brush / Express Oil (emboss 0,05 / 0,2, sem Real Oil).
 
-## (1) Body — `levelingOwnStroke` 1 × 0
+## (1) Body — `levelingOwnStroke` 1 × 0 (2.ª rodada, dois traços cruzados)
 
-| preset | células fora da faixa `r + 2` (lev 1 → lev 0) | massa fora ÷ total | µm p99 lev 0 | massa lev0 ÷ lev1 |
-|---|---|---|---|---|
-| 12 Oil/* com lev 1 | 0 → 0 | 0 → 0 | = lev 1 (tabela §4) | 1,0000 |
-| Wet Liner | 3 683 → 3 683 | 0,432 → 0,432 | 2,725 | 1,0000 |
-| Wet Wash | 6 890 → 6 890 | 0,464 → 0,464 | 0,716 | 1,0000 |
-| Gouache Opaque | 4 707 → 4 707 | 0,394 → 0,394 | 2,928 | 1,0000 |
+⛔ **A 1.ª rodada desta secção era NULA:** o `pointer_down` legado não avança `sim.traco_actual` (quem o faz é a porta do
+produto, `painter/doors.rs:79` `begin_direct_stroke`), logo toda célula ficava com o traço `0` e a parede
+(`solver::parede_do_traco`) nunca valia — por isso lev 1 = lev 0 ao bit. A sonda agora avança o número a cada traço como
+o produto. Re-corrida a 3 passadas com o número certo: os óleos mudam < 1 % (as tabelas (4)/(6) ficam), mas os 3 de água
+passam a ter lev 0 ≠ lev 1 (abaixo).
 
-**Conclusão (provisória):** nesta cena (três passadas no MESMO eixo) `levelingOwnStroke` não muda nada nos 15 — o
-óleo já não escoa para fora da faixa sem ele (0 células), e na água a fuga é a mesma com e sem. O knob só pode decidir
-onde um traço encontra OUTRO traço já pousado (é «nivelar só com o próprio traço»). ⚑ **não fecha R1**: falta a cena de
-DOIS traços que se cruzam (perpendicular, como `sonda_relevo_oleo` `Perp`) com lev 0 × 1, medida no relevo. Até lá
-`Body` fica PROVISÓRIO (N = 31).
+Teste `f3_body_dois_tracos`: traço 1 horizontal (y = 60), traço 2 vertical (x = 130) por cima — **molhado** (10 passos
+depois) ou **seco** (`dry_canvas_now`); leitura 300 passos depois. Por variante, o mesmo processo corre «só o 1.º», «só o
+2.º» e «os dois». Colunas:
+- **cruz**: µm na intersecção (`|dx| ≤ r₂`, `|dy| ≤ r₁`);
+- **borda**: µm na faixa de 3 px por DENTRO da borda do 1.º traço, fora da coluna do 2.º;
+- **escoa**: (os dois − só 1.º − só 2.º) na coluna do 2.º FORA da faixa do 1.º ÷ massa do 1.º, ou seja o que o 2.º
+  levou do 1.º para fora;
+- **fuga**: a massa fora das duas faixas ÷ a massa do 1.º.
 
-## (5) Absorbency — não feito (sem tempo).
+| preset | estado | cruz p50/p99 lev1 | lev0 | borda p99 lev1 | lev0 | escoa lev1 | lev0 | fuga lev1 | lev0 |
+|---|---|---|---|---|---|---|---|---|---|
+| Filbert Dry | molhado | 1,99 / 4,30 | = | 0,74 | 0,74 | 0,73 % | 0,73 % | 0 | 0 |
+| Filbert | molhado | 6,58 / 10,79 | 6,58 / 10,79 | 0,67 | 0,67 | 0,50 % | 0,50 % | 0 | 0 |
+| Filbert | seco | 6,79 / 10,82 | = | 0,68 | 0,68 | 2,20 % | 2,20 % | 0 | 0 |
+| Flat Bristle | molhado | 4,74 / 8,16 | 4,75 / 8,16 | 0,98 | 0,98 | 0,64 % | 0,64 % | 0 | 0 |
+| Thick Impasto | molhado | 6,68 / 10,82 | 6,68 / 10,82 | 0,68 | 0,68 | 0,62 % | 0,62 % | 0 | 0 |
+| Thick Impasto | seco | 6,82 / 11,01 | = | 0,68 | 0,68 | 2,21 % | 2,21 % | 0 | 0 |
+| Tilted Shade | molhado | 4,33 / 7,27 | = | 1,24 | 1,23 | 0,68 % | 0,68 % | 0 | 0 |
+| Knife Dry | molhado | 2,22 / 4,79 | 2,21 / 4,79 | 0,70 | 0,70 | 0,27 % | 0,27 % | 0 | 0 |
+| Knife Grainy / Smooth 3 | molhado | 2,16 / 4,24 | 2,14 / 4,23 | 0,79 | 0,79 | 0,23 % | 0,23 % | 0 | 0 |
+| Knife Oily | molhado | 10,08 / 17,32 | = | 2,77 | 2,79 | 0,48 % | 0,47 % | 0 | 0 |
+| Knife Stain / Textured | ambos | ≤ 0,39 p99 | = | ≤ 0,01 | ≤ 0,01 | 0 | 0 | 0 | 0 |
+| Metallic Flat | molhado | 2,55 / 3,80 | = | 0,67 | 0,67 | 1,46 % | 1,46 % | 0 | 0 |
+| **Wet Liner** | molhado | 0,63 / 1,08 | 0,71 / 1,09 | **12,36** | 2,31 | 1,23 % | 1,44 % | **0** | **5,0 %** |
+| Wet Liner | seco | 1,24 / 2,53 | 1,23 / 2,51 | 0,84 | 0,84 | 0,54 % | 0,44 % | 0 | 0 |
+| **Wet Wash** | molhado | 0,48 / 0,81 | 0,46 / 0,79 | **38,57** | 0,38 | 0,92 % | −13,6 % | **0,02 %** | **39,8 %** |
+| Wet Wash | seco | 1,36 / 2,11 | 1,36 / 2,12 | 0,44 | 0,44 | 0,50 % | 0,55 % | 0 | 0,05 % |
+| **Gouache Opaque** | molhado | 0,75 / 1,17 | 0,72 / 1,12 | **15,28** | 2,08 | 5,8 % | −6,2 % | **0** | **10,5 %** |
+| Gouache Opaque | seco | 1,39 / 1,96 | 1,39 / 1,96 | 0,38 | 0,38 | 2,1 % | 2,1 % | 0 | 0 |
+
+(«=» quer dizer igual nas 3 casas. Os óleos secos que faltam na tabela dão o mesmo padrão: lev 1 = lev 0 a ≤ 0,02 µm.)
+Nas 3 passadas no mesmo eixo, com o número certo, os 3 de água dão lev 1 × lev 0: Wet Liner µm p99 **49,3** × 2,7 e
+fuga 0 × 43 %; Wet Wash **82,3** (máx. **300**) × 0,7 e fuga 0,35 % × 46 %; Gouache Opaque **37,8** × 2,9 e fuga 0 × 39 %.
+
+**Conclusão → R1:** **o meio basta nos 12 óleos, não basta nos 3 de água.**
+- **12 Oil/***: lev 1 × 0 difere ≤ 0,02 µm no cruzamento e na borda, e o escoamento é o mesmo à 4.ª casa. O óleo não
+  escoa por si (não há água), logo a parede não tem o que parar. Para eles `levelingOwnStroke` é redundante: a migração
+  põe `Body = 0`.
+- **Wet Liner, Wet Wash, Gouache Opaque** (`m = 0`, onde `τ_y(m = 0)` ≈ 0): lev 0 deixa escoar **5–40 %** da massa do
+  1.º traço para fora das faixas quando o 2.º o apanha molhado. Lev 1 retém tudo, mas EMPILHA na parede: borda p99
+  **12–39 µm** contra 0,4–2,3 µm com lev 0, e até 300 µm em 3 passadas. É um degrau, não um corpo: a lei de hoje é uma
+  parede binária entre números de traço, e a sua «faixa» só tem dois pontos (0 e 1).
+- **Destino:** `Body` como grandeza `τ_y` NÃO reproduz o lev 1 da água (que é uma parede, não uma tensão de cedência).
+  Com o meio a cobrir o óleo, o `Body` sai (N = 30) SÓ se o dono aceitar que os 3 de água escoem como os outros pincéis
+  de água (com lev 0 ficam como Wet Round). Se o isolamento da água for querido, a forma honesta é `Body` = `τ_y` somado
+  ao do meio, com faixa por medir contra a fuga de 5–40 %, e não a parede binária que empilha 12–39 µm na borda. ⚑ A
+  pilha na parede (lev 1, água) é por si um defeito a registar em BUGS: um degrau de 38 µm onde a lei pede uma borda.
+
+## (5) Absorbency × `paperGate`
+
+A lei do `paperGate` (`trail/deposit.rs:195`): `deposit = stamp − (1 − tooth) · gate`. Se der ≤ 0, a célula NÃO recebe
+nada, nem pigmento nem água (o `wet` só se escreve com depósito). Outros leitores: `tools.rs:106/138` (borracha) e
+`trail.rs:603` (Blend). **Não há velocidade de entrada da água**: o knob é um limiar de CONTACTO com o dente do papel.
+
+Teste `f3_absorbency_paper_gate`: um traço horizontal, papel por omissão, `paperGate` ∈ {0 … 1,2} por cima do preset.
+Colunas: **cobre** = fracção da faixa do traço com massa; **água t0** = Σ `film` logo depois; **molhadas t0/t30/t120** =
+células com `film > 0,01`; **cresce** = (t30 − t0)/30 células por passo; **sett** = fracção assente a t120.
+
+| preset | gate | cobre | água t0 | água ÷ gate 0 | molhadas t0 | t30 | t120 | cresce | sett t120 |
+|---|---|---|---|---|---|---|---|---|---|
+| Wet Round | 0 | 0,953 | 28 181 | 1,00 | 10 257 | 10 114 | 13 342 | −4,8 | 0,17 |
+| Wet Round | 0,2 | 0,877 | 18 817 | 0,67 | 8 842 | 9 159 | 10 844 | 10,6 | 0,16 |
+| Wet Round | 0,4 | 0,840 | 13 361 | 0,47 | 8 331 | 8 723 | 9 529 | 13,1 | 0,13 |
+| Wet Round | 0,6 | 0,802 | 9 776 | 0,35 | 7 899 | 8 385 | 8 634 | 16,2 | 0,13 |
+| Wet Round | 0,8 | 0,750 | 6 854 | 0,24 | 7 334 | 8 011 | 7 922 | 22,6 | 0,15 |
+| Wet Round | 1,0 | 0,670 | 4 568 | 0,16 | 6 487 | 7 528 | 7 214 | 34,7 | 0,18 |
+| Wet Round | 1,2 | 0,562 | 2 918 | 0,10 | 5 393 | 6 832 | 6 402 | 48,0 | 0,23 |
+| Ink Brush | 0 | 0,952 | 2 849 | 1,00 | 9 420 | 8 697 | 7 884 | −24,1 | 0,50 |
+| Ink Brush | 0,4 | 0,472 | 1 123 | 0,39 | 4 334 | 5 819 | 3 695 | 49,5 | 0,70 |
+| Ink Brush | 0,8 | 0,363 | 579 | 0,20 | 3 319 | 4 138 | 1 665 | 27,3 | 0,87 |
+| Ink Brush | 1,2 | 0,226 | 249 | 0,09 | 2 038 | 2 379 | 133 | 11,4 | 0,99 |
+| Wet Dry Brush | 0 | 0,957 | 1 011 | 1,00 | 8 863 | 7 719 | 6 574 | −38,1 | 0,58 |
+| Wet Dry Brush | 0,4 | 0,742 | 384 | 0,38 | 6 463 | 4 532 | 673 | −64,4 | 0,94 |
+| Wet Dry Brush | 1,2 | 0,466 | 88 | 0,09 | 3 266 | 67 | 0 | −106,6 | 1,00 |
+| Gouache Flat | 0…1,2 | igual ao Wet Round a ≤ 1 % na cobertura e na água relativa | | | | | | | |
+
+**Conclusão → F3 R4:** o `paperGate` NÃO tem parte de papel a migrar. Medido, ele só decide QUANTO passa no dente:
+- a água pousada cai como `≈ exp(−1,9 · gate)` em todos (Wet Round 1,87–1,89; Ink Brush 2,0–2,3);
+- a cobertura da faixa cai em paralelo (0,95 → 0,56 / 0,23);
+- a «velocidade» de alastrar sobe com o gate só porque há menos água pousada e mais papel seco à volta (Wet Round −4,8 →
+  +48 células/passo), e no Wet Dry Brush a mancha SECA mais depressa (−38 → −107) pela mesma razão: menos água.
+
+Nenhuma destas é a absorção de Washburn (velocidade com que o papel bebe a água que JÁ lá está). Proposta:
+1. `paperGate` → **Hardness** inteiro (P, contacto no dente), pela fórmula da §3.1, sem divisão.
+2. **Absorbency** (T, por tela) entra como grandeza NOVA com o ponto neutro = o motor de hoje ao bit, e nenhum preset a
+   migra (não há conversão `Absorbency ↔ paperGate`: a tabela acima mostra que o knob não a tem).
+3. A F3 §2.1 #1 corrige-se: «a parte do papel» não existe no código.
+
+⚑ O leitor da absorção de hoje (evaporação/`dryer`/`capillary` por tela) é que dá o ponto neutro do `Absorbency`, e
+esse levantamento está por fazer.
 
 ## O que ficou por medir
 
 1. (3) Píxel do `bristleStreak` pela ferramenta (1 dab a 0 × 1).
 2. (4) Luz/relevo e custo do solver a 100–1000 µm; a fracção `φ` real por preset para a conversão µm molhado → pigmento.
 3. (6) Fotos com a luz real; Fan Brush e Express Oil.
-4. (1) Cena de dois traços cruzados, lev 0 × 1 — decide `Body`.
-5. (5) Absorbency × os 38 `paperGate`.
+4. (1) Decisão do dono: os 3 de água isolados (Body fica, com faixa a medir contra a fuga de 5–40 %) ou como os outros
+   (Body sai, N = 30). A pilha de 12–39 µm na parede, lev 1 com água, vai a BUGS.
+5. (5) O ponto neutro do `Absorbency`: quem lê hoje a absorção do papel (`capillary`, `dryer`, `baseEvaporation`).
 6. Repetir (4)(6)(1) PELA FERRAMENTA (com `Fios`/`Relevo` e dinâmica) — esta régua é o `Engine` directo.

@@ -21,7 +21,11 @@ struct Pre {
 }
 
 fn presets() -> Vec<Pre> {
-    let f = std::env::var("PH2D_F3_PRESETS").expect("PH2D_F3_PRESETS");
+    presets_de("PH2D_F3_PRESETS")
+}
+
+fn presets_de(var: &str) -> Vec<Pre> {
+    let f = std::env::var(var).expect(var);
     std::fs::read_to_string(f)
         .unwrap()
         .lines()
@@ -76,6 +80,8 @@ fn motor(p: &Pre, extra: &[(Knob, f64)]) -> Engine {
 fn tres_passadas(e: &mut Engine) {
     let y = H as f64 * 0.5;
     for _ in 0..3 {
+        // O número do traço avança como na porta do produto (`doors.rs:79`); o `pointer_down` legado não o faz.
+        e.sim.traco_actual = e.sim.traco_actual.wrapping_add(1).max(1);
         e.pointer_down(30.0, y, None);
         for i in 1..=40 {
             e.pointer_frame(30.0 + 200.0 * f64::from(i) / 40.0, y);
@@ -376,5 +382,193 @@ fn f3_cerdas_cada_knob_decide() {
             .map(|(x, y)| (x - y).abs())
             .fold(0.0, f64::max);
         println!("{nome}|{}|{}|{}|{n}|{m:.4}", d.min, d.max, a.len());
+    }
+}
+
+/// Um traço de (x0,y0) a (x1,y1) com o número de traço NOVO, como a porta do produto
+/// (`painter/doors.rs:79` `begin_direct_stroke`); o `pointer_down` legado não o avança.
+fn traco(e: &mut Engine, a: [f64; 2], b: [f64; 2]) {
+    e.sim.traco_actual = e.sim.traco_actual.wrapping_add(1).max(1);
+    e.pointer_down(a[0], a[1], None);
+    for i in 1..=40 {
+        let t = f64::from(i) / 40.0;
+        e.pointer_frame(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
+    }
+    e.pointer_up();
+    while e.release_frame(b[0], b[1]) {}
+}
+
+fn passos(e: &mut Engine, n: u32) {
+    for _ in 0..n {
+        e.step_simulation();
+    }
+}
+
+const XC: f64 = 130.0;
+const YC: f64 = 60.0;
+
+/// Massa por célula (sett + susp) e espessura µm.
+fn campos(e: &Engine) -> (Vec<f64>, Vec<f64>) {
+    let g = e.active_grid();
+    let mut m = vec![0.0; W * H];
+    let mut t = vec![0.0; W * H];
+    for y in 1..g.h.min(H) {
+        for x in 1..g.w.min(W) {
+            let i = x + y * g.s;
+            m[x + y * W] = f64::from(g.sett[i]) + f64::from(g.susp[i]);
+            t[x + y * W] = espessura::em(g, i) / f64::from(M_UM);
+        }
+    }
+    (m, t)
+}
+
+/// Cena do Body: traço 1 horizontal (y = YC), traço 2 vertical (x = XC) — sobre o 1.º molhado (`seco = false`, 10
+/// passos) ou seco (`dry_canvas_now`). Devolve (só o 1.º, só o 2.º, os dois), lidos 300 passos depois.
+fn cena_body(p: &Pre, lev: f64, seco: bool) -> [(Vec<f64>, Vec<f64>); 3] {
+    let h1 = |e: &mut Engine| traco(e, [30.0, YC], [230.0, YC]);
+    let v2 = |e: &mut Engine| traco(e, [XC, 8.0], [XC, 112.0]);
+    let mut s1 = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    h1(&mut s1);
+    passos(&mut s1, 10);
+    if seco {
+        s1.dry_canvas_now();
+    }
+    passos(&mut s1, 300);
+    let mut s2 = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    v2(&mut s2);
+    passos(&mut s2, 300);
+    let mut ab = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    h1(&mut ab);
+    passos(&mut ab, 10);
+    if seco {
+        ab.dry_canvas_now();
+    }
+    v2(&mut ab);
+    passos(&mut ab, 300);
+    [campos(&s1), campos(&s2), campos(&ab)]
+}
+
+#[test]
+#[ignore = "sonda F3 (1) Body, 2 traços cruzados"]
+fn f3_body_dois_tracos() {
+    let ps: Vec<Pre> = presets()
+        .into_iter()
+        .filter(|p| {
+            p.knobs
+                .iter()
+                .any(|(k, v)| k == "levelingOwnStroke" && *v == 1.0)
+        })
+        .collect();
+    println!(
+        "preset|estado|lev|r1|r2|cruz_p50|cruz_p99|borda3_p50|borda3_p99|escoa_1_para_2|fora1_massa"
+    );
+    for p in &ps {
+        for seco in [false, true] {
+            for lev in [1.0, 0.0] {
+                let [s1, s2, ab] = cena_body(p, lev, seco);
+                let e = motor(p, &[]);
+                let r1 = 2.0 + e.sliders.size * 33.0;
+                let r2 = r1;
+                let (mut cruz, mut borda) = (vec![], vec![]);
+                // Escoa: massa do conjunto − (só 1.º + só 2.º) na coluna do 2.º FORA da faixa do 1.º e na faixa do 1.º FORA
+                // da coluna do 2.º (o que o 1.º perdeu para o 2.º e o que o 2.º arrastou do 1.º).
+                let (mut ganho_fora1, mut m1_total) = (0.0, 0.0);
+                for y in 1..H {
+                    for x in 1..W {
+                        let i = x + y * W;
+                        let (dx, dy) = ((x as f64 - XC).abs(), (y as f64 - YC).abs());
+                        m1_total += s1.0[i];
+                        if dx <= r2 && dy <= r1 {
+                            cruz.push(ab.1[i]);
+                        }
+                        if dx > r2 + 2.0 && dy > r1 - 3.0 && dy <= r1 {
+                            borda.push(ab.1[i]);
+                        }
+                        if dx <= r2 + 2.0 && dy > r1 + 2.0 {
+                            ganho_fora1 += ab.0[i] - s1.0[i] - s2.0[i];
+                        }
+                    }
+                }
+                let fora1: f64 = (1..H)
+                    .flat_map(|y| (1..W).map(move |x| (x, y)))
+                    .filter(|&(x, y)| {
+                        (y as f64 - YC).abs() > r1 + 2.0 && (x as f64 - XC).abs() > r2 + 2.0
+                    })
+                    .map(|(x, y)| ab.0[x + y * W])
+                    .sum();
+                println!(
+                    "{}|{}|{lev}|{r1:.1}|{r2:.1}|{:.3}|{:.3}|{:.3}|{:.3}|{:.4}|{:.4}",
+                    p.nome,
+                    if seco { "seco" } else { "molhado" },
+                    pct(&mut cruz, 0.5),
+                    pct(&mut cruz, 0.99),
+                    pct(&mut borda, 0.5),
+                    pct(&mut borda, 0.99),
+                    ganho_fora1 / m1_total.max(1e-9),
+                    fora1 / m1_total.max(1e-9),
+                );
+            }
+        }
+    }
+}
+
+/// (5) A água no papel × `paperGate`: o que entra (fracção da faixa com massa, água pousada) e a velocidade com que a
+/// mancha molhada cresce, nos pincéis de tinta (`PH2D_F3_TINTA`), variantes intercaladas.
+#[test]
+#[ignore = "sonda F3 (5) Absorbency"]
+fn f3_absorbency_paper_gate() {
+    let ps = presets_de("PH2D_F3_TINTA");
+    let gates = [0.0, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2];
+    println!(
+        "preset|gate|cobre_faixa|agua_t0|molhadas_t0|molhadas_t30|molhadas_t120|cresce_px2_por_passo|massa_total|sett_frac_t120"
+    );
+    for p in &ps {
+        for &gt in &gates {
+            let mut e = motor(p, &[(Knob::PaperGate, gt)]);
+            traco(&mut e, [30.0, YC], [230.0, YC]);
+            let r = 2.0 + e.sliders.size * 33.0;
+            let le_ = |e: &Engine| {
+                let g = e.active_grid();
+                let (mut cob, mut nf, mut agua, mut wet, mut m, mut s) =
+                    (0usize, 0usize, 0.0, 0usize, 0.0, 0.0);
+                for y in 1..g.h {
+                    for x in 1..g.w {
+                        let i = x + y * g.s;
+                        let mm = f64::from(g.sett[i]) + f64::from(g.susp[i]);
+                        let dentro = (y as f64 - YC).abs() <= r && (40..=220).contains(&x);
+                        if dentro {
+                            nf += 1;
+                            if mm > 1.0 {
+                                cob += 1;
+                            }
+                        }
+                        agua += f64::from(g.film[i]);
+                        if g.film[i] > 0.01 {
+                            wet += 1;
+                        }
+                        m += mm;
+                        s += f64::from(g.sett[i]);
+                    }
+                }
+                (cob as f64 / nf.max(1) as f64, agua, wet, m, s / m.max(1e-9))
+            };
+            let a = le_(&e);
+            passos(&mut e, 30);
+            let b = le_(&e);
+            passos(&mut e, 90);
+            let c = le_(&e);
+            println!(
+                "{}|{gt}|{:.3}|{:.1}|{}|{}|{}|{:.2}|{:.0}|{:.3}",
+                p.nome,
+                a.0,
+                a.1,
+                a.2,
+                b.2,
+                c.2,
+                (b.2 as f64 - a.2 as f64) / 30.0,
+                c.3,
+                c.4
+            );
+        }
     }
 }

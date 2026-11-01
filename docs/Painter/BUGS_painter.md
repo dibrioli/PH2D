@@ -508,6 +508,15 @@ pela K-M em vez de tapar com branco. NÃO cura o #54: o Marker Bullet e a faixa 
 escorreu sem ele (`oleo` 0) seguem a lei da obra — continuam creme no papel de cor
 ([prancha](Pinceis/pranchas/J8_over_oil_tint_mix_blend.jpg)). Estender a lei a toda a tinta é a decisão pendente.
 
+## Bug #56 (ABERTO, E10) — a parede entre traços (`levelingOwnStroke = 1`) EMPILHA a tinta molhada da água
+
+Medido em 31/10 ([F3b §1](Arquitetura/F3b_medicoes.md), teste `f3_body_dois_tracos`, dois traços que se cruzam, o 2.º
+sobre o 1.º molhado): Wet Liner, Wet Wash e Gouache Opaque com a parede retêm 100 % do 1.º traço mas a orla p99 sobe a
+**12–39 µm** (sem a parede: 0,4–2,3 µm) e chega a 300 µm em 3 passadas; sem a parede escoam 5 % · 40 % · 10,5 % da massa
+do 1.º. A parede é binária (0/1), não uma tensão de cedência. Nos 12 óleos a parede não muda nada (≤ 0,02 µm): o meio
+basta. Decisão de produto no smoke da E10 (o Body sai e os três escoam como as outras águas, ou fica como tensão de
+cedência somada à do meio); a pilha cura-se com essa decisão, nunca com um tecto.
+
 ## Grain Colors esbranquiçadas (smoke 30/10) — medido: NÃO é defeito do motor
 
 `diag_grain_colors_no_papel_de_cor`: com as cores do dono (azul → amarelo em 0,304, RGB) cada célula guarda a cor exacta

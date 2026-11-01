@@ -69,10 +69,13 @@ pub fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
     q.iter(w).find(|(_, n)| n.0 == nome).map(|(e, _)| e)
 }
 
-pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
-    env: "PH2D_GAME_SMOKE",
-    max_level: CENAS,
-}];
+pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[
+    ph2d_app_host::SmokeRouter {
+        env: "PH2D_GAME_SMOKE",
+        max_level: CENAS,
+    },
+    crate::ordem_smoke::ROUTER,
+];
 
 #[must_use]
 pub fn armed_level_in(get: impl Fn(&str) -> Option<String>) -> Option<u32> {

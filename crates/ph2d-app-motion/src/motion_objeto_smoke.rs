@@ -79,7 +79,12 @@ fn enxame(g: &mut Graph) -> Vec<NodeId> {
 /// Ver o cabeçalho do módulo.
 pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>) {
     super::smoke_particula::cena_12(cx);
-    let Some(nivel) = std::env::var("PH2D_MOTION_OBJETO_SMOKE").ok() else {
+    // A cena da ordem (`PH2D_ORDEM_SMOKE`, GEF 19 — `ph2d_app_game::ordem_smoke`) usa o `=1` daqui.
+    let ordem = || std::env::var_os("PH2D_ORDEM_SMOKE").map(|_| "1".to_owned());
+    let Some(nivel) = std::env::var("PH2D_MOTION_OBJETO_SMOKE")
+        .ok()
+        .or_else(ordem)
+    else {
         return;
     };
     if FEITO.swap(true, std::sync::atomic::Ordering::Relaxed) {

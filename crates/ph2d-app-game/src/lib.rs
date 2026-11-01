@@ -9,6 +9,7 @@ pub mod miniatura;
 pub mod moldura;
 pub mod moldura_tinta;
 pub mod object_add;
+pub mod ordem_smoke;
 pub mod personagem;
 pub mod sessao;
 pub mod smoke;

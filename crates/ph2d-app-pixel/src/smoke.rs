@@ -74,6 +74,20 @@ pub const FACE: [(&[(i32, i32)], usize); 4] = [
     (&[(6, 6), (25, 6), (25, 25), (6, 25), (6, 6)], 17),
 ];
 
+/// Um Pixel Sprite novo com o rosto ([`FACE`]) pintado; devolve os bits (a cena `=1` e a da ordem,
+/// `PH2D_ORDEM_SMOKE`).
+pub fn rosto(
+    app: &mut PixelApp,
+    sim: &mut SimWorld,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> Option<u64> {
+    let bits = crate::object_add::spawn(sim, app, NewSprite::default(), spawn_root).ok()?;
+    let key = crate::input::key_of(sim.world(), bits)?;
+    FACE.iter()
+        .all(|(path, color)| draw_path(app, key, *color, path))
+        .then_some(bits)
+}
+
 /// Encena o nível `level`. `false` = nível que este roteador não conhece.
 pub fn stage(
     app: &mut PixelApp,
@@ -83,21 +97,10 @@ pub fn stage(
 ) -> bool {
     match level {
         1 => {
-            let Ok(bits) = crate::object_add::spawn(sim, app, NewSprite::default(), spawn_root)
-            else {
-                return false;
-            };
-            let Some(key) = crate::input::key_of(sim.world(), bits) else {
-                return false;
-            };
-            for (path, color) in FACE {
-                if !draw_path(app, key, color, path) {
-                    return false;
-                }
-            }
+            let feito = rosto(app, sim, spawn_root).is_some();
             app.fg = [0, 0, 0, 255];
             app.bg = [255, 255, 255, 255];
-            true
+            feito
         }
         2 => stage_house(app, sim, spawn_root),
         3 => stage_ball(app, sim, spawn_root),

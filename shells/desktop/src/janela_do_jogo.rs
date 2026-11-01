@@ -113,6 +113,78 @@ impl crate::App {
         self.playhead.pause();
     }
 
+    /// `PH2D_ORDEM_SMOKE=1|2` (GEF 19): cada tipo nasce pela porta da família dele, sobre a «Pile» e o
+    /// «Swarm» do smoke do Motion (espera-os); a pose e a ordem são do `ph2d_app_game::ordem_smoke`.
+    pub(crate) fn ordem_smoke(&mut self) {
+        use ph2d_app_game::ordem_smoke::{self as o, Peca};
+        let (Some(nivel), Some(gfx)) = (o::nivel(), self.gfx.as_mut()) else {
+            return;
+        };
+        let w = gfx.sim.world_mut();
+        let (Some(pilha), Some(enxame)) =
+            (o::por_nome(w, Peca::Pilha), o::por_nome(w, Peca::Enxame))
+        else {
+            return;
+        };
+        if !o::monta_agora() {
+            return;
+        }
+        use ph2d_app_components::{component_attach, object_add};
+        let raiz = object_add::spawn_empty_root;
+        let (reg, seeds) = (
+            &gfx.component_registry,
+            ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
+        );
+        let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {
+            component_attach::attach_by_name(s, reg, seeds, b, n)
+        };
+        let sim = &mut gfx.sim;
+        let imagem = o::imagem(
+            sim,
+            ph2d_app_game::object_add::Portas {
+                raiz,
+                anexa: &anexa,
+            },
+        );
+        let flip = ph2d_app_flip::object_add::FLIP;
+        let traco = ph2d_app_flip::object_add::add(flip, sim, &mut gfx.flip, &mut self.flip_state);
+        if let Some(oid) = self.flip_state.born {
+            ph2d_app_flip::ordem_smoke::traco(&mut gfx.flip, oid);
+        }
+        let rosto = ph2d_app_pixel::smoke::rosto(&mut self.pixel, sim, raiz);
+        let macro_ =
+            ph2d_app_macros::object_add::add(ph2d_app_macros::object_add::MACRO, sim, raiz);
+        let camera = object_add::add(object_add::CAMERA, sim, reg, seeds);
+        let pecas: Vec<(Peca, u64)> = [
+            (Peca::Imagem, imagem),
+            (Peca::Pilha, Some(pilha)),
+            (Peca::Traco, traco.and_then(Result::ok)),
+            (Peca::Rosto, rosto),
+            (Peca::Enxame, Some(enxame)),
+            (Peca::Macro, macro_.and_then(Result::ok)),
+            (Peca::Camera, camera.and_then(Result::ok)),
+        ]
+        .into_iter()
+        .filter_map(|(p, b)| Some((p, b?)))
+        .collect();
+        for &(p, b) in &pecas {
+            o::arruma(sim.world_mut(), b, p);
+        }
+        o::ordena(sim.world_mut(), nivel, &pecas);
+        // O Pixel nasce em Draw e com zoom nele: volta-se a Object e enquadra-se o cartão (a cena).
+        if let (Some(hero), Some(cartao)) = (gfx.hero_screen.as_mut(), imagem) {
+            use ph2d_editor_core::{action_bus::EditorAction, object_mode as m};
+            hero.bus
+                .push(EditorAction::ObjectMode(m::ModeRequest::Enter(
+                    m::ObjectMode::Object,
+                )));
+            hero.gizmo.replace_selection(Some(cartao));
+            let kind = ph2d_editor_core::ViewFocusKind::FrameSelected;
+            hero.bus.push(EditorAction::SetViewFocus { kind });
+        }
+        eprintln!("{}", o::mensagem(nivel, pecas.len()));
+    }
+
     /// O condutor do smoke (`PH2D_GAME_SMOKE_DRIVE`): os gestos pelas portas do produto.
     pub(crate) fn game_smoke_drive(&mut self) {
         use ph2d_app_game::smoke::{self as s, Gesto};

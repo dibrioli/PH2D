@@ -51,6 +51,8 @@ pub mod multiframe;
 pub mod multiplane_smoke;
 /// O desenho Flip no menu Add de objectos (spec/06 F1).
 pub mod object_add;
+/// O traço da cena da ordem (`PH2D_ORDEM_SMOKE`, GEF 19).
+pub mod ordem_smoke;
 pub mod pass;
 pub mod pass_cache;
 pub mod pass_ghosts;

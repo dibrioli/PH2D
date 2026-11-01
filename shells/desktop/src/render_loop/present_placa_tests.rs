@@ -26,7 +26,7 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let em = |agulha: &str| chrome.find(agulha).expect(agulha);
     // GEF 19 E3: a colagem corre DENTRO das faixas (`motion: &mut cola`), cada faixa Motion no rank dela.
     let (placa, cima, vello) = (
-        em("faixa::cola(colagem, placa, motion, e, cena, band);"),
+        em("faixa::cola(colagem, (placa, motion, palcos), e, cena, band);"),
         em("present_bands::draw_upper_bands("),
         em("vello_pass.render_to_intermediate("),
     );
@@ -110,15 +110,18 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
     let chrome = include_str!("present_chrome.rs");
     let em_chrome = |agulha: &str| chrome.find(agulha).expect(agulha);
     let (editor, palcos, vello) = (
-        em_chrome("faixa::cola(colagem, placa, motion, e, cena, band);"),
-        em_chrome("palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {"),
+        em_chrome("faixa::cola(colagem, (placa, motion, palcos), e, cena, band);"),
+        em_chrome("palcos.pousa(\n            ph2d_app_motion::macro_track::palcos::Colagem {"),
         em_chrome("vello_pass.render_to_intermediate("),
     );
     assert!(
         editor < palcos && palcos < vello,
         "os palcos pousam depois do editor e antes do chrome"
     );
-    assert!(em_chrome("faixa::cola(") < em_chrome("palcos.lentes(surface.gpu(), world_rt, cena);"));
+    assert!(
+        em_chrome("faixa::cola(")
+            < em_chrome("palcos.lentes(surface.gpu(), world_rt, cena, fora);")
+    );
     let luz = include_str!("present_luz.rs");
     assert!(luz.contains(".com_oclusoes(&mut [&mut flip_luz, &mut motion_luz], |familias| {"));
 }
@@ -225,14 +228,14 @@ fn uma_faixa_motion_abaixo_dos_sprites_cola_antes_deles() {
     assert!(m > plan.last_sprite, "sem placa: por cima");
     // A faixa do TOPO abaixo da última de sprites leva a camada filtrada e a lente no sítio dela.
     let present = include_str!("present.rs");
-    assert!(
-        present.contains("motion_shape_placa::faixa::cola(colagem, placa, motion, e, cena, band);")
-    );
+    assert!(present.contains(
+        "motion_shape_placa::faixa::cola(\n                colagem,\n                (placa, motion, palcos),"
+    ));
     let src = include_str!("present_bands.rs");
     assert!(!src.contains(
         "(g.motion)(None, g.world_rt, g.band_blit, g.renderer);\n    }\n    let mut doc_i"
     ));
     assert!(src.contains(
-        "Family::Motion => {\n                (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);"
+        "Family::Motion | ph2d_render::draw_bands::Family::Palco => {\n                (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);"
     ));
 }

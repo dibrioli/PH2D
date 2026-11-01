@@ -43,6 +43,9 @@ pub enum Family {
     /// Um objecto Flip (GEF 19 E4): o passe do Flip no `game_rt` (HDR → tonemap), como os sprites —
     /// a faixa logo acima da última de sprites vai no MESMO `game_rt` que ela (o quadro de sempre).
     Flip,
+    /// O palco de uma macro em cena (GEF 19, resto da E3): a camada dele pousa no acumulador no rank
+    /// da entidade Macro. Só com palco a tocar — sem ele o rank é do vizinho ([`FrameOrder::adormece_palcos`]).
+    Palco,
 }
 
 impl Family {
@@ -61,6 +64,7 @@ impl Family {
             Family::Vector => 2,
             Family::Pixel => 3,
             Family::Motion => 4,
+            Family::Palco => 5,
         }
     }
 }
@@ -126,6 +130,7 @@ pub fn collapsed(families: &[Family]) -> Vec<Band> {
         Family::Vector,
         Family::Pixel,
         Family::Motion,
+        Family::Palco,
     ]
     .into_iter()
     .filter(|f| families.contains(f))
@@ -205,6 +210,8 @@ pub struct FrameOrder {
     /// `(FlipObjectRef.0, rank)` de cada objecto Flip que entrou na ordem (GEF 19 E4) — o id do
     /// documento, que é o que o passe do Flip filtra.
     pub flip_ranks: Vec<(u64, u32)>,
+    /// `(bits da entidade Macro, rank)` de cada palco que toca neste quadro.
+    pub palco_ranks: Vec<(u64, u32)>,
     /// A placa do Motion cola-se neste quadro (escrito depois da decisão dela) — `false` = as formas
     /// por cima de tudo ([`motion_por_cima`]).
     pub motion_na_placa: bool,
@@ -221,6 +228,7 @@ impl FrameOrder {
         self.pixel_ranks.clear();
         self.motion_ranks.clear();
         self.flip_ranks.clear();
+        self.palco_ranks.clear();
         self.motion_na_placa = false;
         self.entity_ranks.clear();
     }
@@ -274,6 +282,37 @@ impl FrameOrder {
     pub fn record_flip(&mut self, rank: u32, id: u64) {
         self.put(rank, Family::Flip);
         self.flip_ranks.push((id, rank));
+    }
+
+    /// Regista que a entidade Macro `bits` ocupa o `rank`.
+    pub fn record_palco(&mut self, rank: u32, bits: u64) {
+        self.put(rank, Family::Palco);
+        self.palco_ranks.push((bits, rank));
+    }
+
+    /// ⭐ Escrito depois de saber quem toca: o rank de uma Macro SEM palco a tocar passa à família do
+    /// vizinho de baixo (sem vizinho, o de cima; sozinho, sprite) — nada a desenhar nele, e uma faixa
+    /// vazia partiria as vizinhas (cada corte custa uma colagem e o tonemap à parte).
+    pub fn adormece_palcos(&mut self, tocam: impl Fn(u64) -> bool) {
+        let mortos: Vec<u32> = self
+            .palco_ranks
+            .iter()
+            .filter(|(b, _)| !tocam(*b))
+            .map(|(_, r)| *r)
+            .collect();
+        self.palco_ranks.retain(|(b, _)| tocam(*b));
+        for r in mortos {
+            let i = r as usize;
+            let vivo = |f: &&Option<Family>| f.is_some_and(|f| f != Family::Palco);
+            let viz = self.families[..i]
+                .iter()
+                .rev()
+                .find(vivo)
+                .or_else(|| self.families[i + 1..].iter().find(vivo))
+                .copied()
+                .flatten();
+            self.families[i] = Some(viz.unwrap_or(Family::Sprite));
+        }
     }
 
     fn put(&mut self, rank: u32, fam: Family) {
@@ -342,6 +381,13 @@ impl FrameOrder {
                         hi: n,
                     });
                 }
+                if !self.palco_ranks.is_empty() {
+                    out.push(Band {
+                        family: Family::Palco,
+                        lo: 0,
+                        hi: n,
+                    });
+                }
                 (out, true)
             }
         }
@@ -390,6 +436,15 @@ impl FrameOrder {
             .collect();
         v.sort_unstable();
         v.into_iter().map(|(_, id)| id).collect()
+    }
+
+    /// As entidades Macro com palco nesta faixa.
+    pub fn palco_ids_in(&self, band: Band) -> Vec<u64> {
+        self.palco_ranks
+            .iter()
+            .filter(|(_, r)| *r >= band.lo && *r < band.hi)
+            .map(|(b, _)| *b)
+            .collect()
     }
 
     /// Todos os Pixel Sprites da ordem, do de trás para o da frente.
@@ -444,7 +499,7 @@ pub fn needs_banding(bands: &[Band]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Family::{Flip as F, Motion as M, Pixel as P, Sprite as S, Vector as V};
+    use Family::{Flip as F, Motion as M, Palco as K, Pixel as P, Sprite as S, Vector as V};
 
     /// ⭐ **O caso do report**: uma forma desenhada primeiro, uma imagem importada a seguir. Na
     /// hierarquia a imagem fica ABAIXO ⇒ ela desenha DEPOIS ⇒ por cima.
@@ -932,5 +987,51 @@ mod tests {
         assert!(k(1060) < k(11) && k(11) < k(1070));
         o.clear();
         assert!(o.flip_ranks.is_empty());
+    }
+
+    /// ⭐ Uma Macro sem palco a tocar não parte a ordem: o rank dela passa ao vizinho de baixo (ou de
+    /// cima, ou sprite sozinha); com palco, faixa própria no rank dela.
+    #[test]
+    fn a_macro_without_a_playing_stage_gives_its_rank_to_a_neighbour() {
+        let ordem = || {
+            let mut o = FrameOrder::default();
+            o.record(0, None);
+            o.record_palco(1, 50);
+            o.record(2, None);
+            o.record_palco(3, 51);
+            o.record(4, Some(9));
+            o
+        };
+        let mut o = ordem();
+        o.adormece_palcos(|_| false);
+        assert_eq!(o.complete(), Some(vec![S, S, S, S, V]));
+        assert!(o.palco_ranks.is_empty());
+        assert!(!needs_banding(&o.plan().0), "o quadro de sempre");
+        let mut o = ordem();
+        o.adormece_palcos(|m| m == 50);
+        let (b, _) = o.plan();
+        assert_eq!(
+            b.iter().map(|b| (b.family, b.lo, b.hi)).collect::<Vec<_>>(),
+            vec![(S, 0, 1), (K, 1, 2), (S, 2, 4), (V, 4, 5)]
+        );
+        assert_eq!(o.palco_ids_in(b[1]), vec![50]);
+        let mut o = FrameOrder::default();
+        o.record_palco(0, 50);
+        o.record(1, Some(9));
+        o.adormece_palcos(|_| false);
+        assert_eq!(
+            o.complete(),
+            Some(vec![V, V]),
+            "sem vizinho de baixo: o de cima"
+        );
+        let mut o = FrameOrder::default();
+        o.record_palco(0, 50);
+        o.adormece_palcos(|_| false);
+        assert_eq!(o.complete(), Some(vec![S]));
+        assert!(
+            !needs_banding(&plan(&[S, V, M, K]).0),
+            "palco por ultimo = o de sempre"
+        );
+        assert!(needs_banding(&plan(&[K, S]).0));
     }
 }

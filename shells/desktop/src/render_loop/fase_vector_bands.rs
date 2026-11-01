@@ -118,6 +118,8 @@ impl crate::App {
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
         // GEF 19 E3: com a placa, cada objecto Motion fica no rank dele; sem ela, por cima de tudo.
         frame_order.motion_na_placa = placa;
+        let palcos_da_ordem = &self.motion_shell.palcos;
+        frame_order.adormece_palcos(|m| palcos_da_ordem.toca_o_de(m));
         let doc_bands =
             ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
         // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6);

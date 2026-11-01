@@ -77,7 +77,16 @@ fn the_conversion_records_every_rank_not_only_the_shapes() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[(shape, 7)], &[], &[], &[], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &[(shape, 7)],
+        &[],
+        &[],
+        &[],
+        &[],
+        &scratch,
+        &mut order,
+    );
 
     // ⛔ **`complete()`, e não `families` cru** — é ele que distingue «não registado» de
     // «sprite», e foi a ausência dessa distinção que deixou a 1.ª prova de mutação SOBREVIVER.
@@ -106,9 +115,27 @@ fn running_the_conversion_twice_gives_the_same_order() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[(shape, 7)], &[], &[], &[], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &[(shape, 7)],
+        &[],
+        &[],
+        &[],
+        &[],
+        &scratch,
+        &mut order,
+    );
     let first = order.complete();
-    build_frame_order(&inputs, &[(shape, 7)], &[], &[], &[], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &[(shape, 7)],
+        &[],
+        &[],
+        &[],
+        &[],
+        &scratch,
+        &mut order,
+    );
     assert_eq!(order.complete(), first);
     assert_eq!(order.vector_ranks.len(), 1, "as formas empilharam");
 }
@@ -144,7 +171,7 @@ fn a_pixel_sprite_above_an_image_draws_below_it_as_family_pixel() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[px], &[], &[], &scratch, &mut order);
+    build_frame_order(&inputs, &[], &[px], &[], &[], &[], &scratch, &mut order);
     assert!(
         scratch.rank(px) < scratch.rank(img),
         "o de cima na Hierarchy desenha por baixo"
@@ -183,7 +210,7 @@ fn a_motion_object_above_an_image_ranks_below_it_as_family_motion() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[], &[mo], &[], &scratch, &mut order);
+    build_frame_order(&inputs, &[], &[], &[mo], &[], &[], &scratch, &mut order);
     assert!(
         scratch.rank(mo) < scratch.rank(img),
         "o de cima na Hierarchy tem rank menor"
@@ -231,8 +258,42 @@ fn a_flip_object_above_an_image_draws_below_it_as_family_flip() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[], &[], &[(fl, 42)], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &[],
+        &[],
+        &[],
+        &[(fl, 42)],
+        &[],
+        &scratch,
+        &mut order,
+    );
     assert_eq!(order.complete(), Some(vec![Family::Flip, Family::Sprite]));
     assert_eq!(order.flip_ranks, vec![(42, 0)]);
     assert_eq!(order.entity_ranks.len(), 2, "o clique conhece os dois");
+}
+
+/// Uma entidade Macro entra na ordem como família Palco (o rank do palco dela).
+#[test]
+fn a_macro_entity_takes_a_rank_as_family_palco() {
+    let mut sim = SimWorld::new();
+    let m = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            ph2d_ecs::Macro::default(),
+            RootOrder(0),
+        ))
+        .id();
+    assert!(palco_participant(sim.world(), m));
+    let inputs = vec![SortInput {
+        entity: m,
+        world_pos: ph2d_core::Vec2::ZERO,
+    }];
+    let mut scratch = SortScratch::new();
+    ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
+    let mut order = ph2d_render::draw_bands::FrameOrder::default();
+    build_frame_order(&inputs, &[], &[], &[], &[], &[m], &scratch, &mut order);
+    assert_eq!(order.complete(), Some(vec![Family::Palco]));
+    assert_eq!(order.palco_ranks, vec![(m.to_bits(), 0)]);
 }

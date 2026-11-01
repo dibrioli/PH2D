@@ -209,6 +209,30 @@ impl PalcosDasMacros {
         self.fontes().next().is_some()
     }
 
+    /// O palco da entidade Macro `bits` toca neste quadro (GEF 19: o rank dela na ordem total).
+    #[must_use]
+    pub fn toca_o_de(&self, bits: u64) -> bool {
+        self.lidos.iter().any(|((b, _), l)| {
+            *b == bits
+                && l.palco
+                    .as_ref()
+                    .is_ok_and(|p| p.as_ref().is_some_and(|p| p.toca))
+        })
+    }
+
+    /// Os palcos que tocam, com a entidade Macro de cada um — `quem(bits)` escolhe.
+    fn a_tocar_de(
+        &mut self,
+        quem: impl Fn(u64) -> bool,
+    ) -> impl Iterator<Item = (&mut MotionState, &mut PlacaDeFormas)> {
+        self.lidos
+            .iter_mut()
+            .filter(move |((b, _), _)| quem(*b))
+            .filter_map(|(_, l)| l.palco.as_mut().ok().and_then(Option::as_mut))
+            .filter(|p| p.toca)
+            .map(|p| (p.em_cena.palco_mut(), &mut p.placa))
+    }
+
     /// **A placa de cada palco**, antes de o documento ser codificado — a porta do editor
     /// ([`motion_shape_placa::decide_o_quadro`]). `true` = alguma vai à placa (o documento às faixas).
     pub fn decide(&mut self, gpu: &GpuContext, ligadas: (bool, bool), cam: Affine) -> bool {
@@ -272,7 +296,7 @@ impl PalcosDasMacros {
 
     /// **Cada palco pousa a sua camada no mundo** (sprites e formas, com os filtros dele), depois
     /// da do editor ([`MotionState::filtra_a_camada`]).
-    pub fn pousa(&mut self, c: Colagem<'_>) {
+    pub fn pousa(&mut self, c: Colagem<'_>, quem: impl Fn(u64) -> bool) {
         let Colagem {
             gpu,
             renderer,
@@ -282,7 +306,7 @@ impl PalcosDasMacros {
             mundo,
             band_blit,
         } = c;
-        for (m, p) in self.fontes_mut() {
+        for (m, p) in self.a_tocar_de(quem) {
             m.filtra_a_camada(crate::motion_filter::Engrenagem {
                 gpu,
                 renderer: &mut *renderer,
@@ -302,8 +326,9 @@ impl PalcosDasMacros {
         gpu: &GpuContext,
         mundo: &ph2d_render::WorldRt,
         cena: Option<[f32; 4]>,
+        quem: impl Fn(u64) -> bool,
     ) {
-        for (m, _) in self.fontes_mut() {
+        for (m, _) in self.a_tocar_de(quem) {
             m.lente.aplica(gpu, mundo, cena);
         }
     }

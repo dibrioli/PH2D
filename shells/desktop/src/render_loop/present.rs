@@ -284,7 +284,7 @@ impl crate::App {
             ordem: frame_order,
             bands: &plan.bands,
         };
-        let placa = &mut self.motion_shell.placa;
+        let (placa, palcos) = (&mut self.motion_shell.placa, &mut self.motion_shell.palcos);
         let cena = hero_screen
             .as_ref()
             .filter(|_| !na_vista)
@@ -300,7 +300,13 @@ impl crate::App {
                 mundo,
                 band_blit,
             };
-            ph2d_app_motion::motion_shape_placa::faixa::cola(colagem, placa, motion, e, cena, band);
+            ph2d_app_motion::motion_shape_placa::faixa::cola(
+                colagem,
+                (placa, motion, palcos),
+                e,
+                cena,
+                band,
+            );
         };
         let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,

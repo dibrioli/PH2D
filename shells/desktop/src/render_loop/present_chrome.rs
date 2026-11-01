@@ -58,7 +58,7 @@ impl crate::App {
             ordem: frame_order,
             bands: &plan.bands,
         };
-        let placa = &mut self.motion_shell.placa;
+        let (placa, palcos) = (&mut self.motion_shell.placa, &mut self.motion_shell.palcos);
         let mut cola = |band, mundo: &_, band_blit: &_, renderer: &mut _| {
             let e = ph2d_app_motion::motion_filter::Engrenagem {
                 gpu,
@@ -70,7 +70,7 @@ impl crate::App {
                 mundo,
                 band_blit,
             };
-            faixa::cola(colagem, placa, motion, e, cena, band);
+            faixa::cola(colagem, (placa, motion, palcos), e, cena, band);
         };
         let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,
@@ -106,20 +106,24 @@ impl crate::App {
                 },
             );
         }
-        // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor — na vista da
-        // câmera, a camada DELA (`vista_da_camera::Vista::troca`).
+        // ⭐ E cada palco de uma macro em cena FORA da ordem pousa a sua camada (ADR-0186), por cima da do editor — na
+        // vista da câmera, a camada DELA (`vista_da_camera::Vista::troca`). GEF 19: os da ordem colaram na faixa Palco.
+        let fora = |m: u64| !frame_order.palco_ranks.iter().any(|(b, _)| *b == m);
         let palcos = &mut self.motion_shell.palcos;
-        palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {
-            gpu: surface.gpu(),
-            renderer,
-            camera,
-            window: window_size,
-            scene_viewport,
-            mundo: world_rt,
-            band_blit,
-        });
+        palcos.pousa(
+            ph2d_app_motion::macro_track::palcos::Colagem {
+                gpu: surface.gpu(),
+                renderer,
+                camera,
+                window: window_size,
+                scene_viewport,
+                mundo: world_rt,
+                band_blit,
+            },
+            fora,
+        );
         // ⭐ A lente de cada palco — depois da última escrita do mundo, antes do vidro e do chrome.
-        palcos.lentes(surface.gpu(), world_rt, cena);
+        palcos.lentes(surface.gpu(), world_rt, cena, fora);
     }
 
     /// Os passes 2 a 4 do quadro adquirido: o mundo por cima ([`Self::present_mundo_por_cima`]), o vidro, o chrome

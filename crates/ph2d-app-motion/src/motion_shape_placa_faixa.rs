@@ -99,15 +99,35 @@ impl Colagem<'_> {
 
 /// ⭐ A colagem de uma faixa Motion (`Some`), na metade de baixo ou na de cima, ou da placa inteira sem
 /// objecto Motion na ordem (`None`). A faixa do TOPO leva a camada filtrada e a lente — no sítio DELA,
-/// também abaixo da última faixa de sprites (GEF 19, resto da E3).
+/// também abaixo da última faixa de sprites (GEF 19, resto da E3). Uma faixa Palco pousa os palcos dela.
 pub fn cola(
     c: Colagem<'_>,
-    placa: &mut PlacaDeFormas,
-    motion: &mut MotionState,
+    (placa, motion, palcos): (
+        &mut PlacaDeFormas,
+        &mut MotionState,
+        &mut crate::macro_track::palcos::PalcosDasMacros,
+    ),
     e: Engrenagem<'_>,
     cena: Option<[f32; 4]>,
     band: Option<Band>,
 ) {
+    if let Some(b) = band.filter(|b| b.family == Family::Palco) {
+        let ids = c.ordem.palco_ids_in(b);
+        let (gpu, mundo) = (e.gpu, e.mundo);
+        palcos.pousa(
+            crate::macro_track::palcos::Colagem {
+                gpu,
+                renderer: e.renderer,
+                camera: e.camera,
+                window: e.window,
+                scene_viewport: e.scene_viewport,
+                mundo,
+                band_blit: e.band_blit,
+            },
+            |m| ids.contains(&m),
+        );
+        return palcos.lentes(gpu, mundo, cena, |m| ids.contains(&m));
+    }
     if let Some(b) = band.filter(|b| c.topo() != Some(*b)) {
         return c.cola_a_faixa(placa, motion, e.band_blit, e.mundo.blend_view(), b);
     }

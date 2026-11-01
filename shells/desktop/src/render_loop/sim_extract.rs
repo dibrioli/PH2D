@@ -216,6 +216,11 @@ pub(super) fn flip_participant(sim: &World, entity: Entity) -> Option<u64> {
     sim.get::<ph2d_ecs::FlipObjectRef>(entity).map(|f| f.0)
 }
 
+/// Uma entidade Macro ocupa um rank como família [`Palco`](ph2d_render::draw_bands::Family::Palco) — o palco dela, se tocar.
+pub(super) fn palco_participant(sim: &World, entity: Entity) -> bool {
+    sim.get::<ph2d_ecs::Macro>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
+}
+
 /// ⭐⭐ **A CONVERSÃO** dos ranks do ordenador para a ordem do presente — leitura, nada reordena; todo
 /// rank tem de ser registado (um buraco degrada o plano em vez de perder um objecto).
 pub(super) fn build_frame_order(
@@ -224,6 +229,7 @@ pub(super) fn build_frame_order(
     pixel_inputs: &[Entity],
     motion_inputs: &[Entity],
     flip_inputs: &[(Entity, u64)],
+    palco_inputs: &[Entity],
     scratch: &SortScratch,
     out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
@@ -240,6 +246,8 @@ pub(super) fn build_frame_order(
                 out.record_motion(rank, input.entity.to_bits());
             } else if let Some(&(_, id)) = flip_inputs.iter().find(|(e, _)| *e == input.entity) {
                 out.record_flip(rank, id);
+            } else if palco_inputs.contains(&input.entity) {
+                out.record_palco(rank, input.entity.to_bits());
             } else {
                 out.record(rank, path);
             }
@@ -293,6 +301,7 @@ pub(super) fn run(
     let mut pixel_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     let mut motion_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     let mut flip_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
+    let mut palco_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
     // gameplay — that lands in M10 with the physics integrator).
@@ -360,11 +369,13 @@ pub(super) fn run(
                 let pixel = pixel_participant(sim, sim_entity);
                 let motion = !pixel && motion_participant(sim, sim_entity);
                 let flip = flip_participant(sim, sim_entity).filter(|_| id.is_none() && !pixel && !motion);
-                if drawn && (id.is_some() || pixel || motion || flip.is_some()) {
+                let palco = id.is_none() && !pixel && !motion && flip.is_none() && palco_participant(sim, sim_entity);
+                if drawn && (id.is_some() || pixel || motion || flip.is_some() || palco) {
                     match (id, flip) {
                         (Some(id), _) => vector_inputs.push((sim_entity, id)),
                         (None, Some(f)) => flip_inputs.push((sim_entity, f)),
                         _ if pixel => pixel_inputs.push(sim_entity),
+                        _ if palco => palco_inputs.push(sim_entity),
                         _ => motion_inputs.push(sim_entity),
                     }
                     sort_inputs.push(SortInput {
@@ -406,6 +417,7 @@ pub(super) fn run(
             &pixel_inputs,
             &motion_inputs,
             &flip_inputs,
+            &palco_inputs,
             sort_scratch,
             order_out,
         );

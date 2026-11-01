@@ -190,7 +190,7 @@ pub(super) fn draw_lower_bands(
                 }
                 doc_i += 1;
             }
-            ph2d_render::draw_bands::Family::Motion => {
+            ph2d_render::draw_bands::Family::Motion | ph2d_render::draw_bands::Family::Palco => {
                 (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);
             }
             ph2d_render::draw_bands::Family::Flip => {
@@ -267,7 +267,7 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         .filter(|b| b.family.is_scene())
         .count();
     for band in plan.bands.iter().skip(from) {
-        if e_motion(band) {
+        if e_motion(band) || band.family == ph2d_render::draw_bands::Family::Palco {
             (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);
         }
         if band.family == ph2d_render::draw_bands::Family::Flip {

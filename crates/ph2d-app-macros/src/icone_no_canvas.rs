@@ -1,5 +1,5 @@
 //! ⭐ **O ícone da MACRO no canvas** (dono 01/11, plano GEF 19 E6): no lugar do anel do vazio, o glifo do painel
-//! Macros, com o «Icon Size» do projecto — como o da câmera (`ph2d_app_game::moldura_tinta`). A tinta e o dedo leem a
+//! Macros, com o «Icon Size» do projecto — como o da câmera (`ph2d_camera_frame::tinta`). A tinta e o dedo leem a
 //! MESMA conta ([`icones`]), em px de tela.
 
 use ph2d_editor_core::icons::IconId;

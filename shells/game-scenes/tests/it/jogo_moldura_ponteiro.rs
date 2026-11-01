@@ -1,7 +1,7 @@
 //! Os gates da câmera no canvas sobre a cena 4 REAL (onda 17b, auditoria A1–A3, A6, A7): o céu cobre a
 //! moldura, a câmera segue o Player e tem limites, e cada quadro corre `camera_2d::update` como o app.
 
-use ph2d_app_game::moldura::*;
+use ph2d_camera_frame::*;
 use ph2d_ecs::CameraFollow;
 use ph2d_ecs::Entity;
 use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
@@ -169,7 +169,7 @@ fn os_dois_offset_tem_nomes_distintos() {
 /// quadrado do lado do projecto e não fora dele; com o dobro do lado pega onde antes falhava.
 #[test]
 fn o_icone_pega_no_centro_e_a_camera_escondida_some() {
-    use ph2d_app_game::moldura_tinta::icones_em;
+    use ph2d_camera_frame::tinta::icones_em;
     let (mut sim, cam) = cena();
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(cam) {
         t.translation.x = 20.0;

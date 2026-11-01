@@ -6,7 +6,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::GameCamera;
 use ph2d_render::Camera2d;
 
-use crate::moldura::Moldura;
+use ph2d_camera_frame::Moldura;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, ImageQuality, Rect, StableImage, Stroke, VectorScene};
 

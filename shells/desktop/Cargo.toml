@@ -62,6 +62,7 @@ ph2d-app-board = { path = "../../crates/ph2d-app-board" }
 ph2d-app-code = { path = "../../crates/ph2d-app-code" }
 # ⭐ A família do JOGO a correr (GameEngineFuncional R0): a sessão de Play sobre uma cópia.
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
+ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }
 # ⭐ A família do KANBAN (TrelloClone): instalada no arranque, um `frame` por quadro.
 ph2d-app-kanban = { path = "../../crates/ph2d-app-kanban" }
 ph2d-app-planner = { path = "../../crates/ph2d-app-planner" }

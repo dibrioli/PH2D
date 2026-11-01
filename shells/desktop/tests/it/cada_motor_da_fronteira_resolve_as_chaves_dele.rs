@@ -217,7 +217,11 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
     if let Ok(rd) = std::fs::read_dir(repo.join("crates")) {
         for e in rd.flatten() {
             let n = e.file_name().to_string_lossy().to_string();
-            if n.starts_with("ph2d-panel-") || n.starts_with("ph2d-app-") {
+            // A moldura da câmera saiu de `ph2d-app-game` para uma folha (GEF 19): o prefixo não a apanha.
+            if n.starts_with("ph2d-panel-")
+                || n.starts_with("ph2d-app-")
+                || n == "ph2d-camera-frame"
+            {
                 raizes.push(e.path().join("src"));
             }
         }

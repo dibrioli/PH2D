@@ -1,7 +1,7 @@
 //! **A câmera no canvas — o fio do ponteiro** (plano GEF 17 A3/A4, cura 17b). A lei vive em
-//! [`ph2d_app_game::moldura`]; aqui só se projecta o ponteiro, se escreve e se devolve o clique à seleção.
+//! [`ph2d_camera_frame`]; aqui só se projecta o ponteiro, se escreve e se devolve o clique à seleção.
 
-use ph2d_app_game::moldura::{AGARRE_PX, Alca, Arrasto, Escrita, alca_em, arrastar, edicoes};
+use ph2d_camera_frame::{AGARRE_PX, Alca, Arrasto, Escrita, alca_em, arrastar, edicoes};
 use ph2d_editor_core::action_bus::EditorAction;
 
 impl crate::App {
@@ -122,7 +122,7 @@ impl crate::App {
         #[allow(clippy::cast_precision_loss)]
         let canvas = [0.0, 0.0, w.width as f32, w.height as f32];
         let caixa = ph2d_app_game::encaixe::caixa_do_jogo(canvas, hero.project.game_format);
-        ph2d_app_game::moldura_tinta::tarjas(&mut gfx.vector_scene, canvas, caixa, gfx.theme);
+        ph2d_camera_frame::tinta::tarjas(&mut gfx.vector_scene, canvas, caixa, gfx.theme);
     }
 
     /// Larga a alça; o desfazer pós-quadro fecha o gesto num passo. `true` = havia um arrasto. ⭐ O miolo que

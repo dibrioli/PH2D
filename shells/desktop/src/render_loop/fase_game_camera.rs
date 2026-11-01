@@ -137,7 +137,7 @@ impl crate::App {
         });
         // ⭐ **A câmera no canvas** (plano GEF 17): as molduras deste quadro, a activa com a MESMA vista.
         let selecao = hero_screen.as_ref().and_then(|h| h.gizmo.selection);
-        self.undo.camera_no_canvas.molduras = ph2d_app_game::moldura::molduras(
+        self.undo.camera_no_canvas.molduras = ph2d_camera_frame::molduras(
             sim.world_mut(),
             vista_da_cena.map(|v| v.center),
             aspecto,

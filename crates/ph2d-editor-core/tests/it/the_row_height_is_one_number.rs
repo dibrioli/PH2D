@@ -108,7 +108,8 @@ fn ui_sources() -> Vec<PathBuf> {
             // família de cada vez — e uma varredura que não as siga perde a população **em
             // silêncio**: a isenção fica obsoleta, o censo de obsolescência acusa-a, e a leitura
             // fácil é apagar a isenção. *Isso não cura nada: apaga a cobertura junto com a linha.*
-            if name.starts_with("ph2d-app-") {
+            // A moldura da câmera saiu de `ph2d-app-game` para uma folha (GEF 19): o prefixo não a apanha.
+            if name.starts_with("ph2d-app-") || name == "ph2d-camera-frame" {
                 walk(&p.join("src"), &mut out);
             }
         }

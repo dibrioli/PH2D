@@ -420,7 +420,7 @@ pub(crate) struct ProjectUndo {
     /// O editor guardado enquanto o app vive na janela do jogo (`crate::janela_do_jogo`).
     pub(crate) janela_do_jogo: Option<crate::janela_do_jogo::JanelaDoJogo>,
     /// A câmera no canvas (plano GEF 17): as molduras do quadro e o arrasto em curso.
-    pub(crate) camera_no_canvas: ph2d_app_game::moldura::CameraNoCanvas,
+    pub(crate) camera_no_canvas: ph2d_camera_frame::CameraNoCanvas,
 }
 
 impl ProjectUndo {

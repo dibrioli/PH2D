@@ -5792,18 +5792,16 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-app-host",
+ "ph2d-camera-frame",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
- "ph2d-host",
- "ph2d-i18n",
  "ph2d-input",
  "ph2d-physics-ecs",
  "ph2d-physics-scene",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
- "ph2d-text",
  "ph2d-tokens",
  "ph2d-vec-svg",
  "ph2d-vector",
@@ -6695,6 +6693,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-camera-frame"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-render",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -7287,6 +7301,7 @@ dependencies = [
  "ph2d-audio-decode",
  "ph2d-audio-edit",
  "ph2d-audio-encode",
+ "ph2d-camera-frame",
  "ph2d-color",
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
@@ -7428,6 +7443,7 @@ dependencies = [
  "ph2d-app-physics",
  "ph2d-app-sprite-anim",
  "ph2d-asset",
+ "ph2d-camera-frame",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

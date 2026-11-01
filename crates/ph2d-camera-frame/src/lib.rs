@@ -18,6 +18,8 @@ use ph2d_ecs::{alvo_do_follow, enquadra, mira_parada};
 use ph2d_editor_core::CameraFieldEdit;
 use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 
+pub mod tinta;
+
 /// O que o editor guarda entre quadros: as molduras deste quadro e o arrasto em curso.
 #[derive(Clone, Debug, Default)]
 pub struct CameraNoCanvas {

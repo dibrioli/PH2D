@@ -417,7 +417,7 @@ pub fn follow_target(world: &mut World, name: &str) -> Option<Entity> {
 }
 
 /// ⭐ **A cerca**, eixo a eixo: o centro `mira` com a meia-janela `half` preso aos limites. A porta única — o
-/// passe da câmera (`ph2d_app_components::camera_2d`) e a moldura do canvas (`ph2d_app_game::moldura`) leem-na.
+/// passe da câmera (`ph2d_app_components::camera_2d`) e a moldura do canvas (`ph2d_camera_frame`) leem-na.
 #[must_use]
 pub fn enquadra(mira: [f32; 2], half: [f32; 2], limits: Option<&CameraLimits>) -> [f32; 2] {
     let Some(l) = limits else {

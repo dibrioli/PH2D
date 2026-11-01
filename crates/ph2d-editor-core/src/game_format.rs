@@ -185,19 +185,6 @@ impl Default for CameraCanvasView {
     }
 }
 
-impl CameraCanvasView {
-    /// Aplica uma edição de VISTA da secção Camera. `true` = era de vista (consumida).
-    pub fn aplica(&mut self, e: &crate::CameraFieldEdit) -> bool {
-        match *e {
-            crate::CameraFieldEdit::DimOutside(on) => self.dim_outside = on,
-            crate::CameraFieldEdit::ViewFollows(on) => self.follows = on,
-            crate::CameraFieldEdit::Thumbnail(on) => self.preview = on,
-            _ => return false,
-        }
-        true
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,42 +204,5 @@ mod tests {
             custom: [0, 99_999],
         };
         assert_eq!(f.resolution(), [CUSTOM_MIN_PX, CUSTOM_MAX_PX]);
-    }
-
-    /// ⭐ Cada edição de VISTA (onda 18) escreve o SEU campo e só ele; as outras não são de vista.
-    #[test]
-    fn cada_edicao_de_vista_escreve_o_seu_campo() {
-        use crate::CameraFieldEdit as E;
-        let mut v = CameraCanvasView::default();
-        assert!(v.aplica(&E::DimOutside(true)));
-        assert_eq!(
-            v,
-            CameraCanvasView {
-                dim_outside: true,
-                follows: false,
-                preview: true,
-            }
-        );
-        assert!(v.aplica(&E::ViewFollows(true)));
-        assert!(v.aplica(&E::DimOutside(false)));
-        assert_eq!(
-            v,
-            CameraCanvasView {
-                dim_outside: false,
-                follows: true,
-                preview: true,
-            }
-        );
-        assert!(v.aplica(&E::Thumbnail(false)));
-        assert_eq!(
-            v,
-            CameraCanvasView {
-                dim_outside: false,
-                follows: true,
-                preview: false,
-            }
-        );
-        assert!(!v.aplica(&E::Preview(true)));
-        assert!(!v.aplica(&E::Frame(true)));
     }
 }

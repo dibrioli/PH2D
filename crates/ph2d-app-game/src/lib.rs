@@ -6,8 +6,6 @@ mod dicas;
 pub mod encaixe;
 pub mod formato_do_jogo;
 pub mod miniatura;
-pub mod moldura;
-pub mod moldura_tinta;
 pub mod object_add;
 pub mod ordem_smoke;
 pub mod personagem;

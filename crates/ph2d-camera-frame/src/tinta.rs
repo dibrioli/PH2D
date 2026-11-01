@@ -3,7 +3,7 @@
 //! canvas, os cantos, os limites, a alça sob o ponteiro e — com `follow` — o fio até ao alvo e a mira.
 //! Em espaço de TELA: o traço e o texto ficam nítidos em qualquer zoom.
 
-use crate::moldura::{AGARRE_PX, Moldura, alca_em, caixa, caixa_da_zona, cantos, pegas_da_zona};
+use crate::{AGARRE_PX, Moldura, alca_em, caixa, caixa_da_zona, cantos, pegas_da_zona};
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{CameraFrameShow, icons::IconId};
@@ -153,7 +153,7 @@ pub fn desenhar(
                 &z,
             );
             for (i, c) in pegas_da_zona(m, sob.1).into_iter().enumerate() {
-                let acesa_aqui = acesa == Some(crate::moldura::Alca::ZonaMorta(i as u8));
+                let acesa_aqui = acesa == Some(crate::Alca::ZonaMorta(i as u8));
                 if let Some(c) = c {
                     alca(cena, tela(c), selecao, fundo, acesa_aqui);
                 }
@@ -231,7 +231,7 @@ fn rotulo(
 /// do `follow`) — o que o miolo arrasta. A moldura vai até onde a cerca deixa; a cruz vai com o ponteiro.
 fn fio_do_follow(
     m: &Moldura,
-    s: &crate::moldura::Segue,
+    s: &crate::Segue,
     cor: Color,
     tela: &dyn Fn([f32; 2]) -> (f64, f64),
     cena: &mut VectorScene,

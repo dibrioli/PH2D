@@ -2,7 +2,7 @@
 //! Vieram de `ph2d-app-game/src/moldura_tests.rs` (onda 18, pela catraca das crates `ph2d-app-*`). Os da cena 4
 //! montada moram nos irmãos `jogo_moldura.rs` e `jogo_moldura_ponteiro.rs`.
 
-use ph2d_app_game::moldura::*;
+use ph2d_camera_frame::*;
 use ph2d_editor_core::CameraFieldEdit;
 
 fn selecionada() -> Moldura {
@@ -204,7 +204,7 @@ fn que_segue(zona: [f32; 2]) -> Moldura {
         limites: None,
         offset: [1.0, 0.5],
         centro: [5.0, 4.0],
-        segue: Some(ph2d_app_game::moldura::Segue {
+        segue: Some(ph2d_camera_frame::Segue {
             nome: "Player".into(),
             alvo: Some([2.0, 1.0]),
             offset: [0.0, 0.0],
@@ -223,9 +223,9 @@ fn que_segue(zona: [f32; 2]) -> Moldura {
 #[test]
 fn a_zona_morta_pinta_se_a_volta_da_ancora_e_a_borda_escreve_a_fraccao() {
     let m = que_segue([0.25, 0.5]);
-    let (lo, hi) = ph2d_app_game::moldura::caixa_da_zona(&m).expect("quem segue tem zona");
+    let (lo, hi) = ph2d_camera_frame::caixa_da_zona(&m).expect("quem segue tem zona");
     assert_eq!((lo, hi), ([0.0, -1.25], [4.0, 3.25]));
-    let pegas = ph2d_app_game::moldura::pegas_da_zona(&m, 0.1);
+    let pegas = ph2d_camera_frame::pegas_da_zona(&m, 0.1);
     let direita = pegas[1].expect("a pega da direita");
     assert_eq!(direita, [4.0, 1.0]);
     assert_eq!(alca_em(&m, direita, 0.1), Some(Alca::ZonaMorta(1)));
@@ -251,13 +251,13 @@ fn a_zona_morta_pinta_se_a_volta_da_ancora_e_a_borda_escreve_a_fraccao() {
 fn a_zona_zero_abre_as_pegas_fora_do_icone() {
     let m = que_segue([0.0, 0.0]);
     let tol = 0.1;
-    let pegas = ph2d_app_game::moldura::pegas_da_zona(&m, tol);
-    let c = ph2d_app_game::moldura::centro_da_zona(&m);
+    let pegas = ph2d_camera_frame::pegas_da_zona(&m, tol);
+    let c = ph2d_camera_frame::centro_da_zona(&m);
     for (i, p) in pegas.iter().enumerate() {
         let p = p.expect("quem segue tem as quatro pegas");
         let d = (p[0] - c[0]).abs().max((p[1] - c[1]).abs());
         assert!(
-            (d - tol * ph2d_app_game::moldura::ZONA_PEGA_MIN).abs() < 1e-5,
+            (d - tol * ph2d_camera_frame::ZONA_PEGA_MIN).abs() < 1e-5,
             "{i}: {d}"
         );
         assert_eq!(alca_em(&m, p, tol), Some(Alca::ZonaMorta(i as u8)));
@@ -266,5 +266,5 @@ fn a_zona_zero_abre_as_pegas_fora_do_icone() {
         segue: None,
         ..que_segue([0.3, 0.3])
     };
-    assert_eq!(ph2d_app_game::moldura::pegas_da_zona(&sem, tol), [None; 4]);
+    assert_eq!(ph2d_camera_frame::pegas_da_zona(&sem, tol), [None; 4]);
 }

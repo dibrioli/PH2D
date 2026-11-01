@@ -46,7 +46,8 @@ fn a_shell_pergunta_ao_chrome_pelas_portas_fisicas() {
         .flatten()
     {
         let nome = c.file_name().to_string_lossy().into_owned();
-        if nome.starts_with("ph2d-app-") {
+        // A moldura da câmera saiu de `ph2d-app-game` para uma folha (GEF 19): o prefixo não a apanha.
+        if nome.starts_with("ph2d-app-") || nome == "ph2d-camera-frame" {
             fontes(&c.path().join("src"), &mut ficheiros);
         }
     }

@@ -143,3 +143,59 @@ pub enum CameraFieldEdit {
     /// A miniatura do que a câmera vê (A6). ⚠️ Gesto do EDITOR.
     Thumbnail(bool),
 }
+
+impl crate::CameraCanvasView {
+    /// Aplica uma edição de VISTA da secção Camera. `true` = era de vista (consumida). Mora aqui, com o
+    /// [`CameraFieldEdit`], e não em `game_format`: lá ela fechava o ciclo `game_format → screens`.
+    pub fn aplica(&mut self, e: &CameraFieldEdit) -> bool {
+        match *e {
+            CameraFieldEdit::DimOutside(on) => self.dim_outside = on,
+            CameraFieldEdit::ViewFollows(on) => self.follows = on,
+            CameraFieldEdit::Thumbnail(on) => self.preview = on,
+            _ => return false,
+        }
+        true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CameraFieldEdit as E;
+    use crate::CameraCanvasView;
+
+    /// ⭐ Cada edição de VISTA (onda 18) escreve o SEU campo e só ele; as outras não são de vista.
+    #[test]
+    fn cada_edicao_de_vista_escreve_o_seu_campo() {
+        let mut v = CameraCanvasView::default();
+        assert!(v.aplica(&E::DimOutside(true)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: true,
+                follows: false,
+                preview: true,
+            }
+        );
+        assert!(v.aplica(&E::ViewFollows(true)));
+        assert!(v.aplica(&E::DimOutside(false)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: false,
+                follows: true,
+                preview: true,
+            }
+        );
+        assert!(v.aplica(&E::Thumbnail(false)));
+        assert_eq!(
+            v,
+            CameraCanvasView {
+                dim_outside: false,
+                follows: true,
+                preview: false,
+            }
+        );
+        assert!(!v.aplica(&E::Preview(true)));
+        assert!(!v.aplica(&E::Frame(true)));
+    }
+}

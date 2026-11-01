@@ -20,6 +20,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
+ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
 ph2d-a11y = { path = "../../crates/ph2d-a11y" }

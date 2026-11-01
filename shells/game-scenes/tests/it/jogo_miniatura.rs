@@ -2,7 +2,7 @@
 //! QUAL câmera, a vista dela e ONDE no canvas. O desenho é o do canvas (a vista troca-se, `vista_da_camera.rs`).
 
 use ph2d_app_game::miniatura::{caixa, escolhida, vista};
-use ph2d_app_game::moldura::molduras;
+use ph2d_camera_frame::molduras;
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
 
@@ -16,7 +16,7 @@ fn nivel_2() -> SimWorld {
 }
 
 /// A câmera do nível com a moldura dela, seleccionada (`selecao`) ou não.
-fn com_moldura(sim: &mut SimWorld, selecao: bool) -> Vec<ph2d_app_game::moldura::Moldura> {
+fn com_moldura(sim: &mut SimWorld, selecao: bool) -> Vec<ph2d_camera_frame::Moldura> {
     let (v, _) = ph2d_app_components::camera_2d::update(sim, ASPECTO, 1, DT, [0.0, 0.0]);
     let v = v.expect("o nível 2 tem câmera");
     let cam = ph2d_ecs::active_camera_of(sim.world_mut()).expect("a activa");
@@ -40,7 +40,7 @@ fn a_miniatura_filma_o_rectangulo_da_moldura() {
         width: w as u32,
         height: h as u32,
     };
-    let (lo, hi) = ph2d_app_game::moldura::caixa(m);
+    let (lo, hi) = ph2d_camera_frame::caixa(m);
     let a = c.world_to_screen([lo[0], hi[1]], janela);
     let b = c.world_to_screen([hi[0], lo[1]], janela);
     let folga = 0.6; // a caixa arredonda-se ao píxel

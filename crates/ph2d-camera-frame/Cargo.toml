@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-camera-frame"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A câmera no canvas (planos GEF 17 e 17b) como FOLHA: a moldura exacta, as alças, o arrasto e a tinta.
+# Saiu de `ph2d-app-game` pela catraca `the_shell_only_shrinks_and_every_app_crate_too` (GEF 19); a lê-la
+# estão a família do jogo (a miniatura), a composição (o ponteiro, o realce) e os gizmos do vetor.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-render = { path = "../ph2d-render" }
+# A tinta: o rótulo, a janela, as cores.
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

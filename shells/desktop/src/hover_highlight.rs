@@ -76,10 +76,10 @@ pub(crate) struct PickWorld<'a> {
     /// A régua do projeto — o anel de um objeto vazio é medido em pixels de arte
     /// ([`crate::group_gizmo_view::marker_world_radius`]).
     pub(crate) pixels_per_meter: f32,
-    /// O lado do ícone da câmera (px de tela) — o dedo é o ícone ([`ph2d_app_game::moldura_tinta::icones_em`]).
+    /// O lado do ícone da câmera (px de tela) — o dedo é o ícone ([`ph2d_camera_frame::tinta::icones_em`]).
     pub(crate) camera_icon_px: f32,
     /// As molduras do quadro — o ícone está no centro de cada uma.
-    pub(crate) camera_frames: &'a [ph2d_app_game::moldura::Moldura],
+    pub(crate) camera_frames: &'a [ph2d_camera_frame::Moldura],
     /// As cópias do Motion (GEF 19): o objecto dono da forma ou imagem sob o ponteiro.
     pub(crate) motion: Option<ph2d_app_motion::motion_pick::Alvo<'a>>,
 }
@@ -102,7 +102,7 @@ pub(crate) fn pick_objects_at(
         w.camera,
         w.window_size,
     );
-    icones.extend(ph2d_app_game::moldura_tinta::icones_em(
+    icones.extend(ph2d_camera_frame::tinta::icones_em(
         w.camera_frames,
         pointer,
         w.camera_icon_px,

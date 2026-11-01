@@ -138,9 +138,9 @@ impl crate::App {
                 vector_scene,
             );
             // ⭐ **A CÂMERA no canvas** (plano GEF 17): o ícone, a moldura do jogo, o rótulo, os cantos e os limites.
-            ph2d_app_game::moldura_tinta::desenhar(
+            ph2d_camera_frame::tinta::desenhar(
                 &self.undo.camera_no_canvas.molduras,
-                ph2d_app_game::moldura_tinta::Pintura {
+                ph2d_camera_frame::tinta::Pintura {
                     mostrar: hero.project.camera_frame,
                     unidade: hero.project.display_unit,
                     pixels_per_meter: hero.project.pixels_per_meter,

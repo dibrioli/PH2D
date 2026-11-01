@@ -1,6 +1,6 @@
 //! O gate da moldura da câmera (plano GEF 17 A2) sobre o nível 2 montado e o passe da câmera dos componentes.
 
-use ph2d_app_game::moldura::*;
+use ph2d_camera_frame::*;
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{GameFormat, GamePreset};
 

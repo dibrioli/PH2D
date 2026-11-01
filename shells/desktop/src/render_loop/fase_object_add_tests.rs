@@ -216,3 +216,118 @@ fn editing_a_light_then_undoing_returns_the_project_to_the_bit() {
     let luz = *q.single(w).expect("uma luz depois do undo");
     assert_eq!(luz.intensidade, std::f32::consts::TAU);
 }
+
+/// O que fica SELECCIONADO depois de criar `entry` pela porta da família (a que a fase chama) —
+/// mais o que o artista selecciona a seguir num modo da família (o osso do Pose). Para a imagem,
+/// o pixel sprite e o desenho vetorial: o que o diálogo/1.º traço faz nascer.
+fn seleccionados_ao_nascer(entry: ph2d_editor_core::object_add::AddEntry) -> Vec<u64> {
+    use ph2d_editor_core::object_add as core;
+    let reg = ph2d_app_components::test_support::registo();
+    let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
+    let raiz = ph2d_app_components::object_add::spawn_empty_root;
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let ok = |r: Result<u64, &str>| r.unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
+    let mut bits = if entry == core::EMPTY {
+        vec![raiz(&mut sim, "Empty")]
+    } else if entry == core::IMAGE {
+        // O OK do diálogo New Image: `spawn_blank_canvas` → `spawn_sprite` (o atlas é da placa).
+        let src = ph2d_image_import::PackedSource::Atlas { cell_idx: 0 };
+        let c = ph2d_core::Vec2::new(0.0, 0.0);
+        vec![ph2d_image_import::spawn_sprite(&mut sim, src, c, [1.0, 1.0], "Image").1]
+    } else if entry == ph2d_app_vec::object_add::VECTOR {
+        let mut vec = ph2d_app_vec::state::VecState::default();
+        assert!(ph2d_app_vec::object_add::add(entry, &mut vec));
+        // O 1.º traço: uma forma na cena; a ponte de sempre dá-lhe o objecto.
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [2.0, 2.0]));
+        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut vec.entities);
+        vec![*vec.entities.get(&id).expect("a forma tem objecto")]
+    } else if entry == ph2d_app_pixel::object_add::PIXEL_SPRITE {
+        let mut app = ph2d_app_pixel::PixelApp::default();
+        let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+        assert!(ph2d_app_pixel::object_add::open_dialog(entry, &mut store));
+        let r = ph2d_app_pixel::object_add::add(entry, &mut sim, &mut app, raiz);
+        vec![ok(r.expect("é do pixel"))]
+    } else if entry == ph2d_app_flip::object_add::FLIP {
+        let (mut doc, mut st) = Default::default();
+        let r = ph2d_app_flip::object_add::add(entry, &mut sim, &mut doc, &mut st);
+        vec![ok(r.expect("é do Flip"))]
+    } else if entry == ph2d_app_skeleton::object_add::SKELETON {
+        let mut st = ph2d_app_skeleton::state::SkeletonState::default();
+        let r = ph2d_app_skeleton::object_add::add(entry, &mut sim, &mut st);
+        vec![ok(r.expect("é do esqueleto"))]
+    } else if entry == ph2d_app_motion::motion_objeto::object_add::MOTION {
+        let r = ph2d_app_motion::motion_objeto::object_add::add(entry, &mut sim, raiz);
+        vec![ok(r.expect("é do Motion"))]
+    } else if entry == ph2d_app_macros::object_add::MACRO {
+        let r = ph2d_app_macros::object_add::add(entry, &mut sim, raiz);
+        vec![ok(r.expect("é da Macro"))]
+    } else if let Some(b) = ph2d_app_light2d::object_add::add(entry, &mut sim) {
+        vec![b]
+    } else {
+        let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {
+            ph2d_app_components::component_attach::attach_by_name(s, &reg, seeds, b, n)
+        };
+        let portas = ph2d_app_game::object_add::Portas {
+            raiz,
+            anexa: &anexa,
+        };
+        let r = ph2d_app_game::object_add::add(entry, &mut sim, portas)
+            .or_else(|| ph2d_app_components::object_add::add(entry, &mut sim, &reg, seeds))
+            .unwrap_or_else(|| panic!("{}: tipo do Add sem linha neste gate", entry.key.key()));
+        vec![r.unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()))]
+    };
+    // O Pose selecciona o OSSO: ele também é um objecto do Inspector.
+    let w = sim.world_mut();
+    let mut q = w.query_filtered::<ph2d_ecs::Entity, ph2d_ecs::With<ph2d_skeleton_ecs::Bone>>();
+    bits.extend(q.iter(w).map(ph2d_ecs::Entity::to_bits));
+    bits.into_iter()
+        .map(|b| assert_ordering(&mut sim, &reg, entry, b))
+        .collect()
+}
+
+/// A §7 existe para `b` e o `Z Index` que o artista escreve CHEGA.
+fn assert_ordering(
+    sim: &mut ph2d_ecs::SimWorld,
+    reg: &ph2d_ecs::scene::ComponentRegistry,
+    entry: ph2d_editor_core::object_add::AddEntry,
+    b: u64,
+) -> u64 {
+    use crate::render_loop::inspector_presence_probe::ordering_z_index;
+    let k = entry.key.key();
+    // `None` = `—` (vem da árvore); a Background Layer nasce com o seu −1 autorado (atrás).
+    let z = ordering_z_index(sim.world(), b);
+    assert!(
+        z.is_some(),
+        "{k}: o Inspector deste tipo NÃO tem a secção Ordering"
+    );
+    let q = ph2d_ecs::scene::EditorCommandQueue::new();
+    let edit = ph2d_editor_core::OrderingFieldEdit::ZIndex(Some(7));
+    ph2d_inspector_ordering::apply_ordering_edit(sim, b, edit, &q, reg);
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, reg).expect("aplica");
+    assert_eq!(
+        ordering_z_index(sim.world(), b),
+        Some(Some(7)),
+        "{k}: o Z Index escrito no Inspector não chegou ao objecto"
+    );
+    b
+}
+
+/// ⭐⭐ **Todo tipo do Add tem o Z Index no Inspector** (dono, 01/11; plano 19 E5) — cada entrada
+/// compilada criada pela porta da SUA família, a entidade que fica seleccionada (e o osso do
+/// Pose), a §7 presente e o `Z Index` escrito a chegar. ⚠️ Os modos (Draw/Edit/Pose)
+/// não escondem a §7: o snapshot lê só `hero.gizmo.selection`, e o modo exige-a = o objecto
+/// (`ObjectModeState::still_holds`).
+///
+/// (Mutação, 01/11: o `build_ordering_info` devolver `None` a quem tem `Macro` ⇒ RED.)
+#[test]
+fn a_seccao_ordering_existe_em_todo_tipo_do_add() {
+    let mut vistos = 0;
+    for entry in FAMILIES.iter().flat_map(|f| f.iter()) {
+        let sel = seleccionados_ao_nascer(*entry);
+        assert!(!sel.is_empty(), "{}: nada seleccionado", entry.key.key());
+        vistos += 1;
+    }
+    // Controlo positivo: a varredura viu o menu inteiro (20 tipos em 01/11).
+    assert!(vistos >= 20, "só {vistos} tipos do Add varridos");
+}

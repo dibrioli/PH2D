@@ -24,13 +24,13 @@
 | (1) | `Soma { v, lab, t }` · `Soma::de(tinta, v)` · `junta` · `cor() -> Option<Tinta>` | `soma.rs:62`, `:71`, `:82`, `:96` |
 | (1) | `mistura(&[(Tinta, v)], LeiDeMistura) -> Option<Tinta>` · `LeiDeMistura { Oklab }` (`#[non_exhaustive]`; `Pigmento` WGM 10b = TODO documentado, só se o dono pedir) | `soma.rs:110`, `:21` |
 | (1') | `s_de_transparencia(t) = S_OPACO·(S_TRANSPARENTE/S_OPACO)^t` · `R_INF_MIN`, `S_OPACO`, `S_TRANSPARENTE` | `lei.rs:48`, `:39–43` |
-| (1') | `optica_de_rinf::<N>(R∞, S, v, s_fator) -> Optica<N>` · `optica(&Soma, s_fator) -> Optica<3>` | `lei.rs:57`, `:79` |
+| (1') | `optica_de_rinf::<N>(R∞, S, v, m, molhado) -> Optica<N>` · `optica(&Soma, m, molhado) -> Optica<3>` (lei do meio, §5) | `lei.rs:57`, `:79` |
 | (5) | `n_veiculo(m, molhado)`, `s_fator(m, molhado)` | `lei.rs:16`, `:23` |
 | (2) | `camada_banda(𝒦, 𝒮, R_g)` (Kubelka 1948) · `camada(&Optica, &Bandas)` | `lei.rs:106`, `:129` |
 | — | masstone `r_infinito(q) = 1/(1+q+√(q²+2q))` | `lei.rs:138` |
 | (3) | `cobertura(&Optica)` — derivada | `lei.rs:144` |
 | Lema 3 | `dilui(φ, água) = φ(1−água)` | `lei.rs:153` |
-| (4) | `transfere(&mut Soma, &mut Soma, f)` · `pick_up` (`k_u·o·A_c`) · `optica_celula(filme, aberto, s)` (JUNTOS) · `fecha(R_g, aberto, s)` | `transfere.rs:19`, `:35`, `:47`, `:53` |
+| (4) | `transfere(&mut Soma, &mut Soma, f)` · `pick_up` (`k_u·o·A_c`) · `optica_celula(filme, aberto, m, molhado)` (JUNTOS) · `fecha(R_g, aberto, m)` (cura SECA) | `transfere.rs:19`, `:35`, `:47`, `:53` |
 | F4_2 §3.2 | `ecra_sobre_branco(&Optica, &R_g) -> (cor, α)` — «exacto sobre branco» para o compositor RGBA | `transfere.rs:63` |
 
 **Ramos numéricos de (2)** (`lei.rs:106`, `:115–123`). Forma multiplicada por `𝒮`, com `x = √(𝒦(𝒦+2𝒮))` e
@@ -59,7 +59,7 @@ na CPU e no shader. O backend GPU porta as mesmas expressões na mesma ordem e d
 | `lemas::transferencias_conservam_e_assentar_nao_muda_o_que_se_ve` | depósito/assentar/pick-up conservam `v`, `Σv·Lab`, `Σv·t`; assentar invisível; fecho bit a bit | conservação ≤ 8 ε relativo · assentar ∣ΔR∣ `0` · fecho `assert_eq!` |
 | `lemas::s_tende_a_zero_e_beer_lambert` | o limite `𝒮 → 0` | ≤ `2e-6` |
 | `lemas::sobre_branco_a_composicao_devolve_r_w` | `cor·α + 1 − α = R_w`, `cor, α ∈ [0,1]` | max `5,96e-8` |
-| `dono_6::amarelo_sobre_azul_nunca_escurece_nem_enferruja` | óleo m=0,85 seco, azul 30 µm meio aberto, 8 φ × 8 água × {1,3,6,24} passadas | min (L − L_azul) **`+0,0347`** · todos os matizes (croma ≥ 0,01) no arco azul→amarelo [101,6°, 269,0°], folga mínima **`+0,43°`** (sem ferrugem) |
+| `dono_6::amarelo_sobre_azul_nunca_escurece_nem_enferruja` | óleo m=0,85 seco, azul 30 µm meio aberto, 8 φ × 8 água × {1,3,6,24} passadas | min (L − L_azul) **`+0,0057`** · todos os matizes (croma ≥ 0,01) no arco azul→amarelo [101,6°, 269,0°], folga mínima **`+0,21°`** (sem ferrugem) — lei do meio 31/10 (antes `+0,0347`/`+0,43°`: o 𝒦 seco a m=0,85 sobe pelo `s(m, seco)` e o óleo escurece um pouco, para a cor do tubo) |
 | `dono_6::n_passadas_sao_monotonas_por_banda` | sem degraus em N | 64 células × 24 passadas × 3 bandas |
 
 **Tolerâncias da paridade** (`tests/it/paridade.rs`, crate `f32` × oráculo `f64`): `TOL_LAB = 2e-6` (Oklab;
@@ -97,8 +97,14 @@ ficam como estavam (medem o que mediam).
   «Pigment mix» opcional — SÓ se o dono pedir; precisa de outra `Soma` (`Σv·ln R` por banda) e régua própria.
 - **Calibração `(K,S)`.** `S_OPACO = 2,0`, `S_TRANSPARENTE = 0,02` µm⁻¹, log-linear em `t` (a média de `t` pelo
   volume = média GEOMÉTRICA dos `S`), PROVISÓRIOS. Conferem-se contra as miniaturas e o Óleo Real (ADR §4.5).
-- **`s_fator ≠ 1`** muda o masstone visto (o veículo molhado escurece — física): a cor escolhida é o `R∞` só na
-  linhaça (`s = 1`). Decidir com o dono se a cor do seletor deve ser o masstone NO meio do pincel.
+- ~~`s_fator ≠ 1` muda o masstone visto~~ — **DECIDIDO 31/10 (coordenador): a cor escolhida é o masstone SECO no
+  próprio meio** (o que a amostra de tubo mostra). `𝒦 = v·((S·s(m, seco))·q(R∞))`, `𝒮 = s(m, molhado)·(v·S)` (`lei.rs`
+  `optica_de_rinf`): seca em todo `m`, `𝒦/𝒮 = q` ⇒ masstone = a cor (testes `meio::masstone_seco_e_a_cor_escolhida_em_todo_meio`:
+  0,000 níveis por `R∞(𝒦/𝒮)`, 0,056 pela camada espessa; m ∈ {0; 0,5; 1} × 10 cores × t ∈ {0; 0,35; 1}); molhada
+  (`s(m, molhado) < s(m, seco)` para `m < 1`) mais escura — aquarela `40,90,220` espessa: seca `40,90,220`, molhada
+  `32,76,213`; `245,205,25` → molhada `243,195,19` (`meio::a_aquarela_molhada_escurece_e_seca_para_a_cor`, que prova
+  também `fecha` = a camada seca ao bit e o óleo `m = 1` molhado = seco ao bit). O defeito medido que isto cura: E9 §5.1.
+  Oráculo `lei_unica.py` (`totais`, `optica_oklab`) mudou igual; fixture regerada (cabeçalho com o porquê).
 - **8 bandas:** a camada é genérica em `N` e os Lemas 2–3 passam a 8; a mistura Oklab é a 3 (não há curvas espectrais).
 - O oráculo no ramo `𝒦 = 0` (§3). Desempenho na Radeon: por célula 6 `cbrtf`-equivalentes (cubo) + por banda
   1 `sqrt` + 1 `expm1f` + 2 divisões; `powf` só em `s_de_transparencia`.
@@ -107,6 +113,6 @@ ficam como estavam (medem o que mediam).
 
 1. Por fatia (filme, aberto) a célula guarda `Soma` (5 `f32`: `v`, `Σv·Lab`, `Σv·t`) em vez de `Σv·K`/`Σv·S`
    (6 `f32`) — o F4_2 §2.1 encolhe de 80 para 70 B/célula; mais `R_g: Bandas<3>`, `meio`, `abertura`.
-2. O ecrã = `ecra_sobre_branco(&optica_celula(&filme, &aberto, s_fator(m, molhado)), &R_g)`.
+2. O ecrã = `ecra_sobre_branco(&optica_celula(&filme, &aberto, m, molhado), &R_g)`.
 3. Depósito/pick-up/assentar chamam `transfere`/`pick_up`; a cura chama `fecha` quando `o → 0`.
 4. Portões: a sonda F0 re-corrida com a lei nova; esta paridade é a régua da lei, aquela a do motor.

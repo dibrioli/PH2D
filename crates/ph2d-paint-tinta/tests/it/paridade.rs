@@ -12,7 +12,7 @@
 
 use ph2d_paint_tinta::oklab::linear_para_oklab;
 use ph2d_paint_tinta::{
-    Bandas, LeiDeMistura, Soma, Tinta, camada, camada_banda, cobertura, mistura, optica, s_fator,
+    Bandas, LeiDeMistura, Soma, Tinta, camada, camada_banda, cobertura, mistura, optica,
 };
 
 const FIXTURE: &str = include_str!("../fixtures/lei_unica.tsv");
@@ -74,7 +74,7 @@ fn a_crate_casa_com_o_oraculo_por_banda() {
             "C" => {
                 let (a, b) = (tinta(&tintas, c[1]), tinta(&tintas, c[3]));
                 let soma = Soma::de(a, num(c[2]) as f32).junta(Soma::de(b, num(c[4]) as f32));
-                let o = optica(&soma, s_fator(num(c[5]) as f32, c[6] == "1"));
+                let o = optica(&soma, num(c[5]) as f32, c[6] == "1");
                 let rg = Bandas([num(c[7]) as f32, num(c[8]) as f32, num(c[9]) as f32]);
                 let r = camada(&o, &rg);
                 let cob = cobertura(&o);

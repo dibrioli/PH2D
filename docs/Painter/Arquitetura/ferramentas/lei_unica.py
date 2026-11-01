@@ -9,7 +9,9 @@ e o relatório numérico no stdout (os asserts são o portão do modelo).
 A lei (doc F2_grandezas_fisicas.md §3):
   estado por célula = R_fechado (fundo congelado, por banda) + mistura ABERTA (filme molhado ⊕ assentado aberto),
   cada pigmento i como volume por área v_i [µm]; o veículo (água/óleo) tem K = S = 0.
-  𝒦 = Σ v_i K_i ;  𝒮 = s(n_v) Σ v_i S_i            (Duncan 1940: K e S somam pelo volume)
+  𝒦 = s(m, seco) Σ v_i K_i ;  𝒮 = s(m, molhado?) Σ v_i S_i   (Duncan 1940: K e S somam pelo volume)
+  Lei do meio (coordenador 31/10): a cor escolhida (R∞ de K/S) é o masstone SECO no próprio meio — por isso
+  𝒦 leva s(m, seco): seca, 𝒦/𝒮 = K/S em todo m; molhada (s(m, molhado) < s(m, seco)) é mais escura; m = 1 ⇒ s = 1.
   R = KM_camada(𝒦, 𝒮, R_fundo)                       (Kubelka 1948, solução hiperbólica)
   cobertura C = 1 − (R|fundo=1 − R|fundo=0)          (derivada, nunca knob)
   meio m ∈ [0,1]: 0 = água, 1 = óleo — muda n_v, viscosidade, abertura, veículo que fica (relevo); NUNCA a lei.
@@ -96,7 +98,7 @@ def cobertura(kt, st):
 
 def totais(mistura, m, molhado):
     """mistura = lista de (pigmento, v[µm]); devolve (𝒦, 𝒮) por banda."""
-    kt = sum(v * p["K"] for p, v in mistura)
+    kt = s_fator(m, False) * sum(v * p["K"] for p, v in mistura)
     st = s_fator(m, molhado) * sum(v * p["S"] for p, v in mistura)
     return kt, st
 
@@ -120,9 +122,8 @@ def figura_a():
     agua = np.linspace(0.0, 0.9, 8)  # fracção de diluente acrescentado à tinta
     passadas = [1, 3, 6]
     r_fech = km_camada(*totais([(AZUL, (1 - abertura) * v_azul)], m, False), PAPEL)
-    s = s_fator(m, False)
-    r_azul_puro = r_infinito(AZUL["K"] / (s * AZUL["S"]))  # masstone no MESMO veículo e estado
-    r_amar_puro = r_infinito(AMARELO["K"] / (s * AMARELO["S"]))
+    r_azul_puro = r_infinito(AZUL["K"] / AZUL["S"])  # masstone SECO = a cor do pigmento, em todo meio
+    r_amar_puro = r_infinito(AMARELO["K"] / AMARELO["S"])
     fig, eixos = plt.subplots(1, len(passadas), figsize=(4.2 * len(passadas), 4.6))
     pior_escuro = np.inf
     pior_ferrugem = -np.inf
@@ -294,7 +295,8 @@ def optica_oklab(soma, m, molhado):
         return np.zeros(3), np.zeros(3)
     r = np.clip(oklab2lin(lab / V), R_INF_MIN, 1.0)
     s_um = S_OPACO * (S_TRANSPARENTE / S_OPACO) ** np.clip(t / V, 0, 1)
-    return V * (s_um * (1 - r) ** 2 / (2 * r)), s_fator(m, molhado) * (V * s_um) * np.ones(3)
+    k = V * (s_um * s_fator(m, False) * (1 - r) ** 2 / (2 * r))  # seco: 𝒦/𝒮 = q(R∞) — a cor escolhida
+    return k, s_fator(m, molhado) * (V * s_um) * np.ones(3)
 
 
 TINTAS = {  # rgb linear, transparência
@@ -321,7 +323,8 @@ def grava_fixture(caminho):
     linhas = [
         "# fixture da lei única — mistura Oklab pesada pelo volume + camada Kubelka (oráculo nosso, ADR-0197) — NÃO editar à mão",
         "# comando: python3 docs/Painter/Arquitetura/ferramentas/lei_unica.py --fixture " + caminho,
-        f"# data: {datetime.date.today().isoformat()}",
+        f"# data: {datetime.date.today().isoformat()} · porquê: lei do meio (31/10) — a cor escolhida é o masstone SECO no "
+        "próprio meio (𝒦 ∝ s(m, seco), 𝒮 ∝ s(m, molhado)); E9 §5.1/§6",
         f"# versão: lei_unica.py sha256[:16]={versao} · numpy {np.__version__} · python {sys.version.split()[0]}",
         "# T nome lin0 lin1 lin2 t",
         "# O lin0 lin1 lin2 L a b",

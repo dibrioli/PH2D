@@ -50,33 +50,37 @@ pub fn s_de_transparencia(t: f32) -> f32 {
 }
 
 /// Espessuras ópticas de uma camada de volume `v` (µm) de UMA tinta de masstone `r_inf` (linear, por
-/// banda) e espalhamento `s_um` (µm⁻¹), no veículo de factor `s_fator`:
-/// `𝒦_b = v·(s_um·q_b)`, `q_b = (1−R∞_b)²/(2R∞_b)` (Kubelka–Munk), `𝒮_b = s_fator·(v·s_um)`.
-/// `R∞` é cortado a `[R_INF_MIN, 1]` (a cor misturada em Oklab pode sair da gama por ~2e-3, F2b §4.3).
+/// banda) e espalhamento `s_um` (µm⁻¹), no meio `m`, `molhado` ou seco. Lei (coordenador 31/10, F4_1
+/// §meio): **a cor escolhida é o masstone SECO no próprio meio** ⇒
+/// `𝒦_b = v·((s_um·s(m, seco))·q_b)`, `q_b = (1−R∞_b)²/(2R∞_b)`, `𝒮_b = s(m, molhado)·(v·s_um)`.
+/// Seco: `𝒦/𝒮 = q` ⇒ masstone = `r_inf`; molhado (`s(m, molhado) < s(m, seco)`) é mais escuro; `m = 1`
+/// dá `s = 1` e a forma de antes ao bit. `R∞` é cortado a `[R_INF_MIN, 1]` (F2b §4.3).
 #[must_use]
 pub fn optica_de_rinf<const N: usize>(
     r_inf: Bandas<N>,
     s_um: f32,
     v: f32,
-    s_fator: f32,
+    m: f32,
+    molhado: bool,
 ) -> Optica<N> {
     debug_assert!(v >= 0.0 && v.is_finite() && s_um > 0.0, "v={v} s={s_um}");
     let vs = v * s_um;
+    let sk = s_um * s_fator(m, false);
     Optica {
         k: r_inf.mapa(|_, r| {
             let r = r.clamp(R_INF_MIN, 1.0);
             let um_menos = 1.0 - r;
-            v * (s_um * ((um_menos * um_menos) / (2.0 * r)))
+            v * (sk * ((um_menos * um_menos) / (2.0 * r)))
         }),
-        s: Bandas::uniforme(s_fator * vs),
+        s: Bandas::uniforme(s_fator(m, molhado) * vs),
     }
 }
 
 /// Eq. (1) decidida (ADR-0197, 31/10): a óptica de uma fatia sai da COR MISTURADA (Oklab pesado pelo
 /// volume → RGB linear = `R∞` por banda) e da transparência média; a espessura sai do VOLUME `v`.
-/// Sem pigmento → óptica nula (a camada devolve o fundo).
+/// Sem pigmento → óptica nula (a camada devolve o fundo). Meio: ver [`optica_de_rinf`].
 #[must_use]
-pub fn optica(soma: &Soma, s_fator: f32) -> Optica<3> {
+pub fn optica(soma: &Soma, m: f32, molhado: bool) -> Optica<3> {
     match soma.cor() {
         None => Optica {
             k: Bandas::default(),
@@ -86,7 +90,8 @@ pub fn optica(soma: &Soma, s_fator: f32) -> Optica<3> {
             Bandas(c.linear()),
             s_de_transparencia(c.transparencia),
             soma.v,
-            s_fator,
+            m,
+            molhado,
         ),
     }
 }

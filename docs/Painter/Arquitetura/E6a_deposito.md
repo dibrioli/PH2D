@@ -58,6 +58,12 @@ cobre o mesmo que `alpha_of_mass(600)`; toda outra opaca cobre ≥ (nenhuma perd
 saturadas opacas ficam mais opacas que na lei velha (azul a 600: α ≈ 1). Alternativa medida (média geométrica das
 quatro opacas em C, ~6 700): o branco a 600 cobriria ~0,2 — rejeitada. Os portões F0 (E9) dirão se o critério morde.
 
+**Re-medido com a lei do meio (31/10, `𝒦 ∝ s(m, seco)`, F4_1 §5): `M_UM = 1374` FICA.** O critério é o branco, e o
+branco tem `R∞ = 1` ⇒ `q = 0` ⇒ `𝒦 = 0` em qualquer meio: a cobertura dele só lê `𝒮 = s(0, molhado)·v·S`, que não
+mudou (`calibracao_de_m_um`: branco t=0 `v = 0,4367` ⇒ `M_UM = 1374,0`, `α(600) = 0,6992`). As cores ganham `𝒦`
+(× `s(0, seco) = 3,98`) e cobrem MAIS: t=0 azul C(3) `v = 0,0141` (`M_UM` 42 419), amarelo `0,1588` (3 778), vermelho
+`0,0134` (44 671); t=1 azul `1,4145`, amarelo `15,88`, vermelho `1,343` — «nenhuma opaca cobre menos» continua verde.
+
 ## Testes (por nome, `--profile` do script)
 
 | teste | resultado |

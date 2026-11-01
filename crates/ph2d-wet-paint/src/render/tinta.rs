@@ -5,15 +5,15 @@
 use crate::grid::Grid;
 use crate::grid::tinta::{self, CelulaTinta};
 use ph2d_paint_tinta::oklab::linear_para_srgb;
-use ph2d_paint_tinta::{Bandas, Optica, camada, optica_celula, s_fator};
+use ph2d_paint_tinta::{Bandas, Optica, camada, optica_celula};
 
 /// A cor sRGB `0..255` e a cobertura `α` da célula `i` pela lei da tinta («exacto sobre branco», F4-2 §3.2);
-/// `None` sem tinta (`α == 0`). O «molhado escurece» é `s_fator(m, film > 0)`.
+/// `None` sem tinta (`α == 0`). Seca, a cor é a escolhida; molhada (`film > 0`) escurece (`s(m, molhado)`).
 #[must_use]
 pub(crate) fn ecra_da_celula(lg: &Grid, i: usize) -> Option<([f64; 3], f64)> {
     let c = tinta::em(lg, i);
     let molhado = lg.film.get(i).is_some_and(|&w| w > 0.0);
-    let o = optica_celula(&c.filme, &c.aberto, s_fator(c.m, molhado));
+    let o = optica_celula(&c.filme, &c.aberto, c.m, molhado);
     let (cor, a) = ecra_sobre_o_fundo(&o, &c);
     (a > 0.0).then(|| {
         (

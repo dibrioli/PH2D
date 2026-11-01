@@ -191,3 +191,62 @@ depósito pelo meio do pincel, re-calibrar `M_UM`), re-correr esta célula (≈ 
 2. A orla saturada da Pigmento no plano.
 3. `diagnostico_e9_pigmento_por_ponto` fica `#[ignore]` como instrumento (corre-o depois da E10: o píxel sem relevo
    nem óleo deve dar a cor das somas).
+
+## 6. Depois da lei do meio (31/10): a cor escolhida é o masstone SECO
+
+**A lei** (coordenador, F4_1 §5): `𝒦 = v·((S·s(m, seco))·q(R∞))`, `𝒮 = s(m, molhado)·(v·S)` — `ph2d-paint-tinta`
+`lei.rs` `optica_de_rinf`/`optica(soma, m, molhado)`, `transfere.rs` `optica_celula(.., m, molhado)`/`fecha(rg, aberto, m)`
+(cura seca); chamadores `wp/render/tinta.rs` (`ecra_da_celula`), `wp/drying/tinta.rs` (`fecha_celula`). Seca em todo `m`
+o masstone é a cor (0,000 níveis); molhada a aquarela escurece; `m = 1` igual ao bit à forma antiga. `M_UM = 1374` fica
+(E6a: o branco tem `𝒦 = 0`). Oráculo e fixture mudaram igual; paridade verde (max |ΔR| 1,41e-6).
+
+### 6.1 A célula re-corrida (antes = §5.5, depois = esta lei)
+
+Mesmo comando (`PH2D_SONDA_OUT=<scratchpad>/e9c PH2D_SONDA_PINCEIS="Oil/Flat/Thick Impasto" PH2D_SONDA_PIGMENTOS=600
+PH2D_SONDA_AGUAS=0.5 PH2D_SONDA_PRESSOES=1 PH2D_SONDA_NS=3 PH2D_SONDA_LEI=velha,pigmento PH2D_SONDA_PAPEIS=padrao,liso
+… --lib sonda_varredura_oleo -- --ignored --nocapture`, 49 s). Plano; a Velha não mudou ao bit (28,4/41,5 · 9/0).
+
+| papel | lei | manchas_azul_plano | mix_p99 / mix_max plano | km_p99 / km_max plano (diag.) | ferrugem | furos | degraus y/x | veredicto |
+|---|---|---|---|---|---|---|---|---|
+| padrão | pigmento | 10,28 → **9,18** | 64,6/157,2 → **51,1/157,2** | 165,9/170,0 → 114,9/166,4 | 0 | 0 | 1/0 → 2/0 | reprova (manchas, mix) |
+| liso | pigmento | 10,37 → **9,25** | 64,1/157,2 → **51,3/157,2** | 165,9/169,9 → 114,9/166,4 | 0 | 0 | 1/0 → 1/0 | reprova (manchas, mix) |
+| padrão | Wet Round pigmento (teste mínimo) | 15,58 → **16,15** | 87,6/106,6 → **84,6/111,2** | — | 0 | 0 | 1–2 | reprova |
+
+`portao_mae_f0_lei_pigmento_minimo` (`--ignored`): **continua VERMELHO** — Thick Impasto `manchas_azul_plano 9,18 ·
+mix_p99 51,1 · mix_max 157,2`; Wet Round `16,15 · 84,6 · 111,2`. Foto: [`depois_da_lei_seca.png`](fotos/e9/depois_da_lei_seca.png)
+(cima Pigmento, baixo Velha; padrão | liso, com luz). No plano o azul é o azul e o amarelo deixou de ser creme: é um
+amarelo-ocre (a mistura Oklab com o azul que o amarelo arrasta, §5.1 — a lei, não defeito).
+
+### 6.2 O que ainda reprova — mecanismo medido: a sonda lê a tinta MOLHADA
+
+`diagnostico_e9_pigmento_por_ponto` (coluna x = 180, papel padrão): **`film > 0` nos 8 pontos** (1,5–5,7) — a régua
+fotografa o traço molhado, e a lei nova escurece-o DE PROPÓSITO (m = 0 ⇒ `s(0, molhado) = 2,66 < s(0, seco) = 3,98`).
+A cor SECA das mesmas somas (Oklab ÷ v → sRGB) contra o píxel medido «sem óleo», distância ao segmento azul→amarelo:
+
+| y | seca (das somas) | d_seg | molhada (píxel sem óleo) | d_seg |
+|---|---|---|---|---|
+| 100 | 36,90,223 | 5,4 | 28,76,216 | 18,9 |
+| 112 | 42,92,218 | 0,7 | 33,78,211 | 16,6 |
+| 124 | 107,141,187 | 1,4 | 92,126,175 | 18,8 |
+| 128 | 156,167,155 | 1,3 | 141,153,141 | 22,3 |
+| 132 | 188,181,129 | 1,3 | 176,169,114 | 21,5 |
+| 140 | 218,194,97 | 3,0 | 210,183,83 | 16,5 |
+| 154 | 231,200,73 | 1,5 | 226,189,61 | 14,0 |
+| 170 | 228,199,78 | 2,0 | 223,188,66 | 14,3 |
+
+(Script: `seg.py` no scratchpad da sessão; ignora α e o creme.) **Seca, cada ponto fica a ≤ 5,4 níveis do segmento**
+(o limiar é `mix_p99 ≤ 8`); molhada, 14–22. O `mix_p99 51` mede o escurecimento do molhado (+ a orla, `mix_max 157`
+igual antes e depois: é a orla saturada da §5.6 item 2, não a lei).
+
+- **Thick Impasto é ÓLEO** e a célula tem `m = 0` (o meio por escrever, decisão 4 até à E10): com `m = 1`, `s(1, molhado)
+  = s(1, seco) = 1` e o molhado é o seco ao bit — este pincel deixava de escurecer molhado. A cura dele é a E10.
+- **`manchas_azul` 9–16 %: NÃO resolvido.** Mede o azul SOZINHO logo após a passada (`le_azul`, `canvas_rgba`), também
+  molhado. A hipótese «molhado × seco entre vizinhas» (o `molhado` é binário em `film > 0`, logo a fronteira de
+  evaporação vira um degrau de ~5 níveis de luminância no azul) não foi medida célula a célula: a sonda vive em
+  `ph2d-tool-painter` (fora destes paths). Um instrumento no motor (`Engine` com o pincel por omissão) cobriu 29 células e
+  secou-as todas em 300 passos — não representativo, retirado.
+- **Proposta (do coordenador):** (1) a E10 escreve `m` pelo meio do pincel (óleo ⇒ 1) ANTES da grelha; (2) o portão lê
+  a cor da lei depois de SECO — na sonda, um passe `film ← 0` só para a régua (como o `render_plano` tira relevo/óleo e
+  repõe) ou correr a secagem até `film = 0`; (3) para separar as manchas, gravar em `le_azul` o par (luminância, `film > 0`)
+  por píxel e contar as manchas só nas molhadas, só nas secas e na fronteira. Sem isto, nenhuma célula de aquarela passa
+  o `mix_p99 ≤ 8` molhada — por desenho da lei.

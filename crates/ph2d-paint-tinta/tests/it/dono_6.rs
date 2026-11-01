@@ -4,7 +4,7 @@
 //! azul→amarelo (sem ferrugem). E a monotonia em N passadas (sem degraus).
 
 use ph2d_paint_tinta::oklab::linear_para_oklab;
-use ph2d_paint_tinta::{Bandas, Soma, camada, dilui, optica, s_fator};
+use ph2d_paint_tinta::{Bandas, Soma, camada, dilui, optica};
 
 const M: f32 = 0.85;
 const V_AZUL: f32 = 30.0;
@@ -21,12 +21,11 @@ fn linspace(a: f32, b: f32, n: usize) -> Vec<f32> {
 }
 
 fn pinta(phi: f32, agua: f32, n: u32) -> Bandas<3> {
-    let s = s_fator(M, false);
     let fechado = Soma::de(crate::azul(), (1.0 - ABERTURA) * V_AZUL);
-    let r_fech = camada(&optica(&fechado, s), &crate::PAPEL);
+    let r_fech = camada(&optica(&fechado, M, false), &crate::PAPEL);
     let v_am = n as f32 * CARGA * dilui(phi, agua);
     let aberto = Soma::de(crate::azul(), ABERTURA * V_AZUL).junta(Soma::de(crate::amarelo(), v_am));
-    camada(&optica(&aberto, s), &r_fech)
+    camada(&optica(&aberto, M, false), &r_fech)
 }
 
 fn matiz(lab: [f32; 3]) -> f32 {

@@ -82,7 +82,7 @@ fn linha(g: &Grid, p: &Params) -> Vec<u8> {
 /// O ecrã da lei para a célula `i`, pelas funções da crate da tinta (a régua).
 fn esperado(g: &Grid, i: usize) -> ([f32; 3], f32, [f32; 3]) {
     let c = tinta::em(g, i);
-    let o = optica_celula(&c.filme, &c.aberto, s_fator(c.m, g.film[i] > 0.0));
+    let o = optica_celula(&c.filme, &c.aberto, c.m, g.film[i] > 0.0);
     if c.r_g == [1.0; 3] {
         let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
         return (cor.0, a, camada(&o, &Bandas(c.r_g)).0);
@@ -142,20 +142,41 @@ fn celula_vazia_e_transparente() {
 fn sobre_branco_o_pixel_composto_devolve_r_w() {
     let g = grade();
     let px = linha(&g, &params());
-    let mut pior = 0.0f32;
+    // O pixel guarda cor e α em 8 bits: `c'α' − cα + (α − α') = α'(c' − c) + (c − 1)(α' − α)`, logo o erro
+    // LINEAR sobre branco é ≤ `α'·δc + (1 − c')·δα` (`δc` = meio nível sRGB em linear à volta de `c'`,
+    // `δα = 0,5/255`) — a tolerância é esse limite, levado a sRGB à volta de `R_w` (o «1/255» fixo
+    // reprovava a lei seca do meio por 1,1/255 numa banda escura: o declive do sRGB no escuro).
+    let mut pior = (0.0f32, 0usize, 0usize);
     for k in 0..W - 1 {
         let (_, _, rw) = esperado(&g, (k + 1) + g.s);
         let q = &px[k * 4..k * 4 + 4];
         let a = f32::from(q[3]) / 255.0;
         for b in 0..3 {
-            let c = srgb_para_linear(f32::from(q[b]) / 255.0);
+            let n = f32::from(q[b]);
+            let c = srgb_para_linear(n / 255.0);
+            let dc = (srgb_para_linear(((n + 0.5) / 255.0).min(1.0)) - c)
+                .max(c - srgb_para_linear(((n - 0.5) / 255.0).max(0.0)));
+            let e = a * dc + (1.0 - c) * (0.5 / 255.0) + 1e-6;
+            let (lo, hi) = (
+                linear_para_srgb((rw[b] - e).max(0.0)),
+                linear_para_srgb((rw[b] + e).min(1.0)),
+            );
             let sobre_branco = linear_para_srgb(c * a + (1.0 - a));
-            pior = pior.max((sobre_branco - linear_para_srgb(rw[b])).abs());
+            let fora = (lo - sobre_branco).max(sobre_branco - hi);
+            assert!(
+                fora <= 0.0,
+                "célula {k} banda {b}: {sobre_branco} ∉ [{lo}, {hi}]"
+            );
+            let d = (sobre_branco - linear_para_srgb(rw[b])).abs();
+            if d > pior.0 {
+                pior = (d, k, b);
+            }
         }
     }
-    assert!(
-        pior <= 1.0 / 255.0,
-        "erro sobre branco {:.3}/255",
-        pior * 255.0
+    println!(
+        "sobre branco: pior {:.3}/255 (célula {} banda {})",
+        pior.0 * 255.0,
+        pior.1,
+        pior.2
     );
 }

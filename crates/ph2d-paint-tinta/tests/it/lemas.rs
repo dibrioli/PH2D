@@ -3,7 +3,7 @@
 
 use ph2d_paint_tinta::{
     Bandas, Optica, Soma, camada, fecha, optica_celula, optica_de_rinf, pick_up, r_infinito,
-    s_de_transparencia, s_fator, transfere,
+    s_de_transparencia, transfere,
 };
 
 /// Folga de `f32` sobre grandezas em `[0,1]` (~16 ulp perto de 1).
@@ -20,8 +20,7 @@ fn varre<const N: usize>() -> usize {
         let r = Bandas::<N>(core::array::from_fn(|b| RINF[(i + b) % RINF.len()]));
         for &t in &TRANSP {
             for &(m, molhado) in &MEIOS {
-                let sf = s_fator(m, molhado);
-                let o = |v: f32| optica_de_rinf(r, s_de_transparencia(t), v, sf);
+                let o = |v: f32| optica_de_rinf(r, s_de_transparencia(t), v, m, molhado);
                 for &v in &VOLS {
                     let (op, meio, dobro) = (o(v), o(0.5 * v), o(2.0 * v));
                     let rinf: Bandas<N> = Bandas(core::array::from_fn(|b| {
@@ -85,16 +84,16 @@ fn lemas_2_3_e_teorema_a_8_bandas() {
 
 #[test]
 fn transferencias_conservam_e_assentar_nao_muda_o_que_se_ve() {
-    let sf = s_fator(0.85, true);
+    let (m, molhado) = (0.85, true);
     let mut pincel = Soma::de(crate::azul(), 12.0).junta(Soma::de(crate::amarelo(), 30.0));
     let mut filme = Soma::default();
     let mut aberto = Soma::de(crate::azul(), 20.0).junta(Soma::de(crate::amarelo(), 0.5));
     let total = |a: &Soma, b: &Soma, c: &Soma| a.junta(*b).junta(*c);
     let antes = total(&pincel, &filme, &aberto);
     let _ = transfere(&mut pincel, &mut filme, 0.37); // depósito
-    let r1 = camada(&optica_celula(&filme, &aberto, sf), &crate::PAPEL);
+    let r1 = camada(&optica_celula(&filme, &aberto, m, molhado), &crate::PAPEL);
     let _ = transfere(&mut filme, &mut aberto, 0.61); // assentar
-    let r2 = camada(&optica_celula(&filme, &aberto, sf), &crate::PAPEL);
+    let r2 = camada(&optica_celula(&filme, &aberto, m, molhado), &crate::PAPEL);
     let _ = pick_up(&mut aberto, &mut pincel, 0.5, 0.8, 0.9);
     let depois = total(&pincel, &filme, &aberto);
     let rel = |x: f32, y: f32| (x - y).abs() / y.abs().max(1.0);
@@ -112,10 +111,10 @@ fn transferencias_conservam_e_assentar_nao_muda_o_que_se_ve() {
     }
     println!("assentar: max |ΔR| = {pior:.2e}");
     assert!(pior <= EPS, "assentar mudou a cor: {r1:?} {r2:?}");
-    // Fecho: o fundo novo é EXACTAMENTE o que se via (aberto sobre o fundo), e o aberto zera.
+    // Fecho: o fundo novo é EXACTAMENTE o que se via (aberto SECO sobre o fundo), e o aberto zera.
     let mut rg = crate::PAPEL;
-    let visto = camada(&optica_celula(&Soma::default(), &aberto, sf), &rg);
-    fecha(&mut rg, &mut aberto, sf);
+    let visto = camada(&optica_celula(&Soma::default(), &aberto, m, false), &rg);
+    fecha(&mut rg, &mut aberto, m);
     assert_eq!(rg, visto);
     assert_eq!(aberto, Soma::default());
 }
@@ -140,7 +139,8 @@ fn sobre_branco_a_composicao_devolve_r_w() {
             let o: Optica<3> = optica_celula(
                 &Soma::de(crate::azul(), v),
                 &Soma::de(crate::amarelo(), 0.3 * v),
-                s_fator(0.4, true),
+                0.4,
+                true,
             );
             let rw = camada(&o, &rg);
             let (cor, a) = ph2d_paint_tinta::ecra_sobre_branco(&o, &rg);

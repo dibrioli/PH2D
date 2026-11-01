@@ -44,14 +44,14 @@ pub fn pick_up(
 
 /// A óptica de uma célula: filme e aberto entram JUNTOS (assentar não muda o que se vê).
 #[must_use]
-pub fn optica_celula(filme: &Soma, aberto: &Soma, s_fator: f32) -> Optica<3> {
-    optica(&filme.junta(*aberto), s_fator)
+pub fn optica_celula(filme: &Soma, aberto: &Soma, m: f32, molhado: bool) -> Optica<3> {
+    optica(&filme.junta(*aberto), m, molhado)
 }
 
-/// Fecho: o aberto cura e passa a ser fundo, `R_g ← R(óptica do aberto, R_g)`, aberto `← 0`. O que se
-/// via antes do fecho (aberto sobre `R_g`, filme vazio) é bit a bit o novo `R_g`: é a mesma chamada.
-pub fn fecha(rg: &mut Bandas<3>, aberto: &mut Soma, s_fator: f32) {
-    let o = optica_celula(&Soma::default(), aberto, s_fator);
+/// Fecho: o aberto cura (SECO, meio `m`) e passa a ser fundo, `R_g ← R(óptica do aberto, R_g)`, aberto
+/// `← 0`. O que se via antes do fecho (aberto seco sobre `R_g`, filme vazio) é bit a bit o novo `R_g`.
+pub fn fecha(rg: &mut Bandas<3>, aberto: &mut Soma, m: f32) {
+    let o = optica_celula(&Soma::default(), aberto, m, false);
     *rg = camada(&o, rg);
     *aberto = Soma::default();
 }

@@ -5,7 +5,7 @@ use crate::grid::tinta::{M_UM, garante, soma_da_massa};
 use crate::opacity::alpha_of_mass;
 use crate::painter::Engine;
 use crate::sim::LeiDaTinta;
-use ph2d_paint_tinta::{Bandas, Soma, Tinta, ecra_sobre_branco, optica_celula, s_fator};
+use ph2d_paint_tinta::{Bandas, Soma, Tinta, ecra_sobre_branco, optica_celula};
 
 const W: usize = 96;
 const H: usize = 64;
@@ -32,7 +32,7 @@ fn motor(lei: LeiDaTinta, cor: [f32; 3]) -> Engine {
 
 /// A cobertura sobre branco da fatia (o α do ecrã «exacto sobre branco», F4_2 §3.2), na água (`m = 0`).
 fn cobre(filme: &Soma, aberto: &Soma) -> f32 {
-    let o = optica_celula(filme, aberto, s_fator(0.0, true));
+    let o = optica_celula(filme, aberto, 0.0, true);
     ecra_sobre_branco(&o, &Bandas([1.0; 3])).1
 }
 
@@ -84,7 +84,8 @@ fn calibracao_de_m_um() {
             let h = |m: f32| {
                 let o = ph2d_paint_tinta::optica(
                     &Soma::de(Tinta::de_srgb(rgb.map(|x| x / 255.0), t), m),
-                    s_fator(0.0, true),
+                    0.0,
+                    true,
                 );
                 ph2d_paint_tinta::cobertura(&o).0.iter().sum::<f32>() / 3.0
             };
@@ -102,7 +103,7 @@ fn calibracao_de_m_um() {
             // O critério (a tabela no doc): a tinta OPACA que menos esconde (o branco, onde α e C coincidem) cobre
             // o que `alpha_of_mass(600)` cobria; nenhuma opaca cobre menos.
             if t == 0.0 {
-                let o = ph2d_paint_tinta::optica(&soma_da_massa(rgb, t, 600.0), s_fator(0.0, true));
+                let o = ph2d_paint_tinta::optica(&soma_da_massa(rgb, t, 600.0), 0.0, true);
                 let c = ph2d_paint_tinta::cobertura(&o).0.iter().sum::<f32>() / 3.0;
                 assert!(c >= alvo - 1e-3, "{nome}: C(600) = {c} < {alvo}");
                 if nome == "branco" {

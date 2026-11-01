@@ -3,6 +3,7 @@
 
 mod dono_6;
 mod lemas;
+mod meio;
 mod mistura;
 mod paridade;
 

@@ -49,6 +49,8 @@ pub(super) struct Pigmento {
     pub filme: bool,
     pub mix: crate::colorops::ColorMix,
     pub glaze: f64,
+    /// O meio do pincel (`0` água · `1` óleo): o Real Oil até a E10 lhe dar um controlo.
+    pub meio: f32,
 }
 
 /// O que UMA célula da janela pousa.
@@ -78,7 +80,7 @@ impl Pigmento {
         out: &mut [f64; 3],
     ) {
         let v = x.v;
-        let nova = soma_da_massa(x.ponta, x.transparencia, v as f32);
+        let nova = soma_da_massa(x.ponta, x.transparencia, self.meio, v as f32);
         if x.seco {
             let old = f64::from(g.sett[i]);
             let c = &mut g.tinta[i];
@@ -159,6 +161,7 @@ pub(super) fn arrasta(g: &mut Grid, i: usize, si: usize, drag: f64) {
         v: lerp(a.v, b.v).max(0.0),
         lab: [0, 1, 2].map(|k| lerp(a.lab[k], b.lab[k])),
         t: lerp(a.t, b.t),
+        m: lerp(a.m, b.m).max(0.0),
     };
     let (a, b) = (g.tinta[i], g.tinta[si]);
     g.tinta[i].filme = fatia(a.filme, b.filme);

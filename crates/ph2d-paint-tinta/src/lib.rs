@@ -2,7 +2,7 @@
 //! `ph2d-paint-tinta` — a área **Tinta** do ADR-0197: pigmento conservado em VOLUMES, misturado em
 //! Oklab pesado pelo volume, e a lei de camada que o transforma em reflectância por banda.
 //!
-//! - (1) mistura (decidida 31/10): estado por fatia = [`Soma`] `{v, Σv·Lab, Σv·t}`; cor = média
+//! - (1) mistura (decidida 31/10): estado por fatia = [`Soma`] `{v, Σv·Lab, Σv·t, Σv·m}`; cor = média
 //!   pesada pelo volume em Oklab — [`mistura`], [`LeiDeMistura`].
 //! - (1') óptica DERIVADA da cor misturada + transparência + volume — [`optica`].
 //! - (2) Kubelka 1948, camada finita sobre `R_g` — [`camada`] (o limite `𝒮 → 0` é o mesmo ramo).
@@ -34,4 +34,4 @@ pub use lei::{
     optica, optica_de_rinf, r_infinito, s_de_transparencia, s_fator,
 };
 pub use soma::{LeiDeMistura, Soma, Tinta, mistura};
-pub use transfere::{ecra_sobre_branco, fecha, optica_celula, pick_up, transfere};
+pub use transfere::{decompoe, ecra_sobre_branco, fecha, optica_celula, pick_up, transfere};

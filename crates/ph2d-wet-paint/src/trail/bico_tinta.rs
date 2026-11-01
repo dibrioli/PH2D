@@ -85,7 +85,8 @@ impl Trail {
                     leva(&mut g.sett[i], aberto, c.aberto.v);
                 }
                 if pig > 0.0 {
-                    let mistura = devolvido.junta(Soma::de(base, (pig as f32) / M_UM));
+                    let mistura =
+                        devolvido.junta(Soma::de(base, (pig as f32) / M_UM).com_meio(p.oleo));
                     let novo = pig + f64::from(devolvido.v * M_UM);
                     self.pig[l] = novo as f32;
                     if let Some(rgb) = srgb_0_255(&mistura) {
@@ -114,11 +115,7 @@ impl Trail {
             .iter()
             .fold(Soma::default(), |a, &l| a.junta(self.ponta_tinta[l]));
         let k = 1.0 / pegada.len() as f32;
-        let media = Soma {
-            v: total.v * k,
-            lab: total.lab.map(|x| x * k),
-            t: total.t * k,
-        };
+        let media = total.escala(k);
         for l in pegada {
             self.ponta_tinta[l] = media;
         }

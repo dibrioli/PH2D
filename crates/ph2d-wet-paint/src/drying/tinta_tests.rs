@@ -161,8 +161,7 @@ fn grade_de_oleo(cores: &[([f32; 3], f32, f32)]) -> Grid {
     let t = garante(&mut g);
     for (k, &(rgb, transp, v)) in cores.iter().enumerate() {
         let c = &mut t[k + 1 + s];
-        c.aberto = Soma::de(Tinta::de_srgb(rgb, transp), v);
-        c.m = 1.0;
+        c.aberto = Soma::de(Tinta::de_srgb(rgb, transp), v).com_meio(1.0);
     }
     for k in 0..cores.len() {
         let i = k + 1 + s;
@@ -215,7 +214,8 @@ fn a_secagem_conserva() {
     let p = params(&e);
     let mut g = e.layers[0].grid.clone();
     for c in g.tinta.iter_mut() {
-        c.m = 1.0;
+        c.filme = c.filme.com_meio(1.0);
+        c.aberto = c.aberto.com_meio(1.0);
     }
     let (fi0, ab0) = invariante(&g);
     let v0 = volume(&g);
@@ -266,7 +266,9 @@ fn a_altura_do_oleo_nao_some_no_fecho() {
 #[test]
 fn a_aguarela_nao_fecha() {
     let mut g = grade_de_oleo(&[([0.1, 0.2, 0.7], 0.0, 2.0)]);
-    g.tinta.iter_mut().for_each(|c| c.m = 0.0);
+    g.tinta
+        .iter_mut()
+        .for_each(|c| c.aberto = c.aberto.com_meio(0.0));
     cura(&mut g, 1.0e9);
     assert!(g.tinta.iter().any(|c| c.aberto.v > 0.0 && c.o == 1.0));
 }

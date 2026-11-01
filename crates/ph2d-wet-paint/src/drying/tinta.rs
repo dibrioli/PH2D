@@ -180,10 +180,11 @@ pub fn cura(g: &mut Grid, dt_s: f32) {
     let mode = crate::par::Rows::pick_medido(rows, s, crate::par::MIN_CELLS_DRYING);
     crate::par::walk_rows2(mode, tinta, sett, s, |ri, kr, tr| {
         for (x, c) in kr.iter_mut().enumerate() {
-            if c.aberto.v <= 0.0 || c.m <= 0.0 {
+            let m = c.aberto.meio();
+            if c.aberto.v <= 0.0 || m <= 0.0 {
                 continue;
             }
-            c.o *= (-dt_s / tau(c.m)).exp();
+            c.o *= (-dt_s / tau(m)).exp();
             let i = ri * s + x;
             if c.o < O_FECHA && film[i] <= 0.0 && c.filme.v <= 0.0 {
                 fecha_celula(c, &mut tr[x]);
@@ -194,15 +195,16 @@ pub fn cura(g: &mut Grid, dt_s: f32) {
 
 /// O fecho de UMA célula (sem as condições de [`cura`]): o aberto passa a fundo e a massa dele sai de `sett`.
 pub(crate) fn fecha_celula(c: &mut CelulaTinta, sett: &mut f32) {
+    let m = c.aberto.meio();
     c.altura_fechada += c.aberto.v;
     // O fundo sobre o preto fecha com a MESMA óptica (a cobertura do fechado = a de antes, ao bit).
     c.r_g0 = camada(
-        &optica_celula(&Soma::default(), &c.aberto, c.m, false),
+        &optica_celula(&Soma::default(), &c.aberto, m, false),
         &Bandas(c.r_g0),
     )
     .0;
     let mut rg = Bandas(c.r_g);
-    fecha(&mut rg, &mut c.aberto, c.m);
+    fecha(&mut rg, &mut c.aberto, m);
     c.r_g = rg.0;
     c.o = 1.0;
     *sett = 0.0;

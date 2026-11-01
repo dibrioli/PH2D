@@ -132,7 +132,7 @@ impl Trail {
         let pigmento = (p.tinta == crate::sim::LeiDaTinta::Pigmento).then(|| {
             crate::grid::tinta::garante(g);
             #[rustfmt::skip]
-            let d = deposito_tinta::Pigmento { vela, dissolve, shed_pig, shed_water, water_cap, filme, mix, glaze: p.glaze };
+            let d = deposito_tinta::Pigmento { vela, dissolve, shed_pig, shed_water, water_cap, filme, mix, glaze: p.glaze, meio: p.oleo };
             d
         });
         let mut rx0 = w;

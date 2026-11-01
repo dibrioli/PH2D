@@ -6,15 +6,15 @@
 
 use crate::grid::Grid;
 use crate::grid::tinta::{M_UM, garante};
-use ph2d_paint_tinta::{Soma, Tinta, transfere};
+use ph2d_paint_tinta::{Soma, transfere};
 
-/// A pegada antes da ferramenta: o rectângulo `(x0, y0, x1, y1)` inclusivo, as massas e a cor média das fatias.
+/// A pegada antes da ferramenta: o rectângulo `(x0, y0, x1, y1)` inclusivo, as massas e a soma de cada fatia.
 pub(crate) struct Foto {
     rect: (usize, usize, usize, usize),
     susp: Vec<f32>,
     sett: Vec<f32>,
-    filme: Option<Tinta>,
-    aberto: Option<Tinta>,
+    filme: Soma,
+    aberto: Soma,
 }
 
 impl Foto {
@@ -46,8 +46,8 @@ impl Foto {
             rect: (x0, y0, x1, y1),
             susp,
             sett,
-            filme: f.cor(),
-            aberto: a.cor(),
+            filme: f,
+            aberto: a,
         })
     }
 
@@ -59,8 +59,8 @@ impl Foto {
             for x in x0..=x1 {
                 let i = y * g.s + x;
                 let c = &mut g.tinta[i];
-                fatia(&mut c.filme, self.susp[k], g.susp[i], self.filme);
-                fatia(&mut c.aberto, self.sett[k], g.sett[i], self.aberto);
+                fatia(&mut c.filme, self.susp[k], g.susp[i], &self.filme);
+                fatia(&mut c.aberto, self.sett[k], g.sett[i], &self.aberto);
                 k += 1;
             }
         }
@@ -94,7 +94,7 @@ pub(crate) fn com_foto<R>(
 }
 
 /// A fatia `s` cuja massa passou de `antes` a `depois`.
-fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: Option<Tinta>) {
+fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: &Soma) {
     if depois < antes {
         let f = if antes > 0.0 {
             1.0 - depois / antes
@@ -104,13 +104,12 @@ fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: Option<Tinta>) {
         transfere(s, &mut Soma::default(), f);
     } else if depois > antes {
         let dv = (depois - antes) / M_UM;
-        match chega {
-            Some(t) => *s = s.junta(Soma::de(t, dv)),
-            // Pegada sem tinta antes: a massa nasceu do nada (não deve); a cor da própria fatia.
-            None => match s.cor() {
-                Some(t) => *s = s.junta(Soma::de(t, dv)),
-                None => s.v += dv,
-            },
+        // Chega a tinta média da pegada (cor e meio); sem ela (não deve), a da própria fatia.
+        let de = if chega.v > 0.0 { *chega } else { *s };
+        if de.v > 0.0 {
+            *s = s.junta(de.escala(dv / de.v));
+        } else {
+            s.v += dv;
         }
     }
 }

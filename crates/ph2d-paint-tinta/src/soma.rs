@@ -1,6 +1,6 @@
 //! A lei de MISTURA (ADR-0197 eq. 1, decidida 31/10): Oklab pesado pelo VOLUME, guardado como SOMAS.
 //!
-//! Estado de uma fatia (filme ou aberto) = `Soma { v, lab: Σ vᵢ·Labᵢ, t: Σ vᵢ·tᵢ }`. A cor da mistura
+//! Estado de uma fatia (filme ou aberto) = `Soma { v, lab: Σ vᵢ·Labᵢ, t: Σ vᵢ·tᵢ, m: Σ vᵢ·mᵢ }`. A cor da mistura
 //! é `lab / v` e a transparência `t / v`. Juntar duas fatias é somar componente a componente, logo a
 //! mistura é associativa e comutativa (até ao arredondamento da soma `f32`) e N passadas = uma.
 //! Mover a fracção α de uma fatia move α de cada componente (as transferências são proporcionais e
@@ -63,6 +63,8 @@ pub struct Soma {
     pub v: f32,
     pub lab: [f32; 3],
     pub t: f32,
+    /// `Σ v·m`: o MEIO (`0` = água, `1` = óleo) viaja com o pigmento, como a cor (E9 fecho).
+    pub m: f32,
 }
 
 impl Soma {
@@ -74,6 +76,38 @@ impl Soma {
             v,
             lab: c.lab.map(|x| v * x),
             t: v * c.transparencia,
+            m: 0.0,
+        }
+    }
+
+    /// A mesma fatia com todo o volume no meio `meio ∈ [0,1]`.
+    #[must_use]
+    pub fn com_meio(self, meio: f32) -> Self {
+        Self {
+            m: self.v * meio.clamp(0.0, 1.0),
+            ..self
+        }
+    }
+
+    /// O meio médio pelo volume; `0` sem pigmento.
+    #[must_use]
+    pub fn meio(&self) -> f32 {
+        if self.v > 0.0 {
+            (self.m / self.v).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// Cada componente × `k` (`k ≥ 0`): a mesma tinta noutro volume.
+    #[must_use]
+    pub fn escala(self, k: f32) -> Self {
+        let k = k.max(0.0);
+        Self {
+            v: self.v * k,
+            lab: self.lab.map(|x| x * k),
+            t: self.t * k,
+            m: self.m * k,
         }
     }
 
@@ -88,6 +122,7 @@ impl Soma {
                 self.lab[2] + o.lab[2],
             ],
             t: self.t + o.t,
+            m: self.m + o.m,
         }
     }
 

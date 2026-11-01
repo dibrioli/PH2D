@@ -147,10 +147,12 @@ fn sobre_branco_a_composicao_devolve_r_w() {
             assert!((0.0..=1.0).contains(&a));
             for b in 0..3 {
                 assert!((0.0..=1.0).contains(&cor.0[b]));
-                pior = pior.max((cor.0[b] * a + (1.0 - a) - rw.0[b]).abs());
+                // A tela compõe nos valores sRGB: o `over` sobre branco devolve `sRGB(R_w)` (E9 §7).
+                let e = ph2d_paint_tinta::oklab::linear_para_srgb(rw.0[b]);
+                pior = pior.max((cor.0[b] * a + (1.0 - a) - e).abs());
             }
         }
     }
-    println!("sobre branco: max |cor·α + 1 − α − R_w| = {pior:.2e}");
+    println!("sobre branco: max |cor·α + 1 − α − sRGB(R_w)| = {pior:.2e}");
     assert!(pior <= EPS);
 }

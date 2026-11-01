@@ -23,8 +23,8 @@ fn cena(o: f32) -> (Grid, Trail, Params) {
         for x in 20..44 {
             let i = y * g.s + x;
             (g.susp[i], g.sett[i]) = (600.0, 900.0);
-            g.tinta[i].filme = soma_da_massa(AZUL, 0.0, 600.0);
-            g.tinta[i].aberto = soma_da_massa(AZUL, 0.0, 900.0);
+            g.tinta[i].filme = soma_da_massa(AZUL, 0.0, 0.0, 600.0);
+            g.tinta[i].aberto = soma_da_massa(AZUL, 0.0, 0.0, 900.0);
             g.tinta[i].o = o;
         }
     }
@@ -92,7 +92,7 @@ fn a_ponta_suja_pousa_a_mistura_pela_soma() {
     let (_, mut t, p) = cena(1.0);
     let mut g = Grid::new(64, 64);
     garante(&mut g);
-    let azul = soma_da_massa(AZUL, 0.0, 600.0);
+    let azul = soma_da_massa(AZUL, 0.0, 0.0, 600.0);
     t.ponta_tinta = vec![azul; (t.size * t.size) as usize];
     let c = (t.half + t.half * t.size) as usize;
     t.pig[c] = 600.0;
@@ -119,7 +119,7 @@ fn o_smear_conserva_somas() {
     let (mut g, _, p) = cena(1.0);
     for x in 20..44 {
         let i = 30 * g.s + x;
-        g.tinta[i].filme = soma_da_massa([240.0, 210.0, 20.0], 0.0, 600.0);
+        g.tinta[i].filme = soma_da_massa([240.0, 210.0, 20.0], 0.0, 0.0, 600.0);
     }
     let foto = crate::tools::tinta::Foto::tira(&mut g, &p, [10, 10, 50, 50]).unwrap();
     let massa0: f64 = g.susp.iter().map(|&m| f64::from(m)).sum();

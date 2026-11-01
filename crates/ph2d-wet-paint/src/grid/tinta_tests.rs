@@ -130,10 +130,10 @@ fn marca(g: &mut Grid, k: f32) {
             v: x,
             lab: [x, -x, 0.5 * x],
             t: 0.25 * x,
+            m: 0.5 * x,
         };
         c.aberto.v = 2.0 * x;
         c.r_g = [0.9, 0.8, x];
-        c.m = 0.5;
         c.o = 0.75;
         c.altura_fechada = x;
     }

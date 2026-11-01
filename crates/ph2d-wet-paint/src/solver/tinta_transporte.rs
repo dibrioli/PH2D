@@ -99,18 +99,20 @@ pub(super) fn advect_jacobi(g: &mut Grid) {
 
 /// `Σ coefₖ · somaₖ`, acumulado em `f64` (a mesma combinação linear da massa).
 fn combina(termos: &[(Soma, f64)]) -> Soma {
-    let mut acc = [0.0f64; 5];
+    let mut acc = [0.0f64; 6];
     for (s, c) in termos {
         acc[0] += f64::from(s.v) * c;
         acc[1] += f64::from(s.lab[0]) * c;
         acc[2] += f64::from(s.lab[1]) * c;
         acc[3] += f64::from(s.lab[2]) * c;
         acc[4] += f64::from(s.t) * c;
+        acc[5] += f64::from(s.m) * c;
     }
     Soma {
         v: acc[0].max(0.0) as f32,
         lab: [acc[1] as f32, acc[2] as f32, acc[3] as f32],
         t: acc[4] as f32,
+        m: acc[5].max(0.0) as f32,
     }
 }
 

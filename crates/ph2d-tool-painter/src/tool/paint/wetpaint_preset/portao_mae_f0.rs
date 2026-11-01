@@ -219,7 +219,7 @@ fn diagnostico_e9_pigmento_por_ponto() {
                             g.relevo.get(i).copied().unwrap_or(0.0),
                             c.map_or("sem tinta".into(), |c| format!(
                                 "filme v {:.3} lab {:.3?} t {:.2} · aberto v {:.3} lab {:.3?} · r_g {:.3?} r_g0 {:.3?} m {:.2} o {:.2}",
-                                c.filme.v, lab(c.filme.v, c.filme.lab), c.filme.t, c.aberto.v, lab(c.aberto.v, c.aberto.lab), c.r_g, c.r_g0, c.m, c.o
+                                c.filme.v, lab(c.filme.v, c.filme.lab), c.filme.t, c.aberto.v, lab(c.aberto.v, c.aberto.lab), c.r_g, c.r_g0, c.meio(), c.o
                             ))
                         )
                     })

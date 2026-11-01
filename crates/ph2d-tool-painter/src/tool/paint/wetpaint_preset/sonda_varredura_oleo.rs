@@ -173,10 +173,13 @@ fn pct(v: &mut [f64], q: f64) -> f64 {
     v[((v.len() - 1) as f64 * q).round() as usize]
 }
 
-/// O render PLANO: sem o Real Oil (a luz, o verniz, a sombra da crista) e sem relevo — só a cor da tinta.
-/// O óleo e o emboss são da CÉLULA (`Grid::oleo`, `Grid::relevo`/`altura`, dono 28/10), não da caixa: tiram-se da
-/// grade só para este composite e repõem-se logo (o motor que pinta a seguir não muda). E9 §5.2.
-fn render_plano(t: &mut PainterTool) {
+/// O render PLANO: sem o Real Oil (a luz, o verniz, a sombra da crista), sem relevo e SECO — só a cor da tinta.
+/// O óleo, o emboss e a água são da CÉLULA (`Grid::oleo`, `Grid::relevo`/`altura`, `Grid::film`), não da caixa:
+/// tiram-se da grade só para este composite e repõem-se logo (o motor que pinta a seguir não muda). E9 §5.2, §7.
+/// Seco porque a cor escolhida é o masstone SECO (F4_1 §5): molhada, a aquarela escurece de propósito.
+/// Devolve, na lei `Pigmento`, a cobertura FÍSICA por píxel (a da célula, seca): o `α` do píxel é o da decomposição
+/// para o compositor e passa de 0,9 numa película de amarelo (E9 §7) — «coberto» lê-se desta.
+fn render_plano(t: &mut PainterTool) -> Option<Vec<f32>> {
     use ph2d_editor_core::Tool;
     t.set_wet_oleo_real(None);
     t.handle_panel_event(PanelEvent::SetValue(
@@ -193,10 +196,12 @@ fn render_plano(t: &mut PainterTool) {
                 .map(|l| {
                     let g = &mut l.grid;
                     let zero = vec![0.0; g.relevo.len()];
+                    let seco = vec![0.0; g.film.len()];
                     (
                         std::mem::replace(&mut g.relevo, zero),
                         std::mem::take(&mut g.altura),
                         std::mem::take(&mut g.oleo),
+                        std::mem::replace(&mut g.film, seco),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -204,20 +209,51 @@ fn render_plano(t: &mut PainterTool) {
     };
     let guardado = guarda(t);
     t.wet_recomposite_full();
-    if let (Some(v), Some(s)) = (guardado, t.paint.wetpaint.session.as_mut()) {
-        for (l, (r, a, o)) in s.engine.layers.iter_mut().zip(v) {
-            (l.grid.relevo, l.grid.altura, l.grid.oleo) = (r, a, o);
+    let s = t.paint.wetpaint.session.as_mut()?;
+    let cob = (s.engine.sim.tinta == ph2d_wet_paint::sim::LeiDaTinta::Pigmento).then(|| {
+        let (r, g) = (usize::from(s.ratio), &s.engine.layers[0].grid);
+        (0..(W * H) as usize)
+            .map(|k| {
+                let (x, y) = (k % W as usize, k / W as usize);
+                ph2d_wet_paint::grid::tinta::cobertura(g, (x / r + 1) + (y / r + 1) * g.s)
+            })
+            .collect()
+    });
+    if let Some(v) = guardado {
+        for (l, (r, a, o, f)) in s.engine.layers.iter_mut().zip(v) {
+            (l.grid.relevo, l.grid.altura, l.grid.oleo, l.grid.film) = (r, a, o, f);
         }
     }
+    cob
+}
+
+/// A cobertura física a partir da qual a régua da MISTURA (`mix_*`) lê o píxel na lei `Pigmento` (E9 §7).
+const COBRE_A_MISTURA: f64 = 0.99;
+
+/// O «coberto» do píxel `(x, y)`: a cobertura física `cob` (lei `Pigmento`) ou o `α` do píxel (lei velha).
+fn coberto(cob: Option<&[f32]>, x: usize, y: usize, a: f64) -> f64 {
+    cob.map_or(a, |c| f64::from(c[x + y * W as usize]))
+}
+
+/// O recorte sobre o creme (o que as réguas lêem), para o PNG.
+fn recorte(t: &PainterTool) -> Vec<[u8; 3]> {
+    let mut v = Vec::with_capacity((RX.1 - RX.0) * (RY.1 - RY.0));
+    for y in RY.0..RY.1 {
+        for x in RX.0..RX.1 {
+            let (c, _) = sobre_creme(&t.canvas_rgba[(x + y * W as usize) * 4..][..4]);
+            v.push(c.map(|v| v.round().clamp(0.0, 255.0) as u8));
+        }
+    }
+    v
 }
 
 /// Luminância de referência do azul sozinho (p50 dos cobertos) e % de manchas.
-fn le_azul(t: &PainterTool) -> (f64, f64) {
+fn le_azul(t: &PainterTool, cob: Option<&[f32]>) -> (f64, f64) {
     let mut la = vec![];
     for y in RY.0..RY.1 {
         for x in RX.0..RX.1 {
             let (c, a) = sobre_creme(&t.canvas_rgba[(x + y * W as usize) * 4..][..4]);
-            if a >= 0.9 {
+            if coberto(cob, x, y, a) >= 0.9 {
                 la.push(lum(c));
             }
         }
@@ -250,12 +286,15 @@ fn le_tudo(
     ref_azul: f64,
     manchas_azul: f64,
     px: Option<&mut Vec<[u8; 3]>>,
+    cob: Option<&[f32]>,
 ) -> Leitura {
     let (af, bf) = (AZ.map(f64::from), AM.map(f64::from));
     let seg = segmento_oklab(af, bf);
     let mut mix = vec![];
-    let (mut km, mut cob, mut tinta, mut esc, mut fer) = (vec![], 0usize, 0usize, 0usize, 0usize);
+    let (mut km, mut n_cob, mut tinta, mut esc, mut fer) = (vec![], 0usize, 0usize, 0usize, 0usize);
     let mut px = px;
+    let mut piores: Vec<(f64, usize, usize, [f64; 3], f64)> = vec![];
+    let mut orla = vec![];
     let at = |x: usize, y: usize| sobre_creme(&t.canvas_rgba[(x + y * W as usize) * 4..][..4]);
     for y in RY.0..RY.1 {
         for x in RX.0..RX.1 {
@@ -263,20 +302,49 @@ fn le_tudo(
             if let Some(v) = px.as_deref_mut() {
                 v.push(c.map(|v| v.round().clamp(0.0, 255.0) as u8));
             }
-            if a >= 0.3 {
+            let ac = coberto(cob, x, y, a);
+            if ac >= 0.3 {
                 tinta += 1;
                 if ferrugem(c) {
                     fer += 1;
                 }
             }
-            if a >= 0.9 {
-                cob += 1;
+            if ac >= 0.9 {
+                n_cob += 1;
                 km.push(fora_da_mistura(c, af, bf));
-                mix.push(fora_do_segmento(c, &seg, a));
+                // A MISTURA mede-se onde a tinta cobre (a lei `Pigmento`: C ≥ 0,99); a película entre 0,9 e 0,99 é a
+                // CAMADA FINA (o azul fino mais vivo pelas 3 bandas), outra pergunta — `orla`, E9 §7.
+                let d = fora_do_segmento(c, &seg, a);
+                if cob.is_none() || ac >= COBRE_A_MISTURA {
+                    mix.push(d);
+                } else {
+                    orla.push(d);
+                }
+                if std::env::var_os("PH2D_SONDA_MIX_PIOR").is_some() {
+                    piores.push((d, x, y, c, ac));
+                }
                 if lum(c) < ref_azul - 6.0 {
                     esc += 1;
                 }
             }
+        }
+    }
+    if !piores.is_empty() {
+        println!(
+            "[orla] n {} p99 {:.1} max {:.1}",
+            orla.len(),
+            pct(&mut orla.clone(), 0.99),
+            orla.iter().copied().fold(0.0, f64::max)
+        );
+        piores.sort_by(|p, q| q.0.total_cmp(&p.0));
+        let da_mistura = piores
+            .iter()
+            .filter(|p| cob.is_none() || p.4 >= COBRE_A_MISTURA);
+        for (d, x, y, c, a) in da_mistura.step_by(40).take(12) {
+            println!(
+                "[mix] d {d:.1} x {x} y {y} cor {:?} cob {a:.3}",
+                c.map(|v| v.round())
+            );
         }
     }
     let media = |it: &mut dyn Iterator<Item = (usize, usize)>| {
@@ -301,7 +369,7 @@ fn le_tudo(
         km_p99: pct(&mut km, 0.99),
         mix_max: mix.iter().copied().fold(0.0, f64::max),
         mix_p99: pct(&mut mix, 0.99),
-        manchas: pc(esc, cob),
+        manchas: pc(esc, n_cob),
         manchas_azul,
         ferrugem: pc(fer, tinta),
         ref_azul,
@@ -369,6 +437,7 @@ pub(super) fn celula(
     png: Option<&std::path::Path>,
 ) -> Celula {
     let mut refs = (0.0, 0.0, 0.0, 0.0);
+    let mut px_azul = Vec::new();
     let mut t = pinta(
         b,
         pincel,
@@ -380,16 +449,19 @@ pub(super) fn celula(
         cena,
         &mut |t| {
             t.wet_recomposite_full();
-            let (ref_l, man_l) = le_azul(t);
-            render_plano(t);
-            let (ref_p, man_p) = le_azul(t);
+            let (ref_l, man_l) = le_azul(t, None);
+            let cob = render_plano(t);
+            let (ref_p, man_p) = le_azul(t, cob.as_deref());
             refs = (ref_l, man_l, ref_p, man_p);
+            if png.is_some() {
+                px_azul = recorte(t);
+            }
         },
     );
     let (ref_l, man_l, ref_p, man_p) = refs;
     t.wet_recomposite_full();
     let mut px_l = Vec::with_capacity((RX.1 - RX.0) * (RY.1 - RY.0));
-    let luz = le_tudo(&t, ref_l, man_l, Some(&mut px_l));
+    let luz = le_tudo(&t, ref_l, man_l, Some(&mut px_l), None);
     let (mut miolo, mut papel) = (0usize, 0usize);
     for y in 118..142 {
         for x in 100..260 {
@@ -406,9 +478,9 @@ pub(super) fn celula(
     } else {
         (f64::NAN, f64::NAN)
     };
-    render_plano(&mut t);
+    let cob = render_plano(&mut t);
     let mut px_p = Vec::with_capacity(px_l.len());
-    let plano = le_tudo(&t, ref_p, man_p, Some(&mut px_p));
+    let plano = le_tudo(&t, ref_p, man_p, Some(&mut px_p), cob.as_deref());
     if let Some(f) = png {
         use crate::tool::paint::tests::look_watercolor_arc::{Canvas, write_png};
         let (w, h) = (RX.1 - RX.0, RY.1 - RY.0);
@@ -418,6 +490,11 @@ pub(super) fn celula(
             f.file_stem().and_then(|s| s.to_str()).unwrap_or("c")
         ));
         write_png(&fp, &Canvas { w, h, px: px_p }).expect("png");
+        let fa = f.with_file_name(format!(
+            "{}_azul_plano.png",
+            f.file_stem().and_then(|s| s.to_str()).unwrap_or("c")
+        ));
+        write_png(&fa, &Canvas { w, h, px: px_azul }).expect("png");
     }
     Celula {
         luz,

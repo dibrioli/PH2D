@@ -6,7 +6,7 @@ use crate::jsmath::clamp_u8;
 use crate::painter::Engine;
 use crate::render::{PigmentVisual, RenderLayer, render_pigment_row_visual};
 use crate::sim::{LeiDaTinta, Params};
-use ph2d_paint_tinta::oklab::srgb_para_linear;
+use ph2d_paint_tinta::oklab::linear_para_srgb;
 use ph2d_paint_tinta::{Soma, Tinta, camada, ecra_sobre_branco};
 
 const W: usize = 6;
@@ -82,14 +82,14 @@ fn linha(g: &Grid, p: &Params) -> Vec<u8> {
 /// O ecrã da lei para a célula `i`, pelas funções da crate da tinta (a régua).
 fn esperado(g: &Grid, i: usize) -> ([f32; 3], f32, [f32; 3]) {
     let c = tinta::em(g, i);
-    let o = optica_celula(&c.filme, &c.aberto, c.m, g.film[i] > 0.0);
+    let o = optica_celula(&c.filme, &c.aberto, c.meio(), g.film[i] > 0.0);
     if c.r_g == [1.0; 3] {
         let (cor, a) = ecra_sobre_branco(&o, &Bandas(c.r_g));
         return (cor.0, a, camada(&o, &Bandas(c.r_g)).0);
     }
     // Com fundo curado (E8): a cobertura é a da PILHA, eq. (3) com o fundo sobre branco (`r_g`) e preto (`r_g0`).
     let (rw, rb) = (camada(&o, &Bandas(c.r_g)).0, camada(&o, &Bandas(c.r_g0)).0);
-    let falta = rw.map(|r| 1.0 - r);
+    let falta = rw.map(|r| 1.0 - linear_para_srgb(r));
     let cob: [f32; 3] = core::array::from_fn(|b| 1.0 - (rw[b] - rb[b]));
     let a = falta[0]
         .max(falta[1])
@@ -108,7 +108,7 @@ fn o_ecra_da_celula_e_a_lei_da_tinta_ao_bit() {
         let i = (k + 1) + g.s;
         let (cor, a, _) = esperado(&g, i);
         assert!(a > 0.0, "célula {k} tem tinta");
-        let srgb = cor.map(|v| f64::from(linear_para_srgb(v)) * 255.0);
+        let srgb = cor.map(|v| f64::from(v) * 255.0);
         let (c, la) = ecra_da_celula(&g, i).expect("tinta");
         assert_eq!(c.map(f64::to_bits), srgb.map(f64::to_bits), "célula {k}");
         assert_eq!(la.to_bits(), f64::from(a).to_bits(), "célula {k}");
@@ -142,32 +142,22 @@ fn celula_vazia_e_transparente() {
 fn sobre_branco_o_pixel_composto_devolve_r_w() {
     let g = grade();
     let px = linha(&g, &params());
-    // O pixel guarda cor e α em 8 bits: `c'α' − cα + (α − α') = α'(c' − c) + (c − 1)(α' − α)`, logo o erro
-    // LINEAR sobre branco é ≤ `α'·δc + (1 − c')·δα` (`δc` = meio nível sRGB em linear à volta de `c'`,
-    // `δα = 0,5/255`) — a tolerância é esse limite, levado a sRGB à volta de `R_w` (o «1/255» fixo
-    // reprovava a lei seca do meio por 1,1/255 numa banda escura: o declive do sRGB no escuro).
+    // A tela compõe nos valores sRGB codificados (E9 §7): `c'α' − cα + (α − α') = α'(c' − c) + (c − 1)(α' − α)`
+    // com `|c' − c|, |α' − α| ≤ 0,5/255` ⇒ o erro sobre branco é ≤ `0,5/255·(α' + 1 − c') ≤ 1/255` em sRGB.
     let mut pior = (0.0f32, 0usize, 0usize);
     for k in 0..W - 1 {
         let (_, _, rw) = esperado(&g, (k + 1) + g.s);
         let q = &px[k * 4..k * 4 + 4];
         let a = f32::from(q[3]) / 255.0;
         for b in 0..3 {
-            let n = f32::from(q[b]);
-            let c = srgb_para_linear(n / 255.0);
-            let dc = (srgb_para_linear(((n + 0.5) / 255.0).min(1.0)) - c)
-                .max(c - srgb_para_linear(((n - 0.5) / 255.0).max(0.0)));
-            let e = a * dc + (1.0 - c) * (0.5 / 255.0) + 1e-6;
-            let (lo, hi) = (
-                linear_para_srgb((rw[b] - e).max(0.0)),
-                linear_para_srgb((rw[b] + e).min(1.0)),
-            );
-            let sobre_branco = linear_para_srgb(c * a + (1.0 - a));
-            let fora = (lo - sobre_branco).max(sobre_branco - hi);
-            assert!(
-                fora <= 0.0,
-                "célula {k} banda {b}: {sobre_branco} ∉ [{lo}, {hi}]"
-            );
+            let c = f32::from(q[b]) / 255.0;
+            let sobre_branco = c * a + (1.0 - a);
             let d = (sobre_branco - linear_para_srgb(rw[b])).abs();
+            assert!(
+                d <= 0.5 / 255.0 * (a + 1.0 - c) + 1e-6,
+                "célula {k} banda {b}: {sobre_branco} × {}",
+                linear_para_srgb(rw[b])
+            );
             if d > pior.0 {
                 pior = (d, k, b);
             }

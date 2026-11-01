@@ -94,7 +94,7 @@ fn calibracao_de_m_um() {
                 let mid = (lo * hi).sqrt();
                 if h(mid) < alvo { lo = mid } else { hi = mid }
             }
-            let com_m_um = cobre(&soma_da_massa(rgb, t, 600.0), &Soma::default());
+            let com_m_um = cobre(&soma_da_massa(rgb, t, 0.0, 600.0), &Soma::default());
             println!(
                 "[cal] t={t} {nome:9} α: v={v_alfa:.4} M_UM={:.1} · C(3): v={hi:.4} M_UM={:.1} · com M_UM={M_UM}: α(600)={com_m_um:.4}",
                 600.0 / v_alfa,
@@ -103,7 +103,7 @@ fn calibracao_de_m_um() {
             // O critério (a tabela no doc): a tinta OPACA que menos esconde (o branco, onde α e C coincidem) cobre
             // o que `alpha_of_mass(600)` cobria; nenhuma opaca cobre menos.
             if t == 0.0 {
-                let o = ph2d_paint_tinta::optica(&soma_da_massa(rgb, t, 600.0), 0.0, true);
+                let o = ph2d_paint_tinta::optica(&soma_da_massa(rgb, t, 0.0, 600.0), 0.0, true);
                 let c = ph2d_paint_tinta::cobertura(&o).0.iter().sum::<f32>() / 3.0;
                 assert!(c >= alvo - 1e-3, "{nome}: C(600) = {c} < {alvo}");
                 if nome == "branco" {

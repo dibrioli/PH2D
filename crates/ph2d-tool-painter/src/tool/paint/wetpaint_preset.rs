@@ -32,6 +32,8 @@ pub(in crate::tool::paint) mod json;
 #[cfg(test)]
 mod km_no_preset_tests;
 #[cfg(test)]
+mod material_tests;
+#[cfg(test)]
 mod medida_oleo_real;
 #[cfg(test)]
 mod medida_preview;
@@ -60,6 +62,8 @@ mod sonda_relevo_oleo;
 mod sonda_varredura_oleo;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod volumes_tests;
 
 use campos::{AQUARELA, DA_OBRA, DIGITAL, DO_MEIO, DO_SCULPT, DOS_KNOBS, IMPASTO, POR_DAB, VOLUME};
 pub use campos::{CAMPOS_DO_PINCEL, CAMPOS_FORA, campos_da_macro};

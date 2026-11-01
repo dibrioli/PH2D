@@ -214,7 +214,7 @@ fn fcell(g: vec3<u32>) -> FCell {
     return FCell(x <= u.fx1 && y <= u.fy1, x, y, x + y * u.fs);
 }
 
-// `smooth_velocity_rows` sem gota: média de 5 pontos da velocidade persistente; zero no eixo com parede.
+// `smooth_velocity_rows` sem gota: média de 5 pontos da velocidade persistente.
 @compute @workgroup_size(16, 16, 1)
 fn suaviza(@builtin(global_invocation_id) g: vec3<u32>) {
     let c = fcell(g);
@@ -229,13 +229,8 @@ fn suaviza(@builtin(global_invocation_id) g: vec3<u32>) {
         fx = 0.2 * vel_x[i] + 0.2 * (vel_x[i - 1] + vel_x[i + 1] + vel_x[i - u.fs] + vel_x[i + u.fs]);
         fy = 0.2 * vel_y[i] + 0.2 * (vel_y[i - 1] + vel_y[i + 1] + vel_y[i - u.fs] + vel_y[i + u.fs]);
     }
-    let pl = flow_probe(c.x - 1, u.w);
-    let pr = flow_probe(c.x + 1, u.w);
-    let px = flow_probe(c.x, u.w);
-    let ym = flow_probe(c.y, u.h) * u.s;
-    let w = parede(fi, pl + ym, pr + ym, px + flow_probe(c.y - 1, u.h) * u.s, px + flow_probe(c.y + 1, u.h) * u.s);
-    flow_x[i] = select(clamp(fx, -u.max_v, u.max_v), 0.0, w.x);
-    flow_y[i] = select(clamp(fy, -u.max_v, u.max_v), 0.0, w.y);
+    flow_x[i] = clamp(fx, -u.max_v, u.max_v);
+    flow_y[i] = clamp(fy, -u.max_v, u.max_v);
 }
 
 // `momentum_rows`: o fluxo na origem do retro-traço + gravidade × água daqui.
@@ -271,24 +266,12 @@ struct K {
     visc_t: f32, brake_bias: f32, brake_reach: f32, dif: f32,
     // `project`: o knob `Projection`. `sedimenta`: fracções por eixo e sentido (−1/0/1).
     projection: f32, sed_ax: f32, sed_ay: f32, _k0: f32,
-    // `isola`: as paredes entre traços valem neste passo (`p.paredes` e o campo `traco` existe).
-    sed_dx: i32, sed_dy: i32, isola: i32, _k2: i32,
+    sed_dx: i32, sed_dy: i32, _k1: i32, _k2: i32,
 }
 @group(0) @binding(12) var<storage, read> paper: array<f32>;
 @group(0) @binding(13) var<storage, read_write> wet: array<u32>;
 @group(0) @binding(14) var<storage, read> sett: array<f32>;
 @group(0) @binding(15) var<uniform> k: K;
-@group(0) @binding(18) var<storage, read> traco: array<u32>;
-
-// `grid::traco::separa`: traços diferentes, as duas com tinta molhada (`susp > 0`).
-fn separa(a: i32, b: i32) -> bool {
-    return traco[a] != traco[b] && st[a].y > 0.0 && st[b].y > 0.0;
-}
-// `solver::parede_do_traco`: os eixos `[x, y]` com parede (vizinhos `l, r, u, d`, índices finos).
-fn parede(c: i32, l: i32, r: i32, up: i32, dn: i32) -> vec2<bool> {
-    if k.isola == 0 { return vec2(false, false); }
-    return vec2(separa(c, l) || separa(c, r), separa(c, up) || separa(c, dn));
-}
 
 // `flow_rows`: o núcleo gather — escreve `flow` e mais nada; lê o `wet` do INÍCIO do passo.
 @compute @workgroup_size(16, 16, 1)
@@ -307,14 +290,9 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
     let f = st[fi].x;
     var ex = vel_x[i];
     var ey = vel_y[i];
-    // Leveling: do grosso para o fino, clampado por eixo; zero no eixo com parede.
-    let wl = parede(fi, pl + ym, pr + ym, px + yu, px + yd);
-    if !wl.x {
-        ex += clamp((st[pl + ym].x - st[pr + ym].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
-    }
-    if !wl.y {
-        ey += clamp((st[px + yu].x - st[px + yd].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
-    }
+    // Leveling: do grosso para o fino, clampado por eixo.
+    ex += clamp((st[pl + ym].x - st[pr + ym].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
+    ey += clamp((st[px + yu].x - st[px + yd].x) * k.level_k * k.dif, -k.level_clamp, k.level_clamp);
     // Capilar: só tinta fina segue o dente do papel.
     if st[fi].y + sett[fi] < k.cap_gate {
         let pc = paper[fi];
@@ -347,8 +325,8 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
         ex *= br;
         ey *= br;
     }
-    flow_x[i] = select(clamp(ex, -u.max_v, u.max_v), 0.0, wl.x);
-    flow_y[i] = select(clamp(ey, -u.max_v, u.max_v), 0.0, wl.y);
+    flow_x[i] = clamp(ex, -u.max_v, u.max_v);
+    flow_y[i] = clamp(ey, -u.max_v, u.max_v);
 }
 
 // `wet_stamp_rows`: film fundo marca a folha úmida (corre DEPOIS do `campo`).

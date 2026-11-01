@@ -142,7 +142,8 @@ const DEPOSITO_MOLHADO: [NodeId; 22] = [
     PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_VOL_OPACITY,
     // Os controlos de lei da E10 (F3 §9): o Pigment saiu, fundido na Dilution. A Hardness não é só do pouso: o Blend
-    // da água também lê o `paperGate` (3048 texels, 01/11) — fica fora desta linha, à vista no Pincel e no Blend.
+    // da água também lê o `paperGate` (3048 texels, 01/11) e a borracha da água também (`apply_erase`, E10h) — fica
+    // fora desta linha, à vista no Pincel, no Blend e na Borracha do Wet Paint.
     PAINTER_WETPAINT_DILUTION,
     PAINTER_WETPAINT_MEDIUM,
     PAINTER_WETPAINT_BODY,

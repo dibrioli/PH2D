@@ -60,7 +60,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Stroke — como o traço pousa a tinta.
         "panel.wet_tuning.knob.extDryBrush" => "Dry brush",
         "panel.wet_tuning.knob.extWetSoften" => "Softer on wet paint",
-        "panel.wet_tuning.knob.levelingOwnStroke" => "Strokes keep apart (off · on)",
         "panel.wet_tuning.knob.tipReservoir" => "Tip picks up and smears",
         "panel.wet_tuning.knob.pressureGrain" => "Light pressure breaks into grain",
         "panel.wet_tuning.knob.strokeFilm" => "Smooth wash body (off · on)",

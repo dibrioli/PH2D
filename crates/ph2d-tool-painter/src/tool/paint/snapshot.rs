@@ -464,7 +464,6 @@ impl PainterTool {
             // O meio da ferramenta na mão (o Blur com a água armada não mostra o Wet — dono 24/10).
             wetpaint: self.paint_media() == super::PaintMedia::WetPaint,
             wet_knobs: self.paint.wetpaint.knobs,
-            wet_opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,
             mao: self.mao(),
             mao_do_preset: self.mao_do_preset_disponivel(),
             marca: self.marca(),

@@ -78,11 +78,12 @@ fn linhas_e10_depois(
     let Some(&(_, rotulo, id)) = E10_NO_CARTAO.iter().find(|(d, _, _)| *d == depois) else {
         return y;
     };
-    // O Pincel lê os três; o Blend da água também lê o `paperGate` (a Hardness: 3048 texels no censo
-    // `cada_ferramenta_da_agua_so_ve_o_que_le`, 01/11).
+    // O Pincel lê os três; o Blend da água (3048 texels no censo `cada_ferramenta_da_agua_so_ve_o_que_le`) e a
+    // borracha da água (`apply_erase`, censo `a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda`) também lêem o
+    // `paperGate` (a Hardness, E10h).
     let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
-    let blend = !brush.eraser && brush.wet_tool == ph2d_tool_painter::WetTool::Blend;
-    if !(pousa || blend && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS) {
+    let le_o_papel = brush.eraser || brush.wet_tool == ph2d_tool_painter::WetTool::Blend;
+    if !(pousa || le_o_papel && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS) {
         return y;
     }
     let Some((v, min, max, step)) = brush.wet_knobs.linha_e10(id) else {

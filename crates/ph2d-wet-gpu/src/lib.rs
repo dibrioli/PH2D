@@ -228,9 +228,7 @@ pub struct Knobs {
     pub _k0: f32,
     pub sed_dx: i32,
     pub sed_dy: i32,
-    /// ⛔ Sempre `0` desde a E10 (a parede entre traços e o `Grid::traco` saíram, E10c2): o `parede()` do shader e o
-    /// binding 18 ficam inertes até a limpeza com o portão da placa (`docs/Painter/Arquitetura/E10c2_pontas.md`).
-    pub isola: i32,
+    pub _k1: i32,
     pub _k2: i32,
 }
 
@@ -306,8 +304,6 @@ pub struct AdvectGpu {
     pub kb: wgpu::Buffer,
     /// A caixa do rebuild (16 × i32, ver o WGSL).
     pub caixa: wgpu::Buffer,
-    /// `Grid::traco` (u32 por célula fina; zeros quando a grade não tem o campo).
-    pub traco: wgpu::Buffer,
     pub pipes: Vec<wgpu::ComputePipeline>,
     pub groups: Vec<wgpu::BindGroup>,
     _scratch: Vec<wgpu::Buffer>,
@@ -359,14 +355,13 @@ impl AdvectGpu {
             mapped_at_creation: false,
         });
         let caixa = storage(gpu, "wet-gpu caixa", 64);
-        let traco = storage(gpu, "wet-gpu traco", n * 4);
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("wet-gpu advect"),
                 source: wgpu::ShaderSource::Wgsl(WGSL.into()),
             });
-        let all: [(u32, &wgpu::Buffer); 19] = [
+        let all: [(u32, &wgpu::Buffer); 18] = [
             (0, &ub),
             (1, &flow_x),
             (2, &flow_y),
@@ -385,7 +380,6 @@ impl AdvectGpu {
             (15, &kb),
             (16, &active),
             (17, &caixa),
-            (18, &traco),
         ];
         // Os bindings que cada passada usa (o layout automático só inclui esses).
         let usa: [&[u32]; 21] = [
@@ -393,9 +387,9 @@ impl AdvectGpu {
             &[0, 3, 4, 5],
             &[0, 3, 4, 5, 6, 7, 8, 9],
             &[0, 6, 7, 8, 9],
-            &[0, 1, 2, 3, 6, 10, 11, 15, 18],
             &[0, 1, 2, 3, 6, 10, 11],
-            &[0, 1, 2, 3, 6, 10, 11, 12, 13, 14, 15, 18],
+            &[0, 1, 2, 3, 6, 10, 11],
+            &[0, 1, 2, 3, 6, 10, 11, 12, 13, 14, 15],
             &[0, 3, 6, 12, 13],
             &[0, 6, 13],
             &[0, 1, 2, 10, 11],
@@ -462,7 +456,6 @@ impl AdvectGpu {
             sett,
             kb,
             caixa,
-            traco,
             pipes,
             groups,
             _scratch: vec![uv, outflow, dst, drgb],

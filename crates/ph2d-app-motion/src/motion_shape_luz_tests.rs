@@ -317,3 +317,39 @@ fn o_dono_de_cada_copia_e_o_do_sink_dela() {
     };
     assert_eq!(donos(&m, &placa), vec![(42, 0..2), (43, 2..4)]);
 }
+
+/// ⭐ GEF 19 E3 — **a placa parte-se por faixa pelo `fonte`**: cada faixa Motion leva só as cópias
+/// dos objetos dela; duas faixas não partilham cópia, e a cópia sem dono não cai em nenhuma.
+#[test]
+fn as_copias_partem_se_por_faixa_pelo_fonte() {
+    let mut m = crate::motion_state::MotionState::new();
+    let sa = m.doc.graph.add_node("motion.output");
+    let sb = m.doc.graph.add_node("motion.output");
+    let sc = m.doc.graph.add_node("motion.output");
+    m.doc.set_owner(sa, 1);
+    m.doc.set_owner(sb, 2);
+    let dono = |entity| crate::motion_objeto::Dono {
+        entity,
+        visible: true,
+        afim: crate::motion_objeto::IDENTIDADE,
+    };
+    m.objeto.donos.insert(1, dono(42));
+    m.objeto.donos.insert(2, dono(43));
+    let faixa = |sink, vetores| ph2d_eval_motion::FaixaDoSink {
+        sink,
+        instancias: 0..0,
+        vetores,
+        ladrilhos: 0..0,
+    };
+    m.pump.faixas = vec![faixa(sa, 0..3), faixa(sb, 3..5), faixa(sc, 5..6)];
+    let copia = ph2d_shape_gpu::ShapeInstance::default();
+    let placa = PlacaDeFormas {
+        fonte: vec![0, 2, 3, 4, 5],
+        copias: vec![copia; 5],
+        ..PlacaDeFormas::default()
+    };
+    assert_eq!(copias_da_faixa(&m, &placa, &[42]), vec![0..2]);
+    assert_eq!(copias_da_faixa(&m, &placa, &[43]), vec![2..4]);
+    assert_eq!(copias_da_faixa(&m, &placa, &[42, 43]), vec![0..4]);
+    assert!(copias_da_faixa(&m, &placa, &[7]).is_empty());
+}

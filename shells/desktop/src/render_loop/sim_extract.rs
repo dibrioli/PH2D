@@ -203,12 +203,18 @@ pub(super) fn pixel_participant(sim: &World, entity: Entity) -> bool {
     sim.get::<ph2d_ecs::PixelSprite>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
 }
 
+/// Um objecto Motion ocupa um rank como família [`Motion`](ph2d_render::draw_bands::Family::Motion) (GEF 19 E3).
+pub(super) fn motion_participant(sim: &World, entity: Entity) -> bool {
+    sim.get::<ph2d_ecs::MotionGenerator>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
+}
+
 /// ⭐⭐ **A CONVERSÃO** dos ranks do ordenador para a ordem do presente — leitura, nada reordena; todo
 /// rank tem de ser registado (um buraco degrada o plano em vez de perder um objecto).
 pub(super) fn build_frame_order(
     sort_inputs: &[SortInput],
     vector_inputs: &[(Entity, u64)],
     pixel_inputs: &[Entity],
+    motion_inputs: &[Entity],
     scratch: &SortScratch,
     out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
@@ -221,6 +227,8 @@ pub(super) fn build_frame_order(
                 .map(|(_, id)| *id);
             if pixel_inputs.contains(&input.entity) {
                 out.record_pixel(rank, input.entity.to_bits());
+            } else if motion_inputs.contains(&input.entity) {
+                out.record_motion(rank, input.entity.to_bits());
             } else {
                 out.record(rank, path);
             }
@@ -272,6 +280,7 @@ pub(super) fn run(
     // As formas vetoriais que entraram na ordem, na travessia: `(entidade, VecPathRef.0)`.
     let mut vector_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
     let mut pixel_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
+    let mut motion_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
     // gameplay — that lands in M10 with the physics integrator).
@@ -337,10 +346,12 @@ pub(super) fn run(
                 // AQUI dentro da travessia (o ordenador exige DFS pre-order) e pela MESMA porta de visibilidade (`drawn`).
                 let id = vector_participant(sim, sim_entity);
                 let pixel = pixel_participant(sim, sim_entity);
-                if drawn && (id.is_some() || pixel) {
+                let motion = !pixel && motion_participant(sim, sim_entity);
+                if drawn && (id.is_some() || pixel || motion) {
                     match id {
                         Some(id) => vector_inputs.push((sim_entity, id)),
-                        None => pixel_inputs.push(sim_entity),
+                        None if pixel => pixel_inputs.push(sim_entity),
+                        None => motion_inputs.push(sim_entity),
                     }
                     sort_inputs.push(SortInput {
                         entity: sim_entity,
@@ -375,7 +386,14 @@ pub(super) fn run(
         // tie-break never fires.
         compute_sort_ranks_into(sort_scratch, sim_w, sort_inputs);
         // A ordem total como LEITURA do ordenador: percorre `sort_inputs` inteira (todo rank é registado).
-        build_frame_order(sort_inputs, &vector_inputs, &pixel_inputs, sort_scratch, order_out);
+        build_frame_order(
+            sort_inputs,
+            &vector_inputs,
+            &pixel_inputs,
+            &motion_inputs,
+            sort_scratch,
+            order_out,
+        );
         let mut q = present_w.query::<(&SimRef, &mut RenderInstance)>();
         for (sim_ref, mut ri) in q.iter_mut(present_w) {
             if let Some(rank) = sort_scratch.rank(sim_ref.0) {

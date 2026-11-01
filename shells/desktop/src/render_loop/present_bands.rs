@@ -154,6 +154,8 @@ pub(super) fn draw_lower_bands(
                 }
                 doc_i += 1;
             }
+            // GEF 19 E3: a placa do Motion cola-se depois do mundo (`motion_por_cima`), nunca aqui.
+            ph2d_render::draw_bands::Family::Motion => {}
         }
     }
 }

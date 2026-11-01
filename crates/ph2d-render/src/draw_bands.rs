@@ -36,13 +36,17 @@ pub enum Family {
     /// Um Pixel Sprite (GEF 19 E2): Vello como o vetor, mas desenhado pela família Pixel — faixa
     /// própria, para intercalar com as formas por rank dentro do que seria uma faixa de vetor.
     Pixel,
+    /// Um objecto Motion (GEF 19 E3): as formas dele vão à PLACA, colada no acumulador — não é
+    /// cena Vello nem sprite. ⚠️ Até a placa se colar por faixa, o plano põe-no por cima de tudo
+    /// ([`motion_por_cima`]); o rank já é o da Hierarchy.
+    Motion,
 }
 
 impl Family {
     /// A faixa é uma cena Vello (`band_doc_scenes`) — tudo menos o sprite.
     #[must_use]
     pub fn is_scene(self) -> bool {
-        !matches!(self, Family::Sprite)
+        matches!(self, Family::Vector | Family::Pixel)
     }
 
     /// A posição da família na ordem de sempre (degradada): sprites, vetor, pixel.
@@ -51,6 +55,7 @@ impl Family {
             Family::Sprite => 0,
             Family::Vector => 1,
             Family::Pixel => 2,
+            Family::Motion => 3,
         }
     }
 }
@@ -110,27 +115,55 @@ pub fn bands(families: &[Family]) -> Vec<Band> {
 /// um laço próprio é o que diverge.*
 pub fn collapsed(families: &[Family]) -> Vec<Band> {
     let n = families.len() as u32;
-    [Family::Sprite, Family::Vector, Family::Pixel]
-        .into_iter()
-        .filter(|f| families.contains(f))
-        .map(|family| Band {
-            family,
-            lo: 0,
-            hi: n,
-        })
-        .collect()
+    [
+        Family::Sprite,
+        Family::Vector,
+        Family::Pixel,
+        Family::Motion,
+    ]
+    .into_iter()
+    .filter(|f| families.contains(f))
+    .map(|family| Band {
+        family,
+        lo: 0,
+        hi: n,
+    })
+    .collect()
 }
 
 /// A lei inteira: as faixas desta ordem, já com o teto aplicado.
 ///
 /// Devolve `(faixas, degradou?)` — o segundo é o que o log imprime.
 pub fn plan(families: &[Family]) -> (Vec<Band>, bool) {
-    let b = bands(families);
+    let b = motion_por_cima(bands(families), families.len() as u32);
     if b.len() > MAX_BANDS {
         (collapsed(families), true)
     } else {
         (b, false)
     }
+}
+
+/// ⚠️ GEF 19 E3 (degrau intermédio): as faixas Motion saem do meio e voltam numa só, por cima de
+/// tudo — o que o presente desenha hoje (a placa colada depois do mundo). As vizinhas que a faixa
+/// Motion partia juntam-se outra vez, logo o resto do plano é o de antes, byte a byte. Retirar
+/// esta função é o passo que falta: a placa colada por faixa, pelo `fonte` das cópias.
+pub fn motion_por_cima(b: Vec<Band>, n: u32) -> Vec<Band> {
+    if !b.iter().any(|b| b.family == Family::Motion) {
+        return b;
+    }
+    let mut out: Vec<Band> = Vec::with_capacity(b.len());
+    for band in b.into_iter().filter(|b| b.family != Family::Motion) {
+        match out.last_mut() {
+            Some(last) if last.family == band.family => last.hi = band.hi,
+            _ => out.push(band),
+        }
+    }
+    out.push(Band {
+        family: Family::Motion,
+        lo: 0,
+        hi: n,
+    });
+    out
 }
 
 /// ⭐⭐ **A ordem TOTAL de um quadro** — as duas famílias numa lista só, indexada por rank.
@@ -158,6 +191,8 @@ pub struct FrameOrder {
     pub vector_ranks: Vec<(u64, u32)>,
     /// `(bits da entidade, rank)` de cada Pixel Sprite que entrou na ordem (GEF 19 E2).
     pub pixel_ranks: Vec<(u64, u32)>,
+    /// `(bits da entidade, rank)` de cada objecto Motion que entrou na ordem (GEF 19 E3).
+    pub motion_ranks: Vec<(u64, u32)>,
     /// `(bits da entidade, rank)` de todo objecto que entrou na ordem — o que o CLIQUE pergunta
     /// ([`Self::stack_key`]).
     pub entity_ranks: Vec<(u64, u32)>,
@@ -169,6 +204,7 @@ impl FrameOrder {
         self.families.clear();
         self.vector_ranks.clear();
         self.pixel_ranks.clear();
+        self.motion_ranks.clear();
         self.entity_ranks.clear();
     }
 
@@ -209,6 +245,12 @@ impl FrameOrder {
     pub fn record_pixel(&mut self, rank: u32, bits: u64) {
         self.put(rank, Family::Pixel);
         self.pixel_ranks.push((bits, rank));
+    }
+
+    /// Regista que o objecto Motion `bits` ocupa o `rank`.
+    pub fn record_motion(&mut self, rank: u32, bits: u64) {
+        self.put(rank, Family::Motion);
+        self.motion_ranks.push((bits, rank));
     }
 
     fn put(&mut self, rank: u32, fam: Family) {
@@ -262,6 +304,13 @@ impl FrameOrder {
                         hi: n,
                     });
                 }
+                if !self.motion_ranks.is_empty() {
+                    out.push(Band {
+                        family: Family::Motion,
+                        lo: 0,
+                        hi: n,
+                    });
+                }
                 (out, true)
             }
         }
@@ -280,6 +329,18 @@ impl FrameOrder {
     pub fn pixel_ids_in(&self, band: Band) -> Vec<u64> {
         let mut v: Vec<(u32, u64)> = self
             .pixel_ranks
+            .iter()
+            .filter(|(_, r)| *r >= band.lo && *r < band.hi)
+            .map(|(b, r)| (*r, *b))
+            .collect();
+        v.sort_unstable();
+        v.into_iter().map(|(_, b)| b).collect()
+    }
+
+    /// Os objectos Motion desta faixa, do de trás para o da frente (rank crescente).
+    pub fn motion_ids_in(&self, band: Band) -> Vec<u64> {
+        let mut v: Vec<(u32, u64)> = self
+            .motion_ranks
             .iter()
             .filter(|(_, r)| *r >= band.lo && *r < band.hi)
             .map(|(b, r)| (*r, *b))
@@ -340,7 +401,7 @@ pub fn needs_banding(bands: &[Band]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Family::{Pixel as P, Sprite as S, Vector as V};
+    use Family::{Motion as M, Pixel as P, Sprite as S, Vector as V};
 
     /// ⭐ **O caso do report**: uma forma desenhada primeiro, uma imagem importada a seguir. Na
     /// hierarquia a imagem fica ABAIXO ⇒ ela desenha DEPOIS ⇒ por cima.
@@ -695,5 +756,66 @@ mod tests {
         );
         let c = collapsed(&[P, V]);
         assert!(k(&c, 10) > k(&c, 11), "degradado: o pixel por cima de tudo");
+    }
+
+    /// ⭐ GEF 19 E3: a quarta família — as corridas cruas cobrem a ordem e o Motion tem rank próprio.
+    #[test]
+    fn four_family_bands_tile_the_order() {
+        let fams = [M, S, V, M, P];
+        let got: Vec<_> = bands(&fams)
+            .iter()
+            .map(|b| (b.family, b.lo, b.hi))
+            .collect();
+        assert_eq!(
+            got,
+            vec![(M, 0, 1), (S, 1, 2), (V, 2, 3), (M, 3, 4), (P, 4, 5)]
+        );
+        assert!(!M.is_scene(), "o Motion e' placa, nao cena Vello");
+    }
+
+    /// Degrau intermédio: o plano põe o Motion por cima de tudo e cola as vizinhas que ele partia —
+    /// o resto é o plano de antes (byte-idêntico); degradado, o Motion também é o último.
+    #[test]
+    fn the_plan_keeps_motion_on_top_and_the_rest_unchanged() {
+        let (b, degraded) = plan(&[S, M, S, V]);
+        assert!(!degraded);
+        let got: Vec<_> = b.iter().map(|b| (b.family, b.lo, b.hi)).collect();
+        assert_eq!(got, vec![(S, 0, 3), (V, 3, 4), (M, 0, 4)]);
+        assert!(
+            !needs_banding(&b),
+            "[S, V] + Motion no topo = o caminho de sempre"
+        );
+        assert!(!needs_banding(&plan(&[M, S]).0));
+        assert!(
+            needs_banding(&plan(&[V, M, S]).0),
+            "o resto continua a pedir"
+        );
+        let fams: Vec<Family> = (0..MAX_BANDS + 3).map(|i| [M, V, S][i % 3]).collect();
+        let (b, _) = plan(&fams);
+        assert_eq!(b.last().map(|b| b.family), Some(M));
+        let mut o = FrameOrder::default();
+        o.record_motion(0, 40);
+        o.record(2, Some(9));
+        let (b, degraded) = o.plan();
+        assert!(degraded, "rank 1 e' buraco");
+        assert_eq!(
+            b.iter().map(|b| b.family).collect::<Vec<_>>(),
+            vec![S, V, M]
+        );
+    }
+
+    /// O clique (`stack_key`) acha o objecto Motion — por cima, como o presente o desenha hoje.
+    #[test]
+    fn the_stack_key_works_for_motion_objects() {
+        let mut o = FrameOrder::default();
+        o.record_motion(0, 10);
+        o.enrol(10, 0);
+        o.record(1, None);
+        o.enrol(11, 1);
+        let (b, _) = o.plan();
+        let k = |bits| o.stack_key(&b, bits).expect("na ordem");
+        assert!(k(10) > k(11), "a placa e' colada por cima do mundo");
+        assert_eq!(o.motion_ids_in(b[b.len() - 1]), vec![10]);
+        assert!(doc_bands_of(&o, true).iter().all(|b| b.family != M));
     }
 }

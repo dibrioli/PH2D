@@ -74,6 +74,21 @@ pub fn donos(
         .collect()
 }
 
+/// ⭐ GEF 19 E3: **as cópias de uma faixa Motion** da ordem total — as dos objetos `ids` (os da
+/// faixa, `FrameOrder::motion_ids_in`), pelo dono de cada cópia ([`donos`], o `fonte` na CPU). A
+/// placa colada por faixa desenha só estas; uma cópia sem dono vivo não cai em faixa nenhuma.
+#[must_use]
+pub fn copias_da_faixa(
+    motion: &crate::motion_state::MotionState,
+    placa: &PlacaDeFormas,
+    ids: &[u64],
+) -> Vec<Range<u32>> {
+    let n = placa
+        .do_dispositivo
+        .unwrap_or_else(|| u32::try_from(placa.copias.len()).unwrap_or(u32::MAX));
+    pedidas(&donos(motion, placa), ids, n)
+}
+
 /// As faixas dos objetos em `quem`, cortadas a `n` e juntas quando se tocam.
 fn pedidas(donos: &[(u64, Range<u32>)], quem: &[u64], n: u32) -> Vec<Range<u32>> {
     let mut r: Vec<Range<u32>> = donos

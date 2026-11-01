@@ -301,3 +301,71 @@ saturada), [`depois_srgb_plano.png`](fotos/e9/depois_srgb_plano.png) (cima Pigme
    bico VELHO também escreve (não a `ponta_tinta` da lei nova); e a espessura do óleo (`M_UM` calibrado no branco a
    `m = 0`; a `m = 1` o mesmo dab cobre 3,98× menos — o critério da E6a «o dab cobre o que cobria» já não vale no óleo).
 3. A grelha inteira (§3) corre pela fila (`fila-pesada.sh`, régua congelada) com este commit; o resultado entra aqui.
+
+## 8. A grelha inteira com a E10 — 01/11
+
+Binário do HEAD `4e725aff41` (E10 + lote D: Dilution/Volume/Medium/Body, camada fina presa ao matiz, Absorbency).
+`bash docs/Painter/Arquitetura/fotos/f0_varredura/corre_f0.sh` → `target/e9_0111/` (`varredura.tsv` 3 241 linhas = cabeçalho + 15 pincéis × 216, células em `celulas/`),
+8 processos, **45 min de relógio** (11:22 → 12:08; a estimativa do §3 era ~3 h). Resumo: `target/e9_0111/resumo.md` (`resumo_f0.py`; não versionado).
+
+### 8.1 Duas corridas perdidas (lição)
+
+1. Uma morreu às 09:18, 3 min depois de arrancar, sem nada nos logs; o vigia casava a **própria linha de comandos** em `pgrep -f`, por isso nunca deu pela morte.
+   Lição: vigie o **OUTPUT a crescer** (`g*.tsv`), nunca `pgrep -f` com texto que está na linha do vigia.
+2. `/tmp` é tmpfs em RAM (62 GB) e chegou a 100 % hoje com os `target` dos bisects. Grelhas e builds vão para `target/` do worktree, em `/home`.
+
+### 8.2 Placar (células que passam / total; «sem medida» não conta como passa)
+
+| papel | velha | pigmento |
+|---|---|---|
+| padrao | 0 / 810 (275 sem medida) | **437 / 810** (311 sem medida) |
+| liso | 0 / 810 (290 sem medida) | **398 / 810** (320 sem medida) |
+
+«Sem medida» = a régua de mistura (`km_p99_plano` na velha, `mix_p99_plano` na pigmento) deu NaN: nada com alfa ≥ 0,9 no miolo (tinta fina). Não reprova mas não passa
+(`resumo_f0.py`: `sem = isnan(*_p99_plano)`). Uma célula pode ser «sem medida» e reprovar por outra métrica (furos/degraus): em liso/pigmento, 320 sem medida, das quais 148 só «sem medida» e 172 também reprovam.
+A velha reprova por desenho (a régua `km_*` é a da lei velha: §5.3); o que conta é a coluna Pigmento.
+
+### 8.3 Reprovações da Pigmento (papel liso; 264 células reprovam, 148 sem medida pura, 398 passam)
+
+Por defeito × pressão (15 pincéis × 18 células por pressão = 270 por pressão). **Manchas 0 · ferrugem 0 · `mix_p99`/`mix_max` 0** em toda a grelha: só reprovam `furos` e `degraus`.
+
+| defeito | pr 0,2 | pr 0,6 | pr 1 | total |
+|---|---|---|---|---|
+| furos | **136** | 75 | 24 | 235 |
+| degraus | 10 | 21 | 12 | 43 |
+
+Por pincel (furos pr0,2 / pr0,6 / pr1 · degraus soma): Knife Dry **18/18/18** · 0 (reprova em todas — 54/54) · Dabber 17/10/0 · 2 · Filbert 15/8/1 · 3 · Flat Bristle 15/8/0 · 9 · Tilted Shade 16/9/1 · 2 ·
+Knife Oily 13/2/0 · 2 · Knife Textured 12/12/4 · 1 · Thick Impasto 12/1/0 · 5 · Filbert Dry 8/4/0 · 7 · Express Oil 8/2/0 · 1 · Metallic Flat 2/1/0 · 2 ·
+Knife Grainy 0/0/0 · 7 · Dabber 4 0/0/0 · 2 · Knife Smooth 3 e Knife Stain: **0 reprovações**.
+
+**Domina `furos` (235 de 264 células, 89 %)**, e 136 deles (58 %) a pr 0,2. O palpite «~100 % dos furos a pr 0,2» não se confirma: a pr 0,2 há 136/270 células com furos (o resto passa ou reprova só por degraus), e **75 + 24 estão a pr ≥ 0,6**. Degraus: 43, a maioria no Grainy/Flat Bristle/Filbert Dry.
+**A velha tem os mesmos furos**: pr 0,2 → 136 (idêntico), pr 0,6 → 76, pr 1 → 22. Logo os furos não vêm da lei Pigmento nem da E10: são da régua/pincel e antecedem a lei.
+Distribuição de `furos_pct` na Pigmento/liso/pr 0,2: 187 células ≥ 99 %, 24 em 50–99, 26 em 1–50, 8 em 0–1, 25 em 0.
+
+⚑ **Para o coordenador (não decidido aqui):** `furos_pct` = % de papel à vista (alfa < 0,9) no miolo do azul (F0 §1, x 100..260, y 118..142). Num toque leve a seco (pr 0,2) o dente do papel
+pode ser **física** (a tinta só pousa nas cristas) e a régua conta isso como furo, apesar de a F0 §4 já dizer «furos = 100 % a pr 0,2 não é furo: é tinta fina». O critério de `reprova()` só dispensa a célula
+se o par a pr 1 cobrir (`furos < 1 %`) — por isso o Knife Dry, que fura a todas as pressões, reprova 54/54 e o Thick Impasto a pr 0,2/Pigment 40/Water 0 (63,7 %) também. Se é defeito ou física é decisão de lei/olho do dono.
+
+### 8.4 Mosaicos (papel padrão; linhas = Pigment × Water, colunas = N × pressão; legenda M/F/K = manchas/ferrugem/`mix_p99` no render plano)
+
+Gerados por `python3 docs/Painter/Arquitetura/fotos/f0_varredura/mosaico_f0.py target/e9_0111/varredura.tsv target/e9_0111/celulas <saída>` (6 PNG, 4,1 MB).
+
+| pincel | velha | pigmento |
+|---|---|---|
+| Thick Impasto | [`grelha_e10_thick_impasto_velha.png`](fotos/e9/grelha_e10_thick_impasto_velha.png) | [`grelha_e10_thick_impasto_pigmento.png`](fotos/e9/grelha_e10_thick_impasto_pigmento.png) |
+| Dabber | [`grelha_e10_dabber_velha.png`](fotos/e9/grelha_e10_dabber_velha.png) | [`grelha_e10_dabber_pigmento.png`](fotos/e9/grelha_e10_dabber_pigmento.png) |
+| Knife Dry | [`grelha_e10_knife_dry_velha.png`](fotos/e9/grelha_e10_knife_dry_velha.png) | [`grelha_e10_knife_dry_pigmento.png`](fotos/e9/grelha_e10_knife_dry_pigmento.png) |
+
+![Thick Impasto, Pigmento](fotos/e9/grelha_e10_thick_impasto_pigmento.png)
+
+Leitura do Thick Impasto/Pigmento: azul e amarelo cobrem e misturam sem mancha nem ferrugem (M0 F0 em todas, K 129–145); a pr 0,2 a tinta é fina e translúcida
+(Pigment 40 · Water 1: `Knan`, sem medida) — é a «tinta fina» de §8.3; a pr 0,6–1 o relevo do impasto aparece e a orla azul/amarelo fecha em verde sem faixa.
+
+![Dabber, Pigmento](fotos/e9/grelha_e10_dabber_pigmento.png)
+![Knife Dry, Pigmento](fotos/e9/grelha_e10_knife_dry_pigmento.png)
+
+### 8.5 Aberto
+
+1. **Furos a pr 0,2 (⚑ régua × física):** 136 células Pigmento (e as mesmas 136 na velha). Decidir se o dente do papel num toque seco leve é defeito; se não for, a régua passa a medir furo só onde o par a pr 1 também fura E a alfa média do miolo ≥ 0,9. O Knife Dry (54/54) é o caso a olhar com o dono.
+2. **Células sem medida** (320 liso / 311 padrão na Pigmento; 172 delas também reprovam): são tinta fina (nada com alfa ≥ 0,9). Hoje não passam nem reprovam por mistura; falta uma régua de mistura que meça onde há cobertura parcial, ou declarar a classe «fina» fora do portão.
+3. **Próxima corrida depois da cura do Bingham:** repetir esta grelha (mesmo comando, 45 min, em `target/`) para ver a regressão da remolha (E10e2 §E3) e comparar célula a célula com `target/e9_0111/varredura.tsv` (guardar uma cópia fora de `target/`, que se limpa).

@@ -118,6 +118,12 @@ impl Trail {
         // O FILME do traço (`Knob::StrokeFilm`): a água da célula é a do filme — sem o 2.º gole da célula virgem (o gole
         // dependia de quanto a 1.ª janela lhe trouxe e deixava um arco de água por janela) e sem o tecto de água abaixo.
         let filme = p.k(Knob::StrokeFilm) > 0.0;
+        // O pigmento que o óleo prende pousa como a ponta seca; só o do diluente livre fica molhado (J7: pela receita do dab).
+        let q = if ponta_seca {
+            0.0
+        } else {
+            crate::meio::pasta(p.k(Knob::Medium), shed_pig, shed_water)
+        };
         if vela > 0.0 && std::mem::take(&mut self.por_assentar_pendente) {
             self.por_assentar.clear();
             self.por_assentar.extend(g.susp.iter().map(|&m| m > 0.0));
@@ -206,6 +212,7 @@ impl Trail {
                         g.sett[i] = if ns < 0.0 { 0.0 } else { ns as f32 };
                     }
                 } else {
+                    let (v, ponta) = deposito_tinta::pousa_pasta(g, i, v, q, ponta, p, &mut out);
                     let in_a = alpha_of_mass(v);
                     if dissolve > 0.0 {
                         remolha::remolha(

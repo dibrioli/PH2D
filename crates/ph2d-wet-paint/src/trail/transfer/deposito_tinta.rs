@@ -228,6 +228,26 @@ pub(super) fn pousa_seco(
     g.sett[i] = (old + v) as f32;
 }
 
+/// A fracção `q` do dab que o óleo prende ([`crate::meio::pasta`]) pousa como a ponta seca; devolve o resto, molhado,
+/// e a sua cor: a pasta mexe-se com a tinta de baixo e o líquido livre leva a mistura na fracção `q` (J7).
+pub(super) fn pousa_pasta(
+    g: &mut Grid,
+    i: usize,
+    v: f64,
+    q: f64,
+    tip: [f32; 3],
+    p: &crate::sim::Params,
+    out: &mut [f64; 3],
+) -> (f64, [f32; 3]) {
+    if q <= 0.0 {
+        return (v, tip);
+    }
+    pousa_seco(g, i, v * q, tip, p, out);
+    let (t, s) = (tip.map(f64::from), g.sett_rgb[i].map(f64::from));
+    p.mix.mix(t[0], t[1], t[2], s[0], s[1], s[2], q, out);
+    (v * (1.0 - q), out.map(|c| c as f32))
+}
+
 #[cfg(test)]
 #[path = "deposito_tinta_tests.rs"]
 mod tests;

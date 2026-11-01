@@ -269,3 +269,56 @@ fn a_sessao_nova_herda_a_lei_da_tinta() {
     traco(&mut t, [50.0, 50.0], [80.0, 50.0], 1.0, 0); // o traço cria a sessão nova
     assert_eq!(t.wet_lei_da_tinta(), Some(LeiDaTinta::Velha));
 }
+
+/// J7 (`docs/Painter/Arquitetura/J7_pasta_do_oleo.md`): o óleo pouco acima da pasta (P600 × Water 0,5, Dilution ≈ 0,127)
+/// cruza o amarelo sobre o azul em VERDE, como o óleo do tubo — o pigmento que o óleo prende pousa como pasta e o
+/// líquido livre leva a mistura. Antes da cura: bege (o filme molhado tapava), ferrugem 3,48 e 21 degraus no Filbert Dry.
+#[test]
+fn o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde() {
+    let b = Biblioteca::carregar(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
+        None,
+    );
+    let cena = Cena {
+        lei: LeiDaTinta::Velha,
+        fundo: Papel::Padrao,
+        ..Cena::default()
+    };
+    let mut falhas = vec![];
+    for (pincel, pr) in [
+        ("Oil/Flat/Flat Bristle", 0.2),
+        ("Oil/Flat/Tilted Shade", 0.2),
+        ("Oil/Flat/Filbert", 0.2),
+        ("Oil/Flat/Filbert Dry", 0.6),
+    ] {
+        let mut t = pinta(&b, pincel, 600.0, 0.5, pr, 1, 300, cena, &mut |_| {});
+        t.wet_recomposite_full();
+        let mut m = [0.0f64; 3];
+        let mut n = 0.0;
+        for y in 132..148 {
+            for x in 100..260 {
+                let px = &t.canvas_rgba[(x + y * W as usize) * 4..][..3];
+                for k in 0..3 {
+                    m[k] += f64::from(px[k]);
+                }
+                n += 1.0;
+            }
+        }
+        let m = m.map(|c| c / n);
+        let c = celula(&b, pincel, 600.0, 0.5, pr, 1, 300, cena, None);
+        println!(
+            "[J7] {pincel} pr{pr}: cruzamento {m:.1?} ferrugem {:.2} degraus {}",
+            c.plano.ferrugem, c.plano.degraus_y
+        );
+        if m[1] <= m[0] || c.plano.ferrugem > 0.0 || c.plano.degraus_y > 10 {
+            falhas.push(format!(
+                "{pincel}: {m:.0?} ferrugem {:.2} degraus {}",
+                c.plano.ferrugem, c.plano.degraus_y
+            ));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "o cruzamento tapa em vez de misturar: {falhas:?}"
+    );
+}

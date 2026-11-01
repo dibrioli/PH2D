@@ -42,7 +42,20 @@ pub fn liquido_livre(phi: f64, m: f64) -> f64 {
     if m <= 0.0 {
         return 1.0 - phi;
     }
-    ((1.0 - phi) - m.min(1.0) * LIGADO_NO_OLEO * phi).max(0.0)
+    // `1 − φ·(1 + m·L)`: no limiar do óleo puro dá 0 exacto (a forma `(1−φ) − m·L·φ` deixava 1e−16).
+    (1.0 - phi * (1.0 + m.min(1.0) * LIGADO_NO_OLEO)).max(0.0)
+}
+
+/// A fracção do pigmento `v` de um dab que pousa como PASTA (já assente, J7): a que o líquido LIGADO (`m·L·v ÷ K_W`)
+/// segura contra o livre que chega (`agua`). Contínua no limiar da pasta (sem livre ⇒ `1`, a ponta seca); `m = 0` ⇒ `0`.
+#[inline]
+#[must_use]
+pub fn pasta(m: f64, v: f64, agua: f64) -> f64 {
+    if m <= 0.0 || v <= 0.0 {
+        return 0.0;
+    }
+    let ligado = m.min(1.0) * LIGADO_NO_OLEO * v / crate::painter::receita::K_W;
+    ligado / (ligado + agua.max(0.0))
 }
 
 /// `η_água ÷ η(m)`: o factor do incremento de velocidade da célula.

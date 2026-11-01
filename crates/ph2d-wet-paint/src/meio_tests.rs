@@ -34,6 +34,27 @@ fn a_aguada_sobre_o_oleo_seco_e_agua_e_o_oleo_grosso_no_papel_limpo_e_oleo() {
 }
 
 #[test]
+fn a_pasta_do_dab_e_continua_no_limiar_e_nula_na_agua() {
+    // Água: nada é pasta, ao bit.
+    assert_eq!(pasta(0.0, 600.0, 0.3).to_bits(), 0f64.to_bits());
+    // Sem líquido livre (o tubo): tudo é pasta — o ramo da ponta seca.
+    assert_eq!(pasta(1.0, 600.0, 0.0), 1.0);
+    // Dilution 0,127 (J7, P600 × W0,5): ~76 % prende-se; Dilution 0,9: ~1 %.
+    let dab = |d: f64| {
+        let phi = 1.0 - d;
+        pasta(
+            1.0,
+            phi,
+            liquido_livre(phi, 1.0) / crate::painter::receita::K_W,
+        )
+    };
+    assert!((dab(0.127) - 0.764).abs() < 0.01, "{}", dab(0.127));
+    assert!(dab(0.9) < 0.015, "{}", dab(0.9));
+    // Contínua: logo acima da pasta quase tudo continua pasta.
+    assert!(dab(0.1001) > 0.99);
+}
+
+#[test]
 fn o_oleo_do_tubo_e_pasta_e_so_o_diluente_a_mais_corre() {
     assert_eq!(liquido_livre(0.4, 0.0).to_bits(), (1.0f64 - 0.4).to_bits());
     assert_eq!(

@@ -250,3 +250,54 @@ igual antes e depois: é a orla saturada da §5.6 item 2, não a lei).
   repõe) ou correr a secagem até `film = 0`; (3) para separar as manchas, gravar em `le_azul` o par (luminância, `film > 0`)
   por píxel e contar as manchas só nas molhadas, só nas secas e na fronteira. Sem isto, nenhuma célula de aquarela passa
   o `mix_p99 ≤ 8` molhada — por desenho da lei.
+
+## 7. Fecho da E9 (janela 3, 31/10): o meio nas somas, o ecrã em sRGB, a régua seca e por cobertura física
+
+Commits `8d6ec43322`, `cc8a222a43`. Célula Thick Impasto + Wet Round, P600/W0,5/pr1/N3, dois papéis (sonda
+`PH2D_SONDA_*` como §6.1, 60–70 s cada corrida).
+
+### 7.1 O que mudou (ficheiro → lei)
+
+| onde | antes | agora | porquê |
+|---|---|---|---|
+| `ph2d-paint-tinta/src/soma.rs` `Soma::m` | o meio era um `f32` da CÉLULA (`CelulaTinta::m`, sempre 0) | `Σ v·m` na soma (`com_meio`, `meio()`, `escala`); `transfere` move-o pela mesma fracção | o meio é extensivo como a cor: viaja em toda transferência (advecção, Jacobi `combina`, pick-up, Smear/Blend, arrasto) sem um `match` por rota. `CelulaTinta` 76 → **72 B** |
+| `wp/grid/tinta.rs` `CelulaTinta::meio()` | `c.m` | média pelo volume de filme ⊕ aberto; o fecho e a abertura lêem `aberto.meio()` | |
+| `wp/trail/transfer/deposito_tinta.rs` `Pigmento::meio` | `m = 0` | o pincel pousa `soma_da_massa(cor, t, meio, massa)` com `meio = Params::oleo` (o Real Oil) | o mínimo da E10: o Real Oil liga-se exactamente nos 15 `Oil/*` de fábrica e em nenhum outro (`ExpressOil` fica 0 — aberto para a E10). `migra` lê o Real Oil da célula |
+| `ph2d-paint-tinta/src/transfere.rs` `decompoe` | `cor = 1 − (1 − R_w)/α` em luz LINEAR | a mesma conta sobre `e = sRGB(R_w)` (`R ≥ 1` → `1` exacto) | **a tela compõe nos valores sRGB codificados** (`render.rs` `pr·(1−la) + cr·la` em `0..255`): a decomposição linear só é exacta num compositor linear. Medido: azul `40,90,220` a `α ≈ 0,98` saía `5,84,225` (o vermelho `0,98·sRGB(0,001) + 0,02·255 ≈ 5` em vez de `40`) |
+| sonda `render_plano` | tira relevo, altura, óleo | + `film ← 0` (seco, só para a régua) e devolve a cobertura FÍSICA por píxel (`grid::tinta::cobertura`, a da `pilha`) | §6.2 (a cor escolhida é o masstone seco); o `α` do píxel é o da decomposição — um amarelo bloqueia 90 % do azul e passa `α ≥ 0,9` numa película de 1 nm |
+| sonda `le_tudo`/`le_azul` | «coberto» = `α ≥ 0,9` do píxel | na `Pigmento`, a cobertura física `≥ 0,9`; a MISTURA (`mix_*`) só com `C ≥ 0,99` (`COBRE_A_MISTURA`); a película `[0,9, 0,99)` vai à coluna nova `orla_p99_plano` | `mix_*` mede a lei de MISTURA (Oklab); a camada fina é outra lei (§7.3). A Velha não muda (lê o `α`, que lá É a cobertura) |
+| `sonda_varredura_regua.rs` | — | a régua partida de `sonda_varredura_oleo.rs` (723 → 428 + 303 linhas) | tecto de LOC |
+
+### 7.2 A célula, passo a passo (plano, papel padrão; liso igual a ±0,4)
+
+| passo | Thick Impasto Pigmento: manchas_azul · mix_p99/max | Wet Round Pigmento: manchas_azul · mix_p99/max |
+|---|---|---|
+| §6.1 (m = 0, régua molhada) | 9,18 · 51,1/157,2 | 16,15 · 84,6/111,2 |
+| + meio nas somas (m = 1) + régua seca | **28,88** · 56,8/157,2 | 17,25 · 84,6/111,2 |
+| + ecrã em sRGB | **0,00** · 26,6/154,5 | **0,00** · 45,0/49,6 |
+| + «coberto» pela cobertura física | 0,00 · 24,9/38,6 | 0,00 · 20,8/30,7 |
+| + mistura só com `C ≥ 0,99` (orla à parte) | 0,00 · **9,5/13,9** (orla p99 31,4) | 0,00 · **3,0/3,4** → **PASSA** (orla p99 25,3) |
+
+Velha: igual ao §6.1 ao bit (Thick Impasto 28,4/41,5 · 9/0). Ferrugem 0, furos 0, degraus ≤ 1 na Pigmento em todas.
+`portao_mae_f0_lei_pigmento_minimo`: só o Thick Impasto reprova (`mix_p99 9,5 > 8`).
+
+O m = 1 piorou as manchas porque o óleo espalha `s(0, seco)/s(1) = 3,98×` menos: a camada não chegava ao masstone e
+a decomposição linear escurecia o que ficava a `α < 1` — o mecanismo era o compositor, não o meio. Fotos:
+[`antes_srgb_plano.png`](fotos/e9/antes_srgb_plano.png) (cima Pigmento, baixo Velha),
+[`azul_sozinho_antes_srgb.png`](fotos/e9/azul_sozinho_antes_srgb.png) (o azul antes do amarelo: a Pigmento com a orla
+saturada), [`depois_srgb_plano.png`](fotos/e9/depois_srgb_plano.png) (cima Pigmento óleo | aquarela, baixo Velha).
+
+### 7.3 Aberto (medido, sem cura nesta etapa)
+
+1. **A camada FINA muda de matiz** (`orla_p99` 25–31): o 𝒦 por banda vem do masstone com `𝒮` uniforme, e uma banda
+   escura (`R∞` vermelho do azul `0,021` ⇒ `q = 22,8`; o verde `4,05`) fecha numa película que as outras ainda deixam
+   passar — a borda do azul sai ciano (`5,247,254`), a do amarelo limão (`253,249,20`). É a física das 3 bandas
+   (a mesma família recusada para a MISTURA, F4_1 §4), agora na CAMADA sobre branco. Foto:
+   [`borda_fina.png`](fotos/e9/borda_fina.png). Decisão de lei (olho do dono): manter, ou prender o matiz da camada
+   fina à cor escolhida (o vidrado sobre fundo curado continua por banda: amarelo sobre azul curado = verde).
+2. **Thick Impasto `mix_p99 9,5`**: píxeis cobertos (`C ≥ 0,99`) `31,89,225` contra `40,90,220` — a cor DA CÉLULA já
+   vem `36,90,223` (Oklab `0,518/−0,023/−0,210` contra `0,517/−0,021/−0,205`) e a banda azul ainda não chegou ao
+   masstone (3,6 µm de óleo, `𝒮 = 7,2`). Duas suspeitas por medir: a cor que o depósito pousa é o `tip_*` sRGB que o
+   bico VELHO também escreve (não a `ponta_tinta` da lei nova); e a espessura do óleo (`M_UM` calibrado no branco a
+   `m = 0`; a `m = 1` o mesmo dab cobre 3,98× menos — o critério da E6a «o dab cobre o que cobria» já não vale no óleo).
+3. A grelha inteira (§3) corre pela fila (`fila-pesada.sh`, régua congelada) com este commit; o resultado entra aqui.

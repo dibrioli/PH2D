@@ -23,9 +23,9 @@ impl Corpo<'_> {
                 .register_with_secondary(ids::palette_id(i), r, ids::palette_bg_id(i));
             bottom = r.y + r.h;
         }
-        let slots = self
-            .paleta_prevista(info, celula, cols)
-            .unwrap_or_else(|| (0..info.palette.len()).map(Some).collect());
+        let prevista = self.paleta_prevista(info, celula, cols);
+        let arrasto = prevista.is_some();
+        let slots = prevista.unwrap_or_else(|| (0..info.palette.len()).map(Some).collect());
         for (j, slot) in slots.iter().enumerate() {
             let r = celula(j);
             bottom = bottom.max(r.y + r.h);
@@ -55,6 +55,12 @@ impl Corpo<'_> {
                 stroke_rect(self.scene, r, StrokeToken::Thick.px(), anel);
             }
         }
+        // A queda vê-se: a barra do acento logo à esquerda da primeira célula do vão.
+        self.paleta_vista.marca = slots
+            .iter()
+            .position(Option::is_none)
+            .filter(|_| arrasto)
+            .map(|j| self.marca_da_queda(celula(j)));
         self.paleta_vista.pintada = slots;
         bottom
     }

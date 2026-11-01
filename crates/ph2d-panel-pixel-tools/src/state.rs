@@ -20,6 +20,8 @@ pub(crate) struct PaletaVista {
     /// Célula `j` → a amostra que lá se pintou; `None` = o vão onde o bloco cai.
     pub(crate) pintada: Vec<Option<usize>>,
     pub(crate) voo: Option<VooPaleta>,
+    /// A barra que marca onde o bloco cai (à esquerda da primeira célula do vão).
+    pub(crate) marca: Option<Rect>,
 }
 
 /// O bloco de amostras agarrado: a caixa (antes da inclinação), as cores e quantas por linha.
@@ -43,6 +45,13 @@ impl PixelToolsPanelState {
     #[must_use]
     pub fn palette_flight(&self) -> Option<Rect> {
         self.paleta.voo.as_ref().map(|v| v.caixa)
+    }
+
+    /// A barra que marca onde o bloco de amostras cai, se há arrasto — para os gates.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn palette_drop_marker(&self) -> Option<Rect> {
+        self.paleta.marca
     }
 
     /// Os parâmetros do seletor de cor — de onde o anel se desenha (para os gates).

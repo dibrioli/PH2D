@@ -123,10 +123,15 @@ fn mid_drag_the_palette_paints_the_order_where_the_swatch_will_land() {
     let identidade: Vec<Option<usize>> = (0..32).map(Some).collect();
     assert_eq!(p.st.palette_painted(), identidade.as_slice());
     assert!(p.st.palette_flight().is_none(), "sem arrasto nada voa");
+    assert!(
+        p.st.palette_drop_marker().is_none(),
+        "sem arrasto não há marca"
+    );
 
     let a = p.arrasta_ate(9, 12);
     assert!(a.is_empty(), "a meio do arrasto nada se pede: {a:?}");
     assert_eq!(p.st.palette_painted(), movido(&[9], 12).as_slice());
+    marca_a_esquerda_do_vao(&p);
     let voo = p.st.palette_flight().expect("a amostra voa");
     let (cx, cy) = p.meio(12);
     assert!(
@@ -143,6 +148,37 @@ fn mid_drag_the_palette_paints_the_order_where_the_swatch_will_land() {
     );
     p.pinta();
     assert!(p.st.palette_flight().is_none(), "largado, nada voa");
+    assert!(
+        p.st.palette_drop_marker().is_none(),
+        "largado, a marca some"
+    );
+}
+
+/// A barra da queda fica no intervalo logo à esquerda da PRIMEIRA célula do vão, vertical e da
+/// altura dela (o pedido do dono no smoke de 01/11).
+fn marca_a_esquerda_do_vao(p: &Palco) {
+    let j =
+        p.st.palette_painted()
+            .iter()
+            .position(Option::is_none)
+            .expect("há vão");
+    let id = ids::palette_id(j);
+    let c = p
+        .rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .map(|(_, r)| *r)
+        .expect("célula");
+    let m = p.st.palette_drop_marker().expect("a queda tem marca");
+    assert!(m.h > m.w, "a marca é vertical: {m:?}");
+    assert!(
+        m.x + m.w <= c.x + 0.5 && m.x + m.w >= c.x - c.w * 0.5,
+        "logo à esquerda de {c:?}: {m:?}"
+    );
+    assert!(
+        m.y <= c.y && m.y + m.h >= c.y + c.h,
+        "cobre a altura da célula: {m:?} × {c:?}"
+    );
 }
 
 #[test]
@@ -150,6 +186,7 @@ fn mid_drag_a_selected_swatch_carries_the_whole_block() {
     let mut p = Palco::novo();
     assert!(p.arrasta_ate(3, 10).is_empty());
     assert_eq!(p.st.palette_painted(), movido(&[3, 4], 10).as_slice());
+    marca_a_esquerda_do_vao(&p);
     assert_eq!(
         p.larga_em(10),
         [EditorAction::Pixel(PixelRequest::DragSwatch {
@@ -172,6 +209,7 @@ fn mid_drag_with_ctrl_the_palette_opens_the_gap_of_the_inserted_copy() {
     }
     assert_eq!(quer[12], None, "o vão da cópia fica na célula do alvo");
     assert_eq!(p.st.palette_painted(), quer.as_slice());
+    marca_a_esquerda_do_vao(&p);
     assert_eq!(
         p.larga_em(12),
         [EditorAction::Pixel(PixelRequest::DragSwatch {
@@ -203,6 +241,7 @@ fn escape_mid_drag_cancels_without_a_request() {
         "Esc volta à ordem de agora"
     );
     assert!(p.st.palette_flight().is_none(), "Esc: nada voa");
+    assert!(p.st.palette_drop_marker().is_none(), "Esc: a marca some");
     let a = p.larga_em(12);
     assert!(a.is_empty(), "o Up depois do Esc não pede nada: {a:?}");
 }

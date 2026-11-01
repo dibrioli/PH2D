@@ -117,6 +117,21 @@ impl Corpo<'_> {
         Some(slots)
     }
 
+    /// A marca da queda: uma barra vertical do acento no intervalo à esquerda da célula `r` (a
+    /// primeira do vão), um pouco mais alta que ela.
+    pub(super) fn marca_da_queda(&mut self, r: Rect) -> Rect {
+        let gap = Spacing::Xxs.px();
+        let w = StrokeToken::Heavy.px();
+        let m = Rect::new(r.x - (gap + w) * 0.5, r.y - gap, w, r.h + gap * 2.0);
+        fill_rounded_rect(
+            self.scene,
+            m,
+            w * 0.5,
+            resolve(ColorToken::Accent, self.theme),
+        );
+        m
+    }
+
     /// O vão: a célula onde o bloco vai cair, vazia.
     pub(super) fn vao(&mut self, r: Rect) {
         let radius = frame_radius(self.theme, Radius::Sm.px());

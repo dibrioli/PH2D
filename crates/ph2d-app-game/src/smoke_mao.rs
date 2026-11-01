@@ -26,6 +26,11 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 #[must_use]
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
+        // Um vaivém de 0,2 m sobre o «Face», onde o «Swarm» cai (`ordem_smoke::pose`), um passo por quadro.
+        Foto::OrdemSonda => {
+            let k = quadro.checked_sub(INICIO)?;
+            return Some(Mao::Move([2.4 + if k % 2 == 0 { 0.0 } else { 0.2 }, 1.6]));
+        }
         // Por dentro da moldura (sobre o céu): 6 m para a direita — o offset do `follow` anda.
         Foto::CameraArrasta | Foto::CameraOlharArrasta | Foto::CameraChave => {
             ([-3.0, 4.0], [3.0, 4.0])

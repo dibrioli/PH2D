@@ -82,6 +82,10 @@ impl<'a> Quadro<'a> {
             trace: Some(&st.strip.trace),
         });
         let preview = st.preview_do_quadro.as_ref().filter(|_| !self.na_vista);
+        let (t, span) = (
+            std::time::Instant::now(),
+            ph2d_gpu::pass_profiler::span_begin(&self.gpu.device, &self.gpu.queue, "flip.faixa"),
+        );
         crate::pass::render(
             self.flip,
             self.flip_render,
@@ -100,6 +104,11 @@ impl<'a> Quadro<'a> {
             self.scene_viewport,
             self.gpu,
         );
+        if let Some(span) = span {
+            ph2d_gpu::pass_profiler::span_end(&self.gpu.device, &self.gpu.queue, span);
+        }
+        let ns = u64::try_from(t.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        ph2d_gpu::sonda::nota_cpu("flip.faixa", ns);
     }
 
     /// Os objectos de uma faixa: os ids que a ordem total registou (`FrameOrder::flip_ids_in`).

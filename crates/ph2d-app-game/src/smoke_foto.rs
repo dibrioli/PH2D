@@ -56,6 +56,9 @@ pub enum Foto {
     CameraSegue,
     /// A6: «Preview: Off» — a câmera selecionada sem a miniatura no canto (a `camera` mostra-a ligada).
     CameraSemPrevia,
+    /// GEF 19: o ponteiro pousado sobre o «Swarm» da cena da ordem (`PH2D_ORDEM_SMOKE=1`), a mexer a cada quadro —
+    /// o realce lê o Motion em todos; com `PH2D_SONDA` é a mão da medida intercalada.
+    OrdemSonda,
 }
 
 #[must_use]
@@ -94,6 +97,7 @@ pub fn foto() -> Option<Foto> {
         "camera_fora" => Some(Foto::CameraFora),
         "camera_segue" => Some(Foto::CameraSegue),
         "camera_sem_previa" => Some(Foto::CameraSemPrevia),
+        "ordem_sonda" => Some(Foto::OrdemSonda),
         _ => None,
     }
 }
@@ -250,6 +254,8 @@ pub fn plano_da_foto(
         return Some(plano);
     }
     match foto {
+        // A mão da sonda é da cena da ordem, não do nível do jogo.
+        Foto::OrdemSonda => return None,
         Foto::Seletor => plano.alvo = hills,
         Foto::Trocado => {
             plano.escolhas = vec![(hills, *montes), (player, *heroi)];

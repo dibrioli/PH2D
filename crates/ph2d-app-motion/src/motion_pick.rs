@@ -75,11 +75,18 @@ pub fn donos_em(
         return Vec::new();
     }
     let copias = cache.lidas.get_or_insert_with(|| {
-        if motion.gpu_live {
+        // A sonda (`PH2D_SONDA`, bit 1) mede a leitura da placa contra a junta da CPU no mesmo processo.
+        let na_cpu = ph2d_gpu::sonda::variante().is_some_and(|v| v & 2 == 2);
+        let t = std::time::Instant::now();
+        let placa = motion.gpu_live && !na_cpu;
+        let lidas = if placa {
             do_dispositivo(motion, gpu)
         } else {
             da_cpu(motion)
-        }
+        };
+        let ns = u64::try_from(t.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        ph2d_gpu::sonda::nota_cpu(if placa { "realce.placa" } else { "realce.cpu" }, ns);
+        lidas
     });
     acertos(copias, mundo, |h| {
         motion

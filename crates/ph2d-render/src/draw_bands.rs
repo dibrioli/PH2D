@@ -335,62 +335,69 @@ impl FrameOrder {
 
     /// As faixas desta ordem, já com o teto aplicado — `(faixas, degradou?)`.
     pub fn plan(&self) -> (Vec<Band>, bool) {
+        // A sonda (`PH2D_SONDA`, bit 0) mede a ordem total contra a da Fase 1 no mesmo processo.
+        if ph2d_gpu::sonda::variante().is_some_and(|v| v & 1 == 1) {
+            return (self.fase_um(), false);
+        }
         match self.complete() {
             Some(fams) if self.motion_na_placa => plan(&fams),
             Some(fams) => teto(motion_por_cima(bands(&fams), fams.len() as u32), &fams),
             // ⛔ Buraco: a ordem não é confiável ⇒ a ordem da Fase 1, inteira, e `degradou = true`.
-            None => {
-                let n = self.families.len() as u32;
-                let mut out = Vec::new();
-                if self
-                    .families
-                    .iter()
-                    .any(|f| f.is_none_or(|f| f == Family::Sprite))
-                {
-                    out.push(Band {
-                        family: Family::Sprite,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                if !self.flip_ranks.is_empty() {
-                    out.push(Band {
-                        family: Family::Flip,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                if self.has_vectors() {
-                    out.push(Band {
-                        family: Family::Vector,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                if !self.pixel_ranks.is_empty() {
-                    out.push(Band {
-                        family: Family::Pixel,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                if !self.motion_ranks.is_empty() {
-                    out.push(Band {
-                        family: Family::Motion,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                if !self.palco_ranks.is_empty() {
-                    out.push(Band {
-                        family: Family::Palco,
-                        lo: 0,
-                        hi: n,
-                    });
-                }
-                (out, true)
-            }
+            None => (self.fase_um(), true),
         }
+    }
+
+    /// A ordem da Fase 1: uma faixa por família, cada uma sobre a ordem inteira.
+    fn fase_um(&self) -> Vec<Band> {
+        let n = self.families.len() as u32;
+        let mut out = Vec::new();
+        if self
+            .families
+            .iter()
+            .any(|f| f.is_none_or(|f| f == Family::Sprite))
+        {
+            out.push(Band {
+                family: Family::Sprite,
+                lo: 0,
+                hi: n,
+            });
+        }
+        if !self.flip_ranks.is_empty() {
+            out.push(Band {
+                family: Family::Flip,
+                lo: 0,
+                hi: n,
+            });
+        }
+        if self.has_vectors() {
+            out.push(Band {
+                family: Family::Vector,
+                lo: 0,
+                hi: n,
+            });
+        }
+        if !self.pixel_ranks.is_empty() {
+            out.push(Band {
+                family: Family::Pixel,
+                lo: 0,
+                hi: n,
+            });
+        }
+        if !self.motion_ranks.is_empty() {
+            out.push(Band {
+                family: Family::Motion,
+                lo: 0,
+                hi: n,
+            });
+        }
+        if !self.palco_ranks.is_empty() {
+            out.push(Band {
+                family: Family::Palco,
+                lo: 0,
+                hi: n,
+            });
+        }
+        out
     }
 
     /// Os ids das formas vetoriais que caem nesta faixa.

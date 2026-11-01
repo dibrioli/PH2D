@@ -412,8 +412,13 @@ pub fn drain(device: &wgpu::Device) -> Option<Totals> {
 /// (async map, no blocking poll), drain any COMPLETED prior slot into the
 /// accumulator, and print the per-label table every [`WINDOW`] sampled
 /// frames. Call once per frame from the shell, after the last instrumented
-/// submit. No-op when off.
+/// submit. No-op when off. Then the in-app probe ([`crate::sonda`]) closes its frame.
 pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
+    end_frame_profiler(device, queue);
+    crate::sonda::depois_do_quadro(device);
+}
+
+fn end_frame_profiler(device: &wgpu::Device, queue: &wgpu::Queue) {
     let Some(prof) = prof() else { return };
     let Ok(mut inner) = prof.inner.lock() else {
         return;

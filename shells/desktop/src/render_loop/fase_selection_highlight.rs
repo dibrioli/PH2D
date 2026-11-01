@@ -29,6 +29,7 @@ impl crate::App {
             text_system,
             hero_screen,
             miniatura,
+            frame_order,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -103,7 +104,9 @@ impl crate::App {
             // ⭐ Os Pixel Sprites (ADR-0196) — antes das marcas, para elas ficarem por cima.
             let window = crate::scene_mapping::janela(hero.view.center_split, surface.size());
             let cena = (&mut *vector_scene, &mut *paint_ctx.text);
-            self.pixel.draw_of(sim.world(), camera, window, hero, cena);
+            let ids = frame_order.pixel_ids();
+            self.pixel
+                .draw_of(sim.world(), camera, window, hero, &ids, cena);
             anchor_overlay::draw_anchor_marks(
                 !hero
                     .store

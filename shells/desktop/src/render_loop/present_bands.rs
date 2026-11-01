@@ -135,7 +135,7 @@ pub(super) fn draw_lower_bands(
                     ph2d_render::BandSource::Sprites,
                 );
             }
-            ph2d_render::draw_bands::Family::Vector => {
+            ph2d_render::draw_bands::Family::Vector | ph2d_render::draw_bands::Family::Pixel => {
                 if let Some(scene) = g.band_doc_scenes.get(doc_i) {
                     if let Err(e) = g.vello_pass.render_to_intermediate(
                         gpu,
@@ -185,10 +185,10 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         .bands
         .iter()
         .take(from)
-        .filter(|b| b.family == ph2d_render::draw_bands::Family::Vector)
+        .filter(|b| b.family.is_scene())
         .count();
     for band in plan.bands.iter().skip(from) {
-        if band.family != ph2d_render::draw_bands::Family::Vector {
+        if !band.family.is_scene() {
             continue;
         }
         if let Some(scene) = g.band_doc_scenes.get(doc_i) {

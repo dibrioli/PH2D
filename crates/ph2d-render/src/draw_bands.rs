@@ -33,6 +33,26 @@ pub enum Family {
     Sprite,
     /// Rasterizado pelo Vello, no espaço do desenhista.
     Vector,
+    /// Um Pixel Sprite (GEF 19 E2): Vello como o vetor, mas desenhado pela família Pixel — faixa
+    /// própria, para intercalar com as formas por rank dentro do que seria uma faixa de vetor.
+    Pixel,
+}
+
+impl Family {
+    /// A faixa é uma cena Vello (`band_doc_scenes`) — tudo menos o sprite.
+    #[must_use]
+    pub fn is_scene(self) -> bool {
+        !matches!(self, Family::Sprite)
+    }
+
+    /// A posição da família na ordem de sempre (degradada): sprites, vetor, pixel.
+    fn old_stack(self) -> u8 {
+        match self {
+            Family::Sprite => 0,
+            Family::Vector => 1,
+            Family::Pixel => 2,
+        }
+    }
 }
 
 /// Uma corrida contígua de ranks da mesma família — **uma passagem de desenho**.
@@ -90,22 +110,15 @@ pub fn bands(families: &[Family]) -> Vec<Band> {
 /// um laço próprio é o que diverge.*
 pub fn collapsed(families: &[Family]) -> Vec<Band> {
     let n = families.len() as u32;
-    let mut out = Vec::new();
-    if families.contains(&Family::Sprite) {
-        out.push(Band {
-            family: Family::Sprite,
+    [Family::Sprite, Family::Vector, Family::Pixel]
+        .into_iter()
+        .filter(|f| families.contains(f))
+        .map(|family| Band {
+            family,
             lo: 0,
             hi: n,
-        });
-    }
-    if families.contains(&Family::Vector) {
-        out.push(Band {
-            family: Family::Vector,
-            lo: 0,
-            hi: n,
-        });
-    }
-    out
+        })
+        .collect()
 }
 
 /// A lei inteira: as faixas desta ordem, já com o teto aplicado.
@@ -143,6 +156,8 @@ pub struct FrameOrder {
     /// a contagem de formas de um documento é de dezenas. *Um `BTreeMap` aqui seria uma alocação
     /// por quadro para uma busca que a varredura linear ganha.*
     pub vector_ranks: Vec<(u64, u32)>,
+    /// `(bits da entidade, rank)` de cada Pixel Sprite que entrou na ordem (GEF 19 E2).
+    pub pixel_ranks: Vec<(u64, u32)>,
     /// `(bits da entidade, rank)` de todo objecto que entrou na ordem — o que o CLIQUE pergunta
     /// ([`Self::stack_key`]).
     pub entity_ranks: Vec<(u64, u32)>,
@@ -153,6 +168,7 @@ impl FrameOrder {
     pub fn clear(&mut self) {
         self.families.clear();
         self.vector_ranks.clear();
+        self.pixel_ranks.clear();
         self.entity_ranks.clear();
     }
 
@@ -178,18 +194,29 @@ impl FrameOrder {
     /// ⚠️ **Os ranks chegam FORA DE ORDEM** (o ordenador devolve por entidade, não por rank), então
     /// o vector de famílias cresce por índice e não por `push`.
     pub fn record(&mut self, rank: u32, path: Option<u64>) {
+        let fam = if path.is_some() {
+            Family::Vector
+        } else {
+            Family::Sprite
+        };
+        self.put(rank, fam);
+        if let Some(id) = path {
+            self.vector_ranks.push((id, rank));
+        }
+    }
+
+    /// Regista que o Pixel Sprite `bits` ocupa o `rank`.
+    pub fn record_pixel(&mut self, rank: u32, bits: u64) {
+        self.put(rank, Family::Pixel);
+        self.pixel_ranks.push((bits, rank));
+    }
+
+    fn put(&mut self, rank: u32, fam: Family) {
         let i = rank as usize;
         if self.families.len() <= i {
             self.families.resize(i + 1, None);
         }
-        self.families[i] = Some(if path.is_some() {
-            Family::Vector
-        } else {
-            Family::Sprite
-        });
-        if let Some(id) = path {
-            self.vector_ranks.push((id, rank));
-        }
+        self.families[i] = Some(fam);
     }
 
     /// A ordem sem buracos, ou `None` se algum rank não foi registado.
@@ -210,7 +237,11 @@ impl FrameOrder {
             None => {
                 let n = self.families.len() as u32;
                 let mut out = Vec::new();
-                if self.families.iter().any(|f| *f != Some(Family::Vector)) {
+                if self
+                    .families
+                    .iter()
+                    .any(|f| f.is_none_or(|f| f == Family::Sprite))
+                {
                     out.push(Band {
                         family: Family::Sprite,
                         lo: 0,
@@ -220,6 +251,13 @@ impl FrameOrder {
                 if self.has_vectors() {
                     out.push(Band {
                         family: Family::Vector,
+                        lo: 0,
+                        hi: n,
+                    });
+                }
+                if !self.pixel_ranks.is_empty() {
+                    out.push(Band {
+                        family: Family::Pixel,
                         lo: 0,
                         hi: n,
                     });
@@ -236,6 +274,27 @@ impl FrameOrder {
             .filter(|(_, r)| *r >= band.lo && *r < band.hi)
             .map(|(id, _)| *id)
             .collect()
+    }
+
+    /// Os Pixel Sprites desta faixa, do de trás para o da frente (rank crescente).
+    pub fn pixel_ids_in(&self, band: Band) -> Vec<u64> {
+        let mut v: Vec<(u32, u64)> = self
+            .pixel_ranks
+            .iter()
+            .filter(|(_, r)| *r >= band.lo && *r < band.hi)
+            .map(|(b, r)| (*r, *b))
+            .collect();
+        v.sort_unstable();
+        v.into_iter().map(|(_, b)| b).collect()
+    }
+
+    /// Todos os Pixel Sprites da ordem, do de trás para o da frente.
+    pub fn pixel_ids(&self) -> Vec<u64> {
+        self.pixel_ids_in(Band {
+            family: Family::Pixel,
+            lo: 0,
+            hi: u32::MAX,
+        })
     }
 
     /// A cena tem alguma forma vetorial? `false` ⇒ o presente toma o caminho de sempre.
@@ -258,10 +317,7 @@ pub fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
     if !forcar && !needs_banding(&bands) {
         return Vec::new();
     }
-    bands
-        .into_iter()
-        .filter(|b| b.family == Family::Vector)
-        .collect()
+    bands.into_iter().filter(|b| b.family.is_scene()).collect()
 }
 
 /// O plano precisa do laço de faixas, ou o pipeline de sempre já o desenha?
@@ -274,15 +330,17 @@ pub fn needs_banding(bands: &[Band]) -> bool {
             let _ = one;
             false
         }
-        [a, b] => !(a.family == Family::Sprite && b.family == Family::Vector),
-        _ => true,
+        // ⭐ A ordem de sempre (sprites, vetor, pixel — subconjuntos incluídos) não precisa.
+        _ => !bands
+            .windows(2)
+            .all(|w| w[0].family.old_stack() < w[1].family.old_stack()),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Family::{Sprite as S, Vector as V};
+    use Family::{Pixel as P, Sprite as S, Vector as V};
 
     /// ⭐ **O caso do report**: uma forma desenhada primeiro, uma imagem importada a seguir. Na
     /// hierarquia a imagem fica ABAIXO ⇒ ela desenha DEPOIS ⇒ por cima.
@@ -538,7 +596,10 @@ mod tests {
         let (b, degraded) = o.plan();
         assert!(!degraded);
         let k = |bits| o.stack_key(&b, bits).expect("entrou na ordem");
-        assert!(k(12) > k(11) && k(11) > k(10), "intercalado: a pilha e' o rank");
+        assert!(
+            k(12) > k(11) && k(11) > k(10),
+            "intercalado: a pilha e' o rank"
+        );
 
         let b = collapsed(&[V, S, V]);
         let k = |bits| o.stack_key(&b, bits).expect("entrou na ordem");
@@ -547,5 +608,92 @@ mod tests {
             "degradado: o vetor desenha-se por cima de todo sprite"
         );
         assert_eq!(o.stack_key(&b, 99), None, "fora da ordem nao tem altura");
+    }
+
+    /// ⭐ GEF 19 E2: três famílias — as faixas cobrem a ordem, o pixel intercala com o vetor.
+    #[test]
+    fn three_family_bands_tile_the_order() {
+        let fams = [P, V, S, P, P, V];
+        let (b, degraded) = plan(&fams);
+        assert!(!degraded);
+        let got: Vec<_> = b.iter().map(|b| (b.family, b.lo, b.hi)).collect();
+        assert_eq!(
+            got,
+            vec![(P, 0, 1), (V, 1, 2), (S, 2, 3), (P, 3, 5), (V, 5, 6)]
+        );
+        assert!(needs_banding(&b));
+    }
+
+    /// A degradação (teto ou buraco) põe o pixel POR ÚLTIMO — o quadro de antes da E2.
+    #[test]
+    fn the_degraded_order_puts_pixels_last() {
+        let fams: Vec<Family> = (0..MAX_BANDS + 3).map(|i| [P, V, S][i % 3]).collect();
+        let (b, degraded) = plan(&fams);
+        assert!(degraded);
+        assert_eq!(
+            b.iter().map(|b| b.family).collect::<Vec<_>>(),
+            vec![S, V, P]
+        );
+        let mut o = FrameOrder::default();
+        o.record_pixel(0, 40);
+        o.record(2, Some(9));
+        let (b, degraded) = o.plan();
+        assert!(degraded, "rank 1 e' buraco");
+        assert_eq!(
+            b.iter().map(|b| b.family).collect::<Vec<_>>(),
+            vec![S, V, P]
+        );
+    }
+
+    /// A ordem de sempre com pixel por cima não pede faixas (byte-idêntico); fora dela, pede.
+    #[test]
+    fn the_old_stack_with_pixels_on_top_needs_no_banding() {
+        for fams in [
+            vec![P],
+            vec![S, P],
+            vec![V, P],
+            vec![S, V, P],
+            vec![S, S, V, P, P],
+        ] {
+            assert!(!needs_banding(&plan(&fams).0), "{fams:?}");
+        }
+        for fams in [vec![P, S], vec![P, V], vec![S, P, V], vec![V, P, S]] {
+            assert!(needs_banding(&plan(&fams).0), "{fams:?}");
+        }
+    }
+
+    /// `doc_bands_of` devolve as faixas de vetor E de pixel; `pixel_ids_in` vai por rank.
+    #[test]
+    fn doc_bands_carry_the_pixel_runs() {
+        let mut o = FrameOrder::default();
+        o.record_pixel(1, 21);
+        o.record_pixel(0, 20);
+        o.record(2, None);
+        o.record(3, Some(5));
+        let b = doc_bands_of(&o, false);
+        assert_eq!(b.iter().map(|b| b.family).collect::<Vec<_>>(), vec![P, V]);
+        assert_eq!(o.pixel_ids_in(b[0]), vec![20, 21]);
+        assert!(o.vector_ids_in(b[0]).is_empty());
+        assert_eq!(o.pixel_ids(), vec![20, 21]);
+        o.clear();
+        assert!(o.pixel_ids().is_empty());
+    }
+
+    /// O clique (`stack_key`) lê o pixel na pilha desenhada, nos dois regimes.
+    #[test]
+    fn the_stack_key_works_for_pixel_sprites() {
+        let mut o = FrameOrder::default();
+        o.record_pixel(0, 10);
+        o.enrol(10, 0);
+        o.record(1, Some(1));
+        o.enrol(11, 1);
+        let (b, _) = o.plan();
+        let k = |b: &[Band], bits| o.stack_key(b, bits).expect("na ordem");
+        assert!(
+            k(&b, 11) > k(&b, 10),
+            "intercalado: o pixel de rank 0 fica atras"
+        );
+        let c = collapsed(&[P, V]);
+        assert!(k(&c, 10) > k(&c, 11), "degradado: o pixel por cima de tudo");
     }
 }

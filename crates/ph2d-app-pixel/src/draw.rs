@@ -1,8 +1,7 @@
 //! **O desenho**: todo Pixel Sprite visível como imagem nítida no lugar do objecto; o que está em
 //! Draw leva o xadrez por baixo, a borda, a grelha de pixels (se ligada) e o cursor de célula.
 //!
-//! ⚠️ P0: desenha-se na cena de sobreposição do viewport (por cima dos sprites do mundo). Entrar na
-//! ordem de desenho do mundo (luz, camadas, câmera do jogo) é a P14 — «o sprite vive na cena».
+//! ⭐ GEF 19 E2: a ARTE entra na ordem total (faixa `Family::Pixel`); o chrome do Draw fica por cima.
 
 use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
@@ -15,8 +14,7 @@ use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
 
 use crate::PixelApp;
-use crate::input::to_screen;
-use crate::mode::sprites;
+use crate::input::to_view;
 
 /// Um Pixel Sprite como o último quadro o desenhou: o clique e a caixa do gizmo perguntam AQUI, à
 /// mesma geometria que a tinta usou (nunca uma segunda conta).
@@ -67,20 +65,50 @@ const LINE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de sobreposição, espessura 
 /// Abaixo disto a grelha de pixels vira um borrão cinzento (uma linha por célula de 1–3 px).
 const GRID_MIN_PX_PER_CELL: f64 = 4.0; // LITERAL-PX-OK: legibilidade da grelha, em píxeis de ecrã
 
-/// Desenha os Pixel Sprites do mundo.
+thread_local! {
+    /// A arte do EDITOR já desenhada nas faixas deste quadro (`Some`) — o [`draw`] não a repete.
+    static PENDING: std::cell::RefCell<Option<Vec<Drawn>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Início do quadro: nenhuma arte nas faixas ainda (chamado antes de codificar as faixas).
+pub fn begin_frame() {
+    PENDING.with(|p| *p.borrow_mut() = None);
+}
+
+/// ⭐ **A ARTE** (GEF 19 E2) dos Pixel Sprites `ids`, de trás para a frente, com a câmera `cam`
+/// (mundo → ecrã) — numa faixa da ordem total ou, sem intercalação, na cena do chrome. `editor` =
+/// a vista do editor: a geometria vai para o clique ([`pick_at`]); a miniatura da câmera não.
 #[allow(clippy::too_many_arguments)]
-pub fn draw(
+pub fn art(
     app: &mut PixelApp,
     world: &ph2d_ecs::World,
-    camera: &Camera2d,
-    window: WindowSize,
+    cam: ph2d_vector::Affine,
     ppm: f32,
     editing: Option<u64>,
-    theme: Theme,
+    ids: &[u64],
+    editor: bool,
     scene: &mut VectorScene,
 ) {
+    let drawn = art_of(app, world, cam, ppm, editing, ids, scene);
+    if editor {
+        PENDING.with(|p| p.borrow_mut().get_or_insert_with(Vec::new).extend(drawn));
+    }
+}
+
+fn art_of(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    cam: ph2d_vector::Affine,
+    ppm: f32,
+    editing: Option<u64>,
+    ids: &[u64],
+    scene: &mut VectorScene,
+) -> Vec<Drawn> {
     let mut drawn = Vec::new();
-    for (bits, key) in sprites(world) {
+    for &bits in ids {
+        let Some(key) = crate::input::key_of(world, bits) else {
+            continue;
+        };
         let Some(entity) = ph2d_ecs::Entity::try_from_bits(bits) else {
             continue;
         };
@@ -98,7 +126,7 @@ pub fn draw(
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };
-        let Some(m) = to_screen(world, bits, doc, camera, window, ppm) else {
+        let Some(m) = to_view(world, bits, doc, cam, ppm) else {
             continue;
         };
         let (w, h) = (doc.sprite.width(), doc.sprite.height());
@@ -139,54 +167,89 @@ pub fn draw(
             to_screen: m,
             size: (w, h),
         });
-        if !edit {
-            continue;
-        }
-        if app.grid && px_per_cell(m) >= GRID_MIN_PX_PER_CELL {
-            draw_pixel_grid(scene, w, h, m, resolve(ColorToken::Border, theme), LINE_PX);
-        }
-        draw_border(
+    }
+    drawn
+}
+
+/// Os Pixel Sprites do quadro: a arte de `ids` (rank crescente) se as faixas não a levaram, e por
+/// cima o chrome do Draw (grelha, borda, simetria, selecção, cursor) do que está em edição.
+#[allow(clippy::too_many_arguments)]
+pub fn draw(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    camera: &Camera2d,
+    window: WindowSize,
+    ppm: f32,
+    editing: Option<u64>,
+    ids: &[u64],
+    theme: Theme,
+    scene: &mut VectorScene,
+) {
+    let drawn = PENDING.with(|p| p.borrow_mut().take()).unwrap_or_else(|| {
+        let cam = camera.world_to_screen_affine(window);
+        art_of(app, world, cam, ppm, editing, ids, scene)
+    });
+    let edited = drawn.iter().find(|d| Some(d.bits) == editing).copied();
+    DRAWN.with(|d| *d.borrow_mut() = drawn);
+    let Some(Drawn {
+        bits,
+        to_screen: m,
+        size: (w, h),
+    }) = edited
+    else {
+        return;
+    };
+    let Some(key) = crate::input::key_of(world, bits) else {
+        return;
+    };
+    let previa = app.previa(key);
+    let o = app.options;
+    if app.grid && px_per_cell(m) >= GRID_MIN_PX_PER_CELL {
+        draw_pixel_grid(scene, w, h, m, resolve(ColorToken::Border, theme), LINE_PX);
+    }
+    draw_border(
+        scene,
+        w,
+        h,
+        m,
+        resolve(ColorToken::Selection, theme),
+        LINE_PX,
+    );
+    if let Some(doc) = app.docs.get(&key)
+        && app.tool.paints()
+        && (o.sym_h || o.sym_v || o.sym_d1 || o.sym_d2)
+    {
+        let s = crate::gesture::symmetry(&o, doc);
+        draw_symmetry_axes(
             scene,
-            w,
-            h,
+            (w, h),
             m,
-            resolve(ColorToken::Selection, theme),
+            (s.axis2_x, s.axis2_y),
+            (o.sym_h, o.sym_v, o.sym_d1, o.sym_d2),
+            resolve(ColorToken::Accent, theme),
             LINE_PX,
         );
-        if app.tool.paints() && (o.sym_h || o.sym_v || o.sym_d1 || o.sym_d2) {
-            let s = crate::gesture::symmetry(&o, doc);
-            draw_symmetry_axes(
-                scene,
-                (w, h),
-                m,
-                (s.axis2_x, s.axis2_y),
-                (o.sym_h, o.sym_v, o.sym_d1, o.sym_d2),
-                resolve(ColorToken::Accent, theme),
-                LINE_PX,
-            );
-        }
-        selecao(
-            app,
-            key,
-            m,
-            previa.and_then(|(_, mk)| mk),
-            (theme, window),
-            scene,
-        );
-        #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
-        let janela = (window.width as f32, window.height as f32);
-        crate::viva::draw(app, key, m, (theme, janela), scene);
-        let Some(doc) = app.docs.get(&key) else {
-            continue;
-        };
-        if let Some((hb, cell)) = app.hover
-            && hb == bits
-            && doc.sprite.bounds().contains(cell.0, cell.1)
-        {
-            draw_cell_cursor(scene, cell, m, CURSOR_CORE, LINE_PX);
-        }
     }
-    DRAWN.with(|d| *d.borrow_mut() = drawn);
+    selecao(
+        app,
+        key,
+        m,
+        previa.and_then(|(_, mk)| mk),
+        (theme, window),
+        scene,
+    );
+    #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
+    let janela = (window.width as f32, window.height as f32);
+    crate::viva::draw(app, key, m, (theme, janela), scene);
+    let Some(doc) = app.docs.get(&key) else {
+        return;
+    };
+    if let Some((hb, cell)) = app.hover
+        && hb == bits
+        && doc.sprite.bounds().contains(cell.0, cell.1)
+    {
+        draw_cell_cursor(scene, cell, m, CURSOR_CORE, LINE_PX);
+    }
 }
 
 /// Quantos ms as formigas levam a andar um píxel de ecrã (escolha visual: o passo do Aseprite).

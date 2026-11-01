@@ -203,13 +203,16 @@ impl PixelApp {
         camera: &Camera2d,
         window: WindowSize,
         hero: &HeroScreen,
+        ids: &[u64],
         (scene, text): (&mut ph2d_vector::VectorScene, &mut ph2d_text::TextSystem),
     ) {
         let (ppm, editing) = (
             hero.project.pixels_per_meter,
             crate::mode::editing(world, hero),
         );
-        crate::draw::draw(self, world, camera, window, ppm, editing, hero.theme, scene);
+        crate::draw::draw(
+            self, world, camera, window, ppm, editing, ids, hero.theme, scene,
+        );
         let c = crate::input::Canvas {
             world,
             camera,

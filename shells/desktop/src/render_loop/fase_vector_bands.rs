@@ -73,28 +73,9 @@ impl crate::App {
             // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
             hero_screen.as_ref()?.theme,
         );
-        // ⭐⭐⭐ **AS FAIXAS DO DOCUMENTO** (ADR-0154 Fase 2). Quando a cena INTERCALA vetor e
-        // sprite, o documento deixa de ir para a cena do chrome e passa a ser codificado uma
-        // vez por faixa, em cenas próprias — o presente desenha-as intercaladas com as faixas
-        // de sprite, e o chrome fica por cima de tudo, como sempre.
-        //
-        // ⭐ **A faixa exprime-se ESCONDENDO o resto**, e não filtrando o laço do `dispatch`.
-        // A razão está escrita lá dentro: o `push`/`pop` da camada de recorte vive **fora** do
-        // filtro de escondido, de propósito, para as molduras se emparelharem mesmo quando não
-        // desenham. ⇒ uma forma fora da faixa não desenha **e** a moldura dela continua a
-        // recortar quem cai lá dentro. Filtrar o laço desemparelharia a pilha.
-        //
-        // ⚠️ Sem intercalação isto fica vazio e o documento vai para a cena do chrome, byte a
-        // byte como sempre.
-        // ⭐⭐⭐ **A arte dos PINCÉIS deste quadro, MEMOIZADA** (`line/Vector`, 2026-08-30) —
-        // resolvida aqui pela mesma razão que o ladrilho do padrão o é: a crate de desenho não
-        // alcança a cena, e o guarda de ciclo tem de viver onde se pode medir.
-        //
-        // ⚠️ **Resolvida UMA vez, FORA do laço das faixas** (integração de 2026-09-04): a
-        // `line/Vector` memoizou-a porque sem memo `50` pincéis com grupos de `16` custam
-        // **14,28 ms — 85,5% de um quadro**; a `line/components` pôs o `dispatch` dentro de um
-        // laço por faixa. As duas juntas pagariam a montagem da chave uma vez POR FAIXA, e o
-        // mapa é o mesmo para todas — ele é função da cena, não da faixa.
+        // ⭐ AS FAIXAS DO DOCUMENTO (ADR-0154 Fase 2): com intercalação o documento vai, por faixa, a cenas próprias;
+        // a faixa exprime-se ESCONDENDO o resto (o push/pop do recorte vive fora do filtro). Sem intercalação: o chrome.
+        // A arte dos PINCÉIS, memoizada e resolvida UMA vez fora do laço das faixas (14,28 ms sem memo, 04/09).
         let brush_arts = self.brush_live.resolve(
             vec_scene,
             &|id| {
@@ -108,13 +89,7 @@ impl crate::App {
             &vec_xf,
         );
         band_doc_scenes.clear();
-        // ⭐⭐⭐ **HÁ RECEITA ABERTA NESTE QUADRO?** — o interruptor do vidro jateado, escrito
-        // UMA vez e lido pelo presente (re-derivá-lo lá seria a segunda resposta, e um quadro
-        // em que as duas discordassem desenharia a receita duas vezes ou nenhuma).
-        //
-        // ⚠️⚠️ **A pergunta é ao MUNDO e não à vista do vetor:** o `isolated` dela é enchido a
-        // partir das FORMAS marcadas, e uma receita feita só de imagens deixa-o vazio — o vidro
-        // nunca subiria justamente para os prefabs de sprite.
+        // Há receita aberta? (o interruptor do vidro, escrito UMA vez; pergunta-se ao MUNDO: receita só de imagens.)
         *frosting = ph2d_app_components::master_editing::any_open(sim);
         frost_doc_scene.reset();
         frost_front_scene.reset();
@@ -143,12 +118,42 @@ impl crate::App {
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
         let doc_bands =
             ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
-        // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6).
-        let faixas = |bands: &[ph2d_render::draw_bands::Band],
-                      skins: &ph2d_vec_render::WidgetSkins,
-                      cam: ph2d_vector::Affine,
-                      cenas: &mut Vec<ph2d_vector::VectorScene>| {
+        // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6);
+        // a faixa Pixel leva a arte dos Pixel Sprites dela (GEF 19 E2) — fora do palco do jogo, como antes.
+        let hero = hero_screen.as_ref()?;
+        let (ppm, editing) = (
+            hero.project.pixels_per_meter,
+            ph2d_app_pixel::mode::editing(sim.world(), hero),
+        );
+        let sem_pixel = hero.view.palco_do_jogo;
+        ph2d_app_pixel::draw::begin_frame();
+        let mut faixas = |bands: &[ph2d_render::draw_bands::Band],
+                          skins: &ph2d_vec_render::WidgetSkins,
+                          cam: ph2d_vector::Affine,
+                          cenas: &mut Vec<ph2d_vector::VectorScene>,
+                          editor: bool| {
             for band in bands {
+                if band.family == ph2d_render::draw_bands::Family::Pixel {
+                    let mut target = ph2d_vector::VectorScene::new();
+                    let ids = if sem_pixel {
+                        Vec::new()
+                    } else {
+                        frame_order.pixel_ids_in(*band)
+                    };
+                    let world = sim.world();
+                    ph2d_app_pixel::draw::art(
+                        &mut self.pixel,
+                        world,
+                        cam,
+                        ppm,
+                        editing,
+                        &ids,
+                        editor,
+                        &mut target,
+                    );
+                    cenas.push(target);
+                    continue;
+                }
                 let keep = frame_order.vector_ids_in(*band);
                 let mut band_view = vec_view.clone();
                 for path in vec_scene.paths() {
@@ -173,13 +178,10 @@ impl crate::App {
                 cenas.push(target);
             }
         };
-        faixas(&doc_bands, &vec_skins, cam_affine, band_doc_scenes);
+        faixas(&doc_bands, &vec_skins, cam_affine, band_doc_scenes, true);
         // Com faixas o documento já foi codificado nelas — a cena do chrome fica só com o chrome.
         if doc_bands.is_empty() {
-            // ⭐⭐⭐ **COM O VIDRO, o documento sai da cena do CHROME.** Ele tem de aterrar no
-            // acumulador do mundo **antes** do borrão, e os painéis entram depois dele; na
-            // mesma cena, os dois seriam borrados ou nítidos juntos. ⛔ Sem receita aberta é a
-            // cena de sempre, byte a byte.
+            // Com o vidro o documento sai do chrome (aterra no mundo antes do borrão); sem receita, a cena de sempre.
             let target: &mut ph2d_vector::VectorScene = if *frosting {
                 frost_doc_scene
             } else {
@@ -199,10 +201,7 @@ impl crate::App {
                 target,
             );
         }
-        // ⭐⭐⭐ **E A RECEITA, sozinha, na cena que fica ACIMA do vidro.** ⚠️ Ela é codificada
-        // aqui **em todos os casos** — com faixas ou sem elas —, porque o `dispatch` e as
-        // faixas saltam-na sempre: sem esta chamada a receita aberta simplesmente não desenha.
-        // ⛔ Sem receita aberta a porta devolve sem escrever nada.
+        // A receita aberta, sozinha, na cena ACIMA do vidro — em todos os casos (faixas e `dispatch` saltam-na).
         ph2d_vec_render::dispatch_isolated(
             vec_scene,
             &vec_view,
@@ -251,7 +250,7 @@ impl crate::App {
             );
             v.band_doc_scenes.clear();
             let bands = ph2d_render::draw_bands::doc_bands_of(frame_order, true);
-            faixas(&bands, &skins, cam, &mut v.band_doc_scenes);
+            faixas(&bands, &skins, cam, &mut v.band_doc_scenes, false);
             if let Some(topo) = v.band_doc_scenes.last_mut() {
                 ph2d_vec_render::dispatch_isolated(
                     vec_scene,
@@ -269,20 +268,7 @@ impl crate::App {
             }
         }
         miniatura.cpu_codifica = t0.elapsed().as_secs_f64() * 1000.0;
-        // ⚠️ **O mapa que foi DESENHADO fica guardado, e é ele que o PICK lê.**
-        //
-        // O `vec_gizmo_pick` declara no próprio doc que a pergunta *"o que está desenhado
-        // aqui?"* é feita ao MESMO mapa que este `dispatch` consome — e a fiação contradizia-o:
-        // os seis sítios de pick da `input_dispatch` passavam só o `offset_live`, então tudo o
-        // que os outros oito produtores desenham era **visível e não-clicável** (medido: numa
-        // simetria armada, 3 de 3 pontos da metade espelhada estão na tela e o clique
-        // atravessa).
-        //
-        // ⚠️ É um **MOVE**, não um clone: `vec_live` morre aqui, e a fusão é remontada do zero
-        // no frame seguinte. Guardar custa zero; re-derivar no input custaria a segunda porta.
-        //
-        // ⚠️ E é isto que faz um produtor NOVO nascer coberto: quem acrescenta uma linha à
-        // fusão acima ganha o pick de graça, sem saber que este parágrafo existe.
+        // ⚠️ O mapa DESENHADO fica guardado (um MOVE): é ele que o PICK lê — produtor novo nasce clicável.
         self.vec.live_drawn = vec_live;
         Some((vec_view, vec_xf, cam_affine))
     }

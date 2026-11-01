@@ -77,7 +77,7 @@ fn the_conversion_records_every_rank_not_only_the_shapes() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+    build_frame_order(&inputs, &[(shape, 7)], &[], &scratch, &mut order);
 
     // ⛔ **`complete()`, e não `families` cru** — é ele que distingue «não registado» de
     // «sprite», e foi a ausência dessa distinção que deixou a 1.ª prova de mutação SOBREVIVER.
@@ -106,9 +106,49 @@ fn running_the_conversion_twice_gives_the_same_order() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+    build_frame_order(&inputs, &[(shape, 7)], &[], &scratch, &mut order);
     let first = order.complete();
-    build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+    build_frame_order(&inputs, &[(shape, 7)], &[], &scratch, &mut order);
     assert_eq!(order.complete(), first);
     assert_eq!(order.vector_ranks.len(), 1, "as formas empilharam");
+}
+
+/// ⭐ GEF 19 E2: um Pixel Sprite ACIMA de uma imagem na Hierarchy tem o rank MENOR (desenha por
+/// baixo) e a família Pixel.
+#[test]
+fn a_pixel_sprite_above_an_image_draws_below_it_as_family_pixel() {
+    let mut sim = SimWorld::new();
+    let px = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, ph2d_ecs::PixelSprite(3), RootOrder(0)))
+        .id();
+    let img = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            RootOrder(1),
+        ))
+        .id();
+    assert!(pixel_participant(sim.world(), px));
+    assert!(!pixel_participant(sim.world(), img));
+    assert_eq!(vector_participant(sim.world(), px), None);
+    // A travessia entrega em DFS pre-order: a linha de cima da Hierarchy primeiro.
+    let inputs: Vec<SortInput> = [px, img]
+        .into_iter()
+        .map(|entity| SortInput {
+            entity,
+            world_pos: ph2d_core::Vec2::ZERO,
+        })
+        .collect();
+    let mut scratch = SortScratch::new();
+    ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
+    let mut order = ph2d_render::draw_bands::FrameOrder::default();
+    build_frame_order(&inputs, &[], &[px], &scratch, &mut order);
+    assert!(
+        scratch.rank(px) < scratch.rank(img),
+        "o de cima na Hierarchy desenha por baixo"
+    );
+    assert_eq!(order.complete(), Some(vec![Family::Pixel, Family::Sprite]));
+    assert_eq!(order.pixel_ids(), vec![px.to_bits()]);
 }

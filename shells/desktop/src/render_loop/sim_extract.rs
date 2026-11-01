@@ -190,9 +190,7 @@ pub(crate) struct PreviewOverride {
 /// referencia um path (proveniência de autoria, não geometria a desenhar) — contá-la duas vezes
 /// dar-lhe-ia dois ranks e o objecto apareceria em duas faixas.
 ///
-/// ⚠️ **A visibilidade NÃO se pergunta aqui**: quem a decide é o `off_canvas::draws_this_frame`, no
-/// chamador, pela mesma porta dos sprites. *Uma segunda pergunta de visibilidade aqui seria a
-/// segunda resposta que diverge.*
+/// ⚠️ A visibilidade NÃO se pergunta aqui: é a porta `off_canvas::draws_this_frame` do chamador.
 pub(super) fn vector_participant(sim: &World, entity: Entity) -> Option<u64> {
     if sim.get::<Sprite>(entity).is_some() {
         return None;
@@ -200,15 +198,17 @@ pub(super) fn vector_participant(sim: &World, entity: Entity) -> Option<u64> {
     sim.get::<ph2d_ecs::VecPathRef>(entity).map(|vp| vp.0)
 }
 
-/// ⭐⭐ **A CONVERSÃO: dos ranks que o ordenador decidiu para a ordem que o presente lê.**
-///
-/// ⛔ Ela não reordena nada — é leitura. E é uma função com nome, e não um laço inline, porque é
-/// aqui que mora o defeito silencioso: **um rank de SPRITE que não seja registado** deixa aquele
-/// índice no preenchimento por omissão, e uma forma que caia nele seria desenhada como sprite —
-/// isto é, não seria desenhada.
+/// Um Pixel Sprite ocupa um rank como família [`Pixel`](ph2d_render::draw_bands::Family::Pixel) (GEF 19 E2).
+pub(super) fn pixel_participant(sim: &World, entity: Entity) -> bool {
+    sim.get::<ph2d_ecs::PixelSprite>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
+}
+
+/// ⭐⭐ **A CONVERSÃO** dos ranks do ordenador para a ordem do presente — leitura, nada reordena; todo
+/// rank tem de ser registado (um buraco degrada o plano em vez de perder um objecto).
 pub(super) fn build_frame_order(
     sort_inputs: &[SortInput],
     vector_inputs: &[(Entity, u64)],
+    pixel_inputs: &[Entity],
     scratch: &SortScratch,
     out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
@@ -219,7 +219,11 @@ pub(super) fn build_frame_order(
                 .iter()
                 .find(|(e, _)| *e == input.entity)
                 .map(|(_, id)| *id);
-            out.record(rank, path);
+            if pixel_inputs.contains(&input.entity) {
+                out.record_pixel(rank, input.entity.to_bits());
+            } else {
+                out.record(rank, path);
+            }
             out.enrol(input.entity.to_bits(), rank);
         }
     }
@@ -262,17 +266,12 @@ pub(super) fn run(
     // uma vista, não conteúdo. Um componente entraria no undo, no save e no snapshot — e o artista
     // reabriria o projeto com a folha aberta, sem se lembrar de a ter aberto.
     sheet_preview: Option<ph2d_ecs::Entity>,
-    // ⭐⭐ **A ordem TOTAL deste quadro** (ADR-0154 Fase 2) — as duas famílias numa lista só,
-    // indexada pelo rank que o `compute_sort_ranks_into` acabou de decidir. O presente parte-a em
-    // faixas e desenha faixa a faixa, alternando de motor.
-    //
-    // ⚠️ **Out-param e não valor de retorno**: esta função já devolve por escrita em `present`, e
-    // um `Vec` novo por quadro seria uma alocação por quadro (HR-3) — o `clear` mantém a
-    // capacidade.
+    // ⭐ A ordem TOTAL deste quadro (ADR-0154 Fase 2), out-param para não alocar por quadro (HR-3).
     order_out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
     // As formas vetoriais que entraram na ordem, na travessia: `(entidade, VecPathRef.0)`.
     let mut vector_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
+    let mut pixel_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
     // gameplay — that lands in M10 with the physics integrator).
@@ -333,46 +332,23 @@ pub(super) fn run(
                     .iter()
                     .copied()
                     .find(|o| o.entity_bits == sim_entity.to_bits());
-                // W2.T4: CookedTexture sprites are now LIVE. The
-                // `cooked_texture_bridge` loader pass (run just before this
-                // extract) resolved each `logical_id` for the device tier and
-                // uploaded its KTX2 into the renderer's cooked-texture cache;
-                // the `CookedTexture` arm below reads back the cached
-                // `texture_id`. A sprite whose logical texture wasn't uploaded
-                // (no cooked tier on this device) returns early → no
-                // RenderInstance → invisible, the same shape as a
-                // hidden/culled sprite (the W2.T2 skip-guard's behavior, now
-                // resolved per-sprite instead of blanket).
-                // ⭐⭐⭐ **A FORMA VETORIAL ENTRA NA MESMA ORDEM** (ADR-0154 Fase 2, report do
-                // Enio de 2026-08-30). Ela não emite `RenderInstance` nenhum — o Vello desenha-a —,
-                // mas ocupa o **lugar** dela na ordem total, e é isso que faltava: as duas famílias
-                // eram ordenadas por dois pipelines independentes e coladas por um `over` fixo.
-                //
-                // ⚠️ **Tem de ser AQUI, dentro da travessia**, e não num laço à parte: o
-                // `compute_sort_ranks_into` exige os `inputs` em **DFS pre-order**, e é essa ordem
-                // que semeia o `draw_order` e o desempate entre irmãos. Um laço de query por fora
-                // daria a ordem do arquétipo, que muda com qualquer `insert`.
-                //
-                // ⚠️ E ela passa pela MESMA porta de visibilidade (`drawn`): uma forma escondida
-                // pelo olho da Hierarquia não pode ocupar um rank, senão ela abre uma faixa que
-                // não desenha nada e paga a colagem à mesma.
-                if drawn && let Some(id) = vector_participant(sim, sim_entity) {
-                    vector_inputs.push((sim_entity, id));
+                // W2.T4: um CookedTexture sem tier neste dispositivo não emite instância (invisível, como escondido).
+                // ⭐ A FORMA VETORIAL e o PIXEL SPRITE (GEF 19 E2) entram na MESMA ordem: ocupam o rank sem emitir instância,
+                // AQUI dentro da travessia (o ordenador exige DFS pre-order) e pela MESMA porta de visibilidade (`drawn`).
+                let id = vector_participant(sim, sim_entity);
+                let pixel = pixel_participant(sim, sim_entity);
+                if drawn && (id.is_some() || pixel) {
+                    match id {
+                        Some(id) => vector_inputs.push((sim_entity, id)),
+                        None => pixel_inputs.push(sim_entity),
+                    }
                     sort_inputs.push(SortInput {
                         entity: sim_entity,
                         world_pos: t,
                     });
                 }
-                // ⭐⭐⭐ **UMA IMAGEM PRESA AO ESQUELETO EMITE A SUA INSTÂNCIA como qualquer
-                // sprite** (plano `docs/Skeleton/03`, W2, 2026-09-13): o rank, o olho da
-                // Hierarquia, a tinta, a opacidade, a mistura e o recorte chegam-lhe por aqui, e a
-                // `fase_sim_extract` põe-lhe a malha posada DEPOIS
-                // (`ph2d_skeleton_live::skin_image::attach_skin_meshes`).
-                //
-                // ⛔⛔ **Até esse dia uma guarda tirava-a deste braço e o Vello desenhava-a por
-                // cima do quadro** — fora da ordem, visível com o olho fechado e sem as
-                // propriedades da sprite. Este ficheiro não pergunta se uma sprite está presa: a
-                // última vez que perguntou, a imagem saiu do quadro.
+                // ⭐ Uma imagem presa ao esqueleto emite a sua instância como qualquer sprite (a malha posada vem depois,
+                // na `fase_sim_extract`). ⛔ Não pergunte se está presa: da última vez a imagem saiu do quadro.
                 if drawn && let Some(spr) = sim.get::<Sprite>(sim_entity) {
                     emit::sprite(
                         sim,
@@ -398,14 +374,8 @@ pub(super) fn run(
         // `(z_order, texture_id)`; ranks are unique so the texture_id
         // tie-break never fires.
         compute_sort_ranks_into(sort_scratch, sim_w, sort_inputs);
-        // ⭐⭐ **A ORDEM TOTAL, na forma de que o presente precisa** (ADR-0154 Fase 2). Ela é a
-        // LEITURA do que o ordenador decidiu — nada aqui reordena.
-        //
-        // ⚠️ Percorre-se `sort_inputs` (a lista de entrada, em DFS) e não `vector_inputs` sozinha:
-        // o rank de um SPRITE também tem de ser registado, senão a família daquele rank fica no
-        // preenchimento por omissão e uma forma vetorial que caia lá seria desenhada como sprite —
-        // isto é, não seria desenhada.
-        build_frame_order(sort_inputs, &vector_inputs, sort_scratch, order_out);
+        // A ordem total como LEITURA do ordenador: percorre `sort_inputs` inteira (todo rank é registado).
+        build_frame_order(sort_inputs, &vector_inputs, &pixel_inputs, sort_scratch, order_out);
         let mut q = present_w.query::<(&SimRef, &mut RenderInstance)>();
         for (sim_ref, mut ri) in q.iter_mut(present_w) {
             if let Some(rank) = sort_scratch.rank(sim_ref.0) {

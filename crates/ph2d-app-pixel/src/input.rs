@@ -52,6 +52,18 @@ pub fn to_screen(
     window: WindowSize,
     ppm: f32,
 ) -> Option<Affine> {
+    to_view(world, bits, doc, camera.world_to_screen_affine(window), ppm)
+}
+
+/// O [`to_screen`] com a câmera já feita afim (mundo → ecrã): a do editor ou a da miniatura.
+#[must_use]
+pub fn to_view(
+    world: &ph2d_ecs::World,
+    bits: u64,
+    doc: &Doc,
+    cam: Affine,
+    ppm: f32,
+) -> Option<Affine> {
     let entity = ph2d_ecs::Entity::try_from_bits(bits)?;
     let tr = ph2d_ecs::world_transform(world, entity)?;
     let img = image_to_world(
@@ -63,7 +75,7 @@ pub fn to_screen(
         (f64::from(tr.scale.x), f64::from(tr.scale.y)),
         (f64::from(tr.skew_x), f64::from(tr.skew_y)),
     );
-    Some(camera.world_to_screen_affine(window) * img)
+    Some(cam * img)
 }
 
 /// A chave do documento do objecto `bits`.

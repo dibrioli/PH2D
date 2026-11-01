@@ -466,7 +466,11 @@ mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com p
 #[cfg(test)]
 mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
 #[cfg(test)]
+mod desempenho_oleo_tests; // sonda J8: o óleo diluído é lento por correr mais tempo ou por passo?
+#[cfg(test)]
 mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
+#[cfg(test)]
+mod escorre_contorna_tests; // sonda J8: o escorrimento contorna o relevo já pousado?
 #[cfg(test)]
 mod gota_tests;
 #[cfg(test)]
@@ -484,11 +488,7 @@ mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
 mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o Wet Drip, prompt 16)
 #[cfg(test)]
-mod escorre_contorna_tests; // sonda J8: o escorrimento contorna o relevo já pousado?
-#[cfg(test)]
 mod oleo_diluido_tests; // E10g (dono 01/11): o óleo diluído escorre, a tinta do tubo fica
-#[cfg(test)]
-mod desempenho_oleo_tests; // sonda J8: o óleo diluído é lento por correr mais tempo ou por passo?
 #[cfg(test)]
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
@@ -502,6 +502,8 @@ mod shape_color_tests; // prompt 41: a Shape Color pinta cada célula do depósi
 #[cfg(test)]
 #[path = "wetpaint/showwet_tests.rs"]
 mod showwet_tests;
+#[cfg(test)]
+mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no miolo do óleo
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]

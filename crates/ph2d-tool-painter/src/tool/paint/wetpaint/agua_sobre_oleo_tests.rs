@@ -416,6 +416,9 @@ fn diag_grain_colors_no_papel_de_cor() {
 /// O que a água pousou DENTRO do óleo: com o óleo de [`com_oleo`], um traço aguado só no papel acima da parede (o pé a
 /// `folga` px da orla). Devolve `(massa nova dentro, células dentro com > 50 de massa nova, células do miolo)`; o
 /// miolo = células com óleo (massa > 1000) a ≥ 4 px da orla de cima da sua coluna.
+/// O raio do Wet Flat das cenas da parede.
+const RAIO: f32 = 10.0;
+
 pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
     let mut t = com_oleo();
     t.wet_bring_home();
@@ -441,9 +444,10 @@ pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
     let topo = orla[120].expect("o óleo no meio") as f32 - 1.0;
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
-    t.set_brush_size_px(20.0);
+    // O Size é o RAIO (a pegada do Wet Flat de 20 px mede ~38 px, J9 §2): o pé do pincel a `folga` px da orla.
+    t.set_brush_size_px(RAIO);
     t.set_brush_color_srgb8([240, 130, 60]);
-    let y = topo - 10.0 - folga;
+    let y = topo - RAIO - folga;
     t.on_canvas_pointer(ponteiro(40.0, y, PointerPhase::Down));
     for k in 1..=40 {
         t.on_canvas_pointer(ponteiro(40.0 + 4.0 * k as f32, y, PointerPhase::Move));
@@ -498,27 +502,30 @@ fn diag_a_agua_sobe_a_ladeira_do_oleo() {
 /// ⭐ **A água não sobe a ladeira do óleo** (Bug 2 do smoke do dono 30/10): um traço aguado (Wet Flat) pintado só no
 /// papel, ao pé de um Oil ▸ Dabber assentado, num papel de cor. Mecanismo: o nivelamento corria só pela altura da
 /// água e a do óleo não entrava em passe nenhum (`solver::ladeira_do_oleo`). Medido antes da cura, massa nova no
-/// miolo do óleo (≥ 4 px da orla): encostado 1 003 372 (4 341 células > 50), a 4 px 685 617 (4 014); depois 40 511
-/// (116, onde o próprio pincel pousa) e 3 468 (10).
+/// miolo do óleo (≥ 4 px da orla): encostado 1 003 372 (4 341 células > 50), a 4 px 685 617 (4 014).
+/// J9 §2 (`sobe_a_ladeira_porta_tests`): o Size é o RAIO — com 20 px a pegada do Wet Flat (~38 px) pousava 6 px DENTRO
+/// do óleo e o vermelho de 56 012 era o próprio pincel (entrava todo durante o traço; depois de soltar só descia). Com
+/// o pé do pincel a `folga` px ([`RAIO`] 10), com a ladeira × sem ela (controlo, `LADEIRA_ROTA = 2`): encostado
+/// 1 552 × 258 349 · a 4 px 0 × 112 637 · de lado encostado 0 × 35 994. Tectos = 10 % do controlo.
 #[test]
 fn a_agua_nao_sobe_a_ladeira_do_oleo() {
     let (encostado, celulas, miolo) = agua_que_sobe(0.0);
     assert!(miolo > 5000, "o miolo do óleo tem só {miolo} células");
     assert!(
-        encostado < 100_000.0 && celulas < 400,
+        encostado < 26_000.0 && celulas < 100,
         "encostado à parede: {encostado:.0} de massa nova no miolo do óleo, {celulas} células > 50"
     );
     let (folga, celulas, _) = agua_que_sobe(4.0);
     assert!(
-        folga < 34_000.0 && celulas < 50,
+        folga < 11_000.0 && celulas < 50,
         "a 4 px da parede: {folga:.0} de massa nova no miolo do óleo, {celulas} células > 50"
     );
-    // O eixo `x` (a parede de LADO; a de cima só prova o `y` — a prova de mutação deixou o `x` vivo): a 4 px, sem a
-    // ladeira 588 227, sem o eixo `x` 400 279, com ela 4 975.
-    let (lado, celulas, _) = agua_que_sobe_de_lado(4.0);
+    // O eixo `x` (a parede de LADO; a de cima só prova o `y`): encostado, porque a 4 px de lado a água não chega à
+    // parede nem sem a ladeira (0).
+    let (lado, celulas, _) = agua_que_sobe_de_lado(0.0);
     assert!(
-        lado < 40_000.0 && celulas < 100,
-        "de lado, a 4 px da parede: {lado:.0} de massa nova no miolo do óleo, {celulas} células > 50"
+        lado < 3_600.0 && celulas < 50,
+        "de lado, encostado à parede: {lado:.0} de massa nova no miolo do óleo, {celulas} células > 50"
     );
 }
 
@@ -548,9 +555,10 @@ pub(super) fn agua_que_sobe_de_lado(folga: f32) -> (f64, usize, usize) {
     let esquerda = orla[80].expect("o óleo no meio") as f32 - 1.0;
     t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
         .expect("o meio");
-    t.set_brush_size_px(20.0);
+    // O Size é o RAIO (a pegada do Wet Flat de 20 px mede ~38 px, J9 §2): o pé do pincel a `folga` px da orla.
+    t.set_brush_size_px(RAIO);
     t.set_brush_color_srgb8([240, 130, 60]);
-    let x = esquerda - 10.0 - folga;
+    let x = esquerda - RAIO - folga;
     t.on_canvas_pointer(ponteiro(x, 30.0, PointerPhase::Down));
     for k in 1..=30 {
         t.on_canvas_pointer(ponteiro(x, 30.0 + 3.0 * k as f32, PointerPhase::Move));

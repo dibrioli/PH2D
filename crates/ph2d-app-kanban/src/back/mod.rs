@@ -274,7 +274,9 @@ pub(crate) struct Back {
     /// O modal e a altura do conteúdo no último quadro.
     pub modal: Rect,
     pub content_h: f32,
+    /// Onde o verso se pinta e rola (acima do HUD); o rato é dele no véu inteiro (`full`).
     pub area: Rect,
+    pub full: Rect,
     pub hover: Option<BackHit>,
     pub press: Option<BackHit>,
     pub edit: Option<Edit>,
@@ -355,6 +357,7 @@ impl Back {
             modal: Rect::new(0.0, 0.0, 0.0, 0.0),
             content_h: 0.0,
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
+            full: Rect::new(0.0, 0.0, 0.0, 0.0),
             hover: None,
             press: None,
             edit: None,

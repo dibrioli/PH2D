@@ -97,7 +97,9 @@ pub(crate) struct Panel {
     pub hover: Option<BackHit>,
     pub press: Option<BackHit>,
     pub scroll: f32,
+    /// Como no verso: pinta-se em `area` (acima do HUD), o rato é dele em `full`.
     pub area: Rect,
+    pub full: Rect,
     pub content_h: f32,
     /// As escolhas do menu aberto, pela ordem pintada.
     pub picks: Vec<choices::Pick>,
@@ -213,6 +215,7 @@ pub(crate) fn open(docs: &mut KanbanDocs, id: u64, family: Family, new: bool) {
         press: None,
         scroll: 0.0,
         area: Rect::new(0.0, 0.0, 0.0, 0.0),
+        full: Rect::new(0.0, 0.0, 0.0, 0.0),
         content_h: 0.0,
         picks: Vec::new(),
         lines: Vec::new(),

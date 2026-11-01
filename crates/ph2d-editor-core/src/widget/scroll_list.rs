@@ -6,6 +6,7 @@ use super::scrollbar::{
     ScrollbarState, delta_for_drag, is_needed, thumb_color, thumb_rect, track_rect,
 };
 use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
+use crate::math::safe_clamp;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::paint_shapes::fill_polygon;
 use crate::zones::Rect;
@@ -219,14 +220,18 @@ impl AxisBar {
     #[must_use]
     pub fn press(&self, p: (f32, f32), scroll: f32) -> f32 {
         if let Some(dir) = self.arrow_at(p) {
-            return (scroll + dir * self.step).clamp(0.0, self.max());
+            return safe_clamp(scroll + dir * self.step, 0.0, self.max());
         }
         let (v, a) = (self.v(), self.along(p));
         let thumb = thumb_rect(v, scroll, self.content, self.visible);
         if (thumb.y..thumb.y + thumb.h).contains(&a) {
             return scroll;
         }
-        ((a - v.y) / v.h.max(1.0) * self.content - self.visible / 2.0).clamp(0.0, self.max())
+        safe_clamp(
+            (a - v.y) / v.h.max(1.0) * self.content - self.visible / 2.0,
+            0.0,
+            self.max(),
+        )
     }
 
     /// [`Self::press`] em `now_ns`, e a seta segura se carregou numa.
@@ -245,7 +250,7 @@ impl AxisBar {
     pub fn repeat(&self, h: &mut ArrowHold, scroll: f32, now_ns: u128) -> f32 {
         let n = h.rep.due(now_ns, self.arrow_at(h.at) == Some(h.dir));
         let n = f32::from(u16::try_from(n).unwrap_or(u16::MAX));
-        (scroll + h.dir * self.step * n).clamp(0.0, self.max())
+        safe_clamp(scroll + h.dir * self.step * n, 0.0, self.max())
     }
 
     /// O arrasto do polegar agarrado em `from` (com a rolagem `s0` de então) até `to`.
@@ -253,7 +258,7 @@ impl AxisBar {
     pub fn drag(&self, from: (f32, f32), s0: f32, to: (f32, f32)) -> f32 {
         let d = self.along(to) - self.along(from);
         let d = delta_for_drag(d, self.v().h, self.content, self.visible);
-        (s0 + d).clamp(0.0, self.max())
+        safe_clamp(s0 + d, 0.0, self.max())
     }
 
     /// Pinta a calha (entre as setas), o polegar e as setas nas cores `(calha, polegar)` (quem a usa sabe sobre que
@@ -319,12 +324,12 @@ impl ScrollList {
     pub fn set(&mut self, view: Rect, content_h: f32) {
         self.view = view;
         self.content_h = content_h;
-        self.scroll = self.scroll.clamp(0.0, self.max());
+        self.scroll = safe_clamp(self.scroll, 0.0, self.max());
     }
 
     /// Rola `dy` px (positivo = ver mais abaixo).
     pub fn scroll_by(&mut self, dy: f32) {
-        self.scroll = (self.scroll + dy).clamp(0.0, self.max());
+        self.scroll = safe_clamp(self.scroll + dy, 0.0, self.max());
     }
 
     fn bar(&self, track: Rect) -> AxisBar {
@@ -389,7 +394,7 @@ impl ScrollList {
         } else if top + h > self.scroll + self.view.h {
             self.scroll = top + h + pad - self.view.h;
         }
-        self.scroll = self.scroll.clamp(0.0, self.max());
+        self.scroll = safe_clamp(self.scroll, 0.0, self.max());
     }
 
     /// Pinta a barra em `body` (se o conteúdo não cabe) e guarda a calha; devolve-a para o alvo.

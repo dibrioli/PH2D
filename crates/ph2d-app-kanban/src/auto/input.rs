@@ -15,7 +15,7 @@ pub(crate) fn down(docs: &mut KanbanDocs, id: u64, (x, y): (f32, f32)) -> bool {
     let Some(p) = panel_mut(docs, id) else {
         return false;
     };
-    if !p.area.contains(x, y) {
+    if !p.full.contains(x, y) {
         return false;
     }
     p.press = p.hit(x, y).map(BackHit::Auto);
@@ -26,7 +26,7 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, x: f32, y: f32) -> bool {
     let Some(p) = panel_mut(docs, id) else {
         return false;
     };
-    if !p.area.contains(x, y) {
+    if !p.full.contains(x, y) {
         return false;
     }
     p.hover = p.hit(x, y).map(BackHit::Auto);

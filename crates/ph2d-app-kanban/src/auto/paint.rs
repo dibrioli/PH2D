@@ -53,7 +53,7 @@ pub(crate) fn paint(
         me,
         people: crate::back::people(k, team, me),
     };
-    p.area = area;
+    (p.area, p.full) = (area, full);
     p.lines.clear();
     let mut hits = vec![(full, A(AutoHit::Scrim))];
     scene.fill_rect(

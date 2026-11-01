@@ -70,7 +70,7 @@ pub(crate) fn down(
     let Some(b) = back_mut(docs, id) else {
         return false;
     };
-    if !b.area.contains(x, y) {
+    if !b.full.contains(x, y) {
         return false;
     }
     let h = b.hit(x, y);
@@ -151,7 +151,7 @@ pub(crate) fn moved(docs: &mut KanbanDocs, id: u64, ts: &mut TextSystem, x: f32,
         c.s.drag_bar(y);
         return true;
     }
-    if !b.area.contains(x, y) {
+    if !b.full.contains(x, y) {
         return false;
     }
     match b.press {

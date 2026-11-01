@@ -91,7 +91,7 @@ fn card_back(
         on_board,
     };
     sync_description(back, card);
-    back.area = area;
+    (back.area, back.full) = (area, full);
     let mut hits = Vec::new();
     hits.push((full, BackHit::Scrim));
     scene.fill_rect(

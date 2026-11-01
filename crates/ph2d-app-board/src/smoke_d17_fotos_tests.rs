@@ -16,6 +16,12 @@ const DIR: &str = "ph2d_d17_fotos";
 /// A cena 31 com os painéis da app e os documentos nos Assets (o `push_documents` da shell).
 fn staged() -> (HeroScreen, TextSystem) {
     ph2d_panel_registry_init::register_all_panels();
+    staged_bare()
+}
+
+/// A cena 31 SEM instalar o registo de painéis: ele é do PROCESSO (`OnceLock`) e, instalado por um
+/// teste não ignorado, muda o ecrã dos testes que correm a seguir (`history`, `w16`).
+fn staged_bare() -> (HeroScreen, TextSystem) {
     let mut h = HeroScreen::new(NodeId(1));
     scene_d17_assets(&mut h);
     let mut index = AssetIndex::new();
@@ -203,7 +209,7 @@ fn images(h: &HeroScreen) -> Vec<ph2d_board_model::Element> {
 #[test]
 fn asset_image_dropped_on_the_board_lands_selected_and_undoes() {
     use ph2d_editor_core::screens::hero::{board_bar, board_keys};
-    let (mut h, mut ts) = staged();
+    let (mut h, mut ts) = staged_bare();
     let (db, clouds) = factory_clouds();
     let corners = board_bar::node(board_bar::Item::Round(true));
     let bar = |h: &HeroScreen| {

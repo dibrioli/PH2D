@@ -307,14 +307,17 @@ fn tag(
             &[("name", &t.name), ("dir", &glifo)],
         )
     };
+    // O nome começa depois da pega da esquerda (smoke 01/11: «walk» caía em cima dela).
+    let ponta = Spacing::Sm.px();
+    let recuo = ponta + Spacing::Xxs.px();
     paint_text(
         ctx.text_system,
         ctx.scene,
         &texto,
-        texto_r.x + Spacing::Xxs.px(),
+        texto_r.x + recuo,
         texto_r.y + (texto_r.h - TypeToken::Xs.px()) * 0.5,
         TypeToken::Xs.px(),
-        texto_r.w.max(1.0),
+        (texto_r.w - recuo).max(1.0),
         resolve(ColorToken::Text1, theme),
     );
     ctx.host.hit_index_mut().register(ids::tag_id(i), r);
@@ -326,7 +329,6 @@ fn tag(
     }
     // As pontas, por cima do corpo (o último registo vence): só a que está à vista, com a pega
     // sempre pintada e acesa sob o rato ou a ser puxada.
-    let ponta = Spacing::Sm.px();
     let quente = ctx.host.store().hot_id();
     for (right, visivel, x) in [
         (false, from >= g.first, r.x),

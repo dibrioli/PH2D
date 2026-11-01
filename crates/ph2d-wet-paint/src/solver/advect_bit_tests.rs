@@ -238,11 +238,15 @@ fn advect_jacobi_bits_are_the_recorded_ones() {
     assert_eq!(got, GRAVADO, "a advecção mudou de bits: {s:?}");
 }
 
+/// A cena entra no hash: a lei do DEPÓSITO move-o sem a advecção mudar. Regravado em 31/10 depois da E4
+/// (`7a4bc540b7`, a receita: água sem a pressão inversa, carimbo sem `Intensity`, pigmento `φ·h`): com a lei
+/// antiga do `pressure_dab` posta de volta só na cena, o HEAD `be475f3a46` dá os `8c92…/e965…/b735…/d8e7…`
+/// de `4ac6c0bf5d` nos dois gates — a advecção e as duas rotas do commit estão ao bit.
 const GRAVADO: [u64; 4] = [
-    0x8c92_596a_5485_ccbc,
-    0xe965_2f81_1a49_dff5,
-    0xb735_c68b_229b_7a08,
-    0xd8e7_013b_c075_8c6a,
+    0xbe1a_63e7_3c04_445b,
+    0x1cb2_f716_55da_9adf,
+    0x18d9_3872_ba02_f0ea,
+    0x0118_07f8_c6bc_a2fd,
 ];
 
 /// **As duas rotas do commit FORÇADAS dão os bits gravados** — a rota 0 escolhe pela faixa, e a cena acima cai

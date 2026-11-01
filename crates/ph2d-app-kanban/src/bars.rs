@@ -3,7 +3,7 @@
 //! A calha sai da disposição; as contas são as da [`AxisBar`]; as setas rolam um passo; carregar na
 //! calha leva o polegar lá e agarra-o, e o arrasto segue até largar.
 
-use crate::layout::{Layout, ListBox};
+use crate::layout::Layout;
 use crate::metrics as m;
 use crate::paint::c;
 use crate::tab::{Hit, Tab};
@@ -23,48 +23,41 @@ pub(crate) struct Grab {
     pub hold: Option<ArrowHold>,
 }
 
-/// A calha do quadro: na margem de baixo, por baixo das listas.
-pub(crate) fn board_track(board: Rect, bottom: f32) -> Rect {
-    let w = (board.w - 2.0 * m::BOARD_PAD).max(0.0);
-    Rect::new(
-        board.x + m::BOARD_PAD,
-        bottom + (m::BOARD_PAD - m::SCROLL_BAR) / 2.0,
-        w,
-        m::SCROLL_BAR,
-    )
+/// A margem do quadro (D17): a da lista deitada — a mesma margem e espessura, em baixo de `area`
+/// (por dentro da folga dos lados, longe dos cantos das listas); as listas acabam no topo dela.
+pub(crate) fn board_band(area: Rect) -> Rect {
+    AxisBar::gutter(area, true, m::LIST_GUTTER, m::LIST_BAR).0
 }
 
-fn of_board(l: &Layout) -> AxisBar {
-    AxisBar {
-        track: l.hbar,
-        horizontal: true,
-        content: l.content_w,
-        visible: l.board.w,
+/// A margem de uma barra e a barra: a do quadro (`None`) e a de cada lista saem de [`AxisBar::gutter`].
+fn lane(l: &Layout, list: Option<ListId>) -> Option<(Rect, AxisBar)> {
+    let (band, track, horizontal, content, visible) = match list {
+        None => {
+            let (band, track) = AxisBar::gutter(l.hbar, true, m::LIST_GUTTER, m::LIST_BAR);
+            (band, track, true, l.content_w, l.board.w)
+        }
+        Some(id) => {
+            let lb = l.list(id).filter(|lb| !lb.collapsed)?;
+            let b = lb.body;
+            let h = (b.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
+            let area = Rect::new(b.x, b.y + m::LIST_BODY_TOP, b.w, h);
+            let (band, track) = AxisBar::gutter(area, false, m::LIST_GUTTER, m::LIST_BAR);
+            (band, track, false, lb.content_h, h)
+        }
+    };
+    let bar = AxisBar {
+        track,
+        horizontal,
+        content,
+        visible,
         arrows: true,
         step: m::SCROLL_STEP,
-    }
-}
-
-fn of_list(lb: &ListBox) -> AxisBar {
-    let b = lb.body;
-    let h = (b.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
-    let x = b.x + b.w - m::LIST_GUTTER + (m::LIST_GUTTER - m::LIST_BAR) / 2.0;
-    AxisBar {
-        track: Rect::new(x, b.y + m::LIST_BODY_TOP, m::LIST_BAR, h),
-        horizontal: false,
-        content: lb.content_h,
-        visible: h,
-        arrows: true,
-        step: m::SCROLL_STEP,
-    }
+    };
+    Some((band, bar))
 }
 
 fn bar(l: &Layout, list: Option<ListId>) -> Option<AxisBar> {
-    let b = match list {
-        None => of_board(l),
-        Some(id) => of_list(l.list(id).filter(|lb| !lb.collapsed)?),
-    };
-    b.needed().then_some(b)
+    lane(l, list).map(|(_, b)| b).filter(AxisBar::needed)
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -91,19 +84,10 @@ pub(crate) fn probe(tab: &Tab, list: Option<ListId>) -> Option<(Rect, Rect)> {
 
 /// A barra em `(x, y)` — o alvo é a margem inteira, não só o polegar.
 pub(crate) fn hit(l: &Layout, x: f32, y: f32) -> Option<Hit> {
-    if let Some(b) = bar(l, None) {
-        let pad = (m::BOARD_PAD - m::SCROLL_BAR) / 2.0;
-        let t = b.track;
-        if Rect::new(t.x, t.y - pad, t.w, m::BOARD_PAD).contains(x, y) {
-            return Some(Hit::Bar(None));
-        }
-    }
-    l.lists.iter().find_map(|lb| {
-        let t = bar(l, Some(lb.id))?.track;
-        let edge = lb.body.x + lb.body.w - m::LIST_GUTTER;
-        Rect::new(edge, t.y, m::LIST_GUTTER, t.h)
-            .contains(x, y)
-            .then_some(Hit::Bar(Some(lb.id)))
+    let ids = std::iter::once(None).chain(l.lists.iter().map(|lb| Some(lb.id)));
+    ids.into_iter().find_map(|id| {
+        let (band, b) = lane(l, id)?;
+        (b.needed() && band.contains(x, y)).then_some(Hit::Bar(id))
     })
 }
 
@@ -168,24 +152,23 @@ pub(crate) fn drag(tab: &mut Tab, p: (f32, f32)) -> bool {
     true
 }
 
-/// Pinta as barras; `light` = o chão do quadro é claro (a barra do quadro leva as cores da lista).
-pub(crate) fn paint(scene: &mut VectorScene, theme: Theme, tab: &Tab, light: bool) {
+/// Pinta as barras: a do quadro com as tintas da lista (D17: a mesma barra, deitada).
+pub(crate) fn paint(scene: &mut VectorScene, theme: Theme, tab: &Tab) {
     let on = |list| tab.hover == Some(Hit::Bar(list)) || tab.bar.is_some_and(|g| g.list == list);
-    for lb in tab.layout.lists.iter().filter(|lb| !lb.collapsed) {
-        let thumb = if on(Some(lb.id)) {
+    let ids = std::iter::once(None).chain(tab.layout.lists.iter().map(|lb| Some(lb.id)));
+    for id in ids {
+        let Some((_, b)) = lane(&tab.layout, id) else {
+            continue;
+        };
+        let thumb = if on(id) {
             T::KanbanListFg
         } else {
             T::KanbanListMeta
         };
-        let colors = (c(theme, T::KanbanSlot), c(theme, thumb));
-        of_list(lb).paint(tab.scroll_y(lb.id), colors, scene);
+        b.paint(
+            scroll(tab, id),
+            (c(theme, T::KanbanSlot), c(theme, thumb)),
+            scene,
+        );
     }
-    let (track, thumb, strong) = if light {
-        (T::KanbanList, T::KanbanListMeta, T::KanbanListFg)
-    } else {
-        (T::KanbanHeaderBtn, T::KanbanHeaderBtnOn, T::KanbanHeaderFg)
-    };
-    let thumb = if on(None) { strong } else { thumb };
-    let colors = (c(theme, track), c(theme, thumb));
-    of_board(&tab.layout).paint(scroll(tab, None), colors, scene);
 }

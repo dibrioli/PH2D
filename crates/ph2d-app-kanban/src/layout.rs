@@ -70,7 +70,7 @@ pub(crate) struct Layout {
     pub add_list_close: Option<Rect>,
     /// A largura do conteúdo (o fundo da rolagem horizontal).
     pub content_w: f32,
-    /// A calha da barra do quadro.
+    /// A margem da barra do quadro, em baixo (a calha: [`crate::bars`]).
     pub hbar: Rect,
 }
 
@@ -191,7 +191,9 @@ pub(crate) fn targets(ask: &Arrange<'_>, heights: &mut dyn Heights) -> Layout {
     );
     let top = board.y + m::BOARD_PAD;
     let bottom = floor.map_or(board.y + board.h, |f| f.min(board.y + board.h));
-    let max_h = (bottom - m::BOARD_PAD - top).max(head_h() + foot_h());
+    let w = (board.w - 2.0 * m::BOARD_PAD).max(0.0);
+    let hbar = crate::bars::board_band(Rect::new(board.x + m::BOARD_PAD, top, w, bottom - top));
+    let max_h = (hbar.y - top).max(head_h() + foot_h());
     let mut lists = Vec::new();
     let mut x = 0.0_f32;
     let lifted_list = match lifted {
@@ -275,7 +277,7 @@ pub(crate) fn targets(ask: &Arrange<'_>, heights: &mut dyn Heights) -> Layout {
         add_list_close,
         // As duas margens: a da esquerda (a origem das listas) e a da direita, depois do «Add list».
         content_w: x + m::LIST_W + 2.0 * m::BOARD_PAD,
-        hbar: crate::bars::board_track(board, top + max_h),
+        hbar,
     }
 }
 
@@ -529,7 +531,8 @@ fn list_box(
     };
     // ⭐ A lista que rola dá a margem direita à barra (D16, o Trello): os cartões estreitam e a
     // altura deles volta a medir-se — mais estreito nunca é mais baixo, logo a decisão não oscila.
-    let body_room = (max_h - head_h() - foot_h()).max(0.0);
+    let pad = m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
+    let body_room = (max_h - head_h() - foot_h() - pad).max(0.0);
     let mut f = flow.run(heights, m::CARD_W);
     if f.content_h > body_room + SCROLL_EPS {
         f = flow.run(heights, m::CARD_W_SCROLLING);
@@ -540,7 +543,7 @@ fn list_box(
         composer,
         content_h,
     } = f;
-    let body_h = content_h.min(body_room) + m::LIST_BODY_TOP + m::LIST_BODY_BOTTOM;
+    let body_h = content_h.min(body_room) + pad;
     let body = Rect::new(x, top + head_h(), m::LIST_W, body_h);
     let foot_y = body.y + body.h + m::LIST_FOOT_TOP;
     let mut template = None;

@@ -18,9 +18,7 @@ pub(crate) const ICON_PX: f32 = 16.0;
 
 // ── O quadro e as listas ──
 pub(crate) const BOARD_PAD: f32 = 12.0;
-/// A espessura da barra do quadro: cabe na margem de baixo, por baixo das listas.
-pub(crate) const SCROLL_BAR: f32 = 6.0;
-/// ⭐ A barra da lista (D16), medida na captura do Trello do dono (`smoke/D16`): polegar de `9`,
+/// ⭐ A barra da lista (D16) — e a do quadro, deitada em baixo (D17), medida na captura do Trello do dono (`smoke/D16`): polegar de `9`,
 /// numa margem própria de `23` à direita dos cartões (7 + 9 + 7); o cartão perde `15` (256 → 241).
 pub(crate) const LIST_BAR: f32 = 9.0;
 pub(crate) const LIST_GUTTER: f32 = 23.0;

@@ -123,3 +123,49 @@ fn segurar_a_seta_rola_ate_ao_fim_e_para() {
     m.quadros(30);
     assert_eq!(rolagem(&mut m, id, todo), 0.0, "pára no começo");
 }
+
+/// D17 — a barra do quadro é a da lista deitada, na sua margem em baixo: a mesma espessura, o
+/// polegar entre as setas de `12`; nenhuma lista desce à margem (7 + 9 + 7) e as pontas ficam longe
+/// dos cantos (a folga de `12` do quadro = o raio da lista).
+#[test]
+fn d17_a_barra_do_quadro_e_a_da_lista_deitada_na_sua_margem() {
+    let (mut m, id, todo) = longa();
+    let (lista, _) = m.docs().probe_bar(id.0, Some(todo)).unwrap();
+    let (track, thumb) = m.docs().probe_bar(id.0, None).expect("o quadro rola");
+    assert_eq!((track.h, thumb.h, thumb.y), (lista.w, lista.w, track.y));
+    assert_eq!(thumb.x - track.x, 12.0, "o polegar depois da seta ◀");
+    assert!(track.x >= crate::AREA.x + 12.0 && track.x + track.w <= crate::AREA.w - 12.0);
+    assert_eq!(track.y + track.h + 7.0, crate::AREA.y + crate::AREA.h);
+    for l in m.kanban(id).lists_in_order() {
+        let r = m.rect_lista(id, l.id);
+        assert!(r.y + r.h + 7.0 <= track.y, "a lista na margem: {r:?}");
+    }
+    m.clica((track.x + track.w - 20.0, track.y - 6.0));
+    m.quadros(2);
+    assert!(m.docs().probe_view(id.0).unwrap().scroll_x > 0.0, "alvo");
+}
+
+/// D17 — segurar ▶ do quadro: um passo no carregar, repete, pára no fim (o polegar encosta à seta).
+#[test]
+fn segurar_a_seta_do_quadro_rola_ate_ao_fim_e_para() {
+    let (mut m, id, _) = longa();
+    let x = |m: &mut Mesa| m.docs().probe_view(id.0).unwrap().scroll_x;
+    let (track, _) = m.docs().probe_bar(id.0, None).unwrap();
+    let seta = (track.x + track.w - 2.0, track.y + 4.0);
+    m.carrega(seta.0, seta.1);
+    m.quadros(2);
+    assert!((x(&mut m) - 40.0).abs() < 1e-3, "um passo no carregar");
+    m.quadros(300);
+    let fim = x(&mut m);
+    m.quadros(60);
+    m.larga(seta.0, seta.1);
+    assert!(
+        fim > 80.0 && (x(&mut m) - fim).abs() < 1e-3,
+        "repetiu e parou: {fim}"
+    );
+    let (_, t) = m.docs().probe_bar(id.0, None).unwrap();
+    assert!(
+        (t.x + t.w - (track.x + track.w - 12.0)).abs() < 1e-3,
+        "no fim: {t:?}"
+    );
+}

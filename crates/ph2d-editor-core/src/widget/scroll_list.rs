@@ -83,6 +83,21 @@ fn swap(r: Rect) -> Rect {
 }
 
 impl AxisBar {
+    /// ⭐ A margem própria de uma barra no FIM de `area`, de través ao eixo (D17: a da lista à
+    /// direita, a do quadro em baixo): `(margem, calha)`, a calha de espessura `bar` centrada na
+    /// margem de `gutter`. A horizontal é a vertical deitada — as mesmas contas, eixos trocados.
+    #[must_use]
+    pub fn gutter(area: Rect, horizontal: bool, gutter: f32, bar: f32) -> (Rect, Rect) {
+        let v = if horizontal { swap(area) } else { area };
+        let band = Rect::new(v.x + v.w - gutter, v.y, gutter, v.h);
+        let track = Rect::new(band.x + (gutter - bar) / 2.0, v.y, bar, v.h);
+        if horizontal {
+            (swap(band), swap(track))
+        } else {
+            (band, track)
+        }
+    }
+
     /// A calha como se fosse vertical.
     fn vt(&self) -> Rect {
         if self.horizontal {
@@ -375,6 +390,47 @@ mod tests {
         );
         let s = b.drag((20.0, 0.0), 0.0, (120.0, 50.0));
         assert!(s > 0.0 && s < b.max(), "só o x conta: {s}");
+    }
+
+    /// D17 — a margem horizontal é a vertical deitada: a mesma espessura, as mesmas setas e o
+    /// mesmo polegar, transpostos; a margem fica no fim de través (em baixo / à direita).
+    #[test]
+    fn a_horizontal_gutter_is_the_vertical_one_transposed() {
+        let area = Rect::new(12.0, 40.0, 600.0, 300.0);
+        let (vb, vt) = AxisBar::gutter(area, false, 23.0, 9.0);
+        let (hb, ht) = AxisBar::gutter(swap(area), true, 23.0, 9.0);
+        assert_eq!((hb, ht), (swap(vb), swap(vt)));
+        assert_eq!(
+            (vt.x, vt.w),
+            (12.0 + 600.0 - 23.0 + 7.0, 9.0),
+            "7 + 9 + 7 à direita"
+        );
+        let (b, t) = AxisBar::gutter(area, true, 23.0, 9.0);
+        assert_eq!(
+            (b.y, b.h, b.x, b.w),
+            (340.0 - 23.0, 23.0, 12.0, 600.0),
+            "em baixo"
+        );
+        assert_eq!((t.y, t.h), (340.0 - 16.0, 9.0));
+        let bar = |track, horizontal| AxisBar {
+            track,
+            horizontal,
+            content: 2000.0,
+            visible: 300.0,
+            arrows: true,
+            step: 40.0,
+        };
+        let (v, h) = (bar(vt, false), bar(ht, true));
+        for s in [0.0, 300.0, v.max()] {
+            assert_eq!(h.thumb(s), swap(v.thumb(s)));
+        }
+        assert_eq!(
+            h.arrow_tris(),
+            v.arrow_tris().map(|t| t.map(|(x, y)| (y, x)))
+        );
+        let end = (ht.x + ht.w - 1.0, ht.y + 4.0);
+        assert_eq!(h.arrow_at(end), Some(1.0));
+        assert_eq!(h.press(end, 0.0), 40.0, "a seta dá um passo");
     }
 
     /// As setas (D16): cada ponta rola `step` e o polegar anda só entre elas.

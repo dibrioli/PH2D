@@ -1,9 +1,9 @@
-# PROMPT — continuação da refatoração do Painter (janela 6)
+# PROMPT — continuação da refatoração do Painter (janela 7)
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor` · `pwd` · `git branch --show-current`
-(= `line/PainterWatercolor`) ANTES de ler. Base: o HEAD com o commit «handoff da janela 5».
+(= `line/PainterWatercolor`) ANTES de ler. Base: o HEAD com o commit «handoff da janela 6».
 
-Leia, nesta ordem: [HANDOFF_01_11_janela5.md](HANDOFF_01_11_janela5.md) (estado, decisão do dono, aberto) · a memória
+Leia, nesta ordem: [HANDOFF_01_11_janela6.md](HANDOFF_01_11_janela6.md) (estado; o §3 é por onde começar) · [E10g](E10g_oleo_diluido.md) · [E10i](E10i_ferrugem_velha.md) · a memória
 `project-memory/project_paint_type_water_oil_one_law_2026_11_01.md` (repo principal) ·
 [E10e2_km_e_remolha.md](E10e2_km_e_remolha.md) §E3 · [E10a2_meio_e_corpo.md](E10a2_meio_e_corpo.md) ·
 [F2_grandezas_fisicas.md](F2_grandezas_fisicas.md) (leis de viscosidade e secagem) · [F3_controlos.md](F3_controlos.md)
@@ -17,9 +17,12 @@ FOTOS do motor nesta pasta. «Não meça esforços.» Já respondido (não reper
 ajuda = **C animado** · «Pigment mix» por pincel ✓ · as 9 perguntas da E10 (F3 §8) · **UMA lei, sem segundo fluido: o
 Medium vira o seletor «Paint type: Water · Oil»; o solvente é sempre líquido** (01/11).
 
-**Ordem desta janela** = o §4 «Aberto» do handoff, itens (1)→(7): o bloco do óleo diluído + Paint type + Bingham (e a
-auditoria dos efeitos de água a `m = 1` com a grelha antes de mostrar) · miniaturas UMA vez · vermelhos antigos ·
-furos do E9 §8 · pequenos · E10c · E11 GPU, E12, E13, os outros 3 modos, ajuda, sondas, crateras.
+**Ordem desta janela** = o §3 do handoff (o cruzamento amarelo × azul do óleo meio diluído na lei Velha tapa em vez de
+misturar; o Filbert Dry salpicado; a grelha E9 inteira com o binário final; o teste lento do painel) e SÓ ENTÃO o smoke
+do dono: (1) `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json target/smoke/ph2d-host-desktop`
+(recompile antes) · (2) Painter › Wet Paint › um pincel Oil › «Paint type» mostra Oil; subir Dilution a ~0,9 ·
+(3) o traço espalha e escorre devagar, sem orla escura, e fica molhado mais tempo; com Water escorre depressa e seca ·
+(4) errado = não mexe, orla escura no óleo, laranja onde cores cruzam. Depois, o §4 do handoff em ordem.
 
 **Regras desta linha** (além do CLAUDE.md): coordenador autónomo, sem perguntas salvo aprovação de UI; a UI nova é
 mostrada ao dono NO APP (smoke em passos numerados), nunca numa maquete fora do padrão; agentes ≤ 3 em paralelo, 45

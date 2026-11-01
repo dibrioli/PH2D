@@ -44,6 +44,7 @@ mod paleta;
 mod selecao;
 #[path = "paint_paleta_voo.rs"]
 mod voo;
+pub(crate) use voo::Queda;
 
 pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PixelToolsPanel::ID) {

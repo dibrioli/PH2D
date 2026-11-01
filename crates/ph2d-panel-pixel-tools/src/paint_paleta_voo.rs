@@ -24,8 +24,9 @@ fn bloco(info: &PixelPanelInfo, from: usize) -> Vec<usize> {
     }
 }
 
-/// Célula `j` da grelha → a amostra que lá se pinta (`None` = o vão). Sem alvo (o rato fora das
-/// células), a queda cancela: a ordem é a de agora, e um bloco mudado deixa o vão no sítio dele.
+/// Célula `j` da grelha → a amostra que lá se pinta (`None` = o vão). Sem alvo (o rato longe da
+/// grelha ou sobre a própria amostra), a queda cancela: a ordem é a de agora, e um bloco mudado
+/// deixa o vão no sítio dele.
 fn ordem(
     info: &PixelPanelInfo,
     sel: &[usize],
@@ -57,6 +58,49 @@ fn ordem(
     }
 }
 
+/// ⭐ **A queda é função SÓ do lugar do rato** (smoke do dono 01/11: «ainda não ficou estável»): a
+/// célula `c` sob o rato na grelha FIXA (os intervalos contam para a célula mais próxima, a borda
+/// prende) põe a agarrada nela — o vão começa em `c − j` (`j` = a posição da agarrada no bloco).
+/// Nada depende da ordem prevista pintada, por isso o vão não salta nem pisca. Devolve o `to` do
+/// mover ([`palette::drag_permutation`]) e o do copiar ([`palette::copy_insert`]).
+pub(crate) fn queda(
+    (rx, ry): (f32, f32),
+    cols: usize,
+    n: usize,
+    sel: &[usize],
+    j: usize,
+) -> Option<Queda> {
+    let pitch = Spacing::Xl.px() + Spacing::Xxs.px();
+    let (k, first) = (sel.len(), *sel.first()?);
+    let (rx, ry) = (rx / pitch, ry / pitch);
+    #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
+    let (largura, altura) = (cols as f32, (n + k).div_ceil(cols) as f32);
+    // Meia célula de folga à volta da grelha; além dela, a queda cancela.
+    if !(-0.5..largura + 0.5).contains(&rx) || !(-0.5..altura + 0.5).contains(&ry) {
+        return None;
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "já preso à grelha"
+    )]
+    let celula = |v: f32, max: usize| (v.max(0.0) as usize).min(max.saturating_sub(1));
+    let c = celula(ry, altura as usize) * cols + celula(rx, cols);
+    let inicio = |total: usize| c.min(total - 1).saturating_sub(j).min(total - k);
+    let s = inicio(n);
+    Some(Queda {
+        mover: if s > first { s + k - 1 } else { s },
+        copiar: inicio(n + k),
+    })
+}
+
+/// Os dois `to` de uma queda: o do mover e o do copiar (o Ctrl lê-se ao largar).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Queda {
+    pub(crate) mover: usize,
+    pub(crate) copiar: usize,
+}
+
 impl Corpo<'_> {
     /// O arrasto activo da paleta, como a grelha o pinta: a ordem prevista e o voo. `rect(i)` é a
     /// célula `i` de agora (onde a queda se resolve).
@@ -72,15 +116,26 @@ impl Corpo<'_> {
             .filter(|(f, d)| *f == PanelRowFamily::PixelPalette && d.active)?;
         let n = info.palette.len();
         let from = (0..n).find(|&i| ids::palette_id(i) == d.dragged)?;
-        let dentro = |r: Rect| {
-            d.cursor_x >= r.x
-                && d.cursor_x < r.x + r.w
-                && d.cursor_y >= r.y
-                && d.cursor_y < r.y + r.h
-        };
-        let alvo = (0..n).find(|&i| i != from && dentro(rect(i)));
         let sel = bloco(info, from);
+        let j = sel.iter().position(|&i| i == from).unwrap_or(0);
+        // Sobre a própria amostra o despacho não larga nada: a pré-visualização também cancela.
+        let de = rect(from);
+        let sobre_si = de.contains(d.cursor_x, d.cursor_y);
+        let o = rect(0);
+        let q = queda(
+            (
+                d.cursor_x - o.x + Spacing::Xxs.px() * 0.5,
+                d.cursor_y - o.y + Spacing::Xxs.px() * 0.5,
+            ),
+            cols,
+            n,
+            &sel,
+            j,
+        )
+        .filter(|_| !sobre_si);
+        self.paleta_vista.queda = q;
         let copy = self.store.cmd_held();
+        let alvo = q.map(|q| if copy { q.copiar } else { q.mover });
         let slots = ordem(info, &sel, alvo, copy);
 
         // O bloco voa em linhas de até `cols` amostras, com a agarrada sob o ponto onde o rato a
@@ -90,7 +145,6 @@ impl Corpo<'_> {
         let pad = Spacing::Xxs.px();
         let por_linha = cols.min(sel.len()).max(1);
         let linhas = sel.len().div_ceil(por_linha);
-        let j = sel.iter().position(|&i| i == from).unwrap_or(0);
         #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
         let (w, h, ox, oy) = (
             por_linha as f32 * (cell + gap) - gap + pad * 2.0,
@@ -98,7 +152,6 @@ impl Corpo<'_> {
             (j % por_linha) as f32 * (cell + gap) + pad,
             (j / por_linha) as f32 * (cell + gap) + pad,
         );
-        let de = rect(from);
         let caixa = Rect::new(
             de.x + d.cursor_x - d.down_x - ox,
             de.y + d.cursor_y - d.down_y - oy,

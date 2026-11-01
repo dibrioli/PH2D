@@ -22,6 +22,8 @@ pub(crate) struct PaletaVista {
     pub(crate) voo: Option<VooPaleta>,
     /// A barra que marca onde o bloco cai (à esquerda da primeira célula do vão).
     pub(crate) marca: Option<Rect>,
+    /// Onde o arrasto vivo largaria — a MESMA conta que se pintou; a queda lê-a (`seam::larga`).
+    pub(crate) queda: Option<crate::paint::Queda>,
 }
 
 /// O bloco de amostras agarrado: a caixa (antes da inclinação), as cores e quantas por linha.

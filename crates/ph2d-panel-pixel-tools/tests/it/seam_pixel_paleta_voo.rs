@@ -185,13 +185,15 @@ fn marca_a_esquerda_do_vao(p: &Palco) {
 fn mid_drag_a_selected_swatch_carries_the_whole_block() {
     let mut p = Palco::novo();
     assert!(p.arrasta_ate(3, 10).is_empty());
-    assert_eq!(p.st.palette_painted(), movido(&[3, 4], 10).as_slice());
+    // A agarrada (a 1.ª do bloco) fica sob o rato: o vão começa na célula 10.
+    assert_eq!(p.st.palette_painted(), movido(&[3, 4], 11).as_slice());
+    assert_eq!(p.st.palette_painted()[10], None);
     marca_a_esquerda_do_vao(&p);
     assert_eq!(
         p.larga_em(10),
         [EditorAction::Pixel(PixelRequest::DragSwatch {
             from: 3,
-            to: 10,
+            to: 11,
             copy: false
         })]
     );
@@ -244,4 +246,82 @@ fn escape_mid_drag_cancels_without_a_request() {
     assert!(p.st.palette_drop_marker().is_none(), "Esc: a marca some");
     let a = p.larga_em(12);
     assert!(a.is_empty(), "o Up depois do Esc não pede nada: {a:?}");
+}
+
+/// ⭐ **Estável** (smoke do dono 01/11: «ainda não ficou estável e consistente»): varrer o rato
+/// píxel a píxel ao longo de uma fila, INCLUINDO os intervalos entre as células, nunca faz o vão
+/// voltar ao sítio de partida nem andar para trás, a marca anda com ele, e largar em qualquer
+/// píxel pede o que se viu.
+#[test]
+fn sweeping_the_cursor_across_a_row_moves_the_gap_steadily_and_drops_what_was_shown() {
+    let mut p = Palco::novo();
+    let (x0, y) = p.meio(9);
+    let mut ev = p.ponteiro(PointerKind::Down, (x0, y));
+    ev.extend(p.ponteiro(PointerKind::Move, (x0 + 8.0, y)));
+    let _ = p.aplica(ev);
+    // A fila da amostra 9, de ponta a ponta, com folga para lá das bordas.
+    let fila: Vec<(usize, Rect)> = (0..32)
+        .filter_map(|i| {
+            let id = ids::palette_id(i);
+            p.rects.iter().find(|(n, _)| *n == id).map(|(_, r)| (i, *r))
+        })
+        .filter(|(_, r)| r.contains(r.x, y) && y >= r.y && y < r.y + r.h)
+        .collect();
+    let ultima = fila.iter().map(|(i, _)| *i).max().unwrap();
+    let ini = fila.iter().map(|(_, r)| r.x).fold(f32::MAX, f32::min) - 6.0;
+    let fim = fila.iter().map(|(_, r)| r.x + r.w).fold(f32::MIN, f32::max) + 6.0;
+    let (mut vao_antes, mut marca_antes) = (0usize, f32::MIN);
+    let mut x = ini;
+    while x <= fim {
+        let ev = p.ponteiro(PointerKind::Move, (x, y));
+        let _ = p.aplica(ev);
+        p.pinta();
+        let sobre_si = {
+            let id = ids::palette_id(9);
+            p.rects.iter().any(|(n, r)| *n == id && r.contains(x, y))
+        };
+        if !sobre_si {
+            let vao =
+                p.st.palette_painted()
+                    .iter()
+                    .position(Option::is_none)
+                    .expect("o vão existe");
+            let m =
+                p.st.palette_drop_marker()
+                    .expect("há marca em todo o percurso");
+            assert!(vao >= vao_antes, "x={x}: o vão recuou {vao_antes} → {vao}");
+            assert!(m.x >= marca_antes, "x={x}: a marca recuou");
+            (vao_antes, marca_antes) = (vao, m.x);
+        }
+        x += 1.0;
+    }
+    assert!(
+        vao_antes == ultima,
+        "o vão percorreu a fila até {ultima} (acabou em {vao_antes})"
+    );
+    // Largar num INTERVALO entre células pede o que se viu.
+    let r12 = p
+        .rects
+        .iter()
+        .find(|(n, _)| *n == ids::palette_id(12))
+        .map(|(_, r)| *r)
+        .unwrap();
+    let no_intervalo = (r12.x + r12.w + 1.0, r12.y + r12.h * 0.5);
+    let ev = p.ponteiro(PointerKind::Move, no_intervalo);
+    let _ = p.aplica(ev);
+    p.pinta();
+    let mostrado = p.st.palette_painted().to_vec();
+    let ev = p.ponteiro(PointerKind::Up, no_intervalo);
+    let a = p.aplica(ev);
+    let [
+        EditorAction::Pixel(PixelRequest::DragSwatch {
+            from: 9,
+            to,
+            copy: false,
+        }),
+    ] = a.as_slice()
+    else {
+        panic!("largar no intervalo pede a mudança: {a:?}");
+    };
+    assert_eq!(movido(&[9], *to), mostrado, "o que se larga é o que se viu");
 }

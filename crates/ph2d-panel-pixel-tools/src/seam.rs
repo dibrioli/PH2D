@@ -7,9 +7,7 @@ use crate::ids;
 use crate::state::with_current;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{
-    InteractiveState, PanelRowDrop, PanelRowFamily, WidgetEvent, WidgetStore,
-};
+use ph2d_editor_core::interaction::{InteractiveState, PanelRowFamily, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::pixel_panel::{PixelOptions, PixelRequest, PixelSelect};
 use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
@@ -317,19 +315,20 @@ fn celula(id: NodeId, n: usize) -> Option<usize> {
     (0..n).find(|&i| ids::palette_id(i) == id)
 }
 
-/// Uma amostra largada sobre outra célula: a selecção muda-se para lá (com Ctrl, copia-se).
-fn larga(dragged: NodeId, drop: PanelRowDrop, copy: bool) -> Option<PixelRequest> {
-    let PanelRowDrop::Inside(alvo) = drop else {
-        return None;
-    };
+/// Uma amostra largada: a selecção muda-se para onde a pré-visualização a mostrava (com Ctrl,
+/// copia-se). A queda é a que se pintou no último quadro ([`crate::paint::Queda`]), nunca a célula
+/// sob o rato: assim o que se larga é o que se viu, também nos intervalos entre as células.
+fn larga(
+    st: &mut crate::PixelToolsPanelState,
+    dragged: NodeId,
+    copy: bool,
+) -> Option<PixelRequest> {
+    let q = st.paleta.queda.take()?;
     with_current(|info| {
-        let n = info.palette.len();
-        let (from, to) = (celula(dragged, n)?, celula(alvo, n)?);
-        (info.editing && (copy || from != to)).then_some(PixelRequest::DragSwatch {
-            from,
-            to,
-            copy,
-        })
+        let from = celula(dragged, info.palette.len())?;
+        let to = if copy { q.copiar } else { q.mover };
+        info.editing
+            .then_some(PixelRequest::DragSwatch { from, to, copy })
     })
 }
 
@@ -465,10 +464,10 @@ pub(crate) fn apply_event(
         WidgetEvent::PanelRowReparent {
             family: PanelRowFamily::PixelPalette,
             dragged,
-            drop,
+            ..
         } => {
             let copy = host.store().cmd_held();
-            return empurra(host, larga(dragged, drop, copy));
+            return empurra(host, larga(st, dragged, copy));
         }
         WidgetEvent::Click(id)
             if ids::SELECTOR_AREAS

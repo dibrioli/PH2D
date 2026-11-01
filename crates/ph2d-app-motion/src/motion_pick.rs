@@ -252,3 +252,7 @@ fn do_dispositivo(motion: &MotionState, gpu: &GpuContext) -> Vec<Copia> {
 #[cfg(test)]
 #[path = "motion_pick_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_pick_gpu_tests.rs"]
+mod gpu_tests;

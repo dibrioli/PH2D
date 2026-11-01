@@ -336,6 +336,10 @@ fn corta(corridas: &[Corrida], faixa: &[Range<u32>], imagens: &[Range<u32>]) -> 
 }
 
 #[cfg(test)]
+#[path = "motion_shape_placa_faixa_gpu_tests.rs"]
+mod gpu_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

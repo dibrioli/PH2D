@@ -53,15 +53,20 @@ especiais à frente da lista (sem retorno cedo — o ciclo chega à arte por bai
 Byte-idêntico sem intercalação continua lei (as cenas cuja ordem já coincide com a de hoje não mudam um byte).
 `MAX_BANDS` só se move com medição (§0).
 
-## Estado (01/11)
+## Estado (01/11, 5.ª janela)
 
 | etapa | commit | estado |
 |---|---|---|
 | E1 clique pela pilha do desenho, ícones à frente, trava, 1 clique/degrau | `7d703c2d79` | feito |
-| E2 Pixel Sprites na ordem (`Family::Pixel`) | `c2d460075d` | feito (sem foto) |
-| E3 Motion na ordem — degrau 1: rank + `Family::Motion`, ainda desenhado por cima (`motion_por_cima`) | `06494dff4e` | degrau 2 (placa por faixa) em curso |
-| E4 Flip na ordem | — | por fazer, depois da E3 |
-| E5 Z-index em todo tipo (gate por tipo do Add) | — | em curso |
-| E6 ícone da Macro + smoke `PH2D_OBJECT_ADD_PICK` | `4bf8ac8efe` | feito (deps novas em ph2d-app-macros ⇒ crate inteira no fecho) |
-| E7b repetição de camada escalada | `26c6e5c2b3` | feito |
-| E7a o que o editor mostra da paralaxe · E7c gate dos limites do nível 1 | — | por fazer |
+| E2 Pixel Sprites na ordem (`Family::Pixel`) | `c2d460075d` | feito |
+| E3 Motion na ordem: rank, placa por faixa, palco da macro, lente/filtro, imagens de grupo | `06494dff4e` `cc02d5e412` `68154a91f0` `3a1957bdf0` `480282fb1d` | feito |
+| E3 curas A/B/C: cópias de sprite por faixa, `fica_no_rank`, faixa Motion de baixo (`desenhou()`), cena em Object | `9a88830e50` | feito |
+| E4 Flip na ordem (`Family::Flip`, uma faixa por corrida) | `9ba9527c26` | feito |
+| E5 Z-index em todo tipo (gate por tipo do Add) | `b1c99a7bbf` `1db4cf3d50` | feito |
+| E6 ícone da Macro + smoke `PH2D_OBJECT_ADD_PICK` | `4bf8ac8efe` | feito |
+| E7a paralaxe no editor (ver handoff da 2.ª janela, `ad0cd7f3c2`) · E7b repetição escalada · E7c limites do nível 1 | `26c6e5c2b3` `5680fbd6d1` | feito |
+| clique no Motion (`motion_pick`) · trava × grupo | `fad7ab4748` `22e1c55130` | feito |
+| cena `PH2D_ORDEM_SMOKE=1\|2` | `dd7ca3396b` | feito; smoke do dono por fazer |
+| tecto do `ph2d-app-game` (moldura → `ph2d-camera-frame`), ciclo `game_format→screens`, `draw_bands` > 700 | `58d4fd5ac1` | feito |
+| item 5: perf do Flip intercalado e do realce (sonda `PH2D_SONDA`) | `677bc472f2` | medido: Flip sem custo extra; ordem total +0,1–0,26 ms de placa/quadro; realce na CPU nas cenas de smoke (0,005 ms) |
+| gates de placa novos (`do_dispositivo`, faixa Motion de baixo, cópias por faixa) · mutações em lote | — | em curso |

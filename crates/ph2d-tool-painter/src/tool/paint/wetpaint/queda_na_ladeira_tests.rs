@@ -9,6 +9,17 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 /// O tique da tela.
 const TIQUE: f32 = 1000.0 / 60.0;
 
+/// A água do pincel × `escala` com o MESMO pigmento (E10: o `Water` do ficheiro já não decide a receita): o veículo
+/// `D·h` × `escala`, o pigmento `(1−D)·h` fica — Dilution e Volume juntos.
+fn agua_vezes(t: &mut PainterTool, escala: f64) {
+    use ph2d_wet_paint::tuning::Knob;
+    let k = &mut t.paint.wetpaint.knobs;
+    let (d, h) = (k.get(Knob::Dilution), k.get(Knob::Volume));
+    let (pig, veiculo) = ((1.0 - d) * h, escala * d * h);
+    k.set(Knob::Dilution, veiculo / (pig + veiculo).max(1e-12));
+    k.set(Knob::Volume, pig + veiculo);
+}
+
 fn massas(t: &mut PainterTool) -> Vec<f32> {
     t.wet_bring_home();
     let g = &t
@@ -28,10 +39,9 @@ fn massas(t: &mut PainterTool) -> Vec<f32> {
 pub(super) fn queda(escala: f64, oleo: bool, marcas: &[usize]) -> Vec<f64> {
     let mut t = com_oleo();
     let antes = massas(&mut t);
-    let mut p = preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png");
-    let w = p.parametros.volumes.water.unwrap_or(1.0);
-    p.parametros.volumes.water = Some(w * escala);
-    t.preset_aplicar(&p).expect("o meio");
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    agua_vezes(&mut t, escala);
     t.set_wet_oleo_real_ligado(oleo);
     t.set_brush_size_px(12.0);
     t.set_brush_color_srgb8([240, 130, 60]);
@@ -103,9 +113,9 @@ fn diag_a_queda_na_ladeira() {
 
 /// O que uma corrida J11 lê: a massa nova fora do óleo nas `marcas`, a distância média dessa massa ao eixo do óleo
 /// (células) em cada marca, o `film` médio no óleo ao soltar e a imagem mostrada no fim.
-struct Leitura {
-    fora: Vec<f64>,
-    dist: Vec<f64>,
+pub(super) struct Leitura {
+    pub(super) fora: Vec<f64>,
+    pub(super) dist: Vec<f64>,
     film: f64,
     imagem: Vec<u8>,
 }
@@ -125,7 +135,7 @@ fn grade(t: &mut PainterTool) -> (usize, Vec<f32>) {
 }
 
 /// Um Wet Flat (água `escala` × a do preset, Real Oil ligado) ao longo da crista do Dabber assentado.
-fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
+pub(super) fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
     let mut t = com_oleo();
     let (s, antes) = grade(&mut t);
     // O eixo do óleo: a linha média das células com óleo.
@@ -137,10 +147,9 @@ fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
         }
     }
     let eixo = sy / n.max(1.0);
-    let mut p = preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png");
-    let w = p.parametros.volumes.water.unwrap_or(1.0);
-    p.parametros.volumes.water = Some(w * escala);
-    t.preset_aplicar(&p).expect("o meio");
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    agua_vezes(&mut t, escala);
     t.set_wet_oleo_real_ligado(true);
     t.set_brush_size_px(12.0);
     t.set_brush_color_srgb8([240, 130, 60]);
@@ -195,20 +204,21 @@ fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
     }
 }
 
-/// A massa fora do óleo aos 240 tiques com água ×0,15 na lei ANTERIOR à J11 (a ladeira inteira, qualquer que fosse a
-/// água): `23 654` (commit `6e466569d2`, prancha `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`).
-const POUCA_ANTES_J11: f64 = 23_654.0;
-
 /// ⭐ **A queda cresce com a diluição** (dono 30/10, J11 — escolheu a V3 da prancha
 /// `docs/Painter/Pinceis/pranchas/J11_queda_diluicao.png`): sobre a crista do óleo, o pincel quase seco não escorre
-/// (≤ 10 % do que escorria) e a massa que desce cresce com a água: pouca < média < muita.
-/// Vermelho visto na lei anterior: pouca 23 654 (e 12 618 na árvore de 30/10 22 h, com o `PINCEL_DE_OLEO` de volta);
-/// com a lei: 1 438 · 70 270 · 120 564.
+/// (≤ 10 % do que o cheio escorre) e a massa que DESCE depois de soltar cresce com a água: pouca < média < muita.
+/// Régua J8 (`docs/Painter/Arquitetura/J8_vermelhos_antigos.md`): a queda = massa fora aos 240 tiques − ao soltar (a
+/// de antes somava o que o pincel pousa fora do óleo — 584 → 4 426 com a E10) e a água × pela Dilution com o mesmo
+/// pigmento ([`agua_vezes`]). Na J11 (847b472b3d): 234 · 68 977 · 119 325. Vermelho desde a E10g: 2 433 · 2 978 ·
+/// 4 862 — a viscosidade do óleo fica na célula seca e trava a água que chega (`ETA 1`: 2 475 · … · 55 411).
 #[test]
 fn a_queda_cresce_com_a_diluicao() {
     let q: Vec<f64> = [0.15, 0.5, 1.0]
         .iter()
-        .map(|e| queda_j11(*e, &[240]).fora[0])
+        .map(|e| {
+            let f = queda_j11(*e, &[0, 240]).fora;
+            f[1] - f[0]
+        })
         .collect();
     let (pouca, media, muita) = (q[0], q[1], q[2]);
     assert!(
@@ -216,8 +226,8 @@ fn a_queda_cresce_com_a_diluicao() {
         "pouca {pouca:.0} < média {media:.0} < muita {muita:.0}"
     );
     assert!(
-        pouca <= 0.10 * POUCA_ANTES_J11,
-        "o pincel quase seco ainda escorre: {pouca:.0} > 10 % de {POUCA_ANTES_J11:.0}"
+        pouca <= 0.10 * muita,
+        "o pincel quase seco ainda escorre: {pouca:.0} > 10 % de {muita:.0}"
     );
 }
 
@@ -240,4 +250,41 @@ fn diag_a_queda_pela_diluicao() {
         ));
         super::agua_sobre_oleo_tests::grava(&format!("J11_{escala}"), &l.imagem);
     }
+}
+
+/// SONDA J8 — o que trava a queda do Wet Flat cheio na crista (a queda = massa fora aos 240 tiques − ao soltar), por
+/// interruptor de medição, em série (são estáticos globais).
+#[test]
+#[ignore = "sonda J8"]
+fn diag_o_que_trava_a_queda() {
+    use ph2d_wet_paint::solver::{LADEIRA_ROTA, PAPEL_BINGHAM, PAPEL_CORPO};
+    use std::sync::atomic::Ordering::Relaxed;
+    let corre = |nome: &str| {
+        for e in [0.15, 1.0] {
+            let f = queda_j11(e, &[0, 240]).fora;
+            relato(format!(
+                "{nome} água ×{e}: queda {:.0} (ao soltar {:.0})",
+                f[1] - f[0],
+                f[0]
+            ));
+        }
+    };
+    corre("produto");
+    ph2d_wet_paint::meio::PAPEL_ETA.store(1.0f32.to_bits(), Relaxed);
+    corre("sem a viscosidade do óleo (ETA 1)");
+    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(1.0f32.to_bits(), Relaxed);
+    corre("ETA 1 e sem endurecer");
+    ph2d_wet_paint::meio::PAPEL_ETA.store(0, Relaxed);
+    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(0, Relaxed);
+    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    corre("sem Bingham");
+    PAPEL_BINGHAM.store(0, Relaxed);
+    PAPEL_CORPO.store((1e-9f32).to_bits(), Relaxed);
+    corre("sem Body");
+    PAPEL_CORPO.store(0, Relaxed);
+    LADEIRA_ROTA.store(2, Relaxed);
+    corre("sem ladeira");
+    LADEIRA_ROTA.store(1, Relaxed);
+    corre("ladeira de 30/10");
+    LADEIRA_ROTA.store(0, Relaxed);
 }

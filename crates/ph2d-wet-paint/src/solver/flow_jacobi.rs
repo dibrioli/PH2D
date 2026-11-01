@@ -460,21 +460,6 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     let k = crate::meio::mobilidade(f64::from(cel.meio));
                     (ex, ey) = (ex * k, ey * k);
                 }
-                if let Some(l) = ladeira {
-                    let fx = fx_off as usize;
-                    (ex, ey) = super::ladeira_do_oleo::dique(
-                        l,
-                        (
-                            frow + kf,
-                            frow + kfl,
-                            frow + kfr,
-                            fy_u * fine_s + fx + kf,
-                            fy_d * fine_s + fx + kf,
-                        ),
-                        f,
-                        (ex, ey),
-                    );
-                }
                 fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
                 fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
                 i += 1;

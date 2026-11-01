@@ -1,0 +1,277 @@
+//! SONDA J8 (smoke do dono 01/11: «o escorrimento ignora o relevo da tinta já pousada — passa por cima em vez de
+//! desviar»): um traço A (o obstáculo) em `y = 90`, espera, e um Wet Drip diluído B em `y = 55` que escorre para baixo
+//! na tela inclinada de fábrica. Mede a massa nova de B no miolo de A, abaixo de A (atravessou) e acima (segurou), com
+//! e sem a ladeira do óleo (`LADEIRA_ROTA = 2`). Medição, nunca portão.
+
+use super::agua_sobre_oleo_tests::{H, PAPEL, W, grava, mostrada, ponteiro, preset, relato};
+use super::*;
+use ph2d_editor_core::Tool;
+use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase};
+use ph2d_wet_paint::tuning::Knob;
+use std::sync::atomic::Ordering::Relaxed;
+
+#[derive(Clone, Copy)]
+enum ObstaculoA {
+    Dabber,
+    DabberDiluido,
+    WetRound,
+}
+
+impl ObstaculoA {
+    fn nome(self) -> &'static str {
+        match self {
+            Self::Dabber => "Dabber",
+            Self::DabberDiluido => "Dabber_d05_Oil",
+            Self::WetRound => "WetRound_Water",
+        }
+    }
+}
+
+fn grid(t: &PainterTool) -> &ph2d_wet_paint::grid::Grid {
+    &t.paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão")
+        .engine
+        .layers[0]
+        .grid
+}
+
+fn ticks(t: &mut PainterTool, n: u32) {
+    for _ in 0..n {
+        t.on_tick(1000.0 / 60.0);
+    }
+}
+
+/// Um traço horizontal de `x0` a `x1` em `y`, 40 passos, um tick por passo.
+fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
+    t.on_canvas_pointer(ponteiro(x0, y, PointerPhase::Down));
+    for k in 1..=40 {
+        let x = x0 + (x1 - x0) * k as f32 / 40.0;
+        t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(ponteiro(x1, y, PointerPhase::Up));
+}
+
+fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_wet_relogio_fixo(true);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        format!("{},{},{}", PAPEL[0], PAPEL[1], PAPEL[2]),
+    ));
+    // ── A, o obstáculo.
+    let rel_a = match a {
+        ObstaculoA::Dabber | ObstaculoA::DabberDiluido => "Oil/Dabber/Dabber.ph2d-brush.png",
+        ObstaculoA::WetRound => "Watercolor/Fluid/Wet Round.ph2d-brush.png",
+    };
+    t.preset_aplicar(&preset(rel_a)).expect("o meio de A");
+    match a {
+        ObstaculoA::Dabber => {}
+        ObstaculoA::DabberDiluido => {
+            t.paint.wetpaint.knobs.set(Knob::Dilution, 0.5);
+            t.paint.wetpaint.knobs.set(Knob::Medium, 1.0);
+        }
+        ObstaculoA::WetRound => t.paint.wetpaint.knobs.set(Knob::Medium, 0.0),
+    }
+    let oleo_a = t.wet_oleo_real().is_some();
+    t.set_brush_size_px(30.0);
+    t.set_brush_color_srgb8([40, 90, 220]);
+    traco(&mut t, 40.0, 200.0, 90.0);
+    ticks(&mut t, espera);
+    t.wet_bring_home();
+
+    // ── A fotografia de A no instante em que B começa.
+    let (antes, sett_a, campo_oleo, ganho_k, gs, gw, gh) = {
+        let g = grid(&t);
+        let antes: Vec<f32> = (0..g.cells).map(|i| g.sett[i] + g.susp[i]).collect();
+        let sett: Vec<f32> = g.sett.clone();
+        let ganho: Vec<f64> = (0..g.cells)
+            .map(|i| ph2d_wet_paint::grid::oleo_celula::ganho(&g.oleo, i))
+            .collect();
+        let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+        (
+            antes,
+            sett,
+            !g.oleo.is_empty(),
+            ganho,
+            g.s,
+            s.grid.0,
+            s.grid.1,
+        )
+    };
+    let max_a = antes.iter().copied().fold(0f32, f32::max);
+    let limiar = 1000f32.min(0.25 * max_a);
+    // Orla de cima e de baixo de A por coluna (células com massa > limiar).
+    let orla: Vec<Option<(usize, usize)>> = (1..=gw)
+        .map(|cx| {
+            let top = (1..=gh).find(|&cy| antes[cx + cy * gs] > limiar)?;
+            let bot = (1..=gh).rev().find(|&cy| antes[cx + cy * gs] > limiar)?;
+            Some((top, bot))
+        })
+        .collect();
+    let miolo_de = |cx: usize, cy: usize, top: usize| cy >= top + 4 && antes[cx + cy * gs] > limiar;
+    let (mut ss, mut sm, mut sg, mut n_miolo) = (0f64, 0f64, 0f64, 0usize);
+    for (k, o) in orla.iter().enumerate() {
+        let Some((top, bot)) = *o else { continue };
+        let cx = k + 1;
+        for cy in top..=bot {
+            if miolo_de(cx, cy, top) {
+                let i = cx + cy * gs;
+                ss += f64::from(sett_a[i].max(0.0));
+                sm += f64::from(antes[i]);
+                sg += ganho_k[i];
+                n_miolo += 1;
+            }
+        }
+    }
+    let assente_a = ss / sm.max(1e-9);
+    let ganho_medio = sg / (n_miolo.max(1) as f64);
+
+    // ── B, o escorrimento.
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Drip.ph2d-brush.png"))
+        .expect("o Wet Drip");
+    t.paint.wetpaint.knobs.set(Knob::Dilution, 0.9);
+    t.paint.wetpaint.knobs.set(Knob::Medium, m_b);
+    let oleo_b = t.wet_oleo_real().is_some();
+    t.set_brush_size_px(20.0);
+    t.set_brush_color_srgb8([240, 130, 60]);
+    ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, Relaxed);
+    // `m_b < 0` = o controlo SEM B: o que A faz sozinho nos mesmos 900 ticks (o «novo» que não é de B).
+    if m_b >= 0.0 {
+        traco(&mut t, 60.0, 180.0, 55.0);
+    }
+    // A parede que o motor fotografou no início de B (só existe com o Real Oil na mão e óleo na grade).
+    let (foto, foto_h, foto_ass) = {
+        let g = grid(&t);
+        let foto = g.oleo_antes.len() == g.cells;
+        let (mut h, mut fa, mut n) = (0f64, 0f64, 0usize);
+        if foto {
+            for (k, o) in orla.iter().enumerate() {
+                let Some((top, bot)) = *o else { continue };
+                for cy in top..=bot {
+                    let cx = k + 1;
+                    if miolo_de(cx, cy, top) {
+                        let i = cx + cy * gs;
+                        h += f64::from(g.oleo_antes[i]);
+                        fa += f64::from(g.oleo_antes_assente.get(i).copied().unwrap_or(1.0));
+                        n += 1;
+                    }
+                }
+            }
+        }
+        let n = n.max(1) as f64;
+        (foto, h / n, fa / n)
+    };
+    ticks(&mut t, 900);
+    let nome = format!(
+        "{}_e{espera}_B{}_{}",
+        a.nome(),
+        nome_b(m_b),
+        if rota == 2 { "semladeira" } else { "ladeira" }
+    );
+    grava(&nome, &mostrada(&mut t));
+    t.wet_bring_home();
+    let g = grid(&t);
+    let (mut miolo, mut c50, mut abaixo, mut acima) = (0f64, 0usize, 0f64, 0f64);
+    for (k, o) in orla.iter().enumerate() {
+        let Some((top, bot)) = *o else { continue };
+        let cx = k + 1;
+        for cy in 1..=gh {
+            let i = cx + cy * gs;
+            let nova = f64::from(g.sett[i] + g.susp[i] - antes[i]).max(0.0);
+            if cy < top {
+                acima += nova;
+            } else if cy > bot {
+                abaixo += nova;
+            } else if miolo_de(cx, cy, top) {
+                miolo += nova;
+                if nova > 50.0 {
+                    c50 += 1;
+                }
+            }
+        }
+    }
+    format!(
+        "{:<15}| esp {:>4} | B {:<5}| {:<11}| oleoA {} oleoB {:<5}| limiar {:>5.0} miolo# {:>4} | assenteA {:.3} | campo {:<5} ganho {:.3} | foto {:<5} h {:.3} ass {:.3} | miolo {:>9.0} c>50 {:>4} | abaixo {:>9.0} | acima {:>9.0}",
+        a.nome(),
+        espera,
+        nome_b(m_b),
+        if rota == 2 { "sem ladeira" } else { "ladeira" },
+        u8::from(oleo_a),
+        oleo_b,
+        limiar,
+        n_miolo,
+        assente_a,
+        campo_oleo,
+        ganho_medio,
+        foto,
+        foto_h,
+        foto_ass,
+        miolo,
+        c50,
+        abaixo,
+        acima
+    )
+}
+
+fn nome_b(m_b: f64) -> &'static str {
+    if m_b < 0.0 {
+        "nenhum"
+    } else if m_b > 0.5 {
+        "Oil"
+    } else {
+        "Water"
+    }
+}
+
+fn bloco(rota: u8) {
+    ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, Relaxed);
+    let mut casos = Vec::new();
+    for a in [
+        ObstaculoA::Dabber,
+        ObstaculoA::DabberDiluido,
+        ObstaculoA::WetRound,
+    ] {
+        for espera in [120u32, 1200] {
+            for m_b in [-1.0, 0.0, 1.0] {
+                casos.push((a, espera, m_b));
+            }
+        }
+    }
+    let linhas: Vec<String> = std::thread::scope(|s| {
+        let h: Vec<_> = casos
+            .iter()
+            .map(|&(a, e, m)| {
+                std::thread::Builder::new()
+                    .stack_size(64 << 20)
+                    .spawn_scoped(s, move || linha(a, e, m, rota))
+                    .expect("a thread")
+            })
+            .collect();
+        h.into_iter()
+            .zip(&casos)
+            .map(|(h, &(a, e, m))| {
+                h.join().unwrap_or_else(|_| {
+                    format!("{} | esp {e} | B {m} | rota {rota} | REBENTOU", a.nome())
+                })
+            })
+            .collect()
+    });
+    for l in linhas {
+        relato(l);
+    }
+}
+
+/// SONDA J8 — o escorrimento contorna (ou não) a tinta já pousada; 12 linhas com a ladeira, 12 sem.
+#[test]
+#[ignore = "sonda J8"]
+fn diag_o_escorrer_contorna_o_relevo() {
+    bloco(0);
+    bloco(2);
+    ph2d_wet_paint::solver::LADEIRA_ROTA.store(0, Relaxed);
+}

@@ -1,9 +1,9 @@
-# PROMPT — continuação da refatoração do Painter (janela 8)
+# PROMPT — continuação da refatoração do Painter (janela 9)
 
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor` · `pwd` · `git branch --show-current`
-(= `line/PainterWatercolor`) ANTES de ler. Base: o HEAD com o commit «handoff da janela 7».
+(= `line/PainterWatercolor`) ANTES de ler. Base: o HEAD com o commit «handoff da janela 8».
 
-Leia, nesta ordem: [HANDOFF_01_11_janela7.md](HANDOFF_01_11_janela7.md) (estado; o §4 é por onde começar) · [J7](J7_pasta_do_oleo.md) · [E10g](E10g_oleo_diluido.md) · [E10i](E10i_ferrugem_velha.md) · a memória
+Leia, nesta ordem: [HANDOFF_01_11_janela8.md](HANDOFF_01_11_janela8.md) (estado; o §2–§3 é por onde começar) · [J8](J8_vermelhos_antigos.md) · [J7](J7_pasta_do_oleo.md) · [E10g](E10g_oleo_diluido.md) · [E10i](E10i_ferrugem_velha.md) · a memória
 `project-memory/project_paint_type_water_oil_one_law_2026_11_01.md` (repo principal) ·
 [E10e2_km_e_remolha.md](E10e2_km_e_remolha.md) §E3 · [E10a2_meio_e_corpo.md](E10a2_meio_e_corpo.md) ·
 [F2_grandezas_fisicas.md](F2_grandezas_fisicas.md) (leis de viscosidade e secagem) · [F3_controlos.md](F3_controlos.md)
@@ -17,10 +17,10 @@ FOTOS do motor nesta pasta. «Não meça esforços.» Já respondido (não reper
 ajuda = **C animado** · «Pigment mix» por pincel ✓ · as 9 perguntas da E10 (F3 §8) · **UMA lei, sem segundo fluido: o
 Medium vira o seletor «Paint type: Water · Oil»; o solvente é sempre líquido** (01/11).
 
-**Ordem desta janela** = o §4 do handoff da janela 7, a começar pelos vermelhos antigos (A/B no commit pai antes de
-regravar ou afrouxar; uma régua que media o Rebelle redecide-se — o Rebelle deixou de ser referência). Depois a fila
-do dono (§3: o escorrimento que ignora o relevo pousado; o desempenho do óleo diluído — medir antes). Smoke do dono no
-fim da onda, em passos numerados, com o app recompilado (`--profile smoke`, Radeon).
+**Ordem desta janela** = o §3 do handoff da janela 8: (1) transportar o meio com o líquido (a água que chega a
+óleo seco herda a viscosidade dele — medido, J8 §2) num bloco com os seus portões; (2) medir por que porta a água sobe
+o relevo e só depois curar (o dique foi RECUSADO por medição); (3) a composição do óleo molhado (82–88 % do CPU).
+Smoke do dono no fim da onda, em passos numerados, com o app recompilado (`--profile smoke`, Radeon).
 
 **Regras desta linha** (além do CLAUDE.md): coordenador autónomo, sem perguntas salvo aprovação de UI; a UI nova é
 mostrada ao dono NO APP (smoke em passos numerados), nunca numa maquete fora do padrão; agentes ≤ 3 em paralelo, 45

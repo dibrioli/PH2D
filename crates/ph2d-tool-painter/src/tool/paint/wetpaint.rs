@@ -484,7 +484,11 @@ mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
 mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o Wet Drip, prompt 16)
 #[cfg(test)]
+mod escorre_contorna_tests; // sonda J8: o escorrimento contorna o relevo já pousado?
+#[cfg(test)]
 mod oleo_diluido_tests; // E10g (dono 01/11): o óleo diluído escorre, a tinta do tubo fica
+#[cfg(test)]
+mod desempenho_oleo_tests; // sonda J8: o óleo diluído é lento por correr mais tempo ou por passo?
 #[cfg(test)]
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]

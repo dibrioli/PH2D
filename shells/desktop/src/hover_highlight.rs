@@ -120,8 +120,16 @@ pub(crate) fn pick_objects_at(
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
-    let view =
+    let mut view =
         ph2d_vec_entities::entities::view_state_for_pick(w.sim, vec_entities, vec_view_derived);
+    // O filho de um grupo entra no pick — o fim troca-o pelo grupo (`pick_target`); só o cadeado fica.
+    let travado = |b: u64| {
+        w.sim
+            .world()
+            .get::<ph2d_ecs::Locked>(ph2d_ecs::Entity::from_bits(b))
+    };
+    view.locked
+        .retain(|id| vec_entities.get(id).is_some_and(|&b| travado(b).is_some()));
     let mut hits = ph2d_app_vec::vec_gizmo_view::pick_all_at_world(
         w.sim,
         w.vec_scene,
@@ -174,12 +182,15 @@ pub(crate) fn pick_objects_at(
         w.pixels_per_meter,
     ));
     icones.extend(hits);
-    // ⭐ **Travado não se pega no canvas, em família nenhuma** — o vetor e o Flip já o recusavam;
-    // sprite, pixel, luz e câmera não. O mesmo predicado do gizmo (`is_locked_for_edit`).
-    icones.retain(|&b| {
-        ph2d_ecs::Entity::try_from_bits(b)
-            .is_none_or(|e| !ph2d_ecs::is_locked_for_edit(w.sim.world(), e))
-    });
+    // ⭐ **Travado (cadeado) não se pega no canvas, em família nenhuma**; e o filho de um grupo dá o
+    // GRUPO mais de fora (o único que se manipula, dono 26/05), no sítio do 1.º acerto dele (GEF 19).
+    let mut icones: Vec<u64> = icones
+        .into_iter()
+        .filter_map(|b| match ph2d_ecs::Entity::try_from_bits(b) {
+            Some(e) => ph2d_ecs::pick_target(w.sim.world(), e).map(ph2d_ecs::Entity::to_bits),
+            None => Some(b),
+        })
+        .collect();
     let mut vistos = std::collections::BTreeSet::new();
     icones.retain(|b| vistos.insert(*b));
     icones

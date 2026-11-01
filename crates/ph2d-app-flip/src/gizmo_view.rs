@@ -301,7 +301,8 @@ pub fn pick_all_at_world(
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        if is_hidden_or_locked(sim, e) {
+        // GEF 19: o filho de um grupo entra — o clique troca-o pelo grupo (`ph2d_ecs::pick_target`).
+        if is_hidden(sim, e) || sim.world().get::<ph2d_ecs::Locked>(e).is_some() {
             continue;
         }
         if contains_object(sim, doc, e, oid, p, stroke_hit_r) {
@@ -363,10 +364,11 @@ pub fn pick_in_world_rect(
 /// `Visibility.hidden` no próprio ou em qualquer ancestral (esconder um grupo
 /// esconde os filhos).
 fn is_hidden_or_locked(sim: &SimWorld, entity: Entity) -> bool {
+    ph2d_ecs::is_locked_for_edit(sim.world(), entity) || is_hidden(sim, entity)
+}
+
+fn is_hidden(sim: &SimWorld, entity: Entity) -> bool {
     let w = sim.world();
-    if ph2d_ecs::is_locked_for_edit(w, entity) {
-        return true;
-    }
     let mut cur = Some(entity);
     for _ in 0..64 {
         let Some(e) = cur else { return false };

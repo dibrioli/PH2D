@@ -310,7 +310,8 @@ pub use timer::{
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
-    WorklistBuf, is_locked_for_edit, propagate_transforms, propagate_transforms_into_present,
+    WorklistBuf, is_locked_for_edit, pick_target, propagate_transforms,
+    propagate_transforms_into_present,
 };
 pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,

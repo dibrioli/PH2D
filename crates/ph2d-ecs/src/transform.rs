@@ -293,6 +293,22 @@ pub fn is_locked_for_edit(world: &World, entity: Entity) -> bool {
     false
 }
 
+/// **O alvo de um clique no canvas sobre a arte de `entity`** (GEF 19): ela própria, ou — filha de um
+/// grupo (`GroupedChildren` num ancestral) — o grupo MAIS DE FORA, o único que se manipula (Enio
+/// 2026-05-26). `None` se o alvo tem `Locked` (o cadeado trava só o próprio objecto).
+#[must_use]
+pub fn pick_target(world: &World, entity: Entity) -> Option<Entity> {
+    let mut alvo = entity;
+    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(p) = cur {
+        if world.get::<GroupedChildren>(p).is_some() {
+            alvo = p;
+        }
+        cur = world.get::<ChildOf>(p).map(|c| c.parent());
+    }
+    world.get::<Locked>(alvo).is_none().then_some(alvo)
+}
+
 /// World-space affine transform as a 3×3 column-major matrix.
 ///
 /// Computed per-frame by [`propagate_transforms`] from a chain of

@@ -136,3 +136,49 @@ fn pega(
         tela,
     )
 }
+
+/// ⭐ GEF 19 — **o clique na arte de um filho agrupado pega o GRUPO mais de fora** (dono 26/05: «você
+/// pode manipular o objeto pai do grupo mas não os seus filhos»; dono 01/11: o 1.º clique é do que se
+/// vê por cima). Antes o filho caía da lista e o clique atravessava a arte. O grupo travado não pega.
+///
+/// Mutação que deve sangrar: `pick_target` a devolver o próprio filho.
+#[test]
+fn o_clique_num_filho_agrupado_pega_o_grupo_mais_de_fora() {
+    let centro = ph2d_render::Camera2d::default()
+        .world_to_screen([0.0, 0.0], ph2d_host::WindowSize::new(1280, 720));
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = ph2d_ecs::PresentWorld::new();
+    let filho = imagem_desenhada(&mut present, &mut sim);
+    let (fora, dentro) = {
+        let w = sim.world_mut();
+        let fora = w.spawn(ph2d_ecs::Transform::IDENTITY).id();
+        let dentro = w
+            .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::ChildOf(fora)))
+            .id();
+        w.entity_mut(ph2d_ecs::Entity::from_bits(filho))
+            .insert(ph2d_ecs::ChildOf(dentro));
+        (fora, dentro)
+    };
+    let ordem = ph2d_render::draw_bands::FrameOrder::default();
+    // Sem grupo: o filho à frente; os dois vazios (pais) pelo anel, depois dele.
+    assert_eq!(
+        pega(&sim, &mut present, &ordem, centro).first(),
+        Some(&filho),
+        "controlo: sem grupo, o filho pega-se"
+    );
+    for g in [dentro, fora] {
+        sim.world_mut()
+            .entity_mut(g)
+            .insert(ph2d_ecs::GroupedChildren);
+    }
+    assert_eq!(
+        pega(&sim, &mut present, &ordem, centro),
+        vec![fora.to_bits()],
+        "o clique na arte do grupo não pegou o grupo mais de fora"
+    );
+    sim.world_mut().entity_mut(fora).insert(ph2d_ecs::Locked);
+    assert!(
+        pega(&sim, &mut present, &ordem, centro).is_empty(),
+        "o grupo travado ainda se pega pela arte dos filhos"
+    );
+}

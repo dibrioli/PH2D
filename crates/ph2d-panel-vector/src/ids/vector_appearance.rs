@@ -87,6 +87,28 @@ pub const VECTOR_PAINT_JOIN_BEVEL: NodeId = hash_node_id("vector.paint.join.beve
 /// O chip numérico do slider acima.
 pub const VECTOR_PAINT_OPACITY_NUM: NodeId = hash_node_id("vector.paint.opacity.num");
 
+/// ⭐ F44 — a opacidade (%) na LINHA da camada `i` (Fill/Stroke no layout do Figma).
+#[must_use]
+pub fn vector_paint_row_opacity_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.paint.rowopacity.{i}"))
+}
+
+/// ⭐ F44 — a linha do preenchimento de BASE: um `Dropdown` cujo painel abre à esquerda (tipo, cor,
+/// degradê).
+pub const VECTOR_FILL_ROW: NodeId = hash_node_id("vector.fill.row");
+
+/// O X do painel do preenchimento de base.
+pub const VECTOR_FILL_PROPS_CLOSE: NodeId = hash_node_id("vector.fill.props.close");
+
+/// ⭐ F44 — o botão de ajustes do traço: um `Dropdown` cujo painel «Stroke settings» abre à esquerda.
+pub const VECTOR_STROKE_SETTINGS: NodeId = hash_node_id("vector.stroke.settings");
+
+/// O X do painel «Stroke settings».
+pub const VECTOR_STROKE_PROPS_CLOSE: NodeId = hash_node_id("vector.stroke.props.close");
+
+/// O X do painel de uma camada extra de Fill/Stroke.
+pub const VECTOR_PAINT_PROPS_CLOSE: NodeId = hash_node_id("vector.paint.props.close");
+
 /// A linha `i` da lista de modos da CAMADA.
 ///
 /// ⚠️ Espaço de ids próprio, e não o do objecto: os dois popovers podem existir no mesmo frame, e

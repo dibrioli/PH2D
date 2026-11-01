@@ -343,17 +343,15 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_APPEARANCE, scope::ALWAYS, Drawing, |b, y| {
         b.appearance_section(y)
     });
+    // F44: o «Fill type» mora no painel à esquerda da linha do preenchimento de base.
     p.seccao(VECTOR_SECTION_FILL, scope::ALWAYS, Drawing, |b, y| {
-        b.fill_style(snap, y)
-    });
-    p.seccao(VECTOR_SECTION_FILL_TYPE, scope::ALWAYS, Drawing, |b, y| {
-        b.fill_type_section(y)
+        b.fill_section(snap, y)
     });
     p.seccao(VECTOR_SECTION_TEXPAT, scope::ALWAYS, Drawing, |b, y| {
         b.texture_pattern_section(0, y)
     });
     p.seccao(VECTOR_SECTION_STROKE, scope::ALWAYS, Drawing, |b, y| {
-        b.stroke_style(snap, y)
+        b.stroke_section(snap, y)
     });
     p.seccao(
         VECTOR_SECTION_TEXPAT_STROKE,
@@ -474,7 +472,6 @@ mod tests {
             VECTOR_SECTION_LAYOUT,
             VECTOR_SECTION_APPEARANCE,
             VECTOR_SECTION_FILL,
-            VECTOR_SECTION_FILL_TYPE,
             VECTOR_SECTION_TEXPAT,
             VECTOR_SECTION_STROKE,
             VECTOR_SECTION_TEXPAT_STROKE,

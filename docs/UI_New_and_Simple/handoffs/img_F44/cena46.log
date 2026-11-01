@@ -1,0 +1,19 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   263ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   289ms] live hero mode (roteiro: docs/UI_New_and_Simple/handoffs/img_F44/cena46.log
+ M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   298ms] M11: VelloPass initialized (1024×768 intermediate)
+[   303ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   323ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   354ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   362ms] lifecycle: Foreground
+[   362ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   368ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
+[cena 46] rectângulo: degradê azul→roxo, traço escuro, sombra deslocada e traço amarelo por fora
+[ph2d-gpu] surface present mode → Fifo

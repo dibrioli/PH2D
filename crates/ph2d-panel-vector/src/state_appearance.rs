@@ -126,9 +126,10 @@ pub(crate) fn open_layer() -> Option<usize> {
     OPEN.with(Cell::get)
 }
 
-/// Abre uma camada, ou fecha a que estava aberta se for a mesma.
-pub fn toggle_open_layer(i: usize) {
-    OPEN.with(|c| c.set(if c.get() == Some(i) { None } else { Some(i) }));
+/// ⭐ F44 — a camada aberta é DERIVADA do `Dropdown` da linha dela (`paint_side`, uma vez por
+/// quadro), e um campo da LINHA de outra camada aponta-a por um gesto (`event_paint_stack`).
+pub fn set_open_layer(i: Option<usize>) {
+    OPEN.with(|c| c.set(i));
 }
 
 /// Fecha a camada aberta — o que um gesto que muda a PILHA tem de fazer.

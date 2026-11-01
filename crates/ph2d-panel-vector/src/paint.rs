@@ -487,6 +487,8 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // ⭐ F43: a lista do «+» e o painel de propriedades à ESQUERDA — antes dos popovers abaixo,
     // porque a lista de mistura de um filtro nasce DENTRO do painel.
     crate::fx_side::paint(ctx, rect, theme);
+    // ⭐ F44: e os de Fill e Stroke (o preenchimento de base, uma camada, o «Stroke settings»).
+    crate::paint_side::paint(ctx, rect, theme);
 
     // Deferred: the Font dropdown popover paints (and hit-registers its rows) ON
     // TOP of every section — the chip stashed its rect during the body paint when

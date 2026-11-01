@@ -180,7 +180,9 @@ fn opens_or_closes(
     store: &mut ph2d_editor_core::interaction::WidgetStore,
     id: ph2d_a11y::NodeId,
 ) -> bool {
-    crate::bars::toggle_list(store, id) || crate::fx_side::on_click(store, id)
+    crate::bars::toggle_list(store, id)
+        || crate::fx_side::on_click(store, id)
+        || crate::paint_side::on_click(store, id)
 }
 
 pub(crate) fn apply_event(

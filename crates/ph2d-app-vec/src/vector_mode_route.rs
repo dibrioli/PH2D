@@ -6,17 +6,18 @@ use crate::state::VecState;
 use crate::{
     vector_mode_alinhar as alinhar, vector_mode_composto as composto,
     vector_mode_controle as controle, vector_mode_cor as cor,
-    vector_mode_filtro_efeito as filtro_efeito, vector_mode_filtro_zoom as filtro_zoom,
-    vector_mode_fio as fio, vector_mode_gesto as gesto, vector_mode_interface as interface,
-    vector_mode_le_a_forma as le_a_forma, vector_mode_listas as listas, vector_mode_misto as misto,
-    vector_mode_olho as olho, vector_mode_opaco as opaco, vector_mode_quinas as quinas,
-    vector_mode_tracejado as tracejado, vector_mode_vestidos as vestidos,
+    vector_mode_fill_stroke as fill_stroke, vector_mode_filtro_efeito as filtro_efeito,
+    vector_mode_filtro_zoom as filtro_zoom, vector_mode_fio as fio, vector_mode_gesto as gesto,
+    vector_mode_interface as interface, vector_mode_le_a_forma as le_a_forma,
+    vector_mode_listas as listas, vector_mode_misto as misto, vector_mode_olho as olho,
+    vector_mode_opaco as opaco, vector_mode_quinas as quinas, vector_mode_tracejado as tracejado,
+    vector_mode_vestidos as vestidos,
 };
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::screens::hero::HeroScreen;
 
 /// As faixas de estágio destas famílias — o teste das faixas lê a MESMA lista.
-pub(crate) const FAIXAS: [(u8, u8); 17] = [
+pub(crate) const FAIXAS: [(u8, u8); 18] = [
     (alinhar::FIRST, alinhar::LAST),
     (tracejado::FIRST, tracejado::LAST),
     (interface::FIRST, interface::LAST),
@@ -34,6 +35,7 @@ pub(crate) const FAIXAS: [(u8, u8); 17] = [
     (filtro_efeito::FIRST, filtro_efeito::LAST),
     (filtro_zoom::FIRST, filtro_zoom::LAST),
     (listas::FIRST, listas::LAST),
+    (fill_stroke::FIRST, fill_stroke::LAST),
 ];
 
 /// O estágio `s` é de uma destas famílias?
@@ -80,6 +82,8 @@ pub(super) fn step(
         filtro_zoom::FIRST..=filtro_zoom::LAST => filtro_zoom::step(vec, scene, sim, hero),
         // As cenas 43 e 44 (F43): a 44 abre a lista do «+» em vez do painel.
         listas::FIRST..=listas::LAST => listas::step(vec, scene, sim, hero, h == 30),
+        // As cenas 45 e 46 (F44): a 46 abre o «Stroke settings» em vez do painel do Fill.
+        fill_stroke::FIRST..=fill_stroke::LAST => fill_stroke::step(vec, scene, hero, h == 32),
         _ => None,
     }
 }

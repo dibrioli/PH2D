@@ -196,6 +196,52 @@ pub fn paint_segmented_group(
     }
 }
 
+/// ⭐ **A mesma fileira com um GLIFO por peça** (F44, dono 01/11: *«Cap, Join, Align num modo
+/// moderno como Figma, com ícones inteligíveis»*). As peças são as do [`paint_segmented_group`]
+/// (fundo, moldura, só as pontas de fora arredondam); o glifo pinta-se na tinta que o rótulo teria.
+/// `segments` é `(glifo, aceso, id)`.
+pub fn paint_segmented_icon_group(
+    rect: Rect,
+    segments: &[(crate::icons::IconId, bool, NodeId)],
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+) {
+    crate::widget::composto::grupo(segments.iter().map(|(_, _, id)| *id));
+    // O glifo enche a ALTURA da peça (o desenho traz a margem dele no `viewBox`): a forma de uma
+    // ponta ou de um canto lê-se pelo desenho, e no tamanho de uma letra (o 1.º smoke) os três eram
+    // iguais.
+    for (i, (r, cell)) in crate::widget::segment_rects(rect, segments.len())
+        .into_iter()
+        .enumerate()
+    {
+        let (glyph, selected, id) = segments[i];
+        let visual = store.button_visual(id);
+        paint_segmented_button_in_group(r, "", selected, visual, scene, text_system, theme, cell);
+        let ink = if selected {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        };
+        let side = r.h.min(r.w).max(1.0);
+        crate::paint::paint_icon(
+            scene,
+            glyph,
+            Rect::new(
+                r.x + (r.w - side) * 0.5,
+                r.y + (r.h - side) * 0.5,
+                side,
+                side,
+            ),
+            resolve(ink, theme),
+            StrokeToken::Default.px(),
+        );
+        hit_index.register(id, r);
+    }
+}
+
 /// Like [`paint_segmented_group`] but **adaptive**: when the labels
 /// don't fit in `rect.w` at their natural width, demotes buttons
 /// from the END of the list to NEW ROWS below — each demoted button

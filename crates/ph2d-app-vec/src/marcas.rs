@@ -378,6 +378,10 @@ fn canal_posicional(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
         if painel::vector_paint_eye_id(k) == id {
             return vec![em(v::PILHA_LIGADA, i)];
         }
+        // F44: a opacidade na LINHA da entrada `k`.
+        if painel::vector_paint_row_opacity_id(k) == id {
+            return vec![em(v::PILHA_OPACIDADE, i)];
+        }
     }
     Vec::new()
 }
@@ -404,6 +408,7 @@ fn ids(ctx: Contexto<'_>) -> impl Iterator<Item = NodeId> + '_ {
             [
                 painel::vector_paint_swatch_id(k),
                 painel::vector_paint_eye_id(k),
+                painel::vector_paint_row_opacity_id(k),
             ]
         }))
 }

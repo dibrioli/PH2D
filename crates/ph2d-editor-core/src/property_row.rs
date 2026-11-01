@@ -36,7 +36,7 @@ use crate::zones::Rect;
 pub use botao::{abaixo_do_botao, caixa_do_botao};
 mod casas;
 pub use casas::paint_fields_row_com_casas;
-pub use escolha::paint_choice_row;
+pub use escolha::{paint_choice_row, paint_icon_choice_row};
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Theme, TypeToken};

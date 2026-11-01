@@ -86,22 +86,14 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// Seção **FILL TYPE** — o seletor Solid / Linear / Radial / Multi + os controles de
-    /// gradiente (e a regra de preenchimento do compound). Age sobre o path SELECIONADO;
-    /// sem seleção (ou sem fill) a seção inteira some.
-    pub(crate) fn fill_type_section(&mut self, y: f32) -> f32 {
+    /// ⭐ **O painel do preenchimento de BASE** (F44: abre à esquerda pela linha do Fill) — o seletor
+    /// Solid / Linear / Radial / Multi / Pattern, os controles de gradiente, a regra de
+    /// preenchimento do compound e o token. Age sobre o path SELECIONADO; sem ele, nada.
+    pub(crate) fn fill_props_body(&mut self, y: f32) -> f32 {
         let Some(kind) = state::current_fill_kind() else {
-            return y;
+            return self.fill_token_row(y);
         };
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_FILL_TYPE,
-            tr("panel.vector.section.fill_type"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        y = self.fill_rule_row(y);
+        let mut y = self.fill_rule_row(y);
         let kinds = [
             (
                 ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID,
@@ -261,6 +253,14 @@ impl BodyCtx<'_> {
                 y,
             );
         }
-        y
+        self.fill_token_row(y)
+    }
+
+    /// O TOKEN do preenchimento (plano UI/UX W4) — a swatch que ele cobre é a da linha.
+    fn fill_token_row(&mut self, y: f32) -> f32 {
+        match state::token_bindings() {
+            Some(b) => self.token_row(crate::ids::VECTOR_TOKEN_FILL, b.fill.as_deref(), y),
+            None => y,
+        }
     }
 }

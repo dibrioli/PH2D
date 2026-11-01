@@ -206,3 +206,50 @@ pub fn paint_choice_row<'a>(
     }
     fim
 }
+
+/// ⭐ **A linha de escolha com GLIFOS** (F44) — o nome na coluna da secção e as peças de ícone na do
+/// valor. Um glifo tem a largura de um quadrado, então ela cabe sempre ao lado (nunca é paleta).
+/// `segmentos` é `(glifo, aceso, id)`. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_icon_choice_row<'a>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: impl Into<crate::widget::key_mark::Rotulo<'a>>,
+    segmentos: &[(crate::icons::IconId, bool, NodeId)],
+    seccao: Seccao,
+) -> f32 {
+    let rotulo = label.into();
+    let row = super::paint_label_row(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        ROW_H_PX,
+        rotulo.texto,
+        seccao,
+    );
+    crate::widget::panel_chrome::paint_segmented_icon_group(
+        row.control,
+        segmentos,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
+    if let Some(alvo) =
+        crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &ids, rotulo)
+    {
+        hit_index.register(alvo, row.dot);
+    }
+    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+}

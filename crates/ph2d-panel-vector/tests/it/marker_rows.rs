@@ -38,7 +38,20 @@ fn hero_with_vector_panel() -> HeroScreen {
     hero
 }
 
+/// Pinta um quadro com o «Stroke settings» aberto (F44: as pontas moram lá) — o 1.º quadro regista
+/// o `Dropdown`, o 2.º pinta o painel.
 fn paint_frame(hero: &mut HeroScreen) {
+    paint_once(hero);
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open, .. }) = hero
+        .store
+        .get_mut(ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS)
+    {
+        *open = true;
+    }
+    paint_once(hero);
+}
+
+fn paint_once(hero: &mut HeroScreen) {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(

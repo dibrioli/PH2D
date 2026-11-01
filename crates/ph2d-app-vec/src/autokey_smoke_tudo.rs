@@ -80,9 +80,7 @@ pub(crate) fn step(
             {
                 ct.steps = 3;
             }
-            if ph2d_panel_vector::state::open_layer_index() != Some(0) {
-                ph2d_panel_vector::state::toggle_open_layer(0);
-            }
+            ph2d_panel_vector::open_paint_layer(&mut hero.store, 0);
             vec.pen.select_many(&[id]);
             hero.gizmo.replace_selection(Some(bits));
             hero.set_panel_visible("timeline", true);

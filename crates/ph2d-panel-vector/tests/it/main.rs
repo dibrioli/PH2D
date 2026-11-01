@@ -17,6 +17,7 @@ mod every_chip_is_linked_to_its_slider;
 mod every_name_the_engine_publishes_has_a_key;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod f43_as_listas_do_figma; // F43: o «+», as linhas e o painel de propriedades à esquerda
+mod f44_fill_e_stroke_do_figma; // F44: Fill e Stroke no layout do Figma
 mod fill_chip_labels_fit;
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
@@ -114,6 +115,33 @@ pub fn host_com_aberto(id: ph2d_a11y::NodeId) -> ph2d_ui_testkit::MockPanelHost 
     let mut h = host_aberto();
     clica(&mut h, id);
     h
+}
+
+/// ⭐ F44: o host com o painel do preenchimento de BASE aberto (tipo, degradê, token).
+pub fn host_fill() -> ph2d_ui_testkit::MockPanelHost {
+    host_com(&[ph2d_panel_vector::ids::VECTOR_FILL_ROW])
+}
+
+/// ⭐ F44: o host com o «Stroke settings» aberto (tinta, Cap, Join, tokens, tracejado, pontas).
+pub fn host_traco() -> ph2d_ui_testkit::MockPanelHost {
+    host_com(&[ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS])
+}
+
+/// ⭐ F44: os dois painéis abertos (os tokens moram um em cada).
+pub fn host_paineis() -> ph2d_ui_testkit::MockPanelHost {
+    host_com(&[
+        ph2d_panel_vector::ids::VECTOR_FILL_ROW,
+        ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS,
+    ])
+}
+
+/// ⭐ F44: o host com a camada da pilha que o teste abriu (`state::set_open_layer`) aberta também no
+/// STORE — a caixa da linha é um `Dropdown`, e o painel à esquerda deriva a aberta dele.
+pub fn host_pilha() -> ph2d_ui_testkit::MockPanelHost {
+    match ph2d_panel_vector::state::open_layer_index() {
+        Some(i) => host_com(&[ph2d_panel_vector::ids::vector_paint_row_id(i)]),
+        None => host_aberto(),
+    }
 }
 
 /// ⭐ F43: o host com os `Dropdown` `abertos` já abertos no STORE (sem clique: os testes que

@@ -43,13 +43,13 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_traco();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
 }
 
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_traco();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)

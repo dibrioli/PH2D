@@ -197,14 +197,16 @@ fn writing_the_same_value_reports_no_change() {
 }
 
 /// ⛔ **Abrir uma linha NÃO é uma mudança de documento** — senão cada clique de UI viraria um passo
-/// de undo, que é o defeito que a captura por DIFF desta casa existe para não ter.
+/// de undo. F44: a caixa da linha é um `Dropdown` (abre o painel à esquerda) e não emite clique
+/// nenhum, então nem chega a ser um verbo da pilha.
 #[test]
 fn opening_a_row_is_a_view_change_and_never_a_document_one() {
-    let (mut scene, ids) = cena();
-    apply(&mut scene, &ids, StackVerb::AddFill);
-    let antes = scene.clone();
-    assert!(!apply(&mut scene, &ids, StackVerb::Open(0)));
-    assert_eq!(scene, antes, "o documento nao se mexeu");
+    for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
+        assert_eq!(
+            stack_verb_for_id(ph2d_panel_vector::ids::vector_paint_row_id(i)),
+            None
+        );
+    }
 }
 
 /// **Um contorno novo tem largura**, e uma camada de preenchimento não aceita largura nenhuma.

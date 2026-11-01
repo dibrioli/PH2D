@@ -66,7 +66,8 @@ fn clicar_no_losango_da_largura_pede_a_chave_do_canal() {
 /// O clique REAL num losango e o pedido que chega à shell.
 fn clica_no_losango(primeiro: ph2d_a11y::NodeId, o_que: &str) -> Vec<ph2d_a11y::NodeId> {
     let _ = take_key_mark_click();
-    let mut host = crate::host_aberto();
+    // F44: Cap e Join moram no «Stroke settings»; a entrada da pilha, na linha do Fill.
+    let mut host = crate::host_traco();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, key_mark_id(primeiro))

@@ -114,7 +114,7 @@ pub(crate) use widget_state::{
 mod appearance_state;
 pub use appearance_state::{
     Appearance, PaintRow, RowMixed, close_open_layer, current_appearance, open_layer_index,
-    set_current_appearance, toggle_open_layer,
+    set_current_appearance, set_open_layer,
 };
 pub(crate) use appearance_state::{
     blend_option_index, open_layer, paint_blend_option_index, set_pending_obj_blend_dd,

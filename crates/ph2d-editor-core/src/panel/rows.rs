@@ -331,6 +331,32 @@ impl RowCtx<'_> {
         fim - ph2d_tokens::control_gap_px() + self.row_gap
     }
 
+    /// ⭐ **A escolha com GLIFOS** (F44) — a irmã do [`Self::segmented`], pela porta
+    /// [`crate::property_row::paint_icon_choice_row`], com o mesmo ritmo do painel.
+    pub fn icon_segmented(
+        &mut self,
+        label: &str,
+        opts: &[(NodeId, crate::icons::IconId, bool)],
+        y: f32,
+    ) -> f32 {
+        let segs: Vec<(crate::icons::IconId, bool, NodeId)> =
+            opts.iter().map(|(id, g, on)| (*g, *on, *id)).collect();
+        let fim = crate::property_row::paint_icon_choice_row(
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.hit_index,
+            self.store,
+            self.inner_x,
+            self.inner_w,
+            y,
+            label,
+            &segs,
+            crate::widget::Seccao::apenas_campos(1),
+        );
+        fim - ph2d_tokens::control_gap_px() + self.row_gap
+    }
+
     /// A célula de rótulo das duas linhas rotuladas — uma porta, para as duas nunca desalinharem.
     fn label_cell(&mut self, label: &str, y: f32) {
         // ⚠️ **ELIDIDO:** a coluna é uma fracção da linha, e a coluna docada estreita-se.

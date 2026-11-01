@@ -121,20 +121,31 @@ fn head_of(p: Pilha, row: usize) -> Option<(IconId, &'static str)> {
     }
 }
 
-/// O corpo do painel: o cabeçalho (glifo, nome, ↑ ↓ ✕) e os campos do tipo. Devolve o `y` final.
-fn body(b: &mut BodyCtx<'_>, p: Pilha, row: usize, glyph: IconId, name: &str, y: f32) -> f32 {
-    let total = p.len();
+/// ⭐ **O cabeçalho de um painel à esquerda**: o glifo (se há), o nome, e da DIREITA ✕ · ↓ · ↑ (as
+/// setas só onde mexem — um ícone inerte ensina a desconfiar). Devolve o `y` dos campos.
+pub(crate) fn side_head(
+    b: &mut BodyCtx<'_>,
+    glyph: Option<IconId>,
+    name: &str,
+    close: NodeId,
+    down: Option<NodeId>,
+    up: Option<NodeId>,
+    y: f32,
+) -> f32 {
     let h = b.row_h;
     let ink = resolve(ColorToken::Text1, b.theme);
-    let g = ph2d_editor_core::paint::icon_side_for_glyph(b.font).min(h);
-    paint_icon(
-        b.scene,
-        glyph,
-        Rect::new(b.inner_x, y + (h - g) * 0.5, g, g),
-        ink,
-        StrokeToken::Default.px(),
-    );
-    let tx = b.inner_x + g + ph2d_tokens::icon_label_gap_px();
+    let mut tx = b.inner_x;
+    if let Some(glyph) = glyph {
+        let g = ph2d_editor_core::paint::icon_side_for_glyph(b.font).min(h);
+        paint_icon(
+            b.scene,
+            glyph,
+            Rect::new(b.inner_x, y + (h - g) * 0.5, g, g),
+            ink,
+            StrokeToken::Default.px(),
+        );
+        tx += g + ph2d_tokens::icon_label_gap_px();
+    }
     paint_text(
         b.text_system,
         b.scene,
@@ -145,23 +156,29 @@ fn body(b: &mut BodyCtx<'_>, p: Pilha, row: usize, glyph: IconId, name: &str, y:
         (b.inner_x + b.inner_w - tx).max(1.0),
         ink,
     );
-    // Da DIREITA: ✕ · ↓ · ↑ (as setas só onde mexem — um ícone inerte ensina a desconfiar).
-    let side = h;
     let gap = Spacing::Xs.px();
     let slot = |i: usize| {
         #[allow(clippy::cast_precision_loss)]
         let i = i as f32;
-        b.inner_x + b.inner_w - side * (i + 1.0) - gap * i
+        b.inner_x + b.inner_w - h * (i + 1.0) - gap * i
     };
     let (x0, x1, x2) = (slot(0), slot(1), slot(2));
-    b.filter_icon(p.close(), IconId::Close, x0, y, h);
-    if row + 1 < total {
-        b.filter_icon(p.down(row), IconId::ChevronDown, x1, y, h);
+    b.filter_icon(close, IconId::Close, x0, y, h);
+    if let Some(id) = down {
+        b.filter_icon(id, IconId::ChevronDown, x1, y, h);
     }
-    if row > 0 {
-        b.filter_icon(p.up(row), IconId::ChevronUp, x2, y, h);
+    if let Some(id) = up {
+        b.filter_icon(id, IconId::ChevronUp, x2, y, h);
     }
-    let y = y + h + Spacing::Sm.px();
+    y + h + Spacing::Sm.px()
+}
+
+/// O corpo do painel: o cabeçalho (glifo, nome, ↑ ↓ ✕) e os campos do tipo. Devolve o `y` final.
+fn body(b: &mut BodyCtx<'_>, p: Pilha, row: usize, glyph: IconId, name: &str, y: f32) -> f32 {
+    let total = p.len();
+    let down = (row + 1 < total).then(|| p.down(row));
+    let up = (row > 0).then(|| p.up(row));
+    let y = side_head(b, Some(glyph), name, p.close(), down, up, y);
     match p {
         Pilha::Efeitos => match state::stack().get(row) {
             Some(fx) => b.effect_props(row, fx, y),
@@ -179,13 +196,32 @@ fn body(b: &mut BodyCtx<'_>, p: Pilha, row: usize, glyph: IconId, name: &str, y:
     }
 }
 
-/// ⭐ **O painel da linha aberta**, à esquerda do Inspector, no topo alinhado à linha (e dentro da
-/// região: encolhe e ROLA num ecrã baixo). Com o Inspector docado à esquerda, abre à direita dele.
+/// O painel da linha aberta de uma pilha (Effects/Filters).
 fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect, theme: Theme) {
     let Some((glyph, name)) = head_of(p, row) else {
         close_rows(ctx.host.store_mut(), p);
         return;
     };
+    side_panel(ctx, p.row(row), line, panel, theme, &mut |b, y| {
+        body(b, p, row, glyph, name, y)
+    });
+    if p == Pilha::Filtros {
+        crate::paint::register_ramp_handles(ctx.host.store_mut(), row);
+    }
+}
+
+/// ⭐ **Um painel à esquerda do Inspector**, no topo alinhado à `line` que o abriu (e dentro da
+/// região: encolhe e ROLA num ecrã baixo). Com o Inspector docado à esquerda, abre à direita dele.
+/// `id` é o `Dropdown` que o mantém aberto; `body` pinta os campos a partir do `y` e devolve o fim.
+/// A porta de F43 (Effects/Filters) e de F44 (Fill, camadas, «Stroke settings»).
+pub(crate) fn side_panel(
+    ctx: &mut PaintCtx,
+    id: NodeId,
+    line: Rect,
+    panel: Rect,
+    theme: Theme,
+    body: &mut dyn FnMut(&mut BodyCtx<'_>, f32) -> f32,
+) {
     let pad = PANEL_HEAD_PAD;
     let width = panel.w;
     let inner_w = (width - pad * 2.0).max(0.0);
@@ -202,9 +238,8 @@ fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect
             pad,
             inner_w,
         );
-        body(&mut b, p, row, glyph, name, 0.0)
+        body(&mut b, 0.0)
     };
-    let id = p.row(row);
     let region = ctx.layout.popover_region();
     let gap = Spacing::Sm.px();
     let content_h = body_h + pad * 2.0;
@@ -239,7 +274,7 @@ fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect
         rect.x + pad,
         inner_w,
     );
-    body(&mut b, p, row, glyph, name, rect.y + pad - scroll);
+    body(&mut b, rect.y + pad - scroll);
     hit_index.pop_clip();
     ctx.scene.pop_layer();
     let painted = ph2d_editor_core::widget::PaintedPopover {
@@ -251,12 +286,9 @@ fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect
     };
     ph2d_editor_core::panel::paint_popover_scrollbar(&painted, store, ctx.scene, theme, hit_index);
     ctx.host.store_mut().publish_dropdown_popover(painted);
-    if p == Pilha::Filtros {
-        crate::paint::register_ramp_handles(ctx.host.store_mut(), row);
-    }
 }
 
-fn set_open(store: &mut WidgetStore, id: NodeId, to: bool) {
+pub(crate) fn set_open(store: &mut WidgetStore, id: NodeId, to: bool) {
     if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(id) {
         *open = to;
     }

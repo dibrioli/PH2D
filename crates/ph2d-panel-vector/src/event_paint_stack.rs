@@ -84,5 +84,20 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     if id == ids::VECTOR_PAINT_OPACITY_NUM {
         return Some(true);
     }
+    // ⭐ F44 — a opacidade na LINHA da camada `i`: aponta-a como a aberta e viaja pela porta da
+    // opacidade da camada (a shell grava na aberta, no mesmo quadro, antes da pintura que volta a
+    // derivar a aberta do `Dropdown`).
+    if let Some(i) =
+        (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|&i| id == ids::vector_paint_row_opacity_id(i))
+    {
+        let pct = host.store().number_value(id).unwrap_or(100.0); // LITERAL-PX-OK: 100 % = opaca
+        crate::state::set_open_layer(Some(i));
+        host.bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                crate::ids::VECTOR_PAINT_OPACITY,
+                (pct / 100.0).clamp(0.0, 1.0), // LITERAL-PX-OK: percent→fraction
+            )));
+        return Some(true);
+    }
     None
 }

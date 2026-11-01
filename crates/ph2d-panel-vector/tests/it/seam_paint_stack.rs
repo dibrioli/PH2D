@@ -95,7 +95,7 @@ fn publica(layers: Vec<PaintRow>) {
 /// painel mas **pula a checagem de focabilidade no store** — as duas metades falham de maneiras
 /// diferentes e um gate que só faz uma delas fica verde sobre a outra.
 fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -134,18 +134,26 @@ fn every_control_of_a_layer_row_reaches_the_bus() {
     ];
     for i in 0..2usize {
         alvos.push((ids::vector_paint_eye_id(i), format!("o olho da camada {i}")));
-        alvos.push((ids::vector_paint_row_id(i), format!("o nome da camada {i}")));
-        alvos.push((ids::vector_paint_up_id(i), format!("o subir da camada {i}")));
-        alvos.push((
-            ids::vector_paint_down_id(i),
-            format!("o descer da camada {i}"),
-        ));
         alvos.push((
             ids::vector_paint_del_id(i),
             format!("o apagar da camada {i}"),
         ));
     }
-    for (id, what) in alvos {
+    let mut tudo: Vec<(Option<usize>, ph2d_a11y::NodeId, String)> =
+        alvos.into_iter().map(|(id, w)| (None, id, w)).collect();
+    // F44: ↑ e ↓ moram no cabeçalho do painel à ESQUERDA da camada aberta (só onde mexem).
+    tudo.push((
+        Some(0),
+        ids::vector_paint_up_id(0),
+        "o subir da camada 0".into(),
+    ));
+    tudo.push((
+        Some(1),
+        ids::vector_paint_down_id(1),
+        "o descer da camada 1".into(),
+    ));
+    for (aberta, id, what) in tudo {
+        state::set_open_layer(aberta);
         let acoes = clica(id, &what);
         assert!(
             acoes.iter().any(|a| matches!(
@@ -156,6 +164,7 @@ fn every_control_of_a_layer_row_reaches_the_bus() {
              (falta a familia na allowlist do `event_clicks::forwards_plain_click`)"
         );
     }
+    state::close_open_layer();
     state::set_current_appearance(None);
 }
 
@@ -178,7 +187,7 @@ fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
             (ids::vector_paint_row_id(i), "o nome"),
             (ids::vector_paint_swatch_id(i), "a amostra"),
         ] {
-            let mut host = crate::host_aberto();
+            let mut host = crate::host_pilha();
             let mut st = VectorPanelState;
             assert!(
                 host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -196,7 +205,7 @@ fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
     let mut misto = tinta();
     misto.mixed.color = true;
     publica(vec![misto]);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_paint_swatch_id(0))
@@ -214,13 +223,13 @@ fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
 fn opening_a_layer_paints_its_three_properties() {
     publica(vec![traco(2.0)]);
     state::close_open_layer();
+    // F44: a opacidade mora na LINHA (sempre à vista); a largura e a mistura, no painel aberto.
     let props = [
         (ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, "a largura"),
-        (ph2d_panel_vector::ids::VECTOR_PAINT_OPACITY, "a opacidade"),
         (ph2d_panel_vector::ids::VECTOR_PAINT_BLEND, "a mistura"),
     ];
     for (id, what) in props {
-        let mut host = crate::host_aberto();
+        let mut host = crate::host_pilha();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -228,9 +237,9 @@ fn opening_a_layer_paints_its_three_properties() {
             "{what} foi pintada com a camada FECHADA"
         );
     }
-    state::toggle_open_layer(0);
+    state::set_open_layer(Some(0));
     for (id, what) in props {
-        let mut host = crate::host_aberto();
+        let mut host = crate::host_pilha();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -251,10 +260,10 @@ fn opening_a_layer_paints_its_three_properties() {
 #[test]
 fn the_layers_width_and_opacity_reach_the_bus() {
     publica(vec![traco(2.0)]);
-    state::toggle_open_layer(0);
+    state::set_open_layer(Some(0));
 
     // A LARGURA — campo numérico, o valor viaja como o do Z-index (a mesma porta).
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 7.0);
     host.apply_panel_event::<VectorPanel>(
@@ -280,7 +289,7 @@ fn the_layers_width_and_opacity_reach_the_bus() {
     );
 
     // A OPACIDADE — slider, o valor viaja como TRACK `0..1`.
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PAINT_OPACITY, 0.25);
     host.apply_panel_event::<VectorPanel>(
@@ -322,8 +331,8 @@ fn the_layers_width_and_opacity_reach_the_bus() {
 #[test]
 fn the_width_field_shows_the_open_layers_width() {
     publica(vec![traco(9.0)]);
-    state::toggle_open_layer(0);
-    let mut host = crate::host_aberto();
+    state::set_open_layer(Some(0));
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 1.0);
     host.painted_rect::<VectorPanel>(
@@ -356,7 +365,7 @@ fn the_width_field_shows_the_open_layers_width() {
 #[test]
 fn a_layer_swatch_opens_the_picker_instead_of_clicking() {
     publica(vec![traco(2.0)]);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     let id = ids::vector_paint_swatch_id(0);
     let r = host
@@ -386,7 +395,7 @@ fn a_layer_swatch_opens_the_picker_instead_of_clicking() {
 #[test]
 fn a_layer_swatch_seeds_the_picker_with_that_layers_colour() {
     publica(vec![tinta(), traco(2.0)]);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_paint_swatch_id(0));
     for (i, esperada) in [(0usize, tinta().color), (1usize, traco(2.0).color)] {
@@ -408,8 +417,8 @@ fn a_layer_swatch_seeds_the_picker_with_that_layers_colour() {
 #[test]
 fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
     publica(vec![traco(2.0)]);
-    state::toggle_open_layer(0);
-    let mut host = crate::host_aberto();
+    state::set_open_layer(Some(0));
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(
@@ -473,12 +482,12 @@ fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
 #[test]
 fn the_layers_offset_reaches_the_bus_on_both_axes() {
     publica(vec![tinta()]);
-    state::toggle_open_layer(0);
+    state::set_open_layer(Some(0));
     for (id, valor, eixo) in [
         (ph2d_panel_vector::ids::VECTOR_PAINT_DX, 3.0, "x"),
         (ph2d_panel_vector::ids::VECTOR_PAINT_DY, -2.5, "y"),
     ] {
-        let mut host = crate::host_aberto();
+        let mut host = crate::host_pilha();
         let mut st = VectorPanelState;
         host.set_number_value(id, valor);
         host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
@@ -508,8 +517,8 @@ fn the_layers_offset_reaches_the_bus_on_both_axes() {
 #[test]
 fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
     publica(vec![tinta()]);
-    state::toggle_open_layer(0);
-    let mut host = crate::host_aberto();
+    state::set_open_layer(Some(0));
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     for (id, what) in [
         (ph2d_panel_vector::ids::VECTOR_PAINT_DX, "o X"),
@@ -543,8 +552,8 @@ fn the_offset_fields_show_the_open_layers_offset() {
     let mut linha = tinta();
     linha.offset = [4.0, -1.5];
     publica(vec![linha]);
-    state::toggle_open_layer(0);
-    let mut host = crate::host_aberto();
+    state::set_open_layer(Some(0));
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DX, 0.0);
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DY, 0.0);
@@ -575,9 +584,9 @@ fn the_cad_offset_and_its_corner_reach_the_bus() {
     let mut linha = tinta();
     linha.dilate = 2.0; // a quina só é pintada com o offset ARMADO
     publica(vec![linha]);
-    state::toggle_open_layer(0);
+    state::set_open_layer(Some(0));
 
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DILATE, -1.5);
     host.apply_panel_event::<VectorPanel>(
@@ -631,8 +640,8 @@ fn the_corner_row_appears_only_with_the_offset_armed() {
         let mut linha = tinta();
         linha.dilate = d;
         publica(vec![linha]);
-        state::toggle_open_layer(0);
-        let mut host = crate::host_aberto();
+        state::set_open_layer(Some(0));
+        let mut host = crate::host_pilha();
         let mut st = VectorPanelState;
         let visto = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_JOIN_ROUND)
@@ -652,8 +661,8 @@ fn the_offset_field_shows_the_open_layers_dilate() {
     let mut linha = tinta();
     linha.dilate = 3.25;
     publica(vec![linha]);
-    state::toggle_open_layer(0);
-    let mut host = crate::host_aberto();
+    state::set_open_layer(Some(0));
+    let mut host = crate::host_pilha();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DILATE, 0.0);
     host.painted_rect::<VectorPanel>(

@@ -271,6 +271,8 @@ mod vector_mode_controle;
 mod vector_mode_cor;
 /// A cena 16 (F10; F12): a estrela pelas alças e a fila de ⇕ da lateral.
 mod vector_mode_estrela;
+/// As cenas 45 e 46 (F44): Fill e Stroke no layout do Figma, o painel à esquerda aberto.
+mod vector_mode_fill_stroke;
 /// A cena 40 (F33): seis Nuvens com Bevel + Drop Shadow, uma por efeito que reconstrói a curva.
 mod vector_mode_filtro_efeito;
 mod vector_mode_filtro_zoom;

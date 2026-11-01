@@ -33,8 +33,6 @@ pub enum StackVerb {
     Up(usize),
     Down(usize),
     Del(usize),
-    /// Abre/fecha as propriedades da camada `i` — **estado de VISTA**, nunca documento.
-    Open(usize),
 }
 
 /// Que verbo este id pede (`None` se ele não é da pilha).
@@ -54,8 +52,6 @@ pub fn stack_verb_for_id(id: ph2d_editor_core::NodeId) -> Option<StackVerb> {
             Some(StackVerb::Down(i))
         } else if id == ph2d_panel_vector::ids::vector_paint_del_id(i) {
             Some(StackVerb::Del(i))
-        } else if id == ph2d_panel_vector::ids::vector_paint_row_id(i) {
-            Some(StackVerb::Open(i))
         } else {
             None
         }
@@ -110,20 +106,6 @@ pub fn apply(scene: &mut VecScene, sel: &[VecPathId], verb: StackVerb) -> bool {
         StackVerb::Del(i) => {
             ph2d_panel_vector::state::close_open_layer();
             remove(scene, sel, i)
-        }
-        // ⛔ Este é de VISTA: abrir uma linha não muda o documento, e devolver `true` aqui poria um
-        // passo de undo por clique de UI — o defeito que o `post_frame_undo` desta casa mede por
-        // DIFF justamente para não ter.
-        //
-        // ⛔⛔ **E a SWATCH não é um verbo desta lista, o que é uma decisão e não um esquecimento:**
-        // ela é uma *picker swatch* (`register_picker_swatch`), e o `pointer_down` do editor-core
-        // curto-circuita o Down dessas para abrir o picker partilhado — elas **nunca** emitem
-        // `Click`. Existiu aqui um `StackVerb::Swatch` que abria a camada, e ele era **inalcançável
-        // por construção**: nenhum produtor o podia emitir, e um teste que o chamava à mão deixava-o
-        // com cara de vivo. Quem lê a escolha de cor é a shell, pelo `layer_of_picker_target`.
-        StackVerb::Open(i) => {
-            ph2d_panel_vector::state::toggle_open_layer(i);
-            false
         }
     }
 }

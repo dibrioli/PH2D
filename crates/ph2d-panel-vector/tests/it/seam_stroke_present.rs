@@ -104,30 +104,35 @@ fn the_row_is_not_painted_without_an_answer_to_show() {
     state::set_stroke_present(None);
 }
 
-/// ⛔⛔ **AS ROWS DO TRAÇO FICAM VISÍVEIS MESMO SEM TRAÇO — e isso é DELIBERADO.**
+/// ⭐ **F44 (dono 01/11, o Figma): uma forma SEM traço mostra só o «+» do título.**
 ///
-/// É o **oposto** da lei que o Enio pediu para a secção *Pattern* (*"os parâmetros que um modo não
-/// usa não devem aparecer"*), e a diferença é real: a secção *Stroke* é a ficha da **FERRAMENTA**
-/// espelhada na selecção, então cada row aqui autora **o traço da próxima forma que se desenhar**.
-/// Escondê-las tiraria ao artista o único sítio onde se afina o traço de desenho.
-///
-/// ⚠️ Este gate existe para que a próxima janela **não** "corrija" isto por simetria com o Pattern.
-/// O que a caixa cura não é *"o controlo está morto"* — é *"o controlo não dizia que não alcança
-/// ESTA forma"*.
+/// ⛔ Revoga a lei de 2026-08 (*«as rows do traço ficam visíveis sem traço, porque autoram o traço da
+/// próxima forma»*): no layout do Figma o traço é uma LINHA que existe ou não, e o «+» é quem o dá.
+/// Sem forma selecionada (`None`) a secção continua a ser a ficha da FERRAMENTA, com tudo à vista.
 #[test]
-fn the_stroke_rows_stay_visible_without_a_stroke() {
-    state::set_stroke_present(Some(false));
-    for (id, what) in [
-        (ph2d_tool_vector::ids::VECTOR_WIDTH, "a largura"),
+fn a_shape_without_a_stroke_shows_only_the_plus() {
+    let linhas = [
+        (ph2d_tool_vector::ids::VECTOR_WIDTH_NUM, "a espessura"),
         (ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH, "a cor"),
-        (ph2d_tool_vector::ids::VECTOR_CAP_BUTT, "a ponta"),
-        (ph2d_tool_vector::ids::VECTOR_JOIN_MITER, "a junta"),
-    ] {
+        (ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE, "a posicao"),
+        (ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS, "os ajustes"),
+    ];
+    state::set_stroke_present(Some(false));
+    for (id, what) in linhas {
         assert!(
-            rect(id).is_some(),
-            "{what} sumiu numa forma sem traco - ela autora o traco da PROXIMA forma, e escondê-la \
-             tira o unico sitio onde o desenho se afina"
+            rect(id).is_none(),
+            "{what} ficou à vista numa forma SEM traço — no Figma só o «+» do título a dá"
         );
     }
+    assert!(
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_some(),
+        "o «+» que dá o traço tem de estar lá"
+    );
     state::set_stroke_present(None);
+    for (id, what) in linhas {
+        assert!(
+            rect(id).is_some(),
+            "{what} sumiu sem seleção — a secção é a ficha da ferramenta"
+        );
+    }
 }

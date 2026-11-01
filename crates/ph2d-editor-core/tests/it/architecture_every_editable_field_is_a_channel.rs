@@ -912,10 +912,17 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-vector",
-        "layer_row",
+        "layer_line",
         Canal,
-        &["vector_paint_swatch_id", "vector_paint_eye_id"],
-        "a tinta e o olho da entrada `i` da pilha (`marcas::canal_do_campo`)",
+        &["vector_paint_swatch_id"],
+        "a tinta da entrada `i` da pilha, na linha do Fill/Stroke (F44, `marcas::canal_do_campo`)",
+    ),
+    (
+        "ph2d-panel-vector",
+        "paint_line",
+        Canal,
+        &["vector_paint_eye_id", "vector_paint_row_opacity_id"],
+        "o olho e a opacidade da entrada `i` da pilha, colados ao controlo (F44, `marcas::canal_do_campo`)",
     ),
     (
         "ph2d-panel-vector",
@@ -926,10 +933,10 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-vector",
-        "effect_header",
+        "fx_list_row",
         Canal,
-        &["vector_fx_hide_id"],
-        "o olho do efeito da linha `r` (`marcas::derivados`)",
+        &["vector_fx_hide_id", "filter_hide_id"],
+        "o olho do efeito/degrau da linha `r` (F43, `marcas::derivados` · `marcas_vivos::derivados`)",
     ),
     (
         "ph2d-panel-vector",
@@ -964,7 +971,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-vector",
-        "token_row",
+        "token_row_named",
         NaoAnimavel,
         &[],
         "a ligação a um token de cor é fiação, não propriedade",
@@ -1022,17 +1029,10 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-vector",
-        "filter_card",
+        "filter_props",
         Canal,
         &["filter_mode_id"],
-        "o modo do degrau `row` dos filtros (`marcas_vivos::derivados`)",
-    ),
-    (
-        "ph2d-panel-vector",
-        "filter_header",
-        Canal,
-        &["filter_hide_id"],
-        "o olho do degrau `row` dos filtros (`marcas_vivos::derivados`)",
+        "o modo do degrau `row` dos filtros, no painel à esquerda (F43, `marcas_vivos::derivados`)",
     ),
     (
         "ph2d-panel-vector",
@@ -2065,10 +2065,8 @@ fn todo_campo_sem_coluna_propria_ganha_a_do_losango() {
     for (func, p) in [
         ("checkbox_row", "paint_checkbox("),
         ("dropdown_row", "paint_dropdown_chip("),
-        ("fill_type_section", "paint_segmented_group_adaptive("),
-        ("layer_row", "eye_icon("),
-        ("effect_header", "IconId::Eye"),
-        ("filter_header", "IconId::Eye"),
+        ("fill_props_body", "paint_segmented_group_adaptive("),
+        ("fx_list_row", "IconId::Eye"),
         ("paint_blend_chip", "paint_dropdown_chip("),
     ] {
         assert!(
@@ -2088,7 +2086,7 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "VECTOR_WIDTH",
         "VECTOR_FILL_SWATCH",
         "VECTOR_CONTOUR_STEPS",
-        "VECTOR_PAINT_OPACITY",
+        "VECTOR_STROKE_OPACITY",
         "VECTOR_OBJ_OPACITY_NUM",
         "INSP_TRANSFORM_POS_X",
         "INSP_SPRITE_OPACITY",
@@ -2109,7 +2107,7 @@ fn a_varredura_acha_os_campos_que_se_conhecem() {
         "INSP_WHEEL_BREAK_FORCE",
         "VECTOR_OBJ_BLEND",
         "VECTOR_PAINT_BLEND",
-        "VECTOR_STROKE_PRESENT",
+        "VECTOR_STROKE_SWATCH",
         "VECTOR_FILL_KIND_SOLID",
         "VECTOR_BAR_KIND",
         "TexPatKnob::Angle",

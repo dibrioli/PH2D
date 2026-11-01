@@ -21,9 +21,7 @@ use ph2d_tool_vector::params::{
     BLEND_STEPS_DEFAULT, MORPH_T_DEFAULT, blend_steps_from_track, blend_steps_to_track,
     opacity_to_slider,
 };
-use ph2d_tool_vector::{
-    StrokeCap, StrokeJoin, VectorStyleSnapshot, VertexSel, VertexType, px_to_slider,
-};
+use ph2d_tool_vector::{StrokeCap, StrokeJoin, VectorStyleSnapshot, VertexSel, VertexType};
 use ph2d_vec_scene::StrokeAlign;
 use ph2d_vector::VectorScene;
 
@@ -179,8 +177,11 @@ mod vertex;
 #[path = "paint_expand.rs"]
 mod expand;
 
-#[path = "paint_sections_stroke.rs"]
-mod stroke;
+// F44: Fill e Stroke no layout do Figma (as linhas, a linha fixa do traço, o «Stroke settings»).
+#[path = "paint_fill_stroke.rs"]
+pub(crate) mod fill_stroke;
+#[path = "paint_stroke_settings.rs"]
+mod stroke_settings;
 
 /// A metade PURA do [`BodyCtx::live_track`] — sem cena, sem texto, sem painel. É ela que os gates
 /// dirigem: um `BodyCtx` exige uma `VectorScene` e um `TextSystem`, e a LEI não precisa de nenhum.
@@ -272,54 +273,6 @@ impl BodyCtx<'_> {
     /// Sem dobra em voo é a identidade.
     pub(crate) fn close_fold(&mut self, after: f32) -> f32 {
         self.with_rows(|r| r.close_fold(after))
-    }
-
-    /// Fill swatch + Fill opacity (0 % = none).
-    pub(crate) fn fill_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
-            tr("panel.vector.section.fill"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        // ⭐ Pela PORTA — ver [`super::paint_rows`] / `colour_swatch_row_rect`.
-        let (proximo_y, fill_swatch_rect) = self.colour_swatch_row_rect(
-            ph2d_tool_vector::ids::VECTOR_FILL_SWATCH,
-            snap.fill,
-            !snap.agrees(ph2d_tool_vector::StyleFields::FILL_RGB),
-            tr("panel.vector.section.fill"),
-            y,
-        );
-        // ⚠️ **A RACHURA**: com um token a cobrir, a cor que a swatch mostra NÃO é a que a arte
-        // desenha — e uma swatch que afirma um valor que ninguém usa é a pior UI possível.
-        let bindings = crate::state::token_bindings();
-        if bindings.as_ref().is_some_and(|b| b.fill.is_some()) {
-            self.token_slash(fill_swatch_rect);
-        }
-        y = proximo_y;
-
-        // **O TOKEN do preenchimento** (plano UI/UX W4), logo abaixo da swatch que ele cobre.
-        if let Some(b) = bindings {
-            y = self.token_row(ids::VECTOR_TOKEN_FILL, b.fill.as_deref(), y);
-        }
-
-        let track = self
-            .store
-            .slider(ph2d_tool_vector::ids::VECTOR_FILL_OPACITY)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
-        let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
-        self.slider_row(
-            tr("panel.vector.paint.opacity"),
-            ph2d_tool_vector::ids::VECTOR_FILL_OPACITY,
-            ph2d_tool_vector::ids::VECTOR_FILL_OPACITY_NUM,
-            track,
-            pct,
-            &stroke::mixed_or(snap, ph2d_tool_vector::StyleFields::FILL_A, pct),
-            y,
-        )
     }
 }
 

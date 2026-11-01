@@ -39,8 +39,11 @@ fn losango(campo: NodeId, controlo: NodeId, o_que: &str) -> (Rect, Rect, Vec<Nod
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     set_key_marks(BTreeMap::from([(campo, KeyMark::Chave)]));
     let _ = take_key_mark_click();
-    // F43: os campos de um efeito moram no painel da linha aberta.
-    let mut host = crate::host_com(&[ph2d_tool_vector::ids::vector_fx_row_id(0)]);
+    // F43: os campos de um efeito moram no painel da linha aberta; F44: o Fill Type, no do Fill.
+    let mut host = crate::host_com(&[
+        ph2d_tool_vector::ids::vector_fx_row_id(0),
+        ids::VECTOR_FILL_ROW,
+    ]);
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, key_mark_id(campo))
@@ -87,21 +90,19 @@ fn entrada() -> PaintRow {
     }
 }
 
-/// A caixa «tem traço» acaba antes do losango, e o clique pede a chave dela. (Mutação: o
-/// `checkbox_row` sem o `decorator` ⇒ o losango não existe.)
+/// F44: o «tem traço» é o «−» da linha do traço de base; ele acaba antes do losango da linha, e o
+/// losango pede a chave da TINTA do traço (a cor e a opacidade, o canal que o «tem traço» liga).
+/// (Mutação: a linha sem o `decorator` ⇒ o losango não existe.)
 #[test]
 fn a_caixa_de_marcar_tem_losango() {
+    use ph2d_tool_vector::ids::{VECTOR_STROKE_OPACITY, VECTOR_STROKE_SWATCH};
     state::set_stroke_present(Some(true));
-    let (r, c, f) = losango(
-        ids::VECTOR_STROKE_PRESENT,
-        ids::VECTOR_STROKE_PRESENT,
-        "Stroke",
-    );
+    let (r, c, f) = losango(VECTOR_STROKE_SWATCH, ids::VECTOR_STROKE_PRESENT, "Stroke");
     assert!(
         antes(c, r),
-        "a caixa entra na coluna do losango: {c:?} × {r:?}"
+        "o «−» entra na coluna do losango: {c:?} × {r:?}"
     );
-    assert_eq!(f, vec![ids::VECTOR_STROKE_PRESENT]);
+    assert_eq!(f, vec![VECTOR_STROKE_SWATCH, VECTOR_STROKE_OPACITY]);
     state::set_stroke_present(None);
 }
 
@@ -136,8 +137,8 @@ fn o_fill_type_tem_losango() {
     state::set_current_fill(None, None);
 }
 
-/// O OLHO da entrada tem o seu losango colado a ele — outro que o da tinta, à direita — e o rótulo
-/// começa depois dele.
+/// O OLHO da entrada tem o seu losango colado a ele — outro que o da tinta, à direita — e a caixa
+/// da linha (F44: à esquerda, como no Figma) acaba antes dele.
 #[test]
 fn o_olho_da_entrada_tem_losango() {
     aparencia(vec![entrada()]);
@@ -153,7 +154,7 @@ fn o_olho_da_entrada_tem_losango() {
     let rotulo = host
         .painted_rect::<VectorPanel>(&mut VectorPanelState, VIEWPORT, ids::vector_paint_row_id(0))
         .expect("o rótulo da entrada");
-    assert!(antes(r, rotulo), "o rótulo por cima do losango do olho");
+    assert!(antes(rotulo, c), "a caixa da linha por cima do olho");
     state::set_current_appearance(None);
 }
 

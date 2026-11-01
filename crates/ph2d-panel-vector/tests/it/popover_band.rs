@@ -64,6 +64,13 @@ fn first_row_at(scroll: f32) -> (Rect, HeroScreen) {
     hero.store
         .set_panel_scroll(ph2d_editor_core::ids::VECTOR_PANEL, scroll);
     paint_frame(&mut hero);
+    // F44: o token do preenchimento mora no painel à esquerda da linha do Fill.
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        hero.store.get_mut(ph2d_panel_vector::ids::VECTOR_FILL_ROW)
+    {
+        *open = true;
+    }
+    paint_frame(&mut hero);
     match hero
         .store
         .get_mut(ph2d_panel_vector::ids::VECTOR_TOKEN_FILL)
@@ -106,9 +113,12 @@ fn the_first_row_of_the_token_picker_lands_on_the_panels_band() {
         );
         // A pergunta do PRODUTO: a linha aterra sobre uma superfície de painel, e não sobre um
         // sítio que só a janela conhece. É esta que `panel_at` respondia `None`.
+        // F44: o chip mora no painel à esquerda do Inspector, e a lista pode passar por cima da
+        // tela — o store tem de a reconhecer como o POPOVER aberto (é ele que leva a roda).
         let (cx, cy) = (row.x + row.w * 0.5, row.y + row.h * 0.5);
         assert!(
-            hero.store.panel_at(cx, cy).is_some(),
+            hero.store.panel_at(cx, cy).is_some()
+                || hero.store.open_dropdown_popover_at(cx, cy).is_some(),
             "scroll={scroll}: o centro da linha de SOLTAR ({cx}, {cy}) nao esta' sobre painel \
              nenhum — e quem pergunta *isto esta' sobre um painel?* nao tem por que concordar com \
              o hit-index"

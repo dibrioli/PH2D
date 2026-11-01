@@ -1,39 +1,24 @@
-//! ⭐⭐⭐ **A LISTA DA PILHA DE APARÊNCIA** — N preenchimentos e N contornos numa forma (estudo 42
-//! item 4, v20). Módulo irmão do [`crate::paint_appearance`] pelo tecto de 600 LOC do painel, e o
-//! corte é por RESPONSABILIDADE: ali moram as duas propriedades do OBJECTO; aqui, a pilha que está
-//! **por cima** do chão dele.
+//! ⭐⭐⭐ **AS PROPRIEDADES DE UMA CAMADA da pilha de aparência** (estudo 42 item 4, v20) — N
+//! preenchimentos e N contornos numa forma.
 //!
-//! # ⚠️ O TOPO EM CIMA, e a inversão vive num sítio só
+//! F44 (dono 01/11): as camadas são LINHAS dentro de Fill e Stroke ([`crate::paint_sections::fill_stroke`],
+//! o Figma), e clicar numa abre ESTE corpo no painel à esquerda ([`crate::paint_side`]): a largura
+//! (num contorno), o deslocamento, o offset de CAD e a quina dele, e a mistura. A cor, a opacidade,
+//! o olho e o «−» ficam na linha.
 //!
-//! O documento guarda a pilha do chão para o topo (é a ordem de desenho); o painel mostra-a ao
-//! contrário, como o *Appearance panel* do Illustrator — o que está à frente lê-se primeiro. A
-//! conversão é uma linha (`n - 1 - k`) e **não se repete**: com duas, o artista carrega em «subir»
-//! e a camada desce.
-//!
-//! # A linha, e por que ela tem estes cinco controlos
-//!
-//! `[olho] Rótulo [swatch] [↑] [↓] [✕]` — e clicar no RÓTULO abre a camada, mostrando por baixo a
-//! largura (num contorno), a opacidade e a mistura DELA. ⛔ Pôr as três em toda linha encheria a
-//! seção com três vezes mais controlos do que o artista olha, e é o que o Illustrator resolve com
-//! o mesmo gesto (o triângulo de expandir).
+//! ⚠️ O índice é sempre o do DOCUMENTO (chão → topo); a lista pinta o topo em cima, e a inversão
+//! mora num sítio só (`layer_lines`).
 
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::{
-    Button, ColorSwatch, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, SwatchSize,
-    paint_button, paint_color_swatch, paint_icon_button, paint_swatch_or_mixed,
-};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::Spacing;
 use ph2d_vec_render::blend;
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::state;
 use crate::state::PaintRow;
-
-/// Um botão de ícone quadrado na altura da row — o mesmo da fileira do morph.
-const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altura da row
 
 /// O glifo do olho: o travessão do misto da casa (o da amostra «—») quando a camada está visível
 /// numas formas e escondida noutras (F22).
@@ -48,135 +33,8 @@ pub(crate) fn eye_icon(row: &PaintRow) -> IconId {
 }
 
 impl BodyCtx<'_> {
-    /// **A pilha inteira**, do topo para o chão, mais os dois botões que a fazem crescer.
-    ///
-    /// ⭐ Com pilhas de ESTRUTURAS diferentes na seleção (plano 32), uma linha «Camadas mistas» no
-    /// lugar das linhas: a linha `2` de uma forma não é a `2` da outra.
-    pub(crate) fn paint_stack(&mut self, layers: &[PaintRow], differ: bool, mut y: f32) -> f32 {
-        if differ {
-            let r = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-            self.label_line_in(tr("panel.vector.appearance.mixed_layers"), r);
-            return self.add_buttons(y + self.row_h + self.row_gap);
-        }
-        let n = layers.len();
-        for k in 0..n {
-            // ⚠️ **A inversão, e ela mora AQUI e em mais lado nenhum**: `i` é o índice do
-            // DOCUMENTO (chão → topo) e é o que viaja no clique; `k` é a linha pintada.
-            let i = n - 1 - k;
-            y = self.layer_row(i, &layers[i], y);
-            if state::open_layer() == Some(i) {
-                y = self.layer_props(&layers[i], y);
-            }
-        }
-        self.add_buttons(y)
-    }
-
-    /// Uma linha da pilha.
-    fn layer_row(&mut self, i: usize, row: &PaintRow, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
-        // ⭐ **A etiqueta de cor de uma LINHA DE LISTA é um quadrado da altura de uma linha** — a
-        // forma que o dono escolheu para as camadas de forma do Painter (2026-06-29) e que as duas
-        // listas de camadas do app passam a partilhar (2026-09-23, *«os seletores de cor de todo o
-        // app precisam ser padronizados»*). Até aí esta era `24 × row_h`, um rectângulo em pé.
-        // ⚠️ Não é a BARRA da linha de propriedade, e a diferença é a forma da linha: aqui a coluna
-        // do valor é dos três verbos, e a cor é uma etiqueta ao lado do nome.
-        let sw = ph2d_tokens::ROW_H_PX;
-        let sid = ids::vector_paint_swatch_id(i);
-        // ⭐ Na coluna do decorator — a mesma de toda linha de propriedade — o losango da TINTA
-        // desta entrada (plano 35 §5); da direita para a esquerda, depois dele: os três verbos, a
-        // swatch. O que sobra é o rótulo.
-        let (_, dot) =
-            ph2d_editor_core::widget::form_row_columns(self.inner_x, self.inner_w, y, self.row_h);
-        if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
-            self.scene,
-            self.theme,
-            dot,
-            &[sid],
-        ) {
-            self.hit_index.register(alvo, dot);
-        }
-        let mut x = dot.x;
-        for (id, icon) in [
-            (ids::vector_paint_del_id(i), IconId::Trash),
-            (ids::vector_paint_down_id(i), IconId::ChevronDown),
-            (ids::vector_paint_up_id(i), IconId::ChevronUp),
-        ] {
-            x -= ICON_W;
-            let r = Rect::new(x, y, ICON_W, self.row_h);
-            self.hit_index.register(id, r);
-            paint_icon_button(
-                r,
-                IconGlyph::Builtin(icon),
-                IconButtonStyle::Plain,
-                self.store.button_visual(id),
-                self.scene,
-                self.theme,
-            );
-            x -= gap;
-        }
-        x -= sw;
-        let sr = Rect::new(x, y + (self.row_h - sw) * 0.5, sw, sw);
-        if row.mixed.color {
-            paint_swatch_or_mixed(
-                sr,
-                sid,
-                tr("panel.vector.appearance.layer_color"),
-                None,
-                self.store.picker_target() == Some(sid),
-                self.scene,
-                self.theme,
-            );
-        } else {
-            paint_color_swatch(
-                &ColorSwatch::new(sid, tr("panel.vector.appearance.layer_color"), row.color)
-                    .size(SwatchSize::Sm),
-                sr,
-                self.scene,
-                self.theme,
-            );
-        }
-        self.hit_index.register(sid, sr);
-
-        // O OLHO, à esquerda de tudo.
-        let eid = ids::vector_paint_eye_id(i);
-        let er = Rect::new(self.inner_x, y, ICON_W, self.row_h);
-        self.hit_index.register(eid, er);
-        paint_icon_button(
-            er,
-            IconGlyph::Builtin(eye_icon(row)),
-            IconButtonStyle::Plain,
-            self.store.button_visual(eid),
-            self.scene,
-            self.theme,
-        );
-        // ⭐ O losango do OLHO (ligada/desligada é outro canal que a tinta), colado a ele: o da
-        // direita é o da cor.
-        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
-            ph2d_editor_core::widget::DECORATOR_W
-        } else {
-            0.0
-        };
-        self.decorator(Rect::new(er.x + er.w, y, mw, self.row_h), &[eid]);
-
-        // O RÓTULO ocupa o que sobra — e é ele que ABRE a camada.
-        let lx = self.inner_x + ICON_W + mw + ph2d_tokens::icon_label_gap_px();
-        let lw = (x - gap - lx).max(1.0);
-        let rid = ids::vector_paint_row_id(i);
-        let lr = Rect::new(lx, y, lw, self.row_h);
-        self.label_line_in(
-            tr(if row.is_fill {
-                "panel.vector.paint.fill"
-            } else {
-                "panel.vector.paint.stroke"
-            }),
-            lr,
-        );
-        self.hit_index.register(rid, lr);
-        y + self.row_h + self.row_gap
-    }
-
-    /// As propriedades da camada ABERTA, recuadas por baixo dela.
-    fn layer_props(&mut self, row: &PaintRow, y: f32) -> f32 {
+    /// As propriedades da camada ABERTA — o corpo do painel à esquerda (F44).
+    pub(crate) fn layer_props(&mut self, row: &PaintRow, y: f32) -> f32 {
         let mut y = y;
         if !row.is_fill {
             y = self.lone_number_row(
@@ -208,48 +66,19 @@ impl BodyCtx<'_> {
         // `dilate = 0` não há esquina nenhuma a formar, e três chips que não mudam nada são a
         // definição de um controlo morto sob o dedo.
         if row.dilate != 0.0 {
-            y = self.segmented3(
-                tr("panel.vector.paint.join"),
-                [
-                    (
-                        ids::VECTOR_PAINT_JOIN_MITER,
-                        tr("panel.vector.appearance.miter"),
-                        !row.mixed.dilate_join && row.dilate_join == 0,
-                    ),
-                    (
-                        ids::VECTOR_PAINT_JOIN_ROUND,
-                        tr("panel.vector.appearance.round"),
-                        !row.mixed.dilate_join && row.dilate_join == 1,
-                    ),
-                    (
-                        ids::VECTOR_PAINT_JOIN_BEVEL,
-                        tr("panel.vector.appearance.bevel"),
-                        !row.mixed.dilate_join && row.dilate_join == 2,
-                    ),
-                ],
-                y,
-            );
+            let j = |k: u8| !row.mixed.dilate_join && row.dilate_join == k;
+            y = self.with_rows(|rc| {
+                rc.icon_segmented(
+                    tr("panel.vector.paint.join"),
+                    &[
+                        (ids::VECTOR_PAINT_JOIN_MITER, IconId::JoinMiter, j(0)),
+                        (ids::VECTOR_PAINT_JOIN_ROUND, IconId::JoinRound, j(1)),
+                        (ids::VECTOR_PAINT_JOIN_BEVEL, IconId::JoinBevel, j(2)),
+                    ],
+                    y,
+                )
+            });
         }
-        let track = self.live_track(crate::ids::VECTOR_PAINT_OPACITY, row.opacity);
-        let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "o chip mostra a percentagem inteira, como os irmaos dele"
-        )]
-        let rotulo = if row.mixed.opacity {
-            String::new()
-        } else {
-            format!("{}", pct.round() as i64)
-        };
-        y = self.slider_row(
-            tr("panel.vector.paint.opacity"),
-            crate::ids::VECTOR_PAINT_OPACITY,
-            ids::VECTOR_PAINT_OPACITY_NUM,
-            track,
-            pct,
-            &rotulo,
-            y,
-        );
         self.layer_blend_row(row.blend, row.mixed.blend, y)
     }
 
@@ -271,41 +100,7 @@ impl BodyCtx<'_> {
         }
         y + self.row_h + self.row_gap
     }
-
-    /// **+ Fill** e **+ Stroke**, lado a lado — uma camada nova nasce no TOPO, que é onde o
-    /// artista a espera ver (a lei do Illustrator).
-    ///
-    /// ⛔ Os dois somem quando a pilha está no tecto ([`ph2d_vec_scene::MAX_PAINT_LAYERS`]): um
-    /// botão que consome o clique e não faz nada é pior que um ausente.
-    fn add_buttons(&mut self, y: f32) -> f32 {
-        if state::current_appearance().is_some_and(|a| a.layers.len() >= MAX_ROWS) {
-            return self.hint_line(tr("panel.vector.paint.full"), y);
-        }
-        let cw = self.half_cell_w();
-        let gap = Spacing::Sm.px();
-        for (k, (id, label)) in [
-            (ids::VECTOR_PAINT_ADD_FILL, "panel.vector.paint.add_fill"),
-            (
-                ids::VECTOR_PAINT_ADD_STROKE,
-                "panel.vector.paint.add_stroke",
-            ),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            #[expect(clippy::cast_precision_loss, reason = "k in 0..2")]
-            let x = self.inner_x + k as f32 * (cw + gap);
-            let r = Rect::new(x, y, cw, self.row_h);
-            let btn = Button::new(id, tr(label)).visual(self.store.button_visual(id));
-            paint_button(&btn, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(id, r);
-        }
-        y + self.row_h + self.row_gap
-    }
 }
-
-/// O tecto, lido da folha do documento — nunca um número escrito aqui.
-const MAX_ROWS: usize = ph2d_vec_scene::MAX_PAINT_LAYERS;
 
 /// **O popover dos modos de mistura de uma CAMADA** — pintado no passe diferido, por cima de todas
 /// as seções. Espelho do irmão do objecto, com o espaço de ids próprio.

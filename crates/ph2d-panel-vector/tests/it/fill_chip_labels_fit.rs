@@ -45,7 +45,7 @@ fn chip_rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
     // A fileira só sobe com um preenchimento publicado — sem isto o painel não desenha a secção e
     // o teste mediria a ausência dela.
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_fill();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
 }

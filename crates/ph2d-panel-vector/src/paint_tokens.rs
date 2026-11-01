@@ -85,13 +85,25 @@ impl BodyCtx<'_> {
     /// motivo do [`table_of`]: isto corre no laço de pintura, e um `unwrap` trocaria um controle
     /// ausente por uma janela fechada.
     pub(crate) fn token_row(&mut self, id: ph2d_a11y::NodeId, bound: Option<&str>, y: f32) -> f32 {
+        self.token_row_named("panel.vector.token", id, bound, y)
+    }
+
+    /// A mesma linha com o nome `key` — F44: no «Stroke settings» os dois tokens moram juntos, e
+    /// «Token» duas vezes não diz qual cobre a espessura e qual a cor.
+    pub(crate) fn token_row_named(
+        &mut self,
+        key: &'static str,
+        id: ph2d_a11y::NodeId,
+        bound: Option<&str>,
+        y: f32,
+    ) -> f32 {
         let Some(slot) = ids::token_slot_of(id) else {
             return y;
         };
         ph2d_editor_core::paint::paint_text(
             self.text_system,
             self.scene,
-            tr("panel.vector.token"),
+            tr(key),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,

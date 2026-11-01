@@ -351,8 +351,6 @@ pub const VECTOR_SECTION_STROKE: NodeId = hash_node_id("vector.section.stroke");
 
 pub const VECTOR_SECTION_FILL: NodeId = hash_node_id("vector.section.fill");
 
-pub const VECTOR_SECTION_FILL_TYPE: NodeId = hash_node_id("vector.section.fill_type");
-
 pub const VECTOR_SECTION_SNAP: NodeId = hash_node_id("vector.section.snap");
 
 pub const VECTOR_SECTION_TRANSFORM: NodeId = hash_node_id("vector.section.transform");

@@ -44,7 +44,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_fill();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -119,7 +119,7 @@ fn adding_the_fifth_chip_left_the_other_four_alive() {
 #[test]
 fn the_five_chips_do_not_overlap() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_fill();
     let mut st = VectorPanelState;
     let mut rects: Vec<(&str, Rect)> = Vec::new();
     for (id, name) in [
@@ -154,7 +154,7 @@ fn the_five_chips_do_not_overlap() {
 #[ignore = "sonda: imprime a disposicao, nao afirma nada"]
 fn measure_the_fill_kind_row_layout() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = crate::host_aberto();
+    let mut host = crate::host_fill();
     let mut st = VectorPanelState;
     for (id, name) in [
         (ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID, "Solid"),

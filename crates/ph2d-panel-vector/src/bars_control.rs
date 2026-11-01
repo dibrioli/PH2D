@@ -5,7 +5,7 @@
 //!
 //! ⚠️ **Nenhum controlo novo**: cada chip é outra porta para um id que o painel já despacha (o peso é o
 //! `VECTOR_WIDTH_NUM`, a opacidade o `VECTOR_OBJ_OPACITY_NUM`, as linhas das listas os perfis e as
-//! tintas), e o painel do traço pinta o MESMO corpo da secção Stroke (`BodyCtx::stroke_body`).
+//! tintas), e o painel do traço pinta o MESMO corpo da secção Stroke (`BodyCtx::stroke_lines` + `stroke_settings_body`, F44).
 //! Plano: `docs/UI_New_and_Simple/vetor_nova_ui/26_plano_F16_barra_de_controle.md`.
 
 use crate::paint_sections::BodyCtx;
@@ -267,15 +267,11 @@ pub(crate) fn paint_bar_popovers(ctx: &mut PaintCtx, theme: Theme, width: f32) {
     }
 }
 
-/// O corpo do painel do traço: a secção Stroke inteira e, com seleção, o perfil (o *Profile* do
-/// Stroke panel do Illustrator). Devolve o `y` final.
+/// O corpo do painel do traço: as linhas da secção Stroke e o «Stroke settings» (o perfil incluído)
+/// — o mesmo conteúdo que o Inspector abre pelo ⚙ (F44). Devolve o `y` final.
 fn stroke_rows(b: &mut BodyCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-    let y = b.stroke_body(snap, y);
-    if crate::state::current_selection_count() > 0 {
-        b.width_preset_row(active_profile(), y)
-    } else {
-        y
-    }
+    let y = b.stroke_lines(snap, y, true);
+    b.stroke_settings_body(snap, y)
 }
 
 /// ⭐ **O painel do traço** — solto por baixo do «Stroke ▾» (por cima, com a fila embaixo), com a

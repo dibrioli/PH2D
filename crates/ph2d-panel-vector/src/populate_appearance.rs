@@ -55,9 +55,28 @@ pub(crate) fn populate_appearance(store: &mut WidgetStore) {
 fn populate_paint_stack(store: &mut WidgetStore) {
     button(store, ids::VECTOR_PAINT_ADD_FILL);
     button(store, ids::VECTOR_PAINT_ADD_STROKE);
+    // F44: o preenchimento de base e o ⚙ do traço abrem painéis à esquerda; os X fecham-nos.
+    crate::populate::dropdown(store, ids::VECTOR_FILL_ROW);
+    crate::populate::dropdown(store, ids::VECTOR_STROKE_SETTINGS);
+    for id in [
+        ids::VECTOR_FILL_PROPS_CLOSE,
+        ids::VECTOR_STROKE_PROPS_CLOSE,
+        ids::VECTOR_PAINT_PROPS_CLOSE,
+    ] {
+        button(store, id);
+    }
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
         button(store, ids::vector_paint_eye_id(i));
-        button(store, ids::vector_paint_row_id(i));
+        // F44: a caixa da linha é um `Dropdown` — aberta, o painel dela pinta-se à esquerda.
+        crate::populate::dropdown(store, ids::vector_paint_row_id(i));
+        number_field(
+            store,
+            ids::vector_paint_row_opacity_id(i),
+            0.0,
+            100.0, // LITERAL-PX-OK: opacity ceiling = 100 %
+            1.0,
+            100.0, // LITERAL-PX-OK: initial opacity display = 100 %
+        );
         button(store, ids::vector_paint_up_id(i));
         button(store, ids::vector_paint_down_id(i));
         button(store, ids::vector_paint_del_id(i));

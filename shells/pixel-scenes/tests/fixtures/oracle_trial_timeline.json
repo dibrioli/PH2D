@@ -345,7 +345,13 @@
     5
    ],
    "rule": "copies of the frames (durations and cels, B cel of frame 3 copied too) are inserted at the boundary; the originals stay; the copies become the range (6..7); tag 'walk' 2..4 unchanged",
-   "undo_steps": 1
+   "undo_steps": 1,
+   "undo_then_again": {
+    "case": "mover_ctrl_undo_de_novo",
+    "after_undo_range": [2, 3],
+    "again_durations_ms": [100, 200, 300, 400, 500, 200, 300, 600],
+    "rule": "Ctrl+Z gives the range back to the originals (2..3); the same Ctrl drop then copies again with the same result (8 frames, copies 6..7 chosen)"
+   }
   },
   "move_cels": {
    "case": "mover_cels",

@@ -199,6 +199,8 @@ CASOS = {
     'link_cels': [*_N, 'd:372,874,419,874', 'rc:395,874', 'w:0.5', 's:menu', 'k:l', 'w:0.5', 's:tl', 'k:ctrl+z', 'w:0.4', 's:undo'],
     # 6. O que a P6h deixou por medir (corrida de 01/11)
     'mover_ctrl': [*_N, 'd:395,826,419,826', 'dk:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,8', 'k:ctrl+z', 'w:0.4', 's:undo'],
+    'mover_ctrl_undo_de_novo': [*_N, 'd:395,826,419,826', 'dk:408,887,480,887', 'w:0.4', 's:tl', 'k:ctrl+z', 'w:0.5', 's:undo',
+                                'dk:408,887,480,887', 'w:0.4', 's:de_novo', 'k:Escape', 'D:dur,8'],
     'mover_cels': [*_N, 'd:395,874,419,874', 's:sel', 'd:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],
     'mover_cels_ctrl': [*_N, 'd:395,874,419,874', 'dk:408,887,480,887', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6', 'k:ctrl+z', 'w:0.4', 's:undo'],
     'mover_cels_b':[*_N, 'd:372,850,372,850', 's:sel', 'd:378,862,432,862', 'w:0.4', 's:tl', 'k:Escape', 'D:dur,6'],

@@ -29,6 +29,12 @@ pub struct Doc {
     pub(crate) play: Option<ph2d_pixel_core::play::Play>,
     /// O intervalo escolhido na linha do tempo ([`crate::intervalo`]).
     pub(crate) range: ph2d_editor_core::pixel_panel::PixelRange,
+    /// O intervalo de antes de cada passo por desfazer e o de depois de cada um por refazer: o
+    /// Ctrl+Z devolve-o com o passo (Trial 01/11, `mover_ctrl_undo_de_novo`).
+    ranges: (
+        Vec<ph2d_editor_core::pixel_panel::PixelRange>,
+        Vec<ph2d_editor_core::pixel_panel::PixelRange>,
+    ),
 }
 
 impl Doc {
@@ -47,6 +53,7 @@ impl Doc {
             last_point: None,
             play: None,
             range: ph2d_editor_core::pixel_panel::PixelRange::default(),
+            ranges: (Vec::new(), Vec::new()),
         }
     }
 
@@ -285,6 +292,10 @@ impl PixelApp {
         };
         let was = doc.sprite.frame_index(doc.frame);
         doc.history.commit(&mut doc.sprite, op)?;
+        doc.ranges.0.push(doc.range.clone());
+        doc.ranges.1.clear();
+        let fora = doc.ranges.0.len().saturating_sub(doc.history.undo_len());
+        doc.ranges.0.drain(..fora);
         self.largada = None;
         doc.stamp = stamp;
         doc.sane_frame(was);
@@ -317,6 +328,14 @@ impl PixelApp {
             doc.history.undo(&mut doc.sprite)
         };
         if done {
+            let (de, para) = if redo {
+                (&mut doc.ranges.1, &mut doc.ranges.0)
+            } else {
+                (&mut doc.ranges.0, &mut doc.ranges.1)
+            };
+            if let Some(r) = de.pop() {
+                para.push(std::mem::replace(&mut doc.range, r));
+            }
             doc.stamp = stamp;
             doc.sane_frame(was);
         }

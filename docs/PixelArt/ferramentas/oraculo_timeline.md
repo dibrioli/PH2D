@@ -25,7 +25,7 @@ vale). Gesto novo `dk:` = o arrasto `d:` com Ctrl premido só antes de largar.
 
 | Item | Comportamento medido | Caso |
 |---|---|---|
-| Ctrl ao largar o bloco | 2..3 com Ctrl na fronteira 5\|6 → **8 quadros**: cópias (durações e cels, o cel de B do 3 também) entram na fronteira, os originais ficam (100,200,300,400,500,**200,300**,600); as cópias passam a ser o intervalo (6..7); a tag não mexe; 1 undo. | `mover_ctrl` |
+| Ctrl ao largar o bloco | 2..3 com Ctrl na fronteira 5\|6 → **8 quadros**: cópias (durações e cels, o cel de B do 3 também) entram na fronteira, os originais ficam (100,200,300,400,500,**200,300**,600); as cópias passam a ser o intervalo (6..7); a tag não mexe; 1 undo. O **Ctrl+Z devolve o intervalo aos originais** (2..3) e a mesma largada copia de novo, igual. | `mover_ctrl`, `mover_ctrl_undo_de_novo` |
 | Mover só cels | A2..A3 arrastado 3 colunas → A5 = antigo A2, A6 = antigo A3 (os A5/A6 de antes perdem-se), A2/A3 vazios; quadros e durações **não mexem**; o intervalo segue (A5..A6). Com Ctrl as origens ficam (1 undo). As **filas andam também**: B1 largado na fila A, coluna 3 → A3 = antigo B1, B1 vazio. | `mover_cels`, `mover_cels_ctrl`, `mover_cels_b` |
 | Shift+clique em cel depois de arrasto | A2..A3 + Shift A5 = quadros {2,3,5} (o 4 não), camada A («Multiple Frames»); Shift B5 = camadas B..A × {2,3,5}. Igual à nossa lei — sem cura. | `sel_shift_cel_depois_arrasto` |
 | Esc com selecção E intervalo | **Um** Esc limpa os DOIS. E **Select All (Ctrl+A) limpa o intervalo** na hora. | `esc_sel_e_intervalo`, `esc_intervalo_e_sel` |

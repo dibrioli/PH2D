@@ -472,8 +472,26 @@ fn ctrl_at_the_drop_copies_the_block_and_the_copies_become_the_range() {
     assert_eq!(&ids[..5], &p.ids[..5], "os originais ficam");
     assert_eq!(p.img(b, 7), b3, "o cel de B do quadro 3 vai com a cópia");
     assert_eq!(p.passos(), antes + 1);
+    // Trial 01/11, `mover_ctrl_undo_de_novo` (o smoke do dono): o Ctrl+Z devolve o intervalo aos
+    // originais e a mesma cópia repete-se; o Ctrl+Y devolve as cópias escolhidas.
     assert!(p.app.undo(p.key));
     assert_eq!(p.duracoes(), DURATIONS.to_vec());
+    let de_novo = &o["undo_then_again"];
+    let r = lista(&de_novo["after_undo_range"]);
+    let volta = p.ids[r[0] as usize - 1..r[1] as usize].to_vec();
+    assert_eq!(p.quadro().range.frames, volta, "o undo devolve 2..3");
+    let info = p.pede(PixelRequest::RangeMove {
+        before: 5,
+        copy: true,
+    });
+    assert_eq!(
+        p.duracoes(),
+        lista(&de_novo["again_durations_ms"]),
+        "a 2.ª cópia"
+    );
+    let copias = info.range.frames.clone();
+    assert!(p.app.undo(p.key) && p.app.redo(p.key));
+    assert_eq!(p.quadro().range.frames, copias, "o redo devolve as cópias");
 }
 
 /// **Trial 01/11, `mover_cels*`**: a moldura de um intervalo de CELS leva só os cels, por cima do

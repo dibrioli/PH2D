@@ -56,7 +56,8 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta:
             if dm > 0.0 {
                 // Lei da tinta (F4-2 E8): o campo existe ⇒ o filme inteiro assenta por soma.
                 if let Some(t) = g.tinta.get_mut(i) {
-                    crate::drying::tinta::assenta(t, 1.0, &mut g.sett_rgb[i]);
+                    let l = g.pigmento.get_mut(i);
+                    crate::drying::tinta::assenta(t, l, 1.0, &mut g.sett_rgb[i]);
                 } else {
                     let e = ecra
                         .com_vela(g.vela[i])
@@ -158,6 +159,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.aparencia = Vec::new();
     g.oleo = Vec::new();
     g.tinta = Vec::new();
+    g.pigmento = Vec::new();
     g.vel_x.fill(0.0);
     g.vel_y.fill(0.0);
     g.flow_x.fill(0.0);

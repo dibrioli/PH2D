@@ -26,6 +26,8 @@ pub struct GridSnapshot {
     pub oleo: Vec<oleo_celula::OleoCelula>,
     /// [`Grid::tinta`] (F4-2 E3): vazia com a lei velha.
     pub tinta: Vec<tinta::CelulaTinta>,
+    /// [`Grid::pigmento`] (E10c): vazio sem Pigment mix.
+    pub pigmento: Vec<tinta::pigmento::LadoEspectral>,
     pub vel_x: Vec<f32>,
     pub vel_y: Vec<f32>,
     pub wet: Vec<u8>,
@@ -68,6 +70,7 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         aparencia: g.aparencia.clone(),
         oleo: g.oleo.clone(),
         tinta: g.tinta.clone(),
+        pigmento: g.pigmento.clone(),
         vel_x: g.vel_x.clone(),
         vel_y: g.vel_y.clone(),
         wet: g.wet.clone(),
@@ -104,6 +107,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.aparencia.clone_from(&s.aparencia);
     g.oleo.clone_from(&s.oleo);
     g.tinta.clone_from(&s.tinta);
+    g.pigmento.clone_from(&s.pigmento);
     g.vel_x.copy_from_slice(&s.vel_x);
     g.vel_y.copy_from_slice(&s.vel_y);
     g.flow_x.fill(0.0);
@@ -197,11 +201,12 @@ tile_fino!(
     film: f32, susp: f32, susp_rgb: [f32; 3], sett: f32, sett_rgb: [f32; 3], relevo: f32,
     altura: f32, espessura: f32, crista: f32, nivelado: f32, traco: u32, vela: f32,
     material: crate::material::MaterialCelula, aparencia: aparencia::AparenciaCelula,
-    oleo: oleo_celula::OleoCelula, tinta: tinta::CelulaTinta, wet: u8, active: u8, bloom: u8,
+    oleo: oleo_celula::OleoCelula, tinta: tinta::CelulaTinta,
+    pigmento: tinta::pigmento::LadoEspectral, wet: u8, active: u8, bloom: u8,
 );
 
 /// Os planos que nascem VAZIOS (`garante`): o comprimento na base decide se o restauro os esvazia.
-fn comprimentos_vazios(g: &Grid) -> [usize; 9] {
+fn comprimentos_vazios(g: &Grid) -> [usize; 10] {
     [
         g.altura.len(),
         g.espessura.len(),
@@ -212,6 +217,7 @@ fn comprimentos_vazios(g: &Grid) -> [usize; 9] {
         g.aparencia.len(),
         g.oleo.len(),
         g.tinta.len(),
+        g.pigmento.len(),
     ]
 }
 
@@ -239,7 +245,7 @@ struct Escalares {
     row_hi: Vec<i32>,
     paper_preset: PaperPreset,
     paper_sheet: u32,
-    vazios: [usize; 9],
+    vazios: [usize; 10],
 }
 
 impl Escalares {
@@ -387,6 +393,8 @@ impl Registo {
         ajusta(&mut g.oleo, v[7], a7.as_ref());
         let a8 = amostra!(tinta);
         ajusta(&mut g.tinta, v[8], a8.as_ref());
+        let a9 = amostra!(pigmento);
+        ajusta(&mut g.pigmento, v[9], a9.as_ref());
         for (k, t) in tiles() {
             t.poe(g, ret_do_tile(*k, g.s, g.rows));
         }

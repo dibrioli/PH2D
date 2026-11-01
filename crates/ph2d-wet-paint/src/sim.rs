@@ -107,6 +107,8 @@ pub struct Params {
     pub pigmento_do_dab: Option<f64>,
     /// [`Sim::tinta`].
     pub tinta: LeiDaTinta,
+    /// [`Sim::pigment_mix`].
+    pub pigment_mix: f32,
 }
 
 impl Params {
@@ -180,6 +182,8 @@ pub struct Sim {
     pub lei: crate::assenta::Lei,
     /// **A lei da tinta** ([`LeiDaTinta`]); muda-se em execução por [`Sim::set_tinta`]. `Velha` por omissão.
     pub tinta: LeiDaTinta,
+    /// O «Pigment mix» `p ∈ [0,1]` do depósito na lei `Pigmento` (E10c; `0` = Oklab, igual ao bit). Sem painel.
+    pub pigment_mix: f32,
     /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
     /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
     /// Assentar preserva o ecrã SECO ([`crate::assenta`]), então o traço clareia aos poucos ao secar sem
@@ -290,6 +294,7 @@ impl Default for Sim {
             pickup_assentado: 0.5,
             lei: crate::assenta::Lei::Porto,
             tinta: LeiDaTinta::Velha,
+            pigment_mix: 0.0,
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
@@ -418,6 +423,7 @@ impl Sim {
             agua_do_dab: 1.0,
             pigmento_do_dab: None,
             tinta: self.tinta,
+            pigment_mix: self.pigment_mix,
         }
     }
 }

@@ -6,7 +6,7 @@
 
 use super::Grid;
 use ph2d_paint_tinta::oklab::oklab_para_srgb;
-use ph2d_paint_tinta::{Bandas, Optica, Soma, Tinta, camada, optica_celula};
+use ph2d_paint_tinta::{Bandas, Optica, Soma, Tinta, camada};
 
 /// A tinta de uma célula na lei nova (72 B: o meio vive nas somas).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -124,7 +124,8 @@ pub fn pilha(o: &Optica<3>, c: &CelulaTinta) -> (Bandas<3>, f32) {
 pub fn cobertura(g: &Grid, i: usize) -> f32 {
     let c = em(g, i);
     let molhado = g.film.get(i).is_some_and(|&w| w > 0.0);
-    pilha(&optica_celula(&c.filme, &c.aberto, c.meio(), molhado), &c).1
+    let o = pigmento::optica_celula(&c.filme, &c.aberto, g.pigmento.get(i), c.meio(), molhado);
+    pilha(&o, &c).1
 }
 
 /// A tinta da célula `i`; [`CelulaTinta::NEUTRA`] sem o campo.

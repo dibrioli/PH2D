@@ -160,7 +160,7 @@ pub(crate) fn dry_cell(
     susp_rgb: &mut [f32; 3],
     sett_rgb: &mut [f32; 3],
     out: &mut [f64; 3],
-    mut tinta: Option<&mut crate::grid::tinta::CelulaTinta>,
+    mut tinta: Option<tinta::Celula<'_>>,
 ) {
     let film0 = *film;
     let f = film0 as f64;
@@ -215,8 +215,8 @@ pub(crate) fn dry_cell(
             }
         }
         // SPEC §6.2 step 3 (the shared settle composite, on locals).
-        if let Some(t) = tinta.as_deref_mut() {
-            tinta::assenta(t, dm / s_mass, &mut sett_rgb_c);
+        if let Some((t, l)) = tinta.as_mut() {
+            tinta::assenta(t, l.as_deref_mut(), dm / s_mass, &mut sett_rgb_c);
         } else {
             let a_sett = alpha_of_mass(sett_c as f64);
             let a_in = alpha_of_mass(dm);
@@ -272,8 +272,8 @@ pub(crate) fn dry_cell(
             b *= staining_multiplier(c.ext_staining);
         }
         b = clamp01(b);
-        if let (true, Some(t)) = (b > 0.0, tinta) {
-            tinta::levanta(t, b, &mut susp_c, &mut sett_c, &mut susp_rgb_c);
+        if let (true, Some((t, l))) = (b > 0.0, tinta) {
+            tinta::levanta(t, l, b, &mut susp_c, &mut sett_c, &mut susp_rgb_c);
         } else if b > 0.0 {
             lift_settled(
                 b,
@@ -371,7 +371,11 @@ fn dry_gs<W: edge_window::EdgeGather>(
                 &mut srgb,
                 &mut trgb,
                 &mut out,
-                if pigmento { g.tinta.get_mut(i) } else { None },
+                if pigmento {
+                    Some((&mut g.tinta[i], g.pigmento.get_mut(i)))
+                } else {
+                    None
+                },
             );
             g.film[i] = film;
             g.susp[i] = susp;

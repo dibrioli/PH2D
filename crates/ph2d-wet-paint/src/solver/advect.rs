@@ -213,7 +213,7 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
                 g.susp_rgb[i] = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
                 if pigmento {
                     let (c, w) = ([i00, i10, i01, i11], [w00, w10, w01, w11]);
-                    super::tinta_transporte::junta_cantos(&mut g.tinta, i, c, w);
+                    super::tinta_transporte::junta_cantos(g, i, c, w);
                 }
             }
             // Water moves the same way (no color, no threshold).

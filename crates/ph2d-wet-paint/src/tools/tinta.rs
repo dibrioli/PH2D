@@ -6,7 +6,7 @@
 
 use crate::grid::Grid;
 use crate::grid::tinta::{M_UM, garante};
-use ph2d_paint_tinta::{Soma, transfere};
+use ph2d_paint_tinta::{Espectro, Soma, transfere};
 
 /// A pegada antes da ferramenta: o rectângulo `(x0, y0, x1, y1)` inclusivo, as massas e a soma de cada fatia.
 pub(crate) struct Foto {
@@ -15,6 +15,8 @@ pub(crate) struct Foto {
     sett: Vec<f32>,
     filme: Soma,
     aberto: Soma,
+    /// O `Espectro` total de cada fatia (E10c); `None` sem o lado espectral.
+    lado: Option<[Espectro; 2]>,
 }
 
 impl Foto {
@@ -33,6 +35,7 @@ impl Foto {
         );
         let (mut susp, mut sett) = (Vec::new(), Vec::new());
         let (mut f, mut a) = (Soma::default(), Soma::default());
+        let mut lado = (!g.pigmento.is_empty()).then(<[Espectro; 2]>::default);
         for y in y0..=y1 {
             for x in x0..=x1 {
                 let i = y * g.s + x;
@@ -40,6 +43,9 @@ impl Foto {
                 sett.push(g.sett[i]);
                 f = f.junta(g.tinta[i].filme);
                 a = a.junta(g.tinta[i].aberto);
+                if let Some(l) = lado.as_mut() {
+                    *l = [0, 1].map(|k| l[k].junta(g.pigmento[i][k]));
+                }
             }
         }
         Some(Self {
@@ -48,6 +54,7 @@ impl Foto {
             sett,
             filme: f,
             aberto: a,
+            lado,
         })
     }
 
@@ -59,8 +66,14 @@ impl Foto {
             for x in x0..=x1 {
                 let i = y * g.s + x;
                 let c = &mut g.tinta[i];
+                let (f0, a0) = (c.filme, c.aberto);
                 fatia(&mut c.filme, self.susp[k], g.susp[i], &self.filme);
                 fatia(&mut c.aberto, self.sett[k], g.sett[i], &self.aberto);
+                if let (Some(t), Some(l)) = (self.lado, g.pigmento.get_mut(i)) {
+                    let (fl, al) = (self.susp[k], self.sett[k]);
+                    fatia_e(&mut l[0], (f0, fl, g.susp[i]), (&self.filme, &t[0]));
+                    fatia_e(&mut l[1], (a0, al, g.sett[i]), (&self.aberto, &t[1]));
+                }
                 k += 1;
             }
         }
@@ -110,6 +123,29 @@ fn fatia(s: &mut Soma, antes: f32, depois: f32, chega: &Soma) {
             *s = s.junta(de.escala(dv / de.v));
         } else {
             s.v += dv;
+        }
+    }
+}
+
+/// O par de [`fatia`] no `Espectro` (E10c): a MESMA fracção que sai, e o que chega na composição da pegada.
+fn fatia_e(
+    e: &mut Espectro,
+    (s, antes, depois): (Soma, f32, f32),
+    (chega, chega_e): (&Soma, &Espectro),
+) {
+    if depois < antes {
+        let f = if antes > 0.0 {
+            1.0 - depois / antes
+        } else {
+            1.0
+        };
+        let _ = Espectro::transfere(e, &mut Espectro::default(), f);
+    } else if depois > antes {
+        let dv = (depois - antes) / M_UM;
+        if chega.v > 0.0 {
+            *e = e.junta(chega_e.escala(dv / chega.v));
+        } else if s.v > 0.0 {
+            *e = e.junta(e.escala(dv / s.v));
         }
     }
 }

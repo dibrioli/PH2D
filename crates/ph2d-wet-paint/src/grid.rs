@@ -110,6 +110,8 @@ pub struct Grid {
     /// **A tinta da lei ÚNICA** (F4-2 E3, [`tinta`]): somas do filme e do aberto, `R_g`, meio, abertura e altura
     /// curada. VAZIA com [`crate::sim::LeiDaTinta::Velha`]; alocada pelo passo com `Pigmento` ([`tinta::garante`]).
     pub tinta: Vec<tinta::CelulaTinta>,
+    /// O lado espectral do «Pigment mix» (E10b/E10c, [`tinta::pigmento`]): VAZIO até um depósito com `p > 0`.
+    pub pigmento: Vec<tinta::pigmento::LadoEspectral>,
     /// **A geometria da grade de FLUXO** (plano 30) — os quatro planos de
     /// velocidade abaixo são dimensionados por ELA, não pela grade fina.
     ///
@@ -285,6 +287,7 @@ impl Grid {
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),
             tinta: Vec::new(),
+            pigmento: Vec::new(),
             flow,
             vel_x: vec![0.0; fn_],
             vel_y: vec![0.0; fn_],

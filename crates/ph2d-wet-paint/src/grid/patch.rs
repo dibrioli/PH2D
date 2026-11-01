@@ -61,6 +61,8 @@ pub struct GridPatch {
     oleo: Vec<super::oleo_celula::OleoCelula>,
     /// A tinta da lei única no recorte ([`super::tinta`]); VAZIA quando a grade não a tinha.
     tinta: Vec<super::tinta::CelulaTinta>,
+    /// O lado espectral no recorte (E10c); VAZIO quando a grade não o tinha.
+    pigmento: Vec<super::tinta::pigmento::LadoEspectral>,
     wet: Vec<u8>,
     active: Vec<u8>,
     bloom: Vec<u8>,
@@ -193,6 +195,11 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         } else {
             take_rows(&g.tinta, s, x0, y0, x1, y1)
         },
+        pigmento: if g.pigmento.is_empty() {
+            Vec::new()
+        } else {
+            take_rows(&g.pigmento, s, x0, y0, x1, y1)
+        },
         wet: take_rows(&g.wet, s, x0, y0, x1, y1),
         active: take_rows(&g.active, s, x0, y0, x1, y1),
         bloom: take_rows(&g.bloom, s, x0, y0, x1, y1),
@@ -227,6 +234,7 @@ pub fn restore_grid_region(g: &mut Grid, p: &GridPatch) {
     super::aparencia::restaura_janela(g, (x0, y0, x1, y1), &p.aparencia);
     super::oleo_celula::restaura_janela(g, (x0, y0, x1, y1), &p.oleo);
     super::tinta::restaura_janela(g, (x0, y0, x1, y1), &p.tinta);
+    super::tinta::pigmento::restaura_janela(g, (x0, y0, x1, y1), &p.pigmento);
     put_rows(&mut g.wet, s, x0, y0, x1, y1, &p.wet);
     put_rows(&mut g.active, s, x0, y0, x1, y1, &p.active);
     put_rows(&mut g.bloom, s, x0, y0, x1, y1, &p.bloom);

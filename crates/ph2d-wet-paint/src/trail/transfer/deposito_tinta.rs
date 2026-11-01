@@ -6,25 +6,37 @@
 
 use super::remolha;
 use crate::grid::Grid;
-use crate::grid::tinta::{soma_da_massa, srgb_0_255};
+use crate::grid::tinta::pigmento::{self as pig, ABERTO, FILME};
+use crate::grid::tinta::soma_da_massa;
 use crate::opacity::alpha_of_mass;
 use ph2d_paint_tinta::{Soma, transfere};
 
 /// Tira a fracção `1 − fica` da fatia (a massa que sai da grade: o tecto das 3000).
-fn tira(s: &mut Soma, fica: f64) {
+fn tira(g: &mut Grid, i: usize, k: usize, fica: f64) {
     if fica < 1.0 {
-        transfere(s, &mut Soma::default(), (1.0 - fica.max(0.0)) as f32);
+        let f = (1.0 - fica.max(0.0)) as f32;
+        let c = &mut g.tinta[i];
+        transfere(
+            if k == FILME {
+                &mut c.filme
+            } else {
+                &mut c.aberto
+            },
+            &mut Soma::default(),
+            f,
+        );
+        pig::move_em(g, (i, k), None, f);
     }
 }
 
 /// `susp_rgb`/`sett_rgb` passam a ser o ESPELHO das somas: os leitores ainda da lei velha (o bico, o ecrã antes
 /// da E5) vêem a cor misturada em Oklab; ninguém da lei nova os lê.
 fn espelha(g: &mut Grid, i: usize) {
-    let c = g.tinta[i];
-    if let Some(rgb) = srgb_0_255(&c.filme) {
+    let [f, a] = pig::espelho(g, i);
+    if let Some(rgb) = f {
         g.susp_rgb[i] = rgb;
     }
-    if let Some(rgb) = srgb_0_255(&c.aberto) {
+    if let Some(rgb) = a {
         g.sett_rgb[i] = rgb;
     }
 }
@@ -35,7 +47,7 @@ fn corta_sett(g: &mut Grid, i: usize, shed_pig: f64) {
     if old > 3000.0 && !crate::trail::sonda::sem_teto() {
         let ns = (old - shed_pig).max(0.0);
         g.sett[i] = ns as f32;
-        tira(&mut g.tinta[i].aberto, ns / old);
+        tira(g, i, ABERTO, ns / old);
     }
 }
 
@@ -51,6 +63,8 @@ pub(super) struct Pigmento {
     pub glaze: f64,
     /// O meio do pincel (`0` água · `1` óleo): o Real Oil até a E10 lhe dar um controlo.
     pub meio: f32,
+    /// O «Pigment mix» do pincel (E10c): o `p` do `Espectro` que pousa.
+    pub pigment_mix: f32,
 }
 
 /// O que UMA célula da janela pousa.
@@ -81,6 +95,8 @@ impl Pigmento {
     ) {
         let v = x.v;
         let nova = soma_da_massa(x.ponta, x.transparencia, self.meio, v as f32);
+        pig::garante_para(g, self.pigment_mix);
+        let espectro = || pig::de_massa(x.ponta, x.transparencia, v as f32, self.pigment_mix);
         if x.seco {
             let old = f64::from(g.sett[i]);
             let c = &mut g.tinta[i];
@@ -90,6 +106,9 @@ impl Pigmento {
             } else {
                 c.aberto = c.aberto.junta(nova);
                 g.sett[i] = (old + v) as f32;
+            }
+            if pig::existe(g) {
+                pig::pousa(g, (i, ABERTO), espectro(), old <= 0.0);
             }
             corta_sett(g, i, self.shed_pig);
             espelha(g, i);
@@ -103,6 +122,7 @@ impl Pigmento {
                 let f = 1.0 - f64::from(g.sett[i]) / antes;
                 let c = &mut g.tinta[i];
                 transfere(&mut c.aberto, &mut c.filme, f as f32);
+                pig::move_em(g, (i, ABERTO), Some((i, FILME)), f as f32);
             }
         }
         // O Glaze: a tinta molhada de outro traço assenta (a massa da lei velha; o ecrã não muda: filme e aberto
@@ -121,6 +141,7 @@ impl Pigmento {
                 g.susp[i] = (f64::from(g.susp[i]) - dm) as f32;
                 let c = &mut g.tinta[i];
                 transfere(&mut c.filme, &mut c.aberto, f as f32);
+                pig::move_em(g, (i, FILME), Some((i, ABERTO)), f as f32);
             }
         }
         let old = f64::from(g.susp[i]);
@@ -131,12 +152,17 @@ impl Pigmento {
                 old + v - self.shed_pig
             };
             g.susp[i] = nm.max(0.0) as f32;
-            let c = &mut g.tinta[i];
-            c.filme = c.filme.junta(nova);
-            tira(&mut c.filme, f64::from(g.susp[i]) / (old + v));
+            g.tinta[i].filme = g.tinta[i].filme.junta(nova);
+            if pig::existe(g) {
+                pig::pousa(g, (i, FILME), espectro(), false);
+            }
+            tira(g, i, FILME, f64::from(g.susp[i]) / (old + v));
         } else {
             g.susp[i] = v as f32;
             g.tinta[i].filme = nova;
+            if pig::existe(g) {
+                pig::pousa(g, (i, FILME), espectro(), true);
+            }
             if !self.filme {
                 g.film[i] = (f64::from(g.film[i]) + x.agua) as f32;
             }
@@ -166,6 +192,9 @@ pub(super) fn arrasta(g: &mut Grid, i: usize, si: usize, drag: f64) {
     let (a, b) = (g.tinta[i], g.tinta[si]);
     g.tinta[i].filme = fatia(a.filme, b.filme);
     g.tinta[i].aberto = fatia(a.aberto, b.aberto);
+    if let (Some(&la), Some(&lb)) = (g.pigmento.get(i), g.pigmento.get(si)) {
+        g.pigmento[i] = [0, 1].map(|k| pig::lerp(la[k], lb[k], d));
+    }
     espelha(g, i);
 }
 

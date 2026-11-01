@@ -6,6 +6,7 @@
 //! Doc: `docs/Painter/Arquitetura/E6b_pickup_e_ferramentas.md`.
 
 use super::*;
+use crate::grid::tinta::pigmento::{ABERTO, FILME};
 use crate::grid::tinta::{M_UM, garante, srgb_0_255};
 use ph2d_paint_tinta::{Soma, Tinta, pick_up, transfere};
 
@@ -83,6 +84,10 @@ impl Trail {
                     pick_up(&mut c.aberto, ponta, f, o, assentado);
                     leva(&mut g.susp[i], filme, c.filme.v);
                     leva(&mut g.sett[i], aberto, c.aberto.v);
+                    // E10c: a tela perde a MESMA fracção do lado espectral (a ponta ainda não o leva: §6).
+                    let (pf, pa) = ((i, FILME), (i, ABERTO));
+                    crate::grid::tinta::pigmento::move_em(g, pf, None, f);
+                    crate::grid::tinta::pigmento::move_em(g, pa, None, f * o * assentado);
                 }
                 if pig > 0.0 {
                     let mistura =

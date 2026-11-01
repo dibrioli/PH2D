@@ -9,6 +9,7 @@
 
 use crate::grid::Grid;
 use crate::grid::tinta::CelulaTinta;
+use crate::grid::tinta::pigmento::{self as pig, ABERTO, FILME, LadoEspectral};
 use crate::sim::{LeiDaTinta, Params};
 use ph2d_paint_tinta::{Soma, transfere};
 
@@ -20,28 +21,34 @@ pub(crate) fn liga(p: &Params, g: &Grid) -> bool {
 
 /// Move a fracção `f` do filme da célula `de` para o de `para` (`de == para` é nada).
 #[inline]
-pub(crate) fn move_filme(t: &mut [CelulaTinta], de: usize, para: usize, f: f64) {
+pub(crate) fn move_filme(g: &mut Grid, de: usize, para: usize, f: f64) {
     if de == para || f <= 0.0 {
         return;
     }
+    let t = &mut g.tinta;
     let mut origem = t[de].filme;
     transfere(&mut origem, &mut t[para].filme, f as f32);
     t[de].filme = origem;
+    pig::move_em(g, (de, FILME), Some((para, FILME)), f as f32);
 }
 
 /// Junta ao filme de `i` a fracção `w[k]` do filme de cada canto (o gather sequencial do [`super::advect`]).
 #[inline]
-pub(crate) fn junta_cantos(t: &mut [CelulaTinta], i: usize, cantos: [usize; 4], w: [f64; 4]) {
+pub(crate) fn junta_cantos(g: &mut Grid, i: usize, cantos: [usize; 4], w: [f64; 4]) {
     for (c, wk) in cantos.into_iter().zip(w) {
-        move_filme(t, c, i, wk);
+        move_filme(g, c, i, wk);
     }
 }
 
 /// Levanta a fracção `f` do aberto da célula para o filme dela (o backrun sequencial).
 #[inline]
-pub(crate) fn levanta(t: &mut [CelulaTinta], i: usize, f: f64) {
+pub(crate) fn levanta(t: &mut [CelulaTinta], l: &mut [LadoEspectral], i: usize, f: f64) {
     let c = &mut t[i];
     transfere(&mut c.aberto, &mut c.filme, f as f32);
+    if let Some(l) = l.get_mut(i) {
+        let [a, b] = l;
+        let _ = ph2d_paint_tinta::Espectro::transfere(b, a, f as f32);
+    }
 }
 
 /// O campo existe (para as portas sem [`Params`]: com a lei velha ele está vazio).
@@ -125,17 +132,30 @@ pub(crate) fn gather_linear(
     mut termos: impl FnMut(&Grid, usize, &mut Vec<(usize, f64)>),
 ) {
     let velha = std::mem::take(&mut g.tinta);
+    let lado = std::mem::take(&mut g.pigmento);
     let (mut fontes, mut pesos, mut novas) = (Vec::new(), Vec::new(), Vec::new());
+    let mut pesos_e = Vec::new();
     for i in celulas {
         fontes.clear();
         termos(g, i, &mut fontes);
         pesos.clear();
         pesos.extend(fontes.iter().map(|&(j, c)| (velha[j].filme, c)));
-        novas.push((i, combina(&pesos)));
+        pesos_e.clear();
+        pesos_e.extend(
+            fontes
+                .iter()
+                .filter_map(|&(j, c)| lado.get(j).map(|l| (l[FILME], c))),
+        );
+        let e = (!lado.is_empty()).then(|| pig::combina(&pesos_e));
+        novas.push((i, combina(&pesos), e));
     }
     g.tinta = velha;
-    for (i, s) in novas {
+    g.pigmento = lado;
+    for (i, s, e) in novas {
         g.tinta[i].filme = s;
+        if let Some(e) = e {
+            g.pigmento[i][FILME] = e;
+        }
     }
 }
 
@@ -147,11 +167,13 @@ pub(crate) fn fotografa_sett(p: &Params, g: &Grid) -> Option<Vec<f32>> {
 /// Depois da passagem: onde o `sett` desceu, a mesma fracção do aberto passa ao filme da célula.
 pub(crate) fn levanta_pelo_sett(g: &mut Grid, antes: Option<Vec<f32>>) {
     let Some(antes) = antes else { return };
-    for (i, (&a, &d)) in antes.iter().zip(&g.sett).enumerate() {
+    for (i, &a) in antes.iter().enumerate() {
+        let d = g.sett[i];
         if a > 0.0 && d < a {
             let f = 1.0 - f64::from(d) / f64::from(a);
             let c = &mut g.tinta[i];
             transfere(&mut c.aberto, &mut c.filme, f as f32);
+            pig::move_em(g, (i, ABERTO), Some((i, FILME)), f as f32);
         }
     }
 }
@@ -164,10 +186,12 @@ pub(crate) fn fotografa_susp(p: &Params, g: &Grid) -> Option<Vec<f32>> {
 /// Depois da passagem: onde o `susp` desceu, o filme perde a mesma fracção (o destino — o pincel — é da E6b).
 pub(crate) fn tira_pelo_susp(g: &mut Grid, antes: Option<Vec<f32>>) {
     let Some(antes) = antes else { return };
-    for (i, (&a, &d)) in antes.iter().zip(&g.susp).enumerate() {
+    for (i, &a) in antes.iter().enumerate() {
+        let d = g.susp[i];
         if a > 0.0 && d < a {
             let f = 1.0 - f64::from(d) / f64::from(a);
             let _ = transfere(&mut g.tinta[i].filme, &mut Soma::default(), f as f32);
+            pig::move_em(g, (i, FILME), None, f as f32);
         }
     }
 }
@@ -179,7 +203,12 @@ pub(crate) fn drena_o_anel(g: &mut Grid) {
         return;
     }
     let (s, w, h, rows) = (g.s, g.w, g.h, g.rows);
-    let mut zera = |i: usize| g.tinta[i].filme = Soma::default();
+    let mut zera = |i: usize| {
+        g.tinta[i].filme = Soma::default();
+        if let Some(l) = g.pigmento.get_mut(i) {
+            l[FILME] = ph2d_paint_tinta::Espectro::default();
+        }
+    };
     for y in [0usize, 1, h, h + 1] {
         (y * s..y * s + s).for_each(&mut zera);
     }

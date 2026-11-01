@@ -106,3 +106,56 @@ fluxo que cruza a fronteira — não medido, fica aberto.
    implementação do `libm` ou trocar ambos os lados por um polinómio comum, como o `espectral.rs` fez), a matriz
    `T` 3×10 em ordem fixa, e o ramo `p̄ = 0` que salta tudo (o mesmo bit que o Oklab).
 7. **Esparso por tile** para telas ≥ 4096² (a lateral custa 1,8 GiB por camada): medir quando houver o campo.
+
+## 6. Ligação (E10c) — 31/10
+
+Itens 1–3 do §5 feitos; o 4 (o `p` do depósito) entra como `Sim::pigment_mix`/`Params::pigment_mix` (omissão `0`,
+SEM painel). Abreviatura `wp/` = `crates/ph2d-wet-paint/src/`.
+
+**Campo.** `Grid::pigmento: Vec<LadoEspectral>` (`wp/grid.rs`), VAZIO até `grid::tinta::pigmento::garante_para(g, p)`
+com `p > 0` (`wp/grid/pigmento.rs:84`, migra a tinta de ANTES do depósito). Levado em: `Snapshot` (campo, clone,
+restauro — `wp/grid/snapshot.rs`), tiles do histórico (`tile_fino!` + `comprimentos_vazios` 9→10 + `ajusta v[9]`),
+recorte/retoma (`wp/grid/patch.rs` + `pigmento::restaura_janela`, `wp/grid/pigmento.rs:188`, o par do da tinta),
+`bytes_retidos` dos dois (`wp/painter/instantaneo.rs`), limpar a tela (`wp/grid/canvas_ops.rs`) e sair de
+`Pigmento` (`wp/painter/lei_da_tinta.rs`). A GPU só corre a lei `Velha` (`ph2d-wet-gpu/src/passo.rs:27`): nada a subir.
+
+**Portas** (cada uma move o `Espectro` pela MESMA fracção da `Soma`; nada sem o campo):
+
+| porta | onde |
+|---|---|
+| depósito molhado/seco (junta ou substitui `Espectro::de(tinta, v, p)` — com o lado vivo TODO depósito, também `p = 0`) | `wp/trail/transfer/deposito_tinta.rs:98-164` |
+| tecto das 3000 (`tira`) · re-molhar do dissolve · Glaze (filme→aberto) | `deposito_tinta.rs:28`, `:125`, `:144` |
+| arrasto (`Drag`: lerp das somas ⇒ lerp do `Espectro`) | `deposito_tinta.rs:196` (`pigmento::lerp`) |
+| advecção sequencial e escoamento (`move_filme`, `junta_cantos`, assinatura passa a `&mut Grid`) | `wp/solver/tinta_transporte.rs:32` (chamadas `wp/solver/advect.rs:216`, `wp/solver.rs:605`) |
+| Jacobi (`gather_linear`: mesma combinação linear) | `tinta_transporte.rs:149` (`pigmento::combina`) |
+| backrun (`levanta`), `levanta_pelo_sett`, `tira_pelo_susp`, anel de dreno | `tinta_transporte.rs:50`, `:176`, `:194`, `drena_o_anel` |
+| secagem: `assenta` / `levanta` (série e `dry_jacobi` paralelo, linhas do lado por `lados_por_linha`) | `wp/drying/tinta.rs:60`, `:85`, `:174`; `dry_cell` recebe `Option<Celula>` (`wp/drying.rs`) |
+| lift activo da ferramenta · assentar tudo (`canvas_ops`) | `wp/tools.rs:251`, `wp/grid/canvas_ops.rs:59` |
+| Blend/Smear (`Foto` leva o `Espectro` total; `fatia_e` = par de `fatia`) | `wp/tools/tinta.rs:74`, `:131` |
+| pick-up do bico: a TELA perde `f` do filme e `f·o·assentado` do aberto | `wp/trail/bico_tinta.rs:89-90` |
+| fecho (`fecha_celula` com a óptica do Pigment mix; zera o `Espectro` do aberto); `cura` em série quando há lado | `wp/drying/tinta.rs:221`, `:252` |
+| ecrã e cobertura: `pigmento::optica_celula` (`cor_pigmento` → `optica_de_rinf`; sem lado = `optica_celula` ao bit) | `wp/render/tinta.rs:15`, `wp/grid/tinta.rs:127`; espelho `susp_rgb/sett_rgb` por `pigmento::espelho` |
+
+**Testes** (por nome, `--profile smoke`, 31/10):
+
+| teste | resultado |
+|---|---|
+| `pigment_mix_motor_azul_e_amarelo_dao_verde` (b: depósito com `p`, Jacobi 50/50) | `p = 1` ecrã **101,148,113** (verde; espelho 101,148,113) · `p = 0` **140,158,166** (o cinza Oklab de hoje) e `g.pigmento` vazio |
+| `pigment_mix_motor_lado_p0_igual_ao_bit` (a: lado vivo com `p = 0` após Jacobi + `move_filme`) | ecrã igual ao bit |
+| `pigment_mix_motor_conserva_o_espectro` (c: 50 passos `move_filme` + `junta_cantos` + `assenta`, 7 células) | pior relativa **1,2e-7** (≤ 1e-5) |
+| `pigment_mix_motor_bytes_so_depois_de_p` (d) | `p = 0`: +0 B · 1.º `p > 0`: **+112 B × 180 células** (26 700 → 46 860) |
+| `cargo-test-narrow ph2d-wet-paint tinta` | **67 verdes**, 1 ignorado (63 + os 4 novos) |
+| `o_invariante_soma_massa` · `tinta_pigmento_p0_igual_ao_bit_no_motor` · `bico` (3) · `drying` (10) · `snapshot` · `patch` (5) | verdes |
+| `jacobi` | ⚠️ **2 vermelhos**: `advect_jacobi_bits_are_the_recorded_ones`, `advect_jacobi_bits_by_each_commit_route` (lei `Velha`; a E10c só toca a advecção dentro de `if pigmento`) — NÃO conferido no HEAD sem o diff; ver aberto 1 |
+
+**Aberto.**
+1. Conferir os dois vermelhos `advect_jacobi_bits_*` no HEAD (`28c5db8bd0`) sem este diff: se já falhavam, não são da
+   E10c; se não, bisectar o diff (suspeitos nulos por leitura: `solver.rs` só ganhou o campo no destructure).
+2. **A ponta não leva o `Espectro`**: o pick-up tira o lado da tela pela fracção certa (a tela fica coerente), mas a
+   cor que a ponta devolve é a da `Soma` (Oklab) e o depósito seguinte re-sobe às bandas por `Espectro::de` da cor
+   RGB da ponta. Ligar `ponta_tinta` a um `Espectro` lateral exige `trail.rs` (699 linhas: mudar o TIPO de
+   `ponta_tinta` para um par, sem linha nova) e `bico_tinta_tests.rs`.
+3. O teste (b) mistura pela porta Jacobi com a grade montada à mão (o depósito pelos helpers da porta); falta o
+   mesmo azul+amarelo pelo `Engine` inteiro (traço → Blend) quando a E10 der o controlo.
+4. `cura` com lado corre em SÉRIE (a paralela `walk_rows2` só leva dois planos); medir o custo a 4096² antes da E11.
+5. `trail/transfer.rs:476` tem um diff de `rustfmt` que não é desta etapa (não tocado).

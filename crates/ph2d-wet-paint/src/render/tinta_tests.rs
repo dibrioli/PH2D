@@ -7,7 +7,7 @@ use crate::painter::Engine;
 use crate::render::{PigmentVisual, RenderLayer, render_pigment_row_visual};
 use crate::sim::{LeiDaTinta, Params};
 use ph2d_paint_tinta::oklab::linear_para_srgb;
-use ph2d_paint_tinta::{Soma, Tinta, camada, ecra_sobre_branco};
+use ph2d_paint_tinta::{Soma, Tinta, camada, ecra_sobre_branco, optica_celula};
 
 const W: usize = 6;
 const H: usize = 1;

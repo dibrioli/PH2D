@@ -217,6 +217,7 @@ pub fn apply_wet(
         aparencia,
         oleo,
         tinta,
+        pigmento,
         ..
     } = g;
     for_each_stamp_pixel(
@@ -250,6 +251,7 @@ pub fn apply_wet(
                 if b > 0.0 && !tinta.is_empty() && p.tinta == crate::sim::LeiDaTinta::Pigmento {
                     crate::drying::tinta::levanta(
                         &mut tinta[i],
+                        pigmento.get_mut(i),
                         b,
                         &mut susp[i],
                         &mut sett[i],

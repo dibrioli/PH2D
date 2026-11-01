@@ -11,6 +11,7 @@ impl Engine {
         if self.sim.tinta == LeiDaTinta::Pigmento && lei != LeiDaTinta::Pigmento {
             for l in &mut self.layers {
                 l.grid.tinta = Vec::new();
+                l.grid.pigmento = Vec::new();
             }
         }
         self.sim.set_tinta(lei);

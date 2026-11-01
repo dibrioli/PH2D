@@ -4,7 +4,7 @@
 
 use crate::grid::Grid;
 use crate::grid::tinta::{self, CelulaTinta};
-use ph2d_paint_tinta::{Bandas, Optica, decompoe, optica_celula};
+use ph2d_paint_tinta::{Bandas, Optica, decompoe};
 
 /// A cor sRGB `0..255` e a cobertura `α` da célula `i` pela lei da tinta («exacto sobre branco», F4-2 §3.2);
 /// `None` sem tinta (`α == 0`). Seca, a cor é a escolhida; molhada (`film > 0`) escurece (`s(m, molhado)`).
@@ -12,7 +12,8 @@ use ph2d_paint_tinta::{Bandas, Optica, decompoe, optica_celula};
 pub(crate) fn ecra_da_celula(lg: &Grid, i: usize) -> Option<([f64; 3], f64)> {
     let c = tinta::em(lg, i);
     let molhado = lg.film.get(i).is_some_and(|&w| w > 0.0);
-    let o = optica_celula(&c.filme, &c.aberto, c.meio(), molhado);
+    let o =
+        tinta::pigmento::optica_celula(&c.filme, &c.aberto, lg.pigmento.get(i), c.meio(), molhado);
     let (cor, a) = ecra_sobre_o_fundo(&o, &c);
     (a > 0.0).then(|| (cor.0.map(|v| f64::from(v) * 255.0), f64::from(a)))
 }

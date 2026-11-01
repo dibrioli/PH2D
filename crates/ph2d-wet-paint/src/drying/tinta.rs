@@ -6,8 +6,10 @@
 use super::edge_window::EdgePlane;
 use super::{DryConst, dry_cell};
 use crate::grid::Grid;
-use crate::grid::tinta::{CelulaTinta, srgb_0_255};
-use ph2d_paint_tinta::{Bandas, Soma, camada, fecha, optica_celula, transfere};
+use crate::grid::tinta::CelulaTinta;
+use crate::grid::tinta::pigmento::optica_celula;
+use crate::grid::tinta::pigmento::{ABERTO, FILME, LadoEspectral, srgb_0_255};
+use ph2d_paint_tinta::{Bandas, Espectro, Soma, camada, transfere};
 use rayon::prelude::*;
 
 /// A cura do óleo puro (`m = 1`), em segundos do relógio da simulação (F2 §2: «τ(1) ≈ horas», escala artística).
@@ -40,13 +42,24 @@ fn abre_pelo_volume(c: &mut CelulaTinta, antes: f32, chega: f32) {
     }
 }
 
+/// A célula da lei da tinta que a secagem move: as somas e, com o Pigment mix, o lado espectral (E10c).
+pub(crate) type Celula<'a> = (&'a mut CelulaTinta, Option<&'a mut LadoEspectral>);
+
 /// Assentar: a fracção `f` do filme passa ao aberto (a mesma que `susp → sett`); o espelho `sett_rgb` segue.
 #[inline]
-pub(crate) fn assenta(c: &mut CelulaTinta, f: f64, sett_rgb: &mut [f32; 3]) {
+pub(crate) fn assenta(
+    c: &mut CelulaTinta,
+    mut l: Option<&mut LadoEspectral>,
+    f: f64,
+    sett_rgb: &mut [f32; 3],
+) {
     let antes = c.aberto.v;
     let movido = transfere(&mut c.filme, &mut c.aberto, f as f32);
     abre_pelo_volume(c, antes, movido.v);
-    if let Some(rgb) = srgb_0_255(&c.aberto) {
+    if let Some([a, b]) = l.as_deref_mut() {
+        let _ = Espectro::transfere(a, b, f as f32);
+    }
+    if let Some(rgb) = srgb_0_255(&c.aberto, l.map(|l| &l[ABERTO])) {
         *sett_rgb = rgb;
     }
 }
@@ -56,6 +69,7 @@ pub(crate) fn assenta(c: &mut CelulaTinta, f: f64, sett_rgb: &mut [f32; 3]) {
 #[inline]
 pub(crate) fn levanta(
     c: &mut CelulaTinta,
+    mut l: Option<&mut LadoEspectral>,
     b: f64,
     susp: &mut f32,
     sett: &mut f32,
@@ -67,7 +81,10 @@ pub(crate) fn levanta(
     *susp = (f64::from(*susp) + lift) as f32;
     *sett = (st - lift) as f32;
     transfere(&mut c.aberto, &mut c.filme, b as f32);
-    if let Some(rgb) = srgb_0_255(&c.filme) {
+    if let Some([fi, ab]) = l.as_deref_mut() {
+        let _ = Espectro::transfere(ab, fi, b as f32);
+    }
+    if let Some(rgb) = srgb_0_255(&c.filme, l.map(|l| &l[FILME])) {
         *susp_rgb = rgb;
     }
 }
@@ -90,6 +107,7 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
         susp_rgb,
         sett_rgb,
         tinta,
+        pigmento,
         paper,
         vela,
         aparencia,
@@ -114,7 +132,8 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
                  tr: &mut [f32],
                  cr: &mut [[f32; 3]],
                  dr: &mut [[f32; 3]],
-                 kr: &mut [CelulaTinta]| {
+                 kr: &mut [CelulaTinta],
+                 mut lr: Option<&mut [LadoEspectral]>| {
         let y = by0 + ri as i32;
         let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
         if lo > hi {
@@ -141,7 +160,7 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
                 &mut cr[x],
                 &mut dr[x],
                 &mut out,
-                Some(&mut kr[x]),
+                Some((&mut kr[x], lr.as_deref_mut().map(|l| &mut l[x]))),
             );
         }
     };
@@ -151,11 +170,13 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
         .zip(sett[band.clone()].chunks_mut(s))
         .zip(susp_rgb[band.clone()].chunks_mut(s))
         .zip(sett_rgb[band.clone()].chunks_mut(s))
-        .zip(tinta[band].chunks_mut(s))
+        .zip(tinta[band.clone()].chunks_mut(s))
+        .zip(lados_por_linha(pigmento, band, s))
         .collect();
     let serial = matches!(mode, crate::par::Rows::Serial);
-    let roda =
-        |(ri, (((((fr, sr), tr), cr), dr), kr)): (usize, _)| corpo(ri, fr, sr, tr, cr, dr, kr);
+    let roda = |(ri, ((((((fr, sr), tr), cr), dr), kr), lr)): (usize, _)| {
+        corpo(ri, fr, sr, tr, cr, dr, kr, lr);
+    };
     if serial {
         linhas.into_iter().enumerate().for_each(roda);
     } else {
@@ -170,6 +191,9 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
 pub fn cura(g: &mut Grid, dt_s: f32) {
     if g.tinta.is_empty() {
         return;
+    }
+    if !g.pigmento.is_empty() {
+        return cura_com_pigmento(g, dt_s);
     }
     let s = g.s;
     let Grid {
@@ -187,27 +211,62 @@ pub fn cura(g: &mut Grid, dt_s: f32) {
             c.o *= (-dt_s / tau(m)).exp();
             let i = ri * s + x;
             if c.o < O_FECHA && film[i] <= 0.0 && c.filme.v <= 0.0 {
-                fecha_celula(c, &mut tr[x]);
+                fecha_celula(c, None, &mut tr[x]);
             }
         }
     });
 }
 
 /// O fecho de UMA célula (sem as condições de [`cura`]): o aberto passa a fundo e a massa dele sai de `sett`.
-pub(crate) fn fecha_celula(c: &mut CelulaTinta, sett: &mut f32) {
+pub(crate) fn fecha_celula(c: &mut CelulaTinta, l: Option<&mut LadoEspectral>, sett: &mut f32) {
     let m = c.aberto.meio();
     c.altura_fechada += c.aberto.v;
-    // O fundo sobre o preto fecha com a MESMA óptica (a cobertura do fechado = a de antes, ao bit).
-    c.r_g0 = camada(
-        &optica_celula(&Soma::default(), &c.aberto, m, false),
-        &Bandas(c.r_g0),
-    )
-    .0;
-    let mut rg = Bandas(c.r_g);
-    fecha(&mut rg, &mut c.aberto, m);
-    c.r_g = rg.0;
+    // A óptica do aberto SECO (a de `ph2d_paint_tinta::fecha`, com a cor do Pigment mix quando há lado); o fundo
+    // sobre o preto fecha com a MESMA óptica (a cobertura do fechado = a de antes, ao bit).
+    let so_aberto = l.as_deref().map(|l| [Espectro::default(), l[ABERTO]]);
+    let o = optica_celula(&Soma::default(), &c.aberto, so_aberto.as_ref(), m, false);
+    c.r_g0 = camada(&o, &Bandas(c.r_g0)).0;
+    c.r_g = camada(&o, &Bandas(c.r_g)).0;
+    c.aberto = Soma::default();
+    if let Some(l) = l {
+        l[ABERTO] = Espectro::default();
+    }
     c.o = 1.0;
     *sett = 0.0;
+}
+
+/// As linhas do lado espectral da faixa (`None` por linha sem o campo).
+fn lados_por_linha(
+    l: &mut [LadoEspectral],
+    band: core::ops::Range<usize>,
+    s: usize,
+) -> Vec<Option<&mut [LadoEspectral]>> {
+    if l.is_empty() {
+        (0..band.len() / s).map(|_| None).collect()
+    } else {
+        l[band].chunks_mut(s).map(Some).collect()
+    }
+}
+
+/// A [`cura`] com o lado espectral (série: o fecho zera o `Espectro` do aberto com a soma).
+fn cura_com_pigmento(g: &mut Grid, dt_s: f32) {
+    let Grid {
+        tinta,
+        pigmento,
+        sett,
+        film,
+        ..
+    } = g;
+    for (i, (c, l)) in tinta.iter_mut().zip(pigmento.iter_mut()).enumerate() {
+        let m = c.aberto.meio();
+        if c.aberto.v <= 0.0 || m <= 0.0 {
+            continue;
+        }
+        c.o *= (-dt_s / tau(m)).exp();
+        if c.o < O_FECHA && film[i] <= 0.0 && c.filme.v <= 0.0 {
+            fecha_celula(c, Some(l), &mut sett[i]);
+        }
+    }
 }
 
 #[cfg(test)]

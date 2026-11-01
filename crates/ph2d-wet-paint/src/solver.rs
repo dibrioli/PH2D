@@ -123,6 +123,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         bloom,
         traco,
         tinta,
+        pigmento: pigmento_lado,
         ..
     } = g;
     let traco_full: &[u32] = traco;
@@ -395,7 +396,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
                             susp[nb] = (susp[nb] as f64 + lift) as f32;
                             sett[nb] = (sett[nb] as f64 - lift) as f32;
                             if pigmento {
-                                tinta_transporte::levanta(tinta, nb, 0.1);
+                                tinta_transporte::levanta(tinta, pigmento_lado, nb, 0.1);
                             }
                         }
                     }
@@ -602,7 +603,7 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
                 g.susp_rgb[to] = [out[0] as f32, out[1] as f32, out[2] as f32];
                 if pigmento {
                     let f = dm / g.susp[from] as f64;
-                    tinta_transporte::move_filme(&mut g.tinta, from, to, f);
+                    tinta_transporte::move_filme(g, from, to, f);
                 }
                 g.susp[from] = (g.susp[from] as f64 - dm) as f32;
                 g.susp[to] = (g.susp[to] as f64 + dm) as f32;

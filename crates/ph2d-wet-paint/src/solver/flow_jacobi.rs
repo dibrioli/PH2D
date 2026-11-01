@@ -457,6 +457,8 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                         c.max_v,
                     );
                     (ex, ey) = super::ladeira_do_oleo::bingham(ex, ey, tau);
+                    let k = crate::meio::mobilidade(f64::from(cel.meio));
+                    (ex, ey) = (ex * k, ey * k);
                 }
                 fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
                 fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;

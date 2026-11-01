@@ -91,9 +91,10 @@ pub fn da_celula(campo: &[OleoCelula], i: usize) -> OleoCelula {
     campo.get(i).copied().unwrap_or(OleoCelula::NEUTRA)
 }
 
-/// Pousa `v` de massa com `nova` sobre a célula `i`, que tinha `m_old` (susp + sett): a média pela massa (a lei do
-/// relevo); o papel limpo recebe a do pincel. Sem o campo, a NEUTRA não o aloca.
-pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
+/// Pousa `v` de massa e `agua` de líquido com `nova` sobre a célula `i`, que tinha `m_old` (susp + sett): a média
+/// pela massa (a lei do relevo) — salvo o MEIO, que é do líquido e se mistura pelo volume molhado
+/// ([`crate::meio::mistura`]); o papel limpo recebe a do pincel. Sem o campo, a NEUTRA não o aloca.
+pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, (v, agua): (f64, f64)) {
     if g.oleo.is_empty() {
         if nova == OleoCelula::NEUTRA {
             return;
@@ -101,6 +102,8 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
         g.oleo = vec![OleoCelula::NEUTRA; g.cells];
     }
     let a = g.oleo[i];
+    let molhado = f64::from(g.susp[i]) + crate::painter::receita::K_W * f64::from(g.film[i]);
+    let meio = crate::meio::mistura(a.meio, molhado, nova.meio, v, agua);
     if a != nova {
         g.oleo[i] = if m_old > 0.0 {
             let t = v / (m_old + v);
@@ -110,12 +113,12 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
                 profundidade: m(a.profundidade, nova.profundidade),
                 brilho: m(a.brilho, nova.brilho),
                 soluvel: m(a.soluvel, nova.soluvel),
-                meio: m(a.meio, nova.meio),
+                meio,
                 corpo: m(a.corpo, nova.corpo),
                 pincel_de_oleo: nova.pincel_de_oleo,
             }
         } else {
-            nova
+            OleoCelula { meio, ..nova }
         };
     }
 }

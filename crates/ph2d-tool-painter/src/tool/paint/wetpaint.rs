@@ -481,7 +481,9 @@ mod mistura_tests; // a barra do Rebelle para a mistura (W1e, F6)
 #[cfg(test)]
 mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o Wet Drip, prompt 16)
 #[cfg(test)]
-mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
+mod oleo_diluido_tests; // E10g (dono 01/11): o óleo diluído escorre, a tinta do tubo fica
+#[cfg(test)]
+mod opcoes_tests;// as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
 #[cfg(test)]

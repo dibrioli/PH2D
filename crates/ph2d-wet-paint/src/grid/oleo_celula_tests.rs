@@ -149,7 +149,7 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
     assert_eq!(std::mem::size_of::<OleoCelula>(), 28); // + meio e corpo (E10 A2) + pincel_de_oleo (E10e1, 1 B + 3 de alinhamento)
     let mut g = Grid::new(32, 32);
     let i = 10 + 10 * g.s;
-    pousa(&mut g, i, 0.0, OleoCelula::NEUTRA, 5.0);
+    pousa(&mut g, i, 0.0, OleoCelula::NEUTRA, (5.0, 0.0));
     assert!(g.oleo.is_empty(), "a tinta sem óleo alocou o campo");
     let fundo = OleoCelula {
         oleo: 1.0,
@@ -160,10 +160,10 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
         corpo: 0.0,
         pincel_de_oleo: true,
     };
-    pousa(&mut g, i, 0.0, fundo, 5.0);
+    pousa(&mut g, i, 0.0, fundo, (5.0, 0.0));
     g.sett[i] = 5.0;
     assert_eq!(da_celula(&g.oleo, i), fundo);
-    pousa(&mut g, i, 5.0, OleoCelula::NEUTRA, 5.0);
+    pousa(&mut g, i, 5.0, OleoCelula::NEUTRA, (5.0, 0.0));
     let m = da_celula(&g.oleo, i);
     assert!(
         (m.oleo - 0.5).abs() < 1e-6 && (m.profundidade - 2.0).abs() < 1e-6,

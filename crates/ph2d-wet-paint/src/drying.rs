@@ -184,9 +184,12 @@ pub(crate) fn dry_cell(
         e = nb;
     }
 
-    // Evaporate: retention leak + edge-boosted linear loss.
-    let mut new_film =
-        f * c.retention - c.evap_base * ((1.0 - e) * c.edge_darkening + c.base_evaporation);
+    // Evaporate: retention leak + edge-boosted linear loss — both slowed by the medium (`crate::meio`).
+    let m = f64::from(oleo.meio);
+    let mut new_film = f * crate::meio::retencao(c.retention, m)
+        - c.evap_base
+            * ((1.0 - e) * c.edge_darkening + c.base_evaporation)
+            * crate::meio::evaporacao(m);
     if new_film < 0.0001 {
         new_film = 0.0;
     }

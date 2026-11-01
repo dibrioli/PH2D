@@ -171,7 +171,7 @@ impl Trail {
                 let m_old = g.susp[i] as f64 + g.sett[i] as f64;
                 crate::grid::material::pousa(g, i, m_old, mat, v, mat_trava);
                 crate::grid::aparencia::pousa(g, i, m_old, aparencia, v);
-                crate::grid::oleo_celula::pousa(g, i, m_old, oleo, v);
+                crate::grid::oleo_celula::pousa(g, i, m_old, oleo, (v, self.water[l].into()));
                 if apaga_marca {
                     crate::grid::nivelado::dilui(g, i, m_old, v);
                 }

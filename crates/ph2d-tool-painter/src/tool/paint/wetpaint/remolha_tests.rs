@@ -140,18 +140,23 @@ fn sem_re_molhar_a_aguada_sobre_o_oleo_e_a_de_sempre() {
 
 /// ⭐ **Re-wet 0,35 × Solubility 1 dissolve ~35 % do azul debaixo da aguada e leva-o para a água** (a prancha
 /// «re-molha médio»): o assentado azul sob a aguada cai 25–45 % e a aguada fora do óleo fica com azul.
-/// ⚑ VERMELHO desde `c5e6daa0a9` (Bingham): a água da aguada sobre a célula de óleo ganha `τ_y` e o dissolvido não sai
-/// (E10e2 §E3, sonda [`diag_a_queda_por_lei`]). O K–M de fábrica (`3eb13d38db`) já tinha posto a régua em 0,47.
+/// Verde desde a E10g (`docs/Painter/Arquitetura/E10g_oleo_diluido.md`): o meio da célula mistura-se pelo volume
+/// MOLHADO e a aguada sobre o óleo seco é água — o Bingham deixou de a prender (era vermelho desde `c5e6daa0a9`).
+/// A régua mede com o K–M desligado na aguada: com ele, o verde que o amarelo faz sobre o azul lê-se como «menos
+/// azul» sem nada dissolver (`3eb13d38db`, E10e2 §E3).
 #[test]
 fn a_aguada_re_molha_o_oleo_soluvel() {
-    let (oleo0, fora0) = {
-        let mut t = cena(PAPEL, 0.0, 0.0, 0.0);
+    let corre = |soluvel: f64, dissolve: f64| {
+        let mut t = oleo_azul(PAPEL, soluvel);
+        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+            .expect("o meio");
+        t.paint.wetpaint.km_mixing = false;
+        aguada_sem_preset(&mut t, dissolve);
         assenta(&mut t);
         medidas(&mut t)
     };
-    let mut t = cena(PAPEL, 1.0, 0.35, 0.0);
-    assenta(&mut t);
-    let (oleo, fora) = medidas(&mut t);
+    let (oleo0, fora0) = corre(0.0, 0.0);
+    let (oleo, fora) = corre(1.0, 0.35);
     let caiu = 1.0 - oleo / oleo0;
     assert!(
         (0.25..=0.45).contains(&caiu),
@@ -269,7 +274,10 @@ fn o_real_oil_na_mao_nao_empalidece_a_aguada_sobre_o_oleo() {
         caixa(&mostrada(&mut t), 108, 132, 78, 102)
     };
     let ((sem, claros_sem), (com, claros_com)) = (fotografa(false), fotografa(true));
-    let d = (0..3).map(|k| (com[k] - sem[k]).abs()).fold(0.0, f64::max);
+    // Empalidecer = ficar mais CLARO. Com a água solta (E10g) o Real Oil na aguada cobre o óleo como a opaca (E10e1)
+    // e a caixa muda de cor — mais escura, nunca mais clara (medido 74,120,85 contra 76,125,100; o pai com o Bingham
+    // desligado dava 75,113,91 contra 66,110,140 e 7 claros).
+    let d = com.iter().sum::<f64>() / 3.0 - sem.iter().sum::<f64>() / 3.0;
     assert!(
         d <= 6.0 && claros_com <= claros_sem + 4,
         "o Real Oil empalideceu a aguada: {com:.0?} (claros {claros_com}) contra {sem:.0?} (claros {claros_sem})"

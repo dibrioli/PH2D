@@ -1,7 +1,7 @@
 //! **A receita e a quantidade** (E4, [ADR-0197 §1.1](../../../../docs/architecture/decisions/0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md)):
 //! a Dilution dá SÓ a receita (a concentração `φ = 1 − Dilution`), o Volume (µm) dá SÓ a quantidade `h` por dab, e
 //! a pressão só toca a quantidade (a força do carimbo). É a ÚNICA função que lê os controlos da tinta — o que um
-//! dab pousa por unidade de depósito é `φ·h` de pigmento e `(1−φ)(1−m)·h ÷ K_W` de água. Porquê e números:
+//! dab pousa por unidade de depósito é `φ·h` de pigmento e `(1−φ)·h ÷ K_W` de líquido. Porquê e números:
 //! `docs/Painter/Arquitetura/E4_receita_e_quantidade.md`.
 
 use crate::sim::Params;
@@ -62,10 +62,11 @@ impl Receita {
         self.phi * self.h
     }
 
-    /// Água por unidade de depósito: `(1−φ)(1−m)·h ÷ K_W`.
+    /// Líquido LIVRE por unidade de depósito: `[(1−φ) − m·L·φ]₊·h ÷ K_W` — o diluente é líquido com qualquer meio
+    /// (dono 01/11); o meio só muda as propriedades dele e o que o pigmento prende ([`crate::meio`]).
     #[must_use]
     pub fn agua(&self) -> f64 {
-        (1.0 - self.phi) * (1.0 - self.m) * self.h / K_W
+        crate::meio::liquido_livre(self.phi, self.m) * self.h / K_W
     }
 }
 
@@ -131,13 +132,13 @@ pub fn migra_para_controlos(
 }
 
 /// **O meio por família** (F3 §3.2, dono 01/11 Q5): `familia` = a pasta do meio (`Oil`, `Pastel`…), `grupo` = a
-/// subpasta. Óleo e Express Oil `1`; Acrylic `0,5`; os pastéis de óleo e cera (`Pastel/Oil`, `Pastel/Scrape`) `1`;
-/// o resto `0`. Um só sítio: a migração dos presets (`ph2d-tool-painter`) e as sondas leem-no.
+/// subpasta. Só dois pontos (o seletor Paint type, dono 01/11): óleo, Express Oil e os pastéis de óleo e cera
+/// (`Pastel/Oil`, `Pastel/Scrape`) `1`; o resto `0` — a Acrylic é Water com Re-wet 0. Um só sítio: a migração dos
+/// presets (`ph2d-tool-painter`) e as sondas leem-no.
 #[must_use]
 pub fn meio_da_familia(familia: &str, grupo: &str) -> f64 {
     match (familia, grupo) {
         ("Oil" | "ExpressOil", _) | ("Pastel", "Oil" | "Scrape") => 1.0,
-        ("Acrylic", _) => 0.5,
         _ => 0.0,
     }
 }

@@ -130,6 +130,43 @@ pub(crate) fn start_on_selection(
     0
 }
 
+/// O que um press nu faz com a pilha sob o dedo.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct CycleStep {
+    /// A seleção no PRESS — é ela que o arrasto leva.
+    pub(crate) now: Option<u64>,
+    /// A seleção se o press acabar em CLIQUE (soltar sem arrastar): o degrau seguinte da pilha.
+    pub(crate) on_click: Option<u64>,
+}
+
+/// ⭐⭐ **UM CLIQUE POR DEGRAU** (dono 01/11) — e o arrasto leva sempre o que já está escolhido.
+///
+/// - O selecionado está na pilha ⇒ o press fica com ele (arrastar move-o, a lei de 26/08 de
+///   [`start_on_selection`]); se o ciclo está `armed` (o clique anterior foi nesta MESMA pilha, com
+///   esta seleção), soltar sem arrastar desce para o seguinte. Desarmado (veio da Hierarchy), o
+///   primeiro clique fica nele.
+/// - Fora da pilha ⇒ o de cima.
+///
+/// ⛔ Até 01/11 o press contava e só os ímpares desciam: dois cliques por degrau.
+pub(crate) fn cycle_step(hits: &[u64], selected: Option<u64>, armed: bool) -> CycleStep {
+    let Some(&top) = hits.first() else {
+        return CycleStep {
+            now: None,
+            on_click: None,
+        };
+    };
+    match selected.and_then(|s| hits.iter().position(|&b| b == s)) {
+        Some(i) => CycleStep {
+            now: Some(hits[i]),
+            on_click: armed.then(|| hits[(i + 1) % hits.len()]),
+        },
+        None => CycleStep {
+            now: Some(top),
+            on_click: None,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,5 +306,45 @@ mod tests {
         let mut hits: Vec<u64> = Vec::new();
         assert_eq!(start_on_selection(&mut hits, Some(parent), true), 0);
         assert!(hits.is_empty(), "o clique no nada passou a selecionar algo");
+    }
+
+    /// ⭐⭐ **Um clique por degrau, a pilha inteira e de volta ao topo** (dono 01/11) — e o press de
+    /// cada clique fica com o já escolhido, para o arrasto o levar.
+    #[test]
+    fn each_click_goes_one_step_down_the_stack() {
+        let stack = [1u64, 2, 3];
+        let mut sel = None;
+        let mut armed = false;
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            let step = cycle_step(&stack, sel, armed);
+            let pressed = step.now;
+            sel = step.on_click.or(pressed);
+            armed = true;
+            seen.push(sel.unwrap());
+        }
+        assert_eq!(
+            seen,
+            vec![1, 2, 3, 1],
+            "o ciclo nao desce um degrau por clique"
+        );
+        // O press de um clique armado fica no selecionado — é ele que o arrasto leva.
+        assert_eq!(cycle_step(&stack, Some(2), true).now, Some(2));
+    }
+
+    /// **Escolhido na Hierarchy (desarmado), o 1.º clique fica nele** (lei de 26/08); fora da pilha, o
+    /// de cima.
+    #[test]
+    fn a_disarmed_click_keeps_the_selection_and_outside_picks_the_top() {
+        let stack = [1u64, 2, 3];
+        assert_eq!(
+            cycle_step(&stack, Some(3), false),
+            CycleStep {
+                now: Some(3),
+                on_click: None
+            }
+        );
+        assert_eq!(cycle_step(&stack, Some(9), true).now, Some(1));
+        assert_eq!(cycle_step(&[], Some(1), true).now, None);
     }
 }

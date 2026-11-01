@@ -898,14 +898,11 @@ pub(crate) struct RubberBandState {
     pub(crate) add_mode: bool,
 }
 
-/// O ciclo de sobreposição do clique no canvas (M14.7 19.3): cada Primary Down sobre a MESMA lista
-/// de acertos soma `count`; nas contagens ímpares `idx` desce um degrau da pilha, nas pares a seleção
-/// fica (para arrastar sem re-ciclar). Uma lista nova ou outra seleção abrem um ciclo novo.
+/// O ciclo de sobreposição do clique no canvas: a pilha do último clique e a seleção que ele deixou —
+/// a mesma pilha com a mesma seleção ARMA o degrau seguinte ([`crate::pick_order::cycle_step`]).
 #[derive(Debug, Default)]
 pub(crate) struct CyclePick {
     pub(crate) hits: Vec<u64>,
-    pub(crate) idx: usize,
-    pub(crate) count: u32,
     /// ⭐ **A seleção com que o ciclo corrente foi aberto** (Enio, 2026-08-26): sem ela, escolher o
     /// pai na Hierarquia e voltar a clicar no MESMO ponto continuava o ciclo e devolvia o filho.
     /// ⚠️ Guardada DEPOIS do clique (a seleção que ficou), senão o ciclo invalidava-se a cada passo.

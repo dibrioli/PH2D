@@ -143,6 +143,9 @@ pub struct FrameOrder {
     /// a contagem de formas de um documento é de dezenas. *Um `BTreeMap` aqui seria uma alocação
     /// por quadro para uma busca que a varredura linear ganha.*
     pub vector_ranks: Vec<(u64, u32)>,
+    /// `(bits da entidade, rank)` de todo objecto que entrou na ordem — o que o CLIQUE pergunta
+    /// ([`Self::stack_key`]).
+    pub entity_ranks: Vec<(u64, u32)>,
 }
 
 impl FrameOrder {
@@ -150,6 +153,24 @@ impl FrameOrder {
     pub fn clear(&mut self) {
         self.families.clear();
         self.vector_ranks.clear();
+        self.entity_ranks.clear();
+    }
+
+    /// Regista que a entidade `bits` ocupa o `rank`.
+    pub fn enrol(&mut self, bits: u64, rank: u32) {
+        self.entity_ranks.push((bits, rank));
+    }
+
+    /// ⭐⭐ **A altura de um objecto na pilha que o presente DESENHA** — `(faixa, rank)`, maior = mais à
+    /// frente; `None` = não entrou na ordem. `bands` é o plano deste quadro ([`Self::plan`]): no modo
+    /// degradado a faixa manda (todo vetor por cima de todo sprite), como no desenho.
+    pub fn stack_key(&self, bands: &[Band], bits: u64) -> Option<(usize, u32)> {
+        let &(_, r) = self.entity_ranks.iter().find(|(b, _)| *b == bits)?;
+        let fam = (*self.families.get(r as usize)?)?;
+        let i = bands
+            .iter()
+            .position(|b| b.family == fam && b.lo <= r && r < b.hi)?;
+        Some((i, r))
     }
 
     /// Regista o rank de um objecto. `path` é `Some(id)` para uma forma vetorial.
@@ -502,5 +523,29 @@ mod tests {
         assert_eq!(b.len(), 1);
         assert_eq!(b[0].family, V);
         assert_eq!(o.vector_ids_in(b[0]), vec![5]);
+    }
+
+    /// ⭐⭐ **O clique lê a pilha do DESENHO** (dono 01/11): intercalado, a altura é o rank; degradado,
+    /// todo vetor fica por cima de todo sprite — como o presente o desenha.
+    #[test]
+    fn the_stack_key_is_the_drawn_stack_in_both_regimes() {
+        let mut o = FrameOrder::default();
+        // rank 0 vetor (bits 10) · rank 1 sprite (bits 11) · rank 2 vetor (bits 12)
+        for (r, bits, path) in [(0u32, 10u64, Some(1u64)), (1, 11, None), (2, 12, Some(2))] {
+            o.record(r, path);
+            o.enrol(bits, r);
+        }
+        let (b, degraded) = o.plan();
+        assert!(!degraded);
+        let k = |bits| o.stack_key(&b, bits).expect("entrou na ordem");
+        assert!(k(12) > k(11) && k(11) > k(10), "intercalado: a pilha e' o rank");
+
+        let b = collapsed(&[V, S, V]);
+        let k = |bits| o.stack_key(&b, bits).expect("entrou na ordem");
+        assert!(
+            k(10) > k(11),
+            "degradado: o vetor desenha-se por cima de todo sprite"
+        );
+        assert_eq!(o.stack_key(&b, 99), None, "fora da ordem nao tem altura");
     }
 }

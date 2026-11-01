@@ -68,6 +68,8 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) sim: &'a ph2d_ecs::SimWorld,
     pub(crate) vec_scene: &'a ph2d_vec_scene::VecScene,
     pub(crate) flip: &'a ph2d_flip::FlipDoc,
+    /// A ordem do último quadro desenhado — a régua do 1.º clique ([`pick_objects_at`]).
+    pub(crate) frame_order: &'a ph2d_render::draw_bands::FrameOrder,
     pub(crate) present: &'a mut ph2d_ecs::PresentWorld,
     pub(crate) camera: &'a ph2d_render::Camera2d,
     pub(crate) window_size: ph2d_host::WindowSize,
@@ -88,29 +90,23 @@ pub(crate) fn pick_objects_at(
     flip_entities: &ph2d_flip_entities::entities::FlipEntityMap,
     pointer: (f32, f32),
 ) -> Vec<u64> {
-    // ⭐ **O ícone da LÂMPADA ganha o clique** (smoke do dono, 10/10): pequeno e por cima da arte —
-    // quem clica nele quer a luz. A área é a mesma conta do desenho (`gizmo::glifos`).
-    let luzes = ph2d_app_light2d::gizmo::pick_at(
+    // ⭐ **Os ícones dos objectos especiais ganham o clique** (dono 10/10 e 01/11): pequenos e por cima
+    // da arte — quem clica neles quer a luz ou a câmera. À FRENTE da lista, sem a cortar: o clique
+    // seguinte desce para a arte por baixo do ícone.
+    let mut icones = ph2d_app_light2d::gizmo::pick_at(
         w.sim.world(),
         pointer,
         w.pixels_per_meter,
         w.camera,
         w.window_size,
     );
-    if !luzes.is_empty() {
-        return luzes;
-    }
-    // …e o da CÂMERA também (17b A9): o dedo é o ícone pintado.
-    let cameras = ph2d_app_game::moldura_tinta::icones_em(
+    icones.extend(ph2d_app_game::moldura_tinta::icones_em(
         w.camera_frames,
         pointer,
         w.camera_icon_px,
         w.camera,
         w.window_size,
-    );
-    if !cameras.is_empty() {
-        return cameras;
-    }
+    ));
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);
@@ -147,12 +143,33 @@ pub(crate) fn pick_objects_at(
     // pega o grupo; e o segundo clique no mesmo sítio cicla para ele. *O contêiner não rouba o
     // clique dos filhos.*
     hits.extend(ph2d_app_pixel::draw::pick_at(pointer));
+    // ⭐⭐ **O 1.º clique é do que se VÊ por cima** (dono 01/11): a arte ordena-se pela pilha que o
+    // presente desenhou ([`FrameOrder::stack_key`](ph2d_render::draw_bands::FrameOrder::stack_key)),
+    // não por família. O que não entrou na ordem fica à frente, na ordem em que chegou (desenha-se
+    // numa camada por cima). Estável: empates mantêm a ordem de cada família.
+    let (bands, _) = w.frame_order.plan();
+    hits.sort_by_key(|&b| {
+        std::cmp::Reverse(
+            w.frame_order
+                .stack_key(&bands, b)
+                .unwrap_or((usize::MAX, u32::MAX)),
+        )
+    });
     hits.extend(crate::group_gizmo_view::pick_empty_at_world(
         w.sim,
         world,
         w.pixels_per_meter,
     ));
-    hits
+    icones.extend(hits);
+    // ⭐ **Travado não se pega no canvas, em família nenhuma** — o vetor e o Flip já o recusavam;
+    // sprite, pixel, luz e câmera não. O mesmo predicado do gizmo (`is_locked_for_edit`).
+    icones.retain(|&b| {
+        ph2d_ecs::Entity::try_from_bits(b)
+            .is_none_or(|e| !ph2d_ecs::is_locked_for_edit(w.sim.world(), e))
+    });
+    let mut vistos = std::collections::BTreeSet::new();
+    icones.retain(|b| vistos.insert(*b));
+    icones
 }
 
 impl crate::App {
@@ -192,6 +209,7 @@ impl crate::App {
             sim: &gfx.sim,
             vec_scene: &gfx.vec_scene,
             flip: &gfx.flip,
+            frame_order: &gfx.frame_order,
             present: &mut gfx.present,
             camera: &gfx.camera,
             pixels_per_meter: ppm,

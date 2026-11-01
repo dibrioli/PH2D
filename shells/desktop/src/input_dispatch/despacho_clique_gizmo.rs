@@ -441,6 +441,7 @@ impl crate::App {
                     sim: &gfx.sim,
                     vec_scene: &gfx.vec_scene,
                     flip: &gfx.flip,
+                    frame_order: &gfx.frame_order,
                     present: &mut gfx.present,
                     camera: &gfx.camera,
                     pixels_per_meter: ppm_for_pick,

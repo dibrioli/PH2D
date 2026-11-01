@@ -306,6 +306,7 @@ impl crate::App {
             sim: &gfx.sim,
             vec_scene: &gfx.vec_scene,
             flip: &gfx.flip,
+            frame_order: &gfx.frame_order,
             present: &mut gfx.present,
             camera: &gfx.camera,
             pixels_per_meter: hero.project.pixels_per_meter,
@@ -371,6 +372,7 @@ impl crate::App {
                 sim: &gfx.sim,
                 vec_scene: &gfx.vec_scene,
                 flip: &gfx.flip,
+                frame_order: &gfx.frame_order,
                 present: &mut gfx.present,
                 camera: &gfx.camera,
                 pixels_per_meter: ppm_for_pick,
@@ -432,43 +434,42 @@ impl crate::App {
             // chamada da seleção abaixo — uma 2.ª copiava o arrasto, a mão e a pose (gates «UMA porta, UM sítio»).
             let so_o_de_cima =
                 ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero);
-            let cycle_start = if bare_click && !so_o_de_cima {
+            let cicla = bare_click && !so_o_de_cima;
+            if cicla {
                 crate::pick_order::start_on_selection(
                     &mut hits,
                     hero.gizmo.selection,
                     matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate)),
-                )
-            } else {
-                0
-            };
+                );
+            }
             // ⚠️ **A seleção entra no teste do «mesma lista»**, e é ela que faz a
             // escolha na HIERARQUIA abrir um ciclo novo: sem isto, clicar num ponto,
             // escolher o pai na lista e voltar a clicar no MESMO ponto continuava o
-            // ciclo antigo e devolvia o filho outra vez.
-            let same_list = !hits.is_empty()
+            // ciclo antigo e devolvia o filho outra vez. Com multi-seleção o clique é
+            // o do colapso (`pending_single_replace`), não um degrau.
+            let armed = !hits.is_empty()
                 && hits == self.cycle_pick.hits
-                && hero.gizmo.selection == self.cycle_pick.selection;
-            if so_o_de_cima {
-                self.cycle_pick.hits.clear();
-            } else if !same_list {
-                self.cycle_pick.hits = hits.clone();
-                self.cycle_pick.idx = cycle_start;
-                self.cycle_pick.count = 1;
-            } else {
-                self.cycle_pick.count = self.cycle_pick.count.saturating_add(1);
-                if self.cycle_pick.count.is_multiple_of(2) {
-                    // Even count → selection stays.
-                } else if !hits.is_empty() {
-                    self.cycle_pick.idx = (self.cycle_pick.idx + 1) % hits.len();
-                }
-            }
+                && hero.gizmo.selection == self.cycle_pick.selection
+                && hero.gizmo.selected_len() <= 1;
             // No sprite under the cursor ⇒ None (the old vector-scene fallback retired with ADR-0108).
-            let picked = if so_o_de_cima {
-                hits.first().copied()
+            let step = if cicla {
+                crate::pick_order::cycle_step(&hits, hero.gizmo.selection, armed)
             } else {
-                hits.get(self.cycle_pick.idx).copied()
+                crate::pick_order::CycleStep {
+                    now: hits.first().copied(),
+                    on_click: None,
+                }
             };
-            self.ramo_gizmo_pick_selecao(evt, picked, world_pos);
+            if cicla {
+                self.cycle_pick.hits = hits;
+            } else {
+                self.cycle_pick.hits.clear();
+            }
+            self.ramo_gizmo_pick_selecao(evt, step.now, world_pos);
+            // O degrau seguinte só se o press acabar em CLIQUE — o `Up` resolve-o (despacho_clique_largar).
+            if let Some(next) = step.on_click.filter(|&n| Some(n) != step.now) {
+                self.pending_single_replace = Some((next, (evt.x, evt.y)));
+            }
         }
     }
 }

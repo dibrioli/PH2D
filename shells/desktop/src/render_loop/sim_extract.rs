@@ -220,6 +220,7 @@ pub(super) fn build_frame_order(
                 .find(|(e, _)| *e == input.entity)
                 .map(|(_, id)| *id);
             out.record(rank, path);
+            out.enrol(input.entity.to_bits(), rank);
         }
     }
 }

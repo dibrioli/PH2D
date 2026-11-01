@@ -59,6 +59,8 @@ const CHAVE_REAL_OIL: &str = "realOil";
 /// A caixa **Pigment mixing** DESLIGADA no ficheiro (J11: ligada de fábrica, gravada só desligada) — o extra de uma
 /// receita que mistura como o Rebelle (R1: o azul sobre o vermelho molhado é lilás, não o quase-preto do K-M).
 pub(crate) const SEM_KM: (&str, f64) = ("pigmentMixing", 0.0);
+/// A chave da parede binária de antes da E10, que os ficheiros de fábrica ainda gravam.
+const PAREDE_DE_ANTES: &str = "levelingOwnStroke";
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
@@ -179,8 +181,11 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
     {
         // Um knob que o ficheiro ainda não grava (a pressão do pincel, prompt 44) entra também — desde que
         // seja do REGISTO — ou a caixa Pigment mixing do pincel, que o preset grava no mesmo mapa só desligada (J11).
+        // A parede de antes da E10 saiu do registo (E10c2) mas o ficheiro de fábrica ainda a grava: a migração lê-a
+        // pelo NOME (`controlos_e10::CHAVE_PAREDE` → Body).
         assert!(
             (chave == SEM_KM.0 && v == SEM_KM.1)
+                || chave == PAREDE_DE_ANTES
                 || ph2d_wet_paint::tuning::KNOB_DEFS
                     .iter()
                     .any(|d| d.key == chave),

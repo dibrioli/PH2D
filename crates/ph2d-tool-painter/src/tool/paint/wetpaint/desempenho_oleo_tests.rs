@@ -25,10 +25,13 @@ type Var = (&'static str, &'static str, Option<f64>, f64);
 
 const DRIP: &str = "Watercolor/Fluid/Wet Drip.ph2d-brush.png";
 const FILBERT: &str = "Oil/Flat/Filbert.ph2d-brush.png";
-const VARS: [Var; 5] = [
+/// O nome que acaba em « parado» corre com [`ph2d_wet_paint::solver::MEIO_PARADO`] (o meio na célula, antes da J9).
+const VARS: [Var; 7] = [
     ("Wet Drip Water d0.9", DRIP, Some(0.9), 0.0),
     ("Wet Drip Oil d0.9", DRIP, Some(0.9), 1.0),
+    ("Wet Drip Oil d0.9 parado", DRIP, Some(0.9), 1.0),
     ("Filbert Oil d0.9", FILBERT, Some(0.9), 1.0),
+    ("Filbert Oil d0.9 parado", FILBERT, Some(0.9), 1.0),
     ("Filbert Oil d fábrica", FILBERT, None, 1.0),
     (
         "Wet Round Water d0.9",
@@ -67,6 +70,10 @@ struct Corrida {
 
 /// O mesmo traço do `oleo_diluido_tests::traco` (horizontal em `Y0`, 24 px, 40 movimentos).
 fn traco(v: &Var) -> PainterTool {
+    ph2d_wet_paint::solver::MEIO_PARADO.store(
+        v.0.ends_with(" parado"),
+        std::sync::atomic::Ordering::Relaxed,
+    );
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -194,6 +201,10 @@ fn diag_desempenho_do_oleo_diluido() {
         for o in 0..nv * REP {
             let idx = (o + b) % (nv * REP);
             let c = &mut cs[idx % nv][idx / nv];
+            ph2d_wet_paint::solver::MEIO_PARADO.store(
+                VARS[idx % nv].0.ends_with(" parado"),
+                std::sync::atomic::Ordering::Relaxed,
+            );
             for k in k0..(k0 + BLOCO).min(total) {
                 tique(c, k);
                 if (k + 1) % HZ == 0 && AMOSTRAS.contains(&((k + 1) / HZ)) {

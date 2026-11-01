@@ -20,6 +20,19 @@ fn agua_vezes(t: &mut PainterTool, escala: f64) {
     k.set(Knob::Volume, pig + veiculo);
 }
 
+/// O `escala` do [`agua_vezes`] que leva o Wet Flat à Dilution `d` com o MESMO pigmento: `(1−d₀)/d₀ · d/(1−d)`.
+fn escala_da_diluicao(d: f64) -> f64 {
+    let mut t = PainterTool::default();
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+        .expect("o meio");
+    let d0 = t
+        .paint
+        .wetpaint
+        .knobs
+        .get(ph2d_wet_paint::tuning::Knob::Dilution);
+    (1.0 - d0) / d0 * d / (1.0 - d)
+}
+
 fn massas(t: &mut PainterTool) -> Vec<f32> {
     t.wet_bring_home();
     let g = &t
@@ -210,10 +223,12 @@ pub(super) fn queda_j11(escala: f64, marcas: &[usize]) -> Leitura {
 /// Régua J8 (`docs/Painter/Arquitetura/J8_vermelhos_antigos.md`): a queda = massa fora aos 240 tiques − ao soltar (a
 /// de antes somava o que o pincel pousa fora do óleo — 584 → 4 426 com a E10) e a água × pela Dilution com o mesmo
 /// pigmento ([`agua_vezes`]). Na J11 (847b472b3d): 234 · 68 977 · 119 325. Vermelho desde a E10g: 2 433 · 2 978 ·
-/// 4 862 — a viscosidade do óleo fica na célula seca e trava a água que chega (`ETA 1`: 2 475 · … · 55 411).
+/// 4 862 — a viscosidade do óleo ficava na célula seca e travava a água que chega. J9 (o meio anda com o líquido):
+/// os pontos são Dilution 0,2 (quase seco) · 0,6 · a do preset (0,875) — o ×0,15 da J8 era Dilution 0,51, uma aguada
+/// (curva medida: `docs/Painter/Arquitetura/J9_meio_no_liquido.md`).
 #[test]
 fn a_queda_cresce_com_a_diluicao() {
-    let q: Vec<f64> = [0.15, 0.5, 1.0]
+    let q: Vec<f64> = [escala_da_diluicao(0.2), escala_da_diluicao(0.6), 1.0]
         .iter()
         .map(|e| {
             let f = queda_j11(*e, &[0, 240]).fora;
@@ -221,6 +236,7 @@ fn a_queda_cresce_com_a_diluicao() {
         })
         .collect();
     let (pouca, media, muita) = (q[0], q[1], q[2]);
+    eprintln!("queda: pouca {pouca:.0} · média {media:.0} · muita {muita:.0}");
     assert!(
         pouca < media && media < muita,
         "pouca {pouca:.0} < média {media:.0} < muita {muita:.0}"
@@ -269,7 +285,38 @@ fn diag_o_que_trava_a_queda() {
             ));
         }
     };
+    for e in [0.03, 0.06, 0.1, 0.15, 0.3, 0.5, 1.0] {
+        let mut t = PainterTool::default();
+        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+            .expect("o meio");
+        agua_vezes(&mut t, e);
+        let k = &t.paint.wetpaint.knobs;
+        use ph2d_wet_paint::tuning::Knob;
+        let f = queda_j11(e, &[0, 240]).fora;
+        relato(format!(
+            "curva água ×{e}: Dilution {:.3} Volume {:.3} queda {:.0}",
+            k.get(Knob::Dilution),
+            k.get(Knob::Volume),
+            f[1] - f[0]
+        ));
+    }
     corre("produto");
+    ph2d_wet_paint::solver::MEIO_PARADO.store(true, Relaxed);
+    corre("o meio parado na célula (antes da J9)");
+    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    corre("meio parado e sem Bingham");
+    ph2d_wet_paint::solver::MEIO_PARADO.store(false, Relaxed);
+    corre("meio anda e sem Bingham");
+    PAPEL_BINGHAM.store(0, Relaxed);
+    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(1.0f32.to_bits(), Relaxed);
+    ph2d_wet_paint::meio::PAPEL_ETA.store(1.0f32.to_bits(), Relaxed);
+    PAPEL_BINGHAM.store((-1.0f32).to_bits(), Relaxed);
+    corre("meio anda, o meio sem efeito (ETA 1, sem endurecer, sem Bingham)");
+    ph2d_wet_paint::solver::MEIO_PARADO.store(true, Relaxed);
+    corre("meio parado, o meio sem efeito (ETA 1, sem endurecer, sem Bingham)");
+    ph2d_wet_paint::solver::MEIO_PARADO.store(false, Relaxed);
+    PAPEL_BINGHAM.store(0, Relaxed);
+    ph2d_wet_paint::meio::PAPEL_ENDURECE.store(0, Relaxed);
     ph2d_wet_paint::meio::PAPEL_ETA.store(1.0f32.to_bits(), Relaxed);
     corre("sem a viscosidade do óleo (ETA 1)");
     ph2d_wet_paint::meio::PAPEL_ENDURECE.store(1.0f32.to_bits(), Relaxed);

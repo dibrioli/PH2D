@@ -140,7 +140,9 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
     g.scratch.ensure(g.cells);
     // A lei nova lê o `uv`/`outflow` da rota não fundida (mesmo resultado ao bit, `advect_bit_tests`).
     let pigmento = tinta::liga(p, g);
-    let fundir = !pigmento && fundida::usa_fundida(mode, (g.by1 - g.by0 + 1) as usize * g.s);
+    let com_meio = meio::precisa(g);
+    let fundir =
+        !pigmento && !com_meio && fundida::usa_fundida(mode, (g.by1 - g.by0 + 1) as usize * g.s);
     if !(fundir && fundida::momento_no_bloco(g)) {
         momentum_rows(g, p, gx, gy, mode);
     }
@@ -158,6 +160,9 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
         transport_rows(g, p, mode);
         if pigmento {
             tinta::advect_jacobi(g);
+        }
+        if com_meio {
+            meio::advect(g, mode);
         }
         vmax
     };
@@ -641,10 +646,14 @@ use commit::{commit_rows, walk_rows2_reduce};
 #[path = "advect_fundida.rs"]
 mod fundida;
 
+#[path = "meio_transporte.rs"]
+mod meio;
 #[path = "tinta_transporte.rs"]
 pub(crate) mod tinta;
 #[doc(hidden)]
 pub use fundida::{ADVECT_FASES, BLOCO_LINHAS, MOMENTO_FORA};
+#[doc(hidden)]
+pub use meio::MEIO_PARADO;
 
 #[cfg(test)]
 #[path = "advect_jacobi_measure.rs"]

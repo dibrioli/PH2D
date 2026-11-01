@@ -216,7 +216,8 @@ fn cada_elemento_do_grupo_leva_o_filtro_nas_duas_rotas() {
         println!("sem adaptador — saltado");
         return;
     };
-    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 128);
     for (k, cinza) in [(1u32, A1), (2, A2)] {
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let v = byte(cinza) as u8;
@@ -281,7 +282,8 @@ fn o_scene_com_imagens_nas_celulas_guarda_a_ordem_das_linhas() {
         println!("sem adaptador — saltado");
         return;
     };
-    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 128);
     for (k, cinza) in [(1u32, A1), (2, A2)] {
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let v = byte(cinza) as u8;

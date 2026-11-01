@@ -61,7 +61,8 @@ pub(super) struct Atlas {
 }
 
 pub(super) fn atlas(gpu: &GpuContext) -> Atlas {
-    let mut a = ph2d_render::TextureAtlas::new(gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut a = ph2d_render::TextureAtlas::new(gpu, 128);
     a.insert(gpu, CHAVE, LADO_DA_ARTE, LADO_DA_ARTE, &arte())
         .expect("a arte cabe no átlas");
     let renderer = ph2d_render::SpriteRenderer::new(gpu.clone(), ph2d_render::GameRt::FORMAT, a, 8);

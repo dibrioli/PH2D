@@ -451,7 +451,8 @@ fn o_scene_com_imagens_pela_cpu_guarda_a_ordem_das_linhas() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — este gate mede a placa");
     };
-    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 128);
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
     let v = byte(A1) as u8;
     atlas
@@ -520,7 +521,8 @@ fn o_scene_com_imagens_pelo_dispositivo_segue_a_faixa_deslocada() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — este gate mede a placa");
     };
-    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    // 128: the white tile takes [0,64)² from birth (F37).
+    let mut atlas = ph2d_render::TextureAtlas::new(&gpu, 128);
     for (k, cinza) in [(1u32, A1), (2, A2)] {
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let v = byte(cinza) as u8;

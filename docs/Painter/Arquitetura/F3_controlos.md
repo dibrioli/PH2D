@@ -73,7 +73,7 @@ Colunas: **rótulo** (exacto, inglês) · **tooltip** (uma linha) · **grandeza 
 | 10 | **Bristle relief** | How deep each bristle carves its own groove into the paint. | variação de `h` por cerda · µm | 0..8 | 0 | `Knob::BristleHeight` (`defs:260`) ⚑ leitor «nenhum» no censo §1 #83 (via struct `Fios`, censo §6) | P |
 | 11 | **Hardness** ⚑ | How deep the tip reaches into the paper's tooth: 0 = only the peaks, 1 = fills the valleys. | profundidade de contacto no dente · fracção de `z_s` | 0..1 | 1 | **novo**; funde a parte POR PINCEL de `PaperGate` (`wp/trail/deposit.rs:124`), `PressureGrain` (`deposit.rs:116,135`), `ExtDryBrush` (`deposit.rs:126`) | P |
 | 12 | **Paper press** | How much the paint flattens the paper's tooth under it: 0 = follows the paper, 1 = presses it flat. | deformação do relevo `z_s` sob a tinta · fracção | 0..1 | 1 ⚑ (dono escolhe por foto 0/½/1) | `Knob::PaperPress` (`defs:331` → `wp/material.rs:48`, `wp/grid/material.rs:37`) | P |
-| 13 | **Pickup** | How much wet paint the brush lifts from the canvas as it passes. | `k_u` · fracção por contacto (só o ABERTO: `k_u·o·A_c·v`) | 0..0,2 | 0,005 | `Knob::Pickup` (`defs:69` → `wp/trail/bico.rs:31,184`) absorve `TipClean`, `WetLift` | P |
+| 13 | **Pickup** | How much wet paint the brush lifts from the canvas as it passes. | `k_u` · fracção por contacto (só o ABERTO: `k_u·o·A_c·v`) | 0..0,2 | 0,005 | `Knob::Pickup` (`defs:69` → `wp/trail/bico.rs:31,184`) absorve `WetLift` (o `TipClean` vai ao **Load**, §2.1 #10 — revisão §7 R5) | P |
 | 14 | **Load** ⚑ | How much paint the brush holds — how far a stroke carries picked-up color before it runs clean. | `V_cap` · volume do reservatório (unid. de `h·A`) | 0..1 | 0 | `Knob::TipReservoir` (`defs:270` → `bico.rs:32,108,183,211`) | P |
 | 15 | **Drag** | How much of the wet paint is pulled along with the stroke. | fracção de `vᶠ` arrastada por px | 0..1 | 0,16 | `Knob::Drag` (`defs:68` → `wp/trail/transfer.rs:115`) absorve `RewetDrag`, `WaterDrag` | P |
 | 16 | **Stabilizer** | Smooths a shaky hand: the stroke follows the pen on a string of this length. | atraso · px | 0..400 | 0 | `Knob::PulledString` (`defs:240` → `tp/mao.rs:47,265`) absorve `BrushSpec.stabilizer` (D17) | P |
@@ -484,3 +484,23 @@ texturizado padrão.
 | Digital também por pigmento | o artista digital espera Porter-Duff | ADR-0197 §2 |
 | Apagar o «papel amassado» para curar a assimetria | ordem do dono 28/10 | memória `project_paper_press_is_a_brush_control` |
 | O meio da célula como `f32` próprio | era sempre 0; o meio é extensivo e viaja nas somas (`Σv·m`) | E9 §7.1 |
+
+## §7 Revisão do coordenador (janela 4, 31/10) — o que fica decidido
+
+O rascunho §0–§6 é ACEITE como desenho da E10, com estas decisões técnicas (não vão ao dono):
+
+| # | ponto | decisão | porquê |
+|---|---|---|---|
+| R1 | `Body` talvez redundante | fica no desenho PROVISÓRIO; a medição §4 (1) decide. Se `τ_y(m, φ)` sem acréscimo reproduz os 15 traços `levelingOwnStroke = 1` na régua do RELEVO, `Body` sai e N = 30 | um controlo sem grandeza própria é um controlo que mente (ADR-0197 §1.1) — mas só a régua o prova |
+| R2 | presets de óleo a `m = 1` cobrem 3,98× menos | a FÍSICA fica: `s(m)` é a lei (o óleo tem índice próximo do pigmento, espalha menos, é mais transparente — é por isso que se faz o vidrado a óleo). A migração preserva `h` (Volume), nunca a cobertura. As miniaturas que mudam vão à lista ⚑ de `miniaturas_de_fabrica_golden`, cada uma com foto | compensar a cobertura no preset seria um 2.º controlo da mesma grandeza escondido na migração |
+| R3 | o Thick Impasto não chega ao masstone (3,6 µm) | o defeito é de UNIDADE, não de lei: um empaste real tem 100–1000 µm. A medição §4 (4) fixa a unidade do `Volume` em µm de tinta MOLHADA e a faixa pelo que a grade e o `f32` aguentam (§0.0 do CLAUDE.md: o tecto é o do recurso), nunca por `H_REF` herdado | o mesmo número `M_UM` calibrado no branco a `m = 0` não pode decidir a espessura do óleo |
+| R4 | `paperGate` partido entre papel e pincel | ACEITE: `Hardness` (P) + `Absorbency` (T), fórmulas §3.1 | são duas grandezas (contacto no dente × velocidade de Washburn) que hoje partilham um número |
+| R5 | `TipClean` aparecia em dois destinos (§1.2 #13 Pickup e §2.1 #10 Load) | vai ao **Load** (a ponta volta à cor dela à taxa `apanhado/V_cap`); §1.2 corrigido | uma grandeza, um controlo |
+| R6 | 14 knobs de cerda sem leitor | medição §4 (3): grep + 1 dab a 0 e ao máximo; mortos saem (R), vivos vão ao `Tip` | §5.0 «controlo morto» |
+| R7 | `Re-wet = max(rewet/8, …)` | ⚑ o divisor 8 é a faixa de hoje do `rewet` (`defs:109`); confirmar na medição §4 que `Re-wet` 0,5 dá a mesma reabertura do padrão | fórmula de migração sem prova é escolha |
+| R8 | «Color mixing» Pigment | o seletor entra na E10 já com as duas opções; a opção Pigment liga-se ao WGM (F2b §4.2) na etapa seguinte — até lá a opção não aparece (controlo sem leitor não se mostra) | §5.0 controlo morto |
+| R9 | ordem | (a) smoke do dono com a maquete e as perguntas; (b) EM PARALELO, as medições §4 (1)(3)(4)(5)(6) num só bloco; (c) implementação do painel depois das duas | §0.10: um bloco |
+
+Perguntas que vão ao dono (num só smoke, com a maquete [`fotos/f3/maquete_painel.png`](fotos/f3/maquete_painel.png) e
+[`fotos/e9/borda_fina.png`](fotos/e9/borda_fina.png)): §6 #1–#6 + a camada fina (E9 §7.3 #1: manter a mudança de cor na
+borda fina, ou prendê-la à cor escolhida).

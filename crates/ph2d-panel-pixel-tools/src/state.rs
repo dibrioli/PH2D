@@ -11,9 +11,40 @@ pub struct PixelToolsPanelState {
     /// O renomear aberto: `(camada, o campo já foi semeado)`.
     pub(crate) rename: Option<(u32, bool)>,
     pub(crate) seletor: Seletor,
+    pub(crate) paleta: PaletaVista,
+}
+
+/// A paleta como se pintou neste quadro: a ordem (prevista, a meio de um arrasto) e o bloco em voo.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct PaletaVista {
+    /// Célula `j` → a amostra que lá se pintou; `None` = o vão onde o bloco cai.
+    pub(crate) pintada: Vec<Option<usize>>,
+    pub(crate) voo: Option<VooPaleta>,
+}
+
+/// O bloco de amostras agarrado: a caixa (antes da inclinação), as cores e quantas por linha.
+#[derive(Clone, Debug)]
+pub(crate) struct VooPaleta {
+    pub(crate) caixa: Rect,
+    pub(crate) cores: Vec<[u8; 4]>,
+    pub(crate) por_linha: usize,
 }
 
 impl PixelToolsPanelState {
+    /// A ordem que a grelha da paleta pintou (`None` = o vão) — para os gates.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn palette_painted(&self) -> &[Option<usize>] {
+        &self.paleta.pintada
+    }
+
+    /// A caixa do bloco de amostras em voo, se há arrasto — para os gates.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn palette_flight(&self) -> Option<Rect> {
+        self.paleta.voo.as_ref().map(|v| v.caixa)
+    }
+
     /// Os parâmetros do seletor de cor — de onde o anel se desenha (para os gates).
     #[doc(hidden)]
     #[must_use]

@@ -246,6 +246,7 @@ pub fn dispatch_key<'frame>(
                 }
             }
         }
+        KEY_ESCAPE if store.cancel_grid_row_drag() => {}
         KEY_ESCAPE => {
             // Audit fix #1 (CRITICAL): Esc must also abort any
             // in-flight NumberInput drag-slider OR stepper-hold,

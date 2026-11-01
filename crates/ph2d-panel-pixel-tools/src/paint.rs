@@ -42,6 +42,8 @@ mod formas;
 mod paleta;
 #[path = "paint_selecao.rs"]
 mod selecao;
+#[path = "paint_paleta_voo.rs"]
+mod voo;
 
 pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PixelToolsPanel::ID) {
@@ -123,6 +125,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let mut blend_aberto = None;
     let seletor = &mut st.seletor;
     seletor.rects = [None; 3];
+    let paleta_vista = &mut st.paleta;
+    *paleta_vista = crate::state::PaletaVista::default();
     let content_h = with_current(|info| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         let mut c = Corpo {
@@ -135,12 +139,17 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             w: inner_w,
             blend_aberto: None,
             seletor,
+            paleta_vista,
         };
         let y = c.tudo(info, renaming, top);
         blend_aberto = c.blend_aberto;
         (y - top + PANEL_HEAD_PAD).max(0.0)
     });
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
+    // O bloco de amostras em voo, por cima do painel (fora do recorte da rolagem).
+    if let Some(v) = &st.paleta.voo {
+        voo::voa(ctx.scene, theme, v);
+    }
     // O menu do modo, por cima do corpo (fora do recorte da rolagem).
     if let Some((chip, cur)) = blend_aberto {
         let dd =
@@ -163,6 +172,7 @@ struct Corpo<'a> {
     /// O menu do modo aberto: o chip e o modo actual (pinta-se depois, por cima).
     blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
     seletor: &'a mut crate::state::Seletor,
+    paleta_vista: &'a mut crate::state::PaletaVista,
 }
 
 /// `#RRGGBB` (com `AA` quando a cor não é opaca) — o hex que o Aseprite mostra.

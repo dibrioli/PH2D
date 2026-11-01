@@ -53,6 +53,32 @@ pub fn move_permutation(size: usize, from: usize, to: usize) -> Vec<usize> {
     perm
 }
 
+/// **Mudar o bloco `sel` (índices crescentes) para a célula `to`** (o arrasto na paleta):
+/// `perm[novo] = antigo`. O bloco fica junto, pela ordem dele, e cai como uma amostra só cairia
+/// ([`move_permutation`]): largado à frente do primeiro, o ÚLTIMO fica em `to`; atrás, o primeiro
+/// fica em `to`. O painel pinta a ordem prevista com esta MESMA conta.
+#[must_use]
+pub fn drag_permutation(size: usize, sel: &[usize], to: usize) -> Vec<usize> {
+    let (Some(&first), true) = (sel.first(), to < size) else {
+        return (0..size).collect();
+    };
+    if sel.iter().any(|&i| i >= size) {
+        return (0..size).collect();
+    }
+    let k = sel.len();
+    let inicio = if to > first {
+        (to + 1).saturating_sub(k)
+    } else {
+        to
+    }
+    .min(size - k);
+    let mut perm: Vec<usize> = (0..size).filter(|i| !sel.contains(i)).collect();
+    for (j, &i) in sel.iter().enumerate() {
+        perm.insert(inicio + j, i);
+    }
+    perm
+}
+
 /// O inverso de uma permutação `perm[novo] = antigo`: `inv[antigo] = novo`.
 #[must_use]
 pub fn invert_permutation(perm: &[usize]) -> Vec<usize> {

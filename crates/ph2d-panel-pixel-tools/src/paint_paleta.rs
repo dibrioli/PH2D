@@ -10,21 +10,30 @@ impl Corpo<'_> {
         let cell = Spacing::Xl.px();
         let gap = Spacing::Xxs.px();
         let cols = (((self.w + gap) / (cell + gap)).floor().max(1.0)) as usize;
-        let mut bottom = y;
-        let arrasto = self
-            .store
-            .panel_row_drag()
-            .filter(|(f, d)| *f == PanelRowFamily::PixelPalette && d.active)
-            .map(|(_, d)| d);
-        for (i, c) in info.palette.iter().enumerate() {
+        let (x0, mut bottom) = (self.x, y);
+        let celula = move |j: usize| {
             #[expect(clippy::cast_precision_loss, reason = "uma paleta, ≤ 256")]
-            let (cx, cy) = ((i % cols) as f32, (i / cols) as f32);
-            let r = Rect::new(
-                self.x + cx * (cell + gap),
-                y + cy * (cell + gap),
-                cell,
-                cell,
-            );
+            let (cx, cy) = ((j % cols) as f32, (j / cols) as f32);
+            Rect::new(x0 + cx * (cell + gap), y + cy * (cell + gap), cell, cell)
+        };
+        // Os alvos ficam nas células de AGORA; a meio do arrasto a grelha pinta a ordem prevista.
+        for i in 0..info.palette.len() {
+            let r = celula(i);
+            self.hit_index
+                .register_with_secondary(ids::palette_id(i), r, ids::palette_bg_id(i));
+            bottom = r.y + r.h;
+        }
+        let slots = self
+            .paleta_prevista(info, celula, cols)
+            .unwrap_or_else(|| (0..info.palette.len()).map(Some).collect());
+        for (j, slot) in slots.iter().enumerate() {
+            let r = celula(j);
+            bottom = bottom.max(r.y + r.h);
+            let Some(i) = *slot else {
+                self.vao(r);
+                continue;
+            };
+            let c = &info.palette[i];
             let id = ids::palette_id(i);
             // A cor de frente acende na paleta, como no Aseprite.
             let st = if *c == info.fg {
@@ -45,18 +54,8 @@ impl Corpo<'_> {
                 let anel = resolve(ColorToken::Accent, self.theme);
                 stroke_rect(self.scene, r, StrokeToken::Thick.px(), anel);
             }
-            // A célula onde a amostra arrastada vai cair.
-            if let Some(d) = arrasto
-                && d.dragged != id
-                && r.contains(d.cursor_x, d.cursor_y)
-            {
-                let marca = resolve(ColorToken::Text1, self.theme);
-                stroke_rect(self.scene, r, StrokeToken::Heavy.px(), marca);
-            }
-            self.hit_index
-                .register_with_secondary(id, r, ids::palette_bg_id(i));
-            bottom = r.y + r.h;
         }
+        self.paleta_vista.pintada = slots;
         bottom
     }
 

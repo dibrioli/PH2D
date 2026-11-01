@@ -24,11 +24,16 @@ ph2d-vector      = { path = "../ph2d-vector" }
 # tabela que o painel do Vector lê, nunca uma cópia.
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A lei do arrasto da paleta (`palette::drag_permutation` / `copy_insert`): a grelha pinta a ordem
+# prevista com a MESMA conta que a família aplica ao largar.
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
 ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# O Esc a meio do arrasto da paleta vai pelo `dispatch_key` do produto (a arena dele).
+bumpalo = { version = "3", features = ["collections"] }
 
 [lints]
 workspace = true

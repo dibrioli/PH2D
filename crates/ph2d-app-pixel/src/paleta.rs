@@ -24,31 +24,8 @@ mod predefinicoes;
 mod remap;
 pub use predefinicoes::{DEFAULT_FILE, pasta_do_utilizador};
 
-/// **Mudar o bloco `sel` (índices crescentes) para a célula `to`** (o arrasto na paleta):
-/// `perm[novo] = antigo`. O bloco fica junto, pela ordem dele, e cai como uma amostra só cairia
-/// ([`palette::move_permutation`]): largado à frente do primeiro, o ÚLTIMO fica em `to`; atrás,
-/// o primeiro fica em `to`.
-#[must_use]
-pub fn drag_permutation(size: usize, sel: &[usize], to: usize) -> Vec<usize> {
-    let (Some(&first), true) = (sel.first(), to < size) else {
-        return (0..size).collect();
-    };
-    if sel.iter().any(|&i| i >= size) {
-        return (0..size).collect();
-    }
-    let k = sel.len();
-    let inicio = if to > first {
-        (to + 1).saturating_sub(k)
-    } else {
-        to
-    }
-    .min(size - k);
-    let mut perm: Vec<usize> = (0..size).filter(|i| !sel.contains(i)).collect();
-    for (j, &i) in sel.iter().enumerate() {
-        perm.insert(inicio + j, i);
-    }
-    perm
-}
+/// A lei do arrasto mora no núcleo: o painel pinta a ordem prevista com a mesma conta.
+pub use ph2d_pixel_core::palette::drag_permutation;
 
 /// A cor com que *Palette Size* estende a paleta (Aseprite: preto).
 const PRETO: [u8; 4] = [0, 0, 0, 255];

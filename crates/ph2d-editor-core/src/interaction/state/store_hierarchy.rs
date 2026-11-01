@@ -283,6 +283,18 @@ impl WidgetStore {
         self.panel_row_drag.take()
     }
 
+    /// **Esc a meio do arrasto de uma GRELHA** (a paleta do Pixel): o arrasto e a pressão caem, e o
+    /// Up que vier não larga nem clica. `true` = havia um arrasto activo e foi cancelado.
+    pub fn cancel_grid_row_drag(&mut self) -> bool {
+        let activo = matches!(self.panel_row_drag, Some((f, d)) if f.grelha() && d.active);
+        if activo {
+            self.panel_row_drag = None;
+            self.set_active(None);
+            self.set_active_rect(None);
+        }
+        activo
+    }
+
     /// W4 §3 — record a Curves/Levels control-point drag computed by the
     /// dispatch (`x`/`y` already normalized to `[0, 1]`). The panel drains it
     /// with [`Self::take_curve_point_drag`] and forwards to its tool's

@@ -5,6 +5,7 @@ mod color_laws;
 mod color_parity;
 mod draw_laws;
 mod draw_parity;
+mod fast_tie;
 mod frame_laws;
 mod frames_oracle;
 mod frames_parity;

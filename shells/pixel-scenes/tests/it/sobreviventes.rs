@@ -305,3 +305,117 @@ fn a_sprite_born_from_a_paste_carries_the_source_palette_in_rgba_too() {
     assert_eq!(novo.mode(), ph2d_pixel_core::ColorMode::Rgba);
     assert_eq!(novo.palette(), colors.as_slice());
 }
+
+/// A pintura de cima do Draw (a caixa e as alças da forma viva), como o quadro a desenha.
+fn pintura(m: &mut Mesa) -> (Vec<u32>, u32) {
+    let mut scene = VectorScene::new();
+    ph2d_app_pixel::draw::draw(
+        &mut m.app,
+        m.sim.world(),
+        &m.cam,
+        WINDOW,
+        PPM,
+        Some(m.bits),
+        Theme::default(),
+        &mut scene,
+    );
+    let e = scene.inner().encoding();
+    (e.path_data.clone(), e.n_paths)
+}
+
+/// **#12 (P6f)** — a meio do arrasto de uma alça da forma a caixa fica SÓ com o contorno (as oito
+/// alças da caixa somem); sem o ramo do `outline_only` pintava a caixa inteira e passava verde.
+#[test]
+fn mid_handle_drag_the_box_paints_only_its_outline() {
+    let mut m = Mesa::nova();
+    m.desenha(Tool::RECTANGLE, (4, 4), (24, 20));
+    let alca = m.alca(Glyph::Corner);
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
+    let _ = input::moved(&mut m.app, &c, alca, Mods::default());
+    let (_, em_repouso) = pintura(&mut m);
+    m.press(alca);
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
+    assert!(input::moved(&mut m.app, &c, alca, Mods::default()));
+    let (_, a_meio) = pintura(&mut m);
+    assert!(
+        a_meio < em_repouso,
+        "a meio: {a_meio} caminhos; em repouso com o cursor na alça: {em_repouso}"
+    );
+}
+
+/// **#13 (P6f)** — na cena 14 a alça MOSTRADA pinta-se quente (com o trilho) enquanto o cursor não
+/// chegou; o primeiro movimento do cursor, longe de tudo, apaga-a.
+#[test]
+fn the_shown_handle_of_scene_14_paints_hot_until_the_cursor_moves() {
+    let mut m = Mesa::nova();
+    let mut app = PixelApp::default();
+    let mut sim = ph2d_ecs::SimWorld::new();
+    assert!(ph2d_app_pixel::smoke::stage(
+        &mut app, &mut sim, 14, spawn_root
+    ));
+    let (bits, key) = ph2d_app_pixel::mode::sprites(sim.world())[0];
+    app.frame(&mut sim, &mut m.cam, WINDOW, PPM, Some(bits), spawn_root);
+    (m.app, m.sim, m.bits, m.key) = (app, sim, bits, key);
+    assert!(m.app.live_shape().is_some(), "a cena 14 tem a estrela viva");
+    let mostrada = pintura(&mut m);
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
+    let _ = input::moved(&mut m.app, &c, (1.0, 1.0), Mods::default());
+    let longe = pintura(&mut m);
+    assert_ne!(mostrada, longe, "a alça mostrada pinta-se quente");
+    let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
+    let _ = input::moved(&mut m.app, &c, (2.0, 1.0), Mods::default());
+    assert_eq!(pintura(&mut m), longe, "longe de tudo, a mesma pintura");
+}
+
+/// **#20 (P6g), a metade do `mode.rs`** — o `leave` do modo (a troca de modo pela shell) assenta a
+/// forma viva DESTE objecto, e só a dele.
+#[test]
+fn leaving_draw_through_the_mode_drive_settles_only_its_own_live_shape() {
+    use ph2d_editor_core::ToolRegistry;
+    use ph2d_editor_core::object_mode::ObjectMode;
+    use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
+    let mut m = Mesa::nova();
+    m.desenha(Tool::RECTANGLE, (4, 4), (12, 12));
+    let mut tools = ToolRegistry::default();
+    let mundo = m.sim.world();
+    ph2d_app_pixel::mode::Family::new(&mut m.app, mundo).leave(
+        ObjectMode::Draw,
+        m.bits ^ 1,
+        &mut tools,
+    );
+    assert!(m.app.live_shape().is_some(), "outro objecto não a assenta");
+    let mundo = m.sim.world();
+    ph2d_app_pixel::mode::Family::new(&mut m.app, mundo).leave(
+        ObjectMode::Draw,
+        m.bits,
+        &mut tools,
+    );
+    assert!(m.app.live_shape().is_none());
+    assert_eq!(m.v((4, 4)), WHITE, "sair do Draw pelo modo assenta");
+}
+
+/// **#18 (P6b)** — os campos `Px` escritos por uma alça ficam na célula MAIS PRÓXIMA (`round`):
+/// premir a alça do raio 5 e mexer um nada para qualquer lado deixa 5 (o `floor` dava 4 de um lado).
+#[test]
+fn a_px_field_dragged_by_a_hair_stays_on_the_nearest_cell() {
+    let r = PixelShape::RECTANGLE;
+    for dx in [-0.2_f32, 0.2] {
+        let mut m = Mesa::nova();
+        m.app
+            .options
+            .shapes
+            .set(r, m.app.options.shapes.get(r).with(0, 5.0));
+        m.desenha(Tool::RECTANGLE, (4, 4), (24, 20));
+        assert_eq!(raio(&m), 5.0, "o raio de partida");
+        let alca = m.alca(Glyph::Corner);
+        m.press(alca);
+        let c = crate::comum::canvas(&m.sim, &m.cam, m.bits);
+        assert!(input::moved(
+            &mut m.app,
+            &c,
+            (alca.0 + dx, alca.1 + dx),
+            Mods::default()
+        ));
+        assert_eq!(raio(&m), 5.0, "um nada ({dx} px) fica no 5");
+    }
+}

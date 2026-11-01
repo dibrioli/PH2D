@@ -334,6 +334,47 @@ color_tokens! {
     /// `node-cat-utility` — expressions / adapters / values.
     NodeCatUtility => "node-cat-utility",
 
+    // ── Hierarchy: a cor de cada TIPO de objecto (F42, dono 01/11) ──
+    // Cores de DADO: uma por tipo, distintas entre si (ΔE OKLab ≥ 0,07 no escuro) e com
+    // contraste ≥ 4,5 sobre o painel nos temas escuro e claro. Gate:
+    // `ph2d_editor_core::hier_rows` (`cada_tipo_tem_cor_propria_e_legivel`).
+    /// `obj-empty` — objecto vazio (neutro: não É nada ainda).
+    ObjEmpty => "obj-empty",
+    /// `obj-image` — sprite de imagem.
+    ObjImage => "obj-image",
+    /// `obj-vector` — forma vetorial.
+    ObjVector => "obj-vector",
+    /// `obj-flip` — objecto Flip.
+    ObjFlip => "obj-flip",
+    /// `obj-painted` — documento do Painter.
+    ObjPainted => "obj-painted",
+    /// `obj-skeleton` — esqueleto.
+    ObjSkeleton => "obj-skeleton",
+    /// `obj-motion` — gerador do Motion Nodes.
+    ObjMotion => "obj-motion",
+    /// `obj-pixel-sprite` — sprite de pixel art.
+    ObjPixelSprite => "obj-pixel-sprite",
+    /// `obj-player` — o jogador (`PlatformPlayer`).
+    ObjPlayer => "obj-player",
+    /// `obj-camera` — câmera do jogo.
+    ObjCamera => "obj-camera",
+    /// `obj-light` — lâmpada da Luz 2D.
+    ObjLight => "obj-light",
+    /// `obj-macro` — objecto Macro.
+    ObjMacro => "obj-macro",
+    /// `obj-particles` — emissor de partículas.
+    ObjParticles => "obj-particles",
+    /// `obj-sound` — fonte de som.
+    ObjSound => "obj-sound",
+    /// `obj-hud` — HUD (`UiCanvas`).
+    ObjHud => "obj-hud",
+    /// `obj-joint` — junta da física.
+    ObjJoint => "obj-joint",
+    /// `obj-body` — corpo da física sem arte.
+    ObjBody => "obj-body",
+    /// `obj-collider` — forma de colisão sem arte.
+    ObjCollider => "obj-collider",
+
     // ── Motion Nodes: port colors by PortType axis ─────────────────
     // Socket color = Domain (or Clock for event/static); shape = Dim.
     /// `port-instances` — `Domain::Instances` (purple).

@@ -171,13 +171,7 @@ pub(crate) fn paint_hierarchy_row(
     let icon_w = Spacing::Xl.px();
     let icon_x = chev_x + chev_w + chev_pad;
     let icon_rect = Rect::new(icon_x, rect.y + (rect.h - icon_w) * 0.5, icon_w, icon_w);
-    let icon_color = if entity.selected {
-        ColorToken::Accent
-    } else if entity.muted {
-        ColorToken::TextDisabled
-    } else {
-        ColorToken::Text3
-    };
+    let icon_color = icon_color(entity);
     paint_icon(
         scene,
         entity.icon,
@@ -301,6 +295,23 @@ pub(crate) fn paint_hierarchy_row(
 
 /// ⭐ Um interruptor da linha (olho, grupo, cadeado) é pintável por arrasto — vertical (outras linhas)
 /// e horizontal (as outras funções da mesma linha): um grupo só para os três (dono 01/11).
+/// ⭐ **A cor do ícone da linha** (F42): a do TIPO num objecto — também seleccionado, é a identidade
+/// dele —, cinzenta se escondido; a Cena e o conteúdo ficam como eram (acento na selecção).
+pub(crate) fn icon_color(entity: &fixture::HierarchyEntity) -> ColorToken {
+    use ph2d_editor_core::hier_types::ObjectType;
+    let objecto = entity.role == ph2d_editor_core::hier_rows::RowRole::Object;
+    let tipo = objecto.then(|| ObjectType::of_icon(entity.icon)).flatten();
+    if entity.muted {
+        ColorToken::TextDisabled
+    } else if let Some(t) = tipo {
+        t.color()
+    } else if entity.selected {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text3
+    }
+}
+
 fn pintavel(id: ph2d_a11y::NodeId, ligado: bool, rect: Rect) {
     ph2d_editor_core::interaction::toggle_paint::celula(
         id,
@@ -511,6 +522,59 @@ fn paint_row_name(
 }
 
 /// ⛔⛔ **O SELO É PINTADO **E** É A CHAVE DO TOM** — o gate que nomeia essa dupla vida.
+#[cfg(test)]
+mod icon_color_tests {
+    use super::*;
+    use ph2d_editor_core::hier_rows::RowRole;
+    use ph2d_editor_core::hier_types::ObjectType;
+
+    fn linha(icon: IconId, role: RowRole, selected: bool, muted: bool) -> fixture::HierarchyEntity {
+        fixture::HierarchyEntity {
+            name: String::new(),
+            icon,
+            indent: 0,
+            badge: None,
+            swatch: None,
+            visible: true,
+            selected,
+            hovered: false,
+            muted,
+            locked: false,
+            group_locked: false,
+            role,
+            components: Vec::new(),
+            content: Vec::new(),
+            has: Default::default(),
+            entity: None,
+        }
+    }
+
+    /// ⭐ F42 — o ícone de um objecto pinta a cor do TIPO, seleccionado ou não; escondido fica
+    /// cinzento; a Cena e o conteúdo não ganham cor de tipo. (Mutação: devolver `Text3` em vez da
+    /// cor do tipo ⇒ RED; tirar o filtro do papel ⇒ a Cena com glifo de tipo pintaria a cor — RED.)
+    #[test]
+    fn o_icone_do_objecto_pinta_a_cor_do_tipo() {
+        for t in ObjectType::ALL {
+            assert_eq!(
+                icon_color(&linha(t.icon(), RowRole::Object, false, false)),
+                t.color()
+            );
+            assert_eq!(
+                icon_color(&linha(t.icon(), RowRole::Object, true, false)),
+                t.color()
+            );
+            assert_eq!(
+                icon_color(&linha(t.icon(), RowRole::Object, false, true)),
+                ColorToken::TextDisabled
+            );
+        }
+        let cena = linha(ObjectType::Image.icon(), RowRole::Scene, false, false);
+        assert_eq!(icon_color(&cena), ColorToken::Text3);
+        let pasta = linha(IconId::Folder, RowRole::Object, true, false);
+        assert_eq!(icon_color(&pasta), ColorToken::Accent);
+    }
+}
+
 #[cfg(test)]
 mod badge_tests {
     use super::{TagTone, badge_tone};

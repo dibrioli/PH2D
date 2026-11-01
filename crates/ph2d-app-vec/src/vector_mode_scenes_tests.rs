@@ -41,6 +41,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
             | "39"
             | "40"
             | "41"
+            | "42"
     ) {
         1
     } else {
@@ -121,7 +122,7 @@ fn antes(s: &str) -> (u8, bool, u8, u8) {
 
 #[test]
 fn a_tabela_das_cenas_despacha_como_as_listas_de_antes() {
-    let mut escritas: Vec<String> = (0..=41).map(|n| n.to_string()).collect();
+    let mut escritas: Vec<String> = (0..=42).map(|n| n.to_string()).collect();
     escritas.extend(["07", "+7", " 7", "", "abc", "256"].map(String::from));
     for s in &escritas {
         let c = of(Some(s));
@@ -130,6 +131,7 @@ fn a_tabela_das_cenas_despacha_como_as_listas_de_antes() {
         assert_eq!(c.reach, s == "10", "cena {s:?}");
         assert_eq!(c.nav, s == "11", "cena {s:?}");
         assert_eq!(c.frame, s == "14", "cena {s:?}");
+        assert_eq!(c.single, s == "42", "cena {s:?}");
     }
     let nada = of(None);
     assert_eq!(

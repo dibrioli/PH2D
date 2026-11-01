@@ -406,6 +406,8 @@ pub fn smoke_step(
     static FRAME: AtomicU8 = AtomicU8::new(0);
     // As cenas 15..26: a família das alças — `scenes::handles_first`.
     static HANDLES: AtomicU8 = AtomicU8::new(0);
+    // A cena 42 (F42): um rectângulo e fim.
+    static SINGLE: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let var = std::env::var("PH2D_OBJECT_MODE_SMOKE");
@@ -417,6 +419,7 @@ pub fn smoke_step(
             FRAME.store(u8::from(s.frame), Ordering::Relaxed);
             HANDLES.store(s.handles, Ordering::Relaxed);
             QUICK.store(s.quick, Ordering::Relaxed);
+            SINGLE.store(u8::from(s.single), Ordering::Relaxed);
             STAGE.store(s.want, Ordering::Relaxed);
             s.want
         }
@@ -475,7 +478,11 @@ pub fn smoke_step(
         }
         3 if !edit => {
             draw_shape(vec, scene, ShapeKind::Rectangle, [-1.2, 0.0], 0.7);
-            go(4);
+            go(if SINGLE.load(Ordering::Relaxed) == 1 {
+                9
+            } else {
+                4
+            });
         }
         4 if edit && shapes == 1 => {
             draw_shape(vec, scene, ShapeKind::Ellipse, [-0.6, 0.4], 0.7);

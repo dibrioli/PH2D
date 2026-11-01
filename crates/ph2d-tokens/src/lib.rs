@@ -80,6 +80,7 @@ pub mod spacing;
 pub mod stroke;
 pub mod text_style;
 pub mod theme;
+pub mod type_colour;
 pub mod typography;
 pub mod ui_scale;
 /// ⭐ **A tabela de estados do widget** — a porta única de fundo / borda / raio por estado.

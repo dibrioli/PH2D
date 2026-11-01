@@ -20,6 +20,8 @@ pub(super) struct Scene {
     pub handles: u8,
     /// A cena 12 (F7, o QuickShape) = `1`; a 13 (F7e, o Edit Shape) = `2`.
     pub quick: u8,
+    /// A cena 42 (F42, os tipos na Hierarchy): UM rectângulo e fim — o resto é dos componentes.
+    pub single: bool,
 }
 
 /// As chaves da cena `scene` (o valor da variável; `None` = ausente ou ilegível).
@@ -29,9 +31,10 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=41) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=42) { 1 } else { 9 },
         weld: n == 7,
         bars: matches!(n, 9..=41),
+        single: n == 42,
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,

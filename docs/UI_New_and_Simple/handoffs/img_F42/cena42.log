@@ -1,0 +1,40 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   283ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   315ms] live hero mode (roteiro: docs/UI_New_and_Simple/handoffs/img_F42/cena42.log
+ M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   326ms] M11: VelloPass initialized (1024×768 intermediate)
+[   330ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   344ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   381ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   393ms] lifecycle: Foreground
+[   393ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   403ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.250s of sim time (max_substeps cap)
+[cena 42] passo 0
+[cena 42] passo 1
+[cena 42] passo 2
+[cena 42] passo 3
+[cena 42] passo 4
+[cena 42] passo 5
+[cena 42] passo 6
+[ph2d-gpu] surface present mode → Fifo
+[cena 42] passo 7
+[cena 42] passo 8
+[cena 42] passo 9
+[cena 42] passo 10
+[cena 42] passo 11
+[cena 42] passo 12
+[cena 42] passo 13
+[cena 42] passo 14
+[cena 42] passo 15
+[cena 42] passo 16
+[cena 42] passo 17
+[cena 42] passo 18
+[cena 42] passo 19
+[cena 42] passo 20
+[cena 42] passo 21

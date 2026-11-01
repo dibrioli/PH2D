@@ -267,3 +267,29 @@ fn the_layer_asked_is_opened_when_its_image_binds() {
         .bind_document(a, px, 4, 4);
     assert_eq!(activa(&mut c, a), Some(baixo));
 }
+
+/// ⭐ F42 — a imagem com documento do Painter declara-se Painted, e CONTINUA depois de sair do Paint
+/// (o save carimba o `PaintedDoc` na mesma lista: o ícone não muda ao gravar nem ao sair). A outra
+/// imagem não é declarada. (Mutação: `object_types` não escrever nada ⇒ `None` — RED.)
+#[test]
+fn an_image_with_a_painter_document_is_painted_in_and_out_of_paint() {
+    use ph2d_editor_core::hier_types::ObjectType;
+    let mut c = cena();
+    let (a, b) = (c.imagem(), c.imagem());
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Toggle));
+    painter(&mut c.tools)
+        .expect("painter")
+        .bind_document(a, vec![255u8; 4 * 4 * 4], 4, 4);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.type_of(a), Some(ObjectType::Painted));
+    c.quadro(Some(ModeRequest::Toggle));
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);
+    assert_eq!(
+        c.hero.gizmo.type_of(a),
+        Some(ObjectType::Painted),
+        "saiu do Paint"
+    );
+    assert_eq!(c.hero.gizmo.type_of(b), None);
+}

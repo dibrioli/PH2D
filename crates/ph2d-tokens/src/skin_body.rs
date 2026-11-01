@@ -183,6 +183,24 @@ impl ColorToken {
             | T::NodeCatFx
             | T::NodeCatOutput
             | T::NodeCatUtility
+            | T::ObjEmpty
+            | T::ObjImage
+            | T::ObjVector
+            | T::ObjFlip
+            | T::ObjPainted
+            | T::ObjSkeleton
+            | T::ObjMotion
+            | T::ObjPixelSprite
+            | T::ObjPlayer
+            | T::ObjCamera
+            | T::ObjLight
+            | T::ObjMacro
+            | T::ObjParticles
+            | T::ObjSound
+            | T::ObjHud
+            | T::ObjJoint
+            | T::ObjBody
+            | T::ObjCollider
             | T::PortInstances
             | T::PortVector
             | T::PortField

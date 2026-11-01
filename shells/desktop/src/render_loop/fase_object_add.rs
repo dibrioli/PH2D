@@ -65,6 +65,14 @@ impl crate::App {
             let born = r.map(Born::Entity).map_err(String::from);
             return self.object_born(ph2d_app_pixel::object_add::PIXEL_SPRITE, born);
         }
+        let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
+        ph2d_app_components::smoke_tipos::step(
+            &mut hero.store,
+            &mut hero.bus,
+            sim,
+            component_registry,
+            seeds,
+        );
         // ⚠️ O dreno é CONDICIONAL: o canal de pick tem outros quatro consumidores.
         let Some(entry) = hero
             .store
@@ -73,7 +81,6 @@ impl crate::App {
         else {
             return;
         };
-        let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
         let born: Result<Born, String> = if entry == object_add::EMPTY {
             Ok(Born::Entity(
                 ph2d_app_components::object_add::spawn_empty_root(sim, entry.key.tr()),

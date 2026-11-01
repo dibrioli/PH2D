@@ -50,6 +50,7 @@ pub mod gizmo;
 pub mod grid;
 pub mod grid_snap;
 pub mod hier_rows;
+pub mod hier_types;
 pub mod icons;
 pub mod ids;
 pub mod image_edit;

@@ -53,4 +53,9 @@ Escorrer (`oleo_diluido_tests::diag_o_oleo_diluido_escorre`): Water idêntico em
 
 1. A GPU (`ph2d-wet-gpu`) não tem a pasta (E11, com o resto do meio).
 2. A lei `Pigmento` (`deposito_tinta::Pigmento::pousa`) não passa pela pasta — o produto é a Velha; decidir na E12.
-3. A grelha E9 inteira com este binário (§3 do handoff da janela 6).
+3. A grelha E9 inteira com este binário (`target/e9_j7/`, a correr; ~3 h — o óleo diluído fica molhado). Parcial
+   (582 células, `scratchpad/cmp.py`-style, contra `e9_0111`): **ferrugem 0 em todas**, manchas −0,18 em média;
+   contra `e9_e10g`: degraus −0,01, furos +0,05 — a J7 não mexe nos números da E10g. Os «degraus» que subiram
+   (Filbert P40 W0,5 pr1: 11 → 19 na E10g, 20 na J7) e os «furos» (Dabber 4 P40 W1: +25, foto MAIS limpa) vêm da E10g
+   e do ⚑ da régua. Visto na foto do Filbert P40: com a J7 o líquido diluído leva a mistura verde-clara 2–4 px para
+   baixo do cruzamento (a tela inclina), com a frente em degrau da grelha do escoamento.

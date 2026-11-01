@@ -65,8 +65,9 @@ fn arming_without_the_tool_registered_says_no() {
 }
 
 /// ⭐⭐ **Dono 01/11: escolher um osso existente abre o *Transform*, nunca *Create*/*Weight*.**
-/// O osso que o *Create* acabou de fazer não tira o artista do *Create*; e fora da mão a
-/// ferramenta não é armada (o Object fica Object, A14).
+/// O osso que o *Create* acabou de fazer não tira o artista do *Create*; e fora da mão (Object, o
+/// app acabado de abrir) a ferramenta vem à mão em *Transform* — o gizmo de objecto arrancava o osso
+/// do pai (smoke do dono, 01/11).
 #[test]
 fn choosing_an_existing_bone_opens_transform_but_a_newborn_keeps_create() {
     for de in [BoneAction::Create, BoneAction::Weight] {
@@ -87,12 +88,17 @@ fn choosing_an_existing_bone_opens_transform_but_a_newborn_keeps_create() {
     crate::reveal::on_birth(&mut m.osso_revelado, 9);
     assert!(!on_focus(&mut tools, &mut m, Some(9)));
     assert_eq!(config(&mut tools).action, BoneAction::Create, "o osso novo");
-    // ⛔ Fora da mão: nada é armado.
+    // ⛔ Fora da mão (a ferramenta guardou *Create*): escolher o osso põe-na na mão em *Transform*.
     let mut tools = registo();
+    assert!(arm(&mut tools, BoneAction::Create));
+    assert!(tools.set_active(&ToolId::new("move")));
+    assert!(!in_hand(&tools), "pré-condição: fora da mão");
     let mut m = crate::state::SkeletonState::default();
     assert!(on_focus(&mut tools, &mut m, Some(7)));
-    assert!(
-        !in_hand(&tools),
-        "escolher um osso não põe a ferramenta na mão"
+    assert!(in_hand(&tools), "escolher um osso põe a ferramenta na mão");
+    assert_eq!(
+        config(&mut tools).action,
+        BoneAction::Transform,
+        "fora da mão"
     );
 }

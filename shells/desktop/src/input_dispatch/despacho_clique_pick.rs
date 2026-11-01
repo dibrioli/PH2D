@@ -312,6 +312,11 @@ impl crate::App {
             pixels_per_meter: hero.project.pixels_per_meter,
             camera_icon_px: hero.project.camera_icon_px,
             camera_frames: &self.undo.camera_no_canvas.molduras,
+            motion: Some(ph2d_app_motion::motion_pick::Alvo::new(
+                &gfx.motion,
+                gfx.surface.gpu(),
+                &mut self.motion_shell.clique,
+            )),
         };
         let hits = crate::hover_highlight::pick_objects_at(
             &mut pw,
@@ -378,6 +383,11 @@ impl crate::App {
                 pixels_per_meter: ppm_for_pick,
                 camera_icon_px: hero.project.camera_icon_px,
                 camera_frames: &self.undo.camera_no_canvas.molduras,
+                motion: Some(ph2d_app_motion::motion_pick::Alvo::new(
+                    &gfx.motion,
+                    gfx.surface.gpu(),
+                    &mut self.motion_shell.clique,
+                )),
             };
             let mut hits = crate::hover_highlight::pick_objects_at(
                 &mut pw,

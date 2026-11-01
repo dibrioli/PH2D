@@ -80,6 +80,8 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) camera_icon_px: f32,
     /// As molduras do quadro — o ícone está no centro de cada uma.
     pub(crate) camera_frames: &'a [ph2d_app_game::moldura::Moldura],
+    /// As cópias do Motion (GEF 19): o objecto dono da forma ou imagem sob o ponteiro.
+    pub(crate) motion: Option<ph2d_app_motion::motion_pick::Alvo<'a>>,
 }
 
 pub(crate) fn pick_objects_at(
@@ -142,6 +144,9 @@ pub(crate) fn pick_objects_at(
         w.present.world_mut(),
         world,
     ));
+    if let Some(m) = w.motion.as_mut() {
+        hits.extend(m.donos_em(world));
+    }
     // ⭐⭐ **E o ANEL de um objeto VAZIO pega** (Enio, 2026-08-26: *«não consigo transformar o
     // objeto total a partir do centro do objeto vazio»*).
     //
@@ -223,6 +228,11 @@ impl crate::App {
             pixels_per_meter: ppm,
             camera_icon_px: icone,
             camera_frames: &self.undo.camera_no_canvas.molduras,
+            motion: Some(ph2d_app_motion::motion_pick::Alvo::new(
+                &gfx.motion,
+                gfx.surface.gpu(),
+                &mut self.motion_shell.clique,
+            )),
         };
         pick_objects_at(
             &mut w,

@@ -143,6 +143,8 @@ pub mod motion_object_thumb;
 #[cfg(test)]
 pub mod motion_param_reach;
 pub mod motion_path_smoke;
+/// GEF 19 — o clique nas cópias do Motion (o dono sob o ponteiro).
+pub mod motion_pick;
 /// ⭐ A COLISÃO no grupo do ciclo 9 — o report do dono de 2026-09-17, medido (doc 114 §11).
 #[cfg(test)]
 pub mod motion_rig_colisao_probe;

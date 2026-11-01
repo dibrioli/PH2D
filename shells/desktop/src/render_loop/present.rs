@@ -273,6 +273,7 @@ impl crate::App {
         let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
         let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
         let tamanho = (window_size.width, window_size.height);
+        self.motion_shell.clique.esquece();
         let placa = &mut self.motion_shell.placa;
         let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
             placa, gpu, tamanho, motion, renderer, filtro,

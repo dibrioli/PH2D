@@ -52,4 +52,7 @@ pub struct MotionShellState {
 
     /// ⭐ **Os palcos das macros em cena** (ADR-0186): cada um com a sua placa, ao lado da do editor.
     pub palcos: crate::macro_track::palcos::PalcosDasMacros,
+
+    /// GEF 19 — as cópias do dispositivo lidas para o clique, uma vez por quadro.
+    pub clique: crate::motion_pick::CacheDoClique,
 }

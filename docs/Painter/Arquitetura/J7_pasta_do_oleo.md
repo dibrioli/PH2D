@@ -74,3 +74,11 @@ precisa ver agora, manter o plano»):
    (Filbert P40 W0,5 pr1: 11 → 19 na E10g, 20 na J7) e os «furos» (Dabber 4 P40 W1: +25, foto MAIS limpa) vêm da E10g
    e do ⚑ da régua. Visto na foto do Filbert P40: com a J7 o líquido diluído leva a mistura verde-clara 2–4 px para
    baixo do cruzamento (a tela inclina), com a frente em degrau da grelha do escoamento.
+
+## 6. Miniaturas de fábrica (uma vez, janela principal)
+
+`PH2D_REGERA_PRESETS=1 PH2D_REGERA_SO_MINIATURA=1 … gera_os_presets_de_fabrica` sobre o binário da J7: **31 ficheiros
+mudam** (os 31 da E10e2 §E3, com o Fan Brush), só a miniatura — os metadados do PNG (parâmetros, tabela de largura)
+ficaram iguais byte a byte. Antes × depois (pares lado a lado): [`fotos/j7/miniaturas_antes_depois.png`](fotos/j7/miniaturas_antes_depois.png)
+— diferenças de tom finas (o invólucro K–M). tp `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`: ✗ → ✓.
+Cruzamento manhã × J7: [`fotos/j7/cruzamento_manha_j7.png`](fotos/j7/cruzamento_manha_j7.png).

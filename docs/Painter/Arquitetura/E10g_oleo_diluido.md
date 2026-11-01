@@ -58,9 +58,22 @@ Pincéis de óleo com Dilution do tubo: `água 0` — idênticos (pasta). O «pi
 | tp `agua_sobre_oleo_tests::a_agua_nao_sobe_a_ladeira_do_oleo` | ✗ pai 56 609 | ✗ 54 477 (já vermelho) |
 | tp it `cada_preset_de_fabrica_e_a_sua_receita`, `os_candidatos_da_w2_sao_as_suas_receitas` | ✗ «knob levelingOwnStroke existe» | ✗ igual (a chave saiu do registo na E10c2) |
 
-## 4. Aberto
+## 4. Auditoria pela grelha E9 (parcial, `target/e9_e10g/` contra `target/e9_0111/`, 897 células comuns)
 
-1. Auditoria por efeito a `m = 1` na grelha E9 (`target/e9_e10g/`): §5 abaixo quando acabar.
+- **Água 0 (a tinta do tubo): 384 células idênticas** em todas as métricas, nas duas leis.
+- Pigmento diluída: manchas 0 · ferrugem 0 · `mix_p99` igual · **orla −2,35 em média (até −21)** — o óleo perdeu a orla
+  escura, como a lei pede · `furos` +1,5 em média (até +48, Knife Oily/Thick Impasto P40): lado a lado a imagem é igual
+  ou mais limpa (montagem `scratchpad/furos_ab.png`): a régua lê o relevo nivelado como furo (o ⚑ furos do item 4).
+- ⛔ **Velha diluída (o produto): FERRUGEM nova** só em Pigment 600 × Water 0,5 (Dilution ≈ 0,127 ⇒ 3 % de líquido
+  livre, logo acima da pasta): 20 de 65 células, até +52 (laranja salpicado onde o amarelo cruza o azul). Célula única
+  (`target/sonda_e10g/celula.sh`, interruptor novo `PH2D_SONDA_KNOBS` na sonda): preset 52 · `medium=0` 8,3 (a Velha já
+  enferrujava com película fina de água) · pickup/rewet/edge/wetCover/glaze/opaque/strokeFilm/bristleNoise/wetLift sem
+  efeito. Mecanismo → `E10i_ferrugem_velha.md`. **Não mostrar ao dono antes da cura.**
+- A grelha corre ~4× mais devagar: as células de óleo diluído ficam molhadas (simulação a correr) muito mais tempo.
+
+## 5. Aberto
+
+1. Fechar a auditoria com a grelha inteira; a ferrugem da Velha (E10i).
 2. GPU (`ph2d-wet-gpu`): o escoamento e a secagem da placa ainda não leem `meio` — E11.
 3. Os quatro vermelhos antigos acima → item 3 do handoff.
 4. A rota não-Jacobi (`build_flow_field`) e o `fast_dry` não leem o meio (a rota do produto é a Jacobi).

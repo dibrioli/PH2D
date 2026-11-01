@@ -284,6 +284,21 @@ pub(super) fn pinta(
             ] {
                 assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(id, v)));
             }
+            // `PH2D_SONDA_KNOBS=chave=v;…` (a chave do registo): isola um mecanismo numa célula.
+            for (k, v) in std::env::var("PH2D_SONDA_KNOBS")
+                .unwrap_or_default()
+                .split(';')
+                .filter_map(|kv| kv.split_once('='))
+            {
+                let d = ph2d_wet_paint::tuning::KNOB_DEFS
+                    .iter()
+                    .find(|d| d.key == k);
+                let d = d.unwrap_or_else(|| panic!("knob {k}"));
+                t.paint
+                    .wetpaint
+                    .knobs
+                    .set(d.knob, v.parse().expect("valor"));
+            }
             t.set_brush_size_px(32.0);
             t.set_brush_color_srgb8(cor);
             let y = y0 + [0.0, 6.0, -6.0][k % 3];

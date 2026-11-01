@@ -116,6 +116,8 @@ impl crate::App {
         // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS (a colagem acende-o); sem `Luz`, `false`.
         let docs = (&mut *vec_scene, &vec_xf, &mut *flip);
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
+        // GEF 19 E3: com a placa, cada objecto Motion fica no rank dele; sem ela, por cima de tudo.
+        frame_order.motion_na_placa = placa;
         let doc_bands =
             ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
         // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6);

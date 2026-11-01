@@ -174,7 +174,7 @@ impl PlacaDeFormas {
     }
 
     /// As corridas do segmento `k` (todas, sem partição).
-    fn corridas_do_segmento(&self, k: usize) -> std::ops::Range<usize> {
+    pub(super) fn corridas_do_segmento(&self, k: usize) -> std::ops::Range<usize> {
         if self.pousas.is_empty() {
             return 0..self.corridas.len();
         }
@@ -186,8 +186,17 @@ impl PlacaDeFormas {
     /// ⭐ P4 (b) — **desenha o segmento `k` na camada** (limpa), com as formas, as imagens e a vista do
     /// [`Self::desenha`] deste quadro — e devolve-a, para pousar com [`Self::pousa_do_segmento`].
     pub fn pinta_segmento(&mut self, gpu: &GpuContext, k: usize) -> Option<&wgpu::TextureView> {
+        let corridas = self.corridas[self.corridas_do_segmento(k)].to_vec();
+        self.pinta_corridas(gpu, &corridas)
+    }
+
+    /// Desenha `corridas` (sobre as cópias do [`Self::desenha`] deste quadro) na camada limpa.
+    pub(super) fn pinta_corridas(
+        &mut self,
+        gpu: &GpuContext,
+        corridas: &[Corrida],
+    ) -> Option<&wgpu::TextureView> {
         let vista = self.vista_do_quadro?;
-        let faixa = self.corridas_do_segmento(k);
         let ligacoes = self.fontes.as_ref().map(|f| {
             self.imagens
                 .get_or_insert_with(|| imagens::ImagensDaPlaca::new(gpu, super::FORMATO_DA_CAMADA))
@@ -218,7 +227,7 @@ impl PlacaDeFormas {
                     buffer,
                     count: *count,
                 }),
-            &self.corridas[faixa],
+            corridas,
             imagens.is_some().then_some(&mut desenha_imagens),
         );
         gpu.queue.submit([enc.finish()]);

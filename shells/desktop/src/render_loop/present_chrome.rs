@@ -31,15 +31,54 @@ impl crate::App {
             band_doc_scenes,
             motion,
             hero_screen,
+            frame_order,
             ..
         } = gfx;
         // Pass 2: AgX tonemap
         //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)
         tonemap.run(surface.gpu());
+        // ⭐⭐⭐ AS FORMAS DO MOTION, pela placa (doc 121, W2): por cima do que está abaixo delas e por baixo dos gizmos
+        // e do chrome. GEF 19 E3: cada faixa Motion no rank dela; a do topo leva a camada filtrada (ciclo 20 W3) e a
+        // lente; sem objecto Motion na ordem, a placa inteira por cima do mundo (`faixa::Topo`).
+        // ⚠️ A rota do Vello (`PH2D_FORMAS_NA_PLACA=0`, a de bissecção) fica por cima, na cena do chrome.
+        use ph2d_app_motion::motion_shape_placa::faixa;
+        let cena = hero_screen
+            .as_ref()
+            .filter(|_| !na_vista)
+            .and_then(|h| h.cena_visivel(scene_viewport));
+        let gpu = surface.gpu();
+        let colagem = faixa::Colagem {
+            gpu,
+            ordem: frame_order,
+            bands: &plan.bands,
+        };
+        let placa = &mut self.motion_shell.placa;
+        let mut cola = |band: Option<_>, mundo: &ph2d_render::WorldRt, band_blit: &_| {
+            let topo = colagem.topo();
+            if let Some(b) = band.filter(|b| topo != Some(*b)) {
+                return colagem.cola_a_faixa(placa, motion, band_blit, mundo.blend_view(), b);
+            }
+            let quem = match (band, topo) {
+                (Some(b), _) => faixa::Topo::Faixa(colagem, b),
+                (None, Some(_)) => faixa::Topo::JaColada,
+                (None, None) => faixa::Topo::SemFaixa,
+            };
+            let e = ph2d_app_motion::motion_filter::Engrenagem {
+                gpu,
+                renderer: &mut *renderer,
+                camera,
+                window: window_size,
+                scene_viewport,
+                formas: None,
+                mundo,
+                band_blit,
+            };
+            faixa::cola_o_topo(motion, placa, e, cena, quem);
+        };
         // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
         if banded {
             crate::render_loop::present_bands::draw_upper_bands(
-                surface.gpu(),
+                gpu,
                 plan,
                 crate::render_loop::present_bands::UpperGear {
                     world_rt,
@@ -48,28 +87,9 @@ impl crate::App {
                     band_blit,
                     vello_pass,
                     band_doc_scenes,
+                    motion: &mut cola,
                 },
             );
-        }
-        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121, W2) — por cima do mundo (sprites e
-        // documento, já no acumulador) e por baixo dos gizmos e do chrome, que vêm na cena Vello.
-        // A camada foi DESENHADA antes do halo (`present.rs`, doc 121 §9.14); cola-se aqui.
-        // ⭐ Com `fx.filter` no fio a placa entra na CAMADA filtrada (ciclo 20 W3), colada aqui.
-        let placa = &self.motion_shell.placa;
-        let filtrada = motion.filtra_a_camada(ph2d_app_motion::motion_filter::Engrenagem {
-            gpu: surface.gpu(),
-            renderer,
-            camera,
-            window: window_size,
-            scene_viewport,
-            formas: Some(placa),
-            mundo: world_rt,
-            band_blit,
-        });
-        if !filtrada {
-            let (placa, gpu) = (&mut self.motion_shell.placa, surface.gpu());
-            let alvo = world_rt.blend_view();
-            ph2d_app_motion::motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);
         }
         // ⭐ E cada palco de uma macro em cena pousa a sua camada (ADR-0186), por cima da do editor — na vista da
         // câmera, a camada DELA (`vista_da_camera::Vista::troca`).
@@ -83,12 +103,7 @@ impl crate::App {
             mundo: world_rt,
             band_blit,
         });
-        // ⭐ **A LENTE** (ciclo 20) — depois da última escrita do mundo, antes do vidro e do chrome.
-        let cena = hero_screen
-            .as_ref()
-            .filter(|_| !na_vista)
-            .and_then(|h| h.cena_visivel(scene_viewport));
-        motion.lente.aplica(surface.gpu(), world_rt, cena);
+        // ⭐ A lente de cada palco — depois da última escrita do mundo, antes do vidro e do chrome.
         palcos.lentes(surface.gpu(), world_rt, cena);
     }
 

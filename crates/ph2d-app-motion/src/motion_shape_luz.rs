@@ -90,7 +90,7 @@ pub fn copias_da_faixa(
 }
 
 /// As faixas dos objetos em `quem`, cortadas a `n` e juntas quando se tocam.
-fn pedidas(donos: &[(u64, Range<u32>)], quem: &[u64], n: u32) -> Vec<Range<u32>> {
+pub(crate) fn pedidas(donos: &[(u64, Range<u32>)], quem: &[u64], n: u32) -> Vec<Range<u32>> {
     let mut r: Vec<Range<u32>> = donos
         .iter()
         .filter(|(e, _)| quem.contains(e))

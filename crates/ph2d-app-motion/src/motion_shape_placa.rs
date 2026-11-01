@@ -305,6 +305,10 @@ pub(crate) use monta::linha_da_imagem;
 mod quadro;
 pub use quadro::{cola_no_mundo, decide_o_quadro, desenha_o_quadro};
 
+/// ⭐ GEF 19 E3 — a placa colada por faixa da ordem total (ficheiro irmão).
+#[path = "motion_shape_placa_faixa.rs"]
+pub mod faixa;
+
 /// ⭐ W5e — as formas do Motion na luz 2D (ficheiro irmão).
 #[path = "motion_shape_luz.rs"]
 pub mod luz;

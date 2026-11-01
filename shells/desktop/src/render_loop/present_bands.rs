@@ -15,6 +15,14 @@ use ph2d_host::WindowSize;
 use ph2d_i18n::tr;
 use ph2d_vector::Color as VelloColor;
 
+/// ⭐ GEF 19 E3: a colagem de uma faixa Motion (`Some`) ou do topo do Motion sem faixa neste passe
+/// (`None`) — `ph2d_app_motion::motion_shape_placa::faixa`.
+pub(super) type ColaMotion<'a> = &'a mut dyn FnMut(
+    Option<ph2d_render::draw_bands::Band>,
+    &ph2d_render::WorldRt,
+    &ph2d_render::BandBlit,
+);
+
 /// ⚠️ **A engrenagem viaja numa struct, e não em onze argumentos.** Os dois passes usam
 /// exactamente as mesmas peças; passá-las soltas faria duas listas que divergiriam na primeira
 /// peça nova.
@@ -35,6 +43,7 @@ pub(super) struct BandGear<'a> {
     /// ⭐ A grade ATRÁS dos objectos — a primeira camada depois do fundo. `None` = à frente
     /// (ela vai na cena do chrome) ou desligada.
     pub grid_behind: Option<&'a ph2d_vector::VectorScene>,
+    pub motion: ColaMotion<'a>,
 }
 
 /// O plano de faixas deste quadro — as quatro respostas que os dois passes e o compositor leem.
@@ -154,8 +163,9 @@ pub(super) fn draw_lower_bands(
                 }
                 doc_i += 1;
             }
-            // GEF 19 E3: a placa do Motion cola-se depois do mundo (`motion_por_cima`), nunca aqui.
-            ph2d_render::draw_bands::Family::Motion => {}
+            ph2d_render::draw_bands::Family::Motion => {
+                (g.motion)(Some(*band), g.world_rt, g.band_blit);
+            }
         }
     }
 }
@@ -171,6 +181,7 @@ pub(super) struct UpperGear<'a> {
     pub band_blit: &'a mut ph2d_render::BandBlit,
     pub vello_pass: &'a mut ph2d_render::VelloPass,
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
+    pub motion: ColaMotion<'a>,
 }
 
 /// As faixas **ACIMA** da última faixa de sprites — ela cola essa última faixa (que o tonemap
@@ -183,6 +194,13 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         ph2d_render::BandSource::Sprites,
     );
     let from = plan.last_sprite.map_or(0, |i| i + 1);
+    let e_motion =
+        |b: &ph2d_render::draw_bands::Band| b.family == ph2d_render::draw_bands::Family::Motion;
+    // O topo do Motion já colou abaixo: a camada filtrada e a lente ficam logo por cima dele.
+    let tem_motion = plan.bands.iter().any(e_motion);
+    if tem_motion && !plan.bands.iter().skip(from).any(e_motion) {
+        (g.motion)(None, g.world_rt, g.band_blit);
+    }
     let mut doc_i = plan
         .bands
         .iter()
@@ -190,6 +208,9 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         .filter(|b| b.family.is_scene())
         .count();
     for band in plan.bands.iter().skip(from) {
+        if e_motion(band) {
+            (g.motion)(Some(*band), g.world_rt, g.band_blit);
+        }
         if !band.family.is_scene() {
             continue;
         }
@@ -210,6 +231,10 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
             );
         }
         doc_i += 1;
+    }
+    // Sem objecto Motion na ordem: a placa inteira por cima do mundo, como sempre.
+    if !tem_motion {
+        (g.motion)(None, g.world_rt, g.band_blit);
     }
 }
 

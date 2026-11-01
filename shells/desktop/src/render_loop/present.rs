@@ -318,6 +318,28 @@ impl crate::App {
         // linha abaixo é a de sempre.
         let held =
             frosting.then(|| super::present_frost::lift(sim, present, &mut self.frost_instances));
+        // ⭐ AS FORMAS DO MOTION, pela placa (doc 121 W2/W3, P4): DESENHADAS antes das faixas (GEF 19 E3: uma faixa
+        // Motion abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14, `present_fx`).
+        let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
+        let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
+        let tamanho = (window_size.width, window_size.height);
+        let placa = &mut self.motion_shell.placa;
+        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
+            placa, gpu, tamanho, motion, renderer, filtro,
+        );
+        let palcos = &mut self.motion_shell.palcos;
+        palcos.desenha(gpu, tamanho, renderer, filtro);
+        let colagem = ph2d_app_motion::motion_shape_placa::faixa::Colagem {
+            gpu,
+            ordem: frame_order,
+            bands: &plan.bands,
+        };
+        let placa = &mut self.motion_shell.placa;
+        let mut cola = |band: Option<_>, mundo: &ph2d_render::WorldRt, bb: &_| {
+            if let Some(b) = band {
+                colagem.cola_a_faixa(placa, motion, bb, mundo.blend_view(), b);
+            }
+        };
         if banded {
             super::present_bands::draw_lower_bands(
                 surface.gpu(),
@@ -337,6 +359,7 @@ impl crate::App {
                     band_doc_scenes,
                     held_back: held.as_ref(),
                     grid_behind: grid_behind.then_some(&*grid_behind_scene),
+                    motion: &mut cola,
                 },
             );
         }
@@ -449,17 +472,6 @@ impl crate::App {
             scene_viewport,
             surface.gpu(),
         );
-        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121 W2/W3, P4) — DESENHADAS aqui, antes do halo
-        // que as redesenha (§9.14), e COLADAS no mundo onde sempre foram (`present_chrome`).
-        let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
-        let tamanho = (window_size.width, window_size.height);
-        let placa = &mut self.motion_shell.placa;
-        let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
-        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
-            placa, gpu, tamanho, motion, renderer, filtro,
-        );
-        let palcos = &mut self.motion_shell.palcos;
-        palcos.desenha(gpu, tamanho, renderer, filtro);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

@@ -24,24 +24,30 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     );
     let chrome = include_str!("present_chrome.rs");
     let em = |agulha: &str| chrome.find(agulha).expect(agulha);
-    let (cima, placa, vello) = (
+    // GEF 19 E3: a colagem corre DENTRO das faixas (`motion: &mut cola`), cada faixa Motion no rank dela.
+    let (placa, cima, vello) = (
+        em("faixa::cola_o_topo(motion, placa, e, cena, quem);"),
         em("present_bands::draw_upper_bands("),
-        em("let placa = &self.motion_shell.placa;"),
         em("vello_pass.render_to_intermediate("),
     );
+    assert!(chrome.contains("motion: &mut cola,") && present.contains("motion: &mut cola,"));
     // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).
     let em_present = |agulha: &str| present.find(agulha).expect(agulha);
+    assert!(
+        em_present("motion_shape_placa::desenha_o_quadro(")
+            < em_present("super::present_bands::draw_lower_bands("),
+        "a camada desenha-se antes das faixas de baixo (uma faixa Motion pode colar lá)"
+    );
     assert!(
         em_present("motion_shape_placa::desenha_o_quadro(") < em_present("super::present_fx::run("),
         "as formas desenham-se ANTES do halo que as redesenha"
     );
     assert!(
-        cima < placa && placa < vello,
+        placa < cima && cima < vello,
         "as formas vão DEPOIS do mundo (as faixas de cima) e ANTES do chrome (a cena Vello)"
     );
-    // ⭐ P4 (b): a camada pousa no mundo com a mistura de cada SEGMENTO (`cola_no_mundo`, a porta da
-    // família: a `BandSource::Formas` e o `blit_pousa` estão no gate de texto dela).
-    assert!(chrome.contains("motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);"));
+    // ⭐ P4 (b): a camada pousa com a mistura de cada SEGMENTO — a porta da família (`cola_no_mundo` e
+    // `faixa::Colagem::cola_a_faixa`, com o gate de texto delas).
 }
 
 /// ⭐⭐⭐ **A rota do DISPOSITIVO chega ao quadro** (doc 121 W3 · P4): a decisão e o desenho são as
@@ -104,7 +110,7 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
     let chrome = include_str!("present_chrome.rs");
     let em_chrome = |agulha: &str| chrome.find(agulha).expect(agulha);
     let (editor, palcos, vello) = (
-        em_chrome("motion_shape_placa::cola_no_mundo(placa, gpu, band_blit, alvo);"),
+        em_chrome("faixa::cola_o_topo(motion, placa, e, cena, quem);"),
         em_chrome("palcos.pousa(ph2d_app_motion::macro_track::palcos::Colagem {"),
         em_chrome("vello_pass.render_to_intermediate("),
     );
@@ -113,7 +119,7 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
         "os palcos pousam depois do editor e antes do chrome"
     );
     assert!(
-        em_chrome("motion.lente.aplica(")
+        em_chrome("faixa::cola_o_topo(")
             < em_chrome("palcos.lentes(surface.gpu(), world_rt, cena);")
     );
     let luz = include_str!("present_luz.rs");
@@ -198,4 +204,30 @@ fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
             "{nome}: um retorno cedo na vista da câmera salta os palcos"
         );
     }
+}
+
+/// ⭐ GEF 19 E3 — **uma faixa Motion ABAIXO de uma faixa de sprites cola ANTES dela**: com a placa, o
+/// objecto Motion acima da imagem na Hierarchy cai no passe de baixo (antes da última faixa de
+/// sprites, que corre o pipeline inteiro); sem a placa, por cima de tudo. *Mutação: tirar o
+/// `(g.motion)` do braço Motion do passe de baixo (a faixa não cola em sítio nenhum).*
+#[test]
+fn uma_faixa_motion_abaixo_dos_sprites_cola_antes_deles() {
+    use ph2d_render::draw_bands::{Family, FrameOrder};
+    let mut o = FrameOrder::default();
+    o.record_motion(0, 7);
+    o.record(1, None);
+    o.motion_na_placa = true;
+    let plan = super::plan_frame(&o);
+    let ultima = plan.last_sprite.expect("faixa de sprites");
+    let m = plan.bands.iter().position(|b| b.family == Family::Motion);
+    assert!(m.is_some_and(|m| m < ultima), "no passe de BAIXO");
+    assert!(plan.banded);
+    o.motion_na_placa = false;
+    let plan = super::plan_frame(&o);
+    let m = plan.bands.iter().position(|b| b.family == Family::Motion);
+    assert!(m > plan.last_sprite, "sem placa: por cima");
+    let src = include_str!("present_bands.rs");
+    assert!(src.contains(
+        "Family::Motion => {\n                (g.motion)(Some(*band), g.world_rt, g.band_blit);"
+    ));
 }

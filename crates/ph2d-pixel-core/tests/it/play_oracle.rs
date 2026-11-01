@@ -79,7 +79,7 @@ fn tocada(s: &Sprite, start: usize, opt: PlayOptions, n: usize) -> Vec<usize> {
     let mut p = Play::start(s, start, opt);
     let mut seq = vec![start];
     let mut guarda = 0;
-    let mut empurra = |seq: &mut Vec<usize>, i: usize| {
+    let empurra = |seq: &mut Vec<usize>, i: usize| {
         if seq.last() != Some(&i) {
             seq.push(i);
         }

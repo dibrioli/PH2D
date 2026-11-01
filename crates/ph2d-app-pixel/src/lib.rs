@@ -37,6 +37,7 @@ pub mod smoke_intervalo;
 pub mod smoke_pontas;
 pub mod smoke_quadros;
 pub mod smoke_selecao;
+pub mod smoke_tocar;
 pub mod smoke_viva;
 pub mod solta;
 mod state;

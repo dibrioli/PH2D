@@ -449,9 +449,12 @@ pub enum PixelRequest {
         copy: bool,
     },
     /// Largar um intervalo de CELS: cada `((camada, quadro) de, (camada, quadro) para)`, por cima
-    /// do que lá está; `copy` = Ctrl ao largar (os de origem ficam).
+    /// do que lá está; `copy` = Ctrl ao largar (os de origem ficam). `beyond` = os largados à
+    /// direita do último quadro: `(de, (camada, k))` cai no `k`-ésimo quadro NOVO (0 = o primeiro
+    /// depois do último), que nasce no mesmo passo com a duração do último.
     CelsMove {
         pairs: Vec<((u32, u32), (u32, u32))>,
+        beyond: Vec<((u32, u32), (u32, u32))>,
         copy: bool,
     },
     /// Clique num cabeçalho de frame / num cel: o frame activo (e a camada activa).

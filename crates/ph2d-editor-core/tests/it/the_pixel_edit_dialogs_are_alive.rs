@@ -507,3 +507,34 @@ fn nenhum_rotulo_de_nenhum_dialogo_se_corta() {
         }
     }
 }
+
+/// **Trial 01/11** (`ph2d-pixel-core/tests/fixtures/oracle_trial_modify.json`): o `n` do Modify
+/// tem tecto 100 (acima dá o mesmo que 100), os decimais cortam para BAIXO e um «%» no fim é
+/// ignorado (`50%` = 50 px). O `n` esperado sai da geometria de cada caso da fixtura (Expand de
+/// uma célula: `(x1 − x0) / 2`; Contract do sprite inteiro: `x0`).
+#[test]
+fn the_modify_field_caps_at_100_truncates_and_ignores_a_percent_sign_like_the_trial() {
+    let casos = [
+        ("2.5", 2),
+        ("2.6", 2),
+        ("3%", 3),
+        ("50%", 50),
+        ("63", 63),
+        ("100", 100),
+        ("101", 100),
+        ("150", 100),
+        ("999", 100),
+    ];
+    for kind in MODIFIES {
+        for (texto, n) in casos {
+            let mut e = Ecra::aberto(PixelDialogKind::Modify(kind), (320, 206));
+            e.escreve(ids::PIXEL_EDIT_MODIFY_N, texto);
+            e.tecla(KEY_ENTER, false);
+            let got = match e.pedido() {
+                Some(PixelDialogChoice::Modify { n, .. }) => n,
+                o => panic!("{texto}: {o:?}"),
+            };
+            assert_eq!(got, n, "{kind:?} «{texto}»");
+        }
+    }
+}

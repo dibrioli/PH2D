@@ -179,3 +179,40 @@ fn set_loop_section_creates_then_moves_the_loop_tag() {
     let info = p.pede(PixelRequest::FrameAction(A::LoopSection));
     assert_eq!(info.tags, antes, "sem intervalo, nada");
 }
+
+/// A cena 17 (a entrada `s1` do Trial) toca pelo relógio do host a sequência do vídeo do Trial
+/// (`s1_on_f0`: `0 1 2 3 4 3 2 5 6 7 | 0`, base 0) — o que o dono vê no smoke.
+#[test]
+fn scene_17_plays_the_nested_tags_as_the_trial_did() {
+    let mut app = PixelApp::default();
+    let mut sim = SimWorld::new();
+    assert!(ph2d_app_pixel::smoke::stage(
+        &mut app, &mut sim, 17, spawn_root
+    ));
+    let (bits, key) = mode::sprites(sim.world())[0];
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.gizmo.mode.enter(bits, ObjectMode::Draw);
+    let mut cam = Camera2d::default();
+    app.frame(&mut sim, &mut cam, WINDOW, PPM, Some(bits), spawn_root);
+    let ids: Vec<u32> = app
+        .doc(key)
+        .expect("doc")
+        .sprite
+        .frames()
+        .iter()
+        .map(|f| f.id.0)
+        .collect();
+    let mut toasts = ToastQueue::new();
+    let mut onde = |app: &mut PixelApp| {
+        let a = panel::frame(app, sim.world(), &mut hero, &mut toasts).active_frame;
+        ids.iter().position(|&i| Some(i) == a).expect("da cena")
+    };
+    assert_eq!(onde(&mut app), 0);
+    app.pede(PixelRequest::FrameAction(A::Play));
+    let mut seq = vec![onde(&mut app)];
+    for _ in 0..10 {
+        app.tick(100);
+        seq.push(onde(&mut app));
+    }
+    assert_eq!(seq, [0, 1, 2, 3, 4, 3, 2, 5, 6, 7, 0]);
+}

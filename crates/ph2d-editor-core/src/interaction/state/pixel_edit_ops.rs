@@ -13,8 +13,8 @@ use crate::pixel_panel::{
 };
 use ph2d_a11y::NodeId;
 
-/// O tecto do `n` do Modify: o campo do Aseprite aceita até 100 (dado do coordenador da linha, não
-/// medido aqui contra o Trial).
+/// O tecto do `n` do Modify (Trial 01/11, `oracle_trial_modify.json`: 101, 150 e 999 dão o mesmo
+/// que 100, sem recusa); os decimais cortam para baixo (2.5 e 2.6 → 2).
 const MODIFY_MAX: u32 = 100;
 /// O lado máximo (o `u16` do formato).
 const SIDE_MAX: f64 = NEW_SPRITE_MAX_SIDE as f64;
@@ -153,7 +153,7 @@ impl WidgetStore {
                 self.put(id, v);
             }
             _ if id == ids::PIXEL_EDIT_MODIFY_N => {
-                let v = self.int_field(id, 1, i64::from(MODIFY_MAX));
+                let v = self.modify_n();
                 self.put(id, v);
             }
             _ if id == ids::PIXEL_EDIT_CANVAS_W || id == ids::PIXEL_EDIT_CANVAS_H => {
@@ -200,8 +200,7 @@ impl WidgetStore {
                 PixelDialogChoice::ColorRange { tolerance }
             }
             PixelDialogKind::Modify(kind) => {
-                let n = self.int_field(ids::PIXEL_EDIT_MODIFY_N, 1, i64::from(MODIFY_MAX));
-                let n = u32::try_from(n).unwrap_or(1);
+                let n = u32::try_from(self.modify_n()).unwrap_or(1);
                 self.pixel.edit.modify_n = n;
                 PixelDialogChoice::Modify {
                     kind,
@@ -242,6 +241,12 @@ impl WidgetStore {
         #[expect(clippy::cast_precision_loss, reason = "limites de |x| ≤ 65535")]
         let fallback = lo as f64;
         int(self.number_value(id).unwrap_or(fallback), lo, hi)
+    }
+
+    /// O `n` do Modify: cortado (não arredondado) e preso a `1..=MODIFY_MAX`.
+    fn modify_n(&self) -> i64 {
+        let v = self.number_value(ids::PIXEL_EDIT_MODIFY_N).unwrap_or(1.0);
+        int(v.trunc(), 1, i64::from(MODIFY_MAX))
     }
 
     fn put(&mut self, id: NodeId, v: i64) {

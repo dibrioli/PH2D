@@ -10,6 +10,8 @@ use ph2d_a11y::NodeId;
 pub const PIXEL_PANEL: NodeId = hash_node_id("pixel.panel");
 /// O rect da linha do tempo do Pixel (camadas × frames, P4) — a banda de baixo.
 pub const PIXEL_TIMELINE_PANEL: NodeId = hash_node_id("pixel_timeline.panel");
+/// O rect da janela Preview do Pixel (P5): flutuante, arrasta-se pelo título.
+pub const PIXEL_PREVIEW_PANEL: NodeId = hash_node_id("pixel_preview.panel");
 
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");

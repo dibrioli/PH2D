@@ -25,6 +25,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_tools.title" => "Pixel",
         // A linha do tempo do Pixel (P4): os nomes do Aseprite.
         "panel.pixel_timeline.title" => "Timeline",
+        // A janela Preview (P5): os nomes do Aseprite.
+        "panel.pixel_preview.title" => "Preview",
+        "panel.pixel.preview.play" => "Play / Stop Preview (Shift+Enter)",
+        "panel.pixel.preview.empty" => "Select a Pixel Sprite in Draw to preview it.",
         "panel.pixel.timeline.empty" => {
             "Select a Pixel Sprite and press Tab (Draw) to see its frames."
         }

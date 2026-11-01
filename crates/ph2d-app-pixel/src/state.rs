@@ -164,6 +164,8 @@ pub struct PixelApp {
     pub(crate) remap: Option<(u32, Vec<usize>)>,
     /// As opções do tocar que valem para todos os documentos (a `speed` daqui não conta).
     pub(crate) tocar: ph2d_editor_core::pixel_panel::PixelPlayback,
+    /// O tocar da janela Preview (o `Doc.frame` não anda) e a chave da imagem dela.
+    pub(crate) preview: ph2d_panel_pixel_preview::PreviewPlay,
     /// O documento em Draw, lido no quadro (os pedidos da paleta aplicam-se a ele).
     pub(crate) chave: Option<u32>,
     /// A edição de cor em curso pelo seletor: `(chave, índice, passos do desfazer depois dela)` —
@@ -237,6 +239,7 @@ impl Default for PixelApp {
             sort_key: ph2d_editor_core::pixel_panel::PixelSortKey::Hue,
             remap: None,
             tocar: ph2d_editor_core::pixel_panel::PixelPlayback::default(),
+            preview: Default::default(),
             chave: None,
             edicao: None,
             avisos: Vec::new(),

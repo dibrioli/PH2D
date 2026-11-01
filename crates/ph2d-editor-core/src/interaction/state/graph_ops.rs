@@ -96,6 +96,11 @@ impl WidgetStore {
         self.graph_canvas.clear();
     }
 
+    /// Forget ONE surface's canvas (a hidden panel that zooms by the wheel, e.g. the Pixel Preview).
+    pub fn remove_graph_canvas(&mut self, surface: NodeId) {
+        self.graph_canvas.remove(&surface);
+    }
+
     /// The graph surface whose canvas contains `(x, y)`, if any.
     pub fn graph_surface_at(&self, x: f32, y: f32) -> Option<NodeId> {
         self.graph_canvas

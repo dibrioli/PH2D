@@ -161,6 +161,14 @@ pub fn frame(
             .unwrap_or(false);
         hero.panel_visibility.insert(TIMELINE_ID, !on);
     }
+    let pv = ph2d_editor_core::screens::hero::PANEL_PIXEL_PREVIEW;
+    let aberta = hero.panel_visibility.get(pv).copied().unwrap_or(false);
+    let aberta = (aberta != std::mem::take(&mut app.preview.alternar))
+        || std::mem::take(&mut app.preview.abrir);
+    hero.panel_visibility.insert(pv, aberta);
+    let doc = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)));
+    app.preview
+        .publish(aberta, doc.map(|(k, d)| (k, &d.sprite, d.stamp, d.frame)));
     let doc = app.chave.and_then(|k| app.doc(k));
     let palette = doc.map(|d| d.sprite.palette().to_vec());
     let mode = doc.map_or(NewSpriteMode::Rgba, |d| {

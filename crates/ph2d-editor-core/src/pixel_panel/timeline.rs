@@ -118,6 +118,11 @@ pub enum PixelFrameAction {
     LastInTag,
     /// *Set Loop Section* (F2): a tag «Loop» passa a cobrir o intervalo (nasce na 1.ª vez).
     LoopSection,
+    /// Shift+Enter (*Play Preview Animation*): toca / pára SÓ a janela Preview (abre-a); o
+    /// editor fica no quadro dele.
+    PlayPreview,
+    /// F7 (*View ▸ Preview*): abre / fecha a janela Preview.
+    Preview,
 }
 
 /// *Playback Speed* (o menu do botão Play do Aseprite).

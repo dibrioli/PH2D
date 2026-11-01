@@ -129,6 +129,10 @@ pub fn key_with(
         (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => {
             quadro(app, PixelFrameAction::Play)
         }
+        (KeyCode::Enter | KeyCode::NumpadEnter, false, true) => {
+            quadro(app, PixelFrameAction::PlayPreview)
+        }
+        (KeyCode::F7, false, false) => quadro(app, PixelFrameAction::Preview),
         (KeyCode::F2, false, false) => quadro(app, PixelFrameAction::LoopSection),
         (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
         (KeyCode::Tab, false, false) => {

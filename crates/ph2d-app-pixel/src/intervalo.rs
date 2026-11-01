@@ -118,26 +118,36 @@ impl PixelApp {
                 }
                 true
             }
-            PixelRequest::CelsMove { pairs, copy } => {
+            PixelRequest::CelsMove {
+                pairs,
+                beyond,
+                copy,
+            } => {
+                let de = |l: u32, f: u32| (LayerId(l), FrameId(f));
                 let pares: Vec<_> = pairs
                     .iter()
-                    .map(|&((l0, f0), (l1, f1))| {
-                        ((LayerId(l0), FrameId(f0)), (LayerId(l1), FrameId(f1)))
-                    })
+                    .map(|&((l0, f0), (l1, f1))| (de(l0, f0), de(l1, f1)))
                     .collect();
-                let op = self
+                let alem: Vec<_> = beyond
+                    .iter()
+                    .map(|&((l0, f0), (l1, k))| (de(l0, f0), (LayerId(l1), k as usize)))
+                    .collect();
+                let feito = self
                     .docs
-                    .get(&key)
-                    .and_then(|d| frames::move_cels(&d.sprite, &pares, *copy));
-                if let Some(op) = op
+                    .get_mut(&key)
+                    .and_then(|d| frames::move_cels_grow(&mut d.sprite, &pares, &alem, *copy));
+                if let Some((op, novos)) = feito
                     && self.commit(key, op).is_ok()
                     && let Some(doc) = self.docs.get_mut(&key)
                 {
+                    let pares = pares
+                        .into_iter()
+                        .chain(alem.iter().map(|&(a, (l, k))| (a, (l, novos[k]))));
                     let mut r = PixelRange {
                         kind: K::Cels,
                         ..PixelRange::default()
                     };
-                    for &(_, (l, f)) in &pares {
+                    for (_, (l, f)) in pares {
                         r.layers.extend((!r.layers.contains(&l.0)).then_some(l.0));
                         r.frames.extend((!r.frames.contains(&f.0)).then_some(f.0));
                     }

@@ -507,7 +507,11 @@ fn a_cel_range_moves_only_its_cels_over_the_target_and_ctrl_keeps_the_sources() 
         let ids = p.ids.clone();
         let id = |i: usize| ids[i - 1];
         let pairs = vec![((a, id(2)), (a, id(5))), ((a, id(3)), (a, id(6)))];
-        let info = p.pede(PixelRequest::CelsMove { pairs, copy });
+        let info = p.pede(PixelRequest::CelsMove {
+            pairs,
+            beyond: vec![],
+            copy,
+        });
         let quer = rc[caso]["canvas_order"].as_array().expect("lista");
         assert_eq!(quer[1] == "-", !copy, "{caso}: a fixtura");
         assert_eq!(
@@ -535,6 +539,7 @@ fn a_cel_range_moves_only_its_cels_over_the_target_and_ctrl_keeps_the_sources() 
     p.escolhe(K::Cels, vec![b], &[1]);
     p.pede(PixelRequest::CelsMove {
         pairs: vec![((b, p.ids[0]), (a, p.ids[2]))],
+        beyond: vec![],
         copy: false,
     });
     assert_eq!(
@@ -641,7 +646,96 @@ fn a_copy_inside_the_tag_grows_it_and_an_empty_cel_empties_its_target() {
     p.escolhe(K::Cels, vec![b], &[2]);
     p.pede(PixelRequest::CelsMove {
         pairs: vec![((b, p.ids[1]), (b, p.ids[2]))],
+        beyond: vec![],
         copy: false,
     });
     assert!(p.img(b, 3).is_none(), "o vazio por cima esvazia");
+}
+
+/// O quadro (base 1) a que o cel `pos` da camada `layer` está ligado, ou `None` se é dono.
+fn ligado(p: &Palco, layer: u32, pos: usize) -> Option<usize> {
+    let s = &p.app.doc(p.key).expect("doc").sprite;
+    let e = s.entry((ph2d_pixel_core::LayerId(layer), s.frames()[pos - 1].id))?;
+    let dono = e.link?;
+    s.frames().iter().position(|f| f.id == dono).map(|i| i + 1)
+}
+
+/// **Trial 01/11, `round3_gaps.ctrl_copy_continuous_layer`**: Ctrl ao largar 1..3 na fronteira
+/// 5|6 → 9 quadros, cópias em 6..8; na contínua B cada cópia fica LIGADA ao seu original (B1↔B6,
+/// B3↔B8), na descontínua A as cópias são próprias.
+#[test]
+fn a_ctrl_copy_on_the_continuous_layer_links_each_copy_to_its_original() {
+    let o = &oraculo()["round3_gaps"]["ctrl_copy_continuous_layer"];
+    let mut p = Palco::novo();
+    let (a, b) = p.camadas();
+    let c = lista(&o["copied"]);
+    p.escolhe(K::Frames, Vec::new(), &(c[0]..=c[1]).collect::<Vec<_>>());
+    p.pede(PixelRequest::RangeMove {
+        before: 5,
+        copy: true,
+    });
+    assert_eq!(
+        p.duracoes().len() as u64,
+        o["frames_after"].as_u64().expect("n")
+    );
+    let at = lista(&o["copies_at"]);
+    for (k, pos) in (at[0]..=at[1]).enumerate() {
+        let (pos, orig) = (pos as usize, c[0] as usize + k);
+        let quer = p.img(b, orig).map(|_| orig);
+        assert_eq!(ligado(&p, b, pos), quer, "B{orig}↔B{pos}");
+        assert_eq!(ligado(&p, a, pos), None, "A{pos}: cópia própria");
+        assert_eq!(p.img(a, pos), p.img(a, orig), "A{pos} = A{orig}");
+    }
+    assert_eq!(
+        (ligado(&p, b, 1), ligado(&p, b, 3)),
+        (None, None),
+        "B1 e B3 soltos"
+    );
+}
+
+/// **Trial 01/11, `round3_gaps.cels_dropped_right_of_last_frame`**: A2..A3 largado 7 colunas à
+/// direita → os quadros que faltam NASCEM (6 → 10) com a duração do último (600 ms, total 4,50 s),
+/// A9/A10 = os antigos A2/A3, A2, A3, A7, A8 vazios, B vazio nos novos; o intervalo segue; um passo.
+#[test]
+fn cels_dropped_right_of_the_last_frame_create_the_frames_they_need() {
+    let o = &oraculo()["round3_gaps"]["cels_dropped_right_of_last_frame"];
+    let mut p = Palco::novo();
+    let (a, b) = p.camadas();
+    p.escolhe(K::Cels, vec![a], &[2, 3]);
+    let (a2, a3, antes) = (p.img(a, 2), p.img(a, 3), p.passos());
+    let dc = o["moved_by_columns"].as_u64().expect("dc") as u32;
+    let beyond = [2, 3].map(|c: u32| ((a, p.ids[c as usize - 1]), (a, c + dc - 7)));
+    let info = p.pede(PixelRequest::CelsMove {
+        pairs: vec![],
+        beyond: beyond.to_vec(),
+        copy: false,
+    });
+    let n = o["frames_after"].as_u64().expect("n") as usize;
+    let ms = p.duracoes();
+    assert_eq!(ms.len(), n);
+    let novo = o["new_frame_duration_ms"].as_u64().expect("ms") as u32;
+    assert!(ms[6..].iter().all(|&d| d == novo), "{ms:?}");
+    assert_eq!(ms.iter().sum::<u32>(), 4500, "total 4,50 s");
+    assert_eq!((p.img(a, 9), p.img(a, 10)), (a2, a3), "A9/A10");
+    for pos in [2, 3, 7, 8] {
+        assert!(p.img(a, pos).is_none(), "A{pos} vazio");
+    }
+    assert!(
+        (7..=10).all(|pos| p.img(b, pos).is_none()),
+        "B vazio nos novos"
+    );
+    let s = &p.app.doc(p.key).expect("doc").sprite;
+    let ids: Vec<u32> = s.frames()[8..10].iter().map(|f| f.id.0).collect();
+    assert_eq!(
+        (info.range.layers.clone(), info.range.frames.clone()),
+        (vec![a], ids),
+        "A9..A10"
+    );
+    assert_eq!(p.passos(), antes + 1, "um passo");
+    assert!(p.app.undo(p.key));
+    assert_eq!(
+        p.duracoes(),
+        DURATIONS.to_vec(),
+        "o Ctrl+Z tira os quadros novos"
+    );
 }

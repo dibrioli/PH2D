@@ -80,18 +80,16 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
+    #[cfg(feature = "panel-pixel-preview")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_pixel_preview::PixelPreviewPanel,
+    >());
     #[cfg(feature = "panel-pixel-timeline")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_timeline::PixelTimelinePanel,
     >());
     #[cfg(feature = "panel-pixel-tools")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_tools::PixelToolsPanel>());
-    // As formas do Vector no Pixel (P6b): os nomes dos campos pela ponte do painel do Vector.
-    #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
-    ph2d_panel_pixel_tools::set_field_names(ph2d_panel_vector::nomes_do_motor::campo);
-    // P6e: e os nomes das formas (o flyout, o tooltip e o aviso do atalho).
-    #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
-    ph2d_panel_pixel_tools::set_shape_names(ph2d_panel_vector::nomes_do_motor::forma);
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
     #[cfg(feature = "panel-tags")]
@@ -113,6 +111,14 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     #[cfg(feature = "panel-widget-lab")]
     reg.push(ErasedPanel::new::<ph2d_panel_widget_lab::WidgetLabPanel>());
     // <ph2d-panel-sync:end>
+    // ⚠️ FORA do bloco gerado: o `ph2d-panel-sync` reescreve tudo entre os marcadores (apagou
+    // estas duas chamadas no sync da P5).
+    // As formas do Vector no Pixel (P6b): os nomes dos campos pela ponte do painel do Vector.
+    #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
+    ph2d_panel_pixel_tools::set_field_names(ph2d_panel_vector::nomes_do_motor::campo);
+    // P6e: e os nomes das formas (o flyout, o tooltip e o aviso do atalho).
+    #[cfg(all(feature = "panel-pixel-tools", feature = "panel-vector"))]
+    ph2d_panel_pixel_tools::set_shape_names(ph2d_panel_vector::nomes_do_motor::forma);
     reg
 }
 
@@ -176,6 +182,11 @@ mod tests {
         }
         // A linha do tempo do Pixel (P4).
         #[cfg(feature = "panel-pixel-timeline")]
+        {
+            n += 1;
+        }
+        // A janela Preview do Pixel (P5).
+        #[cfg(feature = "panel-pixel-preview")]
         {
             n += 1;
         }

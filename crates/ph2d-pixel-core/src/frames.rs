@@ -240,9 +240,10 @@ pub fn block_copy_order<T: Copy>(all: &[T], em: impl Fn(&T) -> bool, before: usi
     out
 }
 
-/// Largar o bloco `ids` com Ctrl (Trial 01/11, `mover_ctrl`): cópias dos quadros, com as durações
-/// e cópias próprias dos cels, entram na fronteira `before`; as tags abrem-se como num quadro novo.
-/// Devolve os ids novos (o intervalo passa a eles).
+/// Largar o bloco `ids` com Ctrl (Trial 01/11, `mover_ctrl`): cópias dos quadros, com as durações,
+/// entram na fronteira `before`; as tags abrem-se como num quadro novo. Os cels das camadas
+/// *continuous* ficam LIGADOS ao seu original (`round3_gaps.ctrl_copy_continuous_layer`: B1↔B6,
+/// B3↔B8); os das outras são cópias próprias. Devolve os ids novos (o intervalo passa a eles).
 pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op, Vec<FrameId>)> {
     let block: Vec<Frame> = s
         .frames()
@@ -262,10 +263,14 @@ pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op,
         tags = tags_after_insert(&tags, (at + k) as u32);
         for l in s.layers().iter().filter(|l| !l.is_group()) {
             if let (Some(e), Some(c)) = (s.entry((l.id, src.id)), s.cel((l.id, src.id))) {
-                let cel = Cel {
-                    z: e.z,
-                    link: None,
-                    ..c.clone()
+                let cel = if l.continuous {
+                    Cel::linked(s.owner((l.id, src.id)).1, e.z)
+                } else {
+                    Cel {
+                        z: e.z,
+                        link: None,
+                        ..c.clone()
+                    }
                 };
                 cels.push(((l.id, id), Some(cel)));
             }
@@ -283,9 +288,38 @@ pub fn move_cels(s: &Sprite, pairs: &[(CelKey, CelKey)], copy: bool) -> Option<O
     if pairs.iter().all(|(a, b)| a == b) {
         return None;
     }
+    Some(cels_op(s, s.frames().to_vec(), pairs, copy))
+}
+
+/// [`move_cels`] com destinos ALÉM do último quadro (`round3_gaps.cels_dropped_right_of_last_frame`):
+/// cada `(de, (camada, k))` de `beyond` cai no `k`-ésimo quadro novo depois do último (0 = o
+/// primeiro). Os quadros que faltam nascem no MESMO passo, cada um com a duração do último.
+/// Devolve os ids dos quadros novos.
+pub fn move_cels_grow(
+    s: &mut Sprite,
+    pairs: &[(CelKey, CelKey)],
+    beyond: &[(CelKey, (LayerId, usize))],
+    copy: bool,
+) -> Option<(Op, Vec<FrameId>)> {
+    let Some(grow) = beyond.iter().map(|b| b.1.1 + 1).max() else {
+        return move_cels(s, pairs, copy).map(|o| (o, Vec::new()));
+    };
+    let ms = s.frames().last()?.duration_ms;
+    let novos: Vec<FrameId> = (0..grow).map(|_| FrameId(s.reserve_id())).collect();
+    let mut frames = s.frames().to_vec();
+    frames.extend(novos.iter().map(|&id| Frame {
+        id,
+        duration_ms: ms,
+    }));
+    let mut todos = pairs.to_vec();
+    todos.extend(beyond.iter().map(|&(de, (l, k))| (de, (l, novos[k]))));
+    Some((cels_op(s, frames, &todos, copy), novos))
+}
+
+fn cels_op(s: &Sprite, frames: Vec<Frame>, pairs: &[(CelKey, CelKey)], copy: bool) -> Op {
     let destino = |k: CelKey| pairs.iter().any(|p| p.1 == k);
     let sai = |k: CelKey| destino(k) || (!copy && pairs.iter().any(|p| p.0 == k));
-    let order: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
+    let order: Vec<FrameId> = frames.iter().map(|f| f.id).collect();
     let mut cels = rehome(s, &sai, &order);
     for &(de, _) in pairs.iter().filter(|p| !copy && !destino(p.0)) {
         cels.push((de, None));
@@ -298,7 +332,7 @@ pub fn move_cels(s: &Sprite, pairs: &[(CelKey, CelKey)], copy: bool) -> Option<O
         });
         cels.push((para, cel));
     }
-    Some(op(s.frames().to_vec(), cels, s.tags().to_vec()))
+    op(frames, cels, s.tags().to_vec())
 }
 
 /// A tecla Delete sobre um intervalo de cels: os cels saem, os quadros ficam.

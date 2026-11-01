@@ -15,6 +15,8 @@
 //! 13 — P6e, o catálogo do Vector ([`crate::smoke_catalogo`]) e uma engrenagem viva.
 //! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]).
 //! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]).
+//! 16 — P6h–P6j, o intervalo da linha do tempo ([`crate::smoke_intervalo`]).
+//! 17 — P5, tags dentro de tags, o tocar e a Preview ([`crate::smoke_tocar`]).
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -26,7 +28,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 16,
+    max_level: 17,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -111,6 +113,7 @@ pub fn stage(
         14 => crate::smoke_ajustes::stage(app, sim, spawn_root).is_some(),
         15 => crate::smoke_pontas::stage(app, sim, spawn_root).is_some(),
         16 => crate::smoke_intervalo::stage(app, sim, spawn_root).is_some(),
+        17 => crate::smoke_tocar::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

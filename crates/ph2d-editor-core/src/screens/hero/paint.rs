@@ -96,6 +96,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::ASSET_PANEL,
     ids::INSP_BLENDER_PICKER,
     ids::GAL_PANEL,
+    // A janela Preview do Pixel (`ph2d-panel-pixel-preview`, P5): flutuante, nasce fechada.
+    ids::PIXEL_PREVIEW_PANEL,
     // A bancada de widgets (`ph2d-panel-widget-lab`). ⚠️ **Sétima vez que este arquivo paga o
     // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de
     // z-order nunca chegava a ele: nada quebra, nada avisa, e o menu abre um painel invisível.

@@ -324,3 +324,86 @@ fn merge_down_keeps_the_image_of_a_bottom_link_in_frames_the_top_does_not_touch(
         "o frame sem cel de cima ficou com a imagem de antes"
     );
 }
+
+/// Seis quadros de 100..600 ms; A (`a`) descontínua e B (`b`) contínua, um cel em cada quadro.
+fn seis() -> (Sprite, LayerId, LayerId, Vec<FrameId>) {
+    let mut s = sprite();
+    let a = s.layers()[0].id;
+    let (op, b) = layers::new_layer(&mut s, a).expect("B");
+    apply(&mut s, op).expect("B");
+    let op = layers::edit(&s, b, |x| x.continuous = true).expect("cont");
+    apply(&mut s, op).expect("cont");
+    for i in 1..6 {
+        let last = s.frames()[i - 1].id;
+        let (op, _) = frames::new_frame(&mut s, last, NewFrame::Empty).expect("q");
+        apply(&mut s, op).expect("q");
+    }
+    let ids: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
+    let op = frames::set_duration(&s, &ids[5..], 600).expect("ms");
+    apply(&mut s, op).expect("ms");
+    for (i, &f) in ids.iter().enumerate() {
+        dot(&mut s, a, f, i as i32 % 4, RED);
+        dot(&mut s, b, f, i as i32 % 4, BLUE);
+    }
+    (s, a, b, ids)
+}
+
+/// **Trial 01/11** (`round3_gaps.ctrl_copy_continuous_layer`): copiar com Ctrl os quadros 1..3
+/// para a fronteira 5|6 — 9 quadros, cópias em 6..8; na contínua B cada cópia fica LIGADA ao seu
+/// original (B1↔B6, B3↔B8; B1 e B3 continuam sem ligação); na descontínua A as cópias são próprias.
+/// Um passo, inverso exacto.
+#[test]
+fn a_ctrl_copy_links_each_copy_to_its_original_on_a_continuous_layer() {
+    let (mut s, a, b, ids) = seis();
+    let (op, novos) = frames::copy_block(&mut s, &ids[0..3], 5).expect("copia");
+    one_step(&mut s, op);
+    assert_eq!(s.frames().len(), 9);
+    let at: Vec<FrameId> = s.frames()[5..8].iter().map(|f| f.id).collect();
+    assert_eq!(novos, at, "as cópias caem em 6..8 (base 1)");
+    for (k, &n) in novos.iter().enumerate() {
+        assert_eq!(
+            s.entry((b, n)).and_then(|c| c.link),
+            Some(ids[k]),
+            "B{}↔B{}",
+            k + 1,
+            k + 6
+        );
+        assert_eq!(
+            s.entry((a, n)).and_then(|c| c.link),
+            None,
+            "A: cópia própria"
+        );
+        assert_eq!(s.cel((a, n)), s.cel((a, ids[k])), "A: a mesma imagem");
+    }
+    assert_eq!(
+        s.entry((b, ids[2])).and_then(|c| c.link),
+        None,
+        "B1 e B3 soltos"
+    );
+}
+
+/// **Trial 01/11** (`round3_gaps.cels_dropped_right_of_last_frame`): A2..A3 largado 7 colunas à
+/// direita — os quadros que faltam NASCEM (6 → 10), cada um com a duração do último (600 ms), e
+/// A9/A10 = os antigos A2/A3; as origens e os quadros novos de passagem ficam vazios. Um passo.
+#[test]
+fn cels_dropped_past_the_last_frame_create_the_missing_frames_in_one_step() {
+    let (mut s, a, b, ids) = seis();
+    let (a2, a3) = (s.cel((a, ids[1])).cloned(), s.cel((a, ids[2])).cloned());
+    let beyond = [((a, ids[1]), (a, 2)), ((a, ids[2]), (a, 3))];
+    let (op, novos) = frames::move_cels_grow(&mut s, &[], &beyond, false).expect("larga");
+    one_step(&mut s, op);
+    let ms: Vec<u32> = s.frames().iter().map(|f| f.duration_ms).collect();
+    assert_eq!(ms[6..], [600; 4], "a duração do último");
+    assert_eq!(novos.len(), 4);
+    assert_eq!(
+        (s.cel((a, novos[2])).cloned(), s.cel((a, novos[3])).cloned()),
+        (a2, a3)
+    );
+    for k in [(a, ids[1]), (a, ids[2]), (a, novos[0]), (a, novos[1])] {
+        assert!(s.entry(k).is_none(), "{k:?} vazio");
+    }
+    assert!(
+        novos.iter().all(|&f| s.entry((b, f)).is_none()),
+        "B vazio nos novos"
+    );
+}

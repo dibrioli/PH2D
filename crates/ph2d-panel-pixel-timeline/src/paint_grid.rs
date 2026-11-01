@@ -54,9 +54,6 @@ pub(crate) fn paint(
     let voo = crate::gestos::bloco_previsto(st, info);
     let original = info;
     let info = voo.as_ref().map_or(info, |v| &v.info);
-    let layers_w = ph2d_tokens::chrome::PANEL_MIN_W_PX.min(area.w * 0.5);
-    let gx = area.x + layers_w + Spacing::Sm.px();
-    let gw = (area.x + area.w - gx).max(0.0);
     let duracoes: Vec<String> = info
         .frames
         .iter()
@@ -71,6 +68,13 @@ pub(crate) fn paint(
         .iter()
         .map(|d| ctx.text_system.prefix_width(d, TypeToken::Xs.px()) + Spacing::Sm.px())
         .fold(ROW_H_PX, f32::max);
+    // A coluna das camadas guarda a largura de um painel enquanto sobrar UMA coluna de quadro (a
+    // grelha rola até ao activo); a 1280 a metade da banda cortava «Background» (portão
+    // `nenhum_corte_novo_entra_sem_ser_nomeado`).
+    let folga = (area.w - Spacing::Sm.px() - col_w).max(area.w * 0.5);
+    let layers_w = ph2d_tokens::chrome::PANEL_MIN_W_PX.min(folga);
+    let gx = area.x + layers_w + Spacing::Sm.px();
+    let gw = (area.x + area.w - gx).max(0.0);
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

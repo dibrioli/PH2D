@@ -1,0 +1,146 @@
+//! O quadro da Preview — porta de visibilidade (+ limpeza do rect e da área da roda) · a janela
+//! flutuante (rect próprio, arrasto pela alça, preso ao ecrã) · o título com o tocar e o `×` · a
+//! imagem do quadro mostrado, nítida (vizinho mais próximo), no zoom da janela.
+
+use crate::{PixelPreviewPanel, PixelPreviewPanelState, canal, ids};
+use ph2d_editor_core::IconId;
+use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
+use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::widget::panel_chrome::{
+    PANEL_HEAD_PAD, PANEL_HEADER_ADD_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
+    paint_panel_close_button, paint_panel_surface_floating, paint_panel_title,
+    panel_drag_handle_rect, panel_header_add_button_rect,
+};
+use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
+use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
+use ph2d_tokens::{ColorToken, PANEL_MIN_W_PX, Spacing, TypeToken};
+
+/// Os degraus de zoom (células por píxel de ecrã) — os do menu de zoom do Aseprite 1.3.
+pub(crate) const ZOOMS: [f32; 14] = [
+    0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0,
+    64.0, // LITERAL-PX-OK: degraus de zoom do Aseprite (razões, não píxeis de UI)
+];
+
+pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
+    let node = PixelPreviewPanel::NODE_ID;
+    if !ctx.host.panel_visible(PixelPreviewPanel::ID) {
+        let store = ctx.host.store_mut();
+        store.clear_panel_rect(node);
+        store.remove_graph_canvas(node);
+        let _ = store.take_graph_zoom(node);
+        return;
+    }
+    let base = *st.rect.get_or_insert_with(|| {
+        let w = PANEL_MIN_W_PX;
+        Rect::new(
+            (ctx.slot.x - w - Spacing::Lg.px()).max(ctx.viewport.x),
+            ctx.slot.y,
+            w,
+            w,
+        )
+    });
+    let off = ctx.host.store().blender_picker_offset(node);
+    let (rect, off2, _) = clamp_panel_rect(base, off, (0.0, 0.0), ctx.viewport);
+    {
+        let store = ctx.host.store_mut();
+        if off2 != off {
+            store.set_blender_picker_offset(node, off2.0, off2.1);
+        }
+        store.set_panel_rect(node, rect);
+    }
+    let theme = ctx.host.theme();
+    paint_panel_surface_floating(rect, ctx.scene, theme);
+    let title_size = paint_panel_title(
+        rect,
+        PixelPreviewPanel::TITLE.tr(),
+        PANEL_HEADER_ADD_RESERVE,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    let header_h = PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
+    let frame = canal::current();
+
+    // A alça primeiro: o tocar e o `×` registam-se por cima dela (o último registo ganha).
+    let alca = panel_drag_handle_rect(rect, header_h, PANEL_HEADER_ADD_RESERVE);
+    ctx.host.hit_index_mut().register(ids::DRAG, alca);
+    let play = panel_header_add_button_rect(rect);
+    let icon = if frame.as_ref().is_some_and(|f| f.playing) {
+        IconId::Stop
+    } else {
+        IconId::Play
+    };
+    let visual = ctx.host.store().button_visual(ids::PLAY);
+    paint_icon_button(
+        play,
+        IconGlyph::Builtin(icon),
+        IconButtonStyle::Compact,
+        visual,
+        ctx.scene,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(ids::PLAY, play);
+    paint_panel_close_button(rect, ids::CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+
+    let pad = PANEL_HEAD_PAD;
+    let body = Rect::new(
+        rect.x + pad,
+        rect.y + header_h,
+        (rect.w - pad * 2.0).max(0.0),
+        (rect.h - header_h - pad).max(0.0),
+    );
+    ctx.host.store_mut().set_graph_canvas(node, body);
+    let Some(f) = frame else {
+        st.imagem = None;
+        // Uma frase é PROSA: quebra a linha, nunca é cortada.
+        let _ = paint_text_block(
+            ctx.text_system,
+            ctx.scene,
+            tr("panel.pixel.preview.empty"),
+            body.x,
+            body.y,
+            TypeToken::Sm.px(),
+            body.w.max(1.0),
+            resolve(ColorToken::Text3, theme),
+        );
+        return;
+    };
+    if st.imagem.as_ref().is_none_or(|(seq, _)| *seq != f.seq) {
+        st.imagem =
+            ph2d_vector::StableImage::from_rgba(f.rgba.clone(), f.w, f.h).map(|img| (f.seq, img));
+    }
+    #[expect(clippy::cast_precision_loss, reason = "lados de sprite ≤ 65 535")]
+    let (w, h) = (f.w as f32, f.h as f32);
+    let caber = (body.w / w.max(1.0)).min(body.h / h.max(1.0));
+    if let Some(z) = ctx.host.store_mut().take_graph_zoom(node)
+        && z.delta != 0.0
+    {
+        let agora = st.zoom.map_or(caber, |i| ZOOMS[i]);
+        st.zoom = Some(degrau(agora, z.delta > 0.0));
+    }
+    let escala = st.zoom.map_or(caber, |i| ZOOMS[i]);
+    st.escala = escala;
+    let (dw, dh) = (w * escala, h * escala);
+    let x = body.x + (body.w - dw) * 0.5;
+    let y = body.y + (body.h - dh) * 0.5;
+    if let Some((_, img)) = &st.imagem {
+        ctx.scene.push_clip(&rect_to_vello(body));
+        ctx.scene.draw_stable_image(
+            img,
+            (f64::from(x), f64::from(y), f64::from(dw), f64::from(dh)),
+            ph2d_vector::ImageQuality::Low,
+        );
+        ctx.scene.pop_layer();
+    }
+}
+
+/// O degrau de zoom seguinte (`mais`) ou anterior a partir da escala `agora`.
+fn degrau(agora: f32, mais: bool) -> usize {
+    let n = ZOOMS.len();
+    if mais {
+        ZOOMS.iter().position(|&z| z > agora).unwrap_or(n - 1)
+    } else {
+        ZOOMS.iter().rposition(|&z| z < agora).unwrap_or(0)
+    }
+}

@@ -151,8 +151,20 @@ fn the_ellipse_marquee_matches_the_trial_on_every_measured_box() {
 /// lados pares até 150 / 96, cada uma na posição em que foi arrastada no Trial — exata, linha a linha.
 #[test]
 fn the_ellipse_marquee_matches_the_trial_grid_row_by_row() {
-    let f: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_ellipse_grid.json"))
-        .expect("json");
+    let grid = include_str!("../fixtures/oracle_trial_ellipse_grid.json");
+    ellipse_cases_row_by_row(grid, 715);
+}
+
+/// As caixas maiores que 150 × 96 (`oracle_trial_ellipse_big.json`, 01/11): lados de 3 a 320 × 3 a
+/// 190, medidos a 200 % — a mesma lei, exata, linha a linha.
+#[test]
+fn the_ellipse_marquee_matches_the_trial_beyond_150_by_96() {
+    let big = include_str!("../fixtures/oracle_trial_ellipse_big.json");
+    ellipse_cases_row_by_row(big, 144);
+}
+
+fn ellipse_cases_row_by_row(json: &str, n: usize) {
+    let f: Value = serde_json::from_str(json).expect("json");
     let cs = f["cases"].as_object().expect("cases");
     let mut off = Vec::new();
     for (k, c) in cs {
@@ -180,8 +192,55 @@ fn the_ellipse_marquee_matches_the_trial_grid_row_by_row() {
             off.push(k.as_str());
         }
     }
-    assert_eq!(cs.len(), 715);
+    assert_eq!(cs.len(), n);
     assert_eq!(off, Vec::<&str>::new(), "caixas fora do Trial");
+}
+
+/// **Select ▸ Modify contra o Trial** (`oracle_trial_modify.json`, 01/11, Square Brush): uma
+/// célula em (160, 103) ou o sprite 320 × 206 inteiro (`contract_*`, `borderA_*`); o `n` é o do
+/// campo pela lei medida (tecto 100, decimais cortam, «%» ignorado — o diálogo prova-a em
+/// `the_modify_field_caps_at_100_truncates_and_ignores_a_percent_sign_like_the_trial`). Cada caso
+/// dá a mesma linha 103, a mesma coluna 160 e as mesmas células.
+#[test]
+fn select_modify_matches_the_trial_up_to_its_100_cap() {
+    let f: Value =
+        serde_json::from_str(include_str!("../fixtures/oracle_trial_modify.json")).expect("json");
+    let cs = f["cases"].as_object().expect("cases");
+    let (w, h) = (320, 206);
+    let span = |v: &Value| (v[0].as_i64().expect("lo"), v[1].as_i64().expect("hi"));
+    for (k, c) in cs {
+        let texto = c["texto"].as_str().expect("texto").trim_end_matches('%');
+        let n = (texto.parse::<f64>().expect("número").trunc() as u32).min(100);
+        let kind = match c["tipo"].as_str().expect("tipo") {
+            "expand" => Modify::Expand,
+            "contract" => Modify::Contract,
+            _ => Modify::Border,
+        };
+        let mut m = Mask::empty(w, h);
+        if k.starts_with("contract") || k.starts_with("borderA") {
+            m = m.inverse();
+        } else {
+            m.set(160, 103, true);
+        }
+        let got = m.modify(kind, n, ModifyBrush::Square);
+        let fila: Vec<i64> = (0..w as i32)
+            .filter(|&x| got.get(x, 103))
+            .map(i64::from)
+            .collect();
+        let coluna: Vec<i64> = (0..h as i32)
+            .filter(|&y| got.get(160, y))
+            .map(i64::from)
+            .collect();
+        let ends = |v: &[i64]| (v[0], v[v.len() - 1]);
+        assert_eq!(ends(&fila), span(&c["x"]), "{k}: a linha 103");
+        assert_eq!(ends(&coluna), span(&c["y"]), "{k}: a coluna 160");
+        assert_eq!(
+            got.count() as u64,
+            c["celulas"].as_u64().expect("celulas"),
+            "{k}"
+        );
+    }
+    assert_eq!(cs.len(), 21);
 }
 
 /// As amostras do rato do `trial_selecao.py`: 16 px por célula, centro em +8, passos de ~4 px

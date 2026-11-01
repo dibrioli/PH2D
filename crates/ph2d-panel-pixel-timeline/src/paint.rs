@@ -264,8 +264,12 @@ fn barra(
 
     // *Playback* (o menu do botão Play do Aseprite): a velocidade e os quatro interruptores.
     let p = info.playback;
-    let rotulo = tr(ids::speed_key(p.speed));
-    let chip = rect_for_label(ctx.text_system.prefix_width(rotulo, font)) + h;
+    // O chip mede-se pela velocidade mais larga (não muda de largura ao escolher outra).
+    let texto = ph2d_editor_core::pixel_panel::PixelSpeed::ALL
+        .iter()
+        .map(|&v| (ctx.text_system).prefix_width(tr(ids::speed_key(v)), TypeToken::Base.px()))
+        .fold(0.0_f32, f32::max);
+    let chip = ph2d_editor_core::widget::dropdown_chip_width_for(texto, h);
     let labels: Vec<&str> = ids::PLAY_TOGGLES.iter().map(|(_, k, _)| tr(k)).collect();
     let w = chip + Spacing::Sm.px() + largura(ctx, &labels, font);
     quebra(&mut x, &mut y, w);

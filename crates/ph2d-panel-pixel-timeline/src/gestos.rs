@@ -121,11 +121,9 @@ pub(crate) fn bloco_previsto(st: &PixelTimelinePanelState, info: &PixelPanelInfo
     };
     if info.range.kind == K::Cels {
         let geo = st.geo.as_ref()?;
-        let pares = cels_pares(info, geo, de, a)?;
-        let fila = |l: u32| info.layers.iter().position(|r| r.id == l);
-        let vao = pares
-            .iter()
-            .filter_map(|&(_, (l, f))| Some((Some(fila(l)?), pos(info, f)?)))
+        let vao = cels_destinos(info, geo, de, a)?
+            .into_iter()
+            .map(|(_, fila, c)| (Some(fila), c))
             .collect();
         let (dx, dy) = (a.0 - de.0, a.1 - de.1);
         let info = info.clone();
@@ -155,23 +153,51 @@ pub(crate) fn bloco_previsto(st: &PixelTimelinePanelState, info: &PixelPanelInfo
     })
 }
 
-/// `((camada, quadro) de, (camada, quadro) para)` de um cel largado.
-type ParCel = ((u32, u32), (u32, u32));
+/// O pedido de um intervalo de cels largado: destinos na grelha em `pairs`, à direita do último
+/// quadro em `beyond` (`(camada, k)` = o `k`-ésimo quadro novo, que o Trial CRIA:
+/// `round3_gaps.cels_dropped_right_of_last_frame`).
+fn cels_move(
+    info: &PixelPanelInfo,
+    geo: &Geo,
+    de: (f32, f32),
+    a: (f32, f32),
+    copy: bool,
+) -> Option<PixelRequest> {
+    let n = info.frames.len();
+    let (mut pairs, mut beyond) = (Vec::new(), Vec::new());
+    for ((l0, f0), fila, c) in cels_destinos(info, geo, de, a)? {
+        let l = info.layers[fila].id;
+        match info.frames.get(c) {
+            Some(f) => pairs.push(((l0, f0), (l, f.id))),
+            None => beyond.push(((l0, f0), (l, u32::try_from(c - n).ok()?))),
+        }
+    }
+    Some(PixelRequest::CelsMove {
+        pairs,
+        beyond,
+        copy,
+    })
+}
 
-/// Os pares `(de, para)` de um intervalo de cels arrastado de `de` até `a`: anda as colunas e as
-/// filas que o rato percorreu (arredondadas — agarra-se a moldura na divisa entre colunas), preso
-/// para caber; `None` se algum destino cai numa fila de grupo.
+/// Um destino de cel: `((camada, quadro) de, fila, coluna)`.
+type CelDestino = ((u32, u32), usize, usize);
+
+/// Os destinos `((camada, quadro) de, fila, coluna)` de um intervalo de cels arrastado de `de` até
+/// `a`: anda as colunas e as filas que o rato percorreu (arredondadas — agarra-se a moldura na
+/// divisa entre colunas); as filas e a 1.ª coluna prendem-se à grelha, à direita a coluna passa
+/// do último quadro. `None` se algum destino cai numa fila de grupo: o Trial PERDE esses cels
+/// (`round3_gaps.cels_dropped_on_group_row`); nós recusamos, para não perder dados.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     reason = "colunas e filas da grelha"
 )]
-fn cels_pares(
+fn cels_destinos(
     info: &PixelPanelInfo,
     geo: &Geo,
     de: (f32, f32),
     a: (f32, f32),
-) -> Option<Vec<ParCel>> {
+) -> Option<Vec<CelDestino>> {
     let (n, m) = (info.frames.len(), info.layers.len());
     let cols: Vec<usize> = info
         .range
@@ -187,17 +213,18 @@ fn cels_pares(
         let hi = v.iter().max().map_or(0, |&x| (len - 1 - x) as isize);
         d.clamp(lo, hi)
     };
-    let dc = presa(((a.0 - de.0) / geo.col_w).round() as isize, &cols, n);
+    let dc = ((a.0 - de.0) / geo.col_w).round() as isize;
+    let dc = dc.max(presa(dc, &cols, n));
     let df = presa(((a.1 - de.1) / geo.pitch).round() as isize, &filas, m);
     let mut out = Vec::new();
     for &i in &filas {
-        let destino = &info.layers[i.checked_add_signed(df)?];
-        if destino.group {
+        let fila = i.checked_add_signed(df)?;
+        if info.layers[fila].group {
             return None;
         }
         for &c in &cols {
-            let para = info.frames[c.checked_add_signed(dc)?].id;
-            out.push(((info.layers[i].id, info.frames[c].id), (destino.id, para)));
+            let de = (info.layers[i].id, info.frames[c].id);
+            out.push((de, fila, c.checked_add_signed(dc)?));
         }
     }
     Some(out)
@@ -342,8 +369,7 @@ fn pedidos(
                     if !fim {
                         None
                     } else if info.range.kind == K::Cels {
-                        cels_pares(info, &geo, de, a)
-                            .map(|pairs| PixelRequest::CelsMove { pairs, copy })
+                        cels_move(info, &geo, de, a, copy)
                     } else {
                         let before = u32::try_from(alvo).unwrap_or(u32::MAX);
                         Some(PixelRequest::RangeMove { before, copy })

@@ -493,13 +493,68 @@ fn ctrl_at_the_drop_copies_and_a_cel_range_moves_only_its_cels() {
     for (mods, copy) in [(GestureMods::default(), false), (ctrl, true)] {
         let a = larga_moldura(cels.clone(), dois, mods);
         let pairs = vec![((2, 10), (2, 12))];
-        so(&a, PixelRequest::CelsMove { pairs, copy });
+        so(
+            &a,
+            PixelRequest::CelsMove {
+                pairs,
+                beyond: vec![],
+                copy,
+            },
+        );
     }
     let pitch = ph2d_tokens::row_pitch_px();
     let longe = |p: &Palco, (x, y): (f32, f32)| (x + 9.0 * col(p), y + pitch);
     let a = larga_moldura(cels, longe, GestureMods::default());
-    let pairs = vec![((2, 10), (1, 12))];
-    so(&a, PixelRequest::CelsMove { pairs, copy: false });
+    so(
+        &a,
+        PixelRequest::CelsMove {
+            pairs: vec![],
+            beyond: vec![((2, 10), (1, 6))],
+            copy: false,
+        },
+    );
+}
+
+/// **Trial 01/11** (`round3_gaps.cels_dropped_right_of_last_frame`, `…_below_last_layer`,
+/// `…_right_and_below`): um intervalo de cels largado à direita do último quadro pede os destinos
+/// além do fim (`beyond`: o `k`-ésimo quadro novo) em vez de se prender; abaixo da última camada a
+/// fila prende-se a ela; as duas coisas juntas = à direita na última fila.
+#[test]
+fn a_cel_range_dropped_past_the_last_frame_asks_for_new_frames_and_the_row_clamps() {
+    use ph2d_editor_core::interaction::GestureMods;
+    let col = |p: &Palco| p.rect(ids::header_id(10)).expect("pintado").w;
+    let pitch = ph2d_tokens::row_pitch_px();
+    let cels = faixa(K::Cels, vec![2], vec![11, 12]);
+    let direita = |p: &Palco, (x, y): (f32, f32)| (x + 3.0 * col(p), y);
+    let a = larga_moldura(cels.clone(), direita, GestureMods::default());
+    so(
+        &a,
+        PixelRequest::CelsMove {
+            pairs: vec![],
+            beyond: vec![((2, 11), (2, 1)), ((2, 12), (2, 2))],
+            copy: false,
+        },
+    );
+    let abaixo = |_: &Palco, (x, y): (f32, f32)| (x, y + 3.0 * pitch);
+    let a = larga_moldura(cels.clone(), abaixo, GestureMods::default());
+    so(
+        &a,
+        PixelRequest::CelsMove {
+            pairs: vec![((2, 11), (1, 11)), ((2, 12), (1, 12))],
+            beyond: vec![],
+            copy: false,
+        },
+    );
+    let ambos = |p: &Palco, (x, y): (f32, f32)| (x + 3.0 * col(p), y + 3.0 * pitch);
+    let a = larga_moldura(cels, ambos, GestureMods::default());
+    so(
+        &a,
+        PixelRequest::CelsMove {
+            pairs: vec![],
+            beyond: vec![((2, 11), (1, 1)), ((2, 12), (1, 2))],
+            copy: false,
+        },
+    );
 }
 
 /// Foto P6j (cena 16, `copia`): a meio do arrasto com Ctrl as cópias abrem o vão onde caem e a
@@ -558,6 +613,7 @@ fn drags_round_to_the_nearest_cell_a_group_row_refuses_and_shift_never_duplicate
         &a,
         PixelRequest::CelsMove {
             pairs: vec![((2, 10), (1, 12))],
+            beyond: vec![],
             copy: false,
         },
     );
@@ -667,7 +723,10 @@ fn the_playback_toggles_and_the_speed_menu_ask_for_the_whole_options() {
         let _ = p.host.apply_panel_event::<PixelTimelinePanel>(&mut p.st, e);
     }
     p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
-    assert!(p.rect(ids::speed_option_id(4)).is_some(), "o clique no chip abre o menu");
+    assert!(
+        p.rect(ids::speed_option_id(4)).is_some(),
+        "o clique no chip abre o menu"
+    );
     so(
         &p.carrega(ids::speed_option_id(4)),
         PixelRequest::Playback(PixelPlayback {

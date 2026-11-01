@@ -83,6 +83,11 @@ impl PixelApp {
     /// Anda o tocar do sprite em Draw `dt_ms` no relógio do host.
     pub fn tick(&mut self, dt_ms: u32) {
         self.formigas_ms = self.formigas_ms.wrapping_add(u64::from(dt_ms));
+        let sprite = self
+            .chave
+            .and_then(|k| self.docs.get(&k))
+            .map(|d| &d.sprite);
+        self.preview.advance(self.chave, sprite, dt_ms);
         let Some(doc) = self.chave.and_then(|k| self.docs.get_mut(&k)) else {
             return;
         };
@@ -106,6 +111,23 @@ impl PixelApp {
         };
         match r {
             PixelRequest::FrameAction(A::Onion | A::OnionTint) => self.alterna_onion(r),
+            PixelRequest::FrameAction(A::Preview) => {
+                self.preview.alternar = true;
+                true
+            }
+            PixelRequest::FrameAction(A::PlayPreview) => {
+                let t = self.tocar;
+                if let Some(doc) = self.docs.get(&key) {
+                    let opt = PlayOptions {
+                        once: t.once,
+                        all: t.all,
+                        subtags: t.subtags,
+                    };
+                    let v = velocidade(doc.speed);
+                    self.preview.toggle(key, &doc.sprite, doc.frame, opt, v);
+                }
+                true
+            }
             PixelRequest::FrameAction(A::Play) => {
                 let t = self.tocar;
                 if let Some(doc) = self.docs.get_mut(&key) {

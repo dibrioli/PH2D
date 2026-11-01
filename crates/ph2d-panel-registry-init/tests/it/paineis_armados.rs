@@ -80,6 +80,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_o_pixel(),
         desarma: desarma_o_pixel,
     },
+    // A Preview do Pixel (P5) com uma imagem 16×8 publicada.
+    #[cfg(feature = "panel-pixel-preview")]
+    Armacao {
+        painel: "pixel_preview",
+        arma: |_| arma_a_preview(),
+        desarma: || ph2d_panel_pixel_preview::publish(None),
+    },
     // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
     #[cfg(feature = "panel-pixel-timeline")]
     Armacao {
@@ -307,6 +314,19 @@ fn desarma_o_pixel() {
     ph2d_panel_pixel_tools::set_current_pixel(
         ph2d_editor_core::pixel_panel::PixelPanelInfo::default(),
     );
+}
+
+/// A Preview do Pixel com uma imagem publicada (a família publica-a com a janela aberta).
+#[cfg(feature = "panel-pixel-preview")]
+fn arma_a_preview() {
+    ph2d_panel_pixel_preview::publish(Some(ph2d_panel_pixel_preview::PreviewFrame {
+        rgba: std::sync::Arc::new(vec![255; 16 * 8 * 4]),
+        w: 16,
+        h: 8,
+        seq: 1,
+        frame: 1,
+        playing: false,
+    }));
 }
 
 /// Um Pixel Sprite em Draw com frames, cels ligados e uma tag (a linha do tempo armada).

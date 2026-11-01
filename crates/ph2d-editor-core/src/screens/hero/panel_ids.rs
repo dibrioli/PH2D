@@ -23,6 +23,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert(PANEL_PIXEL, false);
     // A linha do tempo do Pixel (P4) também: abre e fecha com o Draw, como o PIXEL.
     map.insert(PANEL_PIXEL_TIMELINE, false);
+    // A Preview do Pixel (P5) nasce FECHADA: Shift+Enter ou F7 abrem-na.
+    map.insert(PANEL_PIXEL_PREVIEW, false);
     map
 }
 
@@ -42,6 +44,8 @@ pub const PANEL_PHYSICS: &str = "physics";
 pub const PANEL_PIXEL: &str = "pixel_tools";
 /// A linha do tempo do Pixel (camadas × frames, P4) — o `Panel::ID` da `ph2d-panel-pixel-timeline`.
 pub const PANEL_PIXEL_TIMELINE: &str = "pixel_timeline";
+/// A janela Preview do Pixel (P5, flutuante) — o `Panel::ID` da `ph2d-panel-pixel-preview`.
+pub const PANEL_PIXEL_PREVIEW: &str = "pixel_preview";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -60,6 +64,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "macros" => Some("macros"),
         PANEL_PIXEL => Some(PANEL_PIXEL),
         PANEL_PIXEL_TIMELINE => Some(PANEL_PIXEL_TIMELINE),
+        PANEL_PIXEL_PREVIEW => Some(PANEL_PIXEL_PREVIEW),
         _ => None,
     }
 }

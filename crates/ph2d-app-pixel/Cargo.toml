@@ -37,6 +37,8 @@ ph2d-text = { path = "../ph2d-text" }
 winit = "0.30"
 # A foto do gesto a meio da cena 16 (`smoke_intervalo::conduz`): os ids da grelha e a arena do despacho.
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline" }
+# A janela Preview (P5): o tocar dela e o canal da imagem.
+ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview" }
 bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

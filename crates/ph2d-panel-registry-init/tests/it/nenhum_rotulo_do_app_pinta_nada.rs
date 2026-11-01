@@ -1165,11 +1165,18 @@ fn nenhum_corte_novo_entra_sem_ser_nomeado() {
 ///
 /// ⚠️ Três deles foram ARMADOS ([`super::paineis_armados::TABELA`]). Os que ficam aqui pedem um
 /// mundo que o arnês não constrói, e cada linha diz **qual**.
-const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[(
-    "motion_graph",
-    "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
+const PAINEIS_MEDIDOS_VAZIOS: &[(&str, &str)] = &[
+    (
+        "motion_graph",
+        "pinta um GRAFO de nos vivo (`ph2d-nodegraph`), com o cartao e os pinos derivados do \
          manifesto de cada no; o arnes nao monta um grafo.",
-)];
+    ),
+    (
+        "pixel_preview",
+        "a Preview do Pixel (P5) pinta uma IMAGEM (o quadro do sprite), nao rotulos: o titulo e \
+         dois botoes de icone sao tudo o que ela escreve, mesmo armada com a imagem.",
+    ),
+];
 
 /// ⛔ O piso POR PAINEL. ⚠️ **Ele sai da medição, não do gosto:** o painel mais magro que a
 /// varredura de facto enche é o do esqueleto, com `7` rótulos; os que ela não enche medem `0`,

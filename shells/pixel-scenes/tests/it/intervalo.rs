@@ -600,3 +600,30 @@ fn the_delete_key_on_cels_is_one_undo_step_over_one_or_two_layers() {
         );
     }
 }
+
+/// Sobreviventes da P6j (A3, A7): a cópia com Ctrl abre a tag como um quadro novo; um cel VAZIO
+/// largado por cima de um cheio esvazia-o (o bloco move-se como rectângulo).
+#[test]
+fn a_copy_inside_the_tag_grows_it_and_an_empty_cel_empties_its_target() {
+    let mut p = Palco::novo();
+    p.escolhe(K::Frames, Vec::new(), &[2, 3]);
+    p.pede(PixelRequest::RangeMove {
+        before: 2,
+        copy: true,
+    });
+    let s = &p.app.doc(p.key).expect("doc").sprite;
+    assert_eq!(
+        (s.tags()[0].from, s.tags()[0].to),
+        (1, 5),
+        "walk 2..4 → 2..6"
+    );
+    let mut p = Palco::novo();
+    let (_, b) = p.camadas();
+    assert!(p.img(b, 2).is_none() && p.img(b, 3).is_some());
+    p.escolhe(K::Cels, vec![b], &[2]);
+    p.pede(PixelRequest::CelsMove {
+        pairs: vec![((b, p.ids[1]), (b, p.ids[2]))],
+        copy: false,
+    });
+    assert!(p.img(b, 3).is_none(), "o vazio por cima esvazia");
+}

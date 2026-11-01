@@ -541,3 +541,92 @@ fn mid_ctrl_drag_the_outline_stays_on_the_originals() {
         antes.x
     );
 }
+
+/// Sobreviventes da P6j/P6h (A9, B2, A11, B1): o arrasto conta-se ARREDONDADO (colunas, filas e a
+/// fronteira), uma fila de grupo recusa o bloco de cels, e o Shift+clique repetido não duplica.
+#[test]
+fn drags_round_to_the_nearest_cell_a_group_row_refuses_and_shift_never_duplicates() {
+    use ph2d_editor_core::interaction::{
+        GestureMods, GesturePhase as G, PixelTimelineGesture, PixelTimelineHitKind as H,
+    };
+    let col = |p: &Palco| p.rect(ids::header_id(10)).expect("pintado").w;
+    let pitch = ph2d_tokens::row_pitch_px();
+    let cels = faixa(K::Cels, vec![2], vec![10]);
+    let quase = |p: &Palco, (x, y): (f32, f32)| (x + 1.6 * col(p), y + 0.6 * pitch);
+    let a = larga_moldura(cels, quase, GestureMods::default());
+    so(
+        &a,
+        PixelRequest::CelsMove {
+            pairs: vec![((2, 10), (1, 12))],
+            copy: false,
+        },
+    );
+    let quadros = faixa(K::Frames, vec![], vec![10]);
+    let antes_do_fim = |p: &Palco, (_, y): (f32, f32)| {
+        let h = p.rect(ids::header_id(12)).expect("pintado");
+        (h.x + h.w - 0.4 * h.w, y)
+    };
+    let a = larga_moldura(quadros, antes_do_fim, GestureMods::default());
+    so(
+        &a,
+        PixelRequest::RangeMove {
+            before: 3,
+            copy: false,
+        },
+    );
+
+    let mut i = info();
+    i.layers.insert(
+        0,
+        PixelLayerRow {
+            group: true,
+            ..camada(3, "Group")
+        },
+    );
+    i.range = faixa(K::Cels, vec![2], vec![10]);
+    let mut p = Palco::novo(i);
+    let de = p.meio(ids::RANGE_EDGES[1]);
+    for (phase, (x, y)) in [(G::Begin, de), (G::End, (de.0, de.1 - pitch))] {
+        p.host
+            .store_mut()
+            .push_pixel_timeline_gesture(PixelTimelineGesture {
+                surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+                kind: H::RangeOutline,
+                phase,
+                x,
+                y,
+                button: ph2d_host::PointerButton::Primary,
+                mods: GestureMods::default(),
+            });
+        p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    }
+    let a = p.host.drained_actions();
+    assert!(
+        !a.iter()
+            .any(|e| matches!(e, EditorAction::Pixel(PixelRequest::CelsMove { .. }))),
+        "para uma fila de grupo nada se pede: {a:?}"
+    );
+
+    let mut i = info();
+    i.range = faixa(K::Frames, vec![], vec![10, 12]);
+    let mut p = Palco::novo(i);
+    let (x, y) = p.meio(ids::header_id(12));
+    let shift = GestureMods {
+        shift: true,
+        ..GestureMods::default()
+    };
+    p.host
+        .store_mut()
+        .push_pixel_timeline_gesture(PixelTimelineGesture {
+            surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+            kind: H::Header { frame: 12 },
+            phase: G::Begin,
+            x,
+            y,
+            button: ph2d_host::PointerButton::Primary,
+            mods: shift,
+        });
+    p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    let r = ultimo(&p.host.drained_actions()).expect("um intervalo");
+    assert_eq!(r.frames, [10, 12], "o Shift+clique repetido não duplica");
+}

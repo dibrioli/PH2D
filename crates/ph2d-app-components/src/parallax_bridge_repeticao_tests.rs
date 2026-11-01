@@ -430,3 +430,34 @@ fn a_composicao_do_confinamento_e_byte_identica_a_lei_da_w1() {
          diferenca que ele existe para guardar"
     );
 }
+
+/// ⭐⭐ **Uma camada ESCALADA envolve pelo ladrilho que se VÊ** (plano GEF 11 «aberto», curado na 19):
+/// o ladrilho é local, e com escala 2 a imagem repete-se a cada `2 · tile` no mundo. Contra a mesma
+/// camada SEM repetição, a correcção tem de ser um inteiro de ladrilhos ESCALADOS.
+///
+/// Mutação que deve sangrar: voltar a passar `r.tile[i]` cru à `saida_eixo`.
+#[test]
+fn uma_camada_escalada_envolve_pelo_ladrilho_escalado() {
+    let tile = 256.0_f32;
+    let mut pose = pose_em(0.0, 0.0);
+    pose.scale = Vec2::new(2.0, 1.0);
+    let (mut com, e) = cena_rep([0.5, 1.0], [tile, 0.0], pose);
+    let (mut sem, s) = cena([0.5, 1.0], pose);
+    let (mut d_com, mut d_sem) = (PreviewDrive::default(), PreviewDrive::default());
+    let mut corrigiu = 0;
+    for i in 0_i16..200 {
+        let c = [f32::from(i) * 37.0, 0.0];
+        drive_parallax(&mut com, Some((c, SEM_LIMITE)), PARADO, &mut d_com);
+        drive_parallax(&mut sem, Some((c, SEM_LIMITE)), PARADO, &mut d_sem);
+        let x = |w: &SimWorld, e| w.world().get::<Transform>(e).expect("pose").translation.x;
+        let n = (x(&sem, s) - x(&com, e)) / (2.0 * tile);
+        assert!(
+            (n - n.round()).abs() < 1e-3,
+            "a correccao nao e' um inteiro de ladrilhos escalados (camera {c:?}: {n})"
+        );
+        if n.abs() > 0.5 {
+            corrigiu += 1;
+        }
+    }
+    assert!(corrigiu > 0, "controlo: a varredura nunca saiu do 1.o ladrilho");
+}

@@ -159,6 +159,10 @@ pub fn drive_parallax(
         // ⭐⭐⭐ **A lei inteira vive numa função por eixo** ([`ph2d_ecs::scroll_factor::saida_eixo`])
         // — o confinamento com a meia-vista que a camada VÊ através do dolly, a repetição presa à
         // VISTA e o dolly à volta do centro da vista (auditoria 26, §1.1, §1.4 e §2.3).
+        // ⭐ O ladrilho é LOCAL (a arte antes da escala): no mundo ele mede `tile · |escala|`, a
+        // autorada vezes o dolly — sem isto uma Background Layer escalada envolvia por meio ladrilho
+        // e a costura saltava (plano GEF 11 «aberto», curado na 19).
+        let escala = [autorada.scale.x * esc[0], autorada.scale.y * esc[1]];
         let eixo = |i: usize| {
             let conf = lim.map_or(centro[i], |l| {
                 ph2d_ecs::confina_eixo(
@@ -179,7 +183,7 @@ pub fn drive_parallax(
                 conf,
                 deriva[i],
                 esc[i],
-                rep.map(|r| r.tile[i]),
+                rep.map(|r| r.tile[i] * escala[i].abs()),
             )
         };
         let (x, y) = (eixo(0), eixo(1));
@@ -189,7 +193,7 @@ pub fn drive_parallax(
             // escrevia o VIVO com `esc = 1`, e o vivo depois de um dolly ainda é a escala do
             // dolly: voltar o dolly a `0` deixava os fundos encolhidos para sempre. Com `esc = 1`
             // a multiplicação é a identidade ao bit, logo a W1..W4 não se mexem.
-            scale: Vec2::new(autorada.scale.x * esc[0], autorada.scale.y * esc[1]),
+            scale: Vec2::new(escala[0], escala[1]),
             // ⚠️ O resto vem do VIVO e não do autorado: esta ponte não escreve a rotação nem o
             // skew, e roubá-los ao autorado apagaria o que outro motor tivesse escrito.
             ..era

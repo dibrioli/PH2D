@@ -47,6 +47,26 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::zones::Rect;
 use ph2d_ui_testkit::MockPanelHost;
 
+thread_local! {
+    static REGISTO: std::cell::RefCell<Option<ph2d_editor_core::panel::PanelRegistry>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// ⛔ **Todo censo deste ficheiro pinta painéis de um registo do PRÓPRIO TESTE** — nunca do
+/// `PANEL_REGISTRY` partilhado pelo processo. Cada painel guarda estado entre pinturas (a memória
+/// da coluna do valor só CRESCE, o estado do Inspector), e no partilhado um teste a correr ao lado
+/// deixava-o lá: a catraca da altura de abertura reprovava só quando tinha vizinhos (`inspector
+/// 1 659 contra 1 488`, `painter_layers 1 643 contra 1 593`, 01/11). O registo é por THREAD, e o
+/// libtest corre cada teste numa thread sua (o nextest, num processo seu): as medidas DE UM teste
+/// partilham-no — `o_inspector_abre_dentro_da_dobra` precisa disso —, as de outro nunca.
+fn registo_privado<R>(f: impl FnOnce(&mut ph2d_editor_core::panel::PanelRegistry) -> R) -> R {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    REGISTO.with(|r| {
+        let mut r = r.borrow_mut();
+        f(r.get_or_insert_with(ph2d_panel_registry_init::build_typed_registry))
+    })
+}
+
 /// ⭐⭐⭐ **A DOBRA — a altura de um encaixe real desta casa, `880 px`.**
 ///
 /// ⛔ Não é escolhida: é a altura do encaixe da coluna medida NA APP a correr em 2026-09-19 (ao
@@ -427,7 +447,7 @@ pub(super) fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) 
 fn censo() -> Vec<Linha> {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut out = Vec::new();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         for painel in reg.panels_mut() {
             let id = painel.manifest.id;
 
@@ -700,7 +720,7 @@ fn diag_de_quem_sao_as_entradas_do_inspector() {
     println!("ids declarados por literal: {}", nome.len());
 
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -852,47 +872,46 @@ fn os_pintores_de_composto_declaram_o_grupo() {
     use ph2d_editor_core::widget::composto;
 
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let (grupos, soltos, contagem): (Vec<Vec<NodeId>>, usize, Contagem) =
-        ph2d_editor_core::panel::with_registry(|reg| {
-            let painel = reg
-                .panels_mut()
-                .iter_mut()
-                .find(|p| p.manifest.id == "inspector")
-                .expect("o inspector tem de estar no registo");
-            let arm = super::paineis_armados::TABELA
-                .iter()
-                .find(|a| a.painel == "inspector")
-                .expect("o inspector tem armação");
+    let (grupos, soltos, contagem): (Vec<Vec<NodeId>>, usize, Contagem) = registo_privado(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector tem de estar no registo");
+        let arm = super::paineis_armados::TABELA
+            .iter()
+            .find(|a| a.painel == "inspector")
+            .expect("o inspector tem armação");
 
-            let mut host = MockPanelHost::new();
-            (arm.arma)(host.store_mut());
-            painel.populate(host.store_mut());
-            abre_tudo(host.store_mut());
-            let (_, grupos) = composto::medindo(|| {
-                let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
-            });
-
-            // ⭐ O CONTROLO: a MESMA pintura, com o censo DESARMADO.
-            //
-            // ⚠️⚠️ **A pergunta é «ACRESCENTOU?», não «está vazio?»** — e a 1.ª redacção perguntou a
-            //    segunda e reprovou sobre produto correcto. O `grupos()` devolve *o que foi registado
-            //    desde o `arma`*, e o `medindo` só esvazia ao ARMAR: depois dele a lista ainda tem os
-            //    39 grupos da corrida armada, e lê-la a seguir a uma pintura desarmada mede a corrida
-            //    anterior. *Um censo com memória mede-se pelo DELTA, nunca pelo valor.*
-            // ⭐⭐ E o que o CENSO fez com eles — sem isto, uma mutação que declare o grupo e depois
-            //    não o conte passa despercebida (medido: ela SOBREVIVEU à 1.ª redacção deste gate).
-            let pintados = host.registos_da_ultima_pintura();
-            let contagem = conta(host.store(), &pintados, &grupos);
-
-            let antes = composto::grupos().len();
-            let mut host2 = MockPanelHost::new();
-            (arm.arma)(host2.store_mut());
-            painel.populate(host2.store_mut());
-            let _ = host2.medindo_a_pintura_do_registo(painel, VIEWPORT);
-            let depois = composto::grupos().len();
-            (arm.desarma)();
-            (grupos, depois - antes, contagem)
+        let mut host = MockPanelHost::new();
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        abre_tudo(host.store_mut());
+        let (_, grupos) = composto::medindo(|| {
+            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
         });
+
+        // ⭐ O CONTROLO: a MESMA pintura, com o censo DESARMADO.
+        //
+        // ⚠️⚠️ **A pergunta é «ACRESCENTOU?», não «está vazio?»** — e a 1.ª redacção perguntou a
+        //    segunda e reprovou sobre produto correcto. O `grupos()` devolve *o que foi registado
+        //    desde o `arma`*, e o `medindo` só esvazia ao ARMAR: depois dele a lista ainda tem os
+        //    39 grupos da corrida armada, e lê-la a seguir a uma pintura desarmada mede a corrida
+        //    anterior. *Um censo com memória mede-se pelo DELTA, nunca pelo valor.*
+        // ⭐⭐ E o que o CENSO fez com eles — sem isto, uma mutação que declare o grupo e depois
+        //    não o conte passa despercebida (medido: ela SOBREVIVEU à 1.ª redacção deste gate).
+        let pintados = host.registos_da_ultima_pintura();
+        let contagem = conta(host.store(), &pintados, &grupos);
+
+        let antes = composto::grupos().len();
+        let mut host2 = MockPanelHost::new();
+        (arm.arma)(host2.store_mut());
+        painel.populate(host2.store_mut());
+        let _ = host2.medindo_a_pintura_do_registo(painel, VIEWPORT);
+        let depois = composto::grupos().len();
+        (arm.desarma)();
+        (grupos, depois - antes, contagem)
+    });
 
     assert_eq!(
         soltos, 0,
@@ -970,7 +989,7 @@ fn diag_compostos_por_declarar() {
     use std::collections::BTreeMap;
 
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let mut total = 0usize;
         for painel in reg.panels_mut() {
             let id = painel.manifest.id;
@@ -1318,7 +1337,7 @@ fn diag_de_quem_sao_as_entradas_do_tokens() {
     }
 
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1370,7 +1389,7 @@ fn diag_de_quem_sao_as_entradas_do_tokens() {
 fn altura_do_inspector_com(ligadas: &[&str]) -> f32 {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = 0.0;
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1502,7 +1521,7 @@ fn diag_o_chao_do_inspector_com_tudo_dobrado() {
 
     for (nome, ligadas) in CENARIOS_REAIS {
         let _ = ph2d_panel_registry_init::register_all_panels();
-        ph2d_editor_core::panel::with_registry(|reg| {
+        registo_privado(|reg| {
             let painel = reg
                 .panels_mut()
                 .iter_mut()
@@ -1547,7 +1566,7 @@ fn altura_do_inspector_dobrando_tudo_menos(ligadas: &[&str], abertas: &[&str]) -
         .collect();
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = 0.0;
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1626,7 +1645,7 @@ fn diag_as_politicas_de_abertura_do_inspector() {
 fn diag_o_que_sobra_no_chao_do_inspector() {
     let nomes = nomes_do_inspector();
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1687,7 +1706,7 @@ fn diag_o_que_sobra_no_chao_do_inspector() {
 fn controlos_do_inspector_dobrando(dobrada: Option<NodeId>) -> usize {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut n = 0usize;
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1791,7 +1810,7 @@ const SECCOES_POR_NOME: &[&str] = &[
 #[ignore]
 fn diag_a_mascara_de_cull_da_camera_abre() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -1939,7 +1958,7 @@ fn toda_semeadura_de_dobra_passa_pela_porta() {
 #[ignore]
 fn diag_que_paineis_abrem_fora_da_dobra() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let mut linhas: Vec<(f32, String, usize, bool, f32, usize)> = Vec::new();
         for painel in reg.panels_mut() {
             let id = painel.manifest.id.to_string();
@@ -2035,7 +2054,7 @@ fn diag_o_preco_de_cada_seccao_do_painter() {
     let mede = |dobrar: Option<NodeId>, abrir_tudo: bool| -> (f32, bool) {
         let mut h = 0.0;
         let mut pintou = false;
-        ph2d_editor_core::panel::with_registry(|reg| {
+        registo_privado(|reg| {
             let painel = reg
                 .panels_mut()
                 .iter_mut()
@@ -2095,11 +2114,12 @@ fn diag_o_preco_de_cada_seccao_do_painter() {
 }
 
 /// Quanto um painel MOSTRA ao abrir — com a armação dele e a política de dobra do editor.
+///
+/// ⛔ O painel é do registo do próprio teste ([`registo_privado`]): um vizinho que o pintasse com
+/// tudo aberto ensinava-lhe nomes largos e a abertura medida aqui subia.
 #[cfg(test)]
 fn altura_de_abertura(id_painel: &str) -> f32 {
-    let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut h = 0.0;
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -2117,12 +2137,12 @@ fn altura_de_abertura(id_painel: &str) -> f32 {
         let (_, grupos) = ph2d_editor_core::widget::composto::medindo(|| {
             let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
         });
-        h = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).altura;
+        let h = conta(host.store(), &host.registos_da_ultima_pintura(), &grupos).altura;
         if let Some(a) = arm {
             (a.desarma)();
         }
-    });
-    h
+        h
+    })
 }
 
 /// ⛔⛔ **A ALTURA DE ABERTURA SÓ ENCOLHE.**
@@ -2300,7 +2320,7 @@ fn a_altura_de_abertura_de_um_painel_so_encolhe() {
 #[ignore]
 fn diag_os_selectores_de_cor_do_app() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let mut total = 0usize;
         let mut larguras: std::collections::BTreeMap<i32, usize> =
             std::collections::BTreeMap::new();
@@ -2366,7 +2386,7 @@ fn diag_os_selectores_de_cor_do_app() {
 fn larguras_dos_selectores_de_cor() -> std::collections::BTreeMap<i32, usize> {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut out = std::collections::BTreeMap::new();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         for painel in reg.panels_mut() {
             let id = painel.manifest.id;
             let mut host = MockPanelHost::new();
@@ -2410,7 +2430,7 @@ fn larguras_dos_selectores_de_cor() -> std::collections::BTreeMap<i32, usize> {
 #[ignore]
 fn diag_quem_esta_sozinho_na_fileira() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         for painel in reg.panels_mut() {
             let id = painel.manifest.id;
             let mut host = MockPanelHost::new();
@@ -2528,7 +2548,7 @@ struct SeletorDeCor {
 fn selectores_de_cor() -> Vec<SeletorDeCor> {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut out = Vec::new();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         for painel in reg.panels_mut() {
             let id = painel.manifest.id;
             let mut host = MockPanelHost::new();
@@ -2897,7 +2917,7 @@ fn diag_quando_o_nome_move_a_coluna() {
 #[test]
 fn o_per_corner_e_uma_linha_de_propriedade() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -2992,7 +3012,7 @@ fn o_per_corner_e_uma_linha_de_propriedade() {
 #[test]
 fn a_dica_que_saiu_do_nome_do_per_corner_esta_no_balao() {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -3041,7 +3061,7 @@ fn a_dica_que_saiu_do_nome_do_per_corner_esta_no_balao() {
 fn diag_que_linhas_o_nome_espreme() {
     let nomes = nomes_do_inspector();
     let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
+    registo_privado(|reg| {
         let painel = reg
             .panels_mut()
             .iter_mut()
@@ -3140,7 +3160,7 @@ fn diag_o_ritmo_de_cada_seccao_do_inspector() {
     for (nome, _) in super::o_inspector_armado::PORTAS {
         let mut alturas: std::collections::BTreeMap<i32, usize> = Default::default();
         let mut nomes_fora: Vec<(String, f32)> = Vec::new();
-        ph2d_editor_core::panel::with_registry(|reg| {
+        registo_privado(|reg| {
             let painel = reg
                 .panels_mut()
                 .iter_mut()

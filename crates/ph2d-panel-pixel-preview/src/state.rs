@@ -14,6 +14,8 @@ pub struct PixelPreviewPanelState {
     pub(crate) escala: f32,
     /// Os cantos `(x0, y0, x1, y1)` passados ao `draw_stable_image` na última pintura.
     pub(crate) destino: Option<(f64, f64, f64, f64)>,
+    /// O xadrez de transparência por baixo do quadro (o mesmo do canvas).
+    pub(crate) xadrez: ph2d_pixel_render::Checker,
 }
 
 impl PixelPreviewPanelState {

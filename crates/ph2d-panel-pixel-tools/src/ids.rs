@@ -179,6 +179,10 @@ pub const SORT_KEYS: [(PixelSortKey, NodeId); 8] = [
 
 /// O campo *Palette Size* (o valor é o tamanho da paleta do sprite, nunca uma opção).
 pub const PALETTE_SIZE: NodeId = hash_node_id("pixel.palette.size");
+/// O ≡ da barra da paleta: abre o menu das acções (mover, inverter, gradientes, ordenar…).
+pub use ph2d_editor_core::ids::PIXEL_PALETTE_MENU as PALETTE_MENU;
+/// O ícone da barra da paleta que abre ler/gravar e as predefinições.
+pub const PRESETS_MENU: NodeId = hash_node_id("pixel.palette.presets_menu");
 /// A tolerância do *Replace Color* (um campo das opções).
 pub const REPLACE_TOLERANCE: NodeId = hash_node_id("pixel.opt.replace_tolerance");
 /// A amostra do *Edit color* (o chrome conhece-a: a família lê o seletor por ela).

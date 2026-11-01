@@ -12,3 +12,7 @@ pub const CLOSE: NodeId = hash_node_id("pixel_preview.close");
 pub const PLAY: NodeId = hash_node_id("pixel_preview.play");
 /// A alça de arrasto (a banda do título).
 pub const DRAG: NodeId = hash_node_id("pixel_preview.drag");
+/// A pega de redimensionar do canto de baixo à direita.
+pub const RESIZE: NodeId = hash_node_id("pixel_preview.resize");
+/// A pega de redimensionar do canto de baixo à esquerda.
+pub const RESIZE_BL: NodeId = hash_node_id("pixel_preview.resize_bl");

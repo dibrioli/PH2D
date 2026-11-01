@@ -90,7 +90,26 @@ pub(crate) fn conduz(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     use ph2d_panel_pixel_timeline::ids;
     use std::sync::atomic::{AtomicBool, Ordering};
     static FEITO: AtomicBool = AtomicBool::new(false);
-    let (alvo, ctrl) = match std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() {
+    // `menu` (cena 3): o ≡ da barra da paleta aberto · `preview` (cena 17): a janela Preview aberta.
+    let gesto = std::env::var("PH2D_PIXEL_SMOKE_GESTO");
+    match (gesto.as_deref(), crate::smoke::armed_level()) {
+        (Ok("menu"), Some(3)) if !FEITO.load(Ordering::Relaxed) => {
+            use ph2d_editor_core::interaction::InteractiveState;
+            let menu = ph2d_editor_core::ids::PIXEL_PALETTE_MENU;
+            if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(menu) {
+                *open = true;
+                FEITO.store(true, Ordering::Relaxed);
+            }
+            return;
+        }
+        (Ok("preview"), Some(17)) if !FEITO.swap(true, Ordering::Relaxed) => {
+            let pv = ph2d_editor_core::screens::hero::PANEL_PIXEL_PREVIEW;
+            hero.panel_visibility.insert(pv, true);
+            return;
+        }
+        _ => {}
+    }
+    let (alvo, ctrl) = match gesto.as_deref() {
         Ok("bloco" | "cels") => (ids::RANGE_EDGES[1], false),
         Ok("copia") => (ids::RANGE_EDGES[1], true),
         Ok("ponta") => (ids::tag_edge_id(0, true), false),

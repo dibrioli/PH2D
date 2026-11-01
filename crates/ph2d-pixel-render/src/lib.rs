@@ -12,6 +12,6 @@ pub mod zoom;
 
 pub use overlay::{ANTS_DASH_PX, draw_marching_ants, mask_edges};
 pub use view::{
-    CHECKER_CELLS, CURSOR_CORE, SpriteImage, cell_at, draw_border, draw_cell_cursor, draw_checker,
-    draw_pixel_grid, draw_symmetry_axes, image_to_world, px_per_cell,
+    CHECKER_CELLS, CURSOR_CORE, Checker, SpriteImage, cell_at, draw_border, draw_cell_cursor,
+    draw_checker, draw_pixel_grid, draw_symmetry_axes, image_to_world, px_per_cell,
 };

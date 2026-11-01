@@ -150,7 +150,11 @@ fn a_imagem_da_preview_cai_dentro_da_janela() {
     let p = Palco::novo();
     let (x0, y0, x1, y1) = p.st.destino().expect("pintou a imagem");
     let r = p.janela();
-    assert!(x1 > x0 && y1 > y0, "cantos crescentes: {:?}", (x0, y0, x1, y1));
+    assert!(
+        x1 > x0 && y1 > y0,
+        "cantos crescentes: {:?}",
+        (x0, y0, x1, y1)
+    );
     let dentro = |v: f64, a: f32, b: f32| v >= f64::from(a) - 0.5 && v <= f64::from(b) + 0.5;
     assert!(
         dentro(x0, r.x, r.x + r.w)
@@ -169,17 +173,59 @@ fn o_titulo_da_preview_nunca_fica_debaixo_da_regua() {
     let mut p = Palco::novo();
     let layout = ph2d_editor_core::screens::layout::HeroLayout::for_viewport(VIEWPORT);
     let regua = ph2d_editor_core::ruler::top_band(layout.draw_area);
-    let cruza = |a: Rect, b: Rect| {
-        a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
-    };
+    let cruza =
+        |a: Rect, b: Rect| a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
     for id in [ids::DRAG, ids::PLAY, ids::CLOSE] {
         let (x, y) = p.meio(id);
         let r = p.rects.iter().find(|(n, _)| *n == id).expect("pintado").1;
-        assert!(!cruza(r, regua), "{id:?} {r:?} debaixo da régua {regua:?} (meio {x},{y})");
+        assert!(
+            !cruza(r, regua),
+            "{id:?} {r:?} debaixo da régua {regua:?} (meio {x},{y})"
+        );
     }
     let (x, y) = p.meio(ids::DRAG);
     let _ = p.host.drag_at(x, y, x, 0.0);
     p.pinta();
-    let r = p.rects.iter().find(|(n, _)| *n == ids::DRAG).expect("pintado").1;
-    assert!(!cruza(r, regua), "arrastado para cima, o título {r:?} entrou na régua {regua:?}");
+    let r = p
+        .rects
+        .iter()
+        .find(|(n, _)| *n == ids::DRAG)
+        .expect("pintado")
+        .1;
+    assert!(
+        !cruza(r, regua),
+        "arrastado para cima, o título {r:?} entrou na régua {regua:?}"
+    );
+}
+
+/// As pegas dos dois cantos de baixo redimensionam a janela (as das outras janelas soltas): a da
+/// direita cresce para a direita e para baixo; a da esquerda cresce para a esquerda, com a borda
+/// direita parada. A imagem que cabe na janela cresce com ela.
+#[test]
+fn as_pegas_dos_cantos_redimensionam_a_preview() {
+    let mut p = Palco::novo();
+    let antes = p.janela();
+    let caber = p.st.escala();
+    let (x, y) = p.meio(ids::RESIZE);
+    let _ = p.host.drag_at(x, y, x + 120.0, y + 80.0);
+    p.pinta();
+    let depois = p.janela();
+    assert!(
+        (depois.w - (antes.w + 120.0)).abs() < 0.5 && (depois.h - (antes.h + 80.0)).abs() < 0.5,
+        "a pega da direita por (+120, +80) levou {antes:?} a {depois:?}"
+    );
+    assert!(
+        (depois.x - antes.x).abs() < 0.5 && (depois.y - antes.y).abs() < 0.5,
+        "redimensionar não move o canto de cima: {antes:?} → {depois:?}"
+    );
+    assert!(p.st.escala() > caber, "a imagem cresce com a janela");
+    let direita = depois.x + depois.w;
+    let (x, y) = p.meio(ids::RESIZE_BL);
+    let _ = p.host.drag_at(x, y, x - 60.0, y);
+    p.pinta();
+    let bl = p.janela();
+    assert!(
+        (bl.w - (depois.w + 60.0)).abs() < 0.5 && (bl.x + bl.w - direita).abs() < 0.5,
+        "a pega da esquerda por −60 levou {depois:?} a {bl:?}"
+    );
 }

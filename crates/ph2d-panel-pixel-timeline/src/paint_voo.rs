@@ -21,12 +21,18 @@ fn escolhidas(info: &PixelPanelInfo) -> Vec<usize> {
 }
 
 /// O vão: as células `(fila, coluna)` onde o bloco cai ficam vazias por baixo da moldura
-/// (`None` = a coluna inteira, um intervalo de quadros).
-pub(crate) fn vao(ctx: &mut PaintCtx, g: &Grelha, celas: &[(Option<usize>, usize)]) {
+/// (`None` = a coluna inteira, um intervalo de quadros). Devolve onde fica a barra da queda
+/// ([`marca`]): à esquerda da primeira coluna do vão, da altura das filas dele.
+pub(crate) fn vao(
+    ctx: &mut PaintCtx,
+    g: &Grelha,
+    celas: &[(Option<usize>, usize)],
+) -> Option<Rect> {
     let theme = ctx.host.theme();
     let radius = frame_radius(theme, Radius::Sm.px());
     let alto = (g.bottom - g.top).max(0.0);
     let pitch = ph2d_tokens::row_pitch_px();
+    let mut caixas: Vec<(usize, Rect)> = Vec::new();
     for &(fila, c) in celas.iter().filter(|(_, c)| (g.first..g.end).contains(c)) {
         #[expect(clippy::cast_precision_loss, reason = "a fila")]
         let r = match fila {
@@ -34,7 +40,23 @@ pub(crate) fn vao(ctx: &mut PaintCtx, g: &Grelha, celas: &[(Option<usize>, usize
             Some(i) => Rect::new(g.x(c), g.rows_y + i as f32 * pitch, g.col_w, ROW_H_PX),
         };
         fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::Bg2, theme));
+        caixas.push((c, r));
     }
+    let c0 = caixas.iter().map(|(c, _)| *c).min()?;
+    let (top, bottom) = caixas
+        .iter()
+        .filter(|(c, _)| *c == c0)
+        .fold((f32::MAX, f32::MIN), |(t, b), (_, r)| {
+            (t.min(r.y), b.max(r.y + r.h))
+        });
+    let w = StrokeToken::Heavy.px();
+    Some(Rect::new(g.x(c0) - w * 0.5, top, w, bottom - top))
+}
+
+/// A barra do acento que marca a queda (a mesma da paleta) — pintada depois da moldura, por cima.
+pub(crate) fn marca(ctx: &mut PaintCtx, m: Rect) {
+    let theme = ctx.host.theme();
+    fill_rounded_rect(ctx.scene, m, m.w * 0.5, resolve(ColorToken::Accent, theme));
 }
 
 /// O bloco em voo: as colunas do intervalo (na ordem de AGORA, juntas como `move_block` as junta),

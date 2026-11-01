@@ -9793,6 +9793,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-pixel-core",
+ "ph2d-pixel-render",
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-ui-testkit",

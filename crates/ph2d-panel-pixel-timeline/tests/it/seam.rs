@@ -436,6 +436,33 @@ fn mid_drag_the_grid_paints_the_block_where_it_will_land() {
         vao.x,
         antes.x
     );
+    // A queda marca-se como na paleta: a barra do acento centrada na borda esquerda do vão.
+    let m =
+        p.st.drop_marker()
+            .expect("a barra da queda pinta-se a meio do arrasto");
+    assert!(
+        (m.x + m.w * 0.5 - vao.x).abs() < 0.5 && m.h > vao.h,
+        "a barra fica à esquerda da 1.ª coluna do vão, da altura das filas: {m:?} × {vao:?}"
+    );
+    p.host
+        .store_mut()
+        .push_pixel_timeline_gesture(PixelTimelineGesture {
+            surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+            kind: H::RangeOutline,
+            phase: GesturePhase::End,
+            x: antes.x + antes.w,
+            y,
+            button: ph2d_host::PointerButton::Primary,
+            mods: GestureMods::default(),
+        });
+    p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    assert!(
+        p.host
+            .drained_actions()
+            .iter()
+            .any(|e| matches!(e, EditorAction::Pixel(PixelRequest::RangeMove { .. })))
+    );
+    assert!(p.st.drop_marker().is_none(), "largar apaga a barra");
 }
 
 /// Larga a moldura de `range` arrastada pelo canal de gestos de `de` até `a`, com `mods`.

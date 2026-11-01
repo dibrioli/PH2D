@@ -78,6 +78,18 @@ impl Palco {
         );
         self.aplica(ev)
     }
+
+    /// Abre o menu `menu` da barra da paleta pelo ícone (o rato de verdade) e carrega na linha `id`.
+    fn no_menu(&mut self, menu: ph2d_a11y::NodeId, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+        let r = self.rect(menu).expect("o ícone do menu pintou-se na barra");
+        let ev = self.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(self.aplica(ev).is_empty(), "abrir o menu não pede nada");
+        self.rects = self.host.paint::<PixelToolsPanel>(&mut self.st, VIEWPORT);
+        let a = self.carrega(id);
+        self.rects = self.host.paint::<PixelToolsPanel>(&mut self.st, VIEWPORT);
+        assert!(self.rect(id).is_none(), "carregar numa linha fecha o menu");
+        a
+    }
 }
 
 fn so(a: &[EditorAction], r: PixelRequest) {
@@ -129,27 +141,46 @@ fn shift_e_ctrl_no_clique_da_paleta_sao_a_faixa_e_o_liga_desliga() {
 
 #[test]
 fn cada_accao_da_paleta_e_do_sprite_chega_ao_barramento() {
-    // O *Remap Palette* só se pinta com o remapeamento pendente (o Trial).
+    // O *Remap Palette* é um botão à vista, só com o remapeamento pendente (o Trial).
     let remap = ids::ACTIONS
         .iter()
         .find(|(_, r, _)| *r == PixelRequest::RemapPalette);
     let (remap, ..) = *remap.expect("o botão Remap Palette");
-    for (id, r, _) in ids::ACTIONS {
-        let mut i = info(PixelTool::Pencil);
-        if id == remap {
-            assert!(
-                Palco::novo(i.clone()).rect(id).is_none(),
-                "sem pendente, sem botão"
-            );
-            i.remap_pending = true;
+    assert!(
+        Palco::novo(info(PixelTool::Pencil)).rect(remap).is_none(),
+        "sem pendente, sem botão"
+    );
+    let mut i = info(PixelTool::Pencil);
+    i.remap_pending = true;
+    so(&Palco::novo(i).carrega(remap), PixelRequest::RemapPalette);
+    // O resto mora nos dois menus da barra da paleta (como no Aseprite): nenhum à vista no corpo.
+    let presets = [6, 7, 8]; // Load · Save · Default palette
+    let paleta = [0, 1, 2, 3, 4, 5, 9, 10, 11];
+    for (k, menu) in [
+        (&presets[..], ids::PRESETS_MENU),
+        (&paleta[..], ids::PALETTE_MENU),
+    ] {
+        for &n in k {
+            let (id, ref r, _) = ids::ACTIONS[n];
+            let mut p = Palco::novo(info(PixelTool::Pencil));
+            assert!(p.rect(id).is_none(), "{id:?} já não é um botão do corpo");
+            so(&p.no_menu(menu, id), r.clone());
         }
-        let mut p = Palco::novo(i);
-        so(&p.carrega(id), r);
+    }
+    for (id, r, _) in ids::PRESET_ACTIONS {
+        let mut p = Palco::novo(info(PixelTool::Pencil));
+        so(&p.no_menu(ids::PRESETS_MENU, id), r);
     }
     for (k, id) in ids::SORT_KEYS {
         let mut p = Palco::novo(info(PixelTool::Pencil));
-        so(&p.carrega(id), PixelRequest::SortKey(k));
+        so(&p.no_menu(ids::PALETTE_MENU, id), PixelRequest::SortKey(k));
     }
+    let mut i = info(PixelTool::Pencil);
+    i.presets = vec!["Warm".to_owned()];
+    so(
+        &Palco::novo(i).no_menu(ids::PRESETS_MENU, ids::preset_id(0)),
+        PixelRequest::LoadPreset("Warm".to_owned()),
+    );
 }
 
 #[test]

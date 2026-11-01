@@ -160,7 +160,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.tile_y" => "Tile Y",
         "panel.pixel.swap" => "Swap (X)",
         "panel.pixel.swap_tip" => "Swap the foreground and background colors (X)",
-        "panel.pixel.palette" => "Palette",
+        "panel.pixel.palette_selected" => "Palette \u{00b7} {n} selected",
+        "panel.pixel.palette_menu_tip" => "Palette options: move, reverse, gradients, sort",
+        "panel.pixel.presets_menu_tip" => "Load, save and preset palettes",
+        "panel.pixel.sort_by" => "Sort by {key}",
         "pixel.new_sprite.title" => "New Sprite",
         "pixel.new_sprite.width" => "Width",
         "pixel.new_sprite.height" => "Height",
@@ -184,12 +187,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.ink.shading_hint" => {
             "Shading walks the selected palette colors: left button one step right, right button one step left. Shift/Ctrl+click the palette to choose them."
         }
-        "panel.pixel.selected" => "{n} selected",
         "panel.pixel.edit_color" => "Edit color · {hex}",
         "panel.pixel.palette_size" => "Palette size",
         "panel.pixel.move_left" => "Move left",
         "panel.pixel.move_right" => "Move right",
-        "panel.pixel.sort" => "Sort by",
         "panel.pixel.sort.hue" => "Hue",
         "panel.pixel.sort.saturation" => "Saturation",
         "panel.pixel.sort.brightness" => "Brightness",
@@ -211,7 +212,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.default_palette" => "Load default palette",
         "panel.pixel.save_preset" => "Save palette as preset…",
         "panel.pixel.save_default" => "Save palette as default",
-        "panel.pixel.presets" => "Presets",
         "panel.pixel.selector" => "Selector",
         "panel.pixel.selector.tint" => "Color Tint/Shade/Tone",
         "panel.pixel.selector.spectrum" => "Color Spectrum",

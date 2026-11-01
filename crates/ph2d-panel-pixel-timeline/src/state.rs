@@ -22,9 +22,18 @@ pub struct PixelTimelinePanelState {
     pub(crate) arrasto: Option<crate::gestos::Arrasto>,
     /// A geometria da grelha do último quadro pintado (as posições dos gestos lêem-na).
     pub(crate) geo: Option<crate::gestos::Geo>,
+    /// A barra que marca onde o bloco arrastado cai (à esquerda da primeira coluna do vão).
+    pub(crate) marca: Option<Rect>,
 }
 
 impl PixelTimelinePanelState {
+    /// A barra da queda do arrasto em curso (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn drop_marker(&self) -> Option<Rect> {
+        self.marca
+    }
+
     /// A primeira coluna à vista (para os gates).
     #[doc(hidden)]
     #[must_use]

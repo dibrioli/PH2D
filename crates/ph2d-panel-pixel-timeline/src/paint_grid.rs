@@ -154,10 +154,13 @@ pub(crate) fn paint(
     ctx.scene.push_clip(&rect_to_vello(colunas));
     ctx.host.hit_index_mut().push_clip(colunas);
     celulas(ctx, info, &g);
-    if let Some(v) = &voo {
-        crate::paint_voo::vao(ctx, &g, &v.vao);
-    }
+    st.marca = voo
+        .as_ref()
+        .and_then(|v| crate::paint_voo::vao(ctx, &g, &v.vao));
     moldura(ctx, info, &g);
+    if let Some(m) = st.marca {
+        crate::paint_voo::marca(ctx, m);
+    }
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
 

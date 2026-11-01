@@ -6,7 +6,7 @@ use super::*;
 impl Corpo<'_> {
     /// A grelha da paleta: esquerdo = frente, direito = fundo (o gémeo do botão direito).
     pub(super) fn paleta(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
-        let y = self.linha(tr("panel.pixel.palette"), ColorToken::Text3, y);
+        let y = self.barra_da_paleta(info, y);
         let cell = Spacing::Xl.px();
         let gap = Spacing::Xxs.px();
         let cols = (((self.w + gap) / (cell + gap)).floor().max(1.0)) as usize;
@@ -65,21 +65,16 @@ impl Corpo<'_> {
         bottom
     }
 
-    /// ⭐ **O menu ≡ da paleta do Aseprite**: a selecção e a cor dela (*Edit color* abre o seletor
-    /// partilhado), o tamanho, mover, ordenar, seleccionar as usadas, nova do sprite, ler/gravar e
-    /// a de omissão.
+    /// Por baixo da grelha, só o que tem de estar à vista (o resto está nos menus da barra,
+    /// [`super::paleta_menu`]): *Remap palette* quando há troca por aplicar, a cor da âncora com o
+    /// *Edit color* e o tamanho da paleta.
     pub(super) fn acoes_da_paleta(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
-        let sec = Seccao::medida(
-            self.text_system,
-            1,
-            &[tr("panel.pixel.palette_size"), tr("panel.pixel.sort")],
-        );
-        let n = info.selected.len().to_string();
-        let mut y = self.linha(
-            &tr_with("panel.pixel.selected", &[("n", &n)]),
-            ColorToken::Text3,
-            y,
-        );
+        let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.palette_size")]);
+        let mut y = y;
+        if info.remap_pending {
+            let [.., remap, _] = ids::ACTIONS;
+            y = self.botoes(&acoes([remap]), y);
+        }
         if let Some(c) = info.anchor.and_then(|i| info.palette.get(i)) {
             let side = ROW_H_PX;
             let r = Rect::new(self.x, y, side, side);
@@ -100,57 +95,7 @@ impl Corpo<'_> {
             );
             y += side + ph2d_tokens::control_gap_px();
         }
-        y = self.campo(tr("panel.pixel.palette_size"), ids::PALETTE_SIZE, sec, y);
-        let [
-            esq,
-            dir,
-            asc,
-            desc,
-            usadas,
-            do_sprite,
-            ler,
-            gravar,
-            omissao,
-            inverte,
-            grad,
-            grad_hue,
-            remap,
-            _,
-        ] = ids::ACTIONS;
-        if info.remap_pending {
-            y = self.botoes(&acoes([remap]), y);
-        }
-        y = self.botoes(&acoes([esq, dir]), y);
-        let chaves: Vec<(&str, bool, NodeId)> = ids::SORT_KEYS
-            .iter()
-            .map(|&(k, id)| (tr(k.label_key()), k == info.sort_key, id))
-            .collect();
-        y = self.escolha(tr("panel.pixel.sort"), &chaves, sec, y);
-        y = self.botoes(&acoes([asc, desc]), y);
-        y = self.botoes(&acoes([inverte]), y);
-        y = self.botoes(&acoes([grad, grad_hue]), y);
-        y = self.botoes(&acoes([usadas, do_sprite]), y);
-        y = self.botoes(&acoes([ler, gravar]), y);
-        y = self.botoes(&acoes(ids::PRESET_ACTIONS), y);
-        y = self.botoes(&acoes([omissao]), y);
-        self.predefinicoes(info, y)
-    }
-
-    /// As predefinições gravadas: um botão por paleta (clique = *Load Palette* dela).
-    pub(super) fn predefinicoes(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
-        if info.presets.is_empty() {
-            return y;
-        }
-        let mut y = self.linha(tr("panel.pixel.presets"), ColorToken::Text3, y);
-        for (i, nome) in info.presets.iter().enumerate() {
-            let id = ids::preset_id(i);
-            let r = Rect::new(self.x, y, self.w, ROW_H_PX);
-            let b = Button::new(id, nome.as_str()).visual(self.store.button_visual(id));
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(id, r);
-            y += ROW_H_PX + ph2d_tokens::control_gap_px();
-        }
-        y
+        self.campo(tr("panel.pixel.palette_size"), ids::PALETTE_SIZE, sec, y)
     }
 
     /// ⭐ **O seletor de cor abaixo da paleta** (os cinco do menu ≡ do Aseprite): a escolha do modo,

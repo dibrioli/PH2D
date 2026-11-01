@@ -15,6 +15,8 @@ pub const PIXEL_PREVIEW_PANEL: NodeId = hash_node_id("pixel_preview.panel");
 
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");
+/// A linha *Pixel Preview* do menu *Window* (a janela Preview, P5; também F7).
+pub const TOPBAR_PIXEL_PREVIEW: NodeId = hash_node_id("topbar_pixel_preview");
 
 /// A amostra da cor de FRENTE (a coluna da esquerda em Draw): um Down abre o seletor partilhado, e
 /// a família lê de volta a cor dele (`ph2d_app_pixel::panel`).
@@ -83,6 +85,8 @@ pub fn new_sprite_dialog_owns(id: NodeId) -> bool {
 /// A amostra do *Edit color* do painel PIXEL: um Down abre o seletor partilhado sobre a cor da
 /// amostra clicada da paleta, e a família lê de volta a cor dele (`ph2d_app_pixel::panel`).
 pub const PIXEL_PAL_EDIT: NodeId = hash_node_id("pixel.palette.edit");
+/// O ≡ da barra da paleta do painel PIXEL (o menu das acções); a foto da cena 3 abre-o.
+pub const PIXEL_PALETTE_MENU: NodeId = hash_node_id("pixel.palette.menu");
 
 pub const COLOR_MODE_OK: NodeId = hash_node_id("pixel.color_mode.ok");
 pub const COLOR_MODE_CANCEL: NodeId = hash_node_id("pixel.color_mode.cancel");

@@ -40,6 +40,8 @@ mod camadas;
 mod formas;
 #[path = "paint_paleta.rs"]
 mod paleta;
+#[path = "paint_paleta_menu.rs"]
+pub(crate) mod paleta_menu;
 #[path = "paint_selecao.rs"]
 mod selecao;
 #[path = "paint_paleta_voo.rs"]
@@ -124,6 +126,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     );
     let top = area.top();
     let mut blend_aberto = None;
+    let mut menu_aberto = None;
     let seletor = &mut st.seletor;
     seletor.rects = [None; 3];
     let paleta_vista = &mut st.paleta;
@@ -139,11 +142,13 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             x: inner_x,
             w: inner_w,
             blend_aberto: None,
+            menu_aberto: None,
             seletor,
             paleta_vista,
         };
         let y = c.tudo(info, renaming, top);
         blend_aberto = c.blend_aberto;
+        menu_aberto = c.menu_aberto;
         (y - top + PANEL_HEAD_PAD).max(0.0)
     });
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
@@ -160,6 +165,12 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
         let viewport = ctx.viewport;
         ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
     }
+    // O menu da barra da paleta aberto, por cima de tudo.
+    if let Some((chip, menu)) = menu_aberto {
+        let dd = with_current(|info| paleta_menu::dropdown(menu, info));
+        let viewport = ctx.viewport;
+        ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
+    }
 }
 
 struct Corpo<'a> {
@@ -172,6 +183,8 @@ struct Corpo<'a> {
     w: f32,
     /// O menu do modo aberto: o chip e o modo actual (pinta-se depois, por cima).
     blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
+    /// O menu da barra da paleta aberto: o ícone e qual (pinta-se depois, por cima).
+    menu_aberto: Option<(Rect, paleta_menu::MenuPaleta)>,
     seletor: &'a mut crate::state::Seletor,
     paleta_vista: &'a mut crate::state::PaletaVista,
 }
@@ -209,8 +222,8 @@ impl Corpo<'_> {
         let y = self.cores(info, y) + gap;
         let y = self.camadas(info, renaming, y) + gap;
         let y = self.paleta(info, y) + gap;
-        let y = self.seletor(info, y) + gap;
         let y = self.acoes_da_paleta(info, y) + gap;
+        let y = self.seletor(info, y) + gap;
         let y = self.menus_selecao(info, y) + gap;
         self.sprite(info, y)
     }

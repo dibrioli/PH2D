@@ -8,8 +8,9 @@ use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_ADD_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
-    paint_panel_close_button, paint_panel_surface_floating, paint_panel_title,
-    panel_drag_handle_rect, panel_header_add_button_rect,
+    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
+    paint_panel_surface_floating, paint_panel_title, panel_drag_handle_rect,
+    panel_header_add_button_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_editor_core::zones::Rect;
@@ -17,10 +18,8 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, PANEL_MIN_W_PX, Spacing, TypeToken};
 
 /// Os degraus de zoom (células por píxel de ecrã) — os do menu de zoom do Aseprite 1.3.
-pub(crate) const ZOOMS: [f32; 14] = [
-    0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0,
-    64.0, // LITERAL-PX-OK: degraus de zoom do Aseprite (razões, não píxeis de UI)
-];
+#[rustfmt::skip]
+pub(crate) const ZOOMS: [f32; 14] = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 32.0, 64.0]; // LITERAL-PX-OK: degraus de zoom do Aseprite (razões, não píxeis de UI)
 
 pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     let node = PixelPreviewPanel::NODE_ID;
@@ -47,15 +46,20 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         )
     });
     let off = ctx.host.store().blender_picker_offset(node);
-    let (mut rect, mut off2, _) = clamp_panel_rect(base, off, (0.0, 0.0), ctx.viewport);
+    let resize = ctx.host.store().panel_resize_delta(node);
+    let (mut rect, mut off2, resize2) = clamp_panel_rect(base, off, resize, ctx.viewport);
     if rect.y < teto {
         off2.1 += teto - rect.y;
         rect.y = teto;
     }
+    // Escreve de volta o LIMITADO: o próximo arrasto parte do que se vê (sem borracha).
     {
         let store = ctx.host.store_mut();
         if off2 != off {
             store.set_blender_picker_offset(node, off2.0, off2.1);
+        }
+        if resize2 != resize {
+            store.set_panel_resize_delta(node, resize2.0, resize2.1);
         }
         store.set_panel_rect(node, rect);
     }
@@ -92,6 +96,12 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     );
     ctx.host.hit_index_mut().register(ids::PLAY, play);
     paint_panel_close_button(rect, ids::CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+    // As pegas dos dois cantos de baixo (as das outras janelas soltas): por cima do corpo.
+    paint_panel_corner_dot(rect, ctx.scene, theme);
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
+    let hits = ctx.host.hit_index_mut();
+    hits.register(ids::RESIZE, panel_resize_handle_rect(rect));
+    hits.register(ids::RESIZE_BL, panel_resize_handle_rect_bl(rect));
 
     let pad = PANEL_HEAD_PAD;
     let body = Rect::new(
@@ -146,6 +156,10 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     st.destino = Some(dest);
     if let Some((_, img)) = &st.imagem {
         ctx.scene.push_clip(&rect_to_vello(body));
+        // O transparente lê-se no xadrez, como no canvas (o do Aseprite: a Preview mostra o fundo).
+        let to_screen = ph2d_vector::Affine::translate((f64::from(x), f64::from(y)))
+            * ph2d_vector::Affine::scale(f64::from(escala));
+        st.xadrez.draw_under(ctx.scene, f.w, f.h, to_screen);
         ctx.scene
             .draw_stable_image(img, dest, ph2d_vector::ImageQuality::Low);
         ctx.scene.pop_layer();

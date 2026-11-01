@@ -29,7 +29,7 @@ const FRAME_CACHE_BYTES: usize = 256 << 20;
 pub struct SpriteImage {
     key: Option<(u64, FrameId, Option<Onion>)>,
     image: Option<StableImage>,
-    checker: Option<(u32, u32, StableImage)>,
+    checker: Checker,
     scratch: Vec<u8>,
     /// O retângulo do traço em curso na última composição (o próximo quadro do MESMO traço só
     /// recompõe a união dele com o novo).
@@ -134,10 +134,22 @@ impl SpriteImage {
         h: u32,
         to_screen: Affine,
     ) {
+        self.checker.draw_under(scene, w, h, to_screen);
+    }
+}
+
+/// **O xadrez de transparência** de um sprite (casas de [`CHECKER_CELLS`] células), em cache: a
+/// imagem só se refaz quando o número de casas muda. O canvas e a janela Preview pintam o MESMO.
+#[derive(Clone, Default)]
+pub struct Checker(Option<(u32, u32, StableImage)>);
+
+impl Checker {
+    /// O xadrez por baixo de um sprite `w × h` posto por `to_screen` (célula → ecrã).
+    pub fn draw_under(&mut self, scene: &mut VectorScene, w: u32, h: u32, to_screen: Affine) {
         let cols = w.div_ceil(CHECKER_CELLS);
         let rows = h.div_ceil(CHECKER_CELLS);
         if self
-            .checker
+            .0
             .as_ref()
             .is_none_or(|(c, r, _)| (*c, *r) != (cols, rows))
         {
@@ -151,10 +163,9 @@ impl SpriteImage {
                     });
                 }
             }
-            self.checker =
-                StableImage::from_rgba(Arc::new(px), cols, rows).map(|img| (cols, rows, img));
+            self.0 = StableImage::from_rgba(Arc::new(px), cols, rows).map(|img| (cols, rows, img));
         }
-        draw_checker(scene, self.checker.as_ref().map(|c| &c.2), w, h, to_screen);
+        draw_checker(scene, self.0.as_ref().map(|c| &c.2), w, h, to_screen);
     }
 }
 

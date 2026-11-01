@@ -25,9 +25,11 @@
 //! painéis semeiam os widgets a partir do instantâneo publicado, logo um `populate` corrido antes
 //! veria o painel vazio e a segunda passagem mediria as mesmas fileiras da primeira.
 //!
-//! ⛔ **E o `desarma` é obrigatório**: estas portas são `thread_local` e o binário de teste corre
-//! todos os módulos na mesma thread. *O estado que uma fixtura deixa para trás é o estado que a
-//! régua seguinte mede.*
+//! ⛔ **E o `desarma` é obrigatório**: estas portas são `thread_local`, e uma régua que pinte o
+//! mesmo painel duas vezes NO MESMO teste (vazio e armado) mediria na segunda o que a primeira
+//! deixou. *O estado que uma fixtura deixa para trás é o estado que a régua seguinte mede.* (Entre
+//! testes não vaza: o libtest dá a cada um a sua thread; o que vazava entre testes era o registo de
+//! painéis do processo — ver `registo_privado` no censo.)
 
 use ph2d_editor_core::interaction::WidgetStore;
 

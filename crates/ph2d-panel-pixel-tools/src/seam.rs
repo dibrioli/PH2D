@@ -109,14 +109,18 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         },
     );
     store.set_number_range(ids::LAYER_OPACITY, 0.0, 255.0, 1.0); // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
-    store.register(
-        ids::LAYER_BLEND,
-        InteractiveState::Dropdown {
-            state: ph2d_editor_core::widget::DropdownState::Normal,
-            open: false,
-            selected_index: Some(0),
-        },
-    );
+    for id in [ids::LAYER_BLEND, ids::PALETTE_MENU, ids::PRESETS_MENU] {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: ph2d_editor_core::widget::DropdownState::Normal,
+                open: false,
+                selected_index: Some(0),
+            },
+        );
+    }
+    store.set_tooltip(ids::PALETTE_MENU, tr("panel.pixel.palette_menu_tip"));
+    store.set_tooltip(ids::PRESETS_MENU, tr("panel.pixel.presets_menu_tip"));
     for i in 0..ph2d_editor_core::pixel_panel::PixelBlend::ALL.len() {
         let state = ButtonState::Normal;
         store.register(ids::blend_option_id(i), InteractiveState::Button { state });
@@ -440,7 +444,11 @@ pub(crate) fn apply_event(
             let pedido = pedido.filter(|_| with_current(|i| i.editing));
             return empurra(host, pedido);
         }
-        WidgetEvent::Click(id) if id == ids::LAYER_BLEND => return EventOutcome::Consumed,
+        WidgetEvent::Click(id)
+            if id == ids::LAYER_BLEND || id == ids::PALETTE_MENU || id == ids::PRESETS_MENU =>
+        {
+            return EventOutcome::Consumed;
+        }
         WidgetEvent::Click(id)
             if (0..ph2d_editor_core::pixel_panel::PixelBlend::ALL.len())
                 .any(|i| ids::blend_option_id(i) == id) =>
@@ -480,7 +488,19 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if pedido_camada(id).is_some() => {
             return empurra(host, pedido_camada(id));
         }
-        WidgetEvent::Click(id) => id,
+        WidgetEvent::Click(id) => {
+            // Uma linha de um menu da barra da paleta fecha-o (os dois: só um abre de cada vez).
+            if crate::paint::paleta_menu::e_linha(id) {
+                for m in [ids::PALETTE_MENU, ids::PRESETS_MENU] {
+                    if let Some(InteractiveState::Dropdown { open, .. }) =
+                        host.store_mut().get_mut(m)
+                    {
+                        *open = false;
+                    }
+                }
+            }
+            id
+        }
         WidgetEvent::Toggled(id) => {
             // O valor vem do MODELO (o instantâneo), nunca do visual da caixa.
             let pedido = with_current(|info| {

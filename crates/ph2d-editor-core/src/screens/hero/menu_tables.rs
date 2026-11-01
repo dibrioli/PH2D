@@ -249,6 +249,8 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_MACROS, "chrome.menu.macros"),
     // O PIXEL (ADR-0196): abre sozinho no Pixel Sprite ▸ Edit; esta é a porta fora dele.
     menu_row(ids::TOPBAR_PIXEL, "chrome.menu.pixel"),
+    // A janela Preview do Pixel (P5): F7 e Shift+Enter abrem-na em Draw; esta é a porta à vista.
+    menu_row(ids::TOPBAR_PIXEL_PREVIEW, "chrome.menu.pixel_preview"),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
     // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única
     // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*

@@ -14,13 +14,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, InteractiveState::Button { state });
     }
     store.set_tooltip(ids::PLAY, tr("panel.pixel.preview.play"));
-    store.register(
-        ids::DRAG,
-        InteractiveState::BlenderHit {
-            parent: PixelPreviewPanel::NODE_ID,
-            kind: BlenderHitKind::DragHandle,
-        },
-    );
+    for (id, kind) in [
+        (ids::DRAG, BlenderHitKind::DragHandle),
+        (ids::RESIZE, BlenderHitKind::ResizeHandle),
+        (ids::RESIZE_BL, BlenderHitKind::ResizeHandleBl),
+    ] {
+        let parent = PixelPreviewPanel::NODE_ID;
+        store.register(id, InteractiveState::BlenderHit { parent, kind });
+    }
 }
 
 pub(crate) fn apply_event(

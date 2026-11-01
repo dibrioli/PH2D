@@ -103,6 +103,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.material.clone_from(&s.material);
     g.aparencia.clone_from(&s.aparencia);
     g.oleo.clone_from(&s.oleo);
+    super::oleo_celula::reconta_real(g);
     g.tinta.clone_from(&s.tinta);
     g.pigmento.clone_from(&s.pigmento);
     g.vel_x.copy_from_slice(&s.vel_x);
@@ -381,6 +382,7 @@ impl Registo {
         ajusta(&mut g.material, v[4], a5.as_ref());
         ajusta(&mut g.aparencia, v[5], a6.as_ref());
         ajusta(&mut g.oleo, v[6], a7.as_ref());
+        super::oleo_celula::reconta_real(g);
         let a8 = amostra!(tinta);
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         let a9 = amostra!(pigmento);

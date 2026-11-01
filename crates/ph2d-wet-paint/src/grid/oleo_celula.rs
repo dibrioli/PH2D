@@ -46,6 +46,21 @@ impl OleoCelula {
     };
 }
 
+impl OleoCelula {
+    /// Tinta com o Real Oil (a fracção ou a última mão).
+    #[inline]
+    #[must_use]
+    pub fn e_real(&self) -> bool {
+        self.oleo > 0.0 || self.pincel_de_oleo
+    }
+}
+
+/// Reconta [`Grid::oleo_real`] depois de uma porta que reescreve o campo inteiro ou uma janela dele (desfazer,
+/// instantâneo, limpar).
+pub fn reconta_real(g: &mut Grid) {
+    g.oleo_real = g.oleo.iter().any(OleoCelula::e_real);
+}
+
 impl Default for OleoCelula {
     fn default() -> Self {
         Self::NEUTRA
@@ -101,6 +116,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, (v, agua): (f
         }
         g.oleo = vec![OleoCelula::NEUTRA; g.cells];
     }
+    g.oleo_real |= nova.e_real();
     let a = g.oleo[i];
     let molhado = f64::from(g.susp[i]) + crate::painter::receita::K_W * f64::from(g.film[i]);
     let meio = crate::meio::mistura(a.meio, molhado, nova.meio, v, agua);
@@ -134,6 +150,7 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
     if g.oleo.is_empty() {
         return;
     }
+    g.oleo_real |= nova.e_real();
     let r = ORLA_VIRGEM;
     let (x0, y0) = ((x0 - r).max(1), (y0 - r).max(1));
     let (x1, y1) = ((x1 + r).min(g.w as i32), (y1 + r).min(g.h as i32));
@@ -153,6 +170,7 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[OleoCelula]) {
     let (n, s) = (g.cells, g.s);
     super::altura::restaura_campo(&mut g.oleo, n, s, janela, linhas, OleoCelula::NEUTRA);
+    reconta_real(g);
     if linhas.is_empty()
         && g.oleo.iter().all(|c| {
             c.oleo <= 0.0

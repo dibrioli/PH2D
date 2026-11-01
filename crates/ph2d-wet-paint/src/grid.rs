@@ -95,6 +95,10 @@ pub struct Grid {
     /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
     /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
     pub oleo: Vec<oleo_celula::OleoCelula>,
+    /// Alguma célula de [`Self::oleo`] tem tinta com o **Real Oil** (J9 §3): sem ela a óptica do óleo dá a mesma tela
+    /// que o caminho sem óleo, ao byte — o campo pode existir só pelo meio, a solubilidade ou o corpo.
+    /// [`oleo_celula::pousa`] liga-o; as portas que reescrevem o campo recontam ([`oleo_celula::reconta_real`]).
+    pub oleo_real: bool,
     /// **A ladeira do óleo de ANTES do traço vivo** (smoke do dono 30/10, `solver::ladeira_do_oleo`): a altura do óleo
     /// (em `film`) que os traços anteriores deixaram, fotografada no início de um traço com o Real Oil na mão. VAZIA sem
     /// óleo na grade ou com um pincel sem o Real Oil.
@@ -278,6 +282,7 @@ impl Grid {
             material: Vec::new(),
             aparencia: Vec::new(),
             oleo: Vec::new(),
+            oleo_real: false,
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),
             tinta: Vec::new(),

@@ -155,6 +155,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.material = Vec::new();
     g.aparencia = Vec::new();
     g.oleo = Vec::new();
+    g.oleo_real = false;
     g.tinta = Vec::new();
     g.pigmento = Vec::new();
     g.vel_x.fill(0.0);

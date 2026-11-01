@@ -50,6 +50,14 @@ struct Acum {
     compoe: f64,
     varre: f64,
     ticks: u32,
+    /// Dentro da composição (`composite_contagem`): ms do campo de altura, do pigmento, da sombra; chamadas; células
+    /// do sujo do motor e células renderizadas (cresce pelo alcance do Óleo Real).
+    campo: f64,
+    pig: f64,
+    som: f64,
+    chamadas: u64,
+    motor: u64,
+    render: u64,
 }
 
 impl Acum {
@@ -117,6 +125,11 @@ fn janela(k: usize) -> usize {
 
 /// UM tique de 60 Hz pelo caminho do relógio fixo (`wetpaint_tick` → `wet_step_sync`), cronometrado.
 fn tique(c: &mut Corrida, k: usize) {
+    let _ = (
+        super::composite_contagem::take(),
+        super::composite_contagem::take_campo(),
+        super::composite_contagem::take_tempos(),
+    );
     let a = &mut c.jan[janela(k)];
     a.ticks += 1;
     let t0 = Instant::now();
@@ -162,6 +175,12 @@ fn tique(c: &mut Corrida, k: usize) {
         c.t.wetpaint_composite();
         a.compoe += t2.elapsed().as_secs_f64();
     }
+    let a = &mut c.jan[janela(k)];
+    let (n, m, r) = super::composite_contagem::take();
+    let (pig, som) = super::composite_contagem::take_tempos();
+    a.campo += super::composite_contagem::take_campo();
+    (a.pig, a.som) = (a.pig + pig, a.som + som);
+    (a.chamadas, a.motor, a.render) = (a.chamadas + n, a.motor + m, a.render + r);
 }
 
 fn loadavg() -> String {
@@ -306,6 +325,25 @@ fn diag_desempenho_do_oleo_diluido() {
             s * 1e3,
             c * 1e3,
             w * 1e3
+        );
+    }
+    println!(
+        "\n## Composição por dentro (réplica 0, {SEG} s): ms campo · pigmento · sombra · resto | chamadas | células do motor → renderizadas por chamada"
+    );
+    for (v, rs) in VARS.iter().zip(&cs) {
+        let r = &rs[0];
+        let t = |f: &dyn Fn(&Acum) -> f64| r.jan.iter().map(f).sum::<f64>();
+        let (campo, pig, som) = (t(&|a| a.campo), t(&|a| a.pig), t(&|a| a.som));
+        let total = t(&|a| a.compoe) * 1e3;
+        let n = r.jan.iter().map(|a| a.chamadas).sum::<u64>().max(1);
+        let m = r.jan.iter().map(|a| a.motor).sum::<u64>();
+        let rr = r.jan.iter().map(|a| a.render).sum::<u64>();
+        println!(
+            "{} | {campo:.0} · {pig:.0} · {som:.0} · {:.0} (de {total:.0}) | {n} | {} → {}",
+            v.0,
+            total - campo - pig - som,
+            m / n,
+            rr / n
         );
     }
 }

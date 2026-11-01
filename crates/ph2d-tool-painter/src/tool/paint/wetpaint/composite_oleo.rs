@@ -146,15 +146,16 @@ pub(super) fn tinta_sem_oleo(
 impl crate::PainterTool {
     /// Os números do Óleo Real deste composite (`None` = sem óleo na tela); `raio` = o do Smooth Edges, px.
     pub(super) fn oleo_do_composite(&mut self, raio: f32) -> Option<OleoReal> {
-        // O Real Oil é do TRAÇO (dono 28/10): a óptica corre quando ALGUMA camada visível tem tinta com óleo (o campo
-        // `grid::oleo` existe), com os números da TELA do cartão — nunca pela caixa de agora.
+        // O Real Oil é do TRAÇO (dono 28/10): a óptica corre quando ALGUMA camada visível tem tinta com Real Oil
+        // (`Grid::oleo_real`; o campo sozinho pode ser só o meio — J9 §3), com os números da TELA do cartão — nunca
+        // pela caixa de agora.
         let tem_oleo = !self.paint.wetpaint.oleo_adiado
             && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
                 s.bring_home();
                 s.engine
                     .layers
                     .iter()
-                    .any(|l| l.visible && !l.grid.oleo.is_empty())
+                    .any(|l| l.visible && l.grid.oleo_real)
             });
         #[cfg(test)]
         let tem_oleo = if super::oleo_plano::lei_da_caixa::get() {

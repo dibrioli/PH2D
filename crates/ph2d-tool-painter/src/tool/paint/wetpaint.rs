@@ -490,6 +490,8 @@ mod mistura_wet_drip_tests; // uma mistura nunca é mais clara que as tintas (o 
 #[cfg(test)]
 mod oleo_diluido_tests; // E10g (dono 01/11): o óleo diluído escorre, a tinta do tubo fica
 #[cfg(test)]
+mod oleo_sem_real_oil_tests; // J9 §3: a tinta sem Real Oil não paga a óptica do óleo
+#[cfg(test)]
 mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 #[cfg(test)]
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)

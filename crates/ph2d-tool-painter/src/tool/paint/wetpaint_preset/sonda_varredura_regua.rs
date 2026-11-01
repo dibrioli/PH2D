@@ -125,6 +125,7 @@ pub(super) fn render_plano(t: &mut PainterTool) -> Option<Vec<f32>> {
                         std::mem::take(&mut g.altura),
                         std::mem::take(&mut g.oleo),
                         std::mem::replace(&mut g.film, seco),
+                        std::mem::take(&mut g.oleo_real),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -143,8 +144,9 @@ pub(super) fn render_plano(t: &mut PainterTool) -> Option<Vec<f32>> {
             .collect()
     });
     if let Some(v) = guardado {
-        for (l, (r, a, o, f)) in s.engine.layers.iter_mut().zip(v) {
+        for (l, (r, a, o, f, real)) in s.engine.layers.iter_mut().zip(v) {
             (l.grid.relevo, l.grid.altura, l.grid.oleo, l.grid.film) = (r, a, o, f);
+            l.grid.oleo_real = real;
         }
     }
     cob

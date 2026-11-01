@@ -109,6 +109,7 @@ impl crate::grid::Grid {
             material,
             aparencia,
             oleo,
+            oleo_real: _,
             oleo_antes,
             oleo_antes_assente,
             tinta,

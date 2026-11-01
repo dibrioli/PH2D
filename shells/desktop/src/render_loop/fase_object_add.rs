@@ -49,9 +49,7 @@ impl crate::App {
             hero.store
                 .open_command_palette(object_add::build(FAMILIES, &|_| None));
         }
-        if let Some(id) = object_add::smoke_hover().filter(|_| hero.store.command_palette_open()) {
-            hero.store.set_hot(Some(id));
-        }
+        object_add::smoke_drive(&mut hero.store);
         // O OK do diálogo New Sprite (aberto por um pick anterior) nasce o Pixel Sprite.
         let raiz = ph2d_app_components::object_add::spawn_empty_root;
         let dialog = ph2d_app_pixel::object_add::born_from_dialog(

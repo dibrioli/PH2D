@@ -107,6 +107,14 @@ pub(crate) fn pick_objects_at(
         w.camera,
         w.window_size,
     ));
+    let (lado, cam, janela) = (w.camera_icon_px, w.camera, w.window_size);
+    icones.extend(ph2d_app_macros::icone_no_canvas::icones_em(
+        w.sim.world(),
+        pointer,
+        lado,
+        cam,
+        janela,
+    ));
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);

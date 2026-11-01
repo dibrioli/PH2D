@@ -66,9 +66,7 @@ fn imagem_desenhada(present: &mut ph2d_ecs::PresentWorld, sim: &mut ph2d_ecs::Si
     ri.size = [2.0, 2.0];
     ri.basis = ph2d_render::sprite::RenderInstance::IDENTITY_BASIS;
     let gt = ph2d_ecs::GlobalTransform::from_transform(ph2d_ecs::Transform::IDENTITY);
-    present
-        .world_mut()
-        .spawn((ph2d_ecs::SimRef(e), gt, ri));
+    present.world_mut().spawn((ph2d_ecs::SimRef(e), gt, ri));
     e.to_bits()
 }
 

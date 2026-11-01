@@ -52,6 +52,7 @@ const RING_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 pub(super) fn draw_empty_object_marks(
     sim: &SimWorld,
     pixels_per_meter: f32,
+    icone_px: f32,
     theme: Theme,
     camera: &Camera2d,
     window: WindowSize,
@@ -60,6 +61,10 @@ pub(super) fn draw_empty_object_marks(
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let color = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     for entity in crate::group_gizmo_view::empty_objects(sim) {
+        // A macro tem o ícone dela no lugar do anel (plano GEF 19 E6) — pintado a seguir.
+        if ph2d_app_macros::icone_no_canvas::e_macro(sim.world(), entity) {
+            continue;
+        }
         let c = ph2d_vec_entities::transform::world_transform(sim, entity).translation;
         let r_world = crate::group_gizmo_view::marker_world_radius(sim, entity, ppm);
         // ⚠️ **O raio é MEDIDO na tela, e não convertido à mão**: o anel tem de crescer com o zoom
@@ -79,4 +84,12 @@ pub(super) fn draw_empty_object_marks(
             &Circle::new((f64::from(sx), f64::from(sy)), r),
         );
     }
+    ph2d_app_macros::icone_no_canvas::desenhar(
+        sim.world(),
+        icone_px,
+        theme,
+        camera,
+        window,
+        vector_scene,
+    );
 }

@@ -216,6 +216,22 @@ pub fn smoke_hover() -> Option<NodeId> {
     })
 }
 
+/// ⭐ **O smoke do menu sobre o `store`, num passo**: o rato sobre um item ([`smoke_hover`], com o menu
+/// aberto) e, UMA vez, o PICK de `PH2D_OBJECT_ADD_PICK=<chave do item>` — o objecto nasce pelo caminho do
+/// menu e fica selecionado, e a foto apanha o Inspector de cada tipo (plano GEF 19 E5).
+pub fn smoke_drive(store: &mut crate::interaction::WidgetStore) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static TAKEN: AtomicBool = AtomicBool::new(false);
+    if let Some(id) = smoke_hover().filter(|_| store.command_palette_open()) {
+        store.set_hot(Some(id));
+    }
+    if let Ok(key) = std::env::var("PH2D_OBJECT_ADD_PICK")
+        && !TAKEN.swap(true, Ordering::Relaxed)
+    {
+        store.set_command_pick(ph2d_tool_registry::hash_node_id_runtime(&key));
+    }
+}
+
 #[cfg(test)]
 #[path = "object_add_tests.rs"]
 mod tests;

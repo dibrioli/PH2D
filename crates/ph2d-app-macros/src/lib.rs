@@ -10,6 +10,7 @@ pub mod biblioteca;
 pub mod cena_da_biblioteca;
 /// `PH2D_MACRO_SMOKE=8`: o player pintado, o collider e «Simular», gravados e aplicados (W19).
 pub mod cena_do_mundo;
+pub mod icone_no_canvas;
 mod conferencia;
 pub mod erros;
 pub mod espera;

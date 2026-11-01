@@ -131,6 +131,7 @@ impl crate::App {
             empty_object_overlay::draw_empty_object_marks(
                 sim,
                 hero.project.pixels_per_meter,
+                hero.project.camera_icon_px,
                 hero.theme,
                 camera,
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),

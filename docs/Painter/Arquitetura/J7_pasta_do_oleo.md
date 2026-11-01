@@ -62,7 +62,13 @@ precisa ver agora, manter o plano»):
 
 1. A GPU (`ph2d-wet-gpu`) não tem a pasta (E11, com o resto do meio).
 2. A lei `Pigmento` (`deposito_tinta::Pigmento::pousa`) não passa pela pasta — o produto é a Velha; decidir na E12.
-3. A grelha E9 inteira com este binário (`target/e9_j7/`, a correr; ~3 h — o óleo diluído fica molhado). Parcial
+3. **Grelha E9 inteira FEITA** (`target/e9_j7/`, 3 240 células, 2 h 28 min com load ~70): contra `e9_0111`,
+   ferrugem 0 em 3 238 de 3 240 (máx. 0,01, Knife Stain P2000), manchas −0,23 em média; Pigmento idêntica em ferrugem,
+   manchas e degraus. Piores (fotos lado a lado manhã · E10g · J7): Filbert P600 W0,5 e P2000 W1 pr1 n3 (degraus 7 →
+   32/34) — de manhã o amarelo tapava, agora as duas tintas molhadas misturam-se em verde (a mistura aprovada no smoke);
+   Knife Oily P600 W1 pr0,2 n3 (`mix_p99` 0 → 64,6) e Express Oil P600 W0,5 pr0,6 n3 (furos +50) — a faixa
+   verde-clara do líquido que escorre com a mistura, frente em degraus: a família da observação 1 do dono. Parcial
+   anterior
    (582 células, `scratchpad/cmp.py`-style, contra `e9_0111`): **ferrugem 0 em todas**, manchas −0,18 em média;
    contra `e9_e10g`: degraus −0,01, furos +0,05 — a J7 não mexe nos números da E10g. Os «degraus» que subiram
    (Filbert P40 W0,5 pr1: 11 → 19 na E10g, 20 na J7) e os «furos» (Dabber 4 P40 W1: +25, foto MAIS limpa) vêm da E10g

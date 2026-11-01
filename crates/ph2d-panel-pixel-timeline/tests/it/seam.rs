@@ -735,3 +735,69 @@ fn the_playback_toggles_and_the_speed_menu_ask_for_the_whole_options() {
         }),
     );
 }
+
+/// A cena 17 em miniatura: oito quadros (ids 20..27), «out» nas posições 1..=6 e «in» 2..=4.
+fn aninhadas() -> PixelPanelInfo {
+    let tag = |name: &str, from, to| PixelTagInfo {
+        name: name.to_owned(),
+        from,
+        to,
+        direction: PixelDirection::Forward,
+        repeat: 0,
+        color: [60, 60, 200, 255],
+    };
+    PixelPanelInfo {
+        frames: (20..28)
+            .map(|id| PixelFrameCol {
+                id,
+                duration_ms: 100,
+            })
+            .collect(),
+        active_frame: Some(20),
+        cels: vec![cel(2, 20, 20)],
+        tags: vec![tag("out", 1, 6), tag("in", 2, 4)],
+        ..info()
+    }
+}
+
+/// ⭐ Lei do Trial (Ronda 3): a tag de dentro tem a sua fila POR BAIXO da de fora; os rótulos não
+/// se tocam, cada um pede o seu quadro, a ponta da de dentro ainda arrasta, e os cabeçalhos descem
+/// mas continuam clicáveis.
+#[test]
+fn nested_tags_get_their_own_row_below_and_every_handle_still_works() {
+    let mut p = Palco::novo(aninhadas());
+    let out = p.rect(ids::tag_id(0)).expect("«out» pintada");
+    let inn = p.rect(ids::tag_id(1)).expect("«in» pintada");
+    assert!(
+        inn.y >= out.y + out.h - 0.5,
+        "«in» {inn:?} não está por baixo de «out» {out:?}"
+    );
+    let cruza = out.x < inn.x + inn.w
+        && inn.x < out.x + out.w
+        && out.y < inn.y + inn.h
+        && inn.y < out.y + out.h;
+    assert!(!cruza, "os rótulos sobrepõem-se: {out:?} × {inn:?}");
+    let h = p.rect(ids::header_id(20)).expect("cabeçalho pintado");
+    assert!(
+        h.y >= inn.y + inn.h - 0.5,
+        "o cabeçalho {h:?} sob a «in» {inn:?}"
+    );
+    so(&p.carrega(ids::tag_id(0)), PixelRequest::FrameSelect(21));
+    let mut p = Palco::novo(aninhadas());
+    so(&p.carrega(ids::tag_id(1)), PixelRequest::FrameSelect(22));
+    let mut p = Palco::novo(aninhadas());
+    let (x, _) = p.meio(ids::header_id(26));
+    let (_, y) = p.meio(ids::tag_id(1));
+    let a = p.arrasta(ids::tag_edge_id(1, true), (x, y));
+    so(
+        &a,
+        PixelRequest::TagRange {
+            index: 1,
+            from: 2,
+            to: 6,
+        },
+    );
+    let mut p = Palco::novo(aninhadas());
+    let a = p.toca(ids::header_id(25));
+    assert_eq!(ultimo(&a), Some(faixa(K::Frames, vec![], vec![25])));
+}

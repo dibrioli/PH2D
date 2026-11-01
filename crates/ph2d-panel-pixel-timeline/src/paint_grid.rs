@@ -90,8 +90,14 @@ pub(crate) fn paint(
         }
     }
     st.first_col = st.first_col.min(n.saturating_sub(cabem));
+    // ⭐ Cada nível de tags a sua fila (lei do Trial): a de dentro por baixo, as sobrepostas
+    // desfasadas; o cabeçalho e as camadas descem com elas.
+    let spans: Vec<(u32, u32)> = info.tags.iter().map(|t| (t.from, t.to)).collect();
+    let filas_tag = ph2d_pixel_core::play::tag_rows(&spans);
+    let n_filas = filas_tag.iter().max().map_or(1, |m| m + 1);
     let tags_y = area.y;
-    let head_y = tags_y + ROW_H_PX;
+    #[expect(clippy::cast_precision_loss, reason = "poucas filas de tags")]
+    let head_y = tags_y + n_filas as f32 * ROW_H_PX;
     let rows_y = head_y + ROW_H_PX + TypeToken::Xs.px() + Spacing::Xs.px();
     let mut g = Grelha {
         gx,
@@ -121,7 +127,9 @@ pub(crate) fn paint(
             Some(crate::gestos::Arrasto::Ponta { index, right, .. }) if index == i => Some(right),
             _ => None,
         };
-        tag(ctx, &g, i, &t, rename_tag == Some(i), puxada);
+        #[expect(clippy::cast_precision_loss, reason = "poucas filas de tags")]
+        let y = g.tags_y + filas_tag[i] as f32 * ROW_H_PX;
+        tag(ctx, &g, i, &t, y, rename_tag == Some(i), puxada);
     }
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
@@ -253,6 +261,7 @@ fn tag(
     g: &Grelha,
     i: usize,
     t: &PixelTagInfo,
+    y: f32,
     renaming: bool,
     puxada: Option<bool>,
 ) {
@@ -265,7 +274,7 @@ fn tag(
     }
     let theme = ctx.host.theme();
     let x0 = g.x(a);
-    let r = Rect::new(x0, g.tags_y, g.x(b) - x0, ROW_H_PX);
+    let r = Rect::new(x0, y, g.x(b) - x0, ROW_H_PX);
     let faixa_h = Spacing::Xs.px();
     let faixa = Rect::new(r.x, r.y + r.h - faixa_h, r.w, faixa_h);
     let [cr, cg, cb, ca] = t.color;

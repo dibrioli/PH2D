@@ -12,6 +12,8 @@ pub struct PixelPreviewPanelState {
     pub(crate) imagem: Option<(u64, ph2d_vector::StableImage)>,
     /// A escala da última pintura (o zoom da roda parte dela).
     pub(crate) escala: f32,
+    /// Os cantos `(x0, y0, x1, y1)` passados ao `draw_stable_image` na última pintura.
+    pub(crate) destino: Option<(f64, f64, f64, f64)>,
 }
 
 impl PixelPreviewPanelState {
@@ -27,5 +29,12 @@ impl PixelPreviewPanelState {
     #[must_use]
     pub fn escala(&self) -> f32 {
         self.escala
+    }
+
+    /// Os cantos da imagem como foram passados ao `draw_stable_image` (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn destino(&self) -> Option<(f64, f64, f64, f64)> {
+        self.destino
     }
 }

@@ -163,3 +163,18 @@ fn o_canal_da_preview_so_publica_com_a_janela_aberta() {
     p.tecla(KeyCode::F7, false);
     assert!(!p.aberta() && current().is_none(), "F7 fecha-a outra vez");
 }
+
+/// A visibilidade REAL manda (a arrumação, o menu), não só o F7: com o painel marcado visível por
+/// fora, o canal publica a imagem do quadro activo — e ela tem os pixels do quadrado da cena.
+#[test]
+fn com_o_painel_visivel_por_fora_do_f7_a_preview_publica_o_activo() {
+    let mut p = Palco::novo();
+    p.hero.panel_visibility.insert(PANEL_PIXEL_PREVIEW, true);
+    let a = p.activo();
+    let f = current().expect("visível pela arrumação, publica");
+    assert_eq!(f.frame, a, "o quadro activo");
+    assert!(
+        f.rgba.chunks(4).any(|px| px[3] == 255),
+        "a imagem tem os pixels pintados do quadro"
+    );
+}

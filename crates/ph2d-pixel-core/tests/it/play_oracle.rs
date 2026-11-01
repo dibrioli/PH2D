@@ -166,3 +166,38 @@ fn playback_speed_divides_every_frame_duration() {
     }
     assert_eq!(vistos, 6);
 }
+
+/// As filas dos rótulos (lei do Trial): a de dentro por baixo, as sobrepostas desfasadas, as
+/// separadas e a sozinha na fila 0.
+#[test]
+fn tag_rows_put_the_inner_tag_below_and_overlaps_apart() {
+    use ph2d_pixel_core::play::tag_rows;
+    assert_eq!(tag_rows(&[(1, 6)]), [0], "sozinha");
+    assert_eq!(tag_rows(&[(1, 6), (2, 4)]), [0, 1], "aninhadas (cena 17)");
+    assert_eq!(
+        tag_rows(&[(2, 4), (1, 6)]),
+        [1, 0],
+        "a ordem da lista não manda"
+    );
+    assert_eq!(
+        tag_rows(&[(0, 7), (1, 6), (2, 4)]),
+        [0, 1, 2],
+        "três níveis"
+    );
+    assert_eq!(
+        tag_rows(&[(0, 3), (2, 5)]),
+        [0, 1],
+        "sobrepostas sem se conter"
+    );
+    assert_eq!(tag_rows(&[(0, 1), (3, 5)]), [0, 0], "separadas");
+    assert_eq!(
+        tag_rows(&[(0, 7), (1, 2), (4, 5)]),
+        [0, 1, 1],
+        "irmãs no mesmo nível"
+    );
+    assert_eq!(
+        tag_rows(&[(2, 4), (2, 4)]),
+        [0, 1],
+        "o mesmo trecho: a 1.ª é a de fora"
+    );
+}

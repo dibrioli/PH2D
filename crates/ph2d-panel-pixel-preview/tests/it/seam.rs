@@ -142,3 +142,44 @@ fn a_roda_sobre_a_imagem_muda_o_zoom_da_preview() {
         p.st.escala()
     );
 }
+
+/// ⛔ A imagem cai DENTRO da janela: os cantos passados ao `draw_stable_image` são `(x0, y0, x1,
+/// y1)` crescentes e dentro do rect (a cena 17 passava `(x, y, w, h)` e a Preview saía vazia).
+#[test]
+fn a_imagem_da_preview_cai_dentro_da_janela() {
+    let p = Palco::novo();
+    let (x0, y0, x1, y1) = p.st.destino().expect("pintou a imagem");
+    let r = p.janela();
+    assert!(x1 > x0 && y1 > y0, "cantos crescentes: {:?}", (x0, y0, x1, y1));
+    let dentro = |v: f64, a: f32, b: f32| v >= f64::from(a) - 0.5 && v <= f64::from(b) + 0.5;
+    assert!(
+        dentro(x0, r.x, r.x + r.w)
+            && dentro(x1, r.x, r.x + r.w)
+            && dentro(y0, r.y, r.y + r.h)
+            && dentro(y1, r.y, r.y + r.h),
+        "a imagem {:?} sai da janela {r:?}",
+        (x0, y0, x1, y1)
+    );
+}
+
+/// ⛔ O título nunca fica debaixo da régua de cima do canvas (ela pinta-se por cima dos painéis):
+/// nem no sítio de fábrica, nem arrastado para cima dela.
+#[test]
+fn o_titulo_da_preview_nunca_fica_debaixo_da_regua() {
+    let mut p = Palco::novo();
+    let layout = ph2d_editor_core::screens::layout::HeroLayout::for_viewport(VIEWPORT);
+    let regua = ph2d_editor_core::ruler::top_band(layout.draw_area);
+    let cruza = |a: Rect, b: Rect| {
+        a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+    };
+    for id in [ids::DRAG, ids::PLAY, ids::CLOSE] {
+        let (x, y) = p.meio(id);
+        let r = p.rects.iter().find(|(n, _)| *n == id).expect("pintado").1;
+        assert!(!cruza(r, regua), "{id:?} {r:?} debaixo da régua {regua:?} (meio {x},{y})");
+    }
+    let (x, y) = p.meio(ids::DRAG);
+    let _ = p.host.drag_at(x, y, x, 0.0);
+    p.pinta();
+    let r = p.rects.iter().find(|(n, _)| *n == ids::DRAG).expect("pintado").1;
+    assert!(!cruza(r, regua), "arrastado para cima, o título {r:?} entrou na régua {regua:?}");
+}

@@ -115,6 +115,36 @@ fn dentro(tags: &[Tag], a: usize, b: usize) -> bool {
     a != b && y.from <= x.from && x.to <= y.to && ((x.from, x.to) != (y.from, y.to) || b < a)
 }
 
+/// A fila do rótulo de cada tag `(from, to)` na linha do tempo (lei do Trial, «Ronda 3»): a de
+/// dentro fica por baixo de toda a que a contém, as que se sobrepõem sem se conter vão para filas
+/// desfasadas, e as separadas partilham a fila 0. Cada uma toma a menor fila livre abaixo das que a
+/// contêm; com o mesmo trecho, a primeira da lista é a de fora (como em [`dentro`]).
+#[must_use]
+pub fn tag_rows(spans: &[(u32, u32)]) -> Vec<usize> {
+    let mut ordem: Vec<usize> = (0..spans.len()).collect();
+    ordem.sort_by_key(|&i| (spans[i].0, std::cmp::Reverse(spans[i].1), i));
+    let mut fila = vec![0; spans.len()];
+    for (k, &i) in ordem.iter().enumerate() {
+        let (f, t) = spans[i];
+        let postas = &ordem[..k];
+        let piso = postas
+            .iter()
+            .filter(|&&j| spans[j].0 <= f && t <= spans[j].1)
+            .map(|&j| fila[j] + 1)
+            .max()
+            .unwrap_or(0);
+        let mut r = piso;
+        while postas
+            .iter()
+            .any(|&j| fila[j] == r && spans[j].0 <= t && f <= spans[j].1)
+        {
+            r += 1;
+        }
+        fila[i] = r;
+    }
+    fila
+}
+
 /// A tag que governa a posição `i` (a raiz se o tocar começasse ali): a mais interior da cadeia.
 #[must_use]
 pub fn tag_at(tags: &[Tag], i: usize) -> Option<usize> {

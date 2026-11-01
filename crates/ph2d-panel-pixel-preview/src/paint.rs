@@ -31,17 +31,27 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         let _ = store.take_graph_zoom(node);
         return;
     }
+    // ⛔ A régua de cima do canvas pinta-se DEPOIS dos painéis: um título debaixo da faixa dela
+    // fica escondido (foto da cena 17, 01/11). A janela nunca sobe acima do fundo da régua.
+    let teto = {
+        let r = ph2d_editor_core::ruler::top_band(ctx.layout.draw_area);
+        r.y + r.h + Spacing::Sm.px()
+    };
     let base = *st.rect.get_or_insert_with(|| {
         let w = PANEL_MIN_W_PX;
         Rect::new(
             (ctx.slot.x - w - Spacing::Lg.px()).max(ctx.viewport.x),
-            ctx.slot.y,
+            ctx.slot.y.max(teto),
             w,
             w,
         )
     });
     let off = ctx.host.store().blender_picker_offset(node);
-    let (rect, off2, _) = clamp_panel_rect(base, off, (0.0, 0.0), ctx.viewport);
+    let (mut rect, mut off2, _) = clamp_panel_rect(base, off, (0.0, 0.0), ctx.viewport);
+    if rect.y < teto {
+        off2.1 += teto - rect.y;
+        rect.y = teto;
+    }
     {
         let store = ctx.host.store_mut();
         if off2 != off {
@@ -124,13 +134,20 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     let (dw, dh) = (w * escala, h * escala);
     let x = body.x + (body.w - dw) * 0.5;
     let y = body.y + (body.h - dh) * 0.5;
+    // ⛔ O `dest` do `draw_stable_image` são os CANTOS `(x0, y0, x1, y1)`, não `(x, y, w, h)`: com
+    // a largura no lugar do canto a escala saía negativa e a imagem caía fora do recorte (a
+    // Preview vazia da cena 17, 01/11).
+    let dest = (
+        f64::from(x),
+        f64::from(y),
+        f64::from(x + dw),
+        f64::from(y + dh),
+    );
+    st.destino = Some(dest);
     if let Some((_, img)) = &st.imagem {
         ctx.scene.push_clip(&rect_to_vello(body));
-        ctx.scene.draw_stable_image(
-            img,
-            (f64::from(x), f64::from(y), f64::from(dw), f64::from(dh)),
-            ph2d_vector::ImageQuality::Low,
-        );
+        ctx.scene
+            .draw_stable_image(img, dest, ph2d_vector::ImageQuality::Low);
         ctx.scene.pop_layer();
     }
 }

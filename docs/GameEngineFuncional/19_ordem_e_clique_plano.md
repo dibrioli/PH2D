@@ -52,3 +52,16 @@ especiais à frente da lista (sem retorno cedo — o ciclo chega à arte por bai
 
 Byte-idêntico sem intercalação continua lei (as cenas cuja ordem já coincide com a de hoje não mudam um byte).
 `MAX_BANDS` só se move com medição (§0).
+
+## Estado (01/11)
+
+| etapa | commit | estado |
+|---|---|---|
+| E1 clique pela pilha do desenho, ícones à frente, trava, 1 clique/degrau | `7d703c2d79` | feito |
+| E2 Pixel Sprites na ordem (`Family::Pixel`) | `c2d460075d` | feito (sem foto) |
+| E3 Motion na ordem — degrau 1: rank + `Family::Motion`, ainda desenhado por cima (`motion_por_cima`) | `06494dff4e` | degrau 2 (placa por faixa) em curso |
+| E4 Flip na ordem | — | por fazer, depois da E3 |
+| E5 Z-index em todo tipo (gate por tipo do Add) | — | em curso |
+| E6 ícone da Macro + smoke `PH2D_OBJECT_ADD_PICK` | `4bf8ac8efe` | feito (deps novas em ph2d-app-macros ⇒ crate inteira no fecho) |
+| E7b repetição de camada escalada | `26c6e5c2b3` | feito |
+| E7a o que o editor mostra da paralaxe · E7c gate dos limites do nível 1 | — | por fazer |

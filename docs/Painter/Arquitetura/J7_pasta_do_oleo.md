@@ -51,6 +51,15 @@ Escorrer (`oleo_diluido_tests::diag_o_oleo_diluido_escorre`): Water idêntico em
 
 ## 5. Aberto
 
+**Smoke do dono (01/11, Paint type + óleo diluído + cruzamento): OK.** Duas observações, para a FILA (o dono: «não
+precisa ver agora, manter o plano»):
+
+- **O escorrimento ignora o relevo da tinta já pousada**: o líquido passa por cima do relevo anterior como se não
+  existisse, em vez de desviar o trajeto. A mistura de cor ao escorrer está boa. (Família da ladeira do óleo —
+  `agua_sobre_oleo_tests::a_agua_nao_sobe_a_ladeira_do_oleo`, vermelho antigo 54 477.)
+- **Desempenho muito aquém** com o óleo diluído (fica molhado ⇒ a simulação corre muito mais tempo; a grelha E9 ficou
+  ~4× mais lenta). Medir antes de mexer (E11 GPU lê o meio?).
+
 1. A GPU (`ph2d-wet-gpu`) não tem a pasta (E11, com o resto do meio).
 2. A lei `Pigmento` (`deposito_tinta::Pigmento::pousa`) não passa pela pasta — o produto é a Velha; decidir na E12.
 3. A grelha E9 inteira com este binário (`target/e9_j7/`, a correr; ~3 h — o óleo diluído fica molhado). Parcial

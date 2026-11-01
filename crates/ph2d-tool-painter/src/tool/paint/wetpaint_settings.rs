@@ -227,7 +227,7 @@ impl WetKnobs {
             // means the product value the artist opened with (== SPEC for every knob but Enio's five).
             Self::DEFAULT.knobs[knob as usize]
         } else {
-            v.clamp(def.min, def.max)
+            controlos_e10::no_degrau(knob, v.clamp(def.min, def.max))
         };
     }
 
@@ -662,12 +662,8 @@ impl PainterTool {
                 self.set_wet_oleo_real_ligado(self.paint.wetpaint.oleo_real.is_none());
                 true
             }
-            PanelEvent::SelectOption(id, v)
-                if *id == crate::ids::PAINTER_WETPAINT_OLEO_AMBIENTE =>
-            {
-                v.parse::<u8>()
-                    .is_ok_and(|i| self.set_wet_oleo_ambiente_indice(i))
-            }
+            // O Environment do Real Oil e o Paint type (Water · Oil, E10f).
+            PanelEvent::SelectOption(id, v) => self.route_wet_select(*id, v),
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_LIVE_WATER => {
                 self.set_wet_agua_viva(!self.paint.wetpaint.agua_viva);
                 true

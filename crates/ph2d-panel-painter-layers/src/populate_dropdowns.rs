@@ -40,6 +40,8 @@ pub(crate) fn register_dropdowns(store: &mut WidgetStore) {
     .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
     // O Environment do cartão Real Oil (W1c).
     .chain([ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_AMBIENTE])
+    // O Paint type do cartão Wet Paint (Water · Oil, E10f).
+    .chain([ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM])
     // O cartão Pen: o menu da rotação e o do Reset (neutro · preset, dono 25/10).
     .chain([
         ph2d_tool_painter::ids::PAINTER_PEN_ROTATION,

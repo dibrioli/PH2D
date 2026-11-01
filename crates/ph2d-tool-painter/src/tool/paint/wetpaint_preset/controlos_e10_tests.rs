@@ -129,13 +129,15 @@ fn cada_preset_de_fabrica_mapeia_por_funcao() {
         if dphi > TOL || dh > TOL {
             falhas.push(format!("{} (φ {dphi:.2e}, h {dh:.2e})", prm.name));
         }
-        // (b) o meio pela tabela da família (§3.2).
+        // (b) o meio pela tabela da família (§3.2), só Water (0) ou Oil (1) — a Acrylic é Water com Re-wet 0 (E10f).
         let esperado = match (familia, prm.group.as_str()) {
             ("Oil" | "ExpressOil", _) | ("Pastel", "Oil" | "Scrape") => 1.0,
-            ("Acrylic", _) => 0.5,
             _ => 0.0,
         };
         assert_eq!(k.medium(), esperado, "{familia}/{}: Medium", prm.name);
+        if familia == "Acrylic" {
+            assert_eq!(k.get(Knob::Rewet), 0.0, "{}: Acrylic = Re-wet 0", prm.name);
+        }
         let lev = prm.engine.get("levelingOwnStroke").copied().unwrap_or(0.0);
         assert_eq!(
             k.body(),
@@ -235,6 +237,45 @@ fn um_controlo_da_tela_nao_viaja_no_preset() {
         !g.engine.contains_key("evaporation"),
         "gravar não escreve a Dry speed"
     );
+}
+
+/// ⭐ **O Paint type só tem dois pontos** (E10f, dono 01/11): o seletor escreve `0`/`1`, um `SetValue` contínuo cai no
+/// degrau, e um preset gravado com o `0,5` de antes (o Fan Brush Acrylic) carrega como Water — o `0,51` como Oil.
+#[test]
+fn o_paint_type_escreve_agua_ou_oleo_e_o_meio_antigo_carrega_como_agua() {
+    use crate::ids::{PAINTER_WETPAINT_MEDIUM, painter_wetpaint_medium_option_id};
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = wet();
+    for (i, m) in [(1u8, 1.0), (0, 0.0)] {
+        assert!(t.route_brush_wetpaint_event(&PanelEvent::SelectOption(
+            PAINTER_WETPAINT_MEDIUM,
+            i.to_string()
+        )));
+        assert_eq!(t.paint.wetpaint.knobs.medium(), m, "opção {i}");
+    }
+    assert!(!t.route_brush_wetpaint_event(&PanelEvent::SelectOption(
+        PAINTER_WETPAINT_MEDIUM,
+        "2".to_owned()
+    )));
+    assert_ne!(
+        painter_wetpaint_medium_option_id(0),
+        painter_wetpaint_medium_option_id(1)
+    );
+    for (v, m) in [(0.5, 0.0), (0.3, 0.0), (0.51, 1.0), (0.9, 1.0)] {
+        assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(PAINTER_WETPAINT_MEDIUM, v)));
+        assert_eq!(t.paint.wetpaint.knobs.medium(), m, "SetValue {v}");
+    }
+    let mut fan = de_fabrica("Wet Round");
+    for (v, m) in [(0.5, 0.0), (0.51, 1.0)] {
+        fan.parametros
+            .engine
+            .insert(CHAVE_CONTROLOS.to_owned(), 1.0);
+        fan.parametros.engine.insert("medium".to_owned(), v);
+        let mut u = wet();
+        u.wet_preset_aplicar(&fan);
+        assert_eq!(u.paint.wetpaint.knobs.medium(), m, "preset gravado com {v}");
+        assert_eq!(u.paint.wetpaint.knobs.e_oleo(), m == 1.0);
+    }
 }
 
 #[test]

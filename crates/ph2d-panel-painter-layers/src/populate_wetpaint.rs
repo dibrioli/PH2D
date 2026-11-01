@@ -101,7 +101,7 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
         // Os controlos de lei da E10 (F3 §9).
         (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM,
-            "panel.painter_wet_cartao.medium_tip",
+            "panel.painter_wet_cartao.paint_type_tip",
         ),
         (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_DILUTION,

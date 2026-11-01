@@ -63,8 +63,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "How much the water carries the pigment it lifted along the stroke: the colour fades in the direction of the gesture"
         }
         // Os controlos de lei da E10 (`docs/Painter/Arquitetura/F3_controlos.md` §9).
-        "panel.painter_wet_cartao.medium_tip" => {
-            "What the paint is mixed with: 0 = water (flows, dries light), 1 = oil (stays, keeps its relief)."
+        "panel.painter_wet_cartao.paint_type_tip" => {
+            "Water: the paint thins with water, flows and dries fast. Oil: the thinner is oily — thick paint stays put, thinned paint flows slowly and stays wet much longer."
         }
         "panel.painter_wet_cartao.dilution_tip" => {
             "How much water or medium is in the mix: 0 = paint straight from the tube, 1 = almost clear."

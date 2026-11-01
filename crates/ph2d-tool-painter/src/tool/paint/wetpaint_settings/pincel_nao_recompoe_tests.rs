@@ -101,7 +101,7 @@ fn eventos_do_pincel() -> Vec<(String, PanelEvent)> {
         ("tilt_spoke", i::PAINTER_WETPAINT_TILT_SPOKE, 5.0),
         ("water", i::PAINTER_WETPAINT_WATER, 0.3),
         ("dilution", i::PAINTER_WETPAINT_DILUTION, 0.3),
-        ("medium", i::PAINTER_WETPAINT_MEDIUM, 0.5),
+        ("medium", i::PAINTER_WETPAINT_MEDIUM, 1.0),
         ("body", i::PAINTER_WETPAINT_BODY, 0.4),
         ("hardness", i::PAINTER_WETPAINT_HARDNESS, 0.6),
         ("pickup", i::PAINTER_WETPAINT_PICKUP, 0.4),
@@ -112,6 +112,11 @@ fn eventos_do_pincel() -> Vec<(String, PanelEvent)> {
     ] {
         ev.push((nome.to_owned(), PanelEvent::SetValue(id, v)));
     }
+    // O Paint type (E10f) é um menu: Oil pelo `SelectOption`.
+    ev.push((
+        "paint_type".to_owned(),
+        PanelEvent::SelectOption(i::PAINTER_WETPAINT_MEDIUM, "1".to_owned()),
+    ));
     ev
 }
 

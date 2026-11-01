@@ -287,8 +287,17 @@ pub const PAINTER_WETPAINT_PIGMENT: NodeId = hash_node_id("painter_brush.wetpain
 /// **Dilution** (E10, `F3_controlos.md` §9) — `1 − φ` da receita (knob `dilution`): Pigment + Water num controlo.
 pub const PAINTER_WETPAINT_DILUTION: NodeId = hash_node_id("painter_brush.wetpaint_dilution");
 
-/// **Medium** (E10) — o meio `m` da tinta, `0` água … `1` óleo (knob `medium`).
+/// **Paint type** (E10f, dono 01/11) — o chip do seletor Water · Oil sobre o knob `medium` (`m`): só dois pontos,
+/// `0` água e `1` óleo (wire = o índice, [`PAINTER_WETPAINT_MEDIUM_COUNT`]). Fora de [`PAINTER_WETPAINT_FIELDS`].
 pub const PAINTER_WETPAINT_MEDIUM: NodeId = hash_node_id("painter_brush.wetpaint_medium");
+/// Número de opções do **Paint type** (Water, Oil).
+pub const PAINTER_WETPAINT_MEDIUM_COUNT: u8 = 2;
+
+/// Opção `i` do popover do **Paint type** (`0` Water, `1` Oil).
+#[must_use]
+pub fn painter_wetpaint_medium_option_id(i: u8) -> NodeId {
+    hash_node_id_runtime(&format!("painter_brush.wetpaint_medium_opt.{i}"))
+}
 
 /// **Body** (E10) — a tensão de cedência do pincel somada à do meio (knob `body`).
 pub const PAINTER_WETPAINT_BODY: NodeId = hash_node_id("painter_brush.wetpaint_body");
@@ -392,12 +401,11 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 41] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
     PAINTER_WETPAINT_DILUTION,
-    PAINTER_WETPAINT_MEDIUM,
     PAINTER_WETPAINT_BODY,
     PAINTER_WETPAINT_HARDNESS,
     PAINTER_WETPAINT_PICKUP,

@@ -30,16 +30,55 @@ pub(super) const fn dilution_e_volume(
     (diluicao, opacidade * carga * H_REF / M_UM)
 }
 
+/// **O Paint type só tem dois pontos** (E10f, dono 01/11): o `Knob::Medium` é `0` (Water) ou `1` (Oil) — `> 0,5` é
+/// Oil, o resto Water (o `0,5` de antes, o Fan Brush Acrylic, é Water). Os outros knobs passam intactos. É o degrau
+/// de [`WetKnobs::set`], a única porta de escrita: painel, preset, macro e estado gravado passam por ele.
+#[must_use]
+pub(super) fn no_degrau(knob: Knob, v: f64) -> f64 {
+    match knob {
+        Knob::Medium if v > 0.5 => 1.0,
+        Knob::Medium => 0.0,
+        _ => v,
+    }
+}
+
+impl crate::PainterTool {
+    /// As opções dos menus do cartão Wet Paint (`SelectOption`, wire = o índice): o Environment do Real Oil e o
+    /// **Paint type** (`0` Water → `Knob::Medium = 0`, `1` Oil → `1`, pela porta do `SetValue`). `false` = outro id
+    /// ou índice fora.
+    pub(super) fn route_wet_select(&mut self, id: ph2d_a11y::NodeId, v: &str) -> bool {
+        let Ok(i) = v.parse::<u8>() else {
+            return false;
+        };
+        match id {
+            x if x == crate::ids::PAINTER_WETPAINT_OLEO_AMBIENTE => {
+                self.set_wet_oleo_ambiente_indice(i)
+            }
+            x if x == crate::ids::PAINTER_WETPAINT_MEDIUM
+                && i < crate::ids::PAINTER_WETPAINT_MEDIUM_COUNT =>
+            {
+                self.set_wet_knob_value(x, f64::from(i))
+            }
+            _ => false,
+        }
+    }
+}
+
 impl WetKnobs {
     /// Dilution (`Knob::Dilution`): `1 − φ` da receita.
     #[must_use]
     pub fn dilution(&self) -> f64 {
         self.get(Knob::Dilution)
     }
-    /// Medium (`Knob::Medium`): o meio `m`, `0` água … `1` óleo.
+    /// Medium (`Knob::Medium`): o meio `m` — só `0` (Water) ou `1` (Oil), o degrau de [`no_degrau`].
     #[must_use]
     pub fn medium(&self) -> f64 {
         self.get(Knob::Medium)
+    }
+    /// O **Paint type** do seletor: `true` = Oil (`Medium > 0,5`), `false` = Water.
+    #[must_use]
+    pub fn e_oleo(&self) -> bool {
+        self.medium() > 0.5
     }
     /// Volume (`Knob::Volume`): a quantidade por dab, em µm de tinta.
     #[must_use]
@@ -66,7 +105,8 @@ impl WetKnobs {
         self.set(Knob::PaperGate, g);
     }
 
-    /// **A linha do painel** de um controlo da E10 (E10-B2): `(valor, mín, máx, passo)` — a faixa e o passo da
+    /// **A linha do painel** de um controlo NUMÉRICO da E10 (E10-B2; o Paint type é um menu, [`Self::e_oleo`]):
+    /// `(valor, mín, máx, passo)` — a faixa e o passo da
     /// `KNOB_DEFS` (a Hardness, vista sem knob próprio: `0..1` no passo dos outros controlos `0..1` da E10, o do
     /// Body). `None` = não é um deles.
     #[must_use]
@@ -74,7 +114,6 @@ impl WetKnobs {
         use crate::ids;
         let knob = match id {
             x if x == ids::PAINTER_WETPAINT_DILUTION => Knob::Dilution,
-            x if x == ids::PAINTER_WETPAINT_MEDIUM => Knob::Medium,
             x if x == ids::PAINTER_WETPAINT_BODY => Knob::Body,
             x if x == ids::PAINTER_WETPAINT_VOL_OPACITY => Knob::Volume,
             x if x == ids::PAINTER_WETPAINT_HARDNESS => {
@@ -87,7 +126,7 @@ impl WetKnobs {
         Some((self.get(knob), d.min, d.max, d.step))
     }
 
-    /// O roteamento dos ids da E10 (`false` = não é um deles).
+    /// O roteamento dos ids da E10 (`false` = não é um deles). O Medium cai no degrau Water · Oil ([`no_degrau`]).
     pub(super) fn set_controlo_e10(&mut self, id: ph2d_a11y::NodeId, v: f64) -> bool {
         use crate::ids;
         match id {

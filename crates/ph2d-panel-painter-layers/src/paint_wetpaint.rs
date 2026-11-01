@@ -48,15 +48,10 @@ const DO_DEPOSITO: [ph2d_a11y::NodeId; 11] = [
     ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
 ];
 
-/// **Os controlos de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. O Medium abre o cartão (no
-/// lugar do Pigment); a Hardness junto do Pickup (o contacto com o papel); o Body junto do Leveling (o que nivela ×
-/// o que resiste). Só no Pincel (`DepositoMolhado`).
-const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 3] = [
-    (
-        None,
-        "panel.painter_layers.wetpaint.medium",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM,
-    ),
+/// **Os controlos NUMÉRICOS de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. A Hardness junto
+/// do Pickup (o contacto com o papel); o Body junto do Leveling (o que nivela × o que resiste). O Medium é o menu
+/// Paint type que abre o cartão ([`tipo_de_tinta`], E10f). Só no Pincel (`DepositoMolhado`).
+const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 2] = [
     (
         Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP),
         "panel.painter_layers.wetpaint.hardness",
@@ -157,9 +152,11 @@ pub(crate) fn paint_wetpaint_section(
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;
         // A Dilution e o Volume são VOLUMES do topo (`paint_wetpaint_presets.rs`): um só controlo por facto. O
-        // Medium abre o cartão (E10, F3 §9: no lugar do Pigment, fundido na Dilution).
+        // Paint type (Water · Oil) abre o cartão (E10f, no lugar do Pigment).
         let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
-        y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, None);
+        if pousa {
+            y = tipo_de_tinta::paint_tipo_de_tinta(ctx, theme, x, content_w, y, &brush);
+        }
         let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
             (
                 "panel.painter_layers.wetpaint.pickup",
@@ -403,6 +400,7 @@ fn paint_resolution_readout(
 }
 
 mod oleo;
+mod tipo_de_tinta; // o menu Paint type (Water · Oil, E10f)
 use oleo::paint_oleo_real;
 pub(crate) use oleo::{MATERIAL, paint_wetpaint_popovers};
 

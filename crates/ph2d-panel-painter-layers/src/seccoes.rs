@@ -429,7 +429,7 @@ pub(crate) const WETPAINT: &[&str] = &[
 pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.grid_size_px",
     "panel.painter_layers.wetpaint.flow_grid_x",
-    "panel.painter_layers.wetpaint.medium",
+    "panel.painter_layers.wetpaint.paint_type",
     "panel.painter_layers.wetpaint.pickup",
     "panel.painter_layers.wetpaint.hardness",
     "panel.painter_layers.wetpaint.body",

@@ -17,9 +17,10 @@ pub(in crate::tool::paint) const BODY_DO_LEVELING: f64 =
 /// A chave da parede binária de antes da E10 (`Knob::LevelingOwnStroke`, fora do registo): só a migração a lê.
 pub(in crate::tool::paint) const CHAVE_PAREDE: &str = "levelingOwnStroke";
 
-/// **O meio por família** (F3 §3.2, dono 01/11 Q5): `familia` = a pasta do meio (`Oil`, `Pastel`…), `grupo` = a
-/// subpasta. Óleo e Express Oil `1`; Acrylic (o Fan Brush) `0,5`; os pastéis de óleo e cera (`Pastel/Oil`,
-/// `Pastel/Scrape`) `1`; o resto `0` (água, tintas, lápis, e as ferramentas Blend/Smear, que não pousam tinta).
+/// **O meio por família** (F3 §3.2, dono 01/11 Q5; Paint type Water · Oil, E10f): `familia` = a pasta do meio
+/// (`Oil`, `Pastel`…), `grupo` = a subpasta. Óleo e Express Oil `1` (Oil); os pastéis de óleo e cera (`Pastel/Oil`,
+/// `Pastel/Scrape`) `1`; o resto `0` (Water) — a Acrylic (o Fan Brush) incluída: acrílico = Water com Re-wet `0`
+/// ([`migra_para_controlos`]). Um valor fora de `{0, 1}` que o motor devolva cai no degrau de `WetKnobs::set`.
 #[must_use]
 pub(in crate::tool::paint) fn meio_da_familia(familia: &str, grupo: &str) -> f64 {
     ph2d_wet_paint::painter::receita::meio_da_familia(familia, grupo)
@@ -79,7 +80,8 @@ pub(in crate::tool::paint) fn migra_a_receita(
 }
 
 /// **`migra_para_controlos`** sobre os knobs já migrados pela E4: `agua` e `opacidade` = as do preset (ou as de
-/// agora quando ele não as fixa, a mesma regra da E4). Escreve Dilution, Volume, Medium e Body.
+/// agora quando ele não as fixa, a mesma regra da E4). Escreve Dilution, Volume, Medium (Water · Oil) e Body; na
+/// família Acrylic também o Re-wet `0`.
 pub(in crate::tool::paint) fn migra_para_controlos(
     k: &mut WetKnobs,
     prm: &Parametros,
@@ -96,8 +98,13 @@ pub(in crate::tool::paint) fn migra_para_controlos(
     );
     k.set(Knob::Dilution, diluicao);
     k.set(Knob::Volume, volume);
-    let meio = meio_da_familia(familia_do_preset(prm), &prm.group);
-    k.set(Knob::Medium, meio);
+    let familia = familia_do_preset(prm);
+    k.set(Knob::Medium, meio_da_familia(familia, &prm.group));
+    let meio = k.medium();
+    // Acrílico = Water que, seco, não volta a molhar (E10f, dono 01/11).
+    if familia == "Acrylic" {
+        k.set(Knob::Rewet, 0.0);
+    }
     // A parede saiu do registo (E10c2): a chave do preset lê-se pelo NOME, só aqui.
     let parede = prm.engine.get(CHAVE_PAREDE).is_some_and(|v| *v >= 0.5) && meio == 0.0;
     k.set(Knob::Body, if parede { BODY_DO_LEVELING } else { 0.0 });

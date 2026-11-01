@@ -162,6 +162,12 @@ pub(super) fn decode_wet_oleo_ambiente_option(id: NodeId) -> Option<u8> {
         .find(|&i| ph2d_tool_painter::ids::painter_wetpaint_oleo_ambiente_option_id(i) == id)
 }
 
+/// Decode a Wet Paint **Paint type** popover option id → `0` Water · `1` Oil (E10f).
+pub(super) fn decode_wet_medium_option(id: NodeId) -> Option<u8> {
+    (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM_COUNT)
+        .find(|&i| ph2d_tool_painter::ids::painter_wetpaint_medium_option_id(i) == id)
+}
+
 fn decode_wet_quick(vol: usize, id: NodeId) -> Option<u8> {
     (0..ph2d_tool_painter::ids::vol_quick_values(vol).len() as u8)
         .find(|&i| ph2d_tool_painter::ids::painter_wetpaint_vol_quick_option_id(vol, i) == id)

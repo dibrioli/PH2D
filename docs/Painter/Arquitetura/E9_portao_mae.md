@@ -234,7 +234,7 @@ A cor SECA das mesmas somas (Oklab ÷ v → sRGB) contra o píxel medido «sem �
 | 154 | 231,200,73 | 1,5 | 226,189,61 | 14,0 |
 | 170 | 228,199,78 | 2,0 | 223,188,66 | 14,3 |
 
-(Script: `seg.py` no scratchpad da sessão; ignora α e o creme.) **Seca, cada ponto fica a ≤ 5,4 níveis do segmento**
+(Script: [`ferramentas/e9_seg.py`](ferramentas/e9_seg.py); ignora α e o creme.) **Seca, cada ponto fica a ≤ 5,4 níveis do segmento**
 (o limiar é `mix_p99 ≤ 8`); molhada, 14–22. O `mix_p99 51` mede o escurecimento do molhado (+ a orla, `mix_max 157`
 igual antes e depois: é a orla saturada da §5.6 item 2, não a lei).
 

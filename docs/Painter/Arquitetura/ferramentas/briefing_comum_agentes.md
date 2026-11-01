@@ -1,0 +1,18 @@
+## Contexto comum (leia antes de tudo)
+
+Worktree: `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor`, ramo `line/PainterWatercolor`. Faça `pwd` e `git branch --show-current` antes de ler. Leia: `docs/Painter/Arquitetura/F4_2_plano_wet_paint.md` (§2, §3, §4, §5 e a SUA etapa no §7), `docs/architecture/decisions/0197-*.md` §1–§1.1, `crates/ph2d-paint-tinta/src/{soma,lei,transfere}.rs` e `crates/ph2d-wet-paint/src/grid/tinta.rs` (`CelulaTinta`, `garante`, `em`). E1–E4 estão FEITAS. Abreviaturas: `wp/` = `crates/ph2d-wet-paint/src/`.
+
+### Decisões do coordenador (valem para todas as etapas — não as mude)
+1. **A soma acompanha a massa.** Com `Sim::tinta == LeiDaTinta::Pigmento`, `susp`/`sett` CONTINUAM em unidades de massa (toda a dinâmica, `alpha_of_mass`, emboss, ladeira, altura do óleo seguem a ler a massa). A cor e a óptica vivem em `Grid::tinta[i].filme` (a fatia do `susp`) e `.aberto` (a do `sett`), com o INVARIANTE `filme.v · M_UM == susp[i]` e `aberto.v · M_UM == sett[i]` (até ao arredondamento). `M_UM` (massa por µm de pigmento) é uma constante em `wp/grid/tinta.rs`, definida e CALIBRADA pela E6a. Regra única de movimento: toda operação que move a fracção α do `susp`/`sett` de uma célula move α da `Soma` correspondente com `ph2d_paint_tinta::transfere` (ou soma `Soma::junta`/`Soma::de` ao depositar). Nunca se recompõe a cor a partir de `susp_rgb`/`sett_rgb` na lei nova (esses campos ficam a ser escritos pelo código velho e são IGNORADOS por quem lê a lei nova).
+2. **Um `match` por porta**: o ramo `Pigmento` entra num ÚNICO ponto por função (ex.: `match p.tinta { Velha => <caminho de hoje intacto>, Pigmento => tinta::<função nova>(...) }`), com o código novo num FICHEIRO NOVO. A lei `Velha` fica igual AO BIT (prove com os testes de bit existentes por nome).
+3. Tecto de LOC: ficheiros de `wp/` estão perto de 700 linhas (`render.rs` 696, `transfer.rs` 700, `trail.rs` 695) — o portão `architecture_workspace_file_loc_cap` reprova acima. Código novo vai para ficheiro novo (ex.: `wp/render/tinta.rs` com `#[path]` ou submódulo); no ficheiro velho só o `match`.
+4. O `m` (meio) da célula fica `0` até à E10 salvo onde a sua etapa diz; `o` (abertura) `1` até à E8; `altura_fechada` `0` até à E8.
+5. Comentário de código curto (o porquê longo vai no doc da etapa). O app é só em inglês (não há string de UI nestas etapas).
+
+### Como trabalhar
+- Inner loop: `bash scripts/cargo-check-narrow.sh ph2d-wet-paint`. Testes POR NOME: `bash scripts/cargo-test-narrow.sh ph2d-wet-paint <nome>` (exit 0 verde · 1 vermelho · 2 não compilou · 4 nome não casou). Tudo em `--profile smoke` (os scripts já o fazem). Nunca a crate inteira sem nome.
+- Há OUTROS 2 agentes a editar a mesma crate em paralelo, em ficheiros disjuntos. Se o `check` falhar num ficheiro que NÃO é seu, espere 1–2 min e repita; nunca edite o ficheiro de outro. Os seus paths são SÓ os listados na sua etapa (+ o ficheiro novo que criar + a linha `mod` que o declara).
+- Edite pela ferramenta Edit/Write (nunca `sed -i`/python que grava).
+- Prazo: 45 min. Ao fim, escreva um doc curto `docs/Painter/Arquitetura/E<n>_<nome>.md` (o que mudou com ficheiro:linha, fórmulas, a tabela de testes vermelho→verde com os números medidos, o que ficou aberto) e devolva: ficheiros tocados (lista exacta para o commit), testes corridos com o resultado, e o que ficou aberto.
+
+⛔ Proibido: `cd X && …` · `bash -c`/`sh -c` · `rm -rf` com variável/glob · `kill` de PID não gravado · escrever em `.git/`/`.claude/` · AskUserQuestion · push · commit (o coordenador comita) · tocar fora dos seus paths · spectacle · NVIDIA (`PH2D_WET_GPU=1` / testes `ph2d-wet-gpu` que exijam a RTX — travou o PC 2× em 31/10). `rustfmt` dos seus ficheiros no fim, num passo separado.

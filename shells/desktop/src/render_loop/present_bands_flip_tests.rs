@@ -54,7 +54,8 @@ fn both_halves_paste_their_flip_bands() {
         3,
         "a definição e as duas metades"
     );
-    assert!(src.contains("take(plan.main.0)") && src.contains("let from = plan.main.1;"));
+    assert!(src.contains("passe_de_baixo(&plan.bands[..plan.main.0])"));
+    assert!(src.contains("let from = plan.main.1;"));
     let fx = include_str!("present.rs");
     assert!(fx.contains(".flip_main") && fx.contains("quadro.desenha(&ids, game_rt);"));
 }

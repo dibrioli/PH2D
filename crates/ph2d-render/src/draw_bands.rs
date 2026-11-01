@@ -454,6 +454,11 @@ impl FrameOrder {
             .collect()
     }
 
+    /// Um palco «de fora» (sem rank na ordem) pousa no fim do mundo; os com rank, na faixa Palco deles.
+    pub fn palco_fora(&self, bits: u64) -> bool {
+        !self.palco_ranks.iter().any(|(b, _)| *b == bits)
+    }
+
     /// Todos os Pixel Sprites da ordem, do de trás para o da frente.
     pub fn pixel_ids(&self) -> Vec<u64> {
         self.pixel_ids_in(Band {
@@ -484,6 +489,36 @@ pub fn doc_bands_of(order: &FrameOrder, forcar: bool) -> Vec<Band> {
         return Vec::new();
     }
     bands.into_iter().filter(|b| b.family.is_scene()).collect()
+}
+
+/// O que o passe de baixo cola de uma faixa.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Cola {
+    /// O pipeline de sprites recortado à faixa.
+    Sprites,
+    /// A cena Vello `band_doc_scenes[i]`.
+    Cena(usize),
+    /// A colagem do Motion (formas, cópias de sprite, palcos).
+    Motion,
+    /// O passe do Flip, só com os objectos da faixa.
+    Flip,
+}
+
+/// ⭐ As faixas de BAIXO (as da última de sprites para trás, em ordem de desenho), cada uma com o que
+/// ela cola: as cenas contam-se por ordem; Motion e Palco vão à colagem do Motion.
+pub fn passe_de_baixo(bands: &[Band]) -> impl Iterator<Item = (Band, Cola)> + '_ {
+    bands.iter().scan(0usize, |cenas, b| {
+        let cola = match b.family {
+            Family::Sprite => Cola::Sprites,
+            Family::Vector | Family::Pixel => {
+                *cenas += 1;
+                Cola::Cena(*cenas - 1)
+            }
+            Family::Motion | Family::Palco => Cola::Motion,
+            Family::Flip => Cola::Flip,
+        };
+        Some((*b, cola))
+    })
 }
 
 /// O plano precisa do laço de faixas, ou o pipeline de sempre já o desenha?

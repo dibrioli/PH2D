@@ -13,6 +13,7 @@
 
 use ph2d_host::WindowSize;
 use ph2d_i18n::tr;
+use ph2d_render::draw_bands::Cola;
 use ph2d_vector::Color as VelloColor;
 
 /// ⭐ GEF 19 E3: a colagem de uma faixa Motion (`Some`) ou do topo do Motion sem faixa neste passe
@@ -155,10 +156,9 @@ pub(super) fn draw_lower_bands(
             ph2d_render::BandSource::Grade,
         );
     }
-    let mut doc_i = 0usize;
-    for band in plan.bands.iter().take(plan.main.0) {
-        match band.family {
-            ph2d_render::draw_bands::Family::Sprite => {
+    for (band, cola) in ph2d_render::draw_bands::passe_de_baixo(&plan.bands[..plan.main.0]) {
+        match cola {
+            Cola::Sprites => {
                 // ⚠️ Sem `extra` e sem `gpu_extra`: o fluxo cozido do Motion não
                 // tem rank (ele não passa pelo ECS) e pertence à faixa que corre o
                 // pipeline inteiro — a última.
@@ -185,8 +185,8 @@ pub(super) fn draw_lower_bands(
                     ph2d_render::BandSource::Sprites,
                 );
             }
-            ph2d_render::draw_bands::Family::Vector | ph2d_render::draw_bands::Family::Pixel => {
-                if let Some(scene) = g.band_doc_scenes.get(doc_i) {
+            Cola::Cena(i) => {
+                if let Some(scene) = g.band_doc_scenes.get(i) {
                     if let Err(e) = g.vello_pass.render_to_intermediate(
                         gpu,
                         scene.inner(),
@@ -202,21 +202,20 @@ pub(super) fn draw_lower_bands(
                         ph2d_render::BandSource::Vector,
                     );
                 }
-                doc_i += 1;
             }
-            ph2d_render::draw_bands::Family::Motion | ph2d_render::draw_bands::Family::Palco => {
+            Cola::Motion => {
                 (g.motion)(
-                    Some(*band),
+                    Some(band),
                     g.world_rt,
                     g.band_blit,
                     g.renderer,
                     sprites(g.game_rt, g.tonemap),
                 );
             }
-            ph2d_render::draw_bands::Family::Flip => {
+            Cola::Flip => {
                 cola_o_flip(
                     gpu,
-                    *band,
+                    band,
                     g.game_rt,
                     g.tonemap,
                     g.band_blit,

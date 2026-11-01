@@ -534,3 +534,40 @@ fn a_macro_without_a_playing_stage_gives_its_rank_to_a_neighbour() {
     );
     assert!(needs_banding(&plan(&[K, S]).0));
 }
+
+/// ⭐ GEF 19 — **o passe de baixo cola cada faixa pelo seu motor**: a faixa Motion abaixo dos sprites
+/// vai à colagem do Motion, a Palco também, e as cenas contam-se por ordem. (Mutação: saltar a faixa
+/// Motion ⇒ RED.)
+#[test]
+fn the_lower_pass_glues_a_motion_band_below_the_sprites() {
+    let b = |family, lo| Band {
+        family,
+        lo,
+        hi: lo + 1,
+    };
+    let bands = [b(M, 0), b(V, 1), b(K, 2), b(F, 3), b(P, 4), b(S, 5)];
+    let colas: Vec<Cola> = passe_de_baixo(&bands).map(|(_, c)| c).collect();
+    assert_eq!(
+        colas,
+        vec![
+            Cola::Motion,
+            Cola::Cena(0),
+            Cola::Motion,
+            Cola::Flip,
+            Cola::Cena(1),
+            Cola::Sprites
+        ]
+    );
+    let faixas: Vec<Band> = passe_de_baixo(&bands).map(|(f, _)| f).collect();
+    assert_eq!(faixas, bands, "cada faixa uma vez, na ordem de desenho");
+}
+
+/// ⭐ GEF 19 — **os palcos de fora**: com dois palcos a tocar, o que tem rank na ordem pousa na faixa
+/// Palco dele, o outro no fim do mundo. (Mutação: `palco_fora` sempre `true` ⇒ RED.)
+#[test]
+fn a_stage_without_a_rank_is_the_only_one_outside() {
+    let mut o = FrameOrder::default();
+    o.record_palco(0, 41);
+    assert!(!o.palco_fora(41), "o palco com rank cola na faixa dele");
+    assert!(o.palco_fora(42), "o palco sem rank pousa no fim");
+}

@@ -593,3 +593,39 @@ fn mid_hold_the_peek_anchors_on_the_active_key_not_the_raw_frame() {
         "no meio do hold da chave 4, a folha ANTERIOR e' a da chave 0 — nao a propria 4"
     );
 }
+
+/// ⭐ GEF 19 E4 — **uma faixa Flip desenha SÓ os objectos dela, na ordem dela** (`objects: Some(ids)`
+/// de [`render`]): dois objectos, só um em `ids` ⇒ o outro sai; os dois em ordem trocada ⇒ a pilha
+/// segue `ids`. (Mutação: `so_estes` ignorar o `Some` ⇒ RED.)
+#[test]
+fn a_flip_band_keeps_only_its_objects_in_its_order() {
+    let mut doc = doc_bg_fg();
+    let a = doc.objects()[0].id;
+    let b = doc.push_object("P");
+    let obj = doc.object_mut(b).unwrap();
+    let l = obj.add_layer("L");
+    let d = obj
+        .insert_frame(l, 0, Hold::Implicit, KeyKind::Keyframe)
+        .unwrap();
+    let mut s = FlipStroke::new();
+    s.push_default(Vec2::new(0.0, 0.0));
+    s.push_default(Vec2::new(1.0, 1.0));
+    obj.drawing_mut(d).unwrap().strokes.push(s);
+    let (ph, target) = (at(0), FlipTarget::on(a, None));
+    let faixa = |ids: Option<&[FlipObjectId]>| {
+        let todas = collect_layers(&doc, &ph, None, target, &[], None, None);
+        let (layers, _) = so_estes(todas, &doc, target, ids);
+        layers.iter().map(|l| l.obj).collect::<Vec<_>>()
+    };
+    assert_eq!(
+        faixa(None),
+        vec![a.0, a.0, b.0],
+        "CONTROLO: os dois objectos"
+    );
+    assert_eq!(faixa(Some(&[b])), vec![b.0], "só o objecto da faixa");
+    assert_eq!(
+        faixa(Some(&[b, a])),
+        vec![b.0, a.0, a.0],
+        "na ordem de `ids`"
+    );
+}

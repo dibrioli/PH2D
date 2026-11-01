@@ -235,7 +235,7 @@ fn as_copias_de_sprite_colam_na_faixa_do_dono() {
         faixa(s[2], 1..2, 0..0),
         faixa(s[1], 2..3, 0..0),
     ];
-    let (baixo, topo) = colhe_as_duas(&gpu, &m);
+    let (baixo, topo) = colhe_as_duas(&gpu, &mut m, false);
     let (x_baixo, x_sem, x_cima) = (128 - 77, 128, 128 + 77);
     let l = baixo;
     eprintln!(
@@ -253,8 +253,38 @@ fn as_copias_de_sprite_colam_na_faixa_do_dono() {
     assert!(pinta(&l, x_sem) && pinta(&l, x_cima), "o topo leva o resto");
 }
 
+/// ⭐ GEF 19 A — **pela porta do presente**: `faixa::cola` com a faixa Motion de BAIXO cola as cópias
+/// de sprite dela (o braço `Family::Motion` de `cola`). (Mutação: tirar o `cola_os_sprites` de `cola` ⇒ RED.)
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn a_faixa_motion_de_baixo_cola_as_copias_de_sprite_pela_cola() {
+    let gpu = gpu();
+    let (mut m, s) = motion();
+    m.pump.instances = vec![sprite(-3.0), sprite(0.0), sprite(3.0)];
+    m.pump.faixas = vec![
+        faixa(s[0], 0..1, 0..0),
+        faixa(s[2], 1..2, 0..0),
+        faixa(s[1], 2..3, 0..0),
+    ];
+    let (baixo, _) = colhe_as_duas(&gpu, &mut m, true);
+    let (x_baixo, x_sem, x_cima) = (128 - 77, 128, 128 + 77);
+    eprintln!(
+        "  pela cola: {} {} {}",
+        baixo[x_baixo], baixo[x_sem], baixo[x_cima]
+    );
+    assert!(
+        pinta(&baixo, x_baixo),
+        "a cola da faixa de baixo desenha as imagens de BAIXO"
+    );
+    assert!(
+        !pinta(&baixo, x_sem) && !pinta(&baixo, x_cima),
+        "e só as dela"
+    );
+}
+
 /// O `cola_os_sprites` da faixa de baixo e o do topo, cada um num mundo limpo: as linhas do meio.
-fn colhe_as_duas(gpu: &GpuContext, m: &MotionState) -> (Vec<u8>, Vec<u8>) {
+/// `pela_cola` = a faixa de baixo entra pela porta do presente (`faixa::cola`), não pelo método.
+fn colhe_as_duas(gpu: &GpuContext, m: &mut MotionState, pela_cola: bool) -> (Vec<u8>, Vec<u8>) {
     let blit = BandBlit::new(gpu, WorldRt::FORMAT);
     let atlas = ph2d_render::TextureAtlas::new(gpu, 128);
     let mut renderer =
@@ -292,7 +322,18 @@ fn colhe_as_duas(gpu: &GpuContext, m: &MotionState) -> (Vec<u8>, Vec<u8>) {
             game_rt: &game_rt,
             tonemap: &mut tonemap,
         };
-        c.cola_os_sprites(m, &mut e, passe, band);
+        if pela_cola && band == bands[0] {
+            let (mut placa, mut palcos) = (PlacaDeFormas::default(), Default::default());
+            super::cola(
+                c,
+                (&mut placa, m, &mut palcos),
+                e,
+                None,
+                (Some(band), passe),
+            );
+        } else {
+            c.cola_os_sprites(m, &mut e, passe, band);
+        }
         linha_do_meio(gpu, &mundo)
     };
     (colhe(bands[0]), colhe(bands[2]))
@@ -374,7 +415,7 @@ fn na_placa(gpu: &GpuContext) -> MotionState {
 #[ignore = "placa: precisa de adapter de GPU"]
 fn as_copias_de_sprite_cozidas_na_placa_colam_na_faixa_do_dono() {
     let gpu = gpu();
-    let m = na_placa(&gpu);
+    let mut m = na_placa(&gpu);
     let (_, n, _) = (m.sprites_da_camada(true).0).expect("CONTROLO: as sprites vêm da placa");
     assert_eq!(
         n, 3,
@@ -396,7 +437,7 @@ fn as_copias_de_sprite_cozidas_na_placa_colam_na_faixa_do_dono() {
         x
     };
     let (x_baixo, x_sem, x_cima) = (px(BAIXO), 128, px(CIMA));
-    let (baixo, topo) = colhe_as_duas(&gpu, &m);
+    let (baixo, topo) = colhe_as_duas(&gpu, &mut m, false);
     eprintln!(
         "  x {x_baixo}/{x_sem}/{x_cima} · faixa de baixo: {} {} {} · topo: {} {} {}",
         baixo[x_baixo], baixo[x_sem], baixo[x_cima], topo[x_baixo], topo[x_sem], topo[x_cima]

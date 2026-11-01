@@ -111,9 +111,8 @@ impl crate::App {
                 },
             );
         }
-        // ⭐ E cada palco de uma macro em cena FORA da ordem pousa a sua camada (ADR-0186), por cima da do editor — na
-        // vista da câmera, a camada DELA (`vista_da_camera::Vista::troca`). GEF 19: os da ordem colaram na faixa Palco.
-        let fora = |m: u64| !frame_order.palco_ranks.iter().any(|(b, _)| *b == m);
+        // ⭐ Os palcos das macros FORA da ordem pousam a sua camada (ADR-0186) por cima da do editor.
+        let fora = |m: u64| frame_order.palco_fora(m);
         let palcos = &mut self.motion_shell.palcos;
         palcos.pousa(
             ph2d_app_motion::macro_track::palcos::Colagem {

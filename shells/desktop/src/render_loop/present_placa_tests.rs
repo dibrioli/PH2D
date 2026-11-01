@@ -239,7 +239,5 @@ fn uma_faixa_motion_abaixo_dos_sprites_cola_antes_deles() {
             > em_src("for band in plan.bands.iter().skip(from)"),
         "o topo sem faixa cola DEPOIS das faixas de cima"
     );
-    assert!(src.contains(
-        "Family::Motion | ph2d_render::draw_bands::Family::Palco => {\n                (g.motion)(\n                    Some(*band),"
-    ));
+    assert!(src.contains("passe_de_baixo(&plan.bands[..plan.main.0])"));
 }

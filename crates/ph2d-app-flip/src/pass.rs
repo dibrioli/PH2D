@@ -166,15 +166,12 @@ pub fn render(
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas). Os fantasmas entram na MESMA lista,
     // cada um como uma fatia logo abaixo da sua camada.
-    let (mut layers, mut unfolded) =
-        collect_layers(flip, playhead, preview, target, models, ghosts, peek);
-    if let Some(ids) = objects {
-        so_estes(&mut layers, ids);
-        let alvo = target.resolve(flip).map(|(o, _)| o);
-        if !alvo.is_some_and(|o| ids.contains(&o)) {
-            unfolded = None;
-        }
-    }
+    let (layers, unfolded) = so_estes(
+        collect_layers(flip, playhead, preview, target, models, ghosts, peek),
+        flip,
+        target,
+        objects,
+    );
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
@@ -215,11 +212,25 @@ pub fn render(
     }
 }
 
-/// Fica só com as camadas dos objectos `ids`, na ordem deles (estável dentro de cada objecto).
-fn so_estes(layers: &mut Vec<LayerRef<'_>>, ids: &[FlipObjectId]) {
+/// `Some(ids)`: fica só com as camadas dos objectos `ids`, na ordem deles (estável dentro de cada
+/// objecto), e o preview sem dobra só se o alvo for um deles. `None`: tudo como veio.
+fn so_estes<'a>(
+    (mut layers, unfolded): (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>),
+    flip: &FlipDoc,
+    target: FlipTarget,
+    objects: Option<&[FlipObjectId]>,
+) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
+    let Some(ids) = objects else {
+        return (layers, unfolded);
+    };
     let pos = |o: u64| ids.iter().position(|i| i.0 == o);
     layers.retain(|l| pos(l.obj).is_some());
     layers.sort_by_key(|l| pos(l.obj));
+    let alvo = target.resolve(flip).map(|(o, _)| o);
+    (
+        layers,
+        unfolded.filter(|_| alvo.is_some_and(|o| ids.contains(&o))),
+    )
 }
 
 /// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt` — em trechos com a luz de

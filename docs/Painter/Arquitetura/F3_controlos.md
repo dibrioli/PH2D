@@ -504,3 +504,28 @@ O rascunho §0–§6 é ACEITE como desenho da E10, com estas decisões técnica
 Perguntas que vão ao dono (num só smoke, com a maquete [`fotos/f3/maquete_painel.png`](fotos/f3/maquete_painel.png) e
 [`fotos/e9/borda_fina.png`](fotos/e9/borda_fina.png)): §6 #1–#6 + a camada fina (E9 §7.3 #1: manter a mudança de cor na
 borda fina, ou prendê-la à cor escolhida).
+
+## §8 Smoke do dono (01/11) — a FORMA do §1/§5 foi reprovada; a lei fica
+
+Memória: `project-memory/project_painter_panel_e10_owner_decisions_2026_11_01.md` (frases do dono e a captura do painel
+de hoje). O que muda no desenho da E10 (vale sobre o §0–§7):
+
+| # | o dono | o que a E10 passa a ser |
+|---|---|---|
+| D1 | as ferramentas não saem da barra vertical da esquerda | Blend/Smear/Blow/Dry/Water/Erase/Knife ficam onde estão; a força de cada uma continua onde está hoje |
+| D2 | os 4 modos partilham o máximo de UI; Paper, Grain, Shape… ficam | nenhuma secção comum aos 4 modos sai nem muda de lugar; o §1 deixa de ser «o painel» e passa a ser **a lista dos controlos de LEI** que entram NAS secções de hoje |
+| D3 | a UI segue o padrão do app | campos do Inspector (rótulo + número com setas + ponto de keyframe), secções colapsáveis de hoje; nada de widget próprio. A maquete `fotos/f3/maquete_painel*.png` fica só como registo do que foi recusado |
+| D4 | não desfazer vitórias: Spacing «Continuous»; o Tilt e o visor dele | intocados (o §1.2 #9 «Spacing» funde só os knobs de passo POR BAIXO do «Continuous», sem mudar o controlo visível) |
+| D5 | a configuração avançada é muito importante | **todo knob de hoje com leitor de produção FICA** (as linhas M/C/R do §2 deixam de apagar controlos vivos): só sai o que é MORTO medido (censo §5: `extRakeLight`, `extValleyGran`, `extWetSheen`, `extGrainDither`, `extEdgeTint` — sem leitor no produto) e o que é a MESMA grandeza que o dono aprovou fundir (Pigment + Water → Dilution). As fusões M que sobram viram «este knob escreve a grandeza X» no doc/tooltip, não remoção |
+| Q2 | um só «Dilution» ✓ | Pigment + Water → `Dilution` (migração §3.1, exacta) |
+| Q3 | Dry speed da tela inteira | `Evaporation` por tela (T); os 4 pincéis que o mudam migram para o mesmo valor da tela, com foto antes × depois |
+| Q4 | escolha técnica | **Paper press = 1 por omissão** (o que os pincéis aprovados já fazem; medido: a diferença é ≤ 8 % e só no óleo fino, `fotos/f3/paper_press_0_meio_1.png`) |
+| Q5 | meios ✓ | Fan Brush 0,5 · Express Oil 1 · Oil Pastel/Wax 1 |
+| Q6 | quer o controlo da sombra | **Shadow** fica (força da sombra do relevo); Crevice fica no avançado |
+| Q7 | riscas/cor por cerda → secção Shape | os `bristleStreak*`/`bristleNoise*` ficam na secção Shape (não num asset escondido) |
+| Q8 | o que der menos artefactos | **a camada fina prende o matiz à cor escolhida** (a borda ciano/limão da `fotos/e9/borda_fina.png` some); o vidrado sobre tinta curada continua por banda (amarelo sobre azul seco = verde) |
+| Q9 | Body fica | `Body` = tensão de cedência por pincel somada à do meio; substitui a parede binária `levelingOwnStroke` e cura o Bug #56 (a pilha de 12–39 µm) |
+
+Os controlos NOVOS de lei (sem antecessor único) entram nas secções de hoje, no mesmo estilo: `Medium`, `Dilution`,
+`Volume` (em µm, F3b §4: faixa 0..1000 µm medida), `Pigment mix` (E10b/E10c, já no motor), `Body`, `Hardness`,
+`Absorbency` (tela), `Shadow`.

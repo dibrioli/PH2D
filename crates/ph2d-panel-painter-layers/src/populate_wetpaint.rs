@@ -98,6 +98,27 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
             "panel.painter_wet_cartao.wet_soften_tip",
         ),
+        // Os controlos de lei da E10 (F3 §9).
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM,
+            "panel.painter_wet_cartao.medium_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DILUTION,
+            "panel.painter_wet_cartao.dilution_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_OPACITY,
+            "panel.painter_wet_cartao.volume_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_BODY,
+            "panel.painter_wet_cartao.body_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS,
+            "panel.painter_wet_cartao.hardness_tip",
+        ),
     ] {
         store.set_tooltip(id, tr(dica));
     }

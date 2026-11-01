@@ -41,8 +41,6 @@ pub mod oleo_celula;
 mod patch;
 #[path = "grid/tinta.rs"]
 pub mod tinta;
-#[path = "grid/traco.rs"]
-pub mod traco; // o campo PREGUIÇOSO da altura dos fios (W3) — filho por LOC
 pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
 
 pub const DEFAULT_WIDTH: usize = 900;
@@ -84,9 +82,6 @@ pub struct Grid {
     /// **A MARCA do nivelamento** (W3 K7, [`nivelado`]): quanto a lâmina nivelou a célula (`0..=1`); a forma do Óleo
     /// Real poupa-a ao desfoque largo. VAZIO até a 1.ª faca que nivela.
     pub nivelado: Vec<f32>,
-    /// **O TRAÇO** que pousou a tinta da célula (J2, [`traco`]): o nivelamento não escoa de um traço para a tinta
-    /// molhada de outro. VAZIO até o primeiro pincel com a lei pintar ([`traco::garante`]).
-    pub traco: Vec<u32>,
     /// **O GLAZE da tinta em suspensão** (prompt 42): a fracção que filtra a de baixo — o Glaze do pincel que a
     /// pousou, pesado pela massa SUSPENSA (como o [`Self::relevo`]: trocar de pincel não muda a tinta da tela).
     /// Lido pela lei do ecrã de cada célula ([`crate::assenta::Ecra::com_vela`]); `0` = a lei da obra.
@@ -279,7 +274,6 @@ impl Grid {
             espessura: Vec::new(),
             crista: Vec::new(),
             nivelado: Vec::new(),
-            traco: Vec::new(),
             vela: vec![0.0; n],
             material: Vec::new(),
             aparencia: Vec::new(),

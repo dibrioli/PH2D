@@ -53,6 +53,8 @@ mod event_brush_forward;
 mod foto_jitter_tests; // a foto do cartão Jitter, `#[ignore]` (dono 23/10)
 #[cfg(test)]
 mod foto_shape_color_tests; // a foto da secção, `#[ignore]` (prompt 38)
+#[cfg(test)]
+mod foto_wetpaint_tests; // a foto do painel Wet Paint, `#[ignore]` (E10-B2)
 /// As barras do card Line: a tabela que o pintor, o registo e o encaminhamento leem.
 pub mod line_barras;
 mod marca_cor; // a cor secundária e a cor pela mão na secção Randomize Color (L11)

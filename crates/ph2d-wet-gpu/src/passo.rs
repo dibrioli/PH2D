@@ -437,8 +437,7 @@ impl PassoPlaca {
         u.gx = grav[0] as f32;
         u.gy = grav[1] as f32;
         self.adv.set_uniforms(gpu, &u);
-        let mut k = Knobs::from_params(&p, g.flow.rf).com_sedimenta(p.sedimenta, grav[0], grav[1]);
-        k.isola = i32::from(p.paredes && !g.traco.is_empty());
+        let k = Knobs::from_params(&p, g.flow.rf).com_sedimenta(p.sedimenta, grav[0], grav[1]);
         self.adv.set_knobs(gpu, &k);
         let par = n.is_multiple_of(2);
         let seca = n.is_multiple_of(sim.dry_every);

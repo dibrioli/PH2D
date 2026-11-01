@@ -39,17 +39,15 @@ fn cada_preset_de_fabrica_pousa_o_mesmo_pigmento_e_agua_por_dab() {
         let op = prm
             .volumes
             .opacity
-            .unwrap_or(f64::from(t.paint.wetpaint.opacidade));
+            .unwrap_or(f64::from(super::OPACIDADE_DE_FABRICA));
         let (pig_velho, agua_velha) = (ppd * op, veiculo(agua, wpd));
 
         t.wet_preset_aplicar(&e.preset);
         let k = &t.paint.wetpaint.knobs;
+        // E10: a receita lê a Dilution e o Volume que a migração escreveu (o meio à parte: só a água o sente).
         let r = receita(&Controlos {
-            pigmento: k.get(Knob::PigmentPerDab),
-            agua: k.water,
-            agua_por_dab: k.get(Knob::WaterPerDab),
-            volume: f64::from(t.paint.wetpaint.opacidade),
-            carga: k.get(Knob::Intensity),
+            diluicao: k.dilution(),
+            volume_um: k.volume_um(),
             meio: 0.0,
         });
         let rel = |a: f64, b: f64| {
@@ -145,12 +143,9 @@ fn a_faixa_das_ferramentas_da_agua_pousa_o_mesmo_que_na_lei_velha() {
     for op in [1.0, 0.6, 0.25] {
         let k = knobs_da_faixa(op);
         let r = receita(&Controlos {
-            pigmento: k.get(Knob::PigmentPerDab),
-            agua: k.water,
-            agua_por_dab: k.get(Knob::WaterPerDab),
-            volume: op,
-            carga: k.get(Knob::Intensity),
-            meio: 0.0,
+            diluicao: k.dilution(),
+            volume_um: k.volume_um(),
+            meio: k.medium(),
         });
         let (pig, agua) = (
             PIGMENTO_DA_FAIXA * op,

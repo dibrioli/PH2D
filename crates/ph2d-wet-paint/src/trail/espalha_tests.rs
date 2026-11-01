@@ -34,11 +34,13 @@ fn pausa(e: &mut Engine) {
 fn motor() -> Engine {
     let mut e = Engine::new(L, L);
     e.sim.oleo = true;
-    e.set_knob(Knob::PigmentPerDab, 3000.0);
-    e.set_knob(Knob::Intensity, 10.0);
+    // E10: PPD 3000 · carga 10 · Water 0 · Opacity 1, pela migração exacta para Dilution/Volume.
+    let (diluicao, volume) =
+        crate::painter::receita::migra_para_controlos(3000.0, 1.0, 0.0, 10.0, 1.0);
+    e.set_knob(Knob::Dilution, diluicao);
+    e.set_knob(Knob::Volume, volume);
     e.set_knob(Knob::Drag, 0.0);
     e.set_knob(Knob::Smear, 0.0);
-    e.sliders.pigmento = 1.0;
     e.sliders.water = 0.0;
     e.sliders.size = 1.0;
     e

@@ -62,7 +62,6 @@ impl PainterTool {
                 "oleo_real_valores": oleo_para_json(&w.oleo_real_valores),
                 "show_wet": w.show_wet,
                 "paper_visual": w.paper_visual,
-                "opacidade": w.opacidade,
                 "relogio_fixo": w.relogio_fixo,
             },
             "traco": {
@@ -167,9 +166,7 @@ impl PainterTool {
             &wv["oleo_real_valores"],
             &v["preset"]["engine"],
         );
-        if let Some(x) = wv["opacidade"].as_f64() {
-            w.opacidade = x as f32;
-        }
+        // A `opacidade` de uma macro gravada antes da E10 é IGNORADA (o Volume do preset a substitui, E10c2).
         w.relogio_fixo = wv["relogio_fixo"].as_f64();
         self.macro_shape_color_aplica(&v["shape_color"]);
         let tv = &v["traco"];

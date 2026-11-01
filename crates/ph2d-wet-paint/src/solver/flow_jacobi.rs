@@ -80,8 +80,6 @@ struct FlowConst {
     max_v: f64,
     level_k: f64,
     level_clamp: f64,
-    /// As paredes entre traços neste passo ([`crate::sim::Sim::paredes`]; a lei é da tinta).
-    isola: bool,
     /// O pincel na mão tem o Real Oil: sem a ladeira do óleo ([`super::ladeira_do_oleo::do_passe`]).
     oleo_na_mao: bool,
     cap_k: f64,
@@ -122,7 +120,6 @@ impl FlowConst {
             max_v: p.k(Knob::MaxVelocity),
             level_k: p.k(Knob::Leveling),
             level_clamp: p.k(Knob::LevelClamp),
-            isola: p.paredes,
             oleo_na_mao: p.oleo > 0.0,
             cap_k: p.k(Knob::Capillary),
             cap_gate: p.k(Knob::CapillaryGate),
@@ -207,18 +204,13 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         paper,
         active,
         bloom,
-        traco,
         oleo,
         ..
     } = g;
-    let traco_full: &[u32] = traco;
     let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
-    let tau0 = if oleo.is_empty() {
-        0.0
-    } else {
-        super::ladeira_do_oleo::tau0()
-    };
-    let isola = c.isola && !traco_full.is_empty();
+    // A tensão de cedência (meio + corpo) só existe com o campo da célula; sem ele, o fluxo de sempre.
+    let com_tensao = !oleo.is_empty();
+    let tau0 = super::ladeira_do_oleo::tau0();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o
     // compilador o verifica em vez de um comentário o prometer.
     let film_full: &[f32] = film;
@@ -290,18 +282,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 // Leveling: a água corre do grosso para o fino, clampada por
                 // eixo. (Diferença finita ⇒ leva o `dif`.)
                 let fx = fx_off as usize;
-                let [wx, wy] = super::parede_do_traco(isola.then(|| {
-                    let viz = [
-                        frow + kfl,
-                        frow + kfr,
-                        fy_u * fine_s + fx + kf,
-                        fy_d * fine_s + fx + kf,
-                    ];
-                    (traco_full, susp_full, frow + kf, viz)
-                }));
-                let mut lx = if wx {
-                    0.0
-                } else if let Some(l) = ladeira {
+                let mut lx = if let Some(l) = ladeira {
                     let o = l.em(frow + kfl) - l.em(frow + kfr);
                     let d = film_m[kfl] as f64 - film_m[kfr] as f64;
                     l.termo(
@@ -320,9 +301,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 } else if lx < -c.level_clamp {
                     lx = -c.level_clamp;
                 }
-                let mut ly = if wy {
-                    0.0
-                } else if let Some(l) = ladeira {
+                let mut ly = if let Some(l) = ladeira {
                     let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
                     let d = film_u[kf] as f64 - film_d[kf] as f64;
                     l.termo(
@@ -467,26 +446,20 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                 if let Some(gt) = c.gota {
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
                 }
-                if tau0 > 0.0 {
-                    let tau = super::ladeira_do_oleo::tensao(
+                if com_tensao {
+                    let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
+                    let tau = super::ladeira_do_oleo::tensao_com_corpo(
                         tau0,
-                        f64::from(crate::grid::oleo_celula::da_celula(oleo, fi).oleo),
+                        f64::from(cel.meio),
+                        f64::from(cel.corpo),
                         super::ladeira_do_oleo::massa_movel(susp_full[fi], sett_full[fi]),
                         f,
                         c.max_v,
                     );
                     (ex, ey) = super::ladeira_do_oleo::bingham(ex, ey, tau);
                 }
-                fxr[x as usize] = if wx {
-                    0.0
-                } else {
-                    clamp_sym(ex, c.max_v) as f32
-                };
-                fyr[x as usize] = if wy {
-                    0.0
-                } else {
-                    clamp_sym(ey, c.max_v) as f32
-                };
+                fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
+                fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
                 i += 1;
             }
         },

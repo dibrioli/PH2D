@@ -25,6 +25,11 @@
 //! **pincel** deposita a cor de um dab. Um caso que lê a lei e não vê a fileira é um knob
 //! INALCANÇÁVEL; um que a vê e não a lê é um knob MORTO — as duas leem-se igual numa tabela, e só a
 //! medição as separa.
+//!
+//! ⭐ **E10-B2 (01/11):** o Wet Paint passa a ver a fileira com a lei da tinta `Pigmento` (o `Pigment mix` de
+//! `Grid::pigmento`, E10c) — e só com ela: na `Velha` não há leitor (`offers_pigment_mixing_in`, gate
+//! `o_pigment_mix_do_wet_paint_so_aparece_na_lei_pigmento`). Das ferramentas da água, só as que movem tinta pela
+//! lei da sim (`LinhaDaFerramenta::MisturaDoPigmento`).
 
 use crate::card::{card_frame, card_row};
 use crate::number_field;

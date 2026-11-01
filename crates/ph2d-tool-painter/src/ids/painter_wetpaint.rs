@@ -268,8 +268,22 @@ pub const PAINTER_WETPAINT_FLOW: NodeId = hash_node_id("painter_brush.wetpaint_f
 /// **Water** — the brush's water load per dab (engine `sliders.water`, `0..1`, boot `1.0`).
 pub const PAINTER_WETPAINT_WATER: NodeId = hash_node_id("painter_brush.wetpaint_water");
 
-/// **Pigment** — pigment per dab (SPEC §10 gain; knob `pigmentPerDab`, default `600`).
+/// **Pigment** — ⛔ sem leitor desde a E10 (fundido na [`PAINTER_WETPAINT_DILUTION`]): a ferramenta já não o
+/// encaminha e o painel já não tem a linha (E10-B2, fora de [`PAINTER_WETPAINT_FIELDS`]). Fica só pela sonda
+/// `sonda_varredura_oleo` (no-op); sai com ela.
 pub const PAINTER_WETPAINT_PIGMENT: NodeId = hash_node_id("painter_brush.wetpaint_pigment");
+
+/// **Dilution** (E10, `F3_controlos.md` §9) — `1 − φ` da receita (knob `dilution`): Pigment + Water num controlo.
+pub const PAINTER_WETPAINT_DILUTION: NodeId = hash_node_id("painter_brush.wetpaint_dilution");
+
+/// **Medium** (E10) — o meio `m` da tinta, `0` água … `1` óleo (knob `medium`).
+pub const PAINTER_WETPAINT_MEDIUM: NodeId = hash_node_id("painter_brush.wetpaint_medium");
+
+/// **Body** (E10) — a tensão de cedência do pincel somada à do meio (knob `body`).
+pub const PAINTER_WETPAINT_BODY: NodeId = hash_node_id("painter_brush.wetpaint_body");
+
+/// **Hardness** (E10) — vista EXACTA do knob `paperGate`: `paperGate = (1 − Hardness) · máx(paperGate)`.
+pub const PAINTER_WETPAINT_HARDNESS: NodeId = hash_node_id("painter_brush.wetpaint_hardness");
 
 /// **Pickup** — how much settled paint the tip lifts back (dirty brush; knob `pickup`, `0.005`).
 pub const PAINTER_WETPAINT_PICKUP: NodeId = hash_node_id("painter_brush.wetpaint_pickup");
@@ -367,11 +381,14 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 37] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
-    PAINTER_WETPAINT_PIGMENT,
+    PAINTER_WETPAINT_DILUTION,
+    PAINTER_WETPAINT_MEDIUM,
+    PAINTER_WETPAINT_BODY,
+    PAINTER_WETPAINT_HARDNESS,
     PAINTER_WETPAINT_PICKUP,
     PAINTER_WETPAINT_DRY_SPEED,
     PAINTER_WETPAINT_EDGE,

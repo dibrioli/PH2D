@@ -228,7 +228,8 @@ pub struct Knobs {
     pub _k0: f32,
     pub sed_dx: i32,
     pub sed_dy: i32,
-    /// As paredes entre traços valem neste passo (`1`) — `Params::paredes` e o campo `Grid::traco` existe.
+    /// ⛔ Sempre `0` desde a E10 (a parede entre traços e o `Grid::traco` saíram, E10c2): o `parede()` do shader e o
+    /// binding 18 ficam inertes até a limpeza com o portão da placa (`docs/Painter/Arquitetura/E10c2_pontas.md`).
     pub isola: i32,
     pub _k2: i32,
 }
@@ -490,9 +491,6 @@ impl AdvectGpu {
         q.write_buffer(&self.paper, 0, bytemuck::cast_slice(&g.paper));
         q.write_buffer(&self.wet, 0, bytemuck::cast_slice(&pack_active(&g.wet)));
         q.write_buffer(&self.sett, 0, bytemuck::cast_slice(&g.sett));
-        if !g.traco.is_empty() {
-            q.write_buffer(&self.traco, 0, bytemuck::cast_slice(&g.traco));
-        }
     }
 
     /// Os knobs do `campo`.

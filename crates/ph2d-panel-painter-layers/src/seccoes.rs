@@ -242,7 +242,8 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.wetpaint.preset_policy",
     "panel.painter_layers.wetpaint.vol_size",
     "panel.painter_layers.wetpaint.water",
-    "panel.painter_layers.wetpaint.vol_opacity",
+    "panel.painter_layers.wetpaint.dilution",
+    "panel.painter_layers.wetpaint.volume_um",
 ];
 /// *Clone*.
 pub(crate) const CLONE: &[&str] = &["panel.painter_layers.clone.aligned"];
@@ -427,8 +428,10 @@ pub(crate) const WETPAINT: &[&str] = &[
 pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.grid_size_px",
     "panel.painter_layers.wetpaint.flow_grid_x",
-    "panel.painter_layers.wetpaint.pigment",
+    "panel.painter_layers.wetpaint.medium",
     "panel.painter_layers.wetpaint.pickup",
+    "panel.painter_layers.wetpaint.hardness",
+    "panel.painter_layers.wetpaint.body",
     "panel.painter_layers.wetpaint.dry_speed",
     "panel.painter_layers.wetpaint.edge_darkening",
     "panel.painter_layers.wetpaint.gravity",

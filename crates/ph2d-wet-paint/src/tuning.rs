@@ -7,9 +7,9 @@
 //! (NaN falls back to the default, exactly like the JS free numeric input).
 //!
 //! The SPEC §17 gated extensions ship default-neutral; since 25/10 the ones that are ART live in the
-//! Tuning's advanced groups (`Bristles` · `Stroke` · `WetEffects`; the `Look` group left on 27/10 — its knobs are
-//! `Hidden`, read only by the unused `render::render_region`). `Hidden` keeps what another surface paints (card,
-//! Shape), pure engine calibration and those dead Look knobs.
+//! Tuning's advanced groups (`Bristles` · `Stroke` · `WetEffects`; the `Look` group left on 27/10 and its five dead
+//! knobs left the registry in E10). `Hidden` keeps what another surface paints (card, Shape, the E10 law controls)
+//! and pure engine calibration.
 
 /// Every calibration knob. Discriminants are indices into [`KNOB_DEFS`] and
 /// the value array — the order below IS the table order.
@@ -64,11 +64,6 @@ pub enum Knob {
     ExtStaining,
     ExtDryBrush,
     ExtWetSoften,
-    ExtRakeLight,
-    ExtValleyGran,
-    ExtWetSheen,
-    ExtGrainDither,
-    ExtEdgeTint,
     /// Doc 23 P1: active re-wet lift — how strongly a wet-tool stamp
     /// dissolves SETTLED pigment back into suspension (watercolor is
     /// re-soluble; Rebelle's "Re-wet" is stroke-driven). Appended LAST so
@@ -168,9 +163,6 @@ pub enum Knob {
     /// ⭐ **A ponta DESFIADA das cerdas** (J2, 03_MOTORES §7 c): a amplitude do desvio de cada fio ao longo do traço
     /// (a pegada dele deslocada; o desfiado das duas pontas) — `0` = a pegada de sempre, ao bit.
     BristleTipRagged,
-    /// ⭐ **O nivelamento não atravessa para OUTRO traço** (J2, 03_MOTORES §7 d): o filme de um traço não escoa
-    /// para a tinta molhada de outro (`1`); `0` = o nivelamento de sempre, ao bit.
-    LevelingOwnStroke,
     /// ⭐ **A ponta de tinta LÍQUIDA é UM reservatório** (J3 tintas, `docs/Painter/Pinceis/exames/tintas.md` «2.ª
     /// onda»): a fracção `r` da tinta debaixo da ponta entra nela a cada transfer, mistura-se por SUBTRACÇÃO (o
     /// produto das duas tintas, nunca a média) e espalha-se pela pegada inteira — o azul escurece um raio ANTES da
@@ -360,9 +352,20 @@ pub enum Knob {
     /// ao SEGMENTO entre o assentado e a tinta de cima ([`crate::assenta::Ecra::com_opaca`]) — o claro cobre o escuro
     /// sem a diluição em branco do tapar extra. `0` (omissão) = a lei do Rebelle (a aguarela), ao bit.
     Opaque,
+    /// ⭐ **O MEIO da tinta** (E10, `docs/Painter/Arquitetura/F3_controlos.md` §9): `m` `0` água … `1` óleo — o meio do
+    /// dab na receita e na célula (substitui o Real Oil como meio; o Real Oil fica a luz).
+    Medium,
+    /// ⭐ **A DILUIÇÃO** (E10): `1 − φ` da receita — Pigment + Water fundidos num controlo (dono 01/11, Q2).
+    Dilution,
+    /// ⭐ **O VOLUME por dab em µm de tinta** (E10, F3b §4): `h = Volume · M_UM` — funde a Opacity e a carga
+    /// (`Intensity`).
+    Volume,
+    /// ⭐ **O CORPO** (E10, dono 01/11 Q9): a tensão de cedência do PINCEL somada à do meio; viaja na célula com a
+    /// tinta e substitui a parede binária `levelingOwnStroke` (Bug #56). `0` = só a do meio.
+    Body,
 }
 
-pub const KNOB_COUNT: usize = 144;
+pub const KNOB_COUNT: usize = 142;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

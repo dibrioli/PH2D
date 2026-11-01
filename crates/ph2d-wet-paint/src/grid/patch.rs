@@ -50,8 +50,6 @@ pub struct GridPatch {
     crista: Vec<f32>,
     /// A marca do nivelamento no recorte ([`super::nivelado`]); VAZIA quando a grade não a tinha.
     nivelado: Vec<f32>,
-    /// O traço de cada célula no recorte ([`super::traco`]); VAZIO quando a grade não o tinha.
-    traco: Vec<u32>,
     vela: Vec<f32>,
     /// O material no recorte ([`super::material`]); VAZIO quando a grade não o tinha.
     material: Vec<crate::material::MaterialCelula>,
@@ -169,11 +167,6 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         } else {
             take_rows(&g.nivelado, s, x0, y0, x1, y1)
         },
-        traco: if g.traco.is_empty() {
-            Vec::new()
-        } else {
-            take_rows(&g.traco, s, x0, y0, x1, y1)
-        },
         vela: take_rows(&g.vela, s, x0, y0, x1, y1),
         material: if g.material.is_empty() {
             Vec::new()
@@ -228,7 +221,6 @@ pub fn restore_grid_region(g: &mut Grid, p: &GridPatch) {
     super::espessura::restaura_janela(g, (x0, y0, x1, y1), &p.espessura);
     super::crista::restaura_janela(g, (x0, y0, x1, y1), &p.crista);
     super::nivelado::restaura_janela(g, (x0, y0, x1, y1), &p.nivelado);
-    super::traco::restaura_janela(g, (x0, y0, x1, y1), &p.traco);
     put_rows(&mut g.vela, s, x0, y0, x1, y1, &p.vela);
     super::material::restaura_janela(g, (x0, y0, x1, y1), &p.material);
     super::aparencia::restaura_janela(g, (x0, y0, x1, y1), &p.aparencia);

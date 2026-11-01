@@ -55,8 +55,8 @@ fn preset_rel(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
 fn medida_oleo_real_altura_knobs_de_fabrica() {
     let b = biblioteca();
     println!(
-        "{:<44} {:>7} {:>7} {:>7} {:>7} {:>7} {:>8}",
-        "preset", "Emboss", "EmbExp", "EmbRef", "BrHgt", "BrRem", "Pigment"
+        "{:<44} {:>7} {:>7} {:>7} {:>7} {:>7} {:>8} {:>8}",
+        "preset", "Emboss", "EmbExp", "EmbRef", "BrHgt", "BrRem", "Dilution", "Vol_um"
     );
     for e in b.entradas.iter().filter(|e| e.partes()[0] == "WetPainter") {
         let mut t = PainterTool::default();
@@ -65,14 +65,15 @@ fn medida_oleo_real_altura_knobs_de_fabrica() {
         let _ = t.wet_preset_aplicar(&e.preset);
         let k = &t.paint.wetpaint.knobs;
         println!(
-            "{:<44} {:>7.3} {:>7.3} {:>7.1} {:>7.3} {:>7.3} {:>8.1}",
+            "{:<44} {:>7.3} {:>7.3} {:>7.1} {:>7.3} {:>7.3} {:>8.3} {:>8.1}",
             e.relativo,
             k.get(Knob::Emboss),
             k.get(Knob::EmbossSizeExp),
             k.get(Knob::EmbossSizeRef),
             k.get(Knob::BristleHeight),
             k.get(Knob::BristleRemove),
-            k.get(Knob::PigmentPerDab),
+            k.get(Knob::Dilution),
+            k.get(Knob::Volume),
         );
     }
 }

@@ -270,8 +270,16 @@ pub(super) fn pinta(
                 Some(cena.lei),
                 "a lei não sobreviveu ao preset"
             );
+            // E10c2: a carga de tinta `pig` (o Pigment de antes) é a Dilution com a MESMA `φ` sobre esta água.
+            let wpd = t
+                .paint
+                .wetpaint
+                .knobs
+                .get(ph2d_wet_paint::tuning::Knob::WaterPerDab);
+            let (diluicao, _) =
+                ph2d_wet_paint::painter::receita::migra_para_controlos(pig, wpd, agua, 1.0, 1.0);
             for (id, v) in [
-                (crate::ids::PAINTER_WETPAINT_PIGMENT, pig),
+                (crate::ids::PAINTER_WETPAINT_DILUTION, diluicao),
                 (crate::ids::PAINTER_WETPAINT_WATER, agua),
             ] {
                 assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(id, v)));

@@ -12,7 +12,7 @@ use super::brush_settings::BrushTextureImage;
 use super::*;
 use ph2d_brush_presets::{Parametros, Preset, SCHEMA, Volumes, escrever_textura, ler_textura};
 use ph2d_painter_brush::TextureKind;
-use ph2d_wet_paint::tuning::KNOB_DEFS;
+use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
 use std::collections::BTreeMap;
 
 /// A Opacity do Wet Paint sem preset: todo o pigmento do pincel (a claridade de fábrica é o
@@ -20,6 +20,9 @@ use std::collections::BTreeMap;
 pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
 mod campos; // as listas dos campos do `BrushSpec` (dentro e fora do preset) — filho por LOC
+pub(in crate::tool::paint) mod controlos_e10; // a migração da E10 por função — filho por LOC
+#[cfg(test)]
+mod controlos_e10_tests;
 #[cfg(test)]
 mod corpo_da_agua_tests;
 mod ferramentas;
@@ -94,30 +97,7 @@ pub(in crate::tool::paint) fn de_fabrica_ou_candidato(nome: &str) -> Preset {
         .unwrap_or_else(|| panic!("o preset {nome:?}: nem na fábrica nem candidato"))
 }
 
-/// **A migração da E4** (ADR-0197 §1.1): um preset da lei velha pousa o MESMO pigmento e a MESMA água por dab
-/// (à pressão de referência), agora como receita (`pigmentPerDab`) × quantidade (`intensity`). A Water e a
-/// Opacity são as do preset, ou as de agora quando ele não as fixa.
-pub(super) fn migra_a_receita(k: &mut WetKnobs, prm: &Parametros, agua: f64, opacidade: f64) {
-    use ph2d_wet_paint::tuning::Knob;
-    let agua = prm
-        .volumes
-        .water
-        .filter(|w| w.is_finite())
-        .map_or(agua, |w| w.clamp(0.0, 1.0));
-    let opacidade = prm
-        .volumes
-        .opacity
-        .filter(|o| o.is_finite())
-        .map_or(opacidade, |o| o.clamp(0.0, 1.0));
-    let (pig, carga) = ph2d_wet_paint::painter::receita::migra_da_lei_velha(
-        k.get(Knob::PigmentPerDab),
-        k.get(Knob::WaterPerDab),
-        agua,
-        opacidade,
-    );
-    k.set(Knob::PigmentPerDab, pig);
-    k.set(Knob::Intensity, carga);
-}
+pub(super) use controlos_e10::migra_a_receita;
 
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";
@@ -265,19 +245,19 @@ impl PainterTool {
         true
     }
 
-    /// Um volume VIVO pelo índice do painel (Size px · Water · Opacity).
+    /// Um volume VIVO pelo índice do painel (Size px · Water · Volume µm — o `Knob::Volume`, E10).
     fn aplicar_volume(&mut self, vol: usize, x: f64) {
+        if vol >= 2 {
+            self.paint.wetpaint.knobs.set(Knob::Volume, x);
+            return;
+        }
         let v = match vol {
             0 => Volumes {
                 size_px: Some(x),
                 ..Volumes::default()
             },
-            1 => Volumes {
-                water: Some(x),
-                ..Volumes::default()
-            },
             _ => Volumes {
-                opacity: Some(x),
+                water: Some(x),
                 ..Volumes::default()
             },
         };
@@ -349,11 +329,16 @@ impl PainterTool {
                 k.set(knob, v);
             }
         }
-        for def in &KNOB_DEFS {
+        // A Dry speed é da TELA (dono 01/11 Q3): o preset não a lê — fica a de agora.
+        for def in KNOB_DEFS.iter().filter(|d| d.knob != Knob::Evaporation) {
             if let Some(&v) = prm.engine.get(def.key) {
                 k.set(def.knob, v);
             }
         }
+        k.set(
+            Knob::Evaporation,
+            self.paint.wetpaint.knobs.get(Knob::Evaporation),
+        );
         if let Some(&v) = prm.engine.get(CHAVE_ERASE) {
             k.erase = if v.is_nan() {
                 k.erase
@@ -362,8 +347,13 @@ impl PainterTool {
             };
         }
         k.water = water;
+        // A Opacity saiu (E10): a de um preset que não a fixa é a de fábrica.
+        let opacidade = f64::from(OPACIDADE_DE_FABRICA);
         if !prm.engine.contains_key(CHAVE_RECEITA) {
-            migra_a_receita(&mut k, prm, water, f64::from(self.paint.wetpaint.opacidade));
+            migra_a_receita(&mut k, prm, water, opacidade);
+        }
+        if !prm.engine.contains_key(controlos_e10::CHAVE_CONTROLOS) {
+            controlos_e10::migra_para_controlos(&mut k, prm, water, opacidade);
         }
         // Um preset de antes da W2 do plano 27 traz as cerdas no mapa do MOTOR e o Shape vazio: elas passam
         // ao Shape, com os mesmos valores (o traço é o mesmo, ao bit — a miniatura de fábrica é o portão).
@@ -477,11 +467,18 @@ impl PainterTool {
         if let Some(d) = v.size_px.filter(|d| d.is_finite()) {
             self.set_brush_size_px(d as f32 * 0.5);
         }
-        if let Some(o) = v.opacity.filter(|o| o.is_finite()) {
-            self.paint.wetpaint.opacidade = (o as f32).clamp(0.0, 1.0);
-        }
+        // A `opacity` de antes da E10 já entrou no Volume pela migração; os volumes vivos são Dilution e Volume.
         if let Some(w) = v.water.filter(|w| w.is_finite()) {
             self.paint.wetpaint.knobs.water = w.clamp(0.0, 1.0);
+        }
+        for knob in [Knob::Dilution, Knob::Volume] {
+            if let Some(x) = v
+                .extra
+                .get(KNOB_DEFS[knob as usize].key)
+                .and_then(serde_json::Value::as_f64)
+            {
+                self.paint.wetpaint.knobs.set(knob, x);
+            }
         }
     }
 
@@ -500,13 +497,18 @@ impl PainterTool {
         }
     }
 
-    /// Os volumes de agora, como o painel os mostra (Size px = o DIÂMETRO do anel).
+    /// Os volumes de agora, como o painel os mostra (Size px = o DIÂMETRO do anel); a Dilution e o Volume (E10)
+    /// vão no `extra`, pela chave do knob — o que a política «lembrar volumes» guarda.
     #[must_use]
     pub fn wet_preset_volumes(&self) -> Volumes {
+        let k = &self.paint.wetpaint.knobs;
         Volumes {
             size_px: Some(curto(self.paint.brush.radius_px * 2.0)),
-            opacity: Some(curto(self.paint.wetpaint.opacidade)),
-            water: Some(self.paint.wetpaint.knobs.water),
+            water: Some(k.water),
+            extra: [Knob::Dilution, Knob::Volume]
+                .map(|kn| (KNOB_DEFS[kn as usize].key.to_owned(), k.get(kn).into()))
+                .into_iter()
+                .collect(),
             ..Volumes::default()
         }
     }
@@ -540,6 +542,9 @@ impl PainterTool {
         {
             p.engine.insert(def.key.to_owned(), k.get(def.knob));
         }
+        p.engine.remove(KNOB_DEFS[Knob::Evaporation as usize].key); // da tela (Q3)
+        p.engine
+            .insert(controlos_e10::CHAVE_CONTROLOS.to_owned(), 1.0);
         for kn in ph2d_wet_paint::brush::BRISTLE_UNIT_KNOBS {
             p.engine.remove(KNOB_DEFS[kn as usize].key);
         }
@@ -576,7 +581,7 @@ impl PainterTool {
         }
         let v = self.wet_preset_volumes();
         p.volumes.size_px = v.size_px;
-        p.volumes.opacity = v.opacity;
+        p.volumes.opacity = None; // a Opacity saiu: o Volume vai no `engine` (E10)
         p.volumes.water = v.water;
         let ferramenta = self.ferramenta_dos_presets().and_then(nome_da_ferramenta);
         p.paint_mode = ferramenta.is_none().then(|| self.wet_preset_modo());

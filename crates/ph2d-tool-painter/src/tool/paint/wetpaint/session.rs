@@ -13,8 +13,9 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) knobs: WetKnobs,
     pub(in crate::tool::paint) tilt: (bool, u8, u8),
     pub(in crate::tool::paint) km_mixing: bool,
-    /// A **Opacity** do Wet Paint: a quantidade de pigmento (`sliders.pigmento`).
-    pub(in crate::tool::paint) opacidade: f32,
+    /// O **Pigment mix** do cartão comum Mixing (E10c): `BrushSpec.pigment_mix` com o `pigment` ligado, senão `0` —
+    /// só a lei `Pigmento` o lê (`Grid::pigmento`). A quantidade por dab é o `Knob::Volume` (a Opacity saiu, E10).
+    pub(in crate::tool::paint) pigment_mix: f32,
     /// O «Glaze layering (K-M)»: a lei do ECRÃ, que assentar e re-molhar preservam ([`ph2d_wet_paint::assenta`]).
     pub(in crate::tool::paint) km_glaze: bool,
     /// A **Paint Texture** (o papel impresso na tinta): do TRAÇO (dono 28/10), pousa na célula (`grid::aparencia`).
@@ -40,7 +41,7 @@ impl WetEngineFacts {
         km_glaze: false,
         textura: false,
         oleo: false,
-        opacidade: 1.0,
+        pigment_mix: 0.0,
         tooth: 1.0,
         agua_viva: false,
         borda_que_pesa: 0.0,
@@ -230,8 +231,8 @@ impl WetSession {
         if f.knobs.erase != a.knobs.erase {
             e.sliders.erase = f.knobs.erase;
         }
-        if f.opacidade != a.opacidade {
-            e.sliders.pigmento = f64::from(f.opacidade);
+        if f.pigment_mix != a.pigment_mix {
+            e.sim.pigment_mix = f.pigment_mix;
         }
         let moved = KNOB_DEFS.iter().zip(&f.knobs.knobs).zip(&a.knobs.knobs);
         for ((def, new), old) in moved {

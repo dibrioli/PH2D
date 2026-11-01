@@ -659,49 +659,72 @@ fn campos_de_ondas_futuras_sobrevivem_a_captura() {
 #[test]
 fn os_volumes_sao_o_que_o_painel_mostra() {
     let mut t = ferramenta();
+    // E10: a Opacity saiu — os volumes vivos do Pincel são a Dilution e o Volume (µm), no `extra` pela chave.
+    let mut extra = std::collections::BTreeMap::new();
+    extra.insert("dilution".to_owned(), serde_json::json!(0.4));
+    extra.insert("volume".to_owned(), serde_json::json!(12.5));
     t.wet_preset_aplicar_volumes(&Volumes {
         size_px: Some(40.0),
         opacity: Some(0.5),
         water: Some(0.25),
+        extra,
         ..Volumes::default()
     });
     assert_eq!(t.paint.brush.radius_px, 20.0, "Size px é o DIÂMETRO");
-    assert_eq!(
-        t.paint.wetpaint.opacidade, 0.5,
-        "a Opacity é do Wet Paint, não a força partilhada"
-    );
-    assert_eq!(t.paint.wetpaint.knobs.water, 0.25);
+    let k = &t.paint.wetpaint.knobs;
+    assert_eq!((k.water, k.dilution(), k.volume_um()), (0.25, 0.4, 12.5));
     let v = t.wet_preset_volumes();
     assert_eq!(
         (v.size_px, v.opacity, v.water),
-        (Some(40.0), Some(0.5), Some(0.25))
+        (Some(40.0), None, Some(0.25)),
+        "a `opacity` de antes da E10 não volta"
+    );
+    assert_eq!(
+        (v.extra["dilution"].as_f64(), v.extra["volume"].as_f64()),
+        (Some(0.4), Some(12.5))
     );
 }
 
-/// **A Opacity do Wet Paint é a QUANTIDADE de pigmento** (dono 10/10): o traço a 0,26 é ~um quarto do escuro
-/// do traço cheio (a mediana do escuro nos píxeis pintados; Rebelle: a Opacity clareia o traço). Mutação que
-/// sangra: a porta do dab ignorar o `pigmento` (os dois traços iguais).
+/// **O Volume do Wet Paint é a QUANTIDADE de pigmento** (dono 10/10; E10: a Opacity virou o Volume em µm): o traço a
+/// 26 % do Volume pousa 26 % da massa do traço cheio, e fica mais claro. A régua é a MASSA (a lei, F3 §9), não o escuro
+/// do Rebelle (revogado como referência a 31/10; a barra de escuro 0,18..0,36 já reprovava antes da E10 com 17/47).
+/// Mutação que sangra: a receita ignorar o Volume (as duas massas iguais).
 #[test]
 fn a_opacity_do_wet_paint_e_a_quantidade_de_pigmento() {
-    let escuro = |op: f32| {
+    let mede = |frac: f64| {
         let mut t = ferramenta();
-        t.paint.wetpaint.opacidade = op;
-        let px = pinta(&mut t);
-        let mut v: Vec<u32> = px
+        let v = t.paint.wetpaint.knobs.volume_um();
+        t.paint.wetpaint.knobs.set(Knob::Volume, v * frac);
+        risca(&mut t, [23, 101, 179]);
+        let g = &t
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .expect("sessão viva")
+            .engine
+            .layers[0]
+            .grid;
+        let massa: f64 = g.susp.iter().chain(&g.sett).map(|&m| f64::from(m)).sum();
+        let px = t.run_full().0;
+        let escuro: u64 = px
             .as_chunks::<4>()
             .0
             .iter()
-            .map(|p| 255 - u32::from(p[0].min(p[1]).min(p[2])))
-            .filter(|&e| e > 8)
-            .collect();
-        v.sort_unstable();
-        f64::from(v[v.len() / 2])
+            .map(|p| u64::from(255 - p[0].min(p[1]).min(p[2])))
+            .sum();
+        (massa, escuro)
     };
-    let (cheia, clara) = (escuro(1.0), escuro(0.26));
-    let razao = clara / cheia;
+    let ((m1, e1), (m26, e26)) = (mede(1.0), mede(0.26));
+    eprintln!("massa {m26} / {m1} = {}; escuro {e26} / {e1}", m26 / m1);
     assert!(
-        (0.18..=0.36).contains(&razao),
-        "a Opacity 0,26 deu {clara} contra {cheia} da cheia (razão {razao:.2})"
+        (m26 / m1 - 0.26).abs() < 0.02,
+        "a 26 % do Volume a massa deu {m26} contra {m1} ({:.3})",
+        m26 / m1
+    );
+    assert!(
+        e26 < e1,
+        "o traço com menos tinta não ficou mais claro: {e26} contra {e1}"
     );
 }
 
@@ -733,7 +756,8 @@ fn com_a_opacity_baixa_a_cor_acumula_ate_a_escolhida() {
     let tecto = 0.26 * (255.0 - 23.0);
     let camadas = |op: f32, cor: [u8; 3]| {
         let mut t = ferramenta();
-        t.paint.wetpaint.opacidade = op;
+        let v = t.paint.wetpaint.knobs.volume_um();
+        t.paint.wetpaint.knobs.set(Knob::Volume, v * f64::from(op)); // E10: o Volume é a Opacity de antes
         let mut out = Vec::new();
         for _ in 0..PASSADAS {
             risca(&mut t, cor);
@@ -798,8 +822,9 @@ fn a_opacidade_nao_tem_leitor_no_wet_paint() {
         fraca, forte,
         "a força ganhou leitor no Wet Paint: o volume Opacity entra no painel"
     );
-    let seca = traco(&|t| t.paint.wetpaint.knobs.water = 0.2);
-    assert_ne!(seca, forte, "controlo: o Water é lido");
+    // E10: no Pincel a receita lê a Dilution (o Water ficou para a ferramenta Wet).
+    let seca = traco(&|t| t.paint.wetpaint.knobs.set(Knob::Dilution, 0.95));
+    assert_ne!(seca, forte, "controlo: a Dilution é lida");
     let grossa = traco(&|t| t.set_brush_size_px(20.0));
     assert_ne!(grossa, forte, "controlo: o Size é lido");
 }

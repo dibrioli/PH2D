@@ -11,9 +11,7 @@ use super::sonda_oleo_grumos::{alturas, grava_png};
 use super::*;
 use crate::{PaintMedia, PainterTool};
 use ph2d_brush_presets::Biblioteca;
-use ph2d_editor_core::tool::{
-    CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool,
-};
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_wet_paint::tuning::Knob;
 
 const W: u32 = 360;

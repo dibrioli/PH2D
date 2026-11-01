@@ -97,13 +97,6 @@ impl Trail {
         let water_cap = p.k(Knob::WaterCap); // each drag leaks ~0.8% wetness
         // O relevo pelo diâmetro do traço (J2 §7 c): `1` = o `Emboss` do pincel, ao bit.
         let relevo = (p.k(Knob::Emboss) * p.relevo_do_tamanho) as f32;
-        // O traço de cada célula (J2 §7 d): a lei é da TINTA — o pincel com ela marca a célula com o seu traço; um sem
-        // ela, por cima, desmarca-a (a tinta misturada já não isola). Sem o campo e sem a lei, nada.
-        let lei = p.k(Knob::LevelingOwnStroke) > 0.0;
-        let traco = (lei || !g.traco.is_empty()).then_some(if lei { p.traco_actual } else { 0 });
-        if traco.is_some() {
-            crate::grid::traco::garante(g);
-        }
         let vela = p.k(Knob::Glaze) as f32;
         let cobre = p.k(Knob::WetCover);
         // A guache que cobre o ASSENTADO (31/10): `0` = nenhuma célula é tocada, ao bit.
@@ -132,7 +125,7 @@ impl Trail {
         let pigmento = (p.tinta == crate::sim::LeiDaTinta::Pigmento).then(|| {
             crate::grid::tinta::garante(g);
             #[rustfmt::skip]
-            let d = deposito_tinta::Pigmento { vela, dissolve, shed_pig, shed_water, water_cap, filme, mix, glaze: p.glaze, meio: p.oleo, pigment_mix: p.pigment_mix };
+            let d = deposito_tinta::Pigmento { vela, dissolve, shed_pig, shed_water, water_cap, filme, mix, glaze: p.glaze, meio: p.k(Knob::Medium) as f32, pigment_mix: p.pigment_mix };
             d
         });
         let mut rx0 = w;
@@ -165,9 +158,6 @@ impl Trail {
                 let espessura =
                     (crate::grid::espessura::em(g, i) + v).max(piso.unwrap_or(f64::MIN));
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
-                if let Some(t) = traco {
-                    g.traco[i] = t;
-                }
                 let r_old = g.relevo[i];
                 if r_old != relevo {
                     let m_old = g.susp[i] as f64 + g.sett[i] as f64;
@@ -476,7 +466,11 @@ impl Trail {
         let mut out = [0.0f64; 3];
         let mix = p.mix;
         let lift_gain = crate::tools::active_lift_gain(p);
-        let (a0, b0, sz) = (self.anchor_x - self.half, self.anchor_y - self.half, self.size - 1);
+        let (a0, b0, sz) = (
+            self.anchor_x - self.half,
+            self.anchor_y - self.half,
+            self.size - 1,
+        );
         let foto = crate::tools::tinta::Foto::tira(g, p, [a0, b0, a0 + sz, b0 + sz].map(i64::from));
         // Pass 1: averages.
         let mut n = 0u32;

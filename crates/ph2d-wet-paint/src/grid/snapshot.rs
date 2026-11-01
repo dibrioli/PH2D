@@ -19,7 +19,6 @@ pub struct GridSnapshot {
     pub espessura: Vec<f32>,
     pub crista: Vec<f32>,
     pub nivelado: Vec<f32>,
-    pub traco: Vec<u32>,
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
     pub aparencia: Vec<aparencia::AparenciaCelula>,
@@ -64,7 +63,6 @@ pub fn snapshot_grid(g: &Grid) -> GridSnapshot {
         espessura: g.espessura.clone(),
         crista: g.crista.clone(),
         nivelado: g.nivelado.clone(),
-        traco: g.traco.clone(),
         vela: g.vela.clone(),
         material: g.material.clone(),
         aparencia: g.aparencia.clone(),
@@ -101,7 +99,6 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     g.espessura.clone_from(&s.espessura);
     g.crista.clone_from(&s.crista);
     g.nivelado.clone_from(&s.nivelado);
-    g.traco.clone_from(&s.traco);
     g.vela.copy_from_slice(&s.vela);
     g.material.clone_from(&s.material);
     g.aparencia.clone_from(&s.aparencia);
@@ -199,20 +196,19 @@ macro_rules! tile_fino {
 
 tile_fino!(
     film: f32, susp: f32, susp_rgb: [f32; 3], sett: f32, sett_rgb: [f32; 3], relevo: f32,
-    altura: f32, espessura: f32, crista: f32, nivelado: f32, traco: u32, vela: f32,
+    altura: f32, espessura: f32, crista: f32, nivelado: f32, vela: f32,
     material: crate::material::MaterialCelula, aparencia: aparencia::AparenciaCelula,
     oleo: oleo_celula::OleoCelula, tinta: tinta::CelulaTinta,
     pigmento: tinta::pigmento::LadoEspectral, wet: u8, active: u8, bloom: u8,
 );
 
 /// Os planos que nascem VAZIOS (`garante`): o comprimento na base decide se o restauro os esvazia.
-fn comprimentos_vazios(g: &Grid) -> [usize; 10] {
+fn comprimentos_vazios(g: &Grid) -> [usize; 9] {
     [
         g.altura.len(),
         g.espessura.len(),
         g.crista.len(),
         g.nivelado.len(),
-        g.traco.len(),
         g.material.len(),
         g.aparencia.len(),
         g.oleo.len(),
@@ -245,7 +241,7 @@ struct Escalares {
     row_hi: Vec<i32>,
     paper_preset: PaperPreset,
     paper_sheet: u32,
-    vazios: [usize; 10],
+    vazios: [usize; 9],
 }
 
 impl Escalares {
@@ -377,24 +373,18 @@ impl Registo {
             amostra!(crista),
             amostra!(nivelado),
         );
-        let (a4, a5, a6, a7) = (
-            amostra!(traco),
-            amostra!(material),
-            amostra!(aparencia),
-            amostra!(oleo),
-        );
+        let (a5, a6, a7) = (amostra!(material), amostra!(aparencia), amostra!(oleo));
         ajusta(&mut g.altura, v[0], a0.as_ref());
         ajusta(&mut g.espessura, v[1], a1.as_ref());
         ajusta(&mut g.crista, v[2], a2.as_ref());
         ajusta(&mut g.nivelado, v[3], a3.as_ref());
-        ajusta(&mut g.traco, v[4], a4.as_ref());
-        ajusta(&mut g.material, v[5], a5.as_ref());
-        ajusta(&mut g.aparencia, v[6], a6.as_ref());
-        ajusta(&mut g.oleo, v[7], a7.as_ref());
+        ajusta(&mut g.material, v[4], a5.as_ref());
+        ajusta(&mut g.aparencia, v[5], a6.as_ref());
+        ajusta(&mut g.oleo, v[6], a7.as_ref());
         let a8 = amostra!(tinta);
-        ajusta(&mut g.tinta, v[8], a8.as_ref());
+        ajusta(&mut g.tinta, v[7], a8.as_ref());
         let a9 = amostra!(pigmento);
-        ajusta(&mut g.pigmento, v[9], a9.as_ref());
+        ajusta(&mut g.pigmento, v[8], a9.as_ref());
         for (k, t) in tiles() {
             t.poe(g, ret_do_tile(*k, g.s, g.rows));
         }

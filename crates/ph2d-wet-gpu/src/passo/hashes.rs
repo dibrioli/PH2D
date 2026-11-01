@@ -48,9 +48,6 @@ pub(super) fn hash_fina(g: &Grid, y: usize) -> u64 {
     h = mistura(h, c(&g.paper[a..b]));
     h = mistura(h, &g.active[a..b]);
     h = mistura(h, &g.wet[a..b]);
-    if !g.traco.is_empty() {
-        h = mistura(h, bytemuck::cast_slice(&g.traco[a..b]));
-    }
     if !g.vela.is_empty() {
         h = mistura(h, c(&g.vela[a..b]));
     }

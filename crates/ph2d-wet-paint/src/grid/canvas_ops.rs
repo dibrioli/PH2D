@@ -74,8 +74,6 @@ pub fn dry_canvas(g: &mut Grid, mix: ColorMix, glaze: f64, ecra: crate::assenta:
             i += 1;
         }
     }
-    // A tinta seca não é parede (J2 §7 d: a parede é entre tintas MOLHADAS): o campo do traço vai-se com a água.
-    g.traco = Vec::new();
     // A velocidade mora na grade de FLUXO — mesmo interior, outra régua.
     let fg = g.flow;
     for cy in 1..=fg.h {
@@ -153,7 +151,6 @@ pub fn clear_canvas(g: &mut Grid) {
     g.espessura = Vec::new();
     g.crista = Vec::new();
     g.nivelado = Vec::new();
-    g.traco = Vec::new();
     g.vela.fill(0.0);
     g.material = Vec::new();
     g.aparencia = Vec::new();

@@ -102,12 +102,17 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
     let base = molhado();
     let ultimo_base = quadros(&base).pop().unwrap();
     let casos: [Caso<'_>; 14] = [
+        // E10: a receita lê a Dilution (Pigment + Water fundidos) e o Volume (µm) — o Water só a ferramenta Wet lê.
         (
-            "pigmento",
-            &|t| t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 1500.0),
+            "diluição",
+            &|t| t.paint.wetpaint.knobs.set(Knob::Dilution, 0.2),
             true,
         ),
-        ("água", &|t| t.paint.wetpaint.knobs.water = 0.2, true),
+        (
+            "volume",
+            &|t| t.paint.wetpaint.knobs.set(Knob::Volume, 3.0),
+            true,
+        ),
         ("tamanho", &|t| t.set_brush_size_px(8.0), true),
         ("cor", &|t| t.set_brush_color_srgb8([191, 0, 18]), true),
         ("papel de cor", &|t| t.papel = Some([200, 220, 240]), true),
@@ -139,8 +144,17 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
             &|t| t.paint.wetpaint.smooth_edges = 0.5,
             true,
         ),
-        // A Opacity do Wet Paint (smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
-        ("opacity", &|t| t.paint.wetpaint.opacidade = 0.4, true),
+        // O Volume (a Opacity de antes, smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
+        (
+            "volume",
+            &|t| {
+                t.paint
+                    .wetpaint
+                    .knobs
+                    .set(ph2d_wet_paint::tuning::Knob::Volume, 300.0)
+            },
+            true,
+        ),
     ];
     // Os casos são independentes: um por thread (113 s em série sob a suíte, 11/10).
     let chave_base = &base.wet_preview_chave();

@@ -34,7 +34,6 @@ pub const WET: &[Receita] = &[
             ("opaque", 1.0),
             ("levelingOwnStroke", 1.0),
             ("retention", 0.97),
-            ("extWetSheen", 0.0),
             ("felt", 0.0),
             SEM_KM,
         ],

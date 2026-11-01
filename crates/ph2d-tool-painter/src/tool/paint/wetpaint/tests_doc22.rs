@@ -158,6 +158,9 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
         let is_enios = matches!(
             def.knob,
             Knob::PigmentPerDab
+                | Knob::Intensity // E4: a carga do PPD 78
+                | Knob::Dilution // E10: a receita do Wet Round
+                | Knob::Volume
                 | Knob::EdgeDarkening
                 | Knob::PaperGate
                 | Knob::Felt

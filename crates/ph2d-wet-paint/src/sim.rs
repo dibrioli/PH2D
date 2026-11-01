@@ -94,10 +94,6 @@ pub struct Params {
     pub relevo_do_tamanho: f64,
     /// [`Sim::px_por_celula`].
     pub px_por_celula: f64,
-    /// [`Sim::traco_actual`].
-    pub traco_actual: u32,
-    /// [`Sim::paredes`].
-    pub paredes: bool,
     /// A água do dab ÷ a de um dab inteiro (`Engine::agua_do_dab`, `1 ÷` o peso do traço fino que a porta do produto
     /// dobra na opacidade): o FILME do traço ([`crate::tuning::Knob::StrokeFilm`]) desfá-lo para ter a mesma espessura a
     /// todo o tamanho. `1` fora da porta do produto.
@@ -212,13 +208,6 @@ pub struct Sim {
     /// pena do [`Knob::WetOpenEdge`]) convertem-se por ela, para o mesmo pincel dar o mesmo traço a toda a razão. `1` =
     /// a razão de fábrica, ao bit.
     pub px_por_celula: f64,
-    /// **O traço de agora** ([`Knob::LevelingOwnStroke`]): o número que cada célula pintada guarda
-    /// ([`crate::grid::Grid::traco`]); `0` = nenhum. Muda a cada traço ([`crate::painter::Engine::begin_direct_stroke`]).
-    pub traco_actual: u32,
-    /// **As paredes entre traços valem neste passo?** ([`crate::solver::parede_do_traco`]) A lei é da TINTA (a célula
-    /// guarda se o seu traço isola); as ferramentas que MOVEM tinta (Blow, Wet, Smear, Blend) movem-na por cima delas
-    /// — o engine põe-no a cada passo pela ferramenta activa.
-    pub paredes: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
     pub ext_bypass: bool,
     /// **O solver é INDEPENDENTE DE ORDEM?** `true` (o default) roda o
@@ -303,8 +292,6 @@ impl Default for Sim {
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
             px_por_celula: 1.0,
-            traco_actual: 0,
-            paredes: true,
             ext_bypass: false,
             order_invariant: true,
             pending: None,
@@ -418,8 +405,6 @@ impl Sim {
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,
             px_por_celula: self.px_por_celula,
-            traco_actual: self.traco_actual,
-            paredes: self.paredes,
             agua_do_dab: 1.0,
             pigmento_do_dab: None,
             tinta: self.tinta,

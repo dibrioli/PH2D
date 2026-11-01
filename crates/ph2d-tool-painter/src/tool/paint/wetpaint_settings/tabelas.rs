@@ -8,9 +8,7 @@ use super::*;
 pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
     (
         WetTool::Smear,
-        &[
-            CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5],
-        ],
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4]],
     ),
     (
         WetTool::Blend,
@@ -20,7 +18,6 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             CERDAS[2],
             CERDAS[3],
             CERDAS[4],
-            CERDAS[5],
             Knob::PaperGate,
             Knob::Spacing,
             Knob::GateSaturation,
@@ -35,8 +32,8 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             CERDAS[2],
             CERDAS[3],
             CERDAS[4],
-            CERDAS[5],
             Knob::WaterPush,
+            Knob::WaterPerDab,
         ],
     ),
     (
@@ -47,35 +44,33 @@ pub(crate) const CORPO_DA_AGUA: [(WetTool, &[Knob]); 5] = [
             CERDAS[2],
             CERDAS[3],
             CERDAS[4],
-            CERDAS[5],
             Knob::DryerEdge,
             Knob::DryerLevel,
         ],
     ),
     (
         WetTool::Blow,
-        &[
-            CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4], CERDAS[5],
-        ],
+        &[CERDAS[0], CERDAS[1], CERDAS[2], CERDAS[3], CERDAS[4]],
     ),
 ];
 
 /// Os knobs do [`CORPO_DA_AGUA`] que só o leitor de UMA ferramenta lê (`tools/secador.rs`, `tools/bordas.rs`,
 /// `trail/transfer/perto.rs`) — os outros do corpo o Pincel também os lê.
-pub(super) const LIDOS_SO_PELA_FERRAMENTA: [(Knob, WetTool); 4] = [
+pub(super) const LIDOS_SO_PELA_FERRAMENTA: [(Knob, WetTool); 5] = [
     (Knob::BlendReach, WetTool::Blend),
     (Knob::WaterPush, WetTool::Wet),
+    (Knob::WaterPerDab, WetTool::Wet), // E10: a receita do Pincel já não o lê (`tools.rs`, a água do Wet)
     (Knob::DryerEdge, WetTool::Dry),
     (Knob::DryerLevel, WetTool::Dry),
 ];
 
-/// O carimbo de cerdas e a tinta que ele leva: o que as cinco lêem.
-const CERDAS: [Knob; 6] = [
+/// O carimbo de cerdas: o que as cinco lêem (a `Intensity` saiu na E10 — a receita lê o Volume, e a força do carimbo
+/// não a lê; medido por `o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le`).
+const CERDAS: [Knob; 5] = [
     Knob::Felt,
     Knob::BristleCount,
     Knob::BristleStrength,
     Knob::BristleSize,
-    Knob::Intensity,
     Knob::CapsuleSpacing,
 ];
 

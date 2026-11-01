@@ -15,7 +15,11 @@ impl PainterTool {
             km_glaze: w.km_glaze,
             textura: w.paper_visual,
             oleo: w.oleo_real.is_some(),
-            opacidade: w.opacidade,
+            pigment_mix: if self.paint.brush.pigment {
+                self.paint.brush.pigment_mix.clamp(0.0, 1.0)
+            } else {
+                0.0
+            },
             tooth: self
                 .paint
                 .brush

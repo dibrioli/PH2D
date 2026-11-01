@@ -460,7 +460,8 @@ pub struct BrushSettings {
     pub wetpaint: bool,
     /// The full authored knob table (doc 22): the curated rows and the Tuning table read this one value.
     pub wet_knobs: crate::WetKnobs,
-    /// The Wet Paint's own **Opacity** volume (`0..1`): the deposited colour goes to the paper white by it.
+    /// ⛔ MORTO desde a E10 (o Volume substitui a Opacity; `WetPaintState::opacidade` saiu, E10c2): sempre
+    /// `OPACIDADE_DE_FABRICA`. Sai quando o painel (`brush_fallback.rs`, `seam_wet_presets.rs`) deixar de o nomear.
     pub wet_opacidade: f32,
     /// A MÃO do meio de agora, por linha do cartão Pen (`LINHAS_DA_MAO`; L2).
     pub mao: [f64; crate::N_LINHAS_DA_MAO],

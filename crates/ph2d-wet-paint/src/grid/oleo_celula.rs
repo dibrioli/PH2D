@@ -10,8 +10,8 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// O óleo da tinta de uma célula (16 B) — e a SOLUBILIDADE dela (J10), que viaja pela mesma porta (pousa pela massa,
-/// desfaz-se com a janela).
+/// O óleo da tinta de uma célula (24 B) — e a SOLUBILIDADE (J10), o MEIO e o CORPO dela (E10), que viajam pela mesma
+/// porta (pousam pela massa, desfazem-se com a janela).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OleoCelula {
     /// A fracção da tinta pousada com o **Real Oil** ligado (`1` = toda; mistura-se pela massa).
@@ -22,6 +22,11 @@ pub struct OleoCelula {
     pub brilho: f32,
     /// [`Knob::Solubility`] (dono 30/10, J10): quanto a água de um traço seguinte dissolve desta tinta (`0` = nada).
     pub soluvel: f32,
+    /// [`Knob::Medium`] (E10): o meio da tinta (`0` água · `1` óleo) — o `m` da lei de Bingham
+    /// ([`crate::solver::ladeira_do_oleo::tensao`]). O Real Oil (`oleo`) ficou só a luz e o relevo.
+    pub meio: f32,
+    /// [`Knob::Body`] (E10, dono Q9): a tensão de cedência do PINCEL, somada à do meio e sem precisar de `φ > φ_c`.
+    pub corpo: f32,
 }
 
 impl OleoCelula {
@@ -31,6 +36,8 @@ impl OleoCelula {
         profundidade: 1.0,
         brilho: 1.0,
         soluvel: 0.0,
+        meio: 0.0,
+        corpo: 0.0,
     };
 }
 
@@ -44,9 +51,12 @@ impl Default for OleoCelula {
 #[must_use]
 pub fn do_pincel(p: &Params) -> OleoCelula {
     let soluvel = p.k(Knob::Solubility) as f32;
+    let (meio, corpo) = (p.k(Knob::Medium) as f32, p.k(Knob::Body) as f32);
     if p.oleo <= 0.0 {
         return OleoCelula {
             soluvel,
+            meio,
+            corpo,
             ..OleoCelula::NEUTRA
         };
     }
@@ -55,6 +65,8 @@ pub fn do_pincel(p: &Params) -> OleoCelula {
         profundidade: p.k(Knob::OilDepth) as f32,
         brilho: p.k(Knob::OilGloss) as f32,
         soluvel,
+        meio,
+        corpo,
     }
 }
 
@@ -92,6 +104,8 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
                 profundidade: m(a.profundidade, nova.profundidade),
                 brilho: m(a.brilho, nova.brilho),
                 soluvel: m(a.soluvel, nova.soluvel),
+                meio: m(a.meio, nova.meio),
+                corpo: m(a.corpo, nova.corpo),
             }
         } else {
             nova
@@ -129,7 +143,11 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[OleoCelula]) {
     let (n, s) = (g.cells, g.s);
     super::altura::restaura_campo(&mut g.oleo, n, s, janela, linhas, OleoCelula::NEUTRA);
-    if linhas.is_empty() && g.oleo.iter().all(|c| c.oleo <= 0.0 && c.soluvel <= 0.0) {
+    if linhas.is_empty()
+        && g.oleo
+            .iter()
+            .all(|c| c.oleo <= 0.0 && c.soluvel <= 0.0 && c.meio <= 0.0 && c.corpo <= 0.0)
+    {
         g.oleo = Vec::new();
     }
 }
@@ -137,3 +155,7 @@ pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[Ole
 #[cfg(test)]
 #[path = "oleo_celula_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "meio_corpo_tests.rs"]
+mod meio_corpo_tests;

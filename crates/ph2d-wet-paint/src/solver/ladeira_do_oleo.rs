@@ -24,9 +24,12 @@ pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::Atomic
 /// `τ_y` vem da RECEITA que está na célula, não do `film` instantâneo:
 ///
 /// `φ = M ÷ (M + K_W·film)` (`M = susp + sett`, a mesma grandeza de `painter::receita`) ·
-/// `τ_y = τ₀ · MaxVelocity · m · ((φ − φ_c) ÷ (1 − φ_c))₊ⁿ` (`m` = a fracção de Real Oil da célula).
+/// `τ_y = τ₀ · MaxVelocity · m · ((φ − φ_c) ÷ (1 − φ_c))₊ⁿ` (`m` = o MEIO da célula, [`Knob::Medium`] desde a E10;
+/// era a fracção de Real Oil).
 ///
-/// Sem óleo (`m = 0`: aquarela, guache, tudo sem o Real Oil) `τ_y = 0` e o fluxo é o de sempre, ao bit; a tinta aguada
+/// [`Knob::Medium`]: crate::tuning::Knob::Medium
+///
+/// Sem óleo (`m = 0`: aquarela, guache, tudo com Medium 0) `τ_y = 0` e o fluxo é o de sempre, ao bit; a tinta aguada
 /// (`φ ≤ φ_c`) também. Constantes MEDIDAS na régua `sonda_relevo_oleo`:
 /// `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md` §6.
 pub(crate) const TAU0: f64 = 3.0;
@@ -84,6 +87,27 @@ pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64, max_v: f64) -> f64 {
     let pc = medida(&BINGHAM_PHI_C, PHI_C);
     let x = ((phi - pc) / (1.0 - pc)).max(0.0);
     t0 * max_v * m.min(1.0) * x.powi(EXPOENTE)
+}
+
+/// ⭐ **O CORPO do pincel** (E10, dono Q9): `τ_y = τ_meio(m, φ) + TAU_CORPO · MaxVelocity · corpo` — uma tensão de
+/// cedência que NÃO precisa de `φ > φ_c` (a tinta de água tem `φ` baixo) e substitui a parede binária do
+/// `levelingOwnStroke` (Bug #56: empilhava 12–39 µm na borda). Só onde há pigmento (`massa > 0`). `corpo = 0` ⇒ a
+/// [`tensao`] do meio, ao bit. Faixa MEDIDA: `docs/Painter/Arquitetura/E10a2_meio_e_corpo.md`.
+pub(crate) const TAU_CORPO: f64 = 0.25;
+
+/// Ferramenta de MEDIÇÃO: os bits de um `f32` — `0` = [`TAU_CORPO`] (o produto), senão outro.
+#[doc(hidden)]
+pub static PAPEL_CORPO: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// A tensão da célula com o corpo: a do meio ([`tensao`]) + a do pincel.
+#[inline]
+#[must_use]
+pub(crate) fn tensao_com_corpo(t0: f64, m: f64, corpo: f64, massa: f64, f: f64, max_v: f64) -> f64 {
+    let base = tensao(t0, m, massa, f, max_v);
+    if corpo <= 0.0 || massa <= 0.0 {
+        return base;
+    }
+    base + medida(&PAPEL_CORPO, TAU_CORPO) * max_v * corpo
 }
 
 /// Aplica `τ_y` ao incremento de velocidade `(ex, ey)`: abaixo dela nada escoa, acima escoa o excesso.

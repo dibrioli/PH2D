@@ -264,7 +264,6 @@ fn diag_o_que_difere_depois_do_undo() {
             ("active", h(&g.active)),
             ("bloom", h(&g.bloom)),
             ("bbox", h(&(g.bx0, g.by0, g.bx1, g.by1, g.has_fluid))),
-            ("traco", h(&g.traco)),
             ("relevo", h(&g.relevo)),
             ("vela", h(&g.vela)),
             ("oleo_antes", h(&g.oleo_antes)),
@@ -273,7 +272,6 @@ fn diag_o_que_difere_depois_do_undo() {
                 h(&(
                     e.sim.frame,
                     e.sim.dry_every,
-                    e.sim.traco_actual,
                     e.sim.semente_do_po,
                     e.sim.step_pending(),
                 )),

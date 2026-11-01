@@ -5,7 +5,7 @@
 use ph2d_wet_paint::bristles_fios::Fios;
 use ph2d_wet_paint::bristles_relevo::Relevo;
 use ph2d_wet_paint::grid::{espessura, oleo_celula, tinta::M_UM};
-use ph2d_wet_paint::painter::Engine;
+use ph2d_wet_paint::painter::{Engine, receita};
 use ph2d_wet_paint::sim::LeiDaTinta;
 use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
 
@@ -18,6 +18,8 @@ struct Pre {
     size_px: f64,
     water: f64,
     opacity: f64,
+    /// `Família/Grupo` (6.ª coluna, opcional): o Medium pela família; sem ela vale o `realOil` do preset.
+    familia: Option<(String, String)>,
 }
 
 fn presets() -> Vec<Pre> {
@@ -44,6 +46,10 @@ fn presets_de(var: &str) -> Vec<Pre> {
                 size_px: c[2].parse().unwrap(),
                 water: c[3].parse().unwrap(),
                 opacity: c[4].parse().unwrap(),
+                familia: c
+                    .get(5)
+                    .and_then(|f| f.split_once('/'))
+                    .map(|(f, g)| (f.into(), g.into())),
             }
         })
         .collect()
@@ -65,13 +71,38 @@ fn motor(p: &Pre, extra: &[(Knob, f64)]) -> Engine {
             e.set_knob(kn, *v);
         }
     }
+    // E10 (E10c2): o pincel REAL — Dilution, Volume, Medium e Body pela migração do carregador de presets.
+    let chave = |key: &str| p.knobs.iter().find(|(k, _)| k == key).map(|(_, v)| *v);
+    if chave("controlosE10").is_none() {
+        let val =
+            |kn: Knob| chave(KNOB_DEFS[kn as usize].key).unwrap_or(KNOB_DEFS[kn as usize].default);
+        let (d, v) = receita::controlos_do_preset(
+            val(Knob::PigmentPerDab),
+            val(Knob::WaterPerDab),
+            val(Knob::Intensity),
+            p.water,
+            p.opacity,
+            chave("receitaE4").is_some(),
+        );
+        let meio = match &p.familia {
+            Some((f, g)) => receita::meio_da_familia(f, g),
+            None => f64::from(u8::from(oleo)),
+        };
+        let parede = chave("levelingOwnStroke").is_some_and(|v| v >= 0.5) && meio == 0.0;
+        e.set_knob(Knob::Dilution, d);
+        e.set_knob(Knob::Volume, v);
+        e.set_knob(Knob::Medium, meio);
+        e.set_knob(
+            Knob::Body,
+            if parede { receita::BODY_DA_PAREDE } else { 0.0 },
+        );
+    }
     for &(k, v) in extra {
         e.set_knob(k, v);
     }
     e.sim.oleo = oleo;
     e.sliders.size = ((p.size_px * 0.5 - 2.0) / 33.0).clamp(0.0, 1.0);
     e.sliders.water = p.water;
-    e.sliders.pigmento = p.opacity;
     e.sliders.pressure = 1.0;
     e
 }
@@ -80,8 +111,6 @@ fn motor(p: &Pre, extra: &[(Knob, f64)]) -> Engine {
 fn tres_passadas(e: &mut Engine) {
     let y = H as f64 * 0.5;
     for _ in 0..3 {
-        // O número do traço avança como na porta do produto (`doors.rs:79`); o `pointer_down` legado não o faz.
-        e.sim.traco_actual = e.sim.traco_actual.wrapping_add(1).max(1);
         e.pointer_down(30.0, y, None);
         for i in 1..=40 {
             e.pointer_frame(30.0 + 200.0 * f64::from(i) / 40.0, y);
@@ -176,7 +205,7 @@ fn f3_espessura_relevo_body() {
         tres_passadas(&mut a);
         let mut b = motor(p, &[(Knob::OilDepth, 1.0), (Knob::Emboss, 1.0)]);
         tres_passadas(&mut b);
-        let mut c = motor(p, &[(Knob::LevelingOwnStroke, 0.0)]);
+        let mut c = motor(p, &[(Knob::Body, 0.0)]);
         tres_passadas(&mut c);
         let (mut la, mut lb, mut lc) = (le(&a), le(&b), le(&c));
         println!(
@@ -226,6 +255,7 @@ fn f3_tecto_da_espessura() {
         size_px: 40.0,
         water: 0.0,
         opacity: 1.0,
+        familia: None,
     };
     println!("pigmentPerDab max = {ppd_max}");
     println!("passadas|um_p50|um_p99|um_max|sett_max|finito");
@@ -385,10 +415,8 @@ fn f3_cerdas_cada_knob_decide() {
     }
 }
 
-/// Um traço de (x0,y0) a (x1,y1) com o número de traço NOVO, como a porta do produto
-/// (`painter/doors.rs:79` `begin_direct_stroke`); o `pointer_down` legado não o avança.
+/// Um traço de (x0,y0) a (x1,y1).
 fn traco(e: &mut Engine, a: [f64; 2], b: [f64; 2]) {
-    e.sim.traco_actual = e.sim.traco_actual.wrapping_add(1).max(1);
     e.pointer_down(a[0], a[1], None);
     for i in 1..=40 {
         let t = f64::from(i) / 40.0;
@@ -424,20 +452,20 @@ fn campos(e: &Engine) -> (Vec<f64>, Vec<f64>) {
 
 /// Cena do Body: traço 1 horizontal (y = YC), traço 2 vertical (x = XC) — sobre o 1.º molhado (`seco = false`, 10
 /// passos) ou seco (`dry_canvas_now`). Devolve (só o 1.º, só o 2.º, os dois), lidos 300 passos depois.
-fn cena_body(p: &Pre, lev: f64, seco: bool) -> [(Vec<f64>, Vec<f64>); 3] {
+fn cena_body(p: &Pre, body: f64, seco: bool) -> [(Vec<f64>, Vec<f64>); 3] {
     let h1 = |e: &mut Engine| traco(e, [30.0, YC], [230.0, YC]);
     let v2 = |e: &mut Engine| traco(e, [XC, 8.0], [XC, 112.0]);
-    let mut s1 = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    let mut s1 = motor(p, &[(Knob::Body, body)]);
     h1(&mut s1);
     passos(&mut s1, 10);
     if seco {
         s1.dry_canvas_now();
     }
     passos(&mut s1, 300);
-    let mut s2 = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    let mut s2 = motor(p, &[(Knob::Body, body)]);
     v2(&mut s2);
     passos(&mut s2, 300);
-    let mut ab = motor(p, &[(Knob::LevelingOwnStroke, lev)]);
+    let mut ab = motor(p, &[(Knob::Body, body)]);
     h1(&mut ab);
     passos(&mut ab, 10);
     if seco {
@@ -459,12 +487,18 @@ fn f3_body_dois_tracos() {
                 .any(|(k, v)| k == "levelingOwnStroke" && *v == 1.0)
         })
         .collect();
+    // E10 A2: a parede binária saiu; a sonda varre o `Knob::Body` (`PH2D_F3_BODY=0,0.1,…`).
+    let corpos: Vec<f64> = std::env::var("PH2D_F3_BODY")
+        .unwrap_or_else(|_| "0,0.1,0.25,0.5,1,2,4".into())
+        .split(',')
+        .map(|v| v.trim().parse().unwrap())
+        .collect();
     println!(
-        "preset|estado|lev|r1|r2|cruz_p50|cruz_p99|borda3_p50|borda3_p99|escoa_1_para_2|fora1_massa"
+        "preset|estado|body|r1|r2|cruz_p50|cruz_p99|borda3_p50|borda3_p99|escoa_1_para_2|fora1_massa"
     );
     for p in &ps {
         for seco in [false, true] {
-            for lev in [1.0, 0.0] {
+            for &lev in &corpos {
                 let [s1, s2, ab] = cena_body(p, lev, seco);
                 let e = motor(p, &[]);
                 let r1 = 2.0 + e.sliders.size * 33.0;

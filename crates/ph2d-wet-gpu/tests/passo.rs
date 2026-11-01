@@ -62,21 +62,15 @@ fn aguada(w: usize, h: usize) -> Engine {
     e
 }
 
-/// A aguada com as PAREDES entre traços: o pincel com a lei (`LevelingOwnStroke`) marca o `traco` de cada célula e o
-/// passo tem `sim.paredes` ligado (o pincel normal) — o caminho que antes caía na CPU.
-fn aguada_com_paredes(w: usize, h: usize) -> Engine {
+/// Três traços de aguada que se TOCAM molhados (a parede entre traços saiu na E10: o `Knob::Body` a substitui).
+fn aguada_que_se_toca(w: usize, h: usize) -> Engine {
     let mut e = Engine::new(w, h);
-    e.tuning.set(Knob::LevelingOwnStroke, 1.0);
     e.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
     e.sim.pickup_assentado = 0.0;
     e.sliders.water = 1.0;
     e.sliders.size = 1.0;
     let (wf, hf) = (w as f64, h as f64);
-    // `pointer_down` não numera o traço (só `begin_direct_stroke`, a porta do produto): numera-se à mão.
-    let t = |e: &mut Engine, x0: f64, x1: f64, y: f64| {
-        e.sim.traco_actual += 1;
-        traco(e, x0, x1, y);
-    };
+    let t = traco;
     t(&mut e, 0.1 * wf, 0.9 * wf, 0.3 * hf);
     e.color = [0.8, 0.2, 0.1];
     t(&mut e, 0.2 * wf, 0.8 * wf, 0.34 * hf);
@@ -126,29 +120,6 @@ fn o_passo_placa_sobre_o_engine_casa_com_a_cpu_na_cor() {
     compara(&gpu, aguada(512, 320));
 }
 
-/// O mesmo gate com as PAREDES entre traços ligadas (`sim.paredes` do pincel normal + `traco` marcado): três
-/// traços que se tocam molhados, a parede tem de existir (células separadas > 0) e a cor casar ao mesmo limiar.
-#[test]
-#[ignore = "placa — corra com --ignored --nocapture"]
-fn o_passo_placa_com_paredes_casa_com_a_cpu_na_cor() {
-    let Some(gpu) = contexto() else { return };
-    let e = aguada_com_paredes(512, 320);
-    let g = &e.layers[e.active_layer].grid;
-    assert!(e.sim.paredes, "o pincel normal liga as paredes");
-    assert!(!g.traco.is_empty(), "o pincel com a lei marcou o traço");
-    let sep = |a: usize, b: usize| ph2d_wet_paint::grid::traco::separa(&g.traco, &g.susp, a, b);
-    let viz = (1..g.h)
-        .flat_map(|y| (1..g.w).map(move |x| x + y * g.s))
-        .filter(|&i| sep(i, i + 1) || sep(i, i + g.s))
-        .count();
-    let mut ids: Vec<u32> = g.traco.clone();
-    ids.sort_unstable();
-    ids.dedup();
-    eprintln!("PAREDES: {viz} células com vizinho separado · traços {ids:?}");
-    assert!(viz > 0, "a cena tem de ter paredes");
-    compara(&gpu, e);
-}
-
 fn compara(gpu: &GpuContext, mut e: Engine) {
     let gpu = gpu.clone();
     let passos = 60usize;
@@ -160,12 +131,11 @@ fn compara(gpu: &GpuContext, mut e: Engine) {
     let pp = e.sim.gather_params(&e.tuning);
     assert!(
         placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning),
-        "a cena tem de estar no que a placa sabe: inv {} · pend {} · km {} · paredes {} · oleo {} · drip {} · \
+        "a cena tem de estar no que a placa sabe: inv {} · pend {} · km {} · oleo {} · drip {} · \
          goleo {} · bypass {} · ext {:?} · ecra {:?}",
         e.sim.order_invariant,
         e.sim.step_pending(),
         pp.km_mixing,
-        pp.paredes,
         pp.oleo,
         e.sim.drip_head,
         e.layers[idx].grid.oleo.len(),
@@ -331,7 +301,7 @@ fn mede_o_passo_placa_a_4k() {
 fn a_subida_e_a_descida_so_das_linhas_sujas_casam_com_a_cpu() {
     let Some(gpu) = contexto() else { return };
     let (w, h, n) = (512usize, 320usize, 30usize);
-    let mut e = aguada_com_paredes(w, h);
+    let mut e = aguada_que_se_toca(w, h);
     let idx = e.active_layer;
     let mut c = e.clone();
     let mut p = PassoPlaca::new(&gpu, &e.layers[idx].grid, &e.sim, &e.tuning);
@@ -361,7 +331,6 @@ fn a_subida_e_a_descida_so_das_linhas_sujas_casam_com_a_cpu() {
     anda(&mut p, &mut e);
     anda_cpu(&mut c);
     for m in [&mut e, &mut c] {
-        m.sim.traco_actual += 1;
         m.color = [0.2, 0.7, 0.2];
         traco(m, 0.3 * w as f64, 0.6 * w as f64, 0.7 * h as f64);
     }

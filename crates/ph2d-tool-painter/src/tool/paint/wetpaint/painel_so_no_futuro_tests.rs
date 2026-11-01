@@ -76,7 +76,7 @@ fn outro(def: &KnobDef, v: f64) -> f64 {
 
 /// Os controlos do painel do pincel que não são knobs do registo (os factos que a sessão reconcilia).
 type Muda = fn(&mut PainterTool);
-const FACTOS: [(&str, Muda, Muda); 11] = [
+const FACTOS: [(&str, Muda, Muda); 10] = [
     (
         "km_glaze",
         |t| t.paint.wetpaint.km_glaze ^= true,
@@ -96,11 +96,6 @@ const FACTOS: [(&str, Muda, Muda); 11] = [
         "borda_que_pesa",
         |t| t.paint.wetpaint.borda_que_pesa = 1.0,
         |t| t.paint.wetpaint.borda_que_pesa = 0.0,
-    ),
-    (
-        "opacidade",
-        |t| t.paint.wetpaint.opacidade = 0.3,
-        |t| t.paint.wetpaint.opacidade = 1.0,
     ),
     (
         "tilt",

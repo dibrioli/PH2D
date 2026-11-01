@@ -2,7 +2,8 @@
 //! `docs/Painter/Pinceis/03_MOTORES.md` §2): a fileira «Preset» de todo meio. Os volumes vivos são só do Wet
 //! Paint (nos outros o Size e a Strength têm as suas fileiras no corpo). De cima para baixo: o chip Preset (o navegador:
 //! Favoritos · um título por categoria), Favorite, o preview VIVO, Save as New ·
-//! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water · Opacity, a do Wet
+//! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Dilution · Volume µm — E10; antes Water ·
+//! Opacity, a do Wet
 //! Paint, que dilui a cor para o papel) com os valores rápidos, e a política dos volumes. A força
 //! partilhada continua sem leitor no Wet Paint (gate `a_opacidade_nao_tem_leitor_no_wet_paint`); Pressure e
 //! Length não aparecem.
@@ -72,7 +73,8 @@ pub(crate) fn paint_wetpaint_presets(
     y
 }
 
-/// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Water · Opacity.
+/// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Dilution · Volume (µm) no Pincel; Size · Water
+/// na ferramenta Wet (E10-B2).
 fn paint_volumes(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -99,7 +101,33 @@ fn paint_volumes(
         SIZE_STEP,
         0,
     );
-    // O Water é de quem pousa água (o Pincel e a ferramenta Wet); a Opacity, de quem pousa tinta.
+    let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+    // E10 (F3 §9): o Pincel pousa TINTA — Dilution (Pigment + Water fundidos) e Volume em µm; a ferramenta Wet
+    // pousa só água e guarda o seu Water.
+    if pousa {
+        y = linha_e10(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            None,
+            "panel.painter_layers.wetpaint.dilution",
+            ids::PAINTER_WETPAINT_DILUTION,
+            &brush,
+        );
+        return linha_e10(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            Some(2),
+            "panel.painter_layers.wetpaint.volume_um",
+            ids::PAINTER_WETPAINT_VOL_OPACITY,
+            &brush,
+        );
+    }
     if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaDoVolume) {
         y = volume_row(
             ctx,
@@ -116,22 +144,63 @@ fn paint_volumes(
             2,
         );
     }
-    if !brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
+    y
+}
+
+/// Uma linha de volume de um controlo da E10: valor, faixa e passo da ferramenta (`WetKnobs::linha_e10`, a
+/// `KNOB_DEFS`). `vol = None` = sem chip de valores rápidos (o rápido do slot do Water escreve o Water).
+#[allow(clippy::too_many_arguments)]
+fn linha_e10(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    vol: Option<usize>,
+    chave: &str,
+    id: ph2d_a11y::NodeId,
+    brush: &BrushSettings,
+) -> f32 {
+    let Some((v, min, max, step)) = brush.wet_knobs.linha_e10(id) else {
         return y;
-    }
+    };
+    let escala = ph2d_tool_painter::Escala {
+        min: min as f32,
+        max: max as f32,
+        step,
+    };
+    let Some(vol) = vol else {
+        let chip_w = ph2d_tokens::ICON_BTN_SIZE_PX + ph2d_tokens::control_gap_px();
+        let sec = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
+        return number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w - chip_w,
+            y,
+            tr(chave),
+            id,
+            v as f32,
+            escala.min,
+            escala.max,
+            step,
+            escala.decimals(),
+            sec,
+        );
+    };
     volume_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        2,
-        "panel.painter_layers.wetpaint.vol_opacity",
-        ids::PAINTER_WETPAINT_VOL_OPACITY,
-        brush.wet_opacidade,
-        (0.0, 1.0),
-        number_field::FINE_STEP,
-        2,
+        vol,
+        chave,
+        id,
+        v as f32,
+        (escala.min, escala.max),
+        step,
+        escala.decimals(),
     )
 }
 
@@ -372,6 +441,8 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
             .map(|(i, &q)| {
                 let rotulo = if vol == 0 {
                     tr_with("panel.painter_layers.wetpaint.quick_px", &[("n", &q)])
+                } else if vol == 2 {
+                    tr_with("panel.painter_layers.wetpaint.quick_um", &[("n", &q)])
                 } else {
                     tr_with(
                         "panel.painter_layers.wetpaint.quick_percent",

@@ -90,8 +90,9 @@ impl Trail {
                     crate::grid::tinta::pigmento::move_em(g, pa, None, f * o * assentado);
                 }
                 if pig > 0.0 {
-                    let mistura =
-                        devolvido.junta(Soma::de(base, (pig as f32) / M_UM).com_meio(p.oleo));
+                    let mistura = devolvido.junta(
+                        Soma::de(base, (pig as f32) / M_UM).com_meio(p.k(Knob::Medium) as f32),
+                    );
                     let novo = pig + f64::from(devolvido.v * M_UM);
                     self.pig[l] = novo as f32;
                     if let Some(rgb) = srgb_0_255(&mistura) {

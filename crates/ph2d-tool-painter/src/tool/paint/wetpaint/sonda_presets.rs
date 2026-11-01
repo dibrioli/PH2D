@@ -177,7 +177,6 @@ fn coluna_com(
     inclinado: bool,
     knobs: &[(Knob, f64)],
     agua: Option<f64>,
-    opacidade: Option<f32>,
     molhada: Option<f64>,
 ) -> (Vec<u8>, Vec<u8>) {
     let p = &b
@@ -199,9 +198,6 @@ fn coluna_com(
     t.wet_preset_aplicar_volumes(&v);
     for (k, x) in knobs {
         t.paint.wetpaint.knobs.set(*k, *x);
-    }
-    if let Some(o) = opacidade {
-        t.paint.wetpaint.opacidade = o;
     }
     t.paint.wetpaint.tilt_on = inclinado;
     t.paint.wetpaint.tilt_ring = 8;
@@ -260,12 +256,12 @@ fn sonda_presets_varre() {
             })
             .collect();
         let agua = partes.get(2).and_then(|a| a.parse().ok());
-        let op = partes.get(3).and_then(|a| a.parse().ok());
+        // A 4.ª coluna (a Opacity de antes da E10) é ignorada: o Volume vai nos knobs.
         let mol = partes.get(4).and_then(|a| a.parse().ok());
-        let (dois, plano) = coluna_com(&b, i, false, &knobs, agua, op, mol);
+        let (dois, plano) = coluna_com(&b, i, false, &knobs, agua, mol);
         let t2 = regua(&dois, i).0;
         let (t, la, o, bu, _) = regua(&plano, i);
-        let (ti, li, oi, _, es) = regua(&coluna_com(&b, i, true, &knobs, agua, op, mol).1, i);
+        let (ti, li, oi, _, es) = regua(&coluna_com(&b, i, true, &knobs, agua, mol).1, i);
         println!(
             "[{l}] plano: tinta 2 s {t2:.0} → {t:.0} largura {la:.0} orla {o:.2} buracos {bu:.2} · inclinado: tinta {ti:.0} largura {li:.0} orla {oi:.2} escorre {es}"
         );
@@ -283,7 +279,7 @@ fn a_tinta_molhada_ja_e_a_cor_que_fica() {
     let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
     let b = Biblioteca::carregar(&raiz, None);
     let razao = |i: usize, knobs: &[(Knob, f64)]| {
-        let (dois, fim) = coluna_com(&b, i, false, knobs, None, None, None);
+        let (dois, fim) = coluna_com(&b, i, false, knobs, None, None);
         let (t2, t) = (regua(&dois, i).0, regua(&fim, i).0);
         eprintln!(
             "[cor real] pincel {i} {knobs:?}: tinta 2 s {t2:.0} → 30 s {t:.0} ({:.2})",

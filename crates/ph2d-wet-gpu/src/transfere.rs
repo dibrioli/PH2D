@@ -36,9 +36,6 @@ impl AdvectGpu {
             4,
         );
         w(&self.sett, bytemuck::cast_slice(&g.sett[a..b]), 4);
-        if !g.traco.is_empty() {
-            w(&self.traco, bytemuck::cast_slice(&g.traco[a..b]), 4);
-        }
         let (fa, fb) = (f0 * g.flow.s, (f1 + 1) * g.flow.s);
         let o = (fa * 4) as u64;
         q.write_buffer(&self.flow_x, o, bytemuck::cast_slice(&g.flow_x[fa..fb]));

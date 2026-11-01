@@ -8,6 +8,7 @@
 use super::*;
 use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS, Knob, KnobGroup, knob_defaults};
 
+mod controlos_e10; // Dilution · Medium · Volume · Body · Hardness (E10) — filho por LOC
 mod tabelas; // as tabelas dos knobs por ferramenta e por cartão — filho por LOC
 mod tela_e_oleo; // Smooth Edges, Óleo Real, Live Water, Heavy Edge — filho por LOC
 mod tuning; // o roteamento do painel Tuning — filho por LOC
@@ -51,6 +52,16 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     k[Knob::PigmentPerDab as usize] = 78.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 600
     // A carga-base de `h` (E4, receita × quantidade): a que pousa o MESMO pigmento e água que o PPD 78 de antes.
     k[Knob::Intensity as usize] = 0.4505; // LITERAL-OK: E4 migration of PPD 78 · Opacity 1 (docs/Painter/Arquitetura/E4_receita_e_quantidade.md)
+    // E10 (F3 §9): a receita lê Dilution e Volume — os do Wet Round pela migração exacta (Water 1, Opacity 1).
+    let (diluicao, volume) = controlos_e10::dilution_e_volume(
+        k[Knob::PigmentPerDab as usize],
+        k[Knob::WaterPerDab as usize],
+        1.0,
+        k[Knob::Intensity as usize],
+        1.0,
+    );
+    k[Knob::Dilution as usize] = diluicao;
+    k[Knob::Volume as usize] = volume;
     k[Knob::EdgeDarkening as usize] = 12.0; // LITERAL-OK: wet-paint product default = Wet Round, engine boot 50
     k[Knob::PaperGate as usize] = 0.4; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.6
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
@@ -230,7 +241,8 @@ impl WetKnobs {
 
     // The W3 curated accessors — the basic section's five knob rows read the
     // SAME array the Tuning panel edits.
-    /// Pigment per dab (`Knob::PigmentPerDab`).
+    /// Pigment per dab (`Knob::PigmentPerDab`) — ⛔ sem leitor na receita desde a E10 (a [`Self::dilution`]); a
+    /// linha do painel sai na E10-B2 e este acessor com ela.
     #[must_use]
     pub fn pigment(&self) -> f64 {
         self.get(Knob::PigmentPerDab)
@@ -567,9 +579,11 @@ impl PainterTool {
         }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
+        if k.set_controlo_e10(id, v) {
+            return true;
+        }
         match id {
             x if x == crate::ids::PAINTER_WETPAINT_WATER => k.water = v.clamp(0.0, 1.0),
-            x if x == crate::ids::PAINTER_WETPAINT_PIGMENT => k.set(Knob::PigmentPerDab, v),
             x if x == crate::ids::PAINTER_WETPAINT_PICKUP => k.set(Knob::Pickup, v),
             x if x == crate::ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
             x if x == crate::ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),

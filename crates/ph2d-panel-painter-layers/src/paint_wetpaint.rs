@@ -15,8 +15,6 @@ use ph2d_tool_painter::BrushSettings;
 // Knob ranges/steps: each mirrors the `set_wet_knob_value` clamp in the tool
 // (which mirrors SPEC §16's `KNOB_DEFS` slider table) — parameter domains of
 // the fluid engine, not design values.
-const PIGMENT_MAX: f32 = 2000.0; // LITERAL-PX-OK: wet-paint Pigment-per-dab range bound (SPEC §16)
-const PIGMENT_STEP: f64 = 10.0; // LITERAL-PX-OK: wet-paint Pigment slider step (SPEC §16)
 const PICKUP_MAX: f32 = 0.2; // LITERAL-PX-OK: wet-paint Pickup range bound (SPEC §16)
 const PICKUP_STEP: f64 = 0.001; // LITERAL-PX-OK: wet-paint Pickup slider step (SPEC §16)
 const DRY_SPEED_MAX: f32 = 8.0; // LITERAL-PX-OK: wet-paint Evaporation range bound (SPEC §16)
@@ -33,6 +31,78 @@ const GRID_MAX: f32 = 30.0; // LITERAL-PX-OK: fluid-grid ratio upper bound (grid
 // espelha `ph2d_wet_paint::flow` MIN/MAX_FLOW_RATIO, pelo mesmo motivo.
 const FLOW_MIN: f32 = 1.0; // LITERAL-PX-OK: flow-grid ratio lower bound (flow::MIN_FLOW_RATIO)
 const FLOW_MAX: f32 = 16.0; // LITERAL-PX-OK: flow-grid ratio upper bound (flow::MAX_FLOW_RATIO)
+
+/// A borracha da água não pousa: o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta (Wet bloom, Tip
+/// pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften) saem (`DepositoMolhado`); os da E10 também.
+const DO_DEPOSITO: [ph2d_a11y::NodeId; 11] = [
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_TIP_PICKUP,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET_DRAG,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_GLAZE,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_COVER,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_COVER,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
+];
+
+/// **Os controlos de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. O Medium abre o cartão (no
+/// lugar do Pigment); a Hardness junto do Pickup (o contacto com o papel); o Body junto do Leveling (o que nivela ×
+/// o que resiste). Só no Pincel (`DepositoMolhado`).
+const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 3] = [
+    (
+        None,
+        "panel.painter_layers.wetpaint.medium",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM,
+    ),
+    (
+        Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP),
+        "panel.painter_layers.wetpaint.hardness",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS,
+    ),
+    (
+        Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_LEVELING),
+        "panel.painter_layers.wetpaint.body",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_BODY,
+    ),
+];
+
+/// Pinta o controlo da E10 que vem depois de `depois` (se houver) — faixa e passo da ferramenta
+/// (`WetKnobs::linha_e10`, a `KNOB_DEFS`).
+fn linhas_e10_depois(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+    depois: Option<ph2d_a11y::NodeId>,
+) -> f32 {
+    let Some(&(_, rotulo, id)) = E10_NO_CARTAO.iter().find(|(d, _, _)| *d == depois) else {
+        return y;
+    };
+    // O Pincel lê os três; o Blend da água também lê o `paperGate` (a Hardness: 3048 texels no censo
+    // `cada_ferramenta_da_agua_so_ve_o_que_le`, 01/11).
+    let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+    let blend = !brush.eraser && brush.wet_tool == ph2d_tool_painter::WetTool::Blend;
+    if !(pousa || blend && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS) {
+        return y;
+    }
+    let Some((v, min, max, step)) = brush.wet_knobs.linha_e10(id) else {
+        return y;
+    };
+    let decimais = ph2d_tool_painter::Escala {
+        min: min as f32,
+        max: max as f32,
+        step,
+    }
+    .decimals();
+    card_row(
+        ctx, theme, x, content_w, y, rotulo, id, v as f32, min as f32, max as f32, step, decimais,
+    )
+}
 
 pub(crate) fn paint_wetpaint_section(
     ctx: &mut PaintCtx,
@@ -86,17 +156,11 @@ pub(crate) fn paint_wetpaint_section(
         // The TILT dial (the model's polar pad, copied faithfully).
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;
-        // O Water é um VOLUME do topo (W1, `paint_wetpaint_presets.rs`): um só controlo por facto.
-        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 6] = [
-            (
-                "panel.painter_layers.wetpaint.pigment",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
-                k.pigment() as f32,
-                0.0,
-                PIGMENT_MAX,
-                PIGMENT_STEP,
-                0,
-            ),
+        // A Dilution e o Volume são VOLUMES do topo (`paint_wetpaint_presets.rs`): um só controlo por facto. O
+        // Medium abre o cartão (E10, F3 §9: no lugar do Pigment, fundido na Dilution).
+        let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+        y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, None);
+        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
             (
                 "panel.painter_layers.wetpaint.pickup",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
@@ -143,30 +207,13 @@ pub(crate) fn paint_wetpaint_section(
                 2,
             ),
         ];
-        // A borracha da água não pousa: o Pigment, o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta
-        // (Wet bloom, Tip pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften) saem (`DepositoMolhado`).
-        let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
-        let do_deposito = [
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_TIP_PICKUP,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_REWET_DRAG,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_SOLUBILITY,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_GLAZE,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_COVER,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_COVER,
-            ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
-        ];
         for (label, id, value, min, max, step, decimals) in rows {
-            if !pousa && do_deposito.contains(&id) {
-                continue;
+            if pousa || !DO_DEPOSITO.contains(&id) {
+                y = card_row(
+                    ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
+                );
             }
-            y = card_row(
-                ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
-            );
+            y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, Some(id));
         }
         // A física da água que regula a «grossura» dela (saiu do Tuning, dono 13/10) e o pó do pincel (19/10): a
         // faixa e o passo vêm da tabela do motor, a mesma do Tuning.
@@ -191,7 +238,7 @@ pub(crate) fn paint_wetpaint_section(
             "panel.painter_wet_cartao.wet_soften",
         ];
         for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {
-            if !pousa && do_deposito.contains(&id) {
+            if !pousa && DO_DEPOSITO.contains(&id) {
                 continue;
             }
             let decimais = ph2d_tool_painter::Escala {
@@ -204,6 +251,7 @@ pub(crate) fn paint_wetpaint_section(
                 ctx, theme, x, content_w, y, label, id, v as f32, min as f32, max as f32, step,
                 decimais,
             );
+            y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, Some(id));
         }
         // Canvas actions (the model's bottom bar): three one-shots as a
         // momentary button row (the watercolor Dry/Wet pattern) + Show Wet

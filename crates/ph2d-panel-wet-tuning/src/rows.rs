@@ -338,15 +338,15 @@ mod tests {
     /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 96);
+        assert_eq!(rows().len(), 91);
         for g in [
-            (KnobGroup::Paint, 22),
-            (KnobGroup::Water, 8),
+            (KnobGroup::Paint, 19),
+            (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 21),
-            (KnobGroup::Stroke, 12),
+            (KnobGroup::Stroke, 11),
             (KnobGroup::WetEffects, 4),
             (KnobGroup::Material, 16),
         ] {
@@ -359,7 +359,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 29] = [
+        const NOUTRA_SUPERFICIE: [&str; 37] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -397,14 +397,16 @@ mod tests {
             "rewetPaint",
             "solubility",
             "rewetDrag",
-        ];
-        // Controlos MORTOS no produto (W3b): só o `render::render_region` os lê, e nenhum caminho do produto o chama.
-        const MORTOS: [&str; 5] = [
-            "extRakeLight",
-            "extValleyGran",
-            "extWetSheen",
-            "extGrainDither",
-            "extEdgeTint",
+            // os controlos de lei da E10 (F3 §9): os volumes do topo e o cartão Wet Paint
+            "medium",
+            "dilution",
+            "volume",
+            "body",
+            // e os fundidos neles: a mesma grandeza que um controlo acima já escreve (o Hardness escreve o paperGate)
+            "pigmentPerDab",
+            "waterPerDab",
+            "intensity",
+            "paperGate",
         ];
         const CALIBRACAO: [&str; 9] = [
             // normaliza o pigmento pelo comprimento (o preset diz a que Spacing foi afinado)
@@ -429,7 +431,6 @@ mod tests {
         let lista: BTreeSet<&str> = NOUTRA_SUPERFICIE
             .iter()
             .chain(CALIBRACAO.iter())
-            .chain(MORTOS.iter())
             .copied()
             .collect();
         assert_eq!(hidden, lista);

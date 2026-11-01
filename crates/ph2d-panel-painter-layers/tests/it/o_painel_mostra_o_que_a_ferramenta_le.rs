@@ -128,7 +128,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 20] = [
+const DEPOSITO_MOLHADO: [NodeId; 22] = [
     PAINTER_BRUSH_DAB_QUINA,
     // A ponta que gira com inércia (L3).
     PAINTER_BRUSH_DAB_ROTATION_LAG,
@@ -141,7 +141,11 @@ const DEPOSITO_MOLHADO: [NodeId; 20] = [
     // A caixa Real Oil é do TRAÇO (dono 28/10): pousa na célula.
     PAINTER_WETPAINT_OLEO_REAL,
     PAINTER_WETPAINT_VOL_OPACITY,
-    PAINTER_WETPAINT_PIGMENT,
+    // Os controlos de lei da E10 (F3 §9): o Pigment saiu, fundido na Dilution. A Hardness não é só do pouso: o Blend
+    // da água também lê o `paperGate` (3048 texels, 01/11) — fica fora desta linha, à vista no Pincel e no Blend.
+    PAINTER_WETPAINT_DILUTION,
+    PAINTER_WETPAINT_MEDIUM,
+    PAINTER_WETPAINT_BODY,
     PAINTER_WETPAINT_PICKUP,
     PAINTER_WETPAINT_DUST,
     PAINTER_WETPAINT_WET_BLOOM,

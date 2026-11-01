@@ -50,8 +50,6 @@ fn wet_tool(ratio: u8) -> PainterTool {
     t.paint.brush.shape = t.paint.wetpaint.knobs.cerdas_no_shape(t.paint.brush.shape);
     // A física mede-se no carimbo do motor de sempre: a W2 só re-rotula o número do painel.
     t.set_wet_largura_crua(1.0);
-    // A cor CHEIA: estes gates medem a grade e o composite, não a diluição da Opacity.
-    t.paint.wetpaint.opacidade = 1.0;
     // Pela PORTA (o slider), não pelo campo — é o caminho do artista.
     t.set_wet_grid_ratio(f64::from(ratio));
     t

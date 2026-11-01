@@ -59,7 +59,6 @@ fn sonda_camadas() {
         (
             "tilt 4",
             Cond {
-                opacidade: None,
                 tilt: Some(4),
                 ..SIMPLES
             },

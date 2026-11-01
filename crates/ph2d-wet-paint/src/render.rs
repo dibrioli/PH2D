@@ -16,7 +16,6 @@ use crate::grid::Grid;
 use crate::jsmath::clamp_u8;
 use crate::material::transparente;
 use crate::opacity::alpha_of_mass;
-use crate::rng::hash2;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
@@ -70,37 +69,19 @@ pub fn render_region(
     let paper_vis = p.k(Knob::PaperVisibility);
     let grain_vis = p.k(Knob::VisualGrain);
     let emboss_k = p.k(Knob::Emboss);
-    let ext = !ext_bypass;
-    let rake = if ext { p.k(Knob::ExtRakeLight) } else { 0.0 };
-    let valley = if ext { p.k(Knob::ExtValleyGran) } else { 0.0 };
-    let sheen = if ext { p.k(Knob::ExtWetSheen) } else { 0.0 };
-    let dither = if ext { p.k(Knob::ExtGrainDither) } else { 0.0 };
-    let edge_tint = if ext {
-        (p.k(Knob::ExtEdgeTint) - 0.5) * 2.0
-    } else {
-        0.0
-    }; // signed, 0 = neutral
+    // `ext_bypass`: os efeitos de Look (rake, valley, sheen, dither, edge tint) saíram na E10 (mortos, F3 §9).
+    let _ = ext_bypass;
 
     for cy in y0..=y1 {
         let mut i = x0 as usize + cy as usize * s;
         let mut o = ((cy - 1) as usize * w + (x0 - 1) as usize) * 4;
-        for cx in x0..=x1 {
+        for _cx in x0..=x1 {
             let pap_raw = base0.paper[i] as f64;
             let pap = 0.5 + (pap_raw - 0.5) * paper_vis;
             // Base: the sheet, paper-tinted near-white.
             let mut r = 255.0 + (pap * 30.0 - 30.0);
             let mut g = r;
             let mut b = r;
-            // Rake light (extension): grazing light across the paper relief.
-            if rake > 0.0 {
-                let gx = (base0.paper[i + 1] as f64 - base0.paper[i - 1] as f64) * 0.5;
-                let gy = (base0.paper[i + s] as f64 - base0.paper[i - s] as f64) * 0.5;
-                let mut lit = (gx * LIGHT_X + gy * LIGHT_Y) * 90.0 * rake;
-                lit = lit.clamp(-12.0, 12.0);
-                r += lit;
-                g += lit;
-                b += lit;
-            }
             // Optional K–M glaze stacking works in linear reflectance. The
             // sheet is entered into that space LAZILY — a pixel no layer
             // paints must not pay a transfer round trip to arrive back at the
@@ -155,15 +136,9 @@ pub fn render_region(
                 let mut emb = ((m_r - m_l) * 0.5 + (m_d - m_u) * 1.0) * 0.008 * emboss_k;
                 emb = emb.clamp(-40.0, 40.0);
                 v += emb;
-                // Valley granulation (extension): settled reads denser in
-                // troughs.
-                let mut sett_for_alpha = s_mass;
-                if valley > 0.0 {
-                    sett_for_alpha = s_mass * (1.0 + valley * 3.0 * (0.5 - pap).max(0.0));
-                }
                 // A Transparency da tinta (dono 27/10): a cobertura de composição × (1 − T), a massa fica.
                 let t = tinta::transparencia_da_celula(lgrd, i);
-                let a_s = transparente(alpha_of_mass(sett_for_alpha) * op, t);
+                let a_s = transparente(alpha_of_mass(s_mass) * op, t);
                 let a_f = transparente(alpha_of_mass(f_mass) * op, t);
                 let sc = lgrd.sett_rgb[i];
                 let uc = lgrd.susp_rgb[i];
@@ -199,22 +174,6 @@ pub fn render_region(
                         g = g * (1.0 - a_f) + (uc[1] as f64 + v) * a_f;
                         b = b * (1.0 - a_f) + (uc[2] as f64 + v) * a_f;
                     }
-                }
-                // Edge tint (extension): bidirectional darken/lighten on mass
-                // fronts.
-                // Under glaze the tint has never been applied (it is an sRGB
-                // offset and the stack is in reflectance), so the gradient is
-                // not computed either — same output, minus a dead `sqrt` per
-                // layer per pixel.
-                if edge_tint != 0.0 && !km_glaze {
-                    let gmx = (m_r - m_l) * 0.5;
-                    let gmy = (m_d - m_u) * 0.5;
-                    let gm = (gmx * gmx + gmy * gmy).sqrt();
-                    let wgt = smoothstep01((gm - 100.0) / 1300.0);
-                    let tint = edge_tint * 130.0 * wgt;
-                    r -= tint;
-                    g -= tint;
-                    b -= tint;
                 }
             }
             if in_linear {
@@ -252,27 +211,6 @@ pub fn render_region(
                         b += shine;
                     }
                 }
-            }
-            // Wet sheen (extension): specular keyed on the paper gradient x
-            // light.
-            if sheen > 0.0 {
-                let film = active.film[i] as f64;
-                if film > 0.05 {
-                    let win = smoothstep01((film - 0.05) / 2.45);
-                    let gx = (base0.paper[i + 1] as f64 - base0.paper[i - 1] as f64) * 0.5;
-                    let gy = (base0.paper[i + s] as f64 - base0.paper[i - s] as f64) * 0.5;
-                    let spec = (gx * LIGHT_X + gy * LIGHT_Y).max(0.0) * 160.0 * sheen * win;
-                    r += spec;
-                    g += spec;
-                    b += spec;
-                }
-            }
-            // Static grain dither (extension): per-pixel hash, ±0.5 * knob.
-            if dither > 0.0 {
-                let d = (hash2(cx, cy, 0xd17e) - 0.5) * dither;
-                r += d;
-                g += d;
-                b += d;
             }
             out[o] = clamp_u8(r);
             out[o + 1] = clamp_u8(g);

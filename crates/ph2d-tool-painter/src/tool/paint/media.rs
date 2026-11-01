@@ -164,8 +164,22 @@ impl PaintMedia {
     /// ler zero, os zeros do Blur e do Smear não ilibavam ninguém.*
     /// ⚠️ `pub(crate)` porque o [`PaintMode`] é da crate: o painel não pergunta AQUI, ele lê o
     /// `BrushSettings::pigment_offered` que o snapshot já derivou desta porta.
+    ///
+    /// ⭐ **Wet Paint (E10-B2, F3 §9):** o `Pigment mix` só tem leitor na lei `Pigmento`
+    /// (`Grid::pigmento`, E10c); na `Velha` (a do produto até à E12) a fileira seria um knob MORTO.
+    /// Por isso a oferta do fluido segue a LEI da tinta, não o [`Self::offers_pigment_mixing`].
     #[must_use]
-    pub(crate) fn offers_pigment_mixing_in(self, mode: PaintMode, eraser: bool) -> bool {
+    pub(crate) fn offers_pigment_mixing_in(
+        self,
+        mode: PaintMode,
+        eraser: bool,
+        lei: ph2d_wet_paint::sim::LeiDaTinta,
+    ) -> bool {
+        if self == PaintMedia::WetPaint {
+            return lei == ph2d_wet_paint::sim::LeiDaTinta::Pigmento
+                && mode == PaintMode::WetPaint
+                && !eraser;
+        }
         self.offers_pigment_mixing() && mode.deposita_a_cor_do_dab() && !eraser
     }
 
@@ -368,5 +382,8 @@ impl crate::tool::PainterTool {
 #[cfg(test)]
 #[path = "media/ferramenta_tests.rs"]
 mod ferramenta_tests;
+#[cfg(test)]
+#[path = "media/pigment_mix_lei_tests.rs"]
+mod pigment_mix_lei_tests;
 #[cfg(test)]
 mod tests;

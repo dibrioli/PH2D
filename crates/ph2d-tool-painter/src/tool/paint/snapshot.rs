@@ -456,13 +456,15 @@ impl PainterTool {
                 .meios_da_ferramenta()
                 .iter()
                 .fold(0, |a, m| a | 1 << m.to_u8()),
-            pigment_offered: self
-                .paint_media()
-                .offers_pigment_mixing_in(self.paint.paint_mode, self.paint.eraser),
+            pigment_offered: self.paint_media().offers_pigment_mixing_in(
+                self.paint.paint_mode,
+                self.paint.eraser,
+                self.paint.wetpaint.lei_da_tinta,
+            ),
             // O meio da ferramenta na mão (o Blur com a água armada não mostra o Wet — dono 24/10).
             wetpaint: self.paint_media() == super::PaintMedia::WetPaint,
             wet_knobs: self.paint.wetpaint.knobs,
-            wet_opacidade: self.paint.wetpaint.opacidade,
+            wet_opacidade: super::wetpaint_preset::OPACIDADE_DE_FABRICA,
             mao: self.mao(),
             mao_do_preset: self.mao_do_preset_disponivel(),
             marca: self.marca(),

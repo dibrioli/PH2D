@@ -38,8 +38,6 @@ fn tool_in_mode(mode: &str) -> PainterTool {
     if mode == "wetpaint" {
         t.paint.brush.shape = t.paint.wetpaint.knobs.cerdas_no_shape(t.paint.brush.shape);
     }
-    // A cor CHEIA: estes gates medem o caminho da cor e da água, não a diluição da Opacity.
-    t.paint.wetpaint.opacidade = 1.0;
     t
 }
 
@@ -1120,6 +1118,8 @@ fn the_engine_boots_with_the_knob_defaults() {
     assert_eq!(e.sliders.water, d.water);
     assert_eq!(e.sliders.erase, d.erase);
     assert_eq!(e.tuning.get(Knob::PigmentPerDab), d.pigment());
+    assert_eq!(e.tuning.get(Knob::Dilution), d.dilution());
+    assert_eq!(e.tuning.get(Knob::Volume), d.volume_um());
     assert_eq!(e.tuning.get(Knob::Pickup), d.pickup());
     assert_eq!(e.tuning.get(Knob::Evaporation), d.dry_speed());
     assert_eq!(e.tuning.get(Knob::EdgeDarkening), d.edge_darkening());
@@ -1140,10 +1140,10 @@ fn a_turned_knob_reaches_the_live_engine() {
     stroke_across(&mut t);
     assert!(
         t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-            crate::ids::PAINTER_WETPAINT_PIGMENT,
-            1200.0
+            crate::ids::PAINTER_WETPAINT_DILUTION,
+            0.3
         )),
-        "the Pigment SetValue was not consumed by the wet route"
+        "the Dilution SetValue was not consumed by the wet route"
     );
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_WATER,
@@ -1155,7 +1155,7 @@ fn a_turned_knob_reaches_the_live_engine() {
     t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Up));
     {
         let sess = t.paint.wetpaint.session.as_ref().expect("session");
-        assert_eq!(sess.engine.tuning.get(Knob::PigmentPerDab), 1200.0);
+        assert_eq!(sess.engine.tuning.get(Knob::Dilution), 0.3);
         assert_eq!(sess.engine.sliders.water, 0.25);
     }
     // The tick door: no stroke — the knob still lands while the water sits.
@@ -1185,8 +1185,8 @@ fn the_knobs_survive_the_session_and_the_tool_round_trip() {
     let mut t = tool_in_mode("wetpaint");
     stroke_across(&mut t);
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-        crate::ids::PAINTER_WETPAINT_PIGMENT,
-        1500.0
+        crate::ids::PAINTER_WETPAINT_DILUTION,
+        0.2
     )));
     t.set_paint_tool_mode("smear"); // session dies (ending is the bake)
     assert!(t.paint.wetpaint.session.is_none());
@@ -1194,8 +1194,8 @@ fn the_knobs_survive_the_session_and_the_tool_round_trip() {
     stroke_across(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("a fresh session");
     assert_eq!(
-        sess.engine.tuning.get(Knob::PigmentPerDab),
-        1500.0,
+        sess.engine.tuning.get(Knob::Dilution),
+        0.2,
         "the authored knob did not survive the session round-trip"
     );
 }

@@ -105,16 +105,20 @@ pub const PAINTER_WETPAINT_VOL_QUICK: [NodeId; 3] = [
 pub const VOL_QUICK_SIZE_PX: [f32; 12] = [
     2.0, 3.0, 5.0, 10.0, 20.0, 40.0, 60.0, 100.0, 150.0, 200.0, 300.0, 500.0,
 ];
-/// Quick values of the 0..1 volumes (Water · Opacity), shown as percent.
+/// Quick values of the 0..1 volume (Water), shown as percent.
 pub const VOL_QUICK_UNIT: [f32; 10] = [0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.85, 1.0];
+/// Quick values of the **Volume** (µm, E10 — `Knob::Volume`, faixa 0..1000): passos de ~×3 da película
+/// fina (0,1 µm, a aguada; o Wet Round de fábrica dá 0,31 µm) à pasta grossa — o impasto real mede
+/// 100–1000 µm (`F3b` §4), por isso a lista acaba no tecto da faixa.
+pub const VOL_QUICK_UM: [f32; 9] = [0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0];
 
 /// The quick values of volume `v` (index into [`PAINTER_WETPAINT_VOL_QUICK`]).
 #[must_use]
 pub fn vol_quick_values(v: usize) -> &'static [f32] {
-    if v == 0 {
-        &VOL_QUICK_SIZE_PX
-    } else {
-        &VOL_QUICK_UNIT
+    match v {
+        0 => &VOL_QUICK_SIZE_PX,
+        2 => &VOL_QUICK_UM,
+        _ => &VOL_QUICK_UNIT,
     }
 }
 

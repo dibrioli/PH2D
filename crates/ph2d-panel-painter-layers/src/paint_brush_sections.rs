@@ -125,7 +125,9 @@ pub(crate) fn declara_aparencia(
     //    ela que responde ao 2.º report do dono — *«confira se funciona para Blur e Smear»*: não
     //    funciona, e antes desta linha a fileira aparecia lá na mesma. ──
     plano.bloco(move |ctx, theme, y| {
-        if !brush.is_inpaint && brush.pigment_offered {
+        // No Wet Paint (lei `Pigmento`, E10-B2) só quem move tinta pela lei da sim (`MisturaDoPigmento`).
+        let gesto = !brush.wetpaint || brush.le(LinhaDaFerramenta::MisturaDoPigmento);
+        if !brush.is_inpaint && brush.pigment_offered && gesto {
             crate::paint_pigment::paint_mixing_section(ctx, theme, x, content_w, y, &brush)
         } else {
             y

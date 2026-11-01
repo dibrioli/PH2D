@@ -94,8 +94,8 @@ fn painted(media: Media, veil_first: bool) -> Vec<u8> {
     match media {
         Media::PaintNoPigment => {
             assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-                crate::ids::PAINTER_WETPAINT_PIGMENT,
-                0.0
+                crate::ids::PAINTER_WETPAINT_DILUTION,
+                1.0
             )));
         }
         Media::WetTool => t.pick_wet_tool(4),
@@ -148,8 +148,8 @@ fn the_veil_is_not_vacuously_equal_it_actually_draws() {
         let mut t = fixture();
         if let Media::PaintNoPigment = media {
             assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
-                crate::ids::PAINTER_WETPAINT_PIGMENT,
-                0.0
+                crate::ids::PAINTER_WETPAINT_DILUTION,
+                1.0
             )));
         }
         if let Media::WetTool = media {

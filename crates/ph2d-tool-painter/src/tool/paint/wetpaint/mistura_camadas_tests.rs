@@ -75,8 +75,6 @@ pub(super) struct Miolo {
 /// pincel e quantas passadas cabem num só traço (esfregar).
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Cond {
-    /// A Opacity do Wet Paint (`None` = a do preset, o produto).
-    pub opacidade: Option<f32>,
     pub km: bool,
     pub tilt: Option<u8>,
     pub borda: f64,
@@ -87,7 +85,6 @@ pub(super) struct Cond {
 }
 
 pub(super) const SIMPLES: Cond = Cond {
-    opacidade: None,
     km: false,
     tilt: None,
     borda: 0.0,
@@ -264,9 +261,6 @@ pub(super) fn cena(
     t.set_wet_borda_que_pesa(cond.borda);
     t.set_wet_smooth_edges(cond.suave);
     t.paint.wetpaint.km_mixing = cond.km;
-    if let Some(o) = cond.opacidade {
-        t.paint.wetpaint.opacidade = o;
-    }
     assert!(t.ensure_wet_session());
     // O tick leva as opções autoradas ao motor (o reconcile); só depois as variantes mexem nele.
     ticks(&mut t, 1);
@@ -376,7 +370,6 @@ pub(super) fn barra(nome: &str, tr: &Trajectoria, so_a: bool) -> Result<(), Stri
 }
 
 pub(super) const TUDO: Cond = Cond {
-    opacidade: None,
     km: false,
     tilt: Some(4),
     borda: 1.0,
@@ -394,11 +387,6 @@ pub(super) const TUDO: Cond = Cond {
 #[test]
 fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
     let km = |c: Cond| Cond { km: true, ..c };
-    // O produto de antes pintava com a cor CHEIA (sem a Opacity).
-    let cheia = |c: Cond| Cond {
-        opacidade: Some(1.0),
-        ..c
-    };
     // As cenas são independentes: uma por thread (140 s em série no `ci-test` passava o tecto de 180 s do
     // nextest sob a suíte inteira, 11/10).
     let (controlo, f) = std::thread::scope(|s| {
@@ -412,7 +400,7 @@ fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
                 e.tuning
                     .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
             };
-            barra("controlo", &cena(false, 10, cheia(km(TUDO)), &antes), true)
+            barra("controlo", &cena(false, 10, km(TUDO), &antes), true)
         });
         // ⚠️ O controlo «o pincel apanha o assentado» saiu (10/10): a régua do canal VERMELHO contra o
         // amarelo como sai sozinho já não separa esse caso (o pincel sujo fica justificado pela medição da

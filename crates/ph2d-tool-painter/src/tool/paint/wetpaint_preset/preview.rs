@@ -80,9 +80,6 @@ pub struct CenaDoPreview {
     grids: (u8, u8),
     /// As opções da W1g (Live Water, Heavy Edge) — o fluido do preview é o da obra.
     opcoes: (bool, f64),
-    /// A Opacity do Wet Paint (smoke do dono 10/10: sem ela o preview pintava a de fábrica e a tela a do
-    /// pincel).
-    opacidade: f32,
     /// A lei da largura do pincel (W2): sem ela o preview e a miniatura pintavam com a do Wet Round.
     largura: Option<LeiDaLargura>,
     /// A Shape Color (prompt 41: pinta cada célula no Wet Paint; smoke do dono 16/10: o preview pintava
@@ -150,7 +147,6 @@ pub struct ChaveDoPreview {
     tilt: (bool, u8, u8),
     grids: (u8, u8),
     opcoes: (bool, f64),
-    opacidade: f32,
     largura: Option<u64>,
     /// A Shape Color: ligada, B&W e a versão da rampa (cada setter da secção e das camadas a sobe).
     shape_color: (bool, bool, u64),
@@ -185,7 +181,6 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
-            opacidade: w.opacidade,
             largura: w.largura.clone(),
             shape_color: self.shape_color_estado(),
             ferramenta: w.tool,
@@ -238,7 +233,6 @@ impl PainterTool {
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
-            opacidade: w.opacidade,
             largura: w.largura.as_ref().map(LeiDaLargura::chave),
             shape_color: (
                 self.paint.shape_color_ramp_enabled,
@@ -314,7 +308,6 @@ impl PainterTool {
         (w.tilt_on, w.tilt_ring, w.tilt_spoke) = c.tilt;
         (w.grid_ratio, w.flow_ratio) = c.grids;
         (w.agua_viva, w.borda_que_pesa) = c.opcoes;
-        w.opacidade = c.opacidade;
         w.largura.clone_from(&c.largura);
         w.oleo_real = c.oleo_real;
         w.oleo_real_valores = c.oleo_real_valores;
@@ -455,36 +448,16 @@ fn fio_do_trilho(cena: &CenaDoPreview) -> Option<&'static str> {
     }
 }
 
+pub(super) use super::controlos_e10::knobs_da_faixa;
 /// A faixa VERMELHA sobre a qual a miniatura de uma ferramenta mostra o que ela faz: o mesmo pincel a PINTAR (o Mix,
 /// a ferramenta Paint), da altura do S (`2 · AMPLITUDE`, o S atravessa-lhe as duas orlas); depois a ferramenta volta
 /// e o S passa por cima. Os pincéis que pintam nunca chegam aqui (a miniatura deles é a de sempre, ao byte).
-/// O pigmento por dab da faixa no Wet — o da Acrylic Round de fábrica (a tinta cheia que as ferramentas movem).
-pub(super) const PIGMENTO_DA_FAIXA: f64 = 500.0;
-/// …e a água dela (o volume Water da Acrylic Round: a tinta de corpo, não a aguada).
-pub(super) const AGUA_DA_FAIXA: f64 = 0.05;
-
-/// Os knobs da faixa: os do pincel SEM preset com o pigmento e a água da Acrylic Round, pela receita da E4
-/// (ADR-0197 §1.1) — a faixa pousa o MESMO pigmento e a MESMA água por dab que na lei velha (`PIGMENTO_DA_FAIXA` ×
-/// a Opacity, a água de `AGUA_DA_FAIXA`), como a Acrylic Round migrada ([`super::migra_a_receita`]).
-pub(super) fn knobs_da_faixa(opacidade: f64) -> WetKnobs {
-    use ph2d_wet_paint::tuning::Knob;
-    let mut k = WetKnobs::DEFAULT;
-    k.water = AGUA_DA_FAIXA;
-    let (pig, carga) = ph2d_wet_paint::painter::receita::migra_da_lei_velha(
-        PIGMENTO_DA_FAIXA,
-        k.get(Knob::WaterPerDab),
-        AGUA_DA_FAIXA,
-        opacidade,
-    );
-    k.set(Knob::PigmentPerDab, pig);
-    k.set(Knob::Intensity, carga);
-    k
-}
+#[cfg(test)]
+pub(super) use super::controlos_e10::{AGUA_DA_FAIXA, PIGMENTO_DA_FAIXA};
 
 fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f32, cy: f32) {
     use super::super::wetpaint_settings::WetTool;
     const VERMELHO: [u8; 3] = [191, 0, 18];
-    use ph2d_wet_paint::tuning::Knob;
     let (raio, blend, cor) = (
         t.paint.brush.radius_px,
         t.paint.brush.blend,
@@ -499,7 +472,7 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.paint.brush.texture.kind = ph2d_painter_brush::TextureKind::None;
     (t.paint.brush.flow, t.paint.brush.accumulate) = (1.0, false);
     // No Wet: os knobs do pincel SEM preset (o Wet Round: as cerdas dele), com pigmento e água de tinta de corpo.
-    t.paint.wetpaint.knobs = knobs_da_faixa(f64::from(t.paint.wetpaint.opacidade));
+    t.paint.wetpaint.knobs = knobs_da_faixa(f64::from(super::OPACIDADE_DE_FABRICA));
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
     t.paint.brush.radius_px = AMPLITUDE;

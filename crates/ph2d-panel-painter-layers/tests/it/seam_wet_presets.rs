@@ -139,31 +139,32 @@ fn o_water_e_um_volume_e_mexe_no_knob() {
     );
 }
 
-/// **A Opacity do Wet Paint** (a claridade do Rebelle, 10/10): o campo e o valor rápido chegam ao pincel
-/// — a Opacity DELE, não a força partilhada entre os meios.
+/// **O Volume do Wet Paint** (E10, µm — antes a Opacity): o campo e o valor rápido chegam ao `Knob::Volume` do
+/// pincel, não à força partilhada entre os meios; os rápidos são em µm (até a pasta de 1000 µm).
 #[test]
 fn a_opacity_e_um_volume_do_wet_paint() {
     let mut t = molhado();
     let forca = t.brush_settings().strength;
-    digita(&mut t, ids::PAINTER_WETPAINT_VOL_OPACITY, "0.5");
-    assert!(
-        (t.brush_settings().wet_opacidade - 0.5).abs() < 1e-6,
-        "{}",
-        t.brush_settings().wet_opacidade
-    );
+    digita(&mut t, ids::PAINTER_WETPAINT_VOL_OPACITY, "50");
+    let v = t.brush_settings().wet_knobs.volume_um();
+    assert!((v - 50.0).abs() < 1e-6, "{v}");
     assert_eq!(
         t.brush_settings().strength,
         forca,
         "a força partilhada não mexe"
     );
-    let i100 = ids::VOL_QUICK_UNIT.iter().position(|&v| v == 1.0).unwrap() as u8;
+    let i = ids::VOL_QUICK_UM.iter().position(|&v| v == 1000.0).unwrap() as u8;
     escolhe(
         &mut t,
         Some(ROUND),
         ids::PAINTER_WETPAINT_VOL_QUICK[2],
-        ids::painter_wetpaint_vol_quick_option_id(2, i100),
+        ids::painter_wetpaint_vol_quick_option_id(2, i),
     );
-    assert_eq!(t.brush_settings().wet_opacidade, 1.0, "o rápido «100 %»");
+    assert_eq!(
+        t.brush_settings().wet_knobs.volume_um(),
+        1000.0,
+        "o rápido «1000 µm»"
+    );
 }
 
 #[test]
@@ -184,6 +185,14 @@ fn os_valores_rapidos_mudam_o_volume() {
         50.0,
         "o rápido «100 px» é o diâmetro"
     );
+    // E10: o Water do topo é da ferramenta Wet (no Pincel o slot é a Dilution, sem chip rápido).
+    let (_, _, rects) = novo(&t, Some(ROUND));
+    assert!(
+        rect_of(&rects, ids::PAINTER_WETPAINT_VOL_QUICK[1]).is_none(),
+        "o chip rápido do Water escreve o Water: no Pincel (Dilution) não aparece"
+    );
+    assert!(rect_of(&rects, ids::PAINTER_WETPAINT_DILUTION).is_some());
+    t.pick_wet_tool(4);
     let i50 = ids::VOL_QUICK_UNIT.iter().position(|&v| v == 0.5).unwrap() as u8;
     escolhe(
         &mut t,

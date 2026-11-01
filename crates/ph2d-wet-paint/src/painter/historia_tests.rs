@@ -28,7 +28,6 @@ fn hash_grid(g: &Grid) -> Vec<u64> {
     h(&mut st, &s.espessura);
     h(&mut st, &s.crista);
     h(&mut st, &s.nivelado);
-    h(&mut st, &s.traco);
     h(&mut st, &s.vela);
     h(&mut st, &s.material);
     h(&mut st, &s.aparencia);

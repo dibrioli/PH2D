@@ -35,6 +35,7 @@ fn corre(e: &mut Engine, n: usize) {
 fn deriva_fora(agua: f64) -> f64 {
     let mut e = Engine::new(L, L);
     e.sim.oleo = true;
+    e.set_knob(Knob::Medium, 1.0); // E10: o `m` de Bingham é o meio, não o Real Oil
     e.set_knob(Knob::PigmentPerDab, 3000.0);
     e.sliders.water = agua;
     e.sliders.size = 9.0;

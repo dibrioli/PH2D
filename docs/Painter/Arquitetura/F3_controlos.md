@@ -529,3 +529,43 @@ de hoje). O que muda no desenho da E10 (vale sobre o §0–§7):
 Os controlos NOVOS de lei (sem antecessor único) entram nas secções de hoje, no mesmo estilo: `Medium`, `Dilution`,
 `Volume` (em µm, F3b §4: faixa 0..1000 µm medida), `Pigment mix` (E10b/E10c, já no motor), `Body`, `Hardness`,
 `Absorbency` (tela), `Shadow`.
+
+## §9 A E10 no painel de HOJE (janela 5, 01/11) — controlo → secção de hoje → id
+
+Painel lido: `crates/ph2d-panel-painter-layers/src/{paint_wetpaint.rs, paint_wetpaint_presets.rs (os volumes do topo:
+Size · Water · Opacity), paint_wetpaint/oleo.rs (Real Oil), paint_pigment.rs (cartão comum Mixing)}`; ids em
+`tp/../ids/painter_wetpaint.rs`; i18n em `crates/ph2d-i18n/src/{painter_layers,painter_wet_cartao}.rs`; registo
+`wp/tuning{,/defs}.rs`.
+
+⚠️ **O produto ainda pinta com a lei `Velha`** (`tp/wetpaint.rs:254`); a `Pigmento` só corre nas sondas e no portão.
+A troca é da E12. Por isso cada controlo de lei da E10 tem de ser LIDO NAS DUAS leis: a receita
+(`painter/receita.rs`, que as duas leis já usam desde a E4) e a célula do óleo (`grid/oleo_celula.rs`, que as duas
+mantêm). O `Pigment mix` é a excepção (só existe na `Pigmento`): a linha mostra-se só com a lei `Pigmento`.
+
+| controlo | secção de hoje (onde aparece) | id | escreve | leitor | P/T |
+|---|---|---|---|---|---|
+| **Dilution** | volumes do topo, no lugar do **Water** do Pincel (o Water fica para a ferramenta Wet, que só pousa água) | novo `PAINTER_WETPAINT_DILUTION` | `Knob::Dilution` (`1 − φ`) | `receita()` φ = `1 − Dilution` (deixa de ler `PigmentPerDab`, `WaterPerDab` e o Water) | P |
+| **Volume** (µm) | volumes do topo, no lugar do **Opacity** | `PAINTER_WETPAINT_VOL_OPACITY` passa a escrever o knob | `Knob::Volume` | `receita()` `h = Volume · M_UM` (deixa de ler `Intensity` e `sliders.pigmento`) | P |
+| ~~Pigment~~ | cartão Wet Paint, linha 1 | `PAINTER_WETPAINT_PIGMENT` | sai: fundido na Dilution | — | — |
+| **Medium** | cartão Wet Paint, 1.ª linha (onde estava o Pigment) | novo `PAINTER_WETPAINT_MEDIUM` | `Knob::Medium` | `receita()` `m`; o meio do dab na célula (`OleoCelula::oleo`, `deposito_tinta` `meio`, Bingham) no lugar do `p.oleo` | P |
+| **Body** | cartão Wet Paint, junto do Leveling | novo `PAINTER_WETPAINT_BODY` | `Knob::Body` | `OleoCelula::corpo` (viaja com a tinta) → `ladeira_do_oleo::tensao` `τ = τ_meio + τ_corpo` ; substitui `LevelingOwnStroke` (parede binária, Bug #56) | P |
+| **Hardness** | cartão Wet Paint (o `PaperGate` não tinha linha: só o Tuning) | novo `PAINTER_WETPAINT_HARDNESS` | `Knob::PaperGate = (1 − Hardness) · 1,5` (vista exacta, sem migração) | o de hoje (`trail/deposit.rs`) | P |
+| **Pigment mix** | cartão comum **Mixing** (`paint_pigment.rs`, o mesmo do Watercolor) | o de hoje (`BrushSpec.pigment_mix`) | `Params::pigment_mix` pela sessão | `Grid::pigmento` (E10c) | P |
+| **Shadow** | cartão Real Oil (já existe: `PAINTER_WETPAINT_OLEO_SOMBRA`) | — | — | nada a fazer | T |
+| **Dry speed** | cartão Wet Paint (a linha de hoje) | `PAINTER_WETPAINT_DRY_SPEED` | `Knob::Evaporation` | o de hoje; passa a POR TELA: o preset deixa de o gravar e de o ler | T |
+| **Absorbency** | secção comum **Paper** | novo `PAINTER_WETPAINT_ABSORBENCY` | grandeza nova (Washburn) | ⚑ por desenhar: o ponto neutro = o motor de hoje ao bit (F3b (5)); lote seguinte | T |
+| Real Oil (caixa) | fica | `PAINTER_WETPAINT_OLEO_REAL` | só a LUZ e o material | o meio passa ao Medium; a migração põe `Medium` pela família (§3.2) | — |
+| 5 mortos | Tuning › Hidden | — | `ExtRakeLight`, `ExtValleyGran`, `ExtWetSheen`, `ExtGrainDither`, `ExtEdgeTint` saem do registo | só `render_region` (testes) | — |
+
+Os fundidos que deixam de ter leitor na receita (`PigmentPerDab`, `WaterPerDab`, `Intensity`, `PaperGate` no Tuning,
+`LevelingOwnStroke`) saem do Tuning: são a mesma grandeza que um controlo acima já escreve. A migração dos presets é
+por FUNÇÃO (`migra_para_controlos`, marca `controlosE10`), exacta: `Dilution = 1 − P'/(P' + K_W·veículo(W, WPD))`,
+`Volume = Op · carga · H_REF / M_UM` (µm), `Medium` pela família (§3.2), `Body` medido (E10-A2), Dry speed ignorado.
+
+Contrato partilhado (escrito pelo coordenador antes dos agentes): `Knob::{Medium, Dilution, Volume, Body}` no fim do
+registo (`KNOB_COUNT` 144 → 148), omissões = o arranque do motor ao bit.
+
+Lotes: **A1** receita + registo (`wp/painter/receita*.rs`, `wp/tuning*`, `wp/render.rs` dos mortos) · **A2** o meio e o
+corpo na célula (`wp/grid/oleo_celula.rs`, `wp/solver/ladeira_do_oleo.rs`, `wp/solver{,/flow_jacobi}.rs`,
+`wp/trail/transfer.rs`, `wp/grid/traco.rs`) · **B1** a ferramenta (`tp/wetpaint_settings*`, `tp/wetpaint/session.rs`,
+`tp/wetpaint.rs`, `tp/wetpaint_preset*`, ids) · depois **B2** o painel (`ph2d-panel-painter-layers`, `ph2d-i18n`).

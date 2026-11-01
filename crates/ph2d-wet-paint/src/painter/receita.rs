@@ -1,5 +1,5 @@
 //! **A receita e a quantidade** (E4, [ADR-0197 §1.1](../../../../docs/architecture/decisions/0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md)):
-//! Pigmento + Água dão SÓ a receita (a concentração `φ`), o Volume (a Opacity) dá SÓ a quantidade `h` por dab, e
+//! a Dilution dá SÓ a receita (a concentração `φ = 1 − Dilution`), o Volume (µm) dá SÓ a quantidade `h` por dab, e
 //! a pressão só toca a quantidade (a força do carimbo). É a ÚNICA função que lê os controlos da tinta — o que um
 //! dab pousa por unidade de depósito é `φ·h` de pigmento e `(1−φ)(1−m)·h ÷ K_W` de água. Porquê e números:
 //! `docs/Painter/Arquitetura/E4_receita_e_quantidade.md`.
@@ -24,33 +24,25 @@ pub const fn veiculo(agua: f64, agua_por_dab: f64) -> f64 {
     2.0 * u * u * agua_por_dab / (0.2 + 0.7 * PRESSAO_DE_REFERENCIA + 0.01)
 }
 
-/// Os controlos que a receita lê — um controlo, uma grandeza.
+/// Os controlos que a receita lê — um controlo, uma grandeza (E10, `F3_controlos.md` §9).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Controlos {
-    /// Pigment (`Knob::PigmentPerDab`): a parte de pigmento da receita.
-    pub pigmento: f64,
-    /// Water (slider): o veículo.
-    pub agua: f64,
-    /// `Knob::WaterPerDab`: escala do veículo (funde-se ao Water).
-    pub agua_por_dab: f64,
-    /// Volume (a Opacity, `Sliders::pigmento`): só a quantidade.
-    pub volume: f64,
-    /// A carga do pincel (`Knob::Intensity`, fundido ao Volume): a quantidade de base do preset.
-    pub carga: f64,
-    /// O meio `m` (`0` = sem meio; nenhum preset o tem antes da E10).
+    /// Dilution (`Knob::Dilution`): `1 − φ`.
+    pub diluicao: f64,
+    /// Volume (`Knob::Volume`): a quantidade por dab, em µm de tinta (`h = Volume · M_UM`).
+    pub volume_um: f64,
+    /// Medium (`Knob::Medium`): o meio `m`.
     pub meio: f64,
 }
 
 impl Controlos {
+    /// Os knobs da E10; já não lê `PigmentPerDab`, `WaterPerDab`, `Intensity`, o Water nem a Opacity.
     #[must_use]
-    pub fn do_motor(s: &super::Sliders, p: &Params) -> Self {
+    pub fn do_motor(_s: &super::Sliders, p: &Params) -> Self {
         Self {
-            pigmento: p.k(Knob::PigmentPerDab),
-            agua: s.water,
-            agua_por_dab: p.k(Knob::WaterPerDab),
-            volume: s.pigmento,
-            carga: p.k(Knob::Intensity),
-            meio: 0.0,
+            diluicao: p.k(Knob::Dilution),
+            volume_um: p.k(Knob::Volume),
+            meio: p.k(Knob::Medium),
         }
     }
 }
@@ -77,16 +69,13 @@ impl Receita {
     }
 }
 
-/// **A receita**: Pigmento + Água → `φ`; Volume × carga → `h`. Nenhum dos dois lados lê o outro.
+/// **A receita**: Dilution → `φ`; Volume → `h`. Nenhum dos dois lados lê o outro.
 #[must_use]
 pub fn receita(c: &Controlos) -> Receita {
-    let p = c.pigmento.max(0.0);
-    let v = K_W * veiculo(c.agua, c.agua_por_dab).max(0.0);
-    let phi = if p + v > 0.0 { p / (p + v) } else { 0.0 };
     Receita {
-        phi,
+        phi: (1.0 - c.diluicao).clamp(0.0, 1.0),
         m: c.meio.clamp(0.0, 1.0),
-        h: c.volume.max(0.0) * c.carga.max(0.0) * H_REF,
+        h: c.volume_um.max(0.0) * f64::from(crate::grid::tinta::M_UM),
     }
 }
 
@@ -121,6 +110,60 @@ pub fn migra_da_lei_velha(
     let p = pigmento * opacidade;
     let carga = (p + K_W * veiculo(agua, agua_por_dab)) / (opacidade * H_REF);
     (p, carga)
+}
+
+/// **A migração para os controlos da E10** (marca `controlosE10`): (`PigmentPerDab` já com a Opacity dobrada pela
+/// E4, `WaterPerDab`, Water, carga = `Intensity`, Opacity) → (Dilution, Volume µm), exacta — a mesma `φ` e o mesmo
+/// `h` que a receita da E4 dava.
+#[must_use]
+pub fn migra_para_controlos(
+    pigmento: f64,
+    agua_por_dab: f64,
+    agua: f64,
+    carga: f64,
+    opacidade: f64,
+) -> (f64, f64) {
+    let p = pigmento.max(0.0);
+    let v = K_W * veiculo(agua, agua_por_dab).max(0.0);
+    let diluicao = if p + v > 0.0 { 1.0 - p / (p + v) } else { 1.0 };
+    let volume = opacidade.max(0.0) * carga.max(0.0) * H_REF / f64::from(crate::grid::tinta::M_UM);
+    (diluicao, volume)
+}
+
+/// **O meio por família** (F3 §3.2, dono 01/11 Q5): `familia` = a pasta do meio (`Oil`, `Pastel`…), `grupo` = a
+/// subpasta. Óleo e Express Oil `1`; Acrylic `0,5`; os pastéis de óleo e cera (`Pastel/Oil`, `Pastel/Scrape`) `1`;
+/// o resto `0`. Um só sítio: a migração dos presets (`ph2d-tool-painter`) e as sondas leem-no.
+#[must_use]
+pub fn meio_da_familia(familia: &str, grupo: &str) -> f64 {
+    match (familia, grupo) {
+        ("Oil" | "ExpressOil", _) | ("Pastel", "Oil" | "Scrape") => 1.0,
+        ("Acrylic", _) => 0.5,
+        _ => 0.0,
+    }
+}
+
+/// O Body que dá o MESMO traço isolado que a parede `levelingOwnStroke = 1` dava a um pincel SEM meio (Wet Liner,
+/// Wet Wash, Gouache Opaque); no óleo o meio já dá a cedência (Body 0). Medido: `E10a2_meio_e_corpo.md`.
+pub const BODY_DA_PAREDE: f64 = 0.16;
+
+/// **Os controlos da E10 de um preset gravado** (`pigmentPerDab`, `waterPerDab`, `intensity` do mapa, Water e
+/// Opacity dos volumes): a E4 primeiro se o preset não a traz (`receita_e4 = false`), depois a E10 — o mesmo
+/// caminho do carregador de presets. Devolve (Dilution, Volume µm).
+#[must_use]
+pub fn controlos_do_preset(
+    pigmento: f64,
+    agua_por_dab: f64,
+    carga: f64,
+    agua: f64,
+    opacidade: f64,
+    receita_e4: bool,
+) -> (f64, f64) {
+    let (pig, carga) = if receita_e4 {
+        (pigmento, carga)
+    } else {
+        migra_da_lei_velha(pigmento, agua_por_dab, agua, opacidade)
+    };
+    migra_para_controlos(pig, agua_por_dab, agua, carga, opacidade)
 }
 
 impl super::Engine {

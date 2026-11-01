@@ -193,7 +193,17 @@ impl Presets {
             return;
         };
         let nome = &e.preset.parametros.name;
-        let falhas = match painter.preset_aplicar(&e.preset) {
+        // A família vem da pasta (E10: o Medium dos presets de antes migra por ela, `controlos_e10::familia_do_preset`).
+        let com_pasta;
+        let preset = if e.preset.parametros.library_folder.is_none() {
+            let mut p = e.preset.clone();
+            p.parametros.library_folder = Some(e.partes()[1].to_owned());
+            com_pasta = p;
+            &com_pasta
+        } else {
+            &e.preset
+        };
+        let falhas = match painter.preset_aplicar(preset) {
             Ok(f) => f,
             Err(MeioDesconhecido(media)) => {
                 toasts.push(Toast::error(tr_with(

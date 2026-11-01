@@ -43,8 +43,8 @@ const fn k(
 /// caneta (W6) cabem numa linha cada, e a tabela no tecto de linhas do ficheiro.
 #[rustfmt::skip]
 pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
-    k(Knob::PigmentPerDab, KnobGroup::Paint, "pigmentPerDab", 0.0, 2000.0, 10.0, 600.0, None),
-    k(Knob::PaperGate, KnobGroup::Paint, "paperGate", 0.0, 1.5, 0.01, 0.6, None),
+    k(Knob::PigmentPerDab, KnobGroup::Hidden, /* E10: a Dilution */ "pigmentPerDab", 0.0, 2000.0, 10.0, 600.0, None),
+    k(Knob::PaperGate, KnobGroup::Hidden, /* E10: o Hardness */ "paperGate", 0.0, 1.5, 0.01, 0.6, None),
     k(
         Knob::Felt,
         KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
@@ -67,7 +67,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     ),
     k(Knob::Drag, KnobGroup::Paint, "drag", 0.0, 1.0, 0.01, 0.16, None),
     k(Knob::Pickup, KnobGroup::Paint, "pickup", 0.0, 0.2, 0.001, 0.005, None),
-    k(Knob::Intensity, KnobGroup::Paint, "intensity", 0.0, 4.0, 0.05, 1.0, None),
+    k(Knob::Intensity, KnobGroup::Hidden, /* E10: o Volume */ "intensity", 0.0, 4.0, 0.05, 1.0, None),
     k(
         Knob::BristleStrength,
         KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
@@ -103,7 +103,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         None,
     ),
     k(Knob::GateSaturation, KnobGroup::Paint, "gateSaturation", 100.0, 6000.0, 50.0, 2000.0, None),
-    k(Knob::WaterPerDab, KnobGroup::Water, "waterPerDab", 0.0, 4.0, 0.05, 1.0, None),
+    k(Knob::WaterPerDab, KnobGroup::Hidden, /* E10: a Dilution (o Wet ainda o lê) */ "waterPerDab", 0.0, 4.0, 0.05, 1.0, None),
     k(Knob::WaterCap, KnobGroup::Water, "waterCap", 1.0, 30.0, 0.5, 8.0, None),
     k(Knob::Evaporation, KnobGroup::Water, "evaporation", 0.0, 8.0, 0.05, 1.0, None),
     k(Knob::Rewet, KnobGroup::Water, "rewet", 0.0, 8.0, 0.05, 1.0, None),
@@ -209,11 +209,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::ExtStaining, KnobGroup::Hidden, "extStaining", 0.0, 1.0, 0.01, 0.5, None),
     k(Knob::ExtDryBrush, KnobGroup::Stroke, "extDryBrush", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::ExtWetSoften, KnobGroup::Hidden, "extWetSoften", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::ExtRakeLight, KnobGroup::Hidden, "extRakeLight", 0.0, 3.0, 0.05, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtValleyGran, KnobGroup::Hidden, "extValleyGran", 0.0, 1.0, 0.01, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtWetSheen, KnobGroup::Hidden, "extWetSheen", 0.0, 2.0, 0.05, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtGrainDither, KnobGroup::Hidden, "extGrainDither", 0.0, 8.0, 0.1, 0.0, Some(Rebuild::Render)),
-    k(Knob::ExtEdgeTint, KnobGroup::Hidden, "extEdgeTint", 0.0, 1.0, 0.01, 0.5, Some(Rebuild::Render)),
     // Doc 23 P1 — active re-wet lift (Tools group, beside eraser/dryer/blow/
     // smear). 0 = the old model to the byte (Wet never touches settled
     // pigment); default 0.25 is calibrated by the reactivation gate: three
@@ -266,7 +261,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::EmbossSizeExp, KnobGroup::Hidden, "embossSizeExp", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::EmbossSizeRef, KnobGroup::Hidden, "embossSizeRef", 1.0, 1000.0, 0.5, 41.0, None),
     k(Knob::BristleTipRagged, KnobGroup::Bristles, "bristleTipRagged", 0.0, 1.0, 0.01, 0.0, None),
-    k(Knob::LevelingOwnStroke, KnobGroup::Stroke, "levelingOwnStroke", 0.0, 1.0, 1.0, 0.0, None),
     k(Knob::TipReservoir, KnobGroup::Hidden, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PressureGrain, KnobGroup::Stroke, "pressureGrain", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilm, KnobGroup::Stroke, "strokeFilm", 0.0, 1.0, 1.0, 0.0, None),
@@ -345,4 +339,12 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::WaterDrag, KnobGroup::Hidden, "waterDrag", 0.0, 1.0, 0.01, 0.0, None),
     // 31/10 (a tinta opaca): o ponto no segmento das duas tintas — por preset de fábrica; neutro 0 = a aguarela, ao bit
     k(Knob::Opaque, KnobGroup::Hidden, "opaque", 0.0, 1.0, 0.01, 0.0, None),
+    // E10 (F3 §9): os controlos de lei — o cartão e os volumes pintam-nos (Hidden no Tuning). Omissões = o arranque do
+    // motor ao bit da receita (PPD 600, Water 1, carga 1): φ = 600/950, h = H_REF massa = H_REF/M_UM µm.
+    k(Knob::Medium, KnobGroup::Hidden, "medium", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::Dilution, KnobGroup::Hidden, "dilution", 0.0, 1.0, 0.001, 1.0 - crate::painter::receita::PIGMENTO_DO_MOTOR / crate::painter::receita::H_REF, None),
+    // Faixa 0..1000 µm: F3b §4 (o f32 e a grade aguentam ≥ 10⁴ µm; um empaste real 100–1000 µm)
+    k(Knob::Volume, KnobGroup::Hidden, "volume", 0.0, 1000.0, 0.01, crate::painter::receita::H_REF / crate::grid::tinta::M_UM as f64, None),
+    // ⚑ faixa provisória: a E10-A2 mede-a contra a fuga de 5–40 % dos 3 de água (F3b (1)) e fixa-a aqui
+    k(Knob::Body, KnobGroup::Hidden, "body", 0.0, 1.0, 0.01, 0.0, None),
 ];

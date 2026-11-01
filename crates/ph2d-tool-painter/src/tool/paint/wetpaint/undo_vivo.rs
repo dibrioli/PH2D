@@ -20,7 +20,6 @@ pub(crate) struct Relogio {
     dry_every: u64,
     evap_scale: f64,
     rewet_base: f64,
-    traco_actual: u32,
     semente_do_po: u32,
 }
 
@@ -66,7 +65,6 @@ impl FotoDoMotor {
                 dry_every: s.dry_every,
                 evap_scale: s.evap_scale,
                 rewet_base: s.rewet_base,
-                traco_actual: s.traco_actual,
                 semente_do_po: s.semente_do_po,
             },
         }
@@ -86,7 +84,6 @@ impl FotoDoMotor {
         s.dry_every = r.dry_every;
         s.evap_scale = r.evap_scale;
         s.rewet_base = r.rewet_base;
-        s.traco_actual = r.traco_actual;
         s.semente_do_po = r.semente_do_po;
         e.mark_dirty_full();
     }

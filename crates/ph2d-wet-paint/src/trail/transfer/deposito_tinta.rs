@@ -61,7 +61,7 @@ pub(super) struct Pigmento {
     pub filme: bool,
     pub mix: crate::colorops::ColorMix,
     pub glaze: f64,
-    /// O meio do pincel (`0` água · `1` óleo): o Real Oil até a E10 lhe dar um controlo.
+    /// O meio do pincel (`0` água · `1` óleo): o [`crate::tuning::Knob::Medium`] (E10; era o Real Oil).
     pub meio: f32,
     /// O «Pigment mix» do pincel (E10c): o `p` do `Espectro` que pousa.
     pub pigment_mix: f32,

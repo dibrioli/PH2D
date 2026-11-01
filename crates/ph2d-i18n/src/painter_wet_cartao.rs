@@ -62,6 +62,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.water_drag_tip" => {
             "How much the water carries the pigment it lifted along the stroke: the colour fades in the direction of the gesture"
         }
+        // Os controlos de lei da E10 (`docs/Painter/Arquitetura/F3_controlos.md` §9).
+        "panel.painter_wet_cartao.medium_tip" => {
+            "What the paint is mixed with: 0 = water (flows, dries light), 1 = oil (stays, keeps its relief)."
+        }
+        "panel.painter_wet_cartao.dilution_tip" => {
+            "How much water or medium is in the mix: 0 = paint straight from the tube, 1 = almost clear."
+        }
+        "panel.painter_wet_cartao.volume_tip" => {
+            "How much paint each touch leaves on the paper, in micrometres: a thin film or a thick paste."
+        }
+        "panel.painter_wet_cartao.body_tip" => {
+            "How stiff the paint is: high stays exactly where the brush leaves it, low levels out."
+        }
+        "panel.painter_wet_cartao.hardness_tip" => {
+            "How deep the tip reaches into the paper's tooth: 0 = only the peaks, 1 = fills the valleys."
+        }
         _ => return None,
     })
 }

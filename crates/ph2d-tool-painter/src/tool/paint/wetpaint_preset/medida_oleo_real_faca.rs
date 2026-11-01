@@ -16,6 +16,19 @@ pub(super) const FX1: f32 = 550.0;
 
 pub(super) type Ajuste = fn(&mut PainterTool);
 
+/// A carga de tinta de 500 (o `pigmentPerDab` de antes) como Dilution com a MESMA `φ` sobre a água de agora (E10c2).
+fn pig500(t: &mut PainterTool) {
+    let k = &mut t.paint.wetpaint.knobs;
+    let (d, _) = ph2d_wet_paint::painter::receita::migra_para_controlos(
+        500.0,
+        k.get(Knob::WaterPerDab),
+        k.water,
+        1.0,
+        1.0,
+    );
+    k.set(Knob::Dilution, d);
+}
+
 pub(super) fn lisa_dura(t: &mut PainterTool) {
     t.paint.brush.jitter = 0.0;
     t.set_brush_hardness(1.0);
@@ -87,7 +100,11 @@ pub(super) fn candidatas() -> Vec<(&'static str, &'static str, Ajuste)> {
         ("J F+lev2", DAB, |t| {
             quadrada_sem_dente(t);
             t.paint.wetpaint.knobs.set(Knob::Leveling, 2.0);
-            t.paint.wetpaint.knobs.set(Knob::LevelingOwnStroke, 1.0);
+            // E10c2: a parede saiu; o Body que a substitui.
+            t.paint
+                .wetpaint
+                .knobs
+                .set(Knob::Body, ph2d_wet_paint::painter::receita::BODY_DA_PAREDE);
         }),
         ("K F+agua0", DAB, |t| {
             quadrada_sem_dente(t);
@@ -95,7 +112,7 @@ pub(super) fn candidatas() -> Vec<(&'static str, &'static str, Ajuste)> {
         }),
         ("L F+pig500", DAB, |t| {
             quadrada_sem_dente(t);
-            t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 500.0);
+            pig500(t);
         }),
         ("M F+drag0 pick0", DAB, |t| {
             quadrada_sem_dente(t);
@@ -104,7 +121,7 @@ pub(super) fn candidatas() -> Vec<(&'static str, &'static str, Ajuste)> {
         }),
         ("H2 H+pig500", DAB, |t| {
             lamina(t);
-            t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 500.0);
+            pig500(t);
         }),
         ("H3 H+lev0", DAB, |t| {
             lamina(t);

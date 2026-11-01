@@ -105,7 +105,6 @@ impl crate::grid::Grid {
             espessura,
             crista,
             nivelado,
-            traco,
             vela,
             material,
             aparencia,
@@ -149,7 +148,6 @@ impl crate::grid::Grid {
             + de(espessura)
             + de(crista)
             + de(nivelado)
-            + de(traco)
             + de(vela)
             + de(material)
             + de(aparencia)
@@ -188,7 +186,6 @@ impl crate::grid::GridSnapshot {
             + de(&self.espessura)
             + de(&self.crista)
             + de(&self.nivelado)
-            + de(&self.traco)
             + de(&self.vela)
             + de(&self.material)
             + de(&self.aparencia)

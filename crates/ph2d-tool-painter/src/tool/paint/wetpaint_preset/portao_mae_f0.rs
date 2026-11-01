@@ -117,7 +117,6 @@ pub(super) fn reprova(c: &Celula, n: usize, furos_pr1: f64, lei: LeiDaTinta) -> 
 }
 
 #[test]
-#[ignore = "E9: liga quando a E6b/E8 fecharem"]
 fn portao_mae_f0_lei_pigmento_minimo() {
     let b = Biblioteca::carregar(
         &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),

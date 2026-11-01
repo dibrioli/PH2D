@@ -43,13 +43,15 @@ const KAPPA: f64 = 903.296_296_296_296_3;
 const EPSILON: f64 = 0.008_856_451_679_035_631;
 
 /// `rgb` (sRGB `0..255`) com o ruído `[dh voltas, ds, dl]` (`ds`, `dl` em fracções de 100) somado em HSLuv;
-/// a saturação e a luminosidade presas a `[0, 100]`.
+/// a luminosidade presa a `[0, 100]`. O `ds` escala-se pela folga até ao limite mais perto (`min(s, 100 − s)/50`):
+/// presa, uma cor saturada só podia perder saturação e a média do traço deixava de ser a cor escolhida (E9b).
 #[must_use]
 pub fn com_ruido(rgb: [f32; 3], d: [f64; 3]) -> [f32; 3] {
     let [h, s, l] = rgb_para_hsluv(rgb.map(|c| f64::from(c) / 255.0));
+    let folga = s.min(100.0 - s).max(0.0) / 50.0;
     let hsl = [
         (h + 360.0 * d[0]).rem_euclid(360.0),
-        (s + 100.0 * d[1]).clamp(0.0, 100.0),
+        (s + 100.0 * d[1] * folga).clamp(0.0, 100.0),
         (l + 100.0 * d[2]).clamp(0.0, 100.0),
     ];
     hsluv_para_rgb(hsl).map(|c| (c.clamp(0.0, 1.0) * 255.0) as f32)
@@ -194,5 +196,29 @@ mod tests {
             "{claro:?} × {base:?}"
         );
         assert!((claro[0] - base[0]).abs() < 2.0);
+    }
+
+    /// E9b: o ruído de saturação simétrico (a faixa inteira do registo, ±0,5) deixa a saturação MÉDIA na da cor
+    /// escolhida — também no amarelo saturado (`245,205,25`, onde a versão presa subia o B médio 14).
+    #[test]
+    fn o_ruido_de_saturacao_tem_media_zero() {
+        for cor in [
+            [245.0, 205.0, 25.0],
+            [40.0, 90.0, 220.0],
+            [128.0, 128.0, 128.0],
+        ] {
+            let base = rgb_para_hsluv(cor.map(|c| f64::from(c) / 255.0));
+            let s = |ds: f64| {
+                rgb_para_hsluv(com_ruido(cor, [0.0, ds, 0.0]).map(|c| f64::from(c) / 255.0))[1]
+            };
+            for a in [0.1, 0.3, 0.5] {
+                let media = 0.5 * (s(a) + s(-a));
+                assert!(
+                    (media - base[1]).abs() < 1.5,
+                    "{cor:?} ±{a}: {media} × {}",
+                    base[1]
+                );
+            }
+        }
     }
 }

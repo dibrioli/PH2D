@@ -1,0 +1,380 @@
+//! Medições ⚑ da E10 (F3 §4 (1)(3)(4)(6)) — sondas `#[ignore]`, doc `docs/Painter/Arquitetura/F3b_medicoes.md`.
+//! `PH2D_F3_PRESETS=<f>` (linhas `nome|chave=v;…|size_px|water|opacity`, extraídas dos `.ph2d-brush.png`).
+//! `bash scripts/ph2d-run.sh cargo test -p ph2d-wet-paint --profile smoke --test f3_medicoes -- --ignored --nocapture --test-threads 1`
+
+use ph2d_wet_paint::bristles_fios::Fios;
+use ph2d_wet_paint::bristles_relevo::Relevo;
+use ph2d_wet_paint::grid::{espessura, oleo_celula, tinta::M_UM};
+use ph2d_wet_paint::painter::Engine;
+use ph2d_wet_paint::sim::LeiDaTinta;
+use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
+
+const W: usize = 260;
+const H: usize = 120;
+
+struct Pre {
+    nome: String,
+    knobs: Vec<(String, f64)>,
+    size_px: f64,
+    water: f64,
+    opacity: f64,
+}
+
+fn presets() -> Vec<Pre> {
+    let f = std::env::var("PH2D_F3_PRESETS").expect("PH2D_F3_PRESETS");
+    std::fs::read_to_string(f)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| {
+            let c: Vec<&str> = l.split('|').collect();
+            Pre {
+                nome: c[0].into(),
+                knobs: c[1]
+                    .split(';')
+                    .filter_map(|kv| {
+                        let (k, v) = kv.split_once('=')?;
+                        Some((k.to_owned(), v.parse().ok()?))
+                    })
+                    .collect(),
+                size_px: c[2].parse().unwrap(),
+                water: c[3].parse().unwrap(),
+                opacity: c[4].parse().unwrap(),
+            }
+        })
+        .collect()
+}
+
+fn knob(key: &str) -> Option<Knob> {
+    KNOB_DEFS.iter().find(|d| d.key == key).map(|d| d.knob)
+}
+
+fn motor(p: &Pre, extra: &[(Knob, f64)]) -> Engine {
+    let mut e = Engine::new(W, H);
+    e.sim.set_tinta(LeiDaTinta::Pigmento);
+    let mut oleo = false;
+    for (k, v) in &p.knobs {
+        if k == "realOil" {
+            oleo = *v > 0.0;
+        }
+        if let Some(kn) = knob(k) {
+            e.set_knob(kn, *v);
+        }
+    }
+    for &(k, v) in extra {
+        e.set_knob(k, v);
+    }
+    e.sim.oleo = oleo;
+    e.sliders.size = ((p.size_px * 0.5 - 2.0) / 33.0).clamp(0.0, 1.0);
+    e.sliders.water = p.water;
+    e.sliders.pigmento = p.opacity;
+    e.sliders.pressure = 1.0;
+    e
+}
+
+/// Três passadas no mesmo sítio (y = H/2), pausa de 120 passos entre elas e 300 no fim.
+fn tres_passadas(e: &mut Engine) {
+    let y = H as f64 * 0.5;
+    for _ in 0..3 {
+        e.pointer_down(30.0, y, None);
+        for i in 1..=40 {
+            e.pointer_frame(30.0 + 200.0 * f64::from(i) / 40.0, y);
+        }
+        e.pointer_up();
+        while e.release_frame(230.0, y) {}
+        for _ in 0..120 {
+            e.step_simulation();
+        }
+    }
+    for _ in 0..300 {
+        e.step_simulation();
+    }
+}
+
+fn pct(v: &mut [f64], q: f64) -> f64 {
+    if v.is_empty() {
+        return 0.0;
+    }
+    v.sort_by(f64::total_cmp);
+    v[((v.len() - 1) as f64 * q).round() as usize]
+}
+
+struct Leitura {
+    /// espessura (µm de pigmento, `em ÷ M_UM`) das células com massa
+    um: Vec<f64>,
+    /// altura do relevo Óleo Real, proxy linear: `em × ganho(Depth × Real Oil)` ÷ M_UM
+    rel: Vec<f64>,
+    /// `g.relevo` (o Emboss pousado) × `em` ÷ M_UM
+    emb: Vec<f64>,
+    sett_max: f64,
+    massa_total: f64,
+    /// células com massa > 1 a mais de r + 2 do eixo
+    fora: usize,
+    /// massa fora da faixa ÷ massa total
+    fora_massa: f64,
+    raio: f64,
+}
+
+fn le(e: &Engine) -> Leitura {
+    let g = e.active_grid();
+    let r = 2.0 + e.sliders.size * 33.0;
+    let yc = H as f64 * 0.5;
+    let mut l = Leitura {
+        um: vec![],
+        rel: vec![],
+        emb: vec![],
+        sett_max: 0.0,
+        massa_total: 0.0,
+        fora: 0,
+        fora_massa: 0.0,
+        raio: r,
+    };
+    for y in 1..g.h {
+        for x in 1..g.w {
+            let i = x + y * g.s;
+            let m = f64::from(g.sett[i]) + f64::from(g.susp[i]);
+            if m <= 1.0 {
+                continue;
+            }
+            l.massa_total += m;
+            l.sett_max = l.sett_max.max(f64::from(g.sett[i]));
+            if (y as f64 - yc).abs() > r + 2.0 {
+                l.fora += 1;
+                l.fora_massa += m;
+            }
+            let t = espessura::em(g, i) / f64::from(M_UM);
+            l.um.push(t);
+            l.rel.push(t * oleo_celula::ganho(&g.oleo, i));
+            let rv = g.relevo.get(i).copied().unwrap_or(1.0);
+            l.emb.push(t * f64::from(rv));
+        }
+    }
+    l.fora_massa /= l.massa_total.max(1e-9);
+    l
+}
+
+#[test]
+#[ignore = "sonda F3 (4)(6)(1)"]
+fn f3_espessura_relevo_body() {
+    println!(
+        "M_UM={M_UM} H_REF={} (massa por dab de referência)",
+        ph2d_wet_paint::painter::receita::H_REF
+    );
+    let ps = presets();
+    println!(
+        "preset|r|um_p50|um_p99|um_max|sett_max|relOleo_p50|relOleo_p99|relOleo_p50_D1|relOleo_p99_D1|emb_p50|emb_p99|emb_p50_E1|emb_p99_E1|lev1_fora|lev1_foraM|lev0_fora|lev0_foraM|lev0_um_p99|lev0_massa/lev1"
+    );
+    // Intercalado: por preset as três variantes seguidas, mesmo processo.
+    for p in &ps {
+        let mut a = motor(p, &[]);
+        tres_passadas(&mut a);
+        let mut b = motor(p, &[(Knob::OilDepth, 1.0), (Knob::Emboss, 1.0)]);
+        tres_passadas(&mut b);
+        let mut c = motor(p, &[(Knob::LevelingOwnStroke, 0.0)]);
+        tres_passadas(&mut c);
+        let (mut la, mut lb, mut lc) = (le(&a), le(&b), le(&c));
+        println!(
+            "{}|{:.1}|{:.3}|{:.3}|{:.3}|{:.0}|{:.4}|{:.4}|{:.4}|{:.4}|{:.4}|{:.4}|{:.4}|{:.4}|{}|{:.5}|{}|{:.5}|{:.3}|{:.4}",
+            p.nome,
+            la.raio,
+            pct(&mut la.um, 0.5),
+            pct(&mut la.um, 0.99),
+            pct(&mut la.um, 1.0),
+            la.sett_max,
+            pct(&mut la.rel, 0.5),
+            pct(&mut la.rel, 0.99),
+            pct(&mut lb.rel, 0.5),
+            pct(&mut lb.rel, 0.99),
+            pct(&mut la.emb, 0.5),
+            pct(&mut la.emb, 0.99),
+            pct(&mut lb.emb, 0.5),
+            pct(&mut lb.emb, 0.99),
+            la.fora,
+            la.fora_massa,
+            lc.fora,
+            lc.fora_massa,
+            pct(&mut lc.um, 0.99),
+            lc.massa_total / la.massa_total.max(1e-9),
+        );
+    }
+}
+
+/// O tecto da espessura: a mesma célula carregada N vezes (pigmentPerDab no máximo do registo, Water 0).
+#[test]
+#[ignore = "sonda F3 (4) tecto"]
+fn f3_tecto_da_espessura() {
+    let ppd_max = KNOB_DEFS
+        .iter()
+        .find(|d| d.knob == Knob::PigmentPerDab)
+        .unwrap()
+        .max;
+    let p = Pre {
+        nome: "carga".into(),
+        knobs: vec![
+            ("realOil".into(), 1.0),
+            ("pigmentPerDab".into(), ppd_max),
+            ("drag".into(), 0.0),
+            ("smear".into(), 0.0),
+            ("pickup".into(), 0.0),
+        ],
+        size_px: 40.0,
+        water: 0.0,
+        opacity: 1.0,
+    };
+    println!("pigmentPerDab max = {ppd_max}");
+    println!("passadas|um_p50|um_p99|um_max|sett_max|finito");
+    let mut e = motor(&p, &[]);
+    for n in 1..=24 {
+        tres_passadas(&mut e);
+        let mut l = le(&e);
+        let fin = l.um.iter().all(|v| v.is_finite());
+        if n % 3 == 0 || n == 1 {
+            println!(
+                "{}|{:.2}|{:.2}|{:.2}|{:.0}|{}",
+                n * 3,
+                pct(&mut l.um, 0.5),
+                pct(&mut l.um, 0.99),
+                pct(&mut l.um, 1.0),
+                l.sett_max,
+                fin
+            );
+        }
+    }
+    // A precisão f32: o menor incremento de massa representável a cada espessura.
+    for um in [1.0f32, 10.0, 100.0, 1000.0, 10_000.0] {
+        let m = um * M_UM;
+        let ulp = f32::from_bits(m.to_bits() + 1) - m;
+        println!(
+            "f32: {um} µm = massa {m:.0}, ulp {ulp} (= {:.2e} µm)",
+            ulp / M_UM
+        );
+    }
+}
+
+/// Os leitores das cerdas: cada knob a min × max (o resto como um Flat Bristle) — quantas saídas dos fios mudam.
+#[test]
+#[ignore = "sonda F3 (3)"]
+fn f3_cerdas_cada_knob_decide() {
+    let base = Fios {
+        pressao: 1.2,
+        levanta: 0.4,
+        ruido_px: 150.0,
+        largura_px: 4.0,
+        onda: 0.0,
+        onda_px: 500.0,
+        oscilacao_px: 0.0,
+        span_px: 0.0,
+        span_comprimento_px: 10.0,
+        cor: [0.0, 0.3, 0.1],
+        veio: [0.0, 0.0],
+        veio_px: 300.0,
+        veio_corte: 0.5,
+    };
+    type Set = fn(&mut Fios, f64);
+    let ks: [(&str, Knob, Set); 17] = [
+        ("bristlePressure", Knob::BristlePressure, |f, v| {
+            f.pressao = v
+        }),
+        ("bristleLift", Knob::BristleLift, |f, v| f.levanta = v),
+        ("bristleNoiseLength", Knob::BristleNoiseLength, |f, v| {
+            f.ruido_px = v
+        }),
+        ("bristleLaneWidth", Knob::BristleLaneWidth, |f, v| {
+            f.largura_px = v
+        }),
+        ("bristleWave", Knob::BristleWave, |f, v| f.onda = v),
+        ("bristleWaveLength", Knob::BristleWaveLength, |f, v| {
+            f.onda = 0.5;
+            f.onda_px = v;
+        }),
+        ("bristleOscillation", Knob::BristleOscillation, |f, v| {
+            f.oscilacao_px = v
+        }),
+        ("bristleSpan", Knob::BristleSpan, |f, v| f.span_px = v),
+        ("bristleSpanLength", Knob::BristleSpanLength, |f, v| {
+            f.span_px = 2.0;
+            f.span_comprimento_px = v;
+        }),
+        ("bristleNoiseHue", Knob::BristleNoiseHue, |f, v| {
+            f.cor[0] = v
+        }),
+        ("bristleNoiseSat", Knob::BristleNoiseSat, |f, v| {
+            f.cor[1] = v
+        }),
+        ("bristleNoiseLight", Knob::BristleNoiseLight, |f, v| {
+            f.cor[2] = v
+        }),
+        ("bristleStreak", Knob::BristleStreak, |f, v| f.veio[0] = v),
+        ("bristleStreakLight", Knob::BristleStreakLight, |f, v| {
+            f.veio[1] = v
+        }),
+        ("bristleStreakLength", Knob::BristleStreakLength, |f, v| {
+            f.veio[0] = 0.5;
+            f.veio_px = v;
+        }),
+        ("bristleStreakCut", Knob::BristleStreakCut, |f, v| {
+            f.veio[0] = 0.5;
+            f.veio_corte = v;
+        }),
+        ("bristleHeight", Knob::BristleHeight, |_, _| {}),
+    ];
+    let assinatura = |f: &Fios, rel: &Relevo| -> Vec<f64> {
+        let mut s = vec![];
+        for arco in [0.0, 37.0, 111.0, 400.0, 1234.0] {
+            let d = f.resolvido(arco, [1.0, 0.0], 0.6);
+            for k in -12..=12 {
+                s.push(d.ganho_do_fio(k));
+                s.extend(d.cor_do_fio([0.5, 0.3, 0.2], k).map(f64::from));
+                s.push(d.veio_do_fio(k));
+                s.push(rel.alvo_do_fio(k, d.ganho_do_fio(k), 0.6));
+            }
+            for yy in -20..=20 {
+                for xx in [-9, 0, 9] {
+                    let pt = d.no_ponto([f64::from(xx), f64::from(yy)]);
+                    s.extend(pt.q);
+                    s.push(pt.ganho);
+                    s.push(f64::from(pt.fio));
+                }
+            }
+        }
+        s
+    };
+    println!("knob|min|max|saidas|diferentes|max_dif");
+    for (nome, kn, set) in ks {
+        let d = &KNOB_DEFS[kn as usize];
+        assert_eq!(d.key, nome);
+        let (mut lo, mut hi) = (base, base);
+        set(&mut lo, d.min);
+        set(&mut hi, d.max);
+        let (rlo, rhi) = if kn == Knob::BristleHeight {
+            (
+                Relevo {
+                    altura_px: d.min,
+                    escava: 0.0,
+                },
+                Relevo {
+                    altura_px: d.max,
+                    escava: 0.0,
+                },
+            )
+        } else {
+            let r = Relevo {
+                altura_px: 0.75,
+                escava: 0.0,
+            };
+            (r, r)
+        };
+        let (a, b) = (assinatura(&lo, &rlo), assinatura(&hi, &rhi));
+        let n = a
+            .iter()
+            .zip(&b)
+            .filter(|(x, y)| x.to_bits() != y.to_bits())
+            .count();
+        let m = a
+            .iter()
+            .zip(&b)
+            .map(|(x, y)| (x - y).abs())
+            .fold(0.0, f64::max);
+        println!("{nome}|{}|{}|{}|{n}|{m:.4}", d.min, d.max, a.len());
+    }
+}

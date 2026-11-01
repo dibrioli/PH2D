@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!-- F3 §5 — maquete do painel Wet Paint (E10). Tokens: docs/design/styles/tokens.css, tema forge-sdf, acento magenta.
+     Fotografar: google-chrome-stable --headless --screenshot=maquete_painel.png --window-size=460,1000 maquete_painel.html
+     Tudo aberto: o mesmo com «maquete_painel.html#aberto». -->
+<html data-theme="forge-sdf" data-accent="magenta" lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wet Paint panel (F3 mockup)</title>
+<link rel="stylesheet" href="../../../../design/styles/tokens.css">
+<style>
+  body { margin: 0; background: var(--bg-0); font-family: var(--font-sans); color: var(--text-1);
+         font-size: var(--fs-sm); padding: var(--sp-lg); }
+  .panel { width: 480px; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--r-lg);
+           box-shadow: var(--shadow-md); overflow: hidden; }
+  .head { display: flex; align-items: center; gap: var(--sp-sm); padding: var(--sp-md) var(--sp-md);
+          border-bottom: 1px solid var(--border-soft); background: var(--bg-2); }
+  .head h1 { font-size: var(--fs-md); font-weight: var(--fw-semibold); margin: 0; flex: 1; }
+  .btn { background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text-1);
+         font-size: var(--fs-xs); padding: var(--sp-xxs) var(--sp-sm); white-space: nowrap; }
+  .btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text-1); }
+  .tools { padding: var(--sp-sm) var(--sp-md); border-bottom: 1px solid var(--border-soft); }
+  .seg { display: flex; flex-wrap: nowrap; gap: 2px; background: var(--bg-0); border-radius: var(--r-md); padding: 2px; }
+  .seg span { flex: 1; text-align: center; font-size: var(--fs-xs); padding: var(--sp-xxs) 0; border-radius: var(--r-sm);
+              color: var(--text-2); }
+  .seg span.sel { background: var(--accent); color: var(--accent-fg); font-weight: var(--fw-semibold); }
+  .sec { border-bottom: 1px solid var(--border-soft); }
+  .sec-h { display: flex; align-items: baseline; gap: var(--sp-sm); padding: var(--sp-sm) var(--sp-md);
+           background: var(--bg-2); }
+  .sec-h .car { color: var(--text-3); width: 10px; }
+  .sec-h .name { font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: var(--tr-caps); color: var(--text-1); }
+  .sec-h .sum { font-size: var(--fs-xs); color: var(--text-3); flex: 1; overflow: hidden; }
+  .sec-b { padding: var(--sp-xs) var(--sp-md) var(--sp-sm); }
+  .sec.closed .sec-b { display: none; }
+  .sec:not(.closed) .sec-h .sum { display: none; }
+  .row { display: grid; grid-template-columns: 104px 1fr 52px; align-items: center; gap: var(--sp-sm);
+         min-height: var(--row-h); }
+  .lab { color: var(--text-2); font-size: var(--fs-xs); }
+  .val { text-align: right; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-1); }
+  .sl { position: relative; }
+  .track { height: 4px; border-radius: var(--r-full); background: var(--bg-3); position: relative; }
+  .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--r-full); background: var(--accent); }
+  .knob { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--r-full);
+          background: var(--text-1); border: 2px solid var(--accent); box-sizing: border-box; }
+  .ends { display: flex; justify-content: space-between; font-size: var(--fs-xxs); color: var(--text-3); margin-top: 2px; }
+  .dd { background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-xxs) var(--sp-sm);
+        font-size: var(--fs-xs); display: flex; justify-content: space-between; }
+  .dd::after { content: "▾"; color: var(--text-3); }
+  .seg2 { display: flex; gap: 2px; background: var(--bg-0); border-radius: var(--r-md); padding: 2px; }
+  .seg2 span { flex: 1; text-align: center; font-size: var(--fs-xs); padding: var(--sp-xxs) 0; border-radius: var(--r-sm); color: var(--text-2); }
+  .seg2 span.sel { background: var(--bg-3); color: var(--text-1); }
+  .acts { display: flex; gap: var(--sp-xs); margin-top: var(--sp-xs); }
+  .acts .btn { flex: 1; text-align: center; }
+  .dial { width: 26px; height: 26px; border-radius: var(--r-full); border: 2px solid var(--border-strong); position: relative; }
+  .dial::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; background: var(--accent);
+                 transform-origin: 0 50%; transform: rotate(var(--a)); }
+  .pen { padding: var(--sp-sm) var(--sp-md); display: flex; gap: var(--sp-sm); align-items: baseline; background: var(--bg-2); }
+  .pen .name { font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+  .pen .sum { font-size: var(--fs-xs); color: var(--text-3); }
+  .tip { margin-top: var(--sp-xs); font-size: var(--fs-xxs); color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="panel" id="p">
+  <div class="head">
+    <h1>Wet Paint</h1>
+    <span class="btn on">Show wet</span>
+    <span class="btn">⟲ Reset</span>
+  </div>
+  <div class="tools">
+    <div class="seg"><span>Paint</span><span class="sel">Blend</span><span>Smear</span><span>Blow</span><span>Dry</span><span>Water</span><span>Erase</span><span>Knife</span></div>
+    <div class="row" data-s="Strength" data-v="0.80" data-x="0.8"></div>
+    <div class="row" data-s="Reach" data-v="0.20" data-x="0.2"></div>
+    <div class="tip">Each tool shows its own settings here (Blend shown).</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="car"></span><span class="name">PAINT</span><span class="sum">Medium · Dilution · Volume · Transparency · Granulation · Body · Color mixing</span></div>
+    <div class="sec-b">
+      <div class="row" data-s="Medium" data-v="1.00" data-x="1" data-l="water" data-r="oil"></div>
+      <div class="row" data-s="Dilution" data-v="0.33" data-x="0.33" data-l="tube" data-r="clear"></div>
+      <div class="row" data-s="Volume" data-v="1.00" data-x="0.25" data-l="thin" data-r="thick"></div>
+      <div class="row" data-s="Transparency" data-v="0.00" data-x="0" data-l="hides" data-r="glazes"></div>
+      <div class="row" data-s="Granulation" data-v="0.00" data-x="0" data-l="smooth" data-r="grainy"></div>
+      <div class="row" data-s="Body" data-v="auto" data-x="0.6" data-l="flows" data-r="stays"></div>
+      <div class="row"><span class="lab">Color mixing</span><div class="seg2"><span class="sel">Smooth</span><span>Pigment</span></div><span></span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-h"><span class="car"></span><span class="name">BRUSH</span><span class="sum">Tip · Spacing · Bristle relief · Hardness · Paper press · Pickup · Load · Drag · Stabilizer</span></div>
+    <div class="sec-b">
+      <div class="row"><span class="lab">Tip</span><div class="dd"><span>▣ Flat Bristle</span></div><span></span></div>
+      <div class="row" data-s="Spacing" data-v="0.025" data-x="0.05" data-l="dense" data-r="sparse"></div>
+      <div class="row" data-s="Bristle relief" data-v="0.75" data-x="0.09" data-l="flat" data-r="deep"></div>
+      <div class="row" data-s="Hardness" data-v="1.00" data-x="1" data-l="peaks" data-r="valleys"></div>
+      <div class="row" data-s="Paper press" data-v="1.00" data-x="1" data-l="follows" data-r="flat"></div>
+      <div class="row" data-s="Pickup" data-v="0.005" data-x="0.025" data-l="none" data-r="lifts"></div>
+      <div class="row" data-s="Load" data-v="0.00" data-x="0" data-l="dry" data-r="full"></div>
+      <div class="row" data-s="Drag" data-v="0.16" data-x="0.16" data-l="none" data-r="pulls"></div>
+      <div class="row" data-s="Stabilizer" data-v="0 px" data-x="0" data-l="off" data-r="smooth"></div>
+    </div>
+  </div>
+
+  <div class="sec closed">
+    <div class="sec-h"><span class="car"></span><span class="name">PAPER</span><span class="sum">Cold press · Relief · Absorbency · Tilt</span></div>
+    <div class="sec-b">
+      <div class="row"><span class="lab">Paper</span><div class="dd"><span>Cold press</span></div><span></span></div>
+      <div class="row" data-s="Relief" data-v="0.50" data-x="0.5" data-l="flat" data-r="rough"></div>
+      <div class="row" data-s="Absorbency" data-v="0.40" data-x="0.4" data-l="sits on top" data-r="soaks in"></div>
+      <div class="row"><span class="lab">Tilt</span><div style="display:flex;gap:var(--sp-sm);align-items:center"><div class="dial" style="--a:90deg"></div><span class="lab">Off — drag to tilt</span></div><span class="val">off</span></div>
+    </div>
+  </div>
+
+  <div class="sec closed">
+    <div class="sec-h"><span class="car"></span><span class="name">TIME</span><span class="sum">Dry speed · Re-wet · Edge darkening · Wet spread</span></div>
+    <div class="sec-b">
+      <div class="row" data-s="Dry speed" data-v="1.00" data-x="0.125" data-l="slow" data-r="fast"></div>
+      <div class="row" data-s="Re-wet" data-v="0.50" data-x="0.5" data-l="permanent" data-r="lifts"></div>
+      <div class="row" data-s="Edge darkening" data-v="12" data-x="0.06" data-l="none" data-r="strong"></div>
+      <div class="row" data-s="Wet spread" data-v="0.00" data-x="0" data-l="stays" data-r="drifts"></div>
+      <div class="acts"><span class="btn">Wet canvas</span><span class="btn">Dry canvas</span><span class="btn">Fast dry</span></div>
+    </div>
+  </div>
+
+  <div class="sec closed">
+    <div class="sec-h"><span class="car"></span><span class="name">LIGHT</span><span class="sum">Roughness · Metallic · Coat │ Light angle · Light height · Environment · Ambient</span></div>
+    <div class="sec-b">
+      <div class="row" data-s="Roughness" data-v="0.50" data-x="0.5" data-l="gloss" data-r="matte"></div>
+      <div class="row" data-s="Metallic" data-v="0.00" data-x="0" data-l="paint" data-r="metal"></div>
+      <div class="row" data-s="Coat" data-v="0.00" data-x="0" data-l="none" data-r="varnish"></div>
+      <div class="row"><span class="lab">Light angle</span><div><div class="dial" style="--a:-45deg"></div></div><span class="val">135°</span></div>
+      <div class="row" data-s="Light height" data-v="35°" data-x="0.35" data-l="low" data-r="overhead"></div>
+      <div class="row"><span class="lab">Environment</span><div class="dd"><span>Studio</span></div><span></span></div>
+      <div class="row" data-s="Ambient" data-v="0.30" data-x="0.3" data-l="dark" data-r="bright"></div>
+    </div>
+  </div>
+
+  <div class="pen"><span class="name">Pen ▸</span><span class="sum">pressure, tilt, speed — shared with Digital</span></div>
+</div>
+<script>
+  if (location.hash === "#aberto") document.querySelectorAll(".sec.closed").forEach(s => s.classList.remove("closed"));
+  document.querySelectorAll(".sec").forEach(s => s.querySelector(".car").textContent = s.classList.contains("closed") ? "▸" : "▾");
+  document.querySelectorAll(".row[data-s]").forEach(r => {
+    const x = parseFloat(r.dataset.x) * 100;
+    const ends = r.dataset.l ? `<div class="ends"><span>${r.dataset.l}</span><span>${r.dataset.r}</span></div>` : "";
+    r.innerHTML = `<span class="lab">${r.dataset.s}</span><div class="sl"><div class="track"><div class="fill" style="width:${x}%"></div><div class="knob" style="left:${x}%"></div></div>${ends}</div><span class="val">${r.dataset.v}</span>`;
+  });
+</script>
+</body>
+</html>

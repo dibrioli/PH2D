@@ -55,12 +55,21 @@ pub(super) const PINCEIS: [&str; 15] = [
 
 fn preset(b: &Biblioteca, rel: &str) -> ph2d_brush_presets::Preset {
     let rel = format!("WetPainter/{rel}.ph2d-brush.png");
-    b.entradas
+    let mut p = b
+        .entradas
         .iter()
         .find(|e| e.relativo == rel)
         .unwrap_or_else(|| panic!("preset {rel}"))
         .preset
-        .clone()
+        .clone();
+    // A régua mede a lei de MISTURA: a cor própria de cada cerda é desenho do pincel (E9b); `PH2D_SONDA_COR_DO_FIO=1`
+    // repõe-na.
+    if std::env::var("PH2D_SONDA_COR_DO_FIO").as_deref() != Ok("1") {
+        for k in ["bristleNoiseHue", "bristleNoiseSat", "bristleNoiseLight"] {
+            p.parametros.engine.remove(k);
+        }
+    }
+    p
 }
 
 fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2], pressure: f32, pausa: u32) {

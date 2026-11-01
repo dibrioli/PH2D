@@ -5,10 +5,12 @@
 set -u
 W=/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor
 OUT=${1:?pasta de saída}
-BIN=$(ls -t $W/target/smoke/deps/ph2d_tool_painter-* | grep -v '\.d$' | head -1)
 export PH2D_SONDA_LEI=${PH2D_SONDA_LEI:-velha,pigmento}
 export PH2D_SONDA_PAPEIS=${PH2D_SONDA_PAPEIS:-padrao,liso}
 mkdir -p "$OUT"
+# O binário congela-se numa cópia em $OUT: recompilar durante as ~3 h não troca a régua a meio.
+cp "$(ls -t $W/target/smoke/deps/ph2d_tool_painter-* | grep -v '\.d$' | head -1)" "$OUT/sonda.bin"
+BIN="$OUT/sonda.bin"
 grupos=(
  "Oil/Flat/Thick Impasto,Oil/Knife/Knife Stain"
  "Oil/Flat/Filbert,Oil/Knife/Knife Dry"

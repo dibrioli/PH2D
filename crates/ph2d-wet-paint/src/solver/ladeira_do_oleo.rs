@@ -124,6 +124,43 @@ pub(crate) fn bingham(ex: f64, ey: f64, tau: f64) -> (f64, f64) {
     (ex * k, ey * k)
 }
 
+/// ⭐ **O DIQUE** (J8, dono 01/11: «o escorrimento ignora o relevo da tinta já pousada»): a água não entra numa
+/// célula cujo CHÃO (a altura do óleo, [`LadeiraDoOleo::em`]) está à altura da superfície dela (chão + `film`) ou
+/// acima — a condição de molhado/seco das águas rasas. A ladeira empurra (clampada como todo nivelamento); o dique
+/// corta o componente que sobe. Ferramenta de medição: `0` = desligado, `1` = chão pesado pela fracção assente
+/// (como a ladeira), `2` = chão inteiro.
+#[doc(hidden)]
+pub static DIQUE: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+/// Corta em `(ex, ey)` o componente que entra num vizinho mais alto que a superfície da água daqui: `aqui`, `esq`,
+/// `dir`, `cima`, `baixo` = os índices finos (o `+y` desce, para `baixo`).
+#[inline]
+pub(crate) fn dique(
+    l: &LadeiraDoOleo,
+    (aqui, esq, dir, cima, baixo): (usize, usize, usize, usize, usize),
+    f: f64,
+    (ex, ey): (f64, f64),
+) -> (f64, f64) {
+    let modo = DIQUE.load(std::sync::atomic::Ordering::Relaxed);
+    if modo == 0 {
+        return (ex, ey);
+    }
+    let chao = |i: usize| {
+        let h = l.em(i);
+        if modo == 1 { h * l.assente(i) } else { h }
+    };
+    let sup = chao(aqui) + f.max(0.0);
+    let corta = |e: f64, menos: usize, mais: usize| {
+        let alvo = if e > 0.0 { mais } else { menos };
+        if e != 0.0 && chao(alvo) >= sup {
+            0.0
+        } else {
+            e
+        }
+    };
+    (corta(ex, esq, dir), corta(ey, cima, baixo))
+}
+
 fn rota() -> u8 {
     match LADEIRA_ROTA.load(std::sync::atomic::Ordering::Relaxed) {
         0 => 7,

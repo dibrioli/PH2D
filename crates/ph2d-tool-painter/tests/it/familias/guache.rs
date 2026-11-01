@@ -515,8 +515,11 @@ fn a_guache_opaca_cobre_o_azul_seco() {
         // A lei: o cruzamento é a cor no papel (o azul fica coberto), e nunca mais longe dela que sem a lei.
         // Medido 31/10 (pressão 0,3; com · sem): branco 12,0 · 42,0 — amarelo 3,6 · 6,4 — azul claro 12,0 · 39,4 —
         // rosa 5,0 · 16,5. A lei põe o cruzamento perto da cor no papel e sempre mais perto que sem ela.
+        // Desde a E10 (e8f35b5710) a Gouache Opaque tem Body 0,16 (a parede levelingOwnStroke saiu): riscas de cerda
+        // no cruzamento — 01/11: branco 19,0 · 47,6, amarelo 10,8 · 20,5, azul claro 18,5 · 40,8, rosa 9,5 · 17,4; com
+        // Body 0 o branco volta a 11,2 (A/B, `docs/Painter/Arquitetura/J8_vermelhos_antigos.md`).
         assert!(
-            dc < 13.0 && dc < 0.6 * ds,
+            dc < 21.0 && dc < 0.6 * ds,
             "{c:?} não cobre o azul seco: {dc:.1} (sem a lei {ds:.1})"
         );
     }

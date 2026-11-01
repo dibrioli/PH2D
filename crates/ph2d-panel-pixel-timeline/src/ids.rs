@@ -64,7 +64,7 @@ pub const TOGGLES: [(A, NodeId, &str); 2] = [
 /// O menu Frame (e o do Cel e das Tags) na barra, em ícones compactos com a dica do nome do
 /// Aseprite: a acção, o id, o ícone e a chave da dica. ⚠️ Ícones e não palavras: a banda de fábrica
 /// tem 240 px, e dez palavras ocupavam duas linhas dela (smoke da cena 8, 25/10).
-pub const ACTIONS: [(A, NodeId, IconId, &str); 10] = [
+pub const ACTIONS: [(A, NodeId, IconId, &str); 13] = [
     (
         A::NewFrame,
         hash_node_id("pixel_timeline.new_frame"),
@@ -125,10 +125,29 @@ pub const ACTIONS: [(A, NodeId, IconId, &str); 10] = [
         IconId::Tag,
         "panel.pixel.timeline.new_tag",
     ),
+    (
+        A::FirstInTag,
+        hash_node_id("pixel_timeline.first_in_tag"),
+        IconId::AlignLeft,
+        "panel.pixel.timeline.first_in_tag",
+    ),
+    (
+        A::LastInTag,
+        hash_node_id("pixel_timeline.last_in_tag"),
+        IconId::AlignRight,
+        "panel.pixel.timeline.last_in_tag",
+    ),
+    (
+        A::LoopSection,
+        hash_node_id("pixel_timeline.loop_section"),
+        IconId::RotateCw,
+        "panel.pixel.timeline.loop_section",
+    ),
 ];
 
-/// Os grupos da barra de acções (índices em [`ACTIONS`]): criar · apagar · mover · ligar · tag.
-pub const ACTION_GROUPS: [&[usize]; 5] = [&[0, 1, 2], &[3], &[4, 5, 6], &[7, 8], &[9]];
+/// Os grupos da barra de acções (índices em [`ACTIONS`]): criar · apagar · mover · ligar · tag
+/// (nova, ir ao início / ao fim dela, *Set Loop Section*).
+pub const ACTION_GROUPS: [&[usize]; 5] = [&[0, 1, 2], &[3], &[4, 5, 6], &[7, 8], &[9, 10, 11, 12]];
 
 /// O cabeçalho do frame `frame` (o id estável do frame; a população é a linha do tempo).
 #[must_use]
@@ -225,5 +244,56 @@ pub const fn direction_keys(d: PixelDirection) -> (&'static str, &'static str) {
             "panel.pixel.timeline.dir.ping_pong_reverse",
             "panel.pixel.timeline.glyph.ping_pong_reverse",
         ),
+    }
+}
+
+/// *Playback*: o menu da velocidade e os quatro interruptores do tocar.
+pub const PLAY_SPEED: NodeId = hash_node_id("pixel_timeline.play.speed");
+pub const PLAY_ONCE: NodeId = hash_node_id("pixel_timeline.play.once");
+pub const PLAY_ALL: NodeId = hash_node_id("pixel_timeline.play.all");
+pub const PLAY_SUBTAGS: NodeId = hash_node_id("pixel_timeline.play.subtags");
+pub const PLAY_REWIND: NodeId = hash_node_id("pixel_timeline.play.rewind");
+
+/// Os interruptores do tocar: o id, o rótulo curto (a barra) e a dica (o nome do Aseprite).
+pub const PLAY_TOGGLES: [(NodeId, &str, &str); 4] = [
+    (
+        PLAY_ONCE,
+        "panel.pixel.timeline.play_once_short",
+        "panel.pixel.timeline.play_once",
+    ),
+    (
+        PLAY_ALL,
+        "panel.pixel.timeline.play_all_short",
+        "panel.pixel.timeline.play_all",
+    ),
+    (
+        PLAY_SUBTAGS,
+        "panel.pixel.timeline.play_subtags_short",
+        "panel.pixel.timeline.play_subtags",
+    ),
+    (
+        PLAY_REWIND,
+        "panel.pixel.timeline.rewind_on_stop_short",
+        "panel.pixel.timeline.rewind_on_stop",
+    ),
+];
+
+/// A opção `i` do menu da velocidade (a ordem de `PixelSpeed::ALL`).
+#[must_use]
+pub fn speed_option_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel_timeline.play.speed.{i}"))
+}
+
+/// O rótulo de uma velocidade.
+#[must_use]
+pub const fn speed_key(v: ph2d_editor_core::pixel_panel::PixelSpeed) -> &'static str {
+    use ph2d_editor_core::pixel_panel::PixelSpeed as V;
+    match v {
+        V::Quarter => "panel.pixel.timeline.speed.quarter",
+        V::Half => "panel.pixel.timeline.speed.half",
+        V::One => "panel.pixel.timeline.speed.one",
+        V::OneAndHalf => "panel.pixel.timeline.speed.one_and_half",
+        V::Two => "panel.pixel.timeline.speed.two",
+        V::Three => "panel.pixel.timeline.speed.three",
     }
 }

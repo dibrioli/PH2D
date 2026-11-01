@@ -18,7 +18,7 @@ use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 use ph2d_pixel_core::{ColorMode, compose_rgba};
 use ph2d_render::Camera2d;
 
-use crate::edit::{PPM, WINDOW, at, canvas, spawn_root};
+use crate::comum::{PPM, WINDOW, at, canvas, spawn_root};
 
 struct Palco {
     app: PixelApp,
@@ -177,7 +177,7 @@ fn shading_walks_the_selected_ramp_and_the_eraser_stays_simple() {
 /// A tinta escolhida no painel chega ao gesto: com Lock Alpha o lápis não pinta onde não há tinta.
 #[test]
 fn the_ink_chosen_in_the_panel_reaches_the_stroke() {
-    let (mut app, sim, cam, bits) = crate::edit::born();
+    let (mut app, sim, cam, bits) = crate::comum::born();
     let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
     hero.gizmo.mode.enter(bits, ObjectMode::Draw);
     let mut toasts = ToastQueue::new();
@@ -193,7 +193,7 @@ fn the_ink_chosen_in_the_panel_reaches_the_stroke() {
         Press::Done
     );
     assert!(input::release(&mut app));
-    assert_eq!(crate::edit::value(&app, &sim, bits, 3, 3), [0, 0, 0, 0]);
+    assert_eq!(crate::comum::value(&app, &sim, bits, 3, 3), [0, 0, 0, 0]);
     o.ink = PixelInk::Simple;
     app.pede(PixelRequest::Options(Box::new(o)));
     let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut toasts);
@@ -203,7 +203,7 @@ fn the_ink_chosen_in_the_panel_reaches_the_stroke() {
         Press::Done
     );
     assert!(input::release(&mut app));
-    assert_eq!(crate::edit::value(&app, &sim, bits, 3, 3), app.fg);
+    assert_eq!(crate::comum::value(&app, &sim, bits, 3, 3), app.fg);
 }
 
 #[test]
@@ -233,10 +233,10 @@ fn a_palette_click_sets_the_foreground_and_shift_ctrl_shape_the_selection() {
     assert_eq!(p.passos(), 3, "seleccionar não é um passo do desfazer");
 }
 
-/// ⭐ Ordenar e mover reordenam a paleta e o desenho segue as cores: a imagem composta fica igual
-/// ao byte, e o desfazer devolve a ordem.
+/// ⭐ Ordenar e mover em Indexed mudam só a paleta (os pixels guardam o índice, a imagem muda de
+/// cor) e o *Remap Palette* pendente devolve a imagem num passo seu (o Trial, `sort_reverse`).
 #[test]
-fn sort_and_move_keep_the_composed_image_byte_identical() {
+fn sort_and_move_change_only_the_palette_until_remap_palette() {
     let mut p = Palco::novo();
     let (img, pal) = (p.imagem(), p.sprite().palette().to_vec());
     p.pede(PixelRequest::Swatch {
@@ -249,19 +249,38 @@ fn sort_and_move_keep_the_composed_image_byte_identical() {
         pal.as_slice(),
         "a paleta inteira ordenou"
     );
-    assert_eq!(p.imagem(), img, "a imagem não muda");
+    assert_ne!(
+        p.imagem(),
+        img,
+        "os pixels guardam o índice: a imagem muda de cor"
+    );
+    assert!(p.quadro().remap_pending, "o botão Remap Palette aparece");
     assert_eq!(p.passos(), 4);
     assert!(p.app.undo(p.key));
     assert_eq!(p.sprite().palette(), pal.as_slice());
+    assert!(
+        !p.quadro().remap_pending,
+        "desfazer a ordem leva o pendente"
+    );
 
     p.app.select(BALL_RAMP);
     p.pede(PixelRequest::MoveSelection(1));
     assert_eq!(p.app.selection(), vec![5, 6, 7, 8]);
     assert_eq!(p.sprite().palette()[5], pal[4]);
     assert_eq!(p.sprite().palette()[4], pal[8]);
-    assert_eq!(p.imagem(), img, "mover não muda a imagem");
-    p.pede(PixelRequest::MoveSelection(-1));
-    assert_eq!(p.sprite().palette(), pal.as_slice());
+    p.pede(PixelRequest::ReverseColors);
+    assert_eq!(
+        p.sprite().palette()[5],
+        pal[7],
+        "Reverse inverte a selecção 5..8"
+    );
+    assert_eq!(p.sprite().palette()[8], pal[4]);
+    p.pede(PixelRequest::RemapPalette);
+    assert_eq!(p.imagem(), img, "o Remap compõe as duas reordenações");
+    assert!(!p.quadro().remap_pending);
+    assert_eq!(p.passos(), 6, "mover, inverter e remapear: um passo cada");
+    assert!(p.app.undo(p.key));
+    assert_ne!(p.imagem(), img, "o 1.º Ctrl+Z desfaz só o Remap");
 }
 
 #[test]
@@ -517,33 +536,166 @@ fn edit_color_through_the_shared_picker_is_one_undo_step() {
     assert_eq!(p.hero.store.widget_color(id), Some(pal5));
 }
 
-/// ⭐ Arrastar uma amostra (ou a selecção) para outra célula reordena a paleta como UM passo, a
-/// imagem composta fica igual ao byte, e a selecção segue as cores.
+/// O padrão de uma paleta do Trial: cada hex lido é o índice ORIGINAL dele na entrada (8 cores).
+fn padrao(caso: &serde_json::Value) -> Vec<usize> {
+    const ENTRADA: [&str; 8] = [
+        "000000", "ff0000", "00ff00", "0000ff", "ffff00", "00ffff", "ff00ff", "ffffff",
+    ];
+    caso.as_array()
+        .expect("lista")
+        .iter()
+        .map(|h| {
+            ENTRADA
+                .iter()
+                .position(|e| Some(*e) == h.as_str())
+                .expect("cor da entrada")
+        })
+        .collect()
+}
+
+fn oraculo() -> serde_json::Value {
+    let f = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/oracle_trial_palette.json"
+    );
+    serde_json::from_str(&std::fs::read_to_string(f).expect("fixtura")).expect("json")
+}
+
+/// ⭐ Arrastar (`drag_idx`), Ctrl+arrastar (`drag_ctrl_idx`) e o *Remap Palette* no Indexed, pela
+/// fixtura do Trial: a paleta cai como lá, a imagem muda de cor até ao Remap, e cada um é um passo.
 #[test]
-fn dragging_a_swatch_reorders_the_palette_as_one_step_and_keeps_the_image() {
+fn dragging_a_swatch_moves_or_copies_like_the_trial_and_remap_is_its_own_step() {
+    let o = oraculo();
     let mut p = Palco::novo();
     let (img, pal, antes) = (p.imagem(), p.sprite().palette().to_vec(), p.passos());
-    // A rampa da bola (4..=7) largada sobre a célula 20: o último dela cai lá.
+    p.app.select([1]);
+    p.pede(PixelRequest::DragSwatch {
+        from: 1,
+        to: 4,
+        copy: false,
+    });
+    let quer = padrao(&o["drag_idx"]["drag"]["pal"]);
+    for (i, &v) in quer.iter().enumerate() {
+        assert_eq!(
+            p.sprite().palette()[i],
+            pal[v],
+            "a amostra {i} como no Trial"
+        );
+    }
+    assert_ne!(p.imagem(), img);
+    assert!(p.quadro().remap_pending);
+    p.pede(PixelRequest::RemapPalette);
+    assert_eq!(p.imagem(), img, "o Remap devolve as cores do desenho");
+    assert_eq!(p.passos(), antes + 2, "o arrasto e o Remap: dois passos");
+    assert!(p.app.undo(p.key) && p.app.undo(p.key));
+    assert_eq!(p.sprite().palette(), pal.as_slice());
+    assert_eq!(p.imagem(), img);
+
+    // A rampa da bola (4..=7) largada sobre a célula 20: o bloco junto, o último lá.
     p.app.select(BALL_RAMP);
-    p.pede(PixelRequest::DragSwatch { from: 4, to: 20 });
-    assert_eq!(p.passos(), antes + 1, "um passo do desfazer");
-    assert_eq!(p.imagem(), img, "a imagem não muda");
+    p.pede(PixelRequest::DragSwatch {
+        from: 4,
+        to: 20,
+        copy: false,
+    });
     let s = p.sprite().palette().to_vec();
     assert_eq!(&s[17..=20], &pal[4..=7], "o bloco junto, pela ordem dele");
-    assert_eq!(s[4], pal[8], "o que estava depois desliza");
     assert_eq!(p.app.selection(), (17..=20).collect::<Vec<_>>());
     assert_eq!(p.app.fg, pal[4], "a amostra arrastada é a cor de frente");
     assert!(p.app.undo(p.key));
-    assert_eq!(p.sprite().palette(), pal.as_slice());
 
-    // Uma amostra fora da selecção move-se sozinha, para trás.
+    // Com Ctrl: cópias inseridas na célula, os originais ficam; o pendente leva-as em conta.
     p.app.select([1]);
-    p.pede(PixelRequest::DragSwatch { from: 12, to: 2 });
-    assert_eq!(p.sprite().palette()[2], pal[12]);
-    assert_eq!(p.sprite().palette()[3], pal[2]);
-    assert_eq!(p.app.selection(), vec![2]);
+    p.pede(PixelRequest::DragSwatch {
+        from: 1,
+        to: 4,
+        copy: true,
+    });
+    let quer = padrao(&o["drag_ctrl_idx"]["drag"]["pal"]);
+    assert_eq!(p.sprite().palette().len(), pal.len() + 1);
+    for (i, &v) in quer.iter().enumerate() {
+        assert_eq!(
+            p.sprite().palette()[i],
+            pal[v],
+            "a amostra {i} como no Trial (Ctrl)"
+        );
+    }
+    assert_eq!(p.app.selection(), vec![4], "a cópia fica escolhida");
+    assert_ne!(p.imagem(), img);
+    p.pede(PixelRequest::RemapPalette);
     assert_eq!(p.imagem(), img);
+    assert!(p.app.undo(p.key) && p.app.undo(p.key));
+    assert_eq!(p.sprite().palette(), pal.as_slice());
+}
+
+/// Em RGBA arrastar muda só a paleta, a imagem fica e não há Remap pendente (`drag_rgb`).
+#[test]
+fn in_rgba_a_drag_reorders_the_palette_and_never_asks_for_a_remap() {
+    let mut p = Palco::cena(4);
+    assert_eq!(p.sprite().mode(), ColorMode::Rgba);
+    let (img, pal) = (p.imagem(), p.sprite().palette().to_vec());
+    p.pede(PixelRequest::DragSwatch {
+        from: 1,
+        to: 4,
+        copy: false,
+    });
+    assert_eq!(p.sprite().palette()[4], pal[1]);
+    assert_eq!(p.imagem(), img);
+    assert!(!p.quadro().remap_pending);
+}
+
+/// *Gradient* e *Gradient by Hue* pela fixtura do Trial: as leis puras e o pedido sobre a selecção.
+#[test]
+fn gradients_match_the_trial_and_fill_the_selection_as_one_step() {
+    use ph2d_pixel_core::palette::{gradient, gradient_hue};
+    let o = oraculo();
+    let rgb = |v: &serde_json::Value| -> Vec<[u8; 4]> {
+        v.as_array()
+            .expect("lista")
+            .iter()
+            .map(|c| {
+                let c: Vec<u8> = c
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x.as_u64().unwrap() as u8)
+                    .collect();
+                [c[0], c[1], c[2], 255]
+            })
+            .collect()
+    };
+    let (vermelho, ciano, preto, amarelo) = (
+        [255, 0, 0, 255],
+        [0, 255, 255, 255],
+        [0, 0, 0, 255],
+        [255, 255, 0, 255],
+    );
+    assert_eq!(
+        gradient(vermelho, ciano, 5),
+        rgb(&o["gradient"]["rgb15_ff0000_a_00ffff"])
+    );
+    assert_eq!(
+        gradient(preto, amarelo, 5),
+        rgb(&o["gradient"]["rgb04_000000_a_ffff00"])
+    );
+    assert_eq!(
+        gradient_hue(vermelho, ciano, 5),
+        rgb(&o["gradient_hue"]["hue15_ff0000_a_00ffff"])
+    );
+
+    let mut p = Palco::novo();
+    let (pal, antes) = (p.sprite().palette().to_vec(), p.passos());
+    p.app.select(BALL_RAMP);
+    p.pede(PixelRequest::Gradient { hue: false });
+    assert_eq!(
+        &p.sprite().palette()[4..=7],
+        gradient(pal[4], pal[7], 4).as_slice()
+    );
     assert_eq!(p.passos(), antes + 1);
+    assert!(
+        !p.quadro().remap_pending,
+        "o gradiente muda cores, não a ordem"
+    );
 }
 
 #[test]

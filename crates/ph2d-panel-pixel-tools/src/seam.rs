@@ -317,15 +317,19 @@ fn celula(id: NodeId, n: usize) -> Option<usize> {
     (0..n).find(|&i| ids::palette_id(i) == id)
 }
 
-/// Uma amostra largada sobre outra célula: a selecção muda-se para lá.
-fn larga(dragged: NodeId, drop: PanelRowDrop) -> Option<PixelRequest> {
+/// Uma amostra largada sobre outra célula: a selecção muda-se para lá (com Ctrl, copia-se).
+fn larga(dragged: NodeId, drop: PanelRowDrop, copy: bool) -> Option<PixelRequest> {
     let PanelRowDrop::Inside(alvo) = drop else {
         return None;
     };
     with_current(|info| {
         let n = info.palette.len();
         let (from, to) = (celula(dragged, n)?, celula(alvo, n)?);
-        (info.editing && from != to).then_some(PixelRequest::DragSwatch { from, to })
+        (info.editing && (copy || from != to)).then_some(PixelRequest::DragSwatch {
+            from,
+            to,
+            copy,
+        })
     })
 }
 
@@ -462,7 +466,10 @@ pub(crate) fn apply_event(
             family: PanelRowFamily::PixelPalette,
             dragged,
             drop,
-        } => return empurra(host, larga(dragged, drop)),
+        } => {
+            let copy = host.store().cmd_held();
+            return empurra(host, larga(dragged, drop, copy));
+        }
         WidgetEvent::Click(id)
             if ids::SELECTOR_AREAS
                 .iter()

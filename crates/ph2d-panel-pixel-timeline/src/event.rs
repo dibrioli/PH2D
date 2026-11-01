@@ -73,6 +73,22 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for i in 0..PixelDirection::ALL.len() {
         botao(store, ids::direction_option_id(i));
     }
+    store.register(
+        ids::PLAY_SPEED,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(2),
+        },
+    );
+    for i in 0..ph2d_editor_core::pixel_panel::PixelSpeed::ALL.len() {
+        botao(store, ids::speed_option_id(i));
+    }
+    for (id, _, dica) in ids::PLAY_TOGGLES {
+        botao(store, id);
+        store.set_tooltip(id, tr(dica));
+    }
+    store.set_tooltip(ids::PLAY_SPEED, tr("panel.pixel.timeline.speed"));
 }
 
 fn superficie(store: &mut WidgetStore, id: NodeId, kind: H) {
@@ -370,6 +386,23 @@ pub(crate) fn apply_event(
             });
             empurra(host, pedido)
         }
+        WidgetEvent::Click(id) if id == ids::PLAY_SPEED => EventOutcome::Consumed,
+        WidgetEvent::Click(id) if do_tocar(id) => {
+            use ph2d_editor_core::pixel_panel::PixelSpeed;
+            if let Some(i) = (0..PixelSpeed::ALL.len()).find(|&i| ids::speed_option_id(i) == id)
+                && let Some(InteractiveState::Dropdown {
+                    open,
+                    selected_index,
+                    ..
+                }) = host.store_mut().get_mut(ids::PLAY_SPEED)
+            {
+                *open = false;
+                *selected_index = Some(i);
+            }
+            let pedido =
+                with_current(|info| info.editing.then(|| tocar_com(id, info.playback)).flatten());
+            empurra(host, pedido)
+        }
         WidgetEvent::Click(id) => empurra(host, pedido(id)),
         _ => EventOutcome::Ignored,
     }
@@ -394,4 +427,33 @@ fn empurra(host: &mut dyn PanelHostInternal, pedido: Option<PixelRequest>) -> Ev
         }
         None => EventOutcome::Ignored,
     }
+}
+
+/// `id` é uma opção da velocidade ou um interruptor do *Playback*.
+fn do_tocar(id: NodeId) -> bool {
+    let opcoes = ph2d_editor_core::pixel_panel::PixelSpeed::ALL.len();
+    (0..opcoes).any(|i| ids::speed_option_id(i) == id)
+        || ids::PLAY_TOGGLES.iter().any(|(t, ..)| *t == id)
+}
+
+/// As opções do tocar com o controlo `id` aplicado sobre `p`.
+fn tocar_com(
+    id: NodeId,
+    mut p: ph2d_editor_core::pixel_panel::PixelPlayback,
+) -> Option<PixelRequest> {
+    use ph2d_editor_core::pixel_panel::PixelSpeed;
+    if let Some(i) = (0..PixelSpeed::ALL.len()).find(|&i| ids::speed_option_id(i) == id) {
+        p.speed = PixelSpeed::ALL[i];
+    } else if id == ids::PLAY_ONCE {
+        p.once = !p.once;
+    } else if id == ids::PLAY_ALL {
+        p.all = !p.all;
+    } else if id == ids::PLAY_SUBTAGS {
+        p.subtags = !p.subtags;
+    } else if id == ids::PLAY_REWIND {
+        p.rewind = !p.rewind;
+    } else {
+        return None;
+    }
+    Some(PixelRequest::Playback(p))
 }

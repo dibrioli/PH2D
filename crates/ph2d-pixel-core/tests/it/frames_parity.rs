@@ -193,9 +193,17 @@ fn playback_without_tags_shows_the_frame_the_mvp_shows_at_each_instant() {
                 if t < 0 {
                     continue; // o relógio do host nunca anda para trás
                 }
-                let mut p = Play::start(&s, 0, PlayOptions { once, all: false });
+                let opt = PlayOptions {
+                    once,
+                    ..PlayOptions::default()
+                };
+                let mut p = Play::start(&s, 0, opt);
                 p.advance(&s, t as u32);
-                assert_eq!(p.index as u64, n(&tv[1]), "ms {ms:?}, t {t}, {key}");
+                // ⚠️ O *Play Once* do MVP pára no último; o do Trial volta ao quadro de partida
+                // (`oracle_trial_play_p5.json`, `s0_once_f7`) — o Trial ganha.
+                let total: i64 = ms.iter().map(|&m| i64::from(m.max(1))).sum();
+                let quer = if once && t >= total { 0 } else { n(&tv[1]) };
+                assert_eq!(p.index as u64, quer, "ms {ms:?}, t {t}, {key}");
                 vistos += 1;
             }
         }

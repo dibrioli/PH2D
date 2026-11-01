@@ -14,6 +14,8 @@ pub struct PixelTimelinePanelState {
     pub(crate) first_col: usize,
     /// O menu da direcção aberto: o chip e a direcção actual (pinta-se por cima, no fim).
     pub(crate) direction_open: Option<(Rect, PixelDirection)>,
+    /// O menu da velocidade aberto: o chip e a velocidade de agora.
+    pub(crate) speed_open: Option<(Rect, ph2d_editor_core::pixel_panel::PixelSpeed)>,
     /// *Constant Frame Rate* aberto: o activo e o intervalo de quando abriu (mudar um fecha-o).
     pub(crate) constante: Option<(Option<u32>, PixelRange)>,
     /// O arrasto em curso na grelha ([`crate::gestos`]).

@@ -112,4 +112,58 @@ pub enum PixelFrameAction {
     Unlink,
     /// Frame ▸ Tags ▸ New Tag sobre o frame activo.
     NewTag,
+    /// Frame ▸ Jump to ▸ First / Last Frame in Tag: as pontas da tag MAIS INTERIOR que contém o
+    /// activo (fora de tags, o primeiro / o último).
+    FirstInTag,
+    LastInTag,
+    /// *Set Loop Section* (F2): a tag «Loop» passa a cobrir o intervalo (nasce na 1.ª vez).
+    LoopSection,
+}
+
+/// *Playback Speed* (o menu do botão Play do Aseprite).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelSpeed {
+    Quarter,
+    Half,
+    #[default]
+    One,
+    OneAndHalf,
+    Two,
+    Three,
+}
+
+impl PixelSpeed {
+    pub const ALL: [PixelSpeed; 6] = [
+        PixelSpeed::Quarter,
+        PixelSpeed::Half,
+        PixelSpeed::One,
+        PixelSpeed::OneAndHalf,
+        PixelSpeed::Two,
+        PixelSpeed::Three,
+    ];
+}
+
+/// As opções do tocar: a velocidade é do documento; as outras valem para todos (o Trial).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelPlayback {
+    pub speed: PixelSpeed,
+    pub once: bool,
+    /// *Play All Frames (Ignore Tags)*.
+    pub all: bool,
+    /// *Play Subtags & Repetitions* (ligado por omissão).
+    pub subtags: bool,
+    /// *Rewind on Stop*: parar volta ao quadro onde o tocar começou.
+    pub rewind: bool,
+}
+
+impl Default for PixelPlayback {
+    fn default() -> Self {
+        Self {
+            speed: PixelSpeed::One,
+            once: false,
+            all: false,
+            subtags: true,
+            rewind: false,
+        }
+    }
 }

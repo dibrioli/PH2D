@@ -129,6 +129,7 @@ pub fn key_with(
         (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => {
             quadro(app, PixelFrameAction::Play)
         }
+        (KeyCode::F2, false, false) => quadro(app, PixelFrameAction::LoopSection),
         (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
         (KeyCode::Tab, false, false) => {
             app.alterna_timeline = true;

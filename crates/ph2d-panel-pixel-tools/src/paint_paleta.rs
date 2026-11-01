@@ -106,8 +106,15 @@ impl Corpo<'_> {
             ler,
             gravar,
             omissao,
+            inverte,
+            grad,
+            grad_hue,
+            remap,
             _,
         ] = ids::ACTIONS;
+        if info.remap_pending {
+            y = self.botoes(&acoes([remap]), y);
+        }
         y = self.botoes(&acoes([esq, dir]), y);
         let chaves: Vec<(&str, bool, NodeId)> = ids::SORT_KEYS
             .iter()
@@ -115,6 +122,8 @@ impl Corpo<'_> {
             .collect();
         y = self.escolha(tr("panel.pixel.sort"), &chaves, sec, y);
         y = self.botoes(&acoes([asc, desc]), y);
+        y = self.botoes(&acoes([inverte]), y);
+        y = self.botoes(&acoes([grad, grad_hue]), y);
         y = self.botoes(&acoes([usadas, do_sprite]), y);
         y = self.botoes(&acoes([ler, gravar]), y);
         y = self.botoes(&acoes(ids::PRESET_ACTIONS), y);

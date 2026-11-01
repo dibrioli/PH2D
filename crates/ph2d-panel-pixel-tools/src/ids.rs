@@ -187,7 +187,7 @@ pub use ph2d_editor_core::ids::PIXEL_PAL_EDIT;
 pub const COLOR_MODE: NodeId = hash_node_id("pixel.color_mode.open");
 
 /// Os botões das acções da paleta e da cor: o id, o pedido que fazem e o rótulo.
-pub const ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
+pub const ACTIONS: [(NodeId, PixelRequest, &str); 14] = [
     (
         hash_node_id("pixel.palette.move_left"),
         PixelRequest::MoveSelection(-1),
@@ -232,6 +232,26 @@ pub const ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
         hash_node_id("pixel.palette.default"),
         PixelRequest::DefaultPalette,
         "panel.pixel.default_palette",
+    ),
+    (
+        hash_node_id("pixel.palette.reverse"),
+        PixelRequest::ReverseColors,
+        "panel.pixel.reverse_colors",
+    ),
+    (
+        hash_node_id("pixel.palette.gradient"),
+        PixelRequest::Gradient { hue: false },
+        "panel.pixel.gradient",
+    ),
+    (
+        hash_node_id("pixel.palette.gradient_hue"),
+        PixelRequest::Gradient { hue: true },
+        "panel.pixel.gradient_hue",
+    ),
+    (
+        hash_node_id("pixel.palette.remap"),
+        PixelRequest::RemapPalette,
+        "panel.pixel.remap_palette",
     ),
     (
         hash_node_id("pixel.replace.apply"),

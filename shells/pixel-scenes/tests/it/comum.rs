@@ -37,7 +37,7 @@ pub(crate) fn spawn_root(sim: &mut SimWorld, name: &str) -> u64 {
 }
 
 /// Um Pixel Sprite nascido pelo Add, com a câmera já enquadrada pela entrada em Edit.
-fn born() -> (PixelApp, SimWorld, Camera2d, u64) {
+pub(crate) fn born() -> (PixelApp, SimWorld, Camera2d, u64) {
     let mut app = PixelApp::default();
     let mut sim = SimWorld::new();
     let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
@@ -59,7 +59,14 @@ pub(crate) fn canvas<'a>(sim: &'a SimWorld, camera: &'a Camera2d, bits: u64) -> 
 }
 
 /// O ponto de ecrã do CENTRO da célula `(x, y)`.
-fn at(app: &PixelApp, sim: &SimWorld, camera: &Camera2d, bits: u64, x: i32, y: i32) -> (f32, f32) {
+pub(crate) fn at(
+    app: &PixelApp,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    bits: u64,
+    x: i32,
+    y: i32,
+) -> (f32, f32) {
     let key = input::key_of(sim.world(), bits).expect("marcador");
     let m = input::to_screen(
         sim.world(),
@@ -74,7 +81,7 @@ fn at(app: &PixelApp, sim: &SimWorld, camera: &Camera2d, bits: u64, x: i32, y: i
     (p.x as f32, p.y as f32)
 }
 
-fn value(app: &PixelApp, sim: &SimWorld, bits: u64, x: i32, y: i32) -> [u8; 4] {
+pub(crate) fn value(app: &PixelApp, sim: &SimWorld, bits: u64, x: i32, y: i32) -> [u8; 4] {
     let key = input::key_of(sim.world(), bits).expect("marcador");
     let d = app.doc(key).expect("doc");
     d.sprite

@@ -14,6 +14,7 @@ mod layer_laws;
 mod layer_parity;
 mod line_parity;
 mod mede_compose;
+mod play_oracle;
 mod pure_core;
 mod rotation_oracle;
 mod selection_laws;

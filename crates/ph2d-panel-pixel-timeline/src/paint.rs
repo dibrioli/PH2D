@@ -30,6 +30,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
             .store_mut()
             .clear_panel_rect(core_ids::PIXEL_TIMELINE_PANEL);
         st.direction_open = None;
+        st.speed_open = None;
         return;
     }
     let rect: Rect = ctx.slot;
@@ -76,6 +77,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(inner));
     ctx.host.hit_index_mut().push_clip(inner);
     st.direction_open = None;
+    st.speed_open = None;
     if info.editing {
         let titulo_w = ctx
             .text_system
@@ -86,7 +88,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
             (inner.w - titulo_w - Spacing::Lg.px() - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
             ROW_H_PX,
         );
-        let fundo = barra(ctx, &info, linha, inner);
+        let fundo = barra(st, ctx, &info, linha, inner);
         let y = fundo.max(title_bottom) + Spacing::Sm.px();
         let body = Rect::new(inner.x, y, inner.w, (inner.y + inner.h - y).max(0.0));
         let gap = Spacing::Md.px();
@@ -118,6 +120,17 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
             ids::TAG_DIRECTION,
             "",
             crate::paint_props::direction_options(),
+        )
+        .selected(cur)
+        .open(true);
+        let viewport = ctx.viewport;
+        ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
+    }
+    if let Some((chip, cur)) = st.speed_open {
+        let dd = ph2d_editor_core::widget::Dropdown::new(
+            ids::PLAY_SPEED,
+            "",
+            crate::paint_props::speed_options(),
         )
         .selected(cur)
         .open(true);
@@ -160,7 +173,13 @@ fn espelha_campos(ctx: &mut PaintCtx, info: &PixelPanelInfo, constante: bool) {
 /// interruptores com palavra) — cada grupo encostado, os grupos separados pelo vão. Começa em
 /// `linha` (a linha do título); um grupo que não cabe desce para uma linha inteira de `inner`
 /// (nunca transborda). Devolve o fundo da última linha.
-fn barra(ctx: &mut PaintCtx, info: &PixelPanelInfo, linha: Rect, inner: Rect) -> f32 {
+fn barra(
+    st: &mut PixelTimelinePanelState,
+    ctx: &mut PaintCtx,
+    info: &PixelPanelInfo,
+    linha: Rect,
+    inner: Rect,
+) -> f32 {
     let theme = ctx.host.theme();
     let (h, gap) = (ROW_H_PX, Spacing::Md.px());
     let (mut x, mut y, mut fim) = (linha.x, linha.y, linha.x + linha.w);
@@ -224,6 +243,42 @@ fn barra(ctx: &mut PaintCtx, info: &PixelPanelInfo, linha: Rect, inner: Rect) ->
     let ligados = [info.onion, info.onion_tint];
     let cells = segment_rects_for(fila, &labels, font, ctx.text_system);
     for (((_, id, _), (r, cell)), (label, on)) in ids::TOGGLES
+        .iter()
+        .zip(cells)
+        .zip(labels.iter().zip(ligados))
+    {
+        let visual = ctx.host.store().button_visual(*id);
+        paint_segmented_button_in_group(
+            r,
+            label,
+            on,
+            visual,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            cell,
+        );
+        ctx.host.hit_index_mut().register(*id, r);
+    }
+    x += w + gap;
+
+    // *Playback* (o menu do botão Play do Aseprite): a velocidade e os quatro interruptores.
+    let p = info.playback;
+    let rotulo = tr(ids::speed_key(p.speed));
+    let chip = rect_for_label(ctx.text_system.prefix_width(rotulo, font)) + h;
+    let labels: Vec<&str> = ids::PLAY_TOGGLES.iter().map(|(_, k, _)| tr(k)).collect();
+    let w = chip + Spacing::Sm.px() + largura(ctx, &labels, font);
+    quebra(&mut x, &mut y, w);
+    crate::paint_props::velocidade(st, ctx, Rect::new(x, y, chip, h), p.speed);
+    let fila = Rect::new(
+        x + chip + Spacing::Sm.px(),
+        y,
+        w - chip - Spacing::Sm.px(),
+        h,
+    );
+    let cells = segment_rects_for(fila, &labels, font, ctx.text_system);
+    let ligados = [p.once, p.all, p.subtags, p.rewind];
+    for (((id, ..), (r, cell)), (label, on)) in ids::PLAY_TOGGLES
         .iter()
         .zip(cells)
         .zip(labels.iter().zip(ligados))

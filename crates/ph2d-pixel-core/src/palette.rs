@@ -199,3 +199,100 @@ pub fn sort_permutation(
     }
     perm
 }
+
+/// *Reverse Colors*: inverte `range` (o transparente também anda — o Trial,
+/// `docs/PixelArt/ferramentas/oraculo_paleta.md`).
+#[must_use]
+pub fn reverse_permutation(size: usize, range: std::ops::Range<usize>) -> Vec<usize> {
+    let mut perm: Vec<usize> = (0..size).collect();
+    let range = range.start.min(size)..range.end.min(size);
+    perm[range].reverse();
+    perm
+}
+
+/// *Gradient*: `n` cores de `a` a `b`, canal a canal `a + trunc((b − a)·i/(n − 1))` (o Trial).
+#[must_use]
+pub fn gradient(a: [u8; 4], b: [u8; 4], n: usize) -> Vec<[u8; 4]> {
+    let d = n.saturating_sub(1).max(1) as i32;
+    (0..n as i32)
+        .map(|i| {
+            std::array::from_fn(|c| {
+                (i32::from(a[c]) + (i32::from(b[c]) - i32::from(a[c])) * i / d) as u8
+            })
+        })
+        .collect()
+}
+
+/// *Gradient by Hue*: `n` cores de `a` a `b` em HSV — a matiz sempre a CRESCER (de `a` para `b`,
+/// dando a volta aos 360°), saturação, brilho e alfa lineares, cada canal arredondado (o Trial).
+#[must_use]
+pub fn gradient_hue(a: [u8; 4], b: [u8; 4], n: usize) -> Vec<[u8; 4]> {
+    let (ha, sa, va) = to_hsv(a);
+    let (mut hb, sb, vb) = to_hsv(b);
+    if hb < ha {
+        hb += 360.0;
+    }
+    let d = n.saturating_sub(1).max(1) as f64;
+    (0..n)
+        .map(|i| {
+            let t = i as f64 / d;
+            let [r, g, bl] = from_hsv(ha + (hb - ha) * t, sa + (sb - sa) * t, va + (vb - va) * t);
+            let al = f64::from(a[3]) + (f64::from(b[3]) - f64::from(a[3])) * t;
+            [r, g, bl, al.round() as u8]
+        })
+        .collect()
+}
+
+/// HSV em graus e `0..=1`; cinza tem matiz 0.
+fn to_hsv(c: [u8; 4]) -> (f64, f64, f64) {
+    let [r, g, b] = [c[0], c[1], c[2]].map(|v| f64::from(v) / 255.0);
+    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+    let d = max - min;
+    let h = if d == 0.0 {
+        0.0
+    } else if max == r {
+        60.0 * ((g - b) / d).rem_euclid(6.0)
+    } else if max == g {
+        60.0 * ((b - r) / d + 2.0)
+    } else {
+        60.0 * ((r - g) / d + 4.0)
+    };
+    (h, if max == 0.0 { 0.0 } else { d / max }, max)
+}
+
+fn from_hsv(h: f64, s: f64, v: f64) -> [u8; 3] {
+    let h = h.rem_euclid(360.0) / 60.0;
+    let c = v * s;
+    let x = c * (1.0 - (h.rem_euclid(2.0) - 1.0).abs());
+    let (r, g, b) = match h as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = v - c;
+    [r, g, b].map(|u| ((u + m) * 255.0).round() as u8)
+}
+
+/// **Ctrl+arrastar**: cópias do bloco `sel` (índices crescentes) inseridas na célula `to`
+/// (o Trial: `0..7`, 1 sobre 4 → `0,1,2,3,1,4,5,6,7`). Devolve a paleta nova e `onde[antigo] = novo`
+/// de cada cor original (o *Remap Palette* que fica pendente). `None` se não cabe em
+/// [`MAX_COLORS`] ou o bloco é inválido.
+#[must_use]
+pub fn copy_insert(
+    colors: &[[u8; 4]],
+    sel: &[usize],
+    to: usize,
+) -> Option<(Vec<[u8; 4]>, Vec<usize>)> {
+    let (n, k) = (colors.len(), sel.len());
+    if k == 0 || n + k > MAX_COLORS || to > n || sel.iter().any(|&i| i >= n) {
+        return None;
+    }
+    let mut out = colors[..to].to_vec();
+    out.extend(sel.iter().map(|&i| colors[i]));
+    out.extend_from_slice(&colors[to..]);
+    let onde = (0..n).map(|i| if i < to { i } else { i + k }).collect();
+    Some((out, onde))
+}

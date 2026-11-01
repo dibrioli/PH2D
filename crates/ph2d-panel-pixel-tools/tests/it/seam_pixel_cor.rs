@@ -129,8 +129,21 @@ fn shift_e_ctrl_no_clique_da_paleta_sao_a_faixa_e_o_liga_desliga() {
 
 #[test]
 fn cada_accao_da_paleta_e_do_sprite_chega_ao_barramento() {
+    // O *Remap Palette* só se pinta com o remapeamento pendente (o Trial).
+    let remap = ids::ACTIONS
+        .iter()
+        .find(|(_, r, _)| *r == PixelRequest::RemapPalette);
+    let (remap, ..) = *remap.expect("o botão Remap Palette");
     for (id, r, _) in ids::ACTIONS {
-        let mut p = Palco::novo(info(PixelTool::Pencil));
+        let mut i = info(PixelTool::Pencil);
+        if id == remap {
+            assert!(
+                Palco::novo(i.clone()).rect(id).is_none(),
+                "sem pendente, sem botão"
+            );
+            i.remap_pending = true;
+        }
+        let mut p = Palco::novo(i);
         so(&p.carrega(id), r);
     }
     for (k, id) in ids::SORT_KEYS {

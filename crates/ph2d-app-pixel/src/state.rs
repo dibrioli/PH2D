@@ -27,6 +27,8 @@ pub struct Doc {
     pub(crate) last_point: Option<(i32, i32)>,
     /// A animação a tocar (o frame activo segue-a).
     pub(crate) play: Option<ph2d_pixel_core::play::Play>,
+    /// A velocidade do tocar deste documento (o Trial: por documento aberto, não se grava).
+    pub(crate) speed: ph2d_editor_core::pixel_panel::PixelSpeed,
     /// O intervalo escolhido na linha do tempo ([`crate::intervalo`]).
     pub(crate) range: ph2d_editor_core::pixel_panel::PixelRange,
     /// O intervalo de antes de cada passo por desfazer e o de depois de cada um por refazer: o
@@ -52,6 +54,7 @@ impl Doc {
             axis2: None,
             last_point: None,
             play: None,
+            speed: ph2d_editor_core::pixel_panel::PixelSpeed::One,
             range: ph2d_editor_core::pixel_panel::PixelRange::default(),
             ranges: (Vec::new(), Vec::new()),
         }
@@ -157,6 +160,10 @@ pub struct PixelApp {
     pub(crate) ancora: Option<usize>,
     pub(crate) ultima: Option<usize>,
     pub(crate) sort_key: ph2d_editor_core::pixel_panel::PixelSortKey,
+    /// O *Remap Palette* pendente: `(chave, onde[índice antigo] = índice novo)` desde o último.
+    pub(crate) remap: Option<(u32, Vec<usize>)>,
+    /// As opções do tocar que valem para todos os documentos (a `speed` daqui não conta).
+    pub(crate) tocar: ph2d_editor_core::pixel_panel::PixelPlayback,
     /// O documento em Draw, lido no quadro (os pedidos da paleta aplicam-se a ele).
     pub(crate) chave: Option<u32>,
     /// A edição de cor em curso pelo seletor: `(chave, índice, passos do desfazer depois dela)` —
@@ -228,6 +235,8 @@ impl Default for PixelApp {
             ancora: None,
             ultima: None,
             sort_key: ph2d_editor_core::pixel_panel::PixelSortKey::Hue,
+            remap: None,
+            tocar: ph2d_editor_core::pixel_panel::PixelPlayback::default(),
             chave: None,
             edicao: None,
             avisos: Vec::new(),
@@ -317,6 +326,7 @@ impl PixelApp {
         // sem os assentar (o Ctrl+Z do Aseprite com células levantadas).
         self.solta = self.solta.take().filter(|s| s.key != key);
         self.laco = self.laco.take().filter(|l| l.key != key);
+        self.remap = self.remap.take().filter(|r| r.0 != key);
         let stamp = self.stamp();
         let Some(doc) = self.docs.get_mut(&key) else {
             return false;

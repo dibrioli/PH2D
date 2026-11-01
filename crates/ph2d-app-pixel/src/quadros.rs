@@ -107,16 +107,53 @@ impl PixelApp {
         match r {
             PixelRequest::FrameAction(A::Onion | A::OnionTint) => self.alterna_onion(r),
             PixelRequest::FrameAction(A::Play) => {
+                let t = self.tocar;
                 if let Some(doc) = self.docs.get_mut(&key) {
-                    doc.play = match doc.play {
-                        Some(_) => None,
+                    match doc.play.take() {
+                        // *Rewind on Stop*: parar volta ao quadro onde o tocar começou.
+                        Some(p) if t.rewind => {
+                            if let Some(f) = doc.sprite.frames().get(p.start) {
+                                doc.frame = f.id;
+                            }
+                        }
+                        Some(_) => {}
                         None => {
                             let i = doc.sprite.frame_index(doc.frame).unwrap_or(0);
-                            Some(Play::start(&doc.sprite, i, PlayOptions::default()))
+                            let opt = PlayOptions {
+                                once: t.once,
+                                all: t.all,
+                                subtags: t.subtags,
+                            };
+                            let mut p = Play::start(&doc.sprite, i, opt);
+                            p.speed = velocidade(doc.speed);
+                            if let Some(f) = doc.sprite.frames().get(p.index) {
+                                doc.frame = f.id;
+                            }
+                            doc.play = Some(p);
                         }
-                    };
+                    }
                 }
                 true
+            }
+            PixelRequest::Playback(o) => {
+                self.tocar = *o;
+                if let Some(doc) = self.docs.get_mut(&key) {
+                    doc.speed = o.speed;
+                    if let Some(p) = doc.play.as_mut() {
+                        p.speed = velocidade(o.speed);
+                    }
+                }
+                true
+            }
+            PixelRequest::FrameAction(a @ (A::FirstInTag | A::LastInTag)) => {
+                let ultimo = *a == A::LastInTag;
+                self.vai(key, move |s, i| {
+                    let (a, b) = ph2d_pixel_core::play::tag_at(s.tags(), i)
+                        .map_or((0, s.frames().len().saturating_sub(1)), |t| {
+                            (s.tags()[t].from as usize, s.tags()[t].to as usize)
+                        });
+                    Some(if ultimo { b } else { a })
+                })
             }
             PixelRequest::FrameSelect(f) => {
                 self.vai(key, |s, _| s.frames().iter().position(|x| x.id.0 == *f))
@@ -224,6 +261,14 @@ impl PixelApp {
         let (f, l) = (doc.frame, doc.layer);
         let i = doc.sprite.frame_index(f).unwrap_or(0);
         let (alvo, span, keys) = (doc.alvo_quadros(), doc.range_span(), doc.range_keys());
+        let pos: Vec<usize> = (doc.range_frames().iter())
+            .filter_map(|&f| doc.sprite.frame_index(f))
+            .collect();
+        let envelope = pos
+            .iter()
+            .min()
+            .zip(pos.iter().max())
+            .map(|(a, b)| (*a, *b));
         let picks = doc.range_frames().len();
         let s = &mut doc.sprite;
         let novo = |s: &mut Sprite, k| frames::new_frame(s, f, k);
@@ -258,6 +303,8 @@ impl PixelApp {
             }
             A::Unlink => (frames::unlink(s, (l, f)), None),
             A::NewTag => (frames::new_tag(s, NEW_TAG, i as u32, i as u32), None),
+            // *Set Loop Section*: a tag «Loop» cobre o intervalo; sem intervalo, nada.
+            A::LoopSection => (envelope.and_then(|(a, b)| loop_section(s, a, b)), None),
             _ => (None, None),
         };
         if let Some(op) = op {
@@ -281,4 +328,34 @@ fn link_range(s: &Sprite, keys: &[ph2d_pixel_core::CelKey]) -> Option<Op> {
         })
         .collect();
     (!ops.is_empty()).then_some(Op::Batch(ops))
+}
+
+/// A velocidade do chrome no vocabulário do núcleo.
+fn velocidade(v: ph2d_editor_core::pixel_panel::PixelSpeed) -> ph2d_pixel_core::play::PlaySpeed {
+    use ph2d_editor_core::pixel_panel::PixelSpeed as V;
+    use ph2d_pixel_core::play::PlaySpeed as P;
+    match v {
+        V::Quarter => P::Quarter,
+        V::Half => P::Half,
+        V::One => P::One,
+        V::OneAndHalf => P::OneAndHalf,
+        V::Two => P::Two,
+        V::Three => P::Three,
+    }
+}
+
+/// O nome da tag do *Set Loop Section* (o do Aseprite: é um nome do documento, não da UI).
+const LOOP_TAG: &str = "Loop";
+
+/// A tag «Loop» passa a `a..=b` (Forward, para sempre); nasce se não existe (o Trial: chamar de
+/// novo MOVE a mesma).
+fn loop_section(s: &Sprite, a: usize, b: usize) -> Option<Op> {
+    let (a, b) = (u32::try_from(a).ok()?, u32::try_from(b).ok()?);
+    match s.tags().iter().position(|t| t.name == LOOP_TAG) {
+        Some(i) => frames::edit_tag(s, i, |t| {
+            t.from = a;
+            t.to = b;
+        }),
+        None => frames::new_tag(s, LOOP_TAG, a, b),
+    }
 }

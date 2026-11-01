@@ -3,5 +3,7 @@
 
 mod comum;
 mod intervalo;
+mod paleta;
 mod quadros;
 mod sobreviventes;
+mod tocar;

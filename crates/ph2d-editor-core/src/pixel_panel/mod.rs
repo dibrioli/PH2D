@@ -326,6 +326,9 @@ pub struct PixelPanelInfo {
     /// A última amostra clicada: a que o *Edit color* edita.
     pub anchor: Option<usize>,
     pub sort_key: PixelSortKey,
+    /// A paleta foi reordenada em Indexed e os pixels ainda guardam os índices de antes (o botão
+    /// *Remap Palette* aparece).
+    pub remap_pending: bool,
     /// As camadas na ordem da lista (de CIMA para baixo); os filhos de um grupo recolhido não vêm.
     pub layers: Vec<PixelLayerRow>,
     /// A camada activa (a que as ferramentas pintam).
@@ -344,6 +347,7 @@ pub struct PixelPanelInfo {
     pub range: PixelRange,
     /// A animação está a tocar / o papel vegetal está ligado (e com a tinta vermelha/azul).
     pub playing: bool,
+    pub playback: PixelPlayback,
     pub onion: bool,
     pub onion_tint: bool,
     /// P6: o tamanho do sprite (os diálogos abrem com ele), a moldura solta (os seus campos só
@@ -379,12 +383,21 @@ pub enum PixelRequest {
     /// *Palette Size*: corta ou estende com preto.
     PaletteSize(u16),
     SortKey(PixelSortKey),
-    /// Ordena a selecção (2+ amostras) ou a paleta inteira; a imagem não muda.
+    /// Ordena a selecção (2+ amostras) ou a paleta inteira. Reordenar muda só a paleta: em Indexed
+    /// os pixels guardam o índice e o [`PixelRequest::RemapPalette`] fica pendente (o Trial).
     Sort {
         descending: bool,
     },
-    /// Desloca as amostras seleccionadas um lugar (`-1` esquerda, `+1` direita); a imagem não muda.
+    /// Desloca as amostras seleccionadas um lugar (`-1` esquerda, `+1` direita).
     MoveSelection(i8),
+    /// *Reverse Colors* sobre a selecção (2+ amostras) ou a paleta inteira.
+    ReverseColors,
+    /// *Gradient* (`hue` = *Gradient by Hue*): da primeira à última amostra da selecção.
+    Gradient {
+        hue: bool,
+    },
+    /// *Remap Palette*: os pixels seguem as cores reordenadas desde o último remapeamento.
+    RemapPalette,
     /// *Select ▸ Used Colors* (Indexed).
     SelectUsed,
     /// *New Palette from Sprite*.
@@ -394,10 +407,11 @@ pub enum PixelRequest {
     /// *Load Default Palette*: a gravada por *Save Palette as Default*, ou a DB32 de fábrica.
     DefaultPalette,
     /// Arrastar a amostra `from` para a célula `to`: a selecção (ou só ela, se não estava
-    /// seleccionada) muda-se para lá; a imagem não muda.
+    /// seleccionada) muda-se para lá; com `copy` (Ctrl) cópias dela inserem-se em `to`.
     DragSwatch {
         from: usize,
         to: usize,
+        copy: bool,
     },
     /// *Save Palette as Preset*: grava a paleta do sprite na pasta das predefinições.
     SavePreset,
@@ -447,6 +461,8 @@ pub enum PixelRequest {
         frame: u32,
     },
     FrameAction(PixelFrameAction),
+    /// As opções do tocar, inteiras (o painel escreve a que mudou sobre as que leu).
+    Playback(PixelPlayback),
     /// Frame Properties ▸ Duration do activo / *Constant Frame Rate* (todos).
     FrameDuration(u32),
     ConstantFrameRate(u32),

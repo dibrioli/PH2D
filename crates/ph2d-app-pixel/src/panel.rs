@@ -181,6 +181,10 @@ pub fn frame(
         tags,
         range: doc.map(crate::state::Doc::range_info).unwrap_or_default(),
         playing: doc.is_some_and(|d| d.play.is_some()),
+        playback: ph2d_editor_core::pixel_panel::PixelPlayback {
+            speed: doc.map_or_else(Default::default, |d| d.speed),
+            ..app.tocar
+        },
         onion: app.onion_on,
         onion_tint: app.onion.tint,
         editing: palette.is_some(),
@@ -193,6 +197,7 @@ pub fn frame(
         selected: app.sel.iter().copied().filter(|&i| i < n).collect(),
         anchor: app.ultima.filter(|&i| i < n),
         sort_key: app.sort_key,
+        remap_pending: app.remap.as_ref().is_some_and(|r| Some(r.0) == app.chave),
         layers,
         active_layer,
         has_clip: app.clip.is_some(),

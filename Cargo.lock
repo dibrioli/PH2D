@@ -7470,6 +7470,7 @@ dependencies = [
 name = "ph2d-host-pixel-scenes"
 version = "0.0.0"
 dependencies = [
+ "ph2d-app-host",
  "ph2d-app-pixel",
  "ph2d-ecs",
  "ph2d-editor-core",

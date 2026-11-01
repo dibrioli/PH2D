@@ -630,3 +630,49 @@ fn drags_round_to_the_nearest_cell_a_group_row_refuses_and_shift_never_duplicate
     let r = ultimo(&p.host.drained_actions()).expect("um intervalo");
     assert_eq!(r.frames, [10, 12], "o Shift+clique repetido não duplica");
 }
+
+/// *Playback*: cada interruptor carregado no meio pede as opções com ELE trocado (as outras como o
+/// instantâneo as tem), e a velocidade escolhida no menu também.
+#[test]
+fn the_playback_toggles_and_the_speed_menu_ask_for_the_whole_options() {
+    use ph2d_editor_core::pixel_panel::{PixelPlayback, PixelSpeed};
+    let base = PixelPlayback::default();
+    let casos = [
+        (ids::PLAY_ONCE, PixelPlayback { once: true, ..base }),
+        (ids::PLAY_ALL, PixelPlayback { all: true, ..base }),
+        (
+            ids::PLAY_SUBTAGS,
+            PixelPlayback {
+                subtags: false,
+                ..base
+            },
+        ),
+        (
+            ids::PLAY_REWIND,
+            PixelPlayback {
+                rewind: true,
+                ..base
+            },
+        ),
+    ];
+    for (id, quer) in casos {
+        so(
+            &Palco::novo(info()).carrega(id),
+            PixelRequest::Playback(quer),
+        );
+    }
+    let mut p = Palco::novo(info());
+    let r = p.rect(ids::PLAY_SPEED).expect("o chip da velocidade");
+    for e in p.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let _ = p.host.apply_panel_event::<PixelTimelinePanel>(&mut p.st, e);
+    }
+    p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    assert!(p.rect(ids::speed_option_id(4)).is_some(), "o clique no chip abre o menu");
+    so(
+        &p.carrega(ids::speed_option_id(4)),
+        PixelRequest::Playback(PixelPlayback {
+            speed: PixelSpeed::Two,
+            ..base
+        }),
+    );
+}

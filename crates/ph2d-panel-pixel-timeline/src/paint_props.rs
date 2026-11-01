@@ -6,7 +6,7 @@ use crate::{PixelTimelinePanelState, event, ids};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::pixel_panel::{PixelCel, PixelDirection, PixelPanelInfo};
+use ph2d_editor_core::pixel_panel::{PixelCel, PixelDirection, PixelPanelInfo, PixelSpeed};
 use ph2d_editor_core::property_row;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, Dropdown, DropdownOption, Seccao, Unit, paint_button, paint_dropdown_chip,
@@ -17,6 +17,15 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 /// Quantas colunas de propriedades: Frame · Cel · Tag.
 pub(crate) const COLUNAS: usize = 3;
+
+/// As opções do menu da velocidade.
+pub(crate) fn speed_options() -> Vec<DropdownOption<PixelSpeed>> {
+    PixelSpeed::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| DropdownOption::new(ids::speed_option_id(i), v, tr(ids::speed_key(v))))
+        .collect()
+}
 
 /// As opções do menu da direcção, na ordem do `.ase`.
 pub(crate) fn direction_options() -> Vec<DropdownOption<PixelDirection>> {
@@ -263,4 +272,27 @@ fn direcao(
         st.direction_open = Some((r, cur));
     }
     y + ROW_H_PX + ph2d_tokens::control_gap_px()
+}
+
+/// O chip do menu da velocidade em `r` (a lista abre por cima, no fim do quadro).
+pub(crate) fn velocidade(
+    st: &mut PixelTimelinePanelState,
+    ctx: &mut PaintCtx,
+    r: Rect,
+    cur: PixelSpeed,
+) {
+    let theme = ctx.host.theme();
+    let open = matches!(
+        ctx.host.store().get(ids::PLAY_SPEED),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let dd = Dropdown::new(ids::PLAY_SPEED, "", speed_options())
+        .selected(cur)
+        .open(open)
+        .visual(ctx.host.store().dropdown_visual(ids::PLAY_SPEED));
+    paint_dropdown_chip(&dd, r, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(ids::PLAY_SPEED, r);
+    if open {
+        st.speed_open = Some((r, cur));
+    }
 }

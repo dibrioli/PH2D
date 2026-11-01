@@ -181,13 +181,12 @@ fn enter_plays_the_tags_with_their_passes_and_the_hold_by_the_host_clock() {
         p.app.tick(d);
         seq.push(p.activo());
     }
-    let want: Vec<usize> = [
-        0, 1, 2, 3, 0, 1, 2, 3, 7, 6, 5, 4, 7, 6, 5, 4, 8, 9, 10, 11, 10, 9, 8, 15, 14, 13, 12, 13,
-        14, 15,
-    ]
-    .into_iter()
-    .chain([14, 13, 12, 13, 14, 15, 14, 13, 12, 13, 14])
-    .collect();
+    // A última tag (Ping-pong Reverse, «para sempre») entra-se de FORA: não é a raiz, conta uma
+    // passada, e a linha volta ao 0 (o Trial, `oracle_trial_play_p5.json` `s1_on_f0`).
+    let volta = [
+        0, 1, 2, 3, 0, 1, 2, 3, 7, 6, 5, 4, 7, 6, 5, 4, 8, 9, 10, 11, 10, 9, 8, 15, 14, 13, 12,
+    ];
+    let want: Vec<usize> = volta.into_iter().chain(volta).take(41).collect();
     assert_eq!(seq, want);
     // o frame que segura: 120 ms não chegam para sair dele
     let mut q = Palco::novo();

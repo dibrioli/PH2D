@@ -20,6 +20,8 @@ use crate::PixelApp;
 
 #[path = "paleta_predefinicoes.rs"]
 mod predefinicoes;
+#[path = "paleta_remap.rs"]
+mod remap;
 pub use predefinicoes::{DEFAULT_FILE, pasta_do_utilizador};
 
 /// **Mudar o bloco `sel` (índices crescentes) para a célula `to`** (o arrasto na paleta):
@@ -204,7 +206,19 @@ impl PixelApp {
                 let c = self.paleta_de_omissao();
                 self.poe_paleta(key, c, None);
             }
-            PixelRequest::DragSwatch { from, to } => self.arrasta(key, from, to),
+            PixelRequest::DragSwatch {
+                from,
+                to,
+                copy: false,
+            } => self.arrasta(key, from, to),
+            PixelRequest::DragSwatch { from, to, .. } => self.copia(key, from, to),
+            PixelRequest::ReverseColors => {
+                let r = self.trecho(key);
+                let n = self.docs[&key].sprite.palette().len();
+                self.reordena(key, palette::reverse_permutation(n, r));
+            }
+            PixelRequest::Gradient { hue } => self.gradiente(key, hue),
+            PixelRequest::RemapPalette => self.remapeia(key),
             PixelRequest::SavePreset => self.grava_predefinicao_pelo_dialogo(key),
             PixelRequest::SaveDefault => self.grava_omissao(key),
             PixelRequest::LoadPreset(nome) => self.carrega_predefinicao(key, &nome),
@@ -276,17 +290,13 @@ impl PixelApp {
     }
 
     fn ordena(&mut self, key: u32, descending: bool) {
+        let range = self.trecho(key);
         let s = &self.docs[&key].sprite;
-        let n = s.palette().len();
-        let range = match (self.sel.first(), self.sel.last()) {
-            (Some(&a), Some(&b)) if self.sel.len() >= 2 => a..b + 1,
-            _ => 0..n,
-        };
         let t = (s.mode() == ColorMode::Indexed).then(|| usize::from(s.transparent_index()));
         let perm =
             palette::sort_permutation(s.palette(), range, sort_key(self.sort_key), descending, t);
         if perm.iter().enumerate().any(|(i, &o)| i != o) {
-            let _ = self.commit(key, Op::Remap { perm });
+            self.reordena(key, perm);
         }
     }
 
@@ -312,7 +322,7 @@ impl PixelApp {
                 perm.swap(i, i + 1);
             }
         }
-        if self.commit(key, Op::Remap { perm }).is_ok() {
+        if self.reordena(key, perm) {
             let anda = |i: usize| if d < 0 { i - 1 } else { i + 1 };
             self.sel = sel.into_iter().map(anda).collect();
             self.ancora = self.ancora.map(anda);
@@ -337,7 +347,7 @@ impl PixelApp {
             return;
         }
         let novo = palette::invert_permutation(&perm);
-        if self.commit(key, Op::Remap { perm }).is_ok() {
+        if self.reordena(key, perm) {
             self.sel = bloco.iter().map(|&i| novo[i]).collect();
             self.ancora = self.sel.first().copied();
             self.ultima = Some(novo[from]);

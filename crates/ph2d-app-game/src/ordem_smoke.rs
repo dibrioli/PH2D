@@ -89,7 +89,9 @@ pub fn pose(p: Peca) -> Option<([f32; 2], [f32; 2])> {
         Peca::Rosto => Some(([2.6, 1.0], [6.0, 6.0])),
         Peca::Macro => Some(([0.4, 2.2], [1.0, 1.0])),
         Peca::Camera => Some(([1.5, 1.4], [1.0, 1.0])),
-        Peca::Pilha | Peca::Enxame => None,
+        // As taças da cena 114 ficam em y ∈ [−3, −1,4] m locais: sobem para dentro da vista, sobre o cartão.
+        Peca::Pilha => Some(([1.5, 3.5], [1.0, 1.0])),
+        Peca::Enxame => None,
     }
 }
 

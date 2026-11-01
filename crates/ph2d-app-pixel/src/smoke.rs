@@ -88,6 +88,18 @@ pub fn rosto(
         .then_some(bits)
 }
 
+/// O rosto como peça de OUTRA cena (GEF 19, `PH2D_ORDEM_SMOKE`): sem o pedido de Draw com que o
+/// objecto nasce, que no quadro seguinte ganharia ao Object que a cena pede.
+pub fn rosto_em_object(
+    app: &mut PixelApp,
+    sim: &mut SimWorld,
+    spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+) -> Option<u64> {
+    let bits = rosto(app, sim, spawn_root);
+    app.wants_edit = None;
+    bits
+}
+
 /// Encena o nível `level`. `false` = nível que este roteador não conhece.
 pub fn stage(
     app: &mut PixelApp,

@@ -262,6 +262,8 @@ impl crate::App {
         // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
         plan.banded |= lente || filtrada || palcos;
         let banded = plan.banded;
+        use ph2d_app_motion::motion_shape_placa::faixa;
+        plan.motion_por_faixa = faixa::sprites_por_faixa(motion_active, &plan.bands);
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
         // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
@@ -280,17 +282,22 @@ impl crate::App {
         );
         let palcos = &mut self.motion_shell.palcos;
         palcos.desenha(gpu, tamanho, renderer, filtro);
-        let colagem = ph2d_app_motion::motion_shape_placa::faixa::Colagem {
+        let colagem = faixa::Colagem {
             gpu,
             ordem: frame_order,
             bands: &plan.bands,
+            sprites: plan.motion_por_faixa,
         };
         let (placa, palcos) = (&mut self.motion_shell.placa, &mut self.motion_shell.palcos);
         let cena = hero_screen
             .as_ref()
             .filter(|_| !na_vista)
             .and_then(|h| h.cena_visivel(scene_viewport));
-        let mut cola = |band, mundo: &_, band_blit: &_, renderer: &mut _| {
+        let mut cola = |band,
+                        mundo: &_,
+                        band_blit: &_,
+                        renderer: &mut _,
+                        sprites: faixa::PasseDeSprites<'_>| {
             let e = ph2d_app_motion::motion_filter::Engrenagem {
                 gpu,
                 renderer,
@@ -301,13 +308,7 @@ impl crate::App {
                 mundo,
                 band_blit,
             };
-            ph2d_app_motion::motion_shape_placa::faixa::cola(
-                colagem,
-                (placa, motion, palcos),
-                e,
-                cena,
-                band,
-            );
+            faixa::cola(colagem, (placa, motion, palcos), e, cena, (band, sprites));
         };
         let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,
@@ -348,7 +349,8 @@ impl crate::App {
                 },
             );
         }
-        let (motion_gpu, motion_slice) = motion.sprites_da_camada(motion_active && !filtrada);
+        let (motion_gpu, motion_slice) =
+            motion.sprites_da_camada(motion_active && !filtrada && !plan.motion_por_faixa);
         // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
         // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
         //

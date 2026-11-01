@@ -305,7 +305,7 @@ pub(crate) use monta::linha_da_imagem;
 // ⭐ P4 — a decisão e o desenho do quadro que a shell compõe.
 #[path = "motion_shape_placa_quadro.rs"]
 mod quadro;
-pub use quadro::{cola_no_mundo, decide_o_quadro, desenha_o_quadro};
+pub use quadro::{cola_no_mundo, decide_o_quadro, desenha_o_quadro, fica_no_rank};
 
 /// ⭐ GEF 19 E3 — a placa colada por faixa da ordem total (ficheiro irmão).
 #[path = "motion_shape_placa_faixa.rs"]

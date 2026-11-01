@@ -12,6 +12,18 @@ use super::{
 };
 use crate::motion_state::MotionState;
 
+/// ⭐ GEF 19 A — **os objectos Motion ficam no rank deles?** Com a placa, sim. Sem ela as formas vão ao
+/// Vello, por cima do mundo, e as faixas Motion sobem ao topo (`draw_bands::motion_por_cima`). Sem
+/// forma nenhuma neste quadro (só cópias de sprite, ou a simulação a recomeçar) não há nada no Vello:
+/// ficam no rank — antes subiam, e as cópias de sprite piscavam por cima de tudo a cada recomeço.
+#[must_use]
+pub fn fica_no_rank(placa: bool, motion: &MotionState) -> bool {
+    let no_dispositivo = motion.gpu_live
+        && (motion.gpu_cook.formas().is_some_and(|f| f.len() > 0)
+            || motion.gpu_cook.imagens_do_grupo().is_some());
+    placa || !(no_dispositivo || !motion.pump.vector_instances.is_empty())
+}
+
 /// **Este quadro vai à placa?** — pela rota do DISPOSITIVO quando o cozimento está vivo e escreveu
 /// formas ou imagens de um grupo (`ligada_dispositivo`), senão pela da CPU (`ligada_cpu`).
 pub fn decide_o_quadro(

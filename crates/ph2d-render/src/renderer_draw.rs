@@ -175,6 +175,36 @@ impl SpriteRenderer {
         gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
     ) {
+        let (cam, view) = ((camera, window), (scene_viewport, false));
+        self.render_slice(target, cam, clear_color, instances, gpu_extra, view);
+    }
+
+    /// ⭐ GEF 19 A — [`render_instances_only`](Self::render_instances_only) COM a luz 2D, como no passe
+    /// da cena: as cópias de sprite do Motion desenhadas na faixa do objecto dono, fora do passe fundido.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_instances_da_cena(
+        &mut self,
+        target: &wgpu::TextureView,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        instances: &[RenderInstance],
+        gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
+        scene_viewport: Option<[f32; 4]>,
+    ) {
+        let (cam, view) = ((camera, window), (scene_viewport, true));
+        self.render_slice(target, cam, clear_color, instances, gpu_extra, view);
+    }
+
+    fn render_slice(
+        &mut self,
+        target: &wgpu::TextureView,
+        (camera, window): (&Camera2d, WindowSize),
+        clear_color: wgpu::Color,
+        instances: &[RenderInstance],
+        gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
+        (scene_viewport, com_luz): (Option<[f32; 4]>, bool),
+    ) {
         self.scratch.clear();
         self.scratch.extend_from_slice(instances);
         // ⛔ Uma fatia crua não traz malhas: uma marca herdada indexaria as malhas de OUTRA chamada.
@@ -187,7 +217,7 @@ impl SpriteRenderer {
             clear_color,
             gpu_extra,
             scene_viewport,
-            false,
+            com_luz,
         );
     }
 

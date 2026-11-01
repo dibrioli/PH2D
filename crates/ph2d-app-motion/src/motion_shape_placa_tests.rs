@@ -193,3 +193,22 @@ fn conforme_separa_as_poses() {
     assert!(conforme(&v([0.6, 0.8, -0.8, 0.6], [1e-6, 1e-6])));
     assert!(conforme(&v([0.6, 0.8, -0.8, 0.6], [1e6, 1e6])));
 }
+
+/// ⭐ GEF 19 A — **sem forma nenhuma o objecto Motion fica no rank dele**: só sobe ao topo quando há
+/// formas que a placa não leva (o Vello, por cima do mundo). Antes, a cada recomeço da simulação (zero
+/// formas por um instante) a placa desligava e as cópias de sprite piscavam por cima de tudo.
+/// (Mutação: `placa || !formas` → `placa` ⇒ RED no 1.º assert.)
+#[test]
+fn sem_formas_o_motion_fica_no_rank() {
+    let mut motion = crate::motion_state::MotionState::new();
+    assert!(fica_no_rank(false, &motion), "sem formas: fica no rank");
+    motion
+        .pump
+        .vector_instances
+        .push(vi(1, 0.0, ID, [1.0, 1.0]));
+    assert!(
+        !fica_no_rank(false, &motion),
+        "formas fora da placa: o Vello, por cima"
+    );
+    assert!(fica_no_rank(true, &motion), "formas na placa: no rank");
+}

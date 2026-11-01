@@ -57,9 +57,14 @@ impl crate::App {
             gpu,
             ordem: frame_order,
             bands: &plan.bands,
+            sprites: plan.motion_por_faixa,
         };
         let (placa, palcos) = (&mut self.motion_shell.placa, &mut self.motion_shell.palcos);
-        let mut cola = |band, mundo: &_, band_blit: &_, renderer: &mut _| {
+        let mut cola = |band,
+                        mundo: &_,
+                        band_blit: &_,
+                        renderer: &mut _,
+                        sprites: faixa::PasseDeSprites<'_>| {
             let e = ph2d_app_motion::motion_filter::Engrenagem {
                 gpu,
                 renderer,
@@ -70,7 +75,7 @@ impl crate::App {
                 mundo,
                 band_blit,
             };
-            faixa::cola(colagem, (placa, motion, palcos), e, cena, band);
+            faixa::cola(colagem, (placa, motion, palcos), e, cena, (band, sprites));
         };
         let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,

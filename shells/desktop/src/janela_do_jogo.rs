@@ -148,10 +148,10 @@ impl crate::App {
         );
         let flip = ph2d_app_flip::object_add::FLIP;
         let traco = ph2d_app_flip::object_add::add(flip, sim, &mut gfx.flip, &mut self.flip_state);
-        if let Some(oid) = self.flip_state.born {
+        if let Some(oid) = self.flip_state.born.take() {
             ph2d_app_flip::ordem_smoke::traco(&mut gfx.flip, oid);
         }
-        let rosto = ph2d_app_pixel::smoke::rosto(&mut self.pixel, sim, raiz);
+        let rosto = ph2d_app_pixel::smoke::rosto_em_object(&mut self.pixel, sim, raiz);
         let macro_ =
             ph2d_app_macros::object_add::add(ph2d_app_macros::object_add::MACRO, sim, raiz);
         let camera = object_add::add(object_add::CAMERA, sim, reg, seeds);
@@ -171,7 +171,7 @@ impl crate::App {
             o::arruma(sim.world_mut(), b, p);
         }
         o::ordena(sim.world_mut(), nivel, &pecas);
-        // O Pixel nasce em Draw e com zoom nele: volta-se a Object e enquadra-se o cartão (a cena).
+        // Object, e enquadra-se o cartão (a cena).
         if let (Some(hero), Some(cartao)) = (gfx.hero_screen.as_mut(), imagem) {
             use ph2d_editor_core::{action_bus::EditorAction, object_mode as m};
             hero.bus

@@ -117,7 +117,8 @@ impl crate::App {
         let docs = (&mut *vec_scene, &vec_xf, &mut *flip);
         let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, docs);
         // GEF 19 E3: com a placa, cada objecto Motion fica no rank dele; sem ela, por cima de tudo.
-        frame_order.motion_na_placa = placa;
+        frame_order.motion_na_placa =
+            ph2d_app_motion::motion_shape_placa::fica_no_rank(placa, motion);
         let palcos_da_ordem = &self.motion_shell.palcos;
         frame_order.adormece_palcos(|m| palcos_da_ordem.toca_o_de(m));
         let doc_bands =

@@ -21,6 +21,7 @@ pub(super) type ColaMotion<'a> = &'a mut dyn FnMut(
     Option<ph2d_render::draw_bands::Band>,
     &ph2d_render::WorldRt,
     &ph2d_render::BandBlit,
+    &mut ph2d_render::SpriteRenderer,
 );
 
 /// ⚠️ **A engrenagem viaja numa struct, e não em onze argumentos.** Os dois passes usam
@@ -190,7 +191,7 @@ pub(super) fn draw_lower_bands(
                 doc_i += 1;
             }
             ph2d_render::draw_bands::Family::Motion => {
-                (g.motion)(Some(*band), g.world_rt, g.band_blit);
+                (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);
             }
             ph2d_render::draw_bands::Family::Flip => {
                 cola_o_flip(
@@ -235,6 +236,8 @@ fn cola_o_flip(
 pub(super) struct UpperGear<'a> {
     pub world_rt: &'a mut ph2d_render::WorldRt,
     pub game_rt: &'a ph2d_render::GameRt,
+    /// O passe da camada filtrada do Motion (a faixa do topo, `faixa::cola`).
+    pub renderer: &'a mut ph2d_render::SpriteRenderer,
     pub window_size: WindowSize,
     pub tonemap: &'a mut ph2d_render::Tonemap,
     pub band_blit: &'a mut ph2d_render::BandBlit,
@@ -256,11 +259,7 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
     let from = plan.main.1;
     let e_motion =
         |b: &ph2d_render::draw_bands::Band| b.family == ph2d_render::draw_bands::Family::Motion;
-    // O topo do Motion já colou abaixo: a camada filtrada e a lente ficam logo por cima dele.
     let tem_motion = plan.bands.iter().any(e_motion);
-    if tem_motion && !plan.bands.iter().skip(from).any(e_motion) {
-        (g.motion)(None, g.world_rt, g.band_blit);
-    }
     let mut doc_i = plan
         .bands
         .iter()
@@ -269,7 +268,7 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         .count();
     for band in plan.bands.iter().skip(from) {
         if e_motion(band) {
-            (g.motion)(Some(*band), g.world_rt, g.band_blit);
+            (g.motion)(Some(*band), g.world_rt, g.band_blit, g.renderer);
         }
         if band.family == ph2d_render::draw_bands::Family::Flip {
             cola_o_flip(
@@ -305,7 +304,7 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
     }
     // Sem objecto Motion na ordem: a placa inteira por cima do mundo, como sempre.
     if !tem_motion {
-        (g.motion)(None, g.world_rt, g.band_blit);
+        (g.motion)(None, g.world_rt, g.band_blit, g.renderer);
     }
 }
 

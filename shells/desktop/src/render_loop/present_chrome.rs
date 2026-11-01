@@ -59,19 +59,10 @@ impl crate::App {
             bands: &plan.bands,
         };
         let placa = &mut self.motion_shell.placa;
-        let mut cola = |band: Option<_>, mundo: &ph2d_render::WorldRt, band_blit: &_| {
-            let topo = colagem.topo();
-            if let Some(b) = band.filter(|b| topo != Some(*b)) {
-                return colagem.cola_a_faixa(placa, motion, band_blit, mundo.blend_view(), b);
-            }
-            let quem = match (band, topo) {
-                (Some(b), _) => faixa::Topo::Faixa(colagem, b),
-                (None, Some(_)) => faixa::Topo::JaColada,
-                (None, None) => faixa::Topo::SemFaixa,
-            };
+        let mut cola = |band, mundo: &_, band_blit: &_, renderer: &mut _| {
             let e = ph2d_app_motion::motion_filter::Engrenagem {
                 gpu,
-                renderer: &mut *renderer,
+                renderer,
                 camera,
                 window: window_size,
                 scene_viewport,
@@ -79,7 +70,7 @@ impl crate::App {
                 mundo,
                 band_blit,
             };
-            faixa::cola_o_topo(motion, placa, e, cena, quem);
+            faixa::cola(colagem, placa, motion, e, cena, band);
         };
         let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,
@@ -104,6 +95,7 @@ impl crate::App {
                 crate::render_loop::present_bands::UpperGear {
                     world_rt,
                     game_rt,
+                    renderer,
                     window_size,
                     tonemap,
                     band_blit,

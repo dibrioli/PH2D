@@ -29,8 +29,6 @@ pub struct Colagem<'a> {
 pub enum Topo<'a> {
     /// Nenhum objecto Motion na ordem: a placa inteira, por cima do mundo (o quadro de sempre).
     SemFaixa,
-    /// A faixa do topo já colou (abaixo da última faixa de sprites): só a camada filtrada e a lente.
-    JaColada,
     /// A faixa do topo é esta.
     Faixa(Colagem<'a>, Band),
 }
@@ -99,6 +97,24 @@ impl Colagem<'_> {
     }
 }
 
+/// ⭐ A colagem de uma faixa Motion (`Some`), na metade de baixo ou na de cima, ou da placa inteira sem
+/// objecto Motion na ordem (`None`). A faixa do TOPO leva a camada filtrada e a lente — no sítio DELA,
+/// também abaixo da última faixa de sprites (GEF 19, resto da E3).
+pub fn cola(
+    c: Colagem<'_>,
+    placa: &mut PlacaDeFormas,
+    motion: &mut MotionState,
+    e: Engrenagem<'_>,
+    cena: Option<[f32; 4]>,
+    band: Option<Band>,
+) {
+    if let Some(b) = band.filter(|b| c.topo() != Some(*b)) {
+        return c.cola_a_faixa(placa, motion, e.band_blit, e.mundo.blend_view(), b);
+    }
+    let quem = band.map_or(Topo::SemFaixa, |b| Topo::Faixa(c, b));
+    cola_o_topo(motion, placa, e, cena, quem);
+}
+
 /// ⭐ O TOPO do Motion: a camada filtrada (inteira) ou a faixa do topo, e a lente sobre o mundo.
 pub fn cola_o_topo(
     motion: &mut MotionState,
@@ -116,7 +132,6 @@ pub fn cola_o_topo(
         let alvo = mundo.blend_view();
         match topo {
             Topo::SemFaixa => cola_no_mundo(placa, gpu, band_blit, alvo),
-            Topo::JaColada => {}
             Topo::Faixa(c, band) => c.cola_a_faixa(placa, motion, band_blit, alvo, band),
         }
     }

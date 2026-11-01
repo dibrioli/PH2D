@@ -240,6 +240,107 @@ impl crate::App {
         let filtrada = motion.filtro.liga(motion_active);
         // ⭐ Os palcos das macros em cena: cada um numa camada própria, que pousa no mundo.
         let palcos = self.motion_shell.palcos.liga();
+        // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
+        // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
+        // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
+        // **byte-idêntico** ao de sempre.
+        let mut plan = super::present_bands::plan_frame(frame_order);
+        // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
+        //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
+        //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
+        let grid_behind = !na_vista
+            && hero_screen.as_ref().is_some_and(|h| {
+                ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
+            });
+        // A vista da câmera (A6) acaba SEMPRE no acumulador: é ele que se pousa no canto do canvas.
+        plan.banded |= grid_behind || na_vista;
+        // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
+        plan.banded |= self.motion_shell.placa.ativa();
+        // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
+        //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
+        plan.banded |= luz2d.grade().is_some();
+        // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
+        plan.banded |= lente || filtrada || palcos;
+        let banded = plan.banded;
+        // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
+        // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
+        // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
+        // linha abaixo é a de sempre.
+        let held =
+            frosting.then(|| super::present_frost::lift(sim, present, &mut self.frost_instances));
+        // ⭐ AS FORMAS DO MOTION, pela placa (doc 121 W2/W3, P4): DESENHADAS antes das faixas (GEF 19 E3: uma faixa
+        // Motion abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14, `present_fx`).
+        let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
+        let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
+        let tamanho = (window_size.width, window_size.height);
+        let placa = &mut self.motion_shell.placa;
+        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
+            placa, gpu, tamanho, motion, renderer, filtro,
+        );
+        let palcos = &mut self.motion_shell.palcos;
+        palcos.desenha(gpu, tamanho, renderer, filtro);
+        let colagem = ph2d_app_motion::motion_shape_placa::faixa::Colagem {
+            gpu,
+            ordem: frame_order,
+            bands: &plan.bands,
+        };
+        let placa = &mut self.motion_shell.placa;
+        let cena = hero_screen
+            .as_ref()
+            .filter(|_| !na_vista)
+            .and_then(|h| h.cena_visivel(scene_viewport));
+        let mut cola = |band, mundo: &_, band_blit: &_, renderer: &mut _| {
+            let e = ph2d_app_motion::motion_filter::Engrenagem {
+                gpu,
+                renderer,
+                camera,
+                window: window_size,
+                scene_viewport,
+                formas: None,
+                mundo,
+                band_blit,
+            };
+            ph2d_app_motion::motion_shape_placa::faixa::cola(colagem, placa, motion, e, cena, band);
+        };
+        let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
+            flip,
+            (flip_render, flip_compose, flip_composite),
+            &self.flip_state,
+            &self.playhead,
+            sim,
+            na_vista,
+            camera,
+            (window_size, scene_viewport),
+            gpu,
+        );
+        let mut flip_faixa = |b, rt: &_| {
+            let ids = ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b));
+            quadro.desenha(&ids, rt);
+        };
+        if banded {
+            super::present_bands::draw_lower_bands(
+                surface.gpu(),
+                &plan,
+                wgpu::Color { r, g, b, a: 1.0 },
+                super::present_bands::BandGear {
+                    world_rt,
+                    renderer,
+                    game_rt,
+                    present,
+                    camera,
+                    window_size,
+                    scene_viewport,
+                    tonemap,
+                    band_blit,
+                    vello_pass,
+                    band_doc_scenes,
+                    held_back: held.as_ref(),
+                    grid_behind: grid_behind.then_some(&*grid_behind_scene),
+                    motion: &mut cola,
+                    flip: &mut flip_faixa,
+                },
+            );
+        }
         let (motion_gpu, motion_slice) = motion.sprites_da_camada(motion_active && !filtrada);
         // O slot `extra` do passe carrega TRÊS produtores CPU: os fantasmas do onion (ADR-0142),
         // o stream do Motion e — desde o TOP-20 #18 — as PARTÍCULAS dos objectos.
@@ -294,95 +395,6 @@ impl crate::App {
         } else {
             &sprite_extra
         };
-        // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
-        // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
-        // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
-        // **byte-idêntico** ao de sempre.
-        let mut plan = super::present_bands::plan_frame(frame_order);
-        // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
-        //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
-        //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
-        let grid_behind = !na_vista
-            && hero_screen.as_ref().is_some_and(|h| {
-                ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
-            });
-        // A vista da câmera (A6) acaba SEMPRE no acumulador: é ele que se pousa no canto do canvas.
-        plan.banded |= grid_behind || na_vista;
-        // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
-        plan.banded |= self.motion_shell.placa.ativa();
-        // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
-        //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
-        plan.banded |= luz2d.grade().is_some();
-        // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
-        plan.banded |= lente || filtrada || palcos;
-        let banded = plan.banded;
-        // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
-        // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
-        // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
-        // linha abaixo é a de sempre.
-        let held =
-            frosting.then(|| super::present_frost::lift(sim, present, &mut self.frost_instances));
-        // ⭐ AS FORMAS DO MOTION, pela placa (doc 121 W2/W3, P4): DESENHADAS antes das faixas (GEF 19 E3: uma faixa
-        // Motion abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14, `present_fx`).
-        let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
-        let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
-        let tamanho = (window_size.width, window_size.height);
-        let placa = &mut self.motion_shell.placa;
-        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
-            placa, gpu, tamanho, motion, renderer, filtro,
-        );
-        let palcos = &mut self.motion_shell.palcos;
-        palcos.desenha(gpu, tamanho, renderer, filtro);
-        let colagem = ph2d_app_motion::motion_shape_placa::faixa::Colagem {
-            gpu,
-            ordem: frame_order,
-            bands: &plan.bands,
-        };
-        let placa = &mut self.motion_shell.placa;
-        let mut cola = |band: Option<_>, mundo: &ph2d_render::WorldRt, bb: &_| {
-            if let Some(b) = band {
-                colagem.cola_a_faixa(placa, motion, bb, mundo.blend_view(), b);
-            }
-        };
-        let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
-            flip,
-            (flip_render, flip_compose, flip_composite),
-            &self.flip_state,
-            &self.playhead,
-            sim,
-            na_vista,
-            camera,
-            (window_size, scene_viewport),
-            gpu,
-        );
-        let mut flip_faixa = |b, rt: &_| {
-            let ids = ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b));
-            quadro.desenha(&ids, rt);
-        };
-        if banded {
-            super::present_bands::draw_lower_bands(
-                surface.gpu(),
-                &plan,
-                wgpu::Color { r, g, b, a: 1.0 },
-                super::present_bands::BandGear {
-                    world_rt,
-                    renderer,
-                    game_rt,
-                    present,
-                    camera,
-                    window_size,
-                    scene_viewport,
-                    tonemap,
-                    band_blit,
-                    vello_pass,
-                    band_doc_scenes,
-                    held_back: held.as_ref(),
-                    grid_behind: grid_behind.then_some(&*grid_behind_scene),
-                    motion: &mut cola,
-                    flip: &mut flip_faixa,
-                },
-            );
-        }
         renderer.render_with_streams(
             game_rt.view(),
             present,

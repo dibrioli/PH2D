@@ -49,7 +49,11 @@ fn every_band_draws_once_and_the_flip_above_the_last_sprites_is_the_main_one() {
 #[test]
 fn both_halves_paste_their_flip_bands() {
     let src = include_str!("present_bands.rs");
-    assert_eq!(src.matches("cola_o_flip(gpu, *band, g.game_rt").count(), 2);
+    assert_eq!(
+        src.matches("cola_o_flip(\n").count(),
+        3,
+        "a definição e as duas metades"
+    );
     assert!(src.contains("take(plan.main.0)") && src.contains("let from = plan.main.1;"));
     let fx = include_str!("present.rs");
     assert!(fx.contains(".flip_main") && fx.contains("quadro.desenha(&ids, game_rt);"));

@@ -498,7 +498,7 @@ O rascunho §0–§6 é ACEITE como desenho da E10, com estas decisões técnica
 | R5 | `TipClean` aparecia em dois destinos (§1.2 #13 Pickup e §2.1 #10 Load) | vai ao **Load** (a ponta volta à cor dela à taxa `apanhado/V_cap`); §1.2 corrigido | uma grandeza, um controlo |
 | R6 | 14 knobs de cerda sem leitor | medição §4 (3): grep + 1 dab a 0 e ao máximo; mortos saem (R), vivos vão ao `Tip` | §5.0 «controlo morto» |
 | R7 | `Re-wet = max(rewet/8, …)` | ⚑ o divisor 8 é a faixa de hoje do `rewet` (`defs:109`); confirmar na medição §4 que `Re-wet` 0,5 dá a mesma reabertura do padrão | fórmula de migração sem prova é escolha |
-| R8 | «Color mixing» Pigment | o seletor entra na E10 já com as duas opções; a opção Pigment liga-se ao WGM (F2b §4.2) na etapa seguinte — até lá a opção não aparece (controlo sem leitor não se mostra) | §5.0 controlo morto |
+| R8 | «Color mixing» Smooth \| Pigment | **substituído por um SLIDER `Pigment mix` 0..1** (omissão 0) que interpola Oklab → WGM 10 bandas (F2b §4.2, como o slider Pigment do MyPaint); o `p` viaja na soma como o meio (`Σv·p`), e a cor da célula é `lerp_Oklab(ō, WGM, p̄)`. Implementa-se na E10b (`E10b_pigment_mix.md`); o slider só aparece no painel quando tiver leitor. As linhas «Color mixing» acima (§1.1 #7, §2.2, §3.1, §5) leem-se como `Pigment mix` (fábrica: 0) | o dono respondeu «Pigment mix por pincel = sim»; um seletor binário esconde que o meio-termo é contínuo e mensurável |
 | R9 | ordem | (a) smoke do dono com a maquete e as perguntas; (b) EM PARALELO, as medições §4 (1)(3)(4)(5)(6) num só bloco; (c) implementação do painel depois das duas | §0.10: um bloco |
 
 Perguntas que vão ao dono (num só smoke, com a maquete [`fotos/f3/maquete_painel.png`](fotos/f3/maquete_painel.png) e

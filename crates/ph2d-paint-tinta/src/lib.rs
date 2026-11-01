@@ -25,6 +25,7 @@ mod lei;
               o literal arredonda para o mesmo f32 em CPU e GPU"
 )]
 pub mod oklab;
+mod pigmento;
 mod soma;
 mod transfere;
 
@@ -32,6 +33,10 @@ pub use bandas::Bandas;
 pub use lei::{
     Optica, R_INF_MIN, S_OPACO, S_TRANSPARENTE, camada, camada_banda, cobertura, dilui, n_veiculo,
     optica, optica_de_rinf, r_infinito, s_de_transparencia, s_fator,
+};
+pub use pigmento::{
+    EPS_WGM, Espectro, N_WGM, cor as cor_pigmento, log_espectro, oklab_de_log, oklab_wgm_cru,
+    p_medio, transfere_pigmento,
 };
 pub use soma::{LeiDeMistura, Soma, Tinta, mistura};
 pub use transfere::{decompoe, ecra_sobre_branco, fecha, optica_celula, pick_up, transfere};

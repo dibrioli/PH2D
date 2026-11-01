@@ -5,7 +5,7 @@ use crate::lei::{Optica, camada, cobertura, optica};
 use crate::soma::Soma;
 
 #[inline]
-fn move_um(de: &mut f32, para: &mut f32, f: f32) -> f32 {
+pub(crate) fn move_um(de: &mut f32, para: &mut f32, f: f32) -> f32 {
     let (antes_de, antes_para) = (*de, *para);
     *de = antes_de - antes_de * f;
     let movido = antes_de - *de;

@@ -155,6 +155,10 @@ pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[Cel
     }
 }
 
+/// O lado espectral do «Pigment mix» (E10b).
+#[path = "pigmento.rs"]
+pub mod pigmento;
+
 #[cfg(test)]
 #[path = "tinta_tests.rs"]
 mod tests;

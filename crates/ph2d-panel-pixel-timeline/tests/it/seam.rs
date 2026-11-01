@@ -828,3 +828,117 @@ fn nested_tags_get_their_own_row_below_and_every_handle_still_works() {
     let a = p.toca(ids::header_id(25));
     assert_eq!(ultimo(&a), Some(faixa(K::Frames, vec![], vec![25])));
 }
+
+/// Agarra a moldura de `range` e leva-a até à borda direita do quadro 12, SEM largar.
+fn a_meio_do_arrasto(
+    i: PixelPanelInfo,
+    range: PixelRange,
+    mods: ph2d_editor_core::interaction::GestureMods,
+) -> Palco {
+    use ph2d_editor_core::interaction::{
+        GesturePhase as G, PixelTimelineGesture, PixelTimelineHitKind as H,
+    };
+    let mut p = Palco::novo(PixelPanelInfo { range, ..i });
+    let h = p.rect(ids::header_id(12)).expect("pintado");
+    let (x0, y) = p.meio(ids::RANGE_EDGES[1]);
+    for (phase, x) in [(G::Begin, x0), (G::Update, h.x + h.w)] {
+        p.host
+            .store_mut()
+            .push_pixel_timeline_gesture(PixelTimelineGesture {
+                surface: ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL,
+                kind: H::RangeOutline,
+                phase,
+                x,
+                y,
+                button: ph2d_host::PointerButton::Primary,
+                mods,
+            });
+        p.rects = p.host.paint::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    }
+    p
+}
+
+/// A18 (P6j) + a barra pelo `min` da coluna (P6l): um bloco de DOIS quadros arrastado com Ctrl
+/// abre o vão das cópias DEPOIS do 12 (coluna 3) — sem Ctrl o vão abre-se em 1 —, e a barra da
+/// queda fica na primeira coluna do vão, não na última.
+#[test]
+fn mid_ctrl_drag_the_gap_and_the_bar_open_where_the_copies_land() {
+    use ph2d_editor_core::interaction::GestureMods;
+    let ctrl = GestureMods {
+        cmd: true,
+        ..GestureMods::default()
+    };
+    let dois = faixa(K::Frames, vec![], vec![10, 11]);
+    for (mods, coluna) in [(ctrl, 3.0), (GestureMods::default(), 1.0)] {
+        let p = a_meio_do_arrasto(info(), dois.clone(), mods);
+        let h = p.rect(ids::header_id(12)).expect("pintado");
+        let m = p.st.drop_marker().expect("a barra pinta-se a meio");
+        assert!(
+            p.st.marcas_pintadas() > 0,
+            "a barra calculada nunca se pintou"
+        );
+        // O cabeçalho do 12 (na posição 2 ou, movido, na 0) ancora a conta das colunas.
+        let x_col0 = if coluna > 2.0 { h.x - 2.0 * h.w } else { h.x };
+        let esperado = x_col0 + coluna * h.w;
+        assert!(
+            (m.x + m.w * 0.5 - esperado).abs() < 0.5,
+            "ctrl={}: a barra devia estar em {esperado}, está em {m:?}",
+            mods.cmd
+        );
+    }
+}
+
+/// B9 (P6j): o nome da tag começa DEPOIS da pega da esquerda — o orçamento do rótulo é a barra
+/// menos o recuo (pega + folga).
+#[test]
+fn the_tag_name_starts_after_the_left_handle() {
+    use ph2d_tokens::Spacing;
+    let mut p = Palco::novo(info());
+    let r = p.rect(ids::tag_id(0)).expect("pintada");
+    let medidos = p
+        .host
+        .medindo_a_pintura::<PixelTimelinePanel>(&mut p.st, VIEWPORT);
+    let m = medidos
+        .iter()
+        .find(|m| m.texto.contains("walk"))
+        .expect("o rótulo da tag foi pintado");
+    let recuo = Spacing::Sm.px() + Spacing::Xxs.px();
+    assert!(
+        (m.largura - (r.w - recuo)).abs() < 0.5,
+        "o rótulo tem {} px, a barra {} px menos o recuo {recuo}",
+        m.largura,
+        r.w
+    );
+}
+
+/// B10 (P6j): o bloco em voo não leva pontos nas filas de GRUPO (a grelha também não os tem lá):
+/// uma fila de grupo a mais não muda a geometria que o arrasto acrescenta.
+#[test]
+fn the_flying_block_carries_no_dots_on_group_rows() {
+    use ph2d_editor_core::interaction::GestureMods;
+    let acrescenta = |com_grupo: bool| {
+        let mut i = info();
+        if com_grupo {
+            let g = PixelLayerRow {
+                group: true,
+                ..camada(3, "G")
+            };
+            i.layers.insert(1, g);
+        }
+        let range = faixa(K::Frames, vec![], vec![10, 11]);
+        let mut p = a_meio_do_arrasto(i.clone(), range, GestureMods::default());
+        let conta = |p: &mut Palco| {
+            let host = &mut p.host;
+            host.paint_and_count_geometry::<PixelTimelinePanel>(&mut p.st, VIEWPORT)
+                .1
+        };
+        let voando = conta(&mut p);
+        let parado = conta(&mut Palco::novo(i));
+        voando - parado
+    };
+    assert_eq!(
+        acrescenta(true),
+        acrescenta(false),
+        "o voo pinta pontos na fila de grupo"
+    );
+}

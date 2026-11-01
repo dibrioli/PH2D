@@ -229,3 +229,21 @@ fn as_pegas_dos_cantos_redimensionam_a_preview() {
         "a pega da esquerda por −60 levou {depois:?} a {bl:?}"
     );
 }
+
+/// P6l: o transparente lê-se no xadrez — o quadro (16 × 8) pinta o xadrez à escala e ao canto
+/// da imagem, não outro.
+#[test]
+fn o_xadrez_pinta_se_por_baixo_do_quadro_a_escala_e_ao_canto_da_imagem() {
+    let p = Palco::novo();
+    let (w, h, escala, x, y) = p.st.xadrez().expect("o xadrez nunca foi pintado");
+    let (x0, y0, ..) = p.st.destino().expect("a imagem foi pintada");
+    assert_eq!((w, h), (16, 8));
+    assert!(
+        (escala - f64::from(p.st.escala())).abs() < 1e-3,
+        "escala {escala}"
+    );
+    assert!(
+        (x - x0).abs() < 0.5 && (y - y0).abs() < 0.5,
+        "canto ({x}, {y}) ≠ ({x0}, {y0})"
+    );
+}

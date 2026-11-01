@@ -55,6 +55,7 @@ pub(crate) fn vao(
 
 /// A barra do acento que marca a queda (a mesma da paleta) — pintada depois da moldura, por cima.
 pub(crate) fn marca(ctx: &mut PaintCtx, m: Rect) {
+    crate::state::conta_marca();
     let theme = ctx.host.theme();
     fill_rounded_rect(ctx.scene, m, m.w * 0.5, resolve(ColorToken::Accent, theme));
 }

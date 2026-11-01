@@ -143,3 +143,33 @@ fn the_four_panel_rows_move_their_mark_too() {
         );
     }
 }
+
+/// P6l: a linha *Pixel Preview* existe no menu Window e abre a janela Preview — e só ela (não o
+/// painel PIXEL, que é a linha vizinha).
+#[test]
+fn the_pixel_preview_row_exists_and_toggles_only_the_preview_window() {
+    use ph2d_editor_core::screens::hero::{PANEL_PIXEL, PANEL_PIXEL_PREVIEW};
+    let id = ph2d_editor_core::ids::TOPBAR_PIXEL_PREVIEW;
+    assert!(
+        menu_rows(ContextMenuKind::MenuBarWindow)
+            .iter()
+            .any(|(r, ..)| *r == id),
+        "o menu Window perdeu a linha Pixel Preview"
+    );
+    let mut h = hero();
+    let (preview, pixel) = (
+        h.is_panel_visible(PANEL_PIXEL_PREVIEW),
+        h.is_panel_visible(PANEL_PIXEL),
+    );
+    assert!(h.apply_event(WidgetEvent::Click(id)), "não consumida");
+    assert_ne!(
+        h.is_panel_visible(PANEL_PIXEL_PREVIEW),
+        preview,
+        "a Preview não mexeu"
+    );
+    assert_eq!(
+        h.is_panel_visible(PANEL_PIXEL),
+        pixel,
+        "mexeu no painel PIXEL"
+    );
+}

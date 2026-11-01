@@ -34,6 +34,14 @@ impl PixelTimelinePanelState {
         self.marca
     }
 
+    /// Quantas vezes a barra da queda foi PINTADA nesta thread (para os gates: `drop_marker` só
+    /// diz onde ela ficaria, não que alguém a desenhou).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn marcas_pintadas(&self) -> u32 {
+        MARCAS.with(std::cell::Cell::get)
+    }
+
     /// A primeira coluna à vista (para os gates).
     #[doc(hidden)]
     #[must_use]
@@ -43,6 +51,7 @@ impl PixelTimelinePanelState {
 }
 
 thread_local! {
+    static MARCAS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     static CURRENT: std::cell::RefCell<PixelPanelInfo> =
         std::cell::RefCell::new(PixelPanelInfo::default());
 }
@@ -56,6 +65,10 @@ pub fn set_current_pixel(info: PixelPanelInfo) {
 #[must_use]
 pub fn current_pixel() -> PixelPanelInfo {
     CURRENT.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn conta_marca() {
+    MARCAS.with(|c| c.set(c.get() + 1));
 }
 
 pub(crate) fn with_current<R>(f: impl FnOnce(&PixelPanelInfo) -> R) -> R {

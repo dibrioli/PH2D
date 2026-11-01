@@ -71,7 +71,9 @@ fn card_back(
     now: Moment,
 ) {
     let on_board = tab.key.is_some() || !tab.placements.is_empty();
-    let area = tab.layout.area;
+    let full = tab.layout.area;
+    // O modal pára acima do chrome do hero (o HUD), onde as listas param.
+    let area = crate::w6::above(full, Some(tab.layout.hbar.y + tab.layout.hbar.h));
     let Some(back) = tab.back.as_deref_mut() else {
         return;
     };
@@ -91,9 +93,9 @@ fn card_back(
     sync_description(back, card);
     back.area = area;
     let mut hits = Vec::new();
-    hits.push((area, BackHit::Scrim));
+    hits.push((full, BackHit::Scrim));
     scene.fill_rect(
-        rect_to_vello(area),
+        rect_to_vello(full),
         crate::paint::c(theme, T::KanbanShadowFlight),
     );
     let (x, w) = modal_x(area);

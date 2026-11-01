@@ -12,6 +12,7 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text_elided, paint_text_title_elided, rect_to_vello,
     stroke_rounded_rect,
 };
+use ph2d_editor_core::widget::AxisBar;
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::{LabelColor, Member};
 use ph2d_text::TextSystem;
@@ -108,6 +109,8 @@ pub(crate) struct Sheet {
     /// As primeiras linhas que NÃO rolam (o título com o «×», e a palavra-chave do filtro): o
     /// cabeçalho fixo da maquete; só o corpo rola por baixo dele.
     pub pinned: usize,
+    /// O corpo é mais alto que a folha: a margem da barra à direita ([`bar`]) sai da largura dele.
+    pub scrolls: bool,
 }
 
 impl Sheet {
@@ -116,6 +119,7 @@ impl Sheet {
             items: Vec::new(),
             w,
             pinned: 0,
+            scrolls: false,
         }
     }
 
@@ -169,7 +173,7 @@ impl Sheet {
     pub fn fitted(&self, ts: &mut TextSystem, w: f32) -> Self {
         let mut s = self.clone();
         s.w = w;
-        let iw = w - 2.0 * PAD;
+        let iw = w - 2.0 * PAD - gutter(s.scrolls);
         for (item, _) in &mut s.items {
             match item {
                 Item::Note(t) => *t = wrap(ts, t, m::SMALL_PX, iw),
@@ -197,6 +201,49 @@ impl Sheet {
         }
         s
     }
+}
+
+/// ⭐ A folha quebrada à largura `w` e o sítio dela (`place`); se o corpo não cabe, de novo com a
+/// margem da barra ([`bar`]) tirada à largura do texto (a quebra fica honesta) e posta de novo.
+pub(crate) fn lay(
+    s: &Sheet,
+    ts: &mut TextSystem,
+    w: f32,
+    place: impl Fn(&Sheet) -> Rect,
+) -> (Sheet, Rect) {
+    let fit = s.fitted(ts, w);
+    let r = place(&fit);
+    if fit.content_h() <= r.h {
+        return (fit, r);
+    }
+    let fit = Sheet {
+        scrolls: true,
+        ..s.clone()
+    }
+    .fitted(ts, w);
+    let r = place(&fit);
+    (fit, r)
+}
+
+/// O que a margem da barra tira à largura do texto do corpo.
+fn gutter(scrolls: bool) -> f32 {
+    if scrolls { m::LIST_GUTTER - PAD } else { 0.0 }
+}
+
+/// ⭐ A barra da folha em `rect` (`(margem, barra)`), a MESMA das listas: só se o corpo rola. A calha
+/// pára antes do canto redondo de baixo.
+pub(crate) fn bar(s: &Sheet, rect: Rect) -> Option<(Rect, AxisBar)> {
+    let head = s.pinned_h().min(rect.h);
+    let body = rect.h - head;
+    let area = Rect::new(
+        rect.x,
+        rect.y + head + GAP / 2.0,
+        rect.w,
+        body - GAP / 2.0 - m::MENU_RADIUS,
+    );
+    let content = (s.content_h() - head, body, m::SCROLL_STEP);
+    let (band, b) = AxisBar::in_gutter(area, false, (m::LIST_GUTTER, m::LIST_BAR), content);
+    (s.scrolls && b.needed()).then_some((band, b))
 }
 
 /// `text` quebrado a `width` como o pintor o quebra (o mesmo peso e o mesmo modo de desenho).
@@ -342,7 +389,7 @@ pub(crate) fn paint(
     let meta = c(theme, T::KanbanCardMeta);
     let raised = c(theme, T::KanbanCardRaised);
     scene.push_clip(&rect_to_vello(rect));
-    let (x, iw) = (rect.x + PAD, rect.w - 2.0 * PAD);
+    let (x, full) = (rect.x + PAD, rect.w - 2.0 * PAD);
     // O cabeçalho fixo fica no topo; o corpo rola, recortado por baixo dele.
     let head = s.pinned_h().min(rect.h);
     let body = Rect::new(rect.x, rect.y + head, rect.w, rect.h - head);
@@ -354,9 +401,15 @@ pub(crate) fn paint(
             y = body.y - scroll;
             body_hits = Some(hits.len());
         }
-        let region = if idx < s.pinned { rect } else { body };
-        let ih = h(item);
-        let row = Rect::new(rect.x, y, rect.w, ih);
+        let (region, g) = if idx < s.pinned {
+            (rect, 0.0)
+        } else {
+            (body, gutter(s.scrolls))
+        };
+        let (ih, iw) = (h(item), full - g);
+        // A linha que rola pára na margem da barra.
+        let rw = rect.w - if g > 0.0 { m::LIST_GUTTER } else { 0.0 };
+        let row = Rect::new(rect.x, y, rw, ih);
         let visible = row.y + row.h > region.y && row.y < region.y + region.h;
         let on_hover = hover == Some(*act) && *act != Act::Inside;
         match item {
@@ -640,6 +693,15 @@ pub(crate) fn paint(
             .filter_map(|(r, a)| clip(r, body).map(|r| (r, a)))
             .collect();
         hits.extend(clipped);
+        if scroll > 0.0 {
+            let rule = Rect::new(rect.x, body.y, rect.w, StrokeToken::Hairline.px());
+            scene.fill_rect(rect_to_vello(rule), meta);
+        }
+    }
+    if let Some((band, b)) = bar(s, rect) {
+        let thumb = if hover == Some(Act::Bar) { fg } else { meta };
+        b.paint(scroll, (raised, thumb), scene);
+        hits.push((band, Act::Bar));
     }
     scene.pop_layer();
     hits
@@ -653,4 +715,53 @@ fn clip(r: Rect, to: Rect) -> Option<Rect> {
 
 fn continue_y(y: &mut f32, h: f32) {
     *y += h;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rows(n: usize) -> Sheet {
+        let mut s = Sheet::new(W);
+        s.title("kanban.import.report_title");
+        for i in 0..n {
+            s.check(false, format!("Label {i}"), Act::Mine);
+        }
+        s
+    }
+
+    /// A barra das listas só aparece na folha cujo corpo não cabe: na margem dela, por baixo do
+    /// cabeçalho e antes do canto redondo, e nenhuma linha do corpo a cobre.
+    #[test]
+    fn a_sheet_shows_the_list_bar_only_when_its_body_overflows() {
+        let mut ts = TextSystem::without_system_fonts();
+        let area = Rect::new(0.0, 0.0, 800.0, 400.0);
+        let at = |s: &Sheet| place(s, Rect::new(10.0, 10.0, 40.0, 20.0), area, false);
+        let (short, r) = lay(&rows(3), &mut ts, W, at);
+        assert!(
+            !short.scrolls && bar(&short, r).is_none(),
+            "cabe: sem barra"
+        );
+        let (tall, r) = lay(&rows(30), &mut ts, W, at);
+        let (band, b) = bar(&tall, r).expect("o corpo rola: a barra");
+        assert_eq!((band.x + band.w, band.w), (r.x + r.w, m::LIST_GUTTER));
+        assert!(b.track.y >= r.y + tall.pinned_h());
+        assert!(b.track.y + b.track.h <= r.y + r.h - m::MENU_RADIUS);
+        let hits = paint(
+            &mut VectorScene::new(),
+            &mut ts,
+            Theme::default(),
+            &tall,
+            r,
+            0.0,
+            None,
+        );
+        assert!(hits.contains(&(band, Act::Bar)));
+        let body = hits.iter().filter(|(_, a)| *a == Act::Mine);
+        let v: Vec<_> = body.collect();
+        assert!(
+            v.len() > 3 && v.iter().all(|(h, _)| h.x + h.w <= band.x),
+            "{v:?} {band:?}"
+        );
+    }
 }

@@ -42,7 +42,8 @@ pub(crate) fn paint(
     me: &Member,
     team: &[String],
 ) {
-    let area = tab.layout.area;
+    let full = tab.layout.area;
+    let area = crate::w6::above(full, Some(tab.layout.hbar.y + tab.layout.hbar.h));
     let Some(p) = tab.auto.as_deref_mut() else {
         return;
     };
@@ -54,9 +55,9 @@ pub(crate) fn paint(
     };
     p.area = area;
     p.lines.clear();
-    let mut hits = vec![(area, A(AutoHit::Scrim))];
+    let mut hits = vec![(full, A(AutoHit::Scrim))];
     scene.fill_rect(
-        rect_to_vello(area),
+        rect_to_vello(full),
         crate::paint::c(theme, T::KanbanShadowFlight),
     );
     let (x, w) = crate::back::paint::modal_x(area);

@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
-pub(crate) use report::{Open as ImportReportView, key, paint, pointer, wheel};
+pub(crate) use report::{Open as ImportReportView, key, paint, pointer, tick, wheel};
 
 /// Os três diálogos do importar/exportar.
 pub(crate) trait Dialogs {

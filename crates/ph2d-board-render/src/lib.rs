@@ -16,6 +16,7 @@ mod image;
 mod image_frame;
 mod kanban;
 mod kanban_bg;
+pub mod kanban_cover;
 mod mind;
 mod note;
 mod overlay;

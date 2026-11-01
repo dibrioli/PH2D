@@ -187,7 +187,7 @@ fn a_full_image_cover_keeps_the_title_legible_on_the_real_image() {
     assert!(dest.w >= area.w && dest.h >= area.h);
     let (alpha, ratio) = p.veil.expect("o véu");
     assert!(
-        ratio >= cover::MIN_CONTRAST - 1e-3,
+        ratio >= ph2d_board_render::kanban_cover::MIN_CONTRAST - 1e-3,
         "contraste {ratio} com véu {alpha}"
     );
     // Escura: o véu fica no da maquete.

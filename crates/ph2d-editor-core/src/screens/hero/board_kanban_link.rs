@@ -154,9 +154,7 @@ pub(crate) fn place(hero: &mut HeroScreen, kanban: KanbanId) -> Option<(BoardId,
 /// quadro activo, ou o Kanban já não existe.
 pub fn place_at(hero: &mut HeroScreen, kanban: u64, at: [f64; 2]) -> Option<ElementId> {
     let kanban = KanbanId(kanban);
-    if hero.documents.kanbans().get(kanban).is_none() {
-        return None;
-    }
+    hero.documents.kanbans().get(kanban)?;
     put(hero, kanban, Some(at)).map(|(_, el)| el)
 }
 

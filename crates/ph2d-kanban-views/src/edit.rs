@@ -9,7 +9,7 @@ use ph2d_kanban_model::{CardId, ListId};
 
 /// O que o campo escreve quando confirma.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Target {
+pub enum Target {
     KanbanName,
     ListTitle(ListId),
     CardTitle(CardId),
@@ -26,13 +26,14 @@ pub(crate) enum Target {
 
 impl Target {
     /// O campo cria (fica aberto depois do `Enter`).
+    #[must_use]
     pub fn composes(self) -> bool {
         matches!(self, Self::NewCard { .. } | Self::NewList)
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Field {
+pub struct Field {
     pub target: Target,
     pub text: String,
     /// O cursor e a âncora da selecção, em bytes (iguais = sem selecção).
@@ -42,7 +43,7 @@ pub(crate) struct Field {
 
 /// O que uma tecla fez ao campo.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) enum Outcome {
+pub enum Outcome {
     /// Tomada (o texto ou o cursor mudou, ou nada a fazer).
     #[default]
     Typed,
@@ -56,6 +57,7 @@ pub(crate) enum Outcome {
 
 impl Field {
     /// Abre com `text` todo seleccionado.
+    #[must_use]
     pub fn open(target: Target, text: &str) -> Self {
         Self {
             target,
@@ -69,6 +71,7 @@ impl Field {
         (self.caret.min(self.anchor), self.caret.max(self.anchor))
     }
 
+    #[must_use]
     pub fn selection(&self) -> Option<(usize, usize)> {
         let (a, b) = self.range();
         (a != b).then_some((a, b))
@@ -179,6 +182,7 @@ impl Field {
     }
 
     /// O texto a gravar: sem espaços nas pontas; vazio = nada a gravar.
+    #[must_use]
     pub fn value(&self) -> Option<String> {
         let t = self.text.trim();
         (!t.is_empty()).then(|| t.to_owned())

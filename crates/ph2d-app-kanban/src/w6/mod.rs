@@ -24,6 +24,7 @@ use crate::edit::{Field, Outcome, Target};
 use crate::tab::{Hit, Tab};
 use ph2d_board_render::KanbanLod;
 use ph2d_editor_core::doc_surface::{Compose, KeyInput, KeyOutcome};
+use ph2d_editor_core::widget::{AxisBar, BarGrab};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerKind;
 use ph2d_kanban_filter::{ActivityWindow, DueWindow, Filter, MatchMode, SortBy};
@@ -132,6 +133,8 @@ pub(crate) enum Act {
     Share(crate::share::ShareAct),
     /// J5 — um botão de quadro do Butler no cabeçalho.
     BoardButton(ph2d_kanban_model::AutomationId),
+    /// A margem da barra de uma folha que rola ([`sheet::bar`]).
+    Bar,
 }
 
 /// O estado W6 de uma vista.
@@ -157,6 +160,9 @@ pub(crate) struct W6 {
     pub dialog_from: Cell<Option<usize>>,
     /// Os painéis pintados (a roda rola o que está por baixo dela).
     pub sheets: RefCell<Vec<Rect>>,
+    /// A barra da folha que rola (a do último quadro) e o agarrar dela.
+    pub bar: Cell<Option<AxisBar>>,
+    pub grab: Option<BarGrab>,
 }
 
 impl W6 {
@@ -292,6 +298,7 @@ pub(crate) fn paint(
     tab.w6.hits.borrow_mut().clear();
     tab.w6.sheets.borrow_mut().clear();
     tab.w6.dialog_from.set(None);
+    tab.w6.bar.set(None);
     tab.head_right = None;
     if lod != KanbanLod::High {
         return;
@@ -355,13 +362,17 @@ pub(crate) fn show(
     right: bool,
     area: Rect,
 ) {
-    let fitted = s.fitted(ts, s.w.min(area.w));
-    let s = &fitted;
-    let r = sheet::place(s, anchor, area, right);
+    let (s, r) = sheet::lay(s, ts, s.w.min(area.w), |s| {
+        sheet::place(s, anchor, area, right)
+    });
     let max = (s.content_h() - r.h).max(0.0);
     let scroll = tab.w6.scroll.clamp(0.0, max);
     tab.w6.scroll_max.set(max);
-    let hits = sheet::paint(scene, ts, theme, s, r, scroll, tab.w6.hover);
+    if let Some((_, b)) = sheet::bar(&s, r) {
+        tab.w6.bar.set(Some(b));
+    }
+    let hover = tab.w6.grab.map_or(tab.w6.hover, |_| Some(Act::Bar));
+    let hits = sheet::paint(scene, ts, theme, &s, r, scroll, hover);
     tab.w6.hits.borrow_mut().extend(hits);
     tab.w6.sheets.borrow_mut().push(r);
 }
@@ -395,10 +406,14 @@ pub(crate) fn pointer(
     x: f32,
     y: f32,
 ) -> Option<bool> {
+    let now = docs.clock.0;
     let tab = docs.tab_mut(id)?;
     tab.cursor = Some((x, y));
     if tab.back.is_some() && tab.w6.dialog.is_none() {
         return None;
+    }
+    if bar_pointer(&mut tab.w6, kind, (x, y), now) {
+        return Some(true);
     }
     let hit = tab.w6.hit(x, y);
     let open = tab.w6.open();
@@ -432,6 +447,41 @@ pub(crate) fn pointer(
             Some(true)
         }
     }
+}
+
+/// O rato na barra de uma folha: carregar agarra-a, mover segue-a, largar solta. `true` = tomado.
+fn bar_pointer(w: &mut W6, kind: PointerKind, p: (f32, f32), now: u128) -> bool {
+    let Some(b) = w.bar.get() else {
+        w.grab = None;
+        return false;
+    };
+    let (scroll, on) = (w.scroll.min(b.max()), w.hit(p.0, p.1) == Some(Act::Bar));
+    match (kind, w.grab.as_mut()) {
+        (PointerKind::Down, _) if on => {
+            let (s, g) = b.grab(p, scroll, now);
+            (w.scroll, w.grab) = (s, Some(g));
+            true
+        }
+        (PointerKind::Move, Some(g)) => {
+            w.scroll = b.follow(g, p, scroll);
+            true
+        }
+        (PointerKind::Up, Some(_)) => {
+            w.grab = None;
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Cada quadro: a seta segura da folha repete ([`AxisBar::tick`]). `true` = há uma.
+pub(crate) fn tick(t: &mut Tab, now: u128) -> bool {
+    let (Some(b), Some(g)) = (t.w6.bar.get(), t.w6.grab.as_mut()) else {
+        return false;
+    };
+    b.tick(g, t.w6.scroll.min(b.max()), now)
+        .map(|s| t.w6.scroll = s)
+        .is_some()
 }
 
 /// Fecha o que está por cima; a edição rápida grava o título (clicar fora, o Trello).

@@ -7,20 +7,17 @@ use crate::layout::Layout;
 use crate::metrics as m;
 use crate::paint::c;
 use crate::tab::{Hit, Tab};
-use ph2d_editor_core::widget::{ArrowHold, AxisBar};
+use ph2d_editor_core::widget::{AxisBar, BarGrab};
 use ph2d_editor_core::zones::Rect;
 use ph2d_kanban_model::ListId;
 use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::VectorScene;
 
-/// Uma barra agarrada: a de uma lista (`None` = a do quadro), onde agarrou e a rolagem de então;
-/// `hold` = a seta segura (o arrasto só move o rato; segurar repete, D17).
+/// Uma barra agarrada: a de uma lista (`None` = a do quadro) e o agarrar dela ([`BarGrab`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Grab {
     pub list: Option<ListId>,
-    pub from: (f32, f32),
-    pub s0: f32,
-    pub hold: Option<ArrowHold>,
+    pub g: BarGrab,
 }
 
 /// A margem do quadro (D17): a da lista deitada — a mesma margem e espessura, em baixo de `area`
@@ -29,31 +26,24 @@ pub(crate) fn board_band(area: Rect) -> Rect {
     AxisBar::gutter(area, true, m::LIST_GUTTER, m::LIST_BAR).0
 }
 
-/// A margem de uma barra e a barra: a do quadro (`None`) e a de cada lista saem de [`AxisBar::gutter`].
+/// A margem de uma barra e a barra: a do quadro (`None`) e a de cada lista ([`AxisBar::in_gutter`]).
 fn lane(l: &Layout, list: Option<ListId>) -> Option<(Rect, AxisBar)> {
-    let (band, track, horizontal, content, visible) = match list {
-        None => {
-            let (band, track) = AxisBar::gutter(l.hbar, true, m::LIST_GUTTER, m::LIST_BAR);
-            (band, track, true, l.content_w, l.board.w)
-        }
+    let (area, horizontal, content, visible) = match list {
+        None => (l.hbar, true, l.content_w, l.board.w),
         Some(id) => {
-            let lb = l.list(id).filter(|lb| !lb.collapsed)?;
-            let b = lb.body;
-            let h = (b.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
-            let area = Rect::new(b.x, b.y + m::LIST_BODY_TOP, b.w, h);
-            let (band, track) = AxisBar::gutter(area, false, m::LIST_GUTTER, m::LIST_BAR);
-            (band, track, false, lb.content_h, h)
+            let b = l.list(id).filter(|lb| !lb.collapsed)?;
+            let h = (b.body.h - m::LIST_BODY_TOP - m::LIST_BODY_BOTTOM).max(0.0);
+            let area = Rect::new(b.body.x, b.body.y + m::LIST_BODY_TOP, b.body.w, h);
+            (area, false, b.content_h, h)
         }
     };
-    let bar = AxisBar {
-        track,
+    let g = (m::LIST_GUTTER, m::LIST_BAR);
+    Some(AxisBar::in_gutter(
+        area,
         horizontal,
-        content,
-        visible,
-        arrows: true,
-        step: m::SCROLL_STEP,
-    };
-    Some((band, bar))
+        g,
+        (content, visible, m::SCROLL_STEP),
+    ))
 }
 
 fn bar(l: &Layout, list: Option<ListId>) -> Option<AxisBar> {
@@ -100,14 +90,9 @@ pub(crate) fn press(tab: &mut Tab, h: Hit, p: (f32, f32), now_ns: u128) -> bool 
     let Some(b) = bar(&tab.layout, list) else {
         return false;
     };
-    let (s0, hold) = b.press_held(p, scroll(tab, list), now_ns);
-    set(tab, list, s0);
-    tab.bar = Some(Grab {
-        list,
-        from: p,
-        s0,
-        hold,
-    });
+    let (s, g) = b.grab(p, scroll(tab, list), now_ns);
+    set(tab, list, s);
+    tab.bar = Some(Grab { list, g });
     true
 }
 
@@ -117,37 +102,30 @@ pub(crate) fn tick_all(docs: &mut crate::docs::KanbanDocs) {
     let (mut held, now) = (false, docs.clock.0);
     let mut canvas = docs.canvas.borrow_mut();
     for t in docs.tabs.iter_mut().chain(canvas.tabs.values_mut()) {
-        if let Some(
-            g @ Grab {
-                hold: Some(mut h), ..
-            },
-        ) = t.bar
+        if let Some(Grab { list, mut g }) = t.bar
+            && let Some(s) = bar(&t.layout, list).and_then(|b| b.tick(&mut g, scroll(t, list), now))
         {
-            if let Some(b) = bar(&t.layout, g.list) {
-                set(t, g.list, b.repeat(&mut h, scroll(t, g.list), now));
-            }
-            (t.bar, held) = (Some(Grab { hold: Some(h), ..g }), true);
+            (t.bar, held) = (Some(Grab { list, g }), true);
+            set(t, list, s);
         }
+        held |= crate::w6::tick(t, now);
         if let Some(crate::back::Pop::Choice(c)) = t.back.as_mut().and_then(|b| b.pop.as_mut()) {
             held |= c.s.tick(now);
         }
     }
     drop(canvas);
-    docs.held = held;
+    docs.held = held | crate::io::tick(docs, now);
 }
 
 /// O arrasto da barra agarrada. `false` = nenhuma agarrada.
 pub(crate) fn drag(tab: &mut Tab, p: (f32, f32)) -> bool {
-    let Some(g) = tab.bar.as_mut() else {
+    let Some(Grab { list, mut g }) = tab.bar else {
         return false;
     };
-    if let Some(h) = g.hold.as_mut() {
-        h.at = p;
-        return true;
-    }
-    let g = *g;
-    if let Some(b) = bar(&tab.layout, g.list) {
-        set(tab, g.list, b.drag(g.from, g.s0, p));
+    if let Some(b) = bar(&tab.layout, list) {
+        let s = b.follow(&mut g, p, scroll(tab, list));
+        set(tab, list, s);
+        tab.bar = Some(Grab { list, g });
     }
     true
 }

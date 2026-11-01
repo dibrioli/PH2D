@@ -72,6 +72,15 @@ pub struct ArrowHold {
     pub rep: HoldRepeat,
 }
 
+/// ⭐ Uma [`AxisBar`] agarrada (a das listas do Kanban e a das folhas dele): onde carregou, a
+/// rolagem de então e a seta segura (com ela o arrasto só move o rato; segurar repete, D17).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BarGrab {
+    pub from: (f32, f32),
+    pub s0: f32,
+    pub hold: Option<ArrowHold>,
+}
+
 /// O comprimento de cada ponta com seta, por espessura da barra — medido na captura do Trello do dono
 /// (`docs/TrelloClone/smoke/D16`): barra de 9 px, seta de 9 × 5, 7 px até ao polegar ⇒ 12 / 9.
 const ARROW_CELL: f32 = 12.0 / 9.0; // LITERAL-PX-OK: proporção medida na captura do Trello (D16)
@@ -96,6 +105,53 @@ impl AxisBar {
         } else {
             (band, track)
         }
+    }
+
+    /// ⭐ A barra com setas na margem própria de `area` ([`Self::gutter`]) que rola `content` com
+    /// `visible` à vista, `step` por seta: `(margem, barra)`. A margem é o alvo inteiro.
+    #[must_use]
+    pub fn in_gutter(
+        area: Rect,
+        horizontal: bool,
+        (gutter, bar): (f32, f32),
+        (content, visible, step): (f32, f32, f32),
+    ) -> (Rect, Self) {
+        let (band, track) = Self::gutter(area, horizontal, gutter, bar);
+        let b = Self {
+            track,
+            horizontal,
+            content,
+            visible,
+            arrows: true,
+            step,
+        };
+        (band, b)
+    }
+
+    /// Carregar em `p` em `now_ns` ([`Self::press_held`]): a rolagem nova e a barra agarrada.
+    #[must_use]
+    pub fn grab(&self, p: (f32, f32), scroll: f32, now_ns: u128) -> (f32, BarGrab) {
+        let (s0, hold) = self.press_held(p, scroll, now_ns);
+        (s0, BarGrab { from: p, s0, hold })
+    }
+
+    /// Cada quadro com a barra agarrada: a seta segura repete ([`Self::repeat`]). `None` = não há
+    /// seta segura (a rolagem fica e o chamador não precisa de pedir quadros).
+    #[must_use]
+    pub fn tick(&self, g: &mut BarGrab, scroll: f32, now_ns: u128) -> Option<f32> {
+        let h = g.hold.as_mut()?;
+        Some(self.repeat(h, scroll, now_ns))
+    }
+
+    /// O rato em `p` com a barra agarrada: com a seta segura só o sítio dele muda; senão o polegar
+    /// segue-o ([`Self::drag`]). A rolagem nova.
+    #[must_use]
+    pub fn follow(&self, g: &mut BarGrab, p: (f32, f32), scroll: f32) -> f32 {
+        if let Some(h) = g.hold.as_mut() {
+            h.at = p;
+            return scroll;
+        }
+        self.drag(g.from, g.s0, p)
     }
 
     /// A calha como se fosse vertical.
@@ -470,6 +526,50 @@ mod tests {
         assert_eq!(h.due(1_000 + D + 5 * I, false), 0, "fora da seta, nada");
         assert_eq!(h.due(1_000 + D + 5 * I, true), 0, "e os de fora não voltam");
         assert_eq!(h.due(1_000 + D + 6 * I, true), 1, "de volta à seta, retoma");
+    }
+
+    /// A barra agarrada (a das folhas do Kanban): segurar ▼ repete até ao fim e pára lá; largar
+    /// (largar a `BarGrab`) acaba; sem seta, `tick` nada pede; o polegar segue o rato como o
+    /// arrasto da barra das listas ([`AxisBar::drag`]).
+    #[test]
+    fn a_grabbed_bar_holds_to_the_end_and_drags_like_the_list_bar() {
+        let area = Rect::new(0.0, 0.0, 300.0, 200.0);
+        let (band, b) = AxisBar::in_gutter(area, false, (23.0, 9.0), (900.0, 200.0, 40.0));
+        assert_eq!((band.x, band.w), (277.0, 23.0), "a margem à direita");
+        let down = (b.track.x + 4.0, b.track.y + b.track.h - 1.0);
+        let (s, mut g) = b.grab(down, 0.0, 0);
+        assert_eq!(s, 40.0, "o carregar é um passo");
+        assert_eq!(b.tick(&mut g, s, D - 1), Some(40.0), "nada antes do atraso");
+        assert_eq!(b.tick(&mut g, s, D + 2 * I), Some(160.0), "1 + 3 passos");
+        assert_eq!(
+            b.tick(&mut g, 160.0, D + 1_000 * I),
+            Some(b.max()),
+            "pára no fim"
+        );
+        assert_eq!(b.tick(&mut g, b.max(), D + 2_000 * I), Some(b.max()));
+        let mid = (down.0, b.track.y + b.track.h / 2.0);
+        assert_eq!(
+            b.follow(&mut g, mid, 300.0),
+            300.0,
+            "com a seta, o rato só se move"
+        );
+        assert_eq!(
+            b.tick(&mut g, 300.0, D + 3_000 * I),
+            Some(300.0),
+            "fora da seta, pausa"
+        );
+        let t = b.thumb(0.0);
+        let at = (t.x + 1.0, t.y + 2.0);
+        let (s0, mut g) = b.grab(at, 0.0, 0);
+        assert_eq!(
+            (s0, b.tick(&mut g, s0, D + I)),
+            (0.0, None),
+            "o polegar não repete"
+        );
+        for dy in [10.0, 57.0, 400.0] {
+            let to = (at.0 + 30.0, at.1 + dy);
+            assert_eq!(b.follow(&mut g, to, s0), b.drag(at, 0.0, to));
+        }
     }
 
     fn list_with_arrows() -> (ScrollList, Rect) {

@@ -17,7 +17,7 @@ mod bars;
 mod bg;
 mod canvas;
 mod docs;
-mod edit;
+use ph2d_kanban_views::edit;
 mod frame;
 mod front;
 mod header;

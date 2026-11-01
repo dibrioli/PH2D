@@ -10,6 +10,8 @@
 
 mod common;
 pub mod datepick;
+/// O texto escrito no lugar (o título, os compositores, as caixas dos painéis) do Kanban.
+pub mod edit;
 #[doc(hidden)]
 pub mod fixture;
 mod item;

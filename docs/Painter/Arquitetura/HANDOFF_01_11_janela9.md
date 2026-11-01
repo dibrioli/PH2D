@@ -36,6 +36,11 @@ crista −71 %).
    (abaixo → 0 com o Dabber seco), `a_queda_cresce_com_a_diluicao`, `a_agua_nao_sobe_a_ladeira_do_oleo`, `sonda_oleo_derrete`.
 2. **A composição do óleo com Real Oil** (o FPS 70 → 30 do smoke) (Filbert Oil d0,9: campo 5,8 s · pigmento 10,2 s · sombra 4,4 s em 120 s,
    26 000 células por tique): não refazer campo/sombra a cada tique enquanto o filme só assenta.
+   Proposta do dono (01/11): relevo a 24×/s e luz/sombra a 12×/s. Estimativa sobre a sonda (40 composições/s, por
+   tique campo 1,2 · pigmento 2,1 · sombra 0,9 ms): só os dois ritmos poupam ~25 % (o pigmento, a maior fatia, lê a luz
+   por píxel e fica a 40×/s). Desenho a medir: refazer só as células cujo relevo MUDOU além de um limiar, e o ritmo
+   baixo só onde a tinta apenas assenta (sob o pincel e na água que corre, ritmo cheio). A simulação não muda: a
+   composição só desenha. Medir no app (tela real, FPS) antes e depois.
 3. **9 vermelhos antigos** achados nesta janela (J9 §4): `medida_oleo_real_fenda` ×3, `transparencia` ×4,
    `sonda_oleo_furos`, `sonda_oleo_grumos` — bissectar.
 4. Do §4 da janela 7: E9 ⚑ furos; chip de Dilution; `assenta.rs`/`trail/transfer.rs` em 700 linhas; E10c; E11 GPU

@@ -24,6 +24,8 @@
 
 ## Estado
 
+> **Janela 5 fechada (01/11):** [HANDOFF_01_11_janela5.md](HANDOFF_01_11_janela5.md) (E10 no painel, lotes D/E, Paint type Water·Oil decidido) · continuar pelo prompt abaixo.
+
 > **Janela 1 fechada (31/10, noite):** [HANDOFF_31_10_noite.md](HANDOFF_31_10_noite.md) · continuar por
 > [PROMPT_CONTINUACAO_REFATORACAO.md](PROMPT_CONTINUACAO_REFATORACAO.md). A tabela abaixo é a de abertura.
 

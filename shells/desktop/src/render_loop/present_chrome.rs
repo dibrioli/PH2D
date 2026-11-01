@@ -32,6 +32,12 @@ impl crate::App {
             motion,
             hero_screen,
             frame_order,
+            game_rt,
+            flip,
+            flip_render,
+            flip_compose,
+            flip_composite,
+            sim,
             ..
         } = gfx;
         // Pass 2: AgX tonemap
@@ -75,6 +81,21 @@ impl crate::App {
             };
             faixa::cola_o_topo(motion, placa, e, cena, quem);
         };
+        let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
+            flip,
+            (flip_render, flip_compose, flip_composite),
+            &self.flip_state,
+            &self.playhead,
+            sim,
+            na_vista,
+            camera,
+            (window_size, scene_viewport),
+            gpu,
+        );
+        let mut flip_faixa = |b, rt: &_| {
+            let ids = ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b));
+            quadro.desenha(&ids, rt);
+        };
         // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
         if banded {
             crate::render_loop::present_bands::draw_upper_bands(
@@ -82,12 +103,14 @@ impl crate::App {
                 plan,
                 crate::render_loop::present_bands::UpperGear {
                     world_rt,
+                    game_rt,
                     window_size,
                     tonemap,
                     band_blit,
                     vello_pass,
                     band_doc_scenes,
                     motion: &mut cola,
+                    flip: &mut flip_faixa,
                 },
             );
         }

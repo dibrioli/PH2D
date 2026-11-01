@@ -54,6 +54,7 @@ pub mod object_add;
 pub mod pass;
 pub mod pass_cache;
 pub mod pass_ghosts;
+pub mod pass_quadro;
 pub mod pass_stage;
 pub mod peek;
 pub mod pose_gizmo;

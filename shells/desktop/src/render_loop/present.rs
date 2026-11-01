@@ -30,7 +30,7 @@ impl crate::App {
         // ANTES do borrow de `self.gfx` (lê a câmera + o gesto; devolve owned).
         // ADR-0114 C2: no modo Colorize o "em curso" são os RABISCOS acumulados — mesmo
         // slot, porque Draw e Colorize são modos distintos e nunca coexistem.
-        let flip_preview = self
+        self.flip_state.preview_do_quadro = self
             .flip_preview_data()
             .or_else(|| self.flip_colorize_preview_data());
         // Os fantasmas do onion, cozidos no bloco de overlay deste frame (ADR-0142).
@@ -128,7 +128,7 @@ impl crate::App {
                 ) else {
                     return;
                 };
-                self.present_flip_fx(window_size, scene_viewport, motion_draws, &flip_preview);
+                self.present_flip_fx(window_size, scene_viewport, motion_draws, &plan);
                 self.present_chrome_and_composite(
                     &frame,
                     window_size,
@@ -204,6 +204,10 @@ impl crate::App {
             hero_screen,
             grid_behind_scene,
             luz2d,
+            flip,
+            flip_render,
+            flip_compose,
+            flip_composite,
             ..
         } = gfx;
         // M14.5 — viewport / RT pipeline. Four GPU submissions
@@ -340,6 +344,21 @@ impl crate::App {
                 colagem.cola_a_faixa(placa, motion, bb, mundo.blend_view(), b);
             }
         };
+        let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
+            flip,
+            (flip_render, flip_compose, flip_composite),
+            &self.flip_state,
+            &self.playhead,
+            sim,
+            na_vista,
+            camera,
+            (window_size, scene_viewport),
+            gpu,
+        );
+        let mut flip_faixa = |b, rt: &_| {
+            let ids = ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b));
+            quadro.desenha(&ids, rt);
+        };
         if banded {
             super::present_bands::draw_lower_bands(
                 surface.gpu(),
@@ -360,6 +379,7 @@ impl crate::App {
                     held_back: held.as_ref(),
                     grid_behind: grid_behind.then_some(&*grid_behind_scene),
                     motion: &mut cola,
+                    flip: &mut flip_faixa,
                 },
             );
         }
@@ -403,7 +423,7 @@ impl crate::App {
         window_size: ph2d_host::WindowSize,
         scene_viewport: Option<[f32; 4]>,
         motion_active: bool,
-        flip_preview: &Option<ph2d_flip_render::FlipGpuData>,
+        plan: &super::present_bands::FramePlan,
     ) {
         let na_vista = self.na_vista_da_camera;
         let Some(gfx) = self.gfx.as_mut() else {
@@ -426,52 +446,29 @@ impl crate::App {
             // ADR-0111: o `Transform` de cada objeto Flip vem do ECS; o passe o dobra
             // no `world_to_clip` (a arte é LOCAL). Identidade = sem custo.
             sim,
-            hero_screen,
+            frame_order,
             ..
         } = gfx;
-        // Pass 1b: Flip (ADR-0114 W1) composto por-camada (blend/opacity via
-        //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
-        //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
-        //   os sprites por baixo). No-op sem camada Flip ativa (default).
-        let flip_models = ph2d_flip_entities::transform::build(sim, &self.flip_state.entities);
-        // Ghost Frames só existem enquanto a tool Flip está no comando (é
-        // chrome de autoria, não da cena) — e só fora do play.
-        // O PEEK (F1/F2/F3 presos): uma folha vizinha na mão — os fantasmas
-        // somem JUNTO (a folha na mão não é uma pilha translúcida) e não há
-        // peek no play (o relógio já está folheando por conta própria).
-        // Os fantasmas e o peek são chrome de autoria: a vista da câmera (A6) mostra o jogo.
-        let autoria = self.flip_state.active && !na_vista;
-        let peek = if autoria && !self.playhead.is_playing() {
-            self.flip_state.peek
-        } else {
-            None
-        };
-        let ghost_selection =
-            (autoria && peek.is_none()).then(|| ph2d_app_flip::pass_ghosts::GhostSources {
-                selected: self.flip_state.strip.selected_keys(),
-                pinned: self.flip_state.strip.pinned_keys(),
-                trace: Some(&self.flip_state.strip.trace),
-            });
-        ph2d_app_flip::pass::render(
+        // Pass 1b: Flip (ADR-0114 W1) composto por-camada no `game_rt`, por cima da última faixa de sprites —
+        //   a faixa Flip logo acima dela (GEF 19 E4: as outras colam-se em `present_bands`) e os objectos sem
+        //   entidade. ⚠️ O `scene_viewport` é a MESMA porta do passe de sprites (report do Enio, 2026-08-25).
+        let mut quadro = ph2d_app_flip::pass_quadro::Quadro::new(
             flip,
-            flip_render,
-            flip_compose,
-            flip_composite,
-            flip_preview.as_ref(),
-            self.flip_state.target,
-            &flip_models,
+            (flip_render, flip_compose, flip_composite),
+            &self.flip_state,
             &self.playhead,
-            ghost_selection,
-            peek,
-            game_rt,
+            sim,
+            na_vista,
             camera,
-            window_size,
-            // A MESMA porta que o passe de sprites acima: sob o split da Motion este
-            // passe projetava a janela cheia e a arte do Flip andava `1/t` do que o
-            // cursor andava (report do Enio, 2026-08-25).
-            scene_viewport,
+            (window_size, scene_viewport),
             surface.gpu(),
         );
+        let mut ids = plan
+            .flip_main
+            .map(|b| ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b)))
+            .unwrap_or_default();
+        ids.extend(quadro.sem_entidade());
+        quadro.desenha(&ids, game_rt);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

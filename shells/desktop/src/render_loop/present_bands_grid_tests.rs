@@ -32,7 +32,7 @@ fn a_grade_atras_entra_no_acumulador_antes_de_toda_faixa() {
         .find("if let Some(grid) = g.grid_behind {")
         .expect("o acumulador deixou de desenhar a grade de tras");
     let faixas = bands
-        .find("for band in plan.bands.iter().take(upto)")
+        .find("for band in plan.bands.iter().take(plan.main.0)")
         .expect("o laco das faixas de baixo mudou de forma");
     assert!(
         limpa < grade && grade < faixas,

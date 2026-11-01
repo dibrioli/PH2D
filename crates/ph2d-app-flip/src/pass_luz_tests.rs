@@ -316,6 +316,7 @@ fn quem_nao_recebe_a_luz_no_flip_fica_na_cor_de_sempre() {
             None,
             ph2d_flip::FlipTarget::default(),
             &[],
+            None,
             &playhead,
             None,
             None,

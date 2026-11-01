@@ -40,6 +40,9 @@ pub enum Family {
     /// cena Vello nem sprite. A placa cola-se por faixa; sem placa (a rota do Vello) o plano põe-no
     /// por cima de tudo ([`motion_por_cima`]).
     Motion,
+    /// Um objecto Flip (GEF 19 E4): o passe do Flip no `game_rt` (HDR → tonemap), como os sprites —
+    /// a faixa logo acima da última de sprites vai no MESMO `game_rt` que ela (o quadro de sempre).
+    Flip,
 }
 
 impl Family {
@@ -49,13 +52,15 @@ impl Family {
         matches!(self, Family::Vector | Family::Pixel)
     }
 
-    /// A posição da família na ordem de sempre (degradada): sprites, vetor, pixel.
+    /// A posição da família na ordem de sempre (degradada): sprites, Flip (no mesmo `game_rt`), vetor,
+    /// pixel, Motion.
     fn old_stack(self) -> u8 {
         match self {
             Family::Sprite => 0,
-            Family::Vector => 1,
-            Family::Pixel => 2,
-            Family::Motion => 3,
+            Family::Flip => 1,
+            Family::Vector => 2,
+            Family::Pixel => 3,
+            Family::Motion => 4,
         }
     }
 }
@@ -117,6 +122,7 @@ pub fn collapsed(families: &[Family]) -> Vec<Band> {
     let n = families.len() as u32;
     [
         Family::Sprite,
+        Family::Flip,
         Family::Vector,
         Family::Pixel,
         Family::Motion,
@@ -196,6 +202,9 @@ pub struct FrameOrder {
     pub pixel_ranks: Vec<(u64, u32)>,
     /// `(bits da entidade, rank)` de cada objecto Motion que entrou na ordem (GEF 19 E3).
     pub motion_ranks: Vec<(u64, u32)>,
+    /// `(FlipObjectRef.0, rank)` de cada objecto Flip que entrou na ordem (GEF 19 E4) — o id do
+    /// documento, que é o que o passe do Flip filtra.
+    pub flip_ranks: Vec<(u64, u32)>,
     /// A placa do Motion cola-se neste quadro (escrito depois da decisão dela) — `false` = as formas
     /// por cima de tudo ([`motion_por_cima`]).
     pub motion_na_placa: bool,
@@ -211,6 +220,7 @@ impl FrameOrder {
         self.vector_ranks.clear();
         self.pixel_ranks.clear();
         self.motion_ranks.clear();
+        self.flip_ranks.clear();
         self.motion_na_placa = false;
         self.entity_ranks.clear();
     }
@@ -260,6 +270,12 @@ impl FrameOrder {
         self.motion_ranks.push((bits, rank));
     }
 
+    /// Regista que o objecto Flip `id` (`FlipObjectRef.0`) ocupa o `rank`.
+    pub fn record_flip(&mut self, rank: u32, id: u64) {
+        self.put(rank, Family::Flip);
+        self.flip_ranks.push((id, rank));
+    }
+
     fn put(&mut self, rank: u32, fam: Family) {
         let i = rank as usize;
         if self.families.len() <= i {
@@ -294,6 +310,13 @@ impl FrameOrder {
                 {
                     out.push(Band {
                         family: Family::Sprite,
+                        lo: 0,
+                        hi: n,
+                    });
+                }
+                if !self.flip_ranks.is_empty() {
+                    out.push(Band {
+                        family: Family::Flip,
                         lo: 0,
                         hi: n,
                     });
@@ -357,6 +380,18 @@ impl FrameOrder {
         v.into_iter().map(|(_, b)| b).collect()
     }
 
+    /// Os objectos Flip desta faixa (ids do documento), do de trás para o da frente.
+    pub fn flip_ids_in(&self, band: Band) -> Vec<u64> {
+        let mut v: Vec<(u32, u64)> = self
+            .flip_ranks
+            .iter()
+            .filter(|(_, r)| *r >= band.lo && *r < band.hi)
+            .map(|(id, r)| (*r, *id))
+            .collect();
+        v.sort_unstable();
+        v.into_iter().map(|(_, id)| id).collect()
+    }
+
     /// Todos os Pixel Sprites da ordem, do de trás para o da frente.
     pub fn pixel_ids(&self) -> Vec<u64> {
         self.pixel_ids_in(Band {
@@ -409,7 +444,7 @@ pub fn needs_banding(bands: &[Band]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use Family::{Motion as M, Pixel as P, Sprite as S, Vector as V};
+    use Family::{Flip as F, Motion as M, Pixel as P, Sprite as S, Vector as V};
 
     /// ⭐ **O caso do report**: uma forma desenhada primeiro, uma imagem importada a seguir. Na
     /// hierarquia a imagem fica ABAIXO ⇒ ela desenha DEPOIS ⇒ por cima.
@@ -838,5 +873,64 @@ mod tests {
         let k = |bits| o.stack_key(&b, bits).expect("na ordem");
         assert!(k(10) < k(11), "com placa: o rank da Hierarchy");
         assert!(doc_bands_of(&o, true).iter().all(|b| b.family != M));
+    }
+
+    /// ⭐ GEF 19 E4: o Flip logo acima dos sprites é o `game_rt` de sempre (sem faixas); abaixo deles,
+    /// ou acima do vetor, intercala. A degradação e o buraco põem-no logo a seguir aos sprites.
+    #[test]
+    fn the_flip_sits_on_the_sprites_in_the_old_stack_and_bands_elsewhere() {
+        assert!(
+            !needs_banding(&plan(&[S, F, V, P, M]).0),
+            "a ordem de sempre"
+        );
+        assert!(!needs_banding(&plan(&[F, V]).0));
+        assert!(
+            needs_banding(&plan(&[F, S]).0),
+            "Flip por baixo das imagens"
+        );
+        assert!(needs_banding(&plan(&[S, V, F]).0), "Flip por cima do vetor");
+        assert!(!F.is_scene(), "o Flip e' game_rt, nao cena Vello");
+        let fams: Vec<Family> = (0..MAX_BANDS + 3).map(|i| [F, V, S][i % 3]).collect();
+        let (b, degraded) = plan(&fams);
+        assert!(degraded);
+        assert_eq!(
+            b.iter().map(|b| b.family).collect::<Vec<_>>(),
+            vec![S, F, V]
+        );
+        let mut o = FrameOrder::default();
+        o.record_flip(0, 77);
+        o.record(2, None);
+        let (b, degraded) = o.plan();
+        assert!(degraded, "rank 1 e' buraco");
+        assert_eq!(b.iter().map(|b| b.family).collect::<Vec<_>>(), vec![S, F]);
+    }
+
+    /// Os objectos Flip de uma faixa saem do de trás para o da frente; o clique acha-os pelo rank.
+    #[test]
+    fn the_flip_ids_of_a_band_come_back_to_front_and_the_click_finds_them() {
+        let mut o = FrameOrder::default();
+        o.record_flip(2, 70);
+        o.enrol(1070, 2);
+        o.record(1, None);
+        o.enrol(11, 1);
+        o.record_flip(0, 60);
+        o.enrol(1060, 0);
+        let (b, _) = o.plan();
+        assert_eq!(
+            b.iter().map(|b| (b.family, b.lo, b.hi)).collect::<Vec<_>>(),
+            vec![(F, 0, 1), (S, 1, 2), (F, 2, 3)]
+        );
+        assert_eq!(o.flip_ids_in(b[0]), vec![60]);
+        assert_eq!(o.flip_ids_in(b[2]), vec![70]);
+        let all = Band {
+            family: F,
+            lo: 0,
+            hi: 3,
+        };
+        assert_eq!(o.flip_ids_in(all), vec![60, 70], "rank crescente");
+        let k = |bits| o.stack_key(&b, bits).expect("na ordem");
+        assert!(k(1060) < k(11) && k(11) < k(1070));
+        o.clear();
+        assert!(o.flip_ranks.is_empty());
     }
 }

@@ -141,6 +141,9 @@ pub fn render(
     preview: Option<&FlipGpuData>,
     target: FlipTarget,
     models: &[(FlipObjectId, Xform)],
+    // ⭐ GEF 19 E4: `Some(ids)` = só estes objectos, nesta ordem (de trás para a frente) — uma faixa da
+    // ordem total; `None` = todos, na ordem do documento.
+    objects: Option<&[FlipObjectId]>,
     playhead: &Playhead,
     // Ghost Frames: `Some(chaves selecionadas)` = a tool Flip está ativa (fantasmas
     // ligados, sujeitos aos gates do objeto/camada e ao "some no play"); `None` =
@@ -163,7 +166,15 @@ pub fn render(
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas). Os fantasmas entram na MESMA lista,
     // cada um como uma fatia logo abaixo da sua camada.
-    let (layers, unfolded) = collect_layers(flip, playhead, preview, target, models, ghosts, peek);
+    let (mut layers, mut unfolded) =
+        collect_layers(flip, playhead, preview, target, models, ghosts, peek);
+    if let Some(ids) = objects {
+        so_estes(&mut layers, ids);
+        let alvo = target.resolve(flip).map(|(o, _)| o);
+        if !alvo.is_some_and(|o| ids.contains(&o)) {
+            unfolded = None;
+        }
+    }
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
@@ -202,6 +213,13 @@ pub fn render(
     if let Some(pv) = unfolded {
         draw_overlay(flip_render, pv, &cam, game_rt, (w, h), gpu);
     }
+}
+
+/// Fica só com as camadas dos objectos `ids`, na ordem deles (estável dentro de cada objecto).
+fn so_estes(layers: &mut Vec<LayerRef<'_>>, ids: &[FlipObjectId]) {
+    let pos = |o: u64| ids.iter().position(|i| i.0 == o);
+    layers.retain(|l| pos(l.obj).is_some());
+    layers.sort_by_key(|l| pos(l.obj));
 }
 
 /// Compõe as camadas ativas (blend/opacity por-camada) e blita no `game_rt` — em trechos com a luz de

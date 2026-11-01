@@ -208,6 +208,14 @@ pub(super) fn motion_participant(sim: &World, entity: Entity) -> bool {
     sim.get::<ph2d_ecs::MotionGenerator>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
 }
 
+/// Um objecto Flip ocupa um rank como família [`Flip`](ph2d_render::draw_bands::Family::Flip) (GEF 19 E4): o id do documento.
+pub(super) fn flip_participant(sim: &World, entity: Entity) -> Option<u64> {
+    if sim.get::<Sprite>(entity).is_some() {
+        return None;
+    }
+    sim.get::<ph2d_ecs::FlipObjectRef>(entity).map(|f| f.0)
+}
+
 /// ⭐⭐ **A CONVERSÃO** dos ranks do ordenador para a ordem do presente — leitura, nada reordena; todo
 /// rank tem de ser registado (um buraco degrada o plano em vez de perder um objecto).
 pub(super) fn build_frame_order(
@@ -215,6 +223,7 @@ pub(super) fn build_frame_order(
     vector_inputs: &[(Entity, u64)],
     pixel_inputs: &[Entity],
     motion_inputs: &[Entity],
+    flip_inputs: &[(Entity, u64)],
     scratch: &SortScratch,
     out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
@@ -229,6 +238,8 @@ pub(super) fn build_frame_order(
                 out.record_pixel(rank, input.entity.to_bits());
             } else if motion_inputs.contains(&input.entity) {
                 out.record_motion(rank, input.entity.to_bits());
+            } else if let Some(&(_, id)) = flip_inputs.iter().find(|(e, _)| *e == input.entity) {
+                out.record_flip(rank, id);
             } else {
                 out.record(rank, path);
             }
@@ -281,6 +292,7 @@ pub(super) fn run(
     let mut vector_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
     let mut pixel_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
     let mut motion_inputs: Vec<ph2d_ecs::Entity> = Vec::new();
+    let mut flip_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
     // gameplay — that lands in M10 with the physics integrator).
@@ -347,11 +359,13 @@ pub(super) fn run(
                 let id = vector_participant(sim, sim_entity);
                 let pixel = pixel_participant(sim, sim_entity);
                 let motion = !pixel && motion_participant(sim, sim_entity);
-                if drawn && (id.is_some() || pixel || motion) {
-                    match id {
-                        Some(id) => vector_inputs.push((sim_entity, id)),
-                        None if pixel => pixel_inputs.push(sim_entity),
-                        None => motion_inputs.push(sim_entity),
+                let flip = flip_participant(sim, sim_entity).filter(|_| id.is_none() && !pixel && !motion);
+                if drawn && (id.is_some() || pixel || motion || flip.is_some()) {
+                    match (id, flip) {
+                        (Some(id), _) => vector_inputs.push((sim_entity, id)),
+                        (None, Some(f)) => flip_inputs.push((sim_entity, f)),
+                        _ if pixel => pixel_inputs.push(sim_entity),
+                        _ => motion_inputs.push(sim_entity),
                     }
                     sort_inputs.push(SortInput {
                         entity: sim_entity,
@@ -391,6 +405,7 @@ pub(super) fn run(
             &vector_inputs,
             &pixel_inputs,
             &motion_inputs,
+            &flip_inputs,
             sort_scratch,
             order_out,
         );

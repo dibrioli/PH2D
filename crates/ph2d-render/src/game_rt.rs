@@ -60,6 +60,32 @@ impl GameRt {
         &self.view
     }
 
+    /// Limpa para transparente — o início de uma faixa que não é a do pipeline inteiro (GEF 19 E4).
+    pub fn clear(&self, gpu: &GpuContext) {
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render game RT clear encoder"),
+            });
+        let _ = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("ph2d-render game RT clear"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        gpu.queue.submit(Some(enc.finish()));
+    }
+
     pub fn texture(&self) -> &wgpu::Texture {
         &self.texture
     }

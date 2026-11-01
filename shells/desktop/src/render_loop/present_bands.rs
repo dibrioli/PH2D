@@ -44,7 +44,13 @@ pub(super) struct BandGear<'a> {
     /// (ela vai na cena do chrome) ou desligada.
     pub grid_behind: Option<&'a ph2d_vector::VectorScene>,
     pub motion: ColaMotion<'a>,
+    pub flip: DesenhaFlip<'a>,
 }
+
+/// ⭐ GEF 19 E4: o passe do Flip sobre os objectos de uma faixa, no `game_rt` já limpo — quem o chama
+/// faz o tonemap e a colagem, como numa faixa de sprites.
+pub(super) type DesenhaFlip<'a> =
+    &'a mut dyn FnMut(ph2d_render::draw_bands::Band, &ph2d_render::GameRt);
 
 /// O plano de faixas deste quadro — as quatro respostas que os dois passes e o compositor leem.
 pub(super) struct FramePlan {
@@ -56,20 +62,41 @@ pub(super) struct FramePlan {
     pub banded: bool,
     /// O índice da ÚLTIMA faixa de sprites — a que corre o pipeline inteiro.
     pub last_sprite: Option<usize>,
+    /// ⭐ GEF 19 E4: as faixas `[main.0, main.1)` vão no `game_rt` do pipeline inteiro — a última de
+    /// sprites e a Flip logo acima dela (sem sprites: a última Flip). Abaixo = `draw_lower_bands`,
+    /// acima = `draw_upper_bands`; ⛔ cada faixa desenha-se UMA vez.
+    pub main: (usize, usize),
+    /// A faixa Flip que o passe principal do Flip desenha (`present_flip_fx`).
+    pub flip_main: Option<ph2d_render::draw_bands::Band>,
 }
 
 /// Lê a ordem do quadro e responde as quatro.
 pub(super) fn plan_frame(frame_order: &ph2d_render::draw_bands::FrameOrder) -> FramePlan {
     let (bands, degraded) = frame_order.plan();
     let banded = ph2d_render::draw_bands::needs_banding(&bands);
-    let last_sprite = bands
+    use ph2d_render::draw_bands::Family;
+    let last_sprite = bands.iter().rposition(|b| b.family == Family::Sprite);
+    let main = match last_sprite {
+        Some(i) => {
+            let flip_acima = bands.get(i + 1).is_some_and(|b| b.family == Family::Flip);
+            (i, i + 1 + usize::from(flip_acima))
+        }
+        None => bands
+            .iter()
+            .rposition(|b| b.family == Family::Flip)
+            .map_or((0, 0), |j| (j, j + 1)),
+    };
+    let flip_main = bands[main.0..main.1]
         .iter()
-        .rposition(|b| b.family == ph2d_render::draw_bands::Family::Sprite);
+        .copied()
+        .find(|b| b.family == Family::Flip);
     FramePlan {
         bands,
         degraded,
         banded,
         last_sprite,
+        main,
+        flip_main,
     }
 }
 
@@ -113,9 +140,8 @@ pub(super) fn draw_lower_bands(
             ph2d_render::BandSource::Grade,
         );
     }
-    let upto = plan.last_sprite.unwrap_or(plan.bands.len());
     let mut doc_i = 0usize;
-    for band in plan.bands.iter().take(upto) {
+    for band in plan.bands.iter().take(plan.main.0) {
         match band.family {
             ph2d_render::draw_bands::Family::Sprite => {
                 // ⚠️ Sem `extra` e sem `gpu_extra`: o fluxo cozido do Motion não
@@ -166,8 +192,40 @@ pub(super) fn draw_lower_bands(
             ph2d_render::draw_bands::Family::Motion => {
                 (g.motion)(Some(*band), g.world_rt, g.band_blit);
             }
+            ph2d_render::draw_bands::Family::Flip => {
+                cola_o_flip(
+                    gpu,
+                    *band,
+                    g.game_rt,
+                    g.tonemap,
+                    g.band_blit,
+                    g.world_rt,
+                    g.flip,
+                );
+            }
         }
     }
+}
+
+/// Uma faixa Flip fora do `game_rt` principal: limpa-o, desenha os objectos dela, tonemap e cola.
+fn cola_o_flip(
+    gpu: &ph2d_gpu::GpuContext,
+    band: ph2d_render::draw_bands::Band,
+    game_rt: &ph2d_render::GameRt,
+    tonemap: &mut ph2d_render::Tonemap,
+    band_blit: &mut ph2d_render::BandBlit,
+    world_rt: &ph2d_render::WorldRt,
+    flip: DesenhaFlip<'_>,
+) {
+    game_rt.clear(gpu);
+    flip(band, game_rt);
+    tonemap.run(gpu);
+    band_blit.blit(
+        gpu,
+        world_rt.blend_view(),
+        tonemap.output_view(),
+        ph2d_render::BandSource::Sprites,
+    );
 }
 
 /// ⚠️ **A metade de CIMA precisa de MENOS peças**, e por isso tem engrenagem própria: ela não corre
@@ -176,12 +234,14 @@ pub(super) fn draw_lower_bands(
 /// peças que um dos lados não usa esconde qual dos dois as move.*
 pub(super) struct UpperGear<'a> {
     pub world_rt: &'a mut ph2d_render::WorldRt,
+    pub game_rt: &'a ph2d_render::GameRt,
     pub window_size: WindowSize,
     pub tonemap: &'a mut ph2d_render::Tonemap,
     pub band_blit: &'a mut ph2d_render::BandBlit,
     pub vello_pass: &'a mut ph2d_render::VelloPass,
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
     pub motion: ColaMotion<'a>,
+    pub flip: DesenhaFlip<'a>,
 }
 
 /// As faixas **ACIMA** da última faixa de sprites — ela cola essa última faixa (que o tonemap
@@ -193,7 +253,7 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
         g.tonemap.output_view(),
         ph2d_render::BandSource::Sprites,
     );
-    let from = plan.last_sprite.map_or(0, |i| i + 1);
+    let from = plan.main.1;
     let e_motion =
         |b: &ph2d_render::draw_bands::Band| b.family == ph2d_render::draw_bands::Family::Motion;
     // O topo do Motion já colou abaixo: a camada filtrada e a lente ficam logo por cima dele.
@@ -210,6 +270,17 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
     for band in plan.bands.iter().skip(from) {
         if e_motion(band) {
             (g.motion)(Some(*band), g.world_rt, g.band_blit);
+        }
+        if band.family == ph2d_render::draw_bands::Family::Flip {
+            cola_o_flip(
+                gpu,
+                *band,
+                g.game_rt,
+                g.tonemap,
+                g.band_blit,
+                g.world_rt,
+                g.flip,
+            );
         }
         if !band.family.is_scene() {
             continue;
@@ -293,3 +364,7 @@ mod grid_tests;
 #[cfg(test)]
 #[path = "present_placa_tests.rs"]
 mod placa_tests;
+
+#[cfg(test)]
+#[path = "present_bands_flip_tests.rs"]
+mod flip_tests;

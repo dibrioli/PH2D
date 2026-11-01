@@ -298,7 +298,7 @@ impl crate::App {
         if let Some((plan, banded)) =
             self.present_world_sprites(r, g, b, janela, None, motion_draws, false, &vazio, &vazio)
         {
-            self.present_flip_fx(janela, None, motion_draws, &None);
+            self.present_flip_fx(janela, None, motion_draws, &plan);
             self.present_mundo_por_cima(janela, None, &plan, banded);
         }
         self.na_vista_da_camera = false;

@@ -126,4 +126,7 @@ pub struct FlipState {
     /// ⭐ O que a curva move nas camadas é pré-visualização (plano 35 §A.8): o autorado de cada
     /// campo conduzido, que o undo e o save fotografam (`canais_camada::ConducaoFlip`).
     pub conducao: crate::canais_camada::ConducaoFlip,
+    /// O traço em curso deste quadro (ADR-0114 W2), posto pelo shell antes do presente — cada faixa
+    /// Flip o lê ([`crate::pass_quadro::Quadro`]); só a do objecto-alvo o desenha (GEF 19 E4).
+    pub preview_do_quadro: Option<ph2d_flip_render::FlipGpuData>,
 }

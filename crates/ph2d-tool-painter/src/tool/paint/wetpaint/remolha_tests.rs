@@ -140,6 +140,8 @@ fn sem_re_molhar_a_aguada_sobre_o_oleo_e_a_de_sempre() {
 
 /// ⭐ **Re-wet 0,35 × Solubility 1 dissolve ~35 % do azul debaixo da aguada e leva-o para a água** (a prancha
 /// «re-molha médio»): o assentado azul sob a aguada cai 25–45 % e a aguada fora do óleo fica com azul.
+/// ⚑ VERMELHO desde `c5e6daa0a9` (Bingham): a água da aguada sobre a célula de óleo ganha `τ_y` e o dissolvido não sai
+/// (E10e2 §E3, sonda [`diag_a_queda_por_lei`]). O K–M de fábrica (`3eb13d38db`) já tinha posto a régua em 0,47.
 #[test]
 fn a_aguada_re_molha_o_oleo_soluvel() {
     let (oleo0, fora0) = {
@@ -159,6 +161,56 @@ fn a_aguada_re_molha_o_oleo_soluvel() {
         fora > 1.15 * fora0,
         "o azul dissolvido não saiu do óleo: fora {fora:.0} (hoje {fora0:.0})"
     );
+}
+
+/// SONDA — a queda do [`a_aguada_re_molha_o_oleo_soluvel`] com o K–M e o Bingham ligados/desligados (E3,
+/// `docs/Painter/Arquitetura/E10e2_km_e_remolha.md` §E3: os dois degraus da queda são estas duas leis).
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_queda_por_lei() {
+    use ph2d_wet_paint::solver::PAPEL_BINGHAM;
+    for bingham in [true, false] {
+        PAPEL_BINGHAM.store(
+            if bingham { 0 } else { (-1.0f32).to_bits() },
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        for km in [None, Some(false), Some(true)] {
+            let corre = |s: f64, d: f64| {
+                let mut t = oleo_azul(PAPEL, s);
+                t.preset_aplicar(&preset("Watercolor/Fluid/Wet Flat.ph2d-brush.png"))
+                    .expect("o meio");
+                let km0 = t.paint.wetpaint.km_mixing;
+                if let Some(k) = km {
+                    t.paint.wetpaint.km_mixing = k;
+                }
+                let km1 = t.paint.wetpaint.km_mixing;
+                aguada_sem_preset(&mut t, d);
+                assenta(&mut t);
+                let (o, f) = medidas(&mut t);
+                (o, f, km0, km1)
+            };
+            let (o0, f0, km0, km1) = corre(0.0, 0.0);
+            let (o, f, _, _) = corre(1.0, 0.35);
+            relato(format!(
+                "bingham {bingham} km {km:?} (preset {km0} → {km1}): oleo {o0:.0} → {o:.0} caiu {:.3} · fora {f0:.0} → {f:.0}",
+                1.0 - o / o0
+            ));
+        }
+    }
+    PAPEL_BINGHAM.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// A [`aguada`] sem reaplicar o preset (Drag 0), para a sonda mexer no K–M entre o preset e o traço.
+fn aguada_sem_preset(t: &mut PainterTool, dissolve: f64) {
+    t.paint.wetpaint.knobs.set(Knob::Dissolve, dissolve);
+    t.paint.wetpaint.knobs.set(Knob::RewetDrag, 0.0);
+    t.set_brush_size_px(40.0);
+    t.set_brush_color_srgb8([220, 200, 40]);
+    t.on_canvas_pointer(ponteiro(120.0, 30.0, PointerPhase::Down));
+    for k in 1..=40 {
+        t.on_canvas_pointer(ponteiro(120.0, 30.0 + 2.8 * k as f32, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
 }
 
 /// SONDA — a cena a meio e assentada com Re-wet 0,35 e Drag 0 · 0,15 · 0,3 · 0,5 (Solubility 1; `rw00` = hoje, sem
@@ -206,11 +258,10 @@ fn caixa(px: &[u8], x0: usize, x1: usize, y0: usize, y1: usize) -> ([f64; 3], us
 /// óleo guardava o tapar extra (o branco) sobre o óleo e a caixa das tintas mostrava-o como papel — o miolo
 /// branco-rosado. Assentada, a caixa sobre o óleo fica a ≤ 6 níveis da de sem o Real Oil (medido antes da cura:
 /// 87,125,195 → 126,147,205, claros 1 → 11).
-/// ⚠️ ABERTO: a 1.ª cura (`43b535277b`, tirar o `PINCEL_DE_OLEO`) passava este portão mas o óleo deixava de cobrir o
-/// óleo (`pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_ao_byte`: azul sobre vermelho seco, 2 439 px, até 78 níveis)
-/// — revertida. Próxima: o extra do óleo pinta-se com a tinta de cima, não com branco (variante B), à prancha do dono.
+/// Verde desde a E10e1 (`docs/Painter/Arquitetura/E10e1_oleo_na_celula.md`): o ramo «óleo sobre óleo» lê a CÉLULA
+/// (`OleoCelula::pincel_de_oleo`), não o Real Oil da sessão. A 1.ª cura (`43b535277b`) tirava o ramo de todo e o óleo
+/// deixava de cobrir o óleo — revertida.
 #[test]
-#[ignore = "J11 item 0 aberto: vermelho na lei de hoje, a cura espera a prancha do dono"]
 fn o_real_oil_na_mao_nao_empalidece_a_aguada_sobre_o_oleo() {
     let fotografa = |oleo: bool| {
         let mut t = cena_com(PAPEL, 1.0, 0.35, 0.15, oleo, false);

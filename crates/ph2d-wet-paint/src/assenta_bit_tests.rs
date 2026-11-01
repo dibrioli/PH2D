@@ -2,9 +2,7 @@
 //! das portas de [`crate::assenta`] sobre uma grelha que cobre os ramos (as quatro leis; na `Cobre` filme, Glaze,
 //! vidrado, óleo e o pincel de óleo; a mesma tinta filtrada; branco e preto; o passo da derivada no topo `255`;
 //! coberturas nulas, parciais, totais, iguais e diferentes) e de 6 secagens encadeadas (assentar → re-molhar).
-use crate::assenta::{
-    Ecra, PINCEL_DE_OLEO, assenta, cor, cor_e_alfa, levanta, na_caixa_das_tintas, sobre_branco,
-};
+use crate::assenta::{Ecra, assenta, cor, cor_e_alfa, levanta, na_caixa_das_tintas, sobre_branco};
 
 const CORES: [[f64; 3]; 8] = [
     [200.0, 40.0, 40.0],
@@ -37,7 +35,8 @@ fn ecras() -> Vec<Ecra> {
         c(0.0, 5.0, 1.0, 0.6, 0.0),
         c(0.0, 3.0, 1.3, 1.0, 0.0),
         c(0.3, 2.5, 1.0, 0.6, 0.5),
-        c(0.2, 5.0, 1.0, 0.0, PINCEL_DE_OLEO),
+        // O antigo `PINCEL_DE_OLEO` da sessão (saiu na E10e1): a porta ainda prende o negativo a `0`.
+        c(0.2, 5.0, 1.0, 0.0, -1.0),
         c(0.0, 5.0, 1.0, 0.0, 0.0).com_vidrado(0.5),
         c(0.25, 5.0, 1.2, 0.8, 0.0).com_vidrado(1.0),
     ]

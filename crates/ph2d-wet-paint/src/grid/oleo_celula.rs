@@ -10,7 +10,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// O óleo da tinta de uma célula (24 B) — e a SOLUBILIDADE (J10), o MEIO e o CORPO dela (E10), que viajam pela mesma
+/// O óleo da tinta de uma célula (28 B) — e a SOLUBILIDADE (J10), o MEIO e o CORPO dela (E10), que viajam pela mesma
 /// porta (pousam pela massa, desfazem-se com a janela).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OleoCelula {
@@ -27,6 +27,10 @@ pub struct OleoCelula {
     pub meio: f32,
     /// [`Knob::Body`] (E10, dono Q9): a tensão de cedência do PINCEL, somada à do meio e sem precisar de `φ > φ_c`.
     pub corpo: f32,
+    /// O **Real Oil** da ÚLTIMA mão que pousou aqui (E10e1): o óleo sobre o óleo cobre como a opaca
+    /// ([`crate::assenta::Ecra::com_oleo`]). Era o pincel da MÃO (a sessão) e ligar a caixa mudava a tinta pousada.
+    /// O pouso SOBRESCREVE (não se mistura pela massa).
+    pub pincel_de_oleo: bool,
 }
 
 impl OleoCelula {
@@ -38,6 +42,7 @@ impl OleoCelula {
         soluvel: 0.0,
         meio: 0.0,
         corpo: 0.0,
+        pincel_de_oleo: false,
     };
 }
 
@@ -67,6 +72,7 @@ pub fn do_pincel(p: &Params) -> OleoCelula {
         soluvel,
         meio,
         corpo,
+        pincel_de_oleo: true,
     }
 }
 
@@ -106,6 +112,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, v: f64) {
                 soluvel: m(a.soluvel, nova.soluvel),
                 meio: m(a.meio, nova.meio),
                 corpo: m(a.corpo, nova.corpo),
+                pincel_de_oleo: nova.pincel_de_oleo,
             }
         } else {
             nova
@@ -144,9 +151,13 @@ pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[Ole
     let (n, s) = (g.cells, g.s);
     super::altura::restaura_campo(&mut g.oleo, n, s, janela, linhas, OleoCelula::NEUTRA);
     if linhas.is_empty()
-        && g.oleo
-            .iter()
-            .all(|c| c.oleo <= 0.0 && c.soluvel <= 0.0 && c.meio <= 0.0 && c.corpo <= 0.0)
+        && g.oleo.iter().all(|c| {
+            c.oleo <= 0.0
+                && !c.pincel_de_oleo
+                && c.soluvel <= 0.0
+                && c.meio <= 0.0
+                && c.corpo <= 0.0
+        })
     {
         g.oleo = Vec::new();
     }

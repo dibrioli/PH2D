@@ -38,6 +38,7 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
                 soluvel: 0.0,
                 meio: 0.0,
                 corpo: 0.0,
+                pincel_de_oleo: true,
             };
         }
     }
@@ -74,6 +75,7 @@ fn a_parede_entre_traços_de_depth_diferentes_e_uma_rampa_sem_degrau() {
         soluvel: 0.0,
         meio: 0.0,
         corpo: 0.0,
+        pincel_de_oleo: true,
     };
     for (nome, b) in [
         (
@@ -110,6 +112,7 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
         soluvel: 0.0,
         meio: 0.0,
         corpo: 0.0,
+        pincel_de_oleo: true,
     };
     let g = duas(um, um);
     let mut antes = g.clone();
@@ -143,7 +146,7 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
 /// o desfazer que deixa a grade sem óleo LARGA o campo; o custo é 16 B por célula (o `soluvel` da J10, 84df135c02).
 #[test]
 fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
-    assert_eq!(std::mem::size_of::<OleoCelula>(), 24); // + meio e corpo (E10 A2)
+    assert_eq!(std::mem::size_of::<OleoCelula>(), 28); // + meio e corpo (E10 A2) + pincel_de_oleo (E10e1, 1 B + 3 de alinhamento)
     let mut g = Grid::new(32, 32);
     let i = 10 + 10 * g.s;
     pousa(&mut g, i, 0.0, OleoCelula::NEUTRA, 5.0);
@@ -155,6 +158,7 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
         soluvel: 0.0,
         meio: 0.0,
         corpo: 0.0,
+        pincel_de_oleo: true,
     };
     pousa(&mut g, i, 0.0, fundo, 5.0);
     g.sett[i] = 5.0;
@@ -164,6 +168,10 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
     assert!(
         (m.oleo - 0.5).abs() < 1e-6 && (m.profundidade - 2.0).abs() < 1e-6,
         "{m:?}"
+    );
+    assert!(
+        !m.pincel_de_oleo,
+        "o Real Oil da célula é o da última mão (sobrescreve, E10e1)"
     );
     veste_virgens(&mut g, (10, 10, 10, 10), fundo);
     assert_eq!(da_celula(&g.oleo, i + 1), fundo, "a orla virgem");

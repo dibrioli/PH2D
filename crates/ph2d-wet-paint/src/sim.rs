@@ -415,12 +415,8 @@ impl Sim {
                 crate::assenta::Lei::Camada => crate::assenta::Ecra::Camada,
                 crate::assenta::Lei::Cobre => crate::assenta::Ecra::Cobre {
                     opaca: 0.0,
-                    // Com o Real Oil na mão, o óleo sobre o óleo cobre pela lei da obra ([`Ecra::com_oleo`]).
-                    oleo: if self.oleo {
-                        crate::assenta::PINCEL_DE_OLEO
-                    } else {
-                        0.0
-                    },
+                    // O óleo é da CÉLULA (E10e1): o Real Oil na mão não entra na lei da sessão.
+                    oleo: 0.0,
                     filme: self.glaze_filme,
                     esconde: self.esconde,
                     molhada: self.molhada_escurece,

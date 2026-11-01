@@ -242,11 +242,14 @@ fn advect_jacobi_bits_are_the_recorded_ones() {
 /// (`7a4bc540b7`, a receita: água sem a pressão inversa, carimbo sem `Intensity`, pigmento `φ·h`): com a lei
 /// antiga do `pressure_dab` posta de volta só na cena, o HEAD `be475f3a46` dá os `8c92…/e965…/b735…/d8e7…`
 /// de `4ac6c0bf5d` nos dois gates — a advecção e as duas rotas do commit estão ao bit.
+/// Os dois casos K–M ([1], [3]) regravados em 01/11 pelo invólucro da média K–M (E10e2,
+/// `docs/Painter/Arquitetura/E10e2_km_e_remolha.md` §1): no mesmo binário, sem o invólucro dão os antigos
+/// `0x1cb2…9adf`/`0x0118…a2fd`; a tinta 10 deixa de virar 12,709 e o resto muda ≤ 4e-6.
 const GRAVADO: [u64; 4] = [
     0xbe1a_63e7_3c04_445b,
-    0x1cb2_f716_55da_9adf,
+    0x2bf1_4333_5a9b_f102,
     0x18d9_3872_ba02_f0ea,
-    0x0118_07f8_c6bc_a2fd,
+    0x0418_b1ad_31b2_4a60,
 ];
 
 /// **As duas rotas do commit FORÇADAS dão os bits gravados** — a rota 0 escolhe pela faixa, e a cena acima cai

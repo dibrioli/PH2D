@@ -1,5 +1,5 @@
 //! **Óleo molhado sobre óleo com o Real Oil na mão** (dono 31/10, `smoke_31_10_oleo/dono_5.png`: «o branco ocorre no
-//! óleo sobre óleo»). O [`PINCEL_DE_OLEO`] guarda o tapar extra (a cobertura do óleo sobre o óleo, `a4c8c80e3d`), mas a
+//! óleo sobre óleo»). A célula pousada com o Real Oil (`pincel_de_oleo`, E10e1) guarda o tapar extra (a cobertura do óleo sobre o óleo, `a4c8c80e3d`), mas a
 //! [`na_caixa_das_tintas`] fazia dele transparência: o papel creme aparecia por óleo grosso e a secagem guardava bege.
 //! Sobre o óleo a tinta é de CORPO: cobre e mistura pigmento, como a opaca ([`Ecra::com_opaca`]).
 use super::*;
@@ -42,11 +42,17 @@ const OLEO: OleoCelula = OleoCelula {
     ..OleoCelula::NEUTRA
 };
 
+/// O óleo pousado com o Real Oil na mão (a última mão desta célula).
+const OLEO_DO_PINCEL: OleoCelula = OleoCelula {
+    pincel_de_oleo: true,
+    ..OLEO
+};
+
 /// O papel não aparece pelo óleo: a cobertura que o render compõe é a do ponto, e sobre o creme o píxel fica na
 /// mistura de pigmento das duas tintas (azul sob amarelo e o contrário, filme fino a grosso).
 #[test]
 fn o_oleo_sobre_o_oleo_nao_abre_o_papel_nem_clareia() {
-    let e = lei(PINCEL_DE_OLEO).com_oleo(OLEO);
+    let e = lei(0.0).com_oleo(OLEO_DO_PINCEL);
     let mut pior = (0.0f64, String::new());
     for (sc, uc) in [(AZ, AM), (AM, AZ)] {
         for a_s in [1.0, 0.9] {
@@ -77,7 +83,7 @@ fn o_oleo_sobre_o_oleo_nao_abre_o_papel_nem_clareia() {
 /// A SECAGEM guarda a mistura, não o bege: o filme todo assenta no óleo de baixo.
 #[test]
 fn assentar_o_oleo_sobre_o_oleo_guarda_a_mistura() {
-    let e = lei(PINCEL_DE_OLEO).com_oleo(OLEO);
+    let e = lei(0.0).com_oleo(OLEO_DO_PINCEL);
     for (sc, uc) in [(AZ, AM), (AM, AZ)] {
         for a_f in [0.15, 0.3, 0.5] {
             let s2 = assenta(e, sc, uc, 1.0, a_f, 1.0, 0.0);
@@ -97,10 +103,10 @@ fn a_pincelada_unica_e_a_lei_sem_o_pincel_de_oleo_nao_mudam() {
         let e = lei(o);
         assert_eq!(e.com_oleo(OLEO), lei(if o == 0.0 { 1.0 } else { o }));
     }
-    let e = lei(PINCEL_DE_OLEO);
+    let e = lei(0.0);
     for a_f in [0.15, 0.5, 1.0] {
         let antes = cor_e_alfa(e, AZ, AM, 0.0, a_f);
-        let depois = cor_e_alfa(e.com_oleo(OLEO), AZ, AM, 0.0, a_f);
+        let depois = cor_e_alfa(e.com_oleo(OLEO_DO_PINCEL), AZ, AM, 0.0, a_f);
         assert_eq!(antes, depois);
     }
 }
@@ -111,7 +117,7 @@ fn a_pincelada_unica_e_a_lei_sem_o_pincel_de_oleo_nao_mudam() {
 /// fica na mistura de pigmento das duas tintas, fina ou grossa.
 #[test]
 fn a_orla_fina_do_oleo_sobre_o_oleo_nao_enferruja() {
-    let e = lei(PINCEL_DE_OLEO).com_oleo(OLEO);
+    let e = lei(0.0).com_oleo(OLEO_DO_PINCEL);
     let mut pior = (0.0f64, String::new());
     for (sc, uc) in [(AZ, AM), (AM, AZ)] {
         for a_s in [0.02, 0.05, 0.1, 0.3, 0.7] {

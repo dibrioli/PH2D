@@ -176,10 +176,11 @@ fn the_km_round_trip_returns_the_colour() {
 /// by every drying pass.
 ///
 /// ⚠️ The oracle is the EXACT chain iterated identically, never "the colour
-/// stays put". Mixing a colour with itself does NOT return it in this model:
-/// below the reflectance floor every colour shares one K/S, so `libm` walks
-/// c=12 to c=12.7 on the first mix too. A gate that asserted stillness would
-/// be measuring the reference's own physics and calling it the table's error.
+/// stays put". Below the reflectance floor every colour shares one K/S, so the
+/// bare `libm` chain walks c=12 to c=12.7 on the first mix. Since E10e2/E3 the
+/// law keeps a mix inside the hull of its inputs (`docs/Painter/Arquitetura/
+/// E10e2_km_e_remolha.md`), and the oracle carries the same clamp — so the
+/// wash from 12 now stays at 12 in BOTH chains, by the law, not by the table.
 #[test]
 fn a_still_wash_tracks_the_exact_transfer_over_thousands_of_re_mixes() {
     let mut worst = 0.0f64;
@@ -216,14 +217,16 @@ fn a_still_wash_tracks_the_exact_transfer_over_thousands_of_re_mixes() {
 }
 
 /// The exact K–M channel mix, spelled out with `libm` so no oracle in this
-/// file can inherit the table's own answer.
+/// file can inherit the table's own answer. The hull clamp is the law's (E3),
+/// not the table's: it cuts the floor, never the transfer.
 fn exact_km_mix(d: f64, s: f64, w: f64) -> f64 {
     let ks = |c: f64| {
         let r = srgb_to_linear_exact(c / 255.0);
         let rr = if r < 1.0 / 255.0 { 1.0 / 255.0 } else { r };
         ((1.0 - rr) * (1.0 - rr)) / (2.0 * rr)
     };
-    linear_to_srgb_exact(reflect((1.0 - w) * ks(d) + w * ks(s))) * 255.0
+    let v = linear_to_srgb_exact(reflect((1.0 - w) * ks(d) + w * ks(s))) * 255.0;
+    v.max(d.min(s)).min(d.max(s))
 }
 
 /// The other half of the same worry: a cell being re-mixed by PASSING fronts

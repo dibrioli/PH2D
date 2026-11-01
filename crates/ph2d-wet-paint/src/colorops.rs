@@ -377,6 +377,12 @@ pub fn a_mesma_tinta_filtrada(a: [f64; 3], b: [f64; 3]) -> bool {
 /// mean when pigment mixing is ON): mixtures are linear in K/S, so average
 /// the corners' K/S ratios with the pull weights.
 /// `colors` = flat [r0,g0,b0, r1,g1,b1, ...] (0..255); `inv_total` = 1/Σw.
+///
+/// **A média não sai do invólucro das entradas** (E10e2, `docs/Painter/Arquitetura/E10e2_km_e_remolha.md`): o
+/// resultado fica, por canal, entre o mínimo e o máximo dos cantos com peso `> 0`. Em aritmética exacta a média
+/// convexa de K/S já lá está (`K/S → R` é monótona); só saem dele o piso `R_FLOOR` (tudo abaixo de 12,709 tem o MESMO
+/// K/S, e a volta devolve 12,709: o preto puro virava 13) e o erro da volta tabela→`sqrt`. Daí a média idempotente:
+/// cantos iguais devolvem a própria cor, ao bit.
 pub fn km_weighted_mean_color(
     colors: &[f64; 12],
     weights: &[f64; 4],
@@ -386,12 +392,20 @@ pub fn km_weighted_mean_color(
 ) {
     for ch in 0..3 {
         let mut ks = 0.0;
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
         for k in 0..count {
+            let c = colors[k * 3 + ch];
             // One door per corner per channel: the `/255` rescale rides inside
             // the table's index instead of costing a division each.
-            ks += weights[k] * ks_of_srgb255(colors[k * 3 + ch]);
+            ks += weights[k] * ks_of_srgb255(c);
+            if weights[k] > 0.0 {
+                lo = lo.min(c);
+                hi = hi.max(c);
+            }
         }
-        out[ch] = srgb255_of_linear(reflectance_of_ks(ks * inv_total));
+        let v = srgb255_of_linear(reflectance_of_ks(ks * inv_total));
+        // Sem canto pesado (`lo > hi`) não há invólucro: fica a conta.
+        out[ch] = if lo <= hi { v.clamp(lo, hi) } else { v };
     }
 }
 
@@ -495,5 +509,89 @@ mod tests {
     fn glaze_is_energy_bounded() {
         assert!((km_glaze_channel_linear(0.3, 0.8, 1.0) - 0.8).abs() < 1e-12);
         assert!((km_glaze_channel_linear(0.3, 0.8, 0.0) - 0.3).abs() < 1e-12);
+    }
+
+    /// A média K/S de 4 cantos com pesos `w` (o caminho da advecção).
+    fn media(cores: [[f64; 3]; 4], w: [f64; 4]) -> [f64; 3] {
+        let mut flat = [0.0; 12];
+        for (k, c) in cores.iter().enumerate() {
+            flat[3 * k..3 * k + 3].copy_from_slice(c);
+        }
+        let mut out = [0.0; 3];
+        km_weighted_mean_color(&flat, &w, 4, 1.0 / w.iter().sum::<f64>(), &mut out);
+        out
+    }
+
+    /// ⛔ **A média K–M de cores iguais é a própria cor, ao bit** (E10e2): o preto do pincel ficava 12,709 assim que a
+    /// água o movia (o piso `R_FLOOR`), e o Screen desse «preto» clareava a tela.
+    #[test]
+    fn a_media_km_de_cores_iguais_e_a_propria_cor() {
+        for c in [
+            [0.0; 3],
+            [3.0, 12.0, 12.709],
+            [60.0, 128.5, 254.0],
+            [255.0; 3],
+        ] {
+            for w in [[1.0, 1.0, 1.0, 1.0], [0.3, 0.0, 2.0, 0.01]] {
+                assert_eq!(media([c; 4], w), c, "cor {c:?} pesos {w:?}");
+            }
+        }
+    }
+
+    /// ⛔ **A média não sai do invólucro das entradas pesadas**: preto + preto = preto, preto + cinza escuro abaixo do
+    /// piso fica entre os dois, e um canto de peso 0 não alarga o invólucro.
+    #[test]
+    fn a_media_km_fica_no_involucro_das_entradas() {
+        let preto = [0.0; 3];
+        let casos = [
+            ([preto, [10.0; 3], preto, [10.0; 3]], [1.0; 4]),
+            (
+                [preto, [255.0; 3], preto, [40.0, 90.0, 220.0]],
+                [1.0, 0.5, 2.0, 1.0],
+            ),
+            ([preto, [200.0; 3], preto, preto], [1.0, 0.0, 1.0, 1.0]),
+            (
+                [
+                    [5.0, 0.0, 200.0],
+                    [12.0, 30.0, 250.0],
+                    [0.0; 3],
+                    [7.0, 1.0, 90.0],
+                ],
+                [1.0; 4],
+            ),
+        ];
+        for (cores, w) in casos {
+            let m = media(cores, w);
+            for ch in 0..3 {
+                let pesados = (0..4).filter(|&k| w[k] > 0.0).map(|k| cores[k][ch]);
+                let lo = pesados.clone().fold(f64::INFINITY, f64::min);
+                let hi = pesados.fold(f64::NEG_INFINITY, f64::max);
+                assert!(
+                    (lo..=hi).contains(&m[ch]),
+                    "canal {ch}: {} fora de [{lo}, {hi}] ({cores:?} × {w:?})",
+                    m[ch]
+                );
+            }
+        }
+        assert_eq!(
+            media([preto, [200.0; 3], preto, preto], [1.0, 0.0, 1.0, 1.0]),
+            preto
+        );
+    }
+
+    /// SONDA — o viés do piso perto do preto, em misturas DIFERENTES (o invólucro não o toca).
+    #[test]
+    #[ignore = "diagnóstico"]
+    fn diag_vies_do_piso_perto_do_preto() {
+        for (a, b) in [
+            ([0.0; 3], [10.0; 3]),
+            ([0.0; 3], [20.0; 3]),
+            ([0.0; 3], [40.0; 3]),
+            ([0.0; 3], [12.709; 3]),
+            ([0.0; 3], [40.0, 90.0, 220.0]),
+            ([0.0; 3], [255.0; 3]),
+        ] {
+            eprintln!("{a:?} + {b:?} (1:1) = {:?}", media([a, b, a, b], [1.0; 4]));
+        }
     }
 }

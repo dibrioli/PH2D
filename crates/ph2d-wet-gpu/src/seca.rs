@@ -52,7 +52,8 @@ impl SecaU {
             );
         };
         SecaU {
-            retention: p.k(Knob::Retention) as f32,
+            // A fuga escalada pela Absorbency da tela, a mesma da CPU (`DryConst::new`, E10d2).
+            retention: p.retencao() as f32,
             edge_dark: p.k(Knob::EdgeDarkening) as f32,
             base_evap: p.k(Knob::BaseEvaporation) as f32,
             ext_gran: p.k(Knob::ExtGranulation) as f32,

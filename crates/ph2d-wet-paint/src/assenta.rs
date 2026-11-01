@@ -148,13 +148,16 @@ impl Ecra {
 
     /// A lei da CÉLULA com o óleo que ela tem debaixo ([`crate::grid::oleo_celula`], dono 30/10): sobre o óleo o tapar
     /// extra sai: a aguada cobre pela quantidade de pigmento, sem o branco. `0` devolve a da sessão ao bit.
-    /// Com o [`PINCEL_DE_OLEO`] o extra fica (a cobertura do óleo sobre o óleo) e a célula mistura como a OPACA
-    /// (dono 31/10, `smoke_31_10_oleo/dono_5.png`: o extra virava papel à vista e bege guardado).
+    /// Se a última mão que pousou na célula tinha o Real Oil ([`OleoCelula::pincel_de_oleo`]) o extra fica (a
+    /// cobertura do óleo sobre o óleo) e a célula mistura como a OPACA (dono 31/10, `smoke_31_10_oleo/dono_5.png`:
+    /// o extra virava papel à vista e bege guardado). Lê a CÉLULA, nunca o pincel na mão (E10e1).
+    ///
+    /// [`OleoCelula::pincel_de_oleo`]: crate::grid::oleo_celula::OleoCelula::pincel_de_oleo
     #[inline]
     #[must_use]
     pub fn com_oleo(self, c: crate::grid::oleo_celula::OleoCelula) -> Self {
         match self {
-            Ecra::Cobre { oleo: o, .. } if c.oleo > 0.0 && o < 0.0 => {
+            Ecra::Cobre { .. } if c.oleo > 0.0 && c.pincel_de_oleo => {
                 self.com_opaca((f64::from(c.oleo) / OLEO_PLENO).min(1.0) as f32)
             }
             Ecra::Cobre {
@@ -162,9 +165,9 @@ impl Ecra {
                 esconde,
                 molhada,
                 vela,
-                oleo: o,
                 opaca,
-            } if c.oleo > 0.0 && o >= 0.0 => Ecra::Cobre {
+                ..
+            } if c.oleo > 0.0 => Ecra::Cobre {
                 filme,
                 esconde,
                 molhada,
@@ -202,10 +205,6 @@ impl Ecra {
         }
     }
 }
-
-/// O [`Ecra::Cobre::oleo`] da SESSÃO com o Real Oil na mão: o pincel de óleo cobre o óleo pela lei da obra (as
-/// miniaturas Oil/* mudavam até 11 níveis sem isto) — [`Ecra::com_oleo`] não o troca e as contas leem-no como `0`.
-pub const PINCEL_DE_OLEO: f64 = -1.0;
 
 /// A fracção de óleo a partir da qual o tapar extra sai todo: a orla fina do Dabber guarda 4–12 % de
 /// óleo (medido no J8, `oleo_celula_tests`) e é óleo à vista; abaixo, a rampa liga ao branco sem degrau.

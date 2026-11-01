@@ -9,7 +9,7 @@ use crate::grid::Grid;
 use crate::grid::tinta::CelulaTinta;
 use crate::grid::tinta::pigmento::optica_celula;
 use crate::grid::tinta::pigmento::{ABERTO, FILME, LadoEspectral, srgb_0_255};
-use ph2d_paint_tinta::{Bandas, Espectro, Soma, camada, transfere};
+use ph2d_paint_tinta::{Espectro, Soma, transfere};
 use rayon::prelude::*;
 
 /// A cura do óleo puro (`m = 1`), em segundos do relógio da simulação (F2 §2: «τ(1) ≈ horas», escala artística).

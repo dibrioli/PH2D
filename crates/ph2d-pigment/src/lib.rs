@@ -93,13 +93,20 @@ impl ColorMix {
                 // LINEAR in K/S — that is the whole of the model), and back
                 // out through the inverse. The `/255` rescale and the floor
                 // ride inside the door's table index.
+                //
+                // ⚠️ O resultado fica no INVÓLUCRO das duas entradas, canal a canal (E10e2/E3): o piso
+                // `R_FLOOR` de `transfer` dá a todo canal < 12,709 o mesmo K/S, e sem o clamp preto
+                // sobre preto saía 12,709. Em aritmética exacta a lei já está no invólucro (K/S → R é
+                // monótona), logo o clamp só corta o piso e o erro da volta (≤ 4e-6).
                 let iw = 1.0 - w;
-                let ks_r = iw * ks_of_srgb255(dr) + w * ks_of_srgb255(sr);
-                let ks_g = iw * ks_of_srgb255(dg) + w * ks_of_srgb255(sg);
-                let ks_b = iw * ks_of_srgb255(db) + w * ks_of_srgb255(sb);
-                out[0] = srgb255_of_linear(reflectance_of_ks(ks_r));
-                out[1] = srgb255_of_linear(reflectance_of_ks(ks_g));
-                out[2] = srgb255_of_linear(reflectance_of_ks(ks_b));
+                let um = |d: f64, s: f64| {
+                    let ks = iw * ks_of_srgb255(d) + w * ks_of_srgb255(s);
+                    let v = srgb255_of_linear(reflectance_of_ks(ks));
+                    v.max(d.min(s)).min(d.max(s))
+                };
+                out[0] = um(dr, sr);
+                out[1] = um(dg, sg);
+                out[2] = um(db, sb);
             }
         }
     }
@@ -209,6 +216,31 @@ mod tests {
         for c in [[0u8, 0, 0], [26, 64, 217], [128, 128, 128], [255, 255, 255]] {
             for t in [0.0f32, 0.1, 0.5, 0.9, 1.0] {
                 assert_eq!(mix_srgb8(c, c, t), c, "cor {c:?} peso {t}");
+            }
+        }
+    }
+
+    /// ⛔ **A mistura K–M fica no invólucro das entradas** (E10e2/E3): preto sobre preto é preto em todo peso
+    /// interior (o piso `R_FLOOR` dava 12,709), e preto sobre branco fica em `[0, 255]` canal a canal.
+    #[test]
+    fn a_mistura_km_fica_no_involucro() {
+        let mut out = [0.0; 3];
+        for w in [1e-6, 0.1, 0.5, 0.9, 1.0 - 1e-6] {
+            ColorMix::Km.mix(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, w, &mut out);
+            assert_eq!(out, [0.0; 3], "preto sobre preto, peso {w}");
+            for (d, s) in [
+                ([0.0, 10.0, 255.0], [255.0, 3.0, 0.0]),
+                ([5.0; 3], [12.0; 3]),
+            ] {
+                ColorMix::Km.mix(d[0], d[1], d[2], s[0], s[1], s[2], w, &mut out);
+                for ch in 0..3 {
+                    let (lo, hi) = (d[ch].min(s[ch]), d[ch].max(s[ch]));
+                    assert!(
+                        (lo..=hi).contains(&out[ch]),
+                        "canal {ch} = {} fora de [{lo}, {hi}], peso {w}",
+                        out[ch]
+                    );
+                }
             }
         }
     }

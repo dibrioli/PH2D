@@ -58,13 +58,6 @@ pub fn filter_add_id(kind: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.filter.add.{kind}"))
 }
 
-/// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de apagar
-/// são coisas diferentes para a a11y.
-#[must_use]
-pub fn filter_card_id(row: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.filter.card.{row}"))
-}
-
 /// **Remove** o degrau da linha `row`. Removida a última linha, o componente inteiro sai da
 /// entidade (a forma volta nua).
 #[must_use]
@@ -328,3 +321,19 @@ pub const MAX_FILTER_ROWS: usize = 6;
 pub fn filter_ramp_id(row: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.filter.ramp.{row}"))
 }
+
+// ── F43 (layout do Figma): o «+», as LINHAS e o painel de propriedades à esquerda ──────────────
+
+/// O **«+»** do cabeçalho da secção Filters — um `Dropdown` cujas linhas são os
+/// [`filter_add_id`] de cada tipo publicado.
+pub const FILTER_ADD_MENU: NodeId = hash_node_id("vector.filter.add_menu");
+
+/// **A LINHA** do degrau `row` na lista — um `Dropdown` sem opções: aberto, o painel de
+/// propriedades dele pinta-se à esquerda do Inspector.
+#[must_use]
+pub fn filter_row_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.filter.row.{row}"))
+}
+
+/// O **X** que fecha o painel de propriedades do filtro.
+pub const FILTER_PROPS_CLOSE: NodeId = hash_node_id("vector.filter.props_close");

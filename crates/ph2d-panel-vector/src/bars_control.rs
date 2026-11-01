@@ -359,7 +359,7 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
     ctx.host.store_mut().publish_dropdown_popover(painted);
 }
 
-fn body_ctx<'a>(
+pub(crate) fn body_ctx<'a>(
     scene: &'a mut ph2d_vector::VectorScene,
     text_system: &'a mut ph2d_text::TextSystem,
     store: &'a WidgetStore,

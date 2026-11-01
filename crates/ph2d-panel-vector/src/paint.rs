@@ -149,25 +149,35 @@ fn seed_and_publish(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         // E os PUNHOS da rampa: cada um é um `InteractiveState::CurvePoint` cujo `canvas` é a barra
         // que o paint do frame anterior publicou — o primitivo de arrasto 2D que o editor de falloff
         // do Painter e a curva do motion-params já usam. Sem barra pintada não há o que registrar.
-        if let Some([bx, by, bw, bh]) = state::filters::ramp_bar(row) {
-            for stop in 0..ids::MAX_FILTER_STOPS {
-                store.register(
-                    ids::filter_stop_id(row, stop),
-                    ph2d_editor_core::interaction::InteractiveState::CurvePoint {
-                        parent: crate::ids::filter_ramp_id(row),
-                        channel: 0,
-                        index: stop as u8,
-                        canvas: Rect::new(bx, by, bw, bh),
-                    },
-                );
-            }
-        }
+        register_ramp_handles(store, row);
     }
     // ⭐⭐ **As sementes dos CAMPOS NUMÉRICOS saíram daqui** — irmã pelo teto de 200 LOC por
     // função, e o corte é por RESPONSABILIDADE: acima ficam as marcas e os sliders (coisas que
     // se fazem UMA vez), e ali a família que se repete oito vezes — *re-semear um campo do
     // estado publicado, nunca sobre o que está em FOCO*.
     seed_number_fields(store);
+}
+
+/// Os PUNHOS da rampa da linha `row` sobre a barra publicada. ⭐ F43: o painel de propriedades
+/// pinta-se DEPOIS deste passe, e chama-a de novo — o arrasto do quadro seguinte usa a barra deste.
+pub(crate) fn register_ramp_handles(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    row: usize,
+) {
+    if let Some([bx, by, bw, bh]) = state::filters::ramp_bar(row) {
+        for stop in 0..ids::MAX_FILTER_STOPS {
+            store.register(
+                ids::filter_stop_id(row, stop),
+                ph2d_editor_core::interaction::InteractiveState::CurvePoint {
+                    parent: crate::ids::filter_ramp_id(row),
+                    channel: 0,
+                    #[allow(clippy::cast_possible_truncation)]
+                    index: stop as u8,
+                    canvas: Rect::new(bx, by, bw, bh),
+                },
+            );
+        }
+    }
 }
 
 /// **Re-semeia os campos numéricos do estado publicado** — a família que o [`seed_and_publish`]
@@ -474,6 +484,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // ② F16: o painel do traço e as listas que a barra de controle abre — ANTES dos popovers
     // diferidos abaixo, porque o das pontas pode nascer DENTRO do painel do traço.
     crate::bars::paint_bar_popovers(ctx, theme, rect.w);
+    // ⭐ F43: a lista do «+» e o painel de propriedades à ESQUERDA — antes dos popovers abaixo,
+    // porque a lista de mistura de um filtro nasce DENTRO do painel.
+    crate::fx_side::paint(ctx, rect, theme);
 
     // Deferred: the Font dropdown popover paints (and hit-registers its rows) ON
     // TOP of every section — the chip stashed its rect during the body paint when

@@ -16,6 +16,7 @@ mod connector_section;
 mod every_chip_is_linked_to_its_slider;
 mod every_name_the_engine_publishes_has_a_key;
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod f43_as_listas_do_figma; // F43: o «+», as linhas e o painel de propriedades à esquerda
 mod fill_chip_labels_fit;
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
@@ -87,4 +88,46 @@ pub fn abre_aba(h: &mut ph2d_ui_testkit::MockPanelHost, tab: ph2d_a11y::NodeId) 
         &mut st,
         ph2d_editor_core::interaction::WidgetEvent::Click(tab),
     );
+}
+
+/// ⭐ F43: clica `id` pelo PONTEIRO (pintar → centro do rect → Down/Up → eventos ao painel). Um
+/// `Dropdown` (o «+», a linha de um efeito) abre-se no dispatcher, sem evento.
+pub fn clica(h: &mut ph2d_ui_testkit::MockPanelHost, id: ph2d_a11y::NodeId) {
+    const VP: ph2d_editor_core::zones::Rect = ph2d_editor_core::zones::Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 4000.0,
+    };
+    let mut st = ph2d_panel_vector::state::VectorPanelState;
+    let r = h
+        .painted_rect::<ph2d_panel_vector::VectorPanel>(&mut st, VP, id)
+        .unwrap_or_else(|| panic!("{id:?} não foi pintado para o clique"));
+    for ev in h.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        h.apply_panel_event::<ph2d_panel_vector::VectorPanel>(&mut st, ev);
+    }
+}
+
+/// ⭐ F43: o host com `id` (a LINHA de um efeito/filtro, ou o «+») aberto pelo clique — os campos
+/// de um efeito moram no painel à esquerda, e os tipos na lista do «+».
+pub fn host_com_aberto(id: ph2d_a11y::NodeId) -> ph2d_ui_testkit::MockPanelHost {
+    let mut h = host_aberto();
+    clica(&mut h, id);
+    h
+}
+
+/// ⭐ F43: o host com os `Dropdown` `abertos` já abertos no STORE (sem clique: os testes que
+/// publicam a pilha DEPOIS de criar o host). Os campos de um efeito/filtro moram no painel da
+/// linha aberta, e os `Add` na lista do «+».
+pub fn host_com(abertos: &[ph2d_a11y::NodeId]) -> ph2d_ui_testkit::MockPanelHost {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let mut h = host_aberto();
+    for id in abertos {
+        if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open, .. }) =
+            h.store_mut().get_mut(*id)
+        {
+            *open = true;
+        }
+    }
+    h
 }

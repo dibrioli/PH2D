@@ -115,6 +115,19 @@ pub(crate) fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
+/// Um `Dropdown` fechado (F43: o «+» e as linhas das listas de Effects/Filters). `if_absent`: o
+/// `populate` corre de novo e não pode fechar o que o artista abriu.
+pub(crate) fn dropdown(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    store.register_if_absent(
+        id,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+}
+
 /// Uma caixa numérica de faixa FIXA (as do conector + as das pontas do traço), semeada em
 /// `value`. **`set_number_range` não é opcional**: sem ela o arrasto escala errado — o
 /// gotcha conhecido da caixa limitada. (As caixas de parâmetro de FORMA não passam aqui: a

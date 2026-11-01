@@ -242,6 +242,8 @@ thread_local! {
     static STACK: RefCell<Vec<FilterRowView>> = const { RefCell::new(Vec::new()) };
     /// A tabela dos tipos, indexada pelo `kind` — publicada a partir do motor.
     static KINDS: RefCell<Vec<FilterKindView>> = const { RefCell::new(Vec::new()) };
+    /// ⭐ F43: o GLIFO de cada tipo, pelo rótulo do MOTOR (antes da tradução).
+    static KIND_ICONS: RefCell<Vec<ph2d_editor_core::icons::IconId>> = const { RefCell::new(Vec::new()) };
     /// Os NOMES das leis de mistura, na ordem dos códigos — publicados pela shell, que é quem
     /// alcança o `BlendMode`. O painel vive de snapshots e não conhece o enum.
     static BLENDS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
@@ -271,6 +273,12 @@ pub(crate) fn stack() -> Vec<FilterRowView> {
 /// fatia `'static` do motor: esses traduzem-se onde os chips são montados (`paint_filters`).
 pub fn set_filter_kinds(kinds: Vec<FilterKindView>) {
     use crate::nomes_do_motor as n;
+    KIND_ICONS.with(|c| {
+        *c.borrow_mut() = kinds
+            .iter()
+            .map(|k| crate::glifos_do_motor::ou_generico(crate::glifos_do_motor::filtro(k.name)))
+            .collect();
+    });
     let kinds = kinds
         .into_iter()
         .map(|mut k| {
@@ -292,6 +300,11 @@ pub fn set_filter_kinds(kinds: Vec<FilterKindView>) {
         })
         .collect();
     KINDS.with(|k| *k.borrow_mut() = kinds);
+}
+
+/// O glifo do tipo `kind` (F43).
+pub(crate) fn kind_icon(kind: usize) -> ph2d_editor_core::icons::IconId {
+    KIND_ICONS.with(|c| crate::glifos_do_motor::ou_generico(c.borrow().get(kind).copied()))
 }
 
 pub(crate) fn kinds() -> Vec<FilterKindView> {

@@ -115,28 +115,28 @@ fn o_filtro_tem_losango_no_olho_e_nos_campos() {
     ph2d_panel_vector::set_current_filters(vec![row]);
     let olho = ids::filter_hide_id(0);
     losango(
-        crate::host_aberto(),
+        crate::host_com(&[ids::filter_row_id(0)]),
         olho,
         ids::filter_remove_id(0),
         "o olho do filtro",
     );
     let raio = ids::filter_radius_id(0);
     losango(
-        crate::host_aberto(),
+        crate::host_com(&[ids::filter_row_id(0)]),
         raio,
         ids::filter_radius_num_id(0),
         "o raio",
     );
     let mistura = ids::filter_blend_id(0);
     losango(
-        crate::host_aberto(),
+        crate::host_com(&[ids::filter_row_id(0)]),
         mistura,
         mistura,
         "a mistura do filtro",
     );
     let modo = ids::filter_mode_id(0, 0);
     losango(
-        crate::host_aberto(),
+        crate::host_com(&[ids::filter_row_id(0)]),
         modo,
         ids::filter_mode_id(0, 1),
         "o modo",

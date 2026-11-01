@@ -16,7 +16,7 @@ use ph2d_editor_core::widget::{ButtonKind, SectionFold};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_vector::params::{
     BLEND_STEPS_DEFAULT, MORPH_T_DEFAULT, blend_steps_from_track, blend_steps_to_track,
     opacity_to_slider,
@@ -165,6 +165,10 @@ pub(crate) mod filters_blend;
 /// A seção **Effects** (ADR-0132) — módulo irmão (teto de 600 LOC).
 #[path = "paint_effects.rs"]
 mod effects;
+
+// F43: as listas de Effects e Filters no layout do Figma (o «+», as linhas, a âncora do painel).
+#[path = "paint_fx_list.rs"]
+pub(crate) mod fx_list;
 
 /// A seção **Vertex** (tipo do vértice + Delete) — módulo irmão (teto de 600 LOC).
 #[path = "paint_vertex.rs"]

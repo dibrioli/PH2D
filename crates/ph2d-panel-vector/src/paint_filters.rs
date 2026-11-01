@@ -8,12 +8,13 @@
 //! ⚠️ **Distinta da seção Effects** (`VECTOR_SECTION_EFFECTS`, ADR-0132), que é a pilha de
 //! deformadores VETORIAIS. Um filtro produz PIXELS; um efeito produz geometria.
 //!
-//! # Cada degrau é um CARD, e a ORDEM é a feature
+//! # Cada degrau é uma LINHA, e a ORDEM é a feature
 //!
-//! O mesmo idioma da pilha de Effects (Enio, 2026-07-18) — cabeçalho de ícones (↑ ↓ 👁 ✕) e os
-//! parâmetros dentro. Aqui o motivo de reordenar é ainda mais direto: `Drop Shadow → Blur` borra a
-//! sombra junto com a forma; `Blur → Drop Shadow` projeta a sombra da forma JÁ borrada. São dois
-//! desenhos, e a lista é como se escolhe entre eles.
+//! F43 (dono 01/11, layout do Figma): o «+» do cabeçalho abre a lista dos tipos, cada degrau é uma
+//! linha ([`super::fx_list`]) e clicar nela abre os controles num painel à ESQUERDA do Inspector
+//! ([`crate::fx_side`]), com ↑ ↓ no cabeçalho dele. A ordem continua a ser a feature:
+//! `Drop Shadow → Blur` borra a sombra junto com a forma; `Blur → Drop Shadow` projeta a sombra da
+//! forma JÁ borrada.
 //!
 //! Cada linha oferece só os controles que o TIPO dela usa — e **quem responde é a TABELA publicada
 //! pelo motor** (`FilterKindView`), nunca aritmética de código espalhada por aqui: só as sombras
@@ -21,6 +22,7 @@
 //! (é pontual) e o Outline chama o raio de **Width** (a borda dele para exatamente ali). Um knob
 //! morto ensina o artista a desconfiar dos vivos.
 
+use super::fx_list::Pilha;
 use super::*;
 use crate::state::filters as fst;
 use crate::state::filters::{
@@ -28,7 +30,7 @@ use crate::state::filters::{
     FILTER_RADIUS_MAX, FILTER_SCALE_MAX, FILTER_SEED_MAX,
 };
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::{Card, IconButtonStyle, IconGlyph, paint_card, paint_icon_button};
+use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_i18n::tr;
 
 /// O lado de um botão de ícone do cabeçalho.
@@ -42,9 +44,12 @@ impl BodyCtx<'_> {
         if stack.is_empty() && !fst::can_add() {
             return y;
         }
-        let (mut y, collapsed) = self.section_header(
+        let live = fst::can_add() && stack.len() < crate::ids::MAX_FILTER_ROWS;
+        let (mut y, collapsed) = self.fx_list_header(
+            Pilha::Filtros,
             ids::VECTOR_SECTION_FILTERS,
             tr("panel.vector.section.filters"),
+            live,
             y,
         );
         if collapsed {
@@ -52,88 +57,35 @@ impl BodyCtx<'_> {
         }
         for (row, fx) in stack.iter().enumerate().take(crate::ids::MAX_FILTER_ROWS) {
             // Um `kind` sem spec publicada não é desenhável (a shell publica a tabela inteira; um
-            // buraco aqui seria um card sem nome e sem controles).
+            // buraco aqui seria uma linha sem nome e sem controles).
             let Some(spec) = fst::kind_spec(fx.kind) else {
                 continue;
             };
-            y = self.filter_card(row, fx, &spec, stack.len(), y);
-        }
-        // Os "Add": um por tipo PUBLICADO pelo motor. Um tipo novo aparece aqui sem este arquivo
-        // saber que ele existe.
-        if stack.len() < crate::ids::MAX_FILTER_ROWS {
-            for (kind, spec) in fst::kinds().iter().enumerate().take(ids::MAX_FILTER_KINDS) {
-                let label = ph2d_i18n::tr_with("panel.vector.filter.add", &[("name", &spec.name)]);
-                y = self.action_button(ids::filter_add_id(kind), &label, y);
-            }
+            y = self.fx_list_row(
+                Pilha::Filtros,
+                row,
+                fst::kind_icon(usize::from(fx.kind)),
+                spec.name,
+                fx.enabled,
+                y,
+            );
         }
         y
     }
 
-    /// Um degrau: o card, o cabeçalho de ícones e os parâmetros dentro dele.
+    /// **Os controles do degrau `row`** — o corpo do painel à esquerda ([`crate::fx_side`]).
+    /// Devolve o `y` final.
     ///
     /// **Que rows existem é resposta da TABELA**, nunca do código do tipo — é isto que faz um tipo
     /// novo nascer com os controles certos sem editar este arquivo.
-    fn filter_card(
+    pub(crate) fn filter_props(
         &mut self,
         row: usize,
         fx: &fst::FilterRowView,
         spec: &fst::FilterKindView,
-        total: usize,
         y: f32,
     ) -> f32 {
-        let pad = Spacing::Sm.px();
-        let head_h = self.row_h.max(ICON_PX);
-        // Opacity sempre; Radius, Offset X/Y, Color e a fileira de MODO conforme o tipo. A row de
-        // modo é mais alta (rótulo + chips), como as `segmented` do resto do painel.
-        let rows = 1
-            + usize::from(spec.radius_label.is_some())
-            + usize::from(spec.offset_labels.is_some()) * 2
-            + usize::from(spec.color_label.is_some())
-            + usize::from(spec.color_b_label.is_some())
-            + usize::from(spec.takes_blend)
-            + usize::from(spec.noise_labels.is_some()) * 3
-            + usize::from(spec.grow_label.is_some())
-            + usize::from(spec.adjust_labels.is_some()) * 3
-            // O trilho custa DUAS rows: a fileira dos botões `+`/`−` e a swatch do stop escolhido.
-            // A barra e os punhos vão no `ramp_h`, que não é múltiplo de `row_h`.
-            + usize::from(spec.takes_ramp) * 2;
-        #[allow(clippy::cast_precision_loss)]
-        let body_h = rows as f32 * (self.row_h + self.row_gap);
-        let mode_h = if spec.modes.is_empty() {
-            0.0
-        } else {
-            TypeToken::Sm.px() + Spacing::Xs.px() + self.row_h + self.row_gap
-        };
-        // ⚠️ A barra + os punhos têm altura PRÓPRIA (não é uma row): medir por `row_h` deixaria a
-        // próxima seção pintar por cima das alças, que é a falha que a lei do `segmented_row_counts`
-        // já nomeia — container medido por uma régua e preenchido por outra.
-        let ramp_h = if spec.takes_ramp {
-            super::filters_ramp::ramp_extra_h(self.row_gap)
-        } else {
-            0.0
-        };
-        let card_h = pad + head_h + body_h + mode_h + ramp_h + pad;
-        let card_rect = Rect::new(self.inner_x, y, self.inner_w, card_h);
-
-        let card = Card::new(ids::filter_card_id(row));
-        paint_card(&card, card_rect, self.scene, self.text_system, self.theme);
-
-        let inner_x = self.inner_x + pad;
-        let inner_w = self.inner_w - pad * 2.0;
-        self.filter_header(
-            row,
-            fx,
-            spec,
-            total,
-            Rect::new(inner_x, y + pad, inner_w, head_h),
-        );
-
-        // Os parâmetros, indentados dentro do card. Guardo e restauro a coluna: o `slider_row`
-        // desenha no `inner_x`/`inner_w` do CONTEXTO.
-        let (keep_x, keep_w) = (self.inner_x, self.inner_w);
-        self.inner_x = inner_x;
-        self.inner_w = inner_w;
-        let mut py = y + pad + head_h;
+        let mut py = y;
         // O MODO vem PRIMEIRO: ele escolhe a LEI do degrau, e os números abaixo são lidos por ela.
         if !spec.modes.is_empty() {
             let chips: Vec<(ph2d_a11y::NodeId, &str, bool)> = spec
@@ -202,65 +154,7 @@ impl BodyCtx<'_> {
         if spec.takes_blend {
             py = self.filter_blend_row(row, fx, py);
         }
-        self.filter_opacity_row(row, fx, py);
-        self.inner_x = keep_x;
-        self.inner_w = keep_w;
-
-        y + card_h + ph2d_tokens::control_gap_px()
-    }
-
-    /// O cabeçalho do card: o nome à esquerda, os ícones à direita.
-    ///
-    /// **Subir na primeira linha e descer na última não fazem nada — então não são desenhados**
-    /// (a posição de cada ícone é contada da DIREITA, então a ausência de uma seta nas bordas não
-    /// desloca os outros). Um ícone inerte ensina o artista a desconfiar dos que funcionam.
-    fn filter_header(
-        &mut self,
-        row: usize,
-        fx: &fst::FilterRowView,
-        spec: &fst::FilterKindView,
-        total: usize,
-        at: Rect,
-    ) {
-        let (x, w, y, h) = (at.x, at.w, at.y, at.h);
-        let dim = if fx.enabled {
-            ColorToken::Text1
-        } else {
-            ColorToken::TextDisabled
-        };
-        paint_text(
-            self.text_system,
-            self.scene,
-            spec.name,
-            x,
-            y + (h - self.font) * 0.5,
-            self.font,
-            w,
-            resolve(dim, self.theme),
-        );
-        // ⭐ Na coluna do decorator — a dos parâmetros por baixo — o losango do OLHO (o idioma do
-        // `effect_header`); os ícones contam-se da direita a partir dela.
-        let (w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, h);
-        self.decorator(dot, &[ids::filter_hide_id(row)]);
-        let slot = |i: usize| x + w - ICON_PX * (i as f32 + 1.0) - Spacing::Xs.px() * i as f32;
-        self.filter_icon(ids::filter_remove_id(row), IconId::Close, slot(0), y, h);
-        self.filter_icon(
-            ids::filter_hide_id(row),
-            if fx.enabled {
-                IconId::Eye
-            } else {
-                IconId::EyeClosed
-            },
-            slot(1),
-            y,
-            h,
-        );
-        if row + 1 < total {
-            self.filter_icon(ids::filter_down_id(row), IconId::ChevronDown, slot(2), y, h);
-        }
-        if row > 0 {
-            self.filter_icon(ids::filter_up_id(row), IconId::ChevronUp, slot(3), y, h);
-        }
+        self.filter_opacity_row(row, fx, py)
     }
 
     /// Um botão de ícone do cabeçalho: pinta e REGISTRA o hit-rect (sem ele não há Click).

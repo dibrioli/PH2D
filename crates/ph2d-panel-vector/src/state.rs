@@ -442,7 +442,7 @@ pub fn take_shape_edit_toggle() -> bool {
 #[path = "state_effects.rs"]
 mod effects;
 pub use effects::{FalloffRole, FxParamView, FxRowView, set_current_effects};
-pub(crate) use effects::{bound, has_target, kinds, stack};
+pub(crate) use effects::{bound, has_target, kind_icon, kinds, row_icon, stack};
 
 /// O estado do **Envelope** (ADR-0129) — módulo irmão pelo mesmo teto de 600 LOC.
 #[path = "state_envelope.rs"]

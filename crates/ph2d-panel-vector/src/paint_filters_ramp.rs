@@ -33,13 +33,6 @@ const RAMP_BTN_W: f32 = 24.0; // LITERAL-PX-OK: espelha o CURVE_BTN_W do editor 
 /// Arredondamento da barra.
 const RAMP_BAR_RADIUS: f32 = 4.0; // LITERAL-PX-OK: espelha o Radius::Sm do design system
 
-/// A altura que o trilho consome. ⚠️ **UMA régua, dois consumidores** — a conta da altura do card e
-/// o paint perguntam a ESTA função; medir por uma régua e preencher por outra é exactamente o que a
-/// lei do `segmented_row_counts` proíbe.
-pub(crate) fn ramp_extra_h(row_gap: f32) -> f32 {
-    RAMP_BAR_H + RAMP_HANDLE_R + row_gap
-}
-
 impl BodyCtx<'_> {
     /// A fileira da cor do halo: rótulo + swatch que abre o picker OKLCH partilhado (espelho da
     /// swatch de Fill / Contour — a mesma estética para a mesma pergunta *"que cor?"*).

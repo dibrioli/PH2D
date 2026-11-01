@@ -174,6 +174,15 @@ fn blend_option(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool
     }
 }
 
+/// Um clique que só abre/fecha: as listas da barra, ou (F43) o X do painel de propriedades e o que
+/// move/fecha a linha aberta de Effects/Filters ([`crate::fx_side`]).
+fn opens_or_closes(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    crate::bars::toggle_list(store, id) || crate::fx_side::on_click(store, id)
+}
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
@@ -187,7 +196,7 @@ pub(crate) fn apply_event(
     }
     // ② F16: uma linha de uma lista da barra fecha a lista; o verbo dela corre abaixo, como no painel.
     if let WidgetEvent::Click(id) = ev {
-        if crate::bars::toggle_list(host.store_mut(), id) {
+        if opens_or_closes(host.store_mut(), id) {
             return EventOutcome::Consumed;
         }
         crate::bars::close_list_on_pick(host.store_mut(), id);

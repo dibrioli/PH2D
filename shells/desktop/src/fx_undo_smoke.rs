@@ -208,7 +208,12 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         5 => app.any_input_this_frame = true,
         // A seção Effects pode nascer fora da vista: rola o painel até o botão entrar no
         // hit-index (o mesmo gesto do roteiro do Expand).
-        6..=11 => scroll_until_reachable(app, ph2d_tool_vector::ids::vector_fx_add_id(0)),
+        // F43: o Add mora na lista do «+» do cabeçalho — rola até ele e abre-a (10/11).
+        6..=9 => scroll_until_reachable(app, ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU),
+        10 | 59 => click_row_icon(app, ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU, "«+»"),
+        // F43: os parâmetros moram no painel à esquerda — clicar na LINHA abre-o (18/19, 66/67).
+        18 | 66 => click_row_icon(app, ph2d_tool_vector::ids::vector_fx_row_id(0), "LINHA"),
+        11 | 19 | 60 | 67 => app.smoke_pointer_up(),
         // Depois do 2º Add o card voltou e empurrou o Apply para fora — re-rola até ele.
         82..=87 => scroll_until_reachable(app, ph2d_tool_vector::ids::VECTOR_FX_APPLY),
         ADD_DOWN => match app.smoke_find_widget(ph2d_tool_vector::ids::vector_fx_add_id(0)) {

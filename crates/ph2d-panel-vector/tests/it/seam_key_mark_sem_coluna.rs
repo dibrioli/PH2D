@@ -39,7 +39,8 @@ fn losango(campo: NodeId, controlo: NodeId, o_que: &str) -> (Rect, Rect, Vec<Nod
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     set_key_marks(BTreeMap::from([(campo, KeyMark::Chave)]));
     let _ = take_key_mark_click();
-    let mut host = crate::host_aberto();
+    // F43: os campos de um efeito moram no painel da linha aberta.
+    let mut host = crate::host_com(&[ph2d_tool_vector::ids::vector_fx_row_id(0)]);
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, key_mark_id(campo))

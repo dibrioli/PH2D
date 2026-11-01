@@ -283,6 +283,7 @@ mod vector_mode_handles;
 mod vector_mode_interface;
 /// As cenas 29 e 30 (F19): o painel lê a forma depois do Show do Hover.
 mod vector_mode_le_a_forma;
+mod vector_mode_listas;
 /// As cenas 31 e 32 (F20): a seleção de duas diz «misto»; a Width na unidade do documento.
 mod vector_mode_misto;
 mod vector_mode_olho;

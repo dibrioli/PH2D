@@ -117,15 +117,54 @@ impl RowCtx<'_> {
     /// semântico vira neste quadro e o `t` ainda desce — um corpo gateado no flag sumiria de repente
     /// por baixo de um chevron a rodar.
     pub fn section_header(&mut self, id: NodeId, label: &str, y: f32) -> (f32, bool) {
+        self.section_header_with_action(id, label, y, None)
+    }
+
+    /// ⭐ **O cabeçalho com um botão de ícone à esquerda da pega** — o «+» das listas do Figma
+    /// (Effects/Filters, F43). `action` = `(id, glifo, aceso, vivo)`; o botão regista-se ANTES de a
+    /// dobra abrir, senão o recorte do corpo o engolia. Devolve o mesmo par do
+    /// [`Self::section_header`]; o rect do botão lê-se no `hit_index` pelo id.
+    pub fn section_header_with_action(
+        &mut self,
+        id: NodeId,
+        label: &str,
+        y: f32,
+        action: Option<(NodeId, crate::icons::IconId, bool, bool)>,
+    ) -> (f32, bool) {
         let header_h = section_header_h();
         // ⭐⭐ O cabeçalho com a PEGA, e a secção escrita no livro do quadro (2026-09-30): é o que
         //    a faz abrir o menu de temas pelo botão direito e arrastar pelos dez pontos. ⚠️ Quem
         //    pinta por aqui pinta o corpo pelo plano (`section_plan`) — senão a pega mudaria uma
         //    ordem que ninguém lê.
-        let header = super::section_plan::cabecalho(self.store, id, label);
+        let mut header = super::section_plan::cabecalho(self.store, id, label);
+        if action.is_some() {
+            header = header.reserve_right(header_h);
+        }
         let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
         paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
         super::section_plan::regista_cabecalho(self.hit_index, id, rect);
+        if let Some((aid, glyph, lit, live)) = action {
+            let grip = crate::widget::section_grip::grip_slot_w_px();
+            let r = Rect::new(rect.x + rect.w - grip - header_h, y, header_h, header_h);
+            let visual = if !live {
+                (crate::widget::ButtonState::Disabled, 0.0)
+            } else if lit {
+                (crate::widget::ButtonState::Pressed, 1.0)
+            } else {
+                self.store.button_visual(aid)
+            };
+            crate::widget::paint_icon_button(
+                r,
+                crate::widget::IconGlyph::Builtin(glyph),
+                crate::widget::IconButtonStyle::Plain,
+                visual,
+                self.scene,
+                self.theme,
+            );
+            if live {
+                self.hit_index.register(aid, r);
+            }
+        }
         let body_top = y + header_h + SECTION_LABEL_TO_CONTROL_PX;
         self.open_fold = SectionFold::begin(
             self.store,

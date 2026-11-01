@@ -43,6 +43,8 @@ pub use contour_params::{
 pub mod bars;
 mod event;
 mod font_dropdown;
+mod fx_side;
+pub mod glifos_do_motor;
 /// **O PICKER de ícone** — a lista de glifos de um `IconButton`, cada linha desenhando o
 /// próprio. Irmão do `font_dropdown` pela mesma razão: um ícone escolhe-se olhando.
 mod icon_dropdown;

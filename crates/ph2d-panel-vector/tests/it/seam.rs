@@ -1463,7 +1463,15 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
 
     for (id, name) in targets {
         publish();
-        let mut host = crate::host_aberto();
+        // F43: o `Add` mora na lista do «+»; as setas e os campos no painel da linha ABERTA.
+        let abre = if (0..KINDS.len()).any(|k| id == ph2d_tool_vector::ids::vector_fx_add_id(k)) {
+            vec![ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU]
+        } else if id == ph2d_tool_vector::ids::vector_fx_up_id(1) {
+            vec![ph2d_tool_vector::ids::vector_fx_row_id(1)]
+        } else {
+            vec![ph2d_tool_vector::ids::vector_fx_row_id(0)]
+        };
+        let mut host = crate::host_com(&abre);
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1509,7 +1517,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_tool_vector::ids::vector_fx_add_id(0)
+            ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU
         )
         .is_none(),
         "o Add foi pintado sem caminho unico selecionado"
@@ -1524,7 +1532,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_tool_vector::ids::vector_fx_add_id(0)
+            ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU
         )
         .is_some(),
         "com alvo, o Add TEM de ser oferecido"
@@ -1554,7 +1562,7 @@ fn a_bound_shape_is_offered_no_effect() {
         let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         [
-            ph2d_tool_vector::ids::vector_fx_add_id(0),
+            ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU,
             ph2d_tool_vector::ids::VECTOR_FX_APPLY,
             ph2d_tool_vector::ids::vector_fx_remove_id(0),
         ]

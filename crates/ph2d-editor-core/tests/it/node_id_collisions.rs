@@ -70,6 +70,12 @@ const SLUGS_REPETIDOS_TOLERADOS: &[(&str, usize, &str)] = &[];
 /// obriga a reescrevê-la — é essa a prova de que alguém olhou para a forma no sítio novo.
 const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
     (
+        "crates/ph2d-app-components/src/smoke_tipos.rs",
+        "step",
+        Especie::HashDeExpressao,
+        "cena 42 (F42): o pick do Add = hash da CHAVE do item do menu Add (`object_add.*`), os MESMOS ids que o menu regista; só corre com PH2D_OBJECT_MODE_SMOKE=42",
+    ),
+    (
         "crates/ph2d-panel-pixel-tools/src/ids.rs",
         "?",
         Especie::HashDeExpressao,
@@ -1409,7 +1415,7 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ("remove", ph2d_tool_vector::ids::vector_fx_remove_id(r)),
             ("up", ph2d_tool_vector::ids::vector_fx_up_id(r)),
             ("down", ph2d_tool_vector::ids::vector_fx_down_id(r)),
-            ("card", ph2d_tool_vector::ids::vector_fx_card_id(r)),
+            ("row", ph2d_tool_vector::ids::vector_fx_row_id(r)),
             ("hide", ph2d_tool_vector::ids::vector_fx_hide_id(r)),
         ] {
             check(format!("vector_fx_{label}_id({r})"), id.0);
@@ -1435,7 +1441,7 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     }
     for r in 0..ph2d_panel_vector::ids::MAX_FILTER_ROWS {
         for (label, id) in [
-            ("card", ph2d_panel_vector::ids::filter_card_id(r)),
+            ("row", ph2d_panel_vector::ids::filter_row_id(r)),
             ("remove", ph2d_panel_vector::ids::filter_remove_id(r)),
             ("up", ph2d_panel_vector::ids::filter_up_id(r)),
             ("down", ph2d_panel_vector::ids::filter_down_id(r)),

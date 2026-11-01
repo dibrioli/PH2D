@@ -35,10 +35,15 @@ pub(super) fn populate_effects(store: &mut WidgetStore) {
     // O botão de SEÇÃO "Apply" (assa a pilha). Registado sempre; a PINTURA decide se o oferece
     // (só há hit-rect quando a pilha não está vazia), como o resto da seção.
     button(store, ph2d_tool_vector::ids::VECTOR_FX_APPLY);
+    // F43: o «+» e a LINHA de cada efeito são `Dropdown` (abrir, fechar e o light-dismiss vêm do
+    // dispatch genérico); o X fecha o painel de propriedades.
+    super::dropdown(store, ph2d_tool_vector::ids::VECTOR_FX_ADD_MENU);
+    button(store, ph2d_tool_vector::ids::VECTOR_FX_PROPS_CLOSE);
     for kind in 0..ph2d_tool_vector::ids::MAX_FX_KINDS {
         button(store, ph2d_tool_vector::ids::vector_fx_add_id(kind));
     }
     for row in 0..ph2d_tool_vector::ids::MAX_FX_ROWS {
+        super::dropdown(store, ph2d_tool_vector::ids::vector_fx_row_id(row));
         button(store, ph2d_tool_vector::ids::vector_fx_remove_id(row));
         button(store, ph2d_tool_vector::ids::vector_fx_up_id(row));
         button(store, ph2d_tool_vector::ids::vector_fx_down_id(row));

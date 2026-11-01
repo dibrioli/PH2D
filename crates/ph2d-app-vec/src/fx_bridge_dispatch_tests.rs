@@ -121,7 +121,7 @@ fn rows_and_kinds_do_not_collide() {
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_up_id(r)));
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_down_id(r)));
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_hide_id(r)));
-        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_card_id(r)));
+        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_row_id(r)));
         for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             assert!(
                 seen.insert(ph2d_tool_vector::ids::vector_fx_param_id(r, p)),

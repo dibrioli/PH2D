@@ -8,15 +8,15 @@ use crate::{
     vector_mode_controle as controle, vector_mode_cor as cor,
     vector_mode_filtro_efeito as filtro_efeito, vector_mode_filtro_zoom as filtro_zoom,
     vector_mode_fio as fio, vector_mode_gesto as gesto, vector_mode_interface as interface,
-    vector_mode_le_a_forma as le_a_forma, vector_mode_misto as misto, vector_mode_olho as olho,
-    vector_mode_opaco as opaco, vector_mode_quinas as quinas, vector_mode_tracejado as tracejado,
-    vector_mode_vestidos as vestidos,
+    vector_mode_le_a_forma as le_a_forma, vector_mode_listas as listas, vector_mode_misto as misto,
+    vector_mode_olho as olho, vector_mode_opaco as opaco, vector_mode_quinas as quinas,
+    vector_mode_tracejado as tracejado, vector_mode_vestidos as vestidos,
 };
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::screens::hero::HeroScreen;
 
 /// As faixas de estágio destas famílias — o teste das faixas lê a MESMA lista.
-pub(crate) const FAIXAS: [(u8, u8); 16] = [
+pub(crate) const FAIXAS: [(u8, u8); 17] = [
     (alinhar::FIRST, alinhar::LAST),
     (tracejado::FIRST, tracejado::LAST),
     (interface::FIRST, interface::LAST),
@@ -33,6 +33,7 @@ pub(crate) const FAIXAS: [(u8, u8); 16] = [
     (fio::FIRST, fio::LAST),
     (filtro_efeito::FIRST, filtro_efeito::LAST),
     (filtro_zoom::FIRST, filtro_zoom::LAST),
+    (listas::FIRST, listas::LAST),
 ];
 
 /// O estágio `s` é de uma destas famílias?
@@ -77,6 +78,8 @@ pub(super) fn step(
         fio::FIRST..=fio::LAST => fio::step(s, vec, scene, hero),
         filtro_efeito::FIRST..=filtro_efeito::LAST => filtro_efeito::step(vec, scene, sim, hero),
         filtro_zoom::FIRST..=filtro_zoom::LAST => filtro_zoom::step(vec, scene, sim, hero),
+        // As cenas 43 e 44 (F43): a 44 abre a lista do «+» em vez do painel.
+        listas::FIRST..=listas::LAST => listas::step(vec, scene, sim, hero, h == 30),
         _ => None,
     }
 }

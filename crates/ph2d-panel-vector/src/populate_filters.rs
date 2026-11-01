@@ -31,10 +31,14 @@ const COUNT_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento (c
 
 /// Os botões "Add" (um por tipo) + o bloco de controles de cada linha do teto.
 pub(super) fn populate_filters(store: &mut WidgetStore) {
+    // F43: o «+» e a LINHA de cada degrau são `Dropdown`; o X fecha o painel de propriedades.
+    super::dropdown(store, ids::FILTER_ADD_MENU);
+    button(store, ids::FILTER_PROPS_CLOSE);
     for kind in 0..ids::MAX_FILTER_KINDS {
         button(store, ids::filter_add_id(kind));
     }
     for row in 0..crate::ids::MAX_FILTER_ROWS {
+        super::dropdown(store, ids::filter_row_id(row));
         // O cabeçalho do card: reordenar, desarmar, apagar.
         //
         // ⚠️ **A swatch de cor NÃO entra aqui.** Ela é alvo de PICKER (`register_picker_swatch`,

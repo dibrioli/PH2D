@@ -12,6 +12,7 @@
 //! de costura, e o 2º (Zig Zag) ia custar outra. O gargalo tinha deixado de ser a geometria, e
 //! a promessa do ADR só valia para metade do caminho.
 
+use ph2d_editor_core::icons::IconId;
 use std::cell::{Cell, RefCell};
 
 /// Um parâmetro de efeito, como o painel o desenha.
@@ -76,6 +77,10 @@ thread_local! {
     /// O alvo está PRESO a ossos? Então ele não recebe efeitos (ordem do dono, 2026-10-03: ao
     /// prender os efeitos são cozidos no desenho) e a secção diz só porquê.
     static BOUND: Cell<bool> = const { Cell::new(false) };
+    /// ⭐ F43: o GLIFO de cada tipo do «+» e de cada linha da pilha, lidos do rótulo do MOTOR no
+    /// mesmo ponto em que ele é traduzido ([`crate::glifos_do_motor`]).
+    static KIND_ICONS: RefCell<Vec<IconId>> = const { RefCell::new(Vec::new()) };
+    static ROW_ICONS: RefCell<Vec<IconId>> = const { RefCell::new(Vec::new()) };
 }
 
 /// **Publica a seção Effects inteira** — o alvo, os tipos disponíveis e a pilha.
@@ -97,6 +102,9 @@ pub fn set_current_effects(
     BOUND.with(|c| c.set(bound));
     CURRENT_KINDS.with(|c| c.borrow_mut().clear());
     CURRENT_KINDS.with(|c| c.borrow_mut().extend(kinds.iter().map(|k| n::efeito(k))));
+    let glifo = |k: &str| crate::glifos_do_motor::ou_generico(crate::glifos_do_motor::efeito(k));
+    KIND_ICONS.with(|c| *c.borrow_mut() = kinds.iter().map(|k| glifo(k)).collect());
+    ROW_ICONS.with(|c| *c.borrow_mut() = stack.iter().map(|r| glifo(r.label)).collect());
     let stack = stack
         .into_iter()
         .map(|mut row| {
@@ -123,6 +131,16 @@ pub(crate) fn bound() -> bool {
 /// Os tipos do menu "Add".
 pub(crate) fn kinds() -> Vec<&'static str> {
     CURRENT_KINDS.with(|c| c.borrow().clone())
+}
+
+/// O glifo do tipo `kind` do «+» (F43).
+pub(crate) fn kind_icon(kind: usize) -> IconId {
+    KIND_ICONS.with(|c| crate::glifos_do_motor::ou_generico(c.borrow().get(kind).copied()))
+}
+
+/// O glifo do efeito da linha `row` (F43).
+pub(crate) fn row_icon(row: usize) -> IconId {
+    ROW_ICONS.with(|c| crate::glifos_do_motor::ou_generico(c.borrow().get(row).copied()))
 }
 
 /// A pilha publicada.

@@ -485,14 +485,6 @@ pub fn vector_fx_down_id(row: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.fx.down.{row}"))
 }
 
-/// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de
-/// apagar são coisas diferentes para a a11y, e partilhar o id faria o leitor de tela anunciar
-/// a moldura inteira como "remover".
-#[must_use]
-pub fn vector_fx_card_id(row: usize) -> NodeId {
-    hash_node_id_runtime(&format!("vector.fx.card.{row}"))
-}
-
 /// **O olho** da linha `row` — desarma o efeito sem o apagar. Desarmar não pode custar os
 /// parâmetros: zerar a amplitude para "desligar" e depois querer o valor de volta é obrigar o
 /// artista a lembrar-se de números.
@@ -534,6 +526,20 @@ pub fn vector_fx_toggle_id(row: usize, param: usize) -> NodeId {
 /// por-linha), por isso `const` e não `fn`. Só é pintado quando há pilha a assar; o mesmo bake
 /// alimenta o "Convert to Curves" sobre um caminho com efeitos.
 pub const VECTOR_FX_APPLY: NodeId = hash_node_id("vector.fx.apply");
+
+/// ⭐ F43 (layout do Figma): o **«+»** do cabeçalho da secção Effects — um `Dropdown` cujas linhas
+/// são os [`vector_fx_add_id`] de cada tipo publicado.
+pub const VECTOR_FX_ADD_MENU: NodeId = hash_node_id("vector.fx.add_menu");
+
+/// ⭐ F43: **a LINHA** do efeito `row` na lista — um `Dropdown` sem opções: aberto, o painel de
+/// propriedades dele pinta-se à esquerda do Inspector.
+#[must_use]
+pub fn vector_fx_row_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.fx.row.{row}"))
+}
+
+/// ⭐ F43: o **X** que fecha o painel de propriedades do efeito.
+pub const VECTOR_FX_PROPS_CLOSE: NodeId = hash_node_id("vector.fx.props_close");
 
 // ── Ferramentas de QUINA: os pills Fillet / Chamfer (bloco APPEND-ONLY) ──────
 // Clicar-e-arrastar sobre uma quina para arredondá-la (Fillet) ou chanfrá-la (Chamfer).

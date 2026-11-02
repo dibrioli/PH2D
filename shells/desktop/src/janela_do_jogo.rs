@@ -227,6 +227,7 @@ impl crate::App {
     /// As fotos-gesto da câmera (17b, [`ph2d_app_game::smoke_mao`]): aperta, arrasta e solta pelas portas reais
     /// do ponteiro; o `Up` imprime o que ficou (`[camera-mao]`).
     pub(crate) fn mao_da_camera_do_smoke(&mut self) {
+        use ph2d_app_components::object_drag;
         use ph2d_app_game::smoke_mao::{Mao, mao, proximo_quadro_da_mao, relato};
         let foto = ph2d_app_game::smoke::foto();
         let chave = foto == Some(ph2d_app_game::smoke::Foto::CameraChave);
@@ -238,6 +239,12 @@ impl crate::App {
             }
             self.playhead.pause();
             self.playhead.seek(ph2d_app_game::smoke::tempo_da_chave());
+        }
+        if foto == Some(ph2d_app_game::smoke::Foto::CameraLarga) {
+            let (q, g) = (proximo_quadro_da_mao(), self.gfx.as_mut());
+            let p =
+                g.and_then(|g| object_drag::smoke_ao_alvo(g.hero_screen.as_mut()?, &mut g.sim, q));
+            return p.map_or((), |(x, y)| self.smoke_pointer_move(x, y));
         }
         if foto == Some(ph2d_app_game::smoke::Foto::CameraDesfaz) {
             self.formato_desfaz_do_smoke(proximo_quadro_da_mao());

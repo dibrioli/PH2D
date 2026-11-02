@@ -128,10 +128,9 @@ pub(super) fn paint_drop_fields(
         let Some(rect) = hit.rect_for(m.id) else {
             continue;
         };
-        use ph2d_tokens::visuals::Feel;
-        let (line, feel) = match m.verdict {
-            DragVerdict::Accept => (ColorToken::Success, Feel::Active),
-            DragVerdict::Refuse => (ColorToken::Danger, Feel::Error),
+        let line = match m.verdict {
+            DragVerdict::Accept => ColorToken::Success,
+            DragVerdict::Refuse => ColorToken::Danger,
             DragVerdict::Unknown => continue,
         };
         let width = if m.under {
@@ -139,14 +138,9 @@ pub(super) fn paint_drop_fields(
         } else {
             StrokeToken::Thin.px()
         };
-        crate::paint::stroke_frame(
-            scene,
-            rect,
-            radius,
-            theme,
-            feel,
-            width,
-            resolve(line, theme),
-        );
+        // ⛔ Pela porta do tema (`stroke_frame` + `Feel::Active`) o verde SUMIA: a família moderna apaga a
+        // moldura de estado (smoke do dono 02/11). FRAME-RAW-OK: é a resposta do arrasto,
+        // não um estado do widget.
+        crate::paint::stroke_rounded_rect(scene, rect, radius, width, resolve(line, theme));
     }
 }

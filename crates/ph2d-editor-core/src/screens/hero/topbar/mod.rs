@@ -243,6 +243,10 @@ pub fn paint_hover_tooltip(
     let Some(id) = store.hot_id() else {
         return false;
     };
+    // GEF 20b — com um arrasto na mão a dica tapava o fantasma e o campo que se mira (foto 02/11).
+    if store.asset_drag().is_some_and(|d| d.armed) {
+        return false;
+    }
     // Suppress the tooltip when the hot widget is an open Dropdown
     // (or any widget whose popover paints directly below the hit
     // rect — they share the exact pill geometry the tooltip wants

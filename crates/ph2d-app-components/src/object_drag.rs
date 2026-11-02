@@ -54,6 +54,32 @@ pub fn seed(hero: &mut HeroScreen, world: &World, row_bits: Option<u64>, at: (f3
     }
 }
 
+/// A foto `camera_larga` (GEF 20b): do quadro 40 do condutor, a mão pega o «Player» uma caixa à esquerda do Target
+/// do Follow e leva-o até ao meio dele em seis quadros, sem soltar. Devolve o ponto FÍSICO onde o ponteiro vai.
+pub fn smoke_ao_alvo(hero: &mut HeroScreen, sim: &mut SimWorld, quadro: u32) -> Option<(f32, f32)> {
+    const PASSOS: u16 = 6;
+    let quadro = quadro.checked_sub(40)?;
+    hero.store
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CAMERA_SECTION, false);
+    let alvo = hero
+        .hit_index
+        .rect_for(ph2d_panel_inspector::ids::INSP_CAMERA_TARGET)?;
+    let alvo = hero.escala().rect_to_physical(alvo);
+    let fim = (alvo.x + alvo.w * 0.5, alvo.y + alvo.h * 0.5);
+    let inicio = (fim.0 - alvo.w, fim.1);
+    if hero.store.asset_drag().is_none() {
+        let w = sim.world_mut();
+        let player = w
+            .query::<(ph2d_ecs::Entity, &Name)>()
+            .iter(w)
+            .find(|(_, n)| n.as_str() == "Player")
+            .map(|(e, _)| e.to_bits());
+        seed(hero, w, player, inicio);
+    }
+    let t = f32::from(PASSOS.min(u16::try_from(quadro).unwrap_or(PASSOS))) / f32::from(PASSOS);
+    Some((inicio.0 + (fim.0 - inicio.0) * t, fim.1))
+}
+
 /// ⭐ **Um objecto largado no campo de uma propriedade de objecto** (8c): o nome dele passa a ser o
 /// valor da propriedade `prop` do script de `entity_bits` — a mesma edição de escrever o nome.
 pub fn into_script_slot(sim: &mut SimWorld, entity_bits: u64, prop: &str, stable_id: u64) -> bool {

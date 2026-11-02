@@ -56,6 +56,8 @@ pub enum Foto {
     CameraSegue,
     /// A6: «Preview: Off» — a câmera selecionada sem a miniatura no canto (a `camera` mostra-a ligada).
     CameraSemPrevia,
+    /// GEF 20b: o Player levado da Hierarchy até ao Target do Follow, sem soltar — a caixa diz se aceita.
+    CameraLarga,
     /// GEF 19: o ponteiro pousado sobre o «Swarm» da cena da ordem (`PH2D_ORDEM_SMOKE=1`), a mexer a cada quadro —
     /// o realce lê o Motion em todos; com `PH2D_SONDA` é a mão da medida intercalada.
     OrdemSonda,
@@ -97,6 +99,7 @@ pub fn foto() -> Option<Foto> {
         "camera_fora" => Some(Foto::CameraFora),
         "camera_segue" => Some(Foto::CameraSegue),
         "camera_sem_previa" => Some(Foto::CameraSemPrevia),
+        "camera_larga" => Some(Foto::CameraLarga),
         "ordem_sonda" => Some(Foto::OrdemSonda),
         _ => None,
     }
@@ -145,6 +148,7 @@ impl Foto {
                 | Self::CameraFora
                 | Self::CameraSegue
                 | Self::CameraSemPrevia
+                | Self::CameraLarga
         )
     }
 
@@ -292,7 +296,8 @@ pub fn plano_da_foto(
         | Foto::CameraDesfaz
         | Foto::CameraFora
         | Foto::CameraSegue
-        | Foto::CameraSemPrevia => unreachable!("as fotos da câmera voltam antes"),
+        | Foto::CameraSemPrevia
+        | Foto::CameraLarga => unreachable!("as fotos da câmera voltam antes"),
         Foto::PlayerParado => {
             plano.edicoes = vec![(player, uso(ph2d_editor_core::InspectorImageUse::Still))];
             plano.alvo = player;

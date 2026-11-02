@@ -85,7 +85,6 @@ impl crate::App {
         else {
             return;
         };
-        // ⚠️ **Desistir não é recusa** (`asset_drop::verdict`): voltar ao painel de origem é silencioso.
         let verdict = self
             .drop_target_at(x, y)
             .map_or(DragVerdict::Unknown, |t| asset_drop::verdict(payload, t));
@@ -146,17 +145,13 @@ impl crate::App {
     /// ⭐⭐⭐ **O que está debaixo do cursor, na linguagem da lei da queda** — a porta ÚNICA de
     /// *«o que aconteceria se a mão largasse aqui?»* (waves B2/B3/B4).
     ///
-    /// ⚠️ **Ela tem DOIS chamadores e isso é o ponto:** o `Move` para o fantasma dizer se o sítio
-    /// aceita, e o `Up` para agir. Escrever a resolução duas vezes seria o fantasma a prometer uma
-    /// coisa e a queda a fazer outra — e a discordância só se veria no dia em que uma das duas
-    /// fosse corrigida.
+    /// ⚠️ **Dois chamadores, UMA resolução:** o `Move` (o fantasma e as caixas dizem se aceita) e o
+    /// `Up` (age) — resolver duas vezes seria o fantasma a prometer o que a queda não faz.
     ///
-    /// ⚠️ **A ORDEM é a lei**: um alvo que sabe receber pergunta-se ANTES dos que só desistem ou
-    /// recusam (a gaveta e a ranhura ganham ao painel de origem e ao chrome); um Quadro aberto
-    /// tapa a cena, então fora dos painéis o alvo é ele.
+    /// ⚠️ **A ORDEM é a lei**: quem sabe receber (campo, gaveta) ganha a quem desiste ou recusa; um
+    /// Quadro aberto tapa a cena, então fora dos painéis o alvo é ele.
     fn drop_target_at(&mut self, x: f32, y: f32) -> Option<DropTarget> {
-        // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
-        // bloco mutável seria pedir dois empréstimos do mesmo `self`.
+        // ⚠️ Leituras ANTES do `gfx` mutável (senão, dois empréstimos do mesmo `self`).
         let campo = self
             .chrome_id_under(x, y)
             .and_then(asset_drop::field_target);

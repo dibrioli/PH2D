@@ -3,8 +3,8 @@
 //!
 //! ```text
 //! Fill                                          +
-//! [■■■■■■■■■■■■■■■]◇ [100 %]◇ [⚙] [👁]◇ [−]       ← camadas extra (o topo em cima)
-//! [▤▤▤▤▤▤▤▤▤▤▤▤▤▤▤]◇ [ 80 %]  [⚙] [👁]◇ [−]       ← o preenchimento de BASE (rampa = degradê)
+//! [■]◇               [100 %]◇ [⚙] [👁]◇ [−]       ← camadas extra (o topo em cima)
+//! [▤]◇               [ 80 %]  [⚙] [👁]◇ [−]       ← o preenchimento de BASE (rampa = degradê)
 //! Stroke                                        +
 //! [■]◇ [   2 px    ]◇ [100 %]  [⚙] [👁]◇ [−]       ← a cor e o Weight de CADA traço
 //! ```
@@ -93,8 +93,8 @@ struct Peso<'a> {
 }
 
 /// ⭐ **As colunas de uma linha**, da direita para a esquerda — as MESMAS em toda linha de Fill e
-/// de Stroke: `[cor]◇ [Weight]◇ [%]◇ [⚙] [👁]◇ [−]`; num preenchimento a cor ocupa a coluna do
-/// Weight ([`Colunas::faixa`]) e o losango dela fica no do Weight.
+/// de Stroke: `[cor]◇ [Weight]◇ [%]◇ [⚙] [👁]◇ [−]`; a cor é sempre um quadrado, e num
+/// preenchimento a coluna do Weight fica vazia.
 #[derive(Clone, Copy)]
 pub(super) struct Colunas {
     pub(super) caixa: Rect,
@@ -161,16 +161,6 @@ impl BodyCtx<'_> {
             + ph2d_editor_core::widget::field_pad_x() * 2.0
             + ph2d_editor_core::widget::stepper_width(host);
         w.min(self.chip_w)
-    }
-
-    /// A cor de um preenchimento: as colunas da cor e do Weight juntas.
-    fn faixa(c: &Colunas) -> Rect {
-        Rect::new(
-            c.caixa.x,
-            c.caixa.y,
-            (c.weight_key.x - c.caixa.x).max(1.0),
-            c.caixa.h,
-        )
     }
 
     /// O cabeçalho com o «+» (botão simples: o verbo é o id).
@@ -242,15 +232,14 @@ impl BodyCtx<'_> {
     /// rachura de um token) e, se os ajustes estão abertos, a linha (a âncora do painel à esquerda).
     fn paint_line(&mut self, l: &Linha<'_>, y: f32) -> (f32, Rect, Option<Rect>) {
         let c = self.colunas(y);
-        let caixa = if let Some(w) = &l.weight {
-            self.decorator(c.caixa_key, l.color_keys);
+        // A cor é um QUADRADO em toda linha (dono 01/11); num preenchimento a coluna do Weight
+        // fica vazia.
+        let caixa = c.caixa;
+        self.decorator(c.caixa_key, l.color_keys);
+        if let Some(w) = &l.weight {
             self.decorator(c.weight_key, w.keys);
             self.weight_field(w, c.weight);
-            c.caixa
-        } else {
-            self.decorator(c.weight_key, l.color_keys);
-            Self::faixa(&c)
-        };
+        }
         self.decorator(c.pct_key, l.opacity_keys);
         self.decorator(c.eye_key, l.eye_keys);
         self.loose_number(l.opacity, l.pct, l.mixed_pct, Unit::Percent, c.pct);

@@ -393,19 +393,15 @@ fn todas_as_linhas_tem_as_mesmas_colunas() {
             "coluna {k} dos traços desalinhada: {a:?} × {b:?}"
         );
     }
-    let (cor_t, peso) = (strokes[0][0], strokes[0][1]);
+    // A cor é o MESMO quadrado nas duas espécies (dono 01/11: «caixas quadradas como em stroke»).
+    let (cor_t, cor_f) = (strokes[0][0], fills[0][0]);
     assert!(
         (cor_t.w - cor_t.h).abs() < 0.5,
         "a cor do traço é um QUADRADO: {cor_t:?}"
     );
-    let cor_f = fills[0][0];
     assert!(
-        (cor_f.x - cor_t.x).abs() < 0.5,
-        "a cor começa no MESMO x nas duas espécies: {cor_f:?} × {cor_t:?}"
-    );
-    assert!(
-        cor_f.x + cor_f.w >= peso.x + peso.w - 0.5 && cor_f.x + cor_f.w <= fills[0][1].x,
-        "a cor do preenchimento ocupa a coluna do Weight (até antes do %): {cor_f:?} × {peso:?}"
+        mesma(&cor_f, &cor_t),
+        "a cor do preenchimento é o mesmo quadrado da do traço: {cor_f:?} × {cor_t:?}"
     );
     assert!(
         pintado(&mut h, ids::vector_paint_row_width_id(0)).is_none(),

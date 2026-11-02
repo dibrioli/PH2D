@@ -411,4 +411,12 @@ impl PixelApp {
     pub fn floating(&self) -> bool {
         self.solta.is_some()
     }
+
+    /// A máscara que as formigas da moldura solta do documento `key` contornam (o mesmo valor que
+    /// o desenho da vista recebe); `None` = sem moldura nesse documento.
+    #[must_use]
+    pub fn floating_ants(&mut self, key: u32) -> Option<ph2d_pixel_core::selection::Mask> {
+        self.solta.as_ref().filter(|s| s.key == key)?;
+        self.previa(key).and_then(|(_, m)| m)
+    }
 }

@@ -32,6 +32,35 @@ pub fn paint_dropdown_list<T: Clone + PartialEq>(
     theme: Theme,
     rows: Option<PopoverRowPainter<'_>>,
 ) -> PaintedPopover {
+    porta(ctx, dd, chip, region, theme, rows, None)
+}
+
+/// ⭐⭐ **A porta para linhas que NÃO se pintam no rótulo** (o dropdown de fontes do Pixel Art pinta
+/// cada nome na própria fonte): `row_text_w` é a largura REAL do conteúdo mais largo, como `rows` o
+/// pinta, e entra na MESMA lei da largura ([`crate::widget::popover_width_for`] +
+/// [`Dropdown::popover_rect_placed`]: `max(chip, conteúdo + recuos)`, desloca à esquerda se não
+/// cabe, nunca sai da `region`) no lugar do rótulo medido na fonte da interface.
+pub fn paint_dropdown_list_measured<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+    theme: Theme,
+    rows: Option<PopoverRowPainter<'_>>,
+    row_text_w: f32,
+) -> PaintedPopover {
+    porta(ctx, dd, chip, region, theme, rows, Some(row_text_w))
+}
+
+fn porta<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+    theme: Theme,
+    rows: Option<PopoverRowPainter<'_>>,
+    row_text_w: Option<f32>,
+) -> PaintedPopover {
     let painted = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_list(
@@ -44,6 +73,7 @@ pub fn paint_dropdown_list<T: Clone + PartialEq>(
             theme,
             hit_index,
             rows,
+            row_text_w,
         )
     };
     let store = ctx.host.store_mut();
@@ -107,6 +137,7 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
         theme,
         hit_index,
         None,
+        None,
     )
 }
 
@@ -147,10 +178,18 @@ fn paint_list<T: Clone + PartialEq>(
     theme: Theme,
     hit_index: &mut HitIndex,
     rows: Option<PopoverRowPainter<'_>>,
+    row_text_w: Option<f32>,
 ) -> PaintedPopover {
     // ⭐ A largura da lista é a da porta ([`Dropdown::popover_rect_fitted`]); os hits abaixo e o
     // clique-fora (o `panel` publicado) leem este MESMO rect.
-    let panel = dd.popover_rect_fitted(chip, Some(region), text_system);
+    let panel = match row_text_w {
+        Some(w) => {
+            let has_icon = dd.options.iter().any(|o| o.icon.is_some());
+            let list_w = chip.w.max(crate::widget::popover_width_for(w, has_icon));
+            dd.popover_rect_placed(chip, Some(region), list_w)
+        }
+        None => dd.popover_rect_fitted(chip, Some(region), text_system),
+    };
     let content_h = dd.content_height(chip.h);
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);

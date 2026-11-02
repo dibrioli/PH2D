@@ -187,3 +187,84 @@ fn the_font_name_sits_in_the_value_column_next_to_its_label() {
     );
     assert!(r(ids::TEXT_FONT_DD).y < size.y, "a fonte antes do tamanho");
 }
+
+/// P8c: a largura da lista de fontes é a lei da porta (dono 25/10: o nome INTEIRO, só desloca à
+/// esquerda se não cabe, nunca sai da região) sobre a largura de cada linha COMO SE PINTA — a prévia
+/// na escala inteira dela, não o rótulo medido na fonte da interface.
+#[test]
+fn the_font_list_fits_the_widest_painted_row_and_no_wider() {
+    use ph2d_editor_core::pixel_panel::font_preview::{self, PixelFontPreview};
+    use ph2d_editor_core::widget::popover_width_for;
+    use ph2d_tokens::{ROW_H_PX, Spacing};
+    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut st = PixelToolsPanelState::default();
+    let fontes: Vec<String> = ["cozette", "tom-thumb", "x", "Noto Sans"]
+        .map(str::to_owned)
+        .to_vec();
+    // «x» desenha-se numa prévia larga (150 × 8 células → 2× na linha de 22 = 300 px): MUITO mais
+    // larga que o rótulo «x» na fonte da interface; as outras ficam sem prévia (rótulo).
+    let (pw, ph) = (150_u32, 8_u32);
+    font_preview::publish(
+        "x".to_owned(),
+        PixelFontPreview {
+            w: pw,
+            h: ph,
+            cover: vec![u8::MAX; (pw * ph) as usize],
+        },
+    );
+    let p = font_preview::with_preview("x", |p| p.cloned()).expect("publicada");
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "largura de uma máscara de teste"
+    )]
+    let pintada = pw as f32 * p.scale_in(ROW_H_PX);
+    set_current_pixel(PixelPanelInfo {
+        editing: true,
+        tool: PixelTool::Text,
+        text_font_name: "cozette".to_owned(),
+        text_fonts: fontes.clone(),
+        ..Default::default()
+    });
+    let vp = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1920.0, // LITERAL-PX-OK: uma janela de ecrã inteiro (o painel à direita, a lista com região)
+        h: 1080.0, // LITERAL-PX-OK: idem
+    };
+    let rects = host.paint::<PixelToolsPanel>(&mut st, vp);
+    let chip = rects
+        .iter()
+        .find(|(n, _)| *n == ids::TEXT_FONT_DD)
+        .map(|(_, r)| *r)
+        .expect("o chip da fonte");
+    for e in host.click_at(chip.x + chip.w * 0.5, chip.y + chip.h * 0.5) {
+        let _ = host.apply_panel_event::<PixelToolsPanel>(&mut st, e);
+    }
+    let rects = host.paint::<PixelToolsPanel>(&mut st, vp);
+    let lista = popover_width_for(pintada, false);
+    assert!(
+        lista > chip.w,
+        "a prévia é mais larga que o chip: {lista} × {chip:?}"
+    );
+    for i in 0..fontes.len() {
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == ids::text_font_option_id(i))
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a linha {i} nunca foi pintada"));
+        assert!(
+            r.w >= pintada && r.w <= lista && lista - r.w < Spacing::Md.px(),
+            "a linha {i} {r:?}: cabe a prévia de {pintada} px, nunca mais larga que a lei ({lista})"
+        );
+        assert!(
+            r.x >= vp.x && r.x + r.w <= vp.x + vp.w,
+            "a linha {i} {r:?} dentro da região {vp:?}"
+        );
+        let ancorada = (r.x - chip.x).abs() < Spacing::Md.px();
+        let encostada = (vp.x + vp.w - (r.x + r.w)).abs() < Spacing::Md.px();
+        assert!(
+            ancorada || (chip.x + lista > vp.x + vp.w && encostada),
+            "no chip, ou deslocada à esquerda só o que não cabe: {r:?} × {chip:?}"
+        );
+    }
+}

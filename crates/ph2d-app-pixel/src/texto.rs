@@ -76,7 +76,12 @@ pub(crate) fn publica_previas() {
         style.antialias = i >= ph2d_pixel_text::BUILTIN.len();
         let face = ph2d_system_fonts::library::face_bytes;
         let fonte = Fonte::pick(u16::try_from(i).unwrap_or(0), &lista, style, face);
-        let m = fonte.place(&nome, (0, 0)).map(|m| m.0).unwrap_or_default();
+        // Sem as letras do nome (uma face de símbolos), a prévia vazia: a linha sai na fonte da UI.
+        let m = fonte
+            .covers(&nome)
+            .then(|| fonte.place(&nome, (0, 0)).map(|m| m.0))
+            .flatten()
+            .unwrap_or_default();
         publish(
             nome,
             PixelFontPreview {

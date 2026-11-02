@@ -98,3 +98,29 @@ fn the_dropdown_gets_each_font_name_drawn_in_that_font() {
         });
     }
 }
+
+/// P8c: a prévia de cada fonte de pixel na linha da lista (`ROW_H_PX`) sai na maior escala INTEIRA
+/// que cabe — nunca abaixo de metade da linha (o unscii-8 saía a 1× com a fração 0,7 de antes).
+#[test]
+fn every_pixel_font_preview_fills_the_list_row_at_an_integer_scale() {
+    let (mut app, sim, _cam, bits) = born();
+    app.tool = Tool::Text;
+    for b in BUILTIN {
+        font_preview::want(b.0);
+    }
+    quadro(&mut app, &sim, bits);
+    let linha = ph2d_tokens::ROW_H_PX;
+    let mut tabela = String::new();
+    let mut ok = true;
+    for b in BUILTIN {
+        font_preview::with_preview(b.0, |p| {
+            let p = p.unwrap_or_else(|| panic!("{}: sem pré-visualização", b.0));
+            let s = p.scale_in(linha);
+            #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
+            let h = p.h as f32;
+            tabela.push_str(&format!("{} h={} s={s} → {}\n", b.0, p.h, s * h));
+            ok &= s == s.floor() && s * h <= linha && (s + 1.0) * h > linha && s * h * 2.0 > linha;
+        });
+    }
+    assert!(ok, "linha {linha}:\n{tabela}");
+}

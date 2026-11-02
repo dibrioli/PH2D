@@ -139,6 +139,49 @@ pub fn face(data: &[u8], index: u32) -> Result<FontRef<'_>, String> {
     FontRef::from_index(data, index).map_err(|e| format!("fonte: {e}"))
 }
 
+/// Os dígitos pelo nome do glifo na Adobe Glyph List.
+const AGL_DIGITS: [&str; 10] = [
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+];
+
+/// **A face escreve `text` com as letras de `text`?** Cada caractere (fora espaço e controlo) tem
+/// de cair num glifo que não seja o `.notdef`; e, se a face NOMEIA os glifos (`post`/`CFF`), uma
+/// letra ou dígito ASCII tem de cair no glifo com o nome dela (`D` → `D`, `0` → `zero`, ou
+/// `uni0044`, com sufixo `.alt` aceite). MEDIDO (02/11): as faces de símbolos instaladas mapeiam o
+/// ASCII para OUTROS desenhos — D050000L `D` → `a31` (dingbat), Standard Symbols PS `D` → `Delta`
+/// — e o cmap sozinho dá-as como completas; uma face de texto sem nomes (`post` 3) passa pelo cmap.
+#[must_use]
+pub fn covers(data: &[u8], index: u32, text: &str) -> bool {
+    let Ok(font) = face(data, index) else {
+        return false;
+    };
+    let cmap = font.charmap();
+    let names = skrifa::GlyphNames::new(&font);
+    let named = names.source() != skrifa::GlyphNameSource::Synthesized;
+    text.chars()
+        .filter(|c| !c.is_control() && *c != ' ')
+        .all(|ch| {
+            let Some(gid) = cmap.map(ch).filter(|g| g.to_u32() != 0) else {
+                return false;
+            };
+            !named || names.get(gid).is_none_or(|n| agl_agrees(ch, n.as_str()))
+        })
+}
+
+/// O nome `name` do glifo é o de `ch` (só se confere o ASCII alfanumérico).
+fn agl_agrees(ch: char, name: &str) -> bool {
+    let base = name.split('.').next().unwrap_or(name);
+    let code = ch as u32;
+    if base == format!("uni{code:04X}") || base == format!("u{code:04X}") {
+        return true;
+    }
+    match ch {
+        'A'..='Z' | 'a'..='z' => base.len() == 1 && base.starts_with(ch),
+        '0'..='9' => base == AGL_DIGITS[(code - u32::from('0')) as usize],
+        _ => true,
+    }
+}
+
 pub fn face_metrics(font: &FontRef<'_>, px: u32) -> FaceMetrics {
     let m = font.metrics(Size::new(px as f32), LocationRef::default());
     FaceMetrics {

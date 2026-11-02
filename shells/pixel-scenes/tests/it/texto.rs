@@ -109,6 +109,30 @@ fn enter_floats_the_text_without_touching_the_document() {
     assert!(!app.undo(chave(&sim, bits)), "nenhum passo");
 }
 
+/// P8c: as formigas do texto solto são SÓ o retângulo da moldura — o contorno de cada letra
+/// (a máscara da cobertura) tapava as próprias letras (foto `smoke_P8_cena19_solto`).
+#[test]
+fn the_floating_text_ants_are_only_the_frame_rectangle() {
+    let (mut app, sim, cam, bits) = born();
+    let celulas = solto(&mut app, &sim, &cam, bits);
+    let mk = app.floating_ants(chave(&sim, bits)).expect("formigas");
+    let x0 = celulas.iter().map(|c| c.0).min().expect("tinta");
+    let x1 = celulas.iter().map(|c| c.0).max().expect("tinta");
+    let y0 = celulas.iter().map(|c| c.1).min().expect("tinta");
+    let y1 = celulas.iter().map(|c| c.1).max().expect("tinta");
+    let r = mk.bounds().expect("não vazia");
+    assert!(
+        r.x <= x0 && r.y <= y0 && r.x + r.w as i32 > x1 && r.y + r.h as i32 > y1,
+        "o retângulo cobre a tinta: {r:?}"
+    );
+    assert_eq!(
+        mk.cells().count(),
+        (r.w * r.h) as usize,
+        "um retângulo cheio, não o contorno das letras"
+    );
+    assert!(mk.cells().count() > celulas.len(), "mais que as letras");
+}
+
 #[test]
 fn moving_the_floating_text_and_enter_stamps_it_there_in_one_step() {
     let (mut app, sim, cam, bits) = born();

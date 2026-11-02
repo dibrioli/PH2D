@@ -68,6 +68,18 @@ impl Fonte {
         Some((m, o))
     }
 
+    /// A fonte escreve `texto` com as letras dele ([`crate::outline::covers`]; de fábrica: nenhum
+    /// caractere cai no glifo de recurso).
+    #[must_use]
+    pub fn covers(&self, texto: &str) -> bool {
+        match (&self.style.font, &self.dados) {
+            (FontChoice::System(_, index), Some(data)) => {
+                crate::outline::covers(data, *index, texto)
+            }
+            _ => crate::rasterize(texto, &self.style).is_ok_and(|m| m.missing.is_empty()),
+        }
+    }
+
     /// As células acesas dentro de `w × h`, com a cobertura `1..=255`.
     #[must_use]
     pub fn cells(&self, texto: &str, at: Cell, (w, h): (u32, u32)) -> Vec<(Cell, u8)> {

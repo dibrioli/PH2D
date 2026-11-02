@@ -835,3 +835,23 @@ fn the_handles_scale_rotate_and_the_inside_moves_the_floating_frame() {
     p.tecla(KeyCode::Enter, false, false);
     assert_eq!(p.passos(), n + 1);
 }
+
+/// P8c: o Transform de uma selecção NÃO retangular continua a pôr as formigas na FORMA levantada
+/// (só o texto solto troca o contorno pelo retângulo da moldura).
+#[test]
+fn the_transform_ants_still_trace_the_lifted_shape() {
+    let mut p = Palco::limpo();
+    p.ferramenta(Tool::EllipseMarquee);
+    let (a, b) = cena::ELLIPSE;
+    p.arrasta(a, b, Mods::default());
+    let elipse = Mask::ellipse(128, 64, a, b);
+    assert_eq!(p.mascara(), Some(elipse.clone()));
+    p.tecla(KeyCode::KeyT, true, false);
+    assert!(p.app.floating(), "Ctrl+T levanta");
+    let k = p.key;
+    assert_eq!(
+        p.app.floating_ants(k),
+        Some(elipse),
+        "as formigas seguem a elipse"
+    );
+}

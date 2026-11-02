@@ -98,4 +98,25 @@ impl<T: Clone + PartialEq> Dropdown<T> {
         let w = self.list_width(chip.w, text_system);
         self.popover_rect_placed(chip, viewport, w)
     }
+
+    /// ⭐⭐ **A região de uma lista que FLUTUA longe do dock** (um diálogo sobre o canvas): `region`
+    /// recuada `margin` de cada borda e aparada, abaixo e acima do chip, a um número INTEIRO de
+    /// linhas — a lista clampada pelo [`Self::popover_rect_clamped`] acaba com a moldura à vista,
+    /// nunca a meio de uma linha nem encostada à borda da janela. Uma lista que cabia continua a
+    /// caber (a aparagem só tira a fracção de linha).
+    #[must_use]
+    pub fn region_in_whole_rows(&self, chip: Rect, region: Rect, margin: f32) -> Rect {
+        let row_h = chip.h.max(1.0);
+        let pad = POPOVER_PANEL_PAD_Y * 2.0;
+        let top = region.y + margin;
+        let bot = region.y + region.h - margin;
+        let inteiras = |espaco: f32| ((espaco - pad) / row_h).floor().max(1.0) * row_h + pad;
+        let below_y = chip.y + chip.h + popover_gap();
+        let above_y = chip.y - popover_gap();
+        let new_bot = below_y + inteiras(bot - below_y);
+        let new_top = above_y - inteiras(above_y - top);
+        let x = region.x + margin;
+        let w = (region.w - margin * 2.0).max(chip.w);
+        Rect::new(x, new_top, w, (new_bot - new_top).max(0.0))
+    }
 }

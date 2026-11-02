@@ -35,6 +35,8 @@ const MODIFIES: [PixelModify; 3] = [
 pub(crate) struct Ecra {
     pub(crate) hero: HeroScreen,
     pub(crate) text: TextSystem,
+    /// A janela onde o hero pinta (`None` = a de referência).
+    pub(crate) janela: Option<Rect>,
 }
 
 impl Ecra {
@@ -42,6 +44,7 @@ impl Ecra {
         let mut e = Self {
             hero: HeroScreen::new(NodeId(1)),
             text: TextSystem::without_system_fonts(),
+            janela: None,
         };
         e.hero.store.open_pixel_edit_dialog(kind, size);
         e.pinta();
@@ -50,7 +53,9 @@ impl Ecra {
 
     pub(crate) fn pinta(&mut self) {
         let mut scene = VectorScene::new();
-        let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        let vp = self
+            .janela
+            .unwrap_or(Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H));
         paint_hero_screen(&mut self.hero, vp, &mut scene, &mut self.text);
     }
 

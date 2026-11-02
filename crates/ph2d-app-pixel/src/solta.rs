@@ -398,8 +398,9 @@ impl PixelApp {
         let doc = self.docs.get(&key)?;
         let s = &doc.sprite;
         let (layer, frame) = (so.layer, so.frame);
+        let texto = so.tinta.is_some();
         let (op, f) = so.refresh(s, method, bg);
-        let mask = f.map(|f| f.mask(s.width(), s.height()));
+        let mask = f.map(|f| formigas(f, texto, (s.width(), s.height())));
         let mut values = Vec::new();
         let mut patch = |p: &ph2d_pixel_core::Patch| {
             let bpp = s.mode().bpp();
@@ -427,6 +428,17 @@ impl PixelApp {
             _ => {}
         }
         Some((Stroke::with_values(layer, frame, values), mask))
+    }
+}
+
+/// A máscara das formigas de uma moldura solta `f` num sprite `w × h`: a colagem e o Transform
+/// contornam a FORMA levantada; o texto (P8c) contorna só o RETÂNGULO da moldura — o contorno de
+/// cada letra tapava as próprias letras.
+pub(crate) fn formigas(f: &Floating, texto: bool, (w, h): (u32, u32)) -> Mask {
+    if texto {
+        Mask::from_rect(w, h, f.rect())
+    } else {
+        f.mask(w, h)
     }
 }
 

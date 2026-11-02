@@ -63,6 +63,7 @@ fn aberto() -> Ecra {
     let mut e = Ecra {
         hero: HeroScreen::new(ph2d_a11y::NodeId(1)),
         text: TextSystem::without_system_fonts(),
+        janela: None,
     };
     e.hero.store.set_pixel_filter_kernels(nomes());
     e.hero.store.set_pixel_filter_kernel_channels(canais());
@@ -114,6 +115,7 @@ fn the_dialog_has_the_siblings_width_and_every_control_is_alive() {
     let mut hue = Ecra {
         hero: HeroScreen::new(ph2d_a11y::NodeId(1)),
         text: TextSystem::without_system_fonts(),
+        janela: None,
     };
     hue.hero
         .store
@@ -150,6 +152,58 @@ fn opening_the_kernel_dropdown_lists_every_kernel_alive_and_scrolls() {
         assert!(ids::pixel_edit_dialog_owns(id), "opção {i} fora do dono");
         let (x, y) = e.centro(id).expect("à vista");
         assert!(painel.contains(x, y), "opção {i} fora da lista");
+    }
+}
+
+/// Smoke do dono 02/11 (cena 19, 1930×984): a lista descia por cima da Timeline até à borda da
+/// janela e a última linha saía cortada. Na janela da cena e numa janela BAIXA a lista fica dentro
+/// dela com folga, mostra só linhas inteiras, e cada kernel alcança-se pela rolagem.
+#[test]
+fn the_kernel_list_fits_the_window_whole_rows_tall_and_short() {
+    use ph2d_editor_core::zones::Rect;
+    for janela in [
+        Rect::new(0.0, 0.0, 1930.0, 984.0),
+        Rect::new(0.0, 0.0, 1930.0, 560.0),
+        Rect::new(0.0, 0.0, 1280.0, 420.0),
+    ] {
+        let mut e = aberto();
+        e.janela = Some(janela);
+        e.pinta();
+        e.carrega(ids::PIXEL_FILTER_KERNEL);
+        assert!(e.hero.store.pixel_filter_kernel_list_open(), "{janela:?}");
+        let (_, painel) = e.hero.store.dropdown_popover().expect("a lista publicada");
+        let chip = e
+            .hero
+            .hit_index
+            .rect_for(ids::PIXEL_FILTER_KERNEL)
+            .expect("chip");
+        assert!(
+            painel.y > janela.y && painel.y + painel.h < janela.y + janela.h,
+            "{janela:?}: a lista encosta ou sai da janela: {painel:?}"
+        );
+        assert!(
+            painel.x >= janela.x && painel.x + painel.w <= janela.x + janela.w,
+            "{janela:?}: {painel:?}"
+        );
+        // Só linhas inteiras: o que sobra da altura depois das linhas é o mesmo recuo da lista
+        // inteira (a altura do conteúdo = N linhas + o recuo).
+        let fraccao = |h: f32| h - (h / chip.h).floor() * chip.h;
+        let conteudo = e
+            .hero
+            .store
+            .panel_content_h(ids::PIXEL_FILTER_KERNEL)
+            .expect("publicada");
+        assert!(conteudo > painel.h, "{janela:?}: a lista tem de rolar");
+        assert!(
+            (fraccao(painel.h) - fraccao(conteudo)).abs() < 0.5,
+            "{janela:?}: a última linha corta-se ({} px de sobra em {painel:?})",
+            fraccao(painel.h)
+        );
+        for i in 0..nomes().len() {
+            let id = rola_ate(&mut e, i);
+            let (x, y) = e.centro(id).expect("à vista");
+            assert!(painel.contains(x, y), "{janela:?}: opção {i} fora da lista");
+        }
     }
 }
 

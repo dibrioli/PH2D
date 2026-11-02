@@ -1,3 +1,4 @@
+mod cobertura;
 mod font_laws;
 mod freetype_oracle;
 mod minimo_legivel;

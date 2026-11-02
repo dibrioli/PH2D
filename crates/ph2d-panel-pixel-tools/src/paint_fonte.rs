@@ -11,9 +11,6 @@ use ph2d_editor_core::pixel_panel::font_preview::{self, PixelFontPreview};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow, paint_dropdown_chip};
 use ph2d_vector::Color;
 
-/// A altura do nome na linha, em fração da linha (o resto é folga para não tocar a vizinha).
-const GLYPH_ROW_RATIO: f32 = 0.7; // LITERAL-PX-OK: altura do nome ÷ altura da linha (métrica da lista)
-
 fn opcoes(info: &PixelPanelInfo) -> Vec<DropdownOption<usize>> {
     info.text_fonts
         .iter()
@@ -96,15 +93,42 @@ pub(crate) fn popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
             );
         }
     };
+    let largura = largura_pintada(ctx.text_system, &nomes, chip.h);
     let viewport = ctx.viewport;
-    ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, Some(&mut linha));
+    ph2d_editor_core::panel::paint_dropdown_list_measured(
+        ctx,
+        &dd,
+        chip,
+        viewport,
+        theme,
+        Some(&mut linha),
+        largura,
+    );
 }
 
-/// A máscara `p` na linha `r`: cada célula um quadrado inteiro de ecrã (a maior escala inteira que
-/// cabe em [`GLYPH_ROW_RATIO`] da linha), corridas da mesma cobertura num só retângulo.
+/// **A largura da linha mais larga COMO SE PINTA** (P8c), para a lei da largura da porta: a prévia
+/// na escala inteira dela ([`PixelFontPreview::scale_in`] na linha de `row_h`), ou o nome na fonte da
+/// interface quando a prévia está vazia (face sem as letras do nome) ou ainda não chegou. Medir só o
+/// rótulo na fonte da UI (a porta comum) dava a largura errada a cada linha desenhada noutra fonte.
+#[must_use]
+pub fn largura_pintada(text: &mut TextSystem, nomes: &[String], row_h: f32) -> f32 {
+    nomes.iter().fold(0.0_f32, |w, nome| {
+        let previa = font_preview::with_preview(nome, |p| {
+            #[expect(clippy::cast_precision_loss, reason = "largura de uma máscara de nome")]
+            p.filter(|p| p.w > 0 && p.h > 0)
+                .map(|p| p.w as f32 * p.scale_in(row_h))
+        });
+        w.max(previa.unwrap_or_else(|| {
+            ph2d_editor_core::paint::label_column_width(text, TypeToken::Base.px(), [nome.as_str()])
+        }))
+    })
+}
+
+/// A máscara `p` na linha `r`: cada célula um quadrado inteiro de ecrã na maior escala inteira que
+/// cabe na linha ([`PixelFontPreview::scale_in`]; a fração 0,7 de antes deixava o unscii-8 a 1×),
+/// corridas da mesma cobertura num só retângulo.
 fn celulas(scene: &mut VectorScene, p: &PixelFontPreview, r: Rect, cor: Color) {
-    #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
-    let s = ((r.h * GLYPH_ROW_RATIO) / p.h as f32).floor().max(1.0);
+    let s = p.scale_in(r.h);
     let pad = Spacing::Md.px();
     #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
     let y0 = r.y + ((r.h - p.h as f32 * s) * 0.5).floor();

@@ -14,6 +14,30 @@ pub struct PixelFontPreview {
     pub cover: Vec<u8>,
 }
 
+impl PixelFontPreview {
+    /// **A escala da prévia numa linha de `row_h` px** — a maior INTEIRA (célula = quadrado inteiro
+    /// de ecrã) com que a tinta cabe na linha (`≥ 1`). Medido (02/11, linha `ROW_H_PX` = 22; gate
+    /// `every_pixel_font_preview_fills_the_list_row_at_an_integer_scale`), altura da tinta do nome:
+    ///
+    /// | fonte | tinta | antes (0,7 da linha) | agora |
+    /// |---|---|---|---|
+    /// | cozette | 8 | 1× = 8 px | 2× = 16 px |
+    /// | tom-thumb | 5 | 3× = 15 px | 4× = 20 px |
+    /// | unscii-8 | 8 | 1× = 8 px | 2× = 16 px |
+    /// | unscii-16 | 16 | 1× = 16 px | 1× = 16 px |
+    ///
+    /// Todas ≥ 16 px: a linha de 22 basta, não precisa de crescer.
+    #[must_use]
+    pub fn scale_in(&self, row_h: f32) -> f32 {
+        if self.h == 0 {
+            return 1.0;
+        }
+        #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
+        let h = self.h as f32;
+        (row_h / h).floor().max(1.0)
+    }
+}
+
 thread_local! {
     static PREVIEWS: RefCell<BTreeMap<String, PixelFontPreview>> = const { RefCell::new(BTreeMap::new()) };
     static WANTED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };

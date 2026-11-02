@@ -247,10 +247,12 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         .filter(|_| store.pixel_filter_kernel_list_open())
     {
         let dd = kernel_dropdown(d.filter, true);
+        // A lista flutua sobre o canvas e a Timeline: fica dentro da janela com a moldura à vista.
+        let region = dd.region_in_whole_rows(chip, viewport, Spacing::Md.px());
         let p = crate::panel::paint_dropdown_popover_scrolled_with_hits(
             &dd,
             chip,
-            viewport,
+            region,
             store,
             c.scene,
             c.text_system,

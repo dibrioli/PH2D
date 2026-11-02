@@ -286,6 +286,15 @@ listas e etiquetas da mesma cena passam por argumento e a regua nao os ve' — e
 Traduzi-lo faria a cena (e as fotos que dela saem) mudar de documento conforme a lingua.",
     ),
     (
+        "ph2d-kanban-scenes",
+        "rich.rs",
+        "e' o DOCUMENTO da cena rica (TrelloClone D14): as opcoes \"Low\"/\"High\" do campo \
+personalizado `Priority` e o texto de um comentario de \"Rui\" sao CONTEUDO que o artista escreveu e \
+o `KanbanSet` grava — a lista suspensa e o fio de comentarios pintam o que o documento traz, nenhum \
+painel os publica como rotulo. Mesma familia do `ph2d-kanban-scenes/lib.rs` e do \
+`ph2d-kanban-views/fixture.rs`: traduzi-los faria a cena mudar de documento conforme a lingua.",
+    ),
+    (
         "ph2d-kanban-views",
         "fixture.rs",
         "e' o DOCUMENTO da cena 1 para os testes e as fotos das vistas: o `FieldOption.text` (\"High\") \

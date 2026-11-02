@@ -142,6 +142,8 @@ pub mod painter_stamp_device;
 pub mod skin_suspend;
 pub mod substrate_smoke;
 pub mod taper_smoke;
+#[cfg(feature = "panel-painter-layers")]
+pub mod wetpaint_fps;
 pub mod wetpaint_smoke;
 
 #[cfg(test)]

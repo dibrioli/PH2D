@@ -176,6 +176,14 @@ pub fn dispatch(
         // de uma assinatura que a própria ferramenta já dizia ser larga demais.
         |entity, renderer| read_source(entity, sim, renderer, asset_db, atlas_asset_map),
     );
+    #[cfg(feature = "panel-painter-layers")]
+    if painter_is_active
+        && let Some(p) = tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut())
+    {
+        crate::wetpaint_fps::conduz(p);
+    }
 
     // Audit T1.5 round 1 B-H2: NO ghost `panel_visibility` insert. Painter
     // has no docked panel in T1.5 (sidebar lands W2 via

@@ -39,8 +39,22 @@ use std::collections::BTreeMap;
 /// **O maior nível a que este roteador de facto responde** — CONTADO no [`nivel`], nunca escrito de memória
 /// (CLAUDE.md §5.0): qualquer valor abre a tela de 1024² do `1`; o `2` é a cena do RELEVO DOS FIOS (W3b,
 /// prompt 50): o Painter abre sozinho em Wet Paint com o Oil Bristle a 103 px e dois traços inclinados já
-/// pintados — o de HOJE (o relevo sem escada) em cima e o de ONTEM (sem relevo) em baixo.
-pub const NIVEIS: u32 = 2;
+/// pintados — o de HOJE (o relevo sem escada) em cima e o de ONTEM (sem relevo) em baixo; o `3` é a cena do FPS
+/// ([`crate::wetpaint_fps`]): o app pinta sozinho e cronometra cada quadro.
+pub const NIVEIS: u32 = 3;
+
+/// A cena do FPS (`=3`) — a ponte chama [`crate::wetpaint_fps::conduz`] a cada quadro.
+pub fn e_a_cena_do_fps() -> bool {
+    enabled() && nivel() == 3
+}
+
+/// O lado da tela da cena do FPS: `PH2D_FPS_TELA` (px), omissão 1024.
+pub fn lado_do_fps() -> u32 {
+    std::env::var("PH2D_FPS_TELA")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1024)
+}
 
 /// Whether the smoke is armed. Cheap enough to call per frame.
 pub fn enabled() -> bool {
@@ -51,6 +65,7 @@ pub fn enabled() -> bool {
 fn nivel() -> u32 {
     match std::env::var("PH2D_WETPAINT_SMOKE").as_deref() {
         Ok("2") => 2,
+        Ok("3") => 3,
         _ => 1,
     }
 }
@@ -58,7 +73,7 @@ fn nivel() -> u32 {
 /// Sentar a selecção na tela e focá-la; no nível `2` o Painter abre SOZINHO (o modo Paint da imagem, como a
 /// cena do Composite). Mora aqui, não na shell: a shell só chama (`the_shell_only_shrinks`).
 pub fn arm_hero(hero: &mut ph2d_editor_core::HeroScreen, bits: u64) {
-    if nivel() == 2 {
+    if nivel() >= 2 {
         crate::composite_smoke::arm_hero(hero, bits);
         return;
     }
@@ -87,7 +102,7 @@ pub fn spawn_if_enabled(
         renderer,
         asset_db,
         cell_idx,
-        1024,
+        if nivel() == 3 { lado_do_fps() } else { 1024 },
         2, // opaque white — a watercolor ground
         Vec2::new(0.0, 0.0),
         pixels_per_meter,
@@ -125,6 +140,14 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     painter.set_brush_color_srgb8([30, 90, 200]); // a wet ultramarine (synced to the wet slot)
     if nivel() == 2 {
         pinta_o_relevo(painter);
+        return;
+    }
+    if nivel() == 3 {
+        use ph2d_editor_core::Tool;
+        painter.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SelectOption(
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MEDIA,
+            ph2d_tool_painter::PaintMedia::WetPaint.to_u8().to_string(),
+        ));
         return;
     }
     println!(

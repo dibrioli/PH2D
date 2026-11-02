@@ -287,6 +287,7 @@ fn campos_do_traco(p: &VecPath, i: u16, out: &mut Vec<FieldKey>) {
     if s.brush().is_some() {
         out.extend((c::PINCEL_ESPACO..=c::PINCEL_ESPELHO).map(|campo| k(campo, i, 0)));
     }
+    out.push(k(c::TRACO_SOBRE_EFEITOS, i, 0));
 }
 
 /// ⭐ **Quanto vale o campo `kk` agora** — `None` se o caminho não o tem.
@@ -361,6 +362,7 @@ fn ler_interno(p: &VecPath, shape: Option<&VecShape>, kk: FieldKey) -> Option<f3
             })
         }
         c::PINCEL_ESPACO..=c::PINCEL_ESPELHO => ler_pincel(traco(p, i)?.brush()?, campo),
+        c::TRACO_SOBRE_EFEITOS => Some(f32::from(u8::from(traco(p, i)?.above_effects))),
         c::MISTURA => Some(f32::from(p.blend.to_u8())),
         c::PILHA_LIGADA..=c::PILHA_DILATA_JUNCAO => {
             let e = p.paints.get(usize::from(i).checked_sub(1)?)?;
@@ -524,6 +526,11 @@ pub fn escrever(p: &mut VecPath, shape: Option<&mut VecShape>, kk: FieldKey, v: 
         c::PINCEL_ESPACO..=c::PINCEL_ESPELHO => {
             if let Some(StrokePaint::Brush(b)) = traco_mut(p, i).map(|s| &mut s.paint) {
                 escrever_pincel(b, campo, v);
+            }
+        }
+        c::TRACO_SOBRE_EFEITOS => {
+            if let Some(s) = traco_mut(p, i) {
+                s.above_effects = liga;
             }
         }
         c::MISTURA => p.blend = BlendMode::from_u8(byte(v)),

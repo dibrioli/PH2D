@@ -132,6 +132,12 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     ] {
         button(store, id);
     }
+    // ⭐ F47: a caixa «Above Effects», com a dica que diz o que ela faz.
+    button(store, ids::VECTOR_STROKE_ABOVE_EFFECTS);
+    store.set_tooltip(
+        ids::VECTOR_STROKE_ABOVE_EFFECTS,
+        ph2d_i18n::tr("panel.vector.stroke.above_effects.help"),
+    );
     store.register_if_absent(
         crate::ids::VECTOR_PAINT_BLEND,
         InteractiveState::Dropdown {

@@ -235,6 +235,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.vetor.traco_ponta" => "Stroke Cap",
         "canal.vetor.traco_juncao" => "Stroke Join",
         "canal.vetor.traco_alinhamento" => "Stroke Align",
+        "canal.vetor.traco_sobre_efeitos" => "Stroke Above Effects",
         "canal.vetor.tracejado" => "Dash",
         "canal.vetor.marca_inicio" => "Start Marker",
         "canal.vetor.marca_fim" => "End Marker",

@@ -139,6 +139,13 @@ pub fn open_paint_layer(store: &mut WidgetStore, i: usize) {
     state::set_open_layer(Some(i));
 }
 
+/// Abre o «Stroke settings» do traço de BASE (a cena 49, F47): nenhuma camada aberta.
+pub fn open_stroke_settings(store: &mut WidgetStore) {
+    close_layers(store);
+    set_open(store, ids::VECTOR_STROKE_SETTINGS, true);
+    state::set_open_layer(None);
+}
+
 /// A camada aberta da pilha = a linha cujo `Dropdown` está aberto.
 fn sync_open_layer(store: &WidgetStore) {
     state::set_open_layer(open_layer_row(store));

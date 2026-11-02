@@ -127,6 +127,14 @@ pub fn publish(
     } else {
         None
     });
+    // ⭐ F47: a caixa «Above Effects» do ⚙ aberto (o traço de base ou o da camada).
+    ph2d_panel_vector::state::set_stroke_above_effects(
+        vector_active
+            .then(|| {
+                crate::paint_stack::shown_above_effects(scene, &crate::paint_stack::ordered(pen))
+            })
+            .flatten(),
+    );
     ph2d_panel_vector::set_current_vertex_count(if vector_active {
         pen.selected_verts().len()
     } else {

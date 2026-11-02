@@ -121,9 +121,10 @@ impl crate::App {
                 if let Some(d) = pending_paint_dilate {
                     crate::vec_paint_stack::set_dilate(vec_scene, &sel, i, d);
                 }
-                if let Some(j) = pending_paint_join {
-                    crate::vec_paint_stack::set_join_or_align(vec_scene, &sel, i, j);
-                }
+            }
+            if let Some(j) = pending_paint_join {
+                let open = ph2d_panel_vector::state::open_layer_index();
+                crate::vec_paint_stack::set_chip(vec_scene, &sel, open, j);
             }
         }
         if let Some((field, target)) = pending_vec_transform {

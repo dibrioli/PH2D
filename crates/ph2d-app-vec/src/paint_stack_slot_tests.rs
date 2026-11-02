@@ -1,7 +1,9 @@
 //! ⭐ F44b — o corpo de ajustes de Fill/Stroke edita a linha ABERTA (base ou camada `i`); a linha
 //! fixa (cor, Weight, Position) fica na base; uma base escondida é editada escondida.
 
-use super::{ALIGN_CODE, join_code_for_id, open_slot, put_slot_fill, set_join_or_align};
+use super::{
+    ABOVE_CODE, ALIGN_CODE, join_code_for_id, open_slot, put_slot_fill, set_chip, set_join_or_align,
+};
 use crate::vector_bridge::{StrokeStyle, restyle_slot_fields};
 use ph2d_panel_vector::state::set_open_layer;
 use ph2d_tool_vector::StyleFields as F;
@@ -336,4 +338,39 @@ fn the_canvas_gradient_gizmo_follows_the_open_layer_through_the_app_door() {
         panic!("a base continua um degradê");
     };
     assert_eq!(*start, [0.0, 0.0], "e a base ficou");
+}
+
+/// ⭐ F47 — a caixa «Above Effects» do ⚙: sem camada aberta liga o traço de BASE, com a camada de
+/// traço aberta liga o DELA, e numa camada de preenchimento não faz nada. Clicar de novo desliga.
+#[test]
+fn the_above_effects_box_toggles_the_open_stroke_only() {
+    use ph2d_panel_vector::ids as i;
+    assert_eq!(
+        join_code_for_id(i::VECTOR_STROKE_ABOVE_EFFECTS),
+        Some(ABOVE_CODE)
+    );
+    let (mut scene, id) = cena();
+    let base = |s: &VecScene| {
+        s.path(id)
+            .and_then(|p| p.stroke.as_ref())
+            .map(|t| t.above_effects)
+    };
+    assert!(set_chip(&mut scene, &[id], None, ABOVE_CODE));
+    assert_eq!(base(&scene), Some(true));
+    assert!(
+        !traco_da_camada(&scene, id, 0).above_effects,
+        "a base mexeu na camada"
+    );
+    assert!(set_chip(&mut scene, &[id], Some(0), ABOVE_CODE));
+    assert!(traco_da_camada(&scene, id, 0).above_effects);
+    assert!(
+        !set_chip(&mut scene, &[id], Some(1), ABOVE_CODE),
+        "num preenchimento é no-op"
+    );
+    assert!(set_chip(&mut scene, &[id], None, ABOVE_CODE));
+    assert_eq!(base(&scene), Some(false), "clicar de novo desliga");
+    assert!(
+        !set_chip(&mut scene, &[id], None, ALIGN_CODE),
+        "a Position de base não é deste canal"
+    );
 }

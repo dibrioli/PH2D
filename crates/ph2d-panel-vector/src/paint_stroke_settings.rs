@@ -86,6 +86,11 @@ impl BodyCtx<'_> {
                 y,
             )
         });
+        // ⭐ F47 (dono 02/11): o traço por cima dos Filtros da forma.
+        if let Some(on) = state::stroke_above_effects() {
+            let id = ids::VECTOR_STROKE_ABOVE_EFFECTS;
+            y = self.checkbox_row(id, tr("panel.vector.stroke.above_effects"), on, y);
+        }
         // Os tokens da espessura e da cor — só com traço: o token colore o traço que existe e
         // nunca inventa largura.
         if let Some(b) = state::token_bindings()

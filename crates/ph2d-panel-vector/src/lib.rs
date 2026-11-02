@@ -46,7 +46,7 @@ mod font_dropdown;
 mod fx_side;
 // F44: os painéis à esquerda de Fill e Stroke.
 mod paint_side;
-pub use paint_side::open_paint_layer;
+pub use paint_side::{open_paint_layer, open_stroke_settings};
 pub mod glifos_do_motor;
 /// **O PICKER de ícone** — a lista de glifos de um `IconButton`, cada linha desenhando o
 /// próprio. Irmão do `font_dropdown` pela mesma razão: um ícone escolhe-se olhando.

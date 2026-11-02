@@ -1,39 +1,6 @@
 //! ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** (Enio, 2026-08-30).
 //!
-//! ⚠️ **Ele viveu na `shells/desktop` e mudou-se para cá em 2026-09-20**, quando a catraca
-//! `the_shell_only_shrinks` cobrou a wave das âncoras do HUD. ⭐ A mudança é a lei da casa
-//! (ADR-0075: *código de família vive em `crates/ph2d-app-<família>`*) e não um arranjo: o ficheiro
-//! e os gates dele tocavam **só** `ph2d_vec_entities`, `ph2d_ecs` e `ph2d_editor_core` — nenhum
-//! símbolo da shell —, e o modelo de grupo que eles governam já vivia em
-//! [`ph2d_vec_entities::entities`]. O que fica lá é a FASE que resolve a linha em bits e chama
-//! estas portas.
-//!
-//! # O que faltava, e o que não faltava
-//!
-//! O modelo de grupo **já existia inteiro**: uma entidade sem geometria própria com filhos
-//! ([`ph2d_vec_entities::entities`]), com selecção que entra e sai do grupo inteira, gizmo de canvas,
-//! árvore recolhível na Hierarquia e persistência. Até o gesto existia — `Ctrl+G` / `Ctrl+Shift+G`.
-//!
-//! ⛔ **O que não existia era ALCANCE.** Nenhum menu, botão, rótulo ou entrada de paleta em todo o
-//! app dizia a palavra *Group*. É a lei deste repo aplicada à UI: *uma ferramenta que nenhum passo
-//! escrito chama pelo nome morre* — e esta estava morta para quem não adivinhasse o atalho.
-//!
-//! ⚠️ **E o atalho tinha três cercas que ninguém veria:** ele só responde com a ferramenta **Vector**
-//! em mãos, lê **apenas** a selecção de caminhos da caneta (uma sprite escolhida na Hierarquia era
-//! invisível para ele, embora o `group_entities` a aceite de bom grado), e falhava para o `stderr`.
-//! O verbo da Hierarquia entra por outra porta e não herda nenhuma das três.
-//!
-//! # A lei do SUJEITO — e ela **já estava decidida nesta casa**
-//!
-//! O menu é por LINHA, mas agrupar é sobre um CONJUNTO. O *Merge Sprites* enfrentou exactamente
-//! esta pergunta e a resposta dele fica: **se a linha clicada está na selecção, o sujeito é a
-//! selecção**; se está fora e há uma selecção múltipla, o verbo **não age — ORIENTA**
-//! (*"right-click on one of the selected objects"*), porque agir sobre a união traria para dentro
-//! do grupo um objecto que o artista não escolheu, e agir só sobre a linha faria *Group* falhar
-//! por ter um sujeito só.
-//!
-//! ⛔ Inventar aqui uma terceira lei para a mesma pergunta seria a divergência que este repo paga
-//! sempre: *duas respostas à mesma pergunta, e a que o artista encontra é a que envelhece.*
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `hier_group.rs`.
 
 use ph2d_editor_core::Toast;
 use ph2d_i18n::{tr, tr_with};

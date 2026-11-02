@@ -253,5 +253,16 @@ fn a_cena_48_comeca_no_fill_and_stroke() {
         handles_first(c.handles),
         Some(crate::vector_mode_fill_stroke::FIRST)
     );
-    assert_eq!(of(Some("49")).want, 9, "a 49 ainda não existe");
+}
+
+/// F47 — a 49 (o traço por cima dos Filtros) é a 5.ª da família do Fill & Stroke.
+#[test]
+fn a_cena_49_comeca_no_fill_and_stroke() {
+    let c = of(Some("49"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 35));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_fill_stroke::FIRST)
+    );
+    assert_eq!(of(Some("50")).want, 9, "a 50 ainda não existe");
 }

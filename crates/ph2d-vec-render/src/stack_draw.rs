@@ -26,7 +26,7 @@
 //! padrão ou pincel desenha a **cor de recurso** dele, que é a mesma resposta honesta que o chão dá
 //! enquanto o ladrilho não resolve.
 
-use ph2d_vec_scene::{Paint, PaintKind, VecPath};
+use ph2d_vec_scene::{Paint, PaintKind, StackItem, VecPath};
 use ph2d_vector::{Affine, Shape, VectorScene};
 
 use crate::{PathTess, blend, fill_brush, fill_rule, path_bounds_under, stroke_draw};
@@ -79,6 +79,36 @@ pub(crate) fn draw_base_fill(
                 None,
                 fp,
             );
+        }
+    }
+}
+
+/// ⭐ **Os traços POR CIMA dos Filtros** (F47, dono 02/11) — redesenha, vectoriais e na ordem da pilha,
+/// só os traços com [`ph2d_vec_scene::StrokeSpec::above_effects`]; o `dispatch` chama-o logo depois de
+/// pôr a imagem de FX da forma. A imagem continua a levá-los (a sombra nasce da forma inteira), então o
+/// traço nítido cobre exactamente o filtrado. No-op (sem tesselar) se nenhum traço o pede.
+pub(crate) fn draw_above_effects(
+    path: &VecPath,
+    transform: Affine,
+    target: &mut VectorScene,
+    derived: crate::Derived<'_>,
+) {
+    if !path.has_stroke_above_effects() {
+        return;
+    }
+    let tess = crate::path_tess(path);
+    for it in path.draw_order().filter(|it| path.is_above_effects(*it)) {
+        match it {
+            StackItem::BaseStroke => stroke_draw::draw_stroke_with(
+                path,
+                &tess,
+                transform,
+                target,
+                derived.stroke_tile,
+                derived.brush_art,
+            ),
+            StackItem::Entry(i) => draw_entry(path, i, &tess, transform, target, derived.dilated),
+            StackItem::BaseFill => {}
         }
     }
 }

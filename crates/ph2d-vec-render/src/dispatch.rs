@@ -164,56 +164,12 @@ fn draw_one(
     let skin = skins.get(&path.id);
     if let Some(img) = fx.get(&path.id) {
         draw_fx_image(img, target);
+        // ⭐ F47: o traço marcado «Above Effects» volta POR CIMA da imagem filtrada, vectorial.
+        let paints = (patterns, brushes, dilated);
+        draw_vector(path, xforms, live, paints, bound, camera, target, true);
     } else if skin.is_none_or(|s| s.over_drawing) {
-        // ⭐ F18: uma forma vestida (`over_drawing`) desenha-se AQUI como qualquer outra — o
-        // desenho é o CORPO do widget — e a pele entra por cima, logo abaixo.
-        // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
-        // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
-        // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
-        // na borda do primeiro efeito.)
-        // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
-        // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
-        // desta linha.
-        // ⚠️ **O ladrilho é procurado pelo id da FONTE, tal como a tinta dos tokens
-        // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
-        // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
-        // pararia na borda do primeiro efeito.
-        let tile = patterns.get(&(path.id, PatternSlot::Fill));
-        let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
-        // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
-        let art = brushes.get(&path.id).map(Vec::as_slice);
-        if let Some(items) = live.get(&path.id) {
-            for item in items {
-                // ⛔ `None`: uma cópia DERIVADA tem id próprio, e a geometria
-                // dilatada é indexada pelo id da FONTE — a mesma lei do ladrilho e da
-                // arte de pincel logo acima. O censo `the_artless_draw_routes_are_
-                // declared` conta esta rota.
-                draw_path_tiled(
-                    &item.painted(bound),
-                    camera,
-                    target,
-                    Derived {
-                        tile,
-                        stroke_tile,
-                        brush_art: art,
-                        dilated: None,
-                    },
-                );
-            }
-        } else {
-            let transform = path_to_screen(xforms, path.id, camera);
-            draw_path_tiled(
-                &path.painted(bound),
-                transform,
-                target,
-                Derived {
-                    tile,
-                    stroke_tile,
-                    brush_art: art,
-                    dilated: Some(dilated),
-                },
-            );
-        }
+        let paints = (patterns, brushes, dilated);
+        draw_vector(path, xforms, live, paints, bound, camera, target, false);
     }
     // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para achar o
     // retângulo da forma), então entra SEM transform — o contrato da `FxImage` ao lado. O FX,
@@ -234,6 +190,78 @@ fn draw_one(
     }
     if layered {
         target.pop_layer();
+    }
+}
+
+/// **O desenho VECTORIAL de uma forma** — a geometria viva ou a autorada, com ladrilho, pincel e
+/// dilatadas pelo id da FONTE. `above_only` (F47) desenha só os traços «Above Effects», por cima da
+/// imagem de FX que tomou o lugar do resto.
+#[allow(clippy::too_many_arguments)]
+fn draw_vector(
+    path: &VecPath,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    (patterns, brushes, dilated): (&PatternTiles, &BrushArts, &DilatedPaints),
+    bound: Option<&ph2d_vec_scene::BoundStyle>,
+    camera: Affine,
+    target: &mut VectorScene,
+    above_only: bool,
+) {
+    let draw = |p: &VecPath, xf: Affine, target: &mut VectorScene, d: Derived<'_>| {
+        if above_only {
+            crate::stack_draw::draw_above_effects(p, xf, target, d);
+        } else {
+            draw_path_tiled(p, xf, target, d);
+        }
+    };
+    // ⭐ F18: uma forma vestida (`over_drawing`) desenha-se AQUI como qualquer outra — o
+    // desenho é o CORPO do widget — e a pele entra por cima, logo abaixo.
+    // (A TINTA que os tokens dão a esta forma foi perguntada UMA vez, acima — e ela
+    // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
+    // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
+    // na borda do primeiro efeito.)
+    // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
+    // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
+    // desta linha.
+    // ⚠️ **O ladrilho é procurado pelo id da FONTE, tal como a tinta dos tokens
+    // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
+    // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
+    // pararia na borda do primeiro efeito.
+    let tile = patterns.get(&(path.id, PatternSlot::Fill));
+    let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
+    // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
+    let art = brushes.get(&path.id).map(Vec::as_slice);
+    if let Some(items) = live.get(&path.id) {
+        for item in items {
+            // ⛔ `None`: uma cópia DERIVADA tem id próprio, e a geometria
+            // dilatada é indexada pelo id da FONTE — a mesma lei do ladrilho e da
+            // arte de pincel logo acima. O censo `the_artless_draw_routes_are_
+            // declared` conta esta rota.
+            draw(
+                &item.painted(bound),
+                camera,
+                target,
+                Derived {
+                    tile,
+                    stroke_tile,
+                    brush_art: art,
+                    dilated: None,
+                },
+            );
+        }
+    } else {
+        let transform = path_to_screen(xforms, path.id, camera);
+        draw(
+            &path.painted(bound),
+            transform,
+            target,
+            Derived {
+                tile,
+                stroke_tile,
+                brush_art: art,
+                dilated: Some(dilated),
+            },
+        );
     }
 }
 

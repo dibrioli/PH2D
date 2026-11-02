@@ -356,6 +356,22 @@ impl VecPath {
             .fold(0.0_f64, f64::max)
     }
 
+    /// ⭐ **Esta linha da pilha é um traço que desenha POR CIMA dos Filtros?** (F47,
+    /// [`crate::StrokeSpec::above_effects`]) — só um traço que de facto pinta.
+    #[must_use]
+    pub fn is_above_effects(&self, it: StackItem) -> bool {
+        self.drawn(it).is_some_and(|d| match d.paint {
+            PaintRef::Stroke(s) => s.above_effects,
+            PaintRef::Fill(_) => false,
+        })
+    }
+
+    /// Algum traço desta forma desenha por cima dos Filtros?
+    #[must_use]
+    pub fn has_stroke_above_effects(&self) -> bool {
+        self.draw_order().any(|it| self.is_above_effects(it))
+    }
+
     /// Há mais alguma coisa na pilha para lá do chão?
     #[must_use]
     pub fn has_extra_paints(&self) -> bool {

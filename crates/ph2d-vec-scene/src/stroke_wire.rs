@@ -76,6 +76,11 @@ pub(crate) fn reading_path_v26() -> bool {
     reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V26)
 }
 
+/// O traço sem o «por cima dos Filtros» (`<= 27`).
+fn reading_stroke_v27() -> bool {
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V27)
+}
+
 /// A forma v22, campo a campo — ⛔ congelada: mudá-la deixa de ler ficheiros reais.
 #[derive(Deserialize)]
 struct StrokeSpecV22 {
@@ -91,8 +96,7 @@ struct StrokeSpecV22 {
     align: StrokeAlign,
 }
 
-/// O espelho da forma VIVA — a mesma ordem do `Serialize` derivado do [`StrokeSpec`] (o gate
-/// `the_live_layout_round_trips` reprova uma divergência).
+/// A forma v23..v27 — ⛔ congelada.
 #[derive(Deserialize)]
 struct StrokeSpecV23 {
     paint: StrokePaint,
@@ -106,6 +110,24 @@ struct StrokeSpecV23 {
     marker_scale_end: f64,
     marker_round: f64,
     align: StrokeAlign,
+}
+
+/// O espelho da forma VIVA — a mesma ordem do `Serialize` derivado do [`StrokeSpec`] (o gate
+/// `the_live_layout_round_trips` reprova uma divergência).
+#[derive(Deserialize)]
+struct StrokeSpecV28 {
+    paint: StrokePaint,
+    width: f64,
+    cap: LineCap,
+    join: LineJoin,
+    dash: Option<DashPattern>,
+    marker_start: Marker,
+    marker_end: Marker,
+    marker_scale_start: f64,
+    marker_scale_end: f64,
+    marker_round: f64,
+    align: StrokeAlign,
+    above_effects: bool,
 }
 
 impl From<StrokeSpecV22> for StrokeSpec {
@@ -122,6 +144,7 @@ impl From<StrokeSpecV22> for StrokeSpec {
             marker_scale_end: o.marker_scale,
             marker_round: o.marker_round,
             align: o.align,
+            above_effects: false,
         }
     }
 }
@@ -140,6 +163,26 @@ impl From<StrokeSpecV23> for StrokeSpec {
             marker_scale_end: o.marker_scale_end,
             marker_round: o.marker_round,
             align: o.align,
+            above_effects: false,
+        }
+    }
+}
+
+impl From<StrokeSpecV28> for StrokeSpec {
+    fn from(o: StrokeSpecV28) -> Self {
+        Self {
+            paint: o.paint,
+            width: o.width,
+            cap: o.cap,
+            join: o.join,
+            dash: o.dash,
+            marker_start: o.marker_start,
+            marker_end: o.marker_end,
+            marker_scale_start: o.marker_scale_start,
+            marker_scale_end: o.marker_scale_end,
+            marker_round: o.marker_round,
+            align: o.align,
+            above_effects: o.above_effects,
         }
     }
 }
@@ -148,8 +191,10 @@ impl<'de> Deserialize<'de> for StrokeSpec {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         if reading_v22() {
             StrokeSpecV22::deserialize(d).map(Into::into)
-        } else {
+        } else if reading_stroke_v27() {
             StrokeSpecV23::deserialize(d).map(Into::into)
+        } else {
+            StrokeSpecV28::deserialize(d).map(Into::into)
         }
     }
 }

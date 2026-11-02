@@ -349,7 +349,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // (`VecScene` `25 → 26`); os `<= 211` leem-se pela forma do fio deles.
         // ⚠️ **`213` em 2026-11-01** (`line/UIUX`, F45) — a tinta de base tem lugar na pilha
         // (`VecScene` `26 → 27`); os `<= 212` abrem com a base no lugar de antes.
-        (213, 13, 27),
+        // ⚠️ **`214` em 2026-11-02** (`line/UIUX`, F47) — o traço por cima dos Filtros
+        // (`VecScene` `27 → 28`); os `<= 213` abrem com todo traço sob os filtros, como antes.
+        (214, 13, 28),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

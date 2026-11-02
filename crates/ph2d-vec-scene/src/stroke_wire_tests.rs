@@ -15,6 +15,7 @@ fn cheio() -> StrokeSpec {
     s.marker_scale_end = 2.25;
     s.marker_round = 0.3;
     s.align = StrokeAlign::Outer;
+    s.above_effects = true;
     s
 }
 

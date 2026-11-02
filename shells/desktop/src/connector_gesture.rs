@@ -158,6 +158,7 @@ impl App {
             marker_scale_start: style.marker_scale_start,
             marker_scale_end: style.marker_scale_end,
             marker_round: style.marker_round,
+            above_effects: false,
         });
         let id = gfx.vec_scene.push_path(path);
         self.vec.connect = Some(ConnectorDrag {

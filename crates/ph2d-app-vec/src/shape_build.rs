@@ -1,43 +1,6 @@
 //! **Shape Builder** — o cursor pinta REGIÕES, e o que ele pinta vira forma.
 //!
-//! Com 2+ formas fechadas selecionadas, o plano fica dividido nas faces do arranjo
-//! ([`ph2d_vec_boolean::Arrangement`]): "dentro da A e fora da B", "dentro das duas", e
-//! assim por diante. O Shape Builder deixa o dedo passar por cima dessas faces:
-//!
-//! - **Arrastar** (ou clicar): as faces tocadas viram **UMA** forma.
-//! - **Alt + arrastar**: as faces tocadas **somem**.
-//!
-//! É a diferença entre pedir uma operação e **desenhar o resultado**. Um Pathfinder obriga
-//! o artista a traduzir o que ele quer ("a lua crescente") numa sequência de ops ("subtrai
-//! o círculo B do A"); aqui ele passa o dedo na parte que quer e pronto.
-//!
-//! ## A sobra é POR FORMA — e é isto que o smoke do Enio derrubou
-//!
-//! A 1ª versão devolvia a sobra como `união(todas as fontes) − o que foi levado`: **uma**
-//! forma só. O efeito no app real (medido, pela `build_smoke` da shell): um clique numa região
-//! fundia o pentágono, a estrela e o retângulo num BLOB único, com um estilo só — as
-//! silhuetas que o artista tinha acabado de desenhar simplesmente sumiam, e as fronteiras
-//! entre elas (que são justamente o que define as faces seguintes) deixavam de existir.
-//! Um clique destruía a arte.
-//!
-//! Agora cada forma de origem sobrevive como **ela mesma menos o que foi levado**, com o
-//! ESTILO dela e no z dela; a forma que ninguém tocou **não é sequer tocada** (mantém id,
-//! entidade, `Transform`, raio de quina e os params de Live Shape — uma booleana que passa
-//! por perto não pode assar uma forma paramétrica que o artista não escolheu). É o que o
-//! Illustrator faz: o Shape Builder divide o que você percorre e deixa o resto em paz.
-//!
-//! ## A regra do estilo (uma só, e é a que a booleana já usava)
-//!
-//! A forma NOVA (as faces pintadas) herda o estilo da forma do **TOPO entre as tocadas** — a
-//! convenção do `apply_many` e do Illustrator. Sem essa regra, a face herdaria o estilo do
-//! último argumento de uma SUBTRAÇÃO, que é justamente uma forma que ela **não** contém.
-//!
-//! ⚠️ **Mudou-se da shell em 2026-09-12** (`line/render-loop`, A9 da auditoria de arquitectura): a
-//! `App` guardava a sessão num campo solto (`vec_build`) cujo TIPO morava aqui, na shell, e um
-//! campo assim não pode juntar-se ao [`crate::state::VecState`]. O tipo tem `impl` (a lei do
-//! gesto), então desceu o ficheiro inteiro — com os testes — e a shell ficou com o `impl App` que o
-//! conduz
-//! (`shape_build_gesture.rs`).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `shape_build.rs`.
 
 use ph2d_vec_boolean::{Arrangement, BoolOp, FaceId, MAX_BUILD_SHAPES, Membership, apply_many};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};

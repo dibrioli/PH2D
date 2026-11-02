@@ -1,39 +1,7 @@
 //! ⭐⭐⭐ **DE QUEM É CADA FACE** (plano 40 §11) — resolvido pelas **ÂNCORAS**, sem memória nenhuma
 //! do quadro anterior.
 //!
-//! Módulo irmão do [`crate::vec_bucket`], e o corte é por RESPONSABILIDADE: aquele responde
-//! *"quando se recoze"*, este responde *"quem herda o quê"*.
-//!
-//! # ⛔⛔ O modelo anterior, e porque ele foi SUBSTITUÍDO
-//!
-//! Report do Enio, quatro vezes seguidas (2026-09-01 e 02): a tinta partia-se ao atravessar uma
-//! linha, sumia, deixava resíduo, trocava de área. Cada defeito teve a sua cura, e o report voltava.
-//!
-//! ⚠️⚠️ **A causa não era nenhum deles: era o modelo.** A receita de um preenchimento era *a região
-//! que ele pintou no quadro anterior*, e o dono de cada face saía de comparar as faces de hoje com
-//! as regiões de ontem — uma votação por amostragem de área. Isso **deriva**: o que um quadro
-//! decide vira a régua do seguinte, e um único quadro de topologia confusa reatribui a tinta **para
-//! sempre**, porque nada puxa de volta. Medido nos SVG que ele exportou: a partir do estado
-//! `drawing01`, o corpo do círculo direito vota **azul** — o app tinha-o **verde**, ganho num quadro
-//! intermédio e nunca devolvido.
-//!
-//! # A lei nova
-//!
-//! > **Uma região é o lado de um conjunto de pedaços de linha** — e não uma coordenada, nem uma
-//! > área, nem o que estava lá antes.
-//!
-//! No clique, o balde grava as **âncoras** da face: para cada arco que a cerca, *de que contorno de
-//! que caminho ele é um pedaço*, *em que fracção*, e *de que lado*. Arrastar um nó move a curva
-//! **sem mudar de que curva o pedaço é** ⇒ a face segue.
-//!
-//! ⭐⭐⭐ **É STATELESS.** Cada quadro resolve-se do documento sozinho: *o mesmo desenho dá sempre as
-//! mesmas cores, seja qual for o caminho por que se lá chegou.* É a propriedade que os quatro
-//! reports pediam, e a única que nenhuma heurística sobre o quadro anterior podia dar.
-//!
-//! ⭐ **E o resto cai de graça:** uma região que se PARTE deixa umas âncoras a cercar uma metade e
-//! outras a outra — o preenchimento fica com as duas, sem uma linha de código sobre partir. Uma
-//! FUSÃO põe as âncoras de dois na mesma face — ganha quem tem mais lá. Uma área NOVA não tem
-//! âncora nenhuma — fica por pintar, que é o que o artista espera de uma região que nunca visitou.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `bucket_claim.rs`.
 
 use ph2d_ecs::FillAnchor;
 use ph2d_vec_fill::{Face, Rede};

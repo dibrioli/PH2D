@@ -588,6 +588,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.stroke.centre" => "Center",
         "panel.vector.stroke.inner" => "Inside",
         "panel.vector.stroke.outer" => "Outside",
+        // F47: o traço por cima dos Filtros da forma.
+        "panel.vector.stroke.above_effects" => "Above Effects",
+        "panel.vector.stroke.above_effects.help" => {
+            "Draw this stroke on top, untouched by the shape's effects."
+        }
         "panel.vector.stroke.weight" => "Weight",
         "panel.vector.stroke.settings" => "Stroke settings",
         "panel.vector.stroke.add" => "Add stroke",

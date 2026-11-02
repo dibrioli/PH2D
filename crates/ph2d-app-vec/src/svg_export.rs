@@ -1,44 +1,6 @@
 //! ⭐⭐⭐ **EXPORTAR O DESENHO VECTORIAL COMO SVG** (plano 40).
 //!
-//! Pedido do Enio (2026-09-02): *"precisamos de um meio de exportar o path para que vc possa
-//! analisar melhor. Veja se já há exportação no app"*. Não havia: o app exportava **imagem** (16
-//! formatos), **folha de sprites**, **peças 3D** e os **tokens DTCG** — nada que levasse uma curva.
-//!
-//! # A lei
-//!
-//! > **O que sai é o que se VÊ: a geometria COZIDA, no MUNDO.**
-//!
-//! ⚠️ **Cozida** — a pilha de Live Path Effects e o raio de quina já correram, e é por isso que um
-//! ficheiro exportado de uma forma com efeitos abre igual ao que está no ecrã. ⚠️ **No mundo** — a
-//! pose de cada objecto está assada na geometria, então não há um `transform` por elemento a
-//! discordar do que a régua do editor mede.
-//!
-//! ⚠️⚠️ **O `d` sai da MESMA porta que o renderer usa** ([`ph2d_vec_render::build_contours`]) — uma
-//! segunda travessia dos contornos daria um ficheiro que discorda do ecrã em curvas que nenhum
-//! olho apanha, e essa é a classe de defeito que este módulo existe para NÃO ter.
-//!
-//! # ⛔⛔ O EIXO Y, e o defeito que esta linha corrigiu em 2026-09-05
-//!
-//! Até hoje o cabeçalho deste ficheiro dizia *"em coordenadas de MUNDO (Y para baixo, como o
-//! SVG)"* — e as duas metades da frase **contradizem-se**. O mundo do PH2D mede o Y para **CIMA**
-//! (`ph2d_render::Camera2d::world_to_screen_affine` é `scale(k, **−k**)`), o SVG mede-o para
-//! baixo, e escrever as coordenadas cruas fazia **todo ficheiro exportado sair verticalmente
-//! espelhado**.
-//!
-//! ⚠️ **Ninguém o viu porque o consumidor era uma LLM a ler números** (o pedido do Enio de 02/09 foi
-//! *"precisamos de um meio de exportar o path para que vc possa analisar melhor"*), e **nenhum
-//! gate media orientação** — os seis que existiam mediam tinta, pose, marca e a nota do cabeçalho.
-//!
-//! ⇒ A conversão passa pela porta ÚNICA ([`ph2d_vec_svg::world_to_svg`]), que é a inversa exacta da
-//! que o IMPORTADOR usa. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
-//!
-//! # ⛔ O que ele NÃO carrega, e diz
-//!
-//! Um exportador que ignora em silêncio é pior do que um que recusa (a lei do importador `.ase`).
-//! Um padrão, um pincel de contorno e um gradiente multi-ponto **não têm equivalente em SVG 1.1**:
-//! saem com a **mesma cor sólida que o renderer usa quando o ladrilho não resolve**
-//! (`Paint::primary_color` / `PatternFill::fallback`), e o cabeçalho do ficheiro **nomeia** cada
-//! forma em que isso aconteceu.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `svg_export.rs`.
 
 use ph2d_vec_scene::{Paint, StrokePaint, VecPath, VecScene, VecXforms};
 use std::fmt::Write as _;

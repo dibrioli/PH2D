@@ -458,3 +458,49 @@ fn o_existe_da_base_e_o_olho() {
     escrever(&mut p, None, existe, 1.0);
     assert_eq!(p.fill, antes);
 }
+
+/// ⭐ F47 — **o «Above Effects» é canal**, na base (`i` 0) e numa camada Stroke (pelo id dela): o
+/// Auto Key grava-o e a curva escreve-o de volta. Mutação que sangra: o leitor fixo em `0`.
+#[test]
+fn o_traco_por_cima_dos_filtros_e_canal_na_base_e_na_camada() {
+    let mut p = forma();
+    p.paints.push(PaintEntry {
+        id: ItemId(31),
+        ..PaintEntry::stroke(StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 2.0))
+    });
+    let base = k(c::TRACO_SOBRE_EFEITOS, 0, 0);
+    let camada = FieldKey::do_item(VETOR, c::TRACO_SOBRE_EFEITOS, ItemId(31), 0);
+    let cs = campos(&p, None);
+    assert!(
+        cs.contains(&base) && cs.contains(&camada),
+        "os dois publicados"
+    );
+    assert!(
+        !cs.contains(&FieldKey::do_item(
+            VETOR,
+            c::TRACO_SOBRE_EFEITOS,
+            ItemId(11),
+            0
+        )),
+        "a camada de preenchimento não tem «Above Effects»"
+    );
+    assert_eq!(
+        (ler(&p, None, base), ler(&p, None, camada)),
+        (Some(0.0), Some(0.0))
+    );
+    escrever(&mut p, None, camada, 1.0);
+    assert_eq!(
+        (ler(&p, None, base), ler(&p, None, camada)),
+        (Some(0.0), Some(1.0))
+    );
+    let PaintKind::Stroke(s) = &p.paints[1].kind else {
+        panic!("a camada é um traço")
+    };
+    assert!(s.above_effects && !p.stroke.as_ref().unwrap().above_effects);
+    escrever(&mut p, None, base, 1.0);
+    assert!(p.stroke.as_ref().unwrap().above_effects);
+    assert_eq!(
+        c::info(c::TRACO_SOBRE_EFEITOS).map(|i| i.rotulo),
+        Some("canal.vetor.traco_sobre_efeitos")
+    );
+}

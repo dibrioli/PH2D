@@ -495,3 +495,23 @@ fn with_a_layer_open_a_body_field_keys_on_that_layers_channel() {
         "sem camada aberta o corpo é o da base"
     );
 }
+
+/// ⭐ F47 — a caixa «Above Effects» acende o losango do traço que o ⚙ mostra: o da base sem camada
+/// aberta, o da camada aberta com ela.
+#[test]
+fn the_above_effects_box_keys_the_open_strokes_channel() {
+    let id = painel::VECTOR_STROKE_ABOVE_EFFECTS;
+    assert_eq!(
+        canal_posicional(id, SEM),
+        vec![campo(v::TRACO_SOBRE_EFEITOS)]
+    );
+    let aberta = Contexto {
+        aberta: Some(0),
+        camadas: 2,
+        ..SEM
+    };
+    assert_eq!(
+        canal_posicional(id, aberta),
+        vec![super::em(v::TRACO_SOBRE_EFEITOS, 1)]
+    );
+}

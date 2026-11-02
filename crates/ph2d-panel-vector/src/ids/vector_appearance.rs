@@ -100,6 +100,9 @@ pub const VECTOR_PAINT_ALIGN_CENTRE: NodeId = hash_node_id("vector.paint.align.c
 /// `Outside`.
 pub const VECTOR_PAINT_ALIGN_OUTER: NodeId = hash_node_id("vector.paint.align.outer");
 
+/// ⭐ F47 — a caixa «Above Effects» do ⚙ do traço (o de base, ou o da camada aberta).
+pub const VECTOR_STROKE_ABOVE_EFFECTS: NodeId = hash_node_id("vector.stroke.above_effects");
+
 /// O chip numérico do slider acima.
 pub const VECTOR_PAINT_OPACITY_NUM: NodeId = hash_node_id("vector.paint.opacity.num");
 

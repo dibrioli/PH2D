@@ -190,6 +190,7 @@ pub(crate) fn traco(s: &usvg::Stroke) -> (StrokeSpec, Lost) {
             marker_scale_end: 1.0,
             marker_round: 0.0,
             align: StrokeAlign::Centre,
+            above_effects: false,
         },
         perdeu.or(perdeu_dash),
     )

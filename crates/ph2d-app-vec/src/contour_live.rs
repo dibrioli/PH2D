@@ -1,42 +1,6 @@
 //! **O Contour VIVO na shell** — o cozimento do [`ph2d_ecs::VecContour`] (pesquisa `20_*` item #9).
 //!
-//! Generalização direta do [`crate::offset_live`]: onde ele produz UM caminho offsetado, este
-//! produz **N anéis concêntricos com uma rampa de cor**. A forma fonte nunca é tocada — é ela que
-//! o modo Node edita —, e os anéis são desenho derivado, re-cozidos aqui e desenhados por
-//! [`ph2d_vec_render::dispatch`] no z dela.
-//!
-//! # A ordem de desenho é UMA regra: por PROFUNDIDADE (distância assinada decrescente)
-//!
-//! Cada anel nasce a uma **distância assinada** da fonte: `> 0` é para FORA (maior, atrás dela);
-//! `< 0` é para DENTRO (menor, à frente dela, senão ela o tapa). A fonte está no `0`. Ordenar tudo
-//! por distância DECRESCENTE — o mais para fora primeiro (fundo), a fonte no meio, o mais para
-//! dentro por último (frente) — é UMA regra que serve os três Sides (Outer/Inner/Both) e os dois
-//! sinais do slider sem um `if` por caso.
-//!
-//! # O `side` do Contour é DIREÇÃO, não seleção de furos
-//!
-//! ⚠️ O `OffsetSide` do módulo Expand escolhe QUE contorno anda (a borda de fora × os furos), e
-//! isso é o certo para o *Offset Path*. Mas um Contour age sobre a **silhueta**, e a estrela do
-//! smoke não tem furos — então "Inner = só furos" não movia um pixel (o report do Enio). Aqui o
-//! `side` vira a **direção** do modelo do Corel: **Outer** = para fora (respeita o sinal do
-//! slider); **Inner** = o ESPELHO (a direção oposta); **Both** = os dois lados. O offset é sempre
-//! chamado com `OffsetSide::Outer` (a silhueta) e a direção sai do SINAL da distância, então o
-//! offset direto (`offset_ring`) cobre TODOS os Sides — o FPS e o pisca-pisca não voltam por Inner
-//! nem por Both. Um compound (com furos) cai no `offset_path` da silhueta, ignorando os furos:
-//! um contour segue a borda de fora, que é o que o artista espera.
-//!
-//! # O memo é POR ANEL, e é o que torna o slider de passos barato
-//!
-//! O anel `k` está em `d · k^accel` — uma função só de `k` e dos parâmetros, **nunca da contagem**
-//! (vide o § do `d` no [`ph2d_ecs::VecContour`]). Então acrescentar um passo não invalida os
-//! anteriores: o memo guarda o `Vec` de anéis já cozidos e só coze o que falta. Medido
-//! (`probe_contour_cost`): um anel custa 0,4–1,4 ms conforme forma e quina, então re-cozer 16 por
-//! frame arrastando os passos seria 5–11 ms — o gesto mais comum do efeito, e o mais caro, se o
-//! memo não existisse.
-//!
-//! Quem **invalida** o memo inteiro é o que move todos os anéis de uma vez: a geometria de mundo,
-//! o `d`, a quina, o lado e a aceleração. É a mesma chave do `offset_live` — o que ENTROU —, não
-//! um contador de versão que alguém esqueceria de bumpar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `contour_live.rs`.
 
 use std::collections::BTreeMap;
 

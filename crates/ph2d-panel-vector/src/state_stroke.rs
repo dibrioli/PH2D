@@ -25,6 +25,22 @@ pub fn set_stroke_present(v: Option<bool>) {
     STROKE_PRESENT.with(|c| c.set(v));
 }
 
+thread_local! {
+    /// F47: o «Above Effects» do traço que o ⚙ mostra; `None` = a linha aberta não é um traço.
+    static ABOVE_EFFECTS: Cell<Option<bool>> = const { Cell::new(None) };
+}
+
+/// Publica o «Above Effects» do traço aberto (shell → painel).
+pub fn set_stroke_above_effects(v: Option<bool>) {
+    ABOVE_EFFECTS.with(|c| c.set(v));
+}
+
+/// O traço aberto desenha-se por cima dos Filtros? `None` = a caixa não é pintada.
+#[must_use]
+pub(crate) fn stroke_above_effects() -> Option<bool> {
+    ABOVE_EFFECTS.with(Cell::get)
+}
+
 /// A forma selecionada tem traço? `None` = a linha não é pintada.
 #[must_use]
 pub(crate) fn stroke_present() -> Option<bool> {

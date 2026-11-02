@@ -90,6 +90,8 @@ pub const PINCEL_DESLOCA: u16 = 113;
 pub const PINCEL_ROTACAO: u16 = 114;
 pub const PINCEL_ESCALA: u16 = 115;
 pub const PINCEL_ESPELHO: u16 = 116;
+/// O traço desenha-se POR CIMA dos Filtros da forma (F47, `StrokeSpec::above_effects`) — 0 ou 1.
+pub const TRACO_SOBRE_EFEITOS: u16 = 117;
 
 /// A mistura da forma (`BlendMode`). A opacidade é o `PropKind::Opacity` de sempre.
 pub const MISTURA: u16 = 140;
@@ -307,6 +309,12 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         TRACO_MARCA_REDONDA => c("canal.vetor.marca_redonda", campo, true),
         PINCEL_ESPACO..PINCEL_ESPELHO => c("canal.vetor.traco_cor", TINTA_TRACO, true),
         PINCEL_ESPELHO => d("canal.vetor.traco_cor", TINTA_TRACO, true, Especie::Ligado),
+        TRACO_SOBRE_EFEITOS => d(
+            "canal.vetor.traco_sobre_efeitos",
+            campo,
+            true,
+            Especie::Ligado,
+        ),
         MISTURA => d("canal.vetor.mistura", campo, false, op(MISTURAS_DO_VETOR)),
         PILHA_LIGADA => d("canal.vetor.pilha_ligada", campo, true, Especie::Ligado),
         PILHA_OPACIDADE => c("canal.vetor.pilha_opacidade", campo, true),

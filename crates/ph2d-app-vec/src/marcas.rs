@@ -66,6 +66,11 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (ferramenta::VECTOR_JOIN_MITER, &[campo(v::TRACO_JUNCAO)]),
     (ferramenta::VECTOR_JOIN_ROUND, &[campo(v::TRACO_JUNCAO)]),
     (ferramenta::VECTOR_JOIN_BEVEL, &[campo(v::TRACO_JUNCAO)]),
+    // ⭐ F47: do CORPO — com uma camada aberta cai no canal dela ([`na_aberta`]).
+    (
+        painel::VECTOR_STROKE_ABOVE_EFFECTS,
+        &[campo(v::TRACO_SOBRE_EFEITOS)],
+    ),
     (
         ferramenta::VECTOR_ALIGN_CENTRE,
         &[campo(v::TRACO_ALINHAMENTO)],
@@ -242,7 +247,7 @@ fn na_aberta(id: NodeId, g: PropKind, ctx: Contexto<'_>) -> PropKind {
     let (Some(k), PropKind::Field(kk)) = (ctx.aberta, g) else {
         return g;
     };
-    let corpo = (v::TINTA_PREENCH..=v::PINCEL_ESPELHO).contains(&kk.campo)
+    let corpo = (v::TINTA_PREENCH..=v::TRACO_SOBRE_EFEITOS).contains(&kk.campo)
         && kk.i == 0
         && kk.item.is_none()
         && !LINHA_DE_BASE.contains(&id);

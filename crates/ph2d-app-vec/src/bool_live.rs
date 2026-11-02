@@ -1,42 +1,6 @@
 //! **A BOOLEANA VIVA** — um grupo cujos filhos se combinam, e continuam editáveis.
 //!
-//! O 7º produtor de [`LiveGeometry`], e o **segundo que TRANSFORMA o mapa** em vez de o estender
-//! (o primeiro é o [`crate::align_live`]). A razão é a mesma dele e vale a pena repeti-la: os
-//! cinco produtores que o `render_loop` funde com `extend` são mutuamente exclusivos — uma forma
-//! é offset OU pattern OU contour, cada um é um componente próprio e o painel oferece um de cada
-//! vez. **A booleana não é membro dessa família**: ela é um componente do PAI, então os operandos
-//! dela podem ter, cada um, o seu offset vivo. Fundida por `extend` ela apagaria esses offsets —
-//! ou seria apagada por eles — em silêncio.
-//!
-//! # O que entra, e o que sai
-//!
-//! A entrada de cada operando é **o que o mapa já diz** (o offset/pattern/contour dele, se
-//! houver), ou a fonte assada em MUNDO. É a lei do `align_live`, e é ela que faz a booleana
-//! operar sobre *o que se DESENHA* em vez de sobre *o que está guardado*.
-//!
-//! A saída vai no id da **BASE** — o operando mais ao FUNDO —, e cada um dos demais recebe uma
-//! lista **VAZIA**, que o `dispatch` desenha como nada (`ph2d-vec-render/src/lib.rs:174`: ele
-//! itera os items do mapa, e zero items desenham zero). Não é arranjo: é exatamente a regra que a
-//! booleana DESTRUTIVA já segue (*"a base é a de trás: o resultado ocupa a fatia de z dela"*), e
-//! é o que faz o **Apply** não mover a arte um pixel.
-//!
-//! ⚠️ **O grupo NÃO pode ser a chave.** Um grupo é *"uma entidade sem geometria própria que tem
-//! filhos"*, então ele não tem `VecPathId` — e a `LiveGeometry` é chaveada por `VecPathId`. Foi
-//! por isso que a base virou a portadora do resultado.
-//!
-//! # `Err` e `Ok(vazio)` são coisas DIFERENTES
-//!
-//! `Ok(vazio)` é uma RESPOSTA: a interseção de duas formas disjuntas é o vazio, e desenhar nada é
-//! o certo (a mesma lei que o `offset_live` documenta — *"vazio é a ANIQUILAÇÃO"*). `Err` é o
-//! motor a RECUSAR (geometria degenerada no meio de um arrasto), e aí o mapa fica **intocado** —
-//! a arte continua como estava em vez de piscar.
-//!
-//! # Aninhamento: o mais FUNDO primeiro
-//!
-//! Um grupo booleano dentro de outro compõe naturalmente **se** o de dentro cozinhar antes: o
-//! resultado dele pousa no id da base dele, e o de fora encontra esse id no mapa e o consome como
-//! operando. Por isso os grupos são processados por profundidade decrescente — a ordem é a única
-//! coisa que separa "compõe" de "o de fora lê a fonte crua do de dentro".
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `bool_live.rs`.
 
 use std::collections::BTreeMap;
 

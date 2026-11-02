@@ -1,47 +1,7 @@
 //! **A CHAVE do memo do FX raster** — a pergunta *"os pixels desta forma ainda servem?"*, feita
 //! num só lugar.
 //!
-//! # O defeito que este módulo existe para fechar (medido 2026-07-29)
-//!
-//! O memo do [`crate::fx_live`] era `(pilha resolvida, largura, altura)`. Mas o que está na textura
-//! é o resultado de **rasterizar a forma** e correr a pilha sobre esses pixels — e a forma não
-//! entrava na chave. Consequência alcançável: **mudar a cor do preenchimento de uma forma filtrada
-//! não muda a tela.** A pilha é a mesma, a caixa é a mesma, então o memo acerta e o artista
-//! continua a ver a cor antiga, sem erro e sem warning. O mesmo valia para o traço, para a pilha de
-//! Live Path Effects e para qualquer edição de geometria que não movesse a caixa (arrastar um
-//! vértice interior).
-//!
-//! ⚠️ **O memo não era otimização, era uma afirmação**: *"nada que eu desenho mudou"*. Ela estava
-//! escrita em três números que não sabem nada sobre o desenho.
-//!
-//! # A lei, e por que a chave carrega VALORES e não um hash
-//!
-//! A chave é **exatamente o que os dois consumidores leem** — o
-//! [`ph2d_vec_render::draw_path_isolated`] (que põe a forma na célula do atlas) e o
-//! [`ph2d_vec_render::silhouette_segments`] (que dá a fronteira aos degraus que a usam). Ela guarda
-//! os **valores** e compara com `==`, como o `ops` já fazia: é **exato** (sem colisão, sem discutir
-//! bits de `f64`) e o clone só é pago no **miss**, isto é, no frame em que já vamos rasterizar —
-//! onde ele é ruído contra um render do Vello.
-//!
-//! ⚠️ **A TRANSLAÇÃO fica FORA da chave, de propósito.** O conteúdo da célula é a forma desenhada em
-//! `-ex0,-ey0`, então mover a forma (ou panhar a câmera) dá **a mesma arte na mesma posição dentro
-//! da célula** — o que muda é o `rect` onde a célula é desenhada, e esse é recomputado todo frame.
-//! Incluir a translação faria **toda forma filtrada re-cozinhar em todo frame de pan**, que é
-//! precisamente o gesto onde o memo se paga. O que se perde é a **fase sub-pixel**: um pan de meio
-//! pixel reusa um antialiasing calculado para a fase anterior. É diferença de AA, e o preço de a
-//! corrigir é re-cozinhar a cena inteira a cada frame de pan.
-//!
-//! A parte **LINEAR** do afim, ao contrário, entra: rodar ou escalar muda os pixels de verdade.
-//! Entram as duas metades dela (a da câmera e a da pose da forma) porque os dois consumidores
-//! cascateiam diferente — a geometria derivada é desenhada pela câmera, a autorada pela pose — e
-//! perguntar por uma só deixaria um vão exactamente onde a outra governa.
-//!
-//! ⚠️ **Mas `cam`/`screen` são CINTO, não gate, e a diferença está medida:** uma mudança linear que
-//! altera os pixels altera a **caixa** também (girar 45° cresce `w`/`h`; escalar 2× dobra-os), e uma
-//! que não altera a caixa é uma **simetria da forma**, onde os pixels são os mesmos. Não consegui
-//! construir um caso em que estes dois campos decidam sozinhos — então eles ficam por serem 8 `f64`
-//! de graça contra um modo de falha que é *pixels velhos que ninguém vê que são velhos*, e **nenhum
-//! gate afirma que eles estão aqui**. Dizer o contrário seria vender um gate que não pode falhar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `fx_live_memo.rs`.
 
 use ph2d_ecs::SimWorld;
 use ph2d_render::{FxOpGpu, stack_reach, stack_read_por_lado, stack_read_por_lado_com};

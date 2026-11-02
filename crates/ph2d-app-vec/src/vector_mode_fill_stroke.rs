@@ -15,6 +15,9 @@
 //!
 //! ⭐ **A cena 48** (os lados CAD curvos): a 47 com um canto puxado e outro preso por uma regra CAD — ver
 //! [`com_regra_e_um_ponto_puxado`].
+//!
+//! ⭐ **A cena 49** (F47, «Above Effects»): sombra e desfoque nos Filtros; o traço de base marcado por
+//! cima deles e o amarelo não — ver [`por_cima_dos_filtros`].
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -51,11 +54,13 @@ const MAX_ROLAGENS: u8 = 40;
 pub fn step(
     vec: &mut VecState,
     scene: &mut VecScene,
+    sim: &mut ph2d_ecs::SimWorld,
     hero: &mut HeroScreen,
     qual: u8,
 ) -> Option<u8> {
+    let filtros = qual == 4;
     let traco = qual == 1;
-    let ordem = qual >= 2;
+    let ordem = (2..=3).contains(&qual);
     let lados_cad = qual == 3;
     let passo = PASSO.load(Ordering::Relaxed);
     let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
@@ -93,6 +98,10 @@ pub fn step(
             if traco {
                 p.set_stroke_hidden(true);
             }
+            if filtros {
+                por_cima_dos_filtros(vec, scene, sim, ids[0]);
+                return None;
+            }
             if ordem {
                 ordem_livre(p);
                 if lados_cad {
@@ -113,6 +122,12 @@ pub fn step(
             hero.gizmo
                 .replace_selection(vec.entities.get(ids.first()?).copied());
             PASSO.store(3, Ordering::Relaxed);
+        }
+        3 if filtros => {
+            return abre(hero, false, true).map(|f| {
+                ph2d_panel_vector::open_stroke_settings(&mut hero.store);
+                f
+            });
         }
         3 => {
             let fim = abre(hero, traco, ordem);
@@ -170,6 +185,42 @@ fn com_regra_e_um_ponto_puxado(scene: &mut VecScene, id: VecPathId) {
         "[cena 48] a 47 com um canto puxado e outro preso por uma regra CAD: os quatro lados em azul-claro. \
          Carregue no Smooth da barra por cima da forma — as linhas seguem a curva"
     );
+}
+
+/// ⭐ A cena 49 (F47, dono 02/11): a 45 sem o brilho, com o traço de base GROSSO e marcado «Above
+/// Effects», o contorno amarelo NÃO marcado, e nos Filtros um desfoque e uma sombra projectada. O
+/// escuro fica nítido por cima do degradê borrado; o amarelo borra-se junto. Abre o ⚙ do traço.
+fn por_cima_dos_filtros(
+    vec: &VecState,
+    scene: &mut VecScene,
+    sim: &mut ph2d_ecs::SimWorld,
+    id: VecPathId,
+) {
+    use ph2d_ecs::{FxOp, VecFilter};
+    if let Some(p) = scene.path_mut(id) {
+        p.paints.remove(BRILHO);
+        if let Some(s) = p.stroke.as_mut() {
+            s.width = 0.1;
+            s.above_effects = true;
+        }
+    }
+    let borra = FxOp {
+        radius: 0.04,
+        ..FxOp::new(FxOp::BLUR)
+    };
+    let sombra = FxOp {
+        radius: 0.05,
+        offset: [0.12, -0.12],
+        opacity: 0.7,
+        ..FxOp::new(FxOp::DROP_SHADOW)
+    };
+    let filtro = Some(VecFilter::from_ops(vec![borra, sombra]));
+    ph2d_vec_entities::filter::set_filter(sim, &vec.entities, &[id], filtro);
+    eprintln!(
+        "[cena 49] rectângulo com Blur e Drop Shadow nos Filtros: o traço escuro de base com «Above \
+         Effects» (nítido por cima) e o contorno amarelo sem (borrado com a forma). O ⚙ do traço abre-se"
+    );
+    PASSO.store(2, Ordering::Relaxed);
 }
 
 /// Rola o Inspector até a secção Fill & Stroke ficar no alto e abre o painel que a cena mostra (a

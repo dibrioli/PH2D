@@ -85,6 +85,7 @@ impl PenStyle {
             marker_scale_start: self.marker_scale_start,
             marker_scale_end: self.marker_scale_end,
             marker_round: self.marker_round,
+            above_effects: false,
         }
     }
 }

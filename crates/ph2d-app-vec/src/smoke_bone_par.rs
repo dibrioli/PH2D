@@ -2,37 +2,7 @@
 //! dono, 2026-09-29: *«monte a cena com apenas dois esqueletos iguais, um com vector outro com
 //! img»*).
 //!
-//! # Porque esta cena existe
-//!
-//! O report anterior dele (*«o osso do meio provoca ondulações discretas, que diferem da deformação
-//! de imagens»*) só se julga com as duas mídias **lado a lado e em condições iguais** — e a cena
-//! `=1` não as dá: lá o braço vectorial tem `7 × 1` m e o pintado `3,2 × 0,96`, com esqueletos de
-//! tamanhos diferentes e sítios diferentes do ecrã. *Duas peças que diferem em tudo não dizem qual
-//! diferença é da mídia.*
-//!
-//! # O que a cena monta, e o que é IGUAL por construção
-//!
-//! | | em cima | em baixo |
-//! |---|---|---|
-//! | a peça | um `RoundRect` **vectorial** | uma **imagem** pintada da mesma cápsula |
-//! | o tamanho | [`peca`] — UMA porta para os dois | idem |
-//! | a cor | [`COR`] | idem |
-//! | o esqueleto | [`OSSOS`] ossos pelo eixo da cápsula | idem, deslocado só em `y` |
-//! | a pose | [`DOBRA`] em Z, aplicada DEPOIS de prender | idem |
-//!
-//! ⚠️ **A dobra é aplicada no 2.º tempo, depois de prender**, e é load-bearing: prender fotografa a
-//! pose de REPOUSO, e com o esqueleto já dobrado as duas peças aprenderiam o dobrado como repouso e
-//! abririam RECTAS.
-//!
-//! ⭐⭐⭐ **E a `=4` é A DOBRA FORTE** (ordem do dono, 2026-09-29: *«a dobra forte do cotovelo:
-//! tente o estado da arte diretamente»*): o MESMO par, empilhado e aberto já a [`DOBRA_FORTE`] por
-//! junta — onde a face de dentro de dois membros se SOBREPÕE. O desenho sai como a SILHUETA dos
-//! membros (canto em «V»), que é o que a imagem de baixo já mostra de graça; com
-//! `PH2D_SKIN_CONTACTO=0` volta o contorno com o «olho» por dentro, e é essa a comparação.
-//!
-//! ⚠️ **Nada mais na cena, de propósito** — o dono pediu *«apenas»*. Sem folha solta, sem
-//! bifurcação, sem barra por cima: *uma cena de comparação com uma terceira peça obriga o olho a
-//! decidir o que comparar*.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone_par.rs`.
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_vec_scene::{ShapeKind, VecScene, cook_tinted as shape};

@@ -1,42 +1,6 @@
 //! ⭐⭐⭐ **A LINHA DO TEMPO DESVANECE UM CAMINHO VETORIAL** — `PH2D_VEC_FADE_SMOKE=1`.
 //!
-//! # O defeito que a cena fecha
-//!
-//! Até 2026-09-04 o canal `Opacity` existia para **todo** objecto e era **MUDO** num vetor: a row
-//! aparecia no *+ Track*, aceitava chaves, desenhava a curva no editor de gráfico — e não movia um
-//! pixel. O braço da escrita exigia um `ph2d_render::Sprite`, e a entidade de um caminho vetorial
-//! nasce com `(Transform, Name, VecPathRef, RootOrder)` e nunca com um.
-//!
-//! # A cena (unidades de mundo, ~±6)
-//!
-//! Duas estrelas iguais, com a **mesma** curva de opacidade — `1 → 0 → 1` em 4 s:
-//!
-//! - **"Fade"** (esquerda, azul) — uma forma simples. Ela prova a metade nova: a linha do tempo
-//!   alcança a aparência de um vetor.
-//! - **"Fade FX"** (direita, laranja) — a mesma forma **com um brilho** (`FxOp::GLOW`). Ela prova
-//!   a segunda metade, e é a que **falhava em silêncio**: o memo do FX guardava a forma AUTORADA,
-//!   e a opacidade é uma camada de VISTA aplicada depois — então a textura acertava o memo e
-//!   ficava com os pixels opacos da era anterior. *Pixels velhos que ninguém vê que são velhos.*
-//!
-//! # O que provar (dê PLAY, ou arraste a régua)
-//!
-//! 1. **As duas** desvanecem juntas, e voltam juntas. Uma que não desvanece é o defeito.
-//! 2. **A da direita desvanece com o brilho** — o halo some junto com a forma, não depois nem
-//!    "por degraus". Se ela ficar cravada opaca enquanto a esquerda desaparece, o vão do memo
-//!    voltou.
-//! 3. **No topo (`t = 0` e `t = 4`) as duas voltam a OPACO**, não a um degrau abaixo. Um `254` em
-//!    vez de `255` é invisível numa cor chapada e visível na borda contra o fundo.
-//! 4. ⭐ **As DUAS rows da régua mostram um número que ANDA** (2026-09-04) — `1.00` → `0.00` →
-//!    `1.00`, ao lado de *"Fade · Opacity"* e *"Fade FX · Opacity"*. Ele vem do MUNDO e não da
-//!    curva, e é por isso que ele é a régua do ponto 2: **se a da direita ficar opaca com o número
-//!    dela a marcar `0.00`, o desenho é que não está a honrar a opacidade** — foi exactamente esse
-//!    o par de defeitos reportado neste dia.
-//!
-//! ⚠️ O número só é pintado enquanto a coluna de nomes tiver largura para ele **e** para o nome
-//! (arraste a divisória: no piso ela larga o número, nunca o nome).
-//!
-//! ⚠️ Se a linha `[vec-fade-smoke]` não aparecer, PARE: a cena não montou e o resto não significa
-//! nada.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_fade.rs`.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{FxOp, Name, VecFilter};

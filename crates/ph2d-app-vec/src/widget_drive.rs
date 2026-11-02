@@ -1,40 +1,7 @@
 //! **A ROW DIRIGE A FORMA** — o valor vivo de um controle autorado, projetado no que a cena
 //! desenha (plano UI/UX W8b.3).
 //!
-//! É a metade que fecha o laço do §2: *o desenho é a PELE, o widget é o COMPORTAMENTO*, e aqui o
-//! comportamento passa a ter CONSEQUÊNCIA. Sem isto o painel gerado responde ao ponteiro e não
-//! muda nada na arte — um controle que se move e não move nada.
-//!
-//! # A porta única: o que uma row FAZ é derivado do TIPO dela
-//!
-//! [`drive_of`] é a ÚNICA resposta a *"o que este widget dirige?"*, e a resposta sai do
-//! [`WidgetKind`] — nunca de um campo autorado ao lado. Um Slider produz um número e o número que
-//! uma forma tem é a **opacidade**; um Toggle produz um sim/não e o sim/não que uma forma tem é
-//! **aparecer**. Um segundo controle (*"esta row dirige o quê?"*) teria de ser mantido de acordo
-//! com o tipo, e no dia em que discordassem o painel pintaria um slider que apaga a forma.
-//!
-//! ⚠️ **Quem não RESPONDE não dirige**, e o conjunto é menor que o dos controles: um `Button`
-//! responde ao ponteiro e produz um EVENTO, não um valor — dirigir uma forma com ele exigiria um
-//! vocabulário de VERBOS (*"faz o quê?"*) que nenhum consumidor pede ainda, e um vocabulário sem
-//! consumidor é desenhar no escuro (a lei que o `OverrideSlot` da W5a já escreveu). O painel
-//! **não oferece** o vínculo nesses tipos, em vez de o oferecer e o deixar inerte.
-//!
-//! # VISTA, nunca documento
-//!
-//! O resultado é publicado no [`VecViewState`] — a projeção por-frame — e **nada aqui escreve a
-//! cena**. Três consequências, e as três são o motivo:
-//!
-//! 1. arrastar um slider **não vira passo de undo** (o undo deste editor é por DIFF do mundo, e
-//!    uma pose derivada escrita no documento faria cada gesto encher a fila — a lição que o
-//!    ADR-0153 pagou no auto layout);
-//! 2. a tinta autorada **sobrevive**: arrastar até zero e voltar devolve a arte AO BIT, porque
-//!    ninguém a reescreveu;
-//! 3. e o fato tem UM dono — a `VecViewState` é a mesma lista que o olhinho da Hierarquia e os
-//!    tokens já alimentam.
-//!
-//! ⚠️ **O preço honesto, nomeado:** o valor de uma row vive no `WidgetStore`, que é de runtime ⇒
-//! ele **não é salvo**. Reabrir o projeto devolve os controles ao default e a arte ao que o
-//! artista autorou. Persistir a POSIÇÃO de um controle é a W4b/W8a, não esta.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `widget_drive.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetBind};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};

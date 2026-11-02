@@ -78,6 +78,7 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::OFFSET_LADO, 212),
         (v::PINCEL_ESPACO, 112),
         (v::PINCEL_ESPELHO, 116),
+        (v::TRACO_SOBRE_EFEITOS, 117),
         (v::TEXTO_QUEBRA_FIXA, 197),
         (v::TEXTO_FAMILIA, 198),
         (v::TEXTO_CONTEUDO, 199),

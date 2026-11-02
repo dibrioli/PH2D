@@ -1,43 +1,6 @@
 //! ⛔⛔⛔ **A COSTURA DO LADRILHO — e ela NÃO é do renderer** (2026-08-30, plano 33 W10).
 //!
-//! # ⭐⭐⭐ A conclusão vem primeiro, de propósito
-//!
-//! *O grampo do amostrador custa **o salto do próprio ladrilho na volta**, e quase nada além
-//! disso.* Um ladrilho que fecha não tem costura em qualidade nenhuma — medido: onda quadrada crua
-//! `107` níveis, a mesma **espelhada** `0`. Um motivo assado de uma FORMA tem a caixa justa (alfa a
-//! zero nos quatro lados) e mede **`0`**; quem tem o defeito é a arte de bordo a bordo que não foi
-//! feita para repetir, e aí o artista já vê uma **aresta dura** muito maior que a banda do filtro.
-//!
-//! ⚠️⚠️ **Isto está no topo porque a acusação abaixo é convincente e leva à cura errada.** Ela
-//! custou meio dia e três curas construídas em teoria e refutadas por medição — se o próximo leitor
-//! encontrar o mecanismo antes do veredito, refaz a caça. *Uma nota que descreve um defeito sem
-//! dizer de quem ele é manda o leitor seguinte ao sítio errado* — foi exactamente o que a nota do
-//! `fill_path_image` fez comigo.
-//!
-//! # O mecanismo (verdadeiro, e insuficiente)
-//!
-//! Em `Extend::Repeat` o `fine.wgsl` embrulha a *coordenada* e depois **grampeia os TAPS** contra o
-//! rectângulo da imagem no atlas — porque o atlas do Vello empacota as imagens **encostadas, sem
-//! folga** (`vello_encoding-0.8.0/src/image_cache.rs`: `atlas.allocate(size2(w, h))`, zero
-//! padding), e sem o grampo um tap leria a imagem VIZINHA. Do vello 0.9 em diante o `High` é
-//! Mitchell a sério (16 taps, `+-1.5` texels) e o `image_quality_for` manda `Smooth -> High`, então
-//! a banda passou de ~1 texel para ~3.
-//!
-//! ⛔ **Não há gutter possível**: qualquer folga acrescentada ao ladrilho entra no `extents` e passa
-//! a fazer parte do **período**. E baixar para `Medium` foi medido e refutado — sob meio pixel de
-//! `pan` os dois filtros chegam ao **mesmo** pico. As tabelas estão no irmão [`sweeps`].
-//!
-//! # ⭐⭐⭐ O ORÁCULO, e porque ele não é um modelo do shader
-//!
-//! ⛔ Reimplementar o `bicubic_sample` em Rust mediria **o meu port**, não o renderer.
-//!
-//! A régua aqui é a **própria periodicidade**: uma arte periódica de período `P`, assada como um
-//! ladrilho de `P` px e como um ladrilho de `4P` px, produz **a MESMA imagem infinita** — os dois
-//! buffers têm os mesmos bytes, repetidos. Logo, em toda coluna que é *interior* ao ladrilho largo,
-//! o largo dá a resposta **certa**; e é exactamente aí que o estreito tem as suas costuras.
-//!
-//! ⇒ `|estreito - largo|` naquelas colunas **é** o defeito, medido em níveis de 8 bits, pelo
-//! renderer de verdade, com a GPU de verdade. Sem port, sem epsilon inventado, sem oráculo externo.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `pattern_seam_probe.rs`.
 
 #![cfg(test)]
 

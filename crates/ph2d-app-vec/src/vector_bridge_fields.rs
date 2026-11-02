@@ -101,6 +101,7 @@ impl StrokeStyle {
             } else {
                 old.marker_round
             },
+            above_effects: old.above_effects,
         }
     }
 }

@@ -2,7 +2,7 @@
 
 use super::{
     EFEITO_LIGADO, EFEITO_PARAM, FILTRO_TIPO, FILTRO_ULTIMO, PILHA_DILATA_JUNCAO, PILHA_LIGADA,
-    PINCEL_ESPELHO, TINTA_PREENCH,
+    TINTA_PREENCH, TRACO_SOBRE_EFEITOS,
 };
 
 /// ⭐ **De que LISTA da forma um campo é** — a porta única do endereço por identidade (F31 §A): a
@@ -47,7 +47,7 @@ impl Lista {
 #[must_use]
 pub const fn lista(campo: u16) -> Lista {
     match campo {
-        TINTA_PREENCH..=PINCEL_ESPELHO | PILHA_LIGADA..=PILHA_DILATA_JUNCAO => Lista::Tinta,
+        TINTA_PREENCH..=TRACO_SOBRE_EFEITOS | PILHA_LIGADA..=PILHA_DILATA_JUNCAO => Lista::Tinta,
         EFEITO_LIGADO | EFEITO_PARAM => Lista::Efeito,
         FILTRO_TIPO..=FILTRO_ULTIMO => Lista::Filtro,
         _ => Lista::Nenhuma,

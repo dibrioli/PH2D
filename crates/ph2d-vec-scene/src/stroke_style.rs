@@ -285,6 +285,11 @@ pub struct StrokeSpec {
     /// serve para construir o struct em código e para formatos auto-descritivos; a compatibilidade
     /// de leitura vem do NÚMERO, e é ele que recusa o arquivo velho em vez de o ler torto.
     pub align: StrokeAlign,
+    /// ⭐ **Por cima dos Filtros** (v28, F47, dono 02/11): numa forma com Effects raster, este traço
+    /// desenha-se de novo, vectorial, POR CIMA da imagem filtrada — a cor e a nitidez dele não passam
+    /// pelos filtros. A imagem filtrada continua a levá-lo (a sombra e o brilho nascem da forma
+    /// inteira, escolha do dono). Sem filtro não muda nada. `false` = o de sempre.
+    pub above_effects: bool,
 }
 
 /// ⭐⭐⭐ **O LIMITE DO BICO de uma junta `Miter`** — `4`, o do SVG, da `kurbo`, do Vello e do Skia:
@@ -331,6 +336,7 @@ impl StrokeSpec {
             marker_scale_end: 1.0,
             marker_round: 0.0,
             align: StrokeAlign::Centre,
+            above_effects: false,
         }
     }
 

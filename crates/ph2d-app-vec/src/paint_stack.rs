@@ -80,6 +80,7 @@ pub fn join_code_for_id(id: ph2d_editor_core::NodeId) -> Option<u8> {
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_INNER => Some(ALIGN_CODE),
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_CENTRE => Some(ALIGN_CODE + 1),
         _ if id == ph2d_panel_vector::ids::VECTOR_PAINT_ALIGN_OUTER => Some(ALIGN_CODE + 2),
+        _ if id == ph2d_panel_vector::ids::VECTOR_STROKE_ABOVE_EFFECTS => Some(ABOVE_CODE),
         _ => None,
     }
 }
@@ -377,6 +378,46 @@ pub fn set_color(scene: &mut VecScene, sel: &[VecPathId], i: usize, c: Rgba8) ->
 /// O 1.º código da Position no canal do [`join_code_for_id`] (`3` Inside · `4` Center · `5` Outside).
 pub const ALIGN_CODE: u8 = 3;
 
+/// O código do «Above Effects» (F47) no mesmo canal — o traço da linha aberta, base ou camada.
+pub const ABOVE_CODE: u8 = ALIGN_CODE + 3;
+
+/// ⭐ F47 — **o chip do ⚙ aberto**: a quina e a Position são só de uma camada; o «Above Effects»
+/// vale também para o traço de base (sem camada aberta).
+pub fn set_chip(scene: &mut VecScene, sel: &[VecPathId], open: Option<usize>, code: u8) -> bool {
+    match open {
+        Some(i) => set_join_or_align(scene, sel, i, code),
+        None => code == ABOVE_CODE && toggle_above_effects(scene, sel, PaintSlot::Base),
+    }
+}
+
+/// **Liga/desliga o «Above Effects»** do traço da linha `slot`: o valor novo é o contrário do da 1.ª
+/// forma com esse traço, e fica igual em toda a selecção. No-op numa linha de preenchimento.
+pub fn toggle_above_effects(scene: &mut VecScene, sel: &[VecPathId], slot: PaintSlot) -> bool {
+    let Some(novo) = shown_above_effects_at(scene, sel, slot).map(|v| !v) else {
+        return false;
+    };
+    edit(scene, sel, |p| match p.slot_stroke_mut(slot) {
+        Some(s) if s.above_effects != novo => {
+            s.above_effects = novo;
+            true
+        }
+        _ => false,
+    })
+}
+
+/// O que a caixa «Above Effects» mostra: o traço da linha ABERTA da 1.ª forma que o tem. `None` =
+/// a linha aberta não é um traço, e a caixa não se pinta.
+#[must_use]
+pub fn shown_above_effects(scene: &VecScene, sel: &[VecPathId]) -> Option<bool> {
+    shown_above_effects_at(scene, sel, open_slot())
+}
+
+fn shown_above_effects_at(scene: &VecScene, sel: &[VecPathId], slot: PaintSlot) -> Option<bool> {
+    sel.iter()
+        .find_map(|id| scene.path(*id)?.slot_stroke(slot))
+        .map(|s| s.above_effects)
+}
+
 /// **A linha que o painel tem ABERTA** — a base, ou a camada cujo ⚙ está aberto. É o endereço que
 /// o corpo de ajustes (tipo, degradê, padrão, pontas, junções, tracejado, pincel) edita e mostra.
 #[must_use]
@@ -442,13 +483,15 @@ pub fn set_align(scene: &mut VecScene, sel: &[VecPathId], i: usize, a: StrokeAli
     })
 }
 
-/// O canal dos chips da camada aberta: `0..=2` = a QUINA do offset, [`ALIGN_CODE`]`..` = a Position.
+/// O canal dos chips da camada aberta: `0..=2` = a QUINA do offset, [`ALIGN_CODE`]`..` = a Position,
+/// [`ABOVE_CODE`] = o «Above Effects».
 pub fn set_join_or_align(scene: &mut VecScene, sel: &[VecPathId], i: usize, code: u8) -> bool {
     match code.checked_sub(ALIGN_CODE) {
         None => set_dilate_join(scene, sel, i, code),
         Some(0) => set_align(scene, sel, i, StrokeAlign::Inner),
         Some(1) => set_align(scene, sel, i, StrokeAlign::Centre),
-        Some(_) => set_align(scene, sel, i, StrokeAlign::Outer),
+        Some(2) => set_align(scene, sel, i, StrokeAlign::Outer),
+        Some(_) => code == ABOVE_CODE && toggle_above_effects(scene, sel, PaintSlot::Layer(i)),
     }
 }
 

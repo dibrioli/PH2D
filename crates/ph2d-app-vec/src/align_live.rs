@@ -1,38 +1,6 @@
 //! **O ALINHAMENTO do traço, vivo** — Inner/Outer desenhados no z da forma.
 //!
-//! Espelho dos cinco irmãos (`offset_live`/`pattern_live`/`contour_live`/`symmetry_live`/
-//! `profile_live`): o documento guarda o que o artista autorou e o que se vê é derivado, re-cozido
-//! aqui e desenhado por [`ph2d_vec_render::dispatch`] no z da fonte.
-//!
-//! # ⚠️ Este roda por ÚLTIMO, e não é ordem por gosto
-//!
-//! O `render_loop` funde os cinco mapas com `extend` e o comentário de lá diz por que isso é
-//! seguro: *"uma forma é offset OU pattern OU contour (nunca dois — cada um é um componente
-//! próprio e o painel oferece um de cada vez)"*. **O alinhamento não é membro dessa família.** Ele
-//! é um campo do `StrokeSpec`, então **compõe** com qualquer um deles: uma forma pode ter offset
-//! vivo *e* traço interno. Fundido por `extend` ele apagaria o offset (ou seria apagado por ele),
-//! e a forma perderia metade do que o artista pediu, em silêncio.
-//!
-//! Então ele **não produz um mapa** — ele **TRANSFORMA** o mapa já montado, como o
-//! `fx_silhouette`, que roda depois pela mesma razão (*"a união é do que se DESENHA"*). A entrada
-//! de um caminho é o que estiver no mapa; se não houver nada, é a fonte assada em mundo.
-//!
-//! # O que uma entrada vira
-//!
-//! Um `VecPath` com traço alinhado é **substituído por dois ou mais**: ele próprio sem traço (o
-//! preenchimento fica onde estava) e as peças da faixa recortada, que já nascem preenchidas com a
-//! cor do traço (ver [`ph2d_vec_boolean::aligned_stroke`]). Um item recusado pelo motor — caminho
-//! aberto, Centre, largura zero — passa **verbatim**; e se NENHUM item alinhou, o mapa não é
-//! tocado, que é o que torna o mundo pré-alinhamento byte-idêntico (uma entrada, mesmo igual à
-//! fonte, já muda a rota de desenho).
-//!
-//! # O memo é MEDIDO, e o número decidiu contra ele
-//!
-//! `aligned_stroke` custa **0,064-0,069 ms** numa rosquinha, **0,18** numa estrela de 5 pontas e
-//! **1,46** na patológica de 24, contra 16,6 ms de um quadro. Isso é vivo com folga, e o memo
-//! existe pelo caso da CENA CHEIA (dez formas traçadas × por frame), não pelo caso de uma. A
-//! chave é o que de facto determina a saída — a geometria de MUNDO que entra — e não um contador
-//! de versão que alguém esqueceria de bumpar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `align_live.rs`.
 
 use std::collections::BTreeMap;
 

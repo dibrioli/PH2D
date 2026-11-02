@@ -459,3 +459,109 @@ fn a_stroke_layer_draws_without_any_base_paint() {
     ))];
     assert_eq!(conta(&p).0, vazia + 1);
 }
+
+/// Quantos caminhos o `dispatch` emite para a cena de UMA forma, com ou sem imagem de FX dela.
+fn conta_no_dispatch(p: &VecPath, com_fx: bool) -> u32 {
+    use ph2d_vec_scene::{VecScene, VecViewState, VecXforms};
+    let mut scene = VecScene::new();
+    let id = scene.push_path(p.clone());
+    let mut fx = crate::FxImages::new();
+    if com_fx {
+        let image = ph2d_vector::StableImage::from_rgba(std::sync::Arc::new(vec![0u8; 4]), 1, 1)
+            .expect("1x1");
+        let rect = (0.0, 0.0, 1.0, 1.0);
+        fx.insert(
+            id,
+            crate::FxImage {
+                image,
+                rect,
+                texels: (1, 1),
+            },
+        );
+    }
+    let mut t = VectorScene::new();
+    crate::dispatch(
+        &scene,
+        &VecViewState::default(),
+        &VecXforms::default(),
+        &crate::LiveGeometry::new(),
+        &fx,
+        &crate::WidgetSkins::new(),
+        &crate::PatternTiles::new(),
+        &crate::BrushArts::new(),
+        &crate::DilatedPaints::new(),
+        Affine::IDENTITY,
+        &mut t,
+    );
+    t.inner().encoding().n_paths
+}
+
+/// O quadrado com um traço de base e uma camada Stroke de `3`.
+fn com_dois_tracos() -> VecPath {
+    let mut p = quadrado();
+    p.paints = vec![PaintEntry::stroke(StrokeSpec::new(
+        Rgba8::new(0, 128, 255, 255),
+        3.0,
+    ))];
+    p
+}
+
+fn marca(p: &mut VecPath, base: bool, camada: bool) {
+    p.stroke.as_mut().expect("base").above_effects = base;
+    if let ph2d_vec_scene::PaintKind::Stroke(s) = &mut p.paints[0].kind {
+        s.above_effects = camada;
+    }
+}
+
+/// ⭐⭐⭐ **F47 — o traço «Above Effects» volta POR CIMA da imagem filtrada, um caminho por traço.**
+///
+/// A imagem de FX substitui o desenho da forma; cada traço marcado acrescenta exactamente o caminho
+/// que o desenho dele sozinho emite (a régua: o traço desenhado à parte, sem fill nem camadas).
+#[test]
+fn a_stroke_above_effects_is_drawn_again_over_the_fx_image() {
+    let nenhum = conta_no_dispatch(&com_dois_tracos(), true);
+    let so_traco = |w: f64| {
+        let mut p = quadrado();
+        p.fill = None;
+        p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), w));
+        conta(&p).0
+    };
+    let mut base = com_dois_tracos();
+    marca(&mut base, true, false);
+    assert_eq!(
+        conta_no_dispatch(&base, true),
+        nenhum + so_traco(1.0),
+        "a base por cima"
+    );
+    let mut camada = com_dois_tracos();
+    marca(&mut camada, false, true);
+    assert_eq!(
+        conta_no_dispatch(&camada, true),
+        nenhum + so_traco(3.0),
+        "a camada por cima"
+    );
+    let mut os_dois = com_dois_tracos();
+    marca(&mut os_dois, true, true);
+    assert_eq!(
+        conta_no_dispatch(&os_dois, true),
+        nenhum + so_traco(1.0) + so_traco(3.0),
+        "os dois por cima"
+    );
+}
+
+/// ⛔ CONTROLO: **sem filtro a marca não muda nada** (a forma já desenha o traço vectorial), e um
+/// traço marcado mas DESLIGADO não volta por cima da imagem.
+#[test]
+fn above_effects_changes_nothing_without_a_filter_nor_on_a_disabled_stroke() {
+    let mut marcada = com_dois_tracos();
+    marca(&mut marcada, true, true);
+    assert_eq!(
+        conta_no_dispatch(&marcada, false),
+        conta_no_dispatch(&com_dois_tracos(), false)
+    );
+    let nenhum = conta_no_dispatch(&com_dois_tracos(), true);
+    let mut desligada = com_dois_tracos();
+    marca(&mut desligada, false, true);
+    desligada.paints[0].enabled = false;
+    assert_eq!(conta_no_dispatch(&desligada, true), nenhum);
+}

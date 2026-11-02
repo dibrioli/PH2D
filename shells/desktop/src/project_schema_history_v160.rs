@@ -1,4 +1,4 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v166** — a SÉTIMA faixa arquivada.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v167** — a SÉTIMA faixa arquivada.
 //!
 //! ⚠️ **O gatilho é o de sempre: a ACUMULAÇÃO de uma rodada.** Na integração de 2026-10-29
 //! (`line/UIUX` sobre o `main` com a `GameEngineFuncional` e a `BlenderConstraints`) a escada viva
@@ -17,6 +17,9 @@
 //!
 //! ⚠️ **E mais um (`165 → 166`) no mesmo dia** (`line/UIUX`, F45): o degrau `212 → 213` levou a escada
 //! viva a `608` / `600`; o excesso era `8` e o degrau mais velho da ponta mede `12`.
+//!
+//! ⚠️ **E mais um (`166 → 167`) em 2026-11-02** (`line/UIUX`, F47): o degrau `213 → 214` levou a escada
+//! viva a `607` / `600`; o excesso era `7` e o degrau mais velho da ponta mede `14`.
 
 //! # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
 //!
@@ -131,4 +134,18 @@
 //! confina nada e a cena fica byte-idêntica — a mesma convenção do ladrilho zero da W2.
 //!
 //! ⛔ **Sem degrau de migração**, pela mesma decisão — um v165 é recusado em voz alta.
+//!
+//! # ⭐ 166 → 167 (2026-09-22) — o MOVIMENTO PRÓPRIO (plano 24, W4)
+//!
+//! `ScrollMotion { velocity }` — nuvens que andam sozinhas, `offset = velocidade × playhead`.
+//! ⭐ **É uma função PURA do relógio**, e é aí que se ganha por desenho: o *autoscroll* do alvo não
+//! é observável por nenhum dos quatro observáveis nem por um teste (medido), porque vive no caminho
+//! de DESENHO; o nosso sobrevive ao scrub e ao rebobinar **sem uma linha de estado**, tem gate, e
+//! entra no replay.
+//!
+//! ⚠️ Ele é um **SOMANDO do deslocamento** e nunca um segundo condutor — medido: dois motores sobre
+//! o mesmo `Transform` entram no ledger com chaves diferentes, e a paralaxe lê a escrita do outro
+//! como se fosse um arrasto do artista.
+//!
+//! ⛔ **Sem degrau de migração**, pela mesma decisão — um v166 é recusado em voz alta.
 //!

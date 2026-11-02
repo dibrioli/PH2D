@@ -682,7 +682,7 @@ impl VecScene {
             schema::VEC_SCENE_SCHEMA_V22..=schema::VEC_SCENE_SCHEMA_V24 => {
                 with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
             }
-            schema::VEC_SCENE_SCHEMA_V25 | schema::VEC_SCENE_SCHEMA_V26 => {
+            schema::VEC_SCENE_SCHEMA_V25..=schema::VEC_SCENE_SCHEMA_V27 => {
                 with_wire_layout(ver, read).map(|(_, s)| s)
             }
             _ => Err(format!(

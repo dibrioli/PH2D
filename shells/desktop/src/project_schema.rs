@@ -18,13 +18,13 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v166 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v167 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
-/// [`super::project_schema_history_v160`] (`v160`..`v166`). O corte é por IDADE e o tecto de 600
+/// [`super::project_schema_history_v160`] (`v160`..`v167`). O corte é por IDADE e o tecto de 600
 /// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
@@ -33,20 +33,6 @@
 /// `main` de que a rodada VIVA nasceu (`git merge-base`), porque abaixo dele estão rodadas
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
-///
-/// # ⭐ 166 → 167 (2026-09-22) — o MOVIMENTO PRÓPRIO (plano 24, W4)
-///
-/// `ScrollMotion { velocity }` — nuvens que andam sozinhas, `offset = velocidade × playhead`.
-/// ⭐ **É uma função PURA do relógio**, e é aí que se ganha por desenho: o *autoscroll* do alvo não
-/// é observável por nenhum dos quatro observáveis nem por um teste (medido), porque vive no caminho
-/// de DESENHO; o nosso sobrevive ao scrub e ao rebobinar **sem uma linha de estado**, tem gate, e
-/// entra no replay.
-///
-/// ⚠️ Ele é um **SOMANDO do deslocamento** e nunca um segundo condutor — medido: dois motores sobre
-/// o mesmo `Transform` entram no ledger com chaves diferentes, e a paralaxe lê a escrita do outro
-/// como se fosse um arrasto do artista.
-///
-/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v166 é recusado em voz alta.
 ///
 /// # ⭐ 167 → 168 (2026-09-22) — o DOLLY (plano 24, W5 · §2)
 ///
@@ -520,7 +506,17 @@
 /// ([`ph2d_vec_scene::BaseOrder`]). ⭐ **COM leitura dos anteriores:** o `fio_do_projeto` diz `26` até ao
 /// `212` e a base nasce no lugar de antes (a mesma aparência). Gate sobre bytes gravados pelo código
 /// v26: `vec_v26_fixture` (cena). Registos de componentes: `0`. ⚠️ **A tripla VÊ este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 213;
+///
+/// # `213 → 214` — **o traço por cima dos Filtros** (`line/UIUX`, F47, 2026-11-02)
+///
+/// `StrokeSpec::above_effects` no FIM (`VEC_SCENE_SCHEMA_VERSION` `27 → 28`), na base e em cada camada
+/// Stroke da pilha. ⭐ **COM leitura dos anteriores:** o `fio_do_projeto` diz `27` até ao `213` e todo
+/// traço abre com `false` (a aparência de antes). Gate sobre bytes gravados pelo código v27:
+/// `vec_v27_fixture` (cena). Registos de componentes: `0`. ⚠️ **A tripla VÊ este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 214;
+
+/// O último degrau cujo `StrokeSpec` não tem o «por cima dos Filtros» (`VecScene` v27).
+pub(crate) const PROJECT_SCHEMA_SEM_TRACO_SOBRE_FILTROS: u32 = 213;
 
 /// O último degrau cujo `VecPath` não tem a posição da base na pilha (`VecScene` v26).
 pub(crate) const PROJECT_SCHEMA_SEM_ORDEM_DA_BASE: u32 = 212;
@@ -589,6 +585,8 @@ pub(crate) fn fio_do_projeto(ver: u32) -> Option<u32> {
         Some(25)
     } else if ver <= PROJECT_SCHEMA_SEM_ORDEM_DA_BASE {
         Some(26)
+    } else if ver <= PROJECT_SCHEMA_SEM_TRACO_SOBRE_FILTROS {
+        Some(27)
     } else {
         None
     }

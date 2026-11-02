@@ -218,8 +218,8 @@ fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
 
 /// ⭐ GEF 19 E3 — **uma faixa Motion ABAIXO de uma faixa de sprites cola ANTES dela**: com a placa, o
 /// objecto Motion acima da imagem na Hierarchy cai no passe de baixo (antes da última faixa de
-/// sprites, que corre o pipeline inteiro); sem a placa, por cima de tudo. *Mutação: tirar o
-/// `(g.motion)` do braço Motion do passe de baixo (a faixa não cola em sítio nenhum).*
+/// sprites, que corre o pipeline inteiro); sem a placa, por cima de tudo. O braço que COLA é o gate de
+/// placa [`as_duas_metades_entregam_a_faixa_motion_a_colagem`].
 #[test]
 fn uma_faixa_motion_abaixo_dos_sprites_cola_antes_deles() {
     use ph2d_render::draw_bands::{Family, FrameOrder};
@@ -250,4 +250,91 @@ fn uma_faixa_motion_abaixo_dos_sprites_cola_antes_deles() {
         "o topo sem faixa cola DEPOIS das faixas de cima"
     );
     assert!(src.contains("passe_de_baixo(&plan.bands[..plan.main.0])"));
+}
+
+/// ⭐ GEF 19 (aberto do handoff 01/11) — **cada metade ENTREGA a faixa Motion dela à colagem**: Motion ·
+/// imagem · Motion, com a placa; o passe de baixo cola a de baixo, o de cima a de cima, e o topo sem
+/// faixa (`None`) não corre. *Mutações: esvaziar o braço `Cola::Motion` · tirar o `(g.motion)` do laço
+/// de cima.*
+#[test]
+#[ignore = "placa: precisa de adapter de GPU"]
+fn as_duas_metades_entregam_a_faixa_motion_a_colagem() {
+    use ph2d_render::draw_bands::{Band, Family, FrameOrder};
+    use ph2d_render::{BandBlit, GameRt, SpriteRenderer, WorldRt};
+    let mut o = FrameOrder::default();
+    o.record_motion(0, 7);
+    o.record(1, None);
+    o.record_motion(2, 8);
+    o.motion_na_placa = true;
+    let plan = super::plan_frame(&o);
+    let motion: Vec<_> = plan
+        .bands
+        .iter()
+        .filter(|b| b.family == Family::Motion)
+        .collect();
+    assert_eq!(motion.len(), 2, "{:?}", plan.bands);
+    let lado = (16, 16);
+    let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
+        .expect("sem adapter — este gate mede a placa");
+    let mut world_rt = WorldRt::new(&gpu, lado);
+    let atlas = ph2d_render::TextureAtlas::new(&gpu, 128);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), GameRt::FORMAT, atlas, 8);
+    let game_rt = GameRt::new(&gpu, lado);
+    let mut tonemap = ph2d_render::Tonemap::new(&gpu, game_rt.view().clone(), lado);
+    let mut band_blit = BandBlit::new(&gpu, WorldRt::FORMAT);
+    let mut vello_pass =
+        ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, lado).expect("vello");
+    let mut present = ph2d_ecs::PresentWorld::new();
+    let window_size = ph2d_host::WindowSize {
+        width: lado.0,
+        height: lado.1,
+    };
+    let mut coladas: Vec<Option<Band>> = Vec::new();
+    let mut cola = |b: Option<Band>,
+                    _: &WorldRt,
+                    _: &BandBlit,
+                    _: &mut SpriteRenderer,
+                    _: super::Sprites<'_>| {
+        coladas.push(b);
+    };
+    let mut flip = |_: Band, _: &GameRt| {};
+    super::draw_lower_bands(
+        &gpu,
+        &plan,
+        wgpu::Color::TRANSPARENT,
+        super::BandGear {
+            world_rt: &mut world_rt,
+            renderer: &mut renderer,
+            game_rt: &game_rt,
+            present: &mut present,
+            camera: &ph2d_render::Camera2d::default(),
+            window_size,
+            scene_viewport: None,
+            tonemap: &mut tonemap,
+            band_blit: &mut band_blit,
+            vello_pass: &mut vello_pass,
+            band_doc_scenes: &[],
+            held_back: None,
+            grid_behind: None,
+            motion: &mut cola,
+            flip: &mut flip,
+        },
+    );
+    super::draw_upper_bands(
+        &gpu,
+        &plan,
+        super::UpperGear {
+            world_rt: &mut world_rt,
+            game_rt: &game_rt,
+            renderer: &mut renderer,
+            window_size,
+            tonemap: &mut tonemap,
+            band_blit: &mut band_blit,
+            vello_pass: &mut vello_pass,
+            band_doc_scenes: &[],
+            motion: &mut cola,
+            flip: &mut flip,
+        },
+    );
+    assert_eq!(coladas, vec![Some(*motion[0]), Some(*motion[1])]);
 }

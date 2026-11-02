@@ -91,6 +91,7 @@ fn pior_fuga(com_limites: bool) -> f32 {
 
 /// ⭐ **A câmara não mostra fora dos limites:** em 16:9, 4:3 e 21:9, com o jogador em cada ponta do nível,
 /// na plataforma alta, acima de tudo e no fundo do buraco, nenhum pixel da janela cai fora de `CameraLimits`.
+/// Os limites são as bordas desenhadas e o tecto não corta as paredes (*mutação: `max: [17.0, 6.5]`*).
 /// CONTROLO na mesma régua: sem os limites, o mesmo percurso mostra fora.
 #[test]
 fn a_camara_do_nivel_2_nao_mostra_fora_dos_limites() {
@@ -115,6 +116,17 @@ fn a_camara_do_nivel_2_nao_mostra_fora_dos_limites() {
         l.min[1],
         BLOCOS_2[0].1[1] - BLOCOS_2[0].2[1],
         "o fundo do chão"
+    );
+    // O tecto não corta as paredes: a de pedra da esquerda e a invisível do fim (E7c, como no nível 1).
+    let (_, ce, he) = BLOCOS_2
+        .iter()
+        .find(|b| b.0 == "Wall Left")
+        .expect("Wall Left");
+    let ([_, pc], [_, ph]) = PAREDE_INVISIVEL;
+    assert!(
+        l.max[1] >= ce[1] + he[1] && l.max[1] >= pc + ph,
+        "o tecto ({}) corta uma parede",
+        l.max[1]
     );
     let com = pior_fuga(true);
     assert!(com <= 0.0, "um pixel fora dos limites: {com:.4} m");

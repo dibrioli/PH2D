@@ -550,10 +550,12 @@ fn toda_fileira_da_camera_tem_dica() {
 }
 
 /// ⭐ GEF 20 C2 — **o Eyedropper do Target vive sob o dedo**: premido arma-o com os bits da câmera, premido
-/// armado desarma-o; e fica à DIREITA do campo, sem o tapar.
+/// armado desarma-o. ⚠️ GEF 21: ele mora DENTRO da ponta direita da caixa (o círculo do campo de objecto da
+/// Unity) e ganha o clique ali — a caixa tem a largura das irmãs, senão saía da coluna da secção (gates
+/// `os_campos_de_texto_tem_nome` e `onde_comeca_o_valor`).
 ///
-/// **Mutações que devem sangrar:** tirar o registo do botão · mandar `Some` também armado · pintar o campo à
-/// largura inteira.
+/// **Mutações que devem sangrar:** tirar o registo do botão · mandar `Some` também armado · registar o botão
+/// antes da caixa (a caixa ganharia o clique).
 #[test]
 fn o_conta_gotas_do_alvo_arma_e_desarma() {
     use ph2d_panel_inspector::ids::{INSP_CAMERA_TARGET, INSP_CAMERA_TARGET_PICK};
@@ -567,7 +569,17 @@ fn o_conta_gotas_do_alvo_arma_e_desarma() {
             .expect("pintado")
     };
     let (campo, gotas) = (r(INSP_CAMERA_TARGET), r(INSP_CAMERA_TARGET_PICK));
-    assert!(campo.x + campo.w <= gotas.x, "{campo:?} tapa {gotas:?}");
+    let dentro = gotas.x >= campo.x && gotas.x + gotas.w <= campo.x + campo.w + 0.5;
+    assert!(dentro, "{gotas:?} fora da ponta direita de {campo:?}");
+    let no_meio = (gotas.x + gotas.w * 0.5, gotas.y + gotas.h * 0.5);
+    let topo = rects.iter().rev().find(|(_, q)| {
+        no_meio.0 >= q.x && no_meio.0 <= q.x + q.w && no_meio.1 >= q.y && no_meio.1 <= q.y + q.h
+    });
+    assert_eq!(
+        topo.map(|(n, _)| *n),
+        Some(INSP_CAMERA_TARGET_PICK),
+        "a caixa come o clique"
+    );
     assert_eq!(
         carrega(&mut h, &mut st, &rects, INSP_CAMERA_TARGET_PICK, SEC),
         vec![CameraFieldEdit::PickTarget(Some(0xABCD_1234))]

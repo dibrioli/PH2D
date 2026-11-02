@@ -46,14 +46,15 @@ pub(crate) fn dialog_filters() -> Vec<(String, Vec<&'static str>)> {
     let ase = crate::ase_import::ASE_EXTENSIONS.to_vec();
     let svg = crate::svg_import::SVG_EXTENSIONS.to_vec();
     let img = ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.to_vec();
+    let som = ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS.to_vec();
     let mut all = ase.clone();
-    all.extend(svg.iter().copied());
-    all.extend(img.iter().copied());
+    all.extend(svg.iter().chain(&img).chain(&som).copied());
     vec![
         (tr("shell.import_router.all_supported").to_owned(), all),
         (tr("shell.import_router.aseprite").to_owned(), ase),
         (tr("shell.import_router.vector_svg").to_owned(), svg),
         (tr("shell.import_router.images").to_owned(), img),
+        (tr("shell.import_router.sounds").to_owned(), som),
     ]
 }
 
@@ -69,6 +70,8 @@ pub(crate) struct Importables {
     /// o contrário do que ele é.
     pub(crate) svg: Vec<PathBuf>,
     pub(crate) images: Vec<PathBuf>,
+    /// ⭐ GEF 21 E2 — os sons entram nos sons do PROJETO (Assets), sem objecto na cena.
+    pub(crate) sounds: Vec<PathBuf>,
     pub(crate) unknown: Vec<PathBuf>,
 }
 
@@ -83,6 +86,8 @@ pub(crate) fn partition_importables(paths: &[PathBuf]) -> Importables {
             out.svg.push(p.clone());
         } else if ph2d_asset::is_supported_image_extension(p) {
             out.images.push(p.clone());
+        } else if ph2d_app_components::sound_project::is_sound_file(p) {
+            out.sounds.push(p.clone());
         } else {
             out.unknown.push(p.clone());
         }
@@ -129,11 +134,12 @@ pub(crate) fn import_paths_grid(
         ase,
         svg,
         images,
+        sounds,
         unknown,
     } = partition_importables(paths);
     let mut out = ImportBatch {
         items: Vec::new(),
-        notes: Vec::new(),
+        notes: ph2d_app_components::sound_project::import_batch(sim.world_mut(), &sounds),
         skipped: unknown
             .iter()
             .map(|p| {

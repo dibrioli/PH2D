@@ -238,7 +238,13 @@ impl crate::App {
     pub(crate) fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
         match action {
             // ⭐ Desistir não diz nada — ver a lei.
-            DropAction::Cancel | DropAction::WriteCode | DropAction::PlaceKanban { .. } => {}
+            // `WriteCode`, `PlaceKanban` e os campos de objecto e de som: `object_drag::write_code` já os fez.
+            DropAction::Cancel
+            | DropAction::WriteCode
+            | DropAction::PlaceKanban { .. }
+            | DropAction::SetScriptObject { .. }
+            | DropAction::SetCameraTarget { .. }
+            | DropAction::SetSound { .. } => {}
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {
@@ -255,7 +261,6 @@ impl crate::App {
             } => {
                 self.drop_place_prefab(stable_id, world, over);
             }
-            DropAction::SetScriptObject { .. } | DropAction::SetCameraTarget { .. } => {} // `object_drag::write_code` já o fez
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.choose_image(entity_bits, asset);
             }

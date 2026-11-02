@@ -191,8 +191,9 @@ pub use crate::transform_inverse::{
     world_transform, world_transform_into, world_transform_with,
 };
 pub use audio_2d::{
-    AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Spatial,
-    db_to_linear, listener_count, listener_of, spatialize,
+    AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D,
+    ProjectSound, ProjectSounds, SoundId, SoundsBlobError, Spatial, db_to_linear, listener_count,
+    listener_of, spatialize,
 };
 pub use camera_2d::{
     CAMERA_MAX_HEIGHT_WORLD, CAMERA_MIN_HEIGHT_WORLD, CameraFollow, CameraLimits, CameraRuntime,

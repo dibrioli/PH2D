@@ -321,7 +321,7 @@ fn late(
     // são **queries**, e um `QueryState` do bevy precisa de `&mut World` para se preparar. *Não é
     // escrita: é o preço de perguntar à cena em vez de adivinhar a partir do componente.*
     let inspector_audio = hero.gizmo.selection.and_then(|b| {
-        crate::render_loop::inspector_audio::build_audio_info(sim.world_mut(), b, selected_count)
+        ph2d_app_components::audio_inspector::build_audio_info(sim.world_mut(), b, selected_count)
     });
     // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
     //

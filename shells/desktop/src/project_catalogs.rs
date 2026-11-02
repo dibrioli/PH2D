@@ -76,6 +76,7 @@ impl SavedAssignment {
             AssetRef::Texture { asset } => s.image = Some(asset),
             AssetRef::Kanban { id } => s.kanban = Some(id),
             AssetRef::Board { id } => s.board = Some(id),
+            AssetRef::Sound { .. } => {} // a queda não o arruma (`asset_drop::resolve`)
         }
         s
     }

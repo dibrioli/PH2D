@@ -46,6 +46,18 @@ pub(crate) fn users_of(
         | DragPayload::Property { .. }
         | DragPayload::Kanban { .. }
         | DragPayload::Board { .. } => Vec::new(),
+        // GEF 21 E2 — quem toca este som: a fonte cujo `sound` é o NOME dele.
+        DragPayload::Sound { asset } => {
+            let nome = (sim.world().get_resource::<ph2d_ecs::ProjectSounds>())
+                .and_then(|l| l.name_of(&asset).map(str::to_owned));
+            let mut q = sim
+                .world_mut()
+                .query::<(Entity, &ph2d_ecs::AudioSource2D)>();
+            q.iter(sim.world())
+                .filter(|(_, s)| nome.as_deref() == Some(s.sound.trim()))
+                .map(|(e, _)| e)
+                .collect::<Vec<_>>()
+        }
         DragPayload::Prefab { stable_id } => {
             let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
             q.iter(sim.world())
@@ -219,6 +231,7 @@ pub fn drain(
                 toasts.push(Toast::info(match asset {
                     DragPayload::Prefab { .. } => tr("shell.asset_card_verbs.no_copies_of_this"),
                     DragPayload::Image { .. }
+                    | DragPayload::Sound { .. }
                     | DragPayload::Object { .. }
                     | DragPayload::Property { .. }
                     | DragPayload::Kanban { .. }
@@ -317,6 +330,20 @@ pub fn drain(
             toasts.push(Toast::info(tr_with(
                 "shell.asset_card_verbs.this_image_is_in_the",
                 &[("n", &n)],
+            )));
+            false
+        }
+        // GEF 21 E2 — um som não se instancia nem se edita: vai para o campo Sound pela queda. ⚠️ Tirá-lo
+        // do projeto ainda não existe (pediria a lápide no `ProjectState` que a imagem tem, para o undo).
+        (AssetCardAction::RemoveFromLibrary, DragPayload::Sound { .. }) => {
+            toasts.push(Toast::info(tr(
+                "app.components.asset_card_verbs.sounds_stay_in_the_project",
+            )));
+            false
+        }
+        (_, DragPayload::Sound { .. }) => {
+            toasts.push(Toast::info(tr(
+                "app.components.asset_card_verbs.drop_a_sound_on_the_sound_field",
             )));
             false
         }

@@ -1,5 +1,5 @@
 //! ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4, W3) — o snapshot que a secção lê e o commit que ela
-//! escreve. Irmão do `ph2d_app_components::timer_inspector`, pela mesma razão dele.
+//! escreve. Irmão do [`crate::timer_inspector`], pela mesma razão dele; saiu da shell na GEF 21 E2.
 //!
 //! # ⚠️ O snapshot só existe para quem TEM a fonte, as orelhas, ou as duas
 //!
@@ -7,8 +7,8 @@
 //!
 //! # ⭐⭐ TRÊS coisas são DERIVADAS aqui, e nenhuma delas se podia derivar no painel
 //!
-//! - **`file_missing`** — pergunta ao DISCO. É a diferença entre *«ainda não escolhi»* e *«alguém
-//!   mudou o ficheiro de sítio»*, e sem ela as duas leem-se como o mesmo silêncio.
+//! - **`file_missing`** — o nome não é um som do PROJETO (GEF 21 E2: o caminho antigo que o load
+//!   não achou). É a diferença entre *«ainda não escolhi»* e *«o som falta»*.
 //! - **`reachable_by_signal`** — varre as tabelas de acção da CENA à procura de um `Play Sound` que
 //!   aponte para este objecto. ⚠️ É a metade que a lei pura declara não poder responder: ela sabe
 //!   que a fonte não arranca sozinha, e não sabe se alguém a manda arrancar. *Sem ela o painel
@@ -20,11 +20,16 @@
 //!
 //! Eles não escrevem no documento: um toca, o outro abre um diálogo. Quem os serve é o dreno, que
 //! tem o dispositivo e a janela. *O que esta porta faz é o commit de um CAMPO.*
+//!
+//! # ⭐ O campo Sound recebe um NOME, um caminho ou uma queda (GEF 21 E2)
+//!
+//! Um nome dos sons do projeto fica; um ficheiro que existe é IMPORTADO e o campo fica com o nome
+//! dele ([`crate::sound_project`]); o resto fica escrito e o cartão diz que falta.
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, Name, SignalActions,
-    SignalVerb, SimWorld, World,
+    AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, Name, ProjectSounds,
+    SignalActions, SignalVerb, SimWorld, World,
 };
 use ph2d_editor_core::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 use ph2d_i18n::{tr, tr_with};
@@ -66,7 +71,7 @@ fn toca(a: &ph2d_ecs::SignalAction) -> bool {
 }
 
 /// O snapshot da secção, ou `None` quando o objecto não tem nada de áudio.
-pub(super) fn build_audio_info(
+pub fn build_audio_info(
     world: &mut World,
     entity_bits: u64,
     selected_count: usize,
@@ -81,9 +86,10 @@ pub(super) fn build_audio_info(
     let is_active_listener = is_listener && ph2d_ecs::listener_of(world) == Some(entity);
     let alcancavel = src.is_some() && reachable_by_signal(world, entity);
     let source = src.map(|s| InspectorAudioSource {
-        // ⚠️ **O disco responde uma vez por quadro e só para quem tem caminho** — um `exists()`
-        // sobre uma string vazia é uma syscall para não dizer nada.
-        file_missing: !s.sound.trim().is_empty() && !std::path::Path::new(&s.sound).exists(),
+        file_missing: !s.sound.trim().is_empty()
+            && world
+                .get_resource::<ProjectSounds>()
+                .is_none_or(|l| l.get(&s.sound).is_none()),
         sound: s.sound,
         volume_db: s.volume_db,
         pitch: s.pitch,
@@ -121,9 +127,9 @@ pub(super) fn build_audio_info(
 /// Aplica uma [`AudioFieldEdit`] que toca no DOCUMENTO. Devolve um aviso quando recusa.
 ///
 /// ⚠️ **`Preview`, `StopPreview` e `Browse` devolvem `None` sem escrever nada** — eles não são
-/// campos, e quem os serve é o dreno. Ver o doc do módulo.
-pub(super) fn apply_audio_edit(
-    sim: &SimWorld,
+/// campos, e quem os serve é o dreno (o Browse volta como `Sound(caminho)`). Ver o doc do módulo.
+pub fn apply_audio_edit(
+    sim: &mut SimWorld,
     entity_bits: u64,
     edit: &AudioFieldEdit,
     queue: &EditorCommandQueue,
@@ -135,7 +141,10 @@ pub(super) fn apply_audio_edit(
         AudioFieldEdit::Preview | AudioFieldEdit::StopPreview | AudioFieldEdit::Browse => {
             return None;
         }
-        AudioFieldEdit::Sound(path) => src.sound.clone_from(path),
+        AudioFieldEdit::Sound(text) => match sound_name(sim.world_mut(), text) {
+            Ok(name) => src.sound = name,
+            Err(t) => return Some(t),
+        },
         AudioFieldEdit::VolumeDb(v) => src.volume_db = *v,
         AudioFieldEdit::Pitch(v) => src.pitch = *v,
         AudioFieldEdit::Looping(on) => src.looping = *on,
@@ -158,7 +167,34 @@ pub(super) fn apply_audio_edit(
         AudioFieldEdit::Bus(tag) => src.bus_tag = *tag,
     }
     // ⭐ A lei dos números é a MESMA do script (`ph2d.set`, doc CodeEditor 08 §3.5).
-    ph2d_app_components::audio_inspector::sanitize_audio_source(&mut src);
+    super::sanitize_audio_source(&mut src);
     queue_set(queue, registry, entity_bits, SOURCE, &src);
     None
 }
+
+/// O que o campo Sound fica a nomear para o `text` escrito, largado ou escolhido — ver o doc do
+/// módulo. `Err` = o ficheiro existe e não é som (o aviso diz-lo).
+fn sound_name(world: &mut World, text: &str) -> Result<String, Toast> {
+    let t = text.trim();
+    if t.is_empty()
+        || world
+            .get_resource::<ProjectSounds>()
+            .is_some_and(|l| l.get(t).is_some())
+    {
+        return Ok(t.to_owned());
+    }
+    let cwd = std::env::current_dir().ok();
+    let Some((file, _)) = ph2d_script::project_scripts::resolve(t, None, cwd.as_deref()) else {
+        return Ok(t.to_owned());
+    };
+    crate::sound_project::import(world, &file).map_err(|e| {
+        Toast::warning(tr_with(
+            "app.components.audio_inspector.not_a_sound",
+            &[("file", &t), ("why", &e)],
+        ))
+    })
+}
+
+#[cfg(test)]
+#[path = "audio_inspector_card_tests.rs"]
+mod tests;

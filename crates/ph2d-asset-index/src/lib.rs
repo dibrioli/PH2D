@@ -53,6 +53,8 @@ pub enum AssetKind {
     Kanban,
     /// Um Quadro do projecto (D17): idem.
     Board,
+    /// Um som do projecto (GEF 21 E2): os bytes do ficheiro, endereçados por conteúdo.
+    Sound,
 }
 
 impl AssetKind {
@@ -89,6 +91,7 @@ impl AssetKind {
             AssetKind::Macro => "asset.kind.macro",
             AssetKind::Kanban => "asset.kind.kanban",
             AssetKind::Board => "asset.kind.board",
+            AssetKind::Sound => "asset.kind.sound",
         }
     }
 
@@ -101,6 +104,7 @@ impl AssetKind {
         AssetKind::Macro,
         AssetKind::Kanban,
         AssetKind::Board,
+        AssetKind::Sound,
     ];
 }
 
@@ -119,6 +123,8 @@ pub enum AssetRef {
     Kanban { id: u64 },
     /// O `BoardId` do Quadro (D17).
     Board { id: u64 },
+    /// O blake3 dos bytes do som (GEF 21 E2, `ph2d_ecs::SoundId`).
+    Sound { asset: [u8; 32] },
 }
 
 impl AssetRef {
@@ -131,6 +137,7 @@ impl AssetRef {
             AssetRef::Texture { .. } => AssetKind::Texture,
             AssetRef::Kanban { .. } => AssetKind::Kanban,
             AssetRef::Board { .. } => AssetKind::Board,
+            AssetRef::Sound { .. } => AssetKind::Sound,
         }
     }
 }

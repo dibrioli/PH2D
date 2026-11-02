@@ -1131,7 +1131,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    cartão CONSTRAINTS, por item Pick · subir · descer · apagar · Reset Offset, e Bake · Add Constraint ·
     //    Unglue. Recusadas: a pega de arrasto e o menu «⋯»
     //    (`docs/BlenderConstraints/handoffs/HANDOFF_CONTINUACAO_W5_3_2026-10-27.md`).
-    ("inspector", 100),
+    // ⬆️ `100 → 101` em 2026-11-02 (`line/GameEngineFuncional`, GEF 20 C2, achado no fecho da GEF 21) —
+    //    **capacidade nova**: o Eyedropper do Target do Follow da câmera (`INSP_CAMERA_TARGET_PICK`), aprovado no
+    //    smoke do dono da GEF 20 (`docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_2026-11-02_20_CAMERA_INTUITIVA.md`).
+    ("inspector", 101),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     ("tokens", 4),

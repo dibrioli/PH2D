@@ -157,9 +157,8 @@ pub fn conducao() -> Option<GameStage> {
     *C.get_or_init(|| conducao_in(|k| std::env::var(k).ok()))
 }
 
-/// O horário. Nível 1: joga ao quadro 60, corre para a direita (apanha as duas primeiras moedas) e pára
-/// ao 420. Nível 2: corre, salta para a plataforma baixa, sai dela a cair, aterra no chão e pára — as
-/// quatro animações por esta ordem.
+/// O horário. Nível 1: joga ao 60, corre para a direita (as duas primeiras moedas), pára ao 420. Nível 2:
+/// corre, salta para a plataforma baixa, sai a cair, aterra e pára — as quatro animações por esta ordem.
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
     let horario: &[(u32, Gesto)] = match nivel {
@@ -187,8 +186,7 @@ pub const HORARIO_2: [(u32, Gesto); 5] = [
     (330, Gesto::Direita(false)),
     (480, Gesto::Para),
 ];
-/// O nível 3: ← e ↓ até à parede (sob o tecto baixo), solta ↓ lá debaixo (continua agachado), sai para
-/// a direita (levanta) e pára.
+/// O nível 3: ← e ↓ até à parede, solta ↓ lá debaixo (continua agachado), sai à direita (levanta), pára.
 pub const HORARIO_3: [(u32, Gesto); 7] = [
     (120, Gesto::Esquerda(true)),
     (125, Gesto::Abaixa(true)),
@@ -251,14 +249,13 @@ const CHAO: [f32; 4] = [0.35, 0.35, 0.40, 1.0];
 const OURO: [f32; 4] = [0.98, 0.80, 0.18, 1.0];
 const META: [f32; 4] = [0.30, 0.80, 0.40, 1.0];
 
-/// As portas que o nível pede à COMPOSIÇÃO: as do menu desta família ([`crate::object_add::Portas`]) e as
-/// do menu Add dos COMPONENTES, que é de outra família (`ph2d_app_components::object_add`: Camera, HUD…).
+/// As portas que o nível pede à COMPOSIÇÃO: o menu desta família, o dos COMPONENTES e o Import… de um som.
 #[derive(Clone, Copy)]
 pub struct Portas<'a> {
     pub menu: crate::object_add::Portas<'a>,
-    /// Cria um objecto do menu dos componentes pela porta dele; devolve os bits.
-    /// A chave é o nome canónico do componente do objecto (`"ph2d::ecs::GameCamera"`).
+    /// Cria um objecto do menu dos componentes pelo nome canónico (`"ph2d::ecs::GameCamera"`); os bits.
     pub componentes: &'a dyn Fn(&mut SimWorld, &str) -> Result<u64, String>,
+    pub importa_som: fn(&mut SimWorld, &std::path::Path) -> Result<String, String>,
 }
 
 /// Monta o nível `nivel` no mundo. Devolve o jogador.
@@ -380,8 +377,7 @@ pub const MOEDAS_2: [[f32; 2]; 5] = [
 /// O fundo do nível 2 (plano 11): o céu parado no ecrã, maior que a vista mais larga, na cor do céu do fundo
 /// azul do Kenney (`#DFF6F5`).
 pub const CEU_TAMANHO: [f32; 2] = [40.0, 16.0];
-/// ⚠️ O tingimento é LINEAR: `#DFF6F5` pela curva sRGB (IEC 61966-2-1). Escrito como `223/255` saía `#F0FBFA`
-/// (medido na foto do plano 11).
+/// ⚠️ O tingimento é LINEAR (`#DFF6F5` pela curva sRGB); `223/255` saía `#F0FBFA` (foto do plano 11).
 pub const CEU_COR: [f32; 4] = [0.7379, 0.9216, 0.9131, 1.0];
 /// As camadas de fundo: (nome, fracção da câmara que guardam, centro no MUNDO na vista do início, ordem).
 pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [

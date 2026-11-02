@@ -351,7 +351,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // (`VecScene` `26 → 27`); os `<= 212` abrem com a base no lugar de antes.
         // ⚠️ **`214` em 2026-11-02** (`line/UIUX`, F47) — o traço por cima dos Filtros
         // (`VecScene` `27 → 28`); os `<= 213` abrem com todo traço sob os filtros, como antes.
-        (214, 13, 28),
+        // ⚠️ **`215` em 2026-11-02** (`line/GameEngineFuncional`, GEF 21 E2) — os SONS do projeto:
+        // `sounds: Vec<u8>` no fim do `ProjectFile`. A tripla NÃO vê este degrau.
+        (215, 13, 28),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

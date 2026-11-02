@@ -18,8 +18,8 @@
 //!
 //! | aviso | o que se passa | como se cura |
 //! |---|---|---|
-//! | `no file` | ainda não escolheu | **Browse…** |
-//! | `file is gone` | o caminho não abre | escolher outra vez |
+//! | `no file` | ainda não escolheu | **Browse…** ou arrastar dos Assets |
+//! | `file is gone` | o nome não é um som do projeto (GEF 21 E2) | escolher outra vez |
 //! | `nothing plays this` | não arranca sozinha e **nenhum** sinal a manda tocar | ligar *Autoplay*, ou uma linha de *Signal Actions* |
 //! | `no listener` | a cena não tem orelhas | pôr um `Audio Listener 2D` num objecto |
 //!

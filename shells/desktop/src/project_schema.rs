@@ -513,7 +513,20 @@
 /// Stroke da pilha. ⭐ **COM leitura dos anteriores:** o `fio_do_projeto` diz `27` até ao `213` e todo
 /// traço abre com `false` (a aparência de antes). Gate sobre bytes gravados pelo código v27:
 /// `vec_v27_fixture` (cena). Registos de componentes: `0`. ⚠️ **A tripla VÊ este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 214;
+///
+/// # `214 → 215` — **o som é asset do PROJETO** (`line/GameEngineFuncional`, GEF 21 E2, 2026-11-02)
+///
+/// Campo novo no FIM do `ProjectFile`: `sounds: Vec<u8>` — a `ph2d_ecs::ProjectSounds` (nome → bytes do
+/// ficheiro), blob `PH2DSONS` com versão PRÓPRIA (vazio = sem sons); o `AudioSource2D.sound` passa a ser o
+/// NOME de um deles (a forma do componente não muda). ⭐ **COM leitura dos anteriores:** o `falta_no_fim`
+/// acrescenta o `0` a todo `<= 214` e os braços `192`/`191` e `190`/`189` levam seis; o load importa cada
+/// `sound` que se lê como caminho (`ph2d_app_components::sound_project::open`). Gate:
+/// `project_sounds_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+/// (Escrito `213 → 214` na linha; integração `2026-11-02c`: a `line/UIUX` ficou com o `214`.)
+pub(crate) const PROJECT_SCHEMA: u32 = 215;
+
+/// O último degrau sem os sons do projeto — a mesma forma do actual, sem o `Vec` final.
+pub(crate) const PROJECT_SCHEMA_SEM_SONS: u32 = 214;
 
 /// O último degrau cujo `StrokeSpec` não tem o «por cima dos Filtros» (`VecScene` v27).
 pub(crate) const PROJECT_SCHEMA_SEM_TRACO_SOBRE_FILTROS: u32 = 213;

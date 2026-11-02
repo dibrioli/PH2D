@@ -45,6 +45,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.interaction.object" => "Object",
         "chrome.interaction.property" => "Property",
         "chrome.interaction.kanban" => "Kanban",
+        "chrome.interaction.sound" => "Sound",
         "chrome.interaction.board" => "Board",
         "chrome.interaction.palette" => "Palette",
         "chrome.interaction.imported" => "Imported",

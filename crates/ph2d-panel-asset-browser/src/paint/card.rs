@@ -114,6 +114,7 @@ fn doc_icon(key: ph2d_asset_index::AssetRef) -> Option<ph2d_editor_core::icons::
     match key {
         ph2d_asset_index::AssetRef::Kanban { .. } => Some(IconId::LayoutGrid),
         ph2d_asset_index::AssetRef::Board { .. } => Some(IconId::Presentation),
+        ph2d_asset_index::AssetRef::Sound { .. } => Some(IconId::Volume2),
         _ => None,
     }
 }

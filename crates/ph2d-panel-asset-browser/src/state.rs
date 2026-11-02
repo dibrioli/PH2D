@@ -151,6 +151,7 @@ pub fn payload_of(
         AssetRef::Texture { asset } => DragPayload::Image { asset },
         AssetRef::Kanban { id } => DragPayload::Kanban { id },
         AssetRef::Board { id } => DragPayload::Board { id },
+        AssetRef::Sound { asset } => DragPayload::Sound { asset },
     }
 }
 
@@ -160,7 +161,7 @@ pub(crate) fn is_document(key: ph2d_asset_index::AssetRef) -> bool {
     use ph2d_asset_index::AssetRef;
     match key {
         AssetRef::Kanban { .. } | AssetRef::Board { .. } => true,
-        AssetRef::Component { .. } | AssetRef::Texture { .. } => false,
+        AssetRef::Component { .. } | AssetRef::Texture { .. } | AssetRef::Sound { .. } => false,
     }
 }
 

@@ -486,6 +486,13 @@ pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
     CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
 }
 
+/// ⭐ GEF 21 E2 — o campo Sound sob o ponteiro: a fonte de som do Inspector recebe a queda de um som.
+#[must_use]
+pub fn audio_sound_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
+    let info = current_inspector_audio().filter(|i| i.source.is_some())?;
+    (id == crate::ids::INSP_AUDIO_SOUND).then_some(info.entity_bits)
+}
+
 /// ⭐ GEF 20 C2 — o campo Target do Follow sob o ponteiro: a câmera do Inspector (que segue) recebe a queda.
 #[must_use]
 pub fn camera_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {

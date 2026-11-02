@@ -37,8 +37,8 @@
 //!
 //! # ⚠️ Porque o ficheiro de som é ESCRITO aqui
 //!
-//! O `AudioSource2D` nomeia um **caminho** (o índice de assets ainda não conhece áudio), então uma
-//! cena de smoke precisa de um ficheiro que exista. Ela **gera-o e grava-o** na pasta temporária —
+//! O `AudioSource2D` nomeia um **som do projeto** (GEF 21 E2), então uma cena de smoke precisa de um
+//! ficheiro para importar. Ela **gera-o, grava-o** na pasta temporária e importa-o —
 //! o mesmo molde do `PH2D_ASE_SMOKE`, que escreve o `.ase` que vai ler: *um smoke que precisa de um
 //! ficheiro que o dono tenha de arranjar é um smoke que não corre*.
 //!
@@ -55,16 +55,20 @@ use ph2d_ecs::{
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-/// Grava um `.wav` gerado na pasta temporária e devolve o caminho.
-fn escrever(nome: &str, data: ph2d_audio::SampleData) -> Option<String> {
+/// Grava um `.wav` gerado na pasta temporária, IMPORTA-O para os sons do projeto (GEF 21 E2) e
+/// devolve o nome com que ficou.
+fn escrever(
+    world: &mut ph2d_ecs::World,
+    nome: &str,
+    data: ph2d_audio::SampleData,
+) -> Option<String> {
     let path = std::env::temp_dir().join(nome);
-    match ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16) {
-        Ok(()) => Some(path.to_string_lossy().into_owned()),
-        Err(e) => {
-            eprintln!("[audio-2d-smoke] nao consegui gravar {nome}: {e}");
-            None
-        }
-    }
+    let feito = ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16)
+        .map_err(|e| e.to_string())
+        .and_then(|()| crate::sound_project::import(world, &path).map_err(|e| e.to_string()));
+    feito
+        .inspect_err(|e| eprintln!("[audio-2d-smoke] nao consegui gravar {nome}: {e}"))
+        .ok()
 }
 
 /// No prólogo do quadro, uma vez. No-op sem a env.
@@ -73,12 +77,14 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
     // ⚠️ **Um tom LONGO para o ciclo e um curto para o toque** — um blip em ciclo seria uma
     // metralhadora, e um tom longo disparado por sinal empilharia vozes.
     let Some(zumbido) = escrever(
+        cx.sim.world_mut(),
         "ph2d_smoke_sino.wav",
         ph2d_audio::signals::sine_tone(fmt, 220.0, 2.0, 0.35),
     ) else {
         return;
     };
     let Some(blip) = escrever(
+        cx.sim.world_mut(),
         "ph2d_smoke_sirene.wav",
         ph2d_audio::signals::sine_tone(fmt, 880.0, 0.25, 0.5),
     ) else {

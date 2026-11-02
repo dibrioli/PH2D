@@ -47,6 +47,8 @@ pub enum DragPayload {
     Kanban { id: u64 },
     /// Um **Quadro** do projecto, dos Assets (D17) — o `BoardId`.
     Board { id: u64 },
+    /// Um **som** do projecto, dos Assets (GEF 21 E2) — o blake3 dos bytes; a queda resolve o nome.
+    Sound { asset: [u8; 32] },
 }
 
 impl DragPayload {
@@ -60,6 +62,7 @@ impl DragPayload {
             DragPayload::Property { .. } => tr("chrome.interaction.property"),
             DragPayload::Kanban { .. } => tr("chrome.interaction.kanban"),
             DragPayload::Board { .. } => tr("chrome.interaction.board"),
+            DragPayload::Sound { .. } => tr("chrome.interaction.sound"),
         }
     }
 }

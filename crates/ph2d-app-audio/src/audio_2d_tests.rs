@@ -9,7 +9,8 @@
 use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer, SampleData};
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    AudioListener2D, AudioSource2D, Entity, Name, SimWorld, Transform, assign_missing_stable_ids,
+    AudioListener2D, AudioSource2D, Entity, Name, ProjectSounds, SimWorld, Transform,
+    assign_missing_stable_ids,
 };
 
 use super::{play_target_with, stop_target_with, update_with};
@@ -37,19 +38,32 @@ fn vozes_no_mixer(r: &mut AudioRenderer) -> usize {
     r.active_voices()
 }
 
-/// Um `.wav` de verdade na pasta temporária — o `AudioSource2D` nomeia um CAMINHO, então um gate
-/// que lhe desse um nome inventado mediria só o braço da falha.
-fn som(nome: &str) -> String {
+/// Os bytes de um `.wav` de verdade com `frames` de silêncio — o gate mede o LIVRO, não o que se ouve.
+fn wav(nome: &str, frames: usize) -> Vec<u8> {
     let path = std::env::temp_dir().join(nome);
     if !path.exists() {
-        let data = SampleData::from_interleaved(
-            vec![0.0_f32; 4_800], // 0,1 s de silêncio: o gate mede o LIVRO, não o que se ouve
-            AudioFormat::stereo(48_000),
-        );
+        let data =
+            SampleData::from_interleaved(vec![0.0_f32; frames * 2], AudioFormat::stereo(48_000));
         ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16)
             .expect("o gate tem de conseguir escrever a fixtura");
     }
-    path.to_string_lossy().into_owned()
+    std::fs::read(&path).expect("a fixtura lê-se")
+}
+
+/// ⭐ Os sons do projecto do gate (GEF 21 E2): o `AudioSource2D` nomeia um som DESTA biblioteca,
+/// então um gate que lhe desse um nome inventado mediria só o braço da falha.
+fn sons() -> ProjectSounds {
+    let mut l = ProjectSounds::default();
+    l.add("curto.wav", wav("ph2d_gate_audio2d.wav", 2_400));
+    l.add("longo.wav", wav("ph2d_gate_audio2d_longo.wav", 96_000));
+    l.add("lixo.wav", vec![1, 2, 3]);
+    l
+}
+
+/// O nome de um som de [`sons`].
+fn som(nome: &str) -> String {
+    assert!(sons().get(nome).is_some(), "{nome} não é um som do gate");
+    nome.to_owned()
 }
 
 /// Uma cena com um ouvinte na origem e uma fonte, com a config dada.
@@ -68,13 +82,14 @@ fn cena(cfg: AudioSource2D) -> (SimWorld, Entity) {
             cfg,
         ))
         .id();
+    sim.world_mut().insert_resource(sons());
     assign_missing_stable_ids(sim.world_mut());
     (sim, fonte)
 }
 
 fn com_autoplay(looping: bool) -> AudioSource2D {
     AudioSource2D {
-        sound: som("ph2d_gate_audio2d.wav"),
+        sound: som("curto.wav"),
         autoplay: true,
         looping,
         max_distance: 10.0,
@@ -136,7 +151,7 @@ fn autoplay_starts_once_at_birth_and_never_again() {
 #[test]
 fn a_source_without_autoplay_never_starts_by_itself() {
     let (mut sim, _) = cena(AudioSource2D {
-        sound: som("ph2d_gate_audio2d.wav"),
+        sound: som("curto.wav"),
         max_distance: 10.0,
         ..AudioSource2D::default()
     });
@@ -171,7 +186,7 @@ fn a_source_without_autoplay_never_starts_by_itself() {
 #[test]
 fn the_play_verb_sounds_and_polyphony_replaces_the_oldest() {
     let (mut sim, fonte) = cena(AudioSource2D {
-        sound: som("ph2d_gate_audio2d.wav"),
+        sound: som("curto.wav"),
         looping: true, // ⚠️ em ciclo, senão a conta do fim retirava a voz e o gate media outra coisa
         max_distance: 10.0,
         ..AudioSource2D::default()
@@ -215,7 +230,7 @@ fn the_play_verb_sounds_and_polyphony_replaces_the_oldest() {
 #[test]
 fn a_polyphonic_source_stacks_up_to_its_own_ceiling() {
     let (mut sim, fonte) = cena(AudioSource2D {
-        sound: som("ph2d_gate_audio2d.wav"),
+        sound: som("curto.wav"),
         looping: true,
         max_distance: 10.0,
         max_polyphony: 3,
@@ -297,16 +312,9 @@ fn in_a_run_a_one_shot_outlives_its_object_and_a_loop_does_not() {
     }
 }
 
-/// Um `.wav` de 2 s — o disparo ainda soa quando o gate pergunta.
+/// Um som de 2 s — o disparo ainda soa quando o gate pergunta.
 fn som_longo() -> String {
-    let path = std::env::temp_dir().join("ph2d_gate_audio2d_longo.wav");
-    if !path.exists() {
-        let data =
-            SampleData::from_interleaved(vec![0.0_f32; 192_000], AudioFormat::stereo(48_000));
-        ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16)
-            .expect("o gate tem de conseguir escrever a fixtura");
-    }
-    path.to_string_lossy().into_owned()
+    som("longo.wav")
 }
 
 /// **Uma cena sem ouvinte ainda toca** — e o relatório di-lo.
@@ -324,6 +332,7 @@ fn a_scene_with_no_listener_still_plays_and_says_so() {
             com_autoplay(true),
         ))
         .id();
+    sim.world_mut().insert_resource(sons());
     assign_missing_stable_ids(sim.world_mut());
     let mut livro = SceneAudio::default();
     let (mut eng, mut mixer) = motor();
@@ -334,21 +343,32 @@ fn a_scene_with_no_listener_still_plays_and_says_so() {
     assert_eq!(vozes_no_mixer(&mut mixer), 1, "o MIXER nao chegou a tocar");
 }
 
-/// ⛔ **Um caminho que não abre não arranca — e não tenta outra vez.**
+/// ⛔ **Um som que não descodifica não arranca — e não tenta outra vez**; um nome que os sons do
+/// projecto não têm (o caminho antigo que o load não achou) também não.
 ///
 /// ⚠️ **A segunda metade não é performance:** uma tentativa por quadro daria uma linha de erro 60
 /// vezes por segundo sobre um facto que não muda, e o terminal do dono deixaria de servir para
 /// diagnosticar seja o que for.
 ///
-/// **Mutação que deve sangrar:** não guardar a falha (`decoded.insert(path, None)`).
+/// **Mutação que deve sangrar:** não guardar a falha (`decoded.insert(som.id, None)`).
 #[test]
-fn a_path_that_does_not_open_never_starts_and_is_not_retried() {
+fn a_sound_that_does_not_decode_never_starts_and_is_not_retried() {
     let (mut sim, _) = cena(AudioSource2D {
-        sound: "/nao/existe/isto.wav".into(),
+        sound: som("lixo.wav"),
         autoplay: true,
         max_distance: 10.0,
         ..AudioSource2D::default()
     });
+    sim.world_mut().spawn((
+        Transform::from_translation(Vec2::new(2.0, 0.0)),
+        AudioSource2D {
+            sound: "/nao/existe/isto.wav".into(),
+            autoplay: true,
+            max_distance: 10.0,
+            ..AudioSource2D::default()
+        },
+    ));
+    assign_missing_stable_ids(sim.world_mut());
     let mut livro = SceneAudio::default();
     let (mut eng, mut mixer) = motor();
     for _ in 0..5 {

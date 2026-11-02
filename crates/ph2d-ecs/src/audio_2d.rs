@@ -42,6 +42,9 @@
 //! por isso tem um *Relink*), e **o projecto não embute o áudio**. As duas são o preço de não
 //! inventar um índice de assets nesta wave; a cura de ambas é a mesma — pôr áudio no índice — e ela
 //! é wave própria, com o `AssetId` por conteúdo que a F4 já usa para os pixels.
+//!
+//! ⭐ **Curado na GEF 21 E2:** o `sound` passou a ser o NOME de um som da [`ProjectSounds`], que o
+//! `.ph2dproj` embute; ver `audio_2d_library.rs`.
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
@@ -149,7 +152,8 @@ impl AudioBus {
 /// por N para servir um caso que a composição já exprime.*
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AudioSource2D {
-    /// O ficheiro de som. **Vazio = calado** — ver o doc do módulo.
+    /// O NOME de um som do projecto ([`ProjectSounds`], GEF 21 E2). **Vazio = calado.** Um texto que
+    /// a biblioteca não conhece é um caminho antigo: o load importa-o, e até lá não toca.
     pub sound: String,
     /// Volume em decibéis, `0` = o som como ele foi gravado.
     ///
@@ -388,6 +392,10 @@ pub fn listener_of(world: &mut World) -> Option<Entity> {
 pub fn listener_count(world: &mut World) -> usize {
     world.query::<&AudioListener2D>().iter(world).count()
 }
+
+#[path = "audio_2d_library.rs"]
+mod library;
+pub use library::{ProjectSound, ProjectSounds, SoundId, SoundsBlobError};
 
 #[cfg(test)]
 #[path = "audio_2d_tests.rs"]

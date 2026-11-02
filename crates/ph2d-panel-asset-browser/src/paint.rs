@@ -320,14 +320,24 @@ fn paint_chip_row(
     table: &[ph2d_a11y::NodeId],
 ) -> f32 {
     let theme = ctx.host.theme();
-    let step = (w + gap()) / count as f32;
+    // ⚠️ GEF 21 E2 — com o 7.º chip (Sound) a fileira única cortava os nomes («Pref…», medido pelo gate
+    // `nenhum_corte_novo_entra_sem_ser_nomeado` a 1280 px): acima de [`CHIPS_POR_FILA`] ela parte-se em fileiras.
+    let filas = count.div_ceil(CHIPS_POR_FILA).max(1);
+    let por_fila = count.div_ceil(filas);
+    let step = (w + gap()) / por_fila as f32;
     for (i, id) in table
         .iter()
         .copied()
         .enumerate()
         .take(count.min(table.len()))
     {
-        let r = Rect::new(x + step * i as f32, y, step - gap(), row_h);
+        let (fila, col) = (i / por_fila, i % por_fila);
+        let r = Rect::new(
+            x + step * col as f32,
+            y + (row_h + gap()) * fila as f32,
+            step - gap(),
+            row_h,
+        );
         let mut b = Button::new(id, label(i));
         b.kind = if selected(i) {
             ButtonKind::Accent
@@ -340,8 +350,12 @@ fn paint_chip_row(
         paint_button(&b, r, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, r);
     }
-    y + row_h + gap()
+    y + (row_h + gap()) * filas as f32
 }
+
+/// Quantos chips cabem numa fileira sem cortar o nome no painel mais estreito em que o dono trabalha
+/// (seis cabiam; o sétimo cortava — gate `nenhum_rotulo_do_app_pinta_nada`).
+const CHIPS_POR_FILA: usize = 6;
 
 /// A grade de cartões, recortada e rolável.
 fn paint_grid(

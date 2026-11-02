@@ -245,10 +245,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.audio.stop" => "Stop",
         "panel.inspector.audio.sound_file" => "sound file\u{2026}",
         "panel.inspector.audio.no_sound_file_yet_use" => {
-            "No sound file yet \u{2014} use Browse to pick one."
+            "No sound file yet \u{2014} use Browse, or drag a sound here from Assets."
         }
         "panel.inspector.audio.that_file_is_gone_pick" => {
-            "That file is gone \u{2014} pick it again."
+            "That file is gone \u{2014} it isn\u{2019}t one of the project\u{2019}s sounds. Pick it again with Browse."
         }
         "panel.inspector.audio.nothing_plays_this_autoplay_is" => {
             "Nothing plays this: Autoplay is off and no Signal Action targets it."

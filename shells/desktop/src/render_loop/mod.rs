@@ -103,8 +103,6 @@ use ph2d_app_components::signal_actions_bridge as signal_actions;
 mod empty_object_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
-/// ⭐⭐⭐ A secção AUDIO do Inspector (TOP-20 #4, W3) — o snapshot e o commit.
-mod inspector_audio;
 /// **O commit da §2 Sprite** — irmão do `inspector_commits` por CAP de LOC.
 mod inspector_commits_sprite;
 mod inspector_factory;

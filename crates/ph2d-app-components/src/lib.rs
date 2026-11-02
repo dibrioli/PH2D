@@ -239,6 +239,8 @@ pub mod signal_actions_bridge;
 pub mod signal_actions_inspector;
 /// ⭐ A cena 42 do smoke do modo (F42): um objecto de cada tipo na Hierarquia.
 pub mod smoke_tipos;
+/// GEF 21 E2 — os sons do projeto no `ProjectFile.sounds`: importar, gravar, abrir (caminhos antigos).
+pub mod sound_project;
 /// ⭐⭐⭐ O smoke do CÉREBRO AUTORÁVEL (TOP-20 #15) — ver o cabeçalho.
 pub mod state_machine_tick;
 pub mod statemachine_inspector;

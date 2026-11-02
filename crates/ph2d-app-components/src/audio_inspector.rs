@@ -1,9 +1,13 @@
 //! ⭐ **A lei dos números da FONTE DE SOM** (doc CodeEditor 08 §3.5): o cartão do Inspector (o
-//! `apply_audio_edit` da shell, `render_loop/inspector_audio.rs`) e o script
+//! [`apply_audio_edit`], `audio_inspector_card.rs`) e o script
 //! (`ph2d.set(e, "audio_source_2d.volume", …)`) passam os dois por aqui — o script não põe o que o
 //! painel recusa.
 
 use ph2d_ecs::{AUDIO_MAX_DISTANCE_M, AUDIO_MAX_POLYPHONY, AudioBus, AudioSource2D};
+
+#[path = "audio_inspector_card.rs"]
+mod card;
+pub use card::{apply_audio_edit, build_audio_info};
 
 /// `v` dentro de `[lo, hi]`; um valor não finito volta ao de fábrica.
 fn faixa(v: f32, (lo, hi): (f32, f32), livre: f32) -> f32 {

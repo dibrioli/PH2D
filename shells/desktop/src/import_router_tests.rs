@@ -43,6 +43,7 @@ fn the_dialog_offers_exactly_what_the_router_accepts() {
         .iter()
         .chain(crate::svg_import::SVG_EXTENSIONS)
         .chain(ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS)
     {
         assert!(
             all.contains(ext),
@@ -51,7 +52,7 @@ fn the_dialog_offers_exactly_what_the_router_accepts() {
         );
     }
     // 3. E o que não é importável fica de fora dos dois.
-    for ext in ["txt", "mp3", "blend", "rs"] {
+    for ext in ["txt", "mid", "blend", "rs"] {
         let unknown = partition_importables(&[p(&format!("/a/x.{ext}"))]).unknown;
         assert_eq!(unknown.len(), 1, ".{ext} nao devia ser importavel");
         assert!(!all.contains(&ext));
@@ -75,8 +76,9 @@ fn aseprite_svg_and_all_eleven_image_formats_are_offered() {
         all.len(),
         crate::ase_import::ASE_EXTENSIONS.len()
             + crate::svg_import::SVG_EXTENSIONS.len()
-            + ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.len(),
-        "a linha «tudo» tem de ser a UNIAO das tres listas, sem inventar nem perder"
+            + ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS.len()
+            + ph2d_audio_decode::decode_any::AUDIO_IMPORT_EXTS.len(),
+        "a linha «tudo» tem de ser a UNIAO das quatro listas, sem inventar nem perder"
     );
     // As linhas estreitas existem para o artista poder filtrar, e cada uma é a sua lista.
     assert_eq!(filters[1].0, "Aseprite");
@@ -84,6 +86,11 @@ fn aseprite_svg_and_all_eleven_image_formats_are_offered() {
     assert_eq!(filters[2].0, "Vector (SVG)");
     assert_eq!(filters[2].1, crate::svg_import::SVG_EXTENSIONS.to_vec());
     assert_eq!(filters[3].0, "Images");
+    assert_eq!(filters[4].0, "Sounds");
+    assert!(
+        all.contains(&"ogg") && all.contains(&"wav"),
+        "GEF 21 E2: os sons do projeto"
+    );
 }
 
 /// **Cada ficheiro vai para o seu importador**, e o que não é de nenhum sai NOMEADO — não em
@@ -98,6 +105,7 @@ fn every_file_goes_to_its_own_importer() {
         ase,
         svg,
         images,
+        sounds,
         unknown,
     } = partition_importables(&[
         p("/a/hero.ase"),
@@ -106,6 +114,7 @@ fn every_file_goes_to_its_own_importer() {
         p("/a/boss.ASEPRITE"),
         p("/a/scan.PSD"),
         p("/a/logo.svg"),
+        p("/a/moeda.OGG"),
     ]);
     assert_eq!(ase, vec![p("/a/hero.ase"), p("/a/boss.ASEPRITE")]);
     assert_eq!(
@@ -114,6 +123,11 @@ fn every_file_goes_to_its_own_importer() {
         "um .svg e' um DESENHO — se caisse na grelha de imagens viraria pixels"
     );
     assert_eq!(images, vec![p("/a/tiles.png"), p("/a/scan.PSD")]);
+    assert_eq!(
+        sounds,
+        vec![p("/a/moeda.OGG")],
+        "um som vai para os sons do projeto"
+    );
     assert_eq!(unknown, vec![p("/a/notes.txt")]);
 }
 

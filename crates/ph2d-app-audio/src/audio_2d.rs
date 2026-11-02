@@ -121,7 +121,7 @@ pub(crate) fn update_with(
         // está desligado — senão uma fonte muda ficaria «por nascer» para sempre e ligar o
         // `autoplay` a meio da sessão fá-la-ia arrancar sem ninguém pedir.
         let nasceu = livro.take_birth(*id);
-        if nasceu && cfg.autoplay && livro.play(motor, *id, cfg, sp) {
+        if nasceu && cfg.autoplay && livro.play(motor, *id, cfg, sp, sim.world().get_resource()) {
             started += 1;
         }
         livro.update(motor, *id, sp);
@@ -164,7 +164,7 @@ pub(crate) fn play_target_with(
     };
     let ouvinte = ears(sim);
     let sp = ph2d_ecs::spatialize(pos, ouvinte, &cfg);
-    livro.play(motor, id, &cfg, sp)
+    livro.play(motor, id, &cfg, sp, sim.world().get_resource())
 }
 
 /// **CALA** o som de um alvo — o verbo `StopSound`.

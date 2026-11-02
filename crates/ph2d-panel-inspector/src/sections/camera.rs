@@ -257,12 +257,30 @@ fn follow_body(
     }
     let (x, w) = (g.x, g.w);
     let cur_y = g.y;
-    // ⭐ GEF 20 C2 — o Eyedropper à direita do campo (o idioma da roldana, `wheel.rs`): premido enquanto escolhe.
-    let icon_w = (ROW_H_PX * 0.82).min(w); // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
-    let gap = Spacing::Xs.px();
+    // ⭐ GEF 20 C2 — a caixa tem a largura das irmãs (a coluna da secção) e o Eyedropper mora DENTRO da ponta
+    // direita dela, como o círculo do campo de objecto da Unity; registado depois, ganha o clique ali.
+    let y_linha = cur_y;
+    let cur_y = super::anim_rows::text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        TextKey::new("component.field.follow_fields.0"),
+        ids::INSP_CAMERA_TARGET,
+        TextInput::new(ids::INSP_CAMERA_TARGET, "")
+            .placeholder(tr("panel.inspector.camera.object_name")),
+        seccao,
+    );
+    let caixa = ph2d_editor_core::property_row::caixa_do_controlo(x, w, y_linha, seccao);
+    let icon_w = (ROW_H_PX * 0.82).min(caixa.w); // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
+    let inset = (ROW_H_PX - icon_w) * 0.5;
     let conta_gotas = Rect::new(
-        x + w - icon_w,
-        cur_y + (ROW_H_PX - icon_w) * 0.5,
+        caixa.x + caixa.w - icon_w - inset,
+        y_linha + inset,
         icon_w,
         icon_w,
     );
@@ -279,21 +297,7 @@ fn follow_body(
         theme,
     );
     hit_index.register(ids::INSP_CAMERA_TARGET_PICK, conta_gotas);
-    let mut cur_y = super::anim_rows::text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        (w - icon_w - gap).max(0.0),
-        cur_y,
-        TextKey::new("component.field.follow_fields.0"),
-        ids::INSP_CAMERA_TARGET,
-        TextInput::new(ids::INSP_CAMERA_TARGET, "")
-            .placeholder(tr("panel.inspector.camera.object_name")),
-        seccao,
-    );
+    let mut cur_y = cur_y;
 
     if !f.target.trim().is_empty() && !f.target_found {
         cur_y = super::rows::aviso(

@@ -15,11 +15,13 @@ use crate::smoke::Portas;
 pub const SINAL: &str = "coin";
 pub const CONTADOR: &str = "coins";
 pub const PLACAR: &str = "HUD";
-/// O som da moeda (Kenney *Digital Audio* `powerUp9`, CC0 — a licença ao lado).
+/// O som da moeda (Kenney *Digital Audio* `powerUp9`, CC0): a cena IMPORTA-O e a moeda nomeia-o.
 pub const SOM: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../docs/GameEngineFuncional/arte/sons/moeda.ogg"
 );
+/// O nome com que o som fica no projeto (o do ficheiro).
+pub const NOME_DO_SOM: &str = "moeda.ogg";
 /// O raio do círculo, no espaço da moeda (escala `0,5` ⇒ `0,25 m` no mundo, o desenho dela).
 pub const RAIO: f32 = 0.5;
 
@@ -58,7 +60,7 @@ pub fn veste_moeda(sim: &mut SimWorld, portas: Portas<'_>, e: Entity) {
     col.shape = ColliderShape::Ball { radius: RAIO };
     col.is_sensor = true;
     m.get_mut::<SignalOnHit>().expect("Signal On Hit").0 = SINAL.into();
-    m.get_mut::<AudioSource2D>().expect("Audio Source 2D").sound = SOM.into();
+    m.get_mut::<AudioSource2D>().expect("Audio Source 2D").sound = NOME_DO_SOM.into();
     m.get_mut::<SignalActions>().expect("Signal Actions").0 = vec![
         linha(SignalVerb::PlaySound, "", ""),
         linha(SignalVerb::AddToCounter, PLACAR, "1"),
@@ -66,8 +68,11 @@ pub fn veste_moeda(sim: &mut SimWorld, portas: Portas<'_>, e: Entity) {
     ];
 }
 
-/// O HUD (Add ▸ HUD) com o **Counter** das moedas.
+/// O HUD (Add ▸ HUD) com o **Counter** das moedas — e o Import… do som da moeda.
 pub fn placar(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
+    let nome = (portas.importa_som)(sim, std::path::Path::new(SOM))
+        .unwrap_or_else(|m| panic!("o som da moeda: {m}"));
+    assert_eq!(nome, NOME_DO_SOM, "o som entra com o nome do ficheiro");
     let hud = Entity::from_bits(
         (portas.componentes)(sim, "ph2d::ecs::UiCanvas").unwrap_or_else(|m| panic!("HUD: {m}")),
     );

@@ -27,6 +27,7 @@ pub fn com_portas<R>(
     f(ph2d_app_game::smoke::Portas {
         menu,
         componentes: &componentes,
+        importa_som: ph2d_app_components::sound_project::import_for_scene,
     })
 }
 

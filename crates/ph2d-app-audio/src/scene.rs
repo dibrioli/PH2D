@@ -31,7 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
 use ph2d_audio::{AudioEngine, BusId, PlayParams, SampleData, VoiceId};
-use ph2d_ecs::{AudioBus, AudioSource2D, Spatial};
+use ph2d_ecs::{AudioBus, AudioSource2D, ProjectSounds, SoundId, Spatial};
 
 /// Uma voz viva de um objecto.
 struct Live {
@@ -43,12 +43,12 @@ struct Live {
 /// **O livro das vozes da cena.**
 #[derive(Default)]
 pub struct SceneAudio {
-    /// O que já foi descodificado, por caminho.
+    /// O que já foi descodificado, pelo CONTEÚDO (GEF 21 E2: os bytes vêm da [`ProjectSounds`]).
     ///
-    /// ⚠️ **`None` guarda a FALHA**, e é isso que impede uma tentativa por quadro: um caminho que
-    /// não abre não abre, e voltar a tentar 60 vezes por segundo daria uma linha de erro por
-    /// quadro sobre um facto que não muda.
-    decoded: BTreeMap<String, Option<SampleData>>,
+    /// ⚠️ **`None` guarda a FALHA**, e é isso que impede uma tentativa por quadro: uns bytes que
+    /// não descodificam não descodificam, e voltar a tentar 60 vezes por segundo daria uma linha
+    /// de erro por quadro sobre um facto que não muda.
+    decoded: BTreeMap<SoundId, Option<SampleData>>,
     /// As vozes vivas, por `StableId`.
     voices: BTreeMap<u64, Vec<Live>>,
     /// Quem já NASCEU — a aresta que o `autoplay` lê.
@@ -84,8 +84,8 @@ impl SceneAudio {
         self.decoded.values().filter(|d| d.is_some()).count()
     }
 
-    /// **TOCA o som de um objecto.** `false` = não havia o que tocar (sem ficheiro, ou ele não
-    /// abre) ou o mixer recusou o comando.
+    /// **TOCA o som de um objecto.** `false` = não havia o que tocar (sem nome, um nome que os
+    /// sons do projecto não têm, ou bytes que não descodificam) ou o mixer recusou o comando.
     ///
     /// ⚠️ **A polifonia é honrada AQUI**, e da ponta mais VELHA: uma fonte com `max_polyphony = 1`
     /// (o default) **substitui** a voz anterior, que é o que um passo ou um clique de porta querem.
@@ -96,11 +96,12 @@ impl SceneAudio {
         key: u64,
         cfg: &AudioSource2D,
         sp: Spatial,
+        sons: Option<&ProjectSounds>,
     ) -> bool {
         if cfg.sound.trim().is_empty() {
             return false;
         }
-        let Some(data) = self.sample(&cfg.sound) else {
+        let Some(data) = sons.and_then(|l| self.sample(l, &cfg.sound)) else {
             return false;
         };
         let pitch = if cfg.pitch > 0.0 { cfg.pitch } else { 1.0 };
@@ -205,17 +206,16 @@ impl SceneAudio {
     }
 
     /// A amostra deste caminho, descodificada uma vez só. ⚠️ Ver o doc do [`Self::decoded`].
-    fn sample(&mut self, path: &str) -> Option<SampleData> {
-        if let Some(cached) = self.decoded.get(path) {
+    fn sample(&mut self, sons: &ProjectSounds, name: &str) -> Option<SampleData> {
+        let som = sons.get(name)?;
+        if let Some(cached) = self.decoded.get(&som.id) {
             return cached.clone();
         }
-        let out = std::fs::read(path)
-            .ok()
-            .and_then(|bytes| ph2d_audio_decode::decode_any::decode(&bytes).ok());
+        let out = ph2d_audio_decode::decode_any::decode(&som.bytes).ok();
         if out.is_none() {
-            eprintln!("audio: a fonte de cena nao conseguiu abrir `{path}`");
+            eprintln!("audio: o som do projecto `{name}` nao descodifica");
         }
-        self.decoded.insert(path.to_string(), out.clone());
+        self.decoded.insert(som.id, out.clone());
         out
     }
 }

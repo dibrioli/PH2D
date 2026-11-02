@@ -108,6 +108,8 @@ pub fn drain(
                 // D17 — um Kanban e um Quadro arrumam-se numa gaveta como qualquer asset.
                 DragPayload::Kanban { id } => ph2d_asset_index::AssetRef::Kanban { id: *id },
                 DragPayload::Board { id } => ph2d_asset_index::AssetRef::Board { id: *id },
+                // GEF 21 E2 — a lei da queda recusa um som numa gaveta (ainda sem lugar no `ProjectState`).
+                DragPayload::Sound { .. } => return false,
             };
             match catalog {
                 Some(c) => {

@@ -147,6 +147,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.import_router.unnamed" => "(unnamed)",
         "shell.import_router.images" => "Images",
+        "shell.import_router.sounds" => "Sounds",
         "shell.import_router.vector_svg" => "Vector (SVG)",
         "shell.import_router.aseprite" => "Aseprite",
         "shell.import_router.all_supported" => "All supported",
@@ -196,6 +197,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.project_load.project_refused_its_scripts" => {
             "Project refused: its scripts are unreadable ({e})"
+        }
+        "shell.project_load.project_refused_its_sounds" => {
+            "Project refused: its sounds are unreadable ({e})"
         }
         "shell.project_load.project_refused_format_189" => {
             "Project refused: format 189 or 190 file is unreadable ({e})"

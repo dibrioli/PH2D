@@ -150,6 +150,12 @@ fn cargo_of(
     }
 }
 
+/// O nome do som do projeto `asset` (GEF 21 E2) — o que o campo Sound e o script nomeiam.
+fn sound_name(sim: &ph2d_ecs::SimWorld, asset: [u8; 32]) -> Option<String> {
+    let lib = sim.world().get_resource::<ph2d_ecs::ProjectSounds>()?;
+    lib.name_of(&asset).map(str::to_owned)
+}
+
 /// O nome que o script recebe para uma carga da biblioteca: o `Name` do mestre, o nome da imagem.
 fn library_name(payload: DragPayload, libs: &mut Libraries<'_>) -> Option<String> {
     match payload {
@@ -162,6 +168,7 @@ fn library_name(payload: DragPayload, libs: &mut Libraries<'_>) -> Option<String
             let names = crate::library_names::session_library(libs.sim, libs.db, libs.atlas);
             names.get(&AssetId::from_digest(asset)).cloned()
         }
+        DragPayload::Sound { asset } => sound_name(libs.sim, asset),
         DragPayload::Object { .. }
         | DragPayload::Property { .. }
         | DragPayload::Kanban { .. }
@@ -224,6 +231,19 @@ pub fn write_code(
     {
         surface_input::drop_hover(hero, None);
         into_script_row(libs.sim, entity_bits, row, stable_id);
+        return true;
+    }
+    // GEF 21 E2 — um som largado no campo Sound: a fonte passa a nomeá-lo (um passo de desfazer).
+    if let DropAction::SetSound { entity_bits, asset } = action {
+        surface_input::drop_hover(hero, None);
+        if let Some(name) = sound_name(libs.sim, asset) {
+            hero.bus.push(
+                ph2d_editor_core::action_bus::EditorAction::InspectorAudioEdit {
+                    entity_bits,
+                    edit: ph2d_editor_core::AudioFieldEdit::Sound(name),
+                },
+            );
+        }
         return true;
     }
     // GEF 20 C2 — um objecto largado no Target do Follow: a câmera segue-o pelo nome (um passo de desfazer).

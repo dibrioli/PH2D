@@ -117,9 +117,18 @@ impl crate::App {
         }) else {
             return;
         };
+        let sons =
+            ph2d_app_components::sound_project::open(&mut file.state.world, &file.sounds, path)
+                .inspect_err(|e| {
+                    self.toast_refused("shell.project_load.project_refused_its_sounds", e)
+                });
+        let Ok(sons) = sons else {
+            return;
+        };
         self.project_forget_previous(&file);
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts.lib);
+            ph2d_app_components::sound_project::install(gfx.sim.world_mut(), sons.lib);
         }
         let marcas = std::mem::take(&mut file.marcas_do_artista);
         self.project_install_accepted(
@@ -137,7 +146,7 @@ impl crate::App {
             ph2d_editor_core::screens::hero::document_tabs::load(hero, boards);
             hero.documents.replace_kanbans(kanbans);
         }
-        if let Some(n) = scripts.notice {
+        for n in [scripts.notice, sons.notice].into_iter().flatten() {
             self.toast(n);
         }
         // As marcas do artista (W9): uma ilegível não recusa o projeto — o clipe toca por cima.

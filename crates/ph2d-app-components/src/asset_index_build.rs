@@ -110,7 +110,22 @@ pub fn publish_for_frame(
         })
     });
     push_documents(&mut index, documents, catalogs);
+    push_sounds(&mut index, sim.world());
     ph2d_panel_asset_browser::set_current_index(index);
+}
+
+/// ⭐ GEF 21 E2 — **os sons do projecto entram nos Assets por referência**, como as imagens: um cartão
+/// por som da [`ph2d_ecs::ProjectSounds`], com o ícone do som (sem pixels).
+pub(crate) fn push_sounds(index: &mut AssetIndex, world: &ph2d_ecs::World) {
+    let Some(lib) = world.get_resource::<ph2d_ecs::ProjectSounds>() else {
+        return;
+    };
+    for (name, som) in lib.iter() {
+        let key = AssetRef::Sound { asset: som.id };
+        let mut e = AssetEntry::new(key, name.to_owned());
+        e.detail = tr(key.kind().label_key()).to_string();
+        index.push(e);
+    }
 }
 
 /// ⭐ D17 (dono 30/10) — **os documentos do projecto entram nos Assets por referência**, como as

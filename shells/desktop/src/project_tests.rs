@@ -568,6 +568,8 @@ mod pattern_art;
 mod pixel;
 #[path = "project_scripts_tests.rs"]
 mod scripts;
+#[path = "project_sounds_tests.rs"]
+mod sounds;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um

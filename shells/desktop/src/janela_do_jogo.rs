@@ -99,6 +99,7 @@ impl crate::App {
             let portas = ph2d_app_game::smoke::Portas {
                 menu,
                 componentes: &componentes,
+                importa_som: ph2d_app_components::sound_project::import_for_scene,
             };
             let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {

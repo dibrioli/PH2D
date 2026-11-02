@@ -195,9 +195,11 @@ pub(crate) struct ProjectFile {
     /// **Os PIXEL SPRITES** (v209, ADR-0196) — os documentos de pixels dos objectos Pixel Sprite
     /// (`ph2d_app_pixel::persist`, formato `PH2DPIXEL` com versão PRÓPRIA), chaveados pelo
     /// `PixelSprite(u32)` de cada objecto. Fora do `ProjectState`: cada sprite tem desfazer próprio.
-    /// ⚠️ **O último campo** — o `falta_no_fim` e os braços `189`..`192` do load leem-no acrescentando o
-    /// `0` deste `Vec` vazio.
     pub(crate) pixel_sprites: Vec<u8>,
+    /// **Os SONS do projeto** (v214, GEF 21 E2) — `ph2d_ecs::ProjectSounds`, blob `PH2DSONS` com versão
+    /// PRÓPRIA (vazio = sem sons); o `AudioSource2D.sound` nomeia-os. ⚠️ **O último campo** — o
+    /// `falta_no_fim` e os braços `189`..`192` do load acrescentam o `0` deste `Vec` vazio.
+    pub(crate) sounds: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

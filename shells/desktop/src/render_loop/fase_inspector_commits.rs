@@ -246,14 +246,9 @@ impl crate::App {
         }
         // ⭐⭐⭐ **A secção AUDIO** (TOP-20 #4) — na fase-filha, pelo tecto desta função e por
         // uma fronteira que o comentário dela já escrevia: as edições são de DUAS naturezas.
-        inspector_queue_dirty |= audio_commits::aplicar(
-            sim,
-            &mut self.audio,
-            editor_queue,
-            component_registry,
-            toasts,
-            &audio_edits,
-        );
+        let fila = (&*editor_queue, &*component_registry);
+        inspector_queue_dirty |=
+            audio_commits::aplicar(sim, &mut self.audio, fila, toasts, &audio_edits);
         // ⭐⭐⭐ **A secção CAMERA** (TOP-20 #7, W3) — aqui pela MESMA razão da irmã de cima:
         // as edições são de DUAS naturezas. O `Preview` liga a VISTA (que só a `App` tem) e as
         // restantes escrevem um campo do documento. *Duas naturezas, um sítio que tem as duas.*

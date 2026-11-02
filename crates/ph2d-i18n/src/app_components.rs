@@ -120,6 +120,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.script_project.script_file_s_not_found_the_script_card_names_them" => {
             "{n} script file(s) not found \u{2014} the Script card names them"
         }
+        // GEF 21 E2 — um som importado (Import… ou largado na janela) entra nos sons do projeto.
+        "app.components.sound_project.added_to_the_project_sounds" => {
+            "Added the sound {name} to the project \u{2014} drag it from Assets onto an Audio Source 2D"
+        }
+        // GEF 21 E2 — a recusa da queda de um som fora do campo Sound.
+        "app.components.asset_drop.drop_a_sound_on_the_sound_field" => {
+            "Drop a sound on the Sound field of an Audio Source 2D"
+        }
+        // GEF 21 E2 — os verbos do cartão de um som nos Assets.
+        "app.components.asset_card_verbs.drop_a_sound_on_the_sound_field" => {
+            "Drag the sound onto the Sound field of an Audio Source 2D"
+        }
+        "app.components.asset_card_verbs.sounds_stay_in_the_project" => {
+            "Sounds stay in the project for now \u{2014} removing one isn\u{2019}t available yet"
+        }
+        // GEF 21 E2 — o ficheiro escolhido no campo Sound não é som.
+        "app.components.audio_inspector.not_a_sound" => {
+            "{file} isn\u{2019}t a sound this app can play ({why})"
+        }
+        // GEF 21 E2 — o load copiou sons soltos para dentro do projeto (o toast do open).
+        "app.components.sound_project.copied_sound_files_into_the_project" => {
+            "Copied {n} sound file(s) into the project \u{2014} moving the loose files no longer silences it"
+        }
+        "app.components.sound_project.sound_files_not_found" => {
+            "{n} sound file(s) not found \u{2014} the Audio Source card names them"
+        }
         // F30 — a cena `PH2D_AUTOKEY_SMOKE=35`.
         "app.components.autokey_smoke_cena.ground" => "Ground",
         "app.components.autokey_smoke_cena.ball" => "Ball",

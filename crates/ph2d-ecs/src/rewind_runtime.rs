@@ -86,16 +86,16 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // ⚠️ A config entra na conta: o que um slot recebe ao nascer depende do `autostart` DELE.
     let mut q = world.query::<(&Timers, &mut TimerRuntime)>();
     for (cfg, mut rt) in q.iter_mut(world) {
-        rt.0.clear();
-        rt.0.extend(cfg.0.iter().map(crate::timer::born));
-        n += 1;
+        n += repoe(
+            &mut rt,
+            TimerRuntime(cfg.0.iter().map(crate::timer::born).collect()),
+        );
     }
 
     // ── As VIDAS ─────────────────────────────────────────────────────────────
     let mut q = world.query::<&mut LifetimeRuntime>();
     for mut rt in q.iter_mut(world) {
-        *rt = LifetimeRuntime::default();
-        n += 1;
+        n += repoe(&mut rt, LifetimeRuntime::default());
     }
 
     // ── OS CÉREBROS ──────────────────────────────────────────────────────────
@@ -115,8 +115,7 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
         if motivo == Renascimento::Rebobinar && rt.started && rt.current == nascido.current {
             continue;
         }
-        *rt = nascido;
-        n += 1;
+        n += repoe(&mut rt, nascido);
     }
 
     // ── As FÁBRICAS ──────────────────────────────────────────────────────────
@@ -126,8 +125,7 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // semear) ela volta a semear-se da semente AUTORADA misturada com a identidade.
     let mut q = world.query::<&mut FactoryRuntime>();
     for mut rt in q.iter_mut(world) {
-        *rt = FactoryRuntime::default();
-        n += 1;
+        n += repoe(&mut rt, FactoryRuntime::default());
     }
 
     // ── Os CONTADORES ────────────────────────────────────────────────────────
@@ -143,8 +141,7 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
         if motivo == Renascimento::Recomecar && cfg.keep_on_restart {
             continue;
         }
-        rt.value = cfg.start;
-        n += 1;
+        n += repoe(&mut rt, CounterRuntime { value: cfg.start });
     }
 
     // ── As VIGIAS ────────────────────────────────────────────────────────────
@@ -154,9 +151,8 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // `started = false` do cérebro cura um parágrafo acima, e que a fábrica pagou com o `total`.
     let mut q = world.query::<(&CounterWatch, &mut CounterWatchRuntime)>();
     for (cfg, mut rt) in q.iter_mut(world) {
-        rt.0.clear();
-        rt.0.resize(cfg.0.len(), crate::counter_watch::born());
-        n += 1;
+        let nascido = vec![crate::counter_watch::born(); cfg.0.len()];
+        n += repoe(&mut rt, CounterWatchRuntime(nascido));
     }
 
     // ── As ARMAS ─────────────────────────────────────────────────────────────
@@ -167,8 +163,7 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // «quantas balas tem uma arma que renasce».*
     let mut q = world.query::<&mut WeaponRuntime>();
     for mut rt in q.iter_mut(world) {
-        *rt = crate::weapon::born();
-        n += 1;
+        n += repoe(&mut rt, crate::weapon::born());
     }
 
     // ── As CÂMERAS ───────────────────────────────────────────────────────────
@@ -180,15 +175,24 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     //
     // ⚠️ E isso devolve de graça o `settled = false`, que é o `reset_smoothing()` do oráculo: sem
     // ele a câmera **viajaria** do sítio da corrida anterior até ao alvo.
-    let camaras: Vec<Entity> = world
+    // ⚠️ GEF 21 — TODA câmera sai (parado no início, é este re-nascer a cada quadro que mantém a vista colada a um
+    // alvo que o artista arrasta), mas só CONTA a que saiu do nascimento: parada na mira do alvo.
+    let vivas: Vec<(Entity, CameraRuntime)> = world
         .query::<(Entity, &CameraRuntime)>()
         .iter(world)
-        .map(|(e, _)| e)
+        .map(|(e, rt)| (e, rt.clone()))
         .collect();
-    for e in camaras {
+    let camaras: Vec<(Entity, bool)> = vivas
+        .into_iter()
+        .map(|(e, rt)| {
+            let mira = mira_de_nascer(world, e);
+            (e, rt.velocity != [0.0, 0.0] || mira != Some(rt.anchor))
+        })
+        .collect();
+    for (e, correu) in camaras {
         if let Ok(mut ent) = world.get_entity_mut(e) {
             ent.remove::<CameraRuntime>();
-            n += 1;
+            n += usize::from(correu);
         }
     }
 
@@ -199,9 +203,37 @@ pub fn rewind_runtime_state(world: &mut World, motivo: Renascimento) -> usize {
     // vista a acabar de tremer o abanão da corrida ANTERIOR, com o relógio no zero.
     let mut q = world.query::<&mut crate::CameraShakeRuntime>();
     for mut rt in q.iter_mut(world) {
-        *rt = crate::CameraShakeRuntime::default();
-        n += 1;
+        n += repoe(&mut rt, crate::CameraShakeRuntime::default());
     }
 
     n
+}
+
+/// Para onde a câmera `e` aponta ao NASCER (`ph2d_app_components::camera_2d::update`, o ramo do
+/// `settled`): o alvo do *Follow* com o *Offset*, sem antecipação; sem *Follow*, a pose dela.
+fn mira_de_nascer(world: &mut World, e: Entity) -> Option<[f32; 2]> {
+    let pose = crate::camera_position_of(world, e)?;
+    let Some(f) = world.get::<crate::CameraFollow>(e).cloned() else {
+        return Some(pose);
+    };
+    let alvo = crate::follow_target(world, &f.target)
+        .and_then(|t| crate::camera_position_of(world, t))
+        .unwrap_or(pose);
+    Some(crate::aim_at(alvo, [0.0, 0.0], &f))
+}
+
+/// Põe `nascido` em `rt` e conta `1` — **só se mudou** (GEF 21: um quadro parado no início não repõe
+/// nada, e o `[rebobinar]` da shell imprimia «1 estado reposto» a cada quadro por um contador que já
+/// estava no `start`). ⚠️ Sem escrever no igual: o `Mut` marcaria a mudança.
+fn repoe<
+    T: PartialEq + bevy_ecs::component::Component<Mutability = bevy_ecs::component::Mutable>,
+>(
+    rt: &mut bevy_ecs::world::Mut<'_, T>,
+    nascido: T,
+) -> usize {
+    if **rt == nascido {
+        return 0;
+    }
+    **rt = nascido;
+    1
 }

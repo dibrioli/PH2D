@@ -16,6 +16,8 @@ struct Corrida {
     sons: Vec<String>,
     contador: Option<i64>,
     ficam: Vec<String>,
+    /// O que um *Label* «Coins: » ligado ao contador mostraria no fim (GEF 21: o caminho do artista).
+    placar: Option<String>,
 }
 
 fn nome(sim: &SimWorld, e: ph2d_ecs::Entity) -> String {
@@ -82,11 +84,17 @@ fn corre(ticks: u64) -> Corrida {
         }
     }
     let contador = ph2d_ecs::counter::soma(sim.world(), CONTADOR, ph2d_ecs::counter::Ambito::Mundo);
+    let rotulo = ph2d_ecs::UiLabel {
+        source: ph2d_ecs::LabelSource::Counter(CONTADOR.into()),
+        prefix: "Coins: ".into(),
+        suffix: String::new(),
+    };
     Corrida {
         sairam,
         sons,
         contador,
         ficam: moedas(&mut sim),
+        placar: ph2d_ecs::hud::texto(sim.world_mut(), &tags, &rotulo),
     }
 }
 
@@ -101,6 +109,11 @@ fn correr_pelo_chao_apanha_as_duas_moedas_do_chao_uma_vez_cada() {
     assert_eq!(c.sairam, ["Coin 1", "Coin 2"], "sons {:?}", c.sons);
     assert_eq!(c.sons, ["Coin 1", "Coin 2"], "cada moeda toca o SEU som");
     assert_eq!(c.contador, Some(2), "o HUD conta duas");
+    assert_eq!(
+        c.placar.as_deref(),
+        Some("Coins: 2"),
+        "o Label do artista lê o contador"
+    );
     assert_eq!(c.ficam, ["Coin 3", "Coin 4", "Coin 5"]);
 }
 
@@ -130,4 +143,29 @@ fn a_moeda_nao_tem_script_e_o_hud_tem_o_contador() {
         .map(|(n, c)| (n.as_str().to_owned(), c.name.clone()))
         .collect();
     assert_eq!(hud, [(PLACAR.to_owned(), CONTADOR.to_owned())]);
+}
+
+/// ⭐ GEF 21 E2 — **o som da moeda é um som do PROJETO**: a cena importou o ficheiro (o Import… do
+/// artista) e cada moeda nomeia-o; os bytes estão na biblioteca e descodificam — não há caminho do disco.
+///
+/// **Mutação que deve sangrar:** a moeda a guardar o caminho do ficheiro (`SOM`) em vez do nome.
+#[test]
+fn o_som_da_moeda_e_um_som_do_projeto() {
+    use ph2d_app_game::smoke_moedas::NOME_DO_SOM;
+    let mut sim = SimWorld::new();
+    crate::comp::montar(&mut sim, 2);
+    let lib = sim.world().resource::<ph2d_ecs::ProjectSounds>().clone();
+    let som = lib.get(NOME_DO_SOM).expect("o som entrou no projeto");
+    assert!(
+        !som.bytes.is_empty(),
+        "o Import… descodificou-o antes de o aceitar"
+    );
+    let w = sim.world_mut();
+    let mut q = w.query::<(&Name, &ph2d_ecs::AudioSource2D)>();
+    let fontes: Vec<_> = q
+        .iter(w)
+        .map(|(n, a)| (n.as_str().to_owned(), a.sound.clone()))
+        .collect();
+    assert_eq!(fontes.len(), 5, "{fontes:?}");
+    assert!(fontes.iter().all(|(_, s)| s == NOME_DO_SOM), "{fontes:?}");
 }

@@ -408,3 +408,53 @@ fn rebobinar_parado_nao_faz_o_cerebro_reanunciar_a_cada_quadro() {
         "o CONTROLO: o recomeço renasce sempre"
     );
 }
+
+/// ⭐ GEF 21 — **um quadro parado no início não repõe NADA**: a porta corre a cada quadro com o
+/// relógio no zero, e contar o que já estava no nascido fazia a shell imprimir
+/// «`[rebobinar] 1 estado(s) vivo(s) reposto(s)`» a cada quadro (um contador no `start`).
+///
+/// A câmera que só ASSENTOU (parada na mira, a pose dela sem *Follow*) sai à mesma — é isso que mantém a
+/// vista colada ao alvo com o jogo parado —, mas não conta; uma que andou conta.
+///
+/// **Mutações que devem sangrar:** o `repoe` a contar `1` sem comparar · a câmera a contar sempre.
+#[test]
+fn um_mundo_ja_no_inicio_nao_conta_reposicao_nenhuma() {
+    use ph2d_ecs::{Counter, CounterRuntime};
+    let (mut w, _) = cena(true);
+    let contador = Counter {
+        name: "coins".into(),
+        start: 0,
+        keep_on_restart: false,
+    };
+    let c = w.spawn((contador, CounterRuntime { value: 3 })).id();
+    w.spawn(LifetimeRuntime::default());
+    let assentada = ph2d_ecs::CameraRuntime {
+        center: [1.0, 2.0],
+        anchor: [1.0, 2.0],
+        last_target: Some([1.0, 2.0]),
+        settled: true,
+        ..Default::default()
+    };
+    let pose = ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(1.0, 2.0));
+    let andou = ph2d_ecs::CameraRuntime {
+        anchor: [5.0, 2.0],
+        ..assentada.clone()
+    };
+    let cam = w.spawn((pose, andou)).id();
+    let motivo = ph2d_ecs::rewind_runtime::Renascimento::Rebobinar;
+    let primeiro = ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w, motivo);
+    assert!(primeiro >= 1, "o contador a 3 voltou ao 0: {primeiro}");
+    assert_eq!(w.get::<CounterRuntime>(c).expect("vivo").value, 0);
+    assert!(
+        w.get::<ph2d_ecs::CameraRuntime>(cam).is_none(),
+        "a câmera sai para re-assentar"
+    );
+    for _ in 0..3 {
+        w.entity_mut(cam).insert(assentada.clone()); // o passo da vista com o jogo parado
+        assert_eq!(
+            ph2d_ecs::rewind_runtime::rewind_runtime_state(&mut w, motivo),
+            0,
+            "parado no início, nada mudou"
+        );
+    }
+}

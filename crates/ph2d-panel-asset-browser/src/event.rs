@@ -119,7 +119,8 @@ pub(crate) fn apply_event(
                     .push(EditorAction::OpenAsset(crate::state::payload_of(r)));
                 EventOutcome::Consumed
             }
-            Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
+            // GEF 21 E2 — um som vai para o campo Sound pela queda, como a textura.
+            Some(AssetRef::Texture { .. } | AssetRef::Sound { .. }) | None => EventOutcome::Ignored,
         },
 
         // ── ⭐⭐ AS DUAS PERGUNTAS DE RELAÇÃO (D9) ─────────────────────────────────────────────

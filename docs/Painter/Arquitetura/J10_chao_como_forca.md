@@ -78,3 +78,17 @@ os dois primeiros sangram; M2 sem a água na superfície (`w_h = 0`) → o terce
 - O pontilhado da tinta B nos buracos do relevo depois do transbordo (antes e depois): a composição / o pouso.
 - A ONDA que desloca o Dabber (smoke do dono, fotos 2/4): nesta cena o Dabber SECO já não se mexe (a água não passa);
   conferir no app com o Dabber molhado.
+
+## 6. A composição do Real Oil (§3.2 da janela 9) — tentativa MEDIDA e desfeita
+
+Desenho tentado: «só o que se vê» — cada célula guardava a chave do que a tela mostra (água, massas, cor, abertura),
+escrita pela composição; o passo marcava sujo só as células cuja chave mudou além de um limiar invisível (rel 1/256),
+e a caixa inteira quando a água acaba. Prova de fidelidade (`vista_tests`, a tela × a recomposição inteira, ≤ 1 nível;
+seca ao byte) verde no Filbert d0,9 e no Dabber.
+
+Medido (`desempenho_oleo_tests`, variantes « sem vista» intercaladas, 3 réplicas, 120 s): Filbert Oil d0,9 com o filtro
+21 635 ms de composição contra 20 890 sem ele; **as células do motor por chamada ficaram IGUAIS (17 989)**, também com
+o piso da água a 10 (a água fora da chave). Logo o filtro nem chegou a agir: outra marca de sujo cobre a caixa molhada a
+cada tique (suspeitos: `marca_passo`/`merge_dirty` da secagem ou do pouso, ou `Grid::oleo_real` desligado nessa grade —
+por conferir com um contador por chamador de `merge_dirty`). Código desfeito (custava +0,6 s da chave sem ganho);
+guardado fora da árvore. Próximo passo: achar QUEM marca a caixa inteira, depois religar o filtro.

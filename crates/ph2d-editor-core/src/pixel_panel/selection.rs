@@ -122,6 +122,8 @@ pub enum PixelEditAction {
     BrightnessContrast,
     HueSaturation,
     ColorCurve,
+    /// P8: Edit ▸ FX ▸ Convolution Matrix… (`F9`).
+    ConvolutionMatrix,
 }
 
 /// O menu Sprite.
@@ -221,6 +223,7 @@ pub enum PixelDialogKind {
     BrightnessContrast,
     HueSaturation,
     ColorCurve,
+    ConvolutionMatrix,
 }
 
 impl PixelDialogKind {
@@ -235,6 +238,7 @@ impl PixelDialogKind {
                 | Self::BrightnessContrast
                 | Self::HueSaturation
                 | Self::ColorCurve
+                | Self::ConvolutionMatrix
         )
     }
 }
@@ -295,6 +299,12 @@ pub enum PixelDialogChoice {
     },
     ColorCurve {
         curve: super::PixelCurve,
+        channels: super::PixelChannels,
+    },
+    /// `kernel` = índice na lista que a família publicou (`PixelFilterDialog::kernels`).
+    Convolution {
+        kernel: u8,
+        tiled: bool,
         channels: super::PixelChannels,
     },
 }

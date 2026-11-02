@@ -10,6 +10,7 @@ use ph2d_editor_core::pixel_panel::{
     PixelOutlinePlace,
 };
 use ph2d_pixel_core::filter::adjust::Invert;
+use ph2d_pixel_core::filter::convolution::{Convolution, KERNELS};
 use ph2d_pixel_core::filter::median::Median;
 use ph2d_pixel_core::filter::outline::{self, Background, Outline, Place};
 use ph2d_pixel_core::filter::{self, Channels, Edge, Filter};
@@ -36,6 +37,7 @@ pub(crate) fn menu(app: &mut PixelApp, key: u32, a: E) {
         E::BrightnessContrast => Some(PixelDialogKind::BrightnessContrast),
         E::HueSaturation => Some(PixelDialogKind::HueSaturation),
         E::ColorCurve => Some(PixelDialogKind::ColorCurve),
+        E::ConvolutionMatrix => Some(PixelDialogKind::ConvolutionMatrix),
         _ => None,
     };
     if let Some(kind) = kind {
@@ -125,6 +127,17 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
             }),
             channels,
         ),
+        PixelDialogChoice::Convolution {
+            kernel,
+            tiled,
+            channels,
+        } => (
+            Box::new(Convolution {
+                kernel: KERNELS.get(usize::from(kernel))?,
+                edge: if tiled { Edge::Wrap } else { Edge::Clamp },
+            }),
+            channels,
+        ),
         c => crate::ajustes::filtro(c)?,
     };
     let [r, g, b, a] = ch;
@@ -139,6 +152,7 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
         PixelDialogChoice::Invert { .. }
             | PixelDialogChoice::Despeckle { .. }
             | PixelDialogChoice::Outline { .. }
+            | PixelDialogChoice::Convolution { .. }
     ) && crate::ajustes::filtro(c).is_none()
     {
         return false;
@@ -177,6 +191,13 @@ pub(crate) fn acompanha(app: &mut PixelApp, store: &WidgetStore) {
         cores,
         traco,
     });
+}
+
+/// Os nomes dos kernels da Convolution Matrix, na ordem do núcleo — o que o diálogo lista.
+pub(crate) fn nomes_dos_kernels() -> &'static [&'static str] {
+    static NOMES: std::sync::LazyLock<Vec<&'static str>> =
+        std::sync::LazyLock::new(|| KERNELS.iter().map(|k| k.name).collect());
+    &NOMES
 }
 
 /// O traço da pré-visualização do filtro sobre `key`, se há.

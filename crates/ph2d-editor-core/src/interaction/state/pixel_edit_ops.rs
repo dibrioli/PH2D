@@ -54,7 +54,8 @@ impl WidgetStore {
             | PixelDialogKind::Outline
             | PixelDialogKind::BrightnessContrast
             | PixelDialogKind::HueSaturation
-            | PixelDialogKind::ColorCurve => &filter_fields,
+            | PixelDialogKind::ColorCurve
+            | PixelDialogKind::ConvolutionMatrix => &filter_fields,
             PixelDialogKind::ColorRange => &[(
                 ids::PIXEL_EDIT_TOLERANCE,
                 f64::from(d.tolerance),
@@ -106,7 +107,9 @@ impl WidgetStore {
             ids::PIXEL_EDIT_CANCEL,
             ids::PIXEL_EDIT_LOCK,
         ];
-        let filters = ids::pixel_filter_buttons();
+        let n = self.pixel.edit.filter.kernels.len();
+        let kernels = (0..n).filter_map(ids::pixel_filter_kernel_id);
+        let filters = ids::pixel_filter_buttons().chain(kernels);
         for id in anchors
             .chain(brushes)
             .chain(methods)
@@ -222,7 +225,8 @@ impl WidgetStore {
             | PixelDialogKind::Outline
             | PixelDialogKind::BrightnessContrast
             | PixelDialogKind::HueSaturation
-            | PixelDialogKind::ColorCurve => {
+            | PixelDialogKind::ColorCurve
+            | PixelDialogKind::ConvolutionMatrix => {
                 return;
             }
             PixelDialogKind::ColorRange => {

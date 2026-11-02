@@ -106,6 +106,11 @@ pub struct PixelFilterDialog {
     pub curve: PixelCurve,
     /// O ponto da curva agarrado (premido sobre a caixa).
     pub curve_grab: Option<usize>,
+    /// Convolution Matrix: o kernel escolhido (índice em [`Self::kernels`]), lembrado na sessão.
+    pub kernel: u8,
+    /// Convolution Matrix: os nomes dos kernels, na ordem do núcleo — a família publica-os
+    /// ([`crate::interaction::WidgetStore::set_pixel_filter_kernels`]); o chrome não vê o núcleo.
+    pub kernels: &'static [&'static str],
 }
 
 impl Default for PixelFilterDialog {
@@ -123,6 +128,8 @@ impl Default for PixelFilterDialog {
             hue_mode: PixelHueMode::default(),
             curve: PixelCurve::default(),
             curve_grab: None,
+            kernel: 0,
+            kernels: &[],
         }
     }
 }

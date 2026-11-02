@@ -446,6 +446,8 @@ pub(crate) fn key(
         // P8: Adjustments ▸ Hue/Saturation (Ctrl+U), Color Curve (Ctrl+M).
         (KeyCode::KeyU, true, false) => pede(app, PixelRequest::Edit(E::HueSaturation)),
         (KeyCode::KeyM, true, false) => pede(app, PixelRequest::Edit(E::ColorCurve)),
+        // P8: FX ▸ Convolution Matrix (F9).
+        (KeyCode::F9, false, false) => pede(app, PixelRequest::Edit(E::ConvolutionMatrix)),
         _ => return None,
     })
 }

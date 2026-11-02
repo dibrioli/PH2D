@@ -137,3 +137,28 @@ pub fn pixel_filter_buttons() -> impl Iterator<Item = NodeId> {
         .chain(PIXEL_FILTER_BACKGROUNDS.iter().map(|(_, id, _)| *id))
         .chain(PIXEL_FILTER_HUE_MODES.iter().map(|(_, id, _)| *id))
 }
+
+/// Convolution Matrix: quantas linhas da lista de kernels têm id assado — o recurso é o `NodeId`
+/// pré-calculado por linha (o despacho e o dono varrem a escada). A família tem 25 hoje e o gate
+/// dela confere que cabem.
+pub const PIXEL_FILTER_KERNEL_SLOTS: usize = 64;
+
+static KERNEL_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new(|| {
+    (0..PIXEL_FILTER_KERNEL_SLOTS)
+        .map(|i| {
+            ph2d_tool_registry::hash_node_id_runtime(&format!("pixel.filter_dialog.kernel.{i}"))
+        })
+        .collect()
+});
+
+/// O botão da linha `i` da lista de kernels (`None` fora da escada).
+#[must_use]
+pub fn pixel_filter_kernel_id(i: usize) -> Option<NodeId> {
+    KERNEL_ROWS.get(i).copied()
+}
+
+/// A leitura inversa: `id` é a linha de que kernel?
+#[must_use]
+pub fn pixel_filter_kernel_index(id: NodeId) -> Option<usize> {
+    KERNEL_ROWS.iter().position(|k| *k == id)
+}

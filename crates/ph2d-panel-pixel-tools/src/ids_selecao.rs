@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 26] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 27] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -265,6 +265,12 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 26] = [
         hash_node_id("pixel.edit.color_curve"),
         PixelRequest::Edit(E::ColorCurve),
         "panel.pixel.edit.color_curve",
+    ),
+    // P8 (26): FX ▸ Convolution Matrix… (F9).
+    (
+        hash_node_id("pixel.edit.convolution"),
+        PixelRequest::Edit(E::ConvolutionMatrix),
+        "panel.pixel.edit.convolution",
     ),
 ];
 

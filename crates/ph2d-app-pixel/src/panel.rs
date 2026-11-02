@@ -114,6 +114,8 @@ pub fn frame(
         && let Some(doc) = app.chave.and_then(|k| app.docs.get(&k))
     {
         let size = (doc.sprite.width(), doc.sprite.height());
+        hero.store
+            .set_pixel_filter_kernels(crate::filtros::nomes_dos_kernels());
         hero.store.open_pixel_edit_dialog(kind, size);
     }
     let curva = hero

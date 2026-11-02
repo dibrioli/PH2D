@@ -43,8 +43,15 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::HueSaturation => 8,
         // Título · a caixa da curva · canais · Preview · botões.
         PixelDialogKind::ColorCurve => 4 + CURVE_ROWS,
+        // Título · Tiled · canais · Preview · botões (+ as filas da lista: [`KERNEL_COLS`] por fila).
+        PixelDialogKind::ConvolutionMatrix => 5,
     }
 }
+
+/// A lista de kernels da Convolution Matrix vai em colunas de botões de escolha: as 25 numa coluna
+/// só (≈ 700 px) passariam da altura de uma janela pequena, e em duas cabem sem rolagem. O Aseprite
+/// tem também «Apply» e «Reload Stock» (relê o ficheiro de kernels) — não há ficheiro aqui.
+const KERNEL_COLS: usize = 2;
 
 /// A caixa da Color Curve ocupa estas filas.
 const CURVE_ROWS: usize = 7;
@@ -58,8 +65,13 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     viewport: Rect,
 ) {
     let d = store.pixel_edit_dialog();
-    #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 16")]
-    let rows = rows_of(d.kind) as f32;
+    let kernel_rows = if d.kind == PixelDialogKind::ConvolutionMatrix {
+        d.filter.kernels.len().div_ceil(KERNEL_COLS)
+    } else {
+        0
+    };
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 64")]
+    let rows = (rows_of(d.kind) + kernel_rows) as f32;
     let gap = Spacing::Xs.px();
     let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
     let rect_x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
@@ -99,6 +111,7 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         PixelDialogKind::BrightnessContrast => "pixel.filter_dialog.brightness_contrast.title",
         PixelDialogKind::HueSaturation => "pixel.filter_dialog.hue_saturation.title",
         PixelDialogKind::ColorCurve => "pixel.filter_dialog.curve.title",
+        PixelDialogKind::ConvolutionMatrix => "pixel.filter_dialog.convolution.title",
     };
     y = c.label(title, y, ColorToken::Text1);
     match d.kind {
@@ -250,9 +263,23 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
             y,
         );
     }
+    if d.kind == PixelDialogKind::ConvolutionMatrix {
+        let sel = usize::from(f.kernel);
+        for (fila, nomes) in f.kernels.chunks(KERNEL_COLS).enumerate() {
+            let opts: Vec<_> = nomes
+                .iter()
+                .enumerate()
+                .filter_map(|(j, nome)| {
+                    let i = fila * KERNEL_COLS + j;
+                    ids::pixel_filter_kernel_id(i).map(|id| (id, *nome, i == sel))
+                })
+                .collect();
+            y = c.choices(&opts, y);
+        }
+    }
     if matches!(
         d.kind,
-        PixelDialogKind::Despeckle | PixelDialogKind::Outline
+        PixelDialogKind::Despeckle | PixelDialogKind::Outline | PixelDialogKind::ConvolutionMatrix
     ) {
         let tiled = (
             ids::PIXEL_FILTER_TILED,

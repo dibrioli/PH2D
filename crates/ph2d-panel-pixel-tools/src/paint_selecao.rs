@@ -193,7 +193,8 @@ impl Corpo<'_> {
         y = self.botoes(&[par(e, 23)], y);
         y = self.botoes(&[par(e, 24), par(e, 25)], y);
         y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
-        self.botoes(&[par(e, 21), par(e, 22)], y)
+        let y = self.botoes(&[par(e, 21), par(e, 22)], y);
+        self.botoes(&[par(e, 26)], y)
     }
 
     /// Os botões do menu Sprite (o Crop pede selecção).

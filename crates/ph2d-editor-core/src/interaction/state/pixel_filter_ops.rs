@@ -135,6 +135,11 @@ impl WidgetStore {
                 curve: f.curve,
                 channels,
             },
+            PixelDialogKind::ConvolutionMatrix => PixelDialogChoice::Convolution {
+                kernel: self.pixel_filter_kernel(),
+                tiled: f.tiled,
+                channels,
+            },
             _ => return None,
         })
     }
@@ -202,6 +207,26 @@ impl WidgetStore {
 
     pub fn set_pixel_filter_hue_mode(&mut self, m: PixelHueMode) {
         self.pixel.edit.filter.hue_mode = m;
+    }
+
+    /// A família publica os nomes dos kernels da Convolution Matrix (na ordem do núcleo).
+    pub fn set_pixel_filter_kernels(&mut self, names: &'static [&'static str]) {
+        self.pixel.edit.filter.kernels = names;
+    }
+
+    /// Escolhe o kernel `i` (fora da lista, nada muda); fica lembrado na sessão.
+    pub fn set_pixel_filter_kernel(&mut self, i: usize) {
+        let f = &mut self.pixel.edit.filter;
+        if let (true, Ok(k)) = (i < f.kernels.len(), u8::try_from(i)) {
+            f.kernel = k;
+        }
+    }
+
+    /// O kernel escolhido, preso à lista publicada.
+    fn pixel_filter_kernel(&self) -> u8 {
+        let f = self.pixel.edit.filter;
+        let last = u8::try_from(f.kernels.len().saturating_sub(1)).unwrap_or(u8::MAX);
+        f.kernel.min(last)
     }
 
     /// **O editor de curva, a cada quadro**: com a caixa `rect` premida (activa), o premir agarra

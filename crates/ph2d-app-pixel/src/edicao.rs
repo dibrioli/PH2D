@@ -174,7 +174,8 @@ impl PixelApp {
             | E::Outline
             | E::BrightnessContrast
             | E::HueSaturation
-            | E::ColorCurve => {
+            | E::ColorCurve
+            | E::ConvolutionMatrix => {
                 return crate::filtros::menu(self, key, a);
             }
             E::Paste => {
@@ -263,7 +264,8 @@ impl PixelApp {
             | E::Outline
             | E::BrightnessContrast
             | E::HueSaturation
-            | E::ColorCurve => None,
+            | E::ColorCurve
+            | E::ConvolutionMatrix => None,
         };
         self.passo(key, op);
     }
@@ -357,7 +359,8 @@ impl PixelApp {
             | PixelDialogChoice::Outline { .. }
             | PixelDialogChoice::BrightnessContrast { .. }
             | PixelDialogChoice::HueSaturation { .. }
-            | PixelDialogChoice::ColorCurve { .. } => None,
+            | PixelDialogChoice::ColorCurve { .. }
+            | PixelDialogChoice::Convolution { .. } => None,
         };
         self.passo(key, op);
     }

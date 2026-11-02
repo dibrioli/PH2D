@@ -75,6 +75,8 @@ fn filter_click(hero: &mut HeroScreen, id: ph2d_a11y::NodeId) -> bool {
         .find(|(_, x, _)| *x == id)
     {
         s.set_pixel_filter_hue_mode(m);
+    } else if let Some(i) = ids::pixel_filter_kernel_index(id) {
+        s.set_pixel_filter_kernel(i);
     } else if id == ids::PIXEL_FILTER_CURVE {
         // O premir/arrasto da curva corre a cada quadro (`drive_pixel_curve`); o clique é dele.
     } else {

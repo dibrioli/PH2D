@@ -32,9 +32,9 @@ const MODIFIES: [PixelModify; 3] = [
     PixelModify::Border,
 ];
 
-struct Ecra {
-    hero: HeroScreen,
-    text: TextSystem,
+pub(crate) struct Ecra {
+    pub(crate) hero: HeroScreen,
+    pub(crate) text: TextSystem,
 }
 
 impl Ecra {
@@ -48,13 +48,13 @@ impl Ecra {
         e
     }
 
-    fn pinta(&mut self) {
+    pub(crate) fn pinta(&mut self) {
         let mut scene = VectorScene::new();
         let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
         paint_hero_screen(&mut self.hero, vp, &mut scene, &mut self.text);
     }
 
-    fn centro(&self, id: NodeId) -> Option<(f32, f32)> {
+    pub(crate) fn centro(&self, id: NodeId) -> Option<(f32, f32)> {
         let vp = self.hero.last_viewport;
         let (mut n, mut sx, mut sy) = (0u32, 0.0f32, 0.0f32);
         let mut y = vp.y;
@@ -75,7 +75,7 @@ impl Ecra {
         (n > 0).then(|| (sx / k, sy / k))
     }
 
-    fn carrega(&mut self, id: NodeId) {
+    pub(crate) fn carrega(&mut self, id: NodeId) {
         let (x, y) = self
             .centro(id)
             .unwrap_or_else(|| panic!("{id:?} não está pintado no diálogo"));
@@ -100,7 +100,7 @@ impl Ecra {
         self.pinta();
     }
 
-    fn tecla(&mut self, keycode: u32, ctrl: bool) {
+    pub(crate) fn tecla(&mut self, keycode: u32, ctrl: bool) {
         let arena = Bump::new();
         let e = KeyEvent {
             keycode,
@@ -136,14 +136,14 @@ impl Ecra {
         self.hero.store.number_value(id).expect("campo registado")
     }
 
-    fn aberto_ainda(&self) -> bool {
+    pub(crate) fn aberto_ainda(&self) -> bool {
         matches!(
             self.hero.store.context_menu().map(|r| r.kind),
             Some(ContextMenuKind::PixelEditDialog)
         )
     }
 
-    fn pedido(&mut self) -> Option<PixelDialogChoice> {
+    pub(crate) fn pedido(&mut self) -> Option<PixelDialogChoice> {
         self.hero.store.take_pixel_edit_request()
     }
 }

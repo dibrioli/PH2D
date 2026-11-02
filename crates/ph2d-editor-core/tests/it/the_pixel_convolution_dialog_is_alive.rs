@@ -46,11 +46,19 @@ fn canais() -> &'static [[bool; 4]] {
     &C
 }
 
-/// Rola a lista aberta até a opção `i` ter clique (o que a roda faz).
+/// O centro do rect que a pintura publicou para `id` (já recortado pela lista), se o clique
+/// nesse ponto chega MESMO a `id` pelo `hit` que o dispatch usa — sem varrer a janela.
+fn centro_publicado(e: &Ecra, id: ph2d_a11y::NodeId) -> Option<(f32, f32)> {
+    let r = e.hero.hit_index.rect_for(id)?;
+    let (x, y) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+    (e.hero.hit_index.hit(x, y) == Some(id)).then_some((x, y))
+}
+
+/// Rola a lista aberta, a partir da rolagem corrente, até a opção `i` ter clique (o que a roda faz).
 fn rola_ate(e: &mut Ecra, i: usize) -> ph2d_a11y::NodeId {
     let id = ids::pixel_filter_kernel_id(i).expect("na escada");
-    let mut s = 0.0;
-    while e.centro(id).is_none() {
+    let mut s = e.hero.store.panel_scroll(ids::PIXEL_FILTER_KERNEL);
+    while centro_publicado(e, id).is_none() {
         s += 8.0;
         assert!(s < 4000.0, "a opção {i} nunca ficou à vista");
         e.hero.store.set_panel_scroll(ids::PIXEL_FILTER_KERNEL, s);
@@ -150,7 +158,7 @@ fn opening_the_kernel_dropdown_lists_every_kernel_alive_and_scrolls() {
             "opção {i} sem estado: MORTA"
         );
         assert!(ids::pixel_edit_dialog_owns(id), "opção {i} fora do dono");
-        let (x, y) = e.centro(id).expect("à vista");
+        let (x, y) = centro_publicado(&e, id).expect("à vista");
         assert!(painel.contains(x, y), "opção {i} fora da lista");
     }
 }
@@ -201,7 +209,7 @@ fn the_kernel_list_fits_the_window_whole_rows_tall_and_short() {
         );
         for i in 0..nomes().len() {
             let id = rola_ate(&mut e, i);
-            let (x, y) = e.centro(id).expect("à vista");
+            let (x, y) = centro_publicado(&e, id).expect("à vista");
             assert!(painel.contains(x, y), "{janela:?}: opção {i} fora da lista");
         }
     }

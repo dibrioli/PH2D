@@ -123,7 +123,11 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
         3,
         "o botão das quatro selecções, Magic Wand, Transform (P6c: sem o Move)"
     );
-    assert_eq!(col[1].len(), 5, "Pencil, Spray, Eraser, Eyedropper, Bucket");
+    assert_eq!(
+        col[1].len(),
+        6,
+        "Pencil, Spray, Eraser, Eyedropper, o botão do balde (+ Gradient), o do Blur/Jumble (P8)"
+    );
     assert_eq!(
         col[2].len(),
         5,
@@ -140,7 +144,8 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
         id(PixelTool::Spray),
         id(PixelTool::Eraser),
         id(PixelTool::Eyedropper),
-        id(PixelTool::Bucket),
+        Some(ids::PIXEL_BUCKET_GROUP),
+        Some(ids::PIXEL_SMUDGE_GROUP),
         id(PixelTool::Line),
         id(PixelTool::Curve),
         Some(ids::PIXEL_SHAPE_GROUP),
@@ -221,4 +226,56 @@ fn o_hex_e_o_do_aseprite() {
     assert_eq!(ph2d_panel_pixel_tools::hex([255, 255, 255, 255]), "#FFFFFF");
     assert_eq!(ph2d_panel_pixel_tools::hex([0, 0, 0, 255]), "#000000");
     assert_eq!(ph2d_panel_pixel_tools::hex([1, 2, 3, 4]), "#01020304");
+}
+
+/// P8: o balde é um botão de grupo com o Gradient (Shift+G) e o Blur/Jumble (R) outro; o flyout
+/// mostra-os, e a cara é a última usada.
+#[test]
+fn o_balde_e_o_blur_sao_botoes_de_grupo_com_o_gradient_e_o_jumble_no_flyout() {
+    use ph2d_editor_core::icons::IconId;
+    use ph2d_editor_core::interaction::BarFace;
+    use ph2d_editor_core::pixel_panel::PixelToolGroup;
+    let mut i = info(true);
+    i.tool = PixelTool::Gradient;
+    i.groups.chose(PixelTool::Gradient);
+    let col = ph2d_panel_pixel_tools::column::column(&i);
+    let balde = col[1]
+        .iter()
+        .find(|b| b.id == ids::PIXEL_BUCKET_GROUP)
+        .expect("botão do balde");
+    assert!(
+        balde.on && balde.label.contains("Shift+G"),
+        "{}",
+        balde.label
+    );
+    assert_eq!(balde.face, BarFace::Icon(IconId::PixelGradient));
+    i.groups.open = Some(PixelToolGroup::Bucket);
+    let (ancora, todas) = ph2d_panel_pixel_tools::column::bars(&i)
+        .flyout
+        .expect("aberto");
+    assert_eq!(ancora, ids::PIXEL_BUCKET_GROUP);
+    let nomes: Vec<_> = todas.iter().map(|b| (b.label.clone(), b.on)).collect();
+    assert_eq!(
+        nomes,
+        [
+            ("Paint Bucket (G)".to_owned(), false),
+            ("Gradient (Shift+G)".to_owned(), true)
+        ]
+    );
+    i.tool = PixelTool::Jumble;
+    i.groups.chose(PixelTool::Jumble);
+    i.groups.open = Some(PixelToolGroup::Smudge);
+    let (ancora, todas) = ph2d_panel_pixel_tools::column::bars(&i)
+        .flyout
+        .expect("aberto");
+    assert_eq!(ancora, ids::PIXEL_SMUDGE_GROUP);
+    let faces: Vec<_> = todas.iter().map(|b| b.face.clone()).collect();
+    assert_eq!(
+        faces,
+        [
+            BarFace::Icon(IconId::PixelBlur),
+            BarFace::Icon(IconId::PixelJumble)
+        ]
+    );
+    assert!(todas[1].on && todas[1].label.contains("(R)"));
 }

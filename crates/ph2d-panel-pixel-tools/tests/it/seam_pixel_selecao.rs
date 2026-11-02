@@ -268,7 +268,12 @@ fn as_ferramentas_de_selecao_estao_na_coluna_com_o_atalho() {
     let fechado = ph2d_panel_pixel_tools::column::bars(&i);
     assert_eq!(
         fechado.grouped,
-        [ids::PIXEL_SELECT_GROUP, ids::PIXEL_SHAPE_GROUP]
+        [
+            ids::PIXEL_SELECT_GROUP,
+            ids::PIXEL_SHAPE_GROUP,
+            ids::PIXEL_BUCKET_GROUP,
+            ids::PIXEL_SMUDGE_GROUP
+        ]
     );
     assert!(fechado.flyout.is_none());
     i.groups.open = Some(ph2d_editor_core::pixel_panel::PixelToolGroup::Select);

@@ -61,18 +61,25 @@
   "pad_b.ase": "fundo branco, padrao em (13,9)",
   "pad_t.ase": "fundo transparente, padrao em (8,8), bloco castanho (24..37,14..26)",
   "pad_wb.ase": "fundo branco, padrao em (8,8), bloco castanho (24..37,14..26)",
-  "pad_buraco.ase": "como pad_t, com a celula (9,8) do padrao transparente"
+  "pad_buraco.ase": "como pad_t, com a celula (9,8) do padrao transparente",
+  "pad_rr.ase": "fundo branco, padrao 3x2 GRB/RCR em (8,8) (R repetido: separa 'posicao (0,0)' de 'cor do pixel (0,0)')"
  },
  "leis_observadas": {
   "ancora": "origem do carimbo = cursor - (floor(w/2), floor(h/2)) do pincel (3x2, 4x2, 4x3, elipse 5x4)",
   "source": "cor(x,y) = padrao[(y-sy) mod h][(x-sx) mod w], (sx,sy) = canto de cima-esquerda de onde foi copiado; independente do clique e do inicio do traco",
   "destination": "cor(x,y) = padrao[(y-oy) mod h][(x-ox) mod w], (ox,oy) = origem do PRIMEIRO carimbo do traco (cursor no mousedown - ancora); cada clique e um traco novo",
   "paint": "cada carimbo copia o pincel inteiro em cursor-ancora; ao longo do traco o ultimo carimbo sobrescreve",
-  "transparente": "pixel transparente do pincel nao pinta (o destino fica); margens transparentes da seleccao sao aparadas (rb4_apara_6x2)",
+  "transparente": "pixel transparente do pincel nao pinta (o destino fica); as margens transparentes da seleccao NAO sao aparadas: entram no tamanho do pincel e so nao pintam (ver ancora_selecao)",
   "mascara": "seleccao eliptica: so as celulas DENTRO da mascara entram no pincel; as de fora nao pintam (rb4_elipse_branco)",
   "shift_h_v": "Shift+H / Shift+V com o pincel activo e sem seleccao viram a CAMADA inteira, nao o pincel (o carimbo seguinte sai sem flip)",
   "ctrl_b_sem_selecao": "entra na ferramenta 'Select brush bounds | Right-click to cut' (arrastar define o pincel); um clique nao criou pincel visivel",
-  "cor_de_frente": "INCONCLUSIVO: 1.a corrida (verde->azul) deu 5 celulas azuis + 1 R; as repeticoes (azul ja era a frente) deram o padrao intacto"
+  "cor_de_frente": "logo apos o Ctrl+B o pincel pinta as cores da imagem; QUALQUER escolha de cor de frente (amostra da paleta ou campo hex, mesmo a cor que ja era a frente) passa o pincel a 'cor de frente': todo pixel opaco sai na cor de frente EXCEPTO o pixel (0,0) do pincel, que mantem a cor original (RGB/YCP->RBB/BBB; GRB/RCR->GBB/BBB: e a POSICAO, nao a cor); o transparente continua sem pintar. Volta-se as cores da imagem recuperando o espaco (Alt+1 ou o icone do espaco no popup do tipo de pincel), cujo parametro 'Image Color' vem ligado",
+  "modo_por_omissao": "sessao acabada de abrir, dropdown nunca tocado: o 1.o Ctrl+B mostra 'Pattern aligned to source' (foto 65); depois de mudar para 'Paint brush', o 2.o Ctrl+B (outro documento) MANTEM 'Paint brush'",
+  "espacos": "cada Ctrl+B cria um espaco novo Alt+1, Alt+2, ... (nao trancado); 'Save Brush Here' cria o seguinte (Alt+3, trancado). Recuperar (tecla Alt+n ou icone do espaco; o rotulo 'Alt+n' abre os Keyboard Shortcuts) carimba igual ao original; alternar Alt+1/Alt+2 alterna os padroes. Quadrado 5 px a 30 graus guardado e recuperado volta com 5px/30 graus (o carimbo, antes e depois, leu-se 3x3 — nao investigado)",
+  "parametros": "por omissao: espaco do Ctrl+B = Brush Type + Image Color (Size, Angle, Fg, Bg, Ink Type/Opacity, Shade, Pixel-Perfect desligados, lidos pela cor, foto 67); espaco do 'Save Brush Here' = Type, Size, Angle, Image Color, Ink Type, Opacity, Shade ligados; Fg, Bg, Pixel-Perfect desligados (foto 66). Prova por clique: com Size ligado o Alt+3 repos 5px; depois de clicar Size (desligar), tamanho actual 2px e angulo 0 -> Alt+3 deixou 2px e repos 30 graus: parametro desligado = fica o actual",
+  "flip_rotate_do_pincel": "NAO existe no Trial: menus Edit e Select com o pincel de padrao activo (foto 68) e a barra de contexto (foto 65/69) nao tem virar/rodar o pincel; Edit > Flip Horizontal/Vertical (Shift+H/V) vira a CAMADA (rodada 1, rb3_*)",
+  "tinta": "Alpha Compositing a 50 % (campo Opacity '50') sobre castanho (90,60,30): R->(172,30,15), Y->(172,140,15), C->(45,130,125), P->(125,30,115), B->(45,30,142) = mistura ~0,50 (127 ou 128/255: a leitura nao separa); o buraco nao pinta. Lock Alpha a 100 %: pinta a cor cheia so onde o destino e opaco; onde o destino e transparente nada (coluna 38 fora do bloco)",
+  "ancora_selecao": "a ancora usa a seleccao ORIGINAL, sem aparar o transparente: seleccao 6x4 (5..10,6..9) com o padrao no canto de baixo-direita (offset 3,2) -> carimbo em (30,20) poe o padrao em (30,20)=cursor-(3,2)+(3,2); aparado daria (29,19). Reler rb4_apara_6x2: origem (27,19) = cursor-(3,1) da seleccao 6x2, nao do recorte 3x2"
  },
  "casos": {
   "rb1_source": {
@@ -1677,6 +1684,210 @@
     "................................................................",
     "................................................................"
    ]
+  },
+  "rb2b_frente_azul_source": {
+   "sprite": "pad.ase",
+   "selecao": [
+    8,
+    8,
+    10,
+    9
+   ],
+   "modo": "source",
+   "fg_no_ctrl_b": [
+    0,
+    160,
+    0
+   ],
+   "acao": "clique na amostra azul (paleta, idx 4), carimbo em (30,20)",
+   "le": {
+    "19": "BBB em 29..31",
+    "20": "RBB em 29..31"
+   }
+  },
+  "rb2b_frente_paint_cores": {
+   "sprite": "pad.ase",
+   "modo": "paint",
+   "le": {
+    "azul (30,30)": [
+     "RBB",
+     "BBB"
+    ],
+    "amarelo (40,30)": [
+     "RYY",
+     "YYY"
+    ],
+    "vermelho (50,30)": [
+     "RRR",
+     "RRR"
+    ],
+    "verde = a frente do Ctrl+B (30,38)": [
+     "RGG",
+     "GGG"
+    ]
+   },
+   "origem": "cursor-(1,1)"
+  },
+  "rb2b_volta_alt1": {
+   "sprite": "pad.ase",
+   "modo": "paint",
+   "acao": "fg verde (escolhida na paleta), Alt+1, carimbo em (40,38)",
+   "le": [
+    "RGB",
+    "YCP"
+   ]
+  },
+  "rb2b_frente_hex": {
+   "sprite": "pad.ase",
+   "modo": "paint",
+   "acao": "campo hex da frente = 0000ff, carimbo em (50,38)",
+   "le": [
+    "RBB",
+    "BBB"
+   ]
+  },
+  "rb2b_pad_rr": {
+   "sprite": "pad_rr.ase",
+   "selecao": [
+    8,
+    8,
+    10,
+    9
+   ],
+   "modo": "paint (mantido do Ctrl+B anterior)",
+   "le": {
+    "cor da imagem (30,20)": [
+     "GRB",
+     "RCR"
+    ],
+    "depois de clicar a amostra azul (40,20)": [
+     "GBB",
+     "BBB"
+    ]
+   }
+  },
+  "rb2b_espacos": {
+   "acao": "Back, icone Alt+1 no popup -> (20,30); icone Alt+2 -> (30,30); tecla Alt+1 -> (40,30); tecla Alt+2 -> (50,30); fg azul em todos",
+   "le_linha_29": "RGB GRB RGB GRB",
+   "le_linha_30": "YCP RCR YCP RCR"
+  },
+  "rb2b_quadrado5_30": {
+   "acao": "Back, Square, 5px, 30 graus, carimbo (10,40); Save Brush Here (Alt+3); circulo 2px carimbo (20,40); Alt+3 carimbo (30,40)",
+   "le": {
+    "(10,40)": "3x3 em 9..11,39..41",
+    "(20,40)": "2x2 em 19..20,39..40",
+    "(30,40)": "3x3 em 29..31,39..41"
+   },
+   "barra_depois_alt3": "quadrado, 5px, 30 graus"
+  },
+  "rb2b_parametro_size_off": {
+   "acao": "dropdown do Alt+3, clicar Size; tamanho actual 2px, angulo 0; tecla Alt+3",
+   "barra_depois": "2px, 30 graus"
+  },
+  "rb6_ancora_selecao_6x4": {
+   "sprite": "pad_buraco.ase",
+   "selecao": [
+    5,
+    6,
+    10,
+    9
+   ],
+   "modo": "paint",
+   "passos": [
+    [
+     "clique",
+     [
+      30,
+      20
+     ]
+    ]
+   ],
+   "le": {
+    "20": "R k B em 30..32 (buraco = castanho)",
+    "21": "YCP em 30..32"
+   }
+  },
+  "rb5b_alpha_compositing_50": {
+   "sprite": "pad_buraco.ase",
+   "pincel": "rb6 (6x4, padrao em offset 3,2)",
+   "tinta": "Alpha Compositing",
+   "opacidade_campo": "50%",
+   "clique": [
+    28,
+    16
+   ],
+   "fundo": [
+    90,
+    60,
+    30
+   ],
+   "le_rgb": {
+    "(28,16)": [
+     172,
+     30,
+     15
+    ],
+    "(29,16)": [
+     90,
+     60,
+     30
+    ],
+    "(30,16)": [
+     45,
+     30,
+     142
+    ],
+    "(28,17)": [
+     172,
+     140,
+     15
+    ],
+    "(29,17)": [
+     45,
+     130,
+     125
+    ],
+    "(30,17)": [
+     125,
+     30,
+     115
+    ]
+   }
+  },
+  "rb5b_lock_alpha_100": {
+   "sprite": "pad_buraco.ase",
+   "tinta": "Lock Alpha",
+   "opacidade_campo": "100%",
+   "clique": [
+    36,
+    25
+   ],
+   "bloco_ate_x": 37,
+   "le_rgb": {
+    "(36,25)": [
+     255,
+     0,
+     0
+    ],
+    "(37,25)": [
+     90,
+     60,
+     30
+    ],
+    "(38,25)": "transparente",
+    "(36,26)": [
+     255,
+     220,
+     0
+    ],
+    "(37,26)": [
+     0,
+     200,
+     220
+    ],
+    "(38,26)": "transparente"
+   }
   }
- }
+ },
+ "rodada_2": "2026-11-02, Xvfb :91, HOME novo (aseprite.ini sem chaves de pincel, fg verde 00a000); passos interactivos com o motor de trial_pinceis.py (scratch h_rb2.py); fotos 65_..69_"
 }

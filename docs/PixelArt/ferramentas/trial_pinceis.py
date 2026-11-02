@@ -14,6 +14,13 @@ Coordenadas (1600x1000, screen_scale 2, zoom 400 % = 8 px por celula; descoberta
   Quirks: o Open ignora o Return (clica-se OK em (1319,918)) e o dialogo demora: espera-se o titulo;
   Esc com o pincel de imagem activo DESCARTA o pincel; o aviso de fecho tem a barra em (640,437).
 
+Rodada 2 (02/11, passos interactivos sobre estas funcoes; casos rb2b_*/rb5b_*/rb6_* na fixtura):
+  HOME novo abre o painel Preview, que estraga o bbox: fecha-se em (1537,723). Cada processo novo tem de
+  chamar drv.rebbox() (X0/Y0 sao globais do processo). Com o lapis normal o botao do tipo e (178,71), o
+  tamanho (230,71), o angulo (293,71, so com quadrado/linha); no popup o ICONE do espaco (192,145+24n)
+  selecciona-o — o rotulo «Alt+n» abre os Keyboard Shortcuts (Cancel em (1327,843)). Com pincel de padrao:
+  tinta (580,71) -> Alpha Compositing (663,125) · Lock Alpha (648,169); Opacity (713,71) em %.
+
 Lancador (Xvfb proprio, HOME isolado; aseprite.ini com [GfxMode] Frame = 0 0 1600 1000, screen_scale 2):
   Xvfb :91 -screen 0 1600x1000x24 -nolisten tcp &
   env -u WAYLAND_DISPLAY DISPLAY=:91 SDL_VIDEODRIVER=x11 HOME=<scratch>/home \

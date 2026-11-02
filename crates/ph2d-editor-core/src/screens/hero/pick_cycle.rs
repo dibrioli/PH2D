@@ -51,11 +51,24 @@ pub fn start_on_selection(
     0
 }
 
-/// ⭐ **O ícone por cima ganha até da seleção** (dono 01/11): com um ícone no topo que não é o
-/// escolhido, o press fica com o ícone — a seleção que conta passa a ser nenhuma.
-pub fn icon_beats_selection(hits: &[u64], selected: Option<u64>, icons: &[u64]) -> Option<u64> {
-    let top = hits.first().filter(|t| icons.contains(t));
-    selected.filter(|s| top.is_none_or(|t| t == s))
+/// ⭐ **O que se VÊ por cima ganha da seleção** (dono 01/11): a seleção só fica com o press se o que
+/// está acima dela na pilha é dela (`is_inside`: um filho que a desenha por cima — a lei de 26/08,
+/// arrastar o grupo); qualquer outra peça por cima, e todo ícone, leva o press. Fora da pilha (o
+/// press no gizmo dela) a seleção fica.
+pub fn top_beats_selection(
+    hits: &[u64],
+    selected: Option<u64>,
+    icons: &[u64],
+    is_inside: impl Fn(u64) -> bool,
+) -> Option<u64> {
+    let sel = selected?;
+    let Some(i) = hits.iter().position(|&h| h == sel) else {
+        return Some(sel);
+    };
+    hits[..i]
+        .iter()
+        .all(|&h| !icons.contains(&h) && is_inside(h))
+        .then_some(sel)
 }
 
 /// O que um press nu faz com a pilha sob o dedo.
@@ -99,20 +112,35 @@ pub fn cycle_step(hits: &[u64], selected: Option<u64>, armed: bool) -> CycleStep
 mod tests {
     use super::*;
 
-    /// O ícone da câmera sobre o Card selecionado: o press fica com o ícone; com o ícone já
-    /// escolhido, o ciclo segue e desce para o Card. *Mutação: devolver `selected` sempre.*
+    /// O ícone e a «Pile» sobre o Card selecionado levam o press; o filho do grupo selecionado
+    /// não; com o de cima já escolhido, o ciclo desce. *Mutação: devolver `selected` sempre.*
     #[test]
-    fn an_icon_on_top_beats_the_selection_under_it() {
-        let (cam, card) = (7, 9);
-        let hits = [cam, card];
-        assert_eq!(icon_beats_selection(&hits, Some(card), &[cam]), None);
-        assert_eq!(cycle_step(&hits, None, true).now, Some(cam));
-        assert_eq!(icon_beats_selection(&hits, Some(cam), &[cam]), Some(cam));
+    fn what_is_seen_on_top_beats_the_selection_under_it() {
+        let (cam, pile, card, filho) = (7, 8, 9, 10);
+        let dentro = |h| h == filho;
+        let hits = [cam, pile, card];
+        assert_eq!(top_beats_selection(&hits, Some(card), &[cam], dentro), None);
         assert_eq!(
-            icon_beats_selection(&[card, cam], Some(card), &[cam]),
+            top_beats_selection(&[pile, card], Some(card), &[], dentro),
+            None
+        );
+        assert_eq!(cycle_step(&hits, None, true).now, Some(cam));
+        assert_eq!(
+            top_beats_selection(&hits, Some(cam), &[cam], dentro),
+            Some(cam)
+        );
+        assert_eq!(
+            top_beats_selection(&[filho, card], Some(card), &[], dentro),
             Some(card)
         );
-        assert_eq!(icon_beats_selection(&hits, Some(card), &[]), Some(card));
+        assert_eq!(
+            top_beats_selection(&[filho, card], Some(card), &[filho], dentro),
+            None
+        );
+        assert_eq!(
+            top_beats_selection(&[pile], Some(card), &[], dentro),
+            Some(card)
+        );
     }
 
     /// ⭐⭐⭐ **O primeiro clique é de quem já está selecionado** (report do Enio, 2026-08-26).

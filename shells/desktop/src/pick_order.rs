@@ -38,6 +38,14 @@ use ph2d_ecs::{ChildOf, Entity};
 /// permitir, mas que um load corrompido pode produzir) travaria o quadro em vez de pintar. Um
 /// limite alto é indistinguível do infinito para uma cena real e é a diferença entre um bug e um
 /// congelamento.
+/// `h` está dentro da seleção (descendente dela) — o que a deixa ficar com o press.
+pub(crate) fn inside_selection(world: &ph2d_ecs::World, sel: Option<u64>, h: u64) -> bool {
+    let e = |b| Entity::try_from_bits(b);
+    sel.and_then(e)
+        .zip(e(h))
+        .is_some_and(|(s, h)| is_ancestor_of(world, s, h))
+}
+
 fn is_ancestor_of(world: &ph2d_ecs::World, maybe_ancestor: Entity, entity: Entity) -> bool {
     const MAX_DEPTH: usize = 64;
     let mut cur = entity;

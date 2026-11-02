@@ -446,10 +446,11 @@ impl crate::App {
             let so_o_de_cima =
                 ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero);
             let cicla = bare_click && !so_o_de_cima;
-            let sel = ph2d_editor_core::screens::hero::pick_cycle::icon_beats_selection(
+            let sel = ph2d_editor_core::screens::hero::pick_cycle::top_beats_selection(
                 &hits,
                 hero.gizmo.selection,
                 &icones,
+                |h| crate::pick_order::inside_selection(gfx.sim.world(), hero.gizmo.selection, h),
             );
             if cicla {
                 ph2d_editor_core::screens::hero::pick_cycle::start_on_selection(

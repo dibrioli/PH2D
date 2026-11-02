@@ -98,9 +98,9 @@ fn the_click_dispatch_starts_the_cycle_on_the_selection() {
     );
     // ⭐ O ícone por cima ganha da seleção (dono 01/11): a seleção do ciclo passa pela lei dele.
     assert!(
-        src.contains("pick_cycle::icon_beats_selection(")
+        src.contains("pick_cycle::top_beats_selection(")
             && src.contains("cycle_step(&hits, sel, armed)"),
-        "o clique deixou de dar a preferencia ao icone por cima da selecao"
+        "o clique deixou de dar a preferencia ao que se ve por cima da selecao"
     );
     // ⚠️ E a segunda metade: mudar de seleção na HIERARQUIA tem de abrir um ciclo NOVO, senão o
     // ciclo antigo sobrevive e devolve o filho outra vez no mesmo ponto.

@@ -95,7 +95,9 @@ impl LeiDaLargura {
                 }
                 continue;
             }
-            if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l > l0) {
+            // O fim de um PATAMAR (a mesma largura a um raio maior) fica: a largura não cresce dentro dele, e
+            // interpolar desde o início dele pedia o 5 px da Gouache Flat a r 1,9 (cobre 0,234 contra 0,537 a r 2,0).
+            if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l >= l0) {
                 pontos.push((r, l));
             }
         }

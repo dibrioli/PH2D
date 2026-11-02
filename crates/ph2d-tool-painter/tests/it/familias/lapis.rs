@@ -27,7 +27,10 @@ pub const WET: &[Receita] = &[
             140.0,
             0.45,
             GRAO_MACIO,
-            extras_do_lapis!(0.5, 3.0),
+            // Dono 02/11: o toque leve MARCA (≥ ~8 % a pressão 0,25) — a curva da carga 3 → 2, a do tamanho fica (0,5).
+            // Escuro a 0,25 · 0,5 · 1: 0,024 · 0,208 · 0,702 → 0,094 · 0,365 · 0,710 (a 2,5, 0,047: não chega); largura
+            // 0,24 → 0,86 22 → 38 px; a mão 19,85 (antes o decil 2 mudo).
+            extras_do_lapis!(0.5, 2.0),
         )
     },
     // B-10 — `lapisc_053`: o carvão mais ralo, o papel a meio. ⛔ J3 (`exames/lapis.md`): REPROVADO e de volta ao de antes —

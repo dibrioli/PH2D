@@ -29,6 +29,8 @@ pub const WET: &[Receita] = &[
             ("size_max_px", TECTO_DO_8B),
         ],
         grao: None,
+        // Dono 02/11: o toque leve marca (escuro a p 0,25 0,063 → 0,122) — a curva da carga 3 → 2,5 só aqui (a base fica).
+        extras: extras_do_lapis!(0.25, 2.5),
         ..GRAPHITE_8B
     },
     // ⭐ Os do prompt 53 (doc 53 §8): cada um o 8B inteiro (`nasce_de`) + os overrides; o tamanho é o do preset do Rebelle.

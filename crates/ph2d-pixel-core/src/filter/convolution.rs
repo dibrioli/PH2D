@@ -2,7 +2,10 @@
 //! divisão trunca para ZERO (inteiro C) e o bias soma-se DEPOIS; borda replicada (*Tiled* = dá a
 //! volta). Lei e matrizes: `oracle_trial_convolution.json` (rodadas 1 e 2), lista em [`KERNELS`].
 //!
-//! O alfa fica como estava: as entradas do Trial são opacas e nenhuma mediu o kernel sobre o alfa.
+//! A cor: a célula de alfa 0 sai da soma e o seu peso sai do divisor (`div − Σ w` dos
+//! transparentes; 0 → 1). O alfa é a fórmula linear, que só vale com o canal A ligado
+//! ([`super::Channels::merge`]). Lei: `docs/PixelArt/ferramentas/fit_convolucao_alfa.py` sobre
+//! `oracle_trial_round3.json` `A4b`/`A4` (0 células fora).
 
 use super::{Edge, Filter, Source};
 
@@ -19,6 +22,8 @@ pub struct Kernel {
     pub cy: u32,
     pub div: i32,
     pub bias: i32,
+    /// Os botões R G B A que escolher este kernel deixa no diálogo (Trial, `A5_kernel_channels`).
+    pub channels: [bool; 4],
     pub weights: &'static [i32],
 }
 
@@ -37,7 +42,8 @@ pub struct Convolution {
 impl Filter for Convolution {
     fn at(&self, src: &Source, x: i32, y: i32) -> [u8; 4] {
         let k = self.kernel;
-        let mut sum = [0i32; 3];
+        let mut sum = [0i32; 4];
+        let mut dropped = 0i32;
         for j in 0..k.h {
             for i in 0..k.w {
                 let wt = k.weights[(j * k.w + i) as usize];
@@ -46,13 +52,27 @@ impl Filter for Convolution {
                 }
                 let (dx, dy) = (i as i32 - k.cx as i32, j as i32 - k.cy as i32);
                 let c = src.at_edge(x - dx, y - dy, self.edge);
-                for (s, v) in sum.iter_mut().zip(c) {
-                    *s += wt * i32::from(v);
+                sum[3] += wt * i32::from(c[3]);
+                if c[3] == 0 {
+                    dropped += wt;
+                    continue;
+                }
+                for (s, v) in sum.iter_mut().zip(&c[..3]) {
+                    *s += wt * i32::from(*v);
                 }
             }
         }
-        let old = src.at_edge(x, y, self.edge);
-        let ch = |s: i32| ((s / k.div.max(1)) + k.bias).clamp(0, 255) as u8;
-        [ch(sum[0]), ch(sum[1]), ch(sum[2]), old[3]]
+        let ch = |s: i32, div: i32| ((s / div) + k.bias).clamp(0, 255) as u8;
+        let div = k.div.max(1);
+        let cdiv = match div - dropped {
+            0 => 1,
+            d => d,
+        };
+        [
+            ch(sum[0], cdiv),
+            ch(sum[1], cdiv),
+            ch(sum[2], cdiv),
+            ch(sum[3], div),
+        ]
     }
 }

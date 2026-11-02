@@ -21,7 +21,7 @@ def kernels():
     src = open('crates/ph2d-pixel-core/src/filter/kernels.rs').read()
     out = {}
     for m in re.finditer(r'name: "((?:[^"\\]|\\.)*)", w: (\d+), h: (\d+), cx: (\d+), cy: (\d+), div: (-?\d+), '
-                         r'bias: (-?\d+), weights: &\[([^\]]*)\]', src):
+                         r'bias: (-?\d+), (?:channels: \[[^\]]*\], )?weights: &\[([^\]]*)\]', src):
         name = m.group(1).replace('\\\\', '\\')
         w, h, cx, cy, div, bias = map(int, m.groups()[1:7])
         ws = [int(v) for v in m.group(8).split(',')]

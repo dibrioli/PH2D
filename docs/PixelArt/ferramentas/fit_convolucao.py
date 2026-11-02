@@ -16,6 +16,7 @@ import sys
 
 N = 15
 FIXTURE = "crates/ph2d-pixel-core/tests/fixtures/oracle_trial_convolution.json"
+ROUND3 = "crates/ph2d-pixel-core/tests/fixtures/oracle_trial_round3.json"
 
 
 def grid(rows):
@@ -196,12 +197,15 @@ def rust_table(fit_json, fit_r3_json, out_rs):
     for name, e in json.load(open(fit_r3_json)).items():
         d[name] = dict(e, misses=0)
     order = [k["name"] for k in json.load(open(FIXTURE))["kernels"]]
+    # os botoes R G B A que escolher o kernel deixa (A5, lidos por pixel no Trial)
+    chans = {k.split(" ", 1)[1]: v for k, v in json.load(open(ROUND3))["A5_kernel_channels"]["per_kernel"].items()}
     d = {n: d[n] for n in order if n in d}
     lines = [
         "//! Os kernels da Convolution Matrix — DADOS NOSSOS com o nome medido: cada matriz foi",
         "//! recuperada da resposta do Trial (`docs/PixelArt/ferramentas/fit_convolucao.py` sobre",
         "//! `tests/fixtures/oracle_trial_convolution.json` e `fit_convolucao_r3.py` sobre",
-        "//! `oracle_trial_round3.json`, 0 células fora). Gerado; não editar à mão.",
+        "//! `oracle_trial_round3.json`, 0 células fora); `channels` = os botões que escolher o kernel deixa",
+        "//! (`A5_kernel_channels`). Gerado; não editar à mão.",
         "",
         "use super::convolution::Kernel;",
         "",
@@ -217,7 +221,8 @@ def rust_table(fit_json, fit_r3_json, out_rs):
         ws = [w.get((x, y), 0) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)]
         lines.append(
             f'    Kernel {{ name: {json.dumps(name)}, w: {x1 - x0 + 1}, h: {y1 - y0 + 1}, cx: {-x0}, cy: {-y0}, '
-            f'div: {e["div"]}, bias: {e["bias"]}, weights: &{ws} }},'
+            f'div: {e["div"]}, bias: {e["bias"]}, '
+            f'channels: [{", ".join(str(c in chans[name]).lower() for c in "RGBA")}], weights: &{ws} }},'
         )
     lines.append("];")
     open(out_rs, "w").write("\n".join(lines) + "\n")

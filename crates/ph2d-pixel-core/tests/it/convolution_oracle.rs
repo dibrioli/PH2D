@@ -91,7 +91,8 @@ fn every_listed_kernel_gives_the_trials_cells_on_all_five_inputs() {
             for (y, row) in want.iter().enumerate() {
                 for (x, &v) in row.iter().enumerate() {
                     let got = f.at(&src, x as i32, y as i32);
-                    assert_eq!(got, [v, v, v, 255], "{} sobre {case} em ({x},{y})", k.name);
+                    // As rodadas 1–2 leram o ecrã (só RGB); o alfa é `the_color_under_alpha_…`.
+                    assert_eq!(got[..3], [v; 3], "{} sobre {case} em ({x},{y})", k.name);
                 }
             }
             checked += 1;
@@ -151,7 +152,7 @@ fn round3_kernels_on_the_wide_and_low_contrast_inputs() {
             for (y, row) in gray_grid(out).iter().enumerate() {
                 for (x, &v) in row.iter().enumerate() {
                     let got = f.at(&src, x as i32, y as i32);
-                    assert_eq!(got, [v, v, v, 255], "{name} sobre {key} em ({x},{y})");
+                    assert_eq!(got[..3], [v; 3], "{name} sobre {key} em ({x},{y})");
                 }
             }
             checked += 1;
@@ -219,4 +220,111 @@ fn tiled_wraps_where_clamp_replicates() {
     .at(&src, 0, 7);
     assert_eq!(clamp[0], 255, "replicada: só branco à esquerda");
     assert_eq!(wrap[0], 191, "a volta traz a coluna 14, preta: ⌊255·12/16⌋");
+}
+
+/// O Trial 3b (`A4b`, estado dos botões lido por pixel) e 3 (`A4`: o «A_off» é o A clicado DEPOIS do
+/// kernel, logo o inverso do que o kernel traz): RGBA célula a célula, o alfa sempre e o RGB onde o
+/// alfa medido > 0 (o clipboard não determina o RGB sob alfa 0). O A do caso entra por `merge`.
+#[test]
+fn the_color_under_alpha_and_the_alpha_channel_match_the_trial_cell_by_cell() {
+    use ph2d_pixel_core::filter::Channels;
+    let d: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_round3.json"))
+        .expect("fixtura");
+    let trial = |k: &str| match k {
+        "2" => "negative",
+        "3" => "blur-3x3",
+        "14" => "sharpen-3x3",
+        "20" => "misc-contour",
+        "23" => "misc-marmolize",
+        "25" => "misc-rock-edges",
+        _ => "",
+    };
+    let grid = |v: &Value| -> Vec<Vec<[u8; 4]>> {
+        v.as_array()
+            .expect("linhas")
+            .iter()
+            .map(|r| {
+                r.as_array()
+                    .expect("linha")
+                    .iter()
+                    .map(|c| std::array::from_fn(|i| c[i].as_u64().expect("u8") as u8))
+                    .collect()
+            })
+            .collect()
+    };
+    let mut cases: Vec<(String, String, bool, Value, Value)> = Vec::new();
+    let b = &d["A4b_conv_alpha"];
+    for (key, out) in b["cases_rgba"].as_object().expect("casos") {
+        let p: Vec<&str> = key.split(':').collect();
+        if p[1] == "input" {
+            continue;
+        }
+        let a = b["button_state"]["per_case"][key.as_str()]["at_ok"]["A"]
+            .as_bool()
+            .expect("A");
+        let input = b["cases_rgba"][format!("{}:input", p[0])].clone();
+        cases.push((key.clone(), trial(p[1]).into(), a, input, out.clone()));
+    }
+    let a4 = &d["A4_conv_alpha"]["cases"];
+    for (key, out) in a4.as_object().expect("casos") {
+        let p: Vec<&str> = key.split(':').collect();
+        let name = trial(p[1]);
+        if name.is_empty() {
+            continue; // input e os outline (37, 38), fora da nossa lista
+        }
+        let a = (name == "blur-3x3") != (p.len() == 3);
+        let input = a4[format!("{}:input", p[0])].clone();
+        cases.push((format!("A4 {key}"), name.into(), a, input, out.clone()));
+    }
+    assert_eq!(cases.len(), 20, "16 de A4b + 4 de A4");
+    let mut fora = Vec::new();
+    for (key, name, a, input, out) in &cases {
+        let inp = grid(input);
+        let (h, w) = (inp.len(), inp[0].len());
+        let src = Source::from_rgba(w as u32, h as u32, inp.concat());
+        let f = Convolution {
+            kernel: KERNELS.iter().find(|k| k.name == name).expect("kernel"),
+            edge: Edge::Clamp,
+        };
+        let ch = Channels {
+            r: true,
+            g: true,
+            b: true,
+            a: *a,
+        };
+        for (y, row) in grid(out).iter().enumerate() {
+            for (x, want) in row.iter().enumerate() {
+                let got = ch.merge(inp[y][x], f.at(&src, x as i32, y as i32));
+                let vis = if want[3] == 0 { 3..4 } else { 0..4 };
+                if vis.into_iter().any(|c| got[c] != want[c]) {
+                    fora.push(format!("{key} ({x},{y}) Trial {want:?} nós {got:?}"));
+                }
+            }
+        }
+    }
+    assert!(
+        fora.is_empty(),
+        "{} células fora: {:#?}",
+        fora.len(),
+        &fora[..fora.len().min(12)]
+    );
+}
+
+/// Os botões que escolher cada kernel deixa (`A5_kernel_channels`), um por um.
+#[test]
+fn every_kernel_carries_the_trials_channel_buttons() {
+    let d: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_round3.json"))
+        .expect("fixtura");
+    let per = d["A5_kernel_channels"]["per_kernel"]
+        .as_object()
+        .expect("A5");
+    for k in KERNELS {
+        let s = per
+            .iter()
+            .find(|(n, _)| n.split_once(' ').map(|p| p.1) == Some(k.name))
+            .and_then(|(_, v)| v.as_str())
+            .unwrap_or_else(|| panic!("{} medido", k.name));
+        let want: [bool; 4] = std::array::from_fn(|i| s.contains(['R', 'G', 'B', 'A'][i]));
+        assert_eq!(k.channels, want, "{}", k.name);
+    }
 }

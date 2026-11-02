@@ -202,6 +202,9 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         app.avisos.push((true, ph2d_i18n::tr(motivo).to_owned()));
         return Press::Done;
     }
+    if let Some(r) = crate::degrade::press(app, tool, bits, key, (x, y), m) {
+        return r;
+    }
     let pincel = app.pincel.clone().map(|p| (p, app.pincel_imagem));
     let Some(doc) = app.docs.get_mut(&key) else {
         return Press::NotMine;
@@ -286,6 +289,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             st.spray(s, at, options.spray_width, options.spray_speed);
             (st, Kind::Spray)
         }
+        Tool::Gradient | Tool::Blur | Tool::Jumble => return Press::Done,
         Tool::Bucket => {
             let mut st = Stroke::new(layer, frame, value, paint);
             st.fill(s, at, crate::gesture::bucket(&options));
@@ -379,6 +383,9 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
         return true;
     };
     app.hover = Some((bits, (x, y)));
+    if crate::degrade::moved(app, key, (x, y)) {
+        return true;
+    }
     let stamp = app.stamp();
     let (tool, options, space) = (app.tool, app.options, app.space);
     let (Some(doc), Some(g)) = (app.docs.get_mut(&key), app.gesture.as_mut()) else {
@@ -402,7 +409,7 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
                     .spray(s, at, options.spray_width, options.spray_speed);
             }
         }
-        Kind::Fill => {}
+        Kind::Fill | Kind::Gradient { .. } | Kind::Smudge => {}
         Kind::Axis { vertical } => {
             if let Some(screen) = to_screen(c.world, bits, doc, c.camera, c.window, c.ppm) {
                 let q = image_point(screen, p);

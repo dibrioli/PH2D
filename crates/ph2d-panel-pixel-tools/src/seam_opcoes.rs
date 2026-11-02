@@ -54,6 +54,7 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
     Some(match id {
         ids::PIXEL_PERFECT => &mut o.pixel_perfect,
         ids::CONTIGUOUS => &mut o.contiguous,
+        ids::GRADIENT_RAMP => &mut o.gradient_ramp,
         ids::WAND_CONTIGUOUS => &mut o.wand_contiguous,
         ids::AUTO_SELECT_LAYER => &mut o.auto_select_layer,
         ids::SYM_H => &mut o.sym_h,
@@ -77,7 +78,13 @@ pub(crate) fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptio
         o.ink = *ink;
         return Some(o);
     }
+    if let Some((d, ..)) = ids::GRADIENT_DITHERS.iter().find(|(_, s, _)| *s == id) {
+        o.gradient_dither = *d;
+        return Some(o);
+    }
     match id {
+        ids::GRADIENT_LINEAR => o.gradient_radial = false,
+        ids::GRADIENT_RADIAL => o.gradient_radial = true,
         ids::CONNECT_4 => o.eight = false,
         ids::CONNECT_8 => o.eight = true,
         ids::SAMPLE_LAYER => o.sample_visible = false,

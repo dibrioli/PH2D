@@ -261,6 +261,8 @@ impl Corpo<'_> {
             tr("panel.pixel.dynamics.min_size"),
             tr("panel.pixel.dynamics.min_angle"),
             tr("panel.pixel.dynamics.dither"),
+            tr("panel.pixel.gradient.shape"),
+            tr("panel.pixel.gradient.dither"),
         ];
         let nomes: Vec<&str> = nomes.into_iter().chain(formas::nomes()).collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
@@ -308,7 +310,10 @@ impl Corpo<'_> {
             y = self.campo(tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH, sec, y);
             y = self.campo(tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED, sec, y);
         }
-        if t == PixelTool::Bucket {
+        if t == PixelTool::Gradient {
+            y = self.opcoes_gradiente(info, sec, y);
+        }
+        if matches!(t, PixelTool::Bucket | PixelTool::Gradient) {
             y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);
             y = self.campo(tr("panel.pixel.tolerance"), ids::TOLERANCE, sec, y);
             y = self.caixas(
@@ -335,8 +340,14 @@ impl Corpo<'_> {
             ];
             y = self.escolha(tr("panel.pixel.sample"), &amostra, sec, y);
         }
-        // A borracha pinta sempre com a Simple: a tinta é das outras.
-        if t.paints() && t != PixelTool::Eraser {
+        // A borracha pinta sempre com a Simple: a tinta é das outras (o Gradient, o Blur e o
+        // Jumble escrevem a cor pronta, sem tinta).
+        if t.paints()
+            && !matches!(
+                t,
+                PixelTool::Eraser | PixelTool::Gradient | PixelTool::Blur | PixelTool::Jumble
+            )
+        {
             let tintas: Vec<(&str, bool, NodeId)> = ids::INKS
                 .iter()
                 .map(|&(k, id)| (tr(k.label_key()), k == o.ink, id))

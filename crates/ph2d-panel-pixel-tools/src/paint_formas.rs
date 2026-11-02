@@ -53,3 +53,39 @@ impl Corpo<'_> {
         self.caixas(&[fill], sec, y)
     }
 }
+
+impl Corpo<'_> {
+    /// P8: as opções do Gradient — Linear | Radial, a matriz DELE (não a da dinâmica) e o «Palette
+    /// ramp»; a região (tolerância, contígua, 4/8) é a do balde, logo abaixo.
+    pub(super) fn opcoes_gradiente(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
+        let o = info.options;
+        let y = self.linha(tr("panel.pixel.gradient"), ColorToken::Text3, y);
+        let forma = [
+            (
+                tr("panel.pixel.gradient.linear"),
+                !o.gradient_radial,
+                ids::GRADIENT_LINEAR,
+            ),
+            (
+                tr("panel.pixel.gradient.radial"),
+                o.gradient_radial,
+                ids::GRADIENT_RADIAL,
+            ),
+        ];
+        let y = self.escolha(tr("panel.pixel.gradient.shape"), &forma, sec, y);
+        let matriz: Vec<(&str, bool, NodeId)> = ids::GRADIENT_DITHERS
+            .iter()
+            .map(|&(d, id, k)| (tr(k), d == o.gradient_dither, id))
+            .collect();
+        let y = self.escolha(tr("panel.pixel.gradient.dither"), &matriz, sec, y);
+        self.caixas(
+            &[(
+                ids::GRADIENT_RAMP,
+                tr("panel.pixel.gradient.ramp"),
+                o.gradient_ramp,
+            )],
+            sec,
+            y,
+        )
+    }
+}

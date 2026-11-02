@@ -23,6 +23,12 @@ pub enum PixelTool {
     Eyedropper,
     /// O balde (*Paint Bucket*).
     Bucket,
+    /// P8: o Gradient (`Shift+G`, no botão de grupo do balde): arrasta-se de A a B, fg → bg, na
+    /// região que o balde pintaria.
+    Gradient,
+    /// P8: Blur e Jumble (`R` alterna), ferramentas de pincel num botão de grupo.
+    Blur,
+    Jumble,
     Line,
     Curve,
     /// Uma forma do Vector (P6b; P6e: o catálogo inteiro), num botão de grupo (P6c); cheia pela
@@ -37,7 +43,7 @@ pub enum PixelTool {
 }
 
 /// As ferramentas que não são formas, na ordem da coluna; as formas entram depois da Curva.
-const PLAIN: [PixelTool; 16] = [
+const PLAIN: [PixelTool; 19] = [
     PixelTool::RectMarquee,
     PixelTool::EllipseMarquee,
     PixelTool::Lasso,
@@ -49,6 +55,9 @@ const PLAIN: [PixelTool; 16] = [
     PixelTool::Eraser,
     PixelTool::Eyedropper,
     PixelTool::Bucket,
+    PixelTool::Gradient,
+    PixelTool::Blur,
+    PixelTool::Jumble,
     PixelTool::Line,
     PixelTool::Curve,
     PixelTool::Contour,
@@ -57,7 +66,7 @@ const PLAIN: [PixelTool; 16] = [
 ];
 
 /// Onde as formas entram em [`PixelTool::ALL`]: depois da Curva.
-const SHAPES_AT: usize = 13;
+const SHAPES_AT: usize = 16;
 
 impl PixelTool {
     /// O retângulo do Aseprite (`U`).
@@ -98,6 +107,9 @@ impl PixelTool {
             Self::Eraser => "pixel.tool.eraser",
             Self::Eyedropper => "pixel.tool.eyedropper",
             Self::Bucket => "pixel.tool.bucket",
+            Self::Gradient => "pixel.tool.gradient",
+            Self::Blur => "pixel.tool.blur",
+            Self::Jumble => "pixel.tool.jumble",
             Self::Line => "pixel.tool.line",
             Self::Curve => "pixel.tool.curve",
             // O nome de cada forma é o do Vector ([`PixelShape::name`]).
@@ -119,7 +131,9 @@ impl PixelTool {
             Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
-            Self::Bucket => "G",
+            Self::Bucket | Self::Gradient => "G",
+            // O `R` do Aseprite: escolhe o Blur e, de novo, alterna para o Jumble.
+            Self::Blur | Self::Jumble => "R",
             Self::Line | Self::Curve => "L",
             Self::RECTANGLE | Self::ELLIPSE => "U",
             Self::Contour | Self::Polygon => "D",
@@ -140,6 +154,7 @@ impl PixelTool {
                 | Self::Polygon
                 | Self::EllipseMarquee
                 | Self::PolygonLasso
+                | Self::Gradient
         )
     }
 
@@ -188,13 +203,15 @@ impl PixelTool {
                 | Self::Shape(_)
                 | Self::Contour
                 | Self::Polygon
+                | Self::Blur
+                | Self::Jumble
         )
     }
 
     /// Pinta no documento (a simetria e o ladrilho valem para ela).
     #[must_use]
     pub const fn paints(self) -> bool {
-        self.uses_brush() || matches!(self, Self::Bucket)
+        self.uses_brush() || matches!(self, Self::Bucket | Self::Gradient)
     }
 
     /// O botão de grupo da coluna onde mora, se mora num.
@@ -205,6 +222,8 @@ impl PixelTool {
                 Some(PixelToolGroup::Select)
             }
             Self::Shape(_) => Some(PixelToolGroup::Shape),
+            Self::Bucket | Self::Gradient => Some(PixelToolGroup::Bucket),
+            Self::Blur | Self::Jumble => Some(PixelToolGroup::Smudge),
             _ => None,
         }
     }
@@ -231,10 +250,14 @@ pub enum PixelToolGroup {
     Select,
     /// As formas do Vector (o catálogo inteiro, na ordem dele: o painel lê-a).
     Shape,
+    /// O balde e o Gradient (P8).
+    Bucket,
+    /// Blur e Jumble (P8).
+    Smudge,
 }
 
 impl PixelToolGroup {
-    pub const ALL: [Self; 2] = [Self::Select, Self::Shape];
+    pub const ALL: [Self; 4] = [Self::Select, Self::Shape, Self::Bucket, Self::Smudge];
 
     /// A cara de fábrica do botão.
     #[must_use]
@@ -242,6 +265,8 @@ impl PixelToolGroup {
         match self {
             Self::Select => PixelTool::RectMarquee,
             Self::Shape => PixelTool::RECTANGLE,
+            Self::Bucket => PixelTool::Bucket,
+            Self::Smudge => PixelTool::Blur,
         }
     }
 
@@ -253,7 +278,7 @@ impl PixelToolGroup {
 /// **O estado dos botões de grupo**: a última usada de cada um e o flyout aberto (um de cada vez).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PixelGroups {
-    last: [PixelTool; 2],
+    last: [PixelTool; PixelToolGroup::ALL.len()],
     pub open: Option<PixelToolGroup>,
 }
 

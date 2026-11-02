@@ -61,6 +61,12 @@ pub(crate) enum Kind {
     Polygon(Vec<Cell>),
     /// O balde já encheu no premir.
     Fill,
+    /// P8: o Gradient arrastado desde `from` ([`crate::degrade`]).
+    Gradient {
+        from: Cell,
+    },
+    /// P8: o Blur/Jumble (o estado vive em `PixelApp::mancha`).
+    Smudge,
     /// Arrastar um eixo da simetria (vertical = o do espelho H).
     Axis {
         vertical: bool,

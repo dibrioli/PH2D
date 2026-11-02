@@ -73,6 +73,16 @@ pub fn key_with(
         (KeyCode::KeyE, false, false) => tool(app, Tool::Eraser),
         (KeyCode::KeyI, false, false) => tool(app, Tool::Eyedropper),
         (KeyCode::KeyG, false, false) => tool(app, Tool::Bucket),
+        (KeyCode::KeyG, false, true) => tool(app, Tool::Gradient),
+        // O `R` do Aseprite: o Blur e, de novo, o Jumble (e volta).
+        (KeyCode::KeyR, false, false) => {
+            let t = if app.tool == Tool::Blur {
+                Tool::Jumble
+            } else {
+                Tool::Blur
+            };
+            tool(app, t)
+        }
         (KeyCode::KeyL, false, false) => tool(app, Tool::Line),
         (KeyCode::KeyL, false, true) => tool(app, Tool::Curve),
         // Cheio ou vazio é a caixa «Fill» do painel (P6c), não outra ferramenta.

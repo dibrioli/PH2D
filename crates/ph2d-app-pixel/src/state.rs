@@ -211,6 +211,8 @@ pub struct PixelApp {
     pub(crate) recorte: bool,
     /// A mão do traço livre em curso (P7: dinâmica e corda); `None` = desligadas.
     pub(crate) mao: Option<crate::mao::Mao>,
+    /// O Blur/Jumble em curso (P8).
+    pub(crate) mancha: Option<crate::degrade::Mancha>,
     /// A pasta dos pincéis guardados (Alt+1…); `None` = só nesta sessão (os testes e os palcos
     /// nunca leem a HOME real).
     pub pinceis: Option<std::path::PathBuf>,
@@ -279,6 +281,7 @@ impl Default for PixelApp {
             pincel_imagem: true,
             recorte: false,
             mao: None,
+            mancha: None,
             pinceis: None,
             espacos: None,
             espaco_activo: None,

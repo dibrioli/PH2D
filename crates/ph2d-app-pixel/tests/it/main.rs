@@ -1,6 +1,7 @@
 mod ajustes;
 mod camadas;
 mod catalogo;
+mod degrade;
 mod desenho;
 mod edit;
 mod formas;

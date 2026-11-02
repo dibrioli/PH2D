@@ -6,8 +6,8 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
-    PixelBrushShape, PixelInk, PixelLayerAction, PixelRequest, PixelSelector, PixelShape,
-    PixelSortKey, PixelTool, PixelToolGroup,
+    PixelBrushShape, PixelGradientDither, PixelInk, PixelLayerAction, PixelRequest, PixelSelector,
+    PixelShape, PixelSortKey, PixelTool, PixelToolGroup,
 };
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
@@ -29,9 +29,14 @@ pub const PIXEL_SWAP: NodeId = hash_node_id("pixel.swap");
 /// formas do Vector.
 pub const PIXEL_SELECT_GROUP: NodeId = hash_node_id("pixel.tool.select_group");
 pub const PIXEL_SHAPE_GROUP: NodeId = hash_node_id("pixel.tool.shape_group");
-pub const GROUPS: [(PixelToolGroup, NodeId); 2] = [
+/// P8: o balde e o Gradient; Blur e Jumble.
+pub const PIXEL_BUCKET_GROUP: NodeId = hash_node_id("pixel.tool.bucket_group");
+pub const PIXEL_SMUDGE_GROUP: NodeId = hash_node_id("pixel.tool.smudge_group");
+pub const GROUPS: [(PixelToolGroup, NodeId); 4] = [
     (PixelToolGroup::Select, PIXEL_SELECT_GROUP),
     (PixelToolGroup::Shape, PIXEL_SHAPE_GROUP),
+    (PixelToolGroup::Bucket, PIXEL_BUCKET_GROUP),
+    (PixelToolGroup::Smudge, PIXEL_SMUDGE_GROUP),
 ];
 
 /// As ferramentas, na ordem da coluna: pintar, registar e despachar leem a MESMA tabela. As formas
@@ -78,6 +83,33 @@ pub const SPRAY_SPEED: NodeId = hash_node_id("pixel.opt.spray_speed");
 /// As caixas de marcar das opções.
 pub const PIXEL_PERFECT: NodeId = hash_node_id("pixel.opt.pixel_perfect");
 pub const CONTIGUOUS: NodeId = hash_node_id("pixel.opt.contiguous");
+
+/// P8: as opções do Gradient (a matriz é DELE, não a da dinâmica: ids e campo próprios).
+pub const GRADIENT_LINEAR: NodeId = hash_node_id("pixel.opt.gradient.linear");
+pub const GRADIENT_RADIAL: NodeId = hash_node_id("pixel.opt.gradient.radial");
+pub const GRADIENT_RAMP: NodeId = hash_node_id("pixel.opt.gradient.ramp");
+pub const GRADIENT_DITHERS: [(PixelGradientDither, NodeId, &str); 4] = [
+    (
+        PixelGradientDither::None,
+        hash_node_id("pixel.opt.gradient.dither.none"),
+        "panel.pixel.gradient.dither_none",
+    ),
+    (
+        PixelGradientDither::Bayer2,
+        hash_node_id("pixel.opt.gradient.dither.bayer2"),
+        "panel.pixel.gradient.dither_bayer2",
+    ),
+    (
+        PixelGradientDither::Bayer4,
+        hash_node_id("pixel.opt.gradient.dither.bayer4"),
+        "panel.pixel.gradient.dither_bayer4",
+    ),
+    (
+        PixelGradientDither::Bayer8,
+        hash_node_id("pixel.opt.gradient.dither.bayer8"),
+        "panel.pixel.gradient.dither_bayer8",
+    ),
+];
 pub const SYM_H: NodeId = hash_node_id("pixel.opt.sym_h");
 pub const SYM_V: NodeId = hash_node_id("pixel.opt.sym_v");
 pub const SYM_D1: NodeId = hash_node_id("pixel.opt.sym_d1");
@@ -110,8 +142,9 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
 ];
 
 /// As caixas de marcar.
-pub const CHECKS: [NodeId; 10] = [
+pub const CHECKS: [NodeId; 11] = [
     WAND_CONTIGUOUS,
+    GRADIENT_RAMP,
     AUTO_SELECT_LAYER,
     PIXEL_PERFECT,
     CONTIGUOUS,
@@ -124,7 +157,13 @@ pub const CHECKS: [NodeId; 10] = [
 ];
 
 /// Os segmentos que não são a forma.
-pub const SEGMENTS: [NodeId; 8] = [
+pub const SEGMENTS: [NodeId; 14] = [
+    GRADIENT_LINEAR,
+    GRADIENT_RADIAL,
+    GRADIENT_DITHERS[0].1,
+    GRADIENT_DITHERS[1].1,
+    GRADIENT_DITHERS[2].1,
+    GRADIENT_DITHERS[3].1,
     CONNECT_4,
     CONNECT_8,
     SAMPLE_LAYER,

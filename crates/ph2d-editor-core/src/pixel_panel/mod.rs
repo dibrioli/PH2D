@@ -133,6 +133,11 @@ pub struct PixelOptions {
     /// de cima com uma célula pintada ali.
     pub auto_select_layer: bool,
     pub resample: PixelResample,
+    /// P8: as opções do Gradient — Linear/Radial, a matriz com estado PRÓPRIO (nunca a da
+    /// dinâmica: o bug 1.3.0 do Aseprite) e o «Palette ramp» (caminha pela paleta de fg a bg).
+    pub gradient_radial: bool,
+    pub gradient_dither: PixelGradientDither,
+    pub gradient_ramp: bool,
 }
 
 /// O seletor de cor abaixo da paleta — os cinco do menu ≡ da paleta do Aseprite 1.3.18, na ordem
@@ -338,6 +343,9 @@ impl Default for PixelOptions {
             wand_sample_visible: false,
             auto_select_layer: false,
             resample: PixelResample::Fast,
+            gradient_radial: false,
+            gradient_dither: PixelGradientDither::None,
+            gradient_ramp: false,
         }
     }
 }

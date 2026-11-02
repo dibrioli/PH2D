@@ -13,6 +13,7 @@
 mod ajustes;
 pub mod camadas;
 pub mod compose;
+pub mod degrade;
 pub mod draw;
 pub mod edicao;
 mod filtros;

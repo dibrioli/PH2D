@@ -130,8 +130,15 @@ fn transicoes(p: &Preset) -> (f64, f64) {
 /// tela — as cerdas crescem num eixo só e a razão das transições muda (medida no relatório).
 #[test]
 fn o_eixo_atraves_tem_expoente_proprio() {
+    // A lei é da GEOMETRIA do tapete: a cena tira o meio Oil que a E10 (`7c8e08d16b`) deu ao Dabber, como já tira a luz
+    // do Real Oil. A/B no mesmo processo: Medium 0 → 1,315 · 0,985 (o pai, ao número); Medium 1 → 1,297 · 1,009; o Body
+    // não mexe (0 · 0,16 → 1,297 · 1,009). O óleo pastoso funde as transições do tapete, não a lei do eixo.
+    let sem_meio = com_meio_e_corpo(controlos_migrados(&cerdas(96.0, Some(1.0))), 0.0, 0.0);
     let com = |atraves: Option<f64>| {
         let mut p = cerdas(96.0, Some(1.0));
+        for (k, v) in &sem_meio {
+            p.parametros.engine.insert(k.clone(), *v);
+        }
         if let Some(a) = atraves {
             p.parametros.engine.insert("textureSizeExpAcross".into(), a);
         }
@@ -191,4 +198,27 @@ fn a_nuvem_do_spray_pousa_o_pigmento_de_um_dab() {
         media > 0.15,
         "as marcas do spray são discos pálidos: tinta média {media:.3}"
     );
+}
+
+/// Os controlos da E10 que `p` ganha ao ser aplicado (Dilution, Volume, Medium, Body) — a migração por função.
+pub(super) fn controlos_migrados(p: &Preset) -> [f64; 4] {
+    use ph2d_wet_paint::tuning::Knob;
+    let mut t = ph2d_tool_painter::PainterTool::default();
+    let _ = t.wet_preset_aplicar(p);
+    let k = t.wet_knobs();
+    [Knob::Dilution, Knob::Volume, Knob::Medium, Knob::Body].map(|n| k.get(n))
+}
+
+/// O mapa `engine` que fixa os controlos da E10 (a marca `controlosE10` salta a migração) com Medium e Body à escolha:
+/// o A/B do meio e do corpo no MESMO processo.
+pub(super) fn com_meio_e_corpo(c: [f64; 4], meio: f64, corpo: f64) -> Vec<(String, f64)> {
+    [
+        ("controlosE10", 1.0),
+        ("dilution", c[0]),
+        ("volume", c[1]),
+        ("medium", meio),
+        ("body", corpo),
+    ]
+    .map(|(k, v)| (k.to_owned(), v))
+    .to_vec()
 }

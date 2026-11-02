@@ -342,9 +342,12 @@ fn a_borda_da_mancha_molhada_esbate() {
     println!(
         "[borda] Wet Liner: degradê {dl:.1} · aro {al:.3} · mancha {rl:.2} (Rebelle 12,2 · 1,10 · 1,42) · sem a pena {dc:.1} · {ac:.3}"
     );
+    // O controlo é a borda DURA por lei (a pena 0): corta em 2–3 células. Já não pede o aro > 1,10 — era o fio escuro do
+    // Liner que o dono recusou (02/11) e que a E10 (`7c8e08d16b`, a parede → Body 0,16) tirou: A/B no mesmo processo,
+    // Body 0 → aro 1,281 · Body 0,16 → 1,085 (degradê 3,5 · 3,7). Fica o aro acima do tecto da lei (1,06): a régua do aro mede.
     assert!(
-        dc < 5.0 && ac > 1.10,
-        "o controlo (a borda de sempre) já esbate: {dc:.1} · aro {ac:.3}"
+        dc < 5.0 && ac > 1.06,
+        "o controlo (a borda dura, sem a pena) já esbate: {dc:.1} · aro {ac:.3}"
     );
     assert!(
         (9.0..16.0).contains(&dl),

@@ -34,6 +34,7 @@ pub(crate) fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChan
                 hue,
                 saturation,
                 lightness,
+                alpha: 0,
             }),
             channels,
         ),

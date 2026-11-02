@@ -110,6 +110,9 @@ pub struct HueSaturation {
     pub hue: i32,
     pub saturation: i32,
     pub lightness: i32,
+    /// `-100..=100`: `a' = ⌊a·(1 + v/100)⌋` preso a `0..=255`; `a' = 0` vira `[0; 4]` (Trial,
+    /// rodada 3 `B4_hue_saturation_alpha`).
+    pub alpha: i32,
 }
 
 impl HueSaturation {
@@ -179,6 +182,7 @@ impl Filter for HueSaturation {
     fn at(&self, src: &Source, x: i32, y: i32) -> [u8; 4] {
         let c = src.get(x, y).unwrap_or_default();
         let [r, g, b] = self.rgb([c[0], c[1], c[2]]);
-        [r, g, b, c[3]]
+        let a = (i32::from(c[3]) * (100 + self.alpha.clamp(-100, 100)) / 100).clamp(0, 255) as u8;
+        if a == 0 { [0; 4] } else { [r, g, b, a] }
     }
 }

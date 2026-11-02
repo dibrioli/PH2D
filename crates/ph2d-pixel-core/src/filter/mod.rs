@@ -2,6 +2,8 @@
 //! a imagem do cel e escreve uma CÓPIA — nunca se alimenta do que já escreveu. Age só dentro da
 //! selecção (sem selecção: o sprite inteiro) e só nos [`Channels`] ligados. Todos os cels pedidos
 //! viram UM passo do desfazer.
+//! Em Indexed a cor nova grava o índice mais próximo (`Sprite::value_of_rgba`); o Trial não grava
+//! o Invert em Indexed (rodada 3 `B1`) — falha que recusamos copiar (`tests/it/filter_indexed.rs`).
 
 pub mod adjust;
 pub mod convolution;

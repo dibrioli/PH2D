@@ -216,3 +216,60 @@ fn jumble_only_moves_colours_that_exist_inside_the_brush_band() {
         ));
     }
 }
+
+/// Rodada 3 `B3_outline_bg_color`: `shape15` (128 com o quadrado 255 em 5..9), contorno `#FF0000`,
+/// fundo = a COR `#808080`, matriz círculo. Fora: o anel sem os cantos; dentro: a borda do quadrado
+/// com os cantos. (O Trial não lembra as cores ao reabrir; a nossa sessão lembra — de propósito.)
+#[test]
+fn outline_with_a_background_colour_matches_round3() {
+    let d = fixture(include_str!("../fixtures/oracle_trial_round3.json"));
+    let rows: Vec<[u8; 4]> = (0..15)
+        .flat_map(|y| {
+            (0..15).map(move |x| {
+                if (5..=9).contains(&x) && (5..=9).contains(&y) {
+                    [255; 4]
+                } else {
+                    [128, 128, 128, 255]
+                }
+            })
+        })
+        .collect();
+    let src = Source::from_rgba(15, 15, rows);
+    for (key, place) in [
+        ("outside_circle", Place::Outside),
+        ("inside_circle", Place::Inside),
+    ] {
+        let f = Outline {
+            color: [255, 0, 0, 255],
+            background: Background::Color([128, 128, 128, 255]),
+            matrix: CIRCLE,
+            place,
+            tiled: false,
+        };
+        let got: Vec<Vec<_>> = (0..15)
+            .map(|y| (0..15).map(|x| f.at(&src, x, y)).collect())
+            .collect();
+        let want: Vec<Vec<[u8; 4]>> = d["B3_outline_bg_color"]["data"][key]
+            .as_array()
+            .expect("linhas")
+            .iter()
+            .map(|r| {
+                r.as_array()
+                    .expect("linha")
+                    .iter()
+                    .map(|c| {
+                        let a = c.get(3).and_then(Value::as_u64).unwrap_or(255) as u8;
+                        std::array::from_fn(|k| {
+                            if k == 3 {
+                                a
+                            } else {
+                                c[k].as_u64().unwrap() as u8
+                            }
+                        })
+                    })
+                    .collect()
+            })
+            .collect();
+        diff(key, &got, &want);
+    }
+}

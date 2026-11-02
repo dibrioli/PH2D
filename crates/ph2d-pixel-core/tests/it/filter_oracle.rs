@@ -176,6 +176,7 @@ fn hue_saturation_matches_the_trial_except_on_exact_half_ties() {
             hue: v[0],
             saturation: v[1],
             lightness: v[2],
+            alpha: 0,
         };
         for (y, row) in hex_rows(rows).iter().enumerate() {
             for (x, want) in row.iter().enumerate() {
@@ -200,4 +201,65 @@ fn hue_saturation_matches_the_trial_except_on_exact_half_ties() {
         ties > 0,
         "a fixtura tem empates: o desempate do Trial é ruído de vírgula flutuante"
     );
+}
+
+/// As linhas RGBA brutas da rodada 3 (`[[r, g, b, a], …]` por linha).
+fn rgba_rows(v: &Value) -> Vec<Vec<[u8; 4]>> {
+    v.as_array()
+        .expect("linhas")
+        .iter()
+        .map(|r| {
+            r.as_array()
+                .expect("linha")
+                .iter()
+                .map(|c| std::array::from_fn(|k| c[k].as_u64().expect("canal") as u8))
+                .collect()
+        })
+        .collect()
+}
+
+/// Rodada 3 `B4_hue_saturation_alpha`: o campo Alpha sozinho sobre `alfa15` (cinza 128, alfa 255;
+/// `x ≥ 10` alfa 0 com RGB 128 por baixo; `(7, 7)` alfa 128). O `-100` é a sentinela (ilegível):
+/// fica fora da fixtura e a lei dá-o transparente.
+#[test]
+fn hue_saturation_alpha_scales_the_alpha_like_the_trial() {
+    let d = fixture(include_str!("../fixtures/oracle_trial_round3.json"));
+    let input: Vec<[u8; 4]> = (0..15)
+        .flat_map(|y| {
+            (0..15).map(move |x| match (x, y) {
+                (10.., _) => [128, 128, 128, 0],
+                (7, 7) => [128, 128, 128, 128],
+                _ => [128, 128, 128, 255],
+            })
+        })
+        .collect();
+    let src = Source::from_rgba(15, 15, input);
+    let mut seen = 0;
+    for (name, rows) in d["B4_hue_saturation_alpha"]["data"]
+        .as_object()
+        .expect("casos")
+    {
+        let v: i32 = name.trim_start_matches("alfa15:A").parse().expect("valor");
+        if v == -100 {
+            continue;
+        }
+        let f = HueSaturation {
+            mode: HueMode::Hsl,
+            hue: 0,
+            saturation: 0,
+            lightness: 0,
+            alpha: v,
+        };
+        assert_eq!(run(&f, &src), rgba_rows(rows), "Alpha {v}");
+        seen += 1;
+    }
+    assert_eq!(seen, 3, "-50, +50 e +100 medidos");
+    let none = HueSaturation {
+        mode: HueMode::Hsl,
+        hue: 0,
+        saturation: 0,
+        lightness: 0,
+        alpha: -100,
+    };
+    assert!(run(&none, &src).iter().flatten().all(|c| *c == [0; 4]));
 }

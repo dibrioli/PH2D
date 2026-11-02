@@ -69,6 +69,65 @@ pub fn note_wait(ms: f32) {
 }
 
 // ---------------------------------------------------------------------------
+// O COMPOSITOR DA ÓPTICA fora do fio da tela (J13b P5) — a cópia para o espelho, a óptica, as imagens
+// ---------------------------------------------------------------------------
+
+static COPIA_US: AtomicU64 = AtomicU64::new(0);
+static COPIA_MAX_US: AtomicU64 = AtomicU64::new(0);
+static COPIA_N: AtomicU64 = AtomicU64::new(0);
+static OTICA_US: AtomicU64 = AtomicU64::new(0);
+static OTICA_MAX_US: AtomicU64 = AtomicU64::new(0);
+static OTICA_N: AtomicU64 = AtomicU64::new(0);
+
+/// O worker copiou as linhas sujas para o espelho em `ms` (no fim de um passo fechado).
+pub fn note_copia(ms: f32) {
+    add(&COPIA_US, &COPIA_MAX_US, &COPIA_N, ms);
+}
+
+/// O compositor fez UMA imagem em `ms` (a metade de cima sobre o espelho): `n` é o número de imagens.
+pub fn note_otica(ms: f32) {
+    add(&OTICA_US, &OTICA_MAX_US, &OTICA_N, ms);
+}
+
+/// `(cópia, óptica)` da janela, `(soma ms, pico ms, n)`, ZERANDO; `imagens/s` = `óptica.n ÷ janela`.
+#[must_use]
+pub fn take_otica() -> (Half, Half) {
+    let take = |sum: &AtomicU64, mx: &AtomicU64, n: &AtomicU64| {
+        (
+            sum.swap(0, Ordering::Relaxed) as f64 / 1000.0,
+            mx.swap(0, Ordering::Relaxed) as f64 / 1000.0,
+            n.swap(0, Ordering::Relaxed),
+        )
+    };
+    (
+        take(&COPIA_US, &COPIA_MAX_US, &COPIA_N),
+        take(&OTICA_US, &OTICA_MAX_US, &OTICA_N),
+    )
+}
+
+/// `2` = ainda por ler do ambiente.
+static OTICA_FORA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
+
+/// **A óptica sai do fio da tela?** (`PH2D_WET_OTICA_FORA=1`; desligada por omissão). Lida do ambiente UMA vez;
+/// [`set_otica_fora`] troca-a em execução para as variantes intercaladas no mesmo processo (MEDIR_VELOCIDADE). Vale
+/// para os workers que sobem DEPOIS (o compositor nasce com o worker da sessão).
+pub fn otica_fora() -> bool {
+    match OTICA_FORA.load(Ordering::Relaxed) {
+        2 => {
+            let on = std::env::var("PH2D_WET_OTICA_FORA").is_ok_and(|v| v.trim() == "1");
+            OTICA_FORA.store(u8::from(on), Ordering::Relaxed);
+            on
+        }
+        v => v == 1,
+    }
+}
+
+/// A variante em execução de [`otica_fora`].
+pub fn set_otica_fora(on: bool) {
+    OTICA_FORA.store(u8::from(on), Ordering::Relaxed);
+}
+
+// ---------------------------------------------------------------------------
 // A metade do WORKER — os três baldes que particionam a janela dele
 // ---------------------------------------------------------------------------
 

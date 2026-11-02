@@ -2,7 +2,7 @@
 //! `worker_loop`. Aqui entra o gancho do compositor da óptica (J13b P5).
 
 use super::offthread_ritmo;
-use super::{IDLE_SLEEP, STEP_S, SimWorker, placa};
+use super::{IDLE_SLEEP, STEP_S, SimWorker, otica, placa};
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -28,6 +28,13 @@ impl SimWorker {
         let steps = Arc::new(AtomicU64::new(0));
         let (w, st) = (Arc::clone(&want), Arc::clone(&steps));
         let (lado, ui) = ritmo.map(offthread_ritmo::par).unzip();
+        // O compositor da óptica: só ao relógio (o ritmado é dos gates determinísticos).
+        let (otica_w, otica) = if lado.is_none() && otica::ligada() {
+            let (a, b) = otica::par();
+            (Some(a), Some(b))
+        } else {
+            (None, None)
+        };
         std::thread::Builder::new()
             .name("ph2d-wet-sim".into())
             .spawn(move || match lado {
@@ -39,7 +46,7 @@ impl SimWorker {
                     &l,
                     offthread_ritmo::corre_a_quota,
                 ),
-                None => worker_loop(&rx_engine, &to_ui, &w, &st),
+                None => worker_loop(&rx_engine, &to_ui, &w, &st, otica_w),
             })
             .expect("a thread da sim de agua");
         Self {
@@ -48,6 +55,7 @@ impl SimWorker {
             want,
             steps,
             ritmo: ui,
+            otica,
         }
     }
 }
@@ -58,6 +66,7 @@ fn worker_loop(
     tx: &Sender<Box<Engine>>,
     want: &AtomicBool,
     steps: &AtomicU64,
+    mut otica: Option<otica::DoWorker>,
 ) {
     // O relógio é do WORKER: ele deve `STEP_S` de tempo simulado por `STEP_S` de tempo de parede, e
     // ficar para trás é câmera lenta (nunca uma rajada de catch-up — a lição do `max_substeps`).
@@ -106,6 +115,10 @@ fn worker_loop(
             last = now;
             let in_flight = engine.sim.step_pending();
             if !in_flight && (acc < STEP_S || !engine.sim_should_run()) {
+                // Ocioso: a imagem pedida (J13b P5) cabe aqui sem atrasar passo nenhum.
+                if let Some(o) = otica.as_mut() {
+                    o.serve(&mut engine, acc, steps.load(Ordering::Acquire));
+                }
                 // Nada a fazer: dorme um pouco em vez de girar num núcleo.
                 let t = Instant::now();
                 std::thread::sleep(IDLE_SLEEP);
@@ -127,6 +140,10 @@ fn worker_loop(
                 // `O(linhas)` e sai de uma faixa que o rebuild já materializou.
                 crate::wet_diag::note_cells(engine.active_grid().live_span_cells());
                 step_us = 0;
+                // O passo fechou: a imagem pedida, se a cópia couber na folga ([`otica::DoWorker::serve`]).
+                if let Some(o) = otica.as_mut() {
+                    o.serve(&mut engine, acc, steps.load(Ordering::Acquire));
+                }
             }
         }
     }

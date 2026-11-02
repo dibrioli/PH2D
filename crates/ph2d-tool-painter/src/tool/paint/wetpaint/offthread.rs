@@ -40,6 +40,8 @@ use super::fita::{self, Divergencia, MarcaDaAgua, Pergunta, RespostaDoWorker, Ri
 use super::offthread_ritmo::{self, Ritmado};
 #[path = "offthread_laco.rs"]
 mod laco; // o `spawn` e o `worker_loop` ao relógio — filho por LOC
+#[path = "offthread_otica.rs"]
+pub(super) mod otica; // o compositor da óptica fora do fio da tela (J13b P5)
 mod placa; // a água na PLACA no worker (LIGACAO_PLACA.md)
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
@@ -111,6 +113,12 @@ pub(in crate::tool::paint) struct SimWorker {
     steps: Arc<AtomicU64>,
     /// `Some` = o worker anda num ritmo escrito ([`RitmoDaAgua`]), não ao relógio.
     ritmo: Option<Ritmado>,
+    /// `Some` = o compositor da óptica existe ([`otica`]: só ao relógio e com `PH2D_WET_OTICA_FORA`).
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "J13b P6: o tique pede e recebe as imagens")
+    )]
+    otica: Option<otica::DoFioPrincipal>,
 }
 
 /// Copia o motor que está nesta thread; um motor com o worker não se alcança por `&self` e PANICA

@@ -120,6 +120,8 @@ pub fn frame(
         let size = (doc.sprite.width(), doc.sprite.height());
         hero.store
             .set_pixel_filter_kernels(crate::filtros::nomes_dos_kernels());
+        hero.store
+            .set_pixel_filter_kernel_channels(crate::filtros::canais_dos_kernels());
         hero.store.open_pixel_edit_dialog(kind, size);
     }
     let curva = hero

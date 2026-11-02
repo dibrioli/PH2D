@@ -228,11 +228,23 @@ impl WidgetStore {
         self.pixel.edit.filter.kernels = names;
     }
 
-    /// Escolhe o kernel `i` (fora da lista, nada muda); fica lembrado na sessão.
+    /// A família publica os canais de cada kernel (paralelo aos nomes).
+    pub fn set_pixel_filter_kernel_channels(
+        &mut self,
+        channels: &'static [crate::pixel_panel::PixelChannels],
+    ) {
+        self.pixel.edit.filter.kernel_channels = channels;
+    }
+
+    /// Escolhe o kernel `i` (fora da lista, nada muda); fica lembrado na sessão. Como no Trial, os
+    /// botões R G B A passam aos do kernel.
     pub fn set_pixel_filter_kernel(&mut self, i: usize) {
         let f = &mut self.pixel.edit.filter;
         if let (true, Ok(k)) = (i < f.kernels.len(), u8::try_from(i)) {
             f.kernel = k;
+            if let Some(&c) = f.kernel_channels.get(i) {
+                f.channels = c;
+            }
         }
     }
 

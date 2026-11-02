@@ -223,6 +223,13 @@ pub(crate) fn nomes_dos_kernels() -> &'static [&'static str] {
     &NOMES
 }
 
+/// Os botões R G B A de cada kernel, na mesma ordem.
+pub(crate) fn canais_dos_kernels() -> &'static [[bool; 4]] {
+    static CANAIS: std::sync::LazyLock<Vec<[bool; 4]>> =
+        std::sync::LazyLock::new(|| KERNELS.iter().map(|k| k.channels).collect());
+    &CANAIS
+}
+
 /// O traço da pré-visualização do filtro sobre `key`, se há.
 pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
     app.previa_filtro

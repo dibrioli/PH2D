@@ -111,6 +111,9 @@ pub struct PixelFilterDialog {
     /// Convolution Matrix: os nomes dos kernels, na ordem do núcleo — a família publica-os
     /// ([`crate::interaction::WidgetStore::set_pixel_filter_kernels`]); o chrome não vê o núcleo.
     pub kernels: &'static [&'static str],
+    /// Convolution Matrix: os botões R G B A que escolher cada kernel deixa (Trial: o kernel traz
+    /// os seus canais), paralelo a [`Self::kernels`]; a família publica-os com os nomes.
+    pub kernel_channels: &'static [PixelChannels],
     /// O alvo «All»: todos os quadros × todas as camadas que se pintam (desligado = «Selected», o
     /// cel activo). Lembrado na sessão.
     pub all: bool,
@@ -133,6 +136,7 @@ impl Default for PixelFilterDialog {
             curve_grab: None,
             kernel: 0,
             kernels: &[],
+            kernel_channels: &[],
             all: false,
         }
     }

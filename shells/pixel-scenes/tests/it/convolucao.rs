@@ -159,3 +159,34 @@ fn convolution_tiled_wraps_the_border() {
         "{pedido:?}"
     );
 }
+
+/// Escolher um kernel põe os botões R G B A nos dele (Trial, `A5_kernel_channels`): blur-3x3 liga o
+/// A, negative desliga-o; e com o A desligado o negative não mexe no alfa.
+#[test]
+fn choosing_blur_turns_alpha_on_and_negative_turns_it_off() {
+    let mut p = com_quadrado();
+    p.tecla(KeyCode::F9, false, false);
+    carrega(&mut p, kernel("blur-3x3"));
+    assert_eq!(
+        p.hero.store.pixel_edit_dialog().filter.channels,
+        [true; 4],
+        "blur-3x3 = R G B A"
+    );
+    carrega(&mut p, kernel("negative"));
+    assert_eq!(
+        p.hero.store.pixel_edit_dialog().filter.channels,
+        [true, true, true, false],
+        "negative = R G B, A solto"
+    );
+    assert_eq!(mostrado(&mut p, (102, 42))[3], 255, "o alfa fica");
+    carrega(&mut p, ids::PIXEL_FILTER_CHANNELS[3].1);
+    assert!(
+        p.hero.store.pixel_edit_dialog().filter.channels[3],
+        "o A clicado depois do kernel"
+    );
+    assert_eq!(
+        mostrado(&mut p, (102, 42))[3],
+        0,
+        "negative com A: o alfa inverte"
+    );
+}

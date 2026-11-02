@@ -88,9 +88,11 @@ handles 31..=35; a rota passa `sim`. **Próxima cena: 50.** Fotos em `img_F47/`:
 ## 6 — Smoke do dono
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-UIUX && PH2D_OBJECT_MODE_SMOKE=49 ./target/smoke/ph2d-host-desktop`
-2. Selecione o rectângulo; no Inspector, secção Stroke, abra o ⚙ do traço escuro e ligue «Above Effects» (a cena já vem com ele ligado).
-3. Deve acontecer: o traço escuro aparece UMA vez, nítido, por cima do Blur; desligando, ele borra com a forma.
-4. Deu errado se: o traço aparecer duplicado (borrado por baixo e nítido por cima), ou o amarelo mudar.
+2. A cena abre com o rectângulo seleccionado e o «Stroke settings» do traço escuro de base aberto (Above Effects ligado). Em
+   «Fill & Stroke», clique no ⚙ da linha do contorno amarelo e ligue «Above Effects».
+3. Deve acontecer: o escuro e o amarelo aparecem UMA vez cada, nítidos, por cima do Blur; desligando o do amarelo, ele borra
+   com a forma.
+4. Deu errado se: um traço aparecer duplicado (borrado por baixo e nítido por cima), algum sumir, ou Ctrl+Z não desfizer.
 
 **Estado:** a 1.ª rodada achou o duplicado (curado em `4a6d492e7e`); a **2.ª rodada, depois da cura, NÃO foi confirmada
 pelo dono** — ele passou ao pedido seguinte.

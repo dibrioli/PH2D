@@ -1,18 +1,6 @@
 //! ⭐⭐⭐ **OS VERBOS DA PILHA DE APARÊNCIA, do lado da shell** (estudo 42 item 4, v20).
 //!
-//! O que o painel MOSTRA da selecção, e o que cada clique dele escreve no documento.
-//!
-//! # A lei da selecção múltipla é a MESMA da aparência do objecto
-//!
-//! **Mostra o primário, escreve em todos** — a lei que a fileira de verbos booleanos já paga, e que
-//! veio de um report: *tocar num filho selecciona o GRUPO*, então o sujeito de um readout é a forma
-//! que o artista apontou.
-//!
-//! ⚠️ **E a ESCRITA é por ÍNDICE**, o que tem uma consequência declarada: acrescentar uma camada
-//! acrescenta-a a **todas** as formas seleccionadas, e mexer na camada `2` mexe na `2` de cada uma.
-//! Isso é o que o artista espera quando escolhe cinco formas e carrega em *+ Stroke*; ⛔ o que ele
-//! **não** espera é que uma forma sem camada `2` ganhe uma — e por isso um índice que não existe é
-//! **saltado**, nunca criado.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `paint_stack.rs`.
 
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{

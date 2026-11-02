@@ -1,19 +1,6 @@
 //! Gates do **Offset VIVO** — arquivo irmão de `offset_live.rs`.
 //!
-//! O fato do USUÁRIO que esta família existe para pinar (Enio, 2026-07-21):
-//!
-//! > *"no momento que aperto Round a curva já tem todos os vertex novos criados antes de
-//! > apertar apply … a idéia é bevel desfazer round e aplicar bevel. Só apply aplica
-//! > definitivamente o efeito."*
-//!
-//! Ou seja: enquanto o offset é PREVIEW, o documento guarda a curva AUTORADA — e é ela que o
-//! modo Node mostra. O resultado é DESENHO. `Apply Offset` (ou `Convert to Curves`) é o único
-//! momento em que os vértices do offset passam a existir.
-//!
-//! ⚠️ **O oráculo NÃO é "os três joins diferem"** — isso é verdade mesmo compondo, e foi por
-//! isso que a rodada anterior ficou verde sobre o produto que o Enio reprovou. Os oráculos
-//! daqui são: (a) a curva autorada BYTE-IDÊNTICA através da cadeia de previews; (b) a
-//! identidade com um resultado FRESCO da forma pristina, âncora a âncora.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `offset_live_tests.rs`.
 
 use super::*;
 use ph2d_vec_entities::entities::VecEntityMap;

@@ -10,10 +10,9 @@
 use super::VECTOR_SECTION_APPEARANCE;
 use ph2d_a11y::NodeId;
 use ph2d_tool_vector::ids::{
-    VECTOR_SECTION_AXES, VECTOR_SECTION_BLEND, VECTOR_SECTION_BOOLEAN, VECTOR_SECTION_CONNECTOR,
-    VECTOR_SECTION_EFFECTS, VECTOR_SECTION_ENVELOPE, VECTOR_SECTION_FILL, VECTOR_SECTION_FONT,
-    VECTOR_SECTION_MORPH, VECTOR_SECTION_PARAGRAPH, VECTOR_SECTION_TEXT, VECTOR_SECTION_TRANSFORM,
-    VECTOR_SECTION_VERTEX,
+    VECTOR_SECTION_AXES, VECTOR_SECTION_BLEND, VECTOR_SECTION_CONNECTOR, VECTOR_SECTION_EFFECTS,
+    VECTOR_SECTION_ENVELOPE, VECTOR_SECTION_FILL, VECTOR_SECTION_FONT, VECTOR_SECTION_MORPH,
+    VECTOR_SECTION_PARAGRAPH, VECTOR_SECTION_TEXT, VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX,
 };
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
@@ -42,7 +41,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // pintada: as duas descrevem a forma selecionada como um todo.
     VECTOR_SECTION_APPEARANCE,
     VECTOR_SECTION_VERTEX,
-    VECTOR_SECTION_BOOLEAN,
+    // ⛔ F50 (02/11): a BOOLEAN e a CONVERT saíram — as comuns na ④, as raras no «⋯» dela.
     // ⛔ F48d (02/11): a EXPAND (Offset Path) saiu — é a ferramenta Offset Path, opções na fila ②.
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,
@@ -87,8 +86,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // ⭐ OS ESTADOS do MORPH (plano 32 W7): a máquina que decide em que forma o objecto está.
     // ⛔ Seção PRÓPRIA, e não uma sub-lista da de cima — ver o módulo `vector_morph`.
     super::VECTOR_SECTION_MORPH_STATES,
-    // ▸ O GRUPO Advanced (F17, dono 16/10): o cabeçalho que dobra as sete secções raras juntas.
+    // ▸ O GRUPO Advanced (F17, dono 16/10): o cabeçalho que dobra as cinco secções raras juntas.
     super::VECTOR_SECTION_ADVANCED,
-    // O CONVERT (dono 02/11): o Outline Stroke, fora do Offset Path.
-    super::VECTOR_SECTION_CONVERT,
 ];

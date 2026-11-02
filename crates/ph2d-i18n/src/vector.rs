@@ -258,9 +258,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.width.preset.bulge" => "Bulge",
         "panel.vector.section.transform" => "Transform",
         "panel.vector.section.vertex" => "Vertex",
-        "panel.vector.section.boolean" => "Boolean",
         "panel.vector.section.expand" => "Offset Path",
-        "panel.vector.section.convert" => "Convert",
         "panel.vector.section.path" => "Path",
         "panel.vector.section.text" => "Text",
         "panel.vector.section.font" => "Font",
@@ -392,18 +390,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bone.smart.none" => "\u{2014}",
         "panel.vector.bone.smart.from" => "Action From",
         "panel.vector.bone.smart.to" => "Action To",
-        "panel.vector.bool.union" => "Union",
-        "panel.vector.bool.subtract" => "Subtract",
-        "panel.vector.bool.intersect" => "Intersect",
-        "panel.vector.bool.exclude" => "Exclude",
-        "panel.vector.bool.minus_back" => "Minus Back",
-        "panel.vector.bool.trim" => "Trim",
-        "panel.vector.bool.crop" => "Crop",
-        "panel.vector.bool.merge" => "Merge",
-        "panel.vector.bool.live" => "Live",
-        "panel.vector.bool.live.off" => "Off",
-        "panel.vector.bool.live.on" => "On",
-        "panel.vector.bool.apply" => "Apply Boolean",
+        // F50: a ④ e o «⋯» dela — o nome e, depois dos dois pontos, a dica em Plain English.
+        "panel.vector.bar.union" => "Union: join the shapes into one. Each one can still be moved",
+        "panel.vector.bar.subtract" => "Subtract: cut the front shapes out of the back one",
+        "panel.vector.bar.intersect" => "Intersect: keep only where the shapes overlap",
+        "panel.vector.bar.exclude" => "Exclude: keep everything except where the shapes overlap",
+        "panel.vector.bar.flatten" => {
+            "Flatten: make it one plain shape for good (Undo brings it back)"
+        }
+        "panel.vector.bar.outline_stroke" => {
+            "Outline Stroke: turn the stroke into a shape you can fill"
+        }
+        "panel.vector.more.minus_back" => "Minus Back: cut the back shapes out of the front one",
+        "panel.vector.more.trim" => "Trim: hide what is covered, keep each shape",
+        "panel.vector.more.crop" => "Crop: keep only what is inside the front shape",
+        "panel.vector.more.merge" => "Merge: like Trim, and shapes of the same color join",
+        "panel.vector.more.compound" => {
+            "Make Compound: one shape, where a shape inside another is a hole"
+        }
+        "panel.vector.more.release" => "Release Compound: split it back into separate shapes",
         // O verbo de UMA forma dentro da booleana viva. O rótulo diz de quem é a escolha — sem
         // ele a fileira lê-se como um quinto par de botões de ação sobre a seleção inteira.
         "panel.vector.bool.shape" => "This Shape",
@@ -454,8 +459,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.arrange.cross" => "Cross",
         "panel.vector.arrange.guides" => "Guides",
         "panel.vector.arrange.rulers" => "Rulers",
-        "panel.vector.arrange.compound" => "Compound",
-        "panel.vector.arrange.release" => "Release",
         "panel.vector.arrange.fill_rule" => "Fill Rule",
         "panel.vector.arrange.non_zero" => "Non-Zero",
         "panel.vector.arrange.even_odd" => "Even-Odd",
@@ -545,7 +548,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.expand.miter" => "Miter",
         "panel.vector.expand.round" => "Round",
         "panel.vector.expand.bevel" => "Bevel",
-        "panel.vector.expand.outline_stroke" => "Outline Stroke",
         "panel.vector.expand.w_start" => "Start width",
         "panel.vector.expand.w_mid" => "Middle width",
         "panel.vector.expand.w_end" => "End width",

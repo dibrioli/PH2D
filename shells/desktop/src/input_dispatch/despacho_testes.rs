@@ -381,51 +381,6 @@ fn nested_selection() -> (ph2d_vec_scene::VecScene, ph2d_vec_edit::PenTool, [u64
     (scene, pen, [outer, inner])
 }
 
-/// A regressão que motivou o bloco: Subtract agia nas duas últimas regiões
-/// fechadas do DOCUMENTO, ignorando a seleção — e devolvia dois discos
-/// sólidos em vez de uma rosquinha.
-#[test]
-fn boolean_subtract_uses_the_selection_and_makes_a_real_hole() {
-    let (mut scene, mut pen, _) = nested_selection();
-    // Um terceiro path, NÃO selecionado, bem longe: a booleana antiga o teria
-    // agarrado (é uma das duas últimas fechadas); a nova tem de ignorá-lo.
-    let bystander = scene.push_path(ph2d_vec_scene::rectangle([90.0, 90.0], [95.0, 95.0]));
-
-    super::apply_vec_boolean(
-        &mut scene,
-        &mut pen,
-        &ph2d_vec_scene::VecXforms::new(),
-        ph2d_vec_boolean::PathfinderOp::Subtract,
-    );
-
-    assert_eq!(scene.paths().len(), 2, "resultado + o bystander intacto");
-    assert!(scene.paths().iter().any(|p| p.id == bystander));
-    let donut = scene.paths().iter().find(|p| p.id != bystander).unwrap();
-    assert!(donut.is_compound(), "o furo vive num subpath");
-    let id = donut.id;
-    assert!(scene.path_contains_point(id, [1.0, 5.0]), "o anel é sólido");
-    assert!(
-        !scene.path_contains_point(id, [5.0, 5.0]),
-        "o centro é vazado"
-    );
-    // O resultado entra na fatia de z da BASE (não salta pro topo).
-    assert_eq!(scene.paths()[0].id, id);
-    assert_eq!(pen.selected(), Some(id), "a booleana seleciona o resultado");
-}
-
-#[test]
-fn boolean_needs_two_selected_closed_regions() {
-    let (mut scene, mut pen, ids) = nested_selection();
-    pen.select(Some(ids[0])); // só um selecionado
-    super::apply_vec_boolean(
-        &mut scene,
-        &mut pen,
-        &ph2d_vec_scene::VecXforms::new(),
-        ph2d_vec_boolean::PathfinderOp::Union,
-    );
-    assert_eq!(scene.paths().len(), 2, "no-op");
-}
-
 /// Make Compound é como o usuário desenha um buraco à mão; Release desfaz.
 #[test]
 fn make_and_release_compound_from_the_selection() {

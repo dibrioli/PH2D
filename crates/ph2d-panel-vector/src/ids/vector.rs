@@ -55,9 +55,6 @@ pub const VECTOR_EXPAND_RESULT_REPLACE: NodeId = hash_node_id("vector.expand.res
 
 pub const VECTOR_EXPAND_REMOVE: NodeId = hash_node_id("vector.expand.remove");
 
-/// A secção **Convert** — o Outline Stroke saiu do Offset Path para a secção dele.
-pub const VECTOR_SECTION_CONVERT: NodeId = hash_node_id("vector.section.convert");
-
 // **Power Stroke** — a largura VARIA ao longo do caminho. Três valores de controle + onde o
 // do meio senta: é o *perfil* que o Illustrator vende pronto, e cobre o caso de 90%
 // (afina-no-fim, afina-nos-dois, engrossa-no-meio). As alças arrastáveis na linha são um

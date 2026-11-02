@@ -357,8 +357,6 @@ pub const VECTOR_SECTION_TRANSFORM: NodeId = hash_node_id("vector.section.transf
 
 pub const VECTOR_SECTION_VERTEX: NodeId = hash_node_id("vector.section.vertex");
 
-pub const VECTOR_SECTION_BOOLEAN: NodeId = hash_node_id("vector.section.boolean");
-
 pub const VECTOR_SECTION_EXPAND: NodeId = hash_node_id("vector.section.expand");
 
 pub const VECTOR_SECTION_PATH: NodeId = hash_node_id("vector.section.path");

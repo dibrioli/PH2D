@@ -457,7 +457,7 @@ fn the_reconstructed_dispatch_still_has_every_region() {
         "fn pointer_button(",
         "fn on_mouse_wheel(",
         "fn on_mouse_input(",
-        "pub(crate) fn apply_vec_boolean(",
+        "pub(crate) fn apply_vec_compound(",
         "pub(crate) fn apply_vec_grad_add_stop(",
         "fn gizmo_anchor_half(",
         "pub(crate) fn on_close_request(",

@@ -285,13 +285,12 @@ impl BodyCtx<'_> {
 ///
 /// ⭐ **Toda secção DECLARA de quem é** — o escopo ([`crate::section_scope`], report do Enio de
 /// 2026-08-31: *"deixar no painel apenas o que é útil para a ferramenta em uso"*) e a aba ([`Onde`]).
-pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 5] = [
+pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 4] = [
     // F16 (15/10): o Snap voltou ao painel RECOLHIDO — a catraca da altura de abertura
     // (`a_altura_de_abertura_de_um_painel_so_encolhe`) mediu +140 px com ele aberto.
     ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
-    // ▸ Advanced (F17): o grupo inteiro nasce dobrado; e a Boolean dentro dele, como antes.
+    // ▸ Advanced (F17): o grupo inteiro nasce dobrado. ⛔ F50: a Boolean saiu para a ④.
     crate::ids::VECTOR_SECTION_ADVANCED,
-    ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
     // Na aba Interface as de UI abrem (o artista foi lá para elas) — salvo as duas maiores: a
     // States tem quatro linhas `Rec` e onze curvas (foto `antes_01`), a Morph States a máquina.
     crate::ids::VECTOR_SECTION_STATES,
@@ -389,18 +388,13 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_FILTERS, scope::ALWAYS, Drawing, |b, y| {
         b.filters_section(y)
     });
-    // ⑦ ▸ ADVANCED — o desenho raro, num grupo recolhido (os verbos booleanos frequentes estão na ④).
+    // ⑦ ▸ ADVANCED — o desenho raro, num grupo recolhido. ⛔ F50 (dono 02/11): Boolean e Convert
+    // saíram para a ④ (as comuns) e o «⋯» dela (as raras).
     p.grupo(
         VECTOR_SECTION_ADVANCED,
         "panel.vector.section.advanced",
         Drawing,
         |p| {
-            p.seccao(
-                crate::ids::VECTOR_SECTION_CONVERT,
-                scope::WHEN_SELECTED,
-                Drawing,
-                |b, y| b.convert_section(y),
-            );
             p.seccao(VECTOR_SECTION_BLEND, scope::ALWAYS, Drawing, |b, y| {
                 b.blend_section(snap, y)
             });
@@ -422,12 +416,6 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
             p.seccao(VECTOR_SECTION_CONTOUR, scope::ALWAYS, Drawing, |b, y| {
                 b.contour_section(y)
             });
-            p.seccao(
-                VECTOR_SECTION_BOOLEAN,
-                scope::WHEN_SELECTED,
-                Drawing,
-                |b, y| b.boolean_section(y),
-            );
         },
     );
     // ⑧ O COMPORTAMENTO (o Prototype do Figma): a pele e os estados.
@@ -483,13 +471,11 @@ mod tests {
             VECTOR_SECTION_EFFECTS,
             VECTOR_SECTION_FILTERS,
             VECTOR_SECTION_ADVANCED,
-            VECTOR_SECTION_CONVERT,
             VECTOR_SECTION_BLEND,
             VECTOR_SECTION_MORPH,
             VECTOR_SECTION_ENVELOPE,
             VECTOR_SECTION_PATTERNPATH,
             VECTOR_SECTION_CONTOUR,
-            VECTOR_SECTION_BOOLEAN,
             VECTOR_SECTION_WIDGET,
             VECTOR_SECTION_STATES,
             VECTOR_SECTION_MORPH_STATES,
@@ -497,7 +483,7 @@ mod tests {
         assert_eq!(corpo(&snap).ids(), esperada);
     }
 
-    /// ⭐ **Cada secção vive na aba certa, e os sete raros no grupo Advanced** (`28_plano_F17…` §3).
+    /// ⭐ **Cada secção vive na aba certa, e os cinco raros no grupo Advanced** (`28_plano_F17…` §3).
     /// *Mutação: pôr a Layout em `Drawing`, ou o Blend fora do grupo ⇒ vermelho.*
     #[test]
     fn cada_seccao_vive_na_aba_certa() {
@@ -519,13 +505,11 @@ mod tests {
         ];
         let ambas = [VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_SNAP];
         let avancado = [
-            VECTOR_SECTION_CONVERT,
             VECTOR_SECTION_BLEND,
             VECTOR_SECTION_MORPH,
             VECTOR_SECTION_ENVELOPE,
             VECTOR_SECTION_PATTERNPATH,
             VECTOR_SECTION_CONTOUR,
-            VECTOR_SECTION_BOOLEAN,
         ];
         for (id, onde, grupo) in mapa {
             let esperada = if interface.contains(&id) {

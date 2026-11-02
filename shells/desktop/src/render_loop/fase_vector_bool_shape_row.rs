@@ -16,7 +16,7 @@ impl crate::App {
         &mut self,
         intents: BoolShapeIntents,
         sel: Vec<ph2d_vec_scene::VecPathId>,
-    ) -> Option<(Option<ph2d_ecs::Entity>, Vec<ph2d_vec_scene::VecPathId>)> {
+    ) -> Option<Vec<ph2d_vec_scene::VecPathId>> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx { sim, .. } = FrameGfx::of(gfx);
@@ -24,7 +24,10 @@ impl crate::App {
             pending_bool_shape_op,
         } = intents;
         let group = crate::bool_gesture::group_of_selection(sim, &self.vec.entities, &sel);
-        ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
+        // A operação do grupo acende o botão dela na ④ (F50).
+        ph2d_panel_vector::state::set_bool_group(
+            group.and_then(|g| sim.world().get::<ph2d_ecs::VecBoolGroup>(g).map(|b| b.op)),
+        );
         // **O VERBO DA FORMA: honrar o clique ANTES de publicar** — a ordem é a mesma do
         // chip do recorte, e pela mesma razão: publicar primeiro deixaria o chip a piscar
         // de volta ao valor antigo por um quadro.
@@ -56,6 +59,6 @@ impl crate::App {
                 primary,
             ),
         );
-        Some((group, sel))
+        Some(sel)
     }
 }

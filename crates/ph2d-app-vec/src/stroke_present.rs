@@ -1,21 +1,6 @@
 //! ⭐ **DAR (e TIRAR) o traço de uma forma** — a porta única da caixa *Stroke* do painel (plano 34).
 //!
-//! # Por que isto existe
-//!
-//! Toda forma **autorada** nasce com traço (`shape.rs` escreve `path.stroke = Some(..)`
-//! incondicionalmente), e o `restyle_selected_strokes` **recusa** quem não tem um. ⇒ uma forma que
-//! chegou ao documento por outro caminho — um importador, uma cena montada por código, uma booleana
-//! — ficava **sem forma nenhuma de ganhar um traço**, com a secção *Stroke* do painel a oferecer
-//! controlos que não a alcançavam. Foi o report do Enio de 2026-08-27.
-//!
-//! # ⛔ Por que a cura NÃO é no `restyle_selected_strokes`
-//!
-//! Aquela função corre **por quadro** sobre a selecção, sempre que o estilo da tool difere do dela
-//! ([`crate::render_loop::vector_bridge`]). Criar ali daria traço a **toda** forma sem traço que
-//! estivesse selecionada, **sem ninguém pedir** — e o comentário que lá está (*"ganhar um traço do
-//! nada seria a UI inventando geometria"*) é a cerca certa pelo motivo certo.
-//!
-//! ⇒ **a criação é um GESTO explícito**, nunca um efeito colateral de um espelhamento.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `stroke_present.rs`.
 
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{Paint, VecPath, VecScene};

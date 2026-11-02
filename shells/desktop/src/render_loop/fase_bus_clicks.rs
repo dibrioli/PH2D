@@ -205,14 +205,6 @@ impl crate::App {
         {
             // W2b: escolhe a FORMA da largura (o catálogo de perfis).
             pd.pending_width_preset = Some(i);
-        } else if *id == ph2d_panel_vector::ids::VECTOR_BOOL_LIVE_OFF
-            || *id == ph2d_panel_vector::ids::VECTOR_BOOL_LIVE_ON
-        {
-            // O MODO dos oito botões. Panel-local no valor, mas quem o lê no
-            // clique de uma das oito é a shell — por isso ele passa por aqui.
-            ph2d_panel_vector::state::set_bool_live_on(
-                *id == ph2d_panel_vector::ids::VECTOR_BOOL_LIVE_ON,
-            );
         } else if let Some(code) = crate::vec_bool_shape::shape_op_for_id(*id) {
             // **O VERBO DESTA FORMA.** ⚠️ O mapeamento saiu daqui para uma
             // porta testavel (`vec_bool_shape::shape_op_for_id`): um `match`
@@ -321,8 +313,8 @@ impl crate::App {
     /// A última terça: a booleana, os nós e os caminhos, o arranjo, a tinta e o padrão, o gradiente, o composto, o
     /// snap, as réguas e o texto.
     pub(super) fn fase_bus_click_document(&mut self, id: &NodeId, pd: &mut DrainOut) {
-        if *id == ph2d_panel_vector::ids::VECTOR_BOOL_APPLY {
-            pd.pending_bool_apply = true;
+        if *id == ph2d_panel_vector::ids::VECTOR_FLATTEN {
+            pd.pending_vec_flatten = true;
         } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id) {
             pd.pending_vec_bool = Some(op);
         } else if let Some(cmd) = crate::vec_expand::expand_for_id(*id) {

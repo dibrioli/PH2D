@@ -1,28 +1,6 @@
 //! Gates da **SIMETRIA DE DESENHO** — arquivo irmão de `symmetry_live.rs`.
 //!
-//! As exigências do USUÁRIO que esta família existe para pinar (Enio, 2026-08-01):
-//!
-//! > *"A linha de simetria deve aparecer logo que se aperta o botão e não quando se inicia o
-//! > desenho."*
-//!
-//! > *"A simetria funciona apenas para formas que serão desenhadas com a tool ligada e não deve
-//! > fazer simetria de formas que já existem previamente."*
-//!
-//! > *"Com o botão checado pode-se fazer quantos desenhos desejar que a linha de simetria permanece
-//! > no lugar."*
-//!
-//! > *"Uma vez que o desenho é feito, a referência para a linha passa a ser o próprio desenho … se
-//! > o usuário mover o objeto no canvas a linha de simetria acompanha."*
-//!
-//! > *"Se a simetria for desmarcada antes do apply, as cópias somem mas não são destruídas."*
-//!
-//! ⚠️ **O oráculo NUNCA é "há duas formas desenhadas"** — isso é verdade em qualquer implementação
-//! que reflicta alguma coisa em algum lugar. Os oráculos daqui são: (a) o desenho inteiro TRANSLADA
-//! com a pose, ponto a ponto; (b) uma forma que ninguém desenhou continua **sem componente**; (c) o
-//! eixo capturado, levado de volta ao MUNDO, coincide com o de sessão; (d) a curva autorada fica
-//! byte-idêntica através do ciclo ligar→desligar; (e) uma forma já simétrica no próprio eixo
-//! coincide com a própria cópia sob QUALQUER pose — a propriedade que só a ordem *reflectir → assar*
-//! tem.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `symmetry_live_tests.rs`.
 
 use super::*;
 use ph2d_vec_entities::entities::VecEntityMap;

@@ -1,21 +1,6 @@
 //! ⭐⭐⭐ **A OPACIDADE ALCANÇA AS TRÊS TINTAS** (plano 36, W6) — os gates da PONTE.
 //!
-//! O motor já responde (`ph2d-vec-scene/src/brush_opacity_tests.rs`); aqui prova-se o outro lado da
-//! costura: que a barra *Opacity* do painel **chega** a cada espécie de tinta, e que quem DETECTA a
-//! mudança concorda com quem a GRAVA.
-//!
-//! # Uma opacidade, uma casa
-//!
-//! | tinta | onde a opacidade vive | quem a escreve |
-//! |---|---|---|
-//! | `Solid` (traço e preenchimento) | a alfa da cor | o caminho de sempre |
-//! | `Pattern` (traço) | `PatternFill::alpha`, `fallback.a` em sincronia | [`super::StrokeStyle::onto`] |
-//! | `Pattern` (**preenchimento**) | idem | [`super::style::apply_fill_colour`] ⬅ **a W6** |
-//! | `Brush` (traço) | `fallback.a`, e mais nada | [`super::StrokeStyle::onto`] |
-//!
-//! ⚠️ **As duas metades de um preenchimento de padrão são independentes**, e uma sem a outra é
-//! pior que nenhuma: escrever sem SEMEAR faz a primeira mexida jogar na forma a alfa da forma
-//! **anterior**; semear sem escrever deixa a barra a mostrar o valor certo e a não o mudar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vector_bridge_opacity_tests.rs`.
 
 use super::style::{apply_fill_colour, seed_fill_from_paint};
 use super::{StrokeStyle, restyle_selected_strokes};

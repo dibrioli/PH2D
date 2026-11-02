@@ -147,6 +147,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.hierarchy" => "Hierarchy",
         "chrome.menu.inspector" => "Inspector",
         "chrome.menu.rulers" => "Rulers",
+        "chrome.selection_actions.more" => "More actions",
         "chrome.selection_actions.pin" => "Pin to the top \u{00b7} stop following the selection",
         "chrome.menu.theme" => "Theme\u{2026}",
         "chrome.menu.motion_nodes" => "Motion Nodes",

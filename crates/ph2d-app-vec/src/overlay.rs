@@ -1,18 +1,6 @@
 //! O que o frame vetorial desenha POR CIMA da cena, por modo de desenho (ADR-0112).
 //!
-//! Há duas famílias de overlay, com regras de visibilidade DIFERENTES — confundir as
-//! duas foi o bug do P1 (as guias de snap sumiam no modo Select):
-//!
-//! - **Overlays de edição** (âncoras, handles bézier, alças de gradiente, marquee de
-//!   box-select): só FORA do Select. No Select quem transforma a forma é o gizmo de
-//!   sprite; as alças de nó comeriam o clique dele (ADR-0112).
-//! - **Guias de snap** (as linhas que explicam o encaixe vivo): valem em QUALQUER
-//!   modo. O gizmo-move do Select encaixa a forma igual ao pen/shape-tool/node-edit,
-//!   então a guia precisa aparecer lá também — era o que faltava.
-//!
-//! A decisão vive aqui, fora do `render_loop`, para ser testável sem gfx/câmera: é o
-//! ponto que trava o P1 (uma regressão que re-agrupasse a guia sob o guard de modo
-//! quebra o teste abaixo, não só o smoke).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `overlay.rs`.
 
 use ph2d_tool_vector::DrawMode;
 

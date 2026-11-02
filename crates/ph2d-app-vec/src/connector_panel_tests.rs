@@ -1,17 +1,6 @@
 //! Testes do [`crate::connector_panel`] — módulo irmão (teto de 600 LOC por arquivo).
 //!
-//! O que eles provam, em ordem de importância:
-//!
-//! 1. **A seção existe SSE há conector na seleção** (`selection_snapshot`): sem isso o
-//!    painel mostraria campos de um objeto que não é conector — ou esconderia os de um que
-//!    é. O teste é bilateral: inverter a condição sai vermelho dos dois lados.
-//! 2. **A edição atinge TODOS os selecionados** — é o pedido do Enio (calibrar o diagrama
-//!    inteiro de uma vez). Editar só o primeiro passaria num teste de unidade do componente
-//!    e falharia na mão do usuário.
-//! 3. **O campo nasce no valor EFETIVO** (o automático), não em zero — senão o número salta
-//!    no primeiro toque, longe da linha que o olho vê.
-//! 4. **Editar FIXA** (`None` → `Some`) e o valor fixado **não é re-derivado** no frame
-//!    seguinte, nem quando as caixas mudam de tamanho.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `connector_panel_tests.rs`.
 
 use super::*;
 use ph2d_ecs::{ConnectorEnd, SimWorld};

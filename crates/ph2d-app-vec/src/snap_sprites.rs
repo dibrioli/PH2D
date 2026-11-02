@@ -1,19 +1,6 @@
 //! ⭐ **A caixa de um SPRITE como alvo de encaixe — a parte PURA**, fora da shell (W2/L4, A2).
 //!
-//! ⚠️ **Nenhum concorrente tem isto, e a razão é estrutural:** nenhum deles mistura raster e
-//! vector na mesma hierarquia. Nós misturamos (ADR-0110), então alinhar uma forma à borda de um
-//! sprite é um gesto tão comum quanto alinhá-la a outra forma — e não havia alvo nenhum.
-//!
-//! # ⚠️ O módulo mantém o nome, e o irmão que ficou
-//!
-//! `sprite_snap_points` — quem varre o mundo à procura de sprites — **ficou na shell**, e não por
-//! tocar `gfx`: ele chama `crate::transform`, que não pôde sair porque **declara** por
-//! `#[path]` um teste que precisa de `crate::profile_live`. *A aresta que prende um ficheiro pode
-//! estar num módulo que ele declara, não no que ele usa.*
-//!
-//! O nome do módulo (`vec_snap_sprites`) é preservado porque ele entra no nome de cada teste: numa
-//! lista de `cargo nextest`, um módulo renomeado durante uma extracção é indistinguível de testes
-//! perdidos.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `snap_sprites.rs`.
 
 use ph2d_vec_edit::snap::bbox_key_points;
 

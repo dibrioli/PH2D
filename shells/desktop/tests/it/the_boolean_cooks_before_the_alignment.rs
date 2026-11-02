@@ -12,7 +12,7 @@
 //!    fonte crua e a arte combinada ignoraria o offset — em silêncio.
 //! 2. **A booleana roda ANTES do alinhamento.** O alinhamento é um campo do `StrokeSpec` do
 //!    RESULTADO; alinhar os operandos e só então combiná-los responde outra pergunta.
-//! 3. **O Apply roda DEPOIS do `recook`.** Ele materializa o plano que o produtor acabou de
+//! 3. **O Flatten roda DEPOIS do `recook`.** Ele materializa o plano que o produtor acabou de
 //!    computar — *o que está na tela*. Chamá-lo antes seria consolidar a resposta do frame
 //!    anterior, e a forma saltaria no clique.
 
@@ -89,35 +89,36 @@ fn the_boolean_cooks_after_the_five_and_before_the_alignment() {
     );
 }
 
-/// **O Apply da booleana corre depois do `recook`, e materializa o `plan`.**
+/// **O Flatten (F50) corre depois do `recook`, e materializa os planos dele.**
 ///
-/// ⚠️ A segunda metade é a que pina a porta única: `bake` recebe o plano; se algum dia ele voltar
-/// a chamar o motor, o gate morde. Uma segunda resposta a *"o que este grupo desenha?"* faria a
-/// arte saltar entre o último frame desenhado e o clique.
+/// ⚠️ A segunda metade é a que pina a porta única: o Flatten recebe o `bool_live` que acabou de
+/// cozinhar; se algum dia ele voltar a chamar o motor, o gate morde. Uma segunda resposta a *"o
+/// que este grupo desenha?"* faria a arte saltar entre o último frame desenhado e o clique.
 #[test]
-fn the_apply_materialises_the_plan_the_producer_just_cooked() {
+fn the_flatten_materialises_the_plan_the_producer_just_cooked() {
     let boolean = at(COOK);
-    let plan = at("self.bool_live.plan(g)");
-    let bake = at("crate::bool_gesture::bake(");
+    let flatten = at("ph2d_app_vec::bool_flatten::flatten(");
     assert!(
-        boolean < plan && plan < bake,
-        "o Apply consulta o plano fora de ordem (recook {boolean}, plan {plan}, bake {bake})"
+        boolean < flatten,
+        "o Flatten corre antes do cozimento (recook {boolean}, flatten {flatten})"
     );
+    let call = &src()[flatten..];
+    let args = &call[..call.find(");").expect("a chamada fecha")];
     assert!(
-        !src().contains("bool_gesture::bake(sim, vec_scene, &mut self.vec.pen, &recompute"),
-        "o bake voltou a re-computar em vez de materializar o plano"
+        args.contains("&self.bool_live"),
+        "o Flatten deixou de receber o plano cozinhado: {args}"
     );
 }
 
 /// **A shell publica ao painel se há booleana viva selecionada.**
 ///
-/// Sem esta linha o `Apply` nunca aparece (ou aparece sempre), e o painel — que não alcança o
-/// mundo ECS — não tem como saber. É a mesma fronteira de toda a publicação deste painel.
+/// Sem esta linha o botão da operação do grupo nunca acende na ④ (F50), e o painel — que não
+/// alcança o mundo ECS — não tem como saber. É a mesma fronteira de toda a publicação deste painel.
 #[test]
 fn the_shell_publishes_whether_a_live_boolean_is_selected() {
     assert!(
-        src().contains("ph2d_panel_vector::state::set_bool_group_selected("),
-        "a shell parou de publicar o fato que decide se o Apply é oferecido"
+        src().contains("ph2d_panel_vector::state::set_bool_group("),
+        "a shell parou de publicar a operação do grupo booleano selecionado"
     );
 }
 

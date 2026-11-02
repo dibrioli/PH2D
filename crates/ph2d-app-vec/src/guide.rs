@@ -1,19 +1,6 @@
 //! **A porta única de "onde está o caminho-guia, e como se percorre por arco?"**.
 //!
-//! Um caminho-guia é um `VecPath` normal — geometria LOCAL + pose no `Transform` (ADR-0111). Para
-//! algo o *cavalgar* (o texto em caminho, o Pattern Along Path, e o que vier), ele é lido **cozido
-//! e assado em MUNDO** e virado num [`ArcPath`]. Essa resolução tem três cuidados que discordar é
-//! bug:
-//!
-//! 1. **cozido**, não a fonte crua — senão o que cavalga ignora as Live Corners e a pilha de
-//!    efeitos do guia (ADR-0121/0132);
-//! 2. **assado pela pose de mundo** do guia — senão o padrão assenta onde o caminho NÃO está, e
-//!    mover o caminho deixa de mover o que o cavalga (a metade visível da feature);
-//! 3. `total > 0` — um guia degenerado (menos de dois vértices, comprimento zero) não tem por onde
-//!    ser percorrido, e quem divide pelo total tem de o saber.
-//!
-//! O texto e o pattern faziam (ou fariam) esta MESMA pergunta. Duas cópias divergem no dia em que
-//! uma ganha um cuidado e a outra não — por isso mora aqui, e o `vec_text_ride::guide_of` delega.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `guide.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_vec_scene::VecScene;

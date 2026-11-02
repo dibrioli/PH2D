@@ -1,21 +1,6 @@
 //! **O que o painel é TOLD** — o passo 5 do bridge do vetor (o `dispatch` faz os passos 1-4).
 //!
-//! # Por que este corte, e não outro
-//!
-//! O doc-header do pai já enumerava cinco trabalhos, e os quatro primeiros MEXEM no documento
-//! (visibilidade do dock · leitura do picker · o Style que a caneta herda · o restyle da
-//! seleção) enquanto o quinto só **conta ao painel o que já é verdade**. Quando o arquivo
-//! cruzou o teto de 600 LOC (HR-18) essa era a linha de corte que já estava escrita.
-//!
-//! ⚠️ **Uma publicação ficou no pai, e não por acidente:** `set_current_vector_style` lê o
-//! `ui_snapshot()` da TOOL, e a tool é um empréstimo mútuo do registry que este módulo não
-//! recebe. Ela roda **antes** desta função; a ordem entre as duas é irrelevante (uma escreve
-//! num estático do painel, a outra no store e noutros estáticos), e é por isso que separá-las
-//! é seguro.
-//!
-//! ⚠️ **A fronteira de DISPLAY mora aqui** (doc 88 do Motion, e a lição que este painel pagou
-//! por ser a QUARTA superfície a responder *onde está esta coisa?*): todo comprimento sai
-//! UMA vez pela `LengthDisplay`, e a TAXA de arrasto cruza a mesma porta que o valor.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vector_bridge_publish.rs`.
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_vec_edit::PenTool;

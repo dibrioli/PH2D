@@ -143,7 +143,6 @@ mod paint_anchors;
 mod paint_appearance;
 /// ⭐⭐⭐ O corpo como uma LISTA — ordem do artista e tema por secção (2026-09-30).
 mod paint_body_plan;
-mod paint_boolean;
 /// A seção **Clip** — o recorte, oferecido a qualquer forma vetorial FECHADA.
 mod paint_clip;
 mod paint_components;

@@ -100,6 +100,18 @@ pub fn bake(
     plan: &crate::bool_live::Cooked,
     g: Entity,
 ) -> usize {
+    let new_ids = bake_ids(sim, scene, plan, g);
+    pen.select_many(&new_ids);
+    new_ids.len()
+}
+
+/// O [`bake`] sem tocar na seleção — o Flatten junta o que nasce de vários grupos antes de a pôr.
+pub(crate) fn bake_ids(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    plan: &crate::bool_live::Cooked,
+    g: Entity,
+) -> Vec<VecPathId> {
     // O z da base, ANTES de remover seja o que for — é a fatia que o resultado ocupa, a mesma
     // regra da booleana destrutiva (*"o resultado ocupa a fatia de z dela, não salta pro topo"*).
     let at = scene
@@ -121,8 +133,7 @@ pub fn bake(
     if let Ok(e) = sim.world_mut().get_entity_mut(g) {
         e.despawn();
     }
-    pen.select_many(&new_ids);
-    new_ids.len()
+    new_ids
 }
 
 #[cfg(test)]

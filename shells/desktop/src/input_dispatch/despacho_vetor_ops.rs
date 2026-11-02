@@ -16,74 +16,11 @@ fn selected_closed_z(scene: &ph2d_vec_scene::VecScene, pen: &ph2d_vec_edit::PenT
     zs
 }
 
-/// ADR-0108 Fase 1: apply a boolean `op` to the SELECTED closed regions of `scene`
-/// (destructive — consumes the operands, inserts the result where the base sat,
-/// records ONE undo step + selects the result). N-ary: `Subtract` keeps the
-/// back-most and removes every path above it. A free fn so both the U/I/D hotkeys
-/// ([`App::vec_boolean`]) and the panel's Boolean buttons (the render_loop drain,
-/// where `AppGfx` is already destructured and the method isn't callable) can
-/// invoke it with the decomposed refs. Logs + no-ops on < 2 selected closed
-/// regions / empty result.
-pub(crate) fn apply_vec_boolean(
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &mut ph2d_vec_edit::PenTool,
-    xforms: &ph2d_vec_scene::VecXforms,
-    op: ph2d_vec_boolean::PathfinderOp,
-) {
-    let zs = selected_closed_z(scene, pen);
-    if zs.len() < 2 {
-        eprintln!("[ph2d-vec] boolean: selecione >= 2 regioes FECHADAS (Shift+clique)");
-        return;
-    }
-    // ADR-0111: os operandos podem ter poses diferentes, e um resultado só vive num
-    // frame. Assa cada um no MUNDO; o path novo nasce world-space e a entidade dele
-    // nasce na identidade — a forma aparece exatamente onde as originais estavam.
-    let operands: Vec<ph2d_vec_scene::VecPath> = zs
-        .iter()
-        .map(|&z| {
-            let mut p = scene.paths()[z].clone();
-            let x = ph2d_vec_scene::xform_of(xforms, p.id);
-            ph2d_vec_scene::bake_xform(&mut p, &x);
-            p
-        })
-        .collect();
-    let refs: Vec<&ph2d_vec_scene::VecPath> = operands.iter().collect();
-    // ⚠️ **`Ok(vazio)` e `Err` sao coisas DIFERENTES, e ate' a W5 eram indistinguiveis:** o motor
-    // engolia a falha e o artista via o mesmo nada nos dois casos. A mensagem separa-os.
-    let results = match ph2d_vec_boolean::pathfinder(&refs, op) {
-        Ok(r) if r.is_empty() => {
-            eprintln!("[ph2d-vec] pathfinder {op:?}: sem resultado (as formas nao se cruzam?)");
-            return;
-        }
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[ph2d-vec] pathfinder {op:?}: o motor recusou -- {e}");
-            return;
-        }
-    };
-    // A base é a de trás: o resultado ocupa a fatia de z dela (não salta pro topo).
-    // Os operandos removidos estão todos em z >= `at`, então o índice segue válido.
-    let at = zs[0];
-    for p in &operands {
-        scene.remove_path(p.id);
-    }
-    let new_ids: Vec<u64> = results
-        .into_iter()
-        .enumerate()
-        .map(|(k, r)| scene.insert_path(at + k, r))
-        .collect();
-    pen.select_many(&new_ids);
-    eprintln!(
-        "[ph2d-vec] pathfinder {op:?}: ok ({} path[s])",
-        new_ids.len()
-    );
-}
-
 /// Make / Release Compound sobre a seleção. **Make** funde os paths fechados
 /// selecionados num só (`EvenOdd` ⇒ um contorno dentro de outro vira buraco na
 /// hora); **Release** devolve cada subpath do(s) selecionado(s) a path próprio.
-/// Um passo de undo; re-seleciona o resultado. Free fn pelo mesmo motivo de
-/// [`apply_vec_boolean`].
+/// Um passo de undo; re-seleciona o resultado. Free fn: o dreno do render_loop chama-a com os
+/// refs decompostos.
 pub(crate) fn apply_vec_compound(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -164,7 +101,7 @@ pub(crate) fn vec_bool_op_for_id(
 
 /// Retype the Pen's SELECTED vertex (panel Vertex buttons). The undo step is the global one,
 /// by diff (`App::post_frame_undo`), so it exists iff the kind changed. Free fn (mirror of
-/// [`apply_vec_boolean`]) so the render_loop drain can call it with the destructured shell refs.
+/// [`apply_vec_compound`]) so the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_vertex_kind(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -180,7 +117,7 @@ pub(crate) fn apply_vec_vertex_kind(
 
 /// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key). The
 /// undo step is the global one, by diff (`App::post_frame_undo`), so it exists iff
-/// something was removed. Free fn (mirror of [`apply_vec_boolean`]) so the
+/// something was removed. Free fn (mirror of [`apply_vec_compound`]) so the
 /// render_loop drain can call it with destructured refs. Returns whether anything
 /// was deleted.
 pub(crate) fn apply_vec_delete_vertex(
@@ -227,7 +164,7 @@ pub(crate) fn screen_offset_world(
 
 /// Duplicate the SELECTED path (panel "Duplicate" button), offsetting the clone
 /// by `(dx, dy)` world-units so it's visible, and select the copy. Records ONE
-/// undo step iff a path was cloned. Free fn (mirror of [`apply_vec_boolean`]) so
+/// undo step iff a path was cloned. Free fn (mirror of [`apply_vec_compound`]) so
 /// the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_duplicate(
     scene: &mut ph2d_vec_scene::VecScene,
@@ -292,7 +229,7 @@ pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_ve
 }
 
 /// Mirror the SELECTED path (panel Arrange Flip buttons), recording ONE undo step
-/// iff it flipped. Free fn (mirror of [`apply_vec_boolean`]).
+/// iff it flipped. Free fn (mirror of [`apply_vec_compound`]).
 pub(crate) fn apply_vec_flip(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
@@ -319,7 +256,7 @@ pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_s
 }
 
 /// Rotate the SELECTED path 90° (panel Arrange Rotate buttons), recording ONE undo
-/// step iff it rotated. Free fn (mirror of [`apply_vec_boolean`]).
+/// step iff it rotated. Free fn (mirror of [`apply_vec_compound`]).
 pub(crate) fn apply_vec_rotate(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,

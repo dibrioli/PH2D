@@ -55,6 +55,7 @@ pub mod appearance;
 pub mod bindings;
 pub mod blend;
 pub mod blend_live;
+pub mod bool_flatten;
 pub mod bool_gesture;
 pub mod bool_live;
 pub mod bool_shape;

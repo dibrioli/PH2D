@@ -1,23 +1,6 @@
 //! **O host do Morph vivo** — o `t` animável (a forma única entre duas outras).
 //!
-//! Espelho do [`crate::connector_live`], e irmão do [`crate::blend_live`]. A diferença entre os
-//! dois irmãos é o que cada um põe na CENA: o blend põe o *spine* (invisível) e desenha os N passos
-//! como overlay virtual; o morph põe **a forma**, porque é a forma que o artista quer — para
-//! pintar, exportar e, sobretudo, **animar**.
-//!
-//! Ninguém desenha um morph: move-se uma fonte, ou mexe-se no `t`, e a forma se refaz. A geometria
-//! é **função pura da relação**, re-cozida a cada frame.
-//!
-//! # O `Plan` é CACHEADO aqui, e no blend não é — a diferença não é gosto
-//!
-//! O `blend_live::cook_links` monta um [`Plan`] por frame e ninguém reclamou: o blend só re-coze
-//! quando o artista mexe em alguma coisa. No morph o `t` muda **todo frame** — é essa a feature —,
-//! e sem cache a busca de fase (256×256) rodaria por frame: os **5,9 ms** que o `Plan` foi
-//! inventado para matar, de volta, agora dentro do orçamento de quadro.
-//!
-//! A correspondência é função do **par**, não do `t`. Então a chave do cache é a **geometria em
-//! MUNDO das duas fontes** — geometria *e* pose, não uma delas: sem a pose, o plano descreveria a
-//! forma onde ela **estava** (a mesma lição da chave de sessão do Shape Builder).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `morph_live.rs`.
 
 use std::collections::BTreeMap;
 

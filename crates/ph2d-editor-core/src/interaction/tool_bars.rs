@@ -91,6 +91,9 @@ pub struct ToolBars {
     pub actions: Vec<Vec<BarButton>>,
     /// ④ a 2.ª linha, por baixo da 1.ª (o Alinhar do vetor, dono 15/10). Vazia ⇒ uma linha só.
     pub actions_below: Vec<Vec<BarButton>>,
+    /// ④ as ações RARAS (F50): o menu que o «⋯» da ④ abre, com os ids do painel dono. Vazio ⇒
+    /// sem «⋯».
+    pub actions_more: Vec<ToolRailEntry>,
     /// ④ o rectângulo da seleção no ECRÃ — a âncora da barra quando não está fixada.
     pub selection: Option<Rect>,
     /// ⑤ a dica da ferramenta na mão (o que o clique, o arrasto e os modificadores fazem).

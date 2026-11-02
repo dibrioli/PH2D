@@ -39,29 +39,6 @@ impl BodyCtx<'_> {
         self.with_rows(|r| r.segmented(label, opts, y))
     }
 
-    /// Make / Release Compound — a 2-across row closing the Boolean section. Merging
-    /// closed paths into one compound is how a hole is authored by hand (draw a
-    /// contour inside another, merge, and `EvenOdd` vacates the inner region).
-    pub(crate) fn compound_row(&mut self, y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
-        let w = ((self.inner_w - gap) / 2.0).max(1.0);
-        self.row2(
-            w,
-            gap,
-            [
-                (
-                    ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE,
-                    tr("panel.vector.arrange.compound"),
-                ),
-                (
-                    crate::ids::VECTOR_COMPOUND_RELEASE,
-                    tr("panel.vector.arrange.release"),
-                ),
-            ],
-            y,
-        )
-    }
-
     /// Fill rule of the selected path. Only shown for a COMPOUND path — with a
     /// single contour the two rules paint identically, so the row would be a no-op.
     fn fill_rule_row(&mut self, y: f32) -> f32 {

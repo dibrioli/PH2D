@@ -84,7 +84,6 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
     for s in [
         ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
         ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
-        ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
     ] {
         h.store.set_collapsed(s, false);
     }

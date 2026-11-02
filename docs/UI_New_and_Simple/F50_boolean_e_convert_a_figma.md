@@ -45,3 +45,46 @@ Font, Paragraph, Text on Path, Axes, Vertex, Effects, Filters, **Advanced**, Wid
 - Gates vermelhos primeiro; só tokens e i18n; app só em inglês; tooltip em Plain English; Auto Key onde houver campo.
 - Próxima cena de smoke = **53**, fotografada antes do smoke.
 - Depois deste bloco (ordem proposta): Path Effects em lista (Contour, Pattern on Path, Envelope) → Blend + Morph.
+
+## 4 — Medido e decidido (02/11, depois da maquete)
+
+**Medido antes de construir** (o «Live» e a ④ já exprimiam o grupo vivo):
+
+- O «Live» ligado já criava o grupo à Figma: `bool_gesture::arm` põe `VecBoolGroup { op }` num grupo
+  «Boolean» com as formas dentro, recozido por quadro (`bool_live::recook`); clicar outra operação com o
+  grupo escolhido RE-MIRA (troca a operação). O «This Shape» (verbo por forma) já estava na ④.
+- ⚠️ O «Live» nascia DESLIGADO: por omissão os oito botões e os atalhos `Ctrl+Alt+U/I/D/X` eram
+  destrutivos (`apply_vec_boolean` na shell).
+- O «Apply Boolean» = Flatten só de booleanas (`bool_gesture::bake`); não havia Flatten geral.
+- Não havia fila de ações no topo do painel; o «⋯» da ② (`ToolBarOverflow`) e os pulldowns da área
+  (`AreaCommands`) já sabiam pintar um menu de TEXTO com os ids do painel dono.
+
+**Decisões do dono sobre a maquete:** (1) «Faça como o Figma» — a booleana é SEMPRE viva, a chave
+«Live» sai; o permanente é o Flatten. (2) «Tirar do painel e deixar os mais comuns na barra de ações e
+"..." na barra de ações para as menos comuns» — nada de fila nova no topo do painel.
+
+**O que ficou:**
+
+| Onde | O quê |
+|---|---|
+| ④ (2+ formas ou grupo vivo) | Union · Subtract · Intersect · Exclude (acesa a do grupo) · **Flatten** |
+| ④ (qualquer seleção) | **Outline Stroke** |
+| «⋯» da ④ | Minus Back · Trim · Crop · Merge ─ Make Compound · Release Compound (o Release com uma forma) |
+| Painel | ⛔ sem Boolean e sem Convert; o Advanced fica com Blend, Morph, Envelope, Pattern on Path, Contour |
+
+- **Flatten** (`ph2d_app_vec::bool_flatten::flatten`): consolida cada booleana viva da seleção (o grupo
+  mais de FORA, pelo plano já cozinhado) e funde o resto por **Union** destrutiva. ⛔ Recusado: fundir
+  por `make_compound` — ele põe `EvenOdd`, e duas formas sobrepostas ficariam com um FURO no miolo (a
+  tela mudaria no clique; gate `two_overlapping_shapes_become_one_and_the_overlap_stays_filled`).
+- A booleana destrutiva (`apply_vec_boolean`) saiu da shell para `bool_flatten::pathfinder_selection`
+  (só o Flatten a usa); os atalhos `Ctrl+Alt+U/I/D/X` armam a booleana viva como os botões.
+- O «⋯» da ④: `ToolBars::actions_more` (o módulo publica) → `ids::SELECTION_ACTIONS_MORE` no grupo do
+  chrome (antes do fixar, só se há raras) → `ContextMenuKind::SelectionActionsMore`, ancorado por baixo
+  do «⋯»; as linhas levam os ids do painel (a mesma porta). As raras também estão na paleta, e a
+  paleta faz o «⋯» piscar.
+- Ícones novos: `flatten.svg`, `outline-stroke.svg`. Dica de cada botão em Plain English
+  (`panel.vector.bar.*`, `panel.vector.more.*`).
+- Auto Key: nenhum CAMPO novo (são comandos de uma vez; a operação do grupo não é animável — já não
+  era).
+- Cena **53** (`PH2D_OBJECT_MODE_SMOKE=53`): a 22 com o rectângulo e a elipse sobrepostos e os dois
+  escolhidos (`vector_mode_alinhar`, `h = 39`).

@@ -295,5 +295,15 @@ fn a_cena_52_e_a_22_com_uma_imagem() {
         handles_first(c.handles),
         Some(crate::vector_mode_alinhar::FIRST)
     );
-    assert_eq!(of(Some("53")).want, 9, "a 53 ainda não existe");
+}
+
+#[test]
+fn a_cena_53_e_a_booleana_na_barra() {
+    let c = of(Some("53"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 39));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_alinhar::FIRST)
+    );
+    assert_eq!(of(Some("54")).want, 9, "a 54 ainda não existe");
 }

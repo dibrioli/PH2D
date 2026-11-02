@@ -81,6 +81,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         // para **todo** menu, e um pulldown de área é simplesmente aquele cuja metade estática é
         // vazia. É o mesmo mecanismo que põe *Export Draft* no `MenuBarFile` abaixo.
         ContextMenuKind::AreaCommands { .. } => &[],
+        // F50: as rows do «⋯» da ④ são as `actions_more` das barras (dinâmicas, como as de cima).
+        ContextMenuKind::SelectionActionsMore => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.

@@ -600,7 +600,18 @@ pub fn smoke_step(
                 ));
             go(6);
         }
-        6 if edit && shapes == 1 && vec.edit.objects.first().copied() == newest => go(10),
+        // F50: a Union é VIVA — as duas formas ficam, dentro de um grupo «Boolean».
+        6 if edit
+            && shapes == 2
+            && crate::bool_gesture::group_of_selection(
+                sim,
+                &vec.entities,
+                vec.pen.selected_paths(),
+            )
+            .is_some() =>
+        {
+            go(10);
+        }
         10 if edit => {
             // O chip só se abre depois de pintado (o pulldown ancora-se no rect dele).
             let chip = ph2d_editor_core::ids::area_menu_button(0);

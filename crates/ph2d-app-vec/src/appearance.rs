@@ -1,19 +1,7 @@
 //! ⭐⭐⭐ **A APARÊNCIA DO OBJECTO, do lado da shell** (estudo 42 item 2, v19 do schema) — o que o
 //! painel mostra da selecção, e o que um gesto dele escreve no documento.
 //!
-//! Duas propriedades, e as duas são da FORMA e não da tinta: a **opacidade** (a forma inteira
-//! compõe-se uma vez e desvanece) e o **modo de mistura** (como ela se compõe com o que está por
-//! baixo dela na pilha de z).
-//!
-//! # A lei da selecção múltipla: MOSTRA «misto» onde diferem, ESCREVE o campo tocado em todas
-//!
-//! ⭐ **Plano 31 da UI nova (decisão do dono, 18/10)** — revoga o «mostra o primário» que aqui
-//! estava. O primário mentia sobre as outras formas, e com o restyle a gravar o estilo INTEIRO ele
-//! APAGAVA: mexer na Width de duas formas pintava as duas com a cor do primário. O terceiro estado
-//! já existia nos widgets (amostra «misto», número em branco do BulkSelect do Inspector), e a
-//! objeção registada — *«o artista fica sem saber o que vai acontecer ao arrastar»* — cai com a
-//! escrita POR CAMPO: arrastar dá a todas esse valor, e nada mais muda. O slider fica no primário.
-//! A leitura mora em `paint_stack::published` (`mixed_opacity`, `mixed_blend`).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `appearance.rs`.
 
 use ph2d_vec_scene::{BlendMode, Opacity, VecPathId, VecScene};
 

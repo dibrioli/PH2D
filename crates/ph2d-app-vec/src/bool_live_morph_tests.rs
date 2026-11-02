@@ -1,23 +1,7 @@
 //! **A BOOLEANA VIVA A MEIO DE UMA TROCA DE VERBO** — os gates do que o artista vê quando um
 //! estado de UI muda a operação (Enio, 2026-08-23).
 //!
-//! # A fixture é a DONUT, e a escolha é a metade do trabalho
-//!
-//! Um retângulo grande com outro **inteiramente dentro**. `Union` desenha **1** contorno (área
-//! 400); `Subtract` desenha **2** — o de fora e o buraco de 64. É o único par em que a TOPOLOGIA
-//! muda, e portanto o único que decide se o morph serve para alguma coisa.
-//!
-//! ⚠️ **A fixture do irmão (dois retângulos que se cruzam) NÃO contém o fenômeno:** ali os quatro
-//! verbos dão 1 contorno, e um gate escrito sobre ela ficaria verde sem nunca exercitar um buraco
-//! a nascer. Medido antes de escrever uma linha destes gates.
-//!
-//! # ⛔ O que foi MEDIDO e recusado (sonda `probe_boolean_morph.rs`)
-//!
-//! | tentativa | por quê não |
-//! |---|---|
-//! | Saltar o verbo (Blender / After Effects / Rive) | move **64,0** de tinta num quadro com a peça PARADA, contra 3,1 do morph |
-//! | Crossfade das duas formas (o recuo do Figma) | mostra as duas ao mesmo tempo; o morph não tem fantasma |
-//! | Perseguir a partir do que está na tela | cura o único quadro que salta e paga com o desenho a FICAR PARA TRÁS do movimento: 793,0 de tinta de afastamento numa peça que viaja |
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `bool_live_morph_tests.rs`.
 
 use super::tests::area_of;
 use super::*;

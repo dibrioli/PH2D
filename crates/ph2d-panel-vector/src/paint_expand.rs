@@ -42,24 +42,6 @@ fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
 }
 
 impl BodyCtx<'_> {
-    /// ⭐ A secção **Convert** — o traço vira forma (o *Outline Stroke* do Figma e do Illustrator,
-    /// também em `Ctrl+Alt+O`).
-    pub(crate) fn convert_section(&mut self, y: f32) -> f32 {
-        let (y, collapsed) = self.section_header(
-            crate::ids::VECTOR_SECTION_CONVERT,
-            tr("panel.vector.section.convert"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        self.action_button(
-            ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
-            tr("panel.vector.expand.outline_stroke"),
-            y,
-        )
-    }
-
     /// As quatro linhas do **perfil de largura** + o botão que o CONSOLIDA.
     ///
     /// Os três multiplicadores são MULTIPLICADORES da largura do traço, não medidas: o

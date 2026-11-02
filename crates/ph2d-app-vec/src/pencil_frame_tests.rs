@@ -1,24 +1,6 @@
 //! **O lápis desenha onde a mão está** — o gesto contra a ordem REAL do frame.
 //!
-//! Estes gates nasceram VERMELHOS num defeito reportado pelo Enio (*"pencil está com offset do
-//! mouse"*). A causa não estava no lápis: estava na lista de gestos que o `settle_origins` pula.
-//! Ela enumerava *"a caneta e a ferramenta de forma"* — as duas que existiam quando foi escrita —
-//! e o lápis chegou como o TERCEIRO. Assentar um path no meio de um gesto que reescreve a
-//! geometria em MUNDO a cada frame soma geometria + `Transform`, e a tinta sai deslocada do cursor
-//! **pelo ponto onde o arrasto começou**.
-//!
-//! # Por que os gates da wave não o apanharam
-//!
-//! Os 22 gates de motor provam o AJUSTE (a curva passa pelas amostras) e os 5 arch-gates provam a
-//! ORDEM do dispatch. Nenhum dos dois vê a POSE: a geometria estava certa e o afim da entidade
-//! desmentia-a um passe depois. O que faltava era um gate que corresse os passes do frame **na
-//! ordem do produto** e comparasse o pixel com o dedo — que é o que este arquivo é.
-//!
-//! ⚠️ **O 1º frame do gesto sai CORRECTO**, e é isso que torna o defeito difícil de ver num teste
-//! de unidade: o `settle` corre ANTES do render, então no frame em que ele assenta o path a
-//! geometria já é local e o afim já a leva de volta ao lugar. A divergência começa no frame
-//! SEGUINTE, quando o lápis reescreve mundo por cima do local. Um gate que medisse um frame só
-//! ficaria verde sobre o produto vermelho — daí a asserção correr **sobre o gesto inteiro**.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `pencil_frame_tests.rs`.
 
 /// A dinâmica das fixtures: **um rato** (pressão cheia) e um relógio que anda um passo por
 /// amostra. Premissa, não asserção — estes gates testam a GEOMETRIA e o enquadramento do lápis;

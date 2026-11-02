@@ -60,6 +60,8 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOOL_BAR_OVERFLOW,
         // ④ fixar — pintado pelo `tool_bars`, despachado pelo `chrome::selection_actions`.
         ids::SELECTION_ACTIONS_PIN,
+        // ④ o «⋯» das raras (F50) — o mesmo despacho.
+        ids::SELECTION_ACTIONS_MORE,
     ]
     .into_iter()
     .chain(crate::interaction::touch::CHIPS) // F5: os modificadores na tela (`touch_mods`)

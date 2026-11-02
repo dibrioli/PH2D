@@ -456,55 +456,11 @@ fn the_arrange_verbs_ride_the_first_row_and_align_the_second() {
     }
 }
 
-/// ⭐ (dono 15/10) **O interruptor da booleana viva na ④**, à frente das quatro booleanas: com duas
-/// formas; apagado, o clique pede `On`; aceso, pede `Off` — e os dois chegam à porta do painel.
-#[test]
-fn the_live_boolean_switch_rides_in_front_of_the_booleans() {
-    let bars = |sel| {
-        Retrato {
-            sel,
-            ..Retrato::em(DrawMode::Select)
-        }
-        .barras()
-    };
-    let live = |b: &ToolBars| {
-        b.actions
-            .iter()
-            .flatten()
-            .find(|x| x.id == p::VECTOR_BOOL_LIVE_ON || x.id == p::VECTOR_BOOL_LIVE_OFF)
-            .map(|x| (x.id, x.on))
-    };
-    assert_eq!(live(&bars(1)), None, "com uma forma não há booleana");
-    for (on, want) in [
-        (false, p::VECTOR_BOOL_LIVE_ON),
-        (true, p::VECTOR_BOOL_LIVE_OFF),
-    ] {
-        ph2d_panel_vector::state::set_bool_live_on(on);
-        let b = bars(2);
-        assert_eq!(live(&b), Some((want, on)), "ligada = {on}");
-        let ids = action_ids(&b);
-        let at = ids.iter().position(|&i| i == want).expect("na ④");
-        assert_eq!(
-            ids.get(at + 1),
-            Some(&p::VECTOR_BOOL_UNION),
-            "à frente da Union"
-        );
-        let mut host = crate::host_aberto();
-        let out =
-            host.apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(want));
-        assert!(
-            out == EventOutcome::Consumed && !host.drained_actions().is_empty(),
-            "o interruptor pinta na ④ e o painel não o despacha"
-        );
-    }
-    ph2d_panel_vector::state::set_bool_live_on(false);
-}
-
 /// ⭐ (dono 15/10) **Uma forma DENTRO da booleana viva**: com ela só selecionada, a ④ oferece os
-/// quatro verbos dela (aceso o que ela tem, a dica com o nome dela) e o Apply — e cada um chega à
+/// quatro verbos dela (aceso o que ela tem, a dica com o nome dela) e o Flatten (F50) — e cada um chega à
 /// porta do painel. Fora de uma booleana viva, nenhum.
 #[test]
-fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
+fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_flatten() {
     const VERBS: [NodeId; 4] = [
         p::VECTOR_BOOL_SHAPE_UNION,
         p::VECTOR_BOOL_SHAPE_SUBTRACT,
@@ -522,12 +478,12 @@ fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
     assert!(
         VERBS
             .iter()
-            .chain([&p::VECTOR_BOOL_APPLY])
+            .chain([&p::VECTOR_FLATTEN])
             .all(|id| !fora.contains(id)),
-        "fora de uma booleana viva não há verbo de forma nem Apply"
+        "fora de uma booleana viva não há verbo de forma nem Flatten"
     );
     ph2d_panel_vector::state::set_bool_shape_row(Some((1, "Path 2".to_owned())));
-    ph2d_panel_vector::state::set_bool_group_selected(true);
+    ph2d_panel_vector::state::set_bool_group(Some(1));
     let b = one();
     let row: Vec<_> = b
         .actions
@@ -545,8 +501,8 @@ fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
         row.iter().all(|x| x.label.contains("Path 2")),
         "a dica nomeia a forma"
     );
-    assert!(action_ids(&b).contains(&p::VECTOR_BOOL_APPLY), "o Apply");
-    for id in VERBS.into_iter().chain([p::VECTOR_BOOL_APPLY]) {
+    assert!(action_ids(&b).contains(&p::VECTOR_FLATTEN), "o Flatten");
+    for id in VERBS.into_iter().chain([p::VECTOR_FLATTEN]) {
         let mut host = crate::host_aberto();
         let out =
             host.apply_panel_event::<VectorPanel>(&mut VectorPanelState, WidgetEvent::Click(id));
@@ -556,7 +512,7 @@ fn a_shape_inside_a_live_boolean_gets_its_verbs_and_the_apply() {
         );
     }
     ph2d_panel_vector::state::set_bool_shape_row(None);
-    ph2d_panel_vector::state::set_bool_group_selected(false);
+    ph2d_panel_vector::state::set_bool_group(None);
 }
 
 /// … e o PAINEL já não os pinta (*«tire a seção Arrange do painel»*): com três formas, nenhum
@@ -786,7 +742,6 @@ fn the_advanced_group_and_the_two_big_interface_sections_start_folded() {
         p::VECTOR_SECTION_ADVANCED,
         p::VECTOR_SECTION_STATES,
         p::VECTOR_SECTION_MORPH_STATES,
-        ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
         ph2d_tool_vector::ids::VECTOR_SECTION_SNAP,
     ] {
         assert!(host.store().is_collapsed(id), "{id:?} nasce aberto");

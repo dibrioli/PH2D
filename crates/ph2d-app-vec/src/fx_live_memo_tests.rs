@@ -1,19 +1,6 @@
 //! Gates da **CHAVE do memo** do FX raster — arquivo irmão de `fx_live_memo.rs`.
 //!
-//! O oráculo é a decisão que o `recook` toma na 1ª varredura, e ela é literalmente **um `==` entre
-//! duas chaves**: igual ⇒ os pixels que estão na textura servem; diferente ⇒ re-coza. Por isso os
-//! gates comparam CHAVES em vez de espiarem a GPU — a decisão inteira mora aqui, e mora aqui de
-//! propósito (ela vivia dentro do `recook`, que precisa de dispositivo, então nenhum teste headless
-//! a alcançava e o defeito abaixo atravessou a wave inteira com 18 gates verdes ao lado).
-//!
-//! O defeito medido (2026-07-29): **mudar a cor do preenchimento de uma forma filtrada não mudava a
-//! tela.** A pilha resolvida era a mesma, a caixa era a mesma, então o memo acertava.
-//!
-//! ⚠️ **Um gate foi escrito e DESCARTADO em vez de shipado:** *"armar um Live Path Effect re-cozinha
-//! a forma"*. Ele passa com a chave ANTIGA (a `(pilha, w, h)`), porque **todo efeito de caminho move
-//! a caixa** — então ele não podia falhar pelo motivo que alegava, e a `effects` viaja para dentro da
-//! chave pelo `VecPath` inteiro de qualquer modo (não há lista de campos a esquecer). Verde por
-//! construção; a razão fica escrita aqui para ninguém o re-escrever achando que prova algo.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `fx_live_memo_tests.rs`.
 
 use super::job_for;
 

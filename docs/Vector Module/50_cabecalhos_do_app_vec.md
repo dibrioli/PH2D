@@ -10,6 +10,7 @@ data do commit `8810c8838d`.
 4.º lote (F48d, 02/11, o Offset Path vira ferramenta: +76 sobre o tecto): `lib.rs` e `smoke_bone_paint_assada_tests.rs`, texto à data do commit `fa1283eec8`.
 5.º lote (F48d, 02/11, a ferramenta Offset Path: +8 sobre o tecto): `ui_panel_spec.rs`, texto à data do commit `fa1283eec8`.
 6.º lote (F49, 02/11, o Draw do vetor fica nas outras formas: +103 sobre o tecto): de `resize_box_edit.rs` a `svg_import.rs`, texto à data do commit `9362272bff`.
+7.º lote (F50, 02/11, Boolean e Convert na ④: +309 sobre o tecto): de `no_orphan_module_tests.rs` a `connector_panel_tests.rs`, texto à data do commit `ca6875143c`.
 
 ## `symmetry_live.rs`
 
@@ -2352,3 +2353,526 @@ aterra, que nome cada forma leva na Hierarquia, e como os `<g>` do ficheiro vira
 ⚠️ **O ficheiro inteiro vira UM objecto** quando traz mais de uma coisa de topo: sem isso um
 logótipo de 40 formas aterraria como 40 raízes na Hierarquia, e mover o desenho seria
 impossível sem antes o seleccionar todo.
+
+## `no_orphan_module_tests.rs`
+
+> ⛔⛔ **NENHUM FICHEIRO DESTA CRATE FICA SEM `mod`** — o gate de um defeito que é MUDO por natureza.
+
+# O que aconteceu, e porque nada o apanhou
+
+Na W2 Fase D o `bool_reach_tests.rs` mudou-se da shell para cá. Na shell ele era um
+`#[cfg(test)] mod` de TOPO, declarado no `main.rs`; a declaração foi apagada de lá e **nenhuma
+foi escrita aqui**. Um ficheiro `.rs` que nenhum `mod` declara **não é compilado** — ele fica no
+disco, no git, no diff, e fora do build.
+
+⇒ os **três** gates que ele contém evaporaram-se, e:
+
+| instrumento | o que ele disse |
+|---|---|
+| `cargo check -p ph2d-app-vec --all-targets` | **verde** |
+| `cargo check -p ph2d-host-desktop --all-targets` | **verde** |
+| `cargo clippy` | **verde** |
+| a suíte da crate | **verde** — com três testes a menos, e ninguém conta os que faltam |
+| `cargo test --test it` | **verde** |
+
+*Não há nada para verificar num ficheiro que não entra no build.* O que o acusou foi o `ONLY-A`
+da prova de `nextest-list-diff` — é literalmente para isto que aquele número existe.
+
+# ⚠️ Porque este gate vive aqui e não na shell
+
+Ele mede a **árvore desta crate**, e o sujeito é o `src/` dela. É a mesma forma do censo de
+órfãos que o `CLAUDE.md` §5.0 descreve (*«o ÓRFÃO e o DUPLICADO são as duas metades do MESMO
+audit, os dois mudos»*), aplicada ao sítio onde o movimento acontece.
+
+## `symmetry_live_tests.rs`
+
+> Gates da **SIMETRIA DE DESENHO** — arquivo irmão de `symmetry_live.rs`.
+
+As exigências do USUÁRIO que esta família existe para pinar (Enio, 2026-08-01):
+
+> *"A linha de simetria deve aparecer logo que se aperta o botão e não quando se inicia o
+> desenho."*
+
+> *"A simetria funciona apenas para formas que serão desenhadas com a tool ligada e não deve
+> fazer simetria de formas que já existem previamente."*
+
+> *"Com o botão checado pode-se fazer quantos desenhos desejar que a linha de simetria permanece
+> no lugar."*
+
+> *"Uma vez que o desenho é feito, a referência para a linha passa a ser o próprio desenho … se
+> o usuário mover o objeto no canvas a linha de simetria acompanha."*
+
+> *"Se a simetria for desmarcada antes do apply, as cópias somem mas não são destruídas."*
+
+⚠️ **O oráculo NUNCA é "há duas formas desenhadas"** — isso é verdade em qualquer implementação
+que reflicta alguma coisa em algum lugar. Os oráculos daqui são: (a) o desenho inteiro TRANSLADA
+com a pose, ponto a ponto; (b) uma forma que ninguém desenhou continua **sem componente**; (c) o
+eixo capturado, levado de volta ao MUNDO, coincide com o de sessão; (d) a curva autorada fica
+byte-idêntica através do ciclo ligar→desligar; (e) uma forma já simétrica no próprio eixo
+coincide com a própria cópia sob QUALQUER pose — a propriedade que só a ordem *reflectir → assar*
+tem.
+
+## `pencil_frame_tests.rs`
+
+> **O lápis desenha onde a mão está** — o gesto contra a ordem REAL do frame.
+
+Estes gates nasceram VERMELHOS num defeito reportado pelo Enio (*"pencil está com offset do
+mouse"*). A causa não estava no lápis: estava na lista de gestos que o `settle_origins` pula.
+Ela enumerava *"a caneta e a ferramenta de forma"* — as duas que existiam quando foi escrita —
+e o lápis chegou como o TERCEIRO. Assentar um path no meio de um gesto que reescreve a
+geometria em MUNDO a cada frame soma geometria + `Transform`, e a tinta sai deslocada do cursor
+**pelo ponto onde o arrasto começou**.
+
+# Por que os gates da wave não o apanharam
+
+Os 22 gates de motor provam o AJUSTE (a curva passa pelas amostras) e os 5 arch-gates provam a
+ORDEM do dispatch. Nenhum dos dois vê a POSE: a geometria estava certa e o afim da entidade
+desmentia-a um passe depois. O que faltava era um gate que corresse os passes do frame **na
+ordem do produto** e comparasse o pixel com o dedo — que é o que este arquivo é.
+
+⚠️ **O 1º frame do gesto sai CORRECTO**, e é isso que torna o defeito difícil de ver num teste
+de unidade: o `settle` corre ANTES do render, então no frame em que ele assenta o path a
+geometria já é local e o afim já a leva de volta ao lugar. A divergência começa no frame
+SEGUINTE, quando o lápis reescreve mundo por cima do local. Um gate que medisse um frame só
+ficaria verde sobre o produto vermelho — daí a asserção correr **sobre o gesto inteiro**.
+
+## `cut_line.rs`
+
+> **A LINHA DE CORTE** — o caminho que a tesoura usa como lâmina (plano 25 §7).
+
+Espelho exato do `connector_live::upkeep` e do `blend_live::upkeep`: um caminho novo já está
+na cena desde o press, mas a **entidade** dele só nasce no `vec_entities::sync`, mais adiante
+no mesmo frame — então o componente que o marca como lâmina não pode ser pendurado no press.
+A fila de um item (`VecState::cut_pending`) é o que atravessa esse vão.
+
+# Uma lâmina de cada vez
+
+Desenhar uma linha nova **substitui** a anterior. A alternativa — recusar enquanto houver uma
+— deixaria o modo Cut morto exatamente quando ele parece estar funcionando (o pill aceso, a
+caneta a não desenhar nada), e o botão *Discard* existe para o outro caso: tirar a lâmina da
+tela quando se acabou de cortar.
+
+# A lâmina não é obra
+
+Ela perde `fill` e `stroke` ao ser adotada, e quem a desenha é o **overlay** (hachurada, com
+a tesoura na ponta). Duas razões, e as duas são de produto: uma lâmina que herdasse a cor e a
+espessura do traço corrente seria indistinguível de um desenho, e uma lâmina com estilo sairia
+no export — que é o mesmo que dizer que ela não é uma ferramenta.
+
+## `morph_live.rs`
+
+> **O host do Morph vivo** — o `t` animável (a forma única entre duas outras).
+
+Espelho do [`crate::connector_live`], e irmão do [`crate::blend_live`]. A diferença entre os
+dois irmãos é o que cada um põe na CENA: o blend põe o *spine* (invisível) e desenha os N passos
+como overlay virtual; o morph põe **a forma**, porque é a forma que o artista quer — para
+pintar, exportar e, sobretudo, **animar**.
+
+Ninguém desenha um morph: move-se uma fonte, ou mexe-se no `t`, e a forma se refaz. A geometria
+é **função pura da relação**, re-cozida a cada frame.
+
+# O `Plan` é CACHEADO aqui, e no blend não é — a diferença não é gosto
+
+O `blend_live::cook_links` monta um [`Plan`] por frame e ninguém reclamou: o blend só re-coze
+quando o artista mexe em alguma coisa. No morph o `t` muda **todo frame** — é essa a feature —,
+e sem cache a busca de fase (256×256) rodaria por frame: os **5,9 ms** que o `Plan` foi
+inventado para matar, de volta, agora dentro do orçamento de quadro.
+
+A correspondência é função do **par**, não do `t`. Então a chave do cache é a **geometria em
+MUNDO das duas fontes** — geometria *e* pose, não uma delas: sem a pose, o plano descreveria a
+forma onde ela **estava** (a mesma lição da chave de sessão do Shape Builder).
+
+## `bool_live_morph_tests.rs`
+
+> **A BOOLEANA VIVA A MEIO DE UMA TROCA DE VERBO** — os gates do que o artista vê quando um
+> estado de UI muda a operação (Enio, 2026-08-23).
+
+# A fixture é a DONUT, e a escolha é a metade do trabalho
+
+Um retângulo grande com outro **inteiramente dentro**. `Union` desenha **1** contorno (área
+400); `Subtract` desenha **2** — o de fora e o buraco de 64. É o único par em que a TOPOLOGIA
+muda, e portanto o único que decide se o morph serve para alguma coisa.
+
+⚠️ **A fixture do irmão (dois retângulos que se cruzam) NÃO contém o fenômeno:** ali os quatro
+verbos dão 1 contorno, e um gate escrito sobre ela ficaria verde sem nunca exercitar um buraco
+a nascer. Medido antes de escrever uma linha destes gates.
+
+# ⛔ O que foi MEDIDO e recusado (sonda `probe_boolean_morph.rs`)
+
+| tentativa | por quê não |
+|---|---|
+| Saltar o verbo (Blender / After Effects / Rive) | move **64,0** de tinta num quadro com a peça PARADA, contra 3,1 do morph |
+| Crossfade das duas formas (o recuo do Figma) | mostra as duas ao mesmo tempo; o morph não tem fantasma |
+| Perseguir a partir do que está na tela | cura o único quadro que salta e paga com o desenho a FICAR PARA TRÁS do movimento: 793,0 de tinta de afastamento numa peça que viaja |
+
+## `smoke_bone_paint_smooth_tests.rs`
+
+> ⭐⭐⭐⭐ **O BOTÃO `Smooth` ENTREGA — os gates do controlo que estava MORTO.**
+
+Irmão do [`super`] por RESPONSABILIDADE: *a arte obedece à lei da pele* é uma pergunta (a dele),
+*o segundo segmento do par `Fast`/`Smooth` faz alguma coisa* é outra.
+
+# O defeito (auditoria de 2026-09-16)
+
+O painel *Bones* tem um par de segmentos `Fast`/`Smooth` ([`ph2d_tool_vector::SkinDeform::ALL`],
+registado e pintado). Medido nesta cena, o `Smooth` entregava **a malha do `Fast`, ao bit**: a
+lei de refinamento de então era o `k` GLOBAL, cujo tecto é `⌊√(orçamento / peças)⌋`, e toda malha
+acima de `orçamento / 4` peças só admite `k = 1`.
+
+⛔⛔ **É a terceira espécie de controlo morto do `CLAUDE.md` §5.0, e a sonda de registo é cega a
+ela:** o id existe, é pintado, é registado, o clique chega à ferramenta e o valor chega ao
+consumidor — *e o consumidor devolve a entrada*. Nenhum censo deste repo pergunta se a saída
+MUDA.
+
+⇒ é essa a pergunta que estes gates fazem, e o controlo da resposta é a lei antiga a reprovar.
+
+## `stroke_present.rs`
+
+> ⭐ **DAR (e TIRAR) o traço de uma forma** — a porta única da caixa *Stroke* do painel (plano 34).
+
+# Por que isto existe
+
+Toda forma **autorada** nasce com traço (`shape.rs` escreve `path.stroke = Some(..)`
+incondicionalmente), e o `restyle_selected_strokes` **recusa** quem não tem um. ⇒ uma forma que
+chegou ao documento por outro caminho — um importador, uma cena montada por código, uma booleana
+— ficava **sem forma nenhuma de ganhar um traço**, com a secção *Stroke* do painel a oferecer
+controlos que não a alcançavam. Foi o report do Enio de 2026-08-27.
+
+# ⛔ Por que a cura NÃO é no `restyle_selected_strokes`
+
+Aquela função corre **por quadro** sobre a selecção, sempre que o estilo da tool difere do dela
+([`crate::render_loop::vector_bridge`]). Criar ali daria traço a **toda** forma sem traço que
+estivesse selecionada, **sem ninguém pedir** — e o comentário que lá está (*"ganhar um traço do
+nada seria a UI inventando geometria"*) é a cerca certa pelo motivo certo.
+
+⇒ **a criação é um GESTO explícito**, nunca um efeito colateral de um espelhamento.
+
+## `vector_bridge_opacity_tests.rs`
+
+> ⭐⭐⭐ **A OPACIDADE ALCANÇA AS TRÊS TINTAS** (plano 36, W6) — os gates da PONTE.
+
+O motor já responde (`ph2d-vec-scene/src/brush_opacity_tests.rs`); aqui prova-se o outro lado da
+costura: que a barra *Opacity* do painel **chega** a cada espécie de tinta, e que quem DETECTA a
+mudança concorda com quem a GRAVA.
+
+# Uma opacidade, uma casa
+
+| tinta | onde a opacidade vive | quem a escreve |
+|---|---|---|
+| `Solid` (traço e preenchimento) | a alfa da cor | o caminho de sempre |
+| `Pattern` (traço) | `PatternFill::alpha`, `fallback.a` em sincronia | [`super::StrokeStyle::onto`] |
+| `Pattern` (**preenchimento**) | idem | [`super::style::apply_fill_colour`] ⬅ **a W6** |
+| `Brush` (traço) | `fallback.a`, e mais nada | [`super::StrokeStyle::onto`] |
+
+⚠️ **As duas metades de um preenchimento de padrão são independentes**, e uma sem a outra é
+pior que nenhuma: escrever sem SEMEAR faz a primeira mexida jogar na forma a alfa da forma
+**anterior**; semear sem escrever deixa a barra a mostrar o valor certo e a não o mudar.
+
+## `vector_bridge_publish.rs`
+
+> **O que o painel é TOLD** — o passo 5 do bridge do vetor (o `dispatch` faz os passos 1-4).
+
+# Por que este corte, e não outro
+
+O doc-header do pai já enumerava cinco trabalhos, e os quatro primeiros MEXEM no documento
+(visibilidade do dock · leitura do picker · o Style que a caneta herda · o restyle da
+seleção) enquanto o quinto só **conta ao painel o que já é verdade**. Quando o arquivo
+cruzou o teto de 600 LOC (HR-18) essa era a linha de corte que já estava escrita.
+
+⚠️ **Uma publicação ficou no pai, e não por acidente:** `set_current_vector_style` lê o
+`ui_snapshot()` da TOOL, e a tool é um empréstimo mútuo do registry que este módulo não
+recebe. Ela roda **antes** desta função; a ordem entre as duas é irrelevante (uma escreve
+num estático do painel, a outra no store e noutros estáticos), e é por isso que separá-las
+é seguro.
+
+⚠️ **A fronteira de DISPLAY mora aqui** (doc 88 do Motion, e a lição que este painel pagou
+por ser a QUARTA superfície a responder *onde está esta coisa?*): todo comprimento sai
+UMA vez pela `LengthDisplay`, e a TAXA de arrasto cruza a mesma porta que o valor.
+
+## `blend_live_tests.rs`
+
+> Testes do [`crate::blend_live`] — módulo irmão (teto de 600 LOC por arquivo da shell).
+
+O que eles provam, em ordem de importância:
+
+1. **A transição SEGUE a forma** (`moving_a_source_reflows_the_blend`) — a feature inteira numa
+   asserção: mover uma fonte re-coza o overlay, sem re-clicar "Blend".
+2. **Girar QUALQUER ponta refaz os passos** (`rotating_either_endpoint_reflows_the_blend`) — a
+   simetria; o "a última não influencia" do smoke era o CÍRCULO (rotacionalmente simétrico).
+3. **A última forma fica POR CIMA** (`the_last_source_is_drawn_on_top`) — a pilha de z do
+   Illustrator: fonte0 embaixo → passos → fonte1 em cima.
+4. A cadeia é pairwise; o blend vive na identidade; o `settle` o pula; um elo morto é pulado.
+
+# O `out` do recook é o OVERLAY ORDENADO (passos + fontes reempilhadas)
+
+Não é "os passos": é o que o passe de render desenha, em z. Para cada elo, os passos e **a
+fonte de cima** (redesenhada por cima deles) — só a fonte0 fica no z da cena. Por isso o tamanho
+é `(elos)·(passos+1)`, e o último item é sempre a última fonte.
+
+## `fx_dump.rs`
+
+> **O DESPEJO dos pixels do FX** — a sonda que só o app pode dar.
+
+Irmão de [`crate::fx_live`] pelo teto de LOC, e existe por um motivo medido: o smoke reporta
+dentes no feather DENTRO do app, e a sonda headless (`fx_look_probe`) **não os reproduz sob
+nenhuma condição** — geometria esparsa, densa, rasterizador próprio ou Vello, tudo dá ripple no
+nível do controle. Cada diferença entre as duas foi eliminada por medição; o que resta é o que
+só o app tem, que são os pixels dele.
+
+`PH2D_FX_DUMP=<dir>` escreve, por forma cozida e **uma vez só**:
+
+- `path<id>.ppm` — a saída do FX, RGB composto sobre o cinza do app (é a foto);
+- `path<id>.pgm` — o ALFA cru dessa saída (é onde a rampa do feather vive);
+- `path<id>.txt` — os segmentos da silhueta e os parâmetros da pilha.
+
+Com isso a distância prevista pela GEOMETRIA e o alfa que a GPU de facto escreveu passam a ser
+comparáveis offline. Se discordarem, o campo está exato para uma forma diferente da que o Vello
+desenhou naquela textura — que é a única hipótese que sobrou.
+
+## `connector_walls.rs`
+
+> **O que uma linha ENXERGA** — de que ela desvia, e a que ela se prende.
+
+Módulo filho do [`crate::connector_live`] (teto de 600 LOC por arquivo da shell) e o lugar das
+duas únicas perguntas que ligam o DOCUMENTO à rota: *o que barra a linha?* (as paredes) e *a
+que uma ponta se prende?* (o alvo). Estar num arquivo só não é arrumação — as duas respostas
+são a mesma regra vista de dois lados, e é essa regra que fecha o laço:
+
+> **A rota de um conector NÃO PODE depender da pose de um rótulo.**
+
+Se depender — por qualquer das duas arestas —, o sistema tem realimentação. O rótulo de um
+conector mora **em cima da rota dele** (é onde ele nasce, no meio por comprimento de arco);
+então a rota reage ao rótulo, o rótulo se re-centra na rota nova, a rota reage de novo. Foi o
+que o Enio viu: *"linha e texto pulando sem parar"*.
+
+Um laço de realimentação não se amortece nem se clampa: **corta-se**. As duas arestas morrem
+aqui — [`is_annotation`] (o rótulo não é parede) e [`anchor_target`] (o rótulo não é alvo).
+
+## `fx_live_memo_tests.rs`
+
+> Gates da **CHAVE do memo** do FX raster — arquivo irmão de `fx_live_memo.rs`.
+
+O oráculo é a decisão que o `recook` toma na 1ª varredura, e ela é literalmente **um `==` entre
+duas chaves**: igual ⇒ os pixels que estão na textura servem; diferente ⇒ re-coza. Por isso os
+gates comparam CHAVES em vez de espiarem a GPU — a decisão inteira mora aqui, e mora aqui de
+propósito (ela vivia dentro do `recook`, que precisa de dispositivo, então nenhum teste headless
+a alcançava e o defeito abaixo atravessou a wave inteira com 18 gates verdes ao lado).
+
+O defeito medido (2026-07-29): **mudar a cor do preenchimento de uma forma filtrada não mudava a
+tela.** A pilha resolvida era a mesma, a caixa era a mesma, então o memo acertava.
+
+⚠️ **Um gate foi escrito e DESCARTADO em vez de shipado:** *"armar um Live Path Effect re-cozinha
+a forma"*. Ele passa com a chave ANTIGA (a `(pilha, w, h)`), porque **todo efeito de caminho move
+a caixa** — então ele não podia falhar pelo motivo que alegava, e a `effects` viaja para dentro da
+chave pelo `VecPath` inteiro de qualquer modo (não há lista de campos a esquecer). Verde por
+construção; a razão fica escrita aqui para ninguém o re-escrever achando que prova algo.
+
+## `guide.rs`
+
+> **A porta única de "onde está o caminho-guia, e como se percorre por arco?"**.
+
+Um caminho-guia é um `VecPath` normal — geometria LOCAL + pose no `Transform` (ADR-0111). Para
+algo o *cavalgar* (o texto em caminho, o Pattern Along Path, e o que vier), ele é lido **cozido
+e assado em MUNDO** e virado num [`ArcPath`]. Essa resolução tem três cuidados que discordar é
+bug:
+
+1. **cozido**, não a fonte crua — senão o que cavalga ignora as Live Corners e a pilha de
+   efeitos do guia (ADR-0121/0132);
+2. **assado pela pose de mundo** do guia — senão o padrão assenta onde o caminho NÃO está, e
+   mover o caminho deixa de mover o que o cavalga (a metade visível da feature);
+3. `total > 0` — um guia degenerado (menos de dois vértices, comprimento zero) não tem por onde
+   ser percorrido, e quem divide pelo total tem de o saber.
+
+O texto e o pattern faziam (ou fariam) esta MESMA pergunta. Duas cópias divergem no dia em que
+uma ganha um cuidado e a outra não — por isso mora aqui, e o `vec_text_ride::guide_of` delega.
+
+## `offset_live_tests.rs`
+
+> Gates do **Offset VIVO** — arquivo irmão de `offset_live.rs`.
+
+O fato do USUÁRIO que esta família existe para pinar (Enio, 2026-07-21):
+
+> *"no momento que aperto Round a curva já tem todos os vertex novos criados antes de
+> apertar apply … a idéia é bevel desfazer round e aplicar bevel. Só apply aplica
+> definitivamente o efeito."*
+
+Ou seja: enquanto o offset é PREVIEW, o documento guarda a curva AUTORADA — e é ela que o
+modo Node mostra. O resultado é DESENHO. `Apply Offset` (ou `Convert to Curves`) é o único
+momento em que os vértices do offset passam a existir.
+
+⚠️ **O oráculo NÃO é "os três joins diferem"** — isso é verdade mesmo compondo, e foi por
+isso que a rodada anterior ficou verde sobre o produto que o Enio reprovou. Os oráculos
+daqui são: (a) a curva autorada BYTE-IDÊNTICA através da cadeia de previews; (b) a
+identidade com um resultado FRESCO da forma pristina, âncora a âncora.
+
+## `snap_sprites.rs`
+
+> ⭐ **A caixa de um SPRITE como alvo de encaixe — a parte PURA**, fora da shell (W2/L4, A2).
+
+⚠️ **Nenhum concorrente tem isto, e a razão é estrutural:** nenhum deles mistura raster e
+vector na mesma hierarquia. Nós misturamos (ADR-0110), então alinhar uma forma à borda de um
+sprite é um gesto tão comum quanto alinhá-la a outra forma — e não havia alvo nenhum.
+
+# ⚠️ O módulo mantém o nome, e o irmão que ficou
+
+`sprite_snap_points` — quem varre o mundo à procura de sprites — **ficou na shell**, e não por
+tocar `gfx`: ele chama `crate::transform`, que não pôde sair porque **declara** por
+`#[path]` um teste que precisa de `crate::profile_live`. *A aresta que prende um ficheiro pode
+estar num módulo que ele declara, não no que ele usa.*
+
+O nome do módulo (`vec_snap_sprites`) é preservado porque ele entra no nome de cada teste: numa
+lista de `cargo nextest`, um módulo renomeado durante uma extracção é indistinguível de testes
+perdidos.
+
+## `appearance.rs`
+
+> ⭐⭐⭐ **A APARÊNCIA DO OBJECTO, do lado da shell** (estudo 42 item 2, v19 do schema) — o que o
+> painel mostra da selecção, e o que um gesto dele escreve no documento.
+
+Duas propriedades, e as duas são da FORMA e não da tinta: a **opacidade** (a forma inteira
+compõe-se uma vez e desvanece) e o **modo de mistura** (como ela se compõe com o que está por
+baixo dela na pilha de z).
+
+# A lei da selecção múltipla: MOSTRA «misto» onde diferem, ESCREVE o campo tocado em todas
+
+⭐ **Plano 31 da UI nova (decisão do dono, 18/10)** — revoga o «mostra o primário» que aqui
+estava. O primário mentia sobre as outras formas, e com o restyle a gravar o estilo INTEIRO ele
+APAGAVA: mexer na Width de duas formas pintava as duas com a cor do primário. O terceiro estado
+já existia nos widgets (amostra «misto», número em branco do BulkSelect do Inspector), e a
+objeção registada — *«o artista fica sem saber o que vai acontecer ao arrastar»* — cai com a
+escrita POR CAMPO: arrastar dá a todas esse valor, e nada mais muda. O slider fica no primário.
+A leitura mora em `paint_stack::published` (`mixed_opacity`, `mixed_blend`).
+
+## `autokey_smoke_bloco2.rs`
+
+> **As cenas do smoke «o Auto Key grava o bloco 2»** (F25) — `PH2D_AUTOKEY_SMOKE=11..13`, todas
+> a mexer sozinhas (a sonda mede) e a parar no quadro 18 para a foto.
+
+- `=11` VETOR: uma estrela com um FILTRO (Drop Shadow) e um perfil de largura (afina nas pontas),
+  e um TEXTO ao lado; Auto Key ligado. No quadro 12: o raio e a cor da sombra, o perfil (engrossa
+  no meio), o tamanho e a FAMÍLIA da fonte do texto e a quebra para Fixed; no 24 tudo volta; pára
+  no 18 com a estrela seleccionada e o painel rolado até aos filtros.
+- `=12` a mesma, a acabar com o TEXTO seleccionado e o painel rolado até ao texto.
+- `=13` INSPECTOR: uma sprite; no quadro 12 o skew, o tint e a emissão; no 24 voltam; pára no 18
+  com o Inspector à frente.
+- `=14|15` as juntas — [`crate::autokey_smoke_juntas`].
+
+⚠️ O texto nasce de um rectângulo cuja forma vira `VecShape::Text`: o desenho dos glifos coze-se
+na shell (a fonte do sistema), e a porta que a cena alcança é a mesma da curva — um tamanho
+escrito em `CanaisEscritos` ANTES de o Auto Key ligar, que o `canais::aplicar` devolve em
+`textos` e a shell re-coze. As mudanças do quadro 12/24 vão ao componente, como o painel faz.
+
+## `overlay.rs`
+
+> O que o frame vetorial desenha POR CIMA da cena, por modo de desenho (ADR-0112).
+
+Há duas famílias de overlay, com regras de visibilidade DIFERENTES — confundir as
+duas foi o bug do P1 (as guias de snap sumiam no modo Select):
+
+- **Overlays de edição** (âncoras, handles bézier, alças de gradiente, marquee de
+  box-select): só FORA do Select. No Select quem transforma a forma é o gizmo de
+  sprite; as alças de nó comeriam o clique dele (ADR-0112).
+- **Guias de snap** (as linhas que explicam o encaixe vivo): valem em QUALQUER
+  modo. O gizmo-move do Select encaixa a forma igual ao pen/shape-tool/node-edit,
+  então a guia precisa aparecer lá também — era o que faltava.
+
+A decisão vive aqui, fora do `render_loop`, para ser testável sem gfx/câmera: é o
+ponto que trava o P1 (uma regressão que re-agrupasse a guia sob o guard de modo
+quebra o teste abaixo, não só o smoke).
+
+## `overlay_diag.rs`
+
+> **Diagnóstico do overlay vetorial** — `PH2D_VEC_OVERLAY_DIAG=1`.
+
+Existe por um artefato que eu **não** consegui explicar por dedução: uma linha reta longa saindo
+de uma forma envolvida por envelope (Enio, 2026-07-18). Três hipóteses foram MEDIDAS e refutadas
+— a jacobiana do MLS é exata até o pino (não é cancelamento catastrófico), o kurbo não desenha
+nada numa haste de comprimento zero, e um segmento reto/degenerado atravessa o `warp_path` sem
+produzir ponto disparado.
+
+Quando a dedução falha três vezes, o passo certo não é a quarta hipótese: é **instrumentar o
+produto** ([[feedback_harness_reproduces_mechanism_not_context]]). Este módulo imprime, do frame
+REAL, quem tem geometria fora do lugar — e nomeia o dono do artefato em vez de o adivinhar.
+
+O sinal que ele procura é o que a foto mostra: um ponto de controle **muito** mais longe do que a
+própria forma mede. Uma alça sã vive perto da curva; uma disparada é a assinatura de uma tangente
+inválida a chegar ao fitter.
+
+## `paint_stack.rs`
+
+> ⭐⭐⭐ **OS VERBOS DA PILHA DE APARÊNCIA, do lado da shell** (estudo 42 item 4, v20).
+
+O que o painel MOSTRA da selecção, e o que cada clique dele escreve no documento.
+
+# A lei da selecção múltipla é a MESMA da aparência do objecto
+
+**Mostra o primário, escreve em todos** — a lei que a fileira de verbos booleanos já paga, e que
+veio de um report: *tocar num filho selecciona o GRUPO*, então o sujeito de um readout é a forma
+que o artista apontou.
+
+⚠️ **E a ESCRITA é por ÍNDICE**, o que tem uma consequência declarada: acrescentar uma camada
+acrescenta-a a **todas** as formas seleccionadas, e mexer na camada `2` mexe na `2` de cada uma.
+Isso é o que o artista espera quando escolhe cinco formas e carrega em *+ Stroke*; ⛔ o que ele
+**não** espera é que uma forma sem camada `2` ganhe uma — e por isso um índice que não existe é
+**saltado**, nunca criado.
+
+## `vec_bool_pick_tests.rs`
+
+> **O OPERANDO ABSORVIDO** — os gates do pick sobre a booleana viva, módulo irmão de [`super`]
+> pelo teto de LOC.
+
+Um grupo booleano vivo dá a tinta do resultado ao operando mais ao FUNDO e escreve uma lista
+**VAZIA** para todos os outros (`bool_live`). A lei do hit-test é *nada desenhado, nada pego* —
+logo, até 2026-08-22, cada um desses operandos era **inalcançável pelo canvas**: o artista
+configurava a booleana e passava a só conseguir agarrar UMA das formas (report do Enio).
+
+A cura não fura a lei, dá ao operando a porta que ele de facto tem: **a tinta do GRUPO que o
+absorveu**. É por isso que estes gates vêm aos pares — um que prova o alcance, e o seu gêmeo
+que prova que a tela limpa continua limpa. O par que interessa mais é o do `Subtract`: o
+cortador ocupa exactamente o buraco, então uma cura que o alcançasse pelo próprio footprint
+passaria no gate do alcance e **falharia** no da tela limpa.
+
+⚠️ Mutação canônica: fazer `VecViewState::absorbed_door` devolver sempre `None` (o produto de
+antes desta wave) tem de SANGRAR os gates de alcance e deixar VERDES os de regressão.
+
+## `vector_mode_fill_stroke.rs`
+
+> ⭐ **As cenas 45 e 46** (`PH2D_OBJECT_MODE_SMOKE=45|46`, F44 → F44b — Fill e Stroke no layout do
+> Figma, todas as linhas iguais). Um rectângulo com degradê linear (azul → roxo) de base, traço
+> escuro de base, e três camadas extra: uma SOMBRA (preenchimento deslocado), um BRILHO radial
+> (branco → transparente) e um contorno amarelo TRACEJADO por fora — selecionado, com o Inspector
+> rolado até à secção Fill. A 45 abre o ⚙ do BRILHO (uma camada extra com tipo e degradê, como a
+> base); a 46 esconde o traço de base pelo olho e abre o ⚙ do contorno amarelo (Position, pontas,
+> junções, tracejado — o «Stroke settings» de uma camada). F44c: a 45 acaba na seta branca, com
+> as alças do degradê do brilho no canvas.
+
+⭐ **A cena 47** (F45 — Fill & Stroke numa só pilha, na ordem livre): o mesmo rectângulo com o
+traço de base GROSSO, e a pilha fora da ordem antiga — a SOMBRA por baixo de tudo (o que antes
+era impossível), o PREENCHIMENTO de base por CIMA do traço de base (cobre a metade de dentro
+dele) e o contorno amarelo no topo (um traço por cima do preenchimento). Nenhum painel aberto: o
+dono arrasta os ⚙.
+
+⭐ **A cena 48** (os lados CAD curvos): a 47 com um canto puxado e outro preso por uma regra CAD — ver
+[`com_regra_e_um_ponto_puxado`].
+
+⭐ **A cena 49** (F47, «Above Effects»): sombra e desfoque nos Filtros; o traço de base marcado por
+cima deles e o amarelo não — ver [`por_cima_dos_filtros`].
+
+⭐ **A cena 50** (o Expand sobre a pilha, dono 02/11): a «etiqueta» — ver [`etiqueta`].
+
+## `connector_panel_tests.rs`
+
+> Testes do [`crate::connector_panel`] — módulo irmão (teto de 600 LOC por arquivo).
+
+O que eles provam, em ordem de importância:
+
+1. **A seção existe SSE há conector na seleção** (`selection_snapshot`): sem isso o
+   painel mostraria campos de um objeto que não é conector — ou esconderia os de um que
+   é. O teste é bilateral: inverter a condição sai vermelho dos dois lados.
+2. **A edição atinge TODOS os selecionados** — é o pedido do Enio (calibrar o diagrama
+   inteiro de uma vez). Editar só o primeiro passaria num teste de unidade do componente
+   e falharia na mão do usuário.
+3. **O campo nasce no valor EFETIVO** (o automático), não em zero — senão o número salta
+   no primeiro toque, longe da linha que o olho vê.
+4. **Editar FIXA** (`None` → `Some`) e o valor fixado **não é re-derivado** no frame
+   seguinte, nem quando as caixas mudam de tamanho.

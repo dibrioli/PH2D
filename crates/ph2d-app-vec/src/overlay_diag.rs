@@ -1,18 +1,6 @@
 //! **Diagnóstico do overlay vetorial** — `PH2D_VEC_OVERLAY_DIAG=1`.
 //!
-//! Existe por um artefato que eu **não** consegui explicar por dedução: uma linha reta longa saindo
-//! de uma forma envolvida por envelope (Enio, 2026-07-18). Três hipóteses foram MEDIDAS e refutadas
-//! — a jacobiana do MLS é exata até o pino (não é cancelamento catastrófico), o kurbo não desenha
-//! nada numa haste de comprimento zero, e um segmento reto/degenerado atravessa o `warp_path` sem
-//! produzir ponto disparado.
-//!
-//! Quando a dedução falha três vezes, o passo certo não é a quarta hipótese: é **instrumentar o
-//! produto** ([[feedback_harness_reproduces_mechanism_not_context]]). Este módulo imprime, do frame
-//! REAL, quem tem geometria fora do lugar — e nomeia o dono do artefato em vez de o adivinhar.
-//!
-//! O sinal que ele procura é o que a foto mostra: um ponto de controle **muito** mais longe do que a
-//! própria forma mede. Uma alça sã vive perto da curva; uma disparada é a assinatura de uma tangente
-//! inválida a chegar ao fitter.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `overlay_diag.rs`.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 

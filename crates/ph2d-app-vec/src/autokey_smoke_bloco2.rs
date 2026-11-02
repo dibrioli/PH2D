@@ -1,19 +1,7 @@
 //! **As cenas do smoke «o Auto Key grava o bloco 2»** (F25) — `PH2D_AUTOKEY_SMOKE=11..13`, todas
 //! a mexer sozinhas (a sonda mede) e a parar no quadro 18 para a foto.
 //!
-//! - `=11` VETOR: uma estrela com um FILTRO (Drop Shadow) e um perfil de largura (afina nas pontas),
-//!   e um TEXTO ao lado; Auto Key ligado. No quadro 12: o raio e a cor da sombra, o perfil (engrossa
-//!   no meio), o tamanho e a FAMÍLIA da fonte do texto e a quebra para Fixed; no 24 tudo volta; pára
-//!   no 18 com a estrela seleccionada e o painel rolado até aos filtros.
-//! - `=12` a mesma, a acabar com o TEXTO seleccionado e o painel rolado até ao texto.
-//! - `=13` INSPECTOR: uma sprite; no quadro 12 o skew, o tint e a emissão; no 24 voltam; pára no 18
-//!   com o Inspector à frente.
-//! - `=14|15` as juntas — [`crate::autokey_smoke_juntas`].
-//!
-//! ⚠️ O texto nasce de um rectângulo cuja forma vira `VecShape::Text`: o desenho dos glifos coze-se
-//! na shell (a fonte do sistema), e a porta que a cena alcança é a mesma da curva — um tamanho
-//! escrito em `CanaisEscritos` ANTES de o Auto Key ligar, que o `canais::aplicar` devolve em
-//! `textos` e a shell re-coze. As mudanças do quadro 12/24 vão ao componente, como o painel faz.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `autokey_smoke_bloco2.rs`.
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::canal::familia::VETOR;

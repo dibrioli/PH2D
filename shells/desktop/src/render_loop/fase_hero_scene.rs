@@ -78,7 +78,7 @@ impl crate::App {
                 sel,
             )?;
             vec_xf = vec_xf_back;
-            let (group, sel) = self.fase_vector_bool_shape_row(
+            let sel = self.fase_vector_bool_shape_row(
                 fase_vector_bool_shape_row::BoolShapeIntents {
                     pending_bool_shape_op: take(&mut pd.pending_bool_shape_op),
                 },
@@ -92,9 +92,8 @@ impl crate::App {
             );
             self.fase_vector_bool_apply_and_morph_reconcile(
                 fase_vector_bool_apply_and_morph_reconcile::BoolApplyIntents {
-                    pending_bool_apply: take(&mut pd.pending_bool_apply),
+                    pending_vec_flatten: take(&mut pd.pending_vec_flatten),
                 },
-                group,
             );
         }
         let (vec_view, vec_live, vec_xf) =

@@ -81,11 +81,8 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     super::filters::populate_filters(store);
     super::effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
-    // A BOOLEANA VIVA (plano UI/UX W1): o par de modo + o commit. Sem estas linhas os tres
-    // pintam e ficam MORTOS sob o mouse -- a falha exata que esta lista existe para prevenir.
-    button(store, crate::ids::VECTOR_BOOL_LIVE_OFF);
-    button(store, crate::ids::VECTOR_BOOL_LIVE_ON);
-    button(store, crate::ids::VECTOR_BOOL_APPLY);
+    // O FLATTEN (F50): sem esta linha ele pinta na ④ e fica MORTO sob o mouse.
+    button(store, crate::ids::VECTOR_FLATTEN);
     // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
     button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK);
     button(store, ph2d_tool_vector::ids::VECTOR_BOOL_TRIM);

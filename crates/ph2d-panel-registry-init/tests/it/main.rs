@@ -36,6 +36,7 @@ mod switching_layout_rearranges_the_screen;
 mod the_app_frame_is_reachable_by_the_hit_index;
 mod the_area_hands_its_commands_to_the_bar_and_the_app_menu;
 mod the_mode_selector_answers_a_real_click;
+mod the_more_of_the_action_bar_opens_the_rare_verbs; // F50: o «⋯» da ④
 mod the_name_of_a_panel_has_one_source;
 #[cfg(feature = "panel-vector")]
 mod the_painter_tools_live_in_the_vector_column; // as ferramentas do pintor na coluna do vetor (23/10)

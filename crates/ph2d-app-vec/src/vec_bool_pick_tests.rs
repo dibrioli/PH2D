@@ -1,19 +1,7 @@
 //! **O OPERANDO ABSORVIDO** — os gates do pick sobre a booleana viva, módulo irmão de [`super`]
 //! pelo teto de LOC.
 //!
-//! Um grupo booleano vivo dá a tinta do resultado ao operando mais ao FUNDO e escreve uma lista
-//! **VAZIA** para todos os outros (`bool_live`). A lei do hit-test é *nada desenhado, nada pego* —
-//! logo, até 2026-08-22, cada um desses operandos era **inalcançável pelo canvas**: o artista
-//! configurava a booleana e passava a só conseguir agarrar UMA das formas (report do Enio).
-//!
-//! A cura não fura a lei, dá ao operando a porta que ele de facto tem: **a tinta do GRUPO que o
-//! absorveu**. É por isso que estes gates vêm aos pares — um que prova o alcance, e o seu gêmeo
-//! que prova que a tela limpa continua limpa. O par que interessa mais é o do `Subtract`: o
-//! cortador ocupa exactamente o buraco, então uma cura que o alcançasse pelo próprio footprint
-//! passaria no gate do alcance e **falharia** no da tela limpa.
-//!
-//! ⚠️ Mutação canônica: fazer `VecViewState::absorbed_door` devolver sempre `None` (o produto de
-//! antes desta wave) tem de SANGRAR os gates de alcance e deixar VERDES os de regressão.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vec_bool_pick_tests.rs`.
 
 use super::*;
 use ph2d_ecs::VecBoolGroup;

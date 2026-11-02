@@ -116,6 +116,9 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
                 |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == b.id),
             ) || hero.store.picker_target().is_some()
                 || b.id == ph2d_editor_core::ids::SELECTION_ACTIONS_PIN
+                // F50: o «⋯» abre o menu das raras (gate próprio: `the_more_of_the_action_bar_…`).
+                || (b.id == ph2d_editor_core::ids::SELECTION_ACTIONS_MORE
+                    && hero.store.context_menu().is_some())
                 || (b.id == ph2d_panel_vector::ids::VECTOR_VIEW_INTERFACE && trocou);
             if trocou {
                 hero.apply_event(WidgetEvent::Click(b.id));
@@ -127,6 +130,7 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
             );
             hero.store.set_picker_target(None);
             hero.store.set_selection_actions_pinned(false);
+            hero.store.close_context_menu();
             medidos += 1;
         }
     }

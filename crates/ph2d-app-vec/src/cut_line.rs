@@ -1,23 +1,6 @@
 //! **A LINHA DE CORTE** — o caminho que a tesoura usa como lâmina (plano 25 §7).
 //!
-//! Espelho exato do `connector_live::upkeep` e do `blend_live::upkeep`: um caminho novo já está
-//! na cena desde o press, mas a **entidade** dele só nasce no `vec_entities::sync`, mais adiante
-//! no mesmo frame — então o componente que o marca como lâmina não pode ser pendurado no press.
-//! A fila de um item (`VecState::cut_pending`) é o que atravessa esse vão.
-//!
-//! # Uma lâmina de cada vez
-//!
-//! Desenhar uma linha nova **substitui** a anterior. A alternativa — recusar enquanto houver uma
-//! — deixaria o modo Cut morto exatamente quando ele parece estar funcionando (o pill aceso, a
-//! caneta a não desenhar nada), e o botão *Discard* existe para o outro caso: tirar a lâmina da
-//! tela quando se acabou de cortar.
-//!
-//! # A lâmina não é obra
-//!
-//! Ela perde `fill` e `stroke` ao ser adotada, e quem a desenha é o **overlay** (hachurada, com
-//! a tesoura na ponta). Duas razões, e as duas são de produto: uma lâmina que herdasse a cor e a
-//! espessura do traço corrente seria indistinguível de um desenho, e uma lâmina com estilo sairia
-//! no export — que é o mesmo que dizer que ela não é uma ferramenta.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `cut_line.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecCutPath};
 use ph2d_vec_scene::{VecPathId, VecScene};

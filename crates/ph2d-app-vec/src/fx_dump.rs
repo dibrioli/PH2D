@@ -1,20 +1,6 @@
 //! **O DESPEJO dos pixels do FX** — a sonda que só o app pode dar.
 //!
-//! Irmão de [`crate::fx_live`] pelo teto de LOC, e existe por um motivo medido: o smoke reporta
-//! dentes no feather DENTRO do app, e a sonda headless (`fx_look_probe`) **não os reproduz sob
-//! nenhuma condição** — geometria esparsa, densa, rasterizador próprio ou Vello, tudo dá ripple no
-//! nível do controle. Cada diferença entre as duas foi eliminada por medição; o que resta é o que
-//! só o app tem, que são os pixels dele.
-//!
-//! `PH2D_FX_DUMP=<dir>` escreve, por forma cozida e **uma vez só**:
-//!
-//! - `path<id>.ppm` — a saída do FX, RGB composto sobre o cinza do app (é a foto);
-//! - `path<id>.pgm` — o ALFA cru dessa saída (é onde a rampa do feather vive);
-//! - `path<id>.txt` — os segmentos da silhueta e os parâmetros da pilha.
-//!
-//! Com isso a distância prevista pela GEOMETRIA e o alfa que a GPU de facto escreveu passam a ser
-//! comparáveis offline. Se discordarem, o campo está exato para uma forma diferente da que o Vello
-//! desenhou naquela textura — que é a única hipótese que sobrou.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `fx_dump.rs`.
 
 use std::collections::BTreeSet;
 use std::io::Write;

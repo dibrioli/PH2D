@@ -7,19 +7,7 @@
 //! junções, tracejado — o «Stroke settings» de uma camada). F44c: a 45 acaba na seta branca, com
 //! as alças do degradê do brilho no canvas.
 //!
-//! ⭐ **A cena 47** (F45 — Fill & Stroke numa só pilha, na ordem livre): o mesmo rectângulo com o
-//! traço de base GROSSO, e a pilha fora da ordem antiga — a SOMBRA por baixo de tudo (o que antes
-//! era impossível), o PREENCHIMENTO de base por CIMA do traço de base (cobre a metade de dentro
-//! dele) e o contorno amarelo no topo (um traço por cima do preenchimento). Nenhum painel aberto: o
-//! dono arrasta os ⚙.
-//!
-//! ⭐ **A cena 48** (os lados CAD curvos): a 47 com um canto puxado e outro preso por uma regra CAD — ver
-//! [`com_regra_e_um_ponto_puxado`].
-//!
-//! ⭐ **A cena 49** (F47, «Above Effects»): sombra e desfoque nos Filtros; o traço de base marcado por
-//! cima deles e o amarelo não — ver [`por_cima_dos_filtros`].
-//!
-//! ⭐ **A cena 50** (o Expand sobre a pilha, dono 02/11): a «etiqueta» — ver [`etiqueta`].
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vector_mode_fill_stroke.rs`.
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;

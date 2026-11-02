@@ -1,21 +1,6 @@
 //! ⭐⭐⭐⭐ **O BOTÃO `Smooth` ENTREGA — os gates do controlo que estava MORTO.**
 //!
-//! Irmão do [`super`] por RESPONSABILIDADE: *a arte obedece à lei da pele* é uma pergunta (a dele),
-//! *o segundo segmento do par `Fast`/`Smooth` faz alguma coisa* é outra.
-//!
-//! # O defeito (auditoria de 2026-09-16)
-//!
-//! O painel *Bones* tem um par de segmentos `Fast`/`Smooth` ([`ph2d_tool_vector::SkinDeform::ALL`],
-//! registado e pintado). Medido nesta cena, o `Smooth` entregava **a malha do `Fast`, ao bit**: a
-//! lei de refinamento de então era o `k` GLOBAL, cujo tecto é `⌊√(orçamento / peças)⌋`, e toda malha
-//! acima de `orçamento / 4` peças só admite `k = 1`.
-//!
-//! ⛔⛔ **É a terceira espécie de controlo morto do `CLAUDE.md` §5.0, e a sonda de registo é cega a
-//! ela:** o id existe, é pintado, é registado, o clique chega à ferramenta e o valor chega ao
-//! consumidor — *e o consumidor devolve a entrada*. Nenhum censo deste repo pergunta se a saída
-//! MUDA.
-//!
-//! ⇒ é essa a pergunta que estes gates fazem, e o controlo da resposta é a lei antiga a reprovar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone_paint_smooth_tests.rs`.
 
 use super::*;
 

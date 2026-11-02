@@ -21,7 +21,7 @@ mod actions;
 mod control;
 #[path = "bars_row.rs"]
 mod row;
-use actions::{actions, actions_below};
+use actions::{actions, actions_below, more};
 pub(crate) use control::{
     body_ctx, close_list_on_pick, paint_bar_popovers, populate as populate_control,
     stroke_popover_open, toggle_list,
@@ -446,6 +446,11 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
             actions(snap.mode, sel)
         },
         actions_below: actions_below(snap.mode, sel),
+        actions_more: if rules || hud {
+            Vec::new()
+        } else {
+            more(snap.mode, sel)
+        },
         selection: if rules {
             crate::state_cad::cad_vista().ancora
         } else if hud {

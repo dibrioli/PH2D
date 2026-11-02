@@ -1,19 +1,6 @@
 //! **O que uma linha ENXERGA** — de que ela desvia, e a que ela se prende.
 //!
-//! Módulo filho do [`crate::connector_live`] (teto de 600 LOC por arquivo da shell) e o lugar das
-//! duas únicas perguntas que ligam o DOCUMENTO à rota: *o que barra a linha?* (as paredes) e *a
-//! que uma ponta se prende?* (o alvo). Estar num arquivo só não é arrumação — as duas respostas
-//! são a mesma regra vista de dois lados, e é essa regra que fecha o laço:
-//!
-//! > **A rota de um conector NÃO PODE depender da pose de um rótulo.**
-//!
-//! Se depender — por qualquer das duas arestas —, o sistema tem realimentação. O rótulo de um
-//! conector mora **em cima da rota dele** (é onde ele nasce, no meio por comprimento de arco);
-//! então a rota reage ao rótulo, o rótulo se re-centra na rota nova, a rota reage de novo. Foi o
-//! que o Enio viu: *"linha e texto pulando sem parar"*.
-//!
-//! Um laço de realimentação não se amortece nem se clampa: **corta-se**. As duas arestas morrem
-//! aqui — [`is_annotation`] (o rótulo não é parede) e [`anchor_target`] (o rótulo não é alvo).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `connector_walls.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecConnector, VecLabel, VecShape};
 use ph2d_vec_connect::Aabb;

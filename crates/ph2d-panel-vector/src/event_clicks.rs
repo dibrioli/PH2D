@@ -437,9 +437,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
 /// o report que o Enio já deu duas vezes sobre esta mesma fileira.
 fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_BOOL_UNION
-        || id == crate::ids::VECTOR_BOOL_LIVE_OFF
-        || id == crate::ids::VECTOR_BOOL_LIVE_ON
-        || id == crate::ids::VECTOR_BOOL_APPLY
+        || id == crate::ids::VECTOR_FLATTEN
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_TRIM
         || id == ph2d_tool_vector::ids::VECTOR_BOOL_CROP

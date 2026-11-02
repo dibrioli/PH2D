@@ -1,20 +1,6 @@
 //! Testes do [`crate::blend_live`] — módulo irmão (teto de 600 LOC por arquivo da shell).
 //!
-//! O que eles provam, em ordem de importância:
-//!
-//! 1. **A transição SEGUE a forma** (`moving_a_source_reflows_the_blend`) — a feature inteira numa
-//!    asserção: mover uma fonte re-coza o overlay, sem re-clicar "Blend".
-//! 2. **Girar QUALQUER ponta refaz os passos** (`rotating_either_endpoint_reflows_the_blend`) — a
-//!    simetria; o "a última não influencia" do smoke era o CÍRCULO (rotacionalmente simétrico).
-//! 3. **A última forma fica POR CIMA** (`the_last_source_is_drawn_on_top`) — a pilha de z do
-//!    Illustrator: fonte0 embaixo → passos → fonte1 em cima.
-//! 4. A cadeia é pairwise; o blend vive na identidade; o `settle` o pula; um elo morto é pulado.
-//!
-//! # O `out` do recook é o OVERLAY ORDENADO (passos + fontes reempilhadas)
-//!
-//! Não é "os passos": é o que o passe de render desenha, em z. Para cada elo, os passos e **a
-//! fonte de cima** (redesenhada por cima deles) — só a fonte0 fica no z da cena. Por isso o tamanho
-//! é `(elos)·(passos+1)`, e o último item é sempre a última fonte.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `blend_live_tests.rs`.
 
 use super::*;
 use ph2d_vec_scene::{ShapeKind, VecScene, cook, rectangle};

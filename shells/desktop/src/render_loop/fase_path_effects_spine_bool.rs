@@ -68,27 +68,16 @@ impl crate::App {
             crate::blend_live::set_selected_steps(sim, &self.vec.entities, &self.vec.pen, steps);
         }
         if let Some(op) = pending_vec_bool {
-            // **Um clique, três destinos** (`bool_gesture`): re-mirar um grupo booleano que a
-            // seleção já habita · criar um, com o modo `Live` ligado · ou o caminho
-            // destrutivo de sempre. ⚠️ A ordem é a lei: sem o primeiro, clicar "Intersect"
-            // sobre um grupo vivo com o modo desligado CONSUMIRIA os operandos, e o artista
-            // perderia a arte no gesto que ele fez para trocar a operação.
+            // **A booleana é sempre VIVA** (F50, dono 02/11: «faça como o Figma»): re-mira o
+            // grupo que a seleção já habita, ou cria um. O permanente é o Flatten.
             let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            let live_mode = ph2d_panel_vector::state::bool_live_on();
-            let has_group =
-                crate::bool_gesture::group_of_selection(sim, &self.vec.entities, &sel).is_some();
-            if has_group || live_mode {
-                crate::bool_gesture::arm(
-                    sim,
-                    vec_scene,
-                    &self.vec.entities,
-                    &sel,
-                    crate::bool_live::code_of_op(op),
-                );
-            } else {
-                let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                crate::input_dispatch::apply_vec_boolean(vec_scene, &mut self.vec.pen, &xf, op);
-            }
+            crate::bool_gesture::arm(
+                sim,
+                vec_scene,
+                &self.vec.entities,
+                &sel,
+                crate::bool_live::code_of_op(op),
+            );
         }
     }
 }

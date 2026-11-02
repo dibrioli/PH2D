@@ -333,15 +333,17 @@ impl crate::App {
             })
     }
 
-    /// ADR-0108 Fase 1: booleana N-ária sobre as regiões fechadas SELECIONADAS
-    /// (hotkeys U/I/D/X). Delega ao livre [`apply_vec_boolean`] com os refs
-    /// decompostos — o mesmo caminho usado pelos botões Boolean do painel (drain
-    /// do render_loop, onde `self.gfx` já está destruturado e o método não é
-    /// chamável).
+    /// Os atalhos booleanos (`Ctrl+Alt+U/I/D/X`): a MESMA booleana viva dos botões da ④ (F50).
     pub(super) fn vec_boolean(&mut self, op: ph2d_vec_boolean::PathfinderOp) {
         if let Some(gfx) = self.gfx.as_mut() {
-            let xf = ph2d_vec_entities::transform::build(&gfx.sim, &self.vec.entities);
-            apply_vec_boolean(&mut gfx.vec_scene, &mut self.vec.pen, &xf, op);
+            let sel = self.vec.pen.selected_paths().to_vec();
+            crate::bool_gesture::arm(
+                &mut gfx.sim,
+                &gfx.vec_scene,
+                &self.vec.entities,
+                &sel,
+                crate::bool_live::code_of_op(op),
+            );
         }
     }
 

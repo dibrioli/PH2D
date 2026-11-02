@@ -53,7 +53,7 @@ pub(super) fn step(
     h: u8,
 ) -> Option<u8> {
     match s {
-        alinhar::FIRST..=alinhar::LAST => alinhar::step(s, vec, scene, sim, hero, h == 38),
+        alinhar::FIRST..=alinhar::LAST => alinhar::step(s, vec, scene, sim, hero, h),
         tracejado::FIRST..=tracejado::LAST => tracejado::step(s, vec, scene, hero),
         interface::FIRST..=interface::LAST => {
             // As 27/28 continuam pela fila vestida; as 29/30 pelo Hover regravado; a 35 pelo gesto; a 37

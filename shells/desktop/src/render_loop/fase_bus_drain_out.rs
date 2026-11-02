@@ -155,12 +155,11 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_ui_signal_name: Option<(usize, String)>,
     pub(in crate::render_loop) pending_ui_preview_toggle: bool,
     pub(in crate::render_loop) pending_ui_move_all_toggle: bool,
-    // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
-    // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
-    // plano existe. Aqui só se anota o clique.
+    // **O FLATTEN** (F50): consolida o que o produtor cozinhou NESTE frame, então ele não pode
+    // correr aqui — corre logo depois do `recook`, onde o plano existe. Aqui só se anota o clique.
     pub(in crate::render_loop) pending_morph_arrow: Option<crate::vec_morph_edit::MorphCmd>,
     pub(in crate::render_loop) pending_morph_preview_toggle: bool,
-    pub(in crate::render_loop) pending_bool_apply: bool,
+    pub(in crate::render_loop) pending_vec_flatten: bool,
     // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
     pub(in crate::render_loop) pending_frame_clip: Option<bool>,
     // **O VERBO DA FORMA selecionada** dentro de uma booleana viva (2026-08-22).

@@ -1,30 +1,6 @@
 //! ⛔⛔ **NENHUM FICHEIRO DESTA CRATE FICA SEM `mod`** — o gate de um defeito que é MUDO por natureza.
 //!
-//! # O que aconteceu, e porque nada o apanhou
-//!
-//! Na W2 Fase D o `bool_reach_tests.rs` mudou-se da shell para cá. Na shell ele era um
-//! `#[cfg(test)] mod` de TOPO, declarado no `main.rs`; a declaração foi apagada de lá e **nenhuma
-//! foi escrita aqui**. Um ficheiro `.rs` que nenhum `mod` declara **não é compilado** — ele fica no
-//! disco, no git, no diff, e fora do build.
-//!
-//! ⇒ os **três** gates que ele contém evaporaram-se, e:
-//!
-//! | instrumento | o que ele disse |
-//! |---|---|
-//! | `cargo check -p ph2d-app-vec --all-targets` | **verde** |
-//! | `cargo check -p ph2d-host-desktop --all-targets` | **verde** |
-//! | `cargo clippy` | **verde** |
-//! | a suíte da crate | **verde** — com três testes a menos, e ninguém conta os que faltam |
-//! | `cargo test --test it` | **verde** |
-//!
-//! *Não há nada para verificar num ficheiro que não entra no build.* O que o acusou foi o `ONLY-A`
-//! da prova de `nextest-list-diff` — é literalmente para isto que aquele número existe.
-//!
-//! # ⚠️ Porque este gate vive aqui e não na shell
-//!
-//! Ele mede a **árvore desta crate**, e o sujeito é o `src/` dela. É a mesma forma do censo de
-//! órfãos que o `CLAUDE.md` §5.0 descreve (*«o ÓRFÃO e o DUPLICADO são as duas metades do MESMO
-//! audit, os dois mudos»*), aplicada ao sítio onde o movimento acontece.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `no_orphan_module_tests.rs`.
 
 use std::collections::BTreeSet;
 use std::fs;

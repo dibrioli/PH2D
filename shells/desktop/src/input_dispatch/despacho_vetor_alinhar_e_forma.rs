@@ -237,7 +237,7 @@ pub(crate) fn vec_transform_field_for_id(
 /// Apply a numeric transform edit to the SELECTED path: X/Y translate the anchor
 /// bbox top-left to `target`; W/H scale (about the bbox min) so that dimension
 /// becomes `target` (clamped > 0; a degenerate dimension can't be resized).
-/// Records ONE undo step iff it changed. Free fn (mirror of [`apply_vec_boolean`]).
+/// Records ONE undo step iff it changed. Free fn (mirror of [`apply_vec_compound`]).
 ///
 /// ⚠️ **O `sim`/`map` estão aqui pela RECEITA, e não por conveniência.** Um `W`/`H` escala a
 /// GEOMETRIA (`scale_path`), e a geometria de uma forma VIVA é derivada do `w`/`h` guardado no

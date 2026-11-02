@@ -5,6 +5,7 @@
 use super::button;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{BarButton, BarFamily};
+use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::DrawMode;
 use ph2d_tool_vector::ids;
@@ -96,9 +97,8 @@ pub(super) fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
             BarFamily::Neutral,
         )]);
     }
-    // ⭐ (dono 15/10) **Dentro de uma booleana viva**: o verbo da forma em mãos (aceso o dela) e o
-    // Apply — com UMA forma selecionada, que é como se aponta um filho; sem isto a ④ não deixava
-    // mudar o modo. A regra de quando há fileira (a base não tem verbo…) é da shell (`vec_bool_shape`).
+    // ⭐ (dono 15/10) **Dentro de uma booleana viva**: o verbo da forma em mãos (aceso o dela) — com
+    // UMA forma selecionada, que é como se aponta um filho; sem isto a ④ não deixava mudar o modo. A regra de quando há fileira (a base não tem verbo…) é da shell (`vec_bool_shape`).
     if let Some((code, name)) = crate::state::bool_shape_row() {
         let shape = if name.is_empty() {
             tr("panel.vector.bool.shape").to_owned()
@@ -140,52 +140,7 @@ pub(super) fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
                 .collect(),
         );
     }
-    if crate::state::bool_group_selected() {
-        out.push(vec![b(
-            crate::ids::VECTOR_BOOL_APPLY,
-            IconId::Check,
-            "panel.vector.bool.apply",
-        )]);
-    }
-    if sel >= 2 {
-        // ⭐ (dono 15/10) A BOOLEANA VIVA à frente das quatro: é o MODO delas (`On` cria um grupo
-        // cujos filhos continuam editáveis). Um interruptor: aceso = ligada, e o id é o do estado
-        // OPOSTO — o clique pede o que ainda não é (a mesma lei dos chips do encaixe).
-        let live = crate::state::bool_live_on();
-        out.push(vec![
-            button(
-                if live {
-                    crate::ids::VECTOR_BOOL_LIVE_OFF
-                } else {
-                    crate::ids::VECTOR_BOOL_LIVE_ON
-                },
-                IconId::Link,
-                tr("panel.vector.bar.bool_live").to_owned(),
-                live,
-                BarFamily::Neutral,
-            ),
-            b(
-                crate::ids::VECTOR_BOOL_UNION,
-                IconId::BoolUnion,
-                "panel.vector.bool.union",
-            ),
-            b(
-                crate::ids::VECTOR_BOOL_SUBTRACT,
-                IconId::BoolSubtract,
-                "panel.vector.bool.subtract",
-            ),
-            b(
-                crate::ids::VECTOR_BOOL_INTERSECT,
-                IconId::BoolIntersect,
-                "panel.vector.bool.intersect",
-            ),
-            b(
-                crate::ids::VECTOR_BOOL_EXCLUDE,
-                IconId::BoolExclude,
-                "panel.vector.bool.exclude",
-            ),
-        ]);
-    }
+    out.push(combine(sel));
     // ⭐ O ARRANJO inteiro (dono 15/10: a secção Arrange saiu do painel): a ordem na pilha, da
     // frente para trás, e a orientação. O Z numérico é do Inspector no modo Objeto (a ordenação).
     // ⛔ O Duplicate saiu (dono 15/10, F16): ficam o Ctrl+D e o menu da Hierarchy.
@@ -256,6 +211,102 @@ pub(super) fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
         ));
         out.push(path);
     }
+    out
+}
+
+/// ⭐ F50 (dono 02/11: «faça como o Figma») **O que COMBINA formas**: as quatro booleanas (acesa a
+/// do grupo vivo escolhido — trocar é clicar noutra), o `Flatten` que torna permanente, e o
+/// `Outline Stroke`. A booleana é sempre viva; com uma forma solta só o Outline Stroke serve.
+fn combine(sel: usize) -> Vec<BarButton> {
+    let op = crate::state::bool_group_op();
+    let mut out = Vec::new();
+    if sel >= 2 || op.is_some() {
+        let ops = [
+            (
+                crate::ids::VECTOR_BOOL_UNION,
+                IconId::BoolUnion,
+                "panel.vector.bar.union",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_SUBTRACT,
+                IconId::BoolSubtract,
+                "panel.vector.bar.subtract",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_INTERSECT,
+                IconId::BoolIntersect,
+                "panel.vector.bar.intersect",
+            ),
+            (
+                crate::ids::VECTOR_BOOL_EXCLUDE,
+                IconId::BoolExclude,
+                "panel.vector.bar.exclude",
+            ),
+        ];
+        out.extend(ops.into_iter().zip(0u8..).map(|((id, icon, key), code)| {
+            button(
+                id,
+                icon,
+                tr(key).to_owned(),
+                op == Some(code),
+                BarFamily::Neutral,
+            )
+        }));
+        out.push(button(
+            crate::ids::VECTOR_FLATTEN,
+            IconId::Flatten,
+            tr("panel.vector.bar.flatten").to_owned(),
+            false,
+            BarFamily::Neutral,
+        ));
+    }
+    out.push(button(
+        ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
+        IconId::OutlineStroke,
+        tr("panel.vector.bar.outline_stroke").to_owned(),
+        false,
+        BarFamily::Stroke,
+    ));
+    out
+}
+
+/// ⭐ F50 **O «⋯» da ④** — as raras: as quatro receitas do Pathfinder (com duas formas ou um grupo
+/// vivo) e o Compound; o Release com qualquer seleção. Os ids são os do painel (a mesma porta).
+pub(super) fn more(mode: DrawMode, sel: usize) -> Vec<ToolRailEntry> {
+    if sel == 0 || PRECISE.contains(&mode) || matches!(mode, DrawMode::Cut | DrawMode::Offset) {
+        return Vec::new();
+    }
+    let row = |id, key: &str| ToolRailEntry::icon(id, tr(key), IconId::MoreHorizontal);
+    let mut out = Vec::new();
+    if sel >= 2 || crate::state::bool_group_selected() {
+        out.extend([
+            row(
+                ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK,
+                "panel.vector.more.minus_back",
+            ),
+            row(
+                ph2d_tool_vector::ids::VECTOR_BOOL_TRIM,
+                "panel.vector.more.trim",
+            ),
+            row(
+                ph2d_tool_vector::ids::VECTOR_BOOL_CROP,
+                "panel.vector.more.crop",
+            ),
+            row(
+                ph2d_tool_vector::ids::VECTOR_BOOL_MERGE,
+                "panel.vector.more.merge",
+            ),
+            ToolRailEntry::Divider,
+            row(
+                ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE,
+                "panel.vector.more.compound",
+            ),
+        ]);
+    }
+    out.push(row(
+        crate::ids::VECTOR_COMPOUND_RELEASE,
+        "panel.vector.more.release",
+    ));
     out
 }
 

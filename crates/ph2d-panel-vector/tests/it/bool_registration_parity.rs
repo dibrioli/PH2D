@@ -14,8 +14,9 @@
 //! - e, em 2026-08-22, os **4 chips do verbo por forma** — que levaram o Enio a reportar
 //!   *"os botões não funcionam"* **duas vezes**.
 //!
-//! ⚠️ O `seam_bool.rs` apanha os quatro que existem HOJE, com o gesto real. Este gate apanha **o
-//! quinto**, no dia em que alguém o acrescentar — que é a diferença entre consertar e prevenir.
+//! ⚠️ O gesto real sobre a ④ (`the_vector_bars_answer_a_real_pointer`, crate do registo) apanha os
+//! que existem HOJE. Este gate apanha **o próximo**, no dia em que alguém o acrescentar — que é a
+//! diferença entre consertar e prevenir.
 //!
 //! # Por que a família `VECTOR_BOOL_*`, e não todo id do painel
 //!
@@ -32,15 +33,18 @@ fn read(rel: &str) -> String {
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("não leio {}: {e}", path.display()))
 }
 
-/// Os nomes `VECTOR_BOOL_*` que aparecem em `src`, sem o prefixo `ids::`.
+/// Os nomes da família que COMBINA formas (`VECTOR_BOOL_*`, `VECTOR_FLATTEN`, `VECTOR_COMPOUND_*`)
+/// que aparecem em `src`, sem o prefixo `ids::`.
 fn bool_ids(src: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    for (i, _) in src.match_indices("VECTOR_BOOL_") {
-        let tail = &src[i..];
-        let end = tail
-            .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-            .unwrap_or(tail.len());
-        out.insert(tail[..end].to_string());
+    for prefix in ["VECTOR_BOOL_", "VECTOR_FLATTEN", "VECTOR_COMPOUND_"] {
+        for (i, _) in src.match_indices(prefix) {
+            let tail = &src[i..];
+            let end = tail
+                .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                .unwrap_or(tail.len());
+            out.insert(tail[..end].to_string());
+        }
     }
     out
 }
@@ -53,12 +57,11 @@ fn bool_ids(src: &str) -> BTreeSet<String> {
 /// clique — foi por isso que o report *"não funcionam"* não bastou para localizar a causa.
 #[test]
 fn every_painted_boolean_chip_is_registered_in_populate() {
-    // ⚠️ **O ficheiro mudou em 2026-09-05** — a seção Boolean saiu do `paint_sections.rs` (que é a
-    // caixa de ferramentas do corpo) para o irmão `paint_boolean.rs`, pelo teto de LOC. ⭐ **O
-    // CONTROLO deste gate apanhou a mudança**: com o scanner apontado ao ficheiro velho ele leu
-    // ZERO ids e disparou o `!painted.is_empty()` — *a régua quebrou, não o produto*, exactamente
-    // como o doc dele promete. Sem essa metade, o gate teria ficado **verde sobre nada**.
-    let painted = bool_ids(&read("src/paint_boolean.rs"));
+    // ⚠️ **O ficheiro mudou em 2026-09-05 e outra vez em 2026-11-02** — a secção Boolean saiu do
+    // `paint_sections.rs` para o `paint_boolean.rs` (teto de LOC), e na F50 saiu do PAINEL para a
+    // barra ④ e o «⋯» dela (`bars_actions.rs`). O controlo `!painted.is_empty()` é o que apanha
+    // a régua apontada a um ficheiro velho: *a régua quebrou, não o produto*.
+    let painted = bool_ids(&read("src/bars_actions.rs"));
     let registered = bool_ids(&read("src/populate_ops.rs"));
     assert!(
         !painted.is_empty(),

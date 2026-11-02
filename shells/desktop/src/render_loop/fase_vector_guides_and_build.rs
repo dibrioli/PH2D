@@ -102,7 +102,7 @@ impl crate::App {
         {
             let c = cam_affine.as_coeffs();
             let px_per_world = (c[0] * c[0] + c[1] * c[1]).sqrt();
-            super::render_loop::sheet_overlay::draw(
+            ph2d_sheet_bounds::overlay::draw(
                 sim,
                 cam_affine,
                 px_per_world,

@@ -262,6 +262,9 @@ pub fn health(sim: &SimWorld, sheet: Entity) -> SheetHealth {
 /// `px → metro → arranjo → pose` acumula. Este é o mesmo piso absoluto que o resto da shell usa.
 const EPS: f32 = 1e-5;
 
+/// A decoração da folha sobre o canvas — a moldura hachurada, o nome e o aviso desta saúde.
+pub mod overlay;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -47,7 +47,6 @@ mod inspector_commits_tests;
 /// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
 /// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
 mod inspector_strategy;
-mod sheet_overlay;
 
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig

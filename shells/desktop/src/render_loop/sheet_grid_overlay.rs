@@ -1,4 +1,4 @@
-//! **AS LINHAS DA GRELHA** sobre a folha aberta — irmão do [`super::sheet_overlay`], que decora a
+//! **AS LINHAS DA GRELHA** sobre a folha aberta — irmão do [`ph2d_sheet_bounds::overlay`], que decora a
 //! folha-OBJETO. Este decora a grelha de UMA sprite.
 //!
 //! Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*.
@@ -40,7 +40,7 @@ const LIVE_PX: f64 = 2.0;
 /// Desenha a grelha da sprite cuja folha está aberta.
 ///
 /// `px_per_world` é a escala do afim da câmara — é ela que traz as constantes de TELA acima para o
-/// espaço em que a cena é montada, como no [`super::sheet_overlay`].
+/// espaço em que a cena é montada, como no [`ph2d_sheet_bounds::overlay`].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw(
     sim: &ph2d_ecs::SimWorld,
@@ -125,7 +125,7 @@ pub(crate) fn draw(
     );
 }
 
-/// Traço, pela mesma porta do irmão [`super::sheet_overlay`].
+/// Traço, pela mesma porta do irmão [`ph2d_sheet_bounds::overlay`].
 fn stroke(scene: &mut VectorScene, path: &BezPath, xf: Affine, color: Color, width: f64) {
     scene.inner_mut().stroke(
         &Stroke::new(width.max(f64::EPSILON)),

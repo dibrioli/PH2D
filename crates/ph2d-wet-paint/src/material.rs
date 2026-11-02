@@ -247,7 +247,18 @@ pub fn transmite(base: f64, a: f64, d: f64, w: f64, claro: f64) -> f64 {
     if w <= 0.0 {
         return base;
     }
-    base * (1.0 - w) + w * filtro(a, claro) * d
+    base * (1.0 - w) + w * travessias(w, claro) * filtro(a, claro) * d
+}
+
+/// ⭐ **O peso da SEGUNDA travessia** no modo `claro`: no Blender (`claro = 0`) o Principled sorteia o lóbulo em
+/// CADA encontro com a superfície, e a luz que chega ao papel e volta cruza-a duas vezes — `w` à entrada e `w` à
+/// saída, `w²` ao todo (o Cycles nas rampas: Tr 0,5 = `(1−w)·opaca + w²·Tr 1`, `oraculo/README.md` §Transmission
+/// «Ronda 5»). Clear glass (`claro = 1`) devolve `1` ao bit (a lei de antes, `w` uma vez).
+#[inline]
+#[must_use]
+pub fn travessias(w: f64, claro: f64) -> f64 {
+    let c = claro.clamp(0.0, 1.0);
+    c + (1.0 - c) * w
 }
 
 #[cfg(test)]

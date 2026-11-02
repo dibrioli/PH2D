@@ -169,7 +169,6 @@ fn o_conta_gotas_escolhe_o_de_cima_que_nao_e_a_camera() {
     assert!(!escolhe_alvo(sim.world(), &mut bus, cam, &[cam]));
     let edits: Vec<_> = bus
         .drain()
-        .into_iter()
         .map(|a| match a {
             EditorAction::InspectorCameraEdit { entity_bits, edit } => (entity_bits, edit),
             outra => panic!("{outra:?}"),

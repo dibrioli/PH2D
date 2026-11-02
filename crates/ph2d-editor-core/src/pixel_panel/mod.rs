@@ -2,6 +2,7 @@
 //! pedidos que ele faz e as escolhas do diálogo *New Sprite*. O painel e o diálogo não veem a família
 //! (`ph2d-app-pixel`) nem o documento (`ph2d-pixel-core`); a família traduz.
 
+mod dynamics;
 mod layers;
 mod new_sprite;
 mod selection;
@@ -14,6 +15,7 @@ pub use shapes::{
     set_shape_names,
 };
 
+pub use dynamics::*;
 pub use layers::*;
 pub use new_sprite::*;
 pub use selection::*;
@@ -84,6 +86,8 @@ pub struct PixelOptions {
     pub pixel_perfect: bool,
     /// O alinhamento do padrão de um pincel copiado (Ctrl+B).
     pub pattern_align: PixelPatternAlign,
+    /// P7: o popup Dynamics (sensores, pegas, corda).
+    pub dynamics: PixelDynamics,
     /// P6b: os valores das formas do Vector (o raio do canto do retângulo é o 1.º campo dele, o do
     /// Aseprite 1.3.17) e se as quatro enchem (P6c: a caixa «Fill» no lugar das ferramentas cheias).
     pub shapes: PixelShapes,
@@ -305,6 +309,7 @@ impl Default for PixelOptions {
             angle: 0,
             pixel_perfect: false,
             pattern_align: PixelPatternAlign::Source,
+            dynamics: PixelDynamics::default(),
             shapes: PixelShapes::default(),
             shape_fill: false,
             tolerance: 0,

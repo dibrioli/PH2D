@@ -207,6 +207,8 @@ pub struct PixelApp {
     pub(crate) pincel_imagem: bool,
     /// Ctrl+B sem selecção: o próximo arrasto define o pincel.
     pub(crate) recorte: bool,
+    /// A mão do traço livre em curso (P7: dinâmica e corda); `None` = desligadas.
+    pub(crate) mao: Option<crate::mao::Mao>,
 }
 
 impl Default for PixelApp {
@@ -264,6 +266,7 @@ impl Default for PixelApp {
             pincel: None,
             pincel_imagem: true,
             recorte: false,
+            mao: None,
         }
     }
 }

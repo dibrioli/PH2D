@@ -2,6 +2,7 @@ mod ajustes;
 mod camadas;
 mod catalogo;
 mod desenho;
+mod dinamica;
 mod edit;
 mod fecho;
 mod formas;

@@ -20,6 +20,7 @@ mod gesture;
 pub mod input;
 mod input_teclas;
 mod intervalo;
+pub mod mao;
 pub mod mode;
 pub mod object_add;
 pub mod paleta;

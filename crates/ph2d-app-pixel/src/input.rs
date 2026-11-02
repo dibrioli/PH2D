@@ -236,6 +236,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     };
     let at = (x, y);
     let shading = paint.ink == ph2d_pixel_core::ink::Ink::Shading;
+    let mut mao = None;
     let (stroke, kind) = match tool {
         Tool::Hand => return Press::Pan,
         // A selecção e o Transform já responderam acima (o Alt sozinho com elas é o conta-gotas).
@@ -256,23 +257,28 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             return Press::Done;
         }
         Tool::Pencil | Tool::Eraser => {
+            // P7: a dinâmica dá o carimbo do PREMIR antes do 1.º ponto.
+            let m2 = crate::mao::Mao::of(&options, p);
+            let dab = m2
+                .as_ref()
+                .map(|h| h.premir(crate::mao::tinta().0))
+                .unwrap_or_default();
+            let novo = |v: u32| Stroke::new(layer, frame, v, paint.clone()).with_dab(dab);
             let mut st = match (tool, button) {
-                (Tool::Eraser, Button::Primary) => {
-                    let v = erase_value(s, layer, bg);
-                    let from = if m.shift { doc.last_point } else { None };
-                    Stroke::begin(s, layer, frame, v, paint, from.unwrap_or(at))
-                }
+                (Tool::Eraser, Button::Primary) => novo(erase_value(s, layer, bg)),
                 (Tool::Eraser, Button::Secondary) => {
-                    let pair = (s.value_of_rgba(fg), s.value_of_rgba(bg));
-                    let from = if m.shift { doc.last_point } else { None };
-                    Stroke::begin_replacing(s, layer, frame, pair, paint, from.unwrap_or(at))
+                    novo(s.value_of_rgba(bg)).replacing(s.value_of_rgba(fg))
                 }
-                _ => {
-                    let from = if m.shift { doc.last_point } else { None };
-                    Stroke::begin(s, layer, frame, value, paint, from.unwrap_or(at))
-                }
+                _ => match m2.as_ref().and_then(crate::mao::Mao::gradient) {
+                    Some(d) => novo(value).with_gradient(s.value_of_rgba(bg), d),
+                    None => novo(value),
+                },
             };
+            let from = if m.shift { doc.last_point } else { None };
+            let (fx, fy) = from.unwrap_or(at);
+            st.start(s, fx, fy);
             st.to(s, x, y);
+            mao = m2;
             (st, Kind::Free)
         }
         Tool::Spray => {
@@ -330,6 +336,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         mods: m,
         viva: None,
     });
+    app.mao = mao;
     Press::Done
 }
 
@@ -367,6 +374,7 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
         app.sobre_eixo = c.editing.is_some_and(|bits| eixo_sob(app, c, bits, p));
         return false;
     };
+    let (p, dab) = crate::mao::move_hand(app, p);
     let Some((x, y)) = cell(app, c, bits, key, p) else {
         return true;
     };
@@ -382,7 +390,12 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
     g.mods = m;
     let s = &doc.sprite;
     match &mut g.kind {
-        Kind::Free => g.stroke.to(s, x, y),
+        Kind::Free => {
+            if let Some(d) = dab {
+                g.stroke.set_dab(d);
+            }
+            g.stroke.to(s, x, y);
+        }
         Kind::Spray => {
             if g.held {
                 g.stroke

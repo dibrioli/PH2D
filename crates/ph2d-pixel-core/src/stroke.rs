@@ -104,6 +104,21 @@ impl Stroke {
         self
     }
 
+    /// [`Self::begin_replacing`] por partes: só troca as células que valem `from` (o premir vem
+    /// depois, com [`Self::start`]).
+    #[must_use]
+    pub fn replacing(mut self, from: u32) -> Self {
+        self.only = Some(from);
+        self
+    }
+
+    /// [`Self::set_dab`] antes do premir.
+    #[must_use]
+    pub fn with_dab(mut self, d: Dab) -> Self {
+        self.set_dab(d);
+        self
+    }
+
     /// O Gradient da dinâmica: o fundo `bg` e a matriz (o carimbo diz a fracção, [`Self::set_dab`]).
     #[must_use]
     pub fn with_gradient(mut self, bg: u32, dither: Dither) -> Self {

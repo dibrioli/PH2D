@@ -6103,6 +6103,8 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-timeline",
+ "ph2d-pen",
+ "ph2d-pen-law",
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-render",

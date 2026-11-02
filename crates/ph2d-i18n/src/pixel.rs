@@ -19,7 +19,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "pixel.hint.blur" => "{tool}: paint to soften the pixels under the brush",
         "pixel.hint.jumble" => "{tool}: paint to shuffle the pixels under the brush",
-        "panel.pixel.gradient" => "Gradient",
         "panel.pixel.gradient.shape" => "Shape",
         "panel.pixel.gradient.linear" => "Linear",
         "panel.pixel.gradient.radial" => "Radial",
@@ -131,14 +130,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "pixel.tool.text" => "Text",
         "pixel.hint.text" => {
-            "{tool}: click to place a text box · type · Enter stamps the pixels · Esc cancels"
+            "{tool}: click to place a text box · type · Enter frees it to move and rotate · Enter again stamps it · Esc cancels"
         }
         "panel.pixel.edit.insert_text" => "Insert Text",
         "panel.pixel.text" => "Text",
         "panel.pixel.text.font" => "Font",
         "panel.pixel.text.size" => "Size",
-        "panel.pixel.text.font_prev" => "Previous",
-        "panel.pixel.text.font_next" => "Next",
         "panel.pixel.text.bold" => "Bold",
         "panel.pixel.text.italic" => "Italic",
         "panel.pixel.text.antialias" => "Antialias",

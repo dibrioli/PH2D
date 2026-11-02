@@ -1,7 +1,9 @@
 //! **A ferramenta Text** (P8, `docs/PixelArt/P8_plano.md` §9.3): a caixa aberta (o texto vive aqui,
-//! nunca no documento), o preview e o passo do Enter; o carimbo é `ph2d_pixel_text::carimbo`.
+//! nunca no documento), o preview e o Enter que a solta numa moldura (`crate::solta`, P8b); o
+//! carimbo é `ph2d_pixel_text::carimbo`.
 
 use ph2d_pixel_core::raster::Cell;
+use ph2d_pixel_core::transform::{Floating, Image};
 use ph2d_pixel_core::{CelKey, Sprite, Stroke};
 use ph2d_pixel_text::carimbo::{self, Edit, Editing, Fonte};
 use ph2d_pixel_text::{FontChoice, TextStyle};
@@ -35,8 +37,55 @@ pub fn fontes() -> Vec<String> {
     )
 }
 
-pub(crate) fn normaliza(i: u16) -> u16 {
-    carimbo::wrap_index(i, fontes().len())
+/// As opções do Text depois de um pedido do painel (`antes` = as de antes): a fonte cai na lista e o
+/// tamanho salta para o válido dela — trocar de fonte vai para o mais perto (de pixel: um múltiplo
+/// da linha; do sistema: nunca abaixo de [`ph2d_pixel_text::SYSTEM_MIN_PX`]); mexer no tamanho de
+/// uma fonte de pixel anda um múltiplo inteiro no sentido do gesto.
+pub fn normaliza(antes: &Options, o: &mut Options) {
+    o.text_font = carimbo::wrap_index(o.text_font, fontes().len());
+    let dir = if o.text_font == antes.text_font {
+        i32::from(o.text_px > antes.text_px) - i32::from(o.text_px < antes.text_px)
+    } else {
+        0
+    };
+    o.text_px = ph2d_pixel_text::valid_px(usize::from(o.text_font), o.text_px, dir);
+}
+
+/// As opções do arranque: o tamanho do Text já no válido da fonte de omissão (nunca «1»).
+pub(crate) fn opcoes_iniciais() -> Options {
+    let mut o = Options::default();
+    o.text_px = ph2d_pixel_text::valid_px(usize::from(o.text_font), o.text_px, 0);
+    o
+}
+
+/// O nome de cada fonte pedida pelo dropdown desenhado nela com o rasterizador do Pixel Art: as de
+/// fábrica no tamanho nativo; as do sistema a [`ph2d_pixel_text::SYSTEM_MIN_PX`] com Antialias.
+pub(crate) fn publica_previas() {
+    use ph2d_editor_core::pixel_panel::font_preview::{PixelFontPreview, publish, take_wanted};
+    let pedidas = take_wanted();
+    if pedidas.is_empty() {
+        return;
+    }
+    let lista = fontes();
+    for nome in pedidas {
+        let Some(i) = lista.iter().position(|f| *f == nome) else {
+            continue;
+        };
+        let px = ph2d_pixel_text::valid_px(i, 0, 1);
+        let mut style = TextStyle::new(FontChoice::Builtin(String::new()), px);
+        style.antialias = i >= ph2d_pixel_text::BUILTIN.len();
+        let face = ph2d_system_fonts::library::face_bytes;
+        let fonte = Fonte::pick(u16::try_from(i).unwrap_or(0), &lista, style, face);
+        let m = fonte.place(&nome, (0, 0)).map(|m| m.0).unwrap_or_default();
+        publish(
+            nome,
+            PixelFontPreview {
+                w: m.w,
+                h: m.h,
+                cover: m.cover,
+            },
+        );
+    }
 }
 
 pub(crate) fn nome_da_fonte(i: u16) -> String {
@@ -155,6 +204,60 @@ pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
         .and_then(|c| c.traco.clone())
 }
 
+/// A cobertura `fl` (1 byte, já no sítio) misturada em `fg` sobre o cel `ck` e cortada ao sprite e
+/// à selecção: as células no modo do sprite, prontas a assentar.
+pub(crate) fn mistura(s: &Sprite, ck: CelKey, fl: &Floating, fg: [u8; 4]) -> Floating {
+    let (w, h) = (fl.image.w, fl.image.h);
+    let mut image = Image::new(w, h, s.mode().bpp(), s.transparent_value());
+    let mut keep = vec![false; w as usize * h as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let (cx, cy) = (fl.x + x as i32, fl.y + y as i32);
+            let i = (y * w + x) as usize;
+            let c = u8::try_from(fl.image.get(x, y)).unwrap_or(u8::MAX);
+            if fl.keep[i] && c > 0 && s.bounds().contains(cx, cy) && s.in_selection(cx, cy) {
+                let below = s.rgba_of_value(s.value_at(ck, cx, cy));
+                image.set(x, y, s.value_of_rgba(carimbo::tinge(fg, c, below)));
+                keep[i] = true;
+            }
+        }
+    }
+    Floating {
+        x: fl.x,
+        y: fl.y,
+        image,
+        keep,
+    }
+}
+
+/// O texto da caixa como cobertura solta (1 byte por célula, sem cortar ao sprite).
+fn cobertura(c: &Caixa, f: &Fonte) -> Option<Floating> {
+    let (m, o) = f.place(&c.ed.text, c.at)?;
+    let keep: Vec<bool> = m.cover.iter().map(|&v| v > 0).collect();
+    keep.contains(&true).then(|| Floating {
+        x: o.0,
+        y: o.1,
+        image: Image::from_values(
+            m.w,
+            m.h,
+            1,
+            &m.cover.iter().map(|&v| u32::from(v)).collect::<Vec<_>>(),
+        ),
+        keep,
+    })
+}
+
+/// O 1.º `Enter` (P8b): o texto vira MOLDURA SOLTA (arrasta, roda, escala); o 2.º `Enter` ou um
+/// clique fora assenta UM passo, `Esc` larga. Texto vazio fecha sem nada.
+fn solta(app: &mut PixelApp) -> Option<KeyAnswer> {
+    let c = app.texto.take()?;
+    match cobertura(&c, &estilo(&app.options)) {
+        Some(f) => app.solta_texto(c.key, f, app.fg),
+        None => app.toca(c.key),
+    }
+    Some(KeyAnswer::Quiet)
+}
+
 /// Fecha a caixa: `grava` = carimba UM passo (texto vazio = nenhum), senão larga (`Esc`).
 pub(crate) fn fecha(app: &mut PixelApp, grava: bool) -> Option<KeyAnswer> {
     let c = app.texto.take()?;
@@ -178,7 +281,7 @@ pub(crate) fn tecla(
     let c = app.texto.as_mut()?;
     let e = match code {
         KeyCode::Escape => return fecha(app, false),
-        KeyCode::Enter | KeyCode::NumpadEnter if !m.shift => return fecha(app, true),
+        KeyCode::Enter | KeyCode::NumpadEnter if !m.shift => return solta(app),
         KeyCode::Enter | KeyCode::NumpadEnter => Edit::Insert("\n"),
         KeyCode::Backspace => Edit::Backspace,
         KeyCode::Delete => Edit::Delete,

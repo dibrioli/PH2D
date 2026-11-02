@@ -234,7 +234,7 @@ impl Default for PixelApp {
         Self {
             docs: BTreeMap::new(),
             tool: Tool::Pencil,
-            options: Options::default(),
+            options: crate::texto::opcoes_iniciais(),
             fg: [255, 255, 255, 255],
             bg: [0, 0, 0, 255],
             grid: false,

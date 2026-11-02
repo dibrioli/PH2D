@@ -66,13 +66,7 @@ fn previsto(
         bg: app.bg,
         dither: ph2d_app_pixel::degrade::dither(o.gradient_dither),
     };
-    let bucket = ph2d_pixel_core::fill::Bucket {
-        tolerance: o.tolerance,
-        contiguous: o.contiguous,
-        eight: o.eight,
-        sample: ph2d_pixel_core::fill::BucketSample::Layer,
-    };
-    g.values(&d.sprite, (d.layer, d.frame), bucket)
+    g.values(&d.sprite)
 }
 
 fn confere(app: &PixelApp, sim: &SimWorld, bits: u64, esperado: &[((i32, i32), u32)]) {
@@ -227,4 +221,88 @@ fn a_blur_stroke_changes_the_cells_as_smudge_predicts_and_escape_cancels() {
     );
     assert!(app.undo(k), "um passo");
     assert_eq!(value(&app, &sim, bits, 8, 6), antes);
+}
+
+/// Ordem do dono (smoke P8, 02/11): o Gradient SOBREPÕE-SE. Sobre um gradiente cada célula é
+/// diferente — com a região do balde o 2.º arrasto pintava 1 célula («como o lápis»); agora pinta o
+/// cel inteiro, com a contiguidade do balde ligada ou não.
+#[test]
+fn a_gradient_over_a_gradient_repaints_the_whole_cel() {
+    let (mut app, sim, cam, bits) = born();
+    app.tool = Tool::Gradient;
+    app.options.contiguous = true;
+    app.options.tolerance = 0;
+    app.fg = [255, 0, 0, 255];
+    app.bg = [0, 0, 255, 255];
+    press(&mut app, &sim, &cam, bits, (0, 0));
+    moved(&mut app, &sim, &cam, bits, (20, 0));
+    assert!(input::release(&mut app));
+    app.fg = [0, 255, 0, 255];
+    app.bg = [255, 255, 0, 255];
+    let esperado = previsto(&app, &sim, bits, (0, 0), (0, 20));
+    let (w, h) = {
+        let s = &app.doc(chave(&sim, bits)).expect("doc").sprite;
+        (s.width(), s.height())
+    };
+    assert_eq!(esperado.len(), (w * h) as usize, "a região é o cel inteiro");
+    press(&mut app, &sim, &cam, bits, (0, 0));
+    moved(&mut app, &sim, &cam, bits, (0, 20));
+    assert!(input::release(&mut app));
+    confere(&app, &sim, bits, &esperado);
+    assert_ne!(
+        value(&app, &sim, bits, 7, 3),
+        value(&app, &sim, bits, 7, 15),
+        "o 2.º gradiente (vertical) cobriu o 1.º (horizontal)"
+    );
+}
+
+/// Com selecção, o Gradient pinta a selecção INTEIRA (mesmo sobre conteúdo variado) e nada fora.
+#[test]
+fn with_a_selection_the_gradient_paints_the_whole_selection_and_nothing_outside() {
+    use crate::selecao::Palco;
+    let mut p = Palco::limpo();
+    p.app.fg = [255, 0, 0, 255];
+    p.app.bg = [0, 0, 255, 255];
+    p.ferramenta(Tool::Gradient);
+    // Um 1.º gradiente no cel todo: o conteúdo debaixo da selecção fica todo diferente.
+    p.arrasta((0, 0), (127, 0), Mods::default());
+    p.ferramenta(Tool::RectMarquee);
+    p.arrasta((10, 5), (30, 20), Mods::default());
+    let mascara = p.mascara().expect("selecção");
+    let (w, h) = (p.sprite().width() as i32, p.sprite().height() as i32);
+    let antes: Vec<[u8; 4]> = (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .map(|(x, y)| p.rgba(x, y))
+        .collect();
+    let distintas: std::collections::BTreeSet<[u8; 4]> = (10..=30).map(|x| p.rgba(x, 10)).collect();
+    assert!(distintas.len() > 1, "o conteúdo sob a selecção varia");
+    p.app.fg = [0, 255, 0, 255];
+    p.app.bg = [255, 255, 0, 255];
+    p.ferramenta(Tool::Gradient);
+    let g = Gradient {
+        shape: Shape::Linear,
+        from: (10, 5),
+        to: (10, 20),
+        fg: p.app.fg,
+        bg: p.app.bg,
+        dither: ph2d_app_pixel::degrade::dither(p.app.options.gradient_dither),
+    };
+    let esperado = g.values(p.sprite());
+    assert_eq!(esperado.len(), 21 * 16, "a região é a selecção inteira");
+    p.arrasta((10, 5), (10, 20), Mods::default());
+    for y in 0..h {
+        for x in 0..w {
+            let quer = if mascara.get(x, y) {
+                let v = esperado
+                    .iter()
+                    .find(|q| q.0 == (x, y))
+                    .expect("na região")
+                    .1;
+                p.sprite().rgba_of_value(v)
+            } else {
+                antes[(y * w + x) as usize]
+            };
+            assert_eq!(p.rgba(x, y), quer, "célula ({x}, {y})");
+        }
+    }
 }

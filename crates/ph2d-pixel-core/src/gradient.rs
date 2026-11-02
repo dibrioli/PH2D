@@ -1,6 +1,7 @@
-//! **A ferramenta Gradient** (sub-ferramenta do Paint Bucket, Shift+G; P8_plano §2.1): a região que
-//! o balde pintaria a partir de onde o arrasto começa, colorida de fg (t = 0) a bg (t = 1).
-//! Trial: `oracle_trial_gradient.json`.
+//! **A ferramenta Gradient** (sub-ferramenta do Paint Bucket, Shift+G; P8_plano §2.1): a [`region`]
+//! — a selecção inteira, ou o cel inteiro sem selecção — colorida de fg (t = 0) a bg (t = 1). Não usa
+//! a contiguidade do balde: um gradiente SOBREPÕE-SE ao anterior (ordem do dono, smoke P8 02/11; o
+//! Trial mediu sobre canvas branco, onde as duas leis coincidem). Trial: `oracle_trial_gradient.json`.
 //!
 //! - Linear: `t` = projecção do centro da célula sobre o arrasto `a → b`.
 //! - Radial: elipse inscrita na caixa do arrasto (centro = ponto médio, raios = metade dos lados);
@@ -10,9 +11,8 @@
 //!   canvas, com estado próprio da ferramenta (não o da dinâmica).
 
 use crate::dither::Dither;
-use crate::fill::{Bucket, bucket_cells};
 use crate::raster::Cell;
-use crate::sprite::{CelKey, Sprite};
+use crate::sprite::Sprite;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Shape {
@@ -85,11 +85,10 @@ impl Gradient {
         }
     }
 
-    /// Os valores (no modo do sprite) que o arrasto escreve no cel `key`: a região do balde a
-    /// partir de `from`, dentro da selecção.
+    /// Os valores (no modo do sprite) que o arrasto escreve: a [`region`] inteira.
     #[must_use]
-    pub fn values(&self, s: &Sprite, key: CelKey, bucket: Bucket) -> Vec<(Cell, u32)> {
-        self.paint(s, key, bucket, |p| self.color_at(p))
+    pub fn values(&self, s: &Sprite) -> Vec<(Cell, u32)> {
+        self.paint(s, |p| self.color_at(p))
     }
 
     /// A cor da célula `p` caminhando pela `ramp` (opção «Palette ramp», spec §13.3 do MVP): `t`
@@ -115,29 +114,30 @@ impl Gradient {
 
     /// [`Self::values`] pela `ramp`.
     #[must_use]
-    pub fn ramp_values(
-        &self,
-        s: &Sprite,
-        key: CelKey,
-        bucket: Bucket,
-        ramp: &[[u8; 4]],
-    ) -> Vec<(Cell, u32)> {
-        self.paint(s, key, bucket, |p| self.ramp_color_at(ramp, p))
+    pub fn ramp_values(&self, s: &Sprite, ramp: &[[u8; 4]]) -> Vec<(Cell, u32)> {
+        self.paint(s, |p| self.ramp_color_at(ramp, p))
     }
 
-    fn paint(
-        &self,
-        s: &Sprite,
-        key: CelKey,
-        bucket: Bucket,
-        color: impl Fn(Cell) -> [u8; 4],
-    ) -> Vec<(Cell, u32)> {
-        bucket_cells(s, key, self.from, bucket)
+    fn paint(&self, s: &Sprite, color: impl Fn(Cell) -> [u8; 4]) -> Vec<(Cell, u32)> {
+        region(s)
             .into_iter()
-            .filter(|&(x, y)| s.in_selection(x, y))
             .map(|p| (p, s.value_of_rgba(color(p))))
             .collect()
     }
+}
+
+/// A região do Gradient: as células do sprite cobertas pela selecção, ou todas sem selecção
+/// (o cel inteiro), em ordem de linhas. Não depende do conteúdo do cel.
+#[must_use]
+pub fn region(s: &Sprite) -> Vec<Cell> {
+    let (w, h) = (
+        i32::try_from(s.width()).unwrap_or(i32::MAX),
+        i32::try_from(s.height()).unwrap_or(i32::MAX),
+    );
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .filter(|&(x, y)| s.in_selection(x, y))
+        .collect()
 }
 
 /// A rampa «Palette ramp»: as entradas da paleta de `from` a `to`, na ordem da paleta (para trás

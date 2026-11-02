@@ -70,6 +70,18 @@ fn convolution_opens_by_f9_and_menu_with_the_core_list_and_brightness_first() {
     );
     assert_eq!(f.kernel, 0, "«brightness» escolhido ao abrir");
     assert!(f.preview && !f.tiled, "Preview ligado, Tiled desligado");
+    // Os kernels são um DROPDOWN (dono 02/11), fechado ao abrir e com o escolhido.
+    assert!(
+        matches!(
+            p.hero.store.get(ids::PIXEL_FILTER_KERNEL),
+            Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                open: false,
+                selected_index: Some(0),
+                ..
+            })
+        ),
+        "o dropdown dos kernels registado"
+    );
     // brightness = +8 por canal; o alfa fica.
     assert_eq!(mostrado(&mut p, (102, 42)), [255, 8, 8, 255]);
     carrega(&mut p, ids::PIXEL_EDIT_CANCEL);

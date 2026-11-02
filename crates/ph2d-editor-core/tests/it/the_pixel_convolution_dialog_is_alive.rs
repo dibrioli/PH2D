@@ -1,7 +1,9 @@
 //! **P8 Edit ▸ FX ▸ Convolution Matrix…** do rato e do teclado ao pedido — irmão de
-//! `the_pixel_edit_dialogs_are_alive` (o mesmo [`Ecra`]): a lista que a família publica pinta-se
-//! inteira e viva dentro da janela, o clique escolhe o kernel e refaz o pedido do Preview, o Tiled
-//! entra no pedido, o OK arma-o e a sessão lembra o kernel; o Esc não arma nada; nenhum nome se corta.
+//! `the_pixel_edit_dialogs_are_alive` (o mesmo [`Ecra`]): o diálogo tem a largura dos irmãos e os
+//! kernels que a família publica vão num DROPDOWN (dono 02/11: as três colunas em largura dupla
+//! tapavam metade do sprite); a lista abre, rola, cada opção é viva, escolher muda o kernel e os
+//! canais e refaz o pedido do Preview, o Tiled entra no pedido, o OK arma-o e a sessão lembra o
+//! kernel; o Esc com a lista aberta fecha só a lista; nenhum rótulo se corta.
 
 use crate::the_pixel_edit_dialogs_are_alive::Ecra;
 use ph2d_editor_core::ids;
@@ -28,12 +30,42 @@ fn nomes() -> &'static [&'static str] {
     &N
 }
 
+/// Os canais de cada kernel: o 5 sem o A (como os `misc-*` do Trial), os outros RGBA.
+fn canais() -> &'static [[bool; 4]] {
+    static C: std::sync::LazyLock<Vec<[bool; 4]>> = std::sync::LazyLock::new(|| {
+        (0..39)
+            .map(|i| {
+                if i == 5 {
+                    [true, true, true, false]
+                } else {
+                    [true; 4]
+                }
+            })
+            .collect()
+    });
+    &C
+}
+
+/// Rola a lista aberta até a opção `i` ter clique (o que a roda faz).
+fn rola_ate(e: &mut Ecra, i: usize) -> ph2d_a11y::NodeId {
+    let id = ids::pixel_filter_kernel_id(i).expect("na escada");
+    let mut s = 0.0;
+    while e.centro(id).is_none() {
+        s += 8.0;
+        assert!(s < 4000.0, "a opção {i} nunca ficou à vista");
+        e.hero.store.set_panel_scroll(ids::PIXEL_FILTER_KERNEL, s);
+        e.pinta();
+    }
+    id
+}
+
 fn aberto() -> Ecra {
     let mut e = Ecra {
         hero: HeroScreen::new(ph2d_a11y::NodeId(1)),
         text: TextSystem::without_system_fonts(),
     };
     e.hero.store.set_pixel_filter_kernels(nomes());
+    e.hero.store.set_pixel_filter_kernel_channels(canais());
     e.hero
         .store
         .open_pixel_edit_dialog(PixelDialogKind::ConvolutionMatrix, (32, 24));
@@ -42,14 +74,15 @@ fn aberto() -> Ecra {
 }
 
 #[test]
-fn every_kernel_row_and_control_is_painted_alive_and_inside_the_window() {
+fn the_dialog_has_the_siblings_width_and_every_control_is_alive() {
     let e = aberto();
     assert!(e.aberto_ainda());
-    let mut todos: Vec<_> = (0..nomes().len())
-        .map(|i| ids::pixel_filter_kernel_id(i).expect("na escada"))
+    let mut todos: Vec<_> = ids::PIXEL_FILTER_CHANNELS
+        .iter()
+        .map(|(_, id, _)| *id)
         .collect();
-    todos.extend(ids::PIXEL_FILTER_CHANNELS.iter().map(|(_, id, _)| *id));
     todos.extend([
+        ids::PIXEL_FILTER_KERNEL,
         ids::PIXEL_FILTER_PREVIEW,
         ids::PIXEL_FILTER_TILED,
         ids::PIXEL_EDIT_OK,
@@ -62,9 +95,102 @@ fn every_kernel_row_and_control_is_painted_alive_and_inside_the_window() {
         assert!(e.hero.store.get(id).is_some(), "{id:?} sem estado: MORTO");
         assert!(ids::pixel_edit_dialog_owns(id), "{id:?} fora do dono");
     }
+    // Fechada, nenhuma opção da lista apanha clique.
+    assert!(
+        e.centro(ids::pixel_filter_kernel_id(0).expect("linha"))
+            .is_none()
+    );
+    // A largura: Cancel | OK ocupam a caixa — a mesma dos irmãos (o Hue/Saturation).
+    let caixa = |e: &Ecra| {
+        let c = e
+            .hero
+            .hit_index
+            .rect_for(ids::PIXEL_EDIT_CANCEL)
+            .expect("Cancel");
+        let o = e.hero.hit_index.rect_for(ids::PIXEL_EDIT_OK).expect("OK");
+        o.x + o.w - c.x
+    };
+    let conv = caixa(&e);
+    let mut hue = Ecra {
+        hero: HeroScreen::new(ph2d_a11y::NodeId(1)),
+        text: TextSystem::without_system_fonts(),
+    };
+    hue.hero
+        .store
+        .open_pixel_edit_dialog(PixelDialogKind::HueSaturation, (32, 24));
+    hue.pinta();
+    assert!((conv - caixa(&hue)).abs() < 0.5, "{conv} ≠ {}", caixa(&hue));
     let f = e.hero.store.pixel_edit_dialog().filter;
     assert_eq!(f.kernel, 0, "o 1.º escolhido ao abrir");
     assert!(f.preview && !f.tiled);
+}
+
+#[test]
+fn opening_the_kernel_dropdown_lists_every_kernel_alive_and_scrolls() {
+    let mut e = aberto();
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
+    assert!(
+        e.hero.store.pixel_filter_kernel_list_open(),
+        "o clique no chip abre a lista"
+    );
+    assert!(e.aberto_ainda(), "abrir a lista não fecha o diálogo");
+    let (dono, painel) = e.hero.store.dropdown_popover().expect("a lista publicada");
+    assert_eq!(dono, ids::PIXEL_FILTER_KERNEL);
+    let vp = e.hero.last_viewport;
+    assert!(
+        painel.y >= vp.y && painel.y + painel.h <= vp.y + vp.h + 0.5,
+        "{painel:?}"
+    );
+    for i in 0..nomes().len() {
+        let id = rola_ate(&mut e, i);
+        assert!(
+            e.hero.store.get(id).is_some(),
+            "opção {i} sem estado: MORTA"
+        );
+        assert!(ids::pixel_edit_dialog_owns(id), "opção {i} fora do dono");
+        let (x, y) = e.centro(id).expect("à vista");
+        assert!(painel.contains(x, y), "opção {i} fora da lista");
+    }
+}
+
+#[test]
+fn choosing_a_kernel_in_the_dropdown_changes_the_kernel_and_its_channels() {
+    let mut e = aberto();
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
+    e.carrega(ids::pixel_filter_kernel_id(5).expect("linha"));
+    assert!(
+        !e.hero.store.pixel_filter_kernel_list_open(),
+        "escolher fecha a lista"
+    );
+    assert!(e.aberto_ainda());
+    let f = e.hero.store.pixel_edit_dialog().filter;
+    assert_eq!(f.kernel, 5);
+    assert_eq!(
+        f.channels,
+        [true, true, true, false],
+        "os canais do kernel 5"
+    );
+    assert_eq!(
+        e.hero.store.pixel_filter_preview(),
+        Some(PixelDialogChoice::Convolution {
+            kernel: 5,
+            tiled: false,
+            channels: [true, true, true, false],
+            all: false,
+        })
+    );
+    // Um kernel RGBA devolve o A.
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
+    e.carrega(ids::pixel_filter_kernel_id(1).expect("linha"));
+    assert_eq!(e.hero.store.pixel_edit_dialog().filter.channels, [true; 4]);
+    // O Esc com a lista aberta fecha só a lista.
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
+    e.tecla(KEY_ESCAPE, false);
+    assert!(!e.hero.store.pixel_filter_kernel_list_open());
+    assert!(
+        e.aberto_ainda(),
+        "o Esc fechou o diálogo com a lista aberta"
+    );
 }
 
 #[test]
@@ -79,7 +205,9 @@ fn clicking_a_kernel_and_tiled_reach_the_preview_the_ok_and_the_session() {
             all: false,
         })
     );
-    e.carrega(ids::pixel_filter_kernel_id(24).expect("linha"));
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
+    let k24 = rola_ate(&mut e, 24);
+    e.carrega(k24);
     e.carrega(ids::PIXEL_FILTER_TILED);
     e.carrega(ids::PIXEL_FILTER_CHANNELS[3].1);
     let quer = PixelDialogChoice::Convolution {
@@ -105,6 +233,7 @@ fn clicking_a_kernel_and_tiled_reach_the_preview_the_ok_and_the_session() {
 #[test]
 fn convolution_esc_closes_without_a_request() {
     let mut e = aberto();
+    e.carrega(ids::PIXEL_FILTER_KERNEL);
     e.carrega(ids::pixel_filter_kernel_id(3).expect("linha"));
     e.tecla(KEY_ESCAPE, false);
     assert!(!e.aberto_ainda());
@@ -114,15 +243,13 @@ fn convolution_esc_closes_without_a_request() {
 #[test]
 fn no_kernel_name_nor_label_of_the_convolution_dialog_is_cut() {
     let mut e = aberto();
-    let mut esperados: Vec<&str> = nomes().to_vec();
-    esperados.extend(
-        [
-            "pixel.filter_dialog.convolution.title",
-            "pixel.filter_dialog.tiled",
-            "pixel.filter_dialog.preview",
-        ]
-        .map(ph2d_i18n::tr),
-    );
+    let esperados = [
+        "pixel.filter_dialog.convolution.title",
+        "pixel.filter_dialog.kernel",
+        "pixel.filter_dialog.tiled",
+        "pixel.filter_dialog.preview",
+    ]
+    .map(ph2d_i18n::tr);
     let ((), medidos) = elisao::medindo(|| e.pinta());
     for t in esperados {
         let md = medidos
@@ -131,12 +258,31 @@ fn no_kernel_name_nor_label_of_the_convolution_dialog_is_cut() {
             .unwrap_or_else(|| panic!("«{t}» nunca foi medido"));
         assert!(md.coube(), "«{t}» cortado em «{}»", md.pintado);
     }
+    // O chip na coluna do valor cabe o nome mais largo (o Medium, mais largo que o do chip); a
+    // lista aberta mede-se a si própria (`Dropdown::list_width`).
+    let chip = e
+        .hero
+        .hit_index
+        .rect_for(ids::PIXEL_FILTER_KERNEL)
+        .expect("chip");
+    let largo = ph2d_editor_core::paint::label_column_width(
+        &mut e.text,
+        ph2d_tokens::TypeToken::Base.px(),
+        nomes().iter().copied(),
+    );
+    let precisa = ph2d_editor_core::widget::dropdown_chip_width_for(largo, chip.h);
+    assert!(
+        precisa <= chip.w,
+        "o chip ({}) corta o nome mais largo ({precisa})",
+        chip.w
+    );
 }
 
 /// **A regra de onde o diálogo de filtro assenta** (`place_dialog`), com os números da foto da
 /// cena 19 (área livre 1290 × 645 em (332, 95), sprite 385 × 289 em (785, 248)): o Hue/Saturation
-/// cabe ao lado e não toca o sprite; o Convolution (largo) não cabe em lado nenhum e fica no encosto
-/// de MENOR sobreposição dos oito; nenhum desce à faixa da dica.
+/// e o Convolution (com o dropdown, a largura dos irmãos e 6 filas) cabem ao lado e não tocam o
+/// sprite; um diálogo largo que não cabe em lado nenhum fica no encosto de MENOR sobreposição dos
+/// oito; nenhum desce à faixa da dica.
 #[test]
 fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
     use ph2d_editor_core::pixel_panel::place_dialog;
@@ -153,6 +299,14 @@ fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
     let hue = place_dialog(view, (320.0, 235.0), Some(sprite), margem, dica);
     assert_eq!(toca(hue), 0.0, "o Hue/Saturation ao lado: {hue:?}");
     assert!(hue.y + hue.h <= view.y + view.h - dica, "acima da dica");
+    // O Convolution de hoje: a largura dos irmãos, 6 filas (título · Kernel · Tiled · canais ·
+    // Preview · botões) — a altura dele é menor que a do Hue/Saturation (9 filas).
+    let conv_hoje = place_dialog(view, (320.0, 200.0), Some(sprite), margem, dica);
+    assert_eq!(toca(conv_hoje), 0.0, "o Convolution ao lado: {conv_hoje:?}");
+    assert!(
+        conv_hoje.y + conv_hoje.h <= view.y + view.h - dica,
+        "acima da dica"
+    );
     let conv = place_dialog(view, (650.0, 460.0), Some(sprite), margem, dica);
     assert!(conv.y + conv.h <= view.y + view.h - dica, "acima da dica");
     // O mínimo de verdade: varrer a vista inteira de 4 em 4 px não acha encosto que toque menos.
@@ -167,7 +321,7 @@ fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
         y += 4.0;
     }
     eprintln!(
-        "[sonda cena 19] Convolution: sobreposição {} px² (mínimo varrido {minimo})",
+        "[sonda cena 19] diálogo largo: sobreposição {} px² (mínimo varrido {minimo})",
         toca(conv)
     );
     assert!(
@@ -175,6 +329,6 @@ fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
         "{conv:?} toca {} > {minimo}",
         toca(conv)
     );
-    // ⚠️ Nesta janela o Convolution não cabe ao lado: o mínimo geométrico ainda tapa ~51 % do
-    // sprite (56 933 de 111 265 px²); o encosto escolhido fica a ≤ 10 % desse mínimo.
+    // ⚠️ O antigo Convolution de 3 colunas (650 × 460) não cabia ao lado: o mínimo geométrico ainda
+    // tapava ~51 % do sprite (56 933 de 111 265 px²); a regra continua a valer para um diálogo largo.
 }

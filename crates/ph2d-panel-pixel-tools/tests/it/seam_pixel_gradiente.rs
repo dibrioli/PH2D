@@ -188,3 +188,44 @@ fn the_dither_rows_stack_without_an_empty_band() {
         ph2d_tokens::control_gap_px()
     );
 }
+
+/// Ordem do dono (smoke P8, 02/11): o Gradient pinta a selecção (ou o cel) inteira, sem
+/// contiguidade — as opções do balde saem do painel dele. Controlo: o balde ainda as pinta.
+#[test]
+fn the_gradient_panel_has_no_bucket_options() {
+    let balde = [
+        ids::TOLERANCE,
+        ids::CONTIGUOUS,
+        ids::CONNECT_4,
+        ids::CONNECT_8,
+        ids::SAMPLE_LAYER,
+        ids::SAMPLE_VISIBLE,
+    ];
+    let pintados = |tool| {
+        let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+        let mut st = PixelToolsPanelState::default();
+        set_current_pixel(PixelPanelInfo {
+            tool,
+            ..info(PixelOptions::default())
+        });
+        host.paint::<PixelToolsPanel>(&mut st, viewport(WidgetStore::DOCK_W_MIN))
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect::<Vec<_>>()
+    };
+    let no_balde = pintados(PixelTool::Bucket);
+    for id in balde {
+        assert!(no_balde.contains(&id), "controlo: o balde pinta {id:?}");
+    }
+    let no_gradiente = pintados(PixelTool::Gradient);
+    assert!(
+        no_gradiente.contains(&ids::GRADIENT_RADIAL),
+        "o painel do Gradient pintou"
+    );
+    for id in balde {
+        assert!(
+            !no_gradiente.contains(&id),
+            "o Gradient ainda mostra {id:?}"
+        );
+    }
+}

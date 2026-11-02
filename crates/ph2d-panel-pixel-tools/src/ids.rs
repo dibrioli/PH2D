@@ -110,10 +110,9 @@ pub const GRADIENT_DITHERS: [(PixelGradientDither, NodeId, &str); 4] = [
         "panel.pixel.gradient.dither_bayer8",
     ),
 ];
-/// P8: as opções do Text — a fonte (Previous/Next pela lista de fábrica + sistema), o tamanho e
+/// P8: as opções do Text — a fonte (o dropdown com a lista de fábrica + sistema), o tamanho e
 /// as quatro caixas.
-pub const TEXT_FONT_PREV: NodeId = hash_node_id("pixel.opt.text.font_prev");
-pub const TEXT_FONT_NEXT: NodeId = hash_node_id("pixel.opt.text.font_next");
+pub const TEXT_FONT_DD: NodeId = hash_node_id("pixel.opt.text.font");
 pub const TEXT_SIZE: NodeId = hash_node_id("pixel.opt.text.size");
 pub const TEXT_BOLD: NodeId = hash_node_id("pixel.opt.text.bold");
 pub const TEXT_ITALIC: NodeId = hash_node_id("pixel.opt.text.italic");
@@ -178,7 +177,7 @@ pub const CHECKS: [NodeId; 15] = [
 ];
 
 /// Os segmentos que não são a forma.
-pub const SEGMENTS: [NodeId; 16] = [
+pub const SEGMENTS: [NodeId; 14] = [
     GRADIENT_LINEAR,
     GRADIENT_RADIAL,
     GRADIENT_DITHERS[0].1,
@@ -193,8 +192,6 @@ pub const SEGMENTS: [NodeId; 16] = [
     WAND_CONNECT_8,
     WAND_SAMPLE_LAYER,
     WAND_SAMPLE_VISIBLE,
-    TEXT_FONT_PREV,
-    TEXT_FONT_NEXT,
 ];
 
 /// **A célula `i` da paleta** — o clique esquerdo (cor de frente). A população é a paleta, sem tecto.
@@ -483,6 +480,12 @@ pub const PRESET_ACTIONS: [(NodeId, PixelRequest, &str); 2] = [
         "panel.pixel.save_default",
     ),
 ];
+
+/// A linha `i` do dropdown de fontes do Text (a população é a lista de fontes, sem tecto).
+#[must_use]
+pub fn text_font_option_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel.opt.text.font.{i}"))
+}
 
 /// A predefinição `i` da lista (a população é a pasta do artista, sem tecto).
 #[must_use]

@@ -248,6 +248,32 @@ impl WidgetStore {
         }
     }
 
+    /// A lista do dropdown dos kernels está aberta?
+    #[must_use]
+    pub fn pixel_filter_kernel_list_open(&self) -> bool {
+        matches!(
+            self.get(crate::ids::PIXEL_FILTER_KERNEL),
+            Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
+        )
+    }
+
+    /// Fecha a lista do dropdown dos kernels; `true` se estava aberta.
+    pub fn close_pixel_filter_kernel_list(&mut self) -> bool {
+        let kernel = usize::from(self.pixel_filter_kernel());
+        if let Some(crate::interaction::InteractiveState::Dropdown {
+            open,
+            selected_index,
+            ..
+        }) = self.get_mut(crate::ids::PIXEL_FILTER_KERNEL)
+        {
+            let was = *open;
+            *open = false;
+            *selected_index = Some(kernel);
+            return was;
+        }
+        false
+    }
+
     /// O kernel escolhido, preso à lista publicada (ao abrir, os botões R G B A passam aos dele).
     pub(super) fn pixel_filter_kernel(&self) -> u8 {
         let f = self.pixel.edit.filter;

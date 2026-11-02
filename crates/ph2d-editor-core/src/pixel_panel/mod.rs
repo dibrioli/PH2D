@@ -5,6 +5,7 @@
 mod brushes;
 mod dynamics;
 mod filters;
+pub mod font_preview;
 mod layers;
 mod new_sprite;
 mod selection;
@@ -401,6 +402,9 @@ pub struct PixelPanelInfo {
     pub has_selection: bool,
     /// P8: o nome da fonte do Text na mão (de fábrica ou do sistema).
     pub text_font_name: String,
+    /// A lista inteira das fontes do Text (só com a ferramenta Text na mão): as de fábrica, as de
+    /// pixel do sistema instaladas e as restantes — o dropdown de fontes.
+    pub text_fonts: Vec<String>,
     /// As paletas gravadas com *Save Palette as Preset* (os nomes dos ficheiros, por ordem).
     pub presets: Vec<String>,
     /// A linha do tempo (o painel PIXEL TIMELINE): frames na ordem, o activo, os cels, as tags.

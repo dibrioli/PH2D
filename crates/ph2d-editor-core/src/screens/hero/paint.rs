@@ -543,6 +543,8 @@ pub fn paint_hero_screen(
         &hero.view.luz2d,
         viewport,
     );
+    // A lista dos kernels da Convolution Matrix publica-se aqui (o pintor tem o store `&`).
+    super::context_menu_dialogs::publish_kernel_list(&mut hero.store);
     // A pergunta antes de apagar um quadro: um diálogo do overlay que precisa do NOME do quadro.
     super::document_tabs_menu::paint_confirm_delete(
         &hero.documents,

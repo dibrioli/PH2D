@@ -3,7 +3,6 @@
 //! cores mas o OK não grava nada) e `B2_gradient_indexed` (o arrasto não pinta). Recusamos copiá-las:
 //! Invert grava o índice mais próximo da cor invertida e o Gradient pinta (Palette ramp = degraus).
 
-use ph2d_pixel_core::fill::Bucket;
 use ph2d_pixel_core::filter::adjust::Invert;
 use ph2d_pixel_core::filter::{self, Channels};
 use ph2d_pixel_core::gradient::{Gradient, Shape, palette_ramp};
@@ -104,7 +103,6 @@ fn invert_on_indexed_writes_the_nearest_index_of_the_inverted_colour() {
 #[test]
 fn gradient_paints_on_indexed_and_the_palette_ramp_steps_through_the_entries() {
     let s = indexed(32, 8, |_, _| 0);
-    let key = (s.layers()[0].id, s.frames()[0].id);
     let pal = s.palette().to_vec();
     let g = Gradient {
         shape: Shape::Linear,
@@ -115,7 +113,7 @@ fn gradient_paints_on_indexed_and_the_palette_ramp_steps_through_the_entries() {
         dither: ph2d_pixel_core::dither::Dither::None,
     };
     let ramp = palette_ramp(&pal, 2, 9);
-    let v = g.ramp_values(&s, key, Bucket::default(), &ramp);
+    let v = g.ramp_values(&s, &ramp);
     assert_eq!(v.len(), 32 * 8, "a região inteira");
     assert!(v.iter().all(|&(_, i)| (2..=9).contains(&i)), "{v:?}");
     let at = |p| v.iter().find(|q| q.0 == p).map(|q| q.1);
@@ -123,7 +121,7 @@ fn gradient_paints_on_indexed_and_the_palette_ramp_steps_through_the_entries() {
     assert_eq!(at((31, 4)), Some(9));
     let distinct: std::collections::BTreeSet<u32> = v.iter().map(|q| q.1).collect();
     assert_eq!(distinct.len(), 8, "os oito degraus aparecem");
-    let solid = g.values(&s, key, Bucket::default());
+    let solid = g.values(&s);
     assert_eq!(solid.len(), 32 * 8, "sem a rampa também pinta");
     assert!(
         solid

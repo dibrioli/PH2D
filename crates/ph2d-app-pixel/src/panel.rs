@@ -56,8 +56,9 @@ impl PixelApp {
             }
             // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
             PixelRequest::Options(o) => {
+                let antes = self.options;
                 crate::viva::opcoes(self, *o);
-                self.options.text_font = crate::texto::normaliza(self.options.text_font);
+                crate::texto::normaliza(&antes, &mut self.options);
                 crate::texto::refaz(self);
             }
             PixelRequest::Fg(c) => self.escolhe_fg(c),
@@ -238,6 +239,12 @@ pub fn frame(
             crate::texto::nome_da_fonte(app.options.text_font)
         } else {
             String::new()
+        },
+        text_fonts: if app.tool == Tool::Text {
+            crate::texto::publica_previas();
+            crate::texto::fontes()
+        } else {
+            Vec::new()
         },
         size: doc.map_or((0, 0), |d| (d.sprite.width(), d.sprite.height())),
         transform: app

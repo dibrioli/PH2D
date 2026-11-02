@@ -51,6 +51,42 @@ pub const BUILTIN: [(&str, &str, &[u8]); 4] = [
     ),
 ];
 
+/// O menor tamanho legível de uma fonte do SISTEMA (px por em): o pior, entre as fontes comuns
+/// instaladas, a partir do qual `A-Z a-z 0-9` saem todos distintos com as omissões do Text
+/// (Antialias desligado, Hinting ligado). A régua: `tests/it/minimo_legivel.rs` (02/11):
+///
+/// | fonte | 1.º px sem colisão |   | fonte | 1.º px sem colisão |
+/// |---|---|---|---|---|
+/// | DejaVu Sans / Vera | 8 | | Liberation Sans | **12** |
+/// | DejaVu Sans Mono | 7 | | Liberation Mono | 9 |
+/// | DejaVu Serif | 8 | | Cantarell | **12** |
+/// | Noto Sans / Sans Mono | 11 | | Adwaita Sans | 11 |
+/// | Noto Serif | 10 | | Fira Sans | 10 |
+pub const SYSTEM_MIN_PX: u32 = 12;
+
+/// A altura NATIVA da linha da fonte de fábrica `i` (o tamanho dela é um múltiplo disto).
+#[must_use]
+pub fn builtin_line_height(i: usize) -> Option<u32> {
+    let f = builtin(BUILTIN.get(i)?.0).ok()?;
+    u32::try_from(f.line_height().max(1)).ok()
+}
+
+/// O tamanho válido mais perto de `px` para a fonte `i` de [`carimbo::font_list`]: de fábrica, um
+/// múltiplo ≥ 1× da linha (`dir` > 0 arredonda para cima, < 0 para baixo, 0 para o mais perto); do
+/// sistema, nunca abaixo de [`SYSTEM_MIN_PX`].
+#[must_use]
+pub fn valid_px(i: usize, px: u32, dir: i32) -> u32 {
+    let Some(lh) = builtin_line_height(i) else {
+        return px.max(SYSTEM_MIN_PX);
+    };
+    let k = match dir.signum() {
+        1 => px.div_ceil(lh),
+        -1 => px / lh,
+        _ => (px + lh / 2) / lh,
+    };
+    k.max(1) * lh
+}
+
 /// Lê uma fonte de fábrica pelo nome.
 pub fn builtin(name: &str) -> Result<PixelFont, String> {
     let (_, file, bytes) = BUILTIN
@@ -205,7 +241,8 @@ pub fn rasterize_outline(
     }
     // A caixa do Aseprite corta a última linha da descida quando o ascent arredonda para cima.
     let base = (lines - 1) * step + m.ascent;
-    let ink = (ink - outline::box_bottom_cut(&face, style.px)).max(base.min(ink));
+    // Sem tinta nenhuma (só espaços, ou um glifo que some a este px) `ink` é `i32::MIN`.
+    let ink = (ink.saturating_sub(outline::box_bottom_cut(&face, style.px))).max(base.min(ink));
     let y1 = ink.max(lines * step).max(y0);
     let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
     let mut cover = vec![0u8; (w * h) as usize];

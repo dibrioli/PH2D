@@ -126,6 +126,14 @@ impl WidgetStore {
             let state = crate::widget::ButtonState::Normal;
             self.register(id, S::Button { state });
         }
+        self.register(
+            ids::PIXEL_FILTER_KERNEL,
+            S::Dropdown {
+                state: crate::widget::DropdownState::Normal,
+                open: false,
+                selected_index: Some(usize::from(self.pixel_filter_kernel())),
+            },
+        );
         self.register(ids::PIXEL_FILTER_CURVE, S::Plain);
         self.pixel.edit.filter.curve_grab = None;
         self.context_menu = Some(ContextMenuRequest {

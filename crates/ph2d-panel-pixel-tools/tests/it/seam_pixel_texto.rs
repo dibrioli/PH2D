@@ -76,13 +76,64 @@ fn each_text_option_clicked_in_the_panel_reaches_the_options() {
         &carrega(base, ids::TEXT_HINTING),
         com(|o| o.text_hinting = false),
     );
-    so(
-        &carrega(base, ids::TEXT_FONT_NEXT),
-        com(|o| o.text_font = 1),
+}
+
+/// P8b: o chip «Font» abre a lista com uma linha por fonte, na ordem publicada; carregar no meio de
+/// uma linha pede as opções com essa fonte e fecha a lista.
+#[test]
+fn picking_a_row_of_the_font_dropdown_changes_the_font() {
+    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut st = PixelToolsPanelState::default();
+    let fontes: Vec<String> = ["cozette", "tom-thumb", "unscii-8", "unscii-16", "Noto Sans"]
+        .map(str::to_owned)
+        .to_vec();
+    set_current_pixel(PixelPanelInfo {
+        editing: true,
+        tool: PixelTool::Text,
+        text_font_name: "cozette".to_owned(),
+        text_fonts: fontes.clone(),
+        ..Default::default()
+    });
+    let vp = viewport(WidgetStore::DOCK_W_MIN);
+    let rects = host.paint::<PixelToolsPanel>(&mut st, vp);
+    let chip = rects
+        .iter()
+        .find(|(n, _)| *n == ids::TEXT_FONT_DD)
+        .map(|(_, r)| *r)
+        .expect("o chip da fonte");
+    for e in host.click_at(chip.x + chip.w * 0.5, chip.y + chip.h * 0.5) {
+        let _ = host.apply_panel_event::<PixelToolsPanel>(&mut st, e);
+    }
+    let rects = host.paint::<PixelToolsPanel>(&mut st, vp);
+    let linhas: Vec<_> = (0..fontes.len())
+        .map(|i| {
+            rects
+                .iter()
+                .find(|(n, _)| *n == ids::text_font_option_id(i))
+                .map(|(_, r)| *r)
+                .unwrap_or_else(|| panic!("a linha {i} nunca foi pintada"))
+        })
+        .collect();
+    assert!(
+        linhas.windows(2).all(|w| w[0].y < w[1].y),
+        "na ordem da lista"
     );
-    so(
-        &carrega(base, ids::TEXT_FONT_PREV),
-        com(|o| o.text_font = u16::MAX),
+    let r = linhas[1];
+    let _ = host.drained_actions();
+    for e in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+        let _ = host.apply_panel_event::<PixelToolsPanel>(&mut st, e);
+    }
+    let o = PixelOptions {
+        text_font: 1,
+        ..PixelOptions::default()
+    };
+    so(&host.drained_actions(), o);
+    assert!(
+        matches!(
+            host.store().get(ids::TEXT_FONT_DD),
+            Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open: false, .. })
+        ),
+        "a lista fecha"
     );
 }
 
@@ -100,7 +151,7 @@ fn the_text_size_field_is_painted_with_the_tool() {
 }
 
 /// O nome da fonte senta na coluna do VALOR, ao lado de «Font» (a largura dele é a da coluna do
-/// valor, não a do painel), inteiro; Previous|Next vêm depois, antes do Size.
+/// valor, não a do painel), inteiro, no chip do dropdown — acima do Size.
 #[test]
 fn the_font_name_sits_in_the_value_column_next_to_its_label() {
     let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
@@ -128,14 +179,11 @@ fn the_font_name_sits_in_the_value_column_next_to_its_label() {
             .expect("pintado")
     };
     let size = r(ids::TEXT_SIZE);
+    let chip = r(ids::TEXT_FONT_DD);
     assert!(
-        (nome.largura - size.w).abs() < 24.0 && nome.largura < w * 0.75,
-        "o nome na coluna do valor: largura {} (Size {} · painel {w})",
+        (chip.x - size.x).abs() < 1.0 && (chip.w - size.w).abs() < 1.0 && nome.largura < chip.w,
+        "o chip na coluna do valor: {chip:?} (Size {size:?} · nome {} · painel {w})",
         nome.largura,
-        size.w
     );
-    assert!(
-        r(ids::TEXT_FONT_PREV).y < size.y,
-        "a fonte antes do tamanho"
-    );
+    assert!(r(ids::TEXT_FONT_DD).y < size.y, "a fonte antes do tamanho");
 }

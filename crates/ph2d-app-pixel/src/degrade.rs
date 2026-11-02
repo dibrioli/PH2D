@@ -50,14 +50,9 @@ fn entrada(palette: &[[u8; 4]], c: [u8; 4]) -> usize {
         .map_or(0, |(i, _)| i)
 }
 
-/// Os valores do gradiente de `from` a `to` com as opções da mão.
-fn gradiente(
-    app: &PixelApp,
-    s: &Sprite,
-    key: ph2d_pixel_core::CelKey,
-    from: Cell,
-    to: Cell,
-) -> Vec<(Cell, u32)> {
+/// Os valores do gradiente de `from` a `to` com as opções da mão, sobre a região inteira
+/// ([`ph2d_pixel_core::gradient::region`]: a selecção, ou o cel sem selecção).
+fn gradiente(app: &PixelApp, s: &Sprite, from: Cell, to: Cell) -> Vec<(Cell, u32)> {
     let o = &app.options;
     let g = Gradient {
         shape: if o.gradient_radial {
@@ -71,13 +66,12 @@ fn gradiente(
         bg: app.bg,
         dither: dither(o.gradient_dither),
     };
-    let bucket = crate::gesture::bucket(o);
     if o.gradient_ramp {
         let pal = s.palette();
         let ramp = palette_ramp(pal, entrada(pal, app.fg), entrada(pal, app.bg));
-        g.ramp_values(s, key, bucket, &ramp)
+        g.ramp_values(s, &ramp)
     } else {
-        g.values(s, key, bucket)
+        g.values(s)
     }
 }
 
@@ -106,7 +100,7 @@ pub(crate) fn press(
     let doc = app.docs.get(&key)?;
     let (s, ck) = (&doc.sprite, (doc.layer, doc.frame));
     let (stroke, kind) = if tool == Tool::Gradient {
-        let v = gradiente(app, s, ck, at, at);
+        let v = gradiente(app, s, at, at);
         (
             Stroke::with_values(ck.0, ck.1, v),
             Kind::Gradient { from: at },
@@ -162,7 +156,7 @@ pub(crate) fn moved(app: &mut PixelApp, key: u32, at: Cell) -> bool {
     };
     let (s, ck) = (&doc.sprite, (doc.layer, doc.frame));
     let values = match kind {
-        Kind::Gradient { from } => gradiente(app, s, ck, from, at),
+        Kind::Gradient { from } => gradiente(app, s, from, at),
         Kind::Smudge => {
             let Some(m) = app.mancha.as_mut() else {
                 return true;

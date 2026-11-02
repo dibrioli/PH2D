@@ -478,6 +478,10 @@ fn new_sprite_dialog_key<'a>(
     if !open || !matches!(keycode, KEY_ENTER | KEY_ESCAPE) {
         return false;
     }
+    // O Esc com a lista dos kernels aberta fecha só a lista.
+    if keycode == KEY_ESCAPE && store.close_pixel_filter_kernel_list() {
+        return true;
+    }
     if let Some(id) = store.focus_id() {
         if keycode == KEY_ENTER
             && matches!(store.get(id), Some(InteractiveState::NumberInput { .. }))

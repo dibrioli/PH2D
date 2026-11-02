@@ -91,9 +91,6 @@ pub(crate) fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptio
     match id {
         ids::GRADIENT_LINEAR => o.gradient_radial = false,
         ids::GRADIENT_RADIAL => o.gradient_radial = true,
-        // A família dá a volta à lista (`u16::MAX` = a última).
-        ids::TEXT_FONT_PREV => o.text_font = o.text_font.wrapping_sub(1),
-        ids::TEXT_FONT_NEXT => o.text_font = o.text_font.wrapping_add(1),
         ids::CONNECT_4 => o.eight = false,
         ids::CONNECT_8 => o.eight = true,
         ids::SAMPLE_LAYER => o.sample_visible = false,

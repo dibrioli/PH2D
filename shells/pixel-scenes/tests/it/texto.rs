@@ -1,6 +1,7 @@
 //! **P8: a ferramenta Text pelo caminho real** — `T` escolhe-a, o clique abre a caixa na célula,
-//! teclar só pré-visualiza, Enter grava UM passo com as células que o rasterizador prevê na âncora,
-//! Esc não grava, e com a caixa aberta as letras não trocam de ferramenta.
+//! teclar só pré-visualiza, o 1.º Enter SOLTA o texto numa moldura (P8b: arrasta, roda, escala) e o
+//! 2.º grava UM passo com as células que o rasterizador prevê, Esc não grava, e com a caixa aberta as
+//! letras não trocam de ferramenta.
 
 use ph2d_app_pixel::compose::Mods;
 use ph2d_app_pixel::input::{self, Button, Press};
@@ -74,8 +75,103 @@ fn t_picks_the_text_tool() {
     assert_eq!(app.tool, Tool::Text);
 }
 
+/// Um quadro do painel (o `Enter`/`Esc` da moldura solta é um pedido que ele aplica).
+fn quadro(app: &mut PixelApp, sim: &SimWorld, bits: u64) {
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.gizmo.mode.enter(bits, ObjectMode::Draw);
+    panel::frame(app, sim.world(), &mut hero, &mut ToastQueue::new());
+}
+
+/// Escreve «Ag» em (3, 2) a vermelho e dá o 1.º Enter: as células previstas e o sprite de antes.
+fn solto(app: &mut PixelApp, sim: &SimWorld, cam: &Camera2d, bits: u64) -> Vec<(i32, i32)> {
+    app.tool = Tool::Text;
+    app.fg = RED;
+    click(app, sim, cam, bits, (3, 2));
+    escreve(app, sim, bits, "Ag");
+    let celulas = previsto(app, sim, bits, "Ag", (3, 2));
+    tecla(app, sim, bits, KeyCode::Enter, None);
+    quadro(app, sim, bits);
+    assert!(
+        app.text_box().is_none() && app.floating(),
+        "o 1.º Enter solta"
+    );
+    celulas
+}
+
 #[test]
-fn typing_previews_and_enter_stamps_one_undo_step_at_the_anchor() {
+fn enter_floats_the_text_without_touching_the_document() {
+    let (mut app, sim, cam, bits) = born();
+    let celulas = solto(&mut app, &sim, &cam, bits);
+    for &c in &celulas {
+        assert_eq!(value(&app, &sim, bits, c.0, c.1), CLEAR, "solto não grava");
+        assert_eq!(mostrado(&mut app, &sim, bits, c), RED, "e mostra {c:?}");
+    }
+    assert!(!app.undo(chave(&sim, bits)), "nenhum passo");
+}
+
+#[test]
+fn moving_the_floating_text_and_enter_stamps_it_there_in_one_step() {
+    let (mut app, sim, cam, bits) = born();
+    let celulas = solto(&mut app, &sim, &cam, bits);
+    let n = celulas.len() as i32;
+    let meio = (
+        celulas.iter().map(|c| c.0).sum::<i32>() / n,
+        celulas.iter().map(|c| c.1).sum::<i32>() / n,
+    );
+    let (dx, dy) = (5, 3);
+    let c = canvas(&sim, &cam, bits);
+    let de = at(&app, &sim, &cam, bits, meio.0, meio.1);
+    let para = at(&app, &sim, &cam, bits, meio.0 + dx, meio.1 + dy);
+    assert_eq!(
+        input::press(&mut app, &c, de, Button::Primary, Mods::default()),
+        Press::Done
+    );
+    assert!(input::moved(&mut app, &c, para, Mods::default()));
+    assert!(input::release(&mut app));
+    assert!(app.floating(), "arrastar não assenta");
+    tecla(&mut app, &sim, bits, KeyCode::Enter, None);
+    quadro(&mut app, &sim, bits);
+    assert!(!app.floating());
+    for &(x, y) in &celulas {
+        assert_eq!(
+            value(&app, &sim, bits, x + dx, y + dy),
+            RED,
+            "gravou no sítio novo"
+        );
+    }
+    let fora = celulas
+        .iter()
+        .filter(|&&(x, y)| !celulas.contains(&(x - dx, y - dy)));
+    for &(x, y) in fora {
+        assert_eq!(
+            value(&app, &sim, bits, x, y),
+            CLEAR,
+            "a âncora velha fica limpa"
+        );
+    }
+    assert!(app.undo(chave(&sim, bits)), "um passo");
+    for &(x, y) in &celulas {
+        assert_eq!(value(&app, &sim, bits, x + dx, y + dy), CLEAR);
+    }
+    assert!(!app.undo(chave(&sim, bits)), "só um passo");
+}
+
+#[test]
+fn escape_on_the_floating_text_cancels_everything() {
+    let (mut app, sim, cam, bits) = born();
+    let celulas = solto(&mut app, &sim, &cam, bits);
+    tecla(&mut app, &sim, bits, KeyCode::Escape, None);
+    quadro(&mut app, &sim, bits);
+    assert!(!app.floating() && app.text_box().is_none());
+    for &c in &celulas {
+        assert_eq!(value(&app, &sim, bits, c.0, c.1), CLEAR);
+        assert_eq!(mostrado(&mut app, &sim, bits, c), CLEAR);
+    }
+    assert!(!app.undo(chave(&sim, bits)), "nenhum passo");
+}
+
+#[test]
+fn typing_previews_and_two_enters_stamp_one_undo_step_at_the_anchor() {
     let (mut app, sim, cam, bits) = born();
     app.tool = Tool::Text;
     app.fg = RED;
@@ -98,6 +194,8 @@ fn typing_previews_and_enter_stamps_one_undo_step_at_the_anchor() {
     }
     tecla(&mut app, &sim, bits, KeyCode::Enter, None);
     assert!(app.text_box().is_none());
+    tecla(&mut app, &sim, bits, KeyCode::Enter, None);
+    quadro(&mut app, &sim, bits);
     for &c in &celulas {
         assert_eq!(value(&app, &sim, bits, c.0, c.1), RED, "gravou {c:?}");
     }
@@ -236,6 +334,8 @@ fn the_box_frame_and_caret_follow_the_text() {
     assert!(cx1 > cx0, "o cursor anda com o texto");
     tecla(&mut app, &sim, bits, KeyCode::Enter, Some("\r"));
     assert!(app.text_box_frame().is_none());
+    tecla(&mut app, &sim, bits, KeyCode::Escape, None);
+    quadro(&mut app, &sim, bits);
     escreve_nova_linha(&mut app, &sim, &cam, bits);
 }
 

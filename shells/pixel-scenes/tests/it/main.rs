@@ -21,4 +21,5 @@ mod quadros;
 mod selecao;
 mod sobreviventes;
 mod texto;
+mod texto_fontes;
 mod tocar;

@@ -1,18 +1,19 @@
 //! **A cena 19 — a P8** (Gradient, Blur/Jumble, Text, Edit ▸ Fill/Stroke, Adjustments, FX). Um
-//! Pixel Sprite RGBA 64 × 48 de fundo branco em Draw: um boneco de três cores ([`boneco`]), uma
-//! selecção sobre a zona livre ([`SELECTION`]) e a rampa de seis tons ([`RAMP`]) no fim da paleta,
-//! com a frente na ponta escura e o fundo na clara — o Gradient vê-se e o «Palette ramp» anda nela.
+//! Pixel Sprite RGBA 64 × 48 em Draw: a camada Background branca e, por cima, uma camada normal
+//! TRANSPARENTE e activa com um boneco de três cores ([`boneco`]) — sem selecção, os ajustes agem no
+//! boneco, o Outline contorna-o e a borracha apaga para transparente (na Background pintaria a cor de
+//! fundo). A rampa de seis tons ([`RAMP`]) fica no fim da paleta, com a frente na ponta escura e o
+//! fundo na clara — o Gradient vê-se e o «Palette ramp» anda nela.
 
 use ph2d_ecs::SimWorld;
-use ph2d_pixel_core::selection::{Mask, SelectMode, select};
-use ph2d_pixel_core::{Background, ColorMode, NewSprite, Op, Patch, Rect};
+use ph2d_pixel_core::{Background, ColorMode, NewSprite, Op, Patch, Rect, layers};
 
 use crate::{PixelApp, Tool};
 
 /// O tamanho da cena 19.
 pub const SIZE: (u32, u32) = (64, 48);
-/// A selecção feita (x, y, w, h): o quarto de cima à direita, onde não há boneco.
-pub const SELECTION: (i32, i32, u32, u32) = (32, 6, 26, 20);
+/// A caixa do boneco na camada de cima (fora dela a camada é transparente).
+pub const FIGURE: Rect = Rect::new(6, 6, 16, 35);
 /// A pele, a camisa e as calças do boneco.
 pub const SKIN: [u8; 4] = [240, 190, 140, 255];
 pub const SHIRT: [u8; 4] = [50, 100, 210, 255];
@@ -53,7 +54,7 @@ pub(crate) fn stage(
     };
     let bits = crate::object_add::spawn(sim, app, spec, spawn_root).ok()?;
     let key = crate::input::key_of(sim.world(), bits)?;
-    let (layer, frame, mut colors, transparent) = {
+    let (fundo, frame, mut colors, transparent) = {
         let d = app.docs.get(&key)?;
         let s = &d.sprite;
         (
@@ -72,9 +73,11 @@ pub(crate) fn stage(
         },
     )
     .ok()?;
-    let r = Rect::new(0, 0, w, h);
-    let pixels = (0..h as i32)
-        .flat_map(|y| (0..w as i32).flat_map(move |x| boneco(x, y).unwrap_or([255; 4])))
+    let (op, layer) = layers::new_layer(&mut app.docs.get_mut(&key)?.sprite, fundo)?;
+    app.commit(key, op).ok()?;
+    let r = FIGURE;
+    let pixels = (r.y..r.y + r.h as i32)
+        .flat_map(|y| (r.x..r.x + r.w as i32).flat_map(move |x| boneco(x, y).unwrap_or([0; 4])))
         .collect();
     let p = Patch {
         layer,
@@ -84,10 +87,7 @@ pub(crate) fn stage(
         pixels,
     };
     app.commit(key, Op::Patch(p)).ok()?;
-    let (x, y, sw, sh) = SELECTION;
-    let m = Mask::from_rect(w, h, Rect::new(x, y, sw, sh));
-    let op = select(&app.docs.get(&key)?.sprite, &m, SelectMode::Replace)?;
-    app.commit(key, op).ok()?;
+    app.docs.get_mut(&key)?.layer = layer;
     crate::input::set_tool(app, Tool::Gradient);
     app.fg = RAMP[0];
     app.bg = RAMP[RAMP.len() - 1];
@@ -113,10 +113,6 @@ pub(crate) fn conduz(app: &mut PixelApp) {
         "convolucao" => app.pede(R::Edit(E::ConvolutionMatrix)),
         "hue" => app.pede(R::Edit(E::HueSaturation)),
         "texto" => {
-            // O Text corta-se à selecção: a foto escreve sem ela.
-            app.aplica(R::Select(
-                ph2d_editor_core::pixel_panel::PixelSelectAction::Deselect,
-            ));
             app.fg = [0, 0, 0, 255];
             crate::input::set_tool(app, Tool::Text);
             crate::texto::abre(app, key, (26, 34));

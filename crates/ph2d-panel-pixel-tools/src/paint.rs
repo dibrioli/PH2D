@@ -36,6 +36,8 @@ const LADO: u32 = 256;
 
 #[path = "paint_camadas.rs"]
 mod camadas;
+#[path = "paint_fonte.rs"]
+pub(crate) mod fonte;
 #[path = "paint_formas.rs"]
 mod formas;
 #[path = "paint_paleta.rs"]
@@ -133,6 +135,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let top = area.top();
     let mut blend_aberto = None;
     let mut menu_aberto = None;
+    let mut fonte_aberta = None;
     let seletor = &mut st.seletor;
     seletor.rects = [None; 3];
     let paleta_vista = &mut st.paleta;
@@ -151,6 +154,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             w: inner_w,
             blend_aberto: None,
             menu_aberto: None,
+            fonte_aberta: None,
             seletor,
             paleta_vista,
             pincel,
@@ -158,6 +162,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
         let y = c.tudo(info, renaming, top);
         blend_aberto = c.blend_aberto;
         menu_aberto = c.menu_aberto;
+        fonte_aberta = c.fonte_aberta;
         (y - top + PANEL_HEAD_PAD).max(0.0)
     });
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
@@ -173,6 +178,9 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
                 .open(true);
         let viewport = ctx.viewport;
         ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
+    }
+    if let Some(chip) = fonte_aberta {
+        fonte::popover(ctx, chip, theme);
     }
     // O menu da barra da paleta aberto, por cima de tudo.
     if let Some((chip, menu)) = menu_aberto {
@@ -194,6 +202,8 @@ struct Corpo<'a> {
     blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
     /// O menu da barra da paleta aberto: o ícone e qual (pinta-se depois, por cima).
     menu_aberto: Option<(Rect, paleta_menu::MenuPaleta)>,
+    /// O dropdown de fontes do Text aberto: o chip (a lista pinta-se depois, por cima).
+    fonte_aberta: Option<Rect>,
     seletor: &'a mut crate::state::Seletor,
     paleta_vista: &'a mut crate::state::PaletaVista,
     pincel: &'a mut crate::state::PincelVista,
@@ -318,7 +328,8 @@ impl Corpo<'_> {
         if t == PixelTool::Text {
             y = self.opcoes_texto(info, sec, y);
         }
-        if matches!(t, PixelTool::Bucket | PixelTool::Gradient) {
+        // Só o balde: o Gradient pinta a selecção (ou o cel) inteira, sem contiguidade.
+        if t == PixelTool::Bucket {
             y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);
             y = self.campo(tr("panel.pixel.tolerance"), ids::TOLERANCE, sec, y);
             y = self.caixas(

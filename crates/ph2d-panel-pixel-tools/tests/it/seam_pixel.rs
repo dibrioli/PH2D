@@ -133,7 +133,7 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
         5,
         "Line, Curve, o botão das quatro formas, Contour, Polygon (P6c)"
     );
-    assert_eq!(col[3].len(), 1, "Hand");
+    assert_eq!(col[3].len(), 2, "Text e Hand (P8: o Text mora com a mão)");
     let ferr: Vec<_> = col[..4].iter().flatten().map(|b| (b.id, b.on)).collect();
     let id = |t: PixelTool| ids::TOOLS.iter().find(|(u, _)| *u == t).map(|(_, i)| *i);
     let quer: Vec<_> = [
@@ -151,6 +151,7 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
         Some(ids::PIXEL_SHAPE_GROUP),
         id(PixelTool::Contour),
         id(PixelTool::Polygon),
+        id(PixelTool::Text),
         id(PixelTool::Hand),
     ]
     .into_iter()

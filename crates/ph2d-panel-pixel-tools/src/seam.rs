@@ -28,9 +28,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.set_tooltip(id, t.named());
     }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));
-    for id in [ids::TEXT_FONT_PREV, ids::TEXT_FONT_NEXT] {
-        store.set_tooltip(id, tr("panel.pixel.text.font_tip"));
-    }
+    store.set_tooltip(ids::TEXT_FONT_DD, tr("panel.pixel.text.font_tip"));
     store.set_tooltip(ids::TEXT_SIZE, tr("panel.pixel.text.size_tip"));
     // As amostras da coluna abrem o seletor partilhado num Down — marcadas AQUI, porque a coluna as
     // pinta com o painel fechado.
@@ -114,7 +112,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         },
     );
     store.set_number_range(ids::LAYER_OPACITY, 0.0, 255.0, 1.0); // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
-    for id in [ids::LAYER_BLEND, ids::PALETTE_MENU, ids::PRESETS_MENU] {
+    for id in [
+        ids::LAYER_BLEND,
+        ids::PALETTE_MENU,
+        ids::PRESETS_MENU,
+        ids::TEXT_FONT_DD,
+    ] {
         store.register(
             id,
             InteractiveState::Dropdown {
@@ -364,7 +367,10 @@ pub(crate) fn apply_event(
             return empurra(host, pedido);
         }
         WidgetEvent::Click(id)
-            if id == ids::LAYER_BLEND || id == ids::PALETTE_MENU || id == ids::PRESETS_MENU =>
+            if id == ids::LAYER_BLEND
+                || id == ids::PALETTE_MENU
+                || id == ids::PRESETS_MENU
+                || id == ids::TEXT_FONT_DD =>
         {
             return EventOutcome::Consumed;
         }
@@ -418,6 +424,10 @@ pub(crate) fn apply_event(
         WidgetEvent::ValueChanged(id) if ids::DYN_NUMBERS.iter().any(|(n, _)| *n == id) => {
             let v = host.store().number_value(id);
             let pedido = with_current(|i| crate::seam_pincel::campo(i, id, v));
+            return empurra(host, pedido);
+        }
+        WidgetEvent::Click(id) if crate::paint::fonte::linha(id).is_some() => {
+            let pedido = crate::paint::fonte::escolhe(host, id);
             return empurra(host, pedido);
         }
         WidgetEvent::Click(id) if pedido_camada(id).is_some() => {

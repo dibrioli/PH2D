@@ -118,6 +118,13 @@ impl Fonte {
     }
 }
 
+/// A cor que o texto deixa numa célula de cobertura `c` sobre `dst`: cobertura cheia = `fg` tal e
+/// qual, parcial (Antialias) = [`over`]. A lei do carimbo e do texto solto que assenta.
+#[must_use]
+pub fn tinge(fg: [u8; 4], c: u8, dst: [u8; 4]) -> [u8; 4] {
+    if c == u8::MAX { fg } else { over(fg, c, dst) }
+}
+
 /// `fg` com o alfa multiplicado por `c/255`, por cima de `dst` (alfa reto).
 #[must_use]
 pub fn over(fg: [u8; 4], c: u8, dst: [u8; 4]) -> [u8; 4] {
@@ -195,12 +202,55 @@ impl Editing {
     }
 }
 
-/// As fontes do Text, na ordem do índice: as de fábrica e depois `system` (as famílias do sistema
-/// na ordem do seletor do Vector).
+/// As famílias do sistema mais usadas em pixel art: as instaladas sobem para logo depois das de
+/// fábrica, nesta ordem (casam sem olhar a maiúsculas, espaços nem hífens).
+pub const PIXEL_POPULAR: [&str; 12] = [
+    "Press Start 2P",
+    "Silkscreen",
+    "VT323",
+    "Pixelify Sans",
+    "m5x7",
+    "m3x6",
+    "Monogram",
+    "Pixel Operator",
+    "PixelOperator",
+    "Terminus",
+    "Tamzen",
+    "Spleen",
+];
+
+fn chave(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+/// As fontes do Text, na ordem do índice: as de fábrica, as do sistema de [`PIXEL_POPULAR`] que
+/// existem (na ordem dela) e depois as restantes de `system` (na ordem do seletor do Vector).
 #[must_use]
 pub fn font_list(system: impl IntoIterator<Item = String>) -> Vec<String> {
-    let fabrica = crate::BUILTIN.iter().map(|b| b.0.to_owned());
-    fabrica.chain(system).collect()
+    let mut resto: Vec<String> = system.into_iter().collect();
+    let mut v: Vec<String> = crate::BUILTIN.iter().map(|b| b.0.to_owned()).collect();
+    for p in PIXEL_POPULAR.map(chave) {
+        while let Some(k) = resto.iter().position(|f| chave(f) == p) {
+            v.push(resto.remove(k));
+        }
+    }
+    v.extend(resto);
+    v
+}
+
+/// Quantas das primeiras de [`font_list`] são de pixel (de fábrica ou de [`PIXEL_POPULAR`]).
+#[must_use]
+pub fn pixel_popular_count(list: &[String]) -> usize {
+    let pop = PIXEL_POPULAR.map(chave);
+    crate::BUILTIN.len()
+        + list
+            .iter()
+            .skip(crate::BUILTIN.len())
+            .take_while(|f| pop.contains(&chave(f)))
+            .count()
 }
 
 /// O índice `i` numa lista de `n` (Previous/Next dão a volta: `u16::MAX` = a última).
@@ -241,14 +291,10 @@ impl Fonte {
         fg: [u8; 4],
         below: impl Fn(Cell) -> [u8; 4],
     ) -> Vec<(Cell, [u8; 4])> {
-        let cor = |p, c| {
-            if c == u8::MAX {
-                fg
-            } else {
-                over(fg, c, below(p))
-            }
-        };
         let cells = self.cells(texto, at, size);
-        cells.into_iter().map(|(p, c)| (p, cor(p, c))).collect()
+        cells
+            .into_iter()
+            .map(|(p, c)| (p, tinge(fg, c, below(p))))
+            .collect()
     }
 }

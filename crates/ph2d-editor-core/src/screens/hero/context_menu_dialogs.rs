@@ -465,4 +465,4 @@ mod color_mode;
 pub(super) use color_mode::paint_color_mode_dialog;
 #[path = "context_menu_pixel_edit.rs"]
 mod pixel_edit;
-pub(super) use pixel_edit::paint_pixel_edit_dialog;
+pub(super) use pixel_edit::{paint_pixel_edit_dialog, publish_kernel_list};

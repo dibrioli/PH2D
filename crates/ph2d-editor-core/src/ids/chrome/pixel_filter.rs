@@ -14,6 +14,8 @@ pub const PIXEL_FILTER_TARGET: NodeId = hash_node_id("pixel.filter_dialog.target
 /// Despeckle: a janela da mediana.
 pub const PIXEL_FILTER_MEDIAN_W: NodeId = hash_node_id("pixel.filter_dialog.median_w");
 pub const PIXEL_FILTER_MEDIAN_H: NodeId = hash_node_id("pixel.filter_dialog.median_h");
+/// Convolution Matrix: o chip do dropdown dos kernels (as opções são [`pixel_filter_kernel_id`]).
+pub const PIXEL_FILTER_KERNEL: NodeId = hash_node_id("pixel.filter_dialog.kernel_list");
 
 /// O *Target*: `R G B A` (índice no `PixelChannels`, botão, rótulo).
 pub const PIXEL_FILTER_CHANNELS: [(usize, NodeId, &str); 4] = [

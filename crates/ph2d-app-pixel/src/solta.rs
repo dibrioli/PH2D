@@ -78,6 +78,9 @@ pub struct Solta {
     pub(crate) original: Option<Mask>,
     pub(crate) m: Affine,
     pub(crate) pivot: Pivot,
+    /// O texto do Text (P8b): `src` é a COBERTURA (1 byte) e a cor mistura-se ao assentar, sobre o
+    /// que estiver lá por baixo nesse sítio e cortada à selecção de então.
+    pub(crate) tinta: Option<[u8; 4]>,
     arrasto: Option<Arrasto>,
     /// O último ponto de ecrã do ponteiro (o pintor do gizmo troca os cantos por círculos no giro).
     pub(crate) cursor: Option<(f32, f32)>,
@@ -115,6 +118,7 @@ impl Solta {
             original,
             m,
             pivot,
+            tinta: None,
             arrasto: None,
             cursor: None,
             cache: None,
@@ -143,12 +147,17 @@ impl Solta {
             .as_ref()
             .is_some_and(|(m, r, ..)| *m == self.m && *r == method);
         if !fresh {
-            let (t, bg_t) = (self.m.settle(), s.transparent_value());
-            let f = edit::transform_within(&self.src, &t, method, bg_t, s.bounds());
             let key = (self.layer, self.frame);
-            let op = f.as_ref().and_then(|f| match &self.original {
-                Some(o) => edit::commit(s, key, o, f, bg),
-                None => edit::paste(s, key, f, bg),
+            let bg_t = self.tinta.map_or(s.transparent_value(), |_| 0);
+            let f = edit::transform_within(&self.src, &self.m.settle(), method, bg_t, s.bounds());
+            let f = match self.tinta {
+                Some(fg) => f.map(|f| crate::texto::mistura(s, key, &f, fg)),
+                None => f,
+            };
+            let op = f.as_ref().and_then(|f| match (&self.original, self.tinta) {
+                (_, Some(_)) => ph2d_pixel_core::transform::stamp(s, key, f, None, None, bg),
+                (Some(o), None) => edit::commit(s, key, o, f, bg),
+                (None, None) => edit::paste(s, key, f, bg),
             });
             self.cache = Some((self.m, method, op, f));
         }
@@ -325,6 +334,18 @@ impl PixelApp {
             return;
         };
         self.solta = Some(Solta::new(key, doc.layer, doc.frame, src, None));
+        self.toca(key);
+    }
+
+    /// O texto do Text solto: `cobertura` (1 byte por célula) na cor `fg` (assenta com `Enter` ou
+    /// um clique fora, misturado ao que estiver por baixo).
+    pub(crate) fn solta_texto(&mut self, key: u32, cobertura: Floating, fg: [u8; 4]) {
+        let Some(doc) = self.docs.get(&key) else {
+            return;
+        };
+        let mut so = Solta::new(key, doc.layer, doc.frame, cobertura, None);
+        so.tinta = Some(fg);
+        self.solta = Some(so);
         self.toca(key);
     }
 

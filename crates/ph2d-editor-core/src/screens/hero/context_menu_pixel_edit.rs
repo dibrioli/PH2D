@@ -12,7 +12,7 @@ use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text_elided, resolve};
 use crate::panel::rows::RowCtx;
 use crate::pixel_panel::{PixelDialogKind, PixelModify};
-use crate::widget::{Button, Unit, paint_button};
+use crate::widget::{Button, Dropdown, DropdownOption, PaintedPopover, Unit, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
@@ -43,23 +43,22 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::HueSaturation => 9,
         // Título · a caixa da curva · canais · Preview · botões.
         PixelDialogKind::ColorCurve => 4 + CURVE_ROWS,
-        // Título · Tiled · canais · Preview · botões (+ as filas da lista: [`KERNEL_COLS`] por fila).
-        PixelDialogKind::ConvolutionMatrix => 5,
+        // Título · Kernel (dropdown) · Tiled · canais · Preview · botões.
+        PixelDialogKind::ConvolutionMatrix => 6,
     }
 }
 
-/// A lista de kernels da Convolution Matrix vai em colunas de botões de escolha, numa janela de
-/// largura dupla: as 37 numa coluna só (≈ 1 000 px) passariam da altura de uma janela pequena, e em
-/// três (13 filas) cabem sem rolagem com o nome mais longo inteiro. O Aseprite tem também «Apply» e
-/// «Reload Stock» (relê o ficheiro de kernels) — não há ficheiro aqui.
-const KERNEL_COLS: usize = 3;
+thread_local! {
+    /// A lista dos kernels pintada neste quadro: o pintor só tem o store `&`; o
+    /// [`publish_kernel_list`] publica-a no fim do quadro (rolagem, roda, clique de fora).
+    static KERNEL_LIST: std::cell::Cell<Option<PaintedPopover>> =
+        const { std::cell::Cell::new(None) };
+}
 
-/// A largura da janela de `kind`: a da Convolution Matrix é dupla (as colunas de kernels).
-fn width_of(kind: PixelDialogKind) -> f32 {
-    if kind == PixelDialogKind::ConvolutionMatrix {
-        DIALOG_W + DIALOG_W
-    } else {
-        DIALOG_W
+/// Publica a lista dos kernels pintada neste quadro (se a houve) — chamado depois do overlay.
+pub(in crate::screens::hero) fn publish_kernel_list(store: &mut WidgetStore) {
+    if let Some(p) = KERNEL_LIST.with(std::cell::Cell::take) {
+        store.publish_dropdown_popover(p);
     }
 }
 
@@ -75,16 +74,11 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     viewport: Rect,
 ) {
     let d = store.pixel_edit_dialog();
-    let kernel_rows = if d.kind == PixelDialogKind::ConvolutionMatrix {
-        d.filter.kernels.len().div_ceil(KERNEL_COLS)
-    } else {
-        0
-    };
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 64")]
-    let rows = (rows_of(d.kind) + kernel_rows) as f32;
+    let rows = rows_of(d.kind) as f32;
     let gap = Spacing::Xs.px();
     let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
-    let dialog_w = width_of(d.kind);
+    let dialog_w = DIALOG_W;
     // Os de filtro encostam-se onde tapam menos o sprite e nunca a dica do fundo (as filas dela).
     let alvo = d.kind.is_filter().then_some(d.avoid).flatten();
     #[expect(clippy::cast_precision_loss, reason = "px de ecrã")]
@@ -118,6 +112,7 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         store,
         x: rect.x + Spacing::Md.px(),
         w: rect.w - Spacing::Md.px() * 2.0,
+        kernel_chip: None,
     };
     let mut y = rect.y + pad_y();
     let title = match d.kind {
@@ -246,6 +241,40 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         let b = if accent { b.accent() } else { b };
         paint_button(&b, b_rect, c.scene, c.text_system, theme);
     }
+    // A lista aberta dos kernels por último: por cima dos botões, e os hits dela ganham.
+    if let Some(chip) = c
+        .kernel_chip
+        .filter(|_| store.pixel_filter_kernel_list_open())
+    {
+        let dd = kernel_dropdown(d.filter, true);
+        let p = crate::panel::paint_dropdown_popover_scrolled_with_hits(
+            &dd,
+            chip,
+            viewport,
+            store,
+            c.scene,
+            c.text_system,
+            theme,
+            c.hit_index,
+        );
+        KERNEL_LIST.with(|k| k.set(Some(p)));
+    }
+}
+
+/// O dropdown dos kernels da Convolution Matrix: uma opção por nome publicado, na ordem do núcleo.
+/// O Aseprite tem também «Apply» e «Reload Stock» (relê o ficheiro de kernels) — não há ficheiro.
+fn kernel_dropdown(f: crate::pixel_panel::PixelFilterDialog, open: bool) -> Dropdown<usize> {
+    let opts = f
+        .kernels
+        .iter()
+        .enumerate()
+        .filter_map(|(i, nome)| {
+            ids::pixel_filter_kernel_id(i).map(|id| DropdownOption::new(id, i, *nome))
+        })
+        .collect();
+    Dropdown::new(ids::PIXEL_FILTER_KERNEL, "", opts)
+        .selected(usize::from(f.kernel))
+        .open(open)
 }
 
 /// As filas de um diálogo de filtro (P8), depois do título.
@@ -286,18 +315,7 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         );
     }
     if d.kind == PixelDialogKind::ConvolutionMatrix {
-        let sel = usize::from(f.kernel);
-        for (fila, nomes) in f.kernels.chunks(KERNEL_COLS).enumerate() {
-            let opts: Vec<_> = nomes
-                .iter()
-                .enumerate()
-                .filter_map(|(j, nome)| {
-                    let i = fila * KERNEL_COLS + j;
-                    ids::pixel_filter_kernel_id(i).map(|id| (id, *nome, i == sel))
-                })
-                .collect();
-            y = c.choices(&opts, y);
-        }
+        y = c.kernel_row(f, y);
     }
     if matches!(
         d.kind,
@@ -387,9 +405,43 @@ struct Caixa<'a> {
     store: &'a WidgetStore,
     x: f32,
     w: f32,
+    /// O chip do dropdown dos kernels, quando pintado (a lista aberta pinta-se no fim).
+    kernel_chip: Option<Rect>,
 }
 
 impl Caixa<'_> {
+    /// Convolution Matrix: «Kernel» e o chip do dropdown no resto da fila. Não na coluna do valor:
+    /// ela tem 138 px e o nome mais largo pede 184 (`no_kernel_name_nor_label_…_is_cut`); nenhuma
+    /// outra fila deste diálogo é rotulada, não há coluna a alinhar.
+    fn kernel_row(&mut self, f: crate::pixel_panel::PixelFilterDialog, y: f32) -> f32 {
+        let font = TypeToken::Sm.px();
+        let label = tr("pixel.filter_dialog.kernel");
+        let label_w = crate::paint::label_column_width(self.text_system, font, [label]);
+        crate::widget::paint_property_label(
+            self.text_system,
+            self.scene,
+            label,
+            self.x,
+            y + (ROW_H - font) * 0.5,
+            font,
+            label_w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        let gap = Spacing::Md.px();
+        let chip = Rect::new(
+            self.x + label_w + gap,
+            y,
+            (self.w - label_w - gap).max(1.0),
+            ROW_H,
+        );
+        let dd = kernel_dropdown(f, self.store.pixel_filter_kernel_list_open())
+            .visual(self.store.dropdown_visual(ids::PIXEL_FILTER_KERNEL));
+        crate::widget::paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::PIXEL_FILTER_KERNEL, chip);
+        self.kernel_chip = Some(chip);
+        y + ph2d_tokens::row_pitch_px()
+    }
+
     /// Um rótulo numa fila só (elidido: o censo das elisões vê se coube).
     fn label(&mut self, key: &str, y: f32, token: ColorToken) -> f32 {
         let font = TypeToken::Sm.px();

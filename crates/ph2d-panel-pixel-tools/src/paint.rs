@@ -509,6 +509,43 @@ impl Corpo<'_> {
                 .iter()
                 .fold(y, |y, b| self.botoes(std::slice::from_ref(b), y));
         }
+        // Sozinho e ainda maior que a largura toda (o «Despeckle (Median Filter)…» no piso da
+        // doca): o rótulo inteiro em duas linhas, nunca cortado.
+        if let [(id, key)] = fila
+            && !cabe(self.text_system, key)
+        {
+            let pad = Button::new(NodeId(0), "").padding();
+            let texto = tr(key);
+            let ts = &mut *self.text_system;
+            let partida = texto
+                .match_indices(' ')
+                .map(|(i, _)| (&texto[..i], &texto[i + 1..]))
+                .filter(|(a, b)| {
+                    ts.prefix_width(a, fonte) + 2.0 * pad <= bw
+                        && ts.prefix_width(b, fonte) + 2.0 * pad <= bw
+                })
+                .last();
+            if let Some((a, b)) = partida {
+                let r = Rect::new(self.x, y, bw, 2.0 * ROW_H_PX);
+                let botao = Button::new(*id, "").visual(self.store.button_visual(*id));
+                paint_button(&botao, r, self.scene, self.text_system, self.theme);
+                let cor = resolve(ColorToken::Text1, self.theme);
+                for (k, linha) in [a, b].into_iter().enumerate() {
+                    #[expect(clippy::cast_precision_loss, reason = "duas linhas")]
+                    let rl = Rect::new(self.x, y + k as f32 * ROW_H_PX, bw, ROW_H_PX);
+                    ph2d_editor_core::paint::paint_text_centered(
+                        self.text_system,
+                        self.scene,
+                        linha,
+                        rl,
+                        fonte,
+                        cor,
+                    );
+                }
+                self.hit_index.register(*id, r);
+                return y + 2.0 * ROW_H_PX + ph2d_tokens::control_gap_px();
+            }
+        }
         for (i, (id, key)) in fila.iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
             let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H_PX);

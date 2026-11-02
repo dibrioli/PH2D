@@ -77,7 +77,10 @@ impl Corpo<'_> {
             .iter()
             .map(|&(d, id, k)| (tr(k), d == o.gradient_dither, id))
             .collect();
-        let y = self.escolha(tr("panel.pixel.gradient.dither"), &matriz, sec, y);
+        // 2 + 2: os quatro numa fila partiam 3 + 1 na doca mínima.
+        let (a, b) = matriz.split_at(matriz.len() / 2);
+        let y = self.escolha(tr("panel.pixel.gradient.dither"), a, sec, y);
+        let y = self.escolha("", b, sec, y);
         self.caixas(
             &[(
                 ids::GRADIENT_RAMP,

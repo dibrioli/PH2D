@@ -188,12 +188,12 @@ impl Corpo<'_> {
         if livre {
             fila.push((ids::DYNAMICS, tr("panel.pixel.dynamics"), aberta));
         }
-        #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-        let n = fila.len() as f32;
-        let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
+        // Um botão por fila, na largura toda: «Save Brush Here» não cabe em meia largura da doca.
         for (i, (id, rotulo, premido)) in fila.into_iter().enumerate() {
-            #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-            let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, side);
+            if i > 0 {
+                y += side + ph2d_tokens::control_gap_px();
+            }
+            let r = Rect::new(self.x, y, self.w, side);
             let visual = if premido {
                 (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
             } else {

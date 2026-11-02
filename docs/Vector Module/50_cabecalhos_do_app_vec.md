@@ -658,3 +658,142 @@ fonte, já muda a rota de desenho).
 existe pelo caso da CENA CHEIA (dez formas traçadas × por frame), não pelo caso de uma. A
 chave é o que de facto determina a saída — a geometria de MUNDO que entra — e não um contador
 de versão que alguém esqueceria de bumpar.
+
+## `vec_frame_edit.rs`
+
+> **A moldura da SELEÇÃO** — a projeção que o painel lê, e o chip que a edita.
+
+Duas metades da mesma pergunta (*a seleção é uma moldura, e ela recorta?*), respondidas UMA vez
+e no lugar onde o mundo mora. O painel não alcança o ECS — e não deve: se alcançasse, haveria
+duas respostas para *"esta seleção é uma moldura?"*, e a que desenha a seção divergiria da que
+honra o clique.
+
+# A moldura é a que CONTÉM a seleção
+
+⚠️ **Um GRUPO puro ainda expande** — o [`crate::vec_selection`] entrega ao pen o que
+`selection_paths` diz, e um grupo não tem geometria própria, logo empresta os filhos. Então
+uma moldura dentro de um grupo chega aqui junto com os irmãos, e uma regra de *"exactamente
+um selecionado"* responderia `None` sobre a moldura que interessa. Foi o defeito reportado —
+*"não vejo em lugar nenhum a seção Frame"*.
+
+A pergunta certa é o **INVERSO da expansão**, pela mesma relação de parentesco que a produziu:
+*qual moldura selecionada contém tudo o que está selecionado?* Ela responde igual pelas duas
+rotas de selecção, e é isso que impede a resposta de depender de POR ONDE o artista selecionou.
+
+⚠️ E ela ficou MAIS simples em 2026-08-02, sem mudar de forma: uma **moldura** deixou de
+emprestar os filhos (ela é uma forma, e restilizá-la restilizava seis), então hoje a moldura
+costuma chegar aqui sozinha — e contém-se a si própria. Continua a ser o inverso da expansão
+porque a expansão continua a existir *para grupos*.
+
+O que ela recusa, e é o desenho:
+
+- **um filho sozinho** não oferece a seção — o artista selecionou a forma, não o contêiner;
+- **duas molduras irmãs** não têm resposta única (nenhuma contém a outra);
+- **moldura + forma solta** também não: o chip editaria o que o artista não está a olhar.
+
+Aninhadas, a de FORA contém as de dentro ⇒ ela é a resposta, que é a moldura em que o artista
+de facto clicou.
+
+## `paint_dilate.rs`
+
+> ⭐⭐⭐ **O OFFSET DE CAD DE UMA CAMADA** — a silhueta dela cresce ou encolhe (v22).
+
+Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"*. É o *Offset Path* do
+Illustrator aplicado a UM atributo da pilha de aparência, e é o que faz um adesivo, um rótulo
+contornado ou um selo **numa forma só** — sem duplicar o objecto, que é a doença que a pilha
+existe para curar.
+
+# Por que este módulo existe (e não é feito no renderer)
+
+O renderer é **sem estado** e o `path_tess` corre por forma e por quadro. Medido:
+
+| direcção | motor | custo por camada |
+|---|---|---|
+| **crescer**, contorno único | [`ph2d_vec_boolean::offset_ring`] (Minkowski, sem booleana) | **~0,5 µs** |
+| **encolher**, ou compound | [`ph2d_vec_boolean::offset_path`] (o sweep booleano) | **85–440 µs** |
+
+Tesselar uma forma custa **~0,13 µs** (`encode_cost_by_n`: 10 k formas em 1,323 ms). ⇒ crescer é
+da mesma ordem do desenho e **encolher é ~1 000× isso** — é o encolher que obriga ao memo, e é
+por isso que ele mora aqui, do lado que tem estado entre quadros.
+
+# ⚠️ A chave é LOCAL, e é isso que faz o memo sobreviver ao arrasto
+
+O [`crate::contour_live`] coze em MUNDO e por isso **recoze a cada quadro** enquanto a forma é
+arrastada (o próprio ficheiro dele declara sofrer disso). Aqui a distância é local
+([`ph2d_vec_scene::PaintEntry::dilate`]), então a chave é a geometria COZIDA + a distância + a
+quina — nenhuma delas muda ao mover a forma pelo canvas.
+
+# ⛔ O cozimento passa pela porta do Contour, não por uma segunda
+
+[`crate::contour_live::cook_piece`] é quem escolhe entre o anel e a booleana, com o domínio de
+cada um medido e escrito. Uma segunda escolha aqui divergiria da dele no dia em que o domínio
+do anel crescesse.
+
+## `group_gizmo_view.rs`
+
+> ⭐ **O gizmo de um objeto que não desenha nada** — o VAZIO e o GRUPO (Enio, 2026-08-26).
+
+Até aqui `snapshots::build_view` respondia `None` para toda entidade sem geometria própria —
+*«grupo/outro: sem gizmo próprio»* — e um objeto sem gizmo **não é agarrável de forma nenhuma**:
+nem para mover, nem para girar, nem para escalar. O botão `Add` da Hierarquia (F3) nasce
+exatamente assim (`Transform` + `Name` e mais nada), então o objeto que o artista acabou de
+criar era o único do app que ele não podia pegar.
+
+# A caixa é a DELE, sempre — e ter filhos não a muda
+
+> *«O objeto vazio deve permanecer com seu gizmo original e não se utilizar do gizmo dos
+> filhos.»* (Enio, 2026-08-26, 3.ª volta do smoke.)
+
+⛔ **A 1.ª versão fazia a caixa ser a UNIÃO dos filhos visíveis** quando havia algum — a lei do
+container de um `VecEnvelope` (ADR-0129 Fatia 3) generalizada. Está **construída, medida e
+REJEITADA por veredito de produto**: um objeto vazio passava a ter um tamanho que não é dele, e
+a caixa mudava sozinha sempre que um filho se mexia. ⚠️ *Um controlo cuja moldura muda quando o
+artista não lhe tocou lê-se como o app a decidir por ele.* A árvore dessa versão sobrevive no
+commit `828bc88f4`; ⛔ uma 2.ª tentativa começa perguntando **o que ficou pior**, não
+reconstruindo.
+
+⇒ a caixa é sempre o **marcador** do objeto, com meia-extensão derivada do tamanho da alça (ver
+[`EMPTY_HALF_PX`]). Ela move/gira/escala o `Transform` DELE, e os filhos seguem por parentesco —
+é isso, e não o tamanho da moldura, que faz o conjunto andar como um objeto só.
+
+# ⛔ Quem já tem alças NÃO ganha caixa
+
+Uma junta e uma roldana também não têm geometria, e chegam aqui pelo mesmo caminho — mas elas
+**já publicam alças** (os dots de [`crate::render_loop::point_gizmo`]). Uma caixa por cima
+registaria o interior dela como *Translate* no hit-index e **engoliria o clique nas alças**, que
+são os controlos que aquelas entidades de facto têm. *É a mesma razão pela qual o conector e o
+spine de um Blend não publicam gizmo* (ver o cabeçalho de [`ph2d_app_vec::vec_gizmo_view`]).
+
+## `frame_spans.rs`
+
+> **Os intervalos de RECORTE deste frame**, resolvidos contra a pilha de z que se vai desenhar.
+
+A metade que a shell possui: ela sabe a ÁRVORE (o parentesco e o `ph2d_ecs::VecClipContent`
+moram em entidades) e o renderer sabe DESENHAR, então o que atravessa a fronteira é um par de
+ids por recorte — `ph2d_vec_scene::VecClipSpan`, dentro do `VecViewState` que já leva *"o que a
+árvore diz sobre os paths"*.
+
+⚠️ **"Moldura" aqui é história, não requisito** (2026-08-21): quem recorta é qualquer forma
+FECHADA que carregue o `VecClipContent`, e o campo `frame` do `VecClipSpan` guarda o nome de
+quando só a moldura podia. O que se lê abaixo vale igual para uma elipse e para uma tela.
+
+# O que este módulo DEIXOU de produzir (2026-08-04)
+
+Ele produzia um intervalo para **todo pai**, recortasse ou não, porque a pilha de z era o DFS
+**invertido** — o pai desenhava na FRENTE dos filhos e o renderer tinha de **antecipar** o
+desenho dele. Enio: *"o filho é desenhado por trás do pai … em game engines como Godot os
+filhos são renderizados acima dos pais"*.
+
+⚠️ A cura não foi um terceiro remendo: foi **inverter a projeção** (`vec_zorder::z_order`). O
+filho passou a desenhar sobre o pai em TODA rota — incluindo a INSTÂNCIA de componente, que
+percorre a cena e não tem renderer por trás, e por isso não tinha como herdar a antecipação
+(*"ao criar a instância, os filhos que no mestre aparecem na frente dos pais vão para trás"*).
+Com a antecipação morta, o intervalo voltou a ser o que o nome diz: **recorte**, e só de quem
+recorta.
+
+# O intervalo sai da pilha FINAL, e é isso que o Z global exige
+
+O Z sobrepõe a árvore, então a sub-árvore de uma moldura **deixou de ser contígua** na pilha:
+um filho com Z alto sai de dentro do intervalo e não é recortado. Resolver o intervalo contra o
+DFS o descreveria onde a forma já não está — e um intervalo que aponta para o path errado é um
+`pop_layer` no lugar errado.

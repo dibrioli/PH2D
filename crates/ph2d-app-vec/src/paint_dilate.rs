@@ -1,35 +1,6 @@
 //! ⭐⭐⭐ **O OFFSET DE CAD DE UMA CAMADA** — a silhueta dela cresce ou encolhe (v22).
 //!
-//! Pedido do Enio, 2026-09-05: *"o offset do cad, contraindo e dilatando"*. É o *Offset Path* do
-//! Illustrator aplicado a UM atributo da pilha de aparência, e é o que faz um adesivo, um rótulo
-//! contornado ou um selo **numa forma só** — sem duplicar o objecto, que é a doença que a pilha
-//! existe para curar.
-//!
-//! # Por que este módulo existe (e não é feito no renderer)
-//!
-//! O renderer é **sem estado** e o `path_tess` corre por forma e por quadro. Medido:
-//!
-//! | direcção | motor | custo por camada |
-//! |---|---|---|
-//! | **crescer**, contorno único | [`ph2d_vec_boolean::offset_ring`] (Minkowski, sem booleana) | **~0,5 µs** |
-//! | **encolher**, ou compound | [`ph2d_vec_boolean::offset_path`] (o sweep booleano) | **85–440 µs** |
-//!
-//! Tesselar uma forma custa **~0,13 µs** (`encode_cost_by_n`: 10 k formas em 1,323 ms). ⇒ crescer é
-//! da mesma ordem do desenho e **encolher é ~1 000× isso** — é o encolher que obriga ao memo, e é
-//! por isso que ele mora aqui, do lado que tem estado entre quadros.
-//!
-//! # ⚠️ A chave é LOCAL, e é isso que faz o memo sobreviver ao arrasto
-//!
-//! O [`crate::contour_live`] coze em MUNDO e por isso **recoze a cada quadro** enquanto a forma é
-//! arrastada (o próprio ficheiro dele declara sofrer disso). Aqui a distância é local
-//! ([`ph2d_vec_scene::PaintEntry::dilate`]), então a chave é a geometria COZIDA + a distância + a
-//! quina — nenhuma delas muda ao mover a forma pelo canvas.
-//!
-//! # ⛔ O cozimento passa pela porta do Contour, não por uma segunda
-//!
-//! [`crate::contour_live::cook_piece`] é quem escolhe entre o anel e a booleana, com o domínio de
-//! cada um medido e escrito. Uma segunda escolha aqui divergiria da dele no dia em que o domínio
-//! do anel crescesse.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `paint_dilate.rs`.
 
 use std::collections::BTreeMap;
 

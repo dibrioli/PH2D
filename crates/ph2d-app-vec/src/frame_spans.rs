@@ -1,34 +1,6 @@
 //! **Os intervalos de RECORTE deste frame**, resolvidos contra a pilha de z que se vai desenhar.
 //!
-//! A metade que a shell possui: ela sabe a ÁRVORE (o parentesco e o `ph2d_ecs::VecClipContent`
-//! moram em entidades) e o renderer sabe DESENHAR, então o que atravessa a fronteira é um par de
-//! ids por recorte — `ph2d_vec_scene::VecClipSpan`, dentro do `VecViewState` que já leva *"o que a
-//! árvore diz sobre os paths"*.
-//!
-//! ⚠️ **"Moldura" aqui é história, não requisito** (2026-08-21): quem recorta é qualquer forma
-//! FECHADA que carregue o `VecClipContent`, e o campo `frame` do `VecClipSpan` guarda o nome de
-//! quando só a moldura podia. O que se lê abaixo vale igual para uma elipse e para uma tela.
-//!
-//! # O que este módulo DEIXOU de produzir (2026-08-04)
-//!
-//! Ele produzia um intervalo para **todo pai**, recortasse ou não, porque a pilha de z era o DFS
-//! **invertido** — o pai desenhava na FRENTE dos filhos e o renderer tinha de **antecipar** o
-//! desenho dele. Enio: *"o filho é desenhado por trás do pai … em game engines como Godot os
-//! filhos são renderizados acima dos pais"*.
-//!
-//! ⚠️ A cura não foi um terceiro remendo: foi **inverter a projeção** (`vec_zorder::z_order`). O
-//! filho passou a desenhar sobre o pai em TODA rota — incluindo a INSTÂNCIA de componente, que
-//! percorre a cena e não tem renderer por trás, e por isso não tinha como herdar a antecipação
-//! (*"ao criar a instância, os filhos que no mestre aparecem na frente dos pais vão para trás"*).
-//! Com a antecipação morta, o intervalo voltou a ser o que o nome diz: **recorte**, e só de quem
-//! recorta.
-//!
-//! # O intervalo sai da pilha FINAL, e é isso que o Z global exige
-//!
-//! O Z sobrepõe a árvore, então a sub-árvore de uma moldura **deixou de ser contígua** na pilha:
-//! um filho com Z alto sai de dentro do intervalo e não é recortado. Resolver o intervalo contra o
-//! DFS o descreveria onde a forma já não está — e um intervalo que aponta para o path errado é um
-//! `pop_layer` no lugar errado.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `frame_spans.rs`.
 
 use ph2d_ecs::scene::HierarchySnapshot;
 use ph2d_ecs::{Entity, SimWorld, VecClipContent};

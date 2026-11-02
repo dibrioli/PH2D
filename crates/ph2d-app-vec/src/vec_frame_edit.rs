@@ -1,35 +1,6 @@
 //! **A moldura da SELEÇÃO** — a projeção que o painel lê, e o chip que a edita.
 //!
-//! Duas metades da mesma pergunta (*a seleção é uma moldura, e ela recorta?*), respondidas UMA vez
-//! e no lugar onde o mundo mora. O painel não alcança o ECS — e não deve: se alcançasse, haveria
-//! duas respostas para *"esta seleção é uma moldura?"*, e a que desenha a seção divergiria da que
-//! honra o clique.
-//!
-//! # A moldura é a que CONTÉM a seleção
-//!
-//! ⚠️ **Um GRUPO puro ainda expande** — o [`crate::vec_selection`] entrega ao pen o que
-//! `selection_paths` diz, e um grupo não tem geometria própria, logo empresta os filhos. Então
-//! uma moldura dentro de um grupo chega aqui junto com os irmãos, e uma regra de *"exactamente
-//! um selecionado"* responderia `None` sobre a moldura que interessa. Foi o defeito reportado —
-//! *"não vejo em lugar nenhum a seção Frame"*.
-//!
-//! A pergunta certa é o **INVERSO da expansão**, pela mesma relação de parentesco que a produziu:
-//! *qual moldura selecionada contém tudo o que está selecionado?* Ela responde igual pelas duas
-//! rotas de selecção, e é isso que impede a resposta de depender de POR ONDE o artista selecionou.
-//!
-//! ⚠️ E ela ficou MAIS simples em 2026-08-02, sem mudar de forma: uma **moldura** deixou de
-//! emprestar os filhos (ela é uma forma, e restilizá-la restilizava seis), então hoje a moldura
-//! costuma chegar aqui sozinha — e contém-se a si própria. Continua a ser o inverso da expansão
-//! porque a expansão continua a existir *para grupos*.
-//!
-//! O que ela recusa, e é o desenho:
-//!
-//! - **um filho sozinho** não oferece a seção — o artista selecionou a forma, não o contêiner;
-//! - **duas molduras irmãs** não têm resposta única (nenhuma contém a outra);
-//! - **moldura + forma solta** também não: o chip editaria o que o artista não está a olhar.
-//!
-//! Aninhadas, a de FORA contém as de dentro ⇒ ela é a resposta, que é a moldura em que o artista
-//! de facto clicou.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vec_frame_edit.rs`.
 
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecFrame};
 use ph2d_vec_scene::VecPathId;

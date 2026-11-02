@@ -124,10 +124,8 @@ pub fn step(
             PASSO.store(3, Ordering::Relaxed);
         }
         3 if filtros => {
-            return abre(hero, false, true).map(|f| {
-                ph2d_panel_vector::open_stroke_settings(&mut hero.store);
-                f
-            });
+            return abre(hero, false, true)
+                .inspect(|_| ph2d_panel_vector::open_stroke_settings(&mut hero.store));
         }
         3 => {
             let fim = abre(hero, traco, ordem);

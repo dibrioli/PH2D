@@ -1,35 +1,6 @@
 //! ⭐ **O gizmo de um objeto que não desenha nada** — o VAZIO e o GRUPO (Enio, 2026-08-26).
 //!
-//! Até aqui `snapshots::build_view` respondia `None` para toda entidade sem geometria própria —
-//! *«grupo/outro: sem gizmo próprio»* — e um objeto sem gizmo **não é agarrável de forma nenhuma**:
-//! nem para mover, nem para girar, nem para escalar. O botão `Add` da Hierarquia (F3) nasce
-//! exatamente assim (`Transform` + `Name` e mais nada), então o objeto que o artista acabou de
-//! criar era o único do app que ele não podia pegar.
-//!
-//! # A caixa é a DELE, sempre — e ter filhos não a muda
-//!
-//! > *«O objeto vazio deve permanecer com seu gizmo original e não se utilizar do gizmo dos
-//! > filhos.»* (Enio, 2026-08-26, 3.ª volta do smoke.)
-//!
-//! ⛔ **A 1.ª versão fazia a caixa ser a UNIÃO dos filhos visíveis** quando havia algum — a lei do
-//! container de um `VecEnvelope` (ADR-0129 Fatia 3) generalizada. Está **construída, medida e
-//! REJEITADA por veredito de produto**: um objeto vazio passava a ter um tamanho que não é dele, e
-//! a caixa mudava sozinha sempre que um filho se mexia. ⚠️ *Um controlo cuja moldura muda quando o
-//! artista não lhe tocou lê-se como o app a decidir por ele.* A árvore dessa versão sobrevive no
-//! commit `828bc88f4`; ⛔ uma 2.ª tentativa começa perguntando **o que ficou pior**, não
-//! reconstruindo.
-//!
-//! ⇒ a caixa é sempre o **marcador** do objeto, com meia-extensão derivada do tamanho da alça (ver
-//! [`EMPTY_HALF_PX`]). Ela move/gira/escala o `Transform` DELE, e os filhos seguem por parentesco —
-//! é isso, e não o tamanho da moldura, que faz o conjunto andar como um objeto só.
-//!
-//! # ⛔ Quem já tem alças NÃO ganha caixa
-//!
-//! Uma junta e uma roldana também não têm geometria, e chegam aqui pelo mesmo caminho — mas elas
-//! **já publicam alças** (os dots de [`crate::render_loop::point_gizmo`]). Uma caixa por cima
-//! registaria o interior dela como *Translate* no hit-index e **engoliria o clique nas alças**, que
-//! são os controlos que aquelas entidades de facto têm. *É a mesma razão pela qual o conector e o
-//! spine de um Blend não publicam gizmo* (ver o cabeçalho de [`ph2d_app_vec::vec_gizmo_view`]).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `group_gizmo_view.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, Transform, Visibility};
 use ph2d_editor_core::GizmoView;

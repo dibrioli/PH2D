@@ -41,7 +41,7 @@ pub type TracoProprio<'a> = dyn FnMut(u32, &VecPath, Affine, &Brush, &mut Vector
 /// vetor-DOCUMENTO `source.object` carrega o próprio fill/stroke, então tessela pela mesma
 /// [`path_tess`] que o [`draw_path`](crate::draw_path) usa (o preenchimento e o traço quando difere).
 pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
-    if path.fill.is_some() {
+    if path.base_fill().is_some() {
         path_tess(path)
     } else {
         // Primitivo: a silhueta é do `tint` da instância, e o traço (se houver) é do próprio
@@ -88,7 +88,7 @@ pub(crate) fn draw_shape_instance_tessellated(
     target: &mut VectorScene,
     traco: Option<(u32, &mut TracoProprio<'_>)>,
 ) {
-    if path.fill.is_some() {
+    if path.base_fill().is_some() {
         // ⚠️⚠️ **UMA INSTÂNCIA DE MOTION DE UMA FORMA COM PADRÃO PINTA A `fallback`, e é DECLARADO.**
         //
         // Esta rota é alimentada pelo cozimento do Motion, que é outro oleoduto: ele não tem o mapa
@@ -347,7 +347,7 @@ pub(crate) fn draw_shared_instances_com<'p>(
 /// **A forma de um PRIMITIVO, encodada uma vez** — `None` para tudo o resto.
 ///
 /// ⭐⭐ O que decide é a mesma pergunta que o [`draw_shape_instance_tessellated`] faz: um
-/// vetor-DOCUMENTO (`path.fill.is_some()`) honra a tinta autorada dele e pode levar gradiente,
+/// vetor-DOCUMENTO (`path.base_fill().is_some()`, a base escondida pelo olho incluída) honra a tinta autorada dele e pode levar gradiente,
 /// padrão ou dilatação — nada disso é *«uma cor por cópia»*, e por isso ele fica no ramo de sempre.
 /// Um PRIMITIVO é uma silhueta preenchida com o `tint` da instância, que é exactamente a forma que
 /// esta porta serve.
@@ -356,7 +356,7 @@ pub(crate) fn draw_shared_instances_com<'p>(
 /// que é o que `N` cópias repetem. *Um traço por cópia é raro no carimbo, e assá-lo obrigaria a
 /// preparar também a expansão da caneta — outra wave, e sem medição que a peça.*
 fn prepare_primitive(path: &VecPath, tess: &PathTess) -> Option<PreparedFill> {
-    if path.fill.is_some() {
+    if path.base_fill().is_some() {
         return None;
     }
     tess.fill_bp

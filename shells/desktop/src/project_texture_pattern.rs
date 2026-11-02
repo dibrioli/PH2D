@@ -124,15 +124,27 @@ pub(crate) fn art_ids_named_by(
 ) -> std::collections::BTreeSet<AssetId> {
     let mut ids = std::collections::BTreeSet::new();
     for path in scene.paths() {
-        let da_forma = match path.fill.as_ref() {
-            Some(Paint::Pattern(p)) => Some(p.as_ref()),
+        // ⭐ Toda tinta: a de base (à vista OU escondida pelo olho) e cada camada da pilha.
+        let fills = path
+            .base_fill()
+            .into_iter()
+            .chain(path.paints.iter().filter_map(|e| match &e.kind {
+                ph2d_vec_scene::PaintKind::Fill(p) => Some(p),
+                ph2d_vec_scene::PaintKind::Stroke(_) => None,
+            }));
+        let strokes = path
+            .base_stroke()
+            .into_iter()
+            .chain(path.paints.iter().filter_map(|e| match &e.kind {
+                ph2d_vec_scene::PaintKind::Stroke(s) => Some(s),
+                ph2d_vec_scene::PaintKind::Fill(_) => None,
+            }));
+        let da_forma = fills.filter_map(|p| match p {
+            Paint::Pattern(p) => Some(p.as_ref()),
             _ => None,
-        };
-        let do_traco = path
-            .stroke
-            .as_ref()
-            .and_then(ph2d_vec_scene::StrokeSpec::pattern);
-        for p in da_forma.into_iter().chain(do_traco) {
+        });
+        let do_traco = strokes.filter_map(ph2d_vec_scene::StrokeSpec::pattern);
+        for p in da_forma.chain(do_traco) {
             if let PatternSource::Image(id) = p.source {
                 ids.insert(id);
             }

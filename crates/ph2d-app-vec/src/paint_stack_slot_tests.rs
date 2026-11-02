@@ -302,3 +302,41 @@ fn the_stroke_kind_and_the_pattern_reader_follow_the_open_layer() {
         Some(ph2d_panel_vector::StrokePaintKind::Solid)
     );
 }
+
+/// ⭐ **O gizmo do degradê no canvas segue a linha ABERTA** pela porta da app (`grad_hit`/`grad_drag`
+/// lêem o `open_slot()`): com a camada `0` aberta, a alça que se apanha e arrasta é a DELA e a base
+/// fica. *Mutação (prova de fecho, sobreviveu antes deste teste): `PaintSlot::Base` fixo ⇒ a alça da
+/// camada não responde e a base é que mexe.*
+#[test]
+fn the_canvas_gradient_gizmo_follows_the_open_layer_through_the_app_door() {
+    use ph2d_vec_scene::GradientStop;
+    let ramp = |a: [f64; 2], b: [f64; 2]| Paint::Linear {
+        stops: vec![
+            GradientStop::new(0.0, AZUL),
+            GradientStop::new(1.0, VERDE),
+        ],
+        start: a,
+        end: b,
+    };
+    let mut p = VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(ramp([0.0, 0.0], [10.0, 0.0])),
+        paints: vec![PaintEntry::fill(ramp([0.0, 8.0], [10.0, 8.0]))],
+        ..VecPath::default()
+    };
+    set_open_layer(Some(0));
+    let h = super::grad_hit(&p, [0.0, 8.0], 0.5).expect("a alça de início da CAMADA");
+    assert!(super::grad_drag(&mut p, h, 2.0, 9.0));
+    set_open_layer(None);
+    let PaintKind::Fill(Paint::Linear { start, .. }) = &p.paints[0].kind else {
+        panic!("a camada continua um degradê");
+    };
+    assert_eq!(*start, [2.0, 9.0], "a alça mexeu na camada aberta");
+    let Some(Paint::Linear { start, .. }) = &p.fill else {
+        panic!("a base continua um degradê");
+    };
+    assert_eq!(*start, [0.0, 0.0], "e a base ficou");
+}

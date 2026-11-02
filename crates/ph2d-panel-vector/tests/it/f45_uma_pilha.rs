@@ -179,3 +179,30 @@ fn dragging_down_lands_below_the_row_under_the_cursor() {
     );
     limpa();
 }
+
+/// ⭐ **Arrastar a camada aberta fecha o painel dela** — a pilha renumera, e um `Dropdown` aberto
+/// passaria a editar outra camada. A lei mora no voo: a linha agarrada sai da lista, o passe
+/// diferido não a vê e fecha-a (`paint_side`). Medido no fecho: um `close_layers` a mais no largar
+/// não mudava nada (o teste passava sem ele) — por isso não existe.
+#[test]
+fn dropping_closes_the_open_layer_panel() {
+    forma(Vec::new());
+    let mut h = crate::host_com(&[ids::vector_paint_row_id(0)]);
+    assert_eq!(h.dropdown_is_open(ids::vector_paint_row_id(0)), Some(true));
+    // o ⚙ da PRÓPRIA camada aberta (premi-lo não é «clique fora»), levado para o fundo
+    let gear = h
+        .painted_rect::<VectorPanel>(&mut VectorPanelState, VIEWPORT, ids::vector_paint_row_id(0))
+        .expect("o ⚙ da camada 0");
+    let fundo = y_de(&mut h, ids::VECTOR_FILL_ROW);
+    let (x, y) = (gear.x + gear.w * 0.5, gear.y + gear.h * 0.5);
+    ponteiro(&mut h, PointerKind::Down, x, y, 1);
+    ponteiro(&mut h, PointerKind::Move, x, fundo + 1.0, 2);
+    let _ = h.paint::<VectorPanel>(&mut VectorPanelState, VIEWPORT);
+    ponteiro(&mut h, PointerKind::Up, x, fundo + 1.0, 3);
+    assert_eq!(
+        state::take_paint_move(),
+        Some((StackItem::Entry(0), Place::Below(StackItem::BaseFill)))
+    );
+    assert_eq!(h.dropdown_is_open(ids::vector_paint_row_id(0)), Some(false));
+    limpa();
+}

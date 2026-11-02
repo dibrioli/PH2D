@@ -231,6 +231,9 @@ pub(crate) fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPat
         closed: true,
         fill: style.fill.clone(),
         stroke: style.stroke.clone(),
+        // A tinta de base escondida pelo olho viaja com a visível (o olho devolve-a depois).
+        fill_hidden: style.fill_hidden.clone(),
+        stroke_hidden: style.stroke_hidden.clone(),
         subpaths,
         // Contorno único: as duas regras coincidem — mantém o default histórico.
         fill_rule: if compound {
@@ -480,6 +483,17 @@ fn close_enough(a: [f64; 2], b: [f64; 2]) -> bool {
 mod tests {
     use super::*;
     use ph2d_vec_scene::{Paint, Rgba8};
+
+    /// ⭐ A forma que uma booleana devolve leva a tinta de base ESCONDIDA pelo olho (o olho devolve-a
+    /// depois) — antes ela sumia e o olho não tinha o que mostrar (auditoria do fecho UI/UX).
+    #[test]
+    fn a_compound_keeps_the_hidden_base_paint() {
+        let mut style = square(0.0, 0.0, 1.0);
+        style.fill_hidden = Some(Paint::solid(Rgba8::new(1, 2, 3, 255)));
+        let bp = to_bez(&style);
+        let out = compound_from(&[bp], &style).expect("forma");
+        assert_eq!(out.fill_hidden, style.fill_hidden);
+    }
 
     fn square(cx: f64, cy: f64, r: f64) -> VecPath {
         let v = |x: f64, y: f64| VecVertex::corner([x, y]);

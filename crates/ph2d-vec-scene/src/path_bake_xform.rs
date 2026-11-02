@@ -66,7 +66,9 @@ pub(crate) fn transform_fill_geometry(
     // `(3, 1)` as duas médias dão `2,000` e `1,732`, e usar a do caminho poria a banda e o motivo
     // outra vez em desacordo, um passo mais subtil.
     let caneta = x.uniform_scale();
-    if let Some(s) = path.stroke.as_mut() {
+    // ⭐ A tinta de base ESCONDIDA pelo olho (v26) segue a forma como a à vista: mostrá-la depois de
+    // mover/escalar não pode devolver um degradê ou uma largura do sítio antigo (auditoria do fecho).
+    if let Some(s) = path.base_stroke_mut() {
         s.width *= caneta;
     }
     // ⭐⭐⭐ **E A PILHA DE APARÊNCIA INTEIRA** (v20). ⛔ As três cicatrizes deste ficheiro são todas
@@ -99,7 +101,7 @@ pub(crate) fn transform_fill_geometry(
         // a média do CAMINHO aqui poria as duas em desacordo sob escala não-uniforme (bug #27).
         e.dilate *= caneta;
     }
-    if let Some(p) = path.fill.as_mut() {
+    if let Some(p) = path.base_fill_mut() {
         transform_paint(p, &f, radius_scale);
     }
     // ⭐⭐⭐ **E A ESTAMPA DO CONTORNO TAMBÉM** (auditoria de 2026-08-30).
@@ -122,7 +124,7 @@ pub(crate) fn transform_fill_geometry(
     //
     // ⚠️ **A conta é a MESMA função** — o que muda é o afim que ela recebe: a parte CONFORME, que
     // devolve um afim já conforme **ao bit** (logo o caminho comum não se mexe).
-    if let Some(pat) = path.stroke.as_mut().and_then(StrokeSpec::pattern_mut) {
+    if let Some(pat) = path.base_stroke_mut().and_then(StrokeSpec::pattern_mut) {
         let u = x.uniform_part();
         transform_pattern(pat, &|p| u.apply(p));
     }

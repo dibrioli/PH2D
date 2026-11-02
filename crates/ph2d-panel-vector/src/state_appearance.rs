@@ -88,8 +88,8 @@ pub struct Appearance {
     /// ⚠️ **O painel pinta-a ao contrário** (o topo em cima, como o Illustrator), e essa inversão
     /// vive num sítio só: senão o artista arrasta uma camada para cima e ela desce.
     pub layers: Vec<PaintRow>,
-    /// ⭐ F45 — **a pilha INTEIRA, do chão ao topo**: onde a tinta de base fica entre as camadas
-    /// (`VecPath::draw_order`, as bases mesmo ausentes). Vazia = a ordem neutra ([`Self::stack`]).
+    /// ⭐ F45 — **a pilha À VISTA, do chão ao topo**: onde a tinta de base fica entre as camadas, só as
+    /// bases que a forma tem (vistas ou escondidas). Vazia = a ordem neutra ([`Self::stack`]).
     pub order: Vec<ph2d_vec_scene::StackItem>,
     /// A seleção múltipla tem opacidades / modos DIFERENTES: o número fica em branco e o chip do
     /// modo diz «misto» (plano 31; revoga o «mostra o primário» do `appearance.rs`).
@@ -106,7 +106,12 @@ impl Appearance {
     #[must_use]
     pub fn stack(&self) -> Vec<ph2d_vec_scene::StackItem> {
         use ph2d_vec_scene::StackItem;
-        if self.order.len() == self.layers.len() + 2 {
+        let camadas = self
+            .order
+            .iter()
+            .filter(|it| matches!(it, StackItem::Entry(_)))
+            .count();
+        if !self.order.is_empty() && camadas == self.layers.len() {
             return self.order.clone();
         }
         [StackItem::BaseFill, StackItem::BaseStroke]

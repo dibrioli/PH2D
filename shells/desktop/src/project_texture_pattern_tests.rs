@@ -224,3 +224,24 @@ fn the_decoder_reads_back_exactly_what_the_collector_writes() {
     assert_eq!((lido[0].width, lido[0].height), (w, h));
     assert_eq!(lido[0].rgba, px, "os pixels nao sobreviveram");
 }
+
+/// ⭐ **A arte de um padrão ESCONDIDO pelo olho, e a de uma CAMADA, também viaja** (auditoria do
+/// fecho da linha UI/UX): a colheita lia só `fill`/`stroke` à vista — esconder o Fill de padrão e
+/// gravar perdia os pixels para sempre, e uma camada com padrão (F44b) nunca os gravava.
+#[test]
+fn the_art_of_a_hidden_or_layer_pattern_travels_in_the_file_too() {
+    let a = AssetId::from_bytes(&[4u8; 16]);
+    let b = AssetId::from_bytes(&[5u8; 16]);
+    let mut scene = cena(Some(a), None);
+    let id = scene.paths()[0].id;
+    let p = scene.path_mut(id).expect("forma");
+    assert!(p.set_fill_hidden(true), "o olho esconde o padrão de base");
+    let camada = cena(Some(b), None).paths()[0].fill.clone().expect("padrão b");
+    p.paints
+        .push(ph2d_vec_scene::PaintEntry::fill(camada));
+    assert_eq!(
+        crate::project_texture_pattern::art_ids_named_by(&scene),
+        [a, b].into_iter().collect(),
+        "a arte escondida ou a da camada ficou fora do ficheiro"
+    );
+}

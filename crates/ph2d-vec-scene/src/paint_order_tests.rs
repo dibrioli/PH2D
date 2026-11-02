@@ -24,6 +24,9 @@ fn forma(camadas: usize) -> VecPath {
 /// (`[0, 0]`) ⇒ as duas bases no mesmo sítio.*
 #[test]
 fn the_neutral_order_is_the_pre_f45_order() {
+    // O VALOR gravado também (prova de fecho: `stroke: 0` sobrevivia — o `draw_order` separa duas
+    // posições iguais e saía igual; os bytes de um projecto novo, não).
+    assert_eq!(BaseOrder::default(), BaseOrder { fill: 0, stroke: 1 });
     let p = forma(2);
     assert_eq!(
         p.draw_order().collect::<Vec<_>>(),

@@ -45,6 +45,7 @@ pub(crate) fn take_landing() -> Option<(StackItem, Place)> {
 /// por uma base não o muda; trocar com uma camada dá o dela).
 pub(crate) fn shifted(i: usize, up: bool) -> Option<usize> {
     let a = state::current_appearance()?;
+    // A pilha publicada já é a à vista; o filtro cobre a neutra (sem pilha publicada).
     let vistas: Vec<StackItem> = a
         .stack()
         .into_iter()
@@ -207,7 +208,11 @@ impl BodyCtx<'_> {
             self.fly_row(
                 snap,
                 rows[k],
-                d.cursor_y - (d.down_y - (y0 + step * k as f32)),
+                // O ponto onde a mão agarrou fica sob o cursor, nos DOIS eixos (o cartão do Kanban).
+                (
+                    self.inner_x + d.cursor_x - d.down_x,
+                    d.cursor_y - (d.down_y - (y0 + step * k as f32)),
+                ),
             );
         }
         y
@@ -248,7 +253,7 @@ impl BodyCtx<'_> {
 
     /// Pinta a linha agarrada à parte (num cartão) para o passe diferido a pôr sob o cursor, por cima
     /// de tudo, inclinada e com a sombra de voo.
-    fn fly_row(&mut self, snap: &VectorStyleSnapshot, it: StackItem, top: f32) {
+    fn fly_row(&mut self, snap: &VectorStyleSnapshot, it: StackItem, (left, top): (f32, f32)) {
         let mut local = ph2d_vector::VectorScene::new();
         let mut cliques = ph2d_editor_core::interaction::HitIndex::default();
         let caixa = Rect::new(0.0, 0.0, self.inner_w, self.row_h);
@@ -275,7 +280,7 @@ impl BodyCtx<'_> {
         super::fill_stroke::VOANDO.with(|v| v.set(true));
         b.stack_row(snap, it, 0.0);
         super::fill_stroke::VOANDO.with(|v| v.set(false));
-        let onde = Rect::new(self.inner_x, top, self.inner_w, self.row_h);
+        let onde = Rect::new(left, top, self.inner_w, self.row_h);
         PENDENTE.with(|p| p.borrow_mut().voo = Some((local, onde)));
     }
 }

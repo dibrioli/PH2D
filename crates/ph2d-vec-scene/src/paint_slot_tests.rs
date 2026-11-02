@@ -68,3 +68,32 @@ fn o_slot_responde_com_a_tinta_da_linha_e_recusa_a_especie_errada() {
         Some(7.0)
     );
 }
+
+/// ⭐ **A tinta de base ESCONDIDA segue a forma** ao mover/escalar (auditoria do fecho UI/UX): o
+/// degradê guardado anda com a forma e a largura do traço guardado escala com ela — mostrar depois
+/// não devolve o desenho do sítio antigo.
+#[test]
+fn a_hidden_base_paint_follows_the_shape_when_it_moves_and_scales() {
+    use crate::{GradientStop, StrokeSpec};
+    let mut scene = crate::VecScene::default();
+    let mut p = crate::rectangle([0.0, 0.0], [10.0, 10.0]);
+    p.fill = Some(Paint::Linear {
+        stops: vec![
+            GradientStop::new(0.0, Rgba8::new(255, 0, 0, 255)),
+            GradientStop::new(1.0, Rgba8::new(0, 0, 255, 255)),
+        ],
+        start: [0.0, 0.0],
+        end: [10.0, 0.0],
+    });
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 2.0));
+    assert!(p.set_fill_hidden(true) && p.set_stroke_hidden(true));
+    let id = scene.push_path(p);
+    assert!(scene.translate_path(id, 100.0, 0.0));
+    assert!(scene.scale_path(id, 3.0, 3.0, [100.0, 0.0]));
+    let p = scene.path(id).expect("forma");
+    let Some(Paint::Linear { start, .. }) = &p.fill_hidden else {
+        panic!("o degradê continua guardado");
+    };
+    assert_eq!(*start, [100.0, 0.0], "o degradê guardado andou com a forma");
+    assert_eq!(p.stroke_hidden.as_ref().map(|s| s.width), Some(6.0));
+}

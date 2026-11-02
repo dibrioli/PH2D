@@ -23,10 +23,12 @@ pub fn ordered(pen: &PenTool) -> Vec<VecPathId> {
 /// As pilhas das selecionadas têm ESTRUTURAS diferentes (número de camadas, ou espécie por índice)?
 #[must_use]
 pub fn layers_differ(scene: &VecScene, sel: &[VecPathId]) -> bool {
-    // ⭐ F45: a estrutura é a pilha INTEIRA — a espécie de cada camada e o lugar da base.
+    // ⭐ F45: a estrutura é a pilha À VISTA — a espécie de cada camada, o lugar e a PRESENÇA da base
+    // (a mesma lista que o painel conta para o ↑/↓; com presenças diferentes as duas contas divergiam).
     let estrutura = |id: &VecPathId| {
         scene.path(*id).map(|p| {
-            p.draw_order()
+            super::visible_order(p)
+                .into_iter()
                 .map(|it| match it {
                     ph2d_vec_scene::StackItem::Entry(i) => {
                         it_kind(matches!(p.paints[i].kind, PaintKind::Fill(_)))

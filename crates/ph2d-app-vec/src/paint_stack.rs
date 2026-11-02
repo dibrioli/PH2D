@@ -169,7 +169,7 @@ pub fn published(
         mixed_opacity: outras().any(|o| alfa(o) != opacity),
         mixed_blend: outras().any(|o| o.blend != p.blend),
         layers_differ,
-        order: p.draw_order().collect(),
+        order: visible_order(p),
         layers: p
             .paints
             .iter()

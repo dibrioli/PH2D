@@ -102,3 +102,17 @@ fn an_absent_base_is_not_a_visible_row() {
         [BaseStroke, Entry(0)]
     );
 }
+
+/// ⭐ **Presenças de base diferentes são «camadas mistas»** (auditoria do fecho): o painel conta a
+/// pilha À VISTA para o ↑/↓, e a app também — uma forma sem traço e outra com ele dariam contas
+/// diferentes. *Mutação: comparar o `draw_order` (bases ausentes incluídas) ⇒ verde.*
+#[test]
+fn a_different_base_presence_is_a_mixed_stack_and_the_view_has_only_present_bases() {
+    let (mut scene, ids) = cena();
+    scene.path_mut(ids[0]).expect("forma").stroke = None;
+    assert!(layers_differ(&scene, &ids));
+    let vivo = ph2d_vec_scene::VecViewState::default();
+    let doc = ph2d_editor_core::DocPx::new(1.0);
+    let a = published(&scene, &ids[..1], &vivo, doc).expect("publica");
+    assert_eq!(a.order, [BaseFill, Entry(0)]);
+}

@@ -266,6 +266,16 @@ fn path_shape_ids_map_and_apply_smooths_then_sharpens() {
             .is_some(),
         "closing seeds the Style fill (immediate paint)"
     );
+    // …but a fill HIDDEN by the eye is a fill: re-closing keeps it hidden, never seeds a second.
+    let p = scene.path_mut(sq).unwrap();
+    assert!(p.set_fill_hidden(true));
+    super::apply_vec_toggle_closed(&mut scene, &mut pen);
+    super::apply_vec_toggle_closed(&mut scene, &mut pen);
+    let p = scene.paths().iter().find(|p| p.id == sq).unwrap();
+    assert!(
+        p.fill.is_none() && p.fill_hidden.is_some(),
+        "the eye's fill survives a re-close"
+    );
 }
 
 #[test]

@@ -375,7 +375,7 @@ pub(crate) fn apply_vec_toggle_closed(
         // An existing fill is preserved across open→close cycles.
         if !cur
             && let Some(path) = scene.path_mut(sel)
-            && path.fill.is_none()
+            && path.base_fill().is_none()
         {
             path.fill = Some(ph2d_vec_scene::Paint::solid(pen.style().fill));
         }

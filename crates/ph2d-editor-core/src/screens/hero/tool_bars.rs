@@ -48,6 +48,8 @@ pub fn placed(
     let mut out = Vec::new();
     let sizes: Vec<usize> = bars.column.iter().map(Vec::len).collect();
     let col = column_rects(area, &sizes);
+    // ⭐ (dono 02/11, F50) A ④ nunca tapa a coluna ①: ela pousa na área que SOBRA ao lado dela.
+    let free = beside_column(area, &col, left_handed);
     let mut anchor = None;
     for (b, r) in bars.column.iter().flatten().zip(col) {
         if bars.flyout.as_ref().is_some_and(|(id, _)| *id == b.id) {
@@ -78,8 +80,8 @@ pub fn placed(
         // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
         let s = super::button_px();
         let rects = match bars.selection {
-            Some(sel) if !pinned => strip_rows_at(area, sel, &rows, s, super::selection_gap()),
-            _ => pinned_strip_rows(area, &rows, s),
+            Some(sel) if !pinned => strip_rows_at(free, sel, &rows, s, super::selection_gap()),
+            _ => pinned_strip_rows(free, &rows, s),
         };
         let buttons = groups
             .into_iter()
@@ -88,6 +90,16 @@ pub fn placed(
         out.extend(buttons.zip(rects));
     }
     out
+}
+
+/// A área sem a faixa da coluna ① (com uma folga `Sm`) — à esquerda, ou à direita no canhoto.
+fn beside_column(area: Rect, col: &[Rect], left_handed: bool) -> Rect {
+    let Some(right) = col.iter().map(|r| r.x + r.w).reduce(f32::max) else {
+        return area;
+    };
+    let band = (right - area.x + Spacing::Sm.px()).clamp(0.0, area.w);
+    let x = if left_handed { area.x } else { area.x + band };
+    Rect::new(x, area.y, area.w - band, area.h)
 }
 
 /// As linhas da ④ quando ela está à vista.

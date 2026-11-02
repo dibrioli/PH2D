@@ -335,3 +335,51 @@ fn o_flyout_nunca_deixa_um_botao_sozinho_na_ultima_linha() {
         );
     }
 }
+
+/// ⭐ (dono 02/11, F50) **A ④ nunca tapa a coluna ①**: com a seleção encostada à coluna, a ④ desliza
+/// para dentro da área livre — nas duas mãos (a coluna à direita no canhoto) e fixada também.
+#[test]
+fn the_action_bar_never_covers_the_tool_column() {
+    use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+    let b = |id| BarButton {
+        id: NodeId(id),
+        face: BarFace::Icon(crate::icons::IconId::Select),
+        label: String::new(),
+        on: false,
+        family: BarFamily::Neutral,
+    };
+    let a = Rect::new(300.0, 80.0, 1200.0, 800.0);
+    let toca = |p: &Rect, q: &Rect| {
+        p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h
+    };
+    for left_handed in [false, true] {
+        let x = if left_handed { a.x + a.w - 80.0 } else { a.x };
+        let sel = Rect::new(x, a.y + 300.0, 80.0, 90.0);
+        let bars = ToolBars {
+            column: vec![(1..12).map(b).collect()],
+            actions: vec![(100..130).map(b).collect()],
+            selection: Some(sel),
+            ..ToolBars::default()
+        };
+        for pinned in [false, true] {
+            let all = tool_bars::placed(&bars, a, pinned, left_handed);
+            let col: Vec<Rect> = all
+                .iter()
+                .filter(|(x, _)| x.id.0 < 12)
+                .map(|(_, r)| *r)
+                .collect();
+            let acts: Vec<Rect> = all
+                .iter()
+                .filter(|(x, _)| (100..130).contains(&x.id.0))
+                .map(|(_, r)| *r)
+                .collect();
+            assert!(!col.is_empty() && acts.len() == 30, "controlo");
+            for r in &acts {
+                assert!(
+                    col.iter().all(|c| !toca(r, c)),
+                    "canhoto={left_handed} fixada={pinned}: a ④ em {r:?} tapa a coluna"
+                );
+            }
+        }
+    }
+}

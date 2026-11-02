@@ -1,0 +1,610 @@
+{
+ "source": "Aseprite Trial 1.3.18.6 (caixa preta, so corrido; nunca o fonte)",
+ "method": "Xvfb :93 1600x1000, screen_scale 2, HOME isolado; sprites de entrada NOSSOS escritos como .ase pela spec publica e abertos por ctrl+o (o Trial nao grava); zoom 400 % = 8 px de tela por celula; arrastos por xdotool (trial_elipse_grelha.drag); leitura do centro de cada celula na fotografia (import -window root); cada grelha = linhas de hex RRGGBB separadas por espaco. Transparente le-se como o xadrez da vista (80/c0..). Forma de 6 celulas AZUIS #0000ff (6,6)(7,6)(8,6)(6,7)(6,8)(7,8) num 16x16 de fundo TRANSPARENTE (shape_t) ou BRANCO opaco (shape_w). Edit > FX > Outline (Shift+O); dialogo na foto docs/PixelArt/aseprite/70_outline_dialogo.png: Outline Color = FG #000000, Background Color = Mask, 4 presets da matriz (circle=cruz 4-viz, square=8-viz, horizontal, vertical) + matriz 3x3 editavel, Outside/Inside, canais RGBA, Preview, Tiled. matrix_read = a matriz 3x3 lida no dialogo apos o clique no preset. Transparente na grelha = xadrez (lido como T na verificacao).",
+ "command": "PH2D_TRIAL_DISPLAY=:93 python3 -I docs/PixelArt/ferramentas/trial_efeitos_ferramentas.py <dir> outline",
+ "date": "2026-11-02",
+ "law": "fundo = Background Color (Mask = alfa 0). OUTSIDE: celula de FUNDO com algum vizinho da matriz na forma -> Outline Color. INSIDE: celula da FORMA com algum vizinho da matriz no fundo -> Outline Color. Le o original (nao propaga). Sobre branco opaco com Background=Mask NADA muda (nao ha fundo). Celulas que violam a lei por caso: {'shape_t/circle/outside': 0, 'shape_t/circle/inside': 0, 'shape_t/square/outside': 0, 'shape_t/square/inside': 0, 'shape_t/horizontal/outside': 0, 'shape_t/horizontal/inside': 0, 'shape_t/vertical/outside': 0, 'shape_t/vertical/inside': 0, 'shape_w/circle/outside': 0, 'shape_w/circle/inside': 0, 'shape_w/square/outside': 0, 'shape_w/square/inside': 0, 'shape_w/horizontal/outside': 0, 'shape_w/horizontal/inside': 0, 'shape_w/vertical/outside': 0, 'shape_w/vertical/inside': 0}",
+ "reproducibility_run2": {
+  "cases_compared": 16,
+  "identical": 16,
+  "different": []
+ },
+ "not_measured": [
+  "Background Color = branco (o seletor de cor do dialogo) e Outline Color diferente do FG: sem tempo; a cor do contorno e o FG do momento",
+  "matriz 3x3 personalizada, Tiled, canais"
+ ],
+ "cases": {
+  "shape_t/circle/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/circle/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/square/outside": {
+   "matrix_read": [
+    [
+     "on",
+     "on",
+     "on"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "on",
+     "on",
+     "on"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 000000 000000 000000 000000 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 000000 000000 000000 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/square/inside": {
+   "matrix_read": [
+    [
+     "on",
+     "on",
+     "on"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "on",
+     "on",
+     "on"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/horizontal/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 000000 0000ff 0000ff 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/horizontal/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 0000ff 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/vertical/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 0000ff 0000ff 0000ff 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 0000ff 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 0000ff 0000ff 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_t/vertical/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 000000 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 0000ff 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 000000 000000 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080",
+    "808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080 808080"
+   ]
+  },
+  "shape_w/circle/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/circle/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/square/outside": {
+   "matrix_read": [
+    [
+     "on",
+     "on",
+     "on"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "on",
+     "on",
+     "on"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/square/inside": {
+   "matrix_read": [
+    [
+     "on",
+     "on",
+     "on"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "on",
+     "on",
+     "on"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/horizontal/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/horizontal/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "on",
+     "off",
+     "on"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/vertical/outside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  },
+  "shape_w/vertical/inside": {
+   "matrix_read": [
+    [
+     "off",
+     "on",
+     "off"
+    ],
+    [
+     "off",
+     "off",
+     "off"
+    ],
+    [
+     "off",
+     "on",
+     "off"
+    ]
+   ],
+   "grid": [
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff 0000ff 0000ff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff",
+    "ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff ffffff"
+   ]
+  }
+ }
+}

@@ -315,8 +315,80 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
     );
 }
 
-// ⛔ O fio escuro da borda do Wet Liner (a régua `o_liner_tem_o_fio_escuro_da_borda`, orla a 40 px > 1,12 contra o
-// Rebelle 1,247) SAIU — dono 02/11: o Liner não quer o fio; era paridade com o Rebelle, que deixou de ser referência (31/10).
+/// A ORLA do recto de 40 px (cena `tamanhos`, foto A, y 190, x 300..700): o perfil através (a escuridão média em x) — o
+/// máximo nos 6 % de fora de cada lado ÷ o centro (40..60 %). A régua do liso da 3.ª ronda.
+fn orla_40(px: &[u8], w: usize) -> f64 {
+    let esc = |x: usize, y: usize| {
+        let i = (y * w + x) * 4;
+        1.0 - (0.2126 * f64::from(px[i])
+            + 0.7152 * f64::from(px[i + 1])
+            + 0.0722 * f64::from(px[i + 2]))
+            / 255.0
+    };
+    let p: Vec<f64> = (150..230)
+        .map(|y| (300..700).map(|x| esc(x, y)).sum::<f64>() / 400.0)
+        .collect();
+    let mx = p.iter().copied().fold(0.0, f64::max);
+    let on: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 0.25 * mx).collect();
+    let (a, b) = (on[0], on[on.len() - 1] + 1);
+    let f = |t: f64| a + (t * (b - a) as f64).round() as usize;
+    let centro = p[f(0.4)..f(0.6)].iter().sum::<f64>() / (f(0.6) - f(0.4)) as f64;
+    let fora = p[a..=f(0.06)]
+        .iter()
+        .chain(&p[f(0.94) - 1..b])
+        .copied()
+        .fold(0.0, f64::max);
+    fora / centro
+}
+
+/// O tecto da orla do Liner a 40 px: o meio do vão entre o Liner de fábrica de hoje (0,956, medido 02/11) e o fio que
+/// a régua antiga exigia (1,18, a receita do fio na J4 3.ª ronda).
+const ORLA_LINER: f64 = 1.07;
+
+/// A foto `px` com um FIO escuro de 2 px em cada borda do recto de 40 px: nas colunas de [`orla_40`], as duas linhas
+/// de fora do perfil (a 25 % do máximo) escurecem a 1,18 × a escuridão do centro — o controlo sintético.
+fn com_fio(px: &[u8], w: usize) -> Vec<u8> {
+    let lum = |i: usize| {
+        (0.2126 * f64::from(px[i]) + 0.7152 * f64::from(px[i + 1]) + 0.0722 * f64::from(px[i + 2]))
+            / 255.0
+    };
+    let esc = |y: usize| (300..700).map(|x| 1.0 - lum((y * w + x) * 4)).sum::<f64>() / 400.0;
+    let p: Vec<f64> = (150..230).map(esc).collect();
+    let mx = p.iter().copied().fold(0.0, f64::max);
+    let on: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 0.25 * mx).collect();
+    let (a, b) = (150 + on[0], 150 + on[on.len() - 1]);
+    let centro = esc((a + b) / 2);
+    let fio = ((1.0 - 1.18 * centro).clamp(0.0, 1.0) * 255.0).round() as u8;
+    let mut out = px.to_vec();
+    for y in [a, a + 1, b - 1, b] {
+        for x in 300..700 {
+            let i = (y * w + x) * 4;
+            out[i..i + 3].fill(fio);
+        }
+    }
+    out
+}
+
+/// ⭐ **O Wet Liner NÃO tem o fio escuro da borda** (dono 02/11, `project-memory/project_wet_liner_no_dark_edge_2026_11_02.md`):
+/// a orla a 40 px ([`orla_40`]) fica ≤ [`ORLA_LINER`]. A régua antiga (`o_liner_tem_o_fio_escuro_da_borda`, > 1,12, a
+/// paridade com o Rebelle 1,247) saiu em `8235252138`. A receita que FAZIA o fio (água por dab 0,15 e capilaridade
+/// 0,05) já é a de fábrica e hoje lê 0,956: nenhuma variante dos knobs medida a 02/11 faz o fio (a mais alta, água
+/// 0,05 · capilaridade 0 · evaporação 5, 1,010; `edgeDarkening` 0–1000 0,956–1,000; sem o filme 0,47–0,65). CONTROLO:
+/// a mesma foto com um fio sintético de 2 px a 1,18 × o centro ([`com_fio`]) passa do tecto.
+#[test]
+fn o_liner_nao_tem_o_fio_escuro_da_borda() {
+    let (liner, w) = foto_a("Wet Liner", &[], "tamanhos");
+    let (o, c) = (orla_40(&liner, w), orla_40(&com_fio(&liner, w), w));
+    println!("[orla] Wet Liner a 40 px {o:.3} · com o fio sintético {c:.3}");
+    assert!(
+        c > ORLA_LINER,
+        "o controlo (o fio sintético) só tem orla {c:.3}: a régua não vê o fio"
+    );
+    assert!(
+        o <= ORLA_LINER,
+        "o Wet Liner tem o fio escuro da borda: orla {o:.3} > {ORLA_LINER}"
+    );
+}
 
 /// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 %, 20 % e 2,5 % da largura, cada
 /// uma ÷ a do meio (os dois lados e as colunas x 400–600) — a régua do relatório (`exames/aguarela.md` «Motor J6»).

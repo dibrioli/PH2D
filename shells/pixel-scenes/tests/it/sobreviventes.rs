@@ -316,6 +316,7 @@ fn pintura(m: &mut Mesa) -> (Vec<u32>, u32) {
         WINDOW,
         PPM,
         Some(m.bits),
+        &[m.bits],
         Theme::default(),
         &mut scene,
     );

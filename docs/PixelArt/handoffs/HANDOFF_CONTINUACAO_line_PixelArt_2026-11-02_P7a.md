@@ -86,7 +86,10 @@ corda) · `327d4648f8` rodada 2 do pincel de padrão · (+ o commit da rodada 2 
    Dynamics com a barra de duas pegas (widget NOVO, com o gate dele), seam tests.
 5. Cena 18 (`max_level` 17 → 18), sonda headless, fotos, mutações, handoff de integração.
 
-## 6. Perguntas ao dono (antes da UI)
+## 6. Decisões do dono (02/11, depois das rodadas)
 
-1. O pixel (0,0) do pincel que guarda a cor depois de escolher uma cor (§3): copiar o Aseprite ou pintar tudo na cor de frente?
-2. Virar/rodar o pincel não existe no Aseprite (§3): o PH2D tem-no (como o Pixelorama) ou não?
+1. **Escolher uma cor depois do Ctrl+B pinta o pincel INTEIRO na cor escolhida** — o pixel (0,0) do Aseprite NÃO se copia
+   (defeito dele). Recuperar o espaço guardado volta às cores da imagem (`image_color`).
+2. **O PH2D TEM virar (H/V) e girar 90° o pincel de padrão** (o Aseprite não tem; o Pixelorama tem): botões no menu do
+   tipo de pincel; a lei é a das transformações do núcleo (`transform.rs`) sobre o `PatternBrush` (valores, máscara,
+   `origin` do Source ajustado), nunca uma cópia.

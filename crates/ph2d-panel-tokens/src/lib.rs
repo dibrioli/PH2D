@@ -38,6 +38,7 @@ pub mod state;
 
 mod event;
 
+pub use familias::ids_das_familias;
 pub use state::{
     TokensIntent, TokensPanelState, drain_intents, last_body_top, last_content_h, last_visible_h,
 };

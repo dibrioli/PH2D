@@ -82,6 +82,10 @@ fn a_etiqueta_de_cor_e_o_quadrado_da_linha_no_mesmo_x_e_o_reset_e_um_icone() {
 
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
+    // As famílias de cor de DADO nascem dobradas (integ 02/11); a régua mede TODA etiqueta, abertas.
+    for id in ph2d_panel_tokens::ids_das_familias() {
+        h.store_mut().set_collapsed(id, false);
+    }
     let mut st = TokensPanelState::default();
     let _ = h.painted_rect::<TokensPanel>(&mut st, VIEWPORT, ids::tokens_swatch_id(0));
     let regs = h.registos_da_ultima_pintura();

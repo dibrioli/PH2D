@@ -57,6 +57,12 @@ pub(crate) const FAMILIAS: [Familia; 7] = [
     },
 ];
 
+/// Os cabeçalhos de todas as famílias, pela ordem da tabela — quem mede TODAS as linhas (os gates do
+/// painel) abre-as por aqui, sem uma lista própria que esqueceria a família seguinte.
+pub fn ids_das_familias() -> impl Iterator<Item = NodeId> {
+    FAMILIAS.iter().map(|f| f.id)
+}
+
 /// A família dobrável de `token` (`None` = cromo do app, sempre à vista).
 #[must_use]
 pub(crate) fn familia_de(token: ColorToken) -> Option<&'static Familia> {

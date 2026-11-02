@@ -48,6 +48,11 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 fn host() -> (MockPanelHost, TokensPanelState) {
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
+    // As famílias de cor de DADO nascem dobradas (integ 02/11): estes gates medem TODA linha, então
+    // abrem-nas como o artista — o clique no cabeçalho é a escolha que o `populate` não sobrescreve.
+    for id in ph2d_panel_tokens::ids_das_familias() {
+        h.store_mut().set_collapsed(id, false);
+    }
     (h, TokensPanelState::default())
 }
 

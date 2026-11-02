@@ -445,7 +445,9 @@ fn com_filtros_o_motion_sai_do_passe_fundido() {
     assert_eq!(
         PRESENT
             // GEF 19 E3: com a placa do Motion colada por faixa da ordem total ele sai também.
-            .matches("motion.sprites_da_camada(motion_active && !filtrada && !plan.motion_por_faixa)")
+            .matches(
+                "motion.sprites_da_camada(motion_active && !filtrada && !plan.motion_por_faixa)"
+            )
             .count(),
         1,
         "o passe fundido deixou de tirar o Motion quando a camada filtrada corre"

@@ -234,54 +234,29 @@ impl crate::App {
         // voltaram»*). O lowering de CPU cala uma corrente de posições, e o caminho da GPU **nunca
         // perguntava** — ver `lei_da_aparencia::a_arte_desenha`, que responde pela FRONTEIRA e sem
         // ler o dispositivo de volta.
-        // ⭐ Os efeitos do Motion sobre o acumulador do mundo (ciclo 20): a lente e os FILTROS DA
-        // CAMADA — com filtros, o Motion sai deste passe e é desenhado à parte (`motion_filter`).
-        let lente = motion.lente.liga(motion_active);
-        let filtrada = motion.filtro.liga(motion_active);
-        // ⭐ Os palcos das macros em cena: cada um numa camada própria, que pousa no mundo.
-        let palcos = self.motion_shell.palcos.liga();
-        // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
-        // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
-        // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
-        // **byte-idêntico** ao de sempre.
-        let mut plan = super::present_bands::plan_frame(frame_order);
-        // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
-        //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
-        //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
-        let grid_behind = !na_vista
-            && hero_screen.as_ref().is_some_and(|h| {
-                ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
-            });
-        // A vista da câmera (A6) acaba SEMPRE no acumulador: é ele que se pousa no canto do canvas.
-        plan.banded |= grid_behind || na_vista;
-        // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
-        plan.banded |= self.motion_shell.placa.ativa();
-        // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
-        //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
-        plan.banded |= luz2d.grade().is_some();
-        // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
-        plan.banded |= lente || filtrada || palcos;
+        let (plan, grid_behind, filtrada) = planeia_as_faixas(
+            frame_order,
+            hero_screen.as_ref(),
+            grid_behind_scene,
+            luz2d,
+            (motion, &mut self.motion_shell),
+            motion_active,
+            na_vista,
+        );
         let banded = plan.banded;
         use ph2d_app_motion::motion_shape_placa::faixa;
-        plan.motion_por_faixa = faixa::sprites_por_faixa(motion_active, &plan.bands);
         // ⭐⭐⭐ **QUEM SOBE PARA CIMA DO VIDRO** — as peças da receita aberta saem do
         // fundo (senão o borrão delas escapa por fora da silhueta, como um halo) e são
         // desenhadas depois, do outro lado do vidro. `None` sem receita aberta, e aí toda
         // linha abaixo é a de sempre.
         let held =
             frosting.then(|| super::present_frost::lift(sim, present, &mut self.frost_instances));
-        // ⭐ AS FORMAS DO MOTION, pela placa (doc 121 W2/W3, P4): DESENHADAS antes das faixas (GEF 19 E3: uma faixa
-        // Motion abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14, `present_fx`).
+        // ⭐ AS FORMAS DO MOTION, pela placa (doc 121 W2/W3, P4), e os palcos — antes das faixas e do halo.
         let projeto = hero_screen.as_ref().map(|h| h.project.image_filter);
         let (gpu, filtro) = (surface.gpu(), projeto.unwrap_or_default());
         let tamanho = (window_size.width, window_size.height);
-        self.motion_shell.clique.esquece();
-        let placa = &mut self.motion_shell.placa;
-        let _ = ph2d_app_motion::motion_shape_placa::desenha_o_quadro(
-            placa, gpu, tamanho, motion, renderer, filtro,
-        );
-        let palcos = &mut self.motion_shell.palcos;
-        palcos.desenha(gpu, tamanho, renderer, filtro);
+        let shell = &mut self.motion_shell;
+        shell.desenha_as_camadas(gpu, tamanho, motion, renderer, filtro);
         let colagem = faixa::Colagem {
             gpu,
             ordem: frame_order,
@@ -321,10 +296,7 @@ impl crate::App {
             (window_size, scene_viewport),
             gpu,
         );
-        let mut flip_faixa = |b, rt: &_| {
-            let ids = ph2d_app_flip::pass_quadro::Quadro::da_faixa(&frame_order.flip_ids_in(b));
-            quadro.desenha(&ids, rt);
-        };
+        let mut flip_faixa = |b, rt: &_| quadro.desenha_a_faixa(frame_order, b, rt);
         if banded {
             super::present_bands::draw_lower_bands(
                 surface.gpu(),
@@ -367,43 +339,14 @@ impl crate::App {
         // já montada pela fase de overlay. É por isso que o atalho é testado contra os outros TRÊS.
         let particulas: &[ph2d_render::RenderInstance] = &particles.instances;
         let barras: &[ph2d_render::RenderInstance] = &health_bars.instances;
-        let so_fantasmas = motion_slice.is_empty()
-            && bgremoval_tint.is_empty()
-            && particulas.is_empty()
-            && barras.is_empty();
-        let sprite_extra: ph2d_render::LiftedInstances = if so_fantasmas {
-            ph2d_render::LiftedInstances::default()
-        } else {
-            let mut e = ph2d_render::LiftedInstances::default();
-            for (i, inst) in onion_ghosts.instances().iter().enumerate() {
-                e.push(*inst, onion_ghosts.mesh_of(i));
-            }
-            // ⭐ A tinta da máscara e as barras são INTERFACE: nunca recebem a luz 2D.
-            let sem_luz = |i: &ph2d_render::RenderInstance| ph2d_render::RenderInstance {
-                flip_uv: i.flip_uv | ph2d_render::RenderInstance::SEM_LUZ_BIT,
-                ..*i
-            };
-            for (i, inst) in bgremoval_tint.instances().iter().enumerate() {
-                e.push(sem_luz(inst), bgremoval_tint.mesh_of(i));
-            }
-            for i in motion_slice {
-                e.push(*i, None);
-            }
-            for i in particulas {
-                e.push(*i, None);
-            }
-            // ⚠️ **Por último e com `z_order = u32::MAX`**: uma barra por trás do inimigo que ela
-            // descreve não se lê.
-            for i in barras {
-                e.push(sem_luz(i), None);
-            }
-            e
-        };
-        let extra: &ph2d_render::LiftedInstances = if so_fantasmas {
-            onion_ghosts
-        } else {
-            &sprite_extra
-        };
+        let montado = slot_extra(
+            onion_ghosts,
+            bgremoval_tint,
+            motion_slice,
+            particulas,
+            barras,
+        );
+        let extra: &ph2d_render::LiftedInstances = montado.as_ref().unwrap_or(onion_ghosts);
         renderer.render_with_streams(
             game_rt.view(),
             present,
@@ -421,19 +364,15 @@ impl crate::App {
             plan.rank_window(),
             held.as_ref(),
         );
-        // ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25) —
-        // DEPOIS do passe, de propósito: o que ela tem de imprimir é o sub-retângulo
-        // que ele APLICOU, e esse só existe depois de ele decidir (o `.filter` do
-        // clip/máscara é por conteúdo do quadro).
-        if !na_vista {
-            ph2d_pan_diag::frame(
-                camera,
-                window_size,
-                motion_active,
-                scene_viewport,
-                renderer.applied_subrect(),
-            );
-        }
+        let sub = renderer.applied_subrect();
+        sonda_do_pan(
+            na_vista,
+            camera,
+            window_size,
+            motion_active,
+            scene_viewport,
+            sub,
+        );
         Some((plan, banded))
     }
 
@@ -513,6 +452,111 @@ impl crate::App {
             },
         );
     }
+}
+
+/// ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25) — chamada DEPOIS do
+/// passe de sprites, de propósito: o que ela tem de imprimir é o sub-retângulo que ele APLICOU, e
+/// esse só existe depois de ele decidir (o `.filter` do clip/máscara é por conteúdo do quadro).
+/// Fora da vista da câmera (A6), que não é o canvas do artista.
+fn sonda_do_pan(
+    na_vista: bool,
+    camera: &ph2d_render::Camera2d,
+    window: ph2d_host::WindowSize,
+    motion_active: bool,
+    pedido: Option<[f32; 4]>,
+    aplicado: Option<[f32; 4]>,
+) {
+    if !na_vista {
+        ph2d_pan_diag::frame(camera, window, motion_active, pedido, aplicado);
+    }
+}
+
+/// **O PLANO DO QUADRO**: as faixas e quem força o quadro em CAMADAS (o acumulador do mundo).
+/// Devolve o plano, «a grade vai por trás?» e «o Motion vai à camada filtrada?».
+fn planeia_as_faixas(
+    frame_order: &ph2d_render::draw_bands::FrameOrder,
+    hero: Option<&ph2d_editor_core::HeroScreen>,
+    grid_behind_scene: &mut ph2d_vector::VectorScene,
+    luz2d: &ph2d_app_light2d::LuzDoQuadro,
+    (motion, shell): (
+        &mut ph2d_app_motion::motion_state::MotionState,
+        &mut ph2d_app_motion::motion_shell_state::MotionShellState,
+    ),
+    motion_active: bool,
+    na_vista: bool,
+) -> (super::present_bands::FramePlan, bool, bool) {
+    // ⭐ Os efeitos do Motion sobre o acumulador do mundo (ciclo 20): a lente e os FILTROS DA
+    // CAMADA — com filtros, o Motion sai deste passe e é desenhado à parte (`motion_filter`).
+    let lente = motion.lente.liga(motion_active);
+    let filtrada = motion.filtro.liga(motion_active);
+    // ⭐ Os palcos das macros em cena: cada um numa camada própria, que pousa no mundo.
+    let palcos = shell.palcos.liga();
+    // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
+    // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
+    // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
+    // **byte-idêntico** ao de sempre.
+    let mut plan = super::present_bands::plan_frame(frame_order);
+    // ⭐⭐ **A GRADE ATRÁS DOS OBJECTOS força o quadro em CAMADAS** (report do dono de
+    //    2026-09-24): é o acumulador do mundo que sabe pôr alguma coisa por baixo dos sprites.
+    //    ⚠️ Sem intercalação e sem `Behind`, nada muda — o quadro de sempre, byte a byte.
+    let grid_behind = !na_vista
+        && hero.is_some_and(|h| {
+            ph2d_editor_core::screens::hero::grid_layer::paint_behind(h, grid_behind_scene)
+        });
+    // A vista da câmera (A6) acaba SEMPRE no acumulador: é ele que se pousa no canto do canvas.
+    plan.banded |= grid_behind || na_vista;
+    // ⭐⭐⭐ E AS FORMAS NA PLACA (doc 121, W2): a camada delas cola-se no acumulador do mundo.
+    plan.banded |= shell.placa.ativa();
+    // ⭐ E A LUZ 2D (W3): a MESMA decisão que pôs o documento nas faixas (`preparar`, na
+    //    codificação) — o vetor recebe a luz na colagem delas (o solver: `present_luz`).
+    plan.banded |= luz2d.grade().is_some();
+    // E A LENTE e os FILTROS (ciclo 20): correm sobre o acumulador do mundo.
+    plan.banded |= lente || filtrada || palcos;
+    plan.motion_por_faixa =
+        ph2d_app_motion::motion_shape_placa::faixa::sprites_por_faixa(motion_active, &plan.bands);
+    (plan, grid_behind, filtrada)
+}
+
+/// O slot `extra` do passe de sprites (ver o comentário no chamador): `None` quando só os fantasmas
+/// estão vivos — o caso comum não copia nada, e o chamador usa a lista deles tal como veio.
+fn slot_extra(
+    onion_ghosts: &ph2d_render::LiftedInstances,
+    bgremoval_tint: &ph2d_render::LiftedInstances,
+    motion_slice: &[ph2d_render::RenderInstance],
+    particulas: &[ph2d_render::RenderInstance],
+    barras: &[ph2d_render::RenderInstance],
+) -> Option<ph2d_render::LiftedInstances> {
+    let so_fantasmas = motion_slice.is_empty()
+        && bgremoval_tint.is_empty()
+        && particulas.is_empty()
+        && barras.is_empty();
+    if so_fantasmas {
+        return None;
+    }
+    let mut e = ph2d_render::LiftedInstances::default();
+    for (i, inst) in onion_ghosts.instances().iter().enumerate() {
+        e.push(*inst, onion_ghosts.mesh_of(i));
+    }
+    // ⭐ A tinta da máscara e as barras são INTERFACE: nunca recebem a luz 2D.
+    let sem_luz = |i: &ph2d_render::RenderInstance| ph2d_render::RenderInstance {
+        flip_uv: i.flip_uv | ph2d_render::RenderInstance::SEM_LUZ_BIT,
+        ..*i
+    };
+    for (i, inst) in bgremoval_tint.instances().iter().enumerate() {
+        e.push(sem_luz(inst), bgremoval_tint.mesh_of(i));
+    }
+    for i in motion_slice {
+        e.push(*i, None);
+    }
+    for i in particulas {
+        e.push(*i, None);
+    }
+    // ⚠️ **Por último e com `z_order = u32::MAX`**: uma barra por trás do inimigo que ela
+    // descreve não se lê.
+    for i in barras {
+        e.push(sem_luz(i), None);
+    }
+    Some(e)
 }
 
 #[path = "present_chrome.rs"]

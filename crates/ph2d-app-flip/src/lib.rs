@@ -71,6 +71,7 @@ pub mod select_points;
 pub mod select_segment;
 pub mod selection_gizmo;
 pub mod selection_overlay;
+pub mod selection_overlay_da_tool;
 pub mod selection_smoke;
 pub mod self_overlap_smoke;
 pub mod smooth;

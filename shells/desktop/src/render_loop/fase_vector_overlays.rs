@@ -87,38 +87,15 @@ impl crate::App {
                     motion.filtro.alvo_da_cena(motion_tool_active, vector_scene),
                 );
             }
-            // ⭐ E a vista da câmera (A6): as mesmas formas com a câmera DELA — os palcos na camada de cada um (a da
-            // vista), as do editor na camada dela ou na cena que a vista cola por cima do mundo.
+            // ⭐ E a vista da câmera (A6): as mesmas formas com a câmera DELA.
             if let Some(v) = vista {
-                let alvo = v.janela();
-                let (cam, janela) = (
-                    v.afim(),
-                    Some(ph2d_vector::Rect::new(
-                        0.0,
-                        0.0,
-                        f64::from(alvo.width),
-                        f64::from(alvo.height),
-                    )),
+                v.codifica_o_motion(
+                    palcos,
+                    &mut art,
+                    motion,
+                    filtro,
+                    (motion_tool_active, da_vista),
                 );
-                palcos.troca_a_vista(&mut v.palcos);
-                palcos.codifica(&mut art, cam, janela, filtro);
-                palcos.troca_a_vista(&mut v.palcos);
-                if da_vista {
-                    let cena = v.motion.alvo_da_cena(
-                        &motion.filtro,
-                        motion_tool_active,
-                        &mut v.cena_do_motion,
-                    );
-                    ph2d_app_motion::motion_shape_gen::encode(
-                        &motion.pump.vector_instances,
-                        &motion.shape_store,
-                        &mut art,
-                        cam,
-                        janela,
-                        filtro,
-                        cena,
-                    );
-                }
             }
             // ⛔⛔ **LARGAR O ATLAS** (auditoria §2.5): a cópia em CPU dele são `268 MB`, retidos pela
             // vida do processo. Os RECORTES ficam (a resposta memoizada, pequena).
@@ -182,47 +159,16 @@ impl crate::App {
                 vector_scene,
             );
         }
-        // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
-        // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
-        // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
-        // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
-        ph2d_vec_render::draw_blend_overlay(&self.vec.blend_overlay, cam_affine, vector_scene);
-        // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
-        // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
-        // limpa, para não vazar escolhas velhas para o próximo blend.
-        if vector_active && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
-            let preview =
-                crate::blend_live::pick_preview(vec_scene, &vec_xf, &self.vec.blend_picks);
-            ph2d_vec_render::draw_blend_overlay(&preview, cam_affine, vector_scene);
-        } else if !self.vec.blend_picks.is_empty() {
-            self.vec.blend_picks.clear();
-        }
-        // **O Picker de caminho-guia** (Enio 2026-07-23): armado, o caminho sob o cursor é o que
-        // o clique vai prender — a silhueta dele acende, o idioma do conta-gotas. `path_at` é o
-        // MESMO resolvedor do clique, então o realce nunca mente sobre o que será escolhido. Fora
-        // do modo Select (ou sem a tool) o pick não faz sentido: limpa, para não ficar armado e
-        // invisível — a saída sem compromisso, como o clique no vazio.
-        if let Some(pick) = self.vec.path_pick {
-            if vector_active && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select {
-                let w = camera.screen_to_world(self.last_pointer, janela_da_cena);
-                let a = camera.screen_to_world((0.0, 0.0), janela_da_cena);
-                let b = camera.screen_to_world((1.0, 0.0), janela_da_cena);
-                // LITERAL-PX-OK: raio de acerto em px, o MESMO do picking de canvas (`path_at`).
-                let hit_r =
-                    10.0 * f64::from(((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt());
-                if let Some(gid) =
-                    self.vec
-                        .pen
-                        .path_at(vec_scene, [f64::from(w[0]), f64::from(w[1])], hit_r)
-                    && gid != pick.source()
-                    && let Some(outline) = crate::vec_pick::hover_outline(vec_scene, &vec_xf, gid)
-                {
-                    ph2d_vec_render::draw_blend_overlay(&[outline], cam_affine, vector_scene);
-                }
-            } else {
-                self.vec.path_pick = None;
-            }
-        }
+        // O overlay do Blend, o *Pick Shapes* e o caminho-guia sob o cursor — a família desenha-os.
+        let ponteiro = ph2d_app_vec::pick_previews::Ponteiro {
+            camera: &*camera,
+            janela: janela_da_cena,
+            px: self.last_pointer,
+        };
+        let (cena, xf) = (&*vec_scene, &vec_xf);
+        let quadro = &mut *vector_scene;
+        self.vec
+            .desenha_previas_de_pick(vector_active, cena, xf, &ponteiro, cam_affine, quadro);
         // Âncoras/handles/gradiente/marquee só interessam a quem edita nós; no
         // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à
         // parte (valem em TODOS os modos) — `vec_overlay` separa as duas políticas

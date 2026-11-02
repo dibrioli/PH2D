@@ -235,6 +235,8 @@ pub mod paint_stack;
 #[cfg(test)]
 mod pattern_seam_probe;
 pub mod pick;
+/// As prévias dos pickers no quadro (overlay do Blend, *Pick Shapes*, caminho-guia sob o cursor).
+pub mod pick_previews;
 /// As ALÇAS da forma viva no canvas (F9): onde ficam em mundo, o press, o arrasto pela porta
 /// única do `shape_params`, o `Esc` e o duplo-clique.
 pub mod shape_handles_live;

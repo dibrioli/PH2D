@@ -119,6 +119,33 @@ impl Retrato {
 }
 
 impl Vista {
+    /// ⭐ As formas do Motion com a câmera DELA (A6) — os palcos na camada de cada um (a da vista), as
+    /// do editor (`da_vista`) na camada dela ou na cena que a vista cola por cima do mundo.
+    pub(crate) fn codifica_o_motion(
+        &mut self,
+        palcos: &mut ph2d_app_motion::macro_track::palcos::PalcosDasMacros,
+        art: &mut dyn FnMut(u32, [f32; 4]) -> Option<ph2d_app_motion::motion_leaf_images::Art>,
+        motion: &ph2d_app_motion::motion_state::MotionState,
+        filtro: ph2d_render::ImageFilterMode,
+        (motion_tool_active, da_vista): (bool, bool),
+    ) {
+        let alvo = self.janela();
+        let (w, h) = (f64::from(alvo.width), f64::from(alvo.height));
+        let (cam, janela) = (self.afim(), Some(ph2d_vector::Rect::new(0.0, 0.0, w, h)));
+        palcos.troca_a_vista(&mut self.palcos);
+        palcos.codifica(art, cam, janela, filtro);
+        palcos.troca_a_vista(&mut self.palcos);
+        if da_vista {
+            let cena = self.motion.alvo_da_cena(
+                &motion.filtro,
+                motion_tool_active,
+                &mut self.cena_do_motion,
+            );
+            let (insts, store) = (&motion.pump.vector_instances, &motion.shape_store);
+            ph2d_app_motion::motion_shape_gen::encode(insts, store, art, cam, janela, filtro, cena);
+        }
+    }
+
     fn new(
         gpu: &ph2d_gpu::GpuContext,
         editor: &mut VelloPass,

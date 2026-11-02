@@ -14,6 +14,10 @@ use super::*;
 #[path = "fase_authored_panel_rows.rs"]
 mod authored_panel_rows;
 
+/// O documento do quadro e os seus três destinos (faixas, inteiro, receita isolada).
+#[path = "fase_vector_bands_doc.rs"]
+mod doc;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_vector_bands(
@@ -126,64 +130,31 @@ impl crate::App {
         // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6);
         // a faixa Pixel leva a arte dos Pixel Sprites dela (GEF 19 E2) — fora do palco do jogo, como antes.
         let hero = hero_screen.as_ref()?;
-        let (ppm, editing) = (
-            hero.project.pixels_per_meter,
-            ph2d_app_pixel::mode::editing(sim.world(), hero),
-        );
-        let sem_pixel = hero.view.palco_do_jogo;
         ph2d_app_pixel::draw::begin_frame();
-        let mut faixas = |bands: &[ph2d_render::draw_bands::Band],
-                          skins: &ph2d_vec_render::WidgetSkins,
-                          cam: ph2d_vector::Affine,
-                          cenas: &mut Vec<ph2d_vector::VectorScene>,
-                          editor: bool| {
-            for band in bands {
-                if band.family == ph2d_render::draw_bands::Family::Pixel {
-                    let mut target = ph2d_vector::VectorScene::new();
-                    let ids = if sem_pixel {
-                        Vec::new()
-                    } else {
-                        frame_order.pixel_ids_in(*band)
-                    };
-                    let world = sim.world();
-                    ph2d_app_pixel::draw::art(
-                        &mut self.pixel,
-                        world,
-                        cam,
-                        ppm,
-                        editing,
-                        &ids,
-                        editor,
-                        &mut target,
-                    );
-                    cenas.push(target);
-                    continue;
-                }
-                let keep = frame_order.vector_ids_in(*band);
-                let mut band_view = vec_view.clone();
-                for path in vec_scene.paths() {
-                    if !keep.contains(&path.id) {
-                        band_view.hidden.push(path.id);
-                    }
-                }
-                let mut target = ph2d_vector::VectorScene::new();
-                ph2d_vec_render::dispatch(
-                    vec_scene,
-                    &band_view,
-                    &vec_xf,
-                    &vec_live,
-                    vec_fx,
-                    skins,
-                    vec_patterns,
-                    brush_arts,
-                    self.paint_dilate_live.out(),
-                    cam,
-                    &mut target,
-                );
-                cenas.push(target);
-            }
+        let doc = doc::DocDasFaixas {
+            scene: vec_scene,
+            view: &vec_view,
+            xf: &vec_xf,
+            live: &vec_live,
+            fx: vec_fx,
+            patterns: vec_patterns,
+            brushes: brush_arts,
+            dilated: self.paint_dilate_live.out(),
+            order: frame_order,
+            world: sim.world(),
+            ppm: hero.project.pixels_per_meter,
+            editing: ph2d_app_pixel::mode::editing(sim.world(), hero),
+            sem_pixel: hero.view.palco_do_jogo,
         };
-        faixas(&doc_bands, &vec_skins, cam_affine, band_doc_scenes, true);
+        let pixel = &mut self.pixel;
+        doc.faixas(
+            pixel,
+            &doc_bands,
+            &vec_skins,
+            cam_affine,
+            band_doc_scenes,
+            true,
+        );
         // Com faixas o documento já foi codificado nelas — a cena do chrome fica só com o chrome.
         if doc_bands.is_empty() {
             // Com o vidro o documento sai do chrome (aterra no mundo antes do borrão); sem receita, a cena de sempre.
@@ -192,34 +163,10 @@ impl crate::App {
             } else {
                 vector_scene
             };
-            ph2d_vec_render::dispatch(
-                vec_scene,
-                &vec_view,
-                &vec_xf,
-                &vec_live,
-                vec_fx,
-                &vec_skins,
-                vec_patterns,
-                brush_arts,
-                self.paint_dilate_live.out(),
-                cam_affine,
-                target,
-            );
+            doc.inteiro(&vec_skins, cam_affine, target);
         }
-        // A receita aberta, sozinha, na cena ACIMA do vidro — em todos os casos (faixas e `dispatch` saltam-na).
-        ph2d_vec_render::dispatch_isolated(
-            vec_scene,
-            &vec_view,
-            &vec_xf,
-            &vec_live,
-            vec_fx,
-            &vec_skins,
-            vec_patterns,
-            brush_arts,
-            self.paint_dilate_live.out(),
-            cam_affine,
-            frost_front_scene,
-        );
+        // A receita aberta, sozinha, na cena ACIMA do vidro — em todos os casos.
+        doc.isolada(&vec_skins, cam_affine, frost_front_scene);
         // ⭐ A VISTA DA CÂMERA (A6): o mesmo documento, a luz e as placas do Motion com a câmera dela, nas cenas dela —
         // sempre em faixas (o mundo dela acaba no acumulador). A receita aberta vai por cima, na última faixa.
         let t0 = std::time::Instant::now();
@@ -230,7 +177,7 @@ impl crate::App {
             let gpu = surface.gpu();
             let alvo = (janela.width, janela.height);
             v.luz2d
-                .codificar_no_alvo(sim.world(), gpu, alvo, cam, (vec_scene, &vec_xf));
+                .codificar_no_alvo(doc.world, gpu, alvo, cam, (doc.scene, &vec_xf));
             ph2d_app_motion::motion_shape_placa::decide_o_quadro(
                 &mut v.placa,
                 gpu,
@@ -255,21 +202,9 @@ impl crate::App {
             );
             v.band_doc_scenes.clear();
             let bands = ph2d_render::draw_bands::doc_bands_of(frame_order, true);
-            faixas(&bands, &skins, cam, &mut v.band_doc_scenes, false);
+            doc.faixas(pixel, &bands, &skins, cam, &mut v.band_doc_scenes, false);
             if let Some(topo) = v.band_doc_scenes.last_mut() {
-                ph2d_vec_render::dispatch_isolated(
-                    vec_scene,
-                    &vec_view,
-                    &vec_xf,
-                    &vec_live,
-                    vec_fx,
-                    &skins,
-                    vec_patterns,
-                    brush_arts,
-                    self.paint_dilate_live.out(),
-                    cam,
-                    topo,
-                );
+                doc.isolada(&skins, cam, topo);
             }
         }
         miniatura.cpu_codifica = t0.elapsed().as_secs_f64() * 1000.0;

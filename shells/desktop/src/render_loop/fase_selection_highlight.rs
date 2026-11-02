@@ -54,17 +54,9 @@ impl crate::App {
                 .map_or(ph2d_vec_scene::Xform::IDENTITY, |e| {
                     ph2d_flip_entities::transform::object_xform(sim, e)
                 });
-            // W8/§4.C: o realce fala a linguagem do DOMÍNIO — halo de traço (Stroke),
-            // dots (Point), ou halo do PEDAÇO + preview de hover (Segment).
-            let overlay_domain = match flip_style.map(|s| s.edit_domain) {
-                Some(ph2d_tool_flip::EditDomain::Point) => {
-                    ph2d_app_flip::selection_overlay::OverlayDomain::Point
-                }
-                Some(ph2d_tool_flip::EditDomain::Segment) => {
-                    ph2d_app_flip::selection_overlay::OverlayDomain::Segment
-                }
-                _ => ph2d_app_flip::selection_overlay::OverlayDomain::Stroke,
-            };
+            // W8/§4.C: o realce fala a linguagem do DOMÍNIO (a fronteira tool → realce).
+            let (edit, overlay_domain) =
+                ph2d_app_flip::selection_overlay_da_tool::da_tool(flip_style);
             let hover = self
                 .flip_state
                 .segment_hover
@@ -72,10 +64,7 @@ impl crate::App {
                 .map(|(si, pts)| (*si, pts.as_slice()));
             ph2d_app_flip::selection_overlay::draw_flip_selection(
                 flip_active,
-                matches!(
-                    flip_style.map(|s| s.mode),
-                    Some(ph2d_tool_flip::FlipMode::Edit)
-                ),
+                edit,
                 overlay_domain,
                 hover,
                 flip,

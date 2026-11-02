@@ -111,6 +111,16 @@ impl<'a> Quadro<'a> {
         ph2d_gpu::sonda::nota_cpu("flip.faixa", ns);
     }
 
+    /// Desenha a faixa Flip `band` da ordem total por cima do que o `game_rt` tem (GEF 19 E4).
+    pub fn desenha_a_faixa(
+        &mut self,
+        ordem: &ph2d_render::draw_bands::FrameOrder,
+        band: ph2d_render::draw_bands::Band,
+        game_rt: &GameRt,
+    ) {
+        self.desenha(&Self::da_faixa(&ordem.flip_ids_in(band)), game_rt);
+    }
+
     /// Os objectos de uma faixa: os ids que a ordem total registou (`FrameOrder::flip_ids_in`).
     #[must_use]
     pub fn da_faixa(ids: &[u64]) -> Vec<FlipObjectId> {

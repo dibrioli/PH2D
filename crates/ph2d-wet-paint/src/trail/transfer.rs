@@ -159,10 +159,9 @@ impl Trail {
                     self.espalha.primeiro_toque(g, i);
                 }
                 // A espessura recebe o `v` inteiro, antes do tecto; o óleo nunca fica abaixo do piso ([`super::espalha`]).
-                let piso =
-                    (p.oleo > 0.0 && !super::sonda::sem_piso()).then(|| self.espalha.piso(i));
+                let piso = p.oleo > 0.0 && !super::sonda::sem_piso();
                 let espessura =
-                    (crate::grid::espessura::em(g, i) + v).max(piso.unwrap_or(f64::MIN));
+                    (self.espalha).deposita(i, crate::grid::espessura::em(g, i), v, piso);
                 // O relevo pousa com a tinta (Bug #48): a média, pela massa, do que estava e do que chega.
                 let r_old = g.relevo[i];
                 if r_old != relevo {

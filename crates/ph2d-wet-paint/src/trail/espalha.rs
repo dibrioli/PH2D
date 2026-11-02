@@ -39,6 +39,8 @@ pub(super) struct Espalha {
     tocada: Vec<bool>,
     /// A espessura que cada célula tocada tinha ANTES do traço (`0` nas virgens) — o piso do depósito.
     piso: Vec<f32>,
+    /// O que o piso já ERGUEU na célula neste traço (sai do cru do dab seguinte).
+    erguido: Vec<f32>,
     sujo: bool,
 }
 
@@ -47,6 +49,7 @@ impl Espalha {
         if self.sujo {
             self.tocada.fill(false);
             self.piso.fill(0.0);
+            self.erguido.fill(0.0);
             self.sujo = false;
         }
     }
@@ -68,16 +71,28 @@ impl Espalha {
         }
     }
 
-    /// A espessura que a célula `i` tinha antes deste traço a tocar (`0` sem ela): o depósito nunca a deixa abaixo.
+    /// A espessura da célula `i` depois de um dab de `v` sobre `atual`: `max(t₀, t₀·(1 − ESPALHA) + Σv)` sobre o
+    /// ACUMULADO do traço (`com_piso`: o óleo, sem a sonda `SEM_PISO`), nunca por dab — o erguer do piso de um dab é
+    /// devolvido pelos seguintes (`erguido`). Erguer `atual` ao piso a cada dab desfazia o espalhar e o relevo crescia
+    /// linear com as passadas (`sonda_oleo_furos`: Thick Impasto p99 24,1 → 110,9 em 8 passadas; com a cura, 39,7).
     #[inline]
-    pub(super) fn piso(&self, i: usize) -> f64 {
-        self.piso.get(i).map_or(0.0, |&t| f64::from(t))
+    pub(super) fn deposita(&mut self, i: usize, atual: f64, v: f64, com_piso: bool) -> f64 {
+        let (Some(&piso), Some(erguido), true) =
+            (self.piso.get(i), self.erguido.get_mut(i), com_piso)
+        else {
+            return atual + v;
+        };
+        let cru = atual - f64::from(*erguido) + v;
+        let novo = cru.max(f64::from(piso));
+        *erguido = (novo - cru) as f32;
+        novo
     }
 
     fn marca(&mut self, n: usize, i: usize) {
         if self.tocada.len() != n {
             self.tocada = vec![false; n];
             self.piso = vec![0.0; n];
+            self.erguido = vec![0.0; n];
         }
         self.tocada[i] = true;
         self.sujo = true;

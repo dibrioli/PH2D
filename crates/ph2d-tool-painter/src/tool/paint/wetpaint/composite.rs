@@ -198,7 +198,8 @@ impl PainterTool {
             )
         });
         let Some(super::composite_otica::CaixasDaOtica {
-            caixa_cel: (cx0, cy0, cx1, cy1),
+            // Só a sonda J13 a lê (`cfg(test)`).
+            caixa_cel: _caixa_cel,
             caixa_px: (px0, py0, px1, py1),
             sem_oleo,
         }) = saida.caixas
@@ -532,7 +533,7 @@ impl PainterTool {
         self.declare_wrote(Some(region));
         self.mark_dirty(region);
         #[cfg(test)]
-        super::fps_j13_tests::gancho(self, (cx0, cy0, cx1, cy1), (px0, py0, px1, py1));
+        super::fps_j13_tests::gancho(self, _caixa_cel, (px0, py0, px1, py1));
         if let Some(antes) = agua_antes {
             self.undo
                 .marca

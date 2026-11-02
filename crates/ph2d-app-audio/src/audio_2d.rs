@@ -109,7 +109,8 @@ pub(crate) fn update_with(
 
     livro.retire();
     let vivos: BTreeSet<u64> = fontes.iter().map(|(id, _, _)| *id).collect();
-    livro.forget_absent(motor, &vivos);
+    let corrida = ph2d_ecs::run_is_on_copy(sim.world());
+    livro.forget_absent(motor, &vivos, corrida);
 
     for (id, entity, cfg) in &fontes {
         let Some(pos) = position_of(sim, *entity) else {

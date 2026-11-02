@@ -57,6 +57,8 @@ pub struct SceneAudio {
     /// uma ARESTA, e a aresta é o nascimento*. Ler *«não está a tocar»* faria um som de uma vez só
     /// renascer a cada quadro depois de acabar.
     born: BTreeSet<u64>,
+    /// As vozes de DISPARO de quem saiu numa corrida — acabam de soar sem dono (GEF 21 E3).
+    tails: Vec<Live>,
 }
 
 impl SceneAudio {
@@ -67,7 +69,7 @@ impl SceneAudio {
 
     /// Quantas vozes de cena estão vivas — o número que o smoke imprime.
     pub fn live_voices(&self) -> usize {
-        self.voices.values().map(Vec::len).sum()
+        self.voices.values().map(Vec::len).sum::<usize>() + self.tails.len()
     }
 
     /// Quantos sons distintos já foram descodificados com sucesso.
@@ -165,6 +167,7 @@ impl SceneAudio {
             slot.retain(|l| l.ends_at.is_none_or(|t| t > agora));
             !slot.is_empty()
         });
+        self.tails.retain(|l| l.ends_at.is_some_and(|t| t > agora));
     }
 
     /// **Esquece quem já não está na cena** — e cala o que ele tinha a soar.
@@ -175,7 +178,11 @@ impl SceneAudio {
     ///
     /// ⚠️ **O `born` também se limpa**, senão um objecto apagado e reposto (um undo) voltaria
     /// **sem** a aresta de nascimento e o `autoplay` dele nunca mais valeria.
-    pub fn forget_absent(&mut self, eng: &AudioEngine, vivos: &BTreeSet<u64>) {
+    ///
+    /// ⭐ **Numa corrida (`deixa_acabar`) a voz de DISPARO acaba de soar** (GEF 21 E3): a moeda que
+    /// toca e sai no mesmo quadro tem de se ouvir. A de ciclo cala-se sempre — sem dono, ninguém a
+    /// pararia. Fora da corrida (o `Ctrl+Z`) cala-se tudo, como antes.
+    pub fn forget_absent(&mut self, eng: &AudioEngine, vivos: &BTreeSet<u64>, deixa_acabar: bool) {
         let mortos: Vec<u64> = self
             .voices
             .keys()
@@ -183,7 +190,16 @@ impl SceneAudio {
             .filter(|k| !vivos.contains(k))
             .collect();
         for k in mortos {
-            self.stop(eng, k);
+            let Some(slot) = self.voices.remove(&k) else {
+                continue;
+            };
+            for l in slot {
+                if deixa_acabar && l.ends_at.is_some() {
+                    self.tails.push(l);
+                } else {
+                    let _ = eng.stop(l.voice);
+                }
+            }
         }
         self.born.retain(|k| vivos.contains(k));
     }

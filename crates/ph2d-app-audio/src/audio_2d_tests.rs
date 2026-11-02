@@ -269,6 +269,46 @@ fn an_object_that_leaves_the_scene_is_silenced() {
     );
 }
 
+/// ⭐⭐ **Numa corrida, o som de DISPARO de quem sai acaba de soar; o de ciclo cala-se** (GEF 21 E3).
+///
+/// A moeda toca e sai no mesmo quadro (*Play Sound* + *Destroy*): calada no quadro seguinte, nunca
+/// se ouvia. **Mutações que devem sangrar:** ignorar o `deixa_acabar` (o disparo cala-se) · guardar
+/// também a de ciclo (fica órfã a soar).
+#[test]
+fn in_a_run_a_one_shot_outlives_its_object_and_a_loop_does_not() {
+    for looping in [false, true] {
+        let mut cfg = com_autoplay(looping);
+        cfg.sound = som_longo();
+        let (mut sim, fonte) = cena(cfg);
+        sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
+        let mut livro = SceneAudio::default();
+        let (mut eng, mut mixer) = motor();
+        assert_eq!(update_with(&mut sim, &mut livro, &mut eng).live, 1);
+        assert_eq!(vozes_no_mixer(&mut mixer), 1, "o mixer nao chegou a tocar");
+        sim.world_mut().despawn(fonte);
+        let r = update_with(&mut sim, &mut livro, &mut eng);
+        let fica = usize::from(!looping);
+        assert_eq!(r.live, fica, "looping={looping}: o livro");
+        assert_eq!(
+            vozes_no_mixer(&mut mixer),
+            fica,
+            "looping={looping}: o MIXER"
+        );
+    }
+}
+
+/// Um `.wav` de 2 s — o disparo ainda soa quando o gate pergunta.
+fn som_longo() -> String {
+    let path = std::env::temp_dir().join("ph2d_gate_audio2d_longo.wav");
+    if !path.exists() {
+        let data =
+            SampleData::from_interleaved(vec![0.0_f32; 192_000], AudioFormat::stereo(48_000));
+        ph2d_audio_encode::write_wav(&path, &data, ph2d_audio_encode::BitDepth::Pcm16)
+            .expect("o gate tem de conseguir escrever a fixtura");
+    }
+    path.to_string_lossy().into_owned()
+}
+
 /// **Uma cena sem ouvinte ainda toca** — e o relatório di-lo.
 ///
 /// ⚠️ ⛔ A alternativa recusada é calar: uma cena a meio de ser montada não tem ouvinte, e um

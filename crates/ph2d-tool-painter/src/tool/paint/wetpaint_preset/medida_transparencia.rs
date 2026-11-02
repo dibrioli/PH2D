@@ -497,5 +497,9 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// O hash da tela de `ad16f60b75` (a lei do vidro claro) na cena de [`o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`],
 /// repintado em `9fba4165d8` (o contorno sub-célula só alisa a escada de um meio plano; antes `0x41f2_e6a6_379b_7fa6` ·
 /// `0xaa52_ebb1_0843_041c`, bisseção 29/10: `9fba4165d8~1` dá os de antes, `9fba4165d8` e o HEAD da J6 estes).
-const CLEAR_GLASS_05: u64 = 0x23f9_aa15_b4a8_9263;
-const CLEAR_GLASS_1: u64 = 0xc6ec_682c_aa7f_01a2;
+/// Regravado 02/11 (era `0x23f9_aa15_b4a8_9263` · `0xc6ec_682c_aa7f_01a2`): a tinta da cena mudou só por lei nova —
+/// degraus first-parent ea3daab14c · 5dd9f7b567+209a0e9c8e (anulam-se) · d92340b6f3 · 0170428784 · 0275929512 ·
+/// 47ca63932e · 70869bf673 · 183d3d02e9 · ef3f836a86 · c77e40484c · 0f32fb6e75 · 5acb712ec6 · 7c8e08d16b (E10) ·
+/// 032cda64a5; a tabela dos hashes está no commit.
+const CLEAR_GLASS_05: u64 = 0xd780_ee7b_c62b_9982;
+const CLEAR_GLASS_1: u64 = 0x65a9_16d3_3d87_ed2f;

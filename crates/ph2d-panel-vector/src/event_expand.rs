@@ -18,18 +18,13 @@ use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 /// (`VECTOR_EXPAND_OFFSET`) é lida do store pela shell a cada quadro, e o `Remove` zera-a (a shell
 /// vê o campo mudar e DESARMA a seleção — a mesma porta de quem digita `0`).
 pub(super) fn expand_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
-    use crate::ids::{
-        VECTOR_EXPAND_MITER, VECTOR_EXPAND_OFFSET, VECTOR_EXPAND_REMOVE,
-        VECTOR_EXPAND_RESULT_BEHIND, VECTOR_EXPAND_RESULT_REPLACE,
-    };
+    use crate::ids::{VECTOR_EXPAND_MITER, VECTOR_EXPAND_OFFSET, VECTOR_EXPAND_REMOVE};
     Some(match ev {
         WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
         WidgetEvent::Click(id) if expand_side_index(id).is_some() => pick_expand_side(host, id),
-        WidgetEvent::Click(id)
-            if id == VECTOR_EXPAND_RESULT_BEHIND || id == VECTOR_EXPAND_RESULT_REPLACE =>
-        {
+        WidgetEvent::Click(id) if result_of(id).is_some() => {
             seam_reset_button(host, id);
-            state::set_expand_behind(id == VECTOR_EXPAND_RESULT_BEHIND);
+            state::set_expand_result(result_of(id).unwrap_or(0));
             true
         }
         WidgetEvent::Click(id) if id == VECTOR_EXPAND_REMOVE => {
@@ -44,6 +39,21 @@ pub(super) fn expand_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) ->
         WidgetEvent::ValueChanged(id) if id == VECTOR_EXPAND_OFFSET => true,
         _ => return None,
     })
+}
+
+/// O código do `Result` que o chip `id` escolhe (`0` Replace · `1` Behind · `2` In front).
+fn result_of(id: ph2d_a11y::NodeId) -> Option<u8> {
+    use crate::ids::{
+        VECTOR_EXPAND_RESULT_BEHIND, VECTOR_EXPAND_RESULT_FRONT, VECTOR_EXPAND_RESULT_REPLACE,
+    };
+    [
+        VECTOR_EXPAND_RESULT_REPLACE,
+        VECTOR_EXPAND_RESULT_BEHIND,
+        VECTOR_EXPAND_RESULT_FRONT,
+    ]
+    .iter()
+    .position(|r| *r == id)
+    .and_then(|i| u8::try_from(i).ok())
 }
 
 /// Grava a junção escolhida para o **Offset Path** e ENGOLE o clique.

@@ -62,11 +62,19 @@ pub struct VecOffset {
     /// traço desenhado (`ph2d_vec_scene::MITER_LIMIT`, gate em `offset_live_tests`).
     #[serde(default = "miter_at_birth")]
     pub miter: f64,
-    /// `Result: New shape behind` — a fonte fica intacta POR CIMA e o offset desenha-se atrás dela
-    /// (o *Offset Path* do Illustrator faz uma cópia). `false` = `Replace`, o de antes.
+    /// O `Result` (dono 02/11): [`RESULT_REPLACE`] troca a forma (o de antes); [`RESULT_BEHIND`] e
+    /// [`RESULT_FRONT`] mantêm a fonte intacta e desenham o offset atrás / à frente dela (o *Offset
+    /// Path* do Illustrator faz uma cópia).
     #[serde(default)]
-    pub behind: bool,
+    pub result: u8,
 }
+
+/// `Result · Replace` — o offset troca a forma.
+pub const RESULT_REPLACE: u8 = 0;
+/// `Result · Behind` — a forma nova por trás da fonte.
+pub const RESULT_BEHIND: u8 = 1;
+/// `Result · In front` — a forma nova à frente da fonte.
+pub const RESULT_FRONT: u8 = 2;
 
 /// O limite do Miter com que um offset nasce (e o de um documento gravado antes do campo).
 pub const MITER_AT_BIRTH: f64 = 4.0;
@@ -86,7 +94,13 @@ impl VecOffset {
             join,
             side,
             miter: MITER_AT_BIRTH,
-            behind: false,
+            result: RESULT_REPLACE,
         }
+    }
+
+    /// A fonte FICA (Behind ou In front) — o offset é uma forma a mais.
+    #[must_use]
+    pub fn keeps_source(&self) -> bool {
+        self.result != RESULT_REPLACE
     }
 }

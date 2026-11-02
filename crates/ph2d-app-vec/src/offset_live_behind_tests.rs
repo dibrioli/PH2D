@@ -25,9 +25,9 @@ fn star_scene() -> (VecScene, SimWorld, VecEntityMap, VecXforms, VecPathId) {
     (scene, sim, map, xf, id)
 }
 
-fn spec(d: f64, behind: bool) -> VecOffset {
+fn spec(d: f64, result: u8) -> VecOffset {
     VecOffset {
-        behind,
+        result,
         ..VecOffset::new(d, 0, 2)
     }
 }
@@ -44,10 +44,10 @@ fn world_of(scene: &VecScene, xf: &VecXforms, id: VecPathId) -> VecPath {
 fn behind_draws_the_source_on_top_of_the_offset() {
     let (scene, mut sim, map, xf, id) = star_scene();
     let mut live = OffsetLive::default();
-    arm(&mut sim, &map, &[id], spec(0.2, false));
+    arm(&mut sim, &map, &[id], spec(0.2, ph2d_ecs::RESULT_REPLACE));
     live.recook(&scene, &sim, &map, &xf);
     let replace = live.live()[&id].clone();
-    arm(&mut sim, &map, &[id], spec(0.2, true));
+    arm(&mut sim, &map, &[id], spec(0.2, ph2d_ecs::RESULT_BEHIND));
     live.recook(&scene, &sim, &map, &xf);
     let behind = &live.live()[&id];
     assert_eq!(behind.len(), replace.len() + 1);
@@ -64,7 +64,7 @@ fn behind_draws_the_source_on_top_of_the_offset() {
 #[test]
 fn applying_behind_keeps_the_source_and_puts_the_offset_under_it() {
     let (mut scene, mut sim, map, xf, id) = star_scene();
-    arm(&mut sim, &map, &[id], spec(0.2, true));
+    arm(&mut sim, &map, &[id], spec(0.2, ph2d_ecs::RESULT_BEHIND));
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
     let mut restack = Vec::new();
@@ -93,6 +93,39 @@ fn applying_behind_keeps_the_source_and_puts_the_offset_under_it() {
         pen.selected_paths(),
         &[ids[0]],
         "a forma nova fica selecionada"
+    );
+}
+
+/// ⭐ **À frente (dono 02/11): a fonte por BAIXO do offset, e o Apply põe a forma nova logo à frente
+/// dela.** *Mutação: o `insert(0, …)` virar `push`, ou inserir em `z` ⇒ vermelho.*
+#[test]
+fn in_front_draws_the_offset_over_the_source_and_applies_above_it() {
+    let (mut scene, mut sim, map, xf, id) = star_scene();
+    let mut live = OffsetLive::default();
+    arm(&mut sim, &map, &[id], spec(0.2, ph2d_ecs::RESULT_FRONT));
+    live.recook(&scene, &sim, &map, &xf);
+    assert_eq!(
+        live.live()[&id].first(),
+        Some(&world_of(&scene, &xf, id)),
+        "a fonte por baixo"
+    );
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    let mut restack = Vec::new();
+    assert!(materialise(
+        &mut scene,
+        &mut sim,
+        &mut pen,
+        &map,
+        &xf,
+        &[id],
+        &mut restack
+    ));
+    let ids: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    assert_eq!(ids[0], id, "a fonte por baixo, com o id dela");
+    assert_eq!(
+        restack,
+        vec![vec![id, ids[1]]],
+        "a Hierarchy põe a nova à frente da fonte"
     );
 }
 

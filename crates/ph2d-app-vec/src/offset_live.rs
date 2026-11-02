@@ -62,9 +62,14 @@ impl OffsetLive {
                     crate::expand::side_of_code(spec.side),
                     spec.miter,
                 );
-                // ⭐ `Result: New shape behind` — a fonte desenha-se POR CIMA do offset, no z dela.
-                if spec.behind && !out.is_empty() {
-                    out.push(world.clone());
+                // ⭐ O `Result` que mantém a fonte: por trás, ela desenha-se POR CIMA do offset; à
+                // frente, POR BAIXO — os dois no z dela.
+                if !out.is_empty() {
+                    match spec.result {
+                        ph2d_ecs::RESULT_BEHIND => out.push(world.clone()),
+                        ph2d_ecs::RESULT_FRONT => out.insert(0, world.clone()),
+                        _ => {}
+                    }
                 }
                 self.memo.insert(
                     path.id,
@@ -242,7 +247,7 @@ pub fn materialise(
         return false;
     }
     crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
-        let Some((_, spec)) = live.iter().find(|(i, _)| *i == id && !o_behind(&live, *i)) else {
+        let Some((_, spec)) = live.iter().find(|(i, o)| *i == id && !o.keeps_source()) else {
             return Vec::new(); // fora do comando: fica onde está, e segue selecionado
         };
         // A distância do offset é de MUNDO, então a pose entra ANTES do motor.
@@ -258,10 +263,11 @@ pub fn materialise(
             spec.d,
         )
     });
-    // ⭐ `New shape behind`: a fonte FICA (o mesmo id, a mesma pose, os mesmos componentes) e o
-    // offset entra logo ATRÁS dela; a fonte perde o offset vivo, e a forma nova fica selecionada.
+    // ⭐ Por trás / à frente: a fonte FICA (o mesmo id, a mesma pose, os mesmos componentes) e o
+    // offset entra logo atrás ou à frente dela; a fonte perde o offset vivo, e a forma nova fica
+    // selecionada.
     let mut novas = Vec::new();
-    for (id, spec) in live.iter().filter(|(_, o)| o.behind) {
+    for (id, spec) in live.iter().filter(|(_, o)| o.keeps_source()) {
         let Some(z) = scene.paths().iter().position(|p| p.id == *id) else {
             continue;
         };
@@ -280,13 +286,19 @@ pub fn materialise(
         if pecas.is_empty() {
             continue; // aniquilou: nada a pôr atrás, e o offset fica vivo (a lei de cima)
         }
+        let frente = spec.result == ph2d_ecs::RESULT_FRONT;
         let antes = novas.len();
-        for (at, p) in (z..).zip(pecas) {
+        for (at, p) in ((z + usize::from(frente))..).zip(pecas) {
             novas.push(scene.insert_path(at, p));
         }
         // ⚠️ A ordem de desenho é a da HIERARCHY, e a forma nova só ganha entidade no `sync` do
-        // quadro seguinte (entraria no TOPO): o `restack` põe-na logo atrás da fonte, lá.
-        restack.push(novas[antes..].iter().copied().chain([*id]).collect());
+        // quadro seguinte (entraria no TOPO): o `restack` põe-na logo atrás / à frente da fonte, lá.
+        let feitas = novas[antes..].iter().copied();
+        restack.push(if frente {
+            std::iter::once(*id).chain(feitas).collect()
+        } else {
+            feitas.chain([*id]).collect()
+        });
         arm(sim, map, &[*id], VecOffset { d: 0.0, ..*spec });
     }
     if !novas.is_empty() {
@@ -294,10 +306,6 @@ pub fn materialise(
     }
     eprintln!("[ph2d-vec] offset materializado: {} forma(s)", live.len());
     true
-}
-
-fn o_behind(live: &[(VecPathId, VecOffset)], id: VecPathId) -> bool {
-    live.iter().any(|(i, o)| *i == id && o.behind)
 }
 
 #[cfg(test)]

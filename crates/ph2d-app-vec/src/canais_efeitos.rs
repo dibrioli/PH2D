@@ -66,7 +66,7 @@ impl Efeitos {
             c::OFFSET_DISTANCIA => f(o.d),
             c::OFFSET_JUNCAO => f32::from(o.join),
             c::OFFSET_MITER => f(o.miter),
-            c::OFFSET_ATRAS => f32::from(u8::from(o.behind)),
+            c::OFFSET_ATRAS => f32::from(o.result),
             _ => f32::from(o.side),
         })
     }
@@ -100,7 +100,7 @@ impl Efeitos {
             c::OFFSET_DISTANCIA => o.d = f64::from(v),
             c::OFFSET_JUNCAO => o.join = byte(v, 2.0),
             c::OFFSET_MITER => o.miter = f64::from(v.max(1.0)),
-            c::OFFSET_ATRAS => o.behind = byte(v, 1.0) == 1,
+            c::OFFSET_ATRAS => o.result = byte(v, 2.0),
             _ => o.side = byte(v, 2.0),
         }
     }

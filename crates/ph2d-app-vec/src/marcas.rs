@@ -158,6 +158,10 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
         &[campo(v::OFFSET_ATRAS)],
     ),
     (
+        painel::VECTOR_EXPAND_RESULT_FRONT,
+        &[campo(v::OFFSET_ATRAS)],
+    ),
+    (
         ferramenta::VECTOR_EXPAND_JOIN_MITER,
         &[campo(v::OFFSET_JUNCAO)],
     ),

@@ -141,7 +141,7 @@ pub const CONTORNO_COR: u16 = 205;
 const CONTORNO_COR_A: u16 = CONTORNO_COR + 3;
 
 /// O Offset vivo (`VecOffset`): a distância de MUNDO, a quina, o lado, o `Limit` do Miter e o
-/// `Result` (`0` Replace · `1` New shape behind).
+/// `Result` (`0` Replace · `1` Behind · `2` In front).
 pub const OFFSET_DISTANCIA: u16 = 210;
 pub const OFFSET_JUNCAO: u16 = 211;
 pub const OFFSET_LADO: u16 = 212;

@@ -173,6 +173,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     );
     button(store, crate::ids::VECTOR_EXPAND_RESULT_BEHIND);
     button(store, crate::ids::VECTOR_EXPAND_RESULT_REPLACE);
+    button(store, crate::ids::VECTOR_EXPAND_RESULT_FRONT);
     button(store, crate::ids::VECTOR_EXPAND_REMOVE);
     // Fill rule (compound paths only — the row hides for a single contour).
     button(store, crate::ids::VECTOR_FILL_RULE_NONZERO);

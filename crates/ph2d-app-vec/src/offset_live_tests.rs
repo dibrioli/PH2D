@@ -25,7 +25,7 @@ fn k(join: u8, side: u8) -> ph2d_panel_vector::OffsetKnobs {
         join,
         side,
         miter: ph2d_ecs::MITER_AT_BIRTH,
-        behind: false,
+        result: ph2d_ecs::RESULT_REPLACE,
     }
 }
 

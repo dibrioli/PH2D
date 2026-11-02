@@ -382,7 +382,7 @@ pub use vec_layout::{
     LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, VecLayout, VecLayoutAbsolute, VecLayoutItem,
     VecLayoutSize,
 };
-pub use vec_offset::{MITER_AT_BIRTH, VecOffset};
+pub use vec_offset::{MITER_AT_BIRTH, RESULT_BEHIND, RESULT_FRONT, RESULT_REPLACE, VecOffset};
 pub use vec_pattern_path::VecPatternPath;
 pub use vec_pattern_rotation::VecPatternRotation;
 pub use vec_resize_box::{VecResizeBox, default_for as resize_box_default, resizes_box};

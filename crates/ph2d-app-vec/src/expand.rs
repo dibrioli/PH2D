@@ -329,7 +329,7 @@ pub fn spec_with(k: ph2d_panel_vector::OffsetKnobs, d: f64) -> ph2d_ecs::VecOffs
         join: k.join,
         side: k.side,
         miter: k.miter,
-        behind: k.behind,
+        result: k.result,
     }
 }
 
@@ -340,7 +340,7 @@ pub fn knobs_of(o: &ph2d_ecs::VecOffset) -> ph2d_panel_vector::OffsetKnobs {
         join: o.join,
         side: o.side,
         miter: o.miter,
-        behind: o.behind,
+        result: o.result,
     }
 }
 

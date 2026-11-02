@@ -22,8 +22,8 @@ pub struct OffsetKnobs {
     pub side: u8,
     /// O `Limit` do Miter.
     pub miter: f64,
-    /// `Result: New shape behind` (a fonte fica por cima) × `Replace`.
-    pub behind: bool,
+    /// O `Result`: `0` Replace · `1` Behind · `2` In front (`ph2d_ecs::RESULT_*`).
+    pub result: u8,
 }
 
 /// Os knobs com que o painel NASCE — Miter, os furos andam junto, limite 4 e uma forma NOVA por
@@ -35,7 +35,7 @@ pub const EXPAND_KNOBS_AT_BIRTH: OffsetKnobs = OffsetKnobs {
     join: 0,
     side: 2,
     miter: 4.0, // LITERAL-PX-OK: razão do Miter (adimensional), = ph2d_ecs::MITER_AT_BIRTH (gate na app-vec)
-    behind: true,
+    result: 1,
 };
 
 thread_local! {
@@ -81,8 +81,8 @@ pub fn set_expand_side(v: u8) {
     edit(|k| k.side = v);
 }
 
-pub(crate) fn set_expand_behind(v: bool) {
-    edit(|k| k.behind = v);
+pub(crate) fn set_expand_result(v: u8) {
+    edit(|k| k.result = v);
 }
 
 pub(crate) fn set_expand_miter(v: f64) {

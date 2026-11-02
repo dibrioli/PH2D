@@ -117,12 +117,17 @@ impl BodyCtx<'_> {
                 (
                     crate::ids::VECTOR_EXPAND_RESULT_BEHIND,
                     tr("panel.vector.expand.behind"),
-                    k.behind,
+                    k.result == 1,
+                ),
+                (
+                    crate::ids::VECTOR_EXPAND_RESULT_FRONT,
+                    tr("panel.vector.expand.front"),
+                    k.result == 2,
                 ),
                 (
                     crate::ids::VECTOR_EXPAND_RESULT_REPLACE,
                     tr("panel.vector.expand.replace"),
-                    !k.behind,
+                    k.result == 0,
                 ),
             ],
             y,

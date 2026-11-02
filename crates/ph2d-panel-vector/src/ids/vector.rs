@@ -49,6 +49,8 @@ pub const VECTOR_EXPAND_MITER: NodeId = hash_node_id("vector.expand.miter_limit"
 
 pub const VECTOR_EXPAND_RESULT_BEHIND: NodeId = hash_node_id("vector.expand.result.behind");
 
+pub const VECTOR_EXPAND_RESULT_FRONT: NodeId = hash_node_id("vector.expand.result.front");
+
 pub const VECTOR_EXPAND_RESULT_REPLACE: NodeId = hash_node_id("vector.expand.result.replace");
 
 pub const VECTOR_EXPAND_REMOVE: NodeId = hash_node_id("vector.expand.remove");

@@ -60,11 +60,14 @@ fn o_inner_que_nao_fazia_nada_saiu() {
 #[test]
 fn o_result_grava_o_que_se_clica() {
     let mut h = host();
-    assert!(ph2d_panel_vector::offset_knobs().behind, "nasce atrás");
+    let result = || ph2d_panel_vector::offset_knobs().result;
+    assert_eq!(result(), 1, "nasce atrás");
     crate::clica(&mut h, ids::VECTOR_EXPAND_RESULT_REPLACE);
-    assert!(!ph2d_panel_vector::offset_knobs().behind);
+    assert_eq!(result(), 0);
+    crate::clica(&mut h, ids::VECTOR_EXPAND_RESULT_FRONT);
+    assert_eq!(result(), 2, "pela frente (dono 02/11)");
     crate::clica(&mut h, ids::VECTOR_EXPAND_RESULT_BEHIND);
-    assert!(ph2d_panel_vector::offset_knobs().behind);
+    assert_eq!(result(), 1);
 }
 
 /// ⭐ O `Miter limit` só existe com a quina Miter. *Mutação: tirar o `if k.join == 0` ⇒ vermelho.*

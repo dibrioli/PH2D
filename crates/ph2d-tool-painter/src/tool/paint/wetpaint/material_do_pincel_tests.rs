@@ -31,19 +31,18 @@ fn pinta(t: &mut PainterTool, y: f32) {
 
 /// A tela de FÁBRICA (o artista acabou de abrir: sem papel escolhido, Relief do papel 0) com o Óleo Real ligado e o
 /// pincel com os knobs `k`; `papel` = o Cold com Relief 0,6 (a cena das calibrações).
-/// O pigmento `p` da cena calibrada. Na lei única (E10, `e8f35b5710`) o depósito lê a receita e o `PigmentPerDab` é
-/// Hidden: o pigmento entra pela migração exacta da E10 (a mesma φ; o Volume não depende do pigmento).
+/// O pigmento `p` da cena calibrada. Na lei única o depósito lê a receita (E4 `7a4bc540b7`: φ e h; E10 `e8f35b5710`:
+/// Dilution e Volume µm, o `PigmentPerDab` Hidden): o pigmento da lei velha entra pelas DUAS migrações exactas que os
+/// presets fizeram (`migra_da_lei_velha` → `migra_para_controlos`) — a mesma φ e o mesmo h.
 fn pigmento_da_cena(t: &mut PainterTool, p: f64) {
+    use ph2d_wet_paint::painter::receita::{migra_da_lei_velha, migra_para_controlos};
     let k = &mut t.paint.wetpaint.knobs;
     k.set(Knob::PigmentPerDab, p);
-    let (diluicao, _) = ph2d_wet_paint::painter::receita::migra_para_controlos(
-        p,
-        k.get(Knob::WaterPerDab),
-        k.water,
-        k.get(Knob::Intensity),
-        1.0,
-    );
+    let (wpd, agua) = (k.get(Knob::WaterPerDab), k.water);
+    let (p, carga) = migra_da_lei_velha(p, wpd, agua, 1.0);
+    let (diluicao, volume) = migra_para_controlos(p, wpd, agua, carga, 1.0);
     k.set(Knob::Dilution, diluicao);
+    k.set(Knob::Volume, volume);
 }
 
 fn tela(k: &[(Knob, f64)], papel: bool) -> PainterTool {

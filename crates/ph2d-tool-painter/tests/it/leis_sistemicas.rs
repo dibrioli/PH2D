@@ -19,6 +19,12 @@ fn oraculo() -> Value {
 
 /// A cena `cena` da bateria só com os traços `nomes` (+ 240 quadros de água e a foto molhada), pintada por `p`.
 fn pinta(p: &Pincel, cena: &str, nomes: &[&str]) -> (Vec<u8>, Vec<Value>) {
+    pinta_com(p, cena, nomes, false)
+}
+
+/// [`pinta`]; `sem_pressao`: a caneta pinta os traços com a pressão PRESA a 1 (os traços devolvidos guardam a
+/// rampa nominal, a que a régua lê) — o controlo da lei da mão.
+fn pinta_com(p: &Pincel, cena: &str, nomes: &[&str], sem_pressao: bool) -> (Vec<u8>, Vec<Value>) {
     let bat = bateria();
     let c = bat["cenas"]
         .as_array()
@@ -37,7 +43,15 @@ fn pinta(p: &Pincel, cena: &str, nomes: &[&str]) -> (Vec<u8>, Vec<Value>) {
         json!({"op": "pincel", "quem": "preset"}),
         json!({"op": "cor", "rgb": [23, 101, 179]}),
     ];
-    ops.extend(tracos.iter().cloned());
+    ops.extend(tracos.iter().map(|t| {
+        let mut t = t.clone();
+        if sem_pressao {
+            for pt in t["pts"].as_array_mut().unwrap() {
+                pt[2] = json!(1.0);
+            }
+        }
+        t
+    }));
     ops.extend([
         json!({"op": "simula", "quadros": 240}),
         json!({"op": "foto", "nome": "A"}),
@@ -346,9 +360,18 @@ fn decis(cols: &[(f64, f64, f64)]) -> ([f64; 10], [f64; 10]) {
 
 /// A resposta na FAIXA DA MÃO DO DONO (0,24–0,86; `project-memory/feedback_pen_pressure_floor_must_keep_the_owners_
 /// hand_range.md`): (largura · cobertura) no decil 8 ÷ no decil 2, na rampa 0→1.
-fn mao(l: &[f64; 10], c: &[f64; 10]) -> f64 {
+/// `Err` quando o decil 2 não chega à régua (`a ≤ 1e-3`, ou sem colunas): um preset MUDO na mão leve é uma falha,
+/// nunca uma resposta infinita (era 99, e passava sem a distância ao Rebelle).
+fn mao(l: &[f64; 10], c: &[f64; 10]) -> Result<f64, String> {
     let (a, b) = (l[2] * c[2], l[8] * c[8]);
-    if a > 1e-3 { b / a } else { 99.0 }
+    if a > 1e-3 && b.is_finite() {
+        Ok(b / a)
+    } else {
+        Err(format!(
+            "a mão leve (decil 2 da rampa) não chega à régua: largura {:.2} × cobertura {:.2} (÷ as do topo)",
+            l[2], c[2]
+        ))
+    }
 }
 
 /// A faixa da mão tem de responder pelo menos isto: o dono reprovou ~1,3 (o piso da W6, 18/10: «apertar muito e
@@ -356,34 +379,65 @@ fn mao(l: &[f64; 10], c: &[f64; 10]) -> f64 {
 const R_MAO: f64 = 2.5;
 
 /// A resposta da MÃO de `p` (a régua `rampa_0_1` da bateria `gestos`): quanto a faixa da mão do dono varia.
-fn mao_do_pincel(p: &Pincel) -> f64 {
-    let (px, ts) = pinta(p, "gestos", &["rampa_0_1"]);
+fn mao_do_pincel(p: &Pincel, sem_pressao: bool) -> Result<f64, String> {
+    let (px, ts) = pinta_com(p, "gestos", &["rampa_0_1"], sem_pressao);
     let n: Vec<([f64; 10], [f64; 10])> = ts.iter().map(|t| decis(&colunas(&px, 1000, t))).collect();
     let m = mao(&n[0].0, &n[0].1);
-    println!("[pressao] {}: mão {m:.2}", p.nome);
+    println!(
+        "[pressao] {} (sem pressão: {sem_pressao}): mão {m:.2?}",
+        p.nome
+    );
     m
+}
+
+/// A mão de cada preset com origem, em paralelo.
+fn maos(sem_pressao: bool) -> Vec<(String, Result<f64, String>)> {
+    let o = oraculo();
+    let todos = com_origem(&o);
+    std::thread::scope(|s| {
+        let hs: Vec<_> = todos
+            .iter()
+            .map(|p| s.spawn(move || (p.nome.clone(), mao_do_pincel(p, sem_pressao))))
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    })
 }
 
 /// A lei da MÃO (dono 18/10): todo preset com origem responde ≥ [`R_MAO`] na faixa da mão. A paridade com a rampa do
 /// Rebelle (a antiga lei (a), `BARRA_DA_PRESSAO` 0,18 e o controlo `rampa_torta`) saiu: o Rebelle deixou de ser a
-/// referência (dono 31/10, `project-memory/project_rebelle_no_longer_the_reference_2026_10_31.md`).
+/// referência (dono 31/10, `project-memory/project_rebelle_no_longer_the_reference_2026_10_31.md`). Sem o 99 do decil
+/// 2 mudo (02/11) reprovam 7: Graphite 2H · HB · 2B · 8B, Colored 4B, Wet Flat e Wet Wash (largura 0 no decil 2).
+/// **Mutação que sangra:** a pressão presa a 1 ([`a_regua_da_mao_reprova_a_pressao_desligada`]: 0,89–1,05×).
 #[test]
 fn a_pressao_de_cada_preset_responde_na_faixa_da_mao() {
-    let o = oraculo();
-    let todos = com_origem(&o);
-    let medidas: Vec<(String, f64)> = std::thread::scope(|s| {
-        let hs: Vec<_> = todos
-            .iter()
-            .map(|p| s.spawn(move || (p.nome.clone(), mao_do_pincel(p))))
-            .collect();
-        hs.into_iter().map(|h| h.join().unwrap()).collect()
-    });
-    let falhas: Vec<String> = medidas
+    let falhas: Vec<String> = maos(false)
         .iter()
-        .filter(|(_, m)| *m < R_MAO)
-        .map(|(nome, m)| format!("{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"))
+        .filter_map(|(nome, m)| match m {
+            Err(e) => Some(format!("{nome}: {e}")),
+            Ok(m) if *m < R_MAO => Some(format!(
+                "{nome}: a faixa da mão do dono só responde {m:.2}× (< {R_MAO})"
+            )),
+            Ok(_) => None,
+        })
         .collect();
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// CONTROLO da lei da mão: a MESMA rampa pintada com a pressão presa a 1 — a régua tem de ler ~1× em todo preset
+/// (nenhum passa de [`R_MAO`]), senão ela mede outra coisa que não a pressão.
+#[test]
+fn a_regua_da_mao_reprova_a_pressao_desligada() {
+    let medidas = maos(true);
+    let passam: Vec<String> = medidas
+        .iter()
+        .filter(|(_, m)| !m.as_ref().is_ok_and(|m| *m < R_MAO))
+        .map(|(nome, m)| format!("{nome}: {m:.2?}"))
+        .collect();
+    assert!(
+        passam.is_empty(),
+        "sem pressão a régua devia ler ~1×: {}",
+        passam.join(" · ")
+    );
 }
 
 /// ⭐ **No Wet o modo do grão que lê a PONTA morde** (L9 × Wet, limpeza da J2): o Wet carimba o grão com a ponta

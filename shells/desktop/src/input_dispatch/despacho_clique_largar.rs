@@ -195,7 +195,7 @@ impl crate::App {
                 // like a stationary click.
                 if (dx * dx + dy * dy) <= 144.0 {
                     hero.gizmo.replace_selection(Some(bits));
-                    // O degrau do ciclo (pick_order::cycle_step) fica armado nesta seleção.
+                    // O degrau do ciclo (pick_cycle::cycle_step) fica armado nesta seleção.
                     self.cycle_pick.selection = Some(bits);
                     // Sync the panel header label to the new
                     // primary so the Hierarchy highlight

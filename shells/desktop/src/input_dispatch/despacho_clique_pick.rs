@@ -397,6 +397,7 @@ impl crate::App {
                 &self.flip_state.entities,
                 (evt.x, evt.y),
             );
+            let icones = crate::hover_highlight::icones_em(&pw, (evt.x, evt.y));
             // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0128,
             // Enio 2026-07-15): a linha é editável só no modo Node. Tirá-la dos hits faz
             // o clique nela não selecionar nada — o que se move no Select são as
@@ -432,7 +433,7 @@ impl crate::App {
             // ⭐⭐⭐ **O PRIMEIRO CLIQUE É DE QUEM JÁ ESTÁ SELECIONADO** (Enio,
             // 2026-08-26): um filho desenha por cima do pai, então tentar arrastar um
             // grupo já selecionado escolhia um filho. A lei — e as quatro fronteiras
-            // dela — vive em `pick_order::start_on_selection`, que é pura e tem gate;
+            // dela — vive em `pick_cycle::start_on_selection`, que é pura e tem gate;
             // aqui fica só o fio.
             //
             // ⛔ **Nunca com modificador:** `Shift`/`Cmd` estão a curar a seleção, e
@@ -445,10 +446,15 @@ impl crate::App {
             let so_o_de_cima =
                 ph2d_editor_core::screens::hero::mode_drive::picks_only_the_top(hero);
             let cicla = bare_click && !so_o_de_cima;
+            let sel = ph2d_editor_core::screens::hero::pick_cycle::icon_beats_selection(
+                &hits,
+                hero.gizmo.selection,
+                &icones,
+            );
             if cicla {
-                crate::pick_order::start_on_selection(
+                ph2d_editor_core::screens::hero::pick_cycle::start_on_selection(
                     &mut hits,
-                    hero.gizmo.selection,
+                    sel,
                     matches!(gizmo_kind, Some(ph2d_editor_core::GizmoDragKind::Translate)),
                 );
             }
@@ -463,9 +469,9 @@ impl crate::App {
                 && hero.gizmo.selected_len() <= 1;
             // No sprite under the cursor ⇒ None (the old vector-scene fallback retired with ADR-0108).
             let step = if cicla {
-                crate::pick_order::cycle_step(&hits, hero.gizmo.selection, armed)
+                ph2d_editor_core::screens::hero::pick_cycle::cycle_step(&hits, sel, armed)
             } else {
-                crate::pick_order::CycleStep {
+                ph2d_editor_core::screens::hero::pick_cycle::CycleStep {
                     now: hits.first().copied(),
                     on_click: None,
                 }

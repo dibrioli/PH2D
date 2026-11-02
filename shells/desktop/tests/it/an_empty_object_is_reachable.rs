@@ -86,15 +86,21 @@ fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
 
 /// ⭐⭐⭐ **O primeiro clique é de quem já está selecionado** — o fio da 4.ª volta.
 ///
-/// A lei é pura e tem gate em `pick_order::start_on_selection`; o que **não** é alcançável de um
+/// A lei é pura e tem gate em `pick_cycle::start_on_selection`; o que **não** é alcançável de um
 /// teste é o `input_dispatch`, e sem os dois fios abaixo a lei fica verde e o artista continua a
 /// apanhar um filho ao tentar arrastar o pai.
 #[test]
 fn the_click_dispatch_starts_the_cycle_on_the_selection() {
     let src = crate::input_text::dispatch();
     assert!(
-        src.contains("pick_order::start_on_selection("),
+        src.contains("pick_cycle::start_on_selection("),
         "o clique deixou de comecar o ciclo na selecao — arrastar um grupo volta a pegar um filho"
+    );
+    // ⭐ O ícone por cima ganha da seleção (dono 01/11): a seleção do ciclo passa pela lei dele.
+    assert!(
+        src.contains("pick_cycle::icon_beats_selection(")
+            && src.contains("cycle_step(&hits, sel, armed)"),
+        "o clique deixou de dar a preferencia ao icone por cima da selecao"
     );
     // ⚠️ E a segunda metade: mudar de seleção na HIERARQUIA tem de abrir um ciclo NOVO, senão o
     // ciclo antigo sobrevive e devolve o filho outra vez no mesmo ponto.

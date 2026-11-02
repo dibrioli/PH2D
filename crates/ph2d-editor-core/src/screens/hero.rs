@@ -112,6 +112,7 @@ mod paint;
 mod paint_canvas_overlays;
 mod panel_host;
 mod panel_walk;
+pub mod pick_cycle;
 mod pre_dispatch;
 /// ⭐⭐⭐ **A BARRA DO MODO de edição de receita** — o nome, quantas cópias seguem, e a SAÍDA.
 pub mod prefab_bar;

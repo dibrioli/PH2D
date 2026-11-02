@@ -84,17 +84,8 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) motion: Option<ph2d_app_motion::motion_pick::Alvo<'a>>,
 }
 
-pub(crate) fn pick_objects_at(
-    w: &mut PickWorld,
-    vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
-    vec_view_derived: &ph2d_vec_scene::VecViewState,
-    vec_live_drawn: &ph2d_vec_render::LiveGeometry,
-    flip_entities: &ph2d_flip_entities::entities::FlipEntityMap,
-    pointer: (f32, f32),
-) -> Vec<u64> {
-    // ⭐ **Os ícones dos objectos especiais ganham o clique** (dono 10/10 e 01/11): pequenos e por cima
-    // da arte — quem clica neles quer a luz ou a câmera. À FRENTE da lista, sem a cortar: o clique
-    // seguinte desce para a arte por baixo do ícone.
+/// Os ícones da luz, da câmera e da Macro sob o ponteiro (à frente de [`pick_objects_at`]).
+pub(crate) fn icones_em(w: &PickWorld, pointer: (f32, f32)) -> Vec<u64> {
     let mut icones = ph2d_app_light2d::gizmo::pick_at(
         w.sim.world(),
         pointer,
@@ -117,6 +108,21 @@ pub(crate) fn pick_objects_at(
         cam,
         janela,
     ));
+    icones
+}
+
+pub(crate) fn pick_objects_at(
+    w: &mut PickWorld,
+    vec_entities: &ph2d_vec_entities::entities::VecEntityMap,
+    vec_view_derived: &ph2d_vec_scene::VecViewState,
+    vec_live_drawn: &ph2d_vec_render::LiveGeometry,
+    flip_entities: &ph2d_flip_entities::entities::FlipEntityMap,
+    pointer: (f32, f32),
+) -> Vec<u64> {
+    // ⭐ **Os ícones dos objectos especiais ganham o clique** (dono 10/10 e 01/11): pequenos e por cima
+    // da arte — quem clica neles quer a luz ou a câmera. À FRENTE da lista, sem a cortar: o clique
+    // seguinte desce para a arte por baixo do ícone.
+    let mut icones = icones_em(w, pointer);
     let world = w.camera.screen_to_world(pointer, w.window_size);
     let stroke_r = ph2d_app_vec::vec_gizmo_view::stroke_hit_r(w.camera, w.window_size);
     let flip_r = ph2d_app_flip::gizmo_view::stroke_hit_r(w.camera, w.window_size);

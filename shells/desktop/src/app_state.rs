@@ -899,7 +899,7 @@ pub(crate) struct RubberBandState {
 }
 
 /// O ciclo de sobreposição do clique no canvas: a pilha do último clique e a seleção que ele deixou —
-/// a mesma pilha com a mesma seleção ARMA o degrau seguinte ([`crate::pick_order::cycle_step`]).
+/// a mesma pilha com a mesma seleção ARMA o degrau seguinte ([`ph2d_editor_core::screens::hero::pick_cycle::cycle_step`]).
 #[derive(Debug, Default)]
 pub(crate) struct CyclePick {
     pub(crate) hits: Vec<u64>,

@@ -4,6 +4,7 @@ mod brush_pattern;
 mod codec;
 mod color_laws;
 mod color_parity;
+mod convolution_oracle;
 mod dither_laws;
 mod draw_laws;
 mod draw_parity;

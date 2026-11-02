@@ -4,6 +4,8 @@
 //! viram UM passo do desfazer.
 
 pub mod adjust;
+pub mod convolution;
+mod kernels;
 pub mod median;
 pub mod outline;
 pub mod smudge;

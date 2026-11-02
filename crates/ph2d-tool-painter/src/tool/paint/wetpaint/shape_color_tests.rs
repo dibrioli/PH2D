@@ -117,14 +117,16 @@ pub(super) fn cena(n: usize) -> PainterTool {
 /// (Spacing 0,1 + Continuous no pincel de omissão): a 1 e a 2 (Spacing 1,5 com Continuous) coincidem — com a cápsula o
 /// Spacing já não muda o traço, que é a lei (doc 51). A 6 (a brocha suja, molhado sobre molhado) repintada pela caixa
 /// das tintas do BUGS #53 (`cd07881b37`): a camada guarda o branco como transparência; sobre o branco, ≤ 2 níveis
-/// (2 234 de 49 152 canais mudam, 1 passa de 1 nível — o arredondamento do alfa).
+/// (2 234 de 49 152 canais mudam, 1 passa de 1 nível — o arredondamento do alfa). Regravadas na integração de 02/11
+/// pela bisseção da linha PainterWatercolor, commits da lei nova: a 6 em `776a9ff173` (dono 30/10, sai o Over Oil) e
+/// `3eb13d38db` (K-M ligado de fábrica); a 0 (a única rastreada das 0–4) em `7a4bc540b7` (E4, a lei de pigmento).
 const HOJE: [(usize, u64); 6] = [
-    (0, 0x1d86_41c5_28a4_cbcf),
-    (1, 0x29b7_ef6b_8902_4e43),
-    (2, 0x29b7_ef6b_8902_4e43),
-    (3, 0xfa55_efd8_688f_c815),
-    (4, 0x29b7_ef6b_8902_4e43),
-    (6, 0x03e0_b7e3_cba6_a859),
+    (0, 0x57aa_4a69_3655_191c),
+    (1, 0x6c49_6d00_d42e_be13),
+    (2, 0x6c49_6d00_d42e_be13),
+    (3, 0x52e3_e2c9_2159_a0ac),
+    (4, 0x6c49_6d00_d42e_be13),
+    (6, 0x47c6_7d9e_b68a_90de),
 ];
 
 /// ⭐ **A SECÇÃO DESLIGADA É O TRAÇO DE HOJE AO BYTE** (o portão de identidade do prompt 41, nascido

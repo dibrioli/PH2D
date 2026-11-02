@@ -26,14 +26,17 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// outra vez a 11/10 pela ordem do dono «a tinta já em sua cor real» (a célula molhada desenha-se com a lei
 /// SECA — as três cenas com tinta ainda molhada na foto mudaram; as opções continuam a não mexer um byte); e o S
 /// inclinado outra vez a 30/10 pela caixa das tintas na COR que se compõe (BUGS #53, `cd07881b37`: a camada guarda o
-/// branco como transparência — sobre o branco ≤ 1 nível, 1 297 de 3 840 000 canais).
+/// branco como transparência — sobre o branco ≤ 1 nível, 1 297 de 3 840 000 canais). Regravado na integração de
+/// 02/11 pela bisseção da linha PainterWatercolor, cada mudança num commit da lei nova: `776a9ff173` (dono 30/10,
+/// sai o Over Oil: S 4/8), `3eb13d38db` (K-M ligado de fábrica: as seis), `7a4bc540b7` (E4: bancada None) e
+/// `e8f35b5710` (E10, a parede LevelingOwnStroke sai — Bug #56: bancada None).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0x0c40_166e_7ff6_349e),
-    ("S", Some(4), 0x1955_ff12_6aed_e58d),
-    ("S", Some(8), 0x3479_68b2_db28_97d7),
-    ("bancada", None, 0xd2b1_6237_cdc7_cf56),
-    ("bancada", Some(4), 0x35ba_eaf8_e89b_b371),
-    ("bancada", Some(8), 0xca21_be05_b952_3af7),
+    ("S", None, 0x7c18_29aa_8e13_34bd),
+    ("S", Some(4), 0x1086_0f90_1201_4404),
+    ("S", Some(8), 0x2884_e665_c287_5f72),
+    ("bancada", None, 0xf49a_0ea5_9a62_8df3),
+    ("bancada", Some(4), 0x8566_972b_3668_8d93),
+    ("bancada", Some(8), 0x195b_0a98_8c94_530c),
 ];
 
 #[test]

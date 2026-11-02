@@ -7,6 +7,22 @@ use super::*;
 use ph2d_wet_paint::render::RenderLayer;
 use rayon::prelude::*;
 
+/// O que o composite lê da ferramenta antes da óptica ([`PainterTool::wetpaint_antes_da_otica`]).
+pub(super) struct AntesDaOtica {
+    tela: (usize, usize),
+    gates: (
+        super::super::watercolor_accum::SplatGate,
+        super::super::watercolor_accum::SplatGate,
+        super::super::watercolor_accum::SplatGate,
+    ),
+    camada: Option<crate::layers::LayerId>,
+    raio: f32,
+    linhas: Option<bool>,
+    marca: Option<u64>,
+    exata: bool,
+    pub(super) factos: super::otica_factos::FactosDaOtica,
+}
+
 impl PainterTool {
     /// Composite the engine's dirty rect: pigment (straight alpha) OVER the
     /// frozen base, written into `canvas_rgba`, preview marked.
@@ -25,17 +41,49 @@ impl PainterTool {
     /// [`Self::wetpaint_composite`] with the show-wet veil explicit — the
     /// end-session door forces `false` so the veil never bakes.
     pub(super) fn wetpaint_composite_veiled(&mut self, veil: bool) {
+        #[cfg(test)]
+        if super::otica_fora_porta::ligada() {
+            self.wetpaint_composite_pelo_espelho(veil);
+            return;
+        }
+        let antes = self.wetpaint_antes_da_otica();
+        let Some(entrada) = self.wetpaint_entrada_da_otica(antes.factos) else {
+            return;
+        };
+        let sess = self
+            .paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("a entrada só existe com sessão");
+        // A metade de cima (a óptica): só a entrada e as camadas, escrita nos planos ([`super::composite_otica`]).
+        let layers: Vec<RenderLayer<'_>> = sess
+            .engine
+            .layers
+            .iter()
+            .map(|l| RenderLayer {
+                grid: &l.grid,
+                opacity: l.opacity,
+                visible: l.visible,
+            })
+            .collect();
+        let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
+        drop(layers);
+        self.wetpaint_depois_da_otica(&antes, saida, veil, None);
+    }
+
+    /// O que o composite lê da ferramenta ANTES de trazer o motor para casa (gates, Smooth Edges, marca, factos).
+    pub(super) fn wetpaint_antes_da_otica(&mut self) -> AntesDaOtica {
         // Qualquer composição leva o sujo inteiro do motor — o pendente do quadro também ([`super::por_quadro`]).
         self.paint.wetpaint.composite_pendente = false;
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
-        let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();
+        let gates = self.wet_splat_gates();
         let camada = self.layers.active().filter(|&id| !self.layers.is_mask(id));
         #[cfg(test)]
         let camada = camada.filter(|_| !self.sem_vidro);
         // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`, px); `0` = desligado. É da TELA (D1 W3b).
         let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
-        let suave = raio > 0.0;
         // As linhas que o Smooth Edges procura dentro da tinta: as da GRAVIDADE (o eixo mais perto dela).
         let wp = &self.paint.wetpaint;
         let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
@@ -49,14 +97,32 @@ impl PainterTool {
         let marca = marca.filter(|_| self.undo.marca.molhada_viva(marca));
         let exata = marca.is_some()
             && wp.session.as_ref().map(|s| s.blend) == Some(ph2d_painter_brush::BrushBlend::Mix)
-            && gate_alock.is_none()
+            && gates.2.is_none()
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
-        let factos = self.factos_da_otica();
+        AntesDaOtica {
+            tela: (w, h),
+            gates,
+            camada,
+            raio,
+            linhas,
+            marca,
+            exata,
+            factos: self.factos_da_otica(),
+        }
+    }
+
+    /// Traz o motor para casa e tira dele a entrada da óptica (o sujo, os `Params`, a marca). `None` = sem sessão.
+    pub(super) fn wetpaint_entrada_da_otica(
+        &mut self,
+        factos: super::otica_factos::FactosDaOtica,
+    ) -> Option<super::composite_otica::EntradaDaOtica> {
+        let (w, h) = self.source_size;
+        let (w, h) = (w as usize, h as usize);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             self.paint.wetpaint.oleo_na_tela = factos.oleo_da_tela(&[]).is_some();
-            return;
+            return None;
         };
         // ⚠️ Duas perguntas, como antes do J13b P3 (a decisão do óleo trazia o motor para casa ANTES): com uma fita de
         // macro a tocar, cada `bring_home` no roteiro consome uma resposta dela.
@@ -83,18 +149,7 @@ impl PainterTool {
             )),
         };
         let caixa = caixa.filter(|_| sess.base.len() == w * h * 4);
-        // A metade de cima (a óptica): só a entrada e as camadas, escrita nos planos ([`super::composite_otica`]).
-        let layers: Vec<RenderLayer<'_>> = sess
-            .engine
-            .layers
-            .iter()
-            .map(|l| RenderLayer {
-                grid: &l.grid,
-                opacity: l.opacity,
-                visible: l.visible,
-            })
-            .collect();
-        let entrada = super::composite_otica::EntradaDaOtica {
+        Some(super::composite_otica::EntradaDaOtica {
             factos,
             marca: marca_da_agua,
             trabalho: caixa.map(|caixa| super::composite_otica::TrabalhoDaOtica {
@@ -105,9 +160,28 @@ impl PainterTool {
             grade: (gw, gh),
             tela: (w, h),
             revisao: sess.engine.revisao(),
-        };
-        let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
-        drop(layers);
+        })
+    }
+
+    /// A metade de baixo: aplica a [`super::composite_otica::SaidaDaOtica`] na ferramenta e corre o laço de píxel
+    /// sobre os planos da sessão. `veu` = a grade que o véu lê (`None` = a activa do motor).
+    pub(super) fn wetpaint_depois_da_otica(
+        &mut self,
+        antes: &AntesDaOtica,
+        saida: super::composite_otica::SaidaDaOtica,
+        veil: bool,
+        veu: Option<&ph2d_wet_paint::grid::Grid>,
+    ) {
+        let (w, h) = antes.tela;
+        let (gate_sel, gate_prot, gate_alock) = &antes.gates;
+        let (camada, raio, linhas, marca, exata) = (
+            antes.camada,
+            antes.raio,
+            antes.linhas,
+            antes.marca,
+            antes.exata,
+        );
+        let suave = raio > 0.0;
         // O que a óptica escreve na ferramenta volta na saída.
         let oleo = saida.oleo;
         self.paint.wetpaint.oleo_na_tela = oleo.is_some();
@@ -131,6 +205,11 @@ impl PainterTool {
         else {
             return;
         };
+        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+            return;
+        };
+        let ratio = sess.ratio;
+        let (gw, gh) = sess.grid;
         // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
         let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
             let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);
@@ -429,7 +508,7 @@ impl PainterTool {
         #[cfg(test)]
         split::note_pixel(t_pixel.elapsed());
         if veil {
-            let g = sess.engine.active_grid();
+            let g = veu.unwrap_or_else(|| sess.engine.active_grid());
             let caixa = (px0, py0, px1, py1);
             super::veu::pinta_o_veu(g, canvas, (w, usize::from(ratio)), (gw, gh), caixa);
         }

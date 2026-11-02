@@ -135,3 +135,13 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (o do painel de ossos já foi curado)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
+- ⛔⛔ Auto Key só vê a POPULAÇÃO (seleção + mãos): uma tool que escreve num objecto NÃO selecionado tem de o publicar como alvo (`ph2d_ecs::AlvosDasFamilias`) ANTES do gesto — o diff dos campos compara com o quadro anterior, uma mão de um quadro chega tarde (W4.6, 26/10, report do dono).
+- ⛔ [Widget que só o SHOWCASE usa lê-se como ausente](feedback_a_widget_that_only_the_showcase_uses_reads_as_absent.md)
+- ⛔⛔ [Copiar UM componente deixa para trás os IRMÃOS](feedback_a_copy_of_one_component_silently_drops_its_siblings.md)
+- ⛔⛔ [Fazer uma coisa EXISTIR acorda quem respondia `None`](feedback_making_a_thing_exist_gives_answers_where_there_were_none.md)
+- ⛔⛔ [Duas portas com a lei certa e ZERO chamadores; o consumidor usa uma terceira](feedback_the_door_with_the_right_law_had_no_caller_and_the_consumer_used_a_third.md)
+- ⛔⛔ [«é a MESMA conta que X faz» ao lado de uma CÓPIA é o cheiro da lei duplicada — 3 cópias, cada uma a declará-lo](feedback_a_promise_of_sameness_beside_a_copy_is_the_shape_that_diverges.md)
+- ⛔⛔ [Um gesto NOVO herda os inimigos do antigo](feedback_a_new_gesture_inherits_the_enemies_of_the_old_one.md)
+- ⛔⛔ [Lei de ORDEM do 1.º consumidor não viaja para o 2.º](feedback_a_law_written_for_one_medium_does_not_travel_to_the_second.md)
+- ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
+- ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)

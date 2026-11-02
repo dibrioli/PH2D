@@ -30,7 +30,9 @@ const ORCAMENTO_MEDIDO: usize = 26_007;
 /// A margem: o índice cresce entre rodadas, e a cura é sempre DESCER entradas para a família.
 const TECTO: usize = 22_000;
 /// ⚠️ Piso de população — sem ele um `MEMORY.md` que ninguém encontra passa este gate a medir nada.
-const PISO_DE_PONTEIROS: usize = 120;
+/// 02/11: 120 → 115 (medido) — compactação do índice (22 KB → 17 KB), ponteiros dobrados nos
+/// `reference_topic_*` (conferido: nenhum ficheiro ficou órfão por causa dela).
+const PISO_DE_PONTEIROS: usize = 115;
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")

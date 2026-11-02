@@ -5,6 +5,8 @@ metadata:
   type: project
 ---
 
+⚠️ **Superado no USO dos motores em 19/10** ([[project_the_worlds_best_brushes_mission_2026_10_19]]): o dono liberou pincéis em qualquer dos 4 motores; a cerca byte-idêntica do comportamento existente continua.
+
 Depois da avaliação paralela Painter × Rebelle 8 (`docs/Painter/NewFeaturesWetPaint/`, docs 01–03: as sete
 leis medidas do traço dele, as lacunas, os presets por mídia lidos de 281 presets de fábrica), o dono fixou o
 alvo: *«não tenho intenção de mudar os modos Impasto, Digital ou Watercolor. Apenas aperfeiçoar Wet Paint»*.

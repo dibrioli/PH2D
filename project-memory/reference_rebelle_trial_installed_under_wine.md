@@ -54,3 +54,10 @@ criou a entrada de menu do Wine (`~/.local/share/applications/wine/Programs/Rebe
   (o Flat Dry saiu com 12 px numa faixa de 30 — a «fração de papel branco» lia a faixa vazia). A MISTURA
   (cores sobre papel liso) mede-se bem: `docs/Painter/NewFeaturesWetPaint/ferramentas/mistura_papel*.{py,sh}`
   com foto DURANTE o traço (o RELEASE num ficheiro à parte). A tela virtual fecha-se sozinha em 1 h.
+- ⛔⛔ **RealShader/SoftShadows SÓ aparecem no ecrã REAL com a placa (medido 26/10):** na tela virtual o render é
+  por software e sai igual ao nosso impasto (o dono rejeitou essas fotos). No ecrã real: injector com
+  `front <título>` antes de cada clique (sem ele o clique cai noutra janela) e `kscreen-doctor --dpms on`
+  antes de cada foto — com os monitores em DPMS a janela fica `_NET_WM_STATE_HIDDEN` e o `import` falha com
+  «missing an image filename». O modo lote (`-batch-json`, LOAD de `bump_dry`) é Motion IO pago: o trial
+  ignora-o; SAVE/LOAD pelo WebSocket respondem «not supported». Sessão pronta:
+  `docs/Painter/49_realshader/ferramentas/sessao.sh` (linha PainterWatercolor). Trial acaba ~06/11/2026.

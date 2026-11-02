@@ -98,3 +98,8 @@ metadata:
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⛔⛔ [Um CORTE de LOC move os imports também — a lint corrida antes do corte não vale, e foi o build do dono que apanhou os órfãos](feedback_a_cut_moves_the_imports_too_relint_after_it.md)
 - ⛔ [Restaurar uma mutação com `mv` devolve mtime ANTIGO e o cargo guarda o build DA MUTAÇÃO — `touch` no fim](feedback_a_mutation_restore_by_mv_leaves_cargo_with_the_mutated_build.md)
+- ⛔ [Tilemap (TOP-20 #17) é do projeto `docs/Tilling`, não da line/components — o dono mandou pular (16/09)](project_tilemap_belongs_to_the_tiling_project.md)
+- ⛔ [Painel lateral de params do Motion VAI SAIR (params só no cartão) — não invista nele (19/09)](project_o_painel_lateral_dos_params_do_motion_vai_sair.md)
+- ⛔ [Sonda que arma o módulo por env var mede OUTRO programa que o pill](feedback_a_probe_that_arms_a_module_by_env_var_measures_another_program_than_the_pill.md)
+- ⛔ [Missão de agentes: ≤ 2 rondas por item, revisor `sonnet`, ≤ 3 em paralelo (dono 21/10: «muito gasto»)](feedback_brush_mission_cost_budget.md)
+- ⛔⛔ [Um SELO é texto E chave da COR — traduzi-lo apaga o tom](feedback_a_badge_is_painted_text_and_the_key_of_its_own_colour.md)

@@ -14,3 +14,4 @@ metadata:
 - [Corte por índice entre 2 marcadores apaga o vizinho em silêncio](feedback_an_index_splice_between_two_markers_deletes_the_neighbour_in_silence.md)
 - ⭐ [Agulha VAZIA faz o `replace` inserir entre CADA carácter (581 → 646 277 linhas): asserte a AGULHA, não a contagem](feedback_an_empty_needle_makes_replace_insert_between_every_character.md)
 - [Write diz «updated» — leia o verbo](feedback_write_on_an_existing_path_says_updated_not_created.md) · [o symlink da memória escreve no primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md)
+- ⛔⛔ [N agentes a comitar SÓ os seus hunks no mesmo ficheiro deixam o HEAD sem compilar (a árvore compila)](feedback_filtered_hunk_commits_by_many_agents_misplace_lines.md)

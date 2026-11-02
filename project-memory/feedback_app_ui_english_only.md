@@ -17,6 +17,11 @@ User-facing strings em qualquer crate do PH2D (button labels, toast messages, sn
 - Comentários de doc/código: livre escolha (segue padrão do arquivo).
 - Toast messages, button labels, panel titles, error strings → SEMPRE inglês.
 
+**Reforço 2026-10-31 (ajuda ilustrada do Painter):** a 1.ª maquete do cartão de ajuda saiu em PT-BR («Água», «pouco ·
+médio · muito») porque esta memória NÃO estava no índice `MEMORY.md`. Dono: *«o APP é exclusivamente em Inglês. Cartões
+de ajuda com inglês fácil para qualquer usuário de qualquer país»* ⇒ texto de ajuda/tooltip em **Plain English**: frases
+curtas, palavras comuns, sem idioma nem gíria, sem jargão técnico (nada de «Kubelka», «pigment volume fraction»).
+
 Linka com [[feedback-communication-style]] (que descreve estilo da comunicação Claude↔Enio, não strings do app).
 
 **Incidente 2026-05-27 R7/R9 — auditor adversarial mis-cite HR-15:**

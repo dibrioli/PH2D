@@ -28,3 +28,4 @@ supersedidas — mantidas como arquivos, fora do índice principal:
 - [[project_panel_loc_gate_parser_masked_debt]] — resolvido; resto absorvido pelo gate atual
 - [[project_brush_audit_2026_06_18]] — auditoria multiagente do brush engine (2026-06-18): 2 HIGH corrigidos; os claims de paridade CPU↔GPU MENTIAM (latentes não-gateados)
 - [[project_painting_removed_layers_effects_kept]] — toda a pintura/brush engine foi DELETADA (ADR-0099, 2026-06-20); sobra o host de Layers+Efeitos
+- HISTÓRICO: 3D (saiu do PH2D, ADR-0179; código em `b1a6f9b07`) — [campo implícito/SDF (24)](reference_topic_implicit_field_laws.md) · [quad remesh (20)](reference_topic_quad_remesh_rulers.md) · [MagicaCSG](reference_magicacsg_installed_under_wine.md) · [viés NDC](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md) · [BSDF×albedo](feedback_a_per_texel_albedo_is_the_base_color_never_a_factor_at_the_end.md)

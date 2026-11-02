@@ -151,3 +151,11 @@ crua de `8` nós, mesmo a `64` amostras ele fica `2,9×` mais caro e `1,3`–`1,
 `bind + lei de hoje` — a subdivisão do bind é graduada pelas juntas, e isso é informação que o
 fitter não tem.
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)
+- [Blindagem Fase 0 — ph2d-ui-testkit](project_blindagem_phase0_2026_06_20.md)
+- [Pintura voltou](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)
+- [Norte node-centric](project_node_centric_decision_2026_05_21.md) · [motion keyframes adiados](project_motion_keyframes_deferred_timeline_integration.md) · [Vector cutover ADR-0108](project_vector_cutover_adr0108.md)
+- [Flip = Grease Pencil 2D](project_flip_module_grease_pencil_2d.md) · [traço = união global](project_flip_stroke_analytic_coverage_gp.md) · [Clips ≠ NLA; 2D = nesting](project_clip_composition_not_blender_nla.md)
+- [Multi-agente = f(HW); workstation = Modo L](project_multiagent_modo_l_2026_07_05.md) · [Modo L lento = disco + build 6×](project_modo_l_speed_hole_worktree_targets_slow_path.md)
+- [Tool isolation ADR-0040](project_tool_isolation_freeze_2026_05_22.md) · [nó consumido pelo renderer = Pure](project_node_effect_pure_for_renderer_consumed.md)
+- [Não otimize prematuro (100k @ 60Hz)](project_m5_perf_validated.md) · [gates de velocidade](project_perf_audit_2026_05_19.md)
+- [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)

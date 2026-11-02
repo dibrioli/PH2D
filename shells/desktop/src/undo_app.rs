@@ -408,11 +408,7 @@ impl crate::App {
             Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
         } else if self.held_button.is_some() {
             Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
-        } else if self
-            .flip_state
-            .colorize
-            .live_busy(self.flip_state.style.as_ref())
-        {
+        } else if self.flip_state.colorize_busy() {
             Some(tr("shell.undo_app.colorize_a_recalcular"))
         } else if self.ui_state_live {
             Some(tr("shell.undo_app.transicao_de_estado_de"))

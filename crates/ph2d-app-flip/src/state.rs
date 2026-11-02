@@ -130,3 +130,13 @@ pub struct FlipState {
     /// Flip o lê ([`crate::pass_quadro::Quadro`]); só a do objecto-alvo o desenha (GEF 19 E4).
     pub preview_do_quadro: Option<ph2d_flip_render::FlipGpuData>,
 }
+
+impl FlipState {
+    /// **O Colorize está a recalcular?** — o ajuste ao vivo do Trap/Bleed pendente
+    /// ([`crate::colorize::FlipColorize::live_busy`]) contra o estilo deste quadro. O undo da shell
+    /// trata-o como gesto em andamento.
+    #[must_use]
+    pub fn colorize_busy(&self) -> bool {
+        self.colorize.live_busy(self.style.as_ref())
+    }
+}

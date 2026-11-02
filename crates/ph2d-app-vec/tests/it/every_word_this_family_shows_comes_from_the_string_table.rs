@@ -91,6 +91,12 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "Drawing",
         "o nome por omissão de um desenho importado sem nome no ficheiro — identidade durável",
     ),
+    (
+        "vector_mode_fill_stroke.rs",
+        " ESCONDIDO pelo olho",
+        "o complemento da linha de DIAGNÓSTICO que a cena de smoke 45/46 imprime no terminal \
+         (`eprintln!`) — lido por quem segue a cena, nunca pintado no ecrã",
+    ),
 ];
 
 #[test]

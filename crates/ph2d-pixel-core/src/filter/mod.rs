@@ -5,6 +5,8 @@
 
 pub mod adjust;
 pub mod median;
+pub mod outline;
+pub mod smudge;
 
 use crate::op::{Op, Patch};
 use crate::sprite::{CelKey, Rect, Sprite};
@@ -57,6 +59,10 @@ impl Source {
     pub fn get(&self, x: i32, y: i32) -> Option<[u8; 4]> {
         (x >= 0 && y >= 0 && (x as u32) < self.w && (y as u32) < self.h)
             .then(|| self.rgba[y as usize * self.w as usize + x as usize])
+    }
+
+    pub(crate) fn set_index(&mut self, i: usize, c: [u8; 4]) {
+        self.rgba[i] = c;
     }
 
     /// A célula `(x, y)` com a borda `edge` (a vizinhança dos filtros de janela).

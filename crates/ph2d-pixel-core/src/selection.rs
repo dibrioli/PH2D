@@ -245,6 +245,22 @@ impl Mask {
         out
     }
 
+    /// **Edit ▸ Stroke**: as células com algum vizinho-4 fora (a borda do sprite conta como fora) —
+    /// uma célula, seja qual for o pincel (Trial `oracle_trial_fill_stroke.json`).
+    #[must_use]
+    pub fn edge4(&self) -> Mask {
+        let mut out = Mask::empty(self.w, self.h);
+        for (x, y) in self.cells() {
+            if [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                .iter()
+                .any(|&(dx, dy)| !self.get(x + dx, y + dy))
+            {
+                out.set(x, y, true);
+            }
+        }
+        out
+    }
+
     #[must_use]
     pub fn border(&self, n: u32, brush: ModifyBrush) -> Mask {
         self.combine(&self.contract(n, brush), SelectMode::Subtract)

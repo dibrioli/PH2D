@@ -15,6 +15,7 @@ mod filter_target;
 mod frame_laws;
 mod frames_oracle;
 mod frames_parity;
+mod fx_oracle;
 mod gradient_oracle;
 mod history;
 mod layer_laws;

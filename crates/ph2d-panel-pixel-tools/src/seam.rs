@@ -28,6 +28,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.set_tooltip(id, t.named());
     }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));
+    for id in [ids::TEXT_FONT_PREV, ids::TEXT_FONT_NEXT] {
+        store.set_tooltip(id, tr("panel.pixel.text.font_tip"));
+    }
+    store.set_tooltip(ids::TEXT_SIZE, tr("panel.pixel.text.size_tip"));
     // As amostras da coluna abrem o seletor partilhado num Down — marcadas AQUI, porque a coluna as
     // pinta com o painel fechado.
     store.register_picker_swatch(ids::PIXEL_FG);

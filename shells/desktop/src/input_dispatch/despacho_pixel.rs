@@ -51,11 +51,16 @@ impl crate::App {
     }
 
     /// As teclas do Draw; com um campo de texto a escrever a família cede-as (`View::typing`).
-    pub(crate) fn pixel_owns_the_keyboard(&mut self, key: PhysicalKey, s: ElementState) -> bool {
+    pub(crate) fn pixel_owns_the_keyboard(
+        &mut self,
+        key: PhysicalKey,
+        s: ElementState,
+        t: Option<&str>,
+    ) -> bool {
         if self.surface_owns_the_keyboard() {
             return false;
         }
         let (m, pressed) = (Mods::of(self.modifiers), s == ElementState::Pressed);
-        (self.pixel_view()).is_some_and(|(app, mut v)| app.keyboard(&mut v, key, pressed, m))
+        (self.pixel_view()).is_some_and(|(app, mut v)| app.keyboard(&mut v, key, pressed, m, t))
     }
 }

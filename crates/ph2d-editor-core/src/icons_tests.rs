@@ -376,6 +376,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::PixelRectFilled,
     IconId::PixelSpray,
     IconId::PixelSprite,
+    IconId::PixelText,
     IconId::Place,
     IconId::Play,
     IconId::Player,

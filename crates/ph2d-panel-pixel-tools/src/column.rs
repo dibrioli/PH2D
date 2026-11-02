@@ -34,6 +34,7 @@ pub const fn icon(t: PixelTool) -> IconId {
         PixelTool::Curve => IconId::PixelCurve,
         PixelTool::Contour => IconId::PixelContour,
         PixelTool::Polygon => IconId::Polygon,
+        PixelTool::Text => IconId::PixelText,
         PixelTool::Hand => IconId::Pan,
         // A cara delas é o CONTORNO do Vector ([`face`]); este é só o nome do ícone.
         PixelTool::Shape(_) => IconId::VectorShape,
@@ -147,8 +148,9 @@ pub fn column(info: &PixelPanelInfo) -> Vec<Vec<BarButton>> {
     };
     let selecao = grupo(PixelTool::RectMarquee, PixelTool::Pencil);
     let mao = grupo(PixelTool::Pencil, PixelTool::Line);
-    let formas = grupo(PixelTool::Line, PixelTool::Hand);
-    let vista = grupo(PixelTool::Hand, PixelTool::RectMarquee);
+    let formas = grupo(PixelTool::Line, PixelTool::Text);
+    // O Text mora com a mão (como o grupo de baixo da barra do Aseprite).
+    let vista = grupo(PixelTool::Text, PixelTool::RectMarquee);
     let cores = vec![
         amostra(ids::PIXEL_FG, info.fg, "panel.pixel.fg"),
         amostra(ids::PIXEL_BG, info.bg, "panel.pixel.bg"),
@@ -194,6 +196,7 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Contour => "pixel.hint.contour",
         PixelTool::Polygon => "pixel.hint.polygon",
         PixelTool::Shape(_) => "pixel.hint.shape",
+        PixelTool::Text => "pixel.hint.text",
         PixelTool::Hand => "pixel.hint.hand",
     };
     tr_with(key, &[("tool", &nome(info.tool))])

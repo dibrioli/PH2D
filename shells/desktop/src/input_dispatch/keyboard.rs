@@ -131,7 +131,7 @@ impl App {
         if self.board_owns_the_keyboard(physical_key, state, text.as_deref()) {
             return;
         }
-        if self.pixel_owns_the_keyboard(physical_key, state) {
+        if self.pixel_owns_the_keyboard(physical_key, state, text.as_deref()) {
             return;
         }
 

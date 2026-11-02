@@ -213,6 +213,8 @@ pub struct PixelApp {
     pub(crate) mao: Option<crate::mao::Mao>,
     /// O Blur/Jumble em curso (P8).
     pub(crate) mancha: Option<crate::degrade::Mancha>,
+    /// P8: a caixa do Text aberta (o texto ainda editável, nunca no documento).
+    pub(crate) texto: Option<crate::texto::Caixa>,
     /// A pasta dos pincéis guardados (Alt+1…); `None` = só nesta sessão (os testes e os palcos
     /// nunca leem a HOME real).
     pub pinceis: Option<std::path::PathBuf>,
@@ -282,6 +284,7 @@ impl Default for PixelApp {
             recorte: false,
             mao: None,
             mancha: None,
+            texto: None,
             pinceis: None,
             espacos: None,
             espaco_activo: None,

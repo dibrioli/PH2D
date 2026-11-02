@@ -142,7 +142,15 @@ impl PixelApp {
     /// As teclas do Draw (B, E, I, H, X, Espaço, Ctrl+Z…). `true` = consumida. Com um campo de
     /// texto a escrever a tecla premida é DELE (o Enter que fecha a duração não toca); largar
     /// passa, para o Espaço premido antes do foco não deixar o pan preso.
-    pub fn keyboard(&mut self, v: &mut View<'_>, key: PhysicalKey, pressed: bool, m: Mods) -> bool {
+    /// `text` = o que a tecla escreveu (com a caixa do Text aberta, a tecla é dela).
+    pub fn keyboard(
+        &mut self,
+        v: &mut View<'_>,
+        key: PhysicalKey,
+        pressed: bool,
+        m: Mods,
+        text: Option<&str>,
+    ) -> bool {
         let PhysicalKey::Code(code) = key else {
             return false;
         };
@@ -155,6 +163,9 @@ impl PixelApp {
                 v.editing.is_some(),
                 self.stroking()
             );
+        }
+        if pressed && v.editing.is_some() && crate::texto::tecla(self, code, m, text).is_some() {
+            return true;
         }
         if code == KeyCode::Space {
             return input::space(self, v.world, v.editing, pressed);

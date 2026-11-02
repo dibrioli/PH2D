@@ -205,6 +205,10 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     if let Some(r) = crate::degrade::press(app, tool, bits, key, (x, y), m) {
         return r;
     }
+    if tool == Tool::Text {
+        crate::texto::abre(app, key, (x, y));
+        return Press::Done;
+    }
     let pincel = app.pincel.clone().map(|p| (p, app.pincel_imagem));
     let Some(doc) = app.docs.get_mut(&key) else {
         return Press::NotMine;
@@ -242,6 +246,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     let mut mao = None;
     let (stroke, kind) = match tool {
         Tool::Hand => return Press::Pan,
+        Tool::Text => return Press::Done,
         // A selecção e o Transform já responderam acima (o Alt sozinho com elas é o conta-gotas).
         Tool::RectMarquee
         | Tool::EllipseMarquee
@@ -556,6 +561,7 @@ pub(crate) fn finish(app: &mut PixelApp) {
 pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
     if app.tool != t {
         finish(app);
+        crate::texto::confirma(app);
         app.laco = None;
     }
     app.tool = t;

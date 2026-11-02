@@ -167,6 +167,7 @@ impl PixelApp {
                 return;
             }
             E::NewBrush => return self.novo_pincel(key),
+            E::InsertText => return crate::texto::insere(self, key),
             E::Fill
             | E::Stroke
             | E::Invert
@@ -257,6 +258,7 @@ impl PixelApp {
             | E::Cancel
             | E::Paste
             | E::NewBrush
+            | E::InsertText
             | E::Fill
             | E::Stroke
             | E::Invert

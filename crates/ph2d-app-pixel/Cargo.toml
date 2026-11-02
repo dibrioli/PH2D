@@ -14,6 +14,8 @@ authors.workspace = true
 # ⛔ Nunca `ph2d-app-painter` nem o contrato `Tool=12`: as ferramentas são da família.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+# P8: a ferramenta Text (o rasterizador de fontes de pixel e do sistema).
+ph2d-pixel-text = { path = "../ph2d-pixel-text" }
 # P7: a pressão e o relógio do evento (a porta da caneta) e a corda do Stabilizer.
 ph2d-pen = { path = "../ph2d-pen" }
 ph2d-pen-law = { path = "../ph2d-pen-law" }

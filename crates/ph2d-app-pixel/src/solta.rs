@@ -367,7 +367,9 @@ impl PixelApp {
     /// O traço de pré-visualização e a máscara da moldura do documento `key`, se há.
     pub(crate) fn previa(&mut self, key: u32) -> Option<(Stroke, Option<Mask>)> {
         if !self.solta.as_ref().is_some_and(|s| s.key == key) {
-            return crate::filtros::previa(self, key).map(|t| (t, None));
+            return crate::texto::previa(self, key)
+                .or_else(|| crate::filtros::previa(self, key))
+                .map(|t| (t, None));
         }
         let method = resample(self.options.resample);
         let bg = self.docs.get(&key).map(|d| self.fundo(&d.sprite))?;

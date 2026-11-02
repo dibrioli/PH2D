@@ -124,6 +124,8 @@ pub enum PixelEditAction {
     ColorCurve,
     /// P8: Edit ▸ FX ▸ Convolution Matrix… (`F9`).
     ConvolutionMatrix,
+    /// P8: Edit ▸ Insert Text: abre a caixa do Text no centro da vista.
+    InsertText,
 }
 
 /// O menu Sprite.
@@ -268,12 +270,16 @@ pub enum PixelDialogChoice {
     },
     Invert {
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
     Despeckle {
         width: u32,
         height: u32,
         tiled: bool,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
     /// A cor do contorno é a de frente (a família sabe-a).
     Outline {
@@ -282,31 +288,60 @@ pub enum PixelDialogChoice {
         background: super::PixelOutlineBg,
         tiled: bool,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
     /// Brilho e contraste em `-100..=100`.
     BrightnessContrast {
         brightness: i32,
         contrast: i32,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
-    /// Matiz `-180..=180`, saturação e luz/valor `-100..=100`.
+    /// Matiz `-180..=180`, saturação, luz/valor e alfa `-100..=100`.
     HueSaturation {
         mode: super::PixelHueMode,
         hue: i32,
         saturation: i32,
         lightness: i32,
+        /// `-100..=100`: o alfa `× (1 + v/100)`.
+        alpha: i32,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
     ColorCurve {
         curve: super::PixelCurve,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
     /// `kernel` = índice na lista que a família publicou (`PixelFilterDialog::kernels`).
     Convolution {
         kernel: u8,
         tiled: bool,
         channels: super::PixelChannels,
+        /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
+        all: bool,
     },
+}
+
+impl PixelDialogChoice {
+    /// Um filtro com o alvo «All» (todos os quadros × todas as camadas que se pintam)?
+    #[must_use]
+    pub const fn targets_all(self) -> bool {
+        match self {
+            Self::Invert { all, .. }
+            | Self::Despeckle { all, .. }
+            | Self::Outline { all, .. }
+            | Self::BrightnessContrast { all, .. }
+            | Self::HueSaturation { all, .. }
+            | Self::ColorCurve { all, .. }
+            | Self::Convolution { all, .. } => all,
+            _ => false,
+        }
+    }
 }
 
 /// O estado do diálogo do Pixel aberto no `WidgetStore`: qual é, o tamanho do sprite ao abrir, as

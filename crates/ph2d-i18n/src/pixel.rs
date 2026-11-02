@@ -129,6 +129,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.hint.eyedropper" => {
             "{tool}: click picks the foreground · right button the background"
         }
+        "pixel.tool.text" => "Text",
+        "pixel.hint.text" => {
+            "{tool}: click to place a text box · type · Enter stamps the pixels · Esc cancels"
+        }
+        "panel.pixel.edit.insert_text" => "Insert Text",
+        "panel.pixel.text" => "Text",
+        "panel.pixel.text.font" => "Font",
+        "panel.pixel.text.size" => "Size",
+        "panel.pixel.text.bold" => "Bold",
+        "panel.pixel.text.italic" => "Italic",
+        "panel.pixel.text.antialias" => "Antialias",
+        "panel.pixel.text.hinting" => "Hinting",
+        "panel.pixel.text.font_tip" => {
+            "The font of the text: a built-in pixel font or one installed on this computer"
+        }
+        "panel.pixel.text.size_tip" => {
+            "Pixel font: how many times bigger. Installed font: pixels per em"
+        }
+        "pixel.text.refuse.font" => "This font could not be opened",
         "pixel.hint.hand" => "{tool}: drag to move the view · hold Space with any tool",
         "pixel.hint.spray" => "{tool}: hold to spray · Width and Speed in the Pixel panel",
         "pixel.hint.bucket" => {

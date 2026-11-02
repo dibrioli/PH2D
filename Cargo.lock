@@ -6108,6 +6108,7 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-render",
+ "ph2d-pixel-text",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",

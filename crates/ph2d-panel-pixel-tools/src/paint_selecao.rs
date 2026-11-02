@@ -188,6 +188,7 @@ impl Corpo<'_> {
         }
         // P8: Invert… e o grupo FX ▸ (sem widget de submenu: o grupo é uma secção).
         y = self.botoes(&[par(e, 20)], y);
+        y = self.botoes(&[par(e, 27)], y);
         // P8: Adjustments ▸ (secção, como o FX).
         y = self.linha(tr("panel.pixel.edit.adjustments"), ColorToken::Text3, y);
         y = self.botoes(&[par(e, 23)], y);

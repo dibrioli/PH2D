@@ -273,6 +273,7 @@ pub enum IconId {
     PixelRectFilled,
     PixelSpray,
     PixelSprite,
+    PixelText,
     Place,
     Play,
     Player,

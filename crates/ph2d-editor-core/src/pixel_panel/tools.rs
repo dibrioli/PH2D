@@ -38,12 +38,14 @@ pub enum PixelTool {
     Contour,
     /// Vértices por clique; fecha e enche.
     Polygon,
+    /// P8: o Text (`T`): o clique abre a caixa de texto na célula; Enter carimba os píxeis.
+    Text,
     /// A mão: arrastar move a vista (`Espaço` segurado faz o mesmo com qualquer ferramenta).
     Hand,
 }
 
 /// As ferramentas que não são formas, na ordem da coluna; as formas entram depois da Curva.
-const PLAIN: [PixelTool; 19] = [
+const PLAIN: [PixelTool; 20] = [
     PixelTool::RectMarquee,
     PixelTool::EllipseMarquee,
     PixelTool::Lasso,
@@ -62,6 +64,7 @@ const PLAIN: [PixelTool; 19] = [
     PixelTool::Curve,
     PixelTool::Contour,
     PixelTool::Polygon,
+    PixelTool::Text,
     PixelTool::Hand,
 ];
 
@@ -116,6 +119,7 @@ impl PixelTool {
             Self::Shape(_) => "pixel.tool.shape",
             Self::Contour => "pixel.tool.contour",
             Self::Polygon => "pixel.tool.polygon",
+            Self::Text => "pixel.tool.text",
             Self::Hand => "pixel.tool.hand",
         }
     }
@@ -138,6 +142,7 @@ impl PixelTool {
             Self::RECTANGLE | Self::ELLIPSE => "U",
             Self::Contour | Self::Polygon => "D",
             Self::Hand => "H",
+            Self::Text => "T",
             // O Aseprite não as tem: sem atalho.
             Self::Shape(_) => "",
         }
@@ -211,7 +216,7 @@ impl PixelTool {
     /// Pinta no documento (a simetria e o ladrilho valem para ela).
     #[must_use]
     pub const fn paints(self) -> bool {
-        self.uses_brush() || matches!(self, Self::Bucket | Self::Gradient)
+        self.uses_brush() || matches!(self, Self::Bucket | Self::Gradient | Self::Text)
     }
 
     /// O botão de grupo da coluna onde mora, se mora num.

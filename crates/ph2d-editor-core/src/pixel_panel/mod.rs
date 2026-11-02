@@ -138,6 +138,15 @@ pub struct PixelOptions {
     pub gradient_radial: bool,
     pub gradient_dither: PixelGradientDither,
     pub gradient_ramp: bool,
+    /// P8: as opções do Text (as omissões do Aseprite: Antialias desligado, Hinting ligado). A
+    /// fonte é o índice na lista de fábrica de `ph2d_pixel_text::BUILTIN`; o tamanho é o
+    /// `TextStyle::px` (fonte de pixel: múltiplo da altura da linha).
+    pub text_font: u8,
+    pub text_px: u32,
+    pub text_bold: bool,
+    pub text_italic: bool,
+    pub text_antialias: bool,
+    pub text_hinting: bool,
 }
 
 /// O seletor de cor abaixo da paleta — os cinco do menu ≡ da paleta do Aseprite 1.3.18, na ordem
@@ -346,6 +355,12 @@ impl Default for PixelOptions {
             gradient_radial: false,
             gradient_dither: PixelGradientDither::None,
             gradient_ramp: false,
+            text_font: 0,
+            text_px: 1,
+            text_bold: false,
+            text_italic: false,
+            text_antialias: false,
+            text_hinting: true,
         }
     }
 }

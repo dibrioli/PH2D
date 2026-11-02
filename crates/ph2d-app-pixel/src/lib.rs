@@ -48,6 +48,7 @@ pub mod smoke_tocar;
 pub mod smoke_viva;
 pub mod solta;
 mod state;
+pub mod texto;
 pub mod viva;
 
 pub use state::{Doc, Options, PixelApp, Tool};

@@ -8,6 +8,7 @@
 //! testes que nomeia um módulo que não existe é um corte que parou a meio.*
 
 use super::*;
+use std::borrow::Cow;
 
 /// **Desenha UM caminho avulso**, pela mesma [`draw_path`] do `dispatch` — a porta
 /// que o bake de tile de uma forma usa, e que garante que o tile é o que a forma
@@ -268,6 +269,56 @@ pub fn draw_path_isolated(
     offset: Affine,
     target: &mut VectorScene,
 ) {
+    let args = (scene, xforms, live, patterns, brushes, bound);
+    draw_isolated_with(args, id, camera, offset, target, false);
+}
+
+/// ⭐ **A forma como os FILTROS a rasterizam** (F47) — o [`draw_path_isolated`] sem os traços «Above
+/// Effects» ([`ph2d_vec_scene::VecPath::under_effects`]): eles desenham-se por cima da imagem, uma vez.
+/// Só o produtor de FX a chama; o assado do Motion desenha a forma inteira.
+#[allow(clippy::too_many_arguments)]
+pub fn draw_path_for_effects(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    patterns: &crate::PatternTiles,
+    brushes: &crate::BrushArts,
+    bound: Option<&BoundStyle>,
+    id: VecPathId,
+    camera: Affine,
+    offset: Affine,
+    target: &mut VectorScene,
+) {
+    let args = (scene, xforms, live, patterns, brushes, bound);
+    draw_isolated_with(args, id, camera, offset, target, true);
+}
+
+/// A forma pintada, sem os traços «Above Effects» quando é para os filtros.
+fn filtra(p: Cow<'_, VecPath>, for_effects: bool) -> Cow<'_, VecPath> {
+    if for_effects && p.has_stroke_above_effects() {
+        Cow::Owned(p.under_effects().into_owned())
+    } else {
+        p
+    }
+}
+
+type Isolated<'a> = (
+    &'a VecScene,
+    &'a VecXforms,
+    &'a LiveGeometry,
+    &'a crate::PatternTiles,
+    &'a crate::BrushArts,
+    Option<&'a BoundStyle>,
+);
+
+fn draw_isolated_with(
+    (scene, xforms, live, patterns, brushes, bound): Isolated<'_>,
+    id: VecPathId,
+    camera: Affine,
+    offset: Affine,
+    target: &mut VectorScene,
+    for_effects: bool,
+) {
     let tile = patterns.get(&(id, crate::PatternSlot::Fill));
     let stroke_tile = patterns.get(&(id, crate::PatternSlot::Stroke));
     let art = brushes.get(&id).map(Vec::as_slice);
@@ -277,7 +328,7 @@ pub fn draw_path_isolated(
             // offset/pattern/espelho têm id próprio, então o estilo pára na borda do 1.º efeito se
             // for procurado por elas.
             crate::draw_path_tiled(
-                &item.painted(bound),
+                &filtra(item.painted(bound), for_effects),
                 offset * camera,
                 target,
                 crate::Derived {
@@ -290,7 +341,7 @@ pub fn draw_path_isolated(
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
         crate::draw_path_tiled(
-            &path.painted(bound),
+            &filtra(path.painted(bound), for_effects),
             offset * path_to_screen(xforms, id, camera),
             target,
             crate::Derived {

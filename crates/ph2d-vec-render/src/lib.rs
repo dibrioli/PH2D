@@ -73,7 +73,7 @@ mod stroke_uniform;
 pub use cut_line::draw_cut_line;
 pub use hover_outline::{draw_bucket_face, draw_hover_outline, draw_trim_piece};
 pub use marquee::{draw_lasso, draw_marquee};
-pub use standalone::{draw_path_isolated, draw_path_standalone};
+pub use standalone::{draw_path_for_effects, draw_path_isolated, draw_path_standalone};
 
 /// A tradução do modo de mistura do documento para o par do Vello (módulo irmão: ele é a fonte da
 /// lista que o painel oferece, e o `dispatch` é só um dos consumidores).

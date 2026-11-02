@@ -565,3 +565,59 @@ fn above_effects_changes_nothing_without_a_filter_nor_on_a_disabled_stroke() {
     desligada.paints[0].enabled = false;
     assert_eq!(conta_no_dispatch(&desligada, true), nenhum);
 }
+
+/// Quantos caminhos a rasterização ISOLADA da forma emite — a dos filtros ou a de sempre.
+fn conta_isolada(p: &VecPath, para_os_filtros: bool) -> u32 {
+    use ph2d_vec_scene::{VecScene, VecXforms};
+    let mut scene = VecScene::new();
+    let id = scene.push_path(p.clone());
+    let mut t = VectorScene::new();
+    let f = if para_os_filtros {
+        crate::draw_path_for_effects
+    } else {
+        crate::draw_path_isolated
+    };
+    f(
+        &scene,
+        &VecXforms::default(),
+        &crate::LiveGeometry::new(),
+        &crate::PatternTiles::new(),
+        &crate::BrushArts::new(),
+        None,
+        id,
+        Affine::IDENTITY,
+        Affine::IDENTITY,
+        &mut t,
+    );
+    t.inner().encoding().n_paths
+}
+
+/// ⭐⭐ **F47, smoke do dono 02/11 (*«aparece duplicado»*): o traço «Above Effects» NÃO entra na
+/// imagem dos filtros** — sai um caminho por traço marcado; e o assado do Motion
+/// (`draw_path_isolated`) continua a desenhar a forma inteira.
+#[test]
+fn a_stroke_above_effects_stays_out_of_the_filtered_image() {
+    let nenhum = conta_isolada(&com_dois_tracos(), true);
+    assert_eq!(
+        nenhum,
+        conta_isolada(&com_dois_tracos(), false),
+        "sem marca é igual"
+    );
+    let mut camada = com_dois_tracos();
+    marca(&mut camada, false, true);
+    assert!(
+        conta_isolada(&camada, true) < nenhum,
+        "a camada marcada ficou na imagem"
+    );
+    let mut os_dois = com_dois_tracos();
+    marca(&mut os_dois, true, true);
+    assert!(
+        conta_isolada(&os_dois, true) < conta_isolada(&camada, true),
+        "a base marcada ficou"
+    );
+    assert_eq!(
+        conta_isolada(&os_dois, false),
+        nenhum,
+        "o assado do Motion perdeu traços"
+    );
+}

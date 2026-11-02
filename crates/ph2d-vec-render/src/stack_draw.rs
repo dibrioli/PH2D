@@ -85,8 +85,8 @@ pub(crate) fn draw_base_fill(
 
 /// ⭐ **Os traços POR CIMA dos Filtros** (F47, dono 02/11) — redesenha, vectoriais e na ordem da pilha,
 /// só os traços com [`ph2d_vec_scene::StrokeSpec::above_effects`]; o `dispatch` chama-o logo depois de
-/// pôr a imagem de FX da forma. A imagem continua a levá-los (a sombra nasce da forma inteira), então o
-/// traço nítido cobre exactamente o filtrado. No-op (sem tesselar) se nenhum traço o pede.
+/// pôr a imagem de FX da forma — que NÃO os leva ([`VecPath::under_effects`], o `draw_path_for_effects`):
+/// cada um desenha-se uma vez só. No-op (sem tesselar) se nenhum traço o pede.
 pub(crate) fn draw_above_effects(
     path: &VecPath,
     transform: Affine,

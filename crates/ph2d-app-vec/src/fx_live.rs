@@ -329,7 +329,7 @@ impl FxLive {
                 f64::from(cell.org[0]) + f64::from(job.key.w),
                 f64::from(cell.org[1]) + f64::from(job.key.h),
             ));
-            ph2d_vec_render::draw_path_isolated(
+            ph2d_vec_render::draw_path_for_effects(
                 scene,
                 xforms,
                 live,

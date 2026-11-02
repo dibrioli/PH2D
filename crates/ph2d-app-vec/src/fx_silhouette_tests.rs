@@ -321,3 +321,38 @@ fn the_reported_stroked_star_reaches_the_exact_field_instead_of_the_raster() {
         "a silhueta descreve a curva autorada (raio {src:.4}), nao a borda da tinta ({out:.4})"
     );
 }
+
+/// ⭐ F47 — **o traço «Above Effects» fica fora da silhueta dos filtros**: ele não entra na imagem,
+/// então a fronteira que o Bevel e a Inner Shadow lêem é a do resto da forma (aqui, sem faixa nenhuma).
+/// Controlo: o mesmo traço sem a marca é resolvido.
+#[test]
+fn a_stroke_above_effects_lays_no_band_for_the_filters() {
+    let (mut scene, mut sim, map, id) = scene(true);
+    scene.paths_mut()[0]
+        .stroke
+        .as_mut()
+        .expect("tem traço")
+        .above_effects = true;
+    arm_filter(&mut sim, &map, id);
+    let mut fx = FxSilhouette::default();
+    let recoze = |fx: &mut FxSilhouette, scene: &VecScene| {
+        fx.recook(
+            scene,
+            &sim,
+            &map,
+            &VecXforms::default(),
+            &LiveGeometry::new(),
+        );
+    };
+    recoze(&mut fx, &scene);
+    assert!(
+        fx.live().get(&id).is_none(),
+        "o traço por cima entrou na silhueta"
+    );
+    scene.paths_mut()[0].stroke.as_mut().unwrap().above_effects = false;
+    recoze(&mut fx, &scene);
+    assert!(
+        fx.live().get(&id).is_some(),
+        "controlo: sem a marca resolve-se"
+    );
+}

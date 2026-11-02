@@ -372,6 +372,26 @@ impl VecPath {
         self.draw_order().any(|it| self.is_above_effects(it))
     }
 
+    /// ⭐ **A forma como os FILTROS a vêem** (F47, smoke do dono 02/11: *«aparece duplicado»*): sem os
+    /// traços «Above Effects» — o de base sai, a camada fica desligada (os índices não mudam). Eles
+    /// desenham-se uma vez só, por cima da imagem filtrada; a sombra e o brilho nascem do resto.
+    #[must_use]
+    pub fn under_effects(&self) -> std::borrow::Cow<'_, VecPath> {
+        if !self.has_stroke_above_effects() {
+            return std::borrow::Cow::Borrowed(self);
+        }
+        let mut p = self.clone();
+        if p.stroke.as_ref().is_some_and(|s| s.above_effects) {
+            p.stroke = None;
+        }
+        for e in &mut p.paints {
+            if matches!(&e.kind, PaintKind::Stroke(s) if s.above_effects) {
+                e.enabled = false;
+            }
+        }
+        std::borrow::Cow::Owned(p)
+    }
+
     /// Há mais alguma coisa na pilha para lá do chão?
     #[must_use]
     pub fn has_extra_paints(&self) -> bool {

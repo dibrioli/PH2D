@@ -78,6 +78,11 @@ impl FxSilhouette {
                     vec![world]
                 }
             };
+            // F47: a silhueta dos filtros é a da forma SEM os traços «Above Effects» (eles ficam fora).
+            let input: Vec<VecPath> = input
+                .iter()
+                .map(|p| p.under_effects().into_owned())
+                .collect();
             // Nenhuma peça deitando FAIXA de tinta, o `silhouette_segments` já responde exato pela
             // fonte — resolver aqui seria uma SEGUNDA resposta à mesma pergunta. ⚠️ A pergunta é
             // `lays_a_band`, não `is_some`: largura zero é sem traço, e perguntar pela presença

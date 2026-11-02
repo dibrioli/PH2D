@@ -286,9 +286,10 @@ pub struct StrokeSpec {
     /// de leitura vem do NÚMERO, e é ele que recusa o arquivo velho em vez de o ler torto.
     pub align: StrokeAlign,
     /// ⭐ **Por cima dos Filtros** (v28, F47, dono 02/11): numa forma com Effects raster, este traço
-    /// desenha-se de novo, vectorial, POR CIMA da imagem filtrada — a cor e a nitidez dele não passam
-    /// pelos filtros. A imagem filtrada continua a levá-lo (a sombra e o brilho nascem da forma
-    /// inteira, escolha do dono). Sem filtro não muda nada. `false` = o de sempre.
+    /// sai da imagem filtrada ([`crate::VecPath::under_effects`], `draw_path_for_effects`) e desenha-se UMA vez, vectorial, POR
+    /// CIMA dela — a cor e a nitidez dele não passam pelos filtros, e a sombra e o brilho nascem do
+    /// resto da forma (smoke do dono 02/11: com ele na imagem, aparecia duplicado). Sem filtro não muda
+    /// nada. `false` = o de sempre.
     pub above_effects: bool,
 }
 

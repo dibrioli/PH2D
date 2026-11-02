@@ -1,0 +1,22 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   261ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   292ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   292ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   302ms] M11: VelloPass initialized (1024×768 intermediate)
+[   308ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   330ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   361ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   369ms] lifecycle: Foreground
+[   369ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   377ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
+[vec-bone-smoke] O LOSANGO DO ESQUELETO: a barra laranja e' um braco preso a 3 ossos, e o do MEIO ja' esta' escolhido -- o painel «Skeleton» a' direita mostra os numeros dele.
+[vec-bone-smoke] 1) Ao lado de «Length» o losango esta' CHEIO: ha' chave neste quadro (0). «Segments» e as 4 alcas da curva tem o losango VAZIO: sem animacao.
+[vec-bone-smoke] 2) Carregue Play na Timeline: o osso azul do meio cresce ate' 1,5x no quadro 24 e volta no 48 -- e' so' o osso que muda de tamanho (o seguinte e a barra ficam, igual a escrever o numero a' mao); entre chaves o losango de «Length» fica so' com o contorno.
+[vec-bone-smoke] 3) Pare num quadro sem chave, clique no losango vazio de «Segments»: ele enche (chave nova).
+[ph2d-gpu] surface present mode → Fifo

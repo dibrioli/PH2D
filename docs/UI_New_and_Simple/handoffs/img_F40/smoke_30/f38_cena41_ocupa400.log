@@ -1,0 +1,25 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   253ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   273ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   273ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   281ms] M11: VelloPass initialized (1024×768 intermediate)
+[   284ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   297ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   324ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   331ms] lifecycle: Foreground
+[   331ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   337ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.183s of sim time (max_substeps cap)
+M14.5 vello_pass.render_to_intermediate error: a placa recusou memória ao Vello: Out of Memory
+[gpu-memoria] a placa ficou SEM memória (1 recusas desde o arranque)
+[cena 41] uma Nuvem de 60 com Bevel + Drop Shadow, maior que a textura da placa
+[ph2d-gpu] surface present mode → Fifo
+[gpu-memoria] a placa voltou a ter memória (114 recusas desde o arranque)
+[ph2d-gpu] surface present mode → Immediate
+[ 61278ms] resize: 1930x1012 @ 1.00x scale
+[ph2d-gpu] surface present mode → Fifo

@@ -1,0 +1,28 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   256ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   278ms] physics smoke: empty scene (only the physics bodies)
+[   278ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   287ms] M11: VelloPass initialized (1024×768 intermediate)
+[   292ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   306ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   333ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   342ms] lifecycle: Foreground
+[   342ms] resize: 1024x768 @ 1.00x scale
+[physics-smoke 5] LEFT group on layer 0 (with the floor), RIGHT group on layer 1.
+The physics panel is open (`W`); expand 'Collision Layers'.
+Try:
+· click cell (1,0) : the RIGHT group falls THROUGH the floor, the left
+group stays, and the right group still stacks on itself.
+· click it again   : they land again -- and this must work on the bodies
+ALREADY in the scene, not only on new ones.
+· click cell (1,1) : the right group stops colliding with ITSELF.
+· Inspector > Layer: select one body and move it to another layer.
+· Ctrl+S, Ctrl+O   : the matrix comes back with the project.
+[ph2d-gpu] surface present mode → Immediate
+[   348ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.200s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

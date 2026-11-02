@@ -1,0 +1,20 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   339ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   349ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   350ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   384ms] M11: VelloPass initialized (1024×768 intermediate)
+[   388ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   402ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   431ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   437ms] lifecycle: Foreground
+[   438ms] resize: 1024x768 @ 1.00x scale
+[ph2d-gpu] surface present mode → Immediate
+[   449ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.300s of sim time (max_substeps cap)
+[autokey-smoke] =35 montada · bola 12v0 · chao 11v0 · relogio 13v0 (Short 1000000 us item ItemId(4) · Long 3000000 us item ItemId(5))
+[autokey-smoke] =35 Auto Key true · Physics true · seleccao None
+[ph2d-gpu] surface present mode → Fifo

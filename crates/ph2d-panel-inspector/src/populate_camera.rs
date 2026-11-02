@@ -14,6 +14,7 @@
 //! o artista veria o número a andar com a câmera parada. Há gate na shell a prender os dois lados.
 
 use crate::ids;
+use ph2d_editor_core::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, DropdownState, TextInputState};
 
@@ -100,6 +101,7 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_OUTSIDE);
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_VIEW);
     crate::populate::register_button_ids(store, &ids::INSP_CAMERA_THUMB);
+    crate::populate::register_button_ids(store, &[ids::INSP_CAMERA_TARGET_PICK]);
     store.register(
         ids::INSP_CAMERA_FORMAT_PICK,
         InteractiveState::Dropdown {
@@ -157,6 +159,12 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     // **INABRÍVEL** na primeira vez que alguém re-popular este painel, como cinco painéis da shell
     // já fazem por interacção. Reproduzido pela porta do produto em 2026-09-21:
     // `true` → clique → `false` → `populate` → **`true`**.
+    // ⭐ GEF 20 C1 — toda fileira da câmera explica-se ao passar o ponteiro (o cartão Player já o fazia).
+    for (grupo, chave) in dicas() {
+        for id in grupo {
+            store.set_tooltip(*id, ph2d_i18n::tr(chave));
+        }
+    }
     store.set_collapsed_if_unchosen(ids::INSP_CAMERA_CULL_HEADER, true);
     // ⛔ Sem a marca o clique no cabeçalho MORRE (`apply_click` só dobra o que está marcado) — a
     // máscara viveu assim até 24/10, o gate dela abria-a à mão. Os grupos (doc CodeEditor 12)
@@ -168,4 +176,105 @@ pub(crate) fn populate_camera(store: &mut WidgetStore) {
     ] {
         store.mark_collapsible_section(id);
     }
+}
+
+/// Os ids da câmera e a dica de cada um (GEF 20 C1). Um grupo partilha a dica (os dois eixos de um campo, as
+/// opções de um seletor).
+pub(crate) fn dicas() -> [(&'static [NodeId], &'static str); 23] {
+    [
+        (
+            &[ids::INSP_CAMERA_HEIGHT],
+            "panel.inspector.camera.tip.height",
+        ),
+        (
+            &[ids::INSP_CAMERA_OFFSET_X, ids::INSP_CAMERA_OFFSET_Y],
+            "panel.inspector.camera.tip.view_offset",
+        ),
+        (
+            &[ids::INSP_CAMERA_PRIORITY],
+            "panel.inspector.camera.tip.priority",
+        ),
+        (
+            &[ids::INSP_CAMERA_ACTIVE],
+            "panel.inspector.camera.tip.active",
+        ),
+        (
+            &[ids::INSP_CAMERA_DOLLY],
+            "panel.inspector.camera.tip.dolly",
+        ),
+        (
+            &[ids::INSP_CAMERA_PREVIEW],
+            "panel.inspector.camera.tip.look_through",
+        ),
+        (
+            &ids::INSP_CAMERA_CULL_BIT,
+            "panel.inspector.camera.tip.cull",
+        ),
+        (
+            &[ids::INSP_CAMERA_CULL_HEADER],
+            "panel.inspector.camera.tip.cull",
+        ),
+        (
+            &[ids::INSP_CAMERA_TARGET],
+            "panel.inspector.camera.tip.target",
+        ),
+        (
+            &[ids::INSP_CAMERA_TARGET_PICK],
+            "panel.inspector.camera.tip.target_pick",
+        ),
+        (
+            &[ids::INSP_CAMERA_DAMP_X, ids::INSP_CAMERA_DAMP_Y],
+            "panel.inspector.camera.tip.damping",
+        ),
+        (
+            &[ids::INSP_CAMERA_DEAD_X, ids::INSP_CAMERA_DEAD_Y],
+            "panel.inspector.camera.tip.dead_zone",
+        ),
+        (
+            &[ids::INSP_CAMERA_LOOK_X, ids::INSP_CAMERA_LOOK_Y],
+            "panel.inspector.camera.tip.lookahead",
+        ),
+        (
+            &[ids::INSP_CAMERA_FOLLOW_OFF_X, ids::INSP_CAMERA_FOLLOW_OFF_Y],
+            "panel.inspector.camera.tip.follow_offset",
+        ),
+        (
+            &[
+                ids::INSP_CAMERA_MIN_X,
+                ids::INSP_CAMERA_MIN_Y,
+                ids::INSP_CAMERA_MAX_X,
+                ids::INSP_CAMERA_MAX_Y,
+            ],
+            "panel.inspector.camera.tip.limits",
+        ),
+        (
+            &[ids::INSP_CAMERA_FORMAT_PICK],
+            "panel.inspector.camera.tip.format",
+        ),
+        (
+            &ids::INSP_CAMERA_FORMAT_OPT,
+            "panel.inspector.camera.tip.format",
+        ),
+        (
+            &[ids::INSP_CAMERA_CUSTOM_W, ids::INSP_CAMERA_CUSTOM_H],
+            "panel.inspector.camera.tip.custom_size",
+        ),
+        (&ids::INSP_CAMERA_FRAME, "panel.inspector.camera.tip.frame"),
+        (
+            &ids::INSP_CAMERA_OUTSIDE,
+            "panel.inspector.camera.tip.outside",
+        ),
+        (
+            &ids::INSP_CAMERA_VIEW,
+            "panel.inspector.camera.tip.editor_view",
+        ),
+        (
+            &ids::INSP_CAMERA_THUMB,
+            "panel.inspector.camera.tip.preview",
+        ),
+        (
+            &[ids::INSP_CAMERA_ICON_SIZE],
+            "panel.inspector.camera.tip.icon_size",
+        ),
+    ]
 }

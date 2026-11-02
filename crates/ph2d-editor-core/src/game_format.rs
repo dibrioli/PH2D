@@ -173,6 +173,9 @@ pub struct CameraCanvasView {
     pub follows: bool,
     /// A miniatura do que a câmera seleccionada vê, num canto do canvas (A6). Ligada por omissão.
     pub preview: bool,
+    /// ⭐ GEF 20 C2 — o Eyedropper do Target do Follow armado para a câmera destes bits: o próximo clique no
+    /// canvas escolhe o objecto que ela segue.
+    pub escolhe_alvo: Option<u64>,
 }
 
 impl Default for CameraCanvasView {
@@ -181,6 +184,7 @@ impl Default for CameraCanvasView {
             dim_outside: false,
             follows: false,
             preview: true,
+            escolhe_alvo: None,
         }
     }
 }

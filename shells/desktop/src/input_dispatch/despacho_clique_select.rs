@@ -86,7 +86,8 @@ impl crate::App {
         let constraint = self
             .gfx
             .as_ref()
-            .is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim));
+            .is_some_and(|g| ph2d_app_constraints::inspector::armado(&g.sim))
+            || self.camera_target_armed();
         if (self.joint_body_pick.is_some() || constraint)
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Down

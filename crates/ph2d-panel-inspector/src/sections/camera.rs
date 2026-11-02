@@ -200,7 +200,7 @@ fn follow_body(
     x: f32,
     w: f32,
     y: f32,
-    f: &InspectorCameraFollow,
+    (f, escolhendo): (&InspectorCameraFollow, bool),
 ) -> f32 {
     let linhas = [
         (
@@ -257,6 +257,28 @@ fn follow_body(
     }
     let (x, w) = (g.x, g.w);
     let cur_y = g.y;
+    // ⭐ GEF 20 C2 — o Eyedropper à direita do campo (o idioma da roldana, `wheel.rs`): premido enquanto escolhe.
+    let icon_w = (ROW_H_PX * 0.82).min(w); // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
+    let gap = Spacing::Xs.px();
+    let conta_gotas = Rect::new(
+        x + w - icon_w,
+        cur_y + (ROW_H_PX - icon_w) * 0.5,
+        icon_w,
+        icon_w,
+    );
+    paint_icon_button(
+        conta_gotas,
+        IconGlyph::Builtin(IconId::Eyedropper),
+        IconButtonStyle::Compact,
+        if escolhendo {
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
+        } else {
+            store.button_visual(ids::INSP_CAMERA_TARGET_PICK)
+        },
+        scene,
+        theme,
+    );
+    hit_index.register(ids::INSP_CAMERA_TARGET_PICK, conta_gotas);
     let mut cur_y = super::anim_rows::text_row(
         scene,
         text_system,
@@ -264,7 +286,7 @@ fn follow_body(
         hit_index,
         store,
         x,
-        w,
+        (w - icon_w - gap).max(0.0),
         cur_y,
         TextKey::new("component.field.follow_fields.0"),
         ids::INSP_CAMERA_TARGET,
@@ -491,7 +513,18 @@ pub(crate) fn paint_camera_section(
         info,
     );
     if let Some(f) = info.follow.as_ref() {
-        cur_y = follow_body(scene, text_system, theme, hit_index, store, x, w, cur_y, f);
+        let escolhendo = info.canvas.escolhe_alvo.is_some();
+        cur_y = follow_body(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            (f, escolhendo),
+        );
     }
     if let Some(l) = info.limits.as_ref() {
         cur_y = limits_body(scene, text_system, theme, hit_index, store, x, w, cur_y, l);

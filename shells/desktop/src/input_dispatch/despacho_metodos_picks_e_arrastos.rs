@@ -70,6 +70,13 @@ impl crate::App {
         let world_pos = gfx.camera.screen_to_world((sx, sy), window_size);
         let debaixo = ph2d_render::pick_sprites_at_world(gfx.present.world_mut(), world_pos);
         let Some((joint, slot_b)) = self.joint_body_pick else {
+            // GEF 20 C2 — o Eyedropper do Target do Follow: escolhe e desarma (o vazio também desarma).
+            if let Some(hero) = gfx.hero_screen.as_mut()
+                && let Some(cam) = hero.view.camera_canvas.escolhe_alvo.take()
+            {
+                ph2d_camera_frame::escolhe_alvo(gfx.sim.world(), &mut hero.bus, cam, &debaixo);
+                return;
+            }
             // O alvo de uma constraint (a família recusa o dono e os ciclos).
             ph2d_app_constraints::inspector::escolher_alvo(&mut gfx.sim, &debaixo, world_pos);
             return;

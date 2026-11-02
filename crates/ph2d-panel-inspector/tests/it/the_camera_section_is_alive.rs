@@ -474,6 +474,7 @@ fn as_tres_vistas_chegam_ao_barramento() {
         dim_outside: false,
         follows: false,
         preview: false,
+        escolhe_alvo: None,
     };
     let mut t = SEC;
     for (ids, liga, desliga) in casos {
@@ -488,6 +489,7 @@ fn as_tres_vistas_chegam_ao_barramento() {
             dim_outside: true,
             follows: true,
             preview: true,
+            escolhe_alvo: None,
         };
         let (mut h, mut st) = host(InspectorCameraInfo {
             canvas: tudo,
@@ -505,4 +507,77 @@ fn as_tres_vistas_chegam_ao_barramento() {
         t += 10 * SEC;
     }
     set_current_inspector_camera(None);
+}
+
+/// ⭐ GEF 20 C1 — **toda fileira da câmera explica-se**: todo campo, caixa e seletor pintado na secção (com
+/// Follow e Limits) tem dica ao passar o ponteiro. Varre o que se PINTA, não uma lista.
+///
+/// **Mutação que deve sangrar:** tirar uma linha de `populate_camera::dicas`.
+#[test]
+fn toda_fileira_da_camera_tem_dica() {
+    use ph2d_editor_core::interaction::InteractiveState as S;
+    let (mut h, mut st) = host(info(Some(seguidor()), Some(cerca()), false));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let campos: Vec<_> = rects
+        .iter()
+        .filter(|(id, _)| {
+            matches!(
+                h.store().get(*id),
+                Some(
+                    S::NumberInput { .. }
+                        | S::TextInput { .. }
+                        | S::Checkbox { .. }
+                        | S::Dropdown { .. }
+                )
+            ) || ph2d_panel_inspector::ids::INSP_CAMERA_FORMAT_OPT
+                .iter()
+                .chain(&ph2d_panel_inspector::ids::INSP_CAMERA_FRAME)
+                .chain(&[ph2d_panel_inspector::ids::INSP_CAMERA_TARGET_PICK])
+                .any(|b| b == id)
+        })
+        .map(|(id, _)| *id)
+        .collect();
+    assert!(
+        campos.len() > 20,
+        "a secção não pintou os campos: {}",
+        campos.len()
+    );
+    let sem: Vec<_> = campos
+        .iter()
+        .filter(|id| h.store().tooltip_for(**id).is_none_or(str::is_empty))
+        .collect();
+    assert!(sem.is_empty(), "campos da câmera sem dica: {sem:?}");
+}
+
+/// ⭐ GEF 20 C2 — **o Eyedropper do Target vive sob o dedo**: premido arma-o com os bits da câmera, premido
+/// armado desarma-o; e fica à DIREITA do campo, sem o tapar.
+///
+/// **Mutações que devem sangrar:** tirar o registo do botão · mandar `Some` também armado · pintar o campo à
+/// largura inteira.
+#[test]
+fn o_conta_gotas_do_alvo_arma_e_desarma() {
+    use ph2d_panel_inspector::ids::{INSP_CAMERA_TARGET, INSP_CAMERA_TARGET_PICK};
+    let (mut h, mut st) = host(info(Some(seguidor()), None, false));
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let r = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .expect("pintado")
+    };
+    let (campo, gotas) = (r(INSP_CAMERA_TARGET), r(INSP_CAMERA_TARGET_PICK));
+    assert!(campo.x + campo.w <= gotas.x, "{campo:?} tapa {gotas:?}");
+    assert_eq!(
+        carrega(&mut h, &mut st, &rects, INSP_CAMERA_TARGET_PICK, SEC),
+        vec![CameraFieldEdit::PickTarget(Some(0xABCD_1234))]
+    );
+    let mut armado = info(Some(seguidor()), None, false);
+    armado.canvas.escolhe_alvo = Some(0xABCD_1234);
+    let (mut h, mut st) = host(armado);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(
+        carrega(&mut h, &mut st, &rects, INSP_CAMERA_TARGET_PICK, 2 * SEC),
+        vec![CameraFieldEdit::PickTarget(None)]
+    );
 }

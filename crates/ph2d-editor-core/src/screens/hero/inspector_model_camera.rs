@@ -142,6 +142,8 @@ pub enum CameraFieldEdit {
     ViewFollows(bool),
     /// A miniatura do que a câmera vê (A6). ⚠️ Gesto do EDITOR.
     Thumbnail(bool),
+    /// ⭐ GEF 20 C2 — arma (`Some(câmera)`) ou desarma o Eyedropper do Target. ⚠️ Gesto do EDITOR.
+    PickTarget(Option<u64>),
 }
 
 impl crate::CameraCanvasView {
@@ -152,6 +154,7 @@ impl crate::CameraCanvasView {
             CameraFieldEdit::DimOutside(on) => self.dim_outside = on,
             CameraFieldEdit::ViewFollows(on) => self.follows = on,
             CameraFieldEdit::Thumbnail(on) => self.preview = on,
+            CameraFieldEdit::PickTarget(c) => self.escolhe_alvo = c,
             _ => return false,
         }
         true
@@ -174,6 +177,7 @@ mod tests {
                 dim_outside: true,
                 follows: false,
                 preview: true,
+                escolhe_alvo: None,
             }
         );
         assert!(v.aplica(&E::ViewFollows(true)));
@@ -184,6 +188,7 @@ mod tests {
                 dim_outside: false,
                 follows: true,
                 preview: true,
+                escolhe_alvo: None,
             }
         );
         assert!(v.aplica(&E::Thumbnail(false)));
@@ -193,6 +198,7 @@ mod tests {
                 dim_outside: false,
                 follows: true,
                 preview: false,
+                escolhe_alvo: None,
             }
         );
         assert!(!v.aplica(&E::Preview(true)));

@@ -231,6 +231,7 @@ pub fn plano_da_foto(
                 dim_outside: foto == Foto::CameraFora,
                 follows: foto == Foto::CameraSegue,
                 preview: foto != Foto::CameraSemPrevia,
+                escolhe_alvo: None,
             },
         };
         plano.alvo = camara.to_bits();

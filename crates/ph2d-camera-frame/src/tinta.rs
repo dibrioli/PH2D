@@ -3,8 +3,9 @@
 //! canvas, os cantos, os limites, a alça sob o ponteiro e — com `follow` — o fio até ao alvo e a mira.
 //! Em espaço de TELA: o traço e o texto ficam nítidos em qualquer zoom.
 
-use crate::{AGARRE_PX, Moldura, alca_em, caixa, caixa_da_zona, cantos, pegas_da_zona};
+use crate::{AGARRE_PX, Alca, Moldura, alca_em, caixa, caixa_da_zona, cantos, pegas_da_zona};
 use ph2d_editor_core::project::DisplayUnit;
+use ph2d_editor_core::readout;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{CameraFrameShow, icons::IconId};
 use ph2d_host::WindowSize;
@@ -19,6 +20,12 @@ const TRACO_PX: [f64; 2] = [1.0, 2.0]; // LITERAL-PX-OK: chrome de overlay (tén
 const TRACEJADO_PX: [f64; 2] = [6.0, 4.0]; // LITERAL-PX-OK: chrome de overlay
 const ALCA_PX: f64 = 4.0; // LITERAL-PX-OK: meia-alça
 const ALCA_SOB_PX: f64 = 6.0; // LITERAL-PX-OK: meia-alça sob o ponteiro
+const HALO_PX: f64 = 3.0; // LITERAL-PX-OK: anel da alça sob o ponteiro (o halo do Vector)
+const L_PX: f64 = 9.0; // LITERAL-PX-OK: braço do L dos cantos dos limites
+const L_TRACO_PX: f64 = 3.0; // LITERAL-PX-OK: traço do L
+const CONTORNO_PX: f64 = 1.0; // LITERAL-PX-OK: o contorno escuro por baixo das peças laranja
+const BARRA_PX: f64 = 8.0; // LITERAL-PX-OK: meia-barra das bordas dos limites
+const LOSANGO: f64 = 1.5; // LITERAL-PX-OK: o losango do centro, em meias-alças
 const MIRA_PX: f64 = 5.0; // LITERAL-PX-OK: meio braço da cruz da mira
 const ROTULO_FOLGA_PX: f32 = 4.0; // LITERAL-PX-OK: entre o rótulo e a moldura
 const ROTULO_MAX_PX: f32 = 420.0; // LITERAL-PX-OK: largura máxima do rótulo
@@ -48,6 +55,25 @@ pub struct Pintura {
     pub ponteiro: (f32, f32),
     /// «Outside: Dimmed» (onda 18): escurecer o canvas fora da moldura da selecionada (ou da activa).
     pub escurecer: bool,
+    /// A alça agarrada da câmera selecionada (o arrasto armado): acesa e com a ficha, mesmo fora do agarre.
+    pub agarrada: Option<Alca>,
+}
+
+/// ⭐ GEF 20 C5 — o canvas ÚTIL: as réguas ocupam a borda de cima e a da esquerda (o modelo do Figma), e um rótulo
+/// encostado ali ficava por baixo delas («nera · 1422 × 800 px»).
+#[must_use]
+pub fn canvas_util(canvas: [f32; 4], reguas: bool) -> [f32; 4] {
+    let r = if reguas {
+        ph2d_editor_core::ruler::RULER_PX
+    } else {
+        0.0
+    };
+    [
+        canvas[0] + r,
+        canvas[1] + r,
+        (canvas[2] - r).max(0.0),
+        (canvas[3] - r).max(0.0),
+    ]
 }
 
 /// O rectângulo do ícone de uma câmera em `pose`, em px da vista.
@@ -140,8 +166,7 @@ pub fn desenhar(
         if !forte {
             continue;
         }
-        let acesa = alca_em(m, sob.0, sob.1);
-        let realce = |c: [f32; 2]| alca_em(m, c, 0.0) == acesa && acesa.is_some();
+        let acesa = p.agarrada.or_else(|| alca_em(m, sob.0, sob.1));
         if let Some((zlo, zhi)) = caixa_da_zona(m) {
             let z = retangulo(tela([zlo[0], zhi[1]]), tela([zhi[0], zlo[1]]));
             moldura_vazada(cena, rect, z, selecao.multiply_alpha(ZONA_TINTA));
@@ -152,40 +177,77 @@ pub fn desenhar(
                 None,
                 &z,
             );
+            etiqueta_da_caixa(z, "game.camera_frame.dead_zone_tag", cena, texto, theme);
             for (i, c) in pegas_da_zona(m, sob.1).into_iter().enumerate() {
-                let acesa_aqui = acesa == Some(crate::Alca::ZonaMorta(i as u8));
                 if let Some(c) = c {
-                    alca(cena, tela(c), selecao, fundo, acesa_aqui);
+                    let a = Alca::ZonaMorta(i as u8);
+                    face(cena, tela(c), Cara::Zona, selecao, fundo, acesa == Some(a));
                 }
             }
         }
         if let Some(s) = m.segue.as_ref() {
-            fio_do_follow(m, s, cor, &tela, cena, texto);
+            fio_do_follow(m, s, cor, &p, &tela, (&mut *cena, &mut *texto), theme);
         }
-        for c in cantos(lo, hi) {
-            alca(cena, tela(c), fundo, selecao, realce(c));
+        for (i, c) in cantos(lo, hi).into_iter().enumerate() {
+            let a = Alca::Canto(i as u8);
+            face(cena, tela(c), Cara::Zoom, selecao, fundo, acesa == Some(a));
         }
         if let Some((min, max)) = m.limites {
             let r = retangulo(tela([min[0], max[1]]), tela([max[0], min[1]]));
-            cena.inner_mut().stroke(
-                &Stroke::new(TRACO_PX[1]),
-                Affine::IDENTITY,
-                limites,
-                None,
-                &r,
-            );
-            for c in cantos(min, max) {
-                alca(cena, tela(c), fundo, limites, realce(c));
-            }
-            for c in [
-                [min[0], (min[1] + max[1]) * 0.5],
-                [max[0], (min[1] + max[1]) * 0.5],
-                [(min[0] + max[0]) * 0.5, min[1]],
-                [(min[0] + max[0]) * 0.5, max[1]],
-                [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5],
+            // Um contorno escuro por baixo: o laranja dos limites lê-se sobre um céu claro (foto GEF 20).
+            for (largura, tinta) in [
+                (TRACO_PX[1] + 2.0 * CONTORNO_PX, fundo),
+                (TRACO_PX[1], limites),
             ] {
-                alca(cena, tela(c), limites, fundo, realce(c));
+                cena.inner_mut()
+                    .stroke(&Stroke::new(largura), Affine::IDENTITY, tinta, None, &r);
             }
+            etiqueta_da_caixa(r, "game.camera_frame.limits_tag", cena, texto, theme);
+            for (i, c) in cantos(min, max).into_iter().enumerate() {
+                let a = Alca::LimiteCanto(i as u8);
+                face(
+                    cena,
+                    tela(c),
+                    Cara::LimiteCanto(i as u8),
+                    limites,
+                    fundo,
+                    acesa == Some(a),
+                );
+            }
+            let meio = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5];
+            for (i, c) in [
+                [min[0], meio[1]],
+                [max[0], meio[1]],
+                [meio[0], min[1]],
+                [meio[0], max[1]],
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let a = Alca::LimiteBorda(i as u8);
+                face(
+                    cena,
+                    tela(c),
+                    Cara::LimiteBorda(i < 2),
+                    limites,
+                    fundo,
+                    acesa == Some(a),
+                );
+            }
+            let centro = Cara::LimiteCentro;
+            face(
+                cena,
+                tela(meio),
+                centro,
+                limites,
+                fundo,
+                acesa == Some(Alca::LimiteCentro),
+            );
+        }
+        // O miolo é a moldura INTEIRA: a ficha dele só a meio do arrasto, senão segue o ponteiro por todo o lado.
+        if let Some(a) = acesa.filter(|a| *a != Alca::Dentro || p.agarrada.is_some()) {
+            let txt = crate::etiqueta(m, a, p.unidade, p.pixels_per_meter);
+            ficha_no_ponteiro(&txt, p, cena, texto, theme);
         }
     }
 }
@@ -227,15 +289,17 @@ fn rotulo(
     ph2d_editor_core::paint_text(texto, cena, &rotulo, x, y, tam, ROTULO_MAX_PX, cor);
 }
 
-/// ⭐ **O fio do `follow`** (17b A2): tracejado do ícone ao alvo, com o nome dele, e a cruz da MIRA (alvo + offset
-/// do `follow`) — o que o miolo arrasta. A moldura vai até onde a cerca deixa; a cruz vai com o ponteiro.
+/// ⭐ **O fio do `follow`** (17b A2): tracejado do ícone ao alvo e a cruz da MIRA (alvo + offset do `follow`) — o que
+/// o miolo arrasta. O nome do alvo vai numa ficha no MEIO do fio, dentro do canvas (GEF 20 C5: ao pé do alvo ele
+/// ficava por baixo do boneco).
 fn fio_do_follow(
     m: &Moldura,
     s: &crate::Segue,
     cor: Color,
+    p: &Pintura,
     tela: &dyn Fn([f32; 2]) -> (f64, f64),
-    cena: &mut VectorScene,
-    texto: &mut TextSystem,
+    (cena, texto): (&mut VectorScene, &mut TextSystem),
+    theme: Theme,
 ) {
     let Some(alvo) = s.alvo else {
         return;
@@ -262,17 +326,56 @@ fn fio_do_follow(
         s_.stroke(&Stroke::new(TRACO_PX[1]), Affine::IDENTITY, cor, None, &l);
     }
     let rotulo = ph2d_i18n::tr_with("game.camera_frame.follows", &[("TARGET", &s.nome)]);
-    let tam = TypeToken::Sm.px();
-    ph2d_editor_core::paint_text(
-        texto,
-        cena,
-        &rotulo,
-        b.0 as f32 + ROTULO_FOLGA_PX,
-        b.1 as f32 + ROTULO_FOLGA_PX,
-        tam,
-        ROTULO_MAX_PX,
-        cor,
-    );
+    let w = readout::chip_width(texto, &rotulo, 0.0);
+    let meio = [((a.0 + b.0) * 0.5) as f32, ((a.1 + b.1) * 0.5) as f32];
+    readout::paint_chip(texto, cena, &rotulo, dentro(meio, w, p.canvas), 0.0, theme);
+}
+
+/// O centro de uma ficha de largura `w` em `c`, empurrado para dentro do canvas `[x, y, w, h]`.
+fn dentro(c: [f32; 2], w: f32, canvas: [f32; 4]) -> [f32; 2] {
+    let [x, y, cw, ch] = canvas;
+    let (hw, hh) = (w * 0.5, readout::CHIP_H_PX * 0.5);
+    [
+        c[0].max(x + hw).min((x + cw - hw).max(x + hw)),
+        c[1].max(y + hh).min((y + ch - hh).max(y + hh)),
+    ]
+}
+
+/// ⭐ GEF 20 C4 — a ficha do nome e do valor da alça junto do ponteiro (a mesma das alças das formas do Vector).
+fn ficha_no_ponteiro(
+    txt: &str,
+    p: Pintura,
+    cena: &mut VectorScene,
+    texto: &mut TextSystem,
+    theme: Theme,
+) {
+    let w = readout::chip_width(texto, txt, 0.0);
+    let [x, y, cw, ch] = p.canvas;
+    let at = readout::at_cursor([p.ponteiro.0, p.ponteiro.1], w, Rect::new(x, y, cw, ch));
+    readout::paint_chip(texto, cena, txt, at, 0.0, theme);
+}
+
+/// ⭐ GEF 20 C4 — o NOME de uma caixa («Limits», «Dead Zone») numa ficha no canto de cima-esquerdo, por dentro;
+/// só se cabe.
+fn etiqueta_da_caixa(
+    r: ph2d_vector::Rect,
+    chave: &str,
+    cena: &mut VectorScene,
+    texto: &mut TextSystem,
+    theme: Theme,
+) {
+    let nome = ph2d_i18n::tr(chave);
+    let w = readout::chip_width(texto, nome, 0.0);
+    let folga = f64::from(ROTULO_FOLGA_PX);
+    let h = f64::from(readout::CHIP_H_PX);
+    if r.width() < f64::from(w) + 2.0 * folga || r.height() < h + 2.0 * folga {
+        return;
+    }
+    let centro = [
+        (r.x0 + folga) as f32 + w * 0.5,
+        (r.y0 + folga + h * 0.5) as f32,
+    ];
+    readout::paint_chip(texto, cena, nome, centro, 0.0, theme);
 }
 
 /// Pinta `fora` menos `dentro` (quatro faixas; `dentro` cortado a `fora`) — o escuro de fora e a tinta da zona morta.
@@ -305,16 +408,87 @@ fn retangulo(a: (f64, f64), b: (f64, f64)) -> ph2d_vector::Rect {
     ph2d_vector::Rect::new(a.0.min(b.0), a.1.min(b.1), a.0.max(b.0), a.1.max(b.1))
 }
 
-fn alca(cena: &mut VectorScene, c: (f64, f64), dentro: Color, borda: Color, acesa: bool) {
-    let (meia, dentro) = if acesa {
-        (ALCA_SOB_PX, borda)
-    } else {
-        (ALCA_PX, dentro)
-    };
-    let r = ph2d_vector::Rect::new(c.0 - meia, c.1 - meia, c.0 + meia, c.1 + meia);
+/// ⭐ GEF 20 C4 — **a cara de cada família de alça** (o idioma das alças das formas do Vector, `shape_handles_face`):
+/// o zoom é o quadrado dos cantos de uma caixa; a zona morta, círculos; os limites, cantos em L, barras ao longo
+/// da borda e o losango de mover.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Cara {
+    Zoom,
+    Zona,
+    /// O canto `i` dos limites (a ordem de [`crate::cantos`]): os braços do L vão para DENTRO da caixa.
+    LimiteCanto(u8),
+    /// Uma borda dos limites: `true` = vertical (esquerda/direita).
+    LimiteBorda(bool),
+    LimiteCentro,
+}
+
+fn face(
+    cena: &mut VectorScene,
+    c: (f64, f64),
+    cara: Cara,
+    tinta: Color,
+    fundo: Color,
+    acesa: bool,
+) {
     let s = cena.inner_mut();
-    s.fill(Fill::NonZero, Affine::IDENTITY, dentro, None, &r);
-    s.stroke(&Stroke::new(TRACO_PX[0]), Affine::IDENTITY, borda, None, &r);
+    let k = if acesa { ALCA_SOB_PX / ALCA_PX } else { 1.0 };
+    let m = ALCA_PX * k;
+    if acesa {
+        let halo = ph2d_vector::Circle::new(c, m + HALO_PX);
+        s.stroke(
+            &Stroke::new(TRACO_PX[0]),
+            Affine::IDENTITY,
+            tinta.multiply_alpha(TENUE),
+            None,
+            &halo,
+        );
+    }
+    match cara {
+        Cara::Zoom => {
+            let r = ph2d_vector::Rect::new(c.0 - m, c.1 - m, c.0 + m, c.1 + m);
+            s.fill(Fill::NonZero, Affine::IDENTITY, fundo, None, &r);
+            s.stroke(&Stroke::new(TRACO_PX[1]), Affine::IDENTITY, tinta, None, &r);
+        }
+        Cara::Zona => {
+            let r = ph2d_vector::Circle::new(c, m);
+            s.fill(Fill::NonZero, Affine::IDENTITY, tinta, None, &r);
+            s.stroke(&Stroke::new(TRACO_PX[0]), Affine::IDENTITY, fundo, None, &r);
+        }
+        Cara::LimiteCanto(i) => {
+            // Na tela o y desce: os cantos de baixo (0, 1) abrem para CIMA.
+            let dx = if i == 0 || i == 3 { 1.0 } else { -1.0 };
+            let dy = if i < 2 { -1.0 } else { 1.0 };
+            let l = L_PX * k;
+            let mut p = ph2d_vector::BezPath::new();
+            p.move_to((c.0 + dx * l, c.1));
+            p.line_to(c);
+            p.line_to((c.0, c.1 + dy * l));
+            for (largura, cor) in [(L_TRACO_PX + 2.0 * CONTORNO_PX, fundo), (L_TRACO_PX, tinta)] {
+                s.stroke(&Stroke::new(largura), Affine::IDENTITY, cor, None, &p);
+            }
+        }
+        Cara::LimiteBorda(vertical) => {
+            let (hw, hh) = if vertical {
+                (m * 0.5, BARRA_PX * k)
+            } else {
+                (BARRA_PX * k, m * 0.5)
+            };
+            let r = ph2d_vector::RoundedRect::new(c.0 - hw, c.1 - hh, c.0 + hw, c.1 + hh, m * 0.5);
+            s.fill(Fill::NonZero, Affine::IDENTITY, tinta, None, &r);
+            s.stroke(&Stroke::new(CONTORNO_PX), Affine::IDENTITY, fundo, None, &r);
+        }
+        Cara::LimiteCentro => {
+            let mut p = ph2d_vector::BezPath::new();
+            let d = m * LOSANGO;
+            p.move_to((c.0, c.1 - d));
+            p.line_to((c.0 + d, c.1));
+            p.line_to((c.0, c.1 + d));
+            p.line_to((c.0 - d, c.1));
+            p.close_path();
+            s.fill(Fill::NonZero, Affine::IDENTITY, fundo, None, &p);
+            s.stroke(&Stroke::new(TRACO_PX[1]), Affine::IDENTITY, tinta, None, &p);
+        }
+    }
 }
 
 /// ⭐ **As tarjas do palco** (plano GEF 17 D-F): no jogo a correr, o que fica fora da caixa do jogo dentro do

@@ -67,6 +67,8 @@ pub enum DropTarget {
     /// ⭐ O campo de uma propriedade de OBJECTO no cartão Script (8c do CodeEditor): o objecto do
     /// cartão e a linha.
     ScriptObject { entity_bits: u64, row: u16 },
+    /// ⭐ GEF 20 C2 — o campo Target do Follow da câmera `entity_bits`.
+    CameraTarget { entity_bits: u64 },
     /// ⭐⭐ **Sobre uma aba de SCRIPT** (item 8 do CodeEditor, `docs/CodeEditor/07_arrastar_para_o_codigo.md`).
     /// `on_text` = o cursor está sobre o TEXTO (a aba mostra onde cairia); na calha ou na barra, não.
     Code { on_text: bool },
@@ -121,6 +123,9 @@ pub enum DropAction {
         row: u16,
         stable_id: u64,
     },
+    /// ⭐ GEF 20 C2 — a câmera `entity_bits` passa a seguir o objecto `stable_id` (pelo NOME, a referência do
+    /// `CameraFollow`).
+    SetCameraTarget { entity_bits: u64, stable_id: u64 },
     /// ⭐ D17 — uma referência NOVA ao Kanban `kanban` no quadro aberto, com o meio no ponto de ecrã
     /// `at`, seleccionada (UM passo de desfazer, que tira só a referência).
     PlaceKanban { kanban: u64, at: [f32; 2] },
@@ -188,6 +193,12 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
                 stable_id,
             }
         }
+        (DragPayload::Object { stable_id }, DropTarget::CameraTarget { entity_bits }) => {
+            DropAction::SetCameraTarget {
+                entity_bits,
+                stable_id,
+            }
+        }
         (DragPayload::Object { .. }, _) => DropAction::Refuse,
         // ⭐ Uma linha do Inspector (8b) só sabe ir para o texto; em qualquer outro sítio, desiste
         // calada — como o Godot, onde soltar uma propriedade fora do script não faz nada.
@@ -214,7 +225,9 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⛔ Um prefab não tem elemento no quadro.
         (_, DropTarget::BoardCanvas { .. }) => DropAction::Refuse,
         // ⛔ Um asset não é um objecto da cena: o campo de objecto recusa-o.
-        (_, DropTarget::ScriptObject { .. }) => DropAction::Refuse,
+        (_, DropTarget::ScriptObject { .. } | DropTarget::CameraTarget { .. }) => {
+            DropAction::Refuse
+        }
         // ⭐ Um mestre ou uma imagem no texto escreve o NOME (o 8b: `ph2d.spawn`, `sprite.image`);
         // fora do texto, nada.
         (_, DropTarget::Code { on_text: true }) => DropAction::WriteCode,

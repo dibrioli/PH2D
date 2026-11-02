@@ -57,15 +57,19 @@ pub fn seed(hero: &mut HeroScreen, world: &World, row_bits: Option<u64>, at: (f3
 /// ⭐ **Um objecto largado no campo de uma propriedade de objecto** (8c): o nome dele passa a ser o
 /// valor da propriedade `prop` do script de `entity_bits` — a mesma edição de escrever o nome.
 pub fn into_script_slot(sim: &mut SimWorld, entity_bits: u64, prop: &str, stable_id: u64) -> bool {
-    let w = sim.world_mut();
-    let Some(nome) = ph2d_ecs::entity_of_stable_id(w, StableId(stable_id))
-        .and_then(|e| w.get::<Name>(e))
-        .map(|n| n.as_str().to_owned())
-    else {
+    let Some(nome) = name_of_stable_id(sim, stable_id) else {
         return false;
     };
     let edit = ph2d_editor_core::script_edits::ScriptFieldEdit::SetObject(prop.to_owned(), nome);
     crate::script_inspector::apply(sim, entity_bits, &edit)
+}
+
+/// O nome do objecto `stable_id` — a referência que um campo de objecto escreve.
+fn name_of_stable_id(sim: &mut SimWorld, stable_id: u64) -> Option<String> {
+    let w = sim.world_mut();
+    ph2d_ecs::entity_of_stable_id(w, StableId(stable_id))
+        .and_then(|e| w.get::<Name>(e))
+        .map(|n| n.as_str().to_owned())
 }
 
 /// O mesmo, pela LINHA do cartão Script que o Inspector pintou (o largar na shell).
@@ -194,6 +198,23 @@ pub fn write_code(
     {
         surface_input::drop_hover(hero, None);
         into_script_row(libs.sim, entity_bits, row, stable_id);
+        return true;
+    }
+    // GEF 20 C2 — um objecto largado no Target do Follow: a câmera segue-o pelo nome (um passo de desfazer).
+    if let DropAction::SetCameraTarget {
+        entity_bits,
+        stable_id,
+    } = action
+    {
+        surface_input::drop_hover(hero, None);
+        if let Some(name) = name_of_stable_id(libs.sim, stable_id) {
+            hero.bus.push(
+                ph2d_editor_core::action_bus::EditorAction::InspectorCameraEdit {
+                    entity_bits,
+                    edit: ph2d_editor_core::CameraFieldEdit::Target(name),
+                },
+            );
+        }
         return true;
     }
     let cargo = (action == DropAction::WriteCode)

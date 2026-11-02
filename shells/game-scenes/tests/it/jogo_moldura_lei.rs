@@ -214,20 +214,20 @@ fn que_segue(zona: [f32; 2]) -> Moldura {
     }
 }
 
-/// ⭐ **A zona morta à vista** (onda 18, A5): a caixa é `±dz · meia` à volta da MIRA (a âncora da lei
-/// `dead_zone_goal` com o relógio parado), nunca do centro da moldura; a borda arrastada escreve a fracção do seu
-/// eixo, simétrica, cravada a `0..=1`.
+/// ⭐ **A zona morta à vista** (dono 02/11, plano GEF 20 C3): a caixa é `±dz · meia` à volta do MEIO da moldura
+/// (sem o offset da vista), nunca da mira; a borda arrastada escreve a fracção do seu eixo, simétrica, cravada a
+/// `0..=1`.
 ///
-/// **Mutações que devem sangrar:** centrar a zona na moldura · escrever o delta em vez da distância ao centro · não
-/// cravar a fracção.
+/// **Mutações que devem sangrar:** centrar a zona na mira · esquecer o offset da vista · escrever o delta em vez da
+/// distância ao centro · não cravar a fracção.
 #[test]
-fn a_zona_morta_pinta_se_a_volta_da_ancora_e_a_borda_escreve_a_fraccao() {
+fn a_zona_morta_pinta_se_no_meio_da_moldura_e_a_borda_escreve_a_fraccao() {
     let m = que_segue([0.25, 0.5]);
     let (lo, hi) = ph2d_camera_frame::caixa_da_zona(&m).expect("quem segue tem zona");
-    assert_eq!((lo, hi), ([0.0, -1.25], [4.0, 3.25]));
+    assert_eq!((lo, hi), ([2.0, 1.25], [6.0, 5.75]));
     let pegas = ph2d_camera_frame::pegas_da_zona(&m, 0.1);
     let direita = pegas[1].expect("a pega da direita");
-    assert_eq!(direita, [4.0, 1.0]);
+    assert_eq!(direita, [6.0, 3.5]);
     assert_eq!(alca_em(&m, direita, 0.1), Some(Alca::ZonaMorta(1)));
     let mut a = Arrasto::novo(
         &m,
@@ -238,7 +238,7 @@ fn a_zona_morta_pinta_se_a_volta_da_ancora_e_a_borda_escreve_a_fraccao() {
         (0.0, 0.0),
     );
     assert!(a.arma((0.0, 0.0)), "a borda arma logo");
-    assert_eq!(arrastar(&a, [6.0, 1.0]), Escrita::ZonaMorta([0.5, 0.5]));
+    assert_eq!(arrastar(&a, [8.0, 3.5]), Escrita::ZonaMorta([0.5, 0.5]));
     assert_eq!(arrastar(&a, [-6.0, 7.0]), Escrita::ZonaMorta([1.0, 0.5]));
     assert_eq!(
         edicoes(Escrita::ZonaMorta([0.5, 0.5])),

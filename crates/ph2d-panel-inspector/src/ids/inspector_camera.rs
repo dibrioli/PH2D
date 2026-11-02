@@ -52,6 +52,9 @@ pub const INSP_CAMERA_ACTIVE: NodeId = hash_node_id("insp_camera_active");
 /// O NOME do objecto seguido. ⚠️ Vazio = não segue ninguém.
 pub const INSP_CAMERA_TARGET: NodeId = hash_node_id("insp_camera_target");
 
+/// ⭐ GEF 20 C2 — o Eyedropper do Target: arma, e o próximo clique no canvas escolhe o objecto seguido.
+pub const INSP_CAMERA_TARGET_PICK: NodeId = hash_node_id("insp_camera_target_pick");
+
 /// Amortecimento por eixo, em `1/s` — X.
 pub const INSP_CAMERA_DAMP_X: NodeId = hash_node_id("insp_camera_damp_x");
 

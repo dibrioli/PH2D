@@ -486,6 +486,13 @@ pub fn set_current_inspector_camera(info: Option<InspectorCameraInfo>) {
     CURRENT_INSPECTOR_CAMERA.with(|c| *c.borrow_mut() = info);
 }
 
+/// ⭐ GEF 20 C2 — o campo Target do Follow sob o ponteiro: a câmera do Inspector (que segue) recebe a queda.
+#[must_use]
+pub fn camera_target_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
+    let info = current_inspector_camera().filter(|i| i.follow.is_some())?;
+    (id == crate::ids::INSP_CAMERA_TARGET).then_some(info.entity_bits)
+}
+
 pub(crate) fn current_inspector_camera() -> Option<InspectorCameraInfo> {
     CURRENT_INSPECTOR_CAMERA.with(|c| c.borrow().clone())
 }

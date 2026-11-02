@@ -105,6 +105,11 @@ impl crate::App {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store
                     .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
+                // GEF 20 C7: a vista abre sobre ele (antes abria na origem, com o jogador fora).
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor_core::ViewFocusKind::Selected,
+                    });
             }
         }
         self.troca_de_imagem_do_smoke(nivel);

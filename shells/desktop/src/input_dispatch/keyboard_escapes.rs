@@ -98,6 +98,15 @@ impl App {
             return true;
         }
 
+        // A alça da CÂMERA a meio de um arrasto (GEF 20 C4): volta ao valor do press.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.camera_frame_escape()
+        {
+            return true;
+        }
+
         // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
         // Escape do Pen porque um modo exclui o outro, e este consome só quando há
         // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).

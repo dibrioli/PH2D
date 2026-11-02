@@ -33,6 +33,15 @@ pub(crate) fn apply_camera_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     let bits = info.entity_bits;
 
     if let WidgetEvent::Click(id) = ev {
+        if id == crate::ids::INSP_CAMERA_TARGET_PICK {
+            let armado = info.canvas.escolhe_alvo.is_some();
+            push(
+                host,
+                bits,
+                CameraFieldEdit::PickTarget((!armado).then_some(bits)),
+            );
+            return true;
+        }
         return format_click(host, bits, &info, id);
     }
 

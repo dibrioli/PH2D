@@ -573,6 +573,75 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "game_format.custom" => "Custom",
         "game.camera_frame.label" => "{NAME} \u{b7} {W} \u{d7} {H} {UNIT}",
         "game.camera_frame.follows" => "follows {TARGET}",
+        "game.camera_frame.limits_tag" => "Limits",
+        "panel.inspector.camera.tip.height" => {
+            "How much of the world the camera shows, from top to bottom. Smaller = closer. You can also drag a corner of the camera frame on the canvas."
+        }
+        "panel.inspector.camera.tip.view_offset" => {
+            "Shifts the picture away from the camera's center, without moving the camera."
+        }
+        "panel.inspector.camera.tip.priority" => {
+            "When several cameras are on, the one with the highest number shows the game."
+        }
+        "panel.inspector.camera.tip.active" => "Off = this camera never shows the game.",
+        "panel.inspector.camera.tip.dolly" => {
+            "Moves the camera toward the background layers, so they grow as if you walked closer."
+        }
+        "panel.inspector.camera.tip.look_through" => {
+            "Shows the canvas exactly as this camera sees it."
+        }
+        "panel.inspector.camera.tip.cull" => {
+            "Which layers this camera shows. Unticked layers are hidden in this camera only."
+        }
+        "panel.inspector.camera.tip.target_pick" => {
+            "Eyedropper: click this, then click an object on the canvas for the camera to follow. Esc cancels."
+        }
+        "panel.inspector.camera.tip.target" => {
+            "The object the camera follows. Type its name, drag it here from the Hierarchy, or use the eyedropper and click it on the canvas."
+        }
+        "panel.inspector.camera.tip.damping" => {
+            "How quickly the camera catches up with the object. Higher = snappier, 0 = instant."
+        }
+        "panel.inspector.camera.tip.dead_zone" => {
+            "A box in the middle of the view where the object can move without the camera moving. 0 = the camera always moves. Drag its round handles on the canvas."
+        }
+        "panel.inspector.camera.tip.lookahead" => {
+            "Lets the camera look ahead of a moving object, in seconds of its speed."
+        }
+        "panel.inspector.camera.tip.follow_offset" => {
+            "Where the camera aims, relative to the object. Drag inside the camera frame to change it."
+        }
+        "panel.inspector.camera.tip.limits" => {
+            "The edges of the level: the camera never shows past them. Drag the orange edges on the canvas. Double-click a handle to fit them to the level."
+        }
+        "panel.inspector.camera.tip.format" => {
+            "The shape of the game screen. The camera frame on the canvas uses it."
+        }
+        "panel.inspector.camera.tip.custom_size" => "The width and height of a custom game screen.",
+        "panel.inspector.camera.tip.frame" => {
+            "Always = every camera frame shows on the canvas. Selected = only the selected camera's."
+        }
+        "panel.inspector.camera.tip.outside" => {
+            "Dimmed = darkens the canvas outside the camera frame."
+        }
+        "panel.inspector.camera.tip.editor_view" => {
+            "Follows = the canvas moves with the camera while the game runs."
+        }
+        "panel.inspector.camera.tip.preview" => {
+            "Shows a small picture of what the camera sees in the canvas corner."
+        }
+        "panel.inspector.camera.tip.icon_size" => "The size of the camera icon on the canvas.",
+        "game.camera_frame.dead_zone_tag" => "Dead Zone",
+        "game.camera_frame.handle.zoom" => "Zoom \u{b7} Height {V}",
+        "game.camera_frame.handle.move" => "Move Camera \u{b7} {V}",
+        "game.camera_frame.handle.follow_offset" => "Follow Offset \u{b7} {V}",
+        "game.camera_frame.handle.dead_zone" => "Dead Zone \u{b7} {V} %",
+        "game.camera_frame.handle.limit_left" => "Limits \u{b7} Left {V}",
+        "game.camera_frame.handle.limit_right" => "Limits \u{b7} Right {V}",
+        "game.camera_frame.handle.limit_bottom" => "Limits \u{b7} Bottom {V}",
+        "game.camera_frame.handle.limit_top" => "Limits \u{b7} Top {V}",
+        "game.camera_frame.handle.limit_corner" => "Limits \u{b7} Corner {V}",
+        "game.camera_frame.handle.limit_move" => "Limits \u{b7} Move",
         "panel.inspector.camera.icon_size" => "Icon Size",
         "panel.inspector.camera.format" => "Game Format",
         "panel.inspector.camera.custom_size" => "Size",

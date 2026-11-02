@@ -135,9 +135,19 @@ impl crate::App {
                     pixels_per_meter: hero.project.pixels_per_meter,
                     icone_px: hero.project.camera_icon_px,
                     em_edicao: self.undo.camera_no_canvas.em_edicao,
-                    canvas: [viewport.x, viewport.y, viewport.w, viewport.h],
+                    canvas: ph2d_camera_frame::tinta::canvas_util(
+                        [viewport.x, viewport.y, viewport.w, viewport.h],
+                        hero.view.rulers_visible,
+                    ),
                     ponteiro: self.last_pointer,
                     escurecer: hero.view.camera_canvas.dim_outside,
+                    agarrada: self
+                        .undo
+                        .camera_no_canvas
+                        .arrasto
+                        .as_ref()
+                        .filter(|a| !a.era_um_clique())
+                        .map(|a| a.alca),
                 },
                 hero.theme,
                 camera,

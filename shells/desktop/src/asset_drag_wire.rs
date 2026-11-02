@@ -17,7 +17,7 @@
 use ph2d_app_components::asset_drop::{DropAction, DropOver, DropTarget};
 use ph2d_app_components::object_drag;
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
-use ph2d_panel_inspector::script_object_slot_pick;
+use ph2d_panel_inspector::{camera_target_slot_pick, script_object_slot_pick};
 
 impl crate::App {
     /// **`Down`** — se o botão caiu num cartão do navegador, semeia o arrasto.
@@ -158,6 +158,7 @@ impl crate::App {
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
         let inspector_slot = self.inspector_slot_under(x, y);
         let campo = self.chrome_id_under(x, y).and_then(script_object_slot_pick);
+        let alvo_da_camera = self.chrome_id_under(x, y).and_then(camera_target_slot_pick);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
         let (on_canvas, world, code, home, board) = {
@@ -187,6 +188,8 @@ impl crate::App {
             DropTarget::InspectorTexture { entity_bits }
         } else if let Some((entity_bits, row)) = campo {
             DropTarget::ScriptObject { entity_bits, row }
+        } else if let Some(entity_bits) = alvo_da_camera {
+            DropTarget::CameraTarget { entity_bits }
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
         } else if home {
@@ -270,7 +273,7 @@ impl crate::App {
             } => {
                 self.drop_place_prefab(stable_id, world, over);
             }
-            DropAction::SetScriptObject { .. } => {} // `object_drag::write_code` já o fez
+            DropAction::SetScriptObject { .. } | DropAction::SetCameraTarget { .. } => {} // `object_drag::write_code` já o fez
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.choose_image(entity_bits, asset);
             }

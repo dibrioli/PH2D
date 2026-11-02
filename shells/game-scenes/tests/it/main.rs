@@ -3,6 +3,7 @@
 
 mod comp;
 mod jogo_camara;
+mod jogo_camera_intuitiva;
 mod jogo_encaixe;
 mod jogo_miniatura;
 mod jogo_moldura;

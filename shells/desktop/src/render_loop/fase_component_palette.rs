@@ -63,15 +63,22 @@ impl crate::App {
         );
         let picked =
             ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
-        ph2d_app_components::component_attach::attach_picked(
-            picked.as_ref(),
-            sim,
-            component_registry,
-            // ⭐ A COMPOSIÇÃO entrega as sementes da família dona (auditoria A1): a família de
-            // componentes não conhece a física.
-            ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
-            toasts,
-        );
+        // ⭐ A COMPOSIÇÃO entrega as sementes das famílias donas (auditoria A1): a da física e a cerca da
+        // câmera no contorno do nível (GEF 20 C6).
+        if picked.is_some() {
+            let seeds = [
+                ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
+                &[("ph2d::ecs::CameraLimits", ph2d_camera_frame::semeia_limites)],
+            ]
+            .concat();
+            ph2d_app_components::component_attach::attach_picked(
+                picked.as_ref(),
+                sim,
+                component_registry,
+                &seeds,
+                toasts,
+            );
+        }
         if let Some(bits) = animation_for {
             use ph2d_timeline::{AnimationIntent, TimelineIntent};
             self.timeline_intents

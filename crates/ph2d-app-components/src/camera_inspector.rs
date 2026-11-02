@@ -183,7 +183,8 @@ pub fn apply_camera_edit(
         | CameraFieldEdit::IconSize(_)
         | CameraFieldEdit::DimOutside(_)
         | CameraFieldEdit::ViewFollows(_)
-        | CameraFieldEdit::Thumbnail(_) => {}
+        | CameraFieldEdit::Thumbnail(_)
+        | CameraFieldEdit::PickTarget(_) => {}
 
         CameraFieldEdit::Height(_)
         | CameraFieldEdit::Offset(_)

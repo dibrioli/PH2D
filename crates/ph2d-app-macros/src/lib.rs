@@ -10,7 +10,6 @@ pub mod biblioteca;
 pub mod cena_da_biblioteca;
 /// `PH2D_MACRO_SMOKE=8`: o player pintado, o collider e «Simular», gravados e aplicados (W19).
 pub mod cena_do_mundo;
-pub mod icone_no_canvas;
 mod conferencia;
 pub mod erros;
 pub mod espera;
@@ -18,6 +17,7 @@ pub mod etapas;
 /// As etapas da família «mundo» (W19) pela porta comum.
 pub mod etapas_mundo;
 mod gestos;
+pub mod icone_no_canvas;
 pub mod instala;
 /// A família «mundo» (W19): componentes, objectos e «Simular» dentro do objecto Macro.
 pub mod mundo;

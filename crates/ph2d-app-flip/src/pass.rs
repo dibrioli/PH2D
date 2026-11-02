@@ -680,9 +680,7 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
     object_id.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (layer_id as u64)
 }
 
-// ⭐ A CÂMERA do passe mora na `ph2d-flip-render` desde a auditoria de arquitectura de 2026-09-12
-// (A1): a assadura do Motion e a sonda `ph2d-pan-diag` usam a MESMA convenção — duas cópias
-// divergiriam no Y ou na régua de espessura — e, para a ter, dependiam desta família inteira.
+// A CÂMERA do passe mora na `ph2d-flip-render` (A1, 12/09): a mesma da assadura do Motion.
 use ph2d_flip_render::camera::{camera_scene, fold_model, parallax_model};
 // O passe já não chama a versão SEM sub-retângulo (ela sobrevive dentro do `camera_scene`, no ramo
 // `None`), mas o `multiplane_tests` endereça-a por `super::camera_raw`.

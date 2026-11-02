@@ -459,5 +459,8 @@ fn uma_camada_escalada_envolve_pelo_ladrilho_escalado() {
             corrigiu += 1;
         }
     }
-    assert!(corrigiu > 0, "controlo: a varredura nunca saiu do 1.o ladrilho");
+    assert!(
+        corrigiu > 0,
+        "controlo: a varredura nunca saiu do 1.o ladrilho"
+    );
 }

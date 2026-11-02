@@ -119,9 +119,8 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod build_smoke_router;
-// ⛔ A fachada `canvas_area` (um `pub(crate) use ph2d_app_host::canvas_area::visible`) morreu em
-// 2026-09-13: o último leitor dela era o palco do prefab, que se mudou para `ph2d-app-components` e
-// escreve o caminho da porta.
+// ⛔ A fachada `canvas_area` morreu em 13/09: o último leitor (o palco do prefab) mudou-se para
+// `ph2d-app-components` e escreve o caminho da porta.
 /// ⭐⭐ **A cor com que a camada de sprites é limpa** — o fundo que o artista vê no canvas, hoje
 /// derivado da porta única em vez de escrito à mão. Ver o cabeçalho de lá.
 mod canvas_clear;

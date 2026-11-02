@@ -96,8 +96,7 @@ mod inspector_model_tags;
 mod inspector_model_timer;
 pub mod layout_switch;
 pub mod layout_tabs;
-/// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
-/// que uma tela É, este diz o que ela FAZ a cada quadro.
+/// O tique da UI viva (o `motion` + a corda): o `HeroScreen` diz o que a tela É; este, o que FAZ.
 mod live;
 /// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
 pub mod menu_bar;

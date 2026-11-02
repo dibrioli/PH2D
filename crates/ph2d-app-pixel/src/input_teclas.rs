@@ -43,7 +43,17 @@ pub fn key_with(
 ) -> Option<KeyAnswer> {
     let (ctrl, shift) = (m.ctrl, m.shift);
     if m.alt {
-        editing.and_then(|bits| key_of(world, bits))?;
+        let key = editing.and_then(|bits| key_of(world, bits))?;
+        if let Some(n) = espaco(code).filter(|_| !app.stroking() && !ctrl && !shift) {
+            return Some(if app.recupera(key, n) {
+                KeyAnswer::Toast(ph2d_i18n::tr_with(
+                    "pixel.brush.recalled",
+                    &[("n", &(n + 1).to_string())],
+                ))
+            } else {
+                KeyAnswer::Quiet
+            });
+        }
         return com_alt(app, code, ctrl, shift);
     }
     let bits = editing?;
@@ -163,6 +173,22 @@ fn com_alt(app: &mut PixelApp, code: KeyCode, ctrl: bool, shift: bool) -> Option
         (KeyCode::KeyI, false, false) => quadro(app, PixelFrameAction::Reverse),
         _ => return None,
     })
+}
+
+/// Alt+1…Alt+9: o espaço de pincel (de 0).
+fn espaco(code: KeyCode) -> Option<usize> {
+    const D: [KeyCode; 9] = [
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
+        KeyCode::Digit6,
+        KeyCode::Digit7,
+        KeyCode::Digit8,
+        KeyCode::Digit9,
+    ];
+    D.iter().position(|&d| d == code)
 }
 
 fn quadro(app: &mut PixelApp, a: PixelFrameAction) -> KeyAnswer {

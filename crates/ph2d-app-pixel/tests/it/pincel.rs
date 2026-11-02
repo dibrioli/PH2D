@@ -6,6 +6,7 @@ use ph2d_app_pixel::Tool;
 use ph2d_app_pixel::compose::Mods;
 use ph2d_app_pixel::input::{self, Button, Press};
 use ph2d_editor_core::pixel_panel::PixelRequest;
+use ph2d_pixel_io::brush_file::BrushParams;
 use winit::keyboard::KeyCode;
 
 use crate::edit::{at, canvas};
@@ -126,4 +127,78 @@ fn the_eraser_erases_with_the_brush_shape() {
     p.ferramenta(Tool::Eraser);
     ponto(&mut p, (71, 55));
     assert_eq!((p.rgba(70, 55), p.rgba(71, 55)), (T, T));
+}
+
+fn com_alt(p: &mut Palco, k: KeyCode) {
+    let m = Mods {
+        alt: true,
+        ..Mods::default()
+    };
+    let a = ph2d_app_pixel::input::key_with(&mut p.app, p.sim.world(), Some(p.bits), k, m);
+    assert!(a.is_some(), "{k:?} é da família");
+    p.quadro();
+}
+
+#[test]
+fn each_ctrl_b_is_a_new_slot_and_alt_n_recalls_it_with_the_images_colours() {
+    let mut p = palco();
+    p.pede(PixelRequest::Fg(G));
+    ponto(&mut p, (62, 50));
+    seleciona(&mut p, (60, 50), (61, 50));
+    p.tecla(KeyCode::KeyB, true, false);
+    seleciona(&mut p, (61, 50), (62, 50));
+    p.tecla(KeyCode::KeyB, true, false);
+    let l = p.app.espacos().to_vec();
+    assert_eq!(l.len(), 2, "cada Ctrl+B, um espaço");
+    assert!(
+        l.iter()
+            .all(|s| !s.locked && s.params == BrushParams::NEW_BRUSH)
+    );
+    // Escolher uma cor pinta o pincel inteiro nela; Alt+1 devolve o 1.º com as cores da imagem.
+    p.pede(PixelRequest::Fg(R));
+    p.opcoes(|o| o.size = 7);
+    com_alt(&mut p, KeyCode::Digit1);
+    ponto(&mut p, (71, 55));
+    assert_eq!(
+        (p.rgba(70, 55), p.rgba(71, 55)),
+        (R, B),
+        "o 1.º, com as cores dele"
+    );
+    assert_eq!(p.app.options.size, 7, "o tamanho não é dele: fica o actual");
+    com_alt(&mut p, KeyCode::Digit2);
+    ponto(&mut p, (71, 57));
+    assert_eq!(
+        (p.rgba(70, 57), p.rgba(71, 57)),
+        (G, B),
+        "o 2.º (B G, Source preso a 61)"
+    );
+    com_alt(&mut p, KeyCode::Digit9);
+}
+
+#[test]
+fn the_slots_live_in_the_users_folder_and_survive_a_new_session() {
+    let dir = std::env::temp_dir().join(format!("ph2d_pinceis_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut p = palco();
+    p.app.pinceis = Some(dir.clone());
+    seleciona(&mut p, (60, 50), (61, 50));
+    p.tecla(KeyCode::KeyB, true, false);
+    let texto = std::fs::read_to_string(dir.join(ph2d_app_pixel::pinceis::FILE)).expect("gravou");
+    assert!(texto.contains("row ff0000ff 0000ffff\n"), "{texto}");
+    let mut outra = ph2d_app_pixel::PixelApp::default();
+    outra.pinceis = Some(dir.clone());
+    assert_eq!(
+        outra.espacos(),
+        p.app.espacos(),
+        "a sessão nova lê a mesma lista"
+    );
+    std::fs::write(dir.join(ph2d_app_pixel::pinceis::FILE), "lixo").expect("w");
+    let mut estragada = ph2d_app_pixel::PixelApp::default();
+    estragada.pinceis = Some(dir.clone());
+    assert!(estragada.espacos().is_empty());
+    assert!(
+        estragada.take_avisos().iter().any(|(erro, _)| *erro),
+        "e avisa"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }

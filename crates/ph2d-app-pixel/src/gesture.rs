@@ -79,6 +79,18 @@ pub(crate) fn ink(i: ph2d_editor_core::pixel_panel::PixelInk) -> Ink {
     }
 }
 
+/// A tinta do núcleo no vocabulário do chrome (um espaço guardado que volta).
+pub(crate) fn ink_out(i: Ink) -> ph2d_editor_core::pixel_panel::PixelInk {
+    use ph2d_editor_core::pixel_panel::PixelInk as I;
+    match i {
+        Ink::Simple => I::Simple,
+        Ink::AlphaCompositing => I::AlphaCompositing,
+        Ink::CopyAlphaColor => I::CopyAlphaColor,
+        Ink::LockAlpha => I::LockAlpha,
+        Ink::Shading => I::Shading,
+    }
+}
+
 /// O pincel, a simetria, o ladrilho e a tinta das opções, para o documento `doc`; `pincel` = o
 /// copiado da selecção (Ctrl+B), que toma o lugar da forma.
 pub(crate) fn paint(

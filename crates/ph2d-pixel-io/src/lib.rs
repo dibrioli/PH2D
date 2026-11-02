@@ -6,6 +6,7 @@
 
 use ph2d_pixel_core::{FrameId, Sprite, compose_rgba};
 
+pub mod brush_file;
 pub mod msk;
 pub mod palette_file;
 

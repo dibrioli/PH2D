@@ -209,6 +209,11 @@ pub struct PixelApp {
     pub(crate) recorte: bool,
     /// A mão do traço livre em curso (P7: dinâmica e corda); `None` = desligadas.
     pub(crate) mao: Option<crate::mao::Mao>,
+    /// A pasta dos pincéis guardados (Alt+1…); `None` = só nesta sessão (os testes e os palcos
+    /// nunca leem a HOME real).
+    pub pinceis: Option<std::path::PathBuf>,
+    /// Os espaços (lidos da pasta na 1.ª pergunta).
+    pub(crate) espacos: Option<Vec<ph2d_pixel_io::brush_file::BrushSlot>>,
 }
 
 impl Default for PixelApp {
@@ -267,6 +272,8 @@ impl Default for PixelApp {
             pincel_imagem: true,
             recorte: false,
             mao: None,
+            pinceis: None,
+            espacos: None,
         }
     }
 }
@@ -279,6 +286,7 @@ impl PixelApp {
         Self {
             smoke: crate::smoke::armed_level(),
             paletas: crate::paleta::pasta_do_utilizador(),
+            pinceis: crate::pinceis::pasta_do_utilizador(),
             ..Self::default()
         }
     }

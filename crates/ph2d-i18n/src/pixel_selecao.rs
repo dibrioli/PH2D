@@ -106,6 +106,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.select.refuse.nothing" => "Nothing to transform here",
         "pixel.edit.refuse.clipboard" => "Nothing copied yet",
         "pixel.sprite.refuse.trim" => "Nothing to trim",
+        "pixel.brush.read_failed" => "Your saved brushes could not be read: {e}",
+        "pixel.brush.save_failed" => "Your brushes could not be saved: {e}",
+        "pixel.brush.saved" => "Brush saved in slot {n} (Alt+{n})",
+        "pixel.brush.recalled" => "Brush {n}",
         "pixel.brush.select_bounds" => {
             "Drag over the area that becomes the brush (right-drag also cuts it out)"
         }

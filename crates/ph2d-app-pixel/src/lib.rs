@@ -26,6 +26,7 @@ pub mod object_add;
 pub mod paleta;
 pub mod panel;
 pub mod persist;
+pub mod pinceis;
 mod pincel;
 pub mod quadros;
 pub mod selecao;

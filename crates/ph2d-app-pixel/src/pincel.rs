@@ -29,6 +29,7 @@ impl PixelApp {
         };
         let op = selection::deselect(s);
         self.pega_pincel(p);
+        self.espaco_do_ctrl_b(key);
         self.passo(key, op);
     }
 
@@ -63,6 +64,7 @@ impl PixelApp {
             .then(|| crate::edicao::limpa(s, ck, &m, self.fundo(s)))
             .flatten();
         self.pega_pincel(p);
+        self.espaco_do_ctrl_b(key);
         if let Some(motivo) = recusa {
             self.recusa(motivo);
         }

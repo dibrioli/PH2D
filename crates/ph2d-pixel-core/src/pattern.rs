@@ -98,6 +98,57 @@ impl PatternBrush {
         self.values[self.idx(i, j)]
     }
 
+    /// As células `w × h` em RGBA para guardar fora do sprite: `None` = fora da máscara,
+    /// `Some(None)` = transparente.
+    #[must_use]
+    pub fn to_rgba(&self, s: &Sprite) -> Vec<Option<Option<[u8; 4]>>> {
+        let mut out: Vec<_> = self
+            .values
+            .iter()
+            .map(|v| Some(v.map(|v| s.rgba_of_value(v))))
+            .collect();
+        let mut dentro = vec![false; out.len()];
+        for &(i, j) in &self.foot {
+            dentro[self.idx(i, j)] = true;
+        }
+        for (c, d) in out.iter_mut().zip(dentro) {
+            if !d {
+                *c = None;
+            }
+        }
+        out
+    }
+
+    /// O inverso de [`Self::to_rgba`] no modo do sprite `s` (Indexed: a cor mais próxima da
+    /// paleta); `None` se as medidas não batem ou a máscara está vazia.
+    #[must_use]
+    pub fn from_rgba(
+        s: &Sprite,
+        (w, h): (u32, u32),
+        cells: &[Option<Option<[u8; 4]>>],
+        origin: Cell,
+    ) -> Option<Self> {
+        if w == 0 || h == 0 || cells.len() != (w * h) as usize {
+            return None;
+        }
+        let mut foot = Vec::new();
+        let mut values = Vec::with_capacity(cells.len());
+        for (k, c) in cells.iter().enumerate() {
+            if c.is_some() {
+                foot.push(((k as u32 % w) as i32, (k as u32 / w) as i32));
+            }
+            let v = c.flatten().map(|rgba| s.value_of_rgba(rgba));
+            values.push(v.filter(|&v| !is_clear(s, v)));
+        }
+        (!foot.is_empty()).then_some(Self {
+            w,
+            h,
+            foot,
+            values,
+            origin,
+        })
+    }
+
     /// O pincel virado ou girado pela permutação `f` de [`crate::transform`] (`flip_h`, `flip_v`,
     /// `rot90cw`, `rot90ccw`, `rot180`): valores e máscara juntos; o ponto da âncora no sprite
     /// (`origin + âncora`) não se mexe, e o `Source` não salta. Dono 02/11 (o Aseprite não o tem).

@@ -30,7 +30,8 @@ fn a_curva_escreve_o_osso_pelas_cercas_do_painel() {
     assert_eq!(os.segments, 4);
     manda(&mut sim, b, o::COMPRIMENTO, -5.0);
     aplicar(&mut sim, &mut PreviewDrive::default());
-    assert!(osso(&sim, b).length.abs() < f64::EPSILON);
+    // A cerca do Length é o PISO `COMPRIMENTO_MINIMO` (F41 smoke, 30/10), não o zero.
+    assert!((osso(&sim, b).length - crate::knobs::COMPRIMENTO_MINIMO).abs() < f64::EPSILON);
 }
 
 /// Publicar põe os números do osso em `CanaisLidos`; sem osso, nada.

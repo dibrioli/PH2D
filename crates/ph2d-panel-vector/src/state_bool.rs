@@ -26,12 +26,6 @@ pub(crate) fn bool_group_op() -> Option<u8> {
     GROUP_OP.with(Cell::get)
 }
 
-/// Há booleana viva selecionada? É isto que oferece o **Flatten** com uma forma só.
-#[must_use]
-pub(crate) fn bool_group_selected() -> bool {
-    bool_group_op().is_some()
-}
-
 /// **O verbo da forma selecionada** dentro de uma booleana viva (shell → painel).
 ///
 /// `None` faz a fileira **não existir**, e ele carrega a regra inteira — irmão exacto do

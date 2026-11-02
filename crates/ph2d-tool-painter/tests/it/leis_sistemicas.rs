@@ -73,8 +73,8 @@ fn pinta_com(p: &Pincel, cena: &str, nomes: &[&str], sem_pressao: bool) -> (Vec<
 }
 
 /// Uma coluna do traço horizontal: a cobertura na normal (±h), a largura a ¼ do máximo dela e o centro (o do meio
-/// da janela quando a coluna está vazia, `np.nan_to_num` do Python).
-fn coluna(px: &[u8], w: usize, x: usize, y: f64, h: f64) -> (Vec<f64>, f64, f64) {
+/// da janela quando a coluna está vazia, `np.nan_to_num` do Python): vazia é a coluna cujo máximo fica abaixo de `piso`.
+fn coluna_piso(px: &[u8], w: usize, x: usize, y: f64, h: f64, piso: f64) -> (Vec<f64>, f64, f64) {
     let (y0, y1) = ((y - h).max(0.0) as usize, (y + h) as usize);
     let c: Vec<f64> = (y0..=y1)
         .map(|yy| {
@@ -87,7 +87,7 @@ fn coluna(px: &[u8], w: usize, x: usize, y: f64, h: f64) -> (Vec<f64>, f64, f64)
         .collect();
     let mx = c.iter().copied().fold(0.0, f64::max);
     let meio = (c.len() / 2) as f64;
-    if mx < 0.08 {
+    if mx < piso {
         return (c, 0.0, meio);
     }
     let dentro: Vec<usize> = (0..c.len()).filter(|&i| c[i] >= 0.25 * mx).collect();
@@ -101,6 +101,12 @@ fn coluna(px: &[u8], w: usize, x: usize, y: f64, h: f64) -> (Vec<f64>, f64, f64)
 /// da largura MEDIANA do traço em volta do centro da coluna (a do `exame_regua.py`: numa pressão baixa o miolo é
 /// a mesma banda, e o papel que nela aparece é o esmaecer).
 fn colunas(px: &[u8], w: usize, t: &Value) -> Vec<(f64, f64, f64)> {
+    colunas_piso(px, w, t, None)
+}
+
+/// [`colunas`] com o piso da coluna RELATIVO ao topo do próprio traço (`rel` × a mediana do máximo das colunas a
+/// pressão ≥ 0,9); `None`: o piso absoluto 0,08 do `exame_regua.py`.
+fn colunas_piso(px: &[u8], w: usize, t: &Value, rel: Option<f64>) -> Vec<(f64, f64, f64)> {
     let pts: Vec<[f64; 3]> = t["pts"]
         .as_array()
         .unwrap()
@@ -115,9 +121,23 @@ fn colunas(px: &[u8], w: usize, t: &Value) -> Vec<(f64, f64, f64)> {
         let f = ((x - a[0]) / (b[0] - a[0]).max(1e-9)).clamp(0.0, 1.0);
         a[2] + (b[2] - a[2]) * f
     };
+    let piso = rel.map_or(0.08, |r| {
+        let mut topo: Vec<f64> = (x0 as usize..=x1 as usize)
+            .filter(|&x| pressao(x as f64) >= 0.9)
+            .map(|x| {
+                coluna_piso(px, w, x, y, h, 0.0)
+                    .0
+                    .iter()
+                    .copied()
+                    .fold(0.0, f64::max)
+            })
+            .collect();
+        topo.sort_by(f64::total_cmp);
+        r * topo[topo.len() / 2]
+    });
     let cols: Vec<(f64, Vec<f64>, f64, f64)> = (x0 as usize..=x1 as usize)
         .map(|x| {
-            let (c, l, cen) = coluna(px, w, x, y, h);
+            let (c, l, cen) = coluna_piso(px, w, x, y, h, piso);
             (pressao(x as f64), c, l, cen)
         })
         .collect();
@@ -378,10 +398,17 @@ fn mao(l: &[f64; 10], c: &[f64; 10]) -> Result<f64, String> {
 /// pouco variam pouco») e aprovava a lei de antes (3,2–10 na régua); 2,5 fica perto da média geométrica dos dois.
 const R_MAO: f64 = 2.5;
 
+/// O piso da coluna na régua da mão, × o topo do PRÓPRIO traço: o absoluto (0,08) emudecia a aguada clara — o Wet
+/// Wash da linha (topo 0,176) lia o decil 2 vazio com 0,059 de cobertura; a 0,08 × o topo lê 2,90× (o main 3,00).
+const PISO_DA_MAO: f64 = 0.08;
+
 /// A resposta da MÃO de `p` (a régua `rampa_0_1` da bateria `gestos`): quanto a faixa da mão do dono varia.
 fn mao_do_pincel(p: &Pincel, sem_pressao: bool) -> Result<f64, String> {
     let (px, ts) = pinta_com(p, "gestos", &["rampa_0_1"], sem_pressao);
-    let n: Vec<([f64; 10], [f64; 10])> = ts.iter().map(|t| decis(&colunas(&px, 1000, t))).collect();
+    let n: Vec<([f64; 10], [f64; 10])> = ts
+        .iter()
+        .map(|t| decis(&colunas_piso(&px, 1000, t, Some(PISO_DA_MAO))))
+        .collect();
     let m = mao(&n[0].0, &n[0].1);
     println!(
         "[pressao] {} (sem pressão: {sem_pressao}): mão {m:.2?}",
@@ -406,7 +433,8 @@ fn maos(sem_pressao: bool) -> Vec<(String, Result<f64, String>)> {
 /// A lei da MÃO (dono 18/10): todo preset com origem responde ≥ [`R_MAO`] na faixa da mão. A paridade com a rampa do
 /// Rebelle (a antiga lei (a), `BARRA_DA_PRESSAO` 0,18 e o controlo `rampa_torta`) saiu: o Rebelle deixou de ser a
 /// referência (dono 31/10, `project-memory/project_rebelle_no_longer_the_reference_2026_10_31.md`). Sem o 99 do decil
-/// 2 mudo (02/11) reprovam 7: Graphite 2H · HB · 2B · 8B, Colored 4B, Wet Flat e Wet Wash (largura 0 no decil 2).
+/// 2 mudo (02/11), com o [`PISO_DA_MAO`] relativo, reprovam 2 — iguais no `main`: Graphite 8B (máximo da coluna no
+/// decil 2 0,063, topo 0,898) e Colored 4B (0,024, topo 0,792) quase não marcam a pressão 0,2–0,3 (a curva do preset).
 /// **Mutação que sangra:** a pressão presa a 1 ([`a_regua_da_mao_reprova_a_pressao_desligada`]: 0,89–1,05×).
 #[test]
 fn a_pressao_de_cada_preset_responde_na_faixa_da_mao() {

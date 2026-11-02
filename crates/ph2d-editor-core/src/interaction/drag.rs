@@ -107,7 +107,6 @@ pub struct NumberStepperHoldState {
     pub last_tick_ns: u128,
 }
 
-
 /// ⭐ **O limiar de MÃO PARADA do app** — quanto o cursor tem de andar, a partir do `Down`, para
 /// o gesto deixar de poder ser um clique.
 ///

@@ -42,7 +42,8 @@ const PAINTS_AN_ICON_AND_ITS_LABEL: &[&str] = &[
     "crates/ph2d-editor-core/src/screens/hero/slot_tabs_face.rs",
     "crates/ph2d-editor-core/src/screens/hero/topbar/cluster_painter.rs",
     "crates/ph2d-panel-hierarchy/src/row.rs",
-    "crates/ph2d-panel-vector/src/paint_stack_rows.rs",
+    // ⛔ `ph2d-panel-vector/src/paint_stack_rows.rs` saiu (F44/F45, 01/11): a linha de uma camada
+    // passou a ser a de Fill & Stroke (`[cor] [%] [⚙] [👁] [−]`) — sem rótulo depois de um ícone.
 ];
 
 /// `(caminho, porquê o vão ali NÃO é «um ícone e a legenda dele»)`.
@@ -57,15 +58,9 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
         "COLUNA RESERVADA: o `icon_w` ali e' a largura que a linha guarda para o botao de apagar \
          na ponta direita, e a soma que a regua ve^ e' OUTRO argumento da mesma chamada",
     ),
-    (
-        "crates/ph2d-panel-vector/src/paint_effects.rs",
-        "ICONE -> ICONE: uma fileira de encaixes de icone a` direita da linha; o passo entre dois \
-         encaixes e' a lei do grupo, nao a legenda de nenhum deles",
-    ),
-    (
-        "crates/ph2d-panel-vector/src/paint_filters.rs",
-        "ICONE -> ICONE: a mesma fileira de encaixes, no painel irma~o",
-    ),
+    // ⛔ `ph2d-panel-vector/src/paint_effects.rs` saiu (F43, 01/11): os efeitos viraram a lista do
+    // Figma (`paint_fx_list.rs`) e a fileira de encaixes de ícone deixou de existir.
+    // ⛔ e o irmão `paint_filters.rs` pela mesma razão (a lista `paint_fx_list.rs`).
     (
         "crates/ph2d-editor-core/src/widget/showcase/actions.rs",
         "ICONE -> CHIP: a bancada po~e um botao ao lado de uma etiqueta; sa~o dois widgets, e nao \

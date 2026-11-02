@@ -6,6 +6,7 @@
 use crate::raster::Cell;
 use crate::selection::Mask;
 use crate::sprite::{CelKey, ColorMode, Sprite};
+use crate::transform::Image;
 
 /// Onde o padrão está quando o pincel carimba (o dropdown da barra de contexto do Aseprite).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -95,6 +96,48 @@ impl PatternBrush {
         let i = (at.0 - ox).rem_euclid(self.w as i32);
         let j = (at.1 - oy).rem_euclid(self.h as i32);
         self.values[self.idx(i, j)]
+    }
+
+    /// O pincel virado ou girado pela permutação `f` de [`crate::transform`] (`flip_h`, `flip_v`,
+    /// `rot90cw`, `rot90ccw`, `rot180`): valores e máscara juntos; o ponto da âncora no sprite
+    /// (`origin + âncora`) não se mexe, e o `Source` não salta. Dono 02/11 (o Aseprite não o tem).
+    #[must_use]
+    pub fn permuted(&self, f: impl Fn(&Image) -> Image) -> Self {
+        let n = self.w * self.h;
+        let idx = f(&Image::from_values(
+            self.w,
+            self.h,
+            4,
+            &(0..n).collect::<Vec<_>>(),
+        ));
+        let (w, h) = (idx.w, idx.h);
+        let dentro: Vec<bool> = {
+            let mut d = vec![false; n as usize];
+            for &(i, j) in &self.foot {
+                d[self.idx(i, j)] = true;
+            }
+            d
+        };
+        let mut foot = Vec::new();
+        let mut values = Vec::with_capacity(n as usize);
+        for y in 0..h {
+            for x in 0..w {
+                let k = idx.get(x, y) as usize;
+                if dentro[k] {
+                    foot.push((x as i32, y as i32));
+                }
+                values.push(self.values[k]);
+            }
+        }
+        let (ax, ay) = self.anchor();
+        let (bx, by) = ((w / 2) as i32, (h / 2) as i32);
+        Self {
+            w,
+            h,
+            foot,
+            values,
+            origin: (self.origin.0 + ax - bx, self.origin.1 + ay - by),
+        }
     }
 
     fn idx(&self, i: i32, j: i32) -> usize {

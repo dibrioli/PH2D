@@ -266,3 +266,88 @@ fn a_chosen_colour_paints_the_whole_pattern_brush_not_the_aseprite_corner() {
         &[(29, 29, "BBB"), (30, 29, "BBB")],
     );
 }
+
+/// Carimba `p` em Paint em `at` sobre o `pad.ase` limpo e lê o rectângulo `w × h` do carimbo.
+fn carimbo(p: &PatternBrush, at: (i32, i32)) -> Vec<String> {
+    let mut s = entrada("pad_t.ase");
+    let key = (s.layers()[0].id, s.frames()[0].id);
+    let paint = Paint {
+        brush: Brush {
+            pattern: Some(Arc::new(p.clone())),
+            pattern_align: PatternAlign::Paint,
+            ..Brush::default()
+        },
+        ..Paint::default()
+    };
+    let mut st = Stroke::begin(&s, key.0, key.1, 0, paint, at);
+    st.to(&s, at.0, at.1);
+    let op = st.op(&s).expect("op");
+    apply(&mut s, op).expect("op");
+    let (w, h) = p.size();
+    let (ax, ay) = p.anchor();
+    let g = grelha(&s);
+    (0..h as i32)
+        .map(|j| {
+            let y = (at.1 - ay + j) as usize;
+            let x = (at.0 - ax) as usize;
+            g[y][x..x + w as usize].to_owned()
+        })
+        .collect()
+}
+
+/// Dono 02/11 (§6.2): virar H/V e girar 90° o pincel de padrão (o Pixelorama tem; o Aseprite não)
+/// pela lei das permutações do núcleo — valores e máscara juntos, a âncora sobre a mesma célula.
+#[test]
+fn the_pattern_brush_flips_and_rotates_by_the_cores_permutations() {
+    use ph2d_pixel_core::transform::{flip_h, flip_v, rot90ccw, rot90cw, rot180};
+    let s = entrada("pad.ase");
+    let key = (s.layers()[0].id, s.frames()[0].id);
+    let p =
+        PatternBrush::from_selection(&s, key, &Mask::marquee(W, H, (8, 8), (10, 9))).expect("p");
+    assert_eq!(carimbo(&p, (30, 30)), ["RGB", "YCP"]);
+    assert_eq!(carimbo(&p.permuted(flip_h), (30, 30)), ["BGR", "PCY"]);
+    assert_eq!(carimbo(&p.permuted(flip_v), (30, 30)), ["YCP", "RGB"]);
+    assert_eq!(carimbo(&p.permuted(rot90cw), (30, 30)), ["YR", "CG", "PB"]);
+    assert_eq!(carimbo(&p.permuted(rot90ccw), (30, 30)), ["BP", "GC", "RY"]);
+    assert_eq!(carimbo(&p.permuted(rot180), (30, 30)), ["PCY", "BGR"]);
+    assert_eq!(
+        p.permuted(rot90cw).permuted(rot90ccw),
+        p,
+        "ida e volta devolvem o pincel"
+    );
+    // O ponto da âncora no sprite (`origin + âncora`) não se mexe: 4×2 (âncora (2,1)) girado é
+    // 2×4 (âncora (1,2)), e o Source continua preso ao mesmo sítio.
+    let q =
+        PatternBrush::from_selection(&s, key, &Mask::marquee(W, H, (8, 8), (11, 9))).expect("q");
+    for f in [rot90cw, rot90ccw, rot180, flip_h, flip_v] {
+        let r = q.permuted(f);
+        let (a, b) = (q.anchor(), r.anchor());
+        assert_eq!(
+            (r.origin.0 + b.0, r.origin.1 + b.1),
+            (q.origin.0 + a.0, q.origin.1 + a.1)
+        );
+    }
+    assert_eq!(q.permuted(rot90cw).anchor(), (1, 2));
+    assert_eq!(q.permuted(rot90cw).origin, (9, 7));
+    // A máscara vira junto: a elipse 5×4 tem cantos de fora, e o carimbo girado também.
+    let e =
+        PatternBrush::from_selection(&s, key, &Mask::ellipse(W, H, (6, 6), (10, 9))).expect("e");
+    let mut cantos = e.permuted(rot90cw).offsets();
+    cantos.sort_unstable();
+    let mut quer: Vec<_> = e
+        .offsets()
+        .iter()
+        .map(|&(x, y)| {
+            // rot90cw: (i, j) → (h − 1 − j, i), relativo às âncoras de cada um.
+            let (ax, ay) = e.anchor();
+            let (i, j) = (x + ax, y + ay);
+            let (_, h) = e.size();
+            let (ni, nj) = (h as i32 - 1 - j, i);
+            let (bx, by) = e.permuted(rot90cw).anchor();
+            (ni - bx, nj - by)
+        })
+        .collect();
+    quer.sort_unstable();
+    assert_eq!(cantos, quer);
+    assert!(cantos.len() < 20, "a elipse 5×4 não enche o rectângulo");
+}

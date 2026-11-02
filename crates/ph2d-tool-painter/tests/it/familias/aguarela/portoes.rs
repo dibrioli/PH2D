@@ -315,60 +315,8 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
     );
 }
 
-/// A ORLA do recto de 40 px (cena `tamanhos`, foto A, y 190, x 300..700): o perfil através (a escuridão média em x) — o
-/// máximo nos 6 % de fora de cada lado ÷ o centro (40..60 %). A régua do liso da 3.ª ronda.
-fn orla_40(px: &[u8], w: usize) -> f64 {
-    let esc = |x: usize, y: usize| {
-        let i = (y * w + x) * 4;
-        1.0 - (0.2126 * f64::from(px[i])
-            + 0.7152 * f64::from(px[i + 1])
-            + 0.0722 * f64::from(px[i + 2]))
-            / 255.0
-    };
-    let p: Vec<f64> = (150..230)
-        .map(|y| (300..700).map(|x| esc(x, y)).sum::<f64>() / 400.0)
-        .collect();
-    let mx = p.iter().copied().fold(0.0, f64::max);
-    let on: Vec<usize> = (0..p.len()).filter(|&i| p[i] > 0.25 * mx).collect();
-    let (a, b) = (on[0], on[on.len() - 1] + 1);
-    let f = |t: f64| a + (t * (b - a) as f64).round() as usize;
-    let centro = p[f(0.4)..f(0.6)].iter().sum::<f64>() / (f(0.6) - f(0.4)) as f64;
-    let fora = p[a..=f(0.06)]
-        .iter()
-        .chain(&p[f(0.94) - 1..b])
-        .copied()
-        .fold(0.0, f64::max);
-    fora / centro
-}
-
-/// ⭐ **O fio escuro da borda** (J4 3.ª ronda): o Liner do Rebelle tem um fio escuro de 1–2 px à volta do traço (orla
-/// 1,25 a 40 px). A orla da aguarela nasce na borda que SECA antes do miolo (`drying.rs`, a evaporação pela borda) — e o
-/// filme encharcava: 3,5 de água por célula (~1 sem ele), aos 240 quadros nada secara e a orla lia 1,00–1,04. Não é motor:
-/// água por dab 0,15 (e capilaridade 0,05, a mancha da água pouca) — orla 1,18. CONTROLO: a água por dab de omissão.
-#[test]
-fn o_liner_tem_o_fio_escuro_da_borda() {
-    let [(fio, w), (sem, _)] = std::thread::scope(|s| {
-        let a = s.spawn(|| foto_a("Wet Liner", &[], "tamanhos"));
-        let b = s.spawn(|| {
-            foto_a(
-                "Wet Liner",
-                &[("waterPerDab", 1.0), ("capillary", 0.2)],
-                "tamanhos",
-            )
-        });
-        [a.join().unwrap(), b.join().unwrap()]
-    });
-    let (o, c) = (orla_40(&fio, w), orla_40(&sem, w));
-    println!("[orla] Wet Liner a 40 px {o:.3} (Rebelle 1,247) · com a água de omissão {c:.3}");
-    assert!(
-        c < 1.06,
-        "o controlo (o filme encharcado) já tem orla {c:.3}: a régua não vê o fio"
-    );
-    assert!(
-        o > 1.12,
-        "o Wet Liner sem o fio escuro da borda: orla {o:.3} (Rebelle 1,247)"
-    );
-}
+/// ⛔ O fio escuro da borda do Wet Liner (a régua `o_liner_tem_o_fio_escuro_da_borda`, orla a 40 px > 1,12 contra o
+/// Rebelle 1,247) SAIU — dono 02/11: o Liner não quer o fio; era paridade com o Rebelle, que deixou de ser referência (31/10).
 
 /// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 %, 20 % e 2,5 % da largura, cada
 /// uma ÷ a do meio (os dois lados e as colunas x 400–600) — a régua do relatório (`exames/aguarela.md` «Motor J6»).

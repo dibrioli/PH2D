@@ -81,6 +81,14 @@ fn populate_paint_stack(store: &mut WidgetStore) {
             1.0,
             100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         );
+        number_field(
+            store,
+            ids::vector_paint_row_width_id(i),
+            0.0,
+            ph2d_tool_vector::params::WIDTH_MAX_PX,
+            ph2d_tool_vector::params::WIDTH_MIN_PX,
+            1.0,
+        );
         button(store, ids::vector_paint_up_id(i));
         button(store, ids::vector_paint_down_id(i));
         button(store, ids::vector_paint_del_id(i));
@@ -100,16 +108,6 @@ fn populate_paint_stack(store: &mut WidgetStore) {
         100.0, // LITERAL-PX-OK: initial opacity display = 100 %
         ph2d_tool_vector::params::OPACITY_SLIDER_SCALE,
         ph2d_tool_vector::params::OPACITY_SLIDER_OFFSET,
-    );
-    // ⚠️ A faixa é a mesma do traço de base — a largura de uma camada é a MESMA grandeza, e duas
-    // faixas para ela divergiriam no dia em que uma subisse.
-    number_field(
-        store,
-        crate::ids::VECTOR_PAINT_WIDTH,
-        0.0,
-        ph2d_tool_vector::params::WIDTH_MAX_PX,
-        ph2d_tool_vector::params::WIDTH_MIN_PX,
-        1.0,
     );
     // ⭐ ONDE a camada desenha (v21) — um par de caixas, como o `X`/`Y` do Transform, e pela MESMA
     // porta: um deslocamento é uma **coordenada de mundo**, logo **sem faixa**.

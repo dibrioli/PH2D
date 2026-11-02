@@ -120,13 +120,13 @@ impl crate::App {
                     vector_scene,
                 );
             }
-            // Gradient handles (multi-point dots, or linear/radial endpoints)
-            // when the selected path has a gradient fill. A geometria do gradiente
-            // é LOCAL como a do path, então sobe pelo afim dele.
+            // As alças do degradê da linha ABERTA (base ou camada ⚙) da forma seleccionada;
+            // a geometria do gradiente é LOCAL como a do path, então sobe pelo afim dele.
             if let Some(sel) = self.vec.pen.selected() {
                 ph2d_vec_render::draw_gradient_handles(
                     vec_scene,
                     Some(sel),
+                    ph2d_app_vec::paint_stack::open_slot(),
                     self.vec.grad_selected,
                     ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
                     hero.theme,

@@ -219,38 +219,92 @@ fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
     state::set_current_appearance(None);
 }
 
-/// **ABRIR UMA CAMADA MOSTRA AS TRÊS PROPRIEDADES DELA — e fechá-la esconde-as.**
+/// **AS TRÊS PROPRIEDADES DE UMA CAMADA: duas na LINHA, uma no painel ABERTO.**
 ///
-/// ⚠️ As duas metades, porque um gate que só afirmasse a presença ficaria verde sobre um painel
-/// que as mostra SEMPRE — e aí o artista veria a largura de uma camada enquanto olha para outra.
+/// F44c (dono 01/11): a opacidade (`%`) e o Weight do contorno moram na LINHA — sempre à vista, de
+/// camada aberta ou fechada; a mistura mora no painel à esquerda, que só se pinta com a camada
+/// ABERTA. ⚠️ As duas metades para o painel, porque um gate que só afirmasse a presença ficaria
+/// verde sobre um painel que a mostra SEMPRE. E a linha solitária «Width» do painel não volta: o
+/// Weight tem UM sítio.
 #[test]
 fn opening_a_layer_paints_its_three_properties() {
     publica(vec![traco(2.0)]);
-    state::close_open_layer();
-    // F44: a opacidade mora na LINHA (sempre à vista); a largura e a mistura, no painel aberto.
-    let props = [
-        (ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, "a largura"),
-        (ph2d_panel_vector::ids::VECTOR_PAINT_BLEND, "a mistura"),
+    let na_linha = [
+        (ids::vector_paint_row_opacity_id(0), "a opacidade"),
+        (ids::vector_paint_row_width_id(0), "o Weight"),
     ];
-    for (id, what) in props {
+    let mistura = ph2d_panel_vector::ids::VECTOR_PAINT_BLEND;
+    for aberta in [None, Some(0)] {
+        state::set_open_layer(aberta);
         let mut host = crate::host_pilha();
         let mut st = VectorPanelState;
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
-                .is_none(),
-            "{what} foi pintada com a camada FECHADA"
-        );
-    }
-    state::set_open_layer(Some(0));
-    for (id, what) in props {
-        let mut host = crate::host_pilha();
-        let mut st = VectorPanelState;
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+        for (id, what) in na_linha {
+            assert!(
+                host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                    .is_some(),
+                "{what} da camada não foi pintada na LINHA (aberta = {aberta:?})"
+            );
+        }
+        assert_eq!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, mistura)
                 .is_some(),
-            "{what} nao foi pintada com a camada ABERTA"
+            aberta.is_some(),
+            "a mistura pinta-se SÓ com a camada aberta (aberta = {aberta:?})"
+        );
+        assert!(
+            host.painted_rect::<VectorPanel>(
+                &mut st,
+                VIEWPORT,
+                ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH
+            )
+            .is_none(),
+            "a linha solitária «Width» voltou ao painel (aberta = {aberta:?})"
         );
     }
+    state::close_open_layer();
+    state::set_current_appearance(None);
+}
+
+/// ⭐ **O Weight na LINHA do contorno `i` chega ao barramento como a largura da camada `i`** (F44c):
+/// o campo aponta a camada (a shell grava a ABERTA) e o valor viaja em `px` pela porta
+/// `VECTOR_PAINT_WIDTH`. *Mutação: esquecer o `set_open_layer` ⇒ a aberta fica `None`.*
+#[test]
+fn the_row_weight_reaches_the_bus_as_the_layers_width() {
+    publica(vec![tinta(), traco(2.0)]);
+    state::close_open_layer();
+    let id = ids::vector_paint_row_width_id(1);
+    let mut host = crate::host_pilha();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .is_some(),
+        "o Weight do contorno não foi pintado na linha dele"
+    );
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_paint_row_width_id(0))
+            .is_none(),
+        "um PREENCHIMENTO ganhou o campo Weight"
+    );
+    host.set_number_value(id, 7.0);
+    host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    let v: Vec<f64> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(x, v))
+                if x == ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH =>
+            {
+                Some(v)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(v, vec![7.0], "o Weight da linha não viajou como a largura");
+    assert_eq!(
+        state::open_layer_index(),
+        Some(1),
+        "o Weight não apontou a camada"
+    );
     state::close_open_layer();
     state::set_current_appearance(None);
 }
@@ -262,35 +316,9 @@ fn opening_a_layer_paints_its_three_properties() {
 /// um caía no catch-all do `apply_event`. O oráculo é o VALOR, porque encaminhar o id com o número
 /// de outro campo é o mesmo defeito com outra roupa.
 #[test]
-fn the_layers_width_and_opacity_reach_the_bus() {
+fn the_layers_opacity_reaches_the_bus() {
     publica(vec![traco(2.0)]);
     state::set_open_layer(Some(0));
-
-    // A LARGURA — campo numérico, o valor viaja como o do Z-index (a mesma porta).
-    let mut host = crate::host_pilha();
-    let mut st = VectorPanelState;
-    host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 7.0);
-    host.apply_panel_event::<VectorPanel>(
-        &mut st,
-        WidgetEvent::ValueChanged(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH),
-    );
-    let larguras: Vec<f64> = host
-        .drained_actions()
-        .into_iter()
-        .filter_map(|a| match a {
-            EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
-                if id == ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH =>
-            {
-                Some(v)
-            }
-            _ => None,
-        })
-        .collect();
-    assert_eq!(
-        larguras,
-        vec![7.0],
-        "a largura da camada nao chegou ao barramento: o artista escreve um numero e nada acontece"
-    );
 
     // A OPACIDADE — slider, o valor viaja como TRACK `0..1`.
     let mut host = crate::host_pilha();
@@ -323,35 +351,6 @@ fn the_layers_width_and_opacity_reach_the_bus() {
         tracks[0]
     );
 
-    state::close_open_layer();
-    state::set_current_appearance(None);
-}
-
-/// ⭐⭐ **O CAMPO DE LARGURA MOSTRA A LARGURA DA CAMADA ABERTA.**
-///
-/// ⚠️ Sem a semente ele mostra o que a última edição deixou no store — e o `PaintRow::width` que a
-/// shell publica não tem leitor nenhum. Um campo que mostra o número de OUTRA camada é pior que um
-/// campo vazio: o artista lê `3`, escreve `4`, e engorda um traço que media `12`.
-#[test]
-fn the_width_field_shows_the_open_layers_width() {
-    publica(vec![traco(9.0)]);
-    state::set_open_layer(Some(0));
-    let mut host = crate::host_pilha();
-    let mut st = VectorPanelState;
-    host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 1.0);
-    host.painted_rect::<VectorPanel>(
-        &mut st,
-        VIEWPORT,
-        ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH,
-    );
-    let visto = host
-        .store()
-        .number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH);
-    assert_eq!(
-        visto,
-        Some(9.0),
-        "o campo de largura nao foi semeado da camada aberta (mostra {visto:?}, a camada mede 9)"
-    );
     state::close_open_layer();
     state::set_current_appearance(None);
 }
@@ -538,7 +537,7 @@ fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
         host.painted_rect::<VectorPanel>(
             &mut st,
             VIEWPORT,
-            ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH
+            ph2d_panel_vector::ids::vector_paint_row_width_id(0)
         )
         .is_none(),
         "a largura foi pintada num preenchimento — o controlo nao tem sujeito"

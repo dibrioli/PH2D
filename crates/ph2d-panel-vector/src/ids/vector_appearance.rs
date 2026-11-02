@@ -102,6 +102,12 @@ pub fn vector_paint_row_opacity_id(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.paint.rowopacity.{i}"))
 }
 
+/// ⭐ F44c — o Weight na LINHA do contorno `i`.
+#[must_use]
+pub fn vector_paint_row_width_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.paint.rowwidth.{i}"))
+}
+
 /// ⭐ F44 — a linha do preenchimento de BASE: um `Dropdown` cujo painel abre à esquerda (tipo, cor,
 /// degradê).
 pub const VECTOR_FILL_ROW: NodeId = hash_node_id("vector.fill.row");

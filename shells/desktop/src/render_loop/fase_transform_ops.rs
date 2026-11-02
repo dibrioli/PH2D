@@ -94,14 +94,14 @@ impl crate::App {
             if let Some(v) = pending_paint_verb {
                 crate::vec_paint_stack::apply(vec_scene, &sel, v);
             }
-            // ⚠️ **O índice é o da camada ABERTA no painel** — a única que mostra estes três
-            // controlos. Sem camada aberta não há sujeito, e escrever seria adivinhar.
+            // ⚠️ **O índice é o da camada ABERTA no painel**: sem ela não há sujeito.
             // ⭐⭐⭐ **A COR de uma camada** — o seletor partilhado escreve nela (plano 32: a lei
             // do Fill de base, campo a campo).
             crate::vec_paint_stack::apply_picker(&mut hero.store, vec_scene, &sel);
             if let Some(i) = ph2d_panel_vector::state::open_layer_index() {
                 if let Some(w) = pending_paint_width {
-                    crate::vec_paint_stack::set_width(vec_scene, &sel, i, w);
+                    let doc = ph2d_editor_core::DocPx::of(&hero.project);
+                    crate::vec_paint_stack::set_width(vec_scene, &sel, i, w, doc);
                 }
                 // ⭐ ONDE ela desenha (v21): só o eixo comitado, o outro fica o de cada forma.
                 crate::vec_paint_stack::set_offset_axes(

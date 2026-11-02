@@ -129,6 +129,9 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-vector", "checkbox_row"),
     ("ph2d-panel-vector", "dropdown_row"),
     ("ph2d-panel-vector", "decorator"),
+    // ⭐ F44c: a linha do Fill/Stroke recebe os ids numa `Linha { .. }` e repassa-os ao `decorator`
+    // — a população é a chamada `paint_line(&Linha { .. })`, com os ids literais do chamador.
+    ("ph2d-panel-vector", "paint_line"),
     ("ph2d-panel-vector", "chip"),
     ("ph2d-panel-vector", "list_chip"),
     ("ph2d-panel-inspector", "fields_row"),
@@ -914,15 +917,14 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "ph2d-panel-vector",
         "layer_line",
         Canal,
-        &["vector_paint_swatch_id"],
-        "a tinta da entrada `i` da pilha, na linha do Fill/Stroke (F44, `marcas::canal_do_campo`)",
-    ),
-    (
-        "ph2d-panel-vector",
-        "paint_line",
-        Canal,
-        &["vector_paint_eye_id", "vector_paint_row_opacity_id"],
-        "o olho e a opacidade da entrada `i` da pilha, colados ao controlo (F44, `marcas::canal_do_campo`)",
+        &[
+            "vector_paint_swatch_id",
+            "vector_paint_eye_id",
+            "vector_paint_row_opacity_id",
+            "vector_paint_row_width_id",
+        ],
+        "a cor, o Weight, a opacidade e o olho da entrada `i` da pilha, na linha do Fill/Stroke — \
+         ids derivados do índice (F44/F44c, `marcas::canal_do_campo`)",
     ),
     (
         "ph2d-panel-vector",

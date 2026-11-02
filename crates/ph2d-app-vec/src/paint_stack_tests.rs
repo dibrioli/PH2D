@@ -163,7 +163,13 @@ fn the_view_reads_the_primary_and_the_write_reaches_them_all() {
         .paints
         .push(PaintEntry::fill(Paint::Solid(Rgba8::new(1, 2, 3, 255))));
 
-    let v = published(&scene, &ids, &Default::default()).expect("ha' seleccao");
+    let v = published(
+        &scene,
+        &ids,
+        &Default::default(),
+        ph2d_editor_core::DocPx::DEFAULT,
+    )
+    .expect("ha' seleccao");
     assert_eq!(
         v.layers.len(),
         2,
@@ -172,15 +178,25 @@ fn the_view_reads_the_primary_and_the_write_reaches_them_all() {
     );
     assert!(!v.layers[0].is_fill && v.layers[1].is_fill);
 
-    assert!(set_width(&mut scene, &ids, 0, 5.0));
+    assert!(set_width(
+        &mut scene,
+        &ids,
+        0,
+        5.0,
+        ph2d_editor_core::DocPx::DEFAULT
+    ));
     for id in &ids {
         let PaintKind::Stroke(s) = &scene.path(*id).expect("a forma").paints[0].kind else {
             panic!("a camada 0 e' um contorno nas duas");
         };
-        assert!((s.width - 5.0).abs() < 1e-9, "a escrita alcanca a seleccao");
+        let w = ph2d_editor_core::DocPx::DEFAULT.to_world(5.0);
+        assert!(
+            (s.width - w).abs() < 1e-9,
+            "a escrita alcanca a seleccao, em metros"
+        );
     }
     assert!(
-        !set_width(&mut scene, &ids, 9, 5.0),
+        !set_width(&mut scene, &ids, 9, 5.0, ph2d_editor_core::DocPx::DEFAULT),
         "um indice que nao existe e' SALTADO, nunca criado"
     );
 }
@@ -223,7 +239,7 @@ fn a_new_stroke_has_a_width_and_a_fill_layer_refuses_one() {
         "um contorno de largura zero nao desenha nada"
     );
     assert!(
-        !set_width(&mut scene, &ids, 1, 4.0),
+        !set_width(&mut scene, &ids, 1, 4.0, ph2d_editor_core::DocPx::DEFAULT),
         "a camada de preenchimento nao tem largura para escrever"
     );
     let _ = StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 1.0);

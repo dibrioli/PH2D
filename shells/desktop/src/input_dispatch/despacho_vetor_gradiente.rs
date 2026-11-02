@@ -139,10 +139,9 @@ pub(crate) fn apply_vec_grad_add_point(
     let Some(sel) = pen.selected() else {
         return;
     };
-    let Some((lo, hi)) = scene.path_bbox(sel) else {
+    let Some(center) = ph2d_app_vec::paint_stack::open_centre(scene, sel) else {
         return;
     };
-    let center = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
     if let Some(Paint::MultiPoint { points }) = scene.path_mut(sel).and_then(open_fill_mut) {
         let col = points
             .first()

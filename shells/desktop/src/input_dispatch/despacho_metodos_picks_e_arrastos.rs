@@ -331,7 +331,7 @@ impl crate::App {
         );
         let inv = x.inverse()?;
         let l = inv.apply([wx, wy]);
-        ph2d_vec_render::hit_gradient_handle(path, l[0], l[1], 9.0 * px / x.mean_scale())
+        ph2d_app_vec::paint_stack::grad_hit(path, l, 9.0 * px / x.mean_scale())
     }
 
     /// Gradient group: while a gradient handle is grabbed, move it to the cursor's
@@ -366,7 +366,7 @@ impl crate::App {
             None => w,
         };
         if let Some(path) = gfx.vec_scene.path_mut(sel) {
-            return ph2d_vec_render::drag_gradient_handle(path, handle, w[0] as f64, w[1] as f64);
+            return ph2d_app_vec::paint_stack::grad_drag(path, handle, w[0] as f64, w[1] as f64);
         }
         false
     }

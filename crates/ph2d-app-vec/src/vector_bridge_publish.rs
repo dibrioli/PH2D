@@ -118,7 +118,12 @@ pub fn publish(
     ph2d_panel_vector::state::set_current_appearance(if vector_active {
         let mut vivo = ph2d_vec_scene::VecViewState::default();
         crate::driven_style::live_layers(sim, vec_entities, &hero.store, &mut vivo);
-        crate::paint_stack::published(scene, &crate::paint_stack::ordered(pen), &vivo)
+        crate::paint_stack::published(
+            scene,
+            &crate::paint_stack::ordered(pen),
+            &vivo,
+            ph2d_editor_core::DocPx::of(&hero.project),
+        )
     } else {
         None
     });

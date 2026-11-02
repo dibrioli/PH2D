@@ -202,23 +202,15 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
             }
         }
     }
-    // ⭐⭐⭐ **A LARGURA DA CAMADA ABERTA** (estudo 42 item 4) — o mesmo padrão dos irmãos acima,
-    // incluindo o guard de FOCO.
-    //
-    // ⚠️ **Sem esta semente o campo mostra o que a última edição deixou no store**, e o
-    // `PaintRow::width` que a shell publica não tem leitor nenhum. Um campo que mostra a largura de
-    // OUTRA camada é pior que um vazio: o artista lê `3`, escreve `4`, e engorda um traço que
-    // media `12`. ⛔ E não é `live_number`: aquele lê o documento no PAINT, e o `number_cell` desta
-    // casa pinta o que está no store — a semente é a porta que os outros três campos já usam.
+    // ⭐⭐⭐ **ONDE a camada ABERTA desenha** — o par X/Y e o Offset, com o guard de FOCO. ⛔ Não é
+    // `live_number`: o `number_cell` desta casa pinta o que está no store, e sem a semente o campo
+    // mostraria o número de OUTRA camada. (F44c: a largura saiu daqui para a LINHA do contorno.)
     if let Some(row) = state::current_appearance()
         .zip(state::open_layer())
         .and_then(|(a, i)| a.layers.get(i).copied())
     {
-        // ⭐ E o par que diz ONDE ela desenha (v21), pela MESMA porta e com o mesmo guarda: um
-        // campo semeado por cima do dígito que o artista acabou de escrever apaga-o.
         // ⭐ Onde as selecionadas diferem, a caixa fica em BRANCO (plano 32, a lei do F20).
         for (id, v, misto) in [
-            (crate::ids::VECTOR_PAINT_WIDTH, row.width, row.mixed.width),
             (crate::ids::VECTOR_PAINT_DX, row.offset[0], row.mixed.offset),
             (crate::ids::VECTOR_PAINT_DY, row.offset[1], row.mixed.offset),
             (

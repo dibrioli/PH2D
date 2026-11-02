@@ -14,6 +14,7 @@
 //! **não** espera é que uma forma sem camada `2` ganhe uma — e por isso um índice que não existe é
 //! **saltado**, nunca criado.
 
+use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{
     MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, PaintSlot, Rgba8, StrokeAlign, StrokeSpec,
     VecPathId, VecScene,
@@ -144,6 +145,7 @@ pub fn published(
     scene: &VecScene,
     sel: &[VecPathId],
     vivo: &ph2d_vec_scene::VecViewState,
+    doc: ph2d_editor_core::DocPx,
 ) -> Option<ph2d_panel_vector::state::Appearance> {
     let p = scene.path(*sel.first()?)?;
     let layers_differ = layers_differ(scene, sel);
@@ -166,7 +168,9 @@ pub fn published(
                 ph2d_panel_vector::state::PaintRow {
                     is_fill: matches!(e.kind, PaintKind::Fill(_)),
                     color: [c.r, c.g, c.b, c.a],
-                    width: e.width().unwrap_or(0.0),
+                    // Em px do documento, como o Weight do traço de base (F44c: a linha mostrava
+                    // metros — `0` num traço de 5 px).
+                    width: doc.of_world(e.width().unwrap_or(0.0)),
                     align: match &e.kind {
                         PaintKind::Stroke(sp) => sp.align,
                         PaintKind::Fill(_) => StrokeAlign::default(),
@@ -275,8 +279,15 @@ pub fn set_blend(scene: &mut VecScene, sel: &[VecPathId], i: usize, code: u8) ->
 }
 
 /// **A largura** do contorno da camada `i`. No-op numa camada de preenchimento.
-pub fn set_width(scene: &mut VecScene, sel: &[VecPathId], i: usize, w: f64) -> bool {
-    let w = w.max(0.0);
+/// `px` em px do documento (o Weight da linha), gravado em metros de mundo.
+pub fn set_width(
+    scene: &mut VecScene,
+    sel: &[VecPathId],
+    i: usize,
+    px: f64,
+    doc: ph2d_editor_core::DocPx,
+) -> bool {
+    let w = doc.to_world(px.max(0.0));
     edit(scene, sel, |p| {
         match p.paints.get_mut(i).map(|e| &mut e.kind) {
             Some(PaintKind::Stroke(s)) if (s.width - w).abs() > f64::EPSILON => {
@@ -362,6 +373,29 @@ pub fn open_fill(p: &ph2d_vec_scene::VecPath) -> Option<&Paint> {
 
 pub fn open_fill_mut(p: &mut ph2d_vec_scene::VecPath) -> Option<&mut Paint> {
     p.slot_fill_mut(open_slot())
+}
+
+/// O gizmo de degradê no canvas sobre a linha ABERTA ([`open_slot`]) — o mesmo endereço que o
+/// corpo de ajustes edita (smoke do dono 01/11: o ⚙ de uma camada aberto e a alça editava a base).
+#[must_use]
+pub fn grad_hit(p: &ph2d_vec_scene::VecPath, l: [f64; 2], t: f64) -> Option<GradHandle> {
+    ph2d_vec_render::hit_gradient_handle(p, open_slot(), l[0], l[1], t)
+}
+
+/// O centro de `sel` no espaço do degradê da linha aberta: o da caixa, menos o deslocamento da
+/// camada (ela desenha deslocada — um ponto novo no centro nasce sobre a forma).
+#[must_use]
+pub fn open_centre(scene: &ph2d_vec_scene::VecScene, sel: VecPathId) -> Option<[f64; 2]> {
+    let (lo, hi) = scene.path_bbox(sel)?;
+    let o = match open_slot() {
+        PaintSlot::Layer(i) => scene.path(sel)?.paints.get(i)?.offset,
+        PaintSlot::Base => [0.0, 0.0],
+    };
+    Some([(lo[0] + hi[0]) * 0.5 - o[0], (lo[1] + hi[1]) * 0.5 - o[1]])
+}
+
+pub fn grad_drag(p: &mut ph2d_vec_scene::VecPath, h: GradHandle, x: f64, y: f64) -> bool {
+    ph2d_vec_render::drag_gradient_handle(p, open_slot(), h, x, y)
 }
 
 /// **Põe `paint` no preenchimento da linha aberta** ([`open_slot`]): a base (vista ou escondida;

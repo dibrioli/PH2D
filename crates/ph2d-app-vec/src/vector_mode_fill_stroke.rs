@@ -4,7 +4,8 @@
 //! (branco → transparente) e um contorno amarelo TRACEJADO por fora — selecionado, com o Inspector
 //! rolado até à secção Fill. A 45 abre o ⚙ do BRILHO (uma camada extra com tipo e degradê, como a
 //! base); a 46 esconde o traço de base pelo olho e abre o ⚙ do contorno amarelo (Position, pontas,
-//! junções, tracejado — o «Stroke settings» de uma camada).
+//! junções, tracejado — o «Stroke settings» de uma camada). F44c: a 45 acaba na seta branca, com
+//! as alças do degradê do brilho no canvas.
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -91,7 +92,21 @@ pub fn step(
                 .replace_selection(vec.entities.get(ids.first()?).copied());
             PASSO.store(3, Ordering::Relaxed);
         }
-        3 => return abre(hero, traco),
+        3 => {
+            let fim = abre(hero, traco);
+            // F44c: a 45 acaba na seta branca, com a forma na mão — as alças do degradê do BRILHO
+            // (a camada aberta) aparecem no canvas, e são elas que o arrasto edita.
+            if fim.is_some() && !traco {
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor_core::tool::PanelEvent::Click(
+                            ph2d_tool_vector::ids::VECTOR_MODE_NODE,
+                        ),
+                    ));
+                vec.pen.select(ids.first().copied());
+            }
+            return fim;
+        }
         _ => {}
     }
     None

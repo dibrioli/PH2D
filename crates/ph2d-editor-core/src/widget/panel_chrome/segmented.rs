@@ -226,7 +226,7 @@ pub fn paint_segmented_icon_group(
             ColorToken::Text2
         };
         let side = r.h.min(r.w).max(1.0);
-        crate::paint::paint_icon(
+        crate::paint::paint_icon_toned(
             scene,
             glyph,
             Rect::new(
@@ -236,6 +236,7 @@ pub fn paint_segmented_icon_group(
                 side,
             ),
             resolve(ink, theme),
+            theme,
             StrokeToken::Default.px(),
         );
         hit_index.register(id, r);

@@ -200,7 +200,6 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
 /// ⭐ **Os campos da entrada ABERTA da pilha de pinturas** — o id é um só para qualquer entrada; o
 /// canal é o campo daqui com `i = aberta + 1` ([`Contexto::aberta`]).
 const DA_CAMADA_ABERTA: &[(NodeId, u16)] = &[
-    (painel::VECTOR_PAINT_WIDTH, v::TRACO_LARGURA),
     (painel::VECTOR_PAINT_DX, v::PILHA_DESLOCA_X),
     (painel::VECTOR_PAINT_DY, v::PILHA_DESLOCA_Y),
     (painel::VECTOR_PAINT_DILATE, v::PILHA_DILATA),
@@ -437,6 +436,10 @@ fn canal_posicional(id: NodeId, ctx: Contexto<'_>) -> Vec<PropKind> {
         if painel::vector_paint_row_opacity_id(k) == id {
             return vec![em(v::PILHA_OPACIDADE, i)];
         }
+        // F44c: o Weight na LINHA do contorno `k`.
+        if painel::vector_paint_row_width_id(k) == id {
+            return vec![em(v::TRACO_LARGURA, i)];
+        }
     }
     Vec::new()
 }
@@ -464,6 +467,7 @@ fn ids(ctx: Contexto<'_>) -> impl Iterator<Item = NodeId> + '_ {
                 painel::vector_paint_swatch_id(k),
                 painel::vector_paint_eye_id(k),
                 painel::vector_paint_row_opacity_id(k),
+                painel::vector_paint_row_width_id(k),
             ]
         }))
 }

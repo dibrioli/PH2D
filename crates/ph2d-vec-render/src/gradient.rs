@@ -7,7 +7,7 @@
 
 use crate::color;
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vec_scene::{GradientPoint, Paint, VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{GradientPoint, Paint, PaintSlot, VecPath, VecPathId, VecScene};
 use ph2d_vector::{
     Affine, BezPath, Brush, Circle, Color, Fill, ImageQuality, Point, Stroke, VectorScene,
 };
@@ -75,24 +75,29 @@ fn ramp_point(a: [f64; 2], b: [f64; 2], t: f64) -> [f64; 2] {
     [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 }
 
-/// The world-space anchor of `handle` on `path`'s fill (`None` if the handle
-/// doesn't match the fill kind / index). The radial EDGE sits at `center + (r, 0)`.
-fn handle_world_pos(path: &VecPath, handle: GradHandle) -> Option<[f64; 2]> {
-    match (&path.fill, handle) {
-        (Some(Paint::MultiPoint { points }), GradHandle::Point(i)) => {
-            points.get(i).map(|gp| gp.pos)
-        }
-        (Some(Paint::Linear { start, .. }), GradHandle::LinearStart) => Some(*start),
-        (Some(Paint::Linear { end, .. }), GradHandle::LinearEnd) => Some(*end),
-        (Some(Paint::Radial { center, .. }), GradHandle::RadialCenter) => Some(*center),
-        (Some(Paint::Radial { center, radius, .. }), GradHandle::RadialEdge) => {
+/// **O preenchimento que o gizmo edita** — o da linha `slot` aberta no Inspector (a base, ou a
+/// camada cujo ⚙ está aberto) — e o DESLOCAMENTO com que essa linha desenha (`PaintEntry::offset`,
+/// local à forma, o mesmo que o `stack_draw::camada_xf` aplica). A base não desloca.
+fn slot_gizmo(path: &VecPath, slot: PaintSlot) -> Option<(&Paint, [f64; 2])> {
+    let off = match slot {
+        PaintSlot::Base => [0.0, 0.0],
+        PaintSlot::Layer(i) => path.paints.get(i)?.offset,
+    };
+    Some((path.slot_fill(slot)?, off))
+}
+
+/// The anchor of `handle` on `fill`, in the fill's OWN space (`None` if the handle doesn't
+/// match the fill kind / index). The radial EDGE sits at `center + (r, 0)`.
+fn handle_world_pos(fill: &Paint, handle: GradHandle) -> Option<[f64; 2]> {
+    match (fill, handle) {
+        (Paint::MultiPoint { points }, GradHandle::Point(i)) => points.get(i).map(|gp| gp.pos),
+        (Paint::Linear { start, .. }, GradHandle::LinearStart) => Some(*start),
+        (Paint::Linear { end, .. }, GradHandle::LinearEnd) => Some(*end),
+        (Paint::Radial { center, .. }, GradHandle::RadialCenter) => Some(*center),
+        (Paint::Radial { center, radius, .. }, GradHandle::RadialEdge) => {
             Some([center[0] + radius, center[1]])
         }
-        (Some(fill), GradHandle::Stop(i)) => {
-            let stops = match fill {
-                Paint::Linear { stops, .. } | Paint::Radial { stops, .. } => stops,
-                _ => return None,
-            };
+        (Paint::Linear { stops, .. } | Paint::Radial { stops, .. }, GradHandle::Stop(i)) => {
             let (a, b) = ramp_endpoints(fill)?;
             stops.get(i).map(|s| ramp_point(a, b, s.offset))
         }
@@ -100,42 +105,45 @@ fn handle_world_pos(path: &VecPath, handle: GradHandle) -> Option<[f64; 2]> {
     }
 }
 
-/// Hit-test all of `path`'s gradient handles at world point `(wx, wy)` within
-/// `world_thresh` world-units, returning the closest match (`None` if none / no
-/// gradient fill). Squared distance only.
+/// Hit-test the gradient handles of `path`'s `slot` fill at path-local point `(wx, wy)` within
+/// `world_thresh`, returning the closest match (`None` if none / the slot has no gradient fill).
+/// A layer's handles sit where the layer DRAWS — displaced by its `offset`. Squared distance only.
 #[must_use]
 pub fn hit_gradient_handle(
     path: &VecPath,
+    slot: PaintSlot,
     wx: f64,
     wy: f64,
     world_thresh: f64,
 ) -> Option<GradHandle> {
+    let (fill, off) = slot_gizmo(path, slot)?;
+    let (wx, wy) = (wx - off[0], wy - off[1]);
     let t2 = world_thresh * world_thresh;
     let mut best: Option<(GradHandle, f64)> = None;
     let consider = |best: &mut Option<(GradHandle, f64)>, h: GradHandle| {
-        if let Some(p) = handle_world_pos(path, h) {
+        if let Some(p) = handle_world_pos(fill, h) {
             let d2 = (wx - p[0]).powi(2) + (wy - p[1]).powi(2);
             if d2 <= t2 && best.is_none_or(|(_, b)| d2 < b) {
                 *best = Some((h, d2));
             }
         }
     };
-    match &path.fill {
-        Some(Paint::MultiPoint { points }) => {
+    match fill {
+        Paint::MultiPoint { points } => {
             for i in 0..points.len() {
                 consider(&mut best, GradHandle::Point(i));
             }
         }
-        Some(Paint::Linear { stops, .. }) => {
+        Paint::Linear { stops, .. } => {
             consider(&mut best, GradHandle::LinearStart);
             consider(&mut best, GradHandle::LinearEnd);
-            // Interior stops (the ends are the endpoint handles) — tried first so a
-            // stop marker near an endpoint still wins by proximity.
+            // Interior stops (the ends are the endpoint handles) — a stop marker near an
+            // endpoint still wins by proximity.
             for i in interior_stop_indices(stops.len()) {
                 consider(&mut best, GradHandle::Stop(i));
             }
         }
-        Some(Paint::Radial { stops, .. }) => {
+        Paint::Radial { stops, .. } => {
             consider(&mut best, GradHandle::RadialCenter);
             consider(&mut best, GradHandle::RadialEdge);
             for i in interior_stop_indices(stops.len()) {
@@ -153,36 +161,49 @@ fn interior_stop_indices(len: usize) -> std::ops::Range<usize> {
     if len >= 3 { 1..len - 1 } else { 0..0 }
 }
 
-/// Move `handle` to world `(wx, wy)` on `path`'s fill (the radial edge sets the
-/// radius = distance to the center). Returns `true` iff it applied. No-op if the
-/// handle doesn't match the fill kind / index.
-pub fn drag_gradient_handle(path: &mut VecPath, handle: GradHandle, wx: f64, wy: f64) -> bool {
-    match (&mut path.fill, handle) {
-        (Some(Paint::MultiPoint { points }), GradHandle::Point(i)) => {
+/// Move `handle` of `path`'s `slot` fill to path-local `(wx, wy)` (the radial edge sets the
+/// radius = distance to the center; a layer's `offset` is taken off the cursor first). Returns
+/// `true` iff it applied. No-op if the handle doesn't match the fill kind / index.
+pub fn drag_gradient_handle(
+    path: &mut VecPath,
+    slot: PaintSlot,
+    handle: GradHandle,
+    wx: f64,
+    wy: f64,
+) -> bool {
+    let Some((_, off)) = slot_gizmo(path, slot) else {
+        return false;
+    };
+    let (wx, wy) = (wx - off[0], wy - off[1]);
+    let Some(fill) = path.slot_fill_mut(slot) else {
+        return false;
+    };
+    match (fill, handle) {
+        (Paint::MultiPoint { points }, GradHandle::Point(i)) => {
             if let Some(gp) = points.get_mut(i) {
                 gp.pos = [wx, wy];
                 return true;
             }
         }
-        (Some(Paint::Linear { start, .. }), GradHandle::LinearStart) => {
+        (Paint::Linear { start, .. }, GradHandle::LinearStart) => {
             *start = [wx, wy];
             return true;
         }
-        (Some(Paint::Linear { end, .. }), GradHandle::LinearEnd) => {
+        (Paint::Linear { end, .. }, GradHandle::LinearEnd) => {
             *end = [wx, wy];
             return true;
         }
-        (Some(Paint::Radial { center, .. }), GradHandle::RadialCenter) => {
+        (Paint::Radial { center, .. }, GradHandle::RadialCenter) => {
             *center = [wx, wy];
             return true;
         }
-        (Some(Paint::Radial { center, radius, .. }), GradHandle::RadialEdge) => {
+        (Paint::Radial { center, radius, .. }, GradHandle::RadialEdge) => {
             *radius = ((wx - center[0]).powi(2) + (wy - center[1]).powi(2))
                 .sqrt()
                 .max(1e-6);
             return true;
         }
-        (Some(fill), GradHandle::Stop(i)) => return drag_ramp_stop(fill, i, wx, wy),
+        (fill, GradHandle::Stop(i)) => return drag_ramp_stop(fill, i, wx, wy),
         _ => {}
     }
     false
@@ -229,6 +250,7 @@ fn drag_ramp_stop(fill: &mut Paint, i: usize, wx: f64, wy: f64) -> bool {
 pub fn draw_gradient_handles(
     scene: &VecScene,
     selected: Option<VecPathId>,
+    slot: PaintSlot,
     active: Option<GradHandle>,
     transform: Affine,
     theme: Theme,
@@ -238,6 +260,11 @@ pub fn draw_gradient_handles(
     let Some(path) = scene.paths().iter().find(|p| p.id == sel) else {
         return;
     };
+    let Some((fill, off)) = slot_gizmo(path, slot) else {
+        return;
+    };
+    // A camada desenha deslocada (local, sob a pose): as alças vão onde ela DESENHA.
+    let transform = crate::stack_draw::camada_xf(transform, off);
     // A alça de PARÂMETRO (a mesma família das da forma, nunca a cor da caixa); o anel activo no texto.
     let purple = crate::token_ink(ColorToken::ShapeHandle, theme);
     let white = crate::token_ink(ColorToken::Text1, theme);
@@ -259,8 +286,8 @@ pub fn draw_gradient_handles(
             &Circle::new(c, 5.5),
         );
     };
-    match &path.fill {
-        Some(Paint::MultiPoint { points }) => {
+    match fill {
+        Paint::MultiPoint { points } => {
             for (i, gp) in points.iter().enumerate() {
                 let c = transform * Point::new(gp.pos[0], gp.pos[1]);
                 dot(
@@ -271,7 +298,7 @@ pub fn draw_gradient_handles(
                 );
             }
         }
-        Some(Paint::Linear { start, end, stops }) => {
+        Paint::Linear { start, end, stops } => {
             let a = transform * Point::new(start[0], start[1]);
             let b = transform * Point::new(end[0], end[1]);
             let mut line = BezPath::new();
@@ -299,11 +326,11 @@ pub fn draw_gradient_handles(
                 );
             }
         }
-        Some(Paint::Radial {
+        Paint::Radial {
             center,
             radius,
             stops,
-        }) => {
+        } => {
             let c = transform * Point::new(center[0], center[1]);
             let e = transform * Point::new(center[0] + radius, center[1]);
             let sr = ((e.x - c.x).powi(2) + (e.y - c.y).powi(2)).sqrt();
@@ -554,12 +581,13 @@ mod tests {
         assert_eq!(interior_stop_indices(4).collect::<Vec<_>>(), vec![1, 2]);
         // Interior stop 1 sits at offset 0.3 → world (3,0); hit-test there → Stop(1).
         assert_eq!(
-            hit_gradient_handle(&path, 3.0, 0.0, 0.5),
+            hit_gradient_handle(&path, PaintSlot::Base, 3.0, 0.0, 0.5),
             Some(GradHandle::Stop(1))
         );
         // Drag stop 1 to x=2 → offset 0.2 (strictly inside the ends).
         assert!(drag_gradient_handle(
             &mut path,
+            PaintSlot::Base,
             GradHandle::Stop(1),
             2.0,
             0.0
@@ -568,6 +596,7 @@ mod tests {
         // stop 1's offset now exceeds stop 2's, and its Vec index is unchanged.
         assert!(drag_gradient_handle(
             &mut path,
+            PaintSlot::Base,
             GradHandle::Stop(1),
             8.0,
             0.0
@@ -584,5 +613,78 @@ mod tests {
         } else {
             panic!("fill must stay Linear");
         }
+    }
+
+    /// ⭐ **O gizmo edita a linha ABERTA** (smoke do dono 01/11): com o ⚙ de uma camada de
+    /// preenchimento aberto, arrastar a alça muda o degradê DELA e deixa o da base quieto; e as
+    /// alças da camada estão onde ela desenha — deslocadas pelo `offset`.
+    #[test]
+    fn the_gizmo_edits_the_open_layer_gradient() {
+        use ph2d_vec_scene::{GradientStop, PaintEntry, VecVertex};
+        let ramp = |a: [f64; 2], b: [f64; 2]| Paint::Linear {
+            stops: vec![
+                GradientStop::new(0.0, Rgba8::new(255, 0, 0, 255)),
+                GradientStop::new(1.0, Rgba8::new(0, 0, 255, 255)),
+            ],
+            start: a,
+            end: b,
+        };
+        let base = ramp([0.0, 0.0], [10.0, 0.0]);
+        let mut layer = PaintEntry::fill(ramp([0.0, 5.0], [10.0, 5.0]));
+        layer.offset = [100.0, 0.0];
+        let mut path = VecPath {
+            verts: vec![
+                VecVertex::corner([0.0, 0.0]),
+                VecVertex::corner([10.0, 0.0]),
+            ],
+            closed: true,
+            fill: Some(base.clone()),
+            paints: vec![layer],
+            ..VecPath::default()
+        };
+        let l = PaintSlot::Layer(0);
+        // A alça de início da camada desenha em (0,5) + offset (100,0).
+        assert_eq!(
+            hit_gradient_handle(&path, l, 100.0, 5.0, 0.5),
+            Some(GradHandle::LinearStart)
+        );
+        // Sem o offset, ali não há alça da camada (é onde ela NÃO desenha).
+        assert_eq!(hit_gradient_handle(&path, l, 0.0, 5.0, 0.5), None);
+        // A base continua a responder na base.
+        assert_eq!(
+            hit_gradient_handle(&path, PaintSlot::Base, 0.0, 0.0, 0.5),
+            Some(GradHandle::LinearStart)
+        );
+        // Arrastar a alça da camada para (110,7) grava (10,7) no degradê DELA.
+        assert!(drag_gradient_handle(
+            &mut path,
+            l,
+            GradHandle::LinearEnd,
+            110.0,
+            7.0
+        ));
+        match path.slot_fill(l) {
+            Some(Paint::Linear { end, .. }) => assert_eq!(*end, [10.0, 7.0]),
+            other => panic!("layer fill must stay Linear, got {other:?}"),
+        }
+        assert_eq!(path.fill, Some(base), "the base fill must be untouched");
+        // Uma camada que não existe (o ⚙ aberto de outra forma) não acerta nem arrasta.
+        let fora = PaintSlot::Layer(7);
+        assert_eq!(hit_gradient_handle(&path, fora, 100.0, 5.0, 9.0), None);
+        assert!(!drag_gradient_handle(
+            &mut path,
+            fora,
+            GradHandle::Stop(9),
+            0.0,
+            0.0
+        ));
+        // Uma alça seleccionada que já não existe nesta linha (Stop(5) num degradê de 2) é no-op.
+        assert!(!drag_gradient_handle(
+            &mut path,
+            l,
+            GradHandle::Stop(5),
+            105.0,
+            5.0
+        ));
     }
 }

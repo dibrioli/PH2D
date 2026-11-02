@@ -118,3 +118,49 @@ pub fn icon_side_for_glyph(glyph: f32) -> f32 {
         glyph / 0.8
     } // LITERAL-PX-OK: 1 − 2 × 10 %
 }
+
+/// ⭐ **O glifo na tinta do TEMA** — o ícone de uma cor, salvo os de DUAS tintas: a Position do
+/// traço (dono 01/11, F44c: *«o stroke de cor diferente da linha central»*) pinta o anel do traço no
+/// acento e a borda da forma (a linha central, contínua) no texto forte — a escolha lê-se pelo
+/// fundo da peça. ⛔ Tracejada, ou na tinta apagada (`ink`) das peças por escolher, a 22 px a borda
+/// sumia (fotos F44c).
+pub fn paint_icon_toned(
+    scene: &mut VectorScene,
+    icon: IconId,
+    rect: Rect,
+    ink: Color,
+    theme: ph2d_tokens::Theme,
+    stroke_width: f32,
+) {
+    // Em unidades do `viewBox` 24 dos SVG irmãos (`stroke-*.svg`): a borda e o anel — o de fora
+    // (`EDGE_R + RING_W`) encosta na margem do desenho.
+    const EDGE_R: f64 = 7.0; // LITERAL-PX-OK: raio da borda no viewBox 24
+    const RING_W: f64 = 5.0; // LITERAL-PX-OK: espessura do anel no viewBox 24
+    let shift = match icon {
+        IconId::StrokeInside => -RING_W * 0.5,
+        IconId::StrokeCenter => 0.0,
+        IconId::StrokeOutside => RING_W * 0.5,
+        _ => return paint_icon(scene, icon, rect, ink, stroke_width),
+    };
+    let side = icon_glyph_side(rect.w.min(rect.h));
+    let scale = f64::from(side) / 24.0; // LITERAL-PX-OK: o viewBox dos SVG
+    let c = ph2d_vector::Point::new(
+        f64::from(rect.x + rect.w * 0.5),
+        f64::from(rect.y + rect.h * 0.5),
+    );
+    let ring = crate::paint::resolve(ph2d_tokens::ColorToken::Accent, theme);
+    let anel = ph2d_vector::Circle::new(c, (EDGE_R + shift) * scale);
+    scene.stroke_path(
+        &Stroke::new(RING_W * scale),
+        Affine::IDENTITY,
+        &Brush::Solid(ring),
+        &ph2d_vector::Shape::to_path(&anel, 0.1),
+    );
+    let borda = ph2d_vector::Circle::new(c, EDGE_R * scale);
+    scene.stroke_path(
+        &Stroke::new(f64::from(stroke_width)),
+        Affine::IDENTITY,
+        &Brush::Solid(crate::paint::resolve(ph2d_tokens::ColorToken::Text1, theme)),
+        &ph2d_vector::Shape::to_path(&borda, 0.1),
+    );
+}

@@ -32,7 +32,13 @@ fn the_panel_reads_the_primary_and_the_gesture_writes_them_all() {
     let (mut scene, ids) = cena();
     scene.path_mut(ids[0]).expect("a").opacity = Opacity::new(0.25);
     scene.path_mut(ids[1]).expect("b").opacity = Opacity::new(0.75);
-    let a = published(&scene, &ids, &Default::default()).expect("ha' seleccao");
+    let a = published(
+        &scene,
+        &ids,
+        &Default::default(),
+        ph2d_editor_core::DocPx::DEFAULT,
+    )
+    .expect("ha' seleccao");
     assert!(
         (a.opacity - 0.25).abs() < 1e-6,
         "o readout e' do PRIMARIO, nao de outro da lista"
@@ -61,9 +67,23 @@ fn the_panel_reads_the_primary_and_the_gesture_writes_them_all() {
 #[test]
 fn an_empty_selection_publishes_nothing() {
     let (scene, _) = cena();
-    assert!(published(&scene, &[], &Default::default()).is_none());
     assert!(
-        published(&scene, &[999], &Default::default()).is_none(),
+        published(
+            &scene,
+            &[],
+            &Default::default(),
+            ph2d_editor_core::DocPx::DEFAULT
+        )
+        .is_none()
+    );
+    assert!(
+        published(
+            &scene,
+            &[999],
+            &Default::default(),
+            ph2d_editor_core::DocPx::DEFAULT
+        )
+        .is_none(),
         "um id que a cena nao tem tambem nao publica — a forma pode ter sido apagada neste quadro"
     );
 }
@@ -109,9 +129,14 @@ fn o_painel_mostra_a_opacidade_que_a_tela_desenha() {
     let a = scene.push_path(VecPath::default());
     let b = scene.push_path(VecPath::default());
     let mut vivo = ph2d_vec_scene::VecViewState::default();
-    assert_eq!(published(&scene, &[a], &vivo).unwrap().opacity, 1.0);
+    assert_eq!(
+        published(&scene, &[a], &vivo, ph2d_editor_core::DocPx::DEFAULT)
+            .unwrap()
+            .opacity,
+        1.0
+    );
     crate::driven_style::apply(&[(a, 0.6)], &mut vivo);
-    let p = published(&scene, &[a, b], &vivo).unwrap();
+    let p = published(&scene, &[a, b], &vivo, ph2d_editor_core::DocPx::DEFAULT).unwrap();
     assert!(
         (p.opacity - 0.6).abs() < 1e-2,
         "o painel leu o gravado: {}",

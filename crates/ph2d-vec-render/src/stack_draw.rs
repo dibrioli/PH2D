@@ -106,7 +106,7 @@ pub(crate) fn draw_extra_paints(
 ///
 /// ⭐ O neutro é o afim de sempre, **ao bit** — é o `if` que mantém byte-idêntico o desenho de toda
 /// pilha que não desloca nada.
-fn camada_xf(transform: Affine, offset: [f64; 2]) -> Affine {
+pub(crate) fn camada_xf(transform: Affine, offset: [f64; 2]) -> Affine {
     if offset[0] == 0.0 && offset[1] == 0.0 {
         return transform;
     }

@@ -2,8 +2,8 @@
 //! e *«modernizar Cap, Join, Align num modo moderno como Figma, com ícones inteligíveis»*).
 //!
 //! Cada gate CLICA pelo ponteiro (pintar → rect → Down/Up → dispatcher → painel): o «+» do título,
-//! as linhas (base e camadas extra da pilha), a caixa que abre o painel à ESQUERDA, a linha fixa
-//! Position · Weight · ⚙ e o «Stroke settings».
+//! as linhas (base e camadas extra da pilha), a caixa que abre o painel à ESQUERDA, o Weight na
+//! linha de cada traço (F44c) e o «Stroke settings» com a Position.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -222,46 +222,120 @@ fn cap_join_e_position_sao_glifos() {
     }
 }
 
-/// ⭐ **A linha fixa: Position (três glifos) · Weight · ⚙**, e cada glifo chega ao bus. *Mutação:
-/// trocar o id de um glifo ⇒ vermelho.*
+/// ⭐⭐ **F44c (dono 01/11): o Weight mora na LINHA do traço, a Position no ⚙ dele.** A linha do
+/// traço de base é `[cor] [Weight] [%] [⚙]` na MESMA altura (a cor um quadrado), a linha fixa
+/// «Position | Weight» deixou de existir, e a Position só se pinta com o «Stroke settings» aberto —
+/// onde cada glifo chega ao bus sem fechar o painel. *Mutação: voltar a pintar a linha fixa (a
+/// Position à mostra com o ⚙ fechado), ou o Weight fora da linha da cor ⇒ vermelho.*
 #[test]
-fn a_linha_fixa_position_weight_ajustes() {
+fn o_weight_na_linha_e_a_position_no_ajuste() {
     forma();
+    let mut h = crate::host_aberto();
+    let cor = pintado(&mut h, tv::VECTOR_STROKE_SWATCH).expect("a cor do traço");
+    let peso = pintado(&mut h, tv::VECTOR_WIDTH_NUM).expect("o Weight na linha");
+    let pct = pintado(&mut h, tv::VECTOR_STROKE_OPACITY_NUM).expect("% do traço");
+    let ajuste = pintado(&mut h, ids::VECTOR_STROKE_SETTINGS).expect("⚙");
+    for (r, what) in [(peso, "o Weight"), (pct, "o %"), (ajuste, "o ⚙")] {
+        assert!(
+            (r.y - cor.y).abs() < 0.5,
+            "{what} fora da linha da cor: {r:?} × {cor:?}"
+        );
+    }
+    assert!(
+        (cor.w - cor.h).abs() < 0.5,
+        "a cor do traço é um QUADRADO: {cor:?}"
+    );
+    assert!(
+        cor.x + cor.w <= peso.x && peso.x + peso.w <= pct.x,
+        "a ordem é [cor] [Weight] [%]: {cor:?} {peso:?} {pct:?}"
+    );
     for id in [
         tv::VECTOR_ALIGN_INNER,
         tv::VECTOR_ALIGN_CENTRE,
         tv::VECTOR_ALIGN_OUTER,
     ] {
-        let mut h = crate::host_aberto();
-        crate::clica(&mut h, id);
-        assert!(cliques(&mut h).contains(&id), "{id:?} morto");
+        assert!(
+            pintado(&mut h, id).is_none(),
+            "{id:?} à mostra com o ⚙ fechado (a linha fixa voltou)"
+        );
     }
-    let mut h = crate::host_aberto();
-    let pos = pintado(&mut h, tv::VECTOR_ALIGN_OUTER).expect("Position");
-    let peso = pintado(&mut h, tv::VECTOR_WIDTH_NUM).expect("Weight");
+    crate::clica(&mut h, ids::VECTOR_STROKE_SETTINGS);
+    let inner = pintado(&mut h, tv::VECTOR_ALIGN_INNER).expect("a Position no «Stroke settings»");
+    let cap = pintado(&mut h, tv::VECTOR_CAP_BUTT).expect("o Cap no «Stroke settings»");
     assert!(
-        (pos.y - peso.y).abs() < 0.5,
-        "Position e Weight na MESMA linha"
+        inner.y < cap.y,
+        "a Position é a PRIMEIRA fileira dos ajustes"
     );
-    assert!(pos.x < peso.x);
-    // F44b: o ⚙ do traço de base mudou-se para a linha da COR dele, como o de toda linha; e o
-    // Weight está na coluna do `%`.
-    let pct = pintado(&mut h, tv::VECTOR_STROKE_OPACITY_NUM).expect("% do traço");
-    let ajuste = pintado(&mut h, ids::VECTOR_STROKE_SETTINGS).expect("⚙");
-    assert!((ajuste.y - pct.y).abs() < 0.5, "o ⚙ mora na linha da cor");
-    assert!((peso.x - pct.x).abs() < 0.5 && (peso.w - pct.w).abs() < 0.5);
+    let painel = h
+        .store()
+        .panel_rect(ph2d_editor_core::ids::VECTOR_PANEL)
+        .expect("o rect do Inspector");
+    assert!(
+        inner.x + inner.w <= painel.x,
+        "a Position abre à ESQUERDA do Inspector: {inner:?} × {painel:?}"
+    );
+    for id in [
+        tv::VECTOR_ALIGN_INNER,
+        tv::VECTOR_ALIGN_CENTRE,
+        tv::VECTOR_ALIGN_OUTER,
+    ] {
+        crate::clica(&mut h, id);
+        assert!(cliques(&mut h).contains(&id), "{id:?} pintado e morto");
+        assert_eq!(
+            h.dropdown_is_open(ids::VECTOR_STROKE_SETTINGS),
+            Some(true),
+            "escolher a Position fechou o painel"
+        );
+    }
     limpa();
 }
 
-/// ⭐⭐ **F44b (dono 01/11): TODAS as linhas iguais** — a base e as camadas, Fill e Stroke, com as
-/// MESMAS colunas: caixa, `%`, ⚙, olho e «−» no mesmo `x` e com a mesma largura. *Mutação: tirar o
-/// olho da base (ou não reservar a coluna de um losango ausente) desloca a caixa dela.*
+/// ⭐ **Com uma camada ABERTA a Position é a DELA**, não a do traço de base (F44c): o painel da
+/// camada pinta `VECTOR_PAINT_ALIGN_*`, e a base não se pinta por cima. *Mutação: tirar a guarda
+/// `open_layer().is_none()` do `stroke_settings_body` ⇒ as duas fileiras.*
+#[test]
+fn com_a_camada_aberta_a_position_e_a_dela() {
+    forma();
+    let mut h = crate::host_aberto();
+    crate::clica(&mut h, ids::vector_paint_row_id(1));
+    for id in [
+        ids::VECTOR_PAINT_ALIGN_INNER,
+        ids::VECTOR_PAINT_ALIGN_CENTRE,
+        ids::VECTOR_PAINT_ALIGN_OUTER,
+    ] {
+        assert!(
+            pintado(&mut h, id).is_some(),
+            "{id:?} falta no painel da camada"
+        );
+    }
+    for id in [
+        tv::VECTOR_ALIGN_INNER,
+        tv::VECTOR_ALIGN_CENTRE,
+        tv::VECTOR_ALIGN_OUTER,
+    ] {
+        assert!(
+            pintado(&mut h, id).is_none(),
+            "{id:?}: a Position da base pintada com a camada aberta"
+        );
+    }
+    // A aberta deriva-se do `Dropdown` na pintura (a de cima já a fez).
+    assert_eq!(state::open_layer_index(), Some(1));
+    limpa();
+}
+
+/// ⭐⭐ **F44b/F44c (dono 01/11): TODAS as linhas iguais** — a base e as camadas, Fill e Stroke:
+/// `%`, ⚙, olho e «−» no mesmo `x` e com a mesma largura em toda linha. A cor é a ÚNICA coluna que
+/// muda, e só por espécie: num traço é um quadrado seguido do Weight (os dois no mesmo `x` em toda
+/// linha de traço); num preenchimento a cor ocupa as duas colunas — começa onde a do traço começa
+/// e acaba onde o Weight acaba. *Mutação: tirar o olho da base (ou não reservar a coluna de um
+/// losango ausente) desloca a linha dela; dar o Weight a um preenchimento encolhe-lhe a cor.*
 #[test]
 fn todas_as_linhas_tem_as_mesmas_colunas() {
     forma();
     let mut h = crate::host_aberto();
     let mut r = |id| pintado(&mut h, id).unwrap_or_else(|| panic!("{id:?} não pintado"));
-    let colunas = [
+    // [cor, Weight?, %, ⚙, olho, −] — o Weight só nas linhas de traço.
+    let fills = [
         [
             tv::VECTOR_FILL_SWATCH,
             tv::VECTOR_FILL_OPACITY_NUM,
@@ -276,8 +350,12 @@ fn todas_as_linhas_tem_as_mesmas_colunas() {
             ids::vector_paint_eye_id(0),
             ids::vector_paint_del_id(0),
         ],
+    ]
+    .map(|linha| linha.map(&mut r));
+    let strokes = [
         [
             tv::VECTOR_STROKE_SWATCH,
+            tv::VECTOR_WIDTH_NUM,
             tv::VECTOR_STROKE_OPACITY_NUM,
             ids::VECTOR_STROKE_SETTINGS,
             ids::VECTOR_STROKE_EYE,
@@ -285,6 +363,7 @@ fn todas_as_linhas_tem_as_mesmas_colunas() {
         ],
         [
             ids::vector_paint_swatch_id(1),
+            ids::vector_paint_row_width_id(1),
             ids::vector_paint_row_opacity_id(1),
             ids::vector_paint_row_id(1),
             ids::vector_paint_eye_id(1),
@@ -292,14 +371,46 @@ fn todas_as_linhas_tem_as_mesmas_colunas() {
         ],
     ]
     .map(|linha| linha.map(&mut r));
-    for linha in &colunas[1..] {
-        for (a, b) in colunas[0].iter().zip(linha) {
-            assert!(
-                (a.x - b.x).abs() < 0.5 && (a.w - b.w).abs() < 0.5,
-                "coluna desalinhada: {a:?} × {b:?}"
-            );
+    let mesma = |a: &Rect, b: &Rect| (a.x - b.x).abs() < 0.5 && (a.w - b.w).abs() < 0.5;
+    // As colunas comuns (% · ⚙ · olho · −) — iguais em TODA linha.
+    let comuns = |l: &[Rect]| l[l.len() - 4..].to_vec();
+    let todas: Vec<Vec<Rect>> = (fills.iter().map(|l| comuns(l)))
+        .chain(strokes.iter().map(|l| comuns(l)))
+        .collect();
+    for linha in &todas[1..] {
+        for (a, b) in todas[0].iter().zip(linha) {
+            assert!(mesma(a, b), "coluna desalinhada: {a:?} × {b:?}");
         }
     }
+    // A cor e o Weight: iguais entre as linhas da MESMA espécie.
+    assert!(
+        mesma(&fills[0][0], &fills[1][0]),
+        "a cor dos preenchimentos"
+    );
+    for (k, (a, b)) in strokes[0].iter().zip(&strokes[1]).take(2).enumerate() {
+        assert!(
+            mesma(a, b),
+            "coluna {k} dos traços desalinhada: {a:?} × {b:?}"
+        );
+    }
+    let (cor_t, peso) = (strokes[0][0], strokes[0][1]);
+    assert!(
+        (cor_t.w - cor_t.h).abs() < 0.5,
+        "a cor do traço é um QUADRADO: {cor_t:?}"
+    );
+    let cor_f = fills[0][0];
+    assert!(
+        (cor_f.x - cor_t.x).abs() < 0.5,
+        "a cor começa no MESMO x nas duas espécies: {cor_f:?} × {cor_t:?}"
+    );
+    assert!(
+        cor_f.x + cor_f.w >= peso.x + peso.w - 0.5 && cor_f.x + cor_f.w <= fills[0][1].x,
+        "a cor do preenchimento ocupa a coluna do Weight (até antes do %): {cor_f:?} × {peso:?}"
+    );
+    assert!(
+        pintado(&mut h, ids::vector_paint_row_width_id(0)).is_none(),
+        "um PREENCHIMENTO ganhou o Weight"
+    );
     limpa();
 }
 
@@ -332,18 +443,34 @@ fn a_opacidade_da_linha_aponta_a_camada() {
     limpa();
 }
 
-/// ⭐ **A caixa de uma camada abre o painel dela à esquerda** (largura, deslocamento, mistura) e a
-/// camada aberta passa a ser ESSA — a que a shell grava. *Mutação: não derivar a aberta do
-/// `Dropdown` ⇒ vermelho.*
+/// ⭐ **O ⚙ de uma camada abre o painel dela à esquerda** (Position, deslocamento, mistura) e a
+/// camada aberta passa a ser ESSA — a que a shell grava. F44c: o Weight NÃO está no painel — mora
+/// na linha, à mostra de painel aberto ou fechado. *Mutação: não derivar a aberta do `Dropdown` ⇒
+/// vermelho; voltar a linha «Width» ao painel ⇒ vermelho.*
 #[test]
 fn a_caixa_da_camada_abre_o_painel_dela() {
     forma();
     let mut h = crate::host_aberto();
-    assert!(pintado(&mut h, ids::VECTOR_PAINT_WIDTH).is_none());
+    assert!(pintado(&mut h, ids::VECTOR_PAINT_BLEND).is_none());
+    let peso = pintado(&mut h, ids::vector_paint_row_width_id(1)).expect("o Weight na linha");
     crate::clica(&mut h, ids::vector_paint_row_id(1));
+    let mistura = pintado(&mut h, ids::VECTOR_PAINT_BLEND).expect("a mistura no painel");
+    let painel = h
+        .store()
+        .panel_rect(ph2d_editor_core::ids::VECTOR_PANEL)
+        .expect("o rect do Inspector");
     assert!(
-        pintado(&mut h, ids::VECTOR_PAINT_WIDTH).is_some(),
-        "a largura no painel"
+        mistura.x + mistura.w <= painel.x,
+        "o painel da camada abre à ESQUERDA: {mistura:?} × {painel:?}"
+    );
+    assert!(
+        pintado(&mut h, ids::VECTOR_PAINT_WIDTH).is_none(),
+        "a linha «Width» voltou ao painel — o Weight tem UM sítio, a linha"
+    );
+    assert_eq!(
+        pintado(&mut h, ids::vector_paint_row_width_id(1)),
+        Some(peso),
+        "o Weight da linha mudou de sítio ao abrir o painel"
     );
     assert_eq!(state::open_layer_index(), Some(1));
     crate::clica(&mut h, ids::VECTOR_PAINT_PROPS_CLOSE);

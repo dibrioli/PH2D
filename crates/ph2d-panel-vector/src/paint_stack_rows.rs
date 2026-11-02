@@ -65,14 +65,8 @@ impl BodyCtx<'_> {
 
     /// As propriedades da camada ABERTA — o corpo do painel à esquerda (F44).
     pub(crate) fn layer_props(&mut self, row: &PaintRow, y: f32) -> f32 {
+        // F44c: o Weight do contorno mora na LINHA dele, ao lado da cor.
         let mut y = y;
-        if !row.is_fill {
-            y = self.lone_number_row(
-                tr("panel.vector.paint.width"),
-                crate::ids::VECTOR_PAINT_WIDTH,
-                y,
-            );
-        }
         // ⭐⭐⭐ **ONDE ela desenha** (v21) — o par `X`/`Y`, na MESMA `number_row` que o Transform e
         // o Vertex usam para as coordenadas deles.
         //

@@ -80,7 +80,8 @@ fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
 #[path = "paint_icons.rs"]
 mod icons_paint;
 pub use icons_paint::{
-    icon_glyph_side, icon_pad, icon_side_for_glyph, paint_icon, paint_icon_path, paint_icon_rotated,
+    icon_glyph_side, icon_pad, icon_side_for_glyph, paint_icon, paint_icon_path,
+    paint_icon_rotated, paint_icon_toned,
 };
 pub(crate) use text::paint_text_weighted;
 pub use text::{

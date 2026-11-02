@@ -69,8 +69,7 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     let WidgetEvent::ValueChanged(id) = ev else {
         return None;
     };
-    if id == crate::ids::VECTOR_PAINT_WIDTH
-        || id == crate::ids::VECTOR_PAINT_DX
+    if id == crate::ids::VECTOR_PAINT_DX
         || id == crate::ids::VECTOR_PAINT_DY
         || id == crate::ids::VECTOR_PAINT_DILATE
     {
@@ -100,6 +99,19 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
                 crate::ids::VECTOR_PAINT_OPACITY,
                 (pct / 100.0).clamp(0.0, 1.0), // LITERAL-PX-OK: percent→fraction
+            )));
+        return Some(true);
+    }
+    // ⭐ F44c — o Weight na LINHA do contorno `i`: a mesma volta, pela porta da largura da camada.
+    if let Some(i) =
+        (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|&i| id == ids::vector_paint_row_width_id(i))
+    {
+        let px = host.store().number_value(id).unwrap_or(0.0);
+        crate::state::set_open_layer(Some(i));
+        host.bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                crate::ids::VECTOR_PAINT_WIDTH,
+                px,
             )));
         return Some(true);
     }

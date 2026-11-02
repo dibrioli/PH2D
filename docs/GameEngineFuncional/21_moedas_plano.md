@@ -40,3 +40,10 @@ Sai o `moeda.luau` (distância medida à mão) da cena 2/3/4; o nível 1 fica co
 | Item | Estado |
 |---|---|
 | plano | feito |
+| E1 trigger sem corpo | **não é defeito do artista**: a paleta só oferece *Physics Body* (traz o Collision Shape); Static + Trigger funciona |
+| E3 som que sobrevive ao dono | feito `f08629069a` (gate `in_a_run_a_one_shot_outlives_its_object_and_a_loop_does_not`) |
+| composição das moedas + HUD com Counter | feito `6494f86cd2` (`smoke_moedas.rs`, gates `jogo_moedas` 2; mutação *From: Anyone* sangra) |
+| E4/E5 no app | medido 02/11 (`PH2D_SIGNAL_LOG=1`, condutor `window`): 3 moedas, contador 1→2→3, vozes vivas depois da saída; Stop devolve o documento ao bit e o «rebobinar» repõe o contador |
+| E2 som como asset do projecto | **aberto** — metade 2 da onda (degrau de `PROJECT_SCHEMA`, Assets, queda no campo Sound) |
+| texto do placar pela cena | **aberto**: o texto vetorial só nasce pela shell (`VecState`), em 3 quadros; o caminho do artista (Text + *Label*) já existe |
+| `[rebobinar] 1 estado reposto` a cada quadro parado | aberto (só com `PH2D_SIGNAL_LOG`): conta um contador que já está no início como reposto |

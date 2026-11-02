@@ -63,6 +63,7 @@ impl PainterTool {
     /// A imagem `entity` acabou de nascer pelo *New Image…* com «Textured Paper»: quando ela vira
     /// documento, o papel dela é o [`PAPEL_TEXTURIZADO`].
     pub fn agenda_papel_texturizado(&mut self, entity: u64) {
+        self.macro_recusa("agenda_papel_texturizado");
         self.papel_texturizado_para = Some(entity);
     }
 

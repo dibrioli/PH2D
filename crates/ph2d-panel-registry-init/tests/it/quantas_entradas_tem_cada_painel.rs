@@ -2273,12 +2273,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬇️ `612 → 219` na integração de 02/11 (UIUX F43–F45: Effects/Filters e Fill/Stroke no layout do
     //    Figma — o «+» com lista, linhas iguais com ⚙ por linha, e a secção Stroke fundida na pilha).
     //    Medido pelo gate.
-    // ⬆️ `219 → 271` na mesma integração, e NÃO é uma secção a nascer aberta: a linha de tinta parte-se
-    //    em DUAS filas quando o Weight não leva o maior número que pinta (`100`, medido em `Sm` com a
-    //    folga e o stepper do pintor) — no degrau estreito ele ficava com `1 px` e o «3» pintava em
-    //    nada (`nenhum_rotulo_do_app_pinta_nada`). A 2.ª fila soma `row_h + row_gap` por linha.
-    //    Medido pelo gate.
-    ("vector", 271.0),
+    // ↔️ `219` mantém-se depois de a linha de tinta passar a partir-se em duas filas quando o Weight não
+    //    leva o número que MOSTRA (dono 02/11, *«parte só quando precisa»*): na abertura o valor padrão
+    //    cabe e a linha nasce numa fila. (Medir o MÁXIMO, `100`, dava `271` — a 2.ª fila em toda
+    //    linha de traço; recusado pelo dono.) Medido pelo gate.
+    ("vector", 219.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

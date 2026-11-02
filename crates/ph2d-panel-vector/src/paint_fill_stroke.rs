@@ -102,6 +102,25 @@ struct Peso<'a> {
     token: Option<String>,
 }
 
+/// ⭐ **O Weight que uma linha MOSTRA** — a fonte única que a linha pinta e que a lista mede para a
+/// altura dela ([`BodyCtx::peso_base`], [`BodyCtx::peso_camada`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct PesoValor {
+    pub(super) id: NodeId,
+    pub(super) px: f64,
+    pub(super) mixed: bool,
+}
+
+impl Peso<'_> {
+    fn valor(&self) -> PesoValor {
+        PesoValor {
+            id: self.id,
+            px: self.px,
+            mixed: self.mixed,
+        }
+    }
+}
+
 /// ⭐ **As colunas de uma linha**, da direita para a esquerda — as MESMAS em toda linha de Fill e
 /// de Stroke: `[cor]◇ [Weight]◇ [%]◇ [⚙] [👁]◇ [−]`; a cor é sempre um quadrado, e num
 /// preenchimento a coluna do Weight fica vazia.
@@ -120,22 +139,47 @@ pub(super) struct Colunas {
 }
 
 impl BodyCtx<'_> {
-    /// ⭐ **A linha cabe numa fila?** As partes fixas (a cor, os cinco losangos, ⚙ 👁 −) mais o `%` e o
-    /// Weight MEDIDOS. Abaixo disso (o degrau estreito: `inner_w` 168 contra 230 de fixo + `%`, integ
-    /// 02/11) o Weight ficava com 1 px e o número pintava em nada — a linha parte-se em duas.
-    pub(super) fn linha_dupla(&mut self) -> bool {
+    /// ⭐ **A linha cabe numa fila?** (dono 02/11: *«parte só quando precisa»*). As partes fixas (a cor,
+    /// os quatro losangos, ⚙ 👁 −) mais o `%` e o Weight MEDIDOS — o Weight pelo número que ele mostra
+    /// AGORA. No degrau estreito (`inner_w` 168, integ 02/11) o Weight ficava com 1 px e o número
+    /// pintava em nada; na largura de fábrica o valor padrão cabe e a linha fica numa fila (F44c), e
+    /// só um valor que não cabe (`100`) a parte. Um preenchimento (sem Weight) nunca parte.
+    pub(super) fn linha_dupla(&mut self, peso: Option<PesoValor>) -> bool {
+        let Some(peso) = peso else {
+            return false;
+        };
         let (h, mw) = (self.row_h, self.decorator_w());
         // A cor e os três botões (⚙ 👁 −) são quadrados `h`; losangos há quatro (cor, Weight, %, olho).
         let fixo = 4.0 * h + 4.0 * mw;
         let pct_w = self.pct_w();
-        let weight_w = self.weight_min_w();
+        let weight_w = self.weight_min_w(peso);
         self.inner_w < fixo + pct_w + weight_w
     }
 
-    /// A altura de UMA linha de tinta — uma fila, ou duas no degrau estreito. ⚠️ A lista (passo do
-    /// arrasto, vão, linha que voa) lê ESTA, senão o registo e a pintura discordam.
-    pub(super) fn linha_h(&mut self) -> f32 {
-        if self.linha_dupla() {
+    /// O Weight do traço de BASE: o número em edição, senão a ficha.
+    pub(super) fn peso_base(&self, snap: &VectorStyleSnapshot) -> PesoValor {
+        let id = ph2d_tool_vector::ids::VECTOR_WIDTH_NUM;
+        PesoValor {
+            id,
+            px: self.store.number_value(id).unwrap_or(snap.stroke_width_px),
+            mixed: !snap.agrees(StyleFields::WIDTH),
+        }
+    }
+
+    /// O Weight da camada `i` (índice do DOCUMENTO).
+    pub(super) fn peso_camada(&self, i: usize, row: &PaintRow) -> PesoValor {
+        let id = ids::vector_paint_row_width_id(i);
+        PesoValor {
+            id,
+            px: self.live_number(id, row.width),
+            mixed: row.mixed.width,
+        }
+    }
+
+    /// A altura de UMA linha de tinta — uma fila, ou duas quando o Weight não cabe. ⚠️ A lista (passo
+    /// do arrasto, vão, linha que voa) lê ESTA com o MESMO [`PesoValor`] que a linha pinta.
+    pub(super) fn linha_h(&mut self, peso: Option<PesoValor>) -> f32 {
+        if self.linha_dupla(peso) {
             self.row_h * 2.0 + self.row_gap
         } else {
             self.row_h
@@ -152,10 +196,10 @@ impl BodyCtx<'_> {
 
     /// As colunas da linha em `y`. O losango reserva a largura dele mesmo sem canal (alinhamento).
     /// Na linha dupla a 2.ª fila (sob a cor) leva `[Weight]◇ [%]◇`.
-    pub(super) fn colunas(&mut self, y: f32) -> Colunas {
+    pub(super) fn colunas(&mut self, y: f32, peso: Option<PesoValor>) -> Colunas {
         let h = self.row_h;
         let mw = self.decorator_w();
-        let dupla = self.linha_dupla();
+        let dupla = self.linha_dupla(peso);
         let right = self.inner_x + self.inner_w;
         // Os três botões encostados (o glifo já tem a folga dele): a caixa do hex fica com a largura.
         let minus = Rect::new(right - h, y, h, h);
@@ -200,12 +244,21 @@ impl BodyCtx<'_> {
         self.campo_w(&format!("100{}", Unit::Percent.suffix()))
     }
 
-    /// O mínimo do Weight, MEDIDO sobre o maior NÚMERO que ele pinta (`WIDTH_MAX_PX`) — sem o «px»:
-    /// a unidade vive no rótulo, nunca na caixa (regra do dono), e é o número que não pode faltar.
-    fn weight_min_w(&mut self) -> f32 {
-        let maior = ph2d_editor_core::widget::format_number(
-            ph2d_tool_vector::params::WIDTH_MAX_PX,
-        );
+    /// O mínimo do Weight, MEDIDO sobre o número que ele mostra agora — sem o «px» (a unidade vive no
+    /// rótulo, nunca na caixa, regra do dono). Em repouso o pintor perde CASAS, nunca dígitos
+    /// (`numero_que_cabe`), logo o que não pode faltar é o inteiro arredondado; a editar, o buffer
+    /// inteiro; misto, nada.
+    fn weight_min_w(&mut self, peso: PesoValor) -> f32 {
+        let editando = self.store.focus_id() == Some(peso.id);
+        let maior = if editando {
+            let (_, _, buffer, _, _) =
+                ph2d_editor_core::widget::showcase::read_number_input(self.store, peso.id);
+            buffer.to_string()
+        } else if peso.mixed {
+            String::new()
+        } else {
+            ph2d_editor_core::widget::format_number(peso.px.round())
+        };
         // A conta do PINTOR do número (`paint_number_input_with_buffer`): o texto em `Sm`, a folga
         // da esquerda e o stepper — à direita só as setas ocluem o número.
         let host = Rect::new(0.0, 0.0, self.chip_w, self.row_h);
@@ -219,11 +272,9 @@ impl BodyCtx<'_> {
 
     /// Um campo numérico que mostra `texto` inteiro: o texto, a folga dos dois bordos e o stepper.
     fn campo_w(&mut self, texto: &str) -> f32 {
-        let medido = self.text_system.prefix_width_weighted(
-            texto,
-            self.font,
-            ph2d_text::FontWeight::MEDIUM,
-        );
+        let medido =
+            self.text_system
+                .prefix_width_weighted(texto, self.font, ph2d_text::FontWeight::MEDIUM);
         let host = Rect::new(0.0, 0.0, self.chip_w, self.row_h);
         let w = medido
             + ph2d_editor_core::widget::field_pad_x() * 2.0
@@ -285,7 +336,8 @@ impl BodyCtx<'_> {
     /// como no Figma) — o tipo mora nos ajustes (⚙). Devolve o `y` seguinte, a caixa da cor (para a
     /// rachura de um token) e, se os ajustes estão abertos, a linha (a âncora do painel à esquerda).
     fn paint_line(&mut self, l: &Linha<'_>, y: f32) -> (f32, Rect, Option<Rect>) {
-        let c = self.colunas(y);
+        let peso = l.weight.as_ref().map(Peso::valor);
+        let c = self.colunas(y, peso);
         // A cor é um QUADRADO em toda linha (dono 01/11); num preenchimento a coluna do Weight
         // fica vazia.
         let caixa = c.caixa;
@@ -332,7 +384,7 @@ impl BodyCtx<'_> {
             );
         }
         self.hit_index.register(l.swatch, caixa);
-        let lh = self.linha_h();
+        let lh = self.linha_h(peso);
         let line = Rect::new(self.inner_x, y, self.inner_w, lh);
         (y + lh + self.row_gap, caixa, open.then_some(line))
     }
@@ -387,8 +439,7 @@ impl BodyCtx<'_> {
         let opacity = ids::vector_paint_row_opacity_id(i);
         let pct = self.live_number(opacity, f64::from(row.opacity) * 100.0); // LITERAL-PX-OK: fraction→percent
         let eye = ids::vector_paint_eye_id(i);
-        let wid = ids::vector_paint_row_width_id(i);
-        let px = self.live_number(wid, row.width);
+        let PesoValor { id: wid, px, .. } = self.peso_camada(i, row);
         let (y, _, open) = self.paint_line(
             &Linha {
                 settings: Some(ids::vector_paint_row_id(i)),
@@ -525,8 +576,7 @@ impl BodyCtx<'_> {
             .slider(ph2d_tool_vector::ids::VECTOR_STROKE_OPACITY)
             .map_or_else(|| opacity_to_slider(snap.stroke[3]), |(_, v)| v);
         let hidden = base == Some(state::BasePaint::Hidden);
-        let wid = ph2d_tool_vector::ids::VECTOR_WIDTH_NUM;
-        let px = self.store.number_value(wid).unwrap_or(snap.stroke_width_px);
+        let PesoValor { id: wid, px, .. } = self.peso_base(snap);
         let (next, swatch, open) = self.paint_line(
             &Linha {
                 settings: (!in_bar).then_some(ids::VECTOR_STROKE_SETTINGS),

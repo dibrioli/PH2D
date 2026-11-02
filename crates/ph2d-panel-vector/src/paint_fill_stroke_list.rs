@@ -158,7 +158,20 @@ impl BodyCtx<'_> {
         arrastavel: bool,
         y0: f32,
     ) -> f32 {
-        let step = self.linha_h() + self.row_gap;
+        // ⚠️ As linhas têm altura PRÓPRIA (uma fila, ou duas quando o Weight não cabe): a ranhura,
+        // o vão e a linha que voa leem os topos medidos, nunca um passo fixo.
+        let alturas: Vec<f32> = rows
+            .iter()
+            .map(|it| self.altura_do_item(snap, *it))
+            .collect();
+        let topos: Vec<f32> = alturas
+            .iter()
+            .scan(y0, |y, h| {
+                let topo = *y;
+                *y += h + self.row_gap;
+                Some(topo)
+            })
+            .collect();
         let drag = self
             .store
             .panel_row_drag()
@@ -167,13 +180,11 @@ impl BodyCtx<'_> {
         let agarrada = drag.and_then(|d| rows.iter().position(|it| gear_of(*it) == d.dragged));
         let n = rows.len();
         let ranhura = |cy: f32| {
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "preso à lista"
-            )]
-            let t = ((cy - y0) / step).floor().max(0.0) as usize;
-            t.min(n.saturating_sub(1))
+            topos
+                .iter()
+                .rposition(|&t| t <= cy)
+                .unwrap_or(0)
+                .min(n.saturating_sub(1))
         };
         let (vao, alvo) = match (drag, agarrada) {
             (Some(d), Some(k)) => {
@@ -193,11 +204,11 @@ impl BodyCtx<'_> {
             .map(|(_, it)| *it);
         let mut y = y0;
         for s in 0..n {
-            if let Some((_, t)) = vao
+            if let Some((k, t)) = vao
                 && s == t
             {
-                self.drop_mark(y);
-                y += step;
+                self.drop_mark(y, alturas[k]);
+                y += alturas[k] + self.row_gap;
                 continue;
             }
             if let Some(it) = outras.next() {
@@ -208,14 +219,28 @@ impl BodyCtx<'_> {
             self.fly_row(
                 snap,
                 rows[k],
+                alturas[k],
                 // O ponto onde a mão agarrou fica sob o cursor, nos DOIS eixos (o cartão do Kanban).
                 (
                     self.inner_x + d.cursor_x - d.down_x,
-                    d.cursor_y - (d.down_y - (y0 + step * k as f32)),
+                    d.cursor_y - (d.down_y - topos[k]),
                 ),
             );
         }
         y
+    }
+
+    /// A altura da linha `it` — pelo MESMO Weight que ela pinta (`peso_base`/`peso_camada`).
+    fn altura_do_item(&mut self, snap: &VectorStyleSnapshot, it: StackItem) -> f32 {
+        let peso = match it {
+            StackItem::BaseFill => None,
+            StackItem::BaseStroke => Some(self.peso_base(snap)),
+            StackItem::Entry(i) => state::current_appearance()
+                .and_then(|a| a.layers.get(i).copied())
+                .filter(|r| !r.is_fill)
+                .map(|r| self.peso_camada(i, &r)),
+        };
+        self.linha_h(peso)
     }
 
     /// Uma linha da lista: a tinta de base ou a camada `i`.
@@ -234,9 +259,8 @@ impl BodyCtx<'_> {
 
     /// O vão onde a linha vai cair: a ranhura funda (o lugar do cartão no Kanban) e a linha de
     /// acento na borda de CIMA dela — fora da linha que voa por cima do vão, sempre à vista.
-    fn drop_mark(&mut self, y: f32) {
+    fn drop_mark(&mut self, y: f32, lh: f32) {
         let raio = ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px());
-        let lh = self.linha_h();
         fill_rounded_rect(
             self.scene,
             Rect::new(self.inner_x, y, self.inner_w, lh),
@@ -254,10 +278,15 @@ impl BodyCtx<'_> {
 
     /// Pinta a linha agarrada à parte (num cartão) para o passe diferido a pôr sob o cursor, por cima
     /// de tudo, inclinada e com a sombra de voo.
-    fn fly_row(&mut self, snap: &VectorStyleSnapshot, it: StackItem, (left, top): (f32, f32)) {
+    fn fly_row(
+        &mut self,
+        snap: &VectorStyleSnapshot,
+        it: StackItem,
+        lh: f32,
+        (left, top): (f32, f32),
+    ) {
         let mut local = ph2d_vector::VectorScene::new();
         let mut cliques = ph2d_editor_core::interaction::HitIndex::default();
-        let lh = self.linha_h();
         let caixa = Rect::new(0.0, 0.0, self.inner_w, lh);
         fill_rounded_rect(
             &mut local,

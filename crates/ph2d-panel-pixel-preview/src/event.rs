@@ -9,7 +9,7 @@ use ph2d_editor_core::widget::ButtonState;
 use ph2d_i18n::tr;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    for id in [ids::CLOSE, ids::PLAY] {
+    for id in [ids::PREVIEW_CLOSE, ids::PLAY] {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
@@ -30,7 +30,7 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     match ev {
-        WidgetEvent::Click(id) if id == ids::CLOSE => {
+        WidgetEvent::Click(id) if id == ids::PREVIEW_CLOSE => {
             host.set_panel_visible(PixelPreviewPanel::ID, false);
             EventOutcome::Consumed
         }

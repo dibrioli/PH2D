@@ -196,6 +196,21 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "scrollbar.rs",
         "geometria + pintura do polegar: nao ha' semantica a anunciar (o que se anuncia e' a lista que ele rola)",
     ),
+    // ⚠️ A MESMA ausência, a barra num eixo e a rolagem de quem tem os próprios alvos (TrelloClone
+    // D14–D17; partido em pasta pelo tecto de LOC na integração 02/11): quem se anuncia é a LISTA
+    // que rola — a lista suspensa do Kanban e as listas do quadro, cada uma com a11y própria.
+    (
+        "scroll_list/mod.rs",
+        "a rolagem (roda, arrasto, trazer uma linha a vista) de uma lista com os proprios alvos: o que se anuncia e' a lista que ela rola",
+    ),
+    (
+        "scroll_list/axis_bar.rs",
+        "geometria + pintura da barra de um eixo e das setas: nao ha' semantica a anunciar (o que se anuncia e' a lista que ela rola)",
+    ),
+    (
+        "scroll_list/tests.rs",
+        "so' os testes da rolagem e da barra -- nao pinta nem regista nada",
+    ),
     (
         "scrollbar_ids.rs",
         "so' a escada de ids e os dois gates de unicidade -- nao pinta nem regista nada",
@@ -1154,6 +1169,23 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_components.rs",
         "delegates to action_button (paint_button-backed) in paint_rows — o único não-botão é o \
          readout de texto, que não é um controlo",
+    ),
+    // ⭐ F43/F44 (UIUX, 01/11): o corpo do Effects e o do «Stroke settings» abrem À ESQUERDA e
+    // pintam só por `slider_row`/`segmented`/`token_row_named`/`action_button` dos irmãos.
+    // ⚠️ MEDIDO na integração 02/11: 0 ocorrências de NodeId / hit_index / register( em cada um.
+    (
+        "ph2d-panel-vector/src/paint_effects.rs",
+        "delegates to slider_row/segmented/action_button (paint_slider/paint_segmented/paint_button-backed) in paint_rows/paint_sections",
+    ),
+    (
+        "ph2d-panel-vector/src/paint_stroke_settings.rs",
+        "delegates to with_rows/slider_row/token_row_named (paint_slider/paint_button-backed) in paint_sections/paint_rows/paint_tokens",
+    ),
+    // PixelArt P6i (31/10): o bloco que VOA no arrasto — sombra e cópia do bloco durante o gesto;
+    // não regista hit nem nó (0 NodeId / hit_index / register(): a pega é a da grelha).
+    (
+        "ph2d-panel-pixel-timeline/src/paint_voo.rs",
+        "pure-paint do bloco em voo durante o arrasto (paint_flight); a a11y e os hits sao da grelha que ele copia",
     ),
     (
         "ph2d-panel-vector/src/paint_anchors.rs",

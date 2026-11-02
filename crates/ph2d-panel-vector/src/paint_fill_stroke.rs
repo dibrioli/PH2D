@@ -264,11 +264,11 @@ impl BodyCtx<'_> {
                 self.scene,
                 self.theme,
             );
-            // A moldura: uma cor escura some no fundo escuro do painel sem ela.
+            // FRAME-RAW-OK: o halo da amostra de cor — uma cor escura some no fundo escuro sem ele.
             stroke_rounded_rect(
                 self.scene,
                 caixa,
-                Radius::Sm.px(),
+                ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px()),
                 StrokeToken::Thin.px(),
                 resolve(ColorToken::Border, self.theme),
             );
@@ -290,7 +290,7 @@ impl BodyCtx<'_> {
     /// A amostra de um degradê: as duas pontas em rampa, na moldura da amostra.
     fn ramp_swatch(&mut self, r: Rect, [a, b]: [[u8; 4]; 2]) {
         use ph2d_vector::{Affine, Brush, Fill, Gradient, Point, RoundedRect};
-        let radius = Radius::Sm.px();
+        let radius = ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px());
         let cor = |c: [u8; 4]| {
             ph2d_vector::Color::from_rgba8(c[0], c[1], c[2], c[3]) // LITERAL-COLOR-OK: user-color — the artist's gradient stops
         };
@@ -313,6 +313,7 @@ impl BodyCtx<'_> {
             None,
             &shape,
         );
+        // FRAME-RAW-OK: o halo da amostra do degradê, o mesmo da amostra de cor lisa.
         stroke_rounded_rect(
             self.scene,
             r,

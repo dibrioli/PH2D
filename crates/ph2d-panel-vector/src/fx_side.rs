@@ -170,7 +170,7 @@ pub(crate) fn side_head(
     if let Some(id) = up {
         b.filter_icon(id, IconId::ChevronUp, x2, y, h);
     }
-    y + h + Spacing::Sm.px()
+    y + h + ph2d_tokens::control_gap_px()
 }
 
 /// O corpo do painel: o cabeçalho (glifo, nome, ↑ ↓ ✕) e os campos do tipo. Devolve o `y` final.
@@ -308,11 +308,18 @@ fn close_rows(store: &mut WidgetStore, p: Pilha) {
 /// - «−» → fecha o painel (a linha aberta passa a ser outra coisa);
 /// - ↑ / ↓ da linha aberta → o painel ACOMPANHA o efeito para a linha nova.
 pub(crate) fn on_click(store: &mut WidgetStore, id: NodeId) -> bool {
-    for p in Pilha::TODAS {
-        if id == p.close() {
+    // O X de cada painel, pelo id (o que a régua do consumidor lê); é o mesmo do `Pilha::close`.
+    for (x, p) in [
+        (ph2d_tool_vector::ids::VECTOR_FX_PROPS_CLOSE, Pilha::Efeitos),
+        (crate::ids::FILTER_PROPS_CLOSE, Pilha::Filtros),
+    ] {
+        debug_assert_eq!(x, p.close());
+        if id == x {
             close_rows(store, p);
             return true;
         }
+    }
+    for p in Pilha::TODAS {
         if (0..p.max_kinds()).any(|k| id == p.add(k)) {
             set_open(store, p.add_menu(), false);
             return false;

@@ -212,17 +212,27 @@ impl BodyCtx<'_> {
         }
         let field = Rect::new(self.inner_x, y, (x - self.inner_x).max(1.0), h);
         let open = is_open(self.store, p.row(row));
-        let radius = Radius::Sm.px();
-        let (bg, edge) = if open {
-            (ColorToken::AccentSoft, ColorToken::Accent)
+        let radius = ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px());
+        let (bg, edge, feel) = if open {
+            (
+                ColorToken::AccentSoft,
+                ColorToken::Accent,
+                ph2d_tokens::visuals::Feel::Active,
+            )
         } else {
-            (ColorToken::Bg1, ColorToken::Border)
+            (
+                ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
+                ColorToken::Border,
+                ph2d_tokens::visuals::Feel::Rest,
+            )
         };
         fill_rounded_rect(self.scene, field, radius, resolve(bg, self.theme));
-        stroke_rounded_rect(
+        ph2d_editor_core::paint::stroke_frame(
             self.scene,
             field,
             radius,
+            self.theme,
+            feel,
             StrokeToken::Thin.px(),
             resolve(edge, self.theme),
         );

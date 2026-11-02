@@ -96,7 +96,10 @@ pub fn step(
 /// Rola o Inspector até a secção Effects ficar no alto e abre o que a cena mostra.
 fn abre(hero: &mut HeroScreen, menu: bool) -> Option<u8> {
     let painel = ph2d_editor_core::ids::VECTOR_PANEL;
-    let area = hero.store.panel_rect(painel)?;
+    // O guião rola em LÓGICOS (`rect_for`, `panel_scroll`): pergunta pela porta física e volta.
+    let area = hero
+        .escala()
+        .rect_to_logical(hero.panel_rect_fisico(painel)?);
     let cabeca = hero
         .hit_index
         .rect_for(ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS)

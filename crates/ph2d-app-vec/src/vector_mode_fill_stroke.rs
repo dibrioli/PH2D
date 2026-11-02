@@ -146,7 +146,10 @@ fn ordem_livre(p: &mut ph2d_vec_scene::VecPath) {
 /// 47 não abre nenhum).
 fn abre(hero: &mut HeroScreen, traco: bool, ordem: bool) -> Option<u8> {
     let painel = ph2d_editor_core::ids::VECTOR_PANEL;
-    let area = hero.store.panel_rect(painel)?;
+    // O guião rola em LÓGICOS (`rect_for`, `panel_scroll`): pergunta pela porta física e volta.
+    let area = hero
+        .escala()
+        .rect_to_logical(hero.panel_rect_fisico(painel)?);
     let cabeca = hero
         .hit_index
         .rect_for(ph2d_tool_vector::ids::VECTOR_SECTION_FILL)

@@ -95,6 +95,12 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
     ),
     (
         "crates/ph2d-editor-core/src/object_add.rs",
+        "smoke_drive",
+        Especie::HashDeExpressao,
+        "o pick do smoke (GEF 19) = hash da CHAVE do item do menu Add lida de PH2D_OBJECT_ADD_PICK, os MESMOS ids da entrada `id` acima; só corre com a variável posta e uma vez",
+    ),
+    (
+        "crates/ph2d-editor-core/src/object_add.rs",
         "smoke_hover",
         Especie::HashDeExpressao,
         "o rato do smoke (`PH2D_OBJECT_ADD_HOVER=<chave>`) = o MESMO hash da chave que o `id` acima usa — aponta para um item que já existe, não cria id novo; inerte sem a env",

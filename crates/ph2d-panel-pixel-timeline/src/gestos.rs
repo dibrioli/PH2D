@@ -211,7 +211,7 @@ fn cels_destinos(
     let presa = |d: isize, v: &[usize], len: usize| {
         let lo = v.iter().min().map_or(0, |&x| -(x as isize));
         let hi = v.iter().max().map_or(0, |&x| (len - 1 - x) as isize);
-        d.clamp(lo, hi)
+        ph2d_editor_core::math::safe_clamp_ord(d, lo, hi)
     };
     let dc = ((a.0 - de.0) / geo.col_w).round() as isize;
     let dc = dc.max(presa(dc, &cols, n));

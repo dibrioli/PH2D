@@ -26,6 +26,22 @@ pub fn ask_background(
     None
 }
 
+/// Os porquês de um envio que não trouxe ficheiro (`fase_send_to_board`): um conjunto FECHADO, para
+/// que o censo dos avisos meça cada frase que este `Err` pode mostrar.
+const PORQUES_DO_ENVIO: &[&str] = &[
+    "board.send.gone",
+    "board.send.unreadable",
+    "board.send.wrong_kind",
+];
+
+fn porque_do_envio(why: &'static str) -> &'static str {
+    debug_assert!(
+        PORQUES_DO_ENVIO.contains(&why),
+        "porquê fora do conjunto: {why}"
+    );
+    why
+}
+
 /// ⭐ A escolha do modal: o ficheiro `file` (PNG) do objecto `name` passa a ser o fundo do Kanban
 /// `kanban` (`None` = um Kanban novo). `Err` = a chave i18n do porquê (com `{name}`). Devolve o aviso
 /// a mostrar, se há.
@@ -36,7 +52,12 @@ pub fn scene_background(
     file: Result<Option<Vec<u8>>, &'static str>,
 ) -> Option<Toast> {
     let bytes = match file {
-        Err(why) => return Some(Toast::warning(tr_with(why, &[("name", &name)]))),
+        Err(why) => {
+            return Some(Toast::warning(tr_with(
+                porque_do_envio(why),
+                &[("name", &name)],
+            )));
+        }
         Ok(None) => {
             return Some(Toast::warning(tr_with(
                 "board.send.empty",

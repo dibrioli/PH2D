@@ -86,7 +86,7 @@ impl Palco {
 #[test]
 fn o_x_fecha_a_preview() {
     let mut p = Palco::novo();
-    let _ = p.carrega(ids::CLOSE);
+    let _ = p.carrega(ids::PREVIEW_CLOSE);
     assert!(!p.host.panel_visible(PixelPreviewPanel::ID), "o × fecha-a");
 }
 
@@ -175,7 +175,7 @@ fn o_titulo_da_preview_nunca_fica_debaixo_da_regua() {
     let regua = ph2d_editor_core::ruler::top_band(layout.draw_area);
     let cruza =
         |a: Rect, b: Rect| a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-    for id in [ids::DRAG, ids::PLAY, ids::CLOSE] {
+    for id in [ids::DRAG, ids::PLAY, ids::PREVIEW_CLOSE] {
         let (x, y) = p.meio(id);
         let r = p.rects.iter().find(|(n, _)| *n == id).expect("pintado").1;
         assert!(

@@ -7,7 +7,7 @@ use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
 /// O `×` do título.
-pub const CLOSE: NodeId = hash_node_id("pixel_preview.close");
+pub const PREVIEW_CLOSE: NodeId = hash_node_id("pixel_preview.close");
 /// Tocar / parar a Preview (o ícone vira *Stop* enquanto toca).
 pub const PLAY: NodeId = hash_node_id("pixel_preview.play");
 /// A alça de arrasto (a banda do título).

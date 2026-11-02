@@ -403,13 +403,14 @@ fn moldura(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha) {
     let theme = ctx.host.theme();
     let traco = StrokeToken::Thick.px();
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+    // FRAME-RAW-OK: a moldura do intervalo é a marca dele
     stroke_rounded_rect(
         ctx.scene,
         caixa,
         radius,
         traco,
         resolve(ColorToken::Accent, theme),
-    ); // FRAME-RAW-OK: a moldura do intervalo é a marca dele
+    );
     let e = Spacing::Xs.px();
     let lados = [
         Rect::new(caixa.x, caixa.y - e * 0.5, caixa.w, e),

@@ -1,5 +1,5 @@
 //! **A régua das mídias em Rust** — a `cobertura` e a `textura` de `ferramentas/mede_traco.py`, sobre o
-//! recorte do recto da bancada (03 §1), para o portão `cada_preset_parece_a_sua_midia` correr sem o
+//! recorte do recto da bancada (03 §1), para a régua das mídias (a antiga `cada_preset_parece_a_sua_midia`, (retirada 02/11: paridade com o Rebelle), e as sondas) correr sem o
 //! Python. Conferida contra o Python nas mesmas imagens (`a_regua_rust_e_a_do_python`, ignorado: precisa
 //! de `PH2D_SONDA_OUT` com os PPM e os números do Python ao lado).
 

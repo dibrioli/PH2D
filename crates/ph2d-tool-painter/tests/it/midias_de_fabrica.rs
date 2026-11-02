@@ -331,7 +331,7 @@ fn no_vale(n: f64, r: f64, c: f64) -> bool {
     (n - r).abs() < 0.5 * (c - r).abs()
 }
 
-/// **Sonda do custo das mídias** — o CPU do processo (todas as threads) de cada cena de [`cada_preset_parece_a_sua_midia`],
+/// **Sonda do custo das mídias** — o CPU do processo (todas as threads) de cada cena da antiga `cada_preset_parece_a_sua_midia` (retirada 02/11: paridade com o Rebelle),
 /// uma de cada vez: as mídias e o controlo (o Wet Round) a cada largura de foto.
 #[test]
 #[ignore = "sonda: o custo de cada cena das mídias"]
@@ -412,7 +412,7 @@ fn o_dabber_e_redondo() {
 /// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por
 /// omissão a tinta e o marcador) × `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` (`k` no mapa do motor, `b.k` no do
 /// pincel; `grao`/`rough`/`gx` = o Size do grão, a Roughness dele e o `paperGate` × x; a variante vazia é o preset de
-/// fábrica), a cena seca medida como [`cada_preset_parece_a_sua_midia`],
+/// fábrica), a cena seca medida como na antiga `cada_preset_parece_a_sua_midia` (retirada 02/11: paridade com o Rebelle),
 /// com o vale de cada métrica. `PH2D_SONDA_RAIO=<r>` troca o raio da cena.
 #[test]
 #[ignore = "sonda: as métricas das variantes de um preset (prompt 42b); corre-se à mão"]

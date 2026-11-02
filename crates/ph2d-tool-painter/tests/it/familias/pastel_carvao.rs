@@ -450,7 +450,7 @@ pub const MIDIAS: &[Midia] = &[
     // Square Hard (J4 2.ª ronda, decisão 16 — vale a foto da bateria, 19/10): a carga que cobre o vermelho como ela (o
     // cruzamento R 75, Rebelle 74) lê na foto antiga das mídias Textura 13 (20,9) e Cv 0,044 (0,077); na foto nova a
     // textura e o Cv são os do Rebelle (25 · 23,3 e 0,080 · 0,082, régua 277/295) — saem daqui, e a cobertura do
-    // vermelho prende-se pela foto nova (`o_square_hard_tapa_o_vermelho_como_a_foto`).
+    // vermelho prendia-se pela foto nova (`o_square_hard_tapa_o_vermelho_como_a_foto`, (retirada 02/11: paridade com o Rebelle)).
     Midia { preset: "Square Hard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Borda, 0.856), (Cruzamento, 0.579), (Largura, 31.0)] },
     Midia { preset: "Wax Scrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
 ];

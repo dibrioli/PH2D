@@ -12,7 +12,8 @@ const PASSO_DOS_OLEOS: f64 = 0.01;
 
 // ⭐ O 2.º lote (11/10, depois da reavaliação pedida pelo dono — 18 §3: pigmento alto, o relevo de volta
 // e o grão no lugar das cerdas). Cada um medido contra a foto do seu preset-oráculo do Rebelle, seco, à
-// largura dela; o tamanho é o do preset dele. `cada_preset_parece_a_sua_midia` guarda-os.
+// largura dela; o tamanho é o do preset dele. A régua que os guardava (`cada_preset_parece_a_sua_midia`) saiu a 02/11
+// (paridade com o Rebelle).
 pub const WET: &[Receita] = &[
     // Express Oil › Hairy: claro e liso, tufos (prompt 23, aceite do dono 12/10). A claridade é POUCO
     // pigmento — com o Spacing 0,01 cada célula leva ~100 carimbos, por isso 60 e não 250; sem água (a água
@@ -419,7 +420,7 @@ const ESTUQUE_DO_DABBER_4: &str = r#"{"angle_deg": 0, "flow": false, "kind": "St
 /// - G-6 Flat Bristle (2.ª ronda: o grão era a capilaridade — `capillary` 0 dá a risca lisa; o 5 px esmaece pela lei
 ///   `thinStrokeFade`; régua 367/454, o 1.º dos 228 do Rebelle): o revisor cego achou o Rebelle nas 6 linhas (baixa) e
 ///   lista o vermelho da base opaco e saturado (cobertura 0,92 contra 0,72 — o vermelho do K–M a 200 de pigmento cobre
-///   mais que o azul; não é do preset) e o portão `a_pressao_de_cada_preset_e_a_da_sua_origem` dá 0,202 (barra 0,18): a
+///   mais que o azul; não é do preset) e o portão `a_pressao_de_cada_preset_e_a_da_sua_origem` (retirada 02/11: paridade com o Rebelle) dava 0,202 (barra 0,18): a
 ///   entrada tardia do Rebelle (nada abaixo de p 0,2) só se copia com um piso, que a decisão 9 proíbe. O ficheiro gerado
 ///   vive em `fixtures/presets_teste/` ([`FLAT_EM_ESTUDO`]) para os portões da família. J4 3.ª ronda (`exames/aguarela.md`):
 ///   com a decisão 15 na lei a rampa lê 0,130 (passa); o revisor cego novo achou o Rebelle nas 6 linhas (baixa) e REPETE

@@ -10,7 +10,8 @@ use serde_json::{Value, json};
 
 /// Os knobs do 8B que os lápis do 53 herdam (a caneta, a ponta deitada e o arrasto: comentário do 8B) + a PRESSÃO de
 /// cada um (J2, `docs/Painter/Pinceis/03_MOTORES.md` §7 a): a curva do tamanho e a pressão → carga ajustadas às
-/// rampas da origem no Rebelle (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`).
+/// rampas da origem no Rebelle (a antiga `a_pressao_de_cada_preset_e_a_da_sua_origem`, (retirada 02/11: paridade com o Rebelle); fica a lei da mão,
+/// `leis_sistemicas::a_pressao_de_cada_preset_responde_na_faixa_da_mao`).
 macro_rules! extras_do_lapis {
     ($curva_do_tamanho:expr, $curva_da_carga:expr) => {
         &[
@@ -341,7 +342,7 @@ pub const CHARCOAL: Receita = Receita {
 /// ⭐ **O grão do lápis e do carvão é preso à tela e mais FINO que o de antes** (J2, `docs/Painter/Pinceis/03_MOTORES.md`
 /// §7.2): o Size do Noise `Tiled` (período `256 ÷ Size` px) e o `paperGate`, da grelha Size 32…256 × Roughness ×
 /// portão contra o Rebelle em DUAS réguas — o colar de contas dos rectos 5 · 40 · 200 px (`sonda_o_grao_fino_por_size`)
-/// e o vale da mídia (`cada_preset_parece_a_sua_midia`, a Textura). Os macios e o carvão no 100 (2,56 px); os duros
+/// e o vale da mídia (a Textura da antiga `cada_preset_parece_a_sua_midia`, (retirada 02/11: paridade com o Rebelle)). Os macios e o carvão no 100 (2,56 px); os duros
 /// (HB, 2H) no 64 (4 px): mais fino, o resíduo fino passava o vale da Textura do Rebelle (6,2 · 5,0). Eram 16–64
 /// (4–16 px) e uma lei pelo diâmetro (`grao_do_wet`, saiu: o papel mudava com a ponta): a 5 px sem ela um vale
 /// atravessava o traço (buracos de 2–3 colunas) e a 40 px o cv era 1,5–2,4× o do Rebelle.

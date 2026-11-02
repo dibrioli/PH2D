@@ -117,7 +117,7 @@ const RAIOS_CANDIDATO: [f32; 11] = [
 /// (`PH2D_SONDA_RECEITAS=<f>`: `[{"nome","foto","alvo","water","knobs":{…},"brush":{…}}]`) — a varredura
 /// sem recompilar. Com `"base": "<preset de fábrica>"` e `"raio"`, parte DESSE preset (os knobs e os campos
 /// por cima dos dele, `water`/`opacity` só se vierem) e pinta a cena ao raio dado, como
-/// `cada_preset_parece_a_sua_midia` (prompt 23: a varredura da família C).
+/// a antiga `cada_preset_parece_a_sua_midia` (prompt 23: a varredura da família C; retirada 02/11: paridade com o Rebelle).
 struct Receita {
     nome: String,
     foto: String,

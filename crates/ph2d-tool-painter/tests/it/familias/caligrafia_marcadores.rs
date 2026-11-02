@@ -19,7 +19,7 @@ pub const WET: &[Receita] = &[
     // vermelho para fora da faixa — revisão cega r1) e o tecto do Rebelle (Max Size 100: a 200 px pinta 101). Fica no
     // Wet: as leis da tinta molhada (`a_lei_da_tinta.rs`) têm-no por sujeito. A curva da carga 3 (era 2; fecho da J3):
     // sem a forma de cerdas a ponta lisa cobria cheia desde a pressão 0,3 e a MÃO DO DONO só respondia 1,52 (R_MAO 2,5,
-    // `leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`); a 3, 2,79 com a largura a 0,139 da do Rebelle.
+    // `leis_sistemicas::a_pressao_de_cada_preset_responde_na_faixa_da_mao`); a 3, 2,79 com a largura a 0,139 da do Rebelle.
     Receita {
         meio: "Marker",
         grupo: "Marker",
@@ -148,7 +148,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // 1 px a 40, ~6 a 200 — o Rebelle 2 e 8), o corte quase recto (quina 0,7), a camada que multiplica, a pressão que
     // afina pouco (0,4) e leva a tinta (0,8, com o tecto POR DAB: a camada pára na opacidade da mão) — o Rebelle fica
     // opaco no traço leve, mas a MÃO DO DONO responde (fecho da J3: sem a tinta pela pressão 1,33 < R_MAO 2,5 em
-    // `leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`; com ela 2,87, a largura a 0,048). No Digital: o Size é o eixo LONGO
+    // `leis_sistemicas::a_pressao_de_cada_preset_responde_na_faixa_da_mao`; com ela 2,87, a largura a 0,048). No Digital: o Size é o eixo LONGO
     // do bisel, como no Rebelle (a lei da largura do Wet promete o traço horizontal — o lado FINO —, e o slider a 40
     // pintava um bisel de 102 px de comprido).
     ReceitaMeio {

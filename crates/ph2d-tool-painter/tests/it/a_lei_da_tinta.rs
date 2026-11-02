@@ -207,7 +207,7 @@ fn o_traco_sozinho_nao_muda_com_o_glaze() {
 
 /// **Sonda da prancha (doc 42)**: os 5 pincéis de tinta e marcador SEM o Glaze (a mesma receita com a chave
 /// `glaze` a 0), na cena da bancada seca ao raio do portão das mídias — `sem_glaze_<preset>.ppm` em
-/// `PH2D_SONDA_OUT`, ao lado dos `midia_<preset>.ppm` de `cada_preset_parece_a_sua_midia`
+/// `PH2D_SONDA_OUT`, ao lado dos `midia_<preset>.ppm` da antiga `cada_preset_parece_a_sua_midia` (retirada 02/11: paridade com o Rebelle)
 /// (`ferramentas/prancha_lei_da_tinta.py` monta a prancha).
 #[test]
 #[ignore = "sonda: a prancha da lei da tinta (prompt 42); corre-se à mão"]

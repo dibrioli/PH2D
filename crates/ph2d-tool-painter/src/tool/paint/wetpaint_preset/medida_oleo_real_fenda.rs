@@ -205,7 +205,7 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
         println!("[vãos] {ambiente:?}: {n} vãos, {f:.2} % abaixo de 70, p10 {p10}");
         assert!(
             p10 >= 50,
-            "{ambiente:?}: o p10 dos vãos é {p10} (Cycles 52)"
+            "{ambiente:?}: o p10 dos vãos é {p10} (Cycles 19)"
         );
         assert!(
             f <= tecto,
@@ -296,7 +296,7 @@ pub(super) fn tela_final(t: &mut PainterTool) -> Vec<u8> {
 
 /// As amostras (1 em 9 píxeis) do miolo da tinta grossa `cob` (a ≥ 12 px de papel) e do papel nu (a ≥ 40 px).
 pub(super) fn miolo_e_papel_nu(cob: &[bool]) -> (Vec<bool>, Vec<bool>) {
-    // O miolo: tinta grossa (massa > 0,633 × a mediana, onde o grão do pigmento já é 0) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
+    // O miolo: tinta grossa (`cob`, massa > 0,633 × a mediana) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
     let n = (OW * OH) as usize;
     let perto = |m: &[bool], x: usize, y: usize, r: usize, v: bool| {
         (y.saturating_sub(r)..(y + r + 1).min(OH as usize)).all(|yy| {

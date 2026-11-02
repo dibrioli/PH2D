@@ -76,7 +76,7 @@ pub const WET: &[Receita] = &[
         )
     },
     // O 2B: o grão de 2 px (Size 128), o papel a 0,4 e a curva do tamanho 0,4 (com a orla a 0,25 a rampa da
-    // pressão saía a 0,19 da do Rebelle, `a_pressao_de_cada_preset_e_a_da_sua_origem`; a 0,4, 0,09).
+    // pressão saía a 0,19 da do Rebelle, `a_pressao_de_cada_preset_e_a_da_sua_origem`, (retirada 02/11: paridade com o Rebelle); a 0,4, 0,09).
     Receita {
         pincel: &[
             ("falloff", "\"Smoother\""),
@@ -750,7 +750,7 @@ mod portoes {
         (m.largura, m.textura)
     }
 
-    /// SONDA: as métricas da mídia (a cena seca de `cada_preset_parece_a_sua_midia`, ao raio da foto) e do lápis deitado
+    /// SONDA: as métricas da mídia (a cena seca da antiga `cada_preset_parece_a_sua_midia`, ao raio da foto) e do lápis deitado
     /// (através ÷ de pé) de cada `PH2D_SONDA_PRESETS` (`,`) com cada variante de `PH2D_SONDA_KNOBS` (`|`; ver [`variante`]).
     #[test]
     #[ignore = "sonda: as métricas da mídia e do lápis deitado por variante; corre-se à mão"]

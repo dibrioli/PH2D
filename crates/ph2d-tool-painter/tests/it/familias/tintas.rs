@@ -106,7 +106,7 @@ pub const WET: &[Receita] = &[
     // pouco muda (0,55 → 1) e o cruzamento que arrasta um pouco a cor. ⚠️ A tinta que ENTRA clara do Rebelle (o
     // «loading») não sai: a ponta romba do taper só se vê com o pigmento a ~200, e aí a entrada sai PONTILHADA (o 2.º
     // revisor cego pôs o nosso ao lado do Marker Liner) — a tinta lisa fica; `exames/tintas.md`.
-    // ⭐ Fecho da J3 — a MÃO DO DONO (`leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem`, R_MAO 2,5): o Rebelle
+    // ⭐ Fecho da J3 — a MÃO DO DONO (`leis_sistemicas::a_pressao_de_cada_preset_responde_na_faixa_da_mao`, R_MAO 2,5): o Rebelle
     // quase não responde na faixa 0,24–0,86 (1,39) e a curadoria da J3 seguiu-o (1,46: «apertar muito e pouco variam
     // pouco», o que o dono reprovou a 18/10). A mão responde pela CARGA: pigmento 1000 (a 2000 a tinta SATURA desde a
     // pressão 0,3 e a carga não se vê), o chão 0,01 e a curva 4 — a pressão leve ainda pinta (rampa 0,51; sem chão a

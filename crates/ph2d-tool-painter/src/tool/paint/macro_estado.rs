@@ -11,8 +11,8 @@
 
 use super::wetpaint_preset::{campos_da_macro, json};
 use crate::tool::PainterTool;
-use ph2d_wet_paint::tuning::Knob;
 use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
+use ph2d_wet_paint::tuning::Knob;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 

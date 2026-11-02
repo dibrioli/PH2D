@@ -527,7 +527,11 @@ fn no_desenho_novo_o_desfazer_da_cor_volta_ao_papel_branco() {
         !t.undo_last(),
         "a cor do papel entrou no Desfazer (dono 30/10: só a existência dele é história)"
     );
-    assert_eq!(t.papel(), Some(CASTANHO), "um desfazer vazio mexeu no papel");
+    assert_eq!(
+        t.papel(),
+        Some(CASTANHO),
+        "um desfazer vazio mexeu no papel"
+    );
     escolhe_o_papel(&mut t, BRANCO);
     assert_eq!(
         t.papel(),

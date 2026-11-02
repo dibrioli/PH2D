@@ -19,6 +19,7 @@ pub mod dither;
 pub mod dynamics;
 pub mod edit;
 pub mod fill;
+pub mod filter;
 pub mod frames;
 mod history;
 pub mod ink;

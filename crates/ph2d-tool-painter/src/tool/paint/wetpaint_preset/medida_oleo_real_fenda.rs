@@ -223,7 +223,7 @@ pub(super) fn tela_papel_texturizado(oleo: bool, relief: f32) -> (Vec<u8>, Vec<b
 }
 
 /// A cena de [`tela_papel_texturizado`] pintada (`pinta = false`: só o papel) e a máscara da tinta grossa (massa
-/// > 3000) em píxeis da tela.
+/// > 0,633 × a mediana da massa pousada) em píxeis da tela.
 pub(super) fn cena_papel_texturizado(
     oleo: bool,
     relief: f32,
@@ -254,11 +254,20 @@ pub(super) fn cena_papel_texturizado(
         s.bring_home();
         let g = s.engine.active_grid();
         let (gw, gh, r) = (s.grid.0, s.grid.1, usize::from(s.ratio));
+        // A tinta grossa é relativa à MEDIANA da massa pousada (célula > 1), não um número na unidade de uma receita:
+        // 3000 era 0,633 × a mediana 4736,8 no pai da E10 (`bf90eb2598`); hoje a mediana é 2754,7 e 3000 só
+        // apanhava lascas soltas — o miolo vazio dava `NaN` em silêncio (J10, família N).
+        let mut massas: Vec<f32> = (0..g.sett.len())
+            .map(|i| g.sett[i] + g.susp[i])
+            .filter(|m| *m > 1.0)
+            .collect();
+        massas.sort_by(f32::total_cmp);
+        let limiar = 0.633 * massas.get(massas.len() / 2).copied().unwrap_or(f32::MAX);
         let mut miolo = vec![false; (OW * OH) as usize];
         for y in 0..OH as usize {
             for x in 0..OW as usize {
                 let (cx, cy) = ((x / r + 1).min(gw), (y / r + 1).min(gh));
-                miolo[x + y * OW as usize] = g.sett[cx + cy * g.s] + g.susp[cx + cy * g.s] > 3000.0;
+                miolo[x + y * OW as usize] = g.sett[cx + cy * g.s] + g.susp[cx + cy * g.s] > limiar;
             }
         }
         miolo
@@ -283,7 +292,7 @@ pub(super) fn tela_final(t: &mut PainterTool) -> Vec<u8> {
 
 /// As amostras (1 em 9 píxeis) do miolo da tinta grossa `cob` (a ≥ 12 px de papel) e do papel nu (a ≥ 40 px).
 pub(super) fn miolo_e_papel_nu(cob: &[bool]) -> (Vec<bool>, Vec<bool>) {
-    // O miolo: tinta grossa (massa > 3000, onde o grão do pigmento já é 0) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
+    // O miolo: tinta grossa (massa > 0,633 × a mediana, onde o grão do pigmento já é 0) a ≥ 12 px de papel; o papel nu: a ≥ 40 px.
     let n = (OW * OH) as usize;
     let perto = |m: &[bool], x: usize, y: usize, r: usize, v: bool| {
         (y.saturating_sub(r)..(y + r + 1).min(OH as usize)).all(|yy| {
@@ -299,6 +308,13 @@ pub(super) fn miolo_e_papel_nu(cob: &[bool]) -> (Vec<bool>, Vec<bool>) {
             nu[x + y * OW as usize] = (y % 3 == 0 && x % 3 == 0) && perto(cob, x, y, 40, false);
         }
     }
+    let conta = |m: &[bool]| m.iter().filter(|v| **v).count();
+    assert!(
+        conta(&miolo) > 100 && conta(&nu) > 100,
+        "a cena mudou: miolo {} · papel nu {} amostras",
+        conta(&miolo),
+        conta(&nu)
+    );
     (miolo, nu)
 }
 

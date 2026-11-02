@@ -1362,10 +1362,14 @@ fn fino_sobre_largo(p: &crate::exame_bancada::Pincel) -> f64 {
     pico(55..86) / pico(160..221).max(1e-6)
 }
 
+/// O piso do Oil Bristle SEM a lei, no meio do vão MEDIDO (02/11, a mesma corrida): de fábrica 0,741 · com o
+/// `thinStrokeFade` 1,05 do Flat forçado 0,642 (a mutação) ⇒ 0,69, folga ±0,05. O vão do Flat com a lei (0,231) aos
+/// sem ela (0,741 · 0,940) é largo, mas o meio dele (0,49) deixava a mutação passar. O 0,75 de antes era o Rebelle.
+const OIL_SEM_A_LEI_MIN: f64 = 0.69;
+
 /// ⭐ **O chato pequeno esmaece** (J4 2.ª ronda, `Knob::ThinStrokeFade`): o `Flat` do Rebelle a 5 px quase não pinta (0,228
 /// da tinta do de 40 px) — o revisor cego da 1.ª ronda viu «o 5 px firme contra quase invisível». O Flat Bristle fica
-/// perto dele; o Oil Bristle (sem a lei) não esmaece (Rebelle `Bristle Flat` 0,952). CONTROLO: o Flat Bristle sem a lei
-/// pinta o 5 px cheio (a régua mede).
+/// perto dele; o Oil Bristle (sem a lei) não esmaece. CONTROLO: o Flat Bristle sem a lei pinta o 5 px cheio (a régua mede).
 #[test]
 fn o_chato_pequeno_esmaece() {
     use crate::exame_bancada::{Fonte, Pincel, pinceis};
@@ -1388,7 +1392,7 @@ fn o_chato_pequeno_esmaece() {
         h.map(|h| h.join().unwrap())
     });
     println!(
-        "[fino] Flat Bristle {f:.3} (Rebelle 0,228) · Oil Bristle {o:.3} (0,952) · Flat sem a lei {c:.3}"
+        "[fino] Flat Bristle {f:.3} (Rebelle 0,228) · Oil Bristle {o:.3} · Flat sem a lei {c:.3}"
     );
     let mut falhas = Vec::new();
     if c < 0.7 {
@@ -1399,9 +1403,9 @@ fn o_chato_pequeno_esmaece() {
     if !(0.13..0.35).contains(&f) {
         falhas.push(format!("Flat Bristle: 5 px ÷ 40 px {f:.3} (Rebelle 0,228)"));
     }
-    if o < 0.75 {
+    if o < OIL_SEM_A_LEI_MIN {
         falhas.push(format!(
-            "Oil Bristle: 5 px ÷ 40 px {o:.3} — a lei vazou para quem não a tem (Rebelle 0,952)"
+            "Oil Bristle: 5 px ÷ 40 px {o:.3} — a lei vazou para quem não a tem"
         ));
     }
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));

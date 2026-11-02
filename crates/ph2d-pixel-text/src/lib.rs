@@ -207,7 +207,10 @@ pub fn rasterize_outline(
     for (x, y, g) in &placed {
         for gy in 0..g.h {
             for gx in 0..g.w {
-                let v = g.cover[(gy * g.w + gx) as usize];
+                let mut v = g.cover[(gy * g.w + gx) as usize];
+                if style.antialias {
+                    v = outline::TRIAL_TEXT_TONE[usize::from(v)];
+                }
                 let at = (((y - y0) as u32 + gy) * w + (x - x0) as u32 + gx) as usize;
                 cover[at] = cover[at].max(v);
             }

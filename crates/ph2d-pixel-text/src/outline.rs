@@ -3,13 +3,35 @@
 //! - **Mono**: a célula acende se o CENTRO dela está dentro do contorno (regra não-zero), com o
 //!   controlo de dropout do `SCANTYPE` ([`Dropout`]: o que a fonte pede no `prep` hintado, a omissão do
 //!   `FT_Outline` sem hinting); conferido contra o oráculo (`tests/fixtures/oracle_freetype_mono.json`).
-//! - **AA**: alfa = área coberta da célula (acumulação de área assinada por aresta).
+//! - **AA**: alfa = área coberta da célula (área assinada por aresta) = a cobertura da FreeType em
+//!   escala de cinza; o texto passa-a depois pela curva de tom do Aseprite ([`TRIAL_TEXT_TONE`]).
 //! - **Hinting** (omissão, como no Aseprite): o contorno passa pelo interpretador TrueType do `skrifa`
 //!   (alvo Mono no Mono, Smooth Normal no AA — os alvos da FreeType); o avanço é o ajustado por ele.
 
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, HintingInstance, HintingOptions, OutlinePen, Target};
 use skrifa::{FontRef, MetadataProvider};
+
+/// A curva de tom do texto do Aseprite Trial 1.3.18.6 sobre a cobertura da FreeType em escala de
+/// cinza: índice = cobertura FreeType (`oracle_freetype_gray.json`), valor = tinta lida no Trial
+/// (`oracle_trial_text.json`, «Ag1» DejaVu ×3 × 8/12/16, Antialias + Hinting), MEDIDA em 02/11. 238
+/// entradas medidas (cada uma deu um só valor); 17 sem amostra interpoladas entre vizinhas (25, 51, 63,
+/// 66, 70, 73, 88, 91, 139, 149, 154, 167, 175, 187, 206, 211, 230). Caso ambíguo medido: 56 deu 38 e
+/// 52 — fica 38, o que segue a curva. Forma ≈ 1−(1−a)^0,612 (rms 2,2, máx 4,7 níveis): não é gama.
+pub const TRIAL_TEXT_TONE: [u8; 256] = [
+    0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 15, 15, 16, 16, 17,
+    18, 19, 19, 20, 21, 21, 22, 23, 23, 24, 25, 26, 26, 27, 28, 28, 29, 30, 30, 31, 32, 32, 33, 34,
+    34, 35, 36, 37, 37, 38, 39, 39, 40, 41, 41, 42, 43, 44, 44, 45, 46, 46, 47, 48, 48, 49, 50, 51,
+    51, 52, 53, 53, 54, 55, 56, 56, 57, 58, 59, 59, 60, 60, 61, 62, 63, 64, 64, 65, 66, 67, 67, 68,
+    69, 69, 70, 71, 72, 72, 73, 74, 75, 75, 76, 77, 78, 78, 79, 80, 81, 81, 82, 83, 84, 85, 85, 86,
+    87, 88, 88, 89, 90, 91, 92, 92, 93, 94, 95, 95, 96, 97, 98, 99, 100, 100, 101, 102, 103, 103,
+    104, 105, 106, 107, 108, 108, 109, 110, 111, 112, 113, 113, 114, 115, 116, 117, 118, 118, 119,
+    120, 121, 122, 123, 124, 125, 125, 126, 127, 128, 129, 130, 131, 132, 133, 133, 134, 135, 136,
+    137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155,
+    156, 157, 158, 159, 160, 161, 162, 163, 164, 166, 167, 168, 169, 170, 171, 173, 174, 175, 176,
+    177, 179, 180, 181, 183, 184, 185, 187, 188, 190, 191, 192, 194, 196, 197, 199, 200, 202, 204,
+    206, 208, 210, 212, 214, 216, 218, 221, 224, 226, 230, 233, 237, 242, 249, 255,
+];
 
 /// Um glifo rasterizado, na convenção da FreeType: `left` da caneta, `top` acima da linha de base.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,8 +55,22 @@ pub struct FaceMetrics {
 
 const FLATTEN_STEPS: usize = 16;
 
+/// AA: a cónica parte-se ao meio enquanto `max(|p0−2c+p2|)/(4·n²)` passa de 1/16 de célula (`n`
+/// potência de 2). MEDIDO contra `oracle_freetype_gray.json` (02/11): Δ máx 17 → 4, soma 2 571 → 277
+/// (norma euclidiana: 449 no melhor; L1: 580; 16 passos fixos: 2 571). O Mono fica nos 16 fixos: com
+/// esta regra o gate mono hintado ia de 5 para 30 células.
+fn gray_quad_steps(dd: f32) -> usize {
+    let mut n = 1usize;
+    while dd / (4 * n * n) as f32 > 1.0 / 16.0 && n < 256 {
+        n *= 2;
+    }
+    n
+}
+
 #[derive(Default)]
 struct Flatten {
+    /// Cónicas pela regra da FreeType em escala de cinza ([`gray_quad_steps`]) em vez dos 16 fixos.
+    gray: bool,
     segs: Vec<[f32; 4]>,
     /// Índice do primeiro segmento de cada contorno (o controlo de stubs anda pelo contorno).
     contours: Vec<usize>,
@@ -65,7 +101,11 @@ impl OutlinePen for Flatten {
     }
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
         let (x0, y0) = self.cur;
-        let steps = FLATTEN_STEPS;
+        let steps = if self.gray {
+            gray_quad_steps((x0 - 2.0 * cx + x).abs().max((y0 - 2.0 * cy + y).abs()))
+        } else {
+            FLATTEN_STEPS
+        };
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
             let u = 1.0 - t;
@@ -141,7 +181,10 @@ pub fn rasterize_glyph(
         .advance_width(gid)
         .unwrap_or(0.0);
     let glyph = font.outline_glyphs().get(gid)?;
-    let mut pen = Flatten::default();
+    let mut pen = Flatten {
+        gray: antialias,
+        ..Flatten::default()
+    };
     let settings = match hint {
         Some(h) => DrawSettings::hinted(h, false),
         None => DrawSettings::unhinted(size, LocationRef::default()),
@@ -474,7 +517,8 @@ fn area_cover(segs: &[[f32; 4]], w: u32, h: u32) -> Vec<u8> {
         let mut sum = 0f32;
         for col in 0..w as usize {
             sum += acc[row * stride + col];
-            out[row * w as usize + col] = (sum.abs().min(1.0) * 255.0).round() as u8;
+            // Como a FreeType: ⌊área·256⌋ com tecto 255 (medido: soma 277; round(área·255) 481).
+            out[row * w as usize + col] = (sum.abs() * 256.0).min(255.0) as u8;
         }
     }
     out

@@ -122,3 +122,93 @@ fn freetype_mono_hinted_matches_cell_for_cell() {
         report(&rows)
     );
 }
+
+const GRAY: &str = include_str!("../fixtures/oracle_freetype_gray.json");
+
+/// Por caso: (rótulo, células com cobertura da FreeType, células que diferem em suporte, maior |Δ|,
+/// soma |Δ|). Compara-se a cobertura bruta (0..255) na régua da caneta e da linha de base.
+fn compare_gray() -> Vec<(String, usize, usize, u8, u32)> {
+    let doc: Value = serde_json::from_str(GRAY).unwrap();
+    let mut out = Vec::new();
+    for case in doc["cases"].as_array().unwrap() {
+        let path = case["file"].as_str().unwrap();
+        let data = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        let font = face(&data, 0).unwrap();
+        let px = case["px"].as_u64().unwrap() as u32;
+        let hint = hinter(&font, px, true);
+        let (mut ink, mut supp, mut max, mut sum) = (0, 0, 0u8, 0u32);
+        for g in case["glyphs"].as_array().unwrap() {
+            let ch = char::from_u32(g["cp"].as_u64().unwrap() as u32).unwrap();
+            let mut theirs = std::collections::BTreeMap::new();
+            let (left, top) = (
+                g["left"].as_i64().unwrap() as i32,
+                g["top"].as_i64().unwrap() as i32,
+            );
+            for (y, row) in g["rows"].as_array().unwrap().iter().enumerate() {
+                let row = row.as_str().unwrap();
+                for (x, v) in row.split(' ').filter(|s| !s.is_empty()).enumerate() {
+                    let v: u8 = v.parse().unwrap();
+                    if v != 0 {
+                        theirs.insert((left + x as i32, top - y as i32), v);
+                    }
+                }
+            }
+            let ours = rasterize_glyph(&font, ch, px, true, hint.as_ref()).unwrap();
+            let mut mine = std::collections::BTreeMap::new();
+            for y in 0..ours.h {
+                for x in 0..ours.w {
+                    let v = ours.cover[(y * ours.w + x) as usize];
+                    if v != 0 {
+                        mine.insert((ours.left + x as i32, ours.top - y as i32), v);
+                    }
+                }
+            }
+            let keys: BTreeSet<_> = theirs.keys().chain(mine.keys()).copied().collect();
+            for k in keys {
+                let (a, b) = (
+                    theirs.get(&k).copied().unwrap_or(0),
+                    mine.get(&k).copied().unwrap_or(0),
+                );
+                ink += usize::from(a != 0);
+                supp += usize::from((a != 0) != (b != 0));
+                max = max.max(a.abs_diff(b));
+                sum += u32::from(a.abs_diff(b));
+            }
+        }
+        let label = format!("{} {}px", case["family"].as_str().unwrap(), px);
+        out.push((label, ink, supp, max, sum));
+    }
+    out
+}
+
+/// A nossa cobertura AA hintada contra a FreeType em escala de cinza (`oracle_freetype_gray.json`),
+/// MEDIDA em 02/11, na ordem Sans·Serif·Sans Mono × 8·12·16: (suporte que difere, maior |Δ|). Antes
+/// (16 passos fixos por cónica, round(área·255)): suporte 0–4, Δ 11–16. Com a subdivisão e o ⌊área·256⌋
+/// da FreeType: suporte 0, Δ ≤ 4 — o resto é aritmética f32 contra a inteira dela.
+const MEASURED_GRAY: [(usize, u8); 9] = [
+    (0, 1),
+    (0, 4),
+    (0, 4),
+    (0, 1),
+    (0, 2),
+    (0, 2),
+    (0, 1),
+    (0, 3),
+    (0, 3),
+];
+
+#[test]
+fn freetype_gray_hinted_matches_cell_for_cell() {
+    let rows = compare_gray();
+    let rep = rows
+        .iter()
+        .map(|(l, i, s, mx, sm)| format!("{l}: {i} células FT, {s} suporte, Δ máx {mx}, soma {sm}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    eprintln!("{rep}");
+    assert_eq!(
+        rows.iter().map(|r| (r.2, r.3)).collect::<Vec<_>>(),
+        MEASURED_GRAY,
+        "\n{rep}"
+    );
+}

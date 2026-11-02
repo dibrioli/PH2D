@@ -89,18 +89,20 @@ fn trial_text_mono_hinted_matches_cell_for_cell() {
     );
 }
 
-/// AA: suporte (que células têm tinta) e a maior diferença de alfa, MEDIDOS em 02/11. O Trial passa a
-/// cobertura da FreeType por uma curva de tom (≈ 1−(1−a)^0,62, ver o handoff) que não reproduzimos.
+/// AA: suporte (que células têm tinta) e a maior diferença de alfa, MEDIDOS em 02/11. Antes: suporte
+/// 0–1 a 8/12 px e Δ 54–60 (a cobertura não era a da FreeType e faltava o tom). Agora a cobertura é a
+/// da FreeType em escala de cinza e passa pela LUT `TRIAL_TEXT_TONE`: 8/12 px com suporte 0 e Δ ≤ 14;
+/// a 16 px os 6/6/7 e o Δ ~220 são a linha de baixo que o Trial corta (a caixa).
 const MEASURED_AA: [(usize, u8); 9] = [
-    (0, 54),
-    (1, 60),
-    (6, 252),
-    (1, 54),
-    (0, 58),
-    (8, 252),
-    (0, 56),
-    (0, 56),
-    (11, 253),
+    (0, 14),
+    (0, 3),
+    (6, 214),
+    (0, 2),
+    (0, 3),
+    (6, 221),
+    (0, 2),
+    (0, 2),
+    (7, 216),
 ];
 
 #[test]

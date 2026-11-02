@@ -106,3 +106,9 @@ shell: `file_loc_caps` (4), `project_schema`, `v194` (4), `project_texture_patte
 5. Ids de Position fora do censo `seam`.
 6. `migra_pilha_v23` sem chamadores.
 7. Com nada seleccionado, o ⚙ do traço de base fica activo e o do Fill apagado (comportamento da F44; confirmar com o dono).
+8. ⛔ **Janela baixa: a régua de ferramentas FLUTUANTE regista botões FORA da janela** (achado na integração de 02/11,
+   frente shell/painéis, pela sonda de `crates/ph2d-panel-registry-init/tests/it/the_vector_control_bar.rs`). Numa janela de
+   430 px de altura (⅓ e 0,42 da de fábrica) a régua em `x=320` regista botões de 24 px até `y≈774`: essas ferramentas são
+   INALCANÇÁVEIS — nem se vêem nem se clicam. Falta o recorte/rolagem da régua pela altura da região (o mesmo idioma do
+   painel do traço, que rola dentro da região). ⚠️ Sem gate ainda: o gate novo tem de medir no ECRÃ (registo de hit vs.
+   janela), não no mundo, e reprovar antes da cura. Não curado.

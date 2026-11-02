@@ -31,6 +31,21 @@ fn pinta(t: &mut PainterTool, y: f32) {
 
 /// A tela de FÁBRICA (o artista acabou de abrir: sem papel escolhido, Relief do papel 0) com o Óleo Real ligado e o
 /// pincel com os knobs `k`; `papel` = o Cold com Relief 0,6 (a cena das calibrações).
+/// O pigmento `p` da cena calibrada. Na lei única (E10, `e8f35b5710`) o depósito lê a receita e o `PigmentPerDab` é
+/// Hidden: o pigmento entra pela migração exacta da E10 (a mesma φ; o Volume não depende do pigmento).
+fn pigmento_da_cena(t: &mut PainterTool, p: f64) {
+    let k = &mut t.paint.wetpaint.knobs;
+    k.set(Knob::PigmentPerDab, p);
+    let (diluicao, _) = ph2d_wet_paint::painter::receita::migra_para_controlos(
+        p,
+        k.get(Knob::WaterPerDab),
+        k.water,
+        k.get(Knob::Intensity),
+        1.0,
+    );
+    k.set(Knob::Dilution, diluicao);
+}
+
 fn tela(k: &[(Knob, f64)], papel: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
@@ -41,7 +56,7 @@ fn tela(k: &[(Knob, f64)], papel: bool) -> PainterTool {
         t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
         t.set_substrate_depth(0.6);
     }
-    t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 3000.0);
+    pigmento_da_cena(&mut t, 3000.0);
     t.set_wet_oleo_real_ligado(true);
     for &(kn, v) in k {
         t.paint.wetpaint.knobs.set(kn, v);
@@ -199,7 +214,7 @@ fn cada_knob_do_material_muda_o_preview() {
     t.set_paint_media(crate::PaintMedia::WetPaint);
     t.set_brush_size_px(14.0);
     t.set_brush_color_srgb8([30, 60, 200]);
-    t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 3000.0);
+    pigmento_da_cena(&mut t, 3000.0);
     t.set_wet_oleo_real_ligado(true);
     let defs: Vec<_> = KNOB_DEFS
         .iter()

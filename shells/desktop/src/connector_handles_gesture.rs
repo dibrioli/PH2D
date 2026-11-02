@@ -5,13 +5,13 @@
 //! largar, onde um waypoint novo entra, quando uma pressão vira arrasto — mora em
 //! [`ph2d_vec_entities::connector_handles`], pura, e é lá que ela é testada.
 
+use crate::app_state::App;
+use ph2d_app_vec::connector_drag::{EndSide, Grab, HandleDrag};
+use ph2d_ecs::{Anchor, ConnectorEnd, Entity, VecConnector};
 use ph2d_vec_entities::connector_handles::{
     BODY_GRAB_K, BODY_SAMPLES, DropTarget, body_became_a_drag, handle_points, hit, insert_index,
     is_redundant, resolve_drop, target_of,
 };
-use crate::app_state::App;
-use ph2d_app_vec::connector_drag::{EndSide, Grab, HandleDrag};
-use ph2d_ecs::{Anchor, ConnectorEnd, Entity, VecConnector};
 use ph2d_vec_scene::{VecPathId, VecScene, xform_of};
 
 impl App {

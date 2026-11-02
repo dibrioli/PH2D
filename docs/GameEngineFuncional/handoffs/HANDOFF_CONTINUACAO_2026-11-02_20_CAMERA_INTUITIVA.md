@@ -59,9 +59,11 @@ Smoke do dono: **OK em 02/11** (onda 20 e 20b).
 - ADR: nenhum criado (próximo livre 0197). Contratos §6 (`node.rs`, `tool.rs`) intocados. Sem marcadores de conflito.
 - Crates tocadas: `ph2d-app-components`, `ph2d-app-game`, `ph2d-camera-frame`, `ph2d-editor-core`,
   `ph2d-i18n`, `ph2d-panel-inspector`, `shells/desktop`, `shells/game-scenes`.
-- ⚠️ **Tectos de LOC marcados `✗` pelo mapa** (confira se o gate os censa antes de integrar; cura = MOVER,
-  nunca isentar): `crates/ph2d-camera-frame/src/lib.rs` 738/700 (base 487) e
-  `shells/desktop/src/input_dispatch/despacho_metodos_picks_e_arrastos.rs` 603/600 (base 596).
+- Tectos de LOC: o mapa marcou dois `✗`. O gate `architecture_workspace_file_loc_cap` reprovou
+  `ph2d-camera-frame/src/lib.rs` (738/700) — **curado por corte**: os gestos das alças e os limites do contorno
+  foram para o irmão `src/gestos.rs` (lib 557 · gestos 188); gate verde. O outro
+  (`despacho_metodos_picks_e_arrastos.rs` 603/600, shell) o gate não censa (os ficheiros da shell respondem à
+  catraca `the_shell_only_shrinks`, verde); margem de 2 linhas na catraca.
 - Shell: `the_shell_only_shrinks` verde (tecto 189 041; a lógica da foto foi para `app-components`, comentários
   da shell compactados).
 
@@ -94,10 +96,10 @@ crates tocadas e `fmt` verdes. A suíte completa NÃO correu (só na integraçã
 
 ## ABERTO
 
-1. Os dois `✗` de LOC acima (cortar/mover `ph2d-camera-frame/src/lib.rs`; margem de 3 linhas na shell).
+1. Catraca da shell com 2 linhas de margem — a próxima onda que tocar a shell tem de MOVER antes de crescer.
 2. Conta-gotas só apanha sprites (limite conhecido, C2).
-3. Gate de placa `as_duas_metades_entregam_a_faixa_motion_a_colagem` é `#[ignore]`: corre com `PH2D_GPU=1`
-   por nome (`--profile smoke -- --ignored`) — ainda não corrido na placa.
+3. Gate de placa `as_duas_metades_entregam_a_faixa_motion_a_colagem` (`#[ignore]`): **verde na placa** 02/11
+   (`PH2D_GPU=1 … --profile smoke -- --ignored`, 0,33 s).
 4. As abertas da 4.ª janela da onda 19 que não constam acima (mutações em lote, rodada de perf do
    `LayerCompositor`) seguem no [handoff 19/4](HANDOFF_CONTINUACAO_2026-11-01_19_ORDEM_E_CLIQUE_4.md).
 5. **Próximo item: J5 moedas** (moedas com som + contador no HUD), plano

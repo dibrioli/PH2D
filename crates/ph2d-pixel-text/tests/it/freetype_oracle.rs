@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_pixel_text::outline::{face, rasterize_glyph};
+use ph2d_pixel_text::outline::{face, hinter, rasterize_glyph};
 use serde_json::Value;
 
 const FIXTURE: &str = include_str!("../fixtures/oracle_freetype_mono.json");
@@ -40,11 +40,12 @@ fn compare(hinting: bool) -> Vec<(String, usize, usize, usize)> {
             .unwrap_or_else(|e| panic!("{path}: {e} (a fonte do oráculo tem de estar instalada)"));
         let font = face(&data, 0).unwrap();
         let px = case["px"].as_u64().unwrap() as u32;
+        let hint = hinting.then(|| hinter(&font, px, false)).flatten();
         let (mut total, mut diff, mut adv_diff) = (0, 0, 0);
         for g in case["glyphs"].as_array().unwrap() {
             let ch = char::from_u32(g["cp"].as_u64().unwrap() as u32).unwrap();
             let theirs = ft_cells(g);
-            let ours = rasterize_glyph(&font, ch, px, false).unwrap();
+            let ours = rasterize_glyph(&font, ch, px, false, hint.as_ref()).unwrap();
             let mut mine = Cells::new();
             for y in 0..ours.h {
                 for x in 0..ours.w {
@@ -101,10 +102,19 @@ fn freetype_mono_unhinted_matches_cell_for_cell() {
     );
 }
 
-/// Medição (não gate): quanto o hinting TrueType da FreeType muda — o que esta onda NÃO reimplementa.
+/// Hinting pelo interpretador TrueType do `skrifa` (alvo Mono), MEDIDO em 02/11: 5 células em 18 casos,
+/// todas de dropout (cantos do «g»/«D» a 8 px que acendemos a mais; um ponto do «P» Serif 12 a menos).
+const MEASURED_HINTED_DIFF: [usize; 18] = [2, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+
 #[test]
-fn freetype_mono_hinted_distance_is_measured() {
+fn freetype_mono_hinted_matches_cell_for_cell() {
     let rows = compare(true);
     eprintln!("{}", report(&rows));
-    assert_eq!(rows.len(), 18);
+    assert!(rows.iter().all(|r| r.3 == 0), "avanços:\n{}", report(&rows));
+    assert_eq!(
+        rows.iter().map(|r| r.2).collect::<Vec<_>>(),
+        MEASURED_HINTED_DIFF,
+        "\n{}",
+        report(&rows)
+    );
 }

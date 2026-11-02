@@ -77,6 +77,22 @@ pub struct TextStyle {
     pub bold: bool,
     pub italic: bool,
     pub antialias: bool,
+    /// Fonte do sistema: hinting TrueType (o Aseprite liga-o por omissão). Fonte de pixel: ignora.
+    pub hinting: bool,
+}
+
+impl TextStyle {
+    /// As omissões do Aseprite: sem negrito/itálico, Antialias desligado, Hinting ligado.
+    pub fn new(font: FontChoice, px: u32) -> Self {
+        Self {
+            font,
+            px,
+            bold: false,
+            italic: false,
+            antialias: false,
+            hinting: true,
+        }
+    }
 }
 
 /// As células que o texto acende: `cover` tem `w·h` valores 0..=255, linha a linha.
@@ -151,6 +167,10 @@ pub fn rasterize_outline(
 ) -> Result<TextMask, String> {
     let face = outline::face(data, index)?;
     let m = outline::face_metrics(&face, style.px);
+    let hint = style
+        .hinting
+        .then(|| outline::hinter(&face, style.px, style.antialias))
+        .flatten();
     let step = m.ascent + m.descent;
     let mut placed = Vec::new();
     let mut missing = std::collections::BTreeSet::new();
@@ -160,10 +180,12 @@ pub fn rasterize_outline(
             if (ch as u32) < 32 {
                 continue;
             }
-            let g = outline::rasterize_glyph(&face, ch, style.px, style.antialias).or_else(|| {
-                missing.insert(ch as u32);
-                outline::rasterize_glyph(&face, '\u{fffd}', style.px, style.antialias)
-            });
+            let g = outline::rasterize_glyph(&face, ch, style.px, style.antialias, hint.as_ref())
+                .or_else(|| {
+                    missing.insert(ch as u32);
+                    let fffd = '\u{fffd}';
+                    outline::rasterize_glyph(&face, fffd, style.px, style.antialias, hint.as_ref())
+                });
             let Some(g) = g else { continue };
             let base = k as i32 * step + m.ascent;
             placed.push((pen + g.left, base - g.top, g.clone()));

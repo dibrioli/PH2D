@@ -2,11 +2,13 @@
 //!
 //! - **Mono**: a célula acende se o CENTRO dela está dentro do contorno (regra não-zero) — a lei
 //!   publicada do rasterizador mono da FreeType; conferida contra o oráculo
-//!   (`tests/fixtures/oracle_freetype_mono.json`). Sem controle de dropout nem hinting (ver o handoff).
+//!   (`tests/fixtures/oracle_freetype_mono.json`).
 //! - **AA**: alfa = área coberta da célula (acumulação de área assinada por aresta).
+//! - **Hinting** (omissão, como no Aseprite): o contorno passa pelo interpretador TrueType do `skrifa`
+//!   (alvo Mono no Mono, Smooth Normal no AA — os alvos da FreeType); o avanço é o ajustado por ele.
 
 use skrifa::instance::{LocationRef, Size};
-use skrifa::outline::{DrawSettings, OutlinePen};
+use skrifa::outline::{DrawSettings, HintingInstance, HintingOptions, OutlinePen, Target};
 use skrifa::{FontRef, MetadataProvider};
 
 /// Um glifo rasterizado, na convenção da FreeType: `left` da caneta, `top` acima da linha de base.
@@ -93,33 +95,52 @@ pub fn face(data: &[u8], index: u32) -> Result<FontRef<'_>, String> {
 pub fn face_metrics(font: &FontRef<'_>, px: u32) -> FaceMetrics {
     let m = font.metrics(Size::new(px as f32), LocationRef::default());
     FaceMetrics {
-        ascent: m.ascent.ceil() as i32,
+        // Arredondado, não tecto: a linha de base do Aseprite (DejaVu 8 px: 7,42 → 7; gate trial_text).
+        ascent: m.ascent.round() as i32,
         descent: (-m.descent).ceil() as i32,
     }
 }
 
-/// Rasteriza o glifo de `ch` a `px` píxeis por em. `None` se a face não tem o caractere.
+/// A instância de hinting de `font` a `px` para o modo de `antialias` (uma por texto: corre o `prep`).
+/// `None` se a face não se deixa hintar — então o glifo sai sem hinting.
+pub fn hinter(font: &FontRef<'_>, px: u32, antialias: bool) -> Option<HintingInstance> {
+    let target = if antialias {
+        Target::default()
+    } else {
+        Target::Mono
+    };
+    HintingInstance::new(
+        &font.outline_glyphs(),
+        Size::new(px as f32),
+        LocationRef::default(),
+        HintingOptions::from(target),
+    )
+    .ok()
+}
+
+/// Rasteriza o glifo de `ch` a `px` píxeis por em, hintado por `hint` se houver (ver [`hinter`]).
+/// `None` se a face não tem o caractere.
 pub fn rasterize_glyph(
     font: &FontRef<'_>,
     ch: char,
     px: u32,
     antialias: bool,
+    hint: Option<&HintingInstance>,
 ) -> Option<GlyphCells> {
     let gid = font.charmap().map(ch)?;
     let size = Size::new(px as f32);
-    let adv = font
+    let linear = font
         .glyph_metrics(size, LocationRef::default())
         .advance_width(gid)
-        .unwrap_or(0.0)
-        .round() as i32;
+        .unwrap_or(0.0);
     let glyph = font.outline_glyphs().get(gid)?;
     let mut pen = Flatten::default();
-    glyph
-        .draw(
-            DrawSettings::unhinted(size, LocationRef::default()),
-            &mut pen,
-        )
-        .ok()?;
+    let settings = match hint {
+        Some(h) => DrawSettings::hinted(h, false),
+        None => DrawSettings::unhinted(size, LocationRef::default()),
+    };
+    let adjusted = glyph.draw(settings, &mut pen).ok()?;
+    let adv = adjusted.advance_width.unwrap_or(linear).round() as i32;
     pen.close();
     let empty = || GlyphCells {
         left: 0,

@@ -530,6 +530,7 @@ fn builtin_fonts_open_and_write() {
             bold: false,
             italic: false,
             antialias: false,
+            hinting: true,
         };
         let m = rasterize("Ag1", &style).unwrap();
         assert!(

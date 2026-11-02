@@ -202,8 +202,9 @@ pub fn rasterize_outline(
             ink = ink.max(y + g.h as i32);
         }
     }
-    // A caixa do Aseprite corta a última linha de tinta quando o ascent arredonda para cima.
-    let ink = ink - outline::box_bottom_cut(&face, style.px);
+    // A caixa do Aseprite corta a última linha da descida quando o ascent arredonda para cima.
+    let base = (lines - 1) * step + m.ascent;
+    let ink = (ink - outline::box_bottom_cut(&face, style.px)).max(base.min(ink));
     let y1 = ink.max(lines * step).max(y0);
     let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
     let mut cover = vec![0u8; (w * h) as usize];

@@ -125,18 +125,32 @@ fn compare_box() -> Vec<(String, usize, u8)> {
     let doc: Value = serde_json::from_str(BOX).unwrap();
     let text = &doc["text"];
     let mut out = Vec::new();
-    let mut cases: Vec<_> = text["cases"].as_object().unwrap().iter().collect();
-    cases.sort_by_key(|(k, _)| {
-        let mut p = k.split(':').skip(1);
-        let px: u32 = p.next().unwrap().parse().unwrap();
-        (p.next().unwrap() == "aa", px)
-    });
-    let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-    let data = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
-    for (key, case) in cases {
+    // (rótulo, texto, px, antialias, caso): a chave `text` («Ag1|», mono por px, depois AA) e a
+    // `text_b` («A»/«Ag» sem AA).
+    let mut cases: Vec<(String, &str, u32, bool, &Value)> = Vec::new();
+    for (key, case) in text["cases"].as_object().unwrap() {
         let mut p = key.split(':').skip(1);
         let px: u32 = p.next().unwrap().parse().unwrap();
-        let antialias = p.next().unwrap() == "aa";
+        let aa = p.next().unwrap() == "aa";
+        let label = format!("Ag1| {px} {}", if aa { "aa" } else { "mono" });
+        cases.push((label, text["text"].as_str().unwrap(), px, aa, case));
+    }
+    cases.sort_by_key(|c| (c.3, c.2));
+    let mut b: Vec<_> = doc["text_b"]["cases"].as_object().unwrap().iter().collect();
+    b.sort_by_key(|(k, _)| (k.len(), *k));
+    for (key, case) in b {
+        let (t, px) = key.split_once(':').unwrap();
+        cases.push((
+            format!("{t} {px} mono"),
+            t,
+            px.parse().unwrap(),
+            false,
+            case,
+        ));
+    }
+    let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+    let data = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    for (label, txt, px, antialias, case) in cases {
         let anchor = case["anchor_cell"].as_array().unwrap();
         let (ax, ay) = (
             anchor[0].as_i64().unwrap() as i32,
@@ -144,7 +158,7 @@ fn compare_box() -> Vec<(String, usize, u8)> {
         );
         let mut style = TextStyle::new(FontChoice::System(path.into(), 0), px);
         style.antialias = antialias;
-        let m = rasterize_outline(&data, 0, text["text"].as_str().unwrap(), &style).unwrap();
+        let m = rasterize_outline(&data, 0, txt, &style).unwrap();
         let ascent = face_metrics(&face(&data, 0).unwrap(), px).ascent;
         let (ox, oy) = (ax - m.origin_x, ay + ascent - m.baseline);
         let (mut diff, mut max) = (0, 0u8);
@@ -162,20 +176,18 @@ fn compare_box() -> Vec<(String, usize, u8)> {
                 max = max.max(theirs.abs_diff(ours));
             }
         }
-        out.push((
-            format!("{px} {}", if antialias { "aa" } else { "mono" }),
-            diff,
-            max,
-        ));
+        out.push((label, diff, max));
     }
     out
 }
 
-/// A caixa do Aseprite (`outline::box_bottom_cut`) contra a rodada 3, MEDIDA em 02/11, na ordem mono
-/// 9·10·11·13·14·15·17·18·20·24·32 e AA 12·16·24·32: (células que diferem, maior |Δalfa|). Sem o corte
-/// 14..20 e 32 tinham a última linha de tinta a mais (1 a 7 células cada). Os 1–2 restantes a 14, 15,
-/// 24 e 32 mono não são da caixa (ver o handoff).
-const MEASURED_BOX: [(usize, u8); 15] = [
+/// A caixa do Aseprite (`outline::box_bottom_cut`) contra a rodada 3, MEDIDA em 02/11: «Ag1|» mono
+/// 9·10·11·13·14·15·17·18·20·24·32, AA 12·16·24·32, depois «A» 14·15·16·18 e «Ag» 14·16 (`text_b`):
+/// (células que diferem, maior |Δalfa|). Sem o corte 14..20 e 32 tinham a última linha da descida a
+/// mais; a regra só «última linha de tinta» cortava o pé do «A» a 14..18 (o Trial deixa-o inteiro).
+/// O 1–2 restantes a 14, 15, 24 e 32 mono não são da caixa: a FreeType mono casa o Trial nesses casos
+/// fora do corte — são células nossas contra a FreeType (como os empates do «g» Sans 8).
+const MEASURED_BOX: [(usize, u8); 21] = [
     (0, 0),
     (0, 0),
     (0, 0),
@@ -191,6 +203,12 @@ const MEASURED_BOX: [(usize, u8); 15] = [
     (0, 5),
     (0, 4),
     (0, 7),
+    (0, 0),
+    (0, 0),
+    (0, 0),
+    (0, 0),
+    (1, 255),
+    (0, 0),
 ];
 
 #[test]

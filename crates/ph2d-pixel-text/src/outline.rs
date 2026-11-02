@@ -148,12 +148,15 @@ pub fn face_metrics(font: &FontRef<'_>, px: u32) -> FaceMetrics {
     }
 }
 
-/// Linhas que o Aseprite corta por baixo da tinta: a caixa dele assenta a linha de base em `⌊ascent⌋`
-/// mas desenha os glifos em `round(ascent)` — quando o ascent arredonda para cima, a última linha de
-/// tinta do texto fica fora. MEDIDO: `oracle_trial_box.json` («Ag1|» DejaVu Sans 9..32 px: corta 1
-/// linha exactamente a 14, 15, 16, 17, 18, 20 e 32, os tamanhos de ascent a subir) e
-/// `oracle_trial_text.json` («Ag1» ×3 fontes: só a 16). Nenhuma regra só de métricas
-/// (⌊·⌋/⌈·⌉/round de ascent, descent, height, typo/win, yMin do texto) casa os 33 casos; esta casa todos.
+/// Linhas que o Aseprite corta da tinta ABAIXO da linha de base: quando o ascent arredonda para cima,
+/// a última linha da descida (o «g», o «|») fica fora; o que está acima da base nunca se corta («A»
+/// sozinho a 14..18 px fica inteiro). O chamador corta em `max(base, fundo da tinta − corte)`. MEDIDO:
+/// `oracle_trial_box.json` — chave `text` («Ag1|» DejaVu Sans 9..32 px: corta 1 linha exactamente a
+/// 14, 15, 16, 17, 18, 20 e 32, os tamanhos de ascent a subir) e `text_b` («A» 14/15/16/18 inteiro,
+/// «Ag» 14/16 cortado) — e `oracle_trial_text.json` («Ag1» ×3 fontes: só a 16). 39 casos. Nenhuma
+/// regra só de métricas (⌊·⌋/⌈·⌉/round de ascent, descent, height, typo/win, yMin do texto) os casa.
+/// O Trial só tem UMA linha (Enter confirma o texto em todas as variantes); o nosso núcleo aceita
+/// várias e corta só no fundo da tinta da última — decisão nossa, sem oráculo.
 pub fn box_bottom_cut(font: &FontRef<'_>, px: u32) -> i32 {
     let a = font
         .metrics(Size::new(px as f32), LocationRef::default())

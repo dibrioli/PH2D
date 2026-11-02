@@ -12,6 +12,9 @@
 //! era impossível), o PREENCHIMENTO de base por CIMA do traço de base (cobre a metade de dentro
 //! dele) e o contorno amarelo no topo (um traço por cima do preenchimento). Nenhum painel aberto: o
 //! dono arrasta os ⚙.
+//!
+//! ⭐ **A cena 48** (os lados CAD curvos): a 47 com um canto puxado e outro preso por uma regra CAD — ver
+//! [`com_regra_e_um_ponto_puxado`].
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -36,13 +39,15 @@ const TRANSPARENTE: Rgba8 = Rgba8::new(255, 255, 255, 0);
 /// A camada que cada cena abre: o brilho (45) e o contorno amarelo (46).
 const BRILHO: usize = 1;
 const FORA: usize = 2;
+/// A cena 48: quanto o canto de baixo à direita sai para fora (unidades do mundo; o rectângulo tem 1,2).
+const PUXAO: f64 = 0.3;
 
 static PASSO: AtomicU8 = AtomicU8::new(0);
 static ROLAGENS: AtomicU8 = AtomicU8::new(0);
 const MAX_ROLAGENS: u8 = 40;
 
 /// Um quadro da cena; `Some(9)` = acabou. `qual`: `0` = a 45 · `1` = a 46 (o «Stroke settings» em
-/// vez do Fill) · `2` = a 47 (a ordem livre da pilha).
+/// vez do Fill) · `2` = a 47 (a ordem livre da pilha) · `3` = a 48 (a 47 com os lados CAD).
 pub fn step(
     vec: &mut VecState,
     scene: &mut VecScene,
@@ -50,7 +55,8 @@ pub fn step(
     qual: u8,
 ) -> Option<u8> {
     let traco = qual == 1;
-    let ordem = qual == 2;
+    let ordem = qual >= 2;
+    let lados_cad = qual == 3;
     let passo = PASSO.load(Ordering::Relaxed);
     let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
     match passo {
@@ -89,6 +95,9 @@ pub fn step(
             }
             if ordem {
                 ordem_livre(p);
+                if lados_cad {
+                    com_regra_e_um_ponto_puxado(scene, ids[0]);
+                }
                 return None;
             }
             eprintln!(
@@ -140,6 +149,27 @@ fn ordem_livre(p: &mut ph2d_vec_scene::VecPath) {
         por_baixo && cobre
     );
     PASSO.store(2, Ordering::Relaxed);
+}
+
+/// ⭐ A cena 48 (report do dono 01–02/11, `img_F45/dono_linha_residual_1.png`): a 47 com o canto de baixo à direita
+/// puxado para fora e o canto de baixo à esquerda PRESO por uma regra CAD — a forma passa a ter a cor dos lados (o
+/// azul-claro do «livre»). O dono carrega no Smooth: os lados coloridos seguem a curva, nunca a recta antiga.
+fn com_regra_e_um_ponto_puxado(scene: &mut VecScene, id: VecPathId) {
+    use ph2d_vec_scene::cad::{Lei, PontoCad, RegraCad};
+    let Some(p) = scene.path_mut(id) else { return };
+    let Some(v) = p.verts.get_mut(1) else { return };
+    v.anchor[0] += PUXAO;
+    (v.in_handle, v.out_handle) = (v.anchor, v.anchor);
+    let canto = p.verts[0];
+    scene.regras_mut().push(RegraCad::nova(Lei::Fixo(
+        PontoCad::Vert(id, canto.id),
+        canto.anchor,
+    )));
+    scene.normaliza_ids();
+    eprintln!(
+        "[cena 48] a 47 com um canto puxado e outro preso por uma regra CAD: os quatro lados em azul-claro. \
+         Carregue no Smooth da barra por cima da forma — as linhas seguem a curva"
+    );
 }
 
 /// Rola o Inspector até a secção Fill & Stroke ficar no alto e abre o painel que a cena mostra (a

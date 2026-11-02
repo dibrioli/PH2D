@@ -243,3 +243,15 @@ fn a_cena_41_comeca_na_nuvem_gigante() {
         Some(crate::vector_mode_filtro_zoom::FIRST)
     );
 }
+
+/// A 48 (os lados CAD curvos) é a 4.ª da família do Fill & Stroke: corre, no layout novo, e começa no estágio dela.
+#[test]
+fn a_cena_48_comeca_no_fill_and_stroke() {
+    let c = of(Some("48"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 34));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_fill_stroke::FIRST)
+    );
+    assert_eq!(of(Some("49")).want, 9, "a 49 ainda não existe");
+}

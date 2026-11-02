@@ -17,6 +17,7 @@ use ph2d_vec_scene::{VecPathId, VecScene, VecViewState, VecXforms, Xform};
 use ph2d_vector::{Affine, Point};
 
 use crate::cad_tool::{Alvo, CadTool, Unidades};
+use crate::cad_tool_lado::{self as lado, Curva, Marca};
 
 /// O raio de acerto de um ponto, de um lado e da borda de um círculo — o das alças (a mão já o conhece).
 const HIT_PX: f64 = ph2d_editor_core::HANDLE_SIZE_PX as f64;
@@ -55,16 +56,16 @@ pub(crate) struct Cota {
 pub(crate) struct Plano {
     /// O afim mundo → ecrã com que foi feito (o press chega em mundo).
     pub cam: Affine,
-    /// Cada lado de uma forma com regras, na cor do que ela é.
-    pub lados: Vec<([f64; 2], [f64; 2], ColorToken)>,
+    /// Cada lado de uma forma com regras (a CURVA dele, [`crate::cad_tool_lado`]), na cor do que ela é.
+    pub lados: Vec<(Curva, ColorToken)>,
     pub selos: Vec<Selo>,
     pub cotas: Vec<Cota>,
     /// Os alvos escolhíveis (só com a tool na mão): pontos, lados e círculos.
     pub pontos: Vec<(PontoCad, [f64; 2])>,
-    pub segmentos: Vec<(SegCad, [f64; 2], [f64; 2])>,
+    pub segmentos: Vec<(SegCad, Curva)>,
     pub circulos: Vec<(VecPathId, [f64; 2], f64)>,
     /// O que cada regra liga, no ecrã (o hover e a escolhida acendem-no).
-    pub ligados: BTreeMap<RegraId, Vec<[f64; 2]>>,
+    pub ligados: BTreeMap<RegraId, Vec<Marca>>,
 }
 
 fn tela(
@@ -100,17 +101,42 @@ fn unit(a: [f64; 2]) -> [f64; 2] {
 fn meio(a: [f64; 2], b: [f64; 2]) -> [f64; 2] {
     esc(add(a, b), 0.5)
 }
-/// A distância de `p` ao segmento `a..b`.
-fn ao_segmento(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
-    let d = sub(b, a);
-    let l2 = d[0] * d[0] + d[1] * d[1];
-    let t = if l2 > 0.0 {
-        (((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / l2).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let q = add(a, esc(d, t));
-    (p[0] - q[0]).hypot(p[1] - q[1])
+/// **O que uma regra liga, no ecrã**: cada lado citado como a curva dele; os pontos soltos como pontos; e o par de uma
+/// medida ou de um espelho como a recta entre eles (a medida É recta).
+fn marcas_da_lei(
+    l: &Lei,
+    curva: &impl Fn(SegCad) -> Option<Curva>,
+    ponto: &impl Fn(PontoCad) -> Option<[f64; 2]>,
+) -> Vec<Marca> {
+    let lado = |s: SegCad| curva(s).map(Marca::Lado);
+    let reta = |a, b| Some(Marca::Lado(lado::reta(ponto(a)?, ponto(b)?)));
+    let pt = |a| ponto(a).map(Marca::Ponto);
+    match *l {
+        Lei::Coincidente(a, b) | Lei::Distancia(a, b, _) => vec![reta(a, b)],
+        Lei::Horizontal(s) | Lei::Vertical(s) => vec![lado(s)],
+        Lei::Paralelo(s, t)
+        | Lei::Perpendicular(s, t)
+        | Lei::Igual(s, t)
+        | Lei::Angulo(s, t, _) => {
+            vec![lado(s), lado(t)]
+        }
+        Lei::Tangente(s, c) => vec![lado(s), pt(PontoCad::Centro(c))],
+        Lei::Simetrico(a, b, s) => vec![reta(a, b), lado(s)],
+        Lei::SobreRecta(a, s) => vec![pt(a), lado(s)],
+        Lei::Raio(c, _) => vec![pt(PontoCad::Centro(c))],
+        Lei::Fixo(a, _) => vec![pt(a)],
+    }
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// Os pontos de ecrã que uma marca cobre (a caixa de uma curva).
+fn cobre(m: &Marca) -> Vec<[f64; 2]> {
+    match m {
+        Marca::Ponto(q) => vec![*q],
+        Marca::Lado(c) => lado::caixa(c).to_vec(),
+    }
 }
 fn rect_em(c: [f64; 2], w: f64, h: f64) -> Rect {
     #[expect(clippy::cast_possible_truncation, reason = "px de ecrã")]
@@ -192,6 +218,8 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
         ..
     } = *e;
     let ponto = |p| tela(scene, view, xf, cam, p);
+    let curva = |s| lado::no_ecra(scene, view, xf, cam, s, ponto);
+    let marcas = |l: &Lei| marcas_da_lei(l, &curva, &ponto);
     let regras = scene.regras();
     let estados: Vec<Option<EstadoRegra>> = (0..regras.len())
         .map(|i| e.estado.and_then(|s| s.regras.get(i).copied()))
@@ -218,10 +246,10 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
         .map(PontoCad::path)
         .collect();
     for p in scene.paths().iter().filter(|p| !view.is_hidden(p.id)) {
+        let t = ph2d_vec_render::overlay_transform(view, xf, p.id, cam);
         if e.ativa
             && let Some((c, r)) = circulo_de(p, Xform::IDENTITY)
         {
-            let t = ph2d_vec_render::overlay_transform(view, xf, p.id, cam);
             let cc = t * Point::new(c[0], c[1]);
             let borda = t * Point::new(c[0] + r, c[1]);
             plano
@@ -235,20 +263,16 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
             let n = verts.len();
             let pares = if fechado { n } else { n.saturating_sub(1) };
             for i in 0..pares {
-                let (a, b) = (
-                    PontoCad::Vert(p.id, verts[i].id),
-                    PontoCad::Vert(p.id, verts[(i + 1) % n].id),
-                );
-                let (Some(qa), Some(qb)) = (ponto(a), ponto(b)) else {
-                    continue;
-                };
+                let (va, vb) = (&verts[i], &verts[(i + 1) % n]);
+                let (a, b) = (PontoCad::Vert(p.id, va.id), PontoCad::Vert(p.id, vb.id));
+                let c = lado::cubica(t, va, vb);
                 if com_regras.contains(&p.id)
                     && let Some(s) = e.estado
                 {
-                    plano.lados.push((qa, qb, cor_do_lado(a, b, s, &conflito)));
+                    plano.lados.push((c, cor_do_lado(a, b, s, &conflito)));
                 }
                 if e.ativa {
-                    plano.segmentos.push((SegCad(a, b), qa, qb));
+                    plano.segmentos.push((SegCad(a, b), c));
                 }
             }
             if e.ativa {
@@ -267,7 +291,8 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
     for (r, est) in regras.iter().zip(&estados) {
         let cor = cor_da_regra(*est, r.referencia);
         let ps: Vec<[f64; 2]> = r.lei.pontos().into_iter().filter_map(ponto).collect();
-        plano.ligados.insert(r.id, ps.clone());
+        let ms = marcas(&r.lei);
+        plano.ligados.insert(r.id, ms.clone());
         if let Some(valor) = e.u.texto(&r.lei) {
             // REF: a medida que o desenho já fixa mostra-se entre parênteses, como nos CAD — não se escreve.
             let texto = if r.referencia {
@@ -290,16 +315,18 @@ pub(crate) fn plano(e: &Entrada<'_>, text: &mut TextSystem) -> Plano {
             pares += 1;
             pares
         });
-        // Onde: o meio de cada lado citado (os dois do Igual), ou o ponto (Coincidente, Fixo).
+        // Onde: o meio de cada lado citado (os dois do Igual) — o meio da CURVA —, ou o ponto (Coincidente, Fixo).
         let sitios: Vec<([f64; 2], [f64; 2])> = match ps[..] {
             [a] | [a, _] if matches!(r.lei, Lei::Coincidente(..) | Lei::Fixo(..)) => {
                 vec![(a, [0.7, -0.7])]
             }
-            [a, b] => vec![(meio(a, b), unit([b[1] - a[1], a[0] - b[0]]))],
-            [a, b, c, d] => vec![
-                (meio(a, b), unit([b[1] - a[1], a[0] - b[0]])),
-                (meio(c, d), unit([d[1] - c[1], c[0] - d[0]])),
-            ],
+            [_, _] | [_, _, _, _] => ms
+                .iter()
+                .filter_map(|m| match m {
+                    Marca::Lado(c) => Some(lado::meio_e_normal(c)),
+                    Marca::Ponto(_) => None,
+                })
+                .collect(),
             _ => Vec::new(),
         };
         // O selo de um lado pousa para DENTRO da forma (a cota do mesmo lado vai para fora — nunca se tapam).
@@ -533,7 +560,7 @@ impl Plano {
         if let Some((s, _)) = self
             .segmentos
             .iter()
-            .map(|(s, a, b)| (s, ao_segmento(p, *a, *b)))
+            .map(|(s, c)| (s, lado::distancia(c, p)))
             .filter(|x| perto(x.1))
             .min_by(|x, y| x.1.total_cmp(&y.1))
         {
@@ -558,7 +585,7 @@ impl Plano {
                 .segmentos
                 .iter()
                 .filter(|(q, ..)| q == s)
-                .flat_map(|(_, x, y)| [*x, *y])
+                .flat_map(|(_, c)| lado::caixa(c))
                 .collect(),
             Alvo::Circulo(id) => self
                 .circulos
@@ -576,7 +603,11 @@ impl Plano {
         if pts.is_empty()
             && let Some(id) = regra
         {
-            pts = self.ligados.get(&id).cloned().unwrap_or_default();
+            pts = self
+                .ligados
+                .get(&id)
+                .map(|ms| ms.iter().flat_map(cobre).collect())
+                .unwrap_or_default();
         }
         let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
         for q in &pts {

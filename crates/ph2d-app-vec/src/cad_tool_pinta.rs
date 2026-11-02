@@ -10,6 +10,7 @@ use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color as VelloColor, Point, Stroke, VectorScene};
 
 use crate::cad_tool::{Alvo, CadTool};
+use crate::cad_tool_lado::{Curva, Marca, caminho};
 use crate::cad_tool_plano::{Acerto, Plano};
 
 /// O traço da cor da forma e das cotas, em px de ecrã.
@@ -90,13 +91,23 @@ pub(crate) fn seta(
     );
 }
 
-/// Acende os pontos de ecrã `pts` (um par = um lado; um só = um ponto).
-fn acende(target: &mut VectorScene, pts: &[[f64; 2]], cor: ColorToken, theme: Theme) {
-    for par in pts.chunks(2) {
-        match par {
-            [a, b] => linha(target, &[*a, *b], ACESO_PX, cor, theme),
-            [a] => disco(target, *a, ACESO_PX * 2.0, cor, theme),
-            _ => {}
+/// Um lado no ecrã, pela curva dele.
+fn curva(target: &mut VectorScene, c: &Curva, w: f64, cor: ColorToken, theme: Theme) {
+    target.inner_mut().stroke(
+        &Stroke::new(w),
+        Affine::IDENTITY,
+        &pincel(cor, theme),
+        None,
+        &caminho(c),
+    );
+}
+
+/// Acende as marcas: um lado pela curva dele, um ponto como disco.
+fn acende(target: &mut VectorScene, marcas: &[Marca], cor: ColorToken, theme: Theme) {
+    for m in marcas {
+        match m {
+            Marca::Lado(c) => curva(target, c, ACESO_PX, cor, theme),
+            Marca::Ponto(a) => disco(target, *a, ACESO_PX * 2.0, cor, theme),
         }
     }
 }
@@ -109,26 +120,26 @@ pub(crate) fn pinta(
     text: &mut TextSystem,
     target: &mut VectorScene,
 ) {
-    for &(a, b, cor) in &p.lados {
-        linha(target, &[a, b], TRACO_PX, cor, theme);
+    for (c, cor) in &p.lados {
+        curva(target, c, TRACO_PX, *cor, theme);
     }
     for &(_, q) in &p.pontos {
         disco(target, q, TRACO_PX * 2.0, ColorToken::Text3, theme);
     }
     // O hover sobre um alvo, a escolha (pontos como disco; um lado inteiro).
-    let alvo = |a: &Alvo| -> Vec<[f64; 2]> {
+    let alvo = |a: &Alvo| -> Vec<Marca> {
         match a {
             Alvo::Ponto(x) => p
                 .pontos
                 .iter()
                 .filter(|(y, _)| y == x)
-                .map(|(_, q)| *q)
+                .map(|(_, q)| Marca::Ponto(*q))
                 .collect(),
             Alvo::Lado(s) => p
                 .segmentos
                 .iter()
                 .filter(|(t, ..)| t == s)
-                .flat_map(|(_, a, b)| [*a, *b])
+                .map(|(_, c)| Marca::Lado(*c))
                 .collect(),
             Alvo::Circulo(_) => Vec::new(),
         }

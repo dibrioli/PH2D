@@ -103,7 +103,11 @@ fn hover_lights_what_the_rule_binds() {
     let id = m.scene.regras()[0].id;
     assert_eq!(
         p.ligados.get(&id),
-        Some(&vec![p.no_ecra(m.pos(2)), p.no_ecra(m.pos(3))])
+        Some(&vec![Marca::Lado(lado::reta(
+            p.no_ecra(m.pos(2)),
+            p.no_ecra(m.pos(3))
+        ))]),
+        "um lado recto liga-se pela recta dele"
     );
     let s = &p.selos[0];
     let sobre = [f64::from(s.rect.x + 1.0), f64::from(s.rect.y + 1.0)];
@@ -128,8 +132,8 @@ fn the_shape_colour_says_free_defined_conflict() {
     let cor_de = |p: &Plano, a: [f64; 2], b: [f64; 2]| {
         p.lados
             .iter()
-            .find(|(x, y, _)| *x == a && *y == b)
-            .map(|l| l.2)
+            .find(|(c, _)| c[0] == a && c[3] == b)
+            .map(|l| l.1)
     };
     let p = plano_de(&m);
     let (q1, q2, q3) = (
@@ -217,4 +221,102 @@ fn no_badge_covers_a_number_or_another_badge_and_a_reference_reads_in_parenthese
             c.texto
         );
     }
+}
+
+/// A distância (px) de `q` à arte de `m` no ecrã deste plano.
+fn ate_a_arte(m: &crate::cad_tool::tests::Mesa, p: &Plano, q: [f64; 2]) -> f64 {
+    use ph2d_vector::ParamCurveNearest;
+    let arte = p.cam * ph2d_vec_render::build_bezpath(m.scene.path(m.path).expect("a forma"));
+    arte.segments()
+        .map(|s| s.nearest(Point::new(q[0], q[1]), 1e-3).distance_sq.sqrt())
+        .fold(f64::MAX, f64::min)
+}
+
+/// ⭐⭐ Report do dono (01–02/11, `img_F45/dono_linha_residual_1.png`): depois do Smooth a cor CAD dos lados ficava em
+/// RECTAS por cima da arte curva — «a linha do caminho antigo». Cada lado pinta-se e acerta-se pela CURVA da forma.
+#[test]
+fn a_curved_side_is_painted_and_hit_along_the_curve_not_the_chord() {
+    let mut m = mesa();
+    let v1 = m.v(1);
+    regras(&mut m, &[Lei::Fixo(v1, [0.0; 2])]);
+    assert!(m.scene.smooth_path(m.path), "o Smooth curva os lados");
+    m.desenha(true);
+    let p = plano_de(&m);
+    assert_eq!(p.lados.len(), 4, "a forma com regras pinta os quatro lados");
+    for (c, _) in &p.lados {
+        let (q, _) = lado::meio_e_normal(c);
+        let d = ate_a_arte(&m, &p, q);
+        assert!(d < 0.5, "o meio do lado pintado está a {d:.1} px da arte");
+    }
+    // O lado mais curvo: o meio da curva fica longe da corda — para além do alcance da mão (controlo de que a reta
+    // antiga reprovaria aqui).
+    let (s, c, bojo) = p
+        .segmentos
+        .iter()
+        .map(|(s, c)| {
+            let (q, _) = lado::meio_e_normal(c);
+            (*s, *c, lado::distancia(&lado::reta(c[0], c[3]), q))
+        })
+        .max_by(|a, b| a.2.total_cmp(&b.2))
+        .expect("os lados");
+    assert!(
+        bojo > HIT_PX,
+        "controlo: o Smooth afastou a curva só {bojo:.1} px da corda"
+    );
+    let (q, _) = lado::meio_e_normal(&c);
+    assert_eq!(
+        p.acerta(q),
+        Some(Acerto::Alvo(Alvo::Lado(s))),
+        "o clique no meio do lado CURVO acerta-o"
+    );
+}
+
+/// O que uma regra liga e o selo dela seguem a curva do lado — também citado ao contrário (`2 → 1`).
+#[test]
+fn a_rule_on_a_curved_side_lights_the_curve_and_its_badge_sits_by_it() {
+    let mut m = mesa();
+    let invertido = m.lado(2, 1);
+    regras(&mut m, &[Lei::Horizontal(invertido)]);
+    assert!(m.scene.smooth_path(m.path));
+    m.desenha(true);
+    let p = plano_de(&m);
+    let id = m.scene.regras()[0].id;
+    let c12 = p
+        .segmentos
+        .iter()
+        .find(|(s, _)| *s == m.lado(1, 2))
+        .map(|(_, c)| *c)
+        .expect("o lado 1 → 2");
+    let [a, b, cc, d] = c12;
+    assert_eq!(
+        p.ligados.get(&id),
+        Some(&vec![Marca::Lado([d, cc, b, a])]),
+        "o lado citado 2 → 1 é a mesma curva, percorrida ao contrário"
+    );
+    // A régua do meio é a da kurbo, não a `meio_e_normal` que se mede.
+    let meio_curva = {
+        use ph2d_vector::ParamCurve;
+        let q = lado::caminho(&c12)
+            .segments()
+            .next()
+            .expect("a cúbica")
+            .eval(0.5);
+        [q.x, q.y]
+    };
+    let bojo = lado::distancia(&lado::reta(a, d), meio_curva);
+    assert!(
+        bojo > 1.0,
+        "controlo: o lado de baixo tem de curvar ({bojo:.2} px)"
+    );
+    let s = &p.selos[0];
+    let centro = [
+        f64::from(s.rect.x + s.rect.w / 2.0),
+        f64::from(s.rect.y + s.rect.h / 2.0),
+    ];
+    let longe = f64::from(Spacing::Lg.px()) + f64::from(CHIP_H_PX) * 0.5;
+    let d = (centro[0] - meio_curva[0]).hypot(centro[1] - meio_curva[1]);
+    assert!(
+        (d - longe).abs() < 1.0,
+        "o selo pousa a {longe:.1} px do meio da CURVA, não da corda (está a {d:.1})"
+    );
 }

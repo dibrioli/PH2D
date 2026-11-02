@@ -32,6 +32,7 @@ fn path_of(verts: Vec<VecVertex>, closed: bool) -> VecPath {
         next_vert: 0,
         fill_hidden: None,
         stroke_hidden: None,
+        base_order: crate::BaseOrder::default(),
     }
 }
 

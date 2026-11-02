@@ -16,8 +16,8 @@
 
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{
-    MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, PaintSlot, Rgba8, StrokeAlign, StrokeSpec,
-    VecPathId, VecScene,
+    MAX_PAINT_LAYERS, Paint, PaintEntry, PaintKind, PaintSlot, Place, Rgba8, StackItem,
+    StrokeAlign, StrokeSpec, VecPathId, VecScene,
 };
 
 /// ⭐⭐⭐ **O QUE UM CLIQUE NA PILHA PEDE** — a metade PURA da ponte, testável sem `App`.
@@ -35,6 +35,8 @@ pub enum StackVerb {
     Up(usize),
     Down(usize),
     Del(usize),
+    /// ⭐ F45: o arrasto pelo ⚙ largou uma linha — o par (linha, lugar) está no estado do painel.
+    Move,
 }
 
 /// Que verbo este id pede (`None` se ele não é da pilha).
@@ -44,6 +46,9 @@ pub fn stack_verb_for_id(id: ph2d_editor_core::NodeId) -> Option<StackVerb> {
     }
     if id == ph2d_panel_vector::ids::VECTOR_PAINT_ADD_STROKE {
         return Some(StackVerb::AddStroke);
+    }
+    if id == ph2d_panel_vector::ids::VECTOR_PAINT_MOVE {
+        return Some(StackVerb::Move);
     }
     (0..MAX_PAINT_LAYERS).find_map(|i| {
         if id == ph2d_panel_vector::ids::vector_paint_eye_id(i) {
@@ -114,6 +119,11 @@ pub fn apply(scene: &mut VecScene, sel: &[VecPathId], verb: StackVerb) -> bool {
             ph2d_panel_vector::state::close_open_layer();
             remove(scene, sel, i)
         }
+        StackVerb::Move => {
+            ph2d_panel_vector::state::close_open_layer();
+            ph2d_panel_vector::state::take_paint_move()
+                .is_some_and(|(it, onde)| move_item(scene, sel, it, onde))
+        }
     }
 }
 
@@ -159,6 +169,7 @@ pub fn published(
         mixed_opacity: outras().any(|o| alfa(o) != opacity),
         mixed_blend: outras().any(|o| o.blend != p.blend),
         layers_differ,
+        order: p.draw_order().collect(),
         layers: p
             .paints
             .iter()
@@ -223,35 +234,43 @@ pub fn add(scene: &mut VecScene, sel: &[VecPathId], fill: bool) -> bool {
     mudou
 }
 
-/// **Apaga a camada `i`** de cada forma seleccionada que a tenha.
+/// **Apaga a camada `i`** de cada forma seleccionada que a tenha; a base fica entre as mesmas vizinhas.
 pub fn remove(scene: &mut VecScene, sel: &[VecPathId], i: usize) -> bool {
+    edit(scene, sel, |p| p.remove_paint(i))
+}
+
+/// **Move a camada `i` uma linha** na pilha INTEIRA à vista (`up` = para o topo) — a vizinha pode
+/// ser a tinta de base (F45).
+pub fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool) -> bool {
     edit(scene, sel, |p| {
-        if i < p.paints.len() {
-            p.paints.remove(i);
-            true
+        let vistas = visible_order(p);
+        let eu = StackItem::Entry(i);
+        let Some(k) = vistas.iter().position(|x| *x == eu) else {
+            return false;
+        };
+        let viz = if up {
+            k.checked_add(1)
         } else {
-            false
+            k.checked_sub(1)
+        };
+        match viz.and_then(|v| vistas.get(v)) {
+            Some(&v) if up => p.move_paint(eu, Place::Above(v)),
+            Some(&v) => p.move_paint(eu, Place::Below(v)),
+            None => false,
         }
     })
 }
 
-/// **Move a camada `i` uma posição** (`up` = para o topo da pilha, que é o fim do vector).
-pub fn shift(scene: &mut VecScene, sel: &[VecPathId], i: usize, up: bool) -> bool {
-    edit(scene, sel, |p| {
-        let n = p.paints.len();
-        let j = if up {
-            i.checked_add(1)
-        } else {
-            i.checked_sub(1)
-        };
-        match j {
-            Some(j) if i < n && j < n => {
-                p.paints.swap(i, j);
-                true
-            }
-            _ => false,
-        }
-    })
+/// ⭐ **Move a linha `it` para logo acima/abaixo de outra** em cada forma seleccionada — o arrasto
+/// pelo ⚙ (F45). Uma forma sem uma das duas linhas é saltada.
+pub fn move_item(scene: &mut VecScene, sel: &[VecPathId], it: StackItem, onde: Place) -> bool {
+    edit(scene, sel, |p| p.move_paint(it, onde))
+}
+
+/// As linhas que o painel mostra, de baixo para cima: a pilha inteira sem a base ausente.
+#[must_use]
+pub fn visible_order(p: &ph2d_vec_scene::VecPath) -> Vec<StackItem> {
+    p.draw_order().filter(|it| p.has_item(*it)).collect()
 }
 
 /// **A opacidade** da camada `i`.
@@ -459,3 +478,7 @@ mod tests;
 #[cfg(test)]
 #[path = "paint_stack_slot_tests.rs"]
 mod slot_tests;
+
+#[cfg(test)]
+#[path = "paint_order_tests.rs"]
+mod order_tests;

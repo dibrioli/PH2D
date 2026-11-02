@@ -18,13 +18,13 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v165 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v166 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
-/// [`super::project_schema_history_v160`] (`v160`..`v165`). O corte é por IDADE e o tecto de 600
+/// [`super::project_schema_history_v160`] (`v160`..`v166`). O corte é por IDADE e o tecto de 600
 /// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
@@ -33,18 +33,6 @@
 /// `main` de que a rodada VIVA nasceu (`git merge-base`), porque abaixo dele estão rodadas
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
-///
-/// # ⭐ 165 → 166 (2026-09-22) — o CONFINAMENTO (plano 24, W3)
-///
-/// `ScrollLimits { min, max }` — a região em que a vista pode passear. Enquanto ela couber lá
-/// dentro o fundo faz a paralaxe autorada; quando a borda da VISTA toca a da REGIÃO a camada
-/// **congela no ecrã**, e é por isso que a borda do fundo nunca aparece. O joelho é
-/// `(região − ecrã)/2`, **medido no alvo**.
-///
-/// ⚠️ **Um eixo é limitado quando `max > min`**, logo o valor de fábrica (`[0,0]`/`[0,0]`) não
-/// confina nada e a cena fica byte-idêntica — a mesma convenção do ladrilho zero da W2.
-///
-/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v165 é recusado em voz alta.
 ///
 /// # ⭐ 166 → 167 (2026-09-22) — o MOVIMENTO PRÓPRIO (plano 24, W4)
 ///
@@ -524,7 +512,18 @@
 /// `25` até ao `211` (os dois `None`); as formas do Envelope e da pele regravam-se no load
 /// (`migra_fio`). Gate sobre bytes gravados pelo código v25: `vec_v25_fixture` (cena). Registos de
 /// componentes: `0`. ⚠️ **A tripla VÊ este degrau** — a forma da `VecScene` muda.
-pub(crate) const PROJECT_SCHEMA: u32 = 212;
+///
+/// # `212 → 213` — **a tinta de base tem LUGAR na pilha** (`line/UIUX`, F45, 2026-11-01)
+///
+/// `VecPath::base_order` no FIM (`VEC_SCENE_SCHEMA_VERSION` `26 → 27`): o Fill e o Stroke de base
+/// ocupam uma posição entre as camadas — um preenchimento cobre um traço e vice-versa
+/// ([`ph2d_vec_scene::BaseOrder`]). ⭐ **COM leitura dos anteriores:** o `fio_do_projeto` diz `26` até ao
+/// `212` e a base nasce no lugar de antes (a mesma aparência). Gate sobre bytes gravados pelo código
+/// v26: `vec_v26_fixture` (cena). Registos de componentes: `0`. ⚠️ **A tripla VÊ este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 213;
+
+/// O último degrau cujo `VecPath` não tem a posição da base na pilha (`VecScene` v26).
+pub(crate) const PROJECT_SCHEMA_SEM_ORDEM_DA_BASE: u32 = 212;
 
 /// O último degrau cujo `VecPath` não tem a tinta de base escondida (`VecScene` v25).
 pub(crate) const PROJECT_SCHEMA_SEM_TINTA_ESCONDIDA: u32 = 211;
@@ -588,6 +587,8 @@ pub(crate) fn fio_do_projeto(ver: u32) -> Option<u32> {
         Some(24)
     } else if ver <= PROJECT_SCHEMA_SEM_TINTA_ESCONDIDA {
         Some(25)
+    } else if ver <= PROJECT_SCHEMA_SEM_ORDEM_DA_BASE {
+        Some(26)
     } else {
         None
     }

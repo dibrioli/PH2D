@@ -44,6 +44,8 @@ fn authored() -> VecPath {
         next_vert: 0,
         fill_hidden: None,
         stroke_hidden: None,
+        // ⭐ Idem para a ORDEM da pilha (v27): o traço de base por baixo do preenchimento.
+        base_order: crate::BaseOrder { fill: 1, stroke: 0 },
     }
 }
 
@@ -73,6 +75,7 @@ fn freshly_cooked() -> VecPath {
         next_vert: 0,
         fill_hidden: None,
         stroke_hidden: None,
+        base_order: crate::BaseOrder::default(),
     }
 }
 
@@ -162,6 +165,8 @@ fn a_recook_of_a_path_without_effects_is_the_plain_replacement() {
     // campo novo que sobreviva ao cozimento tem de aparecer aqui, e é ele que impede a lista de
     // crescer sem ninguém a ler.
     expected.paints = vec![segundo_traco()];
+    // ⭐ v27: e a ORDEM da pilha.
+    expected.base_order = crate::BaseOrder { fill: 1, stroke: 0 };
     assert_eq!(
         p, expected,
         "sem pilha de efeitos, o resultado e' o path cozido com o id, a opacidade, a mistura e a \
@@ -228,6 +233,7 @@ fn replace_geometry_carries_the_points_and_leaves_the_style_alone() {
     );
     assert_eq!(p.effects, antes.effects, "a pilha de efeitos idem");
     assert_eq!(p.paints, antes.paints, "a pilha de aparencia idem");
+    assert_eq!(p.base_order, antes.base_order, "a ordem da pilha idem");
     assert_eq!(p.opacity, antes.opacity, "a opacidade idem");
     assert_eq!(p.blend, antes.blend, "a mistura idem");
 }

@@ -401,3 +401,61 @@ fn a_dilated_layers_fill_rule_is_its_own_and_not_the_hosts() {
          auto-cruzada cancela-se e a quina aparece arredondada"
     );
 }
+
+/// O que a codificação leva, na ordem: as etiquetas e os dados de desenho.
+fn desenho(p: &VecPath) -> (Vec<u32>, Vec<u32>) {
+    let mut t = VectorScene::new();
+    crate::draw_path_tiled(p, Affine::IDENTITY, &mut t, crate::Derived::NONE);
+    let e = t.inner().encoding();
+    (
+        e.draw_tags.iter().map(|t| t.0).collect(),
+        e.draw_data.clone(),
+    )
+}
+
+/// ⭐⭐ **F45: o preenchimento de BASE pode cobrir o traço de base** — posto por cima dele, a forma
+/// desenha EXACTAMENTE o que desenharia com o preenchimento como camada no topo da pilha. *Mutação:
+/// o `draw_path_with` voltar à ordem fixa (base fill → base stroke) ⇒ a 1.ª igualdade sangra.*
+#[test]
+fn a_base_fill_moved_above_the_base_stroke_draws_on_top_of_it() {
+    use ph2d_vec_scene::{Place, StackItem};
+    let mut cobre = quadrado();
+    cobre.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 255, 255), 4.0));
+    let neutro = desenho(&cobre);
+    assert!(cobre.move_paint(StackItem::BaseFill, Place::Above(StackItem::BaseStroke)));
+
+    let mut camada_no_topo = cobre.clone();
+    let tinta = camada_no_topo.fill.take().expect("tem preenchimento");
+    camada_no_topo.base_order = ph2d_vec_scene::BaseOrder::default();
+    camada_no_topo.paints = vec![PaintEntry::fill(tinta)];
+
+    assert_eq!(desenho(&cobre), desenho(&camada_no_topo));
+    assert_ne!(desenho(&cobre), neutro, "a ordem tem de mudar o desenho");
+}
+
+/// ⭐ **Uma camada de preenchimento desenha sem o preenchimento de BASE** (o olho dele fechado, ou o
+/// «−»). Antes da F45 a geometria do preenchimento só se construía para a base, e a camada sumia.
+#[test]
+fn a_fill_layer_draws_without_a_base_fill() {
+    let mut p = quadrado();
+    p.fill = None;
+    p.stroke = None;
+    let (vazia, _) = conta(&p);
+    p.paints = vec![PaintEntry::fill(Paint::Solid(Rgba8::new(255, 0, 0, 255)))];
+    assert_eq!(conta(&p).0, vazia + 1);
+}
+
+/// ⭐ **Uma camada de traço desenha sem tinta de base nenhuma** — antes rebentava no `expect` («stroke
+/// => um dos dois desenhos existe») ao esconder o preenchimento e o traço de base.
+#[test]
+fn a_stroke_layer_draws_without_any_base_paint() {
+    let mut p = quadrado();
+    p.fill = None;
+    p.stroke = None;
+    let (vazia, _) = conta(&p);
+    p.paints = vec![PaintEntry::stroke(StrokeSpec::new(
+        Rgba8::new(0, 0, 0, 255),
+        2.0,
+    ))];
+    assert_eq!(conta(&p).0, vazia + 1);
+}

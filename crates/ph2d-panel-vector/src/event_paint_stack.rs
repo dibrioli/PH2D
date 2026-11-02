@@ -117,3 +117,24 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
     }
     None
 }
+
+/// ⭐ F45 — **largou uma linha de Fill & Stroke arrastada pelo ⚙**: a queda é a que o vão mostrou
+/// (`fill_stroke_list::take_landing`), e viaja para a shell como o verbo `Move`. `true` = o evento
+/// era este (consumido, mesmo sem queda: largar no próprio lugar não faz nada).
+pub(super) fn dropped_row(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::PanelRowReparent {
+        family: ph2d_editor_core::interaction::PanelRowFamily::VectorPaint,
+        ..
+    } = ev
+    else {
+        return false;
+    };
+    if let Some(m) = crate::paint_sections::fill_stroke_list::take_landing() {
+        crate::state::set_paint_move(Some(m));
+        host.bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::Click(
+                ids::VECTOR_PAINT_MOVE,
+            )));
+    }
+    true
+}

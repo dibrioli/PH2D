@@ -343,15 +343,13 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_APPEARANCE, scope::ALWAYS, Drawing, |b, y| {
         b.appearance_section(y)
     });
-    // F44: o «Fill type» mora no painel à esquerda da linha do preenchimento de base.
+    // F45: Fill & Stroke numa só secção, na ordem da pilha (o id é o da antiga Fill: a dobra e a
+    // posição que o artista gravou continuam valendo).
     p.seccao(VECTOR_SECTION_FILL, scope::ALWAYS, Drawing, |b, y| {
-        b.fill_section(snap, y)
+        b.fill_stroke_section(snap, y)
     });
     p.seccao(VECTOR_SECTION_TEXPAT, scope::ALWAYS, Drawing, |b, y| {
         b.texture_pattern_section(0, y)
-    });
-    p.seccao(VECTOR_SECTION_STROKE, scope::ALWAYS, Drawing, |b, y| {
-        b.stroke_section(snap, y)
     });
     p.seccao(
         VECTOR_SECTION_TEXPAT_STROKE,
@@ -473,7 +471,6 @@ mod tests {
             VECTOR_SECTION_APPEARANCE,
             VECTOR_SECTION_FILL,
             VECTOR_SECTION_TEXPAT,
-            VECTOR_SECTION_STROKE,
             VECTOR_SECTION_TEXPAT_STROKE,
             VECTOR_SECTION_BRUSH,
             VECTOR_SECTION_CONNECTOR,

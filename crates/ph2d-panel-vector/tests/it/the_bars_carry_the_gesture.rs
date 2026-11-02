@@ -931,6 +931,7 @@ fn the_control_bar_leads_with_name_colours_and_stroke() {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
     let one = Retrato {
         sel: 1,

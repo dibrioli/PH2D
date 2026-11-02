@@ -58,6 +58,7 @@ fn populate_paint_stack(store: &mut WidgetStore) {
     // F44: o preenchimento de base e o ⚙ do traço abrem painéis à esquerda; os X fecham-nos.
     crate::populate::dropdown(store, ids::VECTOR_FILL_ROW);
     crate::populate::dropdown(store, ids::VECTOR_STROKE_SETTINGS);
+    crate::populate::dropdown(store, ids::VECTOR_PAINT_ADD_MENU);
     for id in [
         ids::VECTOR_FILL_PROPS_CLOSE,
         ids::VECTOR_STROKE_PROPS_CLOSE,

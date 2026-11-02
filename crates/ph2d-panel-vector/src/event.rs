@@ -185,6 +185,14 @@ fn opens_or_closes(
         || crate::paint_side::on_click(store, id)
 }
 
+/// Os eventos que um dono próprio consome antes do resto: o largar de uma linha de Fill & Stroke
+/// arrastada pelo ⚙ (F45), o HUD e as regras de CAD.
+fn consumed_early(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    stack::dropped_row(host, ev)
+        || crate::state_hud::evento(host.store(), ev)
+        || crate::state_cad::evento(host.store(), ev)
+}
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
@@ -193,7 +201,7 @@ pub(crate) fn apply_event(
     if let Some(consumed) = track_slider_event(host, ev) {
         return EventOutcome::from_bool(consumed);
     }
-    if crate::state_hud::evento(host.store(), ev) || crate::state_cad::evento(host.store(), ev) {
+    if consumed_early(host, ev) {
         return EventOutcome::Consumed;
     }
     // ② F16: uma linha de uma lista da barra fecha a lista; o verbo dela corre abaixo, como no painel.

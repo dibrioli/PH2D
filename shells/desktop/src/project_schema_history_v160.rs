@@ -1,4 +1,4 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v165** — a SÉTIMA faixa arquivada.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v166** — a SÉTIMA faixa arquivada.
 //!
 //! ⚠️ **O gatilho é o de sempre: a ACUMULAÇÃO de uma rodada.** Na integração de 2026-10-29
 //! (`line/UIUX` sobre o `main` com a `GameEngineFuncional` e a `BlenderConstraints`) a escada viva
@@ -14,6 +14,9 @@
 //! ⚠️ **Mais dois degraus (`163 → 165`) subiram para aqui em 2026-11-01** (`line/UIUX`, F44b): o degrau
 //! `211 → 212` levou a escada viva a `632` / `600`; o excesso medido era `32` e o corte mínimo por
 //! degraus inteiros, os mais velhos da ponta, é `38`. ⛔ Nunca subir o número.
+//!
+//! ⚠️ **E mais um (`165 → 166`) no mesmo dia** (`line/UIUX`, F45): o degrau `212 → 213` levou a escada
+//! viva a `608` / `600`; o excesso era `8` e o degrau mais velho da ponta mede `12`.
 
 //! # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
 //!
@@ -116,4 +119,16 @@
 //! em X, que é o caso de quase todo fundo.
 //!
 //! ⛔ **Sem degrau de migração**, pela mesma decisão — um v164 é recusado em voz alta.
+//!
+//! # ⭐ 165 → 166 (2026-09-22) — o CONFINAMENTO (plano 24, W3)
+//!
+//! `ScrollLimits { min, max }` — a região em que a vista pode passear. Enquanto ela couber lá
+//! dentro o fundo faz a paralaxe autorada; quando a borda da VISTA toca a da REGIÃO a camada
+//! **congela no ecrã**, e é por isso que a borda do fundo nunca aparece. O joelho é
+//! `(região − ecrã)/2`, **medido no alvo**.
+//!
+//! ⚠️ **Um eixo é limitado quando `max > min`**, logo o valor de fábrica (`[0,0]`/`[0,0]`) não
+//! confina nada e a cena fica byte-idêntica — a mesma convenção do ladrilho zero da W2.
+//!
+//! ⛔ **Sem degrau de migração**, pela mesma decisão — um v165 é recusado em voz alta.
 //!

@@ -18,6 +18,7 @@ mod every_name_the_engine_publishes_has_a_key;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod f43_as_listas_do_figma; // F43: o «+», as linhas e o painel de propriedades à esquerda
 mod f44_fill_e_stroke_do_figma; // F44: Fill e Stroke no layout do Figma
+mod f45_uma_pilha; // F45: Fill & Stroke numa só pilha, arrastar pelo ⚙
 mod fill_chip_labels_fit;
 mod marker_rows;
 mod o_losango_do_chip_da_barra;

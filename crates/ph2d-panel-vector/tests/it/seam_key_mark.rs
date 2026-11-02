@@ -121,6 +121,7 @@ fn a_entrada_da_pilha_tem_o_losango_da_tinta() {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
     let sw = ph2d_panel_vector::ids::vector_paint_swatch_id(0);
     set_key_marks(BTreeMap::from([(sw, KeyMark::Chave)]));

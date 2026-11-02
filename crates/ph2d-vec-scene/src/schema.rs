@@ -101,10 +101,14 @@
 /// da tinta de base: escondida, ela sai do `fill`/`stroke` e fica guardada ali, então toda leitura do
 /// documento já a trata como «não pinta» ([`crate::PaintSlot`]). Lê a v25 e anteriores (os dois `None`)
 /// pelo [`crate::with_wire_layout`]. Gate `vec_v25_fixture`, sobre bytes gravados pelo código v25.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 26;
+/// v27: o [`crate::VecPath`] ganhou `base_order` no FIM (`line/UIUX`, F45) — a POSIÇÃO da tinta de base
+/// na pilha, para um preenchimento cobrir um traço e vice-versa ([`crate::BaseOrder`]). Lê a v26 e
+/// anteriores com o neutro (a ordem de antes). Gate `vec_v26_fixture`, sobre bytes gravados pelo v26.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 27;
 
 /// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
 pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
 pub(crate) const VEC_SCENE_SCHEMA_V23: u32 = 23;
 pub(crate) const VEC_SCENE_SCHEMA_V24: u32 = 24;
 pub(crate) const VEC_SCENE_SCHEMA_V25: u32 = 25;
+pub(crate) const VEC_SCENE_SCHEMA_V26: u32 = 26;

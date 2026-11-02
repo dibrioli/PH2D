@@ -39,6 +39,13 @@ pub const VECTOR_PAINT_ADD_FILL: NodeId = hash_node_id("vector.paint.add.fill");
 /// **+ Stroke** — acrescenta um contorno no TOPO da pilha.
 pub const VECTOR_PAINT_ADD_STROKE: NodeId = hash_node_id("vector.paint.add.stroke");
 
+/// ⭐ F45 — **o arrasto pelo ⚙ largou uma linha**: o verbo que a shell resolve, com o par (linha,
+/// lugar) guardado no estado do painel (`state::take_paint_move`).
+pub const VECTOR_PAINT_MOVE: NodeId = hash_node_id("vector.paint.move");
+
+/// ⭐ F45 — **o «+» de Fill & Stroke** (um `Dropdown`): as linhas são «Fill» e «Stroke».
+pub const VECTOR_PAINT_ADD_MENU: NodeId = hash_node_id("vector.paint.add.menu");
+
 /// O olho da camada `i` — desarma sem perder os parâmetros.
 #[must_use]
 pub fn vector_paint_eye_id(i: usize) -> NodeId {

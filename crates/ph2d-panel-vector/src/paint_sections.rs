@@ -180,6 +180,9 @@ mod expand;
 // F44: Fill e Stroke no layout do Figma (as linhas, a linha fixa do traço, o «Stroke settings»).
 #[path = "paint_fill_stroke.rs"]
 pub(crate) mod fill_stroke;
+// ⭐ F45: Fill & Stroke numa só lista, na ordem da pilha, e o arrasto pelo ⚙.
+#[path = "paint_fill_stroke_list.rs"]
+pub mod fill_stroke_list;
 #[path = "paint_stroke_settings.rs"]
 mod stroke_settings;
 

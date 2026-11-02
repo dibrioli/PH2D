@@ -35,6 +35,7 @@ fn quadro(hero: &mut HeroScreen, opacidade: f32) {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
     paint_hero_screen(
         hero,

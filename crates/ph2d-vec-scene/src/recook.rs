@@ -106,6 +106,8 @@ impl VecPath {
             // re-cozida na guarda e continua escondida (`settle_hidden`).
             fill_hidden: _,
             stroke_hidden: _,
+            // ⭐ A ORDEM da pilha (v27) é autoria do objecto, como a própria pilha.
+            base_order: _,
         } = next;
         self.verts = verts;
         self.closed = closed;
@@ -150,6 +152,7 @@ impl VecPath {
             next_vert: _,
             fill_hidden: _,
             stroke_hidden: _,
+            base_order: _,
         } = next;
         self.verts = verts;
         self.closed = closed;

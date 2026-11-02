@@ -71,6 +71,8 @@ pub mod object_mode;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;
+/// O voo de um arrasto (sombra, inclinação) — o Kanban e a linha do tempo do Pixel.
+pub mod paint_flight;
 /// Fill primitives born after `paint.rs` hit its frozen LOC ceiling — see the module docs.
 pub mod paint_shapes;
 pub mod panel;

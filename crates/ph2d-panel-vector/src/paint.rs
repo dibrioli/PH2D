@@ -481,6 +481,8 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     crate::fx_side::paint(ctx, rect, theme);
     // ⭐ F44: e os de Fill e Stroke (o preenchimento de base, uma camada, o «Stroke settings»).
     crate::paint_side::paint(ctx, rect, theme);
+    // ⭐ F45: os ⚙ arrastáveis de Fill & Stroke, o «+» e a linha que voa — por cima de tudo.
+    crate::paint_sections::fill_stroke_list::deferred(ctx, theme);
 
     // Deferred: the Font dropdown popover paints (and hit-registers its rows) ON
     // TOP of every section — the chip stashed its rect during the body paint when

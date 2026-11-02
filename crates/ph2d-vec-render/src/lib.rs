@@ -399,14 +399,18 @@ pub(crate) fn path_tess(path: &VecPath) -> PathTess {
     // O preenchimento ignora os contornos ABERTOS (linhas de construção — as arestas internas do
     // cubo, a tampa do cilindro): eles não têm interior, e fechá-los implicitamente recorta a
     // silhueta. Ver [`build_fill_bezpath`].
-    let fill_bp = path
-        .fill
-        .is_some()
-        .then(|| build_contours(&cooked, Some(true)));
+    // ⭐ F45: QUALQUER tinta da pilha pede o seu desenho — sem a base, uma camada de preenchimento
+    // ficava sem geometria e sumia (e uma de traço, sem as duas, rebentava no `expect`).
+    let pede = |fill: bool| {
+        path.paints
+            .iter()
+            .any(|e| e.is_active() && matches!(e.kind, ph2d_vec_scene::PaintKind::Fill(_)) == fill)
+    };
+    let fill_bp = (path.fill.is_some() || pede(true)).then(|| build_contours(&cooked, Some(true)));
     // O traço leva TODOS os contornos. Sem contorno aberto ele é **o mesmo desenho** do
     // preenchimento ⇒ os dois compartilham uma construção só; com contorno aberto são dois
     // desenhos diferentes e as duas construções são trabalho honesto.
-    let stroke_bp = (path.stroke.is_some() && (open || fill_bp.is_none()))
+    let stroke_bp = ((path.stroke.is_some() || pede(false)) && (open || fill_bp.is_none()))
         .then(|| build_contours(&cooked, None));
     let caixa_local = caixa_dos_desenhos(fill_bp.as_ref(), stroke_bp.as_ref());
     let agudo = agudo_de(path, stroke_bp.as_ref().or(fill_bp.as_ref()));
@@ -486,52 +490,22 @@ pub(crate) fn draw_path_with(
         brush_art,
         dilated,
     } = derived;
-    let fill_bp = tess.fill_bp.as_ref();
-    if let Some(fill) = &path.fill {
-        let fp = fill_bp.expect("fill => fill_bp construido");
-        // ⭐ **O padrão desenha a IMAGEM quando o ladrilho existe, e a `fallback` quando não.**
-        // As duas metades são desenho certo: a segunda é o que o artista vê enquanto a arte carrega,
-        // ou quando a forma-fonte desapareceu — e ⛔ desenhar NADA seria pior (uma forma invisível
-        // não se distingue de um preenchimento vazio).
-        if let (Paint::Pattern(pat), Some(t)) = (fill, tile) {
-            pattern::fill_pattern(
-                target,
-                fp,
-                fill_rule(path),
-                transform,
-                &t.image,
-                // ⚠️ A caixa vem do desenho de PREENCHIMENTO (espaço das âncoras, como a
-                // colocação): é ela que o `Clamp` enquadra. `bounding_box` de um `BezPath` vazio
-                // devolve uma caixa degenerada, e o `placement_in` recusa-a e cai na autorada.
-                pat.placement_in(t.cells, t.tile_px, {
-                    let b = fp.bounding_box();
-                    ([b.x0, b.y0], [b.x1, b.y1])
-                }),
-                pat.mode,
-                t.quality,
-                pat.alpha,
-            );
-        } else if let Paint::MultiPoint { points } = fill {
-            // ⚠️ `path`, não `cooked`: o `fill_multipoint` mede a caixa dos pontos de controle da
-            // forma AUTORADA (`control_point_bounds`). Passar o cozido moveria o gradiente de toda
-            // forma com quina viva ou efeito — mudança de aparência dentro de um fix de custo.
-            fill_multipoint(target, fp, path, points, transform);
-        } else {
-            // `VectorScene::fill_path` assume NonZero; um compound precisa da
-            // regra do path (EvenOdd vaza o contorno de dentro).
-            target.inner_mut().fill(
-                fill_rule(path),
-                transform,
-                &fill_brush(fill, path),
-                None,
-                fp,
-            );
+    // ⭐⭐ **A PILHA INTEIRA na ordem do artista** (F45): a tinta de base e as camadas, cada uma na
+    // posição dela ([`VecPath::draw_order`]) — um preenchimento pode cobrir um traço e vice-versa.
+    // Todas reusam esta mesma tesselação; a ordem neutra é a de antes, byte a byte.
+    for it in path.draw_order() {
+        match it {
+            ph2d_vec_scene::StackItem::BaseFill => {
+                stack_draw::draw_base_fill(path, tess, transform, target, tile);
+            }
+            ph2d_vec_scene::StackItem::BaseStroke => {
+                draw_stroke_with(path, tess, transform, target, stroke_tile, brush_art);
+            }
+            ph2d_vec_scene::StackItem::Entry(i) => {
+                stack_draw::draw_entry(path, i, tess, transform, target, dilated);
+            }
         }
     }
-    draw_stroke_with(path, tess, transform, target, stroke_tile, brush_art);
-    // ⭐⭐⭐ **E A PILHA DE APARÊNCIA POR CIMA** (v20) — as camadas extras, de baixo para cima,
-    // reusando esta mesma tesselação. No-op sem pilha, que é o caminho comum.
-    stack_draw::draw_extra_paints(path, tess, transform, target, dilated);
 }
 
 mod instance;

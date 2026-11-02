@@ -129,6 +129,9 @@ pub enum PanelRowFamily {
     /// ⭐ As amostras da paleta do Pixel Art (P2): uma GRELHA — a queda é `Inside(célula)`, e a
     /// família reordena a paleta sem mudar a imagem.
     PixelPalette,
+    /// ⭐ As linhas de Fill & Stroke do Vector (F45) — arrastadas pelo ⚙; a ordem é a da pilha da
+    /// forma (`VecPath::draw_order`).
+    VectorPaint,
 }
 
 impl PanelRowFamily {
@@ -138,7 +141,7 @@ impl PanelRowFamily {
     pub fn aninha(self) -> bool {
         !matches!(
             self,
-            Self::PainterPreset | Self::AnimRule | Self::PixelPalette
+            Self::PainterPreset | Self::AnimRule | Self::PixelPalette | Self::VectorPaint
         )
     }
 

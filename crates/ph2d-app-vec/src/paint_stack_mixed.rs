@@ -23,11 +23,16 @@ pub fn ordered(pen: &PenTool) -> Vec<VecPathId> {
 /// As pilhas das selecionadas têm ESTRUTURAS diferentes (número de camadas, ou espécie por índice)?
 #[must_use]
 pub fn layers_differ(scene: &VecScene, sel: &[VecPathId]) -> bool {
+    // ⭐ F45: a estrutura é a pilha INTEIRA — a espécie de cada camada e o lugar da base.
     let estrutura = |id: &VecPathId| {
         scene.path(*id).map(|p| {
-            p.paints
-                .iter()
-                .map(|e| matches!(e.kind, PaintKind::Fill(_)))
+            p.draw_order()
+                .map(|it| match it {
+                    ph2d_vec_scene::StackItem::Entry(i) => {
+                        it_kind(matches!(p.paints[i].kind, PaintKind::Fill(_)))
+                    }
+                    base => base,
+                })
                 .collect::<Vec<_>>()
         })
     };
@@ -36,6 +41,11 @@ pub fn layers_differ(scene: &VecScene, sel: &[VecPathId]) -> bool {
         return false;
     };
     todas.any(|e| e != primeira)
+}
+
+/// Uma camada sem o índice, só a espécie (`Entry(0)` preenchimento · `Entry(1)` traço).
+fn it_kind(fill: bool) -> ph2d_vec_scene::StackItem {
+    ph2d_vec_scene::StackItem::Entry(usize::from(!fill))
 }
 
 /// Em que campos a camada `i` do primário (`sel[0]`) difere da `i` das outras.

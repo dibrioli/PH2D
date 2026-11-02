@@ -31,14 +31,14 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=46) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=47) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=41 | 43..=46),
+        bars: matches!(n, 9..=41 | 43..=47),
         single: n == 42,
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if matches!(n, 15..=41 | 43..=46) {
+        handles: if matches!(n, 15..=41 | 43..=47) {
             n - 14
         } else {
             0
@@ -64,8 +64,8 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
 /// `vector_mode_gesto`) · 22 = a 36 (F22, `vector_mode_olho`) · 23 = a 37 (F22b, começa pela 25 e
 /// segue em `vector_mode_opaco`) · 24 = a 38 (F29, `vector_mode_composto`) · 25 = a 39 (F30,
 /// `vector_mode_fio`) · 26 = a 40 (F33, `vector_mode_filtro_efeito`) · 27 = a 41 (F34,
-/// `vector_mode_filtro_zoom`) · 29 e 30 = a 43 e a 44 (F43, `vector_mode_listas`) · 31 e 32 = a 45
-/// e a 46 (F44, `vector_mode_fill_stroke`).
+/// `vector_mode_filtro_zoom`) · 29 e 30 = a 43 e a 44 (F43, `vector_mode_listas`) · 31, 32 e 33 = a
+/// 45, a 46 e a 47 (F44/F45, `vector_mode_fill_stroke`).
 /// `None` = fora da família.
 pub(super) fn handles_first(handles: u8) -> Option<u8> {
     Some(match handles {
@@ -89,7 +89,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         26 => crate::vector_mode_filtro_efeito::FIRST,
         27 => crate::vector_mode_filtro_zoom::FIRST,
         29 | 30 => crate::vector_mode_listas::FIRST,
-        31 | 32 => crate::vector_mode_fill_stroke::FIRST,
+        31..=33 => crate::vector_mode_fill_stroke::FIRST,
         _ => 70,
     })
 }

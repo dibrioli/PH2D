@@ -13,7 +13,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::{
     Contour, FillRule, Opacity, Paint, StrokeSpec, VecPath, VecPathId, VecScene, VecVertex,
     VertexKind, effect, paint_stack,
-    stroke_wire::{reading_geometry_v23, reading_path_v25},
+    paint_stack::BaseOrder,
+    stroke_wire::{reading_geometry_v23, reading_path_v25, reading_path_v26},
 };
 
 /// Id de um vértice dentro do seu path (os contornos de `subpaths` partilham o espaço). Monotónico
@@ -263,6 +264,7 @@ impl From<VecPathV23> for VecPath {
             next_vert: 0,
             fill_hidden: None,
             stroke_hidden: None,
+            base_order: BaseOrder::default(),
         }
     }
 }
@@ -276,12 +278,13 @@ impl<'de> Deserialize<'de> for VecPath {
             Ok(p)
         } else if reading_path_v25() {
             Ok(Self::from(VecPathV24::deserialize(d)?))
+        } else if reading_path_v26() {
+            Ok(Self::from(VecPathV26::deserialize(d)?))
         } else {
-            let o = VecPathV26::deserialize(d)?;
+            let o = VecPathV27::deserialize(d)?;
             Ok(Self {
-                fill_hidden: o.fill_hidden,
-                stroke_hidden: o.stroke_hidden,
-                ..Self::from(o.v24)
+                base_order: o.base_order,
+                ..Self::from(o.v26)
             })
         }
     }
@@ -315,6 +318,23 @@ struct VecPathV26 {
     v24: VecPathV24,
     fill_hidden: Option<Paint>,
     stroke_hidden: Option<StrokeSpec>,
+}
+
+impl From<VecPathV26> for VecPath {
+    fn from(o: VecPathV26) -> Self {
+        Self {
+            fill_hidden: o.fill_hidden,
+            stroke_hidden: o.stroke_hidden,
+            ..Self::from(o.v24)
+        }
+    }
+}
+
+/// O v27 = o v26 + a posição da base na pilha (F45).
+#[derive(Deserialize)]
+struct VecPathV27 {
+    v26: VecPathV26,
+    base_order: BaseOrder,
 }
 
 #[cfg(test)]

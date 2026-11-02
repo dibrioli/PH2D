@@ -60,6 +60,8 @@ ph2d-vec-envelope = { path = "../ph2d-vec-envelope" }
 # ⚠️ **Era `dev-` e deixou de o ser na integração de 2026-09-17**, quando o `vec_gizmo_view` veio
 # da shell: ele converte o raio de acerto em píxeis de ECRÃ, logo o produto lê a `WindowSize`.
 ph2d-host = { path = "../ph2d-host" }
+# A arena do despacho do ponteiro — a cena 47 (F45) conduz o arrasto do ⚙ pelo produto para a foto.
+bumpalo = "3"
 # O `vec_gizmo_view` roda a caixa do gizmo pela pose (`sincosf`), como a shell fazia.
 libm = { version = "=0.2.16", default-features = false }
 # O `envelope_live` lê e escreve o `VecPath` autorado nos bytes opacos do `VecEnvelopeChild`.

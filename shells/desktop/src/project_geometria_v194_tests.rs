@@ -52,12 +52,12 @@ fn a_v194_project_opens_with_vertex_ids_in_order() {
 #[test]
 fn the_same_bytes_under_todays_header_do_not_open_the_same() {
     let mut hoje = V194.to_vec();
-    // `194` e `212` são varints de dois bytes (`0xC2 0x01` / `0xD4 0x01`); os quatro `0` finais são o `jogo`, a
+    // `194` e `213` são varints de dois bytes (`0xC2 0x01` / `0xD5 0x01`); os quatro `0` finais são o `jogo`, a
     // `mesa`, os `kanbans` e os `pixel_sprites` vazios que o braço do `194` acrescenta sozinho — assim só o FIO
     // difere entre o certo e o torto.
     assert_eq!(&hoje[..2], &[0xC2, 0x01], "o fixture é um v194");
-    const { assert!(PROJECT_SCHEMA == 212) };
-    hoje[0] = 0xD4;
+    const { assert!(PROJECT_SCHEMA == 213) };
+    hoje[0] = 0xD5;
     hoje.extend_from_slice(&[0, 0, 0, 0]);
     let certo = le(V194, "geometria_v194_certo").expect("um v194 abre");
     let torto = le(&hoje, "geometria_v194_torto");
@@ -79,5 +79,6 @@ fn each_project_version_reads_the_vector_wire_it_wrote() {
     assert_eq!(fio_do_projeto(205), Some(24));
     assert_eq!(fio_do_projeto(206), Some(25));
     assert_eq!(fio_do_projeto(211), Some(25));
+    assert_eq!(fio_do_projeto(212), Some(26));
     assert_eq!(fio_do_projeto(PROJECT_SCHEMA), None);
 }

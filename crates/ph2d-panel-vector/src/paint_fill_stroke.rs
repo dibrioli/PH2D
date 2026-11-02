@@ -2,12 +2,13 @@
 //! referências `img_F44/`).
 //!
 //! ```text
-//! Fill                                          +
-//! [■]◇               [100 %]◇ [⚙] [👁]◇ [−]       ← camadas extra (o topo em cima)
-//! [▤]◇               [ 80 %]  [⚙] [👁]◇ [−]       ← o preenchimento de BASE (rampa = degradê)
-//! Stroke                                        +
-//! [■]◇ [   2 px    ]◇ [100 %]  [⚙] [👁]◇ [−]       ← a cor e o Weight de CADA traço
+//! Fill & Stroke                                 +
+//! [■]◇ [   2 px    ]◇ [100 %]  [⚙] [👁]◇ [−]       ← um traço (a cor e o Weight)
+//! [▤]◇               [ 80 %]  [⚙] [👁]◇ [−]       ← um preenchimento (rampa = degradê)
 //! ```
+//!
+//! ⭐ **F45 (dono 01/11): UMA lista, na ordem da pilha** (o topo em cima) — a de cima pinta por cima,
+//! a tinta de base incluída; arrastar pelo ⚙ muda a ordem ([`crate::paint_sections::fill_stroke_list`]).
 //!
 //! ⭐ **F44b (dono 01/11): TODAS as linhas iguais** — as mesmas colunas, os mesmos botões, e o ⚙ de
 //! cada uma abre à ESQUERDA ([`crate::paint_side`]) os ajustes da tinta DELA. A caixa mostra só a cor
@@ -46,6 +47,15 @@ pub(crate) struct Abertos {
 
 thread_local! {
     static ABERTOS: RefCell<Abertos> = RefCell::new(Abertos::default());
+    /// A linha que VOA sob o cursor pinta-se fora do lugar: o que ela deixa aberto não conta.
+    pub(super) static VOANDO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Anota o que ficou aberto — salvo na linha que voa.
+fn abre(f: impl FnOnce(&mut Abertos)) {
+    if !VOANDO.with(std::cell::Cell::get) {
+        ABERTOS.with(|a| f(&mut a.borrow_mut()));
+    }
 }
 
 /// Lê e limpa o que o corpo deixou neste quadro.
@@ -89,7 +99,7 @@ struct Peso<'a> {
     mixed: bool,
     keys: &'a [NodeId],
     /// Um token cobre a espessura: o número mostra a autorada, não a que se desenha (rachura).
-    token: bool,
+    token: Option<String>,
 }
 
 /// ⭐ **As colunas de uma linha**, da direita para a esquerda — as MESMAS em toda linha de Fill e
@@ -161,20 +171,6 @@ impl BodyCtx<'_> {
             + ph2d_editor_core::widget::field_pad_x() * 2.0
             + ph2d_editor_core::widget::stepper_width(host);
         w.min(self.chip_w)
-    }
-
-    /// O cabeçalho com o «+» (botão simples: o verbo é o id).
-    fn list_header(
-        &mut self,
-        section: NodeId,
-        label: &str,
-        add: NodeId,
-        live: bool,
-        y: f32,
-    ) -> (f32, bool) {
-        self.with_rows(|rc| {
-            rc.section_header_with_action(section, label, y, Some((add, IconId::Plus, false, live)))
-        })
     }
 
     /// Um campo `%` (ou `px`) solto, pintado do valor que o chamador traz — salvo com foco, quando
@@ -286,7 +282,7 @@ impl BodyCtx<'_> {
     /// tirava ao número a largura dele no Inspector estreito (foto F44c: só sobrava o stepper).
     fn weight_field(&mut self, w: &Peso<'_>, r: Rect) {
         self.loose_number(w.id, w.px, w.mixed, Unit::Px, r);
-        if w.token {
+        if w.token.is_some() {
             self.token_slash(r);
         }
     }
@@ -326,26 +322,8 @@ impl BodyCtx<'_> {
         );
     }
 
-    /// As camadas EXTRA de uma espécie (`fills`), do topo para o chão — ou «Mixed layers» quando as
-    /// pilhas da seleção têm estruturas diferentes (a linha `2` de uma não é a `2` da outra).
-    fn layer_lines(&mut self, fills: bool, mut y: f32) -> f32 {
-        let Some(a) = state::current_appearance() else {
-            return y;
-        };
-        if a.layers_differ {
-            return self.hint_line(tr("panel.vector.appearance.mixed_layers"), y);
-        }
-        for i in (0..a.layers.len()).rev() {
-            let row = &a.layers[i];
-            if row.is_fill == fills {
-                y = self.layer_line(i, row, y);
-            }
-        }
-        y
-    }
-
     /// A linha da camada `i` (índice do DOCUMENTO).
-    fn layer_line(&mut self, i: usize, row: &PaintRow, y: f32) -> f32 {
+    pub(super) fn layer_line(&mut self, i: usize, row: &PaintRow, y: f32) -> f32 {
         let opacity = ids::vector_paint_row_opacity_id(i);
         let pct = self.live_number(opacity, f64::from(row.opacity) * 100.0); // LITERAL-PX-OK: fraction→percent
         let eye = ids::vector_paint_eye_id(i);
@@ -366,7 +344,7 @@ impl BodyCtx<'_> {
                     px,
                     mixed: row.mixed.width,
                     keys: &[wid],
-                    token: false,
+                    token: None,
                 }),
                 eye: Some((eye, crate::paint_stack_rows::eye_icon(row))),
                 minus: Some(ids::vector_paint_del_id(i)),
@@ -377,38 +355,21 @@ impl BodyCtx<'_> {
             y,
         );
         if let Some(r) = open {
-            ABERTOS.with(|a| a.borrow_mut().layer = Some((i, r)));
+            abre(|a| a.layer = Some((i, r)));
         }
         y
     }
 
     /// Há onde pôr mais uma camada: há forma selecionada (a aparência publicada) e a pilha está
     /// abaixo do tecto do documento.
-    fn room_for_layer() -> bool {
+    pub(super) fn room_for_layer() -> bool {
         state::current_appearance()
             .is_some_and(|a| a.layers.len() < ph2d_vec_scene::MAX_PAINT_LAYERS)
     }
 
-    /// ⭐ **A secção FILL**: o «+» (uma camada nova no topo, ou a base de volta), as camadas e a
-    /// linha de base.
-    pub(crate) fn fill_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+    /// ⭐ **A linha do preenchimento de BASE** (nada, se a forma não o tem).
+    pub(super) fn base_fill_line(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let base = state::base_fill();
-        let (add, live) = if base == Some(state::BasePaint::Absent) {
-            (crate::ids::VECTOR_FILL_PRESENT, true)
-        } else {
-            (ids::VECTOR_PAINT_ADD_FILL, Self::room_for_layer())
-        };
-        let (mut y, collapsed) = self.list_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
-            tr("panel.vector.section.fill"),
-            add,
-            live,
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        y = self.layer_lines(true, y);
         if base == Some(state::BasePaint::Absent) {
             return y;
         }
@@ -448,52 +409,55 @@ impl BodyCtx<'_> {
             self.token_slash(swatch);
         }
         if let Some(r) = open {
-            ABERTOS.with(|a| a.borrow_mut().fill = Some(r));
+            abre(|a| a.fill = Some(r));
         }
         next
     }
 
-    /// ⭐ **A secção STROKE**: o «+» (dá o traço de base, ou uma camada nova), as linhas e a fixa.
-    pub(crate) fn stroke_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let sem_traco = state::stroke_present() == Some(false);
-        let (add, live) = if sem_traco {
-            // `Some(false)` só é publicado com uma forma selecionada.
-            (crate::ids::VECTOR_STROKE_PRESENT, true)
-        } else {
-            (ids::VECTOR_PAINT_ADD_STROKE, Self::room_for_layer())
-        };
-        let (y, collapsed) = self.list_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_STROKE,
-            tr("panel.vector.section.stroke"),
-            add,
-            live,
-            y,
+    /// As linhas do TRAÇO, na ordem da pilha — o painel da barra ② pinta-as (sem o ⚙ da base, porque
+    /// o painel da barra já traz o «Stroke settings» por baixo; e, sem traço, o «Add stroke» que no
+    /// Inspector é uma linha do «+» da secção).
+    pub(crate) fn stroke_lines(&mut self, snap: &VectorStyleSnapshot, y: f32, in_bar: bool) -> f32 {
+        let mut y = y;
+        let a = state::current_appearance();
+        let pilha = a.as_ref().filter(|a| !a.layers_differ).map_or_else(
+            || vec![ph2d_vec_scene::StackItem::BaseStroke],
+            state::Appearance::stack,
         );
-        if collapsed {
-            return y;
+        for it in pilha.into_iter().rev() {
+            match it {
+                ph2d_vec_scene::StackItem::BaseStroke => {
+                    y = self.base_stroke_line(snap, y, in_bar);
+                }
+                ph2d_vec_scene::StackItem::Entry(i) => {
+                    if let Some(row) = a.as_ref().and_then(|a| a.layers.get(i))
+                        && !row.is_fill
+                    {
+                        y = self.layer_line(i, row, y);
+                    }
+                }
+                ph2d_vec_scene::StackItem::BaseFill => {}
+            }
         }
-        // F16: com o painel do traço aberto por baixo da barra ②, os controlos moram LÁ neste quadro
-        // — um id pintado em dois sítios faria o arrasto seguir o rect do outro.
-        if crate::bars::stroke_popover_open(self.store) {
-            return self.hint_line(tr("panel.vector.stroke.in_bar"), y);
+        if in_bar && state::stroke_present() == Some(false) {
+            y = self.action_button(
+                crate::ids::VECTOR_STROKE_PRESENT,
+                tr("panel.vector.stroke.add"),
+                y,
+            );
         }
-        self.stroke_lines(snap, y, false)
+        y
     }
 
-    /// As linhas do traço — a secção e o painel da barra ② pintam estas mesmas (`in_bar`: sem o ⚙
-    /// da base, porque o painel da barra já traz o «Stroke settings» por baixo; e, sem traço, o
-    /// «Add stroke» que no Inspector é o «+» do título).
-    pub(crate) fn stroke_lines(&mut self, snap: &VectorStyleSnapshot, y: f32, in_bar: bool) -> f32 {
-        let mut y = self.layer_lines(false, y);
+    /// ⭐ **A linha do traço de BASE** (nada, se a forma não o tem).
+    pub(super) fn base_stroke_line(
+        &mut self,
+        snap: &VectorStyleSnapshot,
+        y: f32,
+        in_bar: bool,
+    ) -> f32 {
         let base = state::base_stroke();
         if state::stroke_present() == Some(false) {
-            if in_bar {
-                y = self.action_button(
-                    crate::ids::VECTOR_STROKE_PRESENT,
-                    tr("panel.vector.stroke.add"),
-                    y,
-                );
-            }
             return y;
         }
         let track = self
@@ -521,7 +485,7 @@ impl BodyCtx<'_> {
                         ph2d_tool_vector::ids::VECTOR_WIDTH,
                         ph2d_tool_vector::ids::VECTOR_WIDTH_NUM,
                     ],
-                    token: state::token_bindings().is_some_and(|b| b.width.is_some()),
+                    token: state::token_bindings().and_then(|b| b.width),
                 }),
                 eye: base.map(|_| (crate::ids::VECTOR_STROKE_EYE, eye_of(hidden))),
                 minus: state::stroke_present().map(|_| crate::ids::VECTOR_STROKE_PRESENT),
@@ -538,7 +502,7 @@ impl BodyCtx<'_> {
             self.token_slash(swatch);
         }
         if let Some(r) = open {
-            ABERTOS.with(|a| a.borrow_mut().stroke = Some(r));
+            abre(|a| a.stroke = Some(r));
         }
         next
     }

@@ -52,6 +52,7 @@ fn forma() {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
     state::set_base_paints(Some([state::BasePaint::Shown; 2]));
     state::set_current_fill(Some(ph2d_panel_vector::FillKind::Linear), None);
@@ -74,11 +75,11 @@ fn cliques(h: &mut MockPanelHost) -> Vec<NodeId> {
         .collect()
 }
 
-/// ⭐ **Cada camada mora na secção da ESPÉCIE dela**, e a Aparência ficou só com o objecto: a camada
-/// de preenchimento é uma linha do Fill (acima da base), a de traço uma do Stroke. *Mutação: pintar
-/// as camadas na Aparência de novo, ou trocar o filtro `is_fill` ⇒ vermelho.*
+/// ⭐ **F45: Fill & Stroke são UMA lista, na ordem da pilha** (o topo em cima), e a Aparência ficou só
+/// com o objecto: na ordem neutra, as camadas (traço por cima da tinta) e depois o traço e o
+/// preenchimento de base. *Mutação: inverter a pilha, ou voltar às duas secções ⇒ vermelho.*
 #[test]
-fn cada_camada_mora_na_seccao_da_especie_dela() {
+fn uma_lista_na_ordem_da_pilha() {
     forma();
     let mut h = crate::host_aberto();
     let fill_base = pintado(&mut h, tv::VECTOR_FILL_SWATCH).expect("a linha de base do Fill");
@@ -86,35 +87,39 @@ fn cada_camada_mora_na_seccao_da_especie_dela() {
     let tinta = pintado(&mut h, ids::vector_paint_swatch_id(0)).expect("a camada de tinta");
     let traco = pintado(&mut h, ids::vector_paint_swatch_id(1)).expect("a camada de traço");
     assert!(
-        tinta.y < fill_base.y && fill_base.y < traco.y && traco.y < stroke_base.y,
-        "a ordem é Fill(camada, base) → Stroke(camada, base): {tinta:?} {fill_base:?} \
-         {traco:?} {stroke_base:?}"
+        traco.y < tinta.y && tinta.y < stroke_base.y && stroke_base.y < fill_base.y,
+        "a ordem é a da pilha, o topo em cima: {traco:?} {tinta:?} {stroke_base:?} {fill_base:?}"
     );
     let obj = pintado(&mut h, ids::VECTOR_OBJ_OPACITY).expect("a opacidade do objecto");
     assert!(
-        obj.y < tinta.y,
+        obj.y < traco.y,
         "a Aparência (o objecto) vem antes das tintas"
     );
     limpa();
 }
 
-/// ⭐ **O «+» do título faz a pilha crescer**: o do Fill pede `+ Fill`; o do Stroke, `+ Stroke` —
-/// e, numa forma SEM traço, dá o traço de base (`VECTOR_STROKE_PRESENT`). O «−» da linha de base do
-/// traço tira-o. *Mutação: trocar o id do «+» do Stroke ⇒ vermelho.*
+/// ⭐ **O «+» do título é um menu Fill / Stroke**: cada linha pede a camada nova — e, numa forma SEM
+/// traço, a linha «Stroke» dá o traço de base (`VECTOR_STROKE_PRESENT`). O «−» da linha de base do
+/// traço tira-o. *Mutação: trocar o id de uma linha do menu ⇒ vermelho.*
 #[test]
 fn o_mais_do_titulo_e_o_menos_da_base() {
     forma();
     for (id, what) in [
-        (ids::VECTOR_PAINT_ADD_FILL, "o «+» do Fill"),
-        (ids::VECTOR_PAINT_ADD_STROKE, "o «+» do Stroke"),
-        (ids::VECTOR_STROKE_PRESENT, "o «−» do traço de base"),
+        (ids::VECTOR_PAINT_ADD_FILL, "o «Fill» do «+»"),
+        (ids::VECTOR_PAINT_ADD_STROKE, "o «Stroke» do «+»"),
     ] {
-        let mut h = crate::host_aberto();
+        let mut h = crate::host_com_aberto(ids::VECTOR_PAINT_ADD_MENU);
         crate::clica(&mut h, id);
         assert!(cliques(&mut h).contains(&id), "{what} não chegou ao bus");
     }
-    state::set_stroke_present(Some(false));
     let mut h = crate::host_aberto();
+    crate::clica(&mut h, ids::VECTOR_STROKE_PRESENT);
+    assert!(
+        cliques(&mut h).contains(&ids::VECTOR_STROKE_PRESENT),
+        "o «−» do traço de base não chegou ao bus"
+    );
+    state::set_stroke_present(Some(false));
+    let mut h = crate::host_com_aberto(ids::VECTOR_PAINT_ADD_MENU);
     assert!(
         pintado(&mut h, ids::VECTOR_PAINT_ADD_STROKE).is_none(),
         "sem traço o «+» dá o traço de base, não uma camada"

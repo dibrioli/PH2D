@@ -22,10 +22,10 @@
 //!    desenhar. ⚠️ O painel mostra a pilha ao contrário (o topo em cima, como o Illustrator), e
 //!    **essa inversão vive num sítio só** — senão as duas convenções divergem e o artista arrasta
 //!    uma camada para cima e ela desce.
-//! 3. **A BASE É O CHÃO DA PILHA.** O `fill` e o `stroke` do documento continuam onde estavam e
-//!    são as duas camadas mais baixas, nesta ordem. ⛔ Não há migração escondida para a lista, e
-//!    não há duas fontes que possam discordar: *a base é o chão, e a lista é o que está por cima
-//!    dele*, exactamente como `verts` é o contorno primário e `subpaths` os outros.
+//! 3. **A BASE MORA NOS SEUS CAMPOS e tem POSIÇÃO na pilha** (F45, v27: `paint_order.rs`). O `fill`
+//!    e o `stroke` do documento continuam onde estavam e, por omissão, são as duas camadas mais
+//!    baixas, nesta ordem. ⛔ Não há migração escondida para a lista: a base tem UMA fonte (os
+//!    campos) e a lista só lhe dá o lugar.
 //!
 //! ⚠️ **E a base não fica sem opacidade nem sem mistura — elas são as do OBJECTO** (v19, estudo 42
 //! item 2). Isso não é uma assimetria: a camada de baixo compõe-se com o que está **atrás da
@@ -293,51 +293,51 @@ pub struct DrawnPaint<'a> {
 }
 
 impl VecPath {
-    /// ⭐⭐⭐ **A PILHA INTEIRA, na ordem de desenho** — a base primeiro (preenchimento, depois
-    /// contorno), depois cada entrada ligada de baixo para cima.
+    /// ⭐⭐⭐ **A PILHA INTEIRA, na ordem de desenho** ([`Self::draw_order`], F45): a tinta de base e
+    /// cada entrada ligada, de baixo para cima, na posição em que o artista as pôs.
     ///
     /// ⛔ **É a porta ÚNICA de *"o que é que esta forma pinta?"*.** Quem lê `path.fill` e
-    /// `path.stroke` directamente vê só o chão da pilha — o que está certo para uma swatch («de
+    /// `path.stroke` directamente vê só a tinta de base — o que está certo para uma swatch («de
     /// que cor é esta forma?») e **errado** para quem desenha, exporta ou mede.
     pub fn paint_stack(&self) -> impl Iterator<Item = DrawnPaint<'_>> {
-        let base_fill = self.fill.as_ref().map(|p| DrawnPaint {
-            paint: PaintRef::Fill(p),
+        self.draw_order().filter_map(|it| self.drawn(it))
+    }
+
+    /// Uma linha da pilha, como se desenha — `None` se ela não pinta (ausente, escondida, desligada).
+    #[must_use]
+    pub fn drawn(&self, it: StackItem) -> Option<DrawnPaint<'_>> {
+        let base = |paint| DrawnPaint {
+            paint,
             opacity: 1.0,
             blend: BlendMode::Normal,
             is_base: true,
             offset: [0.0, 0.0],
             dilate: 0.0,
             dilate_join: JOIN_ROUND,
-        });
-        let base_stroke = self
-            .stroke
-            .as_ref()
-            .filter(|s| s.width > 0.0)
-            .map(|s| DrawnPaint {
-                paint: PaintRef::Stroke(s),
-                opacity: 1.0,
-                blend: BlendMode::Normal,
-                is_base: true,
-                offset: [0.0, 0.0],
-                dilate: 0.0,
-                dilate_join: JOIN_ROUND,
-            });
-        let extras = self.paints.iter().filter(|e| e.is_active()).map(|e| {
-            let paint = match &e.kind {
-                PaintKind::Fill(p) => PaintRef::Fill(p),
-                PaintKind::Stroke(s) => PaintRef::Stroke(s),
-            };
-            DrawnPaint {
-                paint,
-                opacity: e.opacity.get(),
-                blend: e.blend,
-                is_base: false,
-                offset: e.offset,
-                dilate: e.dilate,
-                dilate_join: e.dilate_join,
-            }
-        });
-        base_fill.into_iter().chain(base_stroke).chain(extras)
+        };
+        match it {
+            StackItem::BaseFill => self.fill.as_ref().map(|p| base(PaintRef::Fill(p))),
+            StackItem::BaseStroke => self
+                .stroke
+                .as_ref()
+                .filter(|s| s.width > 0.0)
+                .map(|s| base(PaintRef::Stroke(s))),
+            StackItem::Entry(i) => self.paints.get(i).filter(|e| e.is_active()).map(|e| {
+                let paint = match &e.kind {
+                    PaintKind::Fill(p) => PaintRef::Fill(p),
+                    PaintKind::Stroke(s) => PaintRef::Stroke(s),
+                };
+                DrawnPaint {
+                    paint,
+                    opacity: e.opacity.get(),
+                    blend: e.blend,
+                    is_base: false,
+                    offset: e.offset,
+                    dilate: e.dilate,
+                    dilate_join: e.dilate_join,
+                }
+            }),
+        }
     }
 
     /// **A LARGURA que esta forma de facto ocupa para lá do caminho** — o maior meio-traço entre a
@@ -366,3 +366,7 @@ impl VecPath {
 #[path = "paint_slot.rs"]
 mod slot;
 pub use slot::PaintSlot;
+
+#[path = "paint_order.rs"]
+mod order;
+pub use order::{BaseOrder, Place, StackItem};

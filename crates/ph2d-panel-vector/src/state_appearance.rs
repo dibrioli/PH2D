@@ -88,6 +88,9 @@ pub struct Appearance {
     /// ⚠️ **O painel pinta-a ao contrário** (o topo em cima, como o Illustrator), e essa inversão
     /// vive num sítio só: senão o artista arrasta uma camada para cima e ela desce.
     pub layers: Vec<PaintRow>,
+    /// ⭐ F45 — **a pilha INTEIRA, do chão ao topo**: onde a tinta de base fica entre as camadas
+    /// (`VecPath::draw_order`, as bases mesmo ausentes). Vazia = a ordem neutra ([`Self::stack`]).
+    pub order: Vec<ph2d_vec_scene::StackItem>,
     /// A seleção múltipla tem opacidades / modos DIFERENTES: o número fica em branco e o chip do
     /// modo diz «misto» (plano 31; revoga o «mostra o primário» do `appearance.rs`).
     pub mixed_opacity: bool,
@@ -98,7 +101,25 @@ pub struct Appearance {
     pub layers_differ: bool,
 }
 
+impl Appearance {
+    /// A pilha inteira, do chão ao topo — a publicada, ou a neutra (base fill, base stroke, camadas).
+    #[must_use]
+    pub fn stack(&self) -> Vec<ph2d_vec_scene::StackItem> {
+        use ph2d_vec_scene::StackItem;
+        if self.order.len() == self.layers.len() + 2 {
+            return self.order.clone();
+        }
+        [StackItem::BaseFill, StackItem::BaseStroke]
+            .into_iter()
+            .chain((0..self.layers.len()).map(StackItem::Entry))
+            .collect()
+    }
+}
+
 thread_local! {
+    /// ⭐ F45 — o arrasto pelo ⚙ largou a linha: (linha, lugar), para o verbo `Move` da shell.
+    static PAINT_MOVE: Cell<Option<(ph2d_vec_scene::StackItem, ph2d_vec_scene::Place)>> =
+        const { Cell::new(None) };
     static CURRENT: RefCell<Option<Appearance>> = const { RefCell::new(None) };
     /// O rect do chip de mistura quando o popover está aberto — o passe diferido do `paint.rs`
     /// consome-o e pinta a lista POR CIMA de todas as seções (mesma lei dos outros quatro slots).
@@ -135,6 +156,16 @@ pub(crate) fn open_layer() -> Option<usize> {
 /// quadro), e um campo da LINHA de outra camada aponta-a por um gesto (`event_paint_stack`).
 pub fn set_open_layer(i: Option<usize>) {
     OPEN.with(|c| c.set(i));
+}
+
+/// ⭐ F45 — guarda a queda do arrasto pelo ⚙ (o painel), para o verbo `Move` a ler (a shell).
+pub fn set_paint_move(m: Option<(ph2d_vec_scene::StackItem, ph2d_vec_scene::Place)>) {
+    PAINT_MOVE.with(|c| c.set(m));
+}
+
+/// Tira a queda guardada (uma vez).
+pub fn take_paint_move() -> Option<(ph2d_vec_scene::StackItem, ph2d_vec_scene::Place)> {
+    PAINT_MOVE.with(Cell::take)
 }
 
 /// Fecha a camada aberta — o que um gesto que muda a PILHA tem de fazer.

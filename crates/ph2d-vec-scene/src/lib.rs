@@ -64,8 +64,8 @@ pub use paint_bind::{BoundStyle, Opacity, object_alpha};
 /// ⭐ **A pilha de APARÊNCIA** (v20): N preenchimentos e N contornos numa forma só.
 pub mod paint_stack;
 pub use paint_stack::{
-    DrawnPaint, JOIN_ROUND, MAX_PAINT_LAYERS, MIN_DILATE, PaintEntry, PaintKind, PaintRef,
-    PaintSlot,
+    BaseOrder, DrawnPaint, JOIN_ROUND, MAX_PAINT_LAYERS, MIN_DILATE, PaintEntry, PaintKind,
+    PaintRef, PaintSlot, Place, StackItem,
 };
 // ⭐ O vocabulário de MISTURA do documento (v19), re-exportado como o `WarpStyle`.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};
@@ -500,20 +500,10 @@ pub struct VecPath {
     /// que o painel oferece é **derivada** da tradução, nunca escrita à mão
     /// (`ph2d_vec_render::blend`).
     pub blend: ph2d_blend_mode::BlendMode,
-    /// ⭐⭐⭐ **A PILHA DE APARÊNCIA** (v20, estudo 42 item 4) — as camadas de tinta **por cima** do
-    /// `fill` e do `stroke` de base, da mais baixa para a mais alta.
-    ///
-    /// É o *Appearance panel* do Illustrator e os *Fills*/*Strokes* do Rive: sem ela, cada camada
-    /// de estilo obriga a **duplicar o objecto**, e duas cópias de uma forma são duas geometrias
-    /// que divergem no primeiro ponto que o artista mexe.
-    ///
-    /// ⚠️ **O `fill` e o `stroke` acima continuam a ser o CHÃO da pilha**, e não há migração
-    /// escondida para esta lista — a mesma relação que `verts` tem com `subpaths`. Quem quer saber
-    /// o que a forma **pinta** pergunta à porta [`VecPath::paint_stack`]; quem lê `fill`
-    /// directamente vê o chão, o que é certo para uma swatch e errado para quem desenha.
-    ///
-    /// ⚠️ **No fim da struct, como manda a escada** — e depois do `blend`, que é o campo que a v19
-    /// apendou.
+    /// ⭐⭐⭐ **A PILHA DE APARÊNCIA** (v20, estudo 42 item 4) — as camadas de tinta além do `fill` e
+    /// do `stroke` de base, da mais baixa para a mais alta (o *Appearance panel* do Illustrator).
+    /// A base tem posição entre elas ([`Self::base_order`]); quem quer saber o que a forma
+    /// **pinta** pergunta à porta [`VecPath::paint_stack`].
     pub paints: Vec<paint_stack::PaintEntry>,
     /// O próximo [`VertId`] deste path (v24, no FIM) — monotónico, nunca reusado.
     pub next_vert: u32,
@@ -521,6 +511,8 @@ pub struct VecPath {
     pub fill_hidden: Option<Paint>,
     /// O `stroke` de base escondido pelo olho (v26).
     pub stroke_hidden: Option<StrokeSpec>,
+    /// ⭐ A POSIÇÃO da tinta de base na pilha (v27, F45) — ver [`BaseOrder`].
+    pub base_order: BaseOrder,
 }
 
 /// O id estável por vértice (W4.2).
@@ -690,7 +682,9 @@ impl VecScene {
             schema::VEC_SCENE_SCHEMA_V22..=schema::VEC_SCENE_SCHEMA_V24 => {
                 with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
             }
-            schema::VEC_SCENE_SCHEMA_V25 => with_wire_layout(ver, read).map(|(_, s)| s),
+            schema::VEC_SCENE_SCHEMA_V25 | schema::VEC_SCENE_SCHEMA_V26 => {
+                with_wire_layout(ver, read).map(|(_, s)| s)
+            }
             _ => Err(format!(
                 "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
             )),

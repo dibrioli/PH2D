@@ -50,7 +50,7 @@ impl crate::App {
             }
         };
         // ⭐ **O vetor de um ficheiro antigo lê-se pela forma do FIO dele** (F16c `22` até ao `189`;
-        // W4.2 `23` até ao `199`; F44b `24`/`25` até ao `211`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
+        // W4.2 `23` até ao `199`; F44b `24`/`25` até ao `211`; F45 `26` até ao `212`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
         // resto do ficheiro, o tipo do braço. Ver `ph2d_vec_scene::stroke_wire`.
         let fio = crate::project_schema::fio_do_projeto(ver);
         let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);

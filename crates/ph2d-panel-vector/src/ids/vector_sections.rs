@@ -12,8 +12,8 @@ use ph2d_a11y::NodeId;
 use ph2d_tool_vector::ids::{
     VECTOR_SECTION_AXES, VECTOR_SECTION_BLEND, VECTOR_SECTION_BOOLEAN, VECTOR_SECTION_CONNECTOR,
     VECTOR_SECTION_EFFECTS, VECTOR_SECTION_ENVELOPE, VECTOR_SECTION_EXPAND, VECTOR_SECTION_FILL,
-    VECTOR_SECTION_FONT, VECTOR_SECTION_MORPH, VECTOR_SECTION_PARAGRAPH, VECTOR_SECTION_STROKE,
-    VECTOR_SECTION_TEXT, VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX,
+    VECTOR_SECTION_FONT, VECTOR_SECTION_MORPH, VECTOR_SECTION_PARAGRAPH, VECTOR_SECTION_TEXT,
+    VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX,
 };
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
@@ -32,7 +32,7 @@ use ph2d_tool_vector::ids::{
 /// da tela exatamente como esta driftou.
 pub const VECTOR_SECTIONS: &[NodeId] = &[
     // ⛔ F9 (11/10): a SHAPE_PARAMS saiu — os parâmetros da forma moram na fila ② e nas alças.
-    VECTOR_SECTION_STROKE,
+    // ⛔ F45 (01/11): a STROKE saiu — Fill & Stroke são UMA secção (o id da FILL).
     VECTOR_SECTION_FILL,
     // ⛔ F44 (01/11): a FILL_TYPE saiu — o tipo e o degradê moram no painel à esquerda da linha do Fill.
     VECTOR_SECTION_TRANSFORM,

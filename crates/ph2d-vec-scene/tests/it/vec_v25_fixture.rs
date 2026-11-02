@@ -75,7 +75,7 @@ fn a_tinta_escondida_faz_a_volta_pelo_ficheiro() {
     p.stroke_hidden = Some(StrokeSpec::new(Rgba8::new(4, 5, 6, 255), 3.0));
     cena.push_path(p);
     let b = cena.to_bytes().expect("grava");
-    assert_eq!(b[0], 26);
+    assert_eq!(u32::from(b[0]), VEC_SCENE_SCHEMA_VERSION);
     let lida = VecScene::from_bytes(&b).expect("abre");
     assert_eq!(lida, cena);
     let [q] = lida.paths() else {

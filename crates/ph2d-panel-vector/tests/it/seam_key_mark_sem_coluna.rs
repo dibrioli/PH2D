@@ -72,6 +72,7 @@ fn aparencia(layers: Vec<PaintRow>) {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
 }
 

@@ -71,6 +71,11 @@ pub(crate) fn reading_path_v25() -> bool {
     reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V25)
 }
 
+/// O path sem a posição da base na pilha (`<= 26`).
+pub(crate) fn reading_path_v26() -> bool {
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V26)
+}
+
 /// A forma v22, campo a campo — ⛔ congelada: mudá-la deixa de ler ficheiros reais.
 #[derive(Deserialize)]
 struct StrokeSpecV22 {

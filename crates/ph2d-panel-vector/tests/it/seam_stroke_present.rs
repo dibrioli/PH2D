@@ -37,8 +37,18 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
-fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = crate::host_aberto();
+/// O host do painel — e, numa forma SEM traço, com o «+» de Fill & Stroke aberto (F45): é lá, na
+/// linha «Stroke», que o traço de base se dá.
+fn host(sem_traco: bool) -> ph2d_ui_testkit::MockPanelHost {
+    if sem_traco {
+        crate::host_com_aberto(ph2d_panel_vector::ids::VECTOR_PAINT_ADD_MENU)
+    } else {
+        crate::host_aberto()
+    }
+}
+
+fn rect(id: ph2d_a11y::NodeId, sem_traco: bool) -> Option<Rect> {
+    let mut host = host(sem_traco);
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -52,7 +62,7 @@ fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
 fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
     for tem in [true, false] {
         state::set_stroke_present(Some(tem));
-        let mut host = crate::host_aberto();
+        let mut host = host(!tem);
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(
@@ -93,12 +103,12 @@ fn the_stroke_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
 fn the_row_is_not_painted_without_an_answer_to_show() {
     state::set_stroke_present(None);
     assert!(
-        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_none(),
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT, false).is_none(),
         "a caixa foi pintada sem resposta publicada"
     );
     state::set_stroke_present(Some(false));
     assert!(
-        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_some(),
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT, true).is_some(),
         "e com resposta ela existe"
     );
     state::set_stroke_present(None);
@@ -120,18 +130,22 @@ fn a_shape_without_a_stroke_shows_only_the_plus() {
     state::set_stroke_present(Some(false));
     for (id, what) in linhas {
         assert!(
-            rect(id).is_none(),
+            rect(id, true).is_none(),
             "{what} ficou à vista numa forma SEM traço — no Figma só o «+» do título a dá"
         );
     }
     assert!(
-        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_some(),
+        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT, true).is_some(),
         "o «+» que dá o traço tem de estar lá"
     );
     state::set_stroke_present(None);
-    for (id, what) in linhas {
+    // F44c: a Position mora dentro do ⚙ (o «Stroke settings»), não na linha — fora desta conta.
+    for (id, what) in linhas
+        .into_iter()
+        .filter(|(id, _)| *id != ph2d_tool_vector::ids::VECTOR_ALIGN_CENTRE)
+    {
         assert!(
-            rect(id).is_some(),
+            rect(id, false).is_some(),
             "{what} sumiu sem seleção — a secção é a ficha da ferramenta"
         );
     }

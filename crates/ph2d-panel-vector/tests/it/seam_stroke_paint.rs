@@ -124,8 +124,15 @@ fn the_stroke_type_row_is_absent_without_a_stroke() {
     // CONTROLO: a caixa *Stroke* continua a ter resposta para a mesma selecção, senão este gate
     // ficaria verde sobre um painel que perdeu as duas.
     state::set_stroke_present(Some(false));
+    // F45: numa forma sem traço, o «Stroke» que o dá é uma linha do «+» de Fill & Stroke.
+    let mut host = crate::host_com_aberto(ph2d_panel_vector::ids::VECTOR_PAINT_ADD_MENU);
     assert!(
-        rect(ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT).is_some(),
+        host.painted_rect::<VectorPanel>(
+            &mut VectorPanelState,
+            VIEWPORT,
+            ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT
+        )
+        .is_some(),
         "a caixa Stroke desapareceu junto - sao duas perguntas diferentes"
     );
     state::set_stroke_present(None);

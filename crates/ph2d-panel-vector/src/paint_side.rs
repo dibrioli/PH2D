@@ -12,6 +12,7 @@
 
 use crate::fx_side::{set_open, side_head, side_panel};
 use crate::paint_sections::fill_stroke::take_abertos;
+use crate::paint_sections::fill_stroke_list::shifted;
 use crate::paint_sections::fx_list::is_open;
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
@@ -26,7 +27,58 @@ use ph2d_vec_scene::MAX_PAINT_LAYERS;
 pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
     let abertos = take_abertos();
     sync_open_layer(ctx.host.store());
-    match abertos.fill {
+    // F45: as linhas seguem a pilha — o painel da linha de BAIXO pinta-se por cima (dois abertos
+    // só num teste; no app abrir um fecha o outro).
+    let fill_em_baixo = matches!((abertos.fill, abertos.stroke), (Some(f), Some(s)) if f.y > s.y);
+    if fill_em_baixo {
+        stroke_panel(ctx, abertos.stroke, panel, theme);
+        fill_panel(ctx, abertos.fill, panel, theme);
+    } else {
+        fill_panel(ctx, abertos.fill, panel, theme);
+        stroke_panel(ctx, abertos.stroke, panel, theme);
+    }
+    let camada = abertos.layer.and_then(|(i, line)| {
+        let a = state::current_appearance()?;
+        Some((i, line, *a.layers.get(i)?))
+    });
+    match camada {
+        Some((i, line, row)) => {
+            let snap = state::current_snapshot();
+            let name = tr(if row.is_fill {
+                "panel.vector.paint.fill"
+            } else {
+                "panel.vector.paint.stroke"
+            });
+            // ↑ sobe a camada na pilha à vista (F45: a vizinha pode ser a base); ↓ desce.
+            let up = shifted(i, true).map(|_| ids::vector_paint_up_id(i));
+            let down = shifted(i, false).map(|_| ids::vector_paint_down_id(i));
+            side_panel(
+                ctx,
+                ids::vector_paint_row_id(i),
+                line,
+                panel,
+                theme,
+                &mut |b, y| {
+                    let y = side_head(b, None, name, ids::VECTOR_PAINT_PROPS_CLOSE, down, up, y);
+                    // ⭐ F44b: o MESMO corpo da base (as edições seguem a camada aberta —
+                    // `PaintSlot`), e por baixo o que só uma camada tem.
+                    let y = if row.is_fill {
+                        b.fill_props_body(y)
+                    } else {
+                        let y = b.layer_position_row(&row, y);
+                        b.stroke_settings_body(&snap, y)
+                    };
+                    b.layer_props(&row, y)
+                },
+            );
+        }
+        None => close_layers(ctx.host.store_mut()),
+    }
+}
+
+/// O painel do preenchimento de base (tipo, degradê, token), se a linha dele está aberta.
+fn fill_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme) {
+    match line {
         Some(line) => side_panel(
             ctx,
             ids::VECTOR_FILL_ROW,
@@ -48,7 +100,11 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
         ),
         None => set_open(ctx.host.store_mut(), ids::VECTOR_FILL_ROW, false),
     }
-    match abertos.stroke {
+}
+
+/// O «Stroke settings» do traço de base, se a linha dele está aberta.
+fn stroke_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme) {
+    match line {
         Some(line) => {
             let snap = state::current_snapshot();
             side_panel(
@@ -72,43 +128,6 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
             );
         }
         None => set_open(ctx.host.store_mut(), ids::VECTOR_STROKE_SETTINGS, false),
-    }
-    let camada = abertos.layer.and_then(|(i, line)| {
-        let a = state::current_appearance()?;
-        Some((i, line, *a.layers.get(i)?, a.layers.len()))
-    });
-    match camada {
-        Some((i, line, row, n)) => {
-            let snap = state::current_snapshot();
-            let name = tr(if row.is_fill {
-                "panel.vector.paint.fill"
-            } else {
-                "panel.vector.paint.stroke"
-            });
-            // ↑ sobe a camada no DOCUMENTO (para o topo, `i + 1`); ↓ desce.
-            let up = (i + 1 < n).then(|| ids::vector_paint_up_id(i));
-            let down = (i > 0).then(|| ids::vector_paint_down_id(i));
-            side_panel(
-                ctx,
-                ids::vector_paint_row_id(i),
-                line,
-                panel,
-                theme,
-                &mut |b, y| {
-                    let y = side_head(b, None, name, ids::VECTOR_PAINT_PROPS_CLOSE, down, up, y);
-                    // ⭐ F44b: o MESMO corpo da base (as edições seguem a camada aberta —
-                    // `PaintSlot`), e por baixo o que só uma camada tem.
-                    let y = if row.is_fill {
-                        b.fill_props_body(y)
-                    } else {
-                        let y = b.layer_position_row(&row, y);
-                        b.stroke_settings_body(&snap, y)
-                    };
-                    b.layer_props(&row, y)
-                },
-            );
-        }
-        None => close_layers(ctx.host.store_mut()),
     }
 }
 
@@ -144,6 +163,10 @@ fn open_layer_row(store: &WidgetStore) -> Option<usize> {
 ///   índice guardado não sobrevive à lista que o explicava);
 /// - ↑ / ↓ da camada aberta → o painel ACOMPANHA a camada para o índice novo.
 pub(crate) fn on_click(store: &mut WidgetStore, id: NodeId) -> bool {
+    if crate::paint_sections::fill_stroke_list::is_add_option(id) {
+        // Uma linha do «+» fecha o menu (o light-dismiss não dispara num clique DENTRO dele).
+        set_open(store, ids::VECTOR_PAINT_ADD_MENU, false);
+    }
     let fechar: [(NodeId, NodeId); 2] = [
         (ids::VECTOR_FILL_PROPS_CLOSE, ids::VECTOR_FILL_ROW),
         (ids::VECTOR_STROKE_PROPS_CLOSE, ids::VECTOR_STROKE_SETTINGS),
@@ -165,9 +188,9 @@ pub(crate) fn on_click(store: &mut WidgetStore, id: NodeId) -> bool {
     }
     if let Some(i) = open_layer_row(store) {
         let to = if id == ids::vector_paint_up_id(i) {
-            Some(i + 1)
-        } else if id == ids::vector_paint_down_id(i) && i > 0 {
-            Some(i - 1)
+            shifted(i, true)
+        } else if id == ids::vector_paint_down_id(i) {
+            shifted(i, false)
         } else {
             None
         };

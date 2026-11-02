@@ -6,6 +6,12 @@
 //! base); a 46 esconde o traço de base pelo olho e abre o ⚙ do contorno amarelo (Position, pontas,
 //! junções, tracejado — o «Stroke settings» de uma camada). F44c: a 45 acaba na seta branca, com
 //! as alças do degradê do brilho no canvas.
+//!
+//! ⭐ **A cena 47** (F45 — Fill & Stroke numa só pilha, na ordem livre): o mesmo rectângulo com o
+//! traço de base GROSSO, e a pilha fora da ordem antiga — a SOMBRA por baixo de tudo (o que antes
+//! era impossível), o PREENCHIMENTO de base por CIMA do traço de base (cobre a metade de dentro
+//! dele) e o contorno amarelo no topo (um traço por cima do preenchimento). Nenhum painel aberto: o
+//! dono arrasta os ⚙.
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -35,13 +41,16 @@ static PASSO: AtomicU8 = AtomicU8::new(0);
 static ROLAGENS: AtomicU8 = AtomicU8::new(0);
 const MAX_ROLAGENS: u8 = 40;
 
-/// Um quadro da cena; `Some(9)` = acabou. `traco` = a 46 (o «Stroke settings» em vez do Fill).
+/// Um quadro da cena; `Some(9)` = acabou. `qual`: `0` = a 45 · `1` = a 46 (o «Stroke settings» em
+/// vez do Fill) · `2` = a 47 (a ordem livre da pilha).
 pub fn step(
     vec: &mut VecState,
     scene: &mut VecScene,
     hero: &mut HeroScreen,
-    traco: bool,
+    qual: u8,
 ) -> Option<u8> {
+    let traco = qual == 1;
+    let ordem = qual == 2;
     let passo = PASSO.load(Ordering::Relaxed);
     let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
     match passo {
@@ -78,6 +87,10 @@ pub fn step(
             if traco {
                 p.set_stroke_hidden(true);
             }
+            if ordem {
+                ordem_livre(p);
+                return None;
+            }
             eprintln!(
                 "[cena {}] rectângulo: degradê azul→roxo de base, traço escuro de base{}, sombra \
                  deslocada, brilho radial e contorno amarelo tracejado por fora",
@@ -93,10 +106,10 @@ pub fn step(
             PASSO.store(3, Ordering::Relaxed);
         }
         3 => {
-            let fim = abre(hero, traco);
+            let fim = abre(hero, traco, ordem);
             // F44c: a 45 acaba na seta branca, com a forma na mão — as alças do degradê do BRILHO
             // (a camada aberta) aparecem no canvas, e são elas que o arrasto edita.
-            if fim.is_some() && !traco {
+            if fim.is_some() && qual == 0 {
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
                         ph2d_editor_core::tool::PanelEvent::Click(
@@ -112,8 +125,26 @@ pub fn step(
     None
 }
 
-/// Rola o Inspector até a secção Fill ficar no alto e abre o painel que a cena mostra.
-fn abre(hero: &mut HeroScreen, traco: bool) -> Option<u8> {
+/// ⭐ A cena 47: o traço de base grosso, e a pilha (do chão ao topo) sombra → traço de base →
+/// preenchimento de base → contorno amarelo.
+fn ordem_livre(p: &mut ph2d_vec_scene::VecPath) {
+    use ph2d_vec_scene::{Place, StackItem};
+    if let Some(s) = p.stroke.as_mut() {
+        s.width = 0.16;
+    }
+    p.paints.remove(BRILHO);
+    let por_baixo = p.move_paint(StackItem::Entry(0), Place::Below(StackItem::BaseFill));
+    let cobre = p.move_paint(StackItem::BaseFill, Place::Above(StackItem::BaseStroke));
+    eprintln!(
+        "[cena 47] rectângulo: de baixo para cima — sombra deslocada (Fill), traço escuro grosso          de base, degradê azul→roxo de base POR CIMA do traço, contorno amarelo tracejado no topo          (ordem aplicada: {})",
+        por_baixo && cobre
+    );
+    PASSO.store(2, Ordering::Relaxed);
+}
+
+/// Rola o Inspector até a secção Fill & Stroke ficar no alto e abre o painel que a cena mostra (a
+/// 47 não abre nenhum).
+fn abre(hero: &mut HeroScreen, traco: bool, ordem: bool) -> Option<u8> {
     let painel = ph2d_editor_core::ids::VECTOR_PANEL;
     let area = hero.store.panel_rect(painel)?;
     let cabeca = hero
@@ -133,9 +164,58 @@ fn abre(hero: &mut HeroScreen, traco: bool) -> Option<u8> {
             .set_panel_scroll(painel, (s + c.y - alvo).max(0.0));
         return None;
     }
+    if ordem {
+        // `PH2D_OBJECT_MODE_GESTO=voo`: a foto do arrasto a meio — premir no ⚙ do preenchimento de
+        // base e levá-lo ao topo, sem largar, pelo despacho do produto.
+        if std::env::var("PH2D_OBJECT_MODE_GESTO").as_deref() == Ok("voo") {
+            voo(hero)?;
+        }
+        return Some(9);
+    }
     let i = if traco { FORA } else { BRILHO };
     hero.hit_index
         .rect_for(ph2d_panel_vector::ids::vector_paint_row_id(i))?;
     ph2d_panel_vector::open_paint_layer(&mut hero.store, i);
     Some(9)
+}
+
+/// Premir no ⚙ do preenchimento de base e levá-lo sobre o traço escuro, abaixo do meio da linha (a
+/// que voa descola do vão, e o vão fica à vista).
+fn voo(hero: &mut HeroScreen) -> Option<()> {
+    let gear = hero
+        .hit_index
+        .rect_for(ph2d_panel_vector::ids::VECTOR_FILL_ROW)?;
+    // A rolagem do Inspector ainda pode assentar: o gesto espera o ⚙ parado dois quadros seguidos
+    // (medido 01/11: premido um quadro cedo, as linhas desceram 157 px por baixo do cursor).
+    static ULTIMO_Y: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(u32::MAX);
+    if ULTIMO_Y.swap(gear.y.to_bits(), Ordering::Relaxed) != gear.y.to_bits() {
+        return None;
+    }
+    let alvo = hero
+        .hit_index
+        .rect_for(ph2d_panel_vector::ids::VECTOR_STROKE_SETTINGS)?;
+    let x = gear.x + gear.w * 0.5;
+    let arena = bumpalo::Bump::new();
+    for (kind, y) in [
+        (ph2d_host::PointerKind::Down, gear.y + gear.h * 0.5),
+        (ph2d_host::PointerKind::Move, alvo.y + alvo.h * 0.8),
+    ] {
+        let event = ph2d_host::PointerEvent {
+            kind,
+            x,
+            y,
+            pressure: 1.0,
+            source: ph2d_host::PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
+            timestamp_ns: 0,
+        };
+        let _ = ph2d_editor_core::interaction::dispatch_pointer(
+            &mut hero.store,
+            &hero.hit_index,
+            event,
+            &arena,
+        );
+    }
+    eprintln!("[cena 47] gesto: o ⚙ do Fill de base levado sobre o traço escuro (sem largar)");
+    Some(())
 }

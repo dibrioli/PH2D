@@ -44,6 +44,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.fx.bound" => "Bound to bones: effects are baked into the drawing",
         "panel.vector.section.stroke" => "Stroke",
         "panel.vector.section.fill" => "Fill",
+        "panel.vector.section.fill_stroke" => "Fill & Stroke",
         "panel.vector.section.snap" => "Snap",
         "panel.vector.section.pencil" => "Pencil",
         "panel.vector.section.symmetry" => "Symmetry",

@@ -90,6 +90,7 @@ fn publica(layers: Vec<PaintRow>) {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
 }
 
@@ -100,6 +101,11 @@ fn publica(layers: Vec<PaintRow>) {
 /// diferentes e um gate que só faz uma delas fica verde sobre a outra.
 fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
     let mut host = crate::host_pilha();
+    // F45: «+ Fill» e «+ Stroke» são as linhas do menu do «+» da secção — abre-o primeiro.
+    if id == ids::VECTOR_PAINT_ADD_FILL || id == ids::VECTOR_PAINT_ADD_STROKE {
+        crate::clica(&mut host, ids::VECTOR_PAINT_ADD_MENU);
+        let _ = host.drained_actions();
+    }
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -184,6 +190,7 @@ fn mixed_layers_paint_no_row_and_keep_the_add_buttons() {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: true,
+        order: Vec::new(),
     }));
     for i in 0..2usize {
         for (id, what) in [

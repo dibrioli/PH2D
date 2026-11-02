@@ -62,6 +62,7 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
         opacity: 1.0,
         blend: ph2d_vec_scene::BlendMode::Normal,
         layers: Vec::new(),
+        order: Vec::new(),
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,

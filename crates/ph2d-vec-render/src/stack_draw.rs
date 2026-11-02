@@ -1,6 +1,6 @@
-//! ⭐⭐⭐ **DESENHAR A PILHA DE APARÊNCIA** — as camadas de tinta por cima do `fill`+`stroke` de
-//! base (v20 do schema, estudo 42 item 4). Módulo irmão de [`super`] pelo tecto de LOC, e o corte é
-//! por RESPONSABILIDADE: ali desenha-se **o chão** de uma forma; aqui, o que está **por cima dele**.
+//! ⭐⭐⭐ **DESENHAR A PILHA DE APARÊNCIA** — o preenchimento de base e cada camada (v20 do schema,
+//! estudo 42 item 4). Módulo irmão de [`super`] pelo tecto de LOC; quem decide a ORDEM é o
+//! `draw_path_with` de lá, pela [`VecPath::draw_order`] (F45: a base tem posição na pilha).
 //!
 //! # ⭐ A geometria é a MESMA, e é isso que torna a pilha barata
 //!
@@ -26,74 +26,116 @@
 //! padrão ou pincel desenha a **cor de recurso** dele, que é a mesma resposta honesta que o chão dá
 //! enquanto o ladrilho não resolve.
 
-use ph2d_vec_scene::{PaintKind, VecPath};
-use ph2d_vector::{Affine, VectorScene};
+use ph2d_vec_scene::{Paint, PaintKind, VecPath};
+use ph2d_vector::{Affine, Shape, VectorScene};
 
 use crate::{PathTess, blend, fill_brush, fill_rule, path_bounds_under, stroke_draw};
 
-/// **Desenha as camadas ligadas**, de baixo para cima. No-op sem pilha — o caminho comum.
-pub(crate) fn draw_extra_paints(
+/// **Desenha o preenchimento de BASE** — o padrão (com o ladrilho deste quadro), o multi-ponto ou a
+/// tinta lisa/degradê. No-op sem preenchimento.
+pub(crate) fn draw_base_fill(
     path: &VecPath,
+    tess: &PathTess,
+    transform: Affine,
+    target: &mut VectorScene,
+    tile: Option<&crate::PatternTile>,
+) {
+    if let Some(fill) = &path.fill {
+        let fp = tess.fill_bp.as_ref().expect("fill => fill_bp construido");
+        // ⭐ **O padrão desenha a IMAGEM quando o ladrilho existe, e a `fallback` quando não.**
+        // As duas metades são desenho certo: a segunda é o que o artista vê enquanto a arte carrega,
+        // ou quando a forma-fonte desapareceu — e ⛔ desenhar NADA seria pior (uma forma invisível
+        // não se distingue de um preenchimento vazio).
+        if let (Paint::Pattern(pat), Some(t)) = (fill, tile) {
+            crate::pattern::fill_pattern(
+                target,
+                fp,
+                fill_rule(path),
+                transform,
+                &t.image,
+                // ⚠️ A caixa vem do desenho de PREENCHIMENTO (espaço das âncoras, como a
+                // colocação): é ela que o `Clamp` enquadra. `bounding_box` de um `BezPath` vazio
+                // devolve uma caixa degenerada, e o `placement_in` recusa-a e cai na autorada.
+                pat.placement_in(t.cells, t.tile_px, {
+                    let b = fp.bounding_box();
+                    ([b.x0, b.y0], [b.x1, b.y1])
+                }),
+                pat.mode,
+                t.quality,
+                pat.alpha,
+            );
+        } else if let Paint::MultiPoint { points } = fill {
+            // ⚠️ `path`, não `cooked`: o `fill_multipoint` mede a caixa dos pontos de controle da
+            // forma AUTORADA (`control_point_bounds`). Passar o cozido moveria o gradiente de toda
+            // forma com quina viva ou efeito — mudança de aparência dentro de um fix de custo.
+            crate::fill_multipoint(target, fp, path, points, transform);
+        } else {
+            // `VectorScene::fill_path` assume NonZero; um compound precisa da
+            // regra do path (EvenOdd vaza o contorno de dentro).
+            target.inner_mut().fill(
+                fill_rule(path),
+                transform,
+                &fill_brush(fill, path),
+                None,
+                fp,
+            );
+        }
+    }
+}
+
+/// **Desenha a camada `i`** da pilha, se ela está ligada. ⚠️ `i` é o índice do DOCUMENTO — desarmar a
+/// camada `1` não pode fazer a `3` desenhar a silhueta da `2`.
+pub(crate) fn draw_entry(
+    path: &VecPath,
+    i: usize,
     tess: &PathTess,
     transform: Affine,
     target: &mut VectorScene,
     dilated: Option<&crate::DilatedPaints>,
 ) {
-    if path.paints.is_empty() {
+    let Some(e) = path.paints.get(i).filter(|e| e.is_active()) else {
         return;
+    };
+    let aberta = open_layer(target, path, transform, e.opacity.get(), e.blend);
+    // ⭐⭐⭐ **ONDE esta camada desenha** (v21). ⚠️ A translação vem **por fora** (`transform *
+    // translate`, e não `translate * transform`): o deslocamento é LOCAL, logo tem de sofrer a
+    // pose da forma — rodar a forma 90° tem de rodar a sombra com ela, senão a sombra descola.
+    //
+    // ⭐ E é aqui que se vê por que ele é GRÁTIS: a tesselação (`tess`) é a MESMA, e o Vello já
+    // recebia um transform em toda camada. O custo somado é uma multiplicação de afins.
+    let onde = camada_xf(transform, e.offset);
+    // ⭐⭐⭐ **A GEOMETRIA DESTA CAMADA** (v22): a dilatada, se a shell a cozeu; senão a da
+    // forma.
+    //
+    // ⛔ **Uma camada dilatada cuja geometria NÃO chegou desenha a silhueta da forma**, e não
+    // nada: a shell só falha em cozer quando a booleana panica, e *voltar à forma lê-se como
+    // «o offset não pegou»; desaparecer lê-se como «apaguei a camada»*.
+    //
+    // ⭐ **Tesselar o dilatado corre AQUI** (`~0,13 µs`, como qualquer forma); o que é caro — o
+    // offset — já veio memoizado da shell. É essa divisão que deixa o traço dilatado passar
+    // pela MESMA porta do de base, com o tracejado AJUSTADO ao comprimento novo de graça.
+    let proprio = dilated
+        .and_then(|d| d.get(&(path.id, i)))
+        .map(|p| (p, crate::path_tess(p)));
+    let (geo, gtess) = proprio.as_ref().map_or((path, tess), |(p, t)| (*p, t));
+    match &e.kind {
+        PaintKind::Fill(paint) => {
+            if let Some(fp) = gtess.fill_bp.as_ref() {
+                target
+                    .inner_mut()
+                    .fill(fill_rule(geo), onde, &fill_brush(paint, geo), None, fp);
+            }
+        }
+        // ⛔ Os dois `None` (ladrilho, arte de pincel) são a fronteira declarada no cabeçalho
+        // deste módulo, e o censo `the_artless_draw_routes_are_declared` conta-os.
+        // ⭐ Um CONTORNO dilatado percorre a silhueta crescida/encolhida — o anel de CAD —, e
+        // passa por AQUI: o que muda é a geometria, não a porta.
+        PaintKind::Stroke(s) => {
+            stroke_draw::draw_one_stroke(geo, s, gtess, onde, target, None, None);
+        }
     }
-    for (i, e) in path
-        .paints
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| e.is_active())
-    {
-        let aberta = open_layer(target, path, transform, e.opacity.get(), e.blend);
-        // ⭐⭐⭐ **ONDE esta camada desenha** (v21). ⚠️ A translação vem **por fora** (`transform *
-        // translate`, e não `translate * transform`): o deslocamento é LOCAL, logo tem de sofrer a
-        // pose da forma — rodar a forma 90° tem de rodar a sombra com ela, senão a sombra descola.
-        //
-        // ⭐ E é aqui que se vê por que ele é GRÁTIS: a tesselação (`tess`) é a MESMA, e o Vello já
-        // recebia um transform em toda camada. O custo somado é uma multiplicação de afins.
-        let onde = camada_xf(transform, e.offset);
-        // ⭐⭐⭐ **A GEOMETRIA DESTA CAMADA** (v22): a dilatada, se a shell a cozeu; senão a da
-        // forma. ⚠️ O índice é o do DOCUMENTO (`enumerate` ANTES do filtro) — desarmar a camada `1`
-        // não pode fazer a `3` desenhar a silhueta da `2`.
-        //
-        // ⛔ **Uma camada dilatada cuja geometria NÃO chegou desenha a silhueta da forma**, e não
-        // nada: a shell só falha em cozer quando a booleana panica, e *voltar à forma lê-se como
-        // «o offset não pegou»; desaparecer lê-se como «apaguei a camada»*.
-        //
-        // ⭐ **Tesselar o dilatado corre AQUI** (`~0,13 µs`, como qualquer forma); o que é caro — o
-        // offset — já veio memoizado da shell. É essa divisão que deixa o traço dilatado passar
-        // pela MESMA porta do de base, com o tracejado AJUSTADO ao comprimento novo de graça.
-        let proprio = dilated
-            .and_then(|d| d.get(&(path.id, i)))
-            .map(|p| (p, crate::path_tess(p)));
-        let (geo, gtess) = proprio.as_ref().map_or((path, tess), |(p, t)| (*p, t));
-        match &e.kind {
-            PaintKind::Fill(paint) => {
-                if let Some(fp) = gtess.fill_bp.as_ref() {
-                    target.inner_mut().fill(
-                        fill_rule(geo),
-                        onde,
-                        &fill_brush(paint, geo),
-                        None,
-                        fp,
-                    );
-                }
-            }
-            // ⛔ Os dois `None` (ladrilho, arte de pincel) são a fronteira declarada no cabeçalho
-            // deste módulo, e o censo `the_artless_draw_routes_are_declared` conta-os.
-            // ⭐ Um CONTORNO dilatado percorre a silhueta crescida/encolhida — o anel de CAD —, e
-            // passa por AQUI: o que muda é a geometria, não a porta.
-            PaintKind::Stroke(s) => {
-                stroke_draw::draw_one_stroke(geo, s, gtess, onde, target, None, None);
-            }
-        }
-        if aberta {
-            target.pop_layer();
-        }
+    if aberta {
+        target.pop_layer();
     }
 }
 

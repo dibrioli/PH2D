@@ -249,7 +249,8 @@ fn the_three_align_chips_are_clickable_and_reach_the_tool() {
             StrokeAlign::Centre,
         ),
     ] {
-        let mut host = crate::host_aberto();
+        // F44c: a Position mora no ⚙ do traço (o «Stroke settings»), aberto à esquerda.
+        let mut host = crate::host_traco();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -703,7 +704,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // juntas. ⚠️ O `34` foi CONTADO (o gate imprimiu `left: 34`).
         // ⛔ −1 (F44, 01/11): FILL_TYPE saiu — o tipo e o degradê moram no painel à esquerda da
         // linha do Fill. ⚠️ O `33` foi CONTADO (o gate imprimiu `left: 33`).
-        33,
+        // ⛔ −1 (F45, 01/11): STROKE saiu — Fill & Stroke são UMA secção (o id da FILL). ⚠️ O `32`
+        // foi CONTADO (o gate imprimiu `left: 32`).
+        32,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

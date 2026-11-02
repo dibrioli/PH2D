@@ -38,6 +38,7 @@ fn quadro(hero: &mut HeroScreen) {
         mixed_opacity: false,
         mixed_blend: false,
         layers_differ: false,
+        order: Vec::new(),
     }));
     // A barra de controle é PUBLICADA pelo módulo (a shell chama `bars::tool_bars` por quadro).
     ph2d_panel_vector::set_current_vector_style(Some(

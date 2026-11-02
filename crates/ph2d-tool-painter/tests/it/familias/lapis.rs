@@ -334,6 +334,7 @@ mod portoes {
             .iter()
             .map(|e| e.preset.parametros.name.as_str())
             .filter(|n| super::EM_ESTUDO.iter().any(|r| r.nome == *n))
+            .filter(|n| !super::super::cap01::promovido(n))
             .collect();
         assert!(
             na_fabrica.is_empty(),

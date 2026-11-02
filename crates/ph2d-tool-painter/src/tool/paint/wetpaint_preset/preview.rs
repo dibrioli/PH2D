@@ -73,6 +73,8 @@ pub struct CenaDoPreview {
     substrate_rough: f32,
     paper_visual: bool,
     smooth_edges: f32,
+    absorcao: f64,
+    lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta,
     km_mixing: bool,
     km_glaze: bool,
     show_wet: bool,
@@ -144,6 +146,8 @@ pub struct ChaveDoPreview {
     substrato: (f32, f32),
     flags: (bool, bool, bool, bool),
     suave: f32,
+    /// A tela e a lei que o canvas usa: sem elas o preview pintava outra tinta (censo do preview).
+    tela: (u64, ph2d_wet_paint::sim::LeiDaTinta),
     tilt: (bool, u8, u8),
     grids: (u8, u8),
     opcoes: (bool, f64),
@@ -175,6 +179,8 @@ impl PainterTool {
             substrate_rough: self.paint.substrate_rough,
             paper_visual: w.paper_visual,
             smooth_edges: w.smooth_edges,
+            absorcao: w.absorcao,
+            lei_da_tinta: w.lei_da_tinta,
             km_mixing: w.km_mixing,
             km_glaze: w.km_glaze,
             show_wet: w.show_wet,
@@ -230,6 +236,7 @@ impl PainterTool {
             substrato: (self.paint.substrate_depth, self.paint.substrate_rough),
             flags: (w.paper_visual, w.km_mixing, w.km_glaze, w.show_wet),
             suave: w.smooth_edges,
+            tela: (w.absorcao.to_bits(), w.lei_da_tinta),
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
             grids: (w.grid_ratio, w.flow_ratio),
             opcoes: (w.agua_viva, w.borda_que_pesa),
@@ -302,6 +309,8 @@ impl PainterTool {
         w.knobs = c.knobs;
         w.paper_visual = c.paper_visual;
         w.smooth_edges = c.smooth_edges;
+        w.absorcao = c.absorcao;
+        w.lei_da_tinta = c.lei_da_tinta;
         w.km_mixing = c.km_mixing;
         w.km_glaze = c.km_glaze;
         w.show_wet = c.show_wet;

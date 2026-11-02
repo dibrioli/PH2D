@@ -7,6 +7,13 @@ use super::caligrafia_marcadores::SEM_FORMA;
 use super::oleo_acrilica::{FILBERT, FLAT_BRISTLE};
 use super::prelude::*;
 
+/// O nome é de uma receita que a CAP-01 PROMOVEU à fábrica: a receita velha do mesmo nome continua em estudo nas
+/// listas de reprovados da sua família, mas o ficheiro na fábrica é o desta (os portões «reprovados não estão na
+/// fábrica» identificam pelo nome e não podem acusá-lo).
+pub fn promovido(nome: &str) -> bool {
+    WET.iter().any(|r| r.nome == nome)
+}
+
 pub const WET: &[Receita] = &[
     // A sombra deitada: o Filbert achatado que SEGUE o traço com inércia — a curva alarga e o recto fica limpo.
     Receita {

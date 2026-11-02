@@ -700,6 +700,7 @@ fn os_reprovados_da_familia_nao_estao_na_fabrica() {
         .iter()
         .map(|e| e.preset.parametros.name.clone())
         .filter(|n| nomes.contains(&n.as_str()))
+        .filter(|n| !super::cap01::promovido(n))
         .collect();
     assert!(
         na_fabrica.is_empty(),

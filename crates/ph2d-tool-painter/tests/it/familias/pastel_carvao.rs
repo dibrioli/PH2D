@@ -1239,6 +1239,7 @@ mod portoes {
                     .and_then(|n| n.to_str())
                     .and_then(|n| n.strip_suffix(".ph2d-brush.png"))
                     && super::EM_ESTUDO.iter().any(|r| r.nome == n)
+                    && !super::super::cap01::promovido(n)
                 {
                     achados.push(p.display().to_string());
                 }

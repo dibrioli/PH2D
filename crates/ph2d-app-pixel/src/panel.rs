@@ -57,6 +57,7 @@ impl PixelApp {
             // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
             PixelRequest::Options(o) => {
                 crate::viva::opcoes(self, *o);
+                self.options.text_font = crate::texto::normaliza(self.options.text_font);
                 crate::texto::refaz(self);
             }
             PixelRequest::Fg(c) => self.escolhe_fg(c),
@@ -229,6 +230,11 @@ pub fn frame(
         active_layer,
         has_clip: app.clip.is_some(),
         has_selection: doc.is_some_and(|d| d.sprite.mask().is_some()),
+        text_font_name: if app.tool == Tool::Text {
+            crate::texto::nome_da_fonte(app.options.text_font)
+        } else {
+            String::new()
+        },
         size: doc.map_or((0, 0), |d| (d.sprite.width(), d.sprite.height())),
         transform: app
             .solta

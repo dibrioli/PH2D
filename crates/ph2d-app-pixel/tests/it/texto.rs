@@ -181,3 +181,44 @@ fn changing_the_size_with_the_box_open_redraws_the_preview() {
         );
     }
 }
+
+#[test]
+fn a_system_font_draws_and_previous_wraps_to_the_last_font() {
+    let (mut app, sim, cam, bits) = born();
+    let todas = ph2d_app_pixel::texto::fontes();
+    let mut o = app.options;
+    o.text_font = u16::MAX;
+    pede(&mut app, &sim, bits, PixelRequest::Options(Box::new(o)));
+    assert_eq!(
+        usize::from(app.options.text_font),
+        todas.len() - 1,
+        "dá a volta"
+    );
+    // Uma fonte do sistema (se a máquina tem alguma com «A»): o preview acende células.
+    let fabrica = ph2d_pixel_text::BUILTIN.len();
+    let Some(i) = (fabrica..todas.len()).find(|&i| {
+        let mut o = app.options;
+        o.text_font = u16::try_from(i).unwrap_or(0);
+        o.text_px = 16;
+        let f = ph2d_app_pixel::texto::estilo(&o);
+        ph2d_app_pixel::texto::coloca("A", &f, (0, 0))
+            .is_some_and(|(m, _)| m.cover.contains(&u8::MAX))
+    }) else {
+        return;
+    };
+    let mut o = app.options;
+    o.text_font = u16::try_from(i).unwrap_or(0);
+    o.text_px = 16;
+    pede(&mut app, &sim, bits, PixelRequest::Options(Box::new(o)));
+    app.tool = Tool::Text;
+    app.fg = RED;
+    click(&mut app, &sim, &cam, bits, (1, 1));
+    escreve(&mut app, &sim, bits, "A");
+    let celulas = previsto(&app, &sim, bits, "A", (1, 1));
+    assert!(!celulas.is_empty(), "{}", todas[i]);
+    assert!(
+        celulas
+            .iter()
+            .any(|&c| mostrado(&mut app, &sim, bits, c) != CLEAR)
+    );
+}

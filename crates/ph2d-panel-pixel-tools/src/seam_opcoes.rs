@@ -14,6 +14,7 @@ pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
         ids::SPRAY_WIDTH => f64::from(o.spray_width),
         ids::REPLACE_TOLERANCE => f64::from(o.replace_tolerance),
         ids::WAND_TOLERANCE => f64::from(o.wand_tolerance),
+        ids::TEXT_SIZE => f64::from(o.text_px),
         _ => f64::from(o.spray_speed),
     }
 }
@@ -44,6 +45,7 @@ pub(crate) fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOption
         ids::SPRAY_SPEED => o.spray_speed = u,
         ids::REPLACE_TOLERANCE => o.replace_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         ids::WAND_TOLERANCE => o.wand_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
+        ids::TEXT_SIZE => o.text_px = u,
         _ => {}
     }
     o
@@ -63,6 +65,10 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
         ids::SYM_D2 => &mut o.sym_d2,
         ids::TILE_X => &mut o.tile_x,
         ids::TILE_Y => &mut o.tile_y,
+        ids::TEXT_BOLD => &mut o.text_bold,
+        ids::TEXT_ITALIC => &mut o.text_italic,
+        ids::TEXT_ANTIALIAS => &mut o.text_antialias,
+        ids::TEXT_HINTING => &mut o.text_hinting,
         crate::seam_formas::SHAPE_FILL => &mut o.shape_fill,
         _ => return None,
     })
@@ -85,6 +91,9 @@ pub(crate) fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptio
     match id {
         ids::GRADIENT_LINEAR => o.gradient_radial = false,
         ids::GRADIENT_RADIAL => o.gradient_radial = true,
+        // A família dá a volta à lista (`u16::MAX` = a última).
+        ids::TEXT_FONT_PREV => o.text_font = o.text_font.wrapping_sub(1),
+        ids::TEXT_FONT_NEXT => o.text_font = o.text_font.wrapping_add(1),
         ids::CONNECT_4 => o.eight = false,
         ids::CONNECT_8 => o.eight = true,
         ids::SAMPLE_LAYER => o.sample_visible = false,

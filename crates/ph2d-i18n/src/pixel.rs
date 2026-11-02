@@ -137,6 +137,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.text" => "Text",
         "panel.pixel.text.font" => "Font",
         "panel.pixel.text.size" => "Size",
+        "panel.pixel.text.font_prev" => "Previous",
+        "panel.pixel.text.font_next" => "Next",
         "panel.pixel.text.bold" => "Bold",
         "panel.pixel.text.italic" => "Italic",
         "panel.pixel.text.antialias" => "Antialias",

@@ -26,46 +26,95 @@ pub(crate) struct Caixa {
     caret: (i32, i32, i32),
 }
 
+/// A fonte resolvida: o estilo e, para uma do sistema, os bytes da face (Bold/Italic escolhem a
+/// face mais perto, `ph2d_system_fonts::library::face_bytes`).
+#[derive(Clone)]
+pub struct Fonte {
+    pub style: TextStyle,
+    dados: Option<std::sync::Arc<[u8]>>,
+}
+
+/// As fontes que o Text oferece, na ordem do índice `text_font`: as de fábrica e as do sistema
+/// (a mesma ordem do seletor do Vector).
+#[must_use]
+pub fn fontes() -> Vec<String> {
+    let fabrica = BUILTIN.iter().map(|b| b.0.to_owned());
+    let sistema = ph2d_system_fonts::library::pickable_families()
+        .into_iter()
+        .flatten();
+    fabrica.chain(sistema).collect()
+}
+
+/// O índice `i` dentro da lista (os botões Previous/Next dão a volta: `u16::MAX` = a última).
+#[must_use]
+pub fn normaliza(i: u16) -> u16 {
+    let n = u16::try_from(fontes().len()).unwrap_or(u16::MAX).max(1);
+    if i == u16::MAX { n - 1 } else { i % n }
+}
+
+/// O nome da fonte `i`.
+#[must_use]
+pub fn nome_da_fonte(i: u16) -> String {
+    fontes().into_iter().nth(usize::from(i)).unwrap_or_default()
+}
+
 /// O estilo das opções da mão.
 #[must_use]
-pub fn estilo(o: &Options) -> TextStyle {
-    let nome = BUILTIN
-        .get(usize::from(o.text_font))
-        .map_or(BUILTIN[0].0, |b| b.0);
-    TextStyle {
-        font: FontChoice::Builtin(nome.to_owned()),
+pub fn estilo(o: &Options) -> Fonte {
+    let i = usize::from(o.text_font);
+    let (font, dados) = match BUILTIN.get(i) {
+        Some(b) => (FontChoice::Builtin(b.0.to_owned()), None),
+        None => {
+            let fam = nome_da_fonte(o.text_font);
+            match ph2d_system_fonts::library::face_bytes(&fam, o.text_bold, o.text_italic) {
+                Some((bytes, idx)) => (
+                    FontChoice::System(std::path::PathBuf::from(&fam), idx),
+                    Some(std::sync::Arc::from(bytes)),
+                ),
+                None => (FontChoice::Builtin(BUILTIN[0].0.to_owned()), None),
+            }
+        }
+    };
+    let style = TextStyle {
+        font,
         px: o.text_px.max(1),
         bold: o.text_bold,
         italic: o.text_italic,
         antialias: o.text_antialias,
         hinting: o.text_hinting,
-    }
+    };
+    Fonte { style, dados }
 }
 
 /// O topo da caixa até à linha de base da 1.ª linha (`ascent` na escala do estilo) e a altura de
 /// uma linha.
-fn metricas(style: &TextStyle) -> Option<(i32, i32)> {
-    match &style.font {
-        FontChoice::Builtin(nome) => {
-            let f = ph2d_pixel_text::builtin(nome).ok()?;
-            let lh = f.line_height().max(1);
-            let s = (style.px / lh as u32).max(1) as i32;
-            Some((f.ascent * s, lh * s))
-        }
-        FontChoice::System(path, index) => {
-            let data = std::fs::read(path).ok()?;
-            let face = ph2d_pixel_text::outline::face(&data, *index).ok()?;
-            let m = ph2d_pixel_text::outline::face_metrics(&face, style.px);
+fn metricas(f: &Fonte) -> Option<(i32, i32)> {
+    match (&f.style.font, &f.dados) {
+        (FontChoice::System(_, index), Some(data)) => {
+            let face = ph2d_pixel_text::outline::face(data, *index).ok()?;
+            let m = ph2d_pixel_text::outline::face_metrics(&face, f.style.px);
             Some((m.ascent, m.ascent + m.descent))
         }
+        (FontChoice::Builtin(nome), _) => {
+            let p = ph2d_pixel_text::builtin(nome).ok()?;
+            let lh = p.line_height().max(1);
+            let s = (f.style.px / lh as u32).max(1) as i32;
+            Some((p.ascent * s, lh * s))
+        }
+        _ => None,
     }
 }
 
 /// A máscara de `texto` e onde a célula `(0, 0)` dela cai com a âncora `at`.
 #[must_use]
-pub fn coloca(texto: &str, style: &TextStyle, at: Cell) -> Option<(TextMask, Cell)> {
-    let m = ph2d_pixel_text::rasterize(texto, style).ok()?;
-    let (ascent, _) = metricas(style)?;
+pub fn coloca(texto: &str, f: &Fonte, at: Cell) -> Option<(TextMask, Cell)> {
+    let m = match (&f.style.font, &f.dados) {
+        (FontChoice::System(_, index), Some(data)) => {
+            ph2d_pixel_text::rasterize_outline(data, *index, texto, &f.style).ok()?
+        }
+        _ => ph2d_pixel_text::rasterize(texto, &f.style).ok()?,
+    };
+    let (ascent, _) = metricas(f)?;
     let o = (at.0 - m.origin_x, at.1 + ascent - m.baseline);
     Some((m, o))
 }
@@ -77,7 +126,7 @@ pub fn valores(
     s: &Sprite,
     ck: ph2d_pixel_core::CelKey,
     texto: &str,
-    style: &TextStyle,
+    style: &Fonte,
     at: Cell,
     fg: [u8; 4],
 ) -> Vec<(Cell, u32)> {

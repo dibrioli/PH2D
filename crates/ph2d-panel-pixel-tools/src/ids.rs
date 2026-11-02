@@ -110,6 +110,15 @@ pub const GRADIENT_DITHERS: [(PixelGradientDither, NodeId, &str); 4] = [
         "panel.pixel.gradient.dither_bayer8",
     ),
 ];
+/// P8: as opções do Text — a fonte (Previous/Next pela lista de fábrica + sistema), o tamanho e
+/// as quatro caixas.
+pub const TEXT_FONT_PREV: NodeId = hash_node_id("pixel.opt.text.font_prev");
+pub const TEXT_FONT_NEXT: NodeId = hash_node_id("pixel.opt.text.font_next");
+pub const TEXT_SIZE: NodeId = hash_node_id("pixel.opt.text.size");
+pub const TEXT_BOLD: NodeId = hash_node_id("pixel.opt.text.bold");
+pub const TEXT_ITALIC: NodeId = hash_node_id("pixel.opt.text.italic");
+pub const TEXT_ANTIALIAS: NodeId = hash_node_id("pixel.opt.text.antialias");
+pub const TEXT_HINTING: NodeId = hash_node_id("pixel.opt.text.hinting");
 pub const SYM_H: NodeId = hash_node_id("pixel.opt.sym_h");
 pub const SYM_V: NodeId = hash_node_id("pixel.opt.sym_v");
 pub const SYM_D1: NodeId = hash_node_id("pixel.opt.sym_d1");
@@ -124,7 +133,7 @@ pub const SAMPLE_LAYER: NodeId = hash_node_id("pixel.opt.sample_layer");
 pub const SAMPLE_VISIBLE: NodeId = hash_node_id("pixel.opt.sample_visible");
 
 /// Os campos numéricos: id, faixa `(min, max, passo)`.
-pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
+pub const NUMBERS: [(NodeId, (f64, f64, f64)); 8] = [
     (
         SIZE,
         (
@@ -139,10 +148,18 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 7] = [
     (SPRAY_SPEED, (1.0, 128.0, 1.0)), // LITERAL-PX-OK: faixa do valor no Aseprite (domínio do campo, não medida de desenho)
     (REPLACE_TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
     (WAND_TOLERANCE, (0.0, 255.0, 1.0)), // LITERAL-PX-OK: byte de cor/opacidade 0..=255 (normalização sRGB)
+    (
+        TEXT_SIZE,
+        (
+            1.0,
+            ph2d_editor_core::pixel_panel::PIXEL_MAX_TEXT_PX as f64,
+            1.0,
+        ),
+    ),
 ];
 
 /// As caixas de marcar.
-pub const CHECKS: [NodeId; 11] = [
+pub const CHECKS: [NodeId; 15] = [
     WAND_CONTIGUOUS,
     GRADIENT_RAMP,
     AUTO_SELECT_LAYER,
@@ -154,10 +171,14 @@ pub const CHECKS: [NodeId; 11] = [
     SYM_D2,
     TILE_X,
     TILE_Y,
+    TEXT_BOLD,
+    TEXT_ITALIC,
+    TEXT_ANTIALIAS,
+    TEXT_HINTING,
 ];
 
 /// Os segmentos que não são a forma.
-pub const SEGMENTS: [NodeId; 14] = [
+pub const SEGMENTS: [NodeId; 16] = [
     GRADIENT_LINEAR,
     GRADIENT_RADIAL,
     GRADIENT_DITHERS[0].1,
@@ -172,6 +193,8 @@ pub const SEGMENTS: [NodeId; 14] = [
     WAND_CONNECT_8,
     WAND_SAMPLE_LAYER,
     WAND_SAMPLE_VISIBLE,
+    TEXT_FONT_PREV,
+    TEXT_FONT_NEXT,
 ];
 
 /// **A célula `i` da paleta** — o clique esquerdo (cor de frente). A população é a paleta, sem tecto.

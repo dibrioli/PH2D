@@ -71,6 +71,10 @@ impl PixelPatternAlign {
     }
 }
 
+/// O maior tamanho do Text (o campo). O preço é a máscara `w·h` de um glifo: a 1024 px por em
+/// ≈ 1 MB por glifo; ainda por medir — é o domínio do campo, não um tecto de recurso.
+pub const PIXEL_MAX_TEXT_PX: u32 = 1024;
+
 /// O maior pincel — o `MAX_BRUSH` do `ph2d-pixel-core` (a família prova a igualdade).
 pub const PIXEL_MAX_BRUSH: u32 = 64;
 
@@ -141,7 +145,7 @@ pub struct PixelOptions {
     /// P8: as opções do Text (as omissões do Aseprite: Antialias desligado, Hinting ligado). A
     /// fonte é o índice na lista de fábrica de `ph2d_pixel_text::BUILTIN`; o tamanho é o
     /// `TextStyle::px` (fonte de pixel: múltiplo da altura da linha).
-    pub text_font: u8,
+    pub text_font: u16,
     pub text_px: u32,
     pub text_bold: bool,
     pub text_italic: bool,
@@ -395,6 +399,8 @@ pub struct PixelPanelInfo {
     pub has_clip: bool,
     /// Há selecção (o *Copy* e o *Layer via Copy/Cut* acendem).
     pub has_selection: bool,
+    /// P8: o nome da fonte do Text na mão (de fábrica ou do sistema).
+    pub text_font_name: String,
     /// As paletas gravadas com *Save Palette as Preset* (os nomes dos ficheiros, por ordem).
     pub presets: Vec<String>,
     /// A linha do tempo (o painel PIXEL TIMELINE): frames na ordem, o activo, os cels, as tags.

@@ -263,6 +263,8 @@ impl Corpo<'_> {
             tr("panel.pixel.dynamics.dither"),
             tr("panel.pixel.gradient.shape"),
             tr("panel.pixel.gradient.dither"),
+            tr("panel.pixel.text.font"),
+            tr("panel.pixel.text.size"),
         ];
         let nomes: Vec<&str> = nomes.into_iter().chain(formas::nomes()).collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
@@ -312,6 +314,9 @@ impl Corpo<'_> {
         }
         if t == PixelTool::Gradient {
             y = self.opcoes_gradiente(info, sec, y);
+        }
+        if t == PixelTool::Text {
+            y = self.opcoes_texto(info, sec, y);
         }
         if matches!(t, PixelTool::Bucket | PixelTool::Gradient) {
             y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);

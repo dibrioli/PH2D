@@ -161,7 +161,21 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// |---|---|---|---|---|---|
 /// | 300  | 165 | 295 | 286 | 322 (2 lanes) | 310 |
 /// | 1000 | 968 | 1 563 | 1 497 | 2 058 (2 lanes) | 1 800 |
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 310.0), (1000.0, 1800.0)];
+///
+/// E10 (`e8f35b5710`, a lei única de pigmento, ADR-0197): bissecção na linha (integ 02/11, ci-test, raio 300, sonda sem
+/// óleo) — `171` MiB no pai, `317` nele; nada mais mexe o pico de forma comparável. O Dabber migrou para Medium = 1 (o
+/// óleo VIVE na célula: a grade do óleo existe sem a caixa Real Oil) e a `OleoCelula` passou de 16 para 24 B. É o preço
+/// da lei aprovada pelo dono, não um rascunho por preguiçar. Medido 02/11 (ci-test, um processo por raio, 2 rodadas
+/// intercaladas com o binário do merge-base `422fec2027`, load 11–22; o RECURSO é a RAM do processo, `VmHWM`):
+///
+/// | raio | base sem óleo | base com óleo | integ (`2795e01fe4`+) sem óleo | integ com óleo | tecto |
+/// |---|---|---|---|---|---|
+/// | 300  | 158 | 278 | 222–225 | 320–325 | 340 |
+/// | 1000 | — | — | 1 140 | 1 861 | 1 950 |
+///
+/// ⚠️ O tecto deixou de separar o mutante do limiar `r` (322 MiB em 29/10 < o pico de hoje): quem o pega é a asserção
+/// `lanes == 1` (o mutante parte o traço em 2 lanes), que corre ANTES do tecto.
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 340.0), (1000.0, 1950.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

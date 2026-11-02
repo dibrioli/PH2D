@@ -304,9 +304,19 @@ fn linhas_dentro(hero: &HeroScreen, pop: Rect) -> Vec<NodeId> {
 /// a altura era cortada à região, mas as linhas pintavam e clicavam por baixo dela, por cima da
 /// arte). Cada linha que a janela alta mostra inteira no painel, na baixa ou está DENTRO dele ou
 /// não está registada; a roda leva-o até à última. O CONTROLO: a janela baixa transborda mesmo.
+///
+/// ⚠️ **Duas janelas baixas, e não uma** (integ 02/11): o F44 (UIUX, 01/11) levou Cap/Join para trás
+/// do ⚙ e o painel do traço encolheu para 377 px — a ½ janela ele CABE (o controlo «transborda»
+/// deixa de valer, e não há rolagem a medir). A 0,42 transborda pouco; a ⅓ transborda muito, e foi
+/// a ⅓ que duas linhas ficaram clicáveis fora do painel depois de rolar.
 #[test]
 fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
-    const ALTURA_BAIXA: f32 = HERO_VIEWPORT_H * 0.42;
+    for fracao in [0.42, 1.0 / 3.0] {
+        rola_dentro_da_regiao(HERO_VIEWPORT_H * fracao);
+    }
+}
+
+fn rola_dentro_da_regiao(altura_baixa: f32) {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Solid));
@@ -316,10 +326,7 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         "controlo: a ponta mora no painel do traço"
     );
 
-    // ⚠️ F44 (UIUX, 01/11): o painel do traço encolheu para 377 px e cabe em meia janela (medido) —
-    // a janela baixa é a de 0,42, onde ele transborda de novo. ⚠️ ABERTO: a ⅓ duas linhas ficam
-    // clicáveis fora do painel depois de rolar (integ 02/11) — não é a régua desta altura.
-    let (mut hero, pop, _) = painel_do_traco_aberto(&mut ts, ALTURA_BAIXA);
+    let (mut hero, pop, _) = painel_do_traco_aberto(&mut ts, altura_baixa);
     let id = ph2d_panel_vector::ids::VECTOR_BAR_STROKE;
     let region = hero.last_layout.expect("layout").popover_region();
     assert!(
@@ -334,18 +341,36 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         conteudo > visivel + 1.0,
         "controlo: a janela baixa não transborda ({conteudo} ≤ {visivel})"
     );
-    let fora_do_painel = |hero: &HeroScreen, pop: Rect| -> Vec<NodeId> {
-        let dentro = linhas_dentro(hero, pop);
-        todas
-            .iter()
-            .copied()
-            .filter(|t| !dentro.contains(t) && hero.hit_index.rect_for(*t).is_some())
-            .collect()
+    // ⚠️ **Lê TODAS as registações, na COLUNA do painel, e separa a faixa da BARRA** (integ 02/11):
+    // o mesmo controlo mora em vários sítios com o MESMO id — `VECTOR_WIDTH_NUM` e
+    // `VECTOR_STROKE_SWATCH` estão na barra de controlo, no painel docado e na régua de ferramentas
+    // (`x=320`). Rolada a linha do painel para fora de vista, o `rect_for(id)` devolvia uma dessas
+    // cópias e a régua acusava «clicável fora do painel» sobre um chip que não é do painel. ⇒ uma
+    // linha mal recortada é uma registação de um id do painel na COLUNA dele (o x do painel) acima
+    // ou abaixo dele — por cima da arte —, fora da faixa da barra (a do «Stroke ▾»).
+    let fora_do_painel_e_da_barra = |hero: &HeroScreen, pop: Rect, com_barra: bool| -> Vec<NodeId> {
+        let barra = hero
+            .hit_index
+            .rect_for(id)
+            .expect("o «Stroke ▾» está na barra");
+        let na_barra =
+            |r: &Rect| com_barra && r.y >= barra.y - 0.5 && r.y + r.h <= barra.y + barra.h + 0.5;
+        let na_coluna = |r: &Rect| r.x >= pop.x - 0.5 && r.x + r.w <= pop.x + pop.w + 0.5;
+        let no_painel = |r: &Rect| r.y >= pop.y - 0.5 && r.y + r.h <= pop.y + pop.h + 0.5;
+        let mut fora: Vec<NodeId> = hero
+            .hit_index
+            .iter_registrations()
+            .filter(|(t, r)| todas.contains(t) && na_coluna(r) && !no_painel(r) && !na_barra(r))
+            .map(|(t, _)| t)
+            .collect();
+        fora.dedup();
+        fora
     };
+    let fora_do_painel = |hero: &HeroScreen, pop: Rect| fora_do_painel_e_da_barra(hero, pop, true);
     let fora = fora_do_painel(&hero, pop);
     assert!(
         fora.is_empty(),
-        "linhas do painel do traço clicáveis FORA dele: {fora:?}"
+        "a {altura_baixa} px, linhas do painel do traço clicáveis FORA dele: {fora:?}"
     );
     // A pergunta da SHELL antes de dar a roda ao zoom do canvas (`cursor_over_hero_panel`): sobre o
     // painel do traço a resposta é ele (dono 16/10: a roda dava zoom no canvas e não rolava).
@@ -372,7 +397,7 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         },
         &arena,
     );
-    quadro_em(&mut hero, &mut ts, true, ALTURA_BAIXA);
+    quadro_em(&mut hero, &mut ts, true, altura_baixa);
     let rolado = hero.store.panel_scroll(id);
     assert!(
         (rolado - (conteudo - visivel)).abs() < 1.0,
@@ -382,7 +407,14 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
     let fora = fora_do_painel(&hero, pop);
     assert!(
         fora.is_empty(),
-        "rolado, linhas clicáveis FORA do painel: {fora:?}"
+        "a {altura_baixa} px, rolado, linhas clicáveis FORA do painel: {fora:?} (painel {pop:?})"
+    );
+    // O CONTROLO da régua: sem separar a barra ela VÊ o chip Width da barra (na coluna do painel),
+    // que partilha id com a linha do traço — senão o `fora.is_empty()` acima passaria por uma régua cega.
+    let com_a_barra = fora_do_painel_e_da_barra(&hero, pop, false);
+    assert!(
+        com_a_barra.contains(&ph2d_tool_vector::ids::VECTOR_WIDTH_NUM),
+        "controlo: sem separar a barra a régua devia ver o chip Width da barra: {com_a_barra:?}"
     );
     let cap = hero.hit_index.rect_for(VECTOR_CAP_ROUND);
     assert!(

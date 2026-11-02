@@ -110,10 +110,16 @@ impl PainterTool {
         // Take the session out so the prep below can borrow `self.paint`'s
         // Shape state alongside it (disjoint in fact, not in the borrow
         // checker's eyes); restored before the composite.
+        // J13b P8: com o compositor, o sujo que o motor traz é da água e vai pela dívida ([`super::otica_no_tique`]).
+        let agua_pela_divida =
+            !nasceu_agora && !self.paint.wetpaint.composite_pendente && self.wet_otica_fora();
         let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
         let sess = &mut taken;
         // A PORTA: o motor pode estar com o worker desde o fim do último tick.
         sess.bring_home();
+        if agua_pela_divida {
+            sess.a_agua_herdada_vai_pela_divida();
+        }
         // A razão da grade é a da SESSÃO, nunca a autorada: é ela que diz de
         // que tamanho o motor VIVO é. As duas concordam sempre (trocar a
         // razão encerra a sessão), e ler a que existe é o que mantém a

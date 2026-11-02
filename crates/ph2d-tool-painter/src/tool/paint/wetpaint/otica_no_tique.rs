@@ -58,6 +58,17 @@ impl OticaDoTique {
     }
 }
 
+impl WetSession {
+    /// J13b P8 ([doc](../../../../../../docs/Painter/Arquitetura/J13b_P8_pen_down.md)): o sujo que o motor traz do
+    /// worker é da ÁGUA (a tela de casa não tem traço por compor) e vai pela dívida, para a composição de casa do lote
+    /// levar só o que o traço muda. O sujo é uma caixa só: sem isto o traço longe da poça compunha a UNIÃO das duas.
+    pub(super) fn a_agua_herdada_vai_pela_divida(&mut self) {
+        if let Some(c) = offthread::otica::caixa_da_grade(self.engine.take_dirty(), self.grid) {
+            self.otica.deve(c);
+        }
+    }
+}
+
 impl PainterTool {
     /// O tique mostra a água pelo compositor? Ligado e de pé; desligado a meio, acaba o que está no ar.
     pub(super) fn wet_otica_fora(&self) -> bool {

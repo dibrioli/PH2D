@@ -11,11 +11,11 @@ use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use std::time::{Duration, Instant};
 
-const LADO: usize = 192;
+pub(super) const LADO: usize = 192;
 const QUADRO: Duration = Duration::from_millis(16);
 const DT_MS: f32 = 1000.0 / 60.0;
 
-fn ponto(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
+pub(super) fn ponto(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos: [x, y],
         pressure: 0.7,
@@ -24,12 +24,12 @@ fn ponto(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {
     }
 }
 
-fn tique(t: &mut PainterTool) {
+pub(super) fn tique(t: &mut PainterTool) {
     t.on_tick(DT_MS);
     let _ = t.take_preview_arc();
 }
 
-fn quadros(t: &mut PainterTool, n: usize) {
+pub(super) fn quadros(t: &mut PainterTool, n: usize) {
     for _ in 0..n {
         tique(t);
         std::thread::sleep(QUADRO);
@@ -57,7 +57,7 @@ fn traco(t: &mut PainterTool, rel: &str, cor: [u8; 3], y: f32, smooth: f32, veu:
 }
 
 /// A cena do J13 com a thread real: Dabber com Real Oil, depois Wet Drip a correr.
-fn cena(fora: bool, smooth: f32, veu: bool) -> PainterTool {
+pub(super) fn cena(fora: bool, smooth: f32, veu: bool) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -85,13 +85,13 @@ fn cena(fora: bool, smooth: f32, veu: bool) -> PainterTool {
     t
 }
 
-fn sess(t: &PainterTool) -> &WetSession {
+pub(super) fn sess(t: &PainterTool) -> &WetSession {
     t.paint.wetpaint.session.as_ref().expect("sessao")
 }
 
 /// A água PÁRA (o traço do motor aberto, como no P5) com o motor a ir para o worker, e os tiques correm até a tela
 /// mostrar o último passo e não haver nada no ar.
-fn assenta(t: &mut PainterTool) {
+pub(super) fn assenta(t: &mut PainterTool) {
     congela(t);
     let t0 = Instant::now();
     loop {
@@ -108,7 +108,7 @@ fn assenta(t: &mut PainterTool) {
     }
 }
 
-fn congela(t: &mut PainterTool) {
+pub(super) fn congela(t: &mut PainterTool) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessao");
     s.bring_home();
     s.engine.pointer_down(1.0, 1.0, None);
@@ -116,7 +116,7 @@ fn congela(t: &mut PainterTool) {
 }
 
 /// A tela de agora contra a composição de casa da tela inteira, sobre o mesmo motor.
-fn confere_com_casa(t: &mut PainterTool, onde: &str) {
+pub(super) fn confere_com_casa(t: &mut PainterTool, onde: &str) {
     let vista = t.canvas_rgba.to_vec();
     let s = t.paint.wetpaint.session.as_mut().expect("sessao");
     s.bring_home();

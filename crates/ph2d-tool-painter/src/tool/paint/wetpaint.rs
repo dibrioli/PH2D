@@ -419,6 +419,8 @@ mod otica_fora_tests; // J13b P4: a óptica pelo espelho == a tela de casa, ao b
 mod otica_no_tique; // J13b P6: o tique pede e aplica as imagens do compositor da óptica
 #[cfg(test)]
 mod otica_no_tique_tests; // J13b P6: a água pelo compositor == a tela de casa, e o fio da tela sem a óptica
+#[cfg(test)]
+mod otica_pen_down_tests; // J13b P8: o sujo da água herdado no pen-down vai pela dívida
 mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união dos dabs dele
 #[cfg(test)]
 mod por_quadro_tests;

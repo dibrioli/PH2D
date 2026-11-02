@@ -14,7 +14,10 @@ inp="$(cat)"
 agente="$(printf '%s' "$inp" | jq -r '.agent_id // empty' 2>/dev/null)"
 [ -n "$agente" ] || exit 0
 evento="$(printf '%s' "$inp" | jq -r '.hook_event_name // empty')"
-dir="${PH2D_AGENTES_DIR:-$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-parse --git-common-dir 2>/dev/null || echo /tmp)/ph2d-agentes}"
+# ⛔ `--path-format=absolute`: o `--git-common-dir` sai RELATIVO («.git») ao `-C`, e o `mkdir` abaixo
+# resolvia-o contra o cwd do hook — com a janela em `crates/` nasceu `crates/.git/ph2d-agentes`, e o
+# glob `members = ["crates/*"]` do workspace partiu TODO o cargo (02/11, line/PixelArt).
+dir="${PH2D_AGENTES_DIR:-$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || echo /tmp)/ph2d-agentes}"
 mkdir -p "$dir" 2>/dev/null
 f="$dir/$agente"
 agora="${PH2D_AGORA:-$(date +%s)}"

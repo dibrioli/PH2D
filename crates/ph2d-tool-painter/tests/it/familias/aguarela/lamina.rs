@@ -28,13 +28,8 @@ const ORACULO: &[Lamina] = &[
         1.429,
         None,
     ),
-    (
-        "Broad Nib",
-        "MyPaint classic/calligraphy",
-        40,
-        0.944,
-        Some([0.241, 1.291]),
-    ),
+    // Fora: o Broad Nib — a CAP-01 (31/10, `familias/cap01.rs`) fê-lo GIRAR com o gesto (`dab_rotation_lag`), por
+    // desenho: já não é uma lâmina fixa na tela, que é o que esta régua mede (o oráculo MyPaint era 0,944 · [0,241, 1,291]).
     (
         "Bristle Watercolor",
         "Rebelle Watercolor/Bristle Flat",

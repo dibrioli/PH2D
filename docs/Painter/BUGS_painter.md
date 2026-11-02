@@ -524,6 +524,15 @@ da rampa (`[250,220,40]`). O claro vem da rampa: o modo **RGB** interpola em luz
 cinza claro (`[0.78,0.83,0.75]` a meio de cores claras); e o azul misturado no amarelo dá cinza. OKLCH roda pela matiz
 (azul → verde → amarelo).
 
+## ⛔ Réguas retiradas na integração de 02/11 (o Rebelle deixou de ser a referência)
+
+Fonte: dono 31/10, [`project_rebelle_no_longer_the_reference_2026_10_31.md`](../../project-memory/project_rebelle_no_longer_the_reference_2026_10_31.md), reafirmado em 02/11. Critério: sai o que só mede paridade; a lei própria fica.
+
+| régua | o que saiu | o que fica |
+|---|---|---|
+| `leis_sistemicas::a_pressao_de_cada_preset_e_a_da_sua_origem` → `…_responde_na_faixa_da_mao` | a distância às rampas do Rebelle (`BARRA_DA_PRESSAO` 0,18, controlo `rampa_torta`, `erro`/`inicio`) | a mão do dono ≥ `R_MAO` 2,5 (18/10) |
+| `familias::aguarela::lamina` — linha Broad Nib do oráculo | o oráculo de lâmina FIXA (MyPaint 0,944) — a CAP-01 (31/10) fê-lo GIRAR com o gesto, por desenho | os outros presets chatos |
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

@@ -50,10 +50,10 @@ fn passo_do_escoamento(e: &mut Engine, n: usize) {
     let p = e.sim.gather_params(&e.tuning);
     let [gx, gy] = e.sim.gravity(&e.tuning);
     let g = &mut e.layers[0].grid;
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         s::rebuild_active_region(g);
     }
-    if n % 4 == 0 {
+    if n.is_multiple_of(4) {
         s::build_flow_field_jacobi(g, &p, gx, gy, false);
     } else {
         s::smooth_velocity(g, &p);
@@ -64,7 +64,7 @@ fn passo_do_escoamento(e: &mut Engine, n: usize) {
     s::apply_boundaries(g, false);
     // ⚠️ A porta do dreno vive em `project.rs` (fora da E7): aqui chama-se à mão — ver E7_escoamento.md.
     super::drena_o_anel(g);
-    if n % 3 == 0 {
+    if n.is_multiple_of(3) {
         s::project(g, &p);
         s::apply_boundaries(g, true);
     }

@@ -105,7 +105,9 @@ mod nascida {
     use std::hash::{DefaultHasher, Hash, Hasher};
     use std::sync::Mutex;
 
-    static ASSADOS: Mutex<BTreeMap<(u32, u32), ([u8; 4], u64)>> = Mutex::new(BTreeMap::new());
+    /// (largura, altura) → (o papel, o hash dos píxeis).
+    type Assados = BTreeMap<(u32, u32), ([u8; 4], u64)>;
+    static ASSADOS: Mutex<Assados> = Mutex::new(BTreeMap::new());
 
     fn hash(px: &[u8]) -> u64 {
         let mut h = DefaultHasher::new();

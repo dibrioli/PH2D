@@ -328,9 +328,9 @@ pub(super) fn pinta(
     t
 }
 
-fn lista<T: std::str::FromStr>(var: &str, omissao: &[T]) -> Vec<T>
+fn lista<T>(var: &str, omissao: &[T]) -> Vec<T>
 where
-    T: Copy,
+    T: std::str::FromStr + Copy,
 {
     std::env::var(var).ok().map_or_else(
         || omissao.to_vec(),

@@ -315,8 +315,8 @@ fn o_azul_nao_leva_o_vermelho_molhado() {
     );
 }
 
-/// ⛔ O fio escuro da borda do Wet Liner (a régua `o_liner_tem_o_fio_escuro_da_borda`, orla a 40 px > 1,12 contra o
-/// Rebelle 1,247) SAIU — dono 02/11: o Liner não quer o fio; era paridade com o Rebelle, que deixou de ser referência (31/10).
+// ⛔ O fio escuro da borda do Wet Liner (a régua `o_liner_tem_o_fio_escuro_da_borda`, orla a 40 px > 1,12 contra o
+// Rebelle 1,247) SAIU — dono 02/11: o Liner não quer o fio; era paridade com o Rebelle, que deixou de ser referência (31/10).
 
 /// O perfil ATRAVÉS do recto da cena `tamanhos` (foto A) centrado em `y`: a escuridão a 5 %, 10 %, 20 % e 2,5 % da largura, cada
 /// uma ÷ a do meio (os dois lados e as colunas x 400–600) — a régua do relatório (`exames/aguarela.md` «Motor J6»).

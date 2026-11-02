@@ -91,7 +91,7 @@ fn um_preset_gravado_na_lei_nova_nao_migra_outra_vez() {
     let mut t = PainterTool::default();
     t.set_paint_media(PaintMedia::WetPaint);
     t.wet_preset_aplicar(&e.preset);
-    let antes = t.paint.wetpaint.knobs.clone();
+    let antes = t.paint.wetpaint.knobs;
     let (prm, texturas) = t.wet_preset_capturar(&e.preset.parametros);
     assert_eq!(prm.engine.get(CHAVE_RECEITA), Some(&1.0));
     let mut u = PainterTool::default();

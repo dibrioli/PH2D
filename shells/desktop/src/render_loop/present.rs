@@ -178,7 +178,7 @@ impl crate::App {
         bgremoval_tint: &ph2d_render::LiftedInstances,
     ) -> Option<(super::present_bands::FramePlan, bool)> {
         self.present_luz();
-        let na_vista = self.na_vista_da_camera;
+        let na_vista = self.gfx.as_ref().is_some_and(|g| g.miniatura.na_vista);
         let gfx = self.gfx.as_mut()?;
         let AppGfx {
             surface,
@@ -446,7 +446,7 @@ impl crate::App {
         motion_active: bool,
         plan: &super::present_bands::FramePlan,
     ) {
-        let na_vista = self.na_vista_da_camera;
+        let na_vista = self.gfx.as_ref().is_some_and(|g| g.miniatura.na_vista);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

@@ -749,7 +749,6 @@ impl App {
             signal_smoke_done: false,
             components: crate::app_state::ComponentsShell::default(),
             game_camera_preview: false,
-            na_vista_da_camera: false,
             ui_motion_smoke_done: false,
             timescale_smoke_done: false,
             stagger_smoke_done: false,

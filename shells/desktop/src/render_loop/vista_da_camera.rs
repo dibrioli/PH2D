@@ -18,6 +18,8 @@ pub(crate) struct Miniatura {
     /// O CPU da codificação deste quadro (ms), somado ao do desenho no [`Custo`].
     pub(crate) cpu_codifica: f64,
     custo: Custo,
+    /// O quadro está a desenhar a vista da câmera (GEF 18 A6): o chrome de autoria fica de fora.
+    pub(crate) na_vista: bool,
 }
 
 /// ⭐ INSTRUMENTO `PH2D_MINIATURA_CUSTO=1`: o CPU da vista (codificar + desenhar), mínimo e mediana a cada 120
@@ -293,7 +295,7 @@ impl crate::App {
         };
         vista.troca(gfx, &mut self.motion_shell);
         let janela = vista.janela();
-        self.na_vista_da_camera = true;
+        gfx.miniatura.na_vista = true;
         let vazio = ph2d_render::LiftedInstances::default();
         if let Some((plan, banded)) =
             self.present_world_sprites(r, g, b, janela, None, motion_draws, false, &vazio, &vazio)
@@ -301,8 +303,8 @@ impl crate::App {
             self.present_flip_fx(janela, None, motion_draws, &plan);
             self.present_mundo_por_cima(janela, None, &plan, banded);
         }
-        self.na_vista_da_camera = false;
         if let Some(gfx) = self.gfx.as_mut() {
+            gfx.miniatura.na_vista = false;
             vista.cola_o_motion(gfx);
             vista.troca(gfx, &mut self.motion_shell);
             vista.retrato.copia_de(gfx.surface.gpu(), &vista.world_rt);

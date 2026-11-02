@@ -292,8 +292,6 @@ pub(crate) struct App {
     /// ⚠️ **Ligado, ele toma o pan E o zoom** — uma câmera de jogo é dona do enquadramento inteiro,
     /// e ficar só com o centro deixaria a roda a lutar contra ela todo quadro.
     pub(crate) game_camera_preview: bool,
-    /// O quadro está a desenhar a vista da câmera (GEF 18 A6): o chrome de autoria fica de fora.
-    pub(crate) na_vista_da_camera: bool,
     /// O smoke da UI viva já montou (`PH2D_UI_MOTION_SMOKE`).
     pub(crate) ui_motion_smoke_done: bool,
     /// O smoke do time-scale de seleção (joias §4) já rodou. `PH2D_TIMESCALE_SMOKE=1`.

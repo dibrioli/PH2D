@@ -16,7 +16,7 @@ impl crate::App {
         plan: &crate::render_loop::present_bands::FramePlan,
         banded: bool,
     ) {
-        let na_vista = self.na_vista_da_camera;
+        let na_vista = self.gfx.as_ref().is_some_and(|g| g.miniatura.na_vista);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

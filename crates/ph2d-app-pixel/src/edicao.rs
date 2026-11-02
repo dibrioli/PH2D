@@ -167,6 +167,9 @@ impl PixelApp {
                 return;
             }
             E::NewBrush => return self.novo_pincel(key),
+            E::Fill | E::Stroke | E::Invert | E::Despeckle | E::Outline => {
+                return crate::filtros::menu(self, key, a);
+            }
             E::Paste => {
                 let src = self
                     .clip
@@ -241,7 +244,16 @@ impl PixelApp {
                 self.clip = Some(p);
                 op
             }
-            E::Transform | E::Commit | E::Cancel | E::Paste | E::NewBrush => None,
+            E::Transform
+            | E::Commit
+            | E::Cancel
+            | E::Paste
+            | E::NewBrush
+            | E::Fill
+            | E::Stroke
+            | E::Invert
+            | E::Despeckle
+            | E::Outline => None,
         };
         self.passo(key, op);
     }
@@ -287,6 +299,9 @@ impl PixelApp {
             return;
         };
         self.assenta();
+        if crate::filtros::aplica(self, key, c) {
+            return;
+        }
         let fg = self.fg;
         let Some(doc) = self.docs.get(&key) else {
             return;
@@ -326,6 +341,10 @@ impl PixelApp {
                 height,
                 method,
             } => canvas::sprite_size(s, width, height, method_in(method)),
+            // Os filtros saíram acima (`filtros::aplica`).
+            PixelDialogChoice::Invert { .. }
+            | PixelDialogChoice::Despeckle { .. }
+            | PixelDialogChoice::Outline { .. } => None,
         };
         self.passo(key, op);
     }

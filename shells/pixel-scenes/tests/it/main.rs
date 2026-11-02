@@ -5,6 +5,7 @@ mod cena18;
 mod comum;
 mod dinamica;
 mod fecho;
+mod filtros;
 mod intervalo;
 mod paleta;
 mod pincel;

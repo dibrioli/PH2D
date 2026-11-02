@@ -439,6 +439,10 @@ pub(crate) fn key(
         (KeyCode::KeyC, true, true) => pede(app, PixelRequest::Edit(E::CopyMerged)),
         (KeyCode::KeyV, true, false) => pede(app, PixelRequest::Edit(E::Paste)),
         (KeyCode::KeyC, false, false) => pede(app, PixelRequest::Sprite(Sp::CanvasSize)),
+        // P8: Edit ▸ Fill (F), Stroke (S), FX ▸ Outline (Shift+O).
+        (KeyCode::KeyF, false, false) => pede(app, PixelRequest::Edit(E::Fill)),
+        (KeyCode::KeyS, false, false) => pede(app, PixelRequest::Edit(E::Stroke)),
+        (KeyCode::KeyO, false, true) => pede(app, PixelRequest::Edit(E::Outline)),
         _ => return None,
     })
 }

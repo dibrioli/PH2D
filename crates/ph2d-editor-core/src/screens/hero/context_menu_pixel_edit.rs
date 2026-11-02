@@ -31,6 +31,12 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::CanvasSize => 12,
         // Título · Lock Ratio · W · H · W% · H% · rótulo · 3 métodos · botões.
         PixelDialogKind::SpriteSize => 11,
+        // Título · canais · Preview · botões.
+        PixelDialogKind::Invert => 4,
+        // Título · W · H · Tiled · canais · Preview · botões.
+        PixelDialogKind::Despeckle => 7,
+        // Título · dentro/fora · matriz (2 filas) · fundo · Tiled · canais · Preview · botões.
+        PixelDialogKind::Outline => 9,
     }
 }
 
@@ -78,6 +84,9 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         PixelDialogKind::Modify(PixelModify::Border) => "pixel.edit_dialog.modify.border",
         PixelDialogKind::CanvasSize => "pixel.edit_dialog.canvas.title",
         PixelDialogKind::SpriteSize => "pixel.edit_dialog.sprite.title",
+        PixelDialogKind::Invert => "pixel.filter_dialog.invert.title",
+        PixelDialogKind::Despeckle => "pixel.filter_dialog.despeckle.title",
+        PixelDialogKind::Outline => "pixel.filter_dialog.outline.title",
     };
     y = c.label(title, y, ColorToken::Text1);
     match d.kind {
@@ -162,6 +171,9 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
                 y = c.choices(&[(id, tr(k), m == d.method)], y);
             }
         }
+        PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
+            y = filter_rows(&mut c, d, y);
+        }
     }
     // Cancel | OK — o OK à direita e acentuado (Enter), o Cancel à esquerda (Esc).
     let half = ((c.w - gap) * 0.5).max(1.0);
@@ -185,6 +197,64 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         let b = if accent { b.accent() } else { b };
         paint_button(&b, b_rect, c.scene, c.text_system, theme);
     }
+}
+
+/// As filas de um diálogo de filtro (P8), depois do título.
+fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) -> f32 {
+    let f = d.filter;
+    if d.kind == PixelDialogKind::Outline {
+        let opts: Vec<_> = ids::PIXEL_FILTER_PLACES
+            .iter()
+            .map(|(p, id, k)| (*id, tr(k), *p == f.place))
+            .collect();
+        y = c.choices(&opts, y);
+        // A matriz em duas filas de duas: «Horizontal» não cabe num quarto da caixa.
+        for par in ids::PIXEL_FILTER_MATRICES.chunks(2) {
+            let opts: Vec<_> = par
+                .iter()
+                .map(|(m, id, k)| (*id, tr(k), *m == f.matrix))
+                .collect();
+            y = c.choices(&opts, y);
+        }
+        let opts: Vec<_> = ids::PIXEL_FILTER_BACKGROUNDS
+            .iter()
+            .map(|(b, id, k)| (*id, tr(k), *b == f.background))
+            .collect();
+        y = c.choices(&opts, y);
+    }
+    if d.kind == PixelDialogKind::Despeckle {
+        y = c.field(
+            "pixel.edit_dialog.width",
+            ids::PIXEL_FILTER_MEDIAN_W,
+            Some(Unit::Px),
+            y,
+        );
+        y = c.field(
+            "pixel.edit_dialog.height",
+            ids::PIXEL_FILTER_MEDIAN_H,
+            Some(Unit::Px),
+            y,
+        );
+    }
+    if d.kind != PixelDialogKind::Invert {
+        let tiled = (
+            ids::PIXEL_FILTER_TILED,
+            tr("pixel.filter_dialog.tiled"),
+            f.tiled,
+        );
+        y = c.choices(&[tiled], y);
+    }
+    let opts: Vec<_> = ids::PIXEL_FILTER_CHANNELS
+        .iter()
+        .map(|(k, id, key)| (*id, tr(key), f.channels[*k]))
+        .collect();
+    y = c.choices(&opts, y);
+    let preview = (
+        ids::PIXEL_FILTER_PREVIEW,
+        tr("pixel.filter_dialog.preview"),
+        f.preview,
+    );
+    c.choices(&[preview], y)
 }
 
 struct Caixa<'a> {
@@ -235,11 +305,11 @@ impl Caixa<'_> {
     /// Uma fila de escolhas de largura igual: `(id, rótulo, escolhida)`.
     fn choices(&mut self, opts: &[(NodeId, &str, bool)], y: f32) -> f32 {
         let gap = Spacing::Xs.px();
-        #[expect(clippy::cast_precision_loss, reason = "≤ 3 escolhas")]
+        #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]
         let n = opts.len() as f32;
         let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
         for (i, (id, lbl, on)) in opts.iter().enumerate() {
-            #[expect(clippy::cast_precision_loss, reason = "≤ 3 escolhas")]
+            #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]
             let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H);
             paint_choice_button(
                 self.scene,

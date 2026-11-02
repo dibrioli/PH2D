@@ -192,6 +192,8 @@ pub struct PixelApp {
     pub(crate) formigas_ms: u64,
     /// O diálogo do Pixel a abrir no próximo [`crate::panel::frame`] (lá há o `hero`).
     pub(crate) abre_dialogo: Option<ph2d_editor_core::pixel_panel::PixelDialogKind>,
+    /// P8: a pré-visualização do diálogo de filtro aberto (nunca gravada).
+    pub(crate) previa_filtro: Option<crate::filtros::Previa>,
     /// Os botões de grupo da coluna: a cara de cada um e o flyout aberto.
     pub(crate) groups: ph2d_editor_core::pixel_panel::PixelGroups,
     /// O Solo em curso: `(chave, camada, a visibilidade de antes)`.
@@ -268,6 +270,7 @@ impl Default for PixelApp {
             largada: None,
             formigas_ms: 0,
             abre_dialogo: None,
+            previa_filtro: None,
             groups: ph2d_editor_core::pixel_panel::PixelGroups::default(),
             solo: None,
             paletas: None,

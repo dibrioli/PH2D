@@ -47,7 +47,11 @@ impl WidgetStore {
         let d = *d;
         let (sw, sh) = (f64::from(size.0), f64::from(size.1));
         let (plo, phi) = pct_range(size);
+        let filter_fields = self.pixel_filter_fields(kind, size);
         let fields: &[(NodeId, f64, f64, f64)] = match kind {
+            PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
+                &filter_fields
+            }
             PixelDialogKind::ColorRange => &[(
                 ids::PIXEL_EDIT_TOLERANCE,
                 f64::from(d.tolerance),
@@ -99,7 +103,13 @@ impl WidgetStore {
             ids::PIXEL_EDIT_CANCEL,
             ids::PIXEL_EDIT_LOCK,
         ];
-        for id in anchors.chain(brushes).chain(methods).chain(ends) {
+        let filters = ids::pixel_filter_buttons();
+        for id in anchors
+            .chain(brushes)
+            .chain(methods)
+            .chain(ends)
+            .chain(filters)
+        {
             let state = crate::widget::ButtonState::Normal;
             self.register(id, S::Button { state });
         }
@@ -141,6 +151,9 @@ impl WidgetStore {
     /// Um campo do diálogo mudou (commit, arrasto, stepper): prende-o à faixa dele e refaz os
     /// irmãos. `true` se o `id` é um campo do diálogo aberto.
     pub fn pixel_edit_value_changed(&mut self, id: NodeId) -> bool {
+        if self.pixel_filter_value_changed(id) {
+            return true;
+        }
         if !ids::PIXEL_EDIT_FIELDS.contains(&id) || self.number_value(id).is_none() {
             return false;
         }
@@ -192,7 +205,16 @@ impl WidgetStore {
     pub fn request_pixel_edit(&mut self) {
         let side = i64::from(NEW_SPRITE_MAX_SIDE);
         let d = self.pixel.edit;
+        if let Some(c) = self.pixel_filter_peek() {
+            self.remember_pixel_filter(c);
+            self.pixel.edit.request = Some(c);
+            self.close_context_menu();
+            return;
+        }
         let choice = match d.kind {
+            PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
+                return;
+            }
             PixelDialogKind::ColorRange => {
                 let t = self.int_field(ids::PIXEL_EDIT_TOLERANCE, 0, 255); // LITERAL-PX-OK: a tolerância é um u8
                 let tolerance = u8::try_from(t).unwrap_or(u8::MAX);

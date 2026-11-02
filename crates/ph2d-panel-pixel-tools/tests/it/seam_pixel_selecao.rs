@@ -215,12 +215,16 @@ fn sem_selecao_copia_ou_reselect_os_botoes_que_os_pedem_nao_se_pintam() {
     let escondidos = [
         s[1].0, s[2].0, s[5].0, s[6].0, s[7].0, e[0].0, e[1].0, e[2].0, e[3].0, e[11].0, e[12].0,
         e[13].0, e[14].0, e[15].0, e[16].0, sp[7].0,
+        // P8: Fill e Stroke pedem selecção.
+        e[18].0, e[19].0,
     ];
     for id in escondidos {
         assert!(p.rect(id).is_none(), "{id:?} pintado sem o que pede");
     }
     let sempre = [
         s[0].0, s[3].0, s[4].0, e[4].0, e[5].0, e[6].0, e[10].0, sp[0].0, sp[8].0,
+        // P8: Invert… e FX ▸ Outline…/Despeckle….
+        e[20].0, e[21].0, e[22].0,
     ];
     for id in sempre {
         assert!(p.rect(id).is_some(), "{id:?} devia pintar-se sempre");

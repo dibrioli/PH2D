@@ -43,5 +43,29 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.set_pixel_edit_method(m);
         return true;
     }
-    false
+    filter_click(hero, id)
+}
+
+/// P8: as escolhas dos diálogos de filtro (Preview, Tiled, canais, Outline).
+fn filter_click(hero: &mut HeroScreen, id: ph2d_a11y::NodeId) -> bool {
+    let s = &mut hero.store;
+    if id == ids::PIXEL_FILTER_PREVIEW {
+        s.toggle_pixel_filter_preview();
+    } else if id == ids::PIXEL_FILTER_TILED {
+        s.toggle_pixel_filter_tiled();
+    } else if let Some(&(k, ..)) = ids::PIXEL_FILTER_CHANNELS.iter().find(|(_, x, _)| *x == id) {
+        s.toggle_pixel_filter_channel(k);
+    } else if let Some(&(p, ..)) = ids::PIXEL_FILTER_PLACES.iter().find(|(_, x, _)| *x == id) {
+        s.set_pixel_filter_place(p);
+    } else if let Some(&(m, ..)) = ids::PIXEL_FILTER_MATRICES.iter().find(|(_, x, _)| *x == id) {
+        s.set_pixel_filter_matrix(m);
+    } else if let Some(&(b, ..)) = ids::PIXEL_FILTER_BACKGROUNDS
+        .iter()
+        .find(|(_, x, _)| *x == id)
+    {
+        s.set_pixel_filter_background(b);
+    } else {
+        return false;
+    }
+    true
 }

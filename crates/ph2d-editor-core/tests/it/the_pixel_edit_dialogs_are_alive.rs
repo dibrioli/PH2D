@@ -152,6 +152,63 @@ fn kinds() -> Vec<PixelDialogKind> {
     let mut v = vec![PixelDialogKind::ColorRange];
     v.extend(MODIFIES.map(PixelDialogKind::Modify));
     v.extend([PixelDialogKind::CanvasSize, PixelDialogKind::SpriteSize]);
+    v.extend(FILTERS);
+    v
+}
+
+/// P8: os diálogos de filtro.
+const FILTERS: [PixelDialogKind; 3] = [
+    PixelDialogKind::Invert,
+    PixelDialogKind::Despeckle,
+    PixelDialogKind::Outline,
+];
+
+/// Os controlos de um diálogo de filtro: canais e Preview sempre; Tiled fora do Invert.
+fn controlos_filtro(kind: PixelDialogKind) -> Vec<NodeId> {
+    let mut v: Vec<NodeId> = ids::PIXEL_FILTER_CHANNELS
+        .iter()
+        .map(|(_, id, _)| *id)
+        .collect();
+    v.push(ids::PIXEL_FILTER_PREVIEW);
+    if kind != PixelDialogKind::Invert {
+        v.push(ids::PIXEL_FILTER_TILED);
+    }
+    if kind == PixelDialogKind::Despeckle {
+        v.extend([ids::PIXEL_FILTER_MEDIAN_W, ids::PIXEL_FILTER_MEDIAN_H]);
+    }
+    if kind == PixelDialogKind::Outline {
+        v.extend(ids::PIXEL_FILTER_PLACES.iter().map(|(_, id, _)| *id));
+        v.extend(ids::PIXEL_FILTER_MATRICES.iter().map(|(_, id, _)| *id));
+        v.extend(ids::PIXEL_FILTER_BACKGROUNDS.iter().map(|(_, id, _)| *id));
+    }
+    v
+}
+
+/// Os rótulos de um diálogo de filtro.
+fn rotulos_filtro(kind: PixelDialogKind) -> Vec<&'static str> {
+    let mut v: Vec<&str> = ids::PIXEL_FILTER_CHANNELS
+        .iter()
+        .map(|(_, _, k)| *k)
+        .collect();
+    v.push("pixel.filter_dialog.preview");
+    match kind {
+        PixelDialogKind::Invert => v.push("pixel.filter_dialog.invert.title"),
+        PixelDialogKind::Despeckle => v.extend([
+            "pixel.filter_dialog.despeckle.title",
+            "pixel.filter_dialog.tiled",
+            "pixel.edit_dialog.width",
+            "pixel.edit_dialog.height",
+        ]),
+        _ => {
+            v.extend([
+                "pixel.filter_dialog.outline.title",
+                "pixel.filter_dialog.tiled",
+            ]);
+            v.extend(ids::PIXEL_FILTER_PLACES.iter().map(|(_, _, k)| *k));
+            v.extend(ids::PIXEL_FILTER_MATRICES.iter().map(|(_, _, k)| *k));
+            v.extend(ids::PIXEL_FILTER_BACKGROUNDS.iter().map(|(_, _, k)| *k));
+        }
+    }
     v
 }
 
@@ -179,6 +236,7 @@ fn controlos(kind: PixelDialogKind) -> Vec<NodeId> {
             ]);
             v.extend(ids::PIXEL_EDIT_METHODS.iter().map(|(_, id, _)| *id));
         }
+        k => v.extend(controlos_filtro(k)),
     }
     v
 }
@@ -470,6 +528,7 @@ fn rotulos(kind: PixelDialogKind) -> Vec<&'static str> {
             ]);
             v.extend(ids::PIXEL_EDIT_METHODS.iter().map(|(_, _, k)| *k));
         }
+        k => v.extend(rotulos_filtro(k)),
     }
     v
 }
@@ -537,4 +596,72 @@ fn the_modify_field_caps_at_100_truncates_and_ignores_a_percent_sign_like_the_tr
             assert_eq!(got, n, "{kind:?} «{texto}»");
         }
     }
+}
+
+/// ⭐ P8: o diálogo de filtro pelo clique real — cada escolha muda o pedido que a família
+/// pré-visualiza (`pixel_filter_preview`), o Preview desligado larga-o, o OK arma o MESMO pedido e
+/// fecha, e a janela da mediana fica lembrada.
+#[test]
+fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
+    use ph2d_editor_core::pixel_panel::{PixelOutlineBg, PixelOutlineMatrix, PixelOutlinePlace};
+    let mut e = Ecra::aberto(PixelDialogKind::Outline, (16, 16));
+    let antes = e
+        .hero
+        .store
+        .pixel_filter_preview()
+        .expect("Preview ligado por omissão");
+    e.carrega(ids::PIXEL_FILTER_PLACES[1].1);
+    e.carrega(ids::PIXEL_FILTER_MATRICES[1].1);
+    e.carrega(ids::PIXEL_FILTER_BACKGROUNDS[1].1);
+    e.carrega(ids::PIXEL_FILTER_TILED);
+    e.carrega(ids::PIXEL_FILTER_CHANNELS[3].1);
+    let quer = PixelDialogChoice::Outline {
+        place: PixelOutlinePlace::Inside,
+        matrix: PixelOutlineMatrix::Square,
+        background: PixelOutlineBg::BackgroundColor,
+        tiled: true,
+        channels: [true, true, true, false],
+    };
+    assert_ne!(antes, quer);
+    assert_eq!(e.hero.store.pixel_filter_preview(), Some(quer));
+    e.carrega(ids::PIXEL_FILTER_PREVIEW);
+    assert_eq!(
+        e.hero.store.pixel_filter_preview(),
+        None,
+        "Preview desligado"
+    );
+    e.carrega(ids::PIXEL_FILTER_PREVIEW);
+    e.carrega(ids::PIXEL_EDIT_OK);
+    assert!(!e.aberto_ainda());
+    assert_eq!(e.pedido(), Some(quer));
+    assert_eq!(
+        e.hero.store.pixel_filter_preview(),
+        None,
+        "fechado não pré-visualiza"
+    );
+
+    let mut e = Ecra::aberto(PixelDialogKind::Despeckle, (16, 16));
+    assert_eq!(e.valor(ids::PIXEL_FILTER_MEDIAN_W), 3.0, "Aseprite: 3×3");
+    e.escreve(ids::PIXEL_FILTER_MEDIAN_W, "5");
+    e.escreve(ids::PIXEL_FILTER_MEDIAN_H, "99");
+    e.tecla(KEY_ENTER, false);
+    assert!(
+        matches!(
+            e.pedido(),
+            Some(PixelDialogChoice::Despeckle {
+                width: 5,
+                height: 16,
+                ..
+            })
+        ),
+        "a janela presa ao lado do sprite"
+    );
+    e.hero
+        .store
+        .open_pixel_edit_dialog(PixelDialogKind::Despeckle, (16, 16));
+    assert_eq!(
+        e.valor(ids::PIXEL_FILTER_MEDIAN_W),
+        5.0,
+        "lembrada na sessão"
+    );
 }

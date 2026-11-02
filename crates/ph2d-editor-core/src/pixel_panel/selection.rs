@@ -111,6 +111,13 @@ pub enum PixelEditAction {
     Cancel,
     /// `Ctrl+B` (Edit ▸ New Brush): a selecção vira o pincel de padrão; sem selecção, arrastar define-o.
     NewBrush,
+    /// P8: `F` pinta a selecção com a cor de frente; `S` a borda interna dela (sem diálogo).
+    Fill,
+    Stroke,
+    /// P8: os diálogos de filtro (Preview · OK · Cancel). Outline = `Shift+O`.
+    Invert,
+    Despeckle,
+    Outline,
 }
 
 /// O menu Sprite.
@@ -203,6 +210,18 @@ pub enum PixelDialogKind {
     Modify(PixelModify),
     CanvasSize,
     SpriteSize,
+    /// P8: os filtros (o canvas pré-visualiza enquanto abertos).
+    Invert,
+    Despeckle,
+    Outline,
+}
+
+impl PixelDialogKind {
+    /// Um diálogo de filtro (Preview, Target, OK = UM passo)?
+    #[must_use]
+    pub const fn is_filter(self) -> bool {
+        matches!(self, Self::Invert | Self::Despeckle | Self::Outline)
+    }
 }
 
 /// O OK de um diálogo do Pixel — o pedido que a família drena.
@@ -228,6 +247,23 @@ pub enum PixelDialogChoice {
         height: u32,
         method: PixelSizeMethod,
     },
+    Invert {
+        channels: super::PixelChannels,
+    },
+    Despeckle {
+        width: u32,
+        height: u32,
+        tiled: bool,
+        channels: super::PixelChannels,
+    },
+    /// A cor do contorno é a de frente (a família sabe-a).
+    Outline {
+        place: super::PixelOutlinePlace,
+        matrix: super::PixelOutlineMatrix,
+        background: super::PixelOutlineBg,
+        tiled: bool,
+        channels: super::PixelChannels,
+    },
 }
 
 /// O estado do diálogo do Pixel aberto no `WidgetStore`: qual é, o tamanho do sprite ao abrir, as
@@ -246,6 +282,8 @@ pub struct PixelEditDialog {
     pub tolerance: u8,
     /// Modify: o último `n` (píxeis) da sessão.
     pub modify_n: u32,
+    /// P8: as escolhas dos diálogos de filtro.
+    pub filter: super::PixelFilterDialog,
     pub(crate) request: Option<PixelDialogChoice>,
 }
 
@@ -262,6 +300,7 @@ impl Default for PixelEditDialog {
             lock_ratio: true,
             tolerance: 0,
             modify_n: 1,
+            filter: super::PixelFilterDialog::default(),
             request: None,
         }
     }

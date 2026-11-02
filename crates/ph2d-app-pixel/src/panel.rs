@@ -116,6 +116,7 @@ pub fn frame(
         let size = (doc.sprite.width(), doc.sprite.height());
         hero.store.open_pixel_edit_dialog(kind, size);
     }
+    crate::filtros::acompanha(app, &hero.store);
     app.sincroniza_edicao(&mut hero.store, app.chave);
     if let Some(key) = app.chave {
         app.acompanha_espaco(key);

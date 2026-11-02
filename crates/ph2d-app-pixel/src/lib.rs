@@ -14,6 +14,7 @@ pub mod camadas;
 pub mod compose;
 pub mod draw;
 pub mod edicao;
+mod filtros;
 pub mod formas;
 mod frame;
 mod gesture;

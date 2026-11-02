@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 18] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 23] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -223,6 +223,32 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 18] = [
         hash_node_id("pixel.edit.new_brush"),
         PixelRequest::Edit(E::NewBrush),
         "panel.pixel.edit.new_brush",
+    ),
+    // P8 (18..=22): Fill, Stroke, Invert…, FX ▸ Outline…, FX ▸ Despeckle….
+    (
+        hash_node_id("pixel.edit.fill"),
+        PixelRequest::Edit(E::Fill),
+        "panel.pixel.edit.fill",
+    ),
+    (
+        hash_node_id("pixel.edit.stroke"),
+        PixelRequest::Edit(E::Stroke),
+        "panel.pixel.edit.stroke",
+    ),
+    (
+        hash_node_id("pixel.edit.invert"),
+        PixelRequest::Edit(E::Invert),
+        "panel.pixel.edit.invert",
+    ),
+    (
+        hash_node_id("pixel.edit.outline"),
+        PixelRequest::Edit(E::Outline),
+        "panel.pixel.edit.outline",
+    ),
+    (
+        hash_node_id("pixel.edit.despeckle"),
+        PixelRequest::Edit(E::Despeckle),
+        "panel.pixel.edit.despeckle",
     ),
 ];
 

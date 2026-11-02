@@ -4,6 +4,7 @@
 
 mod brushes;
 mod dynamics;
+mod filters;
 mod layers;
 mod new_sprite;
 mod selection;
@@ -18,6 +19,7 @@ pub use shapes::{
 
 pub use brushes::*;
 pub use dynamics::*;
+pub use filters::*;
 pub use layers::*;
 pub use new_sprite::*;
 pub use selection::*;

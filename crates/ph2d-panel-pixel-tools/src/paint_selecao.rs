@@ -171,6 +171,8 @@ impl Corpo<'_> {
         if sel {
             y = self.botoes(&[par(e, 0), par(e, 1)], y);
             y = self.botoes(&[par(e, 2)], y);
+            // P8: Fill e Stroke pedem selecção (o Aseprite desliga-os sem ela).
+            y = self.botoes(&[par(e, 18), par(e, 19)], y);
         }
         if info.has_clip {
             y = self.botoes(&[par(e, 3)], y);
@@ -184,7 +186,10 @@ impl Corpo<'_> {
             y = self.botoes(&[par(e, 11), par(e, 12)], y);
             y = self.botoes(&[par(e, 13), par(e, 14)], y);
         }
-        y
+        // P8: Invert… e o grupo FX ▸ (sem widget de submenu: o grupo é uma secção).
+        y = self.botoes(&[par(e, 20)], y);
+        y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
+        self.botoes(&[par(e, 21), par(e, 22)], y)
     }
 
     /// Os botões do menu Sprite (o Crop pede selecção).

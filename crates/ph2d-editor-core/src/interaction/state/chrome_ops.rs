@@ -27,6 +27,8 @@ mod color_mode_ops;
 mod new_sprite_ops;
 #[path = "pixel_edit_ops.rs"]
 mod pixel_edit_ops;
+#[path = "pixel_filter_ops.rs"]
+mod pixel_filter_ops;
 
 impl WidgetStore {
     /// Drain the pending clipboard-copy text (set by a Cmd+C / Cmd+X

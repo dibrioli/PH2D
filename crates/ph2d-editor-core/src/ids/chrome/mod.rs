@@ -40,6 +40,8 @@ mod physics;
 mod pixel;
 /// Os quatro diálogos do Pixel P6 (Color Range, Modify, Canvas Size, Sprite Size).
 mod pixel_edit;
+/// Os diálogos de filtro do Pixel P8 (Invert, Despeckle, Outline).
+mod pixel_filter;
 /// **Os ids da BARRA DO MODO de edição de receita** — chrome do canvas, não de um painel.
 mod prefab;
 mod rail;
@@ -73,6 +75,7 @@ pub use painter_fill::*;
 pub use physics::*;
 pub use pixel::*;
 pub use pixel_edit::*;
+pub use pixel_filter::*;
 pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;

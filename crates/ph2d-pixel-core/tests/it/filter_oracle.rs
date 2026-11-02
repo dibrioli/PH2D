@@ -1,7 +1,7 @@
 //! **Os filtros contra o Aseprite Trial** (P8_plano §5, `trial_efeitos_menus.py`): Despeckle
 //! (`oracle_trial_despeckle.json`) e Invert (`oracle_trial_adjust.json`), célula a célula.
 
-use ph2d_pixel_core::filter::adjust::Invert;
+use ph2d_pixel_core::filter::adjust::{BrightnessContrast, Curve, HueMode, HueSaturation, Invert};
 use ph2d_pixel_core::filter::median::Median;
 use ph2d_pixel_core::filter::{Edge, Filter, Source};
 use serde_json::Value;
@@ -105,4 +105,92 @@ fn invert_is_255_minus_each_colour_channel() {
             );
         }
     }
+}
+
+fn lut_of(f: &dyn Filter) -> Vec<u8> {
+    let src = Source::from_rgba(256, 1, (0..=255u8).map(|v| [v, v, v, 255]).collect());
+    (0..256).map(|x| f.at(&src, x, 0)[0]).collect()
+}
+
+fn lut_from(v: &Value) -> Vec<u8> {
+    let v = match v {
+        Value::String(s) => serde_json::from_str(s).expect("lut"),
+        v => v.clone(),
+    };
+    v.as_array()
+        .expect("lut")
+        .iter()
+        .map(|n| n.as_u64().expect("u8") as u8)
+        .collect()
+}
+
+#[test]
+fn brightness_contrast_gives_the_trials_tables() {
+    let d = fixture(include_str!("../fixtures/oracle_trial_adjust.json"));
+    for (name, lut) in d["brightness_contrast"]["cases"]
+        .as_object()
+        .expect("casos")
+    {
+        let (b, c) = name.split_once(',').expect("b,c");
+        let f = BrightnessContrast::new(b.parse().expect("b"), c.parse().expect("c"));
+        assert_eq!(lut_of(&f), lut_from(lut), "B/C {name}");
+    }
+}
+
+#[test]
+fn color_curve_is_straight_lines_between_the_points() {
+    let d = fixture(include_str!("../fixtures/oracle_trial_adjust.json"));
+    let cc = &d["color_curve"];
+    assert_eq!(
+        lut_of(&Curve::new(&[(126, 129)])),
+        lut_from(&cc["lut_point_128_130"])
+    );
+    assert_eq!(
+        lut_of(&Curve::new(&[(126, 192)])),
+        lut_from(&cc["lut_point_128_192"])
+    );
+}
+
+#[test]
+fn hue_saturation_matches_the_trial_except_on_exact_half_ties() {
+    let d = fixture(include_str!("../fixtures/oracle_trial_adjust.json"));
+    let input = hex_rows(&d["input"]["in"]);
+    let mut ties = 0;
+    for (name, rows) in d["hue_saturation"]["cases"].as_object().expect("casos") {
+        let (mode, v) = name.split_once(':').expect("modo");
+        let v: Vec<i32> = v.split(',').map(|n| n.parse().expect("n")).collect();
+        let f = HueSaturation {
+            mode: match mode {
+                "HSL" => HueMode::Hsl,
+                "HSV" => HueMode::Hsv,
+                "HSL+" => HueMode::HslPlus,
+                _ => HueMode::HsvPlus,
+            },
+            hue: v[0],
+            saturation: v[1],
+            lightness: v[2],
+        };
+        for (y, row) in hex_rows(rows).iter().enumerate() {
+            for (x, want) in row.iter().enumerate() {
+                let c = input[y][x];
+                let (got, raw) = (f.rgb(c), f.scaled(c));
+                for k in 0..3 {
+                    if got[k] == want[k] {
+                        continue;
+                    }
+                    let tie = ((raw[k] - raw[k].floor()) - 0.5).abs() < 1e-6;
+                    assert!(
+                        tie && got[k].abs_diff(want[k]) == 1,
+                        "{name} ({x},{y}) canal {k}: {got:?} × {want:?} (cru {:.6})",
+                        raw[k]
+                    );
+                    ties += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        ties > 0,
+        "a fixtura tem empates: o desempate do Trial é ruído de vírgula flutuante"
+    );
 }

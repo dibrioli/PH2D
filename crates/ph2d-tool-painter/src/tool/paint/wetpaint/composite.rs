@@ -242,6 +242,12 @@ impl PainterTool {
         let campo = oleo.zip(guardado.or(proprio.as_ref()));
         #[cfg(test)]
         contagem::campo(t_campo.elapsed());
+        #[cfg(test)]
+        super::fps_j13_tests::campo_bit::gancho(
+            campo.as_ref().map(|(o, c)| (o, *c)),
+            (cx0, cy0, cx1, cy1),
+            (gw, gh),
+        );
         if campo.is_some() && sess.sombra.len() != gw * gh {
             sess.sombra = vec![0u8; gw * gh];
         }
@@ -644,6 +650,8 @@ impl PainterTool {
         // sem declaração, todos daqui). Em DEBUG o `split` confere que a janela verdadeira cabe nesta.
         self.declare_wrote(Some(region));
         self.mark_dirty(region);
+        #[cfg(test)]
+        super::fps_j13_tests::gancho(self, (cx0, cy0, cx1, cy1), (px0, py0, px1, py1));
         if let Some(antes) = agua_antes {
             self.undo
                 .marca

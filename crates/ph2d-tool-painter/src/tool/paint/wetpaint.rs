@@ -466,6 +466,8 @@ mod agua_no_oleo_regua_tests; // J11: a água × o óleo seco (atrito do leito, 
 #[cfg(test)]
 mod agua_no_oleo_tests; // sonda J11: a água × o óleo seco (velocidade, dissolver, pixelado)
 #[cfg(test)]
+mod fps_j13_tests; // sonda J13: o FPS do Real Oil — o que a janela do composite refaz e o que mudou
+#[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
 mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume

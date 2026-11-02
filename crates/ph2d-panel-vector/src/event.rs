@@ -211,6 +211,10 @@ pub(crate) fn apply_event(
         }
         crate::bars::close_list_on_pick(host.store_mut(), id);
     }
+    // ⭐ O Offset Path (quina, furos, `Result`, `Miter limit`, `Remove`) — panel-local.
+    if let Some(consumed) = expand::expand_event(host, ev) {
+        return EventOutcome::from_bool(consumed);
+    }
     let consumed = match ev {
         // **Os sliders cujo TRACK vai cru para o tool** — Width e os dois knobs do lápis. Um braço
         // só porque a pergunta é literalmente a mesma (*qual é o novo track deste slider?*); o que
@@ -329,10 +333,6 @@ pub(crate) fn apply_event(
         // pergunta *"qual dos dois?"* tem de ser feita **uma vez, num sítio** — dois braços
         // vizinhos com a mesma forma são onde o segundo envelhece.
         WidgetEvent::Click(id) if is_blend_option(id) => blend_option(host, id),
-        // **A junção do Offset Path** — panel-local, ver [`pick_expand_join`].
-        WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
-        // **O lado do Offset Path** (Outer/Inner/Both) — panel-local, ver [`pick_expand_side`].
-        WidgetEvent::Click(id) if expand_side_index(id).is_some() => pick_expand_side(host, id),
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic
         // tool channel. Mode clicks land on `VectorTool::handle_panel_event`
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
@@ -545,7 +545,6 @@ mod symmetry;
 /// onde estava, e ficar no mesmo sítio não é encolher.*
 #[path = "event_expand.rs"]
 mod expand;
-use expand::{expand_join_index, expand_side_index, pick_expand_join, pick_expand_side};
 
 /// **O COMMIT do campo de nome de um sinal** (item 4 do estudo dos contêineres) — extraído do
 /// [`apply_event`] pelo teto de 200 LOC por função.

@@ -1,11 +1,10 @@
-//! A seção **Expand** do painel Vector — irmã de `paint_sections.rs` pelo teto de 600 LOC.
-//!
-//! Os três comandos que convertem estilo em GEOMETRIA: o traço vira forma (Outline Stroke), a
-//! borda anda (Offset Path), e a largura varia ao longo do caminho (Power Stroke). São irmãos
-//! da Boolean logo acima — destrutivos, sobre a seleção, pelo mesmo motor
-//! (`ph2d_vec_boolean::expand`).
+//! A secção **Offset Path** do painel Vector (o id é o antigo `EXPAND`) e a irmã **Convert** —
+//! irmãs de `paint_sections.rs` pelo teto de 600 LOC. O perfil de largura (Power Stroke) mora no
+//! «Stroke settings» desde 02/11; as linhas dele continuam neste ficheiro.
 
 use super::BodyCtx;
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::widget::ButtonKind;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::params;
@@ -45,10 +44,12 @@ fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
 }
 
 impl BodyCtx<'_> {
-    /// Seção **EXPAND** — Outline Stroke (o traço vira forma) + Offset Path (a borda anda).
-    ///
-    /// Irmã da Boolean logo acima: os dois são comandos DESTRUTIVOS sobre a seleção, pelo
-    /// mesmo motor. O `Join` aqui é o do OFFSET (a quina que ele produz), nunca o do traço.
+    /// ⭐ Secção **Offset Path** no padrão do Inspector (dono 02/11: «faça tudo como no inspector»):
+    /// `Distance (px)` com sinal (negativo encolhe), `Corners` em glifos, `Miter limit` só no Miter,
+    /// `Holes` e `Result`; `Apply`/`Remove` só com um offset VIVO na seleção — o que se vê antes
+    /// deles é prévia. ⛔ O antigo `Side · Outer/Inner/Both` mentia: `Inner` movia só os FUROS, e
+    /// numa forma sem furo não fazia nada. Comparação com os outros apps: `docs/UI_New_and_Simple/`
+    /// `F48_offset_path_como_no_inspector.md`.
     pub(crate) fn expand_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
             ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
@@ -58,91 +59,106 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        let track = self
-            .store
-            .slider(crate::ids::VECTOR_EXPAND_OFFSET)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| params::offset_frac_to_slider(params::OFFSET_DEFAULT_FRAC));
-        // O chip mostra PERCENTUAL do tamanho da forma (−100 = morte garantida, +100 =
-        // dobrar) — o mundo-d é `fração × vec_expand::offset_scale` na shell. Percentual
-        // porque o mapa do store é estático: um rótulo em unidades de mundo mentiria
-        // sempre que a seleção mudasse de tamanho.
-        let pct = params::slider_to_offset_frac(track) * 100.0; // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
-        y = self.slider_row(
+        let k = crate::state::offset_knobs();
+        y = self.lone_number_row(
             tr("panel.vector.expand.offset"),
             crate::ids::VECTOR_EXPAND_OFFSET,
-            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
-            track,
-            pct,
-            &format!("{pct:.0}"),
             y,
         );
-        // **Qual contorno o offset move** — num compound (forma com furos), a borda de fora e
-        // os furos são coisas separadas; é o que faz a quina aparecer no furo (não só no
-        // externo). Num caminho sem furo os três dão o mesmo (só há o contorno de fora).
-        let side = crate::state::expand_side();
-        y = self.segmented3(
-            tr("panel.vector.expand.side"),
-            [
-                (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
-                    tr("panel.vector.expand.outer"),
-                    side == 0,
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER,
-                    tr("panel.vector.expand.inner"),
-                    side == 1,
-                ),
+        y = self.with_rows(|rc| {
+            rc.icon_segmented(
+                tr("panel.vector.expand.corner"),
+                &[
+                    (
+                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
+                        IconId::JoinMiter,
+                        k.join == 0,
+                    ),
+                    (
+                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
+                        IconId::JoinRound,
+                        k.join == 1,
+                    ),
+                    (
+                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
+                        IconId::JoinBevel,
+                        k.join == 2,
+                    ),
+                ],
+                y,
+            )
+        });
+        if k.join == 0 {
+            y = self.lone_number_row(
+                tr("panel.vector.expand.miter_limit"),
+                crate::ids::VECTOR_EXPAND_MITER,
+                y,
+            );
+        }
+        y = self.segmented(
+            tr("panel.vector.expand.holes"),
+            &[
                 (
                     ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
-                    tr("panel.vector.expand.both"),
-                    side == 2,
+                    tr("panel.vector.expand.holes_move"),
+                    k.side == 2,
+                ),
+                (
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
+                    tr("panel.vector.expand.holes_keep"),
+                    k.side == 0,
                 ),
             ],
             y,
         );
-        // ⚠️ O rótulo é **"Corner"**, não "Join": a seção Stroke, no MESMO painel, tem uma
-        // fileira "Join · Miter/Round/Bevel" IDÊNTICA (a quina do traço) — duas fileiras
-        // gêmeas para perguntas diferentes é como o clique do artista cai na errada e
-        // "não faz nada" (metade do report de 2026-07-20). "Corner" nomeia o que o
-        // artista VÊ: a quina do resultado do offset (vocabulário dos Live Corners).
-        let join = crate::state::expand_join();
-        y = self.segmented3(
-            tr("panel.vector.expand.corner"),
-            [
+        y = self.segmented(
+            tr("panel.vector.expand.result"),
+            &[
                 (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
-                    tr("panel.vector.expand.miter"),
-                    join == 0,
+                    crate::ids::VECTOR_EXPAND_RESULT_BEHIND,
+                    tr("panel.vector.expand.behind"),
+                    k.behind,
                 ),
                 (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
-                    tr("panel.vector.expand.round"),
-                    join == 1,
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
-                    tr("panel.vector.expand.bevel"),
-                    join == 2,
+                    crate::ids::VECTOR_EXPAND_RESULT_REPLACE,
+                    tr("panel.vector.expand.replace"),
+                    !k.behind,
                 ),
             ],
             y,
         );
-        // "Apply Offset", não "Offset Path" (Enio 2026-07-21): os chips de Corner/Side
-        // são PREVIEW do offset recém-solto — quem consolida a curva é ESTE botão (ou
-        // Convert to Curves, ou qualquer edição seguinte). O nome do botão é a promessa.
-        y = self.action_button(
-            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
-            tr("panel.vector.expand.apply_offset"),
+        if crate::state::offset_live_on() {
+            y = self.action_button_kind(
+                ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
+                tr("panel.vector.expand.apply"),
+                ButtonKind::Accent,
+                y,
+            );
+            y = self.action_button(
+                crate::ids::VECTOR_EXPAND_REMOVE,
+                tr("panel.vector.expand.remove"),
+                y,
+            );
+        }
+        y
+    }
+
+    /// ⭐ A secção **Convert** — o traço vira forma (o *Outline Stroke* do Figma e do Illustrator,
+    /// também em `Ctrl+Alt+O`).
+    pub(crate) fn convert_section(&mut self, y: f32) -> f32 {
+        let (y, collapsed) = self.section_header(
+            crate::ids::VECTOR_SECTION_CONVERT,
+            tr("panel.vector.section.convert"),
             y,
         );
-        y = self.action_button(
+        if collapsed {
+            return y;
+        }
+        self.action_button(
             ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
             tr("panel.vector.expand.outline_stroke"),
             y,
-        );
-        self.power_stroke_rows(y)
+        )
     }
 
     /// As quatro linhas do **perfil de largura** + o botão que o CONSOLIDA.
@@ -155,7 +171,7 @@ impl BodyCtx<'_> {
     /// ⚠️ **Desde o ADR-0148 estes quatro sliders AUTORAM** (não são mais parâmetros de um
     /// comando): arrastá-los arma um `VecStrokeProfile` na seleção e a fita aparece na hora,
     /// como os chips de Corner/Side do Offset. O botão materializa.
-    fn power_stroke_rows(&mut self, y: f32) -> f32 {
+    pub(crate) fn power_stroke_rows(&mut self, y: f32) -> f32 {
         // Os ids são tipados como `ph2d_a11y::NodeId` porque é o que eles de fato são: cada um
         // vira um nó de AccessKit lá dentro (`slider_row` → `paint_slider_with_chip…`,
         // `action_button` → `paint_button`, que é quem emite). A seção **delega** o a11y aos
@@ -165,7 +181,7 @@ impl BodyCtx<'_> {
         // daqui — perguntar duas vezes é como a linha acesa passaria a discordar do knob que
         // está logo abaixo dela.
         let tracks = live_tracks(self.store);
-        let mut y = self.width_presets(&tracks, y);
+        let mut y = y;
         for (i, (label, slider, chip)) in SLIDERS.iter().enumerate() {
             // O `W Pos` já É a fração de arco (domínio `[0,1]`); os outros três são
             // multiplicadores numa faixa que o `params` remapeia.
@@ -193,24 +209,6 @@ impl BodyCtx<'_> {
             tr("panel.vector.expand.apply_power_stroke"),
             y,
         )
-    }
-
-    /// **O catálogo de perfis** (W2b) — as formas que se escolhem por NOME, acima dos quatro
-    /// sliders que as refinam. É o *Width Profile* do Illustrator: escolhe-se a curva e depois,
-    /// se for o caso, mexe-se nos números.
-    ///
-    /// ⚠️ **A lista vem da TABELA** (`ph2d_stroke_width::PRESETS`), nunca escrita aqui: um perfil
-    /// novo é uma linha lá e **zero** mudança neste arquivo — o idioma dos presets de gaiola do
-    /// envelope, e o da rack de áudio que se popula de `KINDS`. O `MAX_WIDTH_PRESETS` é só o teto
-    /// que o `populate` registra de uma vez.
-    ///
-    /// ⚠️ **A linha ACESA é DERIVADA, nunca guardada** — não há campo "preset corrente" em lugar
-    /// nenhum, e é isso que mantém a fileira honesta depois de o artista arrastar um slider ou uma
-    /// alça do Width Tool: aí nenhuma acende, que é a verdade (a forma não é mais nenhuma delas).
-    /// A comparação é em **TRILHO** e exata; o porquê de não poder ser em multiplicador está no
-    /// doc de [`params::preset_tracks`].
-    fn width_presets(&mut self, tracks: &[f32; 4], y: f32) -> f32 {
-        self.width_preset_row(params::active_preset(tracks), y)
     }
 
     /// A fileira do catálogo com a linha `active` acesa. O Expand acende a dos quatro sliders (o

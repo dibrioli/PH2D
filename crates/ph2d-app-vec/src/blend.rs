@@ -1,29 +1,6 @@
 //! **Blend** — os passos intermediários entre duas formas (o Blend do Illustrator).
 //!
-//! O motor é a [`ph2d_vec_blend`]; aqui mora só a **política**: quem são as duas formas, o que
-//! acontece com elas, e o que a seleção vira.
-//!
-//! # A sessão existe por causa do ESCAPE, e o escape existe porque o automático erra
-//!
-//! A correspondência entre duas formas — *que ponto de A vira que ponto de B?* — é o problema
-//! que **ninguém** resolveu (`docs/Vector Module/20_*` §1.3: o GSAP tem `shapeIndex` manual **e**
-//! uma ferramenta de debug que admite o erro; o Corel pede pro usuário clicar um nó em cada
-//! forma). A correspondência é 100% AUTOMÁTICA — o motor escolhe o sentido de menor custo e o
-//! melhor casamento de quinas sozinho.
-//!
-//! Houve **dois** botões de escape manual, **Rotate Match** e **Reverse Match**, e os dois foram
-//! removidos (2026-07-14) por serem bugs de design: o Reverse invertia o winding e colapsava a
-//! forma; o Rotate rodava a correspondência às cegas e produzia torção. **O ajuste, no modelo vivo,
-//! é editar as formas-fonte** — girar/mover/escalar uma adapta os intermediários —, não um botão.
-//!
-//! > ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). O **painel já NÃO o
-//! > usa** — o botão "Blend" cria o **Blend Object VIVO** (ADR-0128, `crate::blend_live`): um objeto
-//! > único, não-destrutivo, com as fontes sempre editáveis. Este `apply` sobrevive só para os
-//! > smokes de correspondência (`PH2D_BUILD_SMOKE=7/8/9`, que mostram star→circle etc.); a remoção
-//! > completa (com os smokes repontados ao vivo) é uma limpeza posterior.
-//!
-//! As **fontes sobrevivem** (ao contrário da booleana, que consome os operandos) — é o Blend do
-//! Illustrator: os passos nascem ENTRE elas, no z delas.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `blend.rs`.
 
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 

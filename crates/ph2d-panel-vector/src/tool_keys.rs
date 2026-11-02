@@ -78,10 +78,12 @@ pub enum KeyAction {
     Intersect,
     Subtract,
     Exclude,
+    /// `Ctrl+Alt+O` — o traço vira forma (o atalho do Figma; dono 02/11).
+    OutlineStroke,
 }
 
 /// ⭐ **A tabela** (estudo §5).
-pub const KEYS: [(Chord, KeyAction); 21] = [
+pub const KEYS: [(Chord, KeyAction); 22] = [
     (Chord::key('v'), KeyAction::Mode(DrawMode::Select)),
     (Chord::key('a'), KeyAction::Mode(DrawMode::Node)),
     (Chord::key('p'), KeyAction::Mode(DrawMode::Pen)),
@@ -104,6 +106,7 @@ pub const KEYS: [(Chord, KeyAction); 21] = [
     (Chord::ctrl_alt('i'), KeyAction::Intersect),
     (Chord::ctrl_alt('d'), KeyAction::Subtract),
     (Chord::ctrl_alt('x'), KeyAction::Exclude),
+    (Chord::ctrl_alt('o'), KeyAction::OutlineStroke),
 ];
 
 /// A ação de uma tecla, ou `None` se ela não é do vetor.

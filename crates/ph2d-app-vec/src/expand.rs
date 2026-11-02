@@ -21,8 +21,13 @@ use ph2d_vec_scene::{
 // `materialise` teria de assar por uma segunda rota, que é exatamente o que o ADR proíbe.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expand {
-    /// A borda anda `d` (negativo encolhe), com quinas em `join`, no(s) contorno(s) `side`.
-    Offset { join: LineJoin, side: OffsetSide },
+    /// A borda anda `d` (negativo encolhe), com quinas em `join` (o Miter cortado em `miter`), no(s)
+    /// contorno(s) `side`.
+    Offset {
+        join: LineJoin,
+        side: OffsetSide,
+        miter: f64,
+    },
     /// O traço vira forma preenchida.
     OutlineStroke,
     /// O traço vira forma preenchida com a largura VARIANDO pelas `stops` — o Power Stroke.
@@ -39,6 +44,7 @@ pub fn expand_for_id(id: ph2d_editor_core::NodeId) -> Option<Expand> {
         Some(Expand::Offset {
             join: offset_join(),
             side: offset_side(),
+            miter: ph2d_panel_vector::offset_knobs().miter,
         })
     } else if id == ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE {
         Some(Expand::OutlineStroke)
@@ -192,7 +198,9 @@ pub fn materialise_selection(
 #[must_use]
 pub fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
     match cmd {
-        Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(world, d, join, side),
+        Expand::Offset { join, side, miter } => {
+            ph2d_vec_boolean::offset_path_with(world, d, join, side, miter)
+        }
         Expand::OutlineStroke => world
             .split_stack(|_, layer, s| match stroke_view(world, layer, s) {
                 Ok(view) => outlined(&view),
@@ -306,14 +314,34 @@ pub fn offset_scale(scene: &VecScene, pen: &PenTool, xforms: &VecXforms) -> f64 
     }
 }
 
-/// Os dois knobs do Offset como o PAINEL os guarda (`join`, `side`) — a chave de mudança que o
-/// frame observa para retunar os offsets VIVOS da seleção. Porta única.
+/// Os knobs do Offset como o PAINEL os guarda — a chave de mudança que o frame observa para
+/// retunar os offsets VIVOS da seleção. Porta única.
 #[must_use]
-pub fn expand_knobs() -> (u8, u8) {
-    (
-        ph2d_panel_vector::expand_join(),
-        ph2d_panel_vector::expand_side(),
-    )
+pub fn expand_knobs() -> ph2d_panel_vector::OffsetKnobs {
+    ph2d_panel_vector::offset_knobs()
+}
+
+/// Um offset vivo de distância `d` com os knobs `k`.
+#[must_use]
+pub fn spec_with(k: ph2d_panel_vector::OffsetKnobs, d: f64) -> ph2d_ecs::VecOffset {
+    ph2d_ecs::VecOffset {
+        d,
+        join: k.join,
+        side: k.side,
+        miter: k.miter,
+        behind: k.behind,
+    }
+}
+
+/// Os knobs de um offset vivo — o espelho da forma selecionada no painel.
+#[must_use]
+pub fn knobs_of(o: &ph2d_ecs::VecOffset) -> ph2d_panel_vector::OffsetKnobs {
+    ph2d_panel_vector::OffsetKnobs {
+        join: o.join,
+        side: o.side,
+        miter: o.miter,
+        behind: o.behind,
+    }
 }
 
 #[cfg(test)]

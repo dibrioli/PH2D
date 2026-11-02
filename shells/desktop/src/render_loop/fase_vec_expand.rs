@@ -65,26 +65,20 @@ impl crate::App {
                     &self.vec.entities,
                     &xf,
                     &ids,
+                    &mut self.vec.restack,
                 )
             };
             if materialised {
+                // O campo segue a seleção nova no quadro seguinte (`offset_live::shown_d`).
                 self.vec.offset_mirrored = None;
-                // O slider volta ao zero: a forma nova não tem offset vivo, e um slider
-                // parado em +40% sobre ela mentiria sobre o que está na cena.
-                hero.store.set_slider_value(
-                    ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
-                    ph2d_tool_vector::params::offset_frac_to_slider(0.0),
-                );
             } else {
                 // O caminho NUMÉRICO (sem offset vivo armado): a distância vem do slider —
                 // a MESMA fonte que o chip mostra —, fração × escala da seleção atual.
-                let d = hero
-                    .store
-                    .slider(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
-                    .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
-                        ph2d_tool_vector::params::slider_to_offset_frac(v)
-                    })
-                    * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
+                let d = ph2d_editor_core::DocPx::of(&hero.project).to_world(
+                    hero.store
+                        .number_value(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
+                        .unwrap_or(0.0),
+                );
                 // ⚠️ O PERFIL também vem dos sliders — a mesma fonte que o chip mostra. O
                 // `expand_for_id` devolve o comando com o perfil UNIFORME (ele não tem o
                 // store), e é aqui que ele é preenchido; um default cravado lá seria um 2º
@@ -104,14 +98,6 @@ impl crate::App {
                     cmd.clone(),
                     d,
                 );
-                // O botão de Offset (caminho numérico: arrastar sem seleção viva e clicar)
-                // recentra o slider — cada aplicação offseta pelo valor mostrado e zera.
-                if matches!(cmd, crate::vec_expand::Expand::Offset { .. }) {
-                    hero.store.set_slider_value(
-                        ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_frac_to_slider(0.0),
-                    );
-                }
             }
         }
         Some(())

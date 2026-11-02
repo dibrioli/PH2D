@@ -6,6 +6,7 @@ pela lei do CLAUDE.md §2 («o porquê histórico vive no doc, com link; o códi
 intra-doc do rustdoc (`[`crate::x`]`) ficaram como texto. Texto à data do commit `d95d9a1bea`.
 2.º lote (F48, 02/11, o Expand sobre a pilha: +545 sobre o tecto): de `smoke_bone_paint.rs` em diante, texto à
 data do commit `8810c8838d`.
+3.º lote (F48b, 02/11, o Offset Path no padrão do Inspector: +386 sobre o tecto): de `state.rs` em diante, texto à data do commit `878fa728b1`.
 
 ## `symmetry_live.rs`
 
@@ -1569,3 +1570,489 @@ vermelha em lado nenhum.
 ⚠️ **A resposta vem do PLANO que o `bool_live` acabou de cozinhar**, não de uma segunda
 caminhada da árvore. O plano é o que está na tela: quem é a base, quem são os operandos e em
 que ordem. É a mesma disciplina do Apply, que materializa o plano em vez de re-chamar o motor.
+
+## `state.rs`
+
+> ⭐⭐ **O estado da família `vec`, com um dono só** — W2/L4 A2 (os primeiros 19) + A9 (os outros
+> 50), ADR-0075.
+
+# ⭐ A9 (2026-09-12): a `App` já não tem campo `vec_*` solto
+
+O campo da `App` chama-se `vec` (era `vec_state`), e cada campo daqui perdeu o prefixo:
+`app.vec_pen` passou a `app.vec.pen`. Os 50 que faltavam entraram pela régua da auditoria de
+arquitectura, que pergunta pelo **assunto** de cada campo e não por quem o lê:
+
+- **morto** ⇒ apagado antes de agrupar (o `vec_history` era escrito e nunca lido);
+- **assunto da família + tipo de crate** ⇒ aqui;
+- **assunto da família + tipo da shell** ⇒ o TIPO desceu primeiro, depois o campo. Eram oito
+  (`VecTextEdit`, `ConnectorDrag`, `HandleDrag`, `TrimHit`, o `Grab` da largura, `VecSelSync`,
+  `LabelPoses`, `BuildSession`); os outros doze «tipos da shell» eram FACHADAS de módulos desta
+  crate — medido, não suposto.
+
+⚠️ **A régua de baixo dizia que `vec_entities` e `vec_pen` não eram estado da família** («são o
+documento e a árvore, que a shell inteira conduz»). A A9 mediu o preço que essa frase temia: com
+os campos numa struct só, o que parte é emprestar o `VecState` **inteiro** ao lado de um campo
+dele — e isso acontecia num sítio só, o `smoke_bone::bind`, curado lendo o mapa de dentro do
+`st`. Os empréstimos por campo (`&mut app.vec.pen` ao lado de `&app.vec.entities`) são
+disjuntos como sempre foram. *Muitos leitores não mudam o assunto de um campo.*
+
+Dois grupos têm tipo próprio porque nascem com valores que não são os do `Default` dos tipos:
+[`TextKnobs`] (o estilo de texto corrente) e [`ExpandKnobs`] (o par que o frame viu no quadro
+anterior, que tem de nascer igual ao do painel).
+
+# A régua da W2/L4, que escolheu os primeiros 19 (história)
+
+`App` tem ~401 campos públicos e **75** deles chamam-se `vec_*`. Quantos podem sair não é uma
+escolha — mede-se por duas perguntas, nesta ordem:
+
+1. **quem os lê?** `app_state.rs` (a declaração) e `main.rs` (o construtor) não contam. Restam
+   **30** campos cujos únicos consumidores de fora da família são os dois roteadores da shell
+   (`render_loop/mod.rs`, `input_dispatch.rs`) — ou ninguém. Os outros 45 estão espalhados, e
+   três deles são o substrato do módulo: `vec_entities` (189 ficheiros), `vec_scene` (131),
+   `vec_pen` (36). ⛔ Esses não são «estado da família»: são o documento e a árvore, que a shell
+   inteira conduz.
+2. **o TIPO deles vem de uma crate?** Dos 30, **19** sim (11 de `ph2d_vec_*`, 8 primitivos) e
+   **11 não** — o tipo mora na shell (`crate::blend_live::BlendSpines`,
+   `crate::vec_bucket::BucketCache`, `crate::morph_live::MorphPlans`, …). Um campo cujo tipo
+   está na shell **não pode** viver aqui, e agrupá-lo num `VecState` da shell seria trocar 11
+   campos por 1 sem mover uma linha de lugar.
+
+⇒ estes 19. Os 11 bloqueados estão nomeados no handoff de integração: cada um espera que o
+TIPO dele saia, não que alguém o agrupe.
+
+# ⚠️ Porque não é um recurso do ECS
+
+O ADR-0075 manda desacoplar por ECS, e a primeira leitura disto é «ponha num componente». ⛔
+Errado aqui, e o mecanismo está escrito no [`undo.rs`](../../../shells/desktop/src/undo.rs): o
+`ProjectState` que o undo fotografa é `{WorldSnapshot + VecScene + FlipDoc + …}`, e o
+`WorldSnapshot` **cobre toda entidade com componente registado**. Um `ShapeTool` ou um `Pencil`
+como componente entraria na fotografia ⇒ **cada nudge do lápis viraria um passo de undo**.
+
+Estado de FERRAMENTA não é estado de documento. O precedente da casa é o mesmo: `prop_state`,
+`walk_state`, `z_walk_state` e `input` já são sub-structs num campo de `App`.
+
+# ⚠️ `Default` é derivado, e isso foi VERIFICADO campo a campo
+
+Os 19 inicializadores do `main.rs` eram `false` / `0` / `None` / `Vec::new()` /
+`Pencil::default()` / **`ShapeTool::new()`** — e esse último é literalmente `Self::default()`
+([`shape.rs`](../../ph2d-vec-edit/src/shape.rs)). *Um `derive(Default)` sobre um campo cujo
+`new()` faz mais que o `Default` muda o arranque do app em silêncio* — aqui não faz, e é por
+isso que se conferiu antes de derivar.
+
+Na A9 a mesma conferência correu sobre os 50: `PenTool::new()`, `MorphPlans::new()`, os
+`BTreeMap::new()` (`SideCache`, `BlendSpines`, `LabelPoses`, `LiveGeometry`) e o
+`PencilHand::default()` são o `Default` deles. Os únicos que não eram — os oito números do
+texto e o par do Expand — ganharam `Default` manual nos grupos acima, e o `VecState` continua a
+derivar o seu.
+
+## `pencil_input.rs`
+
+> **A MÃO do lápis** — o estabilizador, entre o ponteiro e o lápis.
+
+O gesto de mão livre grava o que a mão fez, e a mão TREME. O decimador (RDP) não resolve isto e
+nunca vai: ele preserva **extremos locais** de propósito (é o que faz uma quina desenhada
+sobreviver a qualquer tolerância), e um tremor é exactamente um extremo local. São duas
+perguntas — *que detalhe eu guardo?* (Fidelity, na SAÍDA) e *que mão eu escuto?* (Stabilizer, na
+ENTRADA) — e ter dois controles é o que impede um deles de mentir.
+
+# A porta é a do Painter, não uma segunda
+
+O filtro é **`ph2d_painter_brush::lazy_mouse_step`**, a MESMA função que o pincel do Painter e o
+Free Hand dele usam. Uma segunda suavização divergiria do que o artista já aprendeu com o
+raster, e o app passaria a ter duas respostas para *"o que o slider de estabilização faz?"*.
+
+⚠️ **A aresta de dependência custa ZERO, e isto foi MEDIDO** (`cargo tree -i`): a shell já
+recebe a `ph2d-painter-brush` transitivamente pela `ph2d-tool-painter`, então a crate já é
+compilada em todo build da shell e a aresta direta só acrescenta uma linha ao `Cargo.toml`. A
+objeção de 23.250 LOC que a W1a mediu era contra pôr a aresta na **`ph2d-vec-edit`** — uma crate
+leaf com UMA dependência, onde ela seria uma sub-árvore NOVA. É por isso que o filtro é aplicado
+aqui (a shell, que possui a entrada) e não dentro do lápis.
+
+# Em que espaço se filtra, e por quê
+
+Em **pixels de TELA**, antes de converter para mundo. O tremor é um fato da mão sobre a mesa, e
+é em px que ele tem tamanho; o `lazy_mouse_step` é uma mistura proporcional (não um limiar de
+distância), então filtrar em mundo daria a mesma forma — mas o número que o artista arrasta
+passaria a significar coisas diferentes em zooms diferentes se algum dia o filtro ganhasse um
+termo absoluto. Filtrar onde o tremor vive mantém o slider honesto.
+
+# O default, MEDIDO
+
+**MEDIDO** (`measure_pencil_stabilizer`, o S trémulo de 300 px com ±1,5 px de tremor sintético,
+Fidelity 2 px) — o tremor que sobra, o atraso no fim do gesto, e os nós que o traço ganha:
+
+| stabilizer | tremor residual | atraso final | nós |
+|---|---|---|---|
+| 0,00 | 2,06 px | 0,00 px | **97** |
+| 0,25 | 1,41 px | 1,02 px | 25 |
+| **0,50** | **0,89 px** | **2,63 px** | **14** |
+| 0,75 | 0,58 px | 6,33 px | 14 |
+| 0,90 | 1,00 px | 13,08 px | 15 |
+| 0,97 | 2,39 px | 21,72 px | 13 |
+| 1,00 | 4,23 px | 29,05 px | 14 |
+
+⚠️ **O tremor residual NÃO é monotónico, e é isso que escolhe o teto útil:** ele tem MÍNIMO em
+0,75 e depois PIORA — a 1,00 o traço está 2× mais longe da curva pretendida que a mão crua. Um
+lazy mouse é um passa-baixa, e passado o joelho ele deixa de remover o RUÍDO e começa a comer o
+SINAL: o ponto filtrado atrasa tanto que corta as curvas que o artista quis desenhar. Isto não é
+defeito a corrigir — é o que "lazy" custa —, mas mata a leitura ingénua de *"mais é mais liso"*.
+
+⚠️ **E o número que decide o default é a CONTAGEM DE NÓS, não o tremor:** num lápis VETORIAL o
+que o artista herda é a curva que vai editar, e com a mão crua o RDP guarda **97 nós** para um S
+— porque o tremor É um extremo local e a Fidelity preserva extremos por desenho. A 0,50 são
+**14**, com 2,63 px de atraso (um quarto da largura de traço default, imperceptível). O default é
+**0,50** por esse par; 0,75 compra 0,3 px de tremor por 2,4× o atraso, e não paga.
+
+⚠️ **Isto CORRIGE uma nota minha da W1a**, que anunciava *"nove nós descrevem um S inteiro"*: era
+medido sobre uma fixture de ±0,4 px de tremor — uma mão mais firme do que a real. Com ±1,5 px a
+Fidelity sozinha dá 97, e é o estabilizador que torna a contagem editável.
+
+⚠️ **O VALOR vive no tool** (`ph2d_tool_vector::params::PENCIL_STABILIZER_DEFAULT`), que é quem
+o autora e semeia o slider; aqui fica a MEDIÇÃO, ao lado do filtro que ela mede. Uma segunda
+const com o mesmo número seria a segunda porta que esta wave passou a tarde a evitar.
+
+⚠️ **Preço, e é intrínseco a qualquer lazy mouse:** com estabilização alta o ponto filtrado
+ATRASA o cursor, então o traço termina um pouco antes de onde a mão levantou (medido na tabela
+acima). O Painter e o *Stabilize Stroke* do Blender têm exactamente a mesma
+propriedade — é o que "lazy" quer dizer.
+
+## `fx_live.rs`
+
+> **A PILHA de FX raster VIVA na shell — 100% RESIDENTE NA GPU** (`ph2d_ecs::VecFilter`, plano 24).
+
+Irmão do [`crate::offset_live`]/[`crate::contour_live`], mas de OUTRA natureza: o offset produz
+GEOMETRIA (uma `LiveGeometry` que o `dispatch` desenha), e o FX produz PIXELS. A costura do
+plano 24 §2: um FX raster não é `PathEffect` (não é `VecPath -> VecPath`) nem `LiveGeometry` —
+ele isola a forma na própria textura, roda a pilha e recompõe.
+
+# Por que GPU-resident (Enio: "tudo é para o game em runtime, total performance")
+
+O 1º corte foi CPU-first (render → **readback GPU→CPU** → Gaussiana na CPU → **re-upload**) — um
+padrão de PREVIEW de editor. Em runtime a forma filtrada ANIMA, então esse roundtrip roda por
+frame por forma: readback bloqueia o pipeline e o re-upload cresce sem fim (o Vello cacheia
+imagem por id de Blob, e um Blob novo por frame vaza o atlas). Não há "total performance" com
+CPU no caminho.
+
+Agora é **tudo na placa**:
+1. **todas** as formas que erraram o memo são rasterizadas num [`VelloPass`] scratch, **numa
+   passagem só**, cada uma na célula que o [`crate::fx_atlas`] lhe deu (renderer próprio, **sem
+   readback**);
+2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU para cada forma, lendo a
+   célula dela, para uma textura de SAÍDA;
+3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL**
+   ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, o Vello reusa o slot
+   do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
+   ⛔⛔ **E avisa-se o Vello, com [`VelloPass::mark_texture_dirty`].** Até à `vello` 0.8 o atlas
+   era **limpo a cada render** e este passo não existia — a frase acima bastava. A **0.10 tornou
+   o atlas persistente**: sem a marca, os pixels novos **não chegam à tela** e a forma congela na
+   primeira cozedura, refrescando só quando muda de TAMANHO. *Uma afirmação que era verdadeira
+   por construção passou a ser um defeito, sem uma linha nossa mudar.*
+
+# Por que UM render, e não `n`
+
+⚠️ Um render do Vello custa **~0,12 ms antes de desenhar coisa alguma** — ele corre a cadeia de
+binning/tiling inteira e submete, seja qual for o conteúdo. Com um render por forma, uma cena
+de 32 formas filtradas gastava **4,0 ms só em raster**; a MESMA área de arte numa passagem só
+custa **0,39 ms** (medido na RTX: `ph2d-render/tests/it/fx_scene_scale_cost.rs`). Num editor isso
+é invisível — o artista mexe numa forma de cada vez —, mas o eixo é o do Enio: *"performance em
+tempo real em runtime para games"*, e num jogo as formas filtradas **animam**, logo erram o
+memo **todas, todo frame**. O que multiplica é o fixo, não o filtro.
+
+O memo vira OTIMIZAÇÃO — pula o re-cook quando nada muda —, não requisito de correção: mesmo
+re-cozinhando todo frame (cena inteira animada), é UM render + `2n+1` passes por forma. Vazio =
+nenhum FX (byte-idêntico ao mundo pré-FX). ⚠️ **A CHAVE dele mora no [`crate::fx_live_memo`]** e
+carrega o que é DESENHADO, não só a pilha resolvida e o tamanho — era essa a falta que fazia
+*mudar a cor do fill de uma forma filtrada não mudar a tela*.
+
+# A conversão MUNDO → PIXEL mora aqui, e só aqui
+
+O componente fala MUNDO (resolution-crisp: dar zoom aumenta o borrão na tela, como deve). O
+passe fala PIXEL. A câmera é conhecida por esta função e por mais ninguém — uma segunda
+conversão noutro sítio seria um segundo sítio a errá-la.
+
+## `widget_live.rs`
+
+> **A PELE de widget, viva** — o degrau 2 do §2 do plano UI/UX (W6.2).
+
+Uma forma marcada com [`ph2d_ecs::VecWidget`] deixa de ser desenhada como vetor e passa a ser
+pintada pelo **pintor REAL** do catálogo, no retângulo dela. Este módulo é a ponte, e ele mora
+na shell por uma razão de arquitetura: só aqui as duas metades se encontram — a
+`ph2d-editor-core` (que sabe o que é um botão) e a `ph2d-vec-render` (que sabe onde a forma
+está no z). A crate de render recebe um fragmento **opaco** e nunca aprende o que é um widget.
+
+# Três perguntas, três donos, e nenhuma resposta duplicada
+
+- **ONDE** — [`ph2d_vec_render::path_screen_bounds`], a MESMA função que o produtor de FX
+  raster usa para dimensionar o scratch dele. Uma segunda projeção descreveria a forma noutro
+  lugar da tela no primeiro zoom.
+- **O QUÊ** — o `kind` do componente, traduzido UMA vez por
+  [`ph2d_editor_core::widget::WidgetKind::from_code`]; código desconhecido devolve `None` e a
+  forma **desenha como sempre** (é a compatibilidade, não um erro).
+- **O RÓTULO** — o [`ph2d_ecs::Name`] da entidade, o nome que o artista já digita na
+  Hierarquia. Sem `Name`, rótulo vazio: o widget desenha a moldura e mais nada, que é a
+  resposta honesta para um objeto sem nome.
+
+⚠️ **E o GLIFO de um `IconButton` é a QUARTA resposta, dada pelo próprio desenho** — a forma
+que veste o botão *é* o ícone, normalizada por [`crate::widget_icon::icon_face`], a MESMA porta
+que o painel gerado percorre. Ver o doc dela para o que a pose não faz.
+
+# A APARÊNCIA não vem daqui, e isso é decisão
+
+Cor, raio e tipografia saem dos **tokens** (`ph2d_tokens::resolve`, que a W6.1 tornou
+autorável) — o desenho responde ONDE e O QUÊ. Um mapeamento por-tipo (*"o preenchimento da
+forma vira a cor da swatch"*) é uma tabela de casos especiais e está deliberadamente **não
+construído**; ver o doc de [`ph2d_editor_core::widget::paint_widget_skin`].
+
+⭐ **F18 (17/10): o DESENHO passou a ser o corpo.** A forma desenha-se como sempre e a pele vai
+por cima com o conteúdo, num escopo do tema que torna as superfícies transparentes e escolhe a
+tinta legível sobre a cor PINTADA da forma ([`ph2d_tokens::skin_body`]). Os tokens continuam a
+responder COMO — agora pelo papel de cada um.
+
+# O widget é pintado em pixels de TELA
+
+Um token é um número em **px** — `Radius::Md.px()`, `ICON_BTN_SIZE_PX`, o corpo do texto em pt.
+Pintar a pele numa escala inventada mostraria ao artista um número que não é o número que o
+app usa, que é exactamente a falha que a W6.1 existe para impedir. ⚠️ A consequência honesta:
+**o zoom do canvas amplia a MOLDURA, não os detalhes do controle** — a caixa cresce, os cantos
+ficam do tamanho que o token diz. Um widget é autorado em px porque um token é px; magnificação
+fiel exigiria uma constante px↔mundo, e essa constante já tem dono noutro lugar
+(`ProjectSettings::pixels_per_meter`) — puxá-la para cá seria uma segunda resposta a *"quanto
+mede um pixel"*.
+
+## `offset_live.rs`
+
+> **O Offset VIVO na shell** — o cozimento e a materialização do [`ph2d_ecs::VecOffset`].
+
+Espelho do [`crate::blend_live`] / [`crate::connector_live`]: o componente guarda a relação
+(quanto, com que quina, de que lado) e a aparência é uma **função pura** dela, re-cozida aqui
+e desenhada por [`ph2d_vec_render::dispatch`] **no z da forma**.
+
+# A promessa que este módulo existe para cumprir
+
+*"os botões Miter, Round e Bevel são previsualizações em tempo real dos efeitos, mas para
+consolidar a curva deve-se apertar Apply Offset ou Convert to Curves"* (Enio, 2026-07-21).
+
+Antes disto o preview **substituía** a forma no documento: o resultado era um objeto com id
+próprio, e o modo Node mostrava as ~238 âncoras dos arcos do Round. O artista lia, com razão,
+*"a curva já tem todos os vertex novos criados antes de apertar apply"*. Agora o documento
+**nunca é tocado** enquanto o offset é preview: o `VecPath` continua sendo a curva autorada, e
+o resultado é DESENHO.
+
+# A ordem do cozimento: quina → pilha de efeitos → offset
+
+A fonte que entra aqui é o [`ph2d_vec_scene::VecPath::cooked`] — ou seja, o raio de quina
+(estágio zero, ADR-0121) e a pilha de Live Path Effects (ADR-0132) correm ANTES. É a única
+ordem que se sustenta: o offset precisa de uma REGIÃO regularizada, e tanto a quina como os
+efeitos produzem geometria plana que ele pode consumir. O inverso (offsetar e depois ondular)
+continua alcançável pelo caminho destrutivo — Apply Offset e então o efeito.
+
+# Quem lê a DERIVADA e quem lê a FONTE
+
+Lêem a derivada os que respondem *"o que está na tela aqui?"* — o
+[`ph2d_vec_render::dispatch`] e, desde 2026-07-21, o **hit-test de canvas** e o **marquee**
+([`crate::vec_gizmo_view`]): clicar no que se vê é a definição de apontar, e enquanto o pick
+apalpava a curva autorada a forma crescida era pintada num lugar e clicável noutro.
+
+Lêem a FONTE os que respondem *"o que o artista escreveu?"*: o modo **Node** (as âncoras que
+ele arrasta são as autoradas — é a mesma lei do raio de quina vivo, ADR-0121) e a **caixa do
+gizmo** (o porquê está no cabeçalho do `vec_gizmo_view`). Nenhum dos dois é esquecimento.
+
+# O memo não é otimização prematura: é MEDIDO
+
+`offset_path` custa, em release, **0,40–0,86 ms** no donut e **0,55–1,07 ms** na estrela com
+quina Round (Miter/Bevel ficam em 0,1–0,35). O cozimento roda por frame, então sem memo uma
+cena parada pagaria isso para sempre. A chave é o que de facto o determina — a geometria de
+MUNDO que entra e os três parâmetros — e não um contador de versão que alguém esqueceria de
+bumpar.
+
+## `profile_live.rs`
+
+> **A LARGURA VIVA na shell** — o cozimento e a materialização do
+> [`ph2d_ecs::VecStrokeProfile`] (ADR-0148).
+
+Espelho exato do [`crate::offset_live`]: o componente guarda a **relação** (que largura, onde)
+e a aparência é uma **função pura** dela, re-cozida aqui e desenhada por
+[`ph2d_vec_render::dispatch`] **no z da forma**. O documento **nunca é tocado** enquanto o
+perfil é preview — o `VecPath` continua sendo a curva autorada (é ela que o modo Node edita), e
+a fita de largura variável é DESENHO.
+
+# A promessa que este módulo cumpre
+
+Antes disto os quatro sliders `W Start/Mid/End/Pos` eram **parâmetros de um comando**: nada
+acontecia até o clique em *Power Stroke*, e o clique assava. O artista escolhia quatro números
+às cegas e via o resultado depois de a curva já ter sido consumida. Agora eles autoram um
+perfil vivo — o traço engrossa e afina **enquanto o slider anda** —, e o botão MATERIALIZA, o
+mesmo par que o Offset já tinha (*"previsualizações em tempo real … para consolidar a curva
+deve-se apertar Apply"*, Enio 2026-07-21).
+
+# Uma porta produz o desenho, e é a MESMA que assa
+
+[`crate::expand::power_stroke_layers`] — o preview desenha o que ela devolve e o Apply
+insere o que ela devolve. Uma segunda rota ("um aproximador só para o preview") faria a forma
+**SALTAR** no instante do Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate
+comparando as duas saídas byte a byte.
+
+# O neutro é a AUSÊNCIA
+
+Perfil uniforme ⇒ o componente é **removido**, não guardado com todos os multiplicadores em
+`1.0`. Um documento não acumula relações invisíveis que não desenham nada, e é isso que faz
+*"arrastar os sliders de volta ao neutro"* devolver a forma ao estado limpo — a mesma lei do
+`VecOffset` com `d = 0`.
+
+# O memo é medido, como o do irmão
+
+`power_stroke` custa **0,26–0,55 ms** por forma (`measure_power_stroke`, release). O cozimento
+roda por frame, então sem memo uma cena parada pagaria isso para sempre. A chave é o que de
+facto o determina — a geometria de MUNDO que entra (que já carrega a largura do traço) e as
+paradas —, e não um contador de versão que alguém esqueceria de bumpar.
+
+## `vec_gizmo_view.rs`
+
+> A forma vetorial vista pelo **gizmo de sprite** (ADR-0111).
+
+Não há gizmo vetorial próprio. Havia — 492 linhas que mutavam a geometria — e
+ele foi removido. Um path com `Transform` é um objeto como qualquer outro, e a
+matemática de mover/girar/escalar já existe, testada, em `ph2d-editor-core`.
+
+A tradução é exata, não uma imitação. O gizmo enquadra um sprite como
+
+```text
+centro = translation + R·(anchor ⊙ scale)     meia-extensão = half_intrínseco ⊙ scale
+```
+
+e uma forma vetorial tem a MESMA forma se lermos `anchor` como o **centro da
+bbox local da curva** e `half_intrínseco` como a **meia-extensão dessa bbox**.
+Por isso `opposite_anchor_translation` (que fixa o canto oposto ao escalar) vale
+sem uma linha nova: ela só depende desses dois números.
+
+Aqui moram também o **picking** de canvas — clicar numa forma fora da ferramenta
+vetorial a seleciona como se fosse um sprite — e o marquee.
+
+# O pick segue o DESENHO; a CAIXA segue a fonte
+
+Com um offset vivo (`ph2d_ecs::VecOffset`) o documento guarda a curva autorada e a tela
+mostra a derivada. O **hit-test** pergunta ao mesmo `live` que o renderer consome — clicar
+no que se vê é a definição de apontar, e sem isso a forma crescida era pintada num lugar e
+clicável noutro.
+
+A **bbox do gizmo** (`gizmo_view_for_entity`, acima) fica na FONTE, e é decisão, não
+esquecimento. Dois motivos: (a) o `d` do offset é uma distância de MUNDO, então escalar a
+forma não escala a banda — uma caixa que a incluísse pediria `s = (alvo − 2d)/meia_fonte`,
+e o gizmo derivaria do dedo durante o arrasto, que é a mesma armadilha das 5 tentativas
+revertidas do Blend Object (ADR-0128: *um gizmo sobre geometria que se move DOBRA*);
+(b) é o default do Illustrator — o bounding box ignora traço e efeitos de aparência, e
+"Use Preview Bounds" é preferência **desligada**.
+
+## `component_edit.rs`
+
+> **O QUE UM CLIQUE NA SECÇÃO *Prefab* PEDE** — a tabela `id → verbo`, e mais nada.
+
+# ⛔⛔ Este ficheiro tinha 473 linhas e um MOTOR dentro (F4.6c, 2026-09-07)
+
+Ele foi a shell do sistema de instâncias **do vetor**: `create_main`, `place_instance`,
+`detach`, `reset_overrides`, `instance_count`, `cascade_offset`, `arm_instance`,
+`arm_detached`, `main_content_box` — um segundo motor de instância, com o `VecInstance` no ECS
+por trás dele. O modelo GERAL (ADR-0164) responde hoje por todos, e *dois motores para o mesmo
+estado é pior que um motor lento*: o que sobra aqui é a **tradução do clique**, que é a única
+coisa que era de facto do painel vetorial.
+
+Quem executa é [`crate::vec_component_general`], que passa o verbo ao dreno único
+(`instance_verbs::drain`) — onde vivem a voz de cada recusa, a cascata da cópia e a lei *«a
+selecção segue para a cópia»*.
+
+# ⚠️ As duas variantes que morreram com o motor
+
+`PieceVisible(row)` e `Variant(axis, value)` endereçavam controlos que só o motor vetorial
+pintava (a lista de peças e a fileira de eixos). **As capacidades não se perderam** — esconder
+uma peça de UMA cópia e pintá-la são hoje o `Visibility`/`Sprite` da própria peça
+([`crate::instance_piece_override_tests`], escrito como pré-condição desta fatia), e a versão
+que uma cópia é vive no cartão do Inspector (F5).
+
+⚠️ *Um verbo que não tem executor não fica no enum a fingir* — enquanto ficava, o
+`general_verb` devolvia `None` e o clique morria em silêncio, que é o defeito que esta secção
+caçou três vezes.
+
+## `blend.rs`
+
+> **Blend** — os passos intermediários entre duas formas (o Blend do Illustrator).
+
+O motor é a [`ph2d_vec_blend`]; aqui mora só a **política**: quem são as duas formas, o que
+acontece com elas, e o que a seleção vira.
+
+# A sessão existe por causa do ESCAPE, e o escape existe porque o automático erra
+
+A correspondência entre duas formas — *que ponto de A vira que ponto de B?* — é o problema
+que **ninguém** resolveu (`docs/Vector Module/20_*` §1.3: o GSAP tem `shapeIndex` manual **e**
+uma ferramenta de debug que admite o erro; o Corel pede pro usuário clicar um nó em cada
+forma). A correspondência é 100% AUTOMÁTICA — o motor escolhe o sentido de menor custo e o
+melhor casamento de quinas sozinho.
+
+Houve **dois** botões de escape manual, **Rotate Match** e **Reverse Match**, e os dois foram
+removidos (2026-07-14) por serem bugs de design: o Reverse invertia o winding e colapsava a
+forma; o Rotate rodava a correspondência às cegas e produzia torção. **O ajuste, no modelo vivo,
+é editar as formas-fonte** — girar/mover/escalar uma adapta os intermediários —, não um botão.
+
+> ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). O **painel já NÃO o
+> usa** — o botão "Blend" cria o **Blend Object VIVO** (ADR-0128, `crate::blend_live`): um objeto
+> único, não-destrutivo, com as fontes sempre editáveis. Este `apply` sobrevive só para os
+> smokes de correspondência (`PH2D_BUILD_SMOKE=7/8/9`, que mostram star→circle etc.); a remoção
+> completa (com os smokes repontados ao vivo) é uma limpeza posterior.
+
+As **fontes sobrevivem** (ao contrário da booleana, que consome os operandos) — é o Blend do
+Illustrator: os passos nascem ENTRE elas, no z delas.
+
+## `connector_live.rs`
+
+> **Conectores vivos** — a linha que gruda em duas formas e as SEGUE.
+
+Espelho exato do padrão da *Live Shape* ([`crate::shape_live`]): o componente
+[`VecConnector`] guarda a **relação** (a quem cada ponta se prende, e como a rota é
+desenhada) e a geometria é uma **função pura** dela, re-cozida a cada frame. Ninguém
+"move" um conector: move-se uma forma, e a linha se refaz.
+
+Consequência de graça (a mesma da Live Shape): **undo e save cobrem o conector sem uma
+linha a mais** — os dois capturam o mundo ECS + a cena vetorial, e o `VecConnector` está
+registrado no `ComponentRegistry`.
+
+# Os três detalhes que decidem se isto funciona
+
+1. **Escreve a polilinha EM LUGAR** (`scene.path_mut(id)`), preservando o id. Remover e
+   re-empurrar o path daria um id novo a cada frame — e a entidade, a seleção e o gizmo
+   piscariam junto (o invariante documentado da Live Shape).
+2. **O lado de saída lembra do frame anterior** ([`SideCache`]). Sem o `prev` da
+   histerese, um alvo passando pela diagonal da caixa faz a linha piscar entre sair pelo
+   topo e sair pela lateral, quadro sim, quadro não.
+3. **O conector vive na IDENTIDADE.** A geometria que escrevemos aqui é MUNDO; se a
+   entidade tivesse pose, o afim a aplicaria por cima e a rota sairia deslocada. Por isso
+   `vec_transform::settle_origins` o **pula** (como já pula as formas vivas) e este
+   módulo devolve o `Transform` à identidade se alguém o mexeu — o que torna o conector
+   **não-arrastável pelo gizmo**, que é o comportamento certo: arrastar um conector não
+   quer dizer nada; o que se move são as pontas dele.
+
+## `blend_live.rs`
+
+> **Blend Objects vivos** (ADR-0128) — o objeto único que interpola 2..=5 formas e as SEGUE.
+
+Espelho exato do padrão do [`crate::connector_live`]: o componente [`VecBlend`] guarda a
+**relação** (quais formas, na ordem, e quantos passos) e os passos intermediários são uma
+**função pura** dela, re-cozidos a cada frame. Ninguém "desenha" um passo: move-se uma forma
+fonte, e a transição se refaz.
+
+Consequência de graça (a mesma do conector): **undo e save cobrem o blend sem uma linha a
+mais** — os dois capturam o mundo ECS + a cena vetorial, e o `VecBlend` está registrado no
+`ComponentRegistry`.
+
+# Os passos são VIRTUAIS — o que está na cena é só o SPINE
+
+A entidade do blend carrega um `VecPathRef` como qualquer forma; o `VecPath` dela é o **spine**
+(a linha que une as fontes). Os N passos NÃO entram na cena — a shell os coze aqui, num
+`Vec<VecPath>` de MUNDO, e um passe de render ([`ph2d_vec_render::draw_blend_overlay`]) os
+desenha. É o que torna o blend **um objeto**, e não N formas (o pedido do Enio). Consequência:
+os passos não são pickáveis (igual ao Illustrator — pega-se o objeto, não um passo).
+
+# O blend vive na IDENTIDADE (como o conector)
+
+O spine e os passos são geometria de MUNDO; uma pose na entidade os deslocaria. Por isso
+`vec_transform::settle_origins` o **pula** e este módulo devolve o `Transform` à identidade —
+o que o torna (corretamente) não-arrastável pelo gizmo: mover o blend não quer dizer nada; o
+que se move são as formas-fonte, e a transição as segue (ADR-0128, o idioma do Illustrator).

@@ -164,6 +164,8 @@ pub mod morph_live;
 pub mod morph_machine_drive;
 /// As formas vetoriais no menu Add de objectos (spec/06 F1).
 pub mod object_add;
+/// A alça do Offset Path na tela (F48).
+pub mod offset_handle;
 pub mod offset_live;
 pub mod paint_dilate;
 pub mod pattern_live;

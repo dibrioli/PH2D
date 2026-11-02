@@ -140,11 +140,13 @@ pub const CONTORNO_LADO: u16 = 204;
 pub const CONTORNO_COR: u16 = 205;
 const CONTORNO_COR_A: u16 = CONTORNO_COR + 3;
 
-/// O Offset vivo (`VecOffset`, componente da entidade): a distância de MUNDO, a quina e o lado
-/// (os códigos do painel).
+/// O Offset vivo (`VecOffset`): a distância de MUNDO, a quina, o lado, o `Limit` do Miter e o
+/// `Result` (`0` Replace · `1` New shape behind).
 pub const OFFSET_DISTANCIA: u16 = 210;
 pub const OFFSET_JUNCAO: u16 = 211;
 pub const OFFSET_LADO: u16 = 212;
+pub const OFFSET_MITER: u16 = 213;
+pub const OFFSET_ATRAS: u16 = 214;
 
 /// Os e::FILTROS da forma (`VecFilter::ops`, `i` = filtro): o olho é um grupo, o resto do filtro
 /// outro (como o efeito). As cores são `[f32; 4]` como o `FxOp` as guarda; a rampa: paragem `j`
@@ -496,6 +498,8 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
             op(e::OFFSET_JUNCAO),
         ),
         OFFSET_LADO => d("canal.vetor.offset_lado", campo, false, op(e::OFFSET_LADO)),
+        OFFSET_MITER => c("canal.vetor.offset_miter", campo, false),
+        OFFSET_ATRAS => d("canal.vetor.offset_atras", campo, false, op(e::ATRAS)),
         _ => return None,
     })
 }

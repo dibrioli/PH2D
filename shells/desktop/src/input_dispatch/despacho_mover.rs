@@ -74,7 +74,9 @@ impl crate::App {
         }
         // W5: arrastar a alça do texto em caminho (modo Select) — irmã da alça do conector
         // acima, mesma disciplina de early-return; no-op sem a alça agarrada.
-        if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1) {
+        if self.vec_textpath_handle_move(self.last_pointer.0, self.last_pointer.1)
+            || self.vec_offset_handle_move()
+        {
             return true;
         }
         // W4 do pattern: arrastar a ficha de Start/End (modo Select) — irmã da do texto; e F9, a

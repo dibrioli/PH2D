@@ -89,4 +89,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::VECTOR_SECTION_MORPH_STATES,
     // ▸ O GRUPO Advanced (F17, dono 16/10): o cabeçalho que dobra as sete secções raras juntas.
     super::VECTOR_SECTION_ADVANCED,
+    // O CONVERT (dono 02/11): o Outline Stroke, fora do Offset Path.
+    super::VECTOR_SECTION_CONVERT,
 ];

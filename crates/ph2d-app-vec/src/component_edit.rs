@@ -1,29 +1,6 @@
 //! **O QUE UM CLIQUE NA SECÇÃO *Prefab* PEDE** — a tabela `id → verbo`, e mais nada.
 //!
-//! # ⛔⛔ Este ficheiro tinha 473 linhas e um MOTOR dentro (F4.6c, 2026-09-07)
-//!
-//! Ele foi a shell do sistema de instâncias **do vetor**: `create_main`, `place_instance`,
-//! `detach`, `reset_overrides`, `instance_count`, `cascade_offset`, `arm_instance`,
-//! `arm_detached`, `main_content_box` — um segundo motor de instância, com o `VecInstance` no ECS
-//! por trás dele. O modelo GERAL (ADR-0164) responde hoje por todos, e *dois motores para o mesmo
-//! estado é pior que um motor lento*: o que sobra aqui é a **tradução do clique**, que é a única
-//! coisa que era de facto do painel vetorial.
-//!
-//! Quem executa é [`crate::vec_component_general`], que passa o verbo ao dreno único
-//! (`instance_verbs::drain`) — onde vivem a voz de cada recusa, a cascata da cópia e a lei *«a
-//! selecção segue para a cópia»*.
-//!
-//! # ⚠️ As duas variantes que morreram com o motor
-//!
-//! `PieceVisible(row)` e `Variant(axis, value)` endereçavam controlos que só o motor vetorial
-//! pintava (a lista de peças e a fileira de eixos). **As capacidades não se perderam** — esconder
-//! uma peça de UMA cópia e pintá-la são hoje o `Visibility`/`Sprite` da própria peça
-//! ([`crate::instance_piece_override_tests`], escrito como pré-condição desta fatia), e a versão
-//! que uma cópia é vive no cartão do Inspector (F5).
-//!
-//! ⚠️ *Um verbo que não tem executor não fica no enum a fingir* — enquanto ficava, o
-//! `general_verb` devolvia `None` e o clique morria em silêncio, que é o defeito que esta secção
-//! caçou três vezes.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `component_edit.rs`.
 
 /// O que um clique num verbo de componente PEDE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

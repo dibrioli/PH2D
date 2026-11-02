@@ -9,9 +9,8 @@ use super::{button, slider_chip};
 use crate::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_tool_vector::params::{
-    OFFSET_DEFAULT_FRAC, OFFSET_SLIDER_OFFSET, OFFSET_SLIDER_SCALE, WPROFILE_DEFAULT_END,
-    WPROFILE_DEFAULT_MID, WPROFILE_DEFAULT_POS, WPROFILE_DEFAULT_START, WPROFILE_SLIDER_OFFSET,
-    WPROFILE_SLIDER_SCALE, offset_frac_to_slider, wprofile_to_slider,
+    WPROFILE_DEFAULT_END, WPROFILE_DEFAULT_MID, WPROFILE_DEFAULT_POS, WPROFILE_DEFAULT_START,
+    WPROFILE_SLIDER_OFFSET, WPROFILE_SLIDER_SCALE, wprofile_to_slider,
 };
 
 /// Passo do campo numérico do Offset, em fração do comprimento do caminho.
@@ -160,17 +159,21 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
         1.0,
         0.0,
     );
-    // O chip numérico do Offset é PERCENTUAL do tamanho da seleção (−100..+100) — o mapa
-    // fica estático e o rótulo nunca mente; o mundo-d resolve na shell (`offset_scale`).
-    slider_chip(
+    // ⭐ O Offset Path no padrão do Inspector (dono 02/11). `Distance (px)` não tem tecto: o
+    // offset é uma distância do documento, como uma coordenada (negativo encolhe). O `Limit` do
+    // Miter vai de 1 (toda quina vira Bevel) a 500 — a faixa do *Offset Path* do Illustrator.
+    crate::populate::world_number_field(store, crate::ids::VECTOR_EXPAND_OFFSET, 0.0);
+    crate::populate::number_field(
         store,
-        crate::ids::VECTOR_EXPAND_OFFSET,
-        ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_NUM,
-        offset_frac_to_slider(OFFSET_DEFAULT_FRAC),
-        OFFSET_DEFAULT_FRAC * 100.0, // LITERAL-PX-OK: unit conversion (fraction -> percent readout), not a design measure.
-        OFFSET_SLIDER_SCALE,
-        OFFSET_SLIDER_OFFSET,
+        crate::ids::VECTOR_EXPAND_MITER,
+        1.0,
+        500.0, // LITERAL-PX-OK: o tecto do Miter limit do Illustrator (razão, adimensional)
+        0.1,   // LITERAL-PX-OK: passo do scrub da razão
+        crate::EXPAND_KNOBS_AT_BIRTH.miter,
     );
+    button(store, crate::ids::VECTOR_EXPAND_RESULT_BEHIND);
+    button(store, crate::ids::VECTOR_EXPAND_RESULT_REPLACE);
+    button(store, crate::ids::VECTOR_EXPAND_REMOVE);
     // Fill rule (compound paths only — the row hides for a single contour).
     button(store, crate::ids::VECTOR_FILL_RULE_NONZERO);
     button(store, crate::ids::VECTOR_FILL_RULE_EVENODD);

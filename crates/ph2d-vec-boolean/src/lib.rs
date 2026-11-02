@@ -42,8 +42,8 @@ pub use cut::{CutRefusal, cut_closed, cut_open, cut_with_line};
 /// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.
 pub mod expand;
 pub use expand::{
-    __sweep_calls, MIN_OFFSET, offset_path, offset_ring, outline_stroke, power_stroke,
-    silhouette_paths,
+    __sweep_calls, MIN_OFFSET, offset_path, offset_path_with, offset_ring, outline_stroke,
+    power_stroke, silhouette_paths,
 };
 
 /// **O ALINHAMENTO do traço** — Inner/Outer como `banda-dupla ∩ interior` / `banda-dupla −

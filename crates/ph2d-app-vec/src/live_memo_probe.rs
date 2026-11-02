@@ -144,11 +144,9 @@ fn probe_contour() {
 fn probe_offset() {
     let (scene, mut sim, map, id, e) = posed_star();
     let _ = id;
-    sim.world_mut().entity_mut(e).insert(VecOffset {
-        d: 0.12,
-        join: 1,
-        side: 0,
-    });
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(VecOffset::new(0.12, 1, 0));
 
     let mut live = crate::offset_live::OffsetLive::default();
     let xf = pose_at(&mut sim, &map, e, 0.0);

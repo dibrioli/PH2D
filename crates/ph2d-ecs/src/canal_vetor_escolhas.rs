@@ -235,7 +235,10 @@ pub(super) const OFFSET_JUNCAO: &[&str] = &[
 ];
 
 pub(super) const OFFSET_LADO: &[&str] = &[
-    "panel.vector.expand.outer",
+    "panel.vector.expand.holes_keep",
     "panel.vector.expand.inner",
-    "panel.vector.expand.both",
+    "panel.vector.expand.holes_move",
 ];
+
+pub(super) const ATRAS: &[&str] =
+    &["panel.vector.expand.replace", "panel.vector.expand.behind"];

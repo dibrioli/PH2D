@@ -36,6 +36,8 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
+            // `Ctrl+Alt+…` é do vetor (as booleanas, o `Outline Stroke` em `Ctrl+Alt+O`).
+            && !self.modifiers.alt_key()
             && !self.text_entry_focused()
             && let PhysicalKey::Code(code) = physical_key
         {

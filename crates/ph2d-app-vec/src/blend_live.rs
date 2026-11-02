@@ -1,28 +1,6 @@
 //! **Blend Objects vivos** (ADR-0128) — o objeto único que interpola 2..=5 formas e as SEGUE.
 //!
-//! Espelho exato do padrão do [`crate::connector_live`]: o componente [`VecBlend`] guarda a
-//! **relação** (quais formas, na ordem, e quantos passos) e os passos intermediários são uma
-//! **função pura** dela, re-cozidos a cada frame. Ninguém "desenha" um passo: move-se uma forma
-//! fonte, e a transição se refaz.
-//!
-//! Consequência de graça (a mesma do conector): **undo e save cobrem o blend sem uma linha a
-//! mais** — os dois capturam o mundo ECS + a cena vetorial, e o `VecBlend` está registrado no
-//! `ComponentRegistry`.
-//!
-//! # Os passos são VIRTUAIS — o que está na cena é só o SPINE
-//!
-//! A entidade do blend carrega um `VecPathRef` como qualquer forma; o `VecPath` dela é o **spine**
-//! (a linha que une as fontes). Os N passos NÃO entram na cena — a shell os coze aqui, num
-//! `Vec<VecPath>` de MUNDO, e um passe de render ([`ph2d_vec_render::draw_blend_overlay`]) os
-//! desenha. É o que torna o blend **um objeto**, e não N formas (o pedido do Enio). Consequência:
-//! os passos não são pickáveis (igual ao Illustrator — pega-se o objeto, não um passo).
-//!
-//! # O blend vive na IDENTIDADE (como o conector)
-//!
-//! O spine e os passos são geometria de MUNDO; uma pose na entidade os deslocaria. Por isso
-//! `vec_transform::settle_origins` o **pula** e este módulo devolve o `Transform` à identidade —
-//! o que o torna (corretamente) não-arrastável pelo gizmo: mover o blend não quer dizer nada; o
-//! que se move são as formas-fonte, e a transição as segue (ADR-0128, o idioma do Illustrator).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `blend_live.rs`.
 
 use std::collections::BTreeMap;
 

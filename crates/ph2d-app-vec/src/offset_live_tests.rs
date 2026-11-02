@@ -19,6 +19,16 @@ use super::*;
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Contour, VecVertex};
 
+/// Os knobs `(join, side)` de um teste antigo — Miter limit de nascença, `Replace`.
+fn k(join: u8, side: u8) -> ph2d_panel_vector::OffsetKnobs {
+    ph2d_panel_vector::OffsetKnobs {
+        join,
+        side,
+        miter: ph2d_ecs::MITER_AT_BIRTH,
+        behind: false,
+    }
+}
+
 /// A **rosquinha do smoke 17**, posada — a fixture tem de conter o fenômeno: é o compound com
 /// furo que expôs metade dos bugs desta linha, e é onde `Side` e `Corner` têm o que fazer.
 /// A entidade carrega a pose `(4, 0)`, então o cozimento atravessa a fronteira local↔mundo.
@@ -93,12 +103,12 @@ fn the_authored_curve_never_moves_through_a_chain_of_previews() {
     let before = authored(&scene, id);
     let mut live = crate::offset_live::OffsetLive::default();
 
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.5, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.5, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     let mut seen: Vec<Vec<[f64; 2]>> = vec![drawn(&live, id)];
 
     for join in [1u8, 2u8, 0u8] {
-        crate::offset_live::retune(&mut sim, &map, &[id], (join, 2));
+        crate::offset_live::retune(&mut sim, &map, &[id], k(join, 2));
         live.recook(&scene, &sim, &map, &xf);
         assert_eq!(
             authored(&scene, id),
@@ -145,13 +155,13 @@ fn each_preview_re_derives_from_the_source_never_from_the_previous_preview() {
 
     // O caminho REAL: arma com Round, depois retuna para Bevel.
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], d, 1, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(d, 1, 2));
     live.recook(&scene, &sim, &map, &xf);
     assert!(
         drawn(&live, id).len() > 8,
         "o Round tem de materializar arcos, senão o teste não descreve o report"
     );
-    crate::offset_live::retune(&mut sim, &map, &[id], (2, 2));
+    crate::offset_live::retune(&mut sim, &map, &[id], k(2, 2));
     live.recook(&scene, &sim, &map, &xf);
 
     let got = drawn(&live, id);
@@ -180,9 +190,9 @@ fn each_preview_re_derives_from_the_source_never_from_the_previous_preview() {
 fn a_zero_offset_leaves_no_live_effect() {
     let (scene, mut sim, map, xf, id) = donut_scene();
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.5, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.5, 0, 2));
     assert!(crate::offset_live::spec_of(&sim, &map, id).is_some());
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.0, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.0, 0, 2));
     assert!(
         crate::offset_live::spec_of(&sim, &map, id).is_none(),
         "o `d` inerte tem de REMOVER o componente"
@@ -204,7 +214,7 @@ fn an_annihilating_offset_draws_nothing_but_keeps_the_source() {
     let before = authored(&scene, id);
     let mut live = crate::offset_live::OffsetLive::default();
 
-    crate::offset_live::arm(&mut sim, &map, &[id], -1.2, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(-1.2, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     assert_eq!(
         live.live().get(&id).map(Vec::len),
@@ -213,7 +223,7 @@ fn an_annihilating_offset_draws_nothing_but_keeps_the_source() {
     );
     assert_eq!(before, authored(&scene, id), "a arte tem de continuar lá");
 
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.3, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.3, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     assert!(
         !drawn(&live, id).is_empty(),
@@ -229,7 +239,7 @@ fn applying_the_offset_materialises_the_drawn_geometry() {
     let (mut scene, mut sim, mut map, xf, id) = donut_scene();
     let before = authored(&scene, id);
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.5, 1, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.5, 1, 2));
     live.recook(&scene, &sim, &map, &xf);
     let want = drawn(&live, id);
     assert!(
@@ -241,11 +251,12 @@ fn applying_the_offset_materialises_the_drawn_geometry() {
     pen.select_many(&[id]);
     assert!(crate::offset_live::materialise(
         &mut scene,
-        &sim,
+        &mut sim,
         &mut pen,
         &map,
         &xf,
-        &[id]
+        &[id],
+        &mut Vec::new()
     ));
 
     // O que está na CENA agora é, âncora a âncora, o que estava DESENHADO.
@@ -308,8 +319,18 @@ fn materialising_two_shapes_honours_each_ones_own_offset() {
     }
     let xf = ph2d_vec_entities::transform::build(&sim, &map);
     // A com MITER, B com ROUND — o mesmo `d`, quinas diferentes.
-    crate::offset_live::arm(&mut sim, &map, &ids[..1], 0.5, 0, 2);
-    crate::offset_live::arm(&mut sim, &map, &ids[1..], 0.5, 1, 2);
+    crate::offset_live::arm(
+        &mut sim,
+        &map,
+        &ids[..1],
+        ph2d_ecs::VecOffset::new(0.5, 0, 2),
+    );
+    crate::offset_live::arm(
+        &mut sim,
+        &map,
+        &ids[1..],
+        ph2d_ecs::VecOffset::new(0.5, 1, 2),
+    );
 
     // O que cada uma DESENHA, antes de materializar.
     let mut live = crate::offset_live::OffsetLive::default();
@@ -324,7 +345,13 @@ fn materialising_two_shapes_honours_each_ones_own_offset() {
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&ids);
     assert!(crate::offset_live::materialise(
-        &mut scene, &sim, &mut pen, &map, &xf, &ids
+        &mut scene,
+        &mut sim,
+        &mut pen,
+        &map,
+        &xf,
+        &ids,
+        &mut Vec::new()
     ));
 
     // Cada forma materializada fica com a contagem da quina DELA. A ordem na cena é a de z,
@@ -348,16 +375,17 @@ fn materialising_two_shapes_honours_each_ones_own_offset() {
 /// baixo venceria em silêncio.
 #[test]
 fn materialising_without_a_live_offset_refuses() {
-    let (mut scene, sim, map, xf, id) = donut_scene();
+    let (mut scene, mut sim, map, xf, id) = donut_scene();
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
     assert!(!crate::offset_live::materialise(
         &mut scene,
-        &sim,
+        &mut sim,
         &mut pen,
         &map,
         &xf,
-        &[id]
+        &[id],
+        &mut Vec::new()
     ));
 }
 
@@ -369,7 +397,7 @@ fn materialising_without_a_live_offset_refuses() {
 #[test]
 fn a_corner_chip_on_a_bare_shape_previews_the_slider_value() {
     let (scene, mut sim, map, xf, id) = donut_scene();
-    let n = crate::offset_live::choose_knobs(&mut sim, &map, &[id], (1, 0), 0.3);
+    let n = crate::offset_live::choose_knobs(&mut sim, &map, &[id], k(1, 0), 0.3);
     assert_eq!(n, 1, "o clique armou a forma");
     let spec = crate::offset_live::spec_of(&sim, &map, id).expect("offset vivo depois do clique");
     assert_eq!((spec.d, spec.join, spec.side), (0.3, 1, 0));
@@ -386,7 +414,7 @@ fn a_corner_chip_on_a_bare_shape_previews_the_slider_value() {
 fn a_corner_chip_with_the_slider_at_zero_arms_nothing() {
     let (_, mut sim, map, _, id) = donut_scene();
     assert_eq!(
-        crate::offset_live::choose_knobs(&mut sim, &map, &[id], (1, 0), 0.0),
+        crate::offset_live::choose_knobs(&mut sim, &map, &[id], k(1, 0), 0.0),
         0
     );
     assert!(crate::offset_live::spec_of(&sim, &map, id).is_none());
@@ -396,45 +424,38 @@ fn a_corner_chip_with_the_slider_at_zero_arms_nothing() {
 #[test]
 fn a_corner_chip_on_a_live_offset_keeps_its_distance() {
     let (_, mut sim, map, _, id) = donut_scene();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.2, 0, 2);
-    crate::offset_live::choose_knobs(&mut sim, &map, &[id], (2, 2), 0.7);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.2, 0, 2));
+    crate::offset_live::choose_knobs(&mut sim, &map, &[id], k(2, 2), 0.7);
     let spec = crate::offset_live::spec_of(&sim, &map, id).expect("vivo");
     assert_eq!((spec.d, spec.join, spec.side), (0.2, 2, 2));
 }
 
-/// **O slider não mostra um offset que a forma não tem** (smoke do Enio, 11/10: *«o slider mostra
+/// **O campo não mostra um offset que a forma não tem** (smoke do Enio, 11/10: *«o slider mostra
 /// 25 mas o efeito disso não aparece na estrela»*). Numa seleção sem offset vivo ele lê ZERO; só um
-/// offset vivo (o espelho) põe outro número lá.
+/// offset vivo põe outro número lá — a distância DELE.
 #[test]
 fn a_bare_selection_shows_a_zero_offset() {
     let (_, mut sim, map, _, id) = donut_scene();
+    assert_eq!(crate::offset_live::shown_d(&sim, &map, &[id]), 0.0);
+    assert_eq!(crate::offset_live::shown_d(&sim, &map, &[]), 0.0);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.2, 1, 2));
     assert_eq!(
-        crate::offset_live::shown_frac(&sim, &map, &[id], 0.25),
-        Some(0.0)
-    );
-    assert_eq!(
-        crate::offset_live::shown_frac(&sim, &map, &[], 0.0),
-        None,
-        "já no zero: nada a escrever"
-    );
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.2, 1, 2);
-    assert_eq!(
-        crate::offset_live::shown_frac(&sim, &map, &[id], 0.25),
-        None,
-        "vivo: o espelho manda"
+        crate::offset_live::shown_d(&sim, &map, &[id]),
+        0.2,
+        "vivo: a distância dele"
     );
 }
 
-/// E o chip sobre a forma nua, com o slider no zero que ela mostra, pré-visualiza a fração de
-/// NASCENÇA (25 %): um clique de Corner que não desenhasse seria o #41 de volta.
+/// E o chip sobre a forma nua, com o campo no zero que ela mostra, pré-visualiza a distância de
+/// NASCENÇA (um quarto da meia-dimensão): um clique de Corners que não desenhasse seria o #41.
 #[test]
-fn a_chip_on_a_zero_slider_previews_the_birth_fraction() {
+fn a_chip_on_a_zero_field_previews_the_birth_distance() {
     assert_eq!(
-        crate::offset_live::chip_frac(0.0),
-        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC
+        crate::offset_live::chip_d(0.0, 8.0),
+        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC * 8.0
     );
     assert_eq!(
-        crate::offset_live::chip_frac(-0.4),
+        crate::offset_live::chip_d(-0.4, 8.0),
         -0.4,
         "um valor que o artista pôs fica"
     );
@@ -449,7 +470,7 @@ fn a_chip_on_a_zero_slider_previews_the_birth_fraction() {
 fn the_cook_follows_the_source_when_it_changes() {
     let (mut scene, mut sim, map, xf, id) = donut_scene();
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.4, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.4, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     let before = drawn(&live, id);
 
@@ -522,7 +543,7 @@ fn the_cook_runs_the_effect_stack_before_the_pose_and_the_offset() {
     .collect();
 
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.3, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.3, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     let got = drawn(&live, id);
 
@@ -553,7 +574,7 @@ fn the_cook_runs_the_effect_stack_before_the_pose_and_the_offset() {
 fn forgetting_drops_the_memo_and_the_drawing() {
     let (scene, mut sim, map, xf, id) = donut_scene();
     let mut live = crate::offset_live::OffsetLive::default();
-    crate::offset_live::arm(&mut sim, &map, &[id], 0.4, 0, 2);
+    crate::offset_live::arm(&mut sim, &map, &[id], ph2d_ecs::VecOffset::new(0.4, 0, 2));
     live.recook(&scene, &sim, &map, &xf);
     assert!(!live.live().is_empty());
     live.forget();

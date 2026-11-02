@@ -1,41 +1,7 @@
 //! **A LARGURA VIVA na shell** — o cozimento e a materialização do
 //! [`ph2d_ecs::VecStrokeProfile`] (ADR-0148).
 //!
-//! Espelho exato do [`crate::offset_live`]: o componente guarda a **relação** (que largura, onde)
-//! e a aparência é uma **função pura** dela, re-cozida aqui e desenhada por
-//! [`ph2d_vec_render::dispatch`] **no z da forma**. O documento **nunca é tocado** enquanto o
-//! perfil é preview — o `VecPath` continua sendo a curva autorada (é ela que o modo Node edita), e
-//! a fita de largura variável é DESENHO.
-//!
-//! # A promessa que este módulo cumpre
-//!
-//! Antes disto os quatro sliders `W Start/Mid/End/Pos` eram **parâmetros de um comando**: nada
-//! acontecia até o clique em *Power Stroke*, e o clique assava. O artista escolhia quatro números
-//! às cegas e via o resultado depois de a curva já ter sido consumida. Agora eles autoram um
-//! perfil vivo — o traço engrossa e afina **enquanto o slider anda** —, e o botão MATERIALIZA, o
-//! mesmo par que o Offset já tinha (*"previsualizações em tempo real … para consolidar a curva
-//! deve-se apertar Apply"*, Enio 2026-07-21).
-//!
-//! # Uma porta produz o desenho, e é a MESMA que assa
-//!
-//! [`crate::expand::power_stroke_layers`] — o preview desenha o que ela devolve e o Apply
-//! insere o que ela devolve. Uma segunda rota ("um aproximador só para o preview") faria a forma
-//! **SALTAR** no instante do Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate
-//! comparando as duas saídas byte a byte.
-//!
-//! # O neutro é a AUSÊNCIA
-//!
-//! Perfil uniforme ⇒ o componente é **removido**, não guardado com todos os multiplicadores em
-//! `1.0`. Um documento não acumula relações invisíveis que não desenham nada, e é isso que faz
-//! *"arrastar os sliders de volta ao neutro"* devolver a forma ao estado limpo — a mesma lei do
-//! `VecOffset` com `d = 0`.
-//!
-//! # O memo é medido, como o do irmão
-//!
-//! `power_stroke` custa **0,26–0,55 ms** por forma (`measure_power_stroke`, release). O cozimento
-//! roda por frame, então sem memo uma cena parada pagaria isso para sempre. A chave é o que de
-//! facto o determina — a geometria de MUNDO que entra (que já carrega a largura do traço) e as
-//! paradas —, e não um contador de versão que alguém esqueceria de bumpar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `profile_live.rs`.
 
 use std::collections::BTreeMap;
 

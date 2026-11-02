@@ -1,37 +1,6 @@
 //! A forma vetorial vista pelo **gizmo de sprite** (ADR-0111).
 //!
-//! Não há gizmo vetorial próprio. Havia — 492 linhas que mutavam a geometria — e
-//! ele foi removido. Um path com `Transform` é um objeto como qualquer outro, e a
-//! matemática de mover/girar/escalar já existe, testada, em `ph2d-editor-core`.
-//!
-//! A tradução é exata, não uma imitação. O gizmo enquadra um sprite como
-//!
-//! ```text
-//! centro = translation + R·(anchor ⊙ scale)     meia-extensão = half_intrínseco ⊙ scale
-//! ```
-//!
-//! e uma forma vetorial tem a MESMA forma se lermos `anchor` como o **centro da
-//! bbox local da curva** e `half_intrínseco` como a **meia-extensão dessa bbox**.
-//! Por isso `opposite_anchor_translation` (que fixa o canto oposto ao escalar) vale
-//! sem uma linha nova: ela só depende desses dois números.
-//!
-//! Aqui moram também o **picking** de canvas — clicar numa forma fora da ferramenta
-//! vetorial a seleciona como se fosse um sprite — e o marquee.
-//!
-//! # O pick segue o DESENHO; a CAIXA segue a fonte
-//!
-//! Com um offset vivo (`ph2d_ecs::VecOffset`) o documento guarda a curva autorada e a tela
-//! mostra a derivada. O **hit-test** pergunta ao mesmo `live` que o renderer consome — clicar
-//! no que se vê é a definição de apontar, e sem isso a forma crescida era pintada num lugar e
-//! clicável noutro.
-//!
-//! A **bbox do gizmo** (`gizmo_view_for_entity`, acima) fica na FONTE, e é decisão, não
-//! esquecimento. Dois motivos: (a) o `d` do offset é uma distância de MUNDO, então escalar a
-//! forma não escala a banda — uma caixa que a incluísse pediria `s = (alvo − 2d)/meia_fonte`,
-//! e o gizmo derivaria do dedo durante o arrasto, que é a mesma armadilha das 5 tentativas
-//! revertidas do Blend Object (ADR-0128: *um gizmo sobre geometria que se move DOBRA*);
-//! (b) é o default do Illustrator — o bounding box ignora traço e efeitos de aparência, e
-//! "Use Preview Bounds" é preferência **desligada**.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vec_gizmo_view.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_editor_core::GizmoView;

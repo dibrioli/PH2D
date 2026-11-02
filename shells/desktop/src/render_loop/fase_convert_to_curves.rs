@@ -34,6 +34,7 @@ impl crate::App {
                 &mut self.vec.pen,
                 &xf,
                 &sel,
+                &mut self.vec.restack,
             );
             self.vec.pen.select_many(&new_sel);
         }

@@ -41,6 +41,7 @@ fn filled(mut p: VecPath) -> VecPath {
 const MITER: Expand = Expand::Offset {
     join: LineJoin::Miter,
     side: ph2d_vec_scene::OffsetSide::Both,
+    miter: ph2d_vec_scene::MITER_LIMIT,
 };
 
 /// **O id do botão diz o comando.** Um id de outra seção não é nosso — senão o dreno

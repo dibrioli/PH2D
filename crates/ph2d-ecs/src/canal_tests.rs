@@ -76,6 +76,8 @@ fn o_vocabulario_do_vetor_nao_renumera() {
         (v::OFFSET_DISTANCIA, 210),
         (v::OFFSET_JUNCAO, 211),
         (v::OFFSET_LADO, 212),
+        (v::OFFSET_MITER, 213),
+        (v::OFFSET_ATRAS, 214),
         (v::PINCEL_ESPACO, 112),
         (v::PINCEL_ESPELHO, 116),
         (v::TRACO_SOBRE_EFEITOS, 117),

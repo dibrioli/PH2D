@@ -142,6 +142,21 @@ impl crate::App {
                 );
             }
         }
+        // ⭐ A alça do Offset Path (F48): arrastar a borda cresce/encolhe (modo Select).
+        if let Some(pid) = self.vec.pen.selected()
+            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && ph2d_app_vec::offset_handle::shown(&hero.store, sim, &self.vec.entities, pid)
+        {
+            let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
+            let map = &self.vec.entities;
+            if let Some((edge, at)) =
+                ph2d_app_vec::offset_handle::handle(sim, vec_scene, map, &xf, pid)
+            {
+                let grabbed = self.vec.offset_grab.is_some();
+                let (t, s) = (hero.theme, &mut *vector_scene);
+                ph2d_vec_render::draw_width_handle(at, edge, grabbed, cam_affine, t, s);
+            }
+        }
         // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
         // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
         if let Some((a, b)) = crate::vec_text::caret_of(self.vec.text_edit.as_ref()) {

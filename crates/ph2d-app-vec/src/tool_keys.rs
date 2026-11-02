@@ -79,6 +79,7 @@ fn clicks(action: KeyAction) -> Option<KeyOutcome> {
         KeyAction::Intersect => KeyOutcome::Boolean(Op::Intersect),
         KeyAction::Subtract => KeyOutcome::Boolean(Op::Subtract),
         KeyAction::Exclude => KeyOutcome::Boolean(Op::Exclude),
+        KeyAction::OutlineStroke => KeyOutcome::Clicks(vec![ids::VECTOR_EXPAND_OUTLINE_STROKE]),
     };
     Some(out)
 }

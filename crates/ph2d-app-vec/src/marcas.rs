@@ -148,6 +148,15 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     ),
     (painel::VECTOR_TEXT_WRAP_W, &[campo(v::TEXTO_QUEBRA)]),
     (painel::VECTOR_EXPAND_OFFSET, &[campo(v::OFFSET_DISTANCIA)]),
+    (painel::VECTOR_EXPAND_MITER, &[campo(v::OFFSET_MITER)]),
+    (
+        painel::VECTOR_EXPAND_RESULT_BEHIND,
+        &[campo(v::OFFSET_ATRAS)],
+    ),
+    (
+        painel::VECTOR_EXPAND_RESULT_REPLACE,
+        &[campo(v::OFFSET_ATRAS)],
+    ),
     (
         ferramenta::VECTOR_EXPAND_JOIN_MITER,
         &[campo(v::OFFSET_JUNCAO)],

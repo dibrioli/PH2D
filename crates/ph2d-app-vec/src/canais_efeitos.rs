@@ -8,7 +8,7 @@ use ph2d_ecs::canal_vetor as c;
 use ph2d_ecs::{FieldKey, MAX_CONTOUR_STEPS, VecContour, VecOffset};
 
 const FIM_CONTORNO: u16 = c::CONTORNO_COR + 4;
-const FIM_OFFSET: u16 = c::OFFSET_LADO + 1;
+const FIM_OFFSET: u16 = c::OFFSET_ATRAS + 1;
 
 /// O campo `kk` é de um efeito vivo?
 #[must_use]
@@ -65,6 +65,8 @@ impl Efeitos {
         Some(match kk.campo {
             c::OFFSET_DISTANCIA => f(o.d),
             c::OFFSET_JUNCAO => f32::from(o.join),
+            c::OFFSET_MITER => f(o.miter),
+            c::OFFSET_ATRAS => f32::from(u8::from(o.behind)),
             _ => f32::from(o.side),
         })
     }
@@ -97,6 +99,8 @@ impl Efeitos {
         match kk.campo {
             c::OFFSET_DISTANCIA => o.d = f64::from(v),
             c::OFFSET_JUNCAO => o.join = byte(v, 2.0),
+            c::OFFSET_MITER => o.miter = f64::from(v.max(1.0)),
+            c::OFFSET_ATRAS => o.behind = byte(v, 1.0) == 1,
             _ => o.side = byte(v, 2.0),
         }
     }
@@ -148,6 +152,8 @@ mod tests {
             (c::OFFSET_DISTANCIA, -0.5),
             (c::OFFSET_JUNCAO, 0.0),
             (c::OFFSET_LADO, 2.0),
+            (c::OFFSET_MITER, 7.0),
+            (c::OFFSET_ATRAS, 1.0),
         ] {
             fx.escrever(k(campo), v);
             assert_eq!(fx.ler(k(campo)), Some(v), "campo {campo}");
@@ -160,7 +166,7 @@ mod tests {
         );
         fx.escrever(k(c::CONTORNO_PASSOS), 99.0);
         assert_eq!(fx.contorno.unwrap().steps, MAX_CONTOUR_STEPS);
-        assert_eq!(fx.campos().len(), 12);
+        assert_eq!(fx.campos().len(), 14);
         assert!(fx.campos().into_iter().all(|kk| fx.ler(kk).is_some()));
         assert_eq!(fx.ler(FieldKey::new(VETOR, c::CONTORNO_PASSOS, 1, 0)), None);
         assert!(!e_de_efeito(k(c::TEXTO_EIXO)));

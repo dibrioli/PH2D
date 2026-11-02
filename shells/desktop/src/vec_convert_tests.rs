@@ -17,7 +17,8 @@ fn convert(
     ids: &[VecPathId],
 ) -> Vec<VecPathId> {
     let mut pen = PenTool::new();
-    crate::vec_convert::to_curves(sim, scene, map, &mut pen, &VecXforms::default(), ids)
+    let xf = VecXforms::default();
+    crate::vec_convert::to_curves(sim, scene, map, &mut pen, &xf, ids, &mut Vec::new())
 }
 
 /// Um quadrado sincronizado numa entidade, com um Zig Zag ATIVO adicionado pelo MESMO caminho

@@ -1,54 +1,6 @@
 //! **A PILHA de FX raster VIVA na shell — 100% RESIDENTE NA GPU** (`ph2d_ecs::VecFilter`, plano 24).
 //!
-//! Irmão do [`crate::offset_live`]/[`crate::contour_live`], mas de OUTRA natureza: o offset produz
-//! GEOMETRIA (uma `LiveGeometry` que o `dispatch` desenha), e o FX produz PIXELS. A costura do
-//! plano 24 §2: um FX raster não é `PathEffect` (não é `VecPath -> VecPath`) nem `LiveGeometry` —
-//! ele isola a forma na própria textura, roda a pilha e recompõe.
-//!
-//! # Por que GPU-resident (Enio: "tudo é para o game em runtime, total performance")
-//!
-//! O 1º corte foi CPU-first (render → **readback GPU→CPU** → Gaussiana na CPU → **re-upload**) — um
-//! padrão de PREVIEW de editor. Em runtime a forma filtrada ANIMA, então esse roundtrip roda por
-//! frame por forma: readback bloqueia o pipeline e o re-upload cresce sem fim (o Vello cacheia
-//! imagem por id de Blob, e um Blob novo por frame vaza o atlas). Não há "total performance" com
-//! CPU no caminho.
-//!
-//! Agora é **tudo na placa**:
-//! 1. **todas** as formas que erraram o memo são rasterizadas num [`VelloPass`] scratch, **numa
-//!    passagem só**, cada uma na célula que o [`crate::fx_atlas`] lhe deu (renderer próprio, **sem
-//!    readback**);
-//! 2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU para cada forma, lendo a
-//!    célula dela, para uma textura de SAÍDA;
-//! 3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL**
-//!    ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, o Vello reusa o slot
-//!    do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
-//!    ⛔⛔ **E avisa-se o Vello, com [`VelloPass::mark_texture_dirty`].** Até à `vello` 0.8 o atlas
-//!    era **limpo a cada render** e este passo não existia — a frase acima bastava. A **0.10 tornou
-//!    o atlas persistente**: sem a marca, os pixels novos **não chegam à tela** e a forma congela na
-//!    primeira cozedura, refrescando só quando muda de TAMANHO. *Uma afirmação que era verdadeira
-//!    por construção passou a ser um defeito, sem uma linha nossa mudar.*
-//!
-//! # Por que UM render, e não `n`
-//!
-//! ⚠️ Um render do Vello custa **~0,12 ms antes de desenhar coisa alguma** — ele corre a cadeia de
-//! binning/tiling inteira e submete, seja qual for o conteúdo. Com um render por forma, uma cena
-//! de 32 formas filtradas gastava **4,0 ms só em raster**; a MESMA área de arte numa passagem só
-//! custa **0,39 ms** (medido na RTX: `ph2d-render/tests/it/fx_scene_scale_cost.rs`). Num editor isso
-//! é invisível — o artista mexe numa forma de cada vez —, mas o eixo é o do Enio: *"performance em
-//! tempo real em runtime para games"*, e num jogo as formas filtradas **animam**, logo erram o
-//! memo **todas, todo frame**. O que multiplica é o fixo, não o filtro.
-//!
-//! O memo vira OTIMIZAÇÃO — pula o re-cook quando nada muda —, não requisito de correção: mesmo
-//! re-cozinhando todo frame (cena inteira animada), é UM render + `2n+1` passes por forma. Vazio =
-//! nenhum FX (byte-idêntico ao mundo pré-FX). ⚠️ **A CHAVE dele mora no [`crate::fx_live_memo`]** e
-//! carrega o que é DESENHADO, não só a pilha resolvida e o tamanho — era essa a falta que fazia
-//! *mudar a cor do fill de uma forma filtrada não mudar a tela*.
-//!
-//! # A conversão MUNDO → PIXEL mora aqui, e só aqui
-//!
-//! O componente fala MUNDO (resolution-crisp: dar zoom aumenta o borrão na tela, como deve). O
-//! passe fala PIXEL. A câmera é conhecida por esta função e por mais ninguém — uma segunda
-//! conversão noutro sítio seria um segundo sítio a errá-la.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `fx_live.rs`.
 
 use std::collections::BTreeMap;
 

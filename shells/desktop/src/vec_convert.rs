@@ -105,6 +105,7 @@ pub(crate) fn to_curves(
     pen: &mut PenTool,
     xforms: &VecXforms,
     selection: &[VecPathId],
+    restack: &mut Vec<Vec<VecPathId>>,
 ) -> Vec<VecPathId> {
     let new_sel = crate::vec_text::convert_text_selection_to_curves(sim, scene, map, selection);
     crate::vec_shape_live::drop_shape_params(sim, map, &new_sel);
@@ -112,11 +113,12 @@ pub(crate) fn to_curves(
     // O Offset vivo materializa ANTES do bake: ele CONSOME o caminho (remove+insere), então
     // assar o cozido de um path que vai deixar de existir seria trabalho jogado fora — e a
     // seleção que sai daqui tem de ser a que o `expand_selection` produziu.
-    let new_sel = if crate::offset_live::materialise(scene, sim, pen, map, xforms, &new_sel) {
-        pen.selected_paths().to_vec()
-    } else {
-        new_sel
-    };
+    let new_sel =
+        if crate::offset_live::materialise(scene, sim, pen, map, xforms, &new_sel, restack) {
+            pen.selected_paths().to_vec()
+        } else {
+            new_sel
+        };
     for id in &new_sel {
         scene.bake_cooked(*id);
     }

@@ -67,6 +67,18 @@ fn the_booleans_moved_to_ctrl_alt() {
     assert_eq!(key(&mut hold, c('u'), true, false, DrawMode::Select), None);
 }
 
+/// ⭐ `Ctrl+Alt+O` = Outline Stroke (o atalho do Figma; dono 02/11) — um clique no botão do
+/// `Convert`, a mesma porta.
+#[test]
+fn ctrl_alt_o_outlines_the_stroke() {
+    let mut hold = None;
+    let o = chord(0x4F, false, true, true, false).expect("Ctrl+Alt+O é do vetor");
+    assert_eq!(
+        key(&mut hold, o, true, false, DrawMode::Select),
+        Some(KeyOutcome::Clicks(vec![ids::VECTOR_EXPAND_OUTLINE_STROKE]))
+    );
+}
+
 #[test]
 fn only_letters_make_chords() {
     assert!(

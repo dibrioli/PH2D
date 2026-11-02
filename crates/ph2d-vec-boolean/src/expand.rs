@@ -510,6 +510,19 @@ const SLIVER_REL: f64 = 1e-4;
 /// `AssertUnwindSafe` é honesto: a entrada é emprestada e só lida, e a saída nasce no bloco.
 #[must_use]
 pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
+    offset_path_with(path, d, join, side, ph2d_vec_scene::MITER_LIMIT)
+}
+
+/// [`offset_path`] com o **limite do Miter** escolhido pelo artista (o `Limit` do painel, como o
+/// *Miter limit* do Offset Path do Illustrator): uma quina Miter mais aguda que ele vira Bevel.
+#[must_use]
+pub fn offset_path_with(
+    path: &VecPath,
+    d: f64,
+    join: LineJoin,
+    side: OffsetSide,
+    miter: f64,
+) -> Vec<VecPath> {
     if d.abs() < MIN_OFFSET || !d.is_finite() {
         return Vec::new();
     }
@@ -518,7 +531,7 @@ pub fn offset_path(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> 
     // ("o gate que conta quantas vezes o caminho CARO dispara").
     SWEEP_CALLS.with(|c| c.set(c.get() + 1));
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        offset_path_inner(path, d, join, side)
+        offset_path_inner(path, d, join, side, miter)
     }))
     .unwrap_or_default()
 }
@@ -540,7 +553,13 @@ pub fn __sweep_calls() -> u64 {
     SWEEP_CALLS.with(std::cell::Cell::get)
 }
 
-fn offset_path_inner(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -> Vec<VecPath> {
+fn offset_path_inner(
+    path: &VecPath,
+    d: f64,
+    join: LineJoin,
+    side: OffsetSide,
+    miter: f64,
+) -> Vec<VecPath> {
     // Regulariza ANTES de offsetar: os contornos têm de sair orientados e agrupados (quem é
     // furo de quem), senão não dá para offsetar cada um por conta própria.
     let Some(region) = Region::of(&to_bez_with(path, Closing::Always), rule_of(path)) else {
@@ -553,7 +572,7 @@ fn offset_path_inner(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -
             continue;
         };
         let Some(outer_r) =
-            loop_region(outer, side.hits_outer(), d, join).filter(|r| !r.is_empty())
+            loop_region(outer, side.hits_outer(), d, join, miter).filter(|r| !r.is_empty())
         else {
             continue; // o contorno de fora sumiu ao encolher — o grupo inteiro sai
         };
@@ -568,7 +587,7 @@ fn offset_path_inner(path: &VecPath, d: f64, join: LineJoin, side: OffsetSide) -
         let mut all = outer_r.bez();
         for hole in holes {
             if let Some(hr) =
-                loop_region(hole, side.hits_inner(), d, join).filter(|r| !r.is_empty())
+                loop_region(hole, side.hits_inner(), d, join, miter).filter(|r| !r.is_empty())
             {
                 all.extend(hr.bez().iter());
             }
@@ -611,7 +630,13 @@ fn flat_lines(bez: &BezPath) -> BezPath {
 ///
 /// ⚠️ Tudo que entra num sweep aqui passa por [`flat_lines`] — este caminho roda POR FRAME
 /// no arrasto do slider, e cúbica no sweep não cabe num frame (ver o doc do `flat_lines`).
-fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Option<Region> {
+fn loop_region(
+    loop_bez: &BezPath,
+    offset: bool,
+    d: f64,
+    join: LineJoin,
+    miter: f64,
+) -> Option<Region> {
     // Bevel/Miter medem a junção pelas retas vizinhas: junto às quinas elas seguem a tangente
     // com erro `≤ tol/|d|`, ou a junção erraria `|d|·θ` (ver `expand_corner.rs`).
     let honest = (offset && join != LineJoin::Round)
@@ -625,6 +650,7 @@ fn loop_region(loop_bez: &BezPath, offset: bool, d: f64, join: LineJoin) -> Opti
     }
     let pen = Stroke::new(2.0 * d.abs())
         .with_join(join_of(join))
+        .with_miter_limit(miter.max(1.0))
         .with_caps(Cap::Butt);
     // ⚠️ Bevel/Miter: a banda é a UNIÃO das peças (ver `expand_band.rs` — o contorno do stroker
     // cancelava parte dela sob NonZero e a forma sumia sob o slider). Round: o stroker, que lá bate.

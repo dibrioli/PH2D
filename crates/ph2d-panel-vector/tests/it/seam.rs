@@ -706,7 +706,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // linha do Fill. ⚠️ O `33` foi CONTADO (o gate imprimiu `left: 33`).
         // ⛔ −1 (F45, 01/11): STROKE saiu — Fill & Stroke são UMA secção (o id da FILL). ⚠️ O `32`
         // foi CONTADO (o gate imprimiu `left: 32`).
-        32,
+        // +1 (F48, 02/11): CONVERT — o Outline Stroke saiu do Offset Path para a secção dele.
+        // ⚠️ O `33` foi CONTADO (o gate imprimiu `left: 33`).
+        33,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -1694,6 +1696,8 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
     // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
     // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
     ph2d_panel_vector::state::set_current_selection_count(1);
+    // `Apply`/`Remove` só existem com um offset VIVO na seleção (dono 02/11).
+    ph2d_panel_vector::set_offset_live_on(true);
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1704,8 +1708,23 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
     for (id, name, forwards) in [
         (
             ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
-            "Offset Path",
+            "Apply",
             true,
+        ),
+        (
+            ph2d_panel_vector::ids::VECTOR_EXPAND_REMOVE,
+            "Remove",
+            false,
+        ),
+        (
+            ph2d_panel_vector::ids::VECTOR_EXPAND_RESULT_BEHIND,
+            "Result Behind",
+            false,
+        ),
+        (
+            ph2d_panel_vector::ids::VECTOR_EXPAND_RESULT_REPLACE,
+            "Result Replace",
+            false,
         ),
         (
             ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
@@ -1713,18 +1732,8 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
             true,
         ),
         (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_POWER_STROKE,
-            "Power Stroke",
-            true,
-        ),
-        (
             ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
             "Side Outer",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER,
-            "Side Inner",
             false,
         ),
         (
@@ -1746,29 +1755,6 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
             ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
             "Join Bevel",
             false,
-        ),
-        // Os perfis nomeados (W2b) — os quatro FORWARDAM: o clique escreve os sliders e arma o
-        // perfil na seleção, e as duas metades são da shell. Panel-local deixaria a linha acesa
-        // sobre uma forma que não mudou.
-        (
-            ph2d_panel_vector::ids::vector_width_preset_id(0),
-            "Profile Uniform",
-            true,
-        ),
-        (
-            ph2d_panel_vector::ids::vector_width_preset_id(1),
-            "Profile Taper",
-            true,
-        ),
-        (
-            ph2d_panel_vector::ids::vector_width_preset_id(2),
-            "Profile Both",
-            true,
-        ),
-        (
-            ph2d_panel_vector::ids::vector_width_preset_id(3),
-            "Profile Bulge",
-            true,
         ),
     ] {
         let mut host = crate::host_aberto();
@@ -1877,10 +1863,13 @@ fn clicking_a_side_chip_records_that_side() {
         (
             ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
             0_u8,
-            "Outer",
+            "Keep",
         ),
-        (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER, 1, "Inner"),
-        (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH, 2, "Both"),
+        (
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
+            2,
+            "Offset too",
+        ),
     ] {
         let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;

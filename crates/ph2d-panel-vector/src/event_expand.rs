@@ -11,10 +11,43 @@
 //! ATENDE o clique, e o `pick_*` para saber o QUE gravar. Duas perguntas, uma tabela.
 
 use crate::state;
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 
+/// ⭐ **Os eventos do Offset Path** (F48) — `None` = não é dele. Todos panel-local: a distância
+/// (`VECTOR_EXPAND_OFFSET`) é lida do store pela shell a cada quadro, e o `Remove` zera-a (a shell
+/// vê o campo mudar e DESARMA a seleção — a mesma porta de quem digita `0`).
+pub(super) fn expand_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
+    use crate::ids::{
+        VECTOR_EXPAND_MITER, VECTOR_EXPAND_OFFSET, VECTOR_EXPAND_REMOVE,
+        VECTOR_EXPAND_RESULT_BEHIND, VECTOR_EXPAND_RESULT_REPLACE,
+    };
+    Some(match ev {
+        WidgetEvent::Click(id) if expand_join_index(id).is_some() => pick_expand_join(host, id),
+        WidgetEvent::Click(id) if expand_side_index(id).is_some() => pick_expand_side(host, id),
+        WidgetEvent::Click(id)
+            if id == VECTOR_EXPAND_RESULT_BEHIND || id == VECTOR_EXPAND_RESULT_REPLACE =>
+        {
+            seam_reset_button(host, id);
+            state::set_expand_behind(id == VECTOR_EXPAND_RESULT_BEHIND);
+            true
+        }
+        WidgetEvent::Click(id) if id == VECTOR_EXPAND_REMOVE => {
+            seam_reset_button(host, id);
+            host.store_mut().set_number_value(VECTOR_EXPAND_OFFSET, 0.0);
+            true
+        }
+        WidgetEvent::ValueChanged(id) if id == VECTOR_EXPAND_MITER => {
+            state::set_expand_miter(host.store().number_value(id).unwrap_or(1.0));
+            true
+        }
+        WidgetEvent::ValueChanged(id) if id == VECTOR_EXPAND_OFFSET => true,
+        _ => return None,
+    })
+}
+
 /// Grava a junção escolhida para o **Offset Path** e ENGOLE o clique.
-pub(super) fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
     seam_reset_button(host, id);
     if let Some(j) = expand_join_index(id) {
         state::set_expand_join(j);
@@ -26,7 +59,7 @@ pub(super) fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::
 /// Bevel), ou `None` se o id não é um dos três chips. Porta única: o `apply_event` a
 /// consulta para saber se ATENDE o clique, e [`pick_expand_join`] para saber o QUE gravar —
 /// duas perguntas, uma tabela.
-pub(super) fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
+fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
     match id {
         _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
         _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
@@ -36,7 +69,7 @@ pub(super) fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
 }
 
 /// **Qual contorno o Offset Path move** — panel-local, o irmão do [`pick_expand_join`].
-pub(super) fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
     seam_reset_button(host, id);
     if let Some(s) = expand_side_index(id) {
         state::set_expand_side(s);
@@ -46,7 +79,7 @@ pub(super) fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::
 
 /// O índice do lado do Offset (`0` Outer · `1` Inner · `2` Both), ou `None`. Porta única,
 /// como a da junção.
-pub(super) fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
+fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
     match id {
         _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER => Some(0),
         _ if id == ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER => Some(1),

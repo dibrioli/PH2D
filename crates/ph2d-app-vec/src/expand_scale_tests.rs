@@ -178,7 +178,7 @@ fn the_scale_is_a_fact_of_the_sources_which_the_preview_never_moves() {
     let mut scene = scene;
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let ids: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
-    crate::offset_live::arm(&mut sim, &map, &ids, 0.8, 1, 2);
+    crate::offset_live::arm(&mut sim, &map, &ids, ph2d_ecs::VecOffset::new(0.8, 1, 2));
     let mut live = crate::offset_live::OffsetLive::default();
     live.recook(&scene, &sim, &map, &xf);
     assert!(

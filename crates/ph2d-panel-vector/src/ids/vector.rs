@@ -43,6 +43,19 @@ pub const VECTOR_PENCIL_EDIT_SHAPE: NodeId = hash_node_id("vector.pencil.edit_sh
 // traço: um path pode não ter traço nenhum e ainda assim ser offsetado.
 pub const VECTOR_EXPAND_OFFSET: NodeId = hash_node_id("vector.expand.offset");
 
+// ⭐ O Offset Path no padrão do Inspector (dono 02/11): o `Limit` do Miter, o `Result` e o
+// `Remove` (desliga o offset vivo da seleção). O `Distance (px)` é o `VECTOR_EXPAND_OFFSET`.
+pub const VECTOR_EXPAND_MITER: NodeId = hash_node_id("vector.expand.miter_limit");
+
+pub const VECTOR_EXPAND_RESULT_BEHIND: NodeId = hash_node_id("vector.expand.result.behind");
+
+pub const VECTOR_EXPAND_RESULT_REPLACE: NodeId = hash_node_id("vector.expand.result.replace");
+
+pub const VECTOR_EXPAND_REMOVE: NodeId = hash_node_id("vector.expand.remove");
+
+/// A secção **Convert** — o Outline Stroke saiu do Offset Path para a secção dele.
+pub const VECTOR_SECTION_CONVERT: NodeId = hash_node_id("vector.section.convert");
+
 // **Power Stroke** — a largura VARIA ao longo do caminho. Três valores de controle + onde o
 // do meio senta: é o *perfil* que o Illustrator vende pronto, e cobre o caso de 90%
 // (afina-no-fim, afina-nos-dois, engrossa-no-meio). As alças arrastáveis na linha são um

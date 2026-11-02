@@ -58,6 +58,21 @@ pub struct VecOffset {
     pub join: u8,
     /// Que contorno anda, no código do painel: `0` Outer · `1` Inner · `2` Both.
     pub side: u8,
+    /// O limite do Miter (`Limit` no painel): quina mais aguda que ele vira Bevel. O padrão é o do
+    /// traço desenhado (`ph2d_vec_scene::MITER_LIMIT`, gate em `offset_live_tests`).
+    #[serde(default = "miter_at_birth")]
+    pub miter: f64,
+    /// `Result: New shape behind` — a fonte fica intacta POR CIMA e o offset desenha-se atrás dela
+    /// (o *Offset Path* do Illustrator faz uma cópia). `false` = `Replace`, o de antes.
+    #[serde(default)]
+    pub behind: bool,
+}
+
+/// O limite do Miter com que um offset nasce (e o de um documento gravado antes do campo).
+pub const MITER_AT_BIRTH: f64 = 4.0;
+
+fn miter_at_birth() -> f64 {
+    MITER_AT_BIRTH
 }
 
 impl SimComponent for VecOffset {}
@@ -66,6 +81,12 @@ impl VecOffset {
     /// Um offset vivo novo.
     #[must_use]
     pub fn new(d: f64, join: u8, side: u8) -> Self {
-        Self { d, join, side }
+        Self {
+            d,
+            join,
+            side,
+            miter: MITER_AT_BIRTH,
+            behind: false,
+        }
     }
 }

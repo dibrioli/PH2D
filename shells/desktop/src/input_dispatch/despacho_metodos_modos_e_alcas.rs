@@ -137,6 +137,37 @@ impl crate::App {
         )
     }
 
+    /// ⭐ A alça do Offset Path (F48): agarra-a sob o cursor — o host então PULA o picking/gizmo.
+    pub(super) fn vec_offset_handle_down(&mut self, world: [f64; 2]) -> bool {
+        let r = self.vec_px_to_world() * crate::vec_text_ride::HANDLE_R_PX;
+        let (Some(gfx), Some(pid)) = (self.gfx.as_ref(), self.vec.pen.selected()) else {
+            return false;
+        };
+        let Some(hero) = gfx.hero_screen.as_ref() else {
+            return false;
+        };
+        let map = &self.vec.entities;
+        if !ph2d_app_vec::offset_handle::shown(&hero.store, &gfx.sim, map, pid) {
+            return false;
+        }
+        let xf = ph2d_vec_entities::transform::build(&gfx.sim, map);
+        let (s, v) = (&gfx.sim, &gfx.vec_scene);
+        self.vec.offset_grab = ph2d_app_vec::offset_handle::press_at(s, v, map, &xf, pid, world, r);
+        self.vec.offset_grab.is_some()
+    }
+
+    /// O arrasto da alça do Offset Path — no-op sem ela agarrada.
+    pub(super) fn vec_offset_handle_move(&mut self) -> bool {
+        let (Some(g), Some(w)) = (self.vec.offset_grab, self.vec_world_at(self.last_pointer))
+        else {
+            return false;
+        };
+        if let Some(gfx) = self.gfx.as_mut() {
+            ph2d_app_vec::offset_handle::drag(&mut gfx.sim, &self.vec.entities, g, w);
+        }
+        true
+    }
+
     /// **Pressão sobre uma ÂNCORA do motion path** (ADR-0141, Fatia 3): se há uma sob o
     /// cursor, arma o arrasto, abre UM passo de undo e devolve `true` — o host então PULA
     /// o picking/gizmo.

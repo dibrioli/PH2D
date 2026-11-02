@@ -1,49 +1,6 @@
 //! **A PELE de widget, viva** — o degrau 2 do §2 do plano UI/UX (W6.2).
 //!
-//! Uma forma marcada com [`ph2d_ecs::VecWidget`] deixa de ser desenhada como vetor e passa a ser
-//! pintada pelo **pintor REAL** do catálogo, no retângulo dela. Este módulo é a ponte, e ele mora
-//! na shell por uma razão de arquitetura: só aqui as duas metades se encontram — a
-//! `ph2d-editor-core` (que sabe o que é um botão) e a `ph2d-vec-render` (que sabe onde a forma
-//! está no z). A crate de render recebe um fragmento **opaco** e nunca aprende o que é um widget.
-//!
-//! # Três perguntas, três donos, e nenhuma resposta duplicada
-//!
-//! - **ONDE** — [`ph2d_vec_render::path_screen_bounds`], a MESMA função que o produtor de FX
-//!   raster usa para dimensionar o scratch dele. Uma segunda projeção descreveria a forma noutro
-//!   lugar da tela no primeiro zoom.
-//! - **O QUÊ** — o `kind` do componente, traduzido UMA vez por
-//!   [`ph2d_editor_core::widget::WidgetKind::from_code`]; código desconhecido devolve `None` e a
-//!   forma **desenha como sempre** (é a compatibilidade, não um erro).
-//! - **O RÓTULO** — o [`ph2d_ecs::Name`] da entidade, o nome que o artista já digita na
-//!   Hierarquia. Sem `Name`, rótulo vazio: o widget desenha a moldura e mais nada, que é a
-//!   resposta honesta para um objeto sem nome.
-//!
-//! ⚠️ **E o GLIFO de um `IconButton` é a QUARTA resposta, dada pelo próprio desenho** — a forma
-//! que veste o botão *é* o ícone, normalizada por [`crate::widget_icon::icon_face`], a MESMA porta
-//! que o painel gerado percorre. Ver o doc dela para o que a pose não faz.
-//!
-//! # A APARÊNCIA não vem daqui, e isso é decisão
-//!
-//! Cor, raio e tipografia saem dos **tokens** (`ph2d_tokens::resolve`, que a W6.1 tornou
-//! autorável) — o desenho responde ONDE e O QUÊ. Um mapeamento por-tipo (*"o preenchimento da
-//! forma vira a cor da swatch"*) é uma tabela de casos especiais e está deliberadamente **não
-//! construído**; ver o doc de [`ph2d_editor_core::widget::paint_widget_skin`].
-//!
-//! ⭐ **F18 (17/10): o DESENHO passou a ser o corpo.** A forma desenha-se como sempre e a pele vai
-//! por cima com o conteúdo, num escopo do tema que torna as superfícies transparentes e escolhe a
-//! tinta legível sobre a cor PINTADA da forma ([`ph2d_tokens::skin_body`]). Os tokens continuam a
-//! responder COMO — agora pelo papel de cada um.
-//!
-//! # O widget é pintado em pixels de TELA
-//!
-//! Um token é um número em **px** — `Radius::Md.px()`, `ICON_BTN_SIZE_PX`, o corpo do texto em pt.
-//! Pintar a pele numa escala inventada mostraria ao artista um número que não é o número que o
-//! app usa, que é exactamente a falha que a W6.1 existe para impedir. ⚠️ A consequência honesta:
-//! **o zoom do canvas amplia a MOLDURA, não os detalhes do controle** — a caixa cresce, os cantos
-//! ficam do tamanho que o token diz. Um widget é autorado em px porque um token é px; magnificação
-//! fiel exigiria uma constante px↔mundo, e essa constante já tem dono noutro lugar
-//! (`ProjectSettings::pixels_per_meter`) — puxá-la para cá seria uma segunda resposta a *"quanto
-//! mede um pixel"*.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `widget_live.rs`.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecWidget, VecWidgetIcon};
 use ph2d_editor_core::icons::IconId;

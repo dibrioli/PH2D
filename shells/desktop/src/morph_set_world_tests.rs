@@ -357,7 +357,16 @@ fn converting_the_set_to_curves_takes_the_machine_with_it() {
     // caminho próprio aqui provaria que o `remove` funciona, não que o produto o faz.
     let mut pen = ph2d_vec_edit::PenTool::default();
     let xf = ph2d_vec_entities::transform::build(&sim, &map);
-    crate::vec_convert::to_curves(&mut sim, &mut scene, &mut map, &mut pen, &xf, &[host_id]);
+    let (ids, mut restack) = (&[host_id], Vec::new());
+    crate::vec_convert::to_curves(
+        &mut sim,
+        &mut scene,
+        &mut map,
+        &mut pen,
+        &xf,
+        ids,
+        &mut restack,
+    );
 
     assert!(
         sim.world().get::<VecMorph>(host).is_none(),

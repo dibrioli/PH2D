@@ -191,19 +191,24 @@ fn a_quebra_e_a_fonte_tem_losango() {
     state::set_current_text_visible(false);
 }
 
-/// O perfil de largura (Expand): o catálogo e os sliders que o armam.
+/// O perfil de largura (no «Stroke settings» desde a F48): o catálogo e os campos que o armam.
 #[test]
 fn o_perfil_tem_losango() {
     state::set_current_selection_count(1);
     let preset = ids::vector_width_preset_id(0);
+    let com_o_ajuste_aberto = || {
+        let mut h = crate::host_aberto();
+        crate::clica(&mut h, ids::VECTOR_STROKE_SETTINGS);
+        h
+    };
     losango(
-        crate::host_aberto(),
+        com_o_ajuste_aberto(),
         preset,
         ids::vector_width_preset_id(1),
         "o catálogo de perfis",
     );
     losango(
-        crate::host_aberto(),
+        com_o_ajuste_aberto(),
         ids::VECTOR_EXPAND_W_MID,
         ph2d_tool_vector::ids::VECTOR_EXPAND_W_MID_NUM,
         "o W Mid",

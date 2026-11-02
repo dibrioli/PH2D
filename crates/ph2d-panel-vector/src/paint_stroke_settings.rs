@@ -88,8 +88,8 @@ impl BodyCtx<'_> {
         });
         // ⭐ F47 (dono 02/11): o traço por cima dos Filtros da forma.
         if let Some(on) = state::stroke_above_effects() {
-            let id = ids::VECTOR_STROKE_ABOVE_EFFECTS;
-            y = self.checkbox_row(id, tr("panel.vector.stroke.above_effects"), on, y);
+            let rotulo = tr("panel.vector.stroke.above_effects");
+            y = self.checkbox_row(ids::VECTOR_STROKE_ABOVE_EFFECTS, rotulo, on, y);
         }
         // Os tokens da espessura e da cor — só com traço: o token colore o traço que existe e
         // nunca inventa largura.
@@ -113,6 +113,8 @@ impl BodyCtx<'_> {
         y = self.marker_rows(snap, y);
         if state::current_selection_count() > 0 {
             y = self.width_preset_row(state::current_selection_profile(), y);
+            // O afinamento à mão e o `Apply Power Stroke` (vinham da Expand até 02/11).
+            y = self.power_stroke_rows(y);
         }
         y
     }

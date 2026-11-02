@@ -62,6 +62,7 @@ pub fn step(
 ) -> Option<u8> {
     let filtros = qual == 4;
     let expand = qual == 5;
+    let offset = qual == 6;
     let traco = qual == 1;
     let ordem = (2..=3).contains(&qual);
     let lados_cad = qual == 3;
@@ -109,6 +110,11 @@ pub fn step(
                 etiqueta(p);
                 return None;
             }
+            if offset {
+                p.paints.clear();
+                PASSO.store(2, Ordering::Relaxed);
+                return None;
+            }
             if ordem {
                 ordem_livre(p);
                 if lados_cad {
@@ -150,6 +156,7 @@ pub fn step(
             }
             return Some(9);
         }
+        3 if offset => return offset_path(vec, sim, hero, *ids.first()?),
         3 if filtros => {
             return abre(hero, false, true)
                 .inspect(|_| ph2d_panel_vector::open_stroke_settings(&mut hero.store));
@@ -172,6 +179,36 @@ pub fn step(
         _ => {}
     }
     None
+}
+
+/// ⭐ A cena 51 (F48): o Offset Path aberto, com um offset VIVO de `Distance 15 px`, Miter e
+/// `New shape behind`. `PH2D_OBJECT_MODE_GESTO=apply` clica o `Apply` (a foto do resultado).
+fn offset_path(
+    vec: &mut VecState,
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &mut HeroScreen,
+    id: VecPathId,
+) -> Option<u8> {
+    for s in [
+        ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
+        ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
+    ] {
+        hero.store.set_collapsed(s, false);
+    }
+    rola_ate(hero, ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND)?;
+    let d = ph2d_editor_core::DocPx::of(&hero.project).to_world(15.0);
+    let k = ph2d_panel_vector::EXPAND_KNOBS_AT_BIRTH;
+    ph2d_panel_vector::set_offset_knobs(k);
+    crate::offset_live::arm(sim, &vec.entities, &[id], crate::expand::spec_with(k, d));
+    if std::env::var("PH2D_OBJECT_MODE_GESTO").as_deref() == Ok("apply") {
+        hero.bus
+            .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                ph2d_editor_core::tool::PanelEvent::Click(
+                    ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
+                ),
+            ));
+    }
+    Some(9)
 }
 
 /// ⭐ A cena 47: o traço de base grosso, e a pilha (do chão ao topo) sombra → traço de base →

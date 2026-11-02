@@ -1,46 +1,6 @@
 //! **O Offset VIVO na shell** — o cozimento e a materialização do [`ph2d_ecs::VecOffset`].
 //!
-//! Espelho do [`crate::blend_live`] / [`crate::connector_live`]: o componente guarda a relação
-//! (quanto, com que quina, de que lado) e a aparência é uma **função pura** dela, re-cozida aqui
-//! e desenhada por [`ph2d_vec_render::dispatch`] **no z da forma**.
-//!
-//! # A promessa que este módulo existe para cumprir
-//!
-//! *"os botões Miter, Round e Bevel são previsualizações em tempo real dos efeitos, mas para
-//! consolidar a curva deve-se apertar Apply Offset ou Convert to Curves"* (Enio, 2026-07-21).
-//!
-//! Antes disto o preview **substituía** a forma no documento: o resultado era um objeto com id
-//! próprio, e o modo Node mostrava as ~238 âncoras dos arcos do Round. O artista lia, com razão,
-//! *"a curva já tem todos os vertex novos criados antes de apertar apply"*. Agora o documento
-//! **nunca é tocado** enquanto o offset é preview: o `VecPath` continua sendo a curva autorada, e
-//! o resultado é DESENHO.
-//!
-//! # A ordem do cozimento: quina → pilha de efeitos → offset
-//!
-//! A fonte que entra aqui é o [`ph2d_vec_scene::VecPath::cooked`] — ou seja, o raio de quina
-//! (estágio zero, ADR-0121) e a pilha de Live Path Effects (ADR-0132) correm ANTES. É a única
-//! ordem que se sustenta: o offset precisa de uma REGIÃO regularizada, e tanto a quina como os
-//! efeitos produzem geometria plana que ele pode consumir. O inverso (offsetar e depois ondular)
-//! continua alcançável pelo caminho destrutivo — Apply Offset e então o efeito.
-//!
-//! # Quem lê a DERIVADA e quem lê a FONTE
-//!
-//! Lêem a derivada os que respondem *"o que está na tela aqui?"* — o
-//! [`ph2d_vec_render::dispatch`] e, desde 2026-07-21, o **hit-test de canvas** e o **marquee**
-//! ([`crate::vec_gizmo_view`]): clicar no que se vê é a definição de apontar, e enquanto o pick
-//! apalpava a curva autorada a forma crescida era pintada num lugar e clicável noutro.
-//!
-//! Lêem a FONTE os que respondem *"o que o artista escreveu?"*: o modo **Node** (as âncoras que
-//! ele arrasta são as autoradas — é a mesma lei do raio de quina vivo, ADR-0121) e a **caixa do
-//! gizmo** (o porquê está no cabeçalho do `vec_gizmo_view`). Nenhum dos dois é esquecimento.
-//!
-//! # O memo não é otimização prematura: é MEDIDO
-//!
-//! `offset_path` custa, em release, **0,40–0,86 ms** no donut e **0,55–1,07 ms** na estrela com
-//! quina Round (Miter/Bevel ficam em 0,1–0,35). O cozimento roda por frame, então sem memo uma
-//! cena parada pagaria isso para sempre. A chave é o que de facto o determina — a geometria de
-//! MUNDO que entra e os três parâmetros — e não um contador de versão que alguém esqueceria de
-//! bumpar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `offset_live.rs`.
 
 use std::collections::BTreeMap;
 
@@ -95,12 +55,17 @@ impl OffsetLive {
                 .get(&path.id)
                 .is_some_and(|m| m.spec == spec && m.world == world);
             if !hit {
-                let out = ph2d_vec_boolean::offset_path(
+                let mut out = ph2d_vec_boolean::offset_path_with(
                     &world,
                     spec.d,
                     crate::expand::join_of_code(spec.join),
                     crate::expand::side_of_code(spec.side),
+                    spec.miter,
                 );
+                // ⭐ `Result: New shape behind` — a fonte desenha-se POR CIMA do offset, no z dela.
+                if spec.behind && !out.is_empty() {
+                    out.push(world.clone());
+                }
                 self.memo.insert(
                     path.id,
                     Memo {
@@ -147,16 +112,9 @@ pub fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecO
 /// com um efeito invisível pendurado.
 ///
 /// Devolve quantas entidades mudaram.
-pub fn arm(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    ids: &[VecPathId],
-    d: f64,
-    join: u8,
-    side: u8,
-) -> usize {
-    let want = (d.abs() >= ph2d_vec_boolean::MIN_OFFSET && d.is_finite())
-        .then(|| VecOffset::new(d, join, side));
+pub fn arm(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], spec: VecOffset) -> usize {
+    let d = spec.d;
+    let want = (d.abs() >= ph2d_vec_boolean::MIN_OFFSET && d.is_finite()).then_some(spec);
     let mut n = 0;
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
@@ -181,26 +139,28 @@ pub fn arm(
     n
 }
 
-/// Muda só a QUINA e o LADO dos offsets vivos de `ids`.
+/// Muda os KNOBS (tudo menos a distância) dos offsets vivos de `ids`.
 ///
 /// Não arma nada: um caminho sem offset vivo continua sem. O clique num chip NÃO é isto sozinho —
-/// é o [`choose_knobs`], que arma as formas nuas com o valor do slider.
-pub fn retune(sim: &mut SimWorld, map: &VecEntityMap, ids: &[VecPathId], knobs: (u8, u8)) {
+/// é o [`choose_knobs`], que arma as formas nuas com a distância do campo.
+pub fn retune(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    ids: &[VecPathId],
+    knobs: ph2d_panel_vector::OffsetKnobs,
+) {
     for id in ids {
         let Some(&bits) = map.get(id) else { continue };
         let e = Entity::from_bits(bits);
         let Some(cur) = sim.world().get::<VecOffset>(e).copied() else {
             continue;
         };
-        if (cur.join, cur.side) == knobs {
+        let want = crate::expand::spec_with(knobs, cur.d);
+        if cur == want {
             continue;
         }
         if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
-            em.insert(VecOffset {
-                join: knobs.0,
-                side: knobs.1,
-                ..cur
-            });
+            em.insert(want);
         }
     }
 }
@@ -217,7 +177,7 @@ pub fn choose_knobs(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     ids: &[VecPathId],
-    knobs: (u8, u8),
+    knobs: ph2d_panel_vector::OffsetKnobs,
     d: f64,
 ) -> usize {
     retune(sim, map, ids, knobs);
@@ -226,32 +186,27 @@ pub fn choose_knobs(
         .copied()
         .filter(|id| spec_of(sim, map, *id).is_none())
         .collect();
-    arm(sim, map, &bare, d, knobs.0, knobs.1)
+    arm(sim, map, &bare, crate::expand::spec_with(knobs, d))
 }
 
-/// **O slider de Offset diz a verdade da seleção** (smoke de 11/10: *«o slider mostra 25 mas o efeito
-/// não aparece na estrela»*). Sem offset vivo em nenhuma forma de `ids` ele tem de ler ZERO —
-/// `Some(0.0)` quando o `slider` mostra outra coisa. `None` = nada a corrigir: há offset vivo (quem
-/// escreve o número é o espelho da seleção) ou o slider já está no zero.
+/// **O `Distance (px)` diz a verdade da seleção** (smoke de 11/10: *«o slider mostra 25 mas o efeito
+/// não aparece na estrela»*): a distância do primeiro offset vivo de `ids`, ou ZERO sem nenhum.
 #[must_use]
-pub fn shown_frac(
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    ids: &[VecPathId],
-    slider: f64,
-) -> Option<f64> {
-    let live = ids.iter().any(|id| spec_of(sim, map, *id).is_some());
-    (!live && slider != 0.0).then_some(0.0)
+pub fn shown_d(sim: &SimWorld, map: &VecEntityMap, ids: &[VecPathId]) -> f64 {
+    ids.iter()
+        .find_map(|id| spec_of(sim, map, *id))
+        .map_or(0.0, |o| o.d)
 }
 
-/// A fração que um chip arma numa forma nua: a do slider, ou — com ele no zero, que é o que uma
-/// forma nua mostra ([`shown_frac`]) — a de NASCENÇA. Um chip que não desenhasse era o BUGS #41.
+/// A distância que um chip arma numa forma nua: a do campo, ou — com ele no zero, que é o que uma
+/// forma nua mostra ([`shown_d`]) — a de NASCENÇA, um quarto da meia-dimensão da seleção (`scale`,
+/// a de [`crate::expand::offset_scale`]). Um chip que não desenhasse era o BUGS #41.
 #[must_use]
-pub fn chip_frac(slider: f64) -> f64 {
-    if slider == 0.0 {
-        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC
+pub fn chip_d(field: f64, scale: f64) -> f64 {
+    if field == 0.0 {
+        ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC * scale
     } else {
-        slider
+        field
     }
 }
 
@@ -272,11 +227,12 @@ pub fn chip_frac(slider: f64) -> f64 {
 /// o quadro por diff).
 pub fn materialise(
     scene: &mut VecScene,
-    sim: &SimWorld,
+    sim: &mut SimWorld,
     pen: &mut ph2d_vec_edit::PenTool,
     map: &VecEntityMap,
     xforms: &VecXforms,
     ids: &[VecPathId],
+    restack: &mut Vec<Vec<VecPathId>>,
 ) -> bool {
     let live: Vec<(VecPathId, VecOffset)> = ids
         .iter()
@@ -286,7 +242,7 @@ pub fn materialise(
         return false;
     }
     crate::expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
-        let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
+        let Some((_, spec)) = live.iter().find(|(i, _)| *i == id && !o_behind(&live, *i)) else {
             return Vec::new(); // fora do comando: fica onde está, e segue selecionado
         };
         // A distância do offset é de MUNDO, então a pose entra ANTES do motor.
@@ -297,14 +253,57 @@ pub fn materialise(
             crate::expand::Expand::Offset {
                 join: crate::expand::join_of_code(spec.join),
                 side: crate::expand::side_of_code(spec.side),
+                miter: spec.miter,
             },
             spec.d,
         )
     });
+    // ⭐ `New shape behind`: a fonte FICA (o mesmo id, a mesma pose, os mesmos componentes) e o
+    // offset entra logo ATRÁS dela; a fonte perde o offset vivo, e a forma nova fica selecionada.
+    let mut novas = Vec::new();
+    for (id, spec) in live.iter().filter(|(_, o)| o.behind) {
+        let Some(z) = scene.paths().iter().position(|p| p.id == *id) else {
+            continue;
+        };
+        let src = &scene.paths()[z];
+        let mut world = src.cooked().into_owned();
+        ph2d_vec_scene::bake_xform(&mut world, &xform_of(xforms, *id));
+        let pecas = crate::expand::expand_layers(
+            &world,
+            crate::expand::Expand::Offset {
+                join: crate::expand::join_of_code(spec.join),
+                side: crate::expand::side_of_code(spec.side),
+                miter: spec.miter,
+            },
+            spec.d,
+        );
+        if pecas.is_empty() {
+            continue; // aniquilou: nada a pôr atrás, e o offset fica vivo (a lei de cima)
+        }
+        let antes = novas.len();
+        for (at, p) in (z..).zip(pecas) {
+            novas.push(scene.insert_path(at, p));
+        }
+        // ⚠️ A ordem de desenho é a da HIERARCHY, e a forma nova só ganha entidade no `sync` do
+        // quadro seguinte (entraria no TOPO): o `restack` põe-na logo atrás da fonte, lá.
+        restack.push(novas[antes..].iter().copied().chain([*id]).collect());
+        arm(sim, map, &[*id], VecOffset { d: 0.0, ..*spec });
+    }
+    if !novas.is_empty() {
+        pen.select_many(&novas);
+    }
     eprintln!("[ph2d-vec] offset materializado: {} forma(s)", live.len());
     true
+}
+
+fn o_behind(live: &[(VecPathId, VecOffset)], id: VecPathId) -> bool {
+    live.iter().any(|(i, o)| *i == id && o.behind)
 }
 
 #[cfg(test)]
 #[path = "offset_live_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "offset_live_behind_tests.rs"]
+mod behind_tests;

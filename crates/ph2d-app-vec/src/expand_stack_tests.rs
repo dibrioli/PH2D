@@ -80,6 +80,7 @@ fn the_offset_keeps_every_paint_layer_and_the_object_look() {
         Expand::Offset {
             join: LineJoin::Miter,
             side: ph2d_vec_scene::OffsetSide::Both,
+            miter: ph2d_vec_scene::MITER_LIMIT,
         },
         2.0,
     );

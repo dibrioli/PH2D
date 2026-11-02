@@ -275,5 +275,15 @@ fn a_cena_50_comeca_no_fill_and_stroke() {
         handles_first(c.handles),
         Some(crate::vector_mode_fill_stroke::FIRST)
     );
-    assert_eq!(of(Some("51")).want, 9, "a 51 ainda não existe");
+}
+
+#[test]
+fn a_cena_51_e_o_offset_path() {
+    let c = of(Some("51"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 37));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_fill_stroke::FIRST)
+    );
+    assert_eq!(of(Some("52")).want, 9, "a 52 ainda não existe");
 }

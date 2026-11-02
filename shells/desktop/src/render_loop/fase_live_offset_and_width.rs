@@ -35,85 +35,66 @@ impl crate::App {
         // forma. Aqui só se ARMA a relação (`ph2d_ecs::VecOffset`): o slider dá o `d`, os
         // chips de Corner/Side dão a quina e o lado.
         {
-            let knobs = crate::vec_expand::expand_knobs();
             let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            // **O painel espelha o que está SELECIONADO.** Sem isto, escolher uma forma com
-            // offset vivo mostraria os knobs globais do painel e o chip mentiria sobre a
-            // forma que está na tela. A borda é a SELEÇÃO (não o clique), e ela corre ANTES
-            // da borda dos chips — publicar depois faria o espelho parecer um clique novo e
-            // reescreveria a forma com os valores que acabaram de sair dela.
+            let doc = ph2d_editor_core::DocPx::of(&hero.project);
+            let field = ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET;
+            // **O painel espelha o que está SELECIONADO** (knobs e `Limit`). A borda é a SELEÇÃO,
+            // e ela corre ANTES da borda dos chips — publicar depois faria o espelho parecer um
+            // clique novo e reescreveria a forma com os valores que acabaram de sair dela.
             let mirror = (sel.len() == 1)
                 .then(|| sel[0])
                 .filter(|id| crate::offset_live::spec_of(sim, &self.vec.entities, *id).is_some());
-            let knobs = if mirror != self.vec.offset_mirrored {
+            if mirror != self.vec.offset_mirrored {
                 self.vec.offset_mirrored = mirror;
-                match mirror.and_then(|id| crate::offset_live::spec_of(sim, &self.vec.entities, id))
+                if let Some(spec) =
+                    mirror.and_then(|id| crate::offset_live::spec_of(sim, &self.vec.entities, id))
                 {
-                    Some(spec) => {
-                        ph2d_panel_vector::set_expand_join(spec.join);
-                        ph2d_panel_vector::set_expand_side(spec.side);
-                        let scale = crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &{
-                            ph2d_vec_entities::transform::build(sim, &self.vec.entities)
-                        });
-                        hero.store.set_slider_value(
-                            ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
-                            ph2d_tool_vector::params::offset_frac_to_slider(spec.d / scale),
-                        );
-                        (spec.join, spec.side)
-                    }
-                    None => knobs,
+                    let k = crate::vec_expand::knobs_of(&spec);
+                    ph2d_panel_vector::set_offset_knobs(k);
+                    self.vec.expand_knobs.0 = k;
+                    hero.store
+                        .set_number_value(ph2d_panel_vector::ids::VECTOR_EXPAND_MITER, k.miter);
                 }
-            } else {
-                knobs
-            };
-            let offset_grabbed = matches!(
-                hero.store.active_id(),
-                Some(id) if id == ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET
-            );
-            // O slider fala FRAÇÃO do tamanho da forma (−100%..+100%); o `d` de mundo nasce
-            // de `fração × escala` (a porta única `vec_expand::offset_scale`, `ada45fac`).
-            // ⚠️ A escala NÃO precisa mais ser congelada no grab: o preview deixou de
-            // churnar a cena, então a bbox das FONTES não se move durante o arrasto.
-            let frac = hero
-                .store
-                .slider(ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET)
-                .map_or(ph2d_tool_vector::params::OFFSET_DEFAULT_FRAC, |(_, v)| {
-                    ph2d_tool_vector::params::slider_to_offset_frac(v)
-                });
-            // O slider diz a verdade da seleção: sem offset vivo, ZERO (`offset_live::shown_frac`).
-            let truth = (!offset_grabbed)
-                .then(|| crate::offset_live::shown_frac(sim, &self.vec.entities, &sel, frac))
-                .flatten();
-            let frac = truth.map_or(frac, |f| {
-                hero.store.set_slider_value(
-                    ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
-                    ph2d_tool_vector::params::offset_frac_to_slider(f),
+            }
+            let knobs = crate::vec_expand::expand_knobs();
+            // ⭐ `Distance (px)`: o campo diferente do que a shell escreveu no quadro anterior é o
+            // ARTISTA (digitou ou arrasta) — arma a seleção com a distância dele, em mundo.
+            let typed = hero.store.number_value(field).unwrap_or(0.0);
+            if typed != self.vec.offset_shown && !sel.is_empty() {
+                let d = doc.to_world(typed);
+                crate::offset_live::arm(
+                    sim,
+                    &self.vec.entities,
+                    &sel,
+                    crate::vec_expand::spec_with(knobs, d),
                 );
-                f
-            });
-            if offset_grabbed && !sel.is_empty() {
-                let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                let d = frac * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
-                crate::offset_live::arm(sim, &self.vec.entities, &sel, d, knobs.0, knobs.1);
                 self.vec.offset_mirrored = (sel.len() == 1).then(|| sel[0]);
             }
-            // Um chip de Corner/Side clicado PRÉ-VISUALIZA (`offset_live::choose_knobs`): retuna
-            // os offsets vivos e arma as formas nuas com o valor que o slider mostra. Comparar
-            // com o quadro anterior é o que distingue "o artista clicou" de "o painel está no
-            // valor de sempre".
+            // Um chip (Corners · Holes · Result) ou o `Limit` PRÉ-VISUALIZA
+            // (`offset_live::choose_knobs`): retuna os offsets vivos e arma as formas nuas com a
+            // distância do campo (ou a de nascença, com ele no zero).
             if knobs != self.vec.expand_knobs.0 {
                 self.vec.expand_knobs.0 = knobs;
                 let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
-                let chip = crate::offset_live::chip_frac(frac);
-                let d = chip * crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
+                let scale = crate::vec_expand::offset_scale(vec_scene, &self.vec.pen, &xf);
+                let d = crate::offset_live::chip_d(doc.to_world(typed), scale);
                 if crate::offset_live::choose_knobs(sim, &self.vec.entities, &sel, knobs, d) > 0 {
                     self.vec.offset_mirrored = (sel.len() == 1).then(|| sel[0]);
-                    hero.store.set_slider_value(
-                        ph2d_panel_vector::ids::VECTOR_EXPAND_OFFSET,
-                        ph2d_tool_vector::params::offset_frac_to_slider(chip),
-                    );
                 }
             }
+            // O campo diz a verdade da seleção: a distância do offset vivo dela, ou ZERO — menos
+            // enquanto o artista o segura (o foco ou o arrasto são dele).
+            let held =
+                hero.store.focus_id() == Some(field) || hero.store.active_id() == Some(field);
+            let truth = doc.of_world(crate::offset_live::shown_d(sim, &self.vec.entities, &sel));
+            if !held && truth != typed {
+                hero.store.set_number_value(field, truth);
+            }
+            self.vec.offset_shown = hero.store.number_value(field).unwrap_or(0.0);
+            ph2d_panel_vector::set_offset_live_on(
+                sel.iter()
+                    .any(|id| crate::offset_live::spec_of(sim, &self.vec.entities, *id).is_some()),
+            );
         }
         // ── A LARGURA VIVA (ADR-0148) ────────────────────────────────────────
         // Os quatro sliders `W Start/Mid/End/Pos` deixaram de ser parâmetros de um comando

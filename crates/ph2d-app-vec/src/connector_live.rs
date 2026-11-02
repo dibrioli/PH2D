@@ -1,28 +1,6 @@
 //! **Conectores vivos** — a linha que gruda em duas formas e as SEGUE.
 //!
-//! Espelho exato do padrão da *Live Shape* ([`crate::shape_live`]): o componente
-//! [`VecConnector`] guarda a **relação** (a quem cada ponta se prende, e como a rota é
-//! desenhada) e a geometria é uma **função pura** dela, re-cozida a cada frame. Ninguém
-//! "move" um conector: move-se uma forma, e a linha se refaz.
-//!
-//! Consequência de graça (a mesma da Live Shape): **undo e save cobrem o conector sem uma
-//! linha a mais** — os dois capturam o mundo ECS + a cena vetorial, e o `VecConnector` está
-//! registrado no `ComponentRegistry`.
-//!
-//! # Os três detalhes que decidem se isto funciona
-//!
-//! 1. **Escreve a polilinha EM LUGAR** (`scene.path_mut(id)`), preservando o id. Remover e
-//!    re-empurrar o path daria um id novo a cada frame — e a entidade, a seleção e o gizmo
-//!    piscariam junto (o invariante documentado da Live Shape).
-//! 2. **O lado de saída lembra do frame anterior** ([`SideCache`]). Sem o `prev` da
-//!    histerese, um alvo passando pela diagonal da caixa faz a linha piscar entre sair pelo
-//!    topo e sair pela lateral, quadro sim, quadro não.
-//! 3. **O conector vive na IDENTIDADE.** A geometria que escrevemos aqui é MUNDO; se a
-//!    entidade tivesse pose, o afim a aplicaria por cima e a rota sairia deslocada. Por isso
-//!    `vec_transform::settle_origins` o **pula** (como já pula as formas vivas) e este
-//!    módulo devolve o `Transform` à identidade se alguém o mexeu — o que torna o conector
-//!    **não-arrastável pelo gizmo**, que é o comportamento certo: arrastar um conector não
-//!    quer dizer nada; o que se move são as pontas dele.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `connector_live.rs`.
 
 use std::collections::BTreeMap;
 

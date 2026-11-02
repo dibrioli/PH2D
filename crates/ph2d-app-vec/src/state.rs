@@ -1,74 +1,7 @@
 //! ⭐⭐ **O estado da família `vec`, com um dono só** — W2/L4 A2 (os primeiros 19) + A9 (os outros
 //! 50), ADR-0075.
 //!
-//! # ⭐ A9 (2026-09-12): a `App` já não tem campo `vec_*` solto
-//!
-//! O campo da `App` chama-se `vec` (era `vec_state`), e cada campo daqui perdeu o prefixo:
-//! `app.vec_pen` passou a `app.vec.pen`. Os 50 que faltavam entraram pela régua da auditoria de
-//! arquitectura, que pergunta pelo **assunto** de cada campo e não por quem o lê:
-//!
-//! - **morto** ⇒ apagado antes de agrupar (o `vec_history` era escrito e nunca lido);
-//! - **assunto da família + tipo de crate** ⇒ aqui;
-//! - **assunto da família + tipo da shell** ⇒ o TIPO desceu primeiro, depois o campo. Eram oito
-//!   (`VecTextEdit`, `ConnectorDrag`, `HandleDrag`, `TrimHit`, o `Grab` da largura, `VecSelSync`,
-//!   `LabelPoses`, `BuildSession`); os outros doze «tipos da shell» eram FACHADAS de módulos desta
-//!   crate — medido, não suposto.
-//!
-//! ⚠️ **A régua de baixo dizia que `vec_entities` e `vec_pen` não eram estado da família** («são o
-//! documento e a árvore, que a shell inteira conduz»). A A9 mediu o preço que essa frase temia: com
-//! os campos numa struct só, o que parte é emprestar o `VecState` **inteiro** ao lado de um campo
-//! dele — e isso acontecia num sítio só, o `smoke_bone::bind`, curado lendo o mapa de dentro do
-//! `st`. Os empréstimos por campo (`&mut app.vec.pen` ao lado de `&app.vec.entities`) são
-//! disjuntos como sempre foram. *Muitos leitores não mudam o assunto de um campo.*
-//!
-//! Dois grupos têm tipo próprio porque nascem com valores que não são os do `Default` dos tipos:
-//! [`TextKnobs`] (o estilo de texto corrente) e [`ExpandKnobs`] (o par que o frame viu no quadro
-//! anterior, que tem de nascer igual ao do painel).
-//!
-//! # A régua da W2/L4, que escolheu os primeiros 19 (história)
-//!
-//! `App` tem ~401 campos públicos e **75** deles chamam-se `vec_*`. Quantos podem sair não é uma
-//! escolha — mede-se por duas perguntas, nesta ordem:
-//!
-//! 1. **quem os lê?** `app_state.rs` (a declaração) e `main.rs` (o construtor) não contam. Restam
-//!    **30** campos cujos únicos consumidores de fora da família são os dois roteadores da shell
-//!    (`render_loop/mod.rs`, `input_dispatch.rs`) — ou ninguém. Os outros 45 estão espalhados, e
-//!    três deles são o substrato do módulo: `vec_entities` (189 ficheiros), `vec_scene` (131),
-//!    `vec_pen` (36). ⛔ Esses não são «estado da família»: são o documento e a árvore, que a shell
-//!    inteira conduz.
-//! 2. **o TIPO deles vem de uma crate?** Dos 30, **19** sim (11 de `ph2d_vec_*`, 8 primitivos) e
-//!    **11 não** — o tipo mora na shell (`crate::blend_live::BlendSpines`,
-//!    `crate::vec_bucket::BucketCache`, `crate::morph_live::MorphPlans`, …). Um campo cujo tipo
-//!    está na shell **não pode** viver aqui, e agrupá-lo num `VecState` da shell seria trocar 11
-//!    campos por 1 sem mover uma linha de lugar.
-//!
-//! ⇒ estes 19. Os 11 bloqueados estão nomeados no handoff de integração: cada um espera que o
-//! TIPO dele saia, não que alguém o agrupe.
-//!
-//! # ⚠️ Porque não é um recurso do ECS
-//!
-//! O ADR-0075 manda desacoplar por ECS, e a primeira leitura disto é «ponha num componente». ⛔
-//! Errado aqui, e o mecanismo está escrito no [`undo.rs`](../../../shells/desktop/src/undo.rs): o
-//! `ProjectState` que o undo fotografa é `{WorldSnapshot + VecScene + FlipDoc + …}`, e o
-//! `WorldSnapshot` **cobre toda entidade com componente registado**. Um `ShapeTool` ou um `Pencil`
-//! como componente entraria na fotografia ⇒ **cada nudge do lápis viraria um passo de undo**.
-//!
-//! Estado de FERRAMENTA não é estado de documento. O precedente da casa é o mesmo: `prop_state`,
-//! `walk_state`, `z_walk_state` e `input` já são sub-structs num campo de `App`.
-//!
-//! # ⚠️ `Default` é derivado, e isso foi VERIFICADO campo a campo
-//!
-//! Os 19 inicializadores do `main.rs` eram `false` / `0` / `None` / `Vec::new()` /
-//! `Pencil::default()` / **`ShapeTool::new()`** — e esse último é literalmente `Self::default()`
-//! ([`shape.rs`](../../ph2d-vec-edit/src/shape.rs)). *Um `derive(Default)` sobre um campo cujo
-//! `new()` faz mais que o `Default` muda o arranque do app em silêncio* — aqui não faz, e é por
-//! isso que se conferiu antes de derivar.
-//!
-//! Na A9 a mesma conferência correu sobre os 50: `PenTool::new()`, `MorphPlans::new()`, os
-//! `BTreeMap::new()` (`SideCache`, `BlendSpines`, `LabelPoses`, `LiveGeometry`) e o
-//! `PencilHand::default()` são o `Default` deles. Os únicos que não eram — os oito números do
-//! texto e o par do Expand — ganharam `Default` manual nos grupos acima, e o `VecState` continua a
-//! derivar o seu.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `state.rs`.
 
 /// Os campos da família `vec` que saíram de [`App`](../../../shells/desktop/src/app_state.rs).
 ///
@@ -375,9 +308,16 @@ pub struct VecState {
     /// o chip mentiria sobre o que está na tela. Runtime-only.
     pub offset_mirrored: Option<ph2d_vec_scene::VecPathId>,
 
+    /// O `Distance (px)` que a SHELL escreveu no campo no último quadro. O campo diferente disto é
+    /// o ARTISTA a escrever ou a arrastar — a borda que arma o offset. Runtime-only.
+    pub offset_shown: f64,
+
     /// A alça de LARGURA agarrada agora (plano 25 §5). Runtime-only: o que o documento guarda é o
     /// `VecStrokeProfile`, e isto é só qual parada o dedo está a mover.
     pub width_grab: Option<crate::width_grab::Grab>,
+
+    /// A alça do Offset Path agarrada agora (F48). Runtime-only.
+    pub offset_grab: Option<crate::offset_handle::Grab>,
 
     /// O caminho de REFERÊNCIA da cena de smoke do Width Tool, à espera de ganhar o perfil no
     /// frame seguinte (o componente precisa de uma entidade, e ela nasce no `sync`).
@@ -560,8 +500,8 @@ impl Default for TextKnobs {
 /// com que o PAINEL nasce ([`ph2d_panel_vector::EXPAND_KNOBS_AT_BIRTH`]), senão o 1.º quadro leria
 /// um clique que ninguém deu e retunaria os offsets vivos da seleção. O par era escrito à mão em
 /// dois sítios (o `thread_local` do painel e o construtor da `App`); agora sai de um.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ExpandKnobs(pub (u8, u8));
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ExpandKnobs(pub ph2d_panel_vector::OffsetKnobs);
 
 impl Default for ExpandKnobs {
     fn default() -> Self {

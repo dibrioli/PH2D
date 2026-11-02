@@ -92,6 +92,7 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
     if e.inicio_fase.is_none() {
         e.inicio_fase = Some(agora);
         e.eventos = 0;
+        let _ = ph2d_tool_painter::wet_diag::take_otica();
         e.quadros.clear();
         if let Some(rel) = pincel {
             let Some(p) = preset(rel) else {
@@ -150,8 +151,11 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
         quantil(&mut pon, 0.5),
         ev,
     ];
+    // O compositor (ligado por omissão; `PH2D_WET_OTICA_FORA=0` desliga): imagens da água por segundo e o custo de cada uma, fora do fio da tela.
+    let ((c_ms, c_max, c_n), (o_ms, o_max, o_n)) = ph2d_tool_painter::wet_diag::take_otica();
+    let media = |soma: f64, n: u64| soma / n.max(1) as f64;
     eprintln!(
-        "[fps] rodada {} {} {:<9}| quadros {:>4} | período p50 {:.1} p95 {:.1} max {:.1} ms | ponteiro p50 {:.2} ms | {:.1} eventos/quadro",
+        "[fps] rodada {} {} {:<9}| quadros {:>4} | período p50 {:.1} p95 {:.1} max {:.1} ms | ponteiro p50 {:.2} ms | {:.1} eventos/quadro | imagens {:.1}/s óptica {:.1}/{:.1} ms cópia {:.2}/{:.2} ms",
         passo / FASES.len(),
         ["sem real", "real oil"][usize::from(oleo())],
         FASES[fase].0,
@@ -160,7 +164,12 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
         linha[1],
         linha[2],
         linha[3],
-        linha[4]
+        linha[4],
+        o_n as f64 / t.max(1e-3),
+        media(o_ms, o_n),
+        o_max,
+        media(c_ms, c_n),
+        c_max
     );
     e.tabela[fase].push(linha);
     e.inicio_fase = None;

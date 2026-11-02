@@ -108,13 +108,14 @@ pub fn take_otica() -> (Half, Half) {
 /// `2` = ainda por ler do ambiente.
 static OTICA_FORA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
 
-/// **A óptica sai do fio da tela?** (`PH2D_WET_OTICA_FORA=1`; desligada por omissão). Lida do ambiente UMA vez;
+/// **A óptica sai do fio da tela?** Ligada por omissão (J13 §6: o quadro parado 72–82 → 16,6 ms); `PH2D_WET_OTICA_FORA=0`
+/// volta ao caminho de casa. Lida do ambiente UMA vez;
 /// [`set_otica_fora`] troca-a em execução para as variantes intercaladas no mesmo processo (MEDIR_VELOCIDADE). Vale
 /// para os workers que sobem DEPOIS (o compositor nasce com o worker da sessão).
 pub fn otica_fora() -> bool {
     match OTICA_FORA.load(Ordering::Relaxed) {
         2 => {
-            let on = std::env::var("PH2D_WET_OTICA_FORA").is_ok_and(|v| v.trim() == "1");
+            let on = std::env::var("PH2D_WET_OTICA_FORA").map_or(true, |v| v.trim() != "0");
             OTICA_FORA.store(u8::from(on), Ordering::Relaxed);
             on
         }

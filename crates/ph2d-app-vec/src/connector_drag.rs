@@ -23,12 +23,8 @@ pub struct ConnectorDrag {
     pub start_world: [f64; 2],
 }
 
-/// Qual das duas pontas.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum EndSide {
-    Start,
-    End,
-}
+/// Qual das duas pontas — mora com a regra das alças ([`ph2d_vec_entities::connector_handles`]).
+pub use ph2d_vec_entities::connector_handles::EndSide;
 
 /// O que a pressão agarrou.
 #[derive(Copy, Clone, Debug, PartialEq)]

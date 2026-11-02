@@ -37,6 +37,8 @@
 //!
 //! [`ph2d-app-vec`]: https://docs.rs/ph2d-app-vec
 
+/// A regra das alças das pontas do conector (o gesto, com o `App`, fica na shell).
+pub mod connector_handles;
 pub mod entities;
 pub mod entity_map;
 pub mod filter;

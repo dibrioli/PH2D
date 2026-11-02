@@ -2,10 +2,10 @@
 //! shell).
 //!
 //! Aqui está o que precisa de um `App` (câmera, seleção, mundo ECS). A REGRA — o que acontece ao
-//! largar, onde um waypoint novo entra, quando uma pressão vira arrasto — mora no pai, pura, e é
-//! lá que ela é testada.
+//! largar, onde um waypoint novo entra, quando uma pressão vira arrasto — mora em
+//! [`ph2d_vec_entities::connector_handles`], pura, e é lá que ela é testada.
 
-use super::{
+use ph2d_vec_entities::connector_handles::{
     BODY_GRAB_K, BODY_SAMPLES, DropTarget, body_became_a_drag, handle_points, hit, insert_index,
     is_redundant, resolve_drop, target_of,
 };

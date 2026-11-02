@@ -406,6 +406,7 @@ pub(super) mod faixas; // as lanes de um traço guardado (W16)
 mod composite;
 mod composite_oleo; // os planos do Óleo Real no composite (sombra, dente, tinta sem óleo) — filho por LOC
 mod composite_otica; // a metade de cima do composite (a óptica) como função pura — filho por LOC
+mod otica_factos; // o que a óptica tira da ferramenta, como valor que viaja (J13b P3)
 pub(in crate::tool::paint) mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
 #[cfg(test)]
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte

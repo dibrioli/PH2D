@@ -18,14 +18,12 @@ pub(super) fn sombra_do_papel(
     feita: &[bool],
     (cx0, cy0, cx1, cy1): (usize, usize, usize, usize),
     (gw, gh): (usize, usize),
+    atalho: bool,
 ) {
     if let Some((o, c)) = campo {
         // O papel LISO (campo a zero até ao alcance da óptica) dá a mesma sombra em toda a parte: calcula-se
         // uma vez por linha ([`super::oleo_plano`]) — na água parada a região é a caixa molhada inteira.
-        #[cfg(test)]
-        let atalho = !super::oleo_plano::desligado::get();
-        #[cfg(not(test))]
-        let atalho = true;
+        // `atalho` = falso só sob o interruptor de teste [`super::oleo_plano::desligado`].
         let plano =
             atalho.then(|| super::oleo_plano::PapelLiso::de(c, (cx0, cy0, cx1, cy1), (gw, gh)));
         sombra[(cy0 - 1) * gw..cy1 * gw]
@@ -66,12 +64,12 @@ pub(super) fn sombra_do_papel(
 pub(super) fn grao_das_celulas(
     grao_cel: &mut Vec<u8>,
     campo: &Campo<'_>,
-    grao: &Option<super::grao_no_filme::GraoNoFilme<'_>>,
+    tem_grao: bool,
     (cx0, cy0, cx1, cy1): (usize, usize, usize, usize),
     (gw, gh): (usize, usize),
 ) {
-    match (campo, grao) {
-        (Some((o, c)), Some(_)) => {
+    match (campo, tem_grao) {
+        (Some((o, c)), true) => {
             if grao_cel.len() != gw * gh {
                 *grao_cel = vec![0u8; gw * gh];
             }
@@ -96,7 +94,7 @@ pub(super) type SemOleo = Option<(usize, usize, usize, Vec<bool>)>;
 /// SEM ele (e o papel à volta só dela) guarda a orla de sempre do Smooth Edges — a tinta sem óleo não muda por
 /// haver óleo noutro sítio. `(cx0, cy0, largura, célula sem óleo)`.
 pub(super) fn tinta_sem_oleo(
-    engine: &ph2d_wet_paint::painter::Engine,
+    layers: &[ph2d_wet_paint::render::RenderLayer<'_>],
     campo: &Campo<'_>,
     (suave, raio): (bool, f32),
     ratio: u8,
@@ -106,12 +104,11 @@ pub(super) fn tinta_sem_oleo(
     match (campo, suave) {
         (Some((_, c)), true) => {
             let tinta = |i: usize| {
-                engine
-                    .layers
+                layers
                     .iter()
                     .any(|l| l.visible && l.grid.sett[i] + l.grid.susp[i] > 0.0)
             };
-            let s = engine.layers[0].grid.s;
+            let s = layers[0].grid.s;
             let r = (raio / f32::from(ratio)).ceil() as usize + 1;
             let cw = cx1 + 1 - cx0;
             let mut v = vec![false; cw * (cy1 + 1 - cy0)];
@@ -140,50 +137,5 @@ pub(super) fn tinta_sem_oleo(
             Some((cx0, cy0, cw, v))
         }
         _ => None,
-    }
-}
-
-impl crate::PainterTool {
-    /// Os números do Óleo Real deste composite (`None` = sem óleo na tela); `raio` = o do Smooth Edges, px.
-    pub(super) fn oleo_do_composite(&mut self, raio: f32) -> Option<OleoReal> {
-        // O Real Oil é do TRAÇO (dono 28/10): a óptica corre quando ALGUMA camada visível tem tinta com Real Oil
-        // (`Grid::oleo_real`; o campo sozinho pode ser só o meio — J9 §3), com os números da TELA do cartão — nunca
-        // pela caixa de agora.
-        let tem_oleo = !self.paint.wetpaint.oleo_adiado
-            && self.paint.wetpaint.session.as_mut().is_some_and(|s| {
-                s.bring_home();
-                s.engine
-                    .layers
-                    .iter()
-                    .any(|l| l.visible && l.grid.oleo_real)
-            });
-        #[cfg(test)]
-        let tem_oleo = if super::oleo_plano::lei_da_caixa::get() {
-            self.paint.wetpaint.oleo_real.is_some()
-        } else {
-            tem_oleo
-        };
-        self.paint.wetpaint.oleo_na_tela = tem_oleo;
-        // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
-        tem_oleo
-            .then_some(self.paint.wetpaint.oleo_real_valores)
-            .map(|mut o| {
-                o.papel = self.papel.map_or([1.0; 3], |p| {
-                    p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
-                });
-                // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
-                o.suave_px = f64::from(raio);
-                #[cfg(test)]
-                if super::smooth_edges::so_na_cor::get() {
-                    o.suave_px = 0.0;
-                }
-                // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem
-                // o piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
-                o.dente_papel = f64::from(
-                    super::grao_no_filme::relief_na_tinta(self.paint.substrate_depth)
-                        * super::super::substrate_relief::MAX_TOOTH_PX,
-                );
-                o
-            })
     }
 }

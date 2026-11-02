@@ -7,7 +7,7 @@
 use super::composite_contagem as contagem;
 use super::grid_map;
 use ph2d_wet_paint::oleo_real::{CacheCampo, OleoReal};
-use ph2d_wet_paint::render::{PigmentVisual, RenderLayer, render_pigment_row_visual};
+use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
 use rayon::prelude::*;
 
 /// Os planos da GRADE que o laço de píxel lê (única verdade dele) e o campo guardado do Óleo Real.
@@ -48,40 +48,13 @@ impl PlanosDaOtica {
     }
 }
 
-/// Os interruptores de teste que a óptica lê, capturados por quem a pede (um `thread_local!` não se vê noutra thread).
-#[cfg(test)]
-#[derive(Clone, Copy)]
-pub(super) struct InterruptoresDaOtica {
-    /// [`super::oleo_plano::curas_desligadas`]: `(sombra antiga, campo em série)`.
-    pub(super) curas_desligadas: (bool, bool),
-    /// [`super::oleo_plano::sem_cache_do_campo`].
-    pub(super) sem_cache: bool,
-}
-
-#[cfg(test)]
-impl InterruptoresDaOtica {
-    pub(super) fn de_agora() -> Self {
-        Self {
-            curas_desligadas: super::oleo_plano::curas_desligadas::get(),
-            sem_cache: super::oleo_plano::sem_cache_do_campo::get(),
-        }
-    }
-}
-
-/// Tudo o que a óptica lê além das camadas — o que hoje vinha do `self`.
-pub(super) struct EntradaDaOtica<'a, 'g> {
-    pub(super) visual: PigmentVisual,
-    /// O raio do Smooth Edges, px (`0` = desligado).
-    pub(super) raio: f32,
-    /// Os números do Óleo Real deste composite, já construídos (`None` = sem óleo na tela).
-    pub(super) oleo: Option<OleoReal>,
-    /// O dente do papel na tinta: a óptica só pergunta se há (`Some`).
-    pub(super) grao: &'a Option<super::grao_no_filme::GraoNoFilme<'g>>,
-    pub(super) params: &'a ph2d_wet_paint::sim::Params,
-    /// ⚠️ Só para [`super::composite_oleo::tinta_sem_oleo`], que ainda lê o motor (sai no P3 do J13b).
-    pub(super) motor: &'a ph2d_wet_paint::painter::Engine,
-    /// O sujo do motor, em CÉLULAS, já clampado à grade `(x0, y0, x1, y1)`.
-    pub(super) caixa: (usize, usize, usize, usize),
+/// Tudo o que a óptica lê além das camadas — um VALOR sem empréstimos do `PainterTool` nem do `Engine` (J13b P3).
+pub(super) struct EntradaDaOtica {
+    pub(super) factos: super::otica_factos::FactosDaOtica,
+    /// O estado da água que a tela passa a mostrar (W14), tirado do motor como dado.
+    pub(super) marca: super::fita::MarcaDaAgua,
+    /// O trabalho da caixa (`None` = o motor está limpo ou a base não casa: só a decisão do óleo).
+    pub(super) trabalho: Option<TrabalhoDaOtica>,
     pub(super) ratio: u8,
     /// A grade `(gw, gh)`, células.
     pub(super) grade: (usize, usize),
@@ -89,12 +62,27 @@ pub(super) struct EntradaDaOtica<'a, 'g> {
     pub(super) tela: (usize, usize),
     /// A `revisao` do motor (a chave do campo guardado).
     pub(super) revisao: u64,
-    #[cfg(test)]
-    pub(super) teste: InterruptoresDaOtica,
 }
 
-/// O que a óptica escreveu: as caixas e a tinta sem óleo do Smooth Edges.
+/// O sujo do motor e os `Params` do passo com que se compõe.
+pub(super) struct TrabalhoDaOtica {
+    /// O sujo do motor, em CÉLULAS, já clampado à grade `(x0, y0, x1, y1)`.
+    pub(super) caixa: (usize, usize, usize, usize),
+    pub(super) params: ph2d_wet_paint::sim::Params,
+}
+
+/// O que a óptica decidiu e escreveu; o `composite` aplica-o na ferramenta.
 pub(super) struct SaidaDaOtica {
+    /// Os números do Óleo Real deste composite (`None` = sem óleo na tela) ⇒ `wetpaint.oleo_na_tela`.
+    pub(super) oleo: Option<OleoReal>,
+    /// ⇒ `wetpaint.composta`.
+    pub(super) marca: super::fita::MarcaDaAgua,
+    /// `None` = nada a escrever (motor limpo, base que não casa, ou a caixa ficou vazia).
+    pub(super) caixas: Option<CaixasDaOtica>,
+}
+
+/// As caixas compostas e a tinta sem óleo do Smooth Edges.
+pub(super) struct CaixasDaOtica {
     /// A caixa composta em células (o sujo crescido pelo alcance do Óleo Real).
     pub(super) caixa_cel: (usize, usize, usize, usize),
     /// A caixa em píxeis que o laço de baixo escreve (crescida pelo alcance do Smooth Edges).
@@ -102,18 +90,44 @@ pub(super) struct SaidaDaOtica {
     pub(super) sem_oleo: super::composite_oleo::SemOleo,
 }
 
-/// A metade de cima do composite. `None` = nada a escrever (a caixa ficou vazia).
+const _: fn() = || {
+    fn viaja<T: Send>() {}
+    viaja::<EntradaDaOtica>();
+    viaja::<SaidaDaOtica>();
+};
+
+/// A metade de cima do composite: a decisão do óleo e, havendo trabalho, a caixa escrita nos planos.
 pub(super) fn compoe_a_otica(
-    e: &EntradaDaOtica<'_, '_>,
+    e: &EntradaDaOtica,
     layers: &[RenderLayer<'_>],
     planos: &mut PlanosDaOtica,
-) -> Option<SaidaDaOtica> {
+) -> SaidaDaOtica {
+    let oleo = e.factos.oleo_da_tela(layers);
+    let caixas = e
+        .trabalho
+        .as_ref()
+        .and_then(|t| compoe_a_caixa(e, t, oleo, layers, planos));
+    SaidaDaOtica {
+        oleo,
+        marca: e.marca,
+        caixas,
+    }
+}
+
+fn compoe_a_caixa(
+    e: &EntradaDaOtica,
+    t: &TrabalhoDaOtica,
+    oleo: Option<OleoReal>,
+    layers: &[RenderLayer<'_>],
+    planos: &mut PlanosDaOtica,
+) -> Option<CaixasDaOtica> {
     let (w, h) = e.tela;
     let (gw, gh) = e.grade;
     let ratio = e.ratio;
-    let (raio, suave) = (e.raio, e.raio > 0.0);
-    let (oleo, visual, params) = (e.oleo, e.visual, e.params);
-    let (cx0, cy0, cx1, cy1) = e.caixa;
+    let f = &e.factos;
+    let (raio, suave) = (f.raio, f.raio > 0.0);
+    let (visual, params) = (f.visual, &t.params);
+    let (cx0, cy0, cx1, cy1) = t.caixa;
     #[cfg(test)]
     let area_motor = (cx1 + 1).saturating_sub(cx0) * (cy1 + 1).saturating_sub(cy0);
     // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
@@ -180,7 +194,7 @@ pub(super) fn compoe_a_otica(
     // As duas curas de custo (27/10, bit a bit): o campo em faixas pelo rayon e a sombra no papel das células
     // PINTADAS tirada dos termos que a cor delas já calculou ([`super::oleo_plano`]).
     #[cfg(test)]
-    let (sombra_antiga, campo_em_serie) = e.teste.curas_desligadas;
+    let (sombra_antiga, campo_em_serie) = f.teste.curas_desligadas;
     #[cfg(not(test))]
     let (sombra_antiga, campo_em_serie) = (false, false);
     // O campo guardado por DEPENDÊNCIA (`oleo_real::CacheCampo`): a mesma chave e as mesmas grades reusam-no.
@@ -190,7 +204,7 @@ pub(super) fn compoe_a_otica(
         ph2d_wet_paint::oleo_real::ChaveCampo::de(&o, &grades, usize::from(ratio))
     });
     #[cfg(test)]
-    let sem_cache = e.teste.sem_cache;
+    let sem_cache = f.teste.sem_cache;
     #[cfg(not(test))]
     let sem_cache = false;
     let guardado = match (&oleo, &chave) {
@@ -286,10 +300,21 @@ pub(super) fn compoe_a_otica(
     #[cfg(test)]
     let t_som = std::time::Instant::now();
     let caixa = (cx0, cy0, cx1, cy1);
-    super::composite_oleo::sombra_do_papel(&mut planos.sombra, &campo, &feita, caixa, (gw, gh));
-    super::composite_oleo::grao_das_celulas(&mut planos.grao, &campo, e.grao, caixa, (gw, gh));
+    #[cfg(test)]
+    let atalho = !f.teste.papel_liso_desligado;
+    #[cfg(not(test))]
+    let atalho = true;
+    super::composite_oleo::sombra_do_papel(
+        &mut planos.sombra,
+        &campo,
+        &feita,
+        caixa,
+        (gw, gh),
+        atalho,
+    );
+    super::composite_oleo::grao_das_celulas(&mut planos.grao, &campo, f.tem_grao, caixa, (gw, gh));
     let sem_oleo = super::composite_oleo::tinta_sem_oleo(
-        e.motor,
+        layers,
         &campo,
         (suave, raio),
         ratio,
@@ -314,7 +339,7 @@ pub(super) fn compoe_a_otica(
     contagem::tempos(t_pig, t_som.elapsed());
     #[cfg(test)]
     super::composite::split::note_engine(t_engine.elapsed());
-    Some(SaidaDaOtica {
+    Some(CaixasDaOtica {
         caixa_cel: (cx0, cy0, cx1, cy1),
         caixa_px: (px0, py0, px1, py1),
         sem_oleo,

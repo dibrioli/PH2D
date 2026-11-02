@@ -75,6 +75,17 @@ impl<'a> GraoNoFilme<'a> {
         })
     }
 
+    /// [`Self::de`] sobre o [`papel_do_filme`] do documento: `(relief, rough)` do substrato.
+    pub(super) fn do_papel(
+        tex: ph2d_painter_brush::texture::TextureSettings,
+        (relief, rough): (f32, f32),
+        image: Option<ph2d_painter_brush::texture::ImageMask<'a>>,
+        rig: &super::super::impasto_rig::LightRig,
+        tela: (usize, usize),
+    ) -> Option<Self> {
+        Self::de(papel_do_filme(tex, relief, rough, image), rig, tela)
+    }
+
     /// A cor RECTA `cor` (`0..1`) do píxel `(x, y)` com o dente do papel × `d` (`0..1`, a fracção que a tinta
     /// mostra, [`ph2d_wet_paint::oleo_real::grao_do_papel`]): a luz do relevo sobre o papel nu, com a inclinação
     /// do dente escalada por `d`. `d = 0` não chega aqui (quem chama salta: ao bit).

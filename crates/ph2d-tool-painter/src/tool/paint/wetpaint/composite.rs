@@ -33,13 +33,6 @@ impl PainterTool {
         let camada = self.layers.active().filter(|&id| !self.layers.is_mask(id));
         #[cfg(test)]
         let camada = camada.filter(|_| !self.sem_vidro);
-        let visual = ph2d_wet_paint::render::PigmentVisual {
-            // A Paint Texture imprime o PAPEL: sem papel escolhido não há o que imprimir (dono 10/10). É do TRAÇO (dono
-            // 28/10): QUEM imprime é a célula (`grid::aparencia::textura`), nunca a caixa de agora.
-            paper: self.paint.brush.paper.is_active(),
-            // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
-            relevo: true,
-        };
         // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`, px); `0` = desligado. É da TELA (D1 W3b).
         let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
         let suave = raio > 0.0;
@@ -60,46 +53,36 @@ impl PainterTool {
             && camada.is_none_or(|c| !self.vidros.contains_key(&c))
             && self.preview_layer_stack_is_trivial()
             && !self.papel_atravessa_vidro();
-        let oleo = self.oleo_do_composite(raio);
-        // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
-        // papel de fábrica (U2).
-        let grao = oleo.and_then(|_| {
-            super::grao_no_filme::GraoNoFilme::de(
-                super::grao_no_filme::papel_do_filme(
-                    self.paint.brush.paper,
-                    self.paint.substrate_depth,
-                    self.paint.substrate_rough,
-                    self.paint.paper_image.as_ref().map(|i| i.as_mask()),
-                ),
-                &self.paint.impasto_rig,
-                (w, h),
-            )
-        });
+        let factos = self.factos_da_otica();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+            self.paint.wetpaint.oleo_na_tela = factos.oleo_da_tela(&[]).is_some();
             return;
         };
+        // ⚠️ Duas perguntas, como antes do J13b P3 (a decisão do óleo trazia o motor para casa ANTES): com uma fita de
+        // macro a tocar, cada `bring_home` no roteiro consome uma resposta dela.
+        if !factos.oleo_adiado {
+            sess.bring_home();
+        }
         sess.bring_home();
-        // A tela fica a mostrar a água NESTE estado (W14: onde ela pára se a sessão acabar já).
-        self.paint.wetpaint.composta = Some(fita::MarcaDaAgua::de(&sess.engine));
         // ⚠️ **Células e pixels deixaram de ser a mesma coisa** ([`grid_map`]):
         // a grade tem `ratio` pixels de canvas por célula. O dirty do motor é
         // em CÉLULAS e é clampado à GRADE; o retângulo que este composite
         // escreve — e que o `mark_dirty` publica — é em PIXELS.
         let ratio = sess.ratio;
         let (gw, gh) = sess.grid;
+        // A tela fica a mostrar a água NESTE estado (W14: onde ela pára se a sessão acabar já).
+        let marca_da_agua = fita::MarcaDaAgua::de(&sess.engine);
         let caixa = match sess.engine.take_dirty() {
-            Dirty::Clean => return,
-            Dirty::Full => (1, 1, gw, gh),
-            Dirty::Rect { x0, y0, x1, y1 } => (
+            Dirty::Clean => None,
+            Dirty::Full => Some((1, 1, gw, gh)),
+            Dirty::Rect { x0, y0, x1, y1 } => Some((
                 (x0.max(1) as usize).min(gw),
                 (y0.max(1) as usize).min(gh),
                 (x1.max(1) as usize).min(gw),
                 (y1.max(1) as usize).min(gh),
-            ),
+            )),
         };
-        if sess.base.len() != w * h * 4 {
-            return;
-        }
+        let caixa = caixa.filter(|_| sess.base.len() == w * h * 4);
         // A metade de cima (a óptica): só a entrada e as camadas, escrita nos planos ([`super::composite_otica`]).
         let layers: Vec<RenderLayer<'_>> = sess
             .engine
@@ -111,29 +94,40 @@ impl PainterTool {
                 visible: l.visible,
             })
             .collect();
-        let params = sess.engine.sim.gather_params(&sess.engine.tuning);
         let entrada = super::composite_otica::EntradaDaOtica {
-            visual,
-            raio,
-            oleo,
-            grao: &grao,
-            params: &params,
-            motor: &sess.engine,
-            caixa,
+            factos,
+            marca: marca_da_agua,
+            trabalho: caixa.map(|caixa| super::composite_otica::TrabalhoDaOtica {
+                caixa,
+                params: sess.engine.sim.gather_params(&sess.engine.tuning),
+            }),
             ratio,
             grade: (gw, gh),
             tela: (w, h),
             revisao: sess.engine.revisao(),
-            #[cfg(test)]
-            teste: super::composite_otica::InterruptoresDaOtica::de_agora(),
         };
         let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
         drop(layers);
-        let Some(super::composite_otica::SaidaDaOtica {
+        // O que a óptica escreve na ferramenta volta na saída.
+        let oleo = saida.oleo;
+        self.paint.wetpaint.oleo_na_tela = oleo.is_some();
+        self.paint.wetpaint.composta = Some(saida.marca);
+        // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
+        // papel de fábrica (U2). Só o laço de píxel o lê; a óptica só perguntou se há (`factos.tem_grao`).
+        let grao = oleo.and_then(|_| {
+            super::grao_no_filme::GraoNoFilme::do_papel(
+                self.paint.brush.paper,
+                (self.paint.substrate_depth, self.paint.substrate_rough),
+                self.paint.paper_image.as_ref().map(|i| i.as_mask()),
+                &self.paint.impasto_rig,
+                (w, h),
+            )
+        });
+        let Some(super::composite_otica::CaixasDaOtica {
             caixa_cel: (cx0, cy0, cx1, cy1),
             caixa_px: (px0, py0, px1, py1),
             sem_oleo,
-        }) = saida
+        }) = saida.caixas
         else {
             return;
         };

@@ -226,6 +226,17 @@ pub fn filtro(a: f64, claro: f64) -> f64 {
     libm::pow(a.min(1.0), 2.0 * k)
 }
 
+/// ⭐ **O sol que chega ao papel SOB o filme transmissivo** no modo `claro`: no Blender (`claro = 0`) nenhum — o
+/// sol é uma luz pontual e o caminho dele pela interface que refracta é CÁUSTICO; o Cycles (Principled Transmission
+/// numa malha aberta) ilumina o papel sob o filme só com o céu (`oraculo/README.md` §Transmission «Ronda 5»: rampas de
+/// declive conhecido, o plano a 1 deixa `0,60·a` do papel — o quinhão do céu, `ceu = 0,6`). Clear glass (`claro = 1`)
+/// devolve `sol` ao bit; linear entre os dois.
+#[inline]
+#[must_use]
+pub fn sol_sob_o_filme(sol: f64, claro: f64) -> f64 {
+    sol * claro.clamp(0.0, 1.0)
+}
+
 /// ⭐ **A lei da Transmission** (W3b, o «Transmission Weight» do Principled; `oraculo/README.md` §Transmission
 /// «Ronda 3» e «Ronda 4»): o difuso LINEAR `base` de um canal de albedo `a` com o peso `w`. A luz atravessa o filme
 /// fino, bate no papel e volta, filtrada pelo [`filtro`] do modo `claro` — sem o branco que o difuso de uma tinta

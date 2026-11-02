@@ -209,7 +209,11 @@ pub(super) fn cor_dos_termos(o: &OleoReal, t: &Termos, a: [f64; 3], cobertura: f
             base = a[c] * (difuso(o, &t, a[c], c) + t.sss[c]);
         }
         if t.transmissao > 0.0 {
-            let d = difuso(o, &t, crate::material::filtro(a[c], t.vidro_claro), c) * o.papel[c];
+            let sob = Termos {
+                sol: crate::material::sol_sob_o_filme(t.sol, t.vidro_claro),
+                ..t
+            };
+            let d = difuso(o, &sob, crate::material::filtro(a[c], t.vidro_claro), c) * o.papel[c];
             base = crate::material::transmite(base, a[c], d, t.transmissao, t.vidro_claro);
         }
         if t.metal > 0.0 || t.sob_verniz != 1.0 {

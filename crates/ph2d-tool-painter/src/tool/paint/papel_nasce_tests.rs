@@ -510,8 +510,9 @@ fn o_desenho_novo_com_tinta_guarda_o_alfa_na_troca_de_sprite() {
     );
 }
 
-/// **NO DESENHO NOVO, O BRANCO NO SELETOR NÃO FAZ NADA E O DESFAZER VOLTA AO PAPEL BRANCO** — a camada
-/// nunca é tocada pelo papel.
+/// **NO DESENHO NOVO, O BRANCO NO SELETOR NÃO FAZ NADA E A VOLTA AO PAPEL BRANCO É PELO SELETOR** — a
+/// camada nunca é tocada pelo papel. A cor do papel não é história (dono 30/10, `0d18a1e9ad`): o desenho
+/// novo já nasce COM papel (branco), logo trocar-lhe a cor não grava passo — o nome do gate é o do #45.
 #[test]
 fn no_desenho_novo_o_desfazer_da_cor_volta_ao_papel_branco() {
     let mut t = novo(PaintMedia::Digital, 6.0);
@@ -522,11 +523,16 @@ fn no_desenho_novo_o_desfazer_da_cor_volta_ao_papel_branco() {
     );
     escolhe_o_papel(&mut t, CASTANHO);
     assert_eq!(t.papel(), Some(CASTANHO));
-    assert!(t.undo_last(), "há o que desfazer");
+    assert!(
+        !t.undo_last(),
+        "a cor do papel entrou no Desfazer (dono 30/10: só a existência dele é história)"
+    );
+    assert_eq!(t.papel(), Some(CASTANHO), "um desfazer vazio mexeu no papel");
+    escolhe_o_papel(&mut t, BRANCO);
     assert_eq!(
         t.papel(),
         Some(BRANCO),
-        "o desfazer não voltou ao papel branco"
+        "o seletor não voltou ao papel branco"
     );
     assert!(
         t.canvas_rgba.chunks(4).all(|p| p == [0, 0, 0, 0]),

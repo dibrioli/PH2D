@@ -82,7 +82,9 @@ pub fn key_with(
             KeyAnswer::Quiet
         }
         (KeyCode::KeyX, false, false) => {
-            std::mem::swap(&mut app.fg, &mut app.bg);
+            let bg = app.bg;
+            app.bg = app.fg;
+            app.escolhe_fg(bg);
             KeyAnswer::Quiet
         }
         (KeyCode::Quote, true, true) => {

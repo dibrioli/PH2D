@@ -106,6 +106,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.select.refuse.nothing" => "Nothing to transform here",
         "pixel.edit.refuse.clipboard" => "Nothing copied yet",
         "pixel.sprite.refuse.trim" => "Nothing to trim",
+        "pixel.brush.select_bounds" => {
+            "Drag over the area that becomes the brush (right-drag also cuts it out)"
+        }
         _ => return None,
     })
 }

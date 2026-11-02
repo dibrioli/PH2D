@@ -177,6 +177,10 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         }
         return Press::Done;
     }
+    if app.recorte {
+        crate::pincel::press(app, key, (x, y), button == Button::Secondary);
+        return Press::Done;
+    }
     let sel = app.tool.selects();
     if sel && m.ctrl && !m.shift {
         return crate::solta::press_move(app, c, bits, key, p, (x, y));
@@ -198,7 +202,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         app.avisos.push((true, ph2d_i18n::tr(motivo).to_owned()));
         return Press::Done;
     }
-    let pincel = app.pincel.clone();
+    let pincel = app.pincel.clone().map(|p| (p, app.pincel_imagem));
     let Some(doc) = app.docs.get_mut(&key) else {
         return Press::NotMine;
     };
@@ -245,7 +249,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
                 let rgba = s.rgba_of_value(v);
                 match button {
-                    Button::Primary => app.fg = rgba,
+                    Button::Primary => app.escolhe_fg(rgba),
                     Button::Secondary => app.bg = rgba,
                 }
             }

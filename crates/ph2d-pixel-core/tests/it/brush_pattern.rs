@@ -211,3 +211,58 @@ fn the_anchor_is_the_selections_and_transparent_margins_are_not_trimmed() {
     assert_eq!(p.size(), (6, 2));
     assert_eq!(p.anchor(), (3, 1));
 }
+
+/// As linhas que o Trial leu (`le`: a linha → as letras a partir de `x0`).
+fn confere(nome: &str, g: &[String], le: &[(usize, usize, &str)]) {
+    for &(y, x0, quer) in le {
+        let tem = &g[y][x0..x0 + quer.len()];
+        assert_eq!(tem, quer, "{nome}: linha {y} desde {x0}");
+    }
+}
+
+/// rb6: a âncora usa a selecção 6×4 ORIGINAL com o padrão no canto de baixo-direita (offset 3,2);
+/// o buraco transparente deixa o castanho do destino (`R k B`).
+#[test]
+fn rb6_the_anchor_of_a_6x4_selection_puts_the_pattern_under_the_cursor() {
+    let f = fx();
+    let c = &f["casos"]["rb6_ancora_selecao_6x4"];
+    assert_eq!(c["le"]["20"], "R k B em 30..32 (buraco = castanho)");
+    assert_eq!(c["le"]["21"], "YCP em 30..32");
+    let g = refaz(c);
+    confere("rb6", &g, &[(20, 30, "RkB"), (21, 30, "YCP")]);
+}
+
+/// Dono 02/11 (§6.1 do handoff P7a): depois de escolher uma cor o pincel pinta INTEIRO nela — o
+/// Trial guarda a cor do pixel (0,0) (`rb2b_frente_paint_cores`: `RBB/BBB`), defeito dele que não
+/// se copia: `BBB/BBB`. A forma é a do pincel, o transparente da imagem também pinta.
+#[test]
+fn a_chosen_colour_paints_the_whole_pattern_brush_not_the_aseprite_corner() {
+    let f = fx();
+    assert_eq!(
+        f["casos"]["rb2b_frente_paint_cores"]["le"]["azul (30,30)"][0],
+        "RBB"
+    );
+    let mut s = entrada("pad.ase");
+    let key = (s.layers()[0].id, s.frames()[0].id);
+    let mask = Mask::marquee(W, H, (8, 8), (10, 9));
+    let p = PatternBrush::from_selection(&s, key, &mask).expect("p");
+    let paint = Paint {
+        brush: Brush {
+            pattern: Some(Arc::new(p)),
+            pattern_align: PatternAlign::Paint,
+            image_color: false,
+            ..Brush::default()
+        },
+        ..Paint::default()
+    };
+    let azul = s.value_of_rgba(rgb('B'));
+    let mut st = Stroke::begin(&s, key.0, key.1, azul, paint, (30, 30));
+    st.to(&s, 30, 30);
+    let op = st.op(&s).expect("op");
+    apply(&mut s, op).expect("op");
+    confere(
+        "cor escolhida",
+        &grelha(&s),
+        &[(29, 29, "BBB"), (30, 29, "BBB")],
+    );
+}

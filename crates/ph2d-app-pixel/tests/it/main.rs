@@ -6,6 +6,7 @@ mod edit;
 mod fecho;
 mod formas;
 mod painel_e_dialogo;
+mod pincel;
 mod pontas;
 mod selecao;
 mod viva;

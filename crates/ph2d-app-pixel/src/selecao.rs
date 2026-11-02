@@ -31,6 +31,8 @@ pub struct Laco {
     /// O cursor saiu da célula do premir (um clique parado com a marquee DESSELECCIONA).
     pub(crate) moved: bool,
     pub(crate) held: bool,
+    /// O recorte do pincel (Ctrl+B sem selecção): `Some(corta)` — o botão direito também apaga.
+    pub(crate) pincel: Option<bool>,
 }
 
 /// O modo de juntar no núcleo.
@@ -261,6 +263,7 @@ pub(crate) fn press(app: &mut PixelApp, key: u32, at: Cell, m: Mods) -> bool {
         pts,
         moved: false,
         held: true,
+        pincel: None,
     });
     true
 }
@@ -305,6 +308,10 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
     let Some(l) = app.laco.take() else {
         return true;
     };
+    if let Some(corta) = l.pincel {
+        app.recorta_pincel(l.key, l.pts[0], l.pts[1], corta);
+        return true;
+    }
     let Some((w, h)) = app
         .docs
         .get(&l.key)
@@ -388,6 +395,12 @@ pub(crate) fn key(
         (KeyCode::KeyD, true, false) => pede(app, PixelRequest::Select(S::Deselect)),
         (KeyCode::KeyD, true, true) => pede(app, PixelRequest::Select(S::Reselect)),
         (KeyCode::KeyI, true, true) => pede(app, PixelRequest::Select(S::Inverse)),
+        (KeyCode::KeyB, true, false) => pede(app, PixelRequest::Edit(E::NewBrush)),
+        (KeyCode::Escape, _, _) if app.recorte => {
+            app.recorte = false;
+            app.laco = app.laco.take().filter(|l| l.pincel.is_none());
+            KeyAnswer::Quiet
+        }
         (KeyCode::Escape, _, _) if solta => pede(app, PixelRequest::Edit(E::Cancel)),
         (KeyCode::Escape, _, _) if laco => {
             app.laco = None;

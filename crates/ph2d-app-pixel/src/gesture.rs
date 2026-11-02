@@ -84,7 +84,7 @@ pub(crate) fn ink(i: ph2d_editor_core::pixel_panel::PixelInk) -> Ink {
 pub(crate) fn paint(
     o: &Options,
     doc: &Doc,
-    pincel: Option<&std::sync::Arc<ph2d_pixel_core::pattern::PatternBrush>>,
+    pincel: Option<&(std::sync::Arc<ph2d_pixel_core::pattern::PatternBrush>, bool)>,
 ) -> Paint {
     use ph2d_editor_core::pixel_panel::PixelBrushShape as S;
     use ph2d_editor_core::pixel_panel::PixelPatternAlign as A;
@@ -99,13 +99,13 @@ pub(crate) fn paint(
             shape,
             size: o.size,
             angle: o.angle,
-            pattern: pincel.cloned(),
+            pattern: pincel.map(|(p, _)| p.clone()),
             pattern_align: match o.pattern_align {
                 A::Source => PatternAlign::Source,
                 A::Destination => PatternAlign::Destination,
                 A::Paint => PatternAlign::Paint,
             },
-            image_color: true,
+            image_color: pincel.is_none_or(|&(_, imagem)| imagem),
         },
         symmetry: symmetry(o, doc),
         tiling: Tiling {

@@ -109,6 +109,8 @@ pub enum PixelEditAction {
     /// `Enter`: assenta a moldura (UM passo). `Esc`: larga-a sem mudar nada.
     Commit,
     Cancel,
+    /// `Ctrl+B` (Edit ▸ New Brush): a selecção vira o pincel de padrão; sem selecção, arrastar define-o.
+    NewBrush,
 }
 
 /// O menu Sprite.

@@ -203,6 +203,10 @@ pub struct PixelApp {
     pub(crate) predefinicoes: Option<Vec<String>>,
     /// O pincel copiado da selecção (Ctrl+B); `None` = o pincel de forma das opções.
     pub(crate) pincel: Option<std::sync::Arc<ph2d_pixel_core::pattern::PatternBrush>>,
+    /// O pincel pinta com as cores da imagem; escolher uma cor de frente põe-no a `false`.
+    pub(crate) pincel_imagem: bool,
+    /// Ctrl+B sem selecção: o próximo arrasto define o pincel.
+    pub(crate) recorte: bool,
 }
 
 impl Default for PixelApp {
@@ -258,6 +262,8 @@ impl Default for PixelApp {
             paletas: None,
             predefinicoes: None,
             pincel: None,
+            pincel_imagem: true,
+            recorte: false,
         }
     }
 }

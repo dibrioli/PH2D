@@ -55,9 +55,13 @@ impl PixelApp {
             }
             // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
             PixelRequest::Options(o) => crate::viva::opcoes(self, *o),
-            PixelRequest::Fg(c) => self.fg = c,
+            PixelRequest::Fg(c) => self.escolhe_fg(c),
             PixelRequest::Bg(c) => self.bg = c,
-            PixelRequest::Swap => std::mem::swap(&mut self.fg, &mut self.bg),
+            PixelRequest::Swap => {
+                let bg = self.bg;
+                self.bg = self.fg;
+                self.escolhe_fg(bg);
+            }
             _ => {}
         }
     }

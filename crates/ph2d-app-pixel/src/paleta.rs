@@ -209,7 +209,7 @@ impl PixelApp {
         let Some(&c) = self.docs[&key].sprite.palette().get(index) else {
             return;
         };
-        self.fg = c;
+        self.escolhe_fg(c);
         match how {
             PixelSelect::Only => {
                 self.sel = BTreeSet::from([index]);

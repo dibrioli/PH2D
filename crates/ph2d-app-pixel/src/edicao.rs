@@ -81,7 +81,7 @@ impl Prancheta {
 }
 
 /// Limpa as células de `m` no cel `key` (Background: a cor de fundo). UM passo.
-fn limpa(s: &Sprite, key: ph2d_pixel_core::CelKey, m: &Mask, bg: u32) -> Option<Op> {
+pub(crate) fn limpa(s: &Sprite, key: ph2d_pixel_core::CelKey, m: &Mask, bg: u32) -> Option<Op> {
     let nada = Floating {
         x: 0,
         y: 0,
@@ -166,6 +166,7 @@ impl PixelApp {
                 }
                 return;
             }
+            E::NewBrush => return self.novo_pincel(key),
             E::Paste => {
                 let src = self
                     .clip
@@ -240,7 +241,7 @@ impl PixelApp {
                 self.clip = Some(p);
                 op
             }
-            E::Transform | E::Commit | E::Cancel | E::Paste => None,
+            E::Transform | E::Commit | E::Cancel | E::Paste | E::NewBrush => None,
         };
         self.passo(key, op);
     }

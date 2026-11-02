@@ -116,6 +116,11 @@ sistema · Fill/Stroke da selecção · Blur num canto. Os números da mensagem 
 
 ## 9. Perguntas ao dono (antes de codar)
 
+> **Respondidas 02/11: «faça conforme o que achar melhor»** ⇒ valem as quatro recomendações: (1) fg→bg por omissão +
+> opção «Palette ramp» na mesma ferramenta (a lei da spec §13.3 do MVP, a MESMA `gradient::at` com `ends: Ramp`);
+> (2) janelinha flutuante com Preview/OK/Cancel; (3) o texto vira píxeis ao confirmar (sem `PROJECT_SCHEMA`);
+> (4) Cozette, Tom Thumb e Unscii-8/16 de fábrica, sem uma linha mudada, com as licenças.
+
 1. **Gradient**: só entre a cor de frente e a de fundo (como o Aseprite), ou também «pela paleta» (caminha pelos tons vizinhos da paleta, como o MVP fazia)? Recomendo: fundo/frente agora, «pela paleta» como opção na mesma ferramenta.
 2. **Janelas dos filtros** (Brightness, Hue/Sat, Curve, Outline…): janelinha flutuante com Preview / OK / Cancel como no Aseprite, ou uma secção no painel da direita no padrão do Inspector? Recomendo a janelinha (o filtro é um gesto de uma vez, e o canvas fica à vista).
 3. **Texto**: vira píxeis ao confirmar (Aseprite), ou fica um texto que se reabre e edita depois? Recomendo píxeis ao confirmar (editável até lá).

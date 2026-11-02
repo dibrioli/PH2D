@@ -62,12 +62,14 @@ fn pega_w() -> f32 {
     StrokeToken::Thick.px() * 2.0
 }
 
-/// O rect da pega no valor `v` da trilha `track`.
+/// O rect da pega no valor `v` da trilha `track` — centrada no valor e presa DENTRO da trilha (na
+/// ponta, meia pega fora não se via nem se agarrava).
 #[must_use]
 pub fn range_handle_rect(track: Rect, v: f32) -> Rect {
     let cx = track.x + track.w * v.clamp(0.0, 1.0);
-    let w = pega_w();
-    Rect::new(cx - w * 0.5, track.y, w, track.h)
+    let w = pega_w().min(track.w.max(0.0));
+    let x = (cx - w * 0.5).clamp(track.x, track.x + track.w - w);
+    Rect::new(x, track.y, w, track.h)
 }
 
 /// Pinta a trilha com o intervalo `lo..hi` cheio de acento e as duas pegas; `activa` = a agarrada.

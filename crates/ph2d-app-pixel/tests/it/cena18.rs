@@ -70,6 +70,7 @@ fn scene_18_selected_drawing_ctrl_b_stamps_flips_and_slow_vs_fast() {
     assert_eq!(o.size, BRUSH_SIZE);
     assert_eq!(o.dynamics.size.sensor, PixelSensor::Velocity);
     assert_eq!(p.rgba(AT.0, AT.1), cores_do_desenho()[0]);
+    assert_eq!(p.rgba(90, 60), [255; 4], "o fundo é branco até ao canto");
     p.tecla(KeyCode::KeyB, true, false);
     assert!(p.mascara().is_none(), "o Ctrl+B larga a selecção");
     let i = p.quadro();

@@ -59,13 +59,23 @@ fn as_pegas_nunca_se_cruzam_encostam() {
 }
 
 #[test]
-fn a_pega_pinta_se_no_valor_dela() {
+fn a_pega_pinta_se_no_valor_dela_e_dentro_da_trilha() {
+    let r = range_handle_rect(TRILHA, 0.3);
+    let centro = r.x + r.w * 0.5;
+    assert!((centro - (TRILHA.x + TRILHA.w * 0.3)).abs() < 1e-4);
     for v in [0.0, 0.3, 1.0] {
         let r = range_handle_rect(TRILHA, v);
-        let centro = r.x + r.w * 0.5;
-        assert!((centro - (TRILHA.x + TRILHA.w * v)).abs() < 1e-4);
         assert!(r.w > 0.0 && r.h == TRILHA.h);
+        assert!(
+            r.x >= TRILHA.x && r.x + r.w <= TRILHA.x + TRILHA.w + 1e-4,
+            "{v}: {r:?}"
+        );
     }
+    assert_eq!(
+        range_handle_rect(TRILHA, 0.0).x,
+        TRILHA.x,
+        "a do zero encosta à ponta"
+    );
 }
 
 #[test]

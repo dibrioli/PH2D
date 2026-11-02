@@ -64,7 +64,8 @@ pub(crate) fn stage(
     let p = Patch {
         layer,
         frame,
-        bbox: Some(caixa),
+        // O cel de fundo é a imagem inteira: o patch não o encolhe à caixa do desenho.
+        bbox: Some(Rect::new(0, 0, w, h)),
         rect: caixa,
         pixels,
     };

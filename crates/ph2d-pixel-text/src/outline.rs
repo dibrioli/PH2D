@@ -148,6 +148,19 @@ pub fn face_metrics(font: &FontRef<'_>, px: u32) -> FaceMetrics {
     }
 }
 
+/// Linhas que o Aseprite corta por baixo da tinta: a caixa dele assenta a linha de base em `⌊ascent⌋`
+/// mas desenha os glifos em `round(ascent)` — quando o ascent arredonda para cima, a última linha de
+/// tinta do texto fica fora. MEDIDO: `oracle_trial_box.json` («Ag1|» DejaVu Sans 9..32 px: corta 1
+/// linha exactamente a 14, 15, 16, 17, 18, 20 e 32, os tamanhos de ascent a subir) e
+/// `oracle_trial_text.json` («Ag1» ×3 fontes: só a 16). Nenhuma regra só de métricas
+/// (⌊·⌋/⌈·⌉/round de ascent, descent, height, typo/win, yMin do texto) casa os 33 casos; esta casa todos.
+pub fn box_bottom_cut(font: &FontRef<'_>, px: u32) -> i32 {
+    let a = font
+        .metrics(Size::new(px as f32), LocationRef::default())
+        .ascent;
+    a.round() as i32 - a.floor() as i32
+}
+
 /// A instância de hinting de `font` a `px` para o modo de `antialias` (uma por texto: corre o `prep`).
 /// `None` se a face não se deixa hintar — então o glifo sai sem hinting.
 pub fn hinter(font: &FontRef<'_>, px: u32, antialias: bool) -> Option<HintingInstance> {

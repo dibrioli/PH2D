@@ -193,19 +193,25 @@ pub fn rasterize_outline(
         }
     }
     let lines = text_lines(text).len() as i32;
-    let (mut x0, mut y0, mut x1, mut y1) = (0, 0, 0, lines * step);
+    let (mut x0, mut y0, mut x1, mut ink) = (0, 0, 0, i32::MIN);
     for (x, y, g) in &placed {
         if g.w > 0 {
             x0 = x0.min(*x);
             y0 = y0.min(*y);
             x1 = x1.max(x + g.w as i32);
-            y1 = y1.max(y + g.h as i32);
+            ink = ink.max(y + g.h as i32);
         }
     }
+    // A caixa do Aseprite corta a última linha de tinta quando o ascent arredonda para cima.
+    let ink = ink - outline::box_bottom_cut(&face, style.px);
+    let y1 = ink.max(lines * step).max(y0);
     let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
     let mut cover = vec![0u8; (w * h) as usize];
     for (x, y, g) in &placed {
         for gy in 0..g.h {
+            if y + gy as i32 >= ink {
+                break;
+            }
             for gx in 0..g.w {
                 let mut v = g.cover[(gy * g.w + gx) as usize];
                 if style.antialias {

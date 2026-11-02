@@ -71,11 +71,11 @@ fn report(rows: &[(String, usize, usize, u8, u32)]) -> String {
         .join("\n")
 }
 
-/// Mono (as omissões do Aseprite), MEDIDO em 02/11, na ordem Sans·Sans Mono·Serif × 8·12·16. Os 4 a
-/// 16 são a última linha da barriga do «g»: o Trial corta a caixa 17 linhas abaixo da âncora (a
-/// FreeType mono hintada desenha-a). Os 2 de Sans 8 são cantos do «g» que acendemos e a FreeType não
-/// — empates de centro sobre a curva, não dropout — os mesmos 2 do gate `freetype_oracle`.
-const MEASURED_MONO: [usize; 9] = [2, 0, 4, 0, 0, 4, 0, 0, 4];
+/// Mono (as omissões do Aseprite), MEDIDO em 02/11, na ordem Sans·Sans Mono·Serif × 8·12·16. Os 4
+/// a 16 px (a última linha da barriga do «g») foram a 0 com `box_bottom_cut`. Os 2 de Sans 8 são cantos
+/// do «g» que acendemos e a FreeType não — empates de centro sobre a curva, não dropout — os mesmos 2
+/// do gate `freetype_oracle`.
+const MEASURED_MONO: [usize; 9] = [2, 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[test]
 fn trial_text_mono_hinted_matches_cell_for_cell() {
@@ -90,19 +90,19 @@ fn trial_text_mono_hinted_matches_cell_for_cell() {
 }
 
 /// AA: suporte (que células têm tinta) e a maior diferença de alfa, MEDIDOS em 02/11. Antes: suporte
-/// 0–1 a 8/12 px e Δ 54–60 (a cobertura não era a da FreeType e faltava o tom). Agora a cobertura é a
-/// da FreeType em escala de cinza e passa pela LUT `TRIAL_TEXT_TONE`: 8/12 px com suporte 0 e Δ ≤ 14;
-/// a 16 px os 6/6/7 e o Δ ~220 são a linha de baixo que o Trial corta (a caixa).
+/// 0–11 e Δ 54–253 (a cobertura não era a da FreeType, faltava o tom e a caixa não cortava). Agora a
+/// cobertura é a da FreeType em escala de cinza, passa pela LUT `TRIAL_TEXT_TONE` e a caixa corta como
+/// o Trial: suporte 0 em todos, Δ ≤ 5 salvo um ponto de Sans 8 (14).
 const MEASURED_AA: [(usize, u8); 9] = [
     (0, 14),
     (0, 3),
-    (6, 214),
+    (0, 5),
     (0, 2),
     (0, 3),
-    (6, 221),
     (0, 2),
     (0, 2),
-    (7, 216),
+    (0, 2),
+    (0, 2),
 ];
 
 #[test]
@@ -114,5 +114,97 @@ fn trial_text_antialias_support_and_tone_are_measured() {
         MEASURED_AA,
         "\n{}",
         report(&rows)
+    );
+}
+
+const BOX: &str = include_str!("../fixtures/oracle_trial_box.json");
+
+/// Por caso da rodada 3 («Ag1|» DejaVu Sans, âncora (10,10), lona 160×100): (rótulo, células que
+/// diferem em tinta/sem tinta, maior |Δalfa|).
+fn compare_box() -> Vec<(String, usize, u8)> {
+    let doc: Value = serde_json::from_str(BOX).unwrap();
+    let text = &doc["text"];
+    let mut out = Vec::new();
+    let mut cases: Vec<_> = text["cases"].as_object().unwrap().iter().collect();
+    cases.sort_by_key(|(k, _)| {
+        let mut p = k.split(':').skip(1);
+        let px: u32 = p.next().unwrap().parse().unwrap();
+        (p.next().unwrap() == "aa", px)
+    });
+    let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+    let data = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    for (key, case) in cases {
+        let mut p = key.split(':').skip(1);
+        let px: u32 = p.next().unwrap().parse().unwrap();
+        let antialias = p.next().unwrap() == "aa";
+        let anchor = case["anchor_cell"].as_array().unwrap();
+        let (ax, ay) = (
+            anchor[0].as_i64().unwrap() as i32,
+            anchor[1].as_i64().unwrap() as i32,
+        );
+        let mut style = TextStyle::new(FontChoice::System(path.into(), 0), px);
+        style.antialias = antialias;
+        let m = rasterize_outline(&data, 0, text["text"].as_str().unwrap(), &style).unwrap();
+        let ascent = face_metrics(&face(&data, 0).unwrap(), px).ascent;
+        let (ox, oy) = (ax - m.origin_x, ay + ascent - m.baseline);
+        let (mut diff, mut max) = (0, 0u8);
+        for (y, row) in case["rows_hexR"].as_array().unwrap().iter().enumerate() {
+            let row = row.as_str().unwrap();
+            for x in 0..row.len() / 2 {
+                let theirs = 255 - u8::from_str_radix(&row[2 * x..2 * x + 2], 16).unwrap();
+                let (mx, my) = (x as i32 - ox, y as i32 - oy);
+                let ours = if mx >= 0 && my >= 0 && (mx as u32) < m.w && (my as u32) < m.h {
+                    m.cover[(my as u32 * m.w + mx as u32) as usize]
+                } else {
+                    0
+                };
+                diff += usize::from((theirs != 0) != (ours != 0));
+                max = max.max(theirs.abs_diff(ours));
+            }
+        }
+        out.push((
+            format!("{px} {}", if antialias { "aa" } else { "mono" }),
+            diff,
+            max,
+        ));
+    }
+    out
+}
+
+/// A caixa do Aseprite (`outline::box_bottom_cut`) contra a rodada 3, MEDIDA em 02/11, na ordem mono
+/// 9·10·11·13·14·15·17·18·20·24·32 e AA 12·16·24·32: (células que diferem, maior |Δalfa|). Sem o corte
+/// 14..20 e 32 tinham a última linha de tinta a mais (1 a 7 células cada). Os 1–2 restantes a 14, 15,
+/// 24 e 32 mono não são da caixa (ver o handoff).
+const MEASURED_BOX: [(usize, u8); 15] = [
+    (0, 0),
+    (0, 0),
+    (0, 0),
+    (0, 0),
+    (1, 255),
+    (1, 255),
+    (0, 0),
+    (0, 0),
+    (0, 0),
+    (2, 255),
+    (2, 255),
+    (0, 3),
+    (0, 5),
+    (0, 4),
+    (0, 7),
+];
+
+#[test]
+fn trial_text_box_cuts_like_the_trial() {
+    let rows = compare_box();
+    let rep = rows
+        .iter()
+        .map(|(l, d, mx)| format!("{l}: {d} diferem, Δalfa máx {mx}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    eprintln!("{rep}");
+    assert_eq!(
+        rows.iter().map(|r| (r.1, r.2)).collect::<Vec<_>>(),
+        MEASURED_BOX,
+        "\n{rep}"
     );
 }

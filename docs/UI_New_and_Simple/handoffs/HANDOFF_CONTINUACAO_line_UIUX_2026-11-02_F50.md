@@ -45,3 +45,13 @@ enviado.** Anterior: [F49](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F49.md) (smo
 4. Herdados: grupo de formas como parte do Draw (F49 §2); Inner/Outer + «Above Effects» (F48); os quatro W do perfil
    ainda `slider_row`; `cargo fmt --all --check` alheio (pixel-preview, connector_handles).
 5. Depois deste bloco (dono): Path Effects em lista (Contour, Pattern on Path, Envelope) → Blend + Morph.
+
+## 5 — Smoke do dono, 1.ª volta (02/11)
+
+- Dono: «retirar do app as operações booleanas menos comuns (que estão dentro dos ...)» e «retire os ...
+  também». Feito: saíram da UI o «⋯» da ④, Minus Back/Trim/Crop/Merge e Make/Release Compound (ids,
+  registo, despacho, i18n, testes; o gate `the_more_of_the_action_bar_opens_the_rare_verbs` foi apagado).
+- O motor fica: projetos antigos com essas operações (códigos 4..7 em `bool_live`, compound paths)
+  desenham igual.
+- Prova nova: `f50_…::as_raras_e_o_mais_sairam_do_app`. Doc: `F50_boolean_e_convert_a_figma.md` §4 «Revisto
+  pelo dono no smoke».

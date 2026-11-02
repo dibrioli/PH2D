@@ -7,7 +7,6 @@ use super::*;
 
 /// Os pedidos que o dreno do barramento recolheu neste quadro para esta fase.
 pub(super) struct CompoundSnapRulersIntents {
-    pub(super) pending_vec_compound: Option<bool>,
     pub(super) pending_vec_fill_rule: Option<bool>,
     pub(super) pending_vec_snap_on: Option<bool>,
     pub(super) pending_vec_snap_path: Option<bool>,
@@ -24,16 +23,12 @@ impl crate::App {
         };
         let FrameGfx { vec_scene, .. } = FrameGfx::of(gfx);
         let CompoundSnapRulersIntents {
-            pending_vec_compound,
             pending_vec_fill_rule,
             pending_vec_snap_on,
             pending_vec_snap_path,
             pending_vec_snap_cross,
             pending_vec_snap_guides,
         } = intents;
-        if let Some(make) = pending_vec_compound {
-            crate::input_dispatch::apply_vec_compound(vec_scene, &mut self.vec.pen, make);
-        }
         if let Some(even_odd) = pending_vec_fill_rule {
             crate::input_dispatch::apply_vec_fill_rule(vec_scene, &self.vec.pen, even_odd);
         }

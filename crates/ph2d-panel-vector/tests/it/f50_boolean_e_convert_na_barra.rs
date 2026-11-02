@@ -1,11 +1,13 @@
 //! ⭐ **F50 — Boolean e Convert saem do painel para a barra de ações ④** (dono 02/11: «faça como o
 //! Figma» · «tirar do painel e deixar os mais comuns na barra de ações e "..." para as menos
 //! comuns»). A booleana é sempre viva (a chave «Live» saiu); o permanente é o `Flatten`.
+//! ⛔ Revisto pelo dono no smoke (02/11): «retirar do app as operações booleanas menos comuns» e
+//! «retire os ... também» — o «⋯» da ④, as quatro raras e o Make/Release Compound saíram da UI
+//! (o motor fica: projetos antigos desenham igual).
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{ToolBars, WidgetEvent};
 use ph2d_editor_core::panel::EventOutcome;
-use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, bars, ids as p};
@@ -19,13 +21,6 @@ const COMUNS: [NodeId; 6] = [
     p::VECTOR_BOOL_EXCLUDE,
     p::VECTOR_FLATTEN,
     t::VECTOR_EXPAND_OUTLINE_STROKE,
-];
-
-const RARAS: [NodeId; 4] = [
-    t::VECTOR_BOOL_MINUS_BACK,
-    t::VECTOR_BOOL_TRIM,
-    t::VECTOR_BOOL_CROP,
-    t::VECTOR_BOOL_MERGE,
 ];
 
 fn barras(sel: usize, grupo: Option<u8>) -> (MockPanelHost, ToolBars) {
@@ -42,10 +37,6 @@ fn barras(sel: usize, grupo: Option<u8>) -> (MockPanelHost, ToolBars) {
 
 fn acoes(b: &ToolBars) -> Vec<NodeId> {
     b.actions.iter().flatten().map(|x| x.id).collect()
-}
-
-fn mais(b: &ToolBars) -> Vec<Option<NodeId>> {
-    b.actions_more.iter().map(ToolRailEntry::node_id).collect()
 }
 
 fn chega(h: &mut MockPanelHost, id: NodeId) {
@@ -72,41 +63,15 @@ fn duas_formas_trazem_as_comuns_na_barra() {
     }
 }
 
-/// O «⋯» guarda as raras: as quatro receitas e o Compound/Release, separados por um risco.
+/// Uma forma solta: Outline Stroke sim, booleana e Flatten não.
 #[test]
-fn o_mais_guarda_as_raras() {
-    let (mut h, b) = barras(2, None);
-    let want: Vec<Option<NodeId>> = RARAS
-        .iter()
-        .map(|&i| Some(i))
-        .chain([
-            None,
-            Some(ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE),
-            Some(p::VECTOR_COMPOUND_RELEASE),
-        ])
-        .collect();
-    assert_eq!(mais(&b), want);
-    for id in RARAS {
-        chega(&mut h, id);
-    }
-    assert!(
-        b.actions_more
-            .iter()
-            .all(|e| e.label().is_none_or(|l| !l.is_empty())),
-        "linha sem nome"
-    );
-}
-
-/// Uma forma solta: Outline Stroke sim, booleana e Flatten não; o «⋯» só com o Release.
-#[test]
-fn uma_forma_so_tem_o_outline_e_o_release() {
+fn uma_forma_so_tem_o_outline() {
     let (_, b) = barras(1, None);
     let ids = acoes(&b);
     assert!(ids.contains(&t::VECTOR_EXPAND_OUTLINE_STROKE));
     for id in &COMUNS[..5] {
         assert!(!ids.contains(id), "{id:?} com uma forma só");
     }
-    assert_eq!(mais(&b), vec![Some(p::VECTOR_COMPOUND_RELEASE)]);
 }
 
 /// A operação do grupo vivo escolhido ACENDE o botão dela — trocar é clicar noutro (Figma).
@@ -145,11 +110,46 @@ fn o_painel_ja_nao_tem_boolean_nem_convert() {
             .is_some(),
         "controlo: o Advanced pinta"
     );
-    for id in COMUNS.into_iter().chain(RARAS) {
+    for id in COMUNS {
         assert!(
             h.painted_rect::<VectorPanel>(&mut VectorPanelState, vp, id)
                 .is_none(),
             "{id:?} ainda no painel"
         );
+    }
+}
+
+/// ⛔ **As raras e o «⋯» saíram do app** (smoke do dono, 02/11). Os ids já não existem, então a
+/// prova é pelo NOME: as chaves `panel.vector.more.*` deixaram de ter tradução (o `tr` devolve a
+/// própria chave) e nenhum botão da ④, com duas formas ou uma, se chama como uma delas.
+#[test]
+fn as_raras_e_o_mais_sairam_do_app() {
+    // Montadas em tempo de execução: um literal aqui contaria como USO no censo das chaves.
+    let chaves = ["minus_back", "trim", "crop", "merge", "compound", "release"]
+        .map(|n| format!("panel.vector.{}.{n}", "more"))
+        .into_iter()
+        .chain([format!("chrome.selection_actions.{}", "more")]);
+    for key in chaves {
+        assert_eq!(ph2d_i18n::tr(&key), key, "{key} ainda traduzida");
+    }
+    for sel in [1, 2] {
+        let (_, b) = barras(sel, None);
+        assert!(!acoes(&b).is_empty(), "controlo: a ④ tem botões com {sel}");
+        for x in b.actions.iter().chain(&b.actions_below).flatten() {
+            for nome in [
+                "Minus Back",
+                "Trim",
+                "Crop",
+                "Merge",
+                "Compound",
+                "More actions",
+            ] {
+                assert!(
+                    !x.label.contains(nome),
+                    "«{}» na ④ com {sel} forma(s)",
+                    x.label
+                );
+            }
+        }
     }
 }

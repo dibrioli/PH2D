@@ -295,7 +295,7 @@ fn shape_up_only_consumed_while_a_drag_is_live() {
     );
 }
 
-/// **Os OITO ids do Pathfinder mapeiam para as suas ops** (plano 25 §8, W5).
+/// **Os QUATRO ids do Pathfinder mapeiam para as suas ops** (plano 25 §8, W5).
 ///
 /// ⚠️ A lista é enumerada aqui à mão de propósito: derivá-la da tabela do produto tornaria o
 /// gate um espelho (encolher a tabela encolheria a lista percorrida, e ele seguiria verde) —
@@ -308,10 +308,6 @@ fn pathfinder_button_ids_map_to_their_ops() {
         (ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
         (ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
         (ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, P::Trim),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, P::Crop),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, P::Merge),
     ] {
         assert_eq!(vec_bool_op_for_id(id), Some(want), "{want:?}");
     }
@@ -381,33 +377,13 @@ fn nested_selection() -> (ph2d_vec_scene::VecScene, ph2d_vec_edit::PenTool, [u64
     (scene, pen, [outer, inner])
 }
 
-/// Make Compound é como o usuário desenha um buraco à mão; Release desfaz.
-#[test]
-fn make_and_release_compound_from_the_selection() {
-    let (mut scene, mut pen, ids) = nested_selection();
-
-    super::apply_vec_compound(&mut scene, &mut pen, true);
-    assert_eq!(scene.paths().len(), 1);
-    assert!(
-        !scene.path_contains_point(ids[0], [5.0, 5.0]),
-        "virou buraco"
-    );
-    assert_eq!(pen.selected(), Some(ids[0]));
-
-    super::apply_vec_compound(&mut scene, &mut pen, false);
-    assert_eq!(scene.paths().len(), 2);
-    assert!(
-        scene.path_contains_point(ids[0], [5.0, 5.0]),
-        "sólido de novo"
-    );
-    assert_eq!(pen.selected_paths().len(), 2, "base + liberado");
-}
-
 /// A regra de preenchimento troca o buraco por região sólida, sem tocar a geometria.
 #[test]
 fn fill_rule_toggle_vacates_or_fills_the_hole() {
     let (mut scene, mut pen, ids) = nested_selection();
-    super::apply_vec_compound(&mut scene, &mut pen, true);
+    // O compound é do MOTOR (projetos antigos); a UI do Make/Release saiu no smoke do dono, 02/11.
+    assert_eq!(scene.make_compound(&ids), Some(ids[0]));
+    pen.select(Some(ids[0]));
     assert!(!scene.path_contains_point(ids[0], [5.0, 5.0]));
 
     super::apply_vec_fill_rule(&mut scene, &pen, false); // Non-Zero

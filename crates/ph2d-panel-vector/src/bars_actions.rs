@@ -5,7 +5,6 @@
 use super::button;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{BarButton, BarFamily};
-use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::DrawMode;
 use ph2d_tool_vector::ids;
@@ -266,46 +265,6 @@ fn combine(sel: usize) -> Vec<BarButton> {
         tr("panel.vector.bar.outline_stroke").to_owned(),
         false,
         BarFamily::Stroke,
-    ));
-    out
-}
-
-/// ⭐ F50 **O «⋯» da ④** — as raras: as quatro receitas do Pathfinder (com duas formas ou um grupo
-/// vivo) e o Compound; o Release com qualquer seleção. Os ids são os do painel (a mesma porta).
-pub(super) fn more(mode: DrawMode, sel: usize) -> Vec<ToolRailEntry> {
-    if sel == 0 || PRECISE.contains(&mode) || matches!(mode, DrawMode::Cut | DrawMode::Offset) {
-        return Vec::new();
-    }
-    let row = |id, key: &str| ToolRailEntry::icon(id, tr(key), IconId::MoreHorizontal);
-    let mut out = Vec::new();
-    if sel >= 2 || crate::state::bool_group_selected() {
-        out.extend([
-            row(
-                ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK,
-                "panel.vector.more.minus_back",
-            ),
-            row(
-                ph2d_tool_vector::ids::VECTOR_BOOL_TRIM,
-                "panel.vector.more.trim",
-            ),
-            row(
-                ph2d_tool_vector::ids::VECTOR_BOOL_CROP,
-                "panel.vector.more.crop",
-            ),
-            row(
-                ph2d_tool_vector::ids::VECTOR_BOOL_MERGE,
-                "panel.vector.more.merge",
-            ),
-            ToolRailEntry::Divider,
-            row(
-                ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE,
-                "panel.vector.more.compound",
-            ),
-        ]);
-    }
-    out.push(row(
-        crate::ids::VECTOR_COMPOUND_RELEASE,
-        "panel.vector.more.release",
     ));
     out
 }

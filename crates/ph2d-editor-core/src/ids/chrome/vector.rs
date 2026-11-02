@@ -27,11 +27,6 @@ pub const VECTOR_CLOSE: NodeId = hash_node_id("vector.close");
 // resolve o índice de volta para a forma / o parâmetro. Uma forma nova não precisa
 // de id nenhum.
 
-// ── Compound paths (ADR-0108 — subpaths + fill rule) ─────────────────────────
-/// Merge the selected closed paths into ONE compound path (a contour inside
-/// another becomes a hole, via `EvenOdd`). Inverse: [`VECTOR_COMPOUND_RELEASE`].
-pub const VECTOR_COMPOUND_MAKE: NodeId = hash_node_id("vector.compound.make");
-
 pub const VECTOR_SNAP_ON: NodeId = hash_node_id("vector.snap.on");
 
 // ── Reforma da UI do painel (categoria ≠ tipo) ───────────────────────────────

@@ -103,10 +103,6 @@ pub enum ContextMenuKind {
     AreaCommands {
         slot: u8,
     },
-    /// ⭐ **O «⋯» da barra de ações ④** (F50) — as ações RARAS que o módulo publica em
-    /// [`crate::interaction::ToolBars::actions_more`], com os ids do painel dono (o mesmo desenho
-    /// do [`Self::AreaCommands`]).
-    SelectionActionsMore,
     MenuBarView,
     /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
     /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
@@ -443,7 +439,6 @@ impl ContextMenuKind {
         Self::SectionOutline { section: NodeId(1) },
         Self::ToolBarOverflow,
         Self::AreaCommands { slot: 0 },
-        Self::SelectionActionsMore,
         Self::NoteBackground {
             panel: NodeId(1),
             note_index: 0,

@@ -83,11 +83,6 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_UNION);
     // O FLATTEN (F50): sem esta linha ele pinta na ④ e fica MORTO sob o mouse.
     button(store, crate::ids::VECTOR_FLATTEN);
-    // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
-    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK);
-    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_TRIM);
-    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_CROP);
-    button(store, ph2d_tool_vector::ids::VECTOR_BOOL_MERGE);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);
@@ -101,8 +96,6 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_SHAPE_SUBTRACT);
     button(store, ids::VECTOR_BOOL_SHAPE_INTERSECT);
     button(store, ids::VECTOR_BOOL_SHAPE_EXCLUDE);
-    button(store, ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE);
-    button(store, crate::ids::VECTOR_COMPOUND_RELEASE);
     // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).
     button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER);
     button(store, ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER);

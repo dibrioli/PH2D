@@ -263,7 +263,6 @@ impl crate::App {
             pending_vec_expand: take(&mut pd.pending_vec_expand),
         })?;
         self.fase_compound_snap_rulers(fase_compound_snap_rulers::CompoundSnapRulersIntents {
-            pending_vec_compound: take(&mut pd.pending_vec_compound),
             pending_vec_fill_rule: take(&mut pd.pending_vec_fill_rule),
             pending_vec_snap_on: take(&mut pd.pending_vec_snap_on),
             pending_vec_snap_path: take(&mut pd.pending_vec_snap_path),

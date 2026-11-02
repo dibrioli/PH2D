@@ -75,7 +75,6 @@ fn the_selection_exceptions_are_all_real_controls() {
 #[test]
 fn a_control_from_another_section_is_not_claimed() {
     for id in [
-        ids::VECTOR_COMPOUND_MAKE,
         ids::VECTOR_SNAP_ON,
         ids::VECTOR_SECTION_BONE,
         ids::VECTOR_MODE_BONE,

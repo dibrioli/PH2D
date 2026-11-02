@@ -2380,63 +2380,9 @@ fn clicking_the_cut_pill_reaches_the_tool() {
     );
 }
 
-/// **Os OITO botões do Pathfinder respondem a um PONTEIRO real** (plano 25 §8, W5).
-///
-/// Down + Up de verdade, não um `WidgetEvent` sintético: o sintético **pula a checagem de
-/// focabilidade do store**, e um id pintado e hit-registado mas ausente do `populate` fica vivo
-/// aos olhos daquele gate e MORTO sob o mouse. Foi assim que os dois pills de corte chegaram ao
-/// smoke mudos, três dias antes desta wave.
-///
-/// ⚠️ A lista é enumerada à mão, e a exposição é essa: a nona operação que não entre aqui nasce
-/// descoberta. Não há como derivá-la — a tabela que o painel pinta é privada dele, e iterá-la
-/// faria deste gate um espelho (encolher a tabela encolheria a lista percorrida).
-#[test]
-fn every_pathfinder_button_answers_a_real_pointer() {
-    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
-    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
-    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
-    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
-    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
-    ph2d_panel_vector::state::set_current_selection_count(1);
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
-    let ops: [(ph2d_a11y::NodeId, &str); 8] = [
-        (ids::VECTOR_BOOL_UNION, "Union"),
-        (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
-        (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
-        (ids::VECTOR_BOOL_EXCLUDE, "Exclude"),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, "Minus Back"),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, "Trim"),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, "Crop"),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, "Merge"),
-    ];
-    let mut dead = Vec::new();
-    for (id, name) in ops {
-        let mut host = crate::host_aberto();
-        let mut panel_state = VectorPanelState;
-        let Some(r) = host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id) else {
-            dead.push(format!("{name} (nao PINTADO)"));
-            continue;
-        };
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        if !evs
-            .iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id))
-        {
-            dead.push(format!(
-                "{name} (MORTO sob o mouse -- falta o `button()` no populate)"
-            ));
-        }
-    }
-    assert!(dead.is_empty(), "operacoes que nao respondem: {dead:?}");
-}
+// O gesto real sobre os botões do Pathfinder saiu daqui com a secção Boolean (F50: moram na ④, que
+// este host do painel não pinta). Quem o mede hoje: `the_vector_bars_answer_a_real_pointer`
+// (crate do registo) e `bool_registration_parity`.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A SIMETRIA de desenho (plano 25 §9, W6.3)

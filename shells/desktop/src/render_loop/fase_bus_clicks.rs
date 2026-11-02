@@ -417,10 +417,6 @@ impl crate::App {
             pd.pending_vec_align = Some(a);
         } else if let Some(d) = crate::input_dispatch::vec_distribute_for_id(*id) {
             pd.pending_vec_distribute = Some(d);
-        } else if *id == ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE {
-            pd.pending_vec_compound = Some(true);
-        } else if *id == ph2d_panel_vector::ids::VECTOR_COMPOUND_RELEASE {
-            pd.pending_vec_compound = Some(false);
         } else if *id == ph2d_panel_vector::ids::VECTOR_FILL_RULE_NONZERO {
             pd.pending_vec_fill_rule = Some(false);
         } else if *id == ph2d_panel_vector::ids::VECTOR_FILL_RULE_EVENODD {

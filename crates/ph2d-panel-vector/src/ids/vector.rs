@@ -123,9 +123,6 @@ pub const VECTOR_TRANSFORM_RESIZE_BOX: NodeId = hash_node_id("vector.transform.r
 /// ribbon (label driven by the published `closed` flag).
 pub const VECTOR_PATH_CLOSE: NodeId = hash_node_id("vector.path.close");
 
-/// Split the selected compound path's subpaths back into standalone paths.
-pub const VECTOR_COMPOUND_RELEASE: NodeId = hash_node_id("vector.compound.release");
-
 /// Fill rule of the selected COMPOUND path — the two agree on a single contour,
 /// so the row only shows when the path actually has subpaths.
 pub const VECTOR_FILL_RULE_NONZERO: NodeId = hash_node_id("vector.fill.rule.nonzero");
@@ -156,7 +153,7 @@ pub const VECTOR_BLEND_EXPAND: NodeId = hash_node_id("vector.blend.expand");
 
 /// **Release** — desfaz o blend: os passos somem e as fontes ficam (ADR-0128 Fase D). Nada é
 /// materializado. É a saída do blend pelo canvas: a linha não é selecionável no modo Select, então o
-/// Delete não a alcança. NÃO confundir com `VECTOR_COMPOUND_RELEASE` (que solta um compound path).
+/// Delete não a alcança. NÃO confundir com o Release Compound do motor (`VecScene::release_compound`, que solta um compound path).
 pub const VECTOR_BLEND_RELEASE: NodeId = hash_node_id("vector.blend.release");
 
 /// **Morph** — cria o objeto morph vivo (a forma única entre DUAS formas, com o `t` animável).

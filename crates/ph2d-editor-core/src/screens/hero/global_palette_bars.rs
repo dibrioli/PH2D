@@ -103,19 +103,11 @@ pub fn groups(store: &WidgetStore) -> Vec<PaletteGroup> {
     out.extend(group(
         "chrome.palette.near_selection",
         ColorToken::NodeCatFx,
-        vec![
-            sub(
-                None,
-                bars.actions.iter().flatten().map(button_item),
-                &mut seen,
-            ),
-            // F50: as raras do «⋯» da ④.
-            sub(
-                None,
-                bars.actions_more.iter().filter_map(row_item),
-                &mut seen,
-            ),
-        ],
+        vec![sub(
+            None,
+            bars.actions.iter().flatten().map(button_item),
+            &mut seen,
+        )],
     ));
     out
 }

@@ -22,14 +22,7 @@ pub fn level_at(store: &WidgetStore, steady: bool, slot: NodeId) -> Option<f32> 
         .tool_overflow()
         .iter()
         .any(|e| e.node_id().is_some_and(|n| n == id || Some(n) == pill));
-    // F50: uma ação rara mora atrás do «⋯» da ④.
-    let in_dots = store
-        .tool_bars()
-        .is_some_and(|b| b.actions_more.iter().any(|e| e.node_id() == Some(id)));
-    let home = slot == id
-        || Some(slot) == pill
-        || (slot == ids::TOOL_BAR_OVERFLOW && behind_more)
-        || (slot == ids::SELECTION_ACTIONS_MORE && in_dots);
+    let home = slot == id || Some(slot) == pill || (slot == ids::TOOL_BAR_OVERFLOW && behind_more);
     home.then_some(level)
 }
 

@@ -69,7 +69,6 @@ Font, Paragraph, Text on Path, Axes, Vertex, Effects, Filters, **Advanced**, Wid
 |---|---|
 | ④ (2+ formas ou grupo vivo) | Union · Subtract · Intersect · Exclude (acesa a do grupo) · **Flatten** |
 | ④ (qualquer seleção) | **Outline Stroke** |
-| «⋯» da ④ | Minus Back · Trim · Crop · Merge ─ Make Compound · Release Compound (o Release com uma forma) |
 | Painel | ⛔ sem Boolean e sem Convert; o Advanced fica com Blend, Morph, Envelope, Pattern on Path, Contour |
 
 - **Flatten** (`ph2d_app_vec::bool_flatten::flatten`): consolida cada booleana viva da seleção (o grupo
@@ -88,3 +87,11 @@ Font, Paragraph, Text on Path, Axes, Vertex, Effects, Filters, **Advanced**, Wid
   era).
 - Cena **53** (`PH2D_OBJECT_MODE_SMOKE=53`): a 22 com o rectângulo e a elipse sobrepostos e os dois
   escolhidos (`vector_mode_alinhar`, `h = 39`).
+
+**Revisto pelo dono no smoke (02/11):** «retirar do app as operações booleanas menos comuns» e «retire
+os ... também» ⇒ o «⋯» da ④ (`ToolBars::actions_more`, `SELECTION_ACTIONS_MORE`,
+`ContextMenuKind::SelectionActionsMore`), Minus Back · Trim · Crop · Merge (ids, botões, despacho, chaves
+`panel.vector.more.*`) e Make/Release Compound (só moravam no «⋯»: ids, registo, ramo da shell,
+`apply_vec_compound`) saíram da UI. O motor fica (`ph2d-vec-boolean::PathfinderOp`, `bool_live` lê os
+códigos 4..7, `VecScene::make_compound/release_compound`): projetos antigos com essas operações
+continuam a desenhar igual. O que está na barra é a tabela acima, sem mais nada atrás.

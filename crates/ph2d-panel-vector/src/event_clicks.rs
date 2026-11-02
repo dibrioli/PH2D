@@ -438,10 +438,6 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
 fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_BOOL_UNION
         || id == crate::ids::VECTOR_FLATTEN
-        || id == ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK
-        || id == ph2d_tool_vector::ids::VECTOR_BOOL_TRIM
-        || id == ph2d_tool_vector::ids::VECTOR_BOOL_CROP
-        || id == ph2d_tool_vector::ids::VECTOR_BOOL_MERGE
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT
         || id == ids::VECTOR_BOOL_EXCLUDE
@@ -449,8 +445,6 @@ fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_SHAPE_SUBTRACT
         || id == ids::VECTOR_BOOL_SHAPE_INTERSECT
         || id == ids::VECTOR_BOOL_SHAPE_EXCLUDE
-        || id == ph2d_editor_core::ids::VECTOR_COMPOUND_MAKE
-        || id == crate::ids::VECTOR_COMPOUND_RELEASE
 }
 
 /// ⭐⭐⭐ **Uma linha do popover de MISTURA do objecto foi escolhida** — fecha o chip e encaminha o

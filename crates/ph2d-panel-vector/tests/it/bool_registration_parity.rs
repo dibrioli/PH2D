@@ -59,7 +59,7 @@ fn bool_ids(src: &str) -> BTreeSet<String> {
 fn every_painted_boolean_chip_is_registered_in_populate() {
     // ⚠️ **O ficheiro mudou em 2026-09-05 e outra vez em 2026-11-02** — a secção Boolean saiu do
     // `paint_sections.rs` para o `paint_boolean.rs` (teto de LOC), e na F50 saiu do PAINEL para a
-    // barra ④ e o «⋯» dela (`bars_actions.rs`). O controlo `!painted.is_empty()` é o que apanha
+    // barra ④ (`bars_actions.rs`; o «⋯» dela saiu no smoke do dono, 02/11). O controlo `!painted.is_empty()` é o que apanha
     // a régua apontada a um ficheiro velho: *a régua quebrou, não o produto*.
     let painted = bool_ids(&read("src/bars_actions.rs"));
     let registered = bool_ids(&read("src/populate_ops.rs"));

@@ -254,7 +254,6 @@ fn the_click_seam_maps_each_chip_to_its_verb() {
         ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT,
         ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT,
         ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE,
-        ph2d_tool_vector::ids::VECTOR_BOOL_TRIM,
         ph2d_panel_vector::ids::VECTOR_FLATTEN,
     ] {
         assert_eq!(

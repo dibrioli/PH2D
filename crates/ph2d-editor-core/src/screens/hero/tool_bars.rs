@@ -20,25 +20,15 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
-/// O grupo do chrome que fecha a ④: o «⋯» das raras (F50, só se há raras; aceso com o menu
-/// aberto) e fixar (aceso quando fixada).
-fn chrome_group(pinned: bool, more: Option<bool>) -> Vec<BarButton> {
-    let dots = more.map(|open| BarButton {
-        id: ids::SELECTION_ACTIONS_MORE,
-        face: BarFace::Icon(IconId::MoreHorizontal),
-        label: tr("chrome.selection_actions.more").to_owned(),
-        on: open,
+/// O grupo do chrome que fecha a ④: fixar (aceso quando fixada).
+fn chrome_group(pinned: bool) -> Vec<BarButton> {
+    vec![BarButton {
+        id: ids::SELECTION_ACTIONS_PIN,
+        face: BarFace::Icon(IconId::Pin),
+        label: tr("chrome.selection_actions.pin").to_owned(),
+        on: pinned,
         family: BarFamily::Neutral,
-    });
-    dots.into_iter()
-        .chain([BarButton {
-            id: ids::SELECTION_ACTIONS_PIN,
-            face: BarFace::Icon(IconId::Pin),
-            label: tr("chrome.selection_actions.pin").to_owned(),
-            on: pinned,
-            family: BarFamily::Neutral,
-        }])
-        .collect()
+    }]
 }
 
 /// ⭐ **Onde cai cada botão neste quadro** — a porta que o pintor e os gates perguntam.
@@ -121,11 +111,7 @@ fn action_rows(bars: &ToolBars, pinned: bool) -> Option<ActionRows> {
         return None;
     }
     let mut groups = bars.actions.clone();
-    // O «⋯» nasce apagado; o pintor acende-o com o menu aberto (o estado é do store, não das barras).
-    groups.push(chrome_group(
-        pinned,
-        (!bars.actions_more.is_empty()).then_some(false),
-    ));
+    groups.push(chrome_group(pinned));
     let sizes = groups.iter().map(Vec::len).collect();
     let below = bars.actions_below.iter().map(Vec::len).collect();
     Some(ActionRows {
@@ -175,12 +161,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
             paint_panel(scene, all[b].iter().map(|(_, r)| *r), theme);
         }
     }
-    let dots_open = hero
-        .store
-        .context_menu()
-        .is_some_and(|m| m.kind == crate::interaction::ContextMenuKind::SelectionActionsMore);
-    for (mut b, r) in all {
-        b.on |= b.id == ids::SELECTION_ACTIONS_MORE && dots_open;
+    for (b, r) in all {
         let more = bars.grouped.contains(&b.id);
         face(hero, scene, theme, &b, r, more);
         hero.store.set_tooltip(b.id, b.label);

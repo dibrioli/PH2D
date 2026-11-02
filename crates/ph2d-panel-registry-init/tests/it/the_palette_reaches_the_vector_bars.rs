@@ -80,8 +80,7 @@ fn aberta(hero: &HeroScreen, id: NodeId) -> bool {
 
 /// As portas onde um comando pode morar e que este quadro pintou.
 fn porta_acesa(hero: &HeroScreen, id: NodeId) -> bool {
-    // F50: uma ação rara mora atrás do «⋯» da ④.
-    let mut slots = vec![id, ids::TOOL_BAR_OVERFLOW, ids::SELECTION_ACTIONS_MORE];
+    let mut slots = vec![id, ids::TOOL_BAR_OVERFLOW];
     slots.extend((0..ids::MAX_AREA_MENUS).map(ids::area_menu_button));
     slots.into_iter().any(|s| {
         hero.hit_index.rect_for(s).is_some() && flash::level_at(&hero.store, false, s).is_some()
@@ -151,7 +150,6 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
                     _ => false,
                 }) || hero.store.picker_target().is_some()
                     || id == ids::SELECTION_ACTIONS_PIN
-                    || id == ids::SELECTION_ACTIONS_MORE
                     || (id == ph2d_panel_vector::ids::VECTOR_VIEW_INTERFACE && trocou)
                     || escolha_do_offset_gravada(id)
             };

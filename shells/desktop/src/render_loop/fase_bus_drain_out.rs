@@ -364,8 +364,6 @@ pub(in crate::render_loop) struct DrainOut {
     pub(in crate::render_loop) pending_vec_grad_remove_stop: bool,
     pub(in crate::render_loop) pending_vec_align: Option<crate::input_dispatch::VecAlign>,
     pub(in crate::render_loop) pending_vec_distribute: Option<crate::input_dispatch::VecDistribute>,
-    // Make (true) / Release (false) Compound over the selection.
-    pub(in crate::render_loop) pending_vec_compound: Option<bool>,
     // Fill rule of the selected compound path: even-odd (true) or non-zero.
     pub(in crate::render_loop) pending_vec_fill_rule: Option<bool>,
     // Snap section: encaixar em formas (a grade é do painel de Grid).

@@ -401,14 +401,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bar.outline_stroke" => {
             "Outline Stroke: turn the stroke into a shape you can fill"
         }
-        "panel.vector.more.minus_back" => "Minus Back: cut the back shapes out of the front one",
-        "panel.vector.more.trim" => "Trim: hide what is covered, keep each shape",
-        "panel.vector.more.crop" => "Crop: keep only what is inside the front shape",
-        "panel.vector.more.merge" => "Merge: like Trim, and shapes of the same color join",
-        "panel.vector.more.compound" => {
-            "Make Compound: one shape, where a shape inside another is a hole"
-        }
-        "panel.vector.more.release" => "Release Compound: split it back into separate shapes",
         // O verbo de UMA forma dentro da booleana viva. O rótulo diz de quem é a escolha — sem
         // ele a fileira lê-se como um quinto par de botões de ação sobre a seleção inteira.
         "panel.vector.bool.shape" => "This Shape",

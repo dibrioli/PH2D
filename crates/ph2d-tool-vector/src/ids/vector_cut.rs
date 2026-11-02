@@ -34,18 +34,6 @@ pub const VECTOR_MODE_BUCKET: NodeId = hash_node_id("vector.mode.bucket");
 /// **O conta-gotas** (tecla `I`, D10) — clicar num caminho copia o preenchimento e o traço dele.
 pub const VECTOR_MODE_EYEDROPPER: NodeId = hash_node_id("vector.mode.eyedropper");
 
-/// **Minus Back** — a forma da FRENTE menos a união de tudo o que está atrás.
-pub const VECTOR_BOOL_MINUS_BACK: NodeId = hash_node_id("vector.bool.minus_back");
-
-/// **Trim** — cada forma menos a união do que está ACIMA dela; todas sobrevivem, sem sobreposição.
-pub const VECTOR_BOOL_TRIM: NodeId = hash_node_id("vector.bool.trim");
-
-/// **Crop** — cada forma ∩ a do TOPO, e o topo é descartado (ele foi a moldura).
-pub const VECTOR_BOOL_CROP: NodeId = hash_node_id("vector.bool.crop");
-
-/// **Merge** — Trim, e depois as de MESMO preenchimento que se tocam viram uma.
-pub const VECTOR_BOOL_MERGE: NodeId = hash_node_id("vector.bool.merge");
-
 /// **Marquee: Box** — a região do arrasto no vazio é o retângulo entre os dois cantos.
 pub const VECTOR_MARQUEE_BOX: NodeId = hash_node_id("vector.marquee.box");
 

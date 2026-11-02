@@ -91,9 +91,6 @@ pub fn paint_context_menu_overlay(
     // porta a apodrecer.
     let contrib: &[crate::widget::ToolRailEntry] = match req.kind {
         ContextMenuKind::AreaCommands { slot } => store.area_menu_rows(slot),
-        ContextMenuKind::SelectionActionsMore => store
-            .tool_bars()
-            .map_or(&[][..], |b| b.actions_more.as_slice()),
         kind => store.menu_contrib(kind),
     };
     // ⚠️ `filter_map` e não `map`: o `Divider` não tem id nem rótulo, e uma linha de menu sem verbo

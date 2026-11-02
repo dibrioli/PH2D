@@ -2,58 +2,6 @@
 //! — movidas VERBATIM do índice ([`super`], `line/input-dispatch`, 2026-09-13), com os caminhos
 //! `crate::input_dispatch::..` preservados por re-exportação.
 
-/// The z-ordered (back → front) indices of the closed paths in the pen's OBJECT
-/// selection. Boolean and Make Compound both need this: the back-most is the base
-/// and the front-most donates the style (Illustrator's Pathfinder).
-fn selected_closed_z(scene: &ph2d_vec_scene::VecScene, pen: &ph2d_vec_edit::PenTool) -> Vec<usize> {
-    let mut zs: Vec<usize> = pen
-        .selected_paths()
-        .iter()
-        .filter_map(|id| scene.paths().iter().position(|p| p.id == *id && p.closed))
-        .collect();
-    zs.sort_unstable();
-    zs.dedup();
-    zs
-}
-
-/// Make / Release Compound sobre a seleção. **Make** funde os paths fechados
-/// selecionados num só (`EvenOdd` ⇒ um contorno dentro de outro vira buraco na
-/// hora); **Release** devolve cada subpath do(s) selecionado(s) a path próprio.
-/// Um passo de undo; re-seleciona o resultado. Free fn: o dreno do render_loop chama-a com os
-/// refs decompostos.
-pub(crate) fn apply_vec_compound(
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &mut ph2d_vec_edit::PenTool,
-    make: bool,
-) {
-    if make {
-        let ids: Vec<u64> = selected_closed_z(scene, pen)
-            .iter()
-            .map(|&z| scene.paths()[z].id)
-            .collect();
-        let Some(base) = scene.make_compound(&ids) else {
-            eprintln!("[ph2d-vec] compound: selecione >= 2 regioes FECHADAS");
-            return;
-        };
-        pen.select(Some(base));
-        return;
-    }
-    let selected: Vec<u64> = pen.selected_paths().to_vec();
-    let mut all: Vec<u64> = Vec::new();
-    for id in &selected {
-        let freed = scene.release_compound(*id);
-        if !freed.is_empty() {
-            all.push(*id);
-            all.extend(freed);
-        }
-    }
-    if all.is_empty() {
-        eprintln!("[ph2d-vec] release: a selecao nao tem compound path");
-        return;
-    }
-    pen.select_many(&all);
-}
-
 /// Set the selected path's fill rule (the panel's Non-Zero / Even-Odd segmented
 /// row, shown only for compound paths). One undo step; no-op if unchanged.
 pub(crate) fn apply_vec_fill_rule(
@@ -82,17 +30,13 @@ pub(crate) fn vec_bool_op_for_id(
     id: ph2d_editor_core::NodeId,
 ) -> Option<ph2d_vec_boolean::PathfinderOp> {
     use ph2d_vec_boolean::PathfinderOp as P;
-    // Uma TABELA, e não uma cadeia de `else if`: o 9º comando entra numa linha, e quem esquecer a
+    // Uma TABELA, e não uma cadeia de `else if`: o 5º comando entra numa linha, e quem esquecer a
     // linha vê o botão morto no gate de seam — em vez de o ver a cair no `None` em silêncio.
     [
         (ph2d_panel_vector::ids::VECTOR_BOOL_UNION, P::Union),
         (ph2d_panel_vector::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
         (ph2d_panel_vector::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
         (ph2d_panel_vector::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_TRIM, P::Trim),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_CROP, P::Crop),
-        (ph2d_tool_vector::ids::VECTOR_BOOL_MERGE, P::Merge),
     ]
     .into_iter()
     .find(|(k, _)| *k == id)
@@ -101,7 +45,7 @@ pub(crate) fn vec_bool_op_for_id(
 
 /// Retype the Pen's SELECTED vertex (panel Vertex buttons). The undo step is the global one,
 /// by diff (`App::post_frame_undo`), so it exists iff the kind changed. Free fn (mirror of
-/// [`apply_vec_compound`]) so the render_loop drain can call it with the destructured shell refs.
+/// [`apply_vec_fill_rule`]) so the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_vertex_kind(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,
@@ -117,7 +61,7 @@ pub(crate) fn apply_vec_vertex_kind(
 
 /// Delete the Pen's SELECTED vertex (panel "Delete Node" button / Delete key). The
 /// undo step is the global one, by diff (`App::post_frame_undo`), so it exists iff
-/// something was removed. Free fn (mirror of [`apply_vec_compound`]) so the
+/// something was removed. Free fn (mirror of [`apply_vec_fill_rule`]) so the
 /// render_loop drain can call it with destructured refs. Returns whether anything
 /// was deleted.
 pub(crate) fn apply_vec_delete_vertex(
@@ -164,7 +108,7 @@ pub(crate) fn screen_offset_world(
 
 /// Duplicate the SELECTED path (panel "Duplicate" button), offsetting the clone
 /// by `(dx, dy)` world-units so it's visible, and select the copy. Records ONE
-/// undo step iff a path was cloned. Free fn (mirror of [`apply_vec_compound`]) so
+/// undo step iff a path was cloned. Free fn (mirror of [`apply_vec_fill_rule`]) so
 /// the render_loop drain can call it with the destructured shell refs.
 pub(crate) fn apply_vec_duplicate(
     scene: &mut ph2d_vec_scene::VecScene,
@@ -229,7 +173,7 @@ pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_ve
 }
 
 /// Mirror the SELECTED path (panel Arrange Flip buttons), recording ONE undo step
-/// iff it flipped. Free fn (mirror of [`apply_vec_compound`]).
+/// iff it flipped. Free fn (mirror of [`apply_vec_fill_rule`]).
 pub(crate) fn apply_vec_flip(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
@@ -256,7 +200,7 @@ pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_s
 }
 
 /// Rotate the SELECTED path 90° (panel Arrange Rotate buttons), recording ONE undo
-/// step iff it rotated. Free fn (mirror of [`apply_vec_compound`]).
+/// step iff it rotated. Free fn (mirror of [`apply_vec_fill_rule`]).
 pub(crate) fn apply_vec_rotate(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,

@@ -153,7 +153,7 @@ pub(super) fn pousa_o_dab(
     // Sem Pigment Spacing, a cápsula pesa cada sub-dab pelo sub-passo NATURAL (antes do arredondamento a células):
     // a tinta por área não depende de onde o diâmetro cai na grelha ([`super::lote::sub_passo_natural`]).
     let peso_da_capsula = if capsulas && passo_do_pigmento <= 0.0 && lane_prev.is_some() {
-        let w = caminho / super::lote::sub_passo_natural(&sess.engine.tuning, brush);
+        let w = caminho / super::lote::sub_passo_do_peso(&sess.engine.tuning, brush, ratio);
         if (w - 1.0).abs() < 1e-3 { 1.0 } else { w }
     } else {
         1.0

@@ -94,6 +94,18 @@ pub(super) fn sub_passo_natural(tuning: &ph2d_wet_paint::tuning::Tuning, brush: 
     }
 }
 
+/// O passo pelo qual [`super::pousa_o_dab`] pesa cada sub-dab (`caminho ÷ este`): o [`sub_passo_natural`], nunca
+/// menor que uma CÉLULA — a grade não vê sub-dabs mais densos que um por célula e a tinta por área já é por célula.
+/// Sem o piso, a 2 px por célula e sub-passo natural ~1 px cada sub-dab pesava 2× (o Oil Bristle de 40 px: corpo
+/// 0,274 contra 0,254 a 1 px; o desfiado da ponta 0,87 → 2,14, gate `a_ponta_desfiada_nao_depende_da_grade`).
+pub(super) fn sub_passo_do_peso(
+    tuning: &ph2d_wet_paint::tuning::Tuning,
+    brush: &BrushSpec,
+    ratio: u8,
+) -> f32 {
+    sub_passo_natural(tuning, brush).max(f32::from(ratio).max(1.0))
+}
+
 pub(super) fn sub_passo_do_lote(
     tuning: &ph2d_wet_paint::tuning::Tuning,
     brush: &BrushSpec,

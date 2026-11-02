@@ -18,6 +18,7 @@ mod frames_oracle;
 mod frames_parity;
 mod fx_oracle;
 mod gradient_oracle;
+mod gradient_ramp;
 mod history;
 mod layer_laws;
 mod layer_parity;

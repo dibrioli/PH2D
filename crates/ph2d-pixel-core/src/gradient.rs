@@ -89,12 +89,69 @@ impl Gradient {
     /// partir de `from`, dentro da selecção.
     #[must_use]
     pub fn values(&self, s: &Sprite, key: CelKey, bucket: Bucket) -> Vec<(Cell, u32)> {
+        self.paint(s, key, bucket, |p| self.color_at(p))
+    }
+
+    /// A cor da célula `p` caminhando pela `ramp` (opção «Palette ramp», spec §13.3 do MVP): `t`
+    /// cai entre os degraus `k = ⌊t·(n−1)⌋` e `k+1`, e a fracção entre eles escolhe o degrau pela
+    /// matriz (sem matriz: o mais próximo). As pontas ficam cravadas em `ramp[0]`/`ramp[n−1]`, e
+    /// toda célula é uma cor da rampa.
+    #[must_use]
+    pub fn ramp_color_at(&self, ramp: &[[u8; 4]], p: Cell) -> [u8; 4] {
+        let n = ramp.len();
+        if n < 2 {
+            return ramp.first().copied().unwrap_or(self.fg);
+        }
+        let f = t_at(self.shape, self.from, self.to, p) * (n - 1) as f64;
+        let k = (f.floor() as usize).min(n - 2);
+        let frac = f - k as f64;
+        let up = if self.dither == Dither::None {
+            frac >= 0.5
+        } else {
+            dithered_to_bg(self.dither, p.0, p.1, frac)
+        };
+        ramp[k + usize::from(up)]
+    }
+
+    /// [`Self::values`] pela `ramp`.
+    #[must_use]
+    pub fn ramp_values(
+        &self,
+        s: &Sprite,
+        key: CelKey,
+        bucket: Bucket,
+        ramp: &[[u8; 4]],
+    ) -> Vec<(Cell, u32)> {
+        self.paint(s, key, bucket, |p| self.ramp_color_at(ramp, p))
+    }
+
+    fn paint(
+        &self,
+        s: &Sprite,
+        key: CelKey,
+        bucket: Bucket,
+        color: impl Fn(Cell) -> [u8; 4],
+    ) -> Vec<(Cell, u32)> {
         bucket_cells(s, key, self.from, bucket)
             .into_iter()
             .filter(|&(x, y)| s.in_selection(x, y))
-            .map(|p| (p, s.value_of_rgba(self.color_at(p))))
+            .map(|p| (p, s.value_of_rgba(color(p))))
             .collect()
     }
+}
+
+/// A rampa «Palette ramp»: as entradas da paleta de `from` a `to`, na ordem da paleta (para trás
+/// se `to < from`), pontas incluídas.
+#[must_use]
+pub fn palette_ramp(palette: &[[u8; 4]], from: usize, to: usize) -> Vec<[u8; 4]> {
+    let ix: Vec<usize> = if from <= to {
+        (from..=to).collect()
+    } else {
+        (to..=from).rev().collect()
+    };
+    ix.into_iter()
+        .filter_map(|i| palette.get(i).copied())
+        .collect()
 }
 
 /// fg → bg por canal: `⌊a + (b − a)·t⌋` (Trial, #204060 → #c08010: 0 desvios; arredondar deixa 27).

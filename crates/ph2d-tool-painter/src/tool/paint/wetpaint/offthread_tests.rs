@@ -178,8 +178,9 @@ fn the_frame_does_not_run_a_sim_stage() {
     );
     // Controle positivo: quem DEVE rodar estágio ainda o faz.
     let door = include_str!("offthread.rs");
+    // A CHAMADA, não a palavra: o doc do topo de `offthread.rs` cita `step_stage` e calava o controlo.
     assert!(
-        door.contains("step_stage"),
+        door.contains(".step_stage()"),
         "controle: nem a porta sincrona de teste chama `step_stage` — o scanner \
          esta olhando o lugar errado e o gate acima nao pode falhar"
     );

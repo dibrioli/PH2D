@@ -127,12 +127,15 @@ fn a_moeda_nao_tem_script_e_o_hud_tem_o_contador() {
         &Name,
         Option<&LuauScript>,
         Option<&ph2d_physics_ecs::SignalOnHit>,
+        Option<&ph2d_physics_ecs::Collider>,
     )>();
     let mut moedas = 0;
-    for (n, script, grita) in q.iter(w) {
+    for (n, script, grita, forma) in q.iter(w) {
         if n.as_str().starts_with("Coin ") {
             moedas += 1;
             assert!(script.is_none(), "{n:?} ainda tem script");
+            // ⚠️ A corrida não distingue (a moeda sai ao primeiro toque): o Trigger afirma-se aqui (mutação 02/11).
+            assert!(forma.is_some_and(|c| c.is_sensor), "{n:?} não é Trigger");
             assert_eq!(grita.map(|g| g.0.as_str()), Some(SINAL), "{n:?}");
         }
     }

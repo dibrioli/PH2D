@@ -84,6 +84,12 @@ impl SceneAudio {
         self.decoded.values().filter(|d| d.is_some()).count()
     }
 
+    /// Quantas FALHAS de descodificação estão guardadas (o que impede a tentativa por quadro).
+    #[cfg(test)]
+    pub fn decoded_failed(&self) -> usize {
+        self.decoded.values().filter(|d| d.is_none()).count()
+    }
+
     /// **TOCA o som de um objecto.** `false` = não havia o que tocar (sem nome, um nome que os
     /// sons do projecto não têm, ou bytes que não descodificam) ou o mixer recusou o comando.
     ///

@@ -376,6 +376,11 @@ fn a_sound_that_does_not_decode_never_starts_and_is_not_retried() {
     }
     assert_eq!(livro.live_voices(), 0);
     assert_eq!(
+        livro.decoded_failed(),
+        1,
+        "a falha tem de ficar guardada, senão volta a tentar"
+    );
+    assert_eq!(
         livro.decoded_ok(),
         0,
         "nada devia ter sido descodificado com sucesso"

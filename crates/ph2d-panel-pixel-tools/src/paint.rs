@@ -99,7 +99,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let tamanho = (ids::PALETTE_SIZE, cores as f64);
     let numeros = ids::NUMBERS
         .iter()
-        .map(|(id, _)| (*id, seam::numero(&opcoes, *id)))
+        .map(|(id, _)| (*id, crate::seam_opcoes::numero(&opcoes, *id)))
         .chain(crate::seam_formas::numeros(&opcoes));
     let opacidade = (ids::LAYER_OPACITY, f64::from(opacidade));
     let campos = moldura.into_iter().flat_map(|t| {

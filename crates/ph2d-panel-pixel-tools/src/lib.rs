@@ -17,6 +17,7 @@ pub mod ids;
 mod paint;
 mod seam;
 mod seam_formas;
+mod seam_opcoes;
 mod seam_selecao;
 mod seam_seletor;
 pub mod seletor;

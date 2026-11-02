@@ -37,6 +37,7 @@ pub mod smoke_catalogo;
 pub mod smoke_ferramentas;
 pub mod smoke_formas;
 pub mod smoke_intervalo;
+pub mod smoke_pincel;
 pub mod smoke_pontas;
 pub mod smoke_quadros;
 pub mod smoke_selecao;

@@ -17,6 +17,7 @@
 //! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]).
 //! 16 — P6h–P6j, o intervalo da linha do tempo ([`crate::smoke_intervalo`]).
 //! 17 — P5, tags dentro de tags, o tocar e a Preview ([`crate::smoke_tocar`]).
+//! 18 — P7b, os pincéis e a dinâmica ([`crate::smoke_pincel`]).
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -28,7 +29,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 17,
+    max_level: 18,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -114,6 +115,7 @@ pub fn stage(
         15 => crate::smoke_pontas::stage(app, sim, spawn_root).is_some(),
         16 => crate::smoke_intervalo::stage(app, sim, spawn_root).is_some(),
         17 => crate::smoke_tocar::stage(app, sim, spawn_root).is_some(),
+        18 => crate::smoke_pincel::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

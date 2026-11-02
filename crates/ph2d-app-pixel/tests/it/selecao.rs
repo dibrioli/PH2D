@@ -60,11 +60,15 @@ pub(crate) struct Palco {
 
 impl Palco {
     pub(crate) fn novo() -> Self {
+        Self::cena(9)
+    }
+
+    pub(crate) fn cena(n: u32) -> Self {
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(
-            ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 9, spawn_root),
-            "a cena 9 monta-se"
+            ph2d_app_pixel::smoke::stage(&mut app, &mut sim, n, spawn_root),
+            "a cena {n} monta-se"
         );
         let (bits, key) = mode::sprites(sim.world())[0];
         let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));

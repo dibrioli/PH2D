@@ -1,6 +1,7 @@
 mod ajustes;
 mod camadas;
 mod catalogo;
+mod cena18;
 mod desenho;
 mod dinamica;
 mod edit;

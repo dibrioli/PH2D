@@ -928,10 +928,10 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "vector_paint_swatch_id",
             "vector_paint_eye_id",
             "vector_paint_row_opacity_id",
-            "vector_paint_row_width_id",
         ],
         "a cor, o Weight, a opacidade e o olho da entrada `i` da pilha, na linha do Fill/Stroke — \
-         ids derivados do índice (F44/F44c, `marcas::canal_do_campo`)",
+         ids derivados do índice (F44/F44c, `marcas::canal_do_campo`); o id do Weight vem numa \
+         variável de `peso_camada` (`paint_fill_stroke_colunas.rs`)",
     ),
     (
         "ph2d-panel-vector",

@@ -30,7 +30,7 @@ def write_ase(path, pix, palette=None):
     h, w = len(pix), len(pix[0])
     _s, _c = drv._string, drv._chunk
     if palette is None:
-        raw = b''.join(bytes([*p, 255]) for row in pix for p in row); depth = 32
+        raw = b''.join(bytes([*p, 255] if len(p) == 3 else p) for row in pix for p in row); depth = 32
         chunks = []
     else:
         raw = bytes(v for row in pix for v in row); depth = 8
@@ -235,11 +235,37 @@ def gen2():
     write_ase(os.path.join(D, 'stepg.ase'), [[(64,) * 3 if x < 7 else (192,) * 3 for x in range(15)] for _ in range(15)])
 
 
+def gen3():
+    """3.a rodada: 40x40 para os kernels 17-largos (impg40 = 255 em (20,20) sobre 128; imp040 = 0 em (20,20)
+    sobre 128; stepg40 = x<20 a 64, resto 192; imp40 = preto com 255 em (20,20)); 15x15 de BAIXO contraste
+    (impl = 136 em (7,7) sobre 128; imp0l = 120 em (7,7); stepl = x<7 a 120, resto 136; ramp15 = 60+9x;
+    vramp15 = 60+9y); alfa15 RGBA = cinza 128, x>=10 com alfa 0, (7,7) com alfa 128; stepg como na gen2;
+    idx32 = Indexed 32x8 todo indice 0 com a paleta IDX_PAL"""
+    G = (128, 128, 128)
+    def sq(n, f):
+        write_ase(os.path.join(D, n + '.ase'), [[f(x, y) for x in range(40 if n.endswith('40') else 15)]
+                                                  for y in range(40 if n.endswith('40') else 15)])
+    sq('impg40', lambda x, y: (255,) * 3 if (x, y) == (20, 20) else G)
+    sq('imp040', lambda x, y: (0,) * 3 if (x, y) == (20, 20) else G)
+    sq('stepg40', lambda x, y: (64,) * 3 if x < 20 else (192,) * 3)
+    sq('imp40', lambda x, y: (255,) * 3 if (x, y) == (20, 20) else (0, 0, 0))
+    sq('impl', lambda x, y: (136,) * 3 if (x, y) == (7, 7) else G)
+    sq('imp0l', lambda x, y: (120,) * 3 if (x, y) == (7, 7) else G)
+    sq('stepl', lambda x, y: (120,) * 3 if x < 7 else (136,) * 3)
+    sq('ramp15', lambda x, y: (60 + 9 * x,) * 3)
+    sq('vramp15', lambda x, y: (60 + 9 * y,) * 3)
+    sq('stepg', lambda x, y: (64,) * 3 if x < 7 else (192,) * 3)
+    sq('alfa15', lambda x, y: (128, 128, 128, 0 if x >= 10 else 128 if (x, y) == (7, 7) else 255))
+    write_ase(os.path.join(D, 'idx32.ase'), [[0] * 32 for _ in range(8)], IDX_PAL)
+
+
 if __name__ == '__main__' and len(sys.argv) > 2:
     if sys.argv[2] == 'gen':
         gen()
     elif sys.argv[2] == 'gen2':
         gen2()
+    elif sys.argv[2] == 'gen3':
+        gen3()
 
 
 # ── Text (ferramenta T): barra = fonte (290,71) · tamanho (458,71) · B I · «...» (587,71) com
@@ -248,7 +274,7 @@ FONT_Y = {'DejaVu Sans': 497, 'DejaVu Sans Mono': 575, 'DejaVu Serif': 601}   # 
 _AA = [False]   # o Trial LEMBRA o Antialias entre corridas: comece com o HOME limpo (medido 02/11)
 
 
-def text_case(font, size, aa, cell):
+def text_case(font, size, aa, cell, text='Ag1'):
     xdo('mousemove', 290, 71, 'click', 1); time.sleep(0.7)
     xdo('mousemove', 300, FONT_Y[font], 'click', 1); time.sleep(0.5)
     xdo('mousemove', 458, 71, 'click', '--repeat', 2, '--delay', 60, 1); time.sleep(0.2)
@@ -258,4 +284,4 @@ def text_case(font, size, aa, cell):
         xdo('mousemove', 590, 97, 'click', 1); time.sleep(0.3); key('Escape', t=0.3)
         _AA[0] = aa
     xdo('mousemove', *drv.cc(*cell), 'click', 1); time.sleep(0.6)
-    xdo('type', 'Ag1'); time.sleep(0.3); key('Return', t=0.6)
+    xdo('type', '--', text); time.sleep(0.3); key('Return', t=0.6)

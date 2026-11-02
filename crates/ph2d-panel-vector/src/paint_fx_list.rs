@@ -19,7 +19,7 @@ use super::*;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_tokens::{Radius, StrokeToken};
 use ph2d_tool_vector::ids as tv;

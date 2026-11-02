@@ -74,6 +74,29 @@ App com Real Oil, fase parada (composite média nas rodadas pesadas): 16 núcleo
 núcleos (`PH2D_CPU_PCT=100`) ~46–49 ms; quadro 79,0 → 72,6 ms na rodada 6. Os núcleos a mais quase não pagam (load
 da máquina 9–16 nessas corridas: a régua de escalonamento não decide).
 
+## 6. A cura: a óptica do óleo sai do fio da tela (P0–P7, [plano J13b](J13b_plano_otica_fora.md))
+
+`f89483646a` P0 (óptica = função pura) · `2f0d2a8ef2` P1 (laço do worker partido) · `7135589087` P2 (o `Espelho` das grades,
+[doc](J13b_P2_espelho.md)) · `637e68a9ad` P3 (`FactosDaOtica`) · `000a57a923` P4 (porta síncrona + portão ao byte) ·
+`44138ff9fa` P5 (a thread do compositor, [doc](J13b_P5_compositor.md)) · `6b27b67d4e` P6 (o tique pede e aplica,
+[doc](J13b_P6_tique.md)) · `f4f1959c29` P7 (ligado por omissão; `PH2D_WET_OTICA_FORA=0` volta a casa).
+
+App, Real Oil, 1024², Radeon, 2 processos de cada intercalados (load 13–17), período p50 por rodada:
+
+| fase | sem compositor | com compositor |
+|---|---|---|
+| parado (seca) | 16,6 · 17,5 · 35,4 · 49,9 · 61,2 · 72,1 / 16,9 · 18,3 · 50,8 · 49,8 · 61,6 · 74,0 | 16,5–17,1 em todas |
+| parado (corre) | 17,1 · 36,1 · 50,4 · 60,3 · 68,8 · 80,0 / 17,5 · 35,4 · 47,5 · 58,7 · 72,8 · 82,4 | 16,5–17,0 em todas |
+
+Com o compositor, fase «corre» por rodada: imagens da água 40,1 · 28,6 · 20,0 · 16,2 · 11,8 · 12,4 /s; óptica por imagem
+0,4 · 17,9 · 33,8 · 47,5 · 67,7 · 65,6 ms (no compositor); cópia do espelho 0,4–3,5 ms (no worker, dentro da folga).
+
+**Aberto:** (1) o 1.º quadro de cada traço compõe EM CASA o sujo da água acumulado (o traço traz o motor): pico 60–119 ms
+uma vez por traço, crescendo com a poça — curar mandando esse sujo pela dívida do compositor e compondo em casa só a caixa
+do traço; (2) a imagem descartada por `uniao_local` custa uma imagem a mais (carimbar a cópia); (3) `take_otica()` não está
+no relatório do shell (só na cena do FPS); (4) as escritas fora das portas de `J13b_P2_espelho.md` (3 e 4 latentes também
+na tela de casa).
+
 ## 5. ⛔ Recusas MEDIDAS
 
 | tentativa | o que deu |

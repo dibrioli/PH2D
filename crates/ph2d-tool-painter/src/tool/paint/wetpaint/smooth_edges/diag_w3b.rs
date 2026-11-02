@@ -67,17 +67,17 @@ fn medida_planos_da_borda_w3b() {
     t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
     let s = t.paint.wetpaint.session.as_ref().expect("sessão");
     let ratio = s.ratio;
-    let gw = s.pigment.len() / 4 / (h as usize / usize::from(ratio)).max(1);
+    let gw = s.planos.pigment.len() / 4 / (h as usize / usize::from(ratio)).max(1);
     println!(
         "[planos] ratio {ratio} · grade {gw} · sombra {} · grao {}",
-        s.sombra.len(),
-        s.grao.len()
+        s.planos.sombra.len(),
+        s.planos.grao.len()
     );
     std::fs::write(format!("{d}/tela.rgba"), &px).expect("grava");
     std::fs::write(format!("{d}/sem_luz.rgba"), &sem_luz).expect("grava");
-    std::fs::write(format!("{d}/pigmento.rgba"), &s.pigment).expect("grava");
-    std::fs::write(format!("{d}/sombra.u8"), &s.sombra).expect("grava");
-    std::fs::write(format!("{d}/grao.u8"), &s.grao).expect("grava");
+    std::fs::write(format!("{d}/pigmento.rgba"), &s.planos.pigment).expect("grava");
+    std::fs::write(format!("{d}/sombra.u8"), &s.planos.sombra).expect("grava");
+    std::fs::write(format!("{d}/grao.u8"), &s.planos.grao).expect("grava");
     // A massa EFECTIVA (× o factor da espessura) da grade, `u16`, e os fios: a fixtura do gate da orla.
     let g = s.engine.active_grid();
     let mut m = Vec::with_capacity(g.w * g.h * 2);
@@ -207,6 +207,7 @@ fn com_o_oleo_o_smooth_edges_muda_a_sombra_no_papel() {
                 .session
                 .as_ref()
                 .expect("sessão")
+                .planos
                 .sombra
                 .clone()
         };
@@ -312,7 +313,7 @@ fn com_o_oleo_a_orla_da_tinta_e_a_do_campo() {
             cx.clamp(0, gw as isize - 1) as usize,
             cy.clamp(0, gh as isize - 1) as usize,
         );
-        s.pigment[(cy * gw + cx) * 4 + 3]
+        s.planos.pigment[(cy * gw + cx) * 4 + 3]
     };
     let ss0 = (crate::tool::paint::watercolor_render::SS0 * 255.0).ceil() as u8;
     let (mut orla, mut mexidos) = (0, 0);

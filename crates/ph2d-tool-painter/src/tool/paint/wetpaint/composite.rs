@@ -1,13 +1,10 @@
 //! The wet COMPOSITE half (child of [`super`] — workspace file-LOC cap):
 //! pigment (with the doc-22 visual terms) OVER the frozen base, the
-//! Selection/protection/alpha-lock gates, and the show-wet veil.
+//! Selection/protection/alpha-lock gates, and the show-wet veil. A metade de cima (a óptica, o pigmento por
+//! célula) é a função pura de [`super::composite_otica`]; aqui fica a orquestração e o laço de píxel.
 
 use super::*;
-// The row fan-out and the engine's per-row door live HERE and nowhere else, so the imports do too: the
-// parent was three lines over the workspace LOC cap carrying names only this file uses.
-#[cfg(test)]
-use super::composite_contagem as contagem;
-use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
+use ph2d_wet_paint::render::RenderLayer;
 use rayon::prelude::*;
 
 impl PainterTool {
@@ -90,7 +87,7 @@ impl PainterTool {
         // escreve — e que o `mark_dirty` publica — é em PIXELS.
         let ratio = sess.ratio;
         let (gw, gh) = sess.grid;
-        let (cx0, cy0, cx1, cy1) = match sess.engine.take_dirty() {
+        let caixa = match sess.engine.take_dirty() {
             Dirty::Clean => return,
             Dirty::Full => (1, 1, gw, gh),
             Dirty::Rect { x0, y0, x1, y1 } => (
@@ -100,61 +97,10 @@ impl PainterTool {
                 (y1.max(1) as usize).min(gh),
             ),
         };
-        #[cfg(test)]
-        let area_motor = (cx1 + 1).saturating_sub(cx0) * (cy1 + 1).saturating_sub(cy0);
-        // Óleo Real: a fenda e a sombra de uma célula leem a tinta à volta — a região cresce pelo alcance.
-        let (cx0, cy0, cx1, cy1) = match &oleo {
-            Some(o) => {
-                let grades: Vec<_> = sess
-                    .engine
-                    .layers
-                    .iter()
-                    .map(|l| (&l.grid, l.visible))
-                    .collect();
-                let a = ph2d_wet_paint::oleo_real::alcance_na(
-                    o,
-                    &grades,
-                    usize::from(ratio),
-                    (cx0, cy0, cx1, cy1),
-                );
-                (
-                    cx0.saturating_sub(a).max(1),
-                    cy0.saturating_sub(a).max(1),
-                    (cx1 + a).min(gw),
-                    (cy1 + a).min(gh),
-                )
-            }
-            None => (cx0, cy0, cx1, cy1),
-        };
-        if cx1 < cx0 || cy1 < cy0 || sess.base.len() != w * h * 4 {
+        if sess.base.len() != w * h * 4 {
             return;
         }
-        #[cfg(test)]
-        contagem::nota(area_motor, (cx1 + 1 - cx0) * (cy1 + 1 - cy0));
-        let (px0, py0, px1, py1) = grid_map::cell_rect_to_px((cx0, cy0, cx1, cy1), ratio, w, h);
-        if px1 <= px0 || py1 <= py0 {
-            return;
-        }
-        // Smooth Edges: um pixel até ao alcance do raio também muda, logo o retângulo cresce por ele.
-        let (px0, py0, px1, py1) = if suave {
-            let a = super::smooth_edges::alcance(raio);
-            (
-                px0.saturating_sub(a),
-                py0.saturating_sub(a),
-                (px1 + a).min(w),
-                (py1 + a).min(h),
-            )
-        } else {
-            (px0, py0, px1, py1)
-        };
-        // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
-        let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
-            let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);
-            for y in py0..py1 {
-                v.extend_from_slice(&self.canvas_rgba[(y * w + px0) * 4..(y * w + px1) * 4]);
-            }
-            v
-        });
+        // A metade de cima (a óptica): só a entrada e as camadas, escrita nos planos ([`super::composite_otica`]).
         let layers: Vec<RenderLayer<'_>> = sess
             .engine
             .layers
@@ -165,179 +111,43 @@ impl PainterTool {
                 visible: l.visible,
             })
             .collect();
-        // The visual terms (doc 22): the paper printed into the pigment and
-        // the K–M glaze stacking ride the SAME single render body; both off
-        // is the historical pigment render, byte for byte (engine-gated).
-        //
-        // ROW-PARALLEL ([ADR-0109](../../../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md),
-        // amendment 2): the same shape of work the ADR already sanctioned for
-        // the watercolor optical composite — a pure per-pixel map whose rows
-        // are independent, in the crate the ADR already opened. The ENGINE
-        // stays dependency-free and spawns nothing; it exposes one row
-        // (`render_pigment_row_visual`) and the fan-out lives here.
-        //
-        // Byte-identical by construction: every row computes exactly what the
-        // serial loop computed, and rows never read each other's output.
         let params = sess.engine.sim.gather_params(&sess.engine.tuning);
-        #[cfg(test)]
-        let t_engine = std::time::Instant::now();
-        let stride = w * 4;
-        // O plano de pigmento é da GRADE (uma linha por linha de célula), e é
-        // por isso que uma razão maior corta o render de pigmento por `ratio²`
-        // — é o mesmo trabalho por célula, e há `ratio²` vezes menos delas.
-        let g_stride = gw * 4;
-        #[cfg(test)]
-        let t_campo = std::time::Instant::now();
-        // As duas curas de custo (27/10, bit a bit): o campo em faixas pelo rayon e a sombra no papel das células
-        // PINTADAS tirada dos termos que a cor delas já calculou ([`super::oleo_plano`]).
-        #[cfg(test)]
-        let (sombra_antiga, campo_em_serie) = super::oleo_plano::curas_desligadas::get();
-        #[cfg(not(test))]
-        let (sombra_antiga, campo_em_serie) = (false, false);
-        // O campo guardado por DEPENDÊNCIA (`oleo_real::CacheCampo`): a mesma chave e as mesmas grades reusam-no.
-        let revisao = sess.engine.revisao();
-        let chave = oleo.map(|o| {
-            let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
-            ph2d_wet_paint::oleo_real::ChaveCampo::de(&o, &grades, usize::from(ratio))
-        });
-        #[cfg(test)]
-        let sem_cache = super::oleo_plano::sem_cache_do_campo::get();
-        #[cfg(not(test))]
-        let sem_cache = false;
-        let guardado = match (&oleo, &chave) {
-            (Some(o), Some(k)) if !sem_cache => ph2d_wet_paint::oleo_real::CacheCampo::serve(
-                sess.campo_cache.as_ref(),
-                k,
-                revisao,
-                o,
-                (cy0, cy1),
-            ),
-            _ => None,
-        };
-        let proprio = oleo.filter(|_| guardado.is_none()).map(|o| {
-            let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
-            let janela = (cx0, cy0, cx1, cy1);
-            if campo_em_serie {
-                ph2d_wet_paint::oleo_real::CampoAltura::de_com(
-                    &ph2d_wet_paint::oleo_real::EmSerie,
-                    &grades,
-                    &o,
-                    usize::from(ratio),
-                    janela,
-                )
-            } else {
-                ph2d_wet_paint::oleo_real::CampoAltura::de_com(
-                    &super::oleo_plano::EmFaixas,
-                    &grades,
-                    &o,
-                    usize::from(ratio),
-                    janela,
-                )
-            }
-        });
-        #[cfg(test)]
-        if proprio.is_some() {
-            super::oleo_plano::sem_cache_do_campo::conta();
-        }
-        let campo = oleo.zip(guardado.or(proprio.as_ref()));
-        #[cfg(test)]
-        contagem::campo(t_campo.elapsed());
-        #[cfg(test)]
-        super::fps_j13_tests::campo_bit::gancho(
-            campo.as_ref().map(|(o, c)| (o, *c)),
-            (cx0, cy0, cx1, cy1),
-            (gw, gh),
-        );
-        if campo.is_some() && sess.sombra.len() != gw * gh {
-            sess.sombra = vec![0u8; gw * gh];
-        }
-        // `feita[k·gw + cx − 1]`: a sombra da célula já veio da linha da tinta.
-        let mut feita = if campo.is_some() && !sombra_antiga {
-            vec![false; gw * (cy1 + 1 - cy0)]
-        } else {
-            Vec::new()
-        };
-        #[cfg(test)]
-        let t_pig = std::time::Instant::now();
-        let pig_rows = sess.pigment[(cy0 - 1) * g_stride..cy1 * g_stride].par_chunks_mut(g_stride);
-        if let (Some((o, c)), false) = (&campo, feita.is_empty()) {
-            pig_rows
-                .zip(sess.sombra[(cy0 - 1) * gw..cy1 * gw].par_chunks_mut(gw))
-                .zip(feita.par_chunks_mut(gw))
-                .enumerate()
-                .for_each(|(k, ((row, srow), frow))| {
-                    ph2d_wet_paint::render::render_pigment_row_oleo_com_sombra(
-                        Some(&params),
-                        &layers,
-                        visual,
-                        o,
-                        c,
-                        cy0 + k,
-                        cx0,
-                        cx1,
-                        row,
-                        srow,
-                        frow,
-                    );
-                });
-        } else {
-            pig_rows.enumerate().for_each(|(k, row)| match &campo {
-                Some((o, c)) => ph2d_wet_paint::render::render_pigment_row_oleo(
-                    Some(&params),
-                    &layers,
-                    visual,
-                    o,
-                    c,
-                    cy0 + k,
-                    cx0,
-                    cx1,
-                    row,
-                ),
-                None => render_pigment_row_visual(
-                    Some(&params),
-                    &layers,
-                    visual,
-                    cy0 + k,
-                    cx0,
-                    cx1,
-                    row,
-                ),
-            });
-        }
-        drop(layers);
-        #[cfg(test)]
-        let t_pig = t_pig.elapsed();
-        #[cfg(test)]
-        let t_som = std::time::Instant::now();
-        let caixa = (cx0, cy0, cx1, cy1);
-        super::composite_oleo::sombra_do_papel(&mut sess.sombra, &campo, &feita, caixa, (gw, gh));
-        super::composite_oleo::grao_das_celulas(&mut sess.grao, &campo, &grao, caixa, (gw, gh));
-        let sem_oleo = super::composite_oleo::tinta_sem_oleo(
-            &sess.engine,
-            &campo,
-            (suave, raio),
-            ratio,
+        let entrada = super::composite_otica::EntradaDaOtica {
+            visual,
+            raio,
+            oleo,
+            grao: &grao,
+            params: &params,
+            motor: &sess.engine,
             caixa,
-            (gw, gh),
-        );
-        if oleo.is_none() {
-            // Sem tinta com óleo na tela o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
-            sess.campo_cache = None;
-        }
-        if let (Some(c), Some(k)) = (proprio.as_ref(), chave) {
-            ph2d_wet_paint::oleo_real::CacheCampo::guarda(
-                &mut sess.campo_cache,
-                k,
-                revisao,
-                c,
-                (gw, gh),
-                (cx0, cy0, cx1, cy1),
-            );
-        }
-        #[cfg(test)]
-        contagem::tempos(t_pig, t_som.elapsed());
+            ratio,
+            grade: (gw, gh),
+            tela: (w, h),
+            revisao: sess.engine.revisao(),
+            #[cfg(test)]
+            teste: super::composite_otica::InterruptoresDaOtica::de_agora(),
+        };
+        let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
+        drop(layers);
+        let Some(super::composite_otica::SaidaDaOtica {
+            caixa_cel: (cx0, cy0, cx1, cy1),
+            caixa_px: (px0, py0, px1, py1),
+            sem_oleo,
+        }) = saida
+        else {
+            return;
+        };
+        // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
+        let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
+            let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);
+            for y in py0..py1 {
+                v.extend_from_slice(&self.canvas_rgba[(y * w + px0) * 4..(y * w + px1) * 4]);
+            }
+            v
+        });
+        let stride = w * 4;
         // ⚠️ **A FRONTEIRA DO MOTOR.** Tudo acima lê `sess.engine` (as camadas, o
-        // `params`, o dirty); tudo abaixo lê `sess.pigment`, `sess.base` e o
+        // `params`, o dirty); tudo abaixo lê `sess.planos`, `sess.base` e o
         // `canvas` — **e mais nada do motor**, exceto o véu no fim.
         //
         // ⛔ **MEDIDO E REJEITADO — não refaça: devolver o motor ao worker AQUI.**
@@ -363,8 +173,6 @@ impl PainterTool {
         // sobrepô-las não cria capacidade — só move a contenção para DENTRO do
         // frame. *Um balde de espera só é oportunidade quando o recurso que ele
         // espera está parado.*
-        #[cfg(test)]
-        split::note_engine(t_engine.elapsed());
         #[cfg(test)]
         let t_pixel = std::time::Instant::now();
         // Straight-alpha OVER the frozen base, cell (cx,cy) → pixel (cx-1,cy-1).
@@ -415,8 +223,8 @@ impl PainterTool {
         //
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
-        let (pigment, base, sombra) = (&sess.pigment, &sess.base, &sess.sombra);
-        let grao_cel = &sess.grao;
+        let (pigment, base, sombra) = (&sess.planos.pigment, &sess.base, &sess.planos.sombra);
+        let grao_cel = &sess.planos.grao;
         let rr = usize::from(ratio);
         let modo = sess.blend;
         let base_da_marca = marca.map(|_| Arc::clone(&sess.base));

@@ -220,7 +220,7 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_salvo_o_oleo_sobre_o_oleo() {
             .wetpaint
             .session
             .as_ref()
-            .is_some_and(|s| s.campo_cache.is_none()),
+            .is_some_and(|s| s.planos.campo_cache.is_none()),
         "sem óleo na tela, o cache do campo ficou"
     );
 }
@@ -241,7 +241,7 @@ fn o_cartao_segue_a_tinta_com_oleo_na_tela() {
             .wetpaint
             .session
             .as_ref()
-            .is_some_and(|s| s.campo_cache.is_some()),
+            .is_some_and(|s| s.planos.campo_cache.is_some()),
         "a caixa desligada largou o campo da tinta com óleo"
     );
     t.handle_panel_event(PanelEvent::SetValue(

@@ -127,7 +127,7 @@ fn ratio_one_composites_exactly_what_the_old_over_produced() {
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
     assert_eq!(sess.ratio, 1);
     assert_eq!(sess.grid, (W, H), "razao 1 e uma celula por pixel");
-    let (pig, base) = (&sess.pigment, &sess.base);
+    let (pig, base) = (&sess.planos.pigment, &sess.base);
     let mut diff = 0usize;
     let mut worst = 0i32;
     for py in 0..H {
@@ -433,7 +433,7 @@ fn probe_cell_alpha_at_the_edge() {
             let mut row = Vec::new();
             for cx in ccx..(ccx + 8).min(gw + 1) {
                 let o = ((ccy - 1) * gw + (cx - 1)) * 4;
-                row.push(sess.pigment[o + 3]);
+                row.push(sess.planos.pigment[o + 3]);
             }
             eprintln!("  ratio {ratio}, {label}: alpha do pigmento saindo do centro = {row:?}");
         }
@@ -466,7 +466,7 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
     let (gw, _) = sess.grid;
     let ccx = 200usize / 8 + 1;
     let ccy = 120usize / 8 + 1;
-    let alpha = |cx: usize| -> u8 { sess.pigment[((ccy - 1) * gw + (cx - 1)) * 4 + 3] };
+    let alpha = |cx: usize| -> u8 { sess.planos.pigment[((ccy - 1) * gw + (cx - 1)) * 4 + 3] };
     // Saindo do centro, conta as celulas com cobertura PARCIAL antes do zero —
     // sao elas a penumbra que o supersampling cria.
     let mut partial = 0usize;
@@ -508,7 +508,7 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     let (mut fora_da_silhueta, mut na_silhueta) = (0usize, 0usize);
     {
         let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
-        let (pig, base) = (&sess.pigment, &sess.base);
+        let (pig, base) = (&sess.planos.pigment, &sess.base);
         let dentro = |x: usize, y: usize| f32::from(pig[(y * W + x) * 4 + 3]) / 255.0 >= SS0;
         for py in 1..H - 1 {
             for px in 1..W - 1 {
@@ -567,7 +567,7 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "o slider no zero");
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
-    let (pig, base) = (&sess.pigment, &sess.base);
+    let (pig, base) = (&sess.planos.pigment, &sess.base);
     let diff = (0..H)
         .flat_map(|py| (0..W).map(move |px| (px, py)))
         .filter(|&(px, py)| {

@@ -117,8 +117,12 @@ fn despeja(t: &mut PainterTool, x: usize, y: usize, mostrada: &[u8]) {
         &mostrada[(y * W + x) * 4..(y * W + x) * 4 + 4],
         camada,
         base,
-        &s.pigment[pg..pg + 4],
-        s.sombra.get((cy - 1) * gw + cx - 1).copied().unwrap_or(0)
+        &s.planos.pigment[pg..pg + 4],
+        s.planos
+            .sombra
+            .get((cy - 1) * gw + cx - 1)
+            .copied()
+            .unwrap_or(0)
     ));
     {
         let layers: Vec<ph2d_wet_paint::render::RenderLayer<'_>> = s

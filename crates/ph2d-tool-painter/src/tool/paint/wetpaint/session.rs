@@ -104,23 +104,11 @@ pub(in crate::tool::paint) struct WetSession {
     /// ABA that makes a raw-pointer identity check unsound (the ADR-0124
     /// lesson: **ask the value, never `as_ptr()` of something you don't pin**).
     pub(in crate::tool::paint) canvas: Weak<Vec<u8>>,
-    /// Session-persistent pigment scratch — **`grid.0 * grid.1 * 4`, o tamanho
-    /// da GRADE e não o do canvas** (o render de pigmento do motor escreve uma
-    /// linha de célula por vez; o composite é quem sobe para o canvas). The
-    /// region render fully overwrites the rect it is asked for, so stale bytes
-    /// outside are inert.
-    pub(super) pigment: Vec<u8>,
-    /// **A sombra do Óleo Real no papel** (`gw * gh`, `0..255` de escurecimento) onde a célula não tem
-    /// pigmento — VAZIO enquanto o Óleo Real está desligado (quem não o usa não paga).
-    pub(super) sombra: Vec<u8>,
-    /// W3b: o DENTE do papel que a tinta de cada célula mostra (`gw * gh`, `0..255`,
-    /// [`ph2d_wet_paint::oleo_real::grao_do_papel`]) — VAZIO sem papel, sem luz ou sem Óleo Real.
-    pub(super) grao: Vec<u8>,
+    /// Os planos da GRADE que a óptica escreve e o laço de píxel lê — pigmento, sombra, dente e o campo guardado
+    /// do Óleo Real ([`super::composite_otica::PlanosDaOtica`]).
+    pub(super) planos: super::composite_otica::PlanosDaOtica,
     /// W3b: o papel, o dente e a lâmpada do relevo com que a tinta foi composta ([`super::grao_no_filme::ChaveDoGrao`]).
     pub(super) chave_do_grao: Option<super::grao_no_filme::ChaveDoGrao>,
-    /// **O campo de altura do Óleo Real guardado por dependência** (W3, `oleo_real::CacheCampo`): a varredura do
-    /// cartão (Specular, fenda, material sem Subsurface, Transparency) reusa-o enquanto as grades e a chave ficam.
-    pub(super) campo_cache: Option<ph2d_wet_paint::oleo_real::CacheCampo>,
     /// Per-LANE stroke state (one lane per symmetry copy / tile offset,
     /// matched geometrically): last dab centre (the chord source) + the last
     /// fresh-ink colour sent (Randomize change detector). Cleared per stroke.
@@ -207,7 +195,12 @@ impl WetSession {
     /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
     /// o modo de Blend fixa a sessão ou só lhe troca o modo (`set_brush_blend`).
     pub(in crate::tool::paint) fn ha_tinta(&self) -> bool {
-        self.pigment.as_chunks::<4>().0.iter().any(|p| p[3] > 0)
+        self.planos
+            .pigment
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[3] > 0)
     }
 
     /// Push the authored FACTS into the engine when they moved (W3, grown by
@@ -322,11 +315,8 @@ impl Clone for WetSession {
             blend,
             vazio,
             canvas,
-            pigment,
-            sombra,
-            grao,
+            planos,
             chave_do_grao,
-            campo_cache: _,
             lanes,
             stroke_open,
             paper_key,
@@ -357,11 +347,8 @@ impl Clone for WetSession {
             blend: *blend,
             vazio: *vazio,
             canvas: Weak::clone(canvas),
-            pigment: pigment.clone(),
-            sombra: sombra.clone(),
-            grao: grao.clone(),
+            planos: planos.copia_sem_campo(),
             chave_do_grao: *chave_do_grao,
-            campo_cache: None,
             lanes: lanes.clone(),
             stroke_open: *stroke_open,
             paper_key: *paper_key,
@@ -399,7 +386,7 @@ impl PainterTool {
                 EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
                 EngineSlot::Away => 0,
             };
-            motor + s.pigment.len()
+            motor + s.planos.pigment.len()
         })
     }
 
@@ -411,7 +398,7 @@ impl PainterTool {
             .wetpaint
             .session
             .as_ref()
-            .map(|s| s.pigment.as_slice())
+            .map(|s| s.planos.pigment.as_slice())
     }
 
     /// A fita que a água deste tool usa (a do tocador de uma macro).

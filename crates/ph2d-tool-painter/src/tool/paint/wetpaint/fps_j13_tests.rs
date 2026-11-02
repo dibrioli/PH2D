@@ -120,7 +120,7 @@ pub(super) fn gancho(
             return;
         };
         let (gw, gh) = sess.grid;
-        let primeira = e.pigment.len() != sess.pigment.len();
+        let primeira = e.pigment.len() != sess.planos.pigment.len();
         let ww = cx1 + 1 - cx0;
         let nj = ww * (cy1 + 1 - cy0);
         let (mut rel, mut bit) = (vec![false; nj], vec![false; nj]);
@@ -191,11 +191,12 @@ pub(super) fn gancho(
             for y in cy0..=cy1 {
                 for x in cx0..=cx1 {
                     let p = ((y - 1) * gw + (x - 1)) * 4;
-                    pig[(y - cy0) * ww + (x - cx0)] = sess.pigment[p..p + 4] != e.pigment[p..p + 4];
+                    pig[(y - cy0) * ww + (x - cx0)] =
+                        sess.planos.pigment[p..p + 4] != e.pigment[p..p + 4];
                 }
             }
         }
-        e.pigment.clone_from(&sess.pigment);
+        e.pigment.clone_from(&sess.planos.pigment);
         let (w, _) = t.source_size;
         let w = w as usize;
         let cv = t.canvas_rgba.as_ref();

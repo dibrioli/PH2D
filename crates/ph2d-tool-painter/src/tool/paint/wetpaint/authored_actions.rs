@@ -85,11 +85,8 @@ impl PainterTool {
             // makes the FIRST composite copy — correctly, since the frozen base
             // has to survive the write.
             canvas: Arc::downgrade(&self.canvas_rgba),
-            pigment: vec![0u8; gw * gh * 4],
-            sombra: Vec::new(),
-            grao: Vec::new(),
+            planos: super::composite_otica::PlanosDaOtica::da_grade((gw, gh)),
             chave_do_grao: None,
-            campo_cache: None,
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,

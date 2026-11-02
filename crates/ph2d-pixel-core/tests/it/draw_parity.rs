@@ -126,6 +126,7 @@ fn brush_stamps_match_the_authored_table() {
             shape,
             size: d,
             angle: 0,
+            ..Brush::default()
         };
         assert_eq!(b.offsets(), want, "{shape:?} {d}");
     }

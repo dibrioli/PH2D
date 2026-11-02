@@ -1,5 +1,6 @@
 mod affine_parity;
 mod blend_oracle;
+mod brush_pattern;
 mod codec;
 mod color_laws;
 mod color_parity;

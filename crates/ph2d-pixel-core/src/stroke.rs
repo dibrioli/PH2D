@@ -14,7 +14,7 @@ use crate::symmetry::{Symmetry, Tiling, expand, symmetry_images};
 
 /// Como o gesto deposita: o pincel, a simetria, o ladrilho, o pixel-perfect (só com pincel de 1)
 /// e a tinta.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Paint {
     pub brush: Brush,
     pub symmetry: Symmetry,
@@ -46,6 +46,10 @@ pub struct Stroke {
     /// Valores PRONTOS por célula (a pré-visualização de uma moldura solta, [`Self::with_values`]):
     /// a tinta não entra e a selecção não corta — o valor é o que o assentar vai escrever.
     fixed: BTreeMap<Cell, u32>,
+    /// O valor de cada célula que um pincel de PADRÃO pôs (o último carimbo cobre os anteriores).
+    src: BTreeMap<Cell, u32>,
+    /// O cursor do 1.º carimbo (o `Destination` do padrão alinha-se aqui).
+    start: Cell,
 }
 
 impl Stroke {
@@ -67,6 +71,8 @@ impl Stroke {
             ramp: Vec::new(),
             dir: 1,
             fixed: BTreeMap::new(),
+            src: BTreeMap::new(),
+            start: (0, 0),
         }
     }
 
@@ -125,6 +131,7 @@ impl Stroke {
 
     fn start(&mut self, sprite: &Sprite, x: i32, y: i32) {
         self.last = (x, y);
+        self.start = (x, y);
         self.rng = SplitMix32::new(spray_seed(0, x, y));
         self.point(sprite, x, y);
     }
@@ -215,18 +222,33 @@ impl Stroke {
             self.paint.symmetry,
             self.paint.tiling,
             (sprite.width(), sprite.height()),
-            |x, y, _| hit.push((x, y)),
+            |x, y, k| hit.push((x, y, k)),
         );
-        for (x, y) in hit {
+        let b = &self.paint.brush;
+        let (pattern, align, image) = (
+            b.pattern.clone().filter(|_| !plain),
+            b.pattern_align,
+            b.image_color,
+        );
+        for (x, y, k) in hit {
             if !self.accepts(sprite, x, y) {
                 continue;
             }
             if delta > 0 {
+                if let Some(p) = &pattern {
+                    let Some(v) = p.value(align, k, (x, y), self.start) else {
+                        continue;
+                    };
+                    if image {
+                        self.src.insert((x, y), v);
+                    }
+                }
                 *self.cells.entry((x, y)).or_insert(0) += 1;
             } else if let Some(n) = self.cells.get_mut(&(x, y)) {
                 *n -= 1;
                 if *n == 0 {
                     self.cells.remove(&(x, y));
+                    self.src.remove(&(x, y));
                 }
             }
         }
@@ -249,7 +271,7 @@ impl Stroke {
         ink::apply(
             sprite,
             self.paint.ink,
-            self.value,
+            self.src.get(&(x, y)).copied().unwrap_or(self.value),
             dest,
             &self.ramp,
             self.dir,

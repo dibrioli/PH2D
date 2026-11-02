@@ -106,6 +106,7 @@ fn the_line_brush_and_the_rotated_square_keep_their_size() {
             shape: BrushShape::Line,
             size: d,
             angle: 0,
+            ..Brush::default()
         }
         .offsets();
         assert_eq!(line.len() as u32, d, "linha 0° de {d}");
@@ -114,6 +115,7 @@ fn the_line_brush_and_the_rotated_square_keep_their_size() {
             shape: BrushShape::Line,
             size: d,
             angle: 90,
+            ..Brush::default()
         }
         .offsets();
         assert!(
@@ -124,6 +126,7 @@ fn the_line_brush_and_the_rotated_square_keep_their_size() {
             shape: BrushShape::Line,
             size: d,
             angle: 45,
+            ..Brush::default()
         }
         .offsets();
         assert!(
@@ -135,6 +138,7 @@ fn the_line_brush_and_the_rotated_square_keep_their_size() {
                 shape: BrushShape::Square,
                 size: d,
                 angle,
+                ..Brush::default()
             }
             .offsets()
         };

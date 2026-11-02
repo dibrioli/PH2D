@@ -75,7 +75,7 @@ pub(crate) fn stage(
         doc.layer,
         doc.frame,
         doc.sprite.value_of_rgba(rgba),
-        paint(&app.options, doc),
+        paint(&app.options, doc, None),
     );
     let mut viva = Viva::new(star, a, b).girada(giro);
     viva.mostra = Some(k);

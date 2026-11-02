@@ -79,9 +79,16 @@ pub(crate) fn ink(i: ph2d_editor_core::pixel_panel::PixelInk) -> Ink {
     }
 }
 
-/// O pincel, a simetria, o ladrilho e a tinta das opções, para o documento `doc`.
-pub(crate) fn paint(o: &Options, doc: &Doc) -> Paint {
+/// O pincel, a simetria, o ladrilho e a tinta das opções, para o documento `doc`; `pincel` = o
+/// copiado da selecção (Ctrl+B), que toma o lugar da forma.
+pub(crate) fn paint(
+    o: &Options,
+    doc: &Doc,
+    pincel: Option<&std::sync::Arc<ph2d_pixel_core::pattern::PatternBrush>>,
+) -> Paint {
     use ph2d_editor_core::pixel_panel::PixelBrushShape as S;
+    use ph2d_editor_core::pixel_panel::PixelPatternAlign as A;
+    use ph2d_pixel_core::pattern::PatternAlign;
     let shape = match o.shape {
         S::Circle => BrushShape::Circle,
         S::Square => BrushShape::Square,
@@ -92,6 +99,13 @@ pub(crate) fn paint(o: &Options, doc: &Doc) -> Paint {
             shape,
             size: o.size,
             angle: o.angle,
+            pattern: pincel.cloned(),
+            pattern_align: match o.pattern_align {
+                A::Source => PatternAlign::Source,
+                A::Destination => PatternAlign::Destination,
+                A::Paint => PatternAlign::Paint,
+            },
+            image_color: true,
         },
         symmetry: symmetry(o, doc),
         tiling: Tiling {

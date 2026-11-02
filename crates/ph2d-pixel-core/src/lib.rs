@@ -23,6 +23,7 @@ pub mod ink;
 pub mod layers;
 mod op;
 pub mod palette;
+pub mod pattern;
 pub mod play;
 pub mod raster;
 pub mod selection;

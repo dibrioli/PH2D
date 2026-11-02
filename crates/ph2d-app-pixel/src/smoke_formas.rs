@@ -151,7 +151,7 @@ pub(crate) fn forma(
         doc.layer,
         doc.frame,
         s.value_of_rgba(rgba),
-        paint(&app.options, doc),
+        paint(&app.options, doc, None),
     );
     let kind = Kind::Box { from: a, to: b };
     reshape(&mut st, s, tool, &kind, &app.options, Mods::default());

@@ -198,6 +198,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         app.avisos.push((true, ph2d_i18n::tr(motivo).to_owned()));
         return Press::Done;
     }
+    let pincel = app.pincel.clone();
     let Some(doc) = app.docs.get_mut(&key) else {
         return Press::NotMine;
     };
@@ -219,16 +220,18 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
     }
     let s = &doc.sprite;
     let (layer, frame) = (doc.layer, doc.frame);
-    let mut paint = crate::gesture::paint(&options, doc);
-    // A borracha pinta sempre com a Simple (Aseprite).
+    let mut paint = crate::gesture::paint(&options, doc, pincel.as_ref());
+    // A borracha pinta sempre com a Simple (Aseprite) e apaga com a FORMA do padrão.
     if tool == Tool::Eraser {
         paint.ink = ph2d_pixel_core::ink::Ink::Simple;
+        paint.brush.image_color = false;
     }
     let value = match button {
         Button::Primary => s.value_of_rgba(fg),
         Button::Secondary => s.value_of_rgba(bg),
     };
     let at = (x, y);
+    let shading = paint.ink == ph2d_pixel_core::ink::Ink::Shading;
     let (stroke, kind) = match tool {
         Tool::Hand => return Press::Pan,
         // A selecção e o Transform já responderam acima (o Alt sozinho com elas é o conta-gotas).
@@ -306,7 +309,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         }
     };
     // Shading: a rampa é a selecção da paleta; esquerdo anda +1, direito −1.
-    let stroke = if paint.ink == ph2d_pixel_core::ink::Ink::Shading {
+    let stroke = if shading {
         let dir = if button == Button::Primary { 1 } else { -1 };
         stroke.with_shading(crate::paleta::rampa(s, &sel), dir)
     } else {

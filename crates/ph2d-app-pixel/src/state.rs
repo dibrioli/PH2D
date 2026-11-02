@@ -201,6 +201,8 @@ pub struct PixelApp {
     pub paletas: Option<std::path::PathBuf>,
     /// Os nomes das predefinições gravadas, lidos da pasta (`None` = ainda por ler).
     pub(crate) predefinicoes: Option<Vec<String>>,
+    /// O pincel copiado da selecção (Ctrl+B); `None` = o pincel de forma das opções.
+    pub(crate) pincel: Option<std::sync::Arc<ph2d_pixel_core::pattern::PatternBrush>>,
 }
 
 impl Default for PixelApp {
@@ -255,6 +257,7 @@ impl Default for PixelApp {
             solo: None,
             paletas: None,
             predefinicoes: None,
+            pincel: None,
         }
     }
 }

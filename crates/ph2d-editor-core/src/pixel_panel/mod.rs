@@ -42,6 +42,29 @@ impl PixelBrushShape {
     }
 }
 
+/// Onde o padrão de um pincel copiado (Ctrl+B) fica — o dropdown da barra de contexto do Aseprite,
+/// na ordem dele.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelPatternAlign {
+    #[default]
+    Source,
+    Destination,
+    Paint,
+}
+
+impl PixelPatternAlign {
+    pub const ALL: [Self; 3] = [Self::Source, Self::Destination, Self::Paint];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::Source => "panel.pixel.pattern.source",
+            Self::Destination => "panel.pixel.pattern.destination",
+            Self::Paint => "panel.pixel.pattern.paint",
+        }
+    }
+}
+
 /// O maior pincel — o `MAX_BRUSH` do `ph2d-pixel-core` (a família prova a igualdade).
 pub const PIXEL_MAX_BRUSH: u32 = 64;
 
@@ -59,6 +82,8 @@ pub struct PixelOptions {
     pub angle: i32,
     /// Só com pincel de 1 (Aseprite).
     pub pixel_perfect: bool,
+    /// O alinhamento do padrão de um pincel copiado (Ctrl+B).
+    pub pattern_align: PixelPatternAlign,
     /// P6b: os valores das formas do Vector (o raio do canto do retângulo é o 1.º campo dele, o do
     /// Aseprite 1.3.17) e se as quatro enchem (P6c: a caixa «Fill» no lugar das ferramentas cheias).
     pub shapes: PixelShapes,
@@ -279,6 +304,7 @@ impl Default for PixelOptions {
             size: 1,
             angle: 0,
             pixel_perfect: false,
+            pattern_align: PixelPatternAlign::Source,
             shapes: PixelShapes::default(),
             shape_fill: false,
             tolerance: 0,

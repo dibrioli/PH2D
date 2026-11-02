@@ -79,7 +79,7 @@ pub(crate) fn stage(
         doc.layer,
         doc.frame,
         doc.sprite.value_of_rgba(rgba),
-        paint(&app.options, doc),
+        paint(&app.options, doc, None),
     );
     app.gesture = Some(Gesture {
         entity: bits,

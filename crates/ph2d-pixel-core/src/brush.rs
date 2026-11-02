@@ -1,6 +1,9 @@
 //! **O pincel**: forma, tamanho e ângulo → os offsets de UM carimbo, relativos à célula âncora.
 //! A tabela é AUTORADA (o MVP fixa os redondos 1..10 a olho), não geometria.
 
+use std::sync::Arc;
+
+use crate::pattern::{PatternAlign, PatternBrush};
 use crate::raster::{Cell, line_cells};
 
 /// O maior tamanho do pincel: o do Aseprite 1.3.18 (o slider *Brush Size* vai a 64), que é o
@@ -22,12 +25,18 @@ impl BrushShape {
 }
 
 /// O pincel: forma, tamanho em células (`1..=MAX_BRUSH`) e ângulo em graus (anti-horário, como no
-/// Aseprite; o redondo ignora-o).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Aseprite; o redondo ignora-o). Com [`Self::pattern`] o carimbo é o da selecção copiada (Ctrl+B)
+/// e a forma, o tamanho e o ângulo não contam.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Brush {
     pub shape: BrushShape,
     pub size: u32,
     pub angle: i32,
+    pub pattern: Option<Arc<PatternBrush>>,
+    pub pattern_align: PatternAlign,
+    /// O padrão pinta as cores DELE (*Image Color* do Aseprite); `false` = só a forma, na cor do
+    /// traço (a borracha apaga com a forma do padrão).
+    pub image_color: bool,
 }
 
 impl Default for Brush {
@@ -36,6 +45,9 @@ impl Default for Brush {
             shape: BrushShape::Circle,
             size: 1,
             angle: 0,
+            pattern: None,
+            pattern_align: PatternAlign::default(),
+            image_color: true,
         }
     }
 }
@@ -47,14 +59,21 @@ const CIRCLE_SLACK: f64 = 0.1;
 impl Brush {
     /// O tamanho como o carimbo o usa (`1..=MAX_BRUSH`).
     #[must_use]
-    pub fn diameter(self) -> u32 {
+    pub fn diameter(&self) -> u32 {
+        if let Some(p) = &self.pattern {
+            let (w, h) = p.size();
+            return w.max(h);
+        }
         self.size.clamp(1, MAX_BRUSH)
     }
 
     /// **Os offsets do carimbo** relativos à âncora `floor((d-1)/2)`: ímpar centra no cursor, par
     /// cresce para a direita/baixo (a convenção de todo editor).
     #[must_use]
-    pub fn offsets(self) -> Vec<Cell> {
+    pub fn offsets(&self) -> Vec<Cell> {
+        if let Some(p) = &self.pattern {
+            return p.offsets();
+        }
         let d = self.diameter() as i32;
         let anchor = (d - 1) >> 1;
         let c = f64::from(d - 1) / 2.0;

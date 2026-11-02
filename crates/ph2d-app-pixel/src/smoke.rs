@@ -203,7 +203,7 @@ fn draw_shape(
         doc.layer,
         doc.frame,
         s.value_of_rgba(rgba),
-        paint(&app.options, doc),
+        paint(&app.options, doc, None),
     );
     reshape(&mut st, s, tool, &kind, &app.options, Mods::default());
     let Some(op) = st.op(s) else {

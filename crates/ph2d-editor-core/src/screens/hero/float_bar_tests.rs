@@ -138,12 +138,12 @@ fn the_frame_margin_clears_both_floating_bars() {
     assert!((24.0..=64.0).contains(&m), "{m} fora da faixa dos oráculos");
 }
 
-/// ⭐ (F11) **A ④ flutua a uma alça inteira mais `Lg` da seleção** (o dono: *«abrem muito próximos
-/// das formas»*; eram 12 px) — pela MESMA conta que o pintor ([`tool_bars::placed`]).
+/// ⭐ (F11 + F50) **A ④ flutua a uma alça inteira mais `Xl` da seleção** (o dono: *«abrem muito
+/// próximos das formas»*; eram 12 px; 02/11: *«afaste mais»*) — pela MESMA conta que o pintor ([`tool_bars::placed`]).
 #[test]
-fn the_action_bar_floats_one_handle_plus_lg_off_the_selection() {
+fn the_action_bar_floats_one_handle_plus_xl_off_the_selection() {
     use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars};
-    let gap = crate::HANDLE_SIZE_PX + Spacing::Lg.px();
+    let gap = crate::HANDLE_SIZE_PX + Spacing::Xl.px();
     assert!((selection_gap() - gap).abs() < 1e-3);
     let b = |id| BarButton {
         id: NodeId(id),

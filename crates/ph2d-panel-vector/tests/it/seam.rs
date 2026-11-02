@@ -710,7 +710,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // ⚠️ O `33` foi CONTADO (o gate imprimiu `left: 33`).
         // ⛔ −1 (F48d, 02/11): EXPAND saiu — o Offset Path é uma ferramenta (coluna ①, opções na
         // fila ②). ⚠️ O `32` foi CONTADO (o gate imprimiu `left: 32`).
-        32,
+        // ⛔ −2 (F50, 02/11): BOOLEAN e CONVERT saíram — as comuns na barra de ações ④ (dono:
+        // «faça como o Figma»), as raras saíram do app. ⚠️ O `30` foi CONTADO.
+        30,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -1678,80 +1680,8 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
     ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
-/// **Os controles da seção Expand chegam ao seu destino quando o artista CLICA neles** —
-/// pelo caminho inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs`).
-///
-/// ⚠️ **Os dois COMANDOS e os três chips de JUNÇÃO têm destinos diferentes, e é isso que o
-/// gate afirma:** Offset Path / Outline Stroke viram `ToolPanelEvent` (a shell os aplica ao
-/// documento); a junção é **panel-local** e para no painel. Um chip que vazasse para o bus
-/// seria um segundo lugar guardando "que quina o offset faz"; um comando que NÃO vazasse
-/// seria um botão pintado e morto.
-///
-/// ⚠️ O clique é um ponteiro de verdade, nunca um `WidgetEvent` sintético: o evento
-/// fabricado pula a checagem de FOCABILIDADE no store, e um widget fora do `populate`
-/// passaria — pintado, com hit-rect, e morto sob o mouse.
-#[test]
-fn every_expand_control_reaches_its_destination_when_clicked() {
-    // ⚠️ **A SELEÇÃO faz parte da premissa desta fixture** (2026-08-31): as seções Boolean /
-    // Expand / Envelope / Arrange / Path são COMANDOS sobre a seleção, e todo controle delas morre
-    // numa guarda de seleção — então elas somem inteiras com a seleção vazia
-    // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
-    // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
-    ph2d_panel_vector::state::set_current_selection_count(1);
-    // `Apply`/`Remove` só existem com um offset VIVO na seleção (dono 02/11).
-    ph2d_panel_vector::set_offset_live_on(true);
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
-    // ⛔ F48d (02/11): os controlos do Offset Path saíram do Inspector para a ferramenta (fila ② e
-    // ④) — os gates deles moram em `f48_offset_path_tool.rs`. Fica o da secção Convert.
-    for (id, name, forwards) in [(
-        ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
-        "Outline Stroke",
-        true,
-    )] {
-        let mut host = crate::host_aberto();
-        let mut panel_state = VectorPanelState;
-        let r = host
-            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-            .unwrap_or_else(|| {
-                panic!("o controle {name} nao foi PINTADO com area clicavel na secao Expand")
-            });
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        assert!(
-            evs.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
-            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate` \
-             (o controle esta desenhado, mas nao existe para o dispatcher)"
-        );
-        for ev in evs {
-            let outcome = host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
-            if matches!(ev, WidgetEvent::Click(c) if c == id) {
-                assert_eq!(
-                    outcome,
-                    EventOutcome::Consumed,
-                    "o Click em {name} nao foi consumido pelo `event.rs`"
-                );
-            }
-        }
-        let reached = host
-            .drained_actions()
-            .into_iter()
-            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
-        assert_eq!(
-            reached, forwards,
-            "{name}: chegou ao bus = {reached}, esperado {forwards} — um COMANDO tem de \
-             chegar (senao e' botao morto) e a JUNCAO nao pode (senao seriam dois lugares \
-             guardando a mesma escolha)"
-        );
-    }
-}
+// ⛔ F50 (02/11): o gate do Outline Stroke clicado no painel saiu com a secção Convert — o botão
+// mora na ④ (`f50_boolean_e_convert_na_barra.rs` e `the_vector_bars_answer_a_real_pointer`).
 
 /// **O chip de junção clicado é o que fica selecionado.** Sem isto os três seriam
 /// consumidos, o gate acima passaria, e a escolha do artista cairia no chão — o Offset Path

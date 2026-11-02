@@ -58,6 +58,7 @@ pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,
     paint_sprite_gizmo_skewing, paint_sprite_gizmo_with, sprite_gizmo_hit_at,
 };
+pub use paint_geom::screen_aabb;
 pub use point::{PointGizmoView, PointHandle, PointHandleKind, paint_point_gizmo, point_handle_id};
 pub use readout::{GizmoReadout, gizmo_readout};
 pub use sprite_box::{SpriteBox, drag_in_skew_frame, drag_skew_model, sprite_box};

@@ -206,11 +206,12 @@ pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize], s: f32) -> Vec<Rect>
 }
 
 /// ⭐ **A folga entre a seleção e a ④ do vetor**: uma ALÇA inteira (os widgets da borda da caixa
-/// ficam à vista) mais `Spacing::Lg`. O dono (11/10): *«abrem muito próximos das formas»* — eram
-/// `Lg` (12 px); doc 17 §3.
+/// ficam à vista) mais `Spacing::Xl`. O dono (11/10): *«abrem muito próximos das formas»* — eram
+/// `Lg` (12 px); doc 17 §3. E outra vez (02/11, F50): *«afaste mais … sem sobrepor o gizmo»* —
+/// `Lg` → `Xl`, e a âncora passou a incluir a caixa do gizmo (`bars_publish::anchor_clear_of_gizmo`).
 #[must_use]
 pub fn selection_gap() -> f32 {
-    crate::HANDLE_SIZE_PX + Spacing::Lg.px()
+    crate::HANDLE_SIZE_PX + Spacing::Xl.px()
 }
 
 /// A [`strip_rects`] a `gap` px da seleção — a ④ do vetor afasta-se a [`selection_gap`] (F11); o

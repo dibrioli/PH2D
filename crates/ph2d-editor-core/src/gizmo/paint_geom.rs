@@ -34,6 +34,20 @@ pub(super) fn corners_screen(view: &GizmoView) -> [[f32; 2]; 4] {
     ]
 }
 
+/// ⭐ (F50) **A caixa da `view` em ECRÃ**, alinhada aos eixos (os quatro cantos projectados) — o que
+/// a ④ do vetor não pode tapar.
+#[must_use]
+pub fn screen_aabb(view: &GizmoView) -> Rect {
+    let c = corners_screen(view);
+    let (x0, x1) = c
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p[0]), b.max(p[0])));
+    let (y0, y1) = c
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p[1]), b.max(p[1])));
+    Rect::new(x0, y0, x1 - x0, y1 - y0)
+}
+
 /// As quatro zonas de rodar `(id, rect)`, "para lá" de cada canto ao longo dos eixos LOCAIS da
 /// caixa no ecrã. Sem pai, os eixos saem da rotação (o caminho de sempre); com pai, das ARESTAS
 /// projectadas — sob cisalhamento os dois eixos deixam de ser perpendiculares.

@@ -46,6 +46,22 @@ pub fn selection_on_screen(
     ))
 }
 
+/// ⭐ (dono 02/11, F50) **A âncora da ④ não pode ficar por cima do GIZMO**: a união da seleção com as
+/// caixas que o gizmo desenha (a da forma, as extra e a GLOBAL da seleção múltipla, que se afasta
+/// 32 px das formas) — sem isto a ④ tapava-lhe a borda e as alças.
+#[must_use]
+pub fn anchor_clear_of_gizmo(sel: Rect, gizmo: Option<Rect>) -> Rect {
+    let Some(g) = gizmo else {
+        return sel;
+    };
+    let (x0, y0) = (sel.x.min(g.x), sel.y.min(g.y));
+    let (x1, y1) = (
+        (sel.x + sel.w).max(g.x + g.w),
+        (sel.y + sel.h).max(g.y + g.h),
+    );
+    Rect::new(x0, y0, x1 - x0, y1 - y0)
+}
+
 /// ⑤ as leituras: onde o ponteiro está (na unidade do projeto), o encaixe e o zoom.
 fn readout(hero: &HeroScreen, snap_on: bool, px_to_world: f64) -> Vec<String> {
     let mut out = Vec::new();
@@ -105,7 +121,16 @@ pub fn publish(
     let selection = hero
         .grid
         .view
-        .and_then(|v| selection_on_screen(scene, pen, xforms, &v));
+        .and_then(|v| selection_on_screen(scene, pen, xforms, &v))
+        .map(|sel| {
+            let g = &hero.gizmo;
+            g.view
+                .iter()
+                .chain(g.global_view.iter())
+                .chain(g.extra_views.iter().map(|(_, v)| v))
+                .map(ph2d_editor_core::gizmo::screen_aabb)
+                .fold(sel, |a, r| anchor_clear_of_gizmo(a, Some(r)))
+        });
     let readout = readout(hero, snap_on, px_to_world);
     let bars = ph2d_panel_vector::bars::tool_bars(&hero.store, selection, readout);
     hero.store.set_tool_bars(Some(bars));
@@ -119,6 +144,22 @@ mod tests {
     use ph2d_editor_core::interaction::ToolBars;
     use ph2d_editor_core::screens::hero::HeroScreen;
     use ph2d_vec_scene::{VecScene, VecXforms};
+
+    /// A ④ ancora-se na UNIÃO da seleção com a caixa do gizmo; sem gizmo, na seleção.
+    #[test]
+    fn the_anchor_clears_the_gizmo_box() {
+        use ph2d_editor_core::zones::Rect;
+        let sel = Rect::new(391.0, 183.0, 203.0, 170.0);
+        let gizmo = Rect::new(359.0, 163.0, 266.0, 218.0);
+        let a = super::anchor_clear_of_gizmo(sel, Some(gizmo));
+        assert_eq!((a.x, a.y, a.w, a.h), (359.0, 163.0, 266.0, 218.0));
+        let a = super::anchor_clear_of_gizmo(sel, None);
+        assert_eq!((a.x, a.y, a.w, a.h), (sel.x, sel.y, sel.w, sel.h));
+        // Uma caixa MENOR que a seleção não encolhe a âncora.
+        let dentro = Rect::new(400.0, 200.0, 10.0, 10.0);
+        let a = super::anchor_clear_of_gizmo(sel, Some(dentro));
+        assert_eq!((a.x, a.y, a.w, a.h), (sel.x, sel.y, sel.w, sel.h));
+    }
 
     /// O vetor inactivo limpa as SUAS barras e deixa a coluna do pintor (que o chrome publica) em paz.
     #[test]

@@ -652,7 +652,9 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    (`N…`), porque a fileira dos marcadores passou a acabar onde as vizinhas acabam (a coluna
     //    do valor da porta, com a de animação à direita) — ela passava `18 px` para lá da coluna, e
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
-    ("vector", 1),
+    // ⬇️ `1 → 0` na integração de 2026-11-02: a fileira dos marcadores (o `N…` das pontas) foi
+    //    para o «Stroke settings» atrás do ⚙ (UIUX F44) — MEDIDO na árvore combinada.
+    ("vector", 0),
     ("color_equalization", 2),
     ("tags", 2),
     ("audio_editor", 1),
@@ -695,7 +697,8 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    a catraca só desce.
     ("painter_layers", 3),
     // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
-    ("wet_tuning", 2),
+    // ⬇️ `2 → 1` na integração de 2026-11-02 (PainterWatercolor, painel E10): MEDIDO na árvore combinada.
+    ("wet_tuning", 1),
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.

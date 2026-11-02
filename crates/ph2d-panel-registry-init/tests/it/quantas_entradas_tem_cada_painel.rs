@@ -1144,7 +1144,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    o molde da Física de 24/09); ficam os dez resets de grupo, o fecho e a coluna dos resets por botão.
     // ⬇️ `15 → 14` em 2026-10-28 (W3b: o modo da Transmission como seletor, Depth e Gloss do Óleo Real no Material,
     //    a Paint Texture do traço): MEDIDO pela catraca na árvore com as três mudanças; a catraca só aperta.
-    ("wet_tuning", 14),
+    // ⬇️ `14 → 13` na integração de 2026-11-02 (PainterWatercolor, painel E10): MEDIDO na
+    //    árvore combinada; a catraca só aperta.
+    ("wet_tuning", 13),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.
@@ -1159,7 +1161,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    uma ESCOLHA que não se declarava composto. Os `8` que ficam são comandos a sério (fechar,
     //    as quatro acções do Blend, o *Morph*, o *Both* dos marcadores) e passaram à coluna do
     //    valor pela `caixa_do_botao`, via `RowCtx::action_button_kind`.
-    ("vector", 8),
+    // ⬇️ `8 → 7` na integração de 2026-11-02 (UIUX F43–F45, Fill/Stroke/Effects no layout do Figma):
+    //    MEDIDO na árvore combinada; a catraca só aperta.
+    ("vector", 7),
     // ⭐ Entra na catraca em 2026-09-24 com `22 → 17`: os quatro liga/desliga dos efeitos do master
     //    (*Limiter* · *Reverb* · *Delay* · *Ducking*) são CAIXAS DE MARCAR, e o *Key* que ciclava os
     //    barramentos é uma ESCOLHA declarada (conta como um grupo). Os `17` que ficam são comandos a

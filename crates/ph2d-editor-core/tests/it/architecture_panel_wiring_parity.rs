@@ -108,6 +108,8 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
 /// `populate.rs` — so they count as registered for every panel.
 const GLOBAL_REGISTRATION_FILES: &[&str] = &[
     "ph2d-editor-core/src/screens/hero/pre_populate.rs",
+    // A política de dobra (`marca_as_gavetas`) saiu do `pre_populate.rs` para o filho (integ 02/11).
+    "ph2d-editor-core/src/screens/hero/pre_populate/gavetas.rs",
     "ph2d-editor-core/src/screens/hero/left_rail.rs",
     "ph2d-editor-core/src/screens/hero/topbar/mod.rs",
 ];

@@ -34,6 +34,7 @@ ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive", features = ["test-support"] }
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }
+ph2d-tags = { path = "../../crates/ph2d-tags" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }

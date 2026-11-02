@@ -251,13 +251,14 @@ const CHAO: [f32; 4] = [0.35, 0.35, 0.40, 1.0];
 const OURO: [f32; 4] = [0.98, 0.80, 0.18, 1.0];
 const META: [f32; 4] = [0.30, 0.80, 0.40, 1.0];
 
-/// As portas que o nível pede à COMPOSIÇÃO: as do menu desta família ([`crate::object_add::Portas`]) e a
-/// *Camera* do menu Add, que é de outra família (`ph2d_app_components::object_add::CAMERA`).
+/// As portas que o nível pede à COMPOSIÇÃO: as do menu desta família ([`crate::object_add::Portas`]) e as
+/// do menu Add dos COMPONENTES, que é de outra família (`ph2d_app_components::object_add`: Camera, HUD…).
 #[derive(Clone, Copy)]
 pub struct Portas<'a> {
     pub menu: crate::object_add::Portas<'a>,
-    /// Cria a *Camera* pela porta do menu dela; devolve os bits.
-    pub camera: &'a dyn Fn(&mut SimWorld) -> Result<u64, String>,
+    /// Cria um objecto do menu dos componentes pela porta dele; devolve os bits.
+    /// A chave é o nome canónico do componente do objecto (`"ph2d::ecs::GameCamera"`).
+    pub componentes: &'a dyn Fn(&mut SimWorld, &str) -> Result<u64, String>,
 }
 
 /// Monta o nível `nivel` no mundo. Devolve o jogador.
@@ -500,21 +501,20 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     let meta = do_menu(sim, portas, ANIMATED_SPRITE);
     arruma(sim, meta, "Goal", [15.5, 1.0], [1.0, 2.0]);
     folha(sim, meta, FLAG_SHEET, "wave", FLAG_FRAME_MS);
-    let moeda = sim
-        .world_mut()
-        .get_resource_or_init::<ProjectScripts>()
-        .insert(MOEDA_NAME, MOEDA_LUAU);
+    // J5 (GEF 21): cada moeda montada com as peças, e o HUD com o contador — ver `smoke_moedas`.
     for (i, at) in MOEDAS_2.into_iter().enumerate() {
         let e = do_menu(sim, portas, ANIMATED_SPRITE);
         arruma(sim, e, &format!("Coin {}", i + 1), at, [0.5, 0.5]);
         folha(sim, e, COIN_SHEET, "spin", COIN_FRAME_MS);
-        sim.world_mut()
-            .entity_mut(e)
-            .insert(LuauScript::library(moeda));
+        crate::smoke_moedas::veste_moeda(sim, portas, e);
     }
+    crate::smoke_moedas::placar(sim, portas);
     let jogador = do_menu(sim, portas, CHARACTER);
     arruma(sim, jogador, "Player", [-8.0, 1.5], [1.0, 1.0]);
-    let camara = Entity::from_bits((portas.camera)(sim).unwrap_or_else(|e| panic!("Camera: {e}")));
+    let camara = Entity::from_bits(
+        (portas.componentes)(sim, "ph2d::ecs::GameCamera")
+            .unwrap_or_else(|e| panic!("Camera: {e}")),
+    );
     arruma(sim, camara, "Camera", [-8.0, 2.0], [1.0, 1.0]);
     // Mais perto que os 10 m de fábrica: o boneco desenhado lê-se (~110 px de altura numa janela de 900).
     if let Some(mut c) = sim.world_mut().get_mut::<GameCamera>(camara) {
@@ -536,12 +536,10 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     ));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     println!(
-        "[game-smoke] =2 o mesmo nível feito SÓ com o menu Add (Add ▸ Game), com a arte do Kenney \
-         redesenhada em vetor: chão e plataformas de relva (Static Body), a parede invisível do fim \
-         (Collision Shape dentro do chão), um tecto baixo à esquerda (segure ↓ para passar agachado), o jogador (Character), as moedas a girar e a bandeira a \
-         ondular (Animated Sprite), o céu parado (Sprite com Parallax 0) e, ao longe, as nuvens e os \
-         montes (Background Layer), que andam mais devagar que o chão quando a câmara segue o jogador. Run ▸ Play in a Window: o boneco fica parado, \
-         corre, salta e cai — a animação troca sozinha — e as moedas somem ao tocar."
+        "[game-smoke] =2 o nível feito SÓ com o menu Add (Add ▸ Game) e a arte do Kenney em vetor: chão e \
+         plataformas (Static Body), parede invisível (Collision Shape), tecto baixo (segure ↓), jogador \
+         (Character), moedas e bandeira (Animated Sprite), céu, nuvens e montes em parallax. Run ▸ Play: \
+         cada moeda tocada faz «plim», soma 1 ao contador do HUD e some."
     );
     jogador
 }

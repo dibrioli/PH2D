@@ -89,8 +89,8 @@ impl crate::App {
             let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {
                 component_attach::attach_by_name(s, reg, seeds, b, n)
             };
-            let camera = |s: &mut ph2d_ecs::SimWorld| {
-                object_add::add(object_add::CAMERA, s, reg, seeds).expect("é dos componentes")
+            let componentes = |s: &mut ph2d_ecs::SimWorld, c: &str| {
+                object_add::add_by_component(c, s, reg, seeds)
             };
             let menu = ph2d_app_game::object_add::Portas {
                 raiz: object_add::spawn_empty_root,
@@ -98,7 +98,7 @@ impl crate::App {
             };
             let portas = ph2d_app_game::smoke::Portas {
                 menu,
-                camera: &camera,
+                componentes: &componentes,
             };
             let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {

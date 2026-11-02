@@ -209,13 +209,16 @@ fn o_nivel_2_nasce_so_pelo_menu() {
             Some(art.grid[0])
         );
     }
+    // J5 (GEF 21): cada moeda é um corpo Static de Trigger, sem script — o resto em `jogo_moedas`.
     let moedas = (1..=MOEDAS_2.len())
-        .filter(|i| {
-            w.get::<LuauScript>(por_nome[&format!("Coin {i}")])
-                .is_some()
+        .map(|i| por_nome[&format!("Coin {i}")])
+        .filter(|&e| {
+            w.get::<LuauScript>(e).is_none()
+                && w.get::<RigidBody>(e).map(|b| b.kind) == Some(BodyKind::Static)
+                && w.get::<Collider>(e).is_some_and(|c| c.is_sensor)
         })
         .count();
-    assert_eq!(moedas, MOEDAS_2.len(), "cada moeda corre o moeda.luau");
+    assert_eq!(moedas, MOEDAS_2.len(), "cada moeda é um Trigger sem script");
     assert_eq!(
         w.get::<ph2d_ecs::ZIndexOverride>(por_nome["Sky"])
             .map(|z| z.0),

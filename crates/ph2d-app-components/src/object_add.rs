@@ -81,6 +81,25 @@ pub fn add(
     )
 }
 
+/// ⭐ **O objecto do menu cujo componente é `component`** (o nome canónico, `"ph2d::ecs::UiCanvas"`) —
+/// a porta de quem compõe uma cena sem poder nomear as entradas desta família (GEF 21: o nível do jogo).
+pub fn add_by_component(
+    component: &str,
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
+) -> Result<u64, String> {
+    ENTRIES
+        .iter()
+        .find(|e| component_of(**e) == Some(component))
+        .and_then(|e| add(*e, sim, registry, seeds))
+        .unwrap_or_else(|| {
+            Err(format!(
+                "{component}: não é um objecto do menu dos componentes"
+            ))
+        })
+}
+
 #[cfg(test)]
 #[path = "object_add_tests.rs"]
 mod tests;

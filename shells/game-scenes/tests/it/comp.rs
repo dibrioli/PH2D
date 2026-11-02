@@ -19,16 +19,14 @@ pub fn com_portas<R>(
     let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
     let anexa =
         |s: &mut SimWorld, b, n: &str| component_attach::attach_by_name(s, reg, seeds, b, n);
-    let camera = |s: &mut SimWorld| {
-        object_add::add(object_add::CAMERA, s, reg, seeds).expect("a Camera é dos componentes")
-    };
+    let componentes = |s: &mut SimWorld, c: &str| object_add::add_by_component(c, s, reg, seeds);
     let menu = ph2d_app_game::object_add::Portas {
         raiz: object_add::spawn_empty_root,
         anexa: &anexa,
     };
     f(ph2d_app_game::smoke::Portas {
         menu,
-        camera: &camera,
+        componentes: &componentes,
     })
 }
 

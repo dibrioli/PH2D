@@ -12,6 +12,7 @@ pub mod personagem;
 pub mod sessao;
 pub mod smoke;
 pub mod smoke_mao;
+pub mod smoke_moedas;
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

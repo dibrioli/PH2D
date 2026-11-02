@@ -91,6 +91,8 @@ verdes · portões `architecture_panel_loc_cap`, `_widget_loc_cap`, `_panel_wiri
 
 ## 5. Smoke (para o dono) e fotos
 
+**Smoke da cena 18 APROVADO pelo dono em 02/11** («smoke OK»). A próxima onda é a P8 (`02_plano_modulo.md` §5).
+
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt && PH2D_PIXEL_SMOKE=18 ./target/smoke/ph2d-host-desktop`.
 Sonda (`cena18`): Ctrl+B carimba as 6 cores; Flip H inverte a fila; com as pegas da cena (0/300 ‰) e células de 5 px de
 ecrã, 2 px/evento → 3 de altura, 24 px/evento → chega a 16. Fotos `smoke_P7b_cena18_*_2026-11-02.png` (fábrica, layout do

@@ -5,9 +5,14 @@ Corre a libfreetype do sistema (FTL OR GPL-2.0-or-later, `pacman -Qi freetype2`)
 mesma técnica de `docs/Pixel Art/app/tests/font_oracle.py` — e grava, por fonte × px × hinting × glifo,
 o bitmap 1-bit, `bitmap_left`/`bitmap_top` e o avanço (26.6).  Nada do código da FreeType é lido.
 
+Com `--gray` grava a escala de cinza hintada (`FT_LOAD_TARGET_NORMAL`, render NORMAL) de «Ag1» — os
+casos que o Aseprite Trial mediu (`oracle_trial_text.json`): a cobertura 0..255 por célula.
+
 Uso: python3 docs/PixelArt/ferramentas/oraculo_freetype_texto.py crates/ph2d-pixel-text/tests/fixtures/oracle_freetype_mono.json
+     python3 docs/PixelArt/ferramentas/oraculo_freetype_texto.py --gray crates/ph2d-pixel-text/tests/fixtures/oracle_freetype_gray.json
 """
 import ctypes as C
+import datetime
 import json
 import subprocess
 import sys
@@ -64,6 +69,7 @@ FT_LOAD_NO_HINTING = 1 << 1
 FT_LOAD_RENDER = 1 << 2
 FT_LOAD_MONOCHROME = 1 << 12
 FT_LOAD_TARGET_MONO = (2 & 15) << 16
+FT_LOAD_TARGET_NORMAL = 0
 LIB = C.c_void_p()
 assert ft.FT_Init_FreeType(C.byref(LIB)) == 0
 major, minor, patch = C.c_int(), C.c_int(), C.c_int()
@@ -91,7 +97,46 @@ def glifo(face_p, cp, hinting):
             'linear_advance_16_16': s.linearHoriAdvance, 'rows': rows}
 
 
+def glifo_cinza(face_p, cp):
+    assert ft.FT_Load_Char(face_p, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL) == 0
+    s = face_p.contents.glyph.contents
+    b = s.bitmap
+    assert b.pixel_mode in (0, 2), b.pixel_mode  # FT_PIXEL_MODE_GRAY
+    pitch = abs(b.pitch)
+    buf = bytes(b.buffer[:pitch * b.rows]) if b.rows and pitch else b''
+    rows = [' '.join(str(buf[y * pitch + x]) for x in range(b.width)) for y in range(b.rows)]
+    return {'cp': cp, 'left': s.bitmap_left, 'top': s.bitmap_top, 'advance_26_6': s.advance.x, 'rows': rows}
+
+
+def main_cinza(out):
+    casos = []
+    for fam in FONTES:
+        path = caminho(fam)
+        face_p = C.POINTER(FT_FaceRec)()
+        assert ft.FT_New_Face(LIB, path.encode(), 0, C.byref(face_p)) == 0
+        for px in PXS:
+            assert ft.FT_Set_Pixel_Sizes(face_p, 0, px) == 0
+            casos.append({'family': fam, 'file': path, 'px': px, 'hinting': True, 'text': 'Ag1',
+                          'glyphs': [glifo_cinza(face_p, ord(ch)) for ch in 'Ag1']})
+        ft.FT_Done_Face(face_p)
+    doc = {
+        'source': f'FreeType {major.value}.{minor.value}.{patch.value} (libfreetype.so.6 do sistema; FTL OR GPL-2.0-or-later)',
+        'method': 'FT_Set_Pixel_Sizes(0, px); FT_Load_Char(RENDER|TARGET_NORMAL), hinting ligado (as omissões do '
+                  'Aseprite com Antialias); bitmap 8-bit (cobertura 0..255 por célula, linhas de cima para baixo), '
+                  'bitmap_left/top (da caneta e da linha de base, y para cima), advance 26.6',
+        'command': 'python3 docs/PixelArt/ferramentas/oraculo_freetype_texto.py --gray crates/ph2d-pixel-text/tests/fixtures/oracle_freetype_gray.json',
+        'date': datetime.date.today().isoformat(),
+        'cases': casos,
+    }
+    with open(out, 'w') as f:
+        json.dump(doc, f, indent=1)
+        f.write('\n')
+    print(f'{len(casos)} casos -> {out}')
+
+
 def main():
+    if sys.argv[1] == '--gray':
+        return main_cinza(sys.argv[2])
     out = sys.argv[1]
     casos = []
     for fam in FONTES:

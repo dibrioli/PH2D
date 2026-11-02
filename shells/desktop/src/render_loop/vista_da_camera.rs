@@ -74,7 +74,7 @@ struct Retrato {
 impl Retrato {
     fn new(gpu: &ph2d_gpu::GpuContext, vello: &mut VelloPass, tamanho: (u32, u32)) -> Self {
         let textura = gpu.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ph2d vista da câmera (retrato)"),
+            label: Some("ph2d.vista_camera.retrato"),
             size: wgpu::Extent3d {
                 width: tamanho.0,
                 height: tamanho.1,
@@ -108,7 +108,7 @@ impl Retrato {
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ph2d vista da câmera → retrato"),
+                label: Some("ph2d.vista_camera.copia"),
             });
         self.copia
             .copy(&gpu.device, &mut enc, mundo.blend_view(), &alvo);

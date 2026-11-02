@@ -19,7 +19,7 @@ use crate::motion_state::MotionState;
 #[must_use]
 pub fn fica_no_rank(placa: bool, motion: &MotionState) -> bool {
     let no_dispositivo = motion.gpu_live
-        && (motion.gpu_cook.formas().is_some_and(|f| f.len() > 0)
+        && (motion.gpu_cook.formas().is_some_and(|f| !f.is_empty())
             || motion.gpu_cook.imagens_do_grupo().is_some());
     placa || !(no_dispositivo || !motion.pump.vector_instances.is_empty())
 }

@@ -214,7 +214,7 @@ fn do_dispositivo(motion: &MotionState, gpu: &GpuContext) -> Vec<Copia> {
     let (faixas_img, faixas_formas) = motion.gpu_cook.faixas_dos_sinks();
     let usize_de = |r: &Range<u32>| r.start as usize..r.end as usize;
     let mut fora = Vec::new();
-    if let Some(i) = motion.gpu_cook.instances().filter(|i| i.len() > 0) {
+    if let Some(i) = motion.gpu_cook.instances().filter(|i| !i.is_empty()) {
         let linhas = ph2d_gpu_cook::read_instances(gpu, i);
         let faixas = faixas_img.iter().map(|(s, r)| (*s, usize_de(r)));
         com_donos(motion, faixas, &linhas, da_imagem, &mut fora);

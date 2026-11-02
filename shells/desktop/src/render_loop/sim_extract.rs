@@ -221,18 +221,26 @@ pub(super) fn palco_participant(sim: &World, entity: Entity) -> bool {
     sim.get::<ph2d_ecs::Macro>(entity).is_some() && sim.get::<Sprite>(entity).is_none()
 }
 
+/// Os participantes de cada família não-sprite no quadro (vazio = nenhum).
+#[derive(Default)]
+pub(super) struct Familias<'a> {
+    pub(super) vector: &'a [(Entity, u64)],
+    pub(super) pixel: &'a [Entity],
+    pub(super) motion: &'a [Entity],
+    pub(super) flip: &'a [(Entity, u64)],
+    pub(super) palco: &'a [Entity],
+}
+
 /// ⭐⭐ **A CONVERSÃO** dos ranks do ordenador para a ordem do presente — leitura, nada reordena; todo
 /// rank tem de ser registado (um buraco degrada o plano em vez de perder um objecto).
 pub(super) fn build_frame_order(
     sort_inputs: &[SortInput],
-    vector_inputs: &[(Entity, u64)],
-    pixel_inputs: &[Entity],
-    motion_inputs: &[Entity],
-    flip_inputs: &[(Entity, u64)],
-    palco_inputs: &[Entity],
+    f: &Familias<'_>,
     scratch: &SortScratch,
     out: &mut ph2d_render::draw_bands::FrameOrder,
 ) {
+    let (vector_inputs, pixel_inputs, motion_inputs) = (f.vector, f.pixel, f.motion);
+    let (flip_inputs, palco_inputs) = (f.flip, f.palco);
     out.clear();
     for input in sort_inputs {
         if let Some(rank) = scratch.rank(input.entity) {
@@ -411,16 +419,14 @@ pub(super) fn run(
         // tie-break never fires.
         compute_sort_ranks_into(sort_scratch, sim_w, sort_inputs);
         // A ordem total como LEITURA do ordenador: percorre `sort_inputs` inteira (todo rank é registado).
-        build_frame_order(
-            sort_inputs,
-            &vector_inputs,
-            &pixel_inputs,
-            &motion_inputs,
-            &flip_inputs,
-            &palco_inputs,
-            sort_scratch,
-            order_out,
-        );
+        let familias = Familias {
+            vector: &vector_inputs,
+            pixel: &pixel_inputs,
+            motion: &motion_inputs,
+            flip: &flip_inputs,
+            palco: &palco_inputs,
+        };
+        build_frame_order(sort_inputs, &familias, sort_scratch, order_out);
         let mut q = present_w.query::<(&SimRef, &mut RenderInstance)>();
         for (sim_ref, mut ri) in q.iter_mut(present_w) {
             if let Some(rank) = sort_scratch.rank(sim_ref.0) {

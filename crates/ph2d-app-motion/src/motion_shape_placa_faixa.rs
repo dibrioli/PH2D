@@ -360,11 +360,11 @@ mod tests {
             corrida(4..6, 0..0),
             corrida(6..6, 0..3),
         ];
-        let (baixo, baixo_img) = ([1..3], [1..2]);
-        let (topo, topo_img) = (complemento(&baixo, 6), complemento(&baixo_img, 3));
+        let (baixo, baixo_img) = (std::slice::from_ref(&(1..3)), std::slice::from_ref(&(1..2)));
+        let (topo, topo_img) = (complemento(baixo, 6), complemento(baixo_img, 3));
         assert_eq!(topo, vec![0..1, 3..6]);
         assert_eq!(
-            corta(&cs, &baixo, &baixo_img),
+            corta(&cs, baixo, baixo_img),
             vec![corrida(1..3, 0..0), corrida(6..6, 1..2)]
         );
         assert_eq!(
@@ -389,7 +389,11 @@ mod tests {
             vec![corrida(10..12, 20..22), corrida(14..16, 24..26)]
         );
         assert_eq!(
-            corta(&cs, &[12..14], &[22..24]),
+            corta(
+                &cs,
+                std::slice::from_ref(&(12..14)),
+                std::slice::from_ref(&(22..24))
+            ),
             vec![corrida(12..14, 22..24)]
         );
     }

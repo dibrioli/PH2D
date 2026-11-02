@@ -79,11 +79,10 @@ fn the_conversion_records_every_rank_not_only_the_shapes() {
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
     build_frame_order(
         &inputs,
-        &[(shape, 7)],
-        &[],
-        &[],
-        &[],
-        &[],
+        &Familias {
+            vector: &[(shape, 7)],
+            ..Default::default()
+        },
         &scratch,
         &mut order,
     );
@@ -117,22 +116,20 @@ fn running_the_conversion_twice_gives_the_same_order() {
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
     build_frame_order(
         &inputs,
-        &[(shape, 7)],
-        &[],
-        &[],
-        &[],
-        &[],
+        &Familias {
+            vector: &[(shape, 7)],
+            ..Default::default()
+        },
         &scratch,
         &mut order,
     );
     let first = order.complete();
     build_frame_order(
         &inputs,
-        &[(shape, 7)],
-        &[],
-        &[],
-        &[],
-        &[],
+        &Familias {
+            vector: &[(shape, 7)],
+            ..Default::default()
+        },
         &scratch,
         &mut order,
     );
@@ -171,7 +168,15 @@ fn a_pixel_sprite_above_an_image_draws_below_it_as_family_pixel() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[px], &[], &[], &[], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &Familias {
+            pixel: &[px],
+            ..Default::default()
+        },
+        &scratch,
+        &mut order,
+    );
     assert!(
         scratch.rank(px) < scratch.rank(img),
         "o de cima na Hierarchy desenha por baixo"
@@ -210,7 +215,15 @@ fn a_motion_object_above_an_image_ranks_below_it_as_family_motion() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[], &[mo], &[], &[], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &Familias {
+            motion: &[mo],
+            ..Default::default()
+        },
+        &scratch,
+        &mut order,
+    );
     assert!(
         scratch.rank(mo) < scratch.rank(img),
         "o de cima na Hierarchy tem rank menor"
@@ -260,11 +273,10 @@ fn a_flip_object_above_an_image_draws_below_it_as_family_flip() {
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
     build_frame_order(
         &inputs,
-        &[],
-        &[],
-        &[],
-        &[(fl, 42)],
-        &[],
+        &Familias {
+            flip: &[(fl, 42)],
+            ..Default::default()
+        },
         &scratch,
         &mut order,
     );
@@ -293,7 +305,15 @@ fn a_macro_entity_takes_a_rank_as_family_palco() {
     let mut scratch = SortScratch::new();
     ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
     let mut order = ph2d_render::draw_bands::FrameOrder::default();
-    build_frame_order(&inputs, &[], &[], &[], &[], &[m], &scratch, &mut order);
+    build_frame_order(
+        &inputs,
+        &Familias {
+            palco: &[m],
+            ..Default::default()
+        },
+        &scratch,
+        &mut order,
+    );
     assert_eq!(order.complete(), Some(vec![Family::Palco]));
     assert_eq!(order.palco_ranks, vec![(m.to_bits(), 0)]);
 }

@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 17] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 18] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -218,6 +218,11 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 17] = [
         hash_node_id("pixel.edit.cancel"),
         PixelRequest::Edit(E::Cancel),
         "panel.pixel.edit.cancel",
+    ),
+    (
+        hash_node_id("pixel.edit.new_brush"),
+        PixelRequest::Edit(E::NewBrush),
+        "panel.pixel.edit.new_brush",
     ),
 ];
 

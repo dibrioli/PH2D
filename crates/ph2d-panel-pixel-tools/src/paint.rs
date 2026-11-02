@@ -42,6 +42,8 @@ mod formas;
 mod paleta;
 #[path = "paint_paleta_menu.rs"]
 pub(crate) mod paleta_menu;
+#[path = "paint_pincel.rs"]
+pub(crate) mod pincel;
 #[path = "paint_selecao.rs"]
 mod selecao;
 #[path = "paint_paleta_voo.rs"]
@@ -79,6 +81,9 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let np = with_current(|i| if i.editing { i.presets.len() } else { 0 });
     seam::register_presets(ctx.host.store_mut(), np);
     crate::seam_seletor::arrasta_seletor(st, ctx.host);
+    crate::seam_pincel::arrasta_limiar(st, ctx.host);
+    let trancados: Vec<bool> = with_current(|i| i.brushes.iter().map(|b| b.locked).collect());
+    crate::seam_pincel::register_brushes(ctx.host.store_mut(), &trancados);
     with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
     seam::seed_rename(st, ctx.host.store_mut());
     let renaming = st.rename.map(|(id, _)| id);
@@ -100,7 +105,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let numeros = ids::NUMBERS
         .iter()
         .map(|(id, _)| (*id, crate::seam_opcoes::numero(&opcoes, *id)))
-        .chain(crate::seam_formas::numeros(&opcoes));
+        .chain(crate::seam_formas::numeros(&opcoes))
+        .chain(crate::seam_pincel::numeros(&opcoes));
     let opacidade = (ids::LAYER_OPACITY, f64::from(opacidade));
     let campos = moldura.into_iter().flat_map(|t| {
         ids::XFORM_FIELDS
@@ -131,6 +137,8 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     seletor.rects = [None; 3];
     let paleta_vista = &mut st.paleta;
     *paleta_vista = crate::state::PaletaVista::default();
+    let pincel = &mut st.pincel;
+    pincel.trilhas = [None; 2];
     let content_h = with_current(|info| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         let mut c = Corpo {
@@ -145,6 +153,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             menu_aberto: None,
             seletor,
             paleta_vista,
+            pincel,
         };
         let y = c.tudo(info, renaming, top);
         blend_aberto = c.blend_aberto;
@@ -187,6 +196,7 @@ struct Corpo<'a> {
     menu_aberto: Option<(Rect, paleta_menu::MenuPaleta)>,
     seletor: &'a mut crate::state::Seletor,
     paleta_vista: &'a mut crate::state::PaletaVista,
+    pincel: &'a mut crate::state::PincelVista,
 }
 
 /// `#RRGGBB` (com `AA` quando a cor não é opaca) — o hex que o Aseprite mostra.
@@ -243,6 +253,14 @@ impl Corpo<'_> {
             tr("panel.pixel.spray_speed"),
             tr(selecao::NOMES[0]),
             tr(selecao::NOMES[2]),
+            tr("panel.pixel.pattern"),
+            tr("panel.pixel.dynamics.stabilizer_len"),
+            tr("panel.pixel.dynamics.size"),
+            tr("panel.pixel.dynamics.angle"),
+            tr("panel.pixel.dynamics.gradient"),
+            tr("panel.pixel.dynamics.min_size"),
+            tr("panel.pixel.dynamics.min_angle"),
+            tr("panel.pixel.dynamics.dither"),
         ];
         let nomes: Vec<&str> = nomes.into_iter().chain(formas::nomes()).collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
@@ -251,11 +269,20 @@ impl Corpo<'_> {
             y = self.linha(tr("panel.pixel.brush"), ColorToken::Text3, y);
             let formas: Vec<(&str, bool, NodeId)> = ids::SHAPES
                 .iter()
-                .map(|&(s, id)| (tr(s.label_key()), s == o.shape, id))
+                .map(|&(s, id)| {
+                    (
+                        tr(s.label_key()),
+                        s == o.shape && info.pattern.is_none(),
+                        id,
+                    )
+                })
                 .collect();
             y = self.escolha(tr("panel.pixel.tip"), &formas, sec, y);
-            y = self.campo(tr("panel.pixel.size"), ids::SIZE, sec, y);
-            if o.shape != PixelBrushShape::Circle {
+            y = self.padrao(info, sec, y);
+            if info.pattern.is_none() {
+                y = self.campo(tr("panel.pixel.size"), ids::SIZE, sec, y);
+            }
+            if info.pattern.is_none() && o.shape != PixelBrushShape::Circle {
                 y = self.campo(tr("panel.pixel.angle"), ids::ANGLE, sec, y);
             }
             if matches!(
@@ -272,6 +299,9 @@ impl Corpo<'_> {
                     y,
                 );
             }
+            // A mão (dinâmica e corda) é do traço livre: só o Pencil e o Eraser.
+            let livre = matches!(t, PixelTool::Pencil | PixelTool::Eraser);
+            y = self.guardados(info, livre, sec, y);
         }
         y = self.opcoes_forma(info, sec, y);
         if t == PixelTool::Spray {

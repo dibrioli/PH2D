@@ -45,6 +45,7 @@ mod popover;
 mod progress_bar;
 mod property_box;
 mod radio_group;
+mod range_slider;
 mod rect2_editor;
 mod rich_editor;
 pub mod scroll_area;
@@ -182,6 +183,9 @@ pub use property_box::{ColunaDoPainel, Seccao, colunas_da_linha};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };
+pub use range_slider::{
+    RangeHandle, paint_range_slider, range_drag, range_handle_at, range_handle_rect, range_value_at,
+};
 pub use rect2_editor::{
     RECT2_HANDLE_COUNT, Rect2Editor, Rect2Layout, paint_rect2_editor,
     paint_rect2_editor_with_state, paint_rect2_handles,
@@ -222,7 +226,9 @@ pub use segmented_adaptive::{
 pub use skin::{
     Drawing, SkinParam, WidgetKind, inline_option_rect, paint_widget_skin, paint_widget_skin_with,
 };
-pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
+pub use slider::{
+    Slider, SliderOrientation, SliderState, TRACK_MAX_PX, paint_slider, paint_slider_track,
+};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, default_chip_w, paint_number_chip, paint_slider_with_chip,
     paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive, slider_chip_value,

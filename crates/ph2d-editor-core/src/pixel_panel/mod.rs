@@ -2,6 +2,7 @@
 //! pedidos que ele faz e as escolhas do diálogo *New Sprite*. O painel e o diálogo não veem a família
 //! (`ph2d-app-pixel`) nem o documento (`ph2d-pixel-core`); a família traduz.
 
+mod brushes;
 mod dynamics;
 mod layers;
 mod new_sprite;
@@ -15,6 +16,7 @@ pub use shapes::{
     set_shape_names,
 };
 
+pub use brushes::*;
 pub use dynamics::*;
 pub use layers::*;
 pub use new_sprite::*;
@@ -392,6 +394,10 @@ pub struct PixelPanelInfo {
     pub live_shape: bool,
     /// O cursor está sobre um eixo da simetria (ou arrasta-o): a dica ensina a arrastá-lo.
     pub on_axis: bool,
+    /// O padrão na mão (`w × h`), se o pincel é um Ctrl+B.
+    pub pattern: Option<(u32, u32)>,
+    /// Os pincéis guardados (Alt+1…), na ordem.
+    pub brushes: Vec<PixelBrushSlotInfo>,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
@@ -530,4 +536,6 @@ pub enum PixelRequest {
         field: PixelTransformField,
         value: i32,
     },
+    /// P7b: o menu do pincel.
+    Brush(PixelBrushAction),
 }

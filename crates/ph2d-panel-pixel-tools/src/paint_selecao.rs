@@ -175,6 +175,7 @@ impl Corpo<'_> {
         if info.has_clip {
             y = self.botoes(&[par(e, 3)], y);
         }
+        y = self.botoes(&[par(e, 17)], y);
         y = self.botoes(&[par(e, 4), par(e, 5)], y);
         y = self.botoes(&[par(e, 6), par(e, 7)], y);
         y = self.botoes(&[par(e, 8), par(e, 9)], y);

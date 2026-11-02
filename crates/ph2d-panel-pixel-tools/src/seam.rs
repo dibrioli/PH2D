@@ -85,6 +85,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.set_number_range(ids::PALETTE_SIZE, 1.0, n, 1.0);
     crate::seam_selecao::populate(store);
     crate::seam_formas::populate(store);
+    crate::seam_pincel::populate(store);
     // As áreas do seletor de cor: o clique lê a posição do ponteiro contra o rect pintado.
     for (id, _) in ids::SELECTOR_AREAS {
         store.register(id, InteractiveState::Plain);
@@ -262,6 +263,9 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
         if id == ids::PIXEL_SWAP {
             return Some(PixelRequest::Swap);
         }
+        if let Some(r) = crate::seam_pincel::pedido(info, id) {
+            return Some(r);
+        }
         if let Some(o) = crate::seam_opcoes::com_segmento(info.options, id) {
             return Some(PixelRequest::Options(Box::new(o)));
         }
@@ -394,6 +398,22 @@ pub(crate) fn apply_event(
                 .any(|(a, b)| *a == id || *b == id) =>
         {
             let pedido = crate::seam_seletor::escolhe(st, host, id);
+            return empurra(host, pedido);
+        }
+        WidgetEvent::Click(id) if id == ids::DYNAMICS => {
+            st.pincel.dinamica = !st.pincel.dinamica;
+            return EventOutcome::Consumed;
+        }
+        WidgetEvent::Click(id) if ids::THRESHOLDS.iter().any(|(_, t, _)| *t == id) => {
+            return EventOutcome::Consumed;
+        }
+        WidgetEvent::Toggled(id) if id == ids::DYN_STABILIZER => {
+            let pedido = with_current(|i| crate::seam_pincel::alterna(i, id).filter(|_| i.editing));
+            return empurra(host, pedido);
+        }
+        WidgetEvent::ValueChanged(id) if ids::DYN_NUMBERS.iter().any(|(n, _)| *n == id) => {
+            let v = host.store().number_value(id);
+            let pedido = with_current(|i| crate::seam_pincel::campo(i, id, v));
             return empurra(host, pedido);
         }
         WidgetEvent::Click(id) if pedido_camada(id).is_some() => {

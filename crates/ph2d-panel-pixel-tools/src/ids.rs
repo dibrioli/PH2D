@@ -14,6 +14,9 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 #[path = "ids_selecao.rs"]
 mod selecao;
 pub use selecao::*;
+#[path = "ids_pincel.rs"]
+mod pincel;
+pub use pincel::*;
 
 /// O `×` do cabeçalho.
 pub const PIXEL_CLOSE: NodeId = hash_node_id("pixel.close");

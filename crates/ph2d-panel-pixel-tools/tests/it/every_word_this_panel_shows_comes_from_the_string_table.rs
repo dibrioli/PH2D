@@ -6,6 +6,7 @@ const PREFIX: &str = "panel.pixel.";
 const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/pixel.rs",
     "crates/ph2d-i18n/src/pixel_selecao.rs",
+    "crates/ph2d-i18n/src/pixel_pincel.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.

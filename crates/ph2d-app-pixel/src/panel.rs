@@ -33,6 +33,7 @@ impl PixelApp {
             || self.aplica_camada(&r)
             || self.aplica_intervalo(&r)
             || self.aplica_quadro(&r)
+            || self.aplica_pincel(&r)
             || self.aplica_paleta(r.clone())
         {
             return;
@@ -116,6 +117,9 @@ pub fn frame(
         hero.store.open_pixel_edit_dialog(kind, size);
     }
     app.sincroniza_edicao(&mut hero.store, app.chave);
+    if let Some(key) = app.chave {
+        app.acompanha_espaco(key);
+    }
     for (erro, texto) in app.take_avisos() {
         let _ = toasts.push(if erro {
             Toast::error(texto)
@@ -186,6 +190,7 @@ pub fn frame(
     let (frames, cels, tags) = doc
         .map(|d| crate::quadros::timeline(&d.sprite))
         .unwrap_or_default();
+    let palette_ok = palette.is_some();
     PixelPanelInfo {
         frames,
         active_frame: doc.map(|d| d.frame.0),
@@ -228,6 +233,12 @@ pub fn frame(
         presets: app.predefinicoes().to_vec(),
         groups: app.groups,
         live_shape: app.live_shape().is_some(),
+        pattern: app.pincel.as_ref().map(|p| p.size()),
+        brushes: if palette_ok {
+            app.espacos_info()
+        } else {
+            Vec::new()
+        },
         on_axis: app.sobre_eixo
             || app.gesture.as_ref().is_some_and(|g| {
                 Some(g.key) == app.chave && matches!(g.kind, crate::gesture::Kind::Axis { .. })

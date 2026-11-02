@@ -5,6 +5,7 @@ mod seam_pixel;
 mod seam_pixel_cor;
 mod seam_pixel_formas;
 mod seam_pixel_paleta_voo;
+mod seam_pixel_pincel;
 mod seam_pixel_selecao;
 mod seletor_arrasto;
 mod seletor_leis;

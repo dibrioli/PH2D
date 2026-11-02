@@ -214,6 +214,10 @@ pub struct PixelApp {
     pub pinceis: Option<std::path::PathBuf>,
     /// Os espaços (lidos da pasta na 1.ª pergunta).
     pub(crate) espacos: Option<Vec<ph2d_pixel_io::brush_file::BrushSlot>>,
+    /// O espaço do pincel na mão (o último criado ou recuperado): destrancado, segue-o.
+    pub(crate) espaco_activo: Option<usize>,
+    /// O pincel na mão como o espaço activo o viu da última vez (só se relê quando muda).
+    pub(crate) espaco_visto: Option<crate::pinceis::Visto>,
 }
 
 impl Default for PixelApp {
@@ -274,6 +278,8 @@ impl Default for PixelApp {
             mao: None,
             pinceis: None,
             espacos: None,
+            espaco_activo: None,
+            espaco_visto: None,
         }
     }
 }

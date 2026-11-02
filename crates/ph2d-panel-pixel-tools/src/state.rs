@@ -12,6 +12,16 @@ pub struct PixelToolsPanelState {
     pub(crate) rename: Option<(u32, bool)>,
     pub(crate) seletor: Seletor,
     pub(crate) paleta: PaletaVista,
+    pub(crate) pincel: PincelVista,
+}
+
+/// A vista do pincel: a secção Dynamics aberta, as trilhas de duas pegas pintadas neste quadro
+/// (pressão, velocidade) e a pega agarrada `(trilha, pega)`.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct PincelVista {
+    pub(crate) dinamica: bool,
+    pub(crate) trilhas: [Option<Rect>; 2],
+    pub(crate) pega: Option<(usize, ph2d_editor_core::widget::RangeHandle)>,
 }
 
 /// A paleta como se pintou neste quadro: a ordem (prevista, a meio de um arrasto) e o bloco em voo.
@@ -54,6 +64,13 @@ impl PixelToolsPanelState {
     #[must_use]
     pub fn palette_drop_marker(&self) -> Option<Rect> {
         self.paleta.marca
+    }
+
+    /// A secção Dynamics está aberta — para os gates.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn dynamics_open(&self) -> bool {
+        self.pincel.dinamica
     }
 
     /// Os parâmetros do seletor de cor — de onde o anel se desenha (para os gates).

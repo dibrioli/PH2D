@@ -5,8 +5,10 @@
 use ph2d_app_pixel::Tool;
 use ph2d_app_pixel::compose::Mods;
 use ph2d_app_pixel::input::{self, Button, Press};
-use ph2d_editor_core::pixel_panel::PixelRequest;
-use ph2d_pixel_io::brush_file::BrushParams;
+use ph2d_editor_core::pixel_panel::{
+    PixelBrushAction, PixelBrushShape, PixelPatternTurn, PixelRequest,
+};
+use ph2d_pixel_io::brush_file::{BrushKind, BrushParams};
 use winit::keyboard::KeyCode;
 
 use crate::edit::{at, canvas};
@@ -201,4 +203,80 @@ fn the_slots_live_in_the_users_folder_and_survive_a_new_session() {
         "e avisa"
     );
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn pincel(p: &mut Palco, a: PixelBrushAction) -> ph2d_editor_core::pixel_panel::PixelPanelInfo {
+    p.pede(PixelRequest::Brush(a))
+}
+
+fn primeiras_celulas(p: &mut Palco, n: usize) -> Vec<Option<[u8; 4]>> {
+    match &p.app.espacos()[n].kind {
+        BrushKind::Pattern { cells, .. } => cells.iter().map(|c| c.flatten()).collect(),
+        BrushKind::Shape(_) => Vec::new(),
+    }
+}
+
+/// O menu do pincel no painel (P7b.4): virar segue no espaço DESTRANCADO do Ctrl+B e nunca no
+/// trancado; Save Brush Here, apagar, uma forma larga o padrão, recuperar devolve-o.
+#[test]
+fn the_brush_menu_turns_locks_saves_deletes_and_recalls() {
+    let mut p = palco();
+    seleciona(&mut p, (60, 50), (61, 50));
+    p.tecla(KeyCode::KeyB, true, false);
+    let i = pincel(&mut p, PixelBrushAction::Turn(PixelPatternTurn::FlipH));
+    assert_eq!(i.pattern, Some((2, 1)));
+    assert_eq!(i.brushes.len(), 1);
+    assert!(!i.brushes[0].locked);
+    ponto(&mut p, (71, 55));
+    assert_eq!((p.rgba(70, 55), p.rgba(71, 55)), (B, R), "virado");
+    assert_eq!(
+        primeiras_celulas(&mut p, 0),
+        [Some(B), Some(R)],
+        "o espaço destrancado segue o pincel"
+    );
+    let i = pincel(
+        &mut p,
+        PixelBrushAction::Turn(PixelPatternTurn::RotateRight),
+    );
+    assert_eq!(i.pattern, Some((1, 2)), "girar troca os lados");
+    pincel(&mut p, PixelBrushAction::Turn(PixelPatternTurn::RotateLeft));
+    let i = pincel(&mut p, PixelBrushAction::ToggleLock(0));
+    assert!(i.brushes[0].locked);
+    pincel(&mut p, PixelBrushAction::Turn(PixelPatternTurn::FlipH));
+    ponto(&mut p, (71, 57));
+    assert_eq!((p.rgba(70, 57), p.rgba(71, 57)), (R, B));
+    assert_eq!(
+        primeiras_celulas(&mut p, 0),
+        [Some(B), Some(R)],
+        "trancado, nunca muda"
+    );
+    let i = pincel(&mut p, PixelBrushAction::SaveHere);
+    assert_eq!(i.brushes.len(), 2);
+    assert!(i.brushes[1].locked, "Save Brush Here tranca");
+    let i = pincel(&mut p, PixelBrushAction::Delete(0));
+    assert_eq!(i.brushes.len(), 1);
+    assert_eq!(primeiras_celulas(&mut p, 0), [Some(R), Some(B)]);
+    let i = pincel(&mut p, PixelBrushAction::Shape(PixelBrushShape::Square));
+    assert_eq!(i.pattern, None, "uma forma larga o padrão");
+    assert_eq!(i.options.shape, PixelBrushShape::Square);
+    let i = pincel(&mut p, PixelBrushAction::Recall(0));
+    assert_eq!(i.pattern, Some((2, 1)), "recuperar devolve o padrão");
+}
+
+/// Um espaço de FORMA destrancado guarda o tamanho que o artista muda depois de o recuperar.
+#[test]
+fn an_unlocked_shape_slot_follows_the_size_and_a_locked_one_does_not() {
+    let mut p = palco();
+    p.opcoes(|o| o.size = 3);
+    pincel(&mut p, PixelBrushAction::SaveHere);
+    pincel(&mut p, PixelBrushAction::ToggleLock(0));
+    p.opcoes(|o| o.size = 9);
+    p.quadro();
+    assert_eq!(p.app.espacos()[0].size, 9, "destrancado: segue");
+    pincel(&mut p, PixelBrushAction::ToggleLock(0));
+    p.opcoes(|o| o.size = 4);
+    p.quadro();
+    assert_eq!(p.app.espacos()[0].size, 9, "trancado: fica");
+    pincel(&mut p, PixelBrushAction::Recall(0));
+    assert_eq!(p.app.options.size, 9);
 }

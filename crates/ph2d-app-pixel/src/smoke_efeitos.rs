@@ -93,3 +93,32 @@ pub(crate) fn stage(
     app.bg = RAMP[RAMP.len() - 1];
     Some(key)
 }
+
+/// Só para as fotos (`PH2D_PIXEL_SMOKE_GESTO`, cena 19), uma vez: `balde` = o flyout do balde
+/// aberto · `convolucao` / `hue` = o diálogo aberto · `texto` = a caixa do Text com «PH2D» — os
+/// eventos sintéticos não chegam à janela da tela virtual (`fotografa_cena.sh`).
+pub(crate) fn conduz(app: &mut PixelApp) {
+    use ph2d_editor_core::pixel_panel::{PixelEditAction as E, PixelRequest as R, PixelToolGroup};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    let (Some(19), Some(key)) = (crate::smoke::armed_level(), app.chave) else {
+        return;
+    };
+    let gesto = std::env::var("PH2D_PIXEL_SMOKE_GESTO").unwrap_or_default();
+    if gesto.is_empty() || FEITO.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    match gesto.as_str() {
+        "balde" => app.pede(R::Group(PixelToolGroup::Bucket)),
+        "convolucao" => app.pede(R::Edit(E::ConvolutionMatrix)),
+        "hue" => app.pede(R::Edit(E::HueSaturation)),
+        "texto" => {
+            app.fg = [0, 0, 0, 255];
+            crate::input::set_tool(app, Tool::Text);
+            crate::texto::abre(app, key, (26, 34));
+            let m = crate::compose::Mods::default();
+            crate::texto::tecla(app, winit::keyboard::KeyCode::KeyA, m, Some("PH2D"));
+        }
+        _ => {}
+    }
+}

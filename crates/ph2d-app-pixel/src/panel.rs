@@ -93,6 +93,7 @@ pub fn frame(
     let editing = crate::mode::editing(world, hero);
     app.chave = editing.and_then(|b| crate::input::key_of(world, b));
     crate::smoke_intervalo::conduz(hero);
+    crate::smoke_efeitos::conduz(app);
     for r in std::mem::take(&mut app.pedidos) {
         app.aplica(r);
     }

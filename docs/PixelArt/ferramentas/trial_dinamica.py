@@ -159,5 +159,138 @@ def main_stab(tag):
     json.dump(out, open(os.path.join(D, f'{tag}.json'), 'w'))
 
 
+# ── rodada 2 (02/11): XTest por ctypes no MESMO processo — cada evento com time.monotonic ──────────────
+import ctypes  # noqa: E402
+_X = ctypes.CDLL('libX11.so.6'); _T = ctypes.CDLL('libXtst.so.6')
+_X.XOpenDisplay.restype = ctypes.c_void_p
+_DPY = None
+
+
+def _dpy():
+    global _DPY
+    if _DPY is None:
+        _DPY = _X.XOpenDisplay(drv.ENV['DISPLAY'].encode())
+    return ctypes.c_void_p(_DPY)
+
+
+def xt_move(x, y):
+    _T.XTestFakeMotionEvent(_dpy(), -1, int(x), int(y), 0); _X.XFlush(_dpy())
+
+
+def xt_button(down):
+    _T.XTestFakeButtonEvent(_dpy(), 1, 1 if down else 0, 0); _X.XFlush(_dpy())
+
+
+def serp_rows(n_rows, i0=20, i1=620, j0=20, dj=40):
+    """serpentina em celulas: n_rows linhas horizontais j0, j0+dj, ... alternando o sentido"""
+    pts = []
+    for r in range(n_rows):
+        j = j0 + r * dj
+        a, b = (i0, i1) if r % 2 == 0 else (i1, i0)
+        pts += [(a, j), (b, j)]
+    return pts
+
+
+def path_events(pts_cells, segs):
+    """pts_cells = vertices em celulas; segs = [(dist_px_ate, step_px, v_px_s)] por troco de
+    distancia acumulada de TELA; devolve [(x, y, d, dt_antes)]"""
+    P = [drv.cc(i, j) for i, j in pts_cells]
+    out, d, k = [], 0.0, 0
+    x, y = P[0]
+    for (ax, ay), (bx, by) in zip(P, P[1:]):
+        L = math.hypot(bx - ax, by - ay); s = 0.0
+        while s < L:
+            while k < len(segs) - 1 and d >= segs[k][0]:
+                k += 1
+            _end, st, v = segs[k]
+            step = min(st, L - s); s += step; d += step
+            out.append((ax + (bx - ax) * s / L, ay + (by - ay) * s / L, d, step / v))
+    return P[0], out
+
+
+def stroke_t(start, ev, pauses=()):
+    """arrasto com relogio proprio: espera activa ate o instante de cada evento; pauses = {d_px: s}"""
+    xt_move(*start); time.sleep(0.3); xt_move(start[0] + 1, start[1]); time.sleep(0.15)
+    xt_move(*start); time.sleep(0.2)
+    xt_button(True); time.sleep(0.05)
+    t0 = time.monotonic(); tn = t0; log = []
+    pz = sorted(pauses)
+    for x, y, d, dt in ev:
+        tn += dt
+        if pz and d >= pz[0]:
+            tn += pauses[pz.pop(0)]
+        while time.monotonic() < tn:
+            pass
+        t = time.monotonic(); xt_move(round(x), round(y)); log.append((round(t - t0, 5), round(x), round(y), round(d, 1)))
+    time.sleep(0.15); xt_button(False); time.sleep(0.5)
+    return log
+
+
+def row_sizes(a, j, half=14):
+    """altura (celulas nao-brancas) por coluna em torno da linha j"""
+    lo, hi = max(0, j - half), min(drv.H, j + half + 1)
+    ys = [int(drv.Y0 + (q + 0.5) * drv.CELL) for q in range(lo, hi)]
+    xs = [int(drv.X0 + (i + 0.5) * drv.CELL) for i in range(drv.W)]
+    sub = a[np.ix_(ys, xs)]
+    return (sub.sum(axis=2) < 3 * 250).sum(axis=0).tolist()
+
+
+def big_setup(cw=640, ch=400, zoom='1', cell=2):
+    drv.CW, drv.CH, drv.CELL = cw, ch, cell
+    write_white(os.path.join(D, 'wbig.ase'), cw, ch)
+    _abre = drv.abre
+    drv.abre = lambda nome, zoom_=zoom: _abre('wbig.ase', zoom_)
+
+
+def run_serp(tag, segs, n_rows=10, pauses=()):
+    fresh()
+    start, ev = path_events(serp_rows(n_rows), segs)
+    log = stroke_t(start, ev, dict(pauses))
+    a = shot(f'{tag}.png')
+    rows = {20 + 40 * r: row_sizes(a, 20 + 40 * r) for r in range(n_rows)}
+    return {'tag': tag, 'segs': segs, 'pauses': list(pauses), 'n_rows': n_rows, 'cell_px': drv.CELL,
+            'log': log, 'rows': rows}
+
+
+def main_r2(tag, spec_json):
+    """spec_json = [[nome, segs, n_rows, pauses], ...]; um documento por caso, tudo em <tag>.json"""
+    big_setup()
+    out = []
+    for nome, segs, n_rows, pauses in json.loads(open(spec_json).read()):
+        r = run_serp(f'{tag}_{nome}', [tuple(s) for s in segs], n_rows, [tuple(p) for p in pauses])
+        out.append(r)
+        json.dump(out, open(os.path.join(D, f'{tag}.json'), 'w'))
+        mx = max(max(v) for v in r['rows'].values())
+        print(nome, 'events', len(r['log']), 'wall', r['log'][-1][0], 'max', mx, flush=True)
+
+
+def run_rows(tag, specs):
+    """ate 10 arrastos RECTOS por documento (linhas j = 20 + 40 k, i 20 -> 620): a serpentina nao serve
+    porque a inversao de sentido zera o filtro (medido: cada volta recomeca em 1). spec = {'segs':
+    [(d_ate, step, v)], 'pauses': [(d, s)]}"""
+    fresh()
+    out = []
+    for k, sp in enumerate(specs):
+        j = 20 + 40 * k
+        start, ev = path_events([(20, j), (620, j)], [tuple(x) for x in sp['segs']])
+        log = stroke_t(start, ev, {d: z for d, z in sp.get('pauses', [])})
+        out.append(dict(sp, row=j, log=log))
+    a = shot(f'{tag}.png')
+    for o in out:
+        o['read'] = row_sizes(a, o['row'])
+    return out
+
+
+def main_r2rows(tag, spec_json):
+    """spec_json = {nome_doc: [spec, ...]}; tudo em <tag>.json"""
+    big_setup()
+    res = {}
+    for nome, specs in json.loads(open(spec_json).read()).items():
+        res[nome] = run_rows(f'{tag}_{nome}', specs)
+        json.dump(res, open(os.path.join(D, f'{tag}.json'), 'w'))
+        for o in res[nome]:
+            print(nome, o.get('name'), 'wall', o['log'][-1][0], o['read'][20:621:20], flush=True)
+
+
 if __name__ == '__main__' and len(sys.argv) > 2:
     globals()['main_' + sys.argv[2]](*sys.argv[3:])

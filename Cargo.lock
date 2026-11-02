@@ -10205,6 +10205,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-text"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "skrifa",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [

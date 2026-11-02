@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-pixel-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O texto do Pixel Art (P8 item 8): «que células acende um texto?». Fontes de pixel (BDF/HEX/FNT/FON,
+# porte do MVP W27) e fontes do sistema (contorno do skrifa + rasterizador próprio por célula).
+[dependencies]
+# A MESMA versão do `ph2d-vector-font`: duas versões do skrifa não partilham o `FontRef`.
+skrifa = "0.44.0"
+# NFC antes do layout ("a" + til combinante acha o "ã" pré-composto).
+unicode-normalization = "0.1.26"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

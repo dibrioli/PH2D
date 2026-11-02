@@ -11,7 +11,7 @@ use ph2d_editor_core::pixel_panel::{
 use ph2d_pixel_io::brush_file::{BrushKind, BrushParams};
 use winit::keyboard::KeyCode;
 
-use crate::edit::{at, canvas};
+use crate::comum::{at, canvas};
 use crate::selecao::Palco;
 
 const R: [u8; 4] = [255, 0, 0, 255];

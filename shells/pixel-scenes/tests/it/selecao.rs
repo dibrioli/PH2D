@@ -25,7 +25,7 @@ use ph2d_pixel_core::{Rect, Sprite};
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{PPM, WINDOW, at, canvas, spawn_root};
+use crate::comum::{PPM, WINDOW, at, canvas, spawn_root};
 
 const SHIFT: Mods = Mods {
     alt: false,

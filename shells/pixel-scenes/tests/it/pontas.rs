@@ -15,9 +15,9 @@ use ph2d_pixel_core::fill::BucketSample;
 use ph2d_pixel_core::selection::{self, Wand};
 use winit::keyboard::KeyCode;
 
-use crate::edit::spawn_root;
+use crate::comum::Mesa;
+use crate::comum::spawn_root;
 use crate::selecao::Palco;
-use crate::viva::Mesa;
 
 /// 12 px de ecrã para fora do meio de um lado: além da alça (6 px), dentro da zona de inclinar.
 const FORA_PX: f32 = 12.0;
@@ -239,7 +239,7 @@ fn scene_15_shows_a_skewed_frame_two_layers_a_clip_and_the_flyout_in_one_row() {
         .mode
         .enter(bits, ph2d_editor_core::object_mode::ObjectMode::Draw);
     let mut cam = ph2d_render::Camera2d::default();
-    let (w, ppm) = (crate::edit::WINDOW, crate::edit::PPM);
+    let (w, ppm) = (crate::comum::WINDOW, crate::comum::PPM);
     app.frame(&mut sim, &mut cam, w, ppm, Some(bits), spawn_root);
     let mut toasts = ph2d_editor_core::ToastQueue::new();
     let info = ph2d_app_pixel::panel::frame(&mut app, sim.world(), &mut hero, &mut toasts);

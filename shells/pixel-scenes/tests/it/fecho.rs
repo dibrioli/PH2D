@@ -9,7 +9,7 @@ use ph2d_editor_core::pixel_panel::{PixelRequest, PixelTransformField as F};
 use ph2d_host::{PointerButton, PointerKind};
 use winit::keyboard::KeyCode;
 
-use crate::edit::{PPM, WINDOW, at, spawn_root};
+use crate::comum::{PPM, WINDOW, at, spawn_root};
 use crate::selecao::Palco;
 
 fn ponteiro(p: &mut Palco, k: PointerKind, b: PointerButton, c: (i32, i32), free: bool) -> Pointer {

@@ -1,14 +1,8 @@
 mod ajustes;
 mod camadas;
 mod catalogo;
-mod cena18;
 mod desenho;
-mod dinamica;
 mod edit;
-mod fecho;
 mod formas;
 mod painel_e_dialogo;
-mod pincel;
-mod pontas;
-mod selecao;
 mod viva;

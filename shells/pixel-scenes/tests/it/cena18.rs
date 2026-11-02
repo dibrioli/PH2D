@@ -11,7 +11,7 @@ use ph2d_editor_core::pixel_panel::{
 use ph2d_host::{PointerButton, PointerKind};
 use winit::keyboard::KeyCode;
 
-use crate::edit::{at, canvas};
+use crate::comum::{at, canvas};
 use crate::selecao::Palco;
 
 const MS: u128 = 1_000_000;

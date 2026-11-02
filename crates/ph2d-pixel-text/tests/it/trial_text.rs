@@ -73,8 +73,8 @@ fn report(rows: &[(String, usize, usize, u8, u32)]) -> String {
 
 /// Mono (as omissões do Aseprite), MEDIDO em 02/11, na ordem Sans·Sans Mono·Serif × 8·12·16. Os 4 a
 /// 16 são a última linha da barriga do «g»: o Trial corta a caixa 17 linhas abaixo da âncora (a
-/// FreeType mono hintada desenha-a). Os 2 de Sans 8 são cantos do «g» que o nosso dropout acende e a
-/// FreeType não (stubs) — os mesmos 2 do gate `freetype_oracle`.
+/// FreeType mono hintada desenha-a). Os 2 de Sans 8 são cantos do «g» que acendemos e a FreeType não
+/// — empates de centro sobre a curva, não dropout — os mesmos 2 do gate `freetype_oracle`.
 const MEASURED_MONO: [usize; 9] = [2, 0, 4, 0, 0, 4, 0, 0, 4];
 
 #[test]

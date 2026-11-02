@@ -1,8 +1,8 @@
 //! Fontes de contorno (TTF/OTF do sistema): contorno pelo `skrifa`, rasterizador próprio por célula.
 //!
-//! - **Mono**: a célula acende se o CENTRO dela está dentro do contorno (regra não-zero) — a lei
-//!   publicada do rasterizador mono da FreeType; conferida contra o oráculo
-//!   (`tests/fixtures/oracle_freetype_mono.json`).
+//! - **Mono**: a célula acende se o CENTRO dela está dentro do contorno (regra não-zero), com o
+//!   controlo de dropout do `SCANTYPE` ([`Dropout`]: o que a fonte pede no `prep` hintado, a omissão do
+//!   `FT_Outline` sem hinting); conferido contra o oráculo (`tests/fixtures/oracle_freetype_mono.json`).
 //! - **AA**: alfa = área coberta da célula (acumulação de área assinada por aresta).
 //! - **Hinting** (omissão, como no Aseprite): o contorno passa pelo interpretador TrueType do `skrifa`
 //!   (alvo Mono no Mono, Smooth Normal no AA — os alvos da FreeType); o avanço é o ajustado por ele.
@@ -36,6 +36,8 @@ const FLATTEN_STEPS: usize = 16;
 #[derive(Default)]
 struct Flatten {
     segs: Vec<[f32; 4]>,
+    /// Índice do primeiro segmento de cada contorno (o controlo de stubs anda pelo contorno).
+    contours: Vec<usize>,
     start: (f32, f32),
     cur: (f32, f32),
 }
@@ -52,6 +54,9 @@ impl Flatten {
 impl OutlinePen for Flatten {
     fn move_to(&mut self, x: f32, y: f32) {
         self.close();
+        if self.contours.last() != Some(&self.segs.len()) {
+            self.contours.push(self.segs.len());
+        }
         self.start = (x, y);
         self.cur = (x, y);
     }
@@ -60,8 +65,9 @@ impl OutlinePen for Flatten {
     }
     fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
         let (x0, y0) = self.cur;
-        for i in 1..=FLATTEN_STEPS {
-            let t = i as f32 / FLATTEN_STEPS as f32;
+        let steps = FLATTEN_STEPS;
+        for i in 1..=steps {
+            let t = i as f32 / steps as f32;
             let u = 1.0 - t;
             self.line(
                 u * u * x0 + 2.0 * u * t * cx + t * t * x,
@@ -71,8 +77,9 @@ impl OutlinePen for Flatten {
     }
     fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
         let (x0, y0) = self.cur;
-        for i in 1..=FLATTEN_STEPS {
-            let t = i as f32 / FLATTEN_STEPS as f32;
+        let steps = FLATTEN_STEPS;
+        for i in 1..=steps {
+            let t = i as f32 / steps as f32;
             let u = 1.0 - t;
             let (a, b, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
             self.line(
@@ -181,7 +188,12 @@ pub fn rasterize_glyph(
     let cover = if antialias {
         area_cover(&segs, w, h)
     } else {
-        center_cover(&segs, w, h)
+        let mode = if hint.is_some() {
+            font_dropout(font, px)
+        } else {
+            Dropout::FREETYPE_DEFAULT
+        };
+        center_cover(&segs, &pen.contours, w, h, mode)
     };
     let g = GlyphCells {
         left: x0,
@@ -198,26 +210,117 @@ pub fn rasterize_glyph(
     })
 }
 
-/// Os vãos «dentro» (não-zero) da linha de varrimento `c` (eixo 0 = linhas, 1 = colunas).
+/// Controlo de «dropout» do Mono, nos termos da instrução TrueType `SCANTYPE` (Apple TrueType
+/// Reference Manual / OpenType spec): o vão entre duas transições que não cobre centro nenhum acende
+/// uma célula — a de baixo/esquerda (simples) ou a mais perto do meio do vão (smart) —, e os modos
+/// «sem stubs» não o fazem quando as duas arestas não seguem até às linhas de varrimento vizinhas.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dropout {
+    Off,
+    Simple { stubs: bool },
+    Smart { stubs: bool },
+}
+
+impl Dropout {
+    /// Sem hinting a fonte não corre o `prep`: a omissão documentada do `FT_Outline` (sem
+    /// `FT_OUTLINE_SMART_DROPOUTS` nem `FT_OUTLINE_INCLUDE_STUBS`) = simples, sem stubs.
+    pub const FREETYPE_DEFAULT: Dropout = Dropout::Simple { stubs: false };
+
+    /// `SCANTYPE n` (os valores da especificação; 3 e os desconhecidos = sem controlo).
+    pub fn from_scantype(n: i32) -> Dropout {
+        match n {
+            0 => Dropout::Simple { stubs: true },
+            1 => Dropout::Simple { stubs: false },
+            4 => Dropout::Smart { stubs: true },
+            5 => Dropout::Smart { stubs: false },
+            _ => Dropout::Off,
+        }
+    }
+}
+
+/// `SCANCTRL` (especificação): liga o controlo para `ppem` (sem rotação nem esticamento).
+fn scanctrl_on(flags: i32, ppem: u32) -> bool {
+    let threshold = flags & 0xFF;
+    let small = threshold == 0xFF || ppem as i32 <= threshold;
+    if threshold == 0 {
+        return false;
+    }
+    let mut on = flags & 0x100 != 0 && small;
+    if flags & 0x800 != 0 && !small {
+        on = false;
+    }
+    on
+}
+
+/// O modo de dropout que a fonte escolhe no `prep` hintado a `ppem`. Lê o PRÓLOGO do `prep` — a
+/// sequência inicial só de empilhamentos, `SCANCTRL` e `SCANTYPE`, a forma que as DejaVu usam (`PUSHW
+/// 356; SCANCTRL; SCANTYPE` com o 1 empilhado antes: ligado até 100 ppem, simples sem stubs). Fora
+/// do prólogo o estado gráfico não se sabe sem o interpretador: fica a omissão da especificação
+/// (`scan_control` falso = sem controlo).
+pub fn font_dropout(font: &FontRef<'_>, ppem: u32) -> Dropout {
+    let Some(prep) = font.table_data(skrifa::Tag::new(b"prep")) else {
+        return Dropout::Off;
+    };
+    let code = prep.as_bytes();
+    let (mut stack, mut pc) = (Vec::<i32>::new(), 0usize);
+    let (mut control, mut kind) = (false, 0i32);
+    let byte = |i: usize| code.get(i).copied();
+    while let Some(op) = byte(pc) {
+        let (n, words, start) = match op {
+            0x40 => (byte(pc + 1).map_or(0, usize::from), false, pc + 2),
+            0x41 => (byte(pc + 1).map_or(0, usize::from), true, pc + 2),
+            0xB0..=0xB7 => (usize::from(op - 0xAF), false, pc + 1),
+            0xB8..=0xBF => (usize::from(op - 0xB7), true, pc + 1),
+            0x85 | 0x8D => {
+                let Some(v) = stack.pop() else { break };
+                if op == 0x85 {
+                    control = scanctrl_on(v, ppem);
+                } else {
+                    kind = v;
+                }
+                pc += 1;
+                continue;
+            }
+            _ => break,
+        };
+        let size = if words { 2 } else { 1 };
+        if code.len() < start + n * size {
+            break;
+        }
+        for k in 0..n {
+            let at = start + k * size;
+            stack.push(if words {
+                i32::from(i16::from_be_bytes([code[at], code[at + 1]]))
+            } else {
+                i32::from(code[at])
+            });
+        }
+        pc = start + n * size;
+    }
+    if control {
+        Dropout::from_scantype(kind)
+    } else {
+        Dropout::Off
+    }
+}
+
+/// Os vãos «dentro» (não-zero) da linha de varrimento `c` (eixo 0 = linhas, 1 = colunas), com os
+/// segmentos das duas transições.
 fn spans(
     segs: &[[f32; 4]],
     axis: usize,
     c: f32,
-    xs: &mut Vec<(f32, i32)>,
-    out: &mut Vec<(f32, f32)>,
+    xs: &mut Vec<(f32, i32, usize)>,
+    out: &mut Vec<(f32, f32, usize, usize)>,
 ) {
     xs.clear();
     out.clear();
-    for s in segs {
-        let (u0, v0, u1, v1) = if axis == 0 {
-            (s[0], s[1], s[2], s[3])
-        } else {
-            (s[1], s[0], s[3], s[2])
-        };
+    for (i, s) in segs.iter().enumerate() {
+        let (u0, v0, u1, v1) = axis_seg(s, axis);
         let dir = if v0 < v1 { 1 } else { -1 };
         let (lo, hi) = if v0 < v1 { (v0, v1) } else { (v1, v0) };
         if lo <= c && c < hi {
-            xs.push((u0 + (c - v0) / (v1 - v0) * (u1 - u0), dir));
+            xs.push((u0 + (c - v0) / (v1 - v0) * (u1 - u0), dir, i));
         }
     }
     xs.sort_by(|p, q| p.0.total_cmp(&q.0));
@@ -225,22 +328,78 @@ fn spans(
     for k in 0..xs.len() {
         wind += xs[k].1;
         if wind != 0 && k + 1 < xs.len() {
-            out.push((xs[k].0, xs[k + 1].0));
+            out.push((xs[k].0, xs[k + 1].0, xs[k].2, xs[k + 1].2));
         }
     }
 }
 
-/// Mono: o centro da célula dentro (não-zero); e o vão que não cobre centro nenhum acende uma célula
-/// (controlo de «dropout», nos dois sentidos — o traço fino não some).
-fn center_cover(segs: &[[f32; 4]], w: u32, h: u32) -> Vec<u8> {
+fn axis_seg(s: &[f32; 4], axis: usize) -> (f32, f32, f32, f32) {
+    if axis == 0 {
+        (s[0], s[1], s[2], s[3])
+    } else {
+        (s[1], s[0], s[3], s[2])
+    }
+}
+
+/// O vão da linha `c` entre as transições nos segmentos `i` e `j` é um «stub» se o contorno vai de uma
+/// à outra sem cruzar nenhuma linha de varrimento vizinha (`c ± 1`) nem outra vez a própria `c`: as
+/// arestas não «continuam a cruzar outras linhas nos dois sentidos» (regra 4 do `SCANTYPE`).
+fn is_stub(segs: &[[f32; 4]], contours: &[usize], axis: usize, c: f32, i: usize, j: usize) -> bool {
+    let k0 = contours.partition_point(|&s| s <= i) - 1;
+    let (first, end) = (
+        contours[k0],
+        contours.get(k0 + 1).copied().unwrap_or(segs.len()),
+    );
+    let crosses = |lo: f32, hi: f32, l: f32| lo <= l && l < hi;
+    let neighbour = |a: f32, b: f32| {
+        let (lo, hi) = (a.min(b), a.max(b));
+        crosses(lo, hi, c - 1.0) || crosses(lo, hi, c + 1.0)
+    };
+    let (_, v0, _, v1) = axis_seg(&segs[i], axis);
+    for forward in [true, false] {
+        // O resto do segmento `i`, da transição até à ponta, no sentido do passeio.
+        if neighbour(c, if forward { v1 } else { v0 }) {
+            continue;
+        }
+        let mut k = i;
+        loop {
+            k = if forward {
+                if k + 1 == end { first } else { k + 1 }
+            } else if k == first {
+                end - 1
+            } else {
+                k - 1
+            };
+            if k == i {
+                break;
+            }
+            let (_, a, _, b) = axis_seg(&segs[k], axis);
+            let (lo, hi) = (a.min(b), a.max(b));
+            if crosses(lo, hi, c) {
+                if k == j {
+                    return true;
+                }
+                break;
+            }
+            if neighbour(a, b) {
+                break;
+            }
+        }
+    }
+    false
+}
+
+/// Mono: o centro da célula dentro (não-zero; regras 1 e 2), e o dropout de `mode` nos dois sentidos.
+fn center_cover(segs: &[[f32; 4]], contours: &[usize], w: u32, h: u32, mode: Dropout) -> Vec<u8> {
     let mut out = vec![0u8; (w * h) as usize];
     let (mut xs, mut sp) = (Vec::new(), Vec::new());
     let mut drops: Vec<(u32, u32)> = Vec::new();
     for axis in 0..2 {
         let (lines, len) = if axis == 0 { (h, w) } else { (w, h) };
         for line in 0..lines {
-            spans(segs, axis, line as f32 + 0.5, &mut xs, &mut sp);
-            for &(ua, ub) in &sp {
+            let c = line as f32 + 0.5;
+            spans(segs, axis, c, &mut xs, &mut sp);
+            for &(ua, ub, sa, sb) in &sp {
                 let (e1, e2) = ((ua - 0.5).ceil(), (ub - 0.5).floor());
                 if e1 <= e2 {
                     if axis == 0 {
@@ -252,9 +411,22 @@ fn center_cover(segs: &[[f32; 4]], w: u32, h: u32) -> Vec<u8> {
                     }
                     continue;
                 }
-                // Dropout SIMPLES (medido contra o oráculo: 40 células diferentes; o «smart», pelo meio
-                // do vão, deu 98). Na FreeType y sobe: a «de baixo» nas colunas é a `e1` em y para baixo.
-                let pick = if axis == 0 { e2 } else { e1 };
+                let (smart, stubs) = match mode {
+                    Dropout::Off => continue,
+                    Dropout::Simple { stubs } => (false, stubs),
+                    Dropout::Smart { stubs } => (true, stubs),
+                };
+                if !stubs && is_stub(segs, contours, axis, c, sa, sb) {
+                    continue;
+                }
+                // Simples: na FreeType y sobe — a «de baixo» nas colunas é a `e1` em y para baixo.
+                let pick = if smart {
+                    (0.5 * (ua + ub)).floor()
+                } else if axis == 0 {
+                    e2
+                } else {
+                    e1
+                };
                 let other = if pick == e1 { e2 } else { e1 };
                 let pick = if pick < 0.0 {
                     e1

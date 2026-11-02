@@ -85,9 +85,11 @@ fn report(rows: &[(String, usize, usize, usize)]) -> String {
 }
 
 /// Células diferentes por caso, na ordem do fixture, MEDIDAS em 02/11 (FreeType 2.15). Não é o alvo
-/// (o alvo é zero): é a catraca — melhorar ou piorar obriga a reescrever esta linha. Os 40 restos são
-/// pés de serifa (os «stubs» que a FreeType exclui do dropout) e hastes mais finas que uma célula.
-const MEASURED_DIFF: [usize; 18] = [3, 0, 1, 0, 1, 0, 7, 8, 0, 0, 2, 0, 0, 18, 0, 0, 0, 0];
+/// (o alvo é zero): é a catraca — melhorar ou piorar obriga a reescrever esta linha. 40 → 27 com o
+/// dropout simples SEM stubs (a omissão do `FT_Outline`; com stubs 40, smart sem stubs 68). Restam a
+/// barra do «A» Sans 8 (a FreeType acende 3, nós 0) e as hastes do «H»/«D» Sans Mono 8 mais finas que
+/// uma célula, que a FreeType põe uma coluna à direita da «esquerda» do dropout simples.
+const MEASURED_DIFF: [usize; 18] = [3, 0, 1, 0, 0, 0, 3, 0, 1, 1, 1, 0, 0, 17, 0, 0, 0, 0];
 
 #[test]
 fn freetype_mono_unhinted_matches_cell_for_cell() {
@@ -102,8 +104,10 @@ fn freetype_mono_unhinted_matches_cell_for_cell() {
     );
 }
 
-/// Hinting pelo interpretador TrueType do `skrifa` (alvo Mono), MEDIDO em 02/11: 5 células em 18 casos,
-/// todas de dropout (cantos do «g»/«D» a 8 px que acendemos a mais; um ponto do «P» Serif 12 a menos).
+/// Hinting pelo interpretador TrueType do `skrifa` (alvo Mono), MEDIDO em 02/11: 5 células em 18 casos.
+/// O dropout que a DejaVu pede (`SCANTYPE 1`, simples sem stubs) não dispara em nenhuma delas: são
+/// empates de regra 1 — nos cantos do «g»/«D» a 8 px a curva passa a < 0,01 célula do centro (no «g»
+/// 0,495 contra 0,5) e a FreeType decide o empate ao contrário de nós; o «P» Serif 12 idem, a menos.
 const MEASURED_HINTED_DIFF: [usize; 18] = [2, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[test]

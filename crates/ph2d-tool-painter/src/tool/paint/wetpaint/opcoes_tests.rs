@@ -330,10 +330,20 @@ fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
     t.set_wet_largura_crua(1.0);
     // A tinta CHEIA: o caso do 4.º smoke do dono (o Wet Round de então, pigmento 800). Com o pigmento do
     // Rebelle (78) a tinta clara tem grão abaixo da mancha (`SS0`) e o miolo molhado amacia −10 % (05 §4b).
-    t.paint
-        .wetpaint
-        .knobs
-        .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
+    // Na lei única o depósito lê a receita (E4 `7a4bc540b7`: φ e h; E10 `e8f35b5710`: Dilution e Volume µm, o
+    // `PigmentPerDab` Hidden). O pigmento 800 da lei velha entra pelas DUAS migrações exactas que os presets fizeram
+    // (`migra_da_lei_velha` → `migra_para_controlos`): a mesma φ e o mesmo h que a cena do 4.º smoke pousava.
+    {
+        use ph2d_wet_paint::painter::receita::{migra_da_lei_velha, migra_para_controlos};
+        use ph2d_wet_paint::tuning::Knob;
+        let k = &mut t.paint.wetpaint.knobs;
+        k.set(Knob::PigmentPerDab, 800.0);
+        let (wpd, agua) = (k.get(Knob::WaterPerDab), k.water);
+        let (p, carga) = migra_da_lei_velha(800.0, wpd, agua, 1.0);
+        let (diluicao, volume) = migra_para_controlos(p, wpd, agua, carga, 1.0);
+        k.set(Knob::Dilution, diluicao);
+        k.set(Knob::Volume, volume);
+    }
     t.paint.wetpaint.tilt_on = false;
     t.paint.wetpaint.smooth_edges = forca;
     let cp = |x: f32, y: f32, phase| CanvasPointer {

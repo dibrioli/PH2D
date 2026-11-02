@@ -177,10 +177,11 @@ fn the_stroke_chip_opens_the_stroke_panel_under_the_bar() {
     let painel = hero.store.panel_rect(ids::VECTOR_PANEL);
     let dentro_do_painel =
         |r: Rect| painel.is_some_and(|p| r.x >= p.x - 0.5 && r.x + r.w <= p.x + p.w + 0.5);
-    // O CONTROLO: fechado, a ponta mora no painel docado (e só lá).
+    // O CONTROLO: fechado, a ponta nunca pinta fora do painel docado. ⚠️ F44 (UIUX, 01/11): Cap e
+    // Join moram no «Stroke settings» atrás do ⚙ da linha, logo sem ele aberto a ponta nem regista.
     let antes = hero.hit_index.rect_for(VECTOR_CAP_ROUND);
     assert!(
-        antes.is_some_and(dentro_do_painel),
+        antes.is_none_or(dentro_do_painel),
         "controlo: com o painel do traço fechado a ponta devia estar no painel ({antes:?} × {painel:?})"
     );
 
@@ -305,6 +306,7 @@ fn linhas_dentro(hero: &HeroScreen, pop: Rect) -> Vec<NodeId> {
 /// não está registada; a roda leva-o até à última. O CONTROLO: a janela baixa transborda mesmo.
 #[test]
 fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
+    const ALTURA_BAIXA: f32 = HERO_VIEWPORT_H * 0.42;
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     ph2d_panel_vector::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Solid));
@@ -314,7 +316,10 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         "controlo: a ponta mora no painel do traço"
     );
 
-    let (mut hero, pop, _) = painel_do_traco_aberto(&mut ts, HERO_VIEWPORT_H * 0.5);
+    // ⚠️ F44 (UIUX, 01/11): o painel do traço encolheu para 377 px e cabe em meia janela (medido) —
+    // a janela baixa é a de 0,42, onde ele transborda de novo. ⚠️ ABERTO: a ⅓ duas linhas ficam
+    // clicáveis fora do painel depois de rolar (integ 02/11) — não é a régua desta altura.
+    let (mut hero, pop, _) = painel_do_traco_aberto(&mut ts, ALTURA_BAIXA);
     let id = ph2d_panel_vector::ids::VECTOR_BAR_STROKE;
     let region = hero.last_layout.expect("layout").popover_region();
     assert!(
@@ -367,7 +372,7 @@ fn on_a_short_window_the_stroke_panel_scrolls_inside_the_region() {
         },
         &arena,
     );
-    quadro_em(&mut hero, &mut ts, true, HERO_VIEWPORT_H * 0.5);
+    quadro_em(&mut hero, &mut ts, true, ALTURA_BAIXA);
     let rolado = hero.store.panel_scroll(id);
     assert!(
         (rolado - (conteudo - visivel)).abs() < 1.0,

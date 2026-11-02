@@ -346,24 +346,24 @@ impl Sim {
         self.pending.as_ref().map(|c| c.stage)
     }
 
-    /// O cursor do passo em voo (o undo da tinta viva fotografa-o no pen-down e repõe-no: o registo abre a meio do
-    /// passo sem o drenar, [`crate::painter::Engine::capture_history`]).
+    /// O cursor do passo em voo: o registo do histórico guarda-o ao abrir (abre a meio do passo sem o drenar,
+    /// [`crate::painter::Engine::capture_history`]) e o undo/redo do `Engine` repõe-no.
     #[must_use]
-    pub fn cursor_do_passo(&self) -> Option<StepCursor> {
+    pub(crate) fn cursor_do_passo(&self) -> Option<StepCursor> {
         self.pending.clone()
     }
 
     /// Repõe o cursor de [`Self::cursor_do_passo`].
-    pub fn repoe_cursor_do_passo(&mut self, c: Option<StepCursor>) {
+    pub(crate) fn repoe_cursor_do_passo(&mut self, c: Option<StepCursor>) {
         self.pending = c;
     }
 
     /// **Termina um passo em voo** — a porta que toda operação de CANVAS chama primeiro.
     ///
-    /// O grid entre dois estágios é intermediário: `wet_canvas`/`dry_canvas`/`fast_dry`/`clear` e o
-    /// `capture_history` do engine agem sobre a folha INTEIRA, e fazê-lo no meio de um passo
-    /// misturaria meia física com a ação. Sem passo em voo é um `if` e nada mais. (O `capture_history` já não drena: o
-    /// registo é por tiles e os estágios que faltam marcam-se nele.)
+    /// O grid entre dois estágios é intermediário: `wet_canvas`/`dry_canvas`/`fast_dry`/`clear` agem sobre a
+    /// folha INTEIRA, e fazê-lo no meio de um passo misturaria meia física com a ação. Sem passo em voo é um
+    /// `if` e nada mais. (O `capture_history` não drena: o registo é por tiles, os estágios que faltam marcam-se
+    /// nele e ele guarda o cursor, que o undo/redo do engine repõe.)
     pub fn drain_step(&mut self, g: &mut Grid, tuning: &Tuning) {
         while self.pending.is_some() {
             sim_step_stage(self, g, tuning);
@@ -474,7 +474,8 @@ pub fn sim_step(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> bool {
 ///
 /// ⚠️ **Um passo em voo é estado do `Sim`, e quem faz uma operação de CANVAS tem de drená-lo**
 /// ([`Sim::drain_step`] / `Engine::drain_step`) — o grid entre dois estágios é intermediário, e um
-/// `wet_canvas`/`dry_canvas`/`fast_dry`/`capture_history` sobre ele misturaria meia física com a ação.
+/// `wet_canvas`/`dry_canvas`/`fast_dry` sobre ele misturaria meia física com a ação. O `capture_history`
+/// NÃO drena: o registo guarda o cursor e o undo/redo repõe-no com as grades.
 pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bool> {
     let mut c = match sim.pending.take() {
         Some(c) => c,

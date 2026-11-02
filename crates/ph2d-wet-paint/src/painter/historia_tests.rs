@@ -298,3 +298,94 @@ fn historia_cow_restaura_usa_o_extra_e_zera_o_fluxo_transitorio() {
         "o fluxo transitório ficou do estado desfeito"
     );
 }
+
+/// Um traço com a água a correr e UM estágio de um passo novo em voo.
+fn com_passo_em_voo() -> Engine {
+    let mut e = Engine::new(200, 150);
+    e.sliders.water = 1.0;
+    traco(&mut e, 50.0, 50.0, 5);
+    corre(&mut e, 3);
+    assert!(e.step_stage().is_none(), "o passo completou num estágio");
+    assert!(e.sim.step_pending());
+    e
+}
+
+/// **O undo repõe o passo em voo do registo** (o `capture_history` abre a meio dele sem drenar): os estágios que
+/// faltavam correm depois do desfazer, sobre a grade do registo. Antes, só o `undo_vivo` da ferramenta o repunha —
+/// as acções de tela inteira e o pen-down do motor deixavam a grade a meio da física.
+#[test]
+fn historia_undo_repoe_o_passo_em_voo_de_cada_porta() {
+    let mut alvo = com_passo_em_voo();
+    alvo.active_grid_mut().flow_x.fill(0.0); // o restauro zera o fluxo transitório
+    alvo.active_grid_mut().flow_y.fill(0.0);
+    alvo.drain_step();
+    let alvo = hash_grid(alvo.active_grid());
+    let portas: [(&str, fn(&mut Engine)); 4] = [
+        ("wet_canvas", Engine::action_wet_canvas),
+        ("dry_canvas", Engine::action_dry_canvas),
+        ("fast_dry", Engine::action_fast_dry),
+        ("pointer_down", |e| {
+            e.pointer_down(150.0, 100.0, None);
+            e.pointer_up();
+        }),
+    ];
+    for (nome, porta) in portas {
+        let mut e = com_passo_em_voo();
+        porta(&mut e);
+        e.drain_step();
+        let feito = hash_grid(e.active_grid());
+        assert!(e.undo(), "{nome}");
+        assert!(e.sim.step_pending(), "{nome}: o undo perdeu o passo em voo");
+        e.drain_step();
+        assert_eq!(hash_grid(e.active_grid()), alvo, "{nome}: undo");
+        assert!(e.redo(), "{nome}");
+        assert!(
+            !e.sim.step_pending(),
+            "{nome}: o redo trouxe um passo alheio"
+        );
+        assert_eq!(hash_grid(e.active_grid()), feito, "{nome}: redo");
+    }
+}
+
+/// Sem nada a desfazer o undo não mexe em nada — nem no passo em voo (drenar mudava o ritmo da água).
+#[test]
+fn historia_undo_sem_registo_nao_drena() {
+    let mut e = com_passo_em_voo();
+    e.layers[e.active_layer].undo.clear();
+    let estagio = e.sim.stage_in_flight();
+    let antes = hash_grid(e.active_grid());
+    assert!(!e.undo());
+    assert_eq!(e.sim.stage_in_flight(), estagio);
+    assert_eq!(hash_grid(e.active_grid()), antes);
+}
+
+/// **O redo cobre a água dos dabs pintados com um passo em voo**: um traço longe da caixa viva com um passo em voo,
+/// um pen-down, undo, a água corre (os estágios repostos e mais), redo. O `marca_passo` não precisa da
+/// `agua_nova` reposta: todo dab alarga a caixa viva (`expand_bbox`), que é escalar do registo e volta com ele —
+/// medido: guardar e repor a `agua_nova` no registo não muda este teste.
+#[test]
+fn historia_redo_cobre_a_agua_dos_dabs_que_a_caixa_nao_viu() {
+    let mut e = Engine::new(400, 300);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 4);
+    corre(&mut e, 3);
+    assert!(e.step_stage().is_none());
+    e.pointer_down(330.0, 250.0, None);
+    for i in 0..4 {
+        e.pointer_frame(330.0 + 4.0 * f64::from(i), 250.0);
+    }
+    e.pointer_up();
+    assert!(e.sim.step_pending(), "o traço terminou o passo em voo");
+    e.pointer_down(60.0, 60.0, None);
+    e.pointer_up();
+    e.drain_step();
+    let alvo = hash_grid(e.active_grid());
+    assert!(e.undo());
+    corre(&mut e, 12);
+    assert!(e.redo());
+    assert_eq!(
+        hash_grid(e.active_grid()),
+        alvo,
+        "o redo deixou água da deriva"
+    );
+}

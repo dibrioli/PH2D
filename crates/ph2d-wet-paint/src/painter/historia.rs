@@ -5,6 +5,7 @@
 //! (o passo do sim inclusive — a água que corre depois do pointer_up entra no registo do traço).
 
 use super::*;
+use crate::grid::PassoEmVoo;
 
 /// Folga em volta de um dab: o rasto é uma janela de 123² ancorada num dab anterior, que contém o
 /// dab actual — tudo o que um dab escreve cabe em `r + 130` células dele.
@@ -20,11 +21,14 @@ impl Engine {
 
     /// Abre o registo de um passo. NÃO drena o passo em voo: drenar no pen-down mudava o ritmo da água (o lote
     /// do traço já não pousava a meio de um passo). Os estágios que faltam escrevem depois de abrir e marcam os seus
-    /// tiles nele ([`Self::marca_passo`]); o cursor do passo é estado fora das grades e quem fotografa o resto
-    /// guarda-o ([`crate::sim::Sim::cursor_do_passo`]).
+    /// tiles nele ([`Self::marca_passo`]); o que o passo guarda fora das grades ([`PassoEmVoo`]) entra no registo e
+    /// o undo repõe-no — quem chama não precisa saber.
     pub fn capture_history(&mut self) {
+        let passo = self.passo_em_voo();
         let layer = &mut self.layers[self.active_layer];
-        layer.undo.push(Registo::abre(&layer.grid));
+        let mut reg = Registo::abre(&layer.grid);
+        reg.passo = passo;
+        layer.undo.push(reg);
         if layer.undo.len() > HISTORY_DEPTH {
             layer.undo.remove(0);
         }
@@ -99,21 +103,44 @@ impl Engine {
         !self.layers[self.active_layer].redo.is_empty()
     }
 
+    /// O passo da água fora das grades, agora (o que um registo guarda ao abrir).
+    fn passo_em_voo(&self) -> PassoEmVoo {
+        PassoEmVoo {
+            cursor: self.sim.cursor_do_passo(),
+        }
+    }
+
+    /// Repõe o passo de um registo restaurado: os estágios que faltavam correm, sobre a grade dele.
+    fn repoe_passo(&mut self, p: &PassoEmVoo) {
+        self.sim.repoe_cursor_do_passo(p.cursor.clone());
+    }
+
+    /// Desfaz o último passo; sem nada a desfazer não mexe em nada (nem no ritmo da água).
     pub fn undo(&mut self) -> bool {
+        if !self.can_undo() {
+            return false;
+        }
+        // O «depois» que o redo devolve é o passo TERMINADO (o undo_vivo fotografa o resto no mesmo instante).
         self.drain_step();
+        let agora = self.passo_em_voo();
         let layer = &mut self.layers[self.active_layer];
         let Some(reg) = layer.undo.pop() else {
             return false;
         };
         // O registo estava aberto: o grid só difere da base dele nos tiles que ele guarda.
-        layer.redo.push(Registo::inverso(&layer.grid, &reg, None));
+        let mut inv = Registo::inverso(&layer.grid, &reg, None);
+        inv.passo = agora;
+        layer.redo.push(inv);
         let paper_changed = reg.restaura(&mut layer.grid, None);
         layer.desde = Some(Registo::abre(&layer.grid));
+        self.repoe_passo(&reg.passo);
         self.depois_do_restauro(paper_changed);
         true
     }
 
+    /// Refaz; o passo em voo de agora entra no registo inverso (um undo devolve-o) e o do registo é reposto.
     pub fn redo(&mut self) -> bool {
+        let agora = self.passo_em_voo();
         let layer = &mut self.layers[self.active_layer];
         let Some(reg) = layer.redo.pop() else {
             return false;
@@ -121,13 +148,15 @@ impl Engine {
         // Desde o último evento o grid andou nos tiles de `desde`; fora deles e dos do registo,
         // ele É a base do registo.
         let desde = layer.desde.take();
-        let inv = Registo::inverso(&layer.grid, &reg, desde.as_ref());
+        let mut inv = Registo::inverso(&layer.grid, &reg, desde.as_ref());
+        inv.passo = agora;
         let paper_changed = reg.restaura(&mut layer.grid, desde.as_ref());
         layer.undo.push(inv);
         if layer.undo.len() > HISTORY_DEPTH {
             layer.undo.remove(0);
         }
         layer.desde = (!layer.redo.is_empty()).then(|| Registo::abre(&layer.grid));
+        self.repoe_passo(&reg.passo);
         self.depois_do_restauro(paper_changed);
         true
     }

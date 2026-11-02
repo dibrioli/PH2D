@@ -31,8 +31,6 @@ pub(crate) struct FotoDoMotor {
     /// O fluxo do último passo: o restauro zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
     fluxo: Vec<(Vec<f32>, Vec<f32>)>,
     relogio: Relogio,
-    /// O passo em voo (o registo do pen-down abre a meio dele, sem drenar).
-    cursor: Option<ph2d_wet_paint::sim::StepCursor>,
 }
 
 /// Um passo de undo com a tinta viva de antes (e, depois de desfeito, a de depois para o redo).
@@ -43,8 +41,9 @@ pub(crate) struct PassoVivo {
     depois: Option<FotoDoMotor>,
 }
 
-/// A sessão tirada do caminho do restore, com a fotografia a devolver e o sentido (`true` = refazer).
-pub(crate) struct SessaoNoUndo(WetSession, FotoDoMotor, bool);
+/// A sessão tirada do caminho do restore, com a fotografia a devolver, o sentido (`true` = refazer) e a chave do
+/// passo.
+pub(crate) struct SessaoNoUndo(WetSession, FotoDoMotor, bool, usize);
 
 /// **O tecto das fotografias** (RAM): o mesmo orçamento da história de undo do documento
 /// ([`crate::undo::history_budget_bytes`]).
@@ -69,7 +68,6 @@ impl FotoDoMotor {
                 rewet_base: s.rewet_base,
                 semente_do_po: s.semente_do_po,
             },
-            cursor: s.cursor_do_passo(),
         }
     }
 
@@ -88,7 +86,6 @@ impl FotoDoMotor {
         s.evap_scale = r.evap_scale;
         s.rewet_base = r.rewet_base;
         s.semente_do_po = r.semente_do_po;
-        s.repoe_cursor_do_passo(self.cursor.clone());
         e.mark_dirty_full();
     }
 
@@ -177,28 +174,31 @@ impl PainterTool {
         if !pode {
             return None;
         }
-        // O «depois» é o que o redo devolve: o motor drena o passo em voo antes do undo, a fotografia também.
-        if !refaz {
-            sess.engine.drain_step();
-        }
-        let depois = (!refaz).then(|| FotoDoMotor::de(&sess.engine));
         let p = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave)?;
         let foto = if refaz {
             p.depois.take()?
         } else {
-            p.depois = depois;
             p.antes.clone()
         };
         let sess = self.paint.wetpaint.session.take()?;
-        Some(SessaoNoUndo(sess, foto, refaz))
+        Some(SessaoNoUndo(sess, foto, refaz, chave))
     }
 
     /// Depois do undo/redo: a sessão volta com o motor do passo (grades pelo histórico do motor, o resto pela
     /// fotografia), presa à tela restaurada.
     pub(crate) fn wet_volta_do_undo(&mut self, solta: SessaoNoUndo, aplicou: bool) {
-        let SessaoNoUndo(mut sess, foto, refaz) = solta;
+        let SessaoNoUndo(mut sess, foto, refaz, chave) = solta;
         if aplicou {
             sess.bring_home();
+            if !refaz {
+                // O «depois» que o redo devolve: o motor drena o passo em voo no undo, a fotografia no mesmo
+                // instante — e só quando o undo se aplica (drenar antes mudava o ritmo da água à toa).
+                sess.engine.drain_step();
+                let depois = FotoDoMotor::de(&sess.engine);
+                if let Some(p) = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave) {
+                    p.depois = Some(depois);
+                }
+            }
             let feito = if refaz {
                 sess.engine.redo()
             } else {

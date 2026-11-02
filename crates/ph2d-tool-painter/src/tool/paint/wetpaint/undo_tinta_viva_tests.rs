@@ -484,3 +484,37 @@ fn a_foto_do_passo_cabe_ate_4096() {
         );
     }
 }
+
+/// **Um undo que não se aplica não mexe no ritmo da água**: soltar a sessão para o undo e voltar com
+/// `aplicou = false` deixa o passo em voo onde estava (antes, o soltar drenava-o à cabeça).
+#[test]
+fn undo_que_nao_se_aplica_nao_drena_o_passo_em_voo() {
+    let mut t = base("Watercolor/Fluid/Wet Flat.ph2d-brush.png", [40, 60, 160]);
+    traco(&mut t, 40.0, 90.0);
+    tick(&mut t, 20);
+    traco(&mut t, 40.0, 150.0); // o 1.º traço abre a sessão: só o 2.º tem fotografia
+    t.wet_bring_home();
+    let e = &mut t
+        .paint
+        .wetpaint
+        .session
+        .as_mut()
+        .expect("a sessão viva")
+        .engine;
+    e.drain_step();
+    assert!(e.step_stage().is_none(), "o passo completou num estágio");
+    let estagio = e.sim.stage_in_flight();
+    assert!(estagio.is_some());
+    let solta = t
+        .wet_solta_para_o_undo(false)
+        .expect("o passo tem fotografia");
+    t.wet_volta_do_undo(solta, false);
+    let e = &t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão volta")
+        .engine;
+    assert_eq!(e.sim.stage_in_flight(), estagio, "o undo falhado drenou");
+}

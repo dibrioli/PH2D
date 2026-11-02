@@ -8,8 +8,9 @@
 use super::*;
 
 impl Engine {
-    /// **Termina um passo em voo** — ver [`Sim::drain_step`]. Toda operação de CANVAS (as ações
-    /// abaixo, o histórico, o undo) começa por aqui: o grid entre dois estágios é intermediário.
+    /// **Termina um passo em voo** — ver [`Sim::drain_step`]. Toda operação de CANVAS (as ações de tela
+    /// inteira, o undo) começa por aqui: o grid entre dois estágios é intermediário. O `capture_history` não:
+    /// o registo abre a meio do passo e guarda o cursor, que o undo/redo repõe.
     pub fn drain_step(&mut self) {
         if !self.sim.step_pending() {
             return;

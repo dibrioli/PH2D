@@ -269,6 +269,16 @@ pub struct Registo {
     base: Escalares,
     finos: std::collections::BTreeMap<u32, TileFino>,
     fluxo: std::collections::BTreeMap<u32, [Vec<f32>; 2]>,
+    /// O passo da água no instante em que abriu (quem o preenche e repõe é o `Engine`).
+    pub(crate) passo: PassoEmVoo,
+}
+
+/// O que o passo da água guarda FORA das grades quando um registo abre: o cursor do passo em voo. O undo/redo
+/// repõe-no com as grades — sem ele os estágios que faltavam nunca correm. (A caixa dos dabs, `agua_nova`, não
+/// entra: todo dab alarga a caixa viva, que é escalar do registo — `historia_redo_cobre_a_agua_dos_dabs_que_a_caixa_nao_viu`.)
+#[derive(Clone, Default)]
+pub(crate) struct PassoEmVoo {
+    pub(crate) cursor: Option<crate::sim::StepCursor>,
 }
 
 impl Registo {
@@ -279,6 +289,7 @@ impl Registo {
             base: Escalares::de(g),
             finos: std::collections::BTreeMap::new(),
             fluxo: std::collections::BTreeMap::new(),
+            passo: PassoEmVoo::default(),
         }
     }
 

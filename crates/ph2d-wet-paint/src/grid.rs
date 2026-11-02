@@ -609,4 +609,5 @@ pub use canvas_ops::{clear_canvas, dry_canvas, settle_composite, wet_byte_from_p
 
 #[path = "grid/snapshot.rs"]
 mod snapshot; // as fotografias do histórico (SPEC §15) — filho por LOC
+pub(crate) use snapshot::PassoEmVoo;
 pub use snapshot::{GridSnapshot, Registo, TILE, restore_grid, snapshot_grid};

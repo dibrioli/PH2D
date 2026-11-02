@@ -212,19 +212,19 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-components", 80_869),  // 79_284
     ("ph2d-app-constraints", 10_526), // 10_320
     ("ph2d-app-flip", 28_960),        // 28_393
-    ("ph2d-app-game", 2_728),         // 2_628 (GEF 19: a moldura da câmera saiu para `ph2d-camera-frame`)
-    ("ph2d-app-kanban", 32_175),      // 31_545
-    ("ph2d-app-light2d", 25_523),     // 25_023
-    ("ph2d-app-macros", 14_630),      // 14_344
-    ("ph2d-app-motion", 197_516),     // 193_644
-    ("ph2d-app-painter", 24_429),     // 23_950
-    ("ph2d-app-physics", 55_515),     // 54_427
-    ("ph2d-app-pixel", 13_424),       // 13_161
-    ("ph2d-app-planner", 5_824),      // 5_710
-    ("ph2d-app-registry-init", 799),  // 699
-    ("ph2d-app-skeleton", 11_263),    // 11_043
-    ("ph2d-app-sprite-anim", 8_352),  // 8_189
-    ("ph2d-app-vec", 93_637),         // 91_801
+    ("ph2d-app-game", 2_728), // 2_628 (GEF 19: a moldura da câmera saiu para `ph2d-camera-frame`)
+    ("ph2d-app-kanban", 32_175), // 31_545
+    ("ph2d-app-light2d", 25_523), // 25_023
+    ("ph2d-app-macros", 14_630), // 14_344
+    ("ph2d-app-motion", 197_516), // 193_644
+    ("ph2d-app-painter", 24_429), // 23_950
+    ("ph2d-app-physics", 55_515), // 54_427
+    ("ph2d-app-pixel", 13_424), // 13_161
+    ("ph2d-app-planner", 5_824), // 5_710
+    ("ph2d-app-registry-init", 799), // 699
+    ("ph2d-app-skeleton", 11_263), // 11_043
+    ("ph2d-app-sprite-anim", 8_352), // 8_189
+    ("ph2d-app-vec", 93_637), // 91_801
 ];
 
 /// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell

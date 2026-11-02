@@ -16,6 +16,7 @@ pub mod color;
 mod compose;
 pub mod convert;
 pub mod dither;
+pub mod dynamics;
 pub mod edit;
 pub mod fill;
 pub mod frames;

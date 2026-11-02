@@ -7,6 +7,8 @@ mod color_parity;
 mod dither_laws;
 mod draw_laws;
 mod draw_parity;
+mod dynamics_laws;
+mod dynamics_oracle;
 mod fast_tie;
 mod frame_laws;
 mod frames_oracle;

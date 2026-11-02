@@ -5,6 +5,8 @@
 use std::collections::BTreeMap;
 
 use crate::brush::{Brush, SplitMix32, spray_seed};
+use crate::dither::Dither;
+use crate::dynamics::Dab;
 use crate::fill::{Bucket, bucket_cells};
 use crate::ink::{self, Ink};
 use crate::op::{Op, Patch};
@@ -50,6 +52,9 @@ pub struct Stroke {
     src: BTreeMap<Cell, u32>,
     /// O cursor do 1.º carimbo (o `Destination` do padrão alinha-se aqui).
     start: Cell,
+    /// O Gradient da dinâmica: o valor de fundo, a matriz e os degraus dela que o carimbo actual
+    /// acende na cor de frente ([`Self::set_dab`]).
+    grad: Option<(u32, Dither, u32)>,
 }
 
 impl Stroke {
@@ -73,6 +78,7 @@ impl Stroke {
             fixed: BTreeMap::new(),
             src: BTreeMap::new(),
             start: (0, 0),
+            grad: None,
         }
     }
 
@@ -96,6 +102,33 @@ impl Stroke {
         self.ramp = ramp;
         self.dir = dir;
         self
+    }
+
+    /// O Gradient da dinâmica: o fundo `bg` e a matriz (o carimbo diz a fracção, [`Self::set_dab`]).
+    #[must_use]
+    pub fn with_gradient(mut self, bg: u32, dither: Dither) -> Self {
+        self.grad = Some((bg, dither, dither.lit(1.0)));
+        self
+    }
+
+    /// **O carimbo dos pontos seguintes** (a dinâmica): o tamanho e o ângulo trocam a forma (o
+    /// padrão não muda), o gradiente a fracção. O pixel-perfect só vale com o carimbo de 1.
+    pub fn set_dab(&mut self, d: Dab) {
+        let b = &mut self.paint.brush;
+        if b.pattern.is_none() && (d.size.is_some() || d.angle.is_some()) {
+            let (size, angle) = (d.size.unwrap_or(b.size), d.angle.unwrap_or(b.angle));
+            if (size, angle) != (b.size, b.angle) {
+                b.size = size;
+                b.angle = angle;
+                self.offs = b.offsets();
+                if b.diameter() != 1 {
+                    self.pp = None;
+                }
+            }
+        }
+        if let (Some(g), Some(t)) = (self.grad.as_mut(), d.gradient) {
+            g.2 = g.1.lit(t);
+        }
     }
 
     /// Começa um traço livre em `(x, y)`.
@@ -129,7 +162,9 @@ impl Stroke {
         s
     }
 
-    fn start(&mut self, sprite: &Sprite, x: i32, y: i32) {
+    /// O 1.º ponto de um traço livre feito com [`Self::new`] — depois de [`Self::set_dab`], para a
+    /// dinâmica dar o carimbo do premir.
+    pub fn start(&mut self, sprite: &Sprite, x: i32, y: i32) {
         self.last = (x, y);
         self.start = (x, y);
         self.rng = SplitMix32::new(spray_seed(0, x, y));
@@ -242,6 +277,12 @@ impl Stroke {
                     if image {
                         self.src.insert((x, y), v);
                     }
+                }
+                if let Some((bg, m, lit)) = self.grad
+                    && (pattern.is_none() || !image)
+                {
+                    let v = if m.level(x, y) < lit { self.value } else { bg };
+                    self.src.insert((x, y), v);
                 }
                 *self.cells.entry((x, y)).or_insert(0) += 1;
             } else if let Some(n) = self.cells.get_mut(&(x, y)) {

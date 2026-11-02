@@ -43,8 +43,14 @@ impl Dither {
     /// `⌊t · side²⌋` células de degrau mais baixo da matriz.
     #[must_use]
     pub fn reaches(self, x: i32, y: i32, t: f64) -> bool {
-        let n2 = f64::from(self.side() * self.side());
-        f64::from(self.level(x, y)) < (t.clamp(0.0, 1.0) * n2).floor()
+        self.level(x, y) < self.lit(t)
+    }
+
+    /// Quantos degraus da matriz a fracção `t` acende: `⌊t · side²⌋`.
+    #[must_use]
+    pub fn lit(self, t: f64) -> u32 {
+        let n2 = self.side() * self.side();
+        (t.clamp(0.0, 1.0) * f64::from(n2)).floor() as u32
     }
 }
 

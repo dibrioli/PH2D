@@ -8,8 +8,8 @@
 //! (and its linked Slider, if any). Zero allocation on the no-hold
 //! fast path.
 
-use super::super::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 use super::super::{InteractiveState, WidgetEvent, WidgetStore};
+use crate::hold_repeat::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 

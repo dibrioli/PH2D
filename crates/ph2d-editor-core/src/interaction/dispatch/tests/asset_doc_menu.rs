@@ -1,10 +1,10 @@
 //! D17 — **o botão direito num cartão de DOCUMENTO (Kanban, Quadro) abre o menu do documento**, e
 //! num prefab continua a abrir o do prefab. Antes os dois abriam o do prefab: seis itens mortos num
-//! documento e «Remove from Library» a apagá-lo.
+//! documento e «Remove from Library» a apagá-lo. Aqui, o KIND que o despacho abre; as linhas de cada
+//! kind são do `screens::hero::menu_rows` (`menu_rows_tests.rs`).
 
 use super::*;
 use crate::interaction::ContextMenuKind;
-use crate::screens::hero::menu_rows::menu_rows;
 
 const DOC: NodeId = NodeId(7_101);
 const PREFAB: NodeId = NodeId(7_102);
@@ -36,24 +36,12 @@ fn right_click(store: &mut WidgetStore, hits: &HitIndex, x: f32) -> Option<Conte
     store.context_menu().map(|r| r.kind)
 }
 
-fn row_ids(kind: ContextMenuKind) -> Vec<NodeId> {
-    menu_rows(kind).iter().map(|(id, _, _)| *id).collect()
-}
-
 /// **Mutação que deve sangrar:** abrir sempre `AssetCard` no `pointer_down_menus`.
 #[test]
 fn right_click_on_a_document_card_opens_the_document_menu_with_open_and_delete() {
     let (mut store, hits) = two_cards();
     let kind = right_click(&mut store, &hits, 5.0);
     assert_eq!(kind, Some(ContextMenuKind::AssetDocCard { cell: DOC }));
-    assert_eq!(
-        row_ids(ContextMenuKind::AssetDocCard { cell: DOC }),
-        vec![
-            crate::ids::CTX_MENU_ASSET_OPEN,
-            crate::ids::CTX_MENU_ASSET_DELETE
-        ],
-        "um documento abre-se ou apaga-se — nada de verbos de prefab"
-    );
 }
 
 /// Controle: o prefab continua com o menu dele, intacto.
@@ -62,11 +50,6 @@ fn right_click_on_a_prefab_card_still_opens_the_prefab_menu() {
     let (mut store, hits) = two_cards();
     let kind = right_click(&mut store, &hits, 105.0);
     assert_eq!(kind, Some(ContextMenuKind::AssetCard { cell: PREFAB }));
-    let rows = row_ids(ContextMenuKind::AssetCard { cell: PREFAB });
-    assert_eq!(rows.first(), Some(&crate::ids::CTX_MENU_ASSET_EDIT));
-    assert!(rows.contains(&crate::ids::CTX_MENU_ASSET_REMOVE));
-    assert!(!rows.contains(&crate::ids::CTX_MENU_ASSET_OPEN));
-    assert!(!rows.contains(&crate::ids::CTX_MENU_ASSET_DELETE));
 }
 
 /// O censo de cartões manda: painel fechado (cartões vazios) ⇒ nenhum documento sobra.

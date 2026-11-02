@@ -3,7 +3,7 @@
 use super::super::scrollbar::track_rect;
 use super::axis_bar::swap;
 use super::*;
-use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
+use crate::hold_repeat::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 
 /// A barra horizontal é a vertical com os eixos trocados: o polegar anda em `x`.
 #[test]

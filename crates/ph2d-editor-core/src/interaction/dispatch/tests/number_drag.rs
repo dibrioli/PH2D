@@ -744,7 +744,7 @@ fn number_input_body_click_without_drag_preserves_edit_mode() {
 /// then fires repeats every 30 ms.
 #[test]
 fn number_stepper_hold_repeats_after_initial_delay() {
-    use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
+    use crate::hold_repeat::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
     let (mut store, hits, rect) = number_input_setup(10.0);
     let arena = Bump::new();
     let probe = crate::widget::NumberInput::new(NodeId(77), "", 10.0);
@@ -928,7 +928,7 @@ fn set_number_value_preserves_last_committed_during_drag() {
 /// previous test minus the trailing ticks.
 #[test]
 fn number_stepper_hold_ends_on_pointer_up() {
-    use crate::interaction::drag::STEPPER_HOLD_INITIAL_DELAY_NS;
+    use crate::hold_repeat::STEPPER_HOLD_INITIAL_DELAY_NS;
     let (mut store, hits, rect) = number_input_setup(0.0);
     let arena = Bump::new();
     let probe = crate::widget::NumberInput::new(NodeId(77), "", 0.0);

@@ -107,13 +107,6 @@ pub struct NumberStepperHoldState {
     pub last_tick_ns: u128,
 }
 
-/// Initial delay (ns) before continuous-hold repeats start firing.
-/// `250 ms` — match macOS Aqua text-field stepper feel.
-pub const STEPPER_HOLD_INITIAL_DELAY_NS: u128 = 250_000_000;
-
-/// Repeat interval (ns) once the initial delay elapsed. `30 ms` —
-/// ~33 ticks per second, a comfortable fast-but-readable rate.
-pub const STEPPER_REPEAT_INTERVAL_NS: u128 = 30_000_000;
 
 /// ⭐ **O limiar de MÃO PARADA do app** — quanto o cursor tem de andar, a partir do `Down`, para
 /// o gesto deixar de poder ser um clique.

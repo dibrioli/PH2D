@@ -65,7 +65,7 @@ pub use dispatch::{
 pub use drag::{
     DRAG_RATE_X, DRAG_RATE_Y, DRAG_SHIFT_MUL, HierarchyDragState, LONG_PRESS_THRESHOLD_NS,
     NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
-    STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor, ScrubLaw,
+    ScrollbarDragAnchor, ScrubLaw,
 };
 pub use event::{DOUBLE_CLICK_WINDOW_NS, PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;

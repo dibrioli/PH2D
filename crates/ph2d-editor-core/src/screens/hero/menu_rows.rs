@@ -244,3 +244,7 @@ pub fn menu_title(kind: ContextMenuKind) -> Option<&'static str> {
         _ => return None,
     })
 }
+
+#[cfg(test)]
+#[path = "menu_rows_tests.rs"]
+mod tests;

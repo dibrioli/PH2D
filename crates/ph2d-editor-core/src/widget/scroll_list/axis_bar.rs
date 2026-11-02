@@ -2,7 +2,7 @@
 //! GEOMETRIA e tinta do [`super`]; a rolagem que ela move é a [`super::ScrollList`].
 
 use super::super::scrollbar::{delta_for_drag, is_needed, thumb_rect};
-use crate::interaction::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
+use crate::hold_repeat::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 use crate::math::safe_clamp;
 use crate::paint::fill_rounded_rect;
 use crate::paint_shapes::fill_polygon;

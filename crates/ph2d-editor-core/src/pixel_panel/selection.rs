@@ -118,6 +118,10 @@ pub enum PixelEditAction {
     Invert,
     Despeckle,
     Outline,
+    /// P8: Edit ▸ Adjustments ▸ Brightness/Contrast…, Hue/Saturation… (`Ctrl+U`), Color Curve… (`Ctrl+M`).
+    BrightnessContrast,
+    HueSaturation,
+    ColorCurve,
 }
 
 /// O menu Sprite.
@@ -214,13 +218,24 @@ pub enum PixelDialogKind {
     Invert,
     Despeckle,
     Outline,
+    BrightnessContrast,
+    HueSaturation,
+    ColorCurve,
 }
 
 impl PixelDialogKind {
     /// Um diálogo de filtro (Preview, Target, OK = UM passo)?
     #[must_use]
     pub const fn is_filter(self) -> bool {
-        matches!(self, Self::Invert | Self::Despeckle | Self::Outline)
+        matches!(
+            self,
+            Self::Invert
+                | Self::Despeckle
+                | Self::Outline
+                | Self::BrightnessContrast
+                | Self::HueSaturation
+                | Self::ColorCurve
+        )
     }
 }
 
@@ -262,6 +277,24 @@ pub enum PixelDialogChoice {
         matrix: super::PixelOutlineMatrix,
         background: super::PixelOutlineBg,
         tiled: bool,
+        channels: super::PixelChannels,
+    },
+    /// Brilho e contraste em `-100..=100`.
+    BrightnessContrast {
+        brightness: i32,
+        contrast: i32,
+        channels: super::PixelChannels,
+    },
+    /// Matiz `-180..=180`, saturação e luz/valor `-100..=100`.
+    HueSaturation {
+        mode: super::PixelHueMode,
+        hue: i32,
+        saturation: i32,
+        lightness: i32,
+        channels: super::PixelChannels,
+    },
+    ColorCurve {
+        curve: super::PixelCurve,
         channels: super::PixelChannels,
     },
 }

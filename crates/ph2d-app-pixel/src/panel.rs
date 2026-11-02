@@ -116,6 +116,10 @@ pub fn frame(
         let size = (doc.sprite.width(), doc.sprite.height());
         hero.store.open_pixel_edit_dialog(kind, size);
     }
+    let curva = hero
+        .hit_index
+        .rect_for(ph2d_editor_core::ids::PIXEL_FILTER_CURVE);
+    hero.store.drive_pixel_curve(curva);
     crate::filtros::acompanha(app, &hero.store);
     app.sincroniza_edicao(&mut hero.store, app.chave);
     if let Some(key) = app.chave {

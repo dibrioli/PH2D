@@ -33,6 +33,9 @@ pub(crate) fn menu(app: &mut PixelApp, key: u32, a: E) {
         E::Invert => Some(PixelDialogKind::Invert),
         E::Despeckle => Some(PixelDialogKind::Despeckle),
         E::Outline => Some(PixelDialogKind::Outline),
+        E::BrightnessContrast => Some(PixelDialogKind::BrightnessContrast),
+        E::HueSaturation => Some(PixelDialogKind::HueSaturation),
+        E::ColorCurve => Some(PixelDialogKind::ColorCurve),
         _ => None,
     };
     if let Some(kind) = kind {
@@ -122,7 +125,7 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
             }),
             channels,
         ),
-        _ => return None,
+        c => crate::ajustes::filtro(c)?,
     };
     let [r, g, b, a] = ch;
     let channels = Channels { r, g, b, a };
@@ -136,7 +139,8 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
         PixelDialogChoice::Invert { .. }
             | PixelDialogChoice::Despeckle { .. }
             | PixelDialogChoice::Outline { .. }
-    ) {
+    ) && crate::ajustes::filtro(c).is_none()
+    {
         return false;
     }
     app.previa_filtro = None;

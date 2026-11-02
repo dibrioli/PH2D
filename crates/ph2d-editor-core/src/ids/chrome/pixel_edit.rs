@@ -148,5 +148,7 @@ pub fn pixel_edit_dialog_owns(id: NodeId) -> bool {
         || PIXEL_EDIT_METHODS.iter().any(|(_, b, _)| *b == id)
         || id == super::PIXEL_FILTER_MEDIAN_W
         || id == super::PIXEL_FILTER_MEDIAN_H
+        || id == super::PIXEL_FILTER_CURVE
+        || super::PIXEL_FILTER_ADJUST_FIELDS.iter().any(|f| f.1 == id)
         || super::pixel_filter_buttons().any(|b| b == id)
 }

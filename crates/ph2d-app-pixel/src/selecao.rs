@@ -443,6 +443,9 @@ pub(crate) fn key(
         (KeyCode::KeyF, false, false) => pede(app, PixelRequest::Edit(E::Fill)),
         (KeyCode::KeyS, false, false) => pede(app, PixelRequest::Edit(E::Stroke)),
         (KeyCode::KeyO, false, true) => pede(app, PixelRequest::Edit(E::Outline)),
+        // P8: Adjustments ▸ Hue/Saturation (Ctrl+U), Color Curve (Ctrl+M).
+        (KeyCode::KeyU, true, false) => pede(app, PixelRequest::Edit(E::HueSaturation)),
+        (KeyCode::KeyM, true, false) => pede(app, PixelRequest::Edit(E::ColorCurve)),
         _ => return None,
     })
 }

@@ -225,6 +225,8 @@ fn sem_selecao_copia_ou_reselect_os_botoes_que_os_pedem_nao_se_pintam() {
         s[0].0, s[3].0, s[4].0, e[4].0, e[5].0, e[6].0, e[10].0, sp[0].0, sp[8].0,
         // P8: Invert… e FX ▸ Outline…/Despeckle….
         e[20].0, e[21].0, e[22].0,
+        // P8: Adjustments ▸ Brightness/Contrast…, Hue/Saturation…, Color Curve….
+        e[23].0, e[24].0, e[25].0,
     ];
     for id in sempre {
         assert!(p.rect(id).is_some(), "{id:?} devia pintar-se sempre");

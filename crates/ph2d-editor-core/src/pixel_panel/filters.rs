@@ -31,6 +31,62 @@ pub enum PixelOutlineBg {
     BackgroundColor,
 }
 
+/// Hue/Saturation: os quatro modelos do Aseprite (HSL por omissão; os «+» somam).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelHueMode {
+    #[default]
+    Hsl,
+    Hsv,
+    HslPlus,
+    HsvPlus,
+}
+
+impl PixelHueMode {
+    /// Os modelos HSV chamam «Value» à terceira barra.
+    #[must_use]
+    pub const fn is_hsv(self) -> bool {
+        matches!(self, Self::Hsv | Self::HsvPlus)
+    }
+}
+
+/// Quantos pontos interiores a curva guarda: os que a caixa do diálogo distingue ao agarrar
+/// (`widget::curve_capacity` da caixa de `DIALOG_W`, ≤ este número — o gate do diálogo confere).
+pub const PIXEL_CURVE_MAX: usize = 32;
+
+/// Color Curve: os pontos INTERIORES por `x` crescente (as pontas `(0,0)`/`(255,255)` são fixas).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelCurve {
+    n: u8,
+    pts: [(u8, u8); PIXEL_CURVE_MAX],
+}
+
+impl Default for PixelCurve {
+    fn default() -> Self {
+        Self {
+            n: 0,
+            pts: [(0, 0); PIXEL_CURVE_MAX],
+        }
+    }
+}
+
+impl PixelCurve {
+    #[must_use]
+    pub fn points(&self) -> &[(u8, u8)] {
+        &self.pts[..usize::from(self.n)]
+    }
+
+    /// Os primeiros [`PIXEL_CURVE_MAX`] pontos de `pts` (já por `x` crescente).
+    #[must_use]
+    pub fn from_points(pts: &[(u8, u8)]) -> Self {
+        let mut c = Self::default();
+        for (d, s) in c.pts.iter_mut().zip(pts) {
+            *d = *s;
+        }
+        c.n = u8::try_from(pts.len().min(PIXEL_CURVE_MAX)).unwrap_or(0);
+        c
+    }
+}
+
 /// As escolhas de um diálogo de filtro que não são campos numéricos (lembradas na sessão).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PixelFilterDialog {
@@ -44,6 +100,12 @@ pub struct PixelFilterDialog {
     pub background: PixelOutlineBg,
     /// Despeckle: a última janela da sessão.
     pub median: (u32, u32),
+    /// Adjustments: `[brilho, contraste, matiz, saturação, luz]` da última vez (OK).
+    pub adjust: [i32; 5],
+    pub hue_mode: PixelHueMode,
+    pub curve: PixelCurve,
+    /// O ponto da curva agarrado (premido sobre a caixa).
+    pub curve_grab: Option<usize>,
 }
 
 impl Default for PixelFilterDialog {
@@ -57,6 +119,10 @@ impl Default for PixelFilterDialog {
             matrix: PixelOutlineMatrix::default(),
             background: PixelOutlineBg::default(),
             median: (3, 3),
+            adjust: [0; 5],
+            hue_mode: PixelHueMode::default(),
+            curve: PixelCurve::default(),
+            curve_grab: None,
         }
     }
 }

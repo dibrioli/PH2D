@@ -167,7 +167,14 @@ impl PixelApp {
                 return;
             }
             E::NewBrush => return self.novo_pincel(key),
-            E::Fill | E::Stroke | E::Invert | E::Despeckle | E::Outline => {
+            E::Fill
+            | E::Stroke
+            | E::Invert
+            | E::Despeckle
+            | E::Outline
+            | E::BrightnessContrast
+            | E::HueSaturation
+            | E::ColorCurve => {
                 return crate::filtros::menu(self, key, a);
             }
             E::Paste => {
@@ -253,7 +260,10 @@ impl PixelApp {
             | E::Stroke
             | E::Invert
             | E::Despeckle
-            | E::Outline => None,
+            | E::Outline
+            | E::BrightnessContrast
+            | E::HueSaturation
+            | E::ColorCurve => None,
         };
         self.passo(key, op);
     }
@@ -344,7 +354,10 @@ impl PixelApp {
             // Os filtros saíram acima (`filtros::aplica`).
             PixelDialogChoice::Invert { .. }
             | PixelDialogChoice::Despeckle { .. }
-            | PixelDialogChoice::Outline { .. } => None,
+            | PixelDialogChoice::Outline { .. }
+            | PixelDialogChoice::BrightnessContrast { .. }
+            | PixelDialogChoice::HueSaturation { .. }
+            | PixelDialogChoice::ColorCurve { .. } => None,
         };
         self.passo(key, op);
     }

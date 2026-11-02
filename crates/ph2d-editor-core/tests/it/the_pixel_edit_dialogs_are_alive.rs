@@ -157,10 +157,13 @@ fn kinds() -> Vec<PixelDialogKind> {
 }
 
 /// P8: os diálogos de filtro.
-const FILTERS: [PixelDialogKind; 3] = [
+const FILTERS: [PixelDialogKind; 6] = [
     PixelDialogKind::Invert,
     PixelDialogKind::Despeckle,
     PixelDialogKind::Outline,
+    PixelDialogKind::BrightnessContrast,
+    PixelDialogKind::HueSaturation,
+    PixelDialogKind::ColorCurve,
 ];
 
 /// Os controlos de um diálogo de filtro: canais e Preview sempre; Tiled fora do Invert.
@@ -170,8 +173,18 @@ fn controlos_filtro(kind: PixelDialogKind) -> Vec<NodeId> {
         .map(|(_, id, _)| *id)
         .collect();
     v.push(ids::PIXEL_FILTER_PREVIEW);
-    if kind != PixelDialogKind::Invert {
+    if matches!(kind, PixelDialogKind::Despeckle | PixelDialogKind::Outline) {
         v.push(ids::PIXEL_FILTER_TILED);
+    }
+    if kind == PixelDialogKind::BrightnessContrast {
+        v.extend([ids::PIXEL_FILTER_BRIGHTNESS, ids::PIXEL_FILTER_CONTRAST]);
+    }
+    if kind == PixelDialogKind::HueSaturation {
+        v.extend(ids::PIXEL_FILTER_HUE_MODES.iter().map(|(_, id, _)| *id));
+        v.extend(ids::PIXEL_FILTER_ADJUST_FIELDS[2..].iter().map(|f| f.1));
+    }
+    if kind == PixelDialogKind::ColorCurve {
+        v.push(ids::PIXEL_FILTER_CURVE);
     }
     if kind == PixelDialogKind::Despeckle {
         v.extend([ids::PIXEL_FILTER_MEDIAN_W, ids::PIXEL_FILTER_MEDIAN_H]);
@@ -199,6 +212,21 @@ fn rotulos_filtro(kind: PixelDialogKind) -> Vec<&'static str> {
             "pixel.edit_dialog.width",
             "pixel.edit_dialog.height",
         ]),
+        PixelDialogKind::BrightnessContrast => v.extend([
+            "pixel.filter_dialog.brightness_contrast.title",
+            "pixel.filter_dialog.brightness",
+            "pixel.filter_dialog.contrast",
+        ]),
+        PixelDialogKind::HueSaturation => {
+            v.extend([
+                "pixel.filter_dialog.hue_saturation.title",
+                "pixel.filter_dialog.hue",
+                "pixel.filter_dialog.saturation",
+                "pixel.filter_dialog.lightness",
+            ]);
+            v.extend(ids::PIXEL_FILTER_HUE_MODES.iter().map(|(_, _, k)| *k));
+        }
+        PixelDialogKind::ColorCurve => v.push("pixel.filter_dialog.curve.title"),
         _ => {
             v.extend([
                 "pixel.filter_dialog.outline.title",
@@ -663,5 +691,119 @@ fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
         e.valor(ids::PIXEL_FILTER_MEDIAN_W),
         5.0,
         "lembrada na sessão"
+    );
+}
+
+impl Ecra {
+    /// Um premir/largar do rato em `(x, y)`, com o quadro da família (`drive_pixel_curve`) a cada
+    /// passo, como o `panel::frame` do Pixel faz.
+    fn rato(&mut self, (x, y): (f32, f32), kind: PointerKind, s: u64) {
+        let arena = Bump::new();
+        let ev = PointerEvent {
+            x,
+            y,
+            pressure: 1.0,
+            kind,
+            source: PointerSource::Mouse,
+            button: PointerButton::Primary,
+            // Segundos entre gestos: só o par do duplo-clique cai na janela dele.
+            timestamp_ns: u128::from(s) * 1_000_000_000 + u128::from(kind == PointerKind::Up),
+        };
+        let ev = self.hero.handle_pointer(ev, &arena).to_vec();
+        for e in ev {
+            self.hero.apply_event(e);
+        }
+        let caixa = self.hero.hit_index.rect_for(ids::PIXEL_FILTER_CURVE);
+        self.hero.store.drive_pixel_curve(caixa);
+        self.pinta();
+    }
+
+    fn curva(&self) -> Vec<(u8, u8)> {
+        self.hero
+            .store
+            .pixel_edit_dialog()
+            .filter
+            .curve
+            .points()
+            .to_vec()
+    }
+}
+
+/// ⭐ P8 Adjustments pelo clique real: B/C e H/S escrevem o pedido preso às faixas do Aseprite; a
+/// curva ganha um ponto no premir sobre a caixa, o arrasto move-o sem cruzar, o duplo-clique tira-o.
+#[test]
+fn the_adjustments_dialogs_reach_the_preview_and_the_curve_is_edited_by_the_mouse() {
+    let mut e = Ecra::aberto(PixelDialogKind::BrightnessContrast, (16, 16));
+    e.escreve(ids::PIXEL_FILTER_BRIGHTNESS, "-50");
+    e.escreve(ids::PIXEL_FILTER_CONTRAST, "300");
+    // Carregar noutro campo confirma o escrito (o Enter também).
+    e.carrega(ids::PIXEL_FILTER_BRIGHTNESS);
+    let quer = PixelDialogChoice::BrightnessContrast {
+        brightness: -50,
+        contrast: 100,
+        channels: [true; 4],
+    };
+    assert_eq!(
+        e.hero.store.pixel_filter_preview(),
+        Some(quer),
+        "preso a 100"
+    );
+    e.tecla(KEY_ENTER, false);
+    assert_eq!(e.pedido(), Some(quer));
+
+    let mut e = Ecra::aberto(PixelDialogKind::HueSaturation, (16, 16));
+    e.carrega(ids::PIXEL_FILTER_HUE_MODES[3].1);
+    e.escreve(ids::PIXEL_FILTER_HUE, "-400");
+    e.escreve(ids::PIXEL_FILTER_LIGHTNESS, "25");
+    e.carrega(ids::PIXEL_FILTER_HUE);
+    assert_eq!(
+        e.hero.store.pixel_filter_preview(),
+        Some(PixelDialogChoice::HueSaturation {
+            mode: ph2d_editor_core::pixel_panel::PixelHueMode::HsvPlus,
+            hue: -180,
+            saturation: 0,
+            lightness: 25,
+            channels: [true; 4],
+        })
+    );
+
+    let mut e = Ecra::aberto(PixelDialogKind::ColorCurve, (16, 16));
+    let b = e
+        .hero
+        .hit_index
+        .rect_for(ids::PIXEL_FILTER_CURVE)
+        .expect("a caixa da curva pintada");
+    let (x, y) = (b.x + b.w * 0.25, b.y + b.h * 0.25);
+    e.rato((x, y), PointerKind::Down, 0);
+    e.rato((x, y), PointerKind::Up, 0);
+    let pts = e.curva();
+    assert_eq!(pts.len(), 1, "o premir numa zona vazia acrescenta");
+    assert!(
+        pts[0].0.abs_diff(64) <= 1 && pts[0].1.abs_diff(191) <= 1,
+        "{pts:?}"
+    );
+    assert!(matches!(
+        e.hero.store.pixel_filter_preview(),
+        Some(PixelDialogChoice::ColorCurve { curve, .. }) if curve.points() == pts.as_slice()
+    ));
+    // O arrasto para lá da ponta direita prende o x antes dela.
+    let longe = (b.x + b.w * 2.0, b.y - b.h);
+    e.rato((x, y), PointerKind::Down, 10);
+    e.rato(longe, PointerKind::Move, 10);
+    e.rato(longe, PointerKind::Up, 10);
+    assert_eq!(e.curva(), vec![(254, 255)]);
+    // Duplo-clique sobre o ponto tira-o; as pontas ficam.
+    let [px, py] = ph2d_editor_core::widget::curve_to_screen(b, (254, 255));
+    // Um px para dentro da caixa (a ponta de cima é a borda dela).
+    let dentro = (px - 1.0, py + 1.0);
+    for _ in 0..2 {
+        e.rato(dentro, PointerKind::Down, 20);
+        e.rato(dentro, PointerKind::Up, 20);
+    }
+    assert!(e.curva().is_empty(), "o duplo-clique tira o ponto");
+    // A capacidade da caixa pintada cabe no tipo que a guarda.
+    assert!(
+        ph2d_editor_core::widget::curve_capacity(b)
+            <= ph2d_editor_core::pixel_panel::PIXEL_CURVE_MAX
     );
 }

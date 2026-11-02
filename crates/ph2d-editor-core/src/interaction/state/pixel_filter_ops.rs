@@ -6,8 +6,11 @@
 use super::super::WidgetStore;
 use crate::ids;
 use crate::pixel_panel::{
-    PixelDialogChoice, PixelDialogKind, PixelOutlineBg, PixelOutlineMatrix, PixelOutlinePlace,
+    PIXEL_CURVE_MAX, PixelCurve, PixelDialogChoice, PixelDialogKind, PixelHueMode, PixelOutlineBg,
+    PixelOutlineMatrix, PixelOutlinePlace,
 };
+use crate::widget;
+use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 
 impl WidgetStore {
@@ -35,12 +38,41 @@ impl WidgetStore {
                     side,
                 ),
             ],
+            PixelDialogKind::BrightnessContrast => self.adjust_fields(0..2),
+            PixelDialogKind::HueSaturation => self.adjust_fields(2..5),
             _ => Vec::new(),
         }
     }
 
+    /// Os campos de Adjustments `range` com o último valor da sessão.
+    fn adjust_fields(&self, range: std::ops::Range<usize>) -> Vec<(NodeId, f64, f64, f64)> {
+        let last = self.pixel.edit.filter.adjust;
+        ids::PIXEL_FILTER_ADJUST_FIELDS[range]
+            .iter()
+            .map(|&(k, id, lo, hi)| (id, f64::from(last[k]), f64::from(lo), f64::from(hi)))
+            .collect()
+    }
+
+    /// O valor inteiro do campo de Adjustments `k`, preso à faixa dele.
+    fn adjust_value(&self, k: usize) -> i32 {
+        let (_, id, lo, hi) = ids::PIXEL_FILTER_ADJUST_FIELDS[k];
+        let v = self.number_value(id).unwrap_or(0.0);
+        let v = if v.is_finite() { v.round() } else { 0.0 };
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "preso à faixa i32 do campo"
+        )]
+        let r = v.clamp(f64::from(lo), f64::from(hi)) as i32;
+        r
+    }
+
     /// Um campo do filtro mudou: prende-o à faixa (inteiro). `true` se é um campo do filtro.
     pub(super) fn pixel_filter_value_changed(&mut self, id: NodeId) -> bool {
+        if let Some(&(k, ..)) = ids::PIXEL_FILTER_ADJUST_FIELDS.iter().find(|f| f.1 == id) {
+            let v = self.adjust_value(k);
+            self.set_number_value(id, f64::from(v));
+            return true;
+        }
         if id != ids::PIXEL_FILTER_MEDIAN_W && id != ids::PIXEL_FILTER_MEDIAN_H {
             return false;
         }
@@ -87,6 +119,22 @@ impl WidgetStore {
                 tiled: f.tiled,
                 channels,
             },
+            PixelDialogKind::BrightnessContrast => PixelDialogChoice::BrightnessContrast {
+                brightness: self.adjust_value(0),
+                contrast: self.adjust_value(1),
+                channels,
+            },
+            PixelDialogKind::HueSaturation => PixelDialogChoice::HueSaturation {
+                mode: f.hue_mode,
+                hue: self.adjust_value(2),
+                saturation: self.adjust_value(3),
+                lightness: self.adjust_value(4),
+                channels,
+            },
+            PixelDialogKind::ColorCurve => PixelDialogChoice::ColorCurve {
+                curve: f.curve,
+                channels,
+            },
             _ => return None,
         })
     }
@@ -105,8 +153,21 @@ impl WidgetStore {
 
     /// Lembra a janela da mediana para a próxima vez (no OK).
     pub(super) fn remember_pixel_filter(&mut self, c: PixelDialogChoice) {
-        if let PixelDialogChoice::Despeckle { width, height, .. } = c {
-            self.pixel.edit.filter.median = (width, height);
+        let f = &mut self.pixel.edit.filter;
+        match c {
+            PixelDialogChoice::Despeckle { width, height, .. } => f.median = (width, height),
+            PixelDialogChoice::BrightnessContrast {
+                brightness,
+                contrast,
+                ..
+            } => f.adjust[..2].copy_from_slice(&[brightness, contrast]),
+            PixelDialogChoice::HueSaturation {
+                hue,
+                saturation,
+                lightness,
+                ..
+            } => f.adjust[2..].copy_from_slice(&[hue, saturation, lightness]),
+            _ => {}
         }
     }
 
@@ -137,5 +198,44 @@ impl WidgetStore {
 
     pub fn set_pixel_filter_background(&mut self, b: PixelOutlineBg) {
         self.pixel.edit.filter.background = b;
+    }
+
+    pub fn set_pixel_filter_hue_mode(&mut self, m: PixelHueMode) {
+        self.pixel.edit.filter.hue_mode = m;
+    }
+
+    /// **O editor de curva, a cada quadro**: com a caixa `rect` premida (activa), o premir agarra
+    /// o ponto sob o ponteiro ou acrescenta um, e o arrasto move-o; largada, solta-o.
+    pub fn drive_pixel_curve(&mut self, rect: Option<Rect>) {
+        let activo = self.active_id() == Some(ids::PIXEL_FILTER_CURVE);
+        let (Some(b), Some(p), true) = (rect, self.last_pointer(), activo) else {
+            self.pixel.edit.filter.curve_grab = None;
+            return;
+        };
+        let f = &mut self.pixel.edit.filter;
+        let mut pts = f.curve.points().to_vec();
+        let max = PIXEL_CURVE_MAX.min(widget::curve_capacity(b));
+        let grab = match f.curve_grab {
+            Some(i) => Some(i),
+            None => widget::curve_press(b, &mut pts, p, max),
+        };
+        if let Some(i) = grab {
+            widget::curve_drag(b, &mut pts, i, p);
+        }
+        f.curve_grab = grab;
+        f.curve = PixelCurve::from_points(&pts);
+    }
+
+    /// O duplo-clique na caixa da curva: tira o ponto sob o ponteiro. `true` se tirou.
+    pub fn remove_pixel_curve_point(&mut self, rect: Option<Rect>) -> bool {
+        let (Some(b), Some(p)) = (rect, self.last_pointer()) else {
+            return false;
+        };
+        let f = &mut self.pixel.edit.filter;
+        let mut pts = f.curve.points().to_vec();
+        let tirou = widget::curve_remove_at(b, &mut pts, p);
+        f.curve = PixelCurve::from_points(&pts);
+        f.curve_grab = None;
+        tirou
     }
 }

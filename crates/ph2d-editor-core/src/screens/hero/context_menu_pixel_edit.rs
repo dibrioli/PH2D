@@ -37,8 +37,17 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::Despeckle => 7,
         // Título · dentro/fora · matriz (2 filas) · fundo · Tiled · canais · Preview · botões.
         PixelDialogKind::Outline => 9,
+        // Título · Brightness · Contrast · canais · Preview · botões.
+        PixelDialogKind::BrightnessContrast => 6,
+        // Título · modelo · Hue · Saturation · Lightness/Value · canais · Preview · botões.
+        PixelDialogKind::HueSaturation => 8,
+        // Título · a caixa da curva · canais · Preview · botões.
+        PixelDialogKind::ColorCurve => 4 + CURVE_ROWS,
     }
 }
+
+/// A caixa da Color Curve ocupa estas filas.
+const CURVE_ROWS: usize = 7;
 
 pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     scene: &mut VectorScene,
@@ -87,6 +96,9 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         PixelDialogKind::Invert => "pixel.filter_dialog.invert.title",
         PixelDialogKind::Despeckle => "pixel.filter_dialog.despeckle.title",
         PixelDialogKind::Outline => "pixel.filter_dialog.outline.title",
+        PixelDialogKind::BrightnessContrast => "pixel.filter_dialog.brightness_contrast.title",
+        PixelDialogKind::HueSaturation => "pixel.filter_dialog.hue_saturation.title",
+        PixelDialogKind::ColorCurve => "pixel.filter_dialog.curve.title",
     };
     y = c.label(title, y, ColorToken::Text1);
     match d.kind {
@@ -171,9 +183,11 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
                 y = c.choices(&[(id, tr(k), m == d.method)], y);
             }
         }
-        PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
+        k if k.is_filter() => {
+            y = adjust_rows(&mut c, d, y);
             y = filter_rows(&mut c, d, y);
         }
+        _ => {}
     }
     // Cancel | OK — o OK à direita e acentuado (Enter), o Cancel à esquerda (Esc).
     let half = ((c.w - gap) * 0.5).max(1.0);
@@ -236,7 +250,10 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
             y,
         );
     }
-    if d.kind != PixelDialogKind::Invert {
+    if matches!(
+        d.kind,
+        PixelDialogKind::Despeckle | PixelDialogKind::Outline
+    ) {
         let tiled = (
             ids::PIXEL_FILTER_TILED,
             tr("pixel.filter_dialog.tiled"),
@@ -255,6 +272,54 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         f.preview,
     );
     c.choices(&[preview], y)
+}
+
+/// As filas próprias de Adjustments (P8): os campos de B/C e H/S, o modelo do H/S e a curva.
+fn adjust_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) -> f32 {
+    let f = d.filter;
+    let campos: &[(&str, NodeId)] = match d.kind {
+        PixelDialogKind::BrightnessContrast => &[
+            (
+                "pixel.filter_dialog.brightness",
+                ids::PIXEL_FILTER_BRIGHTNESS,
+            ),
+            ("pixel.filter_dialog.contrast", ids::PIXEL_FILTER_CONTRAST),
+        ],
+        PixelDialogKind::HueSaturation => {
+            let opts: Vec<_> = ids::PIXEL_FILTER_HUE_MODES
+                .iter()
+                .map(|(m, id, k)| (*id, tr(k), *m == f.hue_mode))
+                .collect();
+            y = c.choices(&opts, y);
+            let luz = if f.hue_mode.is_hsv() {
+                "pixel.filter_dialog.value"
+            } else {
+                "pixel.filter_dialog.lightness"
+            };
+            &[
+                ("pixel.filter_dialog.hue", ids::PIXEL_FILTER_HUE),
+                (
+                    "pixel.filter_dialog.saturation",
+                    ids::PIXEL_FILTER_SATURATION,
+                ),
+                (luz, ids::PIXEL_FILTER_LIGHTNESS),
+            ]
+        }
+        PixelDialogKind::ColorCurve => {
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 16")]
+            let n = CURVE_ROWS as f32;
+            let h = ROW_H * n + ph2d_tokens::control_gap_px() * (n - 1.0);
+            let b = Rect::new(c.x, y, c.w, h);
+            c.hit_index.register(ids::PIXEL_FILTER_CURVE, b);
+            crate::widget::paint_curve_editor(b, f.curve.points(), f.curve_grab, c.scene, c.theme);
+            return y + ph2d_tokens::row_pitch_px() * n;
+        }
+        _ => &[],
+    };
+    for (key, id) in campos {
+        y = c.field(key, *id, None, y);
+    }
+    y
 }
 
 struct Caixa<'a> {

@@ -49,9 +49,12 @@ impl WidgetStore {
         let (plo, phi) = pct_range(size);
         let filter_fields = self.pixel_filter_fields(kind, size);
         let fields: &[(NodeId, f64, f64, f64)] = match kind {
-            PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
-                &filter_fields
-            }
+            PixelDialogKind::Invert
+            | PixelDialogKind::Despeckle
+            | PixelDialogKind::Outline
+            | PixelDialogKind::BrightnessContrast
+            | PixelDialogKind::HueSaturation
+            | PixelDialogKind::ColorCurve => &filter_fields,
             PixelDialogKind::ColorRange => &[(
                 ids::PIXEL_EDIT_TOLERANCE,
                 f64::from(d.tolerance),
@@ -113,6 +116,8 @@ impl WidgetStore {
             let state = crate::widget::ButtonState::Normal;
             self.register(id, S::Button { state });
         }
+        self.register(ids::PIXEL_FILTER_CURVE, S::Plain);
+        self.pixel.edit.filter.curve_grab = None;
         self.context_menu = Some(ContextMenuRequest {
             x: 0.0,
             y: 0.0,
@@ -212,7 +217,12 @@ impl WidgetStore {
             return;
         }
         let choice = match d.kind {
-            PixelDialogKind::Invert | PixelDialogKind::Despeckle | PixelDialogKind::Outline => {
+            PixelDialogKind::Invert
+            | PixelDialogKind::Despeckle
+            | PixelDialogKind::Outline
+            | PixelDialogKind::BrightnessContrast
+            | PixelDialogKind::HueSaturation
+            | PixelDialogKind::ColorCurve => {
                 return;
             }
             PixelDialogKind::ColorRange => {

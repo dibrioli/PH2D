@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 23] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 26] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -249,6 +249,22 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 23] = [
         hash_node_id("pixel.edit.despeckle"),
         PixelRequest::Edit(E::Despeckle),
         "panel.pixel.edit.despeckle",
+    ),
+    // P8 (23..=25): Adjustments ▸ Brightness/Contrast…, Hue/Saturation… (Ctrl+U), Color Curve… (Ctrl+M).
+    (
+        hash_node_id("pixel.edit.brightness_contrast"),
+        PixelRequest::Edit(E::BrightnessContrast),
+        "panel.pixel.edit.brightness_contrast",
+    ),
+    (
+        hash_node_id("pixel.edit.hue_saturation"),
+        PixelRequest::Edit(E::HueSaturation),
+        "panel.pixel.edit.hue_saturation",
+    ),
+    (
+        hash_node_id("pixel.edit.color_curve"),
+        PixelRequest::Edit(E::ColorCurve),
+        "panel.pixel.edit.color_curve",
     ),
 ];
 

@@ -15,6 +15,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         .is_some_and(|r| r.kind == ContextMenuKind::PixelEditDialog);
     let id = match event {
         WidgetEvent::ValueChanged(id) if open => return hero.store.pixel_edit_value_changed(id),
+        // P8: o duplo-clique sobre um ponto da curva tira-o.
+        WidgetEvent::DoubleClick(id) if open && id == ids::PIXEL_FILTER_CURVE => {
+            let r = hero.hit_index.rect_for(id);
+            hero.store.remove_pixel_curve_point(r);
+            return true;
+        }
         WidgetEvent::Click(id) => id,
         _ => return false,
     };
@@ -64,6 +70,13 @@ fn filter_click(hero: &mut HeroScreen, id: ph2d_a11y::NodeId) -> bool {
         .find(|(_, x, _)| *x == id)
     {
         s.set_pixel_filter_background(b);
+    } else if let Some(&(m, ..)) = ids::PIXEL_FILTER_HUE_MODES
+        .iter()
+        .find(|(_, x, _)| *x == id)
+    {
+        s.set_pixel_filter_hue_mode(m);
+    } else if id == ids::PIXEL_FILTER_CURVE {
+        // O premir/arrasto da curva corre a cada quadro (`drive_pixel_curve`); o clique é dele.
     } else {
         return false;
     }

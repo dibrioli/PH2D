@@ -27,6 +27,7 @@ mod combobox;
 pub mod command_palette;
 pub mod composto;
 mod context_menu;
+mod curve_editor;
 mod date_picker;
 mod divider;
 mod drag_ghost;
@@ -176,6 +177,10 @@ pub use property_box::{
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).
+pub use curve_editor::{
+    curve_capacity, curve_drag, curve_from_screen, curve_grab_radius, curve_point_at, curve_press,
+    curve_remove_at, curve_to_screen, paint_curve_editor,
+};
 /// ⭐⭐ O losango de animação na coluna do decorator (plano 34) — a shell publica, a linha lê.
 pub use property_box::arrasto;
 pub use property_box::key_mark;

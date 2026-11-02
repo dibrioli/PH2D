@@ -55,7 +55,10 @@ impl PixelApp {
                 self.groups.open = (!aberto).then_some(g);
             }
             // P6d: um campo da forma (ou o Fill) re-cozinha a forma viva na hora.
-            PixelRequest::Options(o) => crate::viva::opcoes(self, *o),
+            PixelRequest::Options(o) => {
+                crate::viva::opcoes(self, *o);
+                crate::texto::refaz(self);
+            }
             PixelRequest::Fg(c) => self.escolhe_fg(c),
             PixelRequest::Bg(c) => self.bg = c,
             PixelRequest::Swap => {

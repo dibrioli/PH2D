@@ -608,4 +608,4 @@ pub fn space(
     true
 }
 
-pub use crate::input_teclas::{key, key_with};
+pub use crate::input_teclas::{key, key_with, text_key};

@@ -16,6 +16,20 @@ fn camada(app: &mut PixelApp, a: PixelLayerAction) -> KeyAnswer {
     KeyAnswer::Quiet
 }
 
+/// Com a caixa do Text aberta a tecla é do texto (`text` = o que ela escreveu); `None` = não há
+/// caixa no sprite em Draw e a tecla segue para os atalhos.
+pub fn text_key(
+    app: &mut PixelApp,
+    world: &ph2d_ecs::World,
+    editing: Option<u64>,
+    code: KeyCode,
+    m: Mods,
+    text: Option<&str>,
+) -> Option<KeyAnswer> {
+    editing.and_then(|bits| key_of(world, bits))?;
+    crate::texto::tecla(app, code, m, text)
+}
+
 /// [`key_with`] sem o Alt.
 pub fn key(
     app: &mut PixelApp,
@@ -91,6 +105,7 @@ pub fn key_with(
         (KeyCode::KeyD, false, false) => tool(app, Tool::Contour),
         (KeyCode::KeyD, false, true) => tool(app, Tool::Polygon),
         (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),
+        (KeyCode::KeyT, false, false) => tool(app, Tool::Text),
         (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if app.stroking() => {
             finish(app);
             KeyAnswer::Quiet

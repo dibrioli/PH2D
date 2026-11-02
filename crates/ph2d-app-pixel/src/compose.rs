@@ -164,7 +164,7 @@ impl PixelApp {
                 self.stroking()
             );
         }
-        if pressed && v.editing.is_some() && crate::texto::tecla(self, code, m, text).is_some() {
+        if pressed && input::text_key(self, v.world, v.editing, code, m, text).is_some() {
             return true;
         }
         if code == KeyCode::Space {

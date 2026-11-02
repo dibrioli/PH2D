@@ -6,4 +6,5 @@ mod desenho;
 mod edit;
 mod formas;
 mod painel_e_dialogo;
+mod texto;
 mod viva;

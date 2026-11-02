@@ -31,6 +31,8 @@ pub(crate) struct FotoDoMotor {
     /// O fluxo do último passo: o restauro zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
     fluxo: Vec<(Vec<f32>, Vec<f32>)>,
     relogio: Relogio,
+    /// O passo em voo (o registo do pen-down abre a meio dele, sem drenar).
+    cursor: Option<ph2d_wet_paint::sim::StepCursor>,
 }
 
 /// Um passo de undo com a tinta viva de antes (e, depois de desfeito, a de depois para o redo).
@@ -67,6 +69,7 @@ impl FotoDoMotor {
                 rewet_base: s.rewet_base,
                 semente_do_po: s.semente_do_po,
             },
+            cursor: s.cursor_do_passo(),
         }
     }
 
@@ -85,6 +88,7 @@ impl FotoDoMotor {
         s.evap_scale = r.evap_scale;
         s.rewet_base = r.rewet_base;
         s.semente_do_po = r.semente_do_po;
+        s.repoe_cursor_do_passo(self.cursor.clone());
         e.mark_dirty_full();
     }
 
@@ -172,6 +176,10 @@ impl PainterTool {
         };
         if !pode {
             return None;
+        }
+        // O «depois» é o que o redo devolve: o motor drena o passo em voo antes do undo, a fotografia também.
+        if !refaz {
+            sess.engine.drain_step();
         }
         let depois = (!refaz).then(|| FotoDoMotor::de(&sess.engine));
         let p = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave)?;

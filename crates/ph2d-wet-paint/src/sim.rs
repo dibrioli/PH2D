@@ -346,11 +346,24 @@ impl Sim {
         self.pending.as_ref().map(|c| c.stage)
     }
 
+    /// O cursor do passo em voo (o undo da tinta viva fotografa-o no pen-down e repõe-no: o registo abre a meio do
+    /// passo sem o drenar, [`crate::painter::Engine::capture_history`]).
+    #[must_use]
+    pub fn cursor_do_passo(&self) -> Option<StepCursor> {
+        self.pending.clone()
+    }
+
+    /// Repõe o cursor de [`Self::cursor_do_passo`].
+    pub fn repoe_cursor_do_passo(&mut self, c: Option<StepCursor>) {
+        self.pending = c;
+    }
+
     /// **Termina um passo em voo** — a porta que toda operação de CANVAS chama primeiro.
     ///
     /// O grid entre dois estágios é intermediário: `wet_canvas`/`dry_canvas`/`fast_dry`/`clear` e o
     /// `capture_history` do engine agem sobre a folha INTEIRA, e fazê-lo no meio de um passo
-    /// misturaria meia física com a ação. Sem passo em voo é um `if` e nada mais.
+    /// misturaria meia física com a ação. Sem passo em voo é um `if` e nada mais. (O `capture_history` já não drena: o
+    /// registo é por tiles e os estágios que faltam marcam-se nele.)
     pub fn drain_step(&mut self, g: &mut Grid, tuning: &Tuning) {
         while self.pending.is_some() {
             sim_step_stage(self, g, tuning);

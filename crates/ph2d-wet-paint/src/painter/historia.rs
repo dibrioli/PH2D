@@ -18,8 +18,11 @@ impl Engine {
     // History (SPEC §15): per-layer undo/redo ring, depth 6.
     // -----------------------------------------------------------------------
 
+    /// Abre o registo de um passo. NÃO drena o passo em voo: drenar no pen-down mudava o ritmo da água (o lote
+    /// do traço já não pousava a meio de um passo). Os estágios que faltam escrevem depois de abrir e marcam os seus
+    /// tiles nele ([`Self::marca_passo`]); o cursor do passo é estado fora das grades e quem fotografa o resto
+    /// guarda-o ([`crate::sim::Sim::cursor_do_passo`]).
     pub fn capture_history(&mut self) {
-        self.drain_step();
         let layer = &mut self.layers[self.active_layer];
         layer.undo.push(Registo::abre(&layer.grid));
         if layer.undo.len() > HISTORY_DEPTH {

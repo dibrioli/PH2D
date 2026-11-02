@@ -32,6 +32,7 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_FILLET);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER);
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_WIDTH);
+    button(store, ph2d_tool_vector::ids::VECTOR_MODE_OFFSET);
     // **Corte** (W4) — a ferramenta de corte. Ela foi esquecida aqui na 1ª escrita da wave (o
     // `populate` das SEÇÕES recebeu os botões novos, este não), e o preço foi exactamente o que
     // este doc-comment prometia: o pill pintava, acendia sob o mouse e o clique **nunca virava

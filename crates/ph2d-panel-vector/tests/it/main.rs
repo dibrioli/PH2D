@@ -21,7 +21,7 @@ mod f43_as_listas_do_figma; // F43: o «+», as linhas e o painel de propriedade
 mod f44_fill_e_stroke_do_figma; // F44: Fill e Stroke no layout do Figma
 mod f45_uma_pilha; // F45: Fill & Stroke numa só pilha, arrastar pelo ⚙
 mod f47_traco_sobre_filtros; // F47: «Above Effects» no ⚙ do traço
-mod f48_offset_path_inspector; // F48: o Offset Path no padrão do Inspector
+mod f48_offset_path_tool; // F48d: o Offset Path é uma ferramenta — opções na fila ②, Apply/Remove na ④
 mod fill_chip_labels_fit;
 mod marker_rows;
 mod o_losango_do_chip_da_barra;

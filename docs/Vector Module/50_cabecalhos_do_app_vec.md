@@ -7,6 +7,8 @@ intra-doc do rustdoc (`[`crate::x`]`) ficaram como texto. Texto à data do commi
 2.º lote (F48, 02/11, o Expand sobre a pilha: +545 sobre o tecto): de `smoke_bone_paint.rs` em diante, texto à
 data do commit `8810c8838d`.
 3.º lote (F48b, 02/11, o Offset Path no padrão do Inspector: +386 sobre o tecto): de `state.rs` em diante, texto à data do commit `878fa728b1`.
+4.º lote (F48d, 02/11, o Offset Path vira ferramenta: +76 sobre o tecto): `lib.rs` e `smoke_bone_paint_assada_tests.rs`, texto à data do commit `fa1283eec8`.
+5.º lote (F48d, 02/11, a ferramenta Offset Path: +8 sobre o tecto): `ui_panel_spec.rs`, texto à data do commit `fa1283eec8`.
 
 ## `symmetry_live.rs`
 
@@ -2056,3 +2058,117 @@ O spine e os passos são geometria de MUNDO; uma pose na entidade os deslocaria.
 `vec_transform::settle_origins` o **pula** e este módulo devolve o `Transform` à identidade —
 o que o torna (corretamente) não-arrastável pelo gizmo: mover o blend não quer dizer nada; o
 que se move são as formas-fonte, e a transição as segue (ADR-0128, o idioma do Illustrator).
+
+## `lib.rs`
+
+# ⚠️ Porque ela tem TRINTA E TRÊS ficheiros e não cento e vinte e sete
+
+O conjunto que pode sair **tem de ser fechado sob toda aresta de compilação**. A Fase A mediu-o
+quatro vezes (71 → 29 → 15 → **8** ficheiros), cada resposta menor que a anterior e **as três
+primeiras a favor de mover demasiado**; a Fase B mediu-o outras quatro, e o padrão repetiu-se:
+
+| a régua da Fase B corrigiu-se assim | efeito |
+|---|---|
+| `^impl App` perdia os **10** `impl crate::App` — são **13**, não 3 (HOWTO §2.1) | subestimava |
+| `\bApp\b` no ficheiro CRU acusa 23 e **7** mencionam-no só em doc-comment (§2.12) | 69 → **85** livres |
+| `crate::render_loop::vector_bridge` é ficheiro **desta** família na pasta do laço | +6 |
+| um movido não pode referir um da família que **FICOU** — `vec_entities` prendia **30 de 50** | 50 → **21** |
+
+⛔⛔ **E o bloqueador de fundo NÃO é a `App`.** Medido: curar todo o acoplamento a `App` move
+**+4 ficheiros / 615 LOC** e nada mais, porque os 9 que ela prende batem imediatamente no
+`vec_entities`. O grafo da família tem **uma raiz só**:
+
+```text
+vec_entities  ──blocked by──▶  name_unique::unique_name
+     │                         morph_set::is_set_member
+     │                         render_loop::off_canvas::is_off_canvas
+     ├──#[path]──▶ vec_zorder ──▶ vec_zorder_fixpoint_tests ──▶ undo · hero_intents ·
+     │                                                          project_library · preview_drive
+     └──referido por 42 ficheiros da família
+```
+
+Os três predicados são **puros sobre o ECS** e pertencem a outras famílias ⇒ tomá-los violaria o
+[HOWTO §1.2] (*duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra*).
+
+⭐⭐⭐ **RESOLVIDO em 2026-09-12 pela `line/shell-folhas`, e exactamente como este diagrama
+prescrevia:** os três predicados viraram folhas ([`ph2d_unique_name`],
+[`ph2d_entity_visibility`]) e o `vec_entities` inteiro — com o `vec_transform` e o `morph_set`,
+que fazem ciclo com ele — mudou-se para a [`ph2d_vec_entities`]. ⚠️ **O diagrama acima fica
+como está de propósito:** ele é a medição que abriu aquela linha, e apagá-lo apagaria a razão.
+⚠️ **O `name_unique` e o `preview_drive` são DOIS dos três que a `line/app-physics` nomeou** como
+folhas partilhadas de linha própria — esta família confirma-os **independentemente**.
+
+⛔ **E a cura barata é pior que a doença, com número:** dar a `vec_entities::sync` um parâmetro
+para o nome único custa **168 sítios de chamada**, espalhados por `bool_live`, `blend_live`,
+`connector_live`, `envelope_live`, `instance_*`, `label_live` — as famílias da 3.ª rodada. Um
+parâmetro que atravessa 168 sítios de cinco famílias não é uma assinatura: é uma wave.
+
+⇒ **o que falta desta família não é trabalho desta linha.** A lista, com o preço de cada item,
+está no handoff da Fase B.
+
+# O molde que estes ficheiros provam
+
+Um `Cargo.toml` medido dependência a dependência (**quatro** eram invisíveis até a crate
+existir — `ph2d-core`, `ph2d-tool-vector`, `ph2d-vec-blend`, `ph2d-vec-fill`; o piloto achou
+quatro também), a **re-exportação com alias** que mantém os ~190 `crate::vec_x` da shell byte a
+byte iguais, e as duas armadilhas de caminho que só a corrida revela (§2.6): o `include_str!`
+que falha alto e o `CARGO_MANIFEST_DIR` que **não** falha.
+
+[HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
+
+## `smoke_bone_paint_assada_tests.rs`
+
+# Porque esta é a pergunta DECISIVA, e não uma entre várias
+
+A direcção inteira da F9 — a densidade sai do QUADRO e vai para o BIND, e a deformação passa
+para o *vertex shader* — assenta numa única propriedade: **uma topologia só tem de servir todas
+as poses**. Se ela servir, o resto é engenharia (enviar poses, costurar os leitores da malha).
+Se não servir, a direcção cai e as ondas W1–W4 medem outra coisa.
+
+⚠️ **E ela mede-se sem inventar lei nenhuma.** Assar *no pior caso* (a dobra mais forte, no zoom
+mais fino) usa o refinamento que já existe e responde à pergunta da topologia. O critério
+proposto na fila — refinar onde o CAMPO DE PESOS curva — é uma forma de escolher ONDE partir com
+menos peças, e só faz sentido medir depois de se saber que uma topologia fixa chega.
+
+# ⛔ O CONTROLO que torna a comparação válida
+
+Re-posar uma malha assada noutra cena só significa alguma coisa se o BIND das duas cenas for o
+mesmo — mesmas posições de repouso, mesmos pesos. Se a `cena_dobrada` mexesse no bind ao dobrar,
+a tabela compararia duas artes diferentes e leria isso como qualidade. ⇒ a sonda **afirma-o
+primeiro**, e pára se não for verdade.
+
+# O que cada coluna é
+
+* **peças** — triângulos entregues. Na assada é um número só, o mesmo em toda a linha: é ele que
+  vira memória de GPU (a W4 da fila).
+* **faceta** — `skinned_deviation`, o desvio da malha contra o campo que ela segue, em pixels de
+  ECRÃ (já multiplicado pelo zoom).
+* **canto** — o maior canto da silhueta desenhada (`vai_e_volta`), que é a régua do OLHO e a que
+  apanhou o report de 2026-09-16. ⚠️ Ela não sabe que campo existe, de propósito.
+
+## `ui_panel_spec.rs`
+
+> **QUE PAINEL ESTA ÁRVORE DESCREVE** — a porta única do W8b (plano UI/UX §4).
+
+Uma moldura autorada com filhos vestidos é a descrição de um painel. Esta função responde
+*qual*, e o resultado (`PanelSpec`) é **dado simples**: quem o consome escreve código-fonte
+(`ph2d-ui-codegen`), sem ECS, sem documento e sem janela.
+
+# A ordem das rows é a ordem dos FILHOS, e é uma decisão
+
+A moldura com auto layout **flui os filhos na ordem em que eles estão na árvore** — é por isso
+que arrastar um filho dentro de um fluxo **REORDENA** em vez de o mover (ADR-0153: a pose é
+derivada, então um arrasto não tem onde pousar). Logo, a ordem que o artista vê no painel e na
+Hierarquia **é** a ordem dos filhos, e ler o z (que é outra pergunta) daria um painel cujas
+rows saem noutra ordem que a moldura mostra.
+
+# Só quem VESTE vira row
+
+Um filho sem [`VecWidget`] é desenho — um fundo, uma divisória decorativa, um ícone. Ele
+continua a ser desenhado pela pele da moldura; o que ele **não** é é um controle. Transformar
+todo filho em row daria um painel com linhas que não fazem nada, que é o item-de-menu-morto
+deste repo na sua forma mais cara.
+
+⚠️ E um `kind` que este build **não conhece** também não vira row: o `from_code` devolve
+`None` de propósito (um documento autorado por um build mais novo), e inventar um tipo aqui
+seria gerar código para um widget que não existe.

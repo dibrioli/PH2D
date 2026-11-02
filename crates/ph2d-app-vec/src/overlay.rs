@@ -84,6 +84,7 @@ pub fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
                     | DrawMode::Bucket
                     | DrawMode::Rules
                     | DrawMode::HudLayout
+                    | DrawMode::Offset
             ),
         cad: vector_active,
         snap_guides: vector_active,

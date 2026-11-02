@@ -128,13 +128,14 @@ pub fn chord_for_mode(mode: DrawMode) -> Option<Chord> {
 }
 
 /// As ferramentas que ficam SEM tecla, por decisão (D10 — o Illustrator não as tem).
-pub const KEYLESS: [DrawMode; 6] = [
+pub const KEYLESS: [DrawMode; 7] = [
     DrawMode::Rules,
     DrawMode::HudLayout,
     DrawMode::Fillet,
     DrawMode::Chamfer,
     DrawMode::Trim,
     DrawMode::Connect,
+    DrawMode::Offset,
 ];
 
 #[cfg(test)]

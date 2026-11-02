@@ -21,12 +21,98 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_tool_vector::{VectorStyleSnapshot, ids};
 
-/// Os três chips da barra que abrem uma lista ou um painel por baixo deles.
-const LISTS: [NodeId; 3] = [
+/// Os chips da barra que abrem uma lista ou um painel por baixo deles.
+const LISTS: [NodeId; 5] = [
     crate::ids::VECTOR_BAR_STROKE,
     crate::ids::VECTOR_BAR_PROFILE,
     crate::ids::VECTOR_BAR_KIND,
+    crate::ids::VECTOR_BAR_HOLES,
+    crate::ids::VECTOR_BAR_RESULT,
 ];
+
+/// ⭐ As duas listas do Offset Path (F48d): `(chip, rótulo, legenda, [(linha, nome, código)])`.
+type OffsetList = (NodeId, &'static str, &'static [(NodeId, &'static str, u8)]);
+const HOLES: OffsetList = (
+    crate::ids::VECTOR_BAR_HOLES,
+    "panel.vector.expand.holes",
+    &[
+        (
+            ids::VECTOR_EXPAND_SIDE_BOTH,
+            "panel.vector.expand.holes_move",
+            2,
+        ),
+        (
+            ids::VECTOR_EXPAND_SIDE_OUTER,
+            "panel.vector.expand.holes_keep",
+            0,
+        ),
+    ],
+);
+const RESULT: OffsetList = (
+    crate::ids::VECTOR_BAR_RESULT,
+    "panel.vector.expand.result",
+    &[
+        (
+            crate::ids::VECTOR_EXPAND_RESULT_BEHIND,
+            "panel.vector.expand.behind",
+            1,
+        ),
+        (
+            crate::ids::VECTOR_EXPAND_RESULT_FRONT,
+            "panel.vector.expand.front",
+            2,
+        ),
+        (
+            crate::ids::VECTOR_EXPAND_RESULT_REPLACE,
+            "panel.vector.expand.replace",
+            0,
+        ),
+    ],
+);
+
+/// O código escolhido de uma lista do Offset Path (`Holes` lê o `side`, `Result` o `result`).
+fn offset_code(list: OffsetList) -> u8 {
+    let k = crate::state::offset_knobs();
+    if list.0 == crate::ids::VECTOR_BAR_HOLES {
+        k.side
+    } else {
+        k.result
+    }
+}
+
+/// A face (a escolha de agora) e as faces (todas) de uma lista do Offset Path.
+fn offset_faces(list: OffsetList) -> (String, Vec<String>) {
+    let code = offset_code(list);
+    let face = list.2.iter().find(|r| r.2 == code).map_or("", |r| tr(r.1));
+    (
+        face.to_owned(),
+        list.2.iter().map(|r| tr(r.1).to_owned()).collect(),
+    )
+}
+
+/// ⭐ `Holes ▾` e `Result ▾` para a fila: a face é a escolha de agora, a largura a da mais larga.
+pub(super) fn offset_lists(store: &WidgetStore) -> [ToolRailEntry; 2] {
+    let (hf, hs) = offset_faces(HOLES);
+    let (rf, rs) = offset_faces(RESULT);
+    [
+        list_chip(
+            store,
+            crate::ids::VECTOR_BAR_HOLES,
+            HOLES.1,
+            hf,
+            hs,
+            tr(HOLES.1),
+        ),
+        list_chip(
+            store,
+            crate::ids::VECTOR_BAR_RESULT,
+            RESULT.1,
+            rf,
+            rs,
+            tr(RESULT.1),
+        ),
+    ]
+}
 
 /// As tintas do traço, pela ordem do segmentado do painel (id da linha, chave do nome, tinta).
 const KINDS: [(NodeId, &str, crate::state::StrokePaintKind); 3] = [
@@ -210,10 +296,15 @@ pub(crate) fn close_list_on_pick(store: &mut WidgetStore, id: NodeId) {
     let profile =
         (0..crate::ids::MAX_WIDTH_PRESETS).any(|i| id == crate::ids::vector_width_preset_id(i));
     let kind = KINDS.iter().any(|(k, _, _)| *k == id);
+    let offset = [HOLES, RESULT]
+        .into_iter()
+        .find(|l| l.2.iter().any(|r| r.0 == id));
     let owner = if profile {
         crate::ids::VECTOR_BAR_PROFILE
     } else if kind {
         crate::ids::VECTOR_BAR_KIND
+    } else if let Some(l) = offset {
+        l.0
     } else {
         return;
     };
@@ -261,6 +352,27 @@ pub(crate) fn paint_bar_popovers(ctx: &mut PaintCtx, theme: Theme, width: f32) {
         if let Some(k) = crate::state::stroke_paint_kind()
             && let Some(i) = KINDS.iter().position(|(_, _, kind)| *kind == k)
         {
+            dd = dd.selected(i);
+        }
+        ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, region, theme, None);
+    }
+    for list in [HOLES, RESULT] {
+        let store = ctx.host.store();
+        let Some(chip) = is_open(store, list.0)
+            .then(|| store.tool_row_slot(list.0))
+            .flatten()
+        else {
+            continue;
+        };
+        let options = list
+            .2
+            .iter()
+            .enumerate()
+            .map(|(i, (id, key, _))| DropdownOption::new(*id, i, tr(key)))
+            .collect();
+        let code = offset_code(list);
+        let mut dd = Dropdown::new(list.0, "", options).open(true);
+        if let Some(i) = list.2.iter().position(|r| r.2 == code) {
             dd = dd.selected(i);
         }
         ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, region, theme, None);

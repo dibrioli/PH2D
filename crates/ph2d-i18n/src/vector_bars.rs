@@ -64,6 +64,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.hint.width" => {
             "Click the line: add a stop \u{00b7} Drag a stop: width \u{00b7} Right-click: delete it"
         }
+        "panel.vector.hint.offset" => {
+            "Drag a shape's edge out to grow it, in to shrink it. Set corners and where the new shape goes in the top bar."
+        }
         "panel.vector.hint.trim" => "Click the red piece: remove it",
         "panel.vector.hint.bucket" => "Click the lit region: fill it",
         "panel.vector.hint.cut" => "Click and drag a blade like the Pen \u{00b7} Esc: finish",

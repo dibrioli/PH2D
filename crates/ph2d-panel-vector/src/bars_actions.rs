@@ -11,7 +11,7 @@ use ph2d_tool_vector::ids;
 
 /// As ferramentas de clique PRECISO sobre a arte: com uma delas na mão a barra ④ não aparece — a
 /// barra pousa junto da seleção, e ali ela roubaria o clique que a ferramenta existe para dar.
-const PRECISE: [DrawMode; 12] = [
+const PRECISE: [DrawMode; 13] = [
     DrawMode::Rules,
     DrawMode::HudLayout,
     DrawMode::Cut,
@@ -21,6 +21,7 @@ const PRECISE: [DrawMode; 12] = [
     DrawMode::Fillet,
     DrawMode::Chamfer,
     DrawMode::Width,
+    DrawMode::Offset,
     DrawMode::Connect,
     DrawMode::PickBlend,
     DrawMode::Eyedropper,
@@ -48,11 +49,35 @@ fn cut_actions(sel: usize) -> Vec<Vec<BarButton>> {
     ]]
 }
 
+/// ④ **Do Offset Path** (F48d): `Apply` torna a prévia viva numa forma; `Remove` desfaz a prévia.
+/// Só com um offset VIVO na seleção — antes dele não há nada a aplicar.
+fn offset_actions(sel: usize) -> Vec<Vec<BarButton>> {
+    if sel == 0 || !crate::state::offset_live_on() {
+        return Vec::new();
+    }
+    let b = |id, icon, key: &str| button(id, icon, tr(key).to_owned(), false, BarFamily::Stroke);
+    vec![vec![
+        b(
+            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
+            IconId::Check,
+            "panel.vector.expand.apply",
+        ),
+        b(
+            crate::ids::VECTOR_EXPAND_REMOVE,
+            IconId::Trash,
+            "panel.vector.expand.remove",
+        ),
+    ]]
+}
+
 /// ④ as ações da seleção — *o que faço a seguir com isto?*, com seleção, em toda ferramenta que
 /// não é de clique preciso. ⚠️ Os verbos de caminho não entram no Node: lá eles estão na ②.
 pub(super) fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
     if mode == DrawMode::Cut {
         return cut_actions(sel);
+    }
+    if mode == DrawMode::Offset {
+        return offset_actions(sel);
     }
     if sel == 0 || PRECISE.contains(&mode) {
         return Vec::new();

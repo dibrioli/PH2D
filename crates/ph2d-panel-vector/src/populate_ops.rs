@@ -159,9 +159,8 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
         1.0,
         0.0,
     );
-    // ⭐ O Offset Path no padrão do Inspector (dono 02/11). `Distance (px)` não tem tecto: o
-    // offset é uma distância do documento, como uma coordenada (negativo encolhe). O `Limit` do
-    // Miter vai de 1 (toda quina vira Bevel) a 500 — a faixa do *Offset Path* do Illustrator.
+    // ⭐ A ferramenta Offset Path (F48d, fila ②). `Distance (px)` sem tecto (negativo encolhe); o
+    // `Limit` do Miter de 1 a 500 — a faixa do *Offset Path* do Illustrator.
     crate::populate::world_number_field(store, crate::ids::VECTOR_EXPAND_OFFSET, 0.0);
     crate::populate::number_field(
         store,

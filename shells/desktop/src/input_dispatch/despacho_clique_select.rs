@@ -26,12 +26,11 @@ impl crate::App {
             return true;
         }
         // O Up que fecha o arrasto da alça do texto — nasceu no Select, morre no Select.
-        if (self.vec.textpath_handle_drag || self.vec.offset_grab.is_some())
+        if self.vec.textpath_handle_drag
             && mapped_button == ph2d_host::PointerButton::Primary
             && kind == PointerKind::Up
         {
             self.vec.textpath_handle_drag = false;
-            self.vec.offset_grab = None;
             return true;
         }
         // O Up que fecha o arrasto de uma ALÇA DE OSSO ou de uma pega do gizmo das constraints, e o
@@ -183,9 +182,7 @@ impl crate::App {
             && let Some(w) = self.vec_world_at((evt.x, evt.y))
             && (self.vec_shape_handle_down(w)
                 || (self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
-                    && (self.vec_textpath_handle_down(w)
-                        || self.vec_patternpath_handle_down(w)
-                        || self.vec_offset_handle_down(w))))
+                    && (self.vec_textpath_handle_down(w) || self.vec_patternpath_handle_down(w))))
         {
             return true;
         }

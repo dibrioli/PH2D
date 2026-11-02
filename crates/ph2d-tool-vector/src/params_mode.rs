@@ -72,6 +72,9 @@ pub enum DrawMode {
     /// âncoras — uma parada de multiplicador pequeno senta a milímetros da curva, ou seja em
     /// cima delas. O Illustrator também o faz uma ferramenta (Shift+W).
     Width,
+    /// **Offset Path** (F48d, dono 02/11): arrastar a borda de uma forma para fora cresce-a, para
+    /// dentro encolhe-a — o deslocamento vivo da forma, com as opções na barra ②.
+    Offset,
     /// ⭐⭐⭐ **Aparar** (plano 38): passa o cursor sobre um pedaço de caminho, o pedaço entre as
     /// duas FRONTEIRAS mais próximas acende, e o clique apaga-o.
     ///
@@ -168,6 +171,7 @@ impl DrawMode {
         Self::Fillet,
         Self::Chamfer,
         Self::Width,
+        Self::Offset,
         Self::Trim,
         Self::Bucket,
         Self::Cut,
@@ -288,6 +292,7 @@ mod all_tests {
                 | DrawMode::Fillet
                 | DrawMode::Chamfer
                 | DrawMode::Width
+                | DrawMode::Offset
                 | DrawMode::Trim
                 | DrawMode::Bucket
                 | DrawMode::Cut
@@ -297,7 +302,7 @@ mod all_tests {
                 | DrawMode::HudLayout => 1,
             };
         }
-        assert_eq!(vistos, 19, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 20, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

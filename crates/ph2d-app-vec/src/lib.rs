@@ -13,60 +13,7 @@
 //! janela, `gfx`, painéis, a captura do undo — **fica lá**, e isso é o ADR-0075 outra vez (estado
 //! de família é recurso/componente do ECS; o resto é composição da raiz).
 //!
-//! # ⚠️ Porque ela tem TRINTA E TRÊS ficheiros e não cento e vinte e sete
-//!
-//! O conjunto que pode sair **tem de ser fechado sob toda aresta de compilação**. A Fase A mediu-o
-//! quatro vezes (71 → 29 → 15 → **8** ficheiros), cada resposta menor que a anterior e **as três
-//! primeiras a favor de mover demasiado**; a Fase B mediu-o outras quatro, e o padrão repetiu-se:
-//!
-//! | a régua da Fase B corrigiu-se assim | efeito |
-//! |---|---|
-//! | `^impl App` perdia os **10** `impl crate::App` — são **13**, não 3 (HOWTO §2.1) | subestimava |
-//! | `\bApp\b` no ficheiro CRU acusa 23 e **7** mencionam-no só em doc-comment (§2.12) | 69 → **85** livres |
-//! | `crate::render_loop::vector_bridge` é ficheiro **desta** família na pasta do laço | +6 |
-//! | um movido não pode referir um da família que **FICOU** — `vec_entities` prendia **30 de 50** | 50 → **21** |
-//!
-//! ⛔⛔ **E o bloqueador de fundo NÃO é a `App`.** Medido: curar todo o acoplamento a `App` move
-//! **+4 ficheiros / 615 LOC** e nada mais, porque os 9 que ela prende batem imediatamente no
-//! `vec_entities`. O grafo da família tem **uma raiz só**:
-//!
-//! ```text
-//! vec_entities  ──blocked by──▶  name_unique::unique_name
-//!      │                         morph_set::is_set_member
-//!      │                         render_loop::off_canvas::is_off_canvas
-//!      ├──#[path]──▶ vec_zorder ──▶ vec_zorder_fixpoint_tests ──▶ undo · hero_intents ·
-//!      │                                                          project_library · preview_drive
-//!      └──referido por 42 ficheiros da família
-//! ```
-//!
-//! Os três predicados são **puros sobre o ECS** e pertencem a outras famílias ⇒ tomá-los violaria o
-//! [HOWTO §1.2] (*duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra*).
-//!
-//! ⭐⭐⭐ **RESOLVIDO em 2026-09-12 pela `line/shell-folhas`, e exactamente como este diagrama
-//! prescrevia:** os três predicados viraram folhas ([`ph2d_unique_name`],
-//! [`ph2d_entity_visibility`]) e o `vec_entities` inteiro — com o `vec_transform` e o `morph_set`,
-//! que fazem ciclo com ele — mudou-se para a [`ph2d_vec_entities`]. ⚠️ **O diagrama acima fica
-//! como está de propósito:** ele é a medição que abriu aquela linha, e apagá-lo apagaria a razão.
-//! ⚠️ **O `name_unique` e o `preview_drive` são DOIS dos três que a `line/app-physics` nomeou** como
-//! folhas partilhadas de linha própria — esta família confirma-os **independentemente**.
-//!
-//! ⛔ **E a cura barata é pior que a doença, com número:** dar a `vec_entities::sync` um parâmetro
-//! para o nome único custa **168 sítios de chamada**, espalhados por `bool_live`, `blend_live`,
-//! `connector_live`, `envelope_live`, `instance_*`, `label_live` — as famílias da 3.ª rodada. Um
-//! parâmetro que atravessa 168 sítios de cinco famílias não é uma assinatura: é uma wave.
-//!
-//! ⇒ **o que falta desta família não é trabalho desta linha.** A lista, com o preço de cada item,
-//! está no handoff da Fase B.
-//!
-//! # O molde que estes ficheiros provam
-//!
-//! Um `Cargo.toml` medido dependência a dependência (**quatro** eram invisíveis até a crate
-//! existir — `ph2d-core`, `ph2d-tool-vector`, `ph2d-vec-blend`, `ph2d-vec-fill`; o piloto achou
-//! quatro também), a **re-exportação com alias** que mantém os ~190 `crate::vec_x` da shell byte a
-//! byte iguais, e as duas armadilhas de caminho que só a corrida revela (§2.6): o `include_str!`
-//! que falha alto e o `CARGO_MANIFEST_DIR` que **não** falha.
-//!
-//! [HOWTO §1.2]: ../../../docs/IntegracaoMultiAgente/HOWTO_partir_uma_familia_da_shell.md
+//! A história da extracção (o conjunto fechado, o molde): `docs/Vector Module/50_cabecalhos_do_app_vec.md`.
 
 pub mod align_live;
 /// `PH2D_AUTOKEY_SMOKE` — o Auto Key sobre uma forma vetorial (plano 34).

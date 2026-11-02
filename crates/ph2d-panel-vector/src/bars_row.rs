@@ -228,3 +228,53 @@ pub(super) fn symmetry_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
     }
     v
 }
+
+/// ② **As opções do Offset Path** (F48d, dono 02/11: «melhor transformar numa tool») — a antiga
+/// secção do Inspector, inteira na fila e pelos MESMOS ids (a porta é `event_expand`): `Distance
+/// (px)`, `Corners` em glifos, `Miter limit` só no Miter, `Holes` e `Result`. Cada grupo de escolhas
+/// leva o nome à frente (um texto que não se clica) para a escolha se explicar sozinha.
+pub(super) fn offset_chips(
+    store: &ph2d_editor_core::interaction::WidgetStore,
+) -> Vec<ToolRailEntry> {
+    let k = crate::state::offset_knobs();
+    let mut v = vec![
+        ToolRailEntry::number(
+            crate::ids::VECTOR_EXPAND_OFFSET,
+            tr("panel.vector.expand.offset"),
+            tr("panel.vector.expand.offset"),
+            None,
+        ),
+        ToolRailEntry::Divider,
+        ToolRailEntry::text(tr("panel.vector.expand.corner")),
+        icon_chip(
+            ids::VECTOR_EXPAND_JOIN_MITER,
+            "panel.vector.expand.miter",
+            IconId::JoinMiter,
+            k.join == 0,
+        ),
+        icon_chip(
+            ids::VECTOR_EXPAND_JOIN_ROUND,
+            "panel.vector.expand.round",
+            IconId::JoinRound,
+            k.join == 1,
+        ),
+        icon_chip(
+            ids::VECTOR_EXPAND_JOIN_BEVEL,
+            "panel.vector.expand.bevel",
+            IconId::JoinBevel,
+            k.join == 2,
+        ),
+    ];
+    if k.join == 0 {
+        v.push(ToolRailEntry::number(
+            crate::ids::VECTOR_EXPAND_MITER,
+            tr("panel.vector.expand.miter_limit"),
+            tr("panel.vector.expand.miter_limit"),
+            None,
+        ));
+    }
+    // `Holes ▾` e `Result ▾`: uma lista cada (o chip mostra a escolha), como o `Profile ▾`.
+    v.push(ToolRailEntry::Divider);
+    v.extend(crate::bars::control::offset_lists(store));
+    v
+}

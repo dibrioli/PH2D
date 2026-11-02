@@ -181,21 +181,20 @@ pub fn step(
     None
 }
 
-/// ⭐ A cena 51 (F48): o Offset Path aberto, com um offset VIVO de `Distance 15 px`, Miter e
-/// `New shape behind`. `PH2D_OBJECT_MODE_GESTO=apply` clica o `Apply` (a foto do resultado).
+/// ⭐ A cena 51 (F48d): a FERRAMENTA Offset Path na mão (coluna ①, opções na fila ②), com um
+/// offset VIVO de `Distance 15 px`, Miter e `Behind`. `PH2D_OBJECT_MODE_GESTO=apply` clica o
+/// `Apply` da ④ (a foto do resultado).
 fn offset_path(
     vec: &mut VecState,
     sim: &mut ph2d_ecs::SimWorld,
     hero: &mut HeroScreen,
     id: VecPathId,
 ) -> Option<u8> {
-    for s in [
-        ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
-        ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
-    ] {
-        hero.store.set_collapsed(s, false);
-    }
-    rola_ate(hero, ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND)?;
+    hero.bus
+        .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+            ph2d_editor_core::tool::PanelEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_OFFSET),
+        ));
+    vec.pen.select(Some(id));
     let d = ph2d_editor_core::DocPx::of(&hero.project).to_world(15.0);
     let k = ph2d_panel_vector::EXPAND_KNOBS_AT_BIRTH;
     ph2d_panel_vector::set_offset_knobs(k);
@@ -207,6 +206,14 @@ fn offset_path(
                     ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
                 ),
             ));
+    }
+    // `PH2D_OBJECT_MODE_GESTO=result`: a foto do `Result ▾` aberto.
+    if std::env::var("PH2D_OBJECT_MODE_GESTO").as_deref() == Ok("result")
+        && let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open, .. }) = hero
+            .store
+            .get_mut(ph2d_panel_vector::ids::VECTOR_BAR_RESULT)
+    {
+        *open = true;
     }
     Some(9)
 }

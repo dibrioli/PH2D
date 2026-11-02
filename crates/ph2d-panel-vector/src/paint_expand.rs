@@ -1,10 +1,8 @@
-//! A secção **Offset Path** do painel Vector (o id é o antigo `EXPAND`) e a irmã **Convert** —
+//! A secção **Convert** do painel Vector (o Offset Path virou ferramenta em F48d, `bars_row`) —
 //! irmãs de `paint_sections.rs` pelo teto de 600 LOC. O perfil de largura (Power Stroke) mora no
 //! «Stroke settings» desde 02/11; as linhas dele continuam neste ficheiro.
 
 use super::BodyCtx;
-use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::ButtonKind;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::params;
@@ -44,110 +42,6 @@ fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
 }
 
 impl BodyCtx<'_> {
-    /// ⭐ Secção **Offset Path** no padrão do Inspector (dono 02/11: «faça tudo como no inspector»):
-    /// `Distance (px)` com sinal (negativo encolhe), `Corners` em glifos, `Miter limit` só no Miter,
-    /// `Holes` e `Result`; `Apply`/`Remove` só com um offset VIVO na seleção — o que se vê antes
-    /// deles é prévia. ⛔ O antigo `Side · Outer/Inner/Both` mentia: `Inner` movia só os FUROS, e
-    /// numa forma sem furo não fazia nada. Comparação com os outros apps: `docs/UI_New_and_Simple/`
-    /// `F48_offset_path_como_no_inspector.md`.
-    pub(crate) fn expand_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
-            tr("panel.vector.section.expand"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        let k = crate::state::offset_knobs();
-        y = self.lone_number_row(
-            tr("panel.vector.expand.offset"),
-            crate::ids::VECTOR_EXPAND_OFFSET,
-            y,
-        );
-        y = self.with_rows(|rc| {
-            rc.icon_segmented(
-                tr("panel.vector.expand.corner"),
-                &[
-                    (
-                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
-                        IconId::JoinMiter,
-                        k.join == 0,
-                    ),
-                    (
-                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
-                        IconId::JoinRound,
-                        k.join == 1,
-                    ),
-                    (
-                        ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
-                        IconId::JoinBevel,
-                        k.join == 2,
-                    ),
-                ],
-                y,
-            )
-        });
-        if k.join == 0 {
-            y = self.lone_number_row(
-                tr("panel.vector.expand.miter_limit"),
-                crate::ids::VECTOR_EXPAND_MITER,
-                y,
-            );
-        }
-        y = self.segmented(
-            tr("panel.vector.expand.holes"),
-            &[
-                (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
-                    tr("panel.vector.expand.holes_move"),
-                    k.side == 2,
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
-                    tr("panel.vector.expand.holes_keep"),
-                    k.side == 0,
-                ),
-            ],
-            y,
-        );
-        y = self.segmented(
-            tr("panel.vector.expand.result"),
-            &[
-                (
-                    crate::ids::VECTOR_EXPAND_RESULT_BEHIND,
-                    tr("panel.vector.expand.behind"),
-                    k.result == 1,
-                ),
-                (
-                    crate::ids::VECTOR_EXPAND_RESULT_FRONT,
-                    tr("panel.vector.expand.front"),
-                    k.result == 2,
-                ),
-                (
-                    crate::ids::VECTOR_EXPAND_RESULT_REPLACE,
-                    tr("panel.vector.expand.replace"),
-                    k.result == 0,
-                ),
-            ],
-            y,
-        );
-        if crate::state::offset_live_on() {
-            y = self.action_button_kind(
-                ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
-                tr("panel.vector.expand.apply"),
-                ButtonKind::Accent,
-                y,
-            );
-            y = self.action_button(
-                crate::ids::VECTOR_EXPAND_REMOVE,
-                tr("panel.vector.expand.remove"),
-                y,
-            );
-        }
-        y
-    }
-
     /// ⭐ A secção **Convert** — o traço vira forma (o *Outline Stroke* do Figma e do Illustrator,
     /// também em `Ctrl+Alt+O`).
     pub(crate) fn convert_section(&mut self, y: f32) -> f32 {

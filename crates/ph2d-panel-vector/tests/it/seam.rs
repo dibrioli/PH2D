@@ -708,7 +708,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // foi CONTADO (o gate imprimiu `left: 32`).
         // +1 (F48, 02/11): CONVERT — o Outline Stroke saiu do Offset Path para a secção dele.
         // ⚠️ O `33` foi CONTADO (o gate imprimiu `left: 33`).
-        33,
+        // ⛔ −1 (F48d, 02/11): EXPAND saiu — o Offset Path é uma ferramenta (coluna ①, opções na
+        // fila ②). ⚠️ O `32` foi CONTADO (o gate imprimiu `left: 32`).
+        32,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -1705,58 +1707,13 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
         h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
-    for (id, name, forwards) in [
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_OFFSET_PATH,
-            "Apply",
-            true,
-        ),
-        (
-            ph2d_panel_vector::ids::VECTOR_EXPAND_REMOVE,
-            "Remove",
-            false,
-        ),
-        (
-            ph2d_panel_vector::ids::VECTOR_EXPAND_RESULT_BEHIND,
-            "Result Behind",
-            false,
-        ),
-        (
-            ph2d_panel_vector::ids::VECTOR_EXPAND_RESULT_REPLACE,
-            "Result Replace",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
-            "Outline Stroke",
-            true,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
-            "Side Outer",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
-            "Side Both",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER,
-            "Join Miter",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
-            "Join Round",
-            false,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL,
-            "Join Bevel",
-            false,
-        ),
-    ] {
+    // ⛔ F48d (02/11): os controlos do Offset Path saíram do Inspector para a ferramenta (fila ② e
+    // ④) — os gates deles moram em `f48_offset_path_tool.rs`. Fica o da secção Convert.
+    for (id, name, forwards) in [(
+        ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
+        "Outline Stroke",
+        true,
+    )] {
         let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
@@ -1807,13 +1764,6 @@ fn clicking_a_join_chip_records_that_join() {
     // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
     // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
     ph2d_panel_vector::state::set_current_selection_count(1);
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
         (
             ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_ROUND,
@@ -1823,17 +1773,11 @@ fn clicking_a_join_chip_records_that_join() {
         (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL, 2, "Bevel"),
         (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER, 0, "Miter"),
     ] {
+        // F48d: o chip mora na fila ② da ferramenta Offset Path; o clique da barra chega ao painel
+        // pela mesma porta (`f48_offset_path_tool.rs` prova que a fila o mostra).
         let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
-        let r = host
-            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-            .expect("o chip foi pintado");
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        for ev in evs {
-            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
-        }
+        host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
         assert_eq!(
             ph2d_panel_vector::expand_join(),
             want,
@@ -1852,13 +1796,6 @@ fn clicking_a_side_chip_records_that_side() {
     // (`section_scope::WHEN_SELECTED`, report do Enio: *"deixar no painel apenas o que é útil"*).
     // Sem esta linha o gate mede uma seção que o produto, com razão, não desenha.
     ph2d_panel_vector::state::set_current_selection_count(1);
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
     for (id, want, name) in [
         (
             ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_OUTER,
@@ -1871,17 +1808,11 @@ fn clicking_a_side_chip_records_that_side() {
             "Offset too",
         ),
     ] {
+        // F48d: o chip mora na fila ② da ferramenta Offset Path; o clique da barra chega ao painel
+        // pela mesma porta (`f48_offset_path_tool.rs` prova que a fila o mostra).
         let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
-        let r = host
-            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-            .expect("o chip foi pintado");
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        for ev in evs {
-            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
-        }
+        host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
         assert_eq!(
             ph2d_panel_vector::expand_side(),
             want,

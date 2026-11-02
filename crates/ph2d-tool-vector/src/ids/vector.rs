@@ -559,6 +559,9 @@ pub const VECTOR_MODE_PENCIL: NodeId = hash_node_id("vector.mode.pencil");
 /// apontando-a no canvas.
 pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");
 
+/// **Offset Path** (F48d) — arrastar a borda de uma forma cresce-a ou encolhe-a.
+pub const VECTOR_MODE_OFFSET: NodeId = hash_node_id("vector.mode.offset");
+
 /// **Regras** (W4.6) — as regras de desenho: escolher pontos/lados e prendê-los.
 pub const VECTOR_MODE_RULES: NodeId = hash_node_id("vector.mode.rules");
 

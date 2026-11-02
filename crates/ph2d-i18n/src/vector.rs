@@ -300,6 +300,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",
+        "panel.vector.mode.offset" => "Offset Path",
         "panel.vector.mode.pencil" => "Pencil",
         "panel.vector.mode.cut" => "Cut",
         "panel.vector.mode.trim" => "Trim",

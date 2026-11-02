@@ -142,10 +142,10 @@ impl crate::App {
                 );
             }
         }
-        // ⭐ A alça do Offset Path (F48): arrastar a borda cresce/encolhe (modo Select).
+        // ⭐ A alça da ferramenta Offset Path (F48d): arrastar a borda cresce/encolhe.
+        let sel = self.vec.pen.selected_paths().len();
         if let Some(pid) = self.vec.pen.selected()
-            && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select
-            && ph2d_app_vec::offset_handle::shown(&hero.store, sim, &self.vec.entities, pid)
+            && ph2d_app_vec::offset_handle::shown(self.vec.draw_config.mode, sel)
         {
             let xf = ph2d_vec_entities::transform::build(sim, &self.vec.entities);
             let map = &self.vec.entities;

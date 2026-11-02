@@ -176,6 +176,9 @@ impl crate::App {
         // pagou logo abaixo: `shape_kind_for_mode(..).is_none()` é verdadeiro no modo
         // Width, então um ramo posto no `else` dele seria código morto no único modo
         // capaz de o alcançar — e a alça ficaria agarrada ao dedo depois de solta.
+        if self.vec.offset_grab.take().is_some() {
+            return true; // F48d: a ferramenta Offset Path larga a forma.
+        }
         if let Some(grab) = self.vec.width_grab.take() {
             if let Some(gfx) = self.gfx.as_mut() {
                 // Um clique que não moveu nada não pediu nada: a parada que o press

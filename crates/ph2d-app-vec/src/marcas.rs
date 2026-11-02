@@ -205,6 +205,8 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     ),
     (painel::VECTOR_FILL_PRESENT, &[PREENCHIMENTO]),
     (painel::VECTOR_BAR_KIND, &[COR_DO_TRACO]),
+    (painel::VECTOR_BAR_HOLES, &[campo(v::OFFSET_LADO)]),
+    (painel::VECTOR_BAR_RESULT, &[campo(v::OFFSET_ATRAS)]),
     (
         ferramenta::VECTOR_MARKER_START_DD,
         &[campo(v::TRACO_MARCA_INICIO)],

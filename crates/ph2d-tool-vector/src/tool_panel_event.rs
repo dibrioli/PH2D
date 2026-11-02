@@ -64,6 +64,9 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_WIDTH => {
                 self.mode = DrawMode::Width;
             }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_OFFSET => {
+                self.mode = DrawMode::Offset;
+            }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_TRIM => {
                 self.mode = DrawMode::Trim;
             }
@@ -312,6 +315,7 @@ mod tests {
             (crate::ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
             (crate::ids::VECTOR_MODE_CHAMFER, DrawMode::Chamfer),
             (crate::ids::VECTOR_MODE_WIDTH, DrawMode::Width),
+            (crate::ids::VECTOR_MODE_OFFSET, DrawMode::Offset),
             (crate::ids::VECTOR_MODE_TRIM, DrawMode::Trim),
             (crate::ids::VECTOR_MODE_BUCKET, DrawMode::Bucket),
             (crate::ids::VECTOR_MODE_CUT, DrawMode::Cut),

@@ -330,6 +330,7 @@ pub enum IconId {
     VectorFrame,
     VectorHud,
     VectorNode,
+    VectorOffset,
     VectorPen,
     VectorPencil,
     VectorRules,

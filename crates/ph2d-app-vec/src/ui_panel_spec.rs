@@ -1,27 +1,6 @@
 //! **QUE PAINEL ESTA ÁRVORE DESCREVE** — a porta única do W8b (plano UI/UX §4).
 //!
-//! Uma moldura autorada com filhos vestidos é a descrição de um painel. Esta função responde
-//! *qual*, e o resultado (`PanelSpec`) é **dado simples**: quem o consome escreve código-fonte
-//! (`ph2d-ui-codegen`), sem ECS, sem documento e sem janela.
-//!
-//! # A ordem das rows é a ordem dos FILHOS, e é uma decisão
-//!
-//! A moldura com auto layout **flui os filhos na ordem em que eles estão na árvore** — é por isso
-//! que arrastar um filho dentro de um fluxo **REORDENA** em vez de o mover (ADR-0153: a pose é
-//! derivada, então um arrasto não tem onde pousar). Logo, a ordem que o artista vê no painel e na
-//! Hierarquia **é** a ordem dos filhos, e ler o z (que é outra pergunta) daria um painel cujas
-//! rows saem noutra ordem que a moldura mostra.
-//!
-//! # Só quem VESTE vira row
-//!
-//! Um filho sem [`VecWidget`] é desenho — um fundo, uma divisória decorativa, um ícone. Ele
-//! continua a ser desenhado pela pele da moldura; o que ele **não** é é um controle. Transformar
-//! todo filho em row daria um painel com linhas que não fazem nada, que é o item-de-menu-morto
-//! deste repo na sua forma mais cara.
-//!
-//! ⚠️ E um `kind` que este build **não conhece** também não vira row: o `from_code` devolve
-//! `None` de propósito (um documento autorado por um build mais novo), e inventar um tipo aqui
-//! seria gerar código para um widget que não existe.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `ui_panel_spec.rs`.
 
 use ph2d_ecs::{Children, Entity, Name, SimWorld, VecPathRef, VecWidget, VecWidgetIcon};
 use ph2d_editor_core::icons::IconId;

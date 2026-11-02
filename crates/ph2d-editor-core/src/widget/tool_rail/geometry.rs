@@ -77,12 +77,17 @@ pub fn compound_face_font_px() -> f32 {
 pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
     let font = compound_face_font_px();
     for entry in &mut rail.entries {
-        if let ToolRailEntry::Compound { faces, row_w, .. } = entry {
+        if let ToolRailEntry::Compound {
+            id, faces, row_w, ..
+        } = entry
+        {
             let widest = faces
                 .iter()
                 .map(|f| text_system.prefix_width_weighted(f, font, FontWeight::MEDIUM))
                 .fold(0.0_f32, f32::max);
-            *row_w = crate::paint::rect_for_label(widest);
+            // ⛔ O losango come a ponta direita do slot (`number_with_key_mark`): sem a folga dele a
+            // face saía cortada (`Un…`, `Offs…`, F48d).
+            *row_w = crate::paint::rect_for_label(widest) + key_mark_room(*id);
         }
         // O campo numérico: o piso vivo da caixa de número (que já cresce com o tamanho do texto).
         if let ToolRailEntry::Number { row_w, .. } = entry {
@@ -238,6 +243,15 @@ pub fn entry_rects(
 /// tem canal neste quadro, a coluna do decorator de toda linha de propriedade sai da ponta do chip;
 /// sem canal o chip é o slot inteiro. Quem pinta e quem regista o alvo perguntam AQUI.
 #[must_use]
+/// A largura que o losango do campo `id` toma do slot — `0` sem marca.
+fn key_mark_room(id: NodeId) -> f32 {
+    if crate::paint::ui_is_redesign() && crate::widget::key_mark::key_mark_of(&[id]).is_some() {
+        crate::widget::DECORATOR_W
+    } else {
+        0.0
+    }
+}
+
 pub fn number_with_key_mark(id: NodeId, slot: Rect) -> (Rect, Option<Rect>) {
     if !crate::paint::ui_is_redesign() || crate::widget::key_mark::key_mark_of(&[id]).is_none() {
         return (slot, None);

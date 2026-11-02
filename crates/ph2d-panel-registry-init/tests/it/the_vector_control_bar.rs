@@ -348,24 +348,26 @@ fn rola_dentro_da_regiao(altura_baixa: f32) {
     // cópias e a régua acusava «clicável fora do painel» sobre um chip que não é do painel. ⇒ uma
     // linha mal recortada é uma registação de um id do painel na COLUNA dele (o x do painel) acima
     // ou abaixo dele — por cima da arte —, fora da faixa da barra (a do «Stroke ▾»).
-    let fora_do_painel_e_da_barra = |hero: &HeroScreen, pop: Rect, com_barra: bool| -> Vec<NodeId> {
-        let barra = hero
-            .hit_index
-            .rect_for(id)
-            .expect("o «Stroke ▾» está na barra");
-        let na_barra =
-            |r: &Rect| com_barra && r.y >= barra.y - 0.5 && r.y + r.h <= barra.y + barra.h + 0.5;
-        let na_coluna = |r: &Rect| r.x >= pop.x - 0.5 && r.x + r.w <= pop.x + pop.w + 0.5;
-        let no_painel = |r: &Rect| r.y >= pop.y - 0.5 && r.y + r.h <= pop.y + pop.h + 0.5;
-        let mut fora: Vec<NodeId> = hero
-            .hit_index
-            .iter_registrations()
-            .filter(|(t, r)| todas.contains(t) && na_coluna(r) && !no_painel(r) && !na_barra(r))
-            .map(|(t, _)| t)
-            .collect();
-        fora.dedup();
-        fora
-    };
+    let fora_do_painel_e_da_barra =
+        |hero: &HeroScreen, pop: Rect, com_barra: bool| -> Vec<NodeId> {
+            let barra = hero
+                .hit_index
+                .rect_for(id)
+                .expect("o «Stroke ▾» está na barra");
+            let na_barra = |r: &Rect| {
+                com_barra && r.y >= barra.y - 0.5 && r.y + r.h <= barra.y + barra.h + 0.5
+            };
+            let na_coluna = |r: &Rect| r.x >= pop.x - 0.5 && r.x + r.w <= pop.x + pop.w + 0.5;
+            let no_painel = |r: &Rect| r.y >= pop.y - 0.5 && r.y + r.h <= pop.y + pop.h + 0.5;
+            let mut fora: Vec<NodeId> = hero
+                .hit_index
+                .iter_registrations()
+                .filter(|(t, r)| todas.contains(t) && na_coluna(r) && !no_painel(r) && !na_barra(r))
+                .map(|(t, _)| t)
+                .collect();
+            fora.dedup();
+            fora
+        };
     let fora_do_painel = |hero: &HeroScreen, pop: Rect| fora_do_painel_e_da_barra(hero, pop, true);
     let fora = fora_do_painel(&hero, pop);
     assert!(

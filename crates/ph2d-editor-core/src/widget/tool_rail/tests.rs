@@ -190,3 +190,43 @@ fn o_chip_de_um_campo_com_canal_deixa_a_ponta_ao_losango() {
     assert!((d.x + d.w - (slot.x + slot.w)).abs() < 0.01);
     set_key_marks(std::collections::BTreeMap::new());
 }
+
+/// ⭐ F48d — um PULLDOWN com canal mede-se com a folga do losango: o chip que sobra depois de o
+/// losango tomar a ponta é a caixa inteira da face mais larga. ⛔ Sem isto a face saía cortada
+/// (`PROFILE Un…`, `Holes Offs…`). (Mutação: tirar o `key_mark_room` ⇒ vermelho.)
+#[test]
+fn um_pulldown_com_canal_mede_a_face_e_o_losango() {
+    use crate::widget::key_mark::{KeyMark, set_key_marks};
+    crate::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    let mut text = TextSystem::without_system_fonts();
+    let medir = |text: &mut TextSystem| {
+        let mut rail = ToolRail::new(
+            NodeId(70),
+            "bar",
+            vec![
+                ToolRailEntry::compound(NodeId(7), "Holes", "Offset too", "Holes")
+                    .showing(vec!["Offset too".to_owned(), "Keep".to_owned()]),
+            ],
+        );
+        size_row_pulldowns(&mut rail, text);
+        match rail.entries[0] {
+            ToolRailEntry::Compound { row_w, .. } => row_w,
+            _ => unreachable!(),
+        }
+    };
+    set_key_marks(std::collections::BTreeMap::new());
+    let sem = medir(&mut text);
+    set_key_marks(std::collections::BTreeMap::from([(
+        NodeId(7),
+        KeyMark::Livre,
+    )]));
+    let com = medir(&mut text);
+    let slot = Rect::new(0.0, 0.0, com, 24.0);
+    let (chip, _) = number_with_key_mark(NodeId(7), slot);
+    assert!(
+        chip.w + 0.01 >= sem,
+        "a face perde {} px para o losango",
+        sem - chip.w
+    );
+    set_key_marks(std::collections::BTreeMap::new());
+}

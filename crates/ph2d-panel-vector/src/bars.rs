@@ -34,12 +34,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
-use row::{gesture_chips, shape_chips, symmetry_chips};
+use row::{gesture_chips, offset_chips, shape_chips, symmetry_chips};
 use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
 /// `(modo, id, ícone, família, chave do nome)`.
-pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 19] = [
+pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 20] = [
     (
         DrawMode::Select,
         ids::VECTOR_MODE_SELECT,
@@ -160,6 +160,13 @@ pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 19] = [
         "panel.vector.mode.width",
     ),
     (
+        DrawMode::Offset,
+        ids::VECTOR_MODE_OFFSET,
+        IconId::VectorOffset,
+        BarFamily::Stroke,
+        "panel.vector.mode.offset",
+    ),
+    (
         DrawMode::PickBlend,
         ids::VECTOR_MODE_PICKBLEND,
         IconId::VectorBlend,
@@ -217,6 +224,7 @@ pub fn hint_key(mode: DrawMode) -> &'static str {
         DrawMode::Fillet => "panel.vector.hint.fillet",
         DrawMode::Chamfer => "panel.vector.hint.chamfer",
         DrawMode::Width => "panel.vector.hint.width",
+        DrawMode::Offset => "panel.vector.hint.offset",
         DrawMode::Trim => "panel.vector.hint.trim",
         DrawMode::Bucket => "panel.vector.hint.bucket",
         DrawMode::Cut => "panel.vector.hint.cut",
@@ -403,7 +411,12 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     // Os parâmetros da forma em foco (F9) são campos: à frente, num grupo que o separador nomeia.
     let rules = snap.mode == DrawMode::Rules;
     let hud = snap.mode == DrawMode::HudLayout;
-    let mut shape = shape_chips(&snap, store);
+    // F48d: a ferramenta Offset Path põe AS SUAS opções no grupo dos campos (a forma não muda aqui).
+    let mut shape = if snap.mode == DrawMode::Offset {
+        offset_chips(store)
+    } else {
+        shape_chips(&snap, store)
+    };
     if rules {
         shape.extend(crate::state_cad::chips());
     }

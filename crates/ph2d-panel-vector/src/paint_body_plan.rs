@@ -396,12 +396,6 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
         Drawing,
         |p| {
             p.seccao(
-                VECTOR_SECTION_EXPAND,
-                scope::WHEN_SELECTED,
-                Drawing,
-                |b, y| b.expand_section(y),
-            );
-            p.seccao(
                 crate::ids::VECTOR_SECTION_CONVERT,
                 scope::WHEN_SELECTED,
                 Drawing,
@@ -489,7 +483,6 @@ mod tests {
             VECTOR_SECTION_EFFECTS,
             VECTOR_SECTION_FILTERS,
             VECTOR_SECTION_ADVANCED,
-            VECTOR_SECTION_EXPAND,
             VECTOR_SECTION_CONVERT,
             VECTOR_SECTION_BLEND,
             VECTOR_SECTION_MORPH,
@@ -526,7 +519,6 @@ mod tests {
         ];
         let ambas = [VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_SNAP];
         let avancado = [
-            VECTOR_SECTION_EXPAND,
             VECTOR_SECTION_CONVERT,
             VECTOR_SECTION_BLEND,
             VECTOR_SECTION_MORPH,

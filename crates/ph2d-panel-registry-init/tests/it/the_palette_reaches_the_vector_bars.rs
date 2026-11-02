@@ -61,10 +61,13 @@ fn ponte_do_snap(id: NodeId, pos: &mut (bool, bool)) {
 }
 
 /// Os três chips «▾» da barra de controle (F16): abrem uma lista ou o painel do traço por baixo.
-const LISTAS: [NodeId; 3] = [
+const LISTAS: [NodeId; 5] = [
     ph2d_panel_vector::ids::VECTOR_BAR_STROKE,
     ph2d_panel_vector::ids::VECTOR_BAR_PROFILE,
     ph2d_panel_vector::ids::VECTOR_BAR_KIND,
+    // F48d: as duas listas da ferramenta Offset Path.
+    ph2d_panel_vector::ids::VECTOR_BAR_HOLES,
+    ph2d_panel_vector::ids::VECTOR_BAR_RESULT,
 ];
 
 /// O `Dropdown` do store de `id` está aberto?
@@ -148,6 +151,7 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
                 }) || hero.store.picker_target().is_some()
                     || id == ids::SELECTION_ACTIONS_PIN
                     || (id == ph2d_panel_vector::ids::VECTOR_VIEW_INTERFACE && trocou)
+                    || escolha_do_offset_gravada(id)
             };
             if trocou {
                 global_palette::route_global_pick(&mut hero, id);
@@ -214,4 +218,24 @@ fn the_palette_opens_the_stroke_panel_of_the_control_bar() {
         "escolher o mesmo outra vez não fechou"
     );
     ph2d_panel_vector::set_stroke_paint_kind(None);
+}
+
+/// F48d: as escolhas da ferramenta Offset Path (Corners · Holes · Result) são do PAINEL — o
+/// `event_expand` grava-as e a shell lê-as no quadro; não vão ao barramento. Chegar = gravar.
+fn escolha_do_offset_gravada(id: NodeId) -> bool {
+    use ph2d_panel_vector::ids as p;
+    use ph2d_tool_vector::ids as t;
+    let k = ph2d_panel_vector::offset_knobs();
+    [
+        (t::VECTOR_EXPAND_JOIN_MITER, k.join == 0),
+        (t::VECTOR_EXPAND_JOIN_ROUND, k.join == 1),
+        (t::VECTOR_EXPAND_JOIN_BEVEL, k.join == 2),
+        (t::VECTOR_EXPAND_SIDE_OUTER, k.side == 0),
+        (t::VECTOR_EXPAND_SIDE_BOTH, k.side == 2),
+        (p::VECTOR_EXPAND_RESULT_REPLACE, k.result == 0),
+        (p::VECTOR_EXPAND_RESULT_BEHIND, k.result == 1),
+        (p::VECTOR_EXPAND_RESULT_FRONT, k.result == 2),
+    ]
+    .iter()
+    .any(|&(i, gravou)| i == id && gravou)
 }

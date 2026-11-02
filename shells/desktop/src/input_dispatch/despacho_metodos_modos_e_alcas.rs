@@ -137,23 +137,15 @@ impl crate::App {
         )
     }
 
-    /// ⭐ A alça do Offset Path (F48): agarra-a sob o cursor — o host então PULA o picking/gizmo.
-    pub(super) fn vec_offset_handle_down(&mut self, world: [f64; 2]) -> bool {
+    /// ⭐ A ferramenta Offset Path (F48d): agarra a alça ou a forma sob o cursor.
+    pub(super) fn vec_offset_handle_down(&mut self, world: [f64; 2]) {
         let r = self.vec_px_to_world() * crate::vec_text_ride::HANDLE_R_PX;
-        let (Some(gfx), Some(pid)) = (self.gfx.as_ref(), self.vec.pen.selected()) else {
-            return false;
-        };
-        let Some(hero) = gfx.hero_screen.as_ref() else {
-            return false;
-        };
-        let map = &self.vec.entities;
-        if !ph2d_app_vec::offset_handle::shown(&hero.store, &gfx.sim, map, pid) {
-            return false;
-        }
+        let Some(gfx) = self.gfx.as_ref() else { return };
+        let (map, pen) = (&self.vec.entities, &mut self.vec.pen);
         let xf = ph2d_vec_entities::transform::build(&gfx.sim, map);
         let (s, v) = (&gfx.sim, &gfx.vec_scene);
-        self.vec.offset_grab = ph2d_app_vec::offset_handle::press_at(s, v, map, &xf, pid, world, r);
-        self.vec.offset_grab.is_some()
+        self.vec.offset_grab =
+            ph2d_app_vec::offset_handle::press_tool(pen, s, v, map, &xf, world, r);
     }
 
     /// O arrasto da alça do Offset Path — no-op sem ela agarrada.

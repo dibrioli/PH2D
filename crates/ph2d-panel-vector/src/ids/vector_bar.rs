@@ -16,3 +16,9 @@ pub const VECTOR_BAR_PROFILE: NodeId = hash_node_id("vector.bar.profile");
 
 /// **Tinta ▾** — com que tinta o traço desenha (Solid, Pattern, Brush).
 pub const VECTOR_BAR_KIND: NodeId = hash_node_id("vector.bar.kind");
+
+/// **Holes ▾** e **Result ▾** da ferramenta Offset Path (F48d): as linhas são os chips do Holes
+/// (`VECTOR_EXPAND_SIDE_*`) e do Result (`VECTOR_EXPAND_RESULT_*`).
+pub const VECTOR_BAR_HOLES: NodeId = hash_node_id("vector.bar.offset_holes");
+
+pub const VECTOR_BAR_RESULT: NodeId = hash_node_id("vector.bar.offset_result");

@@ -483,6 +483,13 @@ impl crate::App {
             }
             return true;
         }
+        // **Ferramenta Offset Path** (F48d): o press agarra a alça ou qualquer forma (o gesto é dela).
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Offset {
+            if let Some(w) = self.vec_world_at(self.last_pointer) {
+                self.vec_offset_handle_down(w);
+            }
+            return true;
+        }
         false
     }
 }

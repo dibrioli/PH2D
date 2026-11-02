@@ -101,6 +101,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ph2d_tool_vector::ids::VECTOR_MODE_FILLET
             || x == ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER
             || x == ph2d_tool_vector::ids::VECTOR_MODE_WIDTH
+            || x == ph2d_tool_vector::ids::VECTOR_MODE_OFFSET
             || x == ph2d_tool_vector::ids::VECTOR_MODE_CUT
             || x == ph2d_tool_vector::ids::VECTOR_MODE_TRIM
             || x == ph2d_tool_vector::ids::VECTOR_MODE_BUCKET

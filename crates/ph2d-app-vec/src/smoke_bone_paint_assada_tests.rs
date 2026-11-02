@@ -5,33 +5,7 @@
 //!
 //! > *uma malha fixa assada em repouso alisa a dobra FORTE como o refinamento por quadro alisa?*
 //!
-//! # Porque esta é a pergunta DECISIVA, e não uma entre várias
-//!
-//! A direcção inteira da F9 — a densidade sai do QUADRO e vai para o BIND, e a deformação passa
-//! para o *vertex shader* — assenta numa única propriedade: **uma topologia só tem de servir todas
-//! as poses**. Se ela servir, o resto é engenharia (enviar poses, costurar os leitores da malha).
-//! Se não servir, a direcção cai e as ondas W1–W4 medem outra coisa.
-//!
-//! ⚠️ **E ela mede-se sem inventar lei nenhuma.** Assar *no pior caso* (a dobra mais forte, no zoom
-//! mais fino) usa o refinamento que já existe e responde à pergunta da topologia. O critério
-//! proposto na fila — refinar onde o CAMPO DE PESOS curva — é uma forma de escolher ONDE partir com
-//! menos peças, e só faz sentido medir depois de se saber que uma topologia fixa chega.
-//!
-//! # ⛔ O CONTROLO que torna a comparação válida
-//!
-//! Re-posar uma malha assada noutra cena só significa alguma coisa se o BIND das duas cenas for o
-//! mesmo — mesmas posições de repouso, mesmos pesos. Se a `cena_dobrada` mexesse no bind ao dobrar,
-//! a tabela compararia duas artes diferentes e leria isso como qualidade. ⇒ a sonda **afirma-o
-//! primeiro**, e pára se não for verdade.
-//!
-//! # O que cada coluna é
-//!
-//! * **peças** — triângulos entregues. Na assada é um número só, o mesmo em toda a linha: é ele que
-//!   vira memória de GPU (a W4 da fila).
-//! * **faceta** — `skinned_deviation`, o desvio da malha contra o campo que ela segue, em pixels de
-//!   ECRÃ (já multiplicado pelo zoom).
-//! * **canto** — o maior canto da silhueta desenhada (`vai_e_volta`), que é a régua do OLHO e a que
-//!   apanhou o report de 2026-09-16. ⚠️ Ela não sabe que campo existe, de propósito.
+//! O porquê e as colunas: `docs/Vector Module/50_cabecalhos_do_app_vec.md`.
 
 use super::*;
 

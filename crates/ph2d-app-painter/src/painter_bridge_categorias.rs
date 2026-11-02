@@ -14,7 +14,7 @@ pub(crate) const CATEGORIAS: &[(&str, &[&str])] = &[
     ("app.painter.presets.category.ink", &["Ink"]),
     ("app.painter.presets.category.marker", &["Marker"]),
     ("app.painter.presets.category.pastel", &["Pastel"]),
-    ("app.painter.presets.category.oil", &["Oil", "ExpressOil"]),
+    ("app.painter.presets.category.oil", &["Oil", "ExpressOil", "Acrylic"]),
     ("app.painter.presets.category.watercolor", &["Watercolor"]),
     ("app.painter.presets.category.airbrush", &["Airbrush"]),
     (
@@ -23,7 +23,7 @@ pub(crate) const CATEGORIAS: &[(&str, &[&str])] = &[
     ),
     (
         "app.painter.presets.category.blend_erase",
-        &["Blend", "Eraser", "Smear"],
+        &["Blend", "Eraser", "Smear", "Water"],
     ),
     ("app.painter.presets.category.effects", &["Effects", "Splatter"]),
 ];

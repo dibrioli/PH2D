@@ -81,9 +81,9 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
     }
     assert_eq!(
         Tool::ALL.len(),
-        16 + ph2d_tool_vector::shapes::SHAPES.len(),
-        "10 de desenho + 5 de selecção + Transform (P6c: sem Move nem as cheias) + as formas do \
-         Vector (P6e: o catálogo inteiro)"
+        19 + ph2d_tool_vector::shapes::SHAPES.len(),
+        "10 de desenho + 5 de selecção + Transform (P6c: sem Move nem as cheias) + Gradient, Blur \
+         e Jumble (P8) + as formas do Vector (P6e: o catálogo inteiro)"
     );
     assert_eq!(PIXEL_MAX_BRUSH, ph2d_pixel_core::brush::MAX_BRUSH);
 }

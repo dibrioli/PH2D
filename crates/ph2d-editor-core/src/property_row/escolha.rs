@@ -172,7 +172,12 @@ pub fn paint_choice_row<'a>(
             w,
             crate::paint::resolve(ph2d_tokens::ColorToken::Text2, theme),
         );
-        let gy = y + font + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
+        // Sem nome não há cabeçalho: a fila continua a de cima (o 2 + 2 do Dithering do Pixel).
+        let gy = if label.is_empty() {
+            y
+        } else {
+            y + font + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX
+        };
         // O losango da paleta senta na coluna do decorator da linha do CABEÇALHO — só quando o
         // campo tem canal: a paleta nunca teve o ponto, e um ponto novo na ponta do nome dela
         // mudaria a linha de quem não anima nada.

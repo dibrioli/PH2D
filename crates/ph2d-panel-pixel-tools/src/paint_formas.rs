@@ -99,12 +99,36 @@ impl Corpo<'_> {
     pub(super) fn opcoes_texto(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
         let o = info.options;
         let y = self.linha(tr("panel.pixel.text"), ColorToken::Text3, y);
-        let y = self.linha(&info.text_font_name, ColorToken::Text2, y);
+        // «Font» à esquerda e o nome dela na coluna do valor, como os outros campos; Previous|Next
+        // por baixo, na mesma coluna.
+        let row = ph2d_editor_core::property_row::paint_label_row(
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.x,
+            self.w,
+            y,
+            ROW_H_PX,
+            tr("panel.pixel.text.font"),
+            sec,
+        );
+        let font = TypeToken::Sm.px();
+        ph2d_editor_core::paint::paint_text(
+            self.text_system,
+            self.scene,
+            &info.text_font_name,
+            row.control.x,
+            y + (ROW_H_PX - font) * 0.5,
+            font,
+            row.control.w.max(1.0),
+            ph2d_editor_core::paint::resolve(ColorToken::Text1, self.theme),
+        );
+        let y = y + ROW_H_PX + ph2d_tokens::control_gap_px();
         let fonte = [
             (tr("panel.pixel.text.font_prev"), false, ids::TEXT_FONT_PREV),
             (tr("panel.pixel.text.font_next"), false, ids::TEXT_FONT_NEXT),
         ];
-        let y = self.escolha(tr("panel.pixel.text.font"), &fonte, sec, y);
+        let y = self.escolha("", &fonte, sec, y);
         let y = self.campo(tr("panel.pixel.text.size"), ids::TEXT_SIZE, sec, y);
         let y = self.caixas(
             &[

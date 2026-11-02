@@ -164,3 +164,27 @@ fn no_gradient_option_label_is_cut_at_the_minimum_dock_width() {
         );
     }
 }
+
+/// A matriz 2 + 2 sem vão: a 2.ª fila desce do fim da 1.ª só o degrau entre controlos (o mesmo que
+/// separa Linear|Radial da linha seguinte), nunca um cabeçalho vazio.
+#[test]
+fn the_dither_rows_stack_without_an_empty_band() {
+    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut st = PixelToolsPanelState::default();
+    set_current_pixel(info(PixelOptions::default()));
+    let rects = host.paint::<PixelToolsPanel>(&mut st, viewport(WidgetStore::DOCK_W_MIN));
+    let r = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .expect("pintado")
+    };
+    let (a, c) = (r(ids::GRADIENT_DITHERS[0].1), r(ids::GRADIENT_DITHERS[2].1));
+    let vao = c.y - (a.y + a.h);
+    assert!(
+        (vao - ph2d_tokens::control_gap_px()).abs() < 0.5,
+        "vão entre as filas = {vao} px (o degrau é {})",
+        ph2d_tokens::control_gap_px()
+    );
+}

@@ -98,3 +98,44 @@ fn the_text_size_field_is_painted_with_the_tool() {
     let rects = host.paint::<PixelToolsPanel>(&mut st, viewport(WidgetStore::DOCK_W_MIN));
     assert!(rects.iter().any(|(n, _)| *n == ids::TEXT_SIZE));
 }
+
+/// O nome da fonte senta na coluna do VALOR, ao lado de «Font» (a largura dele é a da coluna do
+/// valor, não a do painel), inteiro; Previous|Next vêm depois, antes do Size.
+#[test]
+fn the_font_name_sits_in_the_value_column_next_to_its_label() {
+    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut st = PixelToolsPanelState::default();
+    set_current_pixel(PixelPanelInfo {
+        editing: true,
+        tool: PixelTool::Text,
+        text_font_name: "cozette".to_owned(),
+        ..Default::default()
+    });
+    let w = WidgetStore::DOCK_W_MIN;
+    let (rects, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| {
+        host.paint::<PixelToolsPanel>(&mut st, viewport(w))
+    });
+    let nome = medidos
+        .iter()
+        .find(|m| m.texto == "cozette")
+        .expect("o nome pintado");
+    assert_eq!(nome.pintado, "cozette", "inteiro");
+    let r = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .expect("pintado")
+    };
+    let size = r(ids::TEXT_SIZE);
+    assert!(
+        (nome.largura - size.w).abs() < 24.0 && nome.largura < w * 0.75,
+        "o nome na coluna do valor: largura {} (Size {} · painel {w})",
+        nome.largura,
+        size.w
+    );
+    assert!(
+        r(ids::TEXT_FONT_PREV).y < size.y,
+        "a fonte antes do tamanho"
+    );
+}

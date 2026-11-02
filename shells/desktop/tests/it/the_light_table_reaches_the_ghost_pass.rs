@@ -10,7 +10,9 @@
 //! número — e o artista fixa um quadro que nunca aparece. Então a costura é afirmada aqui,
 //! sobre o fonte: quem monta as fontes de fantasma tem de perguntar ao `pinned_keys()`.
 
-const SRC: &str = include_str!("../../src/render_loop/present.rs");
+/// ⚠️ GEF 19 E4 (`0cb325c9b9`): o Flip entrou na ordem total e o seu passe — com as fontes de
+/// fantasma — mudou-se para a faixa da crate da família.
+const SRC: &str = include_str!("../../../../crates/ph2d-app-flip/src/pass_quadro.rs");
 
 #[test]
 fn the_ghost_sources_are_built_from_the_pinned_keys() {

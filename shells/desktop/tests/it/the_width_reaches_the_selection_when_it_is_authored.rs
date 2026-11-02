@@ -59,7 +59,10 @@ fn the_width_handed_to_the_restyle_is_the_authored_one() {
 
 #[test]
 fn the_change_detector_counts_a_width_that_was_authored() {
-    at("stroke_style.onto_fields(s, new_w, stroke_campos) != *s");
+    // ⚠️ F44b (UIUX, 01/11): com as linhas de tinta (`PaintSlot`) o detector escreve num CLONE pelo
+    // mesmo escritor que o restyle usa (`restyle_path_fields` → `onto_fields(s) != *s`).
+    at("restyle_path_fields(&mut p.clone(), &stroke_style, new_w, stroke_campos, slot)");
+    at("let stroke_campos = authored & StyleFields::STROKE;");
     assert!(
         !SRC.contains("width_dragging && (s.width"),
         "o detector voltou a perguntar pelo ARRASTO: num traço em que só a largura mudou o \

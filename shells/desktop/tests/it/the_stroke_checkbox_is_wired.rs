@@ -80,19 +80,22 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
         (
             // ⚠️ Desde a `line/render-bodies` o acumulador é um campo do `DrainOut`: a declaração saiu do corpo do
             // dreno, e o que o quadro mostra dele é a ESCRITA — que é o que morre se o clique deixar de o encher.
-            "pd.pending_stroke_present = true;",
+            // ⚠️ F44b (UIUX, 01/11): a caixa virou os quatro gestos da tinta de BASE (`BaseVerb`:
+            // «−»/«+» e olho, do preenchimento e do traço); o acumulador leva o VERBO, e o
+            // reconhecimento do id mora no `verb_for_id` da crate da família.
+            "pd.pending_stroke_present = Some(v);",
             "o acumulador do clique",
         ),
         (
-            "ph2d_panel_vector::ids::VECTOR_STROKE_PRESENT",
+            "crate::vec_stroke_present::verb_for_id(",
             "o reconhecimento do clique no despacho",
         ),
         (
-            "crate::vec_stroke_present::toggle(",
+            "crate::vec_stroke_present::apply(",
             "o dreno que HONRA o clique",
         ),
         (
-            "ph2d_panel_vector::state::set_stroke_present(",
+            "crate::vec_stroke_present::publish(",
             "a publicacao que a caixa desenha",
         ),
     ] {
@@ -111,10 +114,10 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
 fn the_click_is_honoured_before_the_state_is_published() {
     let render = frame_code();
     let honra = render
-        .find("crate::vec_stroke_present::toggle(")
+        .find("crate::vec_stroke_present::apply(")
         .expect("o dreno existe");
     let publica = render
-        .find("ph2d_panel_vector::state::set_stroke_present(")
+        .find("crate::vec_stroke_present::publish(")
         .expect("a publicacao existe");
     assert!(
         honra < publica,
@@ -159,8 +162,10 @@ fn the_per_frame_restyle_still_refuses_a_shape_without_a_stroke() {
     // ⚠️ A agulha é o PREFIXO, e não a linha inteira: a wave A do plano 35 tirou o `Copy` do
     // `StrokeSpec`, e o `else` passou a vir depois de um `.as_ref()`. *Um gate que fixa a grafia
     // exacta de uma linha reprova a refactoração que não mudou a lei que ele defende.*
+    // ⚠️ F44b (UIUX, 01/11): o traço passou a ter LINHAS (`PaintSlot`); a recusa é «nem base nem a
+    // linha aberta têm traço», no `restyle_slot_fields`.
     assert!(
-        s.contains("let Some(old) = path.stroke"),
+        s.contains("if path.base_stroke().is_none() && path.slot_stroke(slot).is_none() {"),
         "o `restyle_selected_strokes` deixou de RECUSAR quem nao tem traco - ele corre por QUADRO, \
          e agora veste toda forma selecionada sem ninguem pedir"
     );

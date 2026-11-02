@@ -187,7 +187,8 @@ fn as_particulas_desenham_se_com_qualquer_ferramenta() {
         .find("let particulas: &[ph2d_render::RenderInstance] = &particles.instances;")
         .expect("as particulas nao entram no passe de sprites — o componente seria invisivel");
     let motion_gate = src
-        .find("let (motion_gpu, motion_slice) = motion.sprites_da_camada(motion_active")
+        // ⚠️ A GEF 19 alongou o argumento e o rustfmt partiu o `let` em duas linhas: a agulha é a chamada.
+        .find("motion.sprites_da_camada(motion_active")
         .expect("o slice do Motion mudou de forma — este gate mede a diferenca contra ele");
     // As duas linhas existem, e a das partículas NÃO é a do Motion: ela não pergunta pela
     // ferramenta. (A ordem entre elas não importa; o que importa é a ausência da guarda.)

@@ -134,7 +134,7 @@ fn nothing_writes_the_visibility_every_frame() {
     // ⚠️ E a única escrita é a da ARESTA: ela mora dentro do `if` do `on_focus`.
     let aresta = linhas
         .iter()
-        .position(|l| l.contains("skeleton_reveal::on_focus("))
+        .position(|l| l.contains("ph2d_app_skeleton::bone_bridge::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada");
     assert!(
         codigo_apos(&linhas, aresta, 8)
@@ -158,19 +158,27 @@ fn nothing_writes_the_visibility_every_frame() {
 ///
 /// ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`, gateada no seu módulo): pedi-la em
 /// todo quadro prenderia a aba e o artista não conseguiria olhar para outra.
+///
+/// ⭐ **Dono 01/11 (UIUX F41 smoke 2, `c9174f0df6`): escolher um osso JÁ EXISTENTE arma *Transform*.**
+/// O armar mora numa porta só, `ph2d_app_skeleton::bone_bridge::on_focus` (aresta + verbo; lei em
+/// `choosing_an_existing_bone_opens_transform_but_a_newborn_keeps_create`). ⇒ o que este gate mede
+/// na shell é que a aresta é ESSA porta e que o corpo dela não arma por conta própria — um segundo
+/// sítio a armar divergiria da porta (o recém-nascido que fica em *Create*).
 #[test]
-fn the_focus_edge_opens_and_raises_and_never_arms() {
+fn the_focus_edge_opens_and_raises_and_arms_only_through_the_one_door() {
     let src = code_only(&LOOP);
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
         .iter()
-        .position(|l| l.contains("skeleton_reveal::on_focus("))
+        .position(|l| l.contains("ph2d_app_skeleton::bone_bridge::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada — o painel nunca vem à frente");
     let corpo = corpo_do_bloco(&linhas, i);
     assert!(
-        !corpo.contains("bone_arm_pending") && !corpo.contains("tool_in_hand"),
-        "a aresta do foco voltou a armar a ferramenta de osso — escolher um osso muda o esqueleto \
-         para Pose, e o Bind (Object) fica inalcançável"
+        !corpo.contains("bone_arm_pending")
+            && !corpo.contains("tool_in_hand")
+            && !corpo.contains("bone_bridge::arm("),
+        "o corpo da aresta do foco arma a ferramenta de osso por conta própria — o armar é da porta \
+         `bone_bridge::on_focus`, e um segundo sítio arma também o osso recém-nascido"
     );
     for (agulha, o_que) in [
         ("set_panel_visible", "ABRIR o painel"),

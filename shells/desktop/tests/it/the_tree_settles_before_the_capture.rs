@@ -48,10 +48,18 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 #[test]
 fn the_tree_settles_before_the_capture() {
     // A cabeça do bloco da supressão (o 1.º motivo é hoje o jogo a correr, GEF 28/10 — e o do botão vem a seguir).
-    let supressao = at(UNDO, "let motivo = if ", "undo_app.rs");
+    // ⚠️ UIUX F41 (28d17458e4): os motivos moram na `motivo_da_supressao`, e o bloco é a chamada.
+    let funcao = at(UNDO, "fn motivo_da_supressao(", "undo_app.rs");
+    let corpo = &UNDO[funcao..];
+    let corpo = &corpo[..corpo.find("\n    }\n").expect("o fim da função")];
     assert!(
-        UNDO[supressao..].contains("self.held_button.is_some()"),
+        corpo.contains("self.held_button.is_some()"),
         "o motivo do botão em baixo sumiu do bloco da supressão"
+    );
+    let supressao = at(
+        UNDO,
+        "if let Some(motivo) = self.motivo_da_supressao(had_input) {",
+        "undo_app.rs",
     );
     let settle = at(
         &UNDO[supressao..],

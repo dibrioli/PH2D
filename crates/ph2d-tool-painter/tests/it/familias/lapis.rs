@@ -253,8 +253,8 @@ const PAPEL_DO_RASCUNHO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Nois
 
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Colored 4B", foto: "pencil4bcolor", raio: 15.00, metricas: &[(Cobertura, 0.665), (Textura, 11.826), (Borda, 0.327), (Orla, 10.0), (Cruzamento, 0.730), (Largura, 25.0)] },
-    Midia { preset: "Scratch", foto: "scratch", raio: 15.71, metricas: &[(Cobertura, 0.255), (Textura, 19.780), (Borda, 0.591), (Orla, 13.0), (Cv, 0.126), (Cruzamento, 0.652), (Largura, 24.0)] },
+    Midia { preset: "Colored 4B", raio: 15.00, metricas: &[(Cobertura, 0.665), (Textura, 11.826), (Borda, 0.327), (Orla, 10.0), (Cruzamento, 0.730), (Largura, 25.0)] },
+    Midia { preset: "Scratch", raio: 15.71, metricas: &[(Cobertura, 0.255), (Textura, 19.780), (Borda, 0.591), (Orla, 13.0), (Cv, 0.126), (Cruzamento, 0.652), (Largura, 24.0)] },
 ];
 
 // ---- Os portões da família (J3, `docs/Painter/Pinceis/exames/lapis.md`) ----

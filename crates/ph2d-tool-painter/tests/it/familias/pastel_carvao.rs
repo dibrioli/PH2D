@@ -444,15 +444,15 @@ pub const MEIOS: &[ReceitaMeio] = &[];
 // O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua); o raio do Wax por grelha.
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Charcoal", foto: "charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
-    Midia { preset: "Soft Pastel", foto: "pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
-    Midia { preset: "Oil Pastel", foto: "oilpastel2", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
+    Midia { preset: "Charcoal", raio: 10.5, metricas: &[(Cobertura, 0.384), (Borda, 0.378), (Orla, 15.0)] },
+    Midia { preset: "Soft Pastel", raio: 8.5, metricas: &[(Cobertura, 0.752), (Borda, 0.443), (Orla, 6.0)] },
+    Midia { preset: "Oil Pastel", raio: 15.0, metricas: &[(Cobertura, 0.654), (Textura, 17.354), (Borda, 0.417), (Orla, 11.0)] },
     // Square Hard (J4 2.ª ronda, decisão 16 — vale a foto da bateria, 19/10): a carga que cobre o vermelho como ela (o
     // cruzamento R 75, Rebelle 74) lê na foto antiga das mídias Textura 13 (20,9) e Cv 0,044 (0,077); na foto nova a
     // textura e o Cv são os do Rebelle (25 · 23,3 e 0,080 · 0,082, régua 277/295) — saem daqui, e a cobertura do
     // vermelho prende-se pela foto nova (`o_square_hard_tapa_o_vermelho_como_a_foto`).
-    Midia { preset: "Square Hard", foto: "squarehard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Borda, 0.856), (Cruzamento, 0.579), (Largura, 31.0)] },
-    Midia { preset: "Wax Scrape", foto: "waxscrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
+    Midia { preset: "Square Hard", raio: 15.50, metricas: &[(Cobertura, 0.705), (Borda, 0.856), (Cruzamento, 0.579), (Largura, 31.0)] },
+    Midia { preset: "Wax Scrape", raio: 19.5, metricas: &[(Cobertura, 0.763), (Textura, 16.691), (Borda, 0.586), (Largura, 36.0)] },
 ];
 
 const OIL_PASTEL: Receita = Receita {

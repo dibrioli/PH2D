@@ -278,7 +278,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
 // Orla 1 nos marcadores (como no Round): não conta. (O Liner saiu daqui: passou ao Digital, e o portão por foto é do Wet.)
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Marker Bullet", foto: "markerbullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
+    Midia { preset: "Marker Bullet", raio: 20.0, metricas: &[(Cobertura, 0.909), (Textura, 0.658), (Borda, 0.768), (Cruzamento, 0.016)] },
 ];
 
 // ---- O portão da família (J3, `docs/Painter/Pinceis/exames/caligrafia_marcadores.md`) ----

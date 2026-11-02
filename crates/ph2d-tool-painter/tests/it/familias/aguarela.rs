@@ -590,8 +590,8 @@ pub const MEIOS: &[ReceitaMeio] = &[ReceitaMeio::aquarela(
 // ESMAECE (prompt 45, doc 45).
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Wet Liner", foto: "wcliner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
-    Midia { preset: "Wet Flat", foto: "wcflat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0), (Pontas, 0.9)] },
+    Midia { preset: "Wet Liner", raio: 19.0, metricas: &[(Cobertura, 0.653), (Textura, 1.708)] },
+    Midia { preset: "Wet Flat", raio: 17.0, metricas: &[(Cobertura, 0.315), (Ponta, 0.096), (RampaLargura, 0.829), (RampaCobertura, 0.42), (Largura, 34.0), (Pontas, 0.9)] },
 ];
 
 /// Os reprovados da J4 ([`EM_ESTUDO`]) não têm ficheiro na fábrica, e nenhum tem o nome de um pincel dela.

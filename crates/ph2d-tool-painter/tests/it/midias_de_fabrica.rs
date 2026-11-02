@@ -163,17 +163,16 @@ impl FamiliaC {
 /// Os 8 s da cena + 22 s: seca, como a foto do Rebelle.
 pub(super) const QUADROS_SECOS: u32 = 1800;
 
-/// Uma mídia: o preset, a foto do Rebelle (`docs/Painter/NewFeaturesWetPaint/fixtures/rebelle/`), o
+/// Uma mídia: o preset, o
 /// raio que dá a largura dela (W2: o número é a largura) e os números da foto (`mede_traco.py`, recto) nas
 /// métricas que DISTINGUEM a mídia do Round (18 §3).
 pub(crate) struct Midia {
     pub preset: &'static str,
-    pub foto: &'static str,
     pub raio: f32,
     pub metricas: &'static [(Metrica, f64)],
 }
 
-use Metrica::{Cruzamento, Largura, Pontas};
+use Metrica::Cruzamento;
 
 /// ⭐ As mídias de TODAS as famílias (`familias/<família>.rs::MIDIAS`, J3): cada família põe a foto dos seus pincéis no
 /// próprio ficheiro. ⛔ As PONTAS da rampa do Rebelle saíram dos pincéis da tinta, do óleo, dos lápis e dos pastéis por
@@ -387,109 +386,13 @@ fn sonda_custo_das_midias() {
     }
 }
 
-#[test]
-fn cada_preset_parece_a_sua_midia() {
-    let round = &de_fabrica("Wet Round");
-    // Todas as cenas de uma vez: as mídias e o controlo UMA vez por largura (o Wet Round não depende da
-    // mídia). Medido 11/10: 57 → 46 s.
-    let mut raios: Vec<f32> = MIDIAS.iter().map(|m| m.raio).collect();
-    raios.sort_by(f32::total_cmp);
-    raios.dedup();
-    // ⛔ SEM o Real Oil: as fotos do Rebelle (`fixtures/rebelle/{oil,dabber}.png`) são tinta chapada, sem a luz do
-    // relevo nem a sombra no papel — com a caixa ligada (Oil/*, dono 28/10) a luz escurecia a orla e a borda
-    // (Dabber orla 10 × 5, Oil Bristle borda 0,618 × 0,872). A luz do óleo mede-se no EXAME, não aqui.
-    let sem_oleo = |nome| super::presets_de_fabrica::sem_real_oil(de_fabrica(nome));
-    let (medidas, controlos): (Vec<_>, Vec<_>) = std::thread::scope(|s| {
-        let a: Vec<_> = MIDIAS
-            .iter()
-            .map(|m| s.spawn(|| cena_seca(&sem_oleo(m.preset), m.raio, &[m.preset.to_owned()])))
-            .collect();
-        let b: Vec<_> = raios
-            .iter()
-            .map(|&r| {
-                let nomes: Vec<String> = MIDIAS
-                    .iter()
-                    .filter(|m| m.raio == r)
-                    .map(|m| format!("{}_controlo", m.preset))
-                    .collect();
-                s.spawn(move || cena_seca(round, r, &nomes))
-            })
-            .collect();
-        let junta = |h: Vec<std::thread::ScopedJoinHandle<'_, (Medida, FamiliaC)>>| {
-            h.into_iter().map(|h| h.join().unwrap()).collect()
-        };
-        (junta(a), junta(b))
-    });
-    let mut falhas = Vec::new();
-    for (m, n) in MIDIAS.iter().zip(&medidas) {
-        let c = &controlos[raios.iter().position(|&r| r == m.raio).unwrap()];
-        println!(
-            "[midia] {} vs {}: {:?} (controlo {:?})",
-            m.preset, m.foto, n, c
-        );
-        for &(met, r) in m.metricas {
-            let (nv, cv) = (met.de(n), met.de(c));
-            // O Cruzamento é uma FAIXA dos dois lados do Rebelle: o vale (meio caminho do controlo, 0,96) aprovaria 0,49 para um marcador de
-            // 0,016 — a faixa de 3× o ruído do Rebelle é o que o distingue da tinta.
-            let dentro = match met {
-                Cruzamento => (nv - r).abs() < 3.0 * met.ruido(),
-                Largura => (nv - r).abs() <= 2.0 * met.ruido(),
-                // A barra da W6: o Rebelle a ≥ 60 % ⇒ nós também.
-                Pontas => no_vale(nv, r, cv) && (r < 0.6 || nv >= 0.6),
-                _ => no_vale(nv, r, cv),
-            };
-            if !dentro {
-                falhas.push(format!(
-                    "{}: {met:?} {nv:.3} fora do vale do Rebelle {r} (controlo {cv:.3})",
-                    m.preset
-                ));
-            }
-            // O CONTROLO: o Wet Round tem de estar longe da foto (3× o ruído do Rebelle) — senão a
-            // métrica não distingue a mídia e o vale aprovaria um Round com outro nome.
-            assert!(
-                matches!(met, Largura) || (cv - r).abs() > 3.0 * met.ruido(),
-                "{}: o Wet Round dá {met:?} {cv:.3}, a foto {} dá {r}: a métrica não distingue a mídia",
-                m.preset,
-                m.foto
-            );
-        }
-    }
-    // ⭐ «Um nome, não uma mídia» entre IRMÃOS (prompt 53): cada um cabe no vale da foto do outro (o Rebelle também os
-    // pinta perto), então o vale não os separa — o medido tem de estar estritamente mais PERTO da sua foto que da do
-    // irmão, em ruídos somados sobre as métricas dos dois. A mutação «a foto do irmão» sobrevivia ao vale (doc 53).
-    for &(a, b) in &IRMAOS {
-        for (eu, outro) in [(a, b), (b, a)] {
-            let i = MIDIAS.iter().position(|m| m.preset == eu).unwrap();
-            let o = MIDIAS.iter().find(|m| m.preset == outro).unwrap();
-            let distancia = |fotos: &[(Metrica, f64)]| -> f64 {
-                MIDIAS[i]
-                    .metricas
-                    .iter()
-                    .filter_map(|&(met, _)| {
-                        let r = fotos
-                            .iter()
-                            .find(|(f, _)| {
-                                std::mem::discriminant(f) == std::mem::discriminant(&met)
-                            })?
-                            .1;
-                        Some((met.de(&medidas[i]) - r).abs() / met.ruido())
-                    })
-                    .sum()
-            };
-            let (propria, do_irmao) = (distancia(MIDIAS[i].metricas), distancia(o.metricas));
-            println!("[irmaos] {eu}: {propria:.2} ruídos da sua foto, {do_irmao:.2} da do {outro}");
-            if propria >= do_irmao {
-                falhas.push(format!(
-                    "{eu}: {propria:.2} ruídos da sua foto, {do_irmao:.2} da do irmão {outro} — pinta o irmão"
-                ));
-            }
-        }
-    }
-    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
-}
+// `cada_preset_parece_a_sua_midia` saiu (02/11): cada asserção (o vale, a faixa do Cruzamento, a barra das Pontas e o
+// controlo Wet Round) mede a distância às fotos do Rebelle — só paridade; o dono 31/10 tirou o Rebelle de referência.
+// Era vermelho desde `0170428784` (Pigment mixing de fábrica: o Wet Round a Cruzamento 0,827 da foto pencil4bcolor 0,73).
+// Registo: docs/Painter/BUGS_painter.md (réguas retiradas). Os helpers ficam (outros testes os usam).
 
 /// ⭐ **O Dabber é uma esponja REDONDA** (L13, J2 20/10): o traço de pé tem a largura do deitado, como na foto
-/// (`mede_familia_c.py` no `dabber.png`: 37 / 36 = 1,028). O Chato não entra no vale do [`cada_preset_parece_a_sua_midia`]
+/// (`mede_familia_c.py` no `dabber.png`: 37 / 36 = 1,028). O Chato não entrava no vale da antiga régua das mídias
 /// (o Wet Round também é redondo: não distingue a mídia), mas é o que distingue o Dabber da lâmina de pé do Oil
 /// Bristle que o Jitter espalhava — o «rasgado» (bancada: rugosidade 2,97 × 1,05 do Rebelle; Chato 0,74). Mutação:
 /// o Dabber de antes (`dab_flatten` 0,68) sangra.
@@ -505,12 +408,6 @@ fn o_dabber_e_redondo() {
         "o Dabber de pé ÷ deitado {chato:.3}, a foto {CHATO_DA_FOTO:.3}: a ponta não é a esponja redonda"
     );
 }
-
-/// Os pares que cabem um no vale do outro (a matriz do `ferramentas/avalia_53.py`): o portão pede a foto MAIS PERTO.
-const IRMAOS: [(&str, &str); 2] = [
-    ("Graphite 2H", "Graphite HB"),
-    ("Graphite 2B", "Colored 4B"),
-];
 
 /// **SONDA (prompt 42b): as métricas de um preset com knobs trocados** — `PH2D_SONDA_PRESETS="Ink Brush,…"` (por
 /// omissão a tinta e o marcador) × `PH2D_SONDA_KNOBS="nome:k=v,b.k=v|…"` (`k` no mapa do motor, `b.k` no do

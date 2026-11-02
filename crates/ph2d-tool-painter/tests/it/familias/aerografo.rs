@@ -171,7 +171,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
 // o controlo fica a 0,013 — doc 43 §2).
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Airbrush", foto: "airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0), (Pontas, 0.8)] },
+    Midia { preset: "Airbrush", raio: 15.0, metricas: &[(Cobertura, 0.381), (Textura, 22.705), (Borda, 0.537), (Orla, 12.0), (Cv, 0.088), (Cruzamento, 0.583), (RampaLargura, 0.63), (RampaCobertura, 0.34), (Largura, 26.0), (Pontas, 0.8)] },
 ];
 
 /// O Shape sem forma (nem cerdas): a ponta é só a queda — o aerógrafo.

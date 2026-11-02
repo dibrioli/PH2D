@@ -191,7 +191,7 @@ pub const MEIOS: &[ReceitaMeio] = &[];
 // As formas (prompt 44, doc 44 §3): a ponta reta e a pressão que não estreita e ESMAECE (prompt 45, doc 45).
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Gouache Flat", foto: "gouacheflat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
+    Midia { preset: "Gouache Flat", raio: 19.5, metricas: &[(Cobertura, 0.504), (Ponta, 0.083), (Chato, 0.782), (RampaLargura, 0.872), (RampaCobertura, 0.43), (Largura, 39.0), (Pontas, 0.87)] },
 ];
 
 /// Os reprovados da J4 ([`EM_ESTUDO`]) não têm ficheiro na fábrica, e nenhum tem o nome de um pincel dela.

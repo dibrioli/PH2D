@@ -848,14 +848,14 @@ const NUVENS_DO_THICK: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds
 // sangra cada um sozinho (Oil 0,950 · Express 0,906).
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Oil Bristle", foto: "oil", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
+    Midia { preset: "Oil Bristle", raio: 20.5, metricas: &[(Cobertura, 0.909), (Borda, 0.872), (Chato, 0.317)] },
     // J4: sem a Tinta da foto `express` do prompt 23 (0,772): os tufos curados (`exames/oleo_acrilica.md`) dão 0,666 com o
     // pigmento 75 — o recto da bateria do EXAME (Rebelle `Round/Hairy`, três cenas) está dentro do ruído na opacidade, e o
     // pigmento que a devolvia (≥ 100) partia a largura prometida a raio 7. A identidade dos tufos é o portão da família.
-    Midia { preset: "Express Oil", foto: "express", raio: 21.0, metricas: &[(Cobertura, 0.700)] },
+    Midia { preset: "Express Oil", raio: 21.0, metricas: &[(Cobertura, 0.700)] },
     // J4: sem a Textura da foto `dabber` do 52 (10,7): a bateria do EXAME (Rebelle `Dabber/Dabber`, três cenas) quer o
     // granulado fino e igual — o claro por fio 0,55 → 0,1 deixa a textura em 6,6 (régua 368 → 388/454, origem 12.º → 8.º).
-    Midia { preset: "Dabber", foto: "dabber", raio: 18.5, metricas: &[(Cobertura, 0.840), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
+    Midia { preset: "Dabber", raio: 18.5, metricas: &[(Cobertura, 0.840), (Borda, 0.588), (Orla, 5.0), (Largura, 36.0)] },
 ];
 
 const OIL_BRISTLE: Receita = Receita {

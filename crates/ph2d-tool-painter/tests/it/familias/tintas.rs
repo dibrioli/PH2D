@@ -164,12 +164,12 @@ pub const MEIOS: &[ReceitaMeio] = &[];
 // O Cruzamento é o da foto MOLHADA; a Borda e a Orla só onde o Round não as tem (Ink Bullet: borda 1,00 nos dois).
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Ink Bullet", foto: "ink", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
-    Midia { preset: "Dip Pen", foto: "dippen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
+    Midia { preset: "Ink Bullet", raio: 21.0, metricas: &[(Cobertura, 0.862), (Textura, 0.395), (Cruzamento, 0.117)] },
+    Midia { preset: "Dip Pen", raio: 19.0, metricas: &[(Cobertura, 0.856), (Textura, 1.433), (Borda, 0.910), (Cruzamento, 0.223)] },
     // ⚠️ Sem a Orla (5 px na foto `inkbrush` de 5 gestos): era a franja da forma de CERDAS, que a bateria do EXAME
     // (Rebelle `Brush/Brush`, três cenas) desmente — o perfil do recto dela casa com os lados nítidos (régua: perfil ✓
     // nas 3 cenas) e o revisor cego leu a franja como «granulado/salpicado». `exames/tintas.md`.
-    Midia { preset: "Ink Brush", foto: "inkbrush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Cruzamento, 0.239)] },
+    Midia { preset: "Ink Brush", raio: 20.0, metricas: &[(Cobertura, 0.722), (Textura, 1.266), (Borda, 0.793), (Cruzamento, 0.239)] },
 ];
 
 /// As medidas de identidade de uma tinta na bateria do EXAME (`ferramentas/bateria.json`, a foto A molhada), à

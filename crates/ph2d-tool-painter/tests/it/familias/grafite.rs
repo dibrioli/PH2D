@@ -164,10 +164,10 @@ pub const MEIOS: &[ReceitaMeio] = &[];
 const COBERTURA_DO_2H: f64 = 0.595 * 106.0 / 140.0;
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[
-    Midia { preset: "Graphite 8B", foto: "pencil", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
-    Midia { preset: "Graphite 2H", foto: "pencil2h", raio: 14.40, metricas: &[(Cobertura, COBERTURA_DO_2H), (Textura, 4.983), (Borda, 0.321), (Orla, 10.0), (Cruzamento, 0.599), (Largura, 24.0)] },
-    Midia { preset: "Graphite HB", foto: "pencilhb", raio: 15.31, metricas: &[(Cobertura, 0.561), (Textura, 6.153), (Borda, 0.325), (Orla, 11.0), (Cruzamento, 0.583), (Largura, 24.0)] },
-    Midia { preset: "Graphite 2B", foto: "pencil2b", raio: 14.40, metricas: &[(Cobertura, 0.544), (Textura, 13.901), (Borda, 0.350), (Orla, 11.0), (Cruzamento, 0.589), (Largura, 24.0)] },
+    Midia { preset: "Graphite 8B", raio: 15.0, metricas: &[(Cobertura, 0.798), (Textura, 9.093), (Borda, 0.320), (Orla, 7.0)] },
+    Midia { preset: "Graphite 2H", raio: 14.40, metricas: &[(Cobertura, COBERTURA_DO_2H), (Textura, 4.983), (Borda, 0.321), (Orla, 10.0), (Cruzamento, 0.599), (Largura, 24.0)] },
+    Midia { preset: "Graphite HB", raio: 15.31, metricas: &[(Cobertura, 0.561), (Textura, 6.153), (Borda, 0.325), (Orla, 11.0), (Cruzamento, 0.583), (Largura, 24.0)] },
+    Midia { preset: "Graphite 2B", raio: 14.40, metricas: &[(Cobertura, 0.544), (Textura, 13.901), (Borda, 0.350), (Orla, 11.0), (Cruzamento, 0.589), (Largura, 24.0)] },
 ];
 
 // ---- Os portões da família (J3, `docs/Painter/Pinceis/exames/grafite.md`) ----

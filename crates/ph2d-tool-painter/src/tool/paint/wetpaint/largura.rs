@@ -68,7 +68,8 @@ pub(crate) const LARGURA_DO_WET_ROUND: [[f64; 2]; 54] = [
 /// A lei raio do motor → largura medida de um pincel, monótona.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct LeiDaLargura {
-    /// `(raio do motor, largura)`, ambos a crescer estritamente — em `f64`, os números do ficheiro tal
+    /// `(raio do motor, largura)`: o raio a crescer estritamente, a largura sem recuar (um patamar guarda o
+    /// início e o FIM, [`Self::de_tabela`]) — em `f64`, os números do ficheiro tal
     /// como vieram (um `f32` alargado escreve-se com 17 algarismos e não volta igual pelo JSON).
     pontos: Vec<(f64, f64)>,
     /// ⭐ O pincel tem um traço MÍNIMO (prompt 44): a tabela mediu raios abaixo do primeiro ponto que não
@@ -138,7 +139,9 @@ impl LeiDaLargura {
         self.pontos.iter().map(|&(r, l)| [r, l]).collect()
     }
 
-    /// O raio do motor cuja largura medida é `2 · raio`. Fora da tabela, a razão do ponto da ponta.
+    /// O raio do motor cuja largura medida é `2 · raio`. Fora da tabela, a razão do ponto da ponta — acima dela,
+    /// a do último ponto que CRESCE (o início de um patamar final): o fim do patamar subiria o raio dos pincéis
+    /// grandes sem que a largura medida tivesse crescido.
     pub(crate) fn raio_do_motor(&self, raio: f32) -> f32 {
         self.raio_do_motor_f64(f64::from(raio)) as f32
     }
@@ -156,7 +159,12 @@ impl LeiDaLargura {
                 return ra + (rb - ra) * (alvo - la) / (lb - la);
             }
         }
-        let (rn, ln) = self.pontos[self.pontos.len() - 1];
+        let (rn, ln) = self
+            .pontos
+            .windows(2)
+            .rev()
+            .find(|w| w[1].1 > w[0].1)
+            .map_or(self.pontos[0], |w| w[1]);
         rn * alvo / ln
     }
 }
@@ -183,5 +191,27 @@ mod tests {
         assert_eq!(lei.raio_do_motor(0.8), 4.0);
         assert_eq!(lei.raio_do_motor(20.0), 32.0);
         assert!(LeiDaLargura::de_tabela(&[[2.0, 0.0], [4.0, 3.0]]).is_none());
+    }
+
+    /// Patamar no MEIO e no FIM: o do meio interpola desde o seu fim; acima da tabela a razão é a do último ponto
+    /// que cresce (o início do patamar final), não a do fim dele.
+    #[test]
+    fn patamar_no_meio_e_no_fim() {
+        let lei = LeiDaLargura::de_tabela(&[
+            [4.0, 4.0],
+            [6.0, 4.0],
+            [8.0, 10.0],
+            [16.0, 20.0],
+            [20.0, 20.0],
+        ])
+        .unwrap();
+        assert_eq!(lei.pontos.len(), 5);
+        assert_eq!(lei.raio_do_motor(2.0), 4.0);
+        assert_eq!(lei.raio_do_motor(3.5), 6.0 + 2.0 * 3.0 / 6.0);
+        assert_eq!(lei.raio_do_motor(10.0), 16.0);
+        assert_eq!(lei.raio_do_motor(20.0), 32.0);
+        // Só patamar: a razão do primeiro ponto.
+        let plana = LeiDaLargura::de_tabela(&[[4.0, 4.0], [6.0, 4.0]]).unwrap();
+        assert_eq!(plana.raio_do_motor(4.0), 8.0);
     }
 }

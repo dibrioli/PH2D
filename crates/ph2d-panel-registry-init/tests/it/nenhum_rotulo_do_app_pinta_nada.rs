@@ -697,8 +697,7 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    a catraca só desce.
     ("painter_layers", 3),
     // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
-    // ⬇️ `2 → 1` na integração de 2026-11-02 (PainterWatercolor, painel E10): MEDIDO na árvore combinada.
-    ("wet_tuning", 1),
+    ("wet_tuning", 2),
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.

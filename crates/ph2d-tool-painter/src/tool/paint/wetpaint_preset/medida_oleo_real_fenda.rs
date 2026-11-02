@@ -255,8 +255,9 @@ pub(super) fn cena_papel_texturizado(
         let g = s.engine.active_grid();
         let (gw, gh, r) = (s.grid.0, s.grid.1, usize::from(s.ratio));
         // A tinta grossa é relativa à MEDIANA da massa pousada (célula > 1), não um número na unidade de uma receita:
-        // 3000 era 0,633 × a mediana 4736,8 no pai da E10 (`bf90eb2598`); hoje a mediana é 2754,7 e 3000 só
-        // apanhava lascas soltas — o miolo vazio dava `NaN` em silêncio (J10, família N).
+        // 3000 era 0,633 × a mediana 4736,8 no pai da E10 (`bf90eb2598`). A E10 deu ao Dabber (família Oil) o
+        // Medium 1 (`meio_da_familia`): a mesma φ·h = 2000 por dab, mas a pasta sem líquido livre acumula ~40 % menos
+        // em 3 passadas (mediana 2754,7; com Medium 0 volta a 4754,6). 3000 deixava o miolo vazio → `NaN` (J10, N).
         let mut massas: Vec<f32> = (0..g.sett.len())
             .map(|i| g.sett[i] + g.susp[i])
             .filter(|m| *m > 1.0)

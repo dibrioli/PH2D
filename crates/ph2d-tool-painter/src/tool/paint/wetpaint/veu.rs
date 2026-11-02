@@ -11,9 +11,39 @@ const WET_VEIL_RGB: [f64; 3] = [56.0, 80.0, 104.0];
 const WET_LIGHT_X: f64 = -std::f64::consts::FRAC_1_SQRT_2;
 const WET_LIGHT_Y: f64 = -std::f64::consts::FRAC_1_SQRT_2;
 
-/// O véu sobre `canvas` (largura `w`) na caixa de pixels; `g` = a grade ATIVA do motor, `rr` = a razão.
+/// O filme e a molha que o véu lê: as linhas `linha0..` de uma grade de largura `s` (a grade inteira: `linha0 = 0`).
+pub(super) struct FilmeEMolha<'a> {
+    pub(super) film: &'a [f32],
+    pub(super) wet: &'a [u8],
+    pub(super) s: usize,
+    pub(super) linha0: usize,
+}
+
+impl<'a> FilmeEMolha<'a> {
+    pub(super) fn da_grade(g: &'a ph2d_wet_paint::grid::Grid) -> Self {
+        Self {
+            film: &g.film,
+            wet: &g.wet,
+            s: g.s,
+            linha0: 0,
+        }
+    }
+}
+
+/// De onde o composite tira o véu.
+pub(super) enum VeuDe<'a> {
+    /// A grade activa do motor, em casa (a composição local).
+    Motor,
+    /// Outra grade inteira (o espelho da porta de teste).
+    #[cfg(test)]
+    Grade(&'a ph2d_wet_paint::grid::Grid),
+    /// As linhas que uma imagem do compositor trouxe ([`super::offthread::otica::VeuDaCaixa`]).
+    DaImagem(FilmeEMolha<'a>),
+}
+
+/// O véu sobre `canvas` (largura `w`) na caixa de pixels; `g` = a grade ATIVA (ou as linhas dela), `rr` = a razão.
 pub(super) fn pinta_o_veu(
-    g: &ph2d_wet_paint::grid::Grid,
+    g: &FilmeEMolha<'_>,
     canvas: &mut [u8],
     (w, rr): (usize, usize),
     (gw, gh): (usize, usize),
@@ -35,7 +65,7 @@ pub(super) fn pinta_o_veu(
         let cy = (py / rr + 1).min(gh);
         for px in px0..px1 {
             let cx = (px / rr + 1).min(gw);
-            let i = cx + cy * sg;
+            let i = cx + cy * sg - g.linha0 * sg;
             let film = f64::from(g.film[i]);
             let mut wet_sig = f64::from(g.wet[i]) / 255.0;
             if film > 0.02 {

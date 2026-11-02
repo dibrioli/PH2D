@@ -114,7 +114,10 @@ impl crate::PainterTool {
         }
         let ativa = sess.engine.active_layer;
         {
-            let veu = p.espelho.camadas.get(ativa).map(|c| &c.grid);
+            let veu = match p.espelho.camadas.get(ativa) {
+                Some(c) => super::veu::VeuDe::Grade(&c.grid),
+                None => super::veu::VeuDe::Motor,
+            };
             self.wetpaint_depois_da_otica(&antes, saida, veil, veu);
         }
         PORTA.with(|q| *q.borrow_mut() = Some(p));

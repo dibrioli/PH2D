@@ -1,5 +1,5 @@
 //! **O COMPOSITOR DA ÓPTICA fora do fio da tela** (J13b P5, [plano](../../../../../../../docs/Painter/Arquitetura/J13b_plano_otica_fora.md)
-//! §2–§3; filho de [`super`] por LOC). A maquinaria, ainda sem o tique (P6):
+//! §2–§3; filho de [`super`] por LOC). A maquinaria; o tique que pede e aplica é [`super::super::otica_no_tique`] (P6):
 //!
 //! - o fio principal publica um [`PedidoDeImagem`] na CAIXA DE CORREIO do worker ([`DoFioPrincipal::pede`]) e
 //!   recolhe as [`RespostaDaOtica`] sem esperar ([`DoFioPrincipal::try_recv`]);
@@ -11,10 +11,6 @@
 //! Só existe no worker AO RELÓGIO com o interruptor [`ligada`] (`PH2D_WET_OTICA_FORA`); nunca no ritmado, no
 //! roteiro nem no `wet_step_sync`. Morre com o worker: o worker sai (o `Drop` do `SimWorker`), o canal de
 //! trabalho fecha e o compositor acaba no `recv`.
-#![expect(
-    dead_code,
-    reason = "J13b P6 liga o tique: o fio principal ainda não pede imagens nem as aplica"
-)]
 
 use super::super::composite_oleo::SemOleo;
 use super::super::composite_otica::{
@@ -186,12 +182,12 @@ thread_local! {
 
 /// A porta de teste do interruptor: lida por [`ligada`] no fio que sobe o worker.
 #[cfg(test)]
-pub(super) fn forca_no_teste(v: Option<bool>) {
+pub(in crate::tool::paint::wetpaint) fn forca_no_teste(v: Option<bool>) {
     FORCA.with(|c| c.set(v));
 }
 
 /// O compositor existe? (`PH2D_WET_OTICA_FORA`, [`crate::wet_diag::otica_fora`]).
-pub(super) fn ligada() -> bool {
+pub(in crate::tool::paint::wetpaint) fn ligada() -> bool {
     #[cfg(test)]
     if let Some(v) = FORCA.with(std::cell::Cell::get) {
         return v;
@@ -433,6 +429,11 @@ impl super::super::WetSession {
             Some(o) => Ok(o.pede(p)),
             None => Err(p),
         }
+    }
+
+    /// Esta sessão tem compositor (o worker ao relógio subiu-o)?
+    pub(in crate::tool::paint::wetpaint) fn tem_compositor(&self) -> bool {
+        self.worker.as_ref().is_some_and(|w| w.otica.is_some())
     }
 
     /// A próxima resposta do compositor, sem esperar.

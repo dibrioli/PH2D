@@ -69,7 +69,7 @@ impl PainterTool {
             .collect();
         let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
         drop(layers);
-        self.wetpaint_depois_da_otica(&antes, saida, veil, None);
+        self.wetpaint_depois_da_otica(&antes, saida, veil, super::veu::VeuDe::Motor);
     }
 
     /// O que o composite lê da ferramenta ANTES de trazer o motor para casa (gates, Smooth Edges, marca, factos).
@@ -164,13 +164,14 @@ impl PainterTool {
     }
 
     /// A metade de baixo: aplica a [`super::composite_otica::SaidaDaOtica`] na ferramenta e corre o laço de píxel
-    /// sobre os planos da sessão. `veu` = a grade que o véu lê (`None` = a activa do motor).
+    /// sobre os planos da sessão. `veu` = de onde o véu lê; tudo o que não é [`super::veu::VeuDe::DaImagem`] é uma
+    /// composição LOCAL e a caixa dela entra na `uniao_local` ([`super::otica_no_tique`]).
     pub(super) fn wetpaint_depois_da_otica(
         &mut self,
         antes: &AntesDaOtica,
         saida: super::composite_otica::SaidaDaOtica,
         veil: bool,
-        veu: Option<&ph2d_wet_paint::grid::Grid>,
+        veu: super::veu::VeuDe<'_>,
     ) {
         let (w, h) = antes.tela;
         let (gate_sel, gate_prot, gate_alock) = &antes.gates;
@@ -198,8 +199,7 @@ impl PainterTool {
             )
         });
         let Some(super::composite_otica::CaixasDaOtica {
-            // Só a sonda J13 a lê (`cfg(test)`).
-            caixa_cel: _caixa_cel,
+            caixa_cel,
             caixa_px: (px0, py0, px1, py1),
             sem_oleo,
         }) = saida.caixas
@@ -211,6 +211,9 @@ impl PainterTool {
         };
         let ratio = sess.ratio;
         let (gw, gh) = sess.grid;
+        if !matches!(veu, super::veu::VeuDe::DaImagem(_)) {
+            sess.otica.compos_local(caixa_cel);
+        }
         // A marca do artista (W9): o que a água muda aqui não é do artista — guarda-se a caixa como está.
         let agua_antes: Option<Vec<u8>> = self.undo.marca.ativa().then(|| {
             let mut v = Vec::with_capacity((px1 - px0) * (py1 - py0) * 4);
@@ -509,9 +512,16 @@ impl PainterTool {
         #[cfg(test)]
         split::note_pixel(t_pixel.elapsed());
         if veil {
-            let g = veu.unwrap_or_else(|| sess.engine.active_grid());
+            let g = match veu {
+                super::veu::VeuDe::Motor => {
+                    super::veu::FilmeEMolha::da_grade(sess.engine.active_grid())
+                }
+                #[cfg(test)]
+                super::veu::VeuDe::Grade(g) => super::veu::FilmeEMolha::da_grade(g),
+                super::veu::VeuDe::DaImagem(l) => l,
+            };
             let caixa = (px0, py0, px1, py1);
-            super::veu::pinta_o_veu(g, canvas, (w, usize::from(ratio)), (gw, gh), caixa);
+            super::veu::pinta_o_veu(&g, canvas, (w, usize::from(ratio)), (gw, gh), caixa);
         }
         // Re-arm the guard with the allocation our own make_mut may have
         // re-seated (weak — [`WetSession::canvas`]).
@@ -533,7 +543,7 @@ impl PainterTool {
         self.declare_wrote(Some(region));
         self.mark_dirty(region);
         #[cfg(test)]
-        super::fps_j13_tests::gancho(self, _caixa_cel, (px0, py0, px1, py1));
+        super::fps_j13_tests::gancho(self, caixa_cel, (px0, py0, px1, py1));
         if let Some(antes) = agua_antes {
             self.undo
                 .marca

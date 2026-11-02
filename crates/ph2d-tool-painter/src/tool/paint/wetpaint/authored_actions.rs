@@ -102,6 +102,7 @@ impl PainterTool {
             marca,
             po: super::po::PoDoTraco::default(),
             antes_do_passo: Vec::new(),
+            otica: super::otica_no_tique::OticaDoTique::default(),
         });
         true
     }
@@ -192,7 +193,14 @@ impl PainterTool {
     /// the overlay on and the canvas still ours, recomposite clean first.
     pub(crate) fn wetpaint_end_session(&mut self) {
         self.wetpaint_guard();
-        if self.paint.wetpaint.show_wet && self.paint.wetpaint.session.is_some() {
+        // Uma imagem no ar ou uma dívida levam o sujo que tiraram do motor: o fim recompõe tudo em casa.
+        let pendente = self
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| s.otica.pendente());
+        if (self.paint.wetpaint.show_wet || pendente) && self.paint.wetpaint.session.is_some() {
             if let Some(sess) = self.paint.wetpaint.session.as_mut() {
                 sess.bring_home();
                 sess.engine.mark_dirty_full();

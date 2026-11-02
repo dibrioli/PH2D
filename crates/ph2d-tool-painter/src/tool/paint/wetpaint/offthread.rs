@@ -114,10 +114,6 @@ pub(in crate::tool::paint) struct SimWorker {
     /// `Some` = o worker anda num ritmo escrito ([`RitmoDaAgua`]), não ao relógio.
     ritmo: Option<Ritmado>,
     /// `Some` = o compositor da óptica existe ([`otica`]: só ao relógio e com `PH2D_WET_OTICA_FORA`).
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "J13b P6: o tique pede e recebe as imagens")
-    )]
     otica: Option<otica::DoFioPrincipal>,
 }
 

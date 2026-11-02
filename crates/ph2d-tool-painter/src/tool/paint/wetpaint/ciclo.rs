@@ -156,6 +156,8 @@ impl PainterTool {
             // `want` fica armado e o tick seguinte o encontra — no máximo um
             // punhado de passos escapa antes de a pausa fechar.
             if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+                // Nenhuma imagem do compositor se aplica por cima do esboço ([`super::otica_no_tique`]).
+                sess.otica.toca_tudo(sess.grid);
                 sess.try_bring_home();
             }
             return;
@@ -170,6 +172,12 @@ impl PainterTool {
             self.wet_step_sync(passos as usize);
             return;
         }
+        // J13b P6: com o compositor da óptica, a água chega como imagem ([`super::otica_no_tique`]) — o tique só
+        // traz o motor para casa pelos factos e pelos adiados.
+        let fora = self.wet_otica_fora();
+        if fora {
+            self.wet_recebe_imagens();
+        }
         let facts = self.wet_facts();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
@@ -182,11 +190,12 @@ impl PainterTool {
         // núcleo esperando na fronteira de estágio.
         let done = sess.sim_steps();
         let fresh = done != sess.seen_steps;
+        let mostra = fresh && !fora;
         // Facts land while the water SITS too (Dry Speed / Gravity / the
         // tilt are sim forces): the tick reconciles with the stamp's door.
         let facts_moved = sess.applied != facts;
         let adiados = !sess.adiados.is_empty();
-        if fresh || facts_moved || adiados {
+        if mostra || facts_moved || adiados {
             // ⚠️ **PEDE e não espera.** O tick é a única porta que pode voltar
             // de mãos vazias (a água corre a ~33 Hz, o display a 60 ⇒ mostrar
             // um passo no frame seguinte é invisível), e bloquear aqui custava
@@ -206,12 +215,14 @@ impl PainterTool {
             let got = sess.try_bring_home();
             crate::wet_diag::note_wait(t_wait.elapsed().as_secs_f32() * 1e3);
             if got {
-                sess.seen_steps = done;
+                if !fora {
+                    sess.seen_steps = done;
+                }
                 sess.reconcile_facts(facts);
                 if adiados {
                     self.wetpaint_pousa_adiados();
                 }
-                if fresh {
+                if mostra {
                     let t_comp = std::time::Instant::now();
                     self.wetpaint_composite();
                     // Diagnóstico (`PH2D_FLUID_PROFILE`): a metade COMPOSITE do
@@ -220,6 +231,9 @@ impl PainterTool {
                     crate::wet_diag::note_composite(t_comp.elapsed().as_secs_f32() * 1e3);
                 }
             }
+        }
+        if fora {
+            self.wet_pede_imagem(done);
         }
         // ⚠️ **O hand-off é INCONDICIONAL** (no-op se o motor já está lá), e não
         // um `else` do bloco acima: gateá-lo em "houve trabalho" deixaria uma

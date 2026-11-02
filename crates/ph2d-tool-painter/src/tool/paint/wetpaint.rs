@@ -406,16 +406,19 @@ pub(super) mod faixas; // as lanes de um traço guardado (W16)
 mod composite;
 mod composite_oleo; // os planos do Óleo Real no composite (sombra, dente, tinta sem óleo) — filho por LOC
 mod composite_otica; // a metade de cima do composite (a óptica) como função pura — filho por LOC
-mod otica_factos; // o que a óptica tira da ferramenta, como valor que viaja (J13b P3)
-#[cfg(test)]
-mod otica_fora_porta; // J13b P4: a óptica pelo ESPELHO, síncrona, no fio do teste
-#[cfg(test)]
-mod otica_fora_tests; // J13b P4: a óptica pelo espelho == a tela de casa, ao byte
 pub(in crate::tool::paint) mod grao_no_filme; // W3b: o dente do papel assado na tinta do Óleo Real (Relevo do papel, Transmission)
 #[cfg(test)]
 mod oleo_arrasto_tests; // arrastar um número do Real Oil: uma faixa por quadro, a tela final ao byte
 pub(in crate::tool::paint) mod oleo_no_quadro; // a recomposição do painel corre no tick, em faixas
 mod oleo_plano;
+mod otica_factos; // o que a óptica tira da ferramenta, como valor que viaja (J13b P3)
+#[cfg(test)]
+mod otica_fora_porta; // J13b P4: a óptica pelo ESPELHO, síncrona, no fio do teste
+#[cfg(test)]
+mod otica_fora_tests; // J13b P4: a óptica pelo espelho == a tela de casa, ao byte
+mod otica_no_tique; // J13b P6: o tique pede e aplica as imagens do compositor da óptica
+#[cfg(test)]
+mod otica_no_tique_tests; // J13b P6: a água pelo compositor == a tela de casa, e o fio da tela sem a óptica
 mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união dos dabs dele
 #[cfg(test)]
 mod por_quadro_tests;
@@ -472,8 +475,6 @@ mod agua_no_oleo_regua_tests; // J11: a água × o óleo seco (atrito do leito, 
 #[cfg(test)]
 mod agua_no_oleo_tests; // sonda J11: a água × o óleo seco (velocidade, dissolver, pixelado)
 #[cfg(test)]
-mod fps_j13_tests; // sonda J13: o FPS do Real Oil — o que a janela do composite refaz e o que mudou
-#[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
 mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume
@@ -487,6 +488,8 @@ mod desempenho_oleo_tests; // sonda J8: o óleo diluído é lento por correr mai
 mod dry_brush_tests; // o Dry brush só age com o portão seco aberto (a cobertura que cai)
 #[cfg(test)]
 mod escorre_contorna_tests; // sonda J8: o escorrimento contorna o relevo já pousado?
+#[cfg(test)]
+mod fps_j13_tests; // sonda J13: o FPS do Real Oil — o que a janela do composite refaz e o que mudou
 #[cfg(test)]
 mod gota_tests;
 #[cfg(test)]

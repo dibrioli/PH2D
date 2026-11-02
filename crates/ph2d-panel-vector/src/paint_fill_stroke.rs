@@ -35,7 +35,7 @@ use std::cell::RefCell;
 
 #[path = "paint_fill_stroke_colunas.rs"]
 mod colunas;
-pub(super) use colunas::{Colunas, PesoValor};
+pub(super) use colunas::PesoValor;
 
 /// O que o corpo deixou ABERTO neste quadro, para o passe diferido ([`crate::paint_side`]).
 /// ⚠️ Sobrescreve (não acumula): o corpo pode pintar-se mais de uma vez por quadro.

@@ -4,6 +4,7 @@ mod brush_pattern;
 mod codec;
 mod color_laws;
 mod color_parity;
+mod dither_laws;
 mod draw_laws;
 mod draw_parity;
 mod fast_tie;

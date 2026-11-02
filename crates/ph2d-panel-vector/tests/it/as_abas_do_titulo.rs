@@ -217,27 +217,30 @@ fn a_ordem_gravada_do_dono_cede_a_ordem_do_figma_uma_vez() {
     let mut host = crate::host_aberto();
     ph2d_editor_core::interaction::restore_section_prefs_text(host.store_mut(), DONO);
     let antes = host.store().section_order().len();
-    let y = |host: &mut MockPanelHost, id| pintada(host, id).map(|r| r.y).expect("não pintou");
-    let natural = [
-        t::VECTOR_SECTION_SNAP,
-        t::VECTOR_SECTION_FILL,
-        t::VECTOR_SECTION_STROKE,
-    ];
+    let y = |host: &mut MockPanelHost, id| {
+        pintada(host, id)
+            .map(|r| r.y)
+            .unwrap_or_else(|| panic!("a secção {id:?} não pintou"))
+    };
+    // ⚠️ F45 (UIUX, 01/11): Fill & Stroke são UMA pilha na secção Fill — a secção Stroke já não pinta.
+    let natural = [t::VECTOR_SECTION_SNAP, t::VECTOR_SECTION_FILL];
     let ys: Vec<f32> = natural.iter().map(|id| y(&mut host, *id)).collect();
     assert!(
         ys.windows(2).all(|w| w[0] < w[1]),
-        "a ordem gravada do dono ainda manda: Snap/Fill/Stroke a {ys:?}"
+        "a ordem gravada do dono ainda manda: Snap/Fill a {ys:?}"
     );
     assert_eq!(
         host.store().section_order().len(),
-        antes - 4,
-        "só as quatro secções do vetor saem da ordem gravada (Inspector e Painter ficam)"
+        // F45: a Stroke saiu de `VECTOR_SECTIONS`, e a época só esquece as secções que existem —
+        // medido 3; a id da Stroke gravada fica, inerte.
+        antes - 3,
+        "só as três secções do vetor saem da ordem gravada (Inspector e Painter ficam)"
     );
-    // O artista arrasta o Stroke para cima do Snap DEPOIS da época: o arrasto manda.
+    // O artista arrasta o Fill para cima do Snap DEPOIS da época: o arrasto manda.
     host.store_mut()
-        .set_section_order(vec![t::VECTOR_SECTION_STROKE, t::VECTOR_SECTION_SNAP]);
+        .set_section_order(vec![t::VECTOR_SECTION_FILL, t::VECTOR_SECTION_SNAP]);
     assert!(
-        y(&mut host, t::VECTOR_SECTION_STROKE) < y(&mut host, t::VECTOR_SECTION_SNAP),
+        y(&mut host, t::VECTOR_SECTION_FILL) < y(&mut host, t::VECTOR_SECTION_SNAP),
         "o arrasto depois da época foi esquecido"
     );
 }

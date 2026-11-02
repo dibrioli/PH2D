@@ -222,3 +222,32 @@ fn a_system_font_draws_and_previous_wraps_to_the_last_font() {
             .any(|&c| mostrado(&mut app, &sim, bits, c) != CLEAR)
     );
 }
+
+#[test]
+fn the_box_frame_and_caret_follow_the_text() {
+    let (mut app, sim, cam, bits) = born();
+    app.tool = Tool::Text;
+    click(&mut app, &sim, &cam, bits, (2, 3));
+    let ((x, y, w0, h0), (cx0, cy0, _)) = app.text_box_frame().expect("moldura");
+    assert_eq!((x, y, w0, cx0, cy0), (2, 3, 0, 2, 3));
+    escreve(&mut app, &sim, bits, "Ag");
+    let ((_, _, w1, h1), (cx1, _, alto)) = app.text_box_frame().expect("moldura");
+    assert!(w1 > 0 && h1 >= h0 && alto > 0);
+    assert!(cx1 > cx0, "o cursor anda com o texto");
+    tecla(&mut app, &sim, bits, KeyCode::Enter, Some("\r"));
+    assert!(app.text_box_frame().is_none());
+    escreve_nova_linha(&mut app, &sim, &cam, bits);
+}
+
+fn escreve_nova_linha(app: &mut PixelApp, sim: &SimWorld, cam: &Camera2d, bits: u64) {
+    click(app, sim, cam, bits, (2, 3));
+    escreve(app, sim, bits, "A");
+    let shift = Mods {
+        shift: true,
+        ..Mods::default()
+    };
+    assert!(input::text_key(app, sim.world(), Some(bits), KeyCode::Enter, shift, None).is_some());
+    let ((_, _, _, h), (cx, cy, alto)) = app.text_box_frame().expect("moldura");
+    assert_eq!((cx, cy), (2, 3 + alto), "Shift+Enter abre uma linha");
+    assert_eq!(h, (2 * alto) as u32);
+}

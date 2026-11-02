@@ -241,6 +241,17 @@ pub fn draw(
     #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
     let janela = (window.width as f32, window.height as f32);
     crate::viva::draw(app, key, m, (theme, janela), scene);
+    // P8: a caixa do Text aberta — a moldura (pelo menos uma célula de largo) e o cursor.
+    if app.text_box().is_some_and(|b| b.0 == key)
+        && let Some(((x, y, bw, bh), (cx, cy, ch))) = app.text_box_frame()
+    {
+        let em =
+            |px: i32, py: i32| m * ph2d_vector::Affine::translate((f64::from(px), f64::from(py)));
+        let cor = resolve(ColorToken::Accent, theme);
+        draw_border(scene, bw.max(1), bh.max(1), em(x, y), cor, LINE_PX);
+        let alto = u32::try_from(ch).unwrap_or(0).max(1);
+        draw_border(scene, 0, alto, em(cx, cy), cor, LINE_PX);
+    }
     let Some(doc) = app.docs.get(&key) else {
         return;
     };

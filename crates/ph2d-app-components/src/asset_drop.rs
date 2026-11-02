@@ -28,7 +28,8 @@
 //! que se arrasta e o que está debaixo do cursor, e devolve **o que fazer**. É isso que o torna
 //! gateável sem GPU — e é onde o defeito de *«o alvo adivinha»* moraria.
 
-use ph2d_editor_core::interaction::drag_payload::DragPayload;
+use ph2d_editor_core::NodeId;
+use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict, DropFieldMark};
 use ph2d_i18n::tr;
 
 /// Onde o cursor estava quando a mão largou.
@@ -163,6 +164,55 @@ impl DropAction {
             }
         }
     }
+}
+
+/// ⭐ GEF 20b — o CAMPO do Inspector `id` como alvo de queda (ranhura de textura, objecto do Script,
+/// alvo da câmera); `None` = o widget não é um campo que recebe. A porta ÚNICA: a queda, o fantasma
+/// e as caixas marcadas perguntam aqui.
+#[must_use]
+pub fn field_target(id: NodeId) -> Option<DropTarget> {
+    use ph2d_panel_inspector as insp;
+    insp::texture_slot_pick(id)
+        .map(|entity_bits| DropTarget::InspectorTexture { entity_bits })
+        .or_else(|| {
+            insp::script_object_slot_pick(id)
+                .map(|(entity_bits, row)| DropTarget::ScriptObject { entity_bits, row })
+        })
+        .or_else(|| {
+            insp::camera_target_slot_pick(id)
+                .map(|entity_bits| DropTarget::CameraTarget { entity_bits })
+        })
+}
+
+/// O que o arrasto MOSTRA para `target`: desistir é silencioso (ver [`DropTarget::Source`]).
+#[must_use]
+pub fn verdict(payload: DragPayload, target: DropTarget) -> DragVerdict {
+    match resolve(payload, target) {
+        DropAction::Refuse => DragVerdict::Refuse,
+        DropAction::Cancel => DragVerdict::Unknown,
+        _ => DragVerdict::Accept,
+    }
+}
+
+/// ⭐ GEF 20b — as caixas que o arrasto marca (o idioma do Godot): dos widgets `ids` pintados neste
+/// quadro, cada campo que ACEITA a carga, e o de debaixo do cursor (`under`) seja qual for a resposta.
+#[must_use]
+pub fn field_marks(
+    ids: impl IntoIterator<Item = NodeId>,
+    payload: DragPayload,
+    under: Option<NodeId>,
+) -> Vec<DropFieldMark> {
+    ids.into_iter()
+        .filter_map(|id| {
+            let verdict = verdict(payload, field_target(id)?);
+            let under = under == Some(id);
+            (under || verdict == DragVerdict::Accept).then_some(DropFieldMark {
+                id,
+                verdict,
+                under,
+            })
+        })
+        .collect()
 }
 
 /// ⭐ **A LEI.** Pura e total.
@@ -635,3 +685,7 @@ mod texture_slot_target_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "asset_drop_field_tests.rs"]
+mod field_tests;

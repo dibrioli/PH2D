@@ -14,10 +14,9 @@
 //! é só a fiação: ele recolhe os factos (onde o cursor está, o que está por baixo) e executa o que
 //! a lei devolver. *Uma decisão dentro da fiação seria uma decisão sem gate.*
 
-use ph2d_app_components::asset_drop::{DropAction, DropOver, DropTarget};
+use ph2d_app_components::asset_drop::{self, DropAction, DropOver, DropTarget};
 use ph2d_app_components::object_drag;
 use ph2d_editor_core::interaction::drag_payload::{DragPayload, DragVerdict};
-use ph2d_panel_inspector::{camera_target_slot_pick, script_object_slot_pick};
 
 impl crate::App {
     /// **`Down`** — se o botão caiu num cartão do navegador, semeia o arrasto.
@@ -86,19 +85,21 @@ impl crate::App {
         else {
             return;
         };
-        let verdict = match self.drop_target_at(x, y) {
-            // ⚠️ **Desistir não é recusa.** Voltar ao painel de origem é o gesto universal de
-            // largar o assunto, e ele é silencioso em todo o software que o tem — pintá-lo de
-            // aviso acusaria o artista de um erro que ele não cometeu.
-            Some(t) => match ph2d_app_components::asset_drop::resolve(payload, t) {
-                ph2d_app_components::asset_drop::DropAction::Refuse => DragVerdict::Refuse,
-                ph2d_app_components::asset_drop::DropAction::Cancel => DragVerdict::Unknown,
-                _ => DragVerdict::Accept,
-            },
-            None => DragVerdict::Unknown,
-        };
+        // ⚠️ **Desistir não é recusa** (`asset_drop::verdict`): voltar ao painel de origem é silencioso.
+        let verdict = self
+            .drop_target_at(x, y)
+            .map_or(DragVerdict::Unknown, |t| asset_drop::verdict(payload, t));
+        let under = self.chrome_id_under(x, y);
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.store.set_asset_drag_verdict(verdict);
+            // GEF 20b — as caixas dos campos dizem se aceitam (o idioma do Godot).
+            let ids: Vec<_> = hero
+                .hit_index
+                .iter_registrations()
+                .map(|(id, _)| id)
+                .collect();
+            hero.store
+                .set_asset_drop_fields(asset_drop::field_marks(ids, payload, under));
         }
     }
 
@@ -156,9 +157,9 @@ impl crate::App {
     fn drop_target_at(&mut self, x: f32, y: f32) -> Option<DropTarget> {
         // ⚠️ Resolvidos ANTES de pegar o `gfx` mutável — são leituras, e adiá-las para dentro do
         // bloco mutável seria pedir dois empréstimos do mesmo `self`.
-        let inspector_slot = self.inspector_slot_under(x, y);
-        let campo = self.chrome_id_under(x, y).and_then(script_object_slot_pick);
-        let alvo_da_camera = self.chrome_id_under(x, y).and_then(camera_target_slot_pick);
+        let campo = self
+            .chrome_id_under(x, y)
+            .and_then(asset_drop::field_target);
         let catalog_row = self.catalog_row_under(x, y);
         let mods = Self::convert_modifiers(self.modifiers);
         let (on_canvas, world, code, home, board) = {
@@ -184,12 +185,8 @@ impl crate::App {
             let code = object_drag::hover_code(hero, libs, (x, y), on_canvas, mods);
             (on_canvas, world, code, home, board)
         };
-        Some(if let Some(entity_bits) = inspector_slot {
-            DropTarget::InspectorTexture { entity_bits }
-        } else if let Some((entity_bits, row)) = campo {
-            DropTarget::ScriptObject { entity_bits, row }
-        } else if let Some(entity_bits) = alvo_da_camera {
-            DropTarget::CameraTarget { entity_bits }
+        Some(if let Some(campo) = campo {
+            campo
         } else if let Some(catalog) = catalog_row {
             DropTarget::CatalogRow { catalog }
         } else if home {
@@ -226,16 +223,6 @@ impl crate::App {
             // *«tira do catálogo»* seria inventar um gesto a partir de um alvo que só filtra.
             ph2d_panel_asset_browser::CatalogPick::All => None,
         }
-    }
-
-    /// ⭐⭐ **A sprite cuja RANHURA DE TEXTURA está debaixo do cursor** (wave B3).
-    ///
-    /// ⚠️ **Duas perguntas, e cada uma ao seu dono:** o `HitIndex` responde *«que widget está
-    /// aqui»* — a porta única, e é dela que vêm de graça o recorte do corpo do painel e a oclusão
-    /// —, e o **Inspector** responde *«aquele id é a minha ranhura, e de que sprite»*. A shell
-    /// conhecer o literal do id seria conhecer a tabela de outro painel.
-    fn inspector_slot_under(&self, x: f32, y: f32) -> Option<u64> {
-        ph2d_panel_inspector::texture_slot_pick(self.chrome_id_under(x, y)?)
     }
 
     fn chrome_id_under(&self, x: f32, y: f32) -> Option<ph2d_editor_core::NodeId> {

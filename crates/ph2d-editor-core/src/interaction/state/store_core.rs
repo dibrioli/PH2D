@@ -9,6 +9,7 @@ impl WidgetStore {
             asset_drag: None,
             asset_drag_origin: (0.0, 0.0),
             asset_drag_label: None,
+            asset_drop_fields: Vec::new(),
             asset_cells: std::collections::BTreeMap::new(),
             asset_doc_cells: std::collections::BTreeSet::new(),
             states: BTreeMap::new(),

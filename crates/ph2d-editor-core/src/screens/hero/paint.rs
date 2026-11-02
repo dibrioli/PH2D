@@ -635,6 +635,14 @@ pub fn paint_hero_screen(
     // observável se algum dia coexistirem.
     // ⚠️ Um objecto ainda dentro da Hierarquia é o reparentar dela (que tem o seu indicador): o
     // fantasma só aparece quando ele SAI do painel.
+    if !hero.store.hierarchy_drag_in_own_panel() {
+        super::asset_drag_ghost::paint_drop_fields(
+            hero.store.asset_drop_fields(),
+            &hero.hit_index,
+            scene,
+            hero.theme,
+        );
+    }
     super::asset_drag_ghost::paint_asset_drag_ghost(
         hero.store
             .asset_drag()

@@ -112,3 +112,41 @@ pub(super) fn paint_asset_drag_ghost(
         resolve(ColorToken::Text1, theme),
     );
 }
+
+/// ⭐ GEF 20b — **a caixa do campo diz se aceita** (o idioma do Godot): enquanto o arrasto voa, cada
+/// campo que aceitaria a queda leva um contorno verde fino; o de debaixo do cursor enche-se de verde
+/// (aceita) ou de vermelho (recusa). O fantasma continua a dizer a PALAVRA — a cor sozinha não chega.
+pub(super) fn paint_drop_fields(
+    marks: &[crate::interaction::drag_payload::DropFieldMark],
+    hit: &crate::interaction::hit::HitIndex,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    for m in marks {
+        let Some(rect) = hit.rect_for(m.id) else {
+            continue;
+        };
+        use ph2d_tokens::visuals::Feel;
+        let (soft, line, feel) = match m.verdict {
+            DragVerdict::Accept => (ColorToken::SuccessSoft, ColorToken::Success, Feel::Active),
+            DragVerdict::Refuse => (ColorToken::DangerSoft, ColorToken::Danger, Feel::Error),
+            DragVerdict::Unknown => continue,
+        };
+        let width = if m.under {
+            fill_rounded_rect(scene, rect, radius, resolve(soft, theme));
+            StrokeToken::Thick.px()
+        } else {
+            StrokeToken::Thin.px()
+        };
+        crate::paint::stroke_frame(
+            scene,
+            rect,
+            radius,
+            theme,
+            feel,
+            width,
+            resolve(line, theme),
+        );
+    }
+}

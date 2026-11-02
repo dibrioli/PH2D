@@ -556,6 +556,8 @@ pub struct WidgetStore {
     pub(super) asset_drag_origin: (f32, f32),
     /// O nome do que vai na mão (o objecto da Hierarquia); `None` = o rótulo da família da carga.
     pub(super) asset_drag_label: Option<String>,
+    /// GEF 20b — os campos marcados enquanto o arrasto voa (escritos pelo shell a cada `Move`).
+    pub(super) asset_drop_fields: Vec<crate::interaction::drag_payload::DropFieldMark>,
     /// Os cartões que o navegador de assets pinta agora (`id → índice`), republicados por quadro.
     pub(super) asset_cells: std::collections::BTreeMap<NodeId, usize>,
     /// D17 — os cartões de `asset_cells` que são documentos (Kanban, Quadro).

@@ -88,6 +88,17 @@ pub enum DragVerdict {
     Refuse,
 }
 
+/// ⭐ GEF 20b — um CAMPO que recebe quedas, marcado enquanto o arrasto voa (o idioma do Godot): os
+/// que aceitam acendem; o de debaixo do cursor diz sim (verde) ou não (vermelho).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct DropFieldMark {
+    /// O widget do campo (o rect vem do `HitIndex` do quadro).
+    pub id: ph2d_a11y::NodeId,
+    pub verdict: DragVerdict,
+    /// O cursor está sobre ele.
+    pub under: bool,
+}
+
 /// **O arrasto em curso** — o que o `WidgetStore` guarda entre o `Down` e o `Up`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InFlightDrag {

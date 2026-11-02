@@ -61,6 +61,7 @@ impl WidgetStore {
         self.asset_drag_origin = (x, y);
         self.asset_drag = Some(InFlightDrag::started(payload, (x, y)));
         self.asset_drag_label = None;
+        self.asset_drop_fields.clear();
     }
 
     /// [`Self::begin_asset_drag`] com o NOME do que vai na mão (o fantasma diz-o, item 8 do CodeEditor).
@@ -97,6 +98,24 @@ impl WidgetStore {
         }
     }
 
+    /// GEF 20b — os campos que o arrasto marca neste quadro (calculados pelo shell, como o veredito).
+    pub fn set_asset_drop_fields(
+        &mut self,
+        marks: Vec<crate::interaction::drag_payload::DropFieldMark>,
+    ) {
+        self.asset_drop_fields = marks;
+    }
+
+    /// Os campos marcados — vazio sem arrasto armado.
+    #[must_use]
+    pub fn asset_drop_fields(&self) -> &[crate::interaction::drag_payload::DropFieldMark] {
+        if self.asset_drag.is_some_and(|d| d.armed) {
+            &self.asset_drop_fields
+        } else {
+            &[]
+        }
+    }
+
     /// O arrasto em curso, para quem o pinta.
     #[must_use]
     pub fn asset_drag(&self) -> Option<InFlightDrag> {
@@ -115,6 +134,7 @@ impl WidgetStore {
     /// Termina o arrasto e devolve também o rótulo (uma linha do Inspector leva nele o nome).
     pub fn end_named_drag(&mut self) -> Option<(InFlightDrag, Option<String>)> {
         let label = self.asset_drag_label.take();
+        self.asset_drop_fields.clear();
         self.asset_drag.take().map(|d| (d, label))
     }
 }

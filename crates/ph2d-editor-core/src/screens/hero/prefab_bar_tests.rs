@@ -177,3 +177,15 @@ fn the_bar_hangs_below_the_ruler_not_over_it() {
         "a barra voltou a ancorar na `draw_area`, que inclui a faixa das reguas:\n{arm}"
     );
 }
+
+/// ⭐ GEF 21 — a queda num campo SOLTA o teclado dele: um campo focado não mostra o valor que a queda lhe
+/// escreveu (o `write_text` do Inspector salta o campo focado), e o dono leu «o som não entrou».
+///
+/// **Mutação que deve sangrar:** o `solta_o_teclado` a não fazer nada.
+#[test]
+fn soltar_o_teclado_tira_o_foco_do_campo() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.set_focus(Some(NodeId(77)));
+    hero.solta_o_teclado();
+    assert_eq!(hero.store.focus_id(), None);
+}

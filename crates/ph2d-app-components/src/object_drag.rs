@@ -230,12 +230,14 @@ pub fn write_code(
     } = action
     {
         surface_input::drop_hover(hero, None);
+        hero.solta_o_teclado();
         into_script_row(libs.sim, entity_bits, row, stable_id);
         return true;
     }
     // GEF 21 E2 — um som largado no campo Sound: a fonte passa a nomeá-lo (um passo de desfazer).
     if let DropAction::SetSound { entity_bits, asset } = action {
         surface_input::drop_hover(hero, None);
+        hero.solta_o_teclado();
         if let Some(name) = sound_name(libs.sim, asset) {
             hero.bus.push(
                 ph2d_editor_core::action_bus::EditorAction::InspectorAudioEdit {
@@ -253,6 +255,7 @@ pub fn write_code(
     } = action
     {
         surface_input::drop_hover(hero, None);
+        hero.solta_o_teclado();
         if let Some(name) = name_of_stable_id(libs.sim, stable_id) {
             hero.bus.push(
                 ph2d_editor_core::action_bus::EditorAction::InspectorCameraEdit {

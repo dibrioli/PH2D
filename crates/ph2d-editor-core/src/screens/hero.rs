@@ -575,6 +575,15 @@ impl HeroScreen {
         crate::interaction::blur_focus(&mut self.store, arena)
     }
 
+    /// [`Self::blur_focus`] com os eventos aplicados já — para quem não tem arena (a queda num campo,
+    /// GEF 21: um campo que segura o teclado não mostra o valor que a queda lhe escreveu).
+    pub fn solta_o_teclado(&mut self) {
+        let arena = Bump::new();
+        for e in self.blur_focus(&arena).to_vec() {
+            self.apply_event(e);
+        }
+    }
+
     pub fn handle_key<'frame>(
         &mut self,
         event: KeyEvent,

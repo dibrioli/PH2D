@@ -297,3 +297,62 @@ fn a_regua_da_escada_e_a_do_python() {
         }
     }
 }
+
+/// O tecto NOSSO da escada (8°, 25°, curva) a 103 e a 41 px, medido 02/11: o meio do vão entre o relevo de hoje e o
+/// mesmo relevo em DEGRAU (a mutação de [`o_relevo_nao_tem_escada`]); o controlo sem relevo fica abaixo de todos.
+///
+/// | raio | região | sem relevo | hoje | degrau | tecto |
+/// |---|---|---|---|---|---|
+/// | 51,5 | 8° | 1,65 | 2,57 | 3,63 | 3,10 |
+/// | 51,5 | 25° | 2,03 | 2,41 | 3,10 | 2,76 |
+/// | 51,5 | curva | 1,52 | 2,24 | 2,65 | 2,44 |
+/// | 20,5 | 8° | 1,78 | 2,73 | 4,52 | 3,62 |
+/// | 20,5 | 25° | 1,57 | 2,29 | 3,69 | 2,99 |
+/// | 20,5 | curva | 1,53 | 2,55 | 3,55 | 3,05 |
+const TECTO_ESCADA: [(f32, [f64; 3]); 2] = [(51.5, [3.10, 2.76, 2.44]), (20.5, [3.62, 2.99, 3.05])];
+
+/// ⭐⭐ **O relevo SEM ESCADA** (W3b, prompt 50; doc 50_medicao): o Oil Bristle de fábrica nos rectos INCLINADOS (8° e
+/// 25°) e na curva em S, ao tamanho do preset (103 px) e a 41, não salta ao longo dos fios mais do que
+/// [`TECTO_ESCADA`]. O relevo de 18/10 (o degrau por fio) lia 15,2 · 12,3 a 103 px; o preset sem relevo 1,7 · 1,3.
+/// A metade do contraste contra as fotos do Rebelle saiu em `2d0b889390` (o dono 31/10 tirou-o de referência).
+/// **Mutação que sangra:** `bristles_relevo::entre` em degrau (`if t < 0.5 { a } else { b }`).
+#[test]
+fn o_relevo_nao_tem_escada() {
+    let medidas: Vec<_> = std::thread::scope(|s| {
+        let hs: Vec<_> = TECTO_ESCADA
+            .iter()
+            .map(|&(r, _)| {
+                s.spawn(move || {
+                    (
+                        super::o_relevo_dos_fios::escada_de(
+                            &super::o_relevo_dos_fios::com_relevo(),
+                            r,
+                        ),
+                        super::o_relevo_dos_fios::escada_de(
+                            &super::o_relevo_dos_fios::sem_relevo("Oil Bristle"),
+                            r,
+                        ),
+                    )
+                })
+            })
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let mut falhas = Vec::new();
+    for (&(r, tecto), (m, c)) in TECTO_ESCADA.iter().zip(&medidas) {
+        println!(
+            "[escada] r {r}: {:?} · SEM {:?}",
+            m.map(|e| e.escada),
+            c.map(|e| e.escada)
+        );
+        for (k, nome) in ["8°", "25°", "curva"].iter().enumerate() {
+            if m[k].escada > tecto[k] {
+                falhas.push(format!(
+                    "r {r} {nome}: escada {:.2} > {} (sem relevo {:.2})",
+                    m[k].escada, tecto[k], c[k].escada
+                ));
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}

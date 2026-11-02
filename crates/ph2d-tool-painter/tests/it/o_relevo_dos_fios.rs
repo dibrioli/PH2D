@@ -345,7 +345,7 @@ fn sonda_a_escada() {
 }
 
 /// O Oil Bristle de fábrica: o relevo de cada fio sem escada (W3b, `bristleHeight` 0,75, doc 50_medicao).
-fn com_relevo() -> ph2d_brush_presets::Preset {
+pub(super) fn com_relevo() -> ph2d_brush_presets::Preset {
     // A lei do relevo dos fios (o emboss), sem a luz do Real Oil (J6: o candidato liga-o).
     super::presets_de_fabrica::sem_real_oil(de_fabrica("Oil Bristle"))
 }
@@ -354,7 +354,7 @@ fn com_relevo() -> ph2d_brush_presets::Preset {
 /// J2 (o relevo pelo diâmetro, a parede entre traços, a ponta desfiada e a lâmina recta, 03_MOTORES §7 c/d): o
 /// controlo é o pincel que a W3 mediu, uma régua fixa (a ponta desfiada sozinha levava o contraste dele a 41 px de
 /// 8,7 a 11,0 — o vale encolhia por o CONTROLO andar, não o relevo).
-fn sem_relevo(nome: &str) -> ph2d_brush_presets::Preset {
+pub(super) fn sem_relevo(nome: &str) -> ph2d_brush_presets::Preset {
     // … e sem o VEIO dos fios (J4 óleo, `Knob::BristleStreak`): os troços escuros e claros também são contraste, e o
     // controlo é o óleo de antes do relevo de cada fio (8,7), não o do veio sozinho (11,5 — colado ao Rebelle).
     com_knobs(
@@ -571,8 +571,7 @@ pub(super) fn escada_de(
     ]
 }
 
-// `o_relevo_nao_tem_escada` saiu (02/11): media SÓ paridade com as fotos do Rebelle (escada ≤ a dele + 0,3, contraste no
-// vale dele) — o dono 31/10 tirou o Rebelle de referência. Registo: docs/Painter/BUGS_painter.md (réguas retiradas).
+// `o_relevo_nao_tem_escada` (a escada com tecto nosso) vive em `regua_escada.rs`, ao lado da régua.
 
 /// **A borracha tira o relevo** (W3): o Oil Bristle de fábrica e, por cima de metade do traço, a borracha do
 /// mesmo pincel — onde ela passou a altura vai a zero (o mesmo pente, para o alvo 0: ~10⁻⁵ px); na outra

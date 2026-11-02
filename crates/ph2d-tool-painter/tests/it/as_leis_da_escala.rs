@@ -146,7 +146,7 @@ fn sonda_o_relevo_por_tamanho() {
     }
 }
 
-/// SONDA: as barras do W3b (`o_relevo_dos_fios::o_relevo_nao_tem_escada`) e da W3 (a textura do recto) do Oil
+/// SONDA: as barras do W3b (`regua_escada::o_relevo_nao_tem_escada`) e da W3 (a textura do recto) do Oil
 /// Bristle de fábrica com as variantes `PH2D_SONDA_KNOBS` (`;`-separadas, `k=v,b.campo=v`), a 103 e a 41 px.
 #[test]
 #[ignore = "sonda: as barras do relevo com variantes; corre-se à mão"]

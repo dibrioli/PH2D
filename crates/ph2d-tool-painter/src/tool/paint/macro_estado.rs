@@ -11,6 +11,7 @@
 
 use super::wetpaint_preset::{campos_da_macro, json};
 use crate::tool::PainterTool;
+use ph2d_wet_paint::tuning::Knob;
 use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -63,6 +64,9 @@ impl PainterTool {
                 "show_wet": w.show_wet,
                 "paper_visual": w.paper_visual,
                 "relogio_fixo": w.relogio_fixo,
+                // Da TELA, fora do preset (Q3 01/11, E10d2): sem elas a reprodução secava e bebia outra água.
+                "dry_speed": w.knobs.get(Knob::Evaporation),
+                "absorcao": w.absorcao,
             },
             "traco": {
                 "seed": p.seed,
@@ -168,6 +172,12 @@ impl PainterTool {
         );
         // A `opacidade` de uma macro gravada antes da E10 é IGNORADA (o Volume do preset a substitui, E10c2).
         w.relogio_fixo = wv["relogio_fixo"].as_f64();
+        if let Some(x) = wv["dry_speed"].as_f64() {
+            w.knobs.set(Knob::Evaporation, x);
+        }
+        if let Some(x) = wv["absorcao"].as_f64() {
+            self.set_wet_absorcao(x);
+        }
         self.macro_shape_color_aplica(&v["shape_color"]);
         let tv = &v["traco"];
         let p = &mut self.paint;

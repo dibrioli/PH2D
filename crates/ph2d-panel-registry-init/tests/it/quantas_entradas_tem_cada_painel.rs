@@ -2270,7 +2270,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    Morph (os dois raros que pintam sem seleção) entraram no grupo ▸ Advanced, que nasce
     //    recolhido — só o cabeçalho dele fica à vista. A abertura mede-se na aba Drawing (a de
     //    nascença). Medido pelo gate.
-    ("vector", 612.0),
+    // ⬇️ `612 → 219` na integração de 02/11 (UIUX F43–F45: Effects/Filters e Fill/Stroke no layout do
+    //    Figma — o «+» com lista, linhas iguais com ⚙ por linha, e a secção Stroke fundida na pilha).
+    //    Medido pelo gate.
+    ("vector", 219.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

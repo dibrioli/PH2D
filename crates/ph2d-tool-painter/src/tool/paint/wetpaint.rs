@@ -464,6 +464,10 @@ mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
+mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume
+#[cfg(test)]
+mod chao_forca_tests; // sonda J10: o chão como força no momento
+#[cfg(test)]
 mod controlos_medidos_tests; // Color, Solid, Type e On empty medidos num traço de fábrica
 #[cfg(test)]
 mod desempenho_oleo_tests; // sonda J8: o óleo diluído é lento por correr mais tempo ou por passo?

@@ -136,7 +136,7 @@ fn rota() -> u8 {
 pub(crate) const FILME_POR_MASSA: f64 = 1.0 / 1000.0;
 
 /// A altura do óleo assentado na célula fina `i`, em unidades de `film`.
-fn altura(g: &Grid, i: usize, inteira: bool) -> f32 {
+pub(crate) fn altura(g: &Grid, i: usize, inteira: bool) -> f32 {
     let m = f64::from(g.sett[i]) + if inteira { f64::from(g.susp[i]) } else { 0.0 };
     if m <= 0.0 {
         return 0.0;
@@ -288,7 +288,7 @@ pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
 }
 
 /// `sett ÷ (sett + susp)` da célula `i` (`1` sem tinta em suspensão).
-fn fraccao_assente(g: &Grid, i: usize) -> f32 {
+pub(crate) fn fraccao_assente(g: &Grid, i: usize) -> f32 {
     let (se, su) = (g.sett[i].max(0.0), g.susp[i]);
     if su > 0.0 { se / (se + su) } else { 1.0 }
 }

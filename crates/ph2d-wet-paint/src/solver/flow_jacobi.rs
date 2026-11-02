@@ -188,7 +188,11 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         return;
     }
     let spans_on = g.spans_enabled;
-    let ladeira = super::ladeira_do_oleo::do_passe(g, by0, by1, c.oleo_na_mao);
+    let ladeira = if super::chao_forca::tira_do_nivelamento(c.oleo_na_mao) {
+        None
+    } else {
+        super::ladeira_do_oleo::do_passe(g, by0, by1, c.oleo_na_mao)
+    };
     let ladeira = ladeira.as_ref();
     let Grid {
         frow_lo: row_lo,

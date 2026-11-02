@@ -71,6 +71,7 @@ impl Engine {
                 &mut self.layers[self.active_layer].grid,
                 oleo_na_mao,
             );
+            crate::solver::fotografa_o_chao(&mut self.layers[self.active_layer].grid, oleo_na_mao);
         }
         while self.lane_trails.len() <= lane {
             self.lane_trails.push(Trail::default());

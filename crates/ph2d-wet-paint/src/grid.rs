@@ -106,6 +106,9 @@ pub struct Grid {
     /// A fracção ASSENTADA (`sett ÷ massa`) de cada célula na mesma fotografia ([`Self::oleo_antes`]): o peso da
     /// ladeira — sobre óleo que ainda estava molhado no início do traço a água não é segurada nem empurrada.
     pub oleo_antes_assente: Vec<f32>,
+    /// **O chão da água** (janela 10, `solver::chao_forca`): a altura do óleo ASSENTE e SECO no início do traço vivo,
+    /// em `film`. VAZIO sem óleo na grade ou com a força desligada.
+    pub chao: Vec<f32>,
     /// **A tinta da lei ÚNICA** (F4-2 E3, [`tinta`]): somas do filme e do aberto, `R_g`, meio, abertura e altura
     /// curada. VAZIA com [`crate::sim::LeiDaTinta::Velha`]; alocada pelo passo com `Pigmento` ([`tinta::garante`]).
     pub tinta: Vec<tinta::CelulaTinta>,
@@ -285,6 +288,7 @@ impl Grid {
             oleo_real: false,
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),
+            chao: Vec::new(),
             tinta: Vec::new(),
             pigmento: Vec::new(),
             flow,

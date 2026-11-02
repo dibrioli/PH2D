@@ -141,10 +141,16 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
     // A lei nova lê o `uv`/`outflow` da rota não fundida (mesmo resultado ao bit, `advect_bit_tests`).
     let pigmento = tinta::liga(p, g);
     let com_meio = meio::precisa(g);
-    let fundir =
-        !pigmento && !com_meio && fundida::usa_fundida(mode, (g.by1 - g.by0 + 1) as usize * g.s);
+    let chao = super::chao_forca::liga(g, p);
+    let fundir = !pigmento
+        && !com_meio
+        && !chao
+        && fundida::usa_fundida(mode, (g.by1 - g.by0 + 1) as usize * g.s);
     if !(fundir && fundida::momento_no_bloco(g)) {
         momentum_rows(g, p, gx, gy, mode);
+    }
+    if chao {
+        super::chao_forca::aplica(g, p, gx, gy, mode);
     }
     let vmax = if fundir {
         fundida::fused_rows(

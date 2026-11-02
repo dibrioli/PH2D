@@ -578,7 +578,14 @@ pub fn diffusion_pass(g: &mut Grid, p: &Params) {
 mod active_region;
 mod advect;
 mod advect_jacobi;
-pub(crate) use advect_jacobi::tinta as tinta_transporte; // F4_2 E7: as somas vão com a massa
+mod chao_forca; // janela 10: o declive do chão (o óleo assentado) como força no momento
+pub(crate) use advect_jacobi::tinta as tinta_transporte;
+#[doc(hidden)]
+pub(crate) use chao_forca::fotografa as fotografa_o_chao;
+#[doc(hidden)]
+pub use chao_forca::{
+    CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO, MEDIDA as MEDIDA_DO_CHAO, MedidaChao,
+}; // F4_2 E7: as somas vão com a massa
 #[cfg(test)]
 mod bingham_tests;
 mod flow_jacobi;

@@ -10,11 +10,16 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase};
 use ph2d_wet_paint::tuning::Knob;
 use std::sync::atomic::Ordering::Relaxed;
 
+/// O sufixo dos ficheiros gravados (a variante da sonda que corre).
+pub(super) static SUFIXO: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
 #[derive(Clone, Copy)]
-enum ObstaculoA {
+pub(super) enum ObstaculoA {
     Dabber,
     DabberDiluido,
     WetRound,
+    /// O Dabber curto (`x` 100–140) debaixo do Wet Drip largo (60–180): a água tem por onde contornar.
+    DabberCurto,
 }
 
 impl ObstaculoA {
@@ -23,6 +28,7 @@ impl ObstaculoA {
             Self::Dabber => "Dabber",
             Self::DabberDiluido => "Dabber_d05_Oil",
             Self::WetRound => "WetRound_Water",
+            Self::DabberCurto => "DabberCurto",
         }
     }
 }
@@ -55,7 +61,8 @@ fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
     t.on_canvas_pointer(ponteiro(x1, y, PointerPhase::Up));
 }
 
-fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
+/// `vezes` = quantas vezes B passa no mesmo sítio (o volume que empoça contra A).
+pub(super) fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8, vezes: u32) -> String {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -66,12 +73,14 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
     ));
     // ── A, o obstáculo.
     let rel_a = match a {
-        ObstaculoA::Dabber | ObstaculoA::DabberDiluido => "Oil/Dabber/Dabber.ph2d-brush.png",
+        ObstaculoA::Dabber | ObstaculoA::DabberDiluido | ObstaculoA::DabberCurto => {
+            "Oil/Dabber/Dabber.ph2d-brush.png"
+        }
         ObstaculoA::WetRound => "Watercolor/Fluid/Wet Round.ph2d-brush.png",
     };
     t.preset_aplicar(&preset(rel_a)).expect("o meio de A");
     match a {
-        ObstaculoA::Dabber => {}
+        ObstaculoA::Dabber | ObstaculoA::DabberCurto => {}
         ObstaculoA::DabberDiluido => {
             t.paint.wetpaint.knobs.set(Knob::Dilution, 0.5);
             t.paint.wetpaint.knobs.set(Knob::Medium, 1.0);
@@ -81,7 +90,11 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
     let oleo_a = t.wet_oleo_real().is_some();
     t.set_brush_size_px(30.0);
     t.set_brush_color_srgb8([40, 90, 220]);
-    traco(&mut t, 40.0, 200.0, 90.0);
+    if matches!(a, ObstaculoA::DabberCurto) {
+        traco(&mut t, 100.0, 140.0, 90.0);
+    } else {
+        traco(&mut t, 40.0, 200.0, 90.0);
+    }
     ticks(&mut t, espera);
     t.wet_bring_home();
 
@@ -142,8 +155,11 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
     t.set_brush_color_srgb8([240, 130, 60]);
     ph2d_wet_paint::solver::LADEIRA_ROTA.store(rota, Relaxed);
     // `m_b < 0` = o controlo SEM B: o que A faz sozinho nos mesmos 900 ticks (o «novo» que não é de B).
+    ph2d_wet_paint::solver::MEDIDA_DO_CHAO.with(|c| c.set(Default::default()));
     if m_b >= 0.0 {
-        traco(&mut t, 60.0, 180.0, 55.0);
+        for _ in 0..vezes.max(1) {
+            traco(&mut t, 60.0, 180.0, 55.0);
+        }
     }
     // A parede que o motor fotografou no início de B (só existe com o Real Oil na mão e óleo na grade).
     let (foto, foto_h, foto_ass) = {
@@ -168,16 +184,48 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
         (foto, h / n, fa / n)
     };
     ticks(&mut t, 900);
+    let md = ph2d_wet_paint::solver::MEDIDA_DO_CHAO.with(std::cell::Cell::get);
     let nome = format!(
-        "{}_e{espera}_B{}_{}",
+        "{}_e{espera}_B{}_{}{}",
         a.nome(),
         nome_b(m_b),
-        if rota == 2 { "semladeira" } else { "ladeira" }
+        if rota == 2 { "semladeira" } else { "ladeira" },
+        SUFIXO.lock().expect("o sufixo")
     );
     grava(&nome, &mostrada(&mut t));
     t.wet_bring_home();
     let g = grid(&t);
     let (mut miolo, mut c50, mut abaixo, mut acima) = (0f64, 0usize, 0f64, 0f64);
+    // Contornou: a massa nova abaixo da orla de baixo de A, nas colunas FORA de A.
+    let fundo = orla.iter().flatten().map(|o| o.1).max().unwrap_or(gh);
+    let mut lado = 0f64;
+    // A poça: o `film` máximo nas 6 linhas acima da orla de A; o chão: a média de `Grid::chao` no miolo.
+    let (mut poca, mut chao_s, mut chao_n, mut chao_max) = (0f32, 0f64, 0usize, 0f32);
+    for (k, o) in orla.iter().enumerate() {
+        let Some((top, bot)) = *o else { continue };
+        let cx = k + 1;
+        for cy in top.saturating_sub(6)..top {
+            poca = poca.max(g.film[cx + cy * gs]);
+        }
+        if g.chao.len() == g.cells {
+            for cy in top..=bot {
+                let v = g.chao[cx + cy * gs];
+                chao_s += f64::from(v);
+                chao_n += 1;
+                chao_max = chao_max.max(v);
+            }
+        }
+    }
+    let chao_m = chao_s / chao_n.max(1) as f64;
+    for (k, o) in orla.iter().enumerate() {
+        if o.is_some() {
+            continue;
+        }
+        for cy in fundo + 1..=gh {
+            let i = k + 1 + cy * gs;
+            lado += f64::from(g.sett[i] + g.susp[i] - antes[i]).max(0.0);
+        }
+    }
     for (k, o) in orla.iter().enumerate() {
         let Some((top, bot)) = *o else { continue };
         let cx = k + 1;
@@ -196,6 +244,17 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
             }
         }
     }
+    let nn = md.n.max(1) as f64;
+    let chao = format!(
+        " | lado {lado:>9.0} | poca {poca:.2} chao {chao_m:.2} max {chao_max:.2} | chao n {} grav {:.5} forca {:.5} decl {:.4} lad {:.5} livre {:.5} clamp {:.3}",
+        md.n,
+        md.gravidade / nn,
+        md.chao / nn,
+        md.declive / nn,
+        md.ladeira / nn,
+        md.ladeira_livre / nn,
+        md.clamp_morde as f64 / nn
+    );
     format!(
         "{:<15}| esp {:>4} | B {:<5}| {:<11}| oleoA {} oleoB {:<5}| limiar {:>5.0} miolo# {:>4} | assenteA {:.3} | campo {:<5} ganho {:.3} | foto {:<5} h {:.3} ass {:.3} | miolo {:>9.0} c>50 {:>4} | abaixo {:>9.0} | acima {:>9.0}",
         a.nome(),
@@ -216,7 +275,7 @@ fn linha(a: ObstaculoA, espera: u32, m_b: f64, rota: u8) -> String {
         c50,
         abaixo,
         acima
-    )
+    ) + &chao
 }
 
 fn nome_b(m_b: f64) -> &'static str {
@@ -249,7 +308,7 @@ fn bloco(rota: u8) {
             .map(|&(a, e, m)| {
                 std::thread::Builder::new()
                     .stack_size(64 << 20)
-                    .spawn_scoped(s, move || linha(a, e, m, rota))
+                    .spawn_scoped(s, move || linha(a, e, m, rota, 1))
                     .expect("a thread")
             })
             .collect();

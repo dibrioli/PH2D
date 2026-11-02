@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod bdf;
+pub mod carimbo;
 mod charsets;
 pub mod font;
 mod hex;

@@ -26,6 +26,7 @@ ph2d-pen = { path = "../../crates/ph2d-pen" }
 ph2d-pixel-core = { path = "../../crates/ph2d-pixel-core" }
 ph2d-pixel-io = { path = "../../crates/ph2d-pixel-io" }
 ph2d-pixel-render = { path = "../../crates/ph2d-pixel-render" }
+ph2d-pixel-text = { path = "../../crates/ph2d-pixel-text" }
 ph2d-panel-pixel-preview = { path = "../../crates/ph2d-panel-pixel-preview" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }

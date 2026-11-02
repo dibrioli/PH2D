@@ -13,7 +13,7 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{at, born, canvas, value};
+use crate::comum::{at, born, canvas, value};
 
 const CLEAR: [u8; 4] = [0, 0, 0, 0];
 const RED: [u8; 4] = [255, 0, 0, 255];
@@ -201,7 +201,7 @@ fn a_system_font_draws_and_previous_wraps_to_the_last_font() {
         o.text_font = u16::try_from(i).unwrap_or(0);
         o.text_px = 16;
         let f = ph2d_app_pixel::texto::estilo(&o);
-        ph2d_app_pixel::texto::coloca("A", &f, (0, 0))
+        f.place("A", (0, 0))
             .is_some_and(|(m, _)| m.cover.contains(&u8::MAX))
     }) else {
         return;

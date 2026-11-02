@@ -13,7 +13,7 @@ use ph2d_pixel_core::raster::line_cells;
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
-use crate::edit::{at, born, canvas, value};
+use crate::comum::{at, born, canvas, value};
 
 const CLEAR: [u8; 4] = [0, 0, 0, 0];
 

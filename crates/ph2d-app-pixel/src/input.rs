@@ -561,7 +561,7 @@ pub(crate) fn finish(app: &mut PixelApp) {
 pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
     if app.tool != t {
         finish(app);
-        crate::texto::confirma(app);
+        crate::texto::fecha(app, true);
         app.laco = None;
     }
     app.tool = t;

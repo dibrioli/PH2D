@@ -44,6 +44,11 @@ pub fn populate(store: &mut WidgetStore) {
     // sobre *este id pode receber foco*, e o `paint` também os oferece sempre — ver o `ids`.
     button(store, crate::ids::TOKENS_DTCG_EXPORT);
     button(store, crate::ids::TOKENS_DTCG_IMPORT);
+    // As famílias de cor de DADO dobram-se e nascem dobradas (`crate::familias`).
+    for f in &crate::familias::FAMILIAS {
+        store.mark_collapsible_section(f.id);
+        store.set_collapsed_if_unchosen(f.id, true);
+    }
     for row in 0..ColorToken::ALL.len() {
         // ⚠️ A swatch é alvo de PICKER, não botão: registá-la como botão faria o clique acender o
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.

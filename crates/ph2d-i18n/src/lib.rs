@@ -421,6 +421,13 @@ fn tr_ingles(key: &str) -> &'static str {
         "panel.tokens.header" => "{tema}  \u{2014}  {n} authored",
         "panel.tokens.reset" => "Reset",
         "panel.tokens.reset_all" => "Reset This Mode",
+        "panel.tokens.family.node_cat" => "Node Categories",
+        "panel.tokens.family.obj" => "Object Types",
+        "panel.tokens.family.port" => "Node Ports",
+        "panel.tokens.family.timeline" => "Timeline",
+        "panel.tokens.family.person" => "People",
+        "panel.tokens.family.code" => "Code Editor",
+        "panel.tokens.family.kanban" => "Kanban",
         // O readout de CONTRASTE (plano UI/UX W4b). ⚠️ O nome do CRITÉRIO ("WCAG 2.2 AA 1.4.3")
         // não passa por aqui: ele é o endereço de uma norma, e traduzi-lo tornaria a coisa que o
         // artista precisa de PROCURAR impossível de procurar — a mesma lei que mantém as chaves

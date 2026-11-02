@@ -176,7 +176,21 @@ fn paint_body(
         y,
     ) + Spacing::Sm.px();
 
+    // As famílias de DADO pintam sob um cabeçalho dobrável (`crate::familias`).
+    let mut familia: Option<ph2d_a11y::NodeId> = None;
+    let mut aberta = true;
     for (row, &token) in ColorToken::ALL.iter().enumerate() {
+        let f = crate::familias::familia_de(token);
+        if f.map(|f| f.id) != familia {
+            familia = f.map(|f| f.id);
+            aberta = true;
+            if let Some(f) = f {
+                (y, aberta) = family_header(ctx, theme, f, Rect::new(x, y, w, 0.0));
+            }
+        }
+        if !aberta {
+            continue;
+        }
         y = paint_token_row(
             ctx,
             theme,
@@ -504,6 +518,31 @@ fn command_at(
         theme,
     );
     hit_index.register(id, rect);
+}
+
+/// O cabeçalho dobrável de uma família de DADO — secção FIXA (a ordem é a da tabela). Devolve o
+/// `y` do corpo e se ele se pinta (só some fechado E parado, como o `RowCtx::section_header`).
+fn family_header(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    f: &crate::familias::Familia,
+    at: Rect,
+) -> (f32, bool) {
+    use ph2d_editor_core::panel::section_plan;
+    let h = ph2d_editor_core::panel::rows::section_header_h();
+    let rect = Rect::new(at.x, at.y, at.w, h);
+    let store = ctx.host.store();
+    let header = section_plan::cabecalho_fixo(store, f.id, tr(f.rotulo));
+    let aberta = !store.is_collapsed(f.id) || store.section_open_live(f.id) > 0.0;
+    ph2d_editor_core::widget::paint_section_header(
+        &header,
+        rect,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    section_plan::regista_cabecalho_fixo(ctx.host.hit_index_mut(), f.id, rect);
+    (at.y + h, aberta)
 }
 
 /// O nome do modo, como o artista o conhece.

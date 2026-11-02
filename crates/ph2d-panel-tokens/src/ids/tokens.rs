@@ -35,6 +35,21 @@ pub const TOKENS_CLOSE: NodeId = hash_node_id("tokens.close");
 /// apagasse trabalho que ele não está a olhar é a forma mais barata de perder uma re-vestida.
 pub const TOKENS_RESET_ALL: NodeId = hash_node_id("tokens.reset_all");
 
+/// Os cabeçalhos das famílias de cor de DADO (`crate::familias`), dobráveis e semeados dobrados.
+pub const TOKENS_SEC_NODE_CAT: NodeId = hash_node_id("tokens.sec.node_cat");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_OBJ: NodeId = hash_node_id("tokens.sec.obj");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_PORT: NodeId = hash_node_id("tokens.sec.port");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_TIMELINE: NodeId = hash_node_id("tokens.sec.timeline");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_PERSON: NodeId = hash_node_id("tokens.sec.person");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_CODE: NodeId = hash_node_id("tokens.sec.code");
+/// Ver [`TOKENS_SEC_NODE_CAT`].
+pub const TOKENS_SEC_KANBAN: NodeId = hash_node_id("tokens.sec.kanban");
+
 /// O **Reset** da linha `row` — devolve UM token à fábrica.
 #[must_use]
 pub fn tokens_reset_id(row: usize) -> NodeId {

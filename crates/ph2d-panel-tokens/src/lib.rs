@@ -29,6 +29,7 @@
 //! obrigada a fazê-lo no read-back do picker (o estado do picker mora no store que ela possui).
 //! Dois escritores para a mesma tabela dariam um que esquece de marcar o projeto como sujo.
 
+mod familias;
 pub mod ids;
 mod paint;
 mod paint_num;

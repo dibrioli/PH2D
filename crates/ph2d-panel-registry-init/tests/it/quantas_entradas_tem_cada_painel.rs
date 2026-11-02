@@ -2247,7 +2247,12 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `code-unresolved` (o global que não existe): `1 × ROW_H_PX (25)` exactos.
     // ⬆️ `3 491 → 5 041` em 2026-10-27 (TrelloClone W2), pela MESMA razão: as 62 cores do Kanban
     //    (30 etiquetas + 32 superfícies/tintas/sombras/prazos): `62 × ROW_H_PX (25) = 1 550`.
-    ("tokens", 5041.0),
+    // ⬇️ `5 041 → 2 302` em 2026-11-02 (integ shellui): a UIUX F42 somou as 18 cores `obj-*`
+    //    (`+450`), e a cura deixou de ser subir — as famílias de cor de DADO (`node-cat`, `obj`,
+    //    `port`, `timeline`, `person`, `code`, `kanban`) são secções fixas semeadas RECOLHIDAS
+    //    (`ph2d_panel_tokens::familias`). ⛔ «Recolher não se aplica» acima deixou de ser verdade:
+    //    uma cor nova de uma família listada entra dobrada; uma família nova entra na tabela dela.
+    ("tokens", 2302.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

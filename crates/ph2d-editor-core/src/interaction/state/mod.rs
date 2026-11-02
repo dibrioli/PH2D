@@ -10,12 +10,8 @@
 //! `ph2d_a11y`) so the store and the `accesskit::TreeInfo` share keys
 //! without translation.
 //!
-//! Note on `BTreeMap` over `HashMap`: workspace clippy bans
-//! `HashMap` everywhere (HR-5/ADR-0022). `BTreeMap` allocates per
-//! insert, but inserts only happen at construction time via
-//! [`WidgetStore::register`]; the hot path uses `get`/`get_mut` on
-//! existing entries, which is allocation-free. Lookup is O(log n)
-//! instead of O(1), trivial at editor widget counts (~50).
+//! `BTreeMap`, never `HashMap` (HR-5/ADR-0022): inserts only happen at construction
+//! ([`WidgetStore::register`]); the hot path's `get`/`get_mut` is allocation-free.
 
 mod blender_ops;
 mod chrome_ops;

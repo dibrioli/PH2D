@@ -119,7 +119,11 @@ pub(super) fn cena(n: usize) -> PainterTool {
 /// das tintas do BUGS #53 (`cd07881b37`): a camada guarda o branco como transparência; sobre o branco, ≤ 2 níveis
 /// (2 234 de 49 152 canais mudam, 1 passa de 1 nível — o arredondamento do alfa). Regravadas na integração de 02/11
 /// pela bisseção da linha PainterWatercolor, commits da lei nova: a 6 em `776a9ff173` (dono 30/10, sai o Over Oil) e
-/// `3eb13d38db` (K-M ligado de fábrica); a 0 (a única rastreada das 0–4) em `7a4bc540b7` (E4, a lei de pigmento).
+/// `3eb13d38db` (K-M ligado de fábrica); a 0 em `7a4bc540b7` (E4, a lei de pigmento). As 1–4 bissecadas uma a uma a
+/// 02/11 (`main..line/PainterWatercolor`, os 158 commits que tocam `ph2d-wet-paint`, `ph2d-tool-painter/src` ou o
+/// `Cargo.lock`; SHAs da linha rebaseada): mudam TODAS num só degrau, o mesmo da 0 — `ed8a69351d` (E4, `7a4bc540b7`
+/// antes do rebase), lei nova da tinta. Antes dele `0x29b7…4e43` (1, 2, 4) e `0xfa55…c815` (3) do merge-base até
+/// `9fb79dc282`; depois os de hoje até ao topo (`ff2077c768`), iguais nos degraus da E10 (`7c8e08d16b`, `1f9e115c7e`).
 const HOJE: [(usize, u64); 6] = [
     (0, 0x57aa_4a69_3655_191c),
     (1, 0x6c49_6d00_d42e_be13),

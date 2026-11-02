@@ -327,15 +327,5 @@ pub fn any_dureza(dabs: &[crate::Dab]) -> bool {
     dabs.iter().any(|d| d.tilt.is_some_and(|t| t.dureza != 0.0))
 }
 
-/// Um passo da corda: o pincel em `anchor` só anda quando a mão (`sample`) está a mais de `len` px, e
-/// então fica a `len` px atrás dela, na recta que os une.
-#[must_use]
-pub fn pulled_string_step(anchor: [f32; 2], sample: [f32; 2], len: f32) -> [f32; 2] {
-    let (dx, dy) = (sample[0] - anchor[0], sample[1] - anchor[1]);
-    let d = dx.hypot(dy);
-    if d <= len {
-        return anchor;
-    }
-    let k = (d - len) / d;
-    [anchor[0] + dx * k, anchor[1] + dy * k]
-}
+/// Um passo da corda — a lei partilhada com o Pixel Art (`ph2d-pen-law`).
+pub use ph2d_pen_law::pulled_string_step;

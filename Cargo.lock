@@ -9466,6 +9466,7 @@ name = "ph2d-painter-brush"
 version = "0.0.0"
 dependencies = [
  "ph2d-label-census",
+ "ph2d-pen-law",
  "ph2d-pigment",
  "ph2d-wet-paint",
  "rayon",
@@ -10117,6 +10118,10 @@ dependencies = [
  "wayland-protocols",
  "zstd",
 ]
+
+[[package]]
+name = "ph2d-pen-law"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-physics"

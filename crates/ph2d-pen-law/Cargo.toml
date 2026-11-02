@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-pen-law"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As leis PURAS da mão no pincel, partilhadas pelas famílias que pintam (Painter, Pixel Art) sem que uma
+# dependa da outra — sem dependências: nada de SO, janela nem caneta (essas vivem no `ph2d-pen`).
+[dependencies]
+
+[lints]
+workspace = true

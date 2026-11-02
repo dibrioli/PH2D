@@ -21,6 +21,8 @@ authors.workspace = true
 # byte texture-paint path, so no sRGB transfer is needed here).
 
 [dependencies]
+# A corda (`pulled_string_step`): a lei pura partilhada com o Pixel Art.
+ph2d-pen-law = { path = "../ph2d-pen-law" }
 # ⚠️ **A EXCEÇÃO do `rayon`, e ela é ESTREITA** — ADR-0158, amparada no ADR-0109. Ela entra
 # EXCLUSIVAMENTE na soma corrida do `solid::fill_coverage`: a cobertura de uma linha é a soma da
 # derivada DAQUELA linha, nada atravessa a fronteira horizontal, e a ordem das somas dentro da linha

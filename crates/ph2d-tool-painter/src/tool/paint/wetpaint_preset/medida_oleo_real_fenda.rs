@@ -172,7 +172,10 @@ fn o_papel_nos_vaos_entre_lascas_nao_fica_preto() {
     };
     // §BUG-bordas: 38 → 42 % (35,73 → 39,63): o contorno sub-célula tira à orla da lasca a parede em ESCADA que
     // devolvia luz ao vão (o rebote K10: sem ele os vãos ficam MAIS claros que antes, 62,8 → 53,9 %).
-    for (ambiente, tecto) in [(Ambiente::Estudio, 42.0), (Ambiente::Classico, 0.0)] {
+    // E10 (Medium 1 no óleo, 02/11): a malha muda (820 → 913 vãos); o Cycles da MESMA malha de hoje (studio_sol10,
+    // 32 amostras, CPU) põe 35,05 % abaixo de 70 e p10 19; nós 54,98 %, p10 58 — o excesso sobre o Cycles (+19,9) é o
+    // da calibração (+19,1 = 39,63 − 20,49). Tecto 42 → 57 com a mesma folga; com Medium 0: 31,22 %.
+    for (ambiente, tecto) in [(Ambiente::Estudio, 57.0), (Ambiente::Classico, 0.0)] {
         let o = OleoReal {
             ambiente,
             ..OleoReal::default()

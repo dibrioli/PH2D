@@ -113,6 +113,10 @@ pub(crate) fn conduz(app: &mut PixelApp) {
         "convolucao" => app.pede(R::Edit(E::ConvolutionMatrix)),
         "hue" => app.pede(R::Edit(E::HueSaturation)),
         "texto" => {
+            // O Text corta-se à selecção: a foto escreve sem ela.
+            app.aplica(R::Select(
+                ph2d_editor_core::pixel_panel::PixelSelectAction::Deselect,
+            ));
             app.fg = [0, 0, 0, 255];
             crate::input::set_tool(app, Tool::Text);
             crate::texto::abre(app, key, (26, 34));

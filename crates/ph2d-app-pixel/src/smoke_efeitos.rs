@@ -95,30 +95,65 @@ pub(crate) fn stage(
 }
 
 /// Só para as fotos (`PH2D_PIXEL_SMOKE_GESTO`, cena 19), uma vez: `balde` = o flyout do balde
-/// aberto · `convolucao` / `hue` = o diálogo aberto · `texto` = a caixa do Text com «PH2D» — os
-/// eventos sintéticos não chegam à janela da tela virtual (`fotografa_cena.sh`).
-pub(crate) fn conduz(app: &mut PixelApp) {
+/// aberto · `convolucao` = o diálogo com a lista «Kernel» aberta · `hue` = o diálogo aberto ·
+/// `texto` = a caixa do Text com «PH2D» · `fonte` = o Text com a lista de fontes aberta · `solto` =
+/// «PH2D» depois do 1.º Enter (a moldura solta) — os eventos sintéticos não chegam à janela da tela
+/// virtual (`fotografa_cena.sh`); as listas abrem-se no estado do dropdown, como faz o clique.
+pub(crate) fn conduz(app: &mut PixelApp, hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     use ph2d_editor_core::pixel_panel::{PixelEditAction as E, PixelRequest as R, PixelToolGroup};
     use std::sync::atomic::{AtomicBool, Ordering};
+    use winit::keyboard::KeyCode;
     static FEITO: AtomicBool = AtomicBool::new(false);
-    let (Some(19), Some(key)) = (crate::smoke::armed_level(), app.chave) else {
+    if crate::smoke::armed_level() != Some(19) {
+        return;
+    }
+    let gesto = std::env::var("PH2D_PIXEL_SMOKE_GESTO").unwrap_or_default();
+    if FEITO.load(Ordering::Relaxed) {
+        abre_lista(hero, &gesto);
+        return;
+    }
+    let Some(key) = app.chave else {
         return;
     };
-    let gesto = std::env::var("PH2D_PIXEL_SMOKE_GESTO").unwrap_or_default();
     if gesto.is_empty() || FEITO.swap(true, Ordering::Relaxed) {
         return;
     }
+    let m = crate::compose::Mods::default();
     match gesto.as_str() {
         "balde" => app.pede(R::Group(PixelToolGroup::Bucket)),
         "convolucao" => app.pede(R::Edit(E::ConvolutionMatrix)),
         "hue" => app.pede(R::Edit(E::HueSaturation)),
-        "texto" => {
+        "fonte" => crate::input::set_tool(app, Tool::Text),
+        "texto" | "solto" => {
             app.fg = [0, 0, 0, 255];
             crate::input::set_tool(app, Tool::Text);
             crate::texto::abre(app, key, (26, 34));
-            let m = crate::compose::Mods::default();
-            crate::texto::tecla(app, winit::keyboard::KeyCode::KeyA, m, Some("PH2D"));
+            crate::texto::tecla(app, KeyCode::KeyA, m, Some("PH2D"));
+            if gesto == "solto" {
+                crate::texto::tecla(app, KeyCode::Enter, m, None);
+            }
         }
         _ => {}
+    }
+}
+
+/// Abre, uma vez, a lista do dropdown do gesto assim que ele existe no `WidgetStore` (o da Kernel
+/// só se regista quando o diálogo abre, um quadro depois do pedido).
+fn abre_lista(hero: &mut ph2d_editor_core::screens::hero::HeroScreen, gesto: &str) {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static ABERTA: AtomicBool = AtomicBool::new(false);
+    let id = match gesto {
+        "convolucao" => ph2d_editor_core::ids::PIXEL_FILTER_KERNEL,
+        // O `ids::TEXT_FONT_DD` do painel de ferramentas (a crate do painel não é dependência).
+        "fonte" => ph2d_editor_core::registry::hash_node_id("pixel.opt.text.font"),
+        _ => return,
+    };
+    if ABERTA.load(Ordering::Relaxed) {
+        return;
+    }
+    if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(id) {
+        *open = true;
+        ABERTA.store(true, Ordering::Relaxed);
     }
 }

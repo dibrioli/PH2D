@@ -1175,53 +1175,9 @@ mod portoes {
         }
     }
 
-    /// O VERMELHO por baixo do azul nos cruzamentos da cena `sobre` (x 250 e 500 × as faixas y 150 e 470, ±8 × ±15 px): o
-    /// canal R médio — o azul puro tem R 23, o vermelho 191.
-    fn r_no_cruzamento(px: &[u8]) -> f64 {
-        let mut v = Vec::new();
-        for x in [250usize, 500] {
-            for y in [150usize, 470] {
-                for yy in y - 15..=y + 15 {
-                    for xx in x - 8..=x + 8 {
-                        v.push(f64::from(px[(yy * 1000 + xx) * 4]));
-                    }
-                }
-            }
-        }
-        v.iter().sum::<f64>() / v.len() as f64
-    }
-
-    /// ⭐ **O Square Hard tapa o vermelho como a foto nova** (decisão 16): o R médio nos cruzamentos do azul sobre o vermelho
-    /// — Rebelle «Square Hard» (bateria, `sobre_A`) 74, pelo MESMO recorte; o de antes (carga 75, papel 1,0) 114. Mutação: a
-    /// carga de antes.
-    #[test]
-    fn o_square_hard_tapa_o_vermelho_como_a_foto() {
-        let ps = [
-            pinceis("Square Hard").remove(0),
-            mutado("Square Hard", "pigmentPerDab", serde_json::json!(75.0)),
-        ];
-        let r: Vec<f64> = std::thread::scope(|s| {
-            let hs: Vec<_> = ps
-                .iter()
-                .map(|p| s.spawn(move || r_no_cruzamento(&cena(p, "sobre"))))
-                .collect();
-            hs.into_iter().map(|h| h.join().unwrap()).collect()
-        });
-        println!(
-            "[pastel_carvao] Square Hard: R no cruzamento {:.1} (Rebelle 74) · com a carga de antes {:.1}",
-            r[0], r[1]
-        );
-        assert!(
-            r[0] <= 86.0,
-            "o Square Hard deixa o vermelho passar: R {:.1} (Rebelle 74)",
-            r[0]
-        );
-        assert!(
-            r[1] > 86.0,
-            "o portão não separa a carga de antes ({:.1})",
-            r[1]
-        );
-    }
+    // `o_square_hard_tapa_o_vermelho_como_a_foto` saiu (02/11): o tecto (R ≤ 86) era o Rebelle «Square Hard» 74 e a
+    // mutação «carga de antes» deixou de o cruzar com o Pigment mixing de fábrica (0170428784: 63,2/88,0 → 40,0/55,1 —
+    // as duas tapam). Só paridade; o dono 31/10 tirou o Rebelle de referência (docs/Painter/BUGS_painter.md).
 
     /// Os reprovados não estão na fábrica: nenhum ficheiro com o nome de uma receita [`super::EM_ESTUDO`].
     #[test]

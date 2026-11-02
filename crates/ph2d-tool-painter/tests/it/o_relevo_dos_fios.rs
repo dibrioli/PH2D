@@ -571,59 +571,8 @@ pub(super) fn escada_de(
     ]
 }
 
-/// ⭐⭐ **O relevo SEM ESCADA** (W3b, prompt 50; doc 50_medicao): o Oil Bristle de fábrica nos rectos INCLINADOS
-/// (8° e 25°) e na curva em S, ao tamanho do preset (103 px) e à largura da foto (41), contra as fotos do Rebelle
-/// da MESMA cena (`fixtures/rebelle/{incl103,incl40,oil103,oil40c}.png`, `ferramentas/escada.py`; o ruído da sessão
-/// 0,3 — `oil` × `oil40c`):
-/// - a **escada** (o salto da luminância ao longo dos fios) do lado do Rebelle: ≤ o dele + 0,3. O relevo de 18/10
-///   (o degrau por fio, a luz do Impasto) lia 15,2 · 12,3 a 103 px; o preset sem relevo 1,7 · 1,3;
-/// - o **contraste** do recto: à largura da foto no vale do Rebelle (12,1; o controlo sem relevo 8,7); a 103 px
-///   não passa de 1,3× o dele (11,5; o controlo já está a 12,3 — e o de 18/10 lia 35,7).
-#[test]
-fn o_relevo_nao_tem_escada() {
-    // O Rebelle: [8°, 25°, curva] e o contraste do recto, a 103 e a 41 px.
-    const REBELLE: [(f32, [f64; 3], f64); 2] = [
-        (51.5, [2.48, 2.30, 2.20], 11.54),
-        (20.5, [2.50, 2.62, 2.25], 12.11),
-    ];
-    let medidas: Vec<_> = std::thread::scope(|s| {
-        let hs: Vec<_> = REBELLE
-            .iter()
-            .map(|&(r, _, _)| {
-                s.spawn(move || {
-                    (
-                        escada_de(&com_relevo(), r),
-                        escada_de(&sem_relevo("Oil Bristle"), r),
-                    )
-                })
-            })
-            .collect();
-        hs.into_iter().map(|h| h.join().unwrap()).collect()
-    });
-    let mut falhas = Vec::new();
-    for (&(r, reb, con), (m, c)) in REBELLE.iter().zip(&medidas) {
-        println!("[escada] r {r}: {m:?} · SEM {c:?}");
-        for (k, nome) in ["8°", "25°", "curva"].iter().enumerate() {
-            if m[k].escada > reb[k] + 0.3 {
-                falhas.push(format!(
-                    "r {r} {nome}: escada {:.2} (Rebelle {})",
-                    m[k].escada, reb[k]
-                ));
-            }
-        }
-        let ok = if r > 40.0 {
-            (m[3].contraste <= 1.3 * con)
-                .then_some(())
-                .ok_or(format!("{:.2} > 1,3 × {con}", m[3].contraste))
-        } else {
-            no_vale(m[3].contraste, con, c[3].contraste, 0.3)
-        };
-        if let Err(e) = ok {
-            falhas.push(format!("r {r}: contraste do recto {e}"));
-        }
-    }
-    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
-}
+// `o_relevo_nao_tem_escada` saiu (02/11): media SÓ paridade com as fotos do Rebelle (escada ≤ a dele + 0,3, contraste no
+// vale dele) — o dono 31/10 tirou o Rebelle de referência. Registo: docs/Painter/BUGS_painter.md (réguas retiradas).
 
 /// **A borracha tira o relevo** (W3): o Oil Bristle de fábrica e, por cima de metade do traço, a borracha do
 /// mesmo pincel — onde ela passou a altura vai a zero (o mesmo pente, para o alvo 0: ~10⁻⁵ px); na outra

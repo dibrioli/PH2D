@@ -445,34 +445,17 @@ pub(super) fn tamanhos(p: &Pincel) -> Vec<u8> {
 fn o_relevo_nao_cresce_com_o_pincel() {
     // A lei é do EMBOSS (`Knob::EmbossSizeExp`): sem a luz do Real Oil que o candidato liga desde `e314e58cec` (com ela
     // 26,4 → 29,8, razão 1,13; triagem (a) de `105f28791d`).
+    // 02/11: saem o tecto da família do Rebelle (+0,08) e o alvo ±2 do Bristle Flat — só paridade (dono 31/10;
+    // o Pigment mixing de fábrica, 0170428784, leva a razão 0,793 → 0,886). Fica a lei: NÃO cresce (sem ela 1,13).
     let px = tamanhos(&pinceis("Oil Bristle").remove(0).sem_real_oil());
     let ((a40, _), (a200, _)) = (recto(&px, 190, 70), recto(&px, 440, 130));
-    let fam = [
-        "bristle_bristle_flat",
-        "bristle_bristle_wide",
-        "bristle_bristle_soft",
-    ]
-    .map(|n| {
-        let pre = format!("OIL_AND_ACRYLIC/{n}");
-        rebelle(&pre, "recto_200", "atraves") / rebelle(&pre, "recto_40", "atraves")
-    });
-    let tecto = fam.iter().copied().fold(0.0, f64::max) + 0.08;
-    let alvo = rebelle(
-        "OIL_AND_ACRYLIC/bristle_bristle_flat",
-        "recto_200",
-        "atraves",
-    );
     println!(
-        "[escala] através 40 {a40:.2} · 200 {a200:.2} · razão {:.3} (Rebelle {fam:.3?}, tecto {tecto:.3})",
+        "[escala] através 40 {a40:.2} · 200 {a200:.2} · razão {:.3}",
         a200 / a40
     );
     assert!(
-        a200 / a40 <= tecto,
+        a200 / a40 < 1.0,
         "o relevo cresce com o pincel: {a40:.2} → {a200:.2}"
-    );
-    assert!(
-        (a200 - alvo).abs() <= 2.0,
-        "o relevo a 200 px {a200:.2} contra o Rebelle {alvo:.2}"
     );
 }
 

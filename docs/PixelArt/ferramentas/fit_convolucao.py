@@ -15,6 +15,7 @@ import json
 import sys
 
 N = 15
+FIXTURE = "crates/ph2d-pixel-core/tests/fixtures/oracle_trial_convolution.json"
 
 
 def grid(rows):
@@ -188,13 +189,19 @@ def main():
 
 
 
-def rust_table(fit_json, out_rs):
-    """Os kernels de 0 desvios como dados Rust (`filter/kernels.rs`), na ordem da lista do Trial."""
+def rust_table(fit_json, fit_r3_json, out_rs):
+    """Os kernels de 0 desvios como dados Rust (`filter/kernels.rs`), na ordem da lista do Trial; os da
+    rodada 3 (`fit_convolucao_r3.py`) completam os que as rodadas 1–2 não fixaram."""
     d = json.load(open(fit_json))
+    for name, e in json.load(open(fit_r3_json)).items():
+        d[name] = dict(e, misses=0)
+    order = [k["name"] for k in json.load(open(FIXTURE))["kernels"]]
+    d = {n: d[n] for n in order if n in d}
     lines = [
         "//! Os kernels da Convolution Matrix — DADOS NOSSOS com o nome medido: cada matriz foi",
         "//! recuperada da resposta do Trial (`docs/PixelArt/ferramentas/fit_convolucao.py` sobre",
-        "//! `tests/fixtures/oracle_trial_convolution.json`, 0 células fora). Gerado; não editar à mão.",
+        "//! `tests/fixtures/oracle_trial_convolution.json` e `fit_convolucao_r3.py` sobre",
+        "//! `oracle_trial_round3.json`, 0 células fora). Gerado; não editar à mão.",
         "",
         "use super::convolution::Kernel;",
         "",
@@ -218,6 +225,6 @@ def rust_table(fit_json, out_rs):
 
 if __name__ == "__main__":
     if sys.argv[1] == "--rust":
-        rust_table(sys.argv[2], sys.argv[3])
+        rust_table(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         main()

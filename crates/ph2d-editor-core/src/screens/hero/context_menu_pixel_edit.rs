@@ -48,10 +48,20 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
     }
 }
 
-/// A lista de kernels da Convolution Matrix vai em colunas de botões de escolha: as 25 numa coluna
-/// só (≈ 700 px) passariam da altura de uma janela pequena, e em duas cabem sem rolagem. O Aseprite
-/// tem também «Apply» e «Reload Stock» (relê o ficheiro de kernels) — não há ficheiro aqui.
-const KERNEL_COLS: usize = 2;
+/// A lista de kernels da Convolution Matrix vai em colunas de botões de escolha, numa janela de
+/// largura dupla: as 37 numa coluna só (≈ 1 000 px) passariam da altura de uma janela pequena, e em
+/// três (13 filas) cabem sem rolagem com o nome mais longo inteiro. O Aseprite tem também «Apply» e
+/// «Reload Stock» (relê o ficheiro de kernels) — não há ficheiro aqui.
+const KERNEL_COLS: usize = 3;
+
+/// A largura da janela de `kind`: a da Convolution Matrix é dupla (as colunas de kernels).
+fn width_of(kind: PixelDialogKind) -> f32 {
+    if kind == PixelDialogKind::ConvolutionMatrix {
+        DIALOG_W + DIALOG_W
+    } else {
+        DIALOG_W
+    }
+}
 
 /// A caixa da Color Curve ocupa estas filas.
 const CURVE_ROWS: usize = 7;
@@ -74,9 +84,10 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     let rows = (rows_of(d.kind) + kernel_rows) as f32;
     let gap = Spacing::Xs.px();
     let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
-    let rect_x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
+    let dialog_w = width_of(d.kind);
+    let rect_x = (viewport.x + (viewport.w - dialog_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
-    let rect = Rect::new(rect_x, rect_y, DIALOG_W, total_h);
+    let rect = Rect::new(rect_x, rect_y, dialog_w, total_h);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     crate::paint::stroke_frame(

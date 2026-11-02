@@ -11,15 +11,18 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::text_elide::elisao;
 use ph2d_text::TextSystem;
 
-/// 25 nomes como os do núcleo (o chrome não o vê): os mais longos da lista real à frente.
+/// 39 nomes, tantos quantos a lista do Trial (o núcleo tem 37; o chrome não o vê): os mais longos
+/// da lista real à frente.
 fn nomes() -> &'static [&'static str] {
     static N: std::sync::LazyLock<Vec<&'static str>> = std::sync::LazyLock::new(|| {
         let mut v = vec![
+            "edges-find-horizontal",
+            "edges-find-vertical",
             "blur-5x5-diagonal(\\)",
             "blur-5x5-diagonal(/)",
             "misc-rock-edges",
         ];
-        v.extend((v.len()..25).map(|i| &*Box::leak(format!("kernel-{i}x{i}").into_boxed_str())));
+        v.extend((v.len()..39).map(|i| &*Box::leak(format!("kernel-{i}x{i}").into_boxed_str())));
         v
     });
     &N

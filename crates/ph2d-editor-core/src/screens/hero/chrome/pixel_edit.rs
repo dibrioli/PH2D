@@ -57,6 +57,8 @@ fn filter_click(hero: &mut HeroScreen, id: ph2d_a11y::NodeId) -> bool {
     let s = &mut hero.store;
     if id == ids::PIXEL_FILTER_PREVIEW {
         s.toggle_pixel_filter_preview();
+    } else if id == ids::PIXEL_FILTER_TARGET {
+        s.toggle_pixel_filter_target();
     } else if id == ids::PIXEL_FILTER_TILED {
         s.toggle_pixel_filter_tiled();
     } else if let Some(&(k, ..)) = ids::PIXEL_FILTER_CHANNELS.iter().find(|(_, x, _)| *x == id) {

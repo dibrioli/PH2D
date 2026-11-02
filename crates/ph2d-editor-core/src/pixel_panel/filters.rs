@@ -100,8 +100,8 @@ pub struct PixelFilterDialog {
     pub background: PixelOutlineBg,
     /// Despeckle: a última janela da sessão.
     pub median: (u32, u32),
-    /// Adjustments: `[brilho, contraste, matiz, saturação, luz]` da última vez (OK).
-    pub adjust: [i32; 5],
+    /// Adjustments: `[brilho, contraste, matiz, saturação, luz, alfa]` da última vez (OK).
+    pub adjust: [i32; 6],
     pub hue_mode: PixelHueMode,
     pub curve: PixelCurve,
     /// O ponto da curva agarrado (premido sobre a caixa).
@@ -111,6 +111,9 @@ pub struct PixelFilterDialog {
     /// Convolution Matrix: os nomes dos kernels, na ordem do núcleo — a família publica-os
     /// ([`crate::interaction::WidgetStore::set_pixel_filter_kernels`]); o chrome não vê o núcleo.
     pub kernels: &'static [&'static str],
+    /// O alvo «All»: todos os quadros × todas as camadas que se pintam (desligado = «Selected», o
+    /// cel activo). Lembrado na sessão.
+    pub all: bool,
 }
 
 impl Default for PixelFilterDialog {
@@ -124,12 +127,13 @@ impl Default for PixelFilterDialog {
             matrix: PixelOutlineMatrix::default(),
             background: PixelOutlineBg::default(),
             median: (3, 3),
-            adjust: [0; 5],
+            adjust: [0; 6],
             hue_mode: PixelHueMode::default(),
             curve: PixelCurve::default(),
             curve_grab: None,
             kernel: 0,
             kernels: &[],
+            all: false,
         }
     }
 }

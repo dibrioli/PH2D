@@ -13,6 +13,7 @@ pub(crate) fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChan
             brightness,
             contrast,
             channels,
+            ..
         } => (
             Box::new(BrightnessContrast::new(brightness, contrast)),
             channels,
@@ -22,7 +23,9 @@ pub(crate) fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChan
             hue,
             saturation,
             lightness,
+            alpha,
             channels,
+            ..
         } => (
             Box::new(HueSaturation {
                 mode: match mode {
@@ -34,13 +37,13 @@ pub(crate) fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChan
                 hue,
                 saturation,
                 lightness,
-                alpha: 0,
+                alpha,
             }),
             channels,
         ),
-        PixelDialogChoice::ColorCurve { curve, channels } => {
-            (Box::new(Curve::new(curve.points())), channels)
-        }
+        PixelDialogChoice::ColorCurve {
+            curve, channels, ..
+        } => (Box::new(Curve::new(curve.points())), channels),
         _ => return None,
     })
 }

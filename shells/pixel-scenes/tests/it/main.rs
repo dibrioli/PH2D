@@ -2,6 +2,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod ajustes;
+mod alvo_todos;
 mod cena18;
 mod comum;
 mod convolucao;

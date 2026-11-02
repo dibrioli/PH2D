@@ -9,6 +9,8 @@ use ph2d_a11y::NodeId;
 
 pub const PIXEL_FILTER_PREVIEW: NodeId = hash_node_id("pixel.filter_dialog.preview");
 pub const PIXEL_FILTER_TILED: NodeId = hash_node_id("pixel.filter_dialog.tiled");
+/// O alvo: «Selected» (o cel activo) ↔ «All» (todos os quadros e camadas), um botão que alterna.
+pub const PIXEL_FILTER_TARGET: NodeId = hash_node_id("pixel.filter_dialog.target");
 /// Despeckle: a janela da mediana.
 pub const PIXEL_FILTER_MEDIAN_W: NodeId = hash_node_id("pixel.filter_dialog.median_w");
 pub const PIXEL_FILTER_MEDIAN_H: NodeId = hash_node_id("pixel.filter_dialog.median_h");
@@ -92,12 +94,14 @@ pub const PIXEL_FILTER_CONTRAST: NodeId = hash_node_id("pixel.filter_dialog.cont
 pub const PIXEL_FILTER_HUE: NodeId = hash_node_id("pixel.filter_dialog.hue");
 pub const PIXEL_FILTER_SATURATION: NodeId = hash_node_id("pixel.filter_dialog.saturation");
 pub const PIXEL_FILTER_LIGHTNESS: NodeId = hash_node_id("pixel.filter_dialog.lightness");
-pub const PIXEL_FILTER_ADJUST_FIELDS: [(usize, NodeId, i32, i32); 5] = [
+pub const PIXEL_FILTER_ALPHA: NodeId = hash_node_id("pixel.filter_dialog.alpha");
+pub const PIXEL_FILTER_ADJUST_FIELDS: [(usize, NodeId, i32, i32); 6] = [
     (0, PIXEL_FILTER_BRIGHTNESS, -100, 100),
     (1, PIXEL_FILTER_CONTRAST, -100, 100),
     (2, PIXEL_FILTER_HUE, -180, 180),
     (3, PIXEL_FILTER_SATURATION, -100, 100),
     (4, PIXEL_FILTER_LIGHTNESS, -100, 100),
+    (5, PIXEL_FILTER_ALPHA, -100, 100),
 ];
 
 /// Color Curve: a caixa do editor de curva (`Plain`: premir agarra/acrescenta, duplo-clique tira).
@@ -129,13 +133,17 @@ pub const PIXEL_FILTER_HUE_MODES: [(PixelHueMode, NodeId, &str); 4] = [
 
 /// Os botões de escolha dos diálogos de filtro (registo e posse).
 pub fn pixel_filter_buttons() -> impl Iterator<Item = NodeId> {
-    [PIXEL_FILTER_PREVIEW, PIXEL_FILTER_TILED]
-        .into_iter()
-        .chain(PIXEL_FILTER_CHANNELS.iter().map(|(_, id, _)| *id))
-        .chain(PIXEL_FILTER_PLACES.iter().map(|(_, id, _)| *id))
-        .chain(PIXEL_FILTER_MATRICES.iter().map(|(_, id, _)| *id))
-        .chain(PIXEL_FILTER_BACKGROUNDS.iter().map(|(_, id, _)| *id))
-        .chain(PIXEL_FILTER_HUE_MODES.iter().map(|(_, id, _)| *id))
+    [
+        PIXEL_FILTER_PREVIEW,
+        PIXEL_FILTER_TILED,
+        PIXEL_FILTER_TARGET,
+    ]
+    .into_iter()
+    .chain(PIXEL_FILTER_CHANNELS.iter().map(|(_, id, _)| *id))
+    .chain(PIXEL_FILTER_PLACES.iter().map(|(_, id, _)| *id))
+    .chain(PIXEL_FILTER_MATRICES.iter().map(|(_, id, _)| *id))
+    .chain(PIXEL_FILTER_BACKGROUNDS.iter().map(|(_, id, _)| *id))
+    .chain(PIXEL_FILTER_HUE_MODES.iter().map(|(_, id, _)| *id))
 }
 
 /// Convolution Matrix: quantas linhas da lista de kernels têm id assado — o recurso é o `NodeId`

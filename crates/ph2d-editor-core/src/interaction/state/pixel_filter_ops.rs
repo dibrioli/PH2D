@@ -39,7 +39,7 @@ impl WidgetStore {
                 ),
             ],
             PixelDialogKind::BrightnessContrast => self.adjust_fields(0..2),
-            PixelDialogKind::HueSaturation => self.adjust_fields(2..5),
+            PixelDialogKind::HueSaturation => self.adjust_fields(2..6),
             _ => Vec::new(),
         }
     }
@@ -100,9 +100,9 @@ impl WidgetStore {
     pub fn pixel_filter_peek(&self) -> Option<PixelDialogChoice> {
         let d = self.pixel.edit;
         let f = d.filter;
-        let channels = f.channels;
+        let (channels, all) = (f.channels, f.all);
         Some(match d.kind {
-            PixelDialogKind::Invert => PixelDialogChoice::Invert { channels },
+            PixelDialogKind::Invert => PixelDialogChoice::Invert { channels, all },
             PixelDialogKind::Despeckle => {
                 let side = d.size.0.max(d.size.1).max(1);
                 PixelDialogChoice::Despeckle {
@@ -110,6 +110,7 @@ impl WidgetStore {
                     height: self.median_side(ids::PIXEL_FILTER_MEDIAN_H, side),
                     tiled: f.tiled,
                     channels,
+                    all,
                 }
             }
             PixelDialogKind::Outline => PixelDialogChoice::Outline {
@@ -118,27 +119,33 @@ impl WidgetStore {
                 background: f.background,
                 tiled: f.tiled,
                 channels,
+                all,
             },
             PixelDialogKind::BrightnessContrast => PixelDialogChoice::BrightnessContrast {
                 brightness: self.adjust_value(0),
                 contrast: self.adjust_value(1),
                 channels,
+                all,
             },
             PixelDialogKind::HueSaturation => PixelDialogChoice::HueSaturation {
                 mode: f.hue_mode,
                 hue: self.adjust_value(2),
                 saturation: self.adjust_value(3),
                 lightness: self.adjust_value(4),
+                alpha: self.adjust_value(5),
                 channels,
+                all,
             },
             PixelDialogKind::ColorCurve => PixelDialogChoice::ColorCurve {
                 curve: f.curve,
                 channels,
+                all,
             },
             PixelDialogKind::ConvolutionMatrix => PixelDialogChoice::Convolution {
                 kernel: self.pixel_filter_kernel(),
                 tiled: f.tiled,
                 channels,
+                all,
             },
             _ => return None,
         })
@@ -170,8 +177,9 @@ impl WidgetStore {
                 hue,
                 saturation,
                 lightness,
+                alpha,
                 ..
-            } => f.adjust[2..].copy_from_slice(&[hue, saturation, lightness]),
+            } => f.adjust[2..].copy_from_slice(&[hue, saturation, lightness, alpha]),
             _ => {}
         }
     }
@@ -179,6 +187,12 @@ impl WidgetStore {
     pub fn toggle_pixel_filter_preview(&mut self) {
         let f = &mut self.pixel.edit.filter;
         f.preview = !f.preview;
+    }
+
+    /// O botão do alvo: «Selected» ↔ «All».
+    pub fn toggle_pixel_filter_target(&mut self) {
+        let f = &mut self.pixel.edit.filter;
+        f.all = !f.all;
     }
 
     pub fn toggle_pixel_filter_tiled(&mut self) {

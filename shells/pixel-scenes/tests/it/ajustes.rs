@@ -93,6 +93,7 @@ fn hue_saturation_by_ctrl_u_previews_the_core_color_and_respects_the_channels() 
         hue: 120,
         saturation: -30,
         lightness: 0,
+        alpha: 0,
     };
     let [r, g, b] = hs.rgb([200, 100, 50]);
     assert_ne!([r, g, b], [200, 100, 50]);
@@ -143,4 +144,24 @@ fn color_curve_by_ctrl_m_with_a_point_added_by_the_press_changes_the_preview() {
     assert_ne!(quer, cor);
     assert_eq!(mostrado(&mut p), quer);
     ok_um_passo(&mut p, quer);
+}
+
+/// O campo Alpha do Hue/Saturation (rodada 3 `B4`): `-50` mostra o alfa `255 → 127` sem gravar, o
+/// OK é UM passo e o valor fica lembrado ao reabrir.
+#[test]
+fn hue_saturation_alpha_field_previews_half_alpha_and_is_remembered() {
+    let cor = [200, 100, 50, 255];
+    let mut p = com_quadrado(cor);
+    p.tecla(KeyCode::KeyU, true, false);
+    assert_eq!(aberto(&p), Some(PixelDialogKind::HueSaturation), "Ctrl+U");
+    escreve(&mut p, ids::PIXEL_FILTER_ALPHA, -50.0);
+    let quer = [200, 100, 50, 127];
+    assert_eq!(mostrado(&mut p), quer);
+    ok_um_passo(&mut p, quer);
+    p.tecla(KeyCode::KeyU, true, false);
+    assert_eq!(
+        p.hero.store.number_value(ids::PIXEL_FILTER_ALPHA),
+        Some(-50.0),
+        "lembrado na sessão"
+    );
 }

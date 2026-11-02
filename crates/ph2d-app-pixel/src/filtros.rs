@@ -82,16 +82,32 @@ fn pinta(s: &ph2d_pixel_core::Sprite, ck: ph2d_pixel_core::CelKey, m: &Mask, v: 
     })
 }
 
-/// O op do filtro `c` sobre o cel activo de `key` (`None` = nada muda ou não é um filtro).
-pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
+/// Os cels do alvo: o activo, ou com «All» todos os quadros × as camadas que se pintam (nem grupo,
+/// nem trancada, nem escondida) — o Trial com «All» inverte os 2 quadros × 2 camadas (rodada 3 `C`).
+fn alvo(doc: &crate::Doc, todas: bool) -> Vec<ph2d_pixel_core::CelKey> {
+    if !todas {
+        return vec![(doc.layer, doc.frame)];
+    }
+    let s = &doc.sprite;
+    s.layers()
+        .iter()
+        .filter(|l| !l.is_group() && !l.locked && s.is_shown(l.id))
+        .flat_map(|l| s.frames().iter().map(move |f| (l.id, f.id)))
+        .collect()
+}
+
+/// O op do filtro `c` sobre o alvo dele em `key`; `todas = false` força o cel activo (o Preview
+/// mostra só o cel activo). `None` = nada muda ou não é um filtro.
+pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice, todas: bool) -> Option<Op> {
     let doc = app.docs.get(&key)?;
     let (f, ch): (Box<dyn Filter>, _) = match c {
-        PixelDialogChoice::Invert { channels } => (Box::new(Invert), channels),
+        PixelDialogChoice::Invert { channels, .. } => (Box::new(Invert), channels),
         PixelDialogChoice::Despeckle {
             width,
             height,
             tiled,
             channels,
+            ..
         } => (
             Box::new(Median {
                 w: width,
@@ -106,6 +122,7 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
             background,
             tiled,
             channels,
+            ..
         } => (
             Box::new(Outline {
                 color: app.fg,
@@ -131,6 +148,7 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
             kernel,
             tiled,
             channels,
+            ..
         } => (
             Box::new(Convolution {
                 kernel: KERNELS.get(usize::from(kernel))?,
@@ -142,7 +160,8 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice) -> Option<Op> {
     };
     let [r, g, b, a] = ch;
     let channels = Channels { r, g, b, a };
-    filter::apply(&doc.sprite, &[(doc.layer, doc.frame)], channels, f.as_ref())
+    let keys = alvo(doc, todas && c.targets_all());
+    filter::apply(&doc.sprite, &keys, channels, f.as_ref())
 }
 
 /// O OK de um filtro: UM passo (a camada que não se pinta recusa). `false` = não é um filtro.
@@ -158,11 +177,13 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
         return false;
     }
     app.previa_filtro = None;
-    if let Some(motivo) = app.docs.get(&key).and_then(crate::camadas::recusa_pintar) {
+    // Com «All» a camada activa não decide: o alvo já tira as que não se pintam.
+    let recusa = app.docs.get(&key).and_then(crate::camadas::recusa_pintar);
+    if let (Some(motivo), false) = (recusa, c.targets_all()) {
         app.recusa(motivo);
         return true;
     }
-    let o = op(app, key, c);
+    let o = op(app, key, c, true);
     app.passo(key, o);
     true
 }
@@ -184,7 +205,9 @@ pub(crate) fn acompanha(app: &mut PixelApp, store: &WidgetStore) {
         return;
     }
     let cel = app.docs.get(&key).map(|d| (d.layer, d.frame));
-    let traco = op(app, key, pedido).zip(cel).map(|(o, cel)| traco(&o, cel));
+    let traco = op(app, key, pedido, false)
+        .zip(cel)
+        .map(|(o, cel)| traco(&o, cel));
     app.previa_filtro = Some(Previa {
         key,
         pedido,

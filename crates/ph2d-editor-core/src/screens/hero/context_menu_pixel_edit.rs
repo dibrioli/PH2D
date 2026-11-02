@@ -39,8 +39,8 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::Outline => 9,
         // Título · Brightness · Contrast · canais · Preview · botões.
         PixelDialogKind::BrightnessContrast => 6,
-        // Título · modelo · Hue · Saturation · Lightness/Value · canais · Preview · botões.
-        PixelDialogKind::HueSaturation => 8,
+        // Título · modelo · Hue · Saturation · Lightness/Value · Alpha · canais · Preview · botões.
+        PixelDialogKind::HueSaturation => 9,
         // Título · a caixa da curva · canais · Preview · botões.
         PixelDialogKind::ColorCurve => 4 + CURVE_ROWS,
         // Título · Tiled · canais · Preview · botões (+ as filas da lista: [`KERNEL_COLS`] por fila).
@@ -309,7 +309,14 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         tr("pixel.filter_dialog.preview"),
         f.preview,
     );
-    c.choices(&[preview], y)
+    // O alvo (o botão do Trial que alterna «Selected» → «All») vai na fila do Preview.
+    let target = if f.all {
+        "pixel.filter_dialog.target.all"
+    } else {
+        "pixel.filter_dialog.target.selected"
+    };
+    let target = (ids::PIXEL_FILTER_TARGET, tr(target), f.all);
+    c.choices(&[preview, target], y)
 }
 
 /// As filas próprias de Adjustments (P8): os campos de B/C e H/S, o modelo do H/S e a curva.
@@ -341,6 +348,7 @@ fn adjust_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
                     ids::PIXEL_FILTER_SATURATION,
                 ),
                 (luz, ids::PIXEL_FILTER_LIGHTNESS),
+                ("pixel.filter_dialog.alpha", ids::PIXEL_FILTER_ALPHA),
             ]
         }
         PixelDialogKind::ColorCurve => {

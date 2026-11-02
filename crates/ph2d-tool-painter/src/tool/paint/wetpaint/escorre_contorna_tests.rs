@@ -33,7 +33,7 @@ impl ObstaculoA {
     }
 }
 
-fn grid(t: &PainterTool) -> &ph2d_wet_paint::grid::Grid {
+pub(super) fn grid(t: &PainterTool) -> &ph2d_wet_paint::grid::Grid {
     &t.paint
         .wetpaint
         .session
@@ -44,14 +44,14 @@ fn grid(t: &PainterTool) -> &ph2d_wet_paint::grid::Grid {
         .grid
 }
 
-fn ticks(t: &mut PainterTool, n: u32) {
+pub(super) fn ticks(t: &mut PainterTool, n: u32) {
     for _ in 0..n {
         t.on_tick(1000.0 / 60.0);
     }
 }
 
 /// Um traço horizontal de `x0` a `x1` em `y`, 40 passos, um tick por passo.
-fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
+pub(super) fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
     t.on_canvas_pointer(ponteiro(x0, y, PointerPhase::Down));
     for k in 1..=40 {
         let x = x0 + (x1 - x0) * k as f32 / 40.0;

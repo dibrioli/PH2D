@@ -462,6 +462,10 @@ mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49
 #[cfg(test)]
 mod achatamento_tests; // o escorrimento não se corta em rectângulos (W1f)
 #[cfg(test)]
+mod agua_no_oleo_regua_tests; // J11: a água × o óleo seco (atrito do leito, a água parada dissolve)
+#[cfg(test)]
+mod agua_no_oleo_tests; // sonda J11: a água × o óleo seco (velocidade, dissolver, pixelado)
+#[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
 mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume

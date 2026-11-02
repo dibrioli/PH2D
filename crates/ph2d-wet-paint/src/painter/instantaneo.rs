@@ -113,6 +113,7 @@ impl crate::grid::Grid {
             oleo_antes,
             oleo_antes_assente,
             chao,
+            sett_do_traco,
             tinta,
             pigmento,
             flow: _,
@@ -157,6 +158,7 @@ impl crate::grid::Grid {
             + de(oleo_antes)
             + de(oleo_antes_assente)
             + de(chao)
+            + de(sett_do_traco)
             + de(tinta)
             + de(pigmento)
             + de(vel_x)

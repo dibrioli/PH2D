@@ -109,6 +109,10 @@ pub struct Grid {
     /// **O chão da água** (janela 10, `solver::chao_forca`): a altura do óleo ASSENTE e SECO no início do traço vivo,
     /// em `film`. VAZIO sem óleo na grade ou com a força desligada.
     pub chao: Vec<f32>,
+    /// O assentado de cada célula no início do traço vivo (J11): o tecto do que a água parada dissolve
+    /// (`solver::remolha_parada`) e a régua do chão de agora, `chao × min(1, sett ÷ sett_do_traco)` — a tinta que a
+    /// água dissolve ou levanta BAIXA o relevo que a segura. VAZIO sem o campo do óleo.
+    pub sett_do_traco: Vec<f32>,
     /// **A tinta da lei ÚNICA** (F4-2 E3, [`tinta`]): somas do filme e do aberto, `R_g`, meio, abertura e altura
     /// curada. VAZIA com [`crate::sim::LeiDaTinta::Velha`]; alocada pelo passo com `Pigmento` ([`tinta::garante`]).
     pub tinta: Vec<tinta::CelulaTinta>,
@@ -289,6 +293,7 @@ impl Grid {
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),
             chao: Vec::new(),
+            sett_do_traco: Vec::new(),
             tinta: Vec::new(),
             pigmento: Vec::new(),
             flow,

@@ -152,6 +152,9 @@ pub fn advect_jacobi_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows
     if chao {
         super::chao_forca::aplica(g, p, gx, gy, mode);
     }
+    if super::remolha_parada::liga(g, p) {
+        super::remolha_parada::aplica(g, p);
+    }
     let vmax = if fundir {
         fundida::fused_rows(
             g,

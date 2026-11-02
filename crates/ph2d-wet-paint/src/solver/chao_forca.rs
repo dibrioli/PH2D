@@ -30,6 +30,27 @@ pub static CHAO_SECO: AtomicU32 = AtomicU32::new(0);
 /// A tinta de óleo ainda fluida corre com o seu líquido; a água que chegou por cima (`m = 0`, J9) não lhe tira o chão.
 pub(crate) const FILM_SECO: f64 = 0.1;
 
+/// O ATRITO DO LEITO (J11, smoke do dono J10: «a água ataca o óleo mais depressa que escorre no papel»): a água
+/// rasa sobre o relevo rugoso é segurada por ele, a funda corre — `v ÷= 1 + K·(|∇chão| ÷ f)²` (o atrito de leito de
+/// Manning cresce com a rugosidade sobre a profundidade). Sem ele a frente da água atravessava o corpo do óleo mais
+/// depressa que escorria no papel (sonda J11). Escolha e recusas: `J11_agua_no_oleo.md`.
+pub(crate) const K_ATRITO: f64 = 0.3;
+
+/// Ferramenta de MEDIÇÃO: os bits de um `f32` — `0` = [`K_ATRITO`], `> 0` = outro, `< 0` = sem atrito.
+#[doc(hidden)]
+pub static CHAO_ATRITO: AtomicU32 = AtomicU32::new(0);
+
+/// Ferramenta de MEDIÇÃO: o expoente de `|∇chão| ÷ f` no atrito (`0` = o do produto, 2; `1` = linear).
+#[doc(hidden)]
+pub static CHAO_ATRITO_P: AtomicU8 = AtomicU8::new(0);
+
+fn atrito() -> f64 {
+    match CHAO_ATRITO.load(Relaxed) {
+        0 => K_ATRITO,
+        b => f64::from(f32::from_bits(b)).max(0.0),
+    }
+}
+
 /// Ferramenta de MEDIÇÃO: `1` = acumula [`MEDIDA`].
 #[doc(hidden)]
 pub static CHAO_MEDE: AtomicU8 = AtomicU8::new(0);
@@ -77,6 +98,11 @@ fn film_seco() -> f64 {
 /// No início de um traço: com a força ligada e óleo na grade, fotografa o chão (a altura do óleo assentado × a
 /// fracção assente × o quanto está seco); senão esvazia-o.
 pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
+    if g.oleo.is_empty() {
+        g.sett_do_traco = Vec::new();
+    } else {
+        g.sett_do_traco.clone_from(&g.sett);
+    }
     if !(ativo(oleo_na_mao) || CHAO_MEDE.load(Relaxed) != 0) || g.oleo.is_empty() {
         g.chao = Vec::new();
         return;
@@ -128,6 +154,7 @@ pub(crate) fn aplica(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
     }
     let na_mao = p.oleo > 0.0;
     let k = if ativo(na_mao) { ganho() } else { 0.0 };
+    let ka = if k > 0.0 { atrito() } else { 0.0 };
     let dif = crate::flow::diff_scale(geom.rf);
     let max_v = p.k(crate::tuning::Knob::MaxVelocity);
     let mede = CHAO_MEDE.load(Relaxed) != 0;
@@ -141,12 +168,22 @@ pub(crate) fn aplica(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
         film,
         active,
         chao,
+        sett,
+        sett_do_traco,
         vel_x,
         vel_y,
         ..
     } = g;
     let (film, active, b): (&[f32], &[u8], &[f32]) = (film, active, chao);
-    let em = |i: usize| f64::from(b[i]);
+    let (sett, s0): (&[f32], &[f32]) = (sett, sett_do_traco);
+    // O chão de agora: o da fotografia × o que resta do assentado dela (o dissolvido baixa o relevo).
+    let em = |i: usize| {
+        let c = f64::from(b[i]);
+        match s0.get(i) {
+            Some(&a) if a > 0.0 && c > 0.0 => c * (f64::from(sett[i]) / f64::from(a)).min(1.0),
+            _ => c,
+        }
+    };
     let soma = std::sync::Mutex::new(MedidaChao::default());
     let band = fby0 as usize * geom.s..(fby1 as usize + 1) * geom.s;
     par::walk_rows2(
@@ -198,8 +235,14 @@ pub(crate) fn aplica(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
                 let col = cx as usize;
                 let wf = (f / super::ladeira_do_oleo::FILM_CHEIO).min(1.0);
                 let (ax, ay) = (k * ox * dif * wf, k * oy * dif * wf);
-                vx[col] = (f64::from(vx[col]) + ax).clamp(-max_v, max_v) as f32;
-                vy[col] = (f64::from(vy[col]) + ay).clamp(-max_v, max_v) as f32;
+                let rf_ = 0.5 * bx.hypot(by) * dif / f.max(0.05);
+                let freio = 1.0
+                    + ka * match CHAO_ATRITO_P.load(Relaxed) {
+                        1 => rf_,
+                        _ => rf_ * rf_,
+                    };
+                vx[col] = ((f64::from(vx[col]) + ax) / freio).clamp(-max_v, max_v) as f32;
+                vy[col] = ((f64::from(vy[col]) + ay) / freio).clamp(-max_v, max_v) as f32;
                 if mede {
                     let dfx = f64::from(film[row + pl]) - f64::from(film[row + pr]);
                     let dfy = f64::from(film[pu * s + px as usize])

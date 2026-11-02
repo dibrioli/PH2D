@@ -579,13 +579,17 @@ mod active_region;
 mod advect;
 mod advect_jacobi;
 mod chao_forca; // janela 10: o declive do chão (o óleo assentado) como força no momento
+mod remolha_parada; // J11: a água parada dissolve a tinta solúvel (Re-wet × Solubility)
 pub(crate) use advect_jacobi::tinta as tinta_transporte;
 #[doc(hidden)]
 pub(crate) use chao_forca::fotografa as fotografa_o_chao;
 #[doc(hidden)]
 pub use chao_forca::{
-    CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO, MEDIDA as MEDIDA_DO_CHAO, MedidaChao,
-}; // F4_2 E7: as somas vão com a massa
+    CHAO_ATRITO, CHAO_ATRITO_P, CHAO_FORCA, CHAO_MEDE, CHAO_ROTA, CHAO_SECO,
+    MEDIDA as MEDIDA_DO_CHAO, MedidaChao,
+};
+#[doc(hidden)]
+pub use remolha_parada::REMOLHA_TAXA; // F4_2 E7: as somas vão com a massa
 #[cfg(test)]
 mod bingham_tests;
 mod flow_jacobi;

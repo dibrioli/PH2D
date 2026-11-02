@@ -611,6 +611,7 @@ impl Engine {
     // Dirty-rect bookkeeping (cell coords, [1..W] x [1..H])
     // -----------------------------------------------------------------------
 
+    #[track_caller]
     pub fn merge_dirty(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         self.revisao = nova_revisao();
         self.merge_dirty_otica(x0, y0, x1, y1);
@@ -618,7 +619,9 @@ impl Engine {
 
     /// [`Self::merge_dirty`] de quem só mudou a ÓPTICA (o cartão Real Oil): as grades ficam, a [`Self::revisao`]
     /// também.
+    #[track_caller]
     pub fn merge_dirty_otica(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        conta_sujo::regista((i64::from(x1 - x0 + 1).max(0) * i64::from(y1 - y0 + 1).max(0)) as u64);
         if self.dirty == Dirty::Full {
             return;
         }
@@ -653,7 +656,9 @@ impl Engine {
         }
     }
 
+    #[track_caller]
     pub fn mark_dirty_full(&mut self) {
+        conta_sujo::regista((self.width * self.height) as u64);
         self.revisao = nova_revisao();
         self.dirty = Dirty::Full;
     }
@@ -670,6 +675,7 @@ impl Engine {
     }
 }
 
+pub mod conta_sujo; // J11: medição — quem marca o sujo
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 mod historia; // o desfazer/refazer POR CAMADA (SPEC §15) — filho por LOC
 #[cfg(test)]

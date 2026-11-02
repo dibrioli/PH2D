@@ -105,8 +105,20 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
         Err(_) => {
             let mut t = PainterTool::default();
             t.set_paint_media(PaintMedia::WetPaint);
-            t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, r.grupo, r.nome))
-                .0
+            let mut p = t
+                .wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, r.grupo, r.nome))
+                .0;
+            // A receita fala a lei VELHA (pigmento, água, Opacity): a captura do pincel sem preset traz as marcas da E4 e
+            // da E10 com a Dilution e o Volume DELE (0,818 · 0,311), e a migração saltava — o `pigment`/`water` da receita
+            // não chegavam ao depósito (Gouache Dry: Dilution 0,818 em vez de 0,167, os fios 8,00× → 6,25×). Sem as
+            // marcas, a receita passa pelas duas migrações, como um ficheiro de antes delas.
+            for marca in ["receitaE4", "controlosE10"] {
+                p.engine.remove(marca);
+            }
+            for controlo in ["dilution", "volume"] {
+                p.volumes.extra.remove(controlo);
+            }
+            p
         }
     };
     // O dente do papel é da TELA (W3b): um ficheiro de antes dela ainda o levava, ignorado.

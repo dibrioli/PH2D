@@ -145,6 +145,8 @@ pub struct Engine {
     /// sujo (a tela já depende disso), logo a mesma revisão = as mesmas grades. A marca só de ÓPTICA
     /// ([`Self::merge_dirty_otica`]) não a muda.
     revisao: u64,
+    /// O sujo do ESPELHO da óptica ([`espelho`]): as mesmas portas da [`Self::revisao`], à parte do `dirty`.
+    espelho_sujo: Dirty,
     /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
     /// fluxo E a fina, que e o motor que sempre shipou.
     pub flow_ratio: usize,
@@ -193,6 +195,7 @@ impl Engine {
             on_dab: None,
             dirty: Dirty::Clean,
             revisao: nova_revisao(),
+            espelho_sujo: Dirty::Full,
         };
         engine.layers.push(Layer {
             grid: Grid::with_flow_ratio(width, height, engine.flow_ratio),
@@ -614,6 +617,8 @@ impl Engine {
     #[track_caller]
     pub fn merge_dirty(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         self.revisao = nova_revisao();
+        self.espelho_sujo
+            .une((x0, y0, x1, y1), self.width, self.height);
         self.merge_dirty_otica(x0, y0, x1, y1);
     }
 
@@ -622,44 +627,14 @@ impl Engine {
     #[track_caller]
     pub fn merge_dirty_otica(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         conta_sujo::regista((i64::from(x1 - x0 + 1).max(0) * i64::from(y1 - y0 + 1).max(0)) as u64);
-        if self.dirty == Dirty::Full {
-            return;
-        }
-        let nx0 = (x0 - 1).max(1);
-        let ny0 = (y0 - 1).max(1);
-        let nx1 = (x1 + 1).min(self.width as i32);
-        let ny1 = (y1 + 1).min(self.height as i32);
-        match &mut self.dirty {
-            Dirty::Clean => {
-                self.dirty = Dirty::Rect {
-                    x0: nx0,
-                    y0: ny0,
-                    x1: nx1,
-                    y1: ny1,
-                };
-            }
-            Dirty::Rect { x0, y0, x1, y1 } => {
-                if nx0 < *x0 {
-                    *x0 = nx0;
-                }
-                if ny0 < *y0 {
-                    *y0 = ny0;
-                }
-                if nx1 > *x1 {
-                    *x1 = nx1;
-                }
-                if ny1 > *y1 {
-                    *y1 = ny1;
-                }
-            }
-            Dirty::Full => {}
-        }
+        self.dirty.une((x0, y0, x1, y1), self.width, self.height);
     }
 
     #[track_caller]
     pub fn mark_dirty_full(&mut self) {
         conta_sujo::regista((self.width * self.height) as u64);
         self.revisao = nova_revisao();
+        self.espelho_sujo = Dirty::Full;
         self.dirty = Dirty::Full;
     }
 
@@ -677,6 +652,7 @@ impl Engine {
 
 pub mod conta_sujo; // J11: medição — quem marca o sujo
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
+pub mod espelho; // J13b P2: o espelho da óptica para a thread de composição
 mod historia; // o desfazer/refazer POR CAMADA (SPEC §15) — filho por LOC
 #[cfg(test)]
 mod historia_tests;

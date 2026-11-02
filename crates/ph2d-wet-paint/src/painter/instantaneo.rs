@@ -39,6 +39,7 @@ impl Clone for Engine {
             on_dab: _,
             dirty,
             revisao: _,
+            espelho_sujo: _,
             flow_ratio,
         } = self;
         Engine {
@@ -74,6 +75,8 @@ impl Clone for Engine {
             dirty: *dirty,
             // A cópia diverge por conta própria: uma revisão nova (nenhum cache a confunde com a original).
             revisao: super::nova_revisao(),
+            // O espelho da cópia é outro: começa inteiro.
+            espelho_sujo: super::Dirty::Full,
             flow_ratio: *flow_ratio,
         }
     }

@@ -9,16 +9,16 @@
 
 use crate::paint::{fill_circle, fill_rounded_rect, resolve, stroke_polyline};
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 /// O fim da escala `0..=255` dos dois eixos.
-const FIM: f32 = 255.0;
+const FIM: f32 = 255.0; // LITERAL-PX-OK: escala 0..=255 do canal (domínio da curva, não medida de desenho)
 
 /// O raio de agarrar um ponto, em px (o mesmo para o dedo e para a pintura do ponto activo).
 #[must_use]
 pub fn curve_grab_radius() -> f32 {
-    StrokeToken::Thick.px() * 3.0
+    Spacing::Sm.px()
 }
 
 /// Quantos pontos interiores a caixa `b` ainda distingue ao agarrar: um por diâmetro de agarrar
@@ -164,3 +164,20 @@ pub fn paint_curve_editor(
 #[cfg(test)]
 #[path = "curve_editor/tests.rs"]
 mod tests;
+
+/// O nó AccessKit da caixa da curva (HR-12): um grupo com o nome do canal, focável, que se clica
+/// (acrescentar ou agarrar um ponto).
+#[must_use]
+pub fn curve_a11y(label: &str, b: Rect) -> ph2d_a11y::Node {
+    ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Group)
+        .label(label)
+        .bounds(
+            f64::from(b.x),
+            f64::from(b.y),
+            f64::from(b.w),
+            f64::from(b.h),
+        )
+        .focusable(true)
+        .action(ph2d_a11y::Action::Click)
+        .build()
+}

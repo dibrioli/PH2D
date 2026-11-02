@@ -118,3 +118,24 @@ pub fn paint_range_slider(
 #[cfg(test)]
 #[path = "range_slider/tests.rs"]
 mod tests;
+
+/// O nó AccessKit da barra de duas pegas (HR-12): um `Role::Slider` por pega, `lo` e `hi` em
+/// `0..=1` — o leitor de ecrã anuncia cada ponta como um slider.
+#[must_use]
+pub fn range_a11y(label: &str, track: Rect, v: f32) -> ph2d_a11y::Node {
+    let r = range_handle_rect(track, v);
+    ph2d_a11y::NodeBuilder::new(ph2d_a11y::Role::Slider)
+        .label(label)
+        .bounds(
+            f64::from(r.x),
+            f64::from(r.y),
+            f64::from(r.w),
+            f64::from(r.h),
+        )
+        .focusable(true)
+        .action(ph2d_a11y::Action::Click)
+        .numeric_value(f64::from(v))
+        .numeric_value_min(0.0)
+        .numeric_value_max(1.0)
+        .build()
+}

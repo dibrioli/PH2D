@@ -21,6 +21,7 @@ pub mod edit;
 pub mod fill;
 pub mod filter;
 pub mod frames;
+pub mod gradient;
 mod history;
 pub mod ink;
 pub mod layers;

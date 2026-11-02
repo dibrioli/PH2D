@@ -226,9 +226,20 @@ def despeckle(w, h, tag, tiled=False):
     return ok_read(DESP_OK, tag)
 
 
+def gen2():
+    """2.a rodada: entradas CINZA para os pesos negativos (impg = 255 em (7,7) sobre 128; stepg = 64|192
+    com x<7 = 64; imp0 = 0 em (7,7) sobre 128) e bc2.ase = a rampa cinza 256x1"""
+    G = (128, 128, 128)
+    write_ase(os.path.join(D, 'impg.ase'), [[(255,) * 3 if (x, y) == (7, 7) else G for x in range(15)] for y in range(15)])
+    write_ase(os.path.join(D, 'imp0.ase'), [[(0,) * 3 if (x, y) == (7, 7) else G for x in range(15)] for y in range(15)])
+    write_ase(os.path.join(D, 'stepg.ase'), [[(64,) * 3 if x < 7 else (192,) * 3 for x in range(15)] for _ in range(15)])
+
+
 if __name__ == '__main__' and len(sys.argv) > 2:
     if sys.argv[2] == 'gen':
         gen()
+    elif sys.argv[2] == 'gen2':
+        gen2()
 
 
 # ── Text (ferramenta T): barra = fonte (290,71) · tamanho (458,71) · B I · «...» (587,71) com

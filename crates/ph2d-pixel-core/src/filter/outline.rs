@@ -61,7 +61,8 @@ impl Filter for Outline {
                 if !self.matrix[r][k] || (r, k) == (1, 1) {
                     return false;
                 }
-                let (nx, ny) = (x + k as i32 - 1, y + r as i32 - 1);
+                // A casa ligada em (dx, dy) testa o vizinho em (−dx, −dy) (Trial, matriz só com a de cima).
+                let (nx, ny) = (x + 1 - k as i32, y + 1 - r as i32);
                 let n = if self.tiled {
                     Some(src.at_edge(nx, ny, Edge::Wrap))
                 } else {

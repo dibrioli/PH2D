@@ -19,6 +19,21 @@ def rep(a, b, keyf):
 def dump(name, d):
     p = os.path.join(F, name); json.dump(d, open(p, 'w'), indent=1, ensure_ascii=False); print(p, os.path.getsize(p))
 
+
+# ── 2.a rodada (02/11, Xvfb :95): `... trial_efeitos_fixturas.py <dir95> <fixtures> r2 <leis.json>` acrescenta
+# chaves NOVAS as fixturas existentes (nada se apaga); <leis.json> = {fixtura: {chave: valor}} montado pelo driver
+if len(sys.argv) > 4 and sys.argv[3] == 'r2':
+    leis = json.load(open(sys.argv[4]))
+    for name, add in leis.items():
+        p = os.path.join(F, name); d = json.load(open(p))
+        clash = [k for k in add if k in d and k not in ('method', 'command')]
+        assert not clash, (name, clash)
+        for k in ('method', 'command'):
+            if k in add:
+                d[k] = d[k] + ' || RODADA 2: ' + add.pop(k)
+        d.update(add); dump(name, d)
+    sys.exit(0)
+
 # ── gradient
 g1, g2 = L('grad.json'), L('grad2.json')
 T = {'h32x8': lambda i, j: i / 31, 'h': lambda i, j: i / 31, 'h_curto': lambda i, j: (i - 8) / 15,

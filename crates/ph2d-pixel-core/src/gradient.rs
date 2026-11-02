@@ -5,7 +5,7 @@
 //! - Linear: `t` = projecção do centro da célula sobre o arrasto `a → b`.
 //! - Radial: elipse inscrita na caixa do arrasto (centro = ponto médio, raios = metade dos lados);
 //!   um raio nulo põe tudo em bg.
-//! - Solid: `v = ⌊255·t⌋` mistura as cores. Com matriz, a célula é bg quando `t·(n²+1) ≥ M+1` —
+//! - Solid: `⌊a + (b − a)·t⌋` por canal. Com matriz, a célula é bg quando `t·(n²+1) ≥ M+1` —
 //!   em `t`, não em `v` (em `v` erram 10 células do Bayer 8); a matriz de [`Dither`] presa ao
 //!   canvas, com estado próprio da ferramenta (não o da dinâmica).
 
@@ -63,12 +63,6 @@ pub fn t_at(shape: Shape, a: Cell, b: Cell, p: Cell) -> f64 {
     t.clamp(0.0, 1.0)
 }
 
-/// `⌊255·t⌋` — o nível da mistura Solid.
-#[must_use]
-pub fn level(t: f64) -> u8 {
-    (255.0 * t.clamp(0.0, 1.0)).floor() as u8
-}
-
 /// A célula `(x, y)` na fracção `t` cai em bg pela matriz `d`.
 #[must_use]
 pub fn dithered_to_bg(d: Dither, x: i32, y: i32, t: f64) -> bool {
@@ -82,7 +76,7 @@ impl Gradient {
     pub fn color_at(&self, p: Cell) -> [u8; 4] {
         let t = t_at(self.shape, self.from, self.to, p);
         if self.dither == Dither::None {
-            return mix(self.fg, self.bg, level(t));
+            return mix(self.fg, self.bg, t);
         }
         if dithered_to_bg(self.dither, p.0, p.1, t) {
             self.bg
@@ -103,10 +97,10 @@ impl Gradient {
     }
 }
 
-/// fg → bg ao nível `v` por canal: `a + ⌊(b − a)·v/255⌋` (com fg/bg 0 → 255 dá `v`, o medido).
-fn mix(a: [u8; 4], b: [u8; 4], v: u8) -> [u8; 4] {
+/// fg → bg por canal: `⌊a + (b − a)·t⌋` (Trial, #204060 → #c08010: 0 desvios; arredondar deixa 27).
+fn mix(a: [u8; 4], b: [u8; 4], t: f64) -> [u8; 4] {
     std::array::from_fn(|k| {
-        let d = i32::from(b[k]) - i32::from(a[k]);
-        (i32::from(a[k]) + (d * i32::from(v)).div_euclid(255)) as u8
+        let (a, b) = (f64::from(a[k]), f64::from(b[k]));
+        (a + (b - a) * t).floor().clamp(0.0, 255.0) as u8
     })
 }

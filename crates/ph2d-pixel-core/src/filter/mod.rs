@@ -3,6 +3,9 @@
 //! selecção (sem selecção: o sprite inteiro) e só nos [`Channels`] ligados. Todos os cels pedidos
 //! viram UM passo do desfazer.
 
+pub mod adjust;
+pub mod median;
+
 use crate::op::{Op, Patch};
 use crate::sprite::{CelKey, Rect, Sprite};
 
@@ -55,6 +58,26 @@ impl Source {
         (x >= 0 && y >= 0 && (x as u32) < self.w && (y as u32) < self.h)
             .then(|| self.rgba[y as usize * self.w as usize + x as usize])
     }
+
+    /// A célula `(x, y)` com a borda `edge` (a vizinhança dos filtros de janela).
+    #[must_use]
+    pub fn at_edge(&self, x: i32, y: i32, edge: Edge) -> [u8; 4] {
+        let (w, h) = (self.w as i32, self.h as i32);
+        let (x, y) = match edge {
+            Edge::Clamp => (x.clamp(0, w - 1), y.clamp(0, h - 1)),
+            Edge::Wrap => (x.rem_euclid(w), y.rem_euclid(h)),
+        };
+        self.rgba[y as usize * self.w as usize + x as usize]
+    }
+}
+
+/// O que a janela de um filtro lê fora da imagem (Trial: *Tiled* desligado = `Clamp`, ligado =
+/// `Wrap`; `oracle_trial_despeckle.json`, `oracle_trial_convolution.json`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Edge {
+    #[default]
+    Clamp,
+    Wrap,
 }
 
 /// Um filtro de imagem: a cor nova da célula `(x, y)` lida de `src`.

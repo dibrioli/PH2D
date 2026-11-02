@@ -1,6 +1,6 @@
-//! A secção **Convert** do painel Vector (o Offset Path virou ferramenta em F48d, `bars_row`) —
-//! irmãs de `paint_sections.rs` pelo teto de 600 LOC. O perfil de largura (Power Stroke) mora no
-//! «Stroke settings» desde 02/11; as linhas dele continuam neste ficheiro.
+//! As linhas do perfil de largura (Power Stroke) do «Stroke settings» — irmãs de
+//! `paint_sections.rs` pelo teto de 600 LOC. (A secção Convert saiu em F50; o Offset Path é
+//! ferramenta da coluna desde F48d.)
 
 use super::BodyCtx;
 use ph2d_i18n::TextKey;

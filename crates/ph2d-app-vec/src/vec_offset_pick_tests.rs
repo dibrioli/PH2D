@@ -1,18 +1,5 @@
 //! **A forma que se VÊ é a que se PEGA** — os gates do pick sobre o Offset vivo
 //! (`ph2d_ecs::VecOffset`), módulo irmão de [`super`] pelo teto de LOC.
-//!
-//! O ADR-0121 separou a curva AUTORADA da COZIDA e o offset vivo (2026-07-21) levou a costura ao
-//! nível do OBJETO: o documento guarda o `VecPath` que o artista desenhou e a tela mostra a
-//! derivada. Quem desenha já pergunta ao `offset_live` — o hit-test passou a perguntar à MESMA
-//! porta, senão a forma fica **pintada num lugar e clicável noutro**, sem erro e sem aviso: o
-//! artista clica no meio do que vê e nada acontece.
-//!
-//! ⚠️ **Os dois sentidos são gates separados de propósito.** Um remendo que apenas SOMASSE a
-//! derivada à fonte (união) passa no gate de crescimento e falha no de encolhimento — e o
-//! encolhimento é onde mora o modo de falha oposto, *pegar a forma onde a tinta já não está*.
-//!
-//! Mutação canônica: fazer o `contains_path`/`world_bbox` ignorarem o `live` (o produto de antes
-//! de 2026-07-21) tem de SANGRAR os quatro primeiros gates e deixar o de regressão VERDE.
 
 use super::*;
 use ph2d_ecs::Transform;

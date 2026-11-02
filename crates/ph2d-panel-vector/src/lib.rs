@@ -150,7 +150,7 @@ mod paint_components;
 mod paint_connector;
 /// O tracejado em pares (F16c) — as linhas Dash / Gap da seção Stroke.
 mod paint_dashes;
-/// Fill-type, Fill-rule e Compound (era `paint_arrange` até 15/10).
+/// Fill-type e Fill-rule (era `paint_arrange` até 15/10).
 mod paint_fill_type;
 /// A seção FRAME — o contêiner (plano UI/UX W0).
 mod paint_frame;

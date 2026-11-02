@@ -1,16 +1,5 @@
 //! ⭐⭐⭐ **Acrescentar ou apagar um ponto numa forma ANIMADA vale em TODAS as chaves** (decisão do
 //! dono, 20/10: a forma inteira numa chave, AE/Spine — plano 35 §2 escolha 4).
-//!
-//! Sem isto, a forma deste quadro passava a ter `n ± 1` vértices e as chaves dos outros instantes
-//! continuavam com `n`: o vértice `j` de uma chave casava com o `j` de outra que já era outro ponto,
-//! e a forma TORCIA entre elas — o defeito do shape tween do Flash.
-//!
-//! **Sem adivinhar a correspondência:** as âncoras que a edição não tocou ficam IGUAIS bit a bit
-//! (inserir num segmento só mexe nas alças dos vizinhos; apagar só tira), então o alinhamento é a
-//! maior subsequência comum de âncoras EXACTAS entre o quadro anterior e este. Um ponto novo acha o
-//! seu parâmetro `u` projectando-se no segmento de ontem, e em cada chave esse segmento divide-se no
-//! mesmo `u` (de Casteljau) — a forma de cada chave não muda de desenho, ganha um ponto. Um ponto
-//! apagado sai de todas. Funciona para TODA porta que edita pontos, sem que nenhuma o declare.
 
 use std::collections::{BTreeMap, BTreeSet};
 

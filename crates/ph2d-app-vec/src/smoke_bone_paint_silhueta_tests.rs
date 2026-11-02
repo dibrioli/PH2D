@@ -1,17 +1,6 @@
 //! ⭐⭐⭐ **A SILHUETA DESENHADA VAI E VOLTA?** — a régua que o olho usa, e o gate que a pôs no
 //! produto (report do dono, 2026-09-16, foto com cinco setas: *«Smooth parece ter resultado
 //! discretamente inferior, gerando micro irregularidades»*).
-//!
-//! Filho do [`super`] por RESPONSABILIDADE: *o `Smooth` refina onde a dobra pede* é a pergunta
-//! dele; *o que ele desenha é mais liso que o `Fast`* é esta.
-//!
-//! ⛔⛔ **O gate do irmão estava VERDE sobre o defeito, e a razão é que a régua dele partilhava a
-//! lei do produto:** ele mede o desvio da malha contra o CAMPO que ela segue, e o campo P1 tinha um
-//! vinco em cada aresta do bind — o `Smooth` seguia os vincos fielmente e a régua aprovava. *Um
-//! espelho não acusa.* A régua daqui não sabe que campo existe: ela olha só a polilinha desenhada.
-//!
-//! ⚠️ **A arte desta cena é um rectângulo OPACO**, logo a silhueta é a fronteira da malha e os
-//! quatro lados dela são os quatro lados do rectângulo de repouso.
 
 use super::*;
 

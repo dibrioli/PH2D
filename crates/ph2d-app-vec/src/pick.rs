@@ -1,17 +1,6 @@
 //! O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern on Path e pelo Text
 //! on Path (Enio 2026-07-23: *"um botão Picker onde o usuário primeiro seleciona a shape, depois
 //! aperta o botão e seleciona o path. Dessa forma é mais correto"*).
-//!
-//! A disambiguação por seleção (`link_candidate`) tem de ADIVINHAR qual dos selecionados é a fonte
-//! e qual é o guia — e adivinha errado quando as premissas não valem (o *"escolhendo a si mesmo"* que
-//! o bbox só resolve no caso comum). O Picker remove a adivinhação: a **fonte** é a que estava
-//! selecionada quando o botão foi apertado, o **guia** é o que o clique seguinte acerta. Um é
-//! capturado, o outro é apontado — nunca há dois candidatos para a mesma vaga.
-//!
-//! Este módulo é só o TIPO do pedido + o realce do hover; a captura (no `render_loop`), o clique (no
-//! `input_dispatch`) e o vínculo em si (`pattern_live::link` / `vec_text_ride::link_explicit`) moram
-//! onde já moram os seus irmãos, porque o Picker só troca a PROCEDÊNCIA do par — a inserção do
-//! componente é a mesma que a auto-ligação já fazia.
 
 use ph2d_vec_scene::{StrokeSpec, VecPath, VecPathId, VecScene, VecXforms};
 

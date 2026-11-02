@@ -1,14 +1,4 @@
 //! Os gates da POLÍTICA do Blend (a math já está gateada no motor, `ph2d-vec-blend`).
-//!
-//! O que se prova aqui é o que o artista vê acontecer com o DOCUMENTO:
-//!
-//! 1. as **fontes sobrevivem** (é um Blend, não uma booleana — ela é que consome os operandos);
-//! 2. os passos nascem **entre** elas, no z delas;
-//! 3. cada chamada é **UM** passo de undo;
-//! 4. sem duas formas fechadas, não faz nada (e não corrompe a cena).
-//!
-//! (Este é o modelo DESTRUTIVO legado — só os smokes `PH2D_BUILD_SMOKE=7/8/9` o chamam. O painel
-//! usa o Blend Object VIVO; os gates dele estão em `blend_live_tests.rs`.)
 
 use super::*;
 use ph2d_vec_scene::{ShapeKind, cook};

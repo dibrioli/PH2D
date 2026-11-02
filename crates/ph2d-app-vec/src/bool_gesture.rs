@@ -1,21 +1,4 @@
 //! **Os gestos da BOOLEANA VIVA** — armar, re-mirar e consolidar.
-//!
-//! O motor é o [`crate::bool_live`]; aqui mora o que é de DOCUMENTO (o grupo, o z, o undo) e a
-//! decisão que os oito botões da seção Boolean tomam quando são clicados.
-//!
-//! # Um clique, três destinos — e a ordem deles é a lei
-//!
-//! 1. **A seleção já está dentro de um grupo booleano** ⇒ o clique RE-MIRA aquele grupo. É o que
-//!    faz os oito botões serem também o seletor de operação de um grupo vivo: uma lista de oito
-//!    verbos, e clicar num deles diz *"passe a ser este"*. Um dropdown separado seria uma segunda
-//!    porta para a mesma pergunta, e ela divergiria no dia em que a nona operação entrasse só num
-//!    dos dois.
-//! 2. **O modo `Live` está ligado** ⇒ o clique CRIA um grupo com os selecionados.
-//! 3. **Senão** ⇒ o caminho destrutivo de sempre, byte-idêntico.
-//!
-//! ⚠️ **(1) vem antes de (2) de propósito.** Sem essa ordem, re-mirar um grupo com o modo
-//! desligado o CONSUMIRIA — o artista clicaria "Intersect" esperando trocar a operação e perderia
-//! os operandos.
 
 use ph2d_ecs::{Entity, SimWorld, VecBoolGroup};
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -47,6 +30,12 @@ pub fn group_of_selection(
         }
     }
     None
+}
+
+/// A operação do grupo booleano `group` (a ④ acende o botão dela); `None` sem grupo.
+#[must_use]
+pub fn group_op(sim: &SimWorld, group: Option<Entity>) -> Option<u8> {
+    group.and_then(|g| sim.world().get::<VecBoolGroup>(g).map(|b| b.op))
 }
 
 /// **Arma** a booleana viva sobre a seleção — re-mirando um grupo existente, ou criando um.
@@ -128,12 +117,49 @@ pub(crate) fn bake_ids(
         .enumerate()
         .map(|(k, r)| scene.insert_path(at + k, r.clone()))
         .collect();
-    // O grupo inteiro morre: os operandos já saíram do documento, e um grupo vazio na Hierarquia
-    // é lixo que o artista teria de apagar à mão. `despawn` leva os descendentes junto.
+    rehang_non_operands(sim, plan, g);
+    // O grupo morre: os operandos já saíram do documento, e um grupo vazio na Hierarquia é lixo
+    // que o artista teria de apagar à mão. `despawn` leva os descendentes que restam.
     if let Ok(e) = sim.world_mut().get_entity_mut(g) {
         e.despawn();
     }
     new_ids
+}
+
+/// Os filhos de `g` que não são operandos (traços abertos) mudam-se para o pai do grupo — ou para a
+/// raiz — com a pose do grupo somada, como no Ungroup; senão o `despawn` apagá-los-ia.
+fn rehang_non_operands(sim: &mut SimWorld, plan: &crate::bool_live::Cooked, g: Entity) {
+    let w = sim.world();
+    let parent = w.get::<ph2d_ecs::ChildOf>(g).map(|c| c.parent());
+    let pose = w.get::<ph2d_ecs::Transform>(g).map(|t| t.translation);
+    let kids: Vec<Entity> = w
+        .get::<ph2d_ecs::Children>(g)
+        .map(|c| c.iter().copied().collect())
+        .unwrap_or_default();
+    let loose: Vec<Entity> = kids
+        .into_iter()
+        .filter(|k| {
+            w.get::<ph2d_ecs::VecPathRef>(*k)
+                .is_some_and(|r| !plan.operands.contains(&r.0))
+        })
+        .collect();
+    for k in loose {
+        if let (Some(p), Some(mut tr)) = (pose, sim.world_mut().get_mut::<ph2d_ecs::Transform>(k)) {
+            tr.translation += p;
+        }
+        let order = ph2d_vec_entities::entities::next_root_order(sim);
+        if let Ok(mut e) = sim.world_mut().get_entity_mut(k) {
+            match parent {
+                Some(p) => {
+                    e.insert(ph2d_ecs::ChildOf(p));
+                }
+                None => {
+                    e.remove::<ph2d_ecs::ChildOf>();
+                    e.insert(ph2d_ecs::RootOrder(order));
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

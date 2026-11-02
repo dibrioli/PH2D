@@ -1,11 +1,8 @@
-//! **Os dois selectores do Offset Path** (a junção da quina e o lado do contorno) — irmão de
-//! [`super`] pelo teto de 600 LOC do painel, com o mesmo corte do `event_texpat` e do
-//! `event_contour`: um assunto, uma porta.
+//! **As opções da ferramenta Offset Path** (fila ②: Corners, Holes, Result e o Remove) — irmão de
+//! [`super`] pelo teto de 600 LOC do painel: um assunto, uma porta.
 //!
-//! ⚠️ **Os dois são PANEL-LOCAL de propósito:** escolher a quina ou o lado não edita o documento
-//! (só o clique em *Offset Path* edita), então a escolha pára aqui em vez de virar um
-//! `ToolPanelEvent` que a shell teria de guardar num 2.º lugar — e dois lugares a guardar a mesma
-//! escolha divergem.
+//! ⚠️ **PANEL-LOCAL de propósito:** a escolha fica no estado do painel e a shell lê-a a cada
+//! quadro (com a `Distance (px)`), em vez de um `ToolPanelEvent` guardado num 2.º lugar.
 //!
 //! ⚠️ Cada um tem **duas** funções e não uma: o `apply_event` consulta o índice para saber se
 //! ATENDE o clique, e o `pick_*` para saber o QUE gravar. Duas perguntas, uma tabela.

@@ -389,7 +389,7 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
         b.filters_section(y)
     });
     // ⑦ ▸ ADVANCED — o desenho raro, num grupo recolhido. ⛔ F50 (dono 02/11): Boolean e Convert
-    // saíram para a ④ (as comuns) e o «⋯» dela (as raras).
+    // saíram do painel — as quatro booleanas, o Flatten e o Outline Stroke moram na ④.
     p.grupo(
         VECTOR_SECTION_ADVANCED,
         "panel.vector.section.advanced",

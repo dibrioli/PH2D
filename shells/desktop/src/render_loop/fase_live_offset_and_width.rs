@@ -28,12 +28,9 @@ impl crate::App {
             pending_width_preset,
         } = intents;
         // ── Offset AO VIVO ───────────────────────────────────────────────────
-        // *"os botões Miter, Round e Bevel são previsualizações em tempo real dos efeitos,
-        // mas para consolidar a curva deve-se apertar Apply Offset ou Convert to Curves"*
-        // (Enio, 2026-07-21). O documento guarda a curva AUTORADA o tempo todo — o que se
-        // vê é a geometria derivada, cozida por `offset_live::recook` e desenhada no z da
-        // forma. Aqui só se ARMA a relação (`ph2d_ecs::VecOffset`): o slider dá o `d`, os
-        // chips de Corner/Side dão a quina e o lado.
+        // O documento guarda a curva AUTORADA; o que se vê é a geometria derivada, cozida por
+        // `offset_live::recook` no z da forma. Aqui só se ARMA a relação (`ph2d_ecs::VecOffset`):
+        // a `Distance (px)` da ferramenta Offset Path dá o `d`, e Corners/Holes/Result o resto.
         {
             let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
             let doc = ph2d_editor_core::DocPx::of(&hero.project);

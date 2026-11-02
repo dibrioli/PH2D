@@ -1,16 +1,5 @@
 //! Gates da **LEI DA FORMA** do slider de Offset (report de 2026-07-20: *"se selecionar
 //! Round, não consegue mudar"*) — arquivo irmão de `vec_expand_tests.rs` pelo teto de LOC.
-//!
-//! A faixa antiga (±4 unidades de MUNDO, constante) entregava o gesto natural — arrastar
-//! até o fim do track — a regimes **join-inertes**: à esquerda a forma ANIQUILA (os três
-//! joins produzem o mesmo nada), à direita ela estoura a tela e as quinas saem de vista. A
-//! janela de retune funcionava; o dial é que apontava para onde o join não pode aparecer.
-//! A lei nova: `d = fração × offset_scale(seleção)`, com `offset_scale = maxdim/2` — o
-//! extremo esquerdo é **morte garantida** (inradius ≤ maxdim/2) e o direito é **dobrar a
-//! forma** (o eixo maior cresce exatamente 2×, quinas na vizinhança da tela).
-//!
-//! ⚠️ Mutação canônica: fazer [`offset_scale`] devolver a constante `4.0` (a faixa velha)
-//! tem de SANGRAR os dois primeiros gates — foi exatamente o produto que o Enio reportou.
 
 use super::*;
 use ph2d_vec_scene::{VecPath, VecVertex};

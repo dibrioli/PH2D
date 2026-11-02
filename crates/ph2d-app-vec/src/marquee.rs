@@ -1,14 +1,4 @@
 //! **O gesto de REGIÃO do modo Node** — o retângulo de sempre e o LAÇO, numa estrutura só.
-//!
-//! O marquee era um par de cantos (`((f32,f32),(f32,f32))`). O laço precisa do CAMINHO, e a
-//! tentação é um segundo campo ao lado — que seriam dois lugares para limpar, dois para pintar e
-//! dois caminhos de release, com o par a divergir no primeiro refino. Aqui é **um gesto**, e a
-//! forma dele é um campo.
-//!
-//! ⚠️ **A forma é decidida no PRESS e congela até soltar** ([`ph2d_tool_vector::params::MarqueeShape::for_gesture`]).
-//! Relê-la por movimento faria largar o Ctrl no meio do arrasto morfar a região sob a mão: o
-//! artista veria o caminho que desenhou virar um retângulo entre dois pontos que ele nunca
-//! escolheu. É a mesma lei da régua congelada no `Begin` do arrasto de exposição da tira do Flip.
 
 use ph2d_tool_vector::params::MarqueeShape;
 

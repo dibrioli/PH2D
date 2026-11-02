@@ -1,16 +1,5 @@
 //! ⭐ **Campo a campo** — a escrita e a leitura da seleção múltipla (plano 31,
 //! `docs/UI_New_and_Simple/vetor_nova_ui/31_plano_F20_misto_e_espessura_do_documento.md`).
-//!
-//! Módulo irmão do [`super::style`] (teto de LOC). Duas metades da MESMA máscara
-//! ([`StyleFields`]):
-//!
-//! - **escrever** ([`StrokeStyle::onto_fields`], [`fill_merge`], [`restyle_selected_fields`]): um
-//!   gesto escreve em cada forma selecionada só os campos que o artista mexeu. ⛔ Antes a ponte
-//!   gravava o estilo INTEIRO da tool (= o do primário) em todas: mexer na Width de uma forma
-//!   vermelha e de uma azul pintava as duas de vermelho.
-//! - **ler** ([`mixed_of`]): os campos em que as selecionadas diferem, que o painel pinta como
-//!   «misto». ⛔ Revoga a lei «mostra o primário» do `appearance.rs` (decisão do dono, 18/10): o
-//!   Inspector do mesmo app já mostrava «misto», e o primário mentia sobre as outras.
 
 use super::style::{StrokeStyle, recolour_stroke_paint, seed_fill_from_paint};
 use ph2d_tool_vector::StyleFields as F;

@@ -125,14 +125,7 @@ pub fn step(
             PASSO.store(3, Ordering::Relaxed);
         }
         3 if expand => {
-            // A Expand mora no grupo «Advanced», recolhido por omissão.
-            for s in [
-                ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
-                ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
-            ] {
-                hero.store.set_collapsed(s, false);
-            }
-            rola_ate(hero, ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND)?;
+            // O Outline Stroke mora na ④ (F50), não no painel: nada a rolar.
             // `PH2D_OBJECT_MODE_GESTO=outline`: a foto do Outline Stroke clicado, pelo despacho do produto.
             if std::env::var("PH2D_OBJECT_MODE_GESTO").as_deref() == Ok("outline") {
                 hero.bus
@@ -302,7 +295,7 @@ fn etiqueta(p: &mut ph2d_vec_scene::VecPath) {
     eprintln!(
         "[cena 50] a etiqueta: traço branco largo numa camada por baixo de tudo, sombra deslocada, \
          degradê de base, traço escuro de base por dentro (Inner) e contorno amarelo tracejado por fora \
-         no topo. O Inspector abre o «Advanced» e rola até à secção Expand"
+         no topo. O Outline Stroke está na barra de ações por cima da forma"
     );
     PASSO.store(2, Ordering::Relaxed);
 }

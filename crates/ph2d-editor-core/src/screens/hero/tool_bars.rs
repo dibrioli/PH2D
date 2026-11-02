@@ -48,8 +48,6 @@ pub fn placed(
     let mut out = Vec::new();
     let sizes: Vec<usize> = bars.column.iter().map(Vec::len).collect();
     let col = column_rects(area, &sizes);
-    // ⭐ (dono 02/11, F50) A ④ nunca tapa a coluna ①: ela pousa na área que SOBRA ao lado dela.
-    let free = beside_column(area, &col, left_handed);
     let mut anchor = None;
     for (b, r) in bars.column.iter().flatten().zip(col) {
         if bars.flyout.as_ref().is_some_and(|(id, _)| *id == b.id) {
@@ -65,6 +63,10 @@ pub fn placed(
             flyout_cols(items.len()),
         )));
     }
+    // ⭐ (dono 02/11, F50) A ④ nunca tapa a coluna ① nem o flyout aberto: pousa na área que SOBRA
+    // ao lado deles (medida antes do espelho do canhoto, como eles).
+    let taken: Vec<Rect> = out.iter().map(|(_, r)| *r).collect();
+    let free = beside_column(area, &taken, left_handed);
     if left_handed {
         for (_, r) in &mut out {
             *r = super::mirrored(area, *r);
@@ -92,12 +94,12 @@ pub fn placed(
     out
 }
 
-/// A área sem a faixa da coluna ① (com uma folga `Sm`) — à esquerda, ou à direita no canhoto.
+/// A área sem a faixa da coluna ① e do flyout (com uma folga `Sm`) — à esquerda, ou à direita no canhoto.
 fn beside_column(area: Rect, col: &[Rect], left_handed: bool) -> Rect {
     let Some(right) = col.iter().map(|r| r.x + r.w).reduce(f32::max) else {
         return area;
     };
-    let band = (right - area.x + Spacing::Sm.px()).clamp(0.0, area.w);
+    let band = crate::math::safe_clamp(right - area.x + Spacing::Sm.px(), 0.0, area.w);
     let x = if left_handed { area.x } else { area.x + band };
     Rect::new(x, area.y, area.w - band, area.h)
 }

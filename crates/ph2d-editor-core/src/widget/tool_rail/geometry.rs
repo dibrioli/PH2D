@@ -239,10 +239,6 @@ pub fn entry_rects(
     out
 }
 
-/// ⭐ **O chip numérico e o LOSANGO de animação à direita dele** (plano 35 §5) — quando o campo
-/// tem canal neste quadro, a coluna do decorator de toda linha de propriedade sai da ponta do chip;
-/// sem canal o chip é o slot inteiro. Quem pinta e quem regista o alvo perguntam AQUI.
-#[must_use]
 /// A largura que o losango do campo `id` toma do slot — `0` sem marca.
 fn key_mark_room(id: NodeId) -> f32 {
     if crate::paint::ui_is_redesign() && crate::widget::key_mark::key_mark_of(&[id]).is_some() {
@@ -252,6 +248,10 @@ fn key_mark_room(id: NodeId) -> f32 {
     }
 }
 
+/// ⭐ **O chip numérico e o LOSANGO de animação à direita dele** (plano 35 §5) — quando o campo
+/// tem canal neste quadro, a coluna do decorator de toda linha de propriedade sai da ponta do chip;
+/// sem canal o chip é o slot inteiro. Quem pinta e quem regista o alvo perguntam AQUI.
+#[must_use]
 pub fn number_with_key_mark(id: NodeId, slot: Rect) -> (Rect, Option<Rect>) {
     if !crate::paint::ui_is_redesign() || crate::widget::key_mark::key_mark_of(&[id]).is_none() {
         return (slot, None);

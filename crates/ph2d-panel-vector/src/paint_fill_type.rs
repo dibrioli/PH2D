@@ -1,5 +1,5 @@
-//! Subsection painters for the Vector Style panel: os seletores de Fill-type + Fill-rule, a linha
-//! Make/Release Compound e a fileira segmentada que eles partilham.
+//! Subsection painters for the Vector Style panel: os seletores de Fill-type + Fill-rule e a
+//! fileira segmentada que eles partilham.
 //!
 //! ⚠️ Chamava-se `paint_arrange` até 15/10, quando o ARRANGE e o ALIGN saíram do painel para a
 //! barra ④ (dono: *«tire a seção Arrange do painel»*; o Z é do Inspector no modo Objeto).

@@ -118,6 +118,10 @@ pub fn publish(
         }
         return;
     }
+    // As caixas do gizmo só contam se ele vai ser PINTADO: o mesmo predicado com que a
+    // `fase_gizmo_suppression` da shell as zera depois (as tools de vértice `vector_*` não
+    // coexistem com `vector_active`, e Deform/Pairs não são do vetor).
+    let gizmo_painted = ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows(hero);
     let selection = hero
         .grid
         .view
@@ -128,6 +132,7 @@ pub fn publish(
                 .iter()
                 .chain(g.global_view.iter())
                 .chain(g.extra_views.iter().map(|(_, v)| v))
+                .filter(|_| gizmo_painted)
                 .map(ph2d_editor_core::gizmo::screen_aabb)
                 .fold(sel, |a, r| anchor_clear_of_gizmo(a, Some(r)))
         });
@@ -159,6 +164,59 @@ mod tests {
         let dentro = Rect::new(400.0, 200.0, 10.0, 10.0);
         let a = super::anchor_clear_of_gizmo(sel, Some(dentro));
         assert_eq!((a.x, a.y, a.w, a.h), (sel.x, sel.y, sel.w, sel.h));
+    }
+
+    /// Num modo sem gizmo do objecto (Draw) a caixa do gizmo não é pintada, logo a ④ não se
+    /// desvia dela: a âncora é só a seleção.
+    #[test]
+    fn the_anchor_ignores_a_gizmo_that_will_not_be_painted() {
+        use ph2d_editor_core::zones::Rect;
+        let canvas = Rect::new(0.0, 0.0, 1000.0, 1000.0);
+        let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+        hero.grid.view = Some(ph2d_editor_core::GridView {
+            camera_center: [0.0, 0.0],
+            camera_height_world: 10.0,
+            window_w: 1000.0,
+            window_h: 1000.0,
+            canvas,
+        });
+        hero.gizmo.view = Some(ph2d_editor_core::gizmo::GizmoView {
+            bbox_min_world: [-3.0, -3.0],
+            bbox_max_world: [3.0, 3.0],
+            rotation: 0.0,
+            camera_center: [0.0, 0.0],
+            camera_height_world: 10.0,
+            window_w: 1000.0,
+            window_h: 1000.0,
+            canvas,
+            cursor_screen: None,
+            pivot_world: [0.0, 0.0],
+            pivot_tool_active: false,
+            model: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        });
+        let mut scene = VecScene::default();
+        let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [1.0, 1.0]));
+        let mut pen = ph2d_vec_edit::PenTool::new();
+        pen.select_many(&[id]);
+        let xf = VecXforms::default();
+        let anchor = |hero: &mut HeroScreen| {
+            super::publish(hero, &scene, &pen, &xf, true, false, 1.0);
+            hero.store
+                .tool_bars()
+                .and_then(|b| b.selection)
+                .expect("âncora")
+        };
+        let com = anchor(&mut hero);
+        hero.gizmo
+            .mode
+            .enter(7, ph2d_editor_core::object_mode::ObjectMode::Draw);
+        let sem = anchor(&mut hero);
+        assert!(
+            com.w > sem.w + 1.0,
+            "controlo: em Object a âncora abraça o gizmo"
+        );
+        let sel = super::selection_on_screen(&scene, &pen, &xf, &hero.grid.view.unwrap()).unwrap();
+        assert_eq!((sem.x, sem.y, sem.w, sem.h), (sel.x, sel.y, sel.w, sel.h));
     }
 
     /// O vetor inactivo limpa as SUAS barras e deixa a coluna do pintor (que o chrome publica) em paz.

@@ -2,21 +2,6 @@
 //! (spec/06 F3 ▸ Vector, 2.ª volta; escolha do dono, 05/10: *«nada aparece no canvas ou na hierarquia
 //! até que o usuário crie alguma forma ou linha. Ao desenhar algo, o objeto aparece na hierarquia no
 //! modo edit»*, e a 2.ª forma é OUTRO objecto).
-//!
-//! - **Add ▸ Vector Drawing** não cria entidade: arma a ferramenta ([`EditTarget::arm`]) — ela chega
-//!   à mão em Object, com o painel inteiro.
-//! - **A forma que NASCE com a ferramenta na mão pede o Edit sobre ela** ([`ModeFamily::wants`]): a
-//!   1.ª depois do Add, e cada nova num Edit (o Edit PASSA a ela — a rede `still_holds` larga a
-//!   anterior e o pedido entra na nova, no mesmo quadro).
-//! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`). ⭐⭐ **O Edit é do TIPO** (dono,
-//!   05/10: *«todos os objetos daquele tipo estão em modo de edição»*, [`ModeFamily::holds_the_whole_kind`]):
-//!   toda forma se agarra e é parte do Edit; escolher um objecto de outro tipo volta a Object, e
-//!   escolher outra forma — ou várias — FICA no Draw ([`ModeFamily::stays_on_its_kind`], dono 02/11:
-//!   as booleanas precisam de várias formas).
-//! - **A forma trancada que MORRE** (o Soldar consome os traços, a caneta junta dois caminhos) passa o
-//!   Edit à [herdeira](ModeFamily::heir) — a última forma viva da caneta.
-//! - **Object** = a ferramenta sai da mão.
-//! - ⭐ **O ALVO** mora no [`crate::state::VecState`], fora da `VecScene` (que entra no undo).
 
 use ph2d_component_desc::ObjectKind;
 use ph2d_ecs::{Entity, SimWorld};

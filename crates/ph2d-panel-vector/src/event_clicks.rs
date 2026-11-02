@@ -423,18 +423,16 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     })
 }
 
-/// **A BOOLEANA, num predicado só** — os dois chips de modo, o Apply, os oito verbos de receita, os
-/// quatro verbos de FORMA e o par do compound path.
+/// **A BOOLEANA, num predicado só** — as quatro operações vivas da ④, o Flatten e os quatro verbos
+/// por FORMA (o «This Shape»).
 ///
 /// ⚠️ Extraído do [`forwards_plain_click`] pelo teto de 200 LOC por função, e o corte é o mesmo dos
-/// irmãos ([`is_frame_widget`], [`is_layout_widget`], [`is_anchor_widget`]): **um assunto**. Os oito
-/// da receita e os quatro da FORMA convivem na mesma secção e fazem coisas diferentes sobre a mesma
-/// selecção — os dois conjuntos têm ids próprios de propósito.
+/// irmãos ([`is_frame_widget`], [`is_layout_widget`], [`is_anchor_widget`]): **um assunto**. As
+/// quatro do grupo e as quatro da FORMA fazem coisas diferentes sobre a mesma selecção — os dois
+/// conjuntos têm ids próprios de propósito.
 ///
-/// ⚠️ **Todos atravessam o barramento.** Os chips de modo são panel-local no VALOR, mas a shell
-/// precisa saber que o modo mudou (é ela quem o lê no clique de um dos oito), e o Apply é um comando
-/// de DOCUMENTO. Fora daqui eles pintariam, acenderiam sob o rato e o `Click` morreria no painel —
-/// o report que o Enio já deu duas vezes sobre esta mesma fileira.
+/// ⚠️ **Todos atravessam o barramento**: são comandos de DOCUMENTO que a shell executa. Fora daqui
+/// pintariam, acenderiam sob o rato e o `Click` morreria no painel.
 fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_BOOL_UNION
         || id == crate::ids::VECTOR_FLATTEN

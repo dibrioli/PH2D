@@ -1,16 +1,4 @@
 //! Gates do Shape Builder — o gesto inteiro, sem gfx.
-//!
-//! ## A fixture é PARTE do gate, e era ela que estava errada
-//!
-//! A 1ª versão destes testes usou quadrados eixo-alinhados construídos à mão, na identidade.
-//! Dezesseis gates verdes, e o Enio reprovou o smoke no primeiro clique. **Um gate só prova
-//! o que a fixture dele contém**: mutar o código e ver vermelho dentro de um universo de
-//! quadrados só prova coisas sobre quadrados.
-//!
-//! Aqui a fixture é a do produto: formas do **catálogo** (curvas), **centradas no local 0**,
-//! com a pose num `Transform` (ADR-0111) — que é o que a Shape tool deixa na cena. A sessão
-//! é aberta pelo `BuildSession::open` de verdade, e o resultado é aplicado pelo `commit` de
-//! verdade: o que se mede é **a cena que o artista fica**, não o retorno de uma função.
 
 use super::*;
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecVertex, Xform, contains_point, cook};

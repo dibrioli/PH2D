@@ -1,16 +1,4 @@
 //! **O que se VE, se CLICA** — os gates da area de captura de um traco.
-//!
-//! Enio: *"selecionar a seta esta dificil pois a area da seta e fina"*. A causa nao era o raio
-//! de captura: era que METADE DO DESENHO nao existia para o mouse. A ponta de seta e construida
-//! a partir do caminho + do `StrokeSpec` (`stroke_head`) e nunca entrou no `VecPath`, entao o
-//! hit-test jamais a viu — clicar no triangulo, que e a parte gorda e a que o olho mira, nao
-//! selecionava nada.
-//!
-//! **A calibragem que estes testes exigiram, e que vale registrar:** a cabeca e proporcional a
-//! LARGURA do traco. Com uma linha curta e um traco grosso, o triangulo cobre metade da cena — e
-//! a primeira versao destes testes ficou vermelha nas asserções NEGATIVAS, porque os pontos que
-//! eu supunha "longe da seta" caiam dentro dela. O bug era do teste. Uma linha longa e um traco
-//! fino poem cada coisa no seu lugar.
 
 use super::*;
 use ph2d_core::Vec2;

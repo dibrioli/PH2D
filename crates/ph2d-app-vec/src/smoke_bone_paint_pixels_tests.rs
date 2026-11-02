@@ -1,15 +1,5 @@
 //! ⭐⭐⭐ **O QUE O OLHO VÊ, EM PIXELS DE ECRÃ** — filho da [`super`] (a assadura) para herdar as
 //! fixturas dela.
-//!
-//! ⛔⛔⛔ **Este módulo nasceu do report do dono de 2026-09-17** (*«Como eu já havia dito muitas
-//! vezes: Fast e Smooth estão sempre idênticos. Nada mudou»*), e a primeira coisa que ele mediu foi
-//! que **o dono tinha razão**.
-//!
-//! ⚠️ **A régua de toda esta linha era o desvio ao CAMPO, em pixels da ARTE** — uma propriedade da
-//! APROXIMAÇÃO. Ninguém vê uma aproximação: vê-se a tinta no ecrã. Medido aqui, as duas leis punham
-//! cada texel a `0,04 px` uma da outra na mediana e `0,34 px` no pior ponto, na dobra que a cena
-//! ship. *Uma régua que mede a fidelidade ao modelo não responde «isto muda alguma coisa aos
-//! olhos?».*
 
 use super::*;
 

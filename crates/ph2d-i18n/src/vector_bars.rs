@@ -83,8 +83,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bar.sub.fidelity" => "FID",
         "panel.vector.bar.sub.stabilizer" => "STAB",
         "panel.vector.bar.sub.segments" => "SEG",
-        // ④ (dono 15/10): o interruptor da booleana viva, à frente das quatro booleanas.
-        "panel.vector.bar.bool_live" => "Live Boolean \u{00b7} the shapes stay editable",
+        // ④ (F50): as quatro booleanas vivas, o Flatten e o Outline Stroke.
+        "panel.vector.bar.union" => {
+            "Union \u{00b7} join the shapes into one; each shape stays editable"
+        }
+        "panel.vector.bar.subtract" => {
+            "Subtract \u{00b7} cut the front shapes out of the back one; each shape stays editable"
+        }
+        "panel.vector.bar.intersect" => {
+            "Intersect \u{00b7} keep only where the shapes overlap; each shape stays editable"
+        }
+        "panel.vector.bar.exclude" => {
+            "Exclude \u{00b7} keep everything except where the shapes overlap; each shape stays editable"
+        }
+        "panel.vector.bar.flatten" => {
+            "Flatten \u{00b7} make it one plain shape for good (Undo brings it back)"
+        }
+        "panel.vector.bar.outline_stroke" => {
+            "Outline Stroke \u{00b7} turn the stroke into a shape you can fill"
+        }
         // ④ o verbo de UMA forma dentro da booleana viva: a dica nomeia a forma de que fala.
         "panel.vector.bar.bool_shape" => "{shape} \u{00b7} {verb}",
         "panel.vector.bar.fill" => "Fill colour",

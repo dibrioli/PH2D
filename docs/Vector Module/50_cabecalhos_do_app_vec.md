@@ -11,6 +11,7 @@ data do commit `8810c8838d`.
 5.º lote (F48d, 02/11, a ferramenta Offset Path: +8 sobre o tecto): `ui_panel_spec.rs`, texto à data do commit `fa1283eec8`.
 6.º lote (F49, 02/11, o Draw do vetor fica nas outras formas: +103 sobre o tecto): de `resize_box_edit.rs` a `svg_import.rs`, texto à data do commit `9362272bff`.
 7.º lote (F50, 02/11, Boolean e Convert na ④: +309 sobre o tecto): de `no_orphan_module_tests.rs` a `connector_panel_tests.rs`, texto à data do commit `ca6875143c`.
+8.º lote (fecho F46–F50, 02/11, curas da auditoria: +186 sobre o tecto): de `bool_gesture.rs` a `smoke_bone_paint_pixels_tests.rs`, texto à data do commit `55c489600d`.
 
 ## `symmetry_live.rs`
 
@@ -2876,3 +2877,303 @@ O que eles provam, em ordem de importância:
    no primeiro toque, longe da linha que o olho vê.
 4. **Editar FIXA** (`None` → `Some`) e o valor fixado **não é re-derivado** no frame
    seguinte, nem quando as caixas mudam de tamanho.
+
+## `bool_gesture.rs`
+
+> **Os gestos da BOOLEANA VIVA** — armar, re-mirar e consolidar.
+
+O motor é o [`crate::bool_live`]; aqui mora o que é de DOCUMENTO (o grupo, o z, o undo) e a
+decisão que os oito botões da seção Boolean tomam quando são clicados.
+
+# Um clique, três destinos — e a ordem deles é a lei
+
+1. **A seleção já está dentro de um grupo booleano** ⇒ o clique RE-MIRA aquele grupo. É o que
+   faz os oito botões serem também o seletor de operação de um grupo vivo: uma lista de oito
+   verbos, e clicar num deles diz *"passe a ser este"*. Um dropdown separado seria uma segunda
+   porta para a mesma pergunta, e ela divergiria no dia em que a nona operação entrasse só num
+   dos dois.
+2. **O modo `Live` está ligado** ⇒ o clique CRIA um grupo com os selecionados.
+3. **Senão** ⇒ o caminho destrutivo de sempre, byte-idêntico.
+
+⚠️ **(1) vem antes de (2) de propósito.** Sem essa ordem, re-mirar um grupo com o modo
+desligado o CONSUMIRIA — o artista clicaria "Intersect" esperando trocar a operação e perderia
+os operandos.
+
+## `vector_mode.rs`
+
+> ⭐⭐ **VECTOR ▸ EDIT** — cada FORMA é um objecto, e o Edit abre a ferramenta do vetor sobre ela
+> (spec/06 F3 ▸ Vector, 2.ª volta; escolha do dono, 05/10: *«nada aparece no canvas ou na hierarquia
+> até que o usuário crie alguma forma ou linha. Ao desenhar algo, o objeto aparece na hierarquia no
+> modo edit»*, e a 2.ª forma é OUTRO objecto).
+
+- **Add ▸ Vector Drawing** não cria entidade: arma a ferramenta ([`EditTarget::arm`]) — ela chega
+  à mão em Object, com o painel inteiro.
+- **A forma que NASCE com a ferramenta na mão pede o Edit sobre ela** ([`ModeFamily::wants`]): a
+  1.ª depois do Add, e cada nova num Edit (o Edit PASSA a ela — a rede `still_holds` larga a
+  anterior e o pedido entra na nova, no mesmo quadro).
+- **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`). ⭐⭐ **O Edit é do TIPO** (dono,
+  05/10: *«todos os objetos daquele tipo estão em modo de edição»*, [`ModeFamily::holds_the_whole_kind`]):
+  toda forma se agarra e é parte do Edit; escolher um objecto de outro tipo volta a Object, e
+  escolher outra forma — ou várias — FICA no Draw ([`ModeFamily::stays_on_its_kind`], dono 02/11:
+  as booleanas precisam de várias formas).
+- **A forma trancada que MORRE** (o Soldar consome os traços, a caneta junta dois caminhos) passa o
+  Edit à [herdeira](ModeFamily::heir) — a última forma viva da caneta.
+- **Object** = a ferramenta sai da mão.
+- ⭐ **O ALVO** mora no [`crate::state::VecState`], fora da `VecScene` (que entra no undo).
+
+## `lib.rs`
+
+> ⭐⭐⭐ **A família `vec` da shell, fora da shell** — W2/L4 (auditoria de velocidade de
+> 2026-09-10 §4-C2, DIRETRIZ §6.7 item 5).
+
+# O que esta crate é
+
+A `shells/desktop` é um `bin` de **493 k linhas** que dobrou em quatro semanas e é a **última
+unidade de todo build grande** (34–45 s sozinha no fim do gate de fecho). Dentro dela vivem
+famílias inteiras que só ali estão por inércia — e a metade-shell do módulo vectorial é uma
+delas: **129 ficheiros, 17 527 LOC de produto e 17 933 de teste**.
+
+Esta crate é o destino dessa família. O sentido é **sempre shell → crate**: a shell é um
+binário, logo nada aqui pode referir `crate::` da shell. Quem precisa do que só a shell tem —
+janela, `gfx`, painéis, a captura do undo — **fica lá**, e isso é o ADR-0075 outra vez (estado
+de família é recurso/componente do ECS; o resto é composição da raiz).
+
+A história da extracção (o conjunto fechado, o molde): `docs/Vector Module/50_cabecalhos_do_app_vec.md`.
+
+## `vec_offset_pick_tests.rs`
+
+> **A forma que se VÊ é a que se PEGA** — os gates do pick sobre o Offset vivo
+> (`ph2d_ecs::VecOffset`), módulo irmão de [`super`] pelo teto de LOC.
+
+O ADR-0121 separou a curva AUTORADA da COZIDA e o offset vivo (2026-07-21) levou a costura ao
+nível do OBJETO: o documento guarda o `VecPath` que o artista desenhou e a tela mostra a
+derivada. Quem desenha já pergunta ao `offset_live` — o hit-test passou a perguntar à MESMA
+porta, senão a forma fica **pintada num lugar e clicável noutro**, sem erro e sem aviso: o
+artista clica no meio do que vê e nada acontece.
+
+⚠️ **Os dois sentidos são gates separados de propósito.** Um remendo que apenas SOMASSE a
+derivada à fonte (união) passa no gate de crescimento e falha no de encolhimento — e o
+encolhimento é onde mora o modo de falha oposto, *pegar a forma onde a tinta já não está*.
+
+Mutação canônica: fazer o `contains_path`/`world_bbox` ignorarem o `live` (o produto de antes
+de 2026-07-21) tem de SANGRAR os quatro primeiros gates e deixar o de regressão VERDE.
+
+## `bool_reach_tests.rs`
+
+> **A BOOLEANA VIVA ALCANÇA OS ESTADOS** — os gates de ROTA da auditoria de 2026-08-23.
+
+# A pergunta que estes gates fazem
+
+*Com uma booleana em mãos, o artista consegue chegar às poses dela?*
+
+⚠️ Ela não é a mesma que *"o widget existe, é pintado e o clique chega ao barramento"* — essas
+três estavam **verdes** enquanto a resposta a esta era **não**. Tocar um operando seleciona o
+GRUPO inteiro (lei deliberada do `object_selection_for`), o `publish` exigia forma ÚNICA, e a
+seção STATES — com o interruptor **Preview** dentro dela — não era sequer pintada. Não dimmed,
+não vazia: ausente, sem uma palavra a dizer o que faltava.
+
+É um gate de alcance: o que se mede aqui é a SEQUÊNCIA.
+
+## `shape_build_tests.rs`
+
+> Gates do Shape Builder — o gesto inteiro, sem gfx.
+
+## A fixture é PARTE do gate, e era ela que estava errada
+
+A 1ª versão destes testes usou quadrados eixo-alinhados construídos à mão, na identidade.
+Dezesseis gates verdes, e o Enio reprovou o smoke no primeiro clique. **Um gate só prova
+o que a fixture dele contém**: mutar o código e ver vermelho dentro de um universo de
+quadrados só prova coisas sobre quadrados.
+
+Aqui a fixture é a do produto: formas do **catálogo** (curvas), **centradas no local 0**,
+com a pose num `Transform` (ADR-0111) — que é o que a Shape tool deixa na cena. A sessão
+é aberta pelo `BuildSession::open` de verdade, e o resultado é aplicado pelo `commit` de
+verdade: o que se mede é **a cena que o artista fica**, não o retorno de uma função.
+
+## `vec_gizmo_view_hit_tests.rs`
+
+> **O que se VE, se CLICA** — os gates da area de captura de um traco.
+
+Enio: *"selecionar a seta esta dificil pois a area da seta e fina"*. A causa nao era o raio
+de captura: era que METADE DO DESENHO nao existia para o mouse. A ponta de seta e construida
+a partir do caminho + do `StrokeSpec` (`stroke_head`) e nunca entrou no `VecPath`, entao o
+hit-test jamais a viu — clicar no triangulo, que e a parte gorda e a que o olho mira, nao
+selecionava nada.
+
+**A calibragem que estes testes exigiram, e que vale registrar:** a cabeca e proporcional a
+LARGURA do traco. Com uma linha curta e um traco grosso, o triangulo cobre metade da cena — e
+a primeira versao destes testes ficou vermelha nas asserções NEGATIVAS, porque os pontos que
+eu supunha "longe da seta" caiam dentro dela. O bug era do teste. Uma linha longa e um traco
+fino poem cada coisa no seu lugar.
+
+## `canais_topologia.rs`
+
+> ⭐⭐⭐ **Acrescentar ou apagar um ponto numa forma ANIMADA vale em TODAS as chaves** (decisão do
+> dono, 20/10: a forma inteira numa chave, AE/Spine — plano 35 §2 escolha 4).
+
+Sem isto, a forma deste quadro passava a ter `n ± 1` vértices e as chaves dos outros instantes
+continuavam com `n`: o vértice `j` de uma chave casava com o `j` de outra que já era outro ponto,
+e a forma TORCIA entre elas — o defeito do shape tween do Flash.
+
+**Sem adivinhar a correspondência:** as âncoras que a edição não tocou ficam IGUAIS bit a bit
+(inserir num segmento só mexe nas alças dos vizinhos; apagar só tira), então o alinhamento é a
+maior subsequência comum de âncoras EXACTAS entre o quadro anterior e este. Um ponto novo acha o
+seu parâmetro `u` projectando-se no segmento de ontem, e em cada chave esse segmento divide-se no
+mesmo `u` (de Casteljau) — a forma de cada chave não muda de desenho, ganha um ponto. Um ponto
+apagado sai de todas. Funciona para TODA porta que edita pontos, sem que nenhuma o declare.
+
+## `expand_scale_tests.rs`
+
+> Gates da **LEI DA FORMA** do slider de Offset (report de 2026-07-20: *"se selecionar
+> Round, não consegue mudar"*) — arquivo irmão de `vec_expand_tests.rs` pelo teto de LOC.
+
+A faixa antiga (±4 unidades de MUNDO, constante) entregava o gesto natural — arrastar
+até o fim do track — a regimes **join-inertes**: à esquerda a forma ANIQUILA (os três
+joins produzem o mesmo nada), à direita ela estoura a tela e as quinas saem de vista. A
+janela de retune funcionava; o dial é que apontava para onde o join não pode aparecer.
+A lei nova: `d = fração × offset_scale(seleção)`, com `offset_scale = maxdim/2` — o
+extremo esquerdo é **morte garantida** (inradius ≤ maxdim/2) e o direito é **dobrar a
+forma** (o eixo maior cresce exatamente 2×, quinas na vizinhança da tela).
+
+⚠️ Mutação canônica: fazer [`offset_scale`] devolver a constante `4.0` (a faixa velha)
+tem de SANGRAR os dois primeiros gates — foi exatamente o produto que o Enio reportou.
+
+## `pick.rs`
+
+> O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern on Path e pelo Text
+> on Path (Enio 2026-07-23: *"um botão Picker onde o usuário primeiro seleciona a shape, depois
+> aperta o botão e seleciona o path. Dessa forma é mais correto"*).
+
+A disambiguação por seleção (`link_candidate`) tem de ADIVINHAR qual dos selecionados é a fonte
+e qual é o guia — e adivinha errado quando as premissas não valem (o *"escolhendo a si mesmo"* que
+o bbox só resolve no caso comum). O Picker remove a adivinhação: a **fonte** é a que estava
+selecionada quando o botão foi apertado, o **guia** é o que o clique seguinte acerta. Um é
+capturado, o outro é apontado — nunca há dois candidatos para a mesma vaga.
+
+Este módulo é só o TIPO do pedido + o realce do hover; a captura (no `render_loop`), o clique (no
+`input_dispatch`) e o vínculo em si (`pattern_live::link` / `vec_text_ride::link_explicit`) moram
+onde já moram os seus irmãos, porque o Picker só troca a PROCEDÊNCIA do par — a inserção do
+componente é a mesma que a auto-ligação já fazia.
+
+## `smoke_bone_efeitos.rs`
+
+> ⭐⭐⭐ **OS EFEITOS NA PELE** — `PH2D_VEC_BONE_SMOKE=5` (F50, ordem do dono de 2026-10-02:
+> formas vetoriais presas a ossos COM efeitos).
+
+# O que a cena monta
+
+Seis barras iguais, cada uma com um esqueleto igual de [`OSSOS`] ossos, todas dobradas em S a
+[`DOBRA`] por junta. A de cima à esquerda NÃO tem efeito (o controlo); cada uma das outras tem
+um ([`EFEITOS`]). ⭐⭐ Desde 2026-10-03 o Bind COZE os efeitos no desenho (ordem do dono: *«ao
+aplicar os bones, os efeitos são cozidos antes»*, ver `skin_live::bind`) — o efeito desenhado em
+repouso dobra com a barra, e a barra presa já não recebe efeitos (a secção Effects diz porquê).
+
+⚠️ **A dobra é aplicada DEPOIS de prender** — prender fotografa a pose de repouso (ver o
+[`crate::smoke_bone_par`]).
+
+## `smoke_bone_paint_silhueta_tests.rs`
+
+> ⭐⭐⭐ **A SILHUETA DESENHADA VAI E VOLTA?** — a régua que o olho usa, e o gate que a pôs no
+> produto (report do dono, 2026-09-16, foto com cinco setas: *«Smooth parece ter resultado
+> discretamente inferior, gerando micro irregularidades»*).
+
+Filho do [`super`] por RESPONSABILIDADE: *o `Smooth` refina onde a dobra pede* é a pergunta
+dele; *o que ele desenha é mais liso que o `Fast`* é esta.
+
+⛔⛔ **O gate do irmão estava VERDE sobre o defeito, e a razão é que a régua dele partilhava a
+lei do produto:** ele mede o desvio da malha contra o CAMPO que ela segue, e o campo P1 tinha um
+vinco em cada aresta do bind — o `Smooth` seguia os vincos fielmente e a régua aprovava. *Um
+espelho não acusa.* A régua daqui não sabe que campo existe: ela olha só a polilinha desenhada.
+
+⚠️ **A arte desta cena é um rectângulo OPACO**, logo a silhueta é a fronteira da malha e os
+quatro lados dela são os quatro lados do rectângulo de repouso.
+
+## `vector_bridge_fields.rs`
+
+> ⭐ **Campo a campo** — a escrita e a leitura da seleção múltipla (plano 31,
+> `docs/UI_New_and_Simple/vetor_nova_ui/31_plano_F20_misto_e_espessura_do_documento.md`).
+
+Módulo irmão do [`super::style`] (teto de LOC). Duas metades da MESMA máscara
+([`StyleFields`]):
+
+- **escrever** ([`StrokeStyle::onto_fields`], [`fill_merge`], [`restyle_selected_fields`]): um
+  gesto escreve em cada forma selecionada só os campos que o artista mexeu. ⛔ Antes a ponte
+  gravava o estilo INTEIRO da tool (= o do primário) em todas: mexer na Width de uma forma
+  vermelha e de uma azul pintava as duas de vermelho.
+- **ler** ([`mixed_of`]): os campos em que as selecionadas diferem, que o painel pinta como
+  «misto». ⛔ Revoga a lei «mostra o primário» do `appearance.rs` (decisão do dono, 18/10): o
+  Inspector do mesmo app já mostrava «misto», e o primário mentia sobre as outras.
+
+## `blend_live_edit.rs`
+
+> As operações de **edição e interação** do Blend Object (ADR-0128 C1/C2b) — módulo irmão do
+> [`super`] (teto de 600 LOC do shell). O núcleo do objeto vivo (component, `recook`, os helpers de
+> geometria) fica em `blend_live.rs`; aqui moram as ações que o painel e o canvas disparam:
+
+- escolher as fontes (por z ou por clique) e ajustar os passos ao vivo;
+- **Reset Spine** (volta ao automático);
+- a **prévia do Pick Shapes** (contorno + polilinha da ordem);
+- as reconciliações âncora↔forma: arrastar o SPINE move todas as fontes (Select), arrastar uma
+  ÂNCORA move a forma dela (Node) — o que faz "editar a curva ≡ mover a forma".
+
+`use super::*` traz os privados do pai (`center_of`/`world`/`spine_verts`/`spine_stroke`/
+`shift_vertex_to`/`MAX_BLEND_SOURCES`/`BlendSpines` + os `use` dele), como os módulos de teste já
+fazem.
+
+## `blend_tests.rs`
+
+> Os gates da POLÍTICA do Blend (a math já está gateada no motor, `ph2d-vec-blend`).
+
+O que se prova aqui é o que o artista vê acontecer com o DOCUMENTO:
+
+1. as **fontes sobrevivem** (é um Blend, não uma booleana — ela é que consome os operandos);
+2. os passos nascem **entre** elas, no z delas;
+3. cada chamada é **UM** passo de undo;
+4. sem duas formas fechadas, não faz nada (e não corrompe a cena).
+
+(Este é o modelo DESTRUTIVO legado — só os smokes `PH2D_BUILD_SMOKE=7/8/9` o chamam. O painel
+usa o Blend Object VIVO; os gates dele estão em `blend_live_tests.rs`.)
+
+## `marquee.rs`
+
+> **O gesto de REGIÃO do modo Node** — o retângulo de sempre e o LAÇO, numa estrutura só.
+
+O marquee era um par de cantos (`((f32,f32),(f32,f32))`). O laço precisa do CAMINHO, e a
+tentação é um segundo campo ao lado — que seriam dois lugares para limpar, dois para pintar e
+dois caminhos de release, com o par a divergir no primeiro refino. Aqui é **um gesto**, e a
+forma dele é um campo.
+
+⚠️ **A forma é decidida no PRESS e congela até soltar** ([`ph2d_tool_vector::params::MarqueeShape::for_gesture`]).
+Relê-la por movimento faria largar o Ctrl no meio do arrasto morfar a região sob a mão: o
+artista veria o caminho que desenhou virar um retângulo entre dois pontos que ele nunca
+escolheu. É a mesma lei da régua congelada no `Begin` do arrasto de exposição da tira do Flip.
+
+## `smoke_bone_media_bracos.rs`
+
+> ⭐⭐⭐ **AS CENAS DO BRAÇO** — `=2`, o TESTE NULO, e `=3`, o braço que ANIMA. Filho do
+> [`super`] para herdar as fixturas dele.
+
+Ordem do dono (2026-09-18): *«crie os 3 tipos do mesmo tamanho e mesma largura para eu ver como
+se dobram, se se dobram igual uma a outra»*.
+
+⚠️ **A pergunta é OUTRA e por isso o ficheiro é outro.** O pai monta a cena `=1`, que pergunta
+*que arte cada mídia desenha* — artes diferentes de propósito. Aqui a arte, o tamanho, o
+esqueleto e a dobra são os MESMOS, e o certo é **não se ver diferença nenhuma**.
+
+⚠️ Ele é filho e não irmão porque o motor de que precisa — `uma`, `tamanho`, `eixos_em`,
+`corrente_em`, `dobra` — é do pai, e **duplicá-lo poria as duas cenas a correr leis diferentes.**
+
+## `smoke_bone_paint_pixels_tests.rs`
+
+> ⭐⭐⭐ **O QUE O OLHO VÊ, EM PIXELS DE ECRÃ** — filho da [`super`] (a assadura) para herdar as
+> fixturas dela.
+
+⛔⛔⛔ **Este módulo nasceu do report do dono de 2026-09-17** (*«Como eu já havia dito muitas
+vezes: Fast e Smooth estão sempre idênticos. Nada mudou»*), e a primeira coisa que ele mediu foi
+que **o dono tinha razão**.
+
+⚠️ **A régua de toda esta linha era o desvio ao CAMPO, em pixels da ARTE** — uma propriedade da
+APROXIMAÇÃO. Ninguém vê uma aproximação: vê-se a tinta no ecrã. Medido aqui, as duas leis punham
+cada texel a `0,04 px` uma da outra na mediana e `0,34 px` no pior ponto, na dobra que a cena
+ship. *Uma régua que mede a fidelidade ao modelo não responde «isto muda alguma coisa aos
+olhos?».*

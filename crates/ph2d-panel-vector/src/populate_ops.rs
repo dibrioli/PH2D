@@ -16,8 +16,8 @@ use ph2d_tool_vector::params::{
 /// Passo do campo numérico do Offset, em fração do comprimento do caminho.
 const TEXTPATH_OFFSET_STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento
 
-/// Vértice, topologia (as três da W4 + o corte), Boolean + Compound, regra de preenchimento,
-/// o ímã, o tipo de Fill e Align/Distribute.
+/// Vértice, topologia (as três da W4 + o corte), regra de preenchimento, o ímã, o tipo de Fill e
+/// Align/Distribute.
 pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
@@ -41,7 +41,6 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, crate::ids::VECTOR_VERT_SEL_SUBPATH);
     button(store, crate::ids::VECTOR_VERT_SEL_SAME);
 
-    // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     super::blend::populate_blend(store);
     super::envelope::populate_envelope(store);
     // Text on Path (plano 22): os quatro controles + o slider de offset. Registrados

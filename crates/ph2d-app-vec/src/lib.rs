@@ -1,19 +1,5 @@
 //! ⭐⭐⭐ **A família `vec` da shell, fora da shell** — W2/L4 (auditoria de velocidade de
 //! 2026-09-10 §4-C2, DIRETRIZ §6.7 item 5).
-//!
-//! # O que esta crate é
-//!
-//! A `shells/desktop` é um `bin` de **493 k linhas** que dobrou em quatro semanas e é a **última
-//! unidade de todo build grande** (34–45 s sozinha no fim do gate de fecho). Dentro dela vivem
-//! famílias inteiras que só ali estão por inércia — e a metade-shell do módulo vectorial é uma
-//! delas: **129 ficheiros, 17 527 LOC de produto e 17 933 de teste**.
-//!
-//! Esta crate é o destino dessa família. O sentido é **sempre shell → crate**: a shell é um
-//! binário, logo nada aqui pode referir `crate::` da shell. Quem precisa do que só a shell tem —
-//! janela, `gfx`, painéis, a captura do undo — **fica lá**, e isso é o ADR-0075 outra vez (estado
-//! de família é recurso/componente do ECS; o resto é composição da raiz).
-//!
-//! A história da extracção (o conjunto fechado, o molde): `docs/Vector Module/50_cabecalhos_do_app_vec.md`.
 
 pub mod align_live;
 /// `PH2D_AUTOKEY_SMOKE` — o Auto Key sobre uma forma vetorial (plano 34).

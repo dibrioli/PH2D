@@ -1,16 +1,5 @@
 //! ⭐⭐⭐ **OS EFEITOS NA PELE** — `PH2D_VEC_BONE_SMOKE=5` (F50, ordem do dono de 2026-10-02:
 //! formas vetoriais presas a ossos COM efeitos).
-//!
-//! # O que a cena monta
-//!
-//! Seis barras iguais, cada uma com um esqueleto igual de [`OSSOS`] ossos, todas dobradas em S a
-//! [`DOBRA`] por junta. A de cima à esquerda NÃO tem efeito (o controlo); cada uma das outras tem
-//! um ([`EFEITOS`]). ⭐⭐ Desde 2026-10-03 o Bind COZE os efeitos no desenho (ordem do dono: *«ao
-//! aplicar os bones, os efeitos são cozidos antes»*, ver `skin_live::bind`) — o efeito desenhado em
-//! repouso dobra com a barra, e a barra presa já não recebe efeitos (a secção Effects diz porquê).
-//!
-//! ⚠️ **A dobra é aplicada DEPOIS de prender** — prender fotografa a pose de repouso (ver o
-//! [`crate::smoke_bone_par`]).
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};

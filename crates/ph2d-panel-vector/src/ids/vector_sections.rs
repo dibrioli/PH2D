@@ -41,7 +41,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // pintada: as duas descrevem a forma selecionada como um todo.
     VECTOR_SECTION_APPEARANCE,
     VECTOR_SECTION_VERTEX,
-    // ⛔ F50 (02/11): a BOOLEAN e a CONVERT saíram — as comuns na ④, as raras no «⋯» dela.
+    // ⛔ F50 (02/11): a BOOLEAN e a CONVERT saíram — o que ficou delas mora na ④.
     // ⛔ F48d (02/11): a EXPAND (Offset Path) saiu — é a ferramenta Offset Path, opções na fila ②.
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,

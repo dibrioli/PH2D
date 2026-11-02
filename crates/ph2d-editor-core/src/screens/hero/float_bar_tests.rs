@@ -382,4 +382,36 @@ fn the_action_bar_never_covers_the_tool_column() {
             }
         }
     }
+    // Com o FLYOUT aberto (um botão do meio da coluna, grelha larga): a ④ também não lhe toca.
+    for left_handed in [false, true] {
+        let x = if left_handed { a.x + a.w - 80.0 } else { a.x };
+        let sel = Rect::new(x, a.y + 300.0, 80.0, 90.0);
+        let bars = ToolBars {
+            column: vec![(1..12).map(b).collect()],
+            flyout: Some((NodeId(6), (200..216).map(b).collect())),
+            actions: vec![(100..130).map(b).collect()],
+            selection: Some(sel),
+            ..ToolBars::default()
+        };
+        for pinned in [false, true] {
+            let all = tool_bars::placed(&bars, a, pinned, left_handed);
+            let fly: Vec<Rect> = all
+                .iter()
+                .filter(|(x, _)| (200..216).contains(&x.id.0))
+                .map(|(_, r)| *r)
+                .collect();
+            let acts: Vec<Rect> = all
+                .iter()
+                .filter(|(x, _)| (100..130).contains(&x.id.0))
+                .map(|(_, r)| *r)
+                .collect();
+            assert!(fly.len() == 16 && acts.len() == 30, "controlo do flyout");
+            for r in &acts {
+                assert!(
+                    fly.iter().all(|c| !toca(r, c)),
+                    "canhoto={left_handed} fixada={pinned}: a ④ em {r:?} tapa o flyout"
+                );
+            }
+        }
+    }
 }

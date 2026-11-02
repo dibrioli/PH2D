@@ -149,3 +149,15 @@ fn the_bake_writes_the_geometry_that_was_on_screen() {
     let expect: Vec<_> = drawn.iter().map(|p| p.verts.clone()).collect();
     assert_eq!(baked, expect, "o bake não pode mover um vértice");
 }
+
+/// **A operação publicada é a do grupo** — sem grupo, ou grupo sem componente, `None`.
+#[test]
+fn group_op_reads_the_operation_of_the_group() {
+    let (mut sim, scene, map, ids) = setup();
+    assert_eq!(group_op(&sim, None), None);
+    assert!(arm(&mut sim, &scene, &map, &ids, 2));
+    let g = group_of_selection(&sim, &map, &ids);
+    assert_eq!(group_op(&sim, g), Some(2));
+    let solto = sim.world_mut().spawn(ph2d_ecs::RootOrder(0)).id();
+    assert_eq!(group_op(&sim, Some(solto)), None);
+}

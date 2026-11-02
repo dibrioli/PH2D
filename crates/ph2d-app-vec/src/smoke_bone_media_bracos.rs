@@ -1,15 +1,5 @@
 //! ⭐⭐⭐ **AS CENAS DO BRAÇO** — `=2`, o TESTE NULO, e `=3`, o braço que ANIMA. Filho do
 //! [`super`] para herdar as fixturas dele.
-//!
-//! Ordem do dono (2026-09-18): *«crie os 3 tipos do mesmo tamanho e mesma largura para eu ver como
-//! se dobram, se se dobram igual uma a outra»*.
-//!
-//! ⚠️ **A pergunta é OUTRA e por isso o ficheiro é outro.** O pai monta a cena `=1`, que pergunta
-//! *que arte cada mídia desenha* — artes diferentes de propósito. Aqui a arte, o tamanho, o
-//! esqueleto e a dobra são os MESMOS, e o certo é **não se ver diferença nenhuma**.
-//!
-//! ⚠️ Ele é filho e não irmão porque o motor de que precisa — `uma`, `tamanho`, `eixos_em`,
-//! `corrente_em`, `dobra` — é do pai, e **duplicá-lo poria as duas cenas a correr leis diferentes.**
 
 use super::*;
 

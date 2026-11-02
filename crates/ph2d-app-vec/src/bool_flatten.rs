@@ -22,20 +22,26 @@ pub fn flatten(
     let sel: Vec<VecPathId> = pen.selected_paths().to_vec();
     let mut groups: Vec<Entity> = Vec::new();
     for id in &sel {
-        if let Some(g) = outermost_group(sim, map, *id)
+        if let Some(g) = outermost_group(sim, map, live, *id)
             && !groups.contains(&g)
         {
             groups.push(g);
         }
     }
     let mut keep: Vec<VecPathId> = Vec::new();
+    // Peças de receitas antigas (MinusBack/Trim/Crop/Merge, códigos ≥ 4): cada uma tem a sua cor,
+    // e a Union fundi-las-ia numa só — ficam como estão.
+    let mut pieces: Vec<VecPathId> = Vec::new();
     for g in groups {
         if let Some(plan) = live.plan(g) {
-            keep.extend(crate::bool_gesture::bake_ids(sim, scene, plan, g));
+            let recipe = crate::bool_gesture::group_op(sim, Some(g)).is_some_and(|op| op >= 4);
+            let baked = crate::bool_gesture::bake_ids(sim, scene, plan, g);
+            if recipe { &mut pieces } else { &mut keep }.extend(baked);
         }
     }
     for id in sel {
-        if !keep.contains(&id) && scene.paths().iter().any(|p| p.id == id) {
+        if !keep.contains(&id) && !pieces.contains(&id) && scene.paths().iter().any(|p| p.id == id)
+        {
             keep.push(id);
         }
     }
@@ -43,11 +49,20 @@ pub fn flatten(
     if selected_closed_z(scene, pen).len() >= 2 {
         pathfinder_selection(scene, pen, xforms, PathfinderOp::Union);
     }
-    pen.selected_paths().len()
+    let mut all = pen.selected_paths().to_vec();
+    all.extend(pieces);
+    pen.select_many(&all);
+    all.len()
 }
 
-/// A booleana viva mais de FORA que contém `id` — a que a tela desenha.
-fn outermost_group(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
+/// A booleana viva mais de FORA que contém `id` e TEM plano — a que a tela desenha (um grupo sem
+/// plano não desenha nada próprio; a de dentro é que vale).
+fn outermost_group(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    live: &BoolLive,
+    id: VecPathId,
+) -> Option<Entity> {
     let w = sim.world();
     let mut cur = Entity::from_bits(*map.get(&id)?);
     let mut found = None;
@@ -55,7 +70,7 @@ fn outermost_group(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<
         let Some(parent) = w.get::<ph2d_ecs::ChildOf>(cur).map(|c| c.parent()) else {
             break;
         };
-        if w.get::<VecBoolGroup>(parent).is_some() {
+        if w.get::<VecBoolGroup>(parent).is_some() && live.plan(parent).is_some() {
             found = Some(parent);
         }
         cur = parent;

@@ -25,9 +25,7 @@ impl crate::App {
         } = intents;
         let group = crate::bool_gesture::group_of_selection(sim, &self.vec.entities, &sel);
         // A operação do grupo acende o botão dela na ④ (F50).
-        ph2d_panel_vector::state::set_bool_group(
-            group.and_then(|g| sim.world().get::<ph2d_ecs::VecBoolGroup>(g).map(|b| b.op)),
-        );
+        ph2d_panel_vector::state::set_bool_group(crate::bool_gesture::group_op(sim, group));
         // **O VERBO DA FORMA: honrar o clique ANTES de publicar** — a ordem é a mesma do
         // chip do recorte, e pela mesma razão: publicar primeiro deixaria o chip a piscar
         // de volta ao valor antigo por um quadro.

@@ -117,7 +117,7 @@ fn the_flatten_materialises_the_plan_the_producer_just_cooked() {
 #[test]
 fn the_shell_publishes_whether_a_live_boolean_is_selected() {
     assert!(
-        src().contains("ph2d_panel_vector::state::set_bool_group("),
+        src().contains("set_bool_group(crate::bool_gesture::group_op("),
         "a shell parou de publicar a operação do grupo booleano selecionado"
     );
 }

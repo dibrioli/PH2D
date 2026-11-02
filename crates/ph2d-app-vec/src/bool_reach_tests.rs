@@ -1,16 +1,4 @@
 //! **A BOOLEANA VIVA ALCANÇA OS ESTADOS** — os gates de ROTA da auditoria de 2026-08-23.
-//!
-//! # A pergunta que estes gates fazem
-//!
-//! *Com uma booleana em mãos, o artista consegue chegar às poses dela?*
-//!
-//! ⚠️ Ela não é a mesma que *"o widget existe, é pintado e o clique chega ao barramento"* — essas
-//! três estavam **verdes** enquanto a resposta a esta era **não**. Tocar um operando seleciona o
-//! GRUPO inteiro (lei deliberada do `object_selection_for`), o `publish` exigia forma ÚNICA, e a
-//! seção STATES — com o interruptor **Preview** dentro dela — não era sequer pintada. Não dimmed,
-//! não vazia: ausente, sem uma palavra a dizer o que faltava.
-//!
-//! É um gate de alcance: o que se mede aqui é a SEQUÊNCIA.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBoolGroup};
 use ph2d_ui_state::StateSets;

@@ -33,11 +33,11 @@ fn read(rel: &str) -> String {
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("não leio {}: {e}", path.display()))
 }
 
-/// Os nomes da família que COMBINA formas (`VECTOR_BOOL_*`, `VECTOR_FLATTEN`, `VECTOR_COMPOUND_*`)
+/// Os nomes da família que COMBINA formas (`VECTOR_BOOL_*`, `VECTOR_FLATTEN`)
 /// que aparecem em `src`, sem o prefixo `ids::`.
 fn bool_ids(src: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    for prefix in ["VECTOR_BOOL_", "VECTOR_FLATTEN", "VECTOR_COMPOUND_"] {
+    for prefix in ["VECTOR_BOOL_", "VECTOR_FLATTEN"] {
         for (i, _) in src.match_indices(prefix) {
             let tail = &src[i..];
             let end = tail

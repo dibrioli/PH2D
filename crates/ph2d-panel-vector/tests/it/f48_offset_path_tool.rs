@@ -95,8 +95,8 @@ fn o_botao_da_coluna_arma_a_ferramenta() {
     assert!(b.hint.contains("grow"), "dica: {}", b.hint);
 }
 
-/// ⭐ A secção do Inspector SAIU: nenhum controlo do Offset Path se pinta no painel; o `Outline
-/// Stroke` (secção `Convert`) fica. *Mutação: repor a `expand_section` no plano ⇒ vermelho.*
+/// ⭐ A secção do Inspector SAIU: nenhum controlo do Offset Path se pinta no painel, e o `Outline
+/// Stroke` (F50) mora só na ④. *Mutação: repor a `expand_section` no plano ⇒ vermelho.*
 #[test]
 fn a_seccao_do_inspector_saiu() {
     let mut h = host();
@@ -111,9 +111,16 @@ fn a_seccao_do_inspector_saiu() {
     }
     ph2d_panel_vector::set_offset_live_on(false);
     let id = ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE;
-    assert!(pintado(&mut h, id).is_some());
-    crate::clica(&mut h, id);
-    assert!(chegou(&mut h, id));
+    assert!(
+        pintado(&mut h, id).is_none(),
+        "o Outline Stroke voltou ao painel"
+    );
+    let sel = Some(Rect::new(400.0, 300.0, 80.0, 60.0));
+    let b = bars::tool_bars(h.store(), sel, Vec::new());
+    assert!(
+        b.actions.iter().flatten().any(|x| x.id == id),
+        "o Outline Stroke saiu da ④"
+    );
 }
 
 /// ⭐ Na fila ②, só com a ferramenta na mão: `Distance (px)` é um CAMPO, as três quinas, o

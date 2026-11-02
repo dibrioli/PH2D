@@ -114,6 +114,9 @@ pub struct PixelFilterDialog {
     /// Convolution Matrix: os botões R G B A que escolher cada kernel deixa (Trial: o kernel traz
     /// os seus canais), paralelo a [`Self::kernels`]; a família publica-os com os nomes.
     pub kernel_channels: &'static [PixelChannels],
+    /// Os canais dos OUTROS diálogos, guardados enquanto o Convolution usa os do kernel (abrir
+    /// outro diálogo devolve-os).
+    pub others_channels: Option<PixelChannels>,
     /// O alvo «All»: todos os quadros × todas as camadas que se pintam (desligado = «Selected», o
     /// cel activo). Lembrado na sessão.
     pub all: bool,
@@ -137,6 +140,7 @@ impl Default for PixelFilterDialog {
             kernel: 0,
             kernels: &[],
             kernel_channels: &[],
+            others_channels: None,
             all: false,
         }
     }

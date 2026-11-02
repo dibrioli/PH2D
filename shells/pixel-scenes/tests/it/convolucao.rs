@@ -210,3 +210,26 @@ fn opening_the_convolution_puts_the_channels_of_the_chosen_kernel() {
         "reaberto: os do blur-3x3 lembrado"
     );
 }
+
+/// O Convolution usa os canais do kernel À PARTE: fechá-lo e abrir o Invert devolve os deste (o A
+/// ligado de fábrica), e reabrir o Convolution volta aos do kernel.
+#[test]
+fn the_convolution_channels_do_not_leak_into_the_next_dialog() {
+    let mut p = com_quadrado();
+    p.tecla(KeyCode::F9, false, false);
+    assert!(
+        !p.hero.store.pixel_edit_dialog().filter.channels[3],
+        "A solto"
+    );
+    carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
+    p.pede(PixelRequest::Edit(E::Invert));
+    assert_eq!(aberto(&p), Some(PixelDialogKind::Invert));
+    assert_eq!(
+        p.hero.store.pixel_edit_dialog().filter.channels,
+        [true; 4],
+        "o Invert com os seus"
+    );
+    carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
+    p.tecla(KeyCode::F9, false, false);
+    assert!(!p.hero.store.pixel_edit_dialog().filter.channels[3]);
+}

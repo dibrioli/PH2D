@@ -44,8 +44,12 @@ impl WidgetStore {
         d.size = size;
         d.anchor = (1, 1);
         d.request = None;
+        let f = &mut d.filter;
         if kind == PixelDialogKind::ConvolutionMatrix {
+            f.others_channels.get_or_insert(f.channels);
             self.set_pixel_filter_kernel(usize::from(self.pixel_filter_kernel()));
+        } else if let Some(c) = f.others_channels.take() {
+            f.channels = c;
         }
         let d = self.pixel.edit;
         let (sw, sh) = (f64::from(size.0), f64::from(size.1));

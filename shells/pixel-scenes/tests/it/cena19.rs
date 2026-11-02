@@ -163,3 +163,71 @@ fn scene_19_opens_ready_and_each_p8_family_takes_one_step() {
         "[sonda cena 19] Hue/Saturation Alpha −50: camisa {camisa:?}; {a127} células com alfa 127"
     );
 }
+
+/// Abre a caixa em `at` e escreve `t` (sem Enter).
+fn caixa(p: &mut Palco, at: (i32, i32), t: &str) {
+    p.ferramenta(Tool::Text);
+    p.app.fg = [0, 0, 0, 255];
+    p.press(at, Mods::default());
+    p.release();
+    tecla_texto(p, KeyCode::KeyA, Some(t));
+}
+
+/// O contorno da caixa do Text envolve a tinta com UMA célula de folga em todos os lados.
+#[test]
+fn the_text_box_outline_wraps_the_ink_with_one_cell_of_margin() {
+    let mut p = Palco::cena(19);
+    p.pede(PixelRequest::Select(PixelSelectAction::Deselect));
+    caixa(&mut p, (26, 34), "PH2D");
+    let key = p.key;
+    let tinta: Vec<(i32, i32)> = celulas()
+        .filter(|&(x, y)| p.app.shown_rgba(key, x, y) != Some(p.rgba(x, y)))
+        .collect();
+    let (ox, oy, ow, oh) = p.app.text_box_outline().expect("contorno");
+    let x0 = tinta.iter().map(|c| c.0).min().expect("tinta");
+    let x1 = tinta.iter().map(|c| c.0).max().expect("tinta");
+    let y0 = tinta.iter().map(|c| c.1).min().expect("tinta");
+    let y1 = tinta.iter().map(|c| c.1).max().expect("tinta");
+    eprintln!("[sonda cena 19] tinta x {x0}..={x1} y {y0}..={y1} · contorno ({ox},{oy}) {ow}×{oh}");
+    assert!(ox <= x0 - 1 && oy <= y0 - 1, "folga à esquerda e em cima");
+    assert!(ox + ow as i32 - 1 >= x1 + 1, "folga à direita");
+    assert!(oy + oh as i32 - 1 >= y1 + 1, "folga em baixo");
+    assert_eq!(ox + ow as i32 - 1, x1 + 1, "exactamente uma à direita");
+}
+
+/// O Text corta-se à selecção como o Fill e o Gradient: o preview e o carimbo só dentro dela.
+#[test]
+fn the_text_is_clipped_to_the_selection_in_preview_and_stamp() {
+    let mut p = Palco::cena(19);
+    let m = p.mascara().expect("selecção");
+    let antes = p.sprite().clone();
+    caixa(&mut p, (50, 10), "PH2D");
+    let key = p.key;
+    let previa: Vec<(i32, i32)> = celulas()
+        .filter(|&(x, y)| p.app.shown_rgba(key, x, y) != Some(p.rgba(x, y)))
+        .collect();
+    assert!(!previa.is_empty(), "há tinta dentro");
+    assert!(
+        previa.iter().all(|&(x, y)| m.get(x, y)),
+        "o preview corta-se"
+    );
+    tecla_texto(&mut p, KeyCode::Enter, None);
+    let gravadas = mudadas(&p, &antes);
+    assert_eq!(gravadas, previa, "o carimbo é o preview");
+    // Fora da selecção nada: na mesma âncora sem selecção a tinta passa da borda.
+    let mut q = Palco::cena(19);
+    q.pede(PixelRequest::Select(PixelSelectAction::Deselect));
+    let antes = q.sprite().clone();
+    caixa(&mut q, (50, 10), "PH2D");
+    tecla_texto(&mut q, KeyCode::Enter, None);
+    let sem = mudadas(&q, &antes);
+    assert!(
+        sem.iter().any(|&(x, y)| !m.get(x, y)),
+        "sem selecção passava da borda"
+    );
+    eprintln!(
+        "[sonda cena 19] Text em (50,10): {} células com selecção · {} sem",
+        gravadas.len(),
+        sem.len()
+    );
+}

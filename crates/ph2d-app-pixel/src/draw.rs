@@ -243,7 +243,8 @@ pub fn draw(
     crate::viva::draw(app, key, m, (theme, janela), scene);
     // P8: a caixa do Text aberta — a moldura (pelo menos uma célula de largo) e o cursor.
     if app.text_box().is_some_and(|b| b.0 == key)
-        && let Some(((x, y, bw, bh), (cx, cy, ch))) = app.text_box_frame()
+        && let Some(((_, (cx, cy, ch)), (x, y, bw, bh))) =
+            app.text_box_frame().zip(app.text_box_outline())
     {
         let em =
             |px: i32, py: i32| m * ph2d_vector::Affine::translate((f64::from(px), f64::from(py)));

@@ -20,6 +20,8 @@ pub(crate) struct Caixa {
     traco: Option<Stroke>,
     /// O retângulo da caixa em células (x, y, w, h) e a célula do cursor `(x, y, altura)`.
     moldura: (i32, i32, u32, u32),
+    /// O que se desenha: a moldura e a tinta com uma célula de folga em todos os lados.
+    contorno: (i32, i32, u32, u32),
     caret: (i32, i32, i32),
 }
 
@@ -82,6 +84,12 @@ impl PixelApp {
     pub fn text_box_frame(&self) -> Option<((i32, i32, u32, u32), (i32, i32, i32))> {
         self.texto.as_ref().map(|c| (c.moldura, c.caret))
     }
+
+    /// O contorno desenhado da caixa `(x, y, w, h)`: envolve a moldura e a tinta com 1 célula de folga.
+    #[must_use]
+    pub fn text_box_outline(&self) -> Option<(i32, i32, u32, u32)> {
+        self.texto.as_ref().map(|c| c.contorno)
+    }
 }
 
 /// Abre a caixa em `at` no documento `key` (a aberta assenta antes). A camada que não se pinta recusa.
@@ -122,9 +130,20 @@ pub(crate) fn refaz(app: &mut PixelApp) {
     };
     let s = &doc.sprite;
     let ck = (doc.layer, doc.frame);
-    let v = valores(s, ck, &c.ed.text, &style, c.at, fg);
-    c.traco = (!v.is_empty()).then(|| Stroke::with_values(ck.0, ck.1, v));
+    // Toda escrita de píxeis corta-se à selecção (o preview é o mesmo traço).
+    let mut v = valores(s, ck, &c.ed.text, &style, c.at, fg);
     (c.moldura, c.caret) = style.frame(&c.ed.text, c.at, c.ed.cursor);
+    let (mx, my, mw, mh) = c.moldura;
+    let (mut x0, mut y0, mut x1, mut y1) = (mx, my, mx + mw as i32 - 1, my + mh as i32 - 1);
+    for &((x, y), _) in &v {
+        (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+    }
+    let lado = |a: i32, b: i32| u32::try_from(b - a + 3).unwrap_or(1);
+    c.contorno = (x0 - 1, y0 - 1, lado(x0, x1), lado(y0, y1));
+    if let Some(m) = s.mask() {
+        v.retain(|&((x, y), _)| m.get(x, y));
+    }
+    c.traco = (!v.is_empty()).then(|| Stroke::with_values(ck.0, ck.1, v));
     doc.stamp = stamp;
 }
 

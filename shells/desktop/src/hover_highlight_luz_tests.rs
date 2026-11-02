@@ -62,7 +62,11 @@ fn o_icone_da_lampada_ganha_o_clique_sobre_um_vazio_no_mesmo_ponto() {
 
 /// Uma imagem já desenhada, como o espelho do `present` a guarda: o pick de sprites lê isto.
 fn imagem_desenhada(present: &mut ph2d_ecs::PresentWorld, sim: &mut ph2d_ecs::SimWorld) -> u64 {
-    let e = sim.world_mut().spawn(ph2d_ecs::Transform::IDENTITY).id();
+    let sprite = ph2d_render::Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
+    let e = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, sprite))
+        .id();
     let mut ri: ph2d_render::sprite::RenderInstance = bytemuck::Zeroable::zeroed();
     ri.size = [2.0, 2.0];
     ri.basis = ph2d_render::sprite::RenderInstance::IDENTITY_BASIS;
@@ -180,5 +184,24 @@ fn o_clique_num_filho_agrupado_pega_o_grupo_mais_de_fora() {
     assert!(
         pega(&sim, &mut present, &ordem, centro).is_empty(),
         "o grupo travado ainda se pega pela arte dos filhos"
+    );
+}
+
+/// ⭐ **Dentro do círculo de um objecto vazio, o 1.º clique é dele** (dono 01/11: «qualquer lugar
+/// dentro do círculo»), mesmo com uma imagem que não é dele por baixo; o 2.º desce para a imagem.
+///
+/// Mutação que deve sangrar: o disco voltar para o FIM da lista (depois da arte).
+#[test]
+fn dentro_do_circulo_do_vazio_o_primeiro_clique_e_dele() {
+    let centro = ph2d_render::Camera2d::default()
+        .world_to_screen([0.0, 0.0], ph2d_host::WindowSize::new(1280, 720));
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let mut present = ph2d_ecs::PresentWorld::new();
+    let imagem = imagem_desenhada(&mut present, &mut sim);
+    let vazio = ph2d_app_components::object_add::spawn_empty_root(&mut sim, "Pile");
+    let ordem = ph2d_render::draw_bands::FrameOrder::default();
+    assert_eq!(
+        pega(&sim, &mut present, &ordem, centro),
+        vec![vazio, imagem]
     );
 }

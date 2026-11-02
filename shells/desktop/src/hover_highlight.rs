@@ -84,7 +84,7 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) motion: Option<ph2d_app_motion::motion_pick::Alvo<'a>>,
 }
 
-/// Os ícones da luz, da câmera e da Macro sob o ponteiro (à frente de [`pick_objects_at`]).
+/// Os ícones da luz, da câmera e da Macro e o disco dos objectos vazios sob o ponteiro (à frente de [`pick_objects_at`]).
 pub(crate) fn icones_em(w: &PickWorld, pointer: (f32, f32)) -> Vec<u64> {
     let mut icones = ph2d_app_light2d::gizmo::pick_at(
         w.sim.world(),
@@ -107,6 +107,14 @@ pub(crate) fn icones_em(w: &PickWorld, pointer: (f32, f32)) -> Vec<u64> {
         lado,
         cam,
         janela,
+    ));
+    // O DISCO do objecto vazio (dono 01/11: «qualquer lugar dentro do círculo»); o filho dele sob
+    // o dedo ainda vem antes (`pick_order::descendants_first`).
+    let world = cam.screen_to_world(pointer, janela);
+    icones.extend(crate::group_gizmo_view::pick_empty_at_world(
+        w.sim,
+        world,
+        w.pixels_per_meter,
     ));
     icones
 }
@@ -161,14 +169,6 @@ pub(crate) fn pick_objects_at(
     if let Some(m) = w.motion.as_mut() {
         hits.extend(m.donos_em(world));
     }
-    // ⭐⭐ **E o ANEL de um objeto VAZIO pega** (Enio, 2026-08-26: *«não consigo transformar o
-    // objeto total a partir do centro do objeto vazio»*).
-    //
-    // ⚠️ **Por ÚLTIMO, e é a metade que importa:** um objeto vazio é quase sempre o PAI da arte que
-    // está por baixo do anel, e a lista é depois reordenada por `pick_order::descendants_first` —
-    // que ADIA o ancestral. Um clique sobre a arte pega a arte; um clique no anel onde não há arte
-    // pega o grupo; e o segundo clique no mesmo sítio cicla para ele. *O contêiner não rouba o
-    // clique dos filhos.*
     hits.extend(ph2d_app_pixel::draw::pick_at(pointer));
     // ⭐⭐ **O 1.º clique é do que se VÊ por cima** (dono 01/11): a arte ordena-se pela pilha que o
     // presente desenhou ([`FrameOrder::stack_key`](ph2d_render::draw_bands::FrameOrder::stack_key)),
@@ -182,11 +182,6 @@ pub(crate) fn pick_objects_at(
                 .unwrap_or((usize::MAX, u32::MAX)),
         )
     });
-    hits.extend(crate::group_gizmo_view::pick_empty_at_world(
-        w.sim,
-        world,
-        w.pixels_per_meter,
-    ));
     icones.extend(hits);
     // ⭐ **Travado (cadeado) não se pega no canvas, em família nenhuma**; e o filho de um grupo dá o
     // GRUPO mais de fora (o único que se manipula, dono 26/05), no sítio do 1.º acerto dele (GEF 19).
@@ -199,6 +194,8 @@ pub(crate) fn pick_objects_at(
         .collect();
     let mut vistos = std::collections::BTreeSet::new();
     icones.retain(|b| vistos.insert(*b));
+    // O disco do vazio vai à frente, mas o filho dele sob o dedo ainda o precede.
+    crate::pick_order::descendants_first(w.sim.world(), &mut icones);
     icones
 }
 

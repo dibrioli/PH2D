@@ -2,26 +2,7 @@
 //! COZIMENTO da rota) e espelho exato de [`crate::shape_params`] (que faz o mesmo pela
 //! forma viva).
 //!
-//! O Enio pediu para calibrar `jetty` e `spread` **com o olho**. Isso impõe três coisas, e
-//! nenhuma delas é decoração:
-//!
-//! 1. **O painel mostra o valor EFETIVO.** Os dois campos são `Option<f32>` no componente:
-//!    `None` = automático (o jetty acompanha o tamanho das caixas; o spread, o índice
-//!    paralelo). Um campo que nascesse vazio — ou em zero — faria o número SALTAR no
-//!    primeiro toque, para longe da linha que está na tela. Então a shell **resolve** o
-//!    efetivo aqui ([`effective`]) e publica; o painel só desenha.
-//! 2. **Editar FIXA** (`None` → `Some(v)`): o auto→override de qualquer editor.
-//! 3. **A edição atinge TODOS os conectores selecionados** ([`edit_selected_connectors`]) —
-//!    é o que permite calibrar o diagrama inteiro de uma vez, em vez de linha por linha.
-//!
-//! # A regra que este módulo existe para honrar: semente = amostra
-//!
-//! O número que o painel EXIBE e o número que o cozimento USA têm de sair da **mesma
-//! função**. Duas cópias da fórmula do automático = o painel mentindo no dia em que alguém
-//! ajustar uma delas (é a lição `feedback_derived_coordinate_seed_must_match_sample` — o
-//! tempo remapeado quebrou três vezes exatamente assim). Por isso a derivação vive em
-//! `ph2d_tool_vector::connector` (`auto_jetty` + `SPREAD_STEP`) e AMBOS os lados a
-//! importam: aqui, para exibir; o `connector_live`, para cozinhar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `connector_panel.rs`.
 
 use ph2d_ecs::{Entity, RouteKind, SimWorld, VecConnector};
 use ph2d_editor_core::NodeId;

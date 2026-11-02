@@ -1,27 +1,6 @@
 //! **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
 //!
-//! # O que esta ponte dirige, e o que ela deliberadamente NÃO dirige
-//!
-//! Ela dirige o botão **Show**: o artista pede um papel e a cena **transita** até ele, com a
-//! duração que ele autorou. É assim que ele vê o tween que gravou, em vez de apenas confiar que
-//! ele existe.
-//!
-//! ⚠️ **Ela não é dirigida pelo mouse DAQUI, e as duas razões continuam de pé:** um hover que
-//! animasse a forma enquanto o artista trabalha tornaria o editor inutilizável (é por isso que o
-//! Figma põe a interação num **modo de apresentação** separado), e o undo deste editor é por
-//! **DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a cada passagem do
-//! rato.
-//!
-//! ⇒ quem liga o rato é o **MODO DE PREVIEW** ([`super::ui_preview`], W7r): ele resolve as duas
-//! de uma vez — enquanto corre, o gesto de edição não existe e o undo não regista, e ao sair o
-//! mundo volta exactamente ao que era. Ele PEDE por esta mesma porta ([`request`]), então não há
-//! um segundo caminho para *"pôr a cena nesta pose"*.
-//!
-//! # O relógio é o do FRAME, e não um relógio próprio
-//!
-//! `advance(dt)` recebe o `dt` que o `FixedStep` já produziu. É a lição W4.T7 do Motion, onde o
-//! `MotionTransport` **morreu**: dois relógios divergem, e o modo de falha é a UI a andar noutra
-//! velocidade que a cena.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `ui_state_bridge.rs`.
 
 use std::collections::BTreeMap;
 

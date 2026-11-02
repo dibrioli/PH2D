@@ -564,3 +564,36 @@ fn what_the_gesture_makes_never_overlaps_what_it_left_alone() {
         }
     }
 }
+
+/// **A forma nova e as sobras levam o «look» inteiro** (dono 02/11, auditoria contra a pilha F45):
+/// só `fill`/`stroke` viajavam, e as camadas, a ordem, a opacidade e a mistura ficavam para trás.
+#[test]
+fn the_merged_shape_and_the_remainders_keep_the_paint_stack() {
+    let (mut sc, xf, ids) = scene();
+    let camada = ph2d_vec_scene::PaintEntry::stroke(ph2d_vec_scene::StrokeSpec::new(
+        Rgba8::new(250, 250, 250, 255),
+        0.3,
+    ));
+    for id in [ids[0], ids[2]] {
+        let p = sc.path_mut(id).expect("forma");
+        p.paints = vec![camada.clone()];
+        p.base_order = ph2d_vec_scene::BaseOrder { fill: 2, stroke: 0 };
+        p.opacity = ph2d_vec_scene::Opacity::new(0.5);
+    }
+    let mut s = session(&sc, &xf, &ids);
+    s.dragging = true;
+    s.touch(IN_STAR);
+    commit(&mut sc, &mut s);
+    let tocadas: Vec<_> = sc.paths().iter().filter(|p| p.id != ids[1]).collect();
+    assert!(tocadas.len() >= 2, "a forma nova e a sobra do retângulo");
+    for p in tocadas {
+        assert_eq!(
+            p.paints,
+            vec![camada.clone()],
+            "as camadas de {:?}",
+            tone(p)
+        );
+        assert_eq!(p.base_order.fill, 2, "a ordem de {:?}", tone(p));
+        assert_eq!(p.opacity.get(), 0.5, "a opacidade de {:?}", tone(p));
+    }
+}

@@ -1,49 +1,6 @@
 //! **A MÁQUINA DE MORPH A CORRER** (plano 32 W5) — quem faz a forma virar a outra.
 //!
-//! # ⚠️ Ela só corre num MODO, e isso não é conservadorismo
-//!
-//! A condição de uma seta é uma **acção do Input Map**, isto é, uma tecla. Se a máquina escutasse
-//! enquanto o artista edita, carregar em `Z` faria a forma mudar **e** o que quer que o `Z` faça no
-//! editor — os dois, sem que nada na tela explicasse. É o argumento do [`crate::render_loop::ui_preview`]
-//! (*"um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável"*)
-//! com outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
-//!
-//! # ⛔⛔ O PLAYHEAD ERA A PORTA E DEIXOU DE SER — e a diferença é uma medição, não um gosto
-//!
-//! A W5 escreveu que *"o modo já existe: neste editor, o jogo a correr é o playhead a andar"*, e
-//! era um argumento bom sobre a coisa errada. **O playhead não tranca o teclado do editor.** Com
-//! ele a andar, as teclas continuam a chegar aos atalhos — então a mesma tecla morfa a forma **e**
-//! faz o que ela faz no editor, que é exactamente o que a nota dizia estar a evitar.
-//!
-//! Enio, 2026-08-25, depois do smoke: *"precisamos de um modo preview (com botão) como o de states
-//! de animação pois senão temos conflitos de atalhos (como setas do teclado movendo as formas)"*.
-//!
-//! ⇒ a porta é o **interruptor `Preview`** da seção *Morph States*, e ele **toma o teclado**
-//! (`input_dispatch::keyboard`, logo depois do retrato dos dispositivos e antes de todo atalho).
-//! ⛔ **Uma porta, não duas:** deixar o playhead a dirigir também manteria o conflito viva na porta
-//! que não tranca nada — e *duas portas para o mesmo modo divergem em silêncio*.
-//!
-//! ⚠️ *Um modo cuja entrada não exclui os outros consumidores não é um modo — é mais um produtor.*
-//!
-//! # ⚠️ O que ela escreve é PRÉ-VISUALIZAÇÃO, e o undo não a vê
-//!
-//! A máquina escreve **dois** campos do `VecMorph` — o par e o `t` —, e os dois passam pelo ledger
-//! ([`crate::preview_drive`]). ⛔ **O `Driver::MorphT` sozinho não bastava:** ele cobre o `t` e
-//! **só** o `t`, e sem o `MorphPair` uma transição durante a reprodução entraria no undo como se o
-//! artista tivesse re-ligado as fontes à mão.
-//!
-//! # ⚠️⚠️ E parar o relógio NÃO devolve a forma autorada — a nota anterior estava ERRADA
-//!
-//! Ela dizia *"ao largar as máquinas a cena volta ao que o artista desenhou"*. **Não volta**, e a
-//! lei que manda é a da [`ph2d_preview_drive::PreviewDrive::settle`]: o ledger repõe o autorado
-//! **dentro da fotografia** enquanto o motor conduz, e no primeiro quadro em que ele **para** a
-//! entrada morre ⇒ a captura seguinte vê o vivo, difere do baseline e regista **UM** passo. É o
-//! *«desfaz a corrida»*, e aqui ele significa: *sair do modo COMPROMETE a forma em que se ficou*.
-//!
-//! ⚠️ **Isso é o comportamento certo** (o artista carrega em ▶, sai, e o objecto ficou onde ele o
-//! pôs — desfazível num Ctrl+Z) **e tem uma consequência que custou o report de 2026-08-26**: a
-//! máquina seguinte nasce **depois** de o componente já estar noutra forma. Por isso ela é
-//! **semeada pelo mundo** ([`open`]) e não por `graph.start()`.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `morph_machine_drive.rs`.
 
 use std::collections::BTreeMap;
 

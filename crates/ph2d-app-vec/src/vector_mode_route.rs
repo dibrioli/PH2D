@@ -84,7 +84,7 @@ pub(super) fn step(
         listas::FIRST..=listas::LAST => listas::step(vec, scene, sim, hero, h == 30),
         // As cenas 45 a 48 (F44/F45): a 46 abre o «Stroke settings»; a 47 mostra a ordem livre; a 48 é a
         // 47 com um ponto puxado e uma regra CAD (os lados coloridos à espera do Smooth); a 49, o traço
-        // por cima dos Filtros.
+        // por cima dos Filtros; a 50, o Expand sobre a pilha.
         fill_stroke::FIRST..=fill_stroke::LAST => fill_stroke::step(vec, scene, sim, hero, h - 31),
         _ => None,
     }

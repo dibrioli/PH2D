@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use ph2d_ecs::SimWorld;
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{
-    Paint, Rgba8, StrokeSpec, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of,
+    Paint, PaintRef, Rgba8, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of,
 };
 
 use ph2d_vec_entities::entities::VecEntityMap;
@@ -87,10 +87,7 @@ impl FxSilhouette {
             // fonte — resolver aqui seria uma SEGUNDA resposta à mesma pergunta. ⚠️ A pergunta é
             // `lays_a_band`, não `is_some`: largura zero é sem traço, e perguntar pela presença
             // pagaria um sweep para receber vazio de volta.
-            if !input
-                .iter()
-                .any(|p| p.stroke.as_ref().is_some_and(StrokeSpec::lays_a_band))
-            {
+            if !input.iter().any(lays_a_band) {
                 continue;
             }
             let hit = self.memo.get(&path.id).is_some_and(|m| m.input == input);
@@ -131,14 +128,35 @@ impl FxSilhouette {
 /// PINADO num gate (`the_boolean_already_hands_back_regions_and_this_normalisation_is_a_belt`), que
 /// é o que impede o cinto de virar prosa se a booleana mudar de opinião.
 fn regions_of(p: &VecPath) -> Vec<VecPath> {
-    ph2d_vec_boolean::silhouette_paths(p)
+    let regioes = if p.has_extra_paints() {
+        // ⭐ A pilha (F45): cada traço que se vê vira faixa NA posição dele e o miolo fica entre
+        // elas (a porta do Outline Stroke); a silhueta é a união de tudo. Vazio = não sei responder.
+        let pecas = crate::expand::expand_layers(p, crate::expand::Expand::OutlineStroke, 0.0);
+        let refs: Vec<&VecPath> = pecas.iter().collect();
+        if refs.is_empty() {
+            Vec::new()
+        } else {
+            ph2d_vec_boolean::apply_many(&refs, ph2d_vec_boolean::BoolOp::Union)
+        }
+    } else {
+        ph2d_vec_boolean::silhouette_paths(p)
+    };
+    regioes
         .into_iter()
         .map(|mut r| {
-            r.stroke = None;
-            r.fill = Some(Paint::Solid(Rgba8::new(255, 255, 255, 255)));
+            r.carry_look_from(&VecPath {
+                fill: Some(Paint::Solid(Rgba8::new(255, 255, 255, 255))),
+                ..VecPath::default()
+            });
             r
         })
         .collect()
+}
+
+/// Algum traço que se VÊ (o de base ou uma camada) deita faixa de tinta?
+fn lays_a_band(p: &VecPath) -> bool {
+    p.paint_stack()
+        .any(|d| matches!(d.paint, PaintRef::Stroke(s) if s.lays_a_band()))
 }
 
 #[cfg(test)]

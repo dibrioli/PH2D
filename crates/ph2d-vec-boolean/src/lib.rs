@@ -226,14 +226,11 @@ pub(crate) fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPat
     let outer = it.next()?;
     let subpaths: Vec<Contour> = it.map(Contour::new_closed).collect();
     let compound = !subpaths.is_empty();
-    Some(VecPath {
+    // O «look» inteiro do estilo viaja (a pilha, a ordem, o olho, opacidade e mistura): sem ele o
+    // Offset e a booleana deixavam as camadas para trás.
+    let mut out = VecPath {
         verts: outer,
         closed: true,
-        fill: style.fill.clone(),
-        stroke: style.stroke.clone(),
-        // A tinta de base escondida pelo olho viaja com a visível (o olho devolve-a depois).
-        fill_hidden: style.fill_hidden.clone(),
-        stroke_hidden: style.stroke_hidden.clone(),
         subpaths,
         // Contorno único: as duas regras coincidem — mantém o default histórico.
         fill_rule: if compound {
@@ -242,7 +239,9 @@ pub(crate) fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPat
             FillRule::NonZero
         },
         ..VecPath::default()
-    })
+    };
+    out.carry_look_from(style);
+    Some(out)
 }
 
 /// Comprimento abaixo do qual um handle (ou uma aresta) conta como degenerado.
@@ -482,3 +481,7 @@ fn close_enough(a: [f64; 2], b: [f64; 2]) -> bool {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "look_tests.rs"]
+mod look_tests;

@@ -32,7 +32,8 @@ pub struct FormaParaAPlaca {
 /// **A forma para a placa**, ou `None` se o passe não a sabe desenhar como o Vello.
 #[must_use]
 pub fn forma_para_a_placa(path: &VecPath) -> Option<FormaParaAPlaca> {
-    if path.fill.is_some() {
+    // A placa só sabe a tinta de base; a pilha (F45) fica no Vello.
+    if path.fill.is_some() || path.has_extra_paints() {
         return None;
     }
     let tess = crate::instance::tessellate_shape_instance(path);

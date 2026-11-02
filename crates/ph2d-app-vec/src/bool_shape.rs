@@ -1,20 +1,7 @@
 //! **O PAPEL DE CADA FORMA dentro de uma booleana viva** — a porta única de *"o que esta forma faz
 //! aqui?"*, e o chip que a edita.
 //!
-//! Irmão do [`crate::vec_clip_edit`] no padrão: uma projeção que a shell publica por frame (o
-//! painel não alcança o mundo ECS e não deve) mais o escritor que o clique dispara.
-//!
-//! # Por que UMA porta, e não duas respostas parecidas
-//!
-//! Dois consumidores fazem a mesma pergunta sobre a mesma forma: o **painel** (*"que verbo mostro
-//! aceso?"*) e a **linha da hierarquia** (*"que selo pinto?"*). Se cada um a derivasse por si,
-//! bastaria um deles usar a ordem de z e o outro a ordem da árvore para o selo dizer `BSE` numa
-//! forma que o motor não trata como base — e a UI passaria a mentir sobre a receita sem uma linha
-//! vermelha em lado nenhum.
-//!
-//! ⚠️ **A resposta vem do PLANO que o `bool_live` acabou de cozinhar**, não de uma segunda
-//! caminhada da árvore. O plano é o que está na tela: quem é a base, quem são os operandos e em
-//! que ordem. É a mesma disciplina do Apply, que materializa o plano em vez de re-chamar o motor.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `bool_shape.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecBoolGroup, VecBoolOp};
 use ph2d_vec_scene::VecPathId;

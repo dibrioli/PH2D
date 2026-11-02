@@ -9,8 +9,8 @@
 
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{
-    LineJoin, OffsetSide, VecPath, VecPathId, VecScene, VecXforms, WidthStops, Xform, bake_xform,
-    xform_of,
+    DrawnPaint, LineJoin, OffsetSide, Split, StackItem, StrokeSpec, VecPath, VecPathId, VecScene,
+    VecXforms, WidthStops, Xform, bake_xform, xform_of,
 };
 
 /// Qual comando o clique pediu.
@@ -185,22 +185,20 @@ pub fn materialise_selection(
 /// Apply, que é o defeito que o ADR-0128 pagou cinco vezes. Há gate: as duas rotas produzem
 /// geometria byte-idêntica.
 ///
-/// A regra da camada de baixo: os dois comandos que assam TINTA (Outline Stroke e Power Stroke)
-/// convertem o **traço** e deixam o miolo em paz — se a forma tinha PREENCHIMENTO, essa região
-/// continua existindo no lugar dela, agora sem traço (é o grupo de dois objetos que o
-/// Illustrator produz). Sem fill não sobra nada da original.
+/// Os dois comandos que assam TINTA (Outline Stroke e Power Stroke) convertem **cada traço que se
+/// vê** — o de base e as camadas — e partem a forma na ordem da pilha
+/// ([`VecPath::split_stack`]): o miolo continua a existir entre as faixas, agora sem traço (o grupo
+/// que o Illustrator produz). Sem preenchimento não sobra nada da original.
 #[must_use]
 pub fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
     match cmd {
         Expand::Offset { join, side } => ph2d_vec_boolean::offset_path(world, d, join, side),
-        // ⚠️ Inner/Outer assam a faixa ALINHADA — a mesma que o ecrã pinta (`align_live`). Até
-        // 15/10 o Outline Stroke de um traço Inner assava a faixa CENTRADA e a forma crescia `w/2`
-        // no clique (`BUGS_vector.md` #43).
-        Expand::OutlineStroke => ink_layers(
-            world,
-            ph2d_vec_boolean::aligned_stroke(world)
-                .unwrap_or_else(|| ph2d_vec_boolean::outline_stroke(world)),
-        ),
+        Expand::OutlineStroke => world
+            .split_stack(|_, layer, s| match stroke_view(world, layer, s) {
+                Ok(view) => outlined(&view),
+                Err(gone) => gone,
+            })
+            .unwrap_or_default(),
         Expand::PowerStroke { stops } => power_stroke_layers(world, &stops),
     }
 }
@@ -208,30 +206,72 @@ pub fn expand_layers(world: &VecPath, cmd: Expand, d: f64) -> Vec<VecPath> {
 /// **O Power Stroke de uma lista de PARADAS** — a rota que o perfil VIVO percorre (ADR-0148).
 ///
 /// Não é uma segunda porta: a lista de paradas é o que o documento guarda, e o preset de quatro
-/// números do painel é uma FACE dela — o [`expand_layers`] converte a face e cai aqui. As duas
-/// chegam ao mesmo `power_stroke` e à mesma [`ink_layers`].
+/// números do painel é uma FACE dela — o [`expand_layers`] converte a face e cai aqui. O perfil é
+/// do traço de BASE; as camadas de traço assam-se como se vêem. Sem traço de base à vista (ou um
+/// perfil uniforme) não há Power Stroke, e nada muda.
 #[must_use]
 pub fn power_stroke_layers(world: &VecPath, stops: &WidthStops) -> Vec<VecPath> {
-    ink_layers(world, ph2d_vec_boolean::power_stroke(world, stops))
+    let mut base = false;
+    world
+        .split_stack(|it, layer, s| {
+            let view = match stroke_view(world, layer, s) {
+                Ok(v) => v,
+                Err(gone) => return gone,
+            };
+            if it == StackItem::BaseStroke {
+                base = true;
+                one_object(ph2d_vec_boolean::power_stroke(&view, stops))
+            } else {
+                outlined(&view)
+            }
+        })
+        .filter(|_| base)
+        .unwrap_or_default()
 }
 
-/// A regra da camada de baixo, escrita **uma vez**: os dois comandos que assam TINTA convertem o
-/// **traço** e deixam o miolo em paz — se a forma tinha PREENCHIMENTO, essa região continua
-/// existindo no lugar dela, agora sem traço (é o grupo de dois objetos que o Illustrator produz).
-/// Sem fill não sobra nada da original.
-#[must_use]
-fn ink_layers(world: &VecPath, results: Vec<VecPath>) -> Vec<VecPath> {
-    if results.is_empty() {
-        return Vec::new();
+/// **O traço `s` sozinho, sobre a geometria que ELE percorre** — a da forma, ou a dilatada pelo
+/// Offset da camada (a mesma que o desenho vivo usa, [`crate::paint_dilate::dilated_geometry`]).
+/// `Err` já é a resposta: um Offset que aniquila a forma não desenha traço (sai), e a booleana que
+/// falha desenha na silhueta de base, como o desenho vivo.
+pub(crate) fn stroke_view(
+    world: &VecPath,
+    layer: &DrawnPaint<'_>,
+    s: &StrokeSpec,
+) -> Result<VecPath, Split> {
+    let mut view = world.stroke_alone(s);
+    if layer.dilate.abs() >= ph2d_vec_scene::MIN_DILATE
+        && let Some(g) =
+            crate::paint_dilate::dilated_geometry(world, layer.dilate, layer.dilate_join)
+    {
+        if g.verts.is_empty() {
+            return Err(Split::Into(Vec::new()));
+        }
+        view.verts = g.verts;
+        view.subpaths = g.subpaths;
+        view.closed = g.closed;
+        view.fill_rule = g.fill_rule;
     }
-    let mut out = Vec::with_capacity(results.len() + 1);
-    if world.fill.is_some() {
-        let mut base = world.clone();
-        base.stroke = None;
-        out.push(base);
+    Ok(view)
+}
+
+/// Outline Stroke de UM traço: a faixa ALINHADA quando Inner/Outer (a mesma que o ecrã pinta,
+/// `align_live`; até 15/10 assava a CENTRADA e a forma crescia `w/2`, `BUGS_vector.md` #43), senão
+/// a centrada. Vazio ⇒ o gesto desiste.
+fn outlined(view: &VecPath) -> Split {
+    one_object(
+        ph2d_vec_boolean::aligned_stroke(view)
+            .unwrap_or_else(|| ph2d_vec_boolean::outline_stroke(view)),
+    )
+}
+
+/// ⭐ **Um traço convertido é UM objecto** — as peças (cada traço do tracejado, cada ilha) como
+/// contornos de um *compound path*, o do Illustrator. A foto da cena 50 (02/11) mediu o contrário:
+/// um contorno tracejado virou 536 objectos na Hierarchy. Vazio ⇒ o gesto desiste.
+pub(crate) fn one_object(pecas: Vec<VecPath>) -> Split {
+    match crate::paint_dilate::merge(&pecas) {
+        Some(um) => Split::Into(vec![um]),
+        None => Split::Fail,
     }
-    out.extend(results);
-    out
 }
 
 /// **A escala do slider de Offset** — metade do maior lado da bbox de MUNDO da seleção.
@@ -283,3 +323,7 @@ mod tests;
 #[cfg(test)]
 #[path = "expand_scale_tests.rs"]
 mod scale_tests;
+
+#[cfg(test)]
+#[path = "expand_stack_tests.rs"]
+mod stack_tests;

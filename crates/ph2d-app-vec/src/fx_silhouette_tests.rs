@@ -356,3 +356,41 @@ fn a_stroke_above_effects_lays_no_band_for_the_filters() {
         "controlo: sem a marca resolve-se"
     );
 }
+
+/// **A silhueta dos filtros conta as CAMADAS de traço** (dono 02/11, auditoria contra a pilha F45): o
+/// Bevel e a Inner Shadow desenhavam a borda no fim do miolo, por dentro de uma camada de traço larga.
+#[test]
+fn a_stroke_layer_widens_the_filter_silhouette() {
+    let (mut scene, mut sim, map, id) = scene(false);
+    scene.path_mut(id).expect("forma").paints = vec![ph2d_vec_scene::PaintEntry::stroke(
+        StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 1.0),
+    )];
+    arm_filter(&mut sim, &map, id);
+    let mut fx = FxSilhouette::default();
+    fx.recook(
+        &scene,
+        &sim,
+        &map,
+        &VecXforms::default(),
+        &LiveGeometry::new(),
+    );
+    let regioes = fx
+        .live()
+        .get(&id)
+        .expect("a camada de traço deita faixa: a silhueta é resolvida");
+    let x_max = regioes
+        .iter()
+        .flat_map(|r| r.verts_all())
+        .map(|v| v.anchor[0])
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+        (x_max - 1.5).abs() < 0.02,
+        "a silhueta vai até {x_max}, não até 1,5"
+    );
+    for r in regioes {
+        assert!(
+            r.paints.is_empty() && r.stroke.is_none(),
+            "a região é só região: {r:?}"
+        );
+    }
+}

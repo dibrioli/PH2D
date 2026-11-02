@@ -1,26 +1,7 @@
 //! O painel edita a forma VIVA — módulo irmão de [`crate::shape_live`] (que cuida do
 //! COZIMENTO e do nascimento da forma; separados pelo teto de 600 LOC, HR-18).
 //!
-//! O mesmo modelo do texto (`vec_text_object` (na shell)): uma config do painel tem um
-//! **ALVO**. Aqui o alvo é a forma paramétrica SELECIONADA — os campos do painel deixam
-//! de ser só o *default de desenho* e passam a editar a forma que está na tela, **mesmo
-//! na ferramenta Select**. É o que fecha o ciclo Live Shape: desenhar um polígono de 5
-//! lados e depois torná-lo de 7.
-//!
-//! **Tudo aqui é genérico sobre o catálogo.** Nenhuma função conhece estrela, seta ou
-//! balão: elas falam `(ShapeKind, ShapeValues)` e consultam o descritor. Uma forma nova
-//! entra no catálogo e ganha painel, semente, edição, undo e save sem tocar neste arquivo.
-//!
-//! Três peças, na ordem em que a shell as usa a cada frame:
-//!
-//! 1. [`shape_field_target`] — de quem são os campos (a 1ª forma paramétrica da seleção, ou
-//!    NINGUÉM quando o artista está armado para desenhar). A porta única; [`panel_shape_target`]
-//!    é a metade dela que só sabe olhar a seleção.
-//! 2. [`shape_seed_focus`] + [`seed_shape_fields`] + [`ui_values_of`] — quando o PAR
-//!    `(alvo, tipo)` muda, os campos são semeados e a tool os ADOTA (painel, tool e objeto
-//!    passam a concordar; e a próxima forma desenhada os herda — modelo Figma).
-//! 3. [`is_shape_field_id`] + [`apply_shape_field`] + [`edit_selected_shape`] — o
-//!    `SetValue` de um campo muta o `VecShape` e RE-COZINHA a geometria in-place.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `shape_params.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 use ph2d_editor_core::NodeId;

@@ -1,28 +1,7 @@
 //! **O AUTO LAYOUT da seleção** — a projeção que o painel lê, e a porta que o edita (plano UI/UX
 //! W2, ADR-0153).
 //!
-//! Irmão do [`crate::vec_frame_edit`], e com a mesma divisão de donos: a verdade mora no ECS
-//! (`VecLayout` no pai, `VecLayoutItem` no filho) e isto é o que a shell publica por frame. O
-//! painel não alcança o mundo — se alcançasse, a resposta que DESENHA o chip aceso divergiria da
-//! que HONRA o clique.
-//!
-//! # Uma tabela, duas direções
-//!
-//! ⚠️ Os três rádios (direção · alinhamento · distribuição) precisam da mesma correspondência
-//! `enum ↔ chip` lida nos dois sentidos: **para publicar** o aceso e **para resolver** o clique.
-//! Escrevê-la duas vezes — um `match` que pinta e outro que honra — é como uma variante nova entra
-//! só numa delas, e o sintoma é um chip que acende e não faz nada. Aqui cada rádio é **um array**,
-//! e as duas perguntas são varreduras dele.
-//!
-//! # Quem é o SUJEITO da seção
-//!
-//! Duas metades, resolvidas por portas diferentes porque são perguntas diferentes:
-//!
-//! - **a moldura** é a que CONTÉM a seleção — a MESMA porta do W0
-//!   ([`crate::vec_frame_edit::frame_of_selection`]), que já sabe desfazer a expansão de seleção
-//!   dos contêineres;
-//! - **o filho** é a seleção quando ela é UMA forma cujo pai flui. Uma moldura aninhada responde
-//!   às duas, e é isso que faz os dois blocos aparecerem juntos nela.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `layout_edit.rs`.
 
 use ph2d_ecs::{
     ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, LayoutSize, SimWorld, VecFrame,

@@ -195,23 +195,21 @@ pub fn svg_at(
             (p.id, c)
         })
         .collect();
+    // ⭐ A caixa do que cada forma PINTA (a pilha inteira: camadas deslocadas, dilatadas, traços
+    // Inner/Outer — `path_visual_bounds`); só o traço de base cortava uma camada grossa do ficheiro.
     let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
     for (_, p) in &mundo {
-        for v in p.verts_all() {
-            for q in [v.anchor, v.in_handle, v.out_handle] {
-                lo = [lo[0].min(q[0]), lo[1].min(q[1])];
-                hi = [hi[0].max(q[0]), hi[1].max(q[1])];
-            }
+        if let Some(r) = ph2d_vec_render::path_visual_bounds(p, ph2d_vector::Affine::IDENTITY) {
+            lo = [lo[0].min(r.x0), lo[1].min(r.y0)];
+            hi = [hi[0].max(r.x1), hi[1].max(r.y1)];
         }
     }
     if !lo[0].is_finite() {
         (lo, hi) = ([0.0, 0.0], [1.0, 1.0]);
     }
-    // A margem cobre metade da largura do traço mais gordo — senão um contorno grosso sai cortado.
-    let margem = mundo
-        .iter()
-        .filter_map(|(_, p)| p.stroke.as_ref().map(|s| s.width))
-        .fold(1.0_f64, f64::max);
+    // Uma unidade de mundo de folga (o anti-aliasing da borda), na escala do ficheiro: o tamanho
+    // natural cresce na mesma proporção que o desenho.
+    let margem = px_por_unidade.abs();
     let (x, y) = (lo[0] - margem, lo[1] - margem);
     let (w, h) = (
         (hi[0] - lo[0] + 2.0 * margem).max(1.0),

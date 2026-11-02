@@ -1,21 +1,6 @@
 //! Live Shapes — o nascimento e o re-cozimento de uma forma paramétrica.
 //!
-//! Uma forma desenhada **nasce viva**: ao soltar o gesto, a geometria é RE-COZIDA
-//! CENTRADA no local 0 (o pivô nasce no centro dela), o `Transform` recebe o centro do
-//! retângulo autorado, e a entidade ganha o componente `VecShape::Param` com o `kind` +
-//! os parâmetros. A partir daí a geometria é uma função pura deles — mudá-los re-cozinha
-//! a forma (é o que o painel faz, em [`crate::shape_params`]).
-//!
-//! **"Convert to Curves"** de uma forma paramétrica é só **descartar o `VecShape`**: a
-//! geometria já assada na cena vira um path cru, editável com a caneta. (O texto é o
-//! único que também explode — num grupo de paths por-letra.)
-//!
-//! O `w`/`h` vem do retângulo AUTORADO do gesto (`ShapeTool::bounds`), não da bbox da
-//! geometria: num polígono/estrela elas diferem (a bbox de um triângulo é menor que a
-//! elipse que o circunscreve), e é o retângulo que o usuário desenhou.
-//!
-//! Nada aqui sabe QUE formas existem — o cozimento é o do catálogo
-//! (`ph2d_vec_scene::cook`), a mesma porta que o preview do arrasto usa.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `shape_live.rs`.
 
 use ph2d_ecs::{Entity, MAX_SHAPE_VALUES, SimWorld, Transform, VecShape};
 use ph2d_vec_edit::ShapeTool;

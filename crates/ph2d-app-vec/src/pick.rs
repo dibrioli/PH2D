@@ -83,8 +83,10 @@ impl PathPick {
 pub fn hover_outline(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Option<VecPath> {
     let mut p = scene.paths().iter().find(|p| p.id == id)?.clone();
     ph2d_vec_scene::bake_xform(&mut p, &ph2d_vec_scene::xform_of(xforms, id));
-    p.fill = None;
-    p.stroke = Some(pick_stroke());
+    p.carry_look_from(&VecPath {
+        stroke: Some(pick_stroke()),
+        ..VecPath::default()
+    });
     Some(p)
 }
 
@@ -93,3 +95,7 @@ pub fn hover_outline(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Opt
 fn pick_stroke() -> StrokeSpec {
     StrokeSpec::new(ph2d_vec_scene::Rgba8::new(80, 150, 240, 230), 0.04)
 }
+
+#[cfg(test)]
+#[path = "pick_look_tests.rs"]
+mod look_tests;

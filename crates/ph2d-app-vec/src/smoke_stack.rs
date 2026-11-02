@@ -1,23 +1,6 @@
 //! ⭐⭐⭐ **N PREENCHIMENTOS E N CONTORNOS NUMA FORMA** — `PH2D_VEC_STACK_SMOKE=1` (estudo 42, item 4).
 //!
-//! # O que a cena fecha
-//!
-//! Até 2026-09-05 uma forma tinha **um** preenchimento e **um** contorno. Cada camada de estilo a
-//! mais obrigava a **duplicar o objecto** — e duas cópias de uma forma são duas geometrias que
-//! divergem no primeiro ponto que o artista mexe: ele corrige uma e a outra fica para trás.
-//!
-//! # A cena, e o que cada peça prova
-//!
-//! | O quê | O que ela prova |
-//! |---|---|
-//! | **A ETIQUETA**: uma estrela com contorno branco largo por baixo de um preto fino | a largura é POR CAMADA (é isto que o Figma não faz: lá as N tintas partilham uma geometria de traço) |
-//! | **O CARRIL**: uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
-//! | **A MISTURA**: um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada, e compõem-se DENTRO da forma |
-//! | **A SOMBRA**: um cartão com o 2.º preenchimento DESLOCADO | ONDE cada camada desenha é da CAMADA (v21) — sem isso dois preenchimentos ocupam os mesmos pixels |
-//! | **O ADESIVO**: uma estrela branca cujo 2.º preenchimento ENCOLHE | o *offset de CAD* (v22) — a silhueta de UMA camada contrai/dilata, e é isso que faz um adesivo numa forma só |
-//! | O par de referência ao lado | a mesma arte feita à moda antiga (duas formas empilhadas) — para se ver que agora é **uma** |
-//!
-//! ⚠️ Se a linha `[vec-stack-smoke]` não aparecer, PARE: a cena não montou.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_stack.rs`.
 
 use ph2d_vec_scene::{
     BlendMode, Opacity, Paint, PaintEntry, Rgba8, ShapeKind, StrokeSpec, VecPath,

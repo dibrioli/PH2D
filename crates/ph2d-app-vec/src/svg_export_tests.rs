@@ -518,7 +518,8 @@ fn one_object_goes_out_alone_at_the_projects_pixels_per_meter() {
         "levou o vizinho"
     );
     let cem = svg_of_path(&scene, &VecXforms::new(), a, &sempre_nao, 100.0).expect("a, a 100");
-    // 20 de lado + 2 margens da largura do traço (2 a 1:1; 200 a 100 px por unidade).
+    // 20 de lado + o meio-traço de cada lado (1) + uma unidade de folga de cada lado (1 a 1:1; 100 a
+    // 100 px por unidade).
     assert!(um.contains(" width=\"24\""), "{um}");
     assert!(
         cem.contains(" width=\"2400\"") && cem.contains("stroke-width=\"200\""),
@@ -595,4 +596,44 @@ fn an_aligned_stroke_exports_the_band_it_draws() {
             "{align:?}: a faixa alinhada sai preenchida com a cor do traço"
         );
     }
+}
+
+/// A largura do `viewBox` exportado.
+fn largura_do_viewbox(texto: &str) -> f64 {
+    let vb = texto.split("viewBox=\"").nth(1).expect("viewBox");
+    let nums: Vec<f64> = vb
+        .split('"')
+        .next()
+        .expect("fecha")
+        .split_whitespace()
+        .map(|n| n.parse().expect("número"))
+        .collect();
+    nums[2]
+}
+
+/// **A moldura cobre o que a PILHA pinta** (dono 02/11, auditoria contra a pilha F45): a margem lia só
+/// o traço de base — uma camada de traço grossa e deslocada saía cortada do ficheiro.
+#[test]
+fn the_frame_covers_a_thick_offset_stroke_layer() {
+    let mut nu = VecScene::new();
+    let id = quadrado(&mut nu, 10.0);
+    nu.path_mut(id).expect("forma").stroke = None;
+    let w0 = largura_do_viewbox(&svg(&nu, &VecXforms::new(), &sempre_nao, &sempre_nao).texto);
+
+    let mut scene = VecScene::new();
+    let id = quadrado(&mut scene, 10.0);
+    let p = scene.path_mut(id).expect("forma");
+    p.stroke = None;
+    let mut e = ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 20.0));
+    e.offset = [30.0, 0.0];
+    p.paints = vec![e];
+    let w = largura_do_viewbox(&svg(&scene, &VecXforms::new(), &sempre_nao, &sempre_nao).texto);
+    // O quadrado de 20 mede `w0` com uma unidade de folga de cada lado; o miolo pinta de −10 a 10
+    // e a camada (o quadrado em 20..40, caneta de 20) de 10 a 50: 60 unidades.
+    let por_unidade = w0 / 22.0;
+    assert!(
+        w >= 60.0 * por_unidade * 0.99,
+        "viewBox {w} < {}",
+        60.0 * por_unidade
+    );
 }

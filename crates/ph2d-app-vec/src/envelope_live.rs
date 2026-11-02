@@ -1,34 +1,7 @@
 //! **O host do Envelope vivo** (ADR-0129) — um **container** cujos filhos têm a geometria deformada
 //! por uma gaiola de 4 cantos comum.
 //!
-//! Espelho do [`crate::morph_live`], e diferente no que deforma: o morph interpola DUAS fontes e
-//! cacheia um `Plan`; o envelope deforma N fontes (1..) por um mapa `R2→R2` (a homografia do gesto
-//! Quad, [`ph2d_vec_envelope::QuadWarp`]). A entidade que carrega o [`VecEnvelope`] é um **container**
-//! (sem `VecPathRef`); cada FILHO tem o `VecPath` da forma **cozida** (deformada) na cena, re-escrita
-//! *em lugar* a cada frame.
-//!
-//! # Um só modelo: o container sempre (`N=1` inclusive)
-//!
-//! Um envelope de uma forma só é o caso `N=1`; um de várias é o *warp group* do Affinity. Modelar o
-//! de-um como path-com-componente e o de-vários como container seriam DOIS modelos do mesmo fato — e
-//! recook/gesto/gizmo teriam de perguntar "qual dos dois é este?" em cada sítio. Aqui há um só: o
-//! **container**, com 1..N filhos.
-//!
-//! # A fonte + a gaiola vivem em LOCAL do CONTAINER; a POSE vive no `Transform` (ADR-0111)
-//!
-//! Ao criar, cada forma-fonte tem a sua geometria COZIDA **assada em MUNDO** e guardada como a fonte
-//! do filho; o filho é reparentado sob o container e posto na **identidade** (`Transform::IDENTITY`),
-//! e o container nasce na identidade também — então, no nascimento, **container-local == mundo**. O
-//! recook desserializa cada fonte, deforma pela gaiola (uma só, comum) e escreve o resultado LOCAL no
-//! path de cada filho. Quem leva tudo ao MUNDO é o `Transform` do **container** — e é por isso que o
-//! **gizmo de sprite move/gira/escala o envelope inteiro no Select** (Fatia 2): a geometria dos
-//! filhos é estável, só a pose do container se move, e o recook **preserva a pose**.
-//!
-//! ⚠️ **Por que não dobra (ADR §3.3):** o Blend dobra porque a geometria dele depende de FONTES que
-//! se movem; a do envelope é função pura de `corners`+fontes FIXOS, então no Select nada a muda e o
-//! gizmo age sobre uma bbox estável. Arrastar os cantos (que MUDA a geometria) é Node-only. O
-//! `settle_origins` PULA os filhos (têm `ChildOf` — geometria já em mundo) e o container (não está no
-//! mapa de paths).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `envelope_live.rs`.
 
 use ph2d_ecs::{
     ChildOf, Entity, EnvelopeKind, Name, RootOrder, SimWorld, Transform, VecEnvelope,

@@ -4,6 +4,8 @@ Verbatim: o `//!` de cabeçalho de cada módulo abaixo, menos o 1.º parágrafo 
 do código pela catraca de LOC por crate (`the_shell_only_shrinks_and_every_app_crate_too`, tecto `93 637`) e
 pela lei do CLAUDE.md §2 («o porquê histórico vive no doc, com link; o código diz a lei»). Os links
 intra-doc do rustdoc (`[`crate::x`]`) ficaram como texto. Texto à data do commit `d95d9a1bea`.
+2.º lote (F48, 02/11, o Expand sobre a pilha: +545 sobre o tecto): de `smoke_bone_paint.rs` em diante, texto à
+data do commit `8810c8838d`.
 
 ## `symmetry_live.rs`
 
@@ -797,3 +799,773 @@ O Z sobrepõe a árvore, então a sub-árvore de uma moldura **deixou de ser con
 um filho com Z alto sai de dentro do intervalo e não é recortado. Resolver o intervalo contra o
 DFS o descreveria onde a forma já não está — e um intervalo que aponta para o path errado é um
 `pop_layer` no lugar errado.
+
+## `smoke_bone_paint.rs`
+
+> ⭐⭐⭐ **UM CANVAS DO PAINTER PRESO A OSSOS, E DOBRADO** — `PH2D_VEC_BONE_PAINT_SMOKE=1`.
+
+# Por que esta cena existe
+
+⛔⛔ **A cura das guias chatas (item 4 do dono, 2026-09-15) não tinha CENA.** A grelha, os selos de
+operação e a caixa do gizmo passaram a seguir a arte dobrada, está tudo gateado — e **nenhuma cena
+deste app punha o Painter a pintar por cima de arte dobrada por ossos**, logo o dono não tinha como
+olhar para a correcção. *Uma cura que ninguém pode ver é uma cura que ninguém julga.*
+
+⚠️ **Ela é da família do VECTOR e não da do Painter**, e não é arrumação: a `ph2d-app-painter` não
+conhece o esqueleto — nem deve. Quem tem as duas metades é esta família, que já possui a cena dos
+ossos ([`crate::smoke_bone`]).
+
+# ⛔⛔ A 1.ª REDACÇÃO DESTA CENA FOI REPROVADA PELO DONO («ruim», 2026-09-15), E A CAUSA É ESTA
+
+Ela montava um canvas **QUADRADO** de `512²` com os três ossos deitados ao meio dele, e a arte
+saía **RASGADA**: lascas brancas e pedaços do traço pintado deslocados do resto.
+
+⚠️⚠️ **Não era dobra a mais — era arte FORA DO ALCANCE.** O raio de um osso é o **comprimento
+dele** vezes a `strength` ([`ph2d_skeleton::SkinBone::new`]), e um ponto fora do raio de TODO osso
+é **órfão**: ele salta, em salto seco, para o osso mais próximo ([`ph2d_skeleton::Skin::weights_at`],
+o *point binding* do Moho). Um salto seco num mapa contínuo é **um rasgo**, e é exactamente o que a
+foto mostrava.
+
+⛔⛔⛔ **A ARITMÉTICA PROÍBE O QUADRADO, e é por isso que afinar o ângulo nunca ia curar:** com `n`
+ossos deitados ao longo da largura `W`, cada osso mede `W/n` e portanto **alcança `W/n`**; a arte
+sobe `W/2` acima do eixo. `W/2 < W/n` só é verdade com `n < 2`. ⇒ *um quadrado com uma corrente de
+três ossos tem uma banda órfã por construção, em qualquer ângulo e em qualquer tamanho.*
+
+⚠️⚠️ **E eu citei a RÉGUA ERRADA ao escolher os `25°`.** O doc dizia que o ângulo estava «bem abaixo
+do ponto em que o mapa dobra sobre si mesmo», e isso era **verdade e irrelevante**: a
+[`ph2d_skeleton::fold`] mede **INVERSÃO**, e a coluna `inverted` lia `0,00 %` sobre a foto do rasgo.
+Quem gritava era a coluna `orphan`, a **`33,85 %`** — a coluna que o doc daquela régua chama de
+*anti-vacuidade* e que eu não olhei. *Uma régua com duas colunas responde a duas perguntas, e ler a
+errada é ler zero sobre o defeito que está no ecrã.*
+
+## A medição que decidiu a forma (3 ossos, `strength` no default do produto, dobra `25°`)
+
+| canvas | meia-altura | alcance do osso | `det_min` | invertida | **ÓRFÃ** |
+|---|---:|---:|---:|---:|---:|
+| `512×512` (a 1.ª redacção) | 256 | 170,67 | 0,2622 | 0,00 % | **33,85 %** |
+| `512×384` | 192 | 170,67 | 0,2573 | 0,00 % | **12,31 %** |
+| `512×336` | 168 | 170,67 | 0,2114 | 0,00 % | 0,00 % |
+| **`512×320`** (esta cena) | **160** | **170,67** | **0,2497** | **0,00 %** | **0,00 %** |
+| `512×288` | 144 | 170,67 | 0,2510 | 0,00 % | 0,00 % |
+| `512×352` | 176 | 170,67 | 0,1241 | 0,00 % | 4,12 % |
+
+⛔⛔ **E a cura «óbvia» — alargar o alcance — foi MEDIDA e é PIOR pelo meio:** com o quadrado de
+`512²`, a `strength 1.0` dá `det_min 0,2622` com `33,85 %` de órfãs, a `1.5` dá **`det_min −1,2829`
+com `0,32 %` da arte DO AVESSO**, e só a `2.0` volta a limpar (`0,4750`). *Um alcance que cobre
+metade da banda órfã mistura um osso que chega com um vizinho que salta, e a mistura inverte-se —
+chegar a meio é pior que não chegar.* ⇒ a alavanca desta cena é a **FORMA da arte**, não um knob.
+
+# O que ela monta, e por que cada peça está lá
+
+| peça | o que ela serve |
+|---|---|
+| um **canvas branco opaco**, largo e baixo | é o sujeito do Painter; o branco é o fundo em que as guias se leem, e é ele que dá tinta à malha |
+| **três ossos** deitados ao longo dele | três porque com dois a dobra tem um vinco só, e o que o olho julga é a CURVA |
+| a **altura DERIVADA** do alcance de um osso | ver [`ALTURA_PX`] — é isto que impede a banda órfã, e não um número escolhido |
+| o canvas **PRESO** a eles | é isto que faz a sprite ser desenhada como MALHA, e sem malha não há o que corrigir |
+| os dois últimos ossos **rodados** | ⚠️ a dobra é feita DEPOIS de prender: o repouso é o instante do bind, e dobrar antes não dobraria nada |
+
+⛔ **Nada mais é armado** — nem a ferramenta, nem o pincel, nem a grelha. É a lei que a cena da
+máscara já escreveu: *uma cena que arma estado por baixo da mesa salta exactamente a costura que
+ela devia provar, e esconde um default mau.*
+
+# ⭐⭐⭐ O QUE ELA DEMONSTRA MUDOU EM 2026-09-15, POR ORDEM DO DONO
+
+*«Inative a possibilidade de pintar sobre malha deformada por ossos. SE o usuário entrar no modo
+Painter em imagem deformada por ossos a imagem deixa a deformação para ser pintada. Ao sair do
+modo painter, ela retorna a deformação.»*
+
+⇒ a cena passou a demonstrar o **ciclo** (dobrado → achata ao pegar no pincel → pinta → dobra
+outra vez ao largá-lo, com a tinta a dobrar junto), e **não** mais as guias a seguir a curva.
+
+⚠️⚠️ **E a consequência está NOMEADA e é do dono decidir:** o chrome do Painter que passou a
+seguir a arte dobrada (a grelha, os selos, os gizmos, os contornos das formas — item 4) **deixa
+de ter sujeito enquanto se pinta**, porque durante a pintura não há dobra nenhuma. ⛔ Ele não foi
+apagado e não custa nada: sem malha o [`ph2d_app_painter::canvas_map::CanvasMap`] degenera no
+afim do quad, **ao bit**. Fica **dormente** — e volta a valer no dia em que pintar sobre a dobra
+for permitido. *Um roteiro de smoke que continuasse a mandar procurar a curva debaixo do pincel
+seria uma cena a ensinar o contrário do que acontece.*
+
+# ⭐⭐⭐ E EM 2026-09-16 A ORDEM VIROU REGRA (fila do esqueleto, F6-s)
+
+*Toda* ferramenta que pinta, apaga ou deforma pixels endireita a imagem (a Remoção de fundo
+incluída), **menos o Liquify**, que trabalha sobre a dobra. ⇒ o roteiro passou a ter as TRÊS
+metades: o Painter endireita, o Liquify volta a dobrar (e o anel dele segue a dobra — o chrome
+dormente acorda ali), a Remoção de fundo endireita outra vez. ⭐ E as de TAMANHO/MARGEM (a
+resposta do dono no mesmo dia): o Padding endireita e avisa; o Make Square — o canvas desta cena
+não é quadrado — solta a imagem dos ossos, e o Ctrl+Z devolve-a.
+
+⚠️ **Se a linha `[bone-paint-smoke]` não aparecer, PARE:** a cena não montou.
+
+## `morph_machine_drive.rs`
+
+> **A MÁQUINA DE MORPH A CORRER** (plano 32 W5) — quem faz a forma virar a outra.
+
+# ⚠️ Ela só corre num MODO, e isso não é conservadorismo
+
+A condição de uma seta é uma **acção do Input Map**, isto é, uma tecla. Se a máquina escutasse
+enquanto o artista edita, carregar em `Z` faria a forma mudar **e** o que quer que o `Z` faça no
+editor — os dois, sem que nada na tela explicasse. É o argumento do [`crate::render_loop::ui_preview`]
+(*"um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável"*)
+com outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
+
+# ⛔⛔ O PLAYHEAD ERA A PORTA E DEIXOU DE SER — e a diferença é uma medição, não um gosto
+
+A W5 escreveu que *"o modo já existe: neste editor, o jogo a correr é o playhead a andar"*, e
+era um argumento bom sobre a coisa errada. **O playhead não tranca o teclado do editor.** Com
+ele a andar, as teclas continuam a chegar aos atalhos — então a mesma tecla morfa a forma **e**
+faz o que ela faz no editor, que é exactamente o que a nota dizia estar a evitar.
+
+Enio, 2026-08-25, depois do smoke: *"precisamos de um modo preview (com botão) como o de states
+de animação pois senão temos conflitos de atalhos (como setas do teclado movendo as formas)"*.
+
+⇒ a porta é o **interruptor `Preview`** da seção *Morph States*, e ele **toma o teclado**
+(`input_dispatch::keyboard`, logo depois do retrato dos dispositivos e antes de todo atalho).
+⛔ **Uma porta, não duas:** deixar o playhead a dirigir também manteria o conflito viva na porta
+que não tranca nada — e *duas portas para o mesmo modo divergem em silêncio*.
+
+⚠️ *Um modo cuja entrada não exclui os outros consumidores não é um modo — é mais um produtor.*
+
+# ⚠️ O que ela escreve é PRÉ-VISUALIZAÇÃO, e o undo não a vê
+
+A máquina escreve **dois** campos do `VecMorph` — o par e o `t` —, e os dois passam pelo ledger
+([`crate::preview_drive`]). ⛔ **O `Driver::MorphT` sozinho não bastava:** ele cobre o `t` e
+**só** o `t`, e sem o `MorphPair` uma transição durante a reprodução entraria no undo como se o
+artista tivesse re-ligado as fontes à mão.
+
+# ⚠️⚠️ E parar o relógio NÃO devolve a forma autorada — a nota anterior estava ERRADA
+
+Ela dizia *"ao largar as máquinas a cena volta ao que o artista desenhou"*. **Não volta**, e a
+lei que manda é a da [`ph2d_preview_drive::PreviewDrive::settle`]: o ledger repõe o autorado
+**dentro da fotografia** enquanto o motor conduz, e no primeiro quadro em que ele **para** a
+entrada morre ⇒ a captura seguinte vê o vivo, difere do baseline e regista **UM** passo. É o
+*«desfaz a corrida»*, e aqui ele significa: *sair do modo COMPROMETE a forma em que se ficou*.
+
+⚠️ **Isso é o comportamento certo** (o artista carrega em ▶, sai, e o objecto ficou onde ele o
+pôs — desfazível num Ctrl+Z) **e tem uma consequência que custou o report de 2026-08-26**: a
+máquina seguinte nasce **depois** de o componente já estar noutra forma. Por isso ela é
+**semeada pelo mundo** ([`open`]) e não por `graph.start()`.
+
+## `smoke_bone_envelope.rs`
+
+> ⭐⭐⭐ **A CENA DO ENVELOPE** — `PH2D_VEC_BONE_SMOKE=2`, a cena que o dono pediu por escrito
+> (2026-09-18: *«Testei aqui e não vi em nenhum dos casos o envelope fazer diferença na
+> deformação. […] Melhor montar uma cena específica para me mostrar isso»*).
+
+# ⛔⛔⛔ O report estava CERTO, e mais certo do que a minha resposta lhe deu
+
+Eu respondi-lhe que *«numa forma vectorial o envelope manda como sempre»*, e a medição derruba-o:
+o `ph2d_vec_skin::pesos::pesos_do_caminho` resolve os mesmos *Bounded Biharmonic Weights* sobre o
+INTERIOR de um contorno fechado desde 2026-09-15 — logo o alcance é inerte ali também. Medido
+pela porta do produto, variando o `strength` do osso do meio de `0,1` a `8,0`
+([`ph2d_skeleton_live`], `sonda_do_envelope_no_vector_tests`):
+
+| forma | fechada? | amplitude da deformação |
+|---|---|---:|
+| `Rectangle` · `Ellipse` · `Star` · `Polygon` | fechada | **`0,000000`** |
+| `Line` · `Arc` · `Spiral` | ABERTA | `2,03` · `4,25` · `2,05` |
+
+⇒ **a mídia nunca foi a pergunta certa.** O envelope manda onde o padrão-ouro **não resolveu**, e
+isso acontece num sítio só: um caminho **ABERTO** não tem interior, logo não tem domínio para a
+energia, logo não tem pesos guardados — e a deformação cai na lei euclidiana, que é a que lê o
+alcance.
+
+# O que a cena monta, e por que cada peça está lá
+
+Três fileiras, a MESMA corda, a MESMA corrente de três ossos, a MESMA dobra. Só o que está
+escrito na coluna da direita muda:
+
+| fileira | o que ela é | o envelope |
+|---|---|---|
+| **`Corda (alcance 1)`** | um traço ABERTO, com o alcance de fábrica | VIVO — mancha e alça à vista |
+| **`Corda (alcance 4)`** | o MESMO traço, com o alcance do osso do meio em `4` | VIVO — e a corda sai **noutro sítio** |
+| **`Barra preenchida`** | a mesma faixa, FECHADA | INERTE — sem mancha e sem alça |
+
+⭐⭐ **As duas primeiras são um par, e é ele que responde ao report:** elas diferem num número só,
+logo *a diferença que se vê entre as duas É o envelope*. ⛔ Uma cena com uma corda só obrigaria o
+dono a confiar na memória da pose anterior, que é exactamente o que falhou no smoke dele.
+
+⚠️ **A terceira fileira é a metade NEGATIVA, e vale tanto como as outras duas:** ela é onde a
+segunda queixa dele (*«o gizmo do envelope fica sempre visível mesmo quando não é usado?»*) se
+lê curada — ali o osso do meio não tem mancha nenhuma, porque ali o alcance não decide nada.
+
+# ⚠️ Os números desta cena são DERIVADOS, e a tabela está no código
+
+A dobra, o comprimento da corda e o alcance forte saem de uma varredura de legibilidade, não de
+gosto — ver [`DOBRA`], [`CORDA_M`] e [`ALCANCE_FORTE`].
+
+## `smoke_appearance.rs`
+
+> ⭐⭐⭐ **A FORMA TEM OPACIDADE E MISTURA PRÓPRIAS** — `PH2D_VEC_APPEARANCE_SMOKE=1`.
+
+# O que a cena fecha
+
+Até 2026-09-05 uma forma vectorial não tinha nem uma nem outra: o painel oferecia duas rows
+`Opacity` que são o **alfa da tinta que a ferramenta tem na mão** (elas semeiam a forma seguinte
+e re-vestem a selecção), e mistura não havia em lado nenhum — `grep blend_mode` nas crates do
+vector dava vazio. É o item 2 do estudo 42, e a metade que faltava ao report do Enio de 04/09
+(*"o painel não mostra..."* — não havia o que mostrar).
+
+# A cena (unidades de mundo, ~±9)
+
+Uma **faixa de fundo** com três blocos de cor (frio · quente · claro) e, por cima dela, uma
+fileira de discos — cada um com um **modo de mistura** diferente, na ordem em que o dropdown os
+oferece. Mais dois quadrados iguais à direita: o de cima **opaco**, o de baixo a **40 %**.
+
+⚠️ **O fundo é load-bearing:** um modo de mistura só existe contra o que está por baixo. Sobre
+o fundo da tela todos os modos desenham a mesma coisa, e a cena ensinaria que a feature não
+funciona.
+
+# O que provar
+
+1. **Os discos não são todos iguais** — cada um compõe-se com a faixa de outra maneira (o
+   `Multiply` escurece, o `Screen`/`Add` clareiam, o `Difference` inverte).
+2. **O quadrado de baixo é translúcido** e o de cima não, com a MESMA cor autorada: a
+   opacidade é do OBJECTO, e não da tinta.
+3. **O painel edita as duas** — pegue a ferramenta Vector, clique numa forma, e a seção
+   **Appearance** aparece com *Opacity* e *Blend*. Arrastar o slider muda a forma na hora;
+   escolher outro modo na lista muda como ela se compõe.
+4. **Ctrl+Z desfaz** o arrasto inteiro num passo só.
+
+⚠️ Se a linha `[vec-appearance-smoke]` não aparecer, PARE: a cena não montou.
+
+## `envelope_live.rs`
+
+> **O host do Envelope vivo** (ADR-0129) — um **container** cujos filhos têm a geometria deformada
+> por uma gaiola de 4 cantos comum.
+
+Espelho do [`crate::morph_live`], e diferente no que deforma: o morph interpola DUAS fontes e
+cacheia um `Plan`; o envelope deforma N fontes (1..) por um mapa `R2→R2` (a homografia do gesto
+Quad, [`ph2d_vec_envelope::QuadWarp`]). A entidade que carrega o [`VecEnvelope`] é um **container**
+(sem `VecPathRef`); cada FILHO tem o `VecPath` da forma **cozida** (deformada) na cena, re-escrita
+*em lugar* a cada frame.
+
+# Um só modelo: o container sempre (`N=1` inclusive)
+
+Um envelope de uma forma só é o caso `N=1`; um de várias é o *warp group* do Affinity. Modelar o
+de-um como path-com-componente e o de-vários como container seriam DOIS modelos do mesmo fato — e
+recook/gesto/gizmo teriam de perguntar "qual dos dois é este?" em cada sítio. Aqui há um só: o
+**container**, com 1..N filhos.
+
+# A fonte + a gaiola vivem em LOCAL do CONTAINER; a POSE vive no `Transform` (ADR-0111)
+
+Ao criar, cada forma-fonte tem a sua geometria COZIDA **assada em MUNDO** e guardada como a fonte
+do filho; o filho é reparentado sob o container e posto na **identidade** (`Transform::IDENTITY`),
+e o container nasce na identidade também — então, no nascimento, **container-local == mundo**. O
+recook desserializa cada fonte, deforma pela gaiola (uma só, comum) e escreve o resultado LOCAL no
+path de cada filho. Quem leva tudo ao MUNDO é o `Transform` do **container** — e é por isso que o
+**gizmo de sprite move/gira/escala o envelope inteiro no Select** (Fatia 2): a geometria dos
+filhos é estável, só a pose do container se move, e o recook **preserva a pose**.
+
+⚠️ **Por que não dobra (ADR §3.3):** o Blend dobra porque a geometria dele depende de FONTES que
+se movem; a do envelope é função pura de `corners`+fontes FIXOS, então no Select nada a muda e o
+gizmo age sobre uma bbox estável. Arrastar os cantos (que MUDA a geometria) é Node-only. O
+`settle_origins` PULA os filhos (têm `ChildOf` — geometria já em mundo) e o container (não está no
+mapa de paths).
+
+## `width_handles.rs`
+
+> **O WIDTH TOOL** — as alças de largura na curva (plano 25 §5, ADR-0148).
+
+O W1c deu a representação (a lista de paradas) e o motor vivo; o W1d deu uma fonte automática
+(o gesto do lápis). Este é o terceiro escritor do MESMO perfil: **a mão do artista, ponto a
+ponto** — o *Width Tool* do Illustrator.
+
+# O gesto, e por que ele é um MODO
+
+Uma alça por parada, **fora da curva**, à distância que a fita de facto tem ali. Arrastar:
+afastar da curva ENGROSSA, aproximar AFINA, e andar ao longo dela MOVE a parada. Clicar na
+curva onde não há alça **acrescenta** uma parada ali; o botão direito sobre uma alça a
+**apaga**.
+
+É um modo (o pill **Width**) e não uma alça escondida no Node pela razão que o Fillet/Chamfer
+já pagou: no Node as alças competiriam com as âncoras — e uma parada de multiplicador pequeno
+senta a milímetros da curva, ou seja em cima delas. O Illustrator faz o mesmo (Shift+W).
+
+# Nada aqui inventa uma segunda maneira de guardar a largura
+
+Toda escrita passa por [`crate::profile_live::arm`], a MESMA porta dos quatro sliders e do
+lápis. O que muda é só quem calcula a lista — e é por isso que o preview, o Apply e as três
+rotas de autoria não podem divergir: há um motor (`power_stroke_layers`) e um lugar onde o
+perfil mora (o componente).
+
+# A primeira alça nasce do NEUTRO
+
+Numa forma sem perfil, o 1º clique cria a lista uniforme (duas paradas, `1.0` nas pontas) e
+**só então** arrasta — o desenho não salta no toque. É a mesma lei do Fillet, que transforma um
+ponto suave em quina antes de arredondá-lo: *a ferramenta faz, dentro do gesto, o passo que o
+artista faria à mão*.
+
+## `smoke_svg.rs`
+
+> ⭐⭐⭐ **IMPORTAR SVG** — `PH2D_VEC_SVG_SMOKE=1` (estudo 42, item 3).
+
+# O que a cena fecha
+
+Até 2026-09-05 este app **exportava** uma curva e não sabia **ler** nenhuma: o
+`ph2d-imageio-svg` validava o ficheiro e devolvia um documento vazio, *"intentionally empty"*.
+Nenhum acervo de artista entrava.
+
+# ⭐ A cena ESCREVE o próprio `.svg`
+
+É a lei do smoke do `.ase`: testar o importador não pode depender de o operador ter um ficheiro
+à mão. Ele é escrito no directório temporário, o caminho é impresso (para o Enio o poder
+**arrastar outra vez**, ou abrir noutro programa e comparar) e depois entra pela **mesma porta**
+que o arrastar-e-largar usa — ⛔ não por um atalho de teste.
+
+# O que o ficheiro carrega, e porquê cada coisa
+
+| No ficheiro | O que prova |
+|---|---|
+| Um triângulo com a ponta em CIMA | a lei dos eixos (o SVG mede o Y ao contrário do mundo) |
+| **Dois** quadrados dentro de dois `<g transform>` | a pose ANINHADA chega certa, e o `<g id>` vira um GRUPO na Hierarquia |
+| Uma curva `Q` (quadrática) | a elevação a cúbica é exacta |
+| Um `<linearGradient>` | a rampa viaja com a geometria |
+| Um traço `stroke-dasharray` | o tracejado entra em múltiplos da largura |
+| Um `<g opacity mix-blend-mode>` sobre uma barra | a opacidade e a mistura da v19 do schema |
+| Um `<text>` | ⛔ o que NÃO entra sai NOMEADO, e não em silêncio |
+
+⚠️ **O `grupo-aninhado` tem DOIS filhos de propósito.** O verbo de agrupar desta casa exige dois
+membros (a mesma regra que o artista lê no menu), então um `<g>` com um filho só é achatado — e
+a cena não mostraria grupo nenhum na Hierarquia, que é metade do que ela existe para provar.
+
+## `vec_clip_edit.rs`
+
+> **O RECORTE da seleção** — a projeção que o painel lê, e o chip que a edita.
+
+Módulo irmão do [`crate::vec_frame_edit`], e o corte é por PERGUNTA, não por tamanho: aquele
+responde *"qual é a moldura desta seleção?"* (a seção Frame, o auto layout, as âncoras), este
+responde *"quem recorta nesta seleção?"*. Foram a mesma pergunta enquanto só uma moldura podia
+recortar; deixaram de ser em 2026-08-21, quando o Enio pediu *"a feature Clip Content para
+qualquer forma vetorial fechada"*.
+
+# A regra de elegibilidade é a MESMA, com um candidato a mais
+
+*Qual forma selecionada contém tudo o que está selecionado?* — o inverso da expansão de
+seleção, herdado do `vec_frame_edit` inteiro (inclusive o `is_within`, que é dele). O que muda
+é só o filtro do candidato: era *"tem `VecFrame`"*, é *"o caminho é FECHADO"*.
+
+O que ela recusa segue valendo, e pelas mesmas razões: **um filho sozinho** não oferece o chip
+(o artista selecionou a forma, não o contêiner); **dois irmãos** não têm resposta única;
+**contêiner + forma solta** editaria o que o artista não está a olhar.
+
+# Por que FECHADO
+
+⚠️ Um caminho aberto não tem interior. O Vello recortaria à mesma — ele fecha a região
+implicitamente para preencher — mas por uma silhueta que o artista **não desenhou**, e o
+resultado seria arte a sumir atrás de uma fronteira invisível. É o mesmo predicado
+(`VecPath::closed`) com que a booleana viva e o Blend recusam caminhos abertos, e por isso o
+filtro vive AQUI, na fronteira de autoria, e não no componente: o `VecClipContent` descreve
+uma intenção, e quem decide onde ela pode ser expressa é quem oferece o controlo.
+
+## `smoke_bone.rs`
+
+> ⭐⭐⭐ **O DESENHO GANHA OSSOS** — `PH2D_VEC_BONE_SMOKE=1` (estudo 42, item 5).
+
+# O que a cena fecha
+
+Até 2026-09-06 um personagem deste editor só animava como **recorte de papel**: a timeline movia
+a POSE de uma forma inteira, e mais nada. Dobrar um braço exigia desenhá-lo outra vez.
+
+# A cena, e o que cada peça prova
+
+| O quê | O que ela prova |
+|---|---|
+| **O BRAÇO** (barra com 3 ossos, já presa) | girar um osso DOBRA o desenho, e a base fica onde está |
+| **O TENTÁCULO** (barra com 6 ossos, já presa) | a cadeia inteira: girar a RAIZ leva tudo, girar a PONTA leva só a ponta — a cinemática é a hierarquia |
+| **A FOLHA SOLTA** (uma forma e um esqueleto **não ligados**) | o gesto do *Bind*: seleccionar a forma, carregar no botão, e ela passa a obedecer |
+| **A BIFURCAÇÃO** (dois esqueletos pequenos, no meio da metade de baixo) | o `From Chain` curva o osso até ao filho — e com DOIS filhos a ponta fica recta (a pergunta ao dono de 2026-09-16) |
+
+⚠️ **As duas primeiras são ligadas pela cena**, e é de propósito: sem uma peça que já obedece, o
+primeiro gesto do artista seria montar um rig do zero para só então descobrir se ele funciona.
+
+⚠️ Se a linha `[vec-bone-smoke]` não aparecer, PARE: a cena não montou.
+
+# ⚠️ Ela monta em DOIS tempos, e não é conforto
+
+Prender uma forma exige a **entidade** dela, e quem a cria é o `vec_entities::sync`, que corre
+**depois** deste prólogo. Ligar no mesmo quadro em que se desenha encontraria o mapa vazio e
+prenderia zero formas — em silêncio.
+
+## `layout_edit.rs`
+
+> **O AUTO LAYOUT da seleção** — a projeção que o painel lê, e a porta que o edita (plano UI/UX
+> W2, ADR-0153).
+
+Irmão do [`crate::vec_frame_edit`], e com a mesma divisão de donos: a verdade mora no ECS
+(`VecLayout` no pai, `VecLayoutItem` no filho) e isto é o que a shell publica por frame. O
+painel não alcança o mundo — se alcançasse, a resposta que DESENHA o chip aceso divergiria da
+que HONRA o clique.
+
+# Uma tabela, duas direções
+
+⚠️ Os três rádios (direção · alinhamento · distribuição) precisam da mesma correspondência
+`enum ↔ chip` lida nos dois sentidos: **para publicar** o aceso e **para resolver** o clique.
+Escrevê-la duas vezes — um `match` que pinta e outro que honra — é como uma variante nova entra
+só numa delas, e o sintoma é um chip que acende e não faz nada. Aqui cada rádio é **um array**,
+e as duas perguntas são varreduras dele.
+
+# Quem é o SUJEITO da seção
+
+Duas metades, resolvidas por portas diferentes porque são perguntas diferentes:
+
+- **a moldura** é a que CONTÉM a seleção — a MESMA porta do W0
+  ([`crate::vec_frame_edit::frame_of_selection`]), que já sabe desfazer a expansão de seleção
+  dos contêineres;
+- **o filho** é a seleção quando ela é UMA forma cujo pai flui. Uma moldura aninhada responde
+  às duas, e é isso que faz os dois blocos aparecerem juntos nela.
+
+## `ui_state_bridge.rs`
+
+> **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
+
+# O que esta ponte dirige, e o que ela deliberadamente NÃO dirige
+
+Ela dirige o botão **Show**: o artista pede um papel e a cena **transita** até ele, com a
+duração que ele autorou. É assim que ele vê o tween que gravou, em vez de apenas confiar que
+ele existe.
+
+⚠️ **Ela não é dirigida pelo mouse DAQUI, e as duas razões continuam de pé:** um hover que
+animasse a forma enquanto o artista trabalha tornaria o editor inutilizável (é por isso que o
+Figma põe a interação num **modo de apresentação** separado), e o undo deste editor é por
+**DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a cada passagem do
+rato.
+
+⇒ quem liga o rato é o **MODO DE PREVIEW** ([`super::ui_preview`], W7r): ele resolve as duas
+de uma vez — enquanto corre, o gesto de edição não existe e o undo não regista, e ao sair o
+mundo volta exactamente ao que era. Ele PEDE por esta mesma porta ([`request`]), então não há
+um segundo caminho para *"pôr a cena nesta pose"*.
+
+# O relógio é o do FRAME, e não um relógio próprio
+
+`advance(dt)` recebe o `dt` que o `FixedStep` já produziu. É a lição W4.T7 do Motion, onde o
+`MotionTransport` **morreu**: dois relógios divergem, e o modo de falha é a UI a andar noutra
+velocidade que a cena.
+
+## `snap_labels.rs`
+
+> **O NÚMERO do smart guide** — quanto vale a distância que a guia desenha
+> (plano 25 §9, o último item da tabela da W6).
+
+O segmento tracejado entre o ponto que encaixou e o ponto em que ele encaixou
+já dizia *com o quê* a forma alinhou. O que faltava era **quanto** — a
+pergunta que faz de um encaixe uma medição, e a razão de a W6 se chamar
+PRECISÃO.
+
+# Três donos, e NENHUM deles é este arquivo
+
+- **quais guias merecem número e onde ele pousa** — [`ph2d_vec_render::snap_labels`],
+  geometria pura, sem noção de unidade;
+- **que número, com que casas** — [`ph2d_editor_core::LengthDisplay`], a porta única
+  que a régua e o painel de Grid Snap também usam;
+- **como uma ficha é desenhada** — [`ph2d_editor_core::readout`], desde a C3 do estudo da UI viva.
+
+⚠️ O terceiro item dizia *«aqui, e só aqui»* até esta ficha ter deixado de ser a única: o corpo,
+a altura, o raio e as cores mudaram-se para a porta comum, e o que sobrou aqui é a largura
+MÍNIMA — o único número que é desta ficha e de mais nenhuma. Este arquivo existe porque desenhar
+exige `TextSystem` e a cena do frame; ele não decide nada que os outros decidem.
+
+# O sufixo
+
+⚠️ A régua imprime o número **NU** e este imprime **com sufixo** (`px`/`m`), e
+a diferença não é gosto: uma régua é entendida pela faixa graduada em que ela
+vive, e esta ficha **paira sobre a arte** sem eixo nenhum ao lado que a
+explique. É também o que torna a unidade ativa visível sem abrir o menu.
+
+## `pattern_live.rs`
+
+> **O Pattern Along Path VIVO na shell** — o cozimento do [`ph2d_ecs::VecPatternPath`] (plano 23).
+
+Espelho do [`crate::offset_live`]: o componente guarda a **relação** (a que caminho, com que
+espaçamento, de que lado) e as cópias são uma **função pura** dela, re-cozidas aqui por frame
+numa [`LiveGeometry`] e desenhadas por [`ph2d_vec_render::dispatch`] **no z do motivo**. A curva
+do motivo nunca é tocada — é ela que o modo Node edita; o que se vê são as cópias.
+
+# Duas entradas, e onde cada uma vem
+
+Um pattern precisa de DUAS geometrias: o **motivo** (a forma a estampar) e o **caminho-guia**.
+
+- O **guia** entra pela porta única [`crate::guide::guide_arc`] — cozido, assado em MUNDO,
+  virado em [`ph2d_vec_scene::arc_path::ArcPath`]. É a MESMA porta do texto em caminho.
+- O **motivo** é a `cooked()` do próprio path, em espaço **LOCAL** (a forma, não a pose). O
+  motor a recentra pelo bbox e a estampa nos pontos do guia. ⚠️ **A pose do motivo é ignorada
+  de propósito** (v1, plano 23 §3): as cópias substituem o desenho do motivo, então mexer no
+  gizmo dele não teria o que mostrar — é o mesmo *"mover o objeto vinculado não quer dizer
+  nada"* do texto e do conector. Para mudar o tamanho das cópias, edite os nós do motivo (a
+  fonte) ou o Spacing; escalar por gizmo é decisão de produto adiada.
+
+# Sem memo (v1), e é MEDIDO
+
+O [`crate::offset_live`] memoiza porque `offset_path` mede 0,4–1 ms. O [`pattern_along`] mede
+**0,597 ms para 200 cópias** (plano 23 §0), e uma cena típica tem muito menos. Uma cena PARADA
+com um pattern pagaria isso por frame — dentro do orçamento (3,6% de um frame de 60 fps), e não
+medido como problema. Memoizar exige detectar a mudança do guia (cozido + assado), e adicioná-lo
+sem uma medição que o justifique é otimização prematura ([[project_m5_perf_validated]]).
+
+## `widget_value.rs`
+
+> **A POSIÇÃO de um controle autorado sobrevive ao arquivo** (plano UI/UX W8b.4).
+
+Irmão do [`crate::widget_drive`], e o corte entre os dois é por PERGUNTA: ali mora *o que
+este controle DIZ à forma*, aqui *que posição este controle GUARDA*. Não são a mesma coisa e
+não se derivam uma da outra — um slider que o artista ainda não prendeu a forma nenhuma tem
+posição, e a opacidade é quantizada em 255 degraus que não descrevem um slider contínuo.
+
+# O reconcile, e por que ele tem DUAS direções
+
+O valor tem dois escritores legítimos, e ignorar qualquer um deles quebra alguma coisa:
+
+- o **PONTEIRO** escreve o `WidgetStore` (arrastar o slider);
+- o **MUNDO** escreve o componente (abrir um projeto · um Ctrl+Z · o smoke a semear a cena).
+
+⚠️ Um sentido só não basta, e as duas metades falham de formas diferentes: sem *store →
+componente* nada é salvo; sem *componente → store* o Ctrl+Z devolve o componente antigo e o
+painel continua a mostrar a posição nova — o controle e a arte discordariam sobre o mesmo
+número, na tela, sem nada dizer por quê.
+
+A desempate é um memo do que **já foi propagado** (`applied`), e a ordem é lei: **o artista
+ganha**. Se o store difere do memo, foi o ponteiro; senão, se o componente difere do memo, foi
+o mundo. Sem o memo os dois lados se sobrescreveriam em frames alternados e o slider tremeria.
+
+⚠️ **Escrever o componente é uma EDIÇÃO** — o undo global é por DIFF do mundo, então arrastar o
+slider vira um passo de undo. É o correto: mover um controle é um ato do artista, e o
+`post_frame_undo` já suprime enquanto o botão está preso ⇒ **um passo por gesto**, não por
+frame. (O que continua fora do undo é a ARTE: ela não é escrita por ninguém aqui.)
+
+## `connector_panel.rs`
+
+> **O painel edita o conector** — módulo irmão de [`crate::connector_live`] (que cuida do
+> COZIMENTO da rota) e espelho exato de [`crate::shape_params`] (que faz o mesmo pela
+> forma viva).
+
+O Enio pediu para calibrar `jetty` e `spread` **com o olho**. Isso impõe três coisas, e
+nenhuma delas é decoração:
+
+1. **O painel mostra o valor EFETIVO.** Os dois campos são `Option<f32>` no componente:
+   `None` = automático (o jetty acompanha o tamanho das caixas; o spread, o índice
+   paralelo). Um campo que nascesse vazio — ou em zero — faria o número SALTAR no
+   primeiro toque, para longe da linha que está na tela. Então a shell **resolve** o
+   efetivo aqui ([`effective`]) e publica; o painel só desenha.
+2. **Editar FIXA** (`None` → `Some(v)`): o auto→override de qualquer editor.
+3. **A edição atinge TODOS os conectores selecionados** ([`edit_selected_connectors`]) —
+   é o que permite calibrar o diagrama inteiro de uma vez, em vez de linha por linha.
+
+# A regra que este módulo existe para honrar: semente = amostra
+
+O número que o painel EXIBE e o número que o cozimento USA têm de sair da **mesma
+função**. Duas cópias da fórmula do automático = o painel mentindo no dia em que alguém
+ajustar uma delas (é a lição `feedback_derived_coordinate_seed_must_match_sample` — o
+tempo remapeado quebrou três vezes exatamente assim). Por isso a derivação vive em
+`ph2d_tool_vector::connector` (`auto_jetty` + `SPREAD_STEP`) e AMBOS os lados a
+importam: aqui, para exibir; o `connector_live`, para cozinhar.
+
+## `smoke_bone_media.rs`
+
+> ⭐⭐⭐ **AS TRÊS MÍDIAS PRESAS AO MESMO GESTO** — `PH2D_VEC_BONE_MEDIA_SMOKE=1` (F11, ordem do
+> dono de 2026-09-17: *«vamos lá: imagens em 9 fatias e folhas de quadros»*).
+
+Três imagens lado a lado, cada uma presa à corrente dela e dobrada pelo MESMO ângulo:
+
+1. **simples** — o CONTROLO, que já dobrava antes desta wave;
+2. **folha de quadros** (`4×1`, a mostrar o quadro `1`);
+3. **9-slice** esticado ao triplo da largura.
+
+# ⛔ Porque as três, e não só as duas que a wave curou
+
+⚠️ **O que a `2` e a `3` faziam antes era INVISÍVEL sem o controlo ao lado.** A folha dobrava —
+**errado**, e sem aviso nenhum (a silhueta era a dos quatro quadros espremida no sítio de um), e
+o 9-slice não dobrava de todo. *Sem a imagem simples ao lado, «dobrou» e «dobrou certo» leem-se
+igual.*
+
+# ⚠️ A arte de cada uma é escolhida para tornar o defeito LEGÍVEL
+
+- A folha tem **a MORDIDA num lado diferente por quadro**, e a união das quatro é o disco
+  inteiro. Com quatro formas iguais a silhueta errada seria indistinguível da certa — *uma cena
+  cuja arte não distingue os dois estados não prova nenhum*.
+- O 9-slice é uma **moldura oca**: o miolo é transparente, logo vê-se se o pedaço do meio foi
+  desenhado onde não devia.
+
+## `shape_params.rs`
+
+> O painel edita a forma VIVA — módulo irmão de [`crate::shape_live`] (que cuida do
+> COZIMENTO e do nascimento da forma; separados pelo teto de 600 LOC, HR-18).
+
+O mesmo modelo do texto (`vec_text_object` (na shell)): uma config do painel tem um
+**ALVO**. Aqui o alvo é a forma paramétrica SELECIONADA — os campos do painel deixam
+de ser só o *default de desenho* e passam a editar a forma que está na tela, **mesmo
+na ferramenta Select**. É o que fecha o ciclo Live Shape: desenhar um polígono de 5
+lados e depois torná-lo de 7.
+
+**Tudo aqui é genérico sobre o catálogo.** Nenhuma função conhece estrela, seta ou
+balão: elas falam `(ShapeKind, ShapeValues)` e consultam o descritor. Uma forma nova
+entra no catálogo e ganha painel, semente, edição, undo e save sem tocar neste arquivo.
+
+Três peças, na ordem em que a shell as usa a cada frame:
+
+1. [`shape_field_target`] — de quem são os campos (a 1ª forma paramétrica da seleção, ou
+   NINGUÉM quando o artista está armado para desenhar). A porta única; [`panel_shape_target`]
+   é a metade dela que só sabe olhar a seleção.
+2. [`shape_seed_focus`] + [`seed_shape_fields`] + [`ui_values_of`] — quando o PAR
+   `(alvo, tipo)` muda, os campos são semeados e a tool os ADOTA (painel, tool e objeto
+   passam a concordar; e a próxima forma desenhada os herda — modelo Figma).
+3. [`is_shape_field_id`] + [`apply_shape_field`] + [`edit_selected_shape`] — o
+   `SetValue` de um campo muta o `VecShape` e RE-COZINHA a geometria in-place.
+
+## `live_memo_probe.rs`
+
+> SONDA (`--ignored`): **quanto custa mover uma forma que tem geometria VIVA?**
+
+# A pergunta
+
+Todo produtor de `LiveGeometry` memoiza, e a §11 do plano 25 afirma que **a chave é o
+MUNDO — que é exatamente o que a animação move**. Se a afirmação valer, então arrastar (ou
+animar) uma forma com Contour/Offset/Perfil/Simetria re-cozinha o efeito **em todo quadro**,
+e o memo protege só a cena PARADA.
+
+⚠️ **A sonda mede pela porta do PRODUTO** (`recook`, o que o frame chama), nunca por um laço
+próprio sobre o kernel: esta casa já pagou três vezes por medir uma peça isolada e chamar o
+número de produto (doc 28 §5.40 do Painter, e a decomposição do `build_flow_field`).
+
+# As duas colunas, e por que a comparação é honesta
+
+- **PARADO** — `recook` N vezes com a MESMA pose. É o que o memo promete proteger.
+- **ANIMADO** — `recook` N vezes com a pose a TRANSLADAR. É o que a timeline faz a 60 Hz.
+
+Uma translação **não muda a forma do efeito**: o contorno de uma estrela deslocada é o
+contorno da estrela, deslocado. Então toda diferença entre as duas colunas é trabalho que a
+resposta não precisou.
+
+Rode: `cargo test -p ph2d-host-desktop --release live_memo -- --ignored --nocapture`
+
+## `ui_state_edit.rs`
+
+> **Os verbos dos ESTADOS de UI** (plano UI/UX W7) — irmão do [`crate::widget_edit`], mesma
+> divisão: o painel PEDE, a shell FAZ, e o que muda é o documento.
+
+# O que um estado GRAVA, e por que a sub-árvore inteira
+
+Um botão não é uma forma: é um retângulo, um rótulo e talvez um ícone. Gravar só o hospedeiro
+deixaria de fora justamente o que se move num hover. Então um estado captura o hospedeiro **e
+cada descendente que é uma forma**, que é o mesmo conjunto que a booleana, o gizmo e o z-order
+já chamam de *a sub-árvore* — [`ph2d_vec_entities::entities::subtree_paths`], nunca uma travessia
+própria.
+
+# O `Transform` LOCAL, nunca o de mundo
+
+Uma pose é relativa ao hospedeiro: arrastar o botão inteiro para outro canto da tela **não pode
+invalidar os estados dele**. O local é exatamente essa relação, e é o que a hierarquia já
+guarda — pedir mundo aqui obrigaria a re-derivar contra a pose do pai a cada gravação, e a
+primeira vez que alguém movesse o pai os dois números discordariam.
+
+⚠️ **`skew` fica de fora, e a ausência é decisão:** a pose interpola por T/R/S decompostos
+([`ph2d_ui_state::ObjectPose`]) justamente para não lerpar matriz; um skew autorado sobrevive
+porque nada aqui o escreve, mas ele **não anima** entre dois estados. Nomeado em vez de
+descoberto.
+
+## `smoke_bone_losango.rs`
+
+> ⭐⭐ **O LOSANGO DO PAINEL DO ESQUELETO** — `PH2D_VEC_BONE_SMOKE=8` (F40).
+
+O que está na tela, e o que cada coisa é:
+
+| O quê | O que é |
+|---|---|
+| **A barra laranja** (o braço da cena `=1`, já presa a 3 ossos) | o desenho que os ossos dobram e esticam |
+| **O osso do MEIO, já escolhido** | o «antebraço»: o painel *Skeleton* mostra os números DELE |
+| **A coluna de losangos** à direita de *Length*, *Segments* e das 4 alças da curva | cada losango diz se aquele número tem animação: cheio = há chave neste quadro · contorno = animado entre chaves · vazio = sem animação |
+| **A animação já gravada** | *Length* tem chave no quadro 0 (o comprimento desenhado), no 24 (1,5×) e no 48 (volta): no Play o osso azul do meio cresce e encolhe |
+
+⭐ **A LEI (dono 30/10, como o Blender/Spine):** no Play o osso do meio cresce, EMPURRA o osso
+seguinte (a raiz dele fica na ponta nova) e ESTICA a barra presa ao longo do eixo. A mão
+(`ph2d_app_skeleton::comprimento::aplica`) e a curva (`canais_osso::aplicar`) correm a MESMA lei
+(`ph2d_skeleton_live::comprimento::empurra_filhos`); a pele estica por `agora / bind`
+(`Tendon::comprimento`). ⛔ Até F40 o filho e a barra ficavam — a cena ensinava a lei velha.
+
+⚠️ O osso do meio nasce com 4 segmentos: com 1 a curva é inerte e o painel esconde as alças
+(`section_campos`), e a cena não as mostraria.
+
+Monta em dois tempos como a `=1`: prender exige a entidade da forma (`vec_entities::sync`).
+
+## `smoke_stack.rs`
+
+> ⭐⭐⭐ **N PREENCHIMENTOS E N CONTORNOS NUMA FORMA** — `PH2D_VEC_STACK_SMOKE=1` (estudo 42, item 4).
+
+# O que a cena fecha
+
+Até 2026-09-05 uma forma tinha **um** preenchimento e **um** contorno. Cada camada de estilo a
+mais obrigava a **duplicar o objecto** — e duas cópias de uma forma são duas geometrias que
+divergem no primeiro ponto que o artista mexe: ele corrige uma e a outra fica para trás.
+
+# A cena, e o que cada peça prova
+
+| O quê | O que ela prova |
+|---|---|
+| **A ETIQUETA**: uma estrela com contorno branco largo por baixo de um preto fino | a largura é POR CAMADA (é isto que o Figma não faz: lá as N tintas partilham uma geometria de traço) |
+| **O CARRIL**: uma linha com três contornos de larguras decrescentes | a pilha ordena-se, e o de cima desenha por último |
+| **A MISTURA**: um disco com um 2.º preenchimento em `Multiply` a 60 % | opacidade e mistura são de CADA camada, e compõem-se DENTRO da forma |
+| **A SOMBRA**: um cartão com o 2.º preenchimento DESLOCADO | ONDE cada camada desenha é da CAMADA (v21) — sem isso dois preenchimentos ocupam os mesmos pixels |
+| **O ADESIVO**: uma estrela branca cujo 2.º preenchimento ENCOLHE | o *offset de CAD* (v22) — a silhueta de UMA camada contrai/dilata, e é isso que faz um adesivo numa forma só |
+| O par de referência ao lado | a mesma arte feita à moda antiga (duas formas empilhadas) — para se ver que agora é **uma** |
+
+⚠️ Se a linha `[vec-stack-smoke]` não aparecer, PARE: a cena não montou.
+
+## `shape_live.rs`
+
+> Live Shapes — o nascimento e o re-cozimento de uma forma paramétrica.
+
+Uma forma desenhada **nasce viva**: ao soltar o gesto, a geometria é RE-COZIDA
+CENTRADA no local 0 (o pivô nasce no centro dela), o `Transform` recebe o centro do
+retângulo autorado, e a entidade ganha o componente `VecShape::Param` com o `kind` +
+os parâmetros. A partir daí a geometria é uma função pura deles — mudá-los re-cozinha
+a forma (é o que o painel faz, em [`crate::shape_params`]).
+
+**"Convert to Curves"** de uma forma paramétrica é só **descartar o `VecShape`**: a
+geometria já assada na cena vira um path cru, editável com a caneta. (O texto é o
+único que também explode — num grupo de paths por-letra.)
+
+O `w`/`h` vem do retângulo AUTORADO do gesto (`ShapeTool::bounds`), não da bbox da
+geometria: num polígono/estrela elas diferem (a bbox de um triângulo é menor que a
+elipse que o circunscreve), e é o retângulo que o usuário desenhou.
+
+Nada aqui sabe QUE formas existem — o cozimento é o do catálogo
+(`ph2d_vec_scene::cook`), a mesma porta que o preview do arrasto usa.
+
+## `stroke_paint.rs`
+
+> ⭐⭐ **COM QUE TINTA O TRAÇO DESENHA** — a porta única da fileira *Type* da secção *Stroke*
+> (plano 35, wave D).
+
+# Por que é um módulo próprio, e irmão do [`crate::stroke_present`]
+
+Aquele responde *"esta forma TEM traço?"*; este, *"com que tinta ele desenha?"*. São duas
+perguntas sobre o mesmo objecto, e a resposta de uma **pressupõe** a da outra — sem traço não há
+tinta de traço. Mantê-las juntas num ficheiro faria a segunda herdar o `Option` da primeira por
+acidente; separadas, cada uma declara o próprio `None`.
+
+# ⛔ Por que a lista tem DUAS variantes e não as cinco do preenchimento
+
+O renderer de traço não desenha gradiente. Um chip que produzisse um `StrokePaint::Linear`
+gravaria estado que **nada pinta** — o documento leria de volta uma tinta inalcançável, e o
+sintoma seria uma forma que abre diferente de como fechou. A recusa está escrita no
+[plano 35 §2.1](../../docs/Vector%20Module/35_plano_padrao_no_traco.md); quando um gradiente no
+traço for pedido, o `StrokePaint` ganha uma variante e esta lista ganha um chip.
+
+## `bool_shape.rs`
+
+> **O PAPEL DE CADA FORMA dentro de uma booleana viva** — a porta única de *"o que esta forma faz
+> aqui?"*, e o chip que a edita.
+
+Irmão do [`crate::vec_clip_edit`] no padrão: uma projeção que a shell publica por frame (o
+painel não alcança o mundo ECS e não deve) mais o escritor que o clique dispara.
+
+# Por que UMA porta, e não duas respostas parecidas
+
+Dois consumidores fazem a mesma pergunta sobre a mesma forma: o **painel** (*"que verbo mostro
+aceso?"*) e a **linha da hierarquia** (*"que selo pinto?"*). Se cada um a derivasse por si,
+bastaria um deles usar a ordem de z e o outro a ordem da árvore para o selo dizer `BSE` numa
+forma que o motor não trata como base — e a UI passaria a mentir sobre a receita sem uma linha
+vermelha em lado nenhum.
+
+⚠️ **A resposta vem do PLANO que o `bool_live` acabou de cozinhar**, não de uma segunda
+caminhada da árvore. O plano é o que está na tela: quem é a base, quem são os operandos e em
+que ordem. É a mesma disciplina do Apply, que materializa o plano em vez de re-chamar o motor.

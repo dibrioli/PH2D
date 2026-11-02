@@ -52,26 +52,17 @@ impl PaintDilateLive {
                     m.dilate == e.dilate && m.join == e.dilate_join && m.cooked == cooked
                 });
                 if fresco {
-                    let join = crate::expand::join_of_code(e.dilate_join);
                     // ⛔ `None` = a booleana FALHOU (pânico do sweep isolado). A entrada não entra,
                     // e o renderer desenha a camada na silhueta de BASE. *Uma camada que volta à
                     // forma lê-se como «o offset não pegou»; uma que desaparece lê-se como
                     // «apaguei a camada».*
-                    let Some(pecas) = crate::contour_live::cook_piece(&cooked, e.dilate, join)
-                    else {
+                    let Some(mut out) = dilated_geometry(&cooked, e.dilate, e.dilate_join) else {
                         continue;
                     };
                     // ⚠️ **A tinta da camada tem de viajar no caminho dilatado**: o `path_tess` do
                     // renderer decide o que construir por `fill.is_some()`/`stroke.is_some()`, então
                     // um caminho sem elas seria tesselado a VAZIO e a camada não desenharia nada.
-                    let mut out = merge(&pecas).unwrap_or_else(|| {
-                        let mut vazio = cooked.clone();
-                        vazio.verts.clear();
-                        vazio.subpaths.clear();
-                        vazio
-                    });
-                    out.fill = None;
-                    out.stroke = None;
+                    out.carry_look_from(&VecPath::default());
                     match &e.kind {
                         PaintKind::Fill(p) => out.fill = Some(p.clone()),
                         PaintKind::Stroke(sp) => out.stroke = Some(sp.clone()),
@@ -97,6 +88,19 @@ impl PaintDilateLive {
     }
 }
 
+/// **A silhueta de `cooked` dilatada `dilate`** com a quina `join` (código do painel) — a geometria
+/// que uma camada com Offset percorre. `None` = a booleana FALHOU; vazia de vértices = ANIQUILAÇÃO.
+/// Porta única: o desenho vivo e o Outline Stroke da camada perguntam aqui.
+pub(crate) fn dilated_geometry(cooked: &VecPath, dilate: f64, join: u8) -> Option<VecPath> {
+    let pecas = crate::contour_live::cook_piece(cooked, dilate, crate::expand::join_of_code(join))?;
+    Some(merge(&pecas).unwrap_or_else(|| {
+        let mut vazio = cooked.clone();
+        vazio.verts.clear();
+        vazio.subpaths.clear();
+        vazio
+    }))
+}
+
 /// **Funde as peças num composto** — e ⚠️ **a REGRA DE PREENCHIMENTO é do MOTOR, não desta função**.
 ///
 /// ⚠️ **Um offset pode PARTIR a forma**: encolher um haltere para além do pescoço devolve duas
@@ -117,7 +121,7 @@ impl PaintDilateLive {
 ///
 /// ⇒ **UMA peça mantém a regra que o motor lhe deu** (o anel devolve sempre exactamente uma); só a
 /// composição de N — que só o sweep produz, e cuja saída É regularizada — passa a `EvenOdd`.
-fn merge(pecas: &[VecPath]) -> Option<VecPath> {
+pub(crate) fn merge(pecas: &[VecPath]) -> Option<VecPath> {
     let mut it = pecas.iter();
     let mut out = it.next()?.clone();
     if pecas.len() > 1 {

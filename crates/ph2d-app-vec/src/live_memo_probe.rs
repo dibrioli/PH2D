@@ -1,26 +1,6 @@
 //! SONDA (`--ignored`): **quanto custa mover uma forma que tem geometria VIVA?**
 //!
-//! # A pergunta
-//!
-//! Todo produtor de `LiveGeometry` memoiza, e a §11 do plano 25 afirma que **a chave é o
-//! MUNDO — que é exatamente o que a animação move**. Se a afirmação valer, então arrastar (ou
-//! animar) uma forma com Contour/Offset/Perfil/Simetria re-cozinha o efeito **em todo quadro**,
-//! e o memo protege só a cena PARADA.
-//!
-//! ⚠️ **A sonda mede pela porta do PRODUTO** (`recook`, o que o frame chama), nunca por um laço
-//! próprio sobre o kernel: esta casa já pagou três vezes por medir uma peça isolada e chamar o
-//! número de produto (doc 28 §5.40 do Painter, e a decomposição do `build_flow_field`).
-//!
-//! # As duas colunas, e por que a comparação é honesta
-//!
-//! - **PARADO** — `recook` N vezes com a MESMA pose. É o que o memo promete proteger.
-//! - **ANIMADO** — `recook` N vezes com a pose a TRANSLADAR. É o que a timeline faz a 60 Hz.
-//!
-//! Uma translação **não muda a forma do efeito**: o contorno de uma estrela deslocada é o
-//! contorno da estrela, deslocado. Então toda diferença entre as duas colunas é trabalho que a
-//! resposta não precisou.
-//!
-//! Rode: `cargo test -p ph2d-host-desktop --release live_memo -- --ignored --nocapture`
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `live_memo_probe.rs`.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecContour, VecOffset, VecPathRef};
 use ph2d_vec_entities::entities::VecEntityMap;

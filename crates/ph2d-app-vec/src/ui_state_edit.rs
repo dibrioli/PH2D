@@ -1,25 +1,7 @@
 //! **Os verbos dos ESTADOS de UI** (plano UI/UX W7) — irmão do [`crate::widget_edit`], mesma
 //! divisão: o painel PEDE, a shell FAZ, e o que muda é o documento.
 //!
-//! # O que um estado GRAVA, e por que a sub-árvore inteira
-//!
-//! Um botão não é uma forma: é um retângulo, um rótulo e talvez um ícone. Gravar só o hospedeiro
-//! deixaria de fora justamente o que se move num hover. Então um estado captura o hospedeiro **e
-//! cada descendente que é uma forma**, que é o mesmo conjunto que a booleana, o gizmo e o z-order
-//! já chamam de *a sub-árvore* — [`ph2d_vec_entities::entities::subtree_paths`], nunca uma travessia
-//! própria.
-//!
-//! # O `Transform` LOCAL, nunca o de mundo
-//!
-//! Uma pose é relativa ao hospedeiro: arrastar o botão inteiro para outro canto da tela **não pode
-//! invalidar os estados dele**. O local é exatamente essa relação, e é o que a hierarquia já
-//! guarda — pedir mundo aqui obrigaria a re-derivar contra a pose do pai a cada gravação, e a
-//! primeira vez que alguém movesse o pai os dois números discordariam.
-//!
-//! ⚠️ **`skew` fica de fora, e a ausência é decisão:** a pose interpola por T/R/S decompostos
-//! ([`ph2d_ui_state::ObjectPose`]) justamente para não lerpar matriz; um skew autorado sobrevive
-//! porque nada aqui o escreve, mas ele **não anima** entre dois estados. Nomeado em vez de
-//! descoberto.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `ui_state_edit.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, Transform, VecFilter, VecStrokeProfile};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};

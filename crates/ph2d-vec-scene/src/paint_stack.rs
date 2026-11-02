@@ -406,3 +406,7 @@ pub use slot::PaintSlot;
 #[path = "paint_order.rs"]
 mod order;
 pub use order::{BaseOrder, Place, StackItem};
+
+#[path = "paint_split.rs"]
+mod split;
+pub use split::Split;

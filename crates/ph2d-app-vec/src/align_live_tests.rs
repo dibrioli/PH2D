@@ -145,3 +145,52 @@ fn the_memo_forgets_a_shape_that_went_back_to_centre() {
     );
     assert!(live2.is_empty());
 }
+
+/// **A Position de uma CAMADA de traço desenha** (dono 02/11, auditoria do painel contra a pilha F45):
+/// o painel deixa pôr Inner numa camada, e o desenho vivo só olhava o traço de base — a camada saía
+/// centrada.
+#[test]
+fn an_aligned_stroke_layer_becomes_a_band() {
+    let mut p = square(StrokeAlign::Centre);
+    p.stroke = None;
+    p.paints = vec![ph2d_vec_scene::PaintEntry::stroke(StrokeSpec {
+        align: StrokeAlign::Inner,
+        ..StrokeSpec::new(Rgba8::new(10, 200, 30, 255), 0.4)
+    })];
+    let mut scene = VecScene::default();
+    let id = scene.push_path(p);
+    let mut live = LiveGeometry::new();
+    AlignLive::default().recook(&scene, &VecXforms::default(), &mut live);
+    let items = live.get(&id).expect("a camada alinhada entra no mapa");
+    assert!(
+        items
+            .iter()
+            .all(|p| p.paints.iter().all(|e| e.width().is_none())),
+        "a camada de traço não pode sobrar viva: a faixa É a tinta"
+    );
+    assert!(
+        items
+            .iter()
+            .any(|p| p.fill == Some(Paint::Solid(Rgba8::new(10, 200, 30, 255)))),
+        "a faixa leva a cor da camada"
+    );
+}
+
+/// **A faixa desenha NA POSIÇÃO do traço na pilha**: um traço Inner posto por baixo do miolo não
+/// pode saltar para cima dele.
+#[test]
+fn the_band_keeps_the_stroke_position_in_the_stack() {
+    let mut p = square(StrokeAlign::Inner);
+    p.base_order = ph2d_vec_scene::BaseOrder { fill: 1, stroke: 0 };
+    let mut scene = VecScene::default();
+    let id = scene.push_path(p);
+    let mut live = LiveGeometry::new();
+    AlignLive::default().recook(&scene, &VecXforms::default(), &mut live);
+    let items = live.get(&id).expect("entra no mapa");
+    let cinza = Some(Paint::Solid(Rgba8::new(200, 200, 200, 255)));
+    assert_eq!(
+        items.last().map(|p| &p.fill),
+        Some(&cinza),
+        "o miolo fica por cima"
+    );
+}

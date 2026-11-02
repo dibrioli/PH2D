@@ -1,30 +1,6 @@
 //! **O Pattern Along Path VIVO na shell** — o cozimento do [`ph2d_ecs::VecPatternPath`] (plano 23).
 //!
-//! Espelho do [`crate::offset_live`]: o componente guarda a **relação** (a que caminho, com que
-//! espaçamento, de que lado) e as cópias são uma **função pura** dela, re-cozidas aqui por frame
-//! numa [`LiveGeometry`] e desenhadas por [`ph2d_vec_render::dispatch`] **no z do motivo**. A curva
-//! do motivo nunca é tocada — é ela que o modo Node edita; o que se vê são as cópias.
-//!
-//! # Duas entradas, e onde cada uma vem
-//!
-//! Um pattern precisa de DUAS geometrias: o **motivo** (a forma a estampar) e o **caminho-guia**.
-//!
-//! - O **guia** entra pela porta única [`crate::guide::guide_arc`] — cozido, assado em MUNDO,
-//!   virado em [`ph2d_vec_scene::arc_path::ArcPath`]. É a MESMA porta do texto em caminho.
-//! - O **motivo** é a `cooked()` do próprio path, em espaço **LOCAL** (a forma, não a pose). O
-//!   motor a recentra pelo bbox e a estampa nos pontos do guia. ⚠️ **A pose do motivo é ignorada
-//!   de propósito** (v1, plano 23 §3): as cópias substituem o desenho do motivo, então mexer no
-//!   gizmo dele não teria o que mostrar — é o mesmo *"mover o objeto vinculado não quer dizer
-//!   nada"* do texto e do conector. Para mudar o tamanho das cópias, edite os nós do motivo (a
-//!   fonte) ou o Spacing; escalar por gizmo é decisão de produto adiada.
-//!
-//! # Sem memo (v1), e é MEDIDO
-//!
-//! O [`crate::offset_live`] memoiza porque `offset_path` mede 0,4–1 ms. O [`pattern_along`] mede
-//! **0,597 ms para 200 cópias** (plano 23 §0), e uma cena típica tem muito menos. Uma cena PARADA
-//! com um pattern pagaria isso por frame — dentro do orçamento (3,6% de um frame de 60 fps), e não
-//! medido como problema. Memoizar exige detectar a mudança do guia (cozido + assado), e adicioná-lo
-//! sem uma medição que o justifique é otimização prematura ([[project_m5_perf_validated]]).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `pattern_live.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecPatternPath, VecPatternRotation};
 use ph2d_vec_render::LiveGeometry;

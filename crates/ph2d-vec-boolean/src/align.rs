@@ -93,11 +93,11 @@ pub fn aligned_stroke(path: &VecPath) -> Option<Vec<VecPath>> {
     // `apply_many` toma o estilo do path do TOPO (o último), então dá-lo aqui é o que faz o
     // recorte sair já com a cor do traço — em vez de a carimbar depois, que seria confiar duas
     // vezes na mesma decisão.
-    let region = VecPath {
+    let mut region = path.clone();
+    region.carry_look_from(&VecPath {
         fill: Some(Paint::Solid(s.color())),
-        stroke: None,
-        ..path.clone()
-    };
+        ..VecPath::default()
+    });
     let op = match s.align {
         StrokeAlign::Inner => BoolOp::Intersect,
         StrokeAlign::Outer => BoolOp::Subtract,

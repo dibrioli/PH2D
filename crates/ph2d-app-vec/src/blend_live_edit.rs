@@ -33,8 +33,10 @@ pub fn pick_preview(scene: &VecScene, xforms: &VecXforms, picks: &[VecPathId]) -
     // O contorno de cada forma escolhida (sem fill — só o realce da silhueta).
     for &id in picks {
         if let Some(mut p) = world(scene, xforms, id) {
-            p.fill = None;
-            p.stroke = Some(pick_stroke());
+            p.carry_look_from(&VecPath {
+                stroke: Some(pick_stroke()),
+                ..VecPath::default()
+            });
             out.push(p);
         }
     }

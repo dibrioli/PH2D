@@ -1,24 +1,6 @@
 //! ⭐⭐ **O LOSANGO DO PAINEL DO ESQUELETO** — `PH2D_VEC_BONE_SMOKE=8` (F40).
 //!
-//! O que está na tela, e o que cada coisa é:
-//!
-//! | O quê | O que é |
-//! |---|---|
-//! | **A barra laranja** (o braço da cena `=1`, já presa a 3 ossos) | o desenho que os ossos dobram e esticam |
-//! | **O osso do MEIO, já escolhido** | o «antebraço»: o painel *Skeleton* mostra os números DELE |
-//! | **A coluna de losangos** à direita de *Length*, *Segments* e das 4 alças da curva | cada losango diz se aquele número tem animação: cheio = há chave neste quadro · contorno = animado entre chaves · vazio = sem animação |
-//! | **A animação já gravada** | *Length* tem chave no quadro 0 (o comprimento desenhado), no 24 (1,5×) e no 48 (volta): no Play o osso azul do meio cresce e encolhe |
-//!
-//! ⭐ **A LEI (dono 30/10, como o Blender/Spine):** no Play o osso do meio cresce, EMPURRA o osso
-//! seguinte (a raiz dele fica na ponta nova) e ESTICA a barra presa ao longo do eixo. A mão
-//! (`ph2d_app_skeleton::comprimento::aplica`) e a curva (`canais_osso::aplicar`) correm a MESMA lei
-//! (`ph2d_skeleton_live::comprimento::empurra_filhos`); a pele estica por `agora / bind`
-//! (`Tendon::comprimento`). ⛔ Até F40 o filho e a barra ficavam — a cena ensinava a lei velha.
-//!
-//! ⚠️ O osso do meio nasce com 4 segmentos: com 1 a curva é inerte e o painel esconde as alças
-//! (`section_campos`), e a cena não as mostraria.
-//!
-//! Monta em dois tempos como a `=1`: prender exige a entidade da forma (`vec_entities::sync`).
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone_losango.rs`.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, FieldKey, SimWorld, canal::familia::OSSO, canal_osso};

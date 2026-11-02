@@ -1,20 +1,7 @@
 //! ⭐⭐ **COM QUE TINTA O TRAÇO DESENHA** — a porta única da fileira *Type* da secção *Stroke*
 //! (plano 35, wave D).
 //!
-//! # Por que é um módulo próprio, e irmão do [`crate::stroke_present`]
-//!
-//! Aquele responde *"esta forma TEM traço?"*; este, *"com que tinta ele desenha?"*. São duas
-//! perguntas sobre o mesmo objecto, e a resposta de uma **pressupõe** a da outra — sem traço não há
-//! tinta de traço. Mantê-las juntas num ficheiro faria a segunda herdar o `Option` da primeira por
-//! acidente; separadas, cada uma declara o próprio `None`.
-//!
-//! # ⛔ Por que a lista tem DUAS variantes e não as cinco do preenchimento
-//!
-//! O renderer de traço não desenha gradiente. Um chip que produzisse um `StrokePaint::Linear`
-//! gravaria estado que **nada pinta** — o documento leria de volta uma tinta inalcançável, e o
-//! sintoma seria uma forma que abre diferente de como fechou. A recusa está escrita no
-//! [plano 35 §2.1](../../docs/Vector%20Module/35_plano_padrao_no_traco.md); quando um gradiente no
-//! traço for pedido, o `StrokePaint` ganha uma variante e esta lista ganha um chip.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `stroke_paint.rs`.
 
 use ph2d_panel_vector::StrokePaintKind;
 use ph2d_vec_edit::PenTool;

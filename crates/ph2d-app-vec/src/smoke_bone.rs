@@ -1,29 +1,6 @@
 //! ⭐⭐⭐ **O DESENHO GANHA OSSOS** — `PH2D_VEC_BONE_SMOKE=1` (estudo 42, item 5).
 //!
-//! # O que a cena fecha
-//!
-//! Até 2026-09-06 um personagem deste editor só animava como **recorte de papel**: a timeline movia
-//! a POSE de uma forma inteira, e mais nada. Dobrar um braço exigia desenhá-lo outra vez.
-//!
-//! # A cena, e o que cada peça prova
-//!
-//! | O quê | O que ela prova |
-//! |---|---|
-//! | **O BRAÇO** (barra com 3 ossos, já presa) | girar um osso DOBRA o desenho, e a base fica onde está |
-//! | **O TENTÁCULO** (barra com 6 ossos, já presa) | a cadeia inteira: girar a RAIZ leva tudo, girar a PONTA leva só a ponta — a cinemática é a hierarquia |
-//! | **A FOLHA SOLTA** (uma forma e um esqueleto **não ligados**) | o gesto do *Bind*: seleccionar a forma, carregar no botão, e ela passa a obedecer |
-//! | **A BIFURCAÇÃO** (dois esqueletos pequenos, no meio da metade de baixo) | o `From Chain` curva o osso até ao filho — e com DOIS filhos a ponta fica recta (a pergunta ao dono de 2026-09-16) |
-//!
-//! ⚠️ **As duas primeiras são ligadas pela cena**, e é de propósito: sem uma peça que já obedece, o
-//! primeiro gesto do artista seria montar um rig do zero para só então descobrir se ele funciona.
-//!
-//! ⚠️ Se a linha `[vec-bone-smoke]` não aparecer, PARE: a cena não montou.
-//!
-//! # ⚠️ Ela monta em DOIS tempos, e não é conforto
-//!
-//! Prender uma forma exige a **entidade** dela, e quem a cria é o `vec_entities::sync`, que corre
-//! **depois** deste prólogo. Ligar no mesmo quadro em que se desenha encontraria o mapa vazio e
-//! prenderia zero formas — em silêncio.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone.rs`.
 
 use ph2d_vec_scene::ShapeKind;
 

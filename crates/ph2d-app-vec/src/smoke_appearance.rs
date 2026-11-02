@@ -1,35 +1,6 @@
 //! ⭐⭐⭐ **A FORMA TEM OPACIDADE E MISTURA PRÓPRIAS** — `PH2D_VEC_APPEARANCE_SMOKE=1`.
 //!
-//! # O que a cena fecha
-//!
-//! Até 2026-09-05 uma forma vectorial não tinha nem uma nem outra: o painel oferecia duas rows
-//! `Opacity` que são o **alfa da tinta que a ferramenta tem na mão** (elas semeiam a forma seguinte
-//! e re-vestem a selecção), e mistura não havia em lado nenhum — `grep blend_mode` nas crates do
-//! vector dava vazio. É o item 2 do estudo 42, e a metade que faltava ao report do Enio de 04/09
-//! (*"o painel não mostra..."* — não havia o que mostrar).
-//!
-//! # A cena (unidades de mundo, ~±9)
-//!
-//! Uma **faixa de fundo** com três blocos de cor (frio · quente · claro) e, por cima dela, uma
-//! fileira de discos — cada um com um **modo de mistura** diferente, na ordem em que o dropdown os
-//! oferece. Mais dois quadrados iguais à direita: o de cima **opaco**, o de baixo a **40 %**.
-//!
-//! ⚠️ **O fundo é load-bearing:** um modo de mistura só existe contra o que está por baixo. Sobre
-//! o fundo da tela todos os modos desenham a mesma coisa, e a cena ensinaria que a feature não
-//! funciona.
-//!
-//! # O que provar
-//!
-//! 1. **Os discos não são todos iguais** — cada um compõe-se com a faixa de outra maneira (o
-//!    `Multiply` escurece, o `Screen`/`Add` clareiam, o `Difference` inverte).
-//! 2. **O quadrado de baixo é translúcido** e o de cima não, com a MESMA cor autorada: a
-//!    opacidade é do OBJECTO, e não da tinta.
-//! 3. **O painel edita as duas** — pegue a ferramenta Vector, clique numa forma, e a seção
-//!    **Appearance** aparece com *Opacity* e *Blend*. Arrastar o slider muda a forma na hora;
-//!    escolher outro modo na lista muda como ela se compõe.
-//! 4. **Ctrl+Z desfaz** o arrasto inteiro num passo só.
-//!
-//! ⚠️ Se a linha `[vec-appearance-smoke]` não aparecer, PARE: a cena não montou.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_appearance.rs`.
 
 use ph2d_vec_scene::{BlendMode, Opacity, ShapeKind};
 

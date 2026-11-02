@@ -1,30 +1,7 @@
 //! **O NÚMERO do smart guide** — quanto vale a distância que a guia desenha
 //! (plano 25 §9, o último item da tabela da W6).
 //!
-//! O segmento tracejado entre o ponto que encaixou e o ponto em que ele encaixou
-//! já dizia *com o quê* a forma alinhou. O que faltava era **quanto** — a
-//! pergunta que faz de um encaixe uma medição, e a razão de a W6 se chamar
-//! PRECISÃO.
-//!
-//! # Três donos, e NENHUM deles é este arquivo
-//!
-//! - **quais guias merecem número e onde ele pousa** — [`ph2d_vec_render::snap_labels`],
-//!   geometria pura, sem noção de unidade;
-//! - **que número, com que casas** — [`ph2d_editor_core::LengthDisplay`], a porta única
-//!   que a régua e o painel de Grid Snap também usam;
-//! - **como uma ficha é desenhada** — [`ph2d_editor_core::readout`], desde a C3 do estudo da UI viva.
-//!
-//! ⚠️ O terceiro item dizia *«aqui, e só aqui»* até esta ficha ter deixado de ser a única: o corpo,
-//! a altura, o raio e as cores mudaram-se para a porta comum, e o que sobrou aqui é a largura
-//! MÍNIMA — o único número que é desta ficha e de mais nenhuma. Este arquivo existe porque desenhar
-//! exige `TextSystem` e a cena do frame; ele não decide nada que os outros decidem.
-//!
-//! # O sufixo
-//!
-//! ⚠️ A régua imprime o número **NU** e este imprime **com sufixo** (`px`/`m`), e
-//! a diferença não é gosto: uma régua é entendida pela faixa graduada em que ela
-//! vive, e esta ficha **paira sobre a arte** sem eixo nenhum ao lado que a
-//! explique. É também o que torna a unidade ativa visível sem abrir o menu.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `snap_labels.rs`.
 
 use ph2d_editor_core::LengthDisplay;
 use ph2d_text::TextSystem;

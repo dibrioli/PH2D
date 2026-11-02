@@ -58,3 +58,18 @@ fn o_traco_de_pincel_fica_no_vello() {
     p.stroke = Some(s);
     assert!(forma_para_a_placa(&p).is_none());
 }
+
+/// **Uma forma com camadas fica no Vello** (dono 02/11, auditoria contra a pilha F45): a placa só
+/// sabe o preenchimento e o traço de base, e a camada sumia da cópia.
+#[test]
+fn uma_forma_com_camadas_fica_no_vello() {
+    let mut p = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.3);
+    p.paints = vec![ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(
+        Rgba8::new(255, 255, 255, 255),
+        0.1,
+    ))];
+    assert!(
+        forma_para_a_placa(&p).is_none(),
+        "a camada de traço sumiria na placa"
+    );
+}

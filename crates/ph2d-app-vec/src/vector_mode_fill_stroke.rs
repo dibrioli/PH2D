@@ -18,6 +18,8 @@
 //!
 //! ⭐ **A cena 49** (F47, «Above Effects»): sombra e desfoque nos Filtros; o traço de base marcado por
 //! cima deles e o amarelo não — ver [`por_cima_dos_filtros`].
+//!
+//! ⭐ **A cena 50** (o Expand sobre a pilha, dono 02/11): a «etiqueta» — ver [`etiqueta`].
 
 use crate::state::VecState;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -59,6 +61,7 @@ pub fn step(
     qual: u8,
 ) -> Option<u8> {
     let filtros = qual == 4;
+    let expand = qual == 5;
     let traco = qual == 1;
     let ordem = (2..=3).contains(&qual);
     let lados_cad = qual == 3;
@@ -102,6 +105,10 @@ pub fn step(
                 por_cima_dos_filtros(vec, scene, sim, ids[0]);
                 return None;
             }
+            if expand {
+                etiqueta(p);
+                return None;
+            }
             if ordem {
                 ordem_livre(p);
                 if lados_cad {
@@ -122,6 +129,26 @@ pub fn step(
             hero.gizmo
                 .replace_selection(vec.entities.get(ids.first()?).copied());
             PASSO.store(3, Ordering::Relaxed);
+        }
+        3 if expand => {
+            // A Expand mora no grupo «Advanced», recolhido por omissão.
+            for s in [
+                ph2d_panel_vector::ids::VECTOR_SECTION_ADVANCED,
+                ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND,
+            ] {
+                hero.store.set_collapsed(s, false);
+            }
+            rola_ate(hero, ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND)?;
+            // `PH2D_OBJECT_MODE_GESTO=outline`: a foto do Outline Stroke clicado, pelo despacho do produto.
+            if std::env::var("PH2D_OBJECT_MODE_GESTO").as_deref() == Ok("outline") {
+                hero.bus
+                    .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                        ph2d_editor_core::tool::PanelEvent::Click(
+                            ph2d_tool_vector::ids::VECTOR_EXPAND_OUTLINE_STROKE,
+                        ),
+                    ));
+            }
+            return Some(9);
         }
         3 if filtros => {
             return abre(hero, false, true)
@@ -221,18 +248,41 @@ fn por_cima_dos_filtros(
     PASSO.store(2, Ordering::Relaxed);
 }
 
-/// Rola o Inspector até a secção Fill & Stroke ficar no alto e abre o painel que a cena mostra (a
-/// 47 não abre nenhum).
-fn abre(hero: &mut HeroScreen, traco: bool, ordem: bool) -> Option<u8> {
+/// ⭐ A cena 50 (dono 02/11: *«Expand e suas funções não funcionam corretamente com nosso novo modo de
+/// camadas»*): a «etiqueta» — um traço BRANCO largo numa camada por BAIXO de tudo, a sombra deslocada,
+/// o degradê de base, o traço escuro de base por DENTRO (Inner) e o contorno amarelo tracejado por
+/// fora no topo. O Inspector rola até à secção Expand: Outline Stroke tem de dar as mesmas cores, na
+/// mesma ordem; Apply Offset tem de manter as camadas.
+fn etiqueta(p: &mut ph2d_vec_scene::VecPath) {
+    p.paints.remove(BRILHO);
+    if let Some(s) = p.stroke.as_mut() {
+        s.width = 0.08;
+        s.align = StrokeAlign::Inner;
+    }
+    let largo = PaintEntry::stroke(StrokeSpec::new(Rgba8::new(255, 255, 255, 255), 0.4));
+    p.paints.insert(0, largo);
+    // Um tracejado que se VÊ (o das cenas 45–49 é tão fino que o contorno parece liso).
+    if let Some(ph2d_vec_scene::PaintKind::Stroke(s)) = p.paints.last_mut().map(|e| &mut e.kind) {
+        s.dash = Some(DashPattern::single(3.0, 1.5));
+    }
+    // De baixo para cima: o branco largo, a sombra, o degradê, o escuro, o amarelo.
+    p.base_order = ph2d_vec_scene::BaseOrder { fill: 2, stroke: 3 };
+    eprintln!(
+        "[cena 50] a etiqueta: traço branco largo numa camada por baixo de tudo, sombra deslocada, \
+         degradê de base, traço escuro de base por dentro (Inner) e contorno amarelo tracejado por fora \
+         no topo. O Inspector abre o «Advanced» e rola até à secção Expand"
+    );
+    PASSO.store(2, Ordering::Relaxed);
+}
+
+/// Rola o Inspector até a secção `secao` ficar no alto; `Some` quando lá chegou.
+fn rola_ate(hero: &mut HeroScreen, secao: ph2d_editor_core::NodeId) -> Option<()> {
     let painel = ph2d_editor_core::ids::VECTOR_PANEL;
     // O guião rola em LÓGICOS (`rect_for`, `panel_scroll`): pergunta pela porta física e volta.
     let area = hero
         .escala()
         .rect_to_logical(hero.panel_rect_fisico(painel)?);
-    let cabeca = hero
-        .hit_index
-        .rect_for(ph2d_tool_vector::ids::VECTOR_SECTION_FILL)
-        .filter(|r| r.h > 0.0);
+    let cabeca = hero.hit_index.rect_for(secao).filter(|r| r.h > 0.0);
     let alvo = area.y + area.h * 0.15;
     let Some(c) = cabeca else {
         let s = hero.store.panel_scroll(painel);
@@ -246,6 +296,13 @@ fn abre(hero: &mut HeroScreen, traco: bool, ordem: bool) -> Option<u8> {
             .set_panel_scroll(painel, (s + c.y - alvo).max(0.0));
         return None;
     }
+    Some(())
+}
+
+/// Rola o Inspector até a secção Fill & Stroke ficar no alto e abre o painel que a cena mostra (a
+/// 47 não abre nenhum).
+fn abre(hero: &mut HeroScreen, traco: bool, ordem: bool) -> Option<u8> {
+    rola_ate(hero, ph2d_tool_vector::ids::VECTOR_SECTION_FILL)?;
     if ordem {
         // `PH2D_OBJECT_MODE_GESTO=voo`: a foto do arrasto a meio — premir no ⚙ do preenchimento de
         // base e levá-lo ao topo, sem largar, pelo despacho do produto.

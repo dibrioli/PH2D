@@ -1,30 +1,6 @@
 //! **A POSIÇÃO de um controle autorado sobrevive ao arquivo** (plano UI/UX W8b.4).
 //!
-//! Irmão do [`crate::widget_drive`], e o corte entre os dois é por PERGUNTA: ali mora *o que
-//! este controle DIZ à forma*, aqui *que posição este controle GUARDA*. Não são a mesma coisa e
-//! não se derivam uma da outra — um slider que o artista ainda não prendeu a forma nenhuma tem
-//! posição, e a opacidade é quantizada em 255 degraus que não descrevem um slider contínuo.
-//!
-//! # O reconcile, e por que ele tem DUAS direções
-//!
-//! O valor tem dois escritores legítimos, e ignorar qualquer um deles quebra alguma coisa:
-//!
-//! - o **PONTEIRO** escreve o `WidgetStore` (arrastar o slider);
-//! - o **MUNDO** escreve o componente (abrir um projeto · um Ctrl+Z · o smoke a semear a cena).
-//!
-//! ⚠️ Um sentido só não basta, e as duas metades falham de formas diferentes: sem *store →
-//! componente* nada é salvo; sem *componente → store* o Ctrl+Z devolve o componente antigo e o
-//! painel continua a mostrar a posição nova — o controle e a arte discordariam sobre o mesmo
-//! número, na tela, sem nada dizer por quê.
-//!
-//! A desempate é um memo do que **já foi propagado** (`applied`), e a ordem é lei: **o artista
-//! ganha**. Se o store difere do memo, foi o ponteiro; senão, se o componente difere do memo, foi
-//! o mundo. Sem o memo os dois lados se sobrescreveriam em frames alternados e o slider tremeria.
-//!
-//! ⚠️ **Escrever o componente é uma EDIÇÃO** — o undo global é por DIFF do mundo, então arrastar o
-//! slider vira um passo de undo. É o correto: mover um controle é um ato do artista, e o
-//! `post_frame_undo` já suprime enquanto o botão está preso ⇒ **um passo por gesto**, não por
-//! frame. (O que continua fora do undo é a ARTE: ela não é escrita por ninguém aqui.)
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `widget_value.rs`.
 
 use std::collections::BTreeMap;
 

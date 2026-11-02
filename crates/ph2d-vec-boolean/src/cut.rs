@@ -127,14 +127,14 @@ pub fn cut_open(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutRef
         // nunca dispara — a mutação que o remove não sangra nenhum gate, porque não há como.
         let tail = head.verts[idx..].to_vec();
         head.verts.truncate(idx + 1);
-        out.push(VecPath {
+        let mut piece = VecPath {
             verts: tail,
             closed: false,
-            stroke: source.stroke.clone(),
-            fill: source.fill.clone(),
             effects: source.effects.clone(),
             ..VecPath::default()
-        });
+        };
+        piece.carry_look_from(source);
+        out.push(piece);
     }
     if out.is_empty() {
         return Err(CutRefusal::Missed);
@@ -206,8 +206,7 @@ pub fn cut_closed(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutR
         return Err(CutRefusal::Missed);
     }
     for p in &mut pieces {
-        p.fill.clone_from(&source.fill);
-        p.stroke.clone_from(&source.stroke);
+        p.carry_look_from(source);
         p.effects.clone_from(&source.effects);
     }
     Ok(pieces)

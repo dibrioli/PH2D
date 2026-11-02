@@ -65,7 +65,7 @@ pub use paint_bind::{BoundStyle, Opacity, object_alpha};
 pub mod paint_stack;
 pub use paint_stack::{
     BaseOrder, DrawnPaint, JOIN_ROUND, MAX_PAINT_LAYERS, MIN_DILATE, PaintEntry, PaintKind,
-    PaintRef, PaintSlot, Place, StackItem,
+    PaintRef, PaintSlot, Place, Split, StackItem,
 };
 // ⭐ O vocabulário de MISTURA do documento (v19), re-exportado como o `WarpStyle`.
 pub use ph2d_blend_mode::{BlendMode, MAX_BLEND_MODES};

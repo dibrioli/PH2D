@@ -203,8 +203,7 @@ fn merge(paths: &[&VecPath]) -> Vec<VecPath> {
 /// Veste `p` com o estilo de `src`. Uma porta só — o `apply_many` doa o estilo do path do TOPO da
 /// lista que recebeu, e nas quatro receitas quem manda é outra forma.
 fn wear(p: &mut VecPath, src: &VecPath) {
-    p.fill.clone_from(&src.fill);
-    p.stroke.clone_from(&src.stroke);
+    p.carry_look_from(src);
     p.effects.clone_from(&src.effects);
 }
 

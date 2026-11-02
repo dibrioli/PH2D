@@ -1,26 +1,7 @@
 //! ⭐⭐⭐ **AS TRÊS MÍDIAS PRESAS AO MESMO GESTO** — `PH2D_VEC_BONE_MEDIA_SMOKE=1` (F11, ordem do
 //! dono de 2026-09-17: *«vamos lá: imagens em 9 fatias e folhas de quadros»*).
 //!
-//! Três imagens lado a lado, cada uma presa à corrente dela e dobrada pelo MESMO ângulo:
-//!
-//! 1. **simples** — o CONTROLO, que já dobrava antes desta wave;
-//! 2. **folha de quadros** (`4×1`, a mostrar o quadro `1`);
-//! 3. **9-slice** esticado ao triplo da largura.
-//!
-//! # ⛔ Porque as três, e não só as duas que a wave curou
-//!
-//! ⚠️ **O que a `2` e a `3` faziam antes era INVISÍVEL sem o controlo ao lado.** A folha dobrava —
-//! **errado**, e sem aviso nenhum (a silhueta era a dos quatro quadros espremida no sítio de um), e
-//! o 9-slice não dobrava de todo. *Sem a imagem simples ao lado, «dobrou» e «dobrou certo» leem-se
-//! igual.*
-//!
-//! # ⚠️ A arte de cada uma é escolhida para tornar o defeito LEGÍVEL
-//!
-//! - A folha tem **a MORDIDA num lado diferente por quadro**, e a união das quatro é o disco
-//!   inteiro. Com quatro formas iguais a silhueta errada seria indistinguível da certa — *uma cena
-//!   cuja arte não distingue os dois estados não prova nenhum*.
-//! - O 9-slice é uma **moldura oca**: o miolo é transparente, logo vê-se se o pedaço do meio foi
-//!   desenhado onde não devia.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone_media.rs`.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

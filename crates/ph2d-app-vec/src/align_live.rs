@@ -5,7 +5,9 @@
 use std::collections::BTreeMap;
 
 use ph2d_vec_render::LiveGeometry;
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
+use ph2d_vec_scene::{
+    PaintRef, Split, VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of,
+};
 
 /// Uma entrada do memo: o que ENTROU (a lista de mundo) e o que SAIU.
 struct Memo {
@@ -41,10 +43,10 @@ impl AlignLive {
             // caminho é FECHADO, e essa metade vive no kernel. Duas portas para *"isto vai fazer
             // alguma coisa?"* divergiriam, e a divergência foi medida: uma linha ABERTA com
             // Outer passava aqui e entrava no mapa com a própria fonte.
-            if !input
-                .iter()
-                .any(|p| p.stroke.as_ref().is_some_and(|s| s.is_aligned()))
-            {
+            if !input.iter().any(|p| {
+                p.paint_stack()
+                    .any(|d| matches!(d.paint, PaintRef::Stroke(s) if s.is_aligned()))
+            }) {
                 continue;
             }
             let hit = self.memo.get(&path.id).is_some_and(|m| m.input == input);
@@ -93,16 +95,24 @@ fn align_items(input: &[VecPath]) -> Option<Vec<VecPath>> {
     let mut out = Vec::with_capacity(input.len() + 1);
     let mut any = false;
     for item in input {
-        match ph2d_vec_boolean::aligned_stroke(item) {
-            Some(band) => {
-                any = true;
-                out.push(VecPath {
-                    stroke: None,
-                    ..item.clone()
-                });
-                out.extend(band);
+        // ⭐ Cada traço alinhado que se vê — o de base e as camadas — vira faixa NA POSIÇÃO dele na
+        // pilha (a mesma porta do Outline Stroke, `split_stack`); o resto fica vivo entre as faixas.
+        let parts = item.split_stack(|_, layer, s| {
+            if !s.is_aligned() {
+                return Split::Keep;
             }
-            // Recusado pelo motor (aberto / Centre / largura zero) ⇒ verbatim.
+            match crate::expand::stroke_view(item, layer, s) {
+                // Recusado pelo motor (aberto / largura zero) ⇒ fica vivo, centrado.
+                Ok(view) => ph2d_vec_boolean::aligned_stroke(&view)
+                    .map_or(Split::Keep, crate::expand::one_object),
+                Err(gone) => gone,
+            }
+        });
+        match parts {
+            Some(parts) => {
+                any = true;
+                out.extend(parts);
+            }
             None => out.push(item.clone()),
         }
     }

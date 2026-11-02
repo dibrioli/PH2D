@@ -175,8 +175,7 @@ impl BuildSession {
             // O `apply_many` tira o estilo do ÚLTIMO argumento — que aqui é uma FACE, não a
             // fonte. O que sobra de uma forma continua sendo aquela forma: o estilo é dela.
             for p in &mut rest {
-                p.fill = src.fill.clone();
-                p.stroke.clone_from(&src.stroke);
+                p.carry_look_from(&src);
             }
             drop_slivers(
                 &mut rest,
@@ -199,8 +198,7 @@ impl BuildSession {
             .map(|i| &self.arr.sources()[i])
         {
             for p in &mut merged {
-                p.fill = top.fill.clone();
-                p.stroke.clone_from(&top.stroke);
+                p.carry_look_from(top);
             }
         }
         BuildResult { merged, remainder }

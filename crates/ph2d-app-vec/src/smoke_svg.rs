@@ -1,33 +1,6 @@
 //! ⭐⭐⭐ **IMPORTAR SVG** — `PH2D_VEC_SVG_SMOKE=1` (estudo 42, item 3).
 //!
-//! # O que a cena fecha
-//!
-//! Até 2026-09-05 este app **exportava** uma curva e não sabia **ler** nenhuma: o
-//! `ph2d-imageio-svg` validava o ficheiro e devolvia um documento vazio, *"intentionally empty"*.
-//! Nenhum acervo de artista entrava.
-//!
-//! # ⭐ A cena ESCREVE o próprio `.svg`
-//!
-//! É a lei do smoke do `.ase`: testar o importador não pode depender de o operador ter um ficheiro
-//! à mão. Ele é escrito no directório temporário, o caminho é impresso (para o Enio o poder
-//! **arrastar outra vez**, ou abrir noutro programa e comparar) e depois entra pela **mesma porta**
-//! que o arrastar-e-largar usa — ⛔ não por um atalho de teste.
-//!
-//! # O que o ficheiro carrega, e porquê cada coisa
-//!
-//! | No ficheiro | O que prova |
-//! |---|---|
-//! | Um triângulo com a ponta em CIMA | a lei dos eixos (o SVG mede o Y ao contrário do mundo) |
-//! | **Dois** quadrados dentro de dois `<g transform>` | a pose ANINHADA chega certa, e o `<g id>` vira um GRUPO na Hierarquia |
-//! | Uma curva `Q` (quadrática) | a elevação a cúbica é exacta |
-//! | Um `<linearGradient>` | a rampa viaja com a geometria |
-//! | Um traço `stroke-dasharray` | o tracejado entra em múltiplos da largura |
-//! | Um `<g opacity mix-blend-mode>` sobre uma barra | a opacidade e a mistura da v19 do schema |
-//! | Um `<text>` | ⛔ o que NÃO entra sai NOMEADO, e não em silêncio |
-//!
-//! ⚠️ **O `grupo-aninhado` tem DOIS filhos de propósito.** O verbo de agrupar desta casa exige dois
-//! membros (a mesma regra que o artista lê no menu), então um `<g>` com um filho só é achatado — e
-//! a cena não mostraria grupo nenhum na Hierarquia, que é metade do que ela existe para provar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_svg.rs`.
 
 /// O desenho da cena. ⚠️ Escrito à mão de propósito: um ficheiro gerado por um editor traria
 /// centenas de dígitos e nenhuma das sete perguntas acima ficaria legível ao lado do resultado.

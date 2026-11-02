@@ -264,5 +264,16 @@ fn a_cena_49_comeca_no_fill_and_stroke() {
         handles_first(c.handles),
         Some(crate::vector_mode_fill_stroke::FIRST)
     );
-    assert_eq!(of(Some("50")).want, 9, "a 50 ainda não existe");
+}
+
+/// A 50 (o Expand sobre a pilha) é a 6.ª da família do Fill & Stroke.
+#[test]
+fn a_cena_50_comeca_no_fill_and_stroke() {
+    let c = of(Some("50"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 36));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_fill_stroke::FIRST)
+    );
+    assert_eq!(of(Some("51")).want, 9, "a 51 ainda não existe");
 }

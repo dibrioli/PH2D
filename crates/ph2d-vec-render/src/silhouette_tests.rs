@@ -254,3 +254,47 @@ fn a_compound_region_contributes_every_contour() {
     };
     assert!(on(2.0) && on(1.0), "faltou um dos contornos do composto");
 }
+
+/// **Uma camada que muda a borda não tem resposta exata pela fonte** (dono 02/11, auditoria contra a
+/// pilha F45): uma camada de traço ou um preenchimento deslocado saem do miolo, e responder com o
+/// miolo poria o Bevel por dentro da tinta. Vazio = o raster (ou a `sil` resolvida) responde.
+#[test]
+fn a_layer_that_moves_the_edge_has_no_exact_silhouette_from_the_source() {
+    let mut traco = square(31, 1.0);
+    traco.paints = vec![ph2d_vec_scene::PaintEntry::stroke(StrokeSpec::new(
+        Rgba8::new(255, 255, 255, 255),
+        1.0,
+    ))];
+    let mut sombra = square(32, 1.0);
+    let mut e = ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(0, 0, 0, 255)));
+    e.offset = [0.5, 0.5];
+    sombra.paints = vec![e];
+    let mut igual = square(33, 1.0);
+    igual.paints = vec![ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(
+        0, 0, 0, 255,
+    )))];
+    let scene = scene_of(vec![traco, sombra, igual]);
+    let segs = |n| {
+        silhouette_segments(
+            &scene,
+            &VecXforms::default(),
+            &LiveGeometry::new(),
+            &LiveGeometry::new(),
+            id_of(n),
+            Affine::IDENTITY,
+            Affine::IDENTITY,
+        )
+    };
+    assert!(
+        segs(31).is_empty(),
+        "a camada de traço respondeu com o miolo"
+    );
+    assert!(
+        segs(32).is_empty(),
+        "o preenchimento deslocado respondeu com o miolo"
+    );
+    assert!(
+        !segs(33).is_empty(),
+        "controlo: um 2.º preenchimento no lugar continua exato"
+    );
+}

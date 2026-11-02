@@ -2,47 +2,7 @@
 //! (2026-09-18: *«Testei aqui e não vi em nenhum dos casos o envelope fazer diferença na
 //! deformação. […] Melhor montar uma cena específica para me mostrar isso»*).
 //!
-//! # ⛔⛔⛔ O report estava CERTO, e mais certo do que a minha resposta lhe deu
-//!
-//! Eu respondi-lhe que *«numa forma vectorial o envelope manda como sempre»*, e a medição derruba-o:
-//! o `ph2d_vec_skin::pesos::pesos_do_caminho` resolve os mesmos *Bounded Biharmonic Weights* sobre o
-//! INTERIOR de um contorno fechado desde 2026-09-15 — logo o alcance é inerte ali também. Medido
-//! pela porta do produto, variando o `strength` do osso do meio de `0,1` a `8,0`
-//! ([`ph2d_skeleton_live`], `sonda_do_envelope_no_vector_tests`):
-//!
-//! | forma | fechada? | amplitude da deformação |
-//! |---|---|---:|
-//! | `Rectangle` · `Ellipse` · `Star` · `Polygon` | fechada | **`0,000000`** |
-//! | `Line` · `Arc` · `Spiral` | ABERTA | `2,03` · `4,25` · `2,05` |
-//!
-//! ⇒ **a mídia nunca foi a pergunta certa.** O envelope manda onde o padrão-ouro **não resolveu**, e
-//! isso acontece num sítio só: um caminho **ABERTO** não tem interior, logo não tem domínio para a
-//! energia, logo não tem pesos guardados — e a deformação cai na lei euclidiana, que é a que lê o
-//! alcance.
-//!
-//! # O que a cena monta, e por que cada peça está lá
-//!
-//! Três fileiras, a MESMA corda, a MESMA corrente de três ossos, a MESMA dobra. Só o que está
-//! escrito na coluna da direita muda:
-//!
-//! | fileira | o que ela é | o envelope |
-//! |---|---|---|
-//! | **`Corda (alcance 1)`** | um traço ABERTO, com o alcance de fábrica | VIVO — mancha e alça à vista |
-//! | **`Corda (alcance 4)`** | o MESMO traço, com o alcance do osso do meio em `4` | VIVO — e a corda sai **noutro sítio** |
-//! | **`Barra preenchida`** | a mesma faixa, FECHADA | INERTE — sem mancha e sem alça |
-//!
-//! ⭐⭐ **As duas primeiras são um par, e é ele que responde ao report:** elas diferem num número só,
-//! logo *a diferença que se vê entre as duas É o envelope*. ⛔ Uma cena com uma corda só obrigaria o
-//! dono a confiar na memória da pose anterior, que é exactamente o que falhou no smoke dele.
-//!
-//! ⚠️ **A terceira fileira é a metade NEGATIVA, e vale tanto como as outras duas:** ela é onde a
-//! segunda queixa dele (*«o gizmo do envelope fica sempre visível mesmo quando não é usado?»*) se
-//! lê curada — ali o osso do meio não tem mancha nenhuma, porque ali o alcance não decide nada.
-//!
-//! # ⚠️ Os números desta cena são DERIVADOS, e a tabela está no código
-//!
-//! A dobra, o comprimento da corda e o alcance forte saem de uma varredura de legibilidade, não de
-//! gosto — ver [`DOBRA`], [`CORDA_M`] e [`ALCANCE_FORTE`].
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `smoke_bone_envelope.rs`.
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_vec_scene::{ShapeKind, VecScene, cook_tinted as shape};

@@ -1,29 +1,6 @@
 //! **O RECORTE da seleção** — a projeção que o painel lê, e o chip que a edita.
 //!
-//! Módulo irmão do [`crate::vec_frame_edit`], e o corte é por PERGUNTA, não por tamanho: aquele
-//! responde *"qual é a moldura desta seleção?"* (a seção Frame, o auto layout, as âncoras), este
-//! responde *"quem recorta nesta seleção?"*. Foram a mesma pergunta enquanto só uma moldura podia
-//! recortar; deixaram de ser em 2026-08-21, quando o Enio pediu *"a feature Clip Content para
-//! qualquer forma vetorial fechada"*.
-//!
-//! # A regra de elegibilidade é a MESMA, com um candidato a mais
-//!
-//! *Qual forma selecionada contém tudo o que está selecionado?* — o inverso da expansão de
-//! seleção, herdado do `vec_frame_edit` inteiro (inclusive o `is_within`, que é dele). O que muda
-//! é só o filtro do candidato: era *"tem `VecFrame`"*, é *"o caminho é FECHADO"*.
-//!
-//! O que ela recusa segue valendo, e pelas mesmas razões: **um filho sozinho** não oferece o chip
-//! (o artista selecionou a forma, não o contêiner); **dois irmãos** não têm resposta única;
-//! **contêiner + forma solta** editaria o que o artista não está a olhar.
-//!
-//! # Por que FECHADO
-//!
-//! ⚠️ Um caminho aberto não tem interior. O Vello recortaria à mesma — ele fecha a região
-//! implicitamente para preencher — mas por uma silhueta que o artista **não desenhou**, e o
-//! resultado seria arte a sumir atrás de uma fronteira invisível. É o mesmo predicado
-//! (`VecPath::closed`) com que a booleana viva e o Blend recusam caminhos abertos, e por isso o
-//! filtro vive AQUI, na fronteira de autoria, e não no componente: o `VecClipContent` descreve
-//! uma intenção, e quem decide onde ela pode ser expressa é quem oferece o controlo.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vec_clip_edit.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecClipContent};
 use ph2d_vec_scene::{VecPathId, VecScene};

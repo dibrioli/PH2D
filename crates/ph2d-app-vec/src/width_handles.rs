@@ -1,33 +1,6 @@
 //! **O WIDTH TOOL** — as alças de largura na curva (plano 25 §5, ADR-0148).
 //!
-//! O W1c deu a representação (a lista de paradas) e o motor vivo; o W1d deu uma fonte automática
-//! (o gesto do lápis). Este é o terceiro escritor do MESMO perfil: **a mão do artista, ponto a
-//! ponto** — o *Width Tool* do Illustrator.
-//!
-//! # O gesto, e por que ele é um MODO
-//!
-//! Uma alça por parada, **fora da curva**, à distância que a fita de facto tem ali. Arrastar:
-//! afastar da curva ENGROSSA, aproximar AFINA, e andar ao longo dela MOVE a parada. Clicar na
-//! curva onde não há alça **acrescenta** uma parada ali; o botão direito sobre uma alça a
-//! **apaga**.
-//!
-//! É um modo (o pill **Width**) e não uma alça escondida no Node pela razão que o Fillet/Chamfer
-//! já pagou: no Node as alças competiriam com as âncoras — e uma parada de multiplicador pequeno
-//! senta a milímetros da curva, ou seja em cima delas. O Illustrator faz o mesmo (Shift+W).
-//!
-//! # Nada aqui inventa uma segunda maneira de guardar a largura
-//!
-//! Toda escrita passa por [`crate::profile_live::arm`], a MESMA porta dos quatro sliders e do
-//! lápis. O que muda é só quem calcula a lista — e é por isso que o preview, o Apply e as três
-//! rotas de autoria não podem divergir: há um motor (`power_stroke_layers`) e um lugar onde o
-//! perfil mora (o componente).
-//!
-//! # A primeira alça nasce do NEUTRO
-//!
-//! Numa forma sem perfil, o 1º clique cria a lista uniforme (duas paradas, `1.0` nas pontas) e
-//! **só então** arrasta — o desenho não salta no toque. É a mesma lei do Fillet, que transforma um
-//! ponto suave em quina antes de arredondá-lo: *a ferramenta faz, dentro do gesto, o passo que o
-//! artista faria à mão*.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `width_handles.rs`.
 
 use ph2d_ecs::SimWorld;
 use ph2d_vec_scene::{VecPathId, VecScene, WidthStop, WidthStops, bake_xform, xform_of};

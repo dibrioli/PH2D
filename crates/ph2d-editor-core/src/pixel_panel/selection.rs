@@ -4,6 +4,8 @@
 
 /// Como uma selecção nova se junta à que há (os quatro botões da barra do Aseprite; no rato:
 /// Shift = somar, Alt+Shift = tirar, Ctrl+Shift = cruzar).
+use crate::zones::Rect;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PixelSelectMode {
     #[default]
@@ -363,6 +365,65 @@ pub struct PixelEditDialog {
     /// P8: as escolhas dos diálogos de filtro.
     pub filter: super::PixelFilterDialog,
     pub(crate) request: Option<PixelDialogChoice>,
+    /// O retângulo do sprite no ecrã `(x, y, w, h)` em px, que a família publica a cada quadro: os
+    /// diálogos de filtro encostam-se onde o tapam menos ([`place_dialog`]).
+    pub avoid: Option<PixelOnScreen>,
+}
+
+/// Um retângulo de ecrã `(x, y, w, h)` em px.
+pub type ScreenBox = (i32, i32, u32, u32);
+/// A área livre do desenho e o sprite dentro dela, no ecrã.
+pub type PixelOnScreen = (ScreenBox, ScreenBox);
+
+/// **Onde a caixa `w × h` assenta na vista `view`**: dos oito encostos (os quatro lados ao meio e
+/// os quatro cantos, a `margin` da borda, acima da faixa `hint_band` do fundo onde vive a dica), o
+/// de MENOR área sobreposta ao sprite `avoid`; empate = a ordem (direita, esquerda, cima, baixo,
+/// cantos). Sem sprite, ao centro.
+#[must_use]
+pub fn place_dialog(
+    view: Rect,
+    (w, h): (f32, f32),
+    avoid: Option<ScreenBox>,
+    margin: f32,
+    hint_band: f32,
+) -> Rect {
+    let centro = Rect::new(
+        (view.x + (view.w - w) * 0.5).max(view.x),
+        (view.y + (view.h - h) * 0.5).max(view.y),
+        w,
+        h,
+    );
+    let Some((sx, sy, sw, sh)) = avoid else {
+        return centro;
+    };
+    #[expect(clippy::cast_precision_loss, reason = "px de ecrã")]
+    let s = Rect::new(sx as f32, sy as f32, sw as f32, sh as f32);
+    let fundo = (view.y + view.h - hint_band).max(view.y + h);
+    let (x0, x1) = (view.x + margin, (view.x + view.w - margin - w).max(view.x));
+    let (y0, y1) = (view.y + margin, (fundo - margin - h).max(view.y));
+    let (xm, ym) = ((x0 + x1) * 0.5, (y0 + y1) * 0.5);
+    let sobra = |r: Rect| {
+        let ix = (r.x + r.w).min(s.x + s.w) - r.x.max(s.x);
+        let iy = (r.y + r.h).min(s.y + s.h) - r.y.max(s.y);
+        ix.max(0.0) * iy.max(0.0)
+    };
+    [
+        (x1, ym),
+        (x0, ym),
+        (xm, y0),
+        (xm, y1),
+        (x1, y0),
+        (x0, y0),
+        (x1, y1),
+        (x0, y1),
+    ]
+    .into_iter()
+    .map(|(x, y)| Rect::new(x, y, w, h))
+    .fold(None, |melhor: Option<Rect>, r| match melhor {
+        Some(m) if sobra(m) <= sobra(r) => Some(m),
+        _ => Some(r),
+    })
+    .unwrap_or(centro)
 }
 
 impl Default for PixelEditDialog {
@@ -380,6 +441,7 @@ impl Default for PixelEditDialog {
             modify_n: 1,
             filter: super::PixelFilterDialog::default(),
             request: None,
+            avoid: None,
         }
     }
 }

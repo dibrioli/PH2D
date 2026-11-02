@@ -89,11 +89,34 @@ impl PixelApp {
         }
         self.was_editing = editing;
         self.spray_tick();
-        self.zoom = editing.and_then(|bits| {
+        let tela = editing.and_then(|bits| {
             let doc = self.docs.get(&crate::input::key_of(sim.world(), bits)?)?;
             let m = to_screen(sim.world(), bits, doc, camera, window, ppm)?;
-            Some(zoom::nearest(px_per_cell(m)))
+            let (w, h) = (doc.sprite.width(), doc.sprite.height());
+            let cantos = [(0, 0), (w, 0), (0, h), (w, h)]
+                .map(|(x, y)| m * ph2d_vector::Point::new(f64::from(x), f64::from(y)));
+            let (x0, y0) = cantos
+                .iter()
+                .fold((f64::MAX, f64::MAX), |a, p| (a.0.min(p.x), a.1.min(p.y)));
+            let (x1, y1) = cantos
+                .iter()
+                .fold((f64::MIN, f64::MIN), |a, p| (a.0.max(p.x), a.1.max(p.y)));
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "px de ecrã"
+            )]
+            let r = (x0 as i32, y0 as i32, (x1 - x0) as u32, (y1 - y0) as u32);
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "px de ecrã"
+            )]
+            let livre = (area.x as i32, area.y as i32, area.w as u32, area.h as u32);
+            Some((zoom::nearest(px_per_cell(m)), (livre, r)))
         });
+        self.zoom = tela.map(|t| t.0);
+        self.na_tela = tela.map(|t| t.1);
     }
 
     /// O spray segurado borrifa a cada quadro, mesmo com o ponteiro parado (Aseprite).

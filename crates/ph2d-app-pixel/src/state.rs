@@ -152,6 +152,9 @@ pub struct PixelApp {
     pub(crate) semeadas: [[u8; 4]; 2],
     /// O degrau de zoom do sprite em Draw (píxeis de ecrã por célula), lido no quadro — o rodapé.
     pub(crate) zoom: Option<u32>,
+    /// A área livre do desenho e o retângulo do sprite em Draw no ecrã `(x, y, w, h)` px: os
+    /// diálogos de filtro encostam-se na área e fogem do sprite.
+    pub(crate) na_tela: Option<ph2d_editor_core::pixel_panel::PixelOnScreen>,
     /// A roda ainda por virar degrau (o trackpad manda o gesto aos bocados).
     pub(crate) roda: crate::input::Roda,
     /// As amostras seleccionadas da paleta (a rampa do Shading; o alvo de Sort/Move).
@@ -255,6 +258,7 @@ impl Default for PixelApp {
             painel_em_edicao: false,
             semeadas: [[0; 4]; 2],
             zoom: None,
+            na_tela: None,
             roda: crate::input::Roda::default(),
             sel: std::collections::BTreeSet::new(),
             ancora: None,

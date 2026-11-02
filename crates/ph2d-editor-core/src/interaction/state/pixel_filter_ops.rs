@@ -290,3 +290,10 @@ impl WidgetStore {
         tirou
     }
 }
+
+impl WidgetStore {
+    /// A família publica onde o sprite está no ecrã (px), a cada quadro.
+    pub fn set_pixel_edit_avoid(&mut self, r: Option<crate::pixel_panel::PixelOnScreen>) {
+        self.pixel.edit.avoid = r;
+    }
+}

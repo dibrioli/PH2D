@@ -94,6 +94,7 @@ pub fn frame(
     app.chave = editing.and_then(|b| crate::input::key_of(world, b));
     crate::smoke_intervalo::conduz(hero);
     crate::smoke_efeitos::conduz(app);
+    hero.store.set_pixel_edit_avoid(app.na_tela);
     for r in std::mem::take(&mut app.pedidos) {
         app.aplica(r);
     }

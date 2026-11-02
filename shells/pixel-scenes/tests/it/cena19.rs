@@ -231,3 +231,18 @@ fn the_text_is_clipped_to_the_selection_in_preview_and_stamp() {
         sem.len()
     );
 }
+
+/// A família publica a área livre e o retângulo do sprite no ecrã a cada quadro (o diálogo de
+/// filtro foge dele): os cantos são os das células (0,0) e (64,48).
+#[test]
+fn the_sprite_rect_on_screen_is_published_for_the_dialogs() {
+    let mut p = Palco::cena(19);
+    p.quadro();
+    let (_, (x, y, w, h)) = p.hero.store.pixel_edit_dialog().avoid.expect("publicado");
+    let a = crate::comum::at(&p.app, &p.sim, &p.cam, p.bits, 0, 0);
+    let b = crate::comum::at(&p.app, &p.sim, &p.cam, p.bits, 63, 47);
+    let cel = (b.0 - a.0) / 63.0;
+    assert!((x as f32 - (a.0 - cel * 0.5)).abs() <= 1.0, "x {x} × {a:?}");
+    assert!((y as f32 - (a.1 - cel * 0.5)).abs() <= 1.0, "y {y} × {a:?}");
+    assert!((w as f32 - cel * 64.0).abs() <= 2.0 && (h as f32 - cel * 48.0).abs() <= 2.0);
+}

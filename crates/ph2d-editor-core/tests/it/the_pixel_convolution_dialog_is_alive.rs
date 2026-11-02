@@ -132,3 +132,49 @@ fn no_kernel_name_nor_label_of_the_convolution_dialog_is_cut() {
         assert!(md.coube(), "«{t}» cortado em «{}»", md.pintado);
     }
 }
+
+/// **A regra de onde o diálogo de filtro assenta** (`place_dialog`), com os números da foto da
+/// cena 19 (área livre 1290 × 645 em (332, 95), sprite 385 × 289 em (785, 248)): o Hue/Saturation
+/// cabe ao lado e não toca o sprite; o Convolution (largo) não cabe em lado nenhum e fica no encosto
+/// de MENOR sobreposição dos oito; nenhum desce à faixa da dica.
+#[test]
+fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
+    use ph2d_editor_core::pixel_panel::place_dialog;
+    use ph2d_editor_core::zones::Rect;
+    let view = Rect::new(332.0, 95.0, 1290.0, 645.0);
+    let sprite = (785, 248, 385, 289);
+    let s = Rect::new(785.0, 248.0, 385.0, 289.0);
+    let (margem, dica) = (12.0, 64.0);
+    let toca = |r: Rect| {
+        let ix = (r.x + r.w).min(s.x + s.w) - r.x.max(s.x);
+        let iy = (r.y + r.h).min(s.y + s.h) - r.y.max(s.y);
+        ix.max(0.0) * iy.max(0.0)
+    };
+    let hue = place_dialog(view, (320.0, 235.0), Some(sprite), margem, dica);
+    assert_eq!(toca(hue), 0.0, "o Hue/Saturation ao lado: {hue:?}");
+    assert!(hue.y + hue.h <= view.y + view.h - dica, "acima da dica");
+    let conv = place_dialog(view, (650.0, 460.0), Some(sprite), margem, dica);
+    assert!(conv.y + conv.h <= view.y + view.h - dica, "acima da dica");
+    // O mínimo de verdade: varrer a vista inteira de 4 em 4 px não acha encosto que toque menos.
+    let mut minimo = f32::MAX;
+    let mut y = view.y;
+    while y + 460.0 <= view.y + view.h - dica {
+        let mut x = view.x;
+        while x + 650.0 <= view.x + view.w {
+            minimo = minimo.min(toca(Rect::new(x, y, 650.0, 460.0)));
+            x += 4.0;
+        }
+        y += 4.0;
+    }
+    eprintln!(
+        "[sonda cena 19] Convolution: sobreposição {} px² (mínimo varrido {minimo})",
+        toca(conv)
+    );
+    assert!(
+        toca(conv) <= minimo * 1.1 + 1.0,
+        "{conv:?} toca {} > {minimo}",
+        toca(conv)
+    );
+    // ⚠️ Nesta janela o Convolution não cabe ao lado: o mínimo geométrico ainda tapa ~51 % do
+    // sprite (56 933 de 111 265 px²); o encosto escolhido fica a ≤ 10 % desse mínimo.
+}

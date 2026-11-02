@@ -85,9 +85,20 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     let gap = Spacing::Xs.px();
     let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
     let dialog_w = width_of(d.kind);
-    let rect_x = (viewport.x + (viewport.w - dialog_w) * 0.5).max(viewport.x);
-    let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
-    let rect = Rect::new(rect_x, rect_y, dialog_w, total_h);
+    // Os de filtro encostam-se onde tapam menos o sprite e nunca a dica do fundo (as filas dela).
+    let alvo = d.kind.is_filter().then_some(d.avoid).flatten();
+    #[expect(clippy::cast_precision_loss, reason = "px de ecrã")]
+    let (view, avoid) = alvo.map_or((viewport, None), |((x, y, w, h), s)| {
+        (Rect::new(x as f32, y as f32, w as f32, h as f32), Some(s))
+    });
+    let hint_band = ROW_H + ROW_H + Spacing::Md.px();
+    let rect = crate::pixel_panel::place_dialog(
+        view,
+        (dialog_w, total_h),
+        avoid,
+        Spacing::Md.px(),
+        hint_band,
+    );
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     crate::paint::stroke_frame(

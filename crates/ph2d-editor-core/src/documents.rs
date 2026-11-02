@@ -23,6 +23,8 @@ pub type SharedKanbans = std::rc::Rc<std::cell::RefCell<KanbanSet>>;
 pub(crate) mod alert;
 #[path = "documents_fac.rs"]
 pub(crate) mod fac;
+#[path = "documents_kanban_tabs.rs"]
+pub mod kanban_tabs;
 #[path = "documents_live.rs"]
 pub mod live;
 #[path = "documents_nav.rs"]
@@ -336,10 +338,7 @@ impl Documents {
                 true
             }
             DragPayload::Kanban { id } if self.kanbans.borrow().get(KanbanId(id)).is_some() => {
-                crate::screens::hero::board_video::kanban::request_open(
-                    &mut self.live,
-                    KanbanId(id),
-                )
+                kanban_tabs::request_open(&mut self.live, KanbanId(id))
             }
             _ => false,
         }

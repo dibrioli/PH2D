@@ -378,6 +378,6 @@ pub(crate) fn install() -> SharedCanvas {
     ph2d_editor_core::screens::hero::board_video::kanban::install_kanban_input(Rc::new(
         RefCell::new(Input(canvas.clone())),
     ));
-    ph2d_editor_core::screens::hero::board_video::kanban::install_tab_opener();
+    ph2d_editor_core::documents::kanban_tabs::install_tab_opener();
     canvas
 }

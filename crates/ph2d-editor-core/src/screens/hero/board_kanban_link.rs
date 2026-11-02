@@ -1,5 +1,5 @@
 //! W4 do Kanban, lote V — **as ligações entre a aba e o quadro** (ADR-0195 §3.2): «Show on board» e
-//! «Place on board» pedidos da aba (o canal [`request`] → [`serve`], molde do `install_tab_opener`: a
+//! «Place on board» pedidos da aba (o canal [`request`] → [`serve`], molde do `documents::kanban_tabs`: a
 //! família pede, o editor serve no quadro seguinte, sem ciclo). O desfazer de «inserir Kanban» tira
 //! só a referência: o documento fica no projecto até ser APAGADO (dono 30/10, D17).
 
@@ -34,18 +34,6 @@ pub struct Placement {
 thread_local! {
     static REQUESTS: RefCell<Vec<BoardRequest>> = const { RefCell::new(Vec::new()) };
     static LAST_BOARD: Cell<Option<BoardId>> = const { Cell::new(None) };
-    static CLOSE: RefCell<Vec<KanbanId>> = const { RefCell::new(Vec::new()) };
-}
-
-/// D17 — o Kanban apagado fecha a aba dele (a família esvazia [`take_close_requests`] a cada quadro).
-pub(crate) fn request_close(k: KanbanId) {
-    CLOSE.with(|q| q.borrow_mut().push(k));
-}
-
-/// Os Kanbans apagados desde a última vez (as abas deles fecham).
-#[must_use]
-pub fn take_close_requests() -> Vec<KanbanId> {
-    CLOSE.with(|q| std::mem::take(&mut *q.borrow_mut()))
 }
 
 /// Quantos quadros mostram o Kanban `kanban` (a pergunta de apagar di-lo).

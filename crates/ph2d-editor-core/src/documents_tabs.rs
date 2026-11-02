@@ -258,7 +258,7 @@ impl Documents {
             }
             refs.extend(gone.into_iter().map(|el| (b, el)));
         }
-        crate::screens::hero::board_video::kanban::link::request_close(id);
+        super::kanban_tabs::request_close(id);
         Some((kanban, refs))
     }
 

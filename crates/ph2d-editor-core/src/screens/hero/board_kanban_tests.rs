@@ -8,9 +8,8 @@ use std::rc::Rc;
 
 use super::*;
 use crate::doc_surface::{Key, KeyInput, KeyOutcome, Surfaces};
-use crate::screens::hero::board_video::kanban::{
-    self as kb, KanbanElementInput, KanbanPointer, NO_TAB,
-};
+use crate::documents::kanban_tabs::{self as tabs, NO_TAB, install_tab_opener, take_open_requests};
+use crate::screens::hero::board_video::kanban::{self as kb, KanbanElementInput, KanbanPointer};
 use ph2d_board_model::{ElementId, KanbanBoardView, KanbanId};
 
 fn kanban_el(t: &T) -> Option<Element> {
@@ -67,18 +66,18 @@ fn open_in_tab_tells_why_without_an_opener_and_asks_for_the_tab_with_one() {
     t.click_bar(Item::Kanban);
     let k = kanban_el(&t).unwrap().kanban().unwrap().kanban;
     t.click_bar(Item::OpenKanban);
-    assert!(kb::take_open_requests().is_empty());
+    assert!(take_open_requests().is_empty());
     assert_eq!(t.hero.documents.live.notice.map(|n| n.0), Some(NO_TAB));
-    kb::install_tab_opener();
+    install_tab_opener();
     t.click_bar(Item::OpenKanban);
-    assert_eq!(kb::take_open_requests(), vec![k]);
+    assert_eq!(take_open_requests(), vec![k]);
 }
 
 /// O duplo clique no CABEÇALHO pede a aba.
 #[test]
 fn a_double_click_on_the_header_asks_for_the_tab() {
     let mut t = T::new();
-    kb::install_tab_opener();
+    install_tab_opener();
     t.click_bar(Item::Kanban);
     let el = kanban_el(&t).unwrap();
     let pl = t.hero.documents.live.render_cache.kanbans.on_screen[&el.id];
@@ -99,7 +98,7 @@ fn a_double_click_on_the_header_asks_for_the_tab() {
         };
         board_view::pointer(&mut t.hero, input, kind, p, x, y, true);
     }
-    assert_eq!(kb::take_open_requests(), vec![el.kanban().unwrap().kanban]);
+    assert_eq!(take_open_requests(), vec![el.kanban().unwrap().kanban]);
 }
 
 #[derive(Default)]
@@ -200,7 +199,7 @@ fn undoing_the_kanban_insert_keeps_the_document_in_the_project() {
 #[test]
 fn the_right_click_menu_of_a_kanban_opens_it_in_a_tab() {
     let mut t = T::new();
-    kb::install_tab_opener();
+    install_tab_opener();
     t.click_bar(Item::Kanban);
     let el = kanban_el(&t).unwrap();
     let at = middle(&mut t, el.id);
@@ -212,7 +211,7 @@ fn the_right_click_menu_of_a_kanban_opens_it_in_a_tab() {
     let open = crate::ids::CTX_MENU_BOARD_EL_OPEN_TAB;
     t.hero
         .apply_event(crate::interaction::WidgetEvent::Click(open));
-    assert_eq!(kb::take_open_requests(), vec![el.kanban().unwrap().kanban]);
+    assert_eq!(take_open_requests(), vec![el.kanban().unwrap().kanban]);
 }
 
 /// ⭐ D17 — um Kanban largado dos Assets sobre o quadro nasce com o meio no ponto do ecrã; o `Ctrl+Z`
@@ -246,7 +245,7 @@ fn deleting_a_kanban_takes_its_references_and_undo_brings_both_back() {
     let k = before.kanban().unwrap().kanban;
     let doc = t.hero.documents.kanbans().get(k).cloned();
     assert_eq!(kb::link::boards_showing(&t.hero.documents, k), 1);
-    let _ = kb::link::take_close_requests();
+    let _ = tabs::take_close_requests();
     t.hero
         .store
         .open_context_menu(crate::interaction::ContextMenuRequest {
@@ -268,7 +267,7 @@ fn deleting_a_kanban_takes_its_references_and_undo_brings_both_back() {
     assert!(t.hero.documents.kanbans().get(k).is_none());
     assert!(!listed(&t), "saiu dos Assets");
     assert!(kanban_el(&t).is_none(), "a referência saiu com ele");
-    assert_eq!(kb::link::take_close_requests(), vec![k], "a aba fecha");
+    assert_eq!(tabs::take_close_requests(), vec![k], "a aba fecha");
     assert!(t.hero.documents.undo_tab(false).is_some());
     assert_eq!(t.hero.documents.kanbans().get(k).cloned(), doc);
     assert!(listed(&t));

@@ -37,10 +37,10 @@ pub fn frame(hero: &mut HeroScreen) {
         c.cx.floor = None;
         c.set = Some(docs.set());
     }
-    for k in kb::take_open_requests() {
+    for k in ph2d_editor_core::documents::kanban_tabs::take_open_requests() {
         docs.open(k);
     }
-    for k in kb::link::take_close_requests() {
+    for k in ph2d_editor_core::documents::kanban_tabs::take_close_requests() {
         let gone: Vec<u64> = docs
             .tabs
             .iter()

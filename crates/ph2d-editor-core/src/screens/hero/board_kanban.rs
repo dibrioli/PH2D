@@ -4,12 +4,12 @@
 //!
 //! Com o gancho, o Kanban activo (o seleccionado sozinho em que se clica de novo, a nível alto) recebe o
 //! rato e as teclas; clicar fora ou `Esc` desactiva-o. Sem gancho o Kanban é uma caixa como um vídeo
-//! parado. O duplo clique no cabeçalho pede-o numa aba ([`take_open_requests`]); sem quem abra abas de
-//! Kanban ([`install_tab_opener`]) o pedido diz-o num aviso, nunca um clique mudo.
+//! parado. O duplo clique no cabeçalho pede-o numa aba ([`crate::documents::kanban_tabs`]); sem quem abra abas de
+//! Kanban o pedido diz-o num aviso, nunca um clique mudo.
 //!
 //! [ADR-0195]: ../../../../../docs/architecture/decisions/0195-o-kanban-e-um-documento-do-projeto-o-quadro-referencia-o-e-a-aba-abre-o.md
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use ph2d_board_edit::Tool;
@@ -20,6 +20,7 @@ use ph2d_text::TextSystem;
 
 use crate::doc_surface::{Compose, KeyInput, KeyOutcome, PointerLook, Surfaces};
 use crate::documents::BoardLive;
+use crate::documents::kanban_tabs::{NO_TAB, can_open_tabs, request_open};
 use crate::icons::IconId;
 use crate::screens::hero::HeroScreen;
 use crate::screens::hero::board_bar::Item;
@@ -121,8 +122,6 @@ pub mod link;
 
 thread_local! {
     static INPUT: RefCell<Option<Rc<RefCell<dyn KanbanElementInput>>>> = const { RefCell::new(None) };
-    static OPENER: Cell<bool> = const { Cell::new(false) };
-    static OPEN: RefCell<Vec<KanbanId>> = const { RefCell::new(Vec::new()) };
     static BACKGROUND: RefCell<Vec<KanbanId>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -142,23 +141,6 @@ pub fn install_kanban_input(input: Rc<RefCell<dyn KanbanElementInput>>) {
     INPUT.with(|s| *s.borrow_mut() = Some(input));
 }
 
-/// Quem abre abas de Kanban existe neste fio (esvazia [`take_open_requests`] a cada quadro).
-pub fn install_tab_opener() {
-    OPENER.with(|o| o.set(true));
-}
-
-/// Os Kanbans pedidos numa aba desde a última vez, por ordem.
-#[must_use]
-pub fn take_open_requests() -> Vec<KanbanId> {
-    OPEN.with(|q| std::mem::take(&mut *q.borrow_mut()))
-}
-
-/// Há quem abra abas de Kanban («Open in tab» fica aceso).
-#[must_use]
-pub fn can_open_tabs() -> bool {
-    OPENER.with(Cell::get)
-}
-
 /// Onde o Kanban `id` do quadro activo ficou no último desenho (as sondas e os testes clicam aí).
 #[must_use]
 pub fn placement(hero: &HeroScreen, id: ElementId) -> Option<ph2d_board_render::KanbanPlacement> {
@@ -175,19 +157,6 @@ pub fn placement(hero: &HeroScreen, id: ElementId) -> Option<ph2d_board_render::
 #[must_use]
 pub fn active(hero: &HeroScreen) -> Option<ElementId> {
     hero.documents.live.render_cache.kanbans.active
-}
-
-/// A frase quando não há quem abra a aba.
-pub(crate) const NO_TAB: &str = "board.kanban.no_tab";
-
-/// Pede o Kanban `k` numa aba; sem quem a abra, o aviso no quadro. `true` = pedido.
-pub(crate) fn request_open(live: &mut BoardLive, k: KanbanId) -> bool {
-    if !can_open_tabs() {
-        live.notice = Some((NO_TAB, std::time::Instant::now()));
-        return false;
-    }
-    OPEN.with(|q| q.borrow_mut().push(k));
-    true
 }
 
 fn hook() -> Option<Rc<RefCell<dyn KanbanElementInput>>> {

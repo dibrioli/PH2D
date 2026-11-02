@@ -649,6 +649,7 @@ fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
         background: PixelOutlineBg::BackgroundColor,
         tiled: true,
         channels: [true, true, true, false],
+        all: false,
     };
     assert_ne!(antes, quer);
     assert_eq!(e.hero.store.pixel_filter_preview(), Some(quer));
@@ -742,6 +743,7 @@ fn the_adjustments_dialogs_reach_the_preview_and_the_curve_is_edited_by_the_mous
         brightness: -50,
         contrast: 100,
         channels: [true; 4],
+        all: false,
     };
     assert_eq!(
         e.hero.store.pixel_filter_preview(),
@@ -755,6 +757,8 @@ fn the_adjustments_dialogs_reach_the_preview_and_the_curve_is_edited_by_the_mous
     e.carrega(ids::PIXEL_FILTER_HUE_MODES[3].1);
     e.escreve(ids::PIXEL_FILTER_HUE, "-400");
     e.escreve(ids::PIXEL_FILTER_LIGHTNESS, "25");
+    e.escreve(ids::PIXEL_FILTER_ALPHA, "-150");
+    e.carrega(ids::PIXEL_FILTER_TARGET);
     e.carrega(ids::PIXEL_FILTER_HUE);
     assert_eq!(
         e.hero.store.pixel_filter_preview(),
@@ -763,7 +767,9 @@ fn the_adjustments_dialogs_reach_the_preview_and_the_curve_is_edited_by_the_mous
             hue: -180,
             saturation: 0,
             lightness: 25,
+            alpha: -100,
             channels: [true; 4],
+            all: true,
         })
     );
 

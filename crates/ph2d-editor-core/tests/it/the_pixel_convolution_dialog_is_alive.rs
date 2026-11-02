@@ -76,6 +76,7 @@ fn clicking_a_kernel_and_tiled_reach_the_preview_the_ok_and_the_session() {
             kernel: 0,
             tiled: false,
             channels: [true; 4],
+            all: false,
         })
     );
     e.carrega(ids::pixel_filter_kernel_id(24).expect("linha"));
@@ -85,6 +86,7 @@ fn clicking_a_kernel_and_tiled_reach_the_preview_the_ok_and_the_session() {
         kernel: 24,
         tiled: true,
         channels: [true, true, true, false],
+        all: false,
     };
     assert_eq!(e.hero.store.pixel_filter_preview(), Some(quer));
     e.carrega(ids::PIXEL_EDIT_OK);

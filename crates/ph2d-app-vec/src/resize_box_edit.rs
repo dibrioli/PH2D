@@ -1,27 +1,7 @@
 //! **RESIZE BOX da seleção** — a projecção que o painel lê, e a porta que a edita (plano UI/UX
 //! W3b, decisão do Enio 2026-08-03).
 //!
-//! Irmão do `vec_anchor_edit` (na shell) e do `vec_frame_edit` (na shell), com a mesma divisão de
-//! donos: a verdade mora no ECS ([`ph2d_ecs::VecResizeBox`], um **override** sobre o default
-//! derivado da hierarquia) e isto é o que a shell publica por frame. O painel não alcança o mundo
-//! — se alcançasse, a resposta que DESENHA a caixa marcada divergiria da que HONRA o arrasto.
-//!
-//! # O que o checkbox decide
-//!
-//! Marcado, arrastar a alça do gizmo reescreve a **CAIXA** do objeto (a geometria). Desmarcado,
-//! escala a **POSE**, que é herdada por todo descendente — o comportamento correto para um
-//! objeto de **game**, e o que este editor sempre fez.
-//!
-//! # O NEUTRO destaca, e é o que mantém o ficheiro honesto
-//!
-//! O default é uma função da hierarquia ([`ph2d_ecs::resize_box_default`]): molduras e os filhos
-//! delas nascem marcados. Voltar ao valor de fábrica **remove** o componente em vez de gravar um
-//! bool redundante — o precedente literal do `VecLayoutItem` e de todo override da física.
-//!
-//! ⚠️ Isso é mais do que higiene: sem o destacamento, uma forma marcada em `true` *por já ser
-//! filha de moldura* levaria o `true` consigo ao ser arrastada para FORA, e passaria a
-//! redimensionar num sítio onde o default diz escalar — a regra deixaria de seguir a hierarquia
-//! sem nada na tela a dizer porquê.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `resize_box_edit.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecResizeBox};
 use ph2d_vec_scene::VecPathId;

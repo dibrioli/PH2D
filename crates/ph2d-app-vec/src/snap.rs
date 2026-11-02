@@ -1,25 +1,6 @@
 //! ⭐ **A LEI do snap vectorial, fora da shell** — W2/L4, A2 (desfazer o acoplamento).
 //!
-//! Aqui mora o que o encaixe DECIDE; na shell fica só o que ele precisa de PERGUNTAR à janela.
-//! O corte é exactamente esse, e é verificável: nada neste ficheiro menciona `App`, `gfx`,
-//! painel ou câmera.
-//!
-//! # ⚠️ O módulo chama-se `vec_snap` de propósito
-//!
-//! Ele era `shells/desktop/src/vec_snap.rs`, e o nome do módulo entra no **nome de cada teste**.
-//! Mantê-lo faz a prova de que nenhum teste se perdeu (`scripts/nextest-list-diff.py`) passar
-//! mesmo a `--depth 2` (`módulo::fn`), e não só no `--depth 1` por omissão. *Renomear um módulo
-//! de testes durante uma extracção é indistinguível, na lista, de perder os testes dele.*
-//!
-//! # O que FICOU na shell, e porquê (a lista que o substrato tem de cobrir)
-//!
-//! | método | o que ele precisa e não é da família |
-//! |---|---|
-//! | `vec_px_to_world` | `gfx.surface` + `gfx.camera` — e ⚠️ ele não é do vector: **11 ficheiros** de outras famílias o chamam |
-//! | `vec_snap_point` · `vec_snap_move` | `gfx.hero_screen.grid` — estado de PAINEL |
-//! | `vec_rebuild_snap_targets` | `gfx.guides` + a orquestração do gesto |
-//! | `dragged_entity_bits` · `dragged_vec_path_ids` · `snap_dragged_vec_during_drag` | `gfx.hero_screen.gizmo` |
-//! | `sprite_snap_points` · `vec_move_sources` | `crate::transform`, que **não pôde sair** (declara um `#[path]` de um teste que precisa de `crate::profile_live`) |
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `snap.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_editor_core::grid_snap::GridSnapState;

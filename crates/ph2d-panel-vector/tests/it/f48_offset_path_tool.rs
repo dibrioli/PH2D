@@ -215,7 +215,45 @@ fn apply_e_remove_so_com_offset_vivo() {
     assert!(!chegou(&mut h, ids::VECTOR_EXPAND_REMOVE));
     clica_na_barra(&mut h, apply);
     assert!(chegou(&mut h, apply));
+    // O Offset é PRECISO: nem com duas formas a ② ganha a fila de baixo (alinhar, booleanas…).
+    // *Mutação: tirar o Offset do `PRECISE` ⇒ vermelho.*
+    ph2d_panel_vector::state::set_current_selection_count(2);
+    assert!(
+        barras(&h, DrawMode::Offset).actions_below.is_empty(),
+        "o Offset ganhou a fila de baixo da ④"
+    );
+    ph2d_panel_vector::state::set_current_selection_count(1);
     ph2d_panel_vector::set_offset_live_on(false);
+}
+
+/// ⭐ Escolher uma linha do `Holes ▾` ou do `Result ▾` FECHA a lista dela. *Mutação: tirar
+/// `[HOLES, RESULT]` do `close_list_on_pick` ⇒ vermelho.*
+#[test]
+fn escolher_na_lista_fecha_a_lista() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    let mut h = host();
+    let _ = barras(&h, DrawMode::Offset);
+    for (lista, linha) in [
+        (ids::VECTOR_BAR_RESULT, ids::VECTOR_EXPAND_RESULT_FRONT),
+        (
+            ids::VECTOR_BAR_HOLES,
+            ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH,
+        ),
+    ] {
+        let Some(InteractiveState::Dropdown { open, .. }) = h.store_mut().get_mut(lista) else {
+            panic!("{lista:?} não é uma lista no store");
+        };
+        *open = true;
+        clica_na_barra(&mut h, linha);
+        assert!(
+            !matches!(
+                h.store().get(lista),
+                Some(InteractiveState::Dropdown { open: true, .. })
+            ),
+            "{lista:?} ficou aberta depois da escolha"
+        );
+    }
+    ph2d_panel_vector::set_offset_knobs(EXPAND_KNOBS_AT_BIRTH);
 }
 
 /// ⭐ O perfil de largura (os quatro W e o `Apply Power Stroke`) mora no «Stroke settings».

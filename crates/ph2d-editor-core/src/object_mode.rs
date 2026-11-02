@@ -141,6 +141,8 @@ pub struct ModeState {
     part_gizmo: bool,
     /// O modo é do TIPO ([`crate::screens::hero::mode_drive::ModeFamily::holds_the_whole_kind`]).
     whole_kind: bool,
+    /// Escolher outro objecto do tipo FICA no modo ([`crate::screens::hero::mode_drive::ModeFamily::stays_on_its_kind`]).
+    kind_stays: bool,
 }
 
 impl ModeState {
@@ -211,6 +213,7 @@ impl ModeState {
     pub fn leave(&mut self) -> Option<ActiveMode> {
         self.parts = None;
         self.whole_kind = false;
+        self.kind_stays = false;
         self.release = false;
         self.active.take()
     }
@@ -241,6 +244,17 @@ impl ModeState {
     #[must_use]
     pub fn whole_kind(&self) -> bool {
         self.whole_kind
+    }
+
+    /// Publica se escolher outro objecto do tipo fica no modo em curso.
+    pub fn publish_kind_stays(&mut self, on: bool) {
+        self.kind_stays = on;
+    }
+
+    /// ⭐ Escolher outro objecto do TIPO fica no modo em curso (o Draw do vetor, 02/11).
+    #[must_use]
+    pub fn kind_stays(&self) -> bool {
+        self.kind_stays
     }
 
     /// As partes publicadas da entidade trancada.
@@ -355,21 +369,26 @@ impl ModeState {
 /// - o alvo é o trancado, ou uma parte DE DENTRO dele (os ossos do esqueleto) ⇒ fica;
 /// - num modo do TIPO ([`ModeState::whole_kind`]) as partes são os outros objectos do tipo ⇒ sai
 ///   (*«seja do mesmo tipo ou de outro tipo»*);
+/// - ⭐ salvo o modo que FICA no tipo (`kind_stays`, o Draw do vetor — dono 02/11: *«não é legal sair
+///   do modo draw ao selecionar mais de um objeto»*, as booleanas): outro objecto do tipo é parte e fica;
 /// - limpar (alvo `None`, `range == false`) ⇒ fica (05/10: desseleccionar não sai do Edit);
-/// - um intervalo da Hierarquia (`range`) apanha linhas que a porta não nomeia ⇒ sai.
+/// - um intervalo da Hierarquia (`range`) apanha linhas que a porta não nomeia ⇒ sai; no modo que fica
+///   no tipo, quem decide é a rede `still_holds` sobre a selecção que o intervalo deixou (um objecto de
+///   outro tipo nela ⇒ Object).
 #[must_use]
 pub fn switches(
     locked: Option<u64>,
     parts: Option<&[u64]>,
     whole_kind: bool,
+    kind_stays: bool,
     target: Option<u64>,
     range: bool,
 ) -> bool {
     let Some(locked) = locked else {
         return false;
     };
-    let inside = |t: u64| t == locked || (!whole_kind && parts.is_some_and(|p| p.contains(&t)));
-    range || target.is_some_and(|t| !inside(t))
+    let part = |t: u64| (!whole_kind || kind_stays) && parts.is_some_and(|p| p.contains(&t));
+    (range && !kind_stays) || target.is_some_and(|t| t != locked && !part(t))
 }
 
 /// ⭐ **O objecto ACTIVO** — o último que o artista acrescentou à selecção (o do Blender, e o que o

@@ -210,16 +210,14 @@ fn a_shape_born_without_the_tool_does_not_ask_for_edit() {
     assert_ne!(a, b);
 }
 
-/// ⭐⭐ GATE (dono, 05/10, e 24/10: *«se estamos com um objeto selecionado no modo edit e selecionamos
-/// outro objeto, seja do mesmo tipo ou de outro tipo, o novo objeto selecionado abre […] no modo
-/// object»*) — **o Draw é do TIPO, e ESCOLHER outro objecto sai dele**: a outra forma seleccionada por
-/// uma porta que não é gesto (a forma que passa a outra, o desfazer) é parte do modo e ele fica; o
-/// `Tab` de volta deixa a selecção como estava; escolher a outra forma OU um objecto de outro tipo pela
-/// porta de selecção volta a Object com ele seleccionado e larga a ferramenta.
-/// (Mutações: `holds_the_whole_kind` = `false` ⇒ a outra forma por outra porta larga o modo ⇒ RED;
-/// `switches` sem o ramo do tipo ⇒ escolher a outra forma fica no Draw ⇒ RED.)
+/// ⭐⭐ GATE (dono, 05/10, 24/10 e a EXCEÇÃO de 02/11: *«se estou num objeto vector modo draw e
+/// seleciono outro objeto vetor ou vários objetos vector, não deve sair do modo draw»*) — **o Draw é
+/// do TIPO**: a outra forma seleccionada por uma porta que não é gesto é parte do modo e ele fica; o
+/// `Tab` de volta deixa a selecção como estava; escolher um objecto de OUTRO tipo pela porta de
+/// selecção volta a Object com ele seleccionado e larga a ferramenta.
+/// (Mutação: `holds_the_whole_kind` = `false` ⇒ a outra forma por outra porta larga o modo ⇒ RED.)
 #[test]
-fn the_draw_holds_every_shape_and_choosing_another_object_leaves_it() {
+fn the_draw_holds_every_shape_and_choosing_another_kind_leaves_it() {
     use ph2d_editor_core::screens::hero::mode_drive::chosen;
     let mut c = cena();
     let (a, b) = (c.forma(0.0), c.forma(3.0));
@@ -246,15 +244,6 @@ fn the_draw_holds_every_shape_and_choosing_another_object_leaves_it() {
     );
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(b));
-    chosen(&mut c.hero, Some(a), false);
-    c.hero.gizmo.replace_selection(Some(a));
-    c.quadro(None);
-    assert_eq!(c.em_edit(), None, "escolher a outra forma ficou no Draw");
-    assert_eq!(c.hero.gizmo.selection, Some(a));
-    assert!(!c.na_mao(), "Object não largou a ferramenta");
-    c.hero.gizmo.replace_selection(Some(b));
-    c.quadro(Some(ModeRequest::Toggle));
-    assert_eq!(c.em_edit(), Some(b));
     chosen(&mut c.hero, Some(sprite), false);
     c.hero.gizmo.replace_selection(Some(sprite));
     c.quadro(None);
@@ -264,6 +253,73 @@ fn the_draw_holds_every_shape_and_choosing_another_object_leaves_it() {
         "o objecto de outro tipo não saiu do Draw"
     );
     assert_eq!(c.hero.gizmo.selection, Some(sprite));
+    assert!(!c.na_mao(), "Object não largou a ferramenta");
+}
+
+/// ⭐⭐⭐ GATE (dono, 02/11 — a EXCEÇÃO Vector → Vector à regra de 24/10: *«temos boolean com vector e
+/// não é legal sair do modo draw ao selecionar mais de um objeto»*) — **no Draw do vetor, escolher
+/// OUTRA forma, ou várias, FICA no Draw**, por cada porta: o clique no canvas e a linha da Hierarquia
+/// (`chosen` com o alvo), o laço (`lasso_chosen`) e o intervalo da Hierarquia (`range`); a caneta segue
+/// a selecção (as booleanas operam sobre ela). Forma + objecto de outro tipo (laço ou intervalo) SAI,
+/// com a selecção do artista. (Mutação: o ramo `stays_on_its_kind` de `switches` fora ⇒ RED.)
+#[test]
+fn choosing_other_vector_shapes_in_the_draw_stays_in_the_draw() {
+    use ph2d_editor_core::screens::hero::mode_drive::{chosen, lasso_chosen};
+    let mut c = cena();
+    let (a, b, d) = (c.forma(0.0), c.forma(3.0), c.forma(6.0));
+    let sprite = c.sim.world_mut().spawn_empty().id().to_bits();
+    c.quadro(None);
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), Some(a));
+    // 1. Uma forma — o clique no canvas / a linha da Hierarquia.
+    chosen(&mut c.hero, Some(b), false);
+    c.hero.gizmo.replace_selection(Some(b));
+    c.quadro(None);
+    assert!(c.em_edit().is_some(), "escolher OUTRA forma saiu do Draw");
+    assert!(c.na_mao(), "a ferramenta do vetor saiu da mão");
+    assert_eq!(c.hero.gizmo.selection, Some(b));
+    // 2. Várias — o Ctrl+clique (mesma porta), o laço e o intervalo da Hierarquia.
+    chosen(&mut c.hero, Some(d), false);
+    c.hero.gizmo.add_to_selection(d);
+    c.quadro(None);
+    assert!(c.em_edit().is_some(), "acrescentar uma forma saiu do Draw");
+    assert_eq!(c.hero.gizmo.selected_len(), 2);
+    lasso_chosen(&mut c.hero, &[a, b, d]);
+    c.hero.gizmo.replace_selection(Some(a));
+    c.hero.gizmo.add_to_selection(b);
+    c.hero.gizmo.add_to_selection(d);
+    c.quadro(None);
+    assert!(c.em_edit().is_some(), "o laço de três formas saiu do Draw");
+    assert_eq!(c.hero.gizmo.selected_len(), 3);
+    chosen(&mut c.hero, None, true);
+    c.hero.gizmo.replace_selection(Some(b));
+    c.hero.gizmo.add_to_selection(d);
+    c.quadro(None);
+    assert!(
+        c.em_edit().is_some(),
+        "o intervalo da Hierarquia só com formas saiu do Draw"
+    );
+    // 3. Forma + objecto de OUTRO tipo — pelo intervalo (a rede decide pela selecção que ficou)…
+    chosen(&mut c.hero, None, true);
+    c.hero.gizmo.add_to_selection(sprite);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), None, "o intervalo com um sprite ficou no Draw");
+    assert_eq!(c.hero.gizmo.selected_len(), 3, "a selecção do artista");
+    assert!(!c.na_mao(), "Object não largou a ferramenta");
+    // … e pelo laço.
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), Some(a));
+    lasso_chosen(&mut c.hero, &[b, sprite]);
+    c.hero.gizmo.replace_selection(Some(b));
+    c.hero.gizmo.add_to_selection(sprite);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), None, "o laço com um sprite ficou no Draw");
+    assert_eq!(
+        (c.hero.gizmo.selection, c.hero.gizmo.selected_len()),
+        (Some(b), 2)
+    );
     assert!(!c.na_mao(), "Object não largou a ferramenta");
 }
 

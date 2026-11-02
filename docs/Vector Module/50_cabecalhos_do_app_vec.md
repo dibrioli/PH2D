@@ -9,6 +9,7 @@ data do commit `8810c8838d`.
 3.º lote (F48b, 02/11, o Offset Path no padrão do Inspector: +386 sobre o tecto): de `state.rs` em diante, texto à data do commit `878fa728b1`.
 4.º lote (F48d, 02/11, o Offset Path vira ferramenta: +76 sobre o tecto): `lib.rs` e `smoke_bone_paint_assada_tests.rs`, texto à data do commit `fa1283eec8`.
 5.º lote (F48d, 02/11, a ferramenta Offset Path: +8 sobre o tecto): `ui_panel_spec.rs`, texto à data do commit `fa1283eec8`.
+6.º lote (F49, 02/11, o Draw do vetor fica nas outras formas: +103 sobre o tecto): de `resize_box_edit.rs` a `svg_import.rs`, texto à data do commit `9362272bff`.
 
 ## `symmetry_live.rs`
 
@@ -2172,3 +2173,182 @@ deste repo na sua forma mais cara.
 ⚠️ E um `kind` que este build **não conhece** também não vira row: o `from_code` devolve
 `None` de propósito (um documento autorado por um build mais novo), e inventar um tipo aqui
 seria gerar código para um widget que não existe.
+
+## `resize_box_edit.rs`
+
+> **RESIZE BOX da seleção** — a projecção que o painel lê, e a porta que a edita (plano UI/UX
+> W3b, decisão do Enio 2026-08-03).
+
+Irmão do `vec_anchor_edit` (na shell) e do `vec_frame_edit` (na shell), com a mesma divisão de
+donos: a verdade mora no ECS ([`ph2d_ecs::VecResizeBox`], um **override** sobre o default
+derivado da hierarquia) e isto é o que a shell publica por frame. O painel não alcança o mundo
+— se alcançasse, a resposta que DESENHA a caixa marcada divergiria da que HONRA o arrasto.
+
+# O que o checkbox decide
+
+Marcado, arrastar a alça do gizmo reescreve a **CAIXA** do objeto (a geometria). Desmarcado,
+escala a **POSE**, que é herdada por todo descendente — o comportamento correto para um
+objeto de **game**, e o que este editor sempre fez.
+
+# O NEUTRO destaca, e é o que mantém o ficheiro honesto
+
+O default é uma função da hierarquia ([`ph2d_ecs::resize_box_default`]): molduras e os filhos
+delas nascem marcados. Voltar ao valor de fábrica **remove** o componente em vez de gravar um
+bool redundante — o precedente literal do `VecLayoutItem` e de todo override da física.
+
+⚠️ Isso é mais do que higiene: sem o destacamento, uma forma marcada em `true` *por já ser
+filha de moldura* levaria o `true` consigo ao ser arrastada para FORA, e passaria a
+redimensionar num sítio onde o default diz escalar — a regra deixaria de seguir a hierarquia
+sem nada na tela a dizer porquê.
+
+## `bucket.rs`
+
+> ⭐⭐⭐ **O BALDE na shell** (plano 40) — a costura entre o ponteiro e a lei ([`ph2d_vec_fill`]).
+
+# As três coisas que esta camada decide
+
+1. **QUE contornos são PAREDE.** Os visíveis do documento, cozidos e assados no MUNDO — **menos
+   os preenchimentos** ([`ph2d_ecs::VecBucketFill`]). ⛔ Um preenchimento tem por fronteira os
+   mesmos arcos que as linhas; deixá-lo voltar à rede punha lá arestas **coincidentes**, com
+   direcção de saída idêntica, e o passeio de faces passava a escolher entre duas meias-arestas
+   indistinguíveis: *"ao usar o balde nas áreas coloridas, ele para de funcionar nas áreas não
+   coloridas"* (Enio, 2026-09-01).
+2. **QUANDO a rede é reconstruída.** ⚠️⚠️ Medido:
+
+   | contornos | arcos | montar a rede | achar a face |
+   |---|---|---|---|
+   | 4 | 8 | `0,06 ms` | `0,01 ms` |
+   | 20 | 280 | **`3,80 ms`** | `0,08 ms` |
+   | 80 | 1293 | **`188 ms`** | `0,35 ms` |
+
+   ⇒ montar por quadro está refutado; achar a face por quadro é de graça. A rede é **guardada**,
+   com a chave a ser o **CONTEÚDO** (âncoras e alças) e não a contagem de caminhos.
+   ⭐ **E o upkeep inteiro não corre se não houver preenchimento nenhum e o balde não estiver na
+   mão** — quem não usa a ferramenta não paga nada.
+3. **QUANDO os preenchimentos são RE-COZIDOS.** Sempre que a rede muda, e **em qualquer
+   ferramenta**: o artista arrasta um nó com a seta branca e a área tem de acompanhar.
+
+## `vector_bridge.rs`
+
+> Vector tool ⟷ shell bridge (ADR-0108 cutover).
+
+Per-frame jobs (mirror of the Padding / Painter panel bridges):
+
+1. **Panel visibility** — show the docked `ph2d-panel-vector` Style panel
+   (right dock) iff the `vector` tool is active; hide the real Inspector
+   (edge-triggered) so they don't both claim the slot.
+2. **Picker read-back** — a Down on the Stroke / Fill swatch opened the
+   shared OKLCH picker (generic `is_picker_swatch` dispatch). While the
+   picker targets one of our swatches, feed the live picked colour into the
+   tool via [`VectorTool::set_stroke_rgba`] / [`VectorTool::set_fill_rgba`].
+3. **Style sync** — copy the tool's stroke / fill / width into the Pen so
+   newly drawn paths honour the Style.
+4. **Restyle selected** — the fields the panel changed (`take_authored`, plano 31),
+   recolour the selected path. (The undo step is the GLOBAL queue's, by state
+   diff; the per-gesture `RECOLOR_PRE` snapshot died with the vector `History`
+   on 2026-09-12 — it fed a stack nobody undid.)
+5. **Publish** — sync the swatches' `widget_color` to the live colour (seeds
+   the picker on open) + publish the Style snapshot the panel paints.
+
+The concrete-tool downcast lives HERE (allowlisted:
+`architecture_no_downcast_to_concrete_tool_in_shell`), so the central render
+loop stays downcast-free — mirror of `painter_bridge`.
+
+## `driven_style.rs`
+
+> ⭐⭐⭐ **A APARÊNCIA CONDUZIDA CHEGA À PROJECÇÃO DO QUADRO** — a segunda metade da ponte que o
+> [`ph2d_ecs::VecDrivenStyle`] abre.
+
+A linha do tempo escreve o componente (ela só sabe falar com o mundo ECS); este módulo lê-o e
+funde-o na **mesma** entrada de estilo que os tokens de design e as rows autoradas já produzem.
+É o irmão exacto do [`crate::vec_widget_drive`], e de propósito: o corte entre os dois é *quem
+produz o número* (um motor de animação · um controlo que o artista está a segurar), nunca o que
+se faz com ele.
+
+# ⚠️⚠️ FUNDIR, nunca acrescentar ao lado
+
+O consumidor lê **uma** entrada por forma (`bound_style(id)` devolve a primeira), então uma
+segunda entrada para a mesma forma seria descartada **em silêncio** — e qual das duas some
+dependeria da ordem de iteração de um mapa. É a lição que o `vec_widget_drive` já pagou, e este
+módulo é o **terceiro** produtor da mesma lista.
+
+# A ordem no quadro, e por que ela é esta
+
+`tokens → ESTE → rows autoradas`. A linha do tempo corre **antes** do controlo que o artista
+está a segurar, e é o precedente que o passe de estados já escreve: *se as duas coisas escrevem
+o mesmo objecto, quem manda é o gesto que o artista acabou de fazer; o motor é o estado de
+fundo*. Arrastar um slider de opacidade durante uma reprodução mostra o slider — se mostrasse a
+curva, o controlo pareceria partido.
+
+## `snap.rs`
+
+> ⭐ **A LEI do snap vectorial, fora da shell** — W2/L4, A2 (desfazer o acoplamento).
+
+Aqui mora o que o encaixe DECIDE; na shell fica só o que ele precisa de PERGUNTAR à janela.
+O corte é exactamente esse, e é verificável: nada neste ficheiro menciona `App`, `gfx`,
+painel ou câmera.
+
+# ⚠️ O módulo chama-se `vec_snap` de propósito
+
+Ele era `shells/desktop/src/vec_snap.rs`, e o nome do módulo entra no **nome de cada teste**.
+Mantê-lo faz a prova de que nenhum teste se perdeu (`scripts/nextest-list-diff.py`) passar
+mesmo a `--depth 2` (`módulo::fn`), e não só no `--depth 1` por omissão. *Renomear um módulo
+de testes durante uma extracção é indistinguível, na lista, de perder os testes dele.*
+
+# O que FICOU na shell, e porquê (a lista que o substrato tem de cobrir)
+
+| método | o que ele precisa e não é da família |
+|---|---|
+| `vec_px_to_world` | `gfx.surface` + `gfx.camera` — e ⚠️ ele não é do vector: **11 ficheiros** de outras famílias o chamam |
+| `vec_snap_point` · `vec_snap_move` | `gfx.hero_screen.grid` — estado de PAINEL |
+| `vec_rebuild_snap_targets` | `gfx.guides` + a orquestração do gesto |
+| `dragged_entity_bits` · `dragged_vec_path_ids` · `snap_dragged_vec_during_drag` | `gfx.hero_screen.gizmo` |
+| `sprite_snap_points` · `vec_move_sources` | `crate::transform`, que **não pôde sair** (declara um `#[path]` de um teste que precisa de `crate::profile_live`) |
+
+## `envelope_gesture.rs`
+
+> O gesto de **arrastar os cantos da gaiola** do Envelope (ADR-0129, Fatia 1) — o lado do HOST.
+
+A parte pura (que canto, e até onde) mora em `ph2d_vec_envelope::{nearest_corner,
+move_corner_convex}`; aqui é o adaptador fino que lê a seleção, o componente ECS [`VecEnvelope`]
+(no **container**, ADR-0129 Fatia 3) e o cursor, e ESCREVE `corners` de volta no componente. É o
+padrão do [`crate::blend_live`] (um gesto de Node que toca o ECS), **não** o do `PenTool`.
+
+O alvo do gesto é uma **entidade** (os bits do container), não um `VecPathId`: o container não tem
+path. O host passa a seleção do gizmo (`hero.gizmo.selection`), que — pela regra
+*seleciona-só-o-container* de [`crate::vec_selection`] — é o container quando um envelope está
+selecionado. Um alvo que não é envelope (sprite, path comum, grupo) é ignorado, e o pen segue dono
+do clique.
+
+A alça é PRÓPRIA e vive no modo Node (ADR-0129 §3.3): o gizmo de sprite não a toca. Um gizmo sobre
+a geometria de mundo que o [`crate::envelope_live::recook`] reescreve a cada frame dobraria — a
+lição de 5 tentativas revertidas do Blend (ADR-0128).
+
+# Undo sai de graça
+
+O arrasto roda com o botão pressionado, e `App::post_frame_undo` suprime passos enquanto
+`held_button` está `Some`. Os N frames do arrasto não viram N passos; ao soltar, o [`VecEnvelope`]
+alterado (que viaja no `WorldSnapshot`) vira **um** passo no diff global. Nada a instrumentar aqui.
+
+## `svg_import.rs`
+
+> ⭐⭐⭐ **UM `.svg` LARGADO NA JANELA VIRA FORMAS EDITÁVEIS** (estudo 42, item 3).
+
+A tradução vive na crate-folha [`ph2d_vec_svg`]; aqui mora o que é da SHELL — onde o desenho
+aterra, que nome cada forma leva na Hierarquia, e como os `<g>` do ficheiro viram grupos.
+
+# Três leis, e as três já existiam nesta casa
+
+1. **Um px é um px** — o mesmo divisor (`pixels_per_meter`) que dimensiona uma sprite
+   importada. Um `.svg` de 512 unidades entra do tamanho de um `.png` de 512 px.
+2. **Um path ⟺ uma entidade** — quem as cria é o [`ph2d_vec_entities::entities::sync`], e não este
+   módulo: pôr aqui um segundo criador de entidades seria a segunda porta pela qual um path
+   órfão nasce.
+3. **Agrupar é o verbo que já existe** ([`ph2d_vec_entities::entities::group_entities`]) — ele
+   põe o grupo entre os filhos, compensa a pose de cada um e ordena a lista. ⚠️ Ele exige
+   **dois** membros, então um `<g>` com um filho só é achatado; é a mesma regra que o artista
+   lê no menu (*"Select at least 2 objects to group"*).
+
+⚠️ **O ficheiro inteiro vira UM objecto** quando traz mais de uma coisa de topo: sem isso um
+logótipo de 40 formas aterraria como 40 raízes na Hierarquia, e mover o desenho seria
+impossível sem antes o seleccionar todo.

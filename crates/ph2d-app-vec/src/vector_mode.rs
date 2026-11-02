@@ -10,7 +10,9 @@
 //!   anterior e o pedido entra na nova, no mesmo quadro).
 //! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`). ⭐⭐ **O Edit é do TIPO** (dono,
 //!   05/10: *«todos os objetos daquele tipo estão em modo de edição»*, [`ModeFamily::holds_the_whole_kind`]):
-//!   toda forma se agarra e é parte do Edit; escolher um objecto de outro tipo volta a Object.
+//!   toda forma se agarra e é parte do Edit; escolher um objecto de outro tipo volta a Object, e
+//!   escolher outra forma — ou várias — FICA no Draw ([`ModeFamily::stays_on_its_kind`], dono 02/11:
+//!   as booleanas precisam de várias formas).
 //! - **A forma trancada que MORRE** (o Soldar consome os traços, a caneta junta dois caminhos) passa o
 //!   Edit à [herdeira](ModeFamily::heir) — a última forma viva da caneta.
 //! - **Object** = a ferramenta sai da mão.
@@ -208,6 +210,10 @@ impl ModeFamily for Family<'_> {
     }
 
     fn holds_the_whole_kind(&self, mode: ObjectMode) -> bool {
+        mode == ObjectMode::Draw
+    }
+
+    fn stays_on_its_kind(&self, mode: ObjectMode) -> bool {
         mode == ObjectMode::Draw
     }
 

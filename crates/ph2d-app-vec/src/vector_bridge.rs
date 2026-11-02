@@ -1,26 +1,6 @@
 //! Vector tool ⟷ shell bridge (ADR-0108 cutover).
 //!
-//! Per-frame jobs (mirror of the Padding / Painter panel bridges):
-//!
-//! 1. **Panel visibility** — show the docked `ph2d-panel-vector` Style panel
-//!    (right dock) iff the `vector` tool is active; hide the real Inspector
-//!    (edge-triggered) so they don't both claim the slot.
-//! 2. **Picker read-back** — a Down on the Stroke / Fill swatch opened the
-//!    shared OKLCH picker (generic `is_picker_swatch` dispatch). While the
-//!    picker targets one of our swatches, feed the live picked colour into the
-//!    tool via [`VectorTool::set_stroke_rgba`] / [`VectorTool::set_fill_rgba`].
-//! 3. **Style sync** — copy the tool's stroke / fill / width into the Pen so
-//!    newly drawn paths honour the Style.
-//! 4. **Restyle selected** — the fields the panel changed (`take_authored`, plano 31),
-//!    recolour the selected path. (The undo step is the GLOBAL queue's, by state
-//!    diff; the per-gesture `RECOLOR_PRE` snapshot died with the vector `History`
-//!    on 2026-09-12 — it fed a stack nobody undid.)
-//! 5. **Publish** — sync the swatches' `widget_color` to the live colour (seeds
-//!    the picker on open) + publish the Style snapshot the panel paints.
-//!
-//! The concrete-tool downcast lives HERE (allowlisted:
-//! `architecture_no_downcast_to_concrete_tool_in_shell`), so the central render
-//! loop stays downcast-free — mirror of `painter_bridge`.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `vector_bridge.rs`.
 
 use ph2d_editor_core::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;

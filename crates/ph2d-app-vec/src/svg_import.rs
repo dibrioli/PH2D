@@ -1,23 +1,6 @@
 //! ⭐⭐⭐ **UM `.svg` LARGADO NA JANELA VIRA FORMAS EDITÁVEIS** (estudo 42, item 3).
 //!
-//! A tradução vive na crate-folha [`ph2d_vec_svg`]; aqui mora o que é da SHELL — onde o desenho
-//! aterra, que nome cada forma leva na Hierarquia, e como os `<g>` do ficheiro viram grupos.
-//!
-//! # Três leis, e as três já existiam nesta casa
-//!
-//! 1. **Um px é um px** — o mesmo divisor (`pixels_per_meter`) que dimensiona uma sprite
-//!    importada. Um `.svg` de 512 unidades entra do tamanho de um `.png` de 512 px.
-//! 2. **Um path ⟺ uma entidade** — quem as cria é o [`ph2d_vec_entities::entities::sync`], e não este
-//!    módulo: pôr aqui um segundo criador de entidades seria a segunda porta pela qual um path
-//!    órfão nasce.
-//! 3. **Agrupar é o verbo que já existe** ([`ph2d_vec_entities::entities::group_entities`]) — ele
-//!    põe o grupo entre os filhos, compensa a pose de cada um e ordena a lista. ⚠️ Ele exige
-//!    **dois** membros, então um `<g>` com um filho só é achatado; é a mesma regra que o artista
-//!    lê no menu (*"Select at least 2 objects to group"*).
-//!
-//! ⚠️ **O ficheiro inteiro vira UM objecto** quando traz mais de uma coisa de topo: sem isso um
-//! logótipo de 40 formas aterraria como 40 raízes na Hierarquia, e mover o desenho seria
-//! impossível sem antes o seleccionar todo.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `svg_import.rs`.
 
 use ph2d_ecs::{Name, SimWorld};
 use ph2d_vec_scene::{VecPathId, VecScene, Xform, bake_xform};

@@ -69,6 +69,13 @@ pub trait ModeFamily {
     fn holds_the_whole_kind(&self, _mode: ObjectMode) -> bool {
         false
     }
+    /// ⭐⭐ **Escolher outro objecto do TIPO fica no modo** (dono, 02/11 — a exceção do Draw do vetor à
+    /// regra de 24/10: *«temos boolean com vector e não é legal sair do modo draw ao selecionar mais de
+    /// um objeto»*): `true` = as [`Self::parts`] escolhidas por uma porta de selecção não saem para
+    /// Object; um objecto de outro tipo continua a sair ([`object_mode::switches`]).
+    fn stays_on_its_kind(&self, _mode: ObjectMode) -> bool {
+        false
+    }
     /// ⭐ **A HERDEIRA** — a entidade trancada (`locked`) morreu (o Soldar consome as formas, juntar
     /// dois caminhos apaga um): `Some` = outra entidade da família continua o modo, sem tocar a
     /// selecção. Só chamada quando o modo em curso deixou de se segurar.
@@ -384,17 +391,19 @@ pub fn drive(
     }
     // 4. Cada módulo segue o modo que ficou.
     let current = hero.gizmo.mode.active();
-    let (part_gizmo, whole_kind) = current
+    let (part_gizmo, whole_kind, kind_stays) = current
         .and_then(|a| {
             let f = family(families, kind_of(a.entity), a.mode)?;
             Some((
                 f.parts_take_the_object_gizmo(a.mode),
                 f.holds_the_whole_kind(a.mode),
+                f.stays_on_its_kind(a.mode),
             ))
         })
         .unwrap_or_default();
     hero.gizmo.mode.publish_part_gizmo(part_gizmo);
     hero.gizmo.mode.publish_whole_kind(whole_kind);
+    hero.gizmo.mode.publish_kind_stays(kind_stays);
     for f in families.iter_mut() {
         f.follow(current, tools);
     }
@@ -428,13 +437,15 @@ pub fn drive(
     changed
 }
 
-/// ⭐ **Uma porta de selecção escolheu `target`** — se é OUTRO objecto, o modo em curso volta a Object
-/// no próximo quadro ([`object_mode::switches`]); a selecção passa sempre. As três portas (o clique no
+/// ⭐ **Uma porta de selecção escolheu `target`** — se é OUTRO objecto (salvo uma parte de um modo que
+/// [fica no tipo](ModeFamily::stays_on_its_kind)), o modo em curso volta a Object no próximo quadro
+/// ([`object_mode::switches`]); a selecção passa sempre. As três portas (o clique no
 /// canvas, o laço, a linha da Hierarquia) chamam AQUI; `range` = o intervalo da Hierarquia.
 pub fn chosen(hero: &mut HeroScreen, target: Option<u64>, range: bool) {
     let mode = &hero.gizmo.mode;
-    let (locked, parts, whole) = (mode.locked_entity(), mode.parts(), mode.whole_kind());
-    if object_mode::switches(locked, parts, whole, target, range) {
+    let (locked, parts) = (mode.locked_entity(), mode.parts());
+    let (whole, stays) = (mode.whole_kind(), mode.kind_stays());
+    if object_mode::switches(locked, parts, whole, stays, target, range) {
         hero.gizmo.mode.ask_release();
     }
 }

@@ -2,6 +2,10 @@
 //! *Vetor*, três formas espalhadas e desalinhadas, o *Select* escolhido pelo MESMO clique que o
 //! botão dele na coluna ① dá, e as três selecionadas — a foto mostra a ④ com as DUAS linhas: o
 //! Arrange inteiro na de cima, o Alinhar e o Distribuir na de baixo; e o painel sem as secções.
+//!
+//! ⭐ **A cena 52** (dono 02/11, o Draw FICA ao escolher outras formas): a 22 com uma IMAGEM em branco
+//! ao lado (o `Ctrl+N`, antes das formas) e SÓ o rectângulo seleccionado no fim — o dono escolhe as
+//! outras formas (canvas, Hierarchy, laço) e o Draw fica; escolhe a imagem e volta a Object.
 
 use crate::state::VecState;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -27,10 +31,29 @@ pub fn step(
     stage: u8,
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
+    sim: &mut ph2d_ecs::SimWorld,
     hero: &mut HeroScreen,
+    cena_52: bool,
 ) -> Option<u8> {
     let feitas = vec.entities.len();
     match stage {
+        FIRST if cena_52 && imagem(sim).is_none() => {
+            if !PEDIU.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                hero.store.set_new_image_size(IMAGEM_PX);
+                hero.store.set_new_image_bg(2);
+                hero.store.request_new_image();
+            }
+            None
+        }
+        // À esquerda das formas: o clique nela não cai em nenhuma forma.
+        FIRST if cena_52 && !MOVEU.swap(true, std::sync::atomic::Ordering::Relaxed) => {
+            let e = imagem(sim)?;
+            sim.world_mut()
+                .get_mut::<ph2d_ecs::Transform>(e)?
+                .translation
+                .x = IMAGEM_X;
+            None
+        }
         s if (FIRST..SELECT).contains(&s) && feitas == usize::from(s - FIRST) => {
             let (kind, at, half) = FORMAS[usize::from(s - FIRST)];
             crate::vector_mode::draw_shape(vec, scene, kind, at, half);
@@ -50,9 +73,22 @@ pub fn step(
         }) =>
         {
             let all: Vec<VecPathId> = vec.entities.keys().copied().collect();
-            vec.pen.select_many(&all);
+            vec.pen.select_many(if cena_52 { &all[..1] } else { &all });
             Some(9)
         }
         _ => None,
     }
+}
+
+/// A imagem da cena 52 (px do documento): pequena, ao lado das formas.
+const IMAGEM_PX: u32 = 256;
+/// O centro dela (m): a borda direita fica à esquerda do rectângulo (`-1.6 ± 0.5`).
+const IMAGEM_X: f32 = -4.0;
+static PEDIU: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static MOVEU: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn imagem(sim: &mut ph2d_ecs::SimWorld) -> Option<ph2d_ecs::Entity> {
+    let w = sim.world_mut();
+    let mut q = w.query::<(ph2d_ecs::Entity, &ph2d_render::Sprite)>();
+    q.iter(w).next().map(|(e, _)| e)
 }

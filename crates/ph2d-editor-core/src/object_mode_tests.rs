@@ -160,24 +160,24 @@ fn the_mode_holds_only_its_own_entity() {
 #[test]
 fn choosing_another_object_in_a_creation_mode_leaves_it() {
     assert!(
-        !switches(None, None, false, Some(OTHER), false),
+        !switches(None, None, false, false, Some(OTHER), false),
         "em Object"
     );
     assert!(
-        !switches(None, None, false, None, true),
+        !switches(None, None, false, false, None, true),
         "em Object, intervalo"
     );
-    assert!(switches(Some(IMG), None, false, Some(OTHER), false));
+    assert!(switches(Some(IMG), None, false, false, Some(OTHER), false));
     assert!(
-        !switches(Some(IMG), None, false, Some(IMG), false),
+        !switches(Some(IMG), None, false, false, Some(IMG), false),
         "o próprio"
     );
     assert!(
-        !switches(Some(IMG), None, false, None, false),
+        !switches(Some(IMG), None, false, false, None, false),
         "limpar não sai (05/10)"
     );
     assert!(
-        switches(Some(IMG), None, false, None, true),
+        switches(Some(IMG), None, false, false, None, true),
         "um intervalo da Hierarquia"
     );
 }
@@ -245,15 +245,31 @@ fn a_mode_of_parts_holds_and_admits_its_parts_only() {
     assert!(!s.still_holds(Some(PART), &[], false), "o módulo largou-a");
     let parts = Some([PART, PART2].as_slice());
     assert!(
-        !switches(Some(IMG), parts, false, Some(PART), false),
+        !switches(Some(IMG), parts, false, false, Some(PART), false),
         "uma parte de dentro"
     );
-    assert!(switches(Some(IMG), parts, false, Some(OTHER), false));
-    assert!(!switches(Some(IMG), parts, false, None, false));
+    assert!(switches(Some(IMG), parts, false, false, Some(OTHER), false));
+    assert!(!switches(Some(IMG), parts, false, false, None, false));
     assert!(
-        switches(Some(IMG), parts, true, Some(PART), false),
+        switches(Some(IMG), parts, true, false, Some(PART), false),
         "num modo do TIPO a «parte» é outro objecto"
     );
+    // ⭐ A exceção do Draw do vetor (dono 02/11): no modo que FICA no tipo a parte não sai — uma ou
+    // várias (o laço chama por cada uma), e o intervalo deixa a decisão à rede; o de fora sai.
+    assert!(
+        !switches(Some(IMG), parts, true, true, Some(PART), false),
+        "outra forma no Draw do vetor"
+    );
+    assert!(!switches(Some(IMG), parts, true, true, Some(PART2), false));
+    assert!(
+        !switches(Some(IMG), parts, true, true, None, true),
+        "o intervalo decide-se pela selecção que ficou"
+    );
+    assert!(
+        switches(Some(IMG), parts, true, true, Some(OTHER), false),
+        "um objecto de outro tipo sai"
+    );
+    assert!(!switches(Some(IMG), parts, true, true, Some(IMG), false));
     s.leave();
     assert_eq!(s.parts(), None, "sair esquece as partes");
 }

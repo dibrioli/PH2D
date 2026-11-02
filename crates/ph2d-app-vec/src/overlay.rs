@@ -207,6 +207,13 @@ mod tests {
         assert!(plan.snap_guides, "guias de snap valem em todo modo");
     }
 
+    /// **O Offset Path não desenha âncoras** (F48d): as alças do degradê e os nós competiam com o
+    /// arrasto da distância. *Mutação: tirar o `| DrawMode::Offset` do `edit` ⇒ vermelho.*
+    #[test]
+    fn the_offset_tool_shows_no_node_overlays() {
+        assert!(!vec_overlay_plan(true, DrawMode::Offset).edit);
+    }
+
     /// Tool inativa: nenhum overlay vetorial (o canvas é de outra ferramenta).
     #[test]
     fn inactive_tool_draws_no_vector_overlays() {

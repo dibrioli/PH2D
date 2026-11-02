@@ -1,27 +1,6 @@
 //! ⭐⭐⭐ **O BALDE na shell** (plano 40) — a costura entre o ponteiro e a lei ([`ph2d_vec_fill`]).
 //!
-//! # As três coisas que esta camada decide
-//!
-//! 1. **QUE contornos são PAREDE.** Os visíveis do documento, cozidos e assados no MUNDO — **menos
-//!    os preenchimentos** ([`ph2d_ecs::VecBucketFill`]). ⛔ Um preenchimento tem por fronteira os
-//!    mesmos arcos que as linhas; deixá-lo voltar à rede punha lá arestas **coincidentes**, com
-//!    direcção de saída idêntica, e o passeio de faces passava a escolher entre duas meias-arestas
-//!    indistinguíveis: *"ao usar o balde nas áreas coloridas, ele para de funcionar nas áreas não
-//!    coloridas"* (Enio, 2026-09-01).
-//! 2. **QUANDO a rede é reconstruída.** ⚠️⚠️ Medido:
-//!
-//!    | contornos | arcos | montar a rede | achar a face |
-//!    |---|---|---|---|
-//!    | 4 | 8 | `0,06 ms` | `0,01 ms` |
-//!    | 20 | 280 | **`3,80 ms`** | `0,08 ms` |
-//!    | 80 | 1293 | **`188 ms`** | `0,35 ms` |
-//!
-//!    ⇒ montar por quadro está refutado; achar a face por quadro é de graça. A rede é **guardada**,
-//!    com a chave a ser o **CONTEÚDO** (âncoras e alças) e não a contagem de caminhos.
-//!    ⭐ **E o upkeep inteiro não corre se não houver preenchimento nenhum e o balde não estiver na
-//!    mão** — quem não usa a ferramenta não paga nada.
-//! 3. **QUANDO os preenchimentos são RE-COZIDOS.** Sempre que a rede muda, e **em qualquer
-//!    ferramenta**: o artista arrasta um nó com a seta branca e a área tem de acompanhar.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `bucket.rs`.
 
 use ph2d_ecs::{Entity, SimWorld, VecBucketFill};
 use ph2d_vec_fill::Rede;

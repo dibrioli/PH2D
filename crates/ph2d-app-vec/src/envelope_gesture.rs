@@ -1,25 +1,6 @@
 //! O gesto de **arrastar os cantos da gaiola** do Envelope (ADR-0129, Fatia 1) — o lado do HOST.
 //!
-//! A parte pura (que canto, e até onde) mora em `ph2d_vec_envelope::{nearest_corner,
-//! move_corner_convex}`; aqui é o adaptador fino que lê a seleção, o componente ECS [`VecEnvelope`]
-//! (no **container**, ADR-0129 Fatia 3) e o cursor, e ESCREVE `corners` de volta no componente. É o
-//! padrão do [`crate::blend_live`] (um gesto de Node que toca o ECS), **não** o do `PenTool`.
-//!
-//! O alvo do gesto é uma **entidade** (os bits do container), não um `VecPathId`: o container não tem
-//! path. O host passa a seleção do gizmo (`hero.gizmo.selection`), que — pela regra
-//! *seleciona-só-o-container* de [`crate::vec_selection`] — é o container quando um envelope está
-//! selecionado. Um alvo que não é envelope (sprite, path comum, grupo) é ignorado, e o pen segue dono
-//! do clique.
-//!
-//! A alça é PRÓPRIA e vive no modo Node (ADR-0129 §3.3): o gizmo de sprite não a toca. Um gizmo sobre
-//! a geometria de mundo que o [`crate::envelope_live::recook`] reescreve a cada frame dobraria — a
-//! lição de 5 tentativas revertidas do Blend (ADR-0128).
-//!
-//! # Undo sai de graça
-//!
-//! O arrasto roda com o botão pressionado, e `App::post_frame_undo` suprime passos enquanto
-//! `held_button` está `Some`. Os N frames do arrasto não viram N passos; ao soltar, o [`VecEnvelope`]
-//! alterado (que viaja no `WorldSnapshot`) vira **um** passo no diff global. Nada a instrumentar aqui.
+//! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `envelope_gesture.rs`.
 
 use ph2d_ecs::{Entity, EnvelopeKind, SimWorld, VecEnvelope};
 use ph2d_vec_envelope::CageEdges;

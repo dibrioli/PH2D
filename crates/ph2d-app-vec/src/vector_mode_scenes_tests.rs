@@ -285,5 +285,15 @@ fn a_cena_51_e_o_offset_path() {
         handles_first(c.handles),
         Some(crate::vector_mode_fill_stroke::FIRST)
     );
-    assert_eq!(of(Some("52")).want, 9, "a 52 ainda não existe");
+}
+
+#[test]
+fn a_cena_52_e_a_22_com_uma_imagem() {
+    let c = of(Some("52"));
+    assert_eq!((c.want, c.bars, c.handles), (1, true, 38));
+    assert_eq!(
+        handles_first(c.handles),
+        Some(crate::vector_mode_alinhar::FIRST)
+    );
+    assert_eq!(of(Some("53")).want, 9, "a 53 ainda não existe");
 }

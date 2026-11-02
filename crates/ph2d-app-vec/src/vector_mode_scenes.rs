@@ -31,14 +31,14 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
         .and_then(|s| s.parse::<u8>().ok().filter(|n| n.to_string() == s))
         .unwrap_or(0);
     Scene {
-        want: if matches!(n, 6 | 7 | 9..=51) { 1 } else { 9 },
+        want: if matches!(n, 6 | 7 | 9..=52) { 1 } else { 9 },
         weld: n == 7,
-        bars: matches!(n, 9..=41 | 43..=51),
+        bars: matches!(n, 9..=41 | 43..=52),
         single: n == 42,
         reach: n == 10,
         nav: n == 11,
         frame: n == 14,
-        handles: if matches!(n, 15..=41 | 43..=51) {
+        handles: if matches!(n, 15..=41 | 43..=52) {
             n - 14
         } else {
             0
@@ -67,7 +67,8 @@ pub(super) fn of(scene: Option<&str>) -> Scene {
 /// `vector_mode_filtro_zoom`) · 29 e 30 = a 43 e a 44 (F43, `vector_mode_listas`) · 31 a 36 = a 45, a
 /// 46, a 47 (F44/F45), a 48 (os lados CAD curvos), a 49 (F47, o traço por cima dos Filtros), a 50
 /// (o Expand sobre a pilha) e 37 = a 51 (F48, o Offset Path no padrão do Inspector), em
-/// `vector_mode_fill_stroke`.
+/// `vector_mode_fill_stroke` · 38 = a 52 (o Draw fica nas outras formas, a 22 com uma imagem,
+/// `vector_mode_alinhar`).
 /// `None` = fora da família.
 pub(super) fn handles_first(handles: u8) -> Option<u8> {
     Some(match handles {
@@ -79,7 +80,7 @@ pub(super) fn handles_first(handles: u8) -> Option<u8> {
         5 => 110,
         6 => 130,
         7 => crate::vector_mode_quinas::FIRST,
-        8 => crate::vector_mode_alinhar::FIRST,
+        8 | 38 => crate::vector_mode_alinhar::FIRST,
         9 => crate::vector_mode_controle::FIRST,
         10 => crate::vector_mode_tracejado::FIRST,
         11..=16 | 21 | 23 => crate::vector_mode_interface::FIRST,

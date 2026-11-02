@@ -127,14 +127,21 @@ fn lut_from(v: &Value) -> Vec<u8> {
 #[test]
 fn brightness_contrast_gives_the_trials_tables() {
     let d = fixture(include_str!("../fixtures/oracle_trial_adjust.json"));
+    // Rodada 1 (9 casos) + rodada 2 (43 casos cinzentos, 11 008 células): `⌊y·255,5⌋` fecha a 0.
+    let r2 = &d["round2_brightness_contrast"]["cases_gray_lut"];
+    let mut n = 0;
     for (name, lut) in d["brightness_contrast"]["cases"]
         .as_object()
         .expect("casos")
+        .iter()
+        .chain(r2.as_object().expect("casos r2"))
     {
+        n += 1;
         let (b, c) = name.split_once(',').expect("b,c");
         let f = BrightnessContrast::new(b.parse().expect("b"), c.parse().expect("c"));
         assert_eq!(lut_of(&f), lut_from(lut), "B/C {name}");
     }
+    assert_eq!(n, 9 + 43, "as duas rodadas inteiras");
 }
 
 #[test]

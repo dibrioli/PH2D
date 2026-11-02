@@ -10,6 +10,8 @@ Vencedores (2026-11-02):
   * Brightness/Contrast — 0 erros em todos os casos:
         y = v/255 ; y = (y - 0.5)*(1 + c/100) + 0.5 ; y = y*(1 + b/100)   (contraste ANTES do brilho)
         y = clamp(y, 0, 1) ; out = floor(y * 255.5)                        (nem round nem floor(y*255))
+    Rodada 2 (43 casos cinzentos, `round2_brightness_contrast.cases_gray_lut`): também 0 em 11 008 —
+    o «1 613 a ±1» anotado na fixtura era o floor(y*255) rival, não esta lei.
   * Color Curve — 0 erros: interpolação LINEAR por troços entre os pontos (inteiros), out = floor.
   * Hue/Saturation — a lei em aritmética EXACTA (racional) acerta toda célula que não é empate;
     os erros restantes são todos empates exactos k+0.5 desempatados pelo ruído do float do Aseprite.

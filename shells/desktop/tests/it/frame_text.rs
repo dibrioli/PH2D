@@ -325,3 +325,42 @@ fn the_splice_follows_calls_in_order_and_skips_fields_and_prose() {
 fn a_called_phase_that_is_not_found_fails_loud() {
     splice("self.fase_fantasma();", &fases_de_brinquedo(), 0);
 }
+
+/// ⭐ **O documento entregue ao DESENHO** (integ 02/11, GEF 18–19 `1dfcef9aec`): a `fase_vector_bands` passou a
+/// montar um `doc::DocDasFaixas` e as quatro chamadas ao `ph2d_vec_render::dispatch` vivem nos métodos dele
+/// (`render_loop/fase_vector_bands_doc.rs`), fora de qualquer `fase_*`. No texto do quadro o desenho é o literal
+/// deste struct — cada método dele corre depois — e o que ele recebe são os campos do literal.
+pub const O_DESENHO: &str = "doc::DocDasFaixas {";
+
+/// O literal do [`O_DESENHO`] no texto do quadro: `(início, campos)`, do `{` ao `};` que o fecha.
+pub fn o_desenho(frame: &str) -> Option<(usize, &str)> {
+    let at = frame.find(O_DESENHO)?;
+    let end = at + frame[at..].find("};")?;
+    Some((at, &frame[at..end]))
+}
+
+/// O ficheiro dos métodos do [`O_DESENHO`] — onde as chamadas ao `dispatch` moram.
+pub fn doc_das_faixas() -> String {
+    fs::read_to_string(render_loop_dir().join("fase_vector_bands_doc.rs"))
+        .expect("ler render_loop/fase_vector_bands_doc.rs")
+}
+
+/// **Toda chamada do desenho dentro do [`O_DESENHO`] recebe o mapa VIVO do quadro** (`self.live`, o campo
+/// `live` do literal) — nunca um `LiveGeometry::new()`. Devolve quantas chamadas `needle` há (controlo positivo).
+pub fn o_desenho_recebe_o_live(needle: &str) -> usize {
+    let doc = doc_das_faixas();
+    let mut n = 0;
+    let mut from = 0;
+    while let Some(i) = doc[from..].find(needle) {
+        let call = from + i;
+        let end = call_end(&doc, call).expect("a chamada do desenho não fecha");
+        let args = &doc[call..end];
+        assert!(
+            args.contains("self.live,") && !args.contains("LiveGeometry::new()"),
+            "`{needle}` não recebe o mapa vivo do quadro (`self.live`):\n{args}"
+        );
+        n += 1;
+        from = end;
+    }
+    n
+}

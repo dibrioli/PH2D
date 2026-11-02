@@ -11,10 +11,14 @@
 //! `!…ativa()` (as formas desenhadas DUAS vezes) · mover a colagem para depois do chrome (as formas
 //! por cima dos gizmos) · desenhar a camada DEPOIS do halo (doc 121 §9.14: o halo redesenha as
 //! formas DESTE quadro, e leria as do anterior) · esquecer um palco num dos sítios.*
+/// As camadas do Motion deste quadro (placa + palcos), a porta da família desde a GEF 18–19 (integ 02/11).
+const CAMADAS: &str =
+    include_str!("../../../../crates/ph2d-app-motion/src/motion_shape_placa_quadro.rs");
+
 #[test]
 fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let present = include_str!("present.rs");
-    assert!(present.contains("plan.banded |= self.motion_shell.placa.ativa();"));
+    assert!(present.contains("plan.banded |= shell.placa.ativa();"));
     let bandas = include_str!("fase_vector_bands.rs");
     assert!(bandas.contains("doc_bands_of(frame_order, placa || palcos || luz_acesa)"));
     let overlays = include_str!("fase_vector_overlays.rs");
@@ -34,12 +38,12 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).
     let em_present = |agulha: &str| present.find(agulha).expect(agulha);
     assert!(
-        em_present("motion_shape_placa::desenha_o_quadro(")
+        em_present("shell.desenha_as_camadas(gpu, tamanho, motion, renderer, filtro);")
             < em_present("super::present_bands::draw_lower_bands("),
         "a camada desenha-se antes das faixas de baixo (uma faixa Motion pode colar lá)"
     );
     assert!(
-        em_present("motion_shape_placa::desenha_o_quadro(") < em_present("super::present_fx::run("),
+        em_present("shell.desenha_as_camadas(") < em_present("super::present_fx::run("),
         "as formas desenham-se ANTES do halo que as redesenha"
     );
     assert!(
@@ -59,8 +63,12 @@ fn a_rota_do_dispositivo_chega_ao_quadro() {
     let bandas = include_str!("fase_vector_bands.rs");
     assert!(bandas.contains("ph2d_app_motion::motion_shape_placa::decide_o_quadro("));
     let present = include_str!("present.rs");
-    assert!(present.contains("motion_shape_placa::desenha_o_quadro("));
-    assert!(present.contains("placa, gpu, tamanho, motion, renderer, filtro,"));
+    // integ 02/11 (GEF 18–19): o desenho das camadas é a porta da família (`desenha_as_camadas`).
+    assert!(present.contains("shell.desenha_as_camadas(gpu, tamanho, motion, renderer, filtro);"));
+    assert!(
+        CAMADAS
+            .contains("desenha_o_quadro(&mut self.placa, gpu, tamanho, motion, renderer, filtro);")
+    );
     assert!(present.contains("hero_screen.as_ref().map(|h| h.project.image_filter)"));
 }
 
@@ -98,12 +106,12 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
     assert!(overlays.contains("if do_editor || da_vista || self.motion_shell.palcos.tocam() {"));
     assert!(overlays.contains("palcos.codifica(&mut art, cam_affine, Some(janela), filtro);"));
     let present = include_str!("present.rs");
-    assert!(present.contains("let palcos = self.motion_shell.palcos.liga();"));
+    assert!(present.contains("let palcos = shell.palcos.liga();"));
     assert!(present.contains("plan.banded |= lente || filtrada || palcos;"));
     let em_present = |agulha: &str| present.find(agulha).expect(agulha);
     assert!(
-        em_present("palcos.desenha(gpu, tamanho, renderer, filtro);")
-            < em_present("super::present_fx::run("),
+        em_present("shell.desenha_as_camadas(") < em_present("super::present_fx::run(")
+            && CAMADAS.contains("self.palcos.desenha(gpu, tamanho, renderer, filtro);"),
         "a camada de cada palco desenha-se antes do halo que a redesenha"
     );
     assert!(present.contains("palcos: &self.motion_shell.palcos,"));
@@ -160,19 +168,20 @@ fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
             < em_vista("vista.troca(gfx, &mut self.motion_shell);"),
         "a cena do Motion da vista cola-se no mundo DELA, antes de a troca o devolver ao editor"
     );
-    for (nome, codigo, porta) in [
+    for (nome, codigo, porta, troca) in [
         (
             "fase_vector_bands.rs",
             include_str!("fase_vector_bands.rs"),
             "palcos.decide(gpu, ligadas, cam);",
+            "palcos.troca_a_vista(&mut v.palcos);\n",
         ),
         (
-            "fase_vector_overlays.rs",
-            include_str!("fase_vector_overlays.rs"),
-            "palcos.codifica(&mut art, cam, janela, filtro);",
+            "vista_da_camera.rs",
+            vista,
+            "palcos.codifica(art, cam, janela, filtro);",
+            "palcos.troca_a_vista(&mut self.palcos);\n",
         ),
     ] {
-        let troca = "palcos.troca_a_vista(&mut v.palcos);\n";
         let em = codigo
             .find(porta)
             .unwrap_or_else(|| panic!("{nome}: {porta}"));
@@ -185,7 +194,8 @@ fn a_vista_da_camera_leva_os_palcos_e_as_formas_fora_da_placa() {
         );
     }
     let overlays = include_str!("fase_vector_overlays.rs");
-    assert!(overlays.contains("let cena = v.motion.alvo_da_cena("));
+    assert!(overlays.contains("v.codifica_o_motion("));
+    assert!(vista.contains("let cena = self.motion.alvo_da_cena("));
     for (nome, codigo) in [
         ("present.rs", include_str!("present.rs")),
         ("present_chrome.rs", include_str!("present_chrome.rs")),

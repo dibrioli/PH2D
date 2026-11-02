@@ -75,17 +75,21 @@ fn args_of<'a>(src: &'a str, needle: &str, from: usize) -> Option<(usize, &'a st
 #[test]
 fn what_is_stored_is_what_was_drawn() {
     let render = render();
-    let (end, args) = args_of(render, "ph2d_vec_render::dispatch(", 0)
-        .expect("a chamada do `dispatch` sumiu do render_loop");
-    let live_arg = args
+    // integ 02/11: o `dispatch` mora nos métodos do `DocDasFaixas`; o que ele desenha é o campo `live`
+    // do literal — e cada chamada lá dentro tem de o receber.
+    assert!(
+        crate::frame_text::o_desenho_recebe_o_live("ph2d_vec_render::dispatch(") >= 1,
+        "a chamada do `dispatch` sumiu do DocDasFaixas"
+    );
+    let (at, campos) =
+        crate::frame_text::o_desenho(render).expect("a chamada do `dispatch` sumiu do render_loop");
+    let end = at + campos.len();
+    let live_arg = campos
         .lines()
         .map(str::trim)
-        .find(|l| l.starts_with('&') && l.ends_with(','))
-        .and_then(|l| l.strip_prefix('&'))
+        .find_map(|l| l.strip_prefix("live: &"))
         .and_then(|l| l.strip_suffix(','))
-        .expect("o `dispatch` não recebe nenhum argumento por referência — assinatura mudou?");
-    // O 4º argumento é o `live`; os anteriores também são referências, então a busca acima pega o
-    // primeiro. O que interessa é o nome que o `store` usa, e ele TEM de estar entre os args.
+        .expect("o desenho não recebe o campo `live` por referência — assinatura mudou?");
     let store = format!("self.{FIELD} = ");
     let at_store = render
         .find(&store)
@@ -100,12 +104,11 @@ fn what_is_stored_is_what_was_drawn() {
         .next()
         .and_then(|l| l.strip_suffix(';'))
         .expect("a atribuição do mapa desenhado não termina em `;`");
-    assert!(
-        args.contains(stored),
-        "o campo `{FIELD}` guarda `{stored}`, que NÃO é um argumento do `dispatch` — o pick \
-         passaria a ler um mapa que ninguém desenhou.\nargumentos:\n{args}"
+    assert_eq!(
+        stored, live_arg,
+        "o campo `{FIELD}` guarda `{stored}`, que NÃO é o mapa que o `dispatch` desenha — o pick \
+         passaria a ler um mapa que ninguém desenhou.\ncampos:\n{campos}"
     );
-    let _ = live_arg;
 }
 
 /// **Toda porta de pick recebe o mapa desenhado, e nenhuma recebe o `offset_live`.**

@@ -68,7 +68,9 @@ fn the_encoding_splits_the_world_from_the_recipe() {
         "o documento deixou de ter cena propria sob o vidro — os paineis borram com o mundo"
     );
     assert!(
-        body.contains("ph2d_vec_render::dispatch_isolated(") && body.contains("frost_front_scene"),
+        body.contains("doc.isolada(&vec_skins, cam_affine, frost_front_scene);")
+            && crate::frame_text::o_desenho_recebe_o_live("ph2d_vec_render::dispatch_isolated(")
+                == 1,
         "a receita ja' nao e' codificada — ela DESAPARECE ao abrir, porque o mundo a salta"
     );
 }

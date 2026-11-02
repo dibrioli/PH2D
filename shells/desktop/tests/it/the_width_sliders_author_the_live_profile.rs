@@ -103,7 +103,7 @@ fn dragging_a_width_slider_arms_the_live_profile() {
 /// compila, e a largura variável simplesmente não aparece.
 #[test]
 fn the_cooked_ribbon_reaches_the_dispatch() {
-    let call = at("ph2d_vec_render::dispatch(");
+    let call = at(crate::frame_text::O_DESENHO);
     let bind = at("let mut vec_live = self.offset_live.live()");
     assert!(bind < call, "`vec_live` é ligado DEPOIS do `dispatch`");
     assert!(
@@ -120,7 +120,7 @@ fn the_cooked_ribbon_reaches_the_dispatch() {
 fn the_profile_cook_runs_after_the_sync_and_before_the_draw() {
     let sync = at("ph2d_vec_entities::entities::sync(");
     let cook = at_chain("self.profile_live", ".recook(");
-    let draw = at("ph2d_vec_render::dispatch(");
+    let draw = at(crate::frame_text::O_DESENHO);
     assert!(
         sync < cook,
         "o `profile_live::recook` corre ANTES do `sync`"

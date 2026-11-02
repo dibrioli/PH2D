@@ -57,26 +57,24 @@ fn at(needle: &str) -> usize {
 #[test]
 fn the_dispatch_is_handed_the_live_geometry() {
     let src = src();
-    let call = at("ph2d_vec_render::dispatch(");
-    let args_end = src[call..]
-        .find(");")
-        .expect("fim da lista de argumentos do `dispatch`")
-        + call;
-    let args = &src[call..args_end];
+    // integ 02/11: o `dispatch` mora nos métodos do `DocDasFaixas` e desenha o campo `live` do literal.
+    assert!(
+        crate::frame_text::o_desenho_recebe_o_live("ph2d_vec_render::dispatch(") >= 1,
+        "`ph2d_vec_render::dispatch(` sumiu do DocDasFaixas — confira que o Offset vivo ainda chega \
+         à tela (`PH2D_BUILD_SMOKE=17`)"
+    );
+    let call = at(crate::frame_text::O_DESENHO);
+    let (_, args) = crate::frame_text::o_desenho(src).expect("fim do literal do desenho");
     assert!(
         !args.contains("LiveGeometry::new()"),
         "o `dispatch` está recebendo um mapa VAZIO — o offset/pattern ao vivo some da tela e \
          NENHUM teste de unidade o nota:\n{args}"
     );
-    let live_arg = args
-        .lines()
-        .map(str::trim)
-        .find(|l| l.starts_with("&vec_live"))
-        .expect(
-            "o `dispatch` não recebe `&vec_live` — se o nome mudou, atualize este gate (e \
-             confira que o preview ainda chega à tela: `PH2D_BUILD_SMOKE=17`)",
-        );
-    let _ = live_arg;
+    assert!(
+        args.lines().map(str::trim).any(|l| l == "live: &vec_live,"),
+        "o desenho não recebe `&vec_live` — se o nome mudou, atualize este gate (e confira que o \
+         preview ainda chega à tela: `PH2D_BUILD_SMOKE=17`)"
+    );
     // E o nome tem de nascer das DUAS fontes vivas, ANTES da chamada.
     let bind = at("let mut vec_live = self.offset_live.live()");
     assert!(
@@ -111,7 +109,7 @@ fn at_chain(head: &str, tail: &str) -> usize {
 fn the_cook_runs_after_the_sync_and_before_the_draw() {
     let sync = at("ph2d_vec_entities::entities::sync(");
     let cook = at_chain("self.offset_live", ".recook(");
-    let draw = at("ph2d_vec_render::dispatch(");
+    let draw = at(crate::frame_text::O_DESENHO);
     assert!(
         sync < cook,
         "o `offset_live::recook` corre ANTES do `vec_entities::sync` — uma forma recém-criada \

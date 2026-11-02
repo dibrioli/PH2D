@@ -411,6 +411,7 @@ fn enter_in_a_focused_field_is_the_fields_and_does_not_play() {
             PhysicalKey::Code(KeyCode::Enter),
             true,
             Mods::default(),
+            None,
         );
         (comeu, p.quadro().playing)
     };

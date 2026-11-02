@@ -4,6 +4,7 @@
 mod ajustes;
 mod alvo_todos;
 mod cena18;
+mod cena19;
 mod comum;
 mod convolucao;
 mod degrade;
@@ -11,6 +12,7 @@ mod dinamica;
 mod fecho;
 mod filtros;
 mod intervalo;
+mod painel_e_dialogo;
 mod paleta;
 mod pincel;
 mod pontas;

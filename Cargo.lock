@@ -7494,9 +7494,11 @@ version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
  "ph2d-app-pixel",
+ "ph2d-component-desc",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-i18n",
  "ph2d-panel-pixel-preview",
  "ph2d-pen",
  "ph2d-pixel-core",

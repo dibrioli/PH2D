@@ -248,8 +248,8 @@ impl WidgetStore {
         }
     }
 
-    /// O kernel escolhido, preso à lista publicada.
-    fn pixel_filter_kernel(&self) -> u8 {
+    /// O kernel escolhido, preso à lista publicada (ao abrir, os botões R G B A passam aos dele).
+    pub(super) fn pixel_filter_kernel(&self) -> u8 {
         let f = self.pixel.edit.filter;
         let last = u8::try_from(f.kernels.len().saturating_sub(1)).unwrap_or(u8::MAX);
         f.kernel.min(last)

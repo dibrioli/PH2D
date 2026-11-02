@@ -190,3 +190,23 @@ fn choosing_blur_turns_alpha_on_and_negative_turns_it_off() {
         "negative com A: o alfa inverte"
     );
 }
+
+/// A 1.ª abertura já põe os botões R G B A nos do kernel escolhido (brightness = R G B, A solto,
+/// como o Trial), e reabrir volta aos do kernel lembrado mesmo que o A tenha sido clicado.
+#[test]
+fn opening_the_convolution_puts_the_channels_of_the_chosen_kernel() {
+    let mut p = com_quadrado();
+    p.tecla(KeyCode::F9, false, false);
+    let f = p.hero.store.pixel_edit_dialog().filter;
+    assert_eq!(f.channels, KERNELS[0].channels, "os do kernel ao abrir");
+    assert_eq!(f.channels, [true, true, true, false], "brightness = R G B");
+    carrega(&mut p, kernel("blur-3x3"));
+    carrega(&mut p, ids::PIXEL_FILTER_CHANNELS[3].1);
+    carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
+    p.tecla(KeyCode::F9, false, false);
+    assert_eq!(
+        p.hero.store.pixel_edit_dialog().filter.channels,
+        [true; 4],
+        "reaberto: os do blur-3x3 lembrado"
+    );
+}

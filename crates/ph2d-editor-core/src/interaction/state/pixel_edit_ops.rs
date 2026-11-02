@@ -44,7 +44,10 @@ impl WidgetStore {
         d.size = size;
         d.anchor = (1, 1);
         d.request = None;
-        let d = *d;
+        if kind == PixelDialogKind::ConvolutionMatrix {
+            self.set_pixel_filter_kernel(usize::from(self.pixel_filter_kernel()));
+        }
+        let d = self.pixel.edit;
         let (sw, sh) = (f64::from(size.0), f64::from(size.1));
         let (plo, phi) = pct_range(size);
         let filter_fields = self.pixel_filter_fields(kind, size);

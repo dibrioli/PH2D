@@ -37,6 +37,7 @@ pub mod smoke;
 pub mod smoke_ajustes;
 pub mod smoke_camadas;
 pub mod smoke_catalogo;
+pub mod smoke_efeitos;
 pub mod smoke_ferramentas;
 pub mod smoke_formas;
 pub mod smoke_intervalo;

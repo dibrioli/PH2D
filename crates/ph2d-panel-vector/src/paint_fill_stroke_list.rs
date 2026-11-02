@@ -158,7 +158,7 @@ impl BodyCtx<'_> {
         arrastavel: bool,
         y0: f32,
     ) -> f32 {
-        let step = self.row_h + self.row_gap;
+        let step = self.linha_h() + self.row_gap;
         let drag = self
             .store
             .panel_row_drag()
@@ -236,9 +236,10 @@ impl BodyCtx<'_> {
     /// acento na borda de CIMA dela — fora da linha que voa por cima do vão, sempre à vista.
     fn drop_mark(&mut self, y: f32) {
         let raio = ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px());
+        let lh = self.linha_h();
         fill_rounded_rect(
             self.scene,
-            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+            Rect::new(self.inner_x, y, self.inner_w, lh),
             raio,
             resolve(ColorToken::Bg3, self.theme),
         );
@@ -256,7 +257,8 @@ impl BodyCtx<'_> {
     fn fly_row(&mut self, snap: &VectorStyleSnapshot, it: StackItem, (left, top): (f32, f32)) {
         let mut local = ph2d_vector::VectorScene::new();
         let mut cliques = ph2d_editor_core::interaction::HitIndex::default();
-        let caixa = Rect::new(0.0, 0.0, self.inner_w, self.row_h);
+        let lh = self.linha_h();
+        let caixa = Rect::new(0.0, 0.0, self.inner_w, lh);
         fill_rounded_rect(
             &mut local,
             caixa,
@@ -280,7 +282,7 @@ impl BodyCtx<'_> {
         super::fill_stroke::VOANDO.with(|v| v.set(true));
         b.stack_row(snap, it, 0.0);
         super::fill_stroke::VOANDO.with(|v| v.set(false));
-        let onde = Rect::new(left, top, self.inner_w, self.row_h);
+        let onde = Rect::new(left, top, self.inner_w, lh);
         PENDENTE.with(|p| p.borrow_mut().voo = Some((local, onde)));
     }
 }

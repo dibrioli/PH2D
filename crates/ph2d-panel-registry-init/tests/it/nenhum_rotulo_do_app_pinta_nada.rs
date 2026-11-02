@@ -742,7 +742,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    (`N…`), porque a fileira dos marcadores passou a acabar onde as vizinhas acabam (a coluna
     //    do valor da porta, com a de animação à direita) — ela passava `18 px` para lá da coluna, e
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
-    ("vector", 1),
+    // ⬇️ `1 → 0` (integ 02/11): a linha de tinta parte-se em duas filas no degrau estreito e o
+    //    Weight ganha a largura do número. Medido pelo gate.
+    ("vector", 0),
     ("color_equalization", 2),
     ("tags", 2),
     ("audio_editor", 1),

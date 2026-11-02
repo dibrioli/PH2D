@@ -120,28 +120,65 @@ pub(super) struct Colunas {
 }
 
 impl BodyCtx<'_> {
-    /// As colunas da linha em `y`. O losango reserva a largura dele mesmo sem canal (alinhamento).
-    pub(super) fn colunas(&mut self, y: f32) -> Colunas {
-        let h = self.row_h;
-        let mw = if ph2d_editor_core::paint::ui_is_redesign() {
+    /// ⭐ **A linha cabe numa fila?** As partes fixas (a cor, os cinco losangos, ⚙ 👁 −) mais o `%` e o
+    /// Weight MEDIDOS. Abaixo disso (o degrau estreito: `inner_w` 168 contra 230 de fixo + `%`, integ
+    /// 02/11) o Weight ficava com 1 px e o número pintava em nada — a linha parte-se em duas.
+    pub(super) fn linha_dupla(&mut self) -> bool {
+        let (h, mw) = (self.row_h, self.decorator_w());
+        // A cor e os três botões (⚙ 👁 −) são quadrados `h`; losangos há quatro (cor, Weight, %, olho).
+        let fixo = 4.0 * h + 4.0 * mw;
+        let pct_w = self.pct_w();
+        let weight_w = self.weight_min_w();
+        self.inner_w < fixo + pct_w + weight_w
+    }
+
+    /// A altura de UMA linha de tinta — uma fila, ou duas no degrau estreito. ⚠️ A lista (passo do
+    /// arrasto, vão, linha que voa) lê ESTA, senão o registo e a pintura discordam.
+    pub(super) fn linha_h(&mut self) -> f32 {
+        if self.linha_dupla() {
+            self.row_h * 2.0 + self.row_gap
+        } else {
+            self.row_h
+        }
+    }
+
+    fn decorator_w(&self) -> f32 {
+        if ph2d_editor_core::paint::ui_is_redesign() {
             ph2d_editor_core::widget::DECORATOR_W
         } else {
             0.0
-        };
+        }
+    }
+
+    /// As colunas da linha em `y`. O losango reserva a largura dele mesmo sem canal (alinhamento).
+    /// Na linha dupla a 2.ª fila (sob a cor) leva `[Weight]◇ [%]◇`.
+    pub(super) fn colunas(&mut self, y: f32) -> Colunas {
+        let h = self.row_h;
+        let mw = self.decorator_w();
+        let dupla = self.linha_dupla();
         let right = self.inner_x + self.inner_w;
         // Os três botões encostados (o glifo já tem a folga dele): a caixa do hex fica com a largura.
         let minus = Rect::new(right - h, y, h, h);
         let eye_key = Rect::new(minus.x - mw, y, mw, h);
         let eye = Rect::new(eye_key.x - h, y, h, h);
         let settings = Rect::new(eye.x - h, y, h, h);
-        let pct_key = Rect::new(settings.x - mw, y, mw, h);
         let pct_w = self.pct_w();
-        let pct = Rect::new(pct_key.x - pct_w, y, pct_w, h);
-        let weight_key = Rect::new(pct.x - mw, y, mw, h);
+        let (y2, fim) = if dupla {
+            (y + h + self.row_gap, right)
+        } else {
+            (y, settings.x)
+        };
+        let pct_key = Rect::new(fim - mw, y2, mw, h);
+        let pct = Rect::new(pct_key.x - pct_w, y2, pct_w, h);
+        let weight_key = Rect::new(pct.x - mw, y2, mw, h);
         let caixa = Rect::new(self.inner_x, y, h, h);
         let caixa_key = Rect::new(caixa.x + caixa.w, y, mw, h);
-        let wx = caixa_key.x + caixa_key.w;
-        let weight = Rect::new(wx, y, (weight_key.x - wx).max(1.0), h);
+        let wx = if dupla {
+            self.inner_x
+        } else {
+            caixa_key.x + caixa_key.w
+        };
+        let weight = Rect::new(wx, y2, (weight_key.x - wx).max(1.0), h);
         Colunas {
             caixa,
             caixa_key,
@@ -160,9 +197,30 @@ impl BodyCtx<'_> {
     /// acima do piso genérico dos números. É o que dá à caixa do hex a largura dos seis dígitos no
     /// Inspector estreito (o piso de `72 px` é do maior número da casa, e aqui o maior é `100`).
     fn pct_w(&mut self) -> f32 {
-        let texto = format!("100{}", Unit::Percent.suffix());
+        self.campo_w(&format!("100{}", Unit::Percent.suffix()))
+    }
+
+    /// O mínimo do Weight, MEDIDO sobre o maior NÚMERO que ele pinta (`WIDTH_MAX_PX`) — sem o «px»:
+    /// a unidade vive no rótulo, nunca na caixa (regra do dono), e é o número que não pode faltar.
+    fn weight_min_w(&mut self) -> f32 {
+        let maior = ph2d_editor_core::widget::format_number(
+            ph2d_tool_vector::params::WIDTH_MAX_PX,
+        );
+        // A conta do PINTOR do número (`paint_number_input_with_buffer`): o texto em `Sm`, a folga
+        // da esquerda e o stepper — à direita só as setas ocluem o número.
+        let host = Rect::new(0.0, 0.0, self.chip_w, self.row_h);
+        self.text_system.prefix_width_weighted(
+            &maior,
+            ph2d_tokens::TypeToken::Sm.px(),
+            ph2d_text::FontWeight::MEDIUM,
+        ) + ph2d_editor_core::widget::field_pad_x()
+            + ph2d_editor_core::widget::stepper_width(host)
+    }
+
+    /// Um campo numérico que mostra `texto` inteiro: o texto, a folga dos dois bordos e o stepper.
+    fn campo_w(&mut self, texto: &str) -> f32 {
         let medido = self.text_system.prefix_width_weighted(
-            &texto,
+            texto,
             self.font,
             ph2d_text::FontWeight::MEDIUM,
         );
@@ -274,8 +332,9 @@ impl BodyCtx<'_> {
             );
         }
         self.hit_index.register(l.swatch, caixa);
-        let line = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        (y + self.row_h + self.row_gap, caixa, open.then_some(line))
+        let lh = self.linha_h();
+        let line = Rect::new(self.inner_x, y, self.inner_w, lh);
+        (y + lh + self.row_gap, caixa, open.then_some(line))
     }
 
     /// O Weight de um traço: o número em `px` (a unidade diz o que ele é). ⛔ Um glifo à frente

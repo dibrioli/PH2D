@@ -311,10 +311,7 @@ fn the_stroke_kind_and_the_pattern_reader_follow_the_open_layer() {
 fn the_canvas_gradient_gizmo_follows_the_open_layer_through_the_app_door() {
     use ph2d_vec_scene::GradientStop;
     let ramp = |a: [f64; 2], b: [f64; 2]| Paint::Linear {
-        stops: vec![
-            GradientStop::new(0.0, AZUL),
-            GradientStop::new(1.0, VERDE),
-        ],
+        stops: vec![GradientStop::new(0.0, AZUL), GradientStop::new(1.0, VERDE)],
         start: a,
         end: b,
     };

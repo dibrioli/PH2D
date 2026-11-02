@@ -236,9 +236,11 @@ fn the_art_of_a_hidden_or_layer_pattern_travels_in_the_file_too() {
     let id = scene.paths()[0].id;
     let p = scene.path_mut(id).expect("forma");
     assert!(p.set_fill_hidden(true), "o olho esconde o padrão de base");
-    let camada = cena(Some(b), None).paths()[0].fill.clone().expect("padrão b");
-    p.paints
-        .push(ph2d_vec_scene::PaintEntry::fill(camada));
+    let camada = cena(Some(b), None).paths()[0]
+        .fill
+        .clone()
+        .expect("padrão b");
+    p.paints.push(ph2d_vec_scene::PaintEntry::fill(camada));
     assert_eq!(
         crate::project_texture_pattern::art_ids_named_by(&scene),
         [a, b].into_iter().collect(),

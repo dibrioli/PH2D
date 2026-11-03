@@ -57,18 +57,25 @@ fn empurra(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<Touche
         let i = cx as usize + cy as usize * g.s;
         (g.film[i] > WATER_WET_FILM).then_some(i)
     };
-    // A frente de cada LINHA da faixa (o passo `t` ao longo do traço), de cada lado: a última célula molhada pela
-    // normal. Só há para onde correr quando a água passa da pegada (sobre a tinta seca a frente é a própria pegada).
+    // A frente de cada LINHA da faixa (o passo `t` ao longo do traço), de cada lado: o comprimento MOLHADO que a água
+    // percorre pela normal; cada célula seca atravessada bebe-a como o transbordo (`e^{−1/(WATER_SPILL_RADII · r)}`).
+    // Sem buracos é a última célula molhada; um poro seco não é parede (parar nele fazia a Water Brush biestável na
+    // fase dos dabs da base — cura 02/11c). Só há para onde correr quando a água passa da pegada (sobre a tinta seca
+    // a frente é a própria pegada).
     let meia = r.ceil() as i64;
+    let bebe = (-1.0 / (WATER_SPILL_RADII * r)).exp();
     let frentes: Vec<[f64; 2]> = (-meia..=meia)
         .map(|k| {
             let (ax, ay) = (dab.x + k as f64 * tx, dab.y + k as f64 * ty);
             [-1.0, 1.0].map(|sinal| {
-                let mut d = 0.0;
+                let (mut d, mut viva) = (0.0, 1.0);
                 let mut q = 1.0;
-                while q <= alcance && molhada(g, ax + sinal * q * nx, ay + sinal * q * ny).is_some()
-                {
-                    d = q;
+                while q <= alcance {
+                    if molhada(g, ax + sinal * q * nx, ay + sinal * q * ny).is_some() {
+                        d += viva;
+                    } else {
+                        viva *= bebe;
+                    }
                     q += 1.0;
                 }
                 if d > r + 1.0 { d } else { 0.0 }

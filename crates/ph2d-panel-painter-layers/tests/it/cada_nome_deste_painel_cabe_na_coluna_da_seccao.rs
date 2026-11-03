@@ -39,7 +39,7 @@
 
 use ph2d_panel_painter_layers::seccoes;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
 /// ⏳ **QUANTOS NOMES ELIDEM, POR LARGURA DE PAINEL — e só ENCOLHE.**
 ///
@@ -70,8 +70,11 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    («Coat Roughness», «Subsurface Radius»); os 13 de cima vêm da base `5a01640d94`. Cura: o nome do material
     //    que não cabe parte-se em DUAS linhas (`duas_linhas::partido`, a mesma pergunta que o pintor faz).
     // ⬇️ 13 → 12 em 2026-10-28 (W3b): Transmission/Transparency/Paper Relief saíram do cartão Real Oil (só no pincel).
-    (220.0, 12),
-    (245.0, 1),
+    // ⬇️ 12 → 1 em 2026-11-03 (line/NovaUI): as secções QUEBRAM o nome que não cabe em duas linhas
+    //    dentro da coluna (`Seccao::que_quebra_o_nome`) — a régua pergunta à MESMA secção do produto.
+    (220.0, 1),
+    // ⬇️ 1 → 0 em 2026-11-03, pela mesma quebra.
+    (245.0, 0),
     // Amostra DATADA da largura do dono (lida em 2026-09-14).
     (273.3, 0),
     // A largura de OMISSÃO de um dock.
@@ -129,18 +132,30 @@ fn elidem_com(ts: &mut TextSystem, painel: f32, declarada: bool) -> Vec<String> 
         let n = d.campos as f32;
         let precisa = n * ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX
             + (n - 1.0) * ph2d_tokens::control_gap_px();
+        // ⭐ A secção DECLARADA é a do produto (`seccoes::seccao`): ela QUEBRA o nome que não cabe
+        //    (`Seccao::que_quebra_o_nome`, 03/11) e pede o chip dos menus — a coluna sai da MESMA porta.
+        let declarada_s = declarada.then(|| seccoes::seccao(ts, d).com_pelo_menos(1));
         for (rotulos, largura) in [(&soltos, linha), (&no_cartao, linha_do_cartao)] {
-            let col = ph2d_editor_core::widget::property_label_col_w_for(
-                0.0,
-                largura,
-                mais_largo,
-                Some(precisa),
-            );
+            let col = match declarada_s {
+                Some(s) => {
+                    ph2d_editor_core::widget::colunas_da_linha(0.0, largura, 0.0, ROW_H_PX, s)
+                        .label
+                        .w
+                }
+                None => ph2d_editor_core::widget::property_label_col_w_for(
+                    0.0,
+                    largura,
+                    mais_largo,
+                    Some(precisa),
+                ),
+            };
             for &(chave, t) in rotulos {
                 // ⭐ O nome do material do Real Oil que não cabe pinta-se em DUAS linhas (W3 K9): corta só se
                 //    nem partido cabe — a mesma pergunta que o pintor faz.
                 let partido = ph2d_panel_painter_layers::duas_linhas::partido(ts, chave, t, col);
-                if ts.prefix_width(t, fonte) > col && partido.is_none() {
+                let quebra = declarada_s.is_some_and(|s| s.quebra_o_nome())
+                    && ph2d_editor_core::widget::nome_em_duas_linhas(ts, t, fonte, col).is_some();
+                if ts.prefix_width(t, fonte) > col && partido.is_none() && !quebra {
                     out.push(format!("[{}] {t}", d.nome));
                 }
             }

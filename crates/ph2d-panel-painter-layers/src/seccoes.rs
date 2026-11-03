@@ -479,7 +479,7 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
 ];
 
 /// ⭐⭐ **A [`Seccao`] de uma declaração** — medida sobre os rótulos dela, no sistema de texto real.
-pub(crate) fn seccao(text_system: &mut TextSystem, d: &Declaracao) -> Seccao {
+pub fn seccao(text_system: &mut TextSystem, d: &Declaracao) -> Seccao {
     let padroes = COM_PADROES.contains(&d.nome);
     let rotulos: Vec<&'static str> = d
         .chaves

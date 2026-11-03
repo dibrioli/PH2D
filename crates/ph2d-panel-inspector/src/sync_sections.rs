@@ -119,7 +119,13 @@ pub(crate) fn sync_new_sections(
     // números do anterior no ecrã. ⚠️ Elas não têm LINHA aberta (um objecto tem um som e uma
     // câmera), então a aresta é só a entidade.
     if let Some(au) = crate::state_components::current_inspector_audio() {
-        sync_audio_fields(host, &au, entity_changed);
+        // ⭐⭐ **E o som ganha a ASSINATURA** (GEF 21, smoke do dono 02/11): a queda de um som no
+        // Sound escreve o MUNDO, e com a aresta só na entidade o campo ficava vazio até se trocar de
+        // objecto — o mesmo defeito que a câmera curou abaixo.
+        let sig = assinatura_audio(&au);
+        let mudou = inspector_state.last_audio_sig != Some(sig);
+        inspector_state.last_audio_sig = Some(sig);
+        sync_audio_fields(host, &au, entity_changed || mudou);
     }
     if let Some(cam) = crate::state_components::current_inspector_camera() {
         // ⭐⭐ **E a câmera ganha a ASSINATURA das irmãs** (plano 24, W7). ⛔ A aresta era só a
@@ -178,6 +184,28 @@ pub(crate) fn write_text(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId
         *caret = text.len();
         *selection_anchor = None;
     }
+}
+
+/// O que os campos semeados da secção AUDIO mostram — muda ⇒ re-semeia.
+fn assinatura_audio(au: &ph2d_editor_core::screens::hero::InspectorAudioInfo) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    au.entity_bits.hash(&mut h);
+    if let Some(s) = au.source.as_ref() {
+        s.sound.hash(&mut h);
+        s.max_polyphony.hash(&mut h);
+        for v in [
+            s.volume_db,
+            s.pitch,
+            s.max_distance,
+            s.attenuation,
+            s.non_spatialized_radius,
+            s.panning_strength,
+        ] {
+            v.to_bits().hash(&mut h);
+        }
+    }
+    h.finish()
 }
 
 /// Semeia os campos da secção AUDIO a partir do snapshot.

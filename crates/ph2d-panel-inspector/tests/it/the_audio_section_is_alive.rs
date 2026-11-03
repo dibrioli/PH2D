@@ -250,3 +250,38 @@ fn the_bus_picker_opens_and_picks() {
     );
     set_current_inspector_audio(None);
 }
+
+/// ⭐⭐⭐ **Um som que muda FORA do painel aparece no campo sem trocar de objecto** (smoke do dono
+/// 02/11: *«o nome não aparece no campo Sound até fechar e abrir o painel»*). A queda escreve o
+/// MUNDO; com a semente só na troca de entidade o campo ficava com o texto velho. Vale também para o
+/// `Ctrl+Z` e para um número (o volume) mudado por fora.
+///
+/// **Mutação que deve sangrar:** semear o AUDIO só com `entity_changed` (tirar o `|| mudou`).
+#[test]
+fn a_sound_changed_outside_the_panel_shows_without_reselecting() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    let sound = ph2d_panel_inspector::ids::INSP_AUDIO_SOUND;
+    let mut f = fonte();
+    f.sound = String::new();
+    let (mut h, mut st) = host(info(Some(f.clone()), false, 1));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let texto = |h: &MockPanelHost| match h.store().get(sound) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        o => panic!("o Sound não é um campo de texto: {o:?}"),
+    };
+    assert_eq!(texto(&h), "");
+    f.sound = "moeda.ogg".into();
+    f.volume_db = -6.0;
+    set_current_inspector_audio(Some(info(Some(f), false, 1)));
+    let _ = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert_eq!(texto(&h), "moeda.ogg", "a queda não chegou ao campo");
+    let vol = h
+        .store()
+        .number_value(ph2d_panel_inspector::ids::INSP_AUDIO_VOLUME);
+    assert!(
+        vol.is_some_and(|v| (v + 6.0).abs() < 1e-6),
+        "o volume mostra {vol:?}"
+    );
+    set_current_inspector_audio(None);
+}

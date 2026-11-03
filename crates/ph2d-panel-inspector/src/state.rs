@@ -138,6 +138,8 @@ pub struct InspectorState {
     pub last_parallax_sig: Option<u64>,
     /// A assinatura da secção CAMERA — ver o `sync_sections`.
     pub last_camera_sig: Option<u64>,
+    /// A assinatura da secção AUDIO — mesma lei (GEF 21: o som largado no Sound não aparecia).
+    pub last_audio_sig: Option<u64>,
     /// A assinatura da secção WEAPON — mesma lei do `last_ray_sig` (ver o `sync_weapon`).
     pub last_weapon_sig: Option<u64>,
     /// A assinatura das secções NAV REGION e NAV AGENT (plano 30, W4) — mesma lei.

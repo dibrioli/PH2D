@@ -13,6 +13,7 @@ authors.workspace = true
 # seleccionado. Crate própria porque a `ph2d-app-vec` está no tecto da catraca (feature nova =
 # drop-crate); a sessão de texto continua a ser a do vetor.
 [dependencies]
+ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }

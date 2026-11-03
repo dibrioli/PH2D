@@ -15,6 +15,13 @@ use ph2d_editor_core::{ToolId, ToolRegistry};
 use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::VecPathId;
 
+/// A declaração da família à shell. Sem roteador: a cena dela é o HUD da `game` (`PH2D_GAME_SMOKE=4`),
+/// onde o *Add ▸ Text* nasce filho do HUD seleccionado.
+pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
+    key: "text",
+    routers: &[],
+};
+
 /// O texto.
 pub const TEXT: AddEntry = AddEntry::new("object_add.vector.text", AddGroup::TwoD);
 /// O que esta família põe no menu.

@@ -6169,6 +6169,7 @@ dependencies = [
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
  "ph2d-app-sync",
+ "ph2d-app-text",
  "ph2d-app-vec",
  "ph2d-component-desc",
  "ph2d-ecs",
@@ -6239,6 +6240,7 @@ version = "0.0.0"
 name = "ph2d-app-text"
 version = "0.0.0"
 dependencies = [
+ "ph2d-app-host",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

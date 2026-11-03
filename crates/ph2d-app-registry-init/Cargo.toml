@@ -29,6 +29,7 @@ ph2d-app-pixel = { path = "../ph2d-app-pixel", optional = true }
 ph2d-app-planner = { path = "../ph2d-app-planner", optional = true }
 ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
 ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim", optional = true }
+ph2d-app-text = { path = "../ph2d-app-text", optional = true }
 ph2d-app-vec = { path = "../ph2d-app-vec", optional = true }
 # <ph2d-app-sync:deps:end>
 
@@ -56,6 +57,7 @@ default = [
     "app-planner",
     "app-skeleton",
     "app-sprite-anim",
+    "app-text",
     "app-vec",
 # <ph2d-app-sync:default:end>
 ]
@@ -79,6 +81,7 @@ app-pixel = ["dep:ph2d-app-pixel"]
 app-planner = ["dep:ph2d-app-planner"]
 app-skeleton = ["dep:ph2d-app-skeleton"]
 app-sprite-anim = ["dep:ph2d-app-sprite-anim"]
+app-text = ["dep:ph2d-app-text"]
 app-vec = ["dep:ph2d-app-vec"]
 # <ph2d-app-sync:features:end>
 

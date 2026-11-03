@@ -92,6 +92,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-sprite-anim")]
     reg.push(ph2d_app_sprite_anim::FAMILY);
+    #[cfg(feature = "app-text")]
+    reg.push(ph2d_app_text::FAMILY);
     #[cfg(feature = "app-vec")]
     reg.push(ph2d_app_vec::FAMILY);
     // <ph2d-app-sync:end>
@@ -182,6 +184,8 @@ mod tests {
     const FAMILIAS_CUJA_CENA_VIVE_NUMA_CRATE_IRMA: &[(&str, &str)] = &[
         ("skeleton", "PH2D_VEC_BONE_SMOKE"),
         ("sprite-anim", "PH2D_GAME_SMOKE"),
+        // Add ▸ Text: o texto nasce filho do HUD da cena `PH2D_GAME_SMOKE=4` (handoff GEF 02/11 §3.1).
+        ("text", "PH2D_GAME_SMOKE"),
     ];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter

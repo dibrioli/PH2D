@@ -45,6 +45,18 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são IDENTIDADE, e consola.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
+        "sound_project.rs",
+        "Sound",
+        "o nome por omissão de um som importado sem nome de ficheiro — entra na `ProjectSounds` e o \
+         `AudioSource2D.sound` refere-o por ESSE nome: identidade durável, como `Prefab`",
+    ),
+    (
+        "object_add.rs",
+        "{component}: não é um objecto do menu dos componentes",
+        "o `Err` da porta `add_by_component`, que só quem MONTA uma cena de smoke chama, e que acaba \
+         num `panic!` (`smoke.rs`, `smoke_moedas.rs`) — terminal, nunca ecrã",
+    ),
+    (
         "statemachine_inspector.rs",
         "State {n}",
         "⚠️ veio da shell com o ficheiro (plano 30, W4 — a catraca da shell): o NOME de omissão de um estado novo — ele entra no documento (`MachineState::name`) e o \

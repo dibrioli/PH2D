@@ -545,12 +545,11 @@ fn mediana(mut v: Vec<f32>) -> f32 {
 }
 
 /// A lei CRUA medida: raio do motor → largura, numa fila do MAIOR para o menor com `PH2D_LEI_FIOS` trabalhadores
-/// (por omissão um por raio). ⚠️ A memória é a do raio: o Dabber (Jitter 0,5) a 64 de uma vez passava dos 48 GB; depois da
+/// (por omissão um por raio) e a memória em voo no tecto ([`memoria::em_paralelo_pela_memoria`], 02/11c). ⚠️ A memória é a do raio: o Dabber (Jitter 0,5) a 64 de uma vez passava dos 48 GB; depois da
 /// margem da janela pelo CAMINHO (`Trail::on_segment_no_caminho`) 21,9 GiB do tecto de 24 (prompt 53); com UMA lane por
 /// ponta (L13) o raio 1 100 pesa 1,7 GiB (era 4,3) — mas a fatia é da LINHA e o `/tmp` (tmpfs) dos agentes conta nela
 /// (14,6 G de `shmem` a 20/10): o Dabber regerou-se a `PH2D_LEI_FIOS=4`, pico 5,3 GiB, 4,8 min (03_MOTORES §4 L13).
 pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     let raios = raios_da_lei();
     // A largura mede-se sem o Real Oil ([`imagem_da_largura`]): a tela de um raio volta a ~940 MiB no Dabber a 1000
     // (com o óleo eram 1 513 e os 64 raios de uma vez passavam os 24G da fatia, J6).
@@ -558,27 +557,12 @@ pub(super) fn tabela_de_largura(p: &Preset) -> Vec<[f64; 2]> {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(raios.len());
-    let proximo = AtomicUsize::new(0);
-    let mut larguras = vec![0.0_f32; raios.len()];
-    std::thread::scope(|s| {
-        let h: Vec<_> = (0..fios)
-            .map(|_| {
-                s.spawn(|| {
-                    let mut feitas = Vec::new();
-                    loop {
-                        let k = proximo.fetch_add(1, Ordering::Relaxed);
-                        let Some(i) = raios.len().checked_sub(k + 1) else {
-                            break feitas;
-                        };
-                        feitas.push((i, largura_de(p, raios[i], true)));
-                    }
-                })
-            })
-            .collect();
-        for (i, l) in h.into_iter().flat_map(|h| h.join().unwrap()) {
-            larguras[i] = l;
-        }
-    });
+    let custos: Vec<u64> = raios
+        .iter()
+        .map(|&r| memoria::custo_da_cena(p, r, true))
+        .collect();
+    let larguras =
+        memoria::em_paralelo_pela_memoria(&custos, fios, |i| largura_de(p, raios[i], true));
     raios
         .iter()
         .zip(larguras)

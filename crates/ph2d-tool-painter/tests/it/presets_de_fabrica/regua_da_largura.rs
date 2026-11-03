@@ -120,7 +120,7 @@ pub(super) fn imagem_da_ferramenta(
     // a orla para fora; a largura é a do rasto que ele puxa, de novo por coluna.
     // A ORLA da base: os dois pontos dela, a normal para DENTRO da faixa e o raio da faixa (a largura é o dobro).
     let (w, h, orla, dentro, ferramenta, raio_da_base) = if modo == "Smear" {
-        let (w, h) = ((motor * 4.5) as u32 + 160, (motor * 3.0) as u32 + 120);
+        let (w, h) = cena_da_ferramenta(modo, motor);
         let (cx, cy) = (80.0 + 2.0 * motor, h as f32 * 0.5);
         (
             w,
@@ -131,9 +131,8 @@ pub(super) fn imagem_da_ferramenta(
             motor,
         )
     } else {
-        let h = ((motor * 6.0) as u32 + 80).max(120);
+        let (w, h) = cena_da_ferramenta(modo, motor);
         let (cy, margem) = (h as f32 * 0.5, MARGEM_DO_MISTURADOR.max(motor + 100.0));
-        let w = (VAO_DO_MISTURADOR + 2.0 * margem) as u32;
         (
             w,
             h,
@@ -179,6 +178,37 @@ pub(super) fn imagem_da_ferramenta(
         })
         .collect();
     (diferenca, w, h)
+}
+
+/// A tela (w, h) da cena de [`imagem_da_ferramenta`] ao raio do motor `motor`: a do Smear (a faixa de pé) ou a do
+/// misturador (o vão recto e a margem que cresce com o raio). A mesma conta dá o custo em [`px_da_cena`].
+fn cena_da_ferramenta(modo: &str, motor: f32) -> (u32, u32) {
+    if modo == "Smear" {
+        ((motor * 4.5) as u32 + 160, (motor * 3.0) as u32 + 120)
+    } else {
+        let margem = MARGEM_DO_MISTURADOR.max(motor + 100.0);
+        (
+            (VAO_DO_MISTURADOR + 2.0 * margem) as u32,
+            ((motor * 6.0) as u32 + 80).max(120),
+        )
+    }
+}
+
+/// Os píxeis da tela de UMA medição de [`imagem_da_largura`] (`p` a `raio`): a da ferramenta ao raio do motor, ou a de
+/// `traco_recto_alto_com` (largura `sonda_gestos::W`, altura `6·raio + 80`). O custo de memória dela em voo.
+pub(super) fn px_da_cena(p: &Preset, raio: f32, crua: bool) -> u64 {
+    let (w, h) = match p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
+        Some(modo) => {
+            let motor = if crua {
+                raio
+            } else {
+                raio_do_motor_da_tabela(&p.parametros.width_table, raio)
+            };
+            cena_da_ferramenta(modo, motor)
+        }
+        None => (crate::sonda_gestos::W, ((raio * 6.0) as u32 + 80).max(120)),
+    };
+    u64::from(w) * u64::from(h)
 }
 
 /// O vão RECTO do traço do misturador (px) e a margem mínima de cada lado: a 1000 px de tela (a `sonda_gestos::W` de
@@ -313,7 +343,6 @@ const FOLGA_PX: f32 = 1.5;
 #[test]
 #[ignore = "sonda: a lei crua das ferramentas é contínua no raio (custo ~ minutos)"]
 fn sonda_monotonia_da_largura() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     let var = |k: &str| std::env::var(k).ok();
     let n: usize = var("PH2D_SONDA_RAIOS").map_or(60, |v| v.parse().unwrap());
     let r0: f32 = var("PH2D_SONDA_RAIO_MIN").map_or(2.0, |v| v.parse().unwrap());
@@ -341,25 +370,18 @@ fn sonda_monotonia_da_largura() {
     let cenas: Vec<(usize, usize)> = (0..presets.len())
         .flat_map(|k| (0..n).map(move |i| (k, i)))
         .collect();
-    let proxima = AtomicUsize::new(0);
-    let mut l = vec![vec![0.0f32; n]; presets.len()];
-    std::thread::scope(|s| {
-        let h: Vec<_> = (0..fios)
-            .map(|_| {
-                s.spawn(|| {
-                    let mut feitas = Vec::new();
-                    while let Some(&(k, i)) = cenas.get(proxima.fetch_add(1, Ordering::Relaxed)) {
-                        let v = largura_de_com(&presets[k], raios[i], true, Relogio::DeUmaVez);
-                        feitas.push((k, i, v));
-                    }
-                    feitas
-                })
-            })
-            .collect();
-        for (k, i, v) in h.into_iter().flat_map(|h| h.join().unwrap()) {
-            l[k][i] = v;
-        }
+    let custos: Vec<u64> = cenas
+        .iter()
+        .map(|&(k, i)| super::memoria::custo_da_cena(&presets[k], raios[i], true))
+        .collect();
+    let medidas = super::memoria::em_paralelo_pela_memoria(&custos, fios, |c| {
+        let (k, i) = cenas[c];
+        largura_de_com(&presets[k], raios[i], true, Relogio::DeUmaVez)
     });
+    let mut l = vec![vec![0.0f32; n]; presets.len()];
+    for (&(k, i), v) in cenas.iter().zip(medidas) {
+        l[k][i] = v;
+    }
     let mut falhas = Vec::new();
     for (p, l) in presets.iter().zip(&l) {
         let nome = &p.parametros.name;

@@ -14,6 +14,112 @@ pub(super) fn pico_mib() -> f64 {
         / 1024.0
 }
 
+/// O tecto de memória do processo (bytes): o menor `memory.max` do cgroup dele e dos pais (a fatia do `ph2d-run.sh`),
+/// menos o que ele já ocupa; sem cgroup com tecto, a `MemAvailable` da máquina.
+fn memoria_livre() -> u64 {
+    let ler = |p: &str| std::fs::read_to_string(p).unwrap_or_default();
+    let campo = |txt: &str, k: &str| -> Option<u64> {
+        txt.lines()
+            .find_map(|l| l.strip_prefix(k))
+            .and_then(|r| r.split_whitespace().next()?.parse::<u64>().ok())
+    };
+    let mut grupo = ler("/proc/self/cgroup")
+        .lines()
+        .find_map(|l| l.strip_prefix("0::").map(str::to_owned))
+        .unwrap_or_default();
+    let mut livre = None::<u64>;
+    loop {
+        let d = format!("/sys/fs/cgroup{grupo}");
+        if let (Ok(max), Some(atual)) = (
+            ler(&format!("{d}/memory.max")).trim().parse::<u64>(),
+            ler(&format!("{d}/memory.current"))
+                .trim()
+                .parse::<u64>()
+                .ok(),
+        ) {
+            let l = max.saturating_sub(atual);
+            livre = Some(livre.map_or(l, |v| v.min(l)));
+        }
+        match grupo.rfind('/') {
+            Some(k) if !grupo.is_empty() => grupo.truncate(k),
+            _ => break,
+        }
+    }
+    livre.unwrap_or_else(|| campo(&ler("/proc/meminfo"), "MemAvailable:").unwrap_or(0) * 1024)
+}
+
+/// Os bytes por píxel de CENA de uma medição da largura em voo (o pico do processo ÷ os píxeis da tela), medido 03/11
+/// num processo por preset, um raio de cada vez (`sonda_monotonia_da_largura`, `PH2D_LEI_FIOS=1`, `VmHWM`, motor 1 100,
+/// cena 3 200 × 6 680 = 21,4 Mpx): Water Brush 7 746 MiB = 380 B/px (a 1 099: 7 585). Arredondado para cima: a
+/// estimativa erra só para o lado seguro. Os 64 raios de uma vez somam 150 Mpx = 7× o maior (≈ 53 GiB + o fixo): o OOM.
+const BYTES_POR_PX_DA_CENA: u64 = 400;
+/// A parte da [`memoria_livre`] que as medições em voo podem somar (o resto: o binário, as tabelas, a miniatura).
+const FRACAO_DO_LIVRE: f64 = 0.7;
+
+/// O custo (bytes) de UMA medição da largura de `p` a `raio` em voo: [`regua_da_largura::px_da_cena`] ×
+/// [`BYTES_POR_PX_DA_CENA`].
+pub(super) fn custo_da_cena(p: &Preset, raio: f32, crua: bool) -> u64 {
+    super::regua_da_largura::px_da_cena(p, raio, crua) * BYTES_POR_PX_DA_CENA
+}
+
+/// ⭐ **As medições da largura em paralelo PELA MEMÓRIA** (02/11c): `f(i)` para cada `i`, no máximo `fios` de cada vez
+/// e com a soma de `custos` (bytes estimados) em voo ≤ [`FRACAO_DO_LIVRE`] da [`memoria_livre`] — a maior entra
+/// sempre sozinha. A ordem de entrada é do maior custo para o menor; o resultado é por índice, e cada `f(i)` é
+/// independente: o que se grava é o mesmo com qualquer concorrência. ⛔ Medido: um fio por raio (64 de uma vez) pôs a
+/// lei crua da Water Brush a 66 G (o cgroup de 64 G matou-a); a soma de r² da escala geométrica é ~5× a do maior.
+pub(super) fn em_paralelo_pela_memoria<T: Send>(
+    custos: &[u64],
+    fios: usize,
+    f: impl Fn(usize) -> T + Sync,
+) -> Vec<T> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Condvar, Mutex};
+    let orcamento = (memoria_livre() as f64 * FRACAO_DO_LIVRE) as u64;
+    let mut ordem: Vec<usize> = (0..custos.len()).collect();
+    ordem.sort_by_key(|&i| std::cmp::Reverse(custos[i]));
+    let proximo = AtomicUsize::new(0);
+    let em_voo = (Mutex::new(0u64), Condvar::new());
+    // Devolve o custo mesmo se `f` entrar em pânico (senão os outros fios esperavam para sempre).
+    struct Vaga<'a>(&'a (Mutex<u64>, Condvar), u64);
+    impl Drop for Vaga<'_> {
+        fn drop(&mut self) {
+            let mut g = self
+                .0
+                .0
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            *g -= self.1;
+            self.0.1.notify_all();
+        }
+    }
+    let mut saida: Vec<Option<T>> = (0..custos.len()).map(|_| None).collect();
+    std::thread::scope(|s| {
+        let h: Vec<_> = (0..fios.clamp(1, custos.len().max(1)))
+            .map(|_| {
+                s.spawn(|| {
+                    let mut feitas = Vec::new();
+                    while let Some(&i) = ordem.get(proximo.fetch_add(1, Ordering::Relaxed)) {
+                        let c = custos[i];
+                        let mut g = em_voo.0.lock().unwrap();
+                        while *g > 0 && *g + c > orcamento {
+                            g = em_voo.1.wait(g).unwrap();
+                        }
+                        *g += c;
+                        drop(g);
+                        let _vaga = Vaga(&em_voo, c);
+                        feitas.push((i, f(i)));
+                    }
+                    feitas
+                })
+            })
+            .collect();
+        for (i, v) in h.into_iter().flat_map(|h| h.join().unwrap()) {
+            saida[i] = Some(v);
+        }
+    });
+    saida.into_iter().map(Option::unwrap).collect()
+}
+
 /// **Sonda da MEMÓRIA da lei da largura** (J2 Dabber, L13): UM raio por processo (`VmHWM` é do processo), o traço
 /// de [`largura_de`] com `PH2D_SONDA_PRESET` (Dabber), `PH2D_SONDA_RAIO`, `PH2D_SONDA_CRUA` (1), `PH2D_SONDA_JITTER`
 /// (o do preset) e `PH2D_SONDA_QUADROS` (os da lei; `0` = só o gesto). Imprime o pico depois do gesto e depois da

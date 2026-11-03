@@ -1,9 +1,10 @@
 //! ⭐⭐ **A galeria como LISTA DE CARTÕES no painel lateral** (doc `CartoesUI/08` §1): o
-//! vocabulário do cartão primeiro ([`crate::cards_vocab`]), depois as onze secções de sempre, cada
-//! uma o corpo de um cartão pintado com a tinta dele.
+//! inspector de ferramentas fictícias primeiro ([`crate::cards_vocab`]), depois as onze secções de
+//! sempre, cada uma o corpo de um cartão com nome de ferramenta, pintado com a tinta dele.
 
 use crate::cards_vocab;
 use crate::state::WidgetGalleryState;
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, paint_card_list_with};
@@ -31,6 +32,40 @@ pub fn force_cards_on_this_thread(on: Option<bool>) {
     OVERRIDE.with(|o| o.set(on));
 }
 
+/// O nome de ferramenta de cada corpo de sempre (a tabela widget → ferramenta do doc 08 §1.2).
+const TOOL_TITLES: [(NodeId, &str); 11] = [
+    (
+        ids::INSP_SECTION_INPUTS,
+        "panel.widget_gallery.card.layer_info",
+    ),
+    (ids::INSP_SECTION_SLIDER, "panel.widget_gallery.card.motion"),
+    (
+        ids::INSP_SECTION_SWITCHES,
+        "panel.widget_gallery.card.preferences",
+    ),
+    (ids::INSP_SECTION_LISTS, "panel.widget_gallery.card.browser"),
+    (ids::INSP_SECTION_VECTOR, "panel.widget_gallery.card.pivot"),
+    (ids::INSP_SECTION_STATUS, "panel.widget_gallery.card.render"),
+    (ids::INSP_SECTION_COLOR, "panel.widget_gallery.card.tint"),
+    (
+        ids::INSP_SECTION_ACTIONS,
+        "panel.widget_gallery.card.history",
+    ),
+    (
+        ids::INSP_SECTION_IDENTITY,
+        "panel.widget_gallery.card.collaborators",
+    ),
+    (ids::INSP_SECTION_CARD, "panel.widget_gallery.card.comments"),
+    (ids::INSP_SECTION_W6, "panel.widget_gallery.card.advanced"),
+];
+
+fn tool_title(section: NodeId) -> &'static str {
+    TOOL_TITLES
+        .iter()
+        .find(|(s, _)| *s == section)
+        .map_or("", |(_, key)| tr(key))
+}
+
 /// As onze secções de sempre, cada uma num cartão (o id de sempre: ordem e tema sobrevivem).
 fn legacy() -> Vec<CardDef<'static>> {
     SHOWCASE_CARDS
@@ -39,7 +74,7 @@ fn legacy() -> Vec<CardDef<'static>> {
             let sc = *sc;
             CardDef {
                 section: sc.section,
-                title: sc.title,
+                title: tool_title(sc.section),
                 actions: Vec::new(),
                 add: None,
                 summary: None,
@@ -72,6 +107,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
         let store = ctx.host.store_mut();
         cards_vocab::prepare(store);
         crate::valores::sync_picked(state, store, theme);
+        crate::valores::sync_link(state, store);
         cards_vocab::vocabulary(state, store)
     };
     cards.extend(legacy());

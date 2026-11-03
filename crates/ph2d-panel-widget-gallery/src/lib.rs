@@ -20,7 +20,13 @@
 #![forbid(unsafe_code)]
 
 mod cards;
+mod cards_layout;
+mod cards_objeto;
+mod cards_pintura;
+mod cards_texto;
+mod cards_transform;
 mod cards_vocab;
+pub mod controlos;
 mod event;
 pub mod ids;
 mod paint;

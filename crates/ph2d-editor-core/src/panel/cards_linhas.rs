@@ -183,13 +183,13 @@ impl<'s> CardCtx<'s> {
         colunas::colunas(self.x, self.w, cells, &mut mede)
     }
 
-    fn seg_need(&mut self, s: &Seg<'_>) -> (f32, bool) {
+    fn seg_need(&mut self, s: &Seg<'_>, com_icone: bool) -> (f32, bool) {
         let tw = if s.text.is_empty() {
             0.0
         } else {
             self.text_system.prefix_width(s.text, m::SEG_TEXT_PX)
         };
-        let iw = glifo_do_segmento(s);
+        let iw = glifo_do_segmento(s, com_icone);
         let gap = if iw > 0.0 && tw > 0.0 {
             m::SEG_ICON_GAP
         } else {
@@ -212,8 +212,12 @@ impl<'s> CardCtx<'s> {
             r.w - m::SEG_PAD * 2.0,
             r.h - m::SEG_PAD * 2.0,
         );
-        let needs: Vec<(f32, bool)> = segs.iter().map(|s| self.seg_need(s)).collect();
-        let ws = m::seg_widths(&needs, inner.w - m::SEG_PAD * (n - 1.0));
+        // Onde ícone e palavra não cabem juntos, a palavra fica: ela é o nome do segmento.
+        let avail = inner.w - m::SEG_PAD * (n - 1.0);
+        let inteiros: f32 = segs.iter().map(|s| self.seg_need(s, true).0).sum();
+        let com_icone = inteiros <= avail;
+        let needs: Vec<(f32, bool)> = segs.iter().map(|s| self.seg_need(s, com_icone)).collect();
+        let ws = m::seg_widths(&needs, avail);
         let mut sx = inner.x;
         for (s, w) in segs.iter().zip(ws) {
             let sr = Rect::new(sx, inner.y, w, inner.h);
@@ -241,7 +245,7 @@ impl<'s> CardCtx<'s> {
             } else {
                 self.text_system.prefix_width(s.text, m::SEG_TEXT_PX)
             };
-            let iw = glifo_do_segmento(s);
+            let iw = glifo_do_segmento(s, com_icone);
             let gap = if iw > 0.0 && tw > 0.0 {
                 m::SEG_ICON_GAP
             } else {
@@ -249,7 +253,7 @@ impl<'s> CardCtx<'s> {
             };
             let total = (iw + gap + tw).min(sr.w);
             let mut x = sr.x + (sr.w - total) * 0.5;
-            if let Some(icon) = s.icon {
+            if let Some(icon) = s.icon.filter(|_| iw > 0.0) {
                 let ir = Rect::new(x, sr.y + (sr.h - iw) * 0.5, iw, iw);
                 paint_icon(self.scene, icon, ir, tinta, StrokeToken::Default.px());
                 x += iw + gap;
@@ -474,11 +478,13 @@ impl<'s> CardCtx<'s> {
 #[path = "cards_linhas_tests.rs"]
 mod tests;
 
-/// O lado do ícone de um segmento: sozinho é maior, ao lado de um texto fica no tamanho do texto.
-fn glifo_do_segmento(s: &Seg<'_>) -> f32 {
+/// O lado do ícone de um segmento: sozinho é maior; ao lado de um texto fica no tamanho do texto, e
+/// larga-se (`com_icone` falso) onde ícone e palavra não cabem juntos — a palavra é o nome.
+fn glifo_do_segmento(s: &Seg<'_>, com_icone: bool) -> f32 {
     match s.icon {
         None => 0.0,
         Some(_) if s.text.is_empty() => m::SEG_ICON_GLYPH,
-        Some(_) => m::ICON_GLYPH,
+        Some(_) if com_icone => m::ICON_GLYPH,
+        Some(_) => 0.0,
     }
 }

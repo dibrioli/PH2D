@@ -90,6 +90,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.styles.duplicate" => "Duplicate",
         "card.styles.delete" => "Delete",
         // O painel Bones (02 §6): títulos dos cartões e rótulos com a unidade no rótulo (D13).
+        "card.bones.list_title" => "BONES",
         "card.bones.tool" => "Tool",
         "card.bones.weight_brush" => "Weight Brush",
         "card.bones.skin" => "Skin",

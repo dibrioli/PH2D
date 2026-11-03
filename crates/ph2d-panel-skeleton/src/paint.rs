@@ -101,7 +101,7 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
         ph2d_editor_core::panel::cards::paint_card_list_pinned(
             ctx,
             ids::SKELETON_PANEL,
-            ph2d_i18n::tr("panel.vector.section.bone"),
+            ph2d_i18n::tr("card.bones.list_title"),
             &cards,
             None,
             &presos,

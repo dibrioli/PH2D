@@ -42,13 +42,17 @@ a óptica pelo espelho ao byte (3), o compositor ao byte (2), o tique (2), o pen
 
 ## 3. ⛔ Vermelhos CONHECIDOS — BLOQUEIAM a integração (o CI do main reprova; os mesmos 4 do handoff anterior, nenhum novo — não afrouxe)
 
-Dono 02/11, ao ler este handoff: «os vermelhos não impedem a integração?» — impedem. Plano proposto ao dono: curá-los NA
-LINHA antes de integrar (Splash: o teste passa a cobrar a decisão do dono de manter a cena; Smear Wet: regerar a tabela;
-Transmission Blender: malha 2D sintética no Cycles; Relevo do papel: âncora nova MEDIDA).
+Dono 02/11: «os vermelhos não impedem a integração?» — impedem. **Ordem do dono: o INTEGRADOR cura os 4 e integra** (a
+linha não os cura). Nenhum se afrouxa nem se ignora; cada cura vai com A/B no commit pai e, onde há lei, mutação.
 
-`o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco` (dono: fica) · `o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes`
-· `a_transmissao_e_o_relevo_do_papel_mostram_o_grao` · lento: `a_largura_e_a_prometida` (Smear Wet r7). Detalhe e cura
-de cada um: §5 do [handoff anterior](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-02_VERMELHOS.md).
+| # | teste | cura pedida |
+|---|---|---|
+| 1 | `macro_track::roteiro::tests::o_splash_tocado_pinta_a_tela_e_o_inicio_e_branco` (`ph2d-tool-painter/src/macro_track/roteiro.rs:~691`) | o dono decidiu (02/11) que a cena macro 1 (Splash) FICA como está: o teste cobra o comportamento de antes. Leia o assert que reprova, confirme que o que a cena faz hoje é o que o dono aprovou no smoke, e mude o assert para a lei de hoje com tecto MEDIDO (não «qualquer coisa passa»). |
+| 2 | `a_largura_e_a_prometida` (lento, ~20–25 min; só Smear Wet r7: 17,0 para 14) | `sonda_monotonia_da_largura` com `PH2D_SONDA_PRESET="Smear Wet"`; alinhar `raio_do_motor_da_tabela` (`tests/it/presets_de_fabrica.rs`) com `de_tabela`; a régua do gerador `largura_do_rasto` tem defeito a r < 1; regerar a tabela do Smear Wet com `PH2D_MEM_MAX=64G`, um preset de cada vez. |
+| 3 | `transparencia::o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes` | nosso L÷papel 0,152 × Cycles 0,124 (a 0,5) e 0,115 × 0,076 (a 1) na malha real; nas rampas sintéticas casa. Próximo passo: malha 2D sintética no Cycles (oráculo que se CORRE, CLAUDE §0.9) para separar a estrutura 2D fechada (TIR / luz que escapa na borda); curar a LEI, nunca a régua. |
+| 4 | `transparencia::a_transmissao_e_o_relevo_do_papel_mostram_o_grao` | Paper Relief 1 lê 0,490 contra a âncora 0,67 (faixa 0,55..0,8), calibração velha irreprodutível (antes de `ca26a7738a`). Medir de novo a âncora pela mesma régua sobre a tela de hoje e decidir pela medição (o piso do espalhar tira 0,026: sem ele 0,516); não escolher o número. |
+
+Detalhe e história de cada um: §5 do [handoff anterior](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-02_VERMELHOS.md).
 
 ## 4. Smoke do dono (02/11)
 
@@ -59,6 +63,7 @@ pen-down (30–64 ms uma vez por traço). Outros abertos: J13 §6.
 
 ## Para o integrador
 
+- **Curar os 4 vermelhos do §3 é seu (ordem do dono 02/11), antes de integrar.**
 - A suíte completa e o `nextest-impacted` são seus (a linha só correu por nome).
 - **Não apague** `exp/j13-luz-guardada`, `integ/2026-11-02-pintura`, `-pintura2`, `-com-painter`,
   `backup/line-PainterWatercolor-pre-rebase-2026-11-02`.

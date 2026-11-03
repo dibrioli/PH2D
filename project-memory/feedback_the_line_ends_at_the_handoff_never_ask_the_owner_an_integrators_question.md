@@ -28,3 +28,9 @@ primária, 6 deles meus»*) entra como secção própria, **com as saídas e o p
 linha recomenda** — e a linha **não lhe toca**, porque aquelas alterações são de outras sessões.
 Depois: **PARE**. Ver [[feedback-architecture-decisions-are-delegated-to-the-gold-standard]] para o
 lado simétrico (decisão TÉCNICA não se pergunta: decide-se pelo padrão-ouro e executa-se).
+
+**Dono 02/11 (Painter, janela 13):** vermelhos conhecidos que bloqueiam a integração **não se curam na linha nem se
+pergunta ao dono quem os cura**: vão no handoff de integração, um por linha, com a cura pedida (teste, número, próximo
+passo), e **o integrador cura e integra**. **Why:** o dono quer a linha a fechar e o integrador dono do caminho até ao
+main. **How to apply:** no fecho, secção «⛔ Vermelhos — BLOQUEIAM» com a tabela teste → cura; e «Curar é seu» no topo
+de «Para o integrador».

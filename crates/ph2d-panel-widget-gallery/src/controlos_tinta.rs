@@ -1,15 +1,17 @@
 //! A tabela dos controlos ([`super`]): a tinta, o texto, o export e as ações.
 
-use super::{Act, Control, Kind, act, eye, icon, minus, opt, plain, plus, seg};
+use super::{Act, Control, Kind, act, add_of, eye, icon, minus, opt, plain, plus, seg};
 use crate::ids as g;
-use crate::state::{FILLS, FXS, Flag, Pick, STROKES};
+use crate::state::{FILLS, FXS, Flag, Pick, SIDE_NONE, STROKES};
 use ph2d_editor_core::IconId;
+
+const FX_PICKS: [Pick; 3] = [Pick::Fx0, Pick::Fx1, Pick::Fx2];
 
 pub(super) const TINTA: &[Control] = &[
     // Fill.
     icon(
         g::FILL_STYLES,
-        Kind::Toggle(Flag::FillStyles),
+        Kind::Styles,
         IconId::CardStyles,
         "panel.widget_gallery.tip.styles",
     ),
@@ -53,7 +55,7 @@ pub(super) const TINTA: &[Control] = &[
     // Stroke.
     icon(
         g::STROKE_STYLES,
-        Kind::Toggle(Flag::StrokeStyles),
+        Kind::Styles,
         IconId::CardStyles,
         "panel.widget_gallery.tip.styles",
     ),
@@ -160,7 +162,49 @@ pub(super) const TINTA: &[Control] = &[
         "panel.widget_gallery.tip.join_bevel",
     ),
     // Effects.
-    plus(g::FX_ADD, FXS, "panel.widget_gallery.tip.fx_add"),
+    icon(
+        g::FX_ADD,
+        Kind::Box,
+        IconId::Add,
+        "panel.widget_gallery.tip.fx_add",
+    ),
+    add_of(
+        g::FX_ADD_KINDS[0],
+        FXS,
+        FX_PICKS,
+        0,
+        "panel.widget_gallery.fx.drop",
+    ),
+    add_of(
+        g::FX_ADD_KINDS[1],
+        FXS,
+        FX_PICKS,
+        1,
+        "panel.widget_gallery.fx.inner",
+    ),
+    add_of(
+        g::FX_ADD_KINDS[2],
+        FXS,
+        FX_PICKS,
+        2,
+        "panel.widget_gallery.fx.layer",
+    ),
+    add_of(
+        g::FX_ADD_KINDS[3],
+        FXS,
+        FX_PICKS,
+        3,
+        "panel.widget_gallery.fx.background",
+    ),
+    plain(g::EFFECTS[0].open, Kind::Expand(Pick::SideOpen, 0)),
+    plain(g::EFFECTS[1].open, Kind::Expand(Pick::SideOpen, 1)),
+    plain(g::EFFECTS[2].open, Kind::Expand(Pick::SideOpen, 2)),
+    icon(
+        g::SIDE_CLOSE,
+        Kind::Pick(Pick::SideOpen, SIDE_NONE),
+        IconId::Close,
+        "panel.widget_gallery.tip.side_close",
+    ),
     plain(g::EFFECTS[0].kind, Kind::Box),
     opt(
         g::EFFECTS[0].options[0],

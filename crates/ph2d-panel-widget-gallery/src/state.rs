@@ -6,6 +6,7 @@
 //! - `applied` — os valores de PARTIDA: o Apply grava-os, o Cancel e o ↺ voltam a eles.
 
 use crate::ids as g;
+use ph2d_editor_core::panel::cards::estilos::Estilo;
 use ph2d_editor_core::zones::Rect;
 
 /// Os interruptores do objeto fictício — índice de [`Choices`].
@@ -18,8 +19,6 @@ pub enum Flag {
     ScaleLink,
     CornerEach,
     Clip,
-    FillStyles,
-    StrokeStyles,
     Physics,
     Fill0,
     Fill1,
@@ -87,11 +86,16 @@ pub enum Pick {
     TextAlign,
     ExportScale,
     Format,
+    /// A linha cujas propriedades abriram ao lado (`SIDE_NONE` = nenhuma): `0..3` Effects.
+    SideOpen,
 }
-const N_PICKS: usize = Pick::Format as usize + 1;
+const N_PICKS: usize = Pick::SideOpen as usize + 1;
 
 /// O valor de [`Pick::Boolean`] depois de achatar: nenhum modo aceso.
 pub const BOOLEAN_NONE: u8 = u8::MAX;
+
+/// O valor de [`Pick::SideOpen`] com o painel do lado fechado.
+pub const SIDE_NONE: u8 = u8::MAX;
 
 /// Quantas amostras de cor o objeto fictício tem (`controlos::SWATCHES`).
 pub const N_SWATCHES: usize = 9;
@@ -103,6 +107,8 @@ pub struct Choices {
     picks: [u8; N_PICKS],
     /// A cor escolhida em cada amostra; `None` = a de fábrica (um token da tinta do cartão).
     pub colors: [Option<[u8; 4]>; N_SWATCHES],
+    /// O estilo de cor a que cada amostra está ligada (`None` = cor solta).
+    pub linked: [Option<u32>; N_SWATCHES],
 }
 
 impl Default for Choices {
@@ -111,12 +117,14 @@ impl Default for Choices {
             flags: [false; N_FLAGS],
             picks: [0; N_PICKS],
             colors: [None; N_SWATCHES],
+            linked: [None; N_SWATCHES],
         };
         for f in FLAGS_ON {
             c.set(f, true);
         }
         c.choose(Pick::ResizeH, 1);
         c.choose(Pick::Grid, 4);
+        c.choose(Pick::SideOpen, SIDE_NONE);
         c
     }
 }
@@ -169,4 +177,9 @@ pub struct WidgetGalleryState {
     pub exported: bool,
     /// A corrente do Scale: os `(X, Y)` vistos no último quadro (`None` = armar de novo).
     pub link: Option<(f64, f64)>,
+    /// Os estilos de cor fictícios (nascem no 1.º quadro, das cores da tinta).
+    pub estilos: Vec<Estilo>,
+    /// A lista de estilos estava aberta no quadro anterior: os pedidos dela são desta galeria.
+    pub styles_open: bool,
+    pub styles_seeded: bool,
 }

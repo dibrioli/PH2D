@@ -4,7 +4,30 @@
 
 use super::*;
 
-impl CardCtx<'_> {
+impl<'s> CardCtx<'s> {
+    /// As linhas de um cartão FORA da lista: o painel que abre ao lado da coluna (F43, a galeria).
+    #[must_use]
+    pub fn flutuante(
+        scene: &'s mut VectorScene,
+        text_system: &'s mut TextSystem,
+        store: &'s WidgetStore,
+        hit_index: &'s mut HitIndex,
+        ink: CardInk,
+        x: f32,
+        w: f32,
+    ) -> Self {
+        Self {
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            first: true,
+        }
+    }
+
     /// ⭐ **Uma linha**: os rótulos (se algum) e os widgets lado a lado.
     pub fn row(&mut self, cells: &[Cell<'_>], y: f32) -> f32 {
         let rotulos = cells.iter().any(|c| c.label.is_some());

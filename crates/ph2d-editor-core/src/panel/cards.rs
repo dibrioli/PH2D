@@ -258,7 +258,7 @@ pub mod dropdown {
         ABERTA.with(|a| *a.borrow())
     }
 
-    pub(super) fn stash(r: Rect, ink: CardInk, options: Vec<(NodeId, String, bool)>) {
+    pub fn stash(r: Rect, ink: CardInk, options: Vec<(NodeId, String, bool)>) {
         PENDENTE.with(|p| *p.borrow_mut() = Some((r, ink, options)));
     }
 
@@ -286,7 +286,7 @@ pub mod dropdown {
     }
 
     /// Pinta as opções da lista aberta por baixo da caixa, por cima de tudo.
-    pub(super) fn paint_pending(
+    pub fn paint_pending(
         scene: &mut VectorScene,
         text_system: &mut TextSystem,
         hit_index: &mut HitIndex,

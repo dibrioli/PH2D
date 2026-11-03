@@ -10,9 +10,12 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::panel::cards::estilos::{self, Estilo};
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Widget};
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_i18n::tr;
+
+const FX_PICKS: [Pick; 3] = [Pick::Fx0, Pick::Fx1, Pick::Fx2];
 
 pub(crate) fn appearance(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     card(
@@ -45,11 +48,21 @@ pub(crate) fn appearance(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     )
 }
 
-/// A amostra `i` de [`SWATCHES`] (cor e código), pela tinta do cartão.
-fn swatch(c: &CardCtx<'_>, ch: &Choices, i: usize, code: &'_ mut String) -> ([u8; 4], NodeId) {
+/// A amostra `i` de [`SWATCHES`] (cor e rótulo): o NOME do estilo se está ligada, senão o código.
+fn swatch(
+    c: &CardCtx<'_>,
+    ch: &Choices,
+    estilos: &[Estilo],
+    i: usize,
+    code: &'_ mut String,
+) -> ([u8; 4], NodeId, Option<NodeId>) {
     let rgba = crate::valores::rgba(ch, i, c.ink);
-    *code = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
-    (rgba, SWATCHES[i].1)
+    let ligado = ch.linked[i].and_then(|id| estilos.iter().find(|e| e.id == id));
+    *code = ligado.map_or_else(
+        || format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]),
+        |e| e.name.clone(),
+    );
+    (rgba, SWATCHES[i].1, ligado.map(|_| estilos::solta_de(i)))
 }
 
 /// `[amostra│código] [opacidade] 👁 −`; a primeira linha da lista leva os rótulos.
@@ -57,12 +70,13 @@ fn paint_row(
     c: &mut CardCtx<'_>,
     ch: &Choices,
     row: &PaintRow,
+    estilos: &[Estilo],
     i: usize,
     rot: bool,
     y: f32,
 ) -> f32 {
     let mut code = String::new();
-    let (rgba, id) = swatch(c, ch, i, &mut code);
+    let (rgba, id, detach) = swatch(c, ch, estilos, i, &mut code);
     let olho = segs([row.eye, row.remove], ch, c.store);
     let k_cor = [row.swatch];
     let k_op = [row.opacity];
@@ -71,7 +85,7 @@ fn paint_row(
         rgba: Some(rgba),
         text: &code,
         edit: None,
-        detach: None,
+        detach,
     });
     let mut op = Cell::new(field(row.opacity, Glyph::Icon(IconId::CardOpacity)));
     if rot {
@@ -91,6 +105,7 @@ fn paint_row(
 fn paint_rows(
     c: &mut CardCtx<'_>,
     ch: &Choices,
+    estilos: &[Estilo],
     rows: &[PaintRow; 3],
     flags: [Flag; 3],
     base: usize,
@@ -100,7 +115,7 @@ fn paint_rows(
     let mut primeira = true;
     for (i, row) in rows.iter().enumerate() {
         if ch.on(flags[i]) {
-            y = paint_row(c, ch, row, base + i, primeira, y);
+            y = paint_row(c, ch, row, estilos, base + i, primeira, y);
             primeira = false;
         }
     }
@@ -129,12 +144,14 @@ fn ausente(flags: [Flag; 3], ch: &Choices, add: NodeId) -> Option<NodeId> {
     (!flags.iter().any(|f| ch.on(*f))).then_some(add)
 }
 
-pub(crate) fn fill(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
+pub(crate) fn fill(ch: Choices, estilos: Vec<Estilo>, store: &WidgetStore) -> CardDef<'static> {
     let mut d = card(
         g::CARD_FILL,
         tr("panel.widget_gallery.card.fill"),
         head_of(&ch, store, Some(g::FILL_STYLES), g::FILL_ADD, FILLS),
-        Box::new(move |c: &mut CardCtx<'_>, y| paint_rows(c, &ch, &g::FILLS, FILLS, 0, y)),
+        Box::new(move |c: &mut CardCtx<'_>, y| {
+            paint_rows(c, &ch, &estilos, &g::FILLS, FILLS, 0, y)
+        }),
     );
     d.add = ausente(FILLS, &ch, g::FILL_ADD);
     d
@@ -176,13 +193,13 @@ fn stroke_props(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
     )
 }
 
-pub(crate) fn stroke(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
+pub(crate) fn stroke(ch: Choices, estilos: Vec<Estilo>, store: &WidgetStore) -> CardDef<'static> {
     let mut d = card(
         g::CARD_STROKE,
         tr("panel.widget_gallery.card.stroke"),
         head_of(&ch, store, Some(g::STROKE_STYLES), g::STROKE_ADD, STROKES),
         Box::new(move |c: &mut CardCtx<'_>, y| {
-            let y = paint_rows(c, &ch, &g::STROKES, STROKES, 3, y);
+            let y = paint_rows(c, &ch, &estilos, &g::STROKES, STROKES, 3, y);
             stroke_props(c, &ch, y)
         }),
     );
@@ -190,26 +207,40 @@ pub(crate) fn stroke(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     d
 }
 
-/// Uma linha de efeito: `[tipo ▾] 👁 −`; as sombras levam deslocamento, cor, desfoque e expansão,
-/// os desfoques só o desfoque.
+/// O glifo do tipo de efeito `kind`.
+const fn fx_icon(kind: u8) -> IconId {
+    if kind >= 2 {
+        IconId::CardSoft
+    } else {
+        IconId::FilterDropShadow
+    }
+}
+
+/// Uma linha da lista (F43): `[glifo tipo] 👁 −`; o clique nela abre as propriedades à esquerda.
 fn effect_row(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
     let row = g::EFFECTS[i];
-    let picks = [Pick::Fx0, Pick::Fx1, Pick::Fx2];
-    let tipos = row.options.map(|id| seg_of(id, ch, c.store));
+    let kind = ch.pick(FX_PICKS[i]);
     let olho = segs([row.eye, row.remove], ch, c.store);
-    let lista = Cell::new(dropdown(row.kind, &tipos));
-    let olhos = Cell::new(Widget::Bare(&olho));
-    let larga = tipos
-        .iter()
-        .fold(0.0_f32, |w, s| w.max(caixa_para(c, s.text)));
-    let y = if c.w >= larga + m::FIELD_H * 2.0 + m::FIELD_GAP {
-        c.row(&[lista, olhos], y)
-    } else {
-        let y = c.row(&[lista], y);
-        c.row(&[olhos], y)
-    };
+    let nome = seg_of(row.options[usize::from(kind)], ch, c.store).text;
+    c.row(
+        &[
+            Cell::new(Widget::FieldFace {
+                id: row.open,
+                glyph: Glyph::Icon(fx_icon(kind)),
+                text: nome,
+            }),
+            Cell::new(Widget::Bare(&olho)),
+        ],
+        y,
+    )
+}
+
+/// As propriedades do efeito `i` (o painel do lado, [`crate::lado`]): as sombras levam deslocamento,
+/// cor, desfoque e expansão; os desfoques só o desfoque.
+pub(crate) fn fx_props(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
+    let row = g::EFFECTS[i];
     let k_blur = [row.blur];
-    if ch.pick(picks[i]) >= 2 {
+    if ch.pick(FX_PICKS[i]) >= 2 {
         return c.row(
             &[Cell::new(field(row.blur, Glyph::Icon(IconId::CardSoft)))
                 .label(tr("panel.widget_gallery.blur"))
@@ -218,7 +249,7 @@ fn effect_row(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
         );
     }
     let mut code = String::new();
-    let (rgba, id) = swatch(c, ch, 6 + i, &mut code);
+    let (rgba, id, _) = swatch(c, ch, &[], 6 + i, &mut code);
     let (k_pos, k_cor, k_sp) = ([row.x, row.y], [row.swatch], [row.spread]);
     let ox = Cell::new(field(row.x, Glyph::Text(tr("card.glyph.x"))))
         .label(tr("panel.widget_gallery.offset"));

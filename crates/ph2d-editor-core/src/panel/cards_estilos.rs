@@ -63,7 +63,7 @@ const FUNDO: NodeId = hash_node_id("card_styles_backdrop");
 
 /// O ⠿ do cartão `card`.
 #[must_use]
-pub fn botao_de(card: NodeId) -> NodeId {
+pub const fn botao_de(card: NodeId) -> NodeId {
     NodeId(card.0 ^ SAL_BOTAO)
 }
 

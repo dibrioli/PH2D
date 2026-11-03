@@ -54,6 +54,12 @@ pub enum Kind {
     Set(Flag, bool),
     /// A amostra `usize` de [`SWATCHES`]: abre o seletor de cor.
     Swatch(usize),
+    /// A opção do «+» de uma lista com tipos: liga a primeira linha livre, já com esse tipo.
+    AddOf([Flag; 3], [Pick; 3], u8),
+    /// A linha que abre o painel do lado: o 2.º clique fecha.
+    Expand(Pick, u8),
+    /// O ⠿ dos estilos: quem o abre é o despacho dos cartões (`panel::cards::estilos`).
+    Styles,
 }
 
 /// Uma linha da tabela. `icon` = o de sempre; `lit_icon` = o do estado aceso, se é outro.
@@ -127,6 +133,24 @@ pub(super) const fn opt(id: NodeId, p: Pick, i: u8, text: &'static str) -> Contr
     }
 }
 
+/// A opção `v` de um «+» com tipos.
+pub(super) const fn add_of(
+    id: NodeId,
+    rows: [Flag; 3],
+    picks: [Pick; 3],
+    v: u8,
+    text: &'static str,
+) -> Control {
+    Control {
+        id,
+        kind: Kind::AddOf(rows, picks, v),
+        icon: None,
+        lit_icon: None,
+        text: Some(text),
+        tip: None,
+    }
+}
+
 /// Um controlo sem ícone nem texto próprios: a caixa, o botão, a caixa de marcar, a amostra.
 pub(super) const fn plain(id: NodeId, kind: Kind) -> Control {
     Control {
@@ -162,7 +186,7 @@ pub fn lit(c: &Control, ch: &Choices, store: &WidgetStore) -> bool {
     match c.kind {
         Kind::Toggle(f) => ch.on(f),
         Kind::Eye(f) => !ch.on(f),
-        Kind::Pick(p, i) => ch.pick(p) == i,
+        Kind::Pick(p, i) | Kind::Expand(p, i) => ch.pick(p) == i,
         Kind::Act(Act::FlipH) => negativo(g::SCALE_X),
         Kind::Act(Act::FlipV) => negativo(g::SCALE_Y),
         _ => false,

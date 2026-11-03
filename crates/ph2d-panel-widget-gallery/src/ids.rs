@@ -2,6 +2,7 @@
 //! `every_non_literal_hash_is_named` e o de colisões os lerem.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::panel::cards::estilos::botao_de;
 use ph2d_tool_registry::hash_node_id;
 
 // ── Os cartões (secções) ──
@@ -127,7 +128,7 @@ pub struct PaintRow {
     pub remove: NodeId,
 }
 
-pub const FILL_STYLES: NodeId = hash_node_id("gallery.fill.styles");
+pub const FILL_STYLES: NodeId = botao_de(CARD_FILL);
 pub const FILL_ADD: NodeId = hash_node_id("gallery.fill.add");
 pub const FILLS: [PaintRow; 3] = [
     PaintRow {
@@ -149,7 +150,7 @@ pub const FILLS: [PaintRow; 3] = [
         remove: hash_node_id("gallery.fill2.remove"),
     },
 ];
-pub const STROKE_STYLES: NodeId = hash_node_id("gallery.stroke.styles");
+pub const STROKE_STYLES: NodeId = botao_de(CARD_STROKE);
 pub const STROKE_ADD: NodeId = hash_node_id("gallery.stroke.add");
 pub const STROKES: [PaintRow; 3] = [
     PaintRow {
@@ -184,9 +185,11 @@ pub const JOIN_ROUND: NodeId = hash_node_id("gallery.choice.join_round");
 pub const JOIN_BEVEL: NodeId = hash_node_id("gallery.choice.join_bevel");
 
 // ── Effects ──
-/// Uma linha de efeito: a lista do tipo (caixa + 4 opções), olho, menos, os campos e a cor.
+/// Uma linha de efeito: a linha que abre o painel do lado, a lista do tipo (caixa + 4 opções, no
+/// painel), olho, menos, os campos e a cor.
 #[derive(Clone, Copy, Debug)]
 pub struct EffectRow {
+    pub open: NodeId,
     pub kind: NodeId,
     pub options: [NodeId; 4],
     pub eye: NodeId,
@@ -199,8 +202,18 @@ pub struct EffectRow {
 }
 
 pub const FX_ADD: NodeId = hash_node_id("gallery.fx.add");
+/// As opções do «+»: o tipo do efeito novo (F43).
+pub const FX_ADD_KINDS: [NodeId; 4] = [
+    hash_node_id("gallery.fx.add_drop"),
+    hash_node_id("gallery.fx.add_inner"),
+    hash_node_id("gallery.fx.add_layer"),
+    hash_node_id("gallery.fx.add_background"),
+];
+/// O ✕ do painel de propriedades ao lado.
+pub const SIDE_CLOSE: NodeId = hash_node_id("gallery.side.close");
 pub const EFFECTS: [EffectRow; 3] = [
     EffectRow {
+        open: hash_node_id("gallery.fx0.open"),
         kind: hash_node_id("gallery.fx0.kind"),
         options: [
             hash_node_id("gallery.fx0.drop"),
@@ -217,6 +230,7 @@ pub const EFFECTS: [EffectRow; 3] = [
         swatch: hash_node_id("gallery.fx0.swatch"),
     },
     EffectRow {
+        open: hash_node_id("gallery.fx1.open"),
         kind: hash_node_id("gallery.fx1.kind"),
         options: [
             hash_node_id("gallery.fx1.drop"),
@@ -233,6 +247,7 @@ pub const EFFECTS: [EffectRow; 3] = [
         swatch: hash_node_id("gallery.fx1.swatch"),
     },
     EffectRow {
+        open: hash_node_id("gallery.fx2.open"),
         kind: hash_node_id("gallery.fx2.kind"),
         options: [
             hash_node_id("gallery.fx2.drop"),

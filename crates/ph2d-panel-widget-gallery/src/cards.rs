@@ -108,6 +108,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
         cards_vocab::prepare(store);
         crate::valores::sync_picked(state, store, theme);
         crate::valores::sync_link(state, store);
+        crate::estilos_ficticios::sync(state, store, theme);
         cards_vocab::vocabulary(state, store)
     };
     cards.extend(legacy());
@@ -118,6 +119,8 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
         &cards,
         None,
     );
+    crate::lado::paint(state, ctx, rect, theme);
+    crate::lado::head_menus(ctx, rect, theme);
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_showcase_popovers(ctx.scene, ctx.text_system, theme, hit_index);
     rect

@@ -135,7 +135,8 @@ fn ordering(store: &WidgetStore) -> CardDef<'static> {
             c.row(
                 &[
                     Cell::new(field(g::Z_ORDER, Glyph::Text(tr("card.glyph.z"))))
-                        .label(tr("panel.widget_gallery.z_order")),
+                        .label(tr("panel.widget_gallery.z_order"))
+                        .key(&[g::Z_ORDER]),
                 ],
                 y,
             )
@@ -160,7 +161,8 @@ fn physics(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
         Box::new(|c: &mut CardCtx<'_>, y| {
             c.row(
                 &[Cell::new(field(g::MASS, Glyph::Icon(IconId::CardWeight)))
-                    .label(tr("panel.widget_gallery.mass"))],
+                    .label(tr("panel.widget_gallery.mass"))
+                    .key(&[g::MASS])],
                 y,
             )
         }),
@@ -182,8 +184,8 @@ pub(crate) fn vocabulary(st: &WidgetGalleryState, store: &WidgetStore) -> Vec<Ca
         cards_layout::corners(ch),
         cards_layout::constraints(ch),
         cards_pintura::appearance(ch, store),
-        cards_pintura::fill(ch, store),
-        cards_pintura::stroke(ch, store),
+        cards_pintura::fill(ch, st.estilos.clone(), store),
+        cards_pintura::stroke(ch, st.estilos.clone(), store),
         cards_pintura::effects(ch, store),
         cards_texto::text(ch),
         cards_texto::export(ch, st.exported),

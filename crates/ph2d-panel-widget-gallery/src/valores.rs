@@ -6,7 +6,7 @@
 
 use crate::controlos::{self, Act, Kind, SWATCHES};
 use crate::ids as g;
-use crate::state::{BOOLEAN_NONE, Choices, Pick, Values, WidgetGalleryState};
+use crate::state::{BOOLEAN_NONE, Choices, Pick, SIDE_NONE, Values, WidgetGalleryState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -117,8 +117,15 @@ pub(crate) fn on_click(
                 state.exported = false;
             }
         }
-        // A caixa da lista abre pelo despacho dos cartões; a galeria só consome o clique.
-        Kind::Box => {}
+        // A caixa da lista e o ⠿ abrem pelo despacho dos cartões; a galeria só consome o clique.
+        Kind::Box | Kind::Styles => {}
+        Kind::AddOf(rows, picks, v) => {
+            if let Some(i) = rows.iter().position(|f| !ch.on(*f)) {
+                ch.set(rows[i], true);
+                ch.choose(picks[i], v);
+            }
+        }
+        Kind::Expand(p, i) => ch.choose(p, if ch.pick(p) == i { SIDE_NONE } else { i }),
         Kind::Add(rows) => {
             if let Some(livre) = rows.iter().find(|f| !ch.on(**f)) {
                 ch.set(*livre, true);
@@ -126,6 +133,7 @@ pub(crate) fn on_click(
         }
         Kind::Remove(f, swatch) => {
             ch.set(f, false);
+            ch.linked[swatch] = None;
             close_picker(host.store_mut(), SWATCHES[swatch].1);
         }
         Kind::Set(f, v) => ch.set(f, v),

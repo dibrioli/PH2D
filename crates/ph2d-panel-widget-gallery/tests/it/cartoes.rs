@@ -5,7 +5,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::cards::dicas;
+use ph2d_editor_core::panel::cards::{self, dicas};
 use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelHost, PanelHostInternal, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, slot_tabs};
 use ph2d_editor_core::screens::paint_hero_screen;
@@ -15,7 +15,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_widget_gallery::controlos::{Kind, controls, lit};
 use ph2d_panel_widget_gallery::ids as g;
-use ph2d_panel_widget_gallery::state::{BOOLEAN_NONE, Choices, Flag, Pick, WidgetGalleryState};
+use ph2d_panel_widget_gallery::state::{
+    BOOLEAN_NONE, Choices, Flag, Pick, SIDE_NONE, WidgetGalleryState,
+};
 use ph2d_panel_widget_gallery::{WidgetGalleryPanel, force_cards_on_this_thread};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
@@ -90,6 +92,16 @@ impl Galeria {
             timestamp_ns: self.t,
         });
         for ev in evs {
+            // A mesma ordem do `HeroScreen::apply_event` (`input_entry.rs`): a lista suspensa e os
+            // estilos de cor comem o clique ANTES dos painéis.
+            if let WidgetEvent::Click(id) = ev
+                && cards::dropdown::on_click(id)
+            {
+                continue;
+            }
+            if cards::estilos::on_event(self.host.store_mut(), ev) {
+                continue;
+            }
             let _ = self
                 .host
                 .apply_panel_event::<WidgetGalleryPanel>(&mut self.st, ev);
@@ -332,7 +344,7 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
     let mut gal = Galeria::aberta();
     let mut mudos = Vec::new();
     for c in controls() {
-        if matches!(c.kind, Kind::Box) {
+        if matches!(c.kind, Kind::Box | Kind::Styles) {
             continue;
         }
         // Parte de um retrato em que o clique tem o que mudar.
@@ -593,26 +605,119 @@ fn o_align_left_poe_o_x_na_borda() {
     );
 }
 
-/// (14) O «+» do Effects acrescenta uma linha e o «−» dela tira-a; com a lista cheia, o «+» some
-/// (nunca um clique mudo). *Mutação: `Kind::Add`/`Kind::Remove` só consumidos.*
+/// (14) F43: o «+» do Effects abre a lista dos tipos e a opção acrescenta a linha JÁ com esse tipo;
+/// com a lista cheia, o «+» some (nunca um clique mudo). *Mutação: `Kind::AddOf` só consumido.*
 #[test]
-fn o_mais_do_effects_acrescenta_uma_linha_e_o_menos_a_tira() {
+fn o_mais_do_effects_abre_os_tipos_e_acrescenta_a_linha() {
     let mut gal = Galeria::aberta();
     let (a, b, c) = (g::EFFECTS[0], g::EFFECTS[1], g::EFFECTS[2]);
-    assert!(gal.rect(a.kind).is_some(), "fixtura: uma linha de fábrica");
-    assert!(gal.rect(b.kind).is_none(), "fixtura: só uma");
+    assert!(gal.rect(a.open).is_some(), "fixtura: uma linha de fábrica");
+    assert!(gal.rect(b.open).is_none(), "fixtura: só uma");
+    assert!(gal.rect(g::FX_ADD_KINDS[2]).is_none(), "fixtura: fechada");
     gal.clica(g::FX_ADD);
-    assert!(gal.rect(b.kind).is_some(), "o «+» não acrescentou a linha");
-    gal.clica(g::FX_ADD);
-    assert!(gal.rect(c.kind).is_some(), "o 2.º «+» não acrescentou");
-    assert!(gal.rect(g::FX_ADD).is_none(), "a lista cheia ainda tem «+»");
-    gal.clica(b.remove);
-    assert!(gal.rect(b.kind).is_none(), "o «−» não tirou a linha dele");
     assert!(
-        gal.rect(a.kind).is_some() && gal.rect(c.kind).is_some(),
+        gal.rect(g::FX_ADD_KINDS[2]).is_some(),
+        "o «+» não abriu a lista dos tipos"
+    );
+    gal.clica(g::FX_ADD_KINDS[2]);
+    assert!(
+        gal.rect(b.open).is_some(),
+        "a opção não acrescentou a linha"
+    );
+    assert_eq!(
+        gal.st.choices.pick(Pick::Fx1),
+        2,
+        "a linha nova não é Layer blur"
+    );
+    assert!(gal.rect(g::FX_ADD_KINDS[2]).is_none(), "a lista não fechou");
+    gal.clica(g::FX_ADD);
+    gal.clica(g::FX_ADD_KINDS[0]);
+    assert!(gal.rect(c.open).is_some(), "o 2.º «+» não acrescentou");
+    assert!(gal.rect(g::FX_ADD).is_none(), "a lista cheia ainda tem «+»");
+}
+
+/// (14b) O «−» tira a SUA linha e devolve o «+». *Mutação: `Kind::Remove` só consumido.*
+#[test]
+fn o_menos_do_effects_tira_so_a_sua_linha() {
+    let mut gal = Galeria::aberta();
+    let (a, b, c) = (g::EFFECTS[0], g::EFFECTS[1], g::EFFECTS[2]);
+    for _ in 0..2 {
+        gal.clica(g::FX_ADD);
+        gal.clica(g::FX_ADD_KINDS[0]);
+    }
+    assert!(gal.rect(c.open).is_some(), "fixtura: três linhas");
+    gal.clica(b.remove);
+    assert!(gal.rect(b.open).is_none(), "o «−» não tirou a linha dele");
+    assert!(
+        gal.rect(a.open).is_some() && gal.rect(c.open).is_some(),
         "o «−» tirou uma linha alheia"
     );
     assert!(gal.rect(g::FX_ADD).is_some(), "a lista com folga sem «+»");
+}
+
+/// (14c) F43: clicar a linha abre as propriedades À ESQUERDA da coluna, nunca nela; o tipo vem por
+/// lista no título; o 2.º clique e o ✕ fecham; o «−» da linha aberta fecha. *Mutação: `Kind::Expand`
+/// só consumido.*
+#[test]
+fn a_linha_do_efeito_abre_as_propriedades_a_esquerda_da_coluna() {
+    let mut gal = Galeria::aberta();
+    let a = g::EFFECTS[0];
+    assert!(
+        gal.rect(a.blur).is_none(),
+        "fixtura: as propriedades fechadas"
+    );
+    gal.clica(a.open);
+    let blur = gal
+        .rect(a.blur)
+        .expect("o clique não abriu as propriedades");
+    let coluna = gal.rect(a.open).expect("a linha sumiu");
+    assert!(
+        blur.x + blur.w <= coluna.x || blur.x >= coluna.x + coluna.w,
+        "as propriedades {blur:?} abriram por cima da coluna {coluna:?}"
+    );
+    gal.clica(a.kind);
+    gal.clica(a.options[2]);
+    assert_eq!(gal.st.choices.pick(Pick::Fx0), 2, "o tipo não mudou");
+    assert!(gal.rect(a.spread).is_none(), "o desfoque mostra Spread");
+    gal.clica(g::SIDE_CLOSE);
+    assert!(gal.rect(a.blur).is_none(), "o ✕ não fechou");
+    gal.clica(a.open);
+    assert!(gal.rect(a.blur).is_some(), "não reabriu");
+    gal.clica(a.open);
+    assert!(gal.rect(a.blur).is_none(), "o 2.º clique não fechou");
+    gal.clica(a.open);
+    gal.clica(a.remove);
+    assert_eq!(
+        gal.st.choices.pick(Pick::SideOpen),
+        SIDE_NONE,
+        "o painel ficou aberto sem a linha"
+    );
+}
+
+/// (14d) O ⠿ abre a lista REAL de estilos; escolher um pinta a amostra e mostra o nome com o
+/// «soltar», que larga a ligação. *Mutação: o `Pedido::Aplicar` só consumido.*
+#[test]
+fn o_estilo_escolhido_pinta_a_amostra_e_o_soltar_a_larga() {
+    let mut gal = Galeria::aberta();
+    let linha = cards::estilos::linha_de(2);
+    assert!(gal.rect(linha).is_none(), "fixtura: a lista fechada");
+    gal.clica(g::FILL_STYLES);
+    assert!(
+        gal.rect(linha).is_some(),
+        "o ⠿ não abriu a lista de estilos"
+    );
+    let antes = gal.st.choices.colors[0];
+    gal.clica(linha);
+    gal.repinta();
+    assert_eq!(gal.st.choices.linked[0], Some(2), "o estilo não ligou");
+    assert_ne!(
+        gal.st.choices.colors[0], antes,
+        "a amostra não mudou de cor"
+    );
+    assert!(gal.rect(linha).is_none(), "a lista não fechou");
+    gal.clica(cards::estilos::solta_de(0));
+    gal.repinta();
+    assert_eq!(gal.st.choices.linked[0], None, "o «soltar» não largou");
 }
 
 /// (15) Com a corrente fechada, o Scale Y segue o X (nos dois sentidos, na proporção de antes); o
@@ -679,19 +784,38 @@ fn o_export_acende_o_estado() {
     assert!(!gal.st.exported, "mudar o formato não apagou o estado");
 }
 
-/// (18) A lista suspensa: o clique na opção escolhe-a e a caixa passa a mostrá-la; os títulos de
-/// ferramenta cobrem os corpos de sempre. *Mutação: `Kind::Pick` só consumido.*
+/// (18) A lista suspensa pelo PONTEIRO: o clique na caixa abre-a, o clique na opção escolhe e fecha;
+/// um clique fora fecha sem escolher. *Mutação: `Kind::Pick` só consumido; `dropdown::declare` fora.*
 #[test]
-fn a_opcao_da_lista_escolhe() {
+fn abrir_a_lista_pelo_clique_e_escolher_a_opcao() {
     let mut gal = Galeria::aberta();
     assert_eq!(gal.st.choices.pick(Pick::Blend), 0, "fixtura: Normal");
-    let _ = gal
-        .host
-        .apply_panel_event::<WidgetGalleryPanel>(&mut gal.st, WidgetEvent::Click(g::BLEND_SCREEN));
+    assert!(
+        gal.rect(g::BLEND_SCREEN).is_none(),
+        "fixtura: a lista fechada"
+    );
+    gal.clica(g::BLEND);
+    assert!(
+        gal.rect(g::BLEND_SCREEN).is_some(),
+        "a caixa não abriu a lista"
+    );
+    gal.clica(g::BLEND_SCREEN);
     assert_eq!(gal.st.choices.pick(Pick::Blend), 2, "a opção não escolheu");
+    assert!(gal.rect(g::BLEND_SCREEN).is_none(), "a lista não fechou");
     assert_eq!(
         gal.st.applied.choices.pick(Pick::Blend),
         0,
         "o clique aplicou"
+    );
+    gal.clica(g::BLEND);
+    gal.clica(g::CLIP);
+    assert!(
+        gal.rect(g::BLEND_SCREEN).is_none(),
+        "o clique fora não fechou"
+    );
+    assert_eq!(
+        gal.st.choices.pick(Pick::Blend),
+        2,
+        "o clique fora escolheu"
     );
 }

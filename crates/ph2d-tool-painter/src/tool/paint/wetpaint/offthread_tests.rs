@@ -515,6 +515,12 @@ fn the_worker_reports_what_a_step_costs() {
         // laço que apenas dorme nunca o preenche — foi assim que a 1ª versão desta espera falhou
         // em debug depois de 10 s. Cada volta é um frame a mais, que é o que o gate já fazia.
         std::thread::sleep(Duration::from_millis(10));
+        // ⚠️ Com o compositor da óptica (J13b P7, ligado por omissão) o tique já não traz o motor
+        // para casa para MOSTRAR a água — só a porta bloqueante o traz (pincelada nova, commit).
+        // É ela que se chama: o balde mede o preço da viagem quando há viagem.
+        if let Some(s) = t.paint.wetpaint.session.as_mut() {
+            s.bring_home();
+        }
         t.paint_tick(1.0 / 60.0);
     }
     assert!(

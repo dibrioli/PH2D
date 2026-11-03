@@ -82,6 +82,7 @@ fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
     let mut measured = 0usize;
     let mut floating = 0usize;
     let mut floats = std::collections::BTreeSet::new();
+    let mut listas = 0usize;
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
             if p.manifest.can_float {
@@ -111,6 +112,13 @@ fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
         let Some(rect) = h.store.panel_rect(node) else {
             continue; // não desenha sem a ferramenta dele activa
         };
+        // ⭐ D24 (CartoesUI, decisão do dono 01/11): a lista de cartões FLUTUA sobre o canvas por
+        //    ordem dele, e declara-o ao publicar (`set_floating_panel_rect`) — é a declaração da D1
+        //    feita em runtime, não uma isenção por nome.
+        if h.store.is_floating_panel(node) {
+            listas += 1;
+            continue;
+        }
         measured += 1;
         let o = overlap(rect, draw);
         if o > 0.0 && !REACHES_PENDING.iter().any(|(n, _)| *n == name) {
@@ -124,6 +132,10 @@ fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
         measured >= 10,
         "só {measured} painéis ancorados publicaram rect — a varredura ficou vazia e passaria \
          sobre nada"
+    );
+    assert!(
+        listas >= 1 || std::env::var("PH2D_CARDS").as_deref() == Ok("0"),
+        "nenhuma lista de cartões declarou flutuar — o controlo de que a declaração D24 é lida caiu"
     );
     assert!(
         floating >= 3,

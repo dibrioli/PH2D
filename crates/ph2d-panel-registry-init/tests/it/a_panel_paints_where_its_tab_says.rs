@@ -88,7 +88,7 @@ fn docked() -> Vec<Docked> {
 ///
 /// ⚠️ **Um painel de cada vez**: com vários abertos os outros ocupantes do encaixe ficam escondidos
 /// por abas e não publicam nada — a varredura mediria dois e leria como aprovada.
-fn place(p: &Docked, slot: Slot, all: &[Docked]) -> (Option<Rect>, Rect) {
+fn place(p: &Docked, slot: Slot, all: &[Docked]) -> (Option<Rect>, Rect, bool) {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
     ph2d_editor_core::panel::with_registry_ref(|reg| {
@@ -106,7 +106,18 @@ fn place(p: &Docked, slot: Slot, all: &[Docked]) -> (Option<Rect>, Rect) {
     }
     let layout = h.last_layout.expect("o quadro publicou o layout");
     let want = layout.slot_rects(slot_tabs::occupied(&h)).get(slot);
-    (h.store.panel_rect(p.node), want)
+    // ⭐ D24 (CartoesUI): a lista de cartões FLUTUA sobre a coluna e declara-o ao publicar
+    //    (`set_floating_panel_rect`) — o rect é o DELA, recuado pela margem da lista.
+    (
+        h.store.panel_rect(p.node),
+        want,
+        h.store.is_floating_panel(p.node),
+    )
+}
+
+/// A lista de cartões (D24) segue a aba se mora DENTRO do encaixe — recuada pela margem dela.
+fn inside(a: Rect, b: Rect) -> bool {
+    a.x >= b.x - SAME_PLACE_PX && a.x + a.w <= b.x + b.w + SAME_PLACE_PX && a.w > 0.0
 }
 
 fn same_place(a: Rect, b: Rect) -> bool {
@@ -134,9 +145,9 @@ fn every_docked_panel_paints_where_its_tab_says() {
             if !p.allowed.contains(slot) || slot.dock_side().is_none() {
                 continue;
             }
-            let (got, want) = place(p, slot, &all);
+            let (got, want, lista) = place(p, slot, &all);
             match got {
-                Some(r) if same_place(r, want) => {}
+                Some(r) if same_place(r, want) || (lista && inside(r, want)) => {}
                 Some(r) => wrong.push(format!(
                     "{} arrumado em {slot:?}: o encaixe está em x={:.0} w={:.0} e ele publicou \
                      x={:.0} w={:.0}",

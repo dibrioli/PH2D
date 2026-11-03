@@ -138,8 +138,10 @@ slow-timeout = { period = "60s", terminate-after = 10 }
 # (load ~50) MORTO aos 180 s — o termo antigo `=presets_de_fabrica::a_largura_e_a_prometida` deixou de casar quando o
 # ficheiro se partiu (`portoes::`), e é por isso que `scripts/nextest-filtros-casam.py` existe. Corre SOZINHO (ocupa
 # todos os núcleos; partilhado ficava ~5×) e o prazo é 20 × 60 s = 1,5× o medido sozinho.
+# 03/11 (integ 02/11c): 55 presets (Water Brush a motor 1 141 no raio 300) passaram os 1 200 s; partido em 8 irmãos por
+# pasta (`a_largura_e_a_prometida_*`, o mesmo conjunto) com os raios numa fila só. Medição: cura-largura2 da rodada.
 [[profile.default.overrides]]
-filter = 'test(=presets_de_fabrica::portoes::a_largura_e_a_prometida)'
+filter = 'test(/presets_de_fabrica::portoes::a_largura_e_a_prometida_/)'
 threads-required = 'num-cpus'
 slow-timeout = { period = "60s", terminate-after = 20 }
 

@@ -500,66 +500,101 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
 
 /// **A LARGURA PROMETIDA (W2)**: em cada preset de fábrica, o traço a raio `r` mede `2·r ± 2 px` (± 2 %
 /// acima de 100 px), de 2 a 300 — raios fora da tabela do preset. CONTROLO dentro: a lei CRUA (o raio direto ao motor, a de antes
-/// da W2) reprova no mesmo pincel.
-/// Um preset medido pelo [`a_largura_e_a_prometida`]: o ficheiro, as larguras com a promessa e (só o Wet Round) as crus.
-type Medido = (Preset, Vec<f32>, Option<Vec<f32>>);
+/// da W2) reprova no mesmo pincel. Partido em irmãos por PASTA (`família` ou `família/grupo` sob `WetPainter/`) que juntos
+/// medem o MESMO conjunto ([`as_familias_da_largura_cobrem_o_wet`]); as ferramentas (Blend, Smear) pesam mais por preset
+/// (a prova da semente e a cena da base). O porquê e a medição: a rodada 02/11c (cura-largura2).
+const FAMILIAS_DA_LARGURA: [&[&str]; 8] = [
+    &["Blend/Hard", "Blend/Soft"],
+    &["Blend/Dots", "Blend/Textured"],
+    &["Smear/Flat", "Smear/Shattered", "Smear/Soft"],
+    &["Smear/Spikey", "Smear/Wet"],
+    &["Water", "Watercolor"],
+    &["Oil", "ExpressOil"],
+    &["Pencil", "Pastel"],
+    &["Acrylic", "Airbrush", "Ink", "Marker"],
+];
 
-#[test]
-fn a_largura_e_a_prometida() {
-    let mut falhas = Vec::new();
-    // Só o Wet: a tabela de largura é a promessa do slider dele (os outros meios não a gravam nem a leem).
-    let ficheiros = ficheiros_do_wet();
-    // Os presets em paralelo (cada um já pinta os seus 8 raios em paralelo), mas só `núcleos ÷ 8` de cada vez: todos
-    // de uma vez eram 44 × 8 = 352 telas vivas, e com os Oil/* de Real Oil (dono 28/10; o campo do óleo ~+100 B por
-    // célula, 466 contra 248 MiB a raio 300) a soma passava os 24G da fatia — OOM 2× (J6). Acima dos núcleos o
-    // paralelismo não compra relógio, só memória.
-    let de_cada_vez = std::thread::available_parallelism()
-        .map_or(4, |n| (n.get() / RAIOS_DA_PROMESSA.len()).max(1));
-    let proximo = std::sync::atomic::AtomicUsize::new(0);
-    let mut medidos: Vec<Option<Medido>> = (0..ficheiros.len()).map(|_| None).collect();
-    std::thread::scope(|s| {
-        let h: Vec<_> = (0..de_cada_vez)
-            .map(|_| {
-                s.spawn(|| {
-                    let mut feitos = Vec::new();
-                    loop {
-                        let k = proximo.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        let Some((rel, b)) = ficheiros.get(k) else {
-                            break feitos;
-                        };
-                        let p = ler(b).unwrap();
-                        let (larguras, crua) = std::thread::scope(|s| {
-                            let crua = rel
-                                .ends_with("Wet Round.ph2d-brush.png")
-                                .then(|| s.spawn(|| larguras_da_promessa(&p, true)));
-                            let larguras = larguras_da_promessa(&p, false);
-                            (larguras, crua.map(|h| h.join().unwrap()))
-                        });
-                        feitos.push((k, (p, larguras, crua)));
-                    }
-                })
-            })
-            .collect();
-        for (k, m) in h.into_iter().flat_map(|h| h.join().unwrap()) {
-            medidos[k] = Some(m);
-        }
+/// O preset `rel` (`WetPainter/<família>/<grupo>/<nome>`) mora na pasta `pasta` (`família` ou `família/grupo`).
+fn mora_em(rel: &str, pasta: &str) -> bool {
+    rel.split_once('/')
+        .is_some_and(|(_, r)| r.strip_prefix(pasta).is_some_and(|r| r.starts_with('/')))
+}
+
+/// Os presets das `familias`, cada raio uma medição numa fila só (a prova da semente antes, para que nenhum raio espere
+/// por ela parado), e as falhas da promessa. ⛔ Era um preset por vaga com os 8 raios dentro: a vaga esperava pelo raio
+/// mais caro do preset (a Water Brush a 300 = motor 1 141, e as ferramentas pela prova da semente) com os outros fios livres.
+fn a_largura_prometida_nas(familias: &[&str]) {
+    let presets: Vec<(String, Preset)> = ficheiros_do_wet()
+        .into_iter()
+        .filter(|(rel, _)| familias.iter().any(|f| mora_em(rel, f)))
+        .map(|(rel, b)| {
+            let p = ler(&b).unwrap();
+            (rel, p)
+        })
+        .collect();
+    assert!(!presets.is_empty(), "nenhum preset do Wet em {familias:?}");
+    let fios = std::thread::available_parallelism().map_or(8, std::num::NonZero::get);
+    let custo_semente: Vec<u64> = presets
+        .iter()
+        .map(|(_, p)| 3 * custo_da_cena(p, 150.0, true))
+        .collect();
+    let tols = em_paralelo_pela_memoria(&custo_semente, fios, |k| {
+        tolerancia_da_largura(&presets[k].1)
     });
-    let medidos = medidos.into_iter().map(Option::unwrap);
-    for ((rel, _), (p, larguras, crua)) in ficheiros.iter().zip(medidos) {
+    // (preset, raio, crua): a promessa em todos; a lei crua só no Wet Round (o controlo).
+    let casos: Vec<(usize, usize, bool)> = presets
+        .iter()
+        .enumerate()
+        .flat_map(|(k, (rel, _))| {
+            let crua = rel.ends_with("Wet Round.ph2d-brush.png");
+            (0..RAIOS_DA_PROMESSA.len()).flat_map(move |i| {
+                [(k, i, false)]
+                    .into_iter()
+                    .chain(crua.then_some((k, i, true)))
+            })
+        })
+        .collect();
+    let fora = |k: usize, i: usize, crua: bool| {
+        !crua && motor_passa_do_tecto(&presets[k].1, RAIOS_DA_PROMESSA[i]).is_some()
+    };
+    let custos: Vec<u64> = casos
+        .iter()
+        .map(|&(k, i, c)| {
+            if fora(k, i, c) {
+                0
+            } else {
+                custo_da_cena(&presets[k].1, RAIOS_DA_PROMESSA[i], c)
+            }
+        })
+        .collect();
+    let medidas = em_paralelo_pela_memoria(&custos, fios, |j| {
+        let (k, i, c) = casos[j];
+        if fora(k, i, c) {
+            return f32::NAN;
+        }
+        largura_de_com(&presets[k].1, RAIOS_DA_PROMESSA[i], c, Relogio::DeUmaVez)
+    });
+    let mut larguras = vec![[vec![0.0f32; RAIOS_DA_PROMESSA.len()], Vec::new()]; presets.len()];
+    for (&(k, i, c), l) in casos.iter().zip(medidas) {
+        let v = &mut larguras[k][usize::from(c)];
+        v.resize(RAIOS_DA_PROMESSA.len(), 0.0);
+        v[i] = l;
+    }
+    let mut falhas = Vec::new();
+    for (((rel, p), [larguras, crua]), tol) in presets.iter().zip(&larguras).zip(tols) {
         println!("[largura] {rel}: {larguras:?} (pedidas {RAIOS_DA_PROMESSA:?} × 2)");
-        let tol = tolerancia_da_largura(&p);
         let tecto = p
             .parametros
             .brush
             .get("size_max_px")
             .and_then(serde_json::Value::as_f64)
             .map_or(f32::INFINITY, |d| d as f32);
-        for f in fora_da_promessa(&larguras, tol, tecto) {
+        for f in fora_da_promessa(larguras, tol, tecto) {
             falhas.push(format!("{rel}: {f}"));
         }
-        if let Some(crua) = crua {
+        if !crua.is_empty() {
             assert!(
-                !fora_da_promessa(&crua, TOLERANCIA_REL, f32::INFINITY).is_empty(),
+                !fora_da_promessa(crua, TOLERANCIA_REL, f32::INFINITY).is_empty(),
                 "controlo: a lei crua do Wet Round já cumpria a promessa — o portão não mede nada"
             );
         }
@@ -569,6 +604,65 @@ fn a_largura_e_a_prometida() {
         "a largura não é a do painel:\n{}",
         falhas.join("\n")
     );
+}
+
+#[test]
+fn a_largura_e_a_prometida_blend_hard_soft() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[0]);
+}
+#[test]
+fn a_largura_e_a_prometida_blend_dots_textured() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[1]);
+}
+#[test]
+fn a_largura_e_a_prometida_smear_flat_shattered_soft() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[2]);
+}
+#[test]
+fn a_largura_e_a_prometida_smear_spikey_wet() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[3]);
+}
+#[test]
+fn a_largura_e_a_prometida_agua() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[4]);
+}
+#[test]
+fn a_largura_e_a_prometida_oleo() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[5]);
+}
+#[test]
+fn a_largura_e_a_prometida_lapis() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[6]);
+}
+#[test]
+fn a_largura_e_a_prometida_tinta() {
+    a_largura_prometida_nas(FAMILIAS_DA_LARGURA[7]);
+}
+
+/// Os irmãos da largura medem juntos TODOS os presets do Wet, cada um uma vez, e o controlo da lei crua (o Wet Round)
+/// cai num deles.
+#[test]
+fn as_familias_da_largura_cobrem_o_wet() {
+    let wet = ficheiros_do_wet();
+    assert!(
+        wet.iter()
+            .any(|(rel, _)| rel.ends_with("Wet Round.ph2d-brush.png"))
+    );
+    for (rel, _) in &wet {
+        let n = FAMILIAS_DA_LARGURA
+            .iter()
+            .filter(|g| g.iter().any(|f| mora_em(rel, f)))
+            .count();
+        assert_eq!(n, 1, "{rel}: em {n} irmãos da largura (deve ser 1)");
+    }
+    for g in FAMILIAS_DA_LARGURA {
+        for f in g {
+            assert!(
+                wet.iter().any(|(rel, _)| mora_em(rel, f)),
+                "a família {f} não tem preset no Wet (irmão órfão)"
+            );
+        }
+    }
 }
 
 /// O pincel que nasce SEM preset tem a lei da largura do Wet Round de fábrica (o `WetKnobs::DEFAULT` é

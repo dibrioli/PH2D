@@ -172,7 +172,7 @@ fn o_tempo_de_uma_vez_e_o_por_quadro() {
 }
 
 /// **Sonda do custo da largura** — o CPU do processo (todas as threads, `/proc/self/stat`) que cada preset do Wet custa
-/// ao [`a_largura_e_a_prometida`], um preset de cada vez (os raios em paralelo), e por raio no `PH2D_SONDA_PRESET`.
+/// ao `a_largura_prometida_nas` (os irmãos `a_largura_e_a_prometida_*`), um preset de cada vez (os raios em paralelo), e por raio no `PH2D_SONDA_PRESET`.
 #[test]
 #[ignore = "sonda: o custo da largura por preset"]
 fn sonda_custo_da_largura() {
@@ -624,7 +624,7 @@ fn sonda_o_piso_de_tempo_da_agua() {
     println!("  loadavg fim: {}", la.trim());
 }
 
-/// **Sonda: o portão da largura com e sem o piso de tempo da água** — o corpo de [`a_largura_e_a_prometida`] (todos os
+/// **Sonda: o portão da largura com e sem o piso de tempo da água** — o corpo de `a_largura_prometida_nas` (os irmãos `a_largura_e_a_prometida_*`) (todos os
 /// presets do Wet, cada raio, em paralelo como o portão) com `PISO_NS_AGUA` = ∞ (a rota de antes) e o de fábrica,
 /// alternados, duas rondas; as larguras das duas rotas têm de ser as mesmas.
 #[test]

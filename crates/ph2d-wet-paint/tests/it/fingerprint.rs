@@ -146,8 +146,11 @@ fn wet_lift_zero_is_the_old_model_to_the_byte() {
 //                        continua verde COM a extração do `dry_cell`, e é
 //                        isso que prova que a fatoração do kernel foi pure
 //                        code motion.
-const PINNED: u64 = 0x5b69_9a43_f65b_6c34;
+// 0xc6dc_cb4a_3205_0bd3  03/11: a umidade sobe em uma célula e a orla não seca o miolo
+//                        (docs/DevOps/MEDICAO_P1_P4_LARGURA_2026-11-03.md, §D). Os três pinos movem-se juntos; o da cura
+//                        62e7fc8505 nunca foi gravado.
+const PINNED: u64 = 0xc6dc_cb4a_3205_0bd3;
 
 /// O pino da rota serial — o `PINNED` que valia antes da §5.45.
-const PINNED_GAUSS_SEIDEL: u64 = 0x99d8_891b_57a7_2abe;
-const PINNED_PRE_DOC23: u64 = 0x6097_a692_a23d_bd5f;
+const PINNED_GAUSS_SEIDEL: u64 = 0x217c_aed8_783d_a46c;
+const PINNED_PRE_DOC23: u64 = 0x32a4_8f31_eab5_9161;

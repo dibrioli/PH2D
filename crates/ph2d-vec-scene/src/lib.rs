@@ -520,6 +520,8 @@ pub mod vert_id;
 pub use vert_id::VertId;
 /// As regras de desenho técnico sobre `(path, VertId)` (W4.3).
 pub mod cad;
+pub mod estilos;
+pub use estilos::{ColorStyle, EstiloId};
 
 /// ⭐ **A versão do wire-format e a escada dela** — módulo irmão pelo tecto de LOC (o corte é por
 /// responsabilidade: aqui o MODELO, ali o número que diz que bytes ele escreve).
@@ -563,7 +565,7 @@ pub enum Rotate90 {
 
 /// Cena vetorial — o documento editor-first. `PartialEq` para o undo detectar
 /// mudança real (só vira passo de histórico se a cena mudou de fato).
-#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct VecScene {
     /// A pilha de z (fundo → topo). É uma **projeção** da árvore da Hierarquia,
     /// re-sincronizada pela shell — ver [`VecScene::reorder_to`] (ADR-0110).
@@ -573,6 +575,10 @@ pub struct VecScene {
     regras: Vec<cad::RegraCad>,
     /// O próximo [`cad::RegraId`] (nunca reusado).
     next_regra: u32,
+    /// Os estilos de cor do projeto ([`estilos`], v26).
+    estilos: Vec<estilos::ColorStyle>,
+    /// O próximo [`estilos::EstiloId`] (nunca reusado).
+    next_estilo: estilos::EstiloId,
 }
 
 impl VecScene {
@@ -664,30 +670,5 @@ impl VecScene {
         let p = self.paths.remove(i);
         self.paths.insert(j, p);
         true
-    }
-
-    /// Serializa a cena (postcard), prefixada pela versão de schema.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
-        postcard::to_allocvec(&(VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())
-    }
-
-    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22/v23 lê-se
-    /// pela forma da sua versão ([`with_wire_layout`]) e volta igual, com ids `1..=n` por path; um
-    /// ≤ v24 lê também as entradas da pilha sem id ([`with_pilha_layout_v23`], ids `NONE`).
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let (ver, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
-        let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
-        match ver {
-            VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
-            schema::VEC_SCENE_SCHEMA_V22..=schema::VEC_SCENE_SCHEMA_V24 => {
-                with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
-            }
-            schema::VEC_SCENE_SCHEMA_V25..=schema::VEC_SCENE_SCHEMA_V27 => {
-                with_wire_layout(ver, read).map(|(_, s)| s)
-            }
-            _ => Err(format!(
-                "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
-            )),
-        }
     }
 }

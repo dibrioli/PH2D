@@ -21,3 +21,5 @@ mod vector_pencil;
 pub use vector_pencil::*;
 mod vector_symmetry;
 pub use vector_symmetry::*;
+pub mod vector_object;
+pub use vector_object::*;

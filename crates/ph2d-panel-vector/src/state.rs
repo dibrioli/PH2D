@@ -200,7 +200,6 @@ thread_local! {
     static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).
-    static CURRENT_SNAPSHOT: RefCell<Option<VectorStyleSnapshot>> = const { RefCell::new(None) };
     /// Type of the currently-selected vertex (published by the shell each frame
     /// from the Pen). `None` = no vertex selected → the Vertex section hides.
     static CURRENT_VERTEX_TYPE: RefCell<Option<VertexSel>> = const { RefCell::new(None) };
@@ -305,13 +304,13 @@ pub struct VectorPanelState;
 /// Publish the current Style snapshot. Called by the shell once per frame while
 /// the `vector` tool is active; pass `None` to clear (tool inactive).
 pub fn set_current_vector_style(snapshot: Option<VectorStyleSnapshot>) {
-    CURRENT_SNAPSHOT.with(|c| *c.borrow_mut() = snapshot);
+    ph2d_tool_vector::appearance::set_current_vector_style(snapshot);
 }
 
 /// Read the snapshot the host published this frame, falling back to
 /// [`VectorStyleSnapshot::default`] when none was pushed.
 pub(crate) fn current_snapshot() -> VectorStyleSnapshot {
-    CURRENT_SNAPSHOT.with(|c| c.borrow().unwrap_or_default())
+    ph2d_tool_vector::appearance::current_vector_style().unwrap_or_default()
 }
 
 /// Publish **a MEDIANA das âncoras selecionadas**, em mundo e na unidade do artista.

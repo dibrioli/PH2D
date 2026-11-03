@@ -137,14 +137,15 @@ pub fn apply_picker(
     scene: &mut VecScene,
     sel: &[VecPathId],
 ) -> bool {
+    let estilos = super::estilos::drena(store, scene, sel);
     let picker = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
     let n = store.colour_picks(picker);
     let tocou = PICKS_SEEN.with(|c| c.replace(n)) != n;
     let Some(i) = super::layer_of_picker_target(store) else {
-        return false;
+        return estilos;
     };
     let Some((value, ..)) = store.blender_picker(picker) else {
-        return false;
+        return estilos;
     };
     let Some(prim) = sel
         .first()
@@ -152,7 +153,7 @@ pub fn apply_picker(
         .and_then(|p| p.paints.get(i))
         .map(PaintEntry::swatch_color)
     else {
-        return false;
+        return estilos;
     };
     let mut c = value.rgba;
     if tocou && c[3] == 0 {
@@ -171,7 +172,7 @@ pub fn apply_picker(
         campos |= F::FILL_A;
     }
     if campos.is_empty() {
-        return false;
+        return estilos;
     }
     let mut mudou = false;
     for id in sel {
@@ -187,5 +188,5 @@ pub fn apply_picker(
             mudou |= super::set_color(scene, &[*id], i, m);
         }
     }
-    mudou
+    mudou || estilos
 }

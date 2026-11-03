@@ -194,6 +194,8 @@ pub mod smoke_bone_media;
 pub mod smoke_bone_modos;
 pub mod smoke_bone_paint;
 pub mod smoke_bone_par;
+/// ⭐ O Inspector em cartões, parado — `PH2D_VEC_CARTOES_SMOKE=1` (C4).
+pub(crate) mod smoke_cartoes_inspector;
 #[cfg(test)]
 #[path = "sonda_tampa_redonda_tests.rs"]
 mod sonda_tampa_redonda_tests;
@@ -318,6 +320,10 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         ph2d_app_host::SmokeRouter {
             env: "PH2D_VEC_BONE_PAINT_SMOKE",
             max_level: smoke_bone_paint::NIVEIS,
+        },
+        ph2d_app_host::SmokeRouter {
+            env: "PH2D_VEC_CARTOES_SMOKE",
+            max_level: 6,
         },
         r("PH2D_VEC_FADE_SMOKE"),
         r("PH2D_VEC_STACK_SMOKE"),

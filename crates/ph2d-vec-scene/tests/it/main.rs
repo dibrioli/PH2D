@@ -25,5 +25,6 @@ mod vec_v23_fixture;
 mod vec_v25_fixture;
 mod vec_v26_fixture;
 mod vec_v27_fixture;
+mod vec_v28_fixture;
 mod vertex_ids_through_edits;
 mod which_shapes_close;

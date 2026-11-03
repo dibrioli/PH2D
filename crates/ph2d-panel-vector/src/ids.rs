@@ -9,8 +9,8 @@
 
 mod vector_anchors;
 pub use vector_anchors::*;
-mod vector_appearance;
-pub use vector_appearance::*;
+// CartoesUI C4: a aparência do objecto e a pilha de camadas desceram para a ferramenta.
+pub use ph2d_tool_vector::ids::vector_object::*;
 mod vector_bool;
 pub use vector_bool::*;
 mod vector_components;

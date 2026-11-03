@@ -507,7 +507,15 @@
 /// `sound` que se lê como caminho (`ph2d_app_components::sound_project::open`). Gate:
 /// `project_sounds_tests`. Registos de componentes: `0`. ⚠️ **A tripla NÃO vê este degrau.**
 /// (Escrito `213 → 214` na linha; integração `2026-11-02c`: a `line/UIUX` ficou com o `214`.)
-pub(crate) const PROJECT_SCHEMA: u32 = 215;
+///
+/// # `215 → 216` — **os estilos de cor** (`line/NovaUI-Inspector`, CartoesUI D28/D30, 2026-11-03)
+///
+/// A `VecScene` `28 → 29` (`estilos` no fim). ⭐ **COM leitura dos anteriores:** `fio_do_projeto` diz `28`
+/// até ao `215` e a cena abre sem estilos. Gate: `vec_v28_fixture`. Registos: `0`. ⚠️ **A tripla VÊ.**
+pub(crate) const PROJECT_SCHEMA: u32 = 216;
+
+/// O último degrau sem os estilos de cor (`VecScene` v28).
+pub(crate) const PROJECT_SCHEMA_SEM_ESTILOS: u32 = 215;
 
 /// O último degrau sem os sons do projeto — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_SONS: u32 = 214;
@@ -584,6 +592,8 @@ pub(crate) fn fio_do_projeto(ver: u32) -> Option<u32> {
         Some(26)
     } else if ver <= PROJECT_SCHEMA_SEM_TRACO_SOBRE_FILTROS {
         Some(27)
+    } else if ver <= PROJECT_SCHEMA_SEM_ESTILOS {
+        Some(28)
     } else {
         None
     }

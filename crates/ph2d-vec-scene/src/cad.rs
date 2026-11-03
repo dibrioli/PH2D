@@ -194,12 +194,43 @@ struct VecSceneV23 {
     next_id: VecPathId,
 }
 
+/// A `VecScene` v24..=v28 (com regras, sem estilos) — ⛔ congelada.
 #[derive(Deserialize)]
-struct VecSceneV24 {
+struct VecSceneSemEstilos {
     paths: Vec<VecPath>,
     next_id: VecPathId,
     regras: Vec<RegraCad>,
     next_regra: u32,
+}
+
+/// O espelho da forma VIVA (a ordem do `Serialize` derivado).
+#[derive(Deserialize)]
+struct VecSceneViva {
+    paths: Vec<VecPath>,
+    next_id: VecPathId,
+    regras: Vec<RegraCad>,
+    next_regra: u32,
+    estilos: Vec<crate::ColorStyle>,
+    next_estilo: crate::EstiloId,
+}
+
+/// A forma viva; dentro do âmbito `<= 28` ([`crate::with_wire_layout`]) grava a v28 — é como um
+/// teste fabrica o ficheiro de um degrau antigo com os tipos de hoje.
+impl Serialize for VecScene {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let antiga = crate::stroke_wire::reading_sem_estilos();
+        let mut st = s.serialize_struct("VecScene", if antiga { 4 } else { 6 })?;
+        st.serialize_field("paths", &self.paths)?;
+        st.serialize_field("next_id", &self.next_id)?;
+        st.serialize_field("regras", &self.regras)?;
+        st.serialize_field("next_regra", &self.next_regra)?;
+        if !antiga {
+            st.serialize_field("estilos", &self.estilos)?;
+            st.serialize_field("next_estilo", &self.next_estilo)?;
+        }
+        st.end()
+    }
 }
 
 impl<'de> Deserialize<'de> for VecScene {
@@ -211,15 +242,62 @@ impl<'de> Deserialize<'de> for VecScene {
                 next_id: o.next_id,
                 regras: Vec::new(),
                 next_regra: 0,
+                estilos: Vec::new(),
+                next_estilo: 0,
             })
-        } else {
-            let o = VecSceneV24::deserialize(d)?;
+        } else if crate::stroke_wire::reading_sem_estilos() {
+            let o = VecSceneSemEstilos::deserialize(d)?;
             Ok(Self {
                 paths: o.paths,
                 next_id: o.next_id,
                 regras: o.regras,
                 next_regra: o.next_regra,
+                estilos: Vec::new(),
+                next_estilo: 0,
             })
+        } else {
+            let o = VecSceneViva::deserialize(d)?;
+            Ok(Self {
+                paths: o.paths,
+                next_id: o.next_id,
+                regras: o.regras,
+                next_regra: o.next_regra,
+                estilos: o.estilos,
+                next_estilo: o.next_estilo,
+            })
+        }
+    }
+}
+
+/// O blob da cena (fora do `lib.rs` pelo tecto de LOC).
+impl VecScene {
+    /// Serializa a cena (postcard), prefixada pela versão de schema.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, String> {
+        postcard::to_allocvec(&(crate::VEC_SCENE_SCHEMA_VERSION, self)).map_err(|e| e.to_string())
+    }
+
+    /// Desserializa uma cena salva por [`Self::to_bytes`]; rejeita schema alheio. Um v22/v23 lê-se
+    /// pela forma da sua versão ([`crate::with_wire_layout`]) e volta igual, com ids `1..=n` por path;
+    /// um ≤ v24 lê também as entradas da pilha sem id ([`crate::with_pilha_layout_v23`], ids `NONE`);
+    /// um ≤ v28 lê-se sem estilos de cor.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        use crate::schema::{
+            VEC_SCENE_SCHEMA_V22, VEC_SCENE_SCHEMA_V24, VEC_SCENE_SCHEMA_V25, VEC_SCENE_SCHEMA_V28,
+        };
+        use crate::{VEC_SCENE_SCHEMA_VERSION, with_pilha_layout_v23, with_wire_layout};
+        let (ver, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
+        let read = || postcard::from_bytes::<(u32, VecScene)>(bytes).map_err(|e| e.to_string());
+        match ver {
+            VEC_SCENE_SCHEMA_VERSION => read().map(|(_, s)| s),
+            VEC_SCENE_SCHEMA_V22..=VEC_SCENE_SCHEMA_V24 => {
+                with_pilha_layout_v23(|| with_wire_layout(ver, read)).map(|(_, s)| s)
+            }
+            VEC_SCENE_SCHEMA_V25..=VEC_SCENE_SCHEMA_V28 => {
+                with_wire_layout(ver, read).map(|(_, s)| s)
+            }
+            _ => Err(format!(
+                "versão de schema {ver} != {VEC_SCENE_SCHEMA_VERSION}"
+            )),
         }
     }
 }

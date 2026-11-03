@@ -244,6 +244,9 @@ impl VecViewState {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VecClip {
     pub paths: Vec<VecPath>,
+    /// As camadas ligadas a um estilo de cor (D30): `(índice em paths, camada, estilo, nome do
+    /// estilo)`. A cópia colada volta a ligar-se — se o estilo ainda existe com o mesmo nome.
+    pub ligacoes: Vec<(usize, ph2d_item_id::ItemId, crate::EstiloId, String)>,
 }
 
 impl VecClip {
@@ -257,14 +260,23 @@ impl VecScene {
     /// Recorta `ids` do documento (sem removê-los), na ordem de z.
     #[must_use]
     pub fn copy_paths(&self, ids: &[VecPathId]) -> VecClip {
-        VecClip {
-            paths: self
-                .paths
-                .iter()
-                .filter(|p| ids.contains(&p.id))
-                .cloned()
-                .collect(),
-        }
+        let paths: Vec<VecPath> = self
+            .paths
+            .iter()
+            .filter(|p| ids.contains(&p.id))
+            .cloned()
+            .collect();
+        let ligacoes = paths
+            .iter()
+            .enumerate()
+            .flat_map(|(i, p)| {
+                p.paints.iter().filter_map(move |e| {
+                    let st = self.estilo_de((p.id, e.id))?;
+                    Some((i, e.id, st.id, st.name.clone()))
+                })
+            })
+            .collect();
+        VecClip { paths, ligacoes }
     }
 
     /// Cola um recorte no topo da pilha, deslocado por `(dx, dy)`. Ids **reemitidos**
@@ -279,6 +291,13 @@ impl VecScene {
                 self.translate_path(new_id, dx, dy);
             }
             new_ids.push(new_id);
+        }
+        for (i, item, estilo, nome) in &clip.ligacoes {
+            if let Some(&novo) = new_ids.get(*i)
+                && self.estilo(*estilo).is_some_and(|e| e.name == *nome)
+            {
+                self.link_estilo((novo, *item), *estilo);
+            }
         }
         new_ids
     }

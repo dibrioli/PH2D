@@ -179,27 +179,9 @@ pub fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPath
         pose.stroke.clone_from(&p.stroke);
         // ⭐ **A OPACIDADE do objeto** (F22b) — o canal que carrega também o fade de quem entra e sai.
         pose.opacity = p.opacity.get();
-        // **A FORMA, sempre.** Um estado que não a gravasse não teria como animar uma edição de
-        // nó, um Fillet ou um Chamfer — e o campo existia, com o motor pronto do outro lado,
-        // esperando um produtor que nunca chegou.
-        //
-        // ⚠️ **A fonte AUTORADA, não a cozida.** É ela que o modo Node edita e é ela que o
-        // `install` devolve na chegada; gravar a cozida assaria o raio de quina e a pilha de
-        // efeitos no documento, e o artista perderia as alças no primeiro Show. Quem coze é a
-        // [`ph2d_ui_state::Transition`], para o CAMINHO — a costura fonte≠cozido do ADR-0121,
-        // no nível do estado.
-        //
-        // ⚠️ **E a tinta sai daqui.** Ela é campo de primeira classe da pose; deixá-la também
-        // dentro da geometria daria dois lugares para o mesmo fato dentro do mesmo arquivo.
-        // ⛔⛔ **MENOS quando ela é DERIVADA** (plano 32 W11d). A forma de um conjunto de Morph
-        // States é reescrita por `morph_live::recook` em TODO quadro a partir do par e do `t` —
-        // gravá-la aqui não guarda trabalho do artista nenhum e custa duas coisas: o `install`
-        // escreve-a para o `recook` a apagar no mesmo quadro, e a `Transition` **casa duas
-        // geometrias** para animar um canal que ninguém lê (`ph2d_vec_blend::Plan::new` custa
-        // 13 079× um passo, e o gate `plans_built` existe por isso).
-        //
-        // ⚠️ **A TINTA fica**, e a assimetria é o ponto: o `recook` escreve os vértices e **não** o
-        // `fill`/`stroke`, então a cor do conjunto é autorada e anima como a de qualquer forma.
+        // A forma, sempre — a fonte AUTORADA (a que o Node edita e o `install` devolve; quem coze é a
+        // `Transition`, ADR-0121), sem a tinta (campo próprio da pose). ⛔ Menos quando é DERIVADA (Morph
+        // States, plano 32 W11d): o `recook` reescreve-a a cada quadro, e casá-la custa um `Plan::new`.
         if !derived_geometry {
             let mut g = p.clone();
             g.fill = None;

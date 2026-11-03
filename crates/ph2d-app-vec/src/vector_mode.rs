@@ -380,6 +380,7 @@ pub fn smoke_step(
     sim: &mut SimWorld,
     hero: &mut HeroScreen,
 ) -> Option<ModeRequest> {
+    crate::smoke_cartoes_inspector::step(vec, scene, sim, hero);
     use ph2d_vec_scene::ShapeKind;
     use std::sync::atomic::{AtomicU8, Ordering};
     // 0 = por ler · 1 = o Add · 2 = a ferramenta na mão · 3 = o rectângulo · 4 = a elipse ·

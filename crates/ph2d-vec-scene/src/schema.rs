@@ -107,7 +107,10 @@
 /// v28: o [`crate::StrokeSpec`] ganhou `above_effects` no FIM (`line/UIUX`, F47) — o traço desenha-se
 /// por cima dos Filtros da forma. Lê a v27 e anteriores com `false` (a aparência de antes) pelo
 /// [`crate::with_wire_layout`]. Gate `vec_v27_fixture`, sobre bytes gravados pelo código v27.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 28;
+/// v29: a [`crate::VecScene`] ganha os ESTILOS DE COR do projeto (`estilos`, `next_estilo`, no FIM;
+/// CartoesUI D28/D30 — ligados como no Figma, a ligação mora no estilo por `(path, ItemId)`). Um ≤ v28
+/// lê-se pelo âmbito [`crate::with_wire_layout`] sem estilos. Gate `vec_v28_fixture`.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 29;
 
 /// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
 pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
@@ -116,3 +119,5 @@ pub(crate) const VEC_SCENE_SCHEMA_V24: u32 = 24;
 pub(crate) const VEC_SCENE_SCHEMA_V25: u32 = 25;
 pub(crate) const VEC_SCENE_SCHEMA_V26: u32 = 26;
 pub(crate) const VEC_SCENE_SCHEMA_V27: u32 = 27;
+/// O traço acima dos filtros, sem estilos de cor.
+pub(crate) const VEC_SCENE_SCHEMA_V28: u32 = 28;

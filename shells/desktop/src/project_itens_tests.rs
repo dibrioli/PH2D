@@ -50,7 +50,8 @@ fn um_projecto_v194_abre_com_os_itens_na_forma_nova() {
     );
     let back = abre(
         "itens_v194",
-        &postcard::to_allocvec(&(204u32, &f)).expect("serializa"),
+        &ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(204u32, &f)))
+            .expect("serializa"),
     );
     let t: ph2d_ecs::Timers = componente(&back, 0);
     assert_eq!(t.0[1].duration_us, 3_000_000);
@@ -75,7 +76,8 @@ fn o_projeto_195_le_o_vec_filter_sem_ids() {
     );
     let back = abre(
         "vec_filter_v195",
-        &postcard::to_allocvec(&(205u32, &f)).expect("serializa"),
+        &ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(205u32, &f)))
+            .expect("serializa"),
     );
     let filtro: ph2d_ecs::VecFilter = componente(&back, 0);
     assert_eq!(filtro.ops(), v195.0.as_slice());
@@ -163,7 +165,8 @@ fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
         components,
     );
     let v196 = ph2d_ui_state::PoseLayoutV196::enter();
-    let vivo = postcard::to_allocvec(&(206u32, &f)).expect("serializa");
+    let vivo = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(206u32, &f)))
+        .expect("serializa");
     drop(v196);
     let cena_viva = postcard::to_allocvec(&*f.state.vec).expect("serializa");
     let iguais = |w: &&[u8]| *w == cena_viva.as_slice();

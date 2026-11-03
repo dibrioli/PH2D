@@ -62,7 +62,7 @@ fn a_v208_opens_without_pixel_sprites() {
         (&f.input_map, &f.pattern_art, &f.boards, &f.scripts),
         (&f.marcas_do_artista, &f.jogo, &f.mesa, &f.kanbans),
     );
-    let path = written("pixel_v208", &(208u32, v208));
+    let path = ph2d_vec_scene::with_wire_layout(28, || written("pixel_v208", &(208u32, v208)));
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     assert!(lido.expect("um v208 é recusado").0.pixel_sprites.is_empty());

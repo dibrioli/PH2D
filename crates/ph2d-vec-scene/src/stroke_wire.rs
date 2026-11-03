@@ -61,6 +61,11 @@ fn reading_v22() -> bool {
     reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V22)
 }
 
+/// A cena sem estilos de cor (`<= 28`).
+pub(crate) fn reading_sem_estilos() -> bool {
+    reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V28)
+}
+
 /// A geometria sem id por vértice (`<= 23`).
 pub(crate) fn reading_geometry_v23() -> bool {
     reading_at_most(crate::schema::VEC_SCENE_SCHEMA_V23)

@@ -1,23 +1,9 @@
-//! **Os ids da APARÊNCIA DO OBJECTO** (estudo 42 item 2, v19 do schema) — irmão do
-//! [`super::vector`] pelo teto de LOC.
-//!
-//! O corte é por ASSUNTO: aqui mora *quão opaca esta forma é, e como ela se mistura com o que está
-//! por baixo* — o que o Illustrator põe no painel *Transparency* e o Figma na fileira de baixo do
-//! *Fill*.
-//!
-//! ⚠️ **Nenhuma destas propriedades é a TINTA**, e os ids ficarem noutro ficheiro é o que mantém
-//! isso legível: o alfa de uma cor descreve UMA marca, e estes dois descrevem o OBJECTO — a
-//! diferença vê-se onde uma forma desenha mais de uma marca (traço sobre preenchimento).
-//!
-//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_appearance.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
-//! carregar.
+//! **A aparência do OBJECTO** (opacidade e mistura da forma selecionada) — desceram do
+//! `ph2d-panel-vector` (CartoesUI C4): o Inspector em cartões também os pinta, e painel não depende
+//! de painel.
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
-
-/// O cabeçalho da seção **Appearance**.
-pub const VECTOR_SECTION_APPEARANCE: NodeId = hash_node_id("vector.section.appearance");
 
 /// O chip numérico do slider acima — o par que todo slider desta casa tem.
 pub const VECTOR_OBJ_OPACITY_NUM: NodeId = hash_node_id("vector.obj.opacity.num");
@@ -32,6 +18,22 @@ pub const VECTOR_OBJ_OPACITY_NUM: NodeId = hash_node_id("vector.obj.opacity.num"
 pub fn vector_obj_blend_option_id(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.obj.blendopt.{i}"))
 }
+
+/// **Opacity** — o slider da opacidade do objecto (0..100 %).
+///
+/// ⚠️ **Não confundir com os dois `VECTOR_*_OPACITY` da seção de estilo:** aqueles são o alfa da
+/// TINTA que a ferramenta tem na mão (eles semeiam a forma seguinte e re-vestem a selecção), e
+/// este é uma propriedade da forma SELECIONADA, que viaja no documento.
+pub const VECTOR_OBJ_OPACITY: NodeId = hash_node_id("vector.obj.opacity");
+
+/// **Blend** — o chip que abre a lista de modos de mistura do objecto.
+///
+/// ⚠️ Ele é um `Dropdown` e não uma segmentada pela mesma razão do ícone do widget: são dezanove
+/// modos, e uma fileira de chips cortaria a lista num teto de tabela de ids.
+pub const VECTOR_OBJ_BLEND: NodeId = hash_node_id("vector.obj.blend");
+
+/// O cabeçalho da seção **Appearance**.
+pub const VECTOR_SECTION_APPEARANCE: NodeId = hash_node_id("vector.section.appearance");
 
 /// **+ Fill** — acrescenta um preenchimento no TOPO da pilha.
 pub const VECTOR_PAINT_ADD_FILL: NodeId = hash_node_id("vector.paint.add.fill");
@@ -145,19 +147,6 @@ pub fn vector_paint_blend_option_id(i: usize) -> NodeId {
 
 // ── Desceu de `ph2d-editor-core/src/ids/chrome/vector_appearance.rs` em 2026-09-13 (2.ª passagem: a cerca com a
 //    `line/render-loop` prendia-os na fundação até às duas linhas se integrarem).
-
-/// **Opacity** — o slider da opacidade do objecto (0..100 %).
-///
-/// ⚠️ **Não confundir com os dois `VECTOR_*_OPACITY` da seção de estilo:** aqueles são o alfa da
-/// TINTA que a ferramenta tem na mão (eles semeiam a forma seguinte e re-vestem a selecção), e
-/// este é uma propriedade da forma SELECIONADA, que viaja no documento.
-pub const VECTOR_OBJ_OPACITY: NodeId = hash_node_id("vector.obj.opacity");
-
-/// **Blend** — o chip que abre a lista de modos de mistura do objecto.
-///
-/// ⚠️ Ele é um `Dropdown` e não uma segmentada pela mesma razão do ícone do widget: são dezanove
-/// modos, e uma fileira de chips cortaria a lista num teto de tabela de ids.
-pub const VECTOR_OBJ_BLEND: NodeId = hash_node_id("vector.obj.blend");
 
 /// A largura do contorno da camada ABERTA.
 pub const VECTOR_PAINT_WIDTH: NodeId = hash_node_id("vector.paint.width");

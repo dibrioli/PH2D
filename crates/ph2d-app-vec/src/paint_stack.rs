@@ -348,6 +348,15 @@ pub fn set_dilate_join(scene: &mut VecScene, sel: &[VecPathId], i: usize, j: u8)
 /// a swatch da linha mostra UMA cor, e escrever uma cor onde a swatch mostra uma cor é o que ela
 /// promete. Um gradiente numa camada edita-se onde os gradientes se editam.
 pub fn set_color(scene: &mut VecScene, sel: &[VecPathId], i: usize, c: Rgba8) -> bool {
+    // D30: a cor escolhida à mão solta a camada do estilo dela (como o Figma).
+    for id in sel {
+        let item = scene.path(*id).and_then(|p| p.paints.get(i)).map(|e| e.id);
+        if let Some(item) = item
+            && scene.estilo_de((*id, item)).is_some_and(|e| e.color != c)
+        {
+            scene.unlink_estilo((*id, item));
+        }
+    }
     edit(scene, sel, |p| {
         match p.paints.get_mut(i).map(|e| &mut e.kind) {
             Some(PaintKind::Fill(f)) => {
@@ -498,6 +507,8 @@ fn edit(
     mudou
 }
 
+#[path = "paint_stack_estilos.rs"]
+pub mod estilos;
 #[path = "paint_stack_mixed.rs"]
 mod mixed;
 pub use mixed::{apply_picker, layers_differ, ordered, row_mixed, set_offset_axes, toggle};

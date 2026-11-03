@@ -180,26 +180,9 @@ pub fn apply_vec_weld(
     let ids_cortados: Vec<u64> = cortados.iter().map(|(id, _)| *id).collect();
     let n_arcos: usize = cortados.iter().map(|(_, a)| a.len()).sum();
 
-    // ── FASE 3: ⭐⭐⭐ **UM OBJECTO**, e não um por arco.
-    //
-    // Report do Enio (2026-09-02): *"o weld cria uma grande quantidade de path na hierarquia
-    // quando na verdade deveria criar apenas 1. No canvas também deve ser transformado como se
-    // fosse um único objeto e o seu gizmo deve ser apenas 1"*.
-    //
-    // ⚠️ **Uma rede é UMA coisa.** Enquanto cada arco era um `VecPath`, cada arco era uma entidade
-    // ECS (ADR-0110) ⇒ uma linha na Hierarquia, uma pose própria e um gizmo próprio — e mover um
-    // deles **rasgava** a rede, que é precisamente o que soldar promete que não acontece. O
-    // `VecPath` já sabe carregar vários contornos (`subpaths`), e o Trim já emite contornos
-    // ABERTOS por essa porta (`trim_tool::sever`): a rede é um **caminho composto** cujos
-    // contornos são os arcos.
-    //
-    // ⚠️⚠️ **E escreve-se NO LUGAR do participante mais ao fundo**, como o Trim faz — *o id, a
-    // ordem em z e a entidade ECS que o representa têm de sobreviver à operação*. Um `insert_path`
-    // daria um objecto novo, com nome de fábrica, e o artista perderia o que tinha baptizado.
-    //
-    // ⛔ **O preço, declarado:** a rede tem **um** estilo (o do anfitrião) e **uma** pose. Os arcos
-    // que vieram de outros traços perdem cor, largura e pose próprias — é o que "um objecto"
-    // significa, e é a mesma conta que o `make_compound` já cobra.
+    // ── FASE 3: UM objecto (report do Enio, 02/09): a rede é um caminho composto cujos contornos
+    // são os arcos, escrito NO LUGAR do participante mais ao fundo (id, z e entidade sobrevivem, como
+    // no Trim). O preço: um estilo e uma pose para a rede inteira.
     let anfitriao = cortados
         .iter()
         .filter_map(|(id, _)| {

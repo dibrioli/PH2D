@@ -18,25 +18,28 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         // Dono 31/10 (pontos pretos): o piso do ganho do HDRI (`piso_do_ganho`) muda os três HDRI por desenho; o
         // Clássico fica ao bit. Antes: Estúdio `0x00f8_7fc3_815d_244b` · `0x75ef_0c73_92b8_506a` · Interior
         // `0xa2f9_d113_c2ae_d806` · `0x6b3a_c14b_d041_dee3` · Pátio `0x598b_2ac4_2f05_c2b9` · `0x537e_b935_9fbb_cc13`.
+        // Cura 02/11c: o lobo da lâmpada passa ao microfacet físico (`G/(4·n·v)` × a irradiância) — os quatro por
+        // desenho. Antes: Clássico `0x47c1_f5e4_7399_15f8` · Estúdio `0x03c8_d0c8_5dc1_62fd` · `0x1b0c_d582_4ea7_dfc3` ·
+        // Interior `0x098a_d848_eafe_0558` · `0x1539_eaf7_a31b_5abd` · Pátio `0x39ae_7d6d_e887_a7ca` · `0x155b_c697_578a_d5ad`.
         (
             Ambiente::Classico,
-            0x47c1_f5e4_7399_15f8u64,
-            0x47c1_f5e4_7399_15f8u64,
+            0xc628_2478_0671_3a32u64,
+            0xc628_2478_0671_3a32u64,
         ),
         (
             Ambiente::Estudio,
-            0x03c8_d0c8_5dc1_62fdu64,
-            0x1b0c_d582_4ea7_dfc3u64,
+            0xf8b3_5f85_223d_cfb4u64,
+            0xc66f_56f2_6140_3359u64,
         ),
         (
             Ambiente::Interior,
-            0x098a_d848_eafe_0558u64,
-            0x1539_eaf7_a31b_5abdu64,
+            0x28bd_f703_1fff_08e4u64,
+            0xa11d_ff5c_d937_0c9eu64,
         ),
         (
             Ambiente::Patio,
-            0x39ae_7d6d_e887_a7cau64,
-            0x155b_c697_578a_d5adu64,
+            0xcff4_3d4f_54e3_fca9u64,
+            0x2e48_98cb_6899_0c1eu64,
         ),
     ] {
         // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).

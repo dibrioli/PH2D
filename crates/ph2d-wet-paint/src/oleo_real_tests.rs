@@ -434,7 +434,8 @@ fn a_forca_da_fenda_multiplica_as_chances_de_oclusao() {
 #[test]
 fn a_fenda_neutra_e_bit_identica_a_de_antes() {
     // §BUG-ressalto: o papel ao pé da tinta mudou por desenho (sem saia; plano) — era `0xd577_67fb_dd93_1d70`.
-    let (ambiente, antes) = (Ambiente::Classico, 0x47c1_f5e4_7399_15f8u64);
+    // Cura 02/11c: o lobo da lâmpada passa ao microfacet físico — era `0x47c1_f5e4_7399_15f8`.
+    let (ambiente, antes) = (Ambiente::Classico, 0xc628_2478_0671_3a32u64);
     // K10: o rebote da tinta no papel mudou o PAPEL por desenho; desligado, o de antes ao bit.
     let af = Afinacao {
         rebote_papel: 0.0,

@@ -127,7 +127,8 @@ pub struct Afinacao {
     /// Largura da penumbra, em tangente de elevação: a luz vai de cheia a nada quando o horizonte sobe
     /// `penumbra` acima da elevação dela. Maior = sombra mais macia.
     pub penumbra: f64,
-    /// Intensidade do brilho (a rugosidade é a Roughness do material, [`MaterialCartao::rugosidade`]).
+    /// Ganho do brilho da lâmpada sobre o microfacet FÍSICO (`1` = o Principled do Cycles; a rugosidade é a
+    /// Roughness do material, [`MaterialCartao::rugosidade`]).
     pub brilho_max: f64,
     /// Ganho do alargamento do lobo pela curvatura dentro da célula (Kaplanyan; `1` = o de W1c).
     pub antisserrilhado: f64,
@@ -163,7 +164,7 @@ impl Default for Afinacao {
             grao: 0.15,
             fios: 1.0,
             penumbra: 0.6,
-            brilho_max: 1.6,
+            brilho_max: 1.0,
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
             rebote_papel: 1.0,
@@ -572,13 +573,25 @@ pub(crate) fn termos_da_amostra(
     let f0d = F0 * (m.nivel_ior / 0.5);
     // IOR Level abaixo de `0,5` apaga também a BORDA (o Principled a `0` não reflecte nada: IOR 1).
     let borda = (m.nivel_ior / 0.5).min(1.0);
-    // O brilho da lâmpada vai com a parte dela na mistura (`1` na de fábrica, bit a bit).
-    let mistura = (1.0 - forca) / (1.0 - FORCA_AMBIENTE_FABRICA);
-    let lampada_de = |f0: f64, borda: f64, d: f64| {
-        let fres = f0 + (1.0 - f0) * p5 * borda;
-        brilho * af.brilho_max * fres * d * ndl * luz * mistura
+    // O lobo da lâmpada é o microfacet do Principled (Cook–Torrance, Smith GGX correlacionado em altura, o do
+    // Cycles): `D·F·G / (4·n·l·n·v)` × a irradiância da lâmpada `π·(1 − força)/l_z` (o plano de albedo 1 = 1) ×
+    // `n·l`. Cura 02/11c: o lobo de antes (`brilho_max 1,6 · F·D·n·l`, sem o `G/(4·n·v)` nem a irradiância) dava
+    // no miolo do Dabber 3,2× o físico (0,0332 × 0,0103; Cycles 0,0093) — `cura-cycles.md`.
+    let lambda = |c: f64, a2: f64| {
+        let c2 = (c * c).max(1e-12);
+        0.5 * (exato::sqrt(1.0 + a2 * (1.0 - c2) / c2) - 1.0)
     };
-    let lampada = [lampada_de(f0d, borda, d_ggx); 3];
+    let nv = n[2].max(1e-4);
+    let irradiancia = core::f64::consts::PI * (1.0 - forca) / l[2].max(1e-4);
+    let lampada_de = |f0: f64, borda: f64, d: f64, a2: f64| {
+        if ndl <= 0.0 {
+            return 0.0;
+        }
+        let fres = f0 + (1.0 - f0) * p5 * borda;
+        let g = 1.0 / (1.0 + lambda(ndl, a2) + lambda(nv, a2));
+        brilho * af.brilho_max * fres * d * g / (4.0 * nv) * luz * irradiancia
+    };
+    let lampada = [lampada_de(f0d, borda, d_ggx, a2); 3];
 
     // Brilho do ambiente (split-sum: pré-filtrado × F0·A + B, Karis 2014), tapado pela visibilidade. Sem mapa
     // (Clássico) o metal e o verniz reflectem o céu uniforme.
@@ -631,7 +644,7 @@ pub(crate) fn termos_da_amostra(
             let f0m = a[c].clamp(0.0, 1.0);
             let ab = f0m * xa + yb;
             let viz = a[c] * difuso(o, &sem_brilho, a[c], c) * (1.0 + (a[c] - 1.0) * m.metal);
-            let em = lampada_de(f0m, 1.0, d_metal)
+            let em = lampada_de(f0m, 1.0, d_metal, a2_amb)
                 + brilho * (forca * pre[c] * livre + (1.0 - livre) * viz) * ab;
             espec[c] = (1.0 - m.metal) * espec[c] + m.metal * em;
         }
@@ -645,7 +658,7 @@ pub(crate) fn termos_da_amostra(
         let (pre, xa, yb, livre) = ambiente_de(rc * rc * rc * rc + aa_amb, n);
         let fv = F0 + (1.0 - F0) * libm::pow(1.0 - n[2].clamp(0.0, 1.0), 5.0);
         sob_verniz = 1.0 - m.verniz * fv;
-        let lv = lampada_de(F0, 1.0, ggx(a2c));
+        let lv = lampada_de(F0, 1.0, ggx(a2c), a2c);
         for c in 0..3 {
             let ev = lv + brilho * forca * pre[c] * (F0 * xa + yb) * livre;
             espec[c] = espec[c] * sob_verniz + m.verniz * ev;

@@ -465,14 +465,15 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
     let n = |px: &[u8]| luz_e_saturacao(px, &papel, &miolo);
     let ((lb05, sb05), (lb1, sb1), (lv1, sv1)) = (n(&b05), n(&b1), n(&v1));
     println!(
-        "[modos] Blender 0,5 L {lb05:.3} sat {sb05:.3} · 1 L {lb1:.3} sat {sb1:.3} (Cycles 0,205 · 0,744 | 0,144 · 0,631) · Clear glass 1 L {lv1:.3} sat {sv1:.3} · hash Clear glass 0,5 {:#x} · 1 {:#x}",
+        "[modos] Blender 0,5 L {lb05:.3} sat {sb05:.3} · 1 L {lb1:.3} sat {sb1:.3} (Cycles 0,124 · 0,801 | 0,076 · 0,705) · Clear glass 1 L {lv1:.3} sat {sv1:.3} · hash Clear glass 0,5 {:#x} · 1 {:#x}",
         fnv(&v05),
         fnv(&v1)
     );
-    // As tolerâncias: o erro MEDIDO neste miolo (0,5: L +1 %, sat −4 %; 1: L +19 %, sat +6 %) com folga.
+    // O Cycles na malha de HOJE (re-medido 02/11c, `cura-cycles.md`: Principled Transmission, 256 amostras, este
+    // miolo); o erro MEDIDO depois da cura do lobo da lâmpada (0,5: L +1 %, sat −4 %; 1: L +16 %, sat +0 %), com folga.
     for (nome, l, s, (lc, sc), (tl, ts)) in [
-        ("0,5", lb05, sb05, (0.205, 0.744), (0.08, 0.08)),
-        ("1", lb1, sb1, (0.144, 0.631), (0.25, 0.10)),
+        ("0,5", lb05, sb05, (0.124, 0.801), (0.08, 0.08)),
+        ("1", lb1, sb1, (0.076, 0.705), (0.25, 0.10)),
     ] {
         assert!(
             (l / lc - 1.0).abs() <= tl,
@@ -500,6 +501,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// Regravado 02/11 (era `0x23f9_aa15_b4a8_9263` · `0xc6ec_682c_aa7f_01a2`): a tinta da cena mudou só por lei nova —
 /// degraus first-parent ea3daab14c · 5dd9f7b567+209a0e9c8e (anulam-se) · d92340b6f3 · 0170428784 · 0275929512 ·
 /// 47ca63932e · 70869bf673 · 183d3d02e9 · ef3f836a86 · c77e40484c · 0f32fb6e75 · 5acb712ec6 · 7c8e08d16b (E10) ·
-/// 032cda64a5; a tabela dos hashes está no commit.
-const CLEAR_GLASS_05: u64 = 0xd780_ee7b_c62b_9982;
-const CLEAR_GLASS_1: u64 = 0x65a9_16d3_3d87_ed2f;
+/// 032cda64a5; a tabela dos hashes está no commit. Regravado 02/11c (era `0xd780_ee7b_c62b_9982` ·
+/// `0x65a9_16d3_3d87_ed2f`): o lobo da lâmpada passou ao microfacet físico (`oleo_real`, cura do Cycles).
+const CLEAR_GLASS_05: u64 = 0x92f6_8918_af19_c165;
+const CLEAR_GLASS_1: u64 = 0xfc73_0fc0_9f11_537a;

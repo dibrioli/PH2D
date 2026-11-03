@@ -102,7 +102,8 @@ A aba «Vector» acesa na foto `dono` vem do `~/.ph2d/layout.txt` do dono (`acti
 
 Binário do smoke (`--profile smoke`), 2.ª corrida:
 ```
-BUILD_AQUI
+▸ linha line_pixelart · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.38s
 ```
 
 ## 6. Aberto / avisos ao integrador

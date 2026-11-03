@@ -628,7 +628,7 @@ fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
             .iter()
             .map(|&r| {
                 s.spawn(move || {
-                    if !crua && regua_da_largura::motor_fora_da_lei(p, r).is_some() {
+                    if !crua && regua_da_largura::motor_passa_do_tecto(p, r).is_some() {
                         return f32::NAN;
                     }
                     largura_de_com(p, r, crua, Relogio::DeUmaVez)
@@ -644,7 +644,7 @@ fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
     RAIOS_DA_PROMESSA
         .iter()
         .zip(larguras)
-        // `NaN` = a promessa cai fora da lei medida ([`regua_da_largura::motor_fora_da_lei`]): FALHA, sem pintar.
+        // `NaN` = a promessa passa do tecto do motor ([`regua_da_largura::motor_passa_do_tecto`]): FALHA, sem pintar.
         .filter(|(r, l)| {
             l.is_nan()
                 || (*l - (2.0 * *r).min(tecto)).abs()
@@ -653,7 +653,8 @@ fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
         .map(|(r, l)| {
             if l.is_nan() {
                 format!(
-                    "raio {r}: o motor passa da lei medida (a tabela não chega a {} px)",
+                    "raio {r}: o motor passa do tecto do motor ({}; a tabela não chega a {} px)",
+                    ph2d_painter_brush::MAX_BRUSH_RADIUS_PX,
                     2.0 * r
                 )
             } else {

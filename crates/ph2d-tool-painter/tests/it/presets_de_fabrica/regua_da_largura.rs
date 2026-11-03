@@ -211,16 +211,13 @@ pub(super) fn px_da_cena(p: &Preset, raio: f32, crua: bool) -> u64 {
     u64::from(w) * u64::from(h)
 }
 
-/// ⛔ **A promessa a `raio` cai FORA da lei medida** (02/11c): o motor que a tabela de `p` dá a `raio` passa do maior
-/// raio MEDIDO dela (a extrapolação pela razão do último ponto que cresce) — devolve `(motor, maior raio)`. Ali não há
-/// lei para refinar nem para conferir: medido 03/11, a lei crua da Water Brush não passa de ~165 px até ao motor 1 100,
-/// e o raio 300 da promessa (600 px) extrapolava para o motor ~4 200, uma cena de 25 280 × 9 400 (92 GB). Nenhum preset
-/// gravado a pede (o maior: Water Brush antiga, motor 758 a raio 300, tabelas até 1 100).
-pub(super) fn motor_fora_da_lei(p: &Preset, raio: f32) -> Option<(f32, f64)> {
-    let t = &p.parametros.width_table;
-    let maior = t.iter().map(|&[r, _]| r).fold(f64::NEG_INFINITY, f64::max);
-    let motor = raio_do_motor_da_tabela(t, raio);
-    (!t.is_empty() && f64::from(motor) > maior).then_some((motor, maior))
+/// ⛔ **A promessa a `raio` passa do TECTO DO MOTOR** (02/11c): o motor que a tabela de `p` dá a `raio` passa de
+/// [`ph2d_painter_brush::MAX_BRUSH_RADIUS_PX`] — o motor grampeia o raio e a largura medida ali não é a desse motor.
+/// Devolve o motor. Entre o maior raio da lei (`RAIO_MAX`) e o tecto o refino MEDE o ponto (o recurso é a memória, que o
+/// [`super::memoria::em_paralelo_pela_memoria`] gere): a Water Brush pede o motor 1 141,7 no raio 300.
+pub(super) fn motor_passa_do_tecto(p: &Preset, raio: f32) -> Option<f32> {
+    let motor = raio_do_motor_da_tabela(&p.parametros.width_table, raio);
+    (motor > ph2d_painter_brush::MAX_BRUSH_RADIUS_PX).then_some(motor)
 }
 
 /// O vão RECTO do traço do misturador (px) e a margem mínima de cada lado: a 1000 px de tela (a `sonda_gestos::W` de

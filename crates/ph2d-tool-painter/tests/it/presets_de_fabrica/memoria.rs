@@ -93,6 +93,20 @@ pub(super) fn em_paralelo_pela_memoria<T: Send>(
     let livre0 = memoria_livre();
     let orcamento = (livre0 as f64 * FRACAO_DO_LIVRE) as u64;
     let reserva = livre0 / 20;
+    // A 1.ª em voo entra sempre: a que SOZINHA passa da fatia morria por OOM — falha alto, com a conta.
+    if let Some((i, &c)) = custos
+        .iter()
+        .enumerate()
+        .find(|&(_, &c)| c + reserva > livre0)
+    {
+        panic!(
+            "[memoria] a medição {i} sozinha não cabe na fatia: {} MiB estimados ({BYTES_POR_PX_DA_CENA} B/px) + \
+             {} MiB de reserva > {} MiB livres — suba PH2D_MEM_MAX",
+            c >> 20,
+            reserva >> 20,
+            livre0 >> 20
+        );
+    }
     let cabe = |em_voo: u64, c: u64| {
         em_voo == 0 || (em_voo + c <= orcamento && memoria_livre() >= c + em_voo + reserva)
     };

@@ -2,7 +2,7 @@
 //! `presets_de_fabrica.rs` pelo tecto de 700 linhas; os ajudantes moram no pai.
 
 use super::memoria::{custo_da_cena, em_paralelo_pela_memoria, pico_mib};
-use super::regua_da_largura::{envolvente_de_baixo, motor_fora_da_lei};
+use super::regua_da_largura::{envolvente_de_baixo, motor_passa_do_tecto};
 use super::*;
 
 /// **A promessa na ponta da tabela**: a lei crua ONDULA de raio para raio e 64 pontos interpolam a ondulação (Knife
@@ -15,7 +15,7 @@ fn refina_a_promessa(p: &mut Preset) {
         let custos: Vec<u64> = RAIOS_DA_PROMESSA
             .iter()
             .map(|&r| {
-                if motor_fora_da_lei(p, r).is_some() {
+                if motor_passa_do_tecto(p, r).is_some() {
                     0
                 } else {
                     custo_da_cena(p, r, false)
@@ -28,10 +28,11 @@ fn refina_a_promessa(p: &mut Preset) {
             |i| {
                 let (p, r) = (&*p, RAIOS_DA_PROMESSA[i]);
                 let motor = raio_do_motor_da_tabela(&p.parametros.width_table, r);
-                if let Some((m, maior)) = motor_fora_da_lei(p, r) {
+                if let Some(m) = motor_passa_do_tecto(p, r) {
                     println!(
-                        "[fabrica] {}: raio {r} → motor {m} fora da lei medida (até {maior}): sem refino",
-                        p.parametros.name
+                        "[fabrica] {}: raio {r} → motor {m} passa do tecto do motor ({}): sem refino",
+                        p.parametros.name,
+                        ph2d_painter_brush::MAX_BRUSH_RADIUS_PX
                     );
                     return (r, motor, f32::NAN);
                 }

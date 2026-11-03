@@ -5,13 +5,13 @@
 impl crate::App {
     /// No prólogo do frame, uma vez. No-op sem a env.
     pub(crate) fn svg_import_smoke(&mut self) {
-        if self.svg_import_smoke_done || !ph2d_app_vec::smoke_svg::armed() {
+        if self.vec.svg_import_smoke_done || !ph2d_app_vec::smoke_svg::armed() {
             return;
         }
         if self.gfx.is_none() {
             return; // sem mundo ainda; tenta no próximo frame
         }
-        self.svg_import_smoke_done = true;
+        self.vec.svg_import_smoke_done = true;
 
         let gfx = self.gfx.as_mut().expect("gfx");
         let ppm = gfx

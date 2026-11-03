@@ -314,8 +314,6 @@ pub(crate) struct App {
     pub(crate) vec: ph2d_app_vec::state::VecState,
     /// O *Add ▸ Text* em curso ([`ph2d_app_text`]).
     pub(crate) text_add: ph2d_app_text::TextAdd,
-    /// A cena do IMPORTAR SVG (`PH2D_VEC_SVG_SMOKE`) já montou — ela escreve o próprio ficheiro.
-    pub(crate) svg_import_smoke_done: bool,
     // ⭐ Os dois slots da cena de osso mudaram-se para o `ph2d_app_vec::state::VecState`, ao lado
     // do `bone_smoke_step` que sempre lhes pertenceu (HOWTO §1.1: *a família que guardou o estado
     // em casa foi a que conseguiu sair de casa*).

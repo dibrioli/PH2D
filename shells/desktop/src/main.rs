@@ -751,7 +751,6 @@ impl App {
             morph_fade_smoke_done: false,
             vec: ph2d_app_vec::state::VecState::default(),
             text_add: ph2d_app_text::TextAdd::default(),
-            svg_import_smoke_done: false,
             nest_smoke_done: false,
             instance_echo: Default::default(),
             show_colliders: true,

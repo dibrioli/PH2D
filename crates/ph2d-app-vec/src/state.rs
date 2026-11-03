@@ -79,6 +79,9 @@ pub struct VecState {
     /// A cena do **fade vetorial** já montou? (`PH2D_VEC_FADE_SMOKE`, uma vez por sessão.)
     pub fade_smoke_done: bool,
 
+    /// A cena do IMPORTAR SVG ([`crate::smoke_svg`]) já montou — ela escreve o próprio ficheiro.
+    pub svg_import_smoke_done: bool,
+
     /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
     /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
     pub grad_drag: Option<ph2d_vec_render::GradHandle>,

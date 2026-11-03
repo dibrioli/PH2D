@@ -88,7 +88,8 @@ pub fn paint_lists_body(
     y += field_h() + row_gap();
 
     // Tabs (segmented).
-    let r = Rect::new(x, y, w, ROW_H_PX);
+    let tabs_h = super::encaixe::fila_h(ROW_H_PX);
+    let r = Rect::new(x, y, w, tabs_h);
     let selected = active_index(
         store,
         &[
@@ -114,19 +115,23 @@ pub fn paint_lists_body(
     for (i, item) in tabs.items.iter().enumerate() {
         hit_index.register(item.id, tabs.tab_rect(r, i));
     }
-    y += ph2d_tokens::row_pitch_px();
+    y += super::encaixe::no_cartao(tabs_h + row_gap(), ph2d_tokens::row_pitch_px());
 
     // Tab body — distinct sample per selected tab so the user can
     // see the tab actually swapping content (vs. just visual
     // emphasis on the segmented control). Each body is painted in a
     // `BgElev` rounded panel for visual grouping with the tabs.
-    let body_h = ICON_BTN_SIZE_PX;
+    let body_h = super::encaixe::fila_h(ICON_BTN_SIZE_PX);
     let body_rect = Rect::new(x, y, w, body_h);
     fill_rounded_rect(
         scene,
         body_rect,
-        crate::paint::frame_radius(theme, Radius::Sm.px()),
-        resolve(ColorToken::Bg2, theme),
+        super::encaixe::no_cartao(
+            m::FIELD_RADIUS,
+            crate::paint::frame_radius(theme, Radius::Sm.px()),
+        ),
+        crate::widget::card_ink::card_field_fill()
+            .unwrap_or_else(|| resolve(ColorToken::Bg2, theme)),
     );
     let (caption, tone) = match selected {
         0 => ("Editing scene · pencil tool", ColorToken::Text1),
@@ -153,7 +158,8 @@ pub fn paint_lists_body(
     // leaf Pressed across frames.
     let expanded = !store.is_collapsed(ids::INSP_SAMPLE_TREE_ROOT);
     let visible_rows = if expanded { 3.0 } else { 1.0 }; // LITERAL-PX-OK: row count constants for tree height calc
-    let tree_h = Density::Cozy.row_h_px() * visible_rows;
+    let tree_row_h = super::encaixe::fila_h(Density::Cozy.row_h_px());
+    let tree_h = tree_row_h * visible_rows;
     let r = Rect::new(x, y, w, tree_h);
     let mut tree = TreeView::new(
         NodeId(0),
@@ -172,22 +178,15 @@ pub fn paint_lists_body(
     }
     let selected_leaf = active_index(store, &TREE_LEAF_IDS).unwrap_or(0);
     tree.select(TREE_LEAF_IDS[selected_leaf]);
-    paint_tree_view(
-        &tree,
-        r,
-        scene,
-        text_system,
-        theme,
-        Density::Cozy.row_h_px(),
-    );
+    paint_tree_view(&tree, r, scene, text_system, theme, tree_row_h);
     // Register hit rects for each visible row.
     for (i, (_depth, node)) in tree.visible_rows().iter().enumerate() {
-        hit_index.register(node.id, tree.row_rect(r, i, Density::Cozy.row_h_px()));
+        hit_index.register(node.id, tree.row_rect(r, i, tree_row_h));
     }
     y += tree_h + row_gap();
 
     // ListItem.
-    let li_h = Density::Cozy.row_h_px();
+    let li_h = tree_row_h;
     let r = Rect::new(x, y, w, li_h);
     hit_index.register(ids::INSP_SAMPLE_LIST_ITEM, r);
     let li_state = match store.get(ids::INSP_SAMPLE_LIST_ITEM) {

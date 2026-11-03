@@ -47,7 +47,7 @@ pub fn paint_color_body(
     w: f32,
     y: f32,
 ) -> f32 {
-    let sw_h = ROW_H_PX;
+    let sw_h = super::encaixe::fila_h(ROW_H_PX);
     let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width
     paint_left_label(scene, text_system, theme, x, "Tint", label_w, y, sw_h);
     let sw_size = Spacing::Xl3.px();

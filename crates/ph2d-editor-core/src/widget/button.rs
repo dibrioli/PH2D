@@ -292,7 +292,19 @@ pub fn paint_button(
     let fg = ph2d_vector::Color::from_rgba8(fg_token.r, fg_token.g, fg_token.b, fg_token.a); // LITERAL-COLOR-OK: token-bridge — `fg_token` is ColorToken-resolved
     match button.kind {
         ButtonKind::IconOnly { icon } => {
-            paint_icon(scene, icon, rect, fg, StrokeToken::Default.px());
+            // Num cartão o ícone tem o tamanho do desenho dos ícones dele, não o da caixa.
+            let desenho = if crate::widget::card_ink::card_body().is_some() {
+                let g = ph2d_card_stack::metrics::ICON_GLYPH.min(rect.w).min(rect.h);
+                Rect::new(
+                    rect.x + (rect.w - g) * 0.5,
+                    rect.y + (rect.h - g) * 0.5,
+                    g,
+                    g,
+                )
+            } else {
+                rect
+            };
+            paint_icon(scene, icon, desenho, fg, StrokeToken::Default.px());
         }
         _ => {
             if button.state == ButtonState::Loading {

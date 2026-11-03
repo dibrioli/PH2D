@@ -25,11 +25,8 @@ use ph2d_vector::VectorScene;
 /// blow the layout.
 pub const MAX_VARIANT_DEPTH: usize = 4;
 
-/// Fraction of the row width given to a dict child's key column.
-///
-/// ⚠️ **A CHAVE é dado do artista e por isso continua a ser uma FRACÇÃO:** ela não tem tamanho
-/// conhecido, logo o que se lhe pode garantir é uma parte da linha — e ser elidida ali é a
-/// resposta certa. ⛔ O que **não** pode ser uma fracção é a coluna ao lado, que a casa escreve.
+/// Fraction of the row width given to a dict child's key column: a CHAVE é dado do artista, sem
+/// tamanho conhecido; a coluna ao lado, que a casa escreve, não pode ser uma fracção.
 const KEY_COL_FRACTION: f32 = 0.3; // LITERAL-PX-OK: layout proportion (key column share)
 
 /// The discriminant a [`VariantValue`] can take.
@@ -179,17 +176,9 @@ impl VariantEditor {
         flatten(&self.value)
     }
 
-    /// ⭐⭐⭐ **A COLUNA DA ESPÉCIE MEDE A FAMÍLIA, nunca o item em mãos.**
-    ///
-    /// ⛔⛔ Ela era `45 %` do que sobrava da linha, e uma fracção não sabe quantas letras a palavra
-    /// tem: medido em 2026-09-19, o chip entregava **`27,82 px`** ao rótulo enquanto `Float` pede
-    /// `30,72` e `Color` `33,54` ⇒ saíam **`Fl…`** e **`C…`**. ⚠️ E o censo só via dois dos seis:
-    /// ele mede a opção ESCOLHIDA, e `Integer` (`44,01`) e `Dictionary` (`63,62`) vivem na mesma
-    /// lista sem nunca terem sido medidos por ninguém.
-    ///
-    /// ⭐ A conta do invólucro sai da porta que o PINTOR usa
-    /// ([`super::dropdown_chip_width_for`]), nunca de uma segunda cópia aqui — é a mesma lei que a
-    /// barra da tira do Flip e a coluna do transporte da Timeline já seguem.
+    /// ⭐⭐⭐ **A COLUNA DA ESPÉCIE MEDE A FAMÍLIA, nunca o item em mãos** (a história e a tabela:
+    /// `tests/it/a_coluna_da_especie_mede_a_familia.rs`). A conta do invólucro sai da porta que o
+    /// PINTOR usa ([`super::dropdown_chip_width_for`]), nunca de uma segunda cópia aqui.
     #[must_use]
     pub fn kind_col_w(text_system: &mut TextSystem, row_h: f32) -> f32 {
         super::dropdown_chip_width_for(
@@ -202,10 +191,8 @@ impl VariantEditor {
         )
     }
 
-    /// ⭐⭐ **A coluna estreita parte a linha em fileiras** (galeria em cartões, doc
-    /// `CartoesUI/08`): `1` = chave · espécie · valor lado a lado (enquanto o valor fica com pelo
-    /// menos a largura da espécie); `2` = a chave em cima, espécie e valor em baixo; `3` = chave,
-    /// espécie e valor, cada um na sua. É uma decisão por EDITOR (uma geometria só).
+    /// ⭐⭐ **A coluna estreita parte a linha em fileiras** (doc `CartoesUI/08`): `1` = chave · espécie
+    /// · valor lado a lado; `2` = a chave em cima, espécie e valor em baixo; `3` = cada um na sua.
     #[must_use]
     pub fn lines(host_w: f32, kind_col: f32) -> usize {
         let chip_w = kind_col.min(host_w);
@@ -220,25 +207,33 @@ impl VariantEditor {
         }
     }
 
-    /// A altura de uma linha do editor (uma a três alturas de `row_h`).
+    /// ⭐ Quantas fileiras a linha ocupa: a raiz (`row_index` `0`, a ÚNICA sem chave —
+    /// [`flatten`]) não reserva a fileira da chave que não tem; sem isto sobrava uma fileira em
+    /// branco por baixo dela (foto g3, 03/11).
     #[must_use]
-    pub fn row_pitch(host_w: f32, kind_col: f32, row_h: f32) -> f32 {
-        row_h * Self::lines(host_w, kind_col) as f32
+    pub fn row_lines(host_w: f32, kind_col: f32, row_index: usize) -> usize {
+        (Self::lines(host_w, kind_col) - usize::from(row_index == 0)).max(1)
+    }
+
+    /// O topo da linha `row_index`, a contar do topo do editor.
+    fn row_top(host_w: f32, kind_col: f32, row_h: f32, row_index: usize) -> f32 {
+        if row_index == 0 {
+            return 0.0;
+        }
+        let filhos = (row_index - 1) * Self::lines(host_w, kind_col);
+        row_h * (Self::row_lines(host_w, kind_col, 0) + filhos) as f32
     }
 
     /// A altura do editor inteiro em `host_w`.
     #[must_use]
     pub fn height(&self, text_system: &mut TextSystem, host_w: f32, row_h: f32) -> f32 {
         let kind_col = Self::kind_col_w(text_system, row_h);
-        Self::row_pitch(host_w, kind_col, row_h) * self.rows().len() as f32
+        Self::row_top(host_w, kind_col, row_h, self.rows().len())
     }
 
-    /// As três medidas horizontais de uma linha, a partir da coluna da família.
-    ///
-    /// ⚠️ **A ordem de quem cede é a lei:** a coluna da ESPÉCIE serve-se primeiro porque a casa
-    /// sabe exactamente o que ela tem de mostrar; a da CHAVE fica com o que a fracção dela pede,
-    /// limitado ao que sobrou. *Quem tem tamanho conhecido não pode ser o que cede.* Partida em
-    /// fileiras, a chave fica com a fileira dela inteira.
+    /// As três medidas horizontais de uma linha. ⚠️ A ESPÉCIE serve-se primeiro (a casa sabe o que
+    /// ela mostra); a CHAVE fica com a fracção dela, limitada ao que sobrou. Partida em fileiras, a
+    /// chave fica com a fileira dela inteira.
     fn row_columns(host: Rect, row: &VariantRow, kind_col: f32) -> (f32, f32, f32) {
         let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
         let livre = (host.w - indent).max(0.0);
@@ -261,7 +256,7 @@ impl VariantEditor {
         kind_col: f32,
     ) -> Rect {
         let (indent, key_w, _) = Self::row_columns(host, row, kind_col);
-        let top = host.y + row_index as f32 * Self::row_pitch(host.w, kind_col, row_h);
+        let top = host.y + Self::row_top(host.w, kind_col, row_h, row_index);
         Rect::new(host.x + indent, top, key_w, row_h)
     }
 
@@ -330,6 +325,12 @@ pub fn paint_variant_editor(
     let font = TypeToken::Sm.px();
     // ⭐ **Uma vez por editor, nunca por linha:** a família não muda entre as linhas dele.
     let kind_col = VariantEditor::kind_col_w(text_system, row_h);
+    let card = crate::widget::card_ink::card_body();
+    let key_font = card.map_or(font, |_| ph2d_card_stack::metrics::LABEL_PX);
+    let key_ink = card.map_or_else(
+        || resolve(ColorToken::Text2, theme),
+        |ink| ink.color(ColorToken::CardLabel),
+    );
     for (i, row) in rows.iter().enumerate() {
         let key_rect = VariantEditor::key_rect(host, row, i, row_h, kind_col);
         if let Some(key) = &row.key {
@@ -338,10 +339,10 @@ pub fn paint_variant_editor(
                 scene,
                 key,
                 key_rect.x,
-                key_rect.y + (row_h - font) * 0.5,
-                font,
+                key_rect.y + (row_h - key_font) * 0.5,
+                key_font,
                 key_rect.w,
-                resolve(ColorToken::Text2, theme),
+                key_ink,
             );
         }
         // Kind dropdown chip.

@@ -109,7 +109,18 @@ pub fn paint_list_item(
         _ => None,
     };
     if let Some(token) = bg {
-        fill_rounded_rect(scene, rect, radius, resolve(token, theme));
+        // No corpo de um cartão a linha acesa e a sob o rato são tons dele.
+        let cor = crate::widget::card_ink::card_body().map_or_else(
+            || resolve(token, theme),
+            |ink| {
+                ink.color(if item.selected {
+                    ColorToken::KanbanCardRaised
+                } else {
+                    ColorToken::CardFieldHover
+                })
+            },
+        );
+        fill_rounded_rect(scene, rect, radius, cor);
     }
 
     let pad_x = Spacing::Lg.px();
@@ -226,9 +237,19 @@ pub fn paint_list_item(
 /// ⚠️ Porta própria para o gate poder PERGUNTAR em vez de re-derivar a aritmética do pintor: um
 /// oráculo que recomputa a fórmula concorda com ela estando as duas erradas.
 fn value_pill_width_in(item: &ListItem, room: f32, font: f32, text_system: &mut TextSystem) -> f32 {
+    // ⭐ Num cartão mede no peso em que se pinta: o peso leve media `Cmd+O` curto e o `paint_text`
+    //    cortava-o em `Cmd…` (foto g2b, 03/11).
+    let no_cartao = crate::widget::card_ink::card_body().is_some();
     item.value
         .as_ref()
-        .map(|v| text_system.layout(v, font, f32::INFINITY).width().min(room))
+        .map(|v| {
+            if no_cartao {
+                text_system.prefix_width_weighted(v, font, ph2d_text::FontWeight::MEDIUM)
+            } else {
+                text_system.layout(v, font, f32::INFINITY).width()
+            }
+            .min(room)
+        })
         .unwrap_or(0.0)
 }
 

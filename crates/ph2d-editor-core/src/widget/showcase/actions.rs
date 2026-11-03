@@ -47,8 +47,8 @@ pub fn paint_actions_body(
     w: f32,
     mut y: f32,
 ) -> f32 {
-    let btn_h = 30.0_f32; // LITERAL-PX-OK: action button height (distinct from ROW_H_PX)
-    let gap = Spacing::Xs.px();
+    let btn_h = super::encaixe::fila_h(30.0_f32); // LITERAL-PX-OK: action button height (distinct from ROW_H_PX)
+    let gap = super::encaixe::no_cartao(m::FIELD_GAP, Spacing::Xs.px());
     // Three labelled buttons — as many per row as give each the box its word asks for
     // (`super::encaixe`): three in the floating window, fewer in the narrow side column.
     let trio = [
@@ -87,7 +87,7 @@ pub fn paint_actions_body(
     y += (btn_h + row_gap()) * rows as f32;
 
     // Icon button + Tag (removable) on one row.
-    let icon_size = Spacing::Xl3.px();
+    let icon_size = field_h();
     let ir = Rect::new(x, y, icon_size, icon_size);
     hit_index.register(ids::INSP_SAMPLE_BTN_ICON, ir);
     let icon_state = store.button_visual(ids::INSP_SAMPLE_BTN_ICON);

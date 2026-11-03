@@ -201,6 +201,7 @@ fn populate_samples(store: &mut WidgetStore) {
     }
 
     store.register(ids::INSP_SAMPLE_SWATCH, InteractiveState::Plain);
+    store.register(ids::INSP_SAMPLE_RICH_EDITOR, InteractiveState::Plain);
     store.set_widget_color(ids::INSP_SAMPLE_SWATCH, [120, 60, 200, 255]);
 
     populate_w6_samples(store);

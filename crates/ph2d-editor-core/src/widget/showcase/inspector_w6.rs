@@ -73,8 +73,10 @@ pub fn paint_inspector_w6_body(
     w: f32,
     mut y: f32,
 ) -> f32 {
-    let label_font = TypeToken::Sm.px();
+    let label_font = super::encaixe::no_cartao(m::LABEL_PX, TypeToken::Sm.px());
     let label_h = label_font + Spacing::Xs.px();
+    // Num cartão o vão até à fileira seguinte é o `LABEL_TOP` do rótulo dela (`mini_label`).
+    let antes_do_rotulo = super::encaixe::no_cartao(0.0, row_gap());
 
     // ── Rect2Editor ─────────────────────────────────────────────────
     y = mini_label(
@@ -84,7 +86,7 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "Rect2Editor",
+        super::encaixe::nome("Rect2Editor", "chrome.sample.bounds"),
         label_h,
         label_font,
     );
@@ -117,7 +119,7 @@ pub fn paint_inspector_w6_body(
         text_system,
         theme,
     );
-    y += rect2_h + row_gap();
+    y += rect2_h + antes_do_rotulo;
 
     // ── NumericInputWithUnit ────────────────────────────────────────
     y = mini_label(
@@ -127,7 +129,7 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "NumericInputWithUnit (deg)",
+        super::encaixe::nome("NumericInputWithUnit (deg)", "chrome.sample.rotation"),
         label_h,
         label_font,
     );
@@ -138,18 +140,34 @@ pub fn paint_inspector_w6_body(
     );
     let unit_host = Rect::new(x, y, w, w6_field_h());
     hit_index.register(ids::INSP_SAMPLE_W6_UNIT, unit_widget.input_rect(unit_host));
-    paint_numeric_input_with_unit(
-        &unit_widget,
-        Some(ub),
-        store.number_input_mixed(ids::INSP_SAMPLE_W6_UNIT),
-        uc,
-        ua,
-        unit_host,
-        scene,
-        text_system,
-        theme,
-    );
-    y += w6_field_h() + row_gap();
+    let mixed = store.number_input_mixed(ids::INSP_SAMPLE_W6_UNIT);
+    if crate::widget::card_ink::card_body().is_some() {
+        // Num cartão a unidade mora no rótulo, nunca na caixa.
+        paint_number_input_with_buffer(
+            &unit_widget.input,
+            Some(ub),
+            mixed,
+            uc,
+            ua,
+            unit_host,
+            scene,
+            text_system,
+            theme,
+        );
+    } else {
+        paint_numeric_input_with_unit(
+            &unit_widget,
+            Some(ub),
+            mixed,
+            uc,
+            ua,
+            unit_host,
+            scene,
+            text_system,
+            theme,
+        );
+    }
+    y += w6_field_h() + antes_do_rotulo;
 
     // ── BitmaskGrid32 ───────────────────────────────────────────────
     y = mini_label(
@@ -159,7 +177,7 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "BitmaskGrid32",
+        super::encaixe::nome("BitmaskGrid32", "chrome.sample.collision_layers"),
         label_h,
         label_font,
     );
@@ -183,7 +201,7 @@ pub fn paint_inspector_w6_body(
         hit_index.register(*id, BitmaskGrid32::cell_rect(x, y, w, cell_h, bit));
     }
     paint_bitmask_grid32(&grid, x, y, w, cell_h, scene, text_system, theme);
-    y += BitmaskGrid32::grid_height(cell_h) + row_gap();
+    y += BitmaskGrid32::grid_height(cell_h) + antes_do_rotulo;
 
     // ── SegmentedAdaptive ───────────────────────────────────────────
     y = mini_label(
@@ -193,7 +211,10 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "SegmentedAdaptive (9-slice modes)",
+        super::encaixe::nome(
+            "SegmentedAdaptive (9-slice modes)",
+            "chrome.sample.slice_mode",
+        ),
         label_h,
         label_font,
     );
@@ -218,7 +239,7 @@ pub fn paint_inspector_w6_body(
         store,
         hit_index,
     );
-    y += seg_h + row_gap();
+    y += seg_h + antes_do_rotulo;
 
     // ── VariantEditor (visual reference) ────────────────────────────
     y = mini_label(
@@ -228,7 +249,10 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "VariantEditor (recursive, depth \u{2264}4)",
+        super::encaixe::nome(
+            "VariantEditor (recursive, depth \u{2264}4)",
+            "chrome.sample.metadata",
+        ),
         label_h,
         label_font,
     );
@@ -251,7 +275,7 @@ pub fn paint_inspector_w6_body(
         text_system,
         theme,
     );
-    y += variant_h + row_gap();
+    y += variant_h + antes_do_rotulo;
 
     // ── KeyValueList (visual reference) ─────────────────────────────
     y = mini_label(
@@ -261,7 +285,7 @@ pub fn paint_inspector_w6_body(
         x,
         w,
         y,
-        "KeyValueList",
+        super::encaixe::nome("KeyValueList", "chrome.sample.custom_properties"),
         label_h,
         label_font,
     );
@@ -281,7 +305,7 @@ pub fn paint_inspector_w6_body(
     paint_key_value_list(&kv, kv_host, w6_field_h(), scene, text_system, theme);
     y += kv.total_height(w6_field_h());
 
-    y + SECTION_BOTTOM_PAD_PX
+    y + super::encaixe::no_cartao(0.0, SECTION_BOTTOM_PAD_PX)
 }
 
 /// Short label row above a control, returning the next `y`.
@@ -297,6 +321,9 @@ fn mini_label(
     label_h: f32,
     label_font: f32,
 ) -> f32 {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        return super::encaixe::rotulo_em_cima(scene, text_system, ink, x, w, y, label);
+    }
     // ⭐ A frase QUEBRA na coluna estreita (`super::encaixe`); numa fileira é a altura de sempre.
     let top = (label_h - label_font) * 0.5;
     let h = super::encaixe::frase(

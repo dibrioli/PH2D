@@ -64,14 +64,15 @@ pub fn paint_slider_body(
         theme,
     );
     y += slider_h;
+    let vao = super::encaixe::no_cartao(m::FIELD_ROW_GAP, Spacing::Sm.px());
 
     // A barra de DUAS pegas (intervalo `lo..hi`, Pixel P8 — a dinâmica do pincel) e a caixa da
     // CURVA de cor (Pixel P7 — Color Curve). Amostras ESTÁTICAS, sem `hit_index`: o gesto vive no
     // produto (`ph2d-panel-pixel-tools`, o diálogo Color Curve), a galeria mostra a forma.
-    y += Spacing::Sm.px();
+    y += vao;
     let (lo, hi) = (0.25, 0.75); // LITERAL-PX-OK: intervalo de amostra da galeria (fracções da trilha)
     crate::widget::paint_range_slider(Rect::new(x, y, w, field_h()), lo, hi, None, scene, theme);
-    y += field_h() + ph2d_tokens::control_gap_px();
+    y += field_h() + row_gap();
     let curve_h = field_h() * 4.0; // LITERAL-PX-OK: quatro filas, a altura da caixa no diálogo Color Curve
     let pontos = [(64, 40), (192, 220)];
     crate::widget::paint_curve_editor(Rect::new(x, y, w, curve_h), &pontos, None, scene, theme);
@@ -96,7 +97,7 @@ pub fn paint_slider_body(
     if !crate::paint::ui_is_redesign() {
         return y;
     }
-    y += Spacing::Sm.px();
+    y += vao;
     let style = crate::paint::slider_style();
     let r = Rect::new(x, y, w, style.row_h_px());
     crate::widget::paint_property_box(

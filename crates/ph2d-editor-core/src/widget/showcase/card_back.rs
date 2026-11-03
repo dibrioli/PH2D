@@ -153,10 +153,13 @@ thread_local! {
 }
 
 /// Pinta os três widgets a partir de `y`; devolve o fundo.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn paint_card_back_widgets(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
@@ -199,10 +202,83 @@ pub(super) fn paint_card_back_widgets(
     EDITOR.with(|cell| {
         let mut cell = cell.borrow_mut();
         let ed = cell.get_or_insert_with(|| demo_rich_editor(ids::INSP_SECTION_CARD));
+        // ⭐ Num cartão a moldura e o cursor dizem a verdade: só com o foco do clique. A janela
+        //    flutuante fica com a amostra semeada em edição.
+        let no_cartao = crate::widget::card_ink::card_body().is_some();
+        if no_cartao {
+            ed.editing = store.focus_id() == Some(ids::INSP_SAMPLE_RICH_EDITOR);
+        }
         let eh = ed.preferred_height(text_system, w);
         let r = Rect::new(x, y, w, eh);
+        if no_cartao {
+            hit_index.register(ids::INSP_SAMPLE_RICH_EDITOR, r);
+        }
         paint_rich_editor(ed, r, scene, text_system, theme);
         let _ = paint_rich_editor_menu(ed, r, scene, text_system, theme);
         y + eh
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::widget::card_ink::{CardInk, com};
+
+    fn pinta(store: &WidgetStore, hits: &mut HitIndex) -> bool {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        paint_card_back_widgets(
+            &mut scene,
+            &mut text,
+            Theme::Dark,
+            hits,
+            store,
+            0.0,
+            ph2d_tokens::PANEL_MIN_W_PX,
+            0.0,
+        );
+        EDITOR.with(|c| c.borrow().as_ref().is_some_and(|e| e.editing))
+    }
+
+    /// ⭐ A foto da galeria (03/11): a amostra pintava-se sempre com a moldura de foco e o cursor.
+    /// Num cartão elas seguem o foco do `store`, e o clique que o dá chega ao editor porque ele
+    /// regista o alvo; fora de um cartão a semente fica. *Mutação: tirar a linha do `ed.editing`.*
+    #[test]
+    fn the_sample_editor_in_a_card_is_framed_only_while_it_has_the_focus() {
+        let mut store = WidgetStore::with_capacity(8);
+        store.register(ids::INSP_SAMPLE_RICH_EDITOR, InteractiveState::Plain);
+        let ink = CardInk::of_list(Theme::Dark);
+
+        let mut hits = HitIndex::new();
+        assert!(
+            !com(ink, || pinta(&store, &mut hits)),
+            "sem foco, sem moldura"
+        );
+        let id = ids::INSP_SAMPLE_RICH_EDITOR;
+        let r = hits
+            .rect_for(id)
+            .expect("o cartão regista o alvo do clique");
+        let arena = bumpalo::Bump::new();
+        let baixo = ph2d_host::PointerEvent {
+            x: r.x + 1.0,
+            y: r.y + 1.0,
+            pressure: 1.0,
+            kind: ph2d_host::PointerKind::Down,
+            source: ph2d_host::PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
+            timestamp_ns: 0,
+        };
+        let _ = crate::interaction::dispatch_pointer(&mut store, &hits, baixo, &arena);
+        assert_eq!(store.focus_id(), Some(id), "o clique dá o foco à amostra");
+        let mut hits = HitIndex::new();
+        assert!(com(ink, || pinta(&store, &mut hits)), "com foco, moldura");
+
+        store.set_focus(None);
+        let mut fora = HitIndex::new();
+        assert!(
+            pinta(&store, &mut fora),
+            "a janela flutuante fica com a semente"
+        );
+        assert!(fora.rect_for(id).is_none());
+    }
 }

@@ -38,6 +38,8 @@ pub const INSP_SAMPLE_BTN_SECONDARY: NodeId = hash_node_id("insp_sample_btn_seco
 pub const INSP_SAMPLE_BTN_DANGER: NodeId = hash_node_id("insp_sample_btn_danger");
 pub const INSP_SAMPLE_BTN_ICON: NodeId = hash_node_id("insp_sample_btn_icon");
 pub const INSP_SAMPLE_LIST_ITEM: NodeId = hash_node_id("insp_sample_list_item");
+/// O editor rico de amostra do cartão «Card»: o foco dele decide a moldura e o cursor.
+pub const INSP_SAMPLE_RICH_EDITOR: NodeId = hash_node_id("insp_sample_rich_editor");
 pub const INSP_SAMPLE_TAG_REMOVE: NodeId = hash_node_id("insp_sample_tag_remove");
 
 // Section header ids — clicking toggles the section's collapsed

@@ -65,7 +65,7 @@ pub fn paint_vector_body(
 
     let two_chip_w = ((w - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0);
 
-    y += SECTION_LABEL_TO_CONTROL_PX;
+    y += super::encaixe::no_cartao(0.0, SECTION_LABEL_TO_CONTROL_PX);
 
     let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_SAMPLE_V3_X);
     let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_SAMPLE_V3_Y);
@@ -125,5 +125,5 @@ pub fn paint_vector_body(
         theme,
     );
 
-    y + field_h() + SECTION_BOTTOM_PAD_PX
+    y + field_h() + super::encaixe::no_cartao(0.0, SECTION_BOTTOM_PAD_PX)
 }

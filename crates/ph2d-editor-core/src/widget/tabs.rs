@@ -175,6 +175,12 @@ pub fn paint_tabs_with_hover(
     //    um COMANDO: era assim que o selector `Center / Pivot / Custom` do Inspector entrava três
     //    vezes na dívida. ⚠️ Desarmado isto é um `Cell::get` e um `return`.
     crate::widget::composto::grupo(tabs.items.iter().map(|t| t.id));
+    if let (Some(ink), TabsVariant::Segmented) =
+        (crate::widget::card_ink::card_body(), tabs.variant)
+    {
+        paint_segmented_in_card(tabs, rect, hovered, scene, text_system, ink);
+        return;
+    }
     if tabs.variant == TabsVariant::Segmented {
         // ⭐ Raio e moldura pela porta do TEMA — a calha das abas é plana num tema moderno.
         let radius = crate::paint::frame_radius(theme, Radius::Md.px());
@@ -263,6 +269,56 @@ pub fn paint_tabs_with_hover(
                 );
             }
         }
+    }
+}
+
+/// As abas segmentadas no corpo de um cartão: a pílula `CardField` com o segmento aceso
+/// `KanbanCardRaised` — o mesmo desenho do segmentado de `panel/cards_linhas.rs`.
+fn paint_segmented_in_card(
+    tabs: &Tabs,
+    rect: Rect,
+    hovered: Option<usize>,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: crate::widget::card_ink::CardInk,
+) {
+    use ph2d_card_stack::metrics as m;
+    fill_rounded_rect(
+        scene,
+        rect,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::CardField),
+    );
+    for (i, item) in tabs.items.iter().enumerate() {
+        let r = tabs.tab_rect(rect, i);
+        let aceso = i == tabs.selected;
+        if aceso || hovered == Some(i) {
+            let inset = Rect::new(
+                r.x + m::SEG_PAD,
+                r.y + m::SEG_PAD,
+                (r.w - m::SEG_PAD * 2.0).max(0.0),
+                (r.h - m::SEG_PAD * 2.0).max(0.0),
+            );
+            let tom = if aceso {
+                ColorToken::KanbanCardRaised
+            } else {
+                ColorToken::CardFieldHover
+            };
+            fill_rounded_rect(scene, inset, m::SEG_RADIUS, ink.color(tom));
+        }
+        let fg = if aceso {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        };
+        paint_text_centered(
+            text_system,
+            scene,
+            &item.label,
+            r,
+            m::SEG_TEXT_PX,
+            ink.color(fg),
+        );
     }
 }
 

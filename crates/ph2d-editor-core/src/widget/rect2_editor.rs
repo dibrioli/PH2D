@@ -30,6 +30,15 @@ pub const RECT2_HANDLE_COUNT: usize = 5;
 /// Vertical gap between the two rows in [`Rect2Layout::Grid2x2`].
 const ROW_GAP_PX: f32 = 4.0; // LITERAL-PX-OK: inter-row gap in 2x2 layout
 
+/// O vão das duas fileiras: num cartão, o do ritmo dos campos dele.
+fn row_gap() -> f32 {
+    if crate::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::FIELD_ROW_GAP
+    } else {
+        ROW_GAP_PX
+    }
+}
+
 /// How the four fields are arranged.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Rect2Layout {
@@ -112,7 +121,7 @@ impl Rect2Editor {
     fn cell_h(&self, host_h: f32) -> f32 {
         match self.layout {
             Rect2Layout::Row => host_h,
-            Rect2Layout::Grid2x2 => ((host_h - ROW_GAP_PX) * 0.5).max(0.0),
+            Rect2Layout::Grid2x2 => ((host_h - row_gap()) * 0.5).max(0.0),
         }
     }
 
@@ -121,7 +130,7 @@ impl Rect2Editor {
     pub fn preferred_height(layout: Rect2Layout, row_h: f32) -> f32 {
         match layout {
             Rect2Layout::Row => row_h,
-            Rect2Layout::Grid2x2 => row_h * 2.0 + ROW_GAP_PX,
+            Rect2Layout::Grid2x2 => row_h * 2.0 + row_gap(),
         }
     }
 
@@ -147,7 +156,7 @@ impl Rect2Editor {
                     let col = (i % 2) as f32;
                     let row = (i / 2) as f32;
                     let x = host.x + (field_w + label_w + gap) * col + label_w;
-                    let y = host.y + (cell_h + ROW_GAP_PX) * row;
+                    let y = host.y + (cell_h + row_gap()) * row;
                     Rect::new(x, y, field_w, cell_h)
                 })
             }

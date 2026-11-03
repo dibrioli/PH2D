@@ -142,3 +142,38 @@ fn a_coluna_e_a_da_familia_inteira_e_nao_tem_folga() {
          é paga pela coluna do VALOR, que é a que sobra"
     );
 }
+
+/// ⭐ A foto g3 (03/11): a raiz, que não tem chave, reservava a fileira dela e sobrava uma linha em
+/// branco por baixo. Cada linha tem a sua altura: as fileiras somadas são as que se pintam, e a 1.ª
+/// chave nasce logo abaixo da raiz. *Mutação: `row_lines` devolver `lines` também na raiz.*
+#[test]
+fn the_root_row_has_no_key_so_it_keeps_no_blank_line_for_one() {
+    let mut text = TextSystem::without_system_fonts();
+    let row_h = 28.0; // LITERAL-PX-OK: teste
+    let kind_col = VariantEditor::kind_col_w(&mut text, row_h);
+    let filhos = 3;
+    let ed = VariantEditor::new(
+        ph2d_a11y::NodeId(500),
+        "Params",
+        VariantValue::Dict(
+            (0..filhos)
+                .map(|i| (format!("k{i}"), VariantValue::Int(i)))
+                .collect(),
+        ),
+    );
+    let rows = ed.rows();
+    for (host_w, partida) in [
+        (kind_col * 4.0, 1),
+        (kind_col * 2.3, 2),
+        (kind_col * 1.5, 3),
+    ] {
+        assert_eq!(VariantEditor::lines(host_w, kind_col), partida, "fixtura");
+        let host = Rect::new(0.0, 0.0, host_w, 400.0); // LITERAL-PX-OK: teste
+        let raiz = VariantEditor::row_lines(host_w, kind_col, 0);
+        assert_eq!(raiz, (partida - 1).max(1), "{partida} fileiras");
+        let chave = VariantEditor::key_rect(host, &rows[1], 1, row_h, kind_col);
+        assert_eq!(chave.y, row_h * raiz as f32, "branco sob a raiz");
+        let total = raiz + partida * filhos as usize;
+        assert_eq!(ed.height(&mut text, host_w, row_h), row_h * total as f32);
+    }
+}

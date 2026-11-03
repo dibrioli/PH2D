@@ -131,7 +131,9 @@ pub fn paint_curve_editor(
     theme: Theme,
 ) {
     let r = crate::paint::frame_radius(theme, Radius::Xs.px());
-    fill_rounded_rect(scene, b, r, resolve(ColorToken::GraphBg, theme));
+    let fundo = crate::widget::card_ink::card_field_fill()
+        .unwrap_or_else(|| resolve(ColorToken::GraphBg, theme));
+    fill_rounded_rect(scene, b, r, fundo);
     let fino = StrokeToken::Thin.px();
     let tup = |p: [f32; 2]| (p[0], p[1]);
     let diag = [

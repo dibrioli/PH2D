@@ -172,7 +172,17 @@ pub fn paint_tree_view(
     for (visible_index, (depth, node)) in tree.visible_rows().iter().enumerate() {
         let y = rect.y + row_h * visible_index as f32;
         let row = Rect::new(rect.x, y, rect.w, row_h);
-        if tree.selected.contains(&node.id) {
+        if let Some(ink) = crate::widget::card_ink::card_body()
+            && tree.selected.contains(&node.id)
+        {
+            // No corpo de um cartão a linha acesa é o segmento aceso dele, sem moldura.
+            fill_rounded_rect(
+                scene,
+                row,
+                ph2d_card_stack::metrics::SEG_RADIUS,
+                ink.color(ColorToken::KanbanCardRaised),
+            );
+        } else if tree.selected.contains(&node.id) {
             // ⭐ Raio e moldura pela porta do TEMA: a linha seleccionada é só tinta num tema
             //    moderno (a `selected` do `Tree` do Godot).
             let radius = crate::paint::frame_radius(theme, Radius::Xs.px());

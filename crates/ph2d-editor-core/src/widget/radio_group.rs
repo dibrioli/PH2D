@@ -278,7 +278,11 @@ pub fn paint_radio_group_with_labels<T: Clone + PartialEq>(
     theme: Theme,
 ) {
     paint_radio_group(group, rect, scene, theme);
-    let font = TypeToken::Sm.px();
+    let font = if crate::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::SEG_TEXT_PX
+    } else {
+        TypeToken::Sm.px()
+    };
     for (i, opt) in group.options.iter().enumerate() {
         let r = group.option_rect(rect, i);
         let selected = group.selected.as_ref() == Some(&opt.value);

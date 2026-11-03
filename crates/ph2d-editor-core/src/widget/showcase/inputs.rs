@@ -47,7 +47,17 @@ pub fn paint_inputs_body(
     w: f32,
     mut y: f32,
 ) -> f32 {
+    // ⭐ Num cartão cada caixa leva o rótulo em cima (D13), e o vão até à seguinte é o `LABEL_TOP`.
+    let ink = crate::widget::card_ink::card_body();
+    let antes_do_rotulo = super::encaixe::no_cartao(0.0, row_gap());
+    let rotulo = |scene: &mut VectorScene, text: &mut TextSystem, y: f32, chave: &'static str| {
+        ink.map_or(y, |ink| {
+            super::encaixe::rotulo_em_cima(scene, text, ink, x, w, y, ph2d_i18n::tr(chave))
+        })
+    };
+
     // TextInput.
+    y = rotulo(scene, text_system, y, "chrome.sample.name");
     let r = Rect::new(x, y, w, field_h());
     hit_index.register(ids::INSP_SAMPLE_TEXT, r);
     let (ti_state, ti_text, ti_caret, ti_anchor) = read_text_input(store, ids::INSP_SAMPLE_TEXT);
@@ -64,7 +74,7 @@ pub fn paint_inputs_body(
         text_system,
         theme,
     );
-    y += field_h() + row_gap();
+    y += field_h() + antes_do_rotulo;
 
     // TextArea (3 lines tall).
     //
@@ -72,6 +82,7 @@ pub fn paint_inputs_body(
     // literal, e o widget promete TRÊS linhas: medido, ele precisa de **67** na escala de fábrica —
     // a vitrine desenhava a própria `TextArea` sete pixels curta demais, e ficaria mais curta ainda
     // no dia em que o artista autorasse o `spacing`.
+    y = rotulo(scene, text_system, y, "chrome.sample.notes_label");
     let area_h = crate::widget::text_area_min_height();
     let r = Rect::new(x, y, w, area_h);
     hit_index.register(ids::INSP_SAMPLE_TEXTAREA, r);
@@ -82,9 +93,10 @@ pub fn paint_inputs_body(
         .state(ta_state);
     ta.value = ta_text.to_string();
     paint_text_area_with_state(&ta, Some(ta_caret), ta_anchor, r, scene, text_system, theme);
-    y += area_h + row_gap();
+    y += area_h + antes_do_rotulo;
 
     // Combobox.
+    y = rotulo(scene, text_system, y, "chrome.sample.search");
     let r = Rect::new(x, y, w, field_h());
     hit_index.register(ids::INSP_SAMPLE_COMBO, r);
     let (cb_state, cb_open, cb_query, cb_caret, cb_anchor) =
@@ -102,14 +114,19 @@ pub fn paint_inputs_body(
     .open(cb_open)
     .state(cb_state);
     paint_combobox_with_state(&combo, cb_caret, cb_anchor, r, scene, text_system, theme);
-    y += field_h() + row_gap();
+    y += field_h() + antes_do_rotulo;
 
     // NumberInput.
-    let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width (demo geometry)
-    let chip_w = (w - label_w - Spacing::Md.px()).max(40.0); // LITERAL-PX-OK: min chip width (demo)
-    let r = Rect::new(x + label_w + Spacing::Md.px(), y, chip_w, field_h());
+    let r = if ink.is_some() {
+        y = rotulo(scene, text_system, y, "chrome.sample.sort_order");
+        Rect::new(x, y, w, field_h())
+    } else {
+        let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width (demo geometry)
+        let chip_w = (w - label_w - Spacing::Md.px()).max(40.0); // LITERAL-PX-OK: min chip width (demo)
+        paint_left_label(scene, text_system, theme, x, "Value", label_w, y, field_h());
+        Rect::new(x + label_w + Spacing::Md.px(), y, chip_w, field_h())
+    };
     hit_index.register(ids::INSP_SAMPLE_NUMBER, r);
-    paint_left_label(scene, text_system, theme, x, "Value", label_w, y, field_h());
     let (n_state, n_value, n_buffer, n_caret, n_anchor) =
         read_number_input(store, ids::INSP_SAMPLE_NUMBER);
     let num = NumberInput::new(ids::INSP_SAMPLE_NUMBER, "Value", n_value).state(n_state);

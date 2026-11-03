@@ -41,8 +41,8 @@ pub fn paint_card_body(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    _hit_index: &mut HitIndex,
-    _store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
@@ -69,7 +69,16 @@ pub fn paint_card_body(
     let pic_h = 64.0_f32; // LITERAL-PX-OK: demo illustration height (showcase-specific)
     let pic = Rect::new(x, y + card_h, w, pic_h);
     crate::widget::illustration::paint_illustration(scene, pic, DEMO_ILLUSTRATION, theme);
-    super::card_back::paint_card_back_widgets(scene, text_system, theme, x, w, y + card_h + pic_h)
+    super::card_back::paint_card_back_widgets(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y + card_h + pic_h,
+    )
 }
 
 /// O desenho de exemplo da galeria (coordenadas da moldura, `0..1`).

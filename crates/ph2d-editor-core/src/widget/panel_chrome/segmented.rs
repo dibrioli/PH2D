@@ -97,10 +97,13 @@ pub fn paint_segmented_button_in_group(
     //    repouso já é a de destino, então não sobra nada para animar). `Pressed`/`Focused` seguem
     //    **duros**: não são uma *quantidade* de nada.
     // ⭐ No corpo de um cartão o segmento apagado é a caixa dele, não um `Bg3` por cima da superfície.
+    // E o aceso é o segmento aceso dele, sem a tinta de acento.
     let no_cartao = crate::widget::card_ink::card_body()
-        .filter(|_| !selected && matches!(state, ButtonState::Normal | ButtonState::Hovered));
+        .filter(|_| selected || matches!(state, ButtonState::Normal | ButtonState::Hovered));
     let fill = if let Some(ink) = no_cartao {
-        ink.color(if hover_t > 0.0 {
+        ink.color(if selected {
+            ColorToken::KanbanCardRaised
+        } else if hover_t > 0.0 {
             ColorToken::CardFieldHover
         } else {
             ColorToken::CardField

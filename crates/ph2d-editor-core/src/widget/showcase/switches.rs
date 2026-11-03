@@ -48,7 +48,7 @@ pub fn paint_switches_body(
     mut y: f32,
 ) -> f32 {
     // Checkbox — o nome EM CIMA da marca quando não cabe ao lado dela (D13, `super::encaixe`).
-    let row_h = Density::Compact.row_h_px();
+    let row_h = super::encaixe::fila_h(Density::Compact.row_h_px());
     let (cb_state, cb_value) = store
         .checkbox(ids::INSP_SAMPLE_CHECKBOX)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
@@ -57,14 +57,15 @@ pub fn paint_switches_body(
         .state(cb_state)
         .value(cb_value);
     if !cb.label_fits_beside(Rect::new(x, y, w, row_h), text_system) {
-        paint_left_label(scene, text_system, theme, x, label, w, y, row_h);
-        y += row_h;
+        let nome_h = super::encaixe::no_cartao(m::LABEL_PX, row_h);
+        paint_left_label(scene, text_system, theme, x, label, w, y, nome_h);
+        y += nome_h + super::encaixe::no_cartao(m::LABEL_BOTTOM, 0.0);
         cb.label.clear();
     }
     let r = Rect::new(x, y, w, row_h);
     hit_index.register(ids::INSP_SAMPLE_CHECKBOX, r);
     paint_checkbox(&cb, r, scene, text_system, theme);
-    y += Density::Compact.row_h_px() + row_gap();
+    y += row_h + row_gap();
 
     // Toggle.
     let toggle_w = TypeToken::Xl3.px(); // LITERAL-PX-OK: toggle widget width (matches TypeToken::Xl3 = 44px by coincidence; chrome-specific)
@@ -114,7 +115,8 @@ pub fn paint_switches_body(
     )
     .orientation(RadioOrientation::Segmented)
     .selected(selected_label.to_string());
-    let r = Rect::new(x, y, w, ROW_H_PX);
+    let seg_h = super::encaixe::fila_h(ROW_H_PX);
+    let r = Rect::new(x, y, w, seg_h);
     paint_radio_group_with_labels(&rg, r, scene, text_system, theme);
     // Register per-option hit rects.
     for (i, id) in [
@@ -127,5 +129,5 @@ pub fn paint_switches_body(
     {
         hit_index.register(*id, rg.option_rect(r, i));
     }
-    y + ROW_H_PX
+    y + seg_h
 }

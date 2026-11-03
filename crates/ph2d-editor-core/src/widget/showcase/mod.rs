@@ -36,6 +36,7 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, Density, ICON_BTN_SIZE_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
@@ -81,12 +82,14 @@ pub(super) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: showcase body inset
 /// ⛔ **A SEXTA cópia da mesma resposta** (censo de 2026-09-06), e a de maior alcance: 18
 /// chamadas, que são as linhas do showcase — a maquinaria de que o Inspector é feito. Ela
 /// devolvia `Sm` (6 px) contra os 4 do resto do app. Delega para a porta.
+///
+/// ⭐ Dentro de um cartão ([`crate::widget::card_ink::com`]) o ritmo é o dos campos do vocabulário.
 pub(super) fn row_gap() -> f32 {
-    ph2d_tokens::control_gap_px()
+    encaixe::no_cartao(m::FIELD_ROW_GAP, ph2d_tokens::control_gap_px())
 }
 pub(super) const SECTION_HEAD_H: f32 = ROW_H_PX;
 pub(super) fn field_h() -> f32 {
-    Spacing::Xl3.px()
+    encaixe::no_cartao(m::FIELD_H, Spacing::Xl3.px())
 }
 /// ⭐⭐ **A folga acima e abaixo do risco entre secções.**
 ///
@@ -139,6 +142,11 @@ pub(super) fn paint_left_label(
     y: f32,
     row_h: f32,
 ) {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        let label_y = y + (row_h - m::LABEL_PX) * 0.5;
+        crate::widget::card_field::paint_label(scene, text_system, ink, x, label_y, label_w, label);
+        return;
+    }
     // Canon (2026-05-24): all field labels follow the Grid Settings
     // pattern — Base font (13 px) + Text1 + left-align via
     // `paint_text`. Was Xs/Sm at various points; user pinned it on

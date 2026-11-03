@@ -68,7 +68,7 @@ pub fn paint_identity_body(
     // A legenda à direita; na coluna estreita ela desce para debaixo dos avatares e quebra
     // (`super::encaixe`, D13 «rótulo em cima» lido ao contrário: a legenda segue o que nomeia).
     let caption = "Avatar · circle + square";
-    let font = TypeToken::Base.px();
+    let font = super::encaixe::no_cartao(m::LABEL_PX, TypeToken::Base.px());
     let cx = x + size * 2.0 + gap * 2.0;
     let side_w = (w - size * 2.0 - gap * 2.0).max(0.0);
     if super::encaixe::cabe(text_system, caption, font, side_w) {
@@ -84,7 +84,7 @@ pub fn paint_identity_body(
         below,
         font,
         w,
-        resolve(ColorToken::Text1, theme),
+        super::encaixe::tom_de_nome(theme),
     );
     below + h
 }

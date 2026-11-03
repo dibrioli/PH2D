@@ -183,17 +183,18 @@ pub fn paint_checkbox(
                     ph2d_tokens::row_pitch_px(),
                     resolve(label_color, theme),
                 );
-            } else if crate::widget::card_ink::card_body().is_some() {
-                // Num cartão não há coluna de nomes à direita: alinha com os rótulos do corpo.
-                crate::paint::paint_text_elided(
-                    text_system,
+            } else if let Some(ink) = crate::widget::card_ink::card_body() {
+                // Num cartão não há coluna de nomes à direita: alinha com os rótulos do corpo,
+                // na lei do rótulo dele.
+                let px = ph2d_card_stack::metrics::LABEL_PX;
+                crate::widget::card_field::paint_label(
                     scene,
-                    &cb.label,
+                    text_system,
+                    ink,
                     rect.x,
-                    ly,
-                    font_size,
+                    rect.y + (rect.h - px) * 0.5,
                     row.label.x + row.label.w - rect.x,
-                    resolve(label_color, theme),
+                    &cb.label,
                 );
             } else {
                 crate::widget::property_box::paint_property_label(

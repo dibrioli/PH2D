@@ -88,15 +88,19 @@ pub fn paint_range_slider(
     } else {
         SliderState::Normal
     };
-    paint_slider_track(
-        track,
-        0.0,
-        SliderOrientation::Horizontal,
-        (estado, crate::motion::SETTLED),
-        scene,
-        theme,
-    );
     let r = crate::paint::frame_radius(theme, Radius::Xs.px());
+    if let Some(fundo) = crate::widget::card_ink::card_field_fill() {
+        fill_rounded_rect(scene, track, r, fundo);
+    } else {
+        paint_slider_track(
+            track,
+            0.0,
+            SliderOrientation::Horizontal,
+            (estado, crate::motion::SETTLED),
+            scene,
+            theme,
+        );
+    }
     let cheio = Rect::new(
         track.x + track.w * lo,
         track.y,

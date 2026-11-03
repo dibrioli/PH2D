@@ -106,7 +106,6 @@ fn imagem(e: &Engine, camadas: &[RenderLayer<'_>]) -> Vec<u8> {
     let visual = PigmentVisual {
         paper: true,
         relevo: true,
-        ..PigmentVisual::default()
     };
     let mut out = vec![0u8; W * H * 4];
     for (k, linha) in out.chunks_mut(W * 4).enumerate() {

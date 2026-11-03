@@ -146,7 +146,11 @@ fn corre(smooth: f32, veu: bool) -> (usize, bool) {
     let caixas = super::otica_fora_porta::take_caixas();
     assert!(caixas >= 96, "a porta compôs só {caixas} caixas");
     assert!(
-        c.a.canvas_rgba.chunks_exact(4).any(|p| p != [255; 4]),
+        c.a.canvas_rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| *p != [255; 4]),
         "a cena não pintou nada"
     );
     (c.tique, c.oleo_visto)

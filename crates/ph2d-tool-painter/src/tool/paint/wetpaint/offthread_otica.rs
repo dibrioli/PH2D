@@ -418,17 +418,24 @@ fn cola(plano: &mut [u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel, b: 
     }
 }
 
+/// A sessão não tem compositor: o pedido de imagem não foi publicado.
+#[derive(Debug)]
+pub(in crate::tool::paint::wetpaint) struct SemCompositor;
+
 impl super::super::WetSession {
-    /// Publica um pedido de imagem; `Err(p)` = não há compositor (interruptor desligado, worker ritmado ou
-    /// ainda sem worker). `Ok(Some(antigo))` = o pedido ainda por servir que este substituiu.
+    /// Publica um pedido de imagem; `Err(SemCompositor)` = não há compositor (interruptor desligado, worker
+    /// ritmado ou ainda sem worker) e o pedido cai. `Ok(Some(antigo))` = o pedido ainda por servir que este
+    /// substituiu.
     pub(in crate::tool::paint::wetpaint) fn pede_imagem(
         &self,
         p: PedidoDeImagem,
-    ) -> Result<Option<PedidoDeImagem>, PedidoDeImagem> {
-        match self.worker.as_ref().and_then(|w| w.otica.as_ref()) {
-            Some(o) => Ok(o.pede(p)),
-            None => Err(p),
-        }
+    ) -> Result<Option<PedidoDeImagem>, SemCompositor> {
+        let o = self
+            .worker
+            .as_ref()
+            .and_then(|w| w.otica.as_ref())
+            .ok_or(SemCompositor)?;
+        Ok(o.pede(p))
     }
 
     /// Esta sessão tem compositor (o worker ao relógio subiu-o)?

@@ -127,13 +127,13 @@ impl Engine {
             let g = &l.grid;
             let faixas = match sujo {
                 Dirty::Clean => Vec::new(),
-                Dirty::Full => vec![0..usize::MAX],
+                Dirty::Full => std::iter::once(0..usize::MAX).collect(),
                 // Uma linha de folga de cada lado, e o ANEL que `solver::apply_boundaries` reescreve a cada passo
                 // fora do sujo (as linhas `0, 1, h, h+1` e as colunas `0, 1, w, w+1`).
                 Dirty::Rect { y0, y1, .. } => {
                     let a = (y0.max(1) as usize) - 1;
                     let b = (y1.max(0) as usize + 1).min(g.rows - 1);
-                    let mut f = vec![a * g.s..(b + 1) * g.s];
+                    let mut f: Vec<_> = std::iter::once(a * g.s..(b + 1) * g.s).collect();
                     for y in [0, 1, g.h, g.h + 1].into_iter().filter(|&y| y < g.rows) {
                         f.push(y * g.s..(y + 1) * g.s);
                     }

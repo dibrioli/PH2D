@@ -135,7 +135,7 @@ pub(super) fn confere_com_casa(t: &mut PainterTool, onde: &str) {
         );
     }
     assert!(
-        casa.chunks_exact(4).any(|p| p != [255; 4]),
+        casa.as_chunks::<4>().0.iter().any(|p| *p != [255; 4]),
         "{onde}: a cena não pintou nada"
     );
 }

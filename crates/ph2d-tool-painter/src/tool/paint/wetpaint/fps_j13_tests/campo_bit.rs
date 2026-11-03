@@ -141,7 +141,10 @@ fn dilata(mudou: &[u64], (ww, wh, nw): (usize, usize, usize), offs: &[(isize, is
 }
 
 /// Os deslocamentos que cada função lê (além de `(0,0)`): horizonte (+ o Sobel 3×3 da normal), rebote, luz directa.
-fn alcances(o: &OleoReal) -> ([Vec<(isize, isize)>; 3], (f64, usize, usize)) {
+/// Um conjunto de deslocamentos `(dx, dy)` em células.
+type Deslocs = Vec<(isize, isize)>;
+
+fn alcances(o: &OleoReal) -> ([Deslocs; 3], (f64, usize, usize)) {
     let escala = o.alcance_fenda.clamp(1.0, 24.0) / 24.0;
     let mut marcha = vec![(0, 0)];
     for k in 0..FATIAS {

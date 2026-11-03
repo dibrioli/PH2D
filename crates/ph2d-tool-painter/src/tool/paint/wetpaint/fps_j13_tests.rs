@@ -15,7 +15,9 @@ const LADO: usize = 1024;
 const HZ: f64 = 250.0;
 const DT_MS: f64 = 1000.0 / 60.0;
 const BLOCO: usize = 32;
-const FASES: [(&str, f64, Option<(&str, [u8; 3])>); 4] = [
+/// Uma fase da cena: nome, duração (s) e o pincel a carregar (preset, cor) ou nenhum.
+type FaseDaCena = (&'static str, f64, Option<(&'static str, [u8; 3])>);
+const FASES: [FaseDaCena; 4] = [
     (
         "dabber",
         2.5,
@@ -205,8 +207,10 @@ pub(super) fn gancho(
             for y in py0..py1 {
                 let (a, b) = ((y * w + px0) * 4, (y * w + px1) * 4);
                 px_mudou += cv[a..b]
-                    .chunks_exact(4)
-                    .zip(e.canvas[a..b].chunks_exact(4))
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .zip(e.canvas[a..b].as_chunks::<4>().0)
                     .filter(|(p, q)| p != q)
                     .count();
                 e.canvas[a..b].copy_from_slice(&cv[a..b]);

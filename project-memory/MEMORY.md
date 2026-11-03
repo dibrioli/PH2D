@@ -33,6 +33,7 @@
 - ⭐ [Dono 26/10: largar imagem na tela SEMPRE cria objeto; blocos que repetem = Tiled com Largura/Altura, Scale 1](project_tiled_blocks_and_canvas_drop_always_creates_2026_10_26.md)
 - ⭐ [Dono 26/10: seletor «Uso» Parada|Repetida|Animada logo abaixo de Image (nunca checkbox)](project_image_use_selector_under_image_2026_10_26.md)
 - ⭐⭐ [Dono 03/11: teste de pincel = alarme BARATO que aponta o que mudou + o DONO decide (gizmo × traço); fim das tabelas de 40 tamanhos](project_brush_tests_cheap_alarm_owner_decides_2026_11_03.md)
+- ⭐⭐ [Dono 03/11: manter a cura da cobertura mas devolver o molhado antigo (Wet Round/Drip); Blend > círculo](project_coverage_cure_must_keep_the_old_wetness_2026_11_03.md)
 - ⭐ [Óleo Real (27/10): W1c e W2 aprovadas; material = Principled SIMPLIFICADO, 8 nomes do Blender; W3 = material + motor + 13 presets](project_oleo_real_mission_w2_2026_10_27.md)
 - ⭐ [Kanban/TrelloClone (27/10): no projeto · o MESMO em aba e no Quadro · calendário interno · IA no fim · maquete antes da 1.ª tela](project_kanban_trello_clone_owner_decisions_2026_10_27.md)
 - ⭐ [Kanban 28/10: W2 aprovada; W2b..W11 em loop autónomo, smoke só no fim](project_kanban_autonomous_loop_owner_order_2026_10_28.md)

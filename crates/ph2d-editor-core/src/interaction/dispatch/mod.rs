@@ -26,6 +26,7 @@ mod number_input;
 mod pointer;
 mod pointer_down;
 mod pointer_down_menus;
+mod pointer_down_targets;
 mod pointer_move;
 mod pointer_up;
 pub mod scroll;

@@ -626,7 +626,14 @@ fn larguras_da_promessa(p: &Preset, crua: bool) -> Vec<f32> {
     std::thread::scope(|s| {
         let h: Vec<_> = RAIOS_DA_PROMESSA
             .iter()
-            .map(|&r| s.spawn(move || largura_de_com(p, r, crua, Relogio::DeUmaVez)))
+            .map(|&r| {
+                s.spawn(move || {
+                    if !crua && regua_da_largura::motor_fora_da_lei(p, r).is_some() {
+                        return f32::NAN;
+                    }
+                    largura_de_com(p, r, crua, Relogio::DeUmaVez)
+                })
+            })
             .collect();
         h.into_iter().map(|h| h.join().unwrap()).collect()
     })
@@ -637,9 +644,21 @@ fn fora_da_promessa(larguras: &[f32], rel: f32, tecto: f32) -> Vec<String> {
     RAIOS_DA_PROMESSA
         .iter()
         .zip(larguras)
+        // `NaN` = a promessa cai fora da lei medida ([`regua_da_largura::motor_fora_da_lei`]): FALHA, sem pintar.
         .filter(|(r, l)| {
-            (*l - (2.0 * *r).min(tecto)).abs() > TOLERANCIA_PX.max(rel * (2.0 * *r).min(tecto))
+            l.is_nan()
+                || (*l - (2.0 * *r).min(tecto)).abs()
+                    > TOLERANCIA_PX.max(rel * (2.0 * *r).min(tecto))
         })
-        .map(|(r, l)| format!("raio {r}: {l} px (pedido {}, tecto {tecto})", 2.0 * r))
+        .map(|(r, l)| {
+            if l.is_nan() {
+                format!(
+                    "raio {r}: o motor passa da lei medida (a tabela não chega a {} px)",
+                    2.0 * r
+                )
+            } else {
+                format!("raio {r}: {l} px (pedido {}, tecto {tecto})", 2.0 * r)
+            }
+        })
         .collect()
 }

@@ -2,7 +2,7 @@
 //! `presets_de_fabrica.rs` pelo tecto de 700 linhas; os ajudantes moram no pai.
 
 use super::memoria::{custo_da_cena, em_paralelo_pela_memoria, pico_mib};
-use super::regua_da_largura::envolvente_de_baixo;
+use super::regua_da_largura::{envolvente_de_baixo, motor_fora_da_lei};
 use super::*;
 
 /// **A promessa na ponta da tabela**: a lei crua ONDULA de raio para raio e 64 pontos interpolam a ondulação (Knife
@@ -14,18 +14,34 @@ fn refina_a_promessa(p: &mut Preset) {
     for _ in 0..3 {
         let custos: Vec<u64> = RAIOS_DA_PROMESSA
             .iter()
-            .map(|&r| custo_da_cena(p, r, false))
+            .map(|&r| {
+                if motor_fora_da_lei(p, r).is_some() {
+                    0
+                } else {
+                    custo_da_cena(p, r, false)
+                }
+            })
             .collect();
-        let medidas: Vec<(f32, f32, f32)> =
-            em_paralelo_pela_memoria(&custos, RAIOS_DA_PROMESSA.len(), |i| {
+        let medidas: Vec<(f32, f32, f32)> = em_paralelo_pela_memoria(
+            &custos,
+            RAIOS_DA_PROMESSA.len(),
+            |i| {
                 let (p, r) = (&*p, RAIOS_DA_PROMESSA[i]);
                 let motor = raio_do_motor_da_tabela(&p.parametros.width_table, r);
+                if let Some((m, maior)) = motor_fora_da_lei(p, r) {
+                    println!(
+                        "[fabrica] {}: raio {r} → motor {m} fora da lei medida (até {maior}): sem refino",
+                        p.parametros.name
+                    );
+                    return (r, motor, f32::NAN);
+                }
                 (r, motor, largura_de_com(p, r, false, Relogio::DeUmaVez))
-            });
+            },
+        );
         let mut mudou = false;
         for (r, motor, l) in medidas {
             let pedido = 2.0 * r;
-            if (l - pedido).abs() <= 0.75 * TOLERANCIA_PX.max(rel * pedido) {
+            if l.is_nan() || (l - pedido).abs() <= 0.75 * TOLERANCIA_PX.max(rel * pedido) {
                 continue;
             }
             let t = &mut p.parametros.width_table;

@@ -141,7 +141,7 @@ pub struct Afinacao {
     /// papel de antes, bit a bit), `1` = a física (`oraculo/README.md` §K10).
     pub rebote_papel: f64,
     /// W3b: o ganho do dente do papel na altura FINA da tinta com o Relevo do papel 1 (`oraculo/README.md`
-    /// §Transmission, calibrado contra a tela de antes de `ca26a7738a`).
+    /// §Transmission; calibrado contra o Cycles, `oraculo/relevo_papel_cycles.py`).
     pub papel_na_tinta: f64,
     /// Paper Press (dono 28/10): o ganho do dente do papel na ALTURA BASE e na SOMBRA da tinta com o Paper Press 0
     /// (`medida_paper_press_calibra`, Dabber, Cold Relief 1, o dente no miolo da tinta grossa ÷ o do papel nu, em
@@ -168,9 +168,9 @@ impl Default for Afinacao {
             antisserrilhado: 1.0,
             antisserrilhado_ambiente: 0.0,
             rebote_papel: 1.0,
-            // `medida_relevo_do_papel_calibra`: miolo ÷ nu 0,449 · 0,866 a 1 · 2 (linear); 0,67 (a tela de antes de
-            // `ca26a7738a`, Dabber de fábrica com o óleo) a 1,5.
-            papel_na_tinta: 1.5,
+            // Cura 02/11c: o Cycles com a tinta assente no dente (`oraculo/relevo_papel_cycles.py`) lê miolo ÷ nu
+            // 1,71; o produto 0,330 · 1,261 · 1,843 a 1 · 4 · 6 (linear) ⇒ 5,5. Tabela no commit.
+            papel_na_tinta: 5.5,
             papel_na_base: 2.4,
         }
     }

@@ -104,16 +104,18 @@ fn a_transmissao_e_o_relevo_do_papel_mostram_o_grao() {
             "{nome} 0,5 entre os dois: {meio} ({d0}..{um})"
         );
     }
-    // ⭐ O Relevo do papel 1 = a tela de antes de `ca26a7738a` na régua do §BUG-papel (o dente na tinta grossa ÷ no
-    // papel nu, absoluto: 0,67 com o óleo ligado) — e o grão também nos BRILHOS da tinta.
+    // ⭐ O Relevo do papel 1 = o Cycles com a tinta assente no dente do papel, na régua do §BUG-papel (o dente na tinta
+    // grossa ÷ no papel nu, absoluto: 1,71, `oraculo/relevo_papel_cycles.py`, tabela no commit da cura 02/11c; a
+    // âncora 0,67 de antes de `ca26a7738a` era o motor velho) — e o grão também nos BRILHOS da tinta.
     let abs = dente_na_tela(&com, &sem, &miolo) / nu_abs;
     let brilhos = dente_nos_brilhos(&com, &sem, &miolo) / nu_abs;
     println!(
-        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (antes de ca26a7738a 0,67) · nos brilhos {brilhos:.3}"
+        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (Cycles 1,71) · nos brilhos {brilhos:.3}"
     );
     assert!(
-        (0.55..=0.8).contains(&abs),
-        "Relevo do papel 1 ≈ a tela de antes: {abs} × 0,67"
+        // A faixa relativa de antes (0,55..0,80 em 0,67: −18 % · +19 %) sobre o número do oráculo.
+        (1.40..=2.04).contains(&abs),
+        "Relevo do papel 1 ≈ o Cycles: {abs} × 1,71"
     );
     assert!(brilhos >= 0.5, "o grão nos brilhos: {brilhos}");
 }
@@ -322,6 +324,71 @@ fn medida_relevo_do_papel_calibra() {
             dente_nos_brilhos(&b, &a, &miolo) / dn
         );
     }
+}
+
+/// A sonda do ORÁCULO do Relevo do papel (cura 02/11c): em `$PH2D_OLEO_PNG/entrada` as entradas do `cycles.py` da
+/// cena do gate com Relevo do papel 0 (`h_fina` sem o dente), o dente do papel em células `dente_papel.f32`
+/// (`dente_papel × Grid::paper`, a geometria do papel nu) e as máscaras do gate `miolo.pgm`/`nu.pgm`; imprime a
+/// régua do gate no produto por ganho `papel_na_tinta`. Régua: `oraculo/relevo_papel_cycles.py`.
+#[test]
+#[ignore = "medicao — corre-se à mão no perfil smoke"]
+fn medida_relevo_do_papel_oraculo() {
+    let dir =
+        std::path::PathBuf::from(std::env::var("PH2D_OLEO_PNG").expect("PH2D_OLEO_PNG=<pasta>"));
+    let e = dir.join("entrada");
+    std::fs::create_dir_all(&e).expect("pasta");
+    let (mut liso, cob) = cena_papel_texturizado(true, 0.0, true);
+    let (mut rugoso, _) = cena_papel_texturizado(true, 0.6, true);
+    let (miolo, nu) = miolo_e_papel_nu(&cob);
+    for (nome, m) in [("miolo", &miolo), ("nu", &nu)] {
+        let mut pgm = format!("P5\n{OW} {OH}\n255\n").into_bytes();
+        pgm.extend(m.iter().map(|&v| if v { 255u8 } else { 0 }));
+        std::fs::write(e.join(format!("{nome}.pgm")), pgm).expect("grava");
+    }
+    let nu_abs = dente_na_tela(&tela_final(&mut rugoso), &tela_final(&mut liso), &nu);
+    let o0 = rugoso.wet_oleo_real_valores();
+    for g in [0.0, 1.0, 4.0, 5.5, 6.0] {
+        let mut o = o0;
+        o.af.papel_na_tinta = g;
+        rugoso.set_wet_oleo_real(Some(o));
+        com_material(&mut rugoso, 10, 1.0);
+        let com = tela_final(&mut rugoso);
+        let sem = sem_o_dente_na_tinta(&mut rugoso);
+        println!(
+            "[relevo oraculo] ganho {g}: miolo ÷ nu {:.3} · nu {nu_abs:.3}",
+            dente_na_tela(&com, &sem, &miolo) / nu_abs
+        );
+    }
+    rugoso.set_wet_oleo_real(Some(o0));
+    com_material(&mut rugoso, 10, 0.0);
+    let o = ph2d_wet_paint::oleo_real::OleoReal {
+        material: ph2d_wet_paint::oleo_real::MaterialCartao::NEUTRO,
+        ..rugoso.wet_oleo_real_valores()
+    };
+    grava_folha_com(&mut rugoso, &e, o);
+    // O dente do papel nu em píxeis de relevo (o que o composite põe em `OleoReal::dente_papel`).
+    let dente_px = f64::from(
+        crate::tool::paint::wetpaint::grao_no_filme::relief_na_tinta(rugoso.paint.substrate_depth)
+            * crate::tool::paint::substrate_relief::MAX_TOOTH_PX,
+    );
+    let s = rugoso.paint.wetpaint.session.as_mut().expect("sessão");
+    let (gw, gh) = s.grid;
+    let g = s.engine.active_grid();
+    let k = dente_px / f64::from(s.ratio.max(1));
+    let mut dente = Vec::with_capacity(gw * gh * 4);
+    for cy in 1..=gh {
+        for cx in 1..=gw {
+            dente
+                .extend_from_slice(&((k * f64::from(g.paper[cx + cy * g.s])) as f32).to_le_bytes());
+        }
+    }
+    std::fs::write(e.join("dente_papel.f32"), dente).expect("grava");
+    grava_ppm(&e.join("nu_produto.ppm"), &tela_final(&mut liso), OW, OH);
+    println!(
+        "[relevo oraculo] dente_papel {dente_px} · ratio {} · {}",
+        s.ratio,
+        dir.display()
+    );
 }
 
 /// O papel CREME do documento (o do smoke do dono, `smoke_27_10/4.png`), aplicado como o painel aplica a cor.

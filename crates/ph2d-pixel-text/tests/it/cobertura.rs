@@ -49,3 +49,13 @@ fn every_builtin_pixel_font_covers_its_own_name() {
         assert!(f.covers(b.0), "{}", b.0);
     }
 }
+
+/// O caso negativo: o que uma fonte de fábrica não tem cai no glifo de recurso e NÃO cobre.
+#[test]
+fn a_builtin_pixel_font_does_not_cover_a_letter_it_lacks() {
+    let fonte = |n: &str| Fonte::new(TextStyle::new(FontChoice::Builtin(n.to_owned()), 1));
+    assert!(!fonte("tom-thumb").covers("日"), "tom-thumb não tem CJK");
+    for b in BUILTIN {
+        assert!(!fonte(b.0).covers("a\u{10FFFD}"), "{}: plano privado", b.0);
+    }
+}

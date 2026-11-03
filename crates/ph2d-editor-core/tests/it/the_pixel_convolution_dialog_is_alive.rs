@@ -185,8 +185,9 @@ fn the_kernel_list_fits_the_window_whole_rows_tall_and_short() {
             .hit_index
             .rect_for(ids::PIXEL_FILTER_KERNEL)
             .expect("chip");
+        let margem = ph2d_tokens::Spacing::Md.px();
         assert!(
-            painel.y > janela.y && painel.y + painel.h < janela.y + janela.h,
+            painel.y >= janela.y + margem && painel.y + painel.h <= janela.y + janela.h - margem,
             "{janela:?}: a lista encosta ou sai da janela: {painel:?}"
         );
         assert!(
@@ -393,4 +394,58 @@ fn a_filter_dialog_sits_where_it_covers_the_sprite_least() {
     );
     // ⚠️ O antigo Convolution de 3 colunas (650 × 460) não cabia ao lado: o mínimo geométrico ainda
     // tapava ~51 % do sprite (56 933 de 111 265 px²); a regra continua a valer para um diálogo largo.
+}
+
+/// [`Dropdown::region_in_whole_rows`] directo, com o chip a percorrer uma linha inteira de
+/// posições perto do TOPO (a lista abre abaixo) e do FUNDO (abre ACIMA) de uma janela baixa: a
+/// lista clampada fica a `Spacing::Md` de cada borda e só mostra linhas inteiras.
+#[test]
+fn the_whole_rows_region_keeps_the_margin_below_and_above_the_chip() {
+    use ph2d_a11y::NodeId;
+    use ph2d_editor_core::widget::{Dropdown, DropdownOption};
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_tokens::Spacing;
+    let opcoes = (0..39)
+        .map(|i| DropdownOption::new(NodeId(9_300_001 + i as u64), i, format!("{i}")))
+        .collect();
+    let dd = Dropdown::new(NodeId(9_300_000), "", opcoes);
+    let janela = Rect::new(0.0, 0.0, 640.0, 300.0);
+    let margem = Spacing::Md.px();
+    let row_h = Spacing::Xl.px();
+    let gap = Spacing::Xs.px();
+    let resto = |h: f32| h.rem_euclid(row_h);
+    let inteira = dd
+        .popover_rect_clamped(
+            Rect::new(0.0, 0.0, 80.0, row_h),
+            Rect::new(0.0, 0.0, 640.0, 1.0e5),
+        )
+        .h;
+    for passo in 0..(row_h as i32 * 2) {
+        let d = passo as f32 * 0.5;
+        for (chip, acima) in [
+            (Rect::new(40.0, row_h + d, 80.0, row_h), false),
+            (
+                Rect::new(40.0, janela.h - 2.0 * row_h - d, 80.0, row_h),
+                true,
+            ),
+        ] {
+            let regiao = dd.region_in_whole_rows(chip, janela, margem);
+            let p = dd.popover_rect_clamped(chip, regiao);
+            let ctx = format!("chip {chip:?} → {p:?}");
+            assert!(p.y >= janela.y + margem - 1e-3, "margem de cima: {ctx}");
+            assert!(
+                p.y + p.h <= janela.y + janela.h - margem + 1e-3,
+                "margem de baixo: {ctx}"
+            );
+            if acima {
+                assert!(p.y + p.h <= chip.y - gap + 1e-3, "abre ACIMA: {ctx}");
+            } else {
+                assert!(p.y >= chip.y + chip.h + gap - 1e-3, "abre abaixo: {ctx}");
+            }
+            assert!(
+                (resto(p.h) - resto(inteira)).abs() < 1e-3,
+                "só linhas inteiras: {ctx}"
+            );
+        }
+    }
 }

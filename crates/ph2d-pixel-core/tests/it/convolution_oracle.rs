@@ -328,3 +328,30 @@ fn every_kernel_carries_the_trials_channel_buttons() {
         assert_eq!(k.channels, want, "{}", k.name);
     }
 }
+
+/// Só o centro opaco e o divisor = a soma dos pesos fora dele (todos transparentes): `div − Σ w`
+/// dá 0 e a cor divide por 1. Fixa a ESCOLHA do «1» — o Trial não a mediu (handoff P8b §3).
+#[test]
+fn a_color_divisor_that_drops_to_zero_divides_by_one() {
+    static K: ph2d_pixel_core::filter::convolution::Kernel =
+        ph2d_pixel_core::filter::convolution::Kernel {
+            name: "teste-centro-so",
+            w: 3,
+            h: 3,
+            cx: 1,
+            cy: 1,
+            div: 4,
+            bias: 0,
+            channels: [true; 4],
+            weights: &[0, 1, 0, 1, 4, 1, 0, 1, 0],
+        };
+    let rgba = (0..9)
+        .map(|i| if i == 4 { [10, 20, 30, 255] } else { [0; 4] })
+        .collect();
+    let src = Source::from_rgba(3, 3, rgba);
+    let f = Convolution {
+        kernel: &K,
+        edge: Edge::Clamp,
+    };
+    assert_eq!(f.at(&src, 1, 1), [40, 80, 120, 255]);
+}

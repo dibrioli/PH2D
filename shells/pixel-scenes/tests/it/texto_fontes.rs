@@ -28,6 +28,16 @@ fn com(app: &mut PixelApp, sim: &SimWorld, bits: u64, font: usize, px: u32) {
     quadro(app, sim, bits);
 }
 
+/// No arranque o tamanho do Text já é um tamanho VÁLIDO da fonte de omissão (nunca o `1` cru).
+#[test]
+fn the_text_size_starts_valid_for_the_default_font() {
+    let o = PixelApp::default().options;
+    let fonte = usize::from(o.text_font);
+    assert_eq!(o.text_px, ph2d_pixel_text::valid_px(fonte, o.text_px, 0));
+    assert_ne!(o.text_px, 1);
+    assert_eq!(Some(o.text_px), builtin_line_height(fonte), "1× da linha");
+}
+
 #[test]
 fn the_font_list_starts_with_the_pixel_fonts() {
     let todas = ph2d_app_pixel::texto::fontes();

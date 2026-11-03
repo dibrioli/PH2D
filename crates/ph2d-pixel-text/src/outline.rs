@@ -161,7 +161,8 @@ pub fn covers(data: &[u8], index: u32, text: &str) -> bool {
     text.chars()
         .filter(|c| !c.is_control() && *c != ' ')
         .all(|ch| {
-            let Some(gid) = cmap.map(ch).filter(|g| g.to_u32() != 0) else {
+            // O `.notdef` (gid 0) já sai `None`: skrifa 0.44 `Charmap::map_impl` filtra-o.
+            let Some(gid) = cmap.map(ch) else {
                 return false;
             };
             !named || names.get(gid).is_none_or(|n| agl_agrees(ch, n.as_str()))

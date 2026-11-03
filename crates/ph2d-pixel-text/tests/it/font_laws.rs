@@ -552,3 +552,18 @@ fn builtin_fonts_open_and_write() {
         );
     }
 }
+
+/// `valid_px` sem direcção vai ao múltiplo MAIS PERTO: 1,6× da linha é 2×, 1,4× é 1×.
+#[test]
+fn valid_px_without_a_direction_rounds_to_the_nearest_multiple() {
+    for (i, b) in ph2d_pixel_text::BUILTIN.iter().enumerate() {
+        let lh = ph2d_pixel_text::builtin_line_height(i).expect("de fábrica");
+        assert_eq!(
+            ph2d_pixel_text::valid_px(i, lh * 16 / 10, 0),
+            2 * lh,
+            "{}",
+            b.0
+        );
+        assert_eq!(ph2d_pixel_text::valid_px(i, lh * 14 / 10, 0), lh, "{}", b.0);
+    }
+}

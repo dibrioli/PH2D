@@ -166,10 +166,13 @@ impl DepositLaw {
         if stamp > 1.0 {
             stamp = 1.0;
         }
+        // O mesmo carimbo no CENTRO do dab (`fall = 1`): a régua da cobertura da umidade, abaixo.
+        let mut cheio = (texv * self.intensity).min(1.0);
         // ⭐ A pressão leve desfaz em grão: a parte `k` da opacidade entra antes do portão (`opacidade^k`), o resto
         // (`opacidade^(1-k)`) depois — `k = 0` é a lei de sempre, ao bit.
         let opacidade_depois = if self.grao_da_pressao > 0.0 {
             stamp *= self.opacidade.powf(self.grao_da_pressao);
+            cheio *= self.opacidade.powf(self.grao_da_pressao);
             self.opacidade.powf(1.0 - self.grao_da_pressao)
         } else {
             self.opacidade
@@ -183,6 +186,7 @@ impl DepositLaw {
                 return None;
             }
             stamp /= po.p;
+            cheio /= po.p;
         }
         // Paper gate: tooth peaks always take pigment, valleys reject
         // it — that per-pixel pass/reject IS the granulation. Heavily
@@ -192,14 +196,19 @@ impl DepositLaw {
         } else {
             0.45
         };
-        let mut deposit = stamp - (1.0 - tooth) * self.gate;
+        let mut portao = (1.0 - tooth) * self.gate;
         if !self.ext_bypass {
             // Dry-brush extension: raise the gate subtraction.
-            deposit -= self.dry_gate * self.ext_dry_brush * 0.6;
+            portao += self.dry_gate * self.ext_dry_brush * 0.6;
         }
+        let mut deposit = stamp - portao;
         if deposit <= 0.0 {
             return None;
         }
+        // ⭐ A umidade é a da COBERTURA (cura-smearwet §17): a fração do depósito do centro que passou o portão, 0 no
+        // portão e 1 no miolo. O byte inteiro em toda célula que passava o portão fazia a célula meio-coberta da orla
+        // tão molhada como o miolo — a água corria por ela conforme a fase sub-píxel da orla caía na grade.
+        let cobertura = (deposit / (cheio.min(1.0) - portao)).clamp(0.0, 1.0);
         deposit *= sv;
         deposit *= opacidade_depois;
         if !self.ext_bypass {
@@ -209,7 +218,8 @@ impl DepositLaw {
         }
         // Wetness seed: OVERWRITE (not max) — repainting can dry the
         // byte back down.
-        Some((deposit, wet_byte_from_paper(tooth)))
+        let umidade = (f64::from(wet_byte_from_paper(tooth)) * cobertura).round() as u8;
+        Some((deposit, umidade))
     }
 }
 

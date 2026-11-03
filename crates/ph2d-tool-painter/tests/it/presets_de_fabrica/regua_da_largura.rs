@@ -102,7 +102,7 @@ pub(super) fn imagem_da_ferramenta(
     crua: bool,
     r: Relogio,
     semente: u64,
-) -> (Vec<u8>, u32, u32) {
+) -> (Vec<u8>, u32, u32, CenaDoRasto) {
     use ph2d_editor_core::tool::RasterEditTool;
     let base = crate::midias_de_fabrica::de_fabrica(base_da_ferramenta(modo));
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
@@ -121,7 +121,9 @@ pub(super) fn imagem_da_ferramenta(
     // A ORLA da base: os dois pontos dela, a normal para DENTRO da faixa e o raio da faixa (a largura é o dobro).
     let (w, h, orla, dentro, ferramenta, raio_da_base) = if modo == "Smear" {
         let (w, h) = cena_da_ferramenta(modo, motor);
-        let (cx, cy) = (80.0 + 2.0 * motor, h as f32 * 0.5);
+        // `cy` na grade INTEIRA (cura-smearwet §18): com `h · 0,5` a altura truncada `3m + 120` punha meia fase
+        // escondida a cada inteiro de `3m` (5,94 → 6 trocava as fases ¼ e ¾); a fase sub-píxel é só a da cena.
+        let (cx, cy) = (80.0 + 2.0 * motor, (h / 2) as f32);
         (
             w,
             h,
@@ -142,17 +144,21 @@ pub(super) fn imagem_da_ferramenta(
             1.5 * motor,
         )
     };
-    let pinta = |com_ferramenta: bool| {
+    let pinta = |com_base: bool, com_ferramenta: bool| {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
         t.set_wet_relogio_fixo(true);
         t.set_semente_dos_tracos(semente);
         assert!(t.wet_preset_aplicar(&direito(&base)).is_empty());
         t.set_brush_color_srgb8([191, 0, 18]);
-        for faixa in faixas_da_base(orla, dentro, raio_da_base, t.raio_maximo()) {
+        for faixa in faixas_da_base(orla, dentro, raio_da_base, t.raio_maximo())
+            .into_iter()
+            .filter(|_| com_base)
+        {
             t.set_brush_size_px(faixa.1);
             crate::sonda_gestos::gesto(&mut t, &faixa.0, 3.0, |_| 1.0);
         }
+        let orla = (modo == "Smear").then(|| orla_da_agua_da_base(&mut t, w, orla[0][0]));
         // Pela porta do navegador: ela põe a ferramenta do preset na mão (a interna escreve-o no slot dela e deixa o
         // Pincel na mão — a régua media o traço do Ink Brush).
         assert!(t.preset_aplicar(&direito(p)).unwrap().is_empty());
@@ -169,9 +175,9 @@ pub(super) fn imagem_da_ferramenta(
             crate::sonda_gestos::gesto(&mut t, &ferramenta, 3.0, |_| 1.0);
         }
         passa_o_tempo(&mut t, QUADROS_DA_LEI, r);
-        t.run_full().0
+        (t.run_full().0, orla)
     };
-    let (com, sem) = (pinta(true), pinta(false));
+    let ((com, orla), (sem, _)) = (pinta(true, true), pinta(true, false));
     let diferenca: Vec<u8> = com
         .as_chunks::<4>()
         .0
@@ -182,7 +188,45 @@ pub(super) fn imagem_da_ferramenta(
             [255 - d, 255 - d, 255 - d, 255]
         })
         .collect();
-    (diferenca, w, h)
+    let cx = 80.0 + 2.0 * motor;
+    let cena = CenaDoRasto {
+        m: motor,
+        x0: orla.map_or(cx, |o| o.max(cx)),
+    };
+    (diferenca, w, h, cena)
+}
+
+/// A cena do rasto do Smear que a régua precisa: o raio do motor EXACTO e a 1.ª coluna fora da água da base.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct CenaDoRasto {
+    pub(super) m: f32,
+    pub(super) x0: f32,
+}
+
+/// ⭐ **Onde acaba a água da base** (cura-smearwet §15): a coluna (px) a partir da orla `cx` da faixa de pé em que a
+/// grade do motor deixa de estar molhada (`wet` = 0), a mediana sobre as linhas da faixa. A água do Smear corre pelo
+/// chão molhado (o termo `wet` do freio, §10), por isso as colunas antes daqui medem a ORLA da base, não o rasto.
+fn orla_da_agua_da_base(t: &mut PainterTool, w: u32, cx: f32) -> f32 {
+    let mut fins = Vec::new();
+    t.wet_sonda_motor(|e| {
+        let g = e.active_grid();
+        let razao = w as f32 / g.w as f32;
+        let celula = |x: f32, j: usize| ((x / razao) as usize + 1).min(g.w) + j * g.s;
+        // Só as linhas onde a base está: a célula logo DENTRO da orla molhada.
+        for j in (1..=g.h).filter(|&j| g.wet[celula((cx - 1.0).max(0.0), j)] > 0) {
+            // A orla SUB-PÍXEL: cada célula molhada conta a sua COBERTURA, `wet ÷ o byte cheio do papel dela` (o
+            // depósito escreve `ceil(byte · cobertura)`, cura-smearwet §17) — a meia célula conta meia, não uma.
+            let (mut x, mut fim) = (cx.floor(), cx.floor());
+            while x < w as f32 && g.wet[celula(x, j)] > 0 {
+                let k = celula(x, j);
+                let cheio = ph2d_wet_paint::grid::wet_byte_from_paper(f64::from(g.paper[k]));
+                fim += razao * (f32::from(g.wet[k]) / f32::from(cheio.max(1))).min(1.0);
+                x += 1.0;
+            }
+            fins.push(fim);
+        }
+    });
+    mediana(fins)
 }
 
 /// A tela (w, h) da cena de [`imagem_da_ferramenta`] ao raio do motor `motor`: a do Smear (a faixa de pé) ou a do
@@ -319,11 +363,13 @@ pub(super) fn largura_da_agua(px: &[u8], w: u32, h: u32) -> f32 {
 /// Smear Shattered lia 597 px a 253,9 e 470 a 255,4). Por coluna, a [`largura_equivalente`]; a mediana.
 /// (⛔ Medido 29/10: a área de todas as colunas ÷ a soma dos picos — contra o ruído das ~8 colunas a raio pequeno — saltava
 /// MAIS no Smear Wet, queda 0,21 e 33,8 → 26,7 px a raio 6,3 → 6,7: as colunas de pico baixo e água larga mandavam.)
-pub(super) fn largura_do_rasto(px: &[u8], w: u32, h: u32) -> f32 {
-    // A cena: `w = 4,5·m + 160`, `cx = 80 + 2·m` ([`imagem_da_ferramenta`]).
-    let m = (w as f32 - 160.0) / 4.5;
-    let x0 = (80.0 + 2.0 * m) as u32;
-    let x1 = ((80.0 + 3.5 * m) as u32)
+///
+/// ⭐ cura-smearwet §15: as colunas começam em `cena.x0`, fora da água da base ([`orla_da_agua_da_base`]) — lá a água
+/// do Smear corre pela faixa molhada e a coluna mede a orla (25–80 px), não o rasto (10–18 px); a mediana das duas
+/// populações saltava com a fase. `cena.m` é o motor EXACTO (o `(w − 160)/4,5` truncado lia 4,684 e 4,779 iguais).
+pub(super) fn largura_do_rasto(px: &[u8], w: u32, h: u32, cena: CenaDoRasto) -> f32 {
+    let x0 = cena.x0 as u32;
+    let x1 = ((80.0 + 3.5 * cena.m) as u32)
         .max(x0 + COLUNAS_MIN_DO_RASTO)
         .min(w);
     mediana(
@@ -356,13 +402,110 @@ fn a_regua_do_rasto_le_um_traco_estreito() {
                     px[i..i + 3].fill(0);
                 }
             }
-            let l = largura_do_rasto(&px, w, h);
+            let l = largura_do_rasto(&px, w, h, CenaDoRasto { m, x0: cx });
             assert!(
                 (l - k as f32).abs() < 1e-4,
                 "m {m}, traço de {k} px: a régua leu {l}"
             );
         }
     }
+}
+
+/// ⭐ **O rasto do Smear Wet é contínuo no raio e não depende da fase** (cura-smearwet §15): a motor 4,5…6,5 (passo
+/// ¼) a largura não salta mais de 1 px entre raios vizinhos, e as fases ¼ px da cena movem-na ≤ 1 px. CONTROLO (a régua
+/// de antes, colunas desde `cx` e `m` truncado): na MESMA imagem a mediana das duas populações (orla molhada 25–80 px,
+/// rasto 10–18) salta 13,5 ↔ 25,3 (§14.2).
+#[test]
+fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
+    let (_, b) = ficheiros_do_wet()
+        .into_iter()
+        .find(|(rel, _)| rel.ends_with("/Smear Wet.ph2d-brush.png"))
+        .expect("o Smear Wet");
+    let p = sem_real_oil(ler(&b).unwrap());
+    let motores: Vec<f32> = (0..9).map(|i| 4.5 + 0.25 * i as f32).collect();
+    let fases = [0.0f32, 0.25, 0.5, 0.75];
+    let casos: Vec<(usize, usize)> = (0..motores.len())
+        .flat_map(|i| (0..fases.len()).map(move |f| (i, f)))
+        .collect();
+    let medidas: Vec<(f32, f32, f32)> = std::thread::scope(|s| {
+        let h: Vec<_> = casos
+            .iter()
+            .map(|&(i, f)| {
+                let (p, motor, fase) = (&p, motores[i], fases[f]);
+                s.spawn(move || {
+                    super::FASE_DA_CENA.set((fase, 1.0));
+                    let (px, w, h, cena) =
+                        imagem_da_ferramenta(p, "Smear", motor, true, Relogio::DeUmaVez, 0);
+                    let m_antigo = (w as f32 - 160.0) / 4.5;
+                    let antiga = CenaDoRasto {
+                        m: m_antigo,
+                        x0: (80.0 + 2.0 * m_antigo).floor(),
+                    };
+                    (
+                        largura_do_rasto(&px, w, h, cena),
+                        largura_do_rasto(&px, w, h, antiga),
+                        cena.x0 - (80.0 + 2.0 * motor),
+                    )
+                })
+            })
+            .collect();
+        h.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let tabela = |k: usize| -> Vec<Vec<f32>> {
+        (0..motores.len())
+            .map(|i| {
+                (0..fases.len())
+                    .map(|f| {
+                        let m = medidas[i * fases.len() + f];
+                        [m.0, m.1, m.2][k]
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+    let falhas = |l: &[Vec<f32>]| -> Vec<String> {
+        let mut v = Vec::new();
+        for (i, li) in l.iter().enumerate() {
+            let (lo, hi) = li
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+            if hi - lo > 1.0 {
+                v.push(format!("motor {}: fases {li:?}", motores[i]));
+            }
+            if let Some(lj) = l.get(i + 1) {
+                for f in 0..fases.len() {
+                    if (lj[f] - li[f]).abs() > 1.0 {
+                        v.push(format!(
+                            "fase {}: motor {} → {}: {} → {}",
+                            fases[f],
+                            motores[i],
+                            motores[i + 1],
+                            li[f],
+                            lj[f]
+                        ));
+                    }
+                }
+            }
+        }
+        v
+    };
+    let (nova, antiga, margem) = (tabela(0), tabela(1), tabela(2));
+    for i in 0..motores.len() {
+        println!(
+            "[rasto smear wet] motor {:.2} · margem {:?} · nova {:?} · antiga {:?}",
+            motores[i], margem[i], nova[i], antiga[i]
+        );
+    }
+    assert!(
+        !falhas(&antiga).is_empty(),
+        "controlo: a régua de antes já era contínua e invariante à fase {antiga:?}"
+    );
+    let f = falhas(&nova);
+    assert!(
+        f.is_empty(),
+        "o rasto do Smear Wet salta:\n{}",
+        f.join("\n")
+    );
 }
 
 /// A queda máxima da largura entre dois raios VIZINHOS da varredura de [`sonda_monotonia_da_largura`] (fração), o

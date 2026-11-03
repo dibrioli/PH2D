@@ -255,7 +255,13 @@ fn smear_com(
             film[i] = (film[i] as f64 + (src_film - film[i] as f64) * u * arrasta_agua) as f32;
             if molha > 0.0 && (film[i] as f64) < cap {
                 film[i] = (film[i] as f64 + (cap - film[i] as f64) * u * molha) as f32;
-                wet[i] = wet_byte_from_paper(paper[i] as f64);
+                // A umidade pela mesma fração que a água (cura-smearwet §17), como a do depósito: o byte inteiro em
+                // toda célula tocada molhava a borda da pegada como o miolo.
+                let alvo = f64::from(wet_byte_from_paper(paper[i] as f64));
+                let agora = f64::from(wet[i]);
+                if alvo > agora {
+                    wet[i] = (agora + (alvo - agora) * u * molha).round() as u8;
+                }
             }
             // Doc 23 P2 — the settled layer, resisted by staining.
             let u_sett = u * sett_gain;

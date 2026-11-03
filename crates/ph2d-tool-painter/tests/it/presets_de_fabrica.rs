@@ -478,7 +478,7 @@ std::thread_local! {
 
 /// A imagem que [`largura_de`] mede, e a régua com que a mede. ⛔ Com o Real Oil DESLIGADO (J6, REGRAS_DE_CUSTO
 /// §METODOLOGIA 4): a luz não muda onde a tinta está, e com ela cada raio pagava o campo de altura a cada passo.
-type Regua = fn(&[u8], u32, u32) -> f32;
+type Regua = Box<dyn Fn(&[u8], u32, u32) -> f32 + Send>;
 fn imagem_da_largura(
     p: &Preset,
     raio: f32,
@@ -494,11 +494,11 @@ fn imagem_da_largura(
         &sem
     };
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
-        let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r, semente);
+        let (px, w, h, cena) = imagem_da_ferramenta(p, modo, raio, crua, r, semente);
         let regua: Regua = match base_da_ferramenta(modo) {
-            _ if modo == "Smear" => largura_do_rasto,
-            "Wet Round" => largura_da_agua,
-            _ => largura_do_misturador,
+            _ if modo == "Smear" => Box::new(move |px, w, h| largura_do_rasto(px, w, h, cena)),
+            "Wet Round" => Box::new(largura_da_agua),
+            _ => Box::new(largura_do_misturador),
         };
         return (px, w, h, regua);
     }
@@ -518,9 +518,9 @@ fn imagem_da_largura(
         w,
         h,
         if espalha(p) {
-            largura_da_nuvem
+            Box::new(largura_da_nuvem)
         } else {
-            largura_que_se_ve_media
+            Box::new(largura_que_se_ve_media)
         },
     )
 }

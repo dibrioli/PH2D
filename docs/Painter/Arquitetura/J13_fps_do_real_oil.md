@@ -91,9 +91,13 @@ App, Real Oil, 1024², Radeon, 2 processos de cada intercalados (load 13–17), 
 Com o compositor, fase «corre» por rodada: imagens da água 40,1 · 28,6 · 20,0 · 16,2 · 11,8 · 12,4 /s; óptica por imagem
 0,4 · 17,9 · 33,8 · 47,5 · 67,7 · 65,6 ms (no compositor); cópia do espelho 0,4–3,5 ms (no worker, dentro da folga).
 
-**Aberto:** (1) o 1.º quadro de cada traço compõe EM CASA o sujo da água acumulado (o traço traz o motor): pico 60–119 ms
-uma vez por traço, crescendo com a poça — curar mandando esse sujo pela dívida do compositor e compondo em casa só a caixa
-do traço; (2) a imagem descartada por `uniao_local` custa uma imagem a mais (carimbar a cópia); (3) `take_otica()` não está
+P8 (`cbff1ee20a`, [doc](J13b_P8_pen_down.md)): no pen-down a água herdada vai pela dívida do compositor — o pico que crescia
+com a poça (105–115 ms) some. O que sobra, separado na cena (`troca` = a CENA lê o preset do disco, 15–28 ms, não é do
+artista): o quadro do PEN-DOWN custa 30–64 ms uma vez por traço (rodada 0 com a tela seca: Dabber 10, Wet Drip 34) e não
+cresce com a poça.
+
+**Aberto:** (1) o quadro do pen-down (30–64 ms): medir por dentro (o `bring_home` que espera o estágio do worker, o
+arranque da sessão/óleo, a 1.ª composição do traço com a óptica) antes de mexer; (2) a imagem descartada por `uniao_local` custa uma imagem a mais (carimbar a cópia); (3) `take_otica()` não está
 no relatório do shell (só na cena do FPS); (4) as escritas fora das portas de `J13b_P2_espelho.md` (3 e 4 latentes também
 na tela de casa).
 

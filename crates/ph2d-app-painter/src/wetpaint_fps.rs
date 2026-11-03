@@ -144,6 +144,10 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
     let mut pon: Vec<f64> = e.quadros.iter().map(|q| q.1).collect();
     let ev = e.quadros.iter().map(|q| q.2).sum::<usize>() as f64 / e.quadros.len().max(1) as f64;
     let max = per.iter().copied().fold(0.0, f64::max);
+    // `quadros[0]` fecha a fase anterior; o `[1]` paga a troca de pincel da CENA (ler o preset do disco), o `[2]` o
+    // pen-down. O máximo sem a troca é o que o artista sente.
+    let q = |k: usize| e.quadros.get(k).map_or(0.0, |q| q.0);
+    let max_sem_troca = per.iter().skip(2).copied().fold(0.0, f64::max);
     let linha = [
         quantil(&mut per, 0.5),
         quantil(&mut per, 0.95),
@@ -155,7 +159,7 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
     let ((c_ms, c_max, c_n), (o_ms, o_max, o_n)) = ph2d_tool_painter::wet_diag::take_otica();
     let media = |soma: f64, n: u64| soma / n.max(1) as f64;
     eprintln!(
-        "[fps] rodada {} {} {:<9}| quadros {:>4} | período p50 {:.1} p95 {:.1} max {:.1} ms | ponteiro p50 {:.2} ms | {:.1} eventos/quadro | imagens {:.1}/s óptica {:.1}/{:.1} ms cópia {:.2}/{:.2} ms",
+        "[fps] rodada {} {} {:<9}| quadros {:>4} | período p50 {:.1} p95 {:.1} max {:.1} ms | ponteiro p50 {:.2} ms | {:.1} eventos/quadro | imagens {:.1}/s óptica {:.1}/{:.1} ms cópia {:.2}/{:.2} ms | troca {:.1} pen-down {:.1} max sem a troca {:.1} ms",
         passo / FASES.len(),
         ["sem real", "real oil"][usize::from(oleo())],
         FASES[fase].0,
@@ -169,7 +173,10 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
         media(o_ms, o_n),
         o_max,
         media(c_ms, c_n),
-        c_max
+        c_max,
+        q(1),
+        q(2),
+        max_sem_troca
     );
     e.tabela[fase].push(linha);
     e.inicio_fase = None;

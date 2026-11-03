@@ -145,8 +145,13 @@ impl App {
         let b = self
             .held_button
             .unwrap_or(ph2d_host::PointerButton::Primary);
+        // O cursor preso do campo Figma pode engolir ou deslocar o movimento (`cursor_preso`).
+        let Some(position) = self.cursor_moved_preso(position) else {
+            return;
+        };
         let (x, y, t) = (position.x as f32, position.y as f32, Self::timestamp_ns());
         self.pointer_moved(ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, b, t));
+        self.sync_cursor_preso();
     }
 
     /// ⭐ A porta ÚNICA do movimento: o rato do winit e a caneta (`input_drop/caneta.rs`) acabam aqui.
@@ -395,6 +400,7 @@ impl App {
         );
         let evt = ph2d_pen::ponteiro::do_rato(x, y, kind, mapped_button, t);
         self.pointer_button(evt, button);
+        self.sync_cursor_preso();
     }
 
     /// ⭐ A porta ÚNICA do clique (ver [`Self::pointer_moved`]); `button` = o do winit.

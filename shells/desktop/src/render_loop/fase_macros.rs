@@ -89,22 +89,31 @@ impl crate::App {
         }
         let hero = gfx.hero_screen.as_ref();
         // O erro da reprodução em cena: só a shell alcança os palcos.
-        let erro = escolhido.and_then(|b| {
+        let erro_de = |b| {
             let mundo = || ph2d_app_macros::mundo::palco::erro_de(b);
             let motion = || self.motion_shell.palcos.erro_de(b).map(do_motion);
             let pintor = gfx.painter_macros.erro_de(b).map(erros::do_painter);
             pintor.or_else(motion).or_else(mundo)
-        });
-        // O cartão MACRO do Inspector: o componente (`build_info`) e as etapas da família.
+        };
+        let erro = escolhido.and_then(erro_de);
+        // O cartão MACRO do Inspector (o componente e as etapas da família): de cada objecto preso
+        // por um cartão solto (T61) e da seleção.
         #[cfg(feature = "panel-inspector")]
-        ph2d_panel_inspector::set_current_inspector_macro(escolhido.and_then(|b| {
-            let quantos = hero.map_or(0, |h| h.gizmo.selected_len());
-            let mut i = ph2d_app_components::macro_inspector::build_info(c.sim, b, quantos)?;
-            if let Some(r) = ph2d_app_macros::com(|m| m.resumo(c.sim, b, erro.clone(), ETAPAS)) {
-                (i.etapas, i.editada_desde, i.erro) = (r.etapas, r.editada_desde, r.erro);
-            }
-            Some(i)
-        }));
+        {
+            let cartao = |b, quantos| {
+                let mut i = ph2d_app_components::macro_inspector::build_info(c.sim, b, quantos)?;
+                if let Some(r) = ph2d_app_macros::com(|m| m.resumo(c.sim, b, erro_de(b), ETAPAS)) {
+                    (i.etapas, i.editada_desde, i.erro) = (r.etapas, r.editada_desde, r.erro);
+                }
+                Some(i)
+            };
+            use ph2d_panel_inspector::{com_cada_preso, set_current_inspector_macro as publica};
+            let pins = hero.map_or_else(Vec::new, |h| {
+                h.store.loose_pins_of(ph2d_editor_core::ids::INSP_PANEL)
+            });
+            com_cada_preso(&pins, |b| publica(cartao(b, 1)));
+            publica(escolhido.and_then(|b| cartao(b, hero.map_or(0, |h| h.gizmo.selected_len()))));
+        }
         #[cfg(feature = "panel-macros")]
         {
             use ph2d_editor_core::panel::Panel;

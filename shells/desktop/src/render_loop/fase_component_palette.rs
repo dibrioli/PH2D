@@ -28,13 +28,8 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // ⚠️ **E fica DEPOIS do dreno do pivot do joint, pela razão que os dois blocos abaixo
-        // já têm escrita:** ele esteve NO MEIO do par `let joint_pivot_commit = …` →
-        // `if let Some(…) = joint_pivot_commit`, e o gate
-        // `the_position_commit_reseats_the_anchor_through_the_door` reprovou — ele lê os 3000
-        // bytes a seguir à captura à procura da porta, e 27 linhas alheias empurraram-na para
-        // fora da janela. *A janela é a forma de o gate exigir que a captura e o dreno de uma
-        // intenção fiquem à vista um do outro; a cura é tirar o intruso, nunca alargá-la.*
+        // ⚠️ DEPOIS do dreno do pivot do joint (o gate `the_position_commit_reseats_the_anchor_
+        // through_the_door` lê a janela de 3000 bytes a seguir à captura; ver o cabeçalho).
         // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
         // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
         // biblioteca do Motion é irmã do `motion_bridge`.
@@ -65,7 +60,7 @@ impl crate::App {
             ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
         // ⭐ A COMPOSIÇÃO entrega as sementes das famílias donas (auditoria A1): a da física e a cerca da
         // câmera no contorno do nível (GEF 20 C6).
-        if picked.is_some() {
+        if picked.is_some() || hero.store.has_component_resets() {
             let seeds = [
                 ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
                 &[("ph2d::ecs::CameraLimits", ph2d_camera_frame::semeia_limites)],
@@ -73,6 +68,14 @@ impl crate::App {
             .concat();
             ph2d_app_components::component_attach::attach_picked(
                 picked.as_ref(),
+                sim,
+                component_registry,
+                &seeds,
+                toasts,
+            );
+            // O ↺ dos cartões (T60) repõe com as mesmas sementes.
+            ph2d_app_components::component_attach::reset_asked(
+                hero,
                 sim,
                 component_registry,
                 &seeds,

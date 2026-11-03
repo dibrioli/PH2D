@@ -5,15 +5,74 @@
 
 use super::*;
 
-/// O Inspector deste quadro: cada secção da seleção construída pela ordem de sempre e publicada ao painel. O player
-/// (§14) chega construído — o bloco dele fica na `publish`, onde o gate dos segundos de corrida o lê.
-#[allow(clippy::too_many_arguments)]
-pub(super) fn publish(
+/// O objecto que o Inspector retrata: a seleção, ou um objecto preso por um cartão solto (T61).
+pub(super) struct Alvo {
+    pub(super) bits: Option<u64>,
+    pub(super) n: usize,
+    /// A multi-seleção inteira — vazia com um só (o caso comum salta o «Mixed»).
+    pub(super) todos: Vec<u64>,
+}
+
+impl Alvo {
+    pub(super) fn da_selecao(hero: &HeroScreen) -> Self {
+        let n = hero.gizmo.selected_len();
+        let todos = if n > 1 {
+            hero.gizmo.iter_selected().collect()
+        } else {
+            Vec::new()
+        };
+        Self {
+            bits: hero.gizmo.selection,
+            n,
+            todos,
+        }
+    }
+
+    pub(super) fn preso(b: u64) -> Self {
+        Self {
+            bits: Some(b),
+            n: 1,
+            todos: Vec::new(),
+        }
+    }
+}
+
+/// O que é do PROJECTO, não de um objecto (catálogos, índice de assets, árvore de tags, unidade):
+/// uma vez por quadro, fora do retrato de cada objecto.
+pub(super) fn publish_global(
     hero: &HeroScreen,
     sim: &mut SimWorld,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     catalogs: &ph2d_asset_index::CatalogTree,
+    tags: &ph2d_tags::TagTree,
+) {
+    ph2d_panel_asset_browser::set_current_catalogs(catalogs.clone());
+    ph2d_app_components::asset_index_build::publish_for_frame(
+        sim,
+        asset_db,
+        atlas_asset_map,
+        catalogs,
+        hero.project.pixels_per_meter,
+        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
+        &hero.documents.asset_listing(), // D17: os Kanbans e os Quadros
+    );
+    let (unit, ppm) = (hero.project.display_unit, hero.project.pixels_per_meter);
+    ph2d_panel_inspector::set_current_tag_tree(crate::render_loop::inspector_tags::tag_tree_rows(
+        tags,
+    ));
+    ph2d_panel_inspector::set_current_display_unit(unit, ppm);
+}
+
+/// O Inspector de `alvo` neste quadro: cada secção construída pela ordem de sempre e publicada ao
+/// painel. O player (§14) chega construído.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn publish(
+    hero: &HeroScreen,
+    alvo: &Alvo,
+    sim: &mut SimWorld,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
     renderer: &ph2d_render::SpriteRenderer,
     game_camera_preview: bool,
@@ -40,28 +99,12 @@ pub(super) fn publish(
     // mesmo caminho do vizinho acima e pela mesma razão: o facto vive na PONTE.
     ray_hits: &[(u64, u64, f32)],
 ) {
-    // M14.5 inspector phase (6.4/§9): publish a per-frame
-    // snapshot of the selected sprite so `paint_inspector` can
-    // surface the Render Source section + Reimport button
-    // without crossing the ADR-0021 boundary into SimWorld.
-    // BulkSelect (T2.0): the full selection (primary + extras). Only
-    // collected (one alloc) for a MULTI-selection — single-select (the
-    // common case) takes the empty path and skips the Mixed compare.
-    let selected_count = hero.gizmo.selected_len();
-    // ⭐⭐⭐ **O facto da SELECÇÃO publicado UMA vez.** Ele já viajava daqui em vinte e quatro
-    //     campos `selected_count`; o que faltava era o painel poder lê-lo sem perguntar a uma
-    //     secção. Ver `ph2d_panel_inspector::set_current_inspector_selecionados`.
+    let (selected_count, inspector_selection) = (alvo.n, alvo.todos.as_slice());
     ph2d_panel_inspector::set_current_inspector_selecionados(selected_count);
-    let inspector_selection: Vec<u64> = if selected_count > 1 {
-        hero.gizmo.iter_selected().collect()
-    } else {
-        Vec::new()
-    };
     let inspector_sprite = super::inspector_sprite::sprite_info(
         hero,
+        alvo,
         sim,
-        &inspector_selection,
-        selected_count,
         atlas_asset_map,
         asset_db,
         renderer,
@@ -71,27 +114,27 @@ pub(super) fn publish(
         inspector_transform,
         inspector_visibility,
         inspector_name,
-    } = identity(hero, sim, &inspector_selection);
-    let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
-    let inspector_ordering = hero.gizmo.selection.and_then(|b| {
+    } = identity(alvo, sim);
+    let sel = inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
+    let inspector_ordering = alvo.bits.and_then(|b| {
         ph2d_inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
     });
-    let inspector_sampling = hero.gizmo.selection.and_then(|b| {
+    let inspector_sampling = alvo.bits.and_then(|b| {
         ph2d_inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
     });
-    let inspector_blend = hero.gizmo.selection.and_then(|b| {
+    let inspector_blend = alvo.bits.and_then(|b| {
         ph2d_inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
     // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».
     // Publicar só quando o componente existe faria a seção aparecer depois de a feature estar
     // ligada — ou seja, nunca, porque não haveria por onde ligá-la.
-    let inspector_slice = hero.gizmo.selection.and_then(|b| {
+    let inspector_slice = alvo.bits.and_then(|b| {
         crate::render_loop::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
     });
     // §12 Sockets / Named Anchors (ADR-0072). Publicado para toda entidade digna de Inspector —
     // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add Anchor».
-    let inspector_anchor = hero.gizmo.selection.and_then(|b| {
+    let inspector_anchor = alvo.bits.and_then(|b| {
         crate::render_loop::inspector_anchor::build_anchor_info(
             sim.world(),
             b,
@@ -107,14 +150,9 @@ pub(super) fn publish(
         inspector_joint,
         inspector_wheel,
     } = physics(
-        hero,
+        alvo,
         sim,
-        asset_db,
-        atlas_asset_map,
-        catalogs,
         component_registry,
-        &inspector_selection,
-        selected_count,
         join_draw_armed,
         join_kind_tag,
         bake_range,
@@ -145,9 +183,8 @@ pub(super) fn publish(
         inspector_visibility_section,
     } = late(
         hero,
+        alvo,
         sim,
-        &inspector_selection,
-        selected_count,
         game_camera_preview,
         preview_drive,
         tags,
@@ -155,26 +192,14 @@ pub(super) fn publish(
         projectile_over,
         ray_hits,
     );
-    // ⭐⭐⭐ **A secção TAGS** (TOP-20 #9) — `None` para quem não tem o componente (ADR-0166).
-    //
-    // ⚠️⚠️ **Esta nota dizia que a árvore não tinha o que fazer na [`late`]** — *«ela recebe o que
-    // sai da CENA, e enfiá-la lá obrigaria a receber um argumento que nenhuma das outras cinco
-    // lê»*. A W3b desmentiu-a no dia seguinte: a secção SIGNAL ACTIONS também precisa da árvore
-    // (para mostrar o CAMINHO da tag alvo), logo a `late` recebe-a e são DUAS a lê-la. *Uma
-    // justificação que assenta em «só uma precisa disto» expira no dia em que a segunda aparece.*
-    // Esta fica aqui e não lá por outra razão, essa estável: a `late` devolve um bloco de cinco
-    // irmãs, e acrescentar uma sexta ao `LateSections` só para poupar uma linha não a torna irmã
-    // de nada.
-    let inspector_tags = hero.gizmo.selection.and_then(|b| {
+    // ⭐ A secção TAGS (TOP-20 #9) — `None` sem o componente (ADR-0166).
+    let inspector_tags = alvo.bits.and_then(|b| {
         crate::render_loop::inspector_tags::build_tags_info(sim.world(), tags, b, selected_count)
     });
-    // ADR-0029 Phase C.1: publish snapshots to the panel crate's
-    // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
-    // writes — the field no longer exists; the panel-owned state +
-    // its thread-local snapshot setters do).
+    // ADR-0029 C.1: os instantâneos vão para os thread-locals do painel.
     #[cfg(feature = "panel-inspector")]
     {
-        publish_slot_image(hero, sim, asset_db, atlas_asset_map);
+        publish_slot_image(alvo, sim, asset_db, atlas_asset_map);
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
@@ -200,12 +225,6 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_path_follow(inspector_path_follow);
         ph2d_panel_inspector::set_current_inspector_statemachine(inspector_statemachine);
         ph2d_panel_inspector::set_current_inspector_tags(inspector_tags);
-        // ⭐ **A ÁRVORE DO PROJECTO** — publicada em TODO quadro, com ou sem selecção: ela não é
-        // dado de um objecto, e o segundo consumidor (o alvo de uma *Signal Action*) vive num
-        // objecto que pode não ter `Tags` nenhum.
-        ph2d_panel_inspector::set_current_tag_tree(
-            crate::render_loop::inspector_tags::tag_tree_rows(tags),
-        );
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);
@@ -216,10 +235,6 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_transform(inspector_transform);
         ph2d_panel_inspector::set_current_inspector_visibility(inspector_visibility);
         ph2d_panel_inspector::set_current_inspector_name(inspector_name);
-        ph2d_panel_inspector::set_current_display_unit(
-            hero.project.display_unit,
-            hero.project.pixels_per_meter,
-        );
     }
     #[cfg(not(feature = "panel-inspector"))]
     {
@@ -277,9 +292,8 @@ struct LateSections {
 #[allow(clippy::too_many_arguments)]
 fn late(
     hero: &HeroScreen,
+    alvo: &Alvo,
     sim: &mut SimWorld,
-    inspector_selection: &[u64],
-    selected_count: usize,
     game_camera_preview: bool,
     preview_drive: &ph2d_preview_drive::PreviewDrive,
     // ⭐ A árvore de tags (TOP-20 #9) — a secção SIGNAL ACTIONS mostra o CAMINHO da tag alvo.
@@ -291,8 +305,8 @@ fn late(
     // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do [`publish`].
     ray_hits: &[(u64, u64, f32)],
 ) -> LateSections {
-    let sel = inspector_selection;
-    let mut inspector_anim = hero.gizmo.selection.and_then(|b| {
+    let (sel, selected_count) = (alvo.todos.as_slice(), alvo.n);
+    let mut inspector_anim = alvo.bits.and_then(|b| {
         ph2d_app_sprite_anim::inspector::build_anim_info(sim.world(), b, selected_count)
     });
     // As teclas do mapa do herói são as opções «Key held» das regras (plano GameEngineFuncional 08).
@@ -302,11 +316,11 @@ fn late(
         }
     }
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_timer = hero.gizmo.selection.and_then(|b| {
+    let inspector_timer = alvo.bits.and_then(|b| {
         ph2d_app_components::timer_inspector::build_timer_info(sim.world(), b, selected_count)
     });
     // ⭐ A secção SIGNAL ACTIONS — `None` para quem não tem o componente (ADR-0166).
-    let inspector_action = hero.gizmo.selection.and_then(|b| {
+    let inspector_action = alvo.bits.and_then(|b| {
         ph2d_app_components::signal_actions_inspector::build_action_info(
             sim.world(),
             tags,
@@ -314,20 +328,16 @@ fn late(
             selected_count,
         )
     });
-    // ⭐ A secção AUDIO — `None` para quem não tem a fonte NEM as orelhas (ADR-0166).
-    //
-    // ⚠️ **Ela pede o mundo em MUTÁVEL**, e é a única da família: as três coisas que ela deriva —
-    // quantas orelhas a cena tem, qual delas manda, e se alguma tabela de acções manda isto tocar —
-    // são **queries**, e um `QueryState` do bevy precisa de `&mut World` para se preparar. *Não é
-    // escrita: é o preço de perguntar à cena em vez de adivinhar a partir do componente.*
-    let inspector_audio = hero.gizmo.selection.and_then(|b| {
+    // ⭐ AUDIO, `None` sem fonte nem orelhas (ADR-0166); `&mut` porque as três perguntas à cena
+    // (quantas orelhas, qual manda, que acção o toca) são queries — não é escrita.
+    let inspector_audio = alvo.bits.and_then(|b| {
         ph2d_app_components::audio_inspector::build_audio_info(sim.world_mut(), b, selected_count)
     });
     // ⭐ A secção CAMERA — `None` para quem não tem `GameCamera` (ADR-0166).
     //
     // ⚠️ **Ela pede a PROPORÇÃO do jogo** (o formato do projecto, plano GEF 17), e é a única da família: o aviso
     // *«a cerca é mais estreita que a vista»* é geometria do ECRÃ, e não dos quatro números da cerca.
-    let inspector_camera = hero.gizmo.selection.and_then(|b| {
+    let inspector_camera = alvo.bits.and_then(|b| {
         ph2d_app_components::camera_inspector::build_camera_info(
             sim.world_mut(),
             b,
@@ -346,7 +356,7 @@ fn late(
     //
     // ⚠️ **Ela pede a ÁRVORE e o RELÓGIO**: o caminho da tag dos pontos de nascimento lê-se da
     // árvore, e *«a corrida é o relógio a andar»* é a frase que separa «avariada» de «à espera».
-    let inspector_factory = hero.gizmo.selection.and_then(|b| {
+    let inspector_factory = alvo.bits.and_then(|b| {
         crate::render_loop::inspector_factory::build_factory_info(
             sim.world_mut(),
             tags,
@@ -359,7 +369,7 @@ fn late(
     //
     // ⚠️ Ela pede o RELÓGIO pela mesma razão da irmã: *«a corrida é o relógio a andar»* é a frase
     // que separa «avariado» de «à espera».
-    let inspector_topdown = hero.gizmo.selection.and_then(|b| {
+    let inspector_topdown = alvo.bits.and_then(|b| {
         crate::render_loop::inspector_topdown::build_topdown_info(
             sim.world(),
             b,
@@ -371,7 +381,7 @@ fn late(
     //
     // ⚠️ Ela pede uma coisa a mais: **se o voo já acabou**. Sem isso um projéctil que fez
     // exactamente o que devia lê-se como partido — está parado no ar com todos os números certos.
-    let inspector_projectile = hero.gizmo.selection.and_then(|b| {
+    let inspector_projectile = alvo.bits.and_then(|b| {
         let acabou = projectile_over.contains(&b);
         ph2d_app_components::projectile_inspector::build_projectile_info(
             sim.world(),
@@ -385,7 +395,7 @@ fn late(
     //
     // ⚠️ Ela pede a LEITURA VIVA, que é o que a distingue das irmãs: sem *«vê a Parede, a 1,75 m»*
     // ela seria seis campos numa tabela, e o artista não teria como afinar um alcance a olhar.
-    let inspector_ray = hero.gizmo.selection.and_then(|b| {
+    let inspector_ray = alvo.bits.and_then(|b| {
         let visto = ray_hits
             .iter()
             .find(|(olha, ..)| *olha == b)
@@ -403,7 +413,7 @@ fn late(
     //
     // ⚠️ Ela lê a CENA e não só o objecto: *há uma câmera do jogo?* é a razão nº 1 para nada se
     // mexer, e sem ela o painel mandaria o artista afinar um factor que a lei nem chega a ler.
-    let inspector_parallax = hero.gizmo.selection.and_then(|b| {
+    let inspector_parallax = alvo.bits.and_then(|b| {
         ph2d_app_components::parallax_inspector::build_parallax_info(
             sim,
             b,
@@ -414,26 +424,22 @@ fn late(
     });
     // ⭐⭐⭐ A secção WEAPON (ADR-0166) — pede a MUNIÇÃO VIVA: sem *«4 de 6 balas»* ela seria oito
     // campos numa tabela, e o artista não teria como afinar uma cadência a olhar.
-    let inspector_weapon = hero.gizmo.selection.and_then(|b| {
+    let inspector_weapon = alvo.bits.and_then(|b| {
         ph2d_app_components::weapon_inspector::build_info(sim, b, clock_playing, selected_count)
     });
     // ⭐⭐⭐ HEALTH/DAMAGE (plano 28) e NAV (plano 30) — família da FÍSICA, no irmão dela.
     let (inspector_vida, inspector_nav) =
-        fisica::vida_e_nav(hero.gizmo.selection, sim, selected_count, clock_playing);
+        fisica::vida_e_nav(alvo.bits, sim, selected_count, clock_playing);
     // ⭐⭐⭐ A secção TWEEN (suplente #22) — `None` para quem não tem o componente (ADR-0166).
     //
     // ⚠️ Ela pede DUAS colunas que não vêm do componente — *há timer neste índice?* e *há sprite?*
     // —, e é delas que sai a queixa: sem isso, um tween sem relógio parece-se com um partido.
-    let inspector_tween = hero.gizmo.selection.and_then(|b| {
+    let inspector_tween = alvo.bits.and_then(|b| {
         ph2d_app_components::tween_inspector::build_tween_info(sim.world(), b, selected_count)
     });
-    // ⭐⭐⭐ A secção PATH FOLLOW (suplente #23) — `None` para quem não tem o componente (ADR-0166).
-    //
-    // ⚠️ **Ela pede `world_mut`, e não é distracção:** a queixa precisa de saber se existe um objecto
-    // com aquele nome, e a busca por nome REGISTA o componente de identidade quando o mundo ainda
-    // não o viu — a armadilha que a `tagged` pagou (*«um `try_query` num mundo que nunca viu o
-    // componente responde NINGUÉM à consulta inteira»*).
-    let inspector_path_follow = hero.gizmo.selection.and_then(|b| {
+    // ⭐ PATH FOLLOW (suplente #23), `None` sem o componente; `world_mut` porque a busca por nome
+    // regista o componente de identidade num mundo que ainda não o viu (a armadilha da `tagged`).
+    let inspector_path_follow = alvo.bits.and_then(|b| {
         ph2d_app_components::path_follow_inspector::build_path_follow_info(
             sim.world_mut(),
             b,
@@ -445,7 +451,7 @@ fn late(
     //
     // ⚠️ Ela lê o VIVO (`StateMachineRuntime`) para dizer *«Now: …»*, e é isso que a torna útil com
     // o relógio a andar: sem o readout o artista tem de simular a tabela de cabeça.
-    let inspector_statemachine = hero.gizmo.selection.and_then(|b| {
+    let inspector_statemachine = alvo.bits.and_then(|b| {
         ph2d_app_components::statemachine_inspector::build_statemachine_info(
             sim.world(),
             b,
@@ -453,7 +459,7 @@ fn late(
             clock_playing,
         )
     });
-    let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
+    let inspector_visibility_section = alvo.bits.and_then(|b| {
         ph2d_app_components::inspector_visibility::build_visibility_section_info(
             sim.world(),
             b,
@@ -496,13 +502,14 @@ struct Identity {
 }
 
 /// O transform, a visibilidade (com o «Mixed» da multi-seleção) e o nome da seleção primária.
-fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> Identity {
+fn identity(alvo: &Alvo, sim: &SimWorld) -> Identity {
+    let inspector_selection = alvo.todos.as_slice();
     // M14.A: live Transform snapshot for the inspector. Same
     // ADR-0021 / HR-8 boundary as sprite snapshot — Inspector
     // never reads SimWorld; the host bridges. Lands on every
     // entity that has a `Transform` component, not just sprites
     // (so non-renderable entities still show their pose).
-    let inspector_transform = hero.gizmo.selection.and_then(|bits| {
+    let inspector_transform = alvo.bits.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let t = sim.world().get::<Transform>(entity)?;
         Some(ph2d_editor_core::InspectorTransformInfo {
@@ -520,7 +527,7 @@ fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> I
     // Only published when the selection has a `Transform`
     // (i.e. it's an Inspector-worthy entity); without a
     // Transform the Inspector hides the whole panel content.
-    let inspector_visibility = hero.gizmo.selection.and_then(|bits| {
+    let inspector_visibility = alvo.bits.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         sim.world().get::<Transform>(entity)?;
         let visible = sim
@@ -549,7 +556,7 @@ fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> I
     // `Entity_{hex}` when the entity has no Name component
     // yet — matches the existing `InspectorSpriteInfo::name`
     // shape. Same Transform-presence gate.
-    let inspector_name = hero.gizmo.selection.and_then(|bits| {
+    let inspector_name = alvo.bits.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         sim.world().get::<Transform>(entity)?;
         let name = sim
@@ -572,12 +579,12 @@ fn identity(hero: &HeroScreen, sim: &SimWorld, inspector_selection: &[u64]) -> I
 /// ⭐ A imagem da linha *Image* do Inspector (plano GEF 12): miniatura e nome da sprite seleccionada.
 #[cfg(feature = "panel-inspector")]
 fn publish_slot_image(
-    hero: &HeroScreen,
+    alvo: &Alvo,
     sim: &mut SimWorld,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
 ) {
-    ph2d_panel_inspector::slot_image::set_current_slot_image(hero.gizmo.selection.and_then(|b| {
+    ph2d_panel_inspector::slot_image::set_current_slot_image(alvo.bits.and_then(|b| {
         let e = ph2d_ecs::Entity::from_bits(b);
         let (name, t) =
             ph2d_app_components::asset_index_build::image_card(sim, asset_db, atlas_asset_map, e)?;

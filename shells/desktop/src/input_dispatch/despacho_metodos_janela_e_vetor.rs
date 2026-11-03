@@ -239,6 +239,8 @@ impl crate::App {
             .map(|h| {
                 if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
                     CursorIcon::Crosshair
+                } else if self.sobre_a_pega_de_um_campo(h) {
+                    CursorIcon::EwResize
                 } else if self.over_motion_split_divider(h) {
                     if h.view.center_split.is_vertical() {
                         CursorIcon::EwResize

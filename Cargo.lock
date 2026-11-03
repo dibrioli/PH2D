@@ -6912,6 +6912,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-cursor-preso"
+version = "0.0.0"
+dependencies = [
+ "winit",
+]
+
+[[package]]
 name = "ph2d-curve"
 version = "0.0.0"
 
@@ -7354,6 +7361,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
  "ph2d-core",
+ "ph2d-cursor-preso",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-entity-visibility",

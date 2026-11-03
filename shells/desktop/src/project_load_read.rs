@@ -34,14 +34,8 @@ impl crate::App {
                 return None;
             }
         };
-        // ⭐ **A PRIMEIRA migração da história do repo** (ADR-0164 F1). Até esta wave a
-        // política de facto era *"versão diferente = recusado"* — a auditoria de 21/08
-        // registou-a como ambiguidade em aberto (§8 item 7: HR-14 exige `migrate_vN_to_vN+1`
-        // e havia **zero**).
-        //
-        // ⚠️ A versão tem de ser lida **antes** do resto: o postcard é posicional, então
-        // desserializar bytes v95 com o tipo v96 não dá erro — dá lixo. Por isso o `ver` sai
-        // sozinho primeiro, e só depois se escolhe o tipo com que ler o corpo.
+        // ⚠️ A versão lê-se ANTES do resto (ADR-0164 F1): o postcard é posicional — bytes v95 com o
+        // tipo v96 não dão erro, dão lixo.
         let ver: u32 = match postcard::take_from_bytes::<u32>(&bytes) {
             Ok((v, _)) => v,
             Err(e) => {
@@ -49,9 +43,7 @@ impl crate::App {
                 return None;
             }
         };
-        // ⭐ **O vetor de um ficheiro antigo lê-se pela forma do FIO dele** (F16c `22` até ao `189`;
-        // W4.2 `23` até ao `199`; F44b `24`/`25` até ao `211`; F45 `26` até ao `212`): todo `VecPath` e `StrokeSpec` dentro do âmbito usa essa forma, e o
-        // resto do ficheiro, o tipo do braço. Ver `ph2d_vec_scene::stroke_wire`.
+        // ⭐ O vetor de um ficheiro antigo lê-se pela forma do FIO dele (`fio_do_projeto`).
         let fio = crate::project_schema::fio_do_projeto(ver);
         let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);
         // ⭐ **Até ao `205` as entradas da pilha do Vetor não tinham id** (F31 §B1, `VEC_SCENE` v25).
@@ -78,11 +70,7 @@ impl crate::App {
             // ⭐⭐⭐ **128 → 129: as TAGS** (TOP-20 #9). Duas coisas mudaram e nenhuma é aditiva no
             // fio: a árvore entrou no `ProjectState` (um campo no MEIO do fluxo de bytes, porque o
             // `state` é o primeiro campo do ficheiro) e o `SignalAction` ganhou o alvo por TAG.
-            //
-            // ⚠️ **É por isso que este braço lê com um tipo CONGELADO** e não com o vivo, ao
-            // contrário do que o braço do corte da `Sprite` fazia: ali a forma do ficheiro era a
-            // mesma. Aqui, ler com o vivo daria lixo bem-formado a partir do campo novo.
-            //
+            // ⇒ este braço lê com um tipo CONGELADO (o vivo daria lixo bem-formado a partir do campo novo).
             // ⚠️ **E COM migração, ao contrário dos últimos onze degraus:** o `128` é o schema que o
             // `main` tem desde 10/09, com o `Timer` e o `SignalActions` dentro — um projecto gravado
             // desde então tem autoria que recusar apagaria.

@@ -2,7 +2,7 @@
 //!
 //! ⚠️ **O corte por IDADE repete-se pela terceira vez, e o gatilho é sempre o mesmo:** o teto de
 //! 600 linhas do HR-18. O irmão `project_schema_history` (hoje em `docs/archive/project-schema/escada_v2_a_v82.md`) nasceu em `v82`; o
-//! [`super::project_schema_history_v83`] em 2026-09-07, com o degrau `122`; este em 2026-09-15,
+//! `project_schema_history_v83` (hoje em `docs/archive/project-schema/escada_v83_a_v98.md`) em 2026-09-07, com o degrau `122`; este em 2026-09-15,
 //! com o degrau `132` (o `ProjectileMotion` do TOP-20 #14), que levou a escada viva a `602`.
 //!
 //! ⛔ **A cura é sempre o CORTE, nunca subir o número** — a entrada em `FILE_OVERAGE_OK` só desce.

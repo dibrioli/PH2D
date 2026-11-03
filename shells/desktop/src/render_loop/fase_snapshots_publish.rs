@@ -46,6 +46,7 @@ impl crate::App {
             joint_paste_targets,
             player_live,
             player_law,
+            presos,
             joint_anchor_handles,
             joint_anchor_snap,
         } = self.fase_snapshot_readouts(window_size)?;
@@ -175,6 +176,7 @@ impl crate::App {
             self.fixed_step.fixed_dt(),
             player_live,
             player_law,
+            &presos,
             // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
             self.wheel_body_pick,
             self.wheel_rope_pick,
@@ -222,22 +224,33 @@ impl crate::App {
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
         kanban_families(sim, hero, tl, toasts);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
-        let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
-        let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), sel);
-        ph2d_panel_inspector::set_current_inspector_luz(info);
-        ph2d_panel_inspector::set_current_inspector_corpo_luz(corpo);
-        ph2d_app_constraints::inspector::publica(sim, sel.0, sel.1);
-        if let Some(m) = recusa {
+        let (timeline, playhead) = (&self.timeline, &self.playhead);
+        let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {
+            let (info, corpo, recusa) = luz2d.publicar(hero.view.luz2d, sim.world(), (b, n));
+            ph2d_panel_inspector::set_current_inspector_luz(info);
+            ph2d_panel_inspector::set_current_inspector_corpo_luz(corpo);
+            ph2d_app_constraints::inspector::publica(sim, b, n);
+            sequencia::publica(sim, timeline, playhead, b, n); // a cutscene (TOP-20 #19)
+            recusa
+        };
+        if let Some(m) = ultimas(sim, (hero.gizmo.selection, hero.gizmo.selected_len())) {
             toasts.push(Toast::warning(m));
         }
-        // ⭐⭐⭐ **A CUTSCENE** (TOP-20 #19) — fase-filha própria; ver o `mod sequencia`.
-        sequencia::publica(
-            sim,
-            &self.timeline,
-            &self.playhead,
-            hero.gizmo.selection,
-            hero.gizmo.selected_len(),
-        );
+        // T61: as secções tardias de cada objecto preso por um cartão solto, pelas mesmas portas.
+        let pins: Vec<u64> = presos.iter().map(|p| p.bits).collect();
+        ph2d_panel_inspector::com_cada_preso(&pins, |b| {
+            let (escolhido, quantos, a_correr) = (Some(b), 1, playhead.is_playing());
+            let mapa = &hero.input_map;
+            let s = tardios::Sessao {
+                escolhido,
+                quantos,
+                a_correr,
+                mapa,
+                motion,
+            };
+            tardios::publica(sim, tags, script.as_ref(), particles, &s);
+            let _ = ultimas(sim, (escolhido, quantos));
+        });
         Some(tool_preview_bits)
     }
 }

@@ -38,6 +38,13 @@ mod inspector;
 #[path = "snapshots_inspector_sprite.rs"]
 mod inspector_sprite;
 
+/// O player de um objecto preso por um cartão solto do Inspector: a vista e o veredito da lei (T61).
+pub(super) struct Preso {
+    pub(super) bits: u64,
+    pub(super) live: Option<ph2d_physics_ecs::PlayerView>,
+    pub(super) law: ph2d_physics_ecs::PlayerLiveness,
+}
+
 /// Walks PresentWorld + SimWorld to build the per-frame snapshots
 /// and writes them onto the `HeroScreen`. Caller (orchestrator)
 /// already holds the destructured `AppGfx` refs and the per-frame
@@ -128,18 +135,12 @@ pub(super) fn publish(
     // O passo fixo do relógio, para o número acima virar SEGUNDOS pela mesma
     // régua com que os tiques foram gravados.
     fixed_dt: f64,
-    // `W-PlayerOut` A3: o que a LEI publicou sobre o player selecionado no
-    // último tique. Resolvido pelo chamador pelo mesmo motivo das âncoras de
-    // joint — `publish` não recebe a ponte —, e vindo da porta ÚNICA
-    // (`PhysicsBridge::player_view`): uma segunda derivação aqui descreveria um
-    // personagem que a simulação não simulou.
+    // O que a LEI publicou sobre o player selecionado e o veredito do `pose_owner` (o que ela lê
+    // dele), pela porta única da ponte (`publish` não a recebe) — e o mesmo de cada objecto preso
+    // por um cartão solto do Inspector (T61).
     player_live: Option<ph2d_physics_ecs::PlayerView>,
-    // **O veredito do `pose_owner` sobre o player selecionado** — o que a lei de
-    // facto lê dele. Resolvido pelo chamador pelo mesmo motivo do `player_live`
-    // acima, e pela MESMA porta que decide quem escreve a pose: uma segunda
-    // derivação aqui (do `PlayerMode`) é o que fazia a §14 oferecer controles
-    // que ninguém consome.
     player_law: ph2d_physics_ecs::PlayerLiveness,
+    presos: &[Preso],
     // W-Pulley W3: a §13 tem a mesma máquina, uma família adiante — o eyedropper
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
@@ -220,48 +221,56 @@ pub(super) fn publish(
         join_draw_armed,
     );
     gizmo::global_view(hero, sim, last_pointer, suppress_sprite_gizmo);
-    // §14 Platform Player (W5) — a quarta da família. Ao contrário da §12/§13,
-    // ela TEM face vazia: `Some` para todo corpo Dynamic, com ou sem o
-    // componente, porque o botão dela é o que faz o comportamento existir.
-    // ⚠️ **A corrida gravada entra por FORA do mundo** (W17): ela é um fato do
-    // documento, não desta entidade, e é o único número da §14 que não sai do
-    // componente. Segundos, medidos com o MESMO passo fixo que gravou os tiques.
+    // §14 Platform Player: `Some` para todo corpo Dynamic (o botão dele faz o comportamento
+    // existir). A corrida gravada é um facto do documento, em segundos pelo MESMO passo fixo.
     let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
     let discarded_run_seconds = (discarded_run_ticks as f64 * fixed_dt) as f32;
-    let inspector_player = hero.gizmo.selection.and_then(|b| {
-        ph2d_app_physics::inspector::player::build_player_info(
+    inspector::publish_global(hero, sim, asset_db, atlas_asset_map, catalogs, tags);
+    let publica = |sim: &mut SimWorld, alvo: inspector::Alvo, live, law| {
+        let player = alvo.bits.and_then(|b| {
+            let (rec, disc) = (recorded_run_seconds, discarded_run_seconds);
+            ph2d_app_physics::inspector::player::build_player_info(sim, b, rec, disc, live, law)
+        });
+        inspector::publish(
+            hero,
+            &alvo,
             sim,
-            b,
-            recorded_run_seconds,
-            discarded_run_seconds,
-            player_live,
-            player_law,
-        )
+            asset_db,
+            atlas_asset_map,
+            sheets,
+            renderer,
+            game_camera_preview,
+            preview_drive,
+            clock_playing,
+            bake_range,
+            bake_channels_tag,
+            join_kind_tag,
+            joint_body_pick,
+            joint_paste_targets,
+            wheel_body_pick,
+            wheel_rope_pick,
+            join_draw_armed,
+            component_registry,
+            player,
+            tags,
+            projectile_over,
+            ray_hits,
+        );
+    };
+    // T61: cada objecto preso por um cartão solto, pelas mesmas portas; a seleção fica por último.
+    let pins: Vec<u64> = presos.iter().map(|p| p.bits).collect();
+    ph2d_panel_inspector::com_cada_preso(&pins, |b| {
+        let p = presos.iter().find(|p| p.bits == b);
+        let (live, law) = p.map_or((None, ph2d_physics_ecs::PlayerLiveness::INERT), |p| {
+            (p.live, p.law)
+        });
+        publica(sim, inspector::Alvo::preso(b), live, law);
     });
-    inspector::publish(
-        hero,
+    publica(
         sim,
-        asset_db,
-        atlas_asset_map,
-        catalogs,
-        sheets,
-        renderer,
-        game_camera_preview,
-        preview_drive,
-        clock_playing,
-        bake_range,
-        bake_channels_tag,
-        join_kind_tag,
-        joint_body_pick,
-        joint_paste_targets,
-        wheel_body_pick,
-        wheel_rope_pick,
-        join_draw_armed,
-        component_registry,
-        inspector_player,
-        tags,
-        projectile_over,
-        ray_hits,
+        inspector::Alvo::da_selecao(hero),
+        player_live,
+        player_law,
     );
 }
 
@@ -318,45 +327,16 @@ fn publish_gizmo(
     // resolve the same effective anchor the extract stamps — keeping the
     // selection box aligned with the rendered quad under centered/offset.
     let gizmo_ppm = hero.project.pixels_per_meter;
-    // Onda 2: factor the per-sprite GizmoView build into a closure so
-    // the primary, each extra, and the global union all share the
-    // exact same world→view math. Single source of truth for the
-    // affine decomposition + anchor compensation; any future render-
-    // path tweak only touches this closure.
-    // ADR-0111: sem `Sprite`, tenta a forma vetorial — mesma caixa, mesmo pivô,
-    // mesma rotação, derivados da bbox local da curva e do `Transform` da entidade.
-    // ⚠️ Lido ANTES do closure: ele captura um `u64` simples, e não `&hero` — que seria emprestado
-    // outra vez, mutavelmente, quando a view é escrita logo abaixo.
+    // Uma só conta mundo→vista para a primária, as extras e a união; sem `Sprite`, a forma vetorial
+    // (ADR-0111). O bit da folha lê-se ANTES: o closure não pode emprestar `hero`.
     let sheet_gizmo_bits: Option<u64> =
         crate::render_loop::sim_extract_sheet::previewed(hero).map(|e| e.to_bits());
     let build_view = |bits: u64,
                       sim: &SimWorld,
                       present: &mut PresentWorld|
      -> Option<ph2d_editor_core::GizmoView> {
-        // ⭐⭐⭐ **NENHUMA FAMÍLIA PUBLICA CAIXA DE OBJECTO FORA DO SELECT DA FERRAMENTA VECTORIAL**
-        // (ADR-0112) — UMA porta, e não um `if` por família. A razão é a que aquele ADR já escreve:
-        // *as alças registam hit-rects, e uma caixa sobre o canvas de um modo de autoria é um
-        // ladrão de cliques*. ⚠️ A selecção fica ARMADA — só a caixa e as alças somem —, e é isso
-        // que mantém o *Bind to Skeleton* com sujeito dentro do modo Osso.
-        //
-        // ⛔⛔ **A lei estava escrita para a forma vectorial e para o envelope, e a SPRITE e o
-        // GRUPO ficavam de fora — o buraco era invisível porque a sprite que vive debaixo de um
-        // gesto de autoria não existia.** Em 2026-09-13 a imagem presa ao esqueleto passou a emitir
-        // instância (plano `docs/Skeleton/03`, W2) e a `gizmo::sprite_view` passou a devolver
-        // caixa: seleccionada, o `ids::GIZMO_BBOX_INTERIOR` que o gizmo regista cobre o braço
-        // inteiro, o `on_canvas` do despacho fica **falso** em cima dele, o
-        // `ramo_ferramenta_vetorial` nem corre e **nenhum osso por cima da arte que ele deforma
-        // podia ser apontado ou posado** (report do dono: *«selecionar o osso não é mais
-        // possível»*). *Uma caixa que nasce onde o rig vive engole o rig.*
-        //
-        // ⭐⭐ **E o GÉMEO DO FLIP fechou no dia seguinte (2026-09-14), sem report — medido:** o
-        // `flip_gizmo_on` gateava só a arte do Flip, logo com a ferramenta Flip a desenhar um
-        // objecto de OUTRA família (uma sprite de referência, um grupo, uma forma) continuava a
-        // publicar caixa — e o `ramo_flip_premidos` exige o MESMO `on_canvas` que o ramo vectorial.
-        // ⇒ a condição desta porta passou a ser *«nenhuma ferramenta AUTORA no canvas»*, e o
-        // terceiro `if` por família morreu com ela. ⛔ **A saída não é isentar o gizmo no hit-test**
-        // (o que o Painter faz, por ter porta própria): ali a caixa continua PINTADA, e uma alça
-        // pintada que não pega é o controlo morto que este repo nomeia.
+        // ⭐ ADR-0112: nenhuma família publica caixa de objecto com uma ferramenta AUTORA no canvas —
+        // as alças roubariam o clique (a seleção fica armada). O caso do esqueleto e do Flip: o ADR.
         if !object_gizmo_on {
             return None;
         }
@@ -467,16 +447,8 @@ fn publish_gizmo(
     // **O NÚMERO do arrasto** (C3) — ao lado da view, e pelo mesmo motivo: os dois descrevem o
     // gesto em curso e são reconstruídos do mundo a cada quadro. Ver `gizmo_readout`.
     super::gizmo_readout::publish(hero, sim, camera, window_size);
-    // The POINT gizmo — every joint's anchors. A joint has a `Transform` but no
-    // box (so `build_view` returns None for it); these are the handles it gets,
-    // and they are NOT selection-gated: a joint has no sprite to pick, so a
-    // selection-gated handle is reachable only by finding the joint in the
-    // Hierarchy first (W-J2b). The "which anchors get one" rule lives in
-    // `point_gizmo` so it is gated headless (the publish here needs a live
-    // HeroScreen the test cannot build).
-    // ⚠️ `join_draw_armed` chega aqui pela SEGUNDA vez de propósito: ele pinta o
-    // botão Pressed no §11 e torna estas alças inertes, e é o MESMO fato — durante
-    // o gesto de desenhar, as âncoras já postas ficam à vista e fora de alcance.
+    // O gizmo de PONTO: as âncoras de cada junta, sem depender da seleção (a regra vive no
+    // `point_gizmo`, testada sem `HeroScreen`); o `join_draw_armed` torna-as inertes (W-J2b, W-J4).
     hero.gizmo.point_view = super::point_gizmo::build_point_view(
         joint_anchor_handles,
         camera,

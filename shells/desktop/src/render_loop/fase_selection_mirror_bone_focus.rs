@@ -10,6 +10,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        let (win, cam) = (gfx.scene_window(), gfx.camera);
         let FrameGfx {
             sim,
             hero_screen,
@@ -198,6 +199,17 @@ impl crate::App {
             )
         }));
         publica_a_ancora(sim, osso_em_foco);
+        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world()); // T36: o alfinete durável
+        // T36/T44 no Inspector: o Transform de cada objecto preso e a corda até à origem dele.
+        #[cfg(feature = "panel-inspector")]
+        {
+            use ph2d_card_rope::chave::origem;
+            use ph2d_editor_core::ids::INSP_PANEL as INSP;
+            let w = sim.world();
+            ph2d_card_rope::anda(&mut hero.store, INSP, |b| {
+                origem(w, b).map(|p| cam.world_to_screen(p, win))
+            });
+        }
     }
 }
 

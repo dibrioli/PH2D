@@ -14,6 +14,7 @@ pub(super) struct SnapshotReadouts {
     pub(super) joint_paste_targets: usize,
     pub(super) player_live: Option<ph2d_physics_ecs::PlayerView>,
     pub(super) player_law: ph2d_physics_ecs::PlayerLiveness,
+    pub(super) presos: Vec<crate::render_loop::snapshots::Preso>,
     pub(super) joint_anchor_handles: Vec<ph2d_editor_core::gizmo::PointHandle>,
     pub(super) joint_anchor_snap: Option<[f32; 2]>,
 }
@@ -118,10 +119,23 @@ impl crate::App {
         };
         // The candidate a live anchor drag has caught (the crosshair).
         let joint_anchor_snap = self.physics.joint_anchor_drag.and_then(|d| d.snap);
+        // T61: o mesmo de cada objecto preso por um cartão solto do Inspector.
+        let presos = (hero
+            .store
+            .loose_pins_of(ph2d_editor_core::ids::INSP_PANEL)
+            .into_iter())
+        .map(|bits| {
+            let e = ph2d_ecs::Entity::from_bits(bits);
+            let live = physics.player_view(e).copied();
+            let law = physics.player_liveness(sim.world(), e);
+            crate::render_loop::snapshots::Preso { bits, live, law }
+        })
+        .collect();
         Some(SnapshotReadouts {
             joint_paste_targets,
             player_live,
             player_law,
+            presos,
             joint_anchor_handles,
             joint_anchor_snap,
         })

@@ -133,15 +133,15 @@ fn compute_emissive_mixed(world: &ph2d_ecs::World, selected: &[u64], primary: f3
 #[allow(clippy::too_many_arguments)]
 pub(super) fn sprite_info(
     hero: &HeroScreen,
+    alvo: &super::inspector::Alvo,
     sim: &SimWorld,
-    inspector_selection: &[u64],
-    selected_count: usize,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     asset_db: &AssetDb,
     renderer: &ph2d_render::SpriteRenderer,
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
 ) -> Option<ph2d_editor_core::InspectorSpriteInfo> {
-    hero.gizmo.selection.and_then(|bits| {
+    let (inspector_selection, selected_count) = (alvo.todos.as_slice(), alvo.n);
+    alvo.bits.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let world = sim.world();
         let sprite = world.get::<Sprite>(entity)?;

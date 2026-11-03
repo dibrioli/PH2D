@@ -154,6 +154,7 @@ pub(crate) use ph2d_app_vec::contour_live;
 mod contour_smoke;
 mod corner_handles;
 mod cursor_pos;
+mod cursor_preso;
 /// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0148).
 mod cut_smoke;
 /// `PH2D_DITHER_SMOKE` — as faixas e a cura, lado a lado (plano `docs/Sprite_projeto/18` W6.1).
@@ -357,8 +358,6 @@ mod project_schema_history_v128;
 /// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).
 mod project_schema_history_v144;
 mod project_schema_history_v160;
-/// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
-mod project_schema_history_v83;
 mod project_schema_history_v99;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
@@ -769,6 +768,7 @@ impl App {
             input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,
             held_button: None,
+            cursor_preso: Default::default(),
             eyedropper_dragging: false,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
@@ -924,6 +924,17 @@ impl ApplicationHandler for App {
         }
     }
 
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let winit::event::DeviceEvent::MouseMotion { delta } = event {
+            self.on_device_motion(delta);
+        }
+    }
+
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         if self.da_outra_janela(id, &event) {
             return;
@@ -960,7 +971,10 @@ impl ApplicationHandler for App {
             WindowEvent::PinchGesture { delta, .. } => self.on_pinch_gesture(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
             WindowEvent::Touch(t) => self.on_touch(t),
-            WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_input(event),
+            WindowEvent::KeyboardInput { event, .. } => {
+                self.on_keyboard_input(event);
+                self.sync_cursor_preso();
+            }
             WindowEvent::RedrawRequested => {
                 self.render_frame();
                 self.palco_janela(event_loop);
@@ -996,6 +1010,9 @@ pub(crate) use ph2d_image_import::EPS_PIXELS_PER_METER;
 /// (`forge`, `workshop`, `sunstone`, `blueprint`).
 fn main() {
     install_panic_hook();
+    // Os cartões do Inspector (`PH2D_CARDS=0` = a coluna clássica); na thread do laço de eventos.
+    #[cfg(feature = "panel-inspector")]
+    ph2d_panel_inspector::set_cards_on(std::env::var("PH2D_CARDS").as_deref() != Ok("0"));
     // **A math dos tokens de design** (plano UI/UX W4c.3) — uma linha, e é a única.
     //
     // ⚠️ Ela vive AQUI e não dentro da `ph2d-tokens` por uma aresta MEDIDA: o parser arrasta

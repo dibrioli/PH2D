@@ -25,14 +25,9 @@ pub(super) struct PhysicsSections {
 /// o corpo (com as contagens do Join, do Rig e das peças), a junta e a roda.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn physics(
-    hero: &HeroScreen,
+    alvo: &Alvo,
     sim: &mut SimWorld,
-    asset_db: &AssetDb,
-    atlas_asset_map: &BTreeMap<u32, AssetId>,
-    catalogs: &ph2d_asset_index::CatalogTree,
     component_registry: &ph2d_ecs::scene::ComponentRegistry,
-    inspector_selection: &[u64],
-    selected_count: usize,
     join_draw_armed: bool,
     join_kind_tag: u8,
     bake_range: (f32, f32),
@@ -44,49 +39,19 @@ pub(super) fn physics(
     // ⭐ A árvore de tags — a row *Only for tag* da §11 (TOP-20 #9, W3c).
     tags: &ph2d_tags::TagTree,
 ) -> PhysicsSections {
-    let sel = inspector_selection;
-    // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
-    // publicada para o navegador. ⚠️ Só com o painel ABERTO: é uma travessia do mundo, e pagá-la
-    // com o painel fechado é trabalho que ninguém lê.
-    // ⭐⭐ A TAXONOMIA (wave A3) — publicada como o índice, e pela mesma razão: o painel não pode
-    // ser a segunda fonte de verdade sobre o que existe.
-    ph2d_panel_asset_browser::set_current_catalogs(catalogs.clone());
-    ph2d_app_components::asset_index_build::publish_for_frame(
-        sim,
-        asset_db,
-        atlas_asset_map,
-        catalogs,
-        // ⭐ O retrato de um prefab põe cada peça onde a TELA a põe, e o pivô autorado converte-se
-        // com o `pixels_per_meter` do projecto (`Sprite::resolve_anchor`).
-        hero.project.pixels_per_meter,
-        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
-        &hero.documents.asset_listing(), // D17: os Kanbans e os Quadros
-    );
-    // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
-    // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a
-    // lei da F3 (o Inspector mostra o que o objeto TEM). ⛔ Ao contrário da §5 e da §12, ela NÃO se
-    // publica «vazia com um +»: não há gesto de anexar uma instância — ela nasce de *Instantiate*.
+    let (sel, selected_count) = (alvo.todos.as_slice(), alvo.n);
     let inspector_instance = crate::render_loop::inspector_instance::build_instance_info(
         sim,
         component_registry,
-        hero.gizmo.selection,
+        alvo.bits,
     );
     // ⭐⭐⭐ **E o CARTÃO DE PROPRIEDADES** (report do Enio, 2026-08-31) — *«o que este objecto DIZ
     // que é»*, lido das chaves do nome. ⚠️ **Ele NÃO depende de ser cópia**: é exactamente o caso
     // que faltava, e era por isso que reescrever as chaves não mudava nada no Inspector.
     let inspector_properties =
-        crate::render_loop::inspector_properties::build_properties_info(sim, hero.gizmo.selection);
-    // W3: the Join gesture needs exactly TWO bodies, and only the shell can
-    // see the selection — the panel is handed one entity at a time. Asked once
-    // here, so the painter (which offers the button) and the event handler
-    // (which honours the click) read the same fact.
-    // ⚠️ `sel.len() == 2`, not just `selected_count == 2`: `all()` on an empty
-    // slice is TRUE, so a count that disagreed with the slice would offer the
-    // button over nothing at all.
-    // ⚠️ **`>= 2`, not `== 2`** (W-J4): three or more selected bodies make a
-    // CHAIN of `n − 1` joints, and the count travels to the panel so the button
-    // can SAY so. A label that says "Join Selected Bodies" over a five-body
-    // selection is how an artist discovers a chain by accident.
+        crate::render_loop::inspector_properties::build_properties_info(sim, alvo.bits);
+    // W3/W-J4: o *Join* pede DOIS corpos ou mais (três fazem uma CADEIA de n − 1, e o rótulo di-lo);
+    // `sel.len()`, não só a contagem: `all()` sobre vazio é verdade.
     let join_count = if sel.len() >= 2
         && selected_count == sel.len()
         && sel.iter().all(|&b| {
@@ -99,16 +64,13 @@ pub(super) fn physics(
         0
     };
 
-    // W-Rig: quantas PARTES um clique em *Rig* tocaria — 0 quando não há aresta
-    // pai→filho a ligar, e é esse zero que tira o botão da tela.
-    //
-    // ⚠️ **Da `iter_selected()`, NÃO do `inspector_selection`** — aquele vetor é
-    // colhido só numa MULTI-seleção (`selected_count > 1`) e fica vazio no caso
-    // único, que é precisamente o gesto do rig: marcar a raiz do personagem e
-    // clicar. Lido dali, o botão só apareceria com dois objetos marcados, isto é
-    // em toda situação menos a que ele existe para servir.
+    // W-Rig: quantas PARTES um *Rig* tocaria (0 tira o botão) — das raízes do alvo, também com uma só.
     let rig_parts = {
-        let roots: Vec<u64> = hero.gizmo.iter_selected().collect();
+        let roots = if sel.is_empty() {
+            alvo.bits.into_iter().collect()
+        } else {
+            sel.to_vec()
+        };
         let plan = ph2d_app_physics::joint_rig::plan(sim, &roots);
         if plan.is_offered() {
             u8::try_from(plan.parts.len()).unwrap_or(u8::MAX)
@@ -117,15 +79,9 @@ pub(super) fn physics(
         }
     };
 
-    // W-PartFace: quantas PEÇAS estão penduradas no objeto selecionado — filhos
-    // que carregam `Collider` e não `RigidBody`.
-    //
-    // ⚠️ **Só a shell pode contar**, e é por isso que o número atravessa a
-    // fronteira em vez de o painel o derivar: `ChildOf` é a única aresta do ECS,
-    // então não há como DESCER a árvore — cada candidato tem de SUBIR até achar
-    // um corpo, e a lista de candidatos vem de uma query sobre o mundo inteiro.
-    // Mesma classe do `rig_parts` logo acima, e o mesmo custo por frame.
-    let part_count = hero.gizmo.selection.map_or(0, |b| {
+    // W-PartFace: as PEÇAS penduradas no objecto (filhos com `Collider` sem `RigidBody`); só a shell
+    // conta — o ECS só sobe (`ChildOf`), então cada candidato sobe até achar um corpo.
+    let part_count = alvo.bits.map_or(0, |b| {
         let owner = ph2d_ecs::Entity::from_bits(b);
         let mut q = sim.world_mut().query_filtered::<ph2d_ecs::Entity, (
             bevy_ecs::query::With<ph2d_physics_ecs::Collider>,
@@ -140,7 +96,7 @@ pub(super) fn physics(
         .unwrap_or(u8::MAX)
     });
 
-    let inspector_physics = hero.gizmo.selection.and_then(|b| {
+    let inspector_physics = alvo.bits.and_then(|b| {
         ph2d_app_physics::inspector::body::build_physics_info(
             sim.world(),
             b,
@@ -155,7 +111,7 @@ pub(super) fn physics(
             tags,
         )
     });
-    let inspector_joint = hero.gizmo.selection.and_then(|b| {
+    let inspector_joint = alvo.bits.and_then(|b| {
         // The eyedropper of the slot with an armed pick FOR THIS joint paints
         // pressed; 0 otherwise.
         let pick_armed = match joint_body_pick {
@@ -172,7 +128,7 @@ pub(super) fn physics(
     });
     // §13 Pulley Wheel (W-Pulley W1) — a irmã da §12, e a seleção é a MESMA
     // pergunta: uma roldana é uma entidade, então ela é o objeto selecionado.
-    let inspector_wheel = hero.gizmo.selection.and_then(|b| {
+    let inspector_wheel = alvo.bits.and_then(|b| {
         ph2d_app_physics::joint_wheel::build_wheel_info(
             sim,
             b,

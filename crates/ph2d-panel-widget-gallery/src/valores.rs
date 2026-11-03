@@ -7,16 +7,37 @@ use crate::ids as g;
 use crate::state::{Choices, Values, WidgetGalleryState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_tokens::{ColorToken, Theme};
 
-/// O retrato dos valores vivos: as escolhas e os números do store.
+/// O retrato dos valores vivos: as escolhas, os números e o texto do Name no store.
 pub(crate) fn current(choices: Choices, store: &WidgetStore) -> Values {
     Values {
         choices,
         numbers: g::FIELDS.map(|f| store.number_value(f.0).unwrap_or(f.1)),
+        name: store.text(g::NAME).unwrap_or_default().to_owned(),
+    }
+}
+
+/// A tinta do cartão Color — a do tema PRÓPRIO dele, se o tem; senão a da lista.
+fn color_ink(store: &WidgetStore, list: Theme) -> CardInk {
+    CardInk::of_card(store.section_theme(g::CARD_COLOR), list)
+}
+
+/// Repõe o texto do Name (caret no fim, sem selecção); o `populate` registou-o no 1.º quadro.
+fn set_name(store: &mut WidgetStore, name: &str) {
+    if let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = store.get_mut(g::NAME)
+    {
+        name.clone_into(text);
+        *caret = text.len();
+        *selection_anchor = None;
     }
 }
 
@@ -34,7 +55,7 @@ pub(crate) fn sync_picked(state: &mut WidgetGalleryState, store: &WidgetStore, t
         return;
     }
     if let Some(c) = store.widget_color(g::FILL_SWATCH)
-        && c != fill_rgba(state.choices, CardInk::of_list(theme))
+        && c != fill_rgba(state.choices, color_ink(store, theme))
     {
         state.choices.fill_rgba = Some(c);
     }
@@ -62,6 +83,7 @@ pub(crate) fn on_click(
         for ((field, ..), n) in g::FIELDS.iter().zip(state.applied.numbers) {
             store.set_number_value(*field, n);
         }
+        set_name(store, &state.applied.name);
     } else {
         return false;
     }
@@ -75,7 +97,8 @@ fn toggle_picker(ch: Choices, host: &mut dyn PanelHostInternal) {
         host.store_mut().set_picker_target(None);
         return;
     }
-    let [r, gr, b, a] = fill_rgba(ch, CardInk::of_list(host.theme()));
+    let ink = color_ink(host.store(), host.theme());
+    let [r, gr, b, a] = fill_rgba(ch, ink);
     let store = host.store_mut();
     store.set_blender_value(
         core_ids::INSP_BLENDER_PICKER,

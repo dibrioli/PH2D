@@ -5,16 +5,18 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::cards::dicas;
-use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelHostInternal, PanelRegistry};
+use ph2d_editor_core::panel::{ErasedPanel, Panel, PanelHost, PanelHostInternal, PanelRegistry};
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, slot_tabs};
 use ph2d_editor_core::screens::paint_hero_screen;
 use ph2d_editor_core::screens::slot::Slot;
+use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_widget_gallery::ids as g;
 use ph2d_panel_widget_gallery::state::{Choices, WidgetGalleryState};
 use ph2d_panel_widget_gallery::{WidgetGalleryPanel, force_cards_on_this_thread};
 use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_ui_testkit::MockPanelHost;
 use ph2d_vector::VectorScene;
 
@@ -362,13 +364,55 @@ fn a_amostra_abre_o_seletor_e_a_cor_escolhida_fica() {
     );
 }
 
-/// (10) Apply grava os valores de PARTIDA; Cancel e o ↺ voltam a eles (não à fábrica). *Mutação:
-/// o Apply só consumido ⇒ o Cancel volta à fábrica; o Cancel só consumido ⇒ nada volta.*
+/// (9b) O seletor parte da cor que a amostra MOSTRA — a tinta do cartão Color, com o tema próprio
+/// dele, não o `Accent` do app. *Mutação: a tinta da lista em `toggle_picker` ⇒ a semente é a do app.*
+#[test]
+fn o_seletor_parte_da_cor_da_tinta_do_cartao() {
+    let mut gal = Galeria::aberta();
+    let lista = gal.host.theme();
+    let proprio = if lista == Theme::PlumberRed {
+        Theme::default()
+    } else {
+        Theme::PlumberRed
+    };
+    gal.host
+        .store_mut()
+        .set_section_theme(g::CARD_COLOR, Some(proprio));
+    gal.repinta();
+    gal.clica(g::FILL_SWATCH);
+    let a_tinta = CardInk::of_card(Some(proprio), lista)
+        .color(ColorToken::Accent)
+        .to_rgba8()
+        .to_u8_array();
+    assert_ne!(
+        a_tinta,
+        CardInk::of_list(lista)
+            .color(ColorToken::Accent)
+            .to_rgba8()
+            .to_u8_array(),
+        "fixtura: os dois temas têm de dar acentos diferentes"
+    );
+    assert_eq!(
+        gal.host.store().widget_color(g::FILL_SWATCH),
+        Some(a_tinta),
+        "o seletor não partiu da cor que a amostra do cartão mostra"
+    );
+    gal.repinta();
+    assert_eq!(
+        gal.st.choices.fill_rgba, None,
+        "só abrir o seletor não escolhe cor nenhuma"
+    );
+}
+
+/// (10) Apply grava os valores de PARTIDA — números, escolhas e o texto do Name; Cancel e o ↺
+/// voltam a eles (não à fábrica). *Mutação: o Apply só consumido ⇒ o Cancel volta à fábrica; o
+/// Cancel só consumido ⇒ nada volta; o Name fora do retrato ⇒ o texto escrito fica.*
 #[test]
 fn apply_grava_os_valores_e_cancel_volta_a_eles() {
     let mut gal = Galeria::aberta();
     gal.arrasta_o_icone(g::POS_X, 60.0);
     gal.clica(g::LEVEL_HIGH);
+    gal.host.set_text(g::NAME, "Hero");
     let aplicado = gal.valor(g::POS_X);
     assert_ne!(aplicado, fabrica(g::POS_X), "fixtura: o X mudou");
     gal.clica(g::PRIMARY);
@@ -376,8 +420,15 @@ fn apply_grava_os_valores_e_cancel_volta_a_eles() {
     gal.arrasta_o_icone(g::POS_X, 60.0);
     gal.clica(g::SNAP);
     gal.clica(g::FILL_REMOVE);
+    gal.host.set_text(g::NAME, "Villain");
+    gal.repinta();
     assert_ne!(gal.valor(g::POS_X), aplicado, "fixtura: o X mudou de novo");
     gal.clica(g::SECONDARY);
+    assert_eq!(
+        gal.host.store().text(g::NAME),
+        Some("Hero"),
+        "o Cancel não voltou o Name ao aplicado"
+    );
     assert_eq!(
         gal.valor(g::POS_X),
         aplicado,
@@ -393,9 +444,16 @@ fn apply_grava_os_valores_e_cancel_volta_a_eles() {
         "o Fill voltou e não pinta"
     );
     gal.clica(g::SNAP);
+    gal.host.set_text(g::NAME, "Villain");
+    gal.repinta();
     gal.clica(g::RESET);
     assert!(
         gal.st.choices.level == 2 && !gal.st.choices.snap,
         "o ↺ não voltou aos valores aplicados"
+    );
+    assert_eq!(
+        gal.host.store().text(g::NAME),
+        Some("Hero"),
+        "o ↺ não voltou o Name ao aplicado"
     );
 }

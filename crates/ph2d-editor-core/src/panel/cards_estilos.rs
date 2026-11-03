@@ -515,7 +515,13 @@ pub(super) fn paint_pending(
     }
     let ligado =
         camada_aberta().and_then(|(_, i)| LIGADOS.with(|l| l.borrow().get(i).copied().flatten()));
-    let col_hex = crate::paint::label_column_width(text_system, m::LABEL_PX, ["MMMMMM"]);
+    // A coluna mede os hex que ELA pinta — a família inteira, nunca uma sonda escrita à mão.
+    let hexes: Vec<String> = lista.iter().map(|e| hex(e.rgba)).collect();
+    let col_hex = crate::paint::label_column_width(
+        text_system,
+        m::LABEL_PX,
+        hexes.iter().map(String::as_str),
+    );
     for e in &lista {
         let lr = Rect::new(
             caixa.x + m::SEG_PAD,

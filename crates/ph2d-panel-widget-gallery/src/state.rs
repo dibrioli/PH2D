@@ -47,12 +47,14 @@ impl Default for Choices {
     }
 }
 
-/// Um retrato dos valores do vocabulário: as escolhas e os números dos campos (pela ordem de
-/// [`g::FIELDS`]). `Default` = a fábrica.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Um retrato dos valores do vocabulário: as escolhas, os números dos campos (pela ordem de
+/// [`g::FIELDS`]) e o texto do Name. `Default` = a fábrica.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Values {
     pub choices: Choices,
     pub numbers: [f64; g::FIELDS.len()],
+    /// O texto do campo Name ([`g::NAME`]); a fábrica é o `name_default` da tabela.
+    pub name: String,
 }
 
 impl Default for Values {
@@ -60,6 +62,7 @@ impl Default for Values {
         Self {
             choices: Choices::default(),
             numbers: g::FIELDS.map(|f| f.1),
+            name: ph2d_i18n::tr("panel.widget_gallery.name_default").to_owned(),
         }
     }
 }

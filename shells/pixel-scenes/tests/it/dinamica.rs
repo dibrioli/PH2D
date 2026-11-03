@@ -142,7 +142,7 @@ fn the_dynamics_gradient_uses_the_dynamics_own_matrix_not_the_gradient_tools() {
     p.app.fg = fg;
     p.app.bg = bg;
     caneta(0.4, 0);
-    // O carimbo do premir leva a fracção cheia (só fg); a matriz mede-se nos pontos seguintes.
+    // Os pontos seguintes (o premir tem o teste dele, logo abaixo).
     let (a, b) = (ecra(&p, (30, 40)), ecra(&p, (70, 40)));
     premir(&mut p, a);
     mover(&mut p, b);
@@ -157,6 +157,45 @@ fn the_dynamics_gradient_uses_the_dynamics_own_matrix_not_the_gradient_tools() {
     assert!(celulas.iter().any(|&c| cor(c) == bg), "há bg");
     for &(x, y) in &celulas {
         // Fracção 0,4 em Bayer2: 1 degrau aceso (fg), os outros 3 em bg.
+        let quer = if Dither::Bayer2.level(x, y) < 1 {
+            fg
+        } else {
+            bg
+        };
+        assert_eq!(cor((x, y)), quer, "({x}, {y})");
+    }
+}
+
+/// O carimbo do PREMIR já leva a fracção da dinâmica Gradient (antes o `with_gradient` repunha a
+/// fracção cheia depois do carimbo e o premir saía só em fg).
+#[test]
+fn the_dynamics_gradient_mixes_the_press_dab_by_the_matrix() {
+    use ph2d_editor_core::pixel_panel::PixelGradientDither as D;
+    use ph2d_pixel_core::dither::Dither;
+    let mut p = palco(|o| {
+        o.size = 8;
+        o.dynamics.gradient.sensor = PixelSensor::Pressure;
+        o.dynamics.dither = D::Bayer2;
+    });
+    let (fg, bg) = ([255, 0, 0, 255], [0, 0, 255, 255]);
+    p.app.fg = fg;
+    p.app.bg = bg;
+    caneta(0.4, 0);
+    let a = ecra(&p, (30, 40));
+    premir(&mut p, a);
+    p.release();
+    let celulas: Vec<(i32, i32)> = (0..120)
+        .flat_map(|x| (0..80).map(move |y| (x, y)))
+        .filter(|&(x, y)| p.rgba(x, y)[3] != 0)
+        .collect();
+    assert!(celulas.len() >= 32, "o premir carimbou: {}", celulas.len());
+    let cor = |c: (i32, i32)| p.rgba(c.0, c.1);
+    assert!(celulas.iter().any(|&c| cor(c) == bg), "o premir tem bg");
+    for &(x, y) in &celulas {
+        assert!(
+            (25..36).contains(&x) && (35..46).contains(&y),
+            "só o carimbo"
+        );
         let quer = if Dither::Bayer2.level(x, y) < 1 {
             fg
         } else {

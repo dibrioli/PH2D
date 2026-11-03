@@ -277,8 +277,11 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
                 (Tool::Eraser, Button::Secondary) => {
                     novo(s.value_of_rgba(bg)).replacing(s.value_of_rgba(fg))
                 }
+                // O Gradient antes do carimbo: `with_gradient` repõe a fracção cheia.
                 _ => match m2.as_ref().and_then(crate::mao::Mao::gradient) {
-                    Some(d) => novo(value).with_gradient(s.value_of_rgba(bg), d),
+                    Some(d) => Stroke::new(layer, frame, value, paint.clone())
+                        .with_gradient(s.value_of_rgba(bg), d)
+                        .with_dab(dab),
                     None => novo(value),
                 },
             };

@@ -331,6 +331,34 @@ fn a_marquee_drag_is_one_step_and_a_click_deselects() {
     assert_eq!(p.mascara(), Some(Mask::ellipse(128, 64, (0, 0), (9, 5))));
 }
 
+/// O Deselect do menu (pelo barramento, aplicado no quadro) e o Ctrl+D largam a selecção, e o
+/// arrasto seguinte da marquee — mesmo DENTRO da antiga — cria outra, não a move.
+#[test]
+fn deselect_from_the_menu_or_ctrl_d_drops_the_mask_and_the_next_drag_selects_anew() {
+    let mut p = Palco::limpo();
+    p.ferramenta(Tool::RectMarquee);
+    for pelo_menu in [true, false] {
+        p.arrasta((10, 10), (40, 30), Mods::default());
+        assert_eq!(
+            p.mascara(),
+            Some(Mask::marquee(128, 64, (10, 10), (40, 30)))
+        );
+        if pelo_menu {
+            p.pede(PixelRequest::Select(S::Deselect));
+        } else {
+            p.tecla(KeyCode::KeyD, true, false);
+        }
+        assert_eq!(p.mascara(), None, "menu={pelo_menu}: largou");
+        p.arrasta((20, 15), (25, 20), Mods::default());
+        assert_eq!(
+            p.mascara(),
+            Some(Mask::marquee(128, 64, (20, 15), (25, 20))),
+            "menu={pelo_menu}: uma selecção nova"
+        );
+        p.pede(PixelRequest::Select(S::Deselect));
+    }
+}
+
 #[test]
 fn shift_alt_shift_and_ctrl_shift_add_subtract_and_intersect() {
     let mut p = Palco::limpo();

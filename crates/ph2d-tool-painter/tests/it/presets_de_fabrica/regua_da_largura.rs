@@ -134,7 +134,13 @@ pub(super) fn imagem_da_ferramenta(
         )
     } else {
         let (w, h) = cena_da_ferramenta(modo, motor);
-        let (cy, margem) = (h as f32 * 0.5, MARGEM_DO_MISTURADOR.max(motor + 100.0));
+        // `cy` na grade INTEIRA, como o Smear ([`sonda_meia_fase_do_misturador`]: a meia fase movia a largura até 0,66 px).
+        let cy = if MEIA_FASE_DO_MISTURADOR.get() {
+            h as f32 * 0.5
+        } else {
+            (h / 2) as f32
+        };
+        let margem = MARGEM_DO_MISTURADOR.max(motor + 100.0);
         (
             w,
             h,
@@ -194,6 +200,62 @@ pub(super) fn imagem_da_ferramenta(
         x0: orla.map_or(cx, |o| o.max(cx)),
     };
     (diferenca, w, h, cena)
+}
+
+std::thread_local! {
+    /// `true` = a orla da base do misturador em `cy = h·0,5` (a cena de antes de 03/11): com `h = 6m + 80` truncado, meia
+    /// fase escondida a cada inteiro ímpar de `6m`. Só a [`sonda_meia_fase_do_misturador`] o liga, para comparar.
+    static MEIA_FASE_DO_MISTURADOR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// **Sonda: a meia fase da orla da base do misturador** (aberto da rodada 02/11c, a mesma que enganou o Smear): os 5
+/// presets do misturador (Blend, Wet) com a lei crua, a raios do motor com `⌊6m⌋` ÍMPAR (`cy = h·0,5` cai a meio
+/// píxel), com a orla a meio píxel × no inteiro — as duas no MESMO processo, intercaladas. Medido 03/11: a meia fase
+/// movia a largura até +0,66 px (Water Brush motor 7,2, 7,3 %) e 0,29 px nos Blender (13,2) — a régua saltava com a
+/// paridade de `⌊6m⌋`; a orla foi para o inteiro.
+#[test]
+#[ignore = "sonda: a meia fase da cena do misturador (custo ~ minutos)"]
+fn sonda_meia_fase_do_misturador() {
+    const RAIOS: [f32; 5] = [3.2, 7.2, 13.2, 26.2, 55.2];
+    let presets: Vec<Preset> = ficheiros_do_wet()
+        .into_iter()
+        .map(|(_, b)| ler(&b).unwrap())
+        .filter(|p| {
+            matches!(
+                p.parametros.paint_mode.as_deref(),
+                Some("Blend" | "Wet" | "Dry")
+            )
+        })
+        .collect();
+    let casos: Vec<(usize, f32, bool)> = (0..presets.len())
+        .flat_map(|k| {
+            RAIOS
+                .iter()
+                .flat_map(move |&r| [(k, r, true), (k, r, false)])
+        })
+        .collect();
+    let custos: Vec<u64> = casos
+        .iter()
+        .map(|&(k, r, _)| super::memoria::custo_da_cena(&presets[k], r, true))
+        .collect();
+    let fios = std::thread::available_parallelism().map_or(8, std::num::NonZero::get);
+    let ls = super::memoria::em_paralelo_pela_memoria(&custos, fios, |j| {
+        let (k, r, meia) = casos[j];
+        MEIA_FASE_DO_MISTURADOR.set(meia);
+        let (px, w, h, regua) = imagem_da_largura(&presets[k], r, true, Relogio::DeUmaVez, 0);
+        regua(&px, w, h)
+    });
+    for (c, l) in casos.chunks(2).zip(ls.chunks(2)) {
+        let (k, r, _) = c[0];
+        println!(
+            "[meia-fase] {:<16} motor {r:>5}: meia {:>8.3} · inteiro {:>8.3} · Δ {:+.3} px ({:+.2} %)",
+            presets[k].parametros.name,
+            l[0],
+            l[1],
+            l[0] - l[1],
+            100.0 * (l[0] - l[1]) / l[1]
+        );
+    }
 }
 
 /// A cena do rasto do Smear que a régua precisa: o raio do motor EXACTO e a 1.ª coluna fora da água da base.
@@ -347,7 +409,7 @@ pub(super) fn largura_do_misturador(px: &[u8], w: u32, h: u32) -> f32 {
 /// (58 → 61): a largura lia 187 → 131 → 208. Na janela `±1,5m`: 219 / 195 / 184 / 210.
 pub(super) fn largura_da_agua(px: &[u8], w: u32, h: u32) -> f32 {
     let m = (h as f32 - 80.0) / 6.0;
-    let cy = h as f32 * 0.5;
+    let cy = (h / 2) as f32;
     let ys = ((cy - 1.5 * m).max(0.0) as u32)..((cy + 1.5 * m).ceil() as u32).min(h);
     let x0 = ((w as f32 - VAO_DO_MISTURADOR) * 0.5) as u32;
     mediana(

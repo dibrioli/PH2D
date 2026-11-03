@@ -38,8 +38,11 @@ impl PainterTool {
     /// ⭐ **Os píxeis com que a SPRITE de uma imagem «Textured Paper» `w`×`h` nasce** — o assado
     /// (`run_full`) do documento que o Draw abre para ela. O Object mostra a sprite: nascida branca, o
     /// papel só se via no Draw (BUG dono 31/10, `docs/Painter/Arquitetura/BUG_papel_so_no_draw.md`).
+    /// Bytes crus de propósito: saem do `run_full` do contrato congelado `RasterEditTool` e entram
+    /// verbatim no `set_source`/`bind_document` e no `spawn_rgba` — todos `Vec<u8>`.
     #[must_use]
-    pub fn pixeis_do_papel_texturizado(w: u32, h: u32) -> Vec<u8> {
+    pub fn pixeis_do_papel_texturizado(w: u32, h: u32) -> Vec<u8> /* COLOR-RAW-OK: plano RGBA8 cru da sprite */
+    {
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; (w as usize) * (h as usize) * 4], w, h);
         t.aplica_papel_preset(&PAPEL_TEXTURIZADO);
@@ -51,7 +54,13 @@ impl PainterTool {
     /// **Abre a sprite de um documento novo** — e reconhece a nascida «Textured Paper» que ninguém pintou
     /// ([`Self::pixeis_do_papel_texturizado`]): ela abre como o documento de que é o assado (fundo vazio
     /// + o papel do dono), nunca com o dente assado na camada e outro por cima.
-    pub(crate) fn abre_a_sprite_nova(&mut self, entity: u64, mut rgba: Vec<u8>, w: u32, h: u32) {
+    pub(crate) fn abre_a_sprite_nova(
+        &mut self,
+        entity: u64,
+        mut rgba: Vec<u8>, // COLOR-RAW-OK: a fonte crua do `set_source`, entregue ao `abre_a_sprite`
+        w: u32,
+        h: u32,
+    ) {
         if nascida::e_ela(&rgba, w, h) {
             rgba.fill(255);
             self.papel_texturizado_para = Some(entity);

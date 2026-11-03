@@ -19,7 +19,7 @@ const FX_PICKS: [Pick; 3] = [Pick::Fx0, Pick::Fx1, Pick::Fx2];
 
 pub(crate) fn appearance(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     card(
-        g::CARD_APPEARANCE,
+        g::GAL_CARD_APPEARANCE,
         tr("panel.widget_gallery.card.appearance"),
         vec![head(g::VISIBLE, &ch, store)],
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -140,7 +140,7 @@ fn ausente(flags: [Flag; 3], ch: &Choices, add: NodeId) -> Option<NodeId> {
 
 pub(crate) fn fill(ch: Choices, estilos: Vec<Estilo>, store: &WidgetStore) -> CardDef<'static> {
     let mut d = card(
-        g::CARD_FILL,
+        g::GAL_CARD_FILL,
         tr("panel.widget_gallery.card.fill"),
         head_of(&ch, store, Some(g::FILL_STYLES), g::FILL_ADD, FILLS),
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -189,7 +189,7 @@ fn stroke_props(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
 
 pub(crate) fn stroke(ch: Choices, estilos: Vec<Estilo>, store: &WidgetStore) -> CardDef<'static> {
     let mut d = card(
-        g::CARD_STROKE,
+        g::GAL_CARD_STROKE,
         tr("panel.widget_gallery.card.stroke"),
         head_of(&ch, store, Some(g::STROKE_STYLES), g::STROKE_ADD, STROKES),
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -278,7 +278,7 @@ pub(crate) fn fx_props(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f
 
 pub(crate) fn effects(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     let mut d = card(
-        g::CARD_EFFECTS,
+        g::GAL_CARD_EFFECTS,
         tr("panel.widget_gallery.card.effects"),
         head_of(&ch, store, None, g::FX_ADD, FXS),
         Box::new(move |c: &mut CardCtx<'_>, y| {

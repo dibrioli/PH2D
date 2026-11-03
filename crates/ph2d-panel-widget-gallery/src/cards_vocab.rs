@@ -42,8 +42,8 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         }
     }
     // O Ordering nasce DOBRADO (o resumo à direita); depois manda o artista.
-    if store.collapsed_choice(g::CARD_ORDERING).is_none() {
-        store.set_collapsed(g::CARD_ORDERING, true);
+    if store.collapsed_choice(g::GAL_CARD_ORDERING).is_none() {
+        store.set_collapsed(g::GAL_CARD_ORDERING, true);
     }
     for (id, mark) in [
         (g::MARK_FREE, KeyMark::Livre),
@@ -68,7 +68,7 @@ fn actions(ch: Choices, dirty: bool, store: &WidgetStore) -> CardDef<'static> {
         (IconId::Check, tr("panel.widget_gallery.status.saved"))
     };
     card(
-        g::CARD_ACTIONS,
+        g::GAL_CARD_ACTIONS,
         tr("panel.widget_gallery.card.actions"),
         vec![head(g::RESET, &ch, store)],
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -96,7 +96,7 @@ fn actions(ch: Choices, dirty: bool, store: &WidgetStore) -> CardDef<'static> {
 /// Animation marks: os quatro estados da marca D17 lado a lado, cada um com o seu rótulo.
 fn marks() -> CardDef<'static> {
     card(
-        g::CARD_MARKS,
+        g::GAL_CARD_MARKS,
         tr("panel.widget_gallery.card.marks"),
         Vec::new(),
         Box::new(|c: &mut CardCtx<'_>, y| {
@@ -131,7 +131,7 @@ fn marks() -> CardDef<'static> {
 fn ordering(store: &WidgetStore) -> CardDef<'static> {
     let z = store.number_value(g::Z_ORDER).unwrap_or_default();
     let mut d = card(
-        g::CARD_ORDERING,
+        g::GAL_CARD_ORDERING,
         tr("panel.widget_gallery.card.ordering"),
         Vec::new(),
         Box::new(|c: &mut CardCtx<'_>, y| {
@@ -154,7 +154,7 @@ fn ordering(store: &WidgetStore) -> CardDef<'static> {
 fn physics(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     let tem = ch.on(Flag::Physics);
     let mut d = card(
-        g::CARD_PHYSICS,
+        g::GAL_CARD_PHYSICS,
         tr("panel.widget_gallery.card.physics"),
         if tem {
             vec![head(g::PHYSICS_REMOVE, &ch, store)]

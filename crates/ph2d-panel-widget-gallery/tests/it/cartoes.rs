@@ -469,7 +469,7 @@ fn o_seletor_parte_da_cor_da_tinta_do_cartao() {
     };
     gal.host
         .store_mut()
-        .set_section_theme(g::CARD_FILL, Some(proprio));
+        .set_section_theme(g::GAL_CARD_FILL, Some(proprio));
     gal.repinta();
     let amostra = g::FILLS[0].swatch;
     gal.clica(amostra);

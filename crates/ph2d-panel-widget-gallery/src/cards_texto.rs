@@ -9,7 +9,7 @@ use ph2d_i18n::tr;
 
 pub(crate) fn text(ch: Choices) -> CardDef<'static> {
     card(
-        g::CARD_TEXT,
+        g::GAL_CARD_TEXT,
         tr("panel.widget_gallery.card.text"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -54,7 +54,7 @@ pub(crate) fn text(ch: Choices) -> CardDef<'static> {
 
 pub(crate) fn export(ch: Choices, exported: bool) -> CardDef<'static> {
     card(
-        g::CARD_EXPORT,
+        g::GAL_CARD_EXPORT,
         tr("panel.widget_gallery.card.export"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {

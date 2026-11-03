@@ -237,23 +237,43 @@ pub(crate) fn graus() -> bool {
     matches!(crate::state::current_display_angle(), DisplayAngle::Degrees)
 }
 
+/// Passos e neutro dos campos do cartão: unidades do valor (rad, fator, %), não geometria.
+const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo do valor (rad, fator), não geometria
+const PASSO_MEDIO: f64 = 0.1; // LITERAL-PX-OK: passo do valor (fator, px), não geometria
+const CEM_POR_CENTO: f64 = 100.0; // LITERAL-PX-OK: neutro de um campo em %, não geometria
+
 /// Marca os campos, declara as listas suspensas e semeia as dobras — com o store MUTÁVEL.
 pub(crate) fn prepare(store: &mut WidgetStore) {
     let p = pos_step();
-    let a = if graus() { 1.0 } else { 0.01 };
+    let a = if graus() { 1.0 } else { PASSO_FINO };
     let campos: [(NodeId, f64, f64, Option<f64>); 12] = [
-        (vids::VECTOR_STROKE_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
+        (
+            vids::VECTOR_STROKE_OPACITY_NUM,
+            1.0,
+            1.0,
+            Some(CEM_POR_CENTO),
+        ),
         (ids::INSP_TRANSFORM_POS_X, p, p, None),
         (ids::INSP_TRANSFORM_POS_Y, p, p, None),
         (ids::INSP_TRANSFORM_ROT, a, a, Some(0.0)),
-        (ids::INSP_TRANSFORM_SCALE_X, 0.1, 0.01, Some(1.0)),
-        (ids::INSP_TRANSFORM_SCALE_Y, 0.1, 0.01, Some(1.0)),
+        (
+            ids::INSP_TRANSFORM_SCALE_X,
+            PASSO_MEDIO,
+            PASSO_FINO,
+            Some(1.0),
+        ),
+        (
+            ids::INSP_TRANSFORM_SCALE_Y,
+            PASSO_MEDIO,
+            PASSO_FINO,
+            Some(1.0),
+        ),
         (ids::INSP_TRANSFORM_SKEW_X, a, a, Some(0.0)),
         (ids::INSP_TRANSFORM_SKEW_Y, a, a, Some(0.0)),
-        (vids::VECTOR_OBJ_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
-        (vids::VECTOR_FILL_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
-        (vids::VECTOR_WIDTH_NUM, 1.0, 0.1, None),
-        (ids::INSP_ORDER_Z_INDEX, 1.0, 0.1, Some(0.0)),
+        (vids::VECTOR_OBJ_OPACITY_NUM, 1.0, 1.0, Some(CEM_POR_CENTO)),
+        (vids::VECTOR_FILL_OPACITY_NUM, 1.0, 1.0, Some(CEM_POR_CENTO)),
+        (vids::VECTOR_WIDTH_NUM, 1.0, PASSO_MEDIO, None),
+        (ids::INSP_ORDER_Z_INDEX, 1.0, PASSO_MEDIO, Some(0.0)),
     ];
     for (id, step, scrub, default) in campos {
         store.mark_card_field(
@@ -286,7 +306,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
             vids::vector_paint_row_width_id(i),
         ] {
             let (step, scrub) = (1.0, 1.0);
-            let default = (id == vids::vector_paint_row_opacity_id(i)).then_some(100.0);
+            let default = (id == vids::vector_paint_row_opacity_id(i)).then_some(CEM_POR_CENTO);
             store.mark_card_field(
                 id,
                 CardFieldSpec {

@@ -108,7 +108,7 @@ pub mod profile_live;
 pub mod quickshape_frame;
 pub mod resize_box_edit;
 pub mod selection_sync;
-pub mod shape_build;
+pub use ph2d_vec_boolean::shape_build;
 pub mod shape_params;
 pub mod short_click;
 pub mod svg_export;

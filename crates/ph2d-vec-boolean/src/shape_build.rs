@@ -2,7 +2,7 @@
 //!
 //! O porquê e a história: `docs/Vector Module/50_cabecalhos_do_app_vec.md` § `shape_build.rs`.
 
-use ph2d_vec_boolean::{Arrangement, BoolOp, FaceId, MAX_BUILD_SHAPES, Membership, apply_many};
+use crate::{Arrangement, BoolOp, FaceId, MAX_BUILD_SHAPES, Membership, apply_many};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
 
 /// O que um gesto de Shape Builder produz. Tudo em MUNDO.
@@ -177,11 +177,7 @@ impl BuildSession {
             for p in &mut rest {
                 p.carry_look_from(&src);
             }
-            drop_slivers(
-                &mut rest,
-                ph2d_vec_boolean::area(&src),
-                &format!("sobra da fonte {i}"),
-            );
+            drop_slivers(&mut rest, crate::area(&src), &format!("sobra da fonte {i}"));
             remainder.push((i, rest));
         }
 
@@ -189,7 +185,7 @@ impl BuildSession {
         // A forma NOVA também passa pelo filtro: a união das faces é geometria re-derivada
         // como qualquer outra. A referência é a área dela mesma (a soma das peças) — se tudo
         // degenerar, o `>` estrito não deixa nada passar.
-        let merged_area: f64 = merged.iter().map(ph2d_vec_boolean::area).sum();
+        let merged_area: f64 = merged.iter().map(crate::area).sum();
         drop_slivers(&mut merged, merged_area, "forma nova");
         // O estilo da forma nova: o da fonte do TOPO entre as tocadas (Illustrator).
         if let Some(top) = (0..self.arr.len())
@@ -279,7 +275,7 @@ fn drop_slivers(pieces: &mut Vec<VecPath>, reference_area: f64, what: &str) {
     let floor = SLIVER_AREA_FRACTION * reference_area;
     let log = std::env::var_os("PH2D_BUILD_LOG").is_some();
     pieces.retain(|p| {
-        let a = ph2d_vec_boolean::area(p);
+        let a = crate::area(p);
         let keep = a > floor;
         if log {
             let pct = 100.0 * a / reference_area.max(f64::MIN_POSITIVE);

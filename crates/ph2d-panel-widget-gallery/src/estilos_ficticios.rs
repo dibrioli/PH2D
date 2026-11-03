@@ -91,7 +91,7 @@ fn atende(state: &mut WidgetGalleryState, p: Pedido) {
 pub(crate) fn sync(state: &mut WidgetGalleryState, store: &WidgetStore, theme: Theme) {
     if state.estilos.is_empty() && !state.styles_seeded {
         state.styles_seeded = true;
-        let ink = CardInk::of_card(store.section_theme(g::CARD_FILL), theme);
+        let ink = CardInk::of_card(store.section_theme(g::GAL_CARD_FILL), theme);
         for (i, (key, token)) in FABRICA.iter().enumerate() {
             state.estilos.push(Estilo {
                 id: i as u32 + 1,
@@ -101,12 +101,12 @@ pub(crate) fn sync(state: &mut WidgetGalleryState, store: &WidgetStore, theme: T
             });
         }
     }
-    estilos::declare(g::CARD_FILL, primeira(FILLS, &state.choices));
+    estilos::declare(g::GAL_CARD_FILL, primeira(FILLS, &state.choices));
     estilos::declare(
-        g::CARD_STROKE,
+        g::GAL_CARD_STROKE,
         STROKE_BASE + primeira(STROKES, &state.choices),
     );
-    let aberta = estilos::aberta_em(g::CARD_FILL) || estilos::aberta_em(g::CARD_STROKE);
+    let aberta = estilos::aberta_em(g::GAL_CARD_FILL) || estilos::aberta_em(g::GAL_CARD_STROKE);
     // Os pedidos são da galeria se a lista era dela; o «soltar» de uma amostra ligada também.
     for p in estilos::take_pedidos() {
         let nosso = state.styles_open

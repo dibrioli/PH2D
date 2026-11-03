@@ -55,7 +55,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx, panel: R
     }
     let i = usize::from(aberta);
     let (presente, abre, section) = if i < 3 {
-        (FXS[i], g::EFFECTS[i].open, g::CARD_EFFECTS)
+        (FXS[i], g::EFFECTS[i].open, g::GAL_CARD_EFFECTS)
     } else {
         (RACKS[i - 3], g::RACK[i - 3].open, g::CARD_AUDIO)
     };
@@ -125,7 +125,7 @@ fn fundo(scene: &mut VectorScene, r: Rect, ink: &CardInk) {
 
 /// As listas que abrem de um ícone de cabeçalho: `(o «+», a secção, as opções)`.
 const MENUS: &[(NodeId, NodeId, &[NodeId])] = &[
-    (g::FX_ADD, g::CARD_EFFECTS, &g::FX_ADD_KINDS),
+    (g::FX_ADD, g::GAL_CARD_EFFECTS, &g::FX_ADD_KINDS),
     (
         g::AU_ADD,
         g::CARD_AUDIO,

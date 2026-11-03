@@ -37,11 +37,6 @@ const FORA: &[Isento] = &[
          de um formato, não vocabulário",
     ),
     (
-        "shape_build.rs",
-        "os rótulos do log da construção (`ARTE` / `lasca (descartada)`, a área de cada peça) — \
-         terminal, e só com o log ligado",
-    ),
-    (
         "overlay_diag.rs",
         "o desenho de DIAGNÓSTICO sobre o canvas (`⚠ NÃO-FINITO`), que só existe com a env ligada \
          — a instrumentação de quem caça uma alça disparada",

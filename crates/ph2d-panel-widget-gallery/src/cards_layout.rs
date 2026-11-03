@@ -67,7 +67,7 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
 
 pub(crate) fn layout(ch: Choices) -> CardDef<'static> {
     card(
-        g::CARD_LAYOUT,
+        g::GAL_CARD_LAYOUT,
         tr("panel.widget_gallery.card.layout"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -115,7 +115,7 @@ pub(crate) fn layout(ch: Choices) -> CardDef<'static> {
 
 pub(crate) fn corners(ch: Choices) -> CardDef<'static> {
     card(
-        g::CARD_CORNERS,
+        g::GAL_CARD_CORNERS,
         tr("panel.widget_gallery.card.corners"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {
@@ -185,7 +185,7 @@ pub(crate) fn corners(ch: Choices) -> CardDef<'static> {
 
 pub(crate) fn constraints(ch: Choices) -> CardDef<'static> {
     card(
-        g::CARD_CONSTRAINTS,
+        g::GAL_CARD_CONSTRAINTS,
         tr("panel.widget_gallery.card.constraints"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {

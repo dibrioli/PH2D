@@ -385,7 +385,7 @@ fn a_curved_build_leaves_no_hairline_behind() {
     // Asserir `área > 0` seria um gate MORTO: a hairline não tem área exatamente zero, tem
     // 1e-13 — e passaria. (Medido: com o filtro desligado, a versão `> 0` fica VERDE.)
     for p in sc.paths() {
-        let area = ph2d_vec_boolean::area(p);
+        let area = crate::area(p);
         let (lo, hi) = p
             .verts
             .iter()
@@ -441,7 +441,7 @@ fn a_thin_but_real_crescent_survives_the_sliver_filter() {
     let crescent: Vec<f64> = result
         .remainder
         .iter()
-        .flat_map(|(_, rest)| rest.iter().map(ph2d_vec_boolean::area))
+        .flat_map(|(_, rest)| rest.iter().map(crate::area))
         .collect();
     assert!(
         !crescent.is_empty(),
@@ -477,7 +477,7 @@ fn painting_every_face_and_uniting_leaves_exactly_one_shape() {
         sel.len(),
         sc.paths()
             .iter()
-            .map(|p| (p.id, (ph2d_vec_boolean::area(p) * 100.0).round() / 100.0))
+            .map(|p| (p.id, (crate::area(p) * 100.0).round() / 100.0))
             .collect::<Vec<_>>()
     );
     assert_eq!(
@@ -537,9 +537,8 @@ fn what_the_gesture_makes_never_overlaps_what_it_left_alone() {
                 if *oid == n.id {
                     continue;
                 }
-                let inter =
-                    ph2d_vec_boolean::apply_many(&[n, outro], ph2d_vec_boolean::BoolOp::Intersect);
-                let sobreposto: f64 = inter.iter().map(ph2d_vec_boolean::area).sum();
+                let inter = crate::apply_many(&[n, outro], crate::BoolOp::Intersect);
+                let sobreposto: f64 = inter.iter().map(crate::area).sum();
                 assert!(
                     sobreposto < 1e-6,
                     "[{nome}] a forma {} que o gesto criou cobre {:.4} da forma {} que ele nao \

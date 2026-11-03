@@ -61,6 +61,7 @@ pub mod gancho;
 pub mod ilha;
 pub mod laco;
 pub mod overlap;
+pub mod shape_build;
 pub use overlap::{crosses_itself, overlaps_itself, quinas_de, resolve_overlap, silhueta_da_pele};
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};

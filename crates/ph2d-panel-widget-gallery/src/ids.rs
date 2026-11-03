@@ -6,23 +6,23 @@ use ph2d_editor_core::panel::cards::estilos::botao_de;
 use ph2d_tool_registry::hash_node_id;
 
 // ── Os cartões (secções) ──
-pub const CARD_IDENTITY: NodeId = hash_node_id("gallery.card.identity");
-pub const CARD_ALIGN: NodeId = hash_node_id("gallery.card.align");
-pub const CARD_BOOLEAN: NodeId = hash_node_id("gallery.card.boolean");
-pub const CARD_TRANSFORM: NodeId = hash_node_id("gallery.card.transform");
-pub const CARD_LAYOUT: NodeId = hash_node_id("gallery.card.layout");
-pub const CARD_CORNERS: NodeId = hash_node_id("gallery.card.corners");
-pub const CARD_CONSTRAINTS: NodeId = hash_node_id("gallery.card.constraints");
-pub const CARD_APPEARANCE: NodeId = hash_node_id("gallery.card.appearance");
-pub const CARD_FILL: NodeId = hash_node_id("gallery.card.fill");
-pub const CARD_STROKE: NodeId = hash_node_id("gallery.card.stroke");
-pub const CARD_EFFECTS: NodeId = hash_node_id("gallery.card.effects");
-pub const CARD_TEXT: NodeId = hash_node_id("gallery.card.text");
-pub const CARD_EXPORT: NodeId = hash_node_id("gallery.card.export");
-pub const CARD_ACTIONS: NodeId = hash_node_id("gallery.card.actions");
-pub const CARD_MARKS: NodeId = hash_node_id("gallery.card.marks");
-pub const CARD_ORDERING: NodeId = hash_node_id("gallery.card.ordering");
-pub const CARD_PHYSICS: NodeId = hash_node_id("gallery.card.physics");
+pub const GAL_CARD_IDENTITY: NodeId = hash_node_id("gallery.card.identity");
+pub const GAL_CARD_ALIGN: NodeId = hash_node_id("gallery.card.align");
+pub const GAL_CARD_BOOLEAN: NodeId = hash_node_id("gallery.card.boolean");
+pub const GAL_CARD_TRANSFORM: NodeId = hash_node_id("gallery.card.transform");
+pub const GAL_CARD_LAYOUT: NodeId = hash_node_id("gallery.card.layout");
+pub const GAL_CARD_CORNERS: NodeId = hash_node_id("gallery.card.corners");
+pub const GAL_CARD_CONSTRAINTS: NodeId = hash_node_id("gallery.card.constraints");
+pub const GAL_CARD_APPEARANCE: NodeId = hash_node_id("gallery.card.appearance");
+pub const GAL_CARD_FILL: NodeId = hash_node_id("gallery.card.fill");
+pub const GAL_CARD_STROKE: NodeId = hash_node_id("gallery.card.stroke");
+pub const GAL_CARD_EFFECTS: NodeId = hash_node_id("gallery.card.effects");
+pub const GAL_CARD_TEXT: NodeId = hash_node_id("gallery.card.text");
+pub const GAL_CARD_EXPORT: NodeId = hash_node_id("gallery.card.export");
+pub const GAL_CARD_ACTIONS: NodeId = hash_node_id("gallery.card.actions");
+pub const GAL_CARD_MARKS: NodeId = hash_node_id("gallery.card.marks");
+pub const GAL_CARD_ORDERING: NodeId = hash_node_id("gallery.card.ordering");
+pub const GAL_CARD_PHYSICS: NodeId = hash_node_id("gallery.card.physics");
 
 // ── Identidade ──
 pub const NAME: NodeId = hash_node_id("gallery.text.name");
@@ -128,7 +128,7 @@ pub struct PaintRow {
     pub remove: NodeId,
 }
 
-pub const FILL_STYLES: NodeId = botao_de(CARD_FILL);
+pub const FILL_STYLES: NodeId = botao_de(GAL_CARD_FILL);
 pub const FILL_ADD: NodeId = hash_node_id("gallery.fill.add");
 pub const FILLS: [PaintRow; 3] = [
     PaintRow {
@@ -150,7 +150,7 @@ pub const FILLS: [PaintRow; 3] = [
         remove: hash_node_id("gallery.fill2.remove"),
     },
 ];
-pub const STROKE_STYLES: NodeId = botao_de(CARD_STROKE);
+pub const STROKE_STYLES: NodeId = botao_de(GAL_CARD_STROKE);
 pub const STROKE_ADD: NodeId = hash_node_id("gallery.stroke.add");
 pub const STROKES: [PaintRow; 3] = [
     PaintRow {

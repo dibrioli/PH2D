@@ -12,7 +12,7 @@ use ph2d_i18n::tr;
 
 pub(crate) fn transform(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
     card(
-        g::CARD_TRANSFORM,
+        g::GAL_CARD_TRANSFORM,
         tr("panel.widget_gallery.card.transform"),
         vec![head(g::TRANSFORM_RESET, &ch, store)],
         Box::new(move |c: &mut CardCtx<'_>, y| {

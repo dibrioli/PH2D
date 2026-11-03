@@ -101,8 +101,12 @@ fn quadro(e: &mut Estado, painter: &mut PainterTool) {
                 return;
             };
             let _ = painter.preset_aplicar(&p);
-            if fase == 0 {
-                painter.set_wet_oleo_real_ligado(oleo());
+            // A caixa Real Oil pela porta do painel (a gravada), nunca pelo setter interno.
+            if fase == 0 && painter.wet_oleo_real().is_some() != oleo() {
+                use ph2d_editor_core::Tool;
+                painter.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+                    ph2d_tool_painter::ids::PAINTER_WETPAINT_OLEO_REAL,
+                ));
             }
             painter.set_brush_size_px(30.0);
             painter.set_brush_color_srgb8(if fase == 0 {

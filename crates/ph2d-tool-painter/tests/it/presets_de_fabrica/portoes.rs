@@ -2,6 +2,7 @@
 //! `presets_de_fabrica.rs` pelo tecto de 700 linhas; os ajudantes moram no pai.
 
 use super::memoria::pico_mib;
+use super::regua_da_largura::envolvente_de_baixo;
 use super::*;
 
 /// **A promessa na ponta da tabela**: a lei crua ONDULA de raio para raio e 64 pontos interpolam a ondulação (Knife
@@ -45,6 +46,7 @@ fn refina_a_promessa(p: &mut Preset) {
             );
             mudou = true;
         }
+        envolvente_de_baixo(&mut p.parametros.width_table);
         if !mudou {
             break;
         }
@@ -97,6 +99,7 @@ fn gera_os_presets_de_fabrica() {
         // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (só a miniatura, quando a lei da largura não mudou).
         if std::env::var("PH2D_REGERA_SO_MINIATURA").as_deref() != Ok("1") {
             preset.parametros.width_table = tabela_de_largura(&preset);
+            envolvente_de_baixo(&mut preset.parametros.width_table);
             refina_a_promessa(&mut preset);
         }
         if r.nome == "Wet Round" {

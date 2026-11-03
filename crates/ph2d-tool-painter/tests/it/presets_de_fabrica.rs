@@ -36,8 +36,8 @@ use ph2d_tool_painter::{
 };
 use ph2d_wet_paint::tuning::Knob;
 use regua_da_largura::{
-    imagem_da_ferramenta, largura_do_misturador, largura_do_rasto, sementes_da_largura,
-    tolerancia_da_largura,
+    imagem_da_ferramenta, largura_do_misturador, largura_do_rasto, raio_do_motor_da_tabela,
+    sementes_da_largura, tolerancia_da_largura,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -542,45 +542,6 @@ fn mediana(mut v: Vec<f32>) -> f32 {
     } else {
         0.5 * (v[n / 2 - 1] + v[n / 2])
     }
-}
-
-/// O raio do motor de `raio` pela tabela de largura de um preset — a conta de `LeiDaLargura::raio_do_motor`
-/// (`wetpaint/largura.rs`: os pontos sem traço e os que não crescem saem; abaixo do 1.º e acima do último, a razão
-/// da ponta). Tabela vazia = o raio pedido.
-fn raio_do_motor_da_tabela(tabela: &[[f64; 2]], raio: f32) -> f32 {
-    let mut pontos: Vec<(f64, f64)> = Vec::new();
-    let mut sem_tinta_ate = 0.0f64;
-    for &[r, l] in tabela {
-        if !r.is_finite() || !l.is_finite() {
-            continue;
-        }
-        if l <= 0.0 {
-            if pontos.is_empty() {
-                sem_tinta_ate = sem_tinta_ate.max(r);
-            }
-            continue;
-        }
-        if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l > l0) {
-            pontos.push((r, l));
-        }
-    }
-    if pontos.len() < 2 {
-        return raio;
-    }
-    let alvo = 2.0 * f64::from(raio);
-    let (r0, l0) = pontos[0];
-    if alvo <= l0 {
-        let r = r0 * alvo / l0;
-        return (if r < sem_tinta_ate { r0 } else { r }) as f32;
-    }
-    for w in pontos.windows(2) {
-        let ((ra, la), (rb, lb)) = (w[0], w[1]);
-        if alvo <= lb {
-            return (ra + (rb - ra) * (alvo - la) / (lb - la)) as f32;
-        }
-    }
-    let (rn, ln) = pontos[pontos.len() - 1];
-    (rn * alvo / ln) as f32
 }
 
 /// A lei CRUA medida: raio do motor → largura, numa fila do MAIOR para o menor com `PH2D_LEI_FIOS` trabalhadores

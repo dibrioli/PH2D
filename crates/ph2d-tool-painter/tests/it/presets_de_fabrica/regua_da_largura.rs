@@ -363,3 +363,95 @@ fn sonda_monotonia_da_largura() {
     println!("[monotonia] raios {raios:?}");
     assert!(falhas.is_empty(), "a lei salta:\n{}", falhas.join("\n"));
 }
+
+/// O raio do motor de `raio` pela tabela de largura de um preset — a MESMA conta de `LeiDaLargura::de_tabela` +
+/// `raio_do_motor` (`wetpaint/largura.rs`): o fim de um patamar fica (`l >= l0`) e acima da tabela vale a razão do
+/// último ponto que CRESCE. Tabela vazia = o raio pedido. ⛔ (02/11c) A cópia de antes tirava os patamares (`l > l0`) e
+/// usava a razão do último ponto: a cena da régua saía de outro tamanho que o traço que o motor pintava.
+pub(super) fn raio_do_motor_da_tabela(tabela: &[[f64; 2]], raio: f32) -> f32 {
+    let mut pontos: Vec<(f64, f64)> = Vec::new();
+    let mut sem_tinta_ate = 0.0f64;
+    for &[r, l] in tabela {
+        if !r.is_finite() || !l.is_finite() {
+            continue;
+        }
+        if l <= 0.0 {
+            if pontos.is_empty() {
+                sem_tinta_ate = sem_tinta_ate.max(r);
+            }
+            continue;
+        }
+        if pontos.last().is_none_or(|&(r0, l0)| r > r0 && l >= l0) {
+            pontos.push((r, l));
+        }
+    }
+    if pontos.len() < 2 {
+        return raio;
+    }
+    let alvo = 2.0 * f64::from(raio);
+    let (r0, l0) = pontos[0];
+    if alvo <= l0 {
+        let r = r0 * alvo / l0;
+        return (if r < sem_tinta_ate { r0 } else { r }) as f32;
+    }
+    for w in pontos.windows(2) {
+        let ((ra, la), (rb, lb)) = (w[0], w[1]);
+        if alvo <= lb {
+            return (ra + (rb - ra) * (alvo - la) / (lb - la)) as f32;
+        }
+    }
+    let (rn, ln) = pontos
+        .windows(2)
+        .rev()
+        .find(|w| w[1].1 > w[0].1)
+        .map_or(pontos[0], |w| w[1]);
+    (rn * alvo / ln) as f32
+}
+
+/// ⭐ **A envolvente MONÓTONA DE BAIXO da lei medida** (02/11c): um ponto fica só se nenhum raio MAIOR mede menos (os de
+/// largura 0 — sem traço — ficam, o `de_tabela` usa-os). A lei crua do Smear Wet sob a E10 não é monótona abaixo de
+/// r ≈ 16 — a água espalha o rasto a ~13 px desde r 5 —, e um PICO isolado (3,5 → 20,3 · 4,3 → 16,9) deixado na tabela
+/// fazia o `de_tabela` (que guarda o 1.º que cresce) largar o patamar inteiro depois dele: a largura 14 caía a r 3,25, no
+/// meio do salto (3,41 → 13, 3,5 → 27), e media 17,0. Com a envolvente de baixo o pico sai e o raio cai onde a lei
+/// já É a largura pedida.
+pub(super) fn envolvente_de_baixo(t: &mut Vec<[f64; 2]>) {
+    let mut minimo = f64::INFINITY;
+    let mut fica = vec![true; t.len()];
+    for (k, &[_, l]) in t.iter().enumerate().rev() {
+        if l > 0.0 {
+            fica[k] = l <= minimo;
+            minimo = minimo.min(l);
+        }
+    }
+    let mut k = 0;
+    t.retain(|_| {
+        k += 1;
+        fica[k - 1]
+    });
+}
+
+/// SONDA (02/11c): a promessa de `PH2D_SONDA_PRESET` (por omissão o Smear Wet) com a tabela do ficheiro e com a
+/// [`envolvente_de_baixo`] dela — sem regerar: diz se a envolvente põe o raio do motor onde a lei já é a largura.
+#[test]
+#[ignore = "sonda: a promessa de um preset com a envolvente de baixo da tabela (custo ~ 1 min)"]
+fn sonda_promessa_com_envolvente() {
+    let nome = std::env::var("PH2D_SONDA_PRESET").unwrap_or_else(|_| "Smear Wet".into());
+    let (_, b) = ficheiros_do_wet()
+        .into_iter()
+        .find(|(rel, _)| rel.ends_with(&format!("/{nome}.ph2d-brush.png")))
+        .expect("o preset");
+    let p = ler(&b).unwrap();
+    let mut q = p.clone();
+    envolvente_de_baixo(&mut q.parametros.width_table);
+    for (rotulo, x) in [("ficheiro", &p), ("envolvente", &q)] {
+        let motores: Vec<f32> = RAIOS_DA_PROMESSA
+            .iter()
+            .map(|&r| raio_do_motor_da_tabela(&x.parametros.width_table, r))
+            .collect();
+        let l = larguras_da_promessa(x, false);
+        let fora = fora_da_promessa(&l, tolerancia_da_largura(x), f32::INFINITY);
+        println!(
+            "[envolvente] {nome} {rotulo}: motores {motores:?} · larguras {l:?} · fora {fora:?}"
+        );
+    }
+}

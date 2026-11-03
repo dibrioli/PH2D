@@ -125,12 +125,12 @@ pub(super) fn cena(n: usize) -> PainterTool {
 /// antes do rebase), lei nova da tinta. Antes dele `0x29b7…4e43` (1, 2, 4) e `0xfa55…c815` (3) do merge-base até
 /// `9fb79dc282`; depois os de hoje até ao topo (`ff2077c768`), iguais nos degraus da E10 (`7c8e08d16b`, `1f9e115c7e`).
 const HOJE: [(usize, u64); 6] = [
-    (0, 0x57aa_4a69_3655_191c),
-    (1, 0x6c49_6d00_d42e_be13),
-    (2, 0x6c49_6d00_d42e_be13),
-    (3, 0x52e3_e2c9_2159_a0ac),
-    (4, 0x6c49_6d00_d42e_be13),
-    (6, 0x47c6_7d9e_b68a_90de),
+    (0, 0x4282_f44d_b602_5076),
+    (1, 0x91c1_c72e_008a_7205),
+    (2, 0x91c1_c72e_008a_7205),
+    (3, 0x8885_c46f_88bb_3136),
+    (4, 0x91c1_c72e_008a_7205),
+    (6, 0xec88_0f5b_394b_4f2f),
 ];
 
 /// ⭐ **A SECÇÃO DESLIGADA É O TRAÇO DE HOJE AO BYTE** (o portão de identidade do prompt 41, nascido

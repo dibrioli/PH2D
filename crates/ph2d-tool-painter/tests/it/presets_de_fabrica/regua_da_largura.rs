@@ -426,12 +426,13 @@ pub(super) fn largura_da_agua(px: &[u8], w: u32, h: u32) -> f32 {
 /// (⛔ Medido 29/10: a área de todas as colunas ÷ a soma dos picos — contra o ruído das ~8 colunas a raio pequeno — saltava
 /// MAIS no Smear Wet, queda 0,21 e 33,8 → 26,7 px a raio 6,3 → 6,7: as colunas de pico baixo e água larga mandavam.)
 ///
-/// ⭐ cura-smearwet §15: as colunas começam em `cena.x0`, fora da água da base ([`orla_da_agua_da_base`]) — lá a água
+/// ⭐ cura-smearwet §15: as colunas começam depois de `cena.x0` e da [`FAIXA_DA_ORLA_DA_BASE`], fora da água da base ([`orla_da_agua_da_base`]) — lá a água
 /// do Smear corre pela faixa molhada e a coluna mede a orla (25–80 px), não o rasto (10–18 px); a mediana das duas
 /// populações saltava com a fase. `cena.m` é o motor EXACTO (o `(w − 160)/4,5` truncado lia 4,684 e 4,779 iguais).
 pub(super) fn largura_do_rasto(px: &[u8], w: u32, h: u32, cena: CenaDoRasto) -> f32 {
     let (x0, x1) = colunas_do_rasto(w, cena);
-    let fora_da_orla = FAIXA_DA_ORLA_DA_BASE.min((x1 - x0).saturating_sub(COLUNAS_MIN_DO_RASTO));
+    let fora_da_orla =
+        FAIXA_DA_ORLA_DA_BASE.min(x1.saturating_sub(x0).saturating_sub(COLUNAS_MIN_DO_RASTO));
     mediana(
         (x0 + fora_da_orla..x1)
             .filter_map(|x| largura_equivalente(px, w, h, x))
@@ -495,10 +496,6 @@ fn a_regua_do_rasto_le_um_traco_estreito() {
     }
 }
 
-/// ⭐ **O rasto do Smear Wet é contínuo no raio e não depende da fase** (cura-smearwet §15): a motor 4,5…6,5 (passo
-/// ¼) a largura não salta mais de 1 px entre raios vizinhos, e as fases ¼ px da cena movem-na ≤ 1 px. CONTROLO (a régua
-/// de antes, colunas desde `cx` e `m` truncado): na MESMA imagem a mediana das duas populações (orla molhada 25–80 px,
-/// rasto 10–18) salta 13,5 ↔ 25,3 (§14.2).
 /// O salto admitido entre fases e raios vizinhos do rasto (px, sobre 20–26 de largura). Medido 03/11 com a umidade até à
 /// orla: pior fase 1,67 · pior vizinho 1,50 — o MESMO ruído da lei de antes da cobertura (1,64 · 1,39). O 1,0 só passava
 /// com o miolo seco pela orla do último dab, que era o defeito que o dono viu (o traço listrado, sem espalhar).
@@ -507,6 +504,9 @@ const SALTO_DO_RASTO_PX: f32 = 1.75;
 /// por ela nas fases a meia célula) · a cobertura de uma célula 4,7.
 const SALTO_DA_ORLA_PX: f32 = 6.0;
 
+/// ⭐ **O rasto do Smear Wet é contínuo no raio e não depende da fase** (cura-smearwet §15): a motor 4,5…6,5 (passo ¼) a
+/// largura não salta mais de [`SALTO_DO_RASTO_PX`] entre raios vizinhos e entre as fases ¼ px da cena, fora da faixa da
+/// orla; com ela, não mais de [`SALTO_DA_ORLA_PX`]. CONTROLO: com a faixa a mesma imagem salta acima do primeiro.
 #[test]
 fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
     let (_, b) = ficheiros_do_wet()

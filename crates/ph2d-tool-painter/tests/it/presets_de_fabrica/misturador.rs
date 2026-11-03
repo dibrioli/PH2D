@@ -19,7 +19,7 @@ const LIMIAR_VISIVEL: u8 = 13;
 /// esparso); os outros cabem em ± 2 px. Com a tabela da equivalente: 80 a 52 e 160 a 104 (1,54×).
 const FOLGA_DO_CIRCULO: f32 = 1.25;
 
-/// A extensão da mudança por coluna, a mediana das colunas do meio. ⛔ Só para a tabela: salta onde a banda fraca passa o
+/// A extensão da mudança por coluna, a mediana das colunas do meio. ⛔ Só para a tabela e o portão do círculo: salta onde a banda fraca passa o
 /// limiar (motor 20 → 28: 21 → 51), que é onde o olho a passa a ver; a régua do alarme é a contínua.
 fn largura_visivel(px: &[u8], w: u32, h: u32) -> f32 {
     let mut v: Vec<f32> = ((w / 3)..(2 * w / 3))
@@ -37,7 +37,7 @@ fn largura_visivel(px: &[u8], w: u32, h: u32) -> f32 {
 /// A tabela raio do motor → largura visível de um Blender (~1 min de CPU por preset).
 pub(super) fn tabela_do_misturador(p: &Preset) -> Vec<[f64; 2]> {
     let custos: Vec<u64> = MOTORES.iter().map(|&m| custo_da_cena(p, m, true)).collect();
-    let fios = std::thread::available_parallelism().map_or(8, std::num::NonZero::get) / 2;
+    let fios = (std::thread::available_parallelism().map_or(8, std::num::NonZero::get) / 2).max(1);
     let larguras = em_paralelo_pela_memoria(&custos, fios, |i| {
         let (px, w, h, _) = imagem_da_largura(p, MOTORES[i], true, Relogio::DeUmaVez, 0);
         largura_visivel(&px, w, h)
@@ -64,7 +64,7 @@ fn a_area_do_blend_cabe_no_circulo() {
         .iter()
         .map(|&(k, r)| custo_da_cena(&presets[k], r, false))
         .collect();
-    let fios = std::thread::available_parallelism().map_or(8, std::num::NonZero::get) / 2;
+    let fios = (std::thread::available_parallelism().map_or(8, std::num::NonZero::get) / 2).max(1);
     let ls = em_paralelo_pela_memoria(&custos, fios, |j| {
         let (k, r) = casos[j];
         let (px, w, h, _) = imagem_da_largura(&presets[k], r, false, Relogio::DeUmaVez, 0);

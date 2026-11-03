@@ -1,4 +1,4 @@
-//! Os PORTÕES da fábrica (o gerador, o censo, a receita, a miniatura, a largura prometida) — partidos de
+//! Os PORTÕES da fábrica (o gerador, o censo, a receita, a miniatura) — partidos de
 //! `presets_de_fabrica.rs` pelo tecto de 700 linhas; os ajudantes moram no pai.
 
 use super::memoria::{custo_da_cena, em_paralelo_pela_memoria, pico_mib};

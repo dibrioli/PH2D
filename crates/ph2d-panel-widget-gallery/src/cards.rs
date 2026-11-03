@@ -2,8 +2,9 @@
 //! inspector de ferramentas fictícias primeiro ([`crate::cards_vocab`]), depois as onze secções de
 //! sempre, cada uma o corpo de um cartão com nome de ferramenta, pintado com a tinta dele.
 
-use crate::cards_vocab;
+use crate::ids as g;
 use crate::state::WidgetGalleryState;
+use crate::{cards_avancado, cards_render, cards_vocab};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
@@ -66,12 +67,19 @@ fn tool_title(section: NodeId) -> &'static str {
         .map_or("", |(_, key)| tr(key))
 }
 
-/// As onze secções de sempre, cada uma num cartão (o id de sempre: ordem e tema sobrevivem).
-fn legacy() -> Vec<CardDef<'static>> {
+/// As onze secções de sempre, cada uma num cartão (o id de sempre: ordem e tema sobrevivem). Render e
+/// Advanced já falam o vocabulário (doc 08 §1.2); os corpos antigos só valem em `PH2D_CARDS=0`.
+fn legacy(st: &WidgetGalleryState) -> Vec<CardDef<'static>> {
     SHOWCASE_CARDS
         .iter()
         .map(|sc| {
             let sc = *sc;
+            if sc.section == g::CARD_RENDER {
+                return cards_render::render(st.choices, st.render);
+            }
+            if sc.section == g::CARD_ADVANCED {
+                return cards_avancado::advanced(st.choices);
+            }
             CardDef {
                 section: sc.section,
                 title: tool_title(sc.section),
@@ -111,9 +119,10 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
         crate::valores::sync_health(state, store);
         crate::cards_rive::sync_pegas(state, store);
         crate::estilos_ficticios::sync(state, store, theme);
+        cards_render::avanca(state);
         cards_vocab::vocabulary(state, store)
     };
-    cards.extend(legacy());
+    cards.extend(legacy(state));
     let rect = paint_card_list_with(
         ctx,
         ids::GAL_PANEL,

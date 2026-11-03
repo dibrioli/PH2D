@@ -10,8 +10,10 @@
 //! registers each bit's hit rect and toggles the mask on click.
 
 use crate::paint::{fill_rounded_rect, paint_text_centered_com_orcamento, resolve};
+use crate::widget::card_ink::CardInk;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -155,6 +157,48 @@ pub fn paint_bitmask_grid32(
             tile_budget(tile),
             fonte,
             resolve(tinta, theme),
+        );
+    }
+}
+
+/// As tintas de um ladrilho num cartão: `(fundo, número)` nos tons da superfície dele; ligado = o
+/// acento. `hover` só realça o desligado.
+#[must_use]
+pub fn tile_tokens_on_card(set: bool, hover: bool) -> (ColorToken, ColorToken) {
+    match (set, hover) {
+        (true, _) => (ColorToken::Accent, ColorToken::AccentFg),
+        (false, true) => (ColorToken::CardFieldHover, ColorToken::Text1),
+        (false, false) => (ColorToken::CardField, ColorToken::Text2),
+    }
+}
+
+/// [`paint_bitmask_grid32`] nos tons de um cartão (`CartoesUI/08` §1.2): o raio e a letra do
+/// segmento. `hover(bit)` diz qual ladrilho está sob o ponteiro.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_bitmask_grid32_on_card(
+    grid: &BitmaskGrid32,
+    origin_x: f32,
+    origin_y: f32,
+    w: f32,
+    cell_h: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: CardInk,
+    hover: &dyn Fn(usize) -> bool,
+) {
+    crate::widget::composto::grupo(grid.bit_ids);
+    for bit in 0..32usize {
+        let tile = tile_rect(BitmaskGrid32::cell_rect(origin_x, origin_y, w, cell_h, bit));
+        let (fundo, tinta) = tile_tokens_on_card(grid.is_set(bit), hover(bit));
+        fill_rounded_rect(scene, tile, m::SEG_RADIUS, ink.color(fundo));
+        paint_text_centered_com_orcamento(
+            text_system,
+            scene,
+            &(bit + 1).to_string(),
+            tile,
+            tile_budget(tile),
+            m::SEG_TEXT_PX,
+            ink.color(tinta),
         );
     }
 }

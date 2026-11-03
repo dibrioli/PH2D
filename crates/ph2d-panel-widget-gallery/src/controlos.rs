@@ -42,6 +42,10 @@ pub enum Act {
     PixelSwap,
     /// Dispara a entrada Trigger `usize`.
     Fire(usize),
+    /// Render começa a corrida fictícia (de novo, se já corria).
+    RenderStart,
+    /// Cancel pára e volta a «Ready».
+    RenderCancel,
 }
 
 /// O que um controlo É.
@@ -72,6 +76,10 @@ pub enum Kind {
     Styles,
     /// A cor `u8` da paleta: vai para o alvo (Foreground ou Background).
     Palette(u8),
+    /// A camada de colisão `u8`: alterna o bit.
+    Layer(u8),
+    /// A opção `u8` do «+» de Metadata: liga a primeira entrada livre, já com esse tipo.
+    AddMeta(u8),
 }
 
 /// Uma linha da tabela. `icon` = o de sempre; `lit_icon` = o do estado aceso, se é outro.
@@ -102,6 +110,12 @@ pub const SWATCHES: [(NodeId, NodeId, ColorToken); crate::state::N_SWATCHES] = [
     (g::CARD_GRADIENT, g::STOPS[0].swatch, ColorToken::Accent),
     (g::CARD_GRADIENT, g::STOPS[1].swatch, ColorToken::Danger),
     (g::CARD_GRADIENT, g::STOPS[2].swatch, ColorToken::Success),
+    (g::CARD_ADVANCED, g::META[0].swatch, ColorToken::Danger),
+    (g::CARD_ADVANCED, g::META[1].swatch, ColorToken::Danger),
+    (g::CARD_ADVANCED, g::META[2].swatch, ColorToken::Danger),
+    (g::CARD_ADVANCED, g::META[3].swatch, ColorToken::Danger),
+    (g::CARD_ADVANCED, g::META[4].swatch, ColorToken::Danger),
+    (g::CARD_ADVANCED, g::META[5].swatch, ColorToken::Danger),
 ];
 
 /// A paleta indexada do cartão Pixel Art, em tokens (nunca hex).
@@ -199,6 +213,8 @@ pub(super) const fn plain(id: NodeId, kind: Kind) -> Control {
     }
 }
 
+#[path = "controlos_avancado.rs"]
+pub(crate) mod avancado;
 #[path = "controlos_forma.rs"]
 mod forma;
 #[path = "controlos_reais.rs"]
@@ -217,6 +233,8 @@ pub fn controls() -> impl Iterator<Item = &'static Control> {
         .chain(reais::linhas())
         .chain(rive::RIVE)
         .chain(rive::linhas())
+        .chain(avancado::AVANCADO)
+        .chain(avancado::linhas())
 }
 
 /// A linha de `id`, se é um controlo da galeria.
@@ -236,6 +254,7 @@ pub fn lit(c: &Control, ch: &Choices, store: &WidgetStore) -> bool {
         Kind::Act(Act::FlipH) => negativo(g::SCALE_X),
         Kind::Act(Act::FlipV) => negativo(g::SCALE_Y),
         Kind::Act(Act::PickTarget(f, _)) => ch.on(f),
+        Kind::Layer(bit) => ch.layers >> bit & 1 == 1,
         _ => false,
     }
 }

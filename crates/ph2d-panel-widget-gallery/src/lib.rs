@@ -20,12 +20,14 @@
 #![forbid(unsafe_code)]
 
 mod cards;
+mod cards_avancado;
 mod cards_layout;
 mod cards_objeto;
 mod cards_pintura;
 mod cards_reais_anim;
 mod cards_reais_media;
 pub mod cards_reais_mundo;
+pub mod cards_render;
 pub mod cards_rive;
 mod cards_texto;
 mod cards_transform;

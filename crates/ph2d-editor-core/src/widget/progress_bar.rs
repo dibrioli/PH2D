@@ -5,6 +5,7 @@
 //! `Affine::translate` against the track each frame).
 
 use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use crate::widget::card_ink::CardInk;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -113,6 +114,30 @@ pub fn paint_progress_bar(
             rect,
             TypeToken::Xs.px(),
             resolve(ColorToken::Text1, theme),
+        );
+    }
+}
+
+/// A barra fina de um cartão (o progresso de exportar do Figma e do Rive): a trilha no tom do campo e
+/// o trecho no acento. O `%` não mora aqui: fica na linha de estado por cima.
+pub fn paint_progress_bar_on_card(
+    bar: &ProgressBar,
+    rect: Rect,
+    scene: &mut VectorScene,
+    ink: CardInk,
+) {
+    let radius = rect.h * 0.5;
+    fill_rounded_rect(scene, rect, radius, ink.color(ColorToken::CardField));
+    let fill_w = match bar.mode {
+        ProgressMode::Determinate(v) => rect.w * v.clamp(0.0, 1.0),
+        ProgressMode::Indeterminate => rect.w * INDETERMINATE_FRACTION,
+    };
+    if fill_w > 0.0 {
+        fill_rounded_rect(
+            scene,
+            Rect::new(rect.x, rect.y, fill_w, rect.h),
+            radius.min(fill_w * 0.5),
+            ink.color(ColorToken::Accent),
         );
     }
 }

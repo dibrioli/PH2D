@@ -4,6 +4,7 @@
 //! clique (girar, espelhar, alinhar), o Apply que grava os valores de PARTIDA e o Cancel e o ↺ que
 //! voltam a eles.
 
+use crate::controlos::avancado::{META_ROWS, META_TYPES};
 use crate::controlos::{self, Act, Kind, SWATCHES};
 use crate::ids as g;
 use crate::state::{BOOLEAN_NONE, Choices, Pick, SIDE_NONE, Values, WidgetGalleryState};
@@ -125,6 +126,10 @@ pub(crate) fn on_click(
             if matches!(p, Pick::ExportScale | Pick::Format) {
                 state.exported = false;
             }
+            // O que sai muda: a corrida (ou o resultado dela) deixa de valer.
+            if matches!(p, Pick::RenderFormat | Pick::RenderQuality) {
+                state.render.cancel();
+            }
         }
         // A caixa da lista e o ⠿ abrem pelo despacho dos cartões; a galeria só consome o clique.
         Kind::Box | Kind::Styles => {}
@@ -157,6 +162,13 @@ pub(crate) fn on_click(
             }
         }
         Kind::Set(f, v) => ch.set(f, v),
+        Kind::Layer(bit) => ch.layers ^= 1 << bit,
+        Kind::AddMeta(v) => {
+            if let Some(i) = META_ROWS.iter().position(|f| !ch.on(*f)) {
+                ch.set(META_ROWS[i], true);
+                ch.choose(META_TYPES[i], v);
+            }
+        }
         Kind::Swatch(i) => toggle_picker(*ch, host, i),
         Kind::Act(a) => act(state, host, a),
     }
@@ -199,6 +211,8 @@ fn act(state: &mut WidgetGalleryState, host: &mut dyn PanelHostInternal, a: Act)
         Act::FlipH => store.set_number_value(g::SCALE_X, -number(store, g::SCALE_X)),
         Act::FlipV => store.set_number_value(g::SCALE_Y, -number(store, g::SCALE_Y)),
         Act::Export => state.exported = true,
+        Act::RenderStart => state.render.start(),
+        Act::RenderCancel => state.render.cancel(),
         Act::PickTarget(f, campo) => {
             let armado = state.choices.on(f);
             state.choices.set(f, !armado);

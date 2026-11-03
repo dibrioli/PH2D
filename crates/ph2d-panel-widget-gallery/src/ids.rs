@@ -310,15 +310,18 @@ pub const PHYSICS_REMOVE: NodeId = hash_node_id("gallery.action.physics_remove")
 /// `(id, valor de fábrica, passo, arrasto por px)` de um campo numérico.
 pub type Campo = (NodeId, f64, f64, f64);
 
+#[path = "ids_avancado.rs"]
+mod avancado;
 #[path = "ids_reais.rs"]
 mod reais;
 #[path = "ids_rive.rs"]
 mod rive;
+pub use avancado::*;
 pub use reais::*;
 pub use rive::*;
 
 /// Junta as tabelas de campos num array só (o tamanho conta-se, nunca se escolhe).
-const fn junta<const N: usize>(partes: [&[Campo]; 3]) -> [Campo; N] {
+const fn junta<const N: usize>(partes: [&[Campo]; 4]) -> [Campo; N] {
     let mut out = [partes[0][0]; N];
     let (mut p, mut n) = (0, 0);
     while p < partes.len() {
@@ -336,8 +339,8 @@ const fn junta<const N: usize>(partes: [&[Campo]; 3]) -> [Campo; N] {
 
 /// A tabela que o `populate` regista, o `prepare` marca e o ↺ repõe. Os números são dados do objeto
 /// fictício.
-pub const FIELDS: [Campo; BASE.len() + CAMPOS.len() + CAMPOS_RIVE.len()] =
-    junta([&BASE, &CAMPOS, &CAMPOS_RIVE]);
+pub const FIELDS: [Campo; BASE.len() + CAMPOS.len() + CAMPOS_RIVE.len() + CAMPOS_AVANCADO.len()] =
+    junta([&BASE, &CAMPOS, &CAMPOS_RIVE, &CAMPOS_AVANCADO]);
 
 const BASE: [Campo; 46] = [
     (POS_X, 120.0, 1.0, 1.0), // LITERAL-PX-OK: dado do objeto fictício
@@ -389,9 +392,24 @@ const BASE: [Campo; 46] = [
 ];
 
 /// `(id, chave do texto de fábrica)` dos campos de texto.
-pub const TEXTS: [(NodeId, &str); 4] = [
+pub const TEXTS: [(NodeId, &str); 16] = [
     (NAME, "panel.widget_gallery.name_default"),
     (SUFFIX, "panel.widget_gallery.suffix_default"),
     (CAM_TARGET, "panel.widget_gallery.name_default"),
     (CS_TARGET, "panel.widget_gallery.real.object.enemy"),
+    (META[0].text, "panel.widget_gallery.adv.text_default"),
+    (META[1].text, "panel.widget_gallery.adv.label_default"),
+    (META[2].text, "panel.widget_gallery.adv.text_default"),
+    (META[3].text, "panel.widget_gallery.adv.text_default"),
+    (META[4].text, "panel.widget_gallery.adv.text_default"),
+    (META[5].text, "panel.widget_gallery.adv.text_default"),
+    (PROPS[0].key, "panel.widget_gallery.adv.prop_key_default"),
+    (
+        PROPS[0].value,
+        "panel.widget_gallery.adv.prop_value_default",
+    ),
+    (PROPS[1].key, "panel.widget_gallery.adv.prop_new_key"),
+    (PROPS[1].value, "panel.widget_gallery.adv.prop_new_value"),
+    (PROPS[2].key, "panel.widget_gallery.adv.prop_new_key"),
+    (PROPS[2].value, "panel.widget_gallery.adv.prop_new_value"),
 ];

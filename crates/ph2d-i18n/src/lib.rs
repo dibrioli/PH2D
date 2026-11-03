@@ -93,6 +93,7 @@ mod familias;
 /// As strings dos dois painéis do Flip (o painel e a tira de quadros).
 mod flip;
 mod galeria;
+mod galeria_avancado;
 mod galeria_reais;
 mod galeria_rive;
 /// As strings do painel Grid Settings.
@@ -565,6 +566,7 @@ fn tr_ingles(key: &str) -> &'static str {
         k => vector::tr(k)
             .or_else(|| cartoes::tr(k))
             .or_else(|| galeria::tr(k))
+            .or_else(|| galeria_avancado::tr(k))
             .or_else(|| galeria_reais::tr(k))
             .or_else(|| galeria_rive::tr(k))
             .or_else(|| timeline::tr(k))

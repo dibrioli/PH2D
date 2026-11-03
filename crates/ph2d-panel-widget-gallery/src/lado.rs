@@ -136,6 +136,11 @@ const MENUS: &[(NodeId, NodeId, &[NodeId])] = &[
         g::CARD_INPUTS,
         &[g::SM_ADD_NUMBER, g::SM_ADD_BOOLEAN, g::SM_ADD_TRIGGER],
     ),
+    (
+        g::META_ADD,
+        g::CARD_ADVANCED,
+        &[g::META_ADD_FLOAT, g::META_ADD_TEXT, g::META_ADD_COLOR],
+    ),
 ];
 
 /// A lista do «+» aberto, com a largura da coluna do cartão, por baixo do ícone.

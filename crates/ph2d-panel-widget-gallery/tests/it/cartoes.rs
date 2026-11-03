@@ -13,7 +13,7 @@ use ph2d_editor_core::screens::slot::Slot;
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
-use ph2d_panel_widget_gallery::controlos::{Kind, controls, lit};
+use ph2d_panel_widget_gallery::controlos::{Act, Kind, controls, lit};
 use ph2d_panel_widget_gallery::ids as g;
 use ph2d_panel_widget_gallery::state::{
     BOOLEAN_NONE, Choices, Flag, Pick, SIDE_NONE, WidgetGalleryState,
@@ -30,9 +30,9 @@ fn viewport() -> Rect {
     Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)
 }
 
-/// Alta o bastante para os cartões das ferramentas caberem sem rolar.
+/// Alta o bastante para a lista inteira caber sem rolar (o Advanced é o último cartão).
 fn alta() -> Rect {
-    Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H * 10.0)
+    Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H * 30.0)
 }
 
 pub(super) struct Galeria {
@@ -69,6 +69,13 @@ impl Galeria {
                 return;
             }
             std::thread::sleep(std::time::Duration::from_millis(16));
+        }
+    }
+
+    /// `n` quadros pintados, sem esperar que a lista assente (a corrida do Render anda um por quadro).
+    pub(super) fn pinta(&mut self, n: u32) {
+        for _ in 0..n {
+            self.rects = self.host.paint::<WidgetGalleryPanel>(&mut self.st, alta());
         }
     }
 
@@ -356,6 +363,7 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
             Kind::Remove(f, _) => st.choices.set(f, true),
             Kind::Palette(i) => st.choices.choose(Pick::PixelFg, i.wrapping_add(1)),
             Kind::Add(rows) | Kind::AddOf(rows, ..) => st.choices.set(rows[2], false),
+            Kind::Act(Act::RenderCancel) => st.render.start(),
             _ => {}
         }
         gal.host.store_mut().set_number_value(g::POS_X, 123.0);
@@ -367,13 +375,14 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
         let numeros =
             |h: &MockPanelHost| g::FIELDS.map(|f| h.store().number_value(f.0).unwrap_or_default());
         let antes = numeros(&gal.host);
-        let (ch, applied, exp) = (st.choices, st.applied.clone(), st.exported);
+        let (ch, applied, exp, corrida) = (st.choices, st.applied.clone(), st.exported, st.render);
         let _ = gal
             .host
             .apply_panel_event::<WidgetGalleryPanel>(&mut st, WidgetEvent::Click(c.id));
         let mudou = st.choices != ch
             || st.applied != applied
             || st.exported != exp
+            || st.render != corrida
             || st.fires != [0; 3]
             || numeros(&gal.host) != antes
             || gal.host.store().picker_target().is_some();

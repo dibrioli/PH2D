@@ -26,6 +26,7 @@ use ph2d_editor_core::zones::Rect;
 pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
     smoke_opens_once(ctx);
     smoke_opens_the_side(state);
+    smoke_holds_the_render(state);
     if !ctx.host.panel_visible(WidgetGalleryPanel::ID) {
         // Stale-rect cleanup: without this, `panel_at` keeps returning
         // GAL_PANEL after the Gallery was closed, and BTreeMap key
@@ -125,6 +126,19 @@ fn smoke_opens_the_side(state: &mut WidgetGalleryState) {
         && !FEITO.swap(true, Ordering::Relaxed)
     {
         state.choices.choose(crate::state::Pick::SideOpen, 0);
+    }
+}
+
+/// `PH2D_GALLERY_SMOKE_RENDER=<quadro>`: a corrida do cartão Render parada nesse quadro (a foto).
+fn smoke_holds_the_render(state: &mut WidgetGalleryState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    if let Some(q) = std::env::var("PH2D_GALLERY_SMOKE_RENDER")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        && !FEITO.swap(true, Ordering::Relaxed)
+    {
+        state.render.prende_em(q);
     }
 }
 

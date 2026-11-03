@@ -81,7 +81,9 @@ mod vector3_editor;
 // <ph2d-widget-sync:end>
 
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
-pub use bitmask_grid32::{BITMASK_COLS, BITMASK_ROWS, BitmaskGrid32, paint_bitmask_grid32};
+pub use bitmask_grid32::{
+    BITMASK_COLS, BITMASK_ROWS, BitmaskGrid32, paint_bitmask_grid32, paint_bitmask_grid32_on_card,
+};
 pub use blender_color_picker::hex_field::text_origin_x as hex_field_text_origin_x;
 pub use blender_color_picker::{
     BlenderColorPicker, BlenderSubIds, ChannelMode, ColorPalette, Harmony, InterpolationMode,
@@ -146,7 +148,7 @@ pub use icon_button::{
     IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button, paint_icon_button_in_group,
 };
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
-pub use level_meter::{LevelMeter, paint_level_meter};
+pub use level_meter::{LevelMeter, fraction_of_db, paint_level_channel_on_card, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
@@ -164,7 +166,7 @@ pub use numeric_input_with_unit::{
 // `PILL_PADDING_PX` que o topbar usa **não era deste widget**: é um token, e quem o quer importa-o
 // do `ph2d_tokens`, que é o dono.
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
-pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
+pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar, paint_progress_bar_on_card};
 // ⭐ A CAIXA ÚNICA — o pintor de uma linha de propriedade, e o padrão do app desde 2026-09-02.
 // ⚠️ Re-exportado por NOME (o `mod` acima é gerado e privado): o laboratório e o produto têm de
 // chamar o MESMO pintor, senão o estudo diverge do que shipa.
@@ -251,7 +253,7 @@ pub use slider_with_chip::{
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs, paint_tabs_with_hover};
-pub use tag::{Tag, TagState, TagTone, paint_tag};
+pub use tag::{Tag, TagState, TagTone, paint_tag, paint_tag_with_radius};
 pub use text_area::{
     TextArea, TextAreaMetrics, metrics as text_area_metrics, min_height as text_area_min_height,
     paint_text_area, paint_text_area_with_state,

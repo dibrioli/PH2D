@@ -10,6 +10,7 @@
 //! literal colours).
 
 use crate::paint::{fill_rounded_rect, resolve};
+use crate::widget::card_ink::CardInk;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
@@ -219,9 +220,96 @@ fn draw_peak_hold(scene: &mut VectorScene, col: Rect, peak_hold: f32, theme: The
     );
 }
 
+/// A fração de escala cheia de um nível em dBFS (a amplitude é linear; `−6 dB` ≈ a zona `Warn`).
+#[must_use]
+pub fn fraction_of_db(db: f32) -> f32 {
+    const DECADA: f32 = 10.0; // LITERAL-PX-OK: a definição do decibel (amplitude)
+    const DB_POR_DECADA: f32 = 20.0; // LITERAL-PX-OK: a definição do decibel (amplitude)
+    DECADA.powf(db / DB_POR_DECADA)
+}
+
+/// O trecho `[lo, hi]` de um canal horizontal até `level`, da esquerda para a direita.
+fn horizontal_segment(track: Rect, lo: f32, hi: f32, level: f32) -> Option<Rect> {
+    let fim = level.min(hi);
+    (fim > lo).then(|| {
+        Rect::new(
+            track.x + track.w * lo,
+            track.y,
+            track.w * (fim - lo),
+            track.h,
+        )
+    })
+}
+
+/// Um canal horizontal nos tons de um cartão: trilha no tom do campo, zonas, pico retido, recorte.
+pub fn paint_level_channel_on_card(
+    scene: &mut VectorScene,
+    track: Rect,
+    rms: f32,
+    peak_hold: f32,
+    clipped: bool,
+    ink: CardInk,
+) {
+    let radius = track.h * 0.5;
+    fill_rounded_rect(scene, track, radius, ink.color(ColorToken::CardField));
+    let rms = rms.clamp(0.0, 1.0);
+    for (lo, hi, token) in [
+        (0.0, ZONE_WARN, ColorToken::Success),
+        (ZONE_WARN, ZONE_DANGER, ColorToken::Warn),
+        (ZONE_DANGER, 1.0, ColorToken::Danger),
+    ] {
+        if let Some(seg) = horizontal_segment(track, lo, hi, rms) {
+            fill_rounded_rect(scene, seg, radius.min(seg.w * 0.5), ink.color(token));
+        }
+    }
+    let ph = peak_hold.clamp(0.0, 1.0);
+    if ph > 0.0 {
+        let token = if ph >= ZONE_DANGER {
+            ColorToken::Danger
+        } else {
+            ColorToken::Text1
+        };
+        let x = crate::math::safe_clamp(
+            track.x + track.w * ph - HOLD_THICKNESS_PX * 0.5,
+            track.x,
+            track.x + track.w - HOLD_THICKNESS_PX,
+        );
+        fill_rounded_rect(
+            scene,
+            Rect::new(x, track.y, HOLD_THICKNESS_PX, track.h),
+            HOLD_THICKNESS_PX * 0.5,
+            ink.color(token),
+        );
+    }
+    if clipped {
+        let cap = CLIP_CAP_PX.min(track.w);
+        fill_rounded_rect(
+            scene,
+            Rect::new(track.x + track.w - cap, track.y, cap, track.h),
+            cap * 0.5,
+            ink.color(ColorToken::Danger),
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// O medidor deitado enche da ESQUERDA, cada zona no seu trecho, e `−6 dB` cai na fronteira da
+    /// zona `Warn` que o doc da constante promete. *Mutação: `track.x + track.w * (1.0 - fim)`.*
+    #[test]
+    fn horizontal_fills_from_the_left_and_the_scale_matches_the_zones() {
+        let t = Rect::new(10.0, 0.0, 100.0, 8.0);
+        let verde = horizontal_segment(t, 0.0, ZONE_WARN, 0.3).expect("verde");
+        assert_eq!((verde.x, verde.w), (10.0, 30.0));
+        let ambar = horizontal_segment(t, ZONE_WARN, ZONE_DANGER, 0.6).expect("âmbar");
+        assert_eq!(ambar.x, 60.0);
+        assert!((ambar.w - 10.0).abs() < 1e-3);
+        assert!(horizontal_segment(t, ZONE_DANGER, 1.0, 0.6).is_none());
+        assert!((fraction_of_db(-6.0) - ZONE_WARN).abs() < 0.01);
+        assert!((fraction_of_db(0.0) - 1.0).abs() < 1e-6);
+    }
 
     #[test]
     fn a11y_reports_louder_held_peak() {

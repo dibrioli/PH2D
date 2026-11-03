@@ -169,6 +169,18 @@ pub fn paint_tag(
     //    Godot (e como o dono pediu — *«etiquetas ainda são pílulas»* estava na lista do que
     //    destoava, `pesquisa/07 §22.3`).
     let radius = crate::paint::frame_radius(theme, Radius::Full.px());
+    paint_tag_with_radius(tag, rect, radius, scene, text_system, theme);
+}
+
+/// [`paint_tag`] com o raio de quem a hospeda (o `SEG_RADIUS` de um cartão).
+pub fn paint_tag_with_radius(
+    tag: &Tag,
+    rect: Rect,
+    radius: f32,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let bg = resolve(tag.bg_token(), theme);
     let fg = resolve(tag.fg_token(), theme);
     fill_rounded_rect(scene, rect, radius, bg);

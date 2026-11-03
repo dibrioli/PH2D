@@ -77,8 +77,18 @@ pub enum Flag {
     Stop0,
     Stop1,
     Stop2,
+    // O cartão Advanced.
+    Meta0,
+    Meta1,
+    Meta2,
+    Meta3,
+    Meta4,
+    Meta5,
+    Prop0,
+    Prop1,
+    Prop2,
 }
-const N_FLAGS: usize = Flag::Stop2 as usize + 1;
+const N_FLAGS: usize = Flag::Prop2 as usize + 1;
 
 /// Os que nascem ligados.
 const FLAGS_ON: &[Flag] = &[
@@ -113,6 +123,10 @@ const FLAGS_ON: &[Flag] = &[
     Flag::Input2,
     Flag::Stop0,
     Flag::Stop1,
+    Flag::Meta0,
+    Flag::Meta1,
+    Flag::Meta2,
+    Flag::Prop0,
 ];
 
 /// As linhas de cada lista («+» liga a primeira livre, «−» desliga a dela).
@@ -185,8 +199,18 @@ pub enum Pick {
     Solo,
     FillType,
     GradStop,
+    // Os cartões Advanced e Render.
+    Meta0,
+    Meta1,
+    Meta2,
+    Meta3,
+    Meta4,
+    Meta5,
+    SliceMode,
+    RenderFormat,
+    RenderQuality,
 }
-const N_PICKS: usize = Pick::GradStop as usize + 1;
+const N_PICKS: usize = Pick::RenderQuality as usize + 1;
 
 /// O valor de [`Pick::Boolean`] depois de achatar: nenhum modo aceso.
 pub const BOOLEAN_NONE: u8 = u8::MAX;
@@ -195,7 +219,7 @@ pub const BOOLEAN_NONE: u8 = u8::MAX;
 pub const SIDE_NONE: u8 = u8::MAX;
 
 /// Quantas amostras de cor o objeto fictício tem (`controlos::SWATCHES`).
-pub const N_SWATCHES: usize = 13;
+pub const N_SWATCHES: usize = 19;
 
 /// As escolhas vivas dos cartões. `Default` = os valores de fábrica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -206,7 +230,12 @@ pub struct Choices {
     pub colors: [Option<[u8; 4]>; N_SWATCHES],
     /// O estilo de cor a que cada amostra está ligada (`None` = cor solta).
     pub linked: [Option<u32>; N_SWATCHES],
+    /// As 32 camadas de colisão do cartão Advanced: o bit `n` é a camada `n + 1`.
+    pub layers: u32,
 }
+
+/// As camadas de colisão de fábrica.
+const LAYERS_DE_FABRICA: u32 = 0b1011_0101;
 
 impl Default for Choices {
     fn default() -> Self {
@@ -215,6 +244,7 @@ impl Default for Choices {
             picks: [0; N_PICKS],
             colors: [None; N_SWATCHES],
             linked: [None; N_SWATCHES],
+            layers: LAYERS_DE_FABRICA,
         };
         for f in FLAGS_ON {
             c.set(*f, true);
@@ -230,6 +260,10 @@ impl Default for Choices {
         c.choose(Pick::Input1, 1);
         c.choose(Pick::Input2, 2);
         c.choose(Pick::FillType, 1);
+        c.choose(Pick::Meta1, 1);
+        c.choose(Pick::Meta2, 2);
+        c.choose(Pick::SliceMode, 1);
+        c.choose(Pick::RenderQuality, 1);
         // A lâmpada de fábrica é branca (`Luz::default`).
         c.colors[9] = Some([u8::MAX; 4]);
         c
@@ -294,4 +328,6 @@ pub struct WidgetGalleryState {
     pub fired_at: [Option<std::time::Instant>; 3],
     /// O deslocamento já visto de cada pega da curva (`cards_rive::sync_pegas`).
     pub pegas: [(f32, f32); 2],
+    /// A corrida fictícia do cartão Render.
+    pub render: crate::cards_render::Corrida,
 }

@@ -14,6 +14,7 @@ const PREFIX: &str = "panel.widget_gallery.";
 const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/lib.rs",
     "crates/ph2d-i18n/src/galeria.rs",
+    "crates/ph2d-i18n/src/galeria_avancado.rs",
     "crates/ph2d-i18n/src/galeria_reais.rs",
     "crates/ph2d-i18n/src/galeria_rive.rs",
 ];

@@ -120,9 +120,9 @@ pub(crate) fn tensao_com_corpo(
 }
 
 /// ⭐ **A CEDÊNCIA da célula fina `fi`** (meio + corpo, [`tensao_com_corpo`] → [`bingham`]) sobre a velocidade `(ex, ey)`:
-/// a ÚNICA porta da lei «a cedência do meio decide se a tinta flui», em TODA rota que escreve o fluxo — a de Jacobi, a
-/// serial e o alisamento dos três quadros em quatro (a parede que ela substituiu valia nas três; só na de Jacobi, o
-/// alisamento escoava), e o corpo conta a tinta assentada (Oil Bristle sobre a faixa molhada 14/12 → 12/12, `cura-molhada.md`). Campo vazio ⇒ `(ex, ey)`, ao bit.
+/// a porta ÚNICA da lei «a cedência decide se a tinta flui», onde o fluxo se CONSTRÓI (Jacobi e serial). O alisamento
+/// dos outros três quadros não a aplica: tirar τ quatro vezes por ciclo empilha o óleo (Thick Impasto p99 39,7 → 105,7,
+/// `cura-molhada.md`). Campo vazio ⇒ `(ex, ey)`, ao bit.
 #[inline]
 #[must_use]
 pub(crate) fn cede(

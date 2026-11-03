@@ -512,7 +512,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.envelope.expand" => "Expand",
         "panel.vector.envelope.release" => "Release",
         "panel.vector.envelope.bend" => "Bend",
-        "panel.vector.expand.offset" => "Distance",
+        "panel.vector.expand.offset" => "Distance (px)",
         "panel.vector.expand.inner" => "Inner",
         "panel.vector.expand.holes" => "Holes",
         "panel.vector.expand.holes_move" => "Offset too",

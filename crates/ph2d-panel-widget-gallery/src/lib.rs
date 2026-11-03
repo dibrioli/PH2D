@@ -26,6 +26,7 @@ pub mod ids;
 mod paint;
 mod populate;
 pub mod state;
+mod valores;
 
 pub use cards::{cards_on, force_cards_on_this_thread};
 

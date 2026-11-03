@@ -49,6 +49,8 @@ pub const BLEND_SCREEN: NodeId = hash_node_id("gallery.dropdown.blend_screen");
 pub const FILL_SWATCH: NodeId = hash_node_id("gallery.color.swatch");
 pub const FILL_EYE: NodeId = hash_node_id("gallery.color.eye");
 pub const FILL_REMOVE: NodeId = hash_node_id("gallery.color.remove");
+/// O «+» do cartão Color sem Fill (devolve-o).
+pub const FILL_ADD: NodeId = hash_node_id("gallery.color.add");
 
 // ── Ações ──
 pub const PRIMARY: NodeId = hash_node_id("gallery.action.primary");
@@ -75,7 +77,7 @@ pub const FIELDS: [(NodeId, f64, f64, f64); 12] = [
 ];
 
 /// Os segmentos, ícones e opções — registados como `Button` pela mesma tabela.
-pub const BUTTONS: [NodeId; 19] = [
+pub const BUTTONS: [NodeId; 20] = [
     LEVEL_LOW,
     LEVEL_MID,
     LEVEL_HIGH,
@@ -92,6 +94,7 @@ pub const BUTTONS: [NodeId; 19] = [
     FILL_SWATCH,
     FILL_EYE,
     FILL_REMOVE,
+    FILL_ADD,
     PRIMARY,
     SECONDARY,
     RESET,

@@ -63,11 +63,13 @@ fn legacy() -> Vec<CardDef<'static>> {
 }
 
 /// Pinta a lista no `ctx.slot` do dock (o encaixe da direita, em aba com o Inspector).
-pub(crate) fn paint(state: &WidgetGalleryState, ctx: &mut PaintCtx) -> Rect {
+pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect {
+    let theme = ctx.host.theme();
     let mut cards = {
         let store = ctx.host.store_mut();
         cards_vocab::prepare(store);
-        cards_vocab::vocabulary(state.choices, store)
+        crate::valores::sync_picked(state, store, theme);
+        cards_vocab::vocabulary(state, store)
     };
     cards.extend(legacy());
     let rect = paint_card_list_with(
@@ -77,7 +79,6 @@ pub(crate) fn paint(state: &WidgetGalleryState, ctx: &mut PaintCtx) -> Rect {
         &cards,
         None,
     );
-    let theme = ctx.host.theme();
     let (_, hit_index) = ctx.host.store_and_hit_index_mut();
     paint_showcase_popovers(ctx.scene, ctx.text_system, theme, hit_index);
     rect

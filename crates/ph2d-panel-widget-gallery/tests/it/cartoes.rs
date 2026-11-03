@@ -299,3 +299,103 @@ fn todo_controlo_pintado_esta_registado_e_todo_icone_tem_dica() {
         .collect();
     assert!(sem_dica.is_empty(), "ícones sem dica: {sem_dica:?}");
 }
+
+/// (8) O «−» do Fill tira-o (a linha some, o cartão fica vazio com o «+») e o «+» devolve-o. *Mutação:
+/// o «−» só consumido ⇒ a amostra continua pintada.*
+#[test]
+fn o_menos_tira_o_fill_e_o_mais_o_devolve() {
+    let mut gal = Galeria::aberta();
+    assert!(gal.rect(g::FILL_SWATCH).is_some(), "fixtura: o Fill nasce");
+    assert!(gal.rect(g::FILL_ADD).is_none(), "fixtura: sem «+» com Fill");
+    gal.clica(g::FILL_REMOVE);
+    assert!(!gal.st.choices.fill, "o «−» não tirou o Fill");
+    assert!(
+        gal.rect(g::FILL_SWATCH).is_none() && gal.rect(g::OPACITY).is_none(),
+        "o Fill tirado continua pintado"
+    );
+    assert!(
+        gal.rect(g::FILL_ADD).is_some(),
+        "o cartão vazio não mostra o «+»"
+    );
+    gal.clica(g::FILL_ADD);
+    assert!(gal.st.choices.fill, "o «+» não devolveu o Fill");
+    assert!(
+        gal.rect(g::FILL_SWATCH).is_some(),
+        "o Fill devolvido não pinta"
+    );
+}
+
+/// (9) A amostra abre o seletor de cor do app apontado para ela, semeado com a cor que mostra; a
+/// cor que o seletor escreve (o espelho do quadro do hero) passa a ser a do Fill. *Mutação: a
+/// amostra só consumida ⇒ o seletor não abre; a leitura do quadro desligada ⇒ a cor não chega.*
+#[test]
+fn a_amostra_abre_o_seletor_e_a_cor_escolhida_fica() {
+    let mut gal = Galeria::aberta();
+    assert_eq!(gal.host.store().picker_target(), None, "fixtura: fechado");
+    gal.clica(g::FILL_SWATCH);
+    assert_eq!(
+        gal.host.store().picker_target(),
+        Some(g::FILL_SWATCH),
+        "o clique na amostra não abriu o seletor para ela"
+    );
+    let semente = gal
+        .host
+        .store()
+        .widget_color(g::FILL_SWATCH)
+        .expect("a amostra semeou a cor");
+    let escolhida = [semente[0] ^ 0x40, semente[1], semente[2], 255];
+    // O que o hero faz a cada quadro: o valor do seletor no `widget_color` do alvo.
+    gal.host
+        .store_mut()
+        .set_widget_color(g::FILL_SWATCH, escolhida);
+    gal.repinta();
+    assert_eq!(
+        gal.st.choices.fill_rgba,
+        Some(escolhida),
+        "a cor escolhida no seletor não chegou ao Fill"
+    );
+    gal.clica(g::FILL_REMOVE);
+    assert_eq!(
+        gal.host.store().picker_target(),
+        None,
+        "tirar o Fill deixou o seletor aberto para uma amostra que sumiu"
+    );
+}
+
+/// (10) Apply grava os valores de PARTIDA; Cancel e o ↺ voltam a eles (não à fábrica). *Mutação:
+/// o Apply só consumido ⇒ o Cancel volta à fábrica; o Cancel só consumido ⇒ nada volta.*
+#[test]
+fn apply_grava_os_valores_e_cancel_volta_a_eles() {
+    let mut gal = Galeria::aberta();
+    gal.arrasta_o_icone(g::POS_X, 60.0);
+    gal.clica(g::LEVEL_HIGH);
+    let aplicado = gal.valor(g::POS_X);
+    assert_ne!(aplicado, fabrica(g::POS_X), "fixtura: o X mudou");
+    gal.clica(g::PRIMARY);
+    assert_eq!(gal.st.applied.choices.level, 2, "o Apply não gravou o High");
+    gal.arrasta_o_icone(g::POS_X, 60.0);
+    gal.clica(g::SNAP);
+    gal.clica(g::FILL_REMOVE);
+    assert_ne!(gal.valor(g::POS_X), aplicado, "fixtura: o X mudou de novo");
+    gal.clica(g::SECONDARY);
+    assert_eq!(
+        gal.valor(g::POS_X),
+        aplicado,
+        "o Cancel não voltou o X ao aplicado"
+    );
+    assert!(
+        gal.st.choices.level == 2 && !gal.st.choices.snap && gal.st.choices.fill,
+        "o Cancel não voltou as escolhas às aplicadas: {:?}",
+        gal.st.choices
+    );
+    assert!(
+        gal.rect(g::FILL_SWATCH).is_some(),
+        "o Fill voltou e não pinta"
+    );
+    gal.clica(g::SNAP);
+    gal.clica(g::RESET);
+    assert!(
+        gal.st.choices.level == 2 && !gal.st.choices.snap,
+        "o ↺ não voltou aos valores aplicados"
+    );
+}

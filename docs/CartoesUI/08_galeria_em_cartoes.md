@@ -41,8 +41,8 @@ clicar MUDAM o que se vê). Títulos e rótulos em inglês, pela tabela de strin
 |---|---|
 | **Fields** | `Position (px)` par X·Y com marca de animação (`Cell::key`); `Rotation (°)` campo só com glifo de ícone; `Size (px)` W·H; `Name` campo de texto (`Widget::Text`) |
 | **Choices** | segmentado de texto (`Widget::Choice`: Low · Mid · High); segmentos de ícone (`Widget::Icons`: Cap Butt/Round/Square); ícones nus (`Widget::Bare`); caixa de marcar à Figma (`corpo::check`, «Snap to grid»); lista suspensa (`Widget::Dropdown`: Normal · Multiply · Screen) |
-| **Color** | a linha do Fill à Figma: `Widget::Swatch` com hex + `Opacity (%)` + olho/menos (`Bare`) |
-| **Actions** | `Widget::Button` primário e secundário; `Widget::Badge`; ação no cabeçalho (`HeadAction` ↺ que repõe os valores do cartão) |
+| **Color** | a linha do Fill à Figma: `Widget::Swatch` com hex + `Opacity (%)` + olho/menos (`Bare`). A amostra abre o seletor de cor do app (`set_picker_target`, a cor volta pelo `widget_color` a cada quadro); o «−» tira o Fill e o cartão fica vazio com o «+» (`add`) que o devolve |
+| **Actions** | `Widget::Button` primário e secundário; `Widget::Badge`; ação no cabeçalho (`HeadAction` ↺). **Apply** grava os valores de partida do vocabulário; **Cancel** e o ↺ voltam a eles; o rótulo sobre o Apply («Saved» · «Not applied») e o emblema (✓ · tracejado) dizem se há mudanças por aplicar (`src/valores.rs`) |
 | **Animation marks** | os quatro estados da marca D17 lado a lado (Livre · Animado · Chave · Mudado), cada um com o rótulo dele |
 | **Ordering** | cartão que nasce DOBRADO com `summary` («Z 3») — o padrão do resumo à direita |
 | **Physics** | secção AUSENTE (`add: Some(id)`): título esmaecido e «+» que a acrescenta (e passa a mostrar um corpo) |

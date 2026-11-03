@@ -3,7 +3,7 @@
 //! [`prepare`]), as escolhas no [`Choices`] do estado (o paint lê, o evento escreve).
 
 use crate::ids as g;
-use crate::state::Choices;
+use crate::state::{Choices, WidgetGalleryState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -13,10 +13,9 @@ use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Wi
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::{self, KeyMark, Rotulo};
 use ph2d_i18n::tr;
-use ph2d_tokens::ColorToken;
 
 /// Os ícones sem texto e a dica de cada um (o censo das dicas dos cartões).
-const TIPS: [(NodeId, &str); 9] = [
+const TIPS: [(NodeId, &str); 10] = [
     (g::CAP_BUTT, "panel.widget_gallery.tip.cap_butt"),
     (g::CAP_ROUND, "panel.widget_gallery.tip.cap_round"),
     (g::CAP_SQUARE, "panel.widget_gallery.tip.cap_square"),
@@ -24,6 +23,7 @@ const TIPS: [(NodeId, &str); 9] = [
     (g::BARE_LOCK, "panel.widget_gallery.tip.lock"),
     (g::FILL_EYE, "panel.widget_gallery.tip.fill_visible"),
     (g::FILL_REMOVE, "panel.widget_gallery.tip.fill_remove"),
+    (g::FILL_ADD, "panel.widget_gallery.tip.fill_add"),
     (g::RESET, "panel.widget_gallery.tip.reset"),
     (g::PHYSICS_REMOVE, "panel.widget_gallery.tip.physics_remove"),
 ];
@@ -228,16 +228,17 @@ fn choices(ch: Choices) -> CardDef<'static> {
     }
 }
 
-/// Color: a linha do Fill à Figma — amostra + código, opacidade, olho e menos.
+/// Color: a linha do Fill à Figma — amostra + código (o clique abre o seletor de cor), opacidade,
+/// olho e menos; sem Fill, o cartão fica vazio com o «+» que o devolve.
 fn color(ch: Choices) -> CardDef<'static> {
     CardDef {
         section: g::CARD_COLOR,
         title: tr("panel.widget_gallery.card.color"),
         actions: Vec::new(),
-        add: None,
+        add: (!ch.fill).then_some(g::FILL_ADD),
         summary: None,
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
-            let rgba = c.ink.color(ColorToken::Accent).to_rgba8().to_u8_array();
+            let rgba = crate::valores::fill_rgba(ch, c.ink);
             let code = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
             let olhos = [
                 icon(g::FILL_EYE, IconId::Eye, ch.fill_visible),
@@ -268,8 +269,18 @@ fn color(ch: Choices) -> CardDef<'static> {
     }
 }
 
-/// Actions: botões, emblema e o ↺ no cabeçalho.
-fn actions() -> CardDef<'static> {
+/// Actions: Apply grava os valores de partida, Cancel e o ↺ voltam a eles; o rótulo sobre os
+/// botões e o emblema dizem se há mudanças por aplicar. ⚠️ O rótulo mora na célula do Apply: sobre
+/// o emblema (uma célula de `FIELD_H`) ele comia letras.
+fn actions(dirty: bool) -> CardDef<'static> {
+    let (badge, status) = if dirty {
+        (
+            IconId::CircleDashed,
+            tr("panel.widget_gallery.status.edited"),
+        )
+    } else {
+        (IconId::Check, tr("panel.widget_gallery.status.saved"))
+    };
     CardDef {
         section: g::CARD_ACTIONS,
         title: tr("panel.widget_gallery.card.actions"),
@@ -280,14 +291,15 @@ fn actions() -> CardDef<'static> {
         }],
         add: None,
         summary: None,
-        body: Some(Box::new(|c: &mut CardCtx<'_>, y| {
+        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             let y = c.row(
                 &[
                     Cell::new(Widget::Button {
                         id: g::PRIMARY,
                         text: tr("panel.widget_gallery.primary"),
                         primary: true,
-                    }),
+                    })
+                    .label(status),
                     Cell::new(Widget::Button {
                         id: g::SECONDARY,
                         text: tr("panel.widget_gallery.secondary"),
@@ -296,7 +308,7 @@ fn actions() -> CardDef<'static> {
                 ],
                 y,
             );
-            c.full(None, Widget::Badge(IconId::Grid), y)
+            c.full(None, Widget::Badge(badge), y)
         })),
     }
 }
@@ -391,12 +403,14 @@ fn physics(ch: Choices) -> CardDef<'static> {
 }
 
 /// Os sete cartões do vocabulário, pela ordem do doc 08 §1.1.
-pub(crate) fn vocabulary(ch: Choices, store: &WidgetStore) -> Vec<CardDef<'static>> {
+pub(crate) fn vocabulary(st: &WidgetGalleryState, store: &WidgetStore) -> Vec<CardDef<'static>> {
+    let ch = st.choices;
+    let dirty = crate::valores::current(ch, store) != st.applied;
     vec![
         fields(),
         choices(ch),
         color(ch),
-        actions(),
+        actions(dirty),
         marks(),
         ordering(store),
         physics(ch),

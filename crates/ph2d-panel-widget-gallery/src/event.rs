@@ -1,5 +1,6 @@
 //! Widget Gallery `apply_event`: a pílula da TopBar / o fecho (X) alternam a visibilidade; os
-//! cartões do vocabulário escrevem as escolhas no estado (o paint lê-as) e o ↺ repõe a fábrica.
+//! cartões do vocabulário escrevem as escolhas no estado (o paint lê-as); a cor, o Fill, o Apply,
+//! o Cancel e o ↺ moram em [`crate::valores`].
 
 use crate::WidgetGalleryPanel;
 use crate::ids as g;
@@ -21,12 +22,7 @@ pub(crate) fn apply_event(
         host.set_panel_visible(WidgetGalleryPanel::ID, next);
         return EventOutcome::Consumed;
     }
-    if id == g::RESET {
-        state.choices = Choices::default();
-        let store = host.store_mut();
-        for (field, factory, _, _) in g::FIELDS {
-            store.set_number_value(field, factory);
-        }
+    if crate::valores::on_click(state, host, id) {
         return EventOutcome::Consumed;
     }
     if choose(&mut state.choices, id) {
@@ -61,16 +57,8 @@ fn choose(ch: &mut Choices, id: ph2d_a11y::NodeId) -> bool {
     } else if id == g::PHYSICS_REMOVE {
         ch.physics = false;
     } else {
-        // A caixa da lista, a amostra, o «−» do Fill e os dois botões de exemplo: o clique é
-        // deles (a caixa abre pelo despacho dos cartões), a galeria só o consome.
-        return [
-            g::BLEND,
-            g::FILL_SWATCH,
-            g::FILL_REMOVE,
-            g::PRIMARY,
-            g::SECONDARY,
-        ]
-        .contains(&id);
+        // A caixa da lista abre pelo despacho dos cartões; a galeria só consome o clique.
+        return id == g::BLEND;
     }
     true
 }

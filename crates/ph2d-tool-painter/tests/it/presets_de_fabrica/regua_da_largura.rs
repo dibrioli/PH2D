@@ -255,12 +255,47 @@ pub(super) fn largura_do_misturador(px: &[u8], w: u32, h: u32) -> f32 {
 pub(super) fn largura_do_rasto(px: &[u8], w: u32, h: u32) -> f32 {
     // A cena: `w = 4,5·m + 160`, `cx = 80 + 2·m` ([`imagem_da_ferramenta`]).
     let m = (w as f32 - 160.0) / 4.5;
-    let (x0, x1) = ((80.0 + 2.0 * m) as u32, ((80.0 + 3.5 * m) as u32).min(w));
+    let x0 = (80.0 + 2.0 * m) as u32;
+    let x1 = ((80.0 + 3.5 * m) as u32)
+        .max(x0 + COLUNAS_MIN_DO_RASTO)
+        .min(w);
     mediana(
         (x0..x1)
             .filter_map(|x| largura_equivalente(px, w, h, x))
             .collect(),
     )
+}
+
+/// As colunas mínimas da mediana de [`largura_do_rasto`] (02/11c): a `m < 2` o vão `cx … cx + 1,5·m` tem menos de 3
+/// colunas inteiras e a `m` ≈ 0,45–0,67 NENHUMA — a régua lia 0 (ou uma coluna só, a da orla da base) e a tabela do
+/// Smear Wet guardava o 0,687 → 1,7. O rasto que o centro puxa cobre pelo menos a pegada depois do fim do traço:
+/// três colunas a partir de `cx` caem nele a todo o raio ([`a_regua_do_rasto_le_um_traco_estreito`]).
+const COLUNAS_MIN_DO_RASTO: u32 = 3;
+
+/// ⭐ **A régua do rasto lê a largura REAL de um traço estreito a qualquer raio do motor** (02/11c): uma faixa sintética
+/// de `k` = 1…4 px de altura sobre o rasto (`cx` → o fim do traço + 1 px, a cena de [`imagem_da_ferramenta`]) mede `k`
+/// de m = 0,3 a 7. Controlo: sem [`COLUNAS_MIN_DO_RASTO`] a m = 0,5 o vão não tinha coluna nenhuma (lia 0).
+#[test]
+fn a_regua_do_rasto_le_um_traco_estreito() {
+    for m in [0.3f32, 0.5, 0.6, 0.687, 1.0, 1.108, 1.5, 2.0, 3.25, 7.0] {
+        let (w, h) = ((m * 4.5) as u32 + 160, (m * 3.0) as u32 + 120);
+        let (cx, cy) = (80.0 + 2.0 * m, h / 2);
+        let (xa, xb) = (cx as u32, (cx + 1.5 * m).ceil() as u32 + 1);
+        for k in 1..=4u32 {
+            let mut px = vec![255u8; (w * h * 4) as usize];
+            for y in cy..cy + k {
+                for x in xa..=xb {
+                    let i = ((y * w + x) * 4) as usize;
+                    px[i..i + 3].fill(0);
+                }
+            }
+            let l = largura_do_rasto(&px, w, h);
+            assert!(
+                (l - k as f32).abs() < 1e-4,
+                "m {m}, traço de {k} px: a régua leu {l}"
+            );
+        }
+    }
 }
 
 /// A queda máxima da largura entre dois raios VIZINHOS da varredura de [`sonda_monotonia_da_largura`] (fração), o

@@ -19,16 +19,20 @@
 
 #![forbid(unsafe_code)]
 
+mod cards;
+mod cards_vocab;
 mod event;
+pub mod ids;
 mod paint;
 mod populate;
 pub mod state;
+
+pub use cards::{cards_on, force_cards_on_this_thread};
 
 pub use paint::default_rect;
 pub use state::WidgetGalleryState;
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
@@ -40,7 +44,7 @@ impl Panel for WidgetGalleryPanel {
     type State = WidgetGalleryState;
 
     const ID: &'static str = "widget_gallery";
-    const NODE_ID: NodeId = ids::GAL_PANEL;
+    const NODE_ID: NodeId = ph2d_editor_core::ids::GAL_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.widget_gallery.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Grid;
@@ -51,12 +55,13 @@ impl Panel for WidgetGalleryPanel {
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::RightTop;
-    /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE com arrasto próprio (a galeria é uma referência, não um dock).
-    ///
-    /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate
-    /// `a_docked_panel_never_reaches_the_drawing_area` impede-a de mentir nos dois sentidos —
-    /// quem não declara **não pode** publicar um rect sobre a área de desenho.
-    const CAN_FLOAT: bool = true;
+    /// ⭐ **Mora no encaixe da direita, em ABA com o Inspector** (dono 03/11, doc `CartoesUI/08`
+    /// §1: *«abrir no painel lateral como um inspector»*). Um `CAN_FLOAT` não ocupa encaixe
+    /// (`slot_tabs::occupants` exclui-o) e a lista de cartões pintaria POR CIMA do Inspector no
+    /// mesmo `ctx.slot`; como inquilino, abrir a galeria acende a aba dela (a ordem z reconciliada).
+    /// ⚠️ Com `PH2D_CARDS=0` a janela flutuante de hoje continua a pintar-se no rect próprio — a
+    /// aba fica no encaixe, mas o corpo é o de sempre.
+    const CAN_FLOAT: bool = false;
 
     fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

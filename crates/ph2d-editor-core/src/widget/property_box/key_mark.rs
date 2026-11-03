@@ -249,6 +249,14 @@ pub fn set_key_marks(marks: BTreeMap<NodeId, KeyMark>) {
     CANAIS.with(|r| r.borrow_mut().clear());
 }
 
+/// Acrescenta o estado de UM campo ao quadro corrente, sem apagar os outros — a Widget Gallery
+/// mostra os quatro estados da marca lado a lado (doc `CartoesUI/08` §1.1).
+pub fn add_key_mark(field: NodeId, mark: KeyMark) {
+    MARCAS.with(|m| {
+        m.borrow_mut().insert(field, mark);
+    });
+}
+
 /// O losango de uma linha com estes campos: o estado mais forte entre eles (`Mudado` > `Chave` >
 /// `Animado` > `Livre`); `None` = nenhum tem canal.
 #[must_use]

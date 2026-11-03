@@ -24,6 +24,7 @@ use ph2d_editor_core::widget::showcase::paint_showcase_body;
 use ph2d_editor_core::zones::Rect;
 
 pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
+    smoke_opens_once(ctx);
     if !ctx.host.panel_visible(WidgetGalleryPanel::ID) {
         // Stale-rect cleanup: without this, `panel_at` keeps returning
         // GAL_PANEL after the Gallery was closed, and BTreeMap key
@@ -32,6 +33,11 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
         // Settings panel then routes to a closed GAL_PANEL and looks
         // like "scroll wheel doesn't work" to the user.
         ctx.host.store_mut().clear_panel_rect(ids::GAL_PANEL);
+        return;
+    }
+    // ⭐ CartoesUI/08: a lista de cartões no encaixe do dock; `PH2D_CARDS=0` = a janela de hoje.
+    if crate::cards::cards_on() {
+        crate::cards::paint(state, ctx);
         return;
     }
     let base_rect = match state.rect {
@@ -85,6 +91,17 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
     // ⭐ A PORTA da rolagem fecha aqui (o `store` já é mutável): barra com a TRILHA, as duas
     // alturas, o clamp — e só depois o cromo do título é re-registado por cima.
     close_showcase_body(body, ctx);
+}
+
+/// `PH2D_GALLERY_SMOKE=1`: a galeria abre-se sozinha no primeiro quadro (o smoke do doc 08 §3).
+fn smoke_opens_once(ctx: &mut PaintCtx) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    if std::env::var("PH2D_GALLERY_SMOKE").as_deref() == Ok("1")
+        && !FEITO.swap(true, Ordering::Relaxed)
+    {
+        ctx.host.set_panel_visible(WidgetGalleryPanel::ID, true);
+    }
 }
 
 /// Default panel geometry when the gallery is first opened. Width

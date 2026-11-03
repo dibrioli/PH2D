@@ -1,29 +1,76 @@
-//! Widget Gallery panel `apply_event` — ADR-0029 Phase C.3 port.
-//!
-//! Migrated from `ph2d_panel_widget_gallery::apply_event_thunk` (which
-//! mutated `hero.view.widget_gallery_visible` directly) to the typed
-//! contract `(state: &mut WidgetGalleryState, host: &mut dyn
-//! PanelHostInternal, ev: WidgetEvent)`. Visibility flips now go
-//! through `host.set_panel_visible("widget_gallery", ...)` (canonical
-//! Phase C visibility model).
+//! Widget Gallery `apply_event`: a pílula da TopBar / o fecho (X) alternam a visibilidade; os
+//! cartões do vocabulário escrevem as escolhas no estado (o paint lê-as) e o ↺ repõe a fábrica.
 
 use crate::WidgetGalleryPanel;
-use crate::state::WidgetGalleryState;
+use crate::ids as g;
+use crate::state::{Choices, WidgetGalleryState};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
 pub(crate) fn apply_event(
-    _state: &mut WidgetGalleryState,
+    state: &mut WidgetGalleryState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
-    if let WidgetEvent::Click(id) = ev
-        && (id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE)
-    {
+    let WidgetEvent::Click(id) = ev else {
+        return EventOutcome::Ignored;
+    };
+    if id == ids::TOPBAR_WIDGET_GALLERY || id == ids::GAL_CLOSE {
         let next = !host.panel_visible(WidgetGalleryPanel::ID);
         host.set_panel_visible(WidgetGalleryPanel::ID, next);
         return EventOutcome::Consumed;
     }
-    EventOutcome::Ignored
+    if id == g::RESET {
+        state.choices = Choices::default();
+        let store = host.store_mut();
+        for (field, factory, _, _) in g::FIELDS {
+            store.set_number_value(field, factory);
+        }
+        return EventOutcome::Consumed;
+    }
+    if choose(&mut state.choices, id) {
+        EventOutcome::Consumed
+    } else {
+        EventOutcome::Ignored
+    }
+}
+
+/// Escreve a escolha do clique `id`; devolve se o id é da galeria.
+fn choose(ch: &mut Choices, id: ph2d_a11y::NodeId) -> bool {
+    let levels = [g::LEVEL_LOW, g::LEVEL_MID, g::LEVEL_HIGH];
+    let caps = [g::CAP_BUTT, g::CAP_ROUND, g::CAP_SQUARE];
+    let blends = [g::BLEND_NORMAL, g::BLEND_MULTIPLY, g::BLEND_SCREEN];
+    let index = |t: &[ph2d_a11y::NodeId]| t.iter().position(|x| *x == id);
+    if let Some(i) = index(&levels) {
+        ch.level = i as u8;
+    } else if let Some(i) = index(&caps) {
+        ch.cap = i as u8;
+    } else if let Some(i) = index(&blends) {
+        ch.blend = i as u8;
+    } else if id == g::BARE_VISIBLE {
+        ch.visible = !ch.visible;
+    } else if id == g::BARE_LOCK {
+        ch.locked = !ch.locked;
+    } else if id == g::SNAP {
+        ch.snap = !ch.snap;
+    } else if id == g::FILL_EYE {
+        ch.fill_visible = !ch.fill_visible;
+    } else if id == g::PHYSICS_ADD {
+        ch.physics = true;
+    } else if id == g::PHYSICS_REMOVE {
+        ch.physics = false;
+    } else {
+        // A caixa da lista, a amostra, o «−» do Fill e os dois botões de exemplo: o clique é
+        // deles (a caixa abre pelo despacho dos cartões), a galeria só o consome.
+        return [
+            g::BLEND,
+            g::FILL_SWATCH,
+            g::FILL_REMOVE,
+            g::PRIMARY,
+            g::SECONDARY,
+        ]
+        .contains(&id);
+    }
+    true
 }

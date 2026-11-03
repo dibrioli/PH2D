@@ -62,6 +62,14 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          pintor do diálogo lê a cada quadro e o OK copia para o pedido. Nada derivado dela.",
     ),
     (
+        "set_pixel_filter_hue_mode",
+        "o modo HSL/HSV(+) escolhido no diálogo Hue/Saturation da Pixel (P7): uma escrita na \
+         escolha. O único derivado é a pré-visualização do filtro, e ela já se reconcilia sozinha: \
+         `ph2d_app_pixel::filtros::acompanha` compara o PEDIDO inteiro (`pixel_filter_peek`, que \
+         leva o `mode`) com o da prévia guardada a cada quadro e recalcula quando difere. O rótulo \
+         Lightness/Value o pintor lê fresco.",
+    ),
+    (
         "set_color_mode_target",
         "o modo ALVO escolhido no diálogo Color Mode (ADR-0196 §P2), irmão do \
          `set_new_sprite_mode`: uma escrita na escolha, lida pelo pintor a cada quadro e copiada \

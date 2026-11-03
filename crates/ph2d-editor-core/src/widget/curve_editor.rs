@@ -7,6 +7,7 @@
 //! [`curve_drag`] a cada movimento e [`curve_remove_at`] no duplo-clique. Um ponto nunca cruza os
 //! vizinhos (`x` estritamente entre eles), e as pontas não se agarram nem se tiram.
 
+use crate::math::{safe_clamp, safe_clamp_ord};
 use crate::paint::{fill_circle, fill_rounded_rect, resolve, stroke_polyline};
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
@@ -59,7 +60,7 @@ pub fn curve_from_screen(b: Rect, p: [f32; 2]) -> (u8, u8) {
             clippy::cast_sign_loss,
             reason = "preso a 0..=255 antes da conversão"
         )]
-        let r = (((v - o) / len) * FIM).round().clamp(0.0, FIM) as u8;
+        let r = safe_clamp((((v - o) / len) * FIM).round(), 0.0, FIM) as u8;
         r
     };
     (f(p[0], b.x, b.w), 255 - f(p[1], b.y, b.h))
@@ -109,7 +110,7 @@ pub fn curve_drag(b: Rect, pts: &mut [(u8, u8)], i: usize, p: [f32; 2]) {
         pts[i - 1].0.saturating_add(1)
     };
     let hi = pts.get(i + 1).map_or(254, |n| n.0.saturating_sub(1));
-    pts[i] = (x.clamp(lo, hi.max(lo)), y);
+    pts[i] = (safe_clamp_ord(x, lo, hi.max(lo)), y);
 }
 
 /// Tira o ponto sob `p` (botão direito / duplo-clique). `true` se tirou.

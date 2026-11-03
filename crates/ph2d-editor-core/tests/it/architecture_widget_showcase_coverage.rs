@@ -191,10 +191,19 @@ fn slug_to_exported_idents(slug: &str) -> Vec<String> {
     if let Some(start) = mod_rs.find(&needle) {
         let after = &mod_rs[start + needle.len()..];
         if let Some(end) = after.find('}') {
+            // A widget that exports only FUNCTIONS (the Pixel `curve_editor`: no type, just
+            // `paint_curve_editor` + the gesture helpers) is shown when the gallery CALLS its
+            // painter — so the full `paint_*` name counts as an ident too. Without it such a widget
+            // had zero idents and could never be shown, only opted out.
             return after[..end]
                 .split(',')
-                .map(|s| s.trim().trim_start_matches("paint_").to_string())
-                .filter(|s| !s.is_empty() && s.chars().next().is_some_and(|c| c.is_uppercase()))
+                .map(str::trim)
+                .flat_map(|s| {
+                    let painter = s.starts_with("paint_").then(|| s.to_string());
+                    let ty = Some(s.trim_start_matches("paint_").to_string())
+                        .filter(|t| t.chars().next().is_some_and(char::is_uppercase));
+                    painter.into_iter().chain(ty)
+                })
                 .collect();
         }
     }

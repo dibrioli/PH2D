@@ -6,6 +6,7 @@
 //! nunca se cruzam: arrastar uma contra a outra encosta-as (juntas = o mais sensível).
 
 use super::{SliderOrientation, SliderState, paint_slider_track};
+use crate::math::safe_clamp;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
@@ -68,7 +69,7 @@ fn pega_w() -> f32 {
 pub fn range_handle_rect(track: Rect, v: f32) -> Rect {
     let cx = track.x + track.w * v.clamp(0.0, 1.0);
     let w = pega_w().min(track.w.max(0.0));
-    let x = (cx - w * 0.5).clamp(track.x, track.x + track.w - w);
+    let x = safe_clamp(cx - w * 0.5, track.x, track.x + track.w - w);
     Rect::new(x, track.y, w, track.h)
 }
 

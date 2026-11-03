@@ -16,12 +16,22 @@ const FORBIDDEN: &[&str] = &[
 fn the_pixel_core_never_touches_the_clock_the_os_or_a_hash_order() {
     let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut read = 0;
-    for entry in std::fs::read_dir(&src).expect("src") {
-        let path = entry.expect("entry").path();
-        let text = std::fs::read_to_string(&path).expect("read");
-        read += 1;
-        for word in FORBIDDEN {
-            assert!(!text.contains(word), "{} contém `{word}`", path.display());
+    let mut pending = vec![src];
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).expect("src") {
+            let path = entry.expect("entry").path();
+            if path.is_dir() {
+                pending.push(path);
+                continue;
+            }
+            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).expect("read");
+            read += 1;
+            for word in FORBIDDEN {
+                assert!(!text.contains(word), "{} contém `{word}`", path.display());
+            }
         }
     }
     assert!(

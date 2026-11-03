@@ -49,6 +49,18 @@ pub(super) fn paint_slider_section(
     );
     y += slider_h;
 
+    // A barra de DUAS pegas (intervalo `lo..hi`, Pixel P8 — a dinâmica do pincel) e a caixa da
+    // CURVA de cor (Pixel P7 — Color Curve). Amostras ESTÁTICAS, sem `hit_index`: o gesto vive no
+    // produto (`ph2d-panel-pixel-tools`, o diálogo Color Curve), a galeria mostra a forma.
+    y += Spacing::Sm.px();
+    let (lo, hi) = (0.25, 0.75); // LITERAL-PX-OK: intervalo de amostra da galeria (fracções da trilha)
+    crate::widget::paint_range_slider(Rect::new(x, y, w, field_h()), lo, hi, None, scene, theme);
+    y += field_h() + Spacing::Sm.px();
+    let curve_h = field_h() * 4.0; // LITERAL-PX-OK: quatro filas, a altura da caixa no diálogo Color Curve
+    let pontos = [(64, 40), (192, 220)];
+    crate::widget::paint_curve_editor(Rect::new(x, y, w, curve_h), &pontos, None, scene, theme);
+    y += curve_h;
+
     // ⭐⭐ **A CAIXA ÚNICA — o padrão do app desde 2026-09-02**, logo abaixo do widget que ela
     // substitui, e pela razão que esta galeria existe: ela é a fonte única de verdade do que o
     // editor **É**, e os agentes periféricos copiam a decoração daqui.

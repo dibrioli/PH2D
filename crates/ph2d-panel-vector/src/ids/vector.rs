@@ -208,20 +208,3 @@ pub const VECTOR_ENVELOPE_PINS: NodeId = hash_node_id("vector.envelope.pins");
 /// gesto que compete com "clicar no vazio prega", e sem porta nenhuma um pino mal pregado seria
 /// permanente.
 pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.clear_pins");
-
-/// ⭐ **Stroke (a caixa de marcar)** — *esta forma TEM traço?* (plano 34).
-///
-/// ⚠️ **Um checkbox e não um `segmented`**, pela lei que este painel já escreveu: *um `segmented` é
-/// uma escolha entre MODOS nomeados; um checkbox é uma PROPRIEDADE que o objeto tem ou não tem*.
-///
-/// ⛔ **O rótulo NÃO é "Outline"**: já existe [`VECTOR_EXPAND_OUTLINE_STROKE`], que é outra coisa
-/// (converter o traço numa forma preenchida). Duas palavras para um conceito e uma palavra para
-/// dois é como um painel passa a mentir.
-pub const VECTOR_STROKE_PRESENT: NodeId = hash_node_id("vector.stroke.present");
-
-/// ⭐ **O «−» e o «+» do preenchimento de BASE** (F44b) — o par do [`VECTOR_STROKE_PRESENT`].
-pub const VECTOR_FILL_PRESENT: NodeId = hash_node_id("vector.fill.present");
-/// ⭐ **O olho do preenchimento de BASE** (F44b): esconde sem perder a tinta (`VecPath::fill_hidden`).
-pub const VECTOR_FILL_EYE: NodeId = hash_node_id("vector.fill.eye");
-/// O olho do traço de base (F44b).
-pub const VECTOR_STROKE_EYE: NodeId = hash_node_id("vector.stroke.eye");

@@ -170,3 +170,20 @@ pub const VECTOR_PAINT_OPACITY: NodeId = hash_node_id("vector.paint.opacity");
 
 /// O modo de mistura da camada ABERTA.
 pub const VECTOR_PAINT_BLEND: NodeId = hash_node_id("vector.paint.blend");
+
+/// ⭐ **Stroke (a caixa de marcar)** — *esta forma TEM traço?* (plano 34).
+///
+/// ⚠️ **Um checkbox e não um `segmented`**, pela lei que este painel já escreveu: *um `segmented` é
+/// uma escolha entre MODOS nomeados; um checkbox é uma PROPRIEDADE que o objeto tem ou não tem*.
+///
+/// ⛔ **O rótulo NÃO é "Outline"**: já existe [`VECTOR_EXPAND_OUTLINE_STROKE`], que é outra coisa
+/// (converter o traço numa forma preenchida). Duas palavras para um conceito e uma palavra para
+/// dois é como um painel passa a mentir.
+pub const VECTOR_STROKE_PRESENT: NodeId = hash_node_id("vector.stroke.present");
+
+/// ⭐ **O «−» e o «+» do preenchimento de BASE** (F44b) — o par do [`VECTOR_STROKE_PRESENT`].
+pub const VECTOR_FILL_PRESENT: NodeId = hash_node_id("vector.fill.present");
+/// ⭐ **O olho do preenchimento de BASE** (F44b): esconde sem perder a tinta (`VecPath::fill_hidden`).
+pub const VECTOR_FILL_EYE: NodeId = hash_node_id("vector.fill.eye");
+/// O olho do traço de base (F44b).
+pub const VECTOR_STROKE_EYE: NodeId = hash_node_id("vector.stroke.eye");

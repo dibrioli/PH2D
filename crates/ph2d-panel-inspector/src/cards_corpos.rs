@@ -15,7 +15,7 @@ use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Wi
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_i18n::tr;
-use ph2d_tool_vector::appearance::{self, Appearance};
+use ph2d_tool_vector::appearance::{self, Appearance, BasePaint};
 use ph2d_tool_vector::ids as vids;
 
 /// ⭐ Os cartões do Inspector, pelo estado publicado (os que não valem não aparecem).
@@ -252,21 +252,30 @@ fn aparencia(a: &Appearance, visivel: bool) -> CardDef<'static> {
 /// Os cartões Fill e Stroke.
 fn tintas(a: &Appearance) -> Vec<CardDef<'static>> {
     let mut out = Vec::with_capacity(2);
-    for (section, title, add, fill) in [
+    for (section, title, add, present, fill) in [
         (
             CARD_FILL,
             "card.insp.fill",
             vids::VECTOR_PAINT_ADD_FILL,
+            vids::VECTOR_FILL_PRESENT,
             true,
         ),
         (
             CARD_STROKE,
             "card.insp.stroke",
             vids::VECTOR_PAINT_ADD_STROKE,
+            vids::VECTOR_STROKE_PRESENT,
             false,
         ),
     ] {
-        let tem = a.layers.iter().any(|r| r.is_fill == fill);
+        let base = crate::cards_pilha::base_de(fill);
+        let tem = base != Some(BasePaint::Absent) || a.layers.iter().any(|r| r.is_fill == fill);
+        // O «+»: a tinta de base, se a forma não a tem; senão uma camada nova (enquanto houver lugar).
+        let add = if base == Some(BasePaint::Absent) {
+            Some(present)
+        } else {
+            (a.layers.len() < ph2d_vec_scene::MAX_PAINT_LAYERS).then_some(add)
+        };
         // D28: o ⠿ abre os estilos de cor para a camada aberta deste tipo (senão a 1.ª dele).
         let camada = appearance::open_layer_index()
             .filter(|i| a.layers.get(*i).is_some_and(|r| r.is_fill == fill))
@@ -279,9 +288,9 @@ fn tintas(a: &Appearance) -> Vec<CardDef<'static>> {
                 on: estilos::aberta_em(section),
             });
         }
-        if tem {
+        if let Some(id) = add.filter(|_| tem) {
             actions.push(HeadAction {
-                id: add,
+                id,
                 icon: IconId::Add,
                 on: false,
             });
@@ -290,7 +299,7 @@ fn tintas(a: &Appearance) -> Vec<CardDef<'static>> {
             section,
             title: tr(title),
             actions,
-            add: (!tem).then_some(add),
+            add: add.filter(|_| !tem),
             summary: None,
             body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
                 let y = pilha(c, fill, y);

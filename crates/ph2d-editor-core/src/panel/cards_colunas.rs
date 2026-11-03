@@ -13,6 +13,11 @@ fn fixa(c: &Cell<'_>) -> Option<f32> {
     }
 }
 
+/// O que a caixa da cor pede para mostrar `text` inteiro: amostra + texto + (corrente partida | folga).
+pub(super) fn caixa_da_cor(text: &str, solta: bool, largura: &mut dyn FnMut(&str) -> f32) -> f32 {
+    m::ICON_CELL + largura(text).ceil() + if solta { m::ICON_CELL } else { m::FIELD_PAD_R }
+}
+
 /// `largura(t)` mede `t` a `VALUE_PX`.
 pub(super) fn colunas(
     x0: f32,
@@ -25,17 +30,10 @@ pub(super) fn colunas(
     let flex = cells.iter().filter(|c| fixa(c).is_none()).count().max(1) as f32;
     let livre = (w - gaps - fixas).max(0.0);
     let cada = livre / flex;
-    // A caixa da cor: amostra + texto + (corrente partida | folga).
     let cor = cells.iter().find_map(|c| match c.widget {
-        Widget::Swatch { text, detach, .. } => Some(
-            m::ICON_CELL
-                + largura(text).ceil()
-                + if detach.is_some() {
-                    m::ICON_CELL
-                } else {
-                    m::FIELD_PAD_R
-                },
-        ),
+        Widget::Swatch { text, detach, .. } => {
+            Some(caixa_da_cor(text, detach.is_some(), &mut *largura))
+        }
         _ => None,
     });
     let cor = cor.map(|need| {

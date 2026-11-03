@@ -1,6 +1,6 @@
 //! ⭐ **O INSPECTOR EM CARTÕES, PARADO** — `PH2D_VEC_CARTOES_SMOKE=1` (linha TrelloUITeste, C4).
 //!
-//! Um retângulo com UM Fill (`4C8DF0`) e UM Stroke (`FFFFFF`, 3 px) na pilha, escolhido, com a
+//! Um retângulo com UM Fill (`4C8DF0`) e UM Stroke (`FFFFFF`, 3 px), escolhido, com a
 //! ferramenta Vector na mão e o Inspector à frente — a maquete C (`docs/CartoesUI/maquete/bones.png`)
 //! para a foto lado a lado. Nada anima: é para olhar e mexer. `=2`: o mesmo retângulo com um corpo
 //! físico (Rigid Body + Collider) e Vida — os cartões dos componentes. `=3`: os cinco ESTILOS DE COR
@@ -78,11 +78,16 @@ pub(crate) fn step(
             let com_componentes = modo == "2";
             for (i, &(f, b)) in formas.iter().rev().enumerate() {
                 if let Some(p) = scene.path_mut(f) {
-                    p.fill = Some(Paint::Solid(FILL));
-                    p.paints = vec![
-                        PaintEntry::fill(Paint::Solid(FILL)),
-                        PaintEntry::stroke(StrokeSpec::new(STROKE, PESO)),
-                    ];
+                    // A forma de todo dia: as tintas de BASE. Nas cenas dos estilos o Fill é uma
+                    // camada, que é o que se liga a um estilo.
+                    let estilos = matches!(modo.as_str(), "3" | "4" | "5");
+                    p.fill = (!estilos).then_some(Paint::Solid(FILL));
+                    p.stroke = Some(StrokeSpec::new(STROKE, PESO));
+                    p.paints = if estilos {
+                        vec![PaintEntry::fill(Paint::Solid(FILL))]
+                    } else {
+                        Vec::new()
+                    };
                 }
                 let Ok(mut e) = sim
                     .world_mut()

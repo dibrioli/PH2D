@@ -40,7 +40,31 @@ pub fn hex_id(i: usize) -> NodeId {
 /// De que camada é esta caixa de hex?
 #[must_use]
 pub(crate) fn hex_layer(id: NodeId) -> Option<usize> {
-    (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|&i| hex_id(i) == id)
+    (0..=HEX_STROKE_DE_BASE).find(|&i| hex_id(i) == id)
+}
+
+/// As caixas de hex das duas tintas de base, depois das camadas.
+pub(crate) const HEX_FILL_DE_BASE: usize = ph2d_vec_scene::MAX_PAINT_LAYERS;
+pub(crate) const HEX_STROKE_DE_BASE: usize = HEX_FILL_DE_BASE + 1;
+
+/// A amostra da linha `i` (camada, ou tinta de base).
+#[must_use]
+pub(crate) fn amostra_de(i: usize) -> NodeId {
+    match i {
+        HEX_FILL_DE_BASE => vids::VECTOR_FILL_SWATCH,
+        HEX_STROKE_DE_BASE => vids::VECTOR_STROKE_SWATCH,
+        _ => vids::vector_paint_swatch_id(i),
+    }
+}
+
+/// A cor que a forma mostra na linha `i`.
+fn cor_de(i: usize) -> Option<[u8; 4]> {
+    let snap = appearance::current_vector_style();
+    match i {
+        HEX_FILL_DE_BASE => snap.map(|s| s.fill),
+        HEX_STROKE_DE_BASE => snap.map(|s| s.stroke),
+        _ => appearance::current_appearance().and_then(|a| a.layers.get(i).map(|r| r.color)),
+    }
 }
 
 /// A composição liga os cartões na thread da interface (`PH2D_CARDS=0` não liga); sem isto o painel
@@ -79,9 +103,7 @@ pub(crate) fn commit_hex(store: &mut WidgetStore, i: usize) -> bool {
     let Some(nova) = ph2d_editor_core::widget::parse_hex(text) else {
         return false;
     };
-    let Some(atual) =
-        appearance::current_appearance().and_then(|a| a.layers.get(i).map(|r| r.color))
-    else {
+    let Some(atual) = cor_de(i) else {
         return false;
     };
     let mut c = nova.rgba;
@@ -89,7 +111,7 @@ pub(crate) fn commit_hex(store: &mut WidgetStore, i: usize) -> bool {
         c[3] = atual[3];
     }
     let picker = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
-    store.open_picker_on(vids::vector_paint_swatch_id(i));
+    store.open_picker_on(amostra_de(i));
     store.set_blender_value(
         picker,
         ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]),
@@ -104,9 +126,8 @@ fn fecha_seletor_do_hex(store: &mut WidgetStore) {
     let Some((i, c, n)) = HEX_PENDENTE.with(std::cell::Cell::get) else {
         return;
     };
-    let alvo = vids::vector_paint_swatch_id(i);
-    let chegou =
-        appearance::current_appearance().and_then(|a| a.layers.get(i).map(|r| r.color)) == Some(c);
+    let alvo = amostra_de(i);
+    let chegou = cor_de(i) == Some(c);
     if store.picker_target() != Some(alvo) {
         HEX_PENDENTE.with(|p| p.set(None));
     } else if chegou || n >= HEX_QUADROS {
@@ -114,6 +135,62 @@ fn fecha_seletor_do_hex(store: &mut WidgetStore) {
         HEX_PENDENTE.with(|p| p.set(None));
     } else {
         HEX_PENDENTE.with(|p| p.set(Some((i, c, n + 1))));
+    }
+}
+
+/// O código e os números de cada linha de tinta: o que a forma mostra, salvo na caixa que a mão usa.
+/// O painel Vector lê-os do publicado ao pintar; o cartão lê as caixas.
+fn semeia_as_linhas(store: &mut WidgetStore) {
+    let pct = |alfa: u8| f64::from(alfa) * 100.0 / 255.0; // LITERAL-PX-OK: byte→percent
+    let mut codigos = Vec::new();
+    let mut numeros = Vec::new();
+    if let Some(a) = appearance::current_appearance() {
+        for (i, r) in a.layers.iter().enumerate() {
+            codigos.push((hex_id(i), r.color));
+            let fracao = f64::from(r.opacity) * 100.0; // LITERAL-PX-OK: fraction→percent
+            numeros.push((vids::vector_paint_row_opacity_id(i), fracao));
+            numeros.push((vids::vector_paint_row_width_id(i), r.width));
+        }
+    }
+    if let Some(s) = appearance::current_vector_style() {
+        codigos.push((hex_id(HEX_FILL_DE_BASE), s.fill));
+        codigos.push((hex_id(HEX_STROKE_DE_BASE), s.stroke));
+        numeros.push((vids::VECTOR_FILL_OPACITY_NUM, pct(s.fill[3])));
+        numeros.push((vids::VECTOR_STROKE_OPACITY_NUM, pct(s.stroke[3])));
+    }
+    let foco = store.focus_id();
+    let mao = store.number_input_drag().map(|d| d.id);
+    for (id, cor) in codigos {
+        store.register_if_absent(
+            id,
+            InteractiveState::TextInput {
+                state: ph2d_editor_core::widget::TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+        store.mark_cancel_on_escape(id);
+        if foco != Some(id)
+            && let Some(InteractiveState::TextInput {
+                text,
+                caret,
+                selection_anchor,
+                ..
+            }) = store.get_mut(id)
+        {
+            let h = hex(cor);
+            if *text != h {
+                *text = h;
+                *caret = text.len();
+                *selection_anchor = None;
+            }
+        }
+    }
+    for (id, valor) in numeros {
+        if foco != Some(id) && mao != Some(id) && store.number_value(id) != Some(valor) {
+            store.set_number_value(id, valor);
+        }
     }
 }
 
@@ -164,7 +241,8 @@ pub(crate) fn graus() -> bool {
 pub(crate) fn prepare(store: &mut WidgetStore) {
     let p = pos_step();
     let a = if graus() { 1.0 } else { 0.01 };
-    let campos: [(NodeId, f64, f64, Option<f64>); 11] = [
+    let campos: [(NodeId, f64, f64, Option<f64>); 12] = [
+        (vids::VECTOR_STROKE_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
         (ids::INSP_TRANSFORM_POS_X, p, p, None),
         (ids::INSP_TRANSFORM_POS_Y, p, p, None),
         (ids::INSP_TRANSFORM_ROT, a, a, Some(0.0)),
@@ -173,7 +251,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         (ids::INSP_TRANSFORM_SKEW_X, a, a, Some(0.0)),
         (ids::INSP_TRANSFORM_SKEW_Y, a, a, Some(0.0)),
         (vids::VECTOR_OBJ_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
-        (vids::VECTOR_PAINT_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
+        (vids::VECTOR_FILL_OPACITY_NUM, 1.0, 1.0, Some(100.0)),
         (vids::VECTOR_WIDTH_NUM, 1.0, 0.1, None),
         (ids::INSP_ORDER_Z_INDEX, 1.0, 0.1, Some(0.0)),
     ];
@@ -203,9 +281,28 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         store.set_tooltip(core_ids::hier_lock_companion(linha), tr("card.insp.lock"));
     }
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
+        for id in [
+            vids::vector_paint_row_opacity_id(i),
+            vids::vector_paint_row_width_id(i),
+        ] {
+            let (step, scrub) = (1.0, 1.0);
+            let default = (id == vids::vector_paint_row_opacity_id(i)).then_some(100.0);
+            store.mark_card_field(
+                id,
+                CardFieldSpec {
+                    step,
+                    scrub,
+                    default,
+                },
+            );
+        }
         for (id, chave) in [
             (vids::vector_paint_eye_id(i), "card.insp.layer_visible"),
             (vids::vector_paint_del_id(i), "card.insp.layer_remove"),
+            (vids::VECTOR_FILL_EYE, "card.insp.layer_visible"),
+            (vids::VECTOR_STROKE_EYE, "card.insp.layer_visible"),
+            (vids::VECTOR_FILL_PRESENT, "card.insp.layer_remove"),
+            (vids::VECTOR_STROKE_PRESENT, "card.insp.layer_remove"),
         ] {
             if store.tooltip_for(id).is_none() {
                 store.set_tooltip(id, tr(chave));
@@ -225,37 +322,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
             store.set_tooltip(d, tr("card.styles.detach"));
         }
     }
-    let foco = store.focus_id();
-    if let Some(a) = appearance::current_appearance() {
-        for (i, row) in a.layers.iter().enumerate() {
-            let id = hex_id(i);
-            store.register_if_absent(
-                id,
-                ph2d_editor_core::interaction::InteractiveState::TextInput {
-                    state: ph2d_editor_core::widget::TextInputState::Normal,
-                    text: String::new(),
-                    caret: 0,
-                    selection_anchor: None,
-                },
-            );
-            store.mark_cancel_on_escape(id);
-            if foco != Some(id)
-                && let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
-                    text,
-                    caret,
-                    selection_anchor,
-                    ..
-                }) = store.get_mut(id)
-            {
-                let h = hex(row.color);
-                if *text != h {
-                    *text = h;
-                    *caret = text.len();
-                    *selection_anchor = None;
-                }
-            }
-        }
-    }
+    semeia_as_linhas(store);
     store.set_collapsed_if_unchosen(CARD_ORDERING, true);
     store.set_collapsed_if_unchosen(CARD_MATERIAL, true);
     for (id, chave) in [

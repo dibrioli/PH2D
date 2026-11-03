@@ -27,7 +27,7 @@ pub(super) fn linhas<'l>(ts: &mut TextSystem, l: &'l str, w: f32) -> (&'l str, O
     }
 }
 
-fn reserva(c: &Cell<'_>) -> f32 {
+pub(super) fn reserva(c: &Cell<'_>) -> f32 {
     if c.key.is_some() {
         m::KEY_MARK_BOX
     } else {

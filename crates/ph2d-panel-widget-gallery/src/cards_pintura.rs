@@ -92,13 +92,7 @@ fn paint_row(
         cor = cor.label(tr("panel.widget_gallery.color")).key(&k_cor);
         op = op.label(tr("panel.widget_gallery.opacity")).key(&k_op);
     }
-    let olhos = Cell::new(Widget::Bare(&olho));
-    let toda = caixa_para(c, &code) + CAMPO_MIN + m::FIELD_H * 2.0 + m::FIELD_GAP * 2.0;
-    if c.w >= toda {
-        return c.row(&[cor, op, olhos], y);
-    }
-    let y = c.row(&[cor], y);
-    c.row(&[op, olhos], y)
+    c.paint_line(cor, op, Cell::new(Widget::Bare(&olho)), y)
 }
 
 /// As linhas presentes de uma lista de tinta, cada uma com a sua amostra (`base + i`).

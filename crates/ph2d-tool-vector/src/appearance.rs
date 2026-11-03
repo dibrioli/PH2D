@@ -126,6 +126,43 @@ thread_local! {
     static CURRENT: RefCell<Option<Appearance>> = const { RefCell::new(None) };
 }
 
+/// ⭐ **O estado de uma tinta de BASE** (F44b): o que o olho e o «−» da linha dela mostram.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BasePaint {
+    /// Não há tinta (o «+» do título dá-a).
+    Absent,
+    Shown,
+    /// Escondida pelo olho: a tinta fica guardada e a linha a cinzento.
+    Hidden,
+}
+
+thread_local! {
+    static BASE_PAINTS: Cell<Option<[BasePaint; 2]>> = const { Cell::new(None) };
+    static BASE_FILL_RAMP: Cell<Option<[[u8; 4]; 2]>> = const { Cell::new(None) };
+}
+
+/// Publica `[preenchimento, traço]` da forma selecionada (`None` sem resposta).
+pub fn set_base_paints(v: Option<[BasePaint; 2]>) {
+    BASE_PAINTS.with(|c| c.set(v));
+}
+
+/// `[preenchimento, traço]` da forma selecionada.
+#[must_use]
+pub fn base_paints() -> Option<[BasePaint; 2]> {
+    BASE_PAINTS.with(Cell::get)
+}
+
+/// As duas pontas do degradê do preenchimento de base (`None` = tinta sólida) — a amostra da linha
+/// pinta-as em rampa, como o Figma.
+pub fn set_base_fill_ramp(v: Option<[[u8; 4]; 2]>) {
+    BASE_FILL_RAMP.with(|c| c.set(v));
+}
+
+#[must_use]
+pub fn base_fill_ramp() -> Option<[[u8; 4]; 2]> {
+    BASE_FILL_RAMP.with(Cell::get)
+}
+
 /// Publica a aparência da forma selecionada; `None` esconde a seção.
 pub fn set_current_appearance(a: Option<Appearance>) {
     CURRENT.with(|c| *c.borrow_mut() = a);

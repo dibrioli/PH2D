@@ -37,6 +37,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.fill" => "Fill",
         "card.insp.stroke" => "Stroke",
         "card.insp.color" => "Color",
+        "card.insp.gradient" => "Gradient",
         "card.insp.stroke_position" => "Position",
         "card.insp.weight" => "Weight (px)",
         "card.insp.align_center" => "Center",

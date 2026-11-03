@@ -108,6 +108,43 @@ impl<'s> CardCtx<'s> {
         y + m::FIELD_H
     }
 
+    /// ⭐ **A linha de tinta** `[cor] [opacidade] 👁 −`. Numa linha só quando cada caixa e cada rótulo
+    /// cabem inteiros; senão a cor vai para a sua própria linha e a opacidade e os botões para a
+    /// seguinte (o Figma na coluna estreita): nada vira «...» nem quebra o rótulo.
+    pub fn paint_line(&mut self, cor: Cell<'_>, op: Cell<'_>, botoes: Cell<'_>, y: f32) -> f32 {
+        let toda = [cor, op, botoes];
+        if self.tudo_cabe(&toda) {
+            return self.row(&toda, y);
+        }
+        let y = self.row(&[cor], y);
+        self.row(&[op, botoes], y)
+    }
+
+    fn tudo_cabe(&mut self, cells: &[Cell<'_>]) -> bool {
+        let cols = self.columns(cells);
+        cells
+            .iter()
+            .zip(&cols)
+            .all(|(c, (_, w))| *w >= self.pede(c))
+    }
+
+    /// A largura em que `c` mostra o conteúdo e o rótulo sem cortar.
+    fn pede(&mut self, c: &Cell<'_>) -> f32 {
+        let ts = &mut *self.text_system;
+        let corpo = match c.widget {
+            Widget::Swatch { text, detach, .. } => {
+                let mut mede = |t: &str| ts.prefix_width(t, m::VALUE_PX);
+                colunas::caixa_da_cor(text, detach.is_some(), &mut mede)
+            }
+            Widget::Field { .. } | Widget::FieldFace { .. } => m::FIELD_VALUE_MIN_W,
+            _ => 0.0,
+        };
+        let rotulo = c.label.map_or(0.0, |l| {
+            ts.prefix_width(l, m::LABEL_PX).ceil() + rotulos::reserva(c)
+        });
+        corpo.max(rotulo)
+    }
+
     /// ⚠️ **A ponte para uma linha do vocabulário de hoje** (`RowCtx`: a lista da ponta do osso, a do
     /// Smart Bone), na largura do cartão. Devolve o fundo.
     pub fn legacy(

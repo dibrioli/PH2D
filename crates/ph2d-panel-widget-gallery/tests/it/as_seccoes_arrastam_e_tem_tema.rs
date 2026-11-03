@@ -49,6 +49,8 @@ fn a_vista(rects: &[(NodeId, Rect)]) -> Vec<(NodeId, Rect)> {
 }
 
 fn aberta() -> (MockPanelHost, WidgetGalleryState, Vec<(NodeId, Rect)>) {
+    // A janela de hoje (`PH2D_CARDS=0`): as secções com cabeçalho próprio. Os cartões: `cartoes.rs`.
+    ph2d_panel_widget_gallery::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<WidgetGalleryPanel>();
     host.set_panel_visible(WidgetGalleryPanel::ID, true);
     let mut st = WidgetGalleryState::default();

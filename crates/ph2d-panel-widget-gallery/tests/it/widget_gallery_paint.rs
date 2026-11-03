@@ -46,6 +46,8 @@ fn ensure_typed_registry() {
 }
 
 fn setup_hero() -> HeroScreen {
+    // A janela flutuante de hoje (`PH2D_CARDS=0`); a lista de cartões tem `cartoes.rs`.
+    ph2d_panel_widget_gallery::force_cards_on_this_thread(Some(false));
     ph2d_editor_core::test_support::ensure_panel_registry();
     ensure_typed_registry();
     let mut hero = HeroScreen::new(NodeId(1));

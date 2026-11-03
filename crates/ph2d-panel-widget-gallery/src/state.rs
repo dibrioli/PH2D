@@ -26,7 +26,7 @@ pub struct Choices {
 impl Default for Choices {
     fn default() -> Self {
         Self {
-            level: 1,
+            level: 0,
             cap: 0,
             visible: true,
             locked: false,

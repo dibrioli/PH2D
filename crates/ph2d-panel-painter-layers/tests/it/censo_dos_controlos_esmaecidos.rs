@@ -40,12 +40,48 @@ fn ids_dependentes() -> Vec<NodeId> {
 /// **Mutações que sangram:** inverter a lei do Space Attenuation (`space_attenuation_reaches`); tirar
 /// o `talvez_esmaecido` da linha de número; o Taper esmaecer com comprimento.
 #[test]
-fn a_linha_esmaecida_e_a_que_nao_age() {
+fn a_linha_esmaecida_e_a_que_nao_age_no_digital() {
+    a_linha_esmaecida_e_a_que_nao_age(PaintMedia::Digital);
+}
+
+/// O [`a_linha_esmaecida_e_a_que_nao_age_no_digital`] na Aquarela.
+#[test]
+fn a_linha_esmaecida_e_a_que_nao_age_na_aquarela() {
+    a_linha_esmaecida_e_a_que_nao_age(PaintMedia::Watercolor);
+}
+
+/// O [`a_linha_esmaecida_e_a_que_nao_age_no_digital`] no Impasto.
+#[test]
+fn a_linha_esmaecida_e_a_que_nao_age_no_impasto() {
+    a_linha_esmaecida_e_a_que_nao_age(PaintMedia::Impasto);
+}
+
+/// O [`a_linha_esmaecida_e_a_que_nao_age_no_digital`] no Wet Paint.
+#[test]
+fn a_linha_esmaecida_e_a_que_nao_age_no_wet_paint() {
+    a_linha_esmaecida_e_a_que_nao_age(PaintMedia::WetPaint);
+}
+
+/// Os meios dos irmãos acima — e o controlo: a tabela das pré-condições não tem estado de OUTRO meio (um meio
+/// novo na tabela, sem irmão, ficaria fora do gate em silêncio).
+const MEIOS_DO_ESMAECIDO: [PaintMedia; 4] = [
+    PaintMedia::Digital,
+    PaintMedia::Watercolor,
+    PaintMedia::Impasto,
+    PaintMedia::WetPaint,
+];
+
+/// O corpo dos quatro irmãos (partido por meio em 02/11: os 77 estados num só teste passavam o prazo sozinhos).
+fn a_linha_esmaecida_e_a_que_nao_age(so: PaintMedia) {
     let nomes = nomes();
     let dependentes = ids_dependentes();
     let mut estados: Vec<(PaintMedia, Vec<Gesto>)> = Vec::new();
     for (media, _, armar, _, depois) in pre_condicoes() {
-        if depois {
+        assert!(
+            MEIOS_DO_ESMAECIDO.contains(&media),
+            "{media:?}: um meio das pré-condições sem irmão no gate do esmaecido"
+        );
+        if depois || media != so {
             continue;
         }
         for e in [Vec::new(), armar] {
@@ -57,13 +93,22 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
             }
         }
     }
-    let falhas: Vec<Vec<String>> = em_paralelo(&estados, |(media, armar)| {
+    // ⚠️ O trabalho é ACHATADO em (estado, gesto) numa só fila da largura da máquina (o laço em série por estado
+    // passou o prazo de 600 s sozinho, 02/11: 77 estados, o painel do E10 a ~0,25 s por pintura). A resposta é a do
+    // laço em série: por estado, cada alvo é o 1.º dos seus gestos (na ordem da tela) cujo ajuste mudou — e por
+    // isso vai por VAGAS: a vaga `n` mede o `n`-ésimo gesto de cada alvo ainda sem ajuste mudado; nenhum ensaio a
+    // mais que o laço em série. As falhas saem na ordem do laço (estado, posição do gesto).
+    struct Estado {
+        base: Vec<u8>,
+        esmaecidos: Vec<NodeId>,
+        /// Por alvo (na ordem da 1.ª aparição): os gestos dele, `(posição na tela, gesto)`.
+        alvos: Vec<(NodeId, Vec<(usize, Gesto)>)>,
+    }
+    let preparados: Vec<Option<Estado>> = em_paralelo_largo(&estados, |(media, armar)| {
         let media = *media;
-        let Ok(bancada) =
+        let bancada =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Bancada::nova(media, armar)))
-        else {
-            return Vec::new();
-        };
+                .ok()?;
         let esmaecida = |id: NodeId| {
             bancada
                 .host
@@ -72,9 +117,8 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
                 .is_some_and(ph2d_panel_painter_layers::e_dica_de_inercia)
         };
         let (base, _) = ensaio(media, armar, &Gesto::Nenhum);
-        let mut out = Vec::new();
-        let mut vistos: Vec<NodeId> = Vec::new();
-        for g in gestos(media, armar) {
+        let mut alvos: Vec<(NodeId, Vec<(usize, Gesto)>)> = Vec::new();
+        for (k, g) in gestos(media, armar).into_iter().enumerate() {
             let alvo = match &g {
                 Gesto::Opcao(menu, _, k, _) if *k > 0 => *menu,
                 Gesto::Opcao(..) => continue,
@@ -83,17 +127,79 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
                     None => continue,
                 },
             };
-            if !dependentes.contains(&alvo) || vistos.contains(&alvo) {
+            if !dependentes.contains(&alvo) {
                 continue;
             }
-            let (px, entrega) = ensaio(media, armar, &g);
-            if !entrega.ajuste_mudou {
-                continue;
+            match alvos.iter_mut().find(|(a, _)| *a == alvo) {
+                Some((_, v)) => v.push((k, g)),
+                None => alvos.push((alvo, vec![(k, g)])),
             }
-            vistos.push(alvo);
-            let inerte = diferenca(&base, &px).0 == 0;
-            if esmaecida(alvo) != inerte {
-                out.push(format!(
+        }
+        let esmaecidos = alvos
+            .iter()
+            .map(|(a, _)| *a)
+            .filter(|a| esmaecida(*a))
+            .collect();
+        Some(Estado {
+            base,
+            esmaecidos,
+            alvos,
+        })
+    });
+    // (estado, alvo) → `Some((posição, inerte))` do gesto escolhido, ou `None` se nenhum mudou o ajuste.
+    let mut escolhido: BTreeMap<(usize, usize), Option<(usize, bool)>> = BTreeMap::new();
+    let mut vaga = 0;
+    loop {
+        let fila: Vec<(usize, usize, usize, &Gesto)> = preparados
+            .iter()
+            .enumerate()
+            .filter_map(|(e, p)| p.as_ref().map(|p| (e, p)))
+            .flat_map(|(e, p)| {
+                p.alvos
+                    .iter()
+                    .enumerate()
+                    .filter_map(move |(a, (_, gs))| gs.get(vaga).map(|(k, g)| (e, a, *k, g)))
+            })
+            .filter(|(e, a, ..)| escolhido.get(&(*e, *a)).is_none_or(Option::is_none))
+            .collect();
+        if fila.is_empty() {
+            break;
+        }
+        let medidas = em_paralelo_largo(&fila, |(e, _, _, g)| {
+            let (media, armar) = &estados[*e];
+            let (px, entrega) = ensaio(*media, armar, g);
+            let base = &preparados[*e].as_ref().expect("preparado").base;
+            (entrega.ajuste_mudou, diferenca(base, &px).0 == 0)
+        });
+        for ((e, a, k, _), (mudou, inerte)) in fila.into_iter().zip(medidas) {
+            let s = escolhido.entry((e, a)).or_insert(None);
+            if mudou {
+                *s = Some((k, inerte));
+            }
+        }
+        vaga += 1;
+    }
+    let mut falhas: Vec<String> = Vec::new();
+    for (e, p) in preparados.iter().enumerate() {
+        let Some(p) = p else { continue };
+        let (media, armar) = &estados[e];
+        let mut deste: Vec<(usize, NodeId, bool)> = p
+            .alvos
+            .iter()
+            .enumerate()
+            .filter_map(|(a, (alvo, _))| {
+                escolhido
+                    .get(&(e, a))
+                    .copied()
+                    .flatten()
+                    .map(|(k, inerte)| (k, *alvo, inerte))
+            })
+            .collect();
+        deste.sort_by_key(|(k, ..)| *k);
+        for (_, alvo, inerte) in deste {
+            let esmaecida = p.esmaecidos.contains(&alvo);
+            if esmaecida != inerte {
+                falhas.push(format!(
                     "{media:?} [{}] {}: esmaecida={} mas a tinta {}",
                     armar
                         .iter()
@@ -101,14 +207,12 @@ fn a_linha_esmaecida_e_a_que_nao_age() {
                         .collect::<Vec<_>>()
                         .join(" + "),
                     nome(&nomes, alvo),
-                    esmaecida(alvo),
+                    esmaecida,
                     if inerte { "NÃO mudou" } else { "mudou" }
                 ));
             }
         }
-        out
-    });
-    let falhas: Vec<String> = falhas.into_iter().flatten().collect();
+    }
     assert!(
         falhas.is_empty(),
         "{} linha(s) dependente(s) mentem sobre agir:\n{}",

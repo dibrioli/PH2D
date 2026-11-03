@@ -655,12 +655,30 @@ pub(crate) fn gestos_da(b: Bancada) -> Vec<Gesto> {
 /// instantâneo publicado ao painel (`set_current_brush`) é por THREAD. O paralelo existe pelo Wet
 /// Paint: o ensaio dele DORME (a água anda ao relógio), e em série a exploração não cabia no prazo.
 pub(crate) fn em_paralelo<I: Sync, T: Send>(gestos: &[I], f: impl Fn(&I) -> T + Sync) -> Vec<T> {
+    em_paralelo_com(FIOS, gestos, f)
+}
+
+/// O [`em_paralelo`] na largura da MÁQUINA (`available_parallelism`, nunca menos que [`FIOS`]) — para os censos
+/// que achatam (estado|ferramenta, gesto) numa só fila: o tecto é o dos núcleos, não o de 8 fios.
+pub(crate) fn em_paralelo_largo<I: Sync, T: Send>(
+    gestos: &[I],
+    f: impl Fn(&I) -> T + Sync,
+) -> Vec<T> {
+    let largura = std::thread::available_parallelism().map_or(FIOS, |n| n.get().max(FIOS));
+    em_paralelo_com(largura, gestos, f)
+}
+
+fn em_paralelo_com<I: Sync, T: Send>(
+    fios: usize,
+    gestos: &[I],
+    f: impl Fn(&I) -> T + Sync,
+) -> Vec<T> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let proximo = AtomicUsize::new(0);
     let saidas: Vec<std::sync::Mutex<Option<T>>> =
         gestos.iter().map(|_| std::sync::Mutex::new(None)).collect();
     std::thread::scope(|s| {
-        for _ in 0..FIOS {
+        for _ in 0..fios.min(gestos.len().max(1)) {
             s.spawn(|| {
                 loop {
                     let k = proximo.fetch_add(1, Ordering::Relaxed);

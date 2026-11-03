@@ -8,7 +8,8 @@
 //!    ferramenta — e o controlo: no Pincel ela muda o traço (senão o gate mediria o vazio).
 
 use super::censo_dos_controlos::{
-    Bancada, Gesto, diferenca, em_paralelo, gestos_da, nome, nomes, risca, risca_ou_nada,
+    Bancada, Gesto, diferenca, em_paralelo, em_paralelo_largo, gestos_da, nome, nomes, risca,
+    risca_ou_nada,
 };
 use super::censo_ferramenta_x_linha::bancada_com;
 use ph2d_a11y::NodeId;
@@ -502,7 +503,43 @@ fn ensaio_da_agua_com(
 /// 2. cada linha que a tabela lhe esconde não está pintada e, mexida com o Pincel da água na mão, não muda o traço
 ///    dela — e o controlo: muda o do Pincel (senão o gate mediria o vazio).
 #[test]
-fn cada_ferramenta_da_agua_so_ve_o_que_le() {
+fn cada_ferramenta_da_agua_so_ve_o_que_le_smear() {
+    cada_ferramenta_da_agua_so_ve_o_que_le("wet_smear");
+}
+
+#[test]
+fn cada_ferramenta_da_agua_so_ve_o_que_le_blend() {
+    cada_ferramenta_da_agua_so_ve_o_que_le("wet_blend");
+}
+
+#[test]
+fn cada_ferramenta_da_agua_so_ve_o_que_le_water() {
+    cada_ferramenta_da_agua_so_ve_o_que_le("wet_water");
+}
+
+#[test]
+fn cada_ferramenta_da_agua_so_ve_o_que_le_dry() {
+    cada_ferramenta_da_agua_so_ve_o_que_le("wet_dry");
+}
+
+#[test]
+fn cada_ferramenta_da_agua_so_ve_o_que_le_blow() {
+    cada_ferramenta_da_agua_so_ve_o_que_le("wet_blow");
+}
+
+/// O corpo dos cinco irmãos acima, um por ferramenta do [`DA_AGUA`] (partido em 02/11: as cinco num só teste passavam o
+/// prazo de 600 s sozinhas).
+fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
+    let da_agua: Vec<(&str, FerramentaDoPincel)> = DA_AGUA
+        .iter()
+        .copied()
+        .filter(|(fio, _)| *fio == so)
+        .collect();
+    assert_eq!(da_agua.len(), 1, "{so}: não é uma ferramenta da água");
+    // ⚠️ O trabalho é ACHATADO em (ferramenta, gesto), em três filas da largura da máquina: o laço em série pelas 5
+    // ferramentas, com um `em_paralelo` por controlo inerte, passou o prazo de 600 s sozinho (02/11; a bancada da água
+    // custa ~2,5 s, o ensaio ~3 s). As perguntas são as do laço; o que só depende do gesto do Pincel (o controlo «age no
+    // Pincel», o bake) mede-se UMA vez, e a base com bake uma vez por ferramenta, em vez de uma por gesto escondido.
     let nomes = nomes();
     let pincel = gestos_da(bancada_da_agua("wet_paint", &Gesto::Nenhum, false));
     let base_pincel = ensaio_da_agua("wet_paint", &Gesto::Nenhum, &Gesto::Nenhum, false);
@@ -513,28 +550,29 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
         )
         .2 > PISO
     };
-    let mut falhas = Vec::new();
-    let mut medidas = 0;
-    for (fio, f) in DA_AGUA {
+    struct DaFerramenta {
+        escondidas: Vec<NodeId>,
+        pintadas: Vec<NodeId>,
+        base: Vec<u8>,
+        gs: Vec<Gesto>,
+    }
+    let fs: Vec<DaFerramenta> = em_paralelo_largo(&da_agua, |(fio, f)| {
         let b = bancada_da_agua(fio, &Gesto::Nenhum, false);
         assert_eq!(
             b.tool.brush_settings().ferramenta(),
-            f,
+            *f,
             "{fio}: a ferramenta não ficou na mão"
         );
         let escondidas: Vec<NodeId> = NAO_LE
             .iter()
-            .filter(|(g, _)| *g == f)
+            .filter(|(g, _)| g == f)
             .flat_map(|(_, ls)| ls.iter().flat_map(|l| ids_da(*l).iter().copied()))
             .collect();
-        for id in &escondidas {
-            if b.rects().iter().any(|(i, _)| i == id) {
-                falhas.push(format!(
-                    "{fio}: «{}» está escondida e pintada",
-                    nome(&nomes, *id)
-                ));
-            }
-        }
+        let pintadas = escondidas
+            .iter()
+            .copied()
+            .filter(|id| b.rects().iter().any(|(i, _)| i == id))
+            .collect();
         let inercias = b.tool.brush_settings().inercias;
         let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum, false);
         let gs: Vec<Gesto> = gestos_da(b)
@@ -546,78 +584,217 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
                     .all(|i| inercias.dica_de(i).is_none())
             })
             .collect();
-        let agem = em_paralelo(&gs, |g| {
-            diferenca(&base, &ensaio_da_agua(fio, &Gesto::Nenhum, g, false)).0 > 0
-        });
+        DaFerramenta {
+            escondidas,
+            pintadas,
+            base,
+            gs,
+        }
+    });
+    // Os gestos do Pincel que alguma ferramenta esconde.
+    let escondidos_do_pincel: Vec<usize> = (0..pincel.len())
+        .filter(|&p| {
+            chave(&pincel[p]).is_some_and(|i| fs.iter().any(|d| d.escondidas.contains(&i)))
+        })
+        .collect();
+
+    // Fila 1: cada gesto à vista de cada ferramenta; as bases (ponta redonda; sessão encerrada) de cada uma; e, por
+    // gesto escondido do Pincel, se ele age no Pincel e se encerra a sessão (o bake da base).
+    enum Um<'a> {
+        Age(usize, &'a Gesto),
+        BaseRedonda(usize),
+        BaseBake(usize),
+        DoPincel(usize),
+    }
+    enum UmSai {
+        Age(bool),
+        Px(Vec<u8>),
+        DoPincel(bool, bool),
+    }
+    let mut fila: Vec<Um> = Vec::new();
+    for (fi, d) in fs.iter().enumerate() {
+        fila.extend(d.gs.iter().map(|g| Um::Age(fi, g)));
+        fila.push(Um::BaseRedonda(fi));
+        fila.push(Um::BaseBake(fi));
+    }
+    fila.extend(escondidos_do_pincel.iter().map(|&p| Um::DoPincel(p)));
+    let saidas = em_paralelo_largo(&fila, |t| match t {
+        Um::Age(fi, g) => {
+            let fio = da_agua[*fi].0;
+            UmSai::Age(
+                diferenca(
+                    &fs[*fi].base,
+                    &ensaio_da_agua(fio, &Gesto::Nenhum, g, false),
+                )
+                .0 > 0,
+            )
+        }
+        Um::BaseRedonda(fi) => UmSai::Px(ensaio_da_agua_com(
+            &PONTA_REDONDA,
+            da_agua[*fi].0,
+            &Gesto::Nenhum,
+            &Gesto::Nenhum,
+            false,
+        )),
+        Um::BaseBake(fi) => UmSai::Px(ensaio_da_agua(
+            da_agua[*fi].0,
+            &Gesto::Nenhum,
+            &Gesto::Nenhum,
+            true,
+        )),
+        Um::DoPincel(p) => {
+            let g = &pincel[*p];
+            let bake = bancada_da_agua("wet_paint", g, false)
+                .tool
+                .wet_pigmento()
+                .is_none();
+            UmSai::DoPincel(age_no_pincel(g), bake)
+        }
+    });
+    let mut agem: Vec<Vec<bool>> = fs.iter().map(|_| Vec::new()).collect();
+    let mut base_redonda: Vec<Option<Vec<u8>>> = fs.iter().map(|_| None).collect();
+    let mut base_bake: Vec<Option<Vec<u8>>> = fs.iter().map(|_| None).collect();
+    let mut do_pincel: BTreeMap<usize, (bool, bool)> = BTreeMap::new();
+    let mut k_pincel = escondidos_do_pincel.iter();
+    for (t, s) in fila.iter().zip(saidas) {
+        match (t, s) {
+            (Um::Age(fi, _), UmSai::Age(a)) => agem[*fi].push(a),
+            (Um::BaseRedonda(fi), UmSai::Px(px)) => base_redonda[*fi] = Some(px),
+            (Um::BaseBake(fi), UmSai::Px(px)) => base_bake[*fi] = Some(px),
+            (Um::DoPincel(_), UmSai::DoPincel(a, b)) => {
+                do_pincel.insert(*k_pincel.next().expect("um por gesto"), (a, b));
+            }
+            _ => unreachable!("a saída é da tarefa"),
+        }
+    }
+    let mut medidas = 0;
+    // Por ferramenta, os controlos à vista que não agiram (fora os inertes com motivo), com os seus gestos.
+    let mut inertes: Vec<Vec<(NodeId, Vec<&Gesto>)>> = Vec::new();
+    for (fi, d) in fs.iter().enumerate() {
         let mut por_controlo: BTreeMap<NodeId, (bool, Vec<&Gesto>)> = BTreeMap::new();
-        for (g, a) in gs.iter().zip(agem) {
+        for (g, a) in d.gs.iter().zip(&agem[fi]) {
             let e = por_controlo
                 .entry(chave(g).unwrap_or(NodeId(0)))
                 .or_default();
-            e.0 |= a;
+            e.0 |= *a;
             e.1.push(g);
             medidas += 1;
         }
-        // A ponta de IMAGEM da bancada é uma régua parcial: o sopro do Blow é fraco (`apply_blow`) e, por ela, o
-        // Speed → Opacity não chega a um texel (pela redonda, 329 — sonda 29/10). O inerte pela imagem mede-se de novo
-        // com a ponta que o mostra; só o inerte nas DUAS é inerte.
-        let base_redonda = std::sync::OnceLock::new();
-        for (id, (age, gs_dele)) in por_controlo {
-            if age {
+        inertes.push(
+            por_controlo
+                .into_iter()
+                .filter(|(id, (age, _))| !age && !inerte_da_agua_com_motivo(*id))
+                .map(|(id, (_, gs))| (id, gs))
+                .collect(),
+        );
+    }
+
+    // Fila 2: os inertes pela ponta REDONDA (a ponta de IMAGEM da bancada é uma régua parcial: o sopro do Blow é fraco
+    // e, por ela, o Speed → Opacity não chega a um texel — pela redonda, 329; sonda 29/10; só o inerte nas DUAS é
+    // inerte), e cada gesto escondido do Pincel na ferramenta.
+    enum Dois<'a> {
+        Redonda(usize, &'a Gesto),
+        Escondido(usize, usize),
+    }
+    let mut fila: Vec<Dois> = Vec::new();
+    for (fi, ins) in inertes.iter().enumerate() {
+        for (_, gs) in ins {
+            fila.extend(gs.iter().map(|g| Dois::Redonda(fi, g)));
+        }
+        fila.extend(
+            escondidos_do_pincel
+                .iter()
+                .filter(|&&p| chave(&pincel[p]).is_some_and(|i| fs[fi].escondidas.contains(&i)))
+                .map(|&p| Dois::Escondido(fi, p)),
+        );
+    }
+    let saidas = em_paralelo_largo(&fila, |t| match t {
+        Dois::Redonda(fi, g) => {
+            let base_r = base_redonda[*fi].as_ref().expect("medida na fila 1");
+            diferenca(
+                base_r,
+                &ensaio_da_agua_com(&PONTA_REDONDA, da_agua[*fi].0, &Gesto::Nenhum, g, false),
+            )
+            .0
+        }
+        Dois::Escondido(fi, p) => {
+            let base = if do_pincel[p].1 {
+                base_bake[*fi].as_ref().expect("medida na fila 1")
+            } else {
+                &fs[*fi].base
+            };
+            diferenca(
+                base,
+                &ensaio_da_agua(da_agua[*fi].0, &pincel[*p], &Gesto::Nenhum, false),
+            )
+            .0
+        }
+    });
+    let mut redonda: BTreeMap<(usize, *const Gesto), bool> = BTreeMap::new();
+    let mut escondido: Vec<Vec<(usize, usize)>> = fs.iter().map(|_| Vec::new()).collect();
+    for (t, n) in fila.iter().zip(saidas) {
+        match t {
+            Dois::Redonda(fi, g) => {
+                redonda.insert((*fi, std::ptr::from_ref(*g)), n > 0);
+            }
+            Dois::Escondido(fi, p) => escondido[*fi].push((*p, n)),
+        }
+    }
+
+    // Fila 3: o inerte nas duas pontas que o Pincel também mostra — age no Pincel?
+    let mut fila: Vec<&Gesto> = Vec::new();
+    let mut inertes_nas_duas: Vec<Vec<(NodeId, Vec<&Gesto>, bool)>> = Vec::new();
+    for (fi, ins) in inertes.iter().enumerate() {
+        let mut v = Vec::new();
+        for (id, gs) in ins {
+            if gs.iter().any(|g| redonda[&(fi, std::ptr::from_ref(*g))]) {
                 continue;
             }
-            let n = nome(&nomes, id);
-            if inerte_da_agua_com_motivo(id) {
-                continue;
+            let no_pincel = pincel.iter().any(|p| chave(p) == Some(*id));
+            if no_pincel {
+                fila.extend(gs.iter().copied());
             }
-            let base_r = base_redonda.get_or_init(|| {
-                ensaio_da_agua_com(&PONTA_REDONDA, fio, &Gesto::Nenhum, &Gesto::Nenhum, false)
-            });
-            let age_redonda = em_paralelo(&gs_dele, |g| {
-                diferenca(
-                    base_r,
-                    &ensaio_da_agua_com(&PONTA_REDONDA, fio, &Gesto::Nenhum, g, false),
-                )
-                .0 > 0
-            });
-            if age_redonda.contains(&true) {
-                continue;
-            }
-            if !pincel.iter().any(|p| chave(p) == Some(id)) {
+            v.push((*id, gs.clone(), no_pincel));
+        }
+        inertes_nas_duas.push(v);
+    }
+    let agem_no_pincel = em_paralelo_largo(&fila, |g| age_no_pincel(g));
+    let age_no_pincel_de: BTreeMap<*const Gesto, bool> = fila
+        .iter()
+        .map(|g| std::ptr::from_ref(*g))
+        .zip(agem_no_pincel)
+        .collect();
+
+    let mut falhas = Vec::new();
+    for (fi, (fio, f)) in da_agua.iter().enumerate() {
+        for id in &fs[fi].pintadas {
+            falhas.push(format!(
+                "{fio}: «{}» está escondida e pintada",
+                nome(&nomes, *id)
+            ));
+        }
+        for (id, gs, no_pincel) in &inertes_nas_duas[fi] {
+            let n = nome(&nomes, *id);
+            if !no_pincel {
                 falhas.push(format!("{fio}: «{n}» só ela mostra e é inerte"));
-            } else if em_paralelo(&gs_dele, |g| age_no_pincel(g)).contains(&true) {
+            } else if gs.iter().any(|g| age_no_pincel_de[&std::ptr::from_ref(*g)]) {
                 falhas.push(format!(
                     "{fio}: «{n}» está à vista, age no Pincel da água e não nesta ferramenta"
                 ));
             }
         }
-        let gs: Vec<&Gesto> = pincel
-            .iter()
-            .filter(|g| chave(g).is_some_and(|i| escondidas.contains(&i)))
-            .collect();
-        let r = em_paralelo(&gs, |g| {
-            let bake = bancada_da_agua("wet_paint", g, false)
-                .tool
-                .wet_pigmento()
-                .is_none();
-            let base = ensaio_da_agua(fio, &Gesto::Nenhum, &Gesto::Nenhum, bake);
-            (
-                age_no_pincel(g),
-                diferenca(&base, &ensaio_da_agua(fio, g, &Gesto::Nenhum, false)).0,
-            )
-        });
         // O controlo é POR LINHA: viva se algum id dela age no Pincel (uma linha junta ids que só agem num estado
         // que a bancada não arma — o Square tip, o Per-Layer Color).
         let mut vivo: BTreeMap<String, bool> = BTreeMap::new();
-        for (g, (no_pincel, na_ferramenta)) in gs.iter().zip(r) {
-            let id = chave(g).unwrap_or(NodeId(0));
+        for &(p, na_ferramenta) in &escondido[fi] {
+            let id = chave(&pincel[p]).unwrap_or(NodeId(0));
             let linhas = NAO_LE
                 .iter()
-                .filter(|(h, _)| *h == f)
+                .filter(|(h, _)| h == f)
                 .flat_map(|(_, ls)| ls.iter())
                 .filter(|l| ids_da(**l).contains(&id));
             for l in linhas {
-                *vivo.entry(format!("{l:?}")).or_default() |= no_pincel;
+                *vivo.entry(format!("{l:?}")).or_default() |= do_pincel[&p].0;
             }
             if na_ferramenta > 0 {
                 falhas.push(format!(
@@ -635,7 +812,10 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le() {
             }
         }
     }
-    assert!(medidas >= 5 * 20, "controlo: só {medidas} gestos medidos");
+    assert!(
+        medidas >= 20,
+        "{so}: controlo — só {medidas} gestos medidos"
+    );
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 

@@ -365,10 +365,10 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    if let Some(ink) = crate::panel::cards::corpo::card_body() {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
         let texto = dd.selected_label().unwrap_or(&dd.placeholder);
         let aceso = dd.hover_t > 0.0 || dd.open;
-        return crate::panel::cards::corpo::chip(scene, text_system, ink, rect, texto, aceso);
+        return card_chip::chip(scene, text_system, ink, rect, texto, aceso);
     }
     // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno, moldura só no foco.
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
@@ -479,9 +479,11 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
 /// CHIP and the open LIST are two surfaces with two layouts, and everything above this line
 /// is about the chip and the geometry both share. Adding the per-row kind glyph (ADR-0133's
 /// source selector) is the caller that made the split due.
+mod card_chip;
 mod geometria;
 mod largura;
 mod popover;
+pub use card_chip::chip as paint_card_chip;
 pub use geometria::{dropdown_chevron_size, dropdown_chip_width_for, dropdown_label_budget};
 pub use largura::popover_width_for;
 pub use popover::{

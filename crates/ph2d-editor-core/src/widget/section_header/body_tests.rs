@@ -2,7 +2,6 @@
 //! e traz ao lado a mutação que o faria sangrar.
 
 use super::*;
-use crate::interaction::{HitIndex, WidgetStore};
 
 const X: f32 = 10.0;
 const W: f32 = 280.0;

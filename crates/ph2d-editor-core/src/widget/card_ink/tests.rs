@@ -1,9 +1,4 @@
 use super::*;
-use ph2d_a11y::NodeId;
-
-const A: NodeId = NodeId(0xA11CE);
-const B: NodeId = NodeId(0xB0B);
-const SEM: NodeId = NodeId(0x5E3);
 
 fn rgb(c: Color) -> [u8; 3] {
     let [r, g, b, _] = c.to_rgba8().to_u8_array();
@@ -21,13 +16,10 @@ fn gap(a: Color, b: Color) -> u8 {
 #[test]
 fn two_card_themes_paint_two_different_cards_and_the_list_theme_stays_put() {
     let lista = Theme::Dark;
-    let mut store = WidgetStore::with_capacity(16);
-    store.set_section_theme(A, Some(Theme::PlumberRed));
-    store.set_section_theme(B, Some(Theme::PlumberGreen));
     let (a, b, sem) = (
-        CardInk::of_card(&store, A, lista),
-        CardInk::of_card(&store, B, lista),
-        CardInk::of_card(&store, SEM, lista),
+        CardInk::of_card(Some(Theme::PlumberRed), lista),
+        CardInk::of_card(Some(Theme::PlumberGreen), lista),
+        CardInk::of_card(None, lista),
     );
     for t in [
         ColorToken::KanbanCard,
@@ -54,8 +46,7 @@ fn two_card_themes_paint_two_different_cards_and_the_list_theme_stays_put() {
         );
     }
     // Escolher o tema da própria lista é o mesmo que não ter tema.
-    store.set_section_theme(A, Some(lista));
-    assert!(!CardInk::of_card(&store, A, lista).is_own());
+    assert!(!CardInk::of_card(Some(lista), lista).is_own());
 }
 
 /// ⭐ Em TODO tema que o menu oferece a um cartão, a caixa, a caixa sob o rato e o segmento aceso
@@ -64,12 +55,7 @@ fn two_card_themes_paint_two_different_cards_and_the_list_theme_stays_put() {
 fn every_card_theme_keeps_its_boxes_off_its_surface() {
     for t in Theme::ALL.iter().copied() {
         let ink = CardInk::of_card(
-            &{
-                let mut s = WidgetStore::with_capacity(4);
-                s.set_section_theme(A, Some(t));
-                s
-            },
-            A,
+            Some(t),
             if t == Theme::Dark {
                 Theme::Gray
             } else {

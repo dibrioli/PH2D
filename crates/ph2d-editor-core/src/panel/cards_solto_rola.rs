@@ -81,7 +81,9 @@ pub(in crate::panel) fn corpo(
                 w,
                 first: true,
             };
-            corpo::com(ink, || body(&mut c, y))
+            crate::widget::card_ink::com(ink, || {
+                crate::property_row::cartao::com(super::corpo::LINHAS, || body(&mut c, y))
+            })
         };
         crate::widget::showcase::notes_chrome::notas_do_cartao(
             scene,

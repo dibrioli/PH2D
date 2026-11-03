@@ -118,3 +118,27 @@ pub(super) fn pinta(
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::WidgetStore;
+
+    /// O ícone abre o menu do painel dele.
+    #[test]
+    fn the_list_icon_opens_its_panel_menu() {
+        let painel = NodeId(1);
+        let botao = list_menu_of(painel);
+        let mut s = WidgetStore::default();
+        s.mark_card_list_menu(botao, painel, crate::zones::Rect::new(5.0, 6.0, 7.0, 8.0));
+        assert!(apply_list_menu_click(
+            &mut s,
+            crate::interaction::WidgetEvent::Click(botao)
+        ));
+        let m = s.context_menu().expect("menu aberto");
+        assert_eq!(
+            m.kind,
+            crate::interaction::ContextMenuKind::CardListMenu { panel: painel }
+        );
+    }
+}

@@ -372,17 +372,6 @@ impl WidgetStore {
         self.area_menus.set_leading(menu);
     }
 
-    /// Publica o modo de edição do quadro — ver o campo `object_mode`.
-    pub fn publish_object_mode(&mut self, mode: crate::object_mode::ObjectMode) {
-        self.object_mode = mode;
-    }
-
-    /// O modo de edição que o quadro publicou (Object antes do primeiro).
-    #[must_use]
-    pub fn object_mode(&self) -> crate::object_mode::ObjectMode {
-        self.object_mode
-    }
-
     /// Há seletor de modo neste quadro? (Ele é então o `slot` 0.)
     #[must_use]
     pub fn has_mode_selector(&self) -> bool {

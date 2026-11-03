@@ -239,7 +239,7 @@ pub(super) fn pinta_soltos(
         };
         let r = Rect::new(at.0, at.1, c.w, c.altura());
         let volta = loose_return_of(k);
-        let ink = CardInk::of_card(store, loose_face_of(k), theme);
+        let ink = CardInk::of_card(store.section_theme(loose_face_of(k)), theme);
         let sombra = ink.color(ColorToken::KanbanShadowFlight);
         super::shadow(scene, r, m::CARD_RADIUS, sombra, m::LOOSE_SHADOW_FAR);
         super::shadow(

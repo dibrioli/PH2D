@@ -6,7 +6,7 @@
 //! despacho (`interaction::state::card_field_ops`). Geometria: `ph2d_card_stack::metrics`.
 
 use crate::icons::IconId;
-use crate::interaction::{CardFieldSpec, HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
 use crate::widget::card_ink::CardInk;
 use crate::widget::showcase::read_number_input;
@@ -17,6 +17,17 @@ use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
+
+/// O que o painel declara de um campo de cartão.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct CardFieldSpec {
+    /// Unidades por toque de seta (↑ / ↓), e as casas que o valor mostra.
+    pub step: f64,
+    /// Unidades por pixel de arrasto sem modificador (campos sem intervalo conhecido).
+    pub scrub: f64,
+    /// O valor de FÁBRICA que o duplo clique no ícone repõe (`None` = sem reposição).
+    pub default: Option<f64>,
+}
 
 /// O que mora na célula do ícone: um glifo, ou uma letra curta (`X`, `Y`, `In`, `Out`).
 #[derive(Copy, Clone, Debug)]

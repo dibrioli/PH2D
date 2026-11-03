@@ -141,18 +141,8 @@ pub fn paint_choice_row<'a>(
 ) -> f32 {
     let rotulo = label.into();
     let label = rotulo.texto;
-    if let Some(ink) = crate::panel::cards::corpo::card_body() {
-        let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
-        let segs: Vec<crate::panel::cards::Seg<'_>> = segmentos
-            .iter()
-            .map(|&(text, on, id)| crate::panel::cards::Seg {
-                id,
-                icon: None,
-                text,
-                on,
-            })
-            .collect();
-        return crate::panel::cards::corpo::choices(
+    if let Some((ink, rows)) = super::cartao::card_rows() {
+        return (rows.choices)(
             scene,
             text_system,
             store,
@@ -162,8 +152,7 @@ pub fn paint_choice_row<'a>(
             w,
             y,
             label,
-            &ids,
-            &segs,
+            segmentos,
         );
     }
     let rotulos: Vec<&str> = segmentos.iter().map(|(t, _, _)| *t).collect();

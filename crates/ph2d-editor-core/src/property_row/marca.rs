@@ -36,9 +36,8 @@ pub fn paint_check_row<'a>(
 ) -> f32 {
     let (id, label, on) = caixa;
     let label = label.into();
-    if let Some(ink) = crate::panel::cards::corpo::card_body() {
-        let c = crate::panel::cards::corpo::Marca { id, label, on };
-        return crate::panel::cards::corpo::check(
+    if let Some((ink, rows)) = super::cartao::card_rows() {
+        return (rows.check)(
             scene,
             text_system,
             store,
@@ -47,7 +46,9 @@ pub fn paint_check_row<'a>(
             x,
             w,
             y,
-            c,
+            id,
+            label,
+            on,
         );
     }
     let rect = Rect::new(x, y, w, ROW_H_PX);
@@ -117,7 +118,7 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
         .collect();
     let gap = ph2d_tokens::Spacing::Sm.px();
     let meia = ((w - gap) * 0.5).max(1.0);
-    let cartao = crate::panel::cards::corpo::card_body().is_some();
+    let cartao = crate::widget::card_ink::card_body().is_some();
     let fonte = if cartao {
         ph2d_card_stack::metrics::VALUE_PX
     } else {

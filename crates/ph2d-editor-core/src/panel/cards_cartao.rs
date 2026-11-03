@@ -45,7 +45,7 @@ pub(super) fn paint_card_with(
     extra: Extra<'_>,
 ) -> f32 {
     let face = extra.rola.map_or(card.section, |k| k.face);
-    let ink = CardInk::of_card(store, face, painel);
+    let ink = CardInk::of_card(store.section_theme(face), painel);
     if rest_shadow {
         shadow(
             scene,

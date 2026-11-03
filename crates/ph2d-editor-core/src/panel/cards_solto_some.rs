@@ -130,7 +130,10 @@ pub(super) fn cordas(tela: &mut VectorScene, store: &WidgetStore, panel: NodeId,
         if let (Some(a), Some(p)) = (linha.first_mut(), borda) {
             *a = p;
         }
-        let ink = CardInk::of_card(store, crate::interaction::loose_face_of(k), theme);
+        let ink = CardInk::of_card(
+            store.section_theme(crate::interaction::loose_face_of(k)),
+            theme,
+        );
         pinta_corda(tela, &linha, &outros(k), ink);
         if let Some((x, y)) = borda {
             let cor = ink.color(ColorToken::KanbanCard);
@@ -143,7 +146,10 @@ pub(super) fn cordas(tela: &mut VectorScene, store: &WidgetStore, panel: NodeId,
             tela,
             &linha,
             &outros(k),
-            CardInk::of_card(store, crate::interaction::loose_face_of(k), theme),
+            CardInk::of_card(
+                store.section_theme(crate::interaction::loose_face_of(k)),
+                theme,
+            ),
         );
     }
 }

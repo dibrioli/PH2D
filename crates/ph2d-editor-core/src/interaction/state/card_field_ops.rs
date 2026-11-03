@@ -7,18 +7,8 @@
 //! ícone repõe o valor de fábrica. O painel marca o campo antes de o pintar (como semeia o valor).
 
 use super::WidgetStore;
+use crate::widget::card_field::CardFieldSpec;
 use ph2d_a11y::NodeId;
-
-/// O que o painel declara de um campo de cartão.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct CardFieldSpec {
-    /// Unidades por toque de seta (↑ / ↓), e as casas que o valor mostra.
-    pub step: f64,
-    /// Unidades por pixel de arrasto sem modificador (campos sem intervalo conhecido).
-    pub scrub: f64,
-    /// O valor de FÁBRICA que o duplo clique no ícone repõe (`None` = sem reposição).
-    pub default: Option<f64>,
-}
 
 impl WidgetStore {
     /// Marca `id` como campo de cartão (idempotente; o painel chama-o a cada quadro).

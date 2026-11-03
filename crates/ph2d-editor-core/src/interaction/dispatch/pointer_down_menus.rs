@@ -179,9 +179,12 @@ pub(super) fn handle_down_menus(
                 }
             });
         // ⭐ CartoesUI (D28/D30): uma linha da lista de estilos de cor tem o menu dela.
-        if hit_id
-            .is_some_and(|h| crate::panel::cards::estilos::abre_menu(store, h, event.x, event.y))
-        {
+        if let Some(style) = hit_id.and_then(|h| store.color_style_row(h)) {
+            store.open_context_menu(ContextMenuRequest {
+                x: event.x,
+                y: event.y,
+                kind: ContextMenuKind::ColorStyleRow { style },
+            });
         } else if let Some(kind) = timeline_menu {
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,

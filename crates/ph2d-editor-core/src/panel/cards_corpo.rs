@@ -8,7 +8,8 @@
 
 use super::{CardCtx, Cell, Seg, Widget};
 use crate::icons::IconId;
-use crate::interaction::{CardFieldSpec, HitIndex, WidgetStore};
+use crate::interaction::{HitIndex, WidgetStore};
+use crate::widget::card_field::CardFieldSpec;
 use crate::widget::card_field::Glyph;
 use crate::widget::card_ink::CardInk;
 use crate::widget::key_mark::{Eixos, Rotulo};
@@ -18,28 +19,6 @@ use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
-
-thread_local! {
-    static CORPO: std::cell::Cell<Option<CardInk>> = const { std::cell::Cell::new(None) };
-}
-
-/// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
-pub(super) fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
-    struct Repoe(Option<CardInk>);
-    impl Drop for Repoe {
-        fn drop(&mut self) {
-            CORPO.with(|c| c.set(self.0));
-        }
-    }
-    let _repoe = Repoe(CORPO.with(|c| c.replace(Some(ink))));
-    f()
-}
-
-/// A tinta do cartão cujo corpo se está a pintar — `None` fora de um cartão.
-#[must_use]
-pub fn card_body() -> Option<CardInk> {
-    CORPO.with(std::cell::Cell::get)
-}
 
 /// O glifo da pega de um número: a letra da caixa numa linha de vários ([`Eixos`]: X · Y · Z · W,
 /// ou W · H num tamanho); num campo só, a letra DECLARADA ([`Eixos::Letra`]) ou a inicial da
@@ -230,6 +209,80 @@ pub fn choices(
     y
 }
 
+/// As linhas que este corpo pinta para o `property_row`, injectadas pelo
+/// [`com`](crate::property_row::cartao::com).
+pub(super) const LINHAS: crate::property_row::cartao::CardRows =
+    crate::property_row::cartao::CardRows {
+        fields,
+        choices: choices_de_fora,
+        check: check_de_fora,
+    };
+
+#[allow(clippy::too_many_arguments)]
+fn choices_de_fora(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: &str,
+    segmentos: &[(&str, bool, NodeId)],
+) -> f32 {
+    let ids: Vec<NodeId> = segmentos.iter().map(|&(_, _, id)| id).collect();
+    let segs: Vec<Seg<'_>> = segmentos
+        .iter()
+        .map(|&(text, on, id)| Seg {
+            id,
+            icon: None,
+            text,
+            on,
+        })
+        .collect();
+    choices(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        x,
+        w,
+        y,
+        rotulo,
+        &ids,
+        &segs,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn check_de_fora(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    id: NodeId,
+    label: Rotulo<'_>,
+    on: bool,
+) -> f32 {
+    check(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        x,
+        w,
+        y,
+        Marca { id, label, on },
+    )
+}
+
 /// Uma caixa de marcar de cartão: o id do `Checkbox` de hoje, o nome e o valor do MODELO.
 #[derive(Clone, Copy, Debug)]
 pub struct Marca<'a> {
@@ -297,45 +350,6 @@ pub fn check(
         hit_index.register(alvo, dot);
     }
     y + h
-}
-
-/// T29: a cara de uma lista suspensa do Inspector dentro de um cartão — a caixa do cartão (um degrau
-/// abaixo, acesa no hover), o valor e a seta, como o `Widget::Dropdown`. O id, o estado e as opções
-/// continuam os do Inspector.
-pub fn chip(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    ink: CardInk,
-    r: Rect,
-    texto: &str,
-    aceso: bool,
-) {
-    let fundo = if aceso {
-        ColorToken::CardFieldHover
-    } else {
-        ColorToken::CardField
-    };
-    crate::paint::fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(fundo));
-    let g = m::ICON_GLYPH;
-    crate::paint::paint_text_elided(
-        text_system,
-        scene,
-        texto,
-        r.x + m::FIELD_PAD_R,
-        r.y + (r.h - m::VALUE_PX) * 0.5,
-        m::VALUE_PX,
-        (r.w - m::FIELD_PAD_R * 2.0 - g).max(0.0),
-        ink.color(ColorToken::Text1),
-    );
-    let seta = Rect::new(r.x + r.w - m::FIELD_PAD_R - g, r.y + (r.h - g) * 0.5, g, g);
-    let cor = ink.color(ColorToken::Text2);
-    crate::paint::paint_icon(
-        scene,
-        IconId::ChevronDown,
-        seta,
-        cor,
-        StrokeToken::Default.px(),
-    );
 }
 
 fn ctx<'s>(

@@ -5,7 +5,7 @@
 //! ([`take_pedidos`]) e entra a VISTA ([`publica`]), as duas pelo mesmo thread do quadro.
 
 use super::*;
-use crate::interaction::{ContextMenuKind, ContextMenuRequest, InteractiveState, WidgetEvent};
+use crate::interaction::{ContextMenuKind, InteractiveState, WidgetEvent};
 use std::cell::{Cell, RefCell};
 
 /// Um estilo como a lista o mostra.
@@ -44,37 +44,39 @@ thread_local! {
     static MAIOR: Cell<u32> = const { Cell::new(0) };
 }
 
-const fn sal(s: &'static str) -> u64 {
-    ph2d_tool_registry::hash_node_id(s).0
-}
+use ph2d_tool_registry::hash_node_id;
+
+const SAL_BOTAO: u64 = hash_node_id("card_styles_button").0;
+const SAL_LINHA: u64 = hash_node_id("card_styles_row").0;
+const SAL_SOLTA: u64 = hash_node_id("card_styles_detach").0;
 
 /// O «+» da lista.
-pub const MAIS: NodeId = NodeId(sal("card_styles_add"));
+pub const MAIS: NodeId = hash_node_id("card_styles_add");
 /// A caixa do nome no «Edit style».
-pub const NOME: NodeId = NodeId(sal("card_styles_name"));
+pub const NOME: NodeId = hash_node_id("card_styles_name");
 /// A caixa do código da cor no «Edit style».
-pub const HEX: NodeId = NodeId(sal("card_styles_hex"));
+pub const HEX: NodeId = hash_node_id("card_styles_hex");
 /// A caixa «Search...» no topo da lista: filtra pelo nome, sem caixa alta/baixa.
-pub const BUSCA: NodeId = NodeId(sal("card_styles_search"));
+pub const BUSCA: NodeId = hash_node_id("card_styles_search");
 /// O fundo da lista e do editor: o clique nele não atravessa nem fecha.
-const FUNDO: NodeId = NodeId(sal("card_styles_backdrop"));
+const FUNDO: NodeId = hash_node_id("card_styles_backdrop");
 
 /// O ⠿ do cartão `card`.
 #[must_use]
 pub fn botao_de(card: NodeId) -> NodeId {
-    NodeId(card.0 ^ sal("card_styles_button"))
+    NodeId(card.0 ^ SAL_BOTAO)
 }
 
 /// A linha do estilo `id` na lista.
 #[must_use]
 pub fn linha_de(id: u32) -> NodeId {
-    NodeId(sal("card_styles_row") ^ u64::from(id).rotate_left(17))
+    NodeId(SAL_LINHA ^ u64::from(id).rotate_left(17))
 }
 
 /// O «soltar» (corrente partida) da camada `camada`.
 #[must_use]
 pub fn solta_de(camada: usize) -> NodeId {
-    NodeId(sal("card_styles_detach") ^ (camada as u64).rotate_left(23))
+    NodeId(SAL_SOLTA ^ (camada as u64).rotate_left(23))
 }
 
 /// A cena publica os estilos e o estilo de cada camada da forma mostrada (todo quadro).
@@ -323,21 +325,16 @@ fn menu(store: &mut WidgetStore, id: NodeId) -> bool {
     true
 }
 
-/// O botão direito sobre uma linha da lista abre o menu dela.
-pub fn abre_menu(store: &mut WidgetStore, hit: NodeId, x: f32, y: f32) -> bool {
-    let Some(style) = estilo_da_linha(hit) else {
-        return false;
-    };
-    store.open_context_menu(ContextMenuRequest {
-        x,
-        y,
-        kind: ContextMenuKind::ColorStyleRow { style },
-    });
-    true
-}
-
 /// Antes da pintura: as caixas do «Edit style» e as dicas (a pintura só lê o store).
 pub(super) fn prepara(store: &mut WidgetStore) {
+    // O botão direito numa linha abre o menu dela: o despacho lê-as do store (o DAG da fundação).
+    let aberta = ABERTA.with(Cell::get).is_some();
+    let linhas: Vec<(NodeId, u32)> = if aberta {
+        ESTILOS.with(|e| e.borrow().iter().map(|x| (linha_de(x.id), x.id)).collect())
+    } else {
+        Vec::new()
+    };
+    store.set_color_style_rows(linhas);
     let botoes: Vec<NodeId> = BOTOES
         .with(|v| v.borrow().iter().map(|(b, ..)| *b).collect::<Vec<_>>())
         .into_iter()
@@ -434,7 +431,7 @@ pub(super) fn stash_aberta(
         return;
     }
     if let Some(r) = hit_index.rect_for(crate::ids::grip_de(card)) {
-        let ink = CardInk::of_card(store, card, theme);
+        let ink = CardInk::of_card(store.section_theme(card), theme);
         PENDENTE.with(|p| *p.borrow_mut() = Some((r, ink)));
     }
 }

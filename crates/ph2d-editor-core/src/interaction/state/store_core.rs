@@ -108,7 +108,6 @@ impl WidgetStore {
             dock_w_right: None,
             tool_overflow: Vec::new(),
             area_menus: crate::interaction::AreaMenus::default(),
-            object_mode: crate::object_mode::ObjectMode::Object,
             tool_bars: crate::interaction::ToolBarsSlot::default(),
             menu_contrib: Vec::new(),
             dock_h_bottom: None,

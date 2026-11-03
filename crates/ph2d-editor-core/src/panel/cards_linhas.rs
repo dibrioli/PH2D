@@ -372,7 +372,7 @@ impl CardCtx<'_> {
     fn dropdown(&mut self, r: Rect, id: NodeId, text: &str, options: &[Seg<'_>]) {
         self.hit_index.register(id, r);
         let aceso = self.store.hover_live(id) > 0.0;
-        corpo::chip(self.scene, self.text_system, self.ink, r, text, aceso);
+        crate::widget::paint_card_chip(self.scene, self.text_system, self.ink, r, text, aceso);
         if dropdown::open() == Some(id) {
             dropdown::stash(
                 r,

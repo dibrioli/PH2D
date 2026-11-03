@@ -28,6 +28,7 @@ pub use crate::widget::{Seccao, colunas_da_linha};
 
 /// ⭐ O BOTÃO de acção numa lista de propriedades — ver [`botao::caixa_do_botao`].
 mod botao;
+pub mod cartao;
 /// ⭐ A linha de ESCOLHA — ver [`escolha`].
 pub mod escolha;
 /// O alfa da linha ESMAECIDA, partilhado pelos painéis que esmaecem.
@@ -255,9 +256,9 @@ pub fn paint_fields_row<'a>(
     seccao: Seccao,
 ) -> f32 {
     let label = label.into();
-    if let Some(ink) = crate::panel::cards::corpo::card_body() {
+    if let Some((ink, rows)) = cartao::card_rows() {
         let u = unit.map(Unit::suffix);
-        return crate::panel::cards::corpo::fields(
+        return (rows.fields)(
             scene,
             text_system,
             store,

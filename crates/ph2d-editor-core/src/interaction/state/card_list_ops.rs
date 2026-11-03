@@ -52,6 +52,9 @@ pub struct CardLists {
     pub(super) sections: std::collections::BTreeSet<NodeId>,
     /// O ícone de menu ao lado do título de cada lista (D21): botão → (painel, rect do botão).
     pub(super) menus: BTreeMap<NodeId, (NodeId, crate::zones::Rect)>,
+    /// As linhas da lista de estilos de cor ABERTA (D28/D30): linha → estilo. A lista publica-as
+    /// antes de pintar; o botão direito numa delas abre o menu dela sem o despacho ver o painel.
+    pub(super) style_rows: BTreeMap<NodeId, u32>,
     /// C5: os cartões soltos no canvas (secção → onde), a profundidade e os rects publicados.
     pub(super) loose: BTreeMap<NodeId, super::LooseCard>,
     pub(super) loose_z: u32,
@@ -168,6 +171,17 @@ impl WidgetStore {
         self.card_lists.menus.insert(button, (panel, at));
     }
 
+    /// Publica as linhas da lista de estilos de cor aberta (vazia = fechada), todo quadro.
+    pub fn set_color_style_rows(&mut self, rows: impl IntoIterator<Item = (NodeId, u32)>) {
+        self.card_lists.style_rows = rows.into_iter().collect();
+    }
+
+    /// O estilo da linha `row` da lista de estilos aberta, se é uma.
+    #[must_use]
+    pub fn color_style_row(&self, row: NodeId) -> Option<u32> {
+        self.card_lists.style_rows.get(&row).copied()
+    }
+
     /// O painel e o rect do ícone de menu `button`, se é um.
     #[must_use]
     pub fn card_list_menu(&self, button: NodeId) -> Option<(NodeId, crate::zones::Rect)> {
@@ -258,23 +272,5 @@ mod tests {
         assert_eq!(s.section_order(), &[alheio]);
         assert_eq!(s.section_theme(a), None);
         assert_eq!(s.collapsed_choice(a), None);
-    }
-
-    /// O ícone abre o menu do painel dele.
-    #[test]
-    fn the_list_icon_opens_its_panel_menu() {
-        let painel = NodeId(1);
-        let botao = crate::panel::cards::list_menu_of(painel);
-        let mut s = WidgetStore::default();
-        s.mark_card_list_menu(botao, painel, crate::zones::Rect::new(5.0, 6.0, 7.0, 8.0));
-        assert!(crate::panel::cards::apply_list_menu_click(
-            &mut s,
-            crate::interaction::WidgetEvent::Click(botao)
-        ));
-        let m = s.context_menu().expect("menu aberto");
-        assert_eq!(
-            m.kind,
-            crate::interaction::ContextMenuKind::CardListMenu { panel: painel }
-        );
     }
 }

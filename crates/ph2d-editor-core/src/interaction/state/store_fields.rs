@@ -447,9 +447,6 @@ pub struct WidgetStore {
     /// **diz** fechado, e uma lista de 14 linhas com uma face só volta a ser o depósito da foto 3,
     /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
     pub(in crate::interaction) area_menus: crate::interaction::AreaMenus,
-    /// O modo de edição do quadro (Object · Draw · Edit · Pose), publicado pelo `mode_drive` para os
-    /// painéis lerem sem chegar ao `HeroScreen` (D25b: o «+» do topo do Inspector só em Object).
-    pub(in crate::interaction) object_mode: crate::object_mode::ObjectMode,
     pub(in crate::interaction) tool_bars: crate::interaction::ToolBarsSlot,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
@@ -649,7 +646,8 @@ pub struct WidgetStore {
     /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
     pub(in crate::interaction) alt_held: bool,
     /// Os campos de cartão (o Figma) — ver [`card_field_ops`].
-    pub(in crate::interaction) card_fields: core::cell::RefCell<BTreeMap<NodeId, CardFieldSpec>>,
+    pub(in crate::interaction) card_fields:
+        core::cell::RefCell<BTreeMap<NodeId, crate::widget::card_field::CardFieldSpec>>,
     /// As listas de cartões dos painéis — ver [`card_list_ops`].
     pub(in crate::interaction) card_lists: card_list_ops::CardLists,
 }

@@ -434,7 +434,6 @@ pub fn drive(
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);
-    hero.store.publish_object_mode(hero.gizmo.mode.current());
     changed
 }
 

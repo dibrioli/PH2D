@@ -56,7 +56,6 @@ mod timeline_ops;
 mod tool_bars_ops;
 mod widget_accessors;
 pub use card_ensaio_ops::{Ensaio, EstadosPresos, Trocados};
-pub use card_field_ops::CardFieldSpec;
 pub use card_list_ops::{CardDrag, CardDrop, CardList};
 pub use card_loose_ops::{
     LooseCard, LooseEdge, loose_edge_of, loose_face_of, loose_ghost_of, loose_instance_of,

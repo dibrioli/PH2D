@@ -6,9 +6,7 @@
 //! os tons DO tema ([`ph2d_tokens::derive::card_tone`]) e o acento dele — o cartão inteiro muda,
 //! não só o texto (report do dono 01/11).
 
-use crate::interaction::WidgetStore;
 use crate::paint::{resolve, token_to_vello};
-use ph2d_a11y::NodeId;
 use ph2d_tokens::derive::{CardTone, card_tone};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::Color;
@@ -29,8 +27,8 @@ impl CardInk {
 
     /// A tinta do cartão `section` numa lista pintada em `list`.
     #[must_use]
-    pub fn of_card(store: &WidgetStore, section: NodeId, list: Theme) -> Self {
-        match store.section_theme(section) {
+    pub fn of_card(own: Option<Theme>, list: Theme) -> Self {
+        match own {
             Some(t) if t != list => Self {
                 theme: t,
                 own: true,
@@ -76,3 +74,25 @@ impl CardInk {
 #[cfg(test)]
 #[path = "card_ink/tests.rs"]
 mod tests;
+
+thread_local! {
+    static CORPO: std::cell::Cell<Option<CardInk>> = const { std::cell::Cell::new(None) };
+}
+
+/// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
+pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
+    struct Repoe(Option<CardInk>);
+    impl Drop for Repoe {
+        fn drop(&mut self) {
+            CORPO.with(|c| c.set(self.0));
+        }
+    }
+    let _repoe = Repoe(CORPO.with(|c| c.replace(Some(ink))));
+    f()
+}
+
+/// A tinta do cartão cujo corpo se está a pintar — `None` fora de um cartão.
+#[must_use]
+pub fn card_body() -> Option<CardInk> {
+    CORPO.with(std::cell::Cell::get)
+}

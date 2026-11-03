@@ -85,6 +85,8 @@ pub struct CardLists {
     pub(super) suspended: Option<(NodeId, super::LooseCard)>,
     /// T60: o ↺ de um cartão de componente — `(entidade, nome canónico)` à espera da app.
     pub(super) resets: Vec<(u64, &'static str)>,
+    /// D25b: o «+» de Add component fica só no pé (fora do modo Object).
+    pub(super) add_below: bool,
 }
 
 impl WidgetStore {
@@ -97,9 +99,27 @@ impl WidgetStore {
         self.card_lists.resets.push((entity, component));
     }
 
+    /// Há reposições pedidas neste quadro? (poupa montar as sementes em todo quadro).
+    #[must_use]
+    pub fn has_component_resets(&self) -> bool {
+        !self.card_lists.resets.is_empty()
+    }
+
     /// Os pedidos de reposição deste quadro (quem os atende é a app de componentes).
     pub fn take_component_resets(&mut self) -> Vec<(u64, &'static str)> {
         std::mem::take(&mut self.card_lists.resets)
+    }
+
+    /// D25b: o «+» de Add component vai ao topo da lista? Quem sabe é o `mode_drive` (o modo do
+    /// objecto); o bool mora aqui para a interação não depender de `object_mode` (DAG).
+    pub fn publish_add_at_top(&mut self, at_top: bool) {
+        self.card_lists.add_below = !at_top;
+    }
+
+    /// O «+» de Add component no topo da lista (de fábrica, sim: o modo Object).
+    #[must_use]
+    pub fn add_at_top(&self) -> bool {
+        !self.card_lists.add_below
     }
 
     pub fn mark_card_section(&mut self, section: NodeId) {

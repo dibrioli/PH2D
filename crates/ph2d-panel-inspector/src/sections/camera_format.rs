@@ -96,7 +96,8 @@ pub(super) fn format_rows(
             x,
             w,
             cur_y,
-            TextKey::new(ROTULOS[1]),
+            ph2d_editor_core::widget::key_mark::Rotulo::from(TextKey::new(ROTULOS[1]))
+                .eixos(ph2d_editor_core::widget::key_mark::Eixos::Tamanho),
             &[ids::INSP_CAMERA_CUSTOM_W, ids::INSP_CAMERA_CUSTOM_H],
             1.0, // LITERAL-PX-OK: passo de um píxel do jogo
             Some(ph2d_editor_core::widget::Unit::Px),

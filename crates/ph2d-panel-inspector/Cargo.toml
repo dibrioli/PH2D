@@ -33,6 +33,10 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # Folha PURA (zero dependências), então não puxa nada para o painel.
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# CartoesUI C4: a aparência/pilha Fill-Stroke do vetor e os nomes dos modos de mistura.
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # HR-15: todo texto que o painel pinta sai da tabela de strings (`panel.inspector.*`, 2026-09-13).
 # ⭐ **E as frases das TAGS** (TOP-20 #9) — o `hr15_no_hardcoded_ui_strings` mede `.placeholder("…")`
 # e o `Pick a tag…` estava escrito em três pintores desta crate. A tabela colapsa-os.

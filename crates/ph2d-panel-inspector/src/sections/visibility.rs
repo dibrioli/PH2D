@@ -9,6 +9,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 use ph2d_editor_core::widget::section_cards::close_section;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
@@ -391,7 +392,8 @@ fn paint_enabler_rows(
             x,
             w,
             yy,
-            TextKey::new("component.field.on_screen_enabler.1"),
+            Rotulo::from(TextKey::new("component.field.on_screen_enabler.1"))
+                .eixos(Eixos::Retangulo),
             &[
                 ids::INSP_VIS_RECT_X,
                 ids::INSP_VIS_RECT_Y,

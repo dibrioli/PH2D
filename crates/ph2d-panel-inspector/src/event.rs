@@ -38,6 +38,16 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // T61: o gesto num cartão PRESO corre com o retrato do objecto dele (os pedidos são dele).
+    let preso = host.store().card_press_subject();
+    crate::retrato::com_retrato(preso, || apply_event_do_retrato(state, host, ev))
+}
+
+fn apply_event_do_retrato(
+    state: &mut state::InspectorState,
+    host: &mut dyn PanelHostInternal,
+    ev: WidgetEvent,
+) -> EventOutcome {
     // **§12 Sockets / Anchors** — a ÚNICA família que precisa do estado do painel (clicar numa
     // linha muda a ficha aberta, e isso não é uma edição da cena). Por isso corre aqui, antes
     // do `apply_event_impl`, que só vê o `host`.
@@ -331,7 +341,18 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         )
         && let Some(info) = state::current_inspector_transform()
     {
+        crate::cards::keep_proportion(host, id, &info);
         crate::event_transform::commit_transform_edit(host, info);
+        return true;
+    }
+    if let WidgetEvent::Submit(id) = ev
+        && let Some(i) = crate::cards::hex_layer(id)
+    {
+        crate::cards::commit_hex(host.store_mut(), i);
+        return true;
+    }
+    if ev == WidgetEvent::Click(crate::cards::SCALE_LOCK) {
+        crate::cards::toggle_scale_lock();
         return true;
     }
     if let WidgetEvent::Click(id) = ev
@@ -349,7 +370,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         ));
         return true;
     }
-    if visibility_toggle(host, ev) {
+    if visibility_toggle(host, ev) || crate::cards_componentes::reset_click(host.store_mut(), ev) {
         return true;
     }
     // W2 Sprite Inspector v2 — logical Flip H / Flip V toggled.

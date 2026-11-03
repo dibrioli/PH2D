@@ -36,6 +36,33 @@ pub(super) fn seg_row<'a>(
     // sempre no mesmo `x`; o lado direito pode crescer.*
     let rotulo = label.into();
     let label = rotulo.texto;
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        let sel = (selected as usize).min(labels.len() - 1);
+        let segs: Vec<ph2d_editor_core::panel::cards::Seg<'_>> = option_ids
+            .iter()
+            .zip(labels)
+            .enumerate()
+            .map(|(i, (&id, &text))| ph2d_editor_core::panel::cards::Seg {
+                id,
+                icon: None,
+                text,
+                on: i == sel,
+            })
+            .collect();
+        return ph2d_editor_core::panel::cards::corpo::choices(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            label,
+            option_ids,
+            &segs,
+        );
+    }
     let row = ph2d_editor_core::widget::property_row_columns(x, w, y, ROW_H_PX);
     let label_font = TypeToken::Sm.px();
     ph2d_editor_core::widget::paint_property_label(
@@ -157,88 +184,14 @@ pub(super) fn num_row_h() -> f32 {
     ph2d_tokens::row_pitch_px()
 }
 
-/// Quanto um card **inteiro** mede.
-///
-/// ⚠️ **A régua é `pub(crate)` de propósito.** O pintor tem de avançar pela
-/// ALTURA DA MOLDURA, nunca pela soma das rows — as duas diferem por uma
-/// respiração, e somar as rows faz a moldura do card seguinte nascer POR CIMA da
-/// borda do anterior. É um defeito que só a geometria vê, então a geometria é o
-/// oráculo: o gate compara onde as rows de fato caíram contra este passo.
-pub(crate) fn card_h(n_rows: usize) -> f32 {
-    let pad = Spacing::Sm.px();
-    let title_h = TypeToken::Sm.px() + Spacing::Sm.px();
-    pad + title_h + n_rows as f32 * num_row_h() + pad
-}
+#[path = "rows_moldura.rs"]
+mod moldura;
+pub(super) use moldura::card_frame_with;
+pub(crate) use moldura::card_pitch;
 
-/// O passo de um card ao próximo — a moldura mais o respiro entre elas.
-pub(crate) fn card_pitch(n_rows: usize) -> f32 {
-    card_h(n_rows) + Spacing::Sm.px()
-}
-
-/// Uma **moldura titulada** para um grupo de [`num_row`] — a subseção.
-///
-/// Devolve `(inner_x, inner_w, first_row_y, y_after_card)`: o chamador pinta as
-/// rows em `[inner_x, inner_w]` a partir de `first_row_y` e segue em
-/// `y_after_card`.
-///
-/// ⚠️ **Molde do card do Painter** (`ph2d-panel-painter-layers::card_frame`), e
-/// não uma invenção: é a caixa em que este app já diz *"estes números são um
-/// assunto só"*. ⚠️ **E desde 2026-09-14 a régua da linha é a MESMA dos dois lados**: o rótulo fica
-/// à ESQUERDA aqui também, pela `widget::property_row_columns`. *Esta nota dizia o contrário — ela
-/// é de quando o Inspector era a excepção, e o report do dono fechou essa excepção.*
-#[allow(clippy::too_many_arguments)]
-pub(super) fn card_frame(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    title: &str,
-    n_rows: usize,
-) -> (f32, f32, f32, f32) {
-    let pad = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    let title_h = font + Spacing::Sm.px();
-    let card_h = card_h(n_rows);
-    let card = Rect::new(x, y, w, card_h);
-    // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
-    let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(
-        scene,
-        card,
-        radius,
-        resolve(
-            ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
-            theme,
-        ),
-    );
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        card,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        ph2d_tokens::StrokeToken::Default.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text(
-        text_system,
-        scene,
-        title,
-        x + pad,
-        y + pad,
-        font,
-        w - 2.0 * pad,
-        resolve(ColorToken::Text2, theme),
-    );
-    (
-        x + pad,
-        w - 2.0 * pad,
-        y + pad + title_h,
-        y + card_pitch(n_rows),
-    )
-}
+#[path = "rows_par.rs"]
+mod par;
+pub(super) use par::{Campo, Escolha, par_row, seg_par_row};
 
 /// A labelled number box, seeded from the store (which `sync` mirrors from
 /// the snapshot). Returns the next `y`.
@@ -319,6 +272,26 @@ pub(super) fn num_row_unit<'a>(
     let (unit, _) = crate::unidade_mundo::no_campo(&[id], unit, 0.0);
     let rotulo = label.into();
     let label = rotulo.texto;
+    // T29: no cartão, o passo é o de HOJE — o `NumberInput` sem `.step` anda `1.0`
+    // (`widget/number_input/mod.rs:59`); a unidade sobe para o rótulo.
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        let u = unit.map(ph2d_editor_core::widget::Unit::suffix);
+        return ph2d_editor_core::panel::cards::corpo::fields(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            label,
+            ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            u,
+            &[id],
+            1.0,
+        );
+    }
     let row = ph2d_editor_core::widget::property_row_columns_for(
         x,
         w,

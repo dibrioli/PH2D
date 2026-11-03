@@ -41,6 +41,80 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     let display_angle = ctx.host.project().display_angle;
     state::set_current_display_unit(display_unit, ppm);
     state::set_current_display_angle(display_angle);
+    // ⭐ CartoesUI (C4): o Inspector como LISTA de cartões; `PH2D_CARDS=0` = o de hoje.
+    if crate::cards::active() {
+        crate::cards::prepare(ctx.host.store_mut());
+        crate::cards_componentes::prepara(ctx.host.store_mut());
+        // T7: de quem são os cartões (o «Not available for <nome>» do cartão solto).
+        let sujeito = state::current_inspector_name().map(|n| (n.entity_bits, n.name));
+        ctx.host
+            .store_mut()
+            .set_card_subject(ids::INSP_PANEL, sujeito);
+        // Os componentes do objecto, um cartão cada (`cards_componentes`).
+        let snaps = crate::paint_frame::LiveSnapshots::fetch();
+        let abertas = std::cell::Cell::new(crate::cards_componentes::Abertas::de(inspector_state));
+        let presentes = crate::cards_componentes::presentes(
+            ctx.host.store(),
+            ctx.text_system,
+            ctx.host.theme(),
+            ctx.slot.w,
+            abertas.get(),
+            &snaps,
+            None,
+        );
+        // T61: os soltos presos a outro objecto — o retrato e as caixas de cada um.
+        crate::cards_presos::ensaia(inspector_state, ctx.host);
+        let tema = ctx.host.theme();
+        let presos = crate::cards_presos::monta(
+            ctx.host.store_mut(),
+            ctx.text_system,
+            tema,
+            ctx.slot.w,
+            abertas.get(),
+            &presentes,
+        );
+        let mut cards: Vec<ph2d_editor_core::panel::cards::CardDef<'_>> = Vec::new();
+        cards.extend(crate::cards::cards(ctx.host.store()));
+        cards.extend(
+            presentes
+                .iter()
+                .map(|p| crate::cards_componentes::cartao(p, &abertas, &snaps)),
+        );
+        let presos = crate::cards_presos::cards(&presos, ctx.host.store(), &abertas);
+        ph2d_editor_core::panel::cards::paint_card_list_pinned(
+            ctx,
+            ids::INSP_PANEL,
+            ph2d_i18n::tr("panel.inspector.title"),
+            &cards,
+            crate::state::current_inspector_transform().map(|_| {
+                ph2d_editor_core::panel::cards::Footer {
+                    id: crate::ids::INSP_ADD_COMPONENT,
+                    text: ph2d_i18n::tr("card.insp.add_component"),
+                    // D25b: o «+» do topo só no Inspector geral (modo Object), não em Draw.
+                    at_top: ctx.host.store().add_at_top(),
+                }
+            }),
+            &presos,
+        );
+        drop((cards, presos));
+        abertas.get().devolve(inspector_state);
+        // Os menus abertos dos componentes pintam-se por cima de tudo (o fecho do corpo de hoje).
+        let theme = ctx.host.theme();
+        let regiao = ctx.layout.popover_region();
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        crate::popovers::paint_deferred_popovers(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            store,
+            regiao,
+        );
+        if let Some(painted) = state_popovers::take_painted_popover() {
+            ctx.host.store_mut().publish_dropdown_popover(painted);
+        }
+        return;
+    }
     let theme = ctx.host.theme();
     // Splitting the borrows: paint_inspector wants &mut hit_index,
     // &WidgetStore, &mut Scene, &mut TextSystem — all from disjoint

@@ -326,7 +326,8 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        Rotulo::de_campo(&tamanho(), TextKey::new("component.field.slice_nine.7")),
+        Rotulo::de_campo(&tamanho(), TextKey::new("component.field.slice_nine.7"))
+            .eixos(ph2d_editor_core::widget::key_mark::Eixos::Tamanho),
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),

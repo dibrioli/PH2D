@@ -6,7 +6,7 @@
 //! rather than the whole `InspectorPhysicsInfo`, so this file shares no private
 //! consts with `physics.rs` — the two only meet at the call site.
 
-use super::rows::{num_row, num_row_unit, seg_row};
+use super::rows::{Campo, Escolha, num_row, par_row, seg_par_row, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -66,30 +66,30 @@ pub(super) fn paint_damping_rows(
     y: f32,
     damp_mode_tag: u8,
 ) -> f32 {
-    let mut yy = y;
-    for (label, id) in [
-        (
-            TextKey::new("component.field.damping_override.0"),
-            ids::INSP_PHYS_LINEAR_DAMPING,
-        ),
-        (
-            TextKey::new("component.field.damping_override.1"),
-            ids::INSP_PHYS_ANGULAR_DAMPING,
-        ),
-    ] {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            id,
-        );
-    }
+    // T56: no cartão, Linear | Angular numa linha, um rótulo sobre cada caixa.
+    let yy = par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        None,
+        [
+            Campo::new(
+                TextKey::new("component.field.damping_override.0"),
+                ids::INSP_PHYS_LINEAR_DAMPING,
+                None,
+            ),
+            Campo::new(
+                TextKey::new("component.field.damping_override.1"),
+                ids::INSP_PHYS_ANGULAR_DAMPING,
+                None,
+            ),
+        ],
+    );
     seg_row(
         scene,
         text_system,
@@ -129,63 +129,56 @@ pub(super) fn paint_material_rows(
     restitution_combine_tag: u8,
     friction_combine_tag: u8,
 ) -> f32 {
-    let mut yy = y;
-    for (label, id) in [
-        (
-            TextKey::new("component.field.collider.2"),
-            ids::INSP_PHYS_RESTITUTION,
-        ),
-        (
-            TextKey::new("component.field.collider.3"),
-            ids::INSP_PHYS_FRICTION,
-        ),
-    ] {
-        yy = num_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            id,
-        );
-    }
-    // How Bounce/Friction combine with the OTHER collider — one segmented control
-    // each, sitting right under the value it governs.
-    for (label, group, ids, tag) in [
-        (
-            TextKey::new("component.field.material_combine.0"),
-            ids::INSP_LIVE_PHYSICS_REST_COMBINE,
-            &ids::INSP_PHYS_REST_COMBINE,
-            restitution_combine_tag,
-        ),
-        (
-            TextKey::new("component.field.material_combine.1"),
-            ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
-            &ids::INSP_PHYS_FRIC_COMBINE,
-            friction_combine_tag,
-        ),
-    ] {
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            group,
-            ids,
-            &COMBINE_LABELS.map(TextKey::tr),
-            tag,
-        );
-    }
-    yy
+    // T56: no cartão, Bounce | Friction numa linha (o par do material, como o Physics Material
+    // 2D da Unity) e, por baixo, as duas regras de combinar — lado a lado quando cabem.
+    let yy = par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        None,
+        [
+            Campo::new(
+                TextKey::new("component.field.collider.2"),
+                ids::INSP_PHYS_RESTITUTION,
+                None,
+            ),
+            Campo::new(
+                TextKey::new("component.field.collider.3"),
+                ids::INSP_PHYS_FRICTION,
+                None,
+            ),
+        ],
+    );
+    let combine = COMBINE_LABELS.map(TextKey::tr);
+    seg_par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        Escolha {
+            rotulo: TextKey::new("component.field.material_combine.0").into(),
+            group: ids::INSP_LIVE_PHYSICS_REST_COMBINE,
+            ids: &ids::INSP_PHYS_REST_COMBINE,
+            labels: &combine,
+            selected: restitution_combine_tag,
+        },
+        Escolha {
+            rotulo: TextKey::new("component.field.material_combine.1").into(),
+            group: ids::INSP_LIVE_PHYSICS_FRIC_COMBINE,
+            ids: &ids::INSP_PHYS_FRIC_COMBINE,
+            labels: &combine,
+            selected: friction_combine_tag,
+        },
+    )
 }
 
 /// The mass-source rows: for a Dynamic body, the **Auto | Manual** toggle plus the
@@ -427,33 +420,30 @@ pub(super) fn paint_collision_rows(
         &WALLMAT_LABELS.map(TextKey::tr),
         u8::from(no_wall_cling),
     );
-    for (label, id, unit) in [
-        (
-            TextKey::new("component.field.walk_surface.0"),
-            ids::INSP_PHYS_WALK_GRIP,
-            None,
-        ),
-        (
-            TextKey::new("component.field.walk_surface.1"),
-            ids::INSP_PHYS_WALK_BELT,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
-        ),
-    ] {
-        yy = num_row_unit(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            id,
-            unit,
-            None,
-        );
-    }
+    // T56: no cartão, Grip | Belt numa linha — as duas metades da superfície de andar.
+    yy = par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        None,
+        [
+            Campo::new(
+                TextKey::new("component.field.walk_surface.0"),
+                ids::INSP_PHYS_WALK_GRIP,
+                None,
+            ),
+            Campo::new(
+                TextKey::new("component.field.walk_surface.1"),
+                ids::INSP_PHYS_WALK_BELT,
+                Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
+            ),
+        ],
+    );
     // **O que este objeto GRITA quando algo chega nele — e quando algo sai**
     // (W-Signal · W-SignalLeave).
     //

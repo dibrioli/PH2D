@@ -35,6 +35,11 @@ pub(crate) fn begin_section(
     section_id: NodeId,
     header_h: f32,
 ) {
+    // T58: o cabeçalho que o cartão absorve não se regista — por cima do título do cartão, o rect
+    // dele levava o clique e o cartão aberto não se arrastava.
+    if ph2d_editor_core::widget::absorbing_next_header() {
+        return;
+    }
     let head = Rect::new(inner_x, y_before, inner_w, header_h);
     hit_index.register(section_id, head);
     // ⭐⭐ **A PEGA regista-se AQUI, e não em cada secção** (2026-09-29): as quarenta molduras

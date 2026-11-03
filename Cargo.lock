@@ -7349,6 +7349,7 @@ dependencies = [
  "ph2d-audio-edit",
  "ph2d-audio-encode",
  "ph2d-camera-frame",
+ "ph2d-card-rope",
  "ph2d-color",
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
@@ -9744,8 +9745,11 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
+ "ph2d-tool-vector",
  "ph2d-tween",
  "ph2d-ui-testkit",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
  "ph2d-vector",
 ]
 
@@ -9895,6 +9899,8 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "ph2d-card-rope",
+ "ph2d-card-stack",
  "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-host",
@@ -9932,6 +9938,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
+ "ph2d-skeleton",
  "ph2d-symmetry",
  "ph2d-text",
  "ph2d-tokens",
@@ -9939,6 +9946,7 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
+ "ph2d-vec-scene",
  "ph2d-vector",
 ]
 

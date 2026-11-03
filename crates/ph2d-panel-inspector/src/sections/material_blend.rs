@@ -16,7 +16,7 @@ use ph2d_i18n::tr;
 /// Hardcoded here (not from `ph2d_ecs::BlendMode`) so the panel crate
 /// stays loose-coupled from `ph2d-ecs` — the snapshot carries only the
 /// resolved tag. English per HR-15 (i18n migrates in W7).
-const BLEND_LABELS: [TextKey; 6] = [
+pub(crate) const BLEND_LABELS: [TextKey; 6] = [
     TextKey::new("panel.inspector.material.mix"),
     TextKey::new("panel.inspector.material.add"),
     TextKey::new("panel.inspector.material.subtract"),

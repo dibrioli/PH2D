@@ -16,7 +16,7 @@
 //! argumento variável). Dobrá-los num laço apagaria a cobertura de paridade dos
 //! botões em silêncio — a cicatriz que a §11 já carrega escrita.
 
-use super::rows::{card_frame, num_row_unit, seg_row};
+use super::rows::{Campo, card_frame_with, num_row_unit, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -400,6 +400,30 @@ fn paint_verbs(
     ph2d_editor_core::property_row::abaixo_do_botao(rect)
 }
 
+/// ⭐ T59 (a lei da T56, smoke do dono 02/11): as linhas VIZINHAS que no cartão dividem uma linha —
+/// duas metades de um assunto, um rótulo sobre cada caixa. Fora do cartão, uma por linha.
+pub(crate) const PLAYER_PARES: [(ph2d_a11y::NodeId, ph2d_a11y::NodeId); 16] = {
+    use crate::ids as i;
+    [
+        (i::INSP_PLAYER_STIFFNESS, i::INSP_PLAYER_DAMPING),
+        (i::INSP_PLAYER_FOOT_SAMPLES, i::INSP_PLAYER_FOOT_SPREAD),
+        (i::INSP_PLAYER_SPEED, i::INSP_PLAYER_ACCEL),
+        (i::INSP_PLAYER_AIR_JUMPS, i::INSP_PLAYER_AIR_JUMP_H),
+        (i::INSP_PLAYER_TAKEOFF_G, i::INSP_PLAYER_TAKEOFF_SPEED),
+        (i::INSP_PLAYER_PEAK_G, i::INSP_PLAYER_PEAK_SPEED),
+        (i::INSP_PLAYER_FALL_G, i::INSP_PLAYER_CUT_G),
+        (i::INSP_PLAYER_COYOTE, i::INSP_PLAYER_BUFFER),
+        (i::INSP_PLAYER_CORNER, i::INSP_PLAYER_CORNER_SAMPLES),
+        (i::INSP_PLAYER_REACT_MOVEMENT, i::INSP_PLAYER_REACT_PUSH),
+        (i::INSP_PLAYER_WALL_JUMP, i::INSP_PLAYER_WALL_PUSH),
+        (i::INSP_PLAYER_WALL_SAMPLES, i::INSP_PLAYER_WALL_SPREAD),
+        (i::INSP_PLAYER_DASH_TIME, i::INSP_PLAYER_DASH_COOL),
+        (i::INSP_PLAYER_CROUCH_HEIGHT, i::INSP_PLAYER_CROUCH_SPEED),
+        (i::INSP_PLAYER_SWIM_SPEED, i::INSP_PLAYER_SWIM_ACCEL),
+        (i::INSP_PLAYER_LEDGE_REACH_Y, i::INSP_PLAYER_LEDGE_SPAN),
+    ]
+};
+
 /// **Os oito cards de números**, na ordem da tabela — extraído do `paint` por
 /// TETO DE LOC, e o corte é por responsabilidade: aqui só se pinta a grade de
 /// rows; quem decide o que a seção mostra fica no pai.
@@ -471,32 +495,52 @@ fn paint_cards(
             continue;
         }
         let n = rows.iter().filter(|(_, id, _, _)| shown(*id)).count();
-        let (ix, iw, mut ry, next_y) =
-            card_frame(scene, text_system, theme, x, w, yy, title.tr(), n);
-        for (label, id, _tip, unit) in rows {
-            if !shown(*id) {
-                continue;
+        // ⚠️ Quem manda no fluxo é a moldura, medida pela MESMA régua com que as rows avançam
+        // (fora do cartão a `card_pitch`; no cartão, as rows pintadas — T59).
+        // T59: no cartão, os vizinhos de `PLAYER_PARES` dividem uma linha.
+        let linhas = |scene: &mut VectorScene, text_system: &mut TextSystem, ix, iw, mut ry| {
+            let no_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+            let mut it = rows.iter().filter(|r| shown(r.1)).peekable();
+            while let Some(&(label, id, _, unit)) = it.next() {
+                let par = it
+                    .peek()
+                    .copied()
+                    .filter(|p| no_cartao && PLAYER_PARES.contains(&(id, p.1)));
+                ry = if let Some(&(l2, id2, _, u2)) = par {
+                    it.next();
+                    let campos = [Campo::new(label, id, unit), Campo::new(l2, id2, u2)];
+                    par_row(
+                        scene,
+                        text_system,
+                        theme,
+                        hit_index,
+                        store,
+                        ix,
+                        iw,
+                        ry,
+                        None,
+                        campos,
+                    )
+                } else {
+                    num_row_unit(
+                        scene,
+                        text_system,
+                        theme,
+                        hit_index,
+                        store,
+                        ix,
+                        iw,
+                        ry,
+                        label,
+                        id,
+                        unit,
+                        coluna,
+                    )
+                };
             }
-            ry = num_row_unit(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                ix,
-                iw,
-                ry,
-                *label,
-                *id,
-                *unit,
-                coluna,
-            );
-        }
-        // ⚠️ O `ry` é DESCARTADO de propósito: quem manda no fluxo é a moldura
-        // (`next_y`), medida pela MESMA régua com que as rows avançam. Somar as
-        // rows aqui seria a segunda aritmética que discorda da caixa desenhada.
-        let _ = ry;
-        yy = next_y;
+            ry
+        };
+        yy = card_frame_with(scene, text_system, theme, x, w, yy, title.tr(), n, linhas);
     }
     yy
 }

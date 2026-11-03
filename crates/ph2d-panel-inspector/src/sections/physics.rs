@@ -10,10 +10,11 @@
 //! Snapshot-driven like §10: the panel crate never sees `ph2d-physics-ecs`,
 //! only resolved tags and floats.
 
-use super::rows::num_row_unit;
+use super::rows::{Campo, num_row_unit, par_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::key_mark::Eixos;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
@@ -177,49 +178,65 @@ pub(super) fn paint_shape_dims(
     y: f32,
     shape_tag: u8,
 ) -> f32 {
-    let rows: &[(&str, ph2d_editor_core::NodeId)] = match shape_tag {
-        SHAPE_BALL => &[(
-            tr("panel.inspector.physics.radius_m"),
-            ids::INSP_PHYS_RADIUS,
-        )],
-        SHAPE_CAPSULE => &[
-            (
+    // ⭐ As tres dimensoes sao METROS — `radius`, `half_width`, `half_height`.
+    let m = Some(ph2d_editor_core::widget::Unit::Meters);
+    let par = |titulo, a, b| (titulo, [a, b]);
+    let (titulo, campos) = match shape_tag {
+        SHAPE_BALL => {
+            return num_row_unit(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                y,
                 tr("panel.inspector.physics.radius_m"),
                 ids::INSP_PHYS_RADIUS,
+                m,
+                None,
+            );
+        }
+        // T56: os dois números da cápsula, um rótulo sobre cada caixa.
+        SHAPE_CAPSULE => par(
+            None,
+            Campo::new(
+                tr("panel.inspector.physics.radius_m"),
+                ids::INSP_PHYS_RADIUS,
+                m,
             ),
-            (
+            Campo::new(
                 tr("panel.inspector.physics.half_height_m"),
                 ids::INSP_PHYS_CAP_HALF_H,
+                m,
             ),
-        ],
-        _ => &[
-            (
+        ),
+        // T56: um TAMANHO — «Half Size (px)» W · H, como o Size do Figma.
+        _ => par(
+            Some((tr("panel.inspector.physics.half_size"), Eixos::Tamanho)),
+            Campo::new(
                 tr("panel.inspector.physics.half_width_m"),
                 ids::INSP_PHYS_HALF_X,
+                m,
             ),
-            (
+            Campo::new(
                 tr("panel.inspector.physics.half_height_m"),
                 ids::INSP_PHYS_HALF_Y,
+                m,
             ),
-        ],
+        ),
     };
-    let mut yy = y;
-    for (label, id) in rows {
-        yy = num_row_unit(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            *label,
-            *id,
-            // ⭐ As tres dimensoes deste laco sao METROS — `radius`, `half_width`, `half_height`.
-            Some(ph2d_editor_core::widget::Unit::Meters),
-            None,
-        );
-    }
-    yy
+    par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        titulo,
+        campos,
+    )
 }

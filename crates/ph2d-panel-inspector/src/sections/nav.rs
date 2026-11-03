@@ -18,6 +18,7 @@ use ph2d_editor_core::nav_edits::{
     AgentQueixa, InspectorNavAgent, InspectorNavRegion, NavAlvoModo, NavEstado, RegionQueixa,
 };
 use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
+use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 use ph2d_editor_core::widget::{SectionFold, Unit};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::{tr, tr_with};
@@ -140,7 +141,7 @@ pub(crate) fn paint_nav_region_section(
         x,
         w,
         cur_y,
-        TextKey::new("component.field.nav_region.0"),
+        Rotulo::from(TextKey::new("component.field.nav_region.0")).eixos(Eixos::Tamanho),
         &[crate::ids::INSP_NAV_HALF_W, crate::ids::INSP_NAV_HALF_H],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS
         Some(Unit::Meters),

@@ -55,6 +55,16 @@ mod event_path_follow;
 mod event_physics;
 pub mod unidade_mundo;
 pub use event_physics::physics_edit_for;
+mod cards;
+/// Os cartões que levam a lista de estilos de cor (D28) — os testes do hero montado nomeiam-nos.
+pub use cards::{CARD_FILL, CARD_STROKE, CARD_TRANSFORM, hex_id as cards_hex_id, set_cards_on};
+mod cards_componentes;
+mod cards_corpos;
+mod cards_pilha;
+pub use cards_componentes::reset_of as card_reset_of;
+mod cards_presos;
+mod retrato;
+pub use retrato::com_cada_preso;
 mod event_anim_card;
 mod event_anim_rules;
 mod event_player;
@@ -257,6 +267,11 @@ pub fn player_card_spans() -> Vec<(&'static str, Vec<ph2d_a11y::NodeId>)> {
         .iter()
         .map(|(title, _, rows)| (title.tr(), rows.iter().map(|(_, id, _, _)| *id).collect()))
         .collect()
+}
+
+/// T59: os pares de rows vizinhas que no cartão dividem uma linha.
+pub fn player_card_pairs() -> &'static [(ph2d_a11y::NodeId, ph2d_a11y::NodeId)] {
+    &crate::sections::player::PLAYER_PARES
 }
 
 /// Os RÓTULOS que a §14 pinta, na ordem da tabela.

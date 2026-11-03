@@ -187,7 +187,7 @@ mod sheet_thumb;
 pub(crate) use image_row::paint_image_row;
 pub(crate) use joint::paint_joint_section;
 pub use joint::paste_label;
-pub(crate) use material_blend::paint_material_blend_section;
+pub(crate) use material_blend::{BLEND_LABELS, paint_material_blend_section};
 pub(crate) use ordering::paint_ordering_section;
 pub use physics::bake_label;
 pub(crate) use physics::paint_physics_section;

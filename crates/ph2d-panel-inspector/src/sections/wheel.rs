@@ -15,7 +15,7 @@
 //! alcançar. O raio é o caso oposto: a alça do aro no canvas já o edita, e as
 //! duas portas escrevem o MESMO campo.
 
-use super::rows::{num_row, num_row_unit, seg_row};
+use super::rows::{Campo, num_row, num_row_unit, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorWheelInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -76,20 +76,6 @@ pub(crate) fn paint_wheel_section(
     let mut yy = y + header_h;
     yy = paint_rope_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
     yy = paint_mount_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
-    yy = num_row_unit(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        yy,
-        TextKey::new("component.field.pulley_wheel.3"),
-        ids::INSP_WHEEL_RADIUS,
-        Some(ph2d_editor_core::widget::Unit::Meters),
-        None,
-    );
     // **Out Radius** — o SEGUNDO diâmetro do eixo (W4). `0` é uma roldana comum;
     // qualquer outro valor faz dela um TAMBOR DIFERENCIAL, e a corda ganha
     // vantagem mecânica `Radius / Out Radius`.
@@ -97,7 +83,9 @@ pub(crate) fn paint_wheel_section(
     // ⚠️ Row SEMPRE pintada, e não só quando já há um diferencial: ela é o único
     // gesto que CRIA um, e um controle que só aparece depois de a coisa existir
     // não pode ser o que a faz existir. (É a mesma lei da §11 vazia do W2a.)
-    yy = num_row_unit(
+    // T59 (a lei da T56): os dois diâmetros dividem uma linha no cartão.
+    let m = Some(ph2d_editor_core::widget::Unit::Meters);
+    yy = par_row(
         scene,
         text_system,
         theme,
@@ -106,10 +94,19 @@ pub(crate) fn paint_wheel_section(
         x,
         w,
         yy,
-        TextKey::new("component.field.pulley_wheel.11"),
-        ids::INSP_WHEEL_RADIUS_OUT,
-        Some(ph2d_editor_core::widget::Unit::Meters),
         None,
+        [
+            Campo::new(
+                TextKey::new("component.field.pulley_wheel.3"),
+                ids::INSP_WHEEL_RADIUS,
+                m,
+            ),
+            Campo::new(
+                TextKey::new("component.field.pulley_wheel.11"),
+                ids::INSP_WHEEL_RADIUS_OUT,
+                m,
+            ),
+        ],
     );
     // **Differential** — o eixo de dois diâmetros é um TAMBOR ou uma talha de
     // WESTON (W-Weston), e a diferença é onde o segundo contato fica: no mesmo nó

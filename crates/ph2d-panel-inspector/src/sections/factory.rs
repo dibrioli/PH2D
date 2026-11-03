@@ -30,6 +30,7 @@ use ph2d_editor_core::screens::hero::{
     InspectorFactory, InspectorFactoryInfo, InspectorSpawnWhere,
 };
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::{tr, tr_with};
 
@@ -120,7 +121,7 @@ fn onde_rows(
             x,
             w,
             cur_y,
-            TextKey::new("component.field.factory_fields.4"),
+            Rotulo::from(TextKey::new("component.field.factory_fields.4")).eixos(Eixos::Tamanho),
             &[
                 crate::ids::INSP_FACTORY_AREA_W,
                 crate::ids::INSP_FACTORY_AREA_H,

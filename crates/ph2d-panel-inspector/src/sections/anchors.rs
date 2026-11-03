@@ -284,7 +284,10 @@ fn anchor_editor(
             x,
             w,
             cur_y,
-            tr("panel.inspector.anchors.bounds_x_y_w_h"),
+            ph2d_editor_core::widget::key_mark::Rotulo::from(tr(
+                "panel.inspector.anchors.bounds_x_y_w_h",
+            ))
+            .eixos(ph2d_editor_core::widget::key_mark::Eixos::Retangulo),
             &ids::INSP_ANCHOR_BOUNDS,
             PX_STEP,
             Some(ph2d_editor_core::widget::Unit::Px),
@@ -314,7 +317,10 @@ fn anchor_editor(
                 x,
                 w,
                 cur_y,
-                tr("panel.inspector.anchors.center_x_y_w_h"),
+                ph2d_editor_core::widget::key_mark::Rotulo::from(tr(
+                    "panel.inspector.anchors.center_x_y_w_h",
+                ))
+                .eixos(ph2d_editor_core::widget::key_mark::Eixos::Retangulo),
                 &ids::INSP_ANCHOR_CENTER,
                 PX_STEP,
                 Some(ph2d_editor_core::widget::Unit::Px),

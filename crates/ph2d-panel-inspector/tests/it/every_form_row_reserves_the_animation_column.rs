@@ -47,10 +47,11 @@ const ROW_PAINTERS: &[&str] = &[
 const SEMENTE: &str = "form_row_columns";
 
 /// Os ficheiros do `ph2d-editor-core` onde uma porta que reserve a coluna pode viver.
-const FONTES_DA_FUNDACAO: [&str; 5] = [
+const FONTES_DA_FUNDACAO: [&str; 6] = [
     "src/widget/property_box/row.rs",
     "src/widget/property_box/seccao.rs",
     "src/property_row.rs",
+    "src/property_row/marca.rs",
     "src/widget/checkbox/mark.rs",
     "src/widget/checkbox/label.rs",
 ];

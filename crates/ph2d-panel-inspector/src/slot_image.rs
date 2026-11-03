@@ -31,6 +31,11 @@ pub fn set_current_slot_image(img: Option<SlotImage>) {
     CURRENT.with(|c| *c.borrow_mut() = img);
 }
 
+/// A imagem publicada (o retrato do objecto, T61).
+pub(crate) fn atual() -> Option<SlotImage> {
+    CURRENT.with(|c| c.borrow().clone())
+}
+
 /// A imagem publicada para `entity_bits`.
 #[must_use]
 pub fn current_slot_image(entity_bits: u64) -> Option<SlotImage> {

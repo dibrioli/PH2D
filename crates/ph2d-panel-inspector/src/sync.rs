@@ -26,43 +26,24 @@ pub(crate) fn sync_inspector_from_snapshots(
 ) {
     let transform = current_inspector_transform();
     let name = current_inspector_name();
-    let visibility = current_inspector_visibility();
     let new_entity = transform
         .map(|i| i.entity_bits)
         .or_else(|| name.as_ref().map(|i| i.entity_bits))
-        .or_else(|| visibility.map(|i| i.entity_bits));
+        .or_else(|| current_inspector_visibility().map(|i| i.entity_bits));
     // ⭐ Trocar px/m (ou a escala) re-semeia como uma troca de objecto: os números de mundo mudam.
     let seletor = Some(crate::unidade_mundo::assinatura(host.project()));
     let seletor_mudou = inspector_state.last_display != seletor;
     inspector_state.last_display = seletor;
     crate::unidade_mundo::reescala_faixas(host, &mut inspector_state.faixas_mundo);
     let entity_changed = new_entity != inspector_state.last_entity || seletor_mudou;
-    let display_unit = host.project().display_unit;
-    let ppm = host.project().pixels_per_meter;
-    let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
-    // ⭐ **A irmã do `pos_for_display`, para o ÂNGULO** (Enio, 2026-08-30). Antes disto os seis
-    // sítios abaixo escreviam `.to_degrees()` à mão — uma decisão de LEITURA tomada no sítio
-    // errado, exactamente como um `× ppm` fixo seria para o comprimento.
-    let display_angle = host.project().display_angle;
-    let ang_for_display = |rad: f32| display_angle.from_radians_f64(f64::from(rad));
     if entity_changed {
         host.store_mut().set_focus(None);
         let _ = host.store_mut().end_number_input_drag();
         host.store_mut().end_number_stepper_hold();
-        // Close a tint picker bound to the PREVIOUS selection so its
-        // last-picked color can't stream onto the newly-selected entity
-        // (the host re-mirrors picker → widget_color every frame, so
-        // reseeding the swatch alone can't win). Runs here — above the
-        // `Some(sp)` sprite block — so it fires even when the new
-        // selection has no Sprite (empty entity / note) and the sprite
-        // block is skipped entirely.
+        // O seletor de cor da seleção ANTERIOR fecha-se: senão a última cor escolhida escorreria
+        // para o objecto novo (a shell espelha seletor → caixa a cada quadro).
         if matches!(host.store().picker_target(), Some(t) if is_sprite_color_swatch(t)) {
             host.store_mut().set_picker_target(None);
-        }
-        crate::sync_physics::sync_physics_fields(host);
-        crate::sync_physics::sync_player_fields(host);
-        if let Some(info) = transform {
-            write_transform_rows(host, info, pos_for_display, ang_for_display);
         }
         if let Some(InteractiveState::TextInput {
             state,
@@ -79,7 +60,65 @@ pub(crate) fn sync_inspector_from_snapshots(
             *caret = text.len();
             *selection_anchor = None;
         }
+        crate::sync_sections::limpa_busca_de_tags(host);
         inspector_state.last_entity = new_entity;
+    }
+    // ⭐ Bloco 10 (`docs/CartoesUI/04_plano_de_construcao.md`): fora de uma troca, TODAS as caixas
+    // re-semeiam-se a cada quadro (o Ctrl+Z, o ↺ e o gesto num cartão preso mudam o mundo sem trocar
+    // de objecto); a caixa viva (foco, arrasto, botão premido) fica, e um pedido ainda por chegar ao
+    // mundo adia a semente um quadro.
+    let semeia = entity_changed || host.bus().is_empty();
+    let vivas = (!entity_changed).then(|| vivas(host.store()));
+    semeia_tudo(inspector_state, host, semeia, entity_changed);
+    if let Some(v) = vivas {
+        for (id, st) in v {
+            if let Some(atual) = host.store_mut().get_mut(id) {
+                *atual = st;
+            }
+        }
+    }
+}
+
+/// Os estados das caixas que a mão está a usar (foco, arrasto, botão premido).
+fn vivas(
+    store: &ph2d_editor_core::interaction::WidgetStore,
+) -> Vec<(ph2d_a11y::NodeId, InteractiveState)> {
+    let ids = [
+        store.focus_id(),
+        store.number_input_drag().map(|d| d.id),
+        store.active_id(),
+    ];
+    ids.into_iter()
+        .flatten()
+        .filter_map(|id| Some((id, store.get(id)?.clone())))
+        .collect()
+}
+
+/// ⭐ A semente das caixas a partir do que está publicado: a da seleção ([`sync_inspector_from_snapshots`])
+/// e a do retrato de um objecto preso (`cards_presos::ensaia`, T61). `semeia` = escrever também as
+/// caixas que só se escrevem na semente; `trocou` = o objecto acabou de mudar.
+pub(crate) fn semeia_tudo(
+    inspector_state: &mut state::InspectorState,
+    host: &mut dyn PanelHostInternal,
+    semeia: bool,
+    trocou: bool,
+) {
+    let transform = current_inspector_transform();
+    let name = current_inspector_name();
+    let visibility = current_inspector_visibility();
+    let display_unit = host.project().display_unit;
+    let ppm = host.project().pixels_per_meter;
+    let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
+    let display_angle = host.project().display_angle;
+    let ang_for_display = |rad: f32| display_angle.from_radians_f64(f64::from(rad));
+    if semeia {
+        crate::sync_physics::sync_physics_fields(host);
+        crate::sync_physics::sync_player_fields(host);
+    }
+    if trocou {
+        if let Some(info) = transform {
+            write_transform_rows(host, info, pos_for_display, ang_for_display);
+        }
     } else {
         mirror_live_values_without_stomping_the_edit(
             host,
@@ -116,11 +155,11 @@ pub(crate) fn sync_inspector_from_snapshots(
     }
     // W2 Sprite Inspector v2 — reflect the editable Sprite fields.
     if let Some(sp) = current_inspector_sprite() {
-        sync_sprite_fields(inspector_state, host, &sp, entity_changed);
+        sync_sprite_fields(inspector_state, host, &sp, semeia);
     }
     // W3 §7 — reflect the ordering components (any Transform entity).
     if let Some(ord) = current_inspector_ordering() {
-        sync_ordering_fields(host, &ord, entity_changed);
+        sync_ordering_fields(host, &ord, semeia);
     }
     // W3 §9 — reflect the UV tiling/scroll NumberInputs.
     if let Some(samp) = current_inspector_sampling() {
@@ -145,7 +184,7 @@ pub(crate) fn sync_inspector_from_snapshots(
     }
     // §5 9-Slice + §12 Sockets/Anchors, no irmão `sync_sections` (cap: as duas juntas aqui
     // levavam este `fn` a 208 contra 200).
-    crate::sync_sections::sync_new_sections(host, inspector_state, entity_changed);
+    crate::sync_sections::sync_new_sections(host, inspector_state, semeia);
     // W3 §8 — reflect the Mask Alpha Cutoff + Enabler Rect NumberInputs.
     if let Some(vis) = current_inspector_visibility_section() {
         let focus = host.store().focus_id();

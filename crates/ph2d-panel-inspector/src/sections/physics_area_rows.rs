@@ -7,7 +7,7 @@
 //! de uma colisão*, as daqui *o que esta ÁREA faz* —, e uma **peça** tem as primeiras e nenhuma
 //! destas.
 
-use super::rows::{num_row, num_row_unit, seg_row};
+use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -46,39 +46,36 @@ pub(super) fn paint_area_rows(
         // artist tunes against a body's own weight.
         // Force is what the area PUSHES with; Drag is what it RESISTS with. Together
         // they are the difference between wind (push, no resistance) and water.
-        for (label, id, unit) in [
-            (
-                tr_with(
-                    "panel.inspector.label_x",
-                    &[("label", &tr("component.field.area_effector.0"))],
-                ),
-                ids::INSP_PHYS_FORCE_X,
-                Some(ph2d_editor_core::widget::Unit::Newtons),
+        // T56: no cartão uma linha só, «Force (N)» X · Y.
+        let (fx, fy) = (
+            tr_with(
+                "panel.inspector.label_x",
+                &[("label", &tr("component.field.area_effector.0"))],
             ),
-            (
-                tr_with(
-                    "panel.inspector.label_y",
-                    &[("label", &tr("component.field.area_effector.0"))],
-                ),
-                ids::INSP_PHYS_FORCE_Y,
-                Some(ph2d_editor_core::widget::Unit::Newtons),
+            tr_with(
+                "panel.inspector.label_y",
+                &[("label", &tr("component.field.area_effector.0"))],
             ),
-        ] {
-            yy = num_row_unit(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                yy,
-                &label,
-                id,
-                unit,
-                None,
-            );
-        }
+        );
+        let n = Some(ph2d_editor_core::widget::Unit::Newtons);
+        yy = super::rows::par_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            Some((
+                tr("component.field.area_effector.0"),
+                ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            )),
+            [
+                super::rows::Campo::new(&fx, ids::INSP_PHYS_FORCE_X, n),
+                super::rows::Campo::new(&fy, ids::INSP_PHYS_FORCE_Y, n),
+            ],
+        );
         // In WHOSE axes are those two numbers? Directly under them, and deliberately
         // ABOVE everything else in this branch: it governs the FORCE and nothing else.
         // That is geometry rather than a scope someone chose — a 2D torque is a scalar

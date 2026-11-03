@@ -44,7 +44,7 @@ pub(crate) struct Tela<'c> {
 }
 
 /// Uma secção à espera: recebe a tela, o TEMA dela e o `y`, e devolve o `y` seguinte.
-type Tarefa<'a> = Box<dyn for<'c> FnOnce(&mut Tela<'c>, Theme, f32) -> f32 + 'a>;
+pub(crate) type Tarefa<'a> = Box<dyn for<'c> FnOnce(&mut Tela<'c>, Theme, f32) -> f32 + 'a>;
 
 /// ⭐⭐ **A lista das secções deste quadro, pela ordem NATURAL em que os grupos as empurram.**
 pub(crate) struct Plano<'a> {
@@ -66,6 +66,11 @@ impl<'a> Plano<'a> {
         tarefa: impl for<'c> FnOnce(&mut Tela<'c>, Theme, f32) -> f32 + 'a,
     ) {
         self.tarefas.push((id, Box::new(tarefa)));
+    }
+
+    /// As secções pela ordem natural, para quem as pinta de outra maneira (os cartões, C4).
+    pub(crate) fn into_tarefas(self) -> Vec<(NodeId, Tarefa<'a>)> {
+        self.tarefas
     }
 
     /// A ordem em que o plano vai pintar: as fixas primeiro, pela ordem natural; o resto pela

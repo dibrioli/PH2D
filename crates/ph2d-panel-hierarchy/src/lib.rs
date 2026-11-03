@@ -117,6 +117,12 @@ pub fn sync_from_hierarchy(
                 .map(|c| ids::hier_component_icon(*row, *c))
         }),
     );
+    store.set_hierarchy_entity_rows(
+        entries
+            .iter()
+            .filter_map(|(row, e)| e.entity.map(|b| (b, (*row, e.locked))))
+            .collect(),
+    );
     state::set_live_entries(Some(entries));
 }
 

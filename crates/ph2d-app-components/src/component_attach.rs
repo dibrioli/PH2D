@@ -279,6 +279,54 @@ fn attach_one(
     Ok(())
 }
 
+/// ⭐ **T60 — o ↺ dos cartões de componente** (`docs/CartoesUI`): atende os pedidos do quadro.
+/// Escreve direto no mundo, como o [`attach_picked`]; o Desfazer é o diff do fim do quadro.
+pub fn reset_asked(
+    hero: &mut HeroScreen,
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    for (bits, name) in hero.store.take_component_resets() {
+        if let Err(msg) = reset_by_name(sim, registry, seeds, bits, name) {
+            toasts.push(Toast::error(msg));
+        }
+    }
+}
+
+/// ⭐ **Repor um componente = o que o «+» anexa** (uma lei para todos): tira o componente e as
+/// LINHAS do cartão dele, em cadeia (`row_of`: o `Collider` é linha do corpo, as zonas são linhas
+/// do `Collider`), e anexa-o de novo pela [`attach_by_name`] — o ponto neutro do tipo, a cascata
+/// e o seed. Os componentes com cartão próprio (o corpo do Player) ficam como estão.
+pub fn reset_by_name(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    seeds: crate::component_seed::SeedTable<'_>,
+    entity_bits: u64,
+    name: &str,
+) -> Result<(), String> {
+    let entity = ph2d_ecs::Entity::try_from_bits(entity_bits).ok_or_else(|| {
+        ph2d_i18n::tr("app.components.component_attach.no_such_entity").to_string()
+    })?;
+    let mut sai = vec![name];
+    let mut i = 0;
+    while let Some(dono) = sai.get(i).copied() {
+        sai.extend(
+            ph2d_component_desc::all()
+                .filter(|d| d.row_of == dono)
+                .map(|d| d.canonical_name),
+        );
+        i += 1;
+    }
+    for n in sai {
+        if let Some(e) = registry.get_by_id(ph2d_ecs::scene::stable_type_id(n)) {
+            (e.remove)(sim.world_mut(), entity);
+        }
+    }
+    attach_by_name(sim, registry, seeds, entity_bits, name)
+}
+
 /// ⭐ **A roda sobre a paleta aberta é DELA** (F3 / ADR-0166) — devolve `true` quando consumiu.
 ///
 /// ⚠️ **Consome enquanto ela estiver ABERTA, e não «quando o cursor está sobre o cartão»**: ao

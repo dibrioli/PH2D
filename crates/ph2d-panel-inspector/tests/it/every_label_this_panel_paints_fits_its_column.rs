@@ -51,7 +51,8 @@ const ELIDEM_POR_LARGURA: &[(f32, usize)] = &[
     //    (nesta máquina a `NotoSans-Medium` instalada) — o número antigo era da Noto e de mais nenhuma
     //    máquina. Hoje as fontes embutidas registam-se com o nome forçado e a régua mede a Inter, a
     //    mesma em toda máquina (`ph2d_tokens::UiFont::Inter` diz porquê).
-    (220.0, 18),
+    // ⚠️ **18 → 16 em 2026-11-03**: a Noto Sans passou a ser a letra de fábrica (D11, `line/NovaUI`).
+    (220.0, 16),
     (245.0, 3),
     // ⭐ Amostra DATADA da largura do dono (`drawing_2d`, lida em 2026-09-14). ⛔ Não é uma cerca —
     //   se ele a mudar outra vez, o número muda e a escada continua a valer.

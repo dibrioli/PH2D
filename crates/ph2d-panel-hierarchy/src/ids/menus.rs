@@ -3,7 +3,7 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids::{GROUP_TOGGLE_BIT, HIER_PLAYER, ICON_COMPANION_BIT, LOCK_TOGGLE_BIT};
+use ph2d_editor_core::ids::{GROUP_TOGGLE_BIT, HIER_PLAYER, ICON_COMPANION_BIT};
 use ph2d_tool_registry::hash_node_id;
 
 /// M14.6 E: search/filter TextInput in the Hierarchy header. Empty
@@ -39,13 +39,9 @@ pub fn hierarchy_kind_for_label(_label: &str) -> &'static str {
     ph2d_i18n::tr("panel.hierarchy.badge.entity")
 }
 
-/// 2026-05-26: lock-toggle companion (per hierarchy row). Mirrors
-/// `hier_eye_companion` — XORs `LOCK_TOGGLE_BIT` so dispatch can
-/// recognize a click on the row's lock icon.
-#[inline]
-pub fn hier_lock_companion(row_id: NodeId) -> NodeId {
-    NodeId(row_id.0 | LOCK_TOGGLE_BIT)
-}
+/// 2026-05-26: lock-toggle companion (per hierarchy row) — mora no editor-core, partilhado com o
+/// cadeado do cartão Objeto do Inspector.
+pub use ph2d_editor_core::ids::hier_lock_companion;
 
 /// 2026-05-26: group-lock-toggle companion (per hierarchy row).
 #[inline]

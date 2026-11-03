@@ -9,6 +9,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow};
 use ph2d_editor_core::widget::{CheckboxState, CheckboxValue};
 use ph2d_editor_core::zones::Rect;
@@ -515,6 +516,10 @@ fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
         ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON,
         CheckboxValue::Unchecked,
     );
+    host.bus_mut().push(EditorAction::InspectorAnchorEdit {
+        entity_bits: info().entity_bits,
+        edit: AnchorFieldEdit::BoundsOn(0, false),
+    });
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     assert_eq!(
         host.store()
@@ -522,6 +527,16 @@ fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
             .map(|(_, v)| v),
         Some(CheckboxValue::Unchecked),
         "o sync pisou o clique antes de o commit chegar"
+    );
+    // Bloco 10 (T62): chegado o quadro seguinte, o mundo manda — um Ctrl+Z re-semeia a caixa.
+    let _ = edits(&mut host);
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert_eq!(
+        host.store()
+            .checkbox(ph2d_panel_inspector::ids::INSP_ANCHOR_BOUNDS_ON)
+            .map(|(_, v)| v),
+        Some(CheckboxValue::Checked),
+        "com o barramento vazio a caixa não voltou ao que o mundo diz"
     );
 }
 

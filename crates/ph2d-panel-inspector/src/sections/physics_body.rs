@@ -12,9 +12,10 @@
 //! chama também — *quais números esta forma tem* é uma pergunta do COLLIDER, não
 //! do corpo.
 
-use super::rows::{num_row_unit, seg_row};
+use super::rows::{Campo, Escolha, num_row_unit, par_row, seg_par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_editor_core::widget::key_mark::Eixos;
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
@@ -154,39 +155,33 @@ pub(super) fn paint_body_face(
     // Collider offset from the sprite centre — a collider-geometry property (not
     // Dynamic-only), so it sits with the shape dimensions rather than the dynamics
     // block. The overlay draws the outline here so the offset is visible.
-    for (label, id, unit) in [
-        (
-            tr_with(
-                "panel.inspector.label_x",
-                &[("label", &tr("component.field.collider.6"))],
-            ),
-            ids::INSP_PHYS_OFFSET_X,
-            Some(ph2d_editor_core::widget::Unit::Meters),
+    // T56: no cartão uma linha só, «Offset (px)» X · Y.
+    let (off_x, off_y) = (
+        tr_with(
+            "panel.inspector.label_x",
+            &[("label", &tr("component.field.collider.6"))],
         ),
-        (
-            tr_with(
-                "panel.inspector.label_y",
-                &[("label", &tr("component.field.collider.6"))],
-            ),
-            ids::INSP_PHYS_OFFSET_Y,
-            Some(ph2d_editor_core::widget::Unit::Meters),
+        tr_with(
+            "panel.inspector.label_y",
+            &[("label", &tr("component.field.collider.6"))],
         ),
-    ] {
-        yy = num_row_unit(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            &label,
-            id,
-            unit,
-            None,
-        );
-    }
+    );
+    let m = Some(ph2d_editor_core::widget::Unit::Meters);
+    yy = par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        Some((tr("component.field.collider.6"), Eixos::Xyzw)),
+        [
+            Campo::new(&off_x, ids::INSP_PHYS_OFFSET_X, m),
+            Campo::new(&off_y, ids::INSP_PHYS_OFFSET_Y, m),
+        ],
+    );
 
     // Mass source (W-Mass). A Dynamic body's mass is either density-derived (Auto,
     // mass = density × area) or an explicit override (Manual, kg) — the same quantity
@@ -285,7 +280,6 @@ fn paint_dynamics_rows(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut yy = y;
     let vel_x = tr_with(
         "panel.inspector.label_x",
         &[("label", &tr("component.field.initial_velocity.0"))],
@@ -294,22 +288,38 @@ fn paint_dynamics_rows(
         "panel.inspector.label_y",
         &[("label", &tr("component.field.initial_velocity.0"))],
     );
+    let mut yy = num_row_unit(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        TextKey::new("component.field.gravity_scale.0"),
+        ids::INSP_PHYS_GRAVITY_SCALE,
+        None,
+        None,
+    );
+    // T56: no cartão uma linha só, «Init Velocity (px/s)» X · Y.
+    let v = Some(ph2d_editor_core::widget::Unit::MetersPerSecond);
+    yy = par_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        Some((tr("panel.inspector.physics.init_velocity"), Eixos::Xyzw)),
+        [
+            Campo::new(&vel_x, ids::INSP_PHYS_LINVEL_X, v),
+            Campo::new(&vel_y, ids::INSP_PHYS_LINVEL_Y, v),
+        ],
+    );
     for (label, id, unit) in [
-        (
-            Rotulo::from(TextKey::new("component.field.gravity_scale.0")),
-            ids::INSP_PHYS_GRAVITY_SCALE,
-            None,
-        ),
-        (
-            Rotulo::from(vel_x.as_str()),
-            ids::INSP_PHYS_LINVEL_X,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
-        ),
-        (
-            Rotulo::from(vel_y.as_str()),
-            ids::INSP_PHYS_LINVEL_Y,
-            Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
-        ),
         (
             Rotulo::from(TextKey::new("component.field.initial_velocity.1")),
             ids::INSP_PHYS_ANGVEL,
@@ -412,7 +422,9 @@ fn paint_body_actions(
         // Freeze Position X / Y: pin a translation axis so the body is held to a
         // rail (X) or floats against gravity (Y). Dynamic-only, the same rule as the
         // constraints above — only a body the solver MOVES has a position to freeze.
-        yy = seg_row(
+        // T56: no cartão, Freeze X | Freeze Y lado a lado quando cabem.
+        let freeze = FREEZE_POS_LABELS.map(TextKey::tr);
+        yy = seg_par_row(
             scene,
             text_system,
             theme,
@@ -421,26 +433,20 @@ fn paint_body_actions(
             x,
             w,
             yy,
-            tr("panel.inspector.physics.freeze_x"),
-            ids::INSP_LIVE_PHYSICS_LOCKX,
-            &ids::INSP_PHYS_LOCKX,
-            &FREEZE_POS_LABELS.map(TextKey::tr),
-            u8::from(info.lock_x),
-        );
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            tr("panel.inspector.physics.freeze_y"),
-            ids::INSP_LIVE_PHYSICS_LOCKY,
-            &ids::INSP_PHYS_LOCKY,
-            &FREEZE_POS_LABELS.map(TextKey::tr),
-            u8::from(info.lock_y),
+            Escolha {
+                rotulo: tr("panel.inspector.physics.freeze_x").into(),
+                group: ids::INSP_LIVE_PHYSICS_LOCKX,
+                ids: &ids::INSP_PHYS_LOCKX,
+                labels: &freeze,
+                selected: u8::from(info.lock_x),
+            },
+            Escolha {
+                rotulo: tr("panel.inspector.physics.freeze_y").into(),
+                group: ids::INSP_LIVE_PHYSICS_LOCKY,
+                ids: &ids::INSP_PHYS_LOCKY,
+                labels: &freeze,
+                selected: u8::from(info.lock_y),
+            },
         );
         // Per-body damping (drag): linear + angular + Combine|Replace mode. Dynamic-
         // only like the rows above — damping decays a velocity only a Dynamic body

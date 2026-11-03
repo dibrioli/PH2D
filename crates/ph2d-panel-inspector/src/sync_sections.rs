@@ -25,10 +25,10 @@ use crate::state::InspectorState;
 pub(crate) fn sync_new_sections(
     host: &mut dyn PanelHostInternal,
     inspector_state: &mut InspectorState,
-    entity_changed: bool,
+    semeia: bool,
 ) {
     if let Some(sl) = crate::state::current_inspector_slice() {
-        sync_slice_fields(host, &sl, entity_changed);
+        sync_slice_fields(host, &sl, semeia);
     }
     if let Some(an) = crate::state::current_inspector_anchor() {
         // ⚠️ **A semente é uma ARESTA, e ela tem DUAS causas** — a entidade mudou, ou a linha
@@ -42,7 +42,7 @@ pub(crate) fn sync_new_sections(
         };
         let row_changed = inspector_state.last_anchor_row != Some(row);
         inspector_state.last_anchor_row = Some(row);
-        sync_anchor_fields(host, &an, row, entity_changed || row_changed);
+        sync_anchor_fields(host, &an, row, semeia || row_changed);
     }
     if let Some(an) = crate::state::current_inspector_anim() {
         // ⚠️ **A mesma ARESTA da §12**, e pelo mesmo defeito medido: os campos do editor
@@ -62,7 +62,7 @@ pub(crate) fn sync_new_sections(
         };
         let row_changed = inspector_state.last_anim_row != Some(row);
         inspector_state.last_anim_row = Some(row);
-        sync_anim_fields(host, &an, row, entity_changed || row_changed);
+        sync_anim_fields(host, &an, row, semeia || row_changed);
     }
     // As pegas arrastáveis das regras do cartão «Animation» (plano 08), republicadas por quadro.
     crate::sections::anim_rules::sync_rule_rows(
@@ -78,40 +78,40 @@ pub(crate) fn sync_new_sections(
         };
         let row_changed = inspector_state.last_timer_row != Some(row);
         inspector_state.last_timer_row = Some(row);
-        sync_timer_fields(host, &tm, row, entity_changed || row_changed);
+        sync_timer_fields(host, &tm, row, semeia || row_changed);
     }
     // ⭐⭐⭐ **O CÉREBRO** (TOP-20 #15) — no irmão, pelo tecto de 600 LOC deste ficheiro e por
     // responsabilidade: ele é a única secção com DUAS listas independentes, logo com duas arestas.
-    crate::sync_statemachine::sync(host, inspector_state, entity_changed);
+    crate::sync_statemachine::sync(host, inspector_state, semeia);
     // ⭐ O SCRIPT (TOP-20 #16) — no irmão, pelo mesmo tecto.
-    crate::sync_script::sync(host, inspector_state, entity_changed);
+    crate::sync_script::sync(host, inspector_state, semeia);
     // ⭐ O EMISSOR DE PARTÍCULAS (TOP-20 #18) — no irmão, pelo mesmo tecto.
-    crate::sync_particles::sync(host, inspector_state, entity_changed);
-    crate::sync_hud::sync(host, inspector_state, entity_changed);
+    crate::sync_particles::sync(host, inspector_state, semeia);
+    crate::sync_hud::sync(host, inspector_state, semeia);
     // ⭐⭐⭐ **O RAIO** (suplente #21) — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA, como a da
     // vigia do contador e a das duas de 10/09: a secção shipou a mostrar `Direction 0 / −1` e
     // `Reach 1 m` sobre um olho autorado a `(1, 0)` com alcance `6`, e quem a apanhou foi uma FOTO.
-    crate::sync_parallax::sync(host, inspector_state, entity_changed);
-    crate::sync_ray::sync(host, inspector_state, entity_changed);
-    crate::sync_weapon::sync(host, inspector_state, entity_changed);
+    crate::sync_parallax::sync(host, inspector_state, semeia);
+    crate::sync_ray::sync(host, inspector_state, semeia);
+    crate::sync_weapon::sync(host, inspector_state, semeia);
     // ⭐⭐⭐ A VIDA e o DANO (plano 28, W3) — no MESMO commit que as secções.
-    crate::sync_vida::sync(host, inspector_state, entity_changed);
-    crate::sync_nav::sync(host, inspector_state, entity_changed);
-    crate::sync_motion_input::sync(host, inspector_state, entity_changed);
+    crate::sync_vida::sync(host, inspector_state, semeia);
+    crate::sync_nav::sync(host, inspector_state, semeia);
+    crate::sync_motion_input::sync(host, inspector_state, semeia);
     // ⭐⭐⭐ **O MOVER DE VISTA DE CIMA** — ⛔ esta linha FALTAVA desde o TOP-20 #13 (ver o cabeçalho
     // do irmão): a secção mostrava os números de PARTIDA do `populate` sobre um mover autorado.
-    crate::sync_topdown::sync(host, inspector_state, entity_changed);
-    crate::sync_tween::sync(host, inspector_state, entity_changed);
-    crate::sync_fabrica::sync(host, inspector_state, entity_changed);
-    crate::sync_path_follow::sync(host, inspector_state, entity_changed);
+    crate::sync_topdown::sync(host, inspector_state, semeia);
+    crate::sync_tween::sync(host, inspector_state, semeia);
+    crate::sync_fabrica::sync(host, inspector_state, semeia);
+    crate::sync_path_follow::sync(host, inspector_state, semeia);
     // ⭐⭐⭐ **A VIGIA DO CONTADOR** — no irmão, pelo mesmo tecto. ⛔ Esta linha FALTAVA: a secção
     // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
     // e quem a apanhou foi uma FOTO (o cabeçalho do irmão tem o mecanismo).
-    crate::sync_counter_watch::sync(host, inspector_state, entity_changed);
-    crate::sync_action_trigger::sync(host, inspector_state, entity_changed);
-    crate::sync_shake::sync_camera(host, inspector_state, entity_changed);
-    crate::sync_shake::sync_emitter(host, inspector_state, entity_changed);
-    crate::sync_luz::sync(host, inspector_state, entity_changed);
+    crate::sync_counter_watch::sync(host, inspector_state, semeia);
+    crate::sync_action_trigger::sync(host, inspector_state, semeia);
+    crate::sync_shake::sync_camera(host, inspector_state, semeia);
+    crate::sync_shake::sync_emitter(host, inspector_state, semeia);
+    crate::sync_luz::sync(host, inspector_state, semeia);
     crate::sync_luz::sync_corpo(host);
     crate::sync_constraint::sync(host);
     // ⭐⭐⭐ **As DUAS que faltavam** (auditoria de 2026-09-10). ⛔ Sem elas o painel mostrava os
@@ -125,7 +125,7 @@ pub(crate) fn sync_new_sections(
         let sig = assinatura_audio(&au);
         let mudou = inspector_state.last_audio_sig != Some(sig);
         inspector_state.last_audio_sig = Some(sig);
-        sync_audio_fields(host, &au, entity_changed || mudou);
+        sync_audio_fields(host, &au, semeia || mudou);
     }
     if let Some(cam) = crate::state_components::current_inspector_camera() {
         // ⭐⭐ **E a câmera ganha a ASSINATURA das irmãs** (plano 24, W7). ⛔ A aresta era só a
@@ -136,20 +136,13 @@ pub(crate) fn sync_new_sections(
         let sig = crate::sync_sections_camera_sig::assinatura(&cam);
         let mudou = inspector_state.last_camera_sig != Some(sig);
         inspector_state.last_camera_sig = Some(sig);
-        crate::sync_sections_camera_sig::sync_camera_fields(host, &cam, entity_changed || mudou);
-    }
-    // ⭐⭐⭐ **TAGS** (TOP-20 #9). ⚠️ **Ela não tem campo a semear do objecto** — os chips e a lista
-    // são DERIVADOS do snapshot a cada pintura, e o único campo editável (a busca/criação) é do
-    // PAINEL, não da cena. ⛔ O que ela precisa é do OPOSTO: esvaziá-lo ao trocar de objecto,
-    // senão a lista abre estreitada por uma busca feita noutro objecto e a tag procurada parece
-    // não existir.
-    if entity_changed {
-        limpa_busca_de_tags(host);
+        crate::sync_sections_camera_sig::sync_camera_fields(host, &cam, semeia || mudou);
     }
 }
 
-/// Esvazia a busca da secção TAGS — ver a chamada.
-fn limpa_busca_de_tags(host: &mut dyn PanelHostInternal) {
+/// Esvazia a busca da secção TAGS ao trocar de objecto (`sync`): senão a lista abriria estreitada
+/// por uma busca feita noutro objecto. Ela não tem campo a semear do objecto.
+pub(crate) fn limpa_busca_de_tags(host: &mut dyn PanelHostInternal) {
     if let Some(InteractiveState::TextInput {
         text,
         caret,

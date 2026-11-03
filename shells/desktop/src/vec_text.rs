@@ -49,6 +49,23 @@ impl crate::app_state::App {
             self.vec_text_regen();
             return;
         }
+        self.vec_text_start(world);
+    }
+
+    /// *Add ▸ Text* ([`ph2d_app_text`]): a sessão abre já com a palavra de partida, em Draw ▸ Text,
+    /// e a 1.ª tecla troca-a inteira (como no Figma).
+    pub(crate) fn vec_text_add_open(&mut self, origin: [f64; 2]) {
+        self.vec_text_finish();
+        self.vec_text_start(origin);
+        if let Some(edit) = self.vec.text_edit.as_mut() {
+            self.text_add.opened(&mut edit.text);
+        }
+        self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Text);
+        self.vec_text_regen();
+    }
+
+    /// Uma sessão nova e vazia com a baseline em `world`.
+    fn vec_text_start(&mut self, world: [f64; 2]) {
         // O texto herda o Style ATIVO do painel do vetor (fill/stroke/width/cap/join)
         // — a mesma regra das formas — capturado no clique.
         let (fill, stroke) = resolve_style(&self.vec.pen.style());
@@ -73,6 +90,7 @@ impl crate::app_state::App {
     /// Anexa um caractere ao texto em edição e regenera os glyphs. No-op sem edição.
     pub(crate) fn vec_text_append(&mut self, ch: char) {
         if let Some(edit) = self.vec.text_edit.as_mut() {
+            self.text_add.before_key(&mut edit.text);
             edit.text.push(ch);
             self.vec_text_regen();
         }
@@ -81,6 +99,7 @@ impl crate::app_state::App {
     /// Apaga o último caractere (Backspace).
     pub(crate) fn vec_text_backspace(&mut self) {
         if let Some(edit) = self.vec.text_edit.as_mut() {
+            self.text_add.before_key(&mut edit.text);
             edit.text.pop();
             self.vec_text_regen();
         }
@@ -95,6 +114,7 @@ impl crate::app_state::App {
     /// deixa nada (o `regen` já não gerou paths).
     pub(crate) fn vec_text_finish(&mut self) {
         self.vec.text_edit = None;
+        self.text_add.session_closed();
     }
 
     /// Há uma sessão de texto ativa?

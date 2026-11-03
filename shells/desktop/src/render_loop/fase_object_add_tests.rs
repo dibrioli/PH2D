@@ -97,6 +97,7 @@ fn the_menu_offers_every_compiled_family() {
         ph2d_editor_core::object_add::EMPTY,
         ph2d_editor_core::object_add::IMAGE,
         ph2d_app_vec::object_add::VECTOR,
+        ph2d_app_text::TEXT,
         ph2d_app_flip::object_add::FLIP,
         ph2d_app_components::object_add::CAMERA,
         ph2d_app_light2d::object_add::LUZ,
@@ -234,10 +235,11 @@ fn seleccionados_ao_nascer(entry: ph2d_editor_core::object_add::AddEntry) -> Vec
         let src = ph2d_image_import::PackedSource::Atlas { cell_idx: 0 };
         let c = ph2d_core::Vec2::new(0.0, 0.0);
         vec![ph2d_image_import::spawn_sprite(&mut sim, src, c, [1.0, 1.0], "Image").1]
-    } else if entry == ph2d_app_vec::object_add::VECTOR {
+    } else if entry == ph2d_app_vec::object_add::VECTOR || entry == ph2d_app_text::TEXT {
         let mut vec = ph2d_app_vec::state::VecState::default();
-        assert!(ph2d_app_vec::object_add::add(entry, &mut vec));
-        // O 1.º traço: uma forma na cena; a ponte de sempre dá-lhe o objecto.
+        let text = ph2d_app_text::TextAdd::default().add(entry, &sim, None, [0.0; 2], || ());
+        assert!(ph2d_app_vec::object_add::add(entry, &mut vec) || text);
+        // O 1.º traço (ou a palavra do texto): uma forma na cena; a ponte de sempre dá-lhe o objecto.
         let mut scene = ph2d_vec_scene::VecScene::new();
         let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [2.0, 2.0]));
         ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut vec.entities);

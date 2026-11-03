@@ -246,6 +246,7 @@ impl crate::App {
         // memória não é mais de nada. O arm de rótulo pendente morre com a sessão de texto.
         self.vec.label_poses.clear();
         self.vec.label_pending = None;
+        self.text_add = ph2d_app_text::TextAdd::default();
         // O memo do Offset vivo é chaveado por `VecPathId`, e o restore RECICLA os ids: um id
         // que volta descrevendo outra forma acertaria o memo e desenharia o offset da forma
         // ANTERIOR sobre a nova, sem erro nenhum. O espelho do painel morre pela mesma razão

@@ -59,6 +59,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.skeleton" => "Skeleton",
         "object_add.motion" => "Motion",
         "object_add.vector.drawing" => "Vector Drawing",
+        "object_add.vector.text" => "Text",
+        "object_add.vector.text.placeholder" => "Text",
         "object_add.game.camera" => "Camera",
         "object_add.game.body" => "Physics Body",
         "object_add.game.sound" => "Sound",

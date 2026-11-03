@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-app-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# *Add ▸ Text* (dono, 02/11): o objecto de texto nasce já escrito, em Draw ▸ Text, e filho do HUD
+# seleccionado. Crate própria porque a `ph2d-app-vec` está no tecto da catraca (feature nova =
+# drop-crate); a sessão de texto continua a ser a do vetor.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+
+[lints]
+workspace = true

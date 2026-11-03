@@ -17,6 +17,11 @@ impl crate::App {
         ph2d_vec_scene::VecXforms,
         ph2d_vec_scene::VecViewState,
     )> {
+        // *Add ▸ Text*: com a ferramenta na mão, a sessão abre já escrita.
+        let tools = &self.gfx.as_ref()?.tools;
+        if let Some(origin) = self.text_add.ready(self.vec.edit.armed(), tools) {
+            self.vec_text_add_open(origin);
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
@@ -47,6 +52,9 @@ impl crate::App {
             text_id,
             self.vec.text_edit.is_some(),
         );
+        let alive = self.vec.text_edit.is_some();
+        self.text_add
+            .upkeep(sim, &self.vec.entities, text_id, alive);
         crate::label_live::upkeep(
             sim,
             vec_scene,

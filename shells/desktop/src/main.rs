@@ -662,6 +662,11 @@ impl App {
     fn new() -> Self {
         let gilrs = app_state::devices::init_gamepads();
         let audio = app_state::devices::init_audio();
+        let paused = || {
+            let mut ph = Playhead::default();
+            ph.pause();
+            ph
+        };
         Self {
             dock_seam_drag: None,
             window: None,
@@ -673,25 +678,13 @@ impl App {
             // Start paused: the transport should not run the moment the window
             // opens (the playhead default is "playing" — foundational, motion
             // relies on it — so the app pauses its own playhead explicitly).
-            playhead: {
-                let mut ph = Playhead::default();
-                ph.pause();
-                ph
-            },
+            playhead: paused(),
             // The Keys view's clip-time clock — paused for the same reason, and its
             // own so scrubbing/playing a clip's keys never disturbs the timeline.
-            clip_playhead: {
-                let mut ph = Playhead::default();
-                ph.pause();
-                ph
-            },
+            clip_playhead: paused(),
             // The Containers view's interior-time clock — paused, its own, for the
             // same reason: playing a container's lanes never disturbs the scene.
-            container_playhead: {
-                let mut ph = Playhead::default();
-                ph.pause();
-                ph
-            },
+            container_playhead: paused(),
             last_timeline_container: None,
             timeline_last_selected: None,
             // A 4 s composition on open, not an open-ended one pinned at t = 0 (Enio,
@@ -757,6 +750,7 @@ impl App {
             expr_blend_smoke_done: false,
             morph_fade_smoke_done: false,
             vec: ph2d_app_vec::state::VecState::default(),
+            text_add: ph2d_app_text::TextAdd::default(),
             svg_import_smoke_done: false,
             nest_smoke_done: false,
             instance_echo: Default::default(),

@@ -246,3 +246,18 @@ fn the_box_survives_the_round_trip_through_the_component() {
         "e voltar ao layout que o cozedor consome"
     );
 }
+
+/// ⭐⭐ GATE (dono, 02/11) — **o *Add ▸ Text* abre a sessão já escrita, em Draw ▸ Text, com geometria**
+/// (o objecto aparece na hora), e a 1.ª tecla troca a palavra (a lei em `ph2d_app_text`).
+#[test]
+fn add_text_opens_written_with_geometry_and_the_first_key_replaces_it() {
+    let mut app = crate::App::new(); // sem janela: a sessão não precisa dela
+    app.vec_text_add_open([2.0, 1.0]);
+    assert_eq!(app.vec.draw_config.mode, ph2d_tool_vector::DrawMode::Text);
+    let edit = app.vec.text_edit.as_mut().expect("a sessão");
+    assert_eq!((edit.text.as_str(), edit.origin), ("Text", [2.0, 1.0]));
+    regen_into(&mut ph2d_vec_scene::VecScene::new(), edit);
+    assert!(edit.id.is_some(), "«Text» sem geometria");
+    app.vec_text_append('C');
+    assert_eq!(app.vec.text_edit.map(|e| e.text).as_deref(), Some("C"));
+}

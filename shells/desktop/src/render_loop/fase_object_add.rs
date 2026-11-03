@@ -12,6 +12,7 @@ use ph2d_editor_core::object_add::{self, AddEntry};
 pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     object_add::CORE,
     ph2d_app_vec::object_add::ENTRIES,
+    ph2d_app_text::ENTRIES,
     ph2d_app_flip::object_add::ENTRIES,
     ph2d_app_skeleton::object_add::ENTRIES,
     ph2d_app_motion::motion_objeto::object_add::ENTRIES,
@@ -40,6 +41,7 @@ impl crate::App {
             hero_screen,
             component_registry,
             flip,
+            camera,
             ..
         } = FrameGfx::of(gfx);
         let Some(hero) = hero_screen.as_mut() else {
@@ -106,7 +108,17 @@ impl crate::App {
         .or_else(|| ph2d_app_components::object_add::add(entry, sim, component_registry, seeds))
         {
             r.map(Born::Entity)
-        } else if ph2d_app_vec::object_add::add(entry, &mut self.vec) {
+        } else if ph2d_app_vec::object_add::add(entry, &mut self.vec)
+            || self.text_add.add(
+                entry,
+                sim,
+                hero.gizmo.selection,
+                camera.center.map(f64::from),
+                || {
+                    self.vec.edit.arm();
+                },
+            )
+        {
             use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
             let leave = ph2d_editor_core::action_bus::EditorAction::ObjectMode;
             hero.bus.push(leave(ModeRequest::Enter(ObjectMode::Object)));

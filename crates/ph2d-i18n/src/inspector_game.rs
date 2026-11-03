@@ -153,7 +153,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Editing the primary selection only."
         }
         // ⚠️ **A CHAVE mantém o sufixo `_m` e o TEXTO não** — ela é um endereço, e a unidade vive
-        // no CAMPO (`Unit::Meters`). O gate `no_row_label_carries_its_own_unit` apanhou a 1.ª
+        // no CAMPO (`Unit::Meters`). O gate `a_unidade_aparece_uma_vez_so` apanhou a 1.ª
         // redacção («Reach (m)»): *duas superfícies a dizer a mesma unidade divergem no dia em que
         // uma delas mudar.*
         "panel.inspector.ray.signal_when_it_starts_seeing_u" => {
@@ -429,7 +429,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — duas secções, dois objectos.
         //
         // ⚠️ **As unidades NÃO vão no texto** — elas são o chip do campo (`Unit::Meters`), e há
-        // gate (`no_row_label_carries_its_own_unit`) a prová-lo.
+        // gate (`a_unidade_aparece_uma_vez_so`) a prová-lo.
         // ⭐ Os PERFIS de um clique. ⚠️ Eles pintam-se ANTES dos números, porque os reescrevem.
         "panel.inspector.shake.preset" => "Preset",
         // ⚠️ **«Punch» e não «Exponent»** — o artista escolhe o CARÁCTER do abanão, e a potência a

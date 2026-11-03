@@ -471,7 +471,7 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | peça | lei |
 |---|---|
 | **coluna de animação** | [`DECORATOR_W`] = `14 px`, em **todas** as linhas, sempre — decisão do dono (*«vou querer animar tudo»*). É um **indicador**, não um controlo: não regista clique nenhum |
-| **a unidade** | dentro do campo, **colada ao número**, em `Text2`, e **some enquanto se escreve**. ⛔ Nunca no rótulo: com a unidade lá, **20 de 39** rótulos do Inspector eram cortados; sem ela, **1**. ⭐ Em 2026-09-15 o censo levou os restantes **28** (`Break Torque (N.m)`, `Init Vel X (m/s)`, `Non-Spatialized Radius (m)`, …) e o vocabulário ganhou `N`, `N.m` e `deg/s` |
+| **a unidade** | dentro do campo, **colada ao número**, em `Text2`, e **some enquanto se escreve**. ⛔ Nunca no rótulo: com a unidade lá, **20 de 39** rótulos do Inspector eram cortados; sem ela, **1**. ⭐ Em 2026-09-15 o censo levou os restantes **28** (`Break Torque (N.m)`, `Init Vel X (m/s)`, `Non-Spatialized Radius (m)`, …) e o vocabulário ganhou `N`, `N.m` e `deg/s`. ⭐⭐ **Decisão do dono 2026-11-01** ([memória](../../../project-memory/feedback_units_live_in_the_label_not_in_the_box.md)): nos painéis no idioma Figma a unidade vai para o RÓTULO como `Nome (px)` e a caixa fica só com o número. Enquanto os painéis migram, vale a lei das duas épocas: **a unidade aparece UMA vez só por linha** (no rótulo `(unidade)` no fim, ou no campo, nunca nos dois) |
 | **o que o campo pinta, o campo lê** | o sufixo que se MOSTRA pode ter maiúscula (o `N` do SI) e o que o artista escreve não tem de a ter ⇒ a leitura é **insensível à caixa**. ⛔ Não há uma segunda string por unidade: duas strings para a mesma coisa divergem |
 | **a superfície** | o preenchimento sai da porta do TEMA ([`body_fill`]), nunca do token do cartão. Num tema moderno o campo é um degrau **abaixo** da superfície em que assenta, e **não** leva moldura em repouso |
 | **o valor** | alinhado à esquerda dentro do campo, com as setinhas na coluna da direita |
@@ -548,7 +548,7 @@ ali eles cortam — que é a troca que o dono escolheu em 2026-05-24.
 | §7 | um campo nunca tem a cor daquilo em que assenta | `SURFACE_STEP` | `a_field_is_never_the_colour_of_what_it_sits_on` |
 | §7 | um sufixo mais longo nunca é ensombrado por um mais curto | `Unit` | `a_longer_suffix_is_never_shadowed_by_a_shorter_one` |
 | §7 | o campo lê de volta a unidade que ele próprio pinta, em qualquer caixa | `parse_suffix` | `every_unit_reads_back_what_it_paints` |
-| §7 | nenhum rótulo do app carrega a unidade no texto | `num_row_unit` | `no_row_label_carries_its_own_unit` |
+| §7 | a unidade aparece uma vez só por linha (rótulo `(unidade)` OU campo), e no rótulo só no formato `Nome (unidade)` | `num_row_unit` | `a_unidade_aparece_uma_vez_so` |
 | §7 | a unidade é tinta dentro da caixa, nunca uma segunda caixa | `paint_number_input_with_buffer` | `the_unit_is_ink_inside_the_box_and_never_a_second_box` |
 | §3 | um painel inteiro tem UMA coluna por secção, não uma por família de linha | `seccao_da_chave` | `cada_nome_deste_painel_cabe_na_coluna_da_seccao` |
 | §3 | e a coluna cega cortaria mais — o controlo que prova que a declaração não é decoração | `Declaracao` | `e_a_coluna_cega_cortaria_mais` |

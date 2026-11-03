@@ -122,7 +122,7 @@ pub enum Unidade {
     Nenhuma,
     Graus,
     /// Uma TAXA angular (a velocidade da órbita), guardada e mostrada em `deg/s` — a unidade mora no
-    /// campo, nunca no rótulo (`no_row_label_carries_its_own_unit`).
+    /// campo, nunca no rótulo (`a_unidade_aparece_uma_vez_so`).
     GrausPorSegundo,
     /// A unidade do mundo (a da lâmpada da Luz 2D) — o `Transform` guarda-a; o cartão do
     /// Transform é que a mostra em px.

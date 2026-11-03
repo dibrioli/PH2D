@@ -15,7 +15,7 @@ pub(super) fn paint_slider_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let (mut y, open) = paint_collapsible_header(
+    let (y, open) = paint_collapsible_header(
         scene,
         text_system,
         theme,
@@ -31,6 +31,22 @@ pub(super) fn paint_slider_section(
     if !open {
         return y;
     }
+    paint_slider_body(scene, text_system, theme, hit_index, store, x, w, y)
+}
+
+/// O CORPO da secção «Slider», sem o cabeçalho, a partir de `y`; devolve o fundo. O cartão
+/// da galeria chama-o (`SHOWCASE_CARDS`, doc 08 §1.2); a janela flutuante, pelo `*_section`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_slider_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
     let (_, value) = store
         .slider(ids::INSP_SAMPLE_SLIDER)
         .unwrap_or((SliderState::Normal, 0.62)); // LITERAL-PX-OK: slider default ratio (showcase demo seed value)

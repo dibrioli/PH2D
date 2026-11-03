@@ -31,6 +31,22 @@ pub(super) fn paint_color_section(
     if !open {
         return y;
     }
+    paint_color_body(scene, text_system, theme, hit_index, store, x, w, y)
+}
+
+/// O CORPO da secção «Color», sem o cabeçalho, a partir de `y`; devolve o fundo. O cartão
+/// da galeria chama-o (`SHOWCASE_CARDS`, doc 08 §1.2); a janela flutuante, pelo `*_section`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_color_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let sw_h = ROW_H_PX;
     let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width
     paint_left_label(scene, text_system, theme, x, "Tint", label_w, y, sw_h);

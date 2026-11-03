@@ -383,6 +383,15 @@ use status::paint_status_section;
 use switches::paint_switches_section;
 use vector::paint_vector_section;
 
+mod cartoes;
+pub use cartoes::{PintaCorpo, SHOWCASE_CARDS, ShowcaseCard, paint_showcase_popovers};
+pub use {
+    actions::paint_actions_body, card::paint_card_body, color::paint_color_body,
+    identity::paint_identity_body, inputs::paint_inputs_body,
+    inspector_w6::paint_inspector_w6_body, lists::paint_lists_body, slider::paint_slider_body,
+    status::paint_status_body, switches::paint_switches_body, vector::paint_vector_body,
+};
+
 mod body;
 pub use body::{ShowcaseBody, close_showcase_body_with, finish_chrome, paint_showcase_body};
 

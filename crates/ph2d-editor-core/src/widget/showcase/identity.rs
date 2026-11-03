@@ -31,6 +31,22 @@ pub(super) fn paint_identity_section(
     if !open {
         return y;
     }
+    paint_identity_body(scene, text_system, theme, hit_index, store, x, w, y)
+}
+
+/// O CORPO da secção «Identity», sem o cabeçalho, a partir de `y`; devolve o fundo. O cartão
+/// da galeria chama-o (`SHOWCASE_CARDS`, doc 08 §1.2); a janela flutuante, pelo `*_section`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_identity_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    _hit_index: &mut HitIndex,
+    _store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let size = ICON_BTN_SIZE_PX;
     let gap = Spacing::Md.px();
     let circle = Rect::new(x, y, size, size);

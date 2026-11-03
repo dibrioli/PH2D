@@ -31,6 +31,22 @@ pub(super) fn paint_card_section(
     if !open {
         return y;
     }
+    paint_card_body(scene, text_system, theme, hit_index, store, x, w, y)
+}
+
+/// O CORPO da secção «Card», sem o cabeçalho, a partir de `y`; devolve o fundo. O cartão
+/// da galeria chama-o (`SHOWCASE_CARDS`, doc 08 §1.2); a janela flutuante, pelo `*_section`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_card_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    _hit_index: &mut HitIndex,
+    _store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let card_h = 80.0_f32; // LITERAL-PX-OK: demo Card height (showcase-specific)
     let r = Rect::new(x, y, w, card_h);
     let card = Card::new(NodeId(0)).title("Quick actions");

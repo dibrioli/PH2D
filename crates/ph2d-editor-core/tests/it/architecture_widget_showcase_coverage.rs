@@ -11,6 +11,9 @@
 //! import path (`Button`, `Checkbox`, etc., as parsed from the
 //! `pub use` re-export in `src/widget/mod.rs`).
 //!
+//! ⭐ A crate `ph2d-panel-widget-gallery` TAMBÉM é o showcase (a galeria em cartões, doc
+//! `CartoesUI/08`): o `widget/` não pode chamar `panel::`, logo o que só o cartão usa mora lá.
+//!
 //! Failure modes this catches:
 //! - New widget added without showcase entry.
 //! - Showcase section deleted that previously covered a widget.
@@ -179,6 +182,10 @@ fn read_all_showcase_text() -> String {
     }
     let mut blob = String::new();
     walk(&widget_dir().join("showcase"), &mut blob);
+    walk(
+        &editor_core_root().join("../ph2d-panel-widget-gallery/src"),
+        &mut blob,
+    );
     blob
 }
 
@@ -250,7 +257,8 @@ fn every_widget_is_shown_or_explicitly_opted_out() {
     assert!(
         missing.is_empty(),
         "the following widgets are not referenced anywhere under \
-         src/widget/showcase/ and have no WIDGET_OPT_OUT entry:\n  {}\n\
+         src/widget/showcase/ nor ph2d-panel-widget-gallery/src/ and have \
+         no WIDGET_OPT_OUT entry:\n  {}\n\
          fix: either add a showcase section that uses the widget, or \
          add a WIDGET_OPT_OUT entry with a written reason.",
         missing.join("\n  ")

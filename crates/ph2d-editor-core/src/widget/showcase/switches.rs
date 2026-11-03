@@ -15,7 +15,7 @@ pub(super) fn paint_switches_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let (mut y, open) = paint_collapsible_header(
+    let (y, open) = paint_collapsible_header(
         scene,
         text_system,
         theme,
@@ -31,7 +31,22 @@ pub(super) fn paint_switches_section(
     if !open {
         return y;
     }
+    paint_switches_body(scene, text_system, theme, hit_index, store, x, w, y)
+}
 
+/// O CORPO da secção «Switches», sem o cabeçalho, a partir de `y`; devolve o fundo. O cartão
+/// da galeria chama-o (`SHOWCASE_CARDS`, doc 08 §1.2); a janela flutuante, pelo `*_section`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_switches_body(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
     // Checkbox.
     let r = Rect::new(x, y, w, Density::Compact.row_h_px());
     hit_index.register(ids::INSP_SAMPLE_CHECKBOX, r);

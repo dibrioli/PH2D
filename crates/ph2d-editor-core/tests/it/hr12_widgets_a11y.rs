@@ -409,6 +409,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "showcase orchestrator; widgets emit a11y",
     ),
     ("showcase/card.rs", "section painter; widgets emit a11y"),
+    (
+        "showcase/cartoes.rs",
+        "table of section bodies + dropdown popover; widgets emit a11y",
+    ),
     ("showcase/color.rs", "section painter; widgets emit a11y"),
     ("showcase/identity.rs", "section painter; widgets emit a11y"),
     ("showcase/inputs.rs", "section painter; widgets emit a11y"),

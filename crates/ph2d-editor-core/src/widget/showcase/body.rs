@@ -246,28 +246,8 @@ pub fn paint_showcase_body(
     set_last_gallery_visible_h(visible_h);
 
     // Late-paint phase: open Dropdown popover sits on top of every
-    // section that ran before it. `take_pending_dropdown_chip` is a
-    // thread_local owned by the showcase; the live Inspector never
-    // paints dropdowns so there's no contention.
-    if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
-        let labels = ["Front", "Side", "Top"];
-        let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");
-        let dd = Dropdown::new(
-            ids::INSP_SAMPLE_DROPDOWN,
-            "View",
-            vec![
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_A, "front", "Front"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_B, "side", "Side"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_C, "top", "Top"),
-            ],
-        )
-        .selected(selected_label)
-        .open(true);
-        let panel = crate::widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
-        for (i, opt) in dd.options.iter().enumerate() {
-            hit_index.register(opt.id, dd.option_rect_in(chip, panel, i));
-        }
-    }
+    // section that ran before it.
+    super::cartoes::paint_showcase_popovers(scene, text_system, theme, hit_index);
 
     crate::widget::section_cards::end_section_cards(scene);
     ShowcaseBody {

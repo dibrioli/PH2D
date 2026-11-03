@@ -44,6 +44,10 @@ const FORA: &[Isento] = &[
         "macro_track/caminho_diagnostico.rs",
         "o filho `#[path]` do `caminho.rs`: a linha de diagnóstico por quadro das cenas `=5|6` \
          (`PalcosDoPainter::diagnostico`), escrita no MESMO registo, nunca ecrã",
+    ),    (
+        "wetpaint_fps.rs",
+        "a cena `PH2D_WETPAINT_SMOKE=3` (o FPS): os nomes das FASES e do modo (`sem real`/`real oil`) só \
+         entram na tabela que ela imprime no terminal (`eprintln!`) para quem mede — nunca ecrã",
     ),
 ];
 
@@ -59,6 +63,11 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "painter_bridge_presets.rs",
         "User",
         "nome de PASTA no disco (o grupo de um preset guardado sem origem), pela mesma razão",
+    ),    (
+        "paint_mode.rs",
+        "Canvas",
+        "o NOME da entidade da imagem nova (o mesmo que `ph2d_image_import::spawn_blank_canvas` dá): \
+         entra no `Name`, identidade durável — a lei dos nomes por omissão (`Prefab`, `Layer {}`)",
     ),
 ];
 

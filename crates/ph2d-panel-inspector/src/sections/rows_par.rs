@@ -190,7 +190,7 @@ mod tests {
         let mut text = TextSystem::without_system_fonts();
         let mut hit = HitIndex::default();
         let store = WidgetStore::default();
-        let (a, b) = (NodeId(0x7_56_0001), NodeId(0x7_56_0002));
+        let (a, b) = (NodeId(0x0756_0001), NodeId(0x0756_0002));
         let (x, w) = (0.0, 300.0);
         let fim = par_row(
             &mut scene,

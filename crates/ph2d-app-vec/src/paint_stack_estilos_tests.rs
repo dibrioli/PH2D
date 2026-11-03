@@ -37,7 +37,7 @@ fn cor(s: &VecScene, id: u64) -> Rgba8 {
 fn a_new_style_links_the_selection_and_editing_it_recolours_both() {
     let (mut s, sel) = cena();
     let mut store = ph2d_editor_core::WidgetStore::default();
-    lista::take_pedidos();
+    let _ = lista::take_pedidos();
     lista::pede(Pedido::Novo {
         camada: 0,
         nome: "Brand blue".into(),
@@ -76,7 +76,7 @@ fn applying_detaching_and_deleting_keep_the_colour_law() {
     let (mut s, sel) = cena();
     let mut store = ph2d_editor_core::WidgetStore::default();
     let id = s.add_estilo("Grass", LARANJA);
-    lista::take_pedidos();
+    let _ = lista::take_pedidos();
     lista::pede(Pedido::Aplicar {
         estilo: id,
         camada: 0,

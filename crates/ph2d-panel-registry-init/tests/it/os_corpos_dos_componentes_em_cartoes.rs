@@ -212,7 +212,7 @@ fn outside_a_card_the_same_row_keeps_its_label_on_the_left() {
     let mut text = TextSystem::without_system_fonts();
     let mut hit = ph2d_editor_core::interaction::HitIndex::default();
     let store = ph2d_editor_core::interaction::WidgetStore::default();
-    let id = NodeId(0x7_29_0001);
+    let id = NodeId(0x0729_0001);
     let (x, w) = (0.0, 300.0);
     ph2d_editor_core::property_row::paint_fields_row(
         &mut scene,

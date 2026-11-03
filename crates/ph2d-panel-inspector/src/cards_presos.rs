@@ -30,12 +30,14 @@ pub(crate) struct Preso {
 
 /// A chave do que já foi medido: o retrato do preso, o da seleção e o seletor de unidade.
 type Chave = (Retrato, Retrato, (bool, u32));
+/// O retrato do preso, o seletor de unidade e o componente presente com que o cartão se montou.
+type Montado = (Retrato, u32, Option<Presente>);
 
 thread_local! {
     /// O ensaio e a montagem de cada solto preso só se refazem quando a chave muda (medido no bloco
     /// 10, cena 7, perfil smoke: ~1 ms e ~0,6 ms por quadro e por cartão sem isto).
     static MEDIDOS: RefCell<BTreeMap<NodeId, Chave>> = RefCell::default();
-    static MONTADOS: RefCell<BTreeMap<NodeId, (Retrato, u32, Option<Presente>)>> = RefCell::default();
+    static MONTADOS: RefCell<BTreeMap<NodeId, Montado>> = RefCell::default();
 }
 
 /// As caixas de cada preso: a semente da seleção corrida com o retrato dele, num ensaio (o store,

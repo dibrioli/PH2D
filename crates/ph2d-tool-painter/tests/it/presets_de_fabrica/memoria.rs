@@ -264,6 +264,7 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
         ])
         .env("PH2D_SONDA_RAIO", raio.to_string())
         .env("PH2D_SONDA_QUADROS", "0")
+        .env("MALLOC_ARENA_MAX", "1")
         .env_remove("PH2D_SONDA_JITTER")
         .env_remove("PH2D_SONDA_PRESET")
         .output()
@@ -326,9 +327,14 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 /// | 300  | 158 | 278 | 222–225 | 320–325 | 340 |
 /// | 1000 | — | — | 1 140 | 1 861 | 1 950 |
 ///
+/// 03/11: com as arenas do glibc o pico não é uma medida. Raio 1000, mesma lei: 1 673–2 053 MiB, 3 de 13 corridas acima
+/// do tecto 1 950, inclusive a load 12 e no `main`. Com `MALLOC_ARENA_MAX=1` no filho, intercalado, load 4–9, 5/5:
+/// 305–306 MiB a raio 300 e 1 607–1 608 a raio 1000; seis cópias em paralelo, load até 84, 12/12: 306–308 e 1 608–1 610.
+/// O tecto é o medido calmo + 5 %.
+///
 /// ⚠️ O tecto deixou de separar o mutante do limiar `r` (322 MiB em 29/10 < o pico de hoje): quem o pega é a asserção
 /// `lanes == 1` (o mutante parte o traço em 2 lanes), que corre ANTES do tecto.
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 340.0), (1000.0, 1950.0)];
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 322.0), (1000.0, 1690.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

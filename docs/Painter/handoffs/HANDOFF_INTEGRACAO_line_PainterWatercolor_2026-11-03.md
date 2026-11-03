@@ -100,3 +100,21 @@ Cada uma com a tabela no commit `94d0e2848c` ou no doc da medição.
 | Wet Round/Drip a raio 7: ~11 % menos área que antes da cobertura | O dono julgou OK; não é defeito |
 | Mensagem do commit `5bdaef3fa3` diz 40 presets; são 45 | Erro só na mensagem |
 | P1 (reta + 5 pontos) passa 34/55 | Por isso a linha **não** trocou as tabelas dos outros pincéis |
+
+## 9. Integração (03/11, janela `ph2d-ef`)
+
+Rodada de uma linha: o `main` não andou desde `3a3896a7ab`, sem rebase nem conflito; contadores do `collision-surface.sh` com delta 0. Censos da árvore combinada 132/132 (12 de 12 censos correram). Sem push.
+
+**Suíte inteira a `8f6c0ee266`** (`ci-test`, 1 644 s, load até ~100): 31 443 ok, 3 FAIL, 4 TIMEOUT.
+
+| Vermelho | Causa | Cura |
+|---|---|---|
+| `o_claude_md_cabe_no_orcamento` | §5 com 14 009 B contra o tecto 14 000: a entrada do Painter cresceu | Entrada encurtada; defeito da linha |
+| `a_memoria_do_dabber_cabe` | Régua instável: arenas do glibc, 1 673–2 053 MiB na mesma lei. **Já reprovava no `main`** (1 964) e reprova a load 12, logo não é carga | Filho com `MALLOC_ARENA_MAX=1`; tecto 340/1 950 → 322/1 690 (medido + 5 %), portão mais apertado. Tabela em `memoria.rs`, mecanismo em `FLAKES_DE_CARGA.md` |
+| `com_pacotes_perdidos_chega_tudo_e_na_ordem` · `cada_interruptor_que_neutraliza_…` · `cada_knob_do_material_…` · `pular_a_pincelada_…` · `o_oleo_pouco_diluido_…` | Carga: passam por nome | Promovidos à faixa isolada (tabela + filtro); barras intactas |
+
+**Prova depois das curas, por nome, SEM segunda suíte inteira** (as curas são teste, config e docs): os 5 da carga verdes em série na faixa nova (load 10–13) · `a_memoria_do_dabber_cabe` 12/12 em seis cópias paralelas (load até 84).
+
+⚠️ **Não houve uma passada inteira verde.** A árvore final não está no registo de suítes verdes: o `ff` foi à mão, e o `ship` vai correr a suíte. `o_deposito_de_um_pincel_pesado_de_fabrica_…` (o red de carga do §7) passou nesta suíte.
+
+**Continua aberto:** `.config/testes-lentos.tsv` **não** foi regerado. O `junit.xml` da suíte foi sobrescrito pelas corridas por nome, e regerar dele apagaria a lista; regera sozinho na próxima suíte verde.

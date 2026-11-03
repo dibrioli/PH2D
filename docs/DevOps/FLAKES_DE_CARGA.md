@@ -90,6 +90,11 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `a_agua_pelo_compositor_e_a_tela_de_casa_ao_byte` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/otica_no_tique_tests.rs) | contagem de imagens que o compositor da óptica (outro fio) aplica em 30 quadros — `4` contra o piso `5` na suíte da integração de 02/11c (load 35–70); sozinho `3/3` verde a `load 64–70` (8,6–8,8 s) |
 | `a_separacao_das_pocas_e_exacta_na_fronteira` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/tests/watercolor_secagem_por_poca.rs) | prazo do nextest (180 s → a faixa pesada, 6 × 60 s) — TIMEOUT na suíte da `line/PainterWatercolor` de 23/10 (load ~140); 134,7 s na suíte anterior do dia |
 | `o_censo_dos_controlos_so_encolhe` | [`ph2d-panel-painter-layers`](../../crates/ph2d-panel-painter-layers/tests/it/o_censo_so_encolhe.rs) | prazo global do nextest (180 s) sobre o censo dos quatro meios, que já paraleliza por dentro (`em_paralelo`, 8 fios × meio) — TIMEOUT aos 180 s na suíte combinada da integração 02/11c (load ~60); sozinho por nome 76,8 · 75,9 · 75,5 s (`load 26–37`), 3/3. Disputa os núcleos que pede: corre SOZINHO no fim |
+| `com_pacotes_perdidos_chega_tudo_e_na_ordem` | [`ph2d-board-internet`](../../crates/ph2d-board-internet/src/node_tests.rs) | prazo de rede (`TimedOut` aos 33 s, QUIC com perdas simuladas) na suíte da integração de 03/11 (load ~100), zero linhas da crate no diff; sozinho 2,6 s |
+| `cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo` | [`ph2d-panel-painter-layers`](../../crates/ph2d-panel-painter-layers/tests/it/seam_estado_escondido.rs) | prazo do nextest (faixa de 10 × 60 s) — TIMEOUT na suíte de 03/11 (load ~100); por nome 207 s (load ~57) |
+| `cada_knob_do_material_muda_o_preview` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/material_do_pincel_tests.rs) | prazo global do nextest (180 s) — TIMEOUT na suíte de 03/11 (load ~100); por nome 127 s (load ~57) |
+| `pular_a_pincelada_e_esperar_nao_cumpre_nenhuma` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/macro_track/tutorial_tests.rs) | prazo do nextest (faixa de 10 × 60 s) — TIMEOUT na suíte de 03/11 (load ~100); por nome 201 s (load ~57) |
+| `o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint_preset/portao_mae_f0.rs) | prazo global do nextest (180 s) — TIMEOUT na suíte de 03/11 (load ~100); por nome 112 s (load ~57) |
 
 As cenas 3, 4 e 5 do editor de scripts (`a_cena_*_conduzida_passo_a_passo`) SAÍRAM em 29/10: não eram carga, era a
 árvore velha da gramática a esticar o comentário sobre o `ph2d.` escrito na linha nova (cura e gate em
@@ -111,6 +116,14 @@ load 8–34 com ~7 GB da placa já tomados por outros programas; os 9 passaram s
 pede DE PROPÓSITO mais do que a placa dá; com outro gate da luz ao lado a recusa vira falta de memória de
 verdade para a placa inteira (o atlas do renderer inválido, pânico do wgpu). Sozinho 3/3 verde → corre
 SOZINHO (`threads-required = "num-test-threads"` no `nextest.toml`).
+
+## Parece carga e não é: a memória do processo com as arenas do glibc (03/11)
+
+`a_memoria_do_dabber_cabe` reprovou na suíte a load ~100, parecia membro, e **não entrou na faixa**: a assinatura
+falhou no passo 3 (reprovou por nome a load 12). O `VmHWM` de um processo com vários fios variava 1 673–2 053 MiB na
+mesma lei, sem relação com a carga. Com `MALLOC_ARENA_MAX=1` no processo medido: 1 607–1 610 MiB em 17/17 (load 4–84).
+⇒ Gate de RAM mede num filho com uma arena, e o tecto sai dessa medida
+([`memoria.rs`](../../crates/ph2d-tool-painter/tests/it/presets_de_fabrica/memoria.rs)).
 
 ## A outra espécie: a flake de GPU só no Linux do CI
 

@@ -22,6 +22,20 @@ fn code(rel: &str) -> String {
         .filter(|l| !l.starts_with("//"))
         .collect::<Vec<_>>()
         .join("\n")
+        // O `rustfmt` parte a cadeia (`self` / `.drop_target_at(..)`): a agulha lê a chamada inteira.
+        .replace("\n.", ".")
+}
+
+/// ⚠️ **A lei mudou-se de casa duas vezes** (2026-09-13 para `ph2d-app-components`; GEF 20b,
+/// 2026-11-02, o *«o que o arrasto MOSTRA»* para `asset_drop::verdict`, que as caixas dos campos
+/// também perguntam). A agulha segue a LEI até lá, e não o caminho até ela (HOWTO §2.9/§2.13).
+fn the_verdict() -> String {
+    let s = code("../../crates/ph2d-app-components/src/asset_drop.rs");
+    let i = s
+        .find("pub fn verdict(")
+        .expect("a porta `asset_drop::verdict` desapareceu");
+    let fim = s[i..].find("\n}").expect("o corpo do `verdict`");
+    s[i..i + fim].to_string()
 }
 
 /// ⭐⭐⭐ **UMA porta responde *«o que aconteceria se eu largasse aqui?»*, e ela tem DOIS
@@ -52,10 +66,18 @@ fn both_decide_through_the_same_law() {
     let s = code("src/asset_drag_wire.rs");
     // ⚠️ A agulha ancora na LEI (`asset_drop::resolve(`), e não no CAMINHO até ela: a lei mudou-se
     // para `ph2d-app-components` em 2026-09-13 e o endereço cresceu um prefixo (HOWTO §2.9/§2.13).
+    // O `Up` pergunta à lei; o `Move` pergunta ao `verdict`, que é a lei e nada mais.
     assert_eq!(
-        s.matches("asset_drop::resolve(").count(),
-        2,
+        (
+            s.matches("asset_drop::resolve(").count(),
+            s.matches("asset_drop::verdict(").count(),
+        ),
+        (1, 1),
         "a lei da queda tem de ser consultada nos DOIS caminhos, e em nenhum outro sitio"
+    );
+    assert!(
+        the_verdict().contains("match resolve(payload, target)"),
+        "o `verdict` deixou de perguntar à lei — o fantasma ganhou uma tabela própria"
     );
 }
 
@@ -66,7 +88,7 @@ fn both_decide_through_the_same_law() {
 /// o `Cancel` tem de virar `Unknown`, nunca `Refuse`.
 #[test]
 fn giving_up_is_not_a_refusal() {
-    let s = code("src/asset_drag_wire.rs");
+    let s = the_verdict();
     assert!(
         s.contains("DropAction::Cancel => DragVerdict::Unknown"),
         "desistir passou a pintar-se como recusa — o fantasma acusaria o artista de um erro que \

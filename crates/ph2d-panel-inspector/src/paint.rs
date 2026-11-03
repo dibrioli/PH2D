@@ -84,7 +84,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         ph2d_editor_core::panel::cards::paint_card_list_pinned(
             ctx,
             ids::INSP_PANEL,
-            ph2d_i18n::tr("panel.inspector.title"),
+            <crate::InspectorPanel as ph2d_editor_core::panel::Panel>::TITLE.tr(),
             &cards,
             crate::state::current_inspector_transform().map(|_| {
                 ph2d_editor_core::panel::cards::Footer {

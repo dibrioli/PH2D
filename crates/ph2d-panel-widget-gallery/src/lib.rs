@@ -26,6 +26,7 @@ mod cards_pintura;
 mod cards_reais_anim;
 mod cards_reais_media;
 pub mod cards_reais_mundo;
+pub mod cards_rive;
 mod cards_texto;
 mod cards_transform;
 mod cards_vocab;

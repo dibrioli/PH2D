@@ -26,6 +26,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         );
     }
     button(store, ids::GAL_CLOSE);
+    // As pegas da curva do Rive: um arrasto, como as pegas de um painel.
+    for id in [g::CU_H1, g::CU_H2] {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: id,
+                kind: BlenderHitKind::DragHandle,
+            },
+        );
+    }
     for c in controls() {
         button(store, c.id);
     }

@@ -222,17 +222,17 @@ fn effect_row(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
     let kind = ch.pick(FX_PICKS[i]);
     let olho = segs([row.eye, row.remove], ch, c.store);
     let nome = seg_of(row.options[usize::from(kind)], ch, c.store).text;
-    c.row(
-        &[
-            Cell::new(Widget::FieldFace {
-                id: row.open,
-                glyph: Glyph::Icon(fx_icon(kind)),
-                text: nome,
-            }),
-            Cell::new(Widget::Bare(&olho)),
-        ],
-        y,
-    )
+    let linha = Cell::new(Widget::FieldFace {
+        id: row.open,
+        glyph: Glyph::Icon(fx_icon(kind)),
+        text: nome,
+    });
+    let olhos = Cell::new(Widget::Bare(&olho));
+    if c.w >= caixa_para(c, nome) + m::FIELD_H * 2.0 + m::FIELD_GAP {
+        return c.row(&[linha, olhos], y);
+    }
+    let y = c.row(&[linha], y);
+    c.row(&[olhos], y)
 }
 
 /// As propriedades do efeito `i` (o painel do lado, [`crate::lado`]): as sombras levam deslocamento,

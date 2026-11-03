@@ -5,7 +5,10 @@ use super::cartoes::Galeria;
 use bumpalo::Bump;
 use ph2d_editor_core::interaction::dispatch_text_input;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_host::PointerKind;
 use ph2d_panel_widget_gallery::cards_reais_mundo::estado_do_alvo;
+use ph2d_panel_widget_gallery::cards_rive;
+use ph2d_panel_widget_gallery::controlos::{controls, lit};
 use ph2d_panel_widget_gallery::ids as g;
 use ph2d_panel_widget_gallery::state::{Flag, Pick};
 
@@ -190,4 +193,111 @@ fn sem_overheal_o_start_nao_passa_do_max() {
     gal.host.store_mut().set_number_value(g::HP_MAX, 40.0);
     gal.repinta();
     assert_eq!(gal.valor(g::HP_START), 40.0, "o Start passou do Max");
+}
+
+/// Rive: o Trigger dispara e pisca; «+» traz o tipo pedido. *Mutação: `Act::Fire` só consumido.*
+#[test]
+fn o_trigger_dispara_e_pisca() {
+    let mut gal = Galeria::aberta();
+    let t = g::INPUTS[2];
+    assert_eq!(gal.st.fires[2], 0, "fixtura: nunca disparou");
+    gal.clica(t.fire);
+    assert_eq!(gal.st.fires[2], 1, "o Fire não disparou");
+    // A pintura assentar leva mais que o piscar: o relógio do teste é o carimbo, nunca a parede.
+    assert!(gal.st.fired_at[2].is_some(), "o Fire não carimbou a hora");
+    assert!(gal.st.fired_at[1].is_none(), "carimbou a entrada alheia");
+    gal.st.fired_at[2] = Some(std::time::Instant::now());
+    assert!(cards_rive::a_piscar(&gal.st, 2), "o Fire não acende");
+    gal.st.fired_at[2] = std::time::Instant::now().checked_sub(std::time::Duration::from_secs(5));
+    assert!(!cards_rive::a_piscar(&gal.st, 2), "o Fire não apaga");
+    gal.clica(t.remove);
+    assert!(gal.rect(t.fire).is_none(), "o «−» não tirou a entrada");
+    gal.clica(g::SM_ADD);
+    gal.clica(g::SM_ADD_BOOLEAN);
+    assert!(gal.rect(t.check).is_some(), "o «+» não trouxe o Boolean");
+    gal.clica(t.check);
+    assert!(gal.st.choices.on(Flag::InputBool2), "a caixa não marcou");
+}
+
+/// Rive: no Solo só um filho vive; clicar outro apaga o primeiro. *Mutação: `Kind::Pick` só consumido.*
+#[test]
+fn o_solo_e_exclusivo() {
+    let mut gal = Galeria::aberta();
+    assert_eq!(gal.st.choices.pick(Pick::Solo), 0, "fixtura: o primeiro");
+    gal.clica(g::SOLO[2]);
+    assert_eq!(
+        gal.st.choices.pick(Pick::Solo),
+        2,
+        "o clique não mudou o ativo"
+    );
+    let vivos = g::SOLO
+        .iter()
+        .filter(|id| {
+            let c = controls().find(|c| c.id == **id).expect("na tabela");
+            lit(c, &gal.st.choices, gal.host.store())
+        })
+        .count();
+    assert_eq!(vivos, 1, "o Solo não é exclusivo");
+}
+
+/// Rive: o campo do Cubic muda o que a pré-visualização pinta; a pega também. *Mutação: o quadro a
+/// publicar os valores de fábrica; `sync_pegas` desligado.*
+#[test]
+fn o_campo_e_a_pega_do_cubic_mudam_a_curva_pintada() {
+    let mut gal = Galeria::aberta();
+    let (tipo, antes, _) = cards_rive::curva_publicada().expect("o quadro não publicou");
+    assert_eq!(tipo, 1, "fixtura: Cubic");
+    gal.arrasta_o_icone(g::CU_X1, 40.0);
+    let (_, depois, _) = cards_rive::curva_publicada().expect("o quadro não publicou");
+    assert_ne!(antes[0], depois[0], "o X1 não mudou a curva pintada");
+    assert_eq!(
+        depois[0] as f64,
+        gal.valor(g::CU_X1) as f32 as f64,
+        "a curva não é o campo"
+    );
+    let pega = gal.rect(g::CU_H2).expect("a pega não foi pintada");
+    let (x, y) = (pega.x + pega.w * 0.5, pega.y + pega.h * 0.5);
+    gal.ponteiro(PointerKind::Down, x, y);
+    gal.ponteiro(PointerKind::Move, x - 30.0, y + 12.0);
+    gal.ponteiro(PointerKind::Up, x - 30.0, y + 12.0);
+    gal.repinta();
+    let (_, arrastada, _) = cards_rive::curva_publicada().expect("o quadro não publicou");
+    assert!(arrastada[2] < depois[2], "a pega não moveu o X2");
+    assert!(arrastada[3] < depois[3], "a pega não moveu o Y2");
+    gal.clica(g::IN_HOLD);
+    assert!(
+        gal.rect(g::CU_X1).is_none(),
+        "o Hold manteve os campos do Cubic"
+    );
+    assert_eq!(
+        cards_rive::curva_publicada().expect("publica").0,
+        2,
+        "o tipo não mudou"
+    );
+}
+
+/// Rive: o gradiente: a pega escolhe a paragem, o «+» acrescenta, com duas o «−» some.
+#[test]
+fn a_paragem_do_gradiente_escolhe_e_o_mais_acrescenta() {
+    let mut gal = Galeria::aberta();
+    let (a, b, c) = (g::STOPS[0], g::STOPS[1], g::STOPS[2]);
+    assert!(
+        gal.rect(a.position).is_some(),
+        "fixtura: a primeira escolhida"
+    );
+    gal.clica(b.handle);
+    assert!(
+        gal.rect(b.position).is_some(),
+        "a pega não escolheu a paragem"
+    );
+    assert!(gal.rect(a.position).is_none(), "a escolha não é exclusiva");
+    assert!(gal.rect(b.remove).is_none(), "com duas paragens não há «−»");
+    gal.clica(g::GR_ADD);
+    assert!(
+        gal.rect(c.handle).is_some(),
+        "o «+» não acrescentou a paragem"
+    );
+    assert!(gal.rect(b.remove).is_some(), "com três falta o «−»");
+    gal.clica(g::GR_SOLID);
+    assert!(gal.rect(a.handle).is_none(), "Solid manteve a barra");
 }

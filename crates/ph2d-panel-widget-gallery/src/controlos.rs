@@ -40,6 +40,8 @@ pub enum Act {
     /// e escreve o nome no campo de texto.
     PickTarget(Flag, NodeId),
     PixelSwap,
+    /// Dispara a entrada Trigger `usize`.
+    Fire(usize),
 }
 
 /// O que um controlo É.
@@ -97,6 +99,9 @@ pub const SWATCHES: [(NodeId, NodeId, ColorToken); crate::state::N_SWATCHES] = [
     (g::CARD_EFFECTS, g::EFFECTS[1].swatch, ColorToken::Text3),
     (g::CARD_EFFECTS, g::EFFECTS[2].swatch, ColorToken::Text3),
     (g::CARD_LIGHT, g::LT_SWATCH, ColorToken::Info),
+    (g::CARD_GRADIENT, g::STOPS[0].swatch, ColorToken::Accent),
+    (g::CARD_GRADIENT, g::STOPS[1].swatch, ColorToken::Danger),
+    (g::CARD_GRADIENT, g::STOPS[2].swatch, ColorToken::Success),
 ];
 
 /// A paleta indexada do cartão Pixel Art, em tokens (nunca hex).
@@ -198,6 +203,8 @@ pub(super) const fn plain(id: NodeId, kind: Kind) -> Control {
 mod forma;
 #[path = "controlos_reais.rs"]
 mod reais;
+#[path = "controlos_rive.rs"]
+pub(crate) mod rive;
 #[path = "controlos_tinta.rs"]
 mod tinta;
 
@@ -208,6 +215,8 @@ pub fn controls() -> impl Iterator<Item = &'static Control> {
         .chain(tinta::TINTA)
         .chain(reais::REAIS)
         .chain(reais::linhas())
+        .chain(rive::RIVE)
+        .chain(rive::linhas())
 }
 
 /// A linha de `id`, se é um controlo da galeria.
@@ -332,6 +341,31 @@ pub(crate) fn marca(c: &mut CardCtx<'_>, id: NodeId, key: &'static str, on: bool
         corpo::Marca {
             id,
             label: Rotulo::from(TextKey::new(key)),
+            on,
+        },
+    )
+}
+
+/// Uma caixa de marcar de estado da VISTA: a coluna da marca fica vazia (um ponto diria «isto anima»).
+pub(crate) fn marca_vista(
+    c: &mut CardCtx<'_>,
+    id: NodeId,
+    key: &'static str,
+    on: bool,
+    y: f32,
+) -> f32 {
+    corpo::check(
+        c.scene,
+        c.text_system,
+        c.store,
+        c.hit_index,
+        c.ink,
+        c.x,
+        c.w,
+        y,
+        corpo::Marca {
+            id,
+            label: Rotulo::vista(TextKey::new(key)),
             on,
         },
     )

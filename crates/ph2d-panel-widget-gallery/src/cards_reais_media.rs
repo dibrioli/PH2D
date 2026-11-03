@@ -185,28 +185,33 @@ pub(crate) fn pixel(ch: Choices) -> CardDef<'static> {
             let hex = |v: [u8; 4]| format!("{:02X}{:02X}{:02X}", v[0], v[1], v[2]);
             let (t_fg, t_bg) = (hex(fg), hex(bg));
             let troca = segs([g::PX_SWAP], &ch, c.store);
-            let y = c.row(
-                &[
-                    Cell::new(Widget::Swatch {
-                        id: g::PX_FG,
-                        rgba: Some(fg),
-                        text: &t_fg,
-                        edit: None,
-                        detach: None,
-                    })
-                    .label(tr("panel.widget_gallery.real.foreground")),
-                    Cell::new(Widget::Swatch {
-                        id: g::PX_BG,
-                        rgba: Some(bg),
-                        text: &t_bg,
-                        edit: None,
-                        detach: None,
-                    })
-                    .label(tr("panel.widget_gallery.real.background")),
-                    Cell::new(Widget::Bare(&troca)),
-                ],
-                y,
-            );
+            let frente = Cell::new(Widget::Swatch {
+                id: g::PX_FG,
+                rgba: Some(fg),
+                text: &t_fg,
+                edit: None,
+                detach: None,
+            })
+            .label(tr("panel.widget_gallery.real.foreground"));
+            let fundo = Cell::new(Widget::Swatch {
+                id: g::PX_BG,
+                rgba: Some(bg),
+                text: &t_bg,
+                edit: None,
+                detach: None,
+            })
+            .label(tr("panel.widget_gallery.real.background"));
+            let bare = Cell::new(Widget::Bare(&troca));
+            let y = if c.w
+                >= caixa_para(c, &t_fg).max(caixa_para(c, &t_bg)) * 2.0
+                    + m::FIELD_H
+                    + m::FIELD_GAP * 2.0
+            {
+                c.row(&[frente, fundo, bare], y)
+            } else {
+                let y = c.row(&[frente, bare], y);
+                c.row(&[fundo], y)
+            };
             // A caixa do alvo leva o contorno: é para ela que a próxima cor da paleta vai.
             let alvo = if ch.pick(Pick::PixelTarget) == 0 {
                 g::PX_FG
@@ -283,15 +288,16 @@ pub(crate) fn script(ch: Choices) -> CardDef<'static> {
         Box::new(move |c: &mut CardCtx<'_>, y| {
             let scripts = segs([g::SC_FILE_0, g::SC_FILE_1, g::SC_FILE_2], &ch, c.store);
             let y = c.row(
-                &[
-                    Cell::new(dropdown(g::SC_FILE, &scripts))
-                        .label(tr("panel.inspector.script.script")),
-                    Cell::new(Widget::Button {
-                        id: g::SC_EDIT,
-                        text: tr("panel.inspector.script.edit"),
-                        primary: ch.on(Flag::ScriptEdit),
-                    }),
-                ],
+                &[Cell::new(dropdown(g::SC_FILE, &scripts))
+                    .label(tr("panel.inspector.script.script"))],
+                y,
+            );
+            let y = c.row(
+                &[Cell::new(Widget::Button {
+                    id: g::SC_EDIT,
+                    text: tr("panel.inspector.script.edit"),
+                    primary: ch.on(Flag::ScriptEdit),
+                })],
                 y,
             );
             match ch.pick(Pick::ScriptFile) {

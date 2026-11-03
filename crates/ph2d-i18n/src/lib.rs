@@ -94,6 +94,7 @@ mod familias;
 mod flip;
 mod galeria;
 mod galeria_reais;
+mod galeria_rive;
 /// As strings do painel Grid Settings.
 mod grid_snap;
 mod hier_rows;
@@ -565,6 +566,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| cartoes::tr(k))
             .or_else(|| galeria::tr(k))
             .or_else(|| galeria_reais::tr(k))
+            .or_else(|| galeria_rive::tr(k))
             .or_else(|| timeline::tr(k))
             .or_else(|| canais::tr(k))
             .or_else(|| tags::tr(k))

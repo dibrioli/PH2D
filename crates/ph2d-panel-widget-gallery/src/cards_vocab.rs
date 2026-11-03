@@ -9,7 +9,7 @@ use crate::ids as g;
 use crate::state::{Choices, Flag, WidgetGalleryState};
 use crate::{
     cards_layout, cards_objeto, cards_pintura, cards_reais_anim, cards_reais_media,
-    cards_reais_mundo, cards_texto, cards_transform,
+    cards_reais_mundo, cards_rive, cards_texto, cards_transform,
 };
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -211,5 +211,11 @@ pub(crate) fn vocabulary(st: &WidgetGalleryState, store: &WidgetStore) -> Vec<Ca
         cards_reais_media::audio(ch, store),
         cards_reais_media::pixel(ch),
         cards_reais_media::script(ch),
+        // As amostras do Rive (doc 08 §1.4).
+        cards_rive::interpolation(ch),
+        cards_rive::inputs(st, store),
+        cards_rive::trim(ch),
+        cards_rive::solo(ch),
+        cards_rive::gradient(ch, store),
     ]
 }

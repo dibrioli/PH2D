@@ -210,6 +210,10 @@ fn act(state: &mut WidgetGalleryState, host: &mut dyn PanelHostInternal, a: Act)
                 );
             }
         }
+        Act::Fire(i) => {
+            state.fires[i] += 1;
+            state.fired_at[i] = Some(std::time::Instant::now());
+        }
         Act::PixelSwap => {
             let (fg, bg) = (
                 state.choices.pick(Pick::PixelFg),

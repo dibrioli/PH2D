@@ -131,6 +131,11 @@ const MENUS: &[(NodeId, NodeId, &[NodeId])] = &[
         g::CARD_AUDIO,
         &[g::AU_ADD_0, g::AU_ADD_1, g::AU_ADD_2, g::AU_ADD_3],
     ),
+    (
+        g::SM_ADD,
+        g::CARD_INPUTS,
+        &[g::SM_ADD_NUMBER, g::SM_ADD_BOOLEAN, g::SM_ADD_TRIGGER],
+    ),
 ];
 
 /// A lista do «+» aberto, com a largura da coluna do cartão, por baixo do ícone.

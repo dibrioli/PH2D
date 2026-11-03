@@ -312,10 +312,13 @@ pub type Campo = (NodeId, f64, f64, f64);
 
 #[path = "ids_reais.rs"]
 mod reais;
+#[path = "ids_rive.rs"]
+mod rive;
 pub use reais::*;
+pub use rive::*;
 
 /// Junta as tabelas de campos num array só (o tamanho conta-se, nunca se escolhe).
-const fn junta<const N: usize>(partes: [&[Campo]; 2]) -> [Campo; N] {
+const fn junta<const N: usize>(partes: [&[Campo]; 3]) -> [Campo; N] {
     let mut out = [partes[0][0]; N];
     let (mut p, mut n) = (0, 0);
     while p < partes.len() {
@@ -333,7 +336,8 @@ const fn junta<const N: usize>(partes: [&[Campo]; 2]) -> [Campo; N] {
 
 /// A tabela que o `populate` regista, o `prepare` marca e o ↺ repõe. Os números são dados do objeto
 /// fictício.
-pub const FIELDS: [Campo; BASE.len() + CAMPOS.len()] = junta([&BASE, &CAMPOS]);
+pub const FIELDS: [Campo; BASE.len() + CAMPOS.len() + CAMPOS_RIVE.len()] =
+    junta([&BASE, &CAMPOS, &CAMPOS_RIVE]);
 
 const BASE: [Campo; 46] = [
     (POS_X, 120.0, 1.0, 1.0), // LITERAL-PX-OK: dado do objeto fictício

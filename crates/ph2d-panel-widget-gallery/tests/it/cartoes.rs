@@ -355,6 +355,7 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
             Kind::Set(f, v) => st.choices.set(f, !v),
             Kind::Remove(f, _) => st.choices.set(f, true),
             Kind::Palette(i) => st.choices.choose(Pick::PixelFg, i.wrapping_add(1)),
+            Kind::Add(rows) | Kind::AddOf(rows, ..) => st.choices.set(rows[2], false),
             _ => {}
         }
         gal.host.store_mut().set_number_value(g::POS_X, 123.0);
@@ -373,6 +374,7 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
         let mudou = st.choices != ch
             || st.applied != applied
             || st.exported != exp
+            || st.fires != [0; 3]
             || numeros(&gal.host) != antes
             || gal.host.store().picker_target().is_some();
         if !mudou {

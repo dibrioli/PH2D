@@ -66,8 +66,18 @@ pub enum Flag {
     PixelGrid,
     ScriptEdit,
     ScriptDouble,
+    // As amostras do Rive.
+    Input0,
+    Input1,
+    Input2,
+    InputBool0,
+    InputBool1,
+    InputBool2,
+    Stop0,
+    Stop1,
+    Stop2,
 }
-const N_FLAGS: usize = Flag::ScriptDouble as usize + 1;
+const N_FLAGS: usize = Flag::Stop2 as usize + 1;
 
 /// Os que nascem ligados.
 const FLAGS_ON: &[Flag] = &[
@@ -97,6 +107,11 @@ const FLAGS_ON: &[Flag] = &[
     Flag::RackEye1,
     Flag::RackEye2,
     Flag::PixelGrid,
+    Flag::Input0,
+    Flag::Input1,
+    Flag::Input2,
+    Flag::Stop0,
+    Flag::Stop1,
 ];
 
 /// As linhas de cada lista («+» liga a primeira livre, «−» desliga a dela).
@@ -160,8 +175,17 @@ pub enum Pick {
     PixelFg,
     PixelBg,
     ScriptFile,
+    // As amostras do Rive.
+    Interp,
+    Input0,
+    Input1,
+    Input2,
+    TrimMode,
+    Solo,
+    FillType,
+    GradStop,
 }
-const N_PICKS: usize = Pick::ScriptFile as usize + 1;
+const N_PICKS: usize = Pick::GradStop as usize + 1;
 
 /// O valor de [`Pick::Boolean`] depois de achatar: nenhum modo aceso.
 pub const BOOLEAN_NONE: u8 = u8::MAX;
@@ -170,7 +194,7 @@ pub const BOOLEAN_NONE: u8 = u8::MAX;
 pub const SIDE_NONE: u8 = u8::MAX;
 
 /// Quantas amostras de cor o objeto fictício tem (`controlos::SWATCHES`).
-pub const N_SWATCHES: usize = 10;
+pub const N_SWATCHES: usize = 13;
 
 /// As escolhas vivas dos cartões. `Default` = os valores de fábrica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -201,6 +225,10 @@ impl Default for Choices {
         c.choose(Pick::RuleWhen1, 1);
         c.choose(Pick::RulePlay1, 1);
         c.choose(Pick::PixelBg, 15);
+        c.choose(Pick::Interp, 1);
+        c.choose(Pick::Input1, 1);
+        c.choose(Pick::Input2, 2);
+        c.choose(Pick::FillType, 1);
         c
     }
 }
@@ -258,4 +286,9 @@ pub struct WidgetGalleryState {
     /// A lista de estilos estava aberta no quadro anterior: os pedidos dela são desta galeria.
     pub styles_open: bool,
     pub styles_seeded: bool,
+    /// As vezes que cada entrada Trigger disparou, e quando (o botão pisca).
+    pub fires: [u32; 3],
+    pub fired_at: [Option<std::time::Instant>; 3],
+    /// O deslocamento já visto de cada pega da curva (`cards_rive::sync_pegas`).
+    pub pegas: [(f32, f32); 2],
 }

@@ -2,9 +2,10 @@
 //! UM cartão Animation com regras «quando → animação» (25/10); Paint type Water·Oil, um só Dilution, o
 //! Volume independente e o Paper press no painel do pincel (28/10, 31/10, 01/11).
 
-use crate::controlos::{card, dica, dropdown, head, marca, num, segs};
+use crate::controlos::{caixa_para, card, dica, dropdown, head, marca, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RULES};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
@@ -22,7 +23,16 @@ fn rule_row(c: &mut CardCtx<'_>, ch: &Choices, i: usize, rot: bool, y: f32) -> f
         a = a.label(tr("panel.widget_gallery.real.when"));
         b = b.label(tr("panel.widget_gallery.real.play"));
     }
-    c.row(&[a, b, Cell::new(Widget::Bare(&menos))], y)
+    // A coluna estreita não leva «Standing still» ao lado de outra lista: parte-se, nada se corta.
+    let larga = quando
+        .iter()
+        .chain(&toca)
+        .fold(0.0_f32, |w, s| w.max(caixa_para(c, s.text)));
+    if c.w >= larga * 2.0 + m::FIELD_H + m::FIELD_GAP * 2.0 {
+        return c.row(&[a, b, Cell::new(Widget::Bare(&menos))], y);
+    }
+    let y = c.row(&[a, Cell::new(Widget::Bare(&menos))], y);
+    c.row(&[b], y)
 }
 
 pub(crate) fn animation(ch: Choices, store: &WidgetStore) -> CardDef<'static> {

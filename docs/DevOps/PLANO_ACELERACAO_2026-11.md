@@ -17,8 +17,8 @@ Só **depois da medição** cada item muda a DIRETRIZ e os comandos `/pd-*`; at�
 
 | # | Recomendação | Passos do anexo | Estado |
 |---|---|---|---|
-| 1 | ~5 medições + reta por pincel, provado contra as tabelas existentes | P1, P3 | ADOTADO — a confirmar por medição (A×B do anexo) |
-| 2 | Teste rápido de largura (3–4 tamanhos) no lugar do lento; relatório só do que mudou | P2, P4, P5, P6 | ADOTADO — a confirmar por medição (A×B do anexo) |
+| 1 | ~5 medições + reta por pincel, provado contra as tabelas existentes | P1, P3 | MEDIDO 03/11 — [medição](MEDICAO_P1_P4_LARGURA_2026-11-03.md); reta+5 pontos passa em 34/55, só; ferramentas e aguadas precisam de mais pontos |
+| 2 | Teste rápido de largura (3–4 tamanhos) no lugar do lento; relatório só do que mudou | P2, P4, P5, P6 | MEDIDO 03/11 — [medição](MEDICAO_P1_P4_LARGURA_2026-11-03.md) |
 | 3 | Integrar uma linha por vez, assim que verde | I1 | ADOTADO — a confirmar por medição (A×B do anexo) |
 | 4 | Nível lento à noite sobre o `main` | I2, I4 | ADOTADO — a confirmar por medição (A×B do anexo) |
 | 5 | Amostra do nível lento no fecho da linha | I3 | ADOTADO — a confirmar por medição (A×B do anexo) |

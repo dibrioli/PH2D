@@ -243,16 +243,21 @@ fn color(ch: Choices) -> CardDef<'static> {
                 icon(g::FILL_EYE, IconId::Eye, ch.fill_visible),
                 icon(g::FILL_REMOVE, IconId::Minus, false),
             ];
+            // A amostra numa linha inteira (o código não se come na coluna estreita), a
+            // opacidade e os ícones na seguinte.
+            let y = c.full(
+                Some(tr("panel.widget_gallery.fill")),
+                Widget::Swatch {
+                    id: g::FILL_SWATCH,
+                    rgba: Some(rgba),
+                    text: &code,
+                    edit: None,
+                    detach: None,
+                },
+                y,
+            );
             c.row(
                 &[
-                    Cell::new(Widget::Swatch {
-                        id: g::FILL_SWATCH,
-                        rgba: Some(rgba),
-                        text: &code,
-                        edit: None,
-                        detach: None,
-                    })
-                    .label(tr("panel.widget_gallery.fill")),
                     Cell::new(field(g::OPACITY, Glyph::Icon(IconId::CardOpacity)))
                         .label(tr("panel.widget_gallery.opacity")),
                     Cell::new(Widget::Bare(&olhos)),
@@ -276,7 +281,7 @@ fn actions() -> CardDef<'static> {
         add: None,
         summary: None,
         body: Some(Box::new(|c: &mut CardCtx<'_>, y| {
-            c.row(
+            let y = c.row(
                 &[
                     Cell::new(Widget::Button {
                         id: g::PRIMARY,
@@ -288,10 +293,10 @@ fn actions() -> CardDef<'static> {
                         text: tr("panel.widget_gallery.secondary"),
                         primary: false,
                     }),
-                    Cell::new(Widget::Badge(IconId::Grid)),
                 ],
                 y,
-            )
+            );
+            c.full(None, Widget::Badge(IconId::Grid), y)
         })),
     }
 }

@@ -36,8 +36,9 @@ pub struct Request {
 pub struct TextAdd {
     /// O pedido em curso.
     pub request: Option<Request>,
-    /// A sessão abriu com a palavra de partida: a 1.ª tecla troca-a inteira.
-    fresh: bool,
+    /// A ORIGEM da sessão que abriu com a palavra de partida: a 1.ª tecla DELA troca-a inteira. A
+    /// origem identifica a sessão — outra (um duplo-clique noutro texto) não herda a troca.
+    fresh: Option<[f64; 2]>,
 }
 
 impl TextAdd {
@@ -76,60 +77,64 @@ impl TextAdd {
         let in_hand = tools
             .active()
             .is_some_and(|t| t.id() == ToolId::new("vector"));
-        if armed || !in_hand {
+        if armed {
+            return None;
+        }
+        if !in_hand {
+            // O pedido foi consumido e a ferramenta não veio (ou já saiu): o Add morreu.
+            self.request = None;
             return None;
         }
         req.started = true;
         Some(req.origin)
     }
 
-    /// ⭐ **A entidade nasceu: pendura-se no HUD sem se mover.** `editing` é o path da sessão viva;
-    /// sem sessão o pedido morre (o artista saiu antes de o texto ganhar entidade).
+    /// ⭐ **Enquanto a sessão que o Add abriu viver, a entidade dela é filha do HUD, sem se mover.**
+    /// `session` = a origem da sessão viva e o path dela (`None` sem geometria). ⚠️ O pedido vive
+    /// até a sessão acabar, e não até a 1.ª entidade: um Backspace inicial esvazia o texto, a
+    /// entidade morre, e a letra seguinte nasce outra — que também tem de ir para o HUD. Outra
+    /// sessão (outra origem) mata o pedido.
     pub fn upkeep(
         &mut self,
         sim: &mut SimWorld,
         map: &VecEntityMap,
-        editing: Option<VecPathId>,
-        session_alive: bool,
+        session: Option<([f64; 2], Option<VecPathId>)>,
     ) {
         let Some(req) = self.request.filter(|r| r.started) else {
             return;
         };
-        if !session_alive {
+        let Some((_, editing)) = session.filter(|(o, _)| *o == req.origin) else {
             self.request = None;
             return;
-        }
-        let Some(&bits) = editing.and_then(|id| map.get(&id)) else {
+        };
+        let (Some(p), Some(&bits)) = (req.parent, editing.and_then(|id| map.get(&id))) else {
             return;
         };
-        if let Some(p) = req.parent {
-            ph2d_vec_entities::transform::reparent_keeping_world(
-                sim,
-                Entity::from_bits(bits),
-                Entity::from_bits(p),
-            );
+        let (kid, hud) = (Entity::from_bits(bits), Entity::from_bits(p));
+        if sim.world().get::<ChildOf>(kid).map(ChildOf::parent) != Some(hud) {
+            ph2d_vec_entities::transform::reparent_keeping_world(sim, kid, hud);
         }
-        self.request = None;
     }
 
     /// A sessão abriu (DEPOIS de fechar a anterior, que esquece a troca): o texto dela passa a ser a
     /// palavra de partida.
-    pub fn opened(&mut self, text: &mut String) {
+    pub fn opened(&mut self, origin: [f64; 2], text: &mut String) {
         *text = ph2d_i18n::tr("object_add.vector.text.placeholder").to_string();
-        self.fresh = true;
+        self.fresh = Some(origin);
     }
 
-    /// ⭐ **A 1.ª tecla troca a palavra inteira** — chamado ANTES de cada tecla (escrever ou apagar):
-    /// a 1.ª depois de abrir esvazia o texto.
-    pub fn before_key(&mut self, text: &mut String) {
-        if std::mem::take(&mut self.fresh) {
+    /// ⭐ **A 1.ª tecla troca a palavra inteira** — chamado ANTES de cada tecla (escrever ou apagar)
+    /// com a origem da sessão que a recebe: a 1.ª da sessão aberta pelo Add esvazia o texto; a de
+    /// outra sessão só esquece a troca.
+    pub fn before_key(&mut self, origin: [f64; 2], text: &mut String) {
+        if self.fresh.take() == Some(origin) {
             text.clear();
         }
     }
 
     /// A sessão fechou (ou o undo a levou): esquece a troca.
     pub fn session_closed(&mut self) {
-        self.fresh = false;
+        self.fresh = None;
     }
 }
 

@@ -18,13 +18,13 @@
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
-/// ⚠️ **Os degraus de v2 a v167 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
+/// ⚠️ **Os degraus de v2 a v168 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), [`super::project_schema_history_v83`]
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
-/// [`super::project_schema_history_v160`] (`v160`..`v167`). O corte é por IDADE e o tecto de 600
+/// [`super::project_schema_history_v160`] (`v160`..`v168`). O corte é por IDADE e o tecto de 600
 /// LOC do HR-18 é quem o pede — sete vezes até hoje, e a de 2026-09-17 foi a primeira em que o
 /// gatilho não foi uma linha mas a ACUMULAÇÃO de uma rodada: seis linhas puseram dezasseis degraus,
 /// e nenhuma estoura o tecto sozinha.
@@ -33,22 +33,6 @@
 /// `main` de que a rodada VIVA nasceu (`git merge-base`), porque abaixo dele estão rodadas
 /// FECHADAS e acima está o que alguém a contar o próximo degrau precisa de ver.
 /// O que se lê para contar o próximo degrau é a ponta, e a ponta é o que ficou aqui.
-///
-/// # ⭐ 167 → 168 (2026-09-22) — o DOLLY (plano 24, W5 · §2)
-///
-/// `GameCamera::dolly` — a câmera anda em **PROFUNDIDADE**, e o primeiro plano cresce mais que o
-/// fundo. ⭐ **Nenhum motor 2D tem isto**: é a câmera multiplano que a Disney construiu em 1937, e
-/// ela cai de graça porque o `k` da W1 **já é** `z₀/z`.
-///
-/// ⚠️ **ZERO componentes registados novos** ⇒ os três contadores do registo **não se mexem**: é um
-/// CAMPO no `GameCamera`, e o postcard é posicional — o degrau existe porque sem ele um ficheiro do
-/// v167 seria lido errado **em silêncio**.
-///
-/// ⭐⭐ **E o bloqueador §6.1 do plano fechou por medição, não por decisão:** ele exigia medir `z₀`
-/// antes de a wave abrir, e a lei depende só de `k` e de `d/z₀` ⇒ o dolly é uma **fracção** e o
-/// `z₀` **desaparece**. *Um parâmetro adimensional não tem um default para escolher.*
-///
-/// ⛔ **Sem degrau de migração**, pela mesma decisão — um v167 é recusado em voz alta.
 ///
 /// # ⭐ 168 → 169 (2026-09-23) — a VIDA e o DANO (plano 28, W3)
 ///

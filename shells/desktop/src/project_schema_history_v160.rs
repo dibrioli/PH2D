@@ -1,4 +1,4 @@
-//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v167** — a SÉTIMA faixa arquivada.
+//! **A ESCADA do `PROJECT_SCHEMA`, de v160 a v168** — a SÉTIMA faixa arquivada.
 //!
 //! ⚠️ **O gatilho é o de sempre: a ACUMULAÇÃO de uma rodada.** Na integração de 2026-10-29
 //! (`line/UIUX` sobre o `main` com a `GameEngineFuncional` e a `BlenderConstraints`) a escada viva
@@ -20,6 +20,10 @@
 //!
 //! ⚠️ **E mais um (`166 → 167`) em 2026-11-02** (`line/UIUX`, F47): o degrau `213 → 214` levou a escada
 //! viva a `607` / `600`; o excesso era `7` e o degrau mais velho da ponta mede `14`.
+//!
+//! ⚠️ **E mais um (`167 → 168`) na integração `2026-11-02c`** (`line/UIUX` 214 + `line/GameEngineFuncional`
+//! 215 na mesma rodada): a escada viva foi a `606` / `600`; o excesso era `6` e o degrau mais velho da ponta
+//! mede `16`. ⛔ Nunca subir o número.
 
 //! # `160 → 161` — o CONTADOR que ATRAVESSA um recomeco (*«outra vida, mesma pontuacao»*)
 //!
@@ -148,4 +152,20 @@
 //! como se fosse um arrasto do artista.
 //!
 //! ⛔ **Sem degrau de migração**, pela mesma decisão — um v166 é recusado em voz alta.
+//!
+//! # ⭐ 167 → 168 (2026-09-22) — o DOLLY (plano 24, W5 · §2)
+//!
+//! `GameCamera::dolly` — a câmera anda em **PROFUNDIDADE**, e o primeiro plano cresce mais que o
+//! fundo. ⭐ **Nenhum motor 2D tem isto**: é a câmera multiplano que a Disney construiu em 1937, e
+//! ela cai de graça porque o `k` da W1 **já é** `z₀/z`.
+//!
+//! ⚠️ **ZERO componentes registados novos** ⇒ os três contadores do registo **não se mexem**: é um
+//! CAMPO no `GameCamera`, e o postcard é posicional — o degrau existe porque sem ele um ficheiro do
+//! v167 seria lido errado **em silêncio**.
+//!
+//! ⭐⭐ **E o bloqueador §6.1 do plano fechou por medição, não por decisão:** ele exigia medir `z₀`
+//! antes de a wave abrir, e a lei depende só de `k` e de `d/z₀` ⇒ o dolly é uma **fracção** e o
+//! `z₀` **desaparece**. *Um parâmetro adimensional não tem um default para escolher.*
+//!
+//! ⛔ **Sem degrau de migração**, pela mesma decisão — um v167 é recusado em voz alta.
 //!

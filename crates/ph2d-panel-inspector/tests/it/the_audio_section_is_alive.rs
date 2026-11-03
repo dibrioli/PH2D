@@ -260,7 +260,6 @@ fn the_bus_picker_opens_and_picks() {
 #[test]
 fn a_sound_changed_outside_the_panel_shows_without_reselecting() {
     use ph2d_editor_core::interaction::InteractiveState;
-    use ph2d_editor_core::panel::PanelHostInternal as _;
     let sound = ph2d_panel_inspector::ids::INSP_AUDIO_SOUND;
     let mut f = fonte();
     f.sound = String::new();

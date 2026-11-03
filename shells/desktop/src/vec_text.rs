@@ -58,7 +58,7 @@ impl crate::app_state::App {
         self.vec_text_finish();
         self.vec_text_start(origin);
         if let Some(edit) = self.vec.text_edit.as_mut() {
-            self.text_add.opened(&mut edit.text);
+            self.text_add.opened(edit.origin, &mut edit.text);
         }
         self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Text);
         self.vec_text_regen();
@@ -90,7 +90,7 @@ impl crate::app_state::App {
     /// Anexa um caractere ao texto em edição e regenera os glyphs. No-op sem edição.
     pub(crate) fn vec_text_append(&mut self, ch: char) {
         if let Some(edit) = self.vec.text_edit.as_mut() {
-            self.text_add.before_key(&mut edit.text);
+            self.text_add.before_key(edit.origin, &mut edit.text);
             edit.text.push(ch);
             self.vec_text_regen();
         }
@@ -99,7 +99,7 @@ impl crate::app_state::App {
     /// Apaga o último caractere (Backspace).
     pub(crate) fn vec_text_backspace(&mut self) {
         if let Some(edit) = self.vec.text_edit.as_mut() {
-            self.text_add.before_key(&mut edit.text);
+            self.text_add.before_key(edit.origin, &mut edit.text);
             edit.text.pop();
             self.vec_text_regen();
         }

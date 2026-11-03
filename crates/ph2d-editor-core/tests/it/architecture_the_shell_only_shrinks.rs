@@ -224,7 +224,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-registry-init", 799), // 699
     ("ph2d-app-skeleton", 11_263), // 11_043
     ("ph2d-app-sprite-anim", 8_352), // 8_189
-    ("ph2d-app-text", 388), // 288 (GEF 21: Add ▸ Text, crate nova porque a ph2d-app-vec está no tecto)
+    ("ph2d-app-text", 423), // 323 (GEF 21: Add ▸ Text, crate nova porque a ph2d-app-vec está no tecto)
     ("ph2d-app-vec", 93_637), // 91_801
 ];
 

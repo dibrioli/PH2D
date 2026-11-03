@@ -52,9 +52,8 @@ impl crate::App {
             text_id,
             self.vec.text_edit.is_some(),
         );
-        let alive = self.vec.text_edit.is_some();
-        self.text_add
-            .upkeep(sim, &self.vec.entities, text_id, alive);
+        let session = self.vec.text_edit.as_ref().map(|e| (e.origin, e.id));
+        self.text_add.upkeep(sim, &self.vec.entities, session);
         crate::label_live::upkeep(
             sim,
             vec_scene,

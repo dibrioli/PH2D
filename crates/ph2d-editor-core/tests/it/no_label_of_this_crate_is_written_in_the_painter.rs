@@ -63,6 +63,12 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// `ph2d_label_census::gate::excecoes_mortas`.
 const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
     (
+        "panel/cards_corpo.rs",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "a TABELA de onde `letra_da_grandeza` fatia a letra (um `&str` que vive sem alocar): nunca \
+         se pinta inteira, e a letra que sai é a inicial de um rótulo que já veio da tabela de strings",
+    ),
+    (
         "widget/sheet_cell.rs",
         "SheetImage",
         "o nome do TIPO no `impl Debug` à mão (o blob de 4,7 MB não se imprime) — `{:?}` de \

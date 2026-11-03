@@ -87,7 +87,14 @@ e dos portões tocados. O schema não mudou nesta linha (nada a recontar).
 
 ## 7 — Saída dos portões
 
-> (A preencher a partir do relatório do verificador.)
+Rodada de 03/11 sobre a árvore do fecho da galeria.
+
+- **Verdes:** `rustfmt --check` nos 191 `.rs` do diff; `check-standalone-optional`; `check-workflow-packages`; `ph2d-card-stack`, `ph2d-card-rope` e `ph2d-panel-widget-gallery` inteiros (48/48 na última corrida); `ph2d-panel-registry-init` `nenhum_rotulo` 14/14, `the_window_menu`, `every_docked_panel_paints_where_its_tab_says`; os portões por nome da `ph2d-editor-core` (LOC, DAG, ids, wiring, cores, px, a11y, z-walk, `the_shell_only_shrinks`); `ph2d-host-desktop` (roda e `every_panel_the_registry_ships_reaches_the_binary`); `ph2d-panel-painter-layers` `cada_nome_deste_painel_cabe_na_coluna_da_seccao`; `ph2d-panel-tokens` `dtcg`.
+- **Vermelhos que NÃO são desta linha (árvore combinada, a medir pelo integrador):** `clippy --workspace --all-targets -D warnings` para em `ph2d-panel-wet-tuning/tests/it/seam.rs:125`, `ph2d-paint-tinta/tests/it/meio.rs:30,88` e `ph2d-app-motion/src/motion_shape_placa_quadro.rs:307` (ficheiros com diff vazio contra o merge-base). `cargo machete` sai 1 em dependências que o diff não toca.
+- **Shell:** `188 892`, delta 0 contra o merge-base.
+- **Smoke:** `cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida: `Finished` em 0,36 s, zero `Compiling`.
+- **Impactados e suíte completa ficam para a integração.**
+- `agent-loop-profile`: paralelismo 1,09/passo (alvo ≥ 1,5) · respostas por sessão 154 · `test:check` 2,6x (alvo ≤ 1) · edições sem conferir 1,6 % · contexto relido 223 mil · contexto no início 61 mil.
 
 ## 8 — Smoke para o dono
 

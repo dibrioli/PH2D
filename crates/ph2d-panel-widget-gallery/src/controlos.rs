@@ -120,7 +120,7 @@ pub const PALETTE_TOKENS: [ColorToken; 16] = [
     ColorToken::DangerSoft,
     ColorToken::Bg3,
     ColorToken::Bg2,
-    ColorToken::Bg1,
+    ColorToken::Text3,
     ColorToken::Bg0,
 ];
 

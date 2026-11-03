@@ -132,19 +132,6 @@ priority = -100
 filter = 'test(n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto) + test(=a_lei_da_tinta::o_glaze_do_pincel_escurece_o_cruzamento) + test(=a_lei_da_tinta::sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes) + test(=a_lei_da_tinta::as_bordas_nao_esbranquicam_depois_de_varios_cruzamentos) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_no_digital) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_na_aquarela) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_no_impasto) + test(=censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_no_wet_paint) + test(=seam_estado_escondido::cada_interruptor_que_neutraliza_pinta_como_o_pincel_limpo) + test(=tool::paint::wetpaint_preset::preview::paridade_tests::o_preview_pinta_cada_capacidade_nova_como_a_tela) + test(=o_pigmento_por_comprimento::a_tinta_nao_muda_com_o_spacing) + test(=macro_estado_inicial::cada_controlo_mexido_a_gravar_reproduz_se) + test(=macro_estado_inicial::o_estado_inicial_leva_cada_controlo_de_cada_meio) + test(=macro_estado_inicial::o_estado_inicial_leva_as_ferramentas_do_trilho) + test(=tool::paint::tests::watercolor_secagem_por_poca::a_separacao_das_pocas_e_exacta_na_fronteira) + test(=o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_smear) + test(=o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blend) + test(=o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_water) + test(=o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_dry) + test(=o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blow)'
 slow-timeout = { period = "60s", terminate-after = 10 }
 
-# 29/10 (line/PainterWatercolor, J6 fecho B4): `a_largura_e_a_prometida` mede os 44 presets do Wet a 8 raios (até 300) e,
-# por preset, a prova da semente (a lei crua a raio 150 com 3 sementes) — já paralelo por dentro (núcleos ÷ 8 presets × 8
-# raios). Sozinho, perfil `smoke`, fatia de 16 núcleos: 579 s sem a prova · 795 s com ela (load ~14); na suíte do fecho
-# (load ~50) MORTO aos 180 s — o termo antigo `=presets_de_fabrica::a_largura_e_a_prometida` deixou de casar quando o
-# ficheiro se partiu (`portoes::`), e é por isso que `scripts/nextest-filtros-casam.py` existe. Corre SOZINHO (ocupa
-# todos os núcleos; partilhado ficava ~5×) e o prazo é 20 × 60 s = 1,5× o medido sozinho.
-# 03/11 (integ 02/11c): 55 presets (Water Brush a motor 1 141 no raio 300) passaram os 1 200 s; partido em 8 irmãos por
-# pasta (`a_largura_e_a_prometida_*`, o mesmo conjunto) com os raios numa fila só. Medição: cura-largura2 da rodada.
-[[profile.default.overrides]]
-filter = 'test(/presets_de_fabrica::portoes::a_largura_e_a_prometida_/)'
-threads-required = 'num-cpus'
-slow-timeout = { period = "60s", terminate-after = 20 }
-
 # 17/10 (Macros W7, a MESMA idade da água): cada medida do tutorial do Painter em Wet Paint são 960 quadros de
 # água (~7 ms cada a 512²), duas por pincelada, em `fios()` = núcleos/4 fios. Os gates que medem a água, sozinhos
 # (`-j 1`, load 42 → 19): `pular_…` 40,3 s · `uma_versao_nova_…` 40,0 s · `a_mao_torta_…` 33,9 s ·

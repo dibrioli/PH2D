@@ -10,11 +10,18 @@
 //!     gera_os_presets_de_fabrica -- --ignored --nocapture
 //! ```
 //!
-//! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses (pelo nome; os nomes da fábrica são únicos nos 4 meios).
+//! `PH2D_REGERA_SO="Ink Brush,Dip Pen"` regera só esses (pelo nome; os nomes da fábrica são únicos nos 4 meios). A
+//! tabela de largura só se mede com `PH2D_REGERA_TABELA=1` (ou num preset sem tabela) — por omissão, só a miniatura.
+//!
+//! ⭐ **O motor mudou e a receita não** (lei do dono 03/11): não se regera — os alarmes acusam ([`alarme`] a largura,
+//! `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`), o relatório `target/relatorio-pinceis/index.html` mostra ao
+//! dono, e aprovar (`PH2D_PINCEIS_APROVA=1`, segundos) regrava as referências.
 
+mod alarme;
 mod memoria;
 mod portoes;
 pub(crate) mod regua_da_largura;
+mod relatorio;
 mod sonda_miniatura_oleo;
 mod sondas;
 

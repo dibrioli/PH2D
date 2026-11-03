@@ -110,8 +110,12 @@ fn gera_os_presets_de_fabrica() {
             },
             texturas: Default::default(),
         };
-        // `PH2D_REGERA_SO_MINIATURA=1`: a tabela do ficheiro fica (só a miniatura, quando a lei da largura não mudou).
-        if std::env::var("PH2D_REGERA_SO_MINIATURA").as_deref() != Ok("1") {
+        // A tabela de largura (64 raios até 1 100: 20–60 min e 25–34 GiB por preset, 02/11c) só se MEDE quando se pede
+        // (`PH2D_REGERA_TABELA=1`) ou o preset ainda não tem uma (receita nova); por omissão a do ficheiro fica e só a
+        // miniatura se pinta (segundos). A lei do dono 03/11: a largura vigia-a o alarme (`alarme.rs`), o dono aprova.
+        let mede_tabela = std::env::var("PH2D_REGERA_TABELA").as_deref() == Ok("1")
+            || preset.parametros.width_table.is_empty();
+        if mede_tabela {
             preset.parametros.width_table = tabela_de_largura(&preset);
             envolvente_de_baixo(&mut preset.parametros.width_table);
             refina_a_promessa(&mut preset);
@@ -458,33 +462,59 @@ fn cada_preset_de_fabrica_volta_ao_byte() {
     }
 }
 
+/// O alarme da MINIATURA (ao byte): acusa quais pincéis o motor pinta diferente, escreve antes · depois · diferença no
+/// relatório do dono ([`super::relatorio`]) e, aprovado (`PH2D_PINCEIS_APROVA=1`), regrava SÓ a miniatura de cada um —
+/// a tabela e a receita ficam (segundos; regerar a fábrica pelo gerador é para receita nova). `PH2D_PINCEIS_REFERENCIA`
+/// = outra raiz de `assets/brushes` (a de um commit, `git archive`): o «antes» vem de lá — o relatório de uma rodada
+/// inteira; nunca aprova.
 #[test]
 fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
     let mut vistas = Vec::new();
     // Todas as que mudaram, não só a primeira: o desenho de uma mudança de lei é QUAIS mudaram.
     let mut mudaram = Vec::new();
+    let mut partes = Vec::new();
+    let referencia = std::env::var("PH2D_PINCEIS_REFERENCIA")
+        .ok()
+        .map(PathBuf::from);
+    let aprova = super::relatorio::aprova() && referencia.is_none();
     for (rel, b) in ficheiros_de_fabrica() {
-        let p = ler(&b).unwrap();
+        let mut p = ler(&b).unwrap();
         let hoje = miniatura_do_preset(&p);
+        let antes = referencia
+            .as_ref()
+            .and_then(|r| std::fs::read(r.join(&rel)).ok())
+            .map_or_else(|| p.miniatura.clone(), |b| ler(&b).unwrap().miniatura);
         let diferem = hoje
             .rgba
             .chunks(4)
-            .zip(p.miniatura.rgba.chunks(4))
+            .zip(antes.rgba.chunks(4))
             .filter(|(a, b)| a != b)
             .count();
-        if hoje != p.miniatura {
+        if hoje != antes {
             mudaram.push(format!(
                 "{rel}: {diferem} px mudaram (fnv {:#018x} → {:#018x})",
-                fnv1a(&p.miniatura.rgba),
+                fnv1a(&antes.rgba),
                 fnv1a(&hoje.rgba)
             ));
+            partes.push(parte_da_miniatura(
+                &p.parametros.name,
+                &antes,
+                &hoje,
+                diferem,
+            ));
+            if aprova {
+                p.miniatura = hoje.clone();
+                std::fs::write(raiz().join(&rel), escrever(&p).unwrap()).unwrap();
+            }
         }
         vistas.push((rel, hoje.rgba));
     }
+    let indice = super::relatorio::grava("1-miniatura", "Miniatura", &partes);
     assert!(
-        mudaram.is_empty(),
-        "o motor mudou de lei. Se foi de propósito, regere a fábrica (cabeçalho deste ficheiro) e diga-o no \
-         handoff:\n{}",
+        mudaram.is_empty() || aprova,
+        "o motor mudou de lei — o dono decide pelo relatório {} (aprovar: {}=1):\n{}",
+        indice.display(),
+        super::relatorio::APROVA,
         mudaram.join("\n")
     );
     // O leitor DECIDE: dois presets diferentes pintam miniaturas diferentes.
@@ -495,6 +525,36 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
                 "{ra} e {rb} pintam igual: um knob do preset não tem leitor"
             );
         }
+    }
+}
+
+/// A parte do relatório de um pincel cuja miniatura mudou: antes · depois · a diferença.
+fn parte_da_miniatura(
+    nome: &str,
+    antes: &ph2d_brush_presets::Miniatura,
+    depois: &ph2d_brush_presets::Miniatura,
+    diferem: usize,
+) -> super::relatorio::Parte {
+    use super::relatorio::{Figura, Parte, diferenca};
+    let figura = |rgba: Vec<u8>, legenda: &str| Figura {
+        rgba,
+        w: depois.largura,
+        h: depois.altura,
+        escala: 1,
+        legenda: legenda.to_owned(),
+    };
+    let mut figuras = vec![figura(depois.rgba.clone(), "depois (o motor de hoje)")];
+    if (antes.largura, antes.altura) == (depois.largura, depois.altura) {
+        figuras.insert(0, figura(antes.rgba.clone(), "antes (a aprovada)"));
+        figuras.push(figura(
+            diferenca(&antes.rgba, &depois.rgba),
+            "diferença (escuro = mudou)",
+        ));
+    }
+    Parte {
+        pincel: nome.to_owned(),
+        texto: format!("{diferem} píxeis mudaram."),
+        figuras,
     }
 }
 

@@ -130,3 +130,90 @@ fn target_all_previews_only_the_active_cel() {
     assert_eq!(shown, invertido(c), "o Preview mostra o cel activo");
     assert_eq!(*p.sprite(), antes, "nada gravado");
 }
+
+fn cel_igual(a: &Sprite, b: &Sprite, k: CelKey) -> bool {
+    (0..a.height() as i32)
+        .all(|y| (0..a.width() as i32).all(|x| a.value_at(k, x, y) == b.value_at(k, x, y)))
+}
+
+/// Invert + OK com o alvo escolhido; devolve o sprite de antes.
+fn inverte(p: &mut Palco, all: bool) -> Sprite {
+    let antes = p.sprite().clone();
+    p.pede(PixelRequest::Edit(E::Invert));
+    if all {
+        carrega(p, ids::PIXEL_FILTER_TARGET);
+    }
+    carrega(p, ids::PIXEL_EDIT_OK);
+    antes
+}
+
+/// Com o alvo «Selected» (a omissão) só o cel activo muda: os outros quadros e camadas ficam.
+#[test]
+fn target_selected_changes_only_the_active_cel() {
+    let mut p = multi();
+    let (layer, frame) = {
+        let d = p.app.doc(p.key).expect("doc");
+        (d.layer, d.frame)
+    };
+    let antes = inverte(&mut p, false);
+    let keys = todos(&antes);
+    assert!(keys.len() >= 4, "a cena tem ≥ 2 × 2 cels");
+    let ativo = antes.owner((layer, frame));
+    assert!(!cel_igual(&antes, p.sprite(), ativo), "o activo mudou");
+    for k in keys.into_iter().filter(|&k| antes.owner(k) != ativo) {
+        assert!(cel_igual(&antes, p.sprite(), k), "{k:?} ficou");
+    }
+}
+
+/// «All» não toca nas camadas trancadas, escondidas, nem cria cel num grupo.
+#[test]
+fn target_all_skips_locked_and_hidden_layers_and_groups() {
+    use ph2d_editor_core::pixel_panel::PixelLayerAction as L;
+    for caso in ["locked", "hidden"] {
+        let mut p = multi();
+        let ativa = p.app.doc(p.key).expect("doc").layer;
+        let outra = p
+            .sprite()
+            .layers()
+            .iter()
+            .map(|l| l.id)
+            .find(|&l| l != ativa)
+            .expect("2 camadas");
+        p.pede(if caso == "locked" {
+            PixelRequest::LayerLocked(outra.0)
+        } else {
+            PixelRequest::LayerVisible(outra.0)
+        });
+        let antes = inverte(&mut p, true);
+        let frames: Vec<_> = antes.frames().iter().map(|f| f.id).collect();
+        for &f in &frames {
+            assert!(
+                cel_igual(&antes, p.sprite(), (outra, f)),
+                "{caso}: {outra:?} ficou"
+            );
+        }
+        assert!(
+            frames
+                .iter()
+                .any(|&f| !cel_igual(&antes, p.sprite(), (ativa, f))),
+            "{caso}: a outra camada mudou"
+        );
+    }
+    let mut p = multi();
+    p.pede(PixelRequest::LayerAction(L::NewGroup));
+    let grupo = p
+        .sprite()
+        .layers()
+        .iter()
+        .find(|l| l.is_group())
+        .map(|l| l.id)
+        .expect("um grupo");
+    let n = p.passos();
+    inverte(&mut p, true);
+    assert_eq!(p.passos(), n + 1, "um passo");
+    let s = p.sprite();
+    assert!(
+        s.frames().iter().all(|f| s.cel((grupo, f.id)).is_none()),
+        "o grupo não ganha cel"
+    );
+}

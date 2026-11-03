@@ -273,3 +273,85 @@ fn outline_with_a_background_colour_matches_round3() {
         diff(key, &got, &want);
     }
 }
+
+/// As células (x, y) que o `f` muda numa imagem `w × h` com `shape` nela sobre `fundo`.
+fn pintadas(
+    f: &Outline,
+    (w, h): (i32, i32),
+    fundo: [u8; 4],
+    shape: &[((i32, i32), [u8; 4])],
+) -> Vec<(i32, i32)> {
+    let mut px = vec![fundo; (w * h) as usize];
+    for &((x, y), c) in shape {
+        px[(y * w + x) as usize] = c;
+    }
+    let src = Source::from_rgba(w as u32, h as u32, px);
+    (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .filter(|&(x, y)| f.at(&src, x, y) != src.get(x, y).unwrap())
+        .collect()
+}
+
+fn outline(background: Background, matrix: Matrix, tiled: bool) -> Outline {
+    Outline {
+        color: [9, 9, 9, 255],
+        background,
+        matrix,
+        place: Place::Outside,
+        tiled,
+    }
+}
+
+const AZUL: [u8; 4] = [0, 0, 255, 255];
+
+/// A casa ligada em cima testa o vizinho de BAIXO (Trial, «matriz só com a de cima»): os 4 presets
+/// são simétricos e não distinguem o sentido, esta matriz sim.
+#[test]
+fn an_asymmetric_matrix_tests_the_opposite_neighbour() {
+    let so_cima: Matrix = [[false, true, false], [false; 3], [false; 3]];
+    let f = outline(Background::Mask, so_cima, false);
+    assert_eq!(
+        pintadas(&f, (9, 9), [0; 4], &[((4, 4), AZUL)]),
+        vec![(4, 3)]
+    );
+    let so_esquerda: Matrix = [[false; 3], [true, false, false], [false; 3]];
+    let f = outline(Background::Mask, so_esquerda, false);
+    assert_eq!(
+        pintadas(&f, (9, 9), [0; 4], &[((4, 4), AZUL)]),
+        vec![(3, 4)]
+    );
+}
+
+/// *Mask* é só o alfa 0; uma cor de fundo compara os 4 canais.
+#[test]
+fn the_background_is_alpha_zero_for_mask_and_the_exact_rgba_for_a_colour() {
+    let f = outline(Background::Mask, CIRCLE, false);
+    let meio = [0, 0, 0, 128];
+    // Um vizinho semi-transparente NÃO é fundo: o Outline fora não o pinta (é forma).
+    assert_eq!(pintadas(&f, (5, 5), [0; 4], &[((2, 2), meio)]).len(), 4);
+    assert!(!pintadas(&f, (5, 5), [0; 4], &[((2, 2), meio)]).contains(&(2, 2)));
+    // Fundo de cor [10, 20, 30, 255]: a forma com o mesmo RGB e outro alfa é forma.
+    let cor = [10, 20, 30, 255];
+    let f = outline(Background::Color(cor), CIRCLE, false);
+    let forma = [10, 20, 30, 200];
+    assert_eq!(
+        pintadas(&f, (5, 5), cor, &[((2, 2), forma)]),
+        vec![(2, 1), (1, 2), (3, 2), (2, 3)]
+    );
+}
+
+/// *Tiled*: a vizinhança dá a volta; desligado, fora da imagem não há vizinho.
+#[test]
+fn tiled_wraps_the_neighbourhood_and_untiled_has_no_neighbour_off_the_image() {
+    let forma = [((0, 0), AZUL)];
+    let solto = outline(Background::Mask, CIRCLE, false);
+    assert_eq!(
+        pintadas(&solto, (5, 5), [0; 4], &forma),
+        vec![(1, 0), (0, 1)]
+    );
+    let ladrilho = outline(Background::Mask, CIRCLE, true);
+    assert_eq!(
+        pintadas(&ladrilho, (5, 5), [0; 4], &forma),
+        vec![(1, 0), (4, 0), (0, 1), (0, 4)]
+    );
+}

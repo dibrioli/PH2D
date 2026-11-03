@@ -149,3 +149,66 @@ fn one_undo_gives_the_cel_back_to_the_byte() {
     assert!(h.undo(&mut s));
     assert_eq!(s, before);
 }
+
+/// Inverte também o alfa (o `Negate` deixa-o).
+struct NegateAlpha;
+impl Filter for NegateAlpha {
+    fn at(&self, src: &Source, x: i32, y: i32) -> [u8; 4] {
+        let c = src.get(x, y).unwrap_or_default();
+        [255 - c[0], 255 - c[1], 255 - c[2], 255 - c[3]]
+    }
+}
+
+#[test]
+fn the_alpha_channel_turned_off_keeps_the_alpha() {
+    let mut s = sprite();
+    let before = s.clone();
+    let ch = Channels {
+        r: true,
+        g: true,
+        b: true,
+        a: false,
+    };
+    let op = filter::apply(&s, &[key(&s)], ch, &NegateAlpha).expect("muda");
+    apply(&mut s, op).expect("filtro");
+    for (x, y) in [(0, 0), (3, 2), (7, 5)] {
+        let (a, b) = (rgba(&before, x, y), rgba(&s, x, y));
+        assert_eq!(b, [255 - a[0], 255 - a[1], 255 - a[2], a[3]], "({x},{y})");
+    }
+}
+
+/// Uma selecção em L: as células da caixa dela que não estão na máscara ficam como estavam, e o
+/// passo só cobre a caixa justa da máscara.
+#[test]
+fn a_non_rectangular_selection_keeps_the_cells_inside_its_box_but_outside_the_mask() {
+    let mut s = sprite();
+    for r in [Rect::new(1, 1, 5, 1), Rect::new(1, 1, 1, 4)] {
+        let m = Mask::from_rect(8, 6, r);
+        let op = select(&s, &m, SelectMode::Add).expect("select");
+        apply(&mut s, op).expect("select");
+    }
+    let m = s.mask().expect("máscara").clone();
+    let box_ = m.bounds().expect("caixa");
+    assert!(!m.get(4, 4) && box_.contains(4, 4), "(4,4) é o buraco do L");
+    let before = s.clone();
+    let op = filter::apply(&s, &[key(&s)], Channels::ALL, &Negate).expect("muda");
+    match &op {
+        Op::Patch(p) => assert_eq!(p.rect, box_, "o passo cobre a caixa justa da máscara"),
+        outro => panic!("um cel = um Patch, veio {outro:?}"),
+    }
+    apply(&mut s, op).expect("filtro");
+    for y in 0..6 {
+        for x in 0..8 {
+            let (a, b) = (rgba(&before, x, y), rgba(&s, x, y));
+            if m.get(x, y) {
+                assert_eq!(
+                    b,
+                    [255 - a[0], 255 - a[1], 255 - a[2], a[3]],
+                    "({x},{y}) dentro"
+                );
+            } else {
+                assert_eq!(a, b, "({x},{y}) fora da máscara mudou");
+            }
+        }
+    }
+}

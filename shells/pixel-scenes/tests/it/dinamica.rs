@@ -124,3 +124,44 @@ fn the_stabilizer_string_lags_the_hand_by_eight_screen_px_per_unit() {
         "uma linha do premir até à ponta"
     );
 }
+
+/// O Gradient da dinâmica tem a SUA matriz (a do popup *Dynamics*), não a da ferramenta Gradient
+/// (o bug 1.3.0 do Aseprite): com a da dinâmica em Bayer2 e a da ferramenta em Bayer8, o carimbo
+/// de pressão 0,4 sai com 1 degrau de 4 em fg e os outros em bg.
+#[test]
+fn the_dynamics_gradient_uses_the_dynamics_own_matrix_not_the_gradient_tools() {
+    use ph2d_editor_core::pixel_panel::PixelGradientDither as D;
+    use ph2d_pixel_core::dither::Dither;
+    let mut p = palco(|o| {
+        o.size = 8;
+        o.dynamics.gradient.sensor = PixelSensor::Pressure;
+        o.dynamics.dither = D::Bayer2;
+        o.gradient_dither = D::Bayer8;
+    });
+    let (fg, bg) = ([255, 0, 0, 255], [0, 0, 255, 255]);
+    p.app.fg = fg;
+    p.app.bg = bg;
+    caneta(0.4, 0);
+    // O carimbo do premir leva a fracção cheia (só fg); a matriz mede-se nos pontos seguintes.
+    let (a, b) = (ecra(&p, (30, 40)), ecra(&p, (70, 40)));
+    premir(&mut p, a);
+    mover(&mut p, b);
+    p.release();
+    let celulas: Vec<(i32, i32)> = (40..120)
+        .flat_map(|x| (0..80).map(move |y| (x, y)))
+        .filter(|&(x, y)| p.rgba(x, y)[3] != 0)
+        .collect();
+    assert!(celulas.len() >= 32, "o carimbo pintou: {}", celulas.len());
+    let cor = |c: (i32, i32)| p.rgba(c.0, c.1);
+    assert!(celulas.iter().any(|&c| cor(c) == fg), "há fg");
+    assert!(celulas.iter().any(|&c| cor(c) == bg), "há bg");
+    for &(x, y) in &celulas {
+        // Fracção 0,4 em Bayer2: 1 degrau aceso (fg), os outros 3 em bg.
+        let quer = if Dither::Bayer2.level(x, y) < 1 {
+            fg
+        } else {
+            bg
+        };
+        assert_eq!(cor((x, y)), quer, "({x}, {y})");
+    }
+}

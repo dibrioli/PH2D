@@ -7,7 +7,9 @@ use ph2d_app_pixel::Tool;
 use ph2d_app_pixel::compose::Mods;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{ContextMenuKind, WidgetEvent};
-use ph2d_editor_core::pixel_panel::{PixelDialogKind, PixelEditAction as E, PixelRequest};
+use ph2d_editor_core::pixel_panel::{
+    PixelDialogKind, PixelEditAction as E, PixelOutlineBg, PixelOutlineMatrix, PixelRequest,
+};
 use ph2d_pixel_core::selection::Mask;
 use winit::keyboard::KeyCode;
 
@@ -172,6 +174,115 @@ fn outline_ok_by_enter_draws_the_circle_ring_outside_with_the_foreground_color()
     assert_eq!(p.rgba(102, 42), RED, "o miolo fica");
     p.tecla(KeyCode::KeyZ, true, false);
     assert_eq!(*p.sprite(), antes, "um Ctrl+Z desfaz o contorno inteiro");
+}
+
+/// O OK do Outline depois de clicar `escolhas` no diálogo.
+fn outline_com(p: &mut Palco, escolhas: &[ph2d_editor_core::NodeId]) {
+    p.pede(PixelRequest::Edit(E::Outline));
+    for &id in escolhas {
+        carrega(p, id);
+    }
+    carrega(p, ids::PIXEL_EDIT_OK);
+    assert_eq!(aberto(p), None, "o OK fechou o diálogo");
+}
+
+fn id_do_fundo(b: PixelOutlineBg) -> ph2d_editor_core::NodeId {
+    ids::PIXEL_FILTER_BACKGROUNDS
+        .iter()
+        .find(|e| e.0 == b)
+        .expect("fundo")
+        .1
+}
+
+#[test]
+fn outline_with_a_background_colour_takes_the_background_swatch_as_the_background() {
+    let mut p = com_quadrado();
+    let antes = p.sprite().clone();
+    p.app.fg = [0, 0, 255, 255];
+    p.app.bg = RED;
+    outline_com(&mut p, &[id_do_fundo(PixelOutlineBg::BackgroundColor)]);
+    // Fundo = a cor de fundo (vermelho): o «fora» pinta as células VERMELHAS coladas ao que não é
+    // vermelho — a borda do quadrado, não a volta transparente.
+    assert_eq!(
+        p.rgba(100, 42),
+        [0, 0, 255, 255],
+        "a borda vermelha ganha a cor"
+    );
+    assert_eq!(p.rgba(102, 42), RED, "o miolo não tem vizinho de outra cor");
+    assert_eq!(p.rgba(99, 42), TRANSPARENT, "a volta transparente fica");
+    p.tecla(KeyCode::KeyZ, true, false);
+    assert_eq!(*p.sprite(), antes);
+}
+
+#[test]
+fn outline_square_matrix_reaches_the_diagonal_corner_the_circle_leaves_empty() {
+    let mut p = com_quadrado();
+    let quadrada = ids::PIXEL_FILTER_MATRICES
+        .iter()
+        .find(|e| e.0 == PixelOutlineMatrix::Square)
+        .expect("matriz")
+        .1;
+    p.app.fg = [0, 0, 255, 255];
+    outline_com(&mut p, &[quadrada]);
+    assert_eq!(p.rgba(99, 39), [0, 0, 255, 255], "o canto diagonal");
+    assert_eq!(p.rgba(98, 39), TRANSPARENT, "a 2.ª volta não");
+}
+
+#[test]
+fn outline_horizontal_and_vertical_presets_reach_only_their_own_axis() {
+    for (preset, lado, cima) in [
+        (
+            PixelOutlineMatrix::Horizontal,
+            [0, 0, 255, 255],
+            TRANSPARENT,
+        ),
+        (PixelOutlineMatrix::Vertical, TRANSPARENT, [0, 0, 255, 255]),
+    ] {
+        let mut p = com_quadrado();
+        let id = ids::PIXEL_FILTER_MATRICES
+            .iter()
+            .find(|e| e.0 == preset)
+            .expect("matriz")
+            .1;
+        p.app.fg = [0, 0, 255, 255];
+        outline_com(&mut p, &[id]);
+        assert_eq!(p.rgba(99, 42), lado, "{preset:?}: ao lado do quadrado");
+        assert_eq!(p.rgba(102, 39), cima, "{preset:?}: em cima do quadrado");
+    }
+}
+
+#[test]
+fn outline_tiled_wraps_around_the_sprite_edge() {
+    let mut p = Palco::limpo();
+    p.app.fg = RED;
+    p.ferramenta(Tool::RectMarquee);
+    p.pede(PixelRequest::Select(
+        ph2d_editor_core::pixel_panel::PixelSelectAction::All,
+    ));
+    p.tecla(KeyCode::Delete, false, false);
+    p.pede(PixelRequest::Select(
+        ph2d_editor_core::pixel_panel::PixelSelectAction::Deselect,
+    ));
+    p.arrasta((0, 0), (1, 1), Mods::default());
+    p.tecla(KeyCode::KeyF, false, false);
+    p.pede(PixelRequest::Select(
+        ph2d_editor_core::pixel_panel::PixelSelectAction::Deselect,
+    ));
+    assert_eq!(p.rgba(0, 0), RED);
+    let (w, h) = (p.sprite().width() as i32, p.sprite().height() as i32);
+    p.app.fg = [0, 0, 255, 255];
+    let mut solto = Vec::new();
+    outline_com(&mut p, &[]);
+    solto.push((p.rgba(w - 1, 0), p.rgba(0, h - 1), p.rgba(2, 0)));
+    p.tecla(KeyCode::KeyZ, true, false);
+    outline_com(&mut p, &[ids::PIXEL_FILTER_TILED]);
+    assert_eq!(
+        solto[0],
+        (TRANSPARENT, TRANSPARENT, [0, 0, 255, 255]),
+        "sem Tiled"
+    );
+    assert_eq!(p.rgba(w - 1, 0), [0, 0, 255, 255], "Tiled: a volta do x");
+    assert_eq!(p.rgba(0, h - 1), [0, 0, 255, 255], "Tiled: a volta do y");
 }
 
 #[test]

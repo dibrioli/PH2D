@@ -23,6 +23,10 @@
 // a agulha segue-a para a crate: *pergunta-se para onde foi o SUJEITO, não o ficheiro.*
 const SRC: &str = include_str!("../../../../crates/ph2d-app-vec/src/fx_live.rs");
 
+/// A porta de desenho que o lote chama (`ph2d-vec-render`); ela passa o `bound` ao mesmo corpo
+/// (`draw_isolated_with`) que o `draw_path_isolated`.
+const DRAW_FOR_EFFECTS: &str = "ph2d_vec_render::draw_path_for_effects(";
+
 /// A janela do fonte que monta a cena partilhada do lote.
 fn batch_scene_block() -> &'static str {
     let start = SRC
@@ -77,8 +81,10 @@ fn the_atlas_clips_every_cell() {
     );
     // Controle positivo: sem isto, um `find` que falhasse devolveria um bloco vazio e as três
     // afirmações acima passariam a ser sobre nada.
+    // ⚠️ Desde a UIUX F47 o lote rasteriza pela porta dos FILTROS (`draw_path_for_effects`: a forma
+    // sem os traços «Above Effects»), não pela do assado do Motion (`draw_path_isolated`).
     assert!(
-        block.contains("draw_path_isolated"),
+        block.contains(DRAW_FOR_EFFECTS),
         "o gate não está a ler o laço que desenha as formas — o âncora do `find` apodreceu"
     );
 }
@@ -129,7 +135,7 @@ fn the_batch_rasterises_in_a_single_pass() {
 fn the_batch_draws_with_the_frames_resolved_style() {
     let block = batch_scene_block();
     assert!(
-        block.contains("draw_path_isolated"),
+        block.contains(DRAW_FOR_EFFECTS),
         "o gate não está a ler o laço que desenha as formas — o âncora do `find` apodreceu"
     );
     assert!(

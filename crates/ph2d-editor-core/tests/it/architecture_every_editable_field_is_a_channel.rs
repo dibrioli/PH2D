@@ -222,11 +222,6 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "o snap é da vista/ferramenta (§8)",
     ),
     (
-        "VECTOR_BOOL_",
-        NaoAnimavel,
-        "a booleana é estrutura; o RESULTADO grava-se pelo canal Forma (§8)",
-    ),
-    (
         "VECTOR_STATE_",
         NaoAnimavel,
         "a transição de um estado da Interface É uma animação; não se anima a si própria",

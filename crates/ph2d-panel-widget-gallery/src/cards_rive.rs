@@ -19,7 +19,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use std::cell::Cell as Celula;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Quanto o botão de disparo fica aceso.
 const FLASH: Duration = Duration::from_millis(300);

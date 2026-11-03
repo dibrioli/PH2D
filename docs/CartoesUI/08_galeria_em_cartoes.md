@@ -30,7 +30,8 @@ aprovadas: `maquete/c4_maquete_x_app.png`, `b7_duas_copias.png`). Ela pinta com
 `PH2D_CARDS=0` volta à galeria de hoje (a janela flutuante) — o mesmo interruptor do Inspector/Bones.
 
 A galeria é a **fonte de verdade da UI** (DIRETRIZ §5.2): todo painel novo copia o padrão que ela
-mostra. Por isso ela tem DUAS partes:
+mostra. Por isso ela tem QUATRO partes, por esta ordem: as ferramentas fictícias (§1.1), os casos reais
+(§1.3), as amostras do Rive (§1.4) e os widgets de sempre (§1.2).
 
 ### 1.1 O inspector de ferramentas fictícias (o padrão novo — primeiro na lista)
 
@@ -44,7 +45,7 @@ referência 05 §0: nós → Figma → Rive). Fotos: `maquete/g1_galeria_topo.pn
 
 **Tudo vive (zero no-op silencioso), por TABELA:** `src/controlos.rs` + `controlos_forma.rs` +
 `controlos_tinta.rs` dão uma linha a cada botão/ícone/segmento/opção (`Kind`: `Toggle` · `Eye` · `Pick` ·
-`Box` · `Act` · `Add` · `Remove` · `Set` · `Swatch`, com ícone, texto e dica); o `populate` regista por
+`Box` · `Act` · `Add` · `AddOf` · `Expand` · `Remove` · `Set` · `Swatch` · `Styles` · `Palette`, com ícone, texto e dica); o `populate` regista por
 ela, o `prepare` dá a dica e declara as listas, a pintura tira dela ícone e aceso, o `valores.rs` age por
 ela. Os campos são a tabela `ids::FIELDS`; as escolhas moram em `Choices` (`Flag`/`Pick`), os números no
 store. O gate `nenhum_controlo_da_tabela_e_um_no_op` clica a tabela inteira. As linhas que não cabem na
@@ -60,15 +61,17 @@ coluna estreita partem-se à Figma (`caixa_para`, `CAMPO_MIN`): nada se corta (`
 | **Corners** | `Radius (px)` + cada canto · `Clip content` | «cada canto» acende e mostra os quatro campos; a caixa marca (`corpo::check`) |
 | **Constraints** | `Horizontal` · `Vertical` lado a lado | as listas escolhem |
 | **Appearance** (olho) | `Opacity (%)` + `Blend` | o olho é o MESMO id do da identidade (como no Inspector aprovado) |
-| **Fill** (⠿, +) | `Color` amostra + hex · `Opacity (%)` · olho · − | até 3 linhas; a amostra abre o seletor de cor do app (a cor volta pelo `widget_color` a cada quadro); «−» tira a linha, sem linhas o cartão fica ausente com «+»; com a lista cheia o «+» some |
+| **Fill** (⠿, +) | `Color` amostra + hex · `Opacity (%)` · olho · − | até 3 linhas; a amostra abre o seletor de cor do app (a cor volta pelo `widget_color` a cada quadro); «−» tira a linha, sem linhas o cartão fica ausente com «+»; com a lista cheia o «+» some. O ⠿ abre a lista REAL `panel::cards::estilos` (a galeria faz o papel da cena do Vetor em `estilos_ficticios.rs`: publica enquanto a lista dela está aberta, atende os pedidos): escolher pinta a amostra, ela mostra o nome e o «soltar» |
 | **Stroke** (⠿, +) | a mesma linha · `Position` + `Weight (px)` · `Cap` + `Join` (3 ícones cada) | idem |
-| **Effects** (+) | `Drop shadow ▾` · olho · − · `Offset (px)` X·Y + `Color` · `Blur (px)` + `Spread (px)` | «+»/«−» acrescentam e tiram linhas; os dois desfoques (`Layer blur`, `Background blur`) só mostram o `Blur` |
+| **Effects** (+) | a linha `[glifo Drop shadow] 👁 −`; **as propriedades abrem À ESQUERDA da coluna** (decisão F43 do dono, `project_vector_effects_filters_figma_layout_2026_11_01.md`): `[tipo ▾] ✕` · `Offset (px)` X·Y + `Color` · `Blur (px)` + `Spread (px)` | o «+» abre a lista dos tipos e a opção acrescenta a linha já com esse tipo; «−» tira a dela; clicar a linha abre e fecha o painel do lado (`lado.rs`, a geometria do `side_panel` do Vetor, que é crate inalcançável daqui); os dois desfoques só mostram o `Blur` |
 | **Text** | `Font` · `Weight` + `Size (px)` · `Line height (px)` + `Letter spacing (%)` · `Alignment` | listas e segmentos escolhem |
 | **Export** | `Scale` · `Suffix` · `Format` · botão primário `Export` | o Export acende «Exported»; mudar escala ou formato volta a «Not exported yet» |
 | **Actions** (↺) | Apply primário, Cancel, emblema | **Apply** grava os valores de partida; **Cancel** e o ↺ voltam a eles; o rótulo e o emblema dizem se há mudanças por aplicar (`src/valores.rs`) |
 | **Animation marks** | os quatro estados da marca D17 | Livre · Animado · Chave · Mudado |
 | **Ordering** | nasce DOBRADO com `summary` («Z 3») | o padrão do resumo à direita |
 | **Physics** | secção AUSENTE (`add: Some(id)`) | «+» acrescenta e mostra o corpo; «−» no cabeçalho tira |
+
+As marcas de animação: todo rótulo de propriedade animável leva a marca, Mass e Z order incluídos. **O Export não leva**: Scale, Suffix e Format são configuração de saída, não propriedade do objeto, e um ponto ali diria «isto anima».
 
 ### 1.2 Os widgets de sempre (cada um num cartão, com nome de ferramenta)
 
@@ -98,6 +101,46 @@ girar/espelhar; `Widget::Dropdown` → Blend, Constraints; `Widget::Swatch` → 
 Suffix; `Widget::Badge` → identidade; `Widget::Button` → Export, Apply/Cancel; `corpo::check` → Clip content;
 `HeadAction` → ↺, olho, ⠿, «+»; cartão ausente → Physics; dobrado com resumo → Ordering.
 
+### 1.3 Os casos reais (depois das ferramentas)
+
+Ordem do dono (03/11): *«Coloque a UI rica com representantes de casos reais»*. Cada cartão é uma família
+deste app com o vocabulário do código (`component.field.*`, `card.bones.*`, `panel.inspector.*`,
+`canal.*`: a chave real, para o rótulo seguir o painel real) e as unidades no rótulo; quem constrói a família
+copia este cartão. Foto: `maquete/g4_galeria_casos_reais.png`, `g4b_…`, `g4c_…`. Código: `cards_reais_mundo.rs`, `cards_reais_anim.rs`,
+`cards_reais_media.rs`, tabela `controlos_reais.rs`, ids `ids_reais.rs`, textos `ph2d-i18n/src/galeria_reais.rs`.
+
+| Cartão | Lei (decisão do dono) | O que vive |
+|---|---|---|
+| **Image** | «Use» logo abaixo de Image, nunca checkbox (26/10) | Still → `Frame`; Repeated → `Width`/`Height (px)`; Animated → `Columns`, `Rows`, `Frames/s` |
+| **Physics Body** | o nome real do cartão | `Body` Dynamic/Kinematic/Static: Dynamic → `Mass (kg)`, `Gravity Scale`, `Linear/Angular Damping`, `Lock Rotation`; Kinematic → só o Lock; Static → a frase |
+| **Collider** | ícones de forma | Box → `Width`/`Height`; Circle → `Radius`; Capsule → `Radius` + `Half height`; `Offset`, `Friction`, `Bounce`, `Trigger` (os nomes reais, em vez de Bounciness / Is sensor) |
+| **Health** | | `Max`, `Start` (o real, em vez de Current), a barra, `Regen (/s)`, `Regen Delay (s)`, `Overheal`: sem ele o Start não passa do Max |
+| **Platform Player** | só movimento (25/10) | `Speed (m/s)`, `Accel`, `Air`, `Jump Height (m)`, `Air Jumps`, `Coyote Time (s)`, `Jump Buffer (s)` |
+| **Game Camera** | alvo por arrastar, escrever ou conta-gotas, NUNCA lista (02/11); os defeitos de 05 §8: título, células do cartão, marca na linha do rótulo | `Target` escreve-se e diz «Follows X» ou «No object named…»; o conta-gotas arma e o 2.º clique faz de clique no canvas; `Game Format`, `Frame`, `Dead Zone (px)`, `Damping` (o real, em vez de Follow speed), `Lookahead (px)`, `Active`, `Look Through` (estado da vista: sem marca). **Modelo para o cartão do Inspector** |
+| **Animation** | UM cartão com lista de regras (25/10) | `Clip` + ▶, `Frames/s`, `Who Picks` Me/Script/Rules; Rules → `When` ▾ `Play` ▾ −, «+» até 3 |
+| **Brush** | Paint type Water·Oil (01/11), Volume independente da diluição (31/10), Paper press é controlo (28/10), um só Dilution (E10) | `Preset`, `Size (px)`, `Paint type`, `Dilution`, `Volume (µm)`, `Paper press`; Water → `Re-wet`; Oil → `Body` |
+| **Bones** | os nomes de `card.bones.*` | `Length (px)`, `Bend`, `Angle Limit` → `Min`/`Max (°)`, `Smart Bone`, `IK` → `Mix`, `Chain length` |
+| **Constraint** | pilha; alvo sem lista | `[Look At ▾] 👁 −`, `Target`, `Influence (%)`, `Space`; sem linha, ausente com «+» |
+| **Light 2D** | | `Type` Point/Ambient, `Color`, `Intensity`; Point → `Size (m)`, `Range (m)`, `Casts shadows` |
+| **Audio** | o rack segue o F43 | medidor (`paint_level_meter`, o Gain move-o, o mudo zera-o), `Gain (dB)`, a lista de efeitos com «+» de tipos e `Mix (%)` + `Damp` à esquerda |
+| **Pixel Art** | paleta indexada em tokens | `Foreground`/`Background` (a caixa contornada é o alvo), a troca, a grelha 8×2, `Grid size (px)`, `Pixel grid` |
+| **Script** | o script mora no projeto (ADR-0188) | `Script` ▾, `Edit script`, e as propriedades que cada script expõe mudam com ele |
+
+### 1.4 As amostras do Rive (depois dos casos reais)
+
+Ordem do dono (03/11): *«Se encontrar layouts e widgets interessantes em Rive, traga algumas amostras para
+nós também»*. A regra 05 §0 põe o Rive depois de nós e do Figma; é oráculo que se observa (CLAUDE.md §0.9): só
+o conceito, conferido na documentação pública. Nenhum asset nem código do Rive; o desenho é nosso. Foto:
+`maquete/g5_galeria_rive.png`. Código: `cards_rive.rs`, `controlos_rive.rs`, `ids_rive.rs`, `galeria_rive.rs`.
+
+| Cartão | O que o Rive confirma (página) | O que vive aqui |
+|---|---|---|
+| **Interpolation** | Linear, Cubic (duas pegas), Hold: <https://rive.app/docs/editor/animate-mode/interpolation-easing> | três ícones; o quadro pinta a curva; `X1 Y1 X2 Y2` e as duas pegas arrastáveis escrevem nos mesmos números; Linear e Hold tiram os campos |
+| **State machine inputs** | Number, Boolean, Trigger (`fire()`): <https://rive.app/docs/runtimes/web/rive-parameters>. ⚠️ As próprias docs dizem que as entradas estão a ser substituídas por data binding (<https://rive.app/docs/runtimes/android/migrating-from-legacy>): o padrão vale pelo desenho, não como rumo de produto | número com campo, caixa, `Fire` que pisca e conta; «+» com lista de tipos, «−» |
+| **Trim path** | Start, End (% do comprimento), Offset, Sequential ou Synced: <https://rive.app/docs/editor/manipulating-shapes/trim-path> | `Start (%)`, `End (%)`, a barra do trecho, `Offset (°)`, `Mode`. A página não diz a unidade do Offset; o «Synced» é a palavra dela |
+| **Solo** | um filho pintado de cada vez, com rádios: <https://rive.app/docs/editor/manipulating-shapes/solos> | linhas com olho, clicar uma faz dela a única |
+| **Gradient** | Solid, Linear, Radial, barra com paragens, clique cria: <https://rive.app/docs/editor/fundamentals/fill-and-stroke> | ícones de tipo, barra pintada, pegas clicáveis (escolhem; a posição muda-se no `Position (%)`), «+» até 3, «−» só com mais de duas. A página não mostra campo de posição: ele é nosso |
+
 ## 2 — Regras que mordem (medidas na linha de teste)
 
 - **Nada pinta fora da tinta do cartão**: cor por `CardInk::color`, geometria por
@@ -122,9 +165,11 @@ Suffix; `Widget::Badge` → identidade; `Widget::Button` → Export, Apply/Cance
 (a Position muda), girar 90° e espelhar no Transform (o número muda, o espelho acende), fechar a corrente e
 arrastar o X do Scale (o Y segue), escolher um Union/Subtract, abrir uma lista suspensa, «+» e «−» em Effects,
 Export (acende «Exported»), dobrar um cartão, arrastar um cartão para outra posição, botão direito no título
-(tema do cartão), ↺.
+(tema do cartão), ↺. Depois: o ⠿ do Fill (a lista de estilos), a linha do Effects (propriedades à esquerda), o
+«Use» da Image, escrever na Target da Camera, «+»/«−» das regras, Water/Oil, Fire, os filhos do Solo, a pega da
+curva.
 
-Fotos: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460) · `g2_galeria_meio` · `g2b_galeria_meio` · `g3_galeria_fim` (em `maquete/`; g2..g3 são de antes das ferramentas), com
+Fotos em `maquete/`: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460, com `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito aberta) · `g4_galeria_casos_reais` (2700) · `g4b_…` (4250) · `g4c_…` (5100) · `g5_galeria_rive` (5950) · `g2_galeria_meio` (6950) · `g2b_galeria_meio` (7700) · `g3_galeria_fim` (9400), com
 `PH2D_GALLERY_SMOKE_SCROLL=<px>` a segurar a rolagem (o evento sintético não chega à sessão virtual).
 Os corpos de sempre pintam com a tinta do cartão publicada (`card_ink::com`): a janela flutuante
 (`PH2D_CARDS=0`) não publica nada e não muda. Dentro do corpo os de sempre seguem a lei do

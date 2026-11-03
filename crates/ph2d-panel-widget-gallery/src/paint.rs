@@ -25,6 +25,7 @@ use ph2d_editor_core::zones::Rect;
 
 pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
     smoke_opens_once(ctx);
+    smoke_opens_the_side(state);
     if !ctx.host.panel_visible(WidgetGalleryPanel::ID) {
         // Stale-rect cleanup: without this, `panel_at` keeps returning
         // GAL_PANEL after the Gallery was closed, and BTreeMap key
@@ -113,6 +114,17 @@ fn smoke_opens_once(ctx: &mut PaintCtx) {
     });
     if let Some(y) = *rola {
         ctx.host.store_mut().set_panel_scroll(ids::GAL_PANEL, y);
+    }
+}
+
+/// `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito já aberta — a foto do painel à esquerda (F43).
+fn smoke_opens_the_side(state: &mut WidgetGalleryState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    if std::env::var("PH2D_GALLERY_SMOKE_SIDE").as_deref() == Ok("1")
+        && !FEITO.swap(true, Ordering::Relaxed)
+    {
+        state.choices.choose(crate::state::Pick::SideOpen, 0);
     }
 }
 

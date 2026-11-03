@@ -195,6 +195,34 @@ pub fn traco_recto_alto_com(
     r: Relogio,
     prepara: impl FnOnce(&mut PainterTool),
 ) -> (Vec<u8>, u32, u32) {
+    traco_entre(size, alto, ticks, r, [0.0, 0.0], prepara)
+}
+
+/// ⭐ **O traço da RÉGUA da largura** (cura-largura3, 02/11c): o de [`traco_recto_alto_com`] com o centro a
+/// DESLIZAR `deslize` px (a régua: 1 px inteiro) ao longo do comprimento (de `cy + fase` a `cy + fase + deslize`), para que as colunas medidas
+/// atravessem TODAS as fases sub-píxel — o traço do artista cai em qualquer uma. ⛔ Medido: o traço recto numa
+/// fase fixa media o Wet Dry Brush a motor 17,5 em 16 / 13 / 10 / 17 px nas fases 0 / ¼ / ½ / ¾.
+pub fn traco_que_desliza_com(
+    size: f32,
+    alto: f32,
+    ticks: u32,
+    r: Relogio,
+    fase: f32,
+    deslize: f32,
+    prepara: impl FnOnce(&mut PainterTool),
+) -> (Vec<u8>, u32, u32) {
+    traco_entre(size, alto, ticks, r, [fase, fase + deslize], prepara)
+}
+
+/// O traço de `x = 100` a `900`, o centro de `cy + dy[0]` a `cy + dy[1]`.
+fn traco_entre(
+    size: f32,
+    alto: f32,
+    ticks: u32,
+    r: Relogio,
+    dy: [f32; 2],
+    prepara: impl FnOnce(&mut PainterTool),
+) -> (Vec<u8>, u32, u32) {
     let h = ((alto * 6.0) as u32 + 80).max(120);
     let cy = h as f32 * 0.5;
     let mut t = PainterTool::default();
@@ -202,7 +230,12 @@ pub fn traco_recto_alto_com(
     prepara(&mut t);
     t.set_brush_size_px(size);
     t.set_brush_color_srgb8(AZUL);
-    gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
+    gesto(
+        &mut t,
+        &[[100.0, cy + dy[0]], [900.0, cy + dy[1]]],
+        3.0,
+        |_| 1.0,
+    );
     passa_o_tempo(&mut t, ticks, r);
     t.run_full()
 }
@@ -247,7 +280,35 @@ pub fn largura_da_nuvem(rgba: &[u8], w: u32, h: u32) -> f32 {
     (ys[ys.len() - 1] - ys[0] + 1) as f32
 }
 
+/// ⭐ **A largura que se vê, pela MÉDIA INTERQUARTIL das colunas** (a régua da fábrica, cura-largura3 02/11c): as
+/// colunas de [`largura_que_se_ve`], a média das que ficam entre o 1.º e o 3.º quartil. Sobre o traço que desliza
+/// ([`traco_que_desliza_com`]) cada coluna é uma fase; a mediana saltava de um modo para o outro (Wet Dry Brush motor
+/// 17,5: 16 / 16 / 14 / 16 px com a cena a ¼ px), a média dos quartis do meio é contínua e deixa as pontas de fora.
+pub fn largura_que_se_ve_media(rgba: &[u8], w: u32, h: u32) -> f32 {
+    let l = larguras_das_colunas(rgba, w, h, 0.25);
+    let n = l.len();
+    if n == 0 {
+        return 0.0;
+    }
+    let (a, b) = (n / 4, (n - n / 4).max(n / 4 + 1));
+    l[a..b].iter().sum::<f32>() / (b - a) as f32
+}
+
 fn largura_a(rgba: &[u8], w: u32, h: u32, fracao: f32) -> f32 {
+    let larguras = larguras_das_colunas(rgba, w, h, fracao);
+    if larguras.is_empty() {
+        return 0.0;
+    }
+    let n = larguras.len();
+    if n % 2 == 1 {
+        larguras[n / 2]
+    } else {
+        0.5 * (larguras[n / 2 - 1] + larguras[n / 2])
+    }
+}
+
+/// A extensão de cada coluna com tinta (as linhas com `c ≥ fracao · max(c)`), por ordem.
+fn larguras_das_colunas(rgba: &[u8], w: u32, h: u32, fracao: f32) -> Vec<f32> {
     let c = |x: u32, y: u32| {
         let i = ((y * w + x) * 4) as usize;
         rgba[i..i + 3].iter().map(|&v| 255 - v).max().unwrap_or(0) as f32 / 255.0
@@ -262,16 +323,8 @@ fn largura_a(rgba: &[u8], w: u32, h: u32, fracao: f32) -> f32 {
             Some((ys[ys.len() - 1] - ys[0] + 1) as f32)
         })
         .collect();
-    if larguras.is_empty() {
-        return 0.0;
-    }
     larguras.sort_by(f32::total_cmp);
-    let n = larguras.len();
-    if n % 2 == 1 {
-        larguras[n / 2]
-    } else {
-        0.5 * (larguras[n / 2 - 1] + larguras[n / 2])
-    }
+    larguras
 }
 
 /// FNV-1a de 64 bits — o mesmo hash dos outros gates de pixels desta crate.

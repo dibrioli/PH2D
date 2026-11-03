@@ -160,6 +160,11 @@ pub(super) fn imagem_da_ferramenta(
             t.set_wet_largura_crua(escala);
         }
         if com_ferramenta {
+            // ⭐ A ferramenta atravessa as fases sub-píxel ao longo do traço, como o pincel
+            // (`sonda_gestos::traco_que_desliza_com`): o centro desliza 1 px na normal da orla.
+            let (fase, deslize) = super::FASE_DA_CENA.get();
+            let [[x0, y0], [x1, y1]] = ferramenta;
+            let ferramenta = [[x0, y0 + fase], [x1, y1 + fase + deslize]];
             t.set_brush_size_px(raio / escala);
             crate::sonda_gestos::gesto(&mut t, &ferramenta, 3.0, |_| 1.0);
         }
@@ -543,4 +548,54 @@ fn sonda_promessa_com_envolvente() {
             "[envolvente] {nome} {rotulo}: motores {motores:?} · larguras {l:?} · fora {fora:?}"
         );
     }
+}
+
+/// ⭐ **A régua da largura não depende da FASE sub-píxel da cena** (cura-largura3, 02/11c): o traço da medição
+/// desliza 1 px ao longo do comprimento (todas as fases), e deslocar a cena ¼ px move a largura ≤ 1 px. CONTROLO
+/// (a régua de antes, o traço recto numa fase fixa): o Wet Dry Brush a motor 17,5 media 16 / 13 / 10 / 17 px.
+#[test]
+fn a_largura_nao_depende_da_fase_da_cena() {
+    let (_, b) = ficheiros_do_wet()
+        .into_iter()
+        .find(|(rel, _)| rel.ends_with("/Wet Dry Brush.ph2d-brush.png"))
+        .expect("o Wet Dry Brush");
+    let p = ler(&b).unwrap();
+    let larguras = |motor: f32, deslize: f32| -> Vec<f32> {
+        std::thread::scope(|s| {
+            let h: Vec<_> = [0.0f32, 0.25, 0.5, 0.75]
+                .into_iter()
+                .map(|fase| {
+                    let p = &p;
+                    s.spawn(move || {
+                        super::FASE_DA_CENA.set((fase, deslize));
+                        largura_de_com(p, motor, true, Relogio::DeUmaVez)
+                    })
+                })
+                .collect();
+            h.into_iter().map(|h| h.join().unwrap()).collect()
+        })
+    };
+    let espalho = |l: &[f32]| {
+        let (lo, hi) = l
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
+        hi - lo
+    };
+    let antes = larguras(17.5, 0.0);
+    assert!(
+        espalho(&antes) > 1.0,
+        "controlo: a régua numa fase fixa já era estável {antes:?}"
+    );
+    let mut falhas = Vec::new();
+    for motor in [7.25f32, 17.5, 17.75] {
+        let l = larguras(motor, 1.0);
+        if espalho(&l) > 1.0 {
+            falhas.push(format!("motor {motor}: {l:?}"));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a largura muda com a fase da cena:\n{}",
+        falhas.join("\n")
+    );
 }

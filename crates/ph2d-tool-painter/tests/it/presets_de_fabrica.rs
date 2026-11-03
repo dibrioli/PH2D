@@ -23,8 +23,8 @@ use super::receitas_de_fabrica::{
     grao, modo_da_ferramenta, receitas, receitas_dos_meios,
 };
 use super::sonda_gestos::{
-    Relogio, fnv1a, largura_da_nuvem, largura_que_se_ve, passa_o_tempo, traco_recto_alto,
-    traco_recto_alto_com,
+    Relogio, fnv1a, largura_da_nuvem, largura_que_se_ve, largura_que_se_ve_media, passa_o_tempo,
+    traco_que_desliza_com, traco_recto_alto,
 };
 use ph2d_brush_presets::{
     Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
@@ -471,6 +471,9 @@ std::thread_local! {
     /// `true` = a largura medida COM o Real Oil do preset (o caminho de antes da J6; só a sonda
     /// `sonda_largura_sem_oleo` o liga, para comparar).
     static LEI_COM_OLEO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// `(fase, deslize)` do traço da cena da largura, em px: o centro vai de `cy + fase` a `cy + fase + deslize`.
+    /// `(0, 1)` = a régua (todas as fases); só o teste da fase o move (`a_largura_nao_depende_da_fase_da_cena`).
+    pub(super) static FASE_DA_CENA: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((0.0, 1.0)) };
 }
 
 /// A imagem que [`largura_de`] mede, e a régua com que a mede. ⛔ Com o Real Oil DESLIGADO (J6, REGRAS_DE_CUSTO
@@ -500,14 +503,16 @@ fn imagem_da_largura(
         return (px, w, h, regua);
     }
     let escala = if crua { (raio / 500.0).max(1.0) } else { 1.0 };
-    let (px, w, h) = traco_recto_alto_com(raio / escala, raio, QUADROS_DA_LEI, r, |t| {
-        t.set_wet_relogio_fixo(true);
-        t.set_semente_dos_tracos(semente);
-        assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
-        if crua {
-            t.set_wet_largura_crua(escala);
-        }
-    });
+    let (fase, deslize) = FASE_DA_CENA.get();
+    let (px, w, h) =
+        traco_que_desliza_com(raio / escala, raio, QUADROS_DA_LEI, r, fase, deslize, |t| {
+            t.set_wet_relogio_fixo(true);
+            t.set_semente_dos_tracos(semente);
+            assert!(t.wet_preset_aplicar(&direito(p)).is_empty());
+            if crua {
+                t.set_wet_largura_crua(escala);
+            }
+        });
     (
         px,
         w,
@@ -515,7 +520,7 @@ fn imagem_da_largura(
         if espalha(p) {
             largura_da_nuvem
         } else {
-            largura_que_se_ve
+            largura_que_se_ve_media
         },
     )
 }

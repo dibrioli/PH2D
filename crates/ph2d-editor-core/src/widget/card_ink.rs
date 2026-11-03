@@ -74,5 +74,5 @@ impl CardInk {
 }
 
 #[cfg(test)]
-#[path = "card_ink_tests.rs"]
+#[path = "card_ink/tests.rs"]
 mod tests;

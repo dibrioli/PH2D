@@ -29,6 +29,8 @@ pub const MOD_END: &str = "// <ph2d-widget-sync:end>";
 /// canonical list (today: panel_chrome + showcase). Adding a new public
 /// widget = append here (Coord-A decision — most widgets are private).
 const PUB_MODULE_OVERRIDE: &[&str] = &[
+    "card_field",
+    "card_ink",
     "command_palette",
     "composto",
     "illustration",
@@ -39,6 +41,10 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
     "sheet_cell",
     "showcase",
 ];
+// `card_field` e `card_ink` (NovaUI, 2026-11-03, portados da `line/TrelloUITeste`) pelo criterio do
+// `command_palette`: o `panel::cards*` e os paineis alcancam sub-caminhos (`card_field::Glyph`,
+// `card_field::on_handle`, `card_ink::CardInk`) — e os testes deles moram em `card_field/tests.rs`
+// e `card_ink/tests.rs` (o idioma do `illustration/tests.rs`), fora do bloco gerado.
 // `illustration` e `sheet_cell` (GameEngineFuncional 07–08, 2026-10-25) pelo criterio do
 // `command_palette`: os chamadores de fora alcancam sub-caminhos (`illustration::Mark`,
 // `sheet_cell::paint_sheet_cell`) — `ph2d-app-game`, `ph2d-app-components`, o Inspector e o editor

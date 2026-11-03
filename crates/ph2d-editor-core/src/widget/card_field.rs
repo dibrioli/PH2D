@@ -465,5 +465,5 @@ impl Expr<'_> {
 }
 
 #[cfg(test)]
-#[path = "card_field_tests.rs"]
+#[path = "card_field/tests.rs"]
 mod tests;

@@ -1062,6 +1062,11 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 - Doctest novo só verificado em CI. Quem cria valida manual com `cargo test --doc -p <crate>`.
 - Benches/examples só clippados em CI.
 
+> **Teste de pincel (dono, 03/11/2026).** É um **alarme barato que aponta o que mudou**; o **dono decide** (gizmo × traço) e a
+> aprovação dele vira a referência. Tabelas de largura de ~40 tamanhos e testes de largura de horas deixam de ser o caminho;
+> ⛔ não regerar tabelas de 40 tamanhos. Os demais itens da pesquisa seguem «a confirmar por medição» e NÃO mudam esta DIRETRIZ
+> ainda: [PLANO_ACELERACAO_2026-11.md](../DevOps/PLANO_ACELERACAO_2026-11.md).
+
 ### 6.5 Como NÃO escrever test slow
 
 **❌ NÃO faça:**

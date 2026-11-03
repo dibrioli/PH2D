@@ -5,6 +5,9 @@
 > ([ADR-0099](../architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md)).
 > Pintar o algoritmo, **não** copiar o código GPL (PH2D é proprietário). Ver §1 do doc de arquitetura.
 
+> **Lei nova (dono, 03/11/2026):** teste de pincel = alarme barato que aponta o que mudou + aprovação do dono (vira a referência);
+> não regerar tabelas de largura de 40 tamanhos. Plano: [PLANO_ACELERACAO_2026-11.md](../DevOps/PLANO_ACELERACAO_2026-11.md).
+
 ## Leia nesta ordem
 
 | Doc | O que tem |

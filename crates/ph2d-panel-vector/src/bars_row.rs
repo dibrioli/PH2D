@@ -237,12 +237,20 @@ pub(super) fn offset_chips(
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> Vec<ToolRailEntry> {
     let k = crate::state::offset_knobs();
+    // A unidade vive no CAMPO (spec 03 §7): a shell lê o número cru como `d` em px do vetor.
+    let d = store
+        .number_value(crate::ids::VECTOR_EXPAND_OFFSET)
+        .unwrap_or(0.0);
+    let px = ph2d_editor_core::widget::Unit::Px.suffix();
     let mut v = vec![
         ToolRailEntry::number(
             crate::ids::VECTOR_EXPAND_OFFSET,
             tr("panel.vector.expand.offset"),
             tr("panel.vector.expand.offset"),
-            None,
+            Some(format!(
+                "{} {px}",
+                ph2d_editor_core::interaction::format_number(d)
+            )),
         ),
         ToolRailEntry::Divider,
         ToolRailEntry::text(tr("panel.vector.expand.corner")),

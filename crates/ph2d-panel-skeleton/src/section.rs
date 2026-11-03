@@ -385,7 +385,7 @@ fn limit_rows(r: &mut RowCtx, y: f32) -> f32 {
 /// tem leitor de texto pintado: *quando a lei fica dentro do pintor, o gate dela não existe*.
 /// ⏳ A dívida fica nomeada — o pixel não é alcançável de um teste, e o que o liga é o gate
 /// `include_str!` que exige o pintor a chamar esta porta.
-fn rotulo_do_auto(derivado: Option<usize>) -> String {
+pub(crate) fn rotulo_do_auto(derivado: Option<usize>) -> String {
     // ⛔ Só `Ccw` (1) e `Cw` (2) são lados nomeáveis: o `Keep` (0) seria circular e o `Mixed` (3)
     // não tem um lado só. *Um rótulo que inventa um lado é pior que nenhum.*
     let lado = derivado.and_then(|i| match i {

@@ -48,6 +48,24 @@ fn world_number_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
+/// A caixa de uma lista suspensa. ⚠️ No corpo antigo é `Dropdown` no store, botão na tela: é ele que
+/// faz o dispatch alternar o `open`. Nos cartões é `Button`: a lista abre pelo `Click`
+/// (`panel::cards::dropdown::on_click`), e um `Dropdown` nunca o emitiria — a caixa não abriria.
+fn lista(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    if crate::paint::em_cartoes() {
+        button(store, id);
+    } else {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+    }
+}
+
 pub(crate) fn populate(store: &mut WidgetStore) {
     // ⚠️ Cada fileira é registada **pela TABELA que o `paint` percorre** — é a regra que o gate
     // `table_driven_chips_are_registered_too` lê no fonte, e a que impede a próxima fileira de
@@ -71,30 +89,13 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::VECTOR_BONE_SKIN_LAW_IDS {
         button(store, id);
     }
-    // ⚠️ **`Dropdown` no store, botão na tela**: é o `InteractiveState::Dropdown` que faz o dispatch
-    // genérico alternar o `open` (e fechar o dos outros). Registá-lo como `Button` faria o clique
-    // acender e **nunca abrir lista nenhuma**.
-    store.register(
-        crate::ids::VECTOR_BONE_SMART_CLIP,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: None,
-        },
-    );
+    lista(store, crate::ids::VECTOR_BONE_SMART_CLIP);
     for id in ids::VECTOR_BONE_SMART_CLIP_IDS {
         button(store, id);
     }
-    // ⭐ O selector de QUEM MANDA NA PONTA — a mesma dupla (o chip é `Dropdown`, as linhas são
-    // botões), e foi um gate de costura que apanhou o irmão dele pintado e não registado.
-    store.register(
-        crate::ids::VECTOR_BONE_TIP,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: None,
-        },
-    );
+    // ⭐ O selector de QUEM MANDA NA PONTA — a mesma dupla (a caixa e as linhas, que são botões), e
+    // foi um gate de costura que apanhou o irmão dele pintado e não registado.
+    lista(store, crate::ids::VECTOR_BONE_TIP);
     for id in ids::VECTOR_BONE_TIP_IDS {
         button(store, id);
     }

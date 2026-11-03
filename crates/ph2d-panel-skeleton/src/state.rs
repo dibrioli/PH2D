@@ -10,6 +10,11 @@
 use ph2d_editor_core::zones::Rect;
 use std::cell::{Cell, RefCell};
 
+#[path = "state_preso.rs"]
+mod preso;
+pub(crate) use preso::{com_preso, current_bone_subject};
+pub use preso::{publica_presos, set_current_bone_name};
+
 thread_local! {
     /// A seleção contém pelo menos uma forma PRESA a um esqueleto? Decide se as duas saídas
     /// (Keep Pose / Release) são oferecidas — *um botão que só sabe recusar é pior que um ausente*.
@@ -32,6 +37,8 @@ thread_local! {
     /// O OSSO em foco existe? Sem ele, `Length`/`Strength` não têm sujeito.
     static CURRENT_HAS_BONE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_BONE_LENGTH: Cell<f64> = const { Cell::new(0.0) };
+    /// ⭐ Quantos px do mundo vale uma unidade do comprimento (D27: o campo mostra px).
+    static CURRENT_BONE_PX_PER_UNIT: Cell<f64> = const { Cell::new(1.0) };
     static CURRENT_BONE_STRENGTH: Cell<f64> = const { Cell::new(1.0) };
     /// ⭐ Os SEGMENTOS e a CURVATURA do osso em foco (a F8). ⚠️ Eles decidem se as quatro fileiras
     /// da curvatura são pintadas — ver [`crate::section_campos::campos_do_osso`].
@@ -142,6 +149,16 @@ pub fn set_current_bone(v: Option<ph2d_skeleton::bend::BoneSpec>) {
         CURRENT_BONE_SEGMENTS.with(|c| c.set(s.segments));
         CURRENT_BONE_CURVE.with(|c| c.set(s.curve));
     }
+}
+
+/// ⭐ **D27**: px do mundo por unidade do comprimento do osso em foco — o «Length (px)» é
+/// `length × isto`; quem grava devolve ao espaço local (`ph2d_app_skeleton::knobs::apply_from_panel`).
+pub fn set_current_bone_px_per_unit(k: f64) {
+    CURRENT_BONE_PX_PER_UNIT.with(|c| c.set(k));
+}
+
+pub(crate) fn bone_px_per_unit() -> f64 {
+    CURRENT_BONE_PX_PER_UNIT.with(Cell::get)
 }
 
 thread_local! {

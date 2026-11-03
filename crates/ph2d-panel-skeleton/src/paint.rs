@@ -19,6 +19,12 @@ use ph2d_editor_core::widget::{SCROLLBAR_W, SKELETON_SCROLLBAR_ID, scroll_area};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
+/// ⭐ CartoesUI (C3): o painel é uma LISTA de cartões; `PH2D_CARDS=0` = o corpo de antes (para a
+/// comparação lado a lado no smoke).
+pub(crate) fn em_cartoes() -> bool {
+    std::env::var("PH2D_CARDS").as_deref() != Ok("0")
+}
+
 pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(SkeletonPanel::ID) {
         // Limpeza simétrica do rect: sem ela o `panel_at` continuaria a devolver este painel no
@@ -31,23 +37,32 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(ids::SKELETON_PANEL, rect);
-    paint_panel_surface(rect, ctx.scene, theme);
+    let cartoes = em_cartoes();
+    if !cartoes {
+        paint_panel_surface(rect, ctx.scene, theme);
+    }
 
-    let title_size = paint_panel_title(
-        rect,
-        ph2d_i18n::tr("panel.vector.section.bone"),
-        PANEL_HEADER_CLOSE_RESERVE,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    paint_panel_close_button(
-        rect,
-        ids::VECTOR_CLOSE,
-        ctx.host.hit_index_mut(),
-        ctx.scene,
-        theme,
-    );
+    let title_size = if cartoes {
+        0.0
+    } else {
+        paint_panel_title(
+            rect,
+            ph2d_i18n::tr("panel.vector.section.bone"),
+            PANEL_HEADER_CLOSE_RESERVE,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        )
+    };
+    if !cartoes {
+        paint_panel_close_button(
+            rect,
+            ids::VECTOR_CLOSE,
+            ctx.host.hit_index_mut(),
+            ctx.scene,
+            theme,
+        );
+    }
 
     let inner_x = rect.x + PANEL_HEAD_PAD;
     // A calha da barra fica reservada sempre, para o corpo nunca pintar por baixo dela.
@@ -73,17 +88,26 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
         if state::bone_subject_changed() {
             abandona_a_edicao_do_osso(store);
         }
-        for (id, _, _, valor) in section_campos::campos_do_osso().into_iter().flatten() {
-            store.set_number_value(id, valor);
-        }
-        for (id, _, _, valor) in section_campos::campos_da_ancora().into_iter().flatten() {
-            store.set_number_value(id, valor);
-        }
+        semeia(store, None);
         // ⭐ E os dois do PINCEL de peso, pela mesma porta — ⚠️ o sujeito deles é a ferramenta e
         // não o osso, logo eles são semeados **sempre** (a secção é que decide se os pinta).
         let (raio, quanto, _, _) = state::bone_weight();
         store.set_number_value(ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS, raio);
         store.set_number_value(ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT, quanto);
+    }
+    crate::cards::prepare(ctx.host.store_mut());
+    if cartoes {
+        let (cards, presos) = crate::cards_presos::cards(ctx.host.store_mut());
+        ph2d_editor_core::panel::cards::paint_card_list_pinned(
+            ctx,
+            ids::SKELETON_PANEL,
+            ph2d_i18n::tr("panel.vector.section.bone"),
+            &cards,
+            None,
+            &presos,
+        );
+        deferred(ctx, theme);
+        return;
     }
     let (content_h, area) = {
         let scene = &mut *ctx.scene;
@@ -131,7 +155,11 @@ pub(crate) fn paint(_state: &mut SkeletonPanelState, ctx: &mut PaintCtx) {
     };
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
 
-    // ⭐⭐⭐ O passe DIFERIDO: a lista de acções por cima de tudo.
+    deferred(ctx, theme);
+}
+
+/// ⭐⭐⭐ O passe DIFERIDO: as listas suspensas por cima de tudo.
+fn deferred(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some(chip_rect) = state::take_pending_bone_action_dd() {
         crate::section_smart::paint_action_popover(ctx, chip_rect, theme);
     }
@@ -168,4 +196,53 @@ fn abandona_a_edicao_do_osso(store: &mut ph2d_editor_core::interaction::WidgetSt
     if foco.is_some() {
         store.set_focus(None);
     }
+}
+
+/// Os números do osso entram no store; `so` = só os do cartão dessa secção (o cartão PRESO semeia
+/// os dele com o retrato do osso dele, `cards_presos`). ⛔ O limite e a faixa do Smart Bone nunca
+/// eram semeados (mostravam 0 / 0, achado na cena 8 da C3): em GRAUS, como a shell os publica.
+pub(crate) fn semeia(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    so: Option<ph2d_a11y::NodeId>,
+) {
+    for (id, valor) in valores(so) {
+        store.set_number_value(id, valor);
+    }
+}
+
+/// Os números do osso em foco (todas as secções, ou só `so`) — semeados no store, ou guardados
+/// como os do osso PRESO de um solto (T40).
+pub(crate) fn valores(so: Option<ph2d_a11y::NodeId>) -> Vec<(ph2d_a11y::NodeId, f64)> {
+    use crate::cards::{CARD_BONE, CARD_IK, CARD_LIMIT, CARD_SMART};
+    let quer = |s| so.is_none_or(|x| x == s);
+    let mut v = Vec::new();
+    if quer(CARD_BONE) {
+        v.extend(
+            section_campos::campos_do_osso()
+                .into_iter()
+                .flatten()
+                .map(|(id, _, _, valor)| (id, valor)),
+        );
+    }
+    if quer(CARD_IK) {
+        v.extend(
+            section_campos::campos_da_ancora()
+                .into_iter()
+                .flatten()
+                .map(|(id, _, _, valor)| (id, valor)),
+        );
+    }
+    if quer(CARD_LIMIT)
+        && let Some((min, max)) = state::current_bone_limit()
+    {
+        v.push((ids::VECTOR_BONE_LIMIT_MIN, min));
+        v.push((ids::VECTOR_BONE_LIMIT_MAX, max));
+    }
+    if quer(CARD_SMART)
+        && let Some(sb) = state::current_bone_smart()
+    {
+        v.push((ids::VECTOR_BONE_SMART_FROM, sb.from));
+        v.push((ids::VECTOR_BONE_SMART_TO, sb.to));
+    }
+    v
 }

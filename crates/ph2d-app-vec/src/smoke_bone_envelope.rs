@@ -115,6 +115,8 @@ pub struct Prologo {
     /// escolhido, e ali o artista está a escolher um DESENHO. ⇒ *um passo que nomeia uma linha de
     /// painel afirma que ela está lá, e o dono aprova o smoke com o passo impossível dentro.*
     pub painel_do_osso: bool,
+    /// O verbo *Transform* na mão (a `=9`: a foto mostra o painel como no trabalho).
+    pub transform_na_mao: bool,
 }
 
 /// A lei do [`Prologo`], **por NÍVEL**. ⚠️ **Pura aqui e efeito na shell**, como o molde da família
@@ -148,6 +150,7 @@ pub const fn prologo_do_nivel(n: u32) -> Prologo {
         // cena que o dono aprovou: a timeline fica como ele a deixou e a câmera não se mexe. *Abrir
         // uma coluna lateral não é reenquadrar.*
         painel_do_osso: true,
+        transform_na_mao: n == 9,
     }
 }
 

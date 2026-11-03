@@ -10437,11 +10437,14 @@ name = "ph2d-skeleton-demo"
 version = "0.0.0"
 dependencies = [
  "ph2d-anim",
+ "ph2d-constraints-ecs",
  "ph2d-ecs",
+ "ph2d-i18n",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-timeline",
+ "ph2d-vec-scene",
 ]
 
 [[package]]

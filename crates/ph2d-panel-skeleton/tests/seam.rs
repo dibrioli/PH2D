@@ -31,6 +31,65 @@ const VIEWPORT: Rect = Rect {
 };
 const SEC: u128 = 1_000_000_000;
 
+/// Os cartões medem-se ao pintar e abrem com mola em tempo real: uma pintura só não os mostra.
+trait Assenta {
+    fn pinta_assentado(
+        &mut self,
+        st: &mut SkeletonPanelState,
+        viewport: Rect,
+    ) -> Vec<(ph2d_a11y::NodeId, Rect)>;
+    fn rect_assentado(
+        &mut self,
+        st: &mut SkeletonPanelState,
+        viewport: Rect,
+        id: ph2d_a11y::NodeId,
+    ) -> Option<Rect>;
+}
+
+impl Assenta for MockPanelHost {
+    fn pinta_assentado(
+        &mut self,
+        st: &mut SkeletonPanelState,
+        viewport: Rect,
+    ) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+        const QUADROS: (usize, usize) = (8, 120);
+        let mut antes = Vec::new();
+        for q in 0..QUADROS.1 {
+            let agora = self.paint::<SkeletonPanel>(st, viewport);
+            if q >= QUADROS.0 && agora == antes {
+                break;
+            }
+            antes = agora;
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        antes
+    }
+
+    fn rect_assentado(
+        &mut self,
+        st: &mut SkeletonPanelState,
+        viewport: Rect,
+        id: ph2d_a11y::NodeId,
+    ) -> Option<Rect> {
+        self.pinta_assentado(st, viewport)
+            .into_iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| r)
+    }
+}
+
+/// O caminho do hero: a caixa de uma lista suspensa abre pelo `Click` antes dos painéis.
+fn aplica(host: &mut MockPanelHost, st: &mut SkeletonPanelState, evs: Vec<WidgetEvent>) {
+    for ev in evs {
+        if let WidgetEvent::Click(id) = ev
+            && ph2d_editor_core::panel::cards::dropdown::on_click(id)
+        {
+            continue;
+        }
+        host.apply_panel_event::<SkeletonPanel>(st, ev);
+    }
+}
+
 fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     PointerEvent {
         kind,
@@ -81,7 +140,7 @@ fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+        .rect_assentado(&mut st, VIEWPORT, id)
         .unwrap_or_else(|| panic!("{what} nao foi PINTADO com area clicavel"));
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
@@ -92,9 +151,7 @@ fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
         "{what}: o ponteiro sobre o retangulo nao virou Click — ele esta' desenhado e nao existe \
          para o dispatcher (falta o `register` no populate)"
     );
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     host.drained_actions()
 }
 
@@ -148,8 +205,7 @@ fn every_number_of_the_skeleton_reaches_the_bus() {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
         assert!(
-            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-                .is_some(),
+            host.rect_assentado(&mut st, VIEWPORT, id).is_some(),
             "{id:?} nao foi PINTADO — declare em `estado_de` sob que estado ele existe"
         );
         // ⚠️ O valor entra pelo STORE e o evento só diz *«este mudou»* — é o contrato do
@@ -281,7 +337,7 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<SkeletonPanel>(
+        .rect_assentado(
             &mut st,
             VIEWPORT,
             ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
@@ -295,13 +351,11 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
         chip.y + 2.0,
         SEC + SEC / 100,
     ));
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     // A 2.ª opção é a acção do osso — escolher a 1.ª (`Main`) é o gesto que o report pedia.
     let opt = ids::VECTOR_BONE_SMART_CLIP_IDS[0];
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, opt)
+        .rect_assentado(&mut st, VIEWPORT, opt)
         .expect("com a lista ABERTA a acção tem de ser pintada — senão não é escolhível");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
@@ -311,9 +365,7 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
             .any(|e| matches!(e, WidgetEvent::Click(c) if *c == opt)),
         "a opção da lista está desenhada e MORTA sob o ponteiro"
     );
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
@@ -341,7 +393,7 @@ fn the_option_you_press_is_the_one_you_see() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<SkeletonPanel>(
+        .rect_assentado(
             &mut st,
             VIEWPORT,
             ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
@@ -354,15 +406,13 @@ fn the_option_you_press_is_the_one_you_see() {
         chip.y + 2.0,
         SEC + SEC / 100,
     ));
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     // As duas opções publicadas (`Main`, `Walk`) têm de sair NESTA ordem, de cima para baixo.
     let r0 = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[0])
+        .rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[0])
         .expect("a 1.ª opção");
     let r1 = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[1])
+        .rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_SMART_CLIP_IDS[1])
         .expect("a 2.ª opção");
     assert!(
         r1.y > r0.y,
@@ -395,7 +445,7 @@ fn a_bone_without_an_action_is_offered_no_picker() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     assert!(
-        host.painted_rect::<SkeletonPanel>(
+        host.rect_assentado(
             &mut st,
             VIEWPORT,
             ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP
@@ -438,8 +488,7 @@ fn the_two_exits_appear_only_when_something_is_bound() {
     let sem = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
@@ -484,8 +533,7 @@ fn a_skinned_image_offers_release_but_not_expand() {
     let sem = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     state::set_current_skinned(state::Skinned {
         vector: false,
@@ -533,8 +581,7 @@ fn the_two_bone_numbers_need_a_bone_in_focus() {
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     assert!(
         !pintado(ids::VECTOR_BONE_LENGTH) && !pintado(ids::VECTOR_BONE_STRENGTH),
@@ -785,8 +832,7 @@ fn no_modo_absoluto_a_direccao_nao_e_pintada() {
         state::set_current_bone_weight(0.4, 0.15, 0, modo);
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     let abs = ph2d_tool_bone::WeightMode::Absolute.indice();
     let cum = ph2d_tool_bone::WeightMode::Cumulative.indice();
@@ -819,9 +865,7 @@ fn os_botoes_da_direccao_seguem_o_verbo_e_o_que_a_shell_publica() {
         let mut st = SkeletonPanelState;
         publica_tudo();
         state::set_current_bone_tool(verbo);
-        let v = host
-            .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some();
+        let v = host.rect_assentado(&mut st, VIEWPORT, id).is_some();
         limpa();
         state::set_current_bone_tool(None);
         v
@@ -860,9 +904,7 @@ fn os_numeros_do_pincel_seguem_o_verbo() {
         let mut st = SkeletonPanelState;
         publica_tudo();
         state::set_current_bone_tool(verbo);
-        let v = host
-            .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some();
+        let v = host.rect_assentado(&mut st, VIEWPORT, id).is_some();
         limpa();
         state::set_current_bone_tool(None);
         v
@@ -906,8 +948,7 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     limpa();
     state::set_current_bone_tool(None);
@@ -953,7 +994,7 @@ fn the_number_fields_show_the_document_not_the_value_they_were_born_with() {
     state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(20.0, 1.5)));
     state::set_current_bone_ik(Some((0.5, 0.25, 4.0, ph2d_skeleton::BendSide::Keep)));
     // Pintar UMA vez: o `painted_rect` corre o painel inteiro e devolve o rect de um id.
-    host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_IK_CHAIN)
+    host.rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_IK_CHAIN)
         .expect("o campo Chain tem de ser pintado com um osso com ancora em foco");
     for (id, esperado, nome) in [
         (ids::VECTOR_BONE_LENGTH, 20.0, "Length"),
@@ -1002,9 +1043,7 @@ fn the_curvature_is_only_offered_on_a_bone_that_can_read_it() {
         for id in alcas {
             let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
             let mut st = SkeletonPanelState;
-            let pintado = host
-                .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-                .is_some();
+            let pintado = host.rect_assentado(&mut st, VIEWPORT, id).is_some();
             assert_eq!(
                 pintado, esperado,
                 "com segments = {segments}, {id:?} pintado = {pintado}"
@@ -1014,7 +1053,7 @@ fn the_curvature_is_only_offered_on_a_bone_that_can_read_it() {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
         assert!(
-            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_SEGMENTS)
+            host.rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_SEGMENTS)
                 .is_some(),
             "sem o campo Segments a curvatura e' inalcancavel para sempre"
         );
@@ -1037,8 +1076,7 @@ fn a_fileira_das_alcas_so_existe_onde_ela_manda_e_em_auto_os_numeros_somem() {
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     let curvo = ph2d_skeleton::bend::BoneSpec {
         segments: 4,
@@ -1091,7 +1129,7 @@ fn the_tip_picker_lists_the_children_and_the_choice_reaches_the_bus() {
     let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
     let mut st = SkeletonPanelState;
     let chip = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ph2d_panel_skeleton::ids::VECTOR_BONE_TIP)
+        .rect_assentado(&mut st, VIEWPORT, ph2d_panel_skeleton::ids::VECTOR_BONE_TIP)
         .expect("o chip da ponta não foi PINTADO — a escolha do filho não teria onde acontecer");
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
     let evs = host.dispatch_pointer_event(pointer(
@@ -1100,13 +1138,11 @@ fn the_tip_picker_lists_the_children_and_the_choice_reaches_the_bus() {
         chip.y + 2.0,
         SEC + SEC / 100,
     ));
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     // A 3.ª linha é o primeiro FILHO — o gesto que a ordem do dono pede.
     let opt = ids::VECTOR_BONE_TIP_IDS[2];
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, opt)
+        .rect_assentado(&mut st, VIEWPORT, opt)
         .expect("com a lista ABERTA o filho tem de ser pintado — senão não é escolhível");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 2 * SEC));
@@ -1116,9 +1152,7 @@ fn the_tip_picker_lists_the_children_and_the_choice_reaches_the_bus() {
             .any(|e| matches!(e, WidgetEvent::Click(c) if *c == opt)),
         "a linha da lista está desenhada e MORTA sob o ponteiro"
     );
-    for ev in evs {
-        host.apply_panel_event::<SkeletonPanel>(&mut st, ev);
-    }
+    aplica(&mut host, &mut st, evs);
     assert!(
         host.drained_actions().into_iter().any(|a| matches!(
             a,
@@ -1145,7 +1179,7 @@ fn the_envelope_is_painted_only_where_it_still_rules() {
     let pintado = || {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_STRENGTH)
+        host.rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_STRENGTH)
             .is_some()
     };
     publica_tudo();
@@ -1183,8 +1217,7 @@ fn a_fileira_da_lei_de_pele_existe_segue_a_seleccao_e_o_clique_chega() {
     let pintado = |id| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
 
     // (a) SEM pele escolhida não há sujeito, e a fileira não existe.
@@ -1232,8 +1265,7 @@ fn a_ancora_que_aponta_esconde_o_que_a_medicao_diz_ser_inerte() {
     let pintado = |id: ph2d_a11y::NodeId| {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
-        host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-            .is_some()
+        host.rect_assentado(&mut st, VIEWPORT, id).is_some()
     };
     publica_tudo();
     state::set_current_bone_ik(Some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::Keep)));
@@ -1287,8 +1319,7 @@ fn as_duas_portas_da_ancora_sao_oferecidas() {
         let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
         let mut st = SkeletonPanelState;
         assert!(
-            host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
-                .is_some(),
+            host.rect_assentado(&mut st, VIEWPORT, id).is_some(),
             "{id:?} nao e' pintado sem ancora: uma das duas portas de entrada nao existe"
         );
     }
@@ -1306,7 +1337,7 @@ fn a_typed_length_never_lands_on_the_bone_selected_after_it() {
     publica_tudo();
     state::set_current_bone_subject(Some(4));
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
+        .rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
         .expect("Length pintado");
     let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
@@ -1335,7 +1366,7 @@ fn a_typed_length_never_lands_on_the_bone_selected_after_it() {
     // A selecção muda para outro osso (comprimento 50) e o painel pinta-o.
     state::set_current_bone(Some(ph2d_skeleton::bend::BoneSpec::straight(50.0, 1.0)));
     state::set_current_bone_subject(Some(3));
-    host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
+    host.rect_assentado(&mut st, VIEWPORT, ids::VECTOR_BONE_LENGTH)
         .expect("Length pintado");
     // O clique fora (o canvas) larga o foco.
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 3 * SEC));
@@ -1378,7 +1409,7 @@ fn a_typed_field_the_new_bone_does_not_show_is_dropped_too() {
     state::set_current_bone_subject(Some(4));
     let id = ids::VECTOR_BONE_CURVE_IN_Y;
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+        .rect_assentado(&mut st, VIEWPORT, id)
         .expect("a alça pintada num osso de 4 segmentos");
     let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
@@ -1402,7 +1433,7 @@ fn a_typed_field_the_new_bone_does_not_show_is_dropped_too() {
     }
     state::set_current_bone(Some(osso(50.0, 1)));
     state::set_current_bone_subject(Some(3));
-    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    host.pinta_assentado(&mut st, VIEWPORT);
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 3 * SEC));
     host.dispatch_pointer_event(pointer(PointerKind::Up, 5.0, 895.0, 3 * SEC + SEC / 100));
     assert!(!mudou(&evs, id), "o 7 da alça caiu no osso novo: {evs:?}");
@@ -1420,7 +1451,7 @@ fn a_length_drag_never_writes_to_the_bone_selected_after_it() {
     state::set_current_bone_subject(Some(4));
     let id = ids::VECTOR_BONE_LENGTH;
     let r = host
-        .painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
+        .rect_assentado(&mut st, VIEWPORT, id)
         .expect("Length pintado");
     let (cx, cy) = (r.x + r.w * 0.3, r.y + r.h * 0.5);
     // 1) arrasto acabado sobre o osso 4.
@@ -1430,7 +1461,7 @@ fn a_length_drag_never_writes_to_the_bone_selected_after_it() {
     host.dispatch_pointer_event(pointer(PointerKind::Up, cx + 30.0, cy, SEC + 2));
     state::set_current_bone(Some(osso(50.0, 1)));
     state::set_current_bone_subject(Some(3));
-    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    host.pinta_assentado(&mut st, VIEWPORT);
     let evs = host.dispatch_pointer_event(pointer(PointerKind::Down, 5.0, 895.0, 2 * SEC));
     host.dispatch_pointer_event(pointer(PointerKind::Up, 5.0, 895.0, 2 * SEC + 1));
     assert!(
@@ -1438,13 +1469,13 @@ fn a_length_drag_never_writes_to_the_bone_selected_after_it() {
         "o arrasto acabado escreveu no osso novo: {evs:?}"
     );
     // 2) arrasto a meio sobre o osso 3 quando a selecção passa ao osso 2.
-    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    host.pinta_assentado(&mut st, VIEWPORT);
     host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, 3 * SEC));
     let m = host.dispatch_pointer_event(pointer(PointerKind::Move, cx + 30.0, cy, 3 * SEC + 1));
     assert!(mudou(&m, id), "o arrasto escreve no osso dele: {m:?}");
     state::set_current_bone(Some(osso(80.0, 1)));
     state::set_current_bone_subject(Some(2));
-    host.paint::<SkeletonPanel>(&mut st, VIEWPORT);
+    host.pinta_assentado(&mut st, VIEWPORT);
     let mut evs =
         host.dispatch_pointer_event(pointer(PointerKind::Move, cx + 60.0, cy, 3 * SEC + 2));
     evs.extend(host.dispatch_pointer_event(pointer(PointerKind::Up, cx + 60.0, cy, 3 * SEC + 3)));

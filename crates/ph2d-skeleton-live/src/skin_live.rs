@@ -82,6 +82,18 @@ pub fn bone_segments(sim: &SimWorld) -> Vec<(u64, [f64; 2], [f64; 2])> {
         .collect()
 }
 
+/// O meio do osso `bits` entre a raiz e a ponta que se DESENHAM, em mundo (`None` = não é osso) — onde
+/// a corda do alfinete de um cartão o prende (T44, `docs/CartoesUI`).
+#[must_use]
+pub fn bone_middle(sim: &SimWorld, bits: u64) -> Option<[f32; 2]> {
+    let (_, a, b) = bone_segments(sim).into_iter().find(|(o, ..)| *o == bits)?;
+    #[allow(clippy::cast_possible_truncation)]
+    Some([
+        f64::midpoint(a[0], b[0]) as f32,
+        f64::midpoint(a[1], b[1]) as f32,
+    ])
+}
+
 /// ⭐⭐⭐ **O CORPO de cada osso, em MUNDO** — `(bits, polilinha)`, com `N+1` nós.
 ///
 /// ⚠️⚠️ **Ela e a [`bone_segments`] têm consumidores DIFERENTES e as duas estão certas.** Quem

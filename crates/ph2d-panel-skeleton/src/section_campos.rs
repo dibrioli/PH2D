@@ -41,7 +41,7 @@ pub(crate) fn campos_do_osso() -> Option<Vec<(ph2d_a11y::NodeId, &'static str, f
             ids::VECTOR_BONE_LENGTH,
             tr("panel.vector.bone.length"),
             LENGTH_STEP,
-            osso.length,
+            osso.length * state::bone_px_per_unit(),
         ),
         (
             ids::VECTOR_BONE_SEGMENTS,
@@ -174,7 +174,7 @@ pub(crate) fn linha_com_losango(
     r.labeled_number_field(label, id, step, y)
 }
 
-/// Passo do campo de comprimento, no domínio do DOCUMENTO (unidades de mundo).
+/// Passo do campo de comprimento, em px do DOCUMENTO (D27).
 pub(crate) const LENGTH_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 
 /// Passo do campo de força — ela é um **múltiplo do comprimento do osso**, então a escala útil é

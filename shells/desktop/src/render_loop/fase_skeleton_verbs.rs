@@ -279,8 +279,10 @@ impl crate::App {
         if let Some((knob, v)) = pending_bone_knob
             && let Some(bits) = osso_selecionado
         {
-            // O comprimento empurra os filhos (dono 30/10).
-            ph2d_app_skeleton::comprimento::aplica(sim, ph2d_ecs::Entity::from_bits(bits), knob, v);
+            let doc = hero_screen.as_ref().map_or_else(Default::default, |h| {
+                ph2d_editor_core::DocPx::of(&h.project)
+            });
+            ph2d_app_skeleton::knobs::apply_from_panel(sim, bits, knob, v, doc);
         }
         // ⭐⭐⭐ **A ÂNCORA DE IK** — os dois verbos e os três números, aplicados aqui como os do
         // esqueleto: o dreno acima só CAPTURA.

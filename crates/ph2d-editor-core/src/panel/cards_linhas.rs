@@ -433,7 +433,7 @@ impl<'s> CardCtx<'s> {
         self.hit_index.register(id, r);
         let aceso = self.store.hover_live(id) > 0.0;
         crate::widget::paint_card_chip(self.scene, self.text_system, self.ink, r, text, aceso);
-        if dropdown::open() == Some(id) {
+        if dropdown::open() == Some(id) && !options.is_empty() {
             dropdown::stash(
                 r,
                 self.ink,

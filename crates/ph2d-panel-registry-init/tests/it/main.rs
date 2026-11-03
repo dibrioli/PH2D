@@ -9,6 +9,7 @@
 mod a_column_gives_back_exactly_what_it_took;
 mod a_docked_panel_never_reaches_the_drawing_area;
 mod a_fileira_de_cada_item_tem_canal;
+mod a_lista_de_cartoes_flutua_no_hero;
 mod a_marca_tem_a_altura_da_linha;
 mod a_ordem_das_seccoes_e_a_da_paleta;
 mod a_paleta_fecha_ao_escolher_por_cima_de_um_painel;
@@ -29,10 +30,14 @@ mod o_bloco7_duas_copias;
 mod o_bloco8_player_solto;
 mod o_bloco9_reset_e_alfinete;
 mod o_cadeado_do_cartao_objeto;
+mod o_alfinete_com_corda;
+mod o_cartao_solto_bloco4;
+mod o_cartao_solto_no_canvas;
 mod o_inspector_armado;
 #[cfg(feature = "panel-painter-layers")]
 mod o_painter_armado;
 mod o_que_o_artista_nao_alcanca;
+mod o_smart_bone_em_cartoes;
 mod onde_comeca_o_valor;
 mod os_campos_de_texto_tem_nome;
 mod os_componentes_em_cartoes;

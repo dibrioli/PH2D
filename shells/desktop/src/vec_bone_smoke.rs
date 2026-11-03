@@ -141,6 +141,12 @@ impl crate::App {
                                 ) {
                                     hero.gizmo.selection = Some(b);
                                 }
+                                if pro.transform_na_mao {
+                                    ph2d_app_skeleton::bone_bridge::arm(
+                                        &mut gfx.tools,
+                                        ph2d_tool_bone::BoneAction::Transform,
+                                    );
+                                }
                             }
                             if pro.enquadrar {
                                 hero.bus.push(

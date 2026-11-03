@@ -11,6 +11,7 @@ impl crate::App {
             return;
         };
         let (win, cam) = (gfx.scene_window(), gfx.camera);
+        use ph2d_editor_core::ids::SKELETON_PANEL as BONES;
         let FrameGfx {
             sim,
             hero_screen,
@@ -21,12 +22,8 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // ⭐⭐⭐ **O PICK DO ALVO RESOLVE-SE AQUI**, antes de se perguntar qual osso está em
-        // foco — e a ordem é o desenho: quem resolve é *«a selecção passou a ser outra
-        // coisa»*, e o clique que a mudou pode ter vindo do CANVAS **ou** da HIERARQUIA. As
-        // duas escrevem a mesma selecção, então as duas superfícies saem de graça; um
-        // segundo caminho de acerto seria a segunda resposta à mesma pergunta.
-        //
+        // ⭐⭐⭐ **O PICK DO ALVO RESOLVE-SE AQUI**, antes de se perguntar qual osso está em foco:
+        // canvas e hierarquia escrevem a mesma selecção, e as duas superfícies saem de graça.
         // ⚠️ **E a selecção VOLTA ao osso**, ao contrário dos irmãos `PathPick`: aqui o
         // artista escolheu um objecto *para o osso*, e o contexto dele é o painel do osso.
         // Sem isto a secção Skeleton desaparecia debaixo dele no instante do acerto.
@@ -80,14 +77,7 @@ impl crate::App {
         // ⚠️ **Quem decide se ROLA é o painel**, que é o único sítio onde a faixa visível e
         // o `y` do cabeçalho existem: daqui sai o *pedido*, e um cabeçalho já à vista fica
         // onde está.
-        // ⭐⭐⭐ **UM OSSO NOVO TRAZ A ABA DO PAINEL PARA A FRENTE.**
-        //
-        // ⛔⛔ **É o sucessor do «revelar-ao-focar»** (report do dono, 2026-09-08), e o
-        // painel próprio mudou-lhe o EFEITO sem mudar a lei: a rolagem existia porque a
-        // secção caía `1394 px` abaixo de 785 px de outro assunto; aqui o cabeçalho é a
-        // primeira linha e não há dobra onde se esconder. O que sobra é o encaixe
-        // partilhado — se o Inspector estiver por cima, revelar é **trazer a aba**.
-        //
+        // ⭐⭐⭐ **UM OSSO NOVO TRAZ A ABA DO PAINEL PARA A FRENTE** (report do dono, 2026-09-08).
         // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
         // quadro prenderia a aba e o artista não conseguiria olhar para outra.
         if ph2d_app_skeleton::bone_bridge::on_focus(tools, &mut self.skeleton, osso_em_foco) {
@@ -129,80 +119,86 @@ impl crate::App {
                 );
             }
         }
-        ph2d_panel_skeleton::set_current_bone_subject(osso_em_foco);
-        ph2d_panel_skeleton::set_current_bone(osso_em_foco.and_then(|b| {
-            sim.world()
-                .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
-                .map(ph2d_skeleton_ecs::Bone::spec)
-        }));
-        // ⭐⭐⭐ **DE ONDE VÊM AS ALÇAS** — publicado à parte do `BoneSpec`, e de propósito: o
-        // `BoneSpec` é o osso EFECTIVO que a lei consome, e o modo é uma propriedade de AUTORIA.
-        //
-        // ⚠️ **O `spec` acima é o AUTORADO** (`Bone::spec`), e não o efectivo: os quatro números
-        // que o painel mostra são os que o artista escreveu, e em `From Chain` eles nem sequer se
-        // pintam. *Mostrar ali o valor derivado faria o painel parecer editável e não ser.*
-        ph2d_panel_skeleton::set_current_bone_handles(osso_em_foco.and_then(|b| {
-            sim.world()
-                .get::<ph2d_skeleton_ecs::Bone>(ph2d_ecs::Entity::from_bits(b))
-                .map(|o| usize::from(o.handles == ph2d_skeleton::bend::Handles::Auto))
-        }));
-        // ⭐⭐⭐ **A ÂNCORA do osso em foco** — é isto que decide entre *Add IK* e *Remove IK*
-        // no painel, e se os três números dela têm sujeito. ⚠️ Pela MESMA porta que publica
-        // os números do osso (`selected_bone`): duas perguntas *"qual osso está aceso?"*
-        // divergiriam no primeiro clique.
-        // ⭐ O limite da junta em foco, em GRAUS — a mesma porta e o mesmo guarda de foco.
-        ph2d_panel_skeleton::set_current_bone_limit(osso_em_foco.and_then(|b| {
-            sim.world()
-                .get::<ph2d_skeleton_ecs::BoneLimit>(ph2d_ecs::Entity::from_bits(b))
-                .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
-        }));
-        // ⭐ O osso inteligente em foco — a faixa (em GRAUS), a acção e o alvo, pela MESMA
-        // porta: publicá-los por portas separadas deixaria um quadro em que a faixa é de um
-        // osso e o nome é do anterior.
-        let smart = osso_em_foco.and_then(|b| {
-            sim.world()
-                .get::<ph2d_skeleton_ecs::SmartBone>(ph2d_ecs::Entity::from_bits(b))
-                .cloned()
+        let doc = ph2d_editor_core::DocPx::of(&hero.project);
+        let (pick, linha) = (self.skeleton.smart_pick, &self.timeline.doc);
+        publica_o_osso(sim, osso_em_foco, doc, pick, linha);
+        // O cartão solto preso a um osso: o alfinete durável, o retrato de cada preso e a corda.
+        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world());
+        ph2d_panel_skeleton::publica_presos(&hero.store.loose_pins_of(BONES), |b| {
+            let vivo = ph2d_skeleton_live::painel::live_bone(sim, b);
+            publica_o_osso(sim, vivo, doc, pick, linha);
         });
-        ph2d_panel_skeleton::set_current_bone_smart(smart.as_ref().map(|s| {
-            ph2d_panel_skeleton::SmartBoneView {
-                from: s.from.to_degrees(),
-                to: s.to.to_degrees(),
-                clip: s.clip.clone(),
-                target: s.target.clone(),
-                picking: self.skeleton.smart_pick == osso_em_foco,
-            }
-        }));
-        // ⭐⭐⭐ **A lista de ACÇÕES, filtrada pelo ALVO** — é ela que responde *«qual
-        // animação?»* na tela. ⚠️ Publicada **só** quando há um osso inteligente em foco:
-        // sem sujeito ela seria um selector sem nada para escolher.
-        ph2d_panel_skeleton::set_current_bone_actions(
-            smart
-                .as_ref()
-                .zip(osso_em_foco)
-                .map_or_else(Vec::new, |(s, b)| {
-                    let osso = ph2d_ecs::Entity::from_bits(b);
-                    crate::skeleton_smart::actions_for(sim.world(), &self.timeline.doc, s, osso)
-                }),
-        );
-        // ⭐⭐⭐ **QUEM PODE MANDAR NA PONTA da curva** — a lista inteira (rótulos incluídos) sai da
-        // porta da família, que é a MESMA que o dreno lê para aplicar o clique: a posição é a
-        // escolha, e uma segunda derivação aqui poria o artista a escolher um osso e outro a
-        // obedecer.
-        ph2d_panel_skeleton::set_current_bone_tip(osso_em_foco.and_then(|b| {
-            ph2d_app_skeleton::curve_tip::options(sim, ph2d_ecs::Entity::from_bits(b)).map(
-                |(o, _)| ph2d_panel_skeleton::TipView {
-                    rotulos: o.rotulos,
-                    ligado: o.ligado,
-                    escondidos: o.escondidos,
-                },
-            )
-        }));
-        publica_a_ancora(sim, osso_em_foco);
-        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world()); // T36: o alfinete durável
+        ph2d_card_rope::anda(&mut hero.store, BONES, |b| {
+            ph2d_skeleton_live::skin_live::bone_middle(sim, b).map(|w| cam.world_to_screen(w, win))
+        });
         #[cfg(feature = "panel-inspector")]
         anda_as_cordas_do_inspector(&mut hero.store, sim, &cam, win);
     }
+}
+
+/// O osso `osso` publicado no painel Bones (o em foco, ou um preso): tudo pela MESMA porta — por
+/// portas separadas haveria um quadro com a faixa de um osso e o nome de outro.
+fn publica_o_osso(
+    sim: &ph2d_ecs::SimWorld,
+    osso: Option<u64>,
+    doc: ph2d_editor_core::DocPx,
+    pick: Option<u64>,
+    linha: &ph2d_timeline::TimelineDoc,
+) {
+    use ph2d_panel_skeleton as painel;
+    let sujeito = osso.and_then(|b| ph2d_skeleton_live::painel::bone_subject(sim, b));
+    painel::set_current_bone_subject(sujeito.as_ref().map(|s| s.0));
+    painel::set_current_bone_name(sujeito.map_or_else(String::new, |s| s.1));
+    let no_painel = osso.and_then(|b| ph2d_app_skeleton::knobs::spec_on_panel(sim, b, doc));
+    painel::set_current_bone(no_painel.map(|(s, _)| s));
+    painel::set_current_bone_px_per_unit(no_painel.map_or(1.0, |(_, k)| k));
+    // O modo das alças é AUTORIA, e o `spec` acima é o autorado: em `From Chain` os números nem se
+    // pintam (mostrar o derivado faria o painel parecer editável e não ser).
+    let de = ph2d_ecs::Entity::from_bits;
+    painel::set_current_bone_handles(osso.and_then(|b| {
+        sim.world()
+            .get::<ph2d_skeleton_ecs::Bone>(de(b))
+            .map(|o| usize::from(o.handles == ph2d_skeleton::bend::Handles::Auto))
+    }));
+    painel::set_current_bone_limit(osso.and_then(|b| {
+        sim.world()
+            .get::<ph2d_skeleton_ecs::BoneLimit>(de(b))
+            .map(|l| (l.min.to_degrees(), l.max.to_degrees()))
+    }));
+    let smart = osso.and_then(|b| {
+        sim.world()
+            .get::<ph2d_skeleton_ecs::SmartBone>(de(b))
+            .cloned()
+    });
+    painel::set_current_bone_smart(smart.as_ref().map(|s| painel::SmartBoneView {
+        from: s.from.to_degrees(),
+        to: s.to.to_degrees(),
+        clip: s.clip.clone(),
+        target: s.target.clone(),
+        picking: pick == osso,
+    }));
+    // A lista de acções filtrada pelo alvo, só com um osso inteligente em foco.
+    painel::set_current_bone_actions(smart.as_ref().zip(osso).map_or_else(Vec::new, |(s, b)| {
+        crate::skeleton_smart::actions_for(sim.world(), linha, s, de(b))
+    }));
+    // A lista da ponta sai da porta da família, a MESMA que o dreno lê: a posição é a escolha.
+    painel::set_current_bone_tip(osso.and_then(|b| {
+        ph2d_app_skeleton::curve_tip::options(sim, de(b)).map(|(o, _)| painel::TipView {
+            rotulos: o.rotulos,
+            ligado: o.ligado,
+            escondidos: o.escondidos,
+        })
+    }));
+    publica_a_ancora(sim, osso);
+}
+
+/// A âncora do osso em foco no painel — a conta é da família (`goal::ancora_no_painel`).
+fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
+    let a =
+        crate::skeleton_goal::ancora_no_painel(sim, osso_em_foco.map(ph2d_ecs::Entity::from_bits));
+    ph2d_panel_skeleton::set_current_bone_ik(a.ik);
+    ph2d_panel_skeleton::set_current_bone_aim(a.aim);
+    ph2d_panel_skeleton::set_current_bone_ik_auto_side(a.auto_side);
 }
 
 /// T36/T44 no Inspector: o Transform de cada objecto preso e a corda até à origem dele.

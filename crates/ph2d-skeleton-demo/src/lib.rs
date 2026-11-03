@@ -10,6 +10,8 @@
 //! CONTEÚDO de cena, e conteúdo com dois donos é uma folha.
 #![forbid(unsafe_code)]
 
+pub mod cartoes;
+
 use ph2d_ecs::Entity;
 
 /// ⭐⭐⭐ **A GEOMETRIA DO BRAÇO — uma tabela, dois consumidores.**

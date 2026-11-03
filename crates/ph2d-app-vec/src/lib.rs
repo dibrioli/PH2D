@@ -182,6 +182,7 @@ pub mod shape_live;
 pub mod smoke_appearance;
 pub mod smoke_bone;
 /// ⭐⭐ As cópias na dobra forte — `PH2D_VEC_BONE_SMOKE=6` (A6).
+pub mod smoke_bone_cartoes;
 pub mod smoke_bone_copias;
 /// ⭐⭐⭐ Seis barras presas COM EFEITO — `PH2D_VEC_BONE_SMOKE=5` (F50).
 pub mod smoke_bone_efeitos;

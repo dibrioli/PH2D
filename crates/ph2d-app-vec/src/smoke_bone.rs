@@ -32,10 +32,11 @@ use ph2d_skeleton_demo::{
 /// - **`=6`** — AS CÓPIAS NA DOBRA FORTE (A6, 2026-10-04). Ver [`crate::smoke_bone_copias`].
 /// - **`=7`** — OS TRÊS MODOS DO ESQUELETO (A14, 2026-10-05). Ver [`crate::smoke_bone_modos`].
 /// - **`=8`** — O LOSANGO DO PAINEL DO ESQUELETO (F40). Ver [`crate::smoke_bone_losango`].
+/// - **`=9`** — O PAINEL BONES EM CARTÕES, CHEIO. Ver [`crate::smoke_bone_cartoes`].
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 8;
+pub const NIVEIS: u32 = 9;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -113,6 +114,7 @@ pub fn build(
         6 => return crate::smoke_bone_copias::build(scene, sim, st),
         7 => return crate::smoke_bone_modos::build(scene, sim, st),
         8 => return crate::smoke_bone_losango::build(scene, sim, st),
+        9 => return crate::smoke_bone_cartoes::build(scene, sim, st),
         _ => {}
     }
     if nivel() >= 3 {
@@ -229,6 +231,7 @@ pub fn bind(
         6 => return crate::smoke_bone_copias::bind(scene, sim, st),
         7 => return crate::smoke_bone_modos::bind(st),
         8 => return crate::smoke_bone_losango::bind(scene, sim, doc, st),
+        9 => return crate::smoke_bone_cartoes::bind(scene, sim, st),
         _ => {}
     }
     if nivel() >= 3 {
@@ -472,31 +475,10 @@ pub fn bind(
             );
         }
     }
-    // ⭐⭐⭐ **O BRAÇO NASCE COM ÂNCORA DE IK** — a restrição que persiste.
-    //
-    // ⚠️ **Ela nasce COINCIDENTE com a ponta**, então a cena abre com o braço exactamente onde
-    // estava: o losango é a única coisa nova na tela, e o artista descobre o que ele faz
-    // arrastando-o. ⛔ Uma cena que abrisse já dobrada não distinguiria *«a âncora funciona»* de
-    // *«a cena montou torta»*.
-    //
-    // ⭐⭐⭐ **E O COTOVELO NASCE DOBRADO, porque uma corrente RECTA NÃO TEM LADO.**
-    //
-    // ⚠️⚠️ **Sem isto a cena ensinaria o CONTRÁRIO do que o app faz** (`CLAUDE.md` §5.0): o
-    // `add` **captura** de que lado a corrente já está, e sobre um braço recto ele captura
-    // `Auto` — que é precisamente o modo em que o joelho **inverte** ao passar pela posição
-    // esticada. O dono arrastaria o losango, veria a inversão, e a cura estaria lá, desligada,
-    // porque a cena não lhe deu um lado para defender.
-    //
-    // ⛔ E a dobra vai no ÚLTIMO osso, não em toda a cadeia: a corrente que a âncora governa é
-    // a de `DEFAULT_CHAIN` (dois ossos), e dobrar acima dela não lhe daria lado nenhum.
-    //
-    // ⚠️ A cerca do bloco de baixo continua inteira: o que não pode abrir deslocado é a
-    // ÂNCORA (ela nasce coincidente com a ponta, e o braço não se mexe quando ela aparece).
-    // Um cotovelo dobrado é a pose que o artista autorou — é o que um braço tem.
-    //
-    // ⭐⭐⭐ **E O OMBRO DOBRA PARA O LADO CONTRÁRIO — o braço abre em S**, que é o que dá ao modo
-    // **MISTO** um sujeito (2026-09-14). Com uma só junta dobrada os três modos de lado entregam a
-    // MESMA pose, e a cena ensinaria que eles não existem.
+    // ⭐ O braço nasce com âncora de IK COINCIDENTE com a ponta (o losango é a única coisa nova) e
+    // em S: o cotovelo (último osso) dobra para um lado e o ombro para o outro — uma corrente recta
+    // não tem lado (o `add` capturaria `Auto`) e com uma só dobra os três modos de lado dariam a
+    // mesma pose (2026-09-14).
     if let Some((_, Some(raiz))) = pecas.first().copied() {
         let ponta = ponta_da_cadeia(sim, raiz);
         if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(ponta) {

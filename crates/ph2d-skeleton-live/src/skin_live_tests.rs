@@ -324,6 +324,16 @@ fn the_drawn_bone_is_where_the_hierarchy_puts_it() {
     );
 }
 
+/// T44: a corda do alfinete prende-se ao MEIO do osso que se desenha (a pose, não o escrito).
+#[test]
+fn the_middle_of_a_bone_is_the_middle_of_the_drawn_bone() {
+    let (mut sim, _scene, _map, _id, ossos) = palco();
+    gira(&mut sim, ossos[0], 90.0);
+    let m = bone_middle(&sim, ossos[1].to_bits()).expect("é osso");
+    assert!(m[0].abs() < 1e-5 && (m[1] - 35.0).abs() < 1e-5, "{m:?}");
+    assert_eq!(bone_middle(&sim, u64::MAX), None);
+}
+
 /// ⭐⭐⭐ **A PELE ATRAVESSA O DESFAZER** — o gate que separa *"a pele existe"* de *"o app a tem"*.
 ///
 /// O undo e o salvar são **a mesma máquina** (`world_to_snapshot` → `snapshot_to_world`),

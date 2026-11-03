@@ -19,6 +19,10 @@ ph2d-skeleton = { path = "../ph2d-skeleton" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
 ph2d-timeline = { path = "../ph2d-timeline" }
+# A cena dos cartões do Bones (`cartoes`): a barra, o nome do esqueleto e a IK do osso da ponta.
+ph2d-constraints-ecs = { path = "../ph2d-constraints-ecs" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
 [lints]
 workspace = true

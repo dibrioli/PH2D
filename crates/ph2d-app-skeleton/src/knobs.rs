@@ -8,7 +8,7 @@ use ph2d_skeleton_ecs::Bone;
 /// Qual número do osso um campo do painel escreveu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BoneKnob {
-    /// O comprimento, em unidades locais.
+    /// O comprimento, em unidades locais ([`apply`]); o painel fala em px ([`apply_from_panel`]).
     Length,
     /// O alcance, em comprimentos deste osso.
     Strength,
@@ -83,6 +83,49 @@ pub fn apply(bone: &mut Bone, knob: BoneKnob, v: f64) {
         BoneKnob::CurveOutX => bone.curve.out[0] = v,
         BoneKnob::CurveOutY => bone.curve.out[1] = v,
     }
+}
+
+/// ⭐ **Quantos px do DOCUMENTO vale UMA unidade do comprimento deste osso** (D27): o px é o do
+/// projecto (`DocPx`, a régua do traço e das formas; não muda com o zoom).
+#[must_use]
+pub fn px_per_unit(sim: &ph2d_ecs::SimWorld, bits: u64, doc: ph2d_editor_core::DocPx) -> f64 {
+    doc.of_world(ph2d_skeleton_live::painel::metros_por_unidade(sim, bits))
+}
+
+/// O osso como o PAINEL o mostra: o `BoneSpec` (local) e o [`px_per_unit`] dele — o campo
+/// «Length (px)» é `length × px_per_unit`.
+#[must_use]
+pub fn spec_on_panel(
+    sim: &ph2d_ecs::SimWorld,
+    bits: u64,
+    doc: ph2d_editor_core::DocPx,
+) -> Option<(ph2d_skeleton::bend::BoneSpec, f64)> {
+    let b = sim.world().get::<Bone>(ph2d_ecs::Entity::from_bits(bits))?;
+    Some((b.spec(), px_per_unit(sim, bits, doc)))
+}
+
+/// ⭐ **Escreve um número do PAINEL no osso**: o `Length` chega em px do documento e volta ao
+/// espaço local por [`px_per_unit`]; os outros são do próprio osso e passam como vêm. Uma escala
+/// nula (pai achatado a zero) não tem inverso ⇒ o comprimento fica. Pela porta da mão
+/// ([`crate::comprimento::aplica`]): o comprimento empurra os filhos.
+pub fn apply_from_panel(
+    sim: &mut ph2d_ecs::SimWorld,
+    bits: u64,
+    knob: BoneKnob,
+    v: f64,
+    doc: ph2d_editor_core::DocPx,
+) {
+    let v = match knob {
+        BoneKnob::Length => {
+            let k = px_per_unit(sim, bits, doc);
+            if !(k > f64::EPSILON) {
+                return;
+            }
+            v / k
+        }
+        _ => v,
+    };
+    crate::comprimento::aplica(sim, ph2d_ecs::Entity::from_bits(bits), knob, v);
 }
 
 #[cfg(test)]

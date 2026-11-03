@@ -196,6 +196,8 @@ ph2d-skeleton = { path = "../../crates/ph2d-skeleton" }
 # nos bytes opacos da `SkinBind`.
 ph2d-poly2d = { path = "../../crates/ph2d-poly2d", features = ["serde"] }
 ph2d-skeleton-live = { path = "../../crates/ph2d-skeleton-live" }
+# A corda e o alfinete durável do cartão solto preso a um osso.
+ph2d-card-rope = { path = "../../crates/ph2d-card-rope" }
 ph2d-image-import = { path = "../../crates/ph2d-image-import" }
 ph2d-skeleton-render = { path = "../../crates/ph2d-skeleton-render" }
 ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }

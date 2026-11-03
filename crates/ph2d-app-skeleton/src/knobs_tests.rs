@@ -80,3 +80,49 @@ fn the_seven_numbers_write_in_seven_different_places() {
     }
     assert_eq!(vistos.len(), 7);
 }
+
+/// ⭐⭐ **D27: o «Length (px)» é o comprimento no px do DOCUMENTO** — um osso de 10 m debaixo de um
+/// pai com escala 2× (e rodado, para a régua não ser só a do eixo), a 100 px/m, mostra 2000 px;
+/// escrever 5000 px deixa 25 no osso, e o desenho mede 5000 px.
+#[test]
+fn the_bone_length_field_speaks_world_pixels() {
+    use super::{apply_from_panel, spec_on_panel};
+    use ph2d_ecs::{ChildOf, SimWorld, Transform};
+    let mut sim = SimWorld::default();
+    let pai = sim
+        .world_mut()
+        .spawn(Transform {
+            scale: ph2d_core::Vec2::new(2.0, 2.0),
+            rotation: 0.7,
+            ..Transform::IDENTITY
+        })
+        .id();
+    let osso = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Bone {
+                length: 10.0,
+                ..Bone::default()
+            },
+            ChildOf(pai),
+        ))
+        .id();
+    let bits = osso.to_bits();
+    let doc = ph2d_editor_core::DocPx::new(100.0);
+    let (spec, k) = spec_on_panel(&sim, bits, doc).expect("é osso");
+    assert!(
+        (spec.length * k - 2000.0).abs() < 1e-3,
+        "{} × {k}",
+        spec.length
+    );
+    apply_from_panel(&mut sim, bits, BoneKnob::Length, 5000.0, doc);
+    let local = sim.world().get::<Bone>(osso).expect("é osso").length;
+    assert!((local - 25.0).abs() < 1e-4, "local {local}");
+    let (_, raiz, ponta) = ph2d_skeleton_live::skin_live::bone_segments(&sim)
+        .into_iter()
+        .find(|(b, ..)| *b == bits)
+        .expect("o osso desenha-se");
+    let px = doc.of_world((ponta[0] - raiz[0]).hypot(ponta[1] - raiz[1]));
+    assert!((px - 5000.0).abs() < 1e-2, "desenhado {px} px");
+}

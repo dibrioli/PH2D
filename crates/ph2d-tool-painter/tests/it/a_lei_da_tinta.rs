@@ -25,26 +25,26 @@ const CENAS: [(&str, bool, u64); 20] = [
     // (`06ed1ccf27`), atribuídos por cena com 2 leituras iguais em cada ponta (tabela no commit desta regravação).
     // De novo 03/11 (linha Painter): + a cura da cobertura `62e7fc8505` em 13 cenas e o Wet Dry Brush regerado
     // `6cbcce804c` — 2 leituras iguais em cada ponta (3bf498f1ca · d8e5d237e4 · 6cbcce804c · 62e7fc8505 · HEAD).
-    ("Wet Round", false, 0xb463a7252f8771fb), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e` `62e7fc8505`
-    ("Wet Wash", false, 0x33ca764c3c343c1c), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `62e7fc8505`
-    ("Wet Dry Brush", false, 0x585dfbbcb971557f), // `0170428784` `7c8e08d16b` `1f9e115c7e` `6cbcce804c` `62e7fc8505`
-    ("Wet Drip", false, 0xa067d89becc39426), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
-    ("Wet Liner", false, 0xfa82b7e82eab94d3), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505`
-    ("Oil Bristle", false, 0xeea35fb632823454), // `0170428784` `0275929512` `47ca63932e` `183d3d02e9` `c77e40484c` `0f32fb6e75` `5acb712ec6` `7c8e08d16b` `1f9e115c7e` `b5dc9a8dec` `032cda64a5` `e7e49f465b` `1eecae9e4b` `b176807c40` `62e7fc8505`
+    ("Wet Round", false, 0xa65bd3fe197653ae), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e` `62e7fc8505`
+    ("Wet Wash", false, 0xd372da5d35dea349), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `62e7fc8505`
+    ("Wet Dry Brush", false, 0xc6fd4f71d09ce971), // `0170428784` `7c8e08d16b` `1f9e115c7e` `6cbcce804c` `62e7fc8505`
+    ("Wet Drip", false, 0x5ddb83d1fb3f4802), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
+    ("Wet Liner", false, 0xd46e1535c56a06f1), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505`
+    ("Oil Bristle", false, 0x4cfbcbfa01a7b636), // `0170428784` `0275929512` `47ca63932e` `183d3d02e9` `c77e40484c` `0f32fb6e75` `5acb712ec6` `7c8e08d16b` `1f9e115c7e` `b5dc9a8dec` `032cda64a5` `e7e49f465b` `1eecae9e4b` `b176807c40` `62e7fc8505`
     ("Express Oil", false, 0x8d2b3e14eac9f607), // `0170428784` `1f9e115c7e`
     ("Graphite 8B", false, 0xa8fe17d29bdd8d37), // `0170428784` `1f9e115c7e` `dc66557b6f`
     ("Charcoal", false, 0xa8f6726deb4d2d63), // `0170428784` `89dfe6f5c2` `1f9e115c7e`
     ("Soft Pastel", false, 0xd70a47c8143bdc3d), // `0170428784` `1f9e115c7e`
     ("Oil Pastel", false, 0xd80c9f6150a23d9d), // `0170428784` `1f9e115c7e`
-    ("Ink Bullet", false, 0x428762b506cebd78), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e` `62e7fc8505`
+    ("Ink Bullet", false, 0xacbe36287fc9febf), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e` `62e7fc8505`
     ("Dip Pen", false, 0x951eff62b38733e2), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e`
-    ("Ink Brush", false, 0xb65b43e38a03a025), // `167ba3db16` `02ff1d0f9a` `0170428784` `ed8a69351d` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
-    ("Marker Bullet", false, 0x60fabe0f7cd2e6dd), // `0170428784` `1f9e115c7e` `62e7fc8505`
+    ("Ink Brush", false, 0x68920e845eace3b3), // `167ba3db16` `02ff1d0f9a` `0170428784` `ed8a69351d` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
+    ("Marker Bullet", false, 0x06a7168d54b4ea3f), // `0170428784` `1f9e115c7e` `62e7fc8505`
     ("Airbrush", false, 0x8e3fd692d85de5fd), // `0170428784` `1f9e115c7e`
-    ("Wet Flat", false, 0xefa6427f0f2649c3), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
-    ("Gouache Flat", false, 0xdf39f5796166f7ac), // `167ba3db16` `02ff1d0f9a` `0170428784` `7ad2967e2c` `183d3d02e9` `c77e40484c` `1f9e115c7e` `b5dc9a8dec` `62e7fc8505`
-    ("Wet Round", true, 0x1cf3a2e628eeb281), // `167ba3db16` `02ff1d0f9a` `1f9e115c7e` `62e7fc8505`
-    ("Wet Liner", true, 0xa5d95da8243332bd), // `167ba3db16` `02ff1d0f9a` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505`
+    ("Wet Flat", false, 0x62944e4a50980d73), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505`
+    ("Gouache Flat", false, 0x4772344c20021acf), // `167ba3db16` `02ff1d0f9a` `0170428784` `7ad2967e2c` `183d3d02e9` `c77e40484c` `1f9e115c7e` `b5dc9a8dec` `62e7fc8505`
+    ("Wet Round", true, 0x18f23fd59b2af7b7), // `167ba3db16` `02ff1d0f9a` `1f9e115c7e` `62e7fc8505`
+    ("Wet Liner", true, 0x46dbe93d0587dcd0), // `167ba3db16` `02ff1d0f9a` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505`
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {

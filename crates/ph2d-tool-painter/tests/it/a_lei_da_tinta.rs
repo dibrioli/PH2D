@@ -21,39 +21,28 @@ const RAIO_DA_CENA: f32 = 18.0;
 /// opacidade refeitos pela lei do 45 por ORDEM DO DONO (o Airbrush «como no Rebelle», a rampa dos Flats).
 #[rustfmt::skip]
 const CENAS: [(&str, bool, u64); 20] = [
-    ("Wet Round", false, 0x8e37a39e8ee2ba79),
-    // Wet Wash e Wet Liner: o molhado × molhado (WetOpen, ligado nas receitas em `442ab73435`) passou a TUBO em
-    // `5291edbc75` (smoke da janela 8) e o cruzamento da cena entra nele; WetOpen 0 continua ao bit (os outros 18).
-    ("Wet Wash", false, 0x47ddb5430c301ebb), // `5291edbc75` o tubo (era 0x94c4915c9762415f)
-    ("Wet Dry Brush", false, 0xf45f7dcaa32eb88e),
-    ("Wet Drip", false, 0x6ad975ec85398727),
-    ("Wet Liner", false, 0xa212ee358c43676e), // `5291edbc75` o tubo (era 0xc8c30d93e4c6ffd3)
-    // Os dois com os FIOS da W2 (prompt 48, doc 48_medicao): repinados pela lei nova; os outros 20 ao bit.
-    // O Oil Bristle repintado pelo relevo sem escada (W3b, prompt 50, doc 50_medicao): os outros 21 ao bit.
-    // Os 22 repintados pela regra do prompt 51 (Spacing 0,1 + Continuous em todos, doc 51_medicao); o Airbrush também
-    // pela curva da pressão no tamanho que casa as pontas do Rebelle (ordem do dono 19/10).
-    // J2 (03_MOTORES §7 a): a pressão de cada preset passou a ser a da sua origem no Rebelle (a cena tem a rampa).
-    // Oil Bristle: candidato fora da fábrica (`78e69511ab`, lido pelo `candidato`), regerado com o Real Oil em `e314e58cec`.
-    // J6 fecho: a luz do Real Oil das curas do óleo da linha (o grão de 1 px sobrevive, `9fba4165d8`; a luz só na foto,
-    // `eabfc63ccd`); com a cura do motor (`07b41f2a5a`) revertida o fnv é o mesmo (era 0xd7258ae210c35e61; antes 0xd5dc7c77cb4a281b).
-    ("Oil Bristle", false, 0x0681f53db1cde201),
-    // J4 oleo_acrilica 2.ª ronda: a Acrylic Round (0xb6475854432e61f0) saiu da fábrica — fundida no Hard Round.
-    ("Express Oil", false, 0x324fcd3206cecaff), // J4 oleo_acrilica: os tufos (cerdas 7 × 300, faixa 4 px, pigmento 75) (era 0x6ae408041d1e042f)
-    ("Graphite 8B", false, 0xa30d19aed297aa0d), // J3 3.ª ronda: a 2.ª ponta à frente (no arco), a orla 0,8 × 1, os tufos, a carga 280 e o papel 0,4 (era 0x0aed0cb29386b748)
-    ("Charcoal", false, 0xaebbe231138b2b31), // J4 pastel_carvao 2.ª ronda: o pó solto (`9965b60b59`; era 0x46f876790c63367f)
-    ("Soft Pastel", false, 0xc8fc6772866a8b65), // J6 a receita: pontas rectas `44dd973d8a` + o halo de pó `fd73b349ca` (era 0xd39987ad156db77d)
-    ("Oil Pastel", false, 0x27cb9ff840de7885), // J4 pastel_carvao: as estrias em Flow (era 0x53088992b4918139)
-    // J3 tintas (bff754ff58 → 4d70916e0d: a ponta lisa, os grumos, o reservatório) e o fecho da J3 (a mão do dono, a lei
-    // das camadas e a das bordas: `familias/tintas.rs`) — era 0xd3ea3f5b4f847521 · 0x2785d41ac04f93a1 · 0x5856e27ccfe8f621.
-    ("Ink Bullet", false, 0xb1339765edcd28c8),
-    ("Dip Pen", false, 0xdc7735c79a6ede68),
-    ("Ink Brush", false, 0xfdeb75056ce1a46a),
-    ("Marker Bullet", false, 0xefa793688cff1b24), // J3 caligrafia_marcadores (127689b266) + a curva da carga 3 do fecho (era 0x7c95c14d16114131)
-    ("Airbrush", false, 0x9f6bc7ea9146fa4e), // J3 aerografo (31cc7d8bde): curado contra o Spray 2 (era 0xc9c61bd3db4a244e)
-    ("Wet Flat", false, 0x270ceb734f4d9aea),
-    ("Gouache Flat", false, 0x6111ea627d99cff5),
-    ("Wet Round", true, 0xab51e31b5a6e8cb0),
-    ("Wet Liner", true, 0x06a9cff290a04135), // `5291edbc75` o tubo (era 0x88a2105dbd6a9777)
+    // Regravados 03/11 (integ 02/11c) com o TIP; cada cena leva os commits que a mudaram desde a última fixação
+    // (`06ed1ccf27`), atribuídos por cena com 2 leituras iguais em cada ponta (tabela no commit desta regravação).
+    ("Wet Round", false, 0x959d14d1488e1105), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e`
+    ("Wet Wash", false, 0x183466edb91c5b12), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40`
+    ("Wet Dry Brush", false, 0xf0587685e18521f5), // `0170428784` `7c8e08d16b` `1f9e115c7e`
+    ("Wet Drip", false, 0x069fa61874b9b707), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e`
+    ("Wet Liner", false, 0x0470c60ff3e5335a), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0`
+    ("Oil Bristle", false, 0x72ca1d39f971d0a1), // `0170428784` `0275929512` `47ca63932e` `183d3d02e9` `c77e40484c` `0f32fb6e75` `5acb712ec6` `7c8e08d16b` `1f9e115c7e` `b5dc9a8dec` `032cda64a5` `e7e49f465b` `1eecae9e4b` `b176807c40`
+    ("Express Oil", false, 0x8d2b3e14eac9f607), // `0170428784` `1f9e115c7e`
+    ("Graphite 8B", false, 0xa8fe17d29bdd8d37), // `0170428784` `1f9e115c7e` `dc66557b6f`
+    ("Charcoal", false, 0xa8f6726deb4d2d63), // `0170428784` `89dfe6f5c2` `1f9e115c7e`
+    ("Soft Pastel", false, 0xd70a47c8143bdc3d), // `0170428784` `1f9e115c7e`
+    ("Oil Pastel", false, 0xd80c9f6150a23d9d), // `0170428784` `1f9e115c7e`
+    ("Ink Bullet", false, 0x72ed1a31539ea1fd), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e`
+    ("Dip Pen", false, 0x951eff62b38733e2), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e`
+    ("Ink Brush", false, 0xcabeff79228db443), // `167ba3db16` `02ff1d0f9a` `0170428784` `ed8a69351d` `7c8e08d16b` `1f9e115c7e`
+    ("Marker Bullet", false, 0x66d1a19580910d16), // `0170428784` `1f9e115c7e`
+    ("Airbrush", false, 0x8e3fd692d85de5fd), // `0170428784` `1f9e115c7e`
+    ("Wet Flat", false, 0xcbfec61b7ce27571), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e`
+    ("Gouache Flat", false, 0x0230e8bd7560025e), // `167ba3db16` `02ff1d0f9a` `0170428784` `7ad2967e2c` `183d3d02e9` `c77e40484c` `1f9e115c7e` `b5dc9a8dec`
+    ("Wet Round", true, 0x074e44d919cce7c7), // `167ba3db16` `02ff1d0f9a` `1f9e115c7e`
+    ("Wet Liner", true, 0x36f4665b9ae31ea0), // `167ba3db16` `02ff1d0f9a` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0`
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {

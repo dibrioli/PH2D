@@ -55,6 +55,10 @@ use ph2d_tokens::TypeToken;
 pub struct Seccao {
     campos: usize,
     nome_w: Option<f32>,
+    /// O chip de menu mais largo da secção ([`Self::com_os_menus`]); `0` = só caixas.
+    controlo_w: f32,
+    /// O nome que não cabe na coluna QUEBRA numa 2.ª linha ([`Self::que_quebra_o_nome`]).
+    quebra: bool,
 }
 
 impl Seccao {
@@ -81,6 +85,8 @@ impl Seccao {
         Self {
             campos: if campos == 0 { 1 } else { campos },
             nome_w,
+            controlo_w: 0.0,
+            quebra: false,
         }
     }
 
@@ -94,6 +100,8 @@ impl Seccao {
         Self {
             campos: if campos == 0 { 1 } else { campos },
             nome_w: None,
+            controlo_w: 0.0,
+            quebra: false,
         }
     }
 
@@ -106,7 +114,7 @@ impl Seccao {
     pub fn com_pelo_menos(self, n: usize) -> Self {
         Self {
             campos: self.campos.max(n).max(1),
-            nome_w: self.nome_w,
+            ..self
         }
     }
 
@@ -120,11 +128,59 @@ impl Seccao {
     #[must_use]
     pub fn com_o_nome(self, text_system: &mut TextSystem, nome: &str) -> Self {
         Self {
-            campos: self.campos,
-            nome_w: self
-                .nome_w
-                .map(|w| w.max(text_system.prefix_width(nome, TypeToken::Sm.px()))),
+            nome_w: self.nome_w.map(|w| {
+                let fonte = TypeToken::Sm.px();
+                w.max(if self.quebra {
+                    largura_em_duas_linhas(text_system, nome, fonte)
+                } else {
+                    text_system.prefix_width(nome, fonte)
+                })
+            }),
+            ..self
         }
+    }
+
+    /// ⭐ **A secção com MENUS: o controlo pede o chip da opção mais larga** — medida na fonte e no
+    /// peso em que o chip pinta ([`TypeToken::Base`], `Medium`) e passada pela inversa do orçamento
+    /// ([`crate::widget::dropdown_chip_width_for`]). O que sobra fica para o nome; um chip ao piso
+    /// da caixa numérica cortava `Random` na Noto (D11).
+    #[must_use]
+    pub fn com_os_menus(self, text_system: &mut TextSystem, opcoes: &[&str]) -> Self {
+        let texto = opcoes
+            .iter()
+            .map(|o| text_system.prefix_width(o, TypeToken::Base.px()))
+            .fold(0.0_f32, f32::max);
+        let chip = crate::widget::dropdown_chip_width_for(texto, ph2d_tokens::ROW_H_PX);
+        Self {
+            controlo_w: self.controlo_w.max(chip),
+            ..self
+        }
+    }
+
+    /// ⭐ **O nome que não cabe na coluna QUEBRA numa 2.ª linha** dentro dela, e a linha cresce um
+    /// passo — como a prosa quebra em vez de elidir. A coluna acaba no mesmo sítio e o nome nunca
+    /// sobe para cima do controlo (as duas ordens do dono); só elide o que nem em duas linhas cabe.
+    ///
+    /// ⚠️ Um nome que quebra pede à coluna a largura da sua linha MAIS LARGA em duas, não a de uma
+    /// linha só — é isso que deixa a coluna ceder ao controlo ([`Self::com_os_menus`]).
+    #[must_use]
+    pub fn que_quebra_o_nome(self, text_system: &mut TextSystem, nomes: &[&str]) -> Self {
+        let fonte = TypeToken::Sm.px();
+        let nome_w = nomes
+            .iter()
+            .map(|n| largura_em_duas_linhas(text_system, n, fonte))
+            .fold(None::<f32>, |acc, w| Some(acc.map_or(w, |a| a.max(w))));
+        Self {
+            quebra: true,
+            nome_w: nome_w.or(self.nome_w),
+            ..self
+        }
+    }
+
+    /// Se o nome quebra em vez de elidir — ver [`Self::que_quebra_o_nome`].
+    #[must_use]
+    pub const fn quebra_o_nome(self) -> bool {
+        self.quebra
     }
 
     /// Quantas componentes tem **a linha que a secção não quer ver quebrar**.
@@ -140,6 +196,18 @@ impl Seccao {
     }
 }
 
+/// A coluna mais estreita em que `nome` cabe em DUAS linhas partidas numa palavra (a mais larga
+/// das duas); sem espaço, a largura dele inteiro.
+fn largura_em_duas_linhas(text_system: &mut TextSystem, nome: &str, fonte: f32) -> f32 {
+    let palavras: Vec<&str> = nome.split(' ').collect();
+    let mut w = text_system.prefix_width(nome, fonte);
+    for k in 1..palavras.len() {
+        let a = text_system.prefix_width(&palavras[..k].join(" "), fonte);
+        w = w.min(a.max(text_system.prefix_width(&palavras[k..].join(" "), fonte)));
+    }
+    w
+}
+
 /// ⭐⭐⭐ **AS COLUNAS de uma linha, derivadas do que a SECÇÃO declarou — uma vez, para todas.**
 ///
 /// ⚠️ **Ela existe porque as duas famílias de linha (a que traz campos e a que só traz o nome) têm
@@ -151,6 +219,7 @@ pub fn colunas_da_linha(x: f32, w: f32, y: f32, h: f32, seccao: Seccao) -> Prope
     let gap = ph2d_tokens::control_gap_px();
     // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
     let n = seccao.campos() as f32;
-    let precisa = n * super::super::number_input_min_w_px() + (n - 1.0) * gap;
+    let precisa =
+        (n * super::super::number_input_min_w_px() + (n - 1.0) * gap).max(seccao.controlo_w);
     super::property_row_columns_for(x, w, y, h, seccao.nome_w(), Some(precisa))
 }

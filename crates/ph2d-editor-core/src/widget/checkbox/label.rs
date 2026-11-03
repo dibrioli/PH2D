@@ -40,6 +40,26 @@ impl Checkbox {
         (mark_x - rect.x - pad * 2.0).max(0.0)
     }
 
+    /// ⭐ **Quantas linhas (`row_pitch` cada) o NOME ocupa** — `2` quando a secção quebra o nome
+    /// ([`crate::widget::Seccao::que_quebra_o_nome`]) e ele não cabe na coluna. Quem empilha a linha
+    /// avança por isto, e o alvo e a camada que esmaece cobrem as duas.
+    #[must_use]
+    pub fn linhas_do_nome(&self, rect: Rect, text_system: &mut TextSystem) -> usize {
+        match (crate::paint::ui_is_redesign(), self.seccao) {
+            (true, Some(sec)) if sec.quebra_o_nome() && !self.label.is_empty() => {
+                let col = crate::widget::property_box::colunas_da_linha(
+                    rect.x, rect.w, rect.y, rect.h, sec,
+                )
+                .label
+                .w;
+                let duas =
+                    crate::widget::nome_em_duas_linhas(text_system, &self.label, label_font(), col);
+                if duas.is_some() { 2 } else { 1 }
+            }
+            _ => 1,
+        }
+    }
+
     /// O nome cabe INTEIRO ao lado da marca em `rect`, na letra em que o pintor o escreve?
     #[must_use]
     pub fn label_fits_beside(&self, rect: Rect, text_system: &mut TextSystem) -> bool {
@@ -150,16 +170,31 @@ pub fn paint_checkbox(
             // o nome e a marca fica um vão, e ele é o mesmo em todas as linhas de marcar.
             let row =
                 crate::widget::property_box::colunas_da_linha(rect.x, rect.w, rect.y, rect.h, sec);
-            crate::widget::property_box::paint_property_label(
-                text_system,
-                scene,
-                &cb.label,
-                row.label.x,
-                ly,
-                font_size,
-                row.label.w,
-                resolve(label_color, theme),
-            );
+            // ⭐ A secção que QUEBRA o nome: a 2.ª linha desce um passo (ver [`Checkbox::linhas_do_nome`]).
+            if sec.quebra_o_nome() {
+                crate::widget::property_box::paint_property_label_em_linhas(
+                    text_system,
+                    scene,
+                    &cb.label,
+                    row.label.x,
+                    ly,
+                    font_size,
+                    row.label.w,
+                    ph2d_tokens::row_pitch_px(),
+                    resolve(label_color, theme),
+                );
+            } else {
+                crate::widget::property_box::paint_property_label(
+                    text_system,
+                    scene,
+                    &cb.label,
+                    row.label.x,
+                    ly,
+                    font_size,
+                    row.label.w,
+                    resolve(label_color, theme),
+                );
+            }
         } else if redesign {
             // ⛔ **Fora do formulário** (a pele de canvas): o nome fica onde o artista o pôs.
             let lx = rect.x + Spacing::Md.px();

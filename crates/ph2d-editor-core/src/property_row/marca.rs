@@ -52,7 +52,6 @@ pub fn paint_check_row<'a>(
         );
     }
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    hit_index.register(id, rect);
     let cb = crate::widget::Checkbox::new(id, label.texto)
         .coluna_de_fora()
         .visual(store.checkbox_visual(id))
@@ -62,6 +61,13 @@ pub fn paint_check_row<'a>(
             crate::widget::CheckboxValue::Unchecked
         })
         .seccao(seccao.com_o_nome(text_system, label.texto));
+    // ⭐ O nome que QUEBRA cresce a linha; o alvo cobre as duas linhas dele.
+    let linhas = cb.linhas_do_nome(rect, text_system);
+    let passo = ph2d_tokens::row_pitch_px();
+    hit_index.register(
+        id,
+        Rect::new(x, y, w, ROW_H_PX + passo * (linhas - 1) as f32),
+    );
     crate::widget::paint_checkbox(&cb, rect, scene, text_system, theme);
     let dot = crate::widget::decorator_rect(rect);
     if let Some(alvo) =
@@ -69,7 +75,7 @@ pub fn paint_check_row<'a>(
     {
         hit_index.register(alvo, dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    y + passo * linhas as f32
 }
 
 /// ⭐⭐⭐ **AS LINHAS DE MARCAR DE UMA SECÇÃO — emparelhadas quando CABEM, empilhadas quando não.**

@@ -488,7 +488,15 @@ pub(crate) fn seccao(text_system: &mut TextSystem, d: &Declaracao) -> Seccao {
         .map(|k| ph2d_i18n::tr(k))
         .chain(padroes.then(rotulos_dos_padroes).into_iter().flatten())
         .collect();
-    Seccao::medida(text_system, d.campos, &rotulos)
+    // ⭐ Um nome que não cabe QUEBRA dentro da coluna (D11, Noto); uma secção com menus pede o
+    //    chip da opção mais larga.
+    let s =
+        Seccao::medida(text_system, d.campos, &rotulos).que_quebra_o_nome(text_system, &rotulos);
+    if d.nome == "ponta" {
+        let opcoes = crate::ponta_linhas::opcoes_dos_menus();
+        return s.com_os_menus(text_system, &opcoes);
+    }
+    s
 }
 
 /// ⭐⭐ **As secções que pintam as fileiras de um PADRÃO** ([`crate::number_field::paint_num_params`]).

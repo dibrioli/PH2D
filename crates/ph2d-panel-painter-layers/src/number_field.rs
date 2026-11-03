@@ -220,7 +220,16 @@ pub(crate) fn paint_num_row_com_unidade(
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     arm_field(ctx.host.store_mut(), id, value, min, max, step, decimals);
-    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
+    // A camada que esmaece cobre o nome que QUEBROU (a 2.ª linha dele).
+    let linhas = ph2d_editor_core::property_row::linhas_do_nome(
+        ctx.text_system,
+        x,
+        content_w,
+        label_txt,
+        1,
+        sec,
+    );
+    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px() * linhas as f32);
     crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         // ⚠️ `com_casas`: o espelho escreve `decimals` casas no buffer, e a caixa em repouso tem de

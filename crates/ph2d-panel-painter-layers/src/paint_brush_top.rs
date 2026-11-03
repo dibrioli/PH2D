@@ -106,11 +106,15 @@ pub(crate) fn paint_checkbox_row(
         .value(value)
         .seccao(seccao);
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
-    crate::esmaecer::talvez_esmaecido(ctx, theme, rect, &[id], |ctx| {
+    // ⭐ O nome que QUEBRA cresce a linha: a camada que esmaece e o alvo cobrem as duas linhas dele.
+    let linhas = cb.linhas_do_nome(rect, ctx.text_system);
+    let passo = ph2d_tokens::row_pitch_px();
+    let alto = Rect::new(x, y, content_w, ROW_H_PX + passo * (linhas - 1) as f32);
+    crate::esmaecer::talvez_esmaecido(ctx, theme, alto, &[id], |ctx| {
         paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
     });
-    ctx.host.hit_index_mut().register(id, rect);
-    y + ph2d_tokens::row_pitch_px()
+    ctx.host.hit_index_mut().register(id, alto);
+    y + passo * linhas as f32
 }
 
 /// Paint a collapsible section header (Inspector pattern: ALL-CAPS label + a **reset** icon button + an

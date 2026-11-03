@@ -222,6 +222,13 @@ pub(crate) fn coube_tracked(
     cabe
 }
 
+/// Um nome que QUEBROU em linhas que cabem cada uma em `max_width` saiu INTEIRO — registado como
+/// coube, uma vez ([`crate::widget::paint_property_label_em_linhas`]).
+#[track_caller]
+pub(crate) fn regista_quebrado(text: &str, max_width: f32, font_size: f32) {
+    elisao::regista(text, text, max_width, font_size, FontWeight::MEDIUM);
+}
+
 /// ⭐⭐ **O que a reticência sozinha custa** — abaixo disto um rótulo pinta **NADA**.
 ///
 /// ⚠️ **Ela não depende da língua**, e é isso que a torna a régua do defeito duro: uma caixa

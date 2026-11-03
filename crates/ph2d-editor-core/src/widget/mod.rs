@@ -173,9 +173,10 @@ pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use property_box::decorator_rect;
 pub use property_box::{
     DECORATOR_W, FORM_ROWS_SHOW_DECORATOR, PropertyBox, PropertyBoxState, PropertyRow,
-    form_row_columns, label_column, paint_decorator_dot, paint_property_box, paint_property_label,
-    property_fields_layout, property_label_col_w, property_label_col_w_for, property_label_origin,
-    property_row_columns, property_row_columns_for, surface_rect, value_column,
+    form_row_columns, label_column, nome_em_duas_linhas, paint_decorator_dot, paint_property_box,
+    paint_property_label, paint_property_label_em_linhas, property_fields_layout,
+    property_label_col_w, property_label_col_w_for, property_label_origin, property_row_columns,
+    property_row_columns_for, surface_rect, value_column,
 };
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`

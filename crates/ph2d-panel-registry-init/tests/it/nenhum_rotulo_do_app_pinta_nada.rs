@@ -308,8 +308,8 @@ const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Speed Randomness"),
     ("inspector", "Swim Line (weights)"),
     ("inspector", "Weight on Ground"),
-    ("painter_layers", "Composite Brush"),
-    ("painter_layers", "Sync with other tools"),
+    // ⬇️ 03/11 (line/NovaUI): os dois do `painter_layers` saíram — as secções dele QUEBRAM o nome
+    //    que não cabe (`Seccao::que_quebra_o_nome`), em vez de o elidir.
 ];
 
 /// ⭐⭐⭐ **O QUE O PONTO CEGO ESCONDIA — a dívida do Inspector com um DOCUMENTO na mão.**
@@ -696,7 +696,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    Plane` a contagem continua `4`, e as linhas novas do Flow só podiam somar.
     // ⚠️ `4 → 3` em 2026-10-27 (`line/PainterWatercolor`, fecho do Óleo Real W3): medido `3` —
     //    a catraca só desce.
-    ("painter_layers", 3),
+    // ⬇️ `3 → 0` em 2026-11-03 (line/NovaUI): as secções do painel QUEBRAM o nome que não cabe em
+    //    duas linhas dentro da coluna (`Seccao::que_quebra_o_nome`, a linha cresce um passo) e a
+    //    secção da ponta pede o chip da opção mais larga (`Seccao::com_os_menus`) — medido `0`.
+    ("painter_layers", 0),
     // `["Glaze layering (K-M)"]`
     // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
     //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
@@ -764,7 +767,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    numa secção que este painel semeia dobrada. *População nova, não regressão.*
     // ⚠️ `5 → 4` em 2026-10-02: a linha Mapping do Paper saiu do painel (ver a nota da irmã).
     // ⚠️ `4 → 3` em 2026-10-27: medido `3` no fecho do Óleo Real W3 (ver a nota da irmã).
-    ("painter_layers", 3),
+    // ⬇️ `3 → 0` em 2026-11-03: o nome QUEBRA em vez de elidir (ver a nota da irmã).
+    ("painter_layers", 0),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.

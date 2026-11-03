@@ -37,7 +37,10 @@ mod row;
 /// ⭐ O que a SECÇÃO declara — irmão por responsabilidade (ver o topo dele).
 mod seccao;
 pub use coluna_do_painel::ColunaDoPainel;
-pub use label::{paint_property_label, property_label_origin};
+pub use label::{
+    nome_em_duas_linhas, paint_property_label, paint_property_label_em_linhas,
+    property_label_origin,
+};
 pub use row::{
     FORM_ROWS_SHOW_DECORATOR, PropertyRow, form_row_columns, paint_decorator_dot,
     property_fields_layout, property_label_col_w, property_label_col_w_for, property_row_columns,

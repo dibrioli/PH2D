@@ -72,6 +72,70 @@ pub fn paint_property_label(
     );
 }
 
+/// ⭐⭐ **O nome que não cabe na coluna QUEBRA em duas linhas** ([`crate::widget::Seccao::que_quebra_o_nome`]):
+/// a 1.ª leva as palavras que cabem, a 2.ª o resto. `None` quando cabe numa linha, ou quando nem
+/// assim cabe (uma palavra mais larga que a coluna) — aí vale a elisão de sempre.
+#[must_use]
+pub fn nome_em_duas_linhas(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    col_w: f32,
+) -> Option<(String, String)> {
+    if col_w <= 0.0 || text_system.prefix_width(text, font_size) <= col_w {
+        return None;
+    }
+    let palavras: Vec<&str> = text.split(' ').collect();
+    (1..palavras.len()).rev().find_map(|k| {
+        let (a, b) = (palavras[..k].join(" "), palavras[k..].join(" "));
+        (text_system.prefix_width(&a, font_size) <= col_w
+            && text_system.prefix_width(&b, font_size) <= col_w)
+            .then_some((a, b))
+    })
+}
+
+/// ⭐⭐ **O nome de uma linha que QUEBRA em vez de elidir** — devolve quantas linhas (`passo` cada)
+/// ele ocupou. Cada linha alinhada à DIREITA da coluna, como o [`paint_property_label`]; o que nem
+/// em duas linhas cabe passa por ele (uma linha, elidida).
+#[allow(clippy::too_many_arguments)]
+#[track_caller]
+pub fn paint_property_label_em_linhas(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    col_w: f32,
+    passo: f32,
+    color: ph2d_vector::Color,
+) -> usize {
+    let Some((a, b)) = nome_em_duas_linhas(text_system, text, font_size, col_w) else {
+        paint_property_label(text_system, scene, text, x, y, font_size, col_w, color);
+        return 1;
+    };
+    crate::text_elide::regista_quebrado(text, col_w, font_size);
+    super::arrasto::linha(
+        crate::zones::Rect::new(x, y, col_w, font_size + passo),
+        text,
+    );
+    for (k, linha) in [a, b].iter().enumerate() {
+        let largura = text_system.prefix_width(linha, font_size);
+        crate::paint::paint_text_weighted(
+            text_system,
+            scene,
+            linha,
+            x + (col_w - largura).max(0.0),
+            y + passo * k as f32,
+            font_size,
+            f32::INFINITY,
+            color,
+            ph2d_text::FontWeight::MEDIUM,
+        );
+    }
+    2
+}
+
 /// ⭐⭐ **A DECISÃO do alinhamento, sozinha: o texto que cabe e o `x` em que ele começa.**
 ///
 /// ⚠️ **Ela é uma porta separada porque a decisão tem de ser GATEÁVEL.** Dentro do pintor ela só é

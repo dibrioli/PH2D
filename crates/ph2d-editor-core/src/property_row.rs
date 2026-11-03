@@ -108,23 +108,73 @@ fn row_and_layout(
     // ⛔⛔ **O nome vem da SECÇÃO, nunca desta linha** — ver [`Seccao`], com a foto e a tabela.
     //    Uma linha que tem MAIS componentes do que a secção declarou continua a ser servida por
     //    elas (o `max`), mas a COLUNA não muda: ela é da secção.
+    let (seccao, row) = seccao_e_colunas(text_system, x, w, y, label, n_campos, seccao);
+    let (nome_x, nome_y) = (row.label.x, row.label.y + (row.label.h - label_font) * 0.5);
+    let cor = resolve(ColorToken::Text2, theme);
+    // ⭐ A secção que QUEBRA o nome cresce a linha um passo por linha do nome (o `max` abaixo),
+    //    como as caixas que refluem — ver [`Seccao::que_quebra_o_nome`].
+    let linhas_nome = if seccao.quebra_o_nome() {
+        crate::widget::paint_property_label_em_linhas(
+            text_system,
+            scene,
+            label,
+            nome_x,
+            nome_y,
+            label_font,
+            row.label.w,
+            ph2d_tokens::row_pitch_px(),
+            cor,
+        )
+    } else {
+        crate::widget::paint_property_label(
+            text_system,
+            scene,
+            label,
+            nome_x,
+            nome_y,
+            label_font,
+            row.label.w,
+            cor,
+        );
+        1
+    };
+    let (por_linha, linhas, cw) =
+        crate::widget::property_fields_layout(row.control.w, n_campos, gap, 0.0);
+    (row, por_linha, linhas.max(linhas_nome), cw)
+}
+
+/// A secção desta linha (com o nome dela) e as colunas — a conta ÚNICA da [`row_and_layout`].
+fn seccao_e_colunas(
+    text_system: &mut TextSystem,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    n_campos: usize,
+    seccao: Seccao,
+) -> (Seccao, PropertyRow) {
     let seccao = seccao
         .com_pelo_menos(n_campos)
         .com_o_nome(text_system, label);
-    let row = colunas_da_linha(x, w, y, ROW_H_PX, seccao);
-    crate::widget::paint_property_label(
-        text_system,
-        scene,
-        label,
-        row.label.x,
-        row.label.y + (row.label.h - label_font) * 0.5,
-        label_font,
-        row.label.w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let (por_linha, linhas, cw) =
-        crate::widget::property_fields_layout(row.control.w, n_campos, gap, 0.0);
-    (row, por_linha, linhas, cw)
+    (seccao, colunas_da_linha(x, w, y, ROW_H_PX, seccao))
+}
+
+/// ⭐ **Quantas linhas o NOME desta linha ocupa** (`2` quando a secção quebra e ele não cabe) — para
+/// quem tem de saber a altura ANTES de pintar (a camada que esmaece uma linha inerte).
+#[must_use]
+pub fn linhas_do_nome(
+    text_system: &mut TextSystem,
+    x: f32,
+    w: f32,
+    label: &str,
+    n_campos: usize,
+    seccao: Seccao,
+) -> usize {
+    let (seccao, row) = seccao_e_colunas(text_system, x, w, 0.0, label, n_campos, seccao);
+    let quebra = seccao.quebra_o_nome()
+        && crate::widget::nome_em_duas_linhas(text_system, label, TypeToken::Sm.px(), row.label.w)
+            .is_some();
+    if quebra { 2 } else { 1 }
 }
 
 /// ⭐⭐⭐ **O RECT que uma linha de UMA componente dá ao controlo** — sem pintar coisa nenhuma.
@@ -456,7 +506,7 @@ pub fn paint_text_row<'a>(
     // ⚠️ A geometria e o nome saem da MESMA `row_and_layout` das irmãs — não há aqui uma segunda
     //    conta de onde a coluna do nome acaba.
     let label = label.into();
-    let (row, _, _, cw) =
+    let (row, _, linhas, cw) =
         row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     hit_index.register(id, rect);
@@ -487,7 +537,7 @@ pub fn paint_text_row<'a>(
     {
         hit_index.register(alvo, row.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    y + ph2d_tokens::row_pitch_px() * linhas as f32
 }
 
 /// ⭐⭐⭐ **A LINHA DE COR — o nome à esquerda, a amostra a ENCHER a coluna do valor.**
@@ -526,7 +576,7 @@ pub fn paint_color_row<'a>(
     seccao: Seccao,
 ) -> f32 {
     let label = label.into();
-    let (row, _por_linha, _linhas, cw) =
+    let (row, _por_linha, linhas, cw) =
         row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
     // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
@@ -539,5 +589,5 @@ pub fn paint_color_row<'a>(
     {
         hit_index.register(alvo, row.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    y + ph2d_tokens::row_pitch_px() * linhas as f32
 }

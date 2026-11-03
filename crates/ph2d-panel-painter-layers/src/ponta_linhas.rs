@@ -53,6 +53,14 @@ pub(crate) fn linhas_do_cartao(c: CartaoDaPonta) -> impl Iterator<Item = usize> 
         .map(|(i, _)| i)
 }
 
+/// O texto de toda opção de todo menu da ponta — a secção pede o chip da mais larga.
+pub(crate) fn opcoes_dos_menus() -> Vec<&'static str> {
+    LINHAS_DA_PONTA
+        .iter()
+        .flat_map(|l| l.opcoes().iter().map(|k| tr(k)))
+        .collect()
+}
+
 /// As linhas que são MENUS (as do modo).
 pub(crate) fn e_menu(i: usize) -> bool {
     !LINHAS_DA_PONTA[i].opcoes().is_empty()

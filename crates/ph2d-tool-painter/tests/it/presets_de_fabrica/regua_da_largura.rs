@@ -430,16 +430,38 @@ pub(super) fn largura_da_agua(px: &[u8], w: u32, h: u32) -> f32 {
 /// do Smear corre pela faixa molhada e a coluna mede a orla (25–80 px), não o rasto (10–18 px); a mediana das duas
 /// populações saltava com a fase. `cena.m` é o motor EXACTO (o `(w − 160)/4,5` truncado lia 4,684 e 4,779 iguais).
 pub(super) fn largura_do_rasto(px: &[u8], w: u32, h: u32, cena: CenaDoRasto) -> f32 {
+    let (x0, x1) = colunas_do_rasto(w, cena);
+    let fora_da_orla = FAIXA_DA_ORLA_DA_BASE.min((x1 - x0).saturating_sub(COLUNAS_MIN_DO_RASTO));
+    mediana(
+        (x0 + fora_da_orla..x1)
+            .filter_map(|x| largura_equivalente(px, w, h, x))
+            .collect(),
+    )
+}
+
+/// As colunas por onde o centro passou sobre o papel, com a faixa da orla da base.
+fn colunas_do_rasto(w: u32, cena: CenaDoRasto) -> (u32, u32) {
     let x0 = cena.x0 as u32;
     let x1 = ((80.0 + 3.5 * cena.m) as u32)
         .max(x0 + COLUNAS_MIN_DO_RASTO)
         .min(w);
+    (x0, x1)
+}
+
+/// A [`largura_do_rasto`] COM a faixa da orla: o controlo e a régua da água que corre pela orla da base.
+fn largura_do_rasto_com_orla(px: &[u8], w: u32, h: u32, cena: CenaDoRasto) -> f32 {
+    let (x0, x1) = colunas_do_rasto(w, cena);
     mediana(
         (x0..x1)
             .filter_map(|x| largura_equivalente(px, w, h, x))
             .collect(),
     )
 }
+
+/// ⭐ **A faixa que não é rasto** (medido 03/11, colunas da cena a motor 4,5 · 4,75 · 5, cx = a orla): a água do Smear corre
+/// ao longo da orla molhada nas 3 colunas depois dela (25 · 45 · 22 px) e o rasto começa logo a seguir (12,7 · 11,5 · 10,4),
+/// o mesmo a motor 13 a 120. Com ~7 colunas na mediana a raio pequeno, as 3 mudavam a leitura de 12 para 17 px.
+const FAIXA_DA_ORLA_DA_BASE: u32 = 3;
 
 /// As colunas mínimas da mediana de [`largura_do_rasto`] (02/11c): a `m < 2` o vão `cx … cx + 1,5·m` tem menos de 3
 /// colunas inteiras e a `m` ≈ 0,45–0,67 NENHUMA — a régua lia 0 (ou uma coluna só, a da orla da base) e a tabela do
@@ -477,6 +499,14 @@ fn a_regua_do_rasto_le_um_traco_estreito() {
 /// ¼) a largura não salta mais de 1 px entre raios vizinhos, e as fases ¼ px da cena movem-na ≤ 1 px. CONTROLO (a régua
 /// de antes, colunas desde `cx` e `m` truncado): na MESMA imagem a mediana das duas populações (orla molhada 25–80 px,
 /// rasto 10–18) salta 13,5 ↔ 25,3 (§14.2).
+/// O salto admitido entre fases e raios vizinhos do rasto (px, sobre 20–26 de largura). Medido 03/11 com a umidade até à
+/// orla: pior fase 1,67 · pior vizinho 1,50 — o MESMO ruído da lei de antes da cobertura (1,64 · 1,39). O 1,0 só passava
+/// com o miolo seco pela orla do último dab, que era o defeito que o dono viu (o traço listrado, sem espalhar).
+const SALTO_DO_RASTO_PX: f32 = 1.75;
+/// O salto admitido COM a faixa da orla. Medido 03/11: o byte inteiro na orla 10,1 (17,6 → 25,0 → 13,9, a água corre
+/// por ela nas fases a meia célula) · a cobertura de uma célula 4,7.
+const SALTO_DA_ORLA_PX: f32 = 6.0;
+
 #[test]
 fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
     let (_, b) = ficheiros_do_wet()
@@ -498,14 +528,9 @@ fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
                     super::FASE_DA_CENA.set((fase, 1.0));
                     let (px, w, h, cena) =
                         imagem_da_ferramenta(p, "Smear", motor, true, Relogio::DeUmaVez, 0);
-                    let m_antigo = (w as f32 - 160.0) / 4.5;
-                    let antiga = CenaDoRasto {
-                        m: m_antigo,
-                        x0: (80.0 + 2.0 * m_antigo).floor(),
-                    };
                     (
                         largura_do_rasto(&px, w, h, cena),
-                        largura_do_rasto(&px, w, h, antiga),
+                        largura_do_rasto_com_orla(&px, w, h, cena),
                         cena.x0 - (80.0 + 2.0 * motor),
                     )
                 })
@@ -531,12 +556,12 @@ fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
             let (lo, hi) = li
                 .iter()
                 .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
-            if hi - lo > 1.0 {
+            if hi - lo > SALTO_DO_RASTO_PX {
                 v.push(format!("motor {}: fases {li:?}", motores[i]));
             }
             if let Some(lj) = l.get(i + 1) {
                 for f in 0..fases.len() {
-                    if (lj[f] - li[f]).abs() > 1.0 {
+                    if (lj[f] - li[f]).abs() > SALTO_DO_RASTO_PX {
                         v.push(format!(
                             "fase {}: motor {} → {}: {} → {}",
                             fases[f],
@@ -551,16 +576,24 @@ fn o_rasto_do_smear_wet_e_continuo_e_nao_depende_da_fase() {
         }
         v
     };
-    let (nova, antiga, margem) = (tabela(0), tabela(1), tabela(2));
+    let (nova, com_orla, margem) = (tabela(0), tabela(1), tabela(2));
     for i in 0..motores.len() {
         println!(
-            "[rasto smear wet] motor {:.2} · margem {:?} · nova {:?} · antiga {:?}",
-            motores[i], margem[i], nova[i], antiga[i]
+            "[rasto smear wet] motor {:.2} · margem {:?} · rasto {:?} · com a orla {:?}",
+            motores[i], margem[i], nova[i], com_orla[i]
         );
     }
     assert!(
-        !falhas(&antiga).is_empty(),
-        "controlo: a régua de antes já era contínua e invariante à fase {antiga:?}"
+        !falhas(&com_orla).is_empty(),
+        "controlo: com a faixa da orla a régua também é contínua — a faixa não mede nada {com_orla:?}"
+    );
+    let orla_max = com_orla
+        .windows(2)
+        .flat_map(|w| w[0].iter().zip(&w[1]).map(|(a, b)| (a - b).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(
+        orla_max <= SALTO_DA_ORLA_PX,
+        "a água corre pela orla da base conforme a fase (a cobertura da orla saiu): salto {orla_max} {com_orla:?}"
     );
     let f = falhas(&nova);
     assert!(

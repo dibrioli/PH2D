@@ -19,11 +19,13 @@
 
 mod alarme;
 mod memoria;
+mod misturador;
 mod portoes;
 pub(crate) mod regua_da_largura;
 mod relatorio;
 mod sonda_miniatura_oleo;
 mod sondas;
+mod umidade;
 
 use super::receitas_de_fabrica::{
     DIREITA, PRESETS_DE_FABRICA, Receita, ReceitaMeio, SPACING_DA_FABRICA, base_da_ferramenta,

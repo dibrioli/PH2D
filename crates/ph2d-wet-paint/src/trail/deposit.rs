@@ -116,6 +116,7 @@ pub(super) struct DepositLaw {
     opacidade: f64,
     /// [`Knob::PressureGrain`]: a parte da [`Self::opacidade`] que entra antes do portão (`0` = nenhuma).
     grao_da_pressao: f64,
+    raio: f64,
 }
 
 impl DepositLaw {
@@ -134,6 +135,7 @@ impl DepositLaw {
             po: Po::de(p.k(Knob::Dust), p.k(Knob::DustDrop), p.semente_do_po, dab),
             opacidade: dab.opacity,
             grao_da_pressao: p.k(Knob::PressureGrain),
+            raio: dab.r,
         }
     }
 
@@ -156,6 +158,7 @@ impl DepositLaw {
         sett: f32,
         paper: f32,
         film: f32,
+        wet_atual: u8,
         fall: f64,
         texv: f64,
         sv: f64,
@@ -205,10 +208,11 @@ impl DepositLaw {
         if deposit <= 0.0 {
             return None;
         }
-        // ⭐ A umidade é a da COBERTURA (cura-smearwet §17): a fração do depósito do centro que passou o portão, 0 no
-        // portão e 1 no miolo. O byte inteiro em toda célula que passava o portão fazia a célula meio-coberta da orla
-        // tão molhada como o miolo — a água corria por ela conforme a fase sub-píxel da orla caía na grade.
-        let cobertura = (deposit / (cheio.min(1.0) - portao)).clamp(0.0, 1.0);
+        // ⭐ A umidade é a da COBERTURA da célula: sobe do portão ao byte cheio em UMA célula (o gradiente do carimbo é
+        // `cheio ÷ raio` por célula), a orla anti-serrilhada do molhado. Medição e recusas (rampa pelo raio todo,
+        // sobrescrever): docs/DevOps/MEDICAO_P1_P4_LARGURA_2026-11-03.md.
+        let rampa = (cheio.min(1.0) - portao).min(cheio.min(1.0) / self.raio.max(1.0));
+        let cobertura = (deposit / rampa).clamp(0.0, 1.0);
         deposit *= sv;
         deposit *= opacidade_depois;
         if !self.ext_bypass {
@@ -216,9 +220,11 @@ impl DepositLaw {
             let softness = (film as f64 / 3.0).min(1.0) * self.ext_wet_soften;
             deposit *= 1.0 - softness * (1.0 - fall);
         }
-        // Wetness seed: OVERWRITE (not max) — repainting can dry the
-        // byte back down.
-        let umidade = (f64::from(wet_byte_from_paper(tooth)) * cobertura).round() as u8;
+        // A semente de umidade: repintar ainda seca o byte até ao do papel (`min`), mas a orla de um dab nunca seca o que
+        // o miolo do anterior molhou (`max`) — sobrescrever deixava no traço inteiro a orla do ÚLTIMO dab.
+        let byte_cheio = wet_byte_from_paper(tooth);
+        let umidade =
+            ((f64::from(byte_cheio) * cobertura).round() as u8).max(wet_atual.min(byte_cheio));
         Some((deposit, umidade))
     }
 }
@@ -396,9 +402,18 @@ impl Trail {
                 padrao,
                 |x, fall, texv, sv| {
                     let i = base + x as usize;
-                    let Some((mut deposit, wb)) =
-                        law.cell(susp[i], sett[i], paper[i], film[i], fall, texv, sv, x, y)
-                    else {
+                    let Some((mut deposit, wb)) = law.cell(
+                        susp[i],
+                        sett[i],
+                        paper[i],
+                        film[i],
+                        wet_row[x as usize],
+                        fall,
+                        texv,
+                        sv,
+                        x,
+                        y,
+                    ) else {
                         return;
                     };
                     let tinta = cor.map(|f| f(x, y, fall * sv));

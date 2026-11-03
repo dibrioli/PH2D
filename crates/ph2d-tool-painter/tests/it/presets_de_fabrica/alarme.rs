@@ -161,7 +161,9 @@ fn a_largura_de_fabrica_e_a_aprovada() {
         partes.push(Parte {
             pincel: nome.clone(),
             texto: String::from(
-                "A largura do traço mudou. O anel é o cursor no tamanho do pincel — o traço deve enchê-lo.",
+                "A largura do traço mudou. O anel é o cursor no tamanho do pincel — o traço deve enchê-lo. O número lê o \
+                 MIOLO do traço (área ÷ pico) e pode dar «mais fino» onde a mancha enche o anel: serve para acusar a \
+                 mudança; quem julga é o olho.",
             ),
             figuras,
         });

@@ -1147,7 +1147,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    o molde da Física de 24/09); ficam os dez resets de grupo, o fecho e a coluna dos resets por botão.
     // ⬇️ `15 → 14` em 2026-10-28 (W3b: o modo da Transmission como seletor, Depth e Gloss do Óleo Real no Material,
     //    a Paint Texture do traço): MEDIDO pela catraca na árvore com as três mudanças; a catraca só aperta.
-    ("wet_tuning", 14),
+    // ⬇️ `14 → 13` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `13` pela
+    //    catraca sobre as quatro linhas juntas; a catraca só aperta.
+    ("wet_tuning", 13),
     // ⬇️ `49 → 4` em 2026-09-24 (*«Arrumar»* os painéis, depois do Vector): `36` eram as células da
     //    matriz de camadas (um VALOR, hoje declarado composto como a grelha de bits do Inspector) e
     //    `8` os cabeçalhos de secção, registados como `Button` em vez de secções dobráveis da casa.

@@ -696,8 +696,10 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ `4 → 3` em 2026-10-27 (`line/PainterWatercolor`, fecho do Óleo Real W3): medido `3` —
     //    a catraca só desce.
     ("painter_layers", 3),
-    // `["Glaze layering (K-M)", "Pigment mixing (K-M)"]`
-    ("wet_tuning", 2),
+    // `["Glaze layering (K-M)"]`
+    // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
+    //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
+    ("wet_tuning", 1),
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.

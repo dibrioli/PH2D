@@ -15,6 +15,7 @@ mod a_paleta_fecha_ao_escolher_por_cima_de_um_painel;
 mod a_panel_paints_where_its_tab_says;
 mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
+mod a_tinta_de_base_no_cartao;
 mod cartoes_mao;
 mod diag_os_comandos_do_vector;
 mod global_palette_catalog;

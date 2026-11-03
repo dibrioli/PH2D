@@ -360,3 +360,37 @@ fn o_zoom_nao_re_semeia() {
         q.tool().stroke_width_px()
     );
 }
+
+/// ⭐ **O hex digitado no cartão muda a forma.** `ph2d_panel_inspector::cards::commit_hex` abre o
+/// seletor na amostra, escreve a cor e anota a escolha, no MESMO quadro e sem o seletor ter pintado:
+/// a semente da abertura (a cor de antes) não pode ganhar à cor escrita.
+#[test]
+fn o_hex_escrito_no_seletor_recem_aberto_muda_a_forma() {
+    let picker = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
+    let mut q = Quadro::novo();
+    q.abre_seletor(ids::VECTOR_FILL_SWATCH);
+    q.escolhe(LARANJA);
+    q.hero.store.note_colour_pick(picker);
+    q.quadro();
+    assert_eq!(
+        q.forma().fill,
+        Some(Paint::Solid(rgba(LARANJA))),
+        "a cor escrita não chegou ao preenchimento"
+    );
+    q.hero.store.set_picker_target(None);
+    q.quadro();
+    q.abre_seletor(ids::VECTOR_STROKE_SWATCH);
+    q.escolhe(AMARELO);
+    q.hero.store.note_colour_pick(picker);
+    q.quadro();
+    assert_eq!(
+        q.forma().stroke.as_ref().map(|s| s.color()),
+        Some(rgba(AMARELO)),
+        "a cor escrita não chegou ao traço"
+    );
+    assert_eq!(
+        q.forma().fill,
+        Some(Paint::Solid(rgba(LARANJA))),
+        "o traço mexeu no preenchimento"
+    );
+}

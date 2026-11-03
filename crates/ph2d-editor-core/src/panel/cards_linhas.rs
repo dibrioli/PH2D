@@ -469,3 +469,7 @@ impl<'s> CardCtx<'s> {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "cards_linhas_tests.rs"]
+mod tests;

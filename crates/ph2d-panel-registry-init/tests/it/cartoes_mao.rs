@@ -87,3 +87,37 @@ pub(super) fn solta(h: &mut HeroScreen, secao: ph2d_editor_core::NodeId) {
         "o cartão não ficou solto"
     );
 }
+
+/// ⛔ **O Inspector de um registo só deste teste.** O registo do hero é do PROCESSO, com o
+/// `last_entity` do painel lá dentro: um teste ao lado que pinte outro objecto faz o próximo quadro
+/// deste ver uma troca, e a troca larga o foco (`sync.rs`, a lei de sempre). A app tem um registo e
+/// uma thread; quem julga «a caixa em foco fica» pinta aqui, sem vizinhos.
+pub(super) struct InspectorPrivado {
+    registo: ph2d_editor_core::panel::PanelRegistry,
+    pub(super) host: ph2d_ui_testkit::MockPanelHost,
+}
+
+impl InspectorPrivado {
+    pub(super) fn novo() -> Self {
+        use ph2d_editor_core::panel::PanelHostInternal;
+        let _ = ph2d_panel_registry_init::register_all_panels();
+        ph2d_panel_inspector::set_cards_on(true);
+        let mut registo = ph2d_panel_registry_init::build_typed_registry();
+        let mut host = ph2d_ui_testkit::MockPanelHost::new();
+        // Todos, como o hero: as caixas da pilha nascem no painel Vector.
+        for painel in registo.panels_mut() {
+            painel.populate(host.store_mut());
+        }
+        Self { registo, host }
+    }
+
+    pub(super) fn pinta(&mut self) {
+        let painel = self
+            .registo
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o Inspector está no registo");
+        let _ = self.host.medindo_a_pintura_do_registo(painel, VIEWPORT);
+    }
+}

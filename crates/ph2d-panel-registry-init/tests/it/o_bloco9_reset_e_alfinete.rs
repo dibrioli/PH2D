@@ -3,7 +3,7 @@
 //! clique pede à app que reponha o componente principal dele no objecto do cartão.
 #![cfg(feature = "panel-inspector")]
 
-use super::cartoes_mao::{centro, clica, mao, pinta};
+use super::cartoes_mao::{InspectorPrivado, centro, clica, mao, pinta};
 use super::o_bloco8_player_solto::{hero_com_aberto, solto_de};
 use super::o_inspector_armado::{arma_tudo, fisica_armada, player_armado};
 use ph2d_editor_core::NodeId;
@@ -176,40 +176,46 @@ fn a_pinned_component_card_shows_and_edits_its_own_object() {
 
 /// Bloco 10, o ABERTO 2 do bloco 9: um Ctrl+Z (o mundo muda, o objecto é o mesmo) re-semeia as
 /// caixas dos componentes — elas só se semeavam ao trocar de objecto; a caixa em foco fica.
+/// Num registo privado: no do processo, um vizinho que pinte outro objecto larga o foco.
 /// *Mutação: `semeia = entity_changed` ⇒ a caixa fica com o número antigo.*
 #[test]
 fn an_undo_on_a_component_field_reseeds_its_box() {
+    use ph2d_editor_core::panel::PanelHostInternal;
     let hero = super::o_inspector_armado::BITS;
+    let caixa = |p: &InspectorPrivado| {
+        p.host
+            .store()
+            .number_value(FLOAT)
+            .expect("a caixa Float Height")
+    };
     escolhe(hero, "Hero", 0.1);
-    let mut h = hero_com_aberto(PLAYER);
-    let antes = caixa(&h);
+    let mut p = InspectorPrivado::novo();
+    p.pinta();
+    let antes = caixa(&p);
     escolhe(hero, "Hero", 0.4); // o Ctrl+Z devolveu outro Float ao mesmo objecto
-    pinta(&mut h, 2);
-    let depois = caixa(&h);
+    p.pinta();
+    let depois = caixa(&p);
     assert!(
         (depois - antes).abs() > 1e-6,
         "depois do Ctrl+Z a caixa ficou com {antes}"
     );
-    // O registo dos painéis é do processo: um teste paralelo que troca de objecto larga o foco (é a
-    // lei da troca), e aí a caixa não está em foco — só conta o quadro em que o foco sobreviveu.
-    // Em paralelo, 6 tentativas perderam-se todas (03/11): tenta até julgar uma, com tecto.
-    let julgou = (0..300).any(|_| {
-        h.store.set_focus(Some(FLOAT));
-        h.store.set_number_value(FLOAT, depois);
-        escolhe(hero, "Hero", 0.9);
-        pinta(&mut h, 2);
-        let em_foco = h.store.focus_id() == Some(FLOAT);
-        assert!(
-            !em_foco || caixa(&h) == depois,
-            "a caixa em foco foi reescrita por baixo da mão"
-        );
-        em_foco
-    });
-    assert!(julgou, "o foco nunca sobreviveu a um quadro");
-    h.store.set_focus(None);
-    pinta(&mut h, 2);
+    p.host.store_mut().set_focus(Some(FLOAT));
+    escolhe(hero, "Hero", 0.9);
+    p.pinta();
+    assert_eq!(
+        p.host.store().focus_id(),
+        Some(FLOAT),
+        "o mesmo objecto largou o foco"
+    );
+    assert_eq!(
+        caixa(&p),
+        depois,
+        "a caixa em foco foi reescrita por baixo da mão"
+    );
+    p.host.store_mut().set_focus(None);
+    p.pinta();
     assert!(
-        (caixa(&h) - depois).abs() > 1e-6,
+        (caixa(&p) - depois).abs() > 1e-6,
         "sem foco a caixa não voltou ao mundo"
     );
     super::o_inspector_armado::desarma_tudo();

@@ -55,6 +55,7 @@ pub enum Flag {
     ConsRow,
     ConsEye,
     ConsPicking,
+    LampLimit,
     LampShadows,
     Rack0,
     Rack1,
@@ -229,6 +230,8 @@ impl Default for Choices {
         c.choose(Pick::Input1, 1);
         c.choose(Pick::Input2, 2);
         c.choose(Pick::FillType, 1);
+        // A lâmpada de fábrica é branca (`Luz::default`).
+        c.colors[9] = Some([u8::MAX; 4]);
         c
     }
 }

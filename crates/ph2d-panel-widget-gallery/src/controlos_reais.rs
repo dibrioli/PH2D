@@ -190,7 +190,7 @@ pub(super) const REAIS: &[Control] = &[
         g::COL_CAPSULE,
         Pick::ColShape,
         2,
-        IconId::CardCapRound,
+        IconId::CardCapsule,
         "panel.widget_gallery.real.tip.shape_capsule",
     ),
     toggle(g::COL_TRIGGER, Flag::ColTrigger),
@@ -388,6 +388,7 @@ pub(super) const REAIS: &[Control] = &[
         "panel.inspector.luz.ambient",
     ),
     plain(g::LT_SWATCH, Kind::Swatch(9)),
+    toggle(g::LT_LIMIT, Flag::LampLimit),
     toggle(g::LT_SHADOWS, Flag::LampShadows),
     // Audio.
     icon(

@@ -1,7 +1,8 @@
 //! ⭐ **Casos reais: luz, áudio, pixel art, script** (doc `CartoesUI/08` §1.3).
 
 use crate::controlos::{
-    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, marca, num, seg_of, segs,
+    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, letra, marca, num, seg_of,
+    segs,
 };
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RACKS};
@@ -46,11 +47,7 @@ pub(crate) fn light(ch: Choices) -> CardDef<'static> {
             })
             .label(tr("component.field.luz_fields.1"))
             .key(&[g::LT_SWATCH]);
-            let forca = num!(
-                g::LT_INTENSITY,
-                IconId::Light,
-                tr("component.field.luz_fields.2")
-            );
+            let forca = num!(g::LT_INTENSITY, tr("component.field.luz_fields.2"));
             let y = if c.w >= caixa_para(c, &code) + CAMPO_MIN + m::FIELD_GAP {
                 c.row(&[cor, forca], y)
             } else {
@@ -61,20 +58,28 @@ pub(crate) fn light(ch: Choices) -> CardDef<'static> {
                 return y;
             }
             let y = c.row(
-                &[
-                    num!(
-                        g::LT_SIZE,
-                        IconId::CardLen,
-                        tr("panel.widget_gallery.real.lamp_size")
-                    ),
-                    num!(
-                        g::LT_RANGE,
-                        IconId::CardRadius,
-                        tr("panel.widget_gallery.real.lamp_range")
-                    ),
-                ],
+                &[num!(g::LT_SIZE, tr("panel.widget_gallery.real.lamp_size"))],
                 y,
             );
+            // De fábrica a lâmpada não tem limite (`alcance_m` infinito): como no Inspector, o
+            // alcance só aparece com a caixa marcada.
+            let limitada = ch.on(Flag::LampLimit);
+            let mut y = marca(
+                c,
+                g::LT_LIMIT,
+                "panel.inspector.luz.limit_range",
+                limitada,
+                y,
+            );
+            if limitada {
+                y = c.row(
+                    &[num!(
+                        g::LT_RANGE,
+                        tr("panel.widget_gallery.real.lamp_range")
+                    )],
+                    y,
+                );
+            }
             marca(
                 c,
                 g::LT_SHADOWS,
@@ -95,7 +100,7 @@ pub(crate) fn rack_props(c: &mut CardCtx<'_>, i: usize, y: f32) -> f32 {
             Cell::new(field(r.mix, Glyph::Icon(IconId::CardMix)))
                 .label(tr("panel.widget_gallery.real.mix"))
                 .key(&k_mix),
-            Cell::new(field(r.damp, Glyph::Icon(IconId::CardSoft)))
+            Cell::new(field(r.damp, letra(tr("audio.fx.param.damp"))))
                 .label(tr("audio.fx.param.damp"))
                 .key(&k_damp),
         ],
@@ -122,11 +127,7 @@ pub(crate) fn audio(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
             let mudo = segs([g::AU_MUTE], &ch, c.store);
             let fundo = c.row(
                 &[
-                    num!(
-                        g::AU_GAIN,
-                        IconId::Audio,
-                        tr("panel.widget_gallery.real.gain")
-                    ),
+                    num!(g::AU_GAIN, tr("panel.widget_gallery.real.gain")),
                     Cell::new(Widget::Bare(&mudo)),
                 ],
                 y,
@@ -304,16 +305,8 @@ pub(crate) fn script(ch: Choices) -> CardDef<'static> {
                 0 => {
                     let y = c.row(
                         &[
-                            num!(
-                                g::SC_SPEED,
-                                IconId::Script,
-                                tr("panel.widget_gallery.real.prop.speed")
-                            ),
-                            num!(
-                                g::SC_JUMP,
-                                IconId::Script,
-                                tr("panel.widget_gallery.real.prop.jump_power")
-                            ),
+                            num!(g::SC_SPEED, tr("panel.widget_gallery.real.prop.speed")),
+                            num!(g::SC_JUMP, tr("panel.widget_gallery.real.prop.jump_power")),
                         ],
                         y,
                     );
@@ -327,23 +320,14 @@ pub(crate) fn script(ch: Choices) -> CardDef<'static> {
                 }
                 1 => c.row(
                     &[
-                        num!(
-                            g::SC_PATROL,
-                            IconId::Script,
-                            tr("panel.widget_gallery.real.prop.patrol")
-                        ),
-                        num!(
-                            g::SC_DAMAGE,
-                            IconId::Script,
-                            tr("panel.widget_gallery.real.prop.damage")
-                        ),
+                        num!(g::SC_PATROL, tr("panel.widget_gallery.real.prop.patrol")),
+                        num!(g::SC_DAMAGE, tr("panel.widget_gallery.real.prop.damage")),
                     ],
                     y,
                 ),
                 _ => c.row(
                     &[num!(
                         g::SC_VALUE,
-                        IconId::Script,
                         tr("panel.widget_gallery.real.prop.value")
                     )],
                     y,

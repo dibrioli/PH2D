@@ -66,14 +66,7 @@ pub(crate) fn animation(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
                 ],
                 y,
             );
-            let y = c.row(
-                &[num!(
-                    g::ANIM_FPS,
-                    IconId::Play,
-                    tr("panel.inspector.anim_card.fps")
-                )],
-                y,
-            );
+            let y = c.row(&[num!(g::ANIM_FPS, tr("panel.inspector.anim_card.fps"))], y);
             let quem = segs([g::ANIM_ME, g::ANIM_SCRIPT, g::ANIM_RULES], &ch, c.store);
             let mut y = c.row(
                 &[Cell::new(Widget::Choice(&quem))
@@ -125,7 +118,6 @@ pub(crate) fn brush(ch: Choices) -> CardDef<'static> {
             let y = c.row(
                 &[num!(
                     g::BR_SIZE,
-                    IconId::CardBrush,
                     tr("panel.painter_layers.wetpaint.vol_size")
                 )],
                 y,
@@ -139,40 +131,20 @@ pub(crate) fn brush(ch: Choices) -> CardDef<'static> {
             );
             let y = c.row(
                 &[
-                    num!(
-                        g::BR_DILUTION,
-                        IconId::CardOpacity,
-                        tr("panel.painter_layers.wetpaint.dilution")
-                    ),
-                    num!(
-                        g::BR_VOLUME,
-                        IconId::CardWeight,
-                        tr("panel.painter_layers.wetpaint.volume_um")
-                    ),
+                    num!(g::BR_DILUTION, tr("panel.painter_layers.wetpaint.dilution")),
+                    num!(g::BR_VOLUME, tr("panel.painter_layers.wetpaint.volume_um")),
                 ],
                 y,
             );
             let proprio = if ch.pick(Pick::PaintType) == 0 {
-                num!(
-                    g::BR_REWET,
-                    IconId::CardFlow,
-                    tr("panel.painter_wet_cartao.rewet")
-                )
+                num!(g::BR_REWET, tr("panel.painter_wet_cartao.rewet"))
             } else {
-                num!(
-                    g::BR_BODY,
-                    IconId::CardWeight,
-                    tr("panel.painter_layers.wetpaint.body")
-                )
+                num!(g::BR_BODY, tr("panel.painter_layers.wetpaint.body"))
             };
             c.row(
                 &[
                     proprio,
-                    num!(
-                        g::BR_PRESS,
-                        IconId::CardSoft,
-                        tr("panel.widget_gallery.real.paper_press")
-                    ),
+                    num!(g::BR_PRESS, tr("panel.widget_gallery.real.paper_press")),
                 ],
                 y,
             )
@@ -189,7 +161,7 @@ pub(crate) fn bones(ch: Choices) -> CardDef<'static> {
             let dobra = segs([g::BO_BEND_CCW, g::BO_BEND_CW], &ch, c.store);
             let y = c.row(
                 &[
-                    num!(g::BO_LENGTH, IconId::CardLen, tr("card.bones.length")),
+                    num!(g::BO_LENGTH, tr("card.bones.length")),
                     Cell::new(Widget::Icons(&dobra))
                         .label(tr("card.bones.bend"))
                         .key(&[g::BO_BEND_CCW, g::BO_BEND_CW]),
@@ -266,11 +238,7 @@ pub(crate) fn constraint(ch: Choices) -> CardDef<'static> {
             let espacos = segs([g::CS_SPACE_WORLD, g::CS_SPACE_LOCAL], &ch, c.store);
             c.row(
                 &[
-                    num!(
-                        g::CS_INFLUENCE,
-                        IconId::CardMix,
-                        tr("panel.widget_gallery.real.influence")
-                    ),
+                    num!(g::CS_INFLUENCE, tr("panel.widget_gallery.real.influence")),
                     Cell::new(dropdown(g::CS_SPACE, &espacos))
                         .label(tr("panel.inspector.constraint.space"))
                         .key(&[g::CS_SPACE]),

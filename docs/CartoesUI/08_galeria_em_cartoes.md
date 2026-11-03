@@ -113,18 +113,20 @@ copia este cartão. Foto: `maquete/g4_galeria_casos_reais.png`, `g4b_…`, `g4c_
 |---|---|---|
 | **Image** | «Use» logo abaixo de Image, nunca checkbox (26/10) | Still → `Frame`; Repeated → `Width`/`Height (px)`; Animated → `Columns`, `Rows`, `Frames/s` |
 | **Physics Body** | o nome real do cartão | `Body` Dynamic/Kinematic/Static: Dynamic → `Mass (kg)`, `Gravity Scale`, `Linear/Angular Damping`, `Lock Rotation`; Kinematic → só o Lock; Static → a frase |
-| **Collider** | ícones de forma | Box → `Width`/`Height`; Circle → `Radius`; Capsule → `Radius` + `Half height`; `Offset`, `Friction`, `Bounce`, `Trigger` (os nomes reais, em vez de Bounciness / Is sensor) |
+| **Collider** | ícones de forma | Box → `Half Width`/`Half Height (m)`; Circle → `Radius (m)`; Capsule → `Radius` + `Half Height`; `Offset X/Y (m)`, `Friction`, `Bounce`, `Trigger` (os nomes reais, em vez de Bounciness / Is sensor) |
 | **Health** | | `Max`, `Start` (o real, em vez de Current), a barra, `Regen (/s)`, `Regen Delay (s)`, `Overheal`: sem ele o Start não passa do Max |
 | **Platform Player** | só movimento (25/10) | `Speed (m/s)`, `Accel`, `Air`, `Jump Height (m)`, `Air Jumps`, `Coyote Time (s)`, `Jump Buffer (s)` |
-| **Game Camera** | alvo por arrastar, escrever ou conta-gotas, NUNCA lista (02/11); os defeitos de 05 §8: título, células do cartão, marca na linha do rótulo | `Target` escreve-se e diz «Follows X» ou «No object named…»; o conta-gotas arma e o 2.º clique faz de clique no canvas; `Game Format`, `Frame`, `Dead Zone (px)`, `Damping` (o real, em vez de Follow speed), `Lookahead (px)`, `Active`, `Look Through` (estado da vista: sem marca). **Modelo para o cartão do Inspector** |
+| **Game Camera** | alvo por arrastar, escrever ou conta-gotas, NUNCA lista (02/11); os defeitos de 05 §8: título, células do cartão, marca na linha do rótulo | `Target` escreve-se e diz «Follows X» ou «No object named…»; o conta-gotas arma e o 2.º clique faz de clique no canvas; `Game Format`, `Frame`, `Dead Zone` (fração da meia-janela), `Damping (/s)` (o real, em vez de Follow speed), `Lookahead (s)`, `Active`, `Look Through` (estado da vista: sem marca). **Modelo para o cartão do Inspector** |
 | **Animation** | UM cartão com lista de regras (25/10) | `Clip` + ▶, `Frames/s`, `Who Picks` Me/Script/Rules; Rules → `When` ▾ `Play` ▾ −, «+» até 3 |
 | **Brush** | Paint type Water·Oil (01/11), Volume independente da diluição (31/10), Paper press é controlo (28/10), um só Dilution (E10) | `Preset`, `Size (px)`, `Paint type`, `Dilution`, `Volume (µm)`, `Paper press`; Water → `Re-wet`; Oil → `Body` |
 | **Bones** | os nomes de `card.bones.*` | `Length (px)`, `Bend`, `Angle Limit` → `Min`/`Max (°)`, `Smart Bone`, `IK` → `Mix`, `Chain length` |
 | **Constraint** | pilha; alvo sem lista | `[Look At ▾] 👁 −`, `Target`, `Influence (%)`, `Space`; sem linha, ausente com «+» |
-| **Light 2D** | | `Type` Point/Ambient, `Color`, `Intensity`; Point → `Size (m)`, `Range (m)`, `Casts shadows` |
+| **Light 2D** | | `Type` Point/Ambient, `Color`, `Intensity`; Point → `Size (m)`, `Limit Range` (de fábrica sem limite; marcada, abre `Range (m)`), `Casts shadows` |
 | **Audio** | o rack segue o F43 | medidor (`paint_level_meter`, o Gain move-o, o mudo zera-o), `Gain (dB)`, a lista de efeitos com «+» de tipos e `Mix (%)` + `Damp` à esquerda |
 | **Pixel Art** | paleta indexada em tokens | `Foreground`/`Background` (a caixa contornada é o alvo), a troca, a grelha 8×2, `Grid size (px)`, `Pixel grid` |
 | **Script** | o script mora no projeto (ADR-0188) | `Script` ▾, `Edit script`, e as propriedades que cada script expõe mudam com ele |
+
+**Glifo e valores de partida.** Num campo, a pega mostra a LETRA da grandeza (`letra_da_grandeza`, T56: a inicial maiúscula da última palavra do rótulo: `Offset X` ⇒ X, `Half Height` ⇒ H, `Max`/`Start` ⇒ M, S, `jump_power` ⇒ P). Ícone só onde ele quer dizer a grandeza: ângulo, opacidade, peso do traço, raio, mistura, desfoque, corrente (censo `nenhum_campo_usa_um_icone_emprestado`). Os números de partida são os de fábrica do código: Player de `PlayerConfig::STARTING_POINT` e Health de `ph2d_health::Config` (amarrados por `os_valores_de_partida_sao_os_de_fabrica_do_codigo_real`), Collider, Camera (`CameraFollow`), Light (`Luz`), Bones (`Bone`, `BoneLimit`, `IkGoal`) copiados deles; a cor da lâmpada é branca.
 
 ### 1.4 As amostras do Rive (depois dos casos reais)
 

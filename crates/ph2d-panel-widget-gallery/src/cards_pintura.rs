@@ -2,7 +2,7 @@
 //! lista de efeitos à F43. As linhas são fixas por tabela: «+» liga a primeira livre, «−» a sua.
 
 use crate::controlos::{
-    CAMPO_MIN, SWATCHES, caixa_para, card, dropdown, field, head, seg_of, segs,
+    CAMPO_MIN, SWATCHES, caixa_para, card, dropdown, field, head, letra, seg_of, segs,
 };
 use crate::ids::{self as g, PaintRow};
 use crate::state::{Choices, FILLS, FXS, Flag, Pick, STROKES};
@@ -274,7 +274,7 @@ pub(crate) fn fx_props(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f
             Cell::new(field(row.blur, Glyph::Icon(IconId::CardSoft)))
                 .label(tr("panel.widget_gallery.blur"))
                 .key(&k_blur),
-            Cell::new(field(row.spread, Glyph::Icon(IconId::CardLen)))
+            Cell::new(field(row.spread, letra(tr("panel.widget_gallery.spread"))))
                 .label(tr("panel.widget_gallery.spread"))
                 .key(&k_sp),
         ],

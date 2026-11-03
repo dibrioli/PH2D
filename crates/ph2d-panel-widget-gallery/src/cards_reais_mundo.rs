@@ -37,53 +37,23 @@ pub(crate) fn image(ch: Choices) -> CardDef<'static> {
                 y,
             );
             match ch.pick(Pick::ImgUse) {
-                0 => c.row(
-                    &[num!(
-                        g::IMG_FRAME,
-                        IconId::Image,
-                        tr("panel.inspector.image.frame")
-                    )],
-                    y,
-                ),
+                0 => c.row(&[num!(g::IMG_FRAME, tr("panel.inspector.image.frame"))], y),
                 1 => c.row(
                     &[
-                        num!(
-                            g::IMG_W,
-                            IconId::CardLen,
-                            tr("panel.widget_gallery.real.width")
-                        ),
-                        num!(
-                            g::IMG_H,
-                            IconId::CardLen,
-                            tr("panel.widget_gallery.real.height")
-                        ),
+                        num!(g::IMG_W, tr("panel.widget_gallery.real.width")),
+                        num!(g::IMG_H, tr("panel.widget_gallery.real.height")),
                     ],
                     y,
                 ),
                 _ => {
                     let y = c.row(
                         &[
-                            num!(
-                                g::IMG_COLS,
-                                IconId::Grid,
-                                tr("panel.widget_gallery.real.columns")
-                            ),
-                            num!(
-                                g::IMG_ROWS,
-                                IconId::Grid,
-                                tr("panel.widget_gallery.real.rows")
-                            ),
+                            num!(g::IMG_COLS, tr("panel.widget_gallery.real.columns")),
+                            num!(g::IMG_ROWS, tr("panel.widget_gallery.real.rows")),
                         ],
                         y,
                     );
-                    c.row(
-                        &[num!(
-                            g::IMG_FPS,
-                            IconId::Play,
-                            tr("panel.inspector.anim_card.fps")
-                        )],
-                        y,
-                    )
+                    c.row(&[num!(g::IMG_FPS, tr("panel.inspector.anim_card.fps"))], y)
                 }
             }
         }),
@@ -110,35 +80,13 @@ pub(crate) fn rigid_body(ch: Choices) -> CardDef<'static> {
             if tipo == 0 {
                 y = c.row(
                     &[
-                        num!(
-                            g::RB_MASS,
-                            IconId::CardWeight,
-                            tr("component.field.mass_override.0")
-                        ),
-                        num!(
-                            g::RB_GRAVITY,
-                            IconId::CardFlow,
-                            tr("component.field.gravity_scale.0")
-                        ),
+                        num!(g::RB_MASS, tr("component.field.mass_override.0")),
+                        num!(g::RB_GRAVITY, tr("component.field.gravity_scale.0")),
                     ],
                     y,
                 );
-                y = c.row(
-                    &[num!(
-                        g::RB_LINEAR,
-                        IconId::CardSoft,
-                        tr("canal.fisica.amort_linear")
-                    )],
-                    y,
-                );
-                y = c.row(
-                    &[num!(
-                        g::RB_ANGULAR,
-                        IconId::CardAngle,
-                        tr("canal.fisica.amort_angular")
-                    )],
-                    y,
-                );
+                y = c.row(&[num!(g::RB_LINEAR, tr("canal.fisica.amort_linear"))], y);
+                y = c.row(&[num!(g::RB_ANGULAR, tr("canal.fisica.amort_angular"))], y);
             }
             marca(
                 c,
@@ -172,16 +120,8 @@ pub(crate) fn collider(ch: Choices) -> CardDef<'static> {
             let y = match ch.pick(Pick::ColShape) {
                 0 => c.row(
                     &[
-                        num!(
-                            g::COL_W,
-                            IconId::CardLen,
-                            tr("panel.widget_gallery.real.width")
-                        ),
-                        num!(
-                            g::COL_H,
-                            IconId::CardLen,
-                            tr("panel.widget_gallery.real.height")
-                        ),
+                        num!(g::COL_W, tr("panel.widget_gallery.real.half_width")),
+                        num!(g::COL_H, tr("panel.widget_gallery.real.half_height")),
                     ],
                     y,
                 ),
@@ -189,42 +129,22 @@ pub(crate) fn collider(ch: Choices) -> CardDef<'static> {
                 _ => c.row(
                     &[
                         raio,
-                        num!(
-                            g::COL_HALF,
-                            IconId::CardLen,
-                            tr("panel.widget_gallery.real.half_height")
-                        ),
+                        num!(g::COL_HALF, tr("panel.widget_gallery.real.half_height")),
                     ],
                     y,
                 ),
             };
             let y = c.row(
                 &[
-                    num!(
-                        g::COL_OX,
-                        IconId::CardFlow,
-                        tr("panel.widget_gallery.real.offset_x")
-                    ),
-                    num!(
-                        g::COL_OY,
-                        IconId::CardFlow,
-                        tr("panel.widget_gallery.real.offset_y")
-                    ),
+                    num!(g::COL_OX, tr("panel.widget_gallery.real.offset_x")),
+                    num!(g::COL_OY, tr("panel.widget_gallery.real.offset_y")),
                 ],
                 y,
             );
             let y = c.row(
                 &[
-                    num!(
-                        g::COL_FRICTION,
-                        IconId::CardSoft,
-                        tr("component.field.collider.3")
-                    ),
-                    num!(
-                        g::COL_BOUNCE,
-                        IconId::CardMix,
-                        tr("component.field.collider.2")
-                    ),
+                    num!(g::COL_FRICTION, tr("component.field.collider.3")),
+                    num!(g::COL_BOUNCE, tr("component.field.collider.2")),
                 ],
                 y,
             );
@@ -247,16 +167,8 @@ pub(crate) fn health(ch: Choices) -> CardDef<'static> {
         Box::new(move |c: &mut CardCtx<'_>, y| {
             let y = c.row(
                 &[
-                    num!(
-                        g::HP_MAX,
-                        IconId::CardWeight,
-                        tr("component.field.health_fields.1")
-                    ),
-                    num!(
-                        g::HP_START,
-                        IconId::CardWeight,
-                        tr("component.field.health_fields.2")
-                    ),
+                    num!(g::HP_MAX, tr("component.field.health_fields.1")),
+                    num!(g::HP_START, tr("component.field.health_fields.2")),
                 ],
                 y,
             );
@@ -265,16 +177,8 @@ pub(crate) fn health(ch: Choices) -> CardDef<'static> {
             let y = barra(c, 0.0, fracao, y);
             let y = c.row(
                 &[
-                    num!(
-                        g::HP_REGEN,
-                        IconId::CardFlow,
-                        tr("component.field.health_fields.5")
-                    ),
-                    num!(
-                        g::HP_DELAY,
-                        IconId::CardRest,
-                        tr("panel.widget_gallery.real.regen_delay")
-                    ),
+                    num!(g::HP_REGEN, tr("component.field.health_fields.5")),
+                    num!(g::HP_DELAY, tr("panel.widget_gallery.real.regen_delay")),
                 ],
                 y,
             );
@@ -296,55 +200,27 @@ pub(crate) fn player() -> CardDef<'static> {
         Vec::new(),
         Box::new(|c: &mut CardCtx<'_>, y| {
             let y = c.row(
-                &[num!(
-                    g::PL_SPEED,
-                    IconId::CardFlow,
-                    tr("panel.widget_gallery.real.speed")
-                )],
+                &[num!(g::PL_SPEED, tr("panel.widget_gallery.real.speed"))],
                 y,
             );
             let y = c.row(
                 &[
-                    num!(
-                        g::PL_ACCEL,
-                        IconId::CardFlow,
-                        tr("panel.widget_gallery.real.accel")
-                    ),
-                    num!(
-                        g::PL_AIR,
-                        IconId::CardFlow,
-                        tr("panel.widget_gallery.real.air_accel")
-                    ),
+                    num!(g::PL_ACCEL, tr("panel.widget_gallery.real.accel")),
+                    num!(g::PL_AIR, tr("panel.widget_gallery.real.air_accel")),
                 ],
                 y,
             );
             let y = c.row(
                 &[
-                    num!(
-                        g::PL_JUMP,
-                        IconId::CardLen,
-                        tr("panel.widget_gallery.real.jump_height")
-                    ),
-                    num!(
-                        g::PL_AIR_JUMPS,
-                        IconId::CardSeg,
-                        tr("component.field.platform_player.9")
-                    ),
+                    num!(g::PL_JUMP, tr("panel.widget_gallery.real.jump_height")),
+                    num!(g::PL_AIR_JUMPS, tr("component.field.platform_player.9")),
                 ],
                 y,
             );
             c.row(
                 &[
-                    num!(
-                        g::PL_COYOTE,
-                        IconId::CardRest,
-                        tr("panel.widget_gallery.real.coyote")
-                    ),
-                    num!(
-                        g::PL_BUFFER,
-                        IconId::CardRest,
-                        tr("panel.widget_gallery.real.buffer")
-                    ),
+                    num!(g::PL_COYOTE, tr("panel.widget_gallery.real.coyote")),
+                    num!(g::PL_BUFFER, tr("panel.widget_gallery.real.buffer")),
                 ],
                 y,
             )
@@ -431,16 +307,8 @@ pub(crate) fn camera(ch: Choices) -> CardDef<'static> {
             );
             let y = c.row(
                 &[
-                    num!(
-                        g::CAM_DAMPING,
-                        IconId::CardSoft,
-                        tr("component.field.follow_fields.1")
-                    ),
-                    num!(
-                        g::CAM_LOOKAHEAD,
-                        IconId::CardFlow,
-                        tr("panel.widget_gallery.real.lookahead")
-                    ),
+                    num!(g::CAM_DAMPING, tr("panel.widget_gallery.real.damping")),
+                    num!(g::CAM_LOOKAHEAD, tr("panel.widget_gallery.real.lookahead")),
                 ],
                 y,
             );

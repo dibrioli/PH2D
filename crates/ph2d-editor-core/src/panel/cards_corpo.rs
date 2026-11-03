@@ -22,19 +22,33 @@ use ph2d_vector::VectorScene;
 
 /// O glifo da pega de um número: a letra da caixa numa linha de vários ([`Eixos`]: X · Y · Z · W,
 /// ou W · H num tamanho); num campo só, a letra DECLARADA ([`Eixos::Letra`]) ou a inicial da
-/// ÚLTIMA palavra do rótulo — a que nomeia a grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o
-/// `H` de «Half»; «Offset Y» ⇒ `Y`).
+/// ÚLTIMA palavra do rótulo — [`letra_da_grandeza`].
 fn glifo(rotulo: &str, eixos: Eixos, n: usize, i: usize) -> Glyph<'_> {
     if n > 1 || matches!(eixos, Eixos::Letra(_)) {
         return Glyph::Text(eixos.letra(i));
     }
+    Glyph::Text(letra_da_grandeza(rotulo))
+}
+
+/// A letra de um campo só: a inicial, em maiúscula, da ÚLTIMA palavra do rótulo — a que nomeia a
+/// grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o `H` de «Half»; «Offset Y» ⇒ `Y`; o nome de
+/// um script, «jump_power» ⇒ `P`). A unidade entre parênteses não conta.
+#[must_use]
+pub fn letra_da_grandeza(rotulo: &str) -> &str {
+    const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let palavra = rotulo
-        .split_whitespace()
+        .split(|c: char| c.is_whitespace() || c == '_')
         .rev()
         .find(|p| p.starts_with(char::is_alphanumeric))
         .unwrap_or(rotulo);
-    let fim = palavra.chars().next().map_or(0, char::len_utf8);
-    Glyph::Text(&palavra[..fim])
+    match palavra.chars().next() {
+        Some(c) if c.is_ascii_lowercase() => {
+            let i = usize::from(c as u8 - b'a');
+            &MAIUSCULAS[i..=i]
+        }
+        Some(c) => &palavra[..c.len_utf8()],
+        None => "",
+    }
 }
 
 /// Uma coluna de uma linha de números de cartão: um rótulo (com a unidade nele, D13) sobre as
@@ -410,5 +424,12 @@ mod tests {
         assert_eq!(um("Offset Y", Eixos::Xyzw), "Y");
         assert_eq!(um("Radius (m)", Eixos::Xyzw), "R");
         assert_eq!(um("Half Width", Eixos::Letra("R")), "R");
+        assert_eq!(
+            um("Half height", Eixos::Xyzw),
+            "H",
+            "a letra é sempre maiúscula"
+        );
+        assert_eq!(um("jump_power", Eixos::Xyzw), "P", "o nome de um script");
+        assert_eq!(um("speed", Eixos::Xyzw), "S");
     }
 }

@@ -3,7 +3,9 @@
 //! conceito confere-se na documentação pública, o desenho é nosso e fala a lei do cartão.
 
 use crate::controlos::rive::{INPUT_ROWS, INPUT_TYPES, STOP_ROWS, STOP_SWATCH};
-use crate::controlos::{CAMPO_MIN, caixa_para, card, dropdown, field, head, marca, num, segs};
+use crate::controlos::{
+    CAMPO_MIN, caixa_para, card, dropdown, field, head, letra, marca, num, segs,
+};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, WidgetGalleryState};
 use ph2d_card_stack::metrics as m;
@@ -201,9 +203,12 @@ fn input_row(c: &mut CardCtx<'_>, ch: &Choices, st: Disparos, i: usize, y: f32) 
             let k = [r.number];
             c.row(
                 &[
-                    Cell::new(field(r.number, Glyph::Icon(IconId::CardSeg)))
-                        .label(tr("panel.widget_gallery.rive.input.number"))
-                        .key(&k),
+                    Cell::new(field(
+                        r.number,
+                        letra(tr("panel.widget_gallery.rive.input.number")),
+                    ))
+                    .label(tr("panel.widget_gallery.rive.input.number"))
+                    .key(&k),
                     menos,
                 ],
                 y,
@@ -284,16 +289,8 @@ pub(crate) fn trim(ch: Choices) -> CardDef<'static> {
         Box::new(move |c: &mut CardCtx<'_>, y| {
             let y = c.row(
                 &[
-                    num!(
-                        g::TR_START,
-                        IconId::CardLen,
-                        tr("panel.widget_gallery.rive.trim.start")
-                    ),
-                    num!(
-                        g::TR_END,
-                        IconId::CardLen,
-                        tr("panel.widget_gallery.rive.trim.end")
-                    ),
+                    num!(g::TR_START, tr("panel.widget_gallery.rive.trim.start")),
+                    num!(g::TR_END, tr("panel.widget_gallery.rive.trim.end")),
                 ],
                 y,
             );
@@ -458,9 +455,12 @@ pub(crate) fn gradient(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
             let y = barra_do_gradiente(c, &ch, y);
             let menos = segs([s.remove], &ch, c.store);
             let quantas = STOP_ROWS.iter().filter(|f| ch.on(**f)).count();
-            let posicao = Cell::new(field(s.position, Glyph::Icon(IconId::CardLen)))
-                .label(tr("panel.widget_gallery.rive.stop_position"))
-                .key(&k_pos);
+            let posicao = Cell::new(field(
+                s.position,
+                letra(tr("panel.widget_gallery.rive.stop_position")),
+            ))
+            .label(tr("panel.widget_gallery.rive.stop_position"))
+            .key(&k_pos);
             // Um gradiente tem sempre duas paragens: com duas, o «−» não aparece.
             let y = c.row(&[posicao], y);
             if quantas > 2 {

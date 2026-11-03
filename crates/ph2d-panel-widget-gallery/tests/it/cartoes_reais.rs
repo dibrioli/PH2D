@@ -5,6 +5,7 @@ use super::cartoes::Galeria;
 use bumpalo::Bump;
 use ph2d_editor_core::interaction::dispatch_text_input;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::widget::card_field::painted_letter;
 use ph2d_host::PointerKind;
 use ph2d_panel_widget_gallery::cards_reais_mundo::estado_do_alvo;
 use ph2d_panel_widget_gallery::cards_rive;
@@ -300,4 +301,130 @@ fn a_paragem_do_gradiente_escolhe_e_o_mais_acrescenta() {
     assert!(gal.rect(b.remove).is_some(), "com três falta o «−»");
     gal.clica(g::GR_SOLID);
     assert!(gal.rect(a.handle).is_none(), "Solid manteve a barra");
+}
+
+fn fabrica(id: ph2d_a11y::NodeId) -> f64 {
+    g::FIELDS
+        .iter()
+        .find(|f| f.0 == id)
+        .map(|f| f.1)
+        .expect("campo da tabela")
+}
+
+/// Os números de partida são os do código real, nunca inventados: quem copia o cartão copia a verdade.
+/// *Mutação: `PL_SPEED` a 8 ⇒ vermelho.*
+#[test]
+fn os_valores_de_partida_sao_os_de_fabrica_do_codigo_real() {
+    let p = ph2d_platformer::PlayerConfig::STARTING_POINT;
+    let h = ph2d_health::Config::default();
+    for (id, real, nome) in [
+        (g::PL_SPEED, f64::from(p.walk.speed), "Speed"),
+        (g::PL_ACCEL, f64::from(p.walk.acceleration), "Acceleration"),
+        (g::PL_AIR, f64::from(p.walk.air_acceleration), "Air"),
+        (g::PL_JUMP, f64::from(p.jump.jump_height), "Jump Height"),
+        (g::PL_AIR_JUMPS, f64::from(p.jump.air_jumps), "Air Jumps"),
+        (g::PL_COYOTE, f64::from(p.jump.coyote_time), "Coyote"),
+        (g::PL_BUFFER, f64::from(p.jump.jump_buffer), "Buffer"),
+        (g::HP_MAX, h.maximo, "Max"),
+        (g::HP_START, h.maximo, "Start"),
+        (g::HP_REGEN, h.regen, "Regen"),
+        (g::HP_DELAY, h.regen_atraso_s, "Regen Delay"),
+    ] {
+        assert!(
+            (fabrica(id) - real).abs() < 1e-6,
+            "{nome}: a galeria parte de {}, o código real de {real}",
+            fabrica(id)
+        );
+    }
+}
+
+/// ⭐ T56 no cartão: a pega mostra a LETRA da grandeza — os pares leem-se X/Y, W/H, M/S. A prova é a
+/// letra que a pintura registou, não a tabela. *Mutação: `letra` a devolver a 1.ª palavra ⇒ vermelho.*
+#[test]
+fn cada_campo_mostra_a_letra_da_sua_grandeza() {
+    let mut gal = Galeria::aberta();
+    let _ = gal.rect(g::COL_OX);
+    for (id, letra) in [
+        (g::COL_W, "W"),
+        (g::COL_H, "H"),
+        (g::COL_OX, "X"),
+        (g::COL_OY, "Y"),
+        (g::COL_FRICTION, "F"),
+        (g::COL_BOUNCE, "B"),
+        (g::HP_MAX, "M"),
+        (g::HP_START, "S"),
+        (g::HP_REGEN, "R"),
+        (g::HP_DELAY, "D"),
+        (g::PL_SPEED, "S"),
+        (g::PL_JUMP, "H"),
+        (g::PL_COYOTE, "T"),
+        (g::PL_BUFFER, "B"),
+        (g::TR_START, "S"),
+        (g::TR_END, "E"),
+        (g::SC_SPEED, "S"),
+        (g::SC_JUMP, "P"),
+    ] {
+        assert_eq!(painted_letter(id).as_deref(), Some(letra), "campo {id:?}");
+    }
+    gal.clica(g::COL_CIRCLE);
+    assert!(
+        gal.rect(g::COL_RADIUS).is_some(),
+        "Circle não mostrou o raio"
+    );
+    assert_eq!(
+        painted_letter(g::COL_RADIUS),
+        None,
+        "o raio tem ícone que o quer dizer"
+    );
+}
+
+/// Censo: nas pegas de número só entram os ícones que QUEREM DIZER a grandeza. Um ícone emprestado
+/// é um desenho sem significado ao lado de um número. *Mutação: `Glyph::Icon(IconId::CardFlow)`.*
+#[test]
+fn nenhum_campo_usa_um_icone_emprestado() {
+    const QUEREM_DIZER: &[&str] = &[
+        "CardAngle",   // ângulo
+        "CardOpacity", // opacidade
+        "CardWeight",  // peso do traço
+        "CardRadius",  // raio
+        "CardMix",     // mistura
+        "CardSoft",    // desfoque
+        "CardChain",   // corrente de ossos
+        "FxWave",      // a linha do rack: o tipo, não um número
+    ];
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut vistos = 0;
+    for ficheiro in std::fs::read_dir(src).expect("src") {
+        let p = ficheiro.expect("entrada").path();
+        if !p
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy().starts_with("cards"))
+        {
+            continue;
+        }
+        let t = std::fs::read_to_string(&p).expect("fonte");
+        let mut sitios: Vec<&str> = t.split("Glyph::Icon(").skip(1).collect();
+        // `num!(id, IconId::X, rótulo)`: o ícone vem antes do rótulo.
+        sitios.extend(t.split("num!(").skip(1).filter_map(|r| {
+            let antes = r.split("tr(").next().unwrap_or_default();
+            antes.split_once("IconId::").map(|(_, d)| d)
+        }));
+        for s in sitios {
+            let s = s.trim_start();
+            let s = s.strip_prefix("IconId::").unwrap_or(s);
+            let nome: String = s.chars().take_while(|c| c.is_alphanumeric()).collect();
+            // `Glyph::Icon(if …)`, `Glyph::Icon(fx_icon(kind))`: a expressão fica fora do censo.
+            if !nome.starts_with(char::is_uppercase) {
+                continue;
+            }
+            vistos += 1;
+            assert!(
+                QUEREM_DIZER.contains(&nome.as_str()),
+                "{}: `{nome}` numa pega de número não diz a grandeza; a cura é `num!(id, rótulo)` \
+                 (a letra, T56)",
+                p.display()
+            );
+        }
+    }
+    assert!(vistos >= 8, "o censo não leu o sítio certo ({vistos})");
 }

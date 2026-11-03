@@ -1,6 +1,6 @@
 //! Layout, Corners e Constraints à Figma (doc `CartoesUI/08` §1.1).
 
-use crate::controlos::{CAMPO_MIN, card, dropdown, field, segs};
+use crate::controlos::{CAMPO_MIN, card, dropdown, field, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag};
 use ph2d_card_stack::metrics as m;
@@ -44,12 +44,7 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
         c.w = w0;
         fundo
     };
-    let direita = c.row(
-        &[Cell::new(field(g::GAP, Glyph::Icon(IconId::CardLen)))
-            .label(tr("panel.widget_gallery.gap"))
-            .key(&[g::GAP])],
-        topo,
-    );
+    let direita = c.row(&[num!(g::GAP, tr("panel.widget_gallery.gap"))], topo);
     let direita = c.row(
         &[
             Cell::new(field(

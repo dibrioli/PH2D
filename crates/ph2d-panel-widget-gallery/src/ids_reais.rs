@@ -217,6 +217,7 @@ pub const LT_SWATCH: NodeId = hash_node_id("gallery.real.lt_swatch");
 pub const LT_INTENSITY: NodeId = hash_node_id("gallery.real.lt_intensity");
 pub const LT_SIZE: NodeId = hash_node_id("gallery.real.lt_size");
 pub const LT_RANGE: NodeId = hash_node_id("gallery.real.lt_range");
+pub const LT_LIMIT: NodeId = hash_node_id("gallery.real.lt_limit");
 pub const LT_SHADOWS: NodeId = hash_node_id("gallery.real.lt_shadows");
 
 // ── Audio ──
@@ -326,69 +327,71 @@ pub const SC_PATROL: NodeId = hash_node_id("gallery.real.sc_patrol");
 pub const SC_DAMAGE: NodeId = hash_node_id("gallery.real.sc_damage");
 pub const SC_VALUE: NodeId = hash_node_id("gallery.real.sc_value");
 
-/// Os campos numéricos: nomes e unidades do código real; valores de um objeto fictício.
+/// Os campos numéricos: nomes, unidades e valores de fábrica do código real (`PlayerConfig::STARTING_POINT`,
+/// `ph2d_health::Config`, `Collider`, `CameraFollow`, `Luz`, `Bone`, `BoneLimit`, `IkGoal`); o que não tem
+/// fábrica (imagem, script, pincel, áudio) é dado de um objeto fictício.
 pub const CAMPOS: [Campo; 63] = [
-    (IMG_FRAME, 0.0, 1.0, 0.1),       // LITERAL-PX-OK: dado do objeto fictício
-    (IMG_W, 128.0, 1.0, 1.0),         // LITERAL-PX-OK: dado do objeto fictício
-    (IMG_H, 32.0, 1.0, 1.0),          // LITERAL-PX-OK: dado do objeto fictício
-    (IMG_COLS, 4.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
-    (IMG_ROWS, 2.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
-    (IMG_FPS, 12.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
-    (RB_MASS, 1.0, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
-    (RB_GRAVITY, 1.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
-    (RB_LINEAR, 0.0, 0.1, 0.01),      // LITERAL-PX-OK: dado do objeto fictício
-    (RB_ANGULAR, 0.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
-    (COL_W, 32.0, 1.0, 1.0),          // LITERAL-PX-OK: dado do objeto fictício
-    (COL_H, 48.0, 1.0, 1.0),          // LITERAL-PX-OK: dado do objeto fictício
-    (COL_RADIUS, 16.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (COL_HALF, 24.0, 1.0, 1.0),       // LITERAL-PX-OK: dado do objeto fictício
-    (COL_OX, 0.0, 1.0, 1.0),          // LITERAL-PX-OK: dado do objeto fictício
-    (COL_OY, 0.0, 1.0, 1.0),          // LITERAL-PX-OK: dado do objeto fictício
-    (COL_FRICTION, 0.5, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
-    (COL_BOUNCE, 0.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
-    (HP_MAX, 100.0, 1.0, 1.0),        // LITERAL-PX-OK: dado do objeto fictício
-    (HP_START, 100.0, 1.0, 1.0),      // LITERAL-PX-OK: dado do objeto fictício
-    (HP_REGEN, 0.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
-    (HP_DELAY, 2.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
-    (PL_SPEED, 8.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
-    (PL_ACCEL, 8.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
-    (PL_AIR, 4.0, 0.1, 0.01),         // LITERAL-PX-OK: dado do objeto fictício
-    (PL_JUMP, 2.5, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
-    (PL_AIR_JUMPS, 0.0, 1.0, 0.1),    // LITERAL-PX-OK: dado do objeto fictício
-    (PL_COYOTE, 0.1, 0.01, 0.001),    // LITERAL-PX-OK: dado do objeto fictício
-    (PL_BUFFER, 0.1, 0.01, 0.001),    // LITERAL-PX-OK: dado do objeto fictício
-    (CAM_DEAD_W, 64.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (CAM_DEAD_H, 48.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (CAM_DAMPING, 0.2, 0.01, 0.001),  // LITERAL-PX-OK: dado do objeto fictício
-    (CAM_LOOKAHEAD, 0.0, 1.0, 1.0),   // LITERAL-PX-OK: dado do objeto fictício
-    (ANIM_FPS, 12.0, 1.0, 0.1),       // LITERAL-PX-OK: dado do objeto fictício
-    (BR_SIZE, 40.0, 1.0, 1.0),        // LITERAL-PX-OK: dado do objeto fictício
-    (BR_DILUTION, 0.2, 0.01, 0.001),  // LITERAL-PX-OK: dado do objeto fictício
-    (BR_VOLUME, 100.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (BR_PRESS, 0.5, 0.01, 0.001),     // LITERAL-PX-OK: dado do objeto fictício
-    (BR_REWET, 0.5, 0.01, 0.001),     // LITERAL-PX-OK: dado do objeto fictício
-    (BR_BODY, 0.5, 0.01, 0.001),      // LITERAL-PX-OK: dado do objeto fictício
-    (BO_LENGTH, 120.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (BO_MIN, -45.0, 1.0, 1.0),        // LITERAL-PX-OK: dado do objeto fictício
-    (BO_MAX, 45.0, 1.0, 1.0),         // LITERAL-PX-OK: dado do objeto fictício
-    (BO_MIX, 1.0, 0.01, 0.001),       // LITERAL-PX-OK: dado do objeto fictício
-    (BO_CHAIN, 2.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
-    (CS_INFLUENCE, 100.0, 1.0, 1.0),  // LITERAL-PX-OK: dado do objeto fictício
-    (LT_INTENSITY, 1.0, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
-    (LT_SIZE, 0.5, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
-    (LT_RANGE, 8.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
-    (AU_GAIN, 0.0, 1.0, 0.1),         // LITERAL-PX-OK: dado do objeto fictício
-    (RACK[0].mix, 30.0, 1.0, 1.0),    // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_FRAME, 0.0, 1.0, 0.1),     // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_W, 128.0, 1.0, 1.0),       // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_H, 32.0, 1.0, 1.0),        // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_COLS, 4.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_ROWS, 2.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
+    (IMG_FPS, 12.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
+    (RB_MASS, 1.0, 0.1, 0.01),      // LITERAL-PX-OK: dado do objeto fictício
+    (RB_GRAVITY, 1.0, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
+    (RB_LINEAR, 0.0, 0.1, 0.01),    // LITERAL-PX-OK: dado do objeto fictício
+    (RB_ANGULAR, 0.0, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
+    (COL_W, 0.5, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
+    (COL_H, 0.5, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
+    (COL_RADIUS, 0.5, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
+    (COL_HALF, 0.15, 0.1, 0.01),    // LITERAL-PX-OK: dado do objeto fictício
+    (COL_OX, 0.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
+    (COL_OY, 0.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
+    (COL_FRICTION, 0.5, 0.1, 0.01), // LITERAL-PX-OK: dado do objeto fictício
+    (COL_BOUNCE, 0.0, 0.1, 0.01),   // LITERAL-PX-OK: dado do objeto fictício
+    (HP_MAX, 100.0, 1.0, 1.0),      // LITERAL-PX-OK: dado do objeto fictício
+    (HP_START, 100.0, 1.0, 1.0),    // LITERAL-PX-OK: dado do objeto fictício
+    (HP_REGEN, 0.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
+    (HP_DELAY, 0.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
+    (PL_SPEED, 6.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
+    (PL_ACCEL, 60.0, 1.0, 0.1),     // LITERAL-PX-OK: dado do objeto fictício
+    (PL_AIR, 20.0, 1.0, 0.1),       // LITERAL-PX-OK: dado do objeto fictício
+    (PL_JUMP, 2.0, 0.1, 0.01),      // LITERAL-PX-OK: dado do objeto fictício
+    (PL_AIR_JUMPS, 0.0, 1.0, 0.1),  // LITERAL-PX-OK: dado do objeto fictício
+    (PL_COYOTE, 0.1, 0.01, 0.001),  // LITERAL-PX-OK: dado do objeto fictício
+    (PL_BUFFER, 0.1, 0.01, 0.001),  // LITERAL-PX-OK: dado do objeto fictício
+    (CAM_DEAD_W, 0.0, 0.05, 0.005), // LITERAL-PX-OK: dado do objeto fictício
+    (CAM_DEAD_H, 0.0, 0.05, 0.005), // LITERAL-PX-OK: dado do objeto fictício
+    (CAM_DAMPING, 5.0, 0.5, 0.05),  // LITERAL-PX-OK: dado do objeto fictício
+    (CAM_LOOKAHEAD, 0.0, 0.05, 0.005), // LITERAL-PX-OK: dado do objeto fictício
+    (ANIM_FPS, 12.0, 1.0, 0.1),     // LITERAL-PX-OK: dado do objeto fictício
+    (BR_SIZE, 40.0, 1.0, 1.0),      // LITERAL-PX-OK: dado do objeto fictício
+    (BR_DILUTION, 0.2, 0.01, 0.001), // LITERAL-PX-OK: dado do objeto fictício
+    (BR_VOLUME, 100.0, 1.0, 1.0),   // LITERAL-PX-OK: dado do objeto fictício
+    (BR_PRESS, 0.5, 0.01, 0.001),   // LITERAL-PX-OK: dado do objeto fictício
+    (BR_REWET, 0.5, 0.01, 0.001),   // LITERAL-PX-OK: dado do objeto fictício
+    (BR_BODY, 0.5, 0.01, 0.001),    // LITERAL-PX-OK: dado do objeto fictício
+    (BO_LENGTH, 100.0, 1.0, 1.0),   // LITERAL-PX-OK: dado do objeto fictício
+    (BO_MIN, -180.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
+    (BO_MAX, 180.0, 1.0, 1.0),      // LITERAL-PX-OK: dado do objeto fictício
+    (BO_MIX, 1.0, 0.01, 0.001),     // LITERAL-PX-OK: dado do objeto fictício
+    (BO_CHAIN, 2.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
+    (CS_INFLUENCE, 100.0, 1.0, 1.0), // LITERAL-PX-OK: dado do objeto fictício
+    (LT_INTENSITY, std::f64::consts::TAU, 0.1, 0.01), // LITERAL-PX-OK: dado do objeto fictício
+    (LT_SIZE, 0.25, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
+    (LT_RANGE, 8.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
+    (AU_GAIN, 0.0, 1.0, 0.1),       // LITERAL-PX-OK: dado do objeto fictício
+    (RACK[0].mix, 30.0, 1.0, 1.0),  // LITERAL-PX-OK: dado do objeto fictício
     (RACK[0].damp, 0.5, 0.01, 0.001), // LITERAL-PX-OK: dado do objeto fictício
-    (RACK[1].mix, 30.0, 1.0, 1.0),    // LITERAL-PX-OK: dado do objeto fictício
+    (RACK[1].mix, 30.0, 1.0, 1.0),  // LITERAL-PX-OK: dado do objeto fictício
     (RACK[1].damp, 0.5, 0.01, 0.001), // LITERAL-PX-OK: dado do objeto fictício
-    (RACK[2].mix, 30.0, 1.0, 1.0),    // LITERAL-PX-OK: dado do objeto fictício
+    (RACK[2].mix, 30.0, 1.0, 1.0),  // LITERAL-PX-OK: dado do objeto fictício
     (RACK[2].damp, 0.5, 0.01, 0.001), // LITERAL-PX-OK: dado do objeto fictício
-    (PX_GRID_W, 16.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
-    (PX_GRID_H, 16.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
-    (SC_SPEED, 4.0, 0.1, 0.01),       // LITERAL-PX-OK: dado do objeto fictício
-    (SC_JUMP, 6.0, 0.1, 0.01),        // LITERAL-PX-OK: dado do objeto fictício
-    (SC_PATROL, 200.0, 1.0, 1.0),     // LITERAL-PX-OK: dado do objeto fictício
-    (SC_DAMAGE, 10.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
-    (SC_VALUE, 1.0, 1.0, 0.1),        // LITERAL-PX-OK: dado do objeto fictício
+    (PX_GRID_W, 16.0, 1.0, 0.1),    // LITERAL-PX-OK: dado do objeto fictício
+    (PX_GRID_H, 16.0, 1.0, 0.1),    // LITERAL-PX-OK: dado do objeto fictício
+    (SC_SPEED, 4.0, 0.1, 0.01),     // LITERAL-PX-OK: dado do objeto fictício
+    (SC_JUMP, 6.0, 0.1, 0.01),      // LITERAL-PX-OK: dado do objeto fictício
+    (SC_PATROL, 200.0, 1.0, 1.0),   // LITERAL-PX-OK: dado do objeto fictício
+    (SC_DAMAGE, 10.0, 1.0, 0.1),    // LITERAL-PX-OK: dado do objeto fictício
+    (SC_VALUE, 1.0, 1.0, 0.1),      // LITERAL-PX-OK: dado do objeto fictício
 ];

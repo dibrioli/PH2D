@@ -1,12 +1,10 @@
 //! Text e Export à Figma (doc `CartoesUI/08` §1.1).
 
-use crate::controlos::{caixa_para, card, dropdown, field, segs};
+use crate::controlos::{caixa_para, card, dropdown, num, segs};
 use crate::ids as g;
 use crate::state::Choices;
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
-use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_i18n::tr;
 
 pub(crate) fn text(ch: Choices) -> CardDef<'static> {
@@ -32,20 +30,14 @@ pub(crate) fn text(ch: Choices) -> CardDef<'static> {
                     Cell::new(dropdown(g::FONT_WEIGHT, &pesos))
                         .label(tr("panel.widget_gallery.font_weight"))
                         .key(&[g::FONT_WEIGHT]),
-                    Cell::new(field(g::FONT_SIZE, Glyph::Icon(IconId::Text)))
-                        .label(tr("panel.widget_gallery.font_size"))
-                        .key(&[g::FONT_SIZE]),
+                    num!(g::FONT_SIZE, tr("panel.widget_gallery.font_size")),
                 ],
                 y,
             );
             let y = c.row(
                 &[
-                    Cell::new(field(g::LINE_HEIGHT, Glyph::Icon(IconId::CardWeight)))
-                        .label(tr("panel.widget_gallery.line_height"))
-                        .key(&[g::LINE_HEIGHT]),
-                    Cell::new(field(g::LETTER_SPACING, Glyph::Icon(IconId::CardLen)))
-                        .label(tr("panel.widget_gallery.letter_spacing"))
-                        .key(&[g::LETTER_SPACING]),
+                    num!(g::LINE_HEIGHT, tr("panel.widget_gallery.line_height")),
+                    num!(g::LETTER_SPACING, tr("panel.widget_gallery.letter_spacing")),
                 ],
                 y,
             );

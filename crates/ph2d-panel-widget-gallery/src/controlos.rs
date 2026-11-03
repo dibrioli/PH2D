@@ -298,8 +298,26 @@ pub(crate) fn field(id: NodeId, glyph: Glyph<'_>) -> Widget<'_> {
     Widget::Field { id, glyph }
 }
 
-/// Um campo com glifo, rótulo e a marca de animação na linha do rótulo (`$id` constante).
+/// O glifo de um campo sem ícone próprio: a LETRA da grandeza (T56). Ícone só onde ele quer dizer
+/// aquela grandeza: ângulo, opacidade, traço, raio, mistura, desfoque, corrente.
+pub(crate) fn letra(rotulo: &str) -> Glyph<'_> {
+    Glyph::Text(ph2d_editor_core::panel::cards::corpo::letra_da_grandeza(
+        rotulo,
+    ))
+}
+
+/// Um campo com rótulo, a marca de animação na linha do rótulo (`$id` constante) e, como glifo, a
+/// letra da grandeza ou o ícone que a quer dizer.
 macro_rules! num {
+    ($id:expr, $label:expr) => {{
+        let rotulo = $label;
+        Cell::new($crate::controlos::field(
+            $id,
+            $crate::controlos::letra(rotulo),
+        ))
+        .label(rotulo)
+        .key(&[$id])
+    }};
     ($id:expr, $icon:expr, $label:expr) => {
         Cell::new($crate::controlos::field(
             $id,

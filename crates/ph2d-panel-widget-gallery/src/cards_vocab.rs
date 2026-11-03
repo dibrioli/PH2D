@@ -4,7 +4,7 @@
 //! vêm da tabela [`crate::controlos`]. Aqui ficam a ordem dos cartões e os que sobreviveram ao
 //! vocabulário antigo: Actions, marcas, Ordering e Physics.
 
-use crate::controlos::{Kind, card, controls, field, head};
+use crate::controlos::{Kind, card, controls, field, head, num};
 use crate::ids as g;
 use crate::state::{Choices, Flag, WidgetGalleryState};
 use crate::{
@@ -162,12 +162,7 @@ fn physics(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
             Vec::new()
         },
         Box::new(|c: &mut CardCtx<'_>, y| {
-            c.row(
-                &[Cell::new(field(g::MASS, Glyph::Icon(IconId::CardWeight)))
-                    .label(tr("panel.widget_gallery.mass"))
-                    .key(&[g::MASS])],
-                y,
-            )
+            c.row(&[num!(g::MASS, tr("panel.widget_gallery.mass"))], y)
         }),
     );
     d.add = (!tem).then_some(g::PHYSICS_ADD);

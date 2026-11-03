@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Bones — maquete</title>
+<style>
+:root{
+  --board: oklch(0.3552 0.0975 260.1176);
+  --list: oklch(0.1972 0.0231 268.8047);
+  --card: oklch(0.2822 0.033 267);
+  --fg: oklch(0.916 0.0104 247.94);
+  --fg2: oklch(0.70 0.02 255);
+  --fg3: oklch(0.56 0.02 255);
+  --field: oklch(0.235 0.028 267);
+  --field-h: oklch(0.255 0.03 267);
+  --focus: oklch(0.6957 0.1612 257.18);
+  --green-s: oklch(0.3711 0.0678 162.26);
+  --green-b: oklch(0.7652 0.1403 161.99);
+  --yellow-b: oklch(0.7849 0.16 88.99);
+  --note: oklch(0.86 0.12 92);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#0e1015;font-family:Inter,"Noto Sans",sans-serif;color:var(--fg);font-size:12px}
+.stage{display:flex;gap:48px;padding:28px 36px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:10px}
+.cap{font-size:14px;color:#cfd6e4;width:300px;line-height:1.35}
+.cap b{color:#fff}
+.dock{background:oklch(0.40 0.02 260);background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:50px 50px;background-position:-1px -1px;padding:8px;border-radius:4px;width:320px;height:1000px;position:relative;overflow:hidden}
+.list{background:var(--list);border-radius:12px;padding:0 8px 8px;box-shadow:0 6px 18px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.5)}
+.lhead{display:flex;align-items:center;height:44px;padding:0 6px 0 6px}
+.lhead h1{font-size:13px;letter-spacing:.06em;font-weight:700;margin:0;flex:1}
+.ib{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--fg2)}
+.ib:hover,.ib.h{background:rgba(255,255,255,.08);color:var(--fg)}
+.ib svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.card{background:var(--card);border-radius:8px;padding:8px 10px 10px;margin-bottom:8px;
+  box-shadow:0 1px 1px rgba(0,0,0,.5),0 0 1px rgba(0,0,0,.6);position:relative}
+.card.hover{outline:1px solid rgba(255,255,255,.18)}
+.chead{display:flex;align-items:center;height:26px;margin-bottom:4px}
+.chead h2{font-size:12px;font-weight:600;margin:0;flex:1}
+.lbls{display:flex;gap:6px;font-size:11px;color:var(--fg3);margin:8px 0 4px}.lbls span{flex:1;min-width:0}
+.lbls span{display:flex;align-items:center;gap:4px}
+.km{margin-left:auto;flex:none;width:12px;height:12px;display:grid;place-items:center}
+.km::before{content:'';display:block}
+.km.livre::before{width:6px;height:6px;border-radius:50%;background:var(--fg3)}
+.km.anim::before,.km.chave::before,.km.mud::before{width:6px;height:6px;transform:rotate(45deg)}
+.km.anim::before{border:1px solid var(--fg)}
+.km.chave::before{background:var(--fg)}
+.km.mud::before{background:oklch(0.795 0.125 80)}
+.grp{font-size:11px;color:var(--fg3);margin:8px 0 4px}
+.row{display:flex;gap:6px;align-items:center}
+.row+.row{margin-top:6px}
+.f{flex:1;min-width:0;height:28px;background:var(--field);border-radius:6px;display:flex;align-items:center;
+   border:1px solid transparent;padding-right:8px}
+.f:hover,.f.h{background:var(--field-h)}
+.f.focus{border-color:var(--focus)}
+.f .ic{width:26px;height:26px;display:grid;place-items:center;color:var(--fg3);cursor:ew-resize;flex:none;font-size:11px;font-weight:600}
+.f .ic svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.f .v{flex:1;font-variant-numeric:tabular-nums}
+.f .u{color:var(--fg3)}
+.f.scrub .ic{color:var(--focus)}
+.f.scrub{border-color:var(--focus)}
+.seg{flex:1;height:28px;background:var(--field);border-radius:6px;display:flex;padding:2px;gap:2px}
+.seg span{flex:1;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--fg2);font-size:11px}
+.seg span svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.seg span.on{background:oklch(0.36 0.03 267);color:var(--fg);box-shadow:0 1px 1px rgba(0,0,0,.4)}
+.btn{flex:1;height:28px;border-radius:6px;background:rgba(255,255,255,.07);display:grid;place-items:center;font-weight:500}
+.btn.pri{background:var(--focus);color:oklch(0.2 0.05 260)}
+.sq{width:28px;height:28px;flex:none;border-radius:6px;display:grid;place-items:center;color:var(--fg2)}
+.sq svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.collapsed .chead{margin:0}
+.chev{color:var(--fg3);width:14px;margin-right:2px}
+/* tema verde */
+.card.theme-green{background:var(--green-s)}
+.card.theme-green .f,.card.theme-green .seg{background:oklch(0.31 0.05 162)}
+.outline{position:absolute;inset:-4px;border:2px solid var(--yellow-b);border-radius:11px;pointer-events:none}
+.note{background:var(--note);color:#2a2410;border-radius:4px;padding:6px 8px;margin-top:8px;font-size:11px;line-height:1.3;
+  box-shadow:0 2px 4px rgba(0,0,0,.35);transform:rotate(-1deg)}
+/* arrasto */
+.gap{height:var(--gh);border-radius:8px;background:rgba(0,0,0,.25);margin-bottom:8px}
+.flying{position:absolute;left:26px;width:286px;transform:rotate(4deg);transform-origin:50% 60%;
+  box-shadow:0 16px 32px rgba(0,0,0,.6),0 3px 8px rgba(0,0,0,.45);z-index:5}
+.cursor{position:absolute;z-index:9;width:18px;height:18px}
+.tip{position:absolute;background:#0b0d12;color:#e7ecf5;border-radius:6px;padding:6px 8px;font-size:11px;z-index:8;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);white-space:nowrap}
+.ann{position:absolute;color:#ffd75e;font-size:12px;font-weight:600;z-index:10}
+
+.pop{position:absolute;background:oklch(0.24 0.03 267);border-radius:10px;width:260px;z-index:20;
+  box-shadow:0 12px 32px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.07);padding:8px}
+.pop h3{font-size:12px;margin:0;flex:1;font-weight:600}
+.ph{display:flex;align-items:center;height:28px;padding:0 2px 0 6px}
+.srch{height:28px;background:var(--field);border-radius:6px;display:flex;align-items:center;padding:0 8px;color:var(--fg3);margin:6px 0}
+.grpt{font-size:11px;color:var(--fg3);margin:8px 6px 4px}
+.sty{display:flex;align-items:center;gap:8px;height:28px;padding:0 6px;border-radius:6px}
+.sty.h{background:rgba(255,255,255,.08)}
+.sty.on{background:oklch(0.36 0.06 257)}
+.sw{width:16px;height:16px;border-radius:4px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+.sty .n{flex:1}.sty .hx{color:var(--fg3);font-variant-numeric:tabular-nums;font-size:11px}
+.menu{position:absolute;background:#0b0d12;border-radius:8px;padding:4px;width:170px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.6)}
+.menu div{height:26px;display:flex;align-items:center;padding:0 10px;border-radius:5px}
+.menu div.h{background:var(--focus);color:oklch(0.2 0.05 260)}
+.menu .sep{height:1px;background:rgba(255,255,255,.1);margin:4px 0;padding:0}
+.styname{flex:1;display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;background:var(--field);border-radius:6px}
+.wrap{position:relative;width:320px}
+</style></head><body><svg width="0" height="0" style="position:absolute">
+ <symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r=".8"/><circle cx="8" cy="8" r=".8"/><circle cx="12.5" cy="8" r=".8"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+ <symbol id="i-minus" viewBox="0 0 16 16"><path d="M3 8h10"/></symbol>
+ <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+ <symbol id="i-bone" viewBox="0 0 16 16"><circle cx="3" cy="13" r="1.6"/><path d="M4.2 11.8 12 4M12 4l-1.2 3.6M12 4 8.4 5.2"/></symbol>
+ <symbol id="i-move" viewBox="0 0 16 16"><path d="M8 1.5v13M1.5 8h13M8 1.5 6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2"/></symbol>
+ <symbol id="i-brush" viewBox="0 0 16 16"><path d="M10 2.5 13.5 6 8 11.5 4.5 8z"/><path d="M4.5 8C3 9 2.5 11 2 14c3-.5 5-1 6-2.5"/></symbol>
+ <symbol id="i-len" viewBox="0 0 16 16"><path d="M2 8h12M2 5v6M14 5v6"/></symbol>
+ <symbol id="i-seg" viewBox="0 0 16 16"><path d="M2 12c2-6 4-6 6-4s4 2 6-4"/><circle cx="5" cy="8.4" r=".9"/><circle cx="10.6" cy="8.6" r=".9"/></symbol>
+ <symbol id="i-radius" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 8h6"/></symbol>
+ <symbol id="i-flow" viewBox="0 0 16 16"><path d="M8 14V8M8 8c0-3 2-5 5-6M8 8C8 5 6 3 3 2"/></symbol>
+ <symbol id="i-angle" viewBox="0 0 16 16"><path d="M2 13h12M2 13 11 3"/><path d="M7 13a5 5 0 0 0-1.4-3.4"/></symbol>
+ <symbol id="i-mix" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 2v12a6 6 0 0 0 0-12z" fill="currentColor"/></symbol>
+ <symbol id="i-chain" viewBox="0 0 16 16"><rect x="1.5" y="6" width="6" height="4" rx="2"/><rect x="8.5" y="6" width="6" height="4" rx="2"/></symbol>
+ <symbol id="i-soft" viewBox="0 0 16 16"><path d="M2 12C5 12 5 4 8 4s3 8 6 8"/></symbol>
+ <symbol id="i-rest" viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.5-3.6M3 2.5V5h2.5"/></symbol>
+ <symbol id="i-pin" viewBox="0 0 16 16"><path d="M8 14V9M4.5 9h7L10 6V2.5H6V6z"/></symbol>
+ <symbol id="i-mirror" viewBox="0 0 16 16"><path d="M8 1.5v13" stroke-dasharray="1.5 1.5"/><path d="M6 4 2 12h4zM10 4l4 8h-4z"/></symbol>
+ <symbol id="i-plusw" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6"/></symbol>
+ <symbol id="i-minusw" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M5 8h6"/></symbol>
+ <symbol id="i-look" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2"/><circle cx="8" cy="8" r="6"/><path d="M8 0v3M8 13v3M0 8h3M13 8h3"/></symbol>
+ <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+ <symbol id="i-chevd" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+ <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M5 7.5 3.8 8.7a2.3 2.3 0 0 0 3.3 3.3L8.3 11M11 8.5l1.2-1.2a2.3 2.3 0 0 0-3.3-3.3L7.7 5"/></symbol>
+ <symbol id="i-unlink" viewBox="0 0 16 16"><path d="M5 7.5 3.8 8.7a2.3 2.3 0 0 0 3.3 3.3L8.3 11M11 8.5l1.2-1.2a2.3 2.3 0 0 0-3.3-3.3L7.7 5M2 2l12 12"/></symbol>
+ <symbol id="i-note" viewBox="0 0 16 16"><path d="M3 2.5h10v7l-4 4H3z"/><path d="M9 13.5v-4h4"/></symbol>
+<symbol id="i-rot90" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5"/></symbol>
+ <symbol id="i-fliph" viewBox="0 0 16 16"><path d="M8 1.5v13" stroke-dasharray="1.5 1.5"/><path d="M6 4 2 12h4z"/><path d="M10 4l4 8h-4z" fill="currentColor"/></symbol>
+ <symbol id="i-flipv" viewBox="0 0 16 16"><path d="M1.5 8h13" stroke-dasharray="1.5 1.5"/><path d="M4 6 12 2v4z"/><path d="M4 10l8 4v-4z" fill="currentColor"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></symbol>
+ <symbol id="i-path" viewBox="0 0 16 16"><path d="M2 13C4 5 12 11 14 3"/><circle cx="2" cy="13" r="1.3"/><circle cx="14" cy="3" r="1.3"/></symbol>
+ <symbol id="i-skew" viewBox="0 0 16 16"><path d="M5 3h9l-3 10H2z"/></symbol>
+ <symbol id="i-scale" viewBox="0 0 16 16"><rect x="2" y="7" width="7" height="7" rx="1"/><path d="M9 7l5-5M10 2h4v4"/></symbol>
+ <symbol id="i-opacity" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 14 14 2" /><path d="M5 14l9-9M8 14l6-6M11 14l3-3"/></symbol>
+ <symbol id="i-stroke" viewBox="0 0 16 16"><path d="M2 5h12M2 9h12" /><path d="M2 13h12" stroke-width="3"/></symbol>
+ <symbol id="i-grid4" viewBox="0 0 16 16"><circle cx="5" cy="5" r="1.2"/><circle cx="11" cy="5" r="1.2"/><circle cx="5" cy="11" r="1.2"/><circle cx="11" cy="11" r="1.2"/></symbol>
+ <symbol id="i-cap" viewBox="0 0 16 16"><path d="M2 8h9" stroke-width="4"/><path d="M11 6a2 2 0 0 1 0 4"/></symbol>
+ <symbol id="i-z" viewBox="0 0 16 16"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="6" y="6" width="8" height="8" rx="1"/></symbol>
+</svg>
+<div class="stage"><div class="col"><div class="cap"><b>E · Abrir a lista.</b> O ícone ⠿ no Fill (ou no Stroke) abre os <b>estilos de cor do projeto</b>. Clicar num estilo aplica-o à camada. O <b>+</b> guarda a cor atual da camada como estilo novo (pede o nome).</div><div class="wrap"><div class="list"><div class="lhead"><h1>INSPECTOR</h1><div class="ib"><svg><use href="#i-plus"/></svg></div><div class="ib"><svg><use href="#i-more"/></svg></div></div>
+ <div class="card"><div class="chead"><div class="sq" style="width:24px;height:24px"><svg><use href="#i-path"/></svg></div><div class="f" style="margin:0 6px"><div class="v" style="padding-left:8px">Path 0</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-lock"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Fill</h2><div class="ib STY"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="f"><div class="ic"><span class="sw" style="background:oklch(0.68 0.15 250)"></span></div><div class="v">4C8DF0</div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Stroke</h2><div class="ib"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="f"><div class="ic"><span class="sw" style="background:#f2f2f2"></span></div><div class="v">FFFFFF</div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card collapsed"><div class="chead"><svg class="chev" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5"><use href="#i-chev"/></svg><h2 style="color:var(--fg2)">Ordering</h2><span style="color:var(--fg3);font-size:11px;margin-right:6px">Z 3</span></div></div>
+</div><div class="pop" style="left:30px;top:150px"><div class="ph"><h3>Color styles</h3><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+<div class="srch">Search…</div><div class="grpt">This project · 5</div><div class="sty"><span class="sw" style="background:#4c8df0"></span><span class="n">Brand blue</span><span class="hx">4C8DF0</span></div><div class="sty h"><span class="sw" style="background:#e8743b"></span><span class="n">Brand orange</span><span class="hx">E8743B</span></div><div class="sty"><span class="sw" style="background:#1f2430"></span><span class="n">Ink</span><span class="hx">1F2430</span></div><div class="sty"><span class="sw" style="background:#f4efe6"></span><span class="n">Paper</span><span class="hx">F4EFE6</span></div><div class="sty"><span class="sw" style="background:#59c48a"></span><span class="n">Grass</span><span class="hx">59C48A</span></div></div>
+<div class="ann" style="left:236px;top:92px">① ⠿</div></div></div><div class="col"><div class="cap"><b>F · Estilo aplicado.</b> A camada mostra o <b>nome do estilo</b> no lugar do código (como o Figma). A opacidade continua da camada. O ícone de corrente partida <b>solta</b> a camada do estilo: volta a mostrar o código e passa a ser só uma cor.</div><div class="wrap"><div class="list"><div class="lhead"><h1>INSPECTOR</h1><div class="ib"><svg><use href="#i-plus"/></svg></div><div class="ib"><svg><use href="#i-more"/></svg></div></div>
+ <div class="card"><div class="chead"><div class="sq" style="width:24px;height:24px"><svg><use href="#i-path"/></svg></div><div class="f" style="margin:0 6px"><div class="v" style="padding-left:8px">Path 0</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-lock"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Fill</h2><div class="ib STY"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="styname"><span class="sw" style="background:#e8743b"></span><span style="flex:1">Brand orange</span><div class="ib" style="width:20px;height:20px"><svg><use href="#i-unlink"/></svg></div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Stroke</h2><div class="ib"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="f"><div class="ic"><span class="sw" style="background:#f2f2f2"></span></div><div class="v">FFFFFF</div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card collapsed"><div class="chead"><svg class="chev" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5"><use href="#i-chev"/></svg><h2 style="color:var(--fg2)">Ordering</h2><span style="color:var(--fg3);font-size:11px;margin-right:6px">Z 3</span></div></div>
+</div></div></div><div class="col"><div class="cap"><b>G · Editar.</b> Botão direito num estilo: aplicar, editar, renomear, duplicar, apagar. <b>Editar a cor de um estilo muda todas as camadas que o usam</b> (é a força dos estilos do Figma). Apagar um estilo deixa as camadas com a cor que tinham.</div><div class="wrap"><div class="list"><div class="lhead"><h1>INSPECTOR</h1><div class="ib"><svg><use href="#i-plus"/></svg></div><div class="ib"><svg><use href="#i-more"/></svg></div></div>
+ <div class="card"><div class="chead"><div class="sq" style="width:24px;height:24px"><svg><use href="#i-path"/></svg></div><div class="f" style="margin:0 6px"><div class="v" style="padding-left:8px">Path 0</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-lock"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Fill</h2><div class="ib STY"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="styname"><span class="sw" style="background:#e8743b"></span><span style="flex:1">Brand orange</span><div class="ib" style="width:20px;height:20px"><svg><use href="#i-unlink"/></svg></div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card"><div class="chead"><h2>Stroke</h2><div class="ib"><svg><use href="#i-grid4"/></svg></div><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+   <div class="lbls"><span>Color<i class="km livre"></i></span><span style="flex:none;width:72px">Opacity (%)<i class="km livre"></i></span><span style="flex:none;width:60px"></span></div>
+   <div class="row"><div class="f"><div class="ic"><span class="sw" style="background:#f2f2f2"></span></div><div class="v">FFFFFF</div></div>
+   <div class="f" style="flex:none;width:72px"><div class="v" style="padding-left:10px">100</div></div><div class="ib"><svg><use href="#i-eye"/></svg></div><div class="ib"><svg><use href="#i-minus"/></svg></div></div></div>
+ <div class="card collapsed"><div class="chead"><svg class="chev" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5"><use href="#i-chev"/></svg><h2 style="color:var(--fg2)">Ordering</h2><span style="color:var(--fg3);font-size:11px;margin-right:6px">Z 3</span></div></div>
+</div><div class="pop" style="left:30px;top:150px"><div class="ph"><h3>Color styles</h3><div class="ib"><svg><use href="#i-plus"/></svg></div></div>
+<div class="srch">Search…</div><div class="grpt">This project · 5</div><div class="sty"><span class="sw" style="background:#4c8df0"></span><span class="n">Brand blue</span><span class="hx">4C8DF0</span></div><div class="sty on"><span class="sw" style="background:#e8743b"></span><span class="n">Brand orange</span><span class="hx">E8743B</span></div><div class="sty"><span class="sw" style="background:#1f2430"></span><span class="n">Ink</span><span class="hx">1F2430</span></div><div class="sty h"><span class="sw" style="background:#f4efe6"></span><span class="n">Paper</span><span class="hx">F4EFE6</span></div><div class="sty"><span class="sw" style="background:#59c48a"></span><span class="n">Grass</span><span class="hx">59C48A</span></div></div>
+<div class="menu" style="left:200px;top:300px"><div>Apply</div><div class="h">Edit style…</div><div>Rename</div><div>Duplicate</div><div class="sep"></div><div>Delete</div></div>
+<div class="pop" style="left:30px;top:470px;width:260px"><div class="ph"><h3>Edit style</h3></div>
+<div class="lbls" style="margin-left:6px"><span>Name</span></div><div class="f" style="margin:0 2px"><div class="v" style="padding-left:8px">Paper</div></div>
+<div class="lbls" style="margin-left:6px"><span>Color</span></div><div class="f" style="margin:0 2px"><div class="ic"><span class="sw" style="background:#f4efe6"></span></div><div class="v">F4EFE6</div></div>
+<div style="font-size:11px;color:var(--fg3);margin:8px 6px 2px">Used by 3 layers — they all change.</div></div></div></div><div class="col" style="width:420px"><div class="cap" style="width:420px"><b>O que cada coisa É</b><br><br>
+<b>Estilo de cor</b> = uma cor com nome, guardada no <b>projeto</b> (abre com o projeto, em qualquer máquina).<br>
+<b>⠿</b> = a lista de estilos; a mesma lista no Fill e no Stroke.<br>
+<b>Nome no lugar do código</b> = esta camada está ligada a um estilo.<br>
+<b>Corrente partida</b> = soltar do estilo (a cor fica).<br>
+<b>Editar um estilo</b> = todas as camadas ligadas mudam juntas.<br>
+<b>Apagar</b> = as camadas ficam com a cor, só deixam de estar ligadas.<br><br>
+<b>Pergunta ao dono:</b> ligado como o Figma (editar o estilo muda todas as camadas) — ou só uma paleta (escolher copia a cor e acabou)?</div></div></div></body></html>

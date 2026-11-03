@@ -199,16 +199,14 @@ pub fn paint_combobox_with_state(
     };
     // ⭐ A tinta do corpo é do TEMA, pela porta — ver [`crate::paint::body_fill`]. Ela enchia o
     //   token do CARTÃO por baixo, e num tema moderno não há moldura de repouso.
-    fill_rounded_rect(
-        scene,
-        rect,
-        radius,
+    let fundo = crate::widget::card_ink::card_field_fill().unwrap_or_else(|| {
         crate::paint::token_to_vello(crate::paint::body_fill(
             theme,
             ph2d_tokens::visuals::Feel::Rest,
             fill,
-        )),
-    );
+        ))
+    });
+    fill_rounded_rect(scene, rect, radius, fundo);
     let border = if cb.state == ComboboxState::Focused {
         ColorToken::Accent
     } else {

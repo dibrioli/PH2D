@@ -184,6 +184,10 @@ fn paint_segmented<T: Clone + PartialEq>(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        paint_segmented_in_card(group, rect, scene, ink);
+        return;
+    }
     // Discrete outlined segments — identical look to the canonical
     // `panel_chrome::paint_segmented_button` (selected = Bg2 + Accent
     // outline; unselected = Bg3 + Border). Labels are drawn on top by
@@ -222,6 +226,41 @@ fn paint_segmented<T: Clone + PartialEq>(
             },
             StrokeToken::Default.px(),
             resolve(border, theme),
+        );
+    }
+}
+
+/// O segmentado no corpo de um cartão: a pílula `CardField` com o segmento aceso `KanbanCardRaised`
+/// — o mesmo desenho do segmentado de `panel/cards_linhas.rs`.
+fn paint_segmented_in_card<T: Clone + PartialEq>(
+    group: &RadioGroup<T>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    ink: crate::widget::card_ink::CardInk,
+) {
+    use ph2d_card_stack::metrics as m;
+    fill_rounded_rect(
+        scene,
+        rect,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::CardField),
+    );
+    for (i, opt) in group.options.iter().enumerate() {
+        if group.selected.as_ref() != Some(&opt.value) {
+            continue;
+        }
+        let cell = group.option_rect(rect, i);
+        let lit = Rect::new(
+            cell.x + m::SEG_PAD,
+            cell.y + m::SEG_PAD,
+            (cell.w - m::SEG_PAD * 2.0).max(0.0),
+            (cell.h - m::SEG_PAD * 2.0).max(0.0),
+        );
+        fill_rounded_rect(
+            scene,
+            lit,
+            m::SEG_RADIUS,
+            ink.color(ColorToken::KanbanCardRaised),
         );
     }
 }

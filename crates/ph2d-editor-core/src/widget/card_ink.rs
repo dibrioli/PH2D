@@ -91,6 +91,12 @@ pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// O fundo de uma caixa de campo no cartão cujo corpo se pinta — `None` fora de um cartão.
+#[must_use]
+pub fn card_field_fill() -> Option<Color> {
+    card_body().map(|ink| ink.color(ColorToken::CardField))
+}
+
 /// A tinta do cartão cujo corpo se está a pintar — `None` fora de um cartão.
 #[must_use]
 pub fn card_body() -> Option<CardInk> {

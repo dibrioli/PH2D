@@ -78,3 +78,8 @@ Ids de secção: os de hoje (`ids::INSP_SECTION_*`), para a ordem/tema em `secti
 `PH2D_GALLERY_SMOKE=1` abre a galeria no painel lateral, já visível. O dono: arrastar o ícone de um
 campo (o número muda), clicar Low/Mid/High, marcar «Snap to grid», abrir a lista suspensa, dobrar
 um cartão, arrastar um cartão para outra posição, botão direito no título (tema do cartão), ↺.
+
+Fotos: `g1_galeria_topo` · `g2_galeria_meio` · `g2b_galeria_meio` · `g3_galeria_fim` (em `maquete/`), com
+`PH2D_GALLERY_SMOKE_SCROLL=<px>` a segurar a rolagem (o evento sintético não chega à sessão virtual).
+Os corpos de sempre pintam com a tinta do cartão publicada (`card_ink::com`): a janela flutuante
+(`PH2D_CARDS=0`) não publica nada e não muda.

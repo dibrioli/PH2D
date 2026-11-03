@@ -98,9 +98,8 @@ fn fields() -> CardDef<'static> {
             let mut y = c.row(
                 &[
                     Cell::new(field(g::POS_X, Glyph::Text(gx)))
-                        .label(tr("panel.widget_gallery.position"))
-                        .key(POS),
-                    Cell::new(field(g::POS_Y, Glyph::Text(gy))),
+                        .label(tr("panel.widget_gallery.position")),
+                    Cell::new(field(g::POS_Y, Glyph::Text(gy))).key(POS),
                 ],
                 y,
             );

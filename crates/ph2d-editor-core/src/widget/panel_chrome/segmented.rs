@@ -96,7 +96,16 @@ pub fn paint_segmented_button_in_group(
     //    hover seria instantâneo (no quadro em que o rato sai, `state` já é `Normal` e a cor de
     //    repouso já é a de destino, então não sobra nada para animar). `Pressed`/`Focused` seguem
     //    **duros**: não são uma *quantidade* de nada.
-    let fill = if hover_t < 1.0
+    // ⭐ No corpo de um cartão o segmento apagado é a caixa dele, não um `Bg3` por cima da superfície.
+    let no_cartao = crate::widget::card_ink::card_body()
+        .filter(|_| !selected && matches!(state, ButtonState::Normal | ButtonState::Hovered));
+    let fill = if let Some(ink) = no_cartao {
+        ink.color(if hover_t > 0.0 {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        })
+    } else if hover_t < 1.0
         && !selected
         && matches!(state, ButtonState::Normal | ButtonState::Hovered)
     {

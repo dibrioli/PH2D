@@ -7,7 +7,7 @@ use crate::state::WidgetGalleryState;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, paint_card_list_with};
-use ph2d_editor_core::widget::card_ink::CardInk;
+use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::widget::showcase::{SHOWCASE_CARDS, paint_showcase_popovers};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -44,18 +44,21 @@ fn legacy() -> Vec<CardDef<'static>> {
                 add: None,
                 summary: None,
                 body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
-                    // O corpo de sempre pinta com o tema da TINTA do cartão (o menu de tema dele).
+                    // O corpo de sempre pinta com o tema da TINTA do cartão (o menu de tema dele)
+                    // e publica-a: os campos e os chips assentam na superfície do cartão.
                     let ink: CardInk = c.ink;
-                    (sc.body)(
-                        c.scene,
-                        c.text_system,
-                        ink.theme,
-                        c.hit_index,
-                        c.store,
-                        c.x,
-                        c.w,
-                        y,
-                    )
+                    card_ink::com(ink, || {
+                        (sc.body)(
+                            c.scene,
+                            c.text_system,
+                            ink.theme,
+                            c.hit_index,
+                            c.store,
+                            c.x,
+                            c.w,
+                            y,
+                        )
+                    })
                 })),
             }
         })

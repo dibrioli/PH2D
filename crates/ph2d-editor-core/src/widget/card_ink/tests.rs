@@ -71,3 +71,26 @@ fn every_card_theme_keeps_its_boxes_off_its_surface() {
         assert!(gap(aceso, fundo) >= 4, "{t:?}: aceso igual ao fundo");
     }
 }
+
+/// ⭐ A foto da galeria (03/11): os campos de sempre pintavam-se a preto sobre o cartão. Dentro do
+/// corpo publicado, a família de campos enche o `CardField` da tinta; fora dele, nada muda (a
+/// janela flutuante, `PH2D_CARDS=0`). *Mutação: tirar o ramo do `field_fill` ⇒ a 2.ª asserção.*
+#[test]
+fn a_field_inside_a_card_body_sits_on_the_card_and_outside_nothing_changes() {
+    use crate::widget::text_input::{TextInputState, field_fill};
+    let tema = Theme::Dark;
+    let fora = field_fill(TextInputState::Normal, tema);
+    let ink = CardInk::of_list(tema);
+    assert_ne!(
+        rgb(fora),
+        rgb(ink.color(ColorToken::CardField)),
+        "fixtura: o campo de fora tem de diferir do do cartão"
+    );
+    let dentro = com(ink, || field_fill(TextInputState::Normal, tema));
+    assert_eq!(rgb(dentro), rgb(ink.color(ColorToken::CardField)));
+    assert_eq!(
+        rgb(field_fill(TextInputState::Normal, tema)),
+        rgb(fora),
+        "a tinta vazou para fora do corpo"
+    );
+}

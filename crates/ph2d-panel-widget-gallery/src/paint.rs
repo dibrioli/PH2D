@@ -94,6 +94,8 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
 }
 
 /// `PH2D_GALLERY_SMOKE=1`: a galeria abre-se sozinha no primeiro quadro (o smoke do doc 08 §3).
+/// `PH2D_GALLERY_SMOKE_SCROLL=<px>`: já rolada — a foto dos cartões de baixo (o XTest não chega à
+/// sessão virtual da `fotografa_cena.sh`, a roda não se simula).
 fn smoke_opens_once(ctx: &mut PaintCtx) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static FEITO: AtomicBool = AtomicBool::new(false);
@@ -101,6 +103,16 @@ fn smoke_opens_once(ctx: &mut PaintCtx) {
         && !FEITO.swap(true, Ordering::Relaxed)
     {
         ctx.host.set_panel_visible(WidgetGalleryPanel::ID, true);
+    }
+    // A cada quadro: no 1.º a lista ainda não sabe a própria altura e o clamp devolve-a ao topo.
+    static ROLA: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
+    let rola = ROLA.get_or_init(|| {
+        std::env::var("PH2D_GALLERY_SMOKE_SCROLL")
+            .ok()
+            .and_then(|v| v.parse().ok())
+    });
+    if let Some(y) = *rola {
+        ctx.host.store_mut().set_panel_scroll(ids::GAL_PANEL, y);
     }
 }
 

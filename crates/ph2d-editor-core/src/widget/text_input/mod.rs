@@ -155,7 +155,14 @@ pub(crate) fn fill_token(state: TextInputState) -> ColorToken {
 /// ⏳ **O estado DESACTIVADO não tem tinta própria num tema moderno** — a distinção viaja no
 /// TEXTO (`ColorToken::TextDisabled`, que os três pintores já aplicam). É o comportamento que o
 /// `text_input` já shipava; fica **nomeado** aqui em vez de inventar um segundo tom.
+///
+/// ⭐ **Dentro de um cartão** ([`crate::widget::card_ink::com`]) o campo é o do cartão: `CardField`
+/// na tinta dele (a caixa de cima de um `KanbanCard`), nunca o degrau do painel, que ali lê-se como
+/// uma caixa preta estrangeira (foto da galeria em cartões, 03/11).
 pub(crate) fn field_fill(state: TextInputState, theme: Theme) -> ph2d_vector::Color {
+    if let Some(fundo) = crate::widget::card_ink::card_field_fill() {
+        return fundo;
+    }
     // ⚠️ **`Feel::Rest` mesmo sob o rato, e isso é o comportamento de HOJE**: um campo nunca mudou
     // de tinta no hover (o `fill_token` ignora o `Hovered`) — quem responde ao rato é a borda. Um
     // `feel_of(state)` aqui ACRESCENTARIA um eixo que os campos não têm.

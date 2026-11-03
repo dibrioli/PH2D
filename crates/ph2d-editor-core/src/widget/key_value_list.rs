@@ -142,7 +142,9 @@ fn paint_field(
 ) {
     // ⭐ Raio e moldura pela porta do TEMA: o campo é plano num tema moderno.
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg3, theme));
+    let fundo = crate::widget::card_ink::card_field_fill()
+        .unwrap_or_else(|| resolve(ColorToken::Bg3, theme));
+    fill_rounded_rect(scene, rect, radius, fundo);
     crate::paint::stroke_frame(
         scene,
         rect,

@@ -47,6 +47,21 @@ fn one_button_setup() -> (WidgetStore, HitIndex) {
     (store, hits)
 }
 
+/// ⭐ O clique no editor rico de amostra da galeria dá-lhe o foco: é o foco que acende a moldura
+/// e o cursor dele num cartão (`widget/showcase/card_back.rs`).
+#[test]
+fn a_press_on_the_gallery_rich_editor_gives_it_the_focus() {
+    let id = crate::ids::INSP_SAMPLE_RICH_EDITOR;
+    let mut store = WidgetStore::with_capacity(4);
+    store.register(id, InteractiveState::Plain);
+    let mut hits = HitIndex::new();
+    hits.register(id, Rect::new(0.0, 0.0, 100.0, 50.0));
+    let arena = Bump::new();
+    let baixo = pointer(PointerKind::Down, 10.0, 10.0);
+    let _ = dispatch_pointer(&mut store, &hits, baixo, &arena);
+    assert_eq!(store.focus_id(), Some(id));
+}
+
 // -----------------------------------------------------------------
 // Phase C — TextInput / NumberInput / Combobox / Dropdown
 // -----------------------------------------------------------------

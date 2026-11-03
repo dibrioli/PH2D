@@ -241,8 +241,9 @@ mod tests {
     }
 
     /// ⭐ A foto da galeria (03/11): a amostra pintava-se sempre com a moldura de foco e o cursor.
-    /// Num cartão elas seguem o foco do `store`, e o clique que o dá chega ao editor porque ele
-    /// regista o alvo; fora de um cartão a semente fica. *Mutação: tirar a linha do `ed.editing`.*
+    /// Num cartão elas seguem o foco do `store` e o editor regista o alvo do clique que o dá
+    /// (`interaction/dispatch/tests`); fora de um cartão a semente fica. *Mutação: tirar a linha do
+    /// `ed.editing`.*
     #[test]
     fn the_sample_editor_in_a_card_is_framed_only_while_it_has_the_focus() {
         let mut store = WidgetStore::with_capacity(8);
@@ -255,21 +256,11 @@ mod tests {
             "sem foco, sem moldura"
         );
         let id = ids::INSP_SAMPLE_RICH_EDITOR;
-        let r = hits
-            .rect_for(id)
-            .expect("o cartão regista o alvo do clique");
-        let arena = bumpalo::Bump::new();
-        let baixo = ph2d_host::PointerEvent {
-            x: r.x + 1.0,
-            y: r.y + 1.0,
-            pressure: 1.0,
-            kind: ph2d_host::PointerKind::Down,
-            source: ph2d_host::PointerSource::Mouse,
-            button: ph2d_host::PointerButton::Primary,
-            timestamp_ns: 0,
-        };
-        let _ = crate::interaction::dispatch_pointer(&mut store, &hits, baixo, &arena);
-        assert_eq!(store.focus_id(), Some(id), "o clique dá o foco à amostra");
+        assert!(
+            hits.rect_for(id).is_some(),
+            "o cartão regista o alvo do clique"
+        );
+        store.set_focus(Some(id));
         let mut hits = HitIndex::new();
         assert!(com(ink, || pinta(&store, &mut hits)), "com foco, moldura");
 

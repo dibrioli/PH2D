@@ -163,6 +163,10 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
     t.set_source(vec![255u8; (OW * OH * 4) as usize], OW, OH);
     t.set_paint_media(PaintMedia::WetPaint);
     t.set_wet_relogio_fixo(true);
+    // A luz do óleo a cada tique é da TELA, que ninguém lê a meio: a óptica fica adiada até ao fim da cena, e o
+    // desligar recompõe a tela inteira com ela (o pintor de teste, `exame_bancada` J6). Medido 03/11: a pintura
+    // 137 → 29 s (debug, load ~30); a tela e as quatro renders do gate da fenda iguais ao bit com e sem o adiamento.
+    t.set_wet_oleo_adiado(true);
     const VERMELHO: [u8; 3] = VERMELHO_DO_DONO;
     const CLARO: [u8; 3] = [238, 226, 196];
     let pilhas: [Pilha; 6] = [
@@ -221,6 +225,7 @@ pub(super) fn pinta_cena_do_dono() -> PainterTool {
             println!("[oraculo] {preset} passagem {} (água {ticks})", k + 1);
         }
     }
+    t.set_wet_oleo_adiado(false);
     t
 }
 

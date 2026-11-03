@@ -85,27 +85,40 @@ fn da_tela(g: KnobGroup) -> bool {
     )
 }
 
+/// Os irmãos de [`o_corpo_de`], um por ferramenta do trilho, na ordem de [`WetTool::DO_TRILHO`]: cada irmão confere
+/// que esta tabela É o trilho (nenhuma ferramenta fica sem irmão).
+const IRMAOS: [WetTool; 5] = [
+    WetTool::Blend,
+    WetTool::Smear,
+    WetTool::Wet,
+    WetTool::Dry,
+    WetTool::Blow,
+];
+
 /// ⭐ **O corpo de cada ferramenta da água é o que ela lê** — a tabela `CORPO_DA_AGUA` É a medição, nos dois
 /// sentidos: cada knob candidato (fora da tela e da mão), posto no mínimo ou no máximo com a ferramenta na mão, muda o
 /// traço dela e não a tela parada ⟺ está no corpo dela (ou é dela, [`WetKnobs::so_da_ferramenta`]). E o controlo: a
 /// base repete-se ao byte, e a física da tela muda a tela parada (senão o controlo mediria o vazio).
-#[test]
-fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le() {
+/// Partido por ferramenta (integração 02/11c): os ensaios de uma ferramenta só se comparam entre si, por isso cada
+/// irmão prova exactamente a fatia `c.0 == tool` do censo de antes, e o nextest corre os cinco em paralelo.
+fn o_corpo_de(tool: WetTool) {
+    assert_eq!(
+        IRMAOS,
+        WetTool::DO_TRILHO,
+        "o trilho mudou: um irmão por ferramenta"
+    );
     let mao: Vec<Knob> = super::super::mao::knobs_da_mao().collect();
     let candidatos: Vec<Knob> = KNOB_DEFS
         .iter()
         .filter(|d| !da_tela(d.group) && !mao.contains(&d.knob))
         .map(|d| d.knob)
         .collect();
-    let mut casos: Vec<Caso> = Vec::new();
-    for tool in WetTool::DO_TRILHO {
-        casos.extend([(tool, None, true), (tool, None, true), (tool, None, false)]);
-        for &k in &candidatos {
-            let d = &KNOB_DEFS[k as usize];
-            for v in [d.min, d.max] {
-                if v != d.default {
-                    casos.extend([(tool, Some((k, v)), true), (tool, Some((k, v)), false)]);
-                }
+    let mut casos: Vec<Caso> = vec![(tool, None, true), (tool, None, true), (tool, None, false)];
+    for &k in &candidatos {
+        let d = &KNOB_DEFS[k as usize];
+        for v in [d.min, d.max] {
+            if v != d.default {
+                casos.extend([(tool, Some((k, v)), true), (tool, Some((k, v)), false)]);
             }
         }
     }
@@ -132,42 +145,67 @@ fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le() {
         .collect();
     let difere = |a: &[u8], b: &[u8]| a.iter().zip(b).filter(|(x, y)| x != y).count();
     let mut falhas = Vec::new();
-    for tool in WetTool::DO_TRILHO {
-        let i0 = casos.iter().position(|c| *c == (tool, None, true)).unwrap();
-        let q0 = i0 + 2;
-        assert_eq!(
-            difere(&r[i0], &r[i0 + 1]),
-            0,
-            "{tool:?}: a base não se repete"
-        );
-        let mut corpo: Vec<Knob> = Vec::new();
-        let mut da_tela_medida = false;
-        for (i, c) in casos.iter().enumerate() {
-            if c.0 == tool
-                && c.2
-                && let Some((k, _)) = c.1
-            {
-                let quieto = difere(&r[q0], &r[i + 1]) > 0;
-                da_tela_medida |= quieto;
-                if difere(&r[i0], &r[i]) > 0 && !quieto && !corpo.contains(&k) {
-                    corpo.push(k);
-                }
-            }
-        }
-        assert!(da_tela_medida, "{tool:?}: nenhum knob mudou a tela parada");
-        let tabela: Vec<Knob> = WetKnobs::do_corpo(tool).collect();
-        for k in &corpo {
-            if !tabela.contains(k) {
-                falhas.push(format!("{tool:?}: lê {k:?} e o corpo dela não o tem"));
-            }
-        }
-        for k in &tabela {
-            if !corpo.contains(k) {
-                falhas.push(format!("{tool:?}: o corpo tem {k:?} e ela não o lê"));
+    let (i0, q0) = (0, 2);
+    assert_eq!(
+        difere(&r[i0], &r[i0 + 1]),
+        0,
+        "{tool:?}: a base não se repete"
+    );
+    let mut corpo: Vec<Knob> = Vec::new();
+    let mut da_tela_medida = false;
+    for (i, c) in casos.iter().enumerate() {
+        if c.2
+            && let Some((k, _)) = c.1
+        {
+            let quieto = difere(&r[q0], &r[i + 1]) > 0;
+            da_tela_medida |= quieto;
+            if difere(&r[i0], &r[i]) > 0 && !quieto && !corpo.contains(&k) {
+                corpo.push(k);
             }
         }
     }
+    assert!(da_tela_medida, "{tool:?}: nenhum knob mudou a tela parada");
+    let tabela: Vec<Knob> = WetKnobs::do_corpo(tool).collect();
+    for k in &corpo {
+        if !tabela.contains(k) {
+            falhas.push(format!("{tool:?}: lê {k:?} e o corpo dela não o tem"));
+        }
+    }
+    for k in &tabela {
+        if !corpo.contains(k) {
+            falhas.push(format!("{tool:?}: o corpo tem {k:?} e ela não o lê"));
+        }
+    }
+    println!(
+        "[corpo] {tool:?}: {} ensaios, corpo medido {corpo:?}",
+        casos.len()
+    );
     assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+#[test]
+fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le_blend() {
+    o_corpo_de(WetTool::Blend);
+}
+
+#[test]
+fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le_smear() {
+    o_corpo_de(WetTool::Smear);
+}
+
+#[test]
+fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le_wet() {
+    o_corpo_de(WetTool::Wet);
+}
+
+#[test]
+fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le_dry() {
+    o_corpo_de(WetTool::Dry);
+}
+
+#[test]
+fn o_corpo_de_cada_ferramenta_da_agua_e_o_que_ela_le_blow() {
+    o_corpo_de(WetTool::Blow);
 }
 
 /// ⭐ **O preset de uma ferramenta da água chega à ferramenta** (o defeito da janela 13: o Blender Soft perdia o felt

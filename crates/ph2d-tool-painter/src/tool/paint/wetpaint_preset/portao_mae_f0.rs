@@ -116,46 +116,62 @@ pub(super) fn reprova(c: &Celula, n: usize, furos_pr1: f64, lei: LeiDaTinta) -> 
     r
 }
 
-#[test]
-fn portao_mae_f0_lei_pigmento_minimo() {
+/// Os pincéis do portão-mãe, um irmão de teste cada (integração 02/11c: as quatro células corriam em série,
+/// ~36 s cada em debug, e passavam do prazo do nextest sob carga).
+const PINCEIS_DO_PORTAO: [&str; 2] = ["Oil/Flat/Thick Impasto", "Watercolor/Fluid/Wet Round"];
+
+/// O portão-mãe de UM pincel: as duas leis (a `Velha` só imprime, a `Pigmento` reprova), em paralelo — cada célula
+/// é uma ferramenta nova e independente, por isso o paralelo não muda nenhuma medida.
+fn portao_mae_f0_do(pincel: &str) {
+    assert!(PINCEIS_DO_PORTAO.contains(&pincel));
     let b = Biblioteca::carregar(
         &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
         None,
     );
+    let leis = [LeiDaTinta::Velha, LeiDaTinta::Pigmento];
+    let celulas: Vec<Celula> = std::thread::scope(|s| {
+        let fios: Vec<_> = leis
+            .map(|lei| {
+                let b = &b;
+                s.spawn(move || {
+                    let cena = Cena {
+                        lei,
+                        fundo: Papel::Padrao,
+                        ..Cena::default()
+                    };
+                    celula(b, pincel, 600.0, 0.5, 1.0, 3, 300, cena, None)
+                })
+            })
+            .into_iter()
+            .collect();
+        fios.into_iter().map(|f| f.join().unwrap()).collect()
+    });
     let mut falhas = vec![];
-    for pincel in ["Oil/Flat/Thick Impasto", "Watercolor/Fluid/Wet Round"] {
-        for lei in [LeiDaTinta::Velha, LeiDaTinta::Pigmento] {
-            let cena = Cena {
-                lei,
-                fundo: Papel::Padrao,
-                ..Cena::default()
-            };
-            let c = celula(&b, pincel, 600.0, 0.5, 1.0, 3, 300, cena, None);
-            // pressão 1: a célula É o seu par de cobertura.
-            let r = reprova(&c, 3, c.furos, lei);
-            let q = c.plano;
-            println!(
-                "[E9] {pincel} {}: manchas_azul {:.2} km_p99 {:.1} km_max {:.1} mix_p99 {:.1} mix_max {:.1} ferrugem {:.2} furos {:.2} \
-                 degraus {}/{} → {r:?}",
-                lei.nome(),
-                q.manchas_azul,
-                q.km_p99,
-                q.km_max,
-                q.mix_p99,
-                q.mix_max,
-                q.ferrugem,
-                c.furos,
-                q.degraus_y,
-                q.degraus_x
+    for (lei, c) in leis.into_iter().zip(&celulas) {
+        // pressão 1: a célula É o seu par de cobertura.
+        let r = reprova(c, 3, c.furos, lei);
+        let q = c.plano;
+        println!(
+            "[E9] {pincel} {}: manchas_azul {:.2} km_p99 {:.1} km_max {:.1} mix_p99 {:.1} mix_max {:.1} ferrugem {:.2} furos {:.2} \
+             degraus {}/{} → {r:?}",
+            lei.nome(),
+            q.manchas_azul,
+            q.km_p99,
+            q.km_max,
+            q.mix_p99,
+            q.mix_max,
+            q.ferrugem,
+            c.furos,
+            q.degraus_y,
+            q.degraus_x
+        );
+        if lei == LeiDaTinta::Pigmento {
+            assert!(
+                q.mix_p99.is_finite(),
+                "{pincel}: P600/pr1 não cobre (alfa < 0,9) — o portão não mediu nada"
             );
-            if lei == LeiDaTinta::Pigmento {
-                assert!(
-                    q.mix_p99.is_finite(),
-                    "{pincel}: P600/pr1 não cobre (alfa < 0,9) — o portão não mediu nada"
-                );
-                if !r.is_empty() {
-                    falhas.push(format!("{pincel}: {r:?}"));
-                }
+            if !r.is_empty() {
+                falhas.push(format!("{pincel}: {r:?}"));
             }
         }
     }
@@ -163,6 +179,16 @@ fn portao_mae_f0_lei_pigmento_minimo() {
         falhas.is_empty(),
         "lei Pigmento reprova o portão-mãe: {falhas:?}"
     );
+}
+
+#[test]
+fn portao_mae_f0_lei_pigmento_minimo_thick_impasto() {
+    portao_mae_f0_do(PINCEIS_DO_PORTAO[0]);
+}
+
+#[test]
+fn portao_mae_f0_lei_pigmento_minimo_wet_round() {
+    portao_mae_f0_do(PINCEIS_DO_PORTAO[1]);
 }
 
 /// Diagnóstico da 1.ª corrida (E9 §5): por ponto do eixo central, o pixel composto, as somas da célula e o pixel

@@ -276,7 +276,7 @@ pub(crate) fn head(id: NodeId, ch: &Choices, store: &WidgetStore) -> HeadAction 
 }
 
 /// A largura que uma caixa pede para mostrar `text` inteiro: a célula do ícone (a amostra, a seta)
-/// + o texto + a folga. As linhas de várias colunas partem-se quando ela não cabe (à Figma: nada se
+/// mais o texto e a folga. As linhas de várias colunas partem-se quando ela não cabe (à Figma: nada se
 /// corta na coluna estreita, censo `nenhum_rotulo`).
 pub(crate) fn caixa_para(c: &mut CardCtx<'_>, text: &str) -> f32 {
     m::ICON_CELL + c.text_system.prefix_width(text, m::VALUE_PX).ceil() + m::FIELD_PAD_R

@@ -83,7 +83,7 @@ impl WidgetStore {
     /// Os soltos presos ou com alfinete durável por resolver: `(secção, bits, chave durável)`. Quem
     /// tem o mundo (a shell, por `ph2d_card_rope::chave`) liga uns aos outros a cada quadro.
     #[must_use]
-    pub fn loose_pin_keys(&self) -> Vec<(NodeId, Option<u64>, Option<(u64, String)>)> {
+    pub fn loose_pin_keys(&self) -> Vec<LoosePinKey> {
         self.card_lists
             .loose
             .iter()
@@ -248,3 +248,6 @@ impl WidgetStore {
         self.card_lists.press_subject
     }
 }
+
+/// Um solto por resolver: `(secção, bits do alfinete, chave durável)`.
+pub type LoosePinKey = (NodeId, Option<u64>, Option<(u64, String)>);

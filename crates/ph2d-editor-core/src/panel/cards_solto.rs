@@ -21,6 +21,9 @@ pub(super) fn preso(at: (f32, f32), w: f32, canvas: Rect) -> (f32, f32) {
     (x, y)
 }
 
+/// `(desvio da mão, tamanho)` de um solto que volta à lista.
+type SoltoVoo = ((f32, f32), (f32, f32));
+
 /// A mão sobre um cartão SOLTO. Fora da lista ele anda com ela; ao entrar na coluna da lista volta
 /// a ser dela: devolve `(desvio da mão, tamanho)` para a lista o levantar como voo.
 pub(super) fn arrasta(
@@ -28,7 +31,7 @@ pub(super) fn arrasta(
     d: CardDrag,
     na_lista: bool,
     canvas: Rect,
-) -> Option<(CardDrag, ((f32, f32), (f32, f32)))> {
+) -> Option<(CardDrag, SoltoVoo)> {
     if let Some(e) = d.edge {
         largura(store, d, e, canvas);
         return None;

@@ -63,7 +63,7 @@ pub const ICON_CELL: f32 = 26.0;
 pub const ICON_GLYPH: f32 = 18.0;
 pub const VALUE_PX: f32 = 12.0;
 /// O mínimo de um campo de valor ao lado da caixa da cor: a célula do ícone (`26`) + a folga (`8`)
-/// + «100» a `VALUE_PX` (`20,6 px` medidos, 02/11). A caixa da cor cresce até ao NOME do estilo
+/// e «100» a `VALUE_PX` (`20,6 px` medidos, 02/11). A caixa da cor cresce até ao NOME do estilo
 /// (maquete F: `145 : 70 px`) e pára aqui — no corpo de `257 px` da cena 3, «Brand orange» pede
 /// `78,5 + 2·26 = 130,5 px` e a opacidade fica com `≥ 56`.
 pub const FIELD_VALUE_MIN_W: f32 = 56.0;

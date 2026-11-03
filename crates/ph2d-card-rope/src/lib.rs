@@ -23,11 +23,14 @@ const FEITIO: Feitio = Feitio {
     flexao: m::LOOSE_ROPE_BEND,
 };
 
+/// Uma corda a recolher: a corda, as duas pontas e o avanço `0..1`.
+type Recolhe = (Corda, (f32, f32), (f32, f32), f32);
+
 #[derive(Default)]
 struct Cordas {
     vivas: BTreeMap<(NodeId, NodeId), Corda>,
     /// T41: as que se soltaram — a corda, a ponta do cartão de quando se soltou, o objecto e `0..1`.
-    recolhem: BTreeMap<(NodeId, NodeId), (Corda, (f32, f32), (f32, f32), f32)>,
+    recolhem: BTreeMap<(NodeId, NodeId), Recolhe>,
     /// T52: o relógio POR PAINEL — a shell anda o Bones e o Inspector no mesmo quadro.
     antes: BTreeMap<NodeId, Instant>,
     smoke_feito: bool,

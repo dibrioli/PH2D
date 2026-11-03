@@ -112,7 +112,7 @@ pub const GRADIENT_DITHERS: [(PixelGradientDither, NodeId, &str); 4] = [
 ];
 /// P8: as opções do Text — a fonte (o dropdown com a lista de fábrica + sistema), o tamanho e
 /// as quatro caixas.
-pub const TEXT_FONT_DD: NodeId = hash_node_id("pixel.opt.text.font");
+pub use ph2d_editor_core::ids::PIXEL_TEXT_FONT_DD as TEXT_FONT_DD;
 pub const TEXT_SIZE: NodeId = hash_node_id("pixel.opt.text.size");
 pub const TEXT_BOLD: NodeId = hash_node_id("pixel.opt.text.bold");
 pub const TEXT_ITALIC: NodeId = hash_node_id("pixel.opt.text.italic");

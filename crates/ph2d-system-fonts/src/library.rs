@@ -228,6 +228,26 @@ pub fn seed_extra_axes(family: Option<&str>) -> Vec<(AxisTag, f32)> {
         .collect()
 }
 
+/// Os bytes do ficheiro e o índice da face de `family` mais perto de Bold/Italic (o Text do Pixel
+/// desenha-os com o rasterizador DELE, `ph2d-pixel-text`, que pede o ficheiro e não a
+/// [`VariableFont`]). `None` = a família não existe ou não carrega.
+#[must_use]
+pub fn face_bytes(family: &str, bold: bool, italic: bool) -> Option<(Vec<u8>, u32)> {
+    with_db(|db| {
+        let fam = db.collection.family_by_name(family)?;
+        let fonts = fam.fonts();
+        let peso = if bold { 700.0 } else { 400.0 };
+        let custo = |f: &fontique::FontInfo| {
+            let inclinada = !matches!(f.style(), fontique::FontStyle::Normal);
+            let estilo = if inclinada == italic { 0.0 } else { 1000.0 };
+            estilo + (f.weight().value() - peso).abs()
+        };
+        let chosen = fonts.iter().min_by(|a, b| custo(a).total_cmp(&custo(b)))?;
+        let blob = chosen.load(Some(&mut db.cache))?;
+        Some((blob.data().to_vec(), chosen.index()))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,24 +409,4 @@ mod tests {
             "lixo não parseia"
         );
     }
-}
-
-/// Os bytes do ficheiro e o índice da face de `family` mais perto de Bold/Italic (o Text do Pixel
-/// desenha-os com o rasterizador DELE, `ph2d-pixel-text`, que pede o ficheiro e não a
-/// [`VariableFont`]). `None` = a família não existe ou não carrega.
-#[must_use]
-pub fn face_bytes(family: &str, bold: bool, italic: bool) -> Option<(Vec<u8>, u32)> {
-    with_db(|db| {
-        let fam = db.collection.family_by_name(family)?;
-        let fonts = fam.fonts();
-        let peso = if bold { 700.0 } else { 400.0 };
-        let custo = |f: &fontique::FontInfo| {
-            let inclinada = !matches!(f.style(), fontique::FontStyle::Normal);
-            let estilo = if inclinada == italic { 0.0 } else { 1000.0 };
-            estilo + (f.weight().value() - peso).abs()
-        };
-        let chosen = fonts.iter().min_by(|a, b| custo(a).total_cmp(&custo(b)))?;
-        let blob = chosen.load(Some(&mut db.cache))?;
-        Some((blob.data().to_vec(), chosen.index()))
-    })
 }

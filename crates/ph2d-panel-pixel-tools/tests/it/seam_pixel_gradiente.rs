@@ -4,7 +4,6 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::pixel_panel::{PixelOptions, PixelPanelInfo, PixelRequest, PixelTool};
 use ph2d_editor_core::text_elide::elisao;
 use ph2d_editor_core::zones::Rect;

@@ -370,7 +370,8 @@ pub(crate) fn apply_event(
             if id == ids::LAYER_BLEND
                 || id == ids::PALETTE_MENU
                 || id == ids::PRESETS_MENU
-                || id == ids::TEXT_FONT_DD =>
+                || id == ids::TEXT_FONT_DD
+                || ids::THRESHOLDS.iter().any(|(_, t, _)| *t == id) =>
         {
             return EventOutcome::Consumed;
         }
@@ -412,9 +413,6 @@ pub(crate) fn apply_event(
         }
         WidgetEvent::Click(id) if id == ids::DYNAMICS => {
             st.pincel.dinamica = !st.pincel.dinamica;
-            return EventOutcome::Consumed;
-        }
-        WidgetEvent::Click(id) if ids::THRESHOLDS.iter().any(|(_, t, _)| *t == id) => {
             return EventOutcome::Consumed;
         }
         WidgetEvent::Toggled(id) if id == ids::DYN_STABILIZER => {

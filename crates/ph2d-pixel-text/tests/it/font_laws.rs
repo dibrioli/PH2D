@@ -533,10 +533,7 @@ fn builtin_fonts_open_and_write() {
             hinting: true,
         };
         let m = rasterize("Ag1", &style).unwrap();
-        assert!(
-            m.cover.iter().any(|&c| c == 255) && m.missing.is_empty(),
-            "{name}"
-        );
+        assert!(m.cover.contains(&255) && m.missing.is_empty(), "{name}");
         let dobro = rasterize(
             "Ag1",
             &TextStyle {

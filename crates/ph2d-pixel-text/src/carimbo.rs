@@ -102,12 +102,7 @@ impl Fonte {
     /// A moldura da caixa `(x, y, w, h)` e o cursor `(x, y, altura)` com o cursor no caracter
     /// `cursor` (Shift+Enter = `\n`).
     #[must_use]
-    pub fn frame(
-        &self,
-        texto: &str,
-        at: Cell,
-        cursor: usize,
-    ) -> ((i32, i32, u32, u32), (i32, i32, i32)) {
+    pub fn frame(&self, texto: &str, at: Cell, cursor: usize) -> (Moldura, Cursor) {
         let (_, lh) = self.metrics().unwrap_or((0, 1));
         let largura = |t: &str| {
             self.place(t, at)
@@ -129,6 +124,11 @@ impl Fonte {
         (moldura, (at.0 + x, at.1 + fila * lh, lh))
     }
 }
+
+/// A caixa do texto: `(x, y, w, h)` em células.
+pub type Moldura = (i32, i32, u32, u32);
+/// O cursor do texto: `(x, y, altura)` em células.
+pub type Cursor = (i32, i32, i32);
 
 /// A cor que o texto deixa numa célula de cobertura `c` sobre `dst`: cobertura cheia = `fg` tal e
 /// qual, parcial (Antialias) = [`over`]. A lei do carimbo e do texto solto que assenta.

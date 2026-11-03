@@ -227,6 +227,26 @@ impl Mesa {
         }
     }
 
+    /// A cena `n` do smoke, montada como na shell (o 1.º quadro ainda sem Draw, o seguinte já nele).
+    pub(crate) fn cena(n: u32) -> Self {
+        let mut app = PixelApp::default();
+        let mut sim = SimWorld::new();
+        assert!(ph2d_app_pixel::smoke::stage(
+            &mut app, &mut sim, n, spawn_root
+        ));
+        let (bits, key) = ph2d_app_pixel::mode::sprites(sim.world())[0];
+        let mut cam = Camera2d::default();
+        app.frame(&mut sim, &mut cam, WINDOW, PPM, None, spawn_root);
+        app.frame(&mut sim, &mut cam, WINDOW, PPM, Some(bits), spawn_root);
+        Self {
+            app,
+            sim,
+            cam,
+            bits,
+            key,
+        }
+    }
+
     pub(crate) fn celula(&self, c: (i32, i32)) -> (f32, f32) {
         at(&self.app, &self.sim, &self.cam, self.bits, c.0, c.1)
     }

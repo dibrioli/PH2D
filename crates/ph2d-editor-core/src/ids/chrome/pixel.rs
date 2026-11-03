@@ -85,6 +85,8 @@ pub fn new_sprite_dialog_owns(id: NodeId) -> bool {
 /// A amostra do *Edit color* do painel PIXEL: um Down abre o seletor partilhado sobre a cor da
 /// amostra clicada da paleta, e a família lê de volta a cor dele (`ph2d_app_pixel::panel`).
 pub const PIXEL_PAL_EDIT: NodeId = hash_node_id("pixel.palette.edit");
+/// O dropdown de fontes do Text do painel PIXEL; o gesto `fonte` do smoke abre-o.
+pub const PIXEL_TEXT_FONT_DD: NodeId = hash_node_id("pixel.opt.text.font");
 /// O ≡ da barra da paleta do painel PIXEL (o menu das acções); a foto da cena 3 abre-o.
 pub const PIXEL_PALETTE_MENU: NodeId = hash_node_id("pixel.palette.menu");
 

@@ -145,8 +145,7 @@ fn abre_lista(hero: &mut ph2d_editor_core::screens::hero::HeroScreen, gesto: &st
     static ABERTA: AtomicBool = AtomicBool::new(false);
     let id = match gesto {
         "convolucao" => ph2d_editor_core::ids::PIXEL_FILTER_KERNEL,
-        // O `ids::TEXT_FONT_DD` do painel de ferramentas (a crate do painel não é dependência).
-        "fonte" => ph2d_editor_core::registry::hash_node_id("pixel.opt.text.font"),
+        "fonte" => ph2d_editor_core::ids::PIXEL_TEXT_FONT_DD,
         _ => return,
     };
     if ABERTA.load(Ordering::Relaxed) {

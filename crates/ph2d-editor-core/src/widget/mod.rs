@@ -178,8 +178,8 @@ pub use property_box::{
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).
 pub use curve_editor::{
-    curve_capacity, curve_drag, curve_from_screen, curve_grab_radius, curve_point_at, curve_press,
-    curve_remove_at, curve_to_screen, paint_curve_editor,
+    curve_a11y, curve_capacity, curve_drag, curve_from_screen, curve_grab_radius, curve_point_at,
+    curve_press, curve_remove_at, curve_to_screen, paint_curve_editor,
 };
 /// ⭐⭐ O losango de animação na coluna do decorator (plano 34) — a shell publica, a linha lê.
 pub use property_box::arrasto;
@@ -189,7 +189,8 @@ pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };
 pub use range_slider::{
-    RangeHandle, paint_range_slider, range_drag, range_handle_at, range_handle_rect, range_value_at,
+    RangeHandle, paint_range_slider, range_a11y, range_drag, range_handle_at, range_handle_rect,
+    range_value_at,
 };
 pub use rect2_editor::{
     RECT2_HANDLE_COUNT, Rect2Editor, Rect2Layout, paint_rect2_editor,

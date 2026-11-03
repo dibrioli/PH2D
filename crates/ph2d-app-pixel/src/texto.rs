@@ -135,7 +135,7 @@ impl PixelApp {
 
     /// O retângulo da caixa `(x, y, w, h)` e o cursor `(x, y, altura)`, em células do sprite.
     #[must_use]
-    pub fn text_box_frame(&self) -> Option<((i32, i32, u32, u32), (i32, i32, i32))> {
+    pub fn text_box_frame(&self) -> Option<(carimbo::Moldura, carimbo::Cursor)> {
         self.texto.as_ref().map(|c| (c.moldura, c.caret))
     }
 

@@ -245,9 +245,9 @@ fn the_text_box_outline_wraps_the_ink_with_one_cell_of_margin() {
     let y0 = tinta.iter().map(|c| c.1).min().expect("tinta");
     let y1 = tinta.iter().map(|c| c.1).max().expect("tinta");
     eprintln!("[sonda cena 19] tinta x {x0}..={x1} y {y0}..={y1} · contorno ({ox},{oy}) {ow}×{oh}");
-    assert!(ox <= x0 - 1 && oy <= y0 - 1, "folga à esquerda e em cima");
-    assert!(ox + ow as i32 - 1 >= x1 + 1, "folga à direita");
-    assert!(oy + oh as i32 - 1 >= y1 + 1, "folga em baixo");
+    assert!(ox < x0 && oy < y0, "folga à esquerda e em cima");
+    assert!(ox + ow as i32 > x1 + 1, "folga à direita");
+    assert!(oy + oh as i32 > y1 + 1, "folga em baixo");
     assert_eq!(ox + ow as i32 - 1, x1 + 1, "exactamente uma à direita");
 }
 

@@ -12,8 +12,7 @@ use ph2d_tool_vector::shapes::{ALL_GROUPS, SHAPES};
 use ph2d_vec_scene::ShapeKind;
 use winit::keyboard::KeyCode;
 
-use crate::edit::canvas;
-use crate::viva::Mesa;
+use crate::comum::{Mesa, canvas};
 
 const CLEAR: [u8; 4] = [0, 0, 0, 0];
 const A: (i32, i32) = (3, 3);

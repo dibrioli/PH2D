@@ -50,25 +50,20 @@ fn the_font_list_starts_with_the_pixel_fonts() {
 #[test]
 fn picking_a_pixel_font_snaps_the_size_to_a_multiple_of_its_line() {
     let (mut app, sim, _cam, bits) = born();
-    for i in 0..BUILTIN.len() {
+    for (i, (nome, ..)) in BUILTIN.iter().enumerate() {
         let lh = builtin_line_height(i).expect("linha nativa");
         // Vem de outra fonte com um tamanho que não é múltiplo desta.
         let outra = (i + 1) % BUILTIN.len();
         com(&mut app, &sim, bits, outra, 1);
         com(&mut app, &sim, bits, i, lh * 2 + 1);
-        assert_eq!(
-            app.options.text_px,
-            lh * 2,
-            "{}: o mais perto",
-            BUILTIN[i].0
-        );
+        assert_eq!(app.options.text_px, lh * 2, "{}: o mais perto", nome);
         // O campo sobe um: salta ao múltiplo seguinte; desce um: ao anterior; nunca abaixo de 1×.
         com(&mut app, &sim, bits, i, lh * 2 + 1);
-        assert_eq!(app.options.text_px, lh * 3, "{}: sobe", BUILTIN[i].0);
+        assert_eq!(app.options.text_px, lh * 3, "{}: sobe", nome);
         com(&mut app, &sim, bits, i, lh * 3 - 1);
-        assert_eq!(app.options.text_px, lh * 2, "{}: desce", BUILTIN[i].0);
+        assert_eq!(app.options.text_px, lh * 2, "{}: desce", nome);
         com(&mut app, &sim, bits, i, 1);
-        assert_eq!(app.options.text_px, lh, "{}: 1× no mínimo", BUILTIN[i].0);
+        assert_eq!(app.options.text_px, lh, "{}: 1× no mínimo", nome);
     }
 }
 

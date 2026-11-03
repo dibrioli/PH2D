@@ -347,7 +347,7 @@ fn medida_relevo_do_papel_oraculo() {
     }
     let nu_abs = dente_na_tela(&tela_final(&mut rugoso), &tela_final(&mut liso), &nu);
     let o0 = rugoso.wet_oleo_real_valores();
-    for g in [0.0, 1.0, 4.0, 5.5, 6.0] {
+    for g in [0.0, 1.0, 6.0, 7.6, 8.0] {
         let mut o = o0;
         o.af.papel_na_tinta = g;
         rugoso.set_wet_oleo_real(Some(o));

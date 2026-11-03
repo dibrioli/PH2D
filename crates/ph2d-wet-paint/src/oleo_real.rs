@@ -169,8 +169,9 @@ impl Default for Afinacao {
             antisserrilhado_ambiente: 0.0,
             rebote_papel: 1.0,
             // Cura 02/11c: o Cycles com a tinta assente no dente (`oraculo/relevo_papel_cycles.py`) lê miolo ÷ nu
-            // 1,71; o produto 0,330 · 1,261 · 1,843 a 1 · 4 · 6 (linear) ⇒ 5,5. Tabela no commit.
-            papel_na_tinta: 5.5,
+            // 1,71; o produto (especular microfacet, `e7e49f465b`) 0,256 · 1,396 · 1,788 a 1 · 6 · 8 ⇒ 7,6. Tabela no
+            // commit.
+            papel_na_tinta: 7.6,
             papel_na_base: 2.4,
         }
     }

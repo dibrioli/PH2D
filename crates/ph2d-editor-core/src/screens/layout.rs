@@ -151,6 +151,9 @@ pub struct HeroLayout {
     /// coluna existe sempre (a geometria não depende do estado); o que depende é haver alguém lá.
     /// Sem isto, `dock_seam` oferecia agarre numa coluna vazia — chrome vivo e invisível.
     pub docks: DockSides,
+    /// ⭐ D24: o rect da lista que flutua sobre cada coluna livre (`[esquerda, direita]`, altura
+    /// zero = nenhuma) — preenchido pelo `frame_layout` a partir de `DockSides::with_floating`.
+    pub float_lists: [Rect; 2],
     /// Scene viewport sub-rect (Motion Nodes M0.T4). Equals the full
     /// [`Self::canvas`] with no split; the top slice (`Horizontal`) or left
     /// slice (`Vertical`) of the center band when the Motion tool splits it.
@@ -390,17 +393,35 @@ impl HeroLayout {
         //    flutuar sobre o desenho» — e eu pus lá um controlo sem a reservar.*
         let gap = ph2d_tokens::area_gap_px();
         let closed_reserve = crate::screens::dock_seam::DOCK_SEAM_PX;
+        // ⭐ D24: sobre uma coluna com lista flutuante não há alça de reabrir — o canvas vai à borda.
         let area_x0 = if docks.left {
             left_col_right + gap
+        } else if docks.float_left {
+            viewport.x + rail_w
         } else {
             viewport.x + rail_w + closed_reserve
         };
         let area_x1 = if docks.right {
             right_col_left - gap
+        } else if docks.float_right {
+            viewport.x + viewport.w
         } else {
             viewport.x + viewport.w - closed_reserve
         };
         let area_w = (area_x1 - area_x0).max(0.0);
+        // ⭐ D24: só o CANVAS passa por trás da lista flutuante; a faixa de ferramentas e a do fundo
+        // param na coluna (senão tapam as abas dela).
+        let chrome_x0 = if docks.float_left {
+            left_col_right + gap
+        } else {
+            area_x0
+        };
+        let chrome_x1 = if docks.float_right {
+            right_col_left - gap
+        } else {
+            area_x1
+        };
+        let chrome_w = (chrome_x1 - chrome_x0).max(0.0);
         // ⭐⭐ **O SPLIT DO CENTRO PARTE A ÁREA, NÃO A JANELA** (Enio, 2026-08-31, com foto e duas
         // setas: *«o canvas dos Nodes deve ficar bem encaixado entre os painéis laterais como na
         // Godot, sem espaços»*).
@@ -464,8 +485,8 @@ impl HeroLayout {
         //
         // ⚠️ Ela segue as COLUNAS e não a `draw_area`: uma coluna fechada deixa a área crescer
         // para dentro dela, e a faixa cresce junto porque `area_x0` já responde por isso.
-        let timeline_x = area_x0;
-        let timeline_w = area_w;
+        let timeline_x = chrome_x0;
+        let timeline_w = chrome_w;
         // ⭐⭐ **A ÁREA de desenho** (D5) — as regiões são IRMÃS numa fila, e é por não
         // partilharem coordenada que nada aqui pode tapar nada. Horizontalmente ela começa
         // depois da coluna da esquerda (o trilho, mais o painel **se estiver aberto**) e acaba
@@ -483,7 +504,7 @@ impl HeroLayout {
         // a régua começa por baixo dela, e nenhuma das duas pode tapar a outra porque não
         // partilham coordenada. ⛔ Uma barra de ferramentas que atravessasse o ecrã passaria por
         // cima das colunas — que é o modelo que o trilho `x = 0` tinha, e o defeito que ele deu.
-        let tool_bar = Rect::new(area_x0, chrome_top, area_w, tool_bar_h.min(chrome_h));
+        let tool_bar = Rect::new(chrome_x0, chrome_top, chrome_w, tool_bar_h.min(chrome_h));
         let draw_area = Rect::new(
             area_x0,
             chrome_top + tool_bar.h,
@@ -517,6 +538,7 @@ impl HeroLayout {
             draw_area,
             tool_bar,
             docks,
+            float_lists: [Rect::new(0.0, 0.0, 0.0, 0.0); 2],
             center_viewport,
             motion_graph,
             split_band: band,

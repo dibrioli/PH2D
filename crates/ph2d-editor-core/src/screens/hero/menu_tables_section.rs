@@ -177,3 +177,19 @@ pub(super) const SECTION_MENU_CLASSIC_ROWS: &[MenuRow] = &[
         HIGHLIGHTER_RGBA[8],
     ),
 ];
+
+/// ⭐ CartoesUI (D21): o menu do ícone ao lado do título de uma lista de cartões.
+pub(super) const CARD_LIST_MENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_CARDS_RESET_ORDER, "card.menu.reset_order"),
+    menu_row(ids::CTX_MENU_CARDS_RESET_COLORS, "card.menu.reset_colors"),
+    menu_row(ids::CTX_MENU_CARDS_RESET_ALL, "card.menu.reset_all"),
+];
+
+/// ⭐ D28/D30: o botão direito numa linha da lista de estilos de cor (maquete G).
+pub(super) const COLOR_STYLE_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_STYLE_APPLY, "card.styles.apply"),
+    menu_row(ids::CTX_MENU_STYLE_EDIT, "card.styles.edit"),
+    menu_row(ids::CTX_MENU_STYLE_RENAME, "card.styles.rename"),
+    menu_row(ids::CTX_MENU_STYLE_DUPLICATE, "card.styles.duplicate"),
+    menu_row(ids::CTX_MENU_STYLE_DELETE, "card.styles.delete"),
+];

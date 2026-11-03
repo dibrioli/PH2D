@@ -6737,6 +6737,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-card-rope"
+version = "0.0.0"
+dependencies = [
+ "ph2d-card-stack",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-node-motion-verlet-rope",
+]
+
+[[package]]
+name = "ph2d-card-stack"
+version = "0.0.0"
+dependencies = [
+ "ph2d-spring",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -6950,6 +6967,7 @@ dependencies = [
  "ph2d-board-model",
  "ph2d-board-render",
  "ph2d-board-route",
+ "ph2d-card-stack",
  "ph2d-chrome-sync",
  "ph2d-color",
  "ph2d-component-desc",

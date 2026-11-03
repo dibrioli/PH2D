@@ -233,6 +233,13 @@ pub(super) fn dispatch_up<'frame>(
     // então o bloco da hierarquia acima já foi no-op quando este é `Some`.
     // ⭐⭐ O arrasto de uma SECÇÃO pela pega: grava a ordem nova (ver `section_drag`).
     super::section_drag::drop(store, hit_index, event.y);
+    // ⭐ O cartão: um clique no cabeçalho DOBRA-o; um arrasto activo fica para a pintura assentar.
+    if let Some(d) = store.end_card_drag(false)
+        && !d.active
+        && d.edge.is_none()
+    {
+        store.toggle_collapsed(d.section);
+    }
     // ⭐ O arrasto de uma NOTA pela pega: muda-a de secção ou de posição (ver `note_drag`).
     super::note_drag::drop(store, hit_index, event.y);
     if let Some((family, drag)) = store.end_panel_row_drag()

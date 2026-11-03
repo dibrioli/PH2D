@@ -88,6 +88,26 @@ pub(super) fn walk(
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {
             if hidden.contains(&panel_id) {
+                // ⭐ C5: a aba está atrás, mas os cartões SOLTOS dele continuam no canvas — o painel
+                // pinta só esses (a lista sai cedo) e larga o rect que publicou.
+                if !hero.store.loose_cards_of(panel_id).is_empty()
+                    && let Some(idx) = reg.find_by_panel_node_id(panel_id)
+                {
+                    hero.store.begin_loose_only_pass(panel_id);
+                    let mut typed_ctx = crate::panel::PaintCtx {
+                        host: hero,
+                        layout,
+                        slot: panel_slots
+                            .get(&panel_id)
+                            .copied()
+                            .unwrap_or(layout.draw_area),
+                        viewport,
+                        scene,
+                        text_system,
+                    };
+                    reg.panels_mut()[idx].paint(&mut typed_ctx);
+                    hero.store.end_loose_only_pass(panel_id);
+                }
                 continue;
             }
             if let Some(idx) = reg.find_by_panel_node_id(panel_id) {

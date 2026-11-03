@@ -58,10 +58,13 @@ pub(super) fn tick(hero: &mut HeroScreen, dt: f64) {
 fn tick_hover(hero: &mut HeroScreen, dt: f64) {
     let mut pending: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.hover_targets().collect();
     let thumbs: Vec<(ph2d_a11y::NodeId, f32)> = hero.store.scrollbar_hover_targets().collect();
+    // ⛔ Dono 02/11: o fundo de widget acende e apaga NO QUADRO (`Role::Number`). Com `Fade` o que
+    // o rato deixava ainda apagava enquanto o seguinte acendia — os fundos piscavam em fila
+    // (`docs/CartoesUI/01_decisoes_do_dono.md` D32). Só o polegar da barra desvanece.
     for slot in &mut pending {
         slot.1 = hero
             .motion
-            .animate(slot.0, slot.1, crate::motion::Role::Fade);
+            .animate(slot.0, slot.1, crate::motion::Role::Number);
     }
     // ⚠️ **A PARTIDA é FRIA, e só para estes** — a lei do substrato é *a primeira vista de um id
     //    CHEGA ao alvo*, então sem semear, o quadro em que o rato entra num polegar publicaria

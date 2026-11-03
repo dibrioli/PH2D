@@ -13,6 +13,7 @@
 
 mod blender;
 mod blur;
+mod card_field;
 pub mod clipboard;
 mod curve;
 mod focus;
@@ -364,8 +365,13 @@ pub(super) fn commit_number_buffer<'a>(
             return;
         };
         let prev = *value;
-        match buffer.trim().parse::<f64>() {
-            Ok(parsed) if parsed.is_finite() => (Some(parsed), prev),
+        match buffer
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .or_else(|| crate::widget::card_field::eval_number(buffer))
+        {
+            Some(parsed) if parsed.is_finite() => (Some(parsed), prev),
             _ => {
                 buffer.clear();
                 use std::fmt::Write;

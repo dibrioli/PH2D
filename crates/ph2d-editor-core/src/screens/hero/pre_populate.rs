@@ -371,6 +371,14 @@ fn populate_w6_samples(store: &mut WidgetStore) {
 fn populate_global_context_menu(store: &mut WidgetStore) {
     for id in [
         ids::CTX_MENU_CREATE_NOTE,
+        ids::CTX_MENU_CARDS_RESET_ORDER,
+        ids::CTX_MENU_CARDS_RESET_COLORS,
+        ids::CTX_MENU_CARDS_RESET_ALL,
+        ids::CTX_MENU_STYLE_APPLY,
+        ids::CTX_MENU_STYLE_EDIT,
+        ids::CTX_MENU_STYLE_RENAME,
+        ids::CTX_MENU_STYLE_DUPLICATE,
+        ids::CTX_MENU_STYLE_DELETE,
         ids::CTX_MENU_OUTLINE_NONE,
         ids::CTX_MENU_SECTION_THEME_APP,
         ids::CTX_MENU_SECTION_THEME_FORGE,

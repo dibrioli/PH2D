@@ -138,6 +138,9 @@ const LINHAS: &[(&str, &str)] = &[
     ("ph2d-panel-inspector", "num_row"),
     ("ph2d-panel-inspector", "num_row_unit"),
     ("ph2d-panel-inspector", "seg_row"),
+    // T56: dois campos numa linha do cartão (`sections/rows_par.rs`).
+    ("ph2d-panel-inspector", "par_row"),
+    ("ph2d-panel-inspector", "seg_par_row"),
     ("ph2d-panel-inspector", "paint_tint_swatch_cell"),
     ("ph2d-panel-inspector", "bloco_de_cores"),
     ("ph2d-panel-inspector", "check_row"),
@@ -1234,13 +1237,6 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "paint_body_face",
-        Canal,
-        &["INSP_PHYS_OFFSET_X", "INSP_PHYS_OFFSET_Y"],
-        "o deslocamento do colisor, num laço (canal FISICA)",
-    ),
-    (
-        "ph2d-panel-inspector",
         "paint_dynamics_rows",
         Canal,
         &[
@@ -1262,25 +1258,6 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
             "INSP_PHYS_DENSITY",
         ],
         "o deslocamento e a densidade de uma peça, num laço (canal FISICA)",
-    ),
-    (
-        "ph2d-panel-inspector",
-        "paint_damping_rows",
-        Canal,
-        &["INSP_PHYS_LINEAR_DAMPING", "INSP_PHYS_ANGULAR_DAMPING"],
-        "o amortecimento do corpo, num laço (canal FISICA)",
-    ),
-    (
-        "ph2d-panel-inspector",
-        "paint_material_rows",
-        Canal,
-        &[
-            "INSP_PHYS_RESTITUTION",
-            "INSP_PHYS_FRICTION",
-            "INSP_PHYS_REST_COMBINE",
-            "INSP_PHYS_FRIC_COMBINE",
-        ],
-        "o material e as regras de combinação, num laço (canal FISICA)",
     ),
     (
         "ph2d-panel-inspector",

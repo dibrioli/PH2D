@@ -28,6 +28,10 @@ impl crate::panel::PanelHost for HeroScreen {
 }
 
 impl crate::panel::PanelHostInternal for HeroScreen {
+    fn content_area(&self) -> Option<crate::zones::Rect> {
+        Some(self.last_content)
+    }
+
     fn store(&self) -> &WidgetStore {
         &self.store
     }

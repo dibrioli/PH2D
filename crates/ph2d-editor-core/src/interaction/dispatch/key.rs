@@ -247,6 +247,8 @@ pub fn dispatch_key<'frame>(
             }
         }
         KEY_ESCAPE if store.cancel_grid_row_drag() => {}
+        KEY_ESCAPE if super::card_field::escape_scrub(store, &mut events) => {}
+        KEY_ESCAPE if store.end_card_drag(true).is_some() => {}
         KEY_ESCAPE => {
             // Audit fix #1 (CRITICAL): Esc must also abort any
             // in-flight NumberInput drag-slider OR stepper-hold,
@@ -371,6 +373,8 @@ pub fn dispatch_key<'frame>(
             }
         }
         KEY_ARROW_UP | KEY_ARROW_DOWN if store.list_step(event.keycode == KEY_ARROW_DOWN) => {}
+        KEY_ARROW_UP | KEY_ARROW_DOWN
+            if super::card_field::arrow(store, event.keycode == KEY_ARROW_UP, &mut events) => {}
         KEY_ARROW_UP => {
             if let Some(id) = store.focus_id()
                 && let Some(InteractiveState::NumberInput {

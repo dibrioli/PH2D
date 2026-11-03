@@ -43,12 +43,23 @@ pub use section_prefs_ops::{
 mod slot_ops;
 pub use slider_curve::{fracao_para_pista, pista_para_fracao};
 pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
+mod card_ensaio_ops;
+mod card_field_ops;
+mod card_list_ops;
+mod card_loose_ops;
 mod store_census;
 mod store_core;
 pub mod store_hierarchy;
 mod timeline_ops;
 mod tool_bars_ops;
 mod widget_accessors;
+pub use card_ensaio_ops::{Ensaio, EstadosPresos, Trocados};
+pub use card_field_ops::CardFieldSpec;
+pub use card_list_ops::{CardDrag, CardDrop, CardList};
+pub use card_loose_ops::{
+    LooseCard, LooseEdge, loose_edge_of, loose_face_of, loose_ghost_of, loose_instance_of,
+    loose_pin_of, loose_rect_of, loose_return_of,
+};
 
 use ph2d_a11y::NodeId;
 use std::collections::BTreeMap;
@@ -299,6 +310,9 @@ pub struct WidgetStore {
     /// under the cursor. Cleared together with `clear_for_frame` on
     /// the hit_index by the host (or hero) at frame start.
     pub(super) panel_rects: BTreeMap<NodeId, Rect>,
+    /// Os painéis cujo rect publicado FLUTUA sobre a coluna (lista de cartões, D24): marcam o lado
+    /// sem o reservar — ver [`crate::screens::layout::DockSides::with_floating`].
+    pub(super) floating_panels: std::collections::BTreeSet<NodeId>,
     /// ⭐⭐ **As SUB-REGIÕES roláveis** — uma região dentro de um painel que rola por conta própria.
     ///
     /// ⚠️ **Slot próprio, e não o `panel_rects`:** o `panel_at` é consultado por muita gente (o
@@ -503,6 +517,9 @@ pub struct WidgetStore {
     /// **diz** fechado, e uma lista de 14 linhas com uma face só volta a ser o depósito da foto 3,
     /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
     pub(super) area_menus: crate::interaction::AreaMenus,
+    /// O modo de edição do quadro (Object · Draw · Edit · Pose), publicado pelo `mode_drive` para os
+    /// painéis lerem sem chegar ao `HeroScreen` (D25b: o «+» do topo do Inspector só em Object).
+    pub(super) object_mode: crate::object_mode::ObjectMode,
     pub(super) tool_bars: crate::interaction::ToolBarsSlot,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
@@ -573,6 +590,9 @@ pub struct WidgetStore {
     pub(super) hierarchy_row_ids: std::collections::BTreeSet<NodeId>,
     /// ⭐ As linhas cujo objecto pode ir para um quadro (W15), com o tipo — a shell publica-as.
     pub(super) hierarchy_board_rows: BTreeMap<NodeId, ph2d_component_desc::ObjectKind>,
+    /// A linha da Hierarquia de cada objecto do mundo (`Entity::to_bits`) e se ele está trancado —
+    /// o cadeado do cartão Objeto do Inspector usa o MESMO id do cadeado da linha (CartoesUI C4).
+    pub(super) hierarchy_entity_rows: BTreeMap<u64, (NodeId, bool)>,
     /// TextInput ids that should treat Enter as "insert newline"
     /// instead of the default "Submit + Blur" (single-line form
     /// behavior). Populated by widgets that wrap multi-line content
@@ -694,6 +714,10 @@ pub struct WidgetStore {
     /// Latest Alt modifier state, mirror of [`Self::shift_held`]/[`Self::cmd_held`].
     /// Pushed by the shell on `ModifiersChanged`; folded into `GestureMods.alt`.
     pub(super) alt_held: bool,
+    /// Os campos de cartão (o Figma) — ver [`card_field_ops`].
+    pub(super) card_fields: core::cell::RefCell<BTreeMap<NodeId, CardFieldSpec>>,
+    /// As listas de cartões dos painéis — ver [`card_list_ops`].
+    pub(super) card_lists: card_list_ops::CardLists,
 }
 
 #[cfg(test)]

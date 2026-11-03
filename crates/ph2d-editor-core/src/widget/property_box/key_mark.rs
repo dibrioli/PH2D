@@ -61,6 +61,35 @@ pub struct Rotulo<'a> {
     /// Uma chave por campo da linha (a linha que junta dois campos do catálogo, cada caixa o seu).
     por_campo: &'static [TextKey],
     coluna: bool,
+    /// As letras das caixas de uma linha de vários números (T29).
+    pub eixos: Eixos,
+}
+
+/// ⭐ **O que as caixas de uma linha de vários números SÃO** — dá a letra de cada pega no cartão
+/// (T29): um eixo (`X · Y · Z · W`), um tamanho (`W · H`, como o Figma) ou um retângulo
+/// (`X · Y · W · H`). Declara-se no sítio que sabe o que guarda, nunca se adivinha pelo texto.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Eixos {
+    #[default]
+    Xyzw,
+    Tamanho,
+    Retangulo,
+    /// Um campo só cuja letra o sítio DECLARA (T56: a regra da última palavra não serve).
+    Letra(&'static str),
+}
+
+impl Eixos {
+    /// A letra da `i`-ésima caixa.
+    #[must_use]
+    pub fn letra(self, i: usize) -> &'static str {
+        let l: &[&str] = match self {
+            Self::Xyzw => &["X", "Y", "Z", "W"],
+            Self::Tamanho => &["W", "H"],
+            Self::Retangulo => &["X", "Y", "W", "H"],
+            Self::Letra(l) => return if i == 0 { l } else { "" },
+        };
+        l.get(i).copied().unwrap_or("")
+    }
 }
 
 impl<'a> From<&'a str> for Rotulo<'a> {
@@ -70,6 +99,7 @@ impl<'a> From<&'a str> for Rotulo<'a> {
             chave: None,
             por_campo: &[],
             coluna: true,
+            eixos: Eixos::Xyzw,
         }
     }
 }
@@ -87,6 +117,7 @@ impl From<TextKey> for Rotulo<'static> {
             chave: Some(k.key()),
             por_campo: &[],
             coluna: true,
+            eixos: Eixos::Xyzw,
         }
     }
 }
@@ -120,6 +151,12 @@ impl<'a> Rotulo<'a> {
             por_campo: campos,
             ..Self::from(texto)
         }
+    }
+
+    /// As caixas da linha são um tamanho / um retângulo (ver [`Eixos`]).
+    #[must_use]
+    pub fn eixos(self, eixos: Eixos) -> Self {
+        Self { eixos, ..self }
     }
 
     /// A chave do campo do catálogo que este rótulo nomeia.
@@ -235,6 +272,17 @@ pub fn key_mark_target(id: NodeId) -> Option<KeyMarkClick> {
 }
 
 /// O despacho do rato regista o clique num losango; a shell lê-o com [`take_key_mark_click`].
+/// Regista o alvo clicável da marca de `fields` (o desenho é de quem chama — o campo Figma tem o
+/// seu, de 6 px) e devolve o id a registar no `HitIndex`.
+pub(crate) fn register_key_mark_target(fields: &[NodeId]) -> Option<NodeId> {
+    let &primeiro = fields.first()?;
+    ALVOS.with(|a| {
+        a.borrow_mut()
+            .push((key_mark_id(primeiro), fields.to_vec()))
+    });
+    Some(key_mark_id(primeiro))
+}
+
 pub(crate) fn pedir(c: KeyMarkClick) {
     PEDIDO.with(|p| *p.borrow_mut() = Some(c));
 }

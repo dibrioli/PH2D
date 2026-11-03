@@ -189,6 +189,17 @@ impl WidgetStore {
         self.hierarchy_board_rows = rows;
     }
 
+    /// Publica `entidade → (linha, trancado)` dos objectos do mundo (`sync_from_hierarchy`).
+    pub fn set_hierarchy_entity_rows(&mut self, rows: BTreeMap<u64, (NodeId, bool)>) {
+        self.hierarchy_entity_rows = rows;
+    }
+
+    /// A linha da Hierarquia do objecto `entity_bits` e se ele está trancado.
+    #[must_use]
+    pub fn hierarchy_row_of_entity(&self, entity_bits: u64) -> Option<(NodeId, bool)> {
+        self.hierarchy_entity_rows.get(&entity_bits).copied()
+    }
+
     /// A linha `row` pode ir para um quadro?
     #[must_use]
     pub fn hierarchy_row_goes_to_board(&self, row: NodeId) -> bool {

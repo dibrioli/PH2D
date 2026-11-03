@@ -138,6 +138,10 @@ pub(super) fn dispatch_move<'frame>(
     if store.panel_row_drag().is_some() {
         store.update_panel_row_drag(event.x, event.y);
     }
+    // ⭐ O arrasto de um CARTÃO pelo cabeçalho — a pintura do painel conduz o voo.
+    if store.update_card_drag(event.x, event.y) {
+        return;
+    }
     // ⭐ O arrasto de uma secção pela pega — o painel desenha a marca da queda a partir daqui.
     if store.section_drag().is_some() {
         store.update_section_drag(event.x, event.y);
@@ -180,7 +184,9 @@ pub(super) fn dispatch_move<'frame>(
                 // on which delta is larger. `>=` so a perfect
                 // 45° diagonal defaults to horizontal (the
                 // primary scrub axis).
-                let horizontal = dx_total.abs() >= dy_total.abs();
+                // O campo Figma arrasta só na horizontal (o cursor fica preso; o vertical não diz nada).
+                let horizontal =
+                    dx_total.abs() >= dy_total.abs() || store.card_field(drag.id).is_some();
                 // Pass cursor position so the promotion re-anchors
                 // `last_x`/`last_y` here — otherwise the same Move
                 // that crossed the threshold would apply the
@@ -208,7 +214,10 @@ pub(super) fn dispatch_move<'frame>(
             } else {
                 (0.0, step_dy)
             };
-            let shift_mul = if store.shift_held() {
+            let card = store.card_field(d.id).is_some();
+            let shift_mul = if card {
+                store.card_step_mul()
+            } else if store.shift_held() {
                 drag::DRAG_SHIFT_MUL
             } else {
                 1.0
@@ -222,7 +231,18 @@ pub(super) fn dispatch_move<'frame>(
             // atravessavam-se INTEIROS em menos de 20 px, o pior em 0,01 px. Ver o doc-header de
             // `interaction::state::number_scrub` para a tabela e o porquê de nenhum número novo
             // ser inventado aqui.
-            let law = store.number_scrub_law(d.id, d.step);
+            let law = if card {
+                // O Figma: um passo por pixel; com intervalo conhecido, o intervalo inteiro em
+                // `DRAG_RANGE_PX_H` (a lei da casa).
+                let bounds = store.number_scrub_interval(d.id);
+                drag::ScrubLaw {
+                    rate_x: bounds.map_or(d.step, |(lo, hi)| (hi - lo) / drag::DRAG_RANGE_PX_H),
+                    rate_y: 0.0,
+                    bounds,
+                }
+            } else {
+                store.number_scrub_law(d.id, d.step)
+            };
             let (rate_x, rate_y) = (law.rate_x, law.rate_y);
             let delta = (dom_dx as f64 * rate_x - dom_dy as f64 * rate_y) * shift_mul;
             // Apply the per-Move delta on top of the chip's

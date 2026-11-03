@@ -554,6 +554,8 @@ color_tokens! {
     // O avatar de um membro: a inicial sobre a etiqueta `normal` (no escuro, MEDIDO: o navy do
     // claro lia-se a 2,5:1 — subiu em L até 4,52:1 sobre `kanban-black`).
     KanbanAvatarInk => "kanban-avatar-ink",
+    // Cartões UI (docs/CartoesUI): a caixa de um campo, um degrau abaixo do cartão, e o rótulo dele.
+    CardField => "card-field", CardFieldHover => "card-field-hover", CardLabel => "card-label",
 }
 
 impl ColorToken {

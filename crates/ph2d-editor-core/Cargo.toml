@@ -30,6 +30,7 @@ ph2d-tween = { path = "../ph2d-tween" }
 # `ph2d-ui-state` — copiá-la daria uma SEGUNDA resposta a "como uma mola integra", e depender da
 # `ph2d-ui-state` arrastaria `ph2d-vec-scene` + `ph2d-vec-blend` para dentro de todo painel.
 ph2d-spring = { path = "../ph2d-spring" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 # As formas do Vector no Pixel (`pixel_panel/shapes.rs`, ADR-0196 §12): o `ShapeKind` e os valores
 # de omissão dele. Já estava no grafo normal desta crate (pela `ph2d-vec-render`): a aresta é nova,
 # a crate não.

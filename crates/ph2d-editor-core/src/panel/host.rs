@@ -65,6 +65,12 @@ pub trait PanelHostInternal: PanelHost {
     /// method calls. Concrete impls split the fields directly.
     fn store_and_hit_index_mut(&mut self) -> (&WidgetStore, &mut HitIndex);
 
+    /// A área de desenho menos as réguas (`ruler::content`) deste quadro — o que um painel que
+    /// FLUTUA sobre o canvas não deve tapar. `None` = o hospedeiro não tem réguas.
+    fn content_area(&self) -> Option<crate::zones::Rect> {
+        None
+    }
+
     /// Outbound editor-action queue. Panels push commits here for the
     /// shell to drain each frame.
     fn bus(&self) -> &ActionBus;

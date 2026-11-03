@@ -604,6 +604,23 @@ impl HeroScreen {
         if pre_dispatch::run(self, event) {
             return true;
         }
+        // ⭐ CartoesUI: a lista suspensa de um cartão abre/fecha ANTES dos painéis — a opção
+        //    escolhida segue para o painel dono, e a lista fecha no mesmo clique.
+        if let WidgetEvent::Click(id) = event
+            && (crate::panel::cards::dropdown::on_click(id)
+                || crate::panel::cards::apply_loose_click(&mut self.store, id))
+        {
+            return true;
+        }
+        // T44: o alfinete cicla três estados — o 2.º clique rápido chega como duplo e conta.
+        if let WidgetEvent::DoubleClick(id) = event
+            && crate::panel::cards::apply_loose_click(&mut self.store, id)
+        {
+            return true;
+        }
+        if crate::panel::cards::estilos::on_event(&mut self.store, event) {
+            return true;
+        }
         // ADR-0029 Phase D: legacy fn-pointer dispatch deleted — every
         // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
         // typed `Panel<State>`. Walk only the typed registry.
@@ -633,6 +650,7 @@ impl HeroScreen {
         // running at host level means the gallery keeps working
         // when the typed Inspector is absent.
         if theme_menu::apply_section_theme_click(&mut self.store, event)
+            || crate::panel::cards::apply_list_menu_click(&mut self.store, event)
             || crate::widget::showcase::apply_showcase_event(&mut self.store, event)
         {
             return true;

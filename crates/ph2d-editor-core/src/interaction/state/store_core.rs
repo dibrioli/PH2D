@@ -64,6 +64,7 @@ impl WidgetStore {
             fold_body_h: core::cell::RefCell::new(BTreeMap::new()),
             hover_live: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
+            floating_panels: std::collections::BTreeSet::new(),
             sub_scroll_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),
             panel_visible_h: BTreeMap::new(),
@@ -107,6 +108,7 @@ impl WidgetStore {
             dock_w_right: None,
             tool_overflow: Vec::new(),
             area_menus: crate::interaction::AreaMenus::default(),
+            object_mode: crate::object_mode::ObjectMode::Object,
             tool_bars: crate::interaction::ToolBarsSlot::default(),
             menu_contrib: Vec::new(),
             dock_h_bottom: None,
@@ -118,6 +120,7 @@ impl WidgetStore {
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
             hierarchy_board_rows: std::collections::BTreeMap::new(),
+            hierarchy_entity_rows: std::collections::BTreeMap::new(),
             multiline_text_ids: std::collections::BTreeSet::new(),
             cancel_on_escape_ids: std::collections::BTreeSet::new(),
             mixed_numbers: std::collections::BTreeSet::new(),
@@ -147,6 +150,8 @@ impl WidgetStore {
             flip_strip: Default::default(),
             pixel_timeline: Default::default(),
             alt_held: false,
+            card_fields: Default::default(),
+            card_lists: Default::default(),
         }
     }
 

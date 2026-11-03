@@ -32,6 +32,7 @@ const ARROW_W: f32 = 2.0; // LITERAL-PX-OK: traço do chevron da alça, dentro d
 /// sob o dedo exigiria um id no `WidgetStore` e um estado que só existe enquanto a coluna não
 /// existe. O gesto de reabrir vive na shell, pela porta `dock_reopen_at`.
 pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    paint_float_seams(layout, scene, theme);
     for side in [DockSide::Left, DockSide::Right] {
         let r = layout.dock_reopen(side);
         if r.w <= 0.0 || r.h <= 0.0 {
@@ -46,6 +47,34 @@ pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Th
         // ⭐ Uma marca ao meio, na altura de uma linha — o bastante para dizer «puxa-me», sem
         //   pedir um ícone (que exigiria medir texto num sítio que não tem `TextSystem`).
         let mark_h = ph2d_tokens::ROW_H_PX;
+        let mark = Rect::new(
+            r.x + (r.w - ARROW_W) * 0.5,
+            r.y + (r.h - mark_h) * 0.5,
+            ARROW_W,
+            mark_h,
+        );
+        fill_rounded_rect(
+            scene,
+            mark,
+            ARROW_W * 0.5,
+            resolve(ColorToken::Text3, theme),
+        );
+    }
+}
+
+/// ⭐ D24 (CartoesUI): **o ponto de alargar na beirada de uma lista que flutua** — a costura de uma
+/// coluna livre com lista não tem borda de coluna a mostrá-la (o canvas passa por trás), logo a
+/// marca é pintada, a mesma da alça de reabrir, a meio da altura da lista.
+fn paint_float_seams(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    for (side, flutua) in [
+        (DockSide::Left, layout.docks.float_left),
+        (DockSide::Right, layout.docks.float_right),
+    ] {
+        let r = layout.dock_seam(side);
+        if !flutua || r.w <= 0.0 || r.h <= 0.0 {
+            continue;
+        }
+        let mark_h = ph2d_tokens::ROW_H_PX.min(r.h);
         let mark = Rect::new(
             r.x + (r.w - ARROW_W) * 0.5,
             r.y + (r.h - mark_h) * 0.5,
@@ -199,6 +228,7 @@ mod tests {
         let l = layout(DockSides {
             left: false,
             right: true,
+            ..DockSides::NONE
         });
         let h = l.dock_reopen(DockSide::Left);
         let (col, _) = l.side_columns();
@@ -221,6 +251,43 @@ mod tests {
         );
     }
 
+    /// ⭐ D24: **uma lista que flutua sobre a coluna livre** — sem alça de reabrir, o canvas vai à
+    /// borda da janela, a costura é a beirada da lista (só na altura dela) e o ponto pinta.
+    #[test]
+    fn a_floating_list_moves_the_seam_to_its_own_edge() {
+        let probe = layout(DockSides::BOTH);
+        let (lc, rc) = probe.side_columns();
+        let lista = Rect::new(rc.x + 8.0, rc.y + 8.0, rc.w - 16.0, 200.0);
+        let (docks, lists) = DockSides::NONE.with_floating(lc, rc, [lista]);
+        assert!(docks.float_right && !docks.float_left && !docks.right);
+        let mut l = layout(docks);
+        l.float_lists = lists;
+        assert_eq!(
+            l.dock_reopen(DockSide::Right).w,
+            0.0,
+            "lista flutuante sem alca de reabrir"
+        );
+        assert_eq!(
+            l.draw_area.x + l.draw_area.w,
+            HERO_VIEWPORT_W,
+            "o canvas tem de passar por tras da lista ate' a' borda"
+        );
+        let seam = l.dock_seam(DockSide::Right);
+        assert_eq!((seam.x, seam.y, seam.h), (rc.x, lista.y, lista.h));
+        assert_eq!(l.dock_seam_at((rc.x + 1.0, lista.y + lista.h + 10.0)), None);
+        assert_eq!(
+            l.dock_width_for(DockSide::Right, seam.x),
+            rc.w,
+            "agarrar a costura nao pode saltar a largura"
+        );
+        let mut scene = VectorScene::new();
+        paint_float_seams(&l, &mut scene, Theme::Dark);
+        assert!(
+            scene.inner().encoding().n_path_segments > 0,
+            "o ponto de alargar nao pintou"
+        );
+    }
+
     /// ⛔ **A alça e a costura nunca respondem ao mesmo tempo** — uma exige a coluna aberta, a
     /// outra fechada. Se as duas respondessem, um toque seria ambíguo.
     #[test]
@@ -230,10 +297,12 @@ mod tests {
             DockSides {
                 left: false,
                 right: true,
+                ..DockSides::NONE
             },
             DockSides {
                 left: true,
                 right: false,
+                ..DockSides::NONE
             },
             DockSides::NONE,
         ] {

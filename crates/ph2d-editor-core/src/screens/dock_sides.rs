@@ -61,6 +61,11 @@ pub struct DockSides {
     pub left: bool,
     /// E a da DIREITA?
     pub right: bool,
+    /// ⭐ D24 (CartoesUI): a coluna da ESQUERDA está livre mas uma lista FLUTUA sobre ela — sem
+    /// alça de reabrir nem a reserva dela; a área de desenho vai até à borda.
+    pub float_left: bool,
+    /// E sobre a da DIREITA?
+    pub float_right: bool,
 }
 
 /// **Quanto de uma coluna um painel tem de cobrir para a ocupar.**
@@ -105,11 +110,15 @@ impl DockSides {
     pub const BOTH: Self = Self {
         left: true,
         right: true,
+        float_left: false,
+        float_right: false,
     };
     /// Nenhuma coluna ocupada — a área de desenho vai do trilho à borda direita.
     pub const NONE: Self = Self {
         left: false,
         right: false,
+        float_left: false,
+        float_right: false,
     };
 
     /// **Pergunta aos rects que os painéis PUBLICARAM** quais colunas estão ocupadas — a porta
@@ -134,6 +143,43 @@ impl DockSides {
             }
         }
         out
+    }
+
+    /// ⭐ **As listas que FLUTUAM sobre uma coluna livre** (D24) — `floating` são os rects de
+    /// `WidgetStore::floating_panel_rects`. Devolve os lados marcados e, por lado (`[esquerda,
+    /// direita]`), o rect da lista — a alça de largura vive na beirada dela ([`HeroLayout::dock_seam`]).
+    ///
+    /// ⚠️ Uma lista assenta numa coluna quando ao menos metade da LARGURA dela cai na coluna; uma
+    /// coluna ocupada por um inquilino a sério ignora-a (a costura já é a da coluna).
+    ///
+    /// [`HeroLayout::dock_seam`]: crate::screens::layout::HeroLayout::dock_seam
+    #[must_use]
+    pub fn with_floating(
+        mut self,
+        left_col: Rect,
+        right_col: Rect,
+        floating: impl IntoIterator<Item = Rect>,
+    ) -> (Self, [Rect; 2]) {
+        let mut lists = [Rect::new(left_col.x, left_col.y, 0.0, 0.0); 2];
+        lists[1] = Rect::new(right_col.x, right_col.y, 0.0, 0.0);
+        for r in floating {
+            for (i, col, taken) in [(0, left_col, self.left), (1, right_col, self.right)] {
+                let w = (r.x + r.w).min(col.x + col.w) - r.x.max(col.x);
+                if taken || r.w <= 0.0 || r.h <= 0.0 || w < r.w * COLUMN_TAKEN_FRAC {
+                    continue;
+                }
+                lists[i] = if lists[i].h > 0.0 {
+                    let y0 = lists[i].y.min(r.y);
+                    let y1 = (lists[i].y + lists[i].h).max(r.y + r.h);
+                    Rect::new(r.x, y0, r.w, y1 - y0)
+                } else {
+                    r
+                };
+            }
+        }
+        self.float_left = lists[0].h > 0.0;
+        self.float_right = lists[1].h > 0.0;
+        (self, lists)
     }
 }
 

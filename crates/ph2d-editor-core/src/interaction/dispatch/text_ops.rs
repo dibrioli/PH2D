@@ -117,6 +117,12 @@ pub(super) fn byte_offset_from_click_xy(
                 (text.as_str(), x, rect.y, font_base, false)
             }
         }
+        Some(InteractiveState::NumberInput { buffer, .. }) if store.card_field(id).is_some() => {
+            // O campo Figma: o texto começa depois da célula do ícone (a pega).
+            let x = crate::widget::card_field::value_rect(rect).x;
+            let px = ph2d_card_stack::metrics::VALUE_PX;
+            (buffer.as_str(), x, rect.y, px, false)
+        }
         Some(InteractiveState::NumberInput { buffer, .. }) => {
             // O campo numérico partilha o recuo do campo de texto, e lê-o pela mesma porta.
             // ⚠️ Os chips de canal são CENTRADOS — o clique→byte deles depende da largura do

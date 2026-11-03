@@ -120,12 +120,14 @@ impl ColorToken {
             | T::KanbanList
             | T::KanbanSlot
             | T::KanbanNewList
-            | T::KanbanCard => Role::Surface(Rank::Rest),
+            | T::KanbanCard
+            | T::CardField => Role::Surface(Rank::Rest),
             T::Bg3
             | T::BgElev
             | T::TimelineRowAlt
             | T::CodeLineCurrent
             | T::KanbanCardRaised
+            | T::CardFieldHover
             | T::KanbanHeaderBtnOn => Role::Surface(Rank::Raised),
             T::AccentSoft
             | T::DangerSoft
@@ -157,7 +159,11 @@ impl ColorToken {
             | T::KanbanDueDoneFg
             | T::KanbanAvatarInk => Role::Ink(InkLevel::Primary),
             T::AccentFg => Role::Ink(InkLevel::OnAccent),
-            T::Text3 | T::KanbanListMeta | T::KanbanCardMeta | T::KanbanTintedMeta => {
+            T::Text3
+            | T::KanbanListMeta
+            | T::KanbanCardMeta
+            | T::KanbanTintedMeta
+            | T::CardLabel => {
                 Role::Ink(InkLevel::Tertiary)
             }
             T::TextDisabled => Role::Ink(InkLevel::Disabled),

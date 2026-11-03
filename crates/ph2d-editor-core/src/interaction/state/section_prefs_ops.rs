@@ -247,6 +247,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
     }
     tema_custom::escreve(store, &mut s);
     super::picker_pin_ops::escreve_posicao(store, &mut s);
+    super::card_loose_ops::escreve(store, &mut s);
     s
 }
 
@@ -276,7 +277,9 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
             && let (Ok(id), Ok(e)) = (id.parse(), v.trim().parse())
         {
             epochs.insert(NodeId(id), e);
-        } else if !super::picker_pin_ops::le_posicao(store, k, v) {
+        } else if !super::picker_pin_ops::le_posicao(store, k, v)
+            && !super::card_loose_ops::le(store, k, v)
+        {
             custom.linha(k, v);
         }
     }

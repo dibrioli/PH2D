@@ -17,7 +17,7 @@
 //! Inter (`1,21 em`); acima disso as letras encostam nas linhas vizinhas, e o que o Blender e a
 //! Godot fazem nesse regime é a ESCALA DA INTERFACE inteira — outra obra.
 //!
-//! ⚠️ **O valor de fábrica** é `Inter` · `Normal` · `Normal`: escala `1,0` exacta e reforço `0`. A
+//! ⚠️ **O valor de fábrica** é `NotoSans` (dono 01/11, D11 dos Cartões UI; antes `Inter`) · `Normal` · `Normal`: escala `1,0` exacta e reforço `0`. A
 //! FONTE muda em relação ao que esta máquina mostrava antes — [`UiFont::Inter`] diz porquê.
 
 use crate::typography::{FontWeight, TypeToken};
@@ -33,10 +33,10 @@ pub enum UiFont {
     /// porque a régua é a mesma em toda máquina: **135** construções de teste medem a Inter, e as
     /// **4** que mediam a fonte do sistema mediam a fonte DESTA máquina (numa sem Noto mediriam
     /// outra). ⇒ quem quiser a aparência de antes escolhe [`Self::NotoSans`].
-    #[default]
     Inter,
-    /// Neutra, cobre latim, grego e cirílico inteiros — e é a aparência que o app tinha nesta
-    /// máquina antes de 2026-10-01 (ver [`Self::Inter`]).
+    /// Neutra, cobre latim, grego e cirílico inteiros. ⭐ **A de fábrica desde 01/11** (dono, Cartões
+    /// UI D11: «Noto Sans por padrão»; `docs/CartoesUI/01_decisoes_do_dono.md`).
+    #[default]
     NotoSans,
     /// Desenhada para leitura fácil: `l`, `I` e `1` não se confundem.
     AtkinsonHyperlegible,
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn the_factory_style_changes_nothing() {
         let s = UiTextStyle::default();
-        assert_eq!(s.font, UiFont::Inter);
+        assert_eq!(s.font, UiFont::NotoSans);
         assert_eq!(s.weight.boost(), 0);
         assert_eq!(s.size.scale().to_bits(), 1.0_f32.to_bits());
     }

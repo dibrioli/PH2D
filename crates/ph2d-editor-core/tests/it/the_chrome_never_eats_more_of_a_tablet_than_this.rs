@@ -182,6 +182,7 @@ fn collapsing_both_columns_still_gives_the_tablet_back() {
             DockSides {
                 left: false,
                 right: false,
+                ..DockSides::NONE
             },
         );
         let pct = 100.0 * closed.draw_area.w * closed.draw_area.h / (w * ht);

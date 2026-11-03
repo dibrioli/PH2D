@@ -115,6 +115,27 @@ pub fn stroke_rounded_rect(
     scene.stroke_path(&stroke, Affine::IDENTITY, &Brush::Solid(color), &rr);
 }
 
+/// [`stroke_rounded_rect`] TRACEJADO (`dash` = traço, vão) — a linha-fantasma do cartão solto (C5).
+// FRAME-RAW-OK: e' a CASA do primitivo — o contorno tracejado e' definido aqui
+pub fn stroke_rounded_rect_dashed(
+    scene: &mut VectorScene,
+    rect: Rect,
+    radius: f32,
+    width: f32,
+    dash: (f64, f64),
+    color: Color,
+) {
+    let rr = RoundedRect::new(
+        rect.x as f64,
+        rect.y as f64,
+        (rect.x + rect.w) as f64,
+        (rect.y + rect.h) as f64,
+        scale_radius(radius).max(0.0) as f64,
+    );
+    let stroke = Stroke::new(width as f64).with_dashes(0.0, [dash.0, dash.1]);
+    scene.stroke_path(&stroke, Affine::IDENTITY, &Brush::Solid(color), &rr);
+}
+
 /// ⭐⭐ **O CONTORNO de uma peça de GRUPO** — a irmã traçada do [`fill_rounded_rect_radii`].
 ///
 /// ⛔ Report do dono (2026-09-30): *«botões que em alguns casos ficaram com quinas redondas mesmo

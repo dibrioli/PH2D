@@ -60,6 +60,11 @@ impl ActionBus {
         self.queue.len()
     }
 
+    /// Larga o que entrou depois de `len` — o ensaio de um cartão preso semeia sem pedir nada (T61).
+    pub fn truncate(&mut self, len: usize) {
+        self.queue.truncate(len);
+    }
+
     /// Discard any queued actions without dispatching. Used by tests
     /// + reset paths; production code should always `drain`.
     #[cfg(any(test, debug_assertions))]

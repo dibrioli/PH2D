@@ -83,9 +83,12 @@ pub(super) fn frame_layout(
         hero.view.center_split,
         crate::screens::layout::DockSides::BOTH,
     );
-    let published: Vec<_> = hero.store.panel_rects().collect();
+    let published: Vec<_> = hero.store.docked_panel_rects().collect();
     let (left_col, right_col) = probe.side_columns();
-    let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
+    // ⭐ D24: a lista de cartões FLUTUA — não reserva a coluna, mas a costura vai para a beirada dela.
+    let (docks, float_lists) =
+        crate::screens::layout::DockSides::from_published(left_col, right_col, published)
+            .with_floating(left_col, right_col, hero.store.floating_panel_rects());
     if !hero.view.legacy_chrome {
         // ⛔⛔ **UMA linha, sempre** (Enio, 2026-08-31: *«não podemos ir perdendo espaço»*). A faixa
         // crescia para `108 px` no iPad 11 e no mini com o pincel em mãos — `−3,3` pontos de área
@@ -104,6 +107,7 @@ pub(super) fn frame_layout(
         hero.view.center_split,
         docks,
     );
+    layout.float_lists = float_lists;
     // **The timeline docks INTO the Motion workspace** (W4.T4). Only when both are on screen:
     // otherwise the graph keeps its full band and the timeline keeps its own dock. The condition
     // is read from the panel visibility the bridges already publish — the layout stays a pure
@@ -163,10 +167,7 @@ fn palco(viewport: Rect) -> HeroLayout {
             bottom_dock_h: 0.0,
         },
         crate::screens::layout::CenterSplit::None,
-        crate::screens::layout::DockSides {
-            left: false,
-            right: false,
-        },
+        crate::screens::layout::DockSides::NONE,
     );
     layout.draw_area = viewport;
     layout

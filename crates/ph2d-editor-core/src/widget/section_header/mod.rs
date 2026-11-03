@@ -137,6 +137,9 @@ pub fn paint_section_header(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    if absorve(&header.label, rect.h) {
+        return;
+    }
     // Collapsed sections get a darker background plate so the
     // visual hierarchy (open = transparent on panel; closed =
     // tinted) reads as "this block is folded". Centralized here so
@@ -372,4 +375,43 @@ mod tests {
             Theme::Workshop,
         );
     }
+}
+
+thread_local! {
+    /// O PRÓXIMO cabeçalho de secção não se pinta: dá o título e a altura a quem o pediu
+    /// ([`absorb_next_header`]). É o cartão (CartoesUI C4) que já pinta o título.
+    static ABSORVE: std::cell::RefCell<Option<Option<(String, f32)>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn absorve(label: &str, h: f32) -> bool {
+    ABSORVE.with(|a| {
+        let mut a = a.borrow_mut();
+        match a.as_mut() {
+            Some(slot @ None) => {
+                *slot = Some((label.to_string(), h));
+                true
+            }
+            _ => false,
+        }
+    })
+}
+
+/// ⭐ **Corre `f` com o 1.º cabeçalho de secção ABSORVIDO** — não pinta; devolve `(título, altura)`
+/// dele. Os cabeçalhos seguintes (as subsecções) pintam-se. O cartão de um componente (CartoesUI
+/// C4) pinta o título no cabeçalho DELE e o corpo de hoje por baixo.
+pub fn absorb_next_header<R>(f: impl FnOnce() -> R) -> (R, Option<(String, f32)>) {
+    let antes = ABSORVE.with(|a| a.borrow_mut().replace(None));
+    let out = f();
+    let cab = ABSORVE
+        .with(|a| std::mem::replace(&mut *a.borrow_mut(), antes))
+        .flatten();
+    (out, cab)
+}
+
+/// O PRÓXIMO cabeçalho vai ser absorvido ([`absorb_next_header`])? Quem regista o rect dele
+/// (a moldura da secção) não o regista: o cartão já é o título e a pega (CartoesUI T58).
+#[must_use]
+pub fn absorbing_next_header() -> bool {
+    ABSORVE.with(|a| matches!(*a.borrow(), Some(None)))
 }

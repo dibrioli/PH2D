@@ -77,10 +77,12 @@ fn all_dock_states() -> [DockSides; 4] {
         DockSides {
             left: true,
             right: false,
+            ..DockSides::NONE
         },
         DockSides {
             left: false,
             right: true,
+            ..DockSides::NONE
         },
     ]
 }
@@ -331,7 +333,8 @@ fn the_columns_are_occupied_by_what_was_published_not_by_a_list_of_names() {
         DockSides::from_published(left_col, right_col, [right_col]),
         DockSides {
             left: false,
-            right: true
+            right: true,
+            ..DockSides::NONE
         },
         "o rect da coluna da direita ocupa a coluna da direita — e SO' ela"
     );

@@ -365,6 +365,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.radius_m" => "Radius",
         "panel.inspector.physics.half_height_m" => "Half Height",
         "panel.inspector.physics.half_width_m" => "Half Width",
+        "panel.inspector.physics.half_size" => "Half Size",
+        "panel.inspector.physics.init_velocity" => "Init Velocity",
         "panel.inspector.physics.dynamic" => "Dynamic",
         "panel.inspector.physics.static" => "Static",
         "panel.inspector.physics.kinematic" => "Kinematic",

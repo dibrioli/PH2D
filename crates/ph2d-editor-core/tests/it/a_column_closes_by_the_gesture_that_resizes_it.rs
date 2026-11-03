@@ -89,10 +89,12 @@ fn a_side_offers_either_the_seam_or_the_handle_never_both() {
             DockSides {
                 left: false,
                 right: true,
+                ..DockSides::NONE
             },
             DockSides {
                 left: true,
                 right: false,
+                ..DockSides::NONE
             },
         ] {
             let l = layout(*w, *h, docks);
@@ -182,6 +184,7 @@ fn a_closed_column_reserves_the_strip_its_handle_lives_in() {
             DockSides {
                 left: false,
                 right: true,
+                ..DockSides::NONE
             },
         );
         let alca = l.dock_reopen(DockSide::Left);

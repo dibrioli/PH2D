@@ -249,6 +249,7 @@ mod colunas;
 use colunas::{accel_col, inv_mass_col, scalar_col, share, value_head, vec2_col};
 mod contacto;
 use contacto::Contacto;
+pub mod corda;
 
 /// The simulation parameters resolved at eval (all arithmetic-ready).
 struct Params {

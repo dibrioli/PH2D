@@ -65,6 +65,16 @@ pub enum ContextMenuKind {
     SectionOutline {
         section: NodeId,
     },
+    /// ⭐ CartoesUI (D21): o ícone ao lado do título de uma lista de cartões — repor posições,
+    /// cores, ou tudo, dos cartões de `panel`.
+    CardListMenu {
+        panel: NodeId,
+    },
+    /// ⭐ CartoesUI (D28/D30): uma linha da lista de estilos de cor — Apply, Edit style…, Rename,
+    /// Duplicate, Delete do estilo `style`.
+    ColorStyleRow {
+        style: u32,
+    },
     /// Right-clicked on an existing note (qualquer das faces dela — fundo, título, corpo, pega).
     /// O menu oferece as cores de marcador, *Duplicate* e *Delete*. `panel` is the note's host;
     /// `note_index` is the index into `notes_per_panel[panel]`.
@@ -437,6 +447,8 @@ impl ContextMenuKind {
             section: None,
         },
         Self::SectionOutline { section: NodeId(1) },
+        Self::CardListMenu { panel: NodeId(1) },
+        Self::ColorStyleRow { style: 1 },
         Self::ToolBarOverflow,
         Self::AreaCommands { slot: 0 },
         Self::NoteBackground {

@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-card-rope"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# T44 (docs/CartoesUI): a corda do alfinete entre um cartão solto e o objecto dele — a lei do nó
+# `motion.verlet-rope` andada por quadro sobre o store dos cartões. Genérica: quem compõe diz onde
+# fica, em ecrã, o sujeito preso.
+[dependencies]
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-node-motion-verlet-rope = { path = "../ph2d-node-motion-verlet-rope" }
+
+[lints]
+workspace = true

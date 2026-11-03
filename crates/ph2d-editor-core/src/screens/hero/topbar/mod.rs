@@ -259,7 +259,13 @@ pub fn paint_hover_tooltip(
     ) {
         return false;
     }
-    let Some(text) = store.tooltip_for(id) else {
+    // O campo numérico de um cartão sem dica autorada diz como se arrasta (CartoesUI, maquete B).
+    let campo = store
+        .tooltip_for(id)
+        .is_none()
+        .then(|| crate::panel::cards::dicas::field_hint(store, id))
+        .flatten();
+    let Some(text) = store.tooltip_for(id).or(campo.as_deref()) else {
         return false;
     };
     let Some(target_rect) = hit_index.rect_for(id) else {

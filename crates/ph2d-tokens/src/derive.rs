@@ -466,6 +466,46 @@ pub fn card_surface(theme: Theme, subsection: bool) -> Option<Color> {
     (lifted != natural).then(|| lifted.color())
 }
 
+/// ⭐⭐ **Os tons de um cartão com tema PRÓPRIO** (`docs/CartoesUI` §5, report do dono 01/11: *«a
+/// aplicação dos themes … apenas muda as cores das fonts»*). Os `card-*`/`kanban-*` são cores de
+/// DADO emprestadas (todos os escuros modernos davam o mesmo fundo); um cartão com tema próprio
+/// pinta-se nos tons DESTE tema, com as distâncias que o Kanban usa entre cartão, caixa e
+/// segmento aceso (medidas em `tokens.json`, forge e sunstone: ≈ um [`SURFACE_STEP`]).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum CardTone {
+    /// O fundo do cartão — o `bg-1` do tema (com a cerca do colapso de [`card_surface`]).
+    Surface,
+    /// A caixa de um campo: um degrau abaixo do fundo.
+    Field,
+    /// A caixa sob o rato.
+    FieldHover,
+    /// O segmento aceso e a lista suspensa aberta.
+    Raised,
+}
+
+/// Os degraus de [`SURFACE_STEP`] de cada [`CardTone`] a partir do fundo: `(escuro, claro)`. No
+/// Kanban escuro a caixa sob o rato volta meio degrau rumo ao cartão e o aceso sobe; no claro o
+/// cartão é o mais claro e todos descem (forge: cartão `.282`, caixa `.235`, hover `.255`, aceso
+/// `.326`; sunstone: `1`, `.945`, `.92`, `.961`).
+const fn card_tone_steps(tone: CardTone) -> (f32, f32) {
+    match tone {
+        CardTone::Surface => (0.0, 0.0),
+        CardTone::Field => (-1.0, -1.0),
+        CardTone::FieldHover => (-0.5, -1.5),
+        CardTone::Raised => (1.0, -0.5),
+    }
+}
+
+/// ⭐⭐ A cor de um [`CardTone`] em `theme` — clássico ou moderno.
+#[must_use]
+pub fn card_tone(theme: Theme, tone: CardTone) -> Color {
+    let s = card_surface(theme, false).unwrap_or_else(|| ColorToken::Bg1.resolve(theme));
+    let (escuro, claro) = card_tone_steps(tone);
+    let d = if theme.is_dark() { escuro } else { claro } * SURFACE_STEP;
+    let canal = |c: u8| f32::from(c) / 255.0 + d;
+    Rgb::new(canal(s.r), canal(s.g), canal(s.b)).clamp().color()
+}
+
 /// A alfa do `highlight_color` do Godot — `Color(accent, 0.275)`.
 const HIGHLIGHT_A: f32 = 0.275;
 
@@ -596,6 +636,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
             || k.starts_with("person-")
             || k.starts_with("code-")
             || k.starts_with("kanban-")
+            // Os cartões (CartoesUI) moram com o Kanban: emprestados como ele.
+            || k.starts_with("card-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

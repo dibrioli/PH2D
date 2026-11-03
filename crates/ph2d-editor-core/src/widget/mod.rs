@@ -20,6 +20,8 @@ mod button;
 mod button_surface;
 mod calendar;
 mod card;
+pub mod card_field;
+pub mod card_ink;
 mod checkbox;
 mod color_picker;
 mod color_swatch;
@@ -225,7 +227,10 @@ pub use section_header::body::{SectionFold, folded_gap, has_body as section_has_
 /// ⭐ A geometria e o pintor da PEGA de secção (2026-09-29) — lidos pelo painel que regista o alvo.
 pub use section_header::grip as section_grip;
 pub use section_header::grupo::{group_header_h, paint_group_header};
-pub use section_header::{SectionHeader, grip_hit_rect, paint_section_header, section_title_px};
+pub use section_header::{
+    SectionHeader, absorb_next_header, absorbing_next_header, grip_hit_rect, paint_section_header,
+    section_title_px,
+};
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };

@@ -41,6 +41,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
             super::menu_tables_section::SECTION_MENU_CLASSIC_ROWS
         }
         ContextMenuKind::NoteBackground { .. } => menu_tables::NOTE_BACKGROUND_ROWS,
+        ContextMenuKind::CardListMenu { .. } => super::menu_tables_section::CARD_LIST_MENU_ROWS,
+        ContextMenuKind::ColorStyleRow { .. } => super::menu_tables_section::COLOR_STYLE_ROWS,
         ContextMenuKind::ThemeSelector if crate::paint::ui_is_redesign() => {
             menu_tables::THEME_SELECTOR_REDESIGN_ROWS
         }

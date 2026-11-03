@@ -2252,3 +2252,33 @@ fn every_settings_submenu_is_classified_as_choice_or_action() {
          na de NÃO_ESCOLHEM, com o motivo escrito"
     );
 }
+
+/// ⛔ **D32 (dono 02/11): o fundo de um widget acende e apaga NO QUADRO** — com o desvanecer, o
+/// que o rato deixava ainda apagava enquanto o seguinte acendia, e os fundos piscavam em fila.
+///
+/// *Mutação: `Role::Fade` de volta no `tick_hover` ⇒ o primeiro quadro fica entre 0 e 1.*
+#[test]
+fn a_widget_hover_lights_and_clears_in_one_frame() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.motion
+        .set_character(crate::motion::UiCharacter::Expressive);
+    let id = NodeId(0xD32);
+    let com = |state| crate::interaction::InteractiveState::Button { state };
+    hero.store.register(id, com(ButtonState::Normal));
+    hero.tick_motion(1.0 / 60.0);
+    hero.store.register(id, com(ButtonState::Hovered));
+    hero.tick_motion(1.0 / 60.0);
+    let aceso = hero.store.hover_live(id);
+    assert!(
+        (aceso - 1.0).abs() < f32::EPSILON,
+        "acendeu aos poucos: t = {aceso}"
+    );
+    hero.store.register(id, com(ButtonState::Normal));
+    hero.tick_motion(1.0 / 60.0);
+    let apagado = hero.store.hover_live(id);
+    assert!(
+        apagado.abs() < f32::EPSILON,
+        "apagou aos poucos: t = {apagado}"
+    );
+}

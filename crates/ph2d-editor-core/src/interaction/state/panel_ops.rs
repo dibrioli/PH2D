@@ -134,6 +134,39 @@ impl WidgetStore {
     /// dispatch can find which panel is under the cursor.
     pub fn set_panel_rect(&mut self, panel: NodeId, rect: Rect) {
         self.panel_rects.insert(panel, rect);
+        self.floating_panels.remove(&panel);
+    }
+
+    /// ⭐ **Publica o rect de um painel que FLUTUA sobre a coluna** (a lista de cartões, D24): ele é
+    /// o alvo do clique como qualquer rect publicado, mas NÃO reserva a coluna — o canvas passa por
+    /// trás e a alça de largura vai para a beirada dele (`DockSides::with_floating`).
+    pub fn set_floating_panel_rect(&mut self, panel: NodeId, rect: Rect) {
+        self.panel_rects.insert(panel, rect);
+        self.floating_panels.insert(panel);
+    }
+
+    /// Este painel publicou por [`Self::set_floating_panel_rect`] (flutua sobre o canvas)?
+    #[must_use]
+    pub fn is_floating_panel(&self, panel: NodeId) -> bool {
+        self.floating_panels.contains(&panel)
+    }
+
+    /// Os rects publicados que RESERVAM coluna (todos menos os flutuantes).
+    pub fn docked_panel_rects(&self) -> impl Iterator<Item = Rect> + '_ {
+        self.panel_rects
+            .iter()
+            .filter(|(id, _)| {
+                !self.floating_panels.contains(id) && !self.card_lists.loose_rects.contains(id)
+            })
+            .map(|(_, r)| *r)
+    }
+
+    /// Os rects publicados por [`Self::set_floating_panel_rect`].
+    pub fn floating_panel_rects(&self) -> impl Iterator<Item = Rect> + '_ {
+        self.panel_rects
+            .iter()
+            .filter(|(id, _)| self.floating_panels.contains(id))
+            .map(|(_, r)| *r)
     }
 
     /// ⭐⭐ **Publica uma SUB-REGIÃO rolável** — uma região dentro de um painel com rolagem própria
@@ -191,6 +224,9 @@ impl WidgetStore {
     /// previous frame.
     pub fn clear_panel_rect(&mut self, panel: NodeId) {
         self.panel_rects.remove(&panel);
+        self.floating_panels.remove(&panel);
+        // C5: quem não pinta não pinta os soltos dele — os rects deles saem com o dele.
+        self.clear_loose_card_rects(panel);
     }
 
     /// Total height of all painted content in a panel (sum of

@@ -23,9 +23,10 @@ use std::collections::BTreeMap;
 /// **Um modo de edição.** `Object` é universal; os outros, só o tipo que os declara. ⭐ O mesmo nome
 /// diz o mesmo GESTO em todo tipo (dono 24/10): `Draw` cria o conteúdo do objecto, `Edit` mexe no
 /// que existe — o que cada um abre é da família, por par `(tipo, modo)`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectMode {
     /// Mover, rodar, escalar — o gizmo de transformação.
+    #[default]
     Object,
     /// Criar o conteúdo: pintar a imagem (o Painter), traçar no Flip (o Draw Mode do Grease Pencil),
     /// desenhar formas no vetor.

@@ -39,9 +39,10 @@ pub fn dispatch_text_input<'frame>(
     // selection state.
     let should_replace_selection = match store.get(id) {
         Some(InteractiveState::TextInput { .. }) | Some(InteractiveState::Combobox { .. }) => true,
-        Some(InteractiveState::NumberInput { .. }) => is_numeric_input_char(ch),
+        Some(InteractiveState::NumberInput { .. }) => accepts(store, id, ch),
         _ => false,
     };
+    let aceita = accepts(store, id, ch);
     if should_replace_selection {
         delete_selection_if_any(store, id);
     }
@@ -57,7 +58,7 @@ pub fn dispatch_text_input<'frame>(
             *caret = pos + ch.len_utf8();
             events.push(WidgetEvent::TextChanged(id));
         }
-        Some(InteractiveState::NumberInput { buffer, caret, .. }) if is_numeric_input_char(ch) => {
+        Some(InteractiveState::NumberInput { buffer, caret, .. }) if aceita => {
             buffer.insert(*caret, ch);
             *caret += ch.len_utf8();
             events.push(WidgetEvent::TextChanged(id));
@@ -112,4 +113,12 @@ fn composing_field(store: &WidgetStore) -> Option<ph2d_a11y::NodeId> {
     store
         .focus_id()
         .filter(|&id| matches!(store.get(id), Some(InteractiveState::TextInput { .. })))
+}
+
+/// O que uma `NumberInput` aceita: os algarismos de sempre, e num campo de CARTÃO também as contas
+/// e o sufixo de unidade (`0.35*2`, `12px` — `widget::card_field::eval_number`).
+fn accepts(store: &WidgetStore, id: ph2d_a11y::NodeId, ch: char) -> bool {
+    is_numeric_input_char(ch)
+        || (store.card_field(id).is_some()
+            && (matches!(ch, '*' | '/' | '(' | ')' | ',' | '%' | '°' | ' ') || ch.is_alphabetic()))
 }

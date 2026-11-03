@@ -81,6 +81,51 @@ pub fn fecha_seccao(
     fundo
 }
 
+/// ⭐ **As notas de uma secção DENTRO do cartão dela** (CartoesUI, D6): as mesmas notas, pintadas a
+/// partir de `y` na largura do cartão. Devolve o fundo da última (ou `y`).
+#[allow(clippy::too_many_arguments)]
+pub fn notas_do_cartao(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    panel: NodeId,
+    section: NodeId,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let caixas = crate::ids::note_ids(panel);
+    let mut fim = y + Spacing::Md.px();
+    let mut pintou = false;
+    for (slot, note) in store.notes_for_panel(panel).iter().enumerate() {
+        if note.section == Some(section) && !hit_index.note_painted(panel, slot) {
+            super::paint_one_note(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                x,
+                w,
+                &mut fim,
+                note,
+                &caixas,
+                slot,
+            );
+            hit_index.mark_note_painted(panel, slot);
+            pintou = true;
+        }
+    }
+    if pintou { fim - Spacing::Md.px() } else { y }
+}
+
+/// O contorno decorativo à volta de um CARTÃO (e das notas dele), com o raio do cartão.
+pub fn contorno_do_cartao(scene: &mut VectorScene, color_idx: u8, caixa: Rect, raio: f32) {
+    let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
+    let cor = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette — a marca que o artista escolheu
+    crate::paint::stroke_rounded_rect(scene, caixa, raio, StrokeToken::Thick.px(), cor);
+}
+
 /// ⭐⭐ **A caixa do contorno de uma secção É a caixa do CARTÃO dela**
 /// ([`crate::widget::section_cards::card_rect`]) — do topo da secção até ao `fundo` que o
 /// [`fecha_seccao`] devolve, que é onde o cartão fecha. *Até 2026-10-01 o contorno era pintado
@@ -146,7 +191,10 @@ pub fn pinta_as_que_sobram(
     let caixas = crate::ids::note_ids(panel);
     let mut fim = y;
     for (slot, note) in store.notes_for_panel(panel).iter().enumerate() {
-        if !hit_index.note_painted(panel, slot) {
+        // T63: a nota de uma cópia solta é DELA, nunca cai no fim da lista.
+        if !hit_index.note_painted(panel, slot)
+            && !note.section.is_some_and(|s| store.is_loose_face(s))
+        {
             super::paint_one_note(
                 scene,
                 text_system,

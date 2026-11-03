@@ -46,7 +46,11 @@ pub(super) fn handle_down_menus(
         {
             return false;
         }
-        let panel_under = store.panel_at(event.x, event.y);
+        // T63: sobre um solto, o painel é o dono dele e a secção do menu é a FACE da cópia.
+        let solto = store.loose_at(event.x, event.y);
+        let panel_under = solto
+            .map(|(_, p)| p)
+            .or_else(|| store.panel_at(event.x, event.y));
         // ⭐ A PEGA de uma secção fica POR CIMA do cabeçalho (2026-09-29), logo o botão direito
         //    sobre ela tem de abrir o menu da SECÇÃO — senão metade da largura do título abria o
         //    menu de notas. Ela responde como o cabeçalho que move.
@@ -174,7 +178,11 @@ pub(super) fn handle_down_menus(
                     _ => None,
                 }
             });
-        if let Some(kind) = timeline_menu {
+        // ⭐ CartoesUI (D28/D30): uma linha da lista de estilos de cor tem o menu dela.
+        if hit_id
+            .is_some_and(|h| crate::panel::cards::estilos::abre_menu(store, h, event.x, event.y))
+        {
+        } else if let Some(kind) = timeline_menu {
             store.open_context_menu(ContextMenuRequest {
                 x: event.x,
                 y: event.y,
@@ -218,7 +226,9 @@ pub(super) fn handle_down_menus(
                 x: event.x,
                 y: event.y,
                 kind: ContextMenuKind::SectionOutline {
-                    section: section_id,
+                    section: solto
+                        .filter(|(k, _)| *k == section_id)
+                        .map_or(section_id, |(k, _)| crate::interaction::loose_face_of(k)),
                 },
             });
         } else if let Some(panel) = panel_under.filter(|p| hit_index.is_note_host(*p)) {
@@ -240,12 +250,16 @@ pub(super) fn handle_down_menus(
                 y: event.y,
                 kind: ContextMenuKind::CreateNote {
                     panel,
-                    section: store.panel_rect(panel).and_then(|r| {
-                        super::note_drag::seccao_sob(
-                            &super::note_drag::seccoes_do_painel(hit_index, r),
-                            event.y,
-                        )
-                    }),
+                    section: solto
+                        .map(|(k, _)| crate::interaction::loose_face_of(k))
+                        .or_else(|| {
+                            store.panel_rect(panel).and_then(|r| {
+                                super::note_drag::seccao_sob(
+                                    &super::note_drag::seccoes_do_painel(hit_index, r),
+                                    event.y,
+                                )
+                            })
+                        }),
                 },
             });
         } else {

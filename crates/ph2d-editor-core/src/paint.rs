@@ -61,7 +61,7 @@ pub use label_box::{
 mod rounded;
 pub use rounded::{
     fill_rounded_rect, fill_rounded_rect_radii, stroke_rect, stroke_rounded_rect,
-    stroke_rounded_rect_radii,
+    stroke_rounded_rect_dashed, stroke_rounded_rect_radii,
 };
 
 /// Apply the snap strategy to a glyph X. `None` returns `x` unchanged

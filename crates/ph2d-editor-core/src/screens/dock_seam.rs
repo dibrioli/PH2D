@@ -231,14 +231,23 @@ impl HeroLayout {
             DockSide::Left => self.docks.left,
             DockSide::Right => self.docks.right,
         };
-        if !occupied || col.w <= 0.0 || col.h <= 0.0 {
+        // ⭐ D24: coluna livre com lista flutuante — a costura é a beirada da LISTA, só na altura dela.
+        let lista = self.float_lists[side as usize];
+        let (y, h) = if occupied {
+            (col.y, col.h)
+        } else if lista.h > 0.0 {
+            (lista.y, lista.h)
+        } else {
+            (col.y, 0.0)
+        };
+        if h <= 0.0 || col.w <= 0.0 || col.h <= 0.0 {
             return Rect::new(col.x, col.y, 0.0, 0.0);
         }
         let w = DOCK_SEAM_PX.min(col.w);
         match side {
             // A borda INTERIOR: à direita na coluna da esquerda, à esquerda na da direita.
-            DockSide::Left => Rect::new(col.x + col.w - w, col.y, w, col.h),
-            DockSide::Right => Rect::new(col.x, col.y, w, col.h),
+            DockSide::Left => Rect::new(col.x + col.w - w, y, w, h),
+            DockSide::Right => Rect::new(col.x, y, w, h),
         }
     }
 
@@ -267,7 +276,11 @@ impl HeroLayout {
             DockSide::Left => self.docks.left,
             DockSide::Right => self.docks.right,
         };
-        if occupied || col.w <= 0.0 || col.h <= 0.0 {
+        let flutua = match side {
+            DockSide::Left => self.docks.float_left,
+            DockSide::Right => self.docks.float_right,
+        };
+        if occupied || flutua || col.w <= 0.0 || col.h <= 0.0 {
             return Rect::new(col.x, col.y, 0.0, 0.0);
         }
         // F5: abaixo da janela de REFERÊNCIA (o iPad 12,9" dos tokens) a alça é a FAIXA de ícones

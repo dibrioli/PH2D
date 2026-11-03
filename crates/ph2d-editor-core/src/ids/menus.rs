@@ -44,6 +44,17 @@ pub const CTX_MENU_SECTION_THEME_CANDY: NodeId = hash_node_id("ctx_menu_section_
 // ⭐⭐ Os três verbos do TEMA CUSTOM (ordem do dono, 2026-09-30: *«um botão para resetar todos os
 //    themes dos cards e … um botão para salvar o theme custom»*) — agem sobre o PAINEL inteiro, não
 //    sobre a secção do pedido. Lei em `interaction::state::section_prefs_ops::tema_custom`.
+// ⭐ CartoesUI (D21): o menu do ícone ao lado do título de uma LISTA de cartões — agem sobre os
+//    cartões daquele painel.
+pub const CTX_MENU_CARDS_RESET_ORDER: NodeId = hash_node_id("ctx_menu_cards_reset_order");
+pub const CTX_MENU_CARDS_RESET_COLORS: NodeId = hash_node_id("ctx_menu_cards_reset_colors");
+pub const CTX_MENU_CARDS_RESET_ALL: NodeId = hash_node_id("ctx_menu_cards_reset_all");
+// ⭐ CartoesUI (D28/D30): o botão direito numa linha da lista de estilos de cor.
+pub const CTX_MENU_STYLE_APPLY: NodeId = hash_node_id("ctx_menu_style_apply");
+pub const CTX_MENU_STYLE_EDIT: NodeId = hash_node_id("ctx_menu_style_edit");
+pub const CTX_MENU_STYLE_RENAME: NodeId = hash_node_id("ctx_menu_style_rename");
+pub const CTX_MENU_STYLE_DUPLICATE: NodeId = hash_node_id("ctx_menu_style_duplicate");
+pub const CTX_MENU_STYLE_DELETE: NodeId = hash_node_id("ctx_menu_style_delete");
 pub const CTX_MENU_SECTION_THEMES_RESET: NodeId = hash_node_id("ctx_menu_section_themes_reset");
 pub const CTX_MENU_SECTION_THEMES_SAVE_CUSTOM: NodeId =
     hash_node_id("ctx_menu_section_themes_save_custom");
@@ -431,6 +442,12 @@ pub fn hier_expand_companion_to_row(id: NodeId) -> Option<NodeId> {
         }
     }
     None
+}
+
+/// O cadeado de uma linha — o MESMO id serve o cartão Objeto do Inspector (CartoesUI C4).
+#[inline]
+pub fn hier_lock_companion(row_id: NodeId) -> NodeId {
+    NodeId(row_id.0 | LOCK_TOGGLE_BIT)
 }
 
 #[inline]

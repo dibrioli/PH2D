@@ -70,6 +70,7 @@ mod board_team;
 mod board_w24;
 /// Os rótulos dos canais de família (plano 35 da UI/UX).
 mod canais;
+mod cartoes;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -559,6 +560,7 @@ fn tr_ingles(key: &str) -> &'static str {
         // Pass-through para chave desconhecida, para a entrada que falta ficar visível na UI
         // (o identificador cru é feio de propósito).
         k => vector::tr(k)
+            .or_else(|| cartoes::tr(k))
             .or_else(|| timeline::tr(k))
             .or_else(|| canais::tr(k))
             .or_else(|| tags::tr(k))

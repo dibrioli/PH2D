@@ -49,9 +49,9 @@ pub(super) fn dispatch_down<'frame>(
         return;
     }
 
+    store.note_card_press(event.x, event.y); // T7: a pressão num cartão PRESO é do sujeito dele
     let hit = hit_index.hit_with_rect(event.x, event.y);
-    // ⭐ O LOSANGO de animação ao lado de um campo (plano 35 §5): a pressão é um pedido à shell
-    // (gravar / apagar a chave do canal neste quadro), e não chega ao campo nem à secção.
+    // ⭐ O LOSANGO de um campo (plano 35 §5): pedido à shell (gravar/apagar a chave), não ao campo.
     if let Some((id, _)) = hit
         && let Some(c) = crate::widget::key_mark::key_mark_target(id)
     {
@@ -328,8 +328,14 @@ pub(super) fn dispatch_down<'frame>(
     // where the click landed in dead space (canvas, panel
     // chrome, etc.) so the user's typed buffer always
     // commits when the field loses focus.
+    // ⭐ O campo Figma: o Down na PEGA (a célula do ícone) é scrub, nunca edição — não foca.
+    let card_handle = hit.filter(|(id, r)| {
+        event.button == ph2d_host::PointerButton::Primary
+            && store.card_field(*id).is_some()
+            && crate::widget::card_field::on_handle(*r, event.x)
+    });
     let new_focus = match hit {
-        Some((id, _)) if is_focusable(store, id) => Some(id),
+        Some((id, _)) if card_handle.is_none() && is_focusable(store, id) => Some(id),
         _ => None,
     };
 
@@ -373,6 +379,10 @@ pub(super) fn dispatch_down<'frame>(
     // o objeto no canvas, mas não funciona").
     let down_id = hit.map(|(id, _)| id);
     let is_double_click = store.record_pointer_down(down_id, event.timestamp_ns);
+    if let Some((id, _)) = card_handle {
+        super::card_field::down_on_handle(store, id, event.x, event.y, is_double_click, events);
+        return;
+    }
 
     // Hierarchy chrome companions (eye toggle, chevron toggle,
     // lock toggle, group toggle, entity-icon focus) are
@@ -422,6 +432,23 @@ pub(super) fn dispatch_down<'frame>(
     //    alguém a ter registado como `Plain` (o `pre_populate` do ecrã principal), e um gesto não
     //    pode morrer por um registo esquecido: o teste do gesto real apanhou-o no anfitrião de
     //    testes, que não corre aquele `pre_populate`. Uma pega não ganha foco nem buffer.
+    // T39: a borda de um cartão SOLTO muda-lhe a largura.
+    if let Some((id, _)) = hit
+        && event.button == ph2d_host::PointerButton::Primary
+        && let Some((section, edge)) = store.loose_edge(id)
+    {
+        store.begin_loose_resize(section, edge, event.x, event.y);
+        return;
+    }
+    // ⭐ O cabeçalho de um CARTÃO (CartoesUI): a mão que o levanta; a pintura conduz o voo.
+    if let Some((id, _)) = hit
+        && event.button == ph2d_host::PointerButton::Primary
+        && let Some(section) = super::section_drag::seccao_da_pega(hit_index, id)
+        && store.is_card_section(section)
+    {
+        store.begin_card_drag(section, event.x, event.y);
+        return;
+    }
     if let Some((id, _)) = hit
         && event.button == ph2d_host::PointerButton::Primary
         && super::section_drag::seccao_da_pega(hit_index, id).is_some()

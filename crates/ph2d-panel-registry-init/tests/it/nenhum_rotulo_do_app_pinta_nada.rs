@@ -637,7 +637,7 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    87 depois de as bordas do 9-Slice passarem a «Left / Top» por baixo do título da secção.
     // ⬇️ `87 → 86` em 2026-10-25 (GameEngineFuncional 07): «Show sheet on canvas» virou «Show
     //    Sheet» (o «onde» foi para o balão) — cortava no cartão Animation da foto do dono.
-    ("inspector", 86),
+    ("inspector", 84),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
@@ -645,7 +645,8 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
     //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
-    ("tokens", 2),
+    // ⬇️ 03/11 (line/NovaUI, medido com o painter_layers mascarado): a Noto Sans de fábrica (D11) e o par DTCG que quebra (`wrapped_cells_in_font`) cortam menos — a catraca desce ao medido.
+    ("tokens", 1),
     // ⬇️ `3 → 1` em 2026-09-23: a grelha de ferramentas do vetor deixou de repartir em TRÊS partes
     //    iguais e passou a quebrar pelas palavras (`wrapped_cells_for`, com o `3` como tecto) —
     //    `Bucket`/`Chamfer`/`Connect` deixaram de sair cortados. ⚠️ E ENTROU um: o `None` das pontas
@@ -655,7 +656,7 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `1 → 0` na integração de 2026-11-02: a fileira dos marcadores (o `N…` das pontas) foi
     //    para o «Stroke settings» atrás do ⚙ (UIUX F44) — MEDIDO na árvore combinada.
     ("vector", 0),
-    ("color_equalization", 2),
+    ("color_equalization", 1),
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),
@@ -730,13 +731,14 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
-    ("inspector", 84),
+    ("inspector", 82),
     ("audio_mixer", 5),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
     //    de uma linha (`22`, era o `SwatchSize::Md` de `32`) — o nome ganhou `10 px` em toda linha.
-    ("tokens", 2),
+    // ⬇️ 03/11 (line/NovaUI, medido com o painter_layers mascarado): a Noto Sans de fábrica (D11) e o par DTCG que quebra (`wrapped_cells_in_font`) cortam menos — a catraca desce ao medido.
+    ("tokens", 1),
     // ⬇️ `3 → 1` em 2026-09-23: a grelha de ferramentas do vetor deixou de repartir em TRÊS partes
     //    iguais e passou a quebrar pelas palavras (`wrapped_cells_for`, com o `3` como tecto) —
     //    `Bucket`/`Chamfer`/`Connect` deixaram de sair cortados. ⚠️ E ENTROU um: o `None` das pontas
@@ -746,7 +748,7 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `1 → 0` (integ 02/11): a linha de tinta parte-se em duas filas no degrau estreito e o
     //    Weight ganha a largura do número. Medido pelo gate.
     ("vector", 0),
-    ("color_equalization", 2),
+    ("color_equalization", 1),
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),

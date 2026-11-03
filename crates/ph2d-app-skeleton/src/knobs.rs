@@ -118,7 +118,7 @@ pub fn apply_from_panel(
     let v = match knob {
         BoneKnob::Length => {
             let k = px_per_unit(sim, bits, doc);
-            if !(k > f64::EPSILON) {
+            if k.is_nan() || k <= f64::EPSILON {
                 return;
             }
             v / k

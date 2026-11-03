@@ -38,11 +38,39 @@ pub enum Flag {
     FxEye0,
     FxEye1,
     FxEye2,
+    // Os casos reais.
+    RbLock,
+    ColTrigger,
+    HpOverheal,
+    CamPicking,
+    CamActive,
+    CamLook,
+    AnimPlaying,
+    Rule0,
+    Rule1,
+    Rule2,
+    BoneLimit,
+    BoneSmart,
+    BoneIk,
+    ConsRow,
+    ConsEye,
+    ConsPicking,
+    LampShadows,
+    Rack0,
+    Rack1,
+    Rack2,
+    RackEye0,
+    RackEye1,
+    RackEye2,
+    AudioMute,
+    PixelGrid,
+    ScriptEdit,
+    ScriptDouble,
 }
-const N_FLAGS: usize = Flag::FxEye2 as usize + 1;
+const N_FLAGS: usize = Flag::ScriptDouble as usize + 1;
 
 /// Os que nascem ligados.
-const FLAGS_ON: [Flag; 13] = [
+const FLAGS_ON: &[Flag] = &[
     Flag::Visible,
     Flag::Fill0,
     Flag::FillEye0,
@@ -56,12 +84,27 @@ const FLAGS_ON: [Flag; 13] = [
     Flag::FxEye0,
     Flag::FxEye1,
     Flag::FxEye2,
+    Flag::CamActive,
+    Flag::Rule0,
+    Flag::Rule1,
+    Flag::BoneLimit,
+    Flag::BoneIk,
+    Flag::ConsRow,
+    Flag::ConsEye,
+    Flag::LampShadows,
+    Flag::Rack0,
+    Flag::RackEye0,
+    Flag::RackEye1,
+    Flag::RackEye2,
+    Flag::PixelGrid,
 ];
 
 /// As linhas de cada lista («+» liga a primeira livre, «−» desliga a dela).
 pub const FILLS: [Flag; 3] = [Flag::Fill0, Flag::Fill1, Flag::Fill2];
 pub const STROKES: [Flag; 3] = [Flag::Stroke0, Flag::Stroke1, Flag::Stroke2];
 pub const FXS: [Flag; 3] = [Flag::Fx0, Flag::Fx1, Flag::Fx2];
+pub const RULES: [Flag; 3] = [Flag::Rule0, Flag::Rule1, Flag::Rule2];
+pub const RACKS: [Flag; 3] = [Flag::Rack0, Flag::Rack1, Flag::Rack2];
 
 /// As escolhas de uma-entre-várias (segmentos e listas suspensas) — índice de [`Choices`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,10 +129,39 @@ pub enum Pick {
     TextAlign,
     ExportScale,
     Format,
-    /// A linha cujas propriedades abriram ao lado (`SIDE_NONE` = nenhuma): `0..3` Effects.
+    /// A linha cujas propriedades abriram ao lado (`SIDE_NONE` = nenhuma): `0..3` Effects, `3..6` o
+    /// rack do Audio.
     SideOpen,
+    // Os casos reais.
+    ImgAsset,
+    ImgUse,
+    RbBody,
+    ColShape,
+    CamFormat,
+    CamFrame,
+    AnimWho,
+    AnimClip,
+    RuleWhen0,
+    RuleWhen1,
+    RuleWhen2,
+    RulePlay0,
+    RulePlay1,
+    RulePlay2,
+    BrushPreset,
+    PaintType,
+    BoneBend,
+    ConsKind,
+    ConsSpace,
+    LampKind,
+    Rack0,
+    Rack1,
+    Rack2,
+    PixelTarget,
+    PixelFg,
+    PixelBg,
+    ScriptFile,
 }
-const N_PICKS: usize = Pick::SideOpen as usize + 1;
+const N_PICKS: usize = Pick::ScriptFile as usize + 1;
 
 /// O valor de [`Pick::Boolean`] depois de achatar: nenhum modo aceso.
 pub const BOOLEAN_NONE: u8 = u8::MAX;
@@ -98,7 +170,7 @@ pub const BOOLEAN_NONE: u8 = u8::MAX;
 pub const SIDE_NONE: u8 = u8::MAX;
 
 /// Quantas amostras de cor o objeto fictício tem (`controlos::SWATCHES`).
-pub const N_SWATCHES: usize = 9;
+pub const N_SWATCHES: usize = 10;
 
 /// As escolhas vivas dos cartões. `Default` = os valores de fábrica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,11 +192,15 @@ impl Default for Choices {
             linked: [None; N_SWATCHES],
         };
         for f in FLAGS_ON {
-            c.set(f, true);
+            c.set(*f, true);
         }
         c.choose(Pick::ResizeH, 1);
         c.choose(Pick::Grid, 4);
         c.choose(Pick::SideOpen, SIDE_NONE);
+        c.choose(Pick::AnimWho, 2);
+        c.choose(Pick::RuleWhen1, 1);
+        c.choose(Pick::RulePlay1, 1);
+        c.choose(Pick::PixelBg, 15);
         c
     }
 }

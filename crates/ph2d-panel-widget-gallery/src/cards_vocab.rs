@@ -7,7 +7,10 @@
 use crate::controlos::{Kind, card, controls, field, head};
 use crate::ids as g;
 use crate::state::{Choices, Flag, WidgetGalleryState};
-use crate::{cards_layout, cards_objeto, cards_pintura, cards_texto, cards_transform};
+use crate::{
+    cards_layout, cards_objeto, cards_pintura, cards_reais_anim, cards_reais_media,
+    cards_reais_mundo, cards_texto, cards_transform,
+};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget, dropdown};
@@ -193,5 +196,20 @@ pub(crate) fn vocabulary(st: &WidgetGalleryState, store: &WidgetStore) -> Vec<Ca
         marks(),
         ordering(store),
         physics(ch, store),
+        // Os casos reais (doc 08 §1.3): depois das ferramentas, antes dos de sempre.
+        cards_reais_mundo::image(ch),
+        cards_reais_mundo::rigid_body(ch),
+        cards_reais_mundo::collider(ch),
+        cards_reais_mundo::health(ch),
+        cards_reais_mundo::player(),
+        cards_reais_mundo::camera(ch),
+        cards_reais_anim::animation(ch, store),
+        cards_reais_anim::brush(ch),
+        cards_reais_anim::bones(ch),
+        cards_reais_anim::constraint(ch),
+        cards_reais_media::light(ch),
+        cards_reais_media::audio(ch, store),
+        cards_reais_media::pixel(ch),
+        cards_reais_media::script(ch),
     ]
 }

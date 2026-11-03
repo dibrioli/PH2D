@@ -8,6 +8,7 @@
 
 mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções da galeria
 mod cartoes; // a galeria em cartões no encaixe da direita (doc CartoesUI/08)
+mod cartoes_reais; // os casos reais e as amostras do Rive (doc CartoesUI/08 §1.3 e §1.4)
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod seam;
 mod widget_gallery_paint;

@@ -108,6 +108,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
         cards_vocab::prepare(store);
         crate::valores::sync_picked(state, store, theme);
         crate::valores::sync_link(state, store);
+        crate::valores::sync_health(state, store);
         crate::estilos_ficticios::sync(state, store, theme);
         cards_vocab::vocabulary(state, store)
     };

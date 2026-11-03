@@ -307,9 +307,35 @@ pub const MASS: NodeId = hash_node_id("gallery.field.mass");
 pub const PHYSICS_ADD: NodeId = hash_node_id("gallery.action.physics_add");
 pub const PHYSICS_REMOVE: NodeId = hash_node_id("gallery.action.physics_remove");
 
-/// `(id, valor de fábrica, passo, arrasto por px)` de cada campo numérico — a tabela que o
-/// `populate` regista, o `prepare` marca e o ↺ repõe. Os números são dados do objeto fictício.
-pub const FIELDS: [(NodeId, f64, f64, f64); 46] = [
+/// `(id, valor de fábrica, passo, arrasto por px)` de um campo numérico.
+pub type Campo = (NodeId, f64, f64, f64);
+
+#[path = "ids_reais.rs"]
+mod reais;
+pub use reais::*;
+
+/// Junta as tabelas de campos num array só (o tamanho conta-se, nunca se escolhe).
+const fn junta<const N: usize>(partes: [&[Campo]; 2]) -> [Campo; N] {
+    let mut out = [partes[0][0]; N];
+    let (mut p, mut n) = (0, 0);
+    while p < partes.len() {
+        let mut i = 0;
+        while i < partes[p].len() {
+            out[n] = partes[p][i];
+            n += 1;
+            i += 1;
+        }
+        p += 1;
+    }
+    assert!(n == N);
+    out
+}
+
+/// A tabela que o `populate` regista, o `prepare` marca e o ↺ repõe. Os números são dados do objeto
+/// fictício.
+pub const FIELDS: [Campo; BASE.len() + CAMPOS.len()] = junta([&BASE, &CAMPOS]);
+
+const BASE: [Campo; 46] = [
     (POS_X, 120.0, 1.0, 1.0), // LITERAL-PX-OK: dado do objeto fictício
     (POS_Y, 80.0, 1.0, 1.0),  // LITERAL-PX-OK: dado do objeto fictício
     (ROTATION, 0.0, 1.0, 1.0),
@@ -359,7 +385,9 @@ pub const FIELDS: [(NodeId, f64, f64, f64); 46] = [
 ];
 
 /// `(id, chave do texto de fábrica)` dos campos de texto.
-pub const TEXTS: [(NodeId, &str); 2] = [
+pub const TEXTS: [(NodeId, &str); 4] = [
     (NAME, "panel.widget_gallery.name_default"),
     (SUFFIX, "panel.widget_gallery.suffix_default"),
+    (CAM_TARGET, "panel.widget_gallery.name_default"),
+    (CS_TARGET, "panel.widget_gallery.real.object.enemy"),
 ];

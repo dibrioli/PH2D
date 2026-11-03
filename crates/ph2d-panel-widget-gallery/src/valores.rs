@@ -99,6 +99,15 @@ pub(crate) fn sync_link(state: &mut WidgetGalleryState, store: &mut WidgetStore)
     state.link = Some(visto);
 }
 
+/// Sem «Overheal», o `Start` não passa do `Max` (por quadro, antes de pintar).
+pub(crate) fn sync_health(state: &WidgetGalleryState, store: &mut WidgetStore) {
+    use crate::state::Flag;
+    let (max, start) = (number(store, g::HP_MAX), number(store, g::HP_START));
+    if !state.choices.on(Flag::HpOverheal) && start > max {
+        store.set_number_value(g::HP_START, max);
+    }
+}
+
 /// Trata o clique `id` pela tabela; devolve se é um controlo da galeria.
 pub(crate) fn on_click(
     state: &mut WidgetGalleryState,
@@ -126,6 +135,14 @@ pub(crate) fn on_click(
             }
         }
         Kind::Expand(p, i) => ch.choose(p, if ch.pick(p) == i { SIDE_NONE } else { i }),
+        Kind::Palette(i) => {
+            let alvo = if ch.pick(Pick::PixelTarget) == 0 {
+                Pick::PixelFg
+            } else {
+                Pick::PixelBg
+            };
+            ch.choose(alvo, i);
+        }
         Kind::Add(rows) => {
             if let Some(livre) = rows.iter().find(|f| !ch.on(**f)) {
                 ch.set(*livre, true);
@@ -133,8 +150,11 @@ pub(crate) fn on_click(
         }
         Kind::Remove(f, swatch) => {
             ch.set(f, false);
-            ch.linked[swatch] = None;
-            close_picker(host.store_mut(), SWATCHES[swatch].1);
+            // As linhas sem cor (regras, rack) não têm amostra (`SEM_AMOSTRA`).
+            if let Some(s) = SWATCHES.get(swatch) {
+                ch.linked[swatch] = None;
+                close_picker(host.store_mut(), s.1);
+            }
         }
         Kind::Set(f, v) => ch.set(f, v),
         Kind::Swatch(i) => toggle_picker(*ch, host, i),
@@ -179,6 +199,25 @@ fn act(state: &mut WidgetGalleryState, host: &mut dyn PanelHostInternal, a: Act)
         Act::FlipH => store.set_number_value(g::SCALE_X, -number(store, g::SCALE_X)),
         Act::FlipV => store.set_number_value(g::SCALE_Y, -number(store, g::SCALE_Y)),
         Act::Export => state.exported = true,
+        Act::PickTarget(f, campo) => {
+            let armado = state.choices.on(f);
+            state.choices.set(f, !armado);
+            if armado {
+                set_text(
+                    store,
+                    campo,
+                    ph2d_i18n::tr("panel.widget_gallery.real.object.coin"),
+                );
+            }
+        }
+        Act::PixelSwap => {
+            let (fg, bg) = (
+                state.choices.pick(Pick::PixelFg),
+                state.choices.pick(Pick::PixelBg),
+            );
+            state.choices.choose(Pick::PixelFg, bg);
+            state.choices.choose(Pick::PixelBg, fg);
+        }
         Act::Apply => state.applied = current(state.choices, store),
         Act::Restore => {
             for (_, swatch, _) in SWATCHES {

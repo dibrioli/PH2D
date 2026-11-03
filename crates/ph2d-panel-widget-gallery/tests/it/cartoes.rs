@@ -35,15 +35,15 @@ fn alta() -> Rect {
     Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H * 10.0)
 }
 
-struct Galeria {
-    host: MockPanelHost,
-    st: WidgetGalleryState,
+pub(super) struct Galeria {
+    pub(super) host: MockPanelHost,
+    pub(super) st: WidgetGalleryState,
     rects: Vec<(NodeId, Rect)>,
     t: u128,
 }
 
 impl Galeria {
-    fn aberta() -> Self {
+    pub(super) fn aberta() -> Self {
         force_cards_on_this_thread(Some(true));
         let mut host = MockPanelHost::with_panel::<WidgetGalleryPanel>();
         host.set_panel_visible(WidgetGalleryPanel::ID, true);
@@ -59,7 +59,7 @@ impl Galeria {
 
     /// Pinta até a lista ASSENTAR: as alturas são as do quadro anterior e a mola leva a diferença
     /// no relógio real — um cartão que cresce empurra os de baixo ao longo de vários quadros.
-    fn repinta(&mut self) {
+    pub(super) fn repinta(&mut self) {
         let mut iguais = 0;
         for _ in 0..120 {
             let agora = self.host.paint::<WidgetGalleryPanel>(&mut self.st, alta());
@@ -72,7 +72,7 @@ impl Galeria {
         }
     }
 
-    fn rect(&self, id: NodeId) -> Option<Rect> {
+    pub(super) fn rect(&self, id: NodeId) -> Option<Rect> {
         self.rects
             .iter()
             .rev()
@@ -80,7 +80,7 @@ impl Galeria {
             .map(|(_, r)| *r)
     }
 
-    fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) {
+    pub(super) fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) {
         self.t += SEC;
         let evs = self.host.dispatch_pointer_event(PointerEvent {
             kind,
@@ -108,7 +108,7 @@ impl Galeria {
         }
     }
 
-    fn clica(&mut self, id: NodeId) {
+    pub(super) fn clica(&mut self, id: NodeId) {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não foi pintado"));
@@ -119,7 +119,7 @@ impl Galeria {
     }
 
     /// Arrasta o ÍCONE do campo (a célula da esquerda) `dx` px para a direita.
-    fn arrasta_o_icone(&mut self, id: NodeId, dx: f32) {
+    pub(super) fn arrasta_o_icone(&mut self, id: NodeId, dx: f32) {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não foi pintado"));
@@ -132,7 +132,7 @@ impl Galeria {
         self.repinta();
     }
 
-    fn valor(&self, id: NodeId) -> f64 {
+    pub(super) fn valor(&self, id: NodeId) -> f64 {
         self.host.store().number_value(id).expect("campo registado")
     }
 }
@@ -354,6 +354,7 @@ fn nenhum_controlo_da_tabela_e_um_no_op() {
             Kind::Pick(p, i) => st.choices.choose(p, i.wrapping_add(1)),
             Kind::Set(f, v) => st.choices.set(f, !v),
             Kind::Remove(f, _) => st.choices.set(f, true),
+            Kind::Palette(i) => st.choices.choose(Pick::PixelFg, i.wrapping_add(1)),
             _ => {}
         }
         gal.host.store_mut().set_number_value(g::POS_X, 123.0);

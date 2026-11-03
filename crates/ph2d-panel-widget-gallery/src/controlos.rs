@@ -8,8 +8,12 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, HeadAction, Seg, Widget};
+use ph2d_editor_core::paint::fill_rounded_rect;
+use ph2d_editor_core::panel::TextKey;
+use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, HeadAction, Seg, Widget, corpo};
 use ph2d_editor_core::widget::card_field::Glyph;
+use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::ColorToken;
 
@@ -32,6 +36,10 @@ pub enum Act {
     Export,
     Apply,
     Restore,
+    /// O conta-gotas de um alvo: arma; o 2.º clique faz de clique no canvas (a galeria não tem canvas)
+    /// e escreve o nome no campo de texto.
+    PickTarget(Flag, NodeId),
+    PixelSwap,
 }
 
 /// O que um controlo É.
@@ -60,6 +68,8 @@ pub enum Kind {
     Expand(Pick, u8),
     /// O ⠿ dos estilos: quem o abre é o despacho dos cartões (`panel::cards::estilos`).
     Styles,
+    /// A cor `u8` da paleta: vai para o alvo (Foreground ou Background).
+    Palette(u8),
 }
 
 /// Uma linha da tabela. `icon` = o de sempre; `lit_icon` = o do estado aceso, se é outro.
@@ -86,6 +96,27 @@ pub const SWATCHES: [(NodeId, NodeId, ColorToken); crate::state::N_SWATCHES] = [
     (g::CARD_EFFECTS, g::EFFECTS[0].swatch, ColorToken::Text3),
     (g::CARD_EFFECTS, g::EFFECTS[1].swatch, ColorToken::Text3),
     (g::CARD_EFFECTS, g::EFFECTS[2].swatch, ColorToken::Text3),
+    (g::CARD_LIGHT, g::LT_SWATCH, ColorToken::Info),
+];
+
+/// A paleta indexada do cartão Pixel Art, em tokens (nunca hex).
+pub const PALETTE_TOKENS: [ColorToken; 16] = [
+    ColorToken::Text1,
+    ColorToken::Text2,
+    ColorToken::Text3,
+    ColorToken::Accent,
+    ColorToken::AccentPress,
+    ColorToken::AccentSoft,
+    ColorToken::Info,
+    ColorToken::InfoSoft,
+    ColorToken::Success,
+    ColorToken::SuccessSoft,
+    ColorToken::Danger,
+    ColorToken::DangerSoft,
+    ColorToken::Bg3,
+    ColorToken::Bg2,
+    ColorToken::Bg1,
+    ColorToken::Bg0,
 ];
 
 pub(super) const fn icon(id: NodeId, kind: Kind, icon: IconId, tip: &'static str) -> Control {
@@ -165,12 +196,18 @@ pub(super) const fn plain(id: NodeId, kind: Kind) -> Control {
 
 #[path = "controlos_forma.rs"]
 mod forma;
+#[path = "controlos_reais.rs"]
+mod reais;
 #[path = "controlos_tinta.rs"]
 mod tinta;
 
 /// ⭐ Todos os controlos da galeria.
 pub fn controls() -> impl Iterator<Item = &'static Control> {
-    forma::FORMA.iter().chain(tinta::TINTA)
+    forma::FORMA
+        .iter()
+        .chain(tinta::TINTA)
+        .chain(reais::REAIS)
+        .chain(reais::linhas())
 }
 
 /// A linha de `id`, se é um controlo da galeria.
@@ -189,6 +226,7 @@ pub fn lit(c: &Control, ch: &Choices, store: &WidgetStore) -> bool {
         Kind::Pick(p, i) | Kind::Expand(p, i) => ch.pick(p) == i,
         Kind::Act(Act::FlipH) => negativo(g::SCALE_X),
         Kind::Act(Act::FlipV) => negativo(g::SCALE_Y),
+        Kind::Act(Act::PickTarget(f, _)) => ch.on(f),
         _ => false,
     }
 }
@@ -249,6 +287,68 @@ pub(crate) fn dropdown<'a>(id: NodeId, options: &'a [Seg<'a>]) -> Widget<'a> {
 
 pub(crate) fn field(id: NodeId, glyph: Glyph<'_>) -> Widget<'_> {
     Widget::Field { id, glyph }
+}
+
+/// Um campo com glifo, rótulo e a marca de animação na linha do rótulo (`$id` constante).
+macro_rules! num {
+    ($id:expr, $icon:expr, $label:expr) => {
+        Cell::new($crate::controlos::field(
+            $id,
+            ph2d_editor_core::widget::card_field::Glyph::Icon($icon),
+        ))
+        .label($label)
+        .key(&[$id])
+    };
+}
+pub(crate) use num;
+
+/// Uma frase curta na tinta do rótulo (o que o estado de um cartão quer dizer). Devolve o fundo.
+pub(crate) fn dica(c: &mut CardCtx<'_>, text: &str, y: f32) -> f32 {
+    let y = y + m::LABEL_TOP;
+    ph2d_editor_core::paint::paint_text_elided(
+        c.text_system,
+        c.scene,
+        text,
+        c.x,
+        y,
+        m::LABEL_PX,
+        c.w,
+        c.ink.color(ColorToken::CardLabel),
+    );
+    y + m::LABEL_PX
+}
+
+/// Uma caixa de marcar: o nome à direita e a marca de animação no fim da linha.
+pub(crate) fn marca(c: &mut CardCtx<'_>, id: NodeId, key: &'static str, on: bool, y: f32) -> f32 {
+    corpo::check(
+        c.scene,
+        c.text_system,
+        c.store,
+        c.hit_index,
+        c.ink,
+        c.x,
+        c.w,
+        y,
+        corpo::Marca {
+            id,
+            label: Rotulo::from(TextKey::new(key)),
+            on,
+        },
+    )
+}
+
+/// Uma barra fina com o trecho `de..ate` (`0..=1`) aceso (Health, Trim path). Devolve o fundo.
+pub(crate) fn barra(c: &mut CardCtx<'_>, de: f32, ate: f32, y: f32) -> f32 {
+    let y = y + m::FIELD_ROW_GAP;
+    let h = m::FIELD_GAP;
+    let trilha = Rect::new(c.x, y, c.w, h);
+    fill_rounded_rect(c.scene, trilha, h * 0.5, c.ink.color(ColorToken::CardField));
+    let (a, b) = (de.clamp(0.0, 1.0), ate.clamp(0.0, 1.0)); // CLAMP-OK: fração de um dado fictício
+    if b > a {
+        let cheio = Rect::new(c.x + c.w * a, y, c.w * (b - a), h);
+        fill_rounded_rect(c.scene, cheio, h * 0.5, c.ink.color(ColorToken::Accent));
+    }
+    y + h
 }
 
 /// Um cartão presente: título (a chave), ações de cabeçalho e corpo.

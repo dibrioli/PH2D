@@ -5,9 +5,10 @@
 //! Pintados DEPOIS da lista: por cima dos cartões e fora do recorte da rolagem.
 
 use crate::cards_pintura::fx_props;
+use crate::cards_reais_media::rack_props;
 use crate::controlos::{dropdown, find, seg_of, segs};
 use crate::ids as g;
-use crate::state::{FXS, Pick, SIDE_NONE, WidgetGalleryState};
+use crate::state::{Choices, FXS, Pick, RACKS, SIDE_NONE, WidgetGalleryState};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::HitIndex;
@@ -23,19 +24,27 @@ use ph2d_vector::VectorScene;
 /// A folga entre a coluna e o painel do lado.
 const GAP: f32 = m::CARD_GAP;
 
-/// O título (a lista do tipo + ✕) e os campos da linha `i`.
-fn body(c: &mut CardCtx<'_>, ch: &crate::state::Choices, i: usize, y: f32) -> f32 {
-    let row = g::EFFECTS[i];
-    let tipos = row.options.map(|id| seg_of(id, ch, c.store));
+/// O título (a lista do tipo + ✕) e os campos da linha aberta `i` (`0..3` Effects, `3..6` o rack).
+fn body(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
+    let (kind, options) = if i < 3 {
+        (g::EFFECTS[i].kind, g::EFFECTS[i].options)
+    } else {
+        (g::RACK[i - 3].kind, g::RACK[i - 3].options)
+    };
+    let tipos = options.map(|id| seg_of(id, ch, c.store));
     let fecha = segs([g::SIDE_CLOSE], ch, c.store);
     let y = c.row(
         &[
-            Cell::new(dropdown(row.kind, &tipos)),
+            Cell::new(dropdown(kind, &tipos)),
             Cell::new(Widget::Bare(&fecha)),
         ],
         y,
     );
-    fx_props(c, ch, i, y)
+    if i < 3 {
+        fx_props(c, ch, i, y)
+    } else {
+        rack_props(c, i - 3, y)
+    }
 }
 
 /// O painel da linha aberta. Uma linha que sumiu (o «−») fecha-o.
@@ -45,15 +54,20 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx, panel: R
         return;
     }
     let i = usize::from(aberta);
-    if !state.choices.on(FXS[i]) {
+    let (presente, abre, section) = if i < 3 {
+        (FXS[i], g::EFFECTS[i].open, g::CARD_EFFECTS)
+    } else {
+        (RACKS[i - 3], g::RACK[i - 3].open, g::CARD_AUDIO)
+    };
+    if !state.choices.on(presente) {
         state.choices.choose(Pick::SideOpen, SIDE_NONE);
         return;
     }
     let ch = state.choices;
-    let Some(line) = ctx.host.hit_index_mut().rect_for(g::EFFECTS[i].open) else {
+    let Some(line) = ctx.host.hit_index_mut().rect_for(abre) else {
         return;
     };
-    let ink = CardInk::of_card(ctx.host.store().section_theme(g::CARD_EFFECTS), theme);
+    let ink = CardInk::of_card(ctx.host.store().section_theme(section), theme);
     let w = panel.w - m::LIST_PAD_X * 2.0;
     let inner = w - m::CARD_PAD_X * 2.0;
     // A altura numa passagem a seco: o fundo pinta-se ANTES dos campos.
@@ -110,7 +124,14 @@ fn fundo(scene: &mut VectorScene, r: Rect, ink: &CardInk) {
 }
 
 /// As listas que abrem de um ícone de cabeçalho: `(o «+», a secção, as opções)`.
-const MENUS: &[(NodeId, NodeId, &[NodeId])] = &[(g::FX_ADD, g::CARD_EFFECTS, &g::FX_ADD_KINDS)];
+const MENUS: &[(NodeId, NodeId, &[NodeId])] = &[
+    (g::FX_ADD, g::CARD_EFFECTS, &g::FX_ADD_KINDS),
+    (
+        g::AU_ADD,
+        g::CARD_AUDIO,
+        &[g::AU_ADD_0, g::AU_ADD_1, g::AU_ADD_2, g::AU_ADD_3],
+    ),
+];
 
 /// A lista do «+» aberto, com a largura da coluna do cartão, por baixo do ícone.
 pub(crate) fn head_menus(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {

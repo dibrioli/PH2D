@@ -54,9 +54,9 @@ pub fn paint_card_body(
     // Body caption — Card itself doesn't paint into body_rect, so we
     // write a single label line inside it as a static demo.
     let body = card.body_rect(r);
-    paint_text(
-        text_system,
+    super::encaixe::frase(
         scene,
+        text_system,
         "Card body slot — host content here.",
         body.x,
         body.y,

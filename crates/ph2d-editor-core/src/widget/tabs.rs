@@ -44,6 +44,8 @@ pub struct Tabs {
     pub items: Vec<TabItem>,
     pub selected: usize,
     pub variant: TabsVariant,
+    /// As palavras de cada aba, medidas por [`Self::fit_words`] (vazio = partes iguais).
+    pub naturals: Vec<f32>,
 }
 
 impl Tabs {
@@ -54,7 +56,30 @@ impl Tabs {
             items,
             selected: 0,
             variant: TabsVariant::Ghost,
+            naturals: Vec::new(),
         }
+    }
+
+    /// ⭐⭐ **As abas repartem-se pelas PALAVRAS quando as partes iguais as cortariam** (galeria em
+    /// cartões, doc `CartoesUI/08`): mede a caixa que cada palavra pede ([`crate::paint::rect_for_label`])
+    /// e o [`Self::tab_rect`] dá a cada aba a dela mais uma parte igual da folga. Enquanto a parte
+    /// igual chega para a palavra mais larga, nada muda.
+    #[must_use]
+    pub fn fit_words(mut self, text_system: &mut TextSystem) -> Self {
+        let font = TypeToken::Base.px();
+        self.naturals = self
+            .items
+            .iter()
+            .map(|it| {
+                crate::paint::rect_for_label(text_system.prefix_width_weighted(
+                    &it.label,
+                    font,
+                    ph2d_text::FontWeight::MEDIUM,
+                ))
+                .ceil()
+            })
+            .collect();
+        self
     }
 
     pub fn selected(mut self, idx: usize) -> Self {
@@ -76,7 +101,24 @@ impl Tabs {
     pub fn tab_rect(&self, host: Rect, index: usize) -> Rect {
         let count = self.items.len().max(1) as f32;
         let w = host.w / count;
-        Rect::new(host.x + w * index as f32, host.y, w, host.h)
+        let maior = self.naturals.iter().copied().fold(0.0_f32, f32::max);
+        if self.naturals.len() != self.items.len() || maior <= w {
+            return Rect::new(host.x + w * index as f32, host.y, w, host.h);
+        }
+        let soma: f32 = self.naturals.iter().sum();
+        let folga = (host.w - soma) / count;
+        let largura = |n: f32| {
+            if folga >= 0.0 {
+                n + folga
+            } else {
+                n * host.w / soma
+            }
+        };
+        let x = self.naturals[..index]
+            .iter()
+            .map(|n| largura(*n))
+            .sum::<f32>();
+        Rect::new(host.x + x, host.y, largura(self.naturals[index]), host.h)
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {

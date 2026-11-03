@@ -47,21 +47,27 @@ pub fn paint_switches_body(
     w: f32,
     mut y: f32,
 ) -> f32 {
-    // Checkbox.
-    let r = Rect::new(x, y, w, Density::Compact.row_h_px());
-    hit_index.register(ids::INSP_SAMPLE_CHECKBOX, r);
+    // Checkbox — o nome EM CIMA da marca quando não cabe ao lado dela (D13, `super::encaixe`).
+    let row_h = Density::Compact.row_h_px();
     let (cb_state, cb_value) = store
         .checkbox(ids::INSP_SAMPLE_CHECKBOX)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
-    let cb = Checkbox::new(ids::INSP_SAMPLE_CHECKBOX, "Hot reload on save")
+    let label = "Hot reload on save";
+    let mut cb = Checkbox::new(ids::INSP_SAMPLE_CHECKBOX, label)
         .state(cb_state)
         .value(cb_value);
+    if !cb.label_fits_beside(Rect::new(x, y, w, row_h), text_system) {
+        paint_left_label(scene, text_system, theme, x, label, w, y, row_h);
+        y += row_h;
+        cb.label.clear();
+    }
+    let r = Rect::new(x, y, w, row_h);
+    hit_index.register(ids::INSP_SAMPLE_CHECKBOX, r);
     paint_checkbox(&cb, r, scene, text_system, theme);
     y += Density::Compact.row_h_px() + row_gap();
 
     // Toggle.
     let toggle_w = TypeToken::Xl3.px(); // LITERAL-PX-OK: toggle widget width (matches TypeToken::Xl3 = 44px by coincidence; chrome-specific)
-    let row_h = Density::Compact.row_h_px();
     let tr = Rect::new(x + w - toggle_w, y, toggle_w, row_h);
     hit_index.register(ids::INSP_SAMPLE_TOGGLE, tr);
     let (tg_state, tg_on) = store

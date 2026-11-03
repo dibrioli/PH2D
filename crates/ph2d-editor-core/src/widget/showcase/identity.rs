@@ -65,17 +65,26 @@ pub fn paint_identity_body(
         text_system,
         theme,
     );
-    // Caption to the right.
-    paint_left_label(
+    // A legenda à direita; na coluna estreita ela desce para debaixo dos avatares e quebra
+    // (`super::encaixe`, D13 «rótulo em cima» lido ao contrário: a legenda segue o que nomeia).
+    let caption = "Avatar · circle + square";
+    let font = TypeToken::Base.px();
+    let cx = x + size * 2.0 + gap * 2.0;
+    let side_w = (w - size * 2.0 - gap * 2.0).max(0.0);
+    if super::encaixe::cabe(text_system, caption, font, side_w) {
+        paint_left_label(scene, text_system, theme, cx, caption, side_w, y, size);
+        return y + size;
+    }
+    let below = y + size + row_gap();
+    let h = super::encaixe::frase(
         scene,
         text_system,
-        theme,
-        x + size * 2.0 + gap * 2.0,
-        "Avatar · circle + square",
-        (w - size * 2.0 - gap * 2.0).max(0.0),
-        y,
-        size,
+        caption,
+        x,
+        below,
+        font,
+        w,
+        resolve(ColorToken::Text1, theme),
     );
-    let _ = w; // suppress unused
-    y + size
+    below + h
 }

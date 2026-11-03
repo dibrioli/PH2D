@@ -16,6 +16,49 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+impl Checkbox {
+    /// ⭐ **O orçamento do NOME** — na linha de formulário, a coluna do nome da secção; fora dela,
+    /// até à marca menos um recuo de cada lado (clássico: o nome à direita da marca).
+    /// É a régua que o pintor usa, pública para quem dispõe a linha (o nome EM CIMA quando não
+    /// cabe — galeria em cartões, doc `CartoesUI/08`).
+    #[must_use]
+    pub fn free_label_budget(&self, rect: Rect) -> f32 {
+        let pad = Spacing::Md.px();
+        let box_size = self.box_px.unwrap_or(super::CHECKBOX_BOX_PX).min(rect.h);
+        if !crate::paint::ui_is_redesign() {
+            return (rect.w - box_size - pad).max(0.0);
+        }
+        if let Some(sec) = self.seccao {
+            // Na linha de formulário o nome vai à coluna do nome da secção.
+            return crate::widget::property_box::colunas_da_linha(
+                rect.x, rect.w, rect.y, rect.h, sec,
+            )
+            .label
+            .w;
+        }
+        let mark_x = crate::widget::property_box::value_column(rect, box_size, self.decorator).x;
+        (mark_x - rect.x - pad * 2.0).max(0.0)
+    }
+
+    /// O nome cabe INTEIRO ao lado da marca em `rect`, na letra em que o pintor o escreve?
+    #[must_use]
+    pub fn label_fits_beside(&self, rect: Rect, text_system: &mut TextSystem) -> bool {
+        text_system
+            .layout(&self.label, label_font(), f32::INFINITY)
+            .width()
+            <= self.free_label_budget(rect)
+    }
+}
+
+/// A letra do nome: `Sm` no redesenho (a da linha de propriedade), `Base` no clássico.
+fn label_font() -> f32 {
+    if crate::paint::ui_is_redesign() {
+        TypeToken::Sm.px()
+    } else {
+        TypeToken::Base.px()
+    }
+}
+
 /// Square box + label. Box fills with `Accent` when Checked, paints a check glyph; Indeterminate
 /// paints a dash glyph.
 ///
@@ -90,11 +133,7 @@ pub fn paint_checkbox(
         // corpo de letra entre linhas vizinhas lê-se como desalinho**, não como ênfase.
         // ⚠️ **No clássico volta a `Base`, à DIREITA da caixa** — é a linha de sempre.
         let redesign = crate::paint::ui_is_redesign();
-        let font_size = if redesign {
-            TypeToken::Sm.px()
-        } else {
-            TypeToken::Base.px()
-        };
+        let font_size = label_font();
         let ly = rect.y + (rect.h - font_size) * 0.5;
         if let (true, Some(sec)) = (redesign, cb.seccao) {
             // ⭐⭐⭐ **O NOME VAI À COLUNA DO NOME DA SECÇÃO** — report do dono, 2026-09-14
@@ -124,7 +163,7 @@ pub fn paint_checkbox(
         } else if redesign {
             // ⛔ **Fora do formulário** (a pele de canvas): o nome fica onde o artista o pôs.
             let lx = rect.x + Spacing::Md.px();
-            let budget = (box_rect.x - lx - Spacing::Md.px()).max(0.0);
+            let budget = cb.free_label_budget(rect);
             let cut =
                 crate::widget::property_box::fit_label(text_system, &cb.label, font_size, budget);
             if !cut.is_empty() {

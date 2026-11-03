@@ -149,10 +149,21 @@ pub fn paint_list_item(
     // texto na borda em vez de o deixar sair, e o rótulo à esquerda colapsa a zero (ele já tinha
     // `.max(0.0)`). Um valor que CABE é byte-idêntico — o teto só morde quando ele não caberia.
     let value_room = (rect.x + rect.w - pad_x - chevron_w - cursor_x).max(0.0);
-    let value_w = value_pill_width_in(item, value_room, value_font, text_system);
-    let label_w =
-        (rect.x + rect.w - cursor_x - pad_x - chevron_w - value_w - Spacing::Lg.px()).max(0.0);
     let font_size = TypeToken::Base.px();
+    let label_room = |value_w: f32| {
+        (rect.x + rect.w - cursor_x - pad_x - chevron_w - value_w - Spacing::Lg.px()).max(0.0)
+    };
+    // ⭐⭐ **O NOME serve-se antes da DICA** (galeria em cartões, doc `CartoesUI/08`): numa coluna
+    //    estreita o valor à direita (um atalho, uma contagem) cede a fileira ao nome em vez de o
+    //    cortar — e um valor que não cabe INTEIRO não se pinta (meio atalho mente).
+    let mut value_w = value_pill_width_in(item, value_room, value_font, text_system);
+    if value_w > 0.0
+        && text_system.prefix_width_weighted(&item.label, font_size, ph2d_text::FontWeight::MEDIUM)
+            > label_room(value_w)
+    {
+        value_w = 0.0;
+    }
+    let label_w = label_room(value_w);
     let label_y = rect.y + (rect.h - font_size) * 0.5;
     let label_color = if item.state == ListItemState::Disabled {
         ColorToken::TextDisabled
@@ -175,7 +186,7 @@ pub fn paint_list_item(
         resolve(label_color, theme),
     );
 
-    if let Some(value) = &item.value {
+    if let Some(value) = item.value.as_ref().filter(|_| value_w > 0.0) {
         let value_x = rect.x + rect.w - pad_x - chevron_w - value_w;
         paint_text(
             text_system,

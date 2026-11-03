@@ -108,7 +108,8 @@ pub fn paint_lists_body(
         ],
     )
     .variant(TabsVariant::Segmented)
-    .selected(selected);
+    .selected(selected)
+    .fit_words(text_system);
     paint_tabs(&tabs, r, scene, text_system, theme);
     for (i, item) in tabs.items.iter().enumerate() {
         hit_index.register(item.id, tabs.tab_rect(r, i));

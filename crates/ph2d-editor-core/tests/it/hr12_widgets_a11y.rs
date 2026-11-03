@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "showcase/encaixe.rs",
+        "a lei responsiva dos corpos da galeria (doc CartoesUI/08): so' MEDE larguras e decide fileiras; nao emite no' — a a11y e' a dos widgets que os corpos pintam.",
+    ),
+    (
         "section_header/grupo.rs",
         "o cabecalho de GRUPO (CodeEditor 12) e' um `SectionHeader` e so' o pinta noutra escala; o no' a11y e' o `SectionHeader::build_a11y` (`section_header/mod.rs`).",
     ),

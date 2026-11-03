@@ -362,6 +362,7 @@ mod actions;
 mod card;
 pub mod card_back;
 mod color;
+mod encaixe;
 mod identity;
 mod inputs;
 mod inspector_w6;

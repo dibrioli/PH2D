@@ -202,27 +202,71 @@ impl VariantEditor {
         )
     }
 
+    /// ⭐⭐ **A coluna estreita parte a linha em fileiras** (galeria em cartões, doc
+    /// `CartoesUI/08`): `1` = chave · espécie · valor lado a lado (enquanto o valor fica com pelo
+    /// menos a largura da espécie); `2` = a chave em cima, espécie e valor em baixo; `3` = chave,
+    /// espécie e valor, cada um na sua. É uma decisão por EDITOR (uma geometria só).
+    #[must_use]
+    pub fn lines(host_w: f32, kind_col: f32) -> usize {
+        let chip_w = kind_col.min(host_w);
+        let key_w = (host_w * KEY_COL_FRACTION).min(host_w - chip_w).max(0.0);
+        let gap = Spacing::Sm.px();
+        if host_w - key_w - chip_w - gap >= kind_col {
+            1
+        } else if host_w - chip_w - gap >= kind_col {
+            2
+        } else {
+            3
+        }
+    }
+
+    /// A altura de uma linha do editor (uma a três alturas de `row_h`).
+    #[must_use]
+    pub fn row_pitch(host_w: f32, kind_col: f32, row_h: f32) -> f32 {
+        row_h * Self::lines(host_w, kind_col) as f32
+    }
+
+    /// A altura do editor inteiro em `host_w`.
+    #[must_use]
+    pub fn height(&self, text_system: &mut TextSystem, host_w: f32, row_h: f32) -> f32 {
+        let kind_col = Self::kind_col_w(text_system, row_h);
+        Self::row_pitch(host_w, kind_col, row_h) * self.rows().len() as f32
+    }
+
     /// As três medidas horizontais de uma linha, a partir da coluna da família.
     ///
     /// ⚠️ **A ordem de quem cede é a lei:** a coluna da ESPÉCIE serve-se primeiro porque a casa
     /// sabe exactamente o que ela tem de mostrar; a da CHAVE fica com o que a fracção dela pede,
-    /// limitado ao que sobrou. *Quem tem tamanho conhecido não pode ser o que cede.*
+    /// limitado ao que sobrou. *Quem tem tamanho conhecido não pode ser o que cede.* Partida em
+    /// fileiras, a chave fica com a fileira dela inteira.
     fn row_columns(host: Rect, row: &VariantRow, kind_col: f32) -> (f32, f32, f32) {
         let indent = row.depth as f32 * ph2d_tokens::list_indent_px();
         let livre = (host.w - indent).max(0.0);
         let chip_w = kind_col.min(livre);
-        let key_w = if row.key.is_some() {
-            (host.w * KEY_COL_FRACTION).min(livre - chip_w).max(0.0)
-        } else {
-            0.0
+        let key_w = match (row.key.is_some(), Self::lines(host.w, kind_col)) {
+            (false, _) => 0.0,
+            (true, 1) => (host.w * KEY_COL_FRACTION).min(livre - chip_w).max(0.0),
+            (true, _) => livre,
         };
         (indent, key_w, chip_w)
     }
 
-    /// Hit rect for the kind dropdown of row `i`. `host` is the full
-    /// row strip; `row_h` the per-row height; `kind_col` the family
-    /// column from [`Self::kind_col_w`]. The dropdown sits after the
-    /// row's indent and (optional) key column.
+    /// A caixa da CHAVE da linha `i` (largura `0` numa linha sem chave).
+    #[must_use]
+    pub fn key_rect(
+        host: Rect,
+        row: &VariantRow,
+        row_index: usize,
+        row_h: f32,
+        kind_col: f32,
+    ) -> Rect {
+        let (indent, key_w, _) = Self::row_columns(host, row, kind_col);
+        let top = host.y + row_index as f32 * Self::row_pitch(host.w, kind_col, row_h);
+        Rect::new(host.x + indent, top, key_w, row_h)
+    }
+
+    /// Hit rect for the kind dropdown of row `i` (`kind_col` from [`Self::kind_col_w`]): after the
+    /// indent and key column, or on the line below the key when the row is split ([`Self::lines`]).
     pub fn kind_chip_rect(
         host: Rect,
         row: &VariantRow,
@@ -230,13 +274,32 @@ impl VariantEditor {
         row_h: f32,
         kind_col: f32,
     ) -> Rect {
-        let (indent, key_w, chip_w) = Self::row_columns(host, row, kind_col);
-        Rect::new(
-            host.x + indent + key_w,
-            host.y + row_index as f32 * row_h,
-            chip_w,
-            row_h,
-        )
+        let (indent, _, chip_w) = Self::row_columns(host, row, kind_col);
+        let key = Self::key_rect(host, row, row_index, row_h, kind_col);
+        if Self::lines(host.w, kind_col) == 1 {
+            return Rect::new(key.x + key.w, key.y, chip_w, row_h);
+        }
+        let down = if row.key.is_some() { row_h } else { 0.0 };
+        Rect::new(host.x + indent, key.y + down, chip_w, row_h)
+    }
+
+    /// A caixa do VALOR da linha `i`: à direita da espécie, ou na fileira de baixo quando a
+    /// linha se parte em três ([`Self::lines`]).
+    #[must_use]
+    pub fn value_rect(
+        host: Rect,
+        row: &VariantRow,
+        row_index: usize,
+        row_h: f32,
+        kind_col: f32,
+    ) -> Rect {
+        let chip = Self::kind_chip_rect(host, row, row_index, row_h, kind_col);
+        if Self::lines(host.w, kind_col) == 3 {
+            let w = (host.x + host.w - chip.x).max(0.0);
+            return Rect::new(chip.x, chip.y + row_h, w, row_h);
+        }
+        let val_x = chip.x + chip.w + Spacing::Sm.px();
+        Rect::new(val_x, chip.y, (host.x + host.w - val_x).max(0.0), row_h)
     }
 
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -268,17 +331,16 @@ pub fn paint_variant_editor(
     // ⭐ **Uma vez por editor, nunca por linha:** a família não muda entre as linhas dele.
     let kind_col = VariantEditor::kind_col_w(text_system, row_h);
     for (i, row) in rows.iter().enumerate() {
-        let (indent, key_w, _) = VariantEditor::row_columns(host, row, kind_col);
-        let row_y = host.y + i as f32 * row_h;
+        let key_rect = VariantEditor::key_rect(host, row, i, row_h, kind_col);
         if let Some(key) = &row.key {
             paint_text(
                 text_system,
                 scene,
                 key,
-                host.x + indent,
-                row_y + (row_h - font) * 0.5,
+                key_rect.x,
+                key_rect.y + (row_h - font) * 0.5,
                 font,
-                key_w,
+                key_rect.w,
                 resolve(ColorToken::Text2, theme),
             );
         }
@@ -295,9 +357,7 @@ pub fn paint_variant_editor(
         .selected(row.kind);
         paint_dropdown_chip(&dd, chip, scene, text_system, theme);
         // Value control: a swatch for Color, otherwise a text preview.
-        let val_x = chip.x + chip.w + Spacing::Sm.px();
-        let val_w = (host.x + host.w - val_x).max(0.0);
-        let val_rect = Rect::new(val_x, row_y, val_w, row_h);
+        let val_rect = VariantEditor::value_rect(host, row, i, row_h, kind_col);
         match row.kind {
             VariantKind::Color => {
                 let rgba = parse_color_preview(&row.preview);

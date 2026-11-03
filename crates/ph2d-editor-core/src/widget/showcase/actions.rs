@@ -49,8 +49,8 @@ pub fn paint_actions_body(
 ) -> f32 {
     let btn_h = 30.0_f32; // LITERAL-PX-OK: action button height (distinct from ROW_H_PX)
     let gap = Spacing::Xs.px();
-    // Three labelled buttons.
-    let trio_w = (w - gap * 2.0) / 3.0; // LITERAL-PX-OK: button count divisor
+    // Three labelled buttons — as many per row as give each the box its word asks for
+    // (`super::encaixe`): three in the floating window, fewer in the narrow side column.
     let trio = [
         (ids::INSP_SAMPLE_BTN_PRIMARY, "Save", ButtonKind::Accent),
         (
@@ -60,14 +60,31 @@ pub fn paint_actions_body(
         ),
         (ids::INSP_SAMPLE_BTN_DANGER, "Delete", ButtonKind::Danger),
     ];
+    let precisa = trio.iter().fold(0.0_f32, |m, (id, label, kind)| {
+        let font = Button::new(*id, *label).kind(*kind).font_size();
+        m.max(crate::paint::rect_for_label(super::encaixe::largura(
+            text_system,
+            label,
+            font,
+        )))
+    });
+    let per_row = super::encaixe::pecas_por_fileira(w, gap, precisa, trio.len());
+    let cell_w = (w - gap * (per_row - 1) as f32) / per_row as f32;
     for (i, (id, label, kind)) in trio.iter().enumerate() {
-        let r = Rect::new(x + (trio_w + gap) * i as f32, y, trio_w, btn_h);
+        let (row, col) = (i / per_row, i % per_row);
+        let r = Rect::new(
+            x + (cell_w + gap) * col as f32,
+            y + (btn_h + row_gap()) * row as f32,
+            cell_w,
+            btn_h,
+        );
         hit_index.register(*id, r);
         let state = store.button_visual(*id);
         let btn = Button::new(*id, *label).kind(*kind).visual(state);
         paint_button(&btn, r, scene, text_system, theme);
     }
-    y += btn_h + row_gap();
+    let rows = trio.len().div_ceil(per_row);
+    y += (btn_h + row_gap()) * rows as f32;
 
     // Icon button + Tag (removable) on one row.
     let icon_size = Spacing::Xl3.px();

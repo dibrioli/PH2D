@@ -4,8 +4,8 @@
 use super::{CALENDAR_CELLS, CALENDAR_COLS, CALENDAR_ROWS, Calendar};
 use crate::icons::IconId;
 use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text_centered, paint_text_title, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text_centered, paint_text_centered_com_orcamento,
+    paint_text_title, resolve, stroke_rounded_rect,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -126,6 +126,15 @@ pub fn cell_node_id(cal: NodeId, i: usize) -> NodeId {
     NodeId(cal.0.wrapping_add(1 + i as u64))
 }
 
+/// ⭐ **O dia mede-se pela CÉLULA, não pelo respiro de um rótulo** (galeria em cartões, doc
+/// `CartoesUI/08`): o número é centrado e a pastilha é só fundo, logo a borda dele é a da célula.
+/// Numa coluna estreita (a `w/7` de um encaixe no mínimo) o `10`–`31` e o `Mo` cabem onde o
+/// respiro os cortava — em qualquer fonte da interface (a Inter tem algarismos mais largos que a
+/// Noto Sans: a pastilha sozinha não chegava, medido). Numa célula larga o orçamento só cresce.
+fn orcamento_da_celula(cell: Rect) -> f32 {
+    cell.w
+}
+
 /// O quadrado de cor por trás do número (o dia, não a célula inteira).
 fn chip(cell: Rect) -> Rect {
     let pad = Spacing::Xxs.px();
@@ -197,11 +206,12 @@ pub fn paint_calendar(
             l.cell_w,
             l.weekdays.h,
         );
-        paint_text_centered(
+        paint_text_centered_com_orcamento(
             text_system,
             scene,
             name,
             r,
+            orcamento_da_celula(r),
             TypeToken::Xs.px(),
             resolve(ColorToken::Text3, theme),
         );
@@ -247,11 +257,12 @@ pub fn paint_calendar(
         } else {
             ColorToken::Text3
         };
-        paint_text_centered(
+        paint_text_centered_com_orcamento(
             text_system,
             scene,
             &cell.day.to_string(),
             r,
+            orcamento_da_celula(r),
             TypeToken::Sm.px(),
             resolve(ink, theme),
         );

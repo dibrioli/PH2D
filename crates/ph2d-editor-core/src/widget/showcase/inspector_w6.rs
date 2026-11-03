@@ -241,16 +241,17 @@ pub fn paint_inspector_w6_body(
             ("tint".to_string(), VariantValue::Color([200, 30, 30, 255])),
         ]),
     );
-    let variant_rows = variant.rows().len();
+    // ⭐ Na coluna estreita o valor desce para debaixo da chave (`VariantEditor::lines`).
+    let variant_h = variant.height(text_system, w, w6_field_h());
     paint_variant_editor(
         &variant,
-        Rect::new(x, y, w, w6_field_h() * variant_rows as f32),
+        Rect::new(x, y, w, variant_h),
         w6_field_h(),
         scene,
         text_system,
         theme,
     );
-    y += w6_field_h() * variant_rows as f32 + row_gap();
+    y += variant_h + row_gap();
 
     // ── KeyValueList (visual reference) ─────────────────────────────
     y = mini_label(
@@ -296,15 +297,17 @@ fn mini_label(
     label_h: f32,
     label_font: f32,
 ) -> f32 {
-    paint_text(
-        text_system,
+    // ⭐ A frase QUEBRA na coluna estreita (`super::encaixe`); numa fileira é a altura de sempre.
+    let top = (label_h - label_font) * 0.5;
+    let h = super::encaixe::frase(
         scene,
+        text_system,
         label,
         x,
-        y + (label_h - label_font) * 0.5,
+        y + top,
         label_font,
         w,
         resolve(ColorToken::Text2, theme),
     );
-    y + label_h + SECTION_LABEL_TO_CONTROL_PX
+    y + label_h.max(top + h) + SECTION_LABEL_TO_CONTROL_PX
 }

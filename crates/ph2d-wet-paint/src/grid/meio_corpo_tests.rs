@@ -142,7 +142,7 @@ fn sem_meio_sem_corpo_e_o_de_sempre() {
             for massa in [0.0, 1.0, 600.0] {
                 for f in [0.0, 0.3, 5.0] {
                     let a = tensao(t0, m, massa, f, 1.0);
-                    let b = tensao_com_corpo(t0, m, 0.0, massa, f, 1.0);
+                    let b = tensao_com_corpo(t0, m, 0.0, (massa, massa), f, 1.0);
                     assert_eq!(a.to_bits(), b.to_bits());
                 }
             }

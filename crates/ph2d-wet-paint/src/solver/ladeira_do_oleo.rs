@@ -99,15 +99,50 @@ pub(crate) const TAU_CORPO: f64 = 0.25;
 #[doc(hidden)]
 pub static PAPEL_CORPO: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// A tensão da célula com o corpo: a do meio ([`tensao`]) + a do pincel.
+/// A tensão da célula com o corpo: a do meio ([`tensao`], sobre a massa que ESCOA, [`massa_movel`]) + a do pincel,
+/// que vale onde há tinta dele — `toda` = `susp + sett`: o corpo é da TINTA pousada, e a tinta molhada do Wet Paint
+/// pousa quase toda assentada (a faixa molhada da cena `sobre` não tinha `susp` e escoava sem cedência).
 #[inline]
 #[must_use]
-pub(crate) fn tensao_com_corpo(t0: f64, m: f64, corpo: f64, massa: f64, f: f64, max_v: f64) -> f64 {
-    let base = tensao(t0, m, massa, f, max_v);
-    if corpo <= 0.0 || massa <= 0.0 {
+pub(crate) fn tensao_com_corpo(
+    t0: f64,
+    m: f64,
+    corpo: f64,
+    (movel, toda): (f64, f64),
+    f: f64,
+    max_v: f64,
+) -> f64 {
+    let base = tensao(t0, m, movel, f, max_v);
+    if corpo <= 0.0 || toda <= 0.0 {
         return base;
     }
     base + medida(&PAPEL_CORPO, TAU_CORPO) * max_v * corpo
+}
+
+/// ⭐ **A CEDÊNCIA da célula fina `fi`** (meio + corpo, [`tensao_com_corpo`] → [`bingham`]) sobre a velocidade `(ex, ey)`:
+/// a ÚNICA porta da lei «a cedência do meio decide se a tinta flui», em TODA rota que escreve o fluxo — a de Jacobi, a
+/// serial e o alisamento dos três quadros em quatro (a parede que ela substituiu valia nas três; só na de Jacobi, o
+/// alisamento escoava), e o corpo conta a tinta assentada (Oil Bristle sobre a faixa molhada 14/12 → 12/12, `cura-molhada.md`). Campo vazio ⇒ `(ex, ey)`, ao bit.
+#[inline]
+#[must_use]
+pub(crate) fn cede(
+    oleo: &[crate::grid::oleo_celula::OleoCelula],
+    (susp, sett): (&[f32], &[f32]),
+    fi: usize,
+    f: f64,
+    max_v: f64,
+    (ex, ey): (f64, f64),
+) -> (f64, f64) {
+    if oleo.is_empty() {
+        return (ex, ey);
+    }
+    let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
+    let massa = (
+        massa_movel(susp[fi], sett[fi]),
+        f64::from(susp[fi]) + f64::from(sett[fi]),
+    );
+    let tau = tensao_com_corpo(tau0(), cel.meio.into(), cel.corpo.into(), massa, f, max_v);
+    bingham(ex, ey, tau)
 }
 
 /// Aplica `τ_y` ao incremento de velocidade `(ex, ey)`: abaixo dela nada escoa, acima escoa o excesso.

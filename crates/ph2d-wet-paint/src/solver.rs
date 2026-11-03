@@ -106,8 +106,10 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         bloom,
         tinta,
         pigmento: pigmento_lado,
+        oleo,
         ..
     } = g;
+    let oleo: &[_] = oleo;
 
     // Per-row subslices of the READ-ONLY arrays (film/paper/vel/active are
     // never written by this pass on any path) let the compiler prove the
@@ -381,6 +383,13 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             if let Some(gt) = p.gota {
                 (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet);
             }
+            if !oleo.is_empty() {
+                (ex, ey) = ladeira_do_oleo::cede(oleo, (susp, sett), fi, f, max_v, (ex, ey));
+                let k = crate::meio::mobilidade(f64::from(
+                    crate::grid::oleo_celula::da_celula(oleo, fi).meio,
+                ));
+                (ex, ey) = (ex * k, ey * k);
+            }
             flow_x[i] = clamp_sym(ex, max_v) as f32;
             flow_y[i] = clamp_sym(ey, max_v) as f32;
             i += 1;
@@ -441,8 +450,12 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
         flow_y,
         active,
         wet,
+        oleo,
+        susp,
+        sett,
         ..
     } = g;
+    let (oleo, par): (&[_], (&[f32], &[f32])) = (oleo, (susp, sett));
     let row_lo: &[i32] = frow_lo;
     let row_hi: &[i32] = frow_hi;
     let film: &[f32] = film;
@@ -494,6 +507,8 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
                 if let Some(gt) = p.gota {
                     (fx, fy) = gt.aplica(fx, fy, fi, s, film, wet);
                 }
+                let f = f64::from(film[fi]);
+                (fx, fy) = ladeira_do_oleo::cede(oleo, par, fi, f, max_v, (fx, fy));
                 if fx > max_v {
                     fx = max_v;
                 } else if fx < -max_v {

@@ -214,7 +214,6 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
     // A tensão de cedência (meio + corpo) só existe com o campo da célula; sem ele, o fluxo de sempre.
     let com_tensao = !oleo.is_empty();
-    let tau0 = super::ladeira_do_oleo::tau0();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o
     // compilador o verifica em vez de um comentário o prometer.
     let film_full: &[f32] = film;
@@ -451,16 +450,9 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                     (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
                 }
                 if com_tensao {
+                    let par = (susp_full, sett_full);
+                    (ex, ey) = super::ladeira_do_oleo::cede(oleo, par, fi, f, c.max_v, (ex, ey));
                     let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
-                    let tau = super::ladeira_do_oleo::tensao_com_corpo(
-                        tau0,
-                        f64::from(cel.meio),
-                        f64::from(cel.corpo),
-                        super::ladeira_do_oleo::massa_movel(susp_full[fi], sett_full[fi]),
-                        f,
-                        c.max_v,
-                    );
-                    (ex, ey) = super::ladeira_do_oleo::bingham(ex, ey, tau);
                     let k = crate::meio::mobilidade(f64::from(cel.meio));
                     (ex, ey) = (ex * k, ey * k);
                 }

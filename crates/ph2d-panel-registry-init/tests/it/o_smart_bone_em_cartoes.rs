@@ -91,6 +91,7 @@ fn hero() -> HeroScreen {
         picking: false,
     }));
     state::set_current_bone_actions(vec!["Walk".to_owned(), "Wave".to_owned()]);
+    state::set_current_bone_ik(Some((1.0, 0.0, 2.0, ph2d_skeleton::BendSide::default())));
     let mut h = HeroScreen::new(NodeId(1));
     let todos: Vec<&'static str> = ph2d_editor_core::panel::with_registry_ref(|reg| {
         reg.panels().iter().map(|p| p.manifest.id).collect()
@@ -141,6 +142,19 @@ fn object_action_and_curve_tip_are_card_rows() {
     assert!(
         vao_accao >= objecto.h * 0.5,
         "não sobra lugar para o rótulo por cima de Action: {vao_accao}"
+    );
+    // E o da 1.ª linha: do título do cartão ao botão, o mesmo vão do Mix, que leva rótulo.
+    let vao_do_titulo = |cartao, campo: Rect| campo.y - rect(&h, ids::grip_de(cartao)).y;
+    let (smart, ik) = (
+        vao_do_titulo(ph2d_panel_skeleton::cards::CARD_SMART, objecto),
+        vao_do_titulo(
+            ph2d_panel_skeleton::cards::CARD_IK,
+            rect(&h, ids::VECTOR_BONE_IK_MIX),
+        ),
+    );
+    assert!(
+        (smart - ik).abs() < 0.5,
+        "Object não tem o rótulo por cima como o Mix: {smart} × {ik}"
     );
     let ponta = rect(&h, ids_do_painel::VECTOR_BONE_TIP);
     let (len, seg) = (
@@ -197,23 +211,6 @@ fn the_curve_tip_list_and_the_object_button_answer_a_click() {
         chegou_ao_barramento(&mut h, ids::VECTOR_BONE_SMART_PICK),
         "o botão Object não armou a escolha"
     );
-}
-
-/// Sem acções no documento a caixa não abre uma lista vazia.
-#[test]
-fn an_empty_action_list_opens_nothing() {
-    let mut h = hero();
-    state::set_current_bone_actions(Vec::new());
-    pinta(&mut h, 2);
-    let antes = rect(&h, ids::VECTOR_BONE_SMART_FROM);
-    clica(&mut h, ids_do_painel::VECTOR_BONE_SMART_CLIP);
-    assert!(
-        h.hit_index
-            .rect_for(ids::VECTOR_BONE_SMART_CLIP_IDS[0])
-            .is_none(),
-        "abriu uma lista sem opções"
-    );
-    assert_eq!(rect(&h, ids::VECTOR_BONE_SMART_FROM), antes);
 }
 
 /// Todo ícone sem texto do Bones tem dica; controlo: ≥ 1 ícone declarado.

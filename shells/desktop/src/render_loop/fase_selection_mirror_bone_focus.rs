@@ -122,8 +122,8 @@ impl crate::App {
         let doc = ph2d_editor_core::DocPx::of(&hero.project);
         let (pick, linha) = (self.skeleton.smart_pick, &self.timeline.doc);
         publica_o_osso(sim, osso_em_foco, doc, pick, linha);
-        // O cartão solto preso a um osso: o alfinete durável, o retrato de cada preso e a corda.
-        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world());
+        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world()); // T36: o alfinete durável
+        // O cartão solto preso a um osso: o retrato de cada preso e a corda.
         ph2d_panel_skeleton::publica_presos(&hero.store.loose_pins_of(BONES), |b| {
             let vivo = ph2d_skeleton_live::painel::live_bone(sim, b);
             publica_o_osso(sim, vivo, doc, pick, linha);
@@ -215,13 +215,4 @@ fn anda_as_cordas_do_inspector(
     ph2d_card_rope::anda(store, INSP, |b| {
         origem(w, b).map(|p| cam.world_to_screen(p, win))
     });
-}
-
-/// A âncora do osso em foco no painel — a conta é da família (`goal::ancora_no_painel`).
-fn publica_a_ancora(sim: &ph2d_ecs::SimWorld, osso_em_foco: Option<u64>) {
-    let a =
-        crate::skeleton_goal::ancora_no_painel(sim, osso_em_foco.map(ph2d_ecs::Entity::from_bits));
-    ph2d_panel_skeleton::set_current_bone_ik(a.ik);
-    ph2d_panel_skeleton::set_current_bone_aim(a.aim);
-    ph2d_panel_skeleton::set_current_bone_ik_auto_side(a.auto_side);
 }

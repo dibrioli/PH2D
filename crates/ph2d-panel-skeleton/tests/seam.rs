@@ -377,6 +377,47 @@ fn the_action_picker_lists_the_document_and_the_choice_reaches_the_bus() {
     limpa();
 }
 
+/// Sem acções no documento a caixa não abre uma lista vazia; controlo: com acções, a lista pinta.
+#[test]
+fn an_empty_action_list_paints_no_box() {
+    let abre_e_mede = |acoes: Vec<String>| {
+        estado_de(ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP);
+        state::set_current_bone_actions(acoes);
+        let mut host = MockPanelHost::with_panel::<SkeletonPanel>();
+        let mut st = SkeletonPanelState;
+        let chip = host
+            .rect_assentado(
+                &mut st,
+                VIEWPORT,
+                ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
+            )
+            .expect("a caixa da acção");
+        let fechada = host.paint_and_count_geometry::<SkeletonPanel>(&mut st, VIEWPORT);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
+        let evs = host.dispatch_pointer_event(pointer(
+            PointerKind::Up,
+            chip.x + 2.0,
+            chip.y + 2.0,
+            SEC + SEC / 100,
+        ));
+        aplica(&mut host, &mut st, evs);
+        let aberta = host.paint_and_count_geometry::<SkeletonPanel>(&mut st, VIEWPORT);
+        // A lista fica aberta entre testes da mesma thread só se ninguém a fechar.
+        ph2d_editor_core::panel::cards::dropdown::on_click(
+            ph2d_panel_skeleton::ids::VECTOR_BONE_SMART_CLIP,
+        );
+        limpa();
+        (fechada, aberta)
+    };
+    let (fechada, aberta) = abre_e_mede(vec!["Main".to_owned()]);
+    assert!(
+        aberta > fechada,
+        "controlo: a lista com opções não pintou nada a mais"
+    );
+    let (fechada, aberta) = abre_e_mede(Vec::new());
+    assert_eq!(aberta, fechada, "a lista sem opções pintou uma caixa vazia");
+}
+
 /// ⭐⭐⭐ **A OPÇÃO QUE SE CARREGA É A QUE SE VÊ** — a `n`-ésima linha da lista devolve o `n`-ésimo id.
 ///
 /// ⛔⛔ **Report do dono (2026-09-08):** *«ao selecionar na lista de actions … não consegue

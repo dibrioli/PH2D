@@ -36,8 +36,8 @@ use ph2d_tool_painter::{
 };
 use ph2d_wet_paint::tuning::Knob;
 use regua_da_largura::{
-    imagem_da_ferramenta, largura_do_misturador, largura_do_rasto, raio_do_motor_da_tabela,
-    sementes_da_largura, tolerancia_da_largura,
+    imagem_da_ferramenta, largura_da_agua, largura_do_misturador, largura_do_rasto,
+    raio_do_motor_da_tabela, sementes_da_largura, tolerancia_da_largura,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -492,10 +492,10 @@ fn imagem_da_largura(
     };
     if let Some(modo) = p.parametros.paint_mode.as_deref().filter(|m| *m != "Paint") {
         let (px, w, h) = imagem_da_ferramenta(p, modo, raio, crua, r, semente);
-        let regua: Regua = if modo == "Smear" {
-            largura_do_rasto
-        } else {
-            largura_do_misturador
+        let regua: Regua = match base_da_ferramenta(modo) {
+            _ if modo == "Smear" => largura_do_rasto,
+            "Wet Round" => largura_da_agua,
+            _ => largura_do_misturador,
         };
         return (px, w, h, regua);
     }

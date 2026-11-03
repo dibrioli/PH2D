@@ -270,7 +270,12 @@ const PISO_DA_COLUNA: f32 = 0.08;
 /// degrau: Blender Textured motor 27,75 → 41 px, 27,99 → 60) e a 1.ª à última linha acima de ½ do pico no Smear (o
 /// espalhar da água cruzava o limiar: Smear Wet 3,41 → 13, 3,5 → 27, 3,8 → 14).
 pub(crate) fn largura_equivalente(px: &[u8], w: u32, h: u32, x: u32) -> Option<f32> {
-    let (soma, pico) = (0..h)
+    largura_equivalente_entre(px, w, x, 0..h)
+}
+
+/// A [`largura_equivalente`] da coluna `x` só nas linhas `ys`.
+fn largura_equivalente_entre(px: &[u8], w: u32, x: u32, ys: std::ops::Range<u32>) -> Option<f32> {
+    let (soma, pico) = ys
         .map(|y| mudanca(px, w, x, y))
         .fold((0.0f32, 0.0f32), |(s, m), c| (s + c, m.max(c)));
     (pico >= PISO_DA_COLUNA).then(|| soma / pico)
@@ -284,6 +289,24 @@ pub(super) fn largura_do_misturador(px: &[u8], w: u32, h: u32) -> f32 {
     mediana(
         (x0..(x0 + VAO_DO_MISTURADOR as u32).min(w))
             .filter_map(|x| largura_equivalente(px, w, h, x))
+            .collect(),
+    )
+}
+
+/// ⭐ **A largura da ÁGUA (modos Wet e Dry, base Wet Round)**: a de [`largura_do_misturador`], com cada coluna só na
+/// metade da faixa PERTO do traço — `cy ± 1,5·m` (o raio da base; a cena tem `h = 6m + 80`, `cy = h/2`). A água que
+/// empurra corre pelo filme molhado até à orla de LÁ da faixa (`cy − 3m`) e mexe-a; essa orla é da cena, não do traço.
+/// ⛔ Medido 03/11 (Water Brush, motor 298, só a base a variar 285/290/295/305): o pico da coluna inteira morava na orla
+/// de lá (linha mediana 38–133, o traço em 934) e subia com os poros da base (0,31 → 0,45), com a área quase igual
+/// (58 → 61): a largura lia 187 → 131 → 208. Na janela `±1,5m`: 219 / 195 / 184 / 210.
+pub(super) fn largura_da_agua(px: &[u8], w: u32, h: u32) -> f32 {
+    let m = (h as f32 - 80.0) / 6.0;
+    let cy = h as f32 * 0.5;
+    let ys = ((cy - 1.5 * m).max(0.0) as u32)..((cy + 1.5 * m).ceil() as u32).min(h);
+    let x0 = ((w as f32 - VAO_DO_MISTURADOR) * 0.5) as u32;
+    mediana(
+        (x0..(x0 + VAO_DO_MISTURADOR as u32).min(w))
+            .filter_map(|x| largura_equivalente_entre(px, w, x, ys.clone()))
             .collect(),
     )
 }

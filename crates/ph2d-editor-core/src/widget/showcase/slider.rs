@@ -55,7 +55,7 @@ pub(super) fn paint_slider_section(
     y += Spacing::Sm.px();
     let (lo, hi) = (0.25, 0.75); // LITERAL-PX-OK: intervalo de amostra da galeria (fracções da trilha)
     crate::widget::paint_range_slider(Rect::new(x, y, w, field_h()), lo, hi, None, scene, theme);
-    y += field_h() + Spacing::Sm.px();
+    y += field_h() + ph2d_tokens::control_gap_px();
     let curve_h = field_h() * 4.0; // LITERAL-PX-OK: quatro filas, a altura da caixa no diálogo Color Curve
     let pontos = [(64, 40), (192, 220)];
     crate::widget::paint_curve_editor(Rect::new(x, y, w, curve_h), &pontos, None, scene, theme);

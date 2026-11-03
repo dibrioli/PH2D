@@ -577,7 +577,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.painter_layers.wetpaint.preset_cancel" => "Cancel",
         "panel.painter_layers.wetpaint.preset_reset_order" => "Reset positions",
-        "panel.painter_layers.wetpaint.vol_size" => "Size px",
+        "panel.painter_layers.wetpaint.vol_size" => "Size (px)",
         // E10 (F3 §9): Pigment + Water → Dilution; a Opacity → Volume em µm.
         "panel.painter_layers.wetpaint.dilution" => "Dilution",
         "panel.painter_layers.wetpaint.volume_um" => "Volume (µm)",

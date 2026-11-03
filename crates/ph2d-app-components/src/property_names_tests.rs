@@ -7,7 +7,7 @@ use ph2d_ecs::scene::property::{self, PropertyError};
 use std::collections::BTreeSet;
 
 /// O `snake` de um rótulo inglês: «Cull Mask» → `cull_mask`; a unidade do fim não entra no nome
-/// («Regen / s» → `regen`, «Dodge (0–1)» → `dodge`).
+/// («Regen (/s)» → `regen`, «Dodge (0–1)» → `dodge`).
 pub(crate) fn snake(label: &str) -> String {
     let label = label.split(" / ").next().unwrap_or(label);
     let label = match label.rfind(" (") {

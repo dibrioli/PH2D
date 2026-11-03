@@ -76,7 +76,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.bg_removal.mask.refine" => "Refine",
         "panel.bg_removal.mask.grow" => "Grow",
         "panel.bg_removal.mask.separate_islands" => "Separate islands",
-        "panel.bg_removal.mask.min_px" => "Min px",
+        "panel.bg_removal.mask.min_px" => "Min (px)",
         "panel.bg_removal.mask.add_area" => "Add area",
         "panel.bg_removal.mask.clear_added_areas" => "Clear added areas",
         "panel.bg_removal.mask.pick_colors" => "Pick colors",

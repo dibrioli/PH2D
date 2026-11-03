@@ -34,7 +34,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.vida.editing_the_primary_selection_only" => {
             "Editing the primary selection only."
         }
-        "panel.inspector.vida.amount_per_second" => "Amount / s",
+        "panel.inspector.vida.amount_per_second" => "Amount (/s)",
         "panel.inspector.vida.damage_team_hint" => {
             "Team \u{2014} it does not hurt its own team\u{2026}"
         }

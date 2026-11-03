@@ -9,7 +9,7 @@
 //!   caixa estreitar no iPad. A F48d escreveu `Distance (px)` assim, de propósito.
 //!
 //! ⛔ O que as duas proíbem: a unidade DUAS vezes (`Distance (px)` sobre `12 px`), e uma unidade no
-//! rótulo fora do formato `(unidade)` no fim (`Min px`, `Regen / s`).
+//! rótulo fora do formato `(unidade)` no fim (`Min px`, `Regen / s`) — sem excepções.
 //!
 //! # A régua
 //!
@@ -26,40 +26,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// ⏳ **Rótulos com a unidade FORA do formato `(unidade)` — MEDIDOS em 2026-11-03, e só ENCOLHEM.**
-///
-/// ⛔ Não acrescente entrada: um rótulo novo com unidade escreve-a `Nome (px)` ou põe-na no campo.
-const FORA_DO_FORMATO: &[(&str, &str)] = &[
-    (
-        "panel.bg_removal.mask.min_px",
-        "«Min px» — unidade solta no fim",
-    ),
-    (
-        "panel.painter_layers.wetpaint.vol_size",
-        "«Size px» — unidade solta no fim",
-    ),
-    (
-        "component.field.health_fields.5",
-        "«Regen / s» — taxa escrita «/ s»",
-    ),
-    (
-        "component.field.damage_fields.11",
-        "«Lasting / s» — taxa escrita «/ s»",
-    ),
-    (
-        "component.field.health_bar_fields.10",
-        "«Trail Speed / s» — taxa escrita «/ s»",
-    ),
-    (
-        "panel.inspector.vida.amount_per_second",
-        "«Amount / s» — taxa escrita «/ s»",
-    ),
-];
-
-/// O vocabulário de unidades que um rótulo pode escrever (ver [`unidade_no_fim`]).
+/// O vocabulário de unidades que um rótulo pode escrever (ver [`unidade_no_fim`]). `/s` é a TAXA
+/// por segundo no formato do dono («Regen (/s)», 2026-11-03).
 const SUFIXOS: &[&str] = &[
     "m", "px", "s", "ms", "1/s", "N", "N.m", "m/s", "m/s2", "m/s^2", "%", "deg", "deg/s", "rad",
-    "°", "°/s", "N.s", "seconds",
+    "°", "°/s", "N.s", "seconds", "/s",
 ];
 
 /// Um valor de i18n «tem unidade no fim» quando acaba em `(<sufixo>)`.
@@ -214,16 +185,10 @@ fn janela(src: &str, pos: usize) -> Option<&str> {
             b')' | b']' => prof += 1,
             b'[' if prof > 0 => prof -= 1,
             b'(' if prof > 0 => prof -= 1,
-            b'(' => {
-                let id: String = src[..i]
-                    .chars()
-                    .rev()
-                    .take_while(|c| c.is_alphanumeric() || *c == '_')
-                    .collect();
-                if id != "rt" {
-                    break i;
-                }
-            }
+            // Um INVÓLUCRO cujo único argumento é a chave (`tr("k")`, `TextKey::new("k")`) não é a
+            // chamada que recebe o rótulo: sobe-se para a de fora.
+            b'(' if !src[i + 1..pos].trim().is_empty() => break i,
+            b'(' => {}
             b';' | b'{' | b'}' if prof == 0 => return None,
             _ => {}
         }
@@ -303,19 +268,14 @@ fn a_unidade_aparece_uma_vez_so() {
             }
         }
     }
-    // ⚠️ Piso da 2.ª metade, MEDIDO em 2026-11-03: dos 7 textos com `(unidade)` no fim, a régua leu
-    //    a chamada de 5 (o `Distance (px)`, o `Grid Size (px)` e três avisos com plural `(s)`; os
-    //    dois da timeline entram por outra porta).
+    // ⚠️ Piso da 2.ª metade, MEDIDO em 2026-11-03: dos 15 textos com `(unidade)` no fim, a régua
+    //    leu a chamada de 12 (os dois da timeline e um aviso da shell entram por outra porta).
     assert!(
-        vistos >= 5,
+        vistos >= 12,
         "a regua nao leu a chamada de nenhum rotulo com unidade — a janela partiu-se"
     );
-    let tolerado: Vec<&str> = FORA_DO_FORMATO.iter().map(|(k, _)| *k).collect();
     let mut fora = Vec::new();
     for (chave, texto) in &pares {
-        if tolerado.contains(&chave.as_str()) {
-            continue;
-        }
         if let Some(u) = fora_do_formato(texto) {
             fora.push(format!("{chave}  =>  {texto:?}  (unidade `{u}`)"));
         }
@@ -357,6 +317,14 @@ fn a_regua_reprova_a_unidade_dupla_e_aprova_a_do_rotulo() {
         campo_leva_unidade(j),
         "a janela do num_row_unit nao ve o Unit: {j:?}"
     );
+    // ⛔ E por um TextKey numa tupla de linhas (a forma do Inspector da Vida).
+    let tupla = "&[(TextKey::new(\"k.z\"), ids::X, 0.5, Some(Unit::Seconds))]";
+    let j = janela(tupla, tupla.find("\"k.z\"").unwrap()).unwrap();
+    assert!(
+        campo_leva_unidade(j),
+        "a janela parou no TextKey::new: {j:?}"
+    );
+    assert!(fora_do_formato("Regen (/s)").is_none());
     // ✓ Passa: o `Distance (px)` REAL (F48d) — rótulo com a unidade, campo sem sufixo.
     let src = fontes();
     let us = usos(&src, "panel.vector.expand.offset");
@@ -384,29 +352,6 @@ fn a_regua_reprova_a_unidade_dupla_e_aprova_a_do_rotulo() {
     assert!(fora_do_formato("{px} px").is_none());
 }
 
-/// ⚠️ **A metade de OBSOLESCÊNCIA** — uma tolerância que já não descreve nada sai da lista.
-#[test]
-fn a_divida_fora_do_formato_ainda_descreve_algo() {
-    let pares = tabelas();
-    let mut mortas = Vec::new();
-    for (chave, razao) in FORA_DO_FORMATO {
-        match pares.iter().find(|(k, _)| k == chave) {
-            None => mortas.push(format!("{chave} — a chave sumiu ({razao})")),
-            Some((_, texto)) if fora_do_formato(texto).is_none() => {
-                mortas.push(format!(
-                    "{chave} — ja' esta no formato: {texto:?} ({razao})"
-                ));
-            }
-            _ => {}
-        }
-    }
-    assert!(
-        mortas.is_empty(),
-        "entrada(s) STALE na divida:\n  {}",
-        mortas.join("\n  ")
-    );
-}
-
 /// ⭐⭐ **O CONTROLO do detector** — sem ele, um `unidade_no_fim` que respondesse sempre `None`
 /// deixaria as duas metades verdes sobre o app inteiro por converter.
 #[test]
@@ -423,6 +368,8 @@ fn the_detector_can_see_a_unit_in_a_label() {
         ("Frame ms (0 = use)", None),
         ("Hold (ms)", Some("ms")),
         ("Duration (seconds)", Some("seconds")),
+        // A taxa no formato do dono (2026-11-03).
+        ("Regen (/s)", Some("/s")),
         // ⛔ O MOLDE — o caso que o report de 2026-09-15 expôs.
         ("Speed ({unit})", Some("{unit}")),
     ] {

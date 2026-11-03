@@ -206,10 +206,10 @@ des&ccedil;a at&eacute; <b><code class="ui">Damage</code></b>.</p>
   <div class="panel">
     <div class="h">Damage</div>
     <div class="body">
-      <div class="f"><span class="k">Amount / s</span><span class="v">0</span></div>
+      <div class="f"><span class="k">Amount (/s)</span><span class="v">0</span></div>
       <div class="f"><span class="k">Per Second</span><span class="v">&#10003;</span></div>
       <div class="f"><span class="k">Type</span><span class="v">fogo</span></div>
-      <div class="f"><span class="k">Lasting / s</span><span class="v">6</span></div>
+      <div class="f"><span class="k">Lasting (/s)</span><span class="v">6</span></div>
       <div class="f"><span class="k">Lasts</span><span class="v">2</span></div>
       <div class="f"><span class="k">Every</span><span class="v">0.5</span></div>
       <div class="f"><span class="k">Vanish on Hit</span><span class="ph">&mdash;</span></div>
@@ -217,11 +217,11 @@ des&ccedil;a at&eacute; <b><code class="ui">Damage</code></b>.</p>
   </div>
   <ul class="cal">
     <li><b><code class="ui">Amount</code></b> &eacute; o golpe. Com <b><code class="ui">Per Second</code></b>
-        ligado o r&oacute;tulo vira <b><code class="ui">Amount / s</code></b>: fere <i>enquanto
+        ligado o r&oacute;tulo vira <b><code class="ui">Amount (/s)</code></b>: fere <i>enquanto
         toca</i>, e n&atilde;o uma vez por toque.</li>
     <li><b><code class="ui">Type</code></b> &eacute; o nome que as resist&ecirc;ncias procuram
         (<code>fogo</code>, <code>gelo</code>, <code>cura</code>&hellip;). Vazio fere toda a gente igual.</li>
-    <li><b><code class="ui">Lasting / s</code></b> &eacute; o dano que <b>dura</b>: um golpe que entra
+    <li><b><code class="ui">Lasting (/s)</code></b> &eacute; o dano que <b>dura</b>: um golpe que entra
         deixa uma queimadura que continua a tirar <b><code class="ui">Lasts</code></b> segundos, um
         pulso a cada <b><code class="ui">Every</code></b>.</li>
     <li><b><code class="ui">Vanish on Hit</code></b>: quem bate some ao acertar &mdash; ligado nas balas,
@@ -261,7 +261,7 @@ nome.</p>
   <li>A Salamandra tem a sua pr&oacute;pria barra, com <b><code class="ui">Target</code></b> vazio: vazio
       quer dizer <i>a minha</i>.</li>
   <li>Quando a vida desce, o peda&ccedil;o perdido fica um instante noutra cor e depois escorre
-      &mdash; o <b>rasto</b> (<b><code class="ui">Trail Delay</code></b>, <b><code class="ui">Trail Speed / s</code></b>).
+      &mdash; o <b>rasto</b> (<b><code class="ui">Trail Delay</code></b>, <b><code class="ui">Trail Speed (/s)</code></b>).
       Uma cura sobe de uma vez, sem rasto.</li>
 </ul>
 
@@ -330,7 +330,7 @@ ouvem o que ele pr&oacute;prio diz):</p>
   <tr><th>o painel diz</th><th>quer dizer</th><th>o que fazer</th></tr>
   <tr><td><code class="ui">it hurts nobody.</code></td>
       <td>golpe zero e nada que dure: esta pe&ccedil;a n&atilde;o fere ningu&eacute;m</td>
-      <td>d&ecirc; um <code class="ui">Amount</code>, ou uma queimadura em <code class="ui">Lasting / s</code></td></tr>
+      <td>d&ecirc; um <code class="ui">Amount</code>, ou uma queimadura em <code class="ui">Lasting (/s)</code></td></tr>
   <tr><td><code class="ui">it stays dead; rewind to bring it back.</code></td>
       <td>a vida chegou a zero</td><td>recome&ccedil;ar traz de volta</td></tr>
   <tr><td><code class="ui">add a Physics Body so it can hit or be hit.</code></td>

@@ -89,7 +89,7 @@ use ph2d_editor_core::weapon_edits::InspectorWeaponInfo;
 use ph2d_panel_inspector as insp;
 
 /// O objecto da fixtura. ⚠️ Um valor qualquer: nenhuma das leis medidas aqui o lê como endereço.
-const BITS: u64 = 0x_A5_1D_E0;
+pub const BITS: u64 = 0x_A5_1D_E0;
 /// A receita de que ele seria cópia (a secção Component compara os dois).
 const RAIZ: u64 = 0x_A5_1D_E1;
 
@@ -401,7 +401,13 @@ pub fn arma_tudo() {
 
 /// A metade de FÍSICA: corpo, junta e roldana.
 fn arma_a_fisica() {
-    insp::set_current_inspector_physics(Some(InspectorPhysicsInfo {
+    insp::set_current_inspector_physics(Some(fisica_armada()));
+    arma_a_junta();
+}
+
+/// O corpo que [`arma_tudo`] arma (um Static de caixa) — quem precisa de outro muda um campo.
+pub fn fisica_armada() -> InspectorPhysicsInfo {
+    InspectorPhysicsInfo {
         entity_bits: BITS,
         has_body: true,
         kind_tag: 1,
@@ -457,7 +463,10 @@ fn arma_a_fisica() {
         area_form_drag: 0.0,
         area_torque: 0.0,
         area_falloff: 0.0,
-    }));
+    }
+}
+
+fn arma_a_junta() {
     insp::set_current_inspector_joint(Some(InspectorJointInfo {
         entity_bits: BITS,
         kind_tag: 1,
@@ -509,7 +518,12 @@ fn arma_a_fisica() {
         mount_pick_armed: false,
         rope_pick_armed: false,
     }));
-    insp::set_current_inspector_player(Some(InspectorPlayerInfo {
+    insp::set_current_inspector_player(Some(player_armado()));
+}
+
+/// O player que [`arma_tudo`] arma (Float Height 0,1) — quem precisa de outro muda um campo.
+pub fn player_armado() -> InspectorPlayerInfo {
+    InspectorPlayerInfo {
         entity_bits: BITS,
         has_player: true,
         mode_tag: 1,
@@ -582,7 +596,7 @@ fn arma_a_fisica() {
             velocity: [1.0, 0.0],
         }),
         emits_signals: true,
-    }));
+    }
 }
 
 /// A metade do TOP-20: relógio, acções, som, câmera, fábrica, movimento, projéctil, cérebro,

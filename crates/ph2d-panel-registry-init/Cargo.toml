@@ -123,9 +123,9 @@ ph2d-panel-registry-init = { path = ".", features = [
 # ⭐ Só para a fixtura `o_painter_armado`, que precisa do TIPO do instantâneo de pincel e do
 #    enum do padrão. ⛔ Sem eles a fixtura teria de escrever `11` à mão para dizer «Wood».
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
-# ⭐ Só para `o_cartao_solto_bloco4`: as medidas dos cartões (margem do fundo, largura mínima do solto).
+# ⭐ Só para os testes de cartões (`o_bloco5_abertos`, `o_bloco8_player_solto`…): as medidas dos cartões.
 ph2d-card-stack = { path = "../ph2d-card-stack" }
-# ⭐ Só para `o_alfinete_com_corda` (T53): a corda anda entre quadros como na shell (`anda_com`).
+# ⭐ Só para `o_alfinete_do_inspector` (T53): a corda anda entre quadros como na shell (`anda_com`).
 ph2d-card-rope = { path = "../ph2d-card-rope" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # ⭐ Só para a SONDA `diag_de_quem_sao_as_entradas_do_inspector`, que refaz o mapa

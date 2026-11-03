@@ -14,6 +14,17 @@ pub(super) fn pico_mib() -> f64 {
         / 1024.0
 }
 
+/// A memória residente do processo AGORA (`VmRSS`), em bytes.
+fn rss() -> u64 {
+    std::fs::read_to_string("/proc/self/status")
+        .unwrap_or_default()
+        .lines()
+        .find_map(|l| l.strip_prefix("VmRSS:"))
+        .and_then(|r| r.split_whitespace().next()?.parse::<u64>().ok())
+        .unwrap_or(0)
+        * 1024
+}
+
 /// O tecto de memória do processo (bytes): o menor `memory.max` do cgroup dele e dos pais (a fatia do `ph2d-run.sh`),
 /// menos o que ele já ocupa; sem cgroup com tecto, a `MemAvailable` da máquina.
 fn memoria_livre() -> u64 {
@@ -62,25 +73,35 @@ pub(super) fn custo_da_cena(p: &Preset, raio: f32, crua: bool) -> u64 {
     super::regua_da_largura::px_da_cena(p, raio, crua) * BYTES_POR_PX_DA_CENA
 }
 
-/// ⭐ **As medições da largura em paralelo PELA MEMÓRIA** (02/11c): `f(i)` para cada `i`, no máximo `fios` de cada vez
-/// e com a soma de `custos` (bytes estimados) em voo ≤ [`FRACAO_DO_LIVRE`] da [`memoria_livre`] — a maior entra
-/// sempre sozinha. A ordem de entrada é do maior custo para o menor; o resultado é por índice, e cada `f(i)` é
-/// independente: o que se grava é o mesmo com qualquer concorrência. ⛔ Medido: um fio por raio (64 de uma vez) pôs a
-/// lei crua da Water Brush a 66 G (o cgroup de 64 G matou-a); a soma de r² da escala geométrica é ~5× a do maior.
+/// ⭐ **As medições da largura em paralelo PELA MEMÓRIA** (02/11c): `f(i)` para cada `i`, no máximo `fios` de cada vez,
+/// do maior custo para o menor; o resultado é por índice e cada `f(i)` é independente, por isso o que se grava é o
+/// mesmo com qualquer concorrência. Uma medição entra (a primeira em voo entra sempre) se:
+/// - a soma dos `custos` estimados em voo fica ≤ [`FRACAO_DO_LIVRE`] da [`memoria_livre`] do início; e
+/// - a memória livre REAL do cgroup cobre a nova, mais TUDO o que está em voo voltar a crescer, mais 5 %.
+///
+/// ⛔ Medido 03/11 (Water Brush, `sonda_monotonia_da_largura`): um fio por raio (64 de uma vez) pôs a lei crua a 66 G.
+/// Só com o estimado (1.ª cura) morreu a 48 G: os seis maiores em voo picaram 33,7 G para 33,2 estimados, mas
+/// depois de saírem o `VmRSS` ficou em 23,4 G com zero em voo — o malloc guarda as páginas na arena de cada fio, e a
+/// medição seguinte, noutro fio, não as reaproveita. A medida real conta essa memória guardada; e quem pega a
+/// medição seguinte é, em geral, o fio que acabou de soltar a sua (já acordado; a arena dele tem as páginas).
 pub(super) fn em_paralelo_pela_memoria<T: Send>(
     custos: &[u64],
     fios: usize,
     f: impl Fn(usize) -> T + Sync,
 ) -> Vec<T> {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Condvar, Mutex};
-    let orcamento = (memoria_livre() as f64 * FRACAO_DO_LIVRE) as u64;
+    let livre0 = memoria_livre();
+    let orcamento = (livre0 as f64 * FRACAO_DO_LIVRE) as u64;
+    let reserva = livre0 / 20;
+    let cabe = |em_voo: u64, c: u64| {
+        em_voo == 0 || (em_voo + c <= orcamento && memoria_livre() >= c + em_voo + reserva)
+    };
     let mut ordem: Vec<usize> = (0..custos.len()).collect();
     ordem.sort_by_key(|&i| std::cmp::Reverse(custos[i]));
-    let proximo = AtomicUsize::new(0);
-    let em_voo = (Mutex::new(0u64), Condvar::new());
+    // (o próximo da `ordem`, a soma estimada em voo)
+    let estado = (Mutex::new((0usize, 0u64)), Condvar::new());
     // Devolve o custo mesmo se `f` entrar em pânico (senão os outros fios esperavam para sempre).
-    struct Vaga<'a>(&'a (Mutex<u64>, Condvar), u64);
+    struct Vaga<'a>(&'a (Mutex<(usize, u64)>, Condvar), u64);
     impl Drop for Vaga<'_> {
         fn drop(&mut self) {
             let mut g = self
@@ -88,7 +109,7 @@ pub(super) fn em_paralelo_pela_memoria<T: Send>(
                 .0
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            *g -= self.1;
+            g.1 -= self.1;
             self.0.1.notify_all();
         }
     }
@@ -98,18 +119,30 @@ pub(super) fn em_paralelo_pela_memoria<T: Send>(
             .map(|_| {
                 s.spawn(|| {
                     let mut feitas = Vec::new();
-                    while let Some(&i) = ordem.get(proximo.fetch_add(1, Ordering::Relaxed)) {
-                        let c = custos[i];
-                        let mut g = em_voo.0.lock().unwrap();
-                        while *g > 0 && *g + c > orcamento {
-                            g = em_voo.1.wait(g).unwrap();
-                        }
-                        *g += c;
+                    loop {
+                        let mut g = estado.0.lock().unwrap();
+                        let i = loop {
+                            let Some(&i) = ordem.get(g.0) else {
+                                return feitas;
+                            };
+                            if cabe(g.1, custos[i]) {
+                                break i;
+                            }
+                            g = estado.1.wait(g).unwrap();
+                        };
+                        g.0 += 1;
+                        g.1 += custos[i];
+                        eprintln!(
+                            "[memoria] entra {i}: {} MiB, {} MiB em voo, {} MiB livres, VmRSS {} MiB",
+                            custos[i] >> 20,
+                            g.1 >> 20,
+                            memoria_livre() >> 20,
+                            rss() >> 20
+                        );
                         drop(g);
-                        let _vaga = Vaga(&em_voo, c);
+                        let _vaga = Vaga(&estado, custos[i]);
                         feitas.push((i, f(i)));
                     }
-                    feitas
                 })
             })
             .collect();

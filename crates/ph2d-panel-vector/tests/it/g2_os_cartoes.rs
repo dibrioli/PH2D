@@ -608,6 +608,77 @@ fn all_lines_share_their_columns_and_a_small_weight_stays_on_one_row() {
     );
 }
 
+/// Dois dígitos ainda cabem numa fila (só o `100` do dono parte, 02/11).
+/// *Mutação: voltar os botões a `row_h` ⇒ a linha parte.*
+#[test]
+fn a_two_digit_weight_still_fits_one_row() {
+    let estreita = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1340.0,
+        h: 1600.0,
+    };
+    let mut mesa = Mesa::na_coluna(true, FillKind::Linear, estreita);
+    let mut a = state::current_appearance().expect("a forma");
+    a.layers[1].width = 12.0;
+    state::set_current_appearance(Some(a));
+    mesa.assenta();
+    let peso = mesa.rect(p::vector_paint_row_width_id(1)).unwrap();
+    let cor = mesa.rect(p::vector_paint_swatch_id(1)).unwrap();
+    assert!((peso.y - cor.y).abs() < 0.5, "{peso:?} × {cor:?}");
+}
+
+/// O nome vai com o id: cada opção no lugar da tabela, da esquerda para a direita.
+/// *Mutação: trocar dois ids num `Seg` ⇒ vermelho.*
+#[test]
+fn each_option_sits_in_the_order_of_its_table() {
+    let mut mesa = Mesa::nova(true, FillKind::Linear);
+    mesa.abre(p::VECTOR_FILL_ROW);
+    let cresce = |mesa: &Mesa, ids: &[NodeId]| {
+        let xs: Vec<f32> = ids
+            .iter()
+            .map(|i| mesa.rect(*i).expect("pintado").x)
+            .collect();
+        assert!(xs.windows(2).all(|w| w[0] < w[1]), "fora de ordem: {xs:?}");
+    };
+    cresce(
+        &mesa,
+        &[
+            t::VECTOR_FILL_KIND_SOLID,
+            t::VECTOR_FILL_KIND_LINEAR,
+            t::VECTOR_FILL_KIND_RADIAL,
+            t::VECTOR_FILL_KIND_MULTI,
+            t::VECTOR_FILL_KIND_PATTERN,
+        ],
+    );
+    let mut mesa = Mesa::nova(true, FillKind::Linear);
+    mesa.abre(p::VECTOR_STROKE_SETTINGS);
+    for trio in [
+        [
+            t::VECTOR_ALIGN_INNER,
+            t::VECTOR_ALIGN_CENTRE,
+            t::VECTOR_ALIGN_OUTER,
+        ],
+        [
+            t::VECTOR_CAP_BUTT,
+            t::VECTOR_CAP_ROUND,
+            t::VECTOR_CAP_SQUARE,
+        ],
+        [
+            t::VECTOR_JOIN_MITER,
+            t::VECTOR_JOIN_ROUND,
+            t::VECTOR_JOIN_BEVEL,
+        ],
+        [
+            t::VECTOR_STROKE_KIND_SOLID,
+            t::VECTOR_STROKE_KIND_PATTERN,
+            t::VECTOR_STROKE_KIND_BRUSH,
+        ],
+    ] {
+        cresce(&mesa, &trio);
+    }
+}
+
 /// Dono 02/11: só quando o valor não cabe a linha passa a duas filas, e o número nunca se corta.
 #[test]
 fn a_weight_that_does_not_fit_breaks_the_line_and_is_never_cut() {

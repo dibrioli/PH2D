@@ -122,7 +122,8 @@ fn commands_forward_and_close_is_the_tuning_toggle() {
         );
         assert!(drained_click(&host.drained_actions(), id));
     }
-    for id in [ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE] {
+    {
+        let id = ph2d_tool_painter::ids::WET_TUNING_KM_GLAZE;
         let (mut host, mut st) = host();
         assert_eq!(
             host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(id)),

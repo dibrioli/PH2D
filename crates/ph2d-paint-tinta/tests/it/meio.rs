@@ -27,10 +27,10 @@ fn masstone_seco_e_a_cor_escolhida_em_todo_meio() {
                 let alvo = esperado(srgb, t);
                 for fundo in [0.0f32, 1.0] {
                     let r = camada(&o, &Bandas::uniforme(fundo));
-                    for b in 0..3 {
+                    for (b, &alvo_b) in alvo.iter().enumerate() {
                         let q = linear_para_srgb(r_infinito(o.k.0[b] / o.s.0[b]));
-                        pior_q = pior_q.max((q - alvo[b]).abs());
-                        let e = (linear_para_srgb(r.0[b]) - alvo[b]).abs();
+                        pior_q = pior_q.max((q - alvo_b).abs());
+                        let e = (linear_para_srgb(r.0[b]) - alvo_b).abs();
                         pior_camada = pior_camada.max(e);
                     }
                 }
@@ -85,8 +85,8 @@ fn a_aquarela_molhada_escurece_e_seca_para_a_cor() {
         let rm = camada(&optica(&s, 0.0, true), &Bandas::uniforme(1.0));
         let rs = camada(&optica(&s, 0.0, false), &Bandas::uniforme(1.0));
         let nivel = |r: f32| linear_para_srgb(r) * 255.0;
-        for b in 0..3 {
-            assert!((nivel(rs.0[b]) - alvo[b] * 255.0).abs() < 0.5, "seca ≠ cor");
+        for (b, &alvo_b) in alvo.iter().enumerate() {
+            assert!((nivel(rs.0[b]) - alvo_b * 255.0).abs() < 0.5, "seca ≠ cor");
         }
         println!(
             "aquarela {:?}: seca {:?} · molhada {:?} (sRGB 0..255)",

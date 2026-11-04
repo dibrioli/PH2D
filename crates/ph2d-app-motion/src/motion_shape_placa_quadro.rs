@@ -303,6 +303,24 @@ impl PlacaDeFormas {
     }
 }
 
+impl crate::motion_shell_state::MotionShellState {
+    /// **As camadas do Motion deste quadro**, DESENHADAS antes das faixas (GEF 19 E3: uma faixa Motion
+    /// abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14): a placa das
+    /// formas e os palcos das macros. O clique do quadro anterior é esquecido primeiro.
+    pub fn desenha_as_camadas(
+        &mut self,
+        gpu: &GpuContext,
+        tamanho: (u32, u32),
+        motion: &MotionState,
+        renderer: &ph2d_render::SpriteRenderer,
+        filtro: ph2d_render::ImageFilterMode,
+    ) {
+        self.clique.esquece();
+        let _ = desenha_o_quadro(&mut self.placa, gpu, tamanho, motion, renderer, filtro);
+        self.palcos.desenha(gpu, tamanho, renderer, filtro);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     /// ⭐ **O ELO do dispositivo** (o gate de texto que morava na shell, doc 121 W3, trazido com o
@@ -325,23 +343,5 @@ mod tests {
         ] {
             assert_eq!(corpo.matches(fio).count(), 1, "{fio}");
         }
-    }
-}
-
-impl crate::motion_shell_state::MotionShellState {
-    /// **As camadas do Motion deste quadro**, DESENHADAS antes das faixas (GEF 19 E3: uma faixa Motion
-    /// abaixo da última de sprites cola aqui) e antes do halo que as redesenha (§9.14): a placa das
-    /// formas e os palcos das macros. O clique do quadro anterior é esquecido primeiro.
-    pub fn desenha_as_camadas(
-        &mut self,
-        gpu: &GpuContext,
-        tamanho: (u32, u32),
-        motion: &MotionState,
-        renderer: &ph2d_render::SpriteRenderer,
-        filtro: ph2d_render::ImageFilterMode,
-    ) {
-        self.clique.esquece();
-        let _ = desenha_o_quadro(&mut self.placa, gpu, tamanho, motion, renderer, filtro);
-        self.palcos.desenha(gpu, tamanho, renderer, filtro);
     }
 }

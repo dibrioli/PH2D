@@ -207,23 +207,6 @@ pub(crate) fn button_row(
     ph2d_editor_core::property_row::abaixo_do_botao(r)
 }
 
-/// Uma frase de ajuda em `Text3`, QUEBRADA em tantas linhas quantas pede (nunca elidida). Devolve o
-/// `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-#[track_caller]
-fn hint(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    x: f32,
-    w: f32,
-    y: f32,
-    text: &str,
-    color: ColorToken,
-) -> f32 {
-    super::rows::aviso(scene, text_system, theme, x, w, y, text, color)
-}
-
 /// **«Who Picks»** e o que cada escolha mostra. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_chooser(
@@ -250,7 +233,8 @@ pub(crate) fn paint_chooser(
         .zip(ids::INSP_ANIM_CHOOSER)
         .map(|((&c, text), id)| (text, c == chosen, id))
         .collect();
-    let mut cur_y = ph2d_editor_core::property_row::paint_choice_row(
+    // O que cada escolha faz mora no balão de cada botão (`populate_anim`; ordem do dono 21/09).
+    let cur_y = ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
         theme,
@@ -262,27 +246,6 @@ pub(crate) fn paint_chooser(
         tr("panel.inspector.anim_card.who_picks"),
         &segments,
         sec,
-    );
-    let key = match chosen {
-        AnimChooser::Me => "panel.inspector.anim_card.me_hint",
-        AnimChooser::Script => "panel.inspector.anim_card.script_hint",
-        AnimChooser::Rules => "panel.inspector.anim_card.rules_hint",
-    };
-    // «Me» é a propriedade `animator.autoplay`: o nome dela à frente da dica.
-    let texto = if chosen == AnimChooser::Me {
-        format!("{} · {}", tr("component.field.sprite_animator.2"), tr(key))
-    } else {
-        tr(key).to_string()
-    };
-    cur_y = hint(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        cur_y,
-        &texto,
-        ColorToken::Text3,
     );
     if chosen == AnimChooser::Rules {
         return super::anim_rules::rule_rows(

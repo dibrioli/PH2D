@@ -9,7 +9,9 @@ use super::*;
 use ph2d_editor_core::interaction::PanelRowFamily;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{AnimChooser, AnimWhenInfo, InspectorAnimInfo};
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::widget::{
+    Dropdown, DropdownOption, dropdown_label_budget, paint_dropdown_chip,
+};
 use ph2d_i18n::{TextKey, tr, tr_with};
 
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
@@ -97,6 +99,57 @@ fn is_open(store: &WidgetStore, id: NodeId) -> bool {
     )
 }
 
+/// Onde moram as peças de uma regra.
+struct RuleRects {
+    grip: Rect,
+    when: Rect,
+    arrow: Rect,
+    play: Rect,
+    del: Rect,
+    next_y: f32,
+}
+
+/// **Uma regra numa fileira, ou em duas quando algum nome não cabe** (plano 22: «Cro…» e «crou…» liam-se
+/// iguais). A pega ocupa as duas fileiras: é o rectângulo que o arrastar mede para largar.
+fn rule_rects(x: f32, control_w: f32, y: f32, stacked: bool) -> RuleRects {
+    let gap = ph2d_tokens::control_gap_px();
+    let pitch = ph2d_tokens::row_pitch_px();
+    let del = Rect::new(x + control_w - ROW_H, y, ROW_H, ROW_H);
+    let left = x + ROW_H + gap;
+    if stacked {
+        let right = del.x - gap;
+        let play_x = left + ROW_H + gap;
+        RuleRects {
+            grip: Rect::new(x, y, ROW_H, pitch + ROW_H),
+            when: Rect::new(left, y, right - left, ROW_H),
+            arrow: Rect::new(left, y + pitch, ROW_H, ROW_H),
+            play: Rect::new(play_x, y + pitch, right - play_x, ROW_H),
+            del,
+            next_y: y + pitch * 2.0, // LITERAL-PX-OK: duas fileiras
+        }
+    } else {
+        let chip_w = ((control_w - 3.0 * ROW_H - 4.0 * gap) * 0.5).max(0.0); // LITERAL-PX-OK: 3 células e 4 vãos, metade para cada chip
+        let arrow_x = left + chip_w + gap;
+        RuleRects {
+            grip: Rect::new(x, y, ROW_H, ROW_H),
+            when: Rect::new(left, y, chip_w, ROW_H),
+            arrow: Rect::new(arrow_x, y, ROW_H, ROW_H),
+            play: Rect::new(arrow_x + ROW_H + gap, y, chip_w, ROW_H),
+            del,
+            next_y: y + pitch,
+        }
+    }
+}
+
+/// O texto do chip «Play» de uma regra.
+fn play_label(info: &InspectorAnimInfo, play: &str) -> String {
+    if info.rows.iter().any(|r| r.name == play) {
+        play.to_owned()
+    } else {
+        tr_with("panel.inspector.anim_card.missing", &[("name", &play)])
+    }
+}
+
 /// As regras, «+ Rule», «Run From» e «Flip». Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn rule_rows(
@@ -123,11 +176,26 @@ pub(crate) fn rule_rows(
             ColorToken::Text3,
         );
     }
-    let gap = ph2d_tokens::control_gap_px();
     let font = TypeToken::Sm.px();
     // A coluna do losango (a lista não é animável: o ponto só reserva o MESMO `x` das outras linhas).
     let (control_w, _) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
-    let chip_w = ((control_w - 3.0 * ROW_H - 4.0 * gap) * 0.5).max(0.0); // LITERAL-PX-OK: 3 células e 4 vãos, metade para cada chip
+    let budget = dropdown_label_budget(rule_rects(x, control_w, y, false).when);
+    let stacked = info
+        .card
+        .rules
+        .iter()
+        .take(ids::MAX_ANIM_RULE_ROWS)
+        .any(|rule| {
+            [when_label(&rule.when), play_label(info, &rule.play)]
+                .iter()
+                .any(|t| {
+                    ph2d_editor_core::paint::label_column_width(
+                        text_system,
+                        TypeToken::Base.px(),
+                        [t.as_str()],
+                    ) > budget
+                })
+        });
     let options = info.card.when_options();
     let mut cur_y = y;
     let mut grips = Vec::new();
@@ -138,7 +206,8 @@ pub(crate) fn rule_rows(
         .take(ids::MAX_ANIM_RULE_ROWS)
         .enumerate()
     {
-        let grip = Rect::new(x, cur_y, ROW_H, ROW_H);
+        let rects = rule_rects(x, control_w, cur_y, stacked);
+        let grip = rects.grip;
         hit_index.register(ids::INSP_ANIM_RULE_GRIP[i], grip);
         fill_rounded_rect(
             scene,
@@ -156,7 +225,7 @@ pub(crate) fn rule_rows(
         );
         grips.push(grip);
 
-        let when_rect = Rect::new(grip.x + ROW_H + gap, cur_y, chip_w, ROW_H);
+        let when_rect = rects.when;
         let when_id = ids::INSP_ANIM_RULE_WHEN[i];
         hit_index.register(when_id, when_rect);
         let open = is_open(store, when_id);
@@ -172,28 +241,22 @@ pub(crate) fn rule_rows(
             crate::state_popovers::set_pending_anim_rule_dd(Some((true, i as u8, when_rect)));
         }
 
-        let arrow = Rect::new(when_rect.x + chip_w + gap, cur_y, ROW_H, ROW_H);
         ph2d_editor_core::paint::paint_icon(
             scene,
             IconId::ChevronRight,
-            arrow,
+            rects.arrow,
             resolve(ColorToken::Text3, theme),
             ph2d_tokens::StrokeToken::Default.px(),
         );
 
-        let play_rect = Rect::new(arrow.x + ROW_H + gap, cur_y, chip_w, ROW_H);
+        let play_rect = rects.play;
         let play_id = ids::INSP_ANIM_RULE_PLAY[i];
         hit_index.register(play_id, play_rect);
         let open = is_open(store, play_id);
         let known = info.rows.iter().position(|r| r.name == rule.play);
-        let placeholder = if known.is_none() {
-            tr_with("panel.inspector.anim_card.missing", &[("name", &rule.play)])
-        } else {
-            rule.play.clone()
-        };
         let mut dd = Dropdown::new(play_id, "", play_options(info))
             .open(open)
-            .placeholder(placeholder)
+            .placeholder(play_label(info, &rule.play))
             .visual(store.dropdown_visual(play_id));
         // ⚠️ A escolha vem do SNAPSHOT (o nome guardado), nunca do store.
         if let Some(j) = known {
@@ -210,14 +273,14 @@ pub(crate) fn rule_rows(
             theme,
             hit_index,
             store,
-            Rect::new(x + control_w - ROW_H, cur_y, ROW_H, ROW_H),
+            rects.del,
             ids::INSP_ANIM_RULE_DEL[i],
             IconId::Close,
             tr("panel.inspector.anim_card.rule_del_tip"),
         );
         let (_, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, ROW_H);
         ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-        cur_y += ph2d_tokens::row_pitch_px();
+        cur_y = rects.next_y;
     }
     paint_drop_bar(scene, theme, store, x, w, &grips);
     let hidden = info

@@ -273,14 +273,13 @@ fn advanced_nasce_fechado_e_playback_esta_a_vista() {
         );
     }
     let fine = [
+        ids::INSP_ANIM_FROM,
+        ids::INSP_ANIM_TO,
         ids::INSP_ANIM_HOLD_MS,
         ids::INSP_ANIM_DELAY_MS,
         ids::INSP_ANIM_REPEAT,
-        ids::INSP_ANIM_DIR[0],
         ids::INSP_ANIM_SIGNAL_FINISH,
         ids::INSP_ANIM_SIGNAL_LOOP,
-        ids::INSP_ANIM_DIR_OVERRIDE[0],
-        ids::INSP_ANIM_LOOP_OVERRIDE[0],
     ];
     for id in fine {
         assert!(!has(&rects, id), "{id:?} pintado com «Advanced» fechado");
@@ -295,6 +294,54 @@ fn advanced_nasce_fechado_e_playback_esta_a_vista() {
             "abrir «Advanced» não pintou {id:?} — o grupo não está marcado dobrável ou perdeu-o"
         );
     }
+}
+
+/// ⭐ **Os overrides saíram do painel, mas um override LIGADO não fica invisível** (dono 04/11, plano
+/// 22): em `Inherit` nenhuma linha; ligado, só a linha dele, e o «Inherit» dela desliga-o.
+#[test]
+fn um_override_so_aparece_ligado_e_o_inherit_o_desliga() {
+    let dir = ids::INSP_ANIM_DIR_OVERRIDE;
+    let lop = ids::INSP_ANIM_LOOP_OVERRIDE;
+    let abertos = |info: InspectorAnimInfo| {
+        let (mut host, mut st) = host_with(info);
+        let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        clear();
+        rects
+    };
+
+    let rects = abertos(anim(true, false));
+    assert!(has(&rects, ids::INSP_ANIM_HOLD_MS), "«Advanced» não abriu");
+    for id in dir.iter().chain(lop.iter()) {
+        assert!(
+            !has(&rects, *id),
+            "{id:?} pintado com o override em Inherit"
+        );
+    }
+
+    let so_dir = InspectorAnimInfo {
+        direction_override_tag: 2,
+        ..anim(true, false)
+    };
+    let rects = abertos(so_dir.clone());
+    assert!(dir.iter().all(|id| has(&rects, *id)));
+    assert!(!lop.iter().any(|id| has(&rects, *id)));
+
+    let so_lop = InspectorAnimInfo {
+        loop_override_tag: 1,
+        ..anim(true, false)
+    };
+    let rects = abertos(so_lop.clone());
+    assert!(lop.iter().all(|id| has(&rects, *id)));
+    assert!(!dir.iter().any(|id| has(&rects, *id)));
+
+    assert_eq!(
+        edits(&click_fresh(so_dir, dir[0])),
+        [AnimFieldEdit::DirectionOverride(0)]
+    );
+    assert_eq!(
+        edits(&click_fresh(so_lop, lop[0])),
+        [AnimFieldEdit::LoopOverride(0)]
+    );
 }
 
 /// ⭐ **⏸ só na linha que está no ecrã E a toca**, e clicá-lo PAUSA; ▶ na mesma linha parada RETOMA
@@ -360,12 +407,20 @@ fn o_pause_pinta_se_so_na_linha_que_toca() {
 }
 
 /// ⛔ **From/To só numa animação SEM lista de quadros** (report do dono: «From 0 To 31» numa animação
-/// de 5 quadros). Com lista, a linha «N frames chosen in the editor» e nada de From/To.
+/// de 5 quadros), e dentro de «Advanced» (plano 22). Com lista, a linha «N frames chosen in the editor»
+/// e nada de From/To.
 #[test]
 fn from_e_to_so_numa_animacao_sem_lista() {
-    let range = painted(anim(false, false));
+    let abertos = |info: InspectorAnimInfo| {
+        let (mut host, mut st) = host_with(info);
+        let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        clear();
+        rects
+    };
+    let range = abertos(anim(false, false));
     assert!(has(&range, ids::INSP_ANIM_FROM) && has(&range, ids::INSP_ANIM_TO));
-    let list = painted(with_frame_list(anim(false, false)));
+    let list = abertos(with_frame_list(anim(false, false)));
+    assert!(has(&list, ids::INSP_ANIM_HOLD_MS), "«Advanced» não abriu");
     assert!(
         !has(&list, ids::INSP_ANIM_FROM),
         "From pintado sobre uma lista de quadros"
@@ -545,6 +600,10 @@ fn card_fits_at(w: f32) {
     let mut info = with_character(anim(false, false));
     info.card.hframes = 4;
     info.card.vframes = 2;
+    // As linhas raras também (plano 22): os nomes por extenso têm de caber a estas larguras.
+    info.rows[0].direction_tag = 1;
+    info.direction_override_tag = 1;
+    info.loop_override_tag = 1;
     // ⚠️ Pela pintura do REGISTO e com o Transform ao lado: a coluna dos nomes é UMA por painel
     // (`ColunaDoPainel`), e quem a prende são as fileiras de dois campos das outras secções — o
     // cartão sozinho teria a coluna toda para si e não cortaria nada.
@@ -595,12 +654,21 @@ fn card_fits_at(w: f32) {
             .map(|m| (&m.pintado, m.largura))
             .collect::<Vec<_>>()
     );
-    let hint = ph2d_i18n::tr("panel.inspector.anim_card.rules_hint");
-    assert!(
-        !medidos.iter().any(|m| m.texto == hint && !m.coube()),
-        "«{hint}» saiu elidido numa linha"
-    );
-    // A frase mora entre «Who Picks» e a 1.ª regra, e ocupa as linhas que pede.
+    for extenso in [
+        "Forward",
+        "Reverse",
+        "Ping-pong",
+        "Ping-pong Reverse",
+        "Inherit",
+    ] {
+        let seen: Vec<_> = medidos.iter().filter(|m| m.texto == extenso).collect();
+        assert!(!seen.is_empty(), "«{extenso}» não foi pintado");
+        assert!(
+            seen.iter().all(|m| m.coube()),
+            "«{extenso}» saiu cortado a {w} px"
+        );
+    }
+    // ⭐ Plano 22: nenhum nome de regra sai cortado; a frase de «Rules» mora no balão, fora do cartão.
     let at = |id| {
         rects
             .iter()
@@ -608,13 +676,127 @@ fn card_fits_at(w: f32) {
             .map(|(_, r)| *r)
             .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
     };
-    let chooser = at(ids::INSP_ANIM_CHOOSER[2]);
-    let first_state = at(ids::INSP_ANIM_RULE_GRIP[0]);
-    let font = ph2d_tokens::TypeToken::Sm.px();
+    let (when, play) = (
+        at(ids::INSP_ANIM_RULE_WHEN[0]),
+        at(ids::INSP_ANIM_RULE_PLAY[0]),
+    );
     assert!(
-        first_state.y - (chooser.y + chooser.h) >= 2.0 * font, // LITERAL-PX-OK: duas linhas
-        "a frase tinha de quebrar em mais de uma linha a {} px",
-        dock.w
+        play.y > when.y,
+        "a {w} px a regra tinha de usar duas fileiras"
+    );
+    let hint = ph2d_i18n::tr("panel.inspector.anim_card.rules_hint");
+    assert!(!medidos.iter().any(|m| m.texto == hint));
+    for rule_label in ["Standing still", "Running", "Going up", "Falling"] {
+        let seen: Vec<_> = medidos.iter().filter(|m| m.texto == rule_label).collect();
+        assert!(!seen.is_empty(), "«{rule_label}» não foi pintado");
+        assert!(
+            seen.iter().all(|m| m.coube()),
+            "«{rule_label}» saiu cortado"
+        );
+    }
+}
+
+/// ⭐ **Plano 22: a linha Direction só aparece num sentido INVERSO** — o resto diz-se no Cycle, como na
+/// Godot — e sair do inverso é o clique dela.
+#[test]
+fn a_direction_so_aparece_num_sentido_inverso() {
+    let abertos = |info: InspectorAnimInfo| {
+        let (mut host, mut st) = host_with(info);
+        let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+        clear();
+        rects
+    };
+    for (tag, visivel) in [(0, false), (1, true), (2, false), (3, true)] {
+        let mut info = anim(true, false);
+        info.rows[0].direction_tag = tag;
+        let rects = abertos(info);
+        assert!(has(&rects, ids::INSP_ANIM_HOLD_MS), "«Advanced» não abriu");
+        assert_eq!(
+            has(&rects, ids::INSP_ANIM_DIR[0]),
+            visivel,
+            "direction_tag {tag}"
+        );
+        assert!(has(&rects, ids::INSP_ANIM_CYCLE[2]), "o Cycle fica sempre");
+    }
+}
+
+/// ⭐ **Plano 22: a Speed diz que negativo toca ao contrário**, e o que saiu do cartão mora no balão.
+#[test]
+fn o_que_saiu_do_cartao_mora_no_balao() {
+    let (host, _st) = host_with(anim(true, false));
+    let store = host.store();
+    let tip = |id| store.tooltip_for(id).unwrap_or_default().to_owned();
+    clear();
+    assert!(tip(ids::INSP_ANIM_SPEED).contains("negative"));
+    assert!(
+        tip(ids::INSP_ANIM_CHOOSER[0]).contains(ph2d_i18n::tr("panel.inspector.anim_card.me_hint"))
+    );
+    assert_eq!(
+        tip(ids::INSP_ANIM_CHOOSER[1]),
+        ph2d_i18n::tr("panel.inspector.anim_card.script_hint")
+    );
+    assert_eq!(
+        tip(ids::INSP_ANIM_CHOOSER[2]),
+        ph2d_i18n::tr("panel.inspector.anim_card.rules_hint")
+    );
+    for id in [
+        ids::INSP_ANIM_ADD,
+        ids::INSP_ANIM_REMOVE,
+        ids::INSP_ANIM_FPS,
+        ids::INSP_ANIM_CYCLE[0],
+        ids::INSP_ANIM_CYCLE[1],
+        ids::INSP_ANIM_CYCLE[2],
+        ids::INSP_ANIM_HOLD_MS,
+        ids::INSP_ANIM_DELAY_MS,
+        ids::INSP_ANIM_FROM,
+        ids::INSP_ANIM_TO,
+        ids::INSP_ANIM_SIGNAL_FINISH,
+        ids::INSP_ANIM_SIGNAL_LOOP,
+        ids::INSP_ANIM_DIR[0],
+        ids::INSP_ANIM_DIR_OVERRIDE[0],
+        ids::INSP_ANIM_LOOP_OVERRIDE[0],
+    ] {
+        assert!(!tip(id).is_empty(), "{id:?} sem balão");
+    }
+}
+
+/// ⭐ **Plano 22: a ordem do cartão** — os verbos colados à lista, depois «Playback», depois a escolhida.
+#[test]
+fn os_verbos_ficam_colados_a_lista() {
+    let (mut host, mut st) = host_with(anim(true, false));
+    let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    clear();
+    let y = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| r.y)
+            .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
+    };
+    let ordem = [
+        ids::INSP_ANIM_ROW[1],
+        ids::INSP_ANIM_ADD,
+        ids::INSP_ANIM_OPEN_EDITOR,
+        ids::INSP_ANIM_PLAYING,
+        ids::INSP_ANIM_SPEED,
+        ids::INSP_ANIM_NAME,
+        ids::INSP_ANIM_FPS,
+        ids::INSP_ANIM_CYCLE[0],
+        ids::INSP_ANIM_CHOOSER[0],
+        ids::INSP_ANIM_ADVANCED,
+    ];
+    for par in ordem.windows(2) {
+        assert!(
+            y(par[0]) < y(par[1]),
+            "{:?} devia vir antes de {:?}",
+            par[0],
+            par[1]
+        );
+    }
+    assert_eq!(
+        y(ids::INSP_ANIM_ADD),
+        y(ids::INSP_ANIM_REMOVE),
+        "lado a lado"
     );
 }
 
@@ -630,4 +812,31 @@ fn a_linha_aberta_do_cartao_segue_a_animacao_no_ecra() {
     let _ = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
     clear();
     assert_eq!(st.anim_selected, 1, "o editor pôs «attack» no ecrã");
+}
+
+/// ⭐ **Plano 22: nomes curtos ficam numa fileira só** — as duas fileiras são a cura do nome que não
+/// cabe, não o desenho.
+#[test]
+fn nomes_curtos_ficam_numa_fileira_so() {
+    let mut info = with_character(anim(false, false));
+    info.card.rules = vec![AnimRuleInfo {
+        when: AnimWhenInfo::Life(1), // «Died»
+        play: "walk".into(),
+    }];
+    let (mut host, mut st) = host_with(info);
+    let rects = host.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    clear();
+    let at = |id| {
+        rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{id:?} não foi pintado"))
+    };
+    let (when, play) = (
+        at(ids::INSP_ANIM_RULE_WHEN[0]),
+        at(ids::INSP_ANIM_RULE_PLAY[0]),
+    );
+    assert_eq!(when.y, play.y, "when {when:?} play {play:?}");
+    assert!(play.x > when.x + when.w);
 }

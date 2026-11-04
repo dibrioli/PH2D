@@ -117,7 +117,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // nem GRITADO), logo a régua lia-o como identificador.
         // A direcção «ping-pong» da animação: uma sigla de duas letras ENTRE quatro irmãs que
         // já vinham da tabela.
-        "panel.inspector.animation.pp" => "PP",
+        "panel.inspector.animation.pp" => "Ping-pong",
         // Os dois formatos de precisão, pintados como chips — a mesma lei do
         // `panel.inspector.ordering.ui`: uma tabela, um tipo.
         "panel.inspector.render_source.rgba8" => "RGBA8",
@@ -212,9 +212,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.speed_x" => "Speed (x)",
         "panel.inspector.animation.direction_override" => "Direction override",
         "panel.inspector.animation.inherit" => "Inherit",
-        "panel.inspector.animation.fwd" => "Fwd",
-        "panel.inspector.animation.rev" => "Rev",
-        "panel.inspector.animation.pp_rev" => "PP Rev",
+        "panel.inspector.animation.fwd" => "Forward",
+        "panel.inspector.animation.rev" => "Reverse",
+        "panel.inspector.animation.pp_rev" => "Ping-pong Reverse",
         "panel.inspector.animation.loop_override" => "Loop override",
         "panel.inspector.animation.on" => "On",
         "panel.inspector.animation.off" => "Off",
@@ -233,11 +233,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.plus_add_animator" => "+ Add Animator",
         "panel.inspector.animation.no_animations_yet" => "No animations yet.",
         "panel.inspector.animation.out_of_grid" => "out of grid",
-        "panel.inspector.animation.plus_add_animation" => "+ Add Animation",
-        "panel.inspector.animation.x_remove_animation" => "x Remove Animation",
+        "panel.inspector.animation.plus_add_animation" => "+ Add",
+        "panel.inspector.animation.x_remove_animation" => "Remove",
         "panel.inspector.animation.animation_name" => "animation_name\u{2026}",
         "panel.inspector.animation.direction" => "Direction",
-        "panel.inspector.animation.signals_empty_silent" => "Signals (empty = silent)",
+        "panel.inspector.animation.signals" => "Signals",
         "panel.inspector.animation.on_finish" => "on finish\u{2026}",
         "panel.inspector.animation.on_loop" => "on loop\u{2026}",
         "panel.inspector.audio.browse" => "Browse\u{2026}",

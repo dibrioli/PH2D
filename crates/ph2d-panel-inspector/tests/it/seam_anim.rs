@@ -90,6 +90,22 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
     }
 }
 
+/// A mesma sprite com as duas substituições LIGADAS — a única face em que as linhas delas aparecem.
+pub(crate) fn anim_forced() -> InspectorAnimInfo {
+    InspectorAnimInfo {
+        direction_override_tag: 2,
+        loop_override_tag: 2,
+        ..anim(true, false)
+    }
+}
+
+/// A mesma sprite com a 1.ª animação em sentido INVERSO — a única face em que a linha Direction aparece.
+pub(crate) fn anim_reversed() -> InspectorAnimInfo {
+    let mut info = anim(true, false);
+    info.rows[0].direction_tag = 1;
+    info
+}
+
 /// A mesma sprite **sem** tocador — a face que oferece um botão e mais nada.
 fn no_player() -> InspectorAnimInfo {
     InspectorAnimInfo {
@@ -256,7 +272,7 @@ fn every_player_control_reaches_the_bus() {
         .enumerate()
     {
         expect(
-            &click_fresh(anim(true, false), id),
+            &click_fresh(anim_forced(), id),
             AnimFieldEdit::DirectionOverride(i as u8),
             &format!("Direction override [{i}]"),
         );
@@ -266,7 +282,7 @@ fn every_player_control_reaches_the_bus() {
         .enumerate()
     {
         expect(
-            &click_fresh(anim(true, false), id),
+            &click_fresh(anim_forced(), id),
             AnimFieldEdit::LoopOverride(i as u8),
             &format!("Loop override [{i}]"),
         );
@@ -325,7 +341,7 @@ fn every_library_control_reaches_the_bus() {
     }
     for (i, &id) in ph2d_panel_inspector::ids::INSP_ANIM_DIR.iter().enumerate() {
         expect(
-            &click_fresh(anim(true, false), id),
+            &click_fresh(anim_reversed(), id),
             AnimFieldEdit::Direction(0, i as u8),
             &format!("Direction [{i}]"),
         );
@@ -543,12 +559,19 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         ph2d_panel_inspector::ids::INSP_ANIM_PLAY_ROW[0],
         ph2d_panel_inspector::ids::INSP_ANIM_OPEN_EDITOR,
         ph2d_panel_inspector::ids::INSP_ANIM_CHOOSER[1],
-        ph2d_panel_inspector::ids::INSP_ANIM_DIR[1],
         ph2d_panel_inspector::ids::INSP_ANIM_CYCLE[2],
+    ] {
+        note(click_fresh(anim(true, false), id));
+    }
+    note(click_fresh(
+        anim_reversed(),
+        ph2d_panel_inspector::ids::INSP_ANIM_DIR[1],
+    ));
+    for id in [
         ph2d_panel_inspector::ids::INSP_ANIM_DIR_OVERRIDE[2],
         ph2d_panel_inspector::ids::INSP_ANIM_LOOP_OVERRIDE[1],
     ] {
-        note(click_fresh(anim(true, false), id));
+        note(click_fresh(anim_forced(), id));
     }
     note(click_fresh(
         no_player(),

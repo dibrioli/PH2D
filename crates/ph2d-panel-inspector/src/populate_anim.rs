@@ -101,6 +101,84 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
     populate_anim_card(store);
 }
 
+/// **Os balões do cartão** (plano 22): o que um nome curto não diz mora sob o rato (ordem do dono 21/09).
+fn populate_anim_tips(store: &mut WidgetStore) {
+    use crate::ids;
+    for (id, key) in [
+        (ids::INSP_ANIM_ADD, "panel.inspector.anim_card.add_tip"),
+        (
+            ids::INSP_ANIM_REMOVE,
+            "panel.inspector.anim_card.remove_tip",
+        ),
+        (ids::INSP_ANIM_SPEED, "panel.inspector.anim_card.speed_tip"),
+        (ids::INSP_ANIM_FPS, "panel.inspector.anim_card.fps_tip"),
+        (
+            ids::INSP_ANIM_CYCLE[0],
+            "panel.inspector.anim_card.cycle_repeat_tip",
+        ),
+        (
+            ids::INSP_ANIM_CYCLE[1],
+            "panel.inspector.anim_card.cycle_once_tip",
+        ),
+        (
+            ids::INSP_ANIM_CYCLE[2],
+            "panel.inspector.anim_card.cycle_ping_pong_tip",
+        ),
+        (
+            ids::INSP_ANIM_CHOOSER[1],
+            "panel.inspector.anim_card.script_hint",
+        ),
+        (
+            ids::INSP_ANIM_CHOOSER[2],
+            "panel.inspector.anim_card.rules_hint",
+        ),
+        (ids::INSP_ANIM_HOLD_MS, "panel.inspector.anim_card.hold_tip"),
+        (
+            ids::INSP_ANIM_DELAY_MS,
+            "panel.inspector.anim_card.delay_tip",
+        ),
+        (ids::INSP_ANIM_FROM, "panel.inspector.anim_card.from_tip"),
+        (ids::INSP_ANIM_TO, "panel.inspector.anim_card.to_tip"),
+        (
+            ids::INSP_ANIM_SIGNAL_FINISH,
+            "panel.inspector.anim_card.signal_finish_tip",
+        ),
+        (
+            ids::INSP_ANIM_SIGNAL_LOOP,
+            "panel.inspector.anim_card.signal_loop_tip",
+        ),
+    ] {
+        store.set_tooltip(id, tr(key));
+    }
+    // «Me» é a propriedade `animator.autoplay`: o nome dela à frente da dica.
+    store.set_tooltip(
+        ids::INSP_ANIM_CHOOSER[0],
+        format!(
+            "{} · {}",
+            tr("component.field.sprite_animator.2"),
+            tr("panel.inspector.anim_card.me_hint")
+        ),
+    );
+    for (grupo, key) in [
+        (
+            &ids::INSP_ANIM_DIR[..],
+            "panel.inspector.anim_card.direction_tip",
+        ),
+        (
+            &ids::INSP_ANIM_DIR_OVERRIDE[..],
+            "panel.inspector.anim_card.direction_override_tip",
+        ),
+        (
+            &ids::INSP_ANIM_LOOP_OVERRIDE[..],
+            "panel.inspector.anim_card.loop_override_tip",
+        ),
+    ] {
+        for &id in grupo {
+            store.set_tooltip(id, tr(key));
+        }
+    }
+}
+
 /// **O cartão «Animation»** (plano GameEngineFuncional 07): o ▶ de cada linha, «Edit Animations…»,
 /// «Who Picks», a lista de regras e o grupo «Advanced» (nasce FECHADO).
 fn populate_anim_card(store: &mut WidgetStore) {
@@ -183,6 +261,7 @@ fn populate_anim_card(store: &mut WidgetStore) {
         crate::ids::INSP_ANIM_FLIP,
         tr("panel.inspector.anim_card.flip_tip"),
     );
+    populate_anim_tips(store);
     // ⛔ `_if_unchosen` (a lei da máscara da câmera): re-popular não pode fechar o que o artista abriu.
     store.set_collapsed_if_unchosen(crate::ids::INSP_ANIM_ADVANCED, true);
     store.mark_collapsible_section(crate::ids::INSP_ANIM_ADVANCED);

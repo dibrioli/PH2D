@@ -72,7 +72,7 @@ fn selected_row(
         .get(selected.min(info.rows.len().saturating_sub(1)))
 }
 
-/// «+ Add Animation» e «× Remove Animation», por baixo da lista. Devolve o `y` seguinte.
+/// «+ Add» e «Remove» lado a lado, colados à lista que eles mudam (plano 22). Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_add_remove(
     scene: &mut VectorScene,
@@ -85,59 +85,56 @@ pub(crate) fn paint_add_remove(
     y: f32,
     info: &InspectorAnimInfo,
 ) -> f32 {
-    let mut cur_y = y;
-    let add = ph2d_editor_core::property_row::caixa_do_botao(
-        text_system,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.plus_add_animation"),
-    );
-    hit_index.register(ids::INSP_ANIM_ADD, add);
-    paint_button(
-        &Button::new(
-            ids::INSP_ANIM_ADD,
-            tr("panel.inspector.animation.plus_add_animation"),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_ANIM_ADD)),
-        add,
-        scene,
-        text_system,
-        theme,
-    );
-    cur_y = ph2d_editor_core::property_row::abaixo_do_botao(add);
-    if !info.rows.is_empty() {
-        let rm = ph2d_editor_core::property_row::caixa_do_botao(
-            text_system,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.animation.x_remove_animation"),
-        );
-        hit_index.register(ids::INSP_ANIM_REMOVE, rm);
+    let half = (w - ph2d_tokens::control_gap_px()) * 0.5;
+    let mut botao = |id: NodeId, key: &str, x: f32| {
+        let r = Rect::new(x, y, half, ph2d_tokens::ROW_H_PX);
+        hit_index.register(id, r);
         paint_button(
-            &Button::new(
-                ids::INSP_ANIM_REMOVE,
-                tr("panel.inspector.animation.x_remove_animation"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ANIM_REMOVE)),
-            rm,
+            &Button::new(id, tr(key))
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(id)),
+            r,
             scene,
             text_system,
             theme,
         );
-        cur_y = ph2d_editor_core::property_row::abaixo_do_botao(rm);
+        r
+    };
+    let add = botao(
+        ids::INSP_ANIM_ADD,
+        "panel.inspector.animation.plus_add_animation",
+        x,
+    );
+    if !info.rows.is_empty() {
+        botao(
+            ids::INSP_ANIM_REMOVE,
+            "panel.inspector.animation.x_remove_animation",
+            x + w - half,
+        );
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    // «Edit Animations…» à largura dos dois, para os três lerem como um bloco.
+    let edit_y = ph2d_editor_core::property_row::abaixo_do_botao(add);
+    let edit = Rect::new(x, edit_y, w, ph2d_tokens::ROW_H_PX);
+    hit_index.register(ids::INSP_ANIM_OPEN_EDITOR, edit);
+    paint_button(
+        &Button::new(
+            ids::INSP_ANIM_OPEN_EDITOR,
+            tr("panel.inspector.anim_card.open_editor"),
+        )
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(ids::INSP_ANIM_OPEN_EDITOR)),
+        edit,
+        scene,
+        text_system,
+        theme,
+    );
+    ph2d_editor_core::property_row::abaixo_do_botao(edit)
 }
 
 /// **O nome, os quadros, o ritmo e o ciclo da animação escolhida.**
 ///
-/// ⛔ From/To só existem numa animação SEM lista de quadros: numa lista eles não dizem o que toca
-/// (report do dono 25/10: «From 0 To 31» numa animação de 5 quadros). Aí a linha diz quantos quadros
-/// o editor escolheu. O ritmo é em quadros por segundo e o ciclo é Repeat · Once · Ping-pong — as
+/// Numa lista de quadros a linha diz quantos o editor escolheu (report do dono 25/10); From/To moram em
+/// «Advanced» (plano 22). O ritmo é em quadros por segundo e o ciclo é Repeat · Once · Ping-pong — as
 /// leituras do editor; o dado continua `frame_ms` + `repeat`/`direction`.
 #[allow(clippy::too_many_arguments)]
 fn range_and_timing_rows(
@@ -153,7 +150,15 @@ fn range_and_timing_rows(
     cells: u32,
 ) -> f32 {
     let seccao = seccao_da_animacao(text_system);
-    let mut cur_y = super::anim::subtitle(scene, text_system, theme, x, w, y, &row.name);
+    let mut cur_y = super::anim::subtitle(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y + ph2d_tokens::control_gap_px(),
+        tr("panel.inspector.anim_card.selected"),
+    );
     cur_y = text_row(
         scene,
         text_system,
@@ -169,41 +174,18 @@ fn range_and_timing_rows(
             .placeholder(tr("panel.inspector.animation.animation_name")),
         seccao,
     );
-    let n = ph2d_editor_core::screens::hero::row_cells(row, cells).len();
-    let has_list = !row.frames.is_empty();
-    let count = if has_list {
-        tr_with("panel.inspector.anim_card.frames_chosen", &[("n", &n)])
-    } else {
-        tr_with("panel.inspector.anim_card.frames", &[("n", &n)])
-    };
-    cur_y = super::rows::aviso(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        cur_y,
-        &count,
-        ColorToken::Text3,
-    );
-    if !has_list {
-        for (chave, id, passo, unidade) in RANGE {
-            cur_y = super::rows::fields_row(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                cur_y,
-                tr(chave),
-                &[id],
-                passo,
-                unidade,
-                seccao,
-            );
-        }
+    if !row.frames.is_empty() {
+        let n = ph2d_editor_core::screens::hero::row_cells(row, cells).len();
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &tr_with("panel.inspector.anim_card.frames_chosen", &[("n", &n)]),
+            ColorToken::Text3,
+        );
     }
     cur_y = super::rows::fields_row(
         scene,
@@ -352,8 +334,8 @@ pub(super) fn seccao_da_animacao(
     ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes)
 }
 
-/// Os campos FINOS da animação aberta («Advanced»): Hold, Repeat delay, Repeat count, a direcção
-/// fina e os sinais.
+/// Os campos FINOS da animação aberta («Advanced»): From/To (só sem lista de quadros), Hold, Repeat
+/// delay, Repeat count, os sinais e, só com um sentido inverso gravado, a direcção.
 #[allow(clippy::too_many_arguments)]
 fn editor(
     scene: &mut VectorScene,
@@ -370,7 +352,8 @@ fn editor(
     //    (report do dono), logo ela mede-se sobre eles.
     let sec_texto = seccao_da_animacao(text_system);
     let mut cur_y = y;
-    for (chave, id, passo, unidade) in FINE {
+    let range: &[_] = if row.frames.is_empty() { &RANGE } else { &[] };
+    for &(chave, id, passo, unidade) in range.iter().chain(FINE.iter()) {
         cur_y = super::rows::fields_row(
             scene,
             text_system,
@@ -388,34 +371,36 @@ fn editor(
         );
     }
 
-    // ⭐⭐ **A direção é UMA escolha com NOME, pela porta** (2026-09-23). ⛔ Ela era quatro
-    //    `Button` em partes IGUAIS com o nome POR CIMA — a quarta forma de «escolha com nome» deste
-    //    painel —, e o `PP` era um literal ao lado de três chaves. ⚠️ A selecção vem do SNAPSHOT.
-    let rotulos = [
-        tr("panel.inspector.animation.fwd"),
-        tr("panel.inspector.animation.rev"),
-        tr("panel.inspector.animation.pp"),
-        tr("panel.inspector.animation.pp_rev"),
-    ];
-    let segmentos: Vec<(&str, bool, NodeId)> = ids::INSP_ANIM_DIR
-        .iter()
-        .zip(rotulos)
-        .enumerate()
-        .map(|(i, (&id, l))| (l, usize::from(row.direction_tag) == i, id))
-        .collect();
-    cur_y = ph2d_editor_core::property_row::paint_choice_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.animation.direction"),
-        &segmentos,
-        sec_texto,
-    );
+    // ⭐ Só com um sentido INVERSO gravado (import do `.ase`, projeto antigo): o resto é o Cycle, e tocar
+    //    ao contrário é a Speed negativa, como na Godot (plano 22). A linha some ao sair do inverso.
+    //    ⚠️ A selecção vem do SNAPSHOT.
+    if matches!(row.direction_tag, 1 | 3) {
+        let rotulos = [
+            tr("panel.inspector.animation.fwd"),
+            tr("panel.inspector.animation.rev"),
+            tr("panel.inspector.animation.pp"),
+            tr("panel.inspector.animation.pp_rev"),
+        ];
+        let segmentos: Vec<(&str, bool, NodeId)> = ids::INSP_ANIM_DIR
+            .iter()
+            .zip(rotulos)
+            .enumerate()
+            .map(|(i, (&id, l))| (l, usize::from(row.direction_tag) == i, id))
+            .collect();
+        cur_y = ph2d_editor_core::property_row::paint_choice_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.animation.direction"),
+            &segmentos,
+            sec_texto,
+        );
+    }
     let font = TypeToken::Sm.px();
 
     // **OS SINAIS** (spec §8.10) — no FIM, e depois da direção, porque eles são o que a animação
@@ -426,7 +411,7 @@ fn editor(
     paint_text(
         text_system,
         scene,
-        tr("panel.inspector.animation.signals_empty_silent"),
+        tr("panel.inspector.animation.signals"),
         x,
         cur_y,
         font,

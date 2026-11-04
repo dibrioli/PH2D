@@ -73,6 +73,39 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.own_times" => "\u{2022} some frames have their own time",
         "panel.inspector.anim_card.repeat_count" => "Repeat count",
         "panel.inspector.anim_card.advanced" => "Advanced",
+        "panel.inspector.anim_card.selected" => "Selected Animation",
+        "panel.inspector.anim_card.add_tip" => "Add a new animation to the list.",
+        "panel.inspector.anim_card.remove_tip" => "Remove the selected animation from the list.",
+        "panel.inspector.anim_card.speed_tip" => {
+            "How fast it plays: 2 = twice as fast. A negative number plays it backward."
+        }
+        "panel.inspector.anim_card.fps_tip" => "How many frames play each second.",
+        "panel.inspector.anim_card.cycle_repeat_tip" => {
+            "Play over and over, always from the start."
+        }
+        "panel.inspector.anim_card.cycle_once_tip" => "Play one time and stop on the last frame.",
+        "panel.inspector.anim_card.cycle_ping_pong_tip" => {
+            "Play to the end, then back to the start, over and over."
+        }
+        "panel.inspector.anim_card.hold_tip" => "Extra time on the last frame of each cycle.",
+        "panel.inspector.anim_card.delay_tip" => "Extra pause before the next cycle starts.",
+        "panel.inspector.anim_card.from_tip" => "The first cell of the sheet this animation uses.",
+        "panel.inspector.anim_card.to_tip" => "The last cell of the sheet this animation uses.",
+        "panel.inspector.anim_card.signal_finish_tip" => {
+            "Send a signal with this name when the animation ends. Empty = no signal."
+        }
+        "panel.inspector.anim_card.signal_loop_tip" => {
+            "Send a signal with this name each time the animation loops. Empty = no signal."
+        }
+        "panel.inspector.anim_card.direction_tip" => {
+            "This animation plays in reverse, usually because it was imported that way. Choose Forward or Ping-pong to use Cycle instead; this row then goes away."
+        }
+        "panel.inspector.anim_card.direction_override_tip" => {
+            "This object forces a direction on every animation it plays. Choose Inherit to turn that off; this row then goes away."
+        }
+        "panel.inspector.anim_card.loop_override_tip" => {
+            "This object forces looping on or off for every animation it plays. Choose Inherit to turn that off; this row then goes away."
+        }
         // A troca de imagem (plano GEF 12).
         "app.sprite_anim.image_choice.not_an_image" => "That asset is not an image",
         "app.sprite_anim.image_choice.not_a_sprite" => "This object has no image to change",

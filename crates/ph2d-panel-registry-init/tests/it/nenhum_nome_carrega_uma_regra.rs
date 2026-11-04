@@ -103,9 +103,9 @@ fn rotulos_do_inspector() -> Vec<(String, String, String)> {
 ///    seguinte da mesma tupla (`ids::INSP_ANIM_REPEAT`). A nota afirmava um bloqueio que o
 ///    ficheiro desmentia.
 ///
-/// ⇒ sobra **UM**, e ele é de outra espécie: um TÍTULO de bloco pintado por `paint_text`, sem
-/// controlo nenhum a que pendurar um balão.
-const AINDA_COM_REGRA: &[&str] = &["animation.signals_empty_silent"];
+/// ⇒ sobrava **UM**, o título «Signals (empty = silent)», e a regra dele foi para os balões dos dois
+/// campos (plano GEF 22, 04/11): a lista está VAZIA.
+const AINDA_COM_REGRA: &[&str] = &[];
 
 /// ⭐⭐⭐ **Um PLACEHOLDER não é um NOME** — e a distinção lê-se do SÍTIO DA CHAMADA, não daqui.
 ///

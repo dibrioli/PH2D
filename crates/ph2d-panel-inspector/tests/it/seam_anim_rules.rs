@@ -255,13 +255,16 @@ fn num_painel_estreito_a_lista_do_when_alarga_e_o_clique_fora_do_chip_escolhe() 
         w: 240.0,
         h: 2400.0,
     };
-    let info = with_character(anim(false, false));
+    // ⚠️ Um nome maior que o chip de DUAS fileiras (plano 22): os nomes curtos já cabem nele.
+    const COMPRIDO: &str = "hold_down_to_crouch_under";
+    let mut info = with_character(anim(false, false));
+    info.card.rule_actions.push(COMPRIDO.into());
     let j = info
         .card
         .when_options()
         .iter()
-        .position(|o| *o == AnimWhenInfo::Action("down".into()))
-        .expect("«down» é uma opção");
+        .position(|o| *o == AnimWhenInfo::Action(COMPRIDO.into()))
+        .expect("o nome comprido é uma opção");
     let (mut host, mut st) = host_with(info);
     host.set_dropdown_open(ids::INSP_ANIM_RULE_WHEN[1], true);
     let rects = host.paint::<InspectorPanel>(&mut st, ESTREITO);
@@ -300,7 +303,7 @@ fn num_painel_estreito_a_lista_do_when_alarga_e_o_clique_fora_do_chip_escolhe() 
         edits(&out),
         [AnimFieldEdit::RuleWhen(
             1,
-            AnimWhenInfo::Action("down".into())
+            AnimWhenInfo::Action(COMPRIDO.into())
         )]
     );
 }

@@ -87,6 +87,10 @@ fn segmented_row<'a>(
 /// um teto é o corte por responsabilidade* — e as duas pertencem uma à outra: são a mesma pergunta
 /// (*«o que o TOCADOR manda, contra o que a animação diz»*) feita a dois canais, e as duas nascem
 /// em `Inherit`.
+///
+/// ⭐ **Só aparecem LIGADAS** (dono 04/11, plano 22): nascem por script ou em projeto antigo. A linha
+/// fica à vista até voltar a `Inherit` — esconder um override ligado deixaria o objecto preso a uma
+/// direcção que ninguém vê.
 #[allow(clippy::too_many_arguments)]
 fn override_rows(
     scene: &mut VectorScene,
@@ -99,44 +103,49 @@ fn override_rows(
     y: f32,
     info: &InspectorAnimInfo,
 ) -> f32 {
-    let mut cur_y = segmented_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        y,
-        TextKey::new("component.field.sprite_animator.4"),
-        &ids::INSP_ANIM_DIR_OVERRIDE,
-        &[
-            tr("panel.inspector.animation.inherit"),
-            tr("panel.inspector.animation.fwd"),
-            tr("panel.inspector.animation.rev"),
-            tr("panel.inspector.animation.pp"),
-            tr("panel.inspector.animation.pp_rev"),
-        ],
-        usize::from(info.direction_override_tag),
-    );
-    cur_y = segmented_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        TextKey::new("component.field.sprite_animator.5"),
-        &ids::INSP_ANIM_LOOP_OVERRIDE,
-        &[
-            tr("panel.inspector.animation.inherit"),
-            tr("panel.inspector.animation.on"),
-            tr("panel.inspector.animation.off"),
-        ],
-        usize::from(info.loop_override_tag),
-    );
+    let mut cur_y = y;
+    if info.direction_override_tag != 0 {
+        cur_y = segmented_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            TextKey::new("component.field.sprite_animator.4"),
+            &ids::INSP_ANIM_DIR_OVERRIDE,
+            &[
+                tr("panel.inspector.animation.inherit"),
+                tr("panel.inspector.animation.fwd"),
+                tr("panel.inspector.animation.rev"),
+                tr("panel.inspector.animation.pp"),
+                tr("panel.inspector.animation.pp_rev"),
+            ],
+            usize::from(info.direction_override_tag),
+        );
+    }
+    if info.loop_override_tag != 0 {
+        cur_y = segmented_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            TextKey::new("component.field.sprite_animator.5"),
+            &ids::INSP_ANIM_LOOP_OVERRIDE,
+            &[
+                tr("panel.inspector.animation.inherit"),
+                tr("panel.inspector.animation.on"),
+                tr("panel.inspector.animation.off"),
+            ],
+            usize::from(info.loop_override_tag),
+        );
+    }
     cur_y
 }
 
@@ -486,9 +495,9 @@ pub(crate) fn paint_anim_section(
         );
     }
 
-    // ⭐ O CARTÃO (plano GameEngineFuncional 07, desenho aprovado 25/10), de cima para baixo: ver ·
-    // a lista · «Playback» · os verbos da biblioteca · «Edit Animations…» · a animação escolhida ·
-    // «Who Picks» · «Advanced» (nasce FECHADO). A folha e o corte vivem acima, sob o seletor «Use» (plano 15).
+    // ⭐ O CARTÃO (planos 07 e 22), de cima para baixo: ver · a lista e os verbos dela · «Playback» ·
+    // a animação escolhida · «Who Picks» · «Advanced» (nasce FECHADO). A folha e o corte vivem acima,
+    // sob o seletor «Use» (plano 15).
     cur_y = super::anim_card::paint_preview(scene, x, w, cur_y, info);
     cur_y = super::anim_card::paint_list(
         scene,
@@ -502,17 +511,6 @@ pub(crate) fn paint_anim_section(
         info,
         selected,
     );
-    cur_y = player_block(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        info,
-    );
     cur_y = super::anim_rows::paint_add_remove(
         scene,
         text_system,
@@ -524,7 +522,7 @@ pub(crate) fn paint_anim_section(
         cur_y,
         info,
     );
-    cur_y = super::anim_card::button_row(
+    cur_y = player_block(
         scene,
         text_system,
         theme,
@@ -533,8 +531,7 @@ pub(crate) fn paint_anim_section(
         x,
         w,
         cur_y,
-        ids::INSP_ANIM_OPEN_EDITOR,
-        tr("panel.inspector.anim_card.open_editor"),
+        info,
     );
     cur_y = super::anim_rows::paint_selected_editor(
         scene,

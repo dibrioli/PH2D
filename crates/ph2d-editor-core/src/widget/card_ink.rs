@@ -108,6 +108,7 @@ pub fn publica(ink: CardInk) -> Publicada {
 
 /// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
 pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
+    crate::panel::cards::censo::entra_na_tinta();
     let _repoe = publica(ink);
     f()
 }

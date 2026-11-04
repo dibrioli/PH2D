@@ -202,3 +202,55 @@ fn the_census_accuses_a_lone_sibling_and_a_glued_line() {
     assert!(bom.irmaos_separados().is_empty(), "{:?}", bom.linhas);
     assert!(bom.linhas_grudadas().is_empty());
 }
+
+/// Uma lista suspensa sob um rótulo pedido à parte (`paint_label_row`) é um controlo curto: duas seguidas
+/// acusam irmãos separados. *Mutação: `card_chip::chip` sem `controlo_curto` ⇒ o par não é visto.*
+#[test]
+fn a_chip_under_a_label_row_counts_as_short() {
+    let mut f = mesa();
+    let ink = CardInk::of_list(Theme::default());
+    censo::na_secao(Some(A));
+    let (_, c) = censo::grava(|| {
+        let Mesa { scene, ts, .. } = &mut f;
+        for (nome, y) in [("When", 0.0), ("Compare", 51.0)] {
+            let linha = super::super::corpo::rotulo_em_cima(scene, ts, ink, 0.0, 257.0, y, nome);
+            crate::widget::paint_card_chip(scene, ts, ink, linha.control, "Equal", false);
+        }
+    });
+    censo::na_secao(None);
+    assert_eq!(c.irmaos_separados().len(), 1, "{:?}", c.linhas);
+}
+
+/// Sem lista por baixo, o rótulo continua longo: uma grelha ou um grupo de amostras não se dividem.
+#[test]
+fn a_label_row_without_a_chip_stays_long() {
+    let mut f = mesa();
+    let ink = CardInk::of_list(Theme::default());
+    censo::na_secao(Some(A));
+    let (_, c) = censo::grava(|| {
+        let Mesa { scene, ts, .. } = &mut f;
+        for (nome, y) in [("When", 0.0), ("Compare", 51.0)] {
+            super::super::corpo::rotulo_em_cima(scene, ts, ink, 0.0, 257.0, y, nome);
+        }
+    });
+    censo::na_secao(None);
+    assert!(c.irmaos_separados().is_empty(), "{:?}", c.linhas);
+}
+
+/// Um corpo pintado por `card_ink::com` fora da lista (a captura do Painter) conta, e cada captura
+/// é uma secção. *Mutação: `entra_na_tinta` calada ⇒ duas capturas juntam-se e acusam uma grudada.*
+#[test]
+fn a_captured_body_is_measured_as_its_own_section() {
+    let ink = CardInk::of_list(Theme::default());
+    let linha = |y: f32| censo::linha_antiga_em_captura((0.0, 257.0), y, y + 20.0);
+    let (_, c) = censo::grava(|| {
+        crate::widget::card_ink::com(ink, || {
+            linha(0.0);
+            linha(23.0);
+        });
+        crate::widget::card_ink::com(ink, || linha(43.0));
+    });
+    assert_eq!(c.linhas.len(), 3);
+    assert!(c.linhas.iter().all(|l| l.em_captura));
+    assert_eq!(c.linhas_grudadas().len(), 1, "{:?}", c.linhas);
+}

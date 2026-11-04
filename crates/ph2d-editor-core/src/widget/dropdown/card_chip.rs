@@ -20,6 +20,11 @@ pub fn chip(
     texto: &str,
     aceso: bool,
 ) {
+    if crate::panel::cards::censo::ligado() {
+        let tw = text_system.prefix_width(texto, m::VALUE_PX).ceil();
+        let pede = tw + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
+        crate::panel::cards::censo::controlo_curto(r, pede);
+    }
     let fundo = if aceso {
         ColorToken::CardFieldHover
     } else {

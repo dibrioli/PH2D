@@ -10,6 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 # ⭐ **O vocabulário do TWEEN** (suplente #22) — a secção pinta os rótulos do `Canal`, do
 # `AoAcabar` e das curvas do `ph2d-anim` a partir dos `ALL` deles. ⛔ Uma tabela de rótulos aqui
 # seria a segunda lista, e divergiria no dia do nono canal.

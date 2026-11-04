@@ -142,6 +142,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
+# ⭐ Só para `censo_estados`: a arte do padrão que a compactação semeia no Vector.
+ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # ⭐ Só para a SONDA `diag_de_quem_sao_as_entradas_do_inspector`, que refaz o mapa
 #    `NodeId -> literal` a partir da fonte dos ids. ⛔ Sem isto ela teria de copiar o FNV-1a,

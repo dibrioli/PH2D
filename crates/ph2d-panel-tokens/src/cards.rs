@@ -253,16 +253,19 @@ fn linha_de_escala(
 fn aviso(c: &mut CardCtx<'_>, texto: &str, y: f32) -> f32 {
     let top = y + m::FIELD_ROW_GAP;
     let cor = c.ink.color(ColorToken::Warn);
-    top + paint_text_block(
-        c.text_system,
-        c.scene,
-        texto,
-        c.x,
-        top,
-        m::LABEL_PX,
-        c.w,
-        cor,
-    )
+    let fim = top
+        + paint_text_block(
+            c.text_system,
+            c.scene,
+            texto,
+            c.x,
+            top,
+            m::LABEL_PX,
+            c.w,
+            cor,
+        );
+    ph2d_editor_core::panel::cards::censo::frase((c.x, c.w), top, fim, texto);
+    fim
 }
 
 fn corpo_do_modo(c: &mut CardCtx<'_>, theme: Theme, y: f32) -> f32 {

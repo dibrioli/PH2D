@@ -417,17 +417,30 @@ pub(crate) fn aviso_em(
 ) -> f32 {
     crate::censo_dos_avisos::regista(texto);
     let font = tamanho.px();
+    // Num cartão, a frase é uma linha como as outras: o vão da grelha em cima, nada em baixo.
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let topo = if em_cartao {
+        y + ph2d_card_stack::metrics::FIELD_ROW_GAP
+    } else {
+        y
+    };
     let alta = ph2d_editor_core::paint::paint_text_block(
         text_system,
         scene,
         texto,
         x,
-        y,
+        topo,
         font,
         w,
         resolve(token, theme),
     );
-    y + alta.max(font) + ph2d_tokens::control_gap_px()
+    let fundo = topo + alta.max(font);
+    ph2d_editor_core::panel::cards::censo::frase((x, w), topo, fundo, texto);
+    if em_cartao {
+        fundo
+    } else {
+        fundo + ph2d_tokens::control_gap_px()
+    }
 }
 
 pub(crate) use super::grupo_dobravel::{Grupo, grupo_dobravel};

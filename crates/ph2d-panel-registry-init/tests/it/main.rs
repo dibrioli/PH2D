@@ -38,6 +38,7 @@ mod o_preso_do_bones_r3;
 mod o_cadeado_do_cartao_objeto;
 mod o_cartao_solto_bloco4;
 mod a_lista_aberta_fica_por_cima;
+mod censo_estados;
 mod o_cartao_solto_no_canvas;
 mod o_inspector_armado;
 #[cfg(feature = "panel-painter-layers")]

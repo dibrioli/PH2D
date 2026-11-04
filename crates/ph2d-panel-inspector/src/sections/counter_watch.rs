@@ -348,26 +348,35 @@ fn editor(
             .placeholder(tr("panel.inspector.counter_watch.counter_name")),
         sec,
     );
-    cur_y = linha_da_comparacao(
+    // Num cartão, «When» e «Value» são irmãos curtos: dividem a linha (lei da compactação).
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let meia = (w - ph2d_card_stack::metrics::FIELD_GAP) * 0.5;
+    let (w_cmp, x_val, w_val) = if em_cartao {
+        (meia, x + w - meia, meia)
+    } else {
+        (w, x, w)
+    };
+    let fim_cmp = linha_da_comparacao(
         scene,
         text_system,
         theme,
         hit_index,
         store,
         x,
-        w,
+        w_cmp,
         cur_y,
         row,
     );
+    let topo_val = if em_cartao { cur_y } else { fim_cmp };
     cur_y = super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
-        cur_y,
+        x_val,
+        w_val,
+        topo_val,
         tr("panel.inspector.counter_watch.value"),
         &[ids::INSP_WATCH_VALUE],
         1.0, // LITERAL-PX-OK: passo de scrub em UNIDADES do contador, não em pixels

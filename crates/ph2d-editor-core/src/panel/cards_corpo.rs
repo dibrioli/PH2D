@@ -326,7 +326,7 @@ fn text_de_fora(
 /// ⭐ O rótulo EM CIMA de um controlo que o chamador constrói (T29, os 11 `property_label_row`): as
 /// colunas devolvidas têm o controlo a toda a largura por baixo e a marca na linha do rótulo (D17).
 /// `control.y + control.h` é o fundo; fora de um cartão a mesma conta dá a linha de sempre.
-fn rotulo_em_cima(
+pub(super) fn rotulo_em_cima(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     ink: CardInk,
@@ -338,13 +338,10 @@ fn rotulo_em_cima(
     let (k, ly) = (m::KEY_MARK_BOX, y + m::LABEL_TOP);
     crate::widget::card_field::paint_label(scene, text_system, ink, x, ly, w - k, rotulo);
     let fundo = ly + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H;
-    censo::linha((x, w), ly, fundo, || {
-        vec![censo::CelulaMedida {
-            nome: rotulo.to_owned(),
-            curta: false,
-            pede: 0.0,
-        }]
-    });
+    if censo::ligado() {
+        let pede = text_system.prefix_width(rotulo, m::LABEL_PX).ceil() + k;
+        censo::rotulo((x, w), ly, fundo, rotulo, pede);
+    }
     crate::widget::PropertyRow {
         label: Rect::new(x, ly, w - k, m::LABEL_PX),
         control: Rect::new(x, ly + m::LABEL_PX + m::LABEL_BOTTOM, w, m::FIELD_H),

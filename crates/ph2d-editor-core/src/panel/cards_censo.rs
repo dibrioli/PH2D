@@ -25,6 +25,10 @@ pub struct LinhaMedida {
     pub x: f32,
     pub w: f32,
     pub celulas: Vec<CelulaMedida>,
+    /// Um rótulo cujo controlo ainda não falou ([`rotulo`]): ele é longo até dizer que é curto.
+    pub rotulo_livre: bool,
+    /// Veio de um corpo em captura ([`entra_na_tinta`]).
+    pub em_captura: bool,
 }
 
 /// Um texto pintado num botão, segmento ou caixa de marcar, contra a largura que ele tem.
@@ -46,7 +50,10 @@ pub struct Censo {
 thread_local! {
     static GRAVACAO: RefCell<Option<Censo>> = const { RefCell::new(None) };
     static SECAO: Cell<Option<NodeId>> = const { Cell::new(None) };
+    /// A secção de faz de conta do corpo que se pinta fora da lista, em captura.
+    static CAPTURA: Cell<u64> = const { Cell::new(0) };
 }
+
 
 /// Corre `f` e devolve o que os cartões pintaram.
 pub fn grava<R>(f: impl FnOnce() -> R) -> (R, Censo) {
@@ -88,14 +95,29 @@ pub(crate) fn secao_atual() -> Option<NodeId> {
     SECAO.with(Cell::get)
 }
 
-/// Anota uma linha do corpo do cartão corrente.
-pub(crate) fn linha(
+/// Uma tinta de cartão publicada fora de toda secção é um corpo em captura (o do Painter corre antes da
+/// lista, numa cena à parte): as linhas dele contam, cada captura como uma secção.
+pub(crate) fn entra_na_tinta() {
+    if ligado() && secao_atual().is_none() {
+        CAPTURA.with(|c| c.set(c.get() + 1));
+    }
+}
+
+/// A secção das linhas que se anotam agora: a do corpo, ou a da captura em curso.
+fn secao_da_linha() -> Option<NodeId> {
+    secao_atual().or_else(|| {
+        crate::widget::card_ink::card_body().map(|_| NodeId(CAPTURA.with(Cell::get)))
+    })
+}
+
+fn anota(
     (x, w): (f32, f32),
     topo: f32,
     fundo: f32,
+    rotulo_livre: bool,
     celulas: impl FnOnce() -> Vec<CelulaMedida>,
 ) {
-    let Some(secao) = secao_atual() else {
+    let Some(secao) = secao_da_linha() else {
         return;
     };
     GRAVACAO.with(|g| {
@@ -107,8 +129,79 @@ pub(crate) fn linha(
                 x,
                 w,
                 celulas: celulas(),
+                rotulo_livre,
+                em_captura: secao_atual().is_none(),
             });
         }
+    });
+}
+
+/// Anota uma linha do corpo do cartão corrente.
+pub(crate) fn linha(
+    coluna: (f32, f32),
+    topo: f32,
+    fundo: f32,
+    celulas: impl FnOnce() -> Vec<CelulaMedida>,
+) {
+    anota(coluna, topo, fundo, false, celulas);
+}
+
+/// Uma linha do painel antigo dentro de um corpo em captura: longa, pela geometria dela. Dentro de um
+/// corpo com secção quem anota são as portas dos cartões.
+pub(crate) fn linha_antiga_em_captura(coluna: (f32, f32), topo: f32, fundo: f32) {
+    if ligado() && secao_atual().is_none() && crate::widget::card_ink::card_body().is_some() {
+        linha(coluna, topo, fundo, || {
+            vec![CelulaMedida {
+                nome: format!("old row at y {topo:.0}"),
+                curta: false,
+                pede: 0.0,
+            }]
+        });
+    }
+}
+
+/// Anota o rótulo em cima de um controlo que o chamador constrói. Conta como longo até o controlo
+/// se anunciar por [`controlo_curto`].
+pub(crate) fn rotulo((x, w): (f32, f32), topo: f32, fundo: f32, nome: &str, pede: f32) {
+    anota((x, w), topo, fundo, true, || {
+        vec![CelulaMedida {
+            nome: nome.to_owned(),
+            curta: false,
+            pede,
+        }]
+    });
+}
+
+/// O controlo curto (a lista suspensa) pintado em `r`: se está sob o último [`rotulo`], a linha é curta.
+pub(crate) fn controlo_curto(r: crate::zones::Rect, pede: f32) {
+    let Some(secao) = secao_da_linha() else {
+        return;
+    };
+    GRAVACAO.with(|g| {
+        let mut g = g.borrow_mut();
+        let Some(l) = g.as_mut().and_then(|c| c.linhas.last_mut()) else {
+            return;
+        };
+        let sob = r.y >= l.topo && r.y + r.h <= l.fundo + 0.5 && r.x >= l.x - 0.5;
+        if l.secao == secao && l.rotulo_livre && sob {
+            for c in &mut l.celulas {
+                c.curta = true;
+                c.pede = c.pede.max(pede);
+            }
+            l.rotulo_livre = false;
+        }
+    });
+}
+
+/// Uma frase que ocupa a linha inteira (o aviso de um painel, pintado fora das portas dos cartões):
+/// conta para a distância entre linhas.
+pub fn frase(coluna: (f32, f32), topo: f32, fundo: f32, texto: &str) {
+    linha(coluna, topo, fundo, || {
+        vec![CelulaMedida {
+            nome: texto.to_owned(),
+            curta: false,
+            pede: 0.0,
+        }]
     });
 }
 

@@ -67,12 +67,13 @@ fn linha_da_accao(c: &mut CardCtx<'_>, sb: &state::SmartBoneView, y: f32) -> f32
 }
 
 /// Quem manda na ponta da curva. Os filhos que não couberam no pool aparecem no rótulo.
-fn linha_da_ponta(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    let Some(v) = state::bone_tip() else {
-        return y;
-    };
-    let Some(texto) = v.rotulos.get(v.ligado) else {
-        return y;
+fn linha_da_ponta(c: &mut CardCtx<'_>, y: f32, vizinho: Option<Cell<'_>>) -> f32 {
+    let tip = state::bone_tip();
+    let Some((v, texto)) = tip
+        .as_ref()
+        .and_then(|v| Some((v, v.rotulos.get(v.ligado)?)))
+    else {
+        return vizinho.map_or(y, |alcance| c.row(&[alcance], y));
     };
     let etiqueta = if v.escondidos == 0 {
         tr("panel.vector.bone.tip").to_string()
@@ -80,15 +81,15 @@ fn linha_da_ponta(c: &mut CardCtx<'_>, y: f32) -> f32 {
         format!("{} +{}", tr("panel.vector.bone.tip"), v.escondidos)
     };
     let lista = opcoes(&ids::VECTOR_BONE_TIP_IDS, &v.rotulos, |i| i == v.ligado);
-    c.full(
-        Some(&etiqueta),
-        Widget::Dropdown {
-            id: crate::ids::VECTOR_BONE_TIP,
-            text: texto,
-            options: &lista,
-        },
-        y,
-    )
+    let ponta = Widget::Dropdown {
+        id: crate::ids::VECTOR_BONE_TIP,
+        text: texto,
+        options: &lista,
+    };
+    match vizinho {
+        Some(alcance) => c.pair(alcance, Cell::new(ponta).label(&etiqueta), y),
+        None => c.full(Some(&etiqueta), ponta, y),
+    }
 }
 
 pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'static> {
@@ -141,9 +142,11 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                 .key(STR)
             });
             let curvo = !osso.is_rigid() || ph2d_skeleton::bend::segments_of(osso.segments) > 1;
-            if !curvo && let Some(alcance) = alcance {
-                y = c.row(&[alcance], y);
-            }
+            let (so_alcance, alcance) = if curvo {
+                (None, alcance)
+            } else {
+                (alcance, None)
+            };
             if curvo {
                 let auto = state::current_bone_handles() == Some(1);
                 let modos = [
@@ -196,9 +199,12 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                 }
             }
             if state::bone_tip().is_some() {
-                y = linha_da_ponta(c, y);
+                linha_da_ponta(c, y, so_alcance)
+            } else if let Some(alcance) = so_alcance {
+                c.row(&[alcance], y)
+            } else {
+                y
             }
-            y
         })),
     }
 }

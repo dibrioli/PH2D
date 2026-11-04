@@ -436,6 +436,9 @@ pub(crate) fn paint_script_section(
             tr("panel.inspector.script.no_longer_in_the_script"),
             ColorToken::Warn,
         );
+        if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+            cur_y += ph2d_card_stack::metrics::FIELD_ROW_GAP;
+        }
     }
     for (o, &id) in info
         .orphans

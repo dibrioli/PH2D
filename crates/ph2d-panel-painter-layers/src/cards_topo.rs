@@ -1,22 +1,22 @@
 //! Os cartões do topo e dos básicos, em linhas de cartão (fatia H2, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos
-//! ids, mesmos eventos. O que ainda é de outra fatia entra capturado, como peça: a prévia, os volumes do Wet
-//! Paint (H3) e Clone, Inpaint, Line e Composite (H8). As condições são as de `paint_brush::plano_do_corpo` e
+//! ids, mesmos eventos. O que ainda é de outra fatia entra capturado, como peça: a prévia e Clone, Inpaint, Line e
+//! Composite (H8). As condições são as de `paint_brush::plano_do_corpo` e
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
-use crate::cards_captura::{Captura, y_de};
+use crate::cards_captura::{Captura, x_de, y_de};
+use crate::cards_linhas::{aberta, com_lei, em_pares, esmaecida, registra_lista};
 use crate::paint_wetpaint_presets_biblioteca as biblioteca;
 use crate::state_wet_presets::{self as st, VistaPresets};
-use crate::{number_field, paint, paint_brush};
+use crate::{cards_wet, number_field, paint_brush};
 use crate::{
     paint_clone, paint_composite, paint_inpaint, paint_line, paint_wetpaint_presets, state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo as linhas, ferramenta};
-use ph2d_editor_core::widget::DropdownState;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
@@ -24,7 +24,6 @@ use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
     BrushBlend, BrushSettings, FerramentaDoPincel, LinhaDaFerramenta, PaintMedia,
 };
-use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
 /// O passo dos campos 0 a 1 do pincel, o de `populate_brush_chips`.
 const PASSO_DO_PINCEL: f64 = 0.01; // LITERAL-PX-OK: passo da faixa 0..1, não é medida de UI
@@ -94,6 +93,10 @@ pub(crate) enum Linha {
     Wash,
     Fio,
     Peca(Captura),
+    /// Um volume vivo do Wet Paint, pelo índice na tabela.
+    Volume(usize),
+    /// Duas linhas lado a lado.
+    Par(Box<[Linha; 2]>),
 }
 
 /// O que as peças capturadas precisam de saber do cartão.
@@ -125,7 +128,7 @@ impl Dono {
         pintor: impl FnOnce(&mut PaintCtx, ph2d_tokens::Theme, f32, f32, f32) -> f32,
     ) {
         let chave = NodeId(self.secao.0.wrapping_add(n));
-        let (x, w, tema) = (self.x, self.w, self.ink.theme);
+        let (x, w, tema) = (x_de(chave, self.x), self.w, self.ink.theme);
         let c = Captura::da_peca(
             ctx,
             chave,
@@ -167,9 +170,10 @@ pub(crate) fn do_topo(
         l.push(Linha::Biblioteca);
     }
     if brush.wetpaint {
-        dono.peca(ctx, 2, &mut l, |ctx, tema, x, w, y| {
-            paint_wetpaint_presets::paint_volumes(ctx, tema, x, w, y, brush)
-        });
+        l.extend(
+            (0..paint_wetpaint_presets::numeros_dos_volumes(&brush, &brush).len())
+                .map(Linha::Volume),
+        );
     }
     if vista.is_some() {
         l.push(Linha::Politica);
@@ -187,14 +191,13 @@ pub(crate) fn dos_basicos(
 ) -> Vec<Linha> {
     let dono = Dono::novo(ctx, pids::PAINTER_CARD_BASICOS, ink, x, w);
     let mut l = Vec::new();
-    if brush.le(LinhaDaFerramenta::Cor) {
-        if !brush.watercolor && brush.le(LinhaDaFerramenta::Blend) {
+    let le_a_cor = brush.le(LinhaDaFerramenta::Cor);
+    if le_a_cor && !brush.watercolor && brush.le(LinhaDaFerramenta::Blend) {
+        if !brush.paints_no_color() && !brush.is_mask {
+            l.push(Linha::Par(Box::new([Linha::Blend, Linha::Vazio])));
+        } else {
             l.push(Linha::Blend);
-            if !brush.paints_no_color() && !brush.is_mask {
-                l.push(Linha::Vazio);
-            }
         }
-        l.push(Linha::Cor);
     }
     let mut numeros = Vec::new();
     if !brush.wetpaint {
@@ -205,6 +208,18 @@ pub(crate) fn dos_basicos(
     }
     if brush.le_o_flow() {
         numeros.push(Numero::Fluxo);
+    }
+    // A cor divide a linha com o número que ficar sozinho, e os outros vão aos pares.
+    if le_a_cor {
+        if numeros.len() % 2 == 1 {
+            let sozinho = numeros.remove(numeros.len() - 1);
+            l.push(Linha::Par(Box::new([
+                Linha::Cor,
+                Linha::Numeros(vec![sozinho]),
+            ])));
+        } else {
+            l.push(Linha::Cor);
+        }
     }
     l.extend(numeros.chunks(2).map(|par| Linha::Numeros(par.to_vec())));
     if brush.is_clone {
@@ -226,8 +241,7 @@ pub(crate) fn dos_basicos(
         });
     }
     if brush.accumulate_offered() {
-        l.push(Linha::Accumulate);
-        l.push(Linha::Wash);
+        l.push(Linha::Par(Box::new([Linha::Accumulate, Linha::Wash])));
     }
     if brush.ferramenta() == FerramentaDoPincel::Smear
         && PaintMedia::from_u8(brush.media) == PaintMedia::Digital
@@ -235,25 +249,6 @@ pub(crate) fn dos_basicos(
         l.push(Linha::Fio);
     }
     l
-}
-
-/// As listas destes cartões: a caixa é a do cartão, e a lista que abre é a de sempre (a do Preset arrasta linhas).
-fn registra_lista(store: &mut WidgetStore, id: NodeId, atual: usize) {
-    store.register_if_absent(
-        id,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: Some(atual),
-        },
-    );
-}
-
-fn aberta(store: &WidgetStore, id: NodeId) -> bool {
-    matches!(
-        store.get(id),
-        Some(InteractiveState::Dropdown { open: true, .. })
-    )
 }
 
 /// Com o store MUTÁVEL, antes de pintar: o que estas linhas leem e não podem escrever.
@@ -300,10 +295,11 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
         usize::from(politica),
     );
     let cor = core_ids::PAINTER_COLOR_THUMB;
-    if !b.color_inactive {
-        paint::register_button(store, cor);
-    } else if store.picker_target() == Some(cor) {
+    if b.color_inactive && store.picker_target() == Some(cor) {
         store.set_picker_target(None);
+    }
+    if b.wetpaint {
+        cards_wet::prepara_volumes(store, b);
     }
     for id in COM_LEI {
         let _ = crate::esmaecer::poe_dica(store, &[id]);
@@ -342,6 +338,14 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
             st::PENDING_POLICY_DD.with(|c| c.set(Some((r, v.politica))));
         }
     }
+    for vol in 0..pids::PAINTER_WETPAINT_VOL_QUICK.len() {
+        let id = pids::PAINTER_WETPAINT_VOL_QUICK[vol];
+        if aberta(ctx.host.store(), id)
+            && let Some(r) = ctx.host.hit_index_mut().rect_for(id)
+        {
+            st::PENDING_QUICK_DD.with(|c| c.set(Some((r, vol))));
+        }
+    }
 }
 
 fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f32 {
@@ -370,49 +374,6 @@ fn botoes(c: &mut CardCtx<'_>, lista: &[(NodeId, String)], y: f32) -> f32 {
             .collect();
         c.row(&cells, y)
     })
-}
-
-/// A altura de uma linha com rótulo, de sobra: a camada só recorta, nunca empurra.
-fn altura_de_linha() -> f32 {
-    m::LABEL_TOP + 2.0 * (m::LABEL_PX + m::LABEL_BOTTOM) + m::FIELD_ROW_GAP + m::FIELD_H
-}
-
-/// Esmaecida como a linha de antes: continua editável, salvo a do Color inativo, que o chamador tira do índice.
-fn esmaecida(
-    c: &mut CardCtx<'_>,
-    y: f32,
-    pintar: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
-) -> f32 {
-    let forma = RoundedRect::new(
-        f64::from(c.x),
-        f64::from(y),
-        f64::from(c.x + c.w),
-        f64::from(y + altura_de_linha()),
-        0.0,
-    );
-    c.scene.push_layer_shape(
-        VelloBlend::new(Mix::Normal, Compose::SrcOver),
-        ph2d_editor_core::property_row::inativa::alfa_inativo(c.ink.theme),
-        Affine::IDENTITY,
-        &forma,
-    );
-    let fim = pintar(c, y);
-    c.scene.pop_layer();
-    fim
-}
-
-/// A linha do id `id`, esmaecida se a ferramenta o diz inerte.
-fn com_lei(
-    c: &mut CardCtx<'_>,
-    id: NodeId,
-    y: f32,
-    pintar: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
-) -> f32 {
-    if state::current_inercias().dica_de(id).is_some() {
-        esmaecida(c, y, pintar)
-    } else {
-        pintar(c, y)
-    }
 }
 
 fn numero_em_caixa(rotulo: &str, id: NodeId) -> Widget<'_> {
@@ -562,6 +523,13 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             y,
         ),
         Linha::Peca(p) => p.repete(c, y + m::FIELD_ROW_GAP),
+        Linha::Volume(i) => {
+            let volumes = paint_wetpaint_presets::numeros_dos_volumes(b, b);
+            volumes
+                .get(*i)
+                .map_or(y, |(n, rapido)| cards_wet::volume(c, n, *rapido, y))
+        }
+        Linha::Par(par) => em_pares(c, par.as_slice(), y, |c, l, y| pinta_linha(c, l, b, y)),
     }
 }
 

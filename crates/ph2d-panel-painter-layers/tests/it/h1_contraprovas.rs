@@ -159,7 +159,8 @@ fn the_captured_body_wears_the_card_ink() {
 #[test]
 fn the_captured_body_keeps_the_column_of_the_native_ones() {
     let (sec, id) = CAPTURADO;
-    let nativo = p::PAINTER_BRUSH_BLEND;
+    // A metade direita da linha: a borda dela é a da coluna.
+    let nativo = p::PAINTER_BRUSH_BLEND_ON_EMPTY;
     let alta = Mesa::nova(true, FALLBACK_BRUSH, false);
     let borda = |r: Rect| r.x + r.w;
     let folga =

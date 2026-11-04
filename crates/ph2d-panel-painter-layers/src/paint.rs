@@ -368,7 +368,11 @@ fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
 /// Delete — the canonical ghost-icon button (same look as the Hierarchy header
 /// "+"). Laid out left-to-right inside `toolbar_rect`; painted + registered
 /// post-body so scrolled rows don't shadow them.
-pub(crate) fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+pub(crate) fn paint_action_toolbar(
+    ctx: &mut PaintCtx,
+    toolbar_rect: Rect,
+    theme: ph2d_tokens::Theme,
+) {
     let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
     // Vertically center the square icon within the toolbar strip.
     let y = toolbar_rect.y + ((toolbar_rect.h - HEADER_ICON_W) * 0.5).max(0.0);
@@ -447,7 +451,11 @@ pub(crate) fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme
 /// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggles on the ACTIVE layer (fill
 /// `Accent` when on; Mask is a create action). Mask + Clip are also enabled for a Texture layer;
 /// Lock/Ref stay raster-only. A disabled button is un-registered, so its click is a no-op.
-pub(crate) fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+pub(crate) fn paint_modifier_toolbar(
+    ctx: &mut PaintCtx,
+    toolbar_rect: Rect,
+    theme: ph2d_tokens::Theme,
+) {
     let mods = state::current_layers().and_then(|s| s.active_modifiers());
     let raster = mods.is_some_and(|m| m.is_raster);
     let tex = state::current_layers().is_some_and(|s| s.active().is_some_and(|a| s.is_texture(a)));

@@ -64,40 +64,79 @@ const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 2] =
     ),
 ];
 
-/// Pinta o controlo da E10 que vem depois de `depois` (se houver) — faixa e passo da ferramenta
-/// (`WetKnobs::linha_e10`, a `KNOB_DEFS`).
-fn linhas_e10_depois(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: &BrushSettings,
+/// Um número do cartão: o nome, o id, o valor, a faixa, o passo, as casas. O painel de antes e os cartões leem esta
+/// tabela; as condições moram nas funções que a montam.
+pub(crate) struct Numero {
+    pub(crate) chave: &'static str,
+    pub(crate) id: ph2d_a11y::NodeId,
+    pub(crate) valor: f32,
+    pub(crate) min: f32,
+    pub(crate) max: f32,
+    pub(crate) passo: f64,
+    pub(crate) casas: usize,
+}
+
+impl Numero {
+    /// A linha do painel de antes.
+    pub(crate) fn linha_de_antes(
+        &self,
+        ctx: &mut PaintCtx,
+        theme: ph2d_tokens::Theme,
+        x: f32,
+        content_w: f32,
+        y: f32,
+    ) -> f32 {
+        card_row(
+            ctx, theme, x, content_w, y, self.chave, self.id, self.valor, self.min, self.max,
+            self.passo, self.casas,
+        )
+    }
+
+    /// Um knob da tabela do motor: as casas saem do passo.
+    pub(crate) fn de_knob(
+        chave: &'static str,
+        id: ph2d_a11y::NodeId,
+        v: f64,
+        min: f64,
+        max: f64,
+        passo: f64,
+    ) -> Self {
+        let casas = ph2d_tool_painter::Escala {
+            min: min as f32,
+            max: max as f32,
+            step: passo,
+        }
+        .decimals();
+        Self {
+            chave,
+            id,
+            valor: v as f32,
+            min: min as f32,
+            max: max as f32,
+            passo,
+            casas,
+        }
+    }
+}
+
+/// O controlo da E10 que vem depois de `depois`, se houver: faixa e passo da ferramenta (`WetKnobs::linha_e10`, a
+/// `KNOB_DEFS`), condições de `leis`, valor de `valores`.
+fn numero_e10_depois(
+    leis: &BrushSettings,
+    valores: &BrushSettings,
     depois: Option<ph2d_a11y::NodeId>,
-) -> f32 {
-    let Some(&(_, rotulo, id)) = E10_NO_CARTAO.iter().find(|(d, _, _)| *d == depois) else {
-        return y;
-    };
+) -> Option<Numero> {
+    let &(_, rotulo, id) = E10_NO_CARTAO.iter().find(|(d, _, _)| *d == depois)?;
     // O Pincel lê os três; o Blend da água (3048 texels no censo `cada_ferramenta_da_agua_so_ve_o_que_le`) e a
     // borracha da água (`apply_erase`, censo `a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda`) também lêem o
     // `paperGate` (a Hardness, E10h).
-    let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
-    let le_o_papel = brush.eraser || brush.wet_tool == ph2d_tool_painter::WetTool::Blend;
+    let pousa = leis.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+    let le_o_papel = leis.eraser || leis.wet_tool == ph2d_tool_painter::WetTool::Blend;
     if !(pousa || le_o_papel && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS) {
-        return y;
+        return None;
     }
-    let Some((v, min, max, step)) = brush.wet_knobs.linha_e10(id) else {
-        return y;
-    };
-    let decimais = ph2d_tool_painter::Escala {
-        min: min as f32,
-        max: max as f32,
-        step,
-    }
-    .decimals();
-    card_row(
-        ctx, theme, x, content_w, y, rotulo, id, v as f32, min as f32, max as f32, step, decimais,
-    )
+    let (v, min, max, step) = valores.wet_knobs.linha_e10(id)?;
+    Some(Numero::de_knob(rotulo, id, v, min, max, step))
 }
 
 pub(crate) fn paint_wetpaint_section(
@@ -134,122 +173,20 @@ pub(crate) fn paint_wetpaint_section(
         y = paint_resolution_group(ctx, theme, x, content_w, y, brush);
         // As ferramentas da água moram no trilho da esquerda (dono 25/10); aqui, a linha da que está na mão.
         if !brush.eraser {
-            for (id, rotulo, v, min, max, step) in
-                brush.wet_knobs.knobs_da_ferramenta(brush.wet_tool)
-            {
-                let decimais = ph2d_tool_painter::Escala {
-                    min: min as f32,
-                    max: max as f32,
-                    step,
-                }
-                .decimals();
-                y = card_row(
-                    ctx, theme, x, content_w, y, rotulo, id, v as f32, min as f32, max as f32,
-                    step, decimais,
-                );
+            for n in numeros_da_ferramenta(&brush, &brush) {
+                y = n.linha_de_antes(ctx, theme, x, content_w, y);
             }
         }
         // The TILT dial (the model's polar pad, copied faithfully).
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
-        let k = brush.wet_knobs;
         // A Dilution e o Volume são VOLUMES do topo (`paint_wetpaint_presets.rs`): um só controlo por facto. O
         // Paint type (Water · Oil) abre o cartão (E10f, no lugar do Pigment).
         let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
         if pousa {
             y = tipo_de_tinta::paint_tipo_de_tinta(ctx, theme, x, content_w, y, &brush);
         }
-        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
-            (
-                "panel.painter_layers.wetpaint.pickup",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
-                k.pickup() as f32,
-                0.0,
-                PICKUP_MAX,
-                PICKUP_STEP,
-                3,
-            ),
-            (
-                "panel.painter_layers.wetpaint.dry_speed",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_SPEED,
-                k.dry_speed() as f32,
-                0.0,
-                DRY_SPEED_MAX,
-                DRY_SPEED_STEP,
-                2,
-            ),
-            (
-                "panel.painter_layers.wetpaint.edge_darkening",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
-                k.edge_darkening() as f32,
-                0.0,
-                EDGE_MAX,
-                1.0,
-                0,
-            ),
-            (
-                "panel.painter_layers.wetpaint.gravity",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
-                k.gravity() as f32,
-                0.0,
-                GRAVITY_MAX,
-                GRAVITY_STEP,
-                4,
-            ),
-            (
-                "panel.painter_layers.wetpaint.erase_strength",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_ERASE,
-                k.erase as f32,
-                0.0,
-                1.0,
-                number_field::FINE_STEP,
-                2,
-            ),
-        ];
-        for (label, id, value, min, max, step, decimals) in rows {
-            if pousa || !DO_DEPOSITO.contains(&id) {
-                y = card_row(
-                    ctx, theme, x, content_w, y, label, id, value, min, max, step, decimals,
-                );
-            }
-            y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, Some(id));
-        }
-        // A física da água que regula a «grossura» dela (saiu do Tuning, dono 13/10) e o pó do pincel (19/10): a
-        // faixa e o passo vêm da tabela do motor, a mesma do Tuning.
-        let nomes = [
-            "panel.painter_layers.wetpaint.leveling",
-            "panel.painter_layers.wetpaint.level_clamp",
-            "panel.painter_layers.wetpaint.capillary",
-            "panel.painter_layers.wetpaint.brake",
-            "panel.painter_layers.wetpaint.dust",
-            "panel.painter_wet_cartao.backrun",
-            "panel.painter_wet_cartao.granulation",
-            "panel.painter_wet_cartao.diffusion",
-            "panel.painter_wet_cartao.wet_bloom",
-            "panel.painter_wet_cartao.tip_pickup",
-            "panel.painter_wet_cartao.rewet",
-            "panel.painter_wet_cartao.rewet_drag",
-            "panel.painter_wet_cartao.solubility",
-            "panel.painter_wet_cartao.staining",
-            "panel.painter_wet_cartao.glaze",
-            "panel.painter_wet_cartao.cover",
-            "panel.painter_wet_cartao.dry_cover",
-            "panel.painter_wet_cartao.wet_soften",
-        ];
-        for (label, (id, v, min, max, step)) in nomes.into_iter().zip(k.knobs_no_cartao()) {
-            if !pousa && DO_DEPOSITO.contains(&id) {
-                continue;
-            }
-            let decimais = ph2d_tool_painter::Escala {
-                min: min as f32,
-                max: max as f32,
-                step,
-            }
-            .decimals();
-            y = card_row(
-                ctx, theme, x, content_w, y, label, id, v as f32, min as f32, max as f32, step,
-                decimais,
-            );
-            y = linhas_e10_depois(ctx, theme, x, content_w, y, &brush, Some(id));
+        for n in numeros_da_fisica(&brush, &brush).iter().flatten() {
+            y = n.linha_de_antes(ctx, theme, x, content_w, y);
         }
         // Canvas actions (the model's bottom bar): three one-shots as a
         // momentary button row (the watercolor Dry/Wet pattern) + Show Wet
@@ -284,6 +221,150 @@ pub(crate) fn paint_wetpaint_section(
     crate::paint_brush_top::end_fold(ctx, fold, out)
 }
 
+/// Os knobs da ferramenta da água na mão (dono 25/10): condição de `leis`, valor de `valores`.
+pub(crate) fn numeros_da_ferramenta(leis: &BrushSettings, valores: &BrushSettings) -> Vec<Numero> {
+    valores
+        .wet_knobs
+        .knobs_da_ferramenta(leis.wet_tool)
+        .into_iter()
+        .map(|(id, rotulo, v, min, max, step)| Numero::de_knob(rotulo, id, v, min, max, step))
+        .collect()
+}
+
+/// Quantos nomes de [`numeros_da_fisica`] são do grupo da espessura: os restantes são os do pigmento.
+const NOMES_DA_ESPESSURA: usize = 5;
+
+/// Os números da física, pela ordem do cartão, por grupo: contacto e secagem · espessura · pigmento e camadas.
+/// Condições de `leis`, valores de `valores`: os cartões leem a fábrica pela mesma tabela.
+pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -> [Vec<Numero>; 3] {
+    let k = valores.wet_knobs;
+    let pousa = leis.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
+    let mut grupos: [Vec<Numero>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+    let rows: [(&'static str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
+        (
+            "panel.painter_layers.wetpaint.pickup",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
+            k.pickup() as f32,
+            0.0,
+            PICKUP_MAX,
+            PICKUP_STEP,
+            3,
+        ),
+        (
+            "panel.painter_layers.wetpaint.dry_speed",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_SPEED,
+            k.dry_speed() as f32,
+            0.0,
+            DRY_SPEED_MAX,
+            DRY_SPEED_STEP,
+            2,
+        ),
+        (
+            "panel.painter_layers.wetpaint.edge_darkening",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
+            k.edge_darkening() as f32,
+            0.0,
+            EDGE_MAX,
+            1.0,
+            0,
+        ),
+        (
+            "panel.painter_layers.wetpaint.gravity",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
+            k.gravity() as f32,
+            0.0,
+            GRAVITY_MAX,
+            GRAVITY_STEP,
+            4,
+        ),
+        (
+            "panel.painter_layers.wetpaint.erase_strength",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_ERASE,
+            k.erase as f32,
+            0.0,
+            1.0,
+            number_field::FINE_STEP,
+            2,
+        ),
+    ];
+    for (chave, id, valor, min, max, passo, casas) in rows {
+        if pousa || !DO_DEPOSITO.contains(&id) {
+            grupos[0].push(Numero {
+                chave,
+                id,
+                valor,
+                min,
+                max,
+                passo,
+                casas,
+            });
+        }
+        grupos[0].extend(numero_e10_depois(leis, valores, Some(id)));
+    }
+    // A física da água que regula a «grossura» dela (saiu do Tuning, dono 13/10) e o pó do pincel (19/10): a faixa e o
+    // passo vêm da tabela do motor, a mesma do Tuning.
+    let nomes = [
+        "panel.painter_layers.wetpaint.leveling",
+        "panel.painter_layers.wetpaint.level_clamp",
+        "panel.painter_layers.wetpaint.capillary",
+        "panel.painter_layers.wetpaint.brake",
+        "panel.painter_layers.wetpaint.dust",
+        "panel.painter_wet_cartao.backrun",
+        "panel.painter_wet_cartao.granulation",
+        "panel.painter_wet_cartao.diffusion",
+        "panel.painter_wet_cartao.wet_bloom",
+        "panel.painter_wet_cartao.tip_pickup",
+        "panel.painter_wet_cartao.rewet",
+        "panel.painter_wet_cartao.rewet_drag",
+        "panel.painter_wet_cartao.solubility",
+        "panel.painter_wet_cartao.staining",
+        "panel.painter_wet_cartao.glaze",
+        "panel.painter_wet_cartao.cover",
+        "panel.painter_wet_cartao.dry_cover",
+        "panel.painter_wet_cartao.wet_soften",
+    ];
+    for (i, (chave, (id, v, min, max, passo))) in
+        nomes.into_iter().zip(k.knobs_no_cartao()).enumerate()
+    {
+        if !pousa && DO_DEPOSITO.contains(&id) {
+            continue;
+        }
+        let grupo = usize::from(i >= NOMES_DA_ESPESSURA) + 1;
+        grupos[grupo].push(Numero::de_knob(chave, id, v, min, max, passo));
+        grupos[grupo].extend(numero_e10_depois(leis, valores, Some(id)));
+    }
+    grupos
+}
+
+/// Grid Size e Flow Grid, a mesma faixa das duas caras.
+pub(crate) fn numeros_da_grade(b: &BrushSettings) -> [Numero; 2] {
+    [
+        Numero {
+            chave: "panel.painter_layers.wetpaint.grid_size_px",
+            id: ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID,
+            valor: f32::from(b.wet_grid_ratio),
+            min: GRID_MIN,
+            max: GRID_MAX,
+            passo: 1.0,
+            casas: 0,
+        },
+        Numero {
+            chave: "panel.painter_layers.wetpaint.flow_grid_x",
+            id: ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW,
+            valor: f32::from(b.wet_flow_ratio),
+            min: FLOW_MIN,
+            max: FLOW_MAX,
+            passo: 1.0,
+            casas: 0,
+        },
+    ]
+}
+
+/// O texto do readout da resolução.
+pub(crate) fn texto_da_resolucao(b: &BrushSettings) -> String {
+    resolution_readout(b.wet_fluid_dims, b.wet_flow_dims)
+}
+
 /// **O GRUPO DE RESOLUÇÃO** — os dois números que decidem de que tamanho é cada
 /// grade, e o readout que os torna legíveis.
 ///
@@ -305,39 +386,14 @@ fn paint_resolution_group(
     // — e trocá-lo encerra a água viva (o bake), o que é uma decisão de
     // sessão, não de pincelada. Faixa e passo espelham `grid_map`
     // (MIN/MAX_RATIO) como os knobs espelham `KNOB_DEFS`.
-    y = card_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.wetpaint.grid_size_px",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_GRID,
-        f32::from(brush.wet_grid_ratio),
-        GRID_MIN,
-        GRID_MAX,
-        1.0,
-        0,
-    );
     // A SEGUNDA metade da multi-resolução (plano 30): a velocidade e a
     // pressão ficam `Flow Grid` vezes mais grossas que o pigmento. Dois
     // números porque são duas perguntas — *quão fino é o pigmento?* e *quão
     // grosso é o fluxo?* — e um controle só governando os dois seria a
     // falha de duas-portas ao contrário.
-    y = card_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.wetpaint.flow_grid_x",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW,
-        f32::from(brush.wet_flow_ratio),
-        FLOW_MIN,
-        FLOW_MAX,
-        1.0,
-        0,
-    );
+    for n in numeros_da_grade(&brush) {
+        y = n.linha_de_antes(ctx, theme, x, content_w, y);
+    }
     y = paint_resolution_readout(ctx, theme, x, content_w, y, brush);
     y
 }
@@ -400,8 +456,8 @@ fn paint_resolution_readout(
     y + font + ph2d_tokens::control_gap_px()
 }
 
-mod oleo;
-mod tipo_de_tinta; // o menu Paint type (Water · Oil, E10f)
+pub(crate) mod oleo;
+pub(crate) mod tipo_de_tinta; // o menu Paint type (Water · Oil, E10f)
 use oleo::paint_oleo_real;
 pub(crate) use oleo::{MATERIAL, paint_wetpaint_popovers};
 

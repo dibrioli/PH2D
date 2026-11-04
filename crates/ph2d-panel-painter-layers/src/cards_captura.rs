@@ -47,6 +47,11 @@ pub(crate) fn y_de(id: NodeId, de_outro_modo: f32) -> f32 {
     ONDE.with(|o| o.borrow().get(&id).map_or(de_outro_modo, |p| p.1))
 }
 
+/// O `x` do corpo no quadro anterior: num cartão solto, o que o pintor guarda em coordenadas tem de ser o do solto.
+pub(crate) fn x_de(id: NodeId, de_outro_modo: f32) -> f32 {
+    ONDE.with(|o| o.borrow().get(&id).map_or(de_outro_modo, |p| p.0))
+}
+
 /// Um corpo pintado à parte, pronto a repetir.
 pub(crate) struct Captura {
     /// A chave da memória da posição: a secção, ou uma peça dela.

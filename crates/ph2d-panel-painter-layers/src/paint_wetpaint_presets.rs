@@ -14,6 +14,7 @@
 use crate::number_field;
 use crate::paint_brush_rows::{paint_dropdown_chip, paint_dropdown_row};
 use crate::paint_brush_top::paint_checkbox_row;
+use crate::paint_wetpaint::Numero;
 use crate::state_wet_presets::{self as st, VistaPresets};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -73,8 +74,63 @@ pub(crate) fn paint_wetpaint_presets(
     y
 }
 
-/// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Dilution · Volume (µm) no Pincel; Size · Water
-/// na ferramenta Wet (E10-B2).
+/// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Dilution · Volume (µm) no Pincel; Size · Water na
+/// ferramenta Wet (E10-B2). Com o índice do chip de valores rápidos, se houver. Condições de `leis`, valores de `valores`.
+pub(crate) fn numeros_dos_volumes(
+    leis: &BrushSettings,
+    valores: &BrushSettings,
+) -> Vec<(Numero, Option<usize>)> {
+    // O tecto do pincel (J3, decisão 8): a faixa acaba nele — o artista vê porque o Size não cresce.
+    let mut l = vec![(
+        Numero {
+            chave: "panel.painter_layers.wetpaint.vol_size",
+            id: ids::PAINTER_WETPAINT_VOL_SIZE,
+            valor: valores.size_px * DIAMETRO_POR_RAIO,
+            min: BRUSH_SIZE_MIN_PX * DIAMETRO_POR_RAIO,
+            max: valores.size_max_px * DIAMETRO_POR_RAIO,
+            passo: SIZE_STEP,
+            casas: 0,
+        },
+        Some(0),
+    )];
+    // E10 (F3 §9): o Pincel pousa TINTA — Dilution (Pigment + Water fundidos) e Volume em µm; a ferramenta Wet
+    // pousa só água e guarda o seu Water.
+    if leis.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
+        let e10 = [
+            (
+                "panel.painter_layers.wetpaint.dilution",
+                ids::PAINTER_WETPAINT_DILUTION,
+                None,
+            ),
+            (
+                "panel.painter_layers.wetpaint.volume_um",
+                ids::PAINTER_WETPAINT_VOL_OPACITY,
+                Some(2),
+            ),
+        ];
+        for (chave, id, rapido) in e10 {
+            if let Some((v, min, max, passo)) = valores.wet_knobs.linha_e10(id) {
+                l.push((Numero::de_knob(chave, id, v, min, max, passo), rapido));
+            }
+        }
+    } else if leis.le(ph2d_tool_painter::LinhaDaFerramenta::AguaDoVolume) {
+        l.push((
+            Numero {
+                chave: "panel.painter_layers.wetpaint.water",
+                id: ids::PAINTER_WETPAINT_WATER,
+                valor: valores.wet_knobs.water as f32,
+                min: 0.0,
+                max: 1.0,
+                passo: number_field::FINE_STEP,
+                casas: 2,
+            },
+            Some(1),
+        ));
+    }
+    l
+}
+
+/// A pintura de antes dos volumes.
 pub(crate) fn paint_volumes(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -83,125 +139,45 @@ pub(crate) fn paint_volumes(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let mut y = volume_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        0,
-        "panel.painter_layers.wetpaint.vol_size",
-        ids::PAINTER_WETPAINT_VOL_SIZE,
-        brush.size_px * DIAMETRO_POR_RAIO,
-        // O tecto do pincel (J3, decisão 8): a faixa acaba nele — o artista vê porque o Size não cresce.
-        (
-            BRUSH_SIZE_MIN_PX * DIAMETRO_POR_RAIO,
-            brush.size_max_px * DIAMETRO_POR_RAIO,
-        ),
-        SIZE_STEP,
-        0,
-    );
-    let pousa = brush.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
-    // E10 (F3 §9): o Pincel pousa TINTA — Dilution (Pigment + Water fundidos) e Volume em µm; a ferramenta Wet
-    // pousa só água e guarda o seu Water.
-    if pousa {
-        y = linha_e10(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            None,
-            "panel.painter_layers.wetpaint.dilution",
-            ids::PAINTER_WETPAINT_DILUTION,
-            &brush,
-        );
-        return linha_e10(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            Some(2),
-            "panel.painter_layers.wetpaint.volume_um",
-            ids::PAINTER_WETPAINT_VOL_OPACITY,
-            &brush,
-        );
-    }
-    if brush.le(ph2d_tool_painter::LinhaDaFerramenta::AguaDoVolume) {
-        y = volume_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            1,
-            "panel.painter_layers.wetpaint.water",
-            ids::PAINTER_WETPAINT_WATER,
-            brush.wet_knobs.water as f32,
-            (0.0, 1.0),
-            number_field::FINE_STEP,
-            2,
-        );
+    let mut y = y;
+    for (n, rapido) in numeros_dos_volumes(&brush, &brush) {
+        y = if let Some(vol) = rapido {
+            volume_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                vol,
+                n.chave,
+                n.id,
+                n.valor,
+                (n.min, n.max),
+                n.passo,
+                n.casas,
+            )
+        } else {
+            // Sem chip de valores rápidos: a caixa alinha com as das linhas que o têm.
+            let chip_w = ph2d_tokens::ICON_BTN_SIZE_PX + ph2d_tokens::control_gap_px();
+            let sec = crate::seccoes::seccao_da_chave(ctx.text_system, n.chave);
+            number_field::paint_num_row(
+                ctx,
+                theme,
+                x,
+                content_w - chip_w,
+                y,
+                tr(n.chave),
+                n.id,
+                n.valor,
+                n.min,
+                n.max,
+                n.passo,
+                n.casas,
+                sec,
+            )
+        };
     }
     y
-}
-
-/// Uma linha de volume de um controlo da E10: valor, faixa e passo da ferramenta (`WetKnobs::linha_e10`, a
-/// `KNOB_DEFS`). `vol = None` = sem chip de valores rápidos (o rápido do slot do Water escreve o Water).
-#[allow(clippy::too_many_arguments)]
-fn linha_e10(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    vol: Option<usize>,
-    chave: &str,
-    id: ph2d_a11y::NodeId,
-    brush: &BrushSettings,
-) -> f32 {
-    let Some((v, min, max, step)) = brush.wet_knobs.linha_e10(id) else {
-        return y;
-    };
-    let escala = ph2d_tool_painter::Escala {
-        min: min as f32,
-        max: max as f32,
-        step,
-    };
-    let Some(vol) = vol else {
-        let chip_w = ph2d_tokens::ICON_BTN_SIZE_PX + ph2d_tokens::control_gap_px();
-        let sec = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
-        return number_field::paint_num_row(
-            ctx,
-            theme,
-            x,
-            content_w - chip_w,
-            y,
-            tr(chave),
-            id,
-            v as f32,
-            escala.min,
-            escala.max,
-            step,
-            escala.decimals(),
-            sec,
-        );
-    };
-    volume_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        vol,
-        chave,
-        id,
-        v as f32,
-        (escala.min, escala.max),
-        step,
-        escala.decimals(),
-    )
 }
 
 fn paint_navegador(

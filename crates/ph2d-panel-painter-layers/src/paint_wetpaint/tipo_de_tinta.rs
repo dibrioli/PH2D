@@ -15,7 +15,7 @@ const OPCOES: [&str; PAINTER_WETPAINT_MEDIUM_COUNT as usize] = [
     "panel.painter_layers.wetpaint.paint_type_oil",
 ];
 
-fn nome(i: u8) -> &'static str {
+pub(crate) fn nome(i: u8) -> &'static str {
     tr(OPCOES.get(usize::from(i)).copied().unwrap_or(OPCOES[0]))
 }
 
@@ -50,6 +50,11 @@ pub(super) fn paint_tipo_de_tinta(
         PENDING_TIPO_DD.with(|c| c.set(Some((r, cur))));
     }
     y
+}
+
+/// A lista aberta num cartão: a caixa é dele, a lista é esta.
+pub(crate) fn abre_lista(r: ph2d_editor_core::zones::Rect, atual: u8) {
+    PENDING_TIPO_DD.with(|c| c.set(Some((r, atual))));
 }
 
 /// O popover do **Paint type** (chamado de `paint_wetpaint_popovers`, depois do clip do corpo).

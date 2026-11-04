@@ -5,7 +5,9 @@
 //! ([`crate::cards_captura`]). Em ambos o pintor antigo decide se a secção está à vista e dá o título.
 
 use crate::cards_captura::{Captura, coluna, y_de};
-use crate::{cards_nativos, cards_topo, paint, paint_brush, paint_brush_top, preview_pino, state};
+use crate::{
+    cards_nativos, cards_topo, cards_wet, paint, paint_brush, paint_brush_top, preview_pino, state,
+};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
@@ -58,10 +60,11 @@ struct Presente {
     conteudo: Conteudo,
 }
 
-/// O corpo de hoje, capturado, ou as linhas do topo e dos básicos.
+/// O corpo de hoje, capturado; as linhas do topo e dos básicos; o Wet Paint, com o visor do Tilt capturado.
 enum Conteudo {
     Captura(Captura),
     Linhas(Vec<cards_topo::Linha>),
+    Wet(Captura),
 }
 
 impl Presente {
@@ -69,6 +72,7 @@ impl Presente {
         match &self.conteudo {
             Conteudo::Captura(c) => c.reset,
             Conteudo::Linhas(_) => None,
+            Conteudo::Wet(_) => Some(pids::PAINTER_WETPAINT_RESET),
         }
     }
 }
@@ -121,6 +125,16 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                     id,
                     titulo: titulo_do_bloco(id, &brush),
                     conteudo: Conteudo::Linhas(linhas),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_WETPAINT_SECTION {
+            if cards_wet::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_wet::titulo().to_owned(),
+                    conteudo: Conteudo::Wet(cards_wet::visor(ctx, ink, (x, w), brush)),
                 });
             }
             continue;
@@ -240,6 +254,9 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Linhas(l)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_topo::corpo(c, l, y))
                 }
+                (None, Conteudo::Wet(visor)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_wet::corpo(c, visor, y))
+                }
             };
             CardDef {
                 section: p.id,
@@ -286,6 +303,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     cards_nativos::prepare(ctx.host.store_mut());
     if !camadas {
         cards_topo::prepare(ctx.host.store_mut(), &pincel);
+        cards_wet::prepare(ctx.host.store_mut(), &pincel);
     }
     for p in &presentes {
         if let Some(id) = p.reset()
@@ -345,6 +363,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         }
         None => {
             cards_topo::listas_abertas(ctx, &pincel);
+            cards_wet::listas_abertas(ctx, &pincel);
             paint::paint_brush_view_popovers(ctx, theme);
         }
     }

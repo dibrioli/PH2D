@@ -57,6 +57,34 @@ pub(crate) fn paint_tilt_card(
         "panel.painter_layers.wetpaint.tilt",
         brush.wet_tilt_on,
     );
+    let fim = paint_tilt_dial(ctx, theme, x, content_w, y, brush);
+    // Heavy Edge (W1g) — com a tela inclinada o pigmento pesa na orla de baixo; `0` de fábrica (esmaece
+    // com o Tilt desligado: `Dependente::BordaSemTilt`).
+    numero_da_borda(brush).linha_de_antes(ctx, theme, x, content_w, fim + Spacing::Xs.px())
+}
+
+/// O número Heavy Edge.
+pub(crate) fn numero_da_borda(brush: &BrushSettings) -> crate::paint_wetpaint::Numero {
+    crate::paint_wetpaint::Numero {
+        chave: "panel.painter_layers.wetpaint.heavy_edge",
+        id: ph2d_tool_painter::ids::PAINTER_WETPAINT_HEAVY_EDGE,
+        valor: brush.wet_heavy_edge,
+        min: 0.0,
+        max: 1.0,
+        passo: crate::number_field::FINE_STEP,
+        casas: 2,
+    }
+}
+
+/// O visor (a lei E10 manda não o redesenhar): a grade polar, o botão e o alvo. Devolve o fundo dele.
+pub(crate) fn paint_tilt_dial(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
     let side = DIAL_PX.min(content_w);
     let canvas = Rect::new(x + (content_w - side) * 0.5, y, side, side);
     let (cx, cy) = (canvas.x + side * 0.5, canvas.y + side * 0.5);
@@ -110,22 +138,7 @@ pub(crate) fn paint_tilt_card(
     ctx.host
         .hit_index_mut()
         .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
-    // Heavy Edge (W1g) — com a tela inclinada o pigmento pesa na orla de baixo; `0` de fábrica (esmaece
-    // com o Tilt desligado: `Dependente::BordaSemTilt`).
-    crate::card::card_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        canvas.y + side + Spacing::Xs.px(),
-        "panel.painter_layers.wetpaint.heavy_edge",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_HEAVY_EDGE,
-        brush.wet_heavy_edge,
-        0.0,
-        1.0,
-        crate::number_field::FINE_STEP,
-        2,
-    )
+    canvas.y + side
 }
 
 /// The `event.rs` drain arm's body (kept HERE so the event router stays at

@@ -477,6 +477,117 @@ fn the_lit_option_follows_the_document() {
     );
 }
 
+/// Sempre UMA opção acesa: o tamanho do que se pinta não muda com a escolha. Sem isto, uma opção acesa
+/// sempre, ou nunca, continuava a dar pinturas diferentes. *Mutação: `aceso` fixo ⇒ vermelho.*
+#[test]
+fn exactly_one_option_is_lit() {
+    let n = |semente: &dyn Fn()| {
+        let mut mesa = na_interface(true, base);
+        semente();
+        mesa.assenta();
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        h.paint_draw_data::<ph2d_panel_vector::VectorPanel>(st, super::g4_os_cartoes::COLUNA)
+            .len()
+    };
+    let com = |f: fn(&mut LayoutFlow)| {
+        let mut v = fluxo(p::VECTOR_LAYOUT_DIR_WRAP);
+        f(&mut v);
+        state::set_layout_flow(Some(v));
+    };
+    let base_n = n(&|| com(|_| {}));
+    assert_eq!(
+        base_n,
+        n(&|| com(|f| f.align = p::VECTOR_LAYOUT_ALIGN_END)),
+        "Align"
+    );
+    assert_eq!(
+        base_n,
+        n(&|| com(|f| f.justify = p::VECTOR_LAYOUT_JUSTIFY_AROUND)),
+        "Distribute"
+    );
+    assert_eq!(
+        base_n,
+        n(&|| com(|f| f.size[0] = p::VECTOR_LAYOUT_SIZE_W_HUG)),
+        "Width"
+    );
+    assert_eq!(
+        base_n,
+        n(&|| state::set_widget_skin_state(
+            Some(WidgetSkinState {
+                selected: Some(1),
+                ..pele()
+            }),
+            0
+        )),
+        "Type"
+    );
+    // Direction: Off acende sem fluxo, mas sem fluxo o resto some. Compara-se Row com Column.
+    let direcao = |dir: NodeId| state::set_layout_flow(Some(fluxo(dir)));
+    assert_eq!(
+        n(&|| direcao(p::VECTOR_LAYOUT_DIR_ROW)),
+        n(&|| direcao(p::VECTOR_LAYOUT_DIR_COL)),
+        "Direction"
+    );
+}
+
+/// O que só fala às vezes: órfã, excedente de tipos, Swap armado, moldura ausente. Cada um é um `if`.
+#[test]
+fn what_speaks_only_sometimes_speaks_when_it_has_a_subject() {
+    let pinta = |semente: &dyn Fn()| {
+        let mut mesa = na_interface(true, base);
+        semente();
+        mesa.assenta();
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        h.paint_draw_data::<ph2d_panel_vector::VectorPanel>(st, super::g4_os_cartoes::COLUNA)
+    };
+    let copia = |main_missing: bool| {
+        state::set_component_state(Some(ComponentState {
+            is_instance: true,
+            main_missing,
+            ..ComponentState::default()
+        }));
+    };
+    assert_ne!(pinta(&|| copia(false)), pinta(&|| copia(true)), "órfã");
+    assert_ne!(
+        pinta(&|| state::set_widget_skin_state(Some(pele()), 0)),
+        pinta(&|| state::set_widget_skin_state(Some(pele()), 3)),
+        "excedente"
+    );
+
+    // Armado, o botão diz o que o próximo clique faz, sem cortar: desce de linha.
+    let mut mesa = na_interface(true, base);
+    state::set_component_state(Some(ComponentState {
+        is_instance: true,
+        swap_armed: true,
+        ..ComponentState::default()
+    }));
+    let ((), c) = ph2d_editor_core::panel::cards::censo::grava(|| mesa.assenta());
+    let nome = ph2d_i18n::tr("panel.vector.component.swap_armed");
+    assert!(c.textos.iter().any(|t| t.texto == nome), "«{nome}»");
+    assert_eq!(c.textos_cortados(), Vec::<String>::new());
+
+    // Um mestre não troca nem solta.
+    let mesa = na_interface(true, mestre);
+    assert!(
+        mesa.rect(p::VECTOR_COMPONENT_SWAP).is_none(),
+        "Swap no mestre"
+    );
+    assert!(
+        mesa.rect(p::VECTOR_COMPONENT_PLACE).is_some(),
+        "Instantiate"
+    );
+
+    // Filho de fluxo sem moldura: o Layout fala só do filho.
+    let mut mesa = na_interface(true, base);
+    state::set_frame_clip(None);
+    mesa.assenta();
+    assert!(mesa.rect(p::VECTOR_LAYOUT_DIR_OFF).is_none(), "sem moldura");
+    assert!(
+        mesa.rect(p::VECTOR_LAYOUT_ITEM_GROW).is_some(),
+        "o filho fica"
+    );
+}
+
 /// O canal fica no campo. *Mutação: tirar um `.key` ⇒ vermelho.*
 #[test]
 fn each_channel_keeps_its_animation_mark() {

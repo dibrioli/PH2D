@@ -11,6 +11,7 @@ use crate::state::{self, LayoutFlow};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
+use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::ColorToken;
 
@@ -504,7 +505,12 @@ pub(crate) fn widget(c: &mut CardCtx<'_>, y: f32) -> f32 {
     if face.is_some()
         && let Some(caixa) = aberto(c, p::VECTOR_WIDGET_ICON_DD)
     {
-        state::set_pending_icon_dd(Some(caixa));
+        // A caixa divide a linha com Drives; os nomes dos glifos pedem a largura do cartão.
+        state::set_pending_icon_dd(Some(Rect {
+            x: c.x,
+            w: c.w,
+            ..caixa
+        }));
     }
     if let Some(preso) = s.drives.as_ref() {
         let ligar = Cell::new(botao(p::VECTOR_WIDGET_BIND, tr("panel.vector.widget.bind")));

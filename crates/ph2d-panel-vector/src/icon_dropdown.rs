@@ -21,7 +21,7 @@
 use crate::ids;
 use crate::state;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text};
 use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow};
 use ph2d_editor_core::zones::Rect;
@@ -91,7 +91,8 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
 /// O conteúdo de uma linha visível: o GLIFO e o slug ao lado (o realce é da lista).
 fn paint_row(scene: &mut VectorScene, text_system: &mut TextSystem, row: PopoverRow, theme: Theme) {
     let r = row.rect;
-    let color = resolve(row.ink(), theme);
+    // `resolve_opaque` conhece a tinta do cartão: sobre o realce dele, o `AccentFg` a secas não se lia.
+    let color = ph2d_editor_core::widget::resolve_opaque(row.ink(), theme);
     let pad = Spacing::Md.px();
     let d = r.h * GLYPH_RATIO;
     let mut text_x = r.x + pad;

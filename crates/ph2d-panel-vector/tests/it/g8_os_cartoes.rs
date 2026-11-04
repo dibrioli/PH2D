@@ -8,7 +8,7 @@ use super::g4_os_cartoes::{COLUNA, Mesa};
 use super::g5_os_cartoes::sem_acusacao;
 use ph2d_a11y::NodeId;
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::cards::grip_of;
 use ph2d_editor_core::widget::key_mark::set_key_marks;
 use ph2d_panel_vector::ids as p;
@@ -246,6 +246,12 @@ fn typing_sends_the_same_action_as_the_old_panel() {
 #[test]
 fn the_signal_name_commits_like_the_old_panel() {
     let id = p::vector_state_signal_name_id(0);
+    let mesa = na_interface(true, base);
+    let texto = match mesa.host.store().get(id) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        outro => panic!("o campo é {outro:?}"),
+    };
+    assert_eq!(texto, "open", "o campo não mostra o nome do documento");
     let grava = |cartoes: bool| {
         let mut mesa = na_interface(cartoes, base);
         let ev = mesa.host.type_keys_then_enter(id, "x");
@@ -678,4 +684,174 @@ fn the_advanced_members_stay_in_their_card() {
     ] {
         assert!(mesa.rect(id).is_some(), "{id:?}");
     }
+}
+
+/// A tinta de um estado, sem a ordem: trocar qual opção acende não muda o multiconjunto, e acender duas
+/// ou nenhuma muda.
+fn tinta(semente: fn(), aba: NodeId, muda: &dyn Fn()) -> (Vec<u32>, Vec<u32>) {
+    let mut mesa = Mesa::com(true, semente);
+    mesa.clica(aba);
+    muda();
+    mesa.assenta();
+    let (h, st) = (&mut mesa.host, &mut mesa.st);
+    let pintura = h.paint_draw_data::<ph2d_panel_vector::VectorPanel>(st, COLUNA);
+    let mut ordenada = pintura.clone();
+    ordenada.sort_unstable();
+    (pintura, ordenada)
+}
+
+/// ⭐ **Em cada escolha acende UMA opção, a do documento.** Os seis sobreviventes da G6 e da G7: uma
+/// opção acesa fixa muda só a contagem do que acende. *Mutação: `quina == 0` → `true` ⇒ vermelho.*
+#[test]
+fn every_choice_lights_exactly_one_option() {
+    let (d, i) = (p::VECTOR_TAB_DRAWING, p::VECTOR_TAB_INTERFACE);
+    let tudo = super::g6_os_cartoes::tudo as fn();
+    let contorno = |quina, lado| {
+        ph2d_panel_vector::set_current_contour(
+            true,
+            6.0,
+            0.125,
+            2.0,
+            quina,
+            lado,
+            [16, 32, 48, 255],
+        );
+    };
+    let vinculo = |flip| {
+        ph2d_panel_vector::set_current_patternpath(true, 0.25, 0.75, 1.5, 0.5, flip, 30.0);
+    };
+    let gaiola = |m| ph2d_panel_vector::set_current_envelope_mode(m);
+    let direcao = |id: Option<NodeId>| {
+        state::set_frame_present(true);
+        state::set_frame_clip(Some(false));
+        state::set_layout_flow(id.map(|dir| state::LayoutFlow {
+            size: [p::VECTOR_LAYOUT_SIZE_W_FIXED, p::VECTOR_LAYOUT_SIZE_H_HUG],
+            min: [1.0, 2.0],
+            max: [3.0, 4.0],
+            dir,
+            gap: [0.5, 0.25],
+            pad: [0.125; 4],
+            align: p::VECTOR_LAYOUT_ALIGN_CENTER,
+            justify: p::VECTOR_LAYOUT_JUSTIFY_END,
+            columns: 3.0,
+        }));
+    };
+    let com_curva = |familia: usize, modo: usize| {
+        state::set_ui_states_state(Some(UiStatesState {
+            easing: Easing {
+                family: EasingFamily::ALL[familia],
+                mode: EasingMode::ALL[modo],
+            },
+            ..poses()
+        }));
+    };
+    type Casos<'a> = Vec<(
+        &'a str,
+        fn(),
+        NodeId,
+        Box<dyn Fn() + 'a>,
+        Box<dyn Fn() + 'a>,
+    )>;
+    let casos: Casos<'_> = vec![
+        (
+            "Cage",
+            tudo,
+            d,
+            Box::new(move || gaiola(0)),
+            Box::new(move || gaiola(1)),
+        ),
+        (
+            "Corner 0-1",
+            tudo,
+            d,
+            Box::new(move || contorno(0, 0)),
+            Box::new(move || contorno(1, 0)),
+        ),
+        (
+            "Corner 1-2",
+            tudo,
+            d,
+            Box::new(move || contorno(1, 0)),
+            Box::new(move || contorno(2, 0)),
+        ),
+        (
+            "Side 0-1",
+            tudo,
+            d,
+            Box::new(move || contorno(0, 0)),
+            Box::new(move || contorno(0, 1)),
+        ),
+        (
+            "Side 1-2",
+            tudo,
+            d,
+            Box::new(move || contorno(0, 1)),
+            Box::new(move || contorno(0, 2)),
+        ),
+        (
+            "Flip",
+            tudo,
+            d,
+            Box::new(move || vinculo(false)),
+            Box::new(move || vinculo(true)),
+        ),
+        (
+            "Direction",
+            base,
+            i,
+            Box::new(move || direcao(Some(p::VECTOR_LAYOUT_DIR_ROW))),
+            Box::new(move || direcao(Some(p::VECTOR_LAYOUT_DIR_COL))),
+        ),
+        (
+            "Curve",
+            base,
+            i,
+            Box::new(move || com_curva(1, 0)),
+            Box::new(move || com_curva(2, 0)),
+        ),
+        (
+            "Curve dir",
+            base,
+            i,
+            Box::new(move || com_curva(1, 0)),
+            Box::new(move || com_curva(1, 2)),
+        ),
+    ];
+    for (nome, semente, aba, a, b) in casos {
+        let (pa, oa) = tinta(semente, aba, &*a);
+        let (pb, ob) = tinta(semente, aba, &*b);
+        assert_ne!(pa, pb, "{nome}: o aceso não segue o documento");
+        assert_eq!(oa, ob, "{nome}: acendeu outra contagem de opções");
+    }
+}
+
+/// A lista dos ícones tem a largura do cartão: os nomes dos glifos não cabiam na caixa, que divide a
+/// linha com Drives. *Mutação: ancorar na caixa ⇒ vermelho.*
+#[test]
+fn the_icon_list_is_as_wide_as_the_card() {
+    let mut mesa = na_interface(true, || {
+        base();
+        state::set_widget_skin_state(
+            Some(WidgetSkinState {
+                kinds: vec!["Button".into()],
+                selected: Some(0),
+                drives: Some(None),
+                icon: Some(None),
+                unknown: false,
+            }),
+            0,
+        );
+    });
+    let caixa = mesa.rect(p::VECTOR_WIDGET_ICON_DD).expect("caixa");
+    mesa.clica(p::VECTOR_WIDGET_ICON_DD);
+    mesa.assenta();
+    let linha = mesa
+        .rect(p::vector_widget_icon_option_id(1))
+        .expect("opção");
+    assert!(
+        linha.w > caixa.w * 1.5,
+        "lista {} sobre caixa {}",
+        linha.w,
+        caixa.w
+    );
 }

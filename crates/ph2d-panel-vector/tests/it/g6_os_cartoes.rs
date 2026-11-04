@@ -32,7 +32,7 @@ fn sem_nada() {
 }
 
 /// Tudo vivo: envelope com preset, vínculo, contour.
-fn tudo() {
+pub(crate) fn tudo() {
     sem_nada();
     ph2d_panel_vector::set_current_has_envelope(true);
     ph2d_panel_vector::set_current_envelope_presets(PRESETS, Some(1), 0.25);

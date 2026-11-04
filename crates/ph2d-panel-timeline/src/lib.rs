@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 
 mod breadcrumb;
+mod folha_tinta;
 mod ruler_clock;
 
 /// The ruler's resolved clock, for the seam gate that pins which one it measures.

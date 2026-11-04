@@ -178,9 +178,9 @@ fn colhe(
     let mut registos = host.registos_da_ultima_pintura();
     let cartao = registos
         .iter()
-        // A moldura sem cartão (Timeline, `cards_banda`) tem o «…» da lista e os mesmos controlos.
+        // A moldura sem cartão (Timeline, `cards_banda`) tem o «×» da lista e os mesmos controlos.
         .any(|(nid, _)| {
-            host.store().is_card_section(*nid) || host.store().card_list_menu(*nid).is_some()
+            host.store().is_card_section(*nid) || host.store().is_card_list_close(*nid)
         });
     // Numa lista de cartões o 1.º quadro corta o corpo na mola das alturas: uma marca apanhada no
     // corte mediu 24,5 px (Pixel). A régua é a altura da marca, por isso mede a lista assente.

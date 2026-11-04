@@ -110,6 +110,53 @@ fn release_everything_a_hidden_panel_must_not_hold(
     set_last_visible_h(0.0);
 }
 
+/// A moldura e a barra do transporte, nos cartões ou na cara de antes: onde a folha começa, os dois chips
+/// e o interior.
+fn paint_barra(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    rect: Rect,
+    cartoes: bool,
+    state: &TimelinePanelState,
+    snapshot: &ph2d_timeline::TimelineViewSnapshot,
+) -> (
+    f32,
+    Option<transport::ClipChip>,
+    Option<transport::ClipChip>,
+    Rect,
+) {
+    if cartoes {
+        let barra = crate::transport_sources::bar_view(state, snapshot);
+        ctx.host.store_mut().mark_card_list_close(
+            ph2d_editor_core::ids::TIMELINE_PANEL,
+            crate::ids::TIMELINE_CLOSE,
+        );
+        let mol = ph2d_editor_core::panel::cards::banda::pinta_moldura(
+            ctx,
+            ph2d_editor_core::ids::TIMELINE_PANEL,
+            TimelinePanel::TITLE.tr(),
+            rect,
+        );
+        let (y, clip, anim) =
+            transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, snapshot, barra);
+        return (y, clip, anim, mol.corpo);
+    }
+    let title_size = paint_chrome(ctx, theme, rect);
+    let body = geom::body(rect, title_size);
+    // The transport now flows BESIDE the title and only spills to a row of its own
+    // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
+    let head_strip = geom::header_controls(rect, title_size);
+    let (y, clip, anim) = transport::paint_bar(
+        ctx,
+        theme,
+        head_strip,
+        body,
+        snapshot,
+        crate::transport_sources::bar_view(state, snapshot),
+    );
+    (y, clip, anim, body)
+}
+
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
         release_everything_a_hidden_panel_must_not_hold(state, ctx);
@@ -134,11 +181,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let min_label = geom::min_label_w(&snapshot, state.tab);
     let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     // Nos cartões a folha mora no interior da moldura; as contas de `geom` servem-se dele.
-    let folha = if cartoes {
-        area_da_folha(rect0)
-    } else {
-        rect0
-    };
+    let folha = if cartoes { area_da_folha(rect0) } else { rect0 };
     let time_x0 = geom::time_x(folha, state.label_w, min_label);
     crate::interact::process(state, ctx, rect0, time_x0, &snapshot);
 
@@ -154,38 +197,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);
 
-    let (after_transport, clip_dd_chip, anim_dd_chip, body) = if cartoes {
-        let barra = crate::transport_sources::bar_view(state, &snapshot);
-        let store = ctx.host.store_mut();
-        store.mark_card_list_close(
-            ph2d_editor_core::ids::TIMELINE_PANEL,
-            crate::ids::TIMELINE_CLOSE,
-        );
-        let mol = ph2d_editor_core::panel::cards::banda::pinta_moldura(
-            ctx,
-            ph2d_editor_core::ids::TIMELINE_PANEL,
-            TimelinePanel::TITLE.tr(),
-            rect,
-        );
-        let (y, clip, anim) =
-            transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, &snapshot, barra);
-        (y, clip, anim, mol.corpo)
-    } else {
-        let title_size = paint_chrome(ctx, theme, rect);
-        let body = geom::body(rect, title_size);
-        // The transport now flows BESIDE the title and only spills to a row of its own
-        // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
-        let head_strip = geom::header_controls(rect, title_size);
-        let (y, clip, anim) = transport::paint_bar(
-            ctx,
-            theme,
-            head_strip,
-            body,
-            &snapshot,
-            crate::transport_sources::bar_view(state, &snapshot),
-        );
-        (y, clip, anim, body)
-    };
+    let (after_transport, clip_dd_chip, anim_dd_chip, body) =
+        paint_barra(ctx, theme, rect, cartoes, state, &snapshot);
     let g = geom::resolve(folha, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
@@ -354,7 +367,7 @@ fn paint_label_splitter(ctx: &mut PaintCtx, theme: Theme, region: Rect, x: f32, 
     } else {
         ColorToken::Border
     };
-    fill_rounded_rect(ctx.scene, line, 0.0, resolve(tok, theme));
+    fill_rounded_rect(ctx.scene, line, 0.0, crate::folha_tinta::cor(tok, theme));
 
     let grip = Rect::new(x - SPLIT_GRIP, region.y, SPLIT_GRIP * 2.0, region.h);
     ctx.host.store_mut().register(

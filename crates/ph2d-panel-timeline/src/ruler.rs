@@ -72,7 +72,7 @@ pub(crate) fn paint(
         ctx.scene,
         strip,
         Radius::Xs.px(),
-        resolve(ColorToken::TimelineRulerBg, theme),
+        crate::folha_tinta::cor(ColorToken::TimelineRulerBg, theme),
     );
     // **The dead zone beyond an AUTHORED end** (Enio, 2026-07-23: "deixar a área
     // fora da animação ativa mais escura"): a scrim from the explicit duration to
@@ -478,7 +478,7 @@ fn paint_ticks(
             ctx.scene,
             tick,
             Radius::Xs.px(),
-            resolve(ColorToken::TimelineRulerTick, theme),
+            crate::folha_tinta::cor(ColorToken::TimelineRulerTick, theme),
         );
         if label {
             let font = TypeToken::Sm.px();
@@ -490,7 +490,7 @@ fn paint_ticks(
                 region.y,
                 font,
                 region.x + region.w - x,
-                resolve(ColorToken::Text2, theme),
+                crate::folha_tinta::cor(ColorToken::Text2, theme),
             );
         }
         i += 1.0;

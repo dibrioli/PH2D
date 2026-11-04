@@ -89,7 +89,7 @@ pub(crate) fn paint(
         ctx.scene,
         track,
         Radius::Xs.px(),
-        resolve(ColorToken::Bg2, theme),
+        crate::folha_tinta::cor(ColorToken::Bg2, theme),
     );
     let thumb = thumb_rect(track, state.scroll_y, state.scroll_max, content_h);
     // ⚠️ **A cor sai da porta do app, nao de uma tabela local.** Esta barra e pintada a mao

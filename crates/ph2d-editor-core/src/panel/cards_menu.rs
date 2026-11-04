@@ -45,6 +45,48 @@ pub fn apply_list_menu_click(
     true
 }
 
+/// O «×» de `panel`, na ponta do cabeçalho `cab`, como em toda janela, se foi declarado. Devolve a caixa
+/// do ícone seguinte, que se encosta a ele.
+pub(super) fn pinta_fecho(ctx: &mut PaintCtx, panel: NodeId, theme: Theme, cab: Rect) -> Rect {
+    let ponta = Rect::new(
+        cab.x + cab.w - m::LIST_PAD_X - m::HEAD_ICON_BOX,
+        cab.y + (m::LIST_HEAD_H - m::HEAD_ICON_BOX) * 0.5,
+        m::HEAD_ICON_BOX,
+        m::HEAD_ICON_BOX,
+    );
+    let Some(f) = ctx.host.store().card_list_close(panel) else {
+        return ponta;
+    };
+    let store = ctx.host.store_mut();
+    if store.tooltip_for(f).is_none() {
+        store.set_tooltip(f, ph2d_i18n::tr("card.menu.close"));
+    }
+    let aceso = store.hover_live(f) > 0.0;
+    ctx.host.hit_index_mut().register(f, ponta);
+    if aceso {
+        fill_rounded_rect(
+            ctx.scene,
+            ponta,
+            m::HEAD_ICON_RADIUS,
+            resolve(ColorToken::CardFieldHover, theme),
+        );
+    }
+    let g = m::HEAD_ICON_GLYPH;
+    paint_icon(
+        ctx.scene,
+        IconId::Close,
+        Rect::new(
+            ponta.x + (ponta.w - g) * 0.5,
+            ponta.y + (ponta.h - g) * 0.5,
+            g,
+            g,
+        ),
+        resolve(ColorToken::KanbanListFg, theme),
+        StrokeToken::Default.px(),
+    );
+    Rect::new(ponta.x - m::HEAD_ICON_BOX, ponta.y, ponta.w, ponta.h)
+}
+
 /// Os ícones do cabeçalho da lista `cab` (x, topo, largura, altura do cabeçalho): «…» e, se o pé o
 /// pede, «+».
 pub(super) fn pinta(
@@ -54,50 +96,8 @@ pub(super) fn pinta(
     cab: Rect,
     footer: Option<Footer<'_>>,
 ) {
-    let (x, top_list, w) = (cab.x, cab.y, cab.w);
     let menu = list_menu_of(panel);
-    let ponta = Rect::new(
-        x + w - m::LIST_PAD_X - m::HEAD_ICON_BOX,
-        top_list + (m::LIST_HEAD_H - m::HEAD_ICON_BOX) * 0.5,
-        m::HEAD_ICON_BOX,
-        m::HEAD_ICON_BOX,
-    );
-    // O «×» fica na ponta, como em toda janela; o «…» encosta-se a ele.
-    let fecho = ctx.host.store().card_list_close(panel);
-    let b = if fecho.is_some() {
-        Rect::new(ponta.x - m::HEAD_ICON_BOX, ponta.y, ponta.w, ponta.h)
-    } else {
-        ponta
-    };
-    if let Some(f) = fecho {
-        let store = ctx.host.store_mut();
-        if store.tooltip_for(f).is_none() {
-            store.set_tooltip(f, ph2d_i18n::tr("card.menu.close"));
-        }
-        let aceso = store.hover_live(f) > 0.0;
-        ctx.host.hit_index_mut().register(f, ponta);
-        if aceso {
-            fill_rounded_rect(
-                ctx.scene,
-                ponta,
-                m::HEAD_ICON_RADIUS,
-                resolve(ColorToken::CardFieldHover, theme),
-            );
-        }
-        let g = m::HEAD_ICON_GLYPH;
-        paint_icon(
-            ctx.scene,
-            IconId::Close,
-            Rect::new(
-                ponta.x + (ponta.w - g) * 0.5,
-                ponta.y + (ponta.h - g) * 0.5,
-                g,
-                g,
-            ),
-            resolve(ColorToken::KanbanListFg, theme),
-            StrokeToken::Default.px(),
-        );
-    }
+    let b = pinta_fecho(ctx, panel, theme, cab);
     let store = ctx.host.store_mut();
     store.register_if_absent(
         menu,

@@ -3,7 +3,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::{dicas, ferramenta, list_menu_of};
@@ -312,26 +312,24 @@ fn todo_icone_mudo_tem_dica() {
     }
 }
 
-/// ⭐ O «…» abre o menu da lista e o «×» é o `TIMELINE_CLOSE` de sempre (o clique está na tabela acima).
+/// ⭐ Sem «…»: as linhas dele repõem cartões, e a moldura da Timeline não tem nenhum. O «×» fica na ponta
+/// e é o `TIMELINE_CLOSE` de sempre (o clique está na tabela acima).
+/// *Mutação: `pinta_moldura` chamar `menu::pinta` ⇒ há rect.*
 #[test]
-fn o_menu_abre_e_o_fecho_e_o_de_sempre() {
-    let mut m0 = mesa(true);
-    let menu = list_menu_of(PAINEL);
-    let r = m0.rect(menu).expect("«…» pintado");
-    let ev = m0.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
-    assert!(
-        ev.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(i) if *i == menu)),
-        "{ev:?}"
-    );
-    assert!(ph2d_editor_core::panel::cards::apply_list_menu_click(
-        m0.host.store_mut(),
-        WidgetEvent::Click(menu),
-    ));
-    assert!(m0.host.store().context_menu().is_some(), "o menu não abriu");
+fn nao_ha_menu_morto_e_o_fecho_e_o_de_sempre() {
+    let m0 = mesa(true);
+    assert!(m0.rect(list_menu_of(PAINEL)).is_none(), "«…» morto pintado");
     assert_eq!(
         m0.host.store().card_list_close(PAINEL),
         Some(ids::TIMELINE_CLOSE)
+    );
+    let banda = m0.host.store().panel_rect(PAINEL).expect("rect");
+    let lista = ph2d_editor_core::panel::cards::banda::geometria(banda).lista;
+    let x = m0.rect(ids::TIMELINE_CLOSE).expect("«×» pintado");
+    assert!(x.x + x.w <= lista.x + lista.w, "«×» fora da lista: {x:?}");
+    assert!(
+        x.x + x.w + m::LIST_PAD_X + 0.5 >= lista.x + lista.w,
+        "«×» longe da ponta: {x:?}"
     );
 }
 
@@ -388,21 +386,16 @@ fn numa_janela_estreita_a_barra_quebra_e_nada_sai() {
     }
 }
 
-/// ⭐ `PH2D_CARDS=0` pinta o painel de antes: sem «…», com os controlos à altura de sempre.
+/// ⭐ `PH2D_CARDS=0` pinta o painel de antes: os controlos à altura de sempre.
 /// *Mutação: ramo `cartoes` sempre ligado ⇒ vermelho.*
 #[test]
 fn sem_cartoes_e_o_painel_de_antes() {
     let antes = mesa(false);
-    assert!(
-        antes.rect(list_menu_of(PAINEL)).is_none(),
-        "«…» no de antes"
-    );
     assert_eq!(
         antes.rect(ids::TIMELINE_PLAY).expect("Play").h,
         ph2d_tokens::ROW_H_PX
     );
     let novo = mesa(true);
-    assert!(novo.rect(list_menu_of(PAINEL)).is_some());
     assert_eq!(novo.rect(ids::TIMELINE_PLAY).expect("Play").h, m::FIELD_H);
     let _ = PointerKind::Move;
 }

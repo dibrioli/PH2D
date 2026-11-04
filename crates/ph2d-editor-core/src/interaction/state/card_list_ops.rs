@@ -208,6 +208,12 @@ impl WidgetStore {
         self.card_lists.closes.get(&panel).copied()
     }
 
+    /// `id` é o «×» declarado de alguma lista? (Quem mede sabe assim que o painel tem a moldura da lista.)
+    #[must_use]
+    pub fn is_card_list_close(&self, id: NodeId) -> bool {
+        self.card_lists.closes.values().any(|c| *c == id)
+    }
+
     /// Publica as linhas da lista de estilos de cor aberta (vazia = fechada), todo quadro.
     pub fn set_color_style_rows(&mut self, rows: impl IntoIterator<Item = (NodeId, u32)>) {
         self.card_lists.style_rows = rows.into_iter().collect();

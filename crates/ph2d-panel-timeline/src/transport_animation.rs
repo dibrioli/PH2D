@@ -150,6 +150,7 @@ pub(crate) fn paint_popover(
     // A lista diz mais que o chip («Add animation to Inimigo»): a porta dá-lhe a largura do
     // rótulo mais largo, e o mesmo rect ancora a pintura, os cliques e o fecho por fora.
     let region = ctx.layout.popover_region();
+    crate::folha_tinta::popover_no_tom(dd.id, theme);
     paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }
 

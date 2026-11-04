@@ -9,7 +9,7 @@ use crate::widget::key_mark::Rotulo;
 use crate::widget::paint_card_chip;
 pub use ph2d_card_stack::metrics;
 
-/// A moldura pintada: a lista, a tira do cabeçalho (depois do título, antes do «…») e o interior.
+/// A moldura pintada: a lista, a tira do cabeçalho (depois do título, antes do «×») e o interior.
 #[derive(Copy, Clone, Debug)]
 pub struct Moldura {
     pub lista: Rect,
@@ -42,7 +42,8 @@ pub fn geometria(slot: Rect) -> Moldura {
     Moldura { lista, cab, corpo }
 }
 
-/// A moldura flutuante, o título, o «…» e o «×» (`mark_card_list_close`), como numa lista de cartões.
+/// A moldura flutuante, o título e o «×» (`mark_card_list_close`), como numa lista de cartões. Sem o
+/// «…»: as linhas dele repõem cartões, e aqui não há cartão nenhum (doc 14).
 pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect) -> Moldura {
     dicas::comeca(panel);
     let theme = ctx.host.theme();
@@ -59,19 +60,18 @@ pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect)
         &nome,
         [tx, lista.y + (m::LIST_HEAD_H - m::LIST_TITLE_PX) * 0.5],
         m::LIST_TITLE_PX,
-        (lista.w - m::LIST_PAD_X * 2.0 - m::HEAD_ICON_BOX * 2.0).max(0.0),
+        (lista.w - m::LIST_PAD_X * 2.0 - m::HEAD_ICON_BOX).max(0.0),
         resolve(ColorToken::KanbanListFg, theme),
         m::LIST_TITLE_TRACKING_EM,
     );
-    menu::pinta(
+    menu::pinta_fecho(
         ctx,
         panel,
         theme,
         Rect::new(lista.x, lista.y, lista.w, m::LIST_HEAD_H),
-        None,
     );
     let x = tx + tw + m::CARD_GAP;
-    let fim = lista.x + lista.w - m::LIST_PAD_X - m::HEAD_ICON_BOX * 2.0 - m::FIELD_GAP;
+    let fim = lista.x + lista.w - m::LIST_PAD_X - m::HEAD_ICON_BOX - m::FIELD_GAP;
     g.cab.x = x;
     g.cab.w = (fim - x).max(0.0);
     g

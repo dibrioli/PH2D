@@ -131,7 +131,7 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         ctx.scene,
         list,
         list_radius,
-        resolve(ColorToken::BgElev, theme),
+        crate::folha_tinta::cor(ColorToken::BgElev, theme),
     );
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
@@ -140,7 +140,7 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
+        crate::folha_tinta::cor(ColorToken::Border, theme),
     );
     let mut y = list.y;
     for (id, prop) in ids::ADDPROP_BUTTONS {
@@ -153,7 +153,9 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         }
         let state = ctx.host.store().button_visual(id);
         let btn = Button::new(id, prop_label(prop)).visual(state);
-        paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
+        crate::folha_tinta::no_tom(theme, || {
+            paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
+        });
         ctx.host.hit_index_mut().register(id, r);
     }
 }
@@ -584,7 +586,7 @@ fn fill_row(ctx: &mut PaintCtx, theme: Theme, rect: Rect, tok: ColorToken) {
         ctx.scene,
         rect,
         ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
-        resolve(tok, theme),
+        crate::folha_tinta::cor(tok, theme),
     );
 }
 

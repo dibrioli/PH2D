@@ -176,5 +176,6 @@ pub(crate) fn paint_popover(
     .selected(crate::transport_clips::selected_source(snap, view))
     .open(true);
     let region = ctx.layout.popover_region();
+    crate::folha_tinta::popover_no_tom(ids::TIMELINE_CLIP_DD, theme);
     paint_dropdown_list(ctx, &dd, chip, region, theme, None);
 }

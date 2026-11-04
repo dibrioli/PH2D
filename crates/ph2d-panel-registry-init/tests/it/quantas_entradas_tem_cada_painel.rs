@@ -1158,7 +1158,10 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬇️ `4 → 2` no mesmo dia (ordem do dono: *«Caixas de marcar na Física»*): os dois interruptores
     //    passaram a CAIXAS DE MARCAR da casa (`paint_check_row`, `Toggled`) — um liga/desliga é um
     //    VALOR, não um comando. Os `2` que ficam são comandos a sério: fechar e *Reset to Defaults*.
-    ("physics", 2),
+    // ⬆️ `2 → 3` em 2026-11-04 (NovaUI bloco B, o painel em cartões), MEDIDO: a mais é só o «…» da lista
+    //    (D21, Reset Positions/Colors/All), um comando real que toda lista de cartões tem; as 11 opções
+    //    dos segmentos contam como 3 valores (`CardCtx::choice` declara o grupo). Fechar e Reset ficam.
+    ("physics", 3),
     // ⬇️ `24 → 8` em 2026-09-24 (ordem do dono: *«Arrumar o painel Vector»*): os `16` que saíram
     //    são as peças da grelha `button_grid` — os `15` modos da ferramenta e o *Pick Shapes* —,
     //    uma ESCOLHA que não se declarava composto. Os `8` que ficam são comandos a sério (fechar,
@@ -2299,7 +2302,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
 
     //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
     //    `set_collapsed_if_unchosen` de ninguém.
-    ("physics", 1317.0),
+    // ⬇️ `1 317 → 1 236` em 2026-11-04 (NovaUI bloco B): em cartões abria com `1 370`; o Debug nasce
+    //    dobrado (`cards::prepare`, com o resumo «Bodies: n»). Medido pelo gate.
+    ("physics", 1236.0),
     // ⬇️ `1209 → 1207` em 2026-09-24 (o mixer no molde da Física): os quatro liga/desliga do master
     //    viraram caixas de marcar (passo da casa em vez de `MUTE_H + gap`), o *Play Test* passou pela
     //    `caixa_do_botao` (`ROW_H_PX`), e saiu o `+ Spacing::Sm` escrito à mão depois do *Limiter*.

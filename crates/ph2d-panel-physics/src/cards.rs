@@ -188,7 +188,7 @@ fn cartao_de_tabela(s: &'static rows::Section, snap: PhysicsSnapshot) -> CardDef
         let mut y = y;
         if s.id == i::PHYSICS_SEC_SLEEP {
             y = c.check(
-                i::PHYSICS_SLEEP_SPIN,
+                crate::ids::PHYSICS_SLEEP_SPIN,
                 tr("panel.physics.sleep_enabled"),
                 snap.vivo.sleep_enabled(),
                 y,
@@ -348,7 +348,7 @@ fn cartao_de_debug(snap: PhysicsSnapshot) -> CardDef<'static> {
         )),
         move |c, y| {
             let mut y = c.check(
-                i::PHYSICS_SHOW_COLLIDERS,
+                crate::ids::PHYSICS_SHOW_COLLIDERS,
                 Rotulo::vista(TextKey::new("panel.physics.show_colliders")),
                 snap.show_colliders,
                 y,

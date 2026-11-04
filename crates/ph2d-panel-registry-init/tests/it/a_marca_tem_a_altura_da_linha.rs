@@ -82,6 +82,8 @@ pub(crate) struct Marca {
     pub altura: f32,
     pub especie: &'static str,
     pub id: ph2d_editor_core::NodeId,
+    /// Pintada numa lista de cartões: a altura de lá é a do campo (`FIELD_H`, T64), não a da fileira.
+    pub cartao: bool,
 }
 
 /// ⚠️ **A altura não depende da largura da janela** — a escada da varredura de elisões muda `x` e
@@ -174,6 +176,9 @@ fn colhe(
 ) {
     let _ = host.medindo_a_pintura_do_registo(painel, viewport());
     let registos = host.registos_da_ultima_pintura();
+    let cartao = registos
+        .iter()
+        .any(|(nid, _)| host.store().is_card_section(*nid));
     for (nid, rect) in registos {
         // ⚠️ **As DUAS espécies de marca booleana**: o mesmo pintor serve `Checkbox` e `Toggle`
         //    ([`paint_boolean_mark`]), e medir só uma deixaria metade da população de fora.
@@ -189,6 +194,7 @@ fn colhe(
                 altura: rect.h,
                 especie,
                 id: nid,
+                cartao,
             });
         }
     }
@@ -330,7 +336,14 @@ fn toda_marca_booleana_tem_a_altura_de_uma_linha() {
     // ── 1.ª metade: ninguém foge do padrão sem estar nomeado ──────────────────
     let mut fora: Vec<String> = tudo
         .iter()
-        .filter(|m| (m.altura - ph2d_tokens::ROW_H_PX).abs() > 0.01 && !isenta(m.painel, m.id))
+        .filter(|m| {
+            let linha = if m.cartao {
+                ph2d_card_stack::metrics::FIELD_H
+            } else {
+                ph2d_tokens::ROW_H_PX
+            };
+            (m.altura - linha).abs() > 0.01 && !isenta(m.painel, m.id)
+        })
         .map(|m| {
             format!(
                 "{}{} · {} · {} mede {:.1} px",

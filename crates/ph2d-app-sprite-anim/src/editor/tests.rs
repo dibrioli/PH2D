@@ -771,3 +771,24 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
 
 #[path = "tests_strip.rs"]
 mod strip;
+
+/// Em cartões o editor lê os tons da lista; `PH2D_CARDS=0`, os de antes.
+#[test]
+fn o_editor_veste_os_tons_da_lista_em_cartoes() {
+    use super::paint::tom;
+    use ph2d_editor_core::paint::resolve;
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread as forca;
+    use ph2d_tokens::{ColorToken as C, Theme};
+    let tema = Theme::default();
+    forca(Some(true));
+    let lista = ph2d_editor_core::widget::card_ink::CardInk::of_list(tema);
+    assert_eq!(tom(C::Bg2, tema), lista.color(C::CardField).with_alpha(1.0));
+    assert_eq!(
+        tom(C::Accent, tema),
+        resolve(C::Accent, tema),
+        "a seleção fica"
+    );
+    forca(Some(false));
+    assert_eq!(tom(C::Bg2, tema), resolve(C::Bg2, tema));
+    forca(None);
+}

@@ -2,8 +2,8 @@
 //! xadrez, a imagem, a grelha, o que fica fora da área escurecido, a área e as 8 alças. Nada aqui decide.
 
 use super::doc::{Field, RegionDoc};
-use crate::editor::paint::{button, field};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rect};
+use crate::editor::paint::{button, field, tom};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, stroke_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -19,7 +19,7 @@ pub fn paint_doc(
     theme: Theme,
 ) {
     let l = doc.lay_out(area, text);
-    fill_rounded_rect(scene, area, 0.0, resolve(ColorToken::PanelBg, theme));
+    fill_rounded_rect(scene, area, 0.0, tom(ColorToken::PanelBg, theme));
     let font = TypeToken::Sm.px();
     let rotulo = |scene: &mut VectorScene, text: &mut TextSystem, r: Rect, key: &str| {
         paint_text(
@@ -30,7 +30,7 @@ pub fn paint_doc(
             r.y + (r.h - font) * 0.5,
             font,
             r.w,
-            resolve(ColorToken::Text2, theme),
+            tom(ColorToken::Text2, theme),
         );
     };
     rotulo(scene, text, l.cols_label, "region_editor.columns");
@@ -71,7 +71,7 @@ pub fn paint_doc(
         f64::from(c.x + c.w),
         f64::from(c.y + c.h),
     ));
-    fill_rounded_rect(scene, c, 0.0, resolve(ColorToken::Bg0, theme));
+    fill_rounded_rect(scene, c, 0.0, tom(ColorToken::Bg0, theme));
     let img = doc.image_on_screen();
     checker(scene, intersect(img, c), theme);
     match doc.image.clone() {
@@ -98,15 +98,15 @@ pub fn paint_doc(
         scene,
         r,
         StrokeToken::Thick.px(),
-        resolve(ColorToken::Accent, theme),
+        tom(ColorToken::Accent, theme),
     );
     for (_, _, h) in doc.handles() {
-        fill_rounded_rect(scene, h, 0.0, resolve(ColorToken::Text1, theme));
+        fill_rounded_rect(scene, h, 0.0, tom(ColorToken::Text1, theme));
         stroke_rect(
             scene,
             h,
             StrokeToken::Hairline.px(),
-            resolve(ColorToken::Accent, theme),
+            tom(ColorToken::Accent, theme),
         );
     }
     scene.pop_layer();
@@ -124,8 +124,8 @@ fn checker(scene: &mut VectorScene, r: Rect, theme: Theme) {
     if r.w <= 0.0 || r.h <= 0.0 {
         return;
     }
-    fill_rounded_rect(scene, r, 0.0, resolve(ColorToken::Bg2, theme));
-    let escuro = resolve(ColorToken::Bg3, theme);
+    fill_rounded_rect(scene, r, 0.0, tom(ColorToken::Bg2, theme));
+    let escuro = tom(ColorToken::Bg3, theme);
     let (nx, ny) = ((r.w / s).ceil() as u32, (r.h / s).ceil() as u32);
     for j in 0..ny {
         for i in (j % 2..nx).step_by(2) {
@@ -141,7 +141,7 @@ fn checker(scene: &mut VectorScene, r: Rect, theme: Theme) {
 fn grid(scene: &mut VectorScene, doc: &RegionDoc, img: Rect, theme: Theme) {
     let w = StrokeToken::Hairline.px();
     // Por cima do xadrez e da arte: o tom do texto secundário lê-se nos dois.
-    let cor = resolve(ColorToken::Text2, theme);
+    let cor = tom(ColorToken::Text2, theme);
     for i in 1..doc.grid[0] {
         let x = img.x + doc.grid_line(0, i) * doc.zoom;
         fill_rounded_rect(scene, Rect::new(x, img.y, w, img.h), 0.0, cor);
@@ -154,7 +154,7 @@ fn grid(scene: &mut VectorScene, doc: &RegionDoc, img: Rect, theme: Theme) {
 
 /// O que fica fora da área escurece: o objecto mostra só o que está dentro.
 fn shade_outside(scene: &mut VectorScene, img: Rect, r: Rect, theme: Theme) {
-    let sombra = resolve(ColorToken::BgScrim, theme);
+    let sombra = tom(ColorToken::BgScrim, theme);
     let (x1, y1) = (img.x + img.w, img.y + img.h);
     let (rx1, ry1) = (r.x + r.w, r.y + r.h);
     for q in [

@@ -91,6 +91,21 @@ fn ids_da(l: LinhaDaFerramenta) -> &'static [NodeId] {
     }
 }
 
+/// Os ids que a ferramenta `f` esconde e que nenhum gesto de [`ids_da`] alcança (a amostra da Cor, o Composite): a pergunta
+/// sobre eles é só se o painel os pinta.
+fn so_nao_se_pintam(f: FerramentaDoPincel) -> Vec<NodeId> {
+    NAO_LE
+        .iter()
+        .filter(|(g, _)| *g == f)
+        .flat_map(|(_, ls)| ls.iter())
+        .filter_map(|l| match l {
+            LinhaDaFerramenta::Cor => Some(ph2d_editor_core::ids::PAINTER_COLOR_THUMB),
+            LinhaDaFerramenta::Composite => Some(PAINTER_BRUSH_COMPOSITE_ENABLE),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Os ids da silhueta do carimbo: o Falloff, a Hardness, a textura da Shape e o que dela depende, o Shape Tone, e as
 /// fileiras de giro e de espelho do Jitter.
 const FORMA: [NodeId; 21] = [
@@ -254,13 +269,9 @@ fn nenhuma_linha_escondida_mudaria_a_ferramenta() {
             .filter(|(g, _)| *g == f)
             .flat_map(|(_, ls)| ls.iter().flat_map(|l| ids_da(*l).iter().copied()))
             .collect();
-        // A ferramenta não as pinta (o Composite também, que não tem gesto: ver `ids_da`).
+        // A ferramenta não as pinta (nem as que não têm gesto: ver `ids_da`).
         let b = bancada_com(modo, &ARMAR, &Gesto::Nenhum);
-        let composite = NAO_LE
-            .iter()
-            .any(|(g, ls)| *g == f && ls.contains(&LinhaDaFerramenta::Composite))
-            .then_some(PAINTER_BRUSH_COMPOSITE_ENABLE);
-        for id in escondidas.iter().chain(composite.iter()) {
+        for id in escondidas.iter().chain(&so_nao_se_pintam(f)) {
             if b.rects().iter().any(|(i, _)| i == id) {
                 falhas.push(format!(
                     "{modo}: «{}» está escondida na tabela e o painel pinta-a",
@@ -570,6 +581,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
         let pintadas = escondidas
             .iter()
             .copied()
+            .chain(so_nao_se_pintam(*f))
             .filter(|id| b.rects().iter().any(|(i, _)| i == id))
             .collect();
         let inercias = b.tool.brush_settings().inercias;

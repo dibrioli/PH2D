@@ -140,8 +140,8 @@ pub const INSP_CAMERA_FOLLOW_GROUP: NodeId = hash_node_id("insp_camera_follow_gr
 pub const INSP_CAMERA_LIMITS_GROUP: NodeId = hash_node_id("insp_camera_limits_group");
 
 /// **O formato do jogo — o CHIP do seletor** (plano GEF 17). As entradas são
-/// [`INSP_CAMERA_FORMAT_OPT`].
-pub const INSP_CAMERA_FORMAT_PICK: NodeId = hash_node_id("insp_camera_format_pick");
+/// [`INSP_CAMERA_FORMAT_OPT`]. Definido na fundação: a cena do smoke que o abre não vê esta crate.
+pub use ph2d_editor_core::ids::INSP_CAMERA_FORMAT_PICK;
 
 /// **As entradas do seletor de formato**, uma por `GamePreset::ALL`. ⚠️ A posição é a tag gravada.
 pub const INSP_CAMERA_FORMAT_OPT: [NodeId; 15] = [

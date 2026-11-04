@@ -254,8 +254,7 @@ fn camara_da_cena(sim: &mut SimWorld, hero: &mut HeroScreen) -> u64 {
 /// Cena 9: a lista do formato aberta, como o clique no chip a deixa.
 fn abre_a_lista_do_formato(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     use ph2d_editor_core::interaction::InteractiveState;
-    // O id de `ph2d-panel-inspector` (`INSP_CAMERA_FORMAT_PICK`), que esta crate não vê.
-    let chip = ph2d_editor_core::registry::hash_node_id("insp_camera_format_pick");
+    let chip = ph2d_editor_core::ids::INSP_CAMERA_FORMAT_PICK;
     if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(chip) {
         *open = true;
     }

@@ -17,8 +17,8 @@ use ph2d_tool_bgremoval::params::{
 };
 
 /// Os números de `0..1`: um centésimo por seta, meio centésimo por px de arrasto.
-const PASSO_UNIT: f64 = 0.01;
-const ARRASTO_UNIT: f64 = 0.005;
+const PASSO_UNIT: f64 = 0.01; // LITERAL-PX-OK: passo de seta na faixa 0..1 do valor da ferramenta
+const ARRASTO_UNIT: f64 = 0.005; // LITERAL-PX-OK: valor por px de arrasto na faixa 0..1 da ferramenta
 const PASSO_PX: f64 = 1.0;
 /// `Grow` mostra `-1..+1` sobre um trilho `0..1` com o neutro no meio.
 const GROW_CENTRO: f32 = 0.5;

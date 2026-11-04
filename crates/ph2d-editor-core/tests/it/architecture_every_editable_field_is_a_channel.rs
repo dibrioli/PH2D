@@ -141,6 +141,9 @@ const LINHAS: &[(&str, &str)] = &[
     // T56: dois campos numa linha do cartão (`sections/rows_par.rs`).
     ("ph2d-panel-inspector", "par_row"),
     ("ph2d-panel-inspector", "seg_par_row"),
+    // T29: as linhas que passaram a dizer «misto» e sabem o cartão repassam o id da secção.
+    ("ph2d-panel-inspector", "seg_row_misto"),
+    ("ph2d-panel-inspector", "caixa_row"),
     ("ph2d-panel-inspector", "paint_tint_swatch_cell"),
     ("ph2d-panel-inspector", "bloco_de_cores"),
     ("ph2d-panel-inspector", "check_row"),
@@ -839,6 +842,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         Canal,
         &["regista_canal"],
         "as propriedades que o SCRIPT declara: o instantâneo traz a chave (família SCRIPT, pelo NOME), a `linha` regista-a e o controlo pinta a coluna (F27 E)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/script.rs::linha_de_marcar",
+        Canal,
+        &["regista_canal"],
+        "o booleano do script no cartão: a mesma família SCRIPT do `controlo`, a linha regista a chave e a marca pinta a coluna (T29)",
     ),
     (
         "ph2d-panel-inspector",

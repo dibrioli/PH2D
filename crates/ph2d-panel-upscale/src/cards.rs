@@ -17,8 +17,8 @@ use ph2d_tool_upscale::params::{
 use ph2d_tool_upscale::tool::ids as t;
 
 /// Um décimo por seta; o arrasto é mais fino, porque a faixa inteira são 15 unidades.
-const PASSO: f64 = 0.1;
-const ARRASTO: f64 = 0.02;
+const PASSO: f64 = 0.1; // LITERAL-PX-OK: passo de seta na escala (unidade da ferramenta)
+const ARRASTO: f64 = 0.02; // LITERAL-PX-OK: escala por px de arrasto (unidade da ferramenta)
 
 /// O trilho vivo: o do store enquanto a mão arrasta (a ferramenta chega um quadro depois), senão o
 /// da ferramenta.

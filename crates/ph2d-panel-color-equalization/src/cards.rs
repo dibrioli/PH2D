@@ -28,8 +28,8 @@ pub(crate) fn em_cartoes() -> bool {
 /// A altura do histograma: 64 barras, o mesmo que o corpo de antes reservava.
 pub(crate) const HISTOGRAM_H: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (histogram strip height)
 
-const PASSO: f64 = 0.01;
-const ARRASTO: f64 = 0.005;
+const PASSO: f64 = 0.01; // LITERAL-PX-OK: passo de seta na faixa 0..1 do valor da ferramenta
+const ARRASTO: f64 = 0.005; // LITERAL-PX-OK: valor por px de arrasto na faixa 0..1 da ferramenta
 const INTEIRO: f64 = 1.0;
 
 /// O passo de cada número: os inteiros e a faixa estreita do Clip.

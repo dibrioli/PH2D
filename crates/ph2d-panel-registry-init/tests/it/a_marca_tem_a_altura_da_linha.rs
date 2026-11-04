@@ -272,16 +272,10 @@ fn diag_que_altura_tem_cada_marca() {
 /// [`NodeId`] **cru** (`NodeId(1060)`), logo o mapa inverso dos *slugs* não o sabe nomear — e
 /// escrever `1060` aqui seria um literal que ninguém reconcilia. ⇒ quem o renomear ou apagar
 /// **deixa este ficheiro de compilar**, que é a prova mais forte que existe.
-const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[
-    // O botão grande de *Snap* no topo do painel: `paint_snap_top_toggle` pinta-o com
-    // `paint_button` e declara o número no sítio (`LITERAL-PX-OK: primary CTA height (Snap toggle
-    // hero) — taller than ROW_H so it reads as the panel's main action`).
-    (
-        "grid_snap",
-        ph2d_editor_core::grid_snap::ids::GS_SNAP_ENABLED,
-        44.0,
-    ),
-];
+///
+/// Hoje vazia: o botão grande de *Snap* do `grid_snap` saiu com o painel em cartões, onde o Snap é
+/// uma caixa com a altura da linha (o corpo de `PH2D_CARDS=0` guarda-o, e esta régua pinta cartões).
+const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[];
 
 /// ⭐⭐ **A PORTA da isenção** — `(painel, id)`, e é um par por uma razão medida.
 ///
@@ -290,8 +284,12 @@ const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[
 /// padrão, logo a população do produto **não discrimina** as duas leituras. *Um corpus que não
 /// contém o fenómeno não o pode testar* ⇒ o discriminador vive numa fixtura construída
 /// ([`a_isencao_e_do_PAR_e_nao_do_painel`]), que é a única forma honesta de o afirmar.
-fn isenta(painel: &str, id: ph2d_editor_core::NodeId) -> bool {
-    FORA_COM_NOME
+fn isenta(
+    tabela: &[(&str, ph2d_editor_core::NodeId, f32)],
+    painel: &str,
+    id: ph2d_editor_core::NodeId,
+) -> bool {
+    tabela
         .iter()
         .any(|(p, exid, _)| *p == painel && *exid == id)
 }
@@ -302,9 +300,11 @@ fn isenta(painel: &str, id: ph2d_editor_core::NodeId) -> bool {
 /// daquele painel encolhesse, ninguém saberia.
 #[test]
 fn a_isencao_e_do_par_e_nao_do_painel() {
-    let (painel, declarada, _) = FORA_COM_NOME[0];
+    let declarada = ph2d_editor_core::grid_snap::ids::GS_SNAP_ENABLED;
+    let painel = "grid_snap";
+    let tabela = [(painel, declarada, 44.0)];
     assert!(
-        isenta(painel, declarada),
+        isenta(&tabela, painel, declarada),
         "a marca DECLARADA tem de ser isenta — senão a lista não descreve nada"
     );
     // ⭐ O CONTROLO: outra marca do MESMO painel, que ninguém declarou.
@@ -314,7 +314,7 @@ fn a_isencao_e_do_par_e_nao_do_painel() {
         "o controlo tem de ser um id DIFERENTE, senão ele não contradiz nada"
     );
     assert!(
-        !isenta(painel, estranha),
+        !isenta(&tabela, painel, estranha),
         "uma marca NÃO declarada do mesmo painel ficou isenta — a isenção está a casar pelo \
          PAINEL, e com isso um painel inteiro sai da régua em silêncio"
     );
@@ -342,7 +342,7 @@ fn toda_marca_booleana_tem_a_altura_de_uma_linha() {
             } else {
                 ph2d_tokens::ROW_H_PX
             };
-            (m.altura - linha).abs() > 0.01 && !isenta(m.painel, m.id)
+            (m.altura - linha).abs() > 0.01 && !isenta(FORA_COM_NOME, m.painel, m.id)
         })
         .map(|m| {
             format!(

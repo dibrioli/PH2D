@@ -22,6 +22,9 @@ pub const INSP_LIVE_CAMERA_SECTION: NodeId = hash_node_id("insp_live_camera_sect
 /// CAMERA — a pega de arrasto do cabeçalho.
 pub const INSP_LIVE_CAMERA_GRIP: NodeId = hash_node_id("insp_live_camera_grip");
 
+/// CAMERA — o chip do formato do jogo.
+pub const INSP_CAMERA_FORMAT_PICK: NodeId = hash_node_id("insp_camera_format_pick");
+
 /// A secção FACTORY — o cabeçalho colapsável (TOP-20 #11, W3).
 ///
 /// ⚠️ **Aqui e não na crate do painel, como as irmãs `INSP_LIVE_*`**: o cabeçalho de secção é lido

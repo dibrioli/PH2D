@@ -452,7 +452,7 @@ impl KanbanDocs {
         self.tabs
             .iter()
             .find(|t| t.id() == id)
-            .map_or(0.0, |t| t.springs.tilt.pos)
+            .map_or(0.0, |t| t.springs.tilt.deg())
     }
 
     /// ⚠️ SONDA: o menu e o painel do arquivo estão abertos?

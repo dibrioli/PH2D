@@ -412,11 +412,11 @@ fn flying(
             } else {
                 paint_list::list(&mut s, ts, theme, k, tab, &moved, looks)
             };
-            tab.painted.borrow_mut().flight = Some((lb.id, r, tab.springs.tilt.pos, cards));
+            tab.painted.borrow_mut().flight = Some((lb.id, r, tab.springs.tilt.deg(), cards));
         }
         Lift::Pan { .. } => return,
     }
-    ph2d_editor_core::paint_flight::fly(scene, &s, r, tab.springs.tilt.pos);
+    ph2d_editor_core::paint_flight::fly(scene, &s, r, tab.springs.tilt.deg());
 }
 
 /// A lista `lb` deslocada (para pintar a que voa na origem).

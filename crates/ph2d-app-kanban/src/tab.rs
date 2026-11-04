@@ -96,8 +96,8 @@ pub(crate) struct Springs {
     pub cards: BTreeMap<CardId, CardSpring>,
     /// Onde cada lista foi vista no último quadro: `(x do conteúdo, topo do corpo no ecrã)`.
     pub seen: BTreeMap<ListId, (f32, f32)>,
-    /// A inclinação de quem voa (graus) e a sombra (0 → 1).
-    pub tilt: Follow,
+    /// A inclinação de quem voa (graus).
+    pub tilt: ph2d_card_stack::Tilt,
     /// A disposição inteira ainda se mexe (o hero repinta; o teste espera).
     pub moving: bool,
 }
@@ -384,20 +384,11 @@ pub(crate) fn place(tab: &mut Tab, target: Layout, dt: f64, law: Option<Spring>)
     tab.springs
         .cards
         .retain(|id, _| alive_c.contains(id) || Some(*id) == lifted);
-    let tilt_to = if matches!(
+    let voa = matches!(
         tab.drag.map(|d| d.lift),
         Some(Lift::Card(_) | Lift::List(_))
-    ) {
-        m::FLIGHT_TILT_DEG
-    } else {
-        0.0
-    };
-    // A inclinação nasce a 0 (o 1.º alvo de uma mola é a posição dela), e só então mira.
-    if !tab.springs.tilt.seeded {
-        tab.springs.tilt.aim(0.0);
-    }
-    tab.springs.tilt.aim(tilt_to);
-    moving |= tab.springs.tilt.advance(dt, law);
+    );
+    moving |= tab.springs.tilt.update(voa, dt, law);
     tab.springs.moving = moving;
     let ox = c.origin.0;
     Layout {

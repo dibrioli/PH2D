@@ -6,14 +6,10 @@ use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, Color, VectorScene};
 
-/// O que voa inclina 4° (o Trello).
-pub const FLIGHT_TILT_DEG: f64 = 4.0;
-/// O pivô da inclinação, em fracção da altura.
-pub const FLIGHT_PIVOT_Y: f64 = 0.6;
-/// `(dy, desfoque)` da sombra de voo: a longe no escuro e no claro, e a de perto.
-pub const SHADOW_FLIGHT_DARK: (f64, f64) = (14.0, 30.0);
-pub const SHADOW_FLIGHT_LIGHT: (f64, f64) = (16.0, 32.0);
-pub const SHADOW_FLIGHT_NEAR: (f64, f64) = (3.0, 8.0);
+/// A lei mora em `ph2d-card-stack`: a inclinação, e `(dy, desfoque)` da sombra de voo.
+pub use ph2d_card_stack::FLIGHT_TILT_DEG;
+use ph2d_card_stack::flight_pivot;
+pub use ph2d_card_stack::shadow::{SHADOW_FLIGHT_DARK, SHADOW_FLIGHT_LIGHT, SHADOW_FLIGHT_NEAR};
 
 /// Uma camada de sombra desfocada por baixo de `r`.
 pub fn shadow(scene: &mut VectorScene, r: Rect, radius: f32, color: Color, (dy, blur): (f64, f64)) {
@@ -47,7 +43,7 @@ pub fn flight_shadow(scene: &mut VectorScene, theme: Theme, r: Rect, radius: f32
 /// Pinta em `r` o que foi desenhado em `local` (origem no canto de cima à esquerda), inclinado
 /// `tilt_deg` em torno do pivô.
 pub fn fly(scene: &mut VectorScene, local: &VectorScene, r: Rect, tilt_deg: f64) {
-    let pivot = (f64::from(r.w) / 2.0, f64::from(r.h) * FLIGHT_PIVOT_Y);
+    let pivot = flight_pivot(r.w, r.h);
     let t = Affine::translate((f64::from(r.x), f64::from(r.y)))
         * Affine::translate(pivot)
         * Affine::rotate(tilt_deg.to_radians())

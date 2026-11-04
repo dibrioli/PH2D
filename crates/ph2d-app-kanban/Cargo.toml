@@ -52,6 +52,8 @@ rfd = "0.17"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 # A mola do arrasto (a lei vem do `UiMotion` do hero: o carácter e o «movimento reduzido»).
 ph2d-spring = { path = "../ph2d-spring" }
+# O voo, o vão e a rolagem nas bordas: partilhados com os painéis (docs/CartoesUI, D19).
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

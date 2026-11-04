@@ -330,18 +330,6 @@ fn reveal_composer(tab: &mut Tab, target: &Layout) {
         .insert(lb.id, f64::from(want.clamp(0.0, layout::max_scroll_y(lb))));
 }
 
-/// A fundura `0 → 1` de `p` na faixa junto à borda `[lo, hi]` (negativa = a de baixo/esquerda).
-fn edge(p: f32, lo: f32, hi: f32) -> f32 {
-    let band = m::EDGE_SCROLL_BAND.min((hi - lo) / 3.0).max(1.0);
-    if p < lo + band {
-        -((lo + band - p) / band).min(1.0)
-    } else if p > hi - band {
-        ((p - (hi - band)) / band).min(1.0)
-    } else {
-        0.0
-    }
-}
-
 /// ⭐ A rolagem nas bordas durante um arrasto (o Trello): o quadro na horizontal, a lista por baixo
 /// do ponteiro na vertical; mais depressa quanto mais fundo na faixa.
 #[allow(clippy::cast_possible_truncation)]
@@ -352,10 +340,9 @@ fn edge_scroll(tab: &mut Tab, dt: f64) {
     if matches!(d.lift, Lift::Pan { .. }) {
         return;
     }
-    let speed = f64::from(m::EDGE_SCROLL_MAX_PX_S) * dt;
     let b = tab.layout.board;
-    let ex = edge(d.at.0, b.x, b.x + b.w);
-    tab.view.scroll_x += f64::from(ex) * speed;
+    let ex = ph2d_card_stack::edge_depth(d.at.0, b.x, b.x + b.w);
+    tab.view.scroll_x += ph2d_card_stack::edge_scroll_px(ex, dt);
     if let Lift::Card(_) = d.lift
         && let Some(lb) = tab
             .layout
@@ -363,9 +350,9 @@ fn edge_scroll(tab: &mut Tab, dt: f64) {
             .iter()
             .find(|l| !l.collapsed && l.rect.x <= d.at.0 && d.at.0 <= l.rect.x + l.rect.w)
     {
-        let ey = edge(d.at.1, lb.body.y, lb.body.y + lb.body.h);
+        let ey = ph2d_card_stack::edge_depth(d.at.1, lb.body.y, lb.body.y + lb.body.h);
         if ey != 0.0 && (lb.body.y..=lb.body.y + lb.body.h).contains(&d.at.1) {
-            *tab.view.scroll_y.entry(lb.id).or_default() += f64::from(ey) * speed;
+            *tab.view.scroll_y.entry(lb.id).or_default() += ph2d_card_stack::edge_scroll_px(ey, dt);
         }
     }
 }
@@ -394,28 +381,19 @@ fn retarget(tab: &mut Tab, target: &Layout) {
             };
             let sy = tab.scroll_y(lb.id);
             let cy = d.at.1 - d.grab.1 + d.size.1 / 2.0 - (lb.body.y + m::LIST_BODY_TOP) + sy;
-            let mut acc = 0.0_f32;
-            let mut index = 0usize;
-            for c in lb.cards.iter().filter(|c| c.id != id) {
-                if acc + c.rect.h / 2.0 > cy {
-                    break;
-                }
-                acc += c.rect.h + m::CARD_GAP;
-                index += 1;
-            }
+            let index = ph2d_card_stack::slot_index(
+                lb.cards.iter().filter(|c| c.id != id).map(|c| c.rect.h),
+                m::CARD_GAP,
+                cy,
+            );
             d.to_card = Some((lb.id, index));
         }
         Lift::List(id) => {
-            let mut acc = 0.0_f32;
-            let mut index = 0usize;
-            for l in target.lists.iter().filter(|l| l.id != id) {
-                if acc + l.rect.w / 2.0 > cx {
-                    break;
-                }
-                acc += l.rect.w + m::LIST_GAP;
-                index += 1;
-            }
-            d.to_list = index;
+            d.to_list = ph2d_card_stack::slot_index(
+                target.lists.iter().filter(|l| l.id != id).map(|l| l.rect.w),
+                m::LIST_GAP,
+                cx,
+            );
         }
         Lift::Pan { .. } => {}
     }

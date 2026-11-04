@@ -100,23 +100,13 @@ pub(crate) const EDIT_INSET: f32 = 6.0;
 pub(crate) const COVER_COLOR_H: f32 = 36.0;
 pub(crate) const FOCUS_RING: f32 = 2.0;
 pub(crate) const FOCUS_OFFSET: f32 = 2.0;
-/// O cartão em voo: a lei partilhada com a linha do tempo do Pixel (`paint_flight`).
-pub(crate) use ph2d_editor_core::paint_flight::{
-    FLIGHT_TILT_DEG, SHADOW_FLIGHT_DARK, SHADOW_FLIGHT_NEAR,
+// ── O voo e as sombras: a lista de cartões com mola, partilhada (`ph2d-card-stack`); as cores são
+// `kanban-shadow-*` ──
+pub(crate) use ph2d_card_stack::shadow::{
+    HOVER_RING, SHADOW_FLIGHT_DARK, SHADOW_FLIGHT_NEAR, SHADOW_HOVER_LIGHT, SHADOW_NEAR, SHADOW_RIM,
 };
 
-// ── Sombras: `(dy, desfoque)` de cada camada; as cores são `kanban-shadow-*` ──
-pub(crate) const SHADOW_NEAR: (f64, f64) = (1.0, 1.0);
-pub(crate) const SHADOW_RIM: (f64, f64) = (0.0, 1.0);
-/// A sombra de pairar no claro (no escuro é um anel de 1 px).
-pub(crate) const SHADOW_HOVER_LIGHT: (f64, f64) = (4.0, 8.0);
-pub(crate) const HOVER_RING: f32 = 1.0;
-
 // ── O gesto ──
-/// A faixa junto à borda que rola o quadro (ou a lista) durante um arrasto, e a velocidade no
-/// fundo dela. O Trello rola ao chegar à borda; a velocidade cresce com a fundura.
-pub(crate) const EDGE_SCROLL_BAND: f32 = 64.0;
-pub(crate) const EDGE_SCROLL_MAX_PX_S: f32 = 900.0;
 /// Px da vista por «linha» de roda.
 pub(crate) const WHEEL_STEP: f32 = 48.0;
 /// Px que a janela dá por linha de roda (o espelho do `on_mouse_wheel` da shell e do Quadro).

@@ -5830,6 +5830,7 @@ dependencies = [
  "ph2d-board-model",
  "ph2d-board-net",
  "ph2d-board-render",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",

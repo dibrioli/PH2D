@@ -9,7 +9,7 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::{Affine, Compose, Mix, VectorScene, VelloBlend};
+use ph2d_vector::{Affine, Compose, Mix, Shape, VectorScene, VelloBlend};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::time::Instant;
@@ -101,11 +101,34 @@ fn com_alfa(tela: &mut VectorScene, cena: &VectorScene, alfa: f32) {
     tela.pop_layer();
 }
 
+thread_local! {
+    /// Os painéis que pintaram soltos neste quadro, à espera do fim da caminhada.
+    static CORDAS_PEDIDAS: std::cell::RefCell<Vec<(NodeId, Theme)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// O painel pintou os soltos dele: as cordas dele pintam-se no fim, por cima dos de todos.
+pub(super) fn pede_as_cordas(panel: NodeId, theme: Theme) {
+    CORDAS_PEDIDAS.with(|c| {
+        let mut c = c.borrow_mut();
+        if !c.iter().any(|(p, _)| *p == panel) {
+            c.push((panel, theme));
+        }
+    });
+}
+
+/// As cordas dos painéis que pintaram soltos neste quadro, depois de todos os painéis.
+pub fn pinta_as_cordas(tela: &mut VectorScene, store: &WidgetStore) {
+    for (panel, theme) in CORDAS_PEDIDAS.with(std::cell::RefCell::take) {
+        cordas(tela, store, panel, theme);
+    }
+}
+
 /// ⭐ T50: as cordas de `panel` POR CIMA dos soltos dele (depois de publicados os rects deste
 /// quadro) — a viva (com o nó no objecto e a solda no cartão; o suspenso T53 sob a mão) e as que se
 /// recolhem (T41). O troço que cruza OUTRO solto muda de tom (`CardField`): a corda tem a cor do
 /// cartão e sumiria nele.
-pub(super) fn cordas(tela: &mut VectorScene, store: &WidgetStore, panel: NodeId, theme: Theme) {
+fn cordas(tela: &mut VectorScene, store: &WidgetStore, panel: NodeId, theme: Theme) {
     let outros = |k: NodeId| -> Vec<Rect> {
         store
             .loose_section_ids()
@@ -168,7 +191,17 @@ fn pinta_corda(tela: &mut VectorScene, linha: &[(f32, f32)], outros: &[Rect], in
     }
     if let Some(&(x, y)) = linha.last() {
         let cor = ink.color(ColorToken::KanbanCard);
-        crate::paint::fill_circle(tela, x, y, m::LOOSE_ROPE_KNOT_R, cor);
+        // Pelo `fill_path`, que a gravação vê: é o nó que prova em que ponto do quadro a corda entra.
+        const TOLERANCIA: f64 = 0.1; // LITERAL-PX-OK: tolerância da curva, a mesma do Vello
+        let no = ph2d_vector::Circle::new(
+            (f64::from(x), f64::from(y)),
+            f64::from(m::LOOSE_ROPE_KNOT_R),
+        );
+        tela.fill_path(
+            &no.to_path(TOLERANCIA),
+            &ph2d_vector::Brush::Solid(cor),
+            Affine::IDENTITY,
+        );
     }
 }
 

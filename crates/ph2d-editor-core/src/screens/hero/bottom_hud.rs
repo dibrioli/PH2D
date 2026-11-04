@@ -80,10 +80,11 @@ pub fn paint_bottom_hud(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &crate::interaction::WidgetStore,
     stats: BottomHudStats,
 ) {
     let bar = bar(stats);
-    let rect = rect_of(&bar, layout, text_system);
+    let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
 }
 
@@ -92,21 +93,59 @@ pub fn paint_bottom_hud(
 #[must_use]
 pub fn bottom_hud_rect(
     layout: &HeroLayout,
+    store: &crate::interaction::WidgetStore,
     text_system: &mut TextSystem,
     stats: BottomHudStats,
 ) -> Rect {
-    rect_of(&bar(stats), layout, text_system)
+    rect_of(&bar(stats), layout, store, text_system)
 }
 
-fn rect_of(bar: &StatusBar, layout: &HeroLayout, text_system: &mut TextSystem) -> Rect {
-    let pref_w = bar
-        .preferred_width(text_system)
-        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
+const MARGEM_DO_HUD: f32 = 20.0; // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
+
+/// O vão horizontal que o HUD tem: a janela menos os painéis que flutuam na faixa dele. Quem está na
+/// metade esquerda aperta pela esquerda; quem está na direita, pela direita.
+fn vao_do_hud(layout: &HeroLayout, store: &crate::interaction::WidgetStore) -> (f32, f32) {
+    let faixa = layout.bottom_hud;
+    let meio = layout.viewport.x + layout.viewport.w * 0.5;
+    let mut vao = (
+        layout.viewport.x + MARGEM_DO_HUD,
+        layout.viewport.x + layout.viewport.w - MARGEM_DO_HUD,
+    );
+    for r in store.floating_panel_rects() {
+        if r.y >= faixa.y + faixa.h || r.y + r.h <= faixa.y {
+            continue;
+        }
+        if r.x + r.w * 0.5 < meio {
+            vao.0 = vao.0.max(r.x + r.w + MARGEM_DO_HUD);
+        } else {
+            vao.1 = vao.1.min(r.x - MARGEM_DO_HUD);
+        }
+    }
+    vao
+}
+
+/// Centrado na janela, da largura que o texto pede, dentro do vão: o HUD cede a uma lista que flutua.
+fn no_vao(pref_w: f32, layout: &HeroLayout, (esq, dir): (f32, f32)) -> Rect {
+    let w = pref_w.min((dir - esq).max(0.0));
+    let x = layout.viewport.x + (layout.viewport.w - w) * 0.5;
     Rect::new(
-        layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
+        x.min(dir - w).max(esq),
         layout.bottom_hud.y,
-        pref_w,
+        w,
         layout.bottom_hud.h,
+    )
+}
+
+fn rect_of(
+    bar: &StatusBar,
+    layout: &HeroLayout,
+    store: &crate::interaction::WidgetStore,
+    text_system: &mut TextSystem,
+) -> Rect {
+    no_vao(
+        bar.preferred_width(text_system),
+        layout,
+        vao_do_hud(layout, store),
     )
 }
 
@@ -195,6 +234,7 @@ pub fn paint_tool_hint_hud(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    store: &crate::interaction::WidgetStore,
     hint: &str,
     readout: &[String],
 ) {
@@ -209,16 +249,54 @@ pub fn paint_tool_hint_hud(
             .map(|r| StatusSegment::new(r.clone()).tone(SegmentTone::Muted)),
     );
     let bar = StatusBar::new(NodeId(300), tr("chrome.hud.tool_hint"), segments);
-    let pref_w = bar
-        .preferred_width(text_system)
-        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
-    let rect = Rect::new(
-        layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
-        layout.bottom_hud.y,
-        pref_w,
-        layout.bottom_hud.h,
-    );
+    let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
+}
+
+#[cfg(test)]
+mod o_hud_cede_tests {
+    use super::{no_vao, vao_do_hud};
+    use crate::interaction::WidgetStore;
+    use crate::screens::layout::HeroLayout;
+    use crate::zones::Rect;
+    use ph2d_a11y::NodeId;
+
+    /// A largura que a pílula pede no app a 1200 px (a foto `b_physics_debug_dobrado_hud_por_cima.png`).
+    const PILULA: f32 = 1036.0;
+
+    /// *Mutação: o `vao.1.min(..)` fora ⇒ o HUD pinta-se por cima da lista.*
+    #[test]
+    fn the_hud_gives_way_to_a_list_floating_on_its_band() {
+        let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 1200.0, 1672.0));
+        let faixa = layout.bottom_hud;
+        let mut store = WidgetStore::default();
+        let centrado = no_vao(PILULA, &layout, vao_do_hud(&layout, &store));
+        assert!(
+            (centrado.x + centrado.w * 0.5 - 600.0).abs() < 0.5,
+            "{centrado:?}"
+        );
+        assert!((centrado.w - PILULA).abs() < 0.5, "cabe: não encolhe");
+
+        let lista = Rect::new(938.0, 100.0, 252.0, faixa.y + faixa.h);
+        store.set_floating_panel_rect(NodeId(77), lista);
+        let r = no_vao(PILULA, &layout, vao_do_hud(&layout, &store));
+        assert!(r.x + r.w <= lista.x, "o HUD {r:?} entra na lista {lista:?}");
+        assert!(r.x >= 0.0 && r.w > 0.0, "{r:?}");
+
+        // Uma lista à esquerda aperta pelo outro lado.
+        let hier = Rect::new(4.0, 100.0, 262.0, faixa.y + faixa.h);
+        store.set_floating_panel_rect(NodeId(78), hier);
+        let r = no_vao(PILULA, &layout, vao_do_hud(&layout, &store));
+        assert!(r.x >= hier.x + hier.w, "{r:?}");
+        assert!(r.x + r.w <= lista.x, "{r:?}");
+
+        // Lista que acaba acima da faixa não aperta nada.
+        let mut so_alta = WidgetStore::default();
+        so_alta
+            .set_floating_panel_rect(NodeId(77), Rect::new(938.0, 100.0, 252.0, faixa.y - 100.0));
+        let r = no_vao(PILULA, &layout, vao_do_hud(&layout, &so_alta));
+        assert!((r.w - PILULA).abs() < 0.5, "{r:?}");
+    }
 }
 
 #[cfg(test)]

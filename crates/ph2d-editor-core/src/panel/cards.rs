@@ -157,6 +157,9 @@ mod cartao;
 mod colunas;
 #[path = "cards_corpo.rs"]
 pub mod corpo;
+/// ⭐ A lista suspensa de um cartão: abre, cabe na janela, rola; ver o módulo.
+#[path = "cards_dropdown.rs"]
+pub mod dropdown;
 #[path = "cards_entra_sai.rs"]
 pub mod entra_sai;
 #[path = "cards_estilos.rs"]
@@ -182,6 +185,7 @@ pub mod solto_some;
 use cartao::{flight_shadow, paint_card, paint_card_with, shadow};
 pub use lista::{ListTop, paint_card_list_pinned, paint_card_list_top, scroll_at_edge};
 pub use menu::{apply_list_menu_click, list_menu_of};
+pub use solto_some::pinta_as_cordas;
 
 /// O id da pega (o cabeçalho) de um cartão — o mesmo das secções de hoje.
 #[must_use]
@@ -258,7 +262,7 @@ pub fn ao_premir(store: &mut WidgetStore, hit_index: &HitIndex, event: ph2d_host
     {
         return;
     }
-    dropdown::ao_premir(hit_index, event.x, event.y);
+    dropdown::ao_premir(store, hit_index, event.x, event.y);
     estilos::ao_premir(store, hit_index, event.x, event.y);
 }
 
@@ -272,6 +276,12 @@ fn limita_janelinhas(canvas: Rect) {
     LIMITE_VERTICAL.with(|l| l.set((canvas.y, canvas.y + canvas.h)));
 }
 
+/// A altura que uma janelinha tem para caber: a do canvas visível.
+fn altura_das_janelinhas() -> f32 {
+    let (topo, fundo) = LIMITE_VERTICAL.with(std::cell::Cell::get);
+    fundo - topo
+}
+
 /// O `y` de uma janelinha de altura `h` que quer nascer em `y`: sobe o que faltar para caber.
 fn sobe_para_caber(y: f32, h: f32) -> f32 {
     let (topo, fundo) = LIMITE_VERTICAL.with(std::cell::Cell::get);
@@ -279,132 +289,5 @@ fn sobe_para_caber(y: f32, h: f32) -> f32 {
         y
     } else {
         (fundo - h).max(topo)
-    }
-}
-
-/// ⭐ **A lista suspensa de um cartão** — qual está aberta (um clique na caixa abre/fecha; qualquer
-/// outro clique fecha) e as opções do quadro, pintadas por CIMA de tudo no fim da lista. Cada opção
-/// leva o id do painel dono: o clique nela é o `Click` que o `apply_event` dele já trata.
-pub mod dropdown {
-    use super::*;
-    use std::cell::RefCell;
-
-    type Opcoes = (Rect, CardInk, Vec<(NodeId, String, bool)>);
-
-    thread_local! {
-        static ABERTA: RefCell<Option<NodeId>> = const { RefCell::new(None) };
-        static PENDENTE: RefCell<Option<Opcoes>> = const { RefCell::new(None) };
-        static CAIXAS: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
-        /// As opções pintadas no último quadro: a pressão nelas não é «fora».
-        static OPCOES: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
-        /// A caixa das opções pintada no último quadro.
-        static CAIXA: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
-    }
-
-    /// A pressão fora da caixa e das opções fecha a lista (a caixa decide no clique dela).
-    pub(super) fn ao_premir(hit_index: &HitIndex, x: f32, y: f32) {
-        let dela = hit_index.hit_with_rect(x, y).is_some_and(|(id, _)| {
-            CAIXAS.with(|c| c.borrow().contains(&id)) || OPCOES.with(|o| o.borrow().contains(&id))
-        });
-        if !dela {
-            ABERTA.with(|a| *a.borrow_mut() = None);
-        }
-    }
-
-    #[must_use]
-    pub fn open() -> Option<NodeId> {
-        ABERTA.with(|a| *a.borrow())
-    }
-
-    /// A lista aberta cobre `(x, y)`? A opção que sai do solto ainda é do sujeito que a abriu.
-    #[must_use]
-    pub fn cobre(x: f32, y: f32) -> bool {
-        open().is_some()
-            && CAIXA
-                .with(std::cell::Cell::get)
-                .is_some_and(|r| r.contains(x, y))
-    }
-
-    pub fn stash(r: Rect, ink: CardInk, options: Vec<(NodeId, String, bool)>) {
-        PENDENTE.with(|p| *p.borrow_mut() = Some((r, ink, options)));
-    }
-
-    /// Declara `id` como caixa de lista suspensa (o painel, ao montar os cartões).
-    pub fn declare(id: NodeId) {
-        CAIXAS.with(|c| {
-            let mut c = c.borrow_mut();
-            if !c.contains(&id) {
-                c.push(id);
-            }
-        });
-    }
-
-    /// O clique: na caixa abre/fecha (consome); noutro sítio fecha e deixa o clique seguir.
-    pub fn on_click(id: NodeId) -> bool {
-        if CAIXAS.with(|c| c.borrow().contains(&id)) {
-            ABERTA.with(|a| {
-                let mut a = a.borrow_mut();
-                *a = if *a == Some(id) { None } else { Some(id) };
-            });
-            return true;
-        }
-        ABERTA.with(|a| *a.borrow_mut() = None);
-        false
-    }
-
-    /// Pinta as opções da lista aberta por baixo da caixa, por cima de tudo.
-    pub fn paint_pending(
-        scene: &mut VectorScene,
-        text_system: &mut TextSystem,
-        hit_index: &mut HitIndex,
-        store: &WidgetStore,
-    ) {
-        let Some((r, ink, opts)) = PENDENTE.with(|p| p.borrow_mut().take()) else {
-            return;
-        };
-        OPCOES.with(|o| *o.borrow_mut() = opts.iter().map(|(id, ..)| *id).collect());
-        let h = m::FIELD_H * opts.len() as f32 + m::SEG_PAD * 2.0;
-        let caixa = Rect::new(r.x, sobe_para_caber(r.y + r.h + m::SEG_PAD, h), r.w, h);
-        CAIXA.with(|c| c.set(Some(caixa)));
-        shadow(
-            scene,
-            caixa,
-            m::FIELD_RADIUS,
-            ink.color(ColorToken::KanbanListShadow),
-            m::LIST_SHADOW_FAR,
-        );
-        fill_rounded_rect(
-            scene,
-            caixa,
-            m::FIELD_RADIUS,
-            ink.color(ColorToken::KanbanCardRaised),
-        );
-        for (i, (id, text, on)) in opts.iter().enumerate() {
-            let lr = Rect::new(
-                caixa.x + m::SEG_PAD,
-                caixa.y + m::SEG_PAD + m::FIELD_H * i as f32,
-                caixa.w - m::SEG_PAD * 2.0,
-                m::FIELD_H,
-            );
-            hit_index.register(*id, lr);
-            if *on || store.hover_live(*id) > 0.0 {
-                fill_rounded_rect(
-                    scene,
-                    lr,
-                    m::SEG_RADIUS,
-                    ink.color(ColorToken::CardFieldHover),
-                );
-            }
-            crate::paint::paint_text_elided(
-                text_system,
-                scene,
-                text,
-                lr.x + m::FIELD_PAD_R,
-                lr.y + (lr.h - m::VALUE_PX) * 0.5,
-                m::VALUE_PX,
-                lr.w - m::FIELD_PAD_R * 2.0,
-                ink.color(ColorToken::Text1),
-            );
-        }
     }
 }

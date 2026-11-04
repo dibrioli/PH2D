@@ -44,6 +44,9 @@ pub(super) fn walk(
     // clamp + stale-rect cleanup on hide. Adding a new panel needs
     // zero edits to this iteration — drop `PANEL_MANIFEST` in the
     // panel module + 1 line in `panel_registry::PANEL_REGISTRY`.
+    if let Some(painel) = crate::tool_activation::painel_do_smoke() {
+        hero.panel_visibility.insert(painel, true);
+    }
     let mut z_order: Vec<ph2d_a11y::NodeId> = hero.store.panel_z_order().to_vec();
     for &fallback in PANEL_Z_ORDER_FALLBACK {
         if !z_order.contains(&fallback) {

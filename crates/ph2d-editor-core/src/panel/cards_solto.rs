@@ -407,7 +407,10 @@ pub(super) fn pinta_os_soltos(
     cards: &[CardDef<'_>],
     pinned: &[CardDef<'_>],
 ) {
-    let canvas = rola::acima_do_hud(canvas, ctx.layout.bottom_hud);
+    let canvas = abaixo_da_barra(
+        rola::acima_do_hud(canvas, ctx.layout.bottom_hud),
+        ctx.layout.tool_bar,
+    );
     super::limita_janelinhas(canvas);
     // T61: a pintura troca estados no store — o índice de cliques sai e volta (a mesma ordem).
     let mut hits = std::mem::take(ctx.host.hit_index_mut());
@@ -427,10 +430,24 @@ pub(super) fn pinta_os_soltos(
     super::estilos::stash_aberta(store, hit_index, theme, cards);
     super::estilos::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
     if !super::ferramenta::adia_a_lista_suspensa() {
-        super::dropdown::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+        super::dropdown::paint_pending(ctx);
     }
     publica(ctx.host.store_mut(), rects);
-    super::solto_some::cordas(ctx.scene, ctx.host.store_mut(), panel, theme);
+    super::solto_some::pede_as_cordas(panel, theme);
+}
+
+/// A barra de modos atravessa o topo do canvas por cima dos soltos e fica com o clique: o que nasce
+/// nesse canvas começa abaixo dela, senão o cabeçalho não se agarra e o alfinete não se clica.
+fn abaixo_da_barra(canvas: Rect, barra: Rect) -> Rect {
+    let fim = barra.y + barra.h;
+    if barra.h <= 0.0 || fim <= canvas.y {
+        return canvas;
+    }
+    Rect {
+        y: fim,
+        h: (canvas.y + canvas.h - fim).max(0.0),
+        ..canvas
+    }
 }
 
 /// T53: a queda na lista — largou fora da coluna ⇒ solta (o suspenso volta com alfinete e corda);

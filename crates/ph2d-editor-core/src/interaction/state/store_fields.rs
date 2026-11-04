@@ -402,6 +402,8 @@ pub struct WidgetStore {
     /// keyed by the dropdown id, so the generic scrollbar drag works unchanged). Stale after close —
     /// consumers gate on the dropdown still being `open`.
     pub(in crate::interaction) dropdown_popover: Option<(NodeId, Rect)>,
+    /// O `dropdown_popover` é a lista suspensa de um cartão, aberta (a caixa dela não tem `open`).
+    pub(in crate::interaction) card_dropdown_open: bool,
     /// Editor-wide corner-radius scale. `1.0` = canonical, `0.0` =
     /// sharp / squared, `1.6` = round. Painters that want to follow
     /// the user's preset multiply their `Radius::*.px()` by this.

@@ -46,6 +46,7 @@ mod os_campos_de_texto_tem_nome;
 mod os_componentes_em_cartoes;
 mod os_corpos_dos_componentes_em_cartoes;
 mod os_estilos_de_cor;
+mod os_soltos_no_topo_e_as_cordas;
 mod paineis_armados;
 mod quantas_entradas_tem_cada_painel;
 mod quantas_mensagens_o_painel_escreve;

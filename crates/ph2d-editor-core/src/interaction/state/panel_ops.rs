@@ -360,10 +360,39 @@ impl WidgetStore {
     pub fn open_dropdown_popover_at(&self, x: f32, y: f32) -> Option<NodeId> {
         let (dd, rect) = self.dropdown_popover?;
         (rect.contains(x, y)
-            && matches!(
-                self.get(dd),
-                Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
-            ))
+            && (self.card_dropdown_open
+                || matches!(
+                    self.get(dd),
+                    Some(crate::interaction::InteractiveState::Dropdown { open: true, .. })
+                )))
         .then_some(dd)
+    }
+
+    /// A lista suspensa de um CARTÃO, pintada neste quadro: a caixa dela é um `Button`, sem o `open`
+    /// do `Dropdown`; este é o que diz que ela está aberta. Roda e polegar são os da lista de sempre.
+    pub fn publish_card_dropdown(&mut self, p: crate::widget::PaintedPopover) {
+        self.publish_dropdown_popover(p);
+        self.card_dropdown_open = true;
+    }
+
+    /// A lista suspensa do cartão fechou.
+    pub fn close_card_dropdown(&mut self) {
+        self.card_dropdown_open = false;
+    }
+
+    /// A caixa da lista suspensa do cartão aberta.
+    #[must_use]
+    pub fn card_dropdown(&self) -> Option<NodeId> {
+        self.card_dropdown_open
+            .then_some(self.dropdown_popover)
+            .flatten()
+            .map(|(id, _)| id)
+    }
+
+    /// A lista suspensa do cartão aberta cobre `(x, y)`? A opção que sai do solto ainda é do sujeito
+    /// que a abriu.
+    #[must_use]
+    pub fn card_dropdown_at(&self, x: f32, y: f32) -> bool {
+        self.card_dropdown_open && self.dropdown_popover.is_some_and(|(_, r)| r.contains(x, y))
     }
 }

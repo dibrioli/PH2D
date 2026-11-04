@@ -182,6 +182,142 @@ fn every_dropdown_opens_and_its_option_reaches_the_tool() {
     }
 }
 
+/// ⭐ *A lista suspensa de 16 linhas numa janela baixa: cabe no canvas, a roda rola-a (e não a lista
+/// de cartões por trás), a opção rolada responde ao clique e o polegar arrasta. Mutações: `visivel`
+/// sem o tecto ⇒ sai da janela; sem a publicação ⇒ a roda vai ao painel; sem o recorte dos cliques
+/// ⇒ a opção de fora da caixa responde.*
+#[test]
+fn the_long_list_fits_a_low_window_scrolls_and_its_scrolled_option_answers() {
+    use ph2d_editor_core::screens::layout::HeroLayout;
+    use ph2d_editor_core::widget::DROPDOWN_SCROLLBAR_ID;
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_host::PointerKind;
+    const OPCOES: usize = t::CEQ_LUT_1_OPTS.len();
+    let baixa = Rect::new(0.0, 0.0, 340.0, 360.0);
+    let mut m = mesa(tudo());
+    let caixa = t::CEQ_LUT_1_DROPDOWN;
+    assert!(dropdown::on_click(caixa));
+    m.assenta_em(baixa);
+
+    let layout = HeroLayout::for_viewport(baixa);
+    let fundo = layout.canvas.y + layout.canvas.h.min(layout.bottom_hud.y - layout.canvas.y);
+    let (dono, lista) = m.host.store().dropdown_popover().expect("publicada");
+    assert_eq!(dono, caixa);
+    assert!(
+        lista.y >= layout.canvas.y && lista.y + lista.h <= fundo + 0.5,
+        "a lista {lista:?} não cabe em {:?} até {fundo}",
+        layout.canvas
+    );
+    let linha = t::CEQ_LUT_1_OPTS
+        .iter()
+        .find_map(|o| m.rect(*o))
+        .expect("alguma opção pinta-se")
+        .h;
+    let cheia = OPCOES as f32 * linha;
+    assert!(
+        lista.h < cheia,
+        "a janela é baixa: a lista {lista:?} tem de rolar"
+    );
+    let visivel = |m: &Mesa<ColorEqualizationPanel>, id: NodeId| {
+        m.rect(id).is_some_and(|r| {
+            let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+            lista.contains(cx, cy) && m.host.hit_at(cx, cy) == Some(id)
+        })
+    };
+    assert!(visivel(&m, t::CEQ_LUT_1_OPTS[0]) || visivel(&m, t::CEQ_LUT_1_OPTS[1]));
+    assert!(!visivel(&m, t::CEQ_LUT_1_OPTS[OPCOES - 1]));
+    let abaixo = m
+        .host
+        .hit_at(lista.x + lista.w * 0.5, lista.y + lista.h + 1.0);
+    assert!(
+        abaixo.is_none_or(|id| !t::CEQ_LUT_1_OPTS.contains(&id)),
+        "uma opção fora da caixa responde: {abaixo:?}"
+    );
+
+    // A roda: a lista anda, os cartões por trás não.
+    let atras = m.host.store().panel_scroll(PANEL);
+    let (cx, cy) = (lista.x + lista.w * 0.5, lista.y + lista.h * 0.5);
+    m.host.wheel_at(cx, cy, -2000.0);
+    m.assenta_em(baixa);
+    assert!(
+        m.host.store().panel_scroll(caixa) > 0.0,
+        "a roda não rolou a lista"
+    );
+    assert_eq!(
+        m.host.store().panel_scroll(PANEL),
+        atras,
+        "a roda foi à lista de trás"
+    );
+    assert!(
+        visivel(&m, t::CEQ_LUT_1_OPTS[OPCOES - 1]),
+        "o fim não chegou"
+    );
+    assert!(!visivel(&m, t::CEQ_LUT_1_OPTS[0]), "o início não saiu");
+
+    // O polegar: premir a barra e subir traz o início de volta, sem fechar a lista.
+    let barra = m.rect(DROPDOWN_SCROLLBAR_ID).expect("a barra regista-se");
+    let bx = barra.x + barra.w * 0.5;
+    let antes = m.host.store().panel_scroll(caixa);
+    let premido = ph2d_host::PointerEvent {
+        kind: PointerKind::Down,
+        x: bx,
+        y: barra.y + barra.h - 2.0,
+        button: ph2d_host::PointerButton::Primary,
+        source: ph2d_host::PointerSource::Mouse,
+        pressure: 1.0,
+        timestamp_ns: 0,
+    };
+    let hits = std::mem::take(m.host.hit_index_mut());
+    ph2d_editor_core::panel::cards::ao_premir(m.host.store_mut(), &hits, premido);
+    *m.host.hit_index_mut() = hits;
+    let _ = m.ponteiro(PointerKind::Down, bx, premido.y);
+    let _ = m.ponteiro(PointerKind::Move, bx, barra.y);
+    let _ = m.ponteiro(PointerKind::Up, bx, barra.y);
+    m.assenta_em(baixa);
+    assert!(
+        m.host.store().panel_scroll(caixa) < antes,
+        "o polegar não arrastou"
+    );
+    assert_eq!(dropdown::open(), Some(caixa), "o polegar fechou a lista");
+
+    // A opção rolada responde ao clique real e chega à ferramenta.
+    m.host.wheel_at(cx, cy, -2000.0);
+    m.assenta_em(baixa);
+    m.prova_o_clique(t::CEQ_LUT_1_OPTS[OPCOES - 1]);
+    assert!(!dropdown::on_click(t::CEQ_LUT_1_OPTS[OPCOES - 1]));
+    m.assenta_em(baixa);
+    assert_eq!(
+        m.host.store().card_dropdown(),
+        None,
+        "fechada, a lista larga a roda"
+    );
+}
+
+/// *A lista abre com a opção escolhida à vista, mesmo com ela a meio das 16.*
+#[test]
+fn the_long_list_opens_with_the_chosen_option_in_view() {
+    use ph2d_editor_core::zones::Rect;
+    let escolhida = 12;
+    let mut m = mesa(Snap {
+        lut_preset_1: LutPreset::ALL[escolhida],
+        ..tudo()
+    });
+    assert!(dropdown::on_click(t::CEQ_LUT_1_DROPDOWN));
+    m.assenta_em(Rect::new(0.0, 0.0, 340.0, 360.0));
+    let (_, lista) = m.host.store().dropdown_popover().expect("publicada");
+    let r = m
+        .rect(t::CEQ_LUT_1_OPTS[escolhida])
+        .expect("a escolhida pinta-se");
+    assert!(
+        lista.contains(r.x + r.w * 0.5, r.y + r.h * 0.5),
+        "{r:?} fora de {lista:?}"
+    );
+    assert!(
+        dropdown::on_click(t::CEQ_LUT_1_DROPDOWN),
+        "fecha para o teste seguinte"
+    );
+}
+
 #[test]
 fn the_rare_cards_are_born_folded_and_the_verbs_stay() {
     force_cards_on_this_thread(Some(true));

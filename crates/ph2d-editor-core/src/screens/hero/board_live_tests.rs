@@ -520,7 +520,7 @@ fn the_corner_rises_above_the_stats_hud_in_a_narrow_window() {
     let hud = |t: &mut T| {
         let vp = Rect::new(0.0, 0.0, t.vp_w, t.vp_h);
         let layout = crate::screens::hero::frame_layout::frame_layout(&t.hero, vp, &mut t.ts);
-        crate::screens::hero::bottom_hud::bottom_hud_rect(&layout, &mut t.ts, t.hero.stats)
+        super::bottom_hud::bottom_hud_rect(&layout, &t.hero.store, &mut t.ts, t.hero.stats)
     };
     let rows = |t: &T| {
         crate::screens::hero::board_nav::button_rects(crate::screens::hero::board_nav::corner(

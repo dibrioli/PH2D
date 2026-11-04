@@ -40,11 +40,16 @@ impl<P: Panel> Mesa<P> {
 
     /// Os quadros que a mola das alturas pede para os cartões assentarem.
     pub fn assenta(&mut self) {
+        self.assenta_em(COLUNA);
+    }
+
+    /// O mesmo, numa janela à escolha (uma janela baixa, por exemplo).
+    pub fn assenta_em(&mut self, janela: Rect) {
         for _ in 0..QUADROS_ATE_ASSENTAR {
             let (h, st) = (&mut self.host, &mut self.st);
             self.rects = ph2d_editor_core::aquecimento::com_passo_fixo(
                 ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
-                || h.paint::<P>(st, COLUNA),
+                || h.paint::<P>(st, janela),
             );
         }
     }
@@ -76,7 +81,7 @@ impl<P: Panel> Mesa<P> {
         self.aplica(ev)
     }
 
-    fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
+    pub fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
         self.host.dispatch_pointer_event(PointerEvent {
             kind,
             x,

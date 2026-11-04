@@ -1148,6 +1148,7 @@ fn paint_bottom_hud_smoke() {
         &mut scene,
         &mut text,
         Theme::Workshop,
+        &crate::interaction::WidgetStore::default(),
         BottomHudStats::default(),
     );
 }

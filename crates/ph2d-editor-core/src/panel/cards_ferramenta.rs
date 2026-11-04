@@ -174,8 +174,7 @@ pub fn pinta_lista(
     ADIA.with(|a| a.set(false));
     ctx.slot = slot;
     if lista.w <= 0.0 {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        dropdown::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+        dropdown::paint_pending(ctx);
         return lista;
     }
     let theme = ctx.host.theme();
@@ -205,7 +204,7 @@ pub fn pinta_lista(
     );
     let y = c.row(&[botao(verbos.reset, false)], r.y + m::LIST_PAD_BOTTOM);
     c.row(&[botao(verbos.cancel, false), botao(verbos.apply, true)], y);
-    dropdown::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+    dropdown::paint_pending(ctx);
     let tudo = Rect::new(lista.x, lista.y, lista.w, r.y + r.h - lista.y);
     ctx.host.store_mut().set_floating_panel_rect(panel, tudo);
     tudo

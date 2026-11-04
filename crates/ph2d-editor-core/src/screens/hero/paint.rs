@@ -322,7 +322,9 @@ pub fn paint_hero_screen(
             // 1366×768: o «Live» meio tapado, a fila da navegação inteira por baixo).
             let hud = (hero.view.stats_visible
                 && super::bottom_hud::module_hint(&hero.store).is_none())
-            .then(|| super::bottom_hud::bottom_hud_rect(&layout, text_system, hero.stats));
+            .then(|| {
+                super::bottom_hud::bottom_hud_rect(&layout, &hero.store, text_system, hero.stats)
+            });
             super::board_nav::clear_of(hero, r, hud);
             super::board_nav::paint(hero, r, scene, text_system);
             // W24/W25 — cada um por cima do que já se pintou e fora dele: a barra curta e as gavetas, o
@@ -433,6 +435,8 @@ pub fn paint_hero_screen(
     }
 
     panel_walk::walk(hero, &layout, viewport, scene, text_system);
+    // A corda passa por cima dos soltos de TODOS os painéis, não só dos do dono dela.
+    crate::panel::cards::pinta_as_cordas(scene, &hero.store);
     // hero/scene/text_system unborrowed for the
     // rest of paint_hero_screen (bottom HUD, picker overlay, tooltip,
     // context menu, drop overlay).
@@ -493,11 +497,19 @@ pub fn paint_hero_screen(
             scene,
             text_system,
             hero.theme,
+            &hero.store,
             &hint,
             &readout,
         );
     } else if hero.view.stats_visible {
-        paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
+        paint_bottom_hud(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &hero.store,
+            hero.stats,
+        );
     }
     // W2.T2.3: the Painter color swatch lives INSIDE the Painter sidebar
     // panel (`ph2d-panel-painter-sidebar`), painted there alongside

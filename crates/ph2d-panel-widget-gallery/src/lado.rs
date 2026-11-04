@@ -111,7 +111,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx, panel: R
         );
         body(&mut c, &ch, i, r.y + m::CARD_PAD_TOP);
     }
-    lista::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+    lista::paint_pending(ctx);
 }
 
 fn fundo(scene: &mut VectorScene, r: Rect, ink: &CardInk) {
@@ -164,5 +164,5 @@ pub(crate) fn head_menus(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
     let dentro = m::LIST_PAD_X + m::CARD_PAD_X;
     let caixa = Rect::new(panel.x + dentro, r.y, panel.w - dentro * 2.0, r.h);
     lista::stash(caixa, ink, linhas);
-    lista::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+    lista::paint_pending(ctx);
 }

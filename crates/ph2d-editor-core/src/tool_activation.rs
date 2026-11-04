@@ -39,6 +39,18 @@ pub fn ferramenta_do_smoke() -> Option<&'static str> {
     })
 }
 
+/// `PH2D_PANEL_SMOKE=<chave>`: o painel que se abre com o app, para ver numa foto sem clicar.
+/// `wet_tuning` e `grid_snap`: painéis sem ferramenta nem cena que os abra.
+#[must_use]
+pub fn painel_do_smoke() -> Option<&'static str> {
+    const PAINEIS: [&str; 2] = ["wet_tuning", "grid_snap"];
+    static PEDIDO: std::sync::OnceLock<Option<&'static str>> = std::sync::OnceLock::new();
+    *PEDIDO.get_or_init(|| {
+        let pedido = std::env::var("PH2D_PANEL_SMOKE").ok()?;
+        PAINEIS.into_iter().find(|p| *p == pedido)
+    })
+}
+
 /// **A resposta da lei a um pedido.** Ver o cabeçalho do módulo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActivationGate {

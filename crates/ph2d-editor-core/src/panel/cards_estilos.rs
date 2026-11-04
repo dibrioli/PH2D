@@ -483,7 +483,18 @@ pub(super) fn paint_pending(
         + m::FIELD_H * linhas
         + m::SEG_PAD * 2.0;
     // `card` é a pega = o cabeçalho inteiro: a lista nasce por BAIXO dele (maquete E), nunca sobre o título.
-    let caixa = Rect::new(x, card.y + card.h + m::LABEL_TOP, w, h);
+    let edita = EDITA
+        .with(Cell::get)
+        .and_then(|id| estilos().into_iter().find(|x| x.id == id));
+    let pilha = h + edita
+        .as_ref()
+        .map_or(0.0, |_| m::CARD_GAP + editor::altura());
+    let caixa = Rect::new(
+        x,
+        sobe_para_caber(card.y + card.h + m::LABEL_TOP, pilha),
+        w,
+        h,
+    );
     fundo(scene, caixa, &ink);
     hit_index.register(FUNDO, caixa);
     titulo(
@@ -594,10 +605,7 @@ pub(super) fn paint_pending(
         );
         y += m::FIELD_H;
     }
-    if let Some(e) = EDITA
-        .with(Cell::get)
-        .and_then(|id| estilos().into_iter().find(|x| x.id == id))
-    {
+    if let Some(e) = edita {
         editor::editor(scene, text_system, hit_index, store, &ink, caixa, &e);
     }
 }

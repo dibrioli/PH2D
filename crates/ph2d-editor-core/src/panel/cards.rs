@@ -250,6 +250,26 @@ pub fn ao_premir(store: &mut WidgetStore, hit_index: &HitIndex, event: ph2d_host
     estilos::ao_premir(store, hit_index, event.x, event.y);
 }
 
+thread_local! {
+    /// O topo e o fundo do canvas visível: as janelinhas dos cartões não passam deles.
+    static LIMITE_VERTICAL: std::cell::Cell<(f32, f32)> =
+        const { std::cell::Cell::new((f32::MIN, f32::MAX)) };
+}
+
+fn limita_janelinhas(canvas: Rect) {
+    LIMITE_VERTICAL.with(|l| l.set((canvas.y, canvas.y + canvas.h)));
+}
+
+/// O `y` de uma janelinha de altura `h` que quer nascer em `y`: sobe o que faltar para caber.
+fn sobe_para_caber(y: f32, h: f32) -> f32 {
+    let (topo, fundo) = LIMITE_VERTICAL.with(std::cell::Cell::get);
+    if y + h <= fundo {
+        y
+    } else {
+        (fundo - h).max(topo)
+    }
+}
+
 /// ⭐ **A lista suspensa de um cartão** — qual está aberta (um clique na caixa abre/fecha; qualquer
 /// outro clique fecha) e as opções do quadro, pintadas por CIMA de tudo no fim da lista. Cada opção
 /// leva o id do painel dono: o clique nela é o `Click` que o `apply_event` dele já trata.
@@ -321,7 +341,7 @@ pub mod dropdown {
         };
         OPCOES.with(|o| *o.borrow_mut() = opts.iter().map(|(id, ..)| *id).collect());
         let h = m::FIELD_H * opts.len() as f32 + m::SEG_PAD * 2.0;
-        let caixa = Rect::new(r.x, r.y + r.h + m::SEG_PAD, r.w, h);
+        let caixa = Rect::new(r.x, sobe_para_caber(r.y + r.h + m::SEG_PAD, h), r.w, h);
         shadow(
             scene,
             caixa,

@@ -2,6 +2,12 @@
 
 use super::*;
 
+/// A altura do «Edit style».
+pub(super) fn altura() -> f32 {
+    let rotulo = m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM;
+    m::CARD_HEAD_H + (rotulo + m::FIELD_H) * 2.0 + m::LABEL_TOP + m::LABEL_PX + m::CARD_PAD_BOTTOM
+}
+
 /// O «Edit style» (G), logo abaixo da lista: nome, cor e quantas camadas mudam juntas.
 pub(super) fn editor(
     scene: &mut VectorScene,
@@ -13,12 +19,7 @@ pub(super) fn editor(
     e: &Estilo,
 ) {
     let rotulo = m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM;
-    let h = m::CARD_HEAD_H
-        + (rotulo + m::FIELD_H) * 2.0
-        + m::LABEL_TOP
-        + m::LABEL_PX
-        + m::CARD_PAD_BOTTOM;
-    let caixa = Rect::new(lista.x, lista.y + lista.h + m::CARD_GAP, lista.w, h);
+    let caixa = Rect::new(lista.x, lista.y + lista.h + m::CARD_GAP, lista.w, altura());
     fundo(scene, caixa, ink);
     hit_index.register(FUNDO, caixa);
     titulo(

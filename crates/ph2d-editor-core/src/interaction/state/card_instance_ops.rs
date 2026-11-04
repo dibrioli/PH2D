@@ -52,8 +52,9 @@ impl WidgetStore {
             .map(|(k, c)| (k, c.panel))
     }
 
-    /// T63: tema, contorno e notas de `de` passam a `para` no `panel` — copiados (a cópia nasce
-    /// com os da lista) ou movidos (a cópia que volta devolve-os; `de` fica sem nada).
+    /// T63: tema e contorno de `de` passam a `para` no `panel` — copiados (a cópia nasce com os da
+    /// lista) ou movidos (a cópia que volta devolve-os). As notas andam SEMPRE com o cartão: uma
+    /// cópia delas ficava em dobro no fim do painel e ressuscitava depois de apagada (dono 03/11).
     pub(super) fn passa_face(&mut self, panel: NodeId, de: NodeId, para: NodeId, move_: bool) {
         self.set_section_theme(para, self.section_theme(de));
         self.set_section_outline_color(para, self.section_outline_color(de));
@@ -61,20 +62,8 @@ impl WidgetStore {
             self.set_section_theme(de, None);
             self.set_section_outline_color(de, None);
         }
-        let Some(list) = self.notes_per_panel.get(&panel) else {
-            return;
-        };
-        let dele: Vec<usize> = (0..list.len())
-            .rev()
-            .filter(|&i| list[i].section == Some(de))
-            .collect();
-        for i in dele {
-            let j = if move_ {
-                Some(i)
-            } else {
-                self.note_duplicate(panel, i)
-            };
-            if let Some(n) = j.and_then(|j| self.notes_per_panel.get_mut(&panel)?.get_mut(j)) {
+        if let Some(list) = self.notes_per_panel.get_mut(&panel) {
+            for n in list.iter_mut().filter(|n| n.section == Some(de)) {
                 n.section = Some(para);
             }
         }

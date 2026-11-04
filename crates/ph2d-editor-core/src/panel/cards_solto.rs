@@ -407,6 +407,7 @@ pub(super) fn pinta_os_soltos(
     pinned: &[CardDef<'_>],
 ) {
     let canvas = rola::acima_do_hud(canvas, ctx.layout.bottom_hud);
+    super::limita_janelinhas(canvas);
     // T61: a pintura troca estados no store — o índice de cliques sai e volta (a mesma ordem).
     let mut hits = std::mem::take(ctx.host.hit_index_mut());
     let rects = pinta_soltos(

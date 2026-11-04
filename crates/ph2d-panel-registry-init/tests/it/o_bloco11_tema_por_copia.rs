@@ -197,13 +197,13 @@ fn each_loose_copy_keeps_its_own_theme_and_notes() {
     let v = notas(&h);
     assert_eq!(
         (conta(&v, CARD_TRANSFORM), conta(&v, um), conta(&v, dois)),
-        (1, 1, 2),
-        "as notas não são de cada cartão: {v:?}"
+        (0, 1, 1),
+        "as notas não são de cada cartão (a da lista foi com a cópia 1): {v:?}"
     );
     assert_eq!(h.store.section_theme(dois), candy);
     assert_eq!(h.store.section_theme(CARD_TRANSFORM), oled);
 
-    // Volta à lista: o Candy e as duas notas da cópia 2 passam para o cartão da lista.
+    // Volta à lista: o Candy e a nota da cópia 2 passam para o cartão da lista.
     clica(&mut h, loose_return_of(k2));
     assert!(h.store.loose_card(k2).is_none(), "a cópia 2 não voltou");
     let v = notas(&h);
@@ -215,8 +215,57 @@ fn each_loose_copy_keeps_its_own_theme_and_notes() {
     assert_eq!(h.store.section_theme(dois), None);
     assert_eq!(
         (conta(&v, CARD_TRANSFORM), conta(&v, dois)),
-        (3, 0),
+        (1, 0),
         "{v:?}"
     );
     assert_eq!(h.store.section_theme(um), vermelho, "a cópia 1 mudou");
+}
+
+/// ⭐ Dono 03/11: «ao arrastar o cartão para o canvas a nota é duplicada no painel; se deleto a nota,
+/// ao voltar o card a nota reaparece». A nota anda com o cartão, e só existe uma.
+/// *Mutação: soltar copia a nota em vez de a mover.*
+#[test]
+fn a_note_goes_with_the_card_and_is_never_left_behind() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_panel_inspector::set_cards_on(true);
+    ph2d_panel_inspector::set_current_inspector_sprite(None);
+    escolhe(CIRCULO, "Circle", 1.0);
+    let mut h = HeroScreen::new(NodeId(1));
+    let ids_: Vec<&'static str> = ph2d_editor_core::panel::with_registry_ref(|reg| {
+        reg.panels().iter().map(|p| p.manifest.id).collect()
+    });
+    for n in ids_ {
+        h.panel_visibility.insert(n, n == "inspector");
+    }
+    pinta(&mut h, 30);
+    let corpo = {
+        let pega = h
+            .hit_index
+            .rect_for(ids::grip_de(CARD_TRANSFORM))
+            .expect("o título do Transform");
+        (pega.x + pega.w * 0.5, pega.y + pega.h + 4.0)
+    };
+    menu(&mut h, corpo, CTX_MENU_CREATE_NOTE);
+    pinta(&mut h, 60); // o cartão cresce com a nota: o título é agarrável no fim
+    assert_eq!(
+        conta(&notas(&h), CARD_TRANSFORM),
+        1,
+        "a nota não nasceu no cartão"
+    );
+    let face = loose_face_of(CARD_TRANSFORM);
+
+    // Solta: a nota vai com ele, e não fica nenhuma no painel.
+    solta(&mut h, CARD_TRANSFORM);
+    assert_eq!(notas(&h), vec![Some(face)], "a nota ficou em dobro");
+    // Volta: é a mesma, uma só.
+    clica(&mut h, loose_return_of(CARD_TRANSFORM));
+    assert_eq!(notas(&h), vec![Some(CARD_TRANSFORM)], "a nota não voltou");
+    pinta(&mut h, 60); // o voo de volta acaba: o título é agarrável outra vez
+
+    // Solta, apaga no cartão solto e volta: não ressuscita.
+    solta(&mut h, CARD_TRANSFORM);
+    h.store.note_delete(ids::INSP_PANEL, 0);
+    pinta(&mut h, 5);
+    clica(&mut h, loose_return_of(CARD_TRANSFORM));
+    assert_eq!(notas(&h), vec![], "a nota apagada reapareceu");
 }

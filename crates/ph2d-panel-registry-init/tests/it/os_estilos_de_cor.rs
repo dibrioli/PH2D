@@ -688,3 +688,81 @@ fn a_press_outside_is_read_in_window_pixels() {
     appearance::set_current_appearance(None);
     ph2d_panel_inspector::set_current_inspector_transform(None);
 }
+
+fn pinta_em(h: &mut HeroScreen, altura: f32) {
+    let janela = Rect {
+        h: altura,
+        ..VIEWPORT
+    };
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    for _ in 0..12 {
+        scene.reset();
+        ph2d_editor_core::screens::hero::paint_hero_screen(h, janela, &mut scene, &mut text);
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+}
+
+/// O fundo do que se vê: a janela, acima da faixa de estado.
+fn fundo_visivel(h: &HeroScreen) -> f32 {
+    let l = h.last_layout.expect("houve um quadro");
+    let c = l.canvas;
+    if l.bottom_hud.h > 0.0 {
+        (c.y + c.h).min(l.bottom_hud.y)
+    } else {
+        c.y + c.h
+    }
+}
+
+/// ⭐ Dono 03/11: o «Edit style» de um cartão solto perto do fundo saía da janela.
+/// *Mutação: sem `sobe_para_caber` na lista.*
+#[test]
+fn the_style_editor_stays_inside_the_window() {
+    let mut h = hero();
+    um_estilo();
+    super::cartoes_mao::solta(&mut h, ph2d_panel_inspector::CARD_FILL);
+    pinta(&mut h);
+    estilos::abre_o_editor_do_primeiro();
+    pinta_em(&mut h, 620.0);
+    let fundo = fundo_visivel(&h);
+    let (hex, busca) = (
+        rect(&h, estilos::HEX, "a cor do «Edit style»"),
+        rect(&h, estilos::BUSCA, "a busca"),
+    );
+    assert!(
+        hex.y + hex.h <= fundo,
+        "o «Edit style» saiu: {hex:?}, fundo {fundo}"
+    );
+    let topo = h.last_layout.expect("houve um quadro").canvas.y;
+    assert!(
+        busca.y >= topo,
+        "a lista saiu por cima: {busca:?}, topo {topo}"
+    );
+    appearance::set_current_appearance(None);
+    ph2d_panel_inspector::set_current_inspector_transform(None);
+}
+
+/// A mesma família: a lista Blend perto do fundo. *Mutação: sem `sobe_para_caber` na lista suspensa.*
+#[test]
+fn a_card_dropdown_stays_inside_the_window() {
+    let mut h = hero();
+    pinta_em(&mut h, 620.0);
+    let antes: Vec<NodeId> = h.hit_index.iter_registrations().map(|(id, _)| id).collect();
+    let dd = ph2d_tool_registry::hash_node_id("cards.insp.blend.dd");
+    let caixa = rect(&h, dd, "a caixa do Blend");
+    clique(&mut h, centro(caixa), PointerButton::Primary);
+    pinta_em(&mut h, 620.0);
+    assert_eq!(ph2d_editor_core::panel::cards::dropdown::open(), Some(dd));
+    let fundo = fundo_visivel(&h);
+    let novas: Vec<Rect> = h
+        .hit_index
+        .iter_registrations()
+        .filter(|(id, _)| !antes.contains(id))
+        .map(|(_, r)| r)
+        .collect();
+    assert!(novas.len() > 3, "as opções não se pintaram: {novas:?}");
+    let mais_baixa = novas.iter().map(|r| r.y + r.h).fold(0.0_f32, f32::max);
+    assert!(mais_baixa <= fundo, "a lista saiu: {mais_baixa} > {fundo}");
+    appearance::set_current_appearance(None);
+    ph2d_panel_inspector::set_current_inspector_transform(None);
+}

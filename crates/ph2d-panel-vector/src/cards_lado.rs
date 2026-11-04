@@ -108,7 +108,8 @@ fn cabecalho(c: &mut CardCtx<'_>, h: &Cabeca<'_>, y: f32) -> f32 {
         c.ink.color(ColorToken::Text1),
         0.0,
     );
-    hy + m::CARD_HEAD_H + m::CARD_HEAD_BOTTOM
+    // O corpo já não abre o cartão: a 1.ª linha sem rótulo depois de uma escolha leva o vão.
+    c.legacy(hy + m::CARD_HEAD_H + m::CARD_HEAD_BOTTOM, |_, y| y)
 }
 
 /// ⭐ **O painel**, no topo alinhado à `line` que o abriu, com a tinta do cartão `seccao`. `id` é o

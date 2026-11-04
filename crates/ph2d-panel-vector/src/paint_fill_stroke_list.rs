@@ -184,7 +184,10 @@ impl BodyCtx<'_> {
             && let Some(chip) = self.hit_index.rect_for(menu)
         {
             let _ = ph2d_editor_core::widget::card_ink::troca_popover(Some((menu, ink)));
-            PENDENTE.with(|p| p.borrow_mut().menu = Some(chip));
+            // O «+» está no canto do cartão: a lista cresce para DENTRO, com a borda direita na dele.
+            let w = self.inner_w * 0.5;
+            let ancora = Rect::new(chip.x + chip.w - w, chip.y, w, chip.h);
+            PENDENTE.with(|p| p.borrow_mut().menu = Some(ancora));
         }
     }
 

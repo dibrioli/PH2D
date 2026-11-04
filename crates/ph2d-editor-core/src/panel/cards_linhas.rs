@@ -280,7 +280,15 @@ impl<'s> CardCtx<'s> {
             let mut x = sr.x + (sr.w - total) * 0.5;
             if let Some(icon) = s.icon.filter(|_| iw > 0.0) {
                 let ir = Rect::new(x, sr.y + (sr.h - iw) * 0.5, iw, iw);
-                paint_icon(self.scene, icon, ir, tinta, StrokeToken::Default.px());
+                // A Position do traço tem duas tintas (F44c); os outros ícones, a da peça.
+                crate::paint::paint_icon_toned(
+                    self.scene,
+                    icon,
+                    ir,
+                    tinta,
+                    self.ink.theme,
+                    StrokeToken::Default.px(),
+                );
                 x += iw + gap;
             }
             if tw > 0.0 {

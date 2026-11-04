@@ -20,7 +20,7 @@ use crate::ids;
 use crate::interaction::{
     ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, WidgetEvent, WidgetStore,
 };
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
 use crate::widget::{ButtonState, TextInput, TextInputState, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -319,17 +319,9 @@ pub fn paint(
         w,
         h,
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
     let x = rect.x + Spacing::Xs.px();
     let inner_w = rect.w - Spacing::Xs.px() * 2.0;
     let pad_x = Spacing::Md.px();
@@ -337,7 +329,7 @@ pub fn paint(
     let text_at = |r: Rect| r.y + (r.h - font) * 0.5;
     let mut y = rect.y + pad_y();
     let title = Rect::new(x, y, inner_w, ROW_H);
-    let ink = |t: ColorToken| resolve(t, theme);
+    let ink = |t: ColorToken| crate::widget::card_ink::tinta(t, theme);
     let tw = inner_w - pad_x * 2.0;
     let title_text = tr(src.title());
     paint_text(

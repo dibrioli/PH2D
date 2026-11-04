@@ -155,5 +155,5 @@ fn the_painter_reads_the_unavailable_door() {
     assert!(codigo.contains("if indisponivel {\n                ColorToken::Text3"));
 }
 
-#[path = "context_menu_overlay_tests_cromo.rs"]
+#[path = "context_menu_overlay_cromo_tests.rs"]
 mod cromo;

@@ -45,18 +45,23 @@ fn menu(kind: K, hot: Option<NodeId>, on: bool) -> (VectorScene, HitIndex) {
     (scene, hits)
 }
 
-/// A cena traz um preenchimento nesta cor?
-fn pinta_a_cor(scene: &VectorScene, token: ColorToken) -> bool {
+/// Quantos preenchimentos desta cor a cena traz.
+fn vezes_da_cor(scene: &VectorScene, token: ColorToken) -> usize {
     let mut uma = VectorScene::new();
     let r = Rect::new(0.0, 0.0, 1.0, 1.0);
-    fill_rounded_rect(&mut uma, r, 0.0, resolve(token, TEMA).with_alpha(1.0));
+    fill_rounded_rect(&mut uma, r, 0.0, resolve(token, TEMA));
     let cor = uma.inner().encoding().draw_data.clone();
     scene
         .inner()
         .encoding()
         .draw_data
         .windows(cor.len())
-        .any(|w| w == cor.as_slice())
+        .filter(|w| *w == cor.as_slice())
+        .count()
+}
+
+fn pinta_a_cor(scene: &VectorScene, token: ColorToken) -> bool {
+    vezes_da_cor(scene, token) > 0
 }
 
 #[test]
@@ -96,8 +101,14 @@ fn o_menu_em_cartoes_pinta_a_superficie_da_lista_e_o_de_antes_a_antiga() {
 fn a_linha_sob_o_rato_acende_no_tom_do_campo_do_cartao() {
     let kind = K::HierarchyRow { row: NodeId(1) };
     let hot = Some(ids::CTX_MENU_HIER_DUPLICATE);
-    assert!(!pinta_a_cor(&menu(kind, None, true).0, ColorToken::CardFieldHover));
-    assert!(pinta_a_cor(&menu(kind, hot, true).0, ColorToken::CardFieldHover));
+    assert!(!pinta_a_cor(
+        &menu(kind, None, true).0,
+        ColorToken::CardFieldHover
+    ));
+    assert!(pinta_a_cor(
+        &menu(kind, hot, true).0,
+        ColorToken::CardFieldHover
+    ));
     assert!(pinta_a_cor(&menu(kind, hot, false).0, ColorToken::Bg2));
 }
 
@@ -106,6 +117,48 @@ fn a_lista_de_cenas_e_o_transbordo_vestem_a_mesma_superficie() {
     let (cenas, _) = menu(K::SceneList, None, true);
     assert!(pinta_a_cor(&cenas, ColorToken::KanbanCardRaised));
     assert!(!pinta_a_cor(&cenas, ColorToken::BgElev));
+}
+
+/// A barra de menus inteira num quadro, com File aberto.
+fn barra(on: bool) -> (VectorScene, HitIndex) {
+    force_cromo_on_this_thread(Some(on));
+    let mut text = TextSystem::without_system_fonts();
+    let mut store = WidgetStore::default();
+    store.open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 24.0,
+        kind: K::MenuBarFile,
+    });
+    let layout = crate::screens::HeroLayout::for_viewport(janela());
+    let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+    crate::screens::hero::menu_bar::paint_menu_bar(
+        &layout,
+        &mut scene,
+        &mut text,
+        TEMA,
+        &mut hits,
+        &store,
+        &UiMotion::default(),
+        &crate::documents::Documents::default(),
+    );
+    force_cromo_on_this_thread(None);
+    (scene, hits)
+}
+
+#[test]
+fn o_titulo_do_menu_aberto_acende_no_tom_do_cartao_sem_mover_alvo() {
+    let (novo, alvos_novos) = barra(true);
+    assert!(pinta_a_cor(&novo, ColorToken::CardFieldHover));
+    let (antigo, alvos_antigos) = barra(false);
+    // A aba de modo ativa também é `AccentSoft` (M3): o título aberto é o que muda a conta.
+    assert_eq!(
+        vezes_da_cor(&antigo, ColorToken::AccentSoft),
+        vezes_da_cor(&novo, ColorToken::AccentSoft) + 1,
+    );
+    assert_eq!(
+        alvos_novos.iter_registrations().collect::<Vec<_>>(),
+        alvos_antigos.iter_registrations().collect::<Vec<_>>(),
+    );
 }
 
 #[test]

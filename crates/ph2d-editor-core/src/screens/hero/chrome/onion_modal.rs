@@ -99,17 +99,9 @@ pub fn paint_onion_modal(
     let rect = Rect::new(rect_x, rect_y, MODAL_W, total_h);
 
     // ⭐ Raio e moldura pela porta do TEMA: o cartão flutuante é plano num tema moderno.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -129,7 +121,7 @@ pub fn paint_onion_modal(
         cy + (row_h - font) * 0.5,
         font,
         inner_w - CLOSE_W,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, row_h);
     hit_index.register(ids::TIMELINE_ONION_MODAL_CLOSE, close_rect);
@@ -167,7 +159,7 @@ pub fn paint_onion_modal(
             cy + (row_h - font) * 0.5,
             font,
             SLIDER_LABEL_W,
-            resolve(ColorToken::Text1, theme),
+            crate::widget::card_ink::tinta(ColorToken::Text1, theme),
         );
         let track_rect = Rect::new(track_x, cy, track_w, row_h);
         hit_index.register(id, track_rect);
@@ -199,7 +191,7 @@ pub fn paint_onion_modal(
             cy + (row_h - font) * 0.5,
             font,
             inner_w - SWATCH_W - gap,
-            resolve(ColorToken::Text1, theme),
+            crate::widget::card_ink::tinta(ColorToken::Text1, theme),
         );
         let sw_rect = Rect::new(inner_x + inner_w - SWATCH_W, cy, SWATCH_W, row_h);
         hit_index.register(id, sw_rect);

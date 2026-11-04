@@ -375,6 +375,8 @@ pub fn paint_menu_bar(
     // pinta 1366 px de opaco e deixa passar **86,9 %** deles para o desenho.
     hit_index.register(ids::MENUBAR_BACKDROP, bar);
     let open = store.context_menu().map(|r| r.kind);
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let em_cartoes = superficie.tinta().is_some();
     for (id, title, r) in menu_rects(bar, text_system) {
         let state = store.button_state(id).unwrap_or(ButtonState::Normal);
         let is_open = open.is_some_and(|k| MENUS.iter().any(|(mid, _, mk)| *mid == id && *mk == k));
@@ -397,14 +399,18 @@ pub fn paint_menu_bar(
             _ => None,
         };
         if let Some(bg) = bg {
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                resolve(bg, theme),
-            );
+            if em_cartoes {
+                superficie.realce(scene, r);
+            } else {
+                fill_rounded_rect(
+                    scene,
+                    r,
+                    crate::paint::frame_radius(theme, Radius::Sm.px()),
+                    resolve(bg, theme),
+                );
+            }
         }
-        let fg = if is_open {
+        let fg = if is_open && !em_cartoes {
             ColorToken::Accent
         } else {
             ColorToken::Text1

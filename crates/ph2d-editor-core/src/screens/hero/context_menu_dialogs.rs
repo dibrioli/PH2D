@@ -8,13 +8,13 @@
 use super::context_menu_overlay::{ROW_H, pad_y};
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::paint::paint_text;
 use crate::widget::{Button, TextInput, paint_button, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Paint the color-picker palette rename modal — the shared `BLENDER_PALETTE_NAME` field doubles
@@ -102,17 +102,9 @@ fn paint_centered_input_dialog(
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
 
     // Floating panel surface.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
 
     let inner_x = rect.x + Spacing::Xs.px();
     let inner_w = rect.w - Spacing::Xs.px() * 2.0;
@@ -129,7 +121,7 @@ fn paint_centered_input_dialog(
         y + (title_h - font) * 0.5,
         font,
         inner_w - pad_x * 2.0,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     y += title_h + gap;
 
@@ -142,7 +134,7 @@ fn paint_centered_input_dialog(
         y + (hint_h - font) * 0.5,
         font,
         inner_w - pad_x * 2.0,
-        resolve(ColorToken::Text3, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text3, theme),
     );
     y += hint_h + gap;
 
@@ -233,17 +225,9 @@ pub(super) fn paint_new_image_dialog(
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -259,7 +243,7 @@ pub(super) fn paint_new_image_dialog(
         y + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     y += row_h + gap;
 
@@ -272,7 +256,7 @@ pub(super) fn paint_new_image_dialog(
         y + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text3, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text3, theme),
     );
     y += row_h + gap;
     let sel_size = store.new_image_size();
@@ -304,7 +288,7 @@ pub(super) fn paint_new_image_dialog(
         y + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text3, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text3, theme),
     );
     y += row_h + gap;
     let sel_bg = store.new_image_bg();
@@ -391,17 +375,9 @@ pub(super) fn paint_sheet_size_dialog(
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -416,7 +392,7 @@ pub(super) fn paint_sheet_size_dialog(
         y + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     y += row_h + gap;
 
@@ -428,7 +404,7 @@ pub(super) fn paint_sheet_size_dialog(
         y + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text3, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text3, theme),
     );
     y += row_h + gap;
     let sel = store.sheet_size();

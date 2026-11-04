@@ -9,14 +9,14 @@ use super::super::context_menu_overlay::{ROW_H, pad_y};
 use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, paint_text_elided, resolve};
+use crate::paint::{paint_text, paint_text_elided, resolve};
 use crate::pixel_panel::{NewSpriteMode, PixelDither};
 use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// A grelha das filas rotuladas: o rótulo ocupa uma coluna, os três tamanhos as outras.
@@ -45,17 +45,9 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
     let rect_x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, DIALOG_W, total_h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
     let font = TypeToken::Sm.px();

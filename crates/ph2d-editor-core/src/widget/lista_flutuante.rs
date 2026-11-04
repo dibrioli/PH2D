@@ -84,6 +84,26 @@ impl Superficie {
         self.moldura_de_antes(scene, r, Radius::Sm, ColorToken::Bg3);
     }
 
+    /// O fundo de uma caixa de diálogo interna: o raio e as duas sombras da lista de cartões.
+    pub fn moldura_de_caixa(self, scene: &mut VectorScene, r: Rect) {
+        let Some(ink) = self.tinta() else {
+            return self.moldura_de_antes(scene, r, Radius::Md, ColorToken::BgElev);
+        };
+        let sombra = ink.color(ColorToken::KanbanListShadow);
+        for passo in [m::LIST_SHADOW_FAR, m::LIST_SHADOW_NEAR] {
+            crate::paint_flight::shadow(scene, r, m::LIST_RADIUS, sombra, passo);
+        }
+        let fundo = ink.color(ColorToken::KanbanCardRaised).with_alpha(1.0);
+        fill_rounded_rect(scene, r, m::LIST_RADIUS, fundo);
+    }
+
+    /// Veste o corpo do diálogo: os widgets partilhados e `card_ink::tinta` pintam-se nos tons do
+    /// cartão até o guarda morrer. No modo de antes, nada muda.
+    #[must_use]
+    pub fn veste(self) -> Option<crate::widget::card_ink::Publicada> {
+        self.tinta().map(crate::widget::card_ink::publica)
+    }
+
     fn moldura_de_antes(self, scene: &mut VectorScene, r: Rect, raio: Radius, fundo: ColorToken) {
         let radius = crate::paint::frame_radius(self.theme, raio.px());
         fill_rounded_rect(scene, r, radius, resolve(fundo, self.theme));

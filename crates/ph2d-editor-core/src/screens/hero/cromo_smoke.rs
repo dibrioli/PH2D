@@ -5,17 +5,20 @@ use crate::ids;
 use crate::interaction::{ContextMenuKind as K, ContextMenuRequest, WidgetStore};
 use ph2d_a11y::NodeId;
 
-/// Menu aberto e linha sob o rato de cada cena; `None` no menu = só a dica do id.
-fn cena(n: u32) -> Option<(Option<K>, NodeId)> {
+/// Menu aberto e linha sob o rato de cada cena; sem menu, a linha é só a dica do id.
+fn cena(n: u32) -> Option<(Option<K>, Option<NodeId>)> {
     Some(match n {
         1 => (
             Some(K::HierarchyRow { row: NodeId(1) }),
-            ids::CTX_MENU_HIER_DUPLICATE,
+            Some(ids::CTX_MENU_HIER_DUPLICATE),
         ),
-        2 => (None, ids::HIERARCHY_ADD),
-        3 => (Some(K::SceneList), ids::CTX_SCENE_ROWS[0]),
-        4 => (Some(K::MenuBarFile), ids::CTX_MENU_SAVE),
-        5 => (Some(K::SettingsMenu), ids::CTX_MENU_SETTINGS_UNIT),
+        2 => (None, Some(ids::HIERARCHY_ADD)),
+        3 => (Some(K::SceneList), Some(ids::CTX_SCENE_ROWS[0])),
+        4 => (Some(K::MenuBarFile), Some(ids::CTX_MENU_SAVE)),
+        5 => (Some(K::SettingsMenu), Some(ids::CTX_MENU_SETTINGS_UNIT)),
+        6 => (Some(K::NewImageDialog), None),
+        7 => (Some(K::NewSpriteDialog), None),
+        8 | 9 => (None, None),
         _ => return None,
     })
 }
@@ -25,11 +28,13 @@ const ANCORA: (f32, f32) = (360.0, 120.0); // LITERAL-PX-OK: sítio do menu na f
 
 /// Reabre a cena a cada quadro: a foto não tem rato que a feche nem que a mova.
 pub(super) fn aplica(store: &mut WidgetStore) {
-    let Some((menu, hot)) = std::env::var("PH2D_CROMO_SMOKE")
+    let Some(n) = std::env::var("PH2D_CROMO_SMOKE")
         .ok()
         .and_then(|v| v.parse().ok())
-        .and_then(cena)
     else {
+        return;
+    };
+    let Some((menu, hot)) = cena(n) else {
         return;
     };
     if let Some(kind) = menu {
@@ -39,5 +44,16 @@ pub(super) fn aplica(store: &mut WidgetStore) {
             kind,
         });
     }
-    store.set_hot(Some(hot));
+    match n {
+        8 if store.fill_modal_pos().is_none() => store.open_fill_modal(ANCORA.0, ANCORA.1, 0.5),
+        9 if store.onion_modal_pos().is_none() => {
+            let (antes, depois) = ([230, 80, 80, 255], [80, 200, 120, 255]);
+            let fantasmas = 0.3; // LITERAL-PX-OK: fração de fantasmas da cena de foto, não é geometria
+            store.open_onion_modal(ANCORA.0, ANCORA.1, 0.5, fantasmas, fantasmas, antes, depois);
+        }
+        _ => {}
+    }
+    if hot.is_some() {
+        store.set_hot(hot);
+    }
 }

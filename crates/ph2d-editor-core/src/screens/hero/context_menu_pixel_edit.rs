@@ -9,7 +9,7 @@ use super::super::context_menu_overlay::{ROW_H, pad_y};
 use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_elided, resolve};
+use crate::paint::{paint_text_elided, resolve};
 use crate::panel::rows::RowCtx;
 use crate::pixel_panel::{PixelDialogKind, PixelModify};
 use crate::widget::{Button, Dropdown, DropdownOption, PaintedPopover, Unit, paint_button};
@@ -17,7 +17,7 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// As filas de cada diálogo (título e Cancel | OK incluídos) — uma CONTAGEM.
@@ -93,17 +93,9 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         Spacing::Md.px(),
         hint_band,
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
     let mut c = Caixa {
         scene,
         text_system,

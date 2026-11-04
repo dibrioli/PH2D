@@ -121,22 +121,28 @@ pub fn paint_modal(
 ) {
     scene.fill_rect(rect_to_vello(viewport), resolve(ColorToken::BgScrim, theme));
 
-    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
-    fill_rounded_rect(
-        scene,
-        dialog_rect,
-        radius,
-        resolve(ColorToken::BgElev, theme),
-    );
-    crate::paint::stroke_frame(
-        scene,
-        dialog_rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = super::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    if superficie.tinta().is_some() {
+        superficie.moldura_de_caixa(scene, dialog_rect);
+    } else {
+        let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
+        fill_rounded_rect(
+            scene,
+            dialog_rect,
+            radius,
+            resolve(ColorToken::BgElev, theme),
+        );
+        crate::paint::stroke_frame(
+            scene,
+            dialog_rect,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
 
     let header = modal.header_rect(dialog_rect);
     let pad = Spacing::Lg.px();
@@ -155,7 +161,7 @@ pub fn paint_modal(
         title_y,
         title_font,
         title_max_w,
-        resolve(ColorToken::Text1, theme),
+        super::card_ink::tinta(ColorToken::Text1, theme),
     );
 
     // Hover/press feedback on the close X — a flat icon with no
@@ -167,13 +173,19 @@ pub fn paint_modal(
         _ => (None, ColorToken::Text2),
     };
     if let Some(bg) = close_bg {
-        fill_rounded_rect(scene, close_rect, Spacing::Sm.px(), resolve(bg, theme));
+        let (bg, r) = if superficie.tinta().is_some() {
+            (ColorToken::Bg2, ph2d_card_stack::metrics::SEG_RADIUS)
+        } else {
+            (bg, Spacing::Sm.px())
+        };
+        let cor = super::card_ink::tinta(bg, theme);
+        fill_rounded_rect(scene, close_rect, r, cor);
     }
     paint_icon(
         scene,
         IconId::Close,
         close_rect,
-        resolve(close_fg, theme),
+        super::card_ink::tinta(close_fg, theme),
         StrokeToken::Default.px(),
     );
 

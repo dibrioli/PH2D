@@ -22,14 +22,14 @@ use crate::interaction::{
     ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, TAB_DRAG_THRESHOLD_PX,
     WidgetEvent, WidgetStore,
 };
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::paint::{paint_text, resolve};
 use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
 use ph2d_board_model::{BoardId, KanbanId};
 use ph2d_host::{PointerButton, PointerEvent, PointerKind};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O quadro cuja aba está sob `(x, y)`, pelo `HitIndex` do último quadro pintado.
@@ -392,17 +392,9 @@ pub fn paint_confirm_delete(
         w,
         h,
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
     let x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
     let font = TypeToken::Sm.px();

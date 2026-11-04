@@ -14,14 +14,14 @@
 use crate::action_bus::EditorAction;
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::paint::paint_text;
 use crate::screens::hero::HeroScreen;
 use crate::tool::PanelEvent;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Card width — compact, fits "Threshold" slider + a Cancel/Done button row.
@@ -76,7 +76,10 @@ pub fn paint_fill_adjust_modal(
             scene.inner_mut().stroke(
                 &ph2d_vector::Stroke::new(f64::from(ph2d_tokens::StrokeToken::Default.px())),
                 ph2d_vector::Affine::IDENTITY,
-                &ph2d_vector::Brush::Solid(resolve(ColorToken::Text3, theme)),
+                &ph2d_vector::Brush::Solid(crate::widget::card_ink::tinta(
+                    ColorToken::Text3,
+                    theme,
+                )),
                 None,
                 &path,
             );
@@ -85,17 +88,9 @@ pub fn paint_fill_adjust_modal(
 
     // Floating panel surface.
     // ⭐ Raio e moldura pela porta do TEMA: o cartão flutuante é plano num tema moderno.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _tinta = superficie.veste();
+    superficie.moldura_de_caixa(scene, rect);
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -113,7 +108,7 @@ pub fn paint_fill_adjust_modal(
         cy + (row_h - font) * 0.5,
         font,
         inner_w,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     cy += row_h + gap;
 

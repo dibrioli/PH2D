@@ -91,15 +91,24 @@ thread_local! {
         const { std::cell::Cell::new(None) };
 }
 
+/// Guarda da tinta publicada: repõe a anterior ao morrer (também num pânico).
+#[must_use]
+pub struct Publicada(Option<CardInk>);
+
+impl Drop for Publicada {
+    fn drop(&mut self) {
+        CORPO.with(|c| c.set(self.0));
+    }
+}
+
+/// Publica a tinta do cartão até o guarda morrer.
+pub fn publica(ink: CardInk) -> Publicada {
+    Publicada(CORPO.with(|c| c.replace(Some(ink))))
+}
+
 /// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
 pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
-    struct Repoe(Option<CardInk>);
-    impl Drop for Repoe {
-        fn drop(&mut self) {
-            CORPO.with(|c| c.set(self.0));
-        }
-    }
-    let _repoe = Repoe(CORPO.with(|c| c.replace(Some(ink))));
+    let _repoe = publica(ink);
     f()
 }
 

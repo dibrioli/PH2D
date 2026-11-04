@@ -115,7 +115,7 @@ fn linha_do_selector(
     ) {
         hit_index.register(alvo, row.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    row.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// ⭐ **O botão que LARGA a cutscene** — só existe quando há uma escolhida ou um nome órfão.

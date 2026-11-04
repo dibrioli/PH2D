@@ -259,7 +259,7 @@ fn clip_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    let cur_y = y + ph2d_tokens::row_pitch_px();
+    let cur_y = rotulo.fim(ph2d_tokens::row_pitch_px());
     let aviso = if vazia {
         tr("panel.inspector.actions.target_has_no_animation").to_string()
     } else if atual.is_none() && !row.arg.trim().is_empty() {

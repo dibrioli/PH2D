@@ -145,7 +145,7 @@ fn bus_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// O corpo da FONTE. Devolve o `y` seguinte.

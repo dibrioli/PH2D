@@ -130,6 +130,15 @@ pub struct PropertyRow {
     pub dot: Rect,
 }
 
+impl PropertyRow {
+    /// O `y` seguinte a esta linha, a `passo` do topo do controlo: na linha de sempre o controlo começa
+    /// na linha; num cartão ele vem abaixo do rótulo e a altura é a dele (T29).
+    #[must_use]
+    pub fn fim(&self, passo: f32) -> f32 {
+        self.control.y + passo.max(self.control.h)
+    }
+}
+
 /// ⭐⭐⭐ **ONDE O CONTROLO COMEÇA: no MEIO da linha.**
 ///
 /// ⛔⛔ **Ordem do dono, 2026-09-14, com foto dos cartões LEG/WALK/JUMP:** *«as caixas numéricas são

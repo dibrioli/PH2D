@@ -137,7 +137,7 @@ fn paint_number_chip_inner(
         } else {
             ColorToken::Bg3
         };
-        fill_rounded_rect(scene, rect, radius, resolve(bg, theme));
+        fill_rounded_rect(scene, rect, radius, crate::widget::card_ink::tinta(bg, theme));
         if focused {
             crate::paint::stroke_frame(
                 scene,
@@ -146,7 +146,7 @@ fn paint_number_chip_inner(
                 theme,
                 ph2d_tokens::visuals::Feel::Focused,
                 2.0,
-                resolve(ColorToken::Accent, theme),
+                crate::widget::card_ink::tinta(ColorToken::Accent, theme),
             );
         }
     }
@@ -222,7 +222,7 @@ fn paint_number_chip_inner(
         let sel_w = mid_w.min(text_area_right - 2.0 - sel_x);
         if sel_w > 0.0 {
             let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
-            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+            fill_rounded_rect(scene, sel_rect, 1.0, crate::widget::card_ink::tinta(ColorToken::AccentSoft, theme));
         }
     }
     // Centered text inside the reduced text-area rect (not the full chip).
@@ -240,7 +240,7 @@ fn paint_number_chip_inner(
         text_area_rect,
         orcamento,
         font_size,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
     if focused {
         let caret_clamped = caret.min(display.len());
@@ -259,14 +259,14 @@ fn paint_number_chip_inner(
             StrokeToken::Default.px(),
             (caret_bot - caret_top).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
+        fill_rounded_rect(scene, caret_rect, 0.75, crate::widget::card_ink::tinta(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
     scene.pop_layer();
     // Stepper arrows (up + down) on the right edge — same column the
     // dispatch carves for `apply_number_stepper_if_hit`. Color tracks the
     // chip text color (Text2) — dimmer than the value text to keep the
     // chip from looking busy.
-    let icon_color = resolve(ColorToken::Text2, theme);
+    let icon_color = crate::widget::card_ink::tinta(ColorToken::Text2, theme);
     paint_icon(
         scene,
         IconId::ChevronUp,

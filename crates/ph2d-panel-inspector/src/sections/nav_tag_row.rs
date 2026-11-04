@@ -63,7 +63,7 @@ pub(super) fn tag_row(
     ) {
         hit_index.register(alvo, linha.dot);
     }
-    let mut cur_y = y + ph2d_tokens::row_pitch_px();
+    let mut cur_y = linha.fim(ph2d_tokens::row_pitch_px());
     if tag != 0 && !viva {
         cur_y = super::rows::aviso(
             scene,

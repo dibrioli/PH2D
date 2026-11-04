@@ -65,5 +65,5 @@ pub(crate) fn paint_still_frame(
         (c.w - side * 2.0 - Spacing::Xs.px() * 2.0).max(0.0),
         resolve(ColorToken::Text1, theme),
     );
-    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+    linha.fim(ROW_H_PX + ph2d_tokens::control_gap_px())
 }

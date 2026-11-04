@@ -229,13 +229,13 @@ pub fn paint_icon_button_in_group(
             );
             let radii = cell.radii(radius);
             if cell == super::GroupCell::ONLY {
-                fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+                fill_rounded_rect(scene, rect, radius, crate::widget::card_ink::tinta(ColorToken::BgElev, theme));
             } else {
                 crate::paint::fill_rounded_rect_radii(
                     scene,
                     rect,
                     radii,
-                    resolve(ColorToken::BgElev, theme),
+                    crate::widget::card_ink::tinta(ColorToken::BgElev, theme),
                 );
             }
             crate::paint::stroke_frame_radii(
@@ -245,7 +245,7 @@ pub fn paint_icon_button_in_group(
                 theme,
                 ph2d_tokens::visuals::Feel::Rest,
                 StrokeToken::Default.px(),
-                resolve(ColorToken::Border, theme),
+                crate::widget::card_ink::tinta(ColorToken::Border, theme),
             );
             // **A caixa do glifo é `Xl3` — mas ela nunca passa do botão.**
             //

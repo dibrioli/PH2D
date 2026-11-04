@@ -61,5 +61,5 @@ pub(crate) fn paint_image_row(
     }
     // ⭐ O ALVO: o clique abre o seletor e a queda de uma imagem escolhe-a (`populate.rs`).
     hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, slot);
-    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+    linha.fim(ROW_H_PX + ph2d_tokens::control_gap_px())
 }

@@ -72,13 +72,12 @@ pub fn paint_row_highlight(
     let Some(token) = highlight.token() else {
         return;
     };
-    let tint = token.resolve(theme);
     crate::paint::fill_rounded_rect(
         scene,
         Rect::new(rect.x - bleed, rect.y, rect.w + bleed * 2.0, rect.h),
         // ⛔ ZERO, e é a lei: uma linha de lista não arredonda canto nenhum.
         0.0,
-        ph2d_vector::Color::from_rgba8(tint.r, tint.g, tint.b, tint.a), // LITERAL-COLOR-OK: token-bridge
+        crate::widget::card_ink::tinta(token, theme),
     );
 }
 

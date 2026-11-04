@@ -273,5 +273,5 @@ pub fn paint_icon_choice_row<'a>(
     {
         hit_index.register(alvo, row.dot);
     }
-    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+    row.fim(ROW_H_PX + ph2d_tokens::control_gap_px())
 }

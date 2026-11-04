@@ -98,7 +98,7 @@ fn alvo(
         linha.control.w,
         resolve(cor, theme),
     );
-    let cur_y = y + ph2d_tokens::row_pitch_px();
+    let cur_y = linha.fim(ph2d_tokens::row_pitch_px());
     let rotulo = tr(if escolhendo {
         "panel.inspector.constraint.picking"
     } else {
@@ -176,7 +176,7 @@ fn forca(
     ) {
         hit_index.register(alvo, linha.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// Os ajustes do tipo (os números, as escolhas e o «Reset Offset»), na ordem que a família deu.

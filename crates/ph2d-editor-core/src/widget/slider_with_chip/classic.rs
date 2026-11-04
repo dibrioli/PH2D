@@ -65,7 +65,7 @@ pub(super) fn paint_classic_row(
         label_rect.y + (label_rect.h - font) * 0.5,
         font,
         label_rect.w,
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
 
     // Track background + filled portion — shared canonical painter so

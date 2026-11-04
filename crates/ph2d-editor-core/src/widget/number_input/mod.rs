@@ -376,7 +376,7 @@ pub fn paint_number_input_with_buffer(
             let sel_top = rect.y + Spacing::Md.px();
             let sel_bot = rect.y + rect.h - Spacing::Md.px();
             let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
-            fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
+            fill_rounded_rect(scene, sel_rect, 1.0, crate::widget::card_ink::tinta(ColorToken::AccentSoft, theme));
         }
     }
     paint_text(
@@ -387,7 +387,7 @@ pub fn paint_number_input_with_buffer(
         inner_y,
         font_size,
         inner_w,
-        resolve(label_color, theme),
+        crate::widget::card_ink::tinta(label_color, theme),
     );
     // ⭐⭐ **A UNIDADE, colada ao número** — ver [`NumberInput::suffix`]. Ela entra aqui, DENTRO do
     //    mesmo recorte do valor, e não num chip à direita: com o campo afundado, um segundo
@@ -426,7 +426,7 @@ pub fn paint_number_input_with_buffer(
                 inner_y,
                 font_size,
                 suffix_w,
-                resolve(
+                crate::widget::card_ink::tinta(
                     if input.text_dimmed() {
                         ColorToken::TextDisabled
                     } else {
@@ -455,11 +455,11 @@ pub fn paint_number_input_with_buffer(
             StrokeToken::Default.px(),
             (caret_bot - caret_top).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, resolve(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
+        fill_rounded_rect(scene, caret_rect, 0.75, crate::widget::card_ink::tinta(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
     scene.pop_layer();
 
-    let icon_color = resolve(ColorToken::Text2, theme);
+    let icon_color = crate::widget::card_ink::tinta(ColorToken::Text2, theme);
     paint_icon(
         scene,
         IconId::ChevronUp,

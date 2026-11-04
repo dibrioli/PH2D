@@ -285,7 +285,7 @@ fn linha_da_aresta(
     ) {
         hit_index.register(alvo, linha.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// O editor do gatilho aberto. Devolve o `y` seguinte.

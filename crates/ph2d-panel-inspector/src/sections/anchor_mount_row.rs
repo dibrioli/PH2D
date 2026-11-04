@@ -114,16 +114,18 @@ pub(crate) fn paint_mount_row(
     // comentário dizia *«igual à da §7»*: uma cópia a prometer que acompanharia outra.
     // ⭐⭐ E desde 15/09 é a coluna da SECÇÃO — ver [`seccao`].
     let font = TypeToken::Sm.px();
-    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, seccao(text_system));
-    ph2d_editor_core::widget::paint_property_label(
-        text_system,
+    let sec = seccao(text_system);
+    let rotulo = tr("component.field.anchor_mount.1");
+    let row = ph2d_editor_core::property_row::paint_label_row(
         scene,
-        tr("component.field.anchor_mount.1"),
-        row.label.x,
-        row.label.y + (h - font) * 0.5,
-        font,
-        row.label.w,
-        resolve(ColorToken::Text2, theme),
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        h,
+        rotulo,
+        sec,
     );
     let (dot, rect) = (row.dot, row.control);
     hit_index.register(ids::INSP_MOUNT_PICK, rect);
@@ -155,7 +157,7 @@ pub(crate) fn paint_mount_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    let mut cur_y = y + h;
+    let mut cur_y = row.fim(h);
 
     if info.mount_dangling() {
         cur_y += Spacing::Xs.px();

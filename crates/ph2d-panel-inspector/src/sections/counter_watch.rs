@@ -293,7 +293,7 @@ fn linha_da_comparacao(
     ) {
         hit_index.register(alvo, linha.dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// O editor da regra aberta. Devolve o `y` seguinte.

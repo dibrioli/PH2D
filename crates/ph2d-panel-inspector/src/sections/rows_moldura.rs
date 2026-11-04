@@ -115,7 +115,8 @@ fn moldura(
         scene,
         card,
         radius,
-        resolve(
+        // O degrau de subsecção do tema em que o cartão se pinta (T59, aprovado), não a caixa dele.
+        ph2d_editor_core::paint::resolve(
             ph2d_editor_core::widget::section_cards::CardDepth::Subsection.token(),
             theme,
         ),

@@ -409,7 +409,7 @@ fn paint_provenance(
             resolve(ColorToken::Text1, theme),
         );
     });
-    let mut cur_y = y + ROW_H_PX + row_gap;
+    let mut cur_y = linha.fim(ROW_H_PX + row_gap);
     // ⚠️ **O TAMANHO de origem fica ao lado da ranhura**, e não numa função irmã: as duas são a
     // mesma pergunta — *de onde vêm estes pixels, e que tamanho tinham* —, e separá-las custou ao
     // pai o tecto de 200 LOC por uma chamada.
@@ -433,12 +433,12 @@ fn paint_provenance(
                 &[("pw", &pw), ("ph", &ph)],
             ),
             tamanho.control.x,
-            tamanho.control.y + (ROW_H_PX - label_font) * 0.5,
+            tamanho.control.y + (tamanho.control.h - label_font) * 0.5,
             label_font,
             tamanho.control.w,
             resolve(ColorToken::Text1, theme),
         );
-        cur_y += ROW_H_PX + row_gap;
+        cur_y = tamanho.fim(ROW_H_PX + row_gap);
     }
     cur_y
 }

@@ -267,7 +267,7 @@ fn verb_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// ⭐⭐⭐ **A QUEM esta acção acerta** (TOP-20 #9, W3b) — o segmentado `Name | Tag` e, por baixo, o
@@ -456,7 +456,7 @@ fn tag_pick_row(
         crate::state_popovers::set_pending_action_tag_dd(Some(rect));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }
 
 /// **As opções: a árvore inteira do projecto**, indentada pela profundidade.

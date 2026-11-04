@@ -59,6 +59,16 @@ impl CardInk {
         token_to_vello(card_tone(self.theme, tom))
     }
 
+    /// O fundo deste cartão no valor do token, para quem mistura a partir dele (a listra da lista).
+    #[must_use]
+    pub fn superficie(self) -> ph2d_tokens::Color {
+        if self.own {
+            card_tone(self.theme, CardTone::Surface)
+        } else {
+            ColorToken::KanbanCard.resolve(self.theme)
+        }
+    }
+
     /// Os tokens de TINTA do Kanban que, num cartão com tema próprio, são os do tema.
     const fn own_token(token: ColorToken) -> ColorToken {
         match token {
@@ -157,6 +167,8 @@ const fn papel_no_cartao(token: ColorToken) -> ColorToken {
         ColorToken::Accent => ColorToken::KanbanBlueBold,
         ColorToken::AccentFg => ColorToken::KanbanBtnOnFg,
         ColorToken::Bg2 => ColorToken::CardFieldHover,
+        ColorToken::Bg1 => ColorToken::CardField,
+        ColorToken::BgElev | ColorToken::Bg3 => ColorToken::KanbanCardRaised,
         other => other,
     }
 }

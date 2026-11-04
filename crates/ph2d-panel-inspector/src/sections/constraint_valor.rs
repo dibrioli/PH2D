@@ -65,5 +65,5 @@ pub(super) fn propriedade(
         crate::state_popovers::set_pending_constraint_prop(Some(((k, j), linha.control)));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
-    y + ph2d_tokens::row_pitch_px()
+    linha.fim(ph2d_tokens::row_pitch_px())
 }

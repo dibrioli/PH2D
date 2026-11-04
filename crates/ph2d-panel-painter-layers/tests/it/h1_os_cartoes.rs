@@ -28,21 +28,26 @@ const COLUNA: Rect = Rect {
     h: 6000.0,
 };
 
-const PAINEL: NodeId = core_ids::PAINTER_LAYERS_PANEL;
+pub(super) const PAINEL: NodeId = core_ids::PAINTER_LAYERS_PANEL;
 
-struct Mesa {
-    host: MockPanelHost,
-    st: PainterLayersPanelState,
-    rects: Vec<(NodeId, Rect)>,
-    janela: Rect,
+pub(super) struct Mesa {
+    pub(super) host: MockPanelHost,
+    pub(super) st: PainterLayersPanelState,
+    pub(super) rects: Vec<(NodeId, Rect)>,
+    pub(super) janela: Rect,
 }
 
 impl Mesa {
-    fn nova(cartoes: bool, brush: BrushSettings, camadas: bool) -> Self {
+    pub(super) fn nova(cartoes: bool, brush: BrushSettings, camadas: bool) -> Self {
         Self::na_janela(cartoes, brush, camadas, COLUNA)
     }
 
-    fn na_janela(cartoes: bool, brush: BrushSettings, camadas: bool, janela: Rect) -> Self {
+    pub(super) fn na_janela(
+        cartoes: bool,
+        brush: BrushSettings,
+        camadas: bool,
+        janela: Rect,
+    ) -> Self {
         force_cards_on_this_thread(Some(cartoes));
         set_current_brush(Some(brush));
         set_current_dock_shows_layers(camadas);
@@ -60,13 +65,13 @@ impl Mesa {
         mesa
     }
 
-    fn assenta(&mut self) {
+    pub(super) fn assenta(&mut self) {
         for _ in 0..60 {
             self.quadro();
         }
     }
 
-    fn quadro(&mut self) {
+    pub(super) fn quadro(&mut self) {
         let (h, st, j) = (&mut self.host, &mut self.st, self.janela);
         self.rects = ph2d_editor_core::aquecimento::com_passo_fixo(
             ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
@@ -74,7 +79,7 @@ impl Mesa {
         );
     }
 
-    fn ids(&self) -> BTreeSet<NodeId> {
+    pub(super) fn ids(&self) -> BTreeSet<NodeId> {
         self.rects
             .iter()
             .filter(|(_, r)| r.w > 0.0 && r.h > 0.0)
@@ -82,7 +87,7 @@ impl Mesa {
             .collect()
     }
 
-    fn rect(&self, id: NodeId) -> Option<Rect> {
+    pub(super) fn rect(&self, id: NodeId) -> Option<Rect> {
         self.rects
             .iter()
             .rev()
@@ -90,7 +95,7 @@ impl Mesa {
             .map(|(_, r)| *r)
     }
 
-    fn aplica(&mut self, eventos: Vec<WidgetEvent>) -> Vec<String> {
+    pub(super) fn aplica(&mut self, eventos: Vec<WidgetEvent>) -> Vec<String> {
         let _ = self.host.drained_actions();
         for e in eventos {
             self.host
@@ -103,7 +108,7 @@ impl Mesa {
             .collect()
     }
 
-    fn clica(&mut self, id: NodeId) -> Vec<String> {
+    pub(super) fn clica(&mut self, id: NodeId) -> Vec<String> {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não pintado"));
@@ -113,7 +118,7 @@ impl Mesa {
         self.aplica(ev)
     }
 
-    fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
+    pub(super) fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
         self.host.dispatch_pointer_event(PointerEvent {
             kind,
             x,
@@ -125,7 +130,7 @@ impl Mesa {
         })
     }
 
-    fn arrasta_a_pega(&mut self, id: NodeId, dx: f32) -> Vec<WidgetEvent> {
+    pub(super) fn arrasta_a_pega(&mut self, id: NodeId, dx: f32) -> Vec<WidgetEvent> {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não pintado"));
@@ -137,7 +142,7 @@ impl Mesa {
     }
 
     /// Dobra todos os cartões menos estes: numa lista alta, o que passa da janela não regista alvo.
-    fn so_abertos(&mut self, abertos: &[NodeId]) {
+    pub(super) fn so_abertos(&mut self, abertos: &[NodeId]) {
         for s in TODAS {
             self.host
                 .store_mut()
@@ -152,7 +157,7 @@ impl Mesa {
 }
 
 /// O pincel de uma ferramenta num meio, pela porta gravada do painel.
-fn pincel(meio: PaintMedia, modo: &str) -> (BrushSettings, BTreeSet<NodeId>) {
+pub(super) fn pincel(meio: PaintMedia, modo: &str) -> (BrushSettings, BTreeSet<NodeId>) {
     let mut b = Bancada::nova(meio, &[]);
     b.no_modo(modo);
     b.host.open_all_sections();
@@ -179,9 +184,12 @@ const TODAS: &[NodeId] = &[
     p::PAINTER_BRUSH_TILING_SECTION,
 ];
 
-/// O que o painel de antes pinta e a lista já não: a barra dos nativos e a barra de rolagem antiga. Nada mais.
-fn saiu_de_proposito(id: NodeId) -> bool {
+/// O que o painel de antes pinta e a lista já não: as barras dos nativos e a barra de rolagem antiga. Nada mais.
+pub(super) fn saiu_de_proposito(id: NodeId) -> bool {
     id == p::PAINTER_BRUSH_SYMMETRY_SEGMENTS
+        || id == p::PAINTER_BRUSH_SIZE_SLIDER
+        || id == p::PAINTER_BRUSH_STRENGTH_SLIDER
+        || id == p::PAINTER_BRUSH_FLOW_SLIDER
         || id == ph2d_editor_core::widget::PAINTER_LAYERS_SCROLLBAR_ID
 }
 
@@ -272,15 +280,15 @@ fn every_click_sends_the_same_action_as_the_old_panel() {
     }
 }
 
-fn valor_enviado(accoes: &[String], id: NodeId) -> Option<f64> {
-    let marca = format!("ValueChanged({id:?}, ");
+pub(super) fn valor_enviado(accoes: &[String], id: NodeId) -> Option<f64> {
+    let marca = format!("SetValue({id:?}, ");
     accoes.iter().rev().find_map(|a| {
         let resto = a.split(&marca).nth(1)?;
         resto.split(')').next()?.trim().parse().ok()
     })
 }
 
-fn esc(mesa: &mut Mesa) -> Vec<String> {
+pub(super) fn esc(mesa: &mut Mesa) -> Vec<String> {
     let arena = bumpalo::Bump::new();
     let tecla = ph2d_host::KeyEvent {
         keycode: 0x1B,

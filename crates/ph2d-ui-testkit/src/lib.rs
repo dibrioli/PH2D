@@ -125,6 +125,7 @@ pub struct MockPanelHost {
 }
 
 mod sowing;
+mod translacoes;
 
 impl MockPanelHost {
     /// An empty host: no widgets registered yet. Use [`Self::with_panel`]

@@ -20,7 +20,9 @@ mod censo_dos_controlos; // cada controlo pintado, em cada meio, muda o traço (
 mod censo_ferramenta_x_linha; // a ferramenta do trilho × cada linha do painel (23/10)
 mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod h1_contraprovas; // os mutantes da captura que a H1 deixava passar
 mod h1_os_cartoes; // o painel em cartões: a lista, a captura e os corpos nativos (04/11)
+mod h2_os_cartoes; // o topo e os básicos em linhas de cartão
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint

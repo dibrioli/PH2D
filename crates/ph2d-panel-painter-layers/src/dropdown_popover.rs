@@ -18,6 +18,12 @@ pub(crate) fn paint_dropdown_popover<T: Clone + PartialEq>(
     chip_rect: Rect,
     cur: T,
 ) {
+    // Num cartão, a caixa pinta-se depois de o pintor guardar o rect: vale onde ela está agora, mesmo num solto.
+    let chip_rect = if crate::cards::cards_on() {
+        ctx.host.hit_index_mut().rect_for(id).unwrap_or(chip_rect)
+    } else {
+        chip_rect
+    };
     let dd = Dropdown::new(id, "", options).selected(cur).open(true);
     let viewport = ctx.viewport;
     paint_dropdown_list(ctx, &dd, chip_rect, viewport, theme, None);

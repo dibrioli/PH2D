@@ -7,6 +7,7 @@
 //! atrasa um quadro enquanto ela anda. A cena e os alvos nunca atrasam.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::CardCtx;
@@ -48,7 +49,10 @@ pub(crate) fn y_de(id: NodeId, de_outro_modo: f32) -> f32 {
 
 /// Um corpo pintado à parte, pronto a repetir.
 pub(crate) struct Captura {
+    /// A chave da memória da posição: a secção, ou uma peça dela.
     id: NodeId,
+    /// A secção do cartão onde ela se repete: é ela que voa ou se solta.
+    secao: NodeId,
     cena: VectorScene,
     alvos: HitIndex,
     x: f32,
@@ -57,7 +61,6 @@ pub(crate) struct Captura {
     /// O título que o cabeçalho absorvido deu. `None` numa secção: ela não está à vista.
     pub(crate) titulo: Option<String>,
     pub(crate) reset: Option<NodeId>,
-    gravou: Cell<bool>,
 }
 
 impl Captura {
@@ -85,6 +88,7 @@ impl Captura {
         std::mem::swap(ctx.host.hit_index_mut(), &mut alvos);
         Self {
             id,
+            secao: id,
             cena,
             alvos,
             x,
@@ -92,8 +96,21 @@ impl Captura {
             fundo,
             titulo: cabecalho.map(|c| c.0),
             reset: RESET.with(Cell::get),
-            gravou: Cell::new(false),
         }
+    }
+
+    /// Um pedaço do corpo do cartão `secao` que ainda pede o `PaintCtx`.
+    pub(crate) fn da_peca(
+        ctx: &mut PaintCtx,
+        chave: NodeId,
+        secao: NodeId,
+        ink: CardInk,
+        onde: (f32, f32),
+        pintor: impl FnOnce(&mut PaintCtx, f32) -> f32,
+    ) -> Self {
+        let mut c = Self::de(ctx, chave, ink, onde, false, pintor);
+        c.secao = secao;
+        c
     }
 
     /// A altura do que pintou.
@@ -114,26 +131,28 @@ impl Captura {
             Affine::translate((f64::from(dx), f64::from(dy))),
         );
         for (id, r) in self.alvos.iter_registrations() {
-            let r = Rect::new(r.x + dx, r.y + dy, r.w, r.h);
-            match self.alvos.secondary_of(id) {
-                Some(sec) => c.hit_index.register_with_secondary(id, r, sec),
-                None => c.hit_index.register(id, r),
-            }
+            c.hit_index
+                .register(id, Rect::new(r.x + dx, r.y + dy, r.w, r.h));
         }
         self.lembra(c, y);
         y + (self.fundo - self.y)
     }
 
-    /// O 1.º passe do quadro é o que conta; o voo pinta em coordenadas locais e não entra.
+    /// O voo pinta em coordenadas locais e não entra; um solto tem o seu sítio, e não leva a coluna dos outros.
     fn lembra(&self, c: &CardCtx<'_>, y: f32) {
         let voa = c
             .store
             .card_drag()
-            .is_some_and(|d| d.active && !d.loose && d.section == self.id);
-        if voa || self.gravou.replace(true) {
+            .is_some_and(|d| d.active && !d.loose && d.section == self.secao);
+        if voa {
             return;
         }
         ONDE.with(|o| o.borrow_mut().insert(self.id, (c.x, y)));
-        COLUNA.with(|k| k.set(Some((c.x, c.w))));
+        if !c
+            .store
+            .is_loose_in(self.secao, core_ids::PAINTER_LAYERS_PANEL)
+        {
+            COLUNA.with(|k| k.set(Some((c.x, c.w))));
+        }
     }
 }

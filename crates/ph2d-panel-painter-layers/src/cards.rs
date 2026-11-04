@@ -5,7 +5,7 @@
 //! ([`crate::cards_captura`]). Em ambos o pintor antigo decide se a secção está à vista e dá o título.
 
 use crate::cards_captura::{Captura, coluna, y_de};
-use crate::{cards_nativos, paint, paint_brush, paint_brush_top, preview_pino, state};
+use crate::{cards_nativos, cards_topo, paint, paint_brush, paint_brush_top, preview_pino, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
@@ -55,7 +55,22 @@ pub fn force_cards_on_this_thread(on: Option<bool>) {
 struct Presente {
     id: NodeId,
     titulo: String,
-    captura: Captura,
+    conteudo: Conteudo,
+}
+
+/// O corpo de hoje, capturado, ou as linhas do topo e dos básicos.
+enum Conteudo {
+    Captura(Captura),
+    Linhas(Vec<cards_topo::Linha>),
+}
+
+impl Presente {
+    fn reset(&self) -> Option<NodeId> {
+        match &self.conteudo {
+            Conteudo::Captura(c) => c.reset,
+            Conteudo::Linhas(_) => None,
+        }
+    }
 }
 
 /// Corre as secções do pincel, e fica com as que estão à vista.
@@ -95,6 +110,21 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
     let mut presentes = Vec::with_capacity(entradas.len());
     for (id, absorve, tarefa) in entradas {
         let ink = CardInk::of_card(ctx.host.store().section_theme(id), theme);
+        if id == pids::PAINTER_CARD_TOPO || id == pids::PAINTER_CARD_BASICOS {
+            let linhas = if id == pids::PAINTER_CARD_TOPO {
+                cards_topo::do_topo(ctx, ink, (x, w), brush)
+            } else {
+                cards_topo::dos_basicos(ctx, ink, (x, w), brush)
+            };
+            if !linhas.is_empty() {
+                presentes.push(Presente {
+                    id,
+                    titulo: titulo_do_bloco(id, &brush),
+                    conteudo: Conteudo::Linhas(linhas),
+                });
+            }
+            continue;
+        }
         let tema = ink.theme;
         let posicao = (x, y_de(id, topo));
         let captura = Captura::de(ctx, id, ink, posicao, absorve, |ctx, y| {
@@ -109,7 +139,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
             presentes.push(Presente {
                 id,
                 titulo,
-                captura,
+                conteudo: Conteudo::Captura(captura),
             });
         }
     }
@@ -164,7 +194,7 @@ fn cartao_das_camadas(ctx: &mut PaintCtx, theme: Theme) -> (Presente, Fileiras) 
         Presente {
             id,
             titulo: tr("panel.painter_layers.layers.layers").to_owned(),
-            captura,
+            conteudo: Conteudo::Captura(captura),
         },
         (linhas, fantasma),
     )
@@ -202,16 +232,20 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
     presentes
         .iter()
         .map(|p| {
-            let body: CardBody<'a> = match cards_nativos::corpo(p.id) {
-                Some(f) => Box::new(f),
-                None => Box::new(move |c: &mut CardCtx<'_>, y| p.captura.repete(c, y)),
+            let body: CardBody<'a> = match (cards_nativos::corpo(p.id), &p.conteudo) {
+                (Some(f), _) => Box::new(f),
+                (None, Conteudo::Captura(cap)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cap.repete(c, y))
+                }
+                (None, Conteudo::Linhas(l)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_topo::corpo(c, l, y))
+                }
             };
             CardDef {
                 section: p.id,
                 title: &p.titulo,
                 actions: p
-                    .captura
-                    .reset
+                    .reset()
                     .map(|id| HeadAction {
                         id,
                         icon: IconId::Reset,
@@ -248,9 +282,13 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     } else {
         (secoes_do_pincel(ctx, theme), None)
     };
+    let pincel = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     cards_nativos::prepare(ctx.host.store_mut());
+    if !camadas {
+        cards_topo::prepare(ctx.host.store_mut(), &pincel);
+    }
     for p in &presentes {
-        if let Some(id) = p.captura.reset
+        if let Some(id) = p.reset()
             && ctx.host.store().tooltip_for(id).is_none()
         {
             ctx.host
@@ -305,6 +343,9 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
                 .set_panel_row_ids(PanelRowFamily::PainterLayer, linhas);
             paint::paint_layers_popovers(ctx, theme, fantasma);
         }
-        None => paint::paint_brush_view_popovers(ctx, theme),
+        None => {
+            cards_topo::listas_abertas(ctx, &pincel);
+            paint::paint_brush_view_popovers(ctx, theme);
+        }
     }
 }

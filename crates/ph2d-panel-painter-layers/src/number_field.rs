@@ -83,7 +83,7 @@ fn fmt_val(v: f32, decimals: usize) -> String {
 
 /// Register (if absent) + mirror the live `value` into the store's `NumberInput` when unfocused, with a
 /// `decimals`-formatted buffer (mirror of the Inspector's per-frame sync).
-fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize) {
+pub(crate) fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize) {
     let text = fmt_val(value, decimals);
     let _ = store.register_if_absent(
         id,

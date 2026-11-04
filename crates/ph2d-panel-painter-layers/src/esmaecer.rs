@@ -43,9 +43,20 @@ pub(crate) fn talvez_esmaecido<R>(
     ids: &[NodeId],
     pintar: impl FnOnce(&mut PaintCtx) -> R,
 ) -> R {
+    if poe_dica(ctx.host.store_mut(), ids).is_none() {
+        return pintar(ctx);
+    }
+    esmaecido(ctx, theme, area, pintar)
+}
+
+/// Põe (ou tira) a dica de inércia de cada id, e devolve-a. O corpo de um cartão não escreve no store: lá isto
+/// corre no `prepare`.
+pub(crate) fn poe_dica(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    ids: &[NodeId],
+) -> Option<&'static str> {
     let dica = dica(ids);
     for id in ids {
-        let store = ctx.host.store_mut();
         match dica {
             Some(chave) => store.set_tooltip(*id, tr(chave)),
             None if store.tooltip_for(*id).is_some_and(e_dica_de_inercia) => {
@@ -54,10 +65,7 @@ pub(crate) fn talvez_esmaecido<R>(
             None => {}
         }
     }
-    if dica.is_none() {
-        return pintar(ctx);
-    }
-    esmaecido(ctx, theme, area, pintar)
+    dica
 }
 
 /// **Pinta `pintar` esmaecido, sempre** — com o mesmo alfa da linha inerte. O chamador decide; para um

@@ -75,7 +75,7 @@ pub(crate) fn paint_wetpaint_presets(
 
 /// Os volumes VIVOS do Wet Paint: Size px (o diâmetro do anel) · Dilution · Volume (µm) no Pincel; Size · Water
 /// na ferramenta Wet (E10-B2).
-fn paint_volumes(
+pub(crate) fn paint_volumes(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -244,21 +244,7 @@ fn paint_navegador(
         );
     }
     y = paint_preview(ctx, theme, x, content_w, y);
-    // Sem preset activo não há o que guardar por cima nem o que repor: só «Save as New».
-    let mut botoes = vec![(
-        ids::PAINTER_WETPAINT_PRESET_SAVE_NEW,
-        tr("panel.painter_layers.wetpaint.preset_save_new").to_owned(),
-    )];
-    if ativo.is_some() {
-        botoes.push((
-            ids::PAINTER_WETPAINT_PRESET_SAVE_DEFAULT,
-            tr("panel.painter_layers.wetpaint.preset_save_default").to_owned(),
-        ));
-        botoes.push((
-            ids::PAINTER_WETPAINT_PRESET_RESET,
-            tr("panel.painter_layers.wetpaint.preset_reset").to_owned(),
-        ));
-    }
+    let botoes = crate::paint_wetpaint_presets_biblioteca::botoes_de_guardar(v);
     let y = crate::paint_seg_row::seg_row_owned(
         ctx,
         theme,
@@ -276,7 +262,7 @@ fn paint_navegador(
 /// O preview VIVO: o pincel de agora sobre a obra de agora, o quadro que a ponte publica (ela repinta-o
 /// numa thread a cada mudança e toca a animação do traço uma vez). Fixada pelo pino, ela mora na faixa
 /// por cima do corpo ([`crate::preview_pino`]) e não aqui.
-fn paint_preview(
+pub(crate) fn paint_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -338,7 +324,7 @@ fn volume_row(
     ny
 }
 
-fn nome_da_politica(i: u8) -> &'static str {
+pub(crate) fn nome_da_politica(i: u8) -> &'static str {
     match i {
         0 => tr("panel.painter_layers.wetpaint.policy_volumes_and_mode"),
         1 => tr("panel.painter_layers.wetpaint.policy_volumes"),

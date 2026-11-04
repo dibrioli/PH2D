@@ -160,12 +160,6 @@ const FORA: &[(&str, &str, &str)] = &[
         "a irmã da de cima na câmera (o `Cull Mask`): a mesma grelha de 32 bits, o nome é o \
          cabeçalho dobrável dela — o censo só a viu quando o clique nele deixou de estar morto",
     ),
-    (
-        "painter_layers",
-        "painter_sidebar.toggle_dock",
-        "as ABAS do painel (Brush · Layers): uma navegação entre vistas, pedida assim pelo dono \
-         (2026-09-09), e não uma propriedade — um nome ao lado dela não diria nada",
-    ),
 ];
 
 /// ⭐⭐⭐ **NENHUMA ESCOLHA DO APP É MONTADA À MÃO** — todo grupo segmentado a toda a largura, em

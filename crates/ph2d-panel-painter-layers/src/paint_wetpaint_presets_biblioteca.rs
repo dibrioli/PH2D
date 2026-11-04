@@ -28,6 +28,25 @@ thread_local! {
     static ARMADO: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
+/// Save as New · Save as Default · Reset. Sem preset activo não há o que guardar por cima nem o que repor.
+pub(crate) fn botoes_de_guardar(v: &VistaPresets) -> Vec<(ph2d_a11y::NodeId, String)> {
+    let mut botoes = vec![(
+        ids::PAINTER_WETPAINT_PRESET_SAVE_NEW,
+        tr("panel.painter_layers.wetpaint.preset_save_new").to_owned(),
+    )];
+    if v.ativo.as_deref().and_then(|r| v.procurar(r)).is_some() {
+        botoes.push((
+            ids::PAINTER_WETPAINT_PRESET_SAVE_DEFAULT,
+            tr("panel.painter_layers.wetpaint.preset_save_default").to_owned(),
+        ));
+        botoes.push((
+            ids::PAINTER_WETPAINT_PRESET_RESET,
+            tr("panel.painter_layers.wetpaint.preset_reset").to_owned(),
+        ));
+    }
+    botoes
+}
+
 /// A fileira «Preset library»; devolve o `y` seguinte.
 pub(crate) fn paint_biblioteca(
     ctx: &mut PaintCtx,
@@ -37,6 +56,21 @@ pub(crate) fn paint_biblioteca(
     y: f32,
     v: &VistaPresets,
 ) -> f32 {
+    crate::paint_seg_row::seg_row_owned(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ids::PAINTER_WETPAINT_PRESET_IMPORT,
+        tr("panel.painter_layers.wetpaint.preset_library"),
+        &botoes_da_biblioteca(v),
+        usize::MAX,
+    )
+}
+
+/// Import · Export · Delete · Reset positions, cada um só quando serve.
+pub(crate) fn botoes_da_biblioteca(v: &VistaPresets) -> Vec<(ph2d_a11y::NodeId, String)> {
     let ativo = v.ativo.as_deref().and_then(|r| v.procurar(r));
     let mut botoes = vec![(
         ids::PAINTER_WETPAINT_PRESET_IMPORT,
@@ -60,17 +94,7 @@ pub(crate) fn paint_biblioteca(
             tr("panel.painter_layers.wetpaint.preset_reset_order").to_owned(),
         ));
     }
-    crate::paint_seg_row::seg_row_owned(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        ids::PAINTER_WETPAINT_PRESET_IMPORT,
-        tr("panel.painter_layers.wetpaint.preset_library"),
-        &botoes,
-        usize::MAX,
-    )
+    botoes
 }
 
 /// O popover do Preset aberto: pinta, publica as linhas arrastáveis (as faixas VISÍVEIS, as mesmas que

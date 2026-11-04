@@ -61,6 +61,20 @@ pub(crate) fn paint_brush_body(
     // more: the eight verbs are entries in the Impasto section's TOOL list, which is the single home for
     // everything that acts on the paint's body (Enio 2026-07-19). Nothing replaces it at the top; the
     // section carries it, down with Material and Lighting where the rest of the subject lives.
+    prepara_a_cor(ctx, brush);
+    plano_do_corpo(x, content_w, brush).corre(
+        ctx,
+        core_ids::PAINTER_LAYERS_PANEL,
+        theme,
+        x,
+        content_w,
+        ph2d_editor_core::panel::rows::section_header_h(),
+        top_y,
+    )
+}
+
+/// A cor do pincel, antes de pintar o corpo: em qualquer das duas caras do painel.
+pub(crate) fn prepara_a_cor(ctx: &mut PaintCtx, brush: BrushSettings) {
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
     // Keep the store's swatch colour synced to the brush colour while the picker is CLOSED, so the
@@ -72,10 +86,13 @@ pub(crate) fn paint_brush_body(
             .store_mut()
             .set_widget_color(core_ids::PAINTER_COLOR_THUMB, [r, g, b, 255]);
     }
+}
 
-    // ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) — a
-    //    lei da ordem, do tema por secção, da marca de queda e do fantasma é a partilhada
-    //    ([`PlanoCtx`]); quem se arrasta e quem fica no lugar está em [`crate::plano_corpo`].
+/// ⭐⭐⭐ **O corpo é uma LISTA** (ordem do dono, 2026-09-30: *«siga com os outros painéis»*) — a lei da
+/// ordem, do tema por secção, da marca de queda e do fantasma é a partilhada ([`PlanoCtx`]); quem se
+/// arrasta e quem fica no lugar está em [`crate::plano_corpo`]. Os dois primeiros blocos e o da mistura
+/// são os cartões sem secção de [`crate::cards::BLOCOS`], por esta ordem.
+pub(crate) fn plano_do_corpo<'s>(x: f32, content_w: f32, brush: BrushSettings) -> PlanoCtx<'s> {
     let mut plano = PlanoCtx::new();
 
     // O cartão do TOPO: **Paint Mode** (dono 22/10: o modo primeiro, porque ele reinterpreta tudo o que
@@ -125,15 +142,7 @@ pub(crate) fn paint_brush_body(
     plano.bloco(move |ctx, theme, y| paint_top_basics(ctx, theme, x, content_w, y, brush));
 
     crate::paint_brush_sections::declara_aparencia(&mut plano, x, content_w, brush);
-    plano.corre(
-        ctx,
-        core_ids::PAINTER_LAYERS_PANEL,
-        theme,
-        x,
-        content_w,
-        ph2d_editor_core::panel::rows::section_header_h(),
-        top_y,
-    )
+    plano
 }
 
 /// Os controles que TODO pincel tem — Blend · Color · Size · Strength · Accumulate · Falloff, na

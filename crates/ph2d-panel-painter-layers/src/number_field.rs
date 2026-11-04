@@ -96,7 +96,11 @@ fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize
             selection_anchor: None,
         },
     );
+    // O scrub do campo de um cartão não dá foco: sem isto, a ferramenta reescrevia o valor a meio do gesto.
+    let no_scrub =
+        crate::cards::cards_on() && store.number_input_drag().is_some_and(|d| d.id == id);
     if store.focus_id() != Some(id)
+        && !no_scrub
         && let Some(InteractiveState::NumberInput {
             value: v,
             buffer,

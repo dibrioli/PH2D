@@ -37,7 +37,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// Exercises `populate` (button registered) → `event.rs` (chrome allowlist arm).
 #[test]
 fn add_layer_click_forwards_specific_id() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
 
     // The exact id a real pointer click on the "+ Layer" button carries.
@@ -78,7 +78,7 @@ fn add_layer_click_forwards_specific_id() {
 /// curve stays smooth. This test pins the panel to `Ignored`.
 #[test]
 fn falloff_handle_menu_click_is_not_consumed_by_panel() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
 
     for id in [
@@ -105,7 +105,7 @@ fn falloff_handle_menu_click_is_not_consumed_by_panel() {
 /// `CancelActiveTool` (canon BgRemoval/Painter sidebar), not a ToolPanelEvent.
 #[test]
 fn close_button_forwards_cancel_active_tool() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
 
     let outcome = host.apply_panel_event::<PainterLayersPanel>(
@@ -138,7 +138,7 @@ fn close_button_forwards_cancel_active_tool() {
 /// by the tool's `toggle_brush_space_attenuation` arm) — the surviving Stroke-section toggle.
 #[test]
 fn stroke_adjust_strength_toggle_forwards_click() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN;
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(id));
@@ -162,7 +162,7 @@ fn stroke_adjust_strength_toggle_forwards_click() {
 /// tool's `set_brush_spacing` arm). All Stroke sliders ride the same `event.rs` arm.
 #[test]
 fn stroke_spacing_slider_forwards_setvalue() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING;
     let outcome =
@@ -188,7 +188,7 @@ fn stroke_spacing_slider_forwards_setvalue() {
 /// slider, not the removed toggle) + the `event.rs` drain are both wired.
 #[test]
 fn stroke_stabilizer_slider_forwards_setvalue() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_STABILIZE;
     let outcome =
@@ -214,7 +214,7 @@ fn stroke_stabilizer_slider_forwards_setvalue() {
 /// Pins the option-id ↔ decode round-trip for the Stroke Method chip.
 #[test]
 fn stroke_method_option_forwards_selectoption() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let opt = ph2d_tool_painter::ids::painter_brush_stroke_method_option_id(4);
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
@@ -239,7 +239,7 @@ fn stroke_method_option_forwards_selectoption() {
 /// (its own id namespace, distinct from the Grain picker) — the seam that reaches `set_brush_paper_kind`.
 #[test]
 fn paper_kind_option_forwards_selectoption() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let opt = ph2d_tool_painter::ids::painter_paper_kind_option_id(26); // Paper Cold Press
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
@@ -270,7 +270,7 @@ fn paper_kind_option_forwards_selectoption() {
 #[test]
 fn symmetry_click_controls_forward_their_click() {
     for clicked in ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -295,7 +295,7 @@ fn symmetry_click_controls_forward_their_click() {
 /// the tool's `set_symmetry_segments` arm, which maps the `0..1` track onto the 3..12 count).
 #[test]
 fn symmetry_segments_slider_forwards_setvalue() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS;
     let outcome =
@@ -337,7 +337,7 @@ fn stroke_apply_buttons_forward_their_click() {
         ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD,
         ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE,
     ] {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -368,7 +368,7 @@ fn selection_curve_buttons_forward_their_click() {
         ph2d_tool_painter::ids::PAINTER_SEL_MERGE,
         ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY,
     ] {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -399,7 +399,7 @@ fn selection_curve_buttons_forward_their_click() {
 #[test]
 fn watercolor_click_controls_forward_their_click() {
     for clicked in ph2d_tool_painter::ids::PAINTER_WATERCOLOR_CLICKS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -426,7 +426,7 @@ fn watercolor_click_controls_forward_their_click() {
 #[test]
 fn watercolor_sliders_forward_setvalue() {
     for id in ph2d_tool_painter::ids::PAINTER_WATERCOLOR_FIELDS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
@@ -455,7 +455,7 @@ fn watercolor_sliders_forward_setvalue() {
 /// `SelectOption(shape_layer_blend_id(0), "1")` (consumed by `set_brush_shape_layer_blend`).
 #[test]
 fn shape_layer_blend_option_forwards_selectoption() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let opt = ph2d_tool_painter::ids::painter_shape_layer_blend_option_id(0, 1);
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
@@ -480,7 +480,7 @@ fn shape_layer_blend_option_forwards_selectoption() {
 /// `set_brush_shape_layer_opacity` arm, which edits the source document layer's opacity).
 #[test]
 fn shape_layer_opacity_forwards_setvalue() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let id = ph2d_tool_painter::ids::painter_shape_layer_opacity_id(0);
     let outcome =
@@ -506,7 +506,7 @@ fn shape_layer_opacity_forwards_setvalue() {
 #[test]
 fn shape_watercolor_automatic_forwards_its_click() {
     let clicked = ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let outcome =
         host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -536,7 +536,7 @@ fn shape_watercolor_automatic_forwards_its_click() {
 #[test]
 fn impasto_click_controls_forward_their_click() {
     for clicked in ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -562,7 +562,7 @@ fn impasto_click_controls_forward_their_click() {
 #[test]
 fn impasto_sliders_forward_setvalue() {
     for id in ph2d_tool_painter::ids::PAINTER_IMPASTO_FIELDS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let outcome =
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
@@ -619,7 +619,7 @@ fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
             "fixture: o toggle de impasto não pegou"
         );
         set_current_brush(Some(bs));
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         host.paint::<PainterLayersPanel>(&mut st, viewport())
             .iter()
@@ -652,7 +652,7 @@ fn impasto_hides_the_accumulate_row_but_it_is_alive_without_it() {
 #[test]
 fn wetpaint_reset_click_forwards_through_the_panel() {
     let clicked = ph2d_tool_painter::ids::PAINTER_WETPAINT_RESET;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
     let outcome =
         host.apply_panel_event::<PainterLayersPanel>(&mut panel_state, WidgetEvent::Click(clicked));
@@ -713,7 +713,7 @@ fn the_strength_slider_hides_in_wet_paint_and_in_the_wash() {
         tool.set_paint_tool_mode(mode);
         tool.set_paint_media(media);
         set_current_brush(Some(tool.brush_settings()));
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         host.paint::<PainterLayersPanel>(&mut st, viewport())
             .iter()

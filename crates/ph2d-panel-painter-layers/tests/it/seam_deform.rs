@@ -87,7 +87,7 @@ fn click_through(
 #[test]
 fn clicking_affect_relief_flips_the_toggle() {
     let mut tool = tool_in_deform_with_relief();
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     assert!(
@@ -161,7 +161,7 @@ fn the_row_does_not_exist_on_a_layer_with_no_relief() {
     assert!(bs.is_deform && !bs.deform_layer_has_relief);
     set_current_brush(Some(bs));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     assert!(

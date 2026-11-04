@@ -165,7 +165,7 @@ fn the_sculpt_wire_enters_sculpt_mode() {
 #[test]
 fn clicking_the_sharpen_chip_selects_sharpen() {
     let mut tool = tool_in_sculpt();
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     assert_eq!(
@@ -229,7 +229,7 @@ fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
             // stroke to act on, and the sweep must not demand a button the card is right to withhold.
             let tool = tool_in_sculpt_with_a_stroke(verb);
             let _ = &tool;
-            let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+            let mut host = crate::host_de_antes();
             let mut st = PainterLayersPanelState;
             let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
 
@@ -270,7 +270,7 @@ fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
 #[test]
 fn the_radius_slider_is_wired_to_the_tool() {
     let mut tool = tool_in_sculpt();
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
@@ -340,7 +340,7 @@ fn the_offset_slider_is_wired_to_the_tool() {
     tool.set_sculpt_mode(3); // Scrape — where the Offset row lives
     set_current_brush(Some(tool.brush_settings()));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
@@ -432,7 +432,7 @@ fn the_radius_chip_shows_the_pixels_the_kernel_uses() {
     // The assertion is not "the mapping is (15, 1)" but the property that number is FOR: the chip's
     // mapping and the kernel's radius are the same function of the track. Pin the constant instead and
     // the two are free to drift apart while the gate applauds.
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (scale, offset) = host
@@ -470,7 +470,7 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
          blend mode to a tool that writes neither"
     );
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
@@ -532,7 +532,7 @@ fn every_verb_paints_exactly_the_knobs_it_uses() {
         tool.set_sculpt_mode(mode);
         set_current_brush(Some(tool.brush_settings()));
 
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
         let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
@@ -573,7 +573,7 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     tool.set_sculpt_mode(6); // Layer
     set_current_brush(Some(tool.brush_settings()));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
@@ -620,7 +620,7 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
     tool.set_sculpt_mode(5); // Chisel
     set_current_brush(Some(tool.brush_settings()));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
@@ -690,7 +690,7 @@ fn the_smoothness_slider_is_wired_to_the_tool() {
     tool.set_sculpt_mode(INFLATE);
     set_current_brush(Some(tool.brush_settings()));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let Some((_, rect)) = painted
@@ -783,7 +783,7 @@ fn clicking_filter_layer_filters_the_whole_layer() {
     );
     set_current_brush(Some(bs));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (_, rect) = painted
@@ -826,7 +826,7 @@ fn the_filter_button_is_not_offered_for_a_footprint_fitted_verb() {
         !tool.brush_settings().sculpt_filters,
         "fixture: the Chisel's target is a fitted plane — the tool must say it cannot be filtered"
     );
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     assert!(
@@ -891,7 +891,7 @@ fn clicking_filter_stroke_filters_only_the_last_stroke() {
     );
     set_current_brush(Some(bs));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let (_, rect) = painted
@@ -941,7 +941,7 @@ fn the_filter_stroke_button_waits_for_a_stroke_to_exist() {
         !tool.brush_settings().sculpt_can_filter_stroke,
         "fixture: nothing has been painted, so there is no last stroke"
     );
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     assert!(

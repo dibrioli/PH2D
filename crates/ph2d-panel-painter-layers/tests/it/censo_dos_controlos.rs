@@ -131,7 +131,7 @@ fn ponta_colorida(t: &mut PainterTool) {
 fn pinta(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
     set_current_dock_shows_layers(false);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     host.open_all_sections();

@@ -17,7 +17,7 @@ fn painted(inativo: bool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeI
     let mut b = PainterTool::default().brush_settings();
     b.color_inactive = inativo;
     set_current_brush(Some(b));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     host.open_all_sections();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 4000.0));

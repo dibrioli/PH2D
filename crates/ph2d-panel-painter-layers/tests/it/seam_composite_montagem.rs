@@ -27,7 +27,7 @@ fn viewport() -> Rect {
 /// **chegou ao barramento** como um `PanelEvent` para a ferramenta.
 fn clica(t: &PainterTool, id: ph2d_a11y::NodeId) -> bool {
     set_current_brush(Some(t.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(id));
@@ -84,7 +84,7 @@ fn com_a_pilha_cheia_o_mais_fica_inerte_e_a_rota_recusa() {
     let id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ADD;
     let registado = |t: &PainterTool| {
         set_current_brush(Some(t.brush_settings()));
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         host.paint::<PainterLayersPanel>(&mut st, viewport())
             .iter()
@@ -138,7 +138,7 @@ fn a_lista_mostra_so_as_operacoes_com_quota() {
 
     let opcoes_visiveis = |t: &PainterTool| -> Vec<usize> {
         set_current_brush(Some(t.brush_settings()));
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         // Abrir o menu pela store, que é o que o despacho genérico do `Dropdown` faz.
         {

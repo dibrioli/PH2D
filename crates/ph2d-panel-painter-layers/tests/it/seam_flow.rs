@@ -37,7 +37,7 @@ fn com(mode: &str, media: PaintMedia) -> PainterTool {
 /// `o_flow_a_vista_e_o_flow_que_age`; aqui, pela porta do painel, o lugar e um representante de cada lado.
 #[test]
 fn o_flow_pinta_onde_a_ferramenta_e_o_meio_o_leem() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let r = pintado(&com("brush", PaintMedia::Digital), &mut host, &mut st);
     let flow = rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).expect("Flow no Pincel Digital");
@@ -54,7 +54,7 @@ fn o_flow_pinta_onde_a_ferramenta_e_o_meio_o_leem() {
         ("brush", PaintMedia::Watercolor, false),
         ("brush", PaintMedia::WetPaint, false),
     ] {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let r = pintado(&com(mode, media), &mut host, &mut st);
         assert_eq!(
             rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).is_some(),
@@ -68,7 +68,7 @@ fn o_flow_pinta_onde_a_ferramenta_e_o_meio_o_leem() {
 fn arrastar_o_flow_muda_o_flow_do_tool() {
     let mut tool = com("brush", PaintMedia::Digital);
     let antes = tool.brush_settings().flow;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let r = pintado(&tool, &mut host, &mut st);
     let s = rect_of(&r, ids::PAINTER_BRUSH_FLOW_SLIDER).expect("Flow pintado");

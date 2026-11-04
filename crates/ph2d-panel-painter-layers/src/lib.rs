@@ -41,6 +41,10 @@ mod brush_fallback;
 pub use crate::brush_fallback::FALLBACK_BRUSH;
 /// Se uma dica é a de uma linha ESMAECIDA (os censos distinguem-na das dicas de ajuda, a do Glaze).
 pub use crate::esmaecer::e_dica_de_inercia;
+/// O painel em cartões (`docs/CartoesUI/13_PAINTER_PLANO.md`).
+pub mod cards;
+mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão repete-o
+mod cards_nativos; // os corpos já em linhas de cartão
 mod card; // the titled row-box shared by the brush panel technique sections
 mod composite_picker;
 mod dropdown_popover;

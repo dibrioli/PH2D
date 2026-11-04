@@ -24,7 +24,7 @@ fn viewport() -> Rect {
 
 fn painted(tool: &PainterTool) -> Vec<(NodeId, Rect)> {
     set_current_brush(Some(tool.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     host.paint::<PainterLayersPanel>(&mut st, viewport())
 }
@@ -170,7 +170,7 @@ fn a_wet_knob_edit_forwards_through_the_panel() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     set_current_brush(Some(wet.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport()); // registers the number chips
     let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER;
@@ -285,7 +285,7 @@ fn every_doc22_wet_click_forwards_through_the_panel() {
         ..VistaPresets::default()
     })));
     for clicked in ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let evento = if clicked == ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DELETE {
             host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
@@ -326,7 +326,7 @@ fn the_tilt_pad_drag_forwards_ring_and_spoke() {
     use ph2d_editor_core::interaction::WidgetEvent;
     use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
     use ph2d_editor_core::tool::PanelEvent;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     host.store_mut().set_curve_point_drag(
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
@@ -416,7 +416,7 @@ fn the_fluid_grid_row_is_alive_under_the_mouse() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     set_current_brush(Some(wet.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let r = rects
@@ -489,7 +489,7 @@ fn the_flow_grid_row_is_alive_under_the_mouse() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     set_current_brush(Some(wet.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let r = rects
@@ -568,7 +568,7 @@ fn the_flow_grid_edit_forwards_through_the_panel() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     set_current_brush(Some(wet.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_FLOW;
@@ -599,7 +599,7 @@ fn o_po_do_pincel_edita_se_pelo_cartao() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     set_current_brush(Some(wet.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let id = ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST;

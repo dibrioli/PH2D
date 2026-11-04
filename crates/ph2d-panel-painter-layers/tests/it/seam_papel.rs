@@ -30,7 +30,7 @@ fn o_seletor_da_cor_do_papel_aplica_o_papel_nos_quatro_meios() {
         tool.handle_panel_event(PanelEvent::SelectOption(PAINTER_BRUSH_MEDIA, meio.into()));
         set_current_brush(Some(tool.brush_settings()));
         set_current_dock_shows_layers(false);
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
         let _ = host.paint::<PainterLayersPanel>(&mut st, vp);
@@ -90,7 +90,7 @@ fn a_paint_texture_e_do_wet_paint_e_o_tooth_vive_na_seccao_paper() {
         );
         set_current_brush(Some(tool.brush_settings()));
         set_current_dock_shows_layers(false);
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
         let _ = host.paint::<PainterLayersPanel>(&mut st, vp);
@@ -147,7 +147,7 @@ fn a_paint_texture_mora_no_cartao_wet_paint() {
     tool.handle_panel_event(PanelEvent::SelectOption(PAINTER_BRUSH_MEDIA, "3".into()));
     set_current_brush(Some(tool.brush_settings()));
     set_current_dock_shows_layers(false);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
     let _ = host.paint::<PainterLayersPanel>(&mut st, vp);

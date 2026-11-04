@@ -113,6 +113,20 @@ pub fn arm_hero(hero: &mut ph2d_editor_core::HeroScreen, bits: u64) {
     }
 }
 
+/// A foto do painel em cartões (`docs/CartoesUI/13_PAINTER_PLANO.md`): `PH2D_COMPOSITE_PAINEL=digital|water|
+/// impasto|wet|layers` mantém a aba à frente nos primeiros quadros, porque entrar no Draw põe lá o Inspector.
+pub(crate) fn painel_a_frente(hero: &mut ph2d_editor_core::HeroScreen) {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static QUADROS: AtomicU32 = AtomicU32::new(0);
+    if enabled()
+        && std::env::var_os("PH2D_COMPOSITE_PAINEL").is_some()
+        && QUADROS.fetch_add(1, Ordering::Relaxed) < 240
+    {
+        hero.store
+            .bump_panel_z(ph2d_editor_core::ids::PAINTER_LAYERS_PANEL);
+    }
+}
+
 /// Montar a tela quando `PH2D_COMPOSITE_SMOKE=1`, UMA vez, devolvendo os bits da entidade para
 /// quem chama pôr a selecção nela. Imprime O QUE montou e o roteiro.
 ///
@@ -193,6 +207,14 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         return;
     }
     arma_a_pilha_do_dono(painter);
+    use ph2d_tool_painter::PaintMedia as Meio;
+    match std::env::var("PH2D_COMPOSITE_PAINEL").as_deref() {
+        Ok("water") => painter.set_paint_media(Meio::Watercolor),
+        Ok("impasto") => painter.set_paint_media(Meio::Impasto),
+        Ok("wet") => painter.set_paint_media(Meio::WetPaint),
+        Ok("layers") => painter.set_dock_shows_layers(true),
+        _ => {}
+    }
     println!(
         "PH2D_COMPOSITE_SMOKE: pilha armada — {} camadas, Composite Brush ligado, Size 0.4.",
         painter.composite_len()

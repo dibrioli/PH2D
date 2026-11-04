@@ -30,6 +30,8 @@ pub(crate) fn dock_visibility(hero: &mut HeroScreen, painter_is_active: bool) {
     // written here (a stale `true` would leave the panel floating tool-less).
     if !painter_is_active {
         hero.panel_visibility.insert("wet_tuning", false);
+    } else {
+        crate::composite_smoke::painel_a_frente(hero);
     }
     {
         use std::sync::atomic::{AtomicBool, Ordering};

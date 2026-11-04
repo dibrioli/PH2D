@@ -175,6 +175,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.
         "panel.painter_layers.brush.paint_mode" => "Paint Mode",
         "panel.painter_layers.brush.mixing" => "Mixing",
+        "panel.painter_layers.brush.basics" => "Basics",
+        "panel.painter_layers.brush.reset_section" => "Reset this section to its defaults",
         "panel.painter_layers.brush.layers" => "Layers",
         "panel.painter_layers.brush.deform" => "Deform",
         "panel.painter_layers.brush.sculpt" => "Sculpt",

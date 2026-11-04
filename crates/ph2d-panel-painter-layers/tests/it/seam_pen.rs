@@ -39,7 +39,7 @@ fn painted(
 
 /// O painel pintado com o cartão Pen ABERTO (ele nasce recolhido: o clique no cabeçalho abre-o).
 fn novo(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = painted(tool, &mut host, &mut st);
     let cab = rect_of(&rects, ids::PAINTER_PEN_SECTION).expect("o cabeçalho do cartão Pen");
@@ -277,7 +277,7 @@ fn sonda_custo_do_cartao_pen() {
             })
             .fold(f64::INFINITY, f64::min)
     };
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let fechado = mede(&mut host, &mut st);
     let (mut host, mut st, _) = novo(&t);

@@ -59,7 +59,7 @@ fn pintado_em(
     t.set_paint_media(media);
     t.set_paint_tool_mode(gesto);
     set_current_brush(Some(t.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)

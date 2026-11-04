@@ -58,7 +58,7 @@ fn molhado() -> PainterTool {
 
 fn pinta(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)
@@ -125,7 +125,7 @@ fn a_caixa_real_oil_so_aparece_com_o_wet_paint_armado_e_as_linhas_so_com_ela_lig
     let mut b = tool.brush_settings();
     b.wet_oleo_na_tela = true;
     set_current_brush(Some(b));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let na_tela = host.paint::<PainterLayersPanel>(&mut st, viewport());
     for id in LINHAS {
@@ -422,7 +422,7 @@ fn a_220_os_nomes_do_material_partem_se_em_duas_linhas_e_nao_cortam() {
     let mut tool = molhado();
     tool.set_wet_oleo_real_ligado(true);
     set_current_brush(Some(tool.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let minimo = ph2d_tokens::PANEL_MIN_W_PX;
     assert_eq!(
@@ -499,7 +499,7 @@ fn o_cartao_real_oil_nao_mostra_os_pesos_da_tinta() {
     let mut tool = molhado();
     tool.set_wet_oleo_real_ligado(true);
     set_current_brush(Some(tool.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let vp = viewport();
     let (_, medidos) = elisao::medindo(|| host.paint::<PainterLayersPanel>(&mut st, vp));

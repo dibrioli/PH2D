@@ -47,7 +47,7 @@ fn pointer(kind: PointerKind, button: PointerButton, x: f32, y: f32, t: u128) ->
 
 fn pintado(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)
@@ -143,7 +143,7 @@ fn uma_seccao_aninhada_nao_entra_no_livro() {
     let mut brush = PainterTool::default().brush_settings();
     brush.texture_kind = ph2d_tool_painter::TextureKind::Noise.to_u8();
     set_current_brush(Some(brush));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let rects = host.paint::<PainterLayersPanel>(&mut PainterLayersPanelState, viewport());
     let Some(cab) = rect_of(&rects, pids::PAINTER_BRUSH_COLOR_RAMP_SECTION) else {
         panic!("fixtura: com um grão escolhido o Grain abre e a rampa dele é pintada");

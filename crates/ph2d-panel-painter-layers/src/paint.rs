@@ -39,9 +39,9 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 
 // Chrome layout metrics (the per-row metrics live in `paint_rows.rs`).
 const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
-const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
+pub(crate) const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
 const MOD_BTN_W: f32 = 52.0; // LITERAL-PX-OK: modifier toggle button width (text)
-const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
+pub(crate) const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
@@ -66,6 +66,11 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(core_ids::PAINTER_LAYERS_PANEL, rect);
+
+    if crate::cards::cards_on() {
+        crate::cards::paint(ctx, theme);
+        return;
+    }
 
     // Chrome: dark-glass surface + BOTH corner resize dots (BL here too, so the early-returning Brush view shows it; Enio 2026-06-25).
     paint_panel_surface(rect, ctx.scene, theme);
@@ -186,6 +191,15 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         );
     }
 
+    paint_layers_popovers(ctx, theme, ghost);
+}
+
+/// O que a vista Layers pinta por cima de tudo, depois do corpo.
+pub(crate) fn paint_layers_popovers(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    ghost: Option<(String, f32, f32)>,
+) {
     // Deferred: the single open blend dropdown popover, on top of everything.
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
         crate::blend::paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
@@ -241,6 +255,11 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
     // A barra regista a TRILHA inteira (agarra-se em qualquer ponto) — a Brush transborda depressa.
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
     register_header_chrome(ctx, rect);
+    paint_brush_view_popovers(ctx, theme);
+}
+
+/// O que a vista Brush pinta por cima de tudo, depois do corpo.
+pub(crate) fn paint_brush_view_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     // The open dropdown popover (Blend / Falloff / Method / Jitter Unit) floats over the body,
     // unclipped, above the scrollbar.
     crate::paint_brush::paint_brush_popovers(ctx, theme);
@@ -349,7 +368,7 @@ fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
 /// Delete — the canonical ghost-icon button (same look as the Hierarchy header
 /// "+"). Laid out left-to-right inside `toolbar_rect`; painted + registered
 /// post-body so scrolled rows don't shadow them.
-fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+pub(crate) fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
     let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
     // Vertically center the square icon within the toolbar strip.
     let y = toolbar_rect.y + ((toolbar_rect.h - HEADER_ICON_W) * 0.5).max(0.0);
@@ -428,7 +447,7 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
 /// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggles on the ACTIVE layer (fill
 /// `Accent` when on; Mask is a create action). Mask + Clip are also enabled for a Texture layer;
 /// Lock/Ref stay raster-only. A disabled button is un-registered, so its click is a no-op.
-fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+pub(crate) fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
     let mods = state::current_layers().and_then(|s| s.active_modifiers());
     let raster = mods.is_some_and(|m| m.is_raster);
     let tex = state::current_layers().is_some_and(|s| s.active().is_some_and(|a| s.is_texture(a)));
@@ -481,7 +500,7 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
 
 /// "Apply" footer CTA — commits the live layer composite into the sprite
 /// (routes to `PainterTool::request_commit`). Accent-filled for prominence.
-fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
+pub(crate) fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
     let st = ctx
         .host
         .store()

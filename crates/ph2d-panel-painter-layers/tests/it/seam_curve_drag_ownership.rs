@@ -41,7 +41,7 @@ const FOREIGN_EDITOR: NodeId = NodeId(0x5EED_0BAD_1234_5678);
 /// perguntado — o `hero.apply_event` para no primeiro `Consumed`).
 #[test]
 fn a_curve_drag_that_belongs_to_another_panel_is_left_alone() {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
 
     // O dispatch acabou de calcular o arrasto de um punho de OUTRO painel.
@@ -90,7 +90,7 @@ fn a_curve_drag_of_its_own_editor_is_still_drained() {
     let layer = stack.add_raster("L", 8, 8).expect("a camada nasce");
     set_current_layers(Some(stack));
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut panel_state = PainterLayersPanelState;
     // O editor de curva DAQUELA camada — o id é derivado do id runtime dela.
     let mine = painter_curve_editor_id(layer.0);

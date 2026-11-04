@@ -18,7 +18,7 @@ const ID: NodeId = ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING;
 fn pinta(t: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(t.brush_settings()));
     set_current_dock_shows_layers(false);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
     let _ = host.paint::<PainterLayersPanel>(&mut st, vp);

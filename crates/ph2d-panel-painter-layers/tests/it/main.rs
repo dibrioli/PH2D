@@ -6,6 +6,12 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+/// O painel de antes: estes testes descrevem o corpo de `PH2D_CARDS=0` (`docs/CartoesUI/13_PAINTER_PLANO.md`).
+pub(crate) fn host_de_antes() -> ph2d_ui_testkit::MockPanelHost {
+    ph2d_panel_painter_layers::cards::force_cards_on_this_thread(Some(false));
+    ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_painter_layers::PainterLayersPanel>()
+}
+
 mod a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero;
 mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do corpo do pincel
 mod auditoria_l2_continuous; // AUDITORIA lente 2 (15/10): o Continuous pelo ponteiro — sonda, não portão
@@ -14,6 +20,7 @@ mod censo_dos_controlos; // cada controlo pintado, em cada meio, muda o traço (
 mod censo_ferramenta_x_linha; // a ferramenta do trilho × cada linha do painel (23/10)
 mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod h1_os_cartoes; // o painel em cartões: a lista, a captura e os corpos nativos (04/11)
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint

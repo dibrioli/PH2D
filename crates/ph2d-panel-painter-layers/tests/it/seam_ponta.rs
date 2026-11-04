@@ -49,7 +49,7 @@ fn clica(
 
 /// O painel pintado com as secções Shape e Grain ABERTAS (se nascem recolhidas, o clique no cabeçalho abre-as).
 fn aberto(t: &mut PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let mut rects = painted(t, &mut host, &mut st);
     for (cab, dentro) in [

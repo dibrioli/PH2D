@@ -96,7 +96,7 @@ fn centre(r: Rect) -> (f32, f32) {
 #[test]
 fn clicking_a_lamp_chip_selects_that_lamp() {
     let mut tool = tool_with_impasto_on();
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
@@ -147,7 +147,7 @@ fn every_lamp_chip_selects_its_lamp() {
     .enumerate()
     {
         let mut tool = tool_with_impasto_on();
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
 
         // Start from a lamp that is NOT the target, or "it selected lamp i" would be vacuous for
@@ -183,7 +183,7 @@ fn every_lamp_chip_selects_its_lamp() {
 #[test]
 fn the_enable_checkbox_switches_the_selected_lamp_on() {
     let mut tool = tool_with_impasto_on();
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     tool.select_impasto_light(1);
@@ -231,7 +231,7 @@ fn every_impasto_click_widget_is_reachable_by_a_pointer() {
         tool.select_impasto_light(1);
         republish(&tool);
 
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
 
@@ -267,7 +267,7 @@ fn every_impasto_click_widget_is_reachable_by_a_pointer() {
 fn the_section_header_collapses_and_its_colour_dot_opens_the_picker() {
     let tool = tool_with_impasto_on();
     let _ = &tool;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
@@ -314,7 +314,7 @@ fn no_impasto_widget_loses_its_hit_to_the_section_below() {
     tool.select_impasto_light(1); // the widest the card ever gets: the Enable row exists
     republish(&tool);
 
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
 
@@ -355,7 +355,7 @@ fn no_impasto_widget_loses_its_hit_to_the_section_below() {
 fn the_wax_colour_swatch_opens_the_picker() {
     let tool = tool_with_impasto_on();
     let _ = &tool; // the fixture publishes the brush snapshot the panel paints from
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
 
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
@@ -404,7 +404,7 @@ fn the_wax_colour_swatch_opens_the_picker() {
 fn as_cores_da_impasto_sao_barras_na_caixa_do_numero() {
     let tool = tool_with_impasto_on();
     let _ = &tool;
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     // ⚠️ O MÍNIMO do encaixe (`220`), que é onde o dono trabalha. Alto de propósito, para os
     //    cartões de baixo caberem.

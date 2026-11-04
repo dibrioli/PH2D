@@ -27,7 +27,7 @@ fn viewport() -> Rect {
 
 fn painted(shows_layers: bool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_dock_shows_layers(shows_layers);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
     (host, st, rects)

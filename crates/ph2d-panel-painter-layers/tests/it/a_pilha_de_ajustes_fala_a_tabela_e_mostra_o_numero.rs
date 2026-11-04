@@ -131,7 +131,7 @@ fn pintar(
         CenterSplit::None,
         DockSides::BOTH,
     );
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint_with_layout::<PainterLayersPanel>(&mut st, layout, viewport);
     (host, st, rects)
@@ -496,7 +496,7 @@ fn glifos_com(especie: AdjustmentKind) -> u32 {
         CenterSplit::None,
         DockSides::BOTH,
     );
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let (glifos, _) =
         host.paint_and_count_geometry_with_layout::<PainterLayersPanel>(&mut st, layout, viewport);

@@ -36,7 +36,7 @@ fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(
         tool.brush_flow_image()
             .map(|(lum, w, h)| (std::sync::Arc::new(lum.to_vec()), w, h)),
     );
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
     (host, st, rects)
@@ -122,7 +122,7 @@ fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
 #[test]
 fn a_opcao_do_flow_chega_a_ferramenta() {
     for &k in &ph2d_tool_painter::FLOW_KINDS {
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PainterLayersPanelState;
         let opt = painter_flow_kind_option_id(k.to_u8());
         let outcome =

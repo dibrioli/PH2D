@@ -59,17 +59,23 @@ pub(crate) fn paint_mask_section(
         tr("panel.painter_layers.mask.mask"),
     );
     let header_rect = Rect::new(x, y, content_w, header_h);
+    // Num cartão, o título é o dele: aqui o cabeçalho só dá o nome, e o corpo começa no `y`.
+    let absorvido = ph2d_editor_core::widget::absorbing_next_header();
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         paint_section_header(&header, header_rect, scene, text_system, theme);
     }
-    crate::plano_corpo::regista(
-        ctx,
-        ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
-        header_rect,
-    );
-    let mut y = y + header_h + Spacing::Xs.px();
+    let mut y = if absorvido {
+        y
+    } else {
+        crate::plano_corpo::regista(
+            ctx,
+            ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
+            header_rect,
+        );
+        y + header_h + Spacing::Xs.px()
+    };
     if collapsed {
         return y;
     }

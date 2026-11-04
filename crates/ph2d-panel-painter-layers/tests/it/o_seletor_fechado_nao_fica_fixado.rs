@@ -22,7 +22,7 @@ fn janela() -> Rect {
 fn painel() -> (MockPanelHost, PainterLayersPanelState, Rect) {
     set_current_brush(Some(PainterTool::default().brush_settings()));
     set_current_dock_shows_layers(false);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let r = host
         .paint::<PainterLayersPanel>(&mut st, janela())

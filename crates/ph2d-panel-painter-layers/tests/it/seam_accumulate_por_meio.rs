@@ -22,7 +22,7 @@ fn pintados_com(media: PaintMedia, ajusta: impl Fn(&mut PainterTool)) -> Vec<Nod
     ajusta(&mut t);
     set_current_brush(Some(t.brush_settings()));
     set_current_dock_shows_layers(false);
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let vp = Rect::new(0.0, 0.0, 1600.0, 6000.0);
     let _ = host.paint::<PainterLayersPanel>(&mut st, vp);

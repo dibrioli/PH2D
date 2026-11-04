@@ -44,7 +44,7 @@ impl Banca {
         set_current_wet_presets(None);
         set_current_dock_shows_layers(false);
         set_current_wet_preview(Some((Arc::new(vec![200; 256 * 128 * 4]), 256, 128)));
-        let host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let host = crate::host_de_antes();
         Banca {
             host,
             st: PainterLayersPanelState,

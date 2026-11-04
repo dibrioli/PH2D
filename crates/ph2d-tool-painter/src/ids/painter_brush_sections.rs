@@ -479,6 +479,17 @@ pub const PAINTER_BRUSH_JITTER_SECTION: NodeId = hash_node_id("painter_brush.jit
 pub const PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION: NodeId =
     hash_node_id("painter_brush.grain_behavior_section");
 
+/// Cartões sem secção no painel de antes (`docs/CartoesUI/13`): o topo do pincel (Paint Mode, Preset, Sync).
+pub const PAINTER_CARD_TOPO: NodeId = hash_node_id("painter_brush.card_topo");
+/// Os básicos do pincel: Blend, Color, Size, Strength, Flow…
+pub const PAINTER_CARD_BASICOS: NodeId = hash_node_id("painter_brush.card_basicos");
+/// A mistura: a fileira `Pigment`.
+pub const PAINTER_CARD_MIXING: NodeId = hash_node_id("painter_brush.card_mixing");
+/// O corpo inteiro de uma ferramenta exclusiva: Deform, Selection.
+pub const PAINTER_CARD_EXCLUSIVO: NodeId = hash_node_id("painter_brush.card_exclusivo");
+/// A vista Layers.
+pub const PAINTER_CARD_CAMADAS: NodeId = hash_node_id("painter_brush.card_camadas");
+
 // Per-section **reset** icon buttons (Inspector-Transform pattern: an `IconId::Reset` button in the
 // header, just left of the colour dot). Clicking restores that section's brush fields to defaults
 // (Enio 2026-06-24). Registered as Buttons in `crate::populate`; the tool resets on the forwarded Click.

@@ -64,7 +64,7 @@ fn novo(
     ativo: Option<&str>,
 ) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_wet_presets(Some(vista(ativo)));
-    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PainterLayersPanelState;
     let rects = painted(tool, &mut host, &mut st);
     (host, st, rects)

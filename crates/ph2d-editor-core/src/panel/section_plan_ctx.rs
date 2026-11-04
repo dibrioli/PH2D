@@ -111,6 +111,19 @@ impl<'s> PlanoCtx<'s> {
             .collect()
     }
 
+    /// As entradas pela ordem natural, para quem as pinta sem [`Self::corre`] (a lista de cartões):
+    /// `(id, tarefa)`, e `None` no id de um BLOCO.
+    #[must_use]
+    pub fn entradas(self) -> Vec<(Option<NodeId>, TarefaCtx<'s>)> {
+        self.itens
+            .into_iter()
+            .map(|(e, t)| match e {
+                Especie::Movel(id) | Especie::Fixa(id) => (Some(id), t),
+                Especie::Bloco => (None, t),
+            })
+            .collect()
+    }
+
     /// ⭐⭐ **Pinta as secções pela ordem do artista**, cada uma no tema dela, e devolve o `y`
     /// depois do cartão da última — que fica FECHADO aqui. Durante
     /// um arrasto, a secção arrastada pinta-se numa cena à parte — pousada no sítio de sempre e

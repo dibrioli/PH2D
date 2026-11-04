@@ -491,7 +491,8 @@ fn siblings_share_the_line_and_nothing_is_glued() {
     ] {
         let (ra, rb) = (r(a), r(b));
         assert!(
-            (ra.y - rb.y).abs() < 1.0,
+            // O segmento tem a folga da pílula.
+            (ra.y - rb.y).abs() <= 2.0,
             "{a:?} e {b:?} em linhas diferentes"
         );
         assert!(ra.x + ra.w <= rb.x, "{a:?} por cima de {b:?}");

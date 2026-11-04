@@ -147,13 +147,15 @@ pub(crate) fn numero<'a>(id: NodeId, nome: &'a str, key: &'a [NodeId]) -> Cell<'
 /// saídas lado a lado, porque a escolha é entre elas. O Pick Shapes acende enquanto o modo está armado.
 pub(crate) fn blend(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
     const PASSOS: &[NodeId] = &[p::VECTOR_BLEND_STEPS];
+    // Um segmento só, como no corpo de antes: é um modo, e o modo acende.
+    let escolher = [seg(
+        t::VECTOR_MODE_PICKBLEND,
+        tr("panel.vector.blend.pick_shapes"),
+        snap.mode == DrawMode::PickBlend,
+    )];
     let y = c.row(
         &[
-            Cell::new(Widget::Button {
-                id: t::VECTOR_MODE_PICKBLEND,
-                text: tr("panel.vector.blend.pick_shapes"),
-                primary: snap.mode == DrawMode::PickBlend,
-            }),
+            Cell::new(Widget::Choice(&escolher)),
             botao(p::VECTOR_BLEND_RUN, tr("panel.vector.blend.blend")),
         ],
         y,

@@ -518,3 +518,6 @@ Testes antigos revistos: o de Camera lia a marca colada pelo rect da caixa e pas
 
 **Aberto:** galeria (7 · 1). Camera, Script e os outros cartões de componente passam no censo, mas sem foto com o cartão aberto; o Player foi fotografado até à dobra de `1800`. O `aviso` por baixo de Format fica colado ao segmento: o censo não o vê. Figma e Rive não confirmaram a grelha nas consultas (ver [16](16_REFERENCIAS_POR_CARTAO.md)).
 
+### Fecho do cromo (04/11): texto no meio, listas, coluna partida, nomes, M8 e M9
+
+Estado por peça, medidas, decisões e contraprovas em [15](15_CHROME_CENSO.md). Porta nova: `paint::folga_do_texto`, `ph2d_text::cap_centre_px`, `screens/hero/caixa_cartao.rs`, `lista_flutuante::{veste_fora_de_cartao, Superficie::folga}`. Texto de cartão: de +2,5/+3 a −0,5/0 px nos números, medido.

@@ -39,13 +39,13 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 |---|---|---|---|
 | M1 | Feita | Porta `widget/lista_flutuante.rs` (`Superficie`: moldura, moldura da dica, moldura de caixa, realce, cor, veste; `cromo_em_cartoes`). Menu aberto, lista de cenas, transbordo da fila, `paint_context_menu` e dica. A lista suspensa do cartão passa pela mesma moldura | Nada |
 | M2 | Feita | Título do menu aberto ou sob o rato acende no tom do cartão. A lista e o Settings já vinham da M1 | A cor de fundo da barra (`Bg1`) fica para M3, com a referência do dono |
-| M8 | Parcial | Moldura de caixa e tinta do cartão em New Image, New Sprite, Sheet Size, Color Mode, Pixel Edit, Rename, Fill, Onion, Send to board, Confirm delete e `paint_modal`. New Sprite em `CardCtx::flutuante`. Fill com rótulo. Trilha do `Slider` nos tons do cartão. `FOOTER_H` derivado de tokens (`56` px, igual) | Corpo em `CardCtx::flutuante` em New Image, Sheet Size, Color Mode, Pixel Edit, Rename, Send to board e Confirm delete; ver «Aberto» |
+| M8 | Feita | Moldura de caixa e tinta do cartão em todas as caixas. Corpo em linhas de cartão pela porta `screens/hero/caixa_cartao.rs` em New Image, Sheet Size, Rename, Color Mode, Send to board e Confirm delete; New Sprite e Pixel Edit (`Caixa`, campos aos pares) em `CardCtx::flutuante`. Fill com rótulo. Trilha do `Slider` nos tons do cartão. Placeholder na tinta. Fechar do Onion com ícone. Texto no meio da caixa em todo cartão | Nada |
 | M3 | Feita | Porta `widget/cromo_barra.rs` (`Barra`). Abas de modo e de documento: segmentos numa pílula, sem bloco de acento. Chão da barra de menu no tom da lista | Nada |
-| M4 | Feita | Fila de encaixe sem chão preto nem divisória; a escolhida é segmento. Em cartões, nome inteiro ou só o ícone, com o nome no balão; a escolhida é a última a recolher. A faixa do topo (`canvas::paint_top_band`) cobre a grade nas colunas | O título da lista ainda elide em coluna estreita («COLOR EQUALIZATI…»): é da lista, não da aba |
-| M5 | Feita | `tool_rail/paint_cartao.rs`: chips planos, legendas em caixa normal (tabela `chrome.rail.caption.*`), marca de animação na linha da legenda, setas do número só sob o rato ou com foco | Siglas ficam em caixa alta (`BGRMV`, `CEQ`, `EQSZ`, `RASTR`, `UPSC`, `PAD`): nome novo é decisão de texto, em aberto |
-| M6 | Feita | Mesmo pintor na fila do Vector; «Stroke ▾» com a seta do cartão; `float_bar` e flyouts no painel sem filete. A lista suspensa de fora de um cartão (`dropdown/popover.rs`) e `widget/popover.rs` **não** foram tocadas | Essas duas listas, prometidas à M6 acima |
-| M7 | Feita | HUD com a superfície da lista, sem filete; o HUD cede à coluna do módulo. `left_rail.rs` (só com F9) veste o painel | A coluna ainda passa da janela em altura baixa: a 1000×800 as últimas ferramentas ficam cortadas pela borda inferior. Medido na foto; pede transbordo, é função nova |
-| M9 | Não feita | | Só li o pintor (`widget/command_palette.rs`: `BgElev`, `Bg2`, `Bg3`, filetes); não a olhei aberta. Falta a cena de foto no `cromo_smoke.rs` |
+| M4 | Feita | Fila de encaixe sem chão preto nem divisória; a escolhida é segmento. Em cartões, nome inteiro ou só o ícone, com o nome no balão; a escolhida é a última a recolher. A faixa do topo (`canvas::paint_top_band`) cobre a grade nas colunas | Nada: o título perde o espaçamento, depois desce ao corpo do rótulo, antes de se cortar (`titulo_que_cabe`) |
+| M5 | Feita | `tool_rail/paint_cartao.rs`: chips planos, legendas em caixa normal (tabela `chrome.rail.caption.*`), marca de animação na linha da legenda, setas do número só sob o rato ou com foco | Nada: palavras na tabela `EM_CAIXA_NORMAL` (Cutout, Padding, Color, Equal, Raster, Upscale, Paint, Liquify, Reshape, Inpaint, Select, Ellipse, Polygon, Blow), com gate de largura. Fora de cartões, as de sempre |
+| M6 | Feita | Mesmo pintor na fila do Vector; «Stroke ▾» com a seta do cartão; `float_bar` e flyouts no painel sem filete. A lista suspensa de fora de um cartão (`dropdown/popover.rs`) e `widget/popover.rs` vestem a superfície (`veste_fora_de_cartao`) | Nada |
+| M7 | Feita | HUD com a superfície da lista, sem filete; o HUD cede à coluna do módulo. `left_rail.rs` (só com F9) veste o painel | Nada: numa janela baixa a coluna parte-se em colunas lado a lado, como a do Quadro (W23 A6), e o flyout abre à direita da última (`m8_coluna_partida_1000x800.png`) |
+| M9 | Feita | Paleta com a moldura da caixa, grupos em `KanbanCard`, itens e busca em `CardField`, realce do item sob o rato, ícone em vez do «X» escrito, caixa de marcar do cartão, dica na moldura da lista, texto pela porta do centro. Cena `PH2D_CROMO_SMOKE=16` | Nada |
 
 **Contraprovas da M1/M8 (04/11, 14 mutantes em 4 lotes, 14 sangraram):** `Text3`, moldura de caixa ignora o cartão, alvo do menu que se move, menu sem moldura, lista de cenas sem moldura, transbordo sem moldura, dica sem moldura, texto da dica pelo caminho antigo, título aberto antigo, New Sprite sem moldura, trilha antiga, Fill sem rótulo, unidade fora do rótulo, campo sem marca de cartão. O New Sprite sem moldura sobreviveu à 1.ª corrida (os segmentos escolhidos pintam o mesmo tom): o teste passou a contar `3` pinturas desse tom e sangrou. Restauro conferido por `git diff`. Duas corridas não contam: uma anterior, com o teste da barra vermelho sem mutante, e outra minha, cujo filtro `cromo_tests` não casava com o módulo (`context_menu_overlay_tests::cromo`) e só correu 2 testes. Esse filtro também escondeu dois vermelhos no commit `ecae7d59d5`, curados em `8f899dde78`: o HEAD intermédio tem esses dois testes vermelhos, e compila. Antes: moldura de lista ignorar o cartão, realce ignorar o cartão, forçar o modo não desligar, cor `Text2` antiga.
 
@@ -57,17 +57,23 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 
 **Altura do canvas:** não muda. A régua começa em `y = 76` e a área em `y = 96`, antes e depois (fotos `m6_*`, a 1930×1040); nenhuma conta de `screens/layout.rs` foi tocada.
 
-**Interruptor:** `PH2D_CARDS=0` devolve o de antes em todas as peças acima. **Foto sem rato:** `PH2D_CROMO_SMOKE=<n>` (1 menu da Hierarchy, 2 dica, 3 lista de cenas, 4 File, 5 Settings, 6 New Image, 7 New Sprite, 8 Fill, 9 Onion), `screens/hero/cromo_smoke.rs`.
+**Interruptor:** `PH2D_CARDS=0` devolve o de antes em todas as peças acima, salvo a coluna partida (decisão abaixo). **Foto sem rato:** `PH2D_CROMO_SMOKE=<n>` (1 menu da Hierarchy, 2 dica, 3 lista de cenas, 4 File, 5 Settings, 6 New Image, 7 New Sprite, 8 Fill, 9 Onion, 10 Sheet Size, 11 Rename, 12 Color Mode, 13 Canvas Size, 14 Confirm delete e 15 Send to board com `PH2D_BOARD_SMOKE=1` junto, 16 paleta), `screens/hero/cromo_smoke.rs`.
 
-**Aberto na M8, visto nas fotos `m8_*`:**
+**Texto no meio da caixa (04/11, curado num bloco só).** Medido com foto de antes e depois, por `numpy`, linha a linha, em caixas de 23, 27 e 28 px (Widget Gallery e New Sprite):
 
-- **Texto do cartão cerca de 2,5 px abaixo do centro, em qualquer altura.** A hipótese de que era só a `22 px` estava errada. Medido nas fotos: botão de `27` px (New Sprite), centro da caixa `598,0`, do texto `600,5`; botão de `22` px (New Image), `570,5` e `573,0`. A conta `(h - VALUE_PX) * 0.5` repete-se em cerca de 14 sítios do cartão, e os campos e segmentos parecem ter o mesmo desvio (a olho, numa foto ampliada). A `FIELD_H` não cura. Não mexi: move o texto de todos os painéis já aprovados, e o dono está a fazer smoke. Fica para um bloco só, com uma porta única e foto de vários painéis.
-- O campo de texto da lista de cenas ficou em `CardField`, mas o placeholder é o antigo.
-- Onion: o fechar continua um botão com a letra «X» escrita à mão, em vez de ícone.
+| Texto | Caixa | Antes | Depois |
+|---|---|---|---|
+| `120` (campo) | 28 | +2,5 | −0,5 |
+| `64` (campo) | 28 | +2,5 | −0,5 |
+| `32` (campo) | 27 | +3,0 | 0,0 |
+| `OK` (botão) | 27 | +3,0 | 0,0 |
+| `Cancel` (botão) | 27 | +2,5 | −0,5 |
+| `RGBA` (segmento) | 23 | +2,5 | −0,5 |
+| `Fixed`, `All` (chip, com ascendente) | 28 | +2,0 | −1,0 |
+
+Mecanismo: `(h − px) / 2` tratava a linha como se medisse `px`. A linha de base da Noto (fábrica desde 01/11) cai `1,07 em` abaixo do topo, arredondada pelo parley para `13` px a 12. O desvio é de fundação: em qualquer altura. A hipótese «só a 22 px» e a de `FIELD_H` estavam erradas. Cura: `paint::folga_do_texto(h, px)`, a porta única, nos 45 sítios (meio das maiúsculas pela fonte ativa, lido de `ph2d_text::cap_centre_px`, conferido contra o layout nas 3 fontes). O caminho clássico não muda. Olhados antes e depois, lado a lado: Widget Gallery, Inspector, Bones, New Sprite (`maquete/m8_texto_no_meio_antes_depois_*.png`): nada piorou; o título da lista passa a alinhar com os ícones do cabeçalho. Censo: `nenhum_pintor_centra_pela_conta_de_antes`.
 
 **Curado (04/11):** New Sprite: unidade no rótulo («Width (px)», «Height (px)»), campos e escolhas do cartão. O «0» da foto antiga era da cena de foto, que abria o menu sem semear; agora ela abre pela porta do produto e lê `32`. Fill e Onion: trilha nos tons do cartão, rótulo no Fill. Foto: `maquete/m8_new_sprite.png`, `m8_fill.png`, `m8_onion.png`. As de antes estão no commit `6536cbb6d7`.
-
-**Fora da M1 de propósito:** `widget/popover.rs` (seletor de data, editor rico) e a lista suspensa de fora de um cartão (`dropdown/popover.rs`) continuam na moldura de antes. As linhas dessas listas leem o token cru. Vão com a M6, que tem as listas da barra de opções.
 
 **Decisões tomadas sem o dono:** lista e dica em `KanbanCardRaised` com `FIELD_RADIUS` e a sombra da lista, sem filete (a lista suspensa aprovada). Caixa com `LIST_RADIUS` e as duas sombras da lista. Realce em `CardFieldHover`, como a lista suspensa. O título de menu aberto deixa o azul, para a barra não ter duas cores de estado. Nenhum alvo de clique muda de sítio, salvo os dois casos abaixo.
 
@@ -76,6 +82,17 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 - New Sprite: Width e Height na mesma linha, com o rótulo por cima. A caixa ficou mais baixa e os controlos mudaram de sítio em cartões; os ids são os mesmos. `PH2D_CARDS=0` dá o de antes.
 - Fill: o rótulo «Threshold» à esquerda da trilha, como no Onion. A trilha encurta pela esquerda e acaba no mesmo sítio.
 - Fill e Onion **mantêm a barra**, em vez do campo numérico que a Física adotou. O cartão não tem barra própria, e estes valores são lidos da barra pela shell a cada quadro: trocar para campo faria a shell mudar, e ela não pode crescer. Preenchimento no azul do botão de destaque, trilha no tom do campo. O dono pode preferir o campo.
+
+**Decisões tomadas sem o dono (04/11, chrome fechado):**
+
+- O centro é o das maiúsculas, não o da caixa da linha: dá `|erro| ≤ 0,5` px nos números, contra `0,75` da linha, porque a linha de base arredonda. Texto com descendente lê-se um pouco abaixo, como em toda fonte.
+- Coluna baixa parte-se em duas, sem rolagem nem «…»: é o que o Quadro já fazia (W23 A6), o Photoshop tem a mesma forma, e nenhuma ferramenta fica atrás de um gesto. Vale também em `PH2D_CARDS=0`: uma ferramenta cortada pela borda não era um visual a preservar, era inalcançável. Com lugar, é a coluna de sempre.
+- Nomes em vez de siglas, só em cartões: `Cutout` (Background Removal), `Color` (Color Equalization), `Equal` (Equalize Sizes), `Raster`, `Reshape` (Transform: «Transform» pede `44` px e o passo do menor chip tem `40`). O nome inteiro continua na dica. O dono pode preferir outras palavras: é uma linha na tabela `chrome.rail.caption.*`.
+- Título de lista estreita: perde o espaçamento, depois desce a `LABEL_PX`; só corta se nem assim couber.
+- New Image e Sheet Size: largura `370` px em cartões; tamanhos e fundos em segmentos, com a unidade no rótulo («Size (px)»). Era uma fila de botões em que o escolhido era azul. Os ids são os mesmos.
+- Send to board: «New board» passa a botão de linha inteira, sem o risco por cima. Confirm delete: frase do aviso quebra em vez de cortar.
+- Canvas Size, Sprite Size, Despeckle e Hue/Saturation: campos aos pares, com a unidade no rótulo (lei da compactação).
+- Paleta: as cores de categoria ficam (ensinam o mapa da biblioteca). «Bgremoval» passa a «Background Removal».
 
 **Decisões tomadas sem o dono (04/11, M3–M7):**
 
@@ -89,6 +106,8 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 - Setas do número só sob o rato ou com foco; o alvo delas fica onde estava. **Limite:** num ecrã de toque não há rato, e o toque na ponta da caixa dá um passo sem seta à vista.
 - Sem animação de hover nos chips em cartões (D32a): o crescimento e o eixo do relógio ficam só em `PH2D_CARDS=0`.
 - Nome de documento é do artista e continua a encurtar com «…»: sem ele a aba não diria nada.
+
+Fotos do fecho: `maquete/m8_new_image_cartao.png`, `m8_sheet_size_cartao.png`, `m8_rename_cartao.png`, `m8_color_mode_cartao.png`, `m8_pixel_edit_cartao.png`, `m8_confirm_delete_cartao.png`, `m8_send_to_board_cartao.png`, `m8_lista_de_cenas.png`, `m8_onion_cartao.png`, `m8_coluna_partida_1000x800.png`, `m9_paleta.png`.
 
 Fotos: `maquete/m3_antes_kanban.png`, `m3_quadro_e_kanban_em_abas.png`, `m4_abas_1000.png`, `m4_abas_1930.png`, `m5_draw.png`, `m6_antes_vector.png`, `m6_vector.png`, `m7_antes_1000.png`, `m7_coluna_e_hud_1000.png`. `PH2D_CARDS=0` fotografado na cena do Vector: barras de antes.
 

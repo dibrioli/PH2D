@@ -45,6 +45,9 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        if let Some(fim) = self.no_cartao(y, crate::cards_avancado::contour) {
+            return fim;
+        }
         if !cst::present() {
             return self.action_button(
                 crate::ids::VECTOR_CONTOUR_ADD,

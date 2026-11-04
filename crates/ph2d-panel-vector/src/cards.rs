@@ -67,6 +67,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     crate::cards_texto::prepare(store);
     crate::cards_ponto::prepare(store);
     crate::cards_padrao::prepare(store);
+    crate::cards_avancado::prepare(store);
     let p = passo_do_comprimento();
     for id in [
         vids::VECTOR_TRANSFORM_X,

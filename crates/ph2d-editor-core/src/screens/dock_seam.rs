@@ -213,6 +213,19 @@ impl HeroLayout {
         Rect::new(x, area.y, (area.x + area.w - x).max(0.0), area.h)
     }
 
+    /// `area` sem o que está por baixo das duas listas: a de um documento em aba (Quadro, Kanban,
+    /// Planner, Editor). Ele não passa por trás delas como o canvas, ou os painéis dele ficam tapados.
+    #[must_use]
+    pub fn clear_of_side_lists(&self, area: Rect) -> Rect {
+        let livre = self.clear_of_left_list(area);
+        let lista = self.float_lists[DockSide::Right as usize];
+        if !self.docks.float_right || lista.h <= 0.0 {
+            return livre;
+        }
+        let fim = (livre.x + livre.w).min(lista.x - ph2d_card_stack::metrics::LIST_MARGIN);
+        Rect::new(livre.x, livre.y, (fim - livre.x).max(0.0), livre.h)
+    }
+
     /// **As duas colunas laterais, ORDENADAS POR `x`** — `(esquerda, direita)`.
     ///
     /// ⚠️ **Existe para o `mirrored` não ser uma inversão escrita à mão em cada chamador.** Sob

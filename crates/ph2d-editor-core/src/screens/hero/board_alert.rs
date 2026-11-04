@@ -8,13 +8,13 @@ use crate::documents::BoardLive;
 use crate::documents::alert::{Action, Alert};
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text_centered, rect_for_label, resolve};
+use crate::paint::{paint_text_centered, rect_for_label, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_board_model::BoardId;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, LineHeight, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, LineHeight, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[cfg(test)]
@@ -181,8 +181,8 @@ pub(super) fn paint(
     super::board_nav::fit::float(&mut hero.documents.live.nav, r);
     #[cfg(test)]
     BANNER.with(|b| b.set(Some(r)));
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+    let sup = crate::widget::lista_flutuante::Superficie::de(theme);
+    sup.moldura_de_painel(scene, r);
     let font = TypeToken::Sm.px();
     let text_r = b.map_or(r, |b| Rect::new(r.x, r.y, b.x - r.x, r.h));
     paint_lines(
@@ -195,8 +195,7 @@ pub(super) fn paint(
     if let Some(b) = b {
         register(&mut hero.hit_index, b);
         if hero.store.hot_id() == Some(ids::BOARD_ALERT_ACTION) {
-            let rr = crate::paint::frame_radius(theme, Radius::Sm.px());
-            fill_rounded_rect(scene, b, rr, resolve(ColorToken::Bg2, theme));
+            sup.realce(scene, b);
         }
         let label = alert.action.map_or("", |a| tr(a.label()));
         paint_text_centered(

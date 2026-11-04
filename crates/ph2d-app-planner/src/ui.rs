@@ -46,13 +46,18 @@ fn button(
     let w = ts.prefix_width(label, m::TEXT_PX).ceil() + 2.0 * m::BUTTON_PAD_X;
     let r = Rect::new(x, y, w, m::BUTTON_H);
     let hover = d.hover == Some(hit);
-    let (bg, fg) = match (on, hover) {
-        (true, _) => (Some(T::Accent), T::AccentFg),
-        (false, true) => (Some(T::Bg3), T::Text1),
-        (false, false) => (None, T::Text1),
+    // Em cartões a vista escolhida é o segmento das abas, sem bloco de acento (`docs/CartoesUI/17`, 9).
+    let tinta = ph2d_editor_core::widget::lista_flutuante::Superficie::de(theme).tinta();
+    let cor = |token: T| tinta.map_or_else(|| c(theme, token), |ink| ink.color(token));
+    let (bg, fg) = match (on, hover, tinta.is_some()) {
+        (true, _, true) => (Some(T::KanbanCardRaised), T::Text1),
+        (true, _, false) => (Some(T::Accent), T::AccentFg),
+        (false, true, true) => (Some(T::CardFieldHover), T::Text1),
+        (false, true, false) => (Some(T::Bg3), T::Text1),
+        (false, false, _) => (None, T::Text1),
     };
     if let Some(bg) = bg {
-        fill_rounded_rect(scene, r, m::RADIUS, c(theme, bg));
+        fill_rounded_rect(scene, r, m::RADIUS, cor(bg));
     }
     let ty = text_top(ts, y, m::BUTTON_H, m::TEXT_PX);
     paint_text_elided(

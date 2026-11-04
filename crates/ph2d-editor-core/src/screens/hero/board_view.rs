@@ -32,7 +32,7 @@ pub struct Input<'a> {
 /// quadro a fila da cena não se pinta, e a faixa vazia mostraria a cena por baixo — foto de 05/10).
 #[must_use]
 pub fn area(layout: &super::HeroLayout) -> Rect {
-    let d = layout.clear_of_left_list(layout.draw_area);
+    let d = layout.clear_of_side_lists(layout.draw_area);
     let t = layout.tool_bar;
     if t.h <= 0.0 || t.w <= 0.0 {
         return d;

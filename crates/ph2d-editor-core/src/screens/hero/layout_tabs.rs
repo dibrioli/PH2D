@@ -196,3 +196,6 @@ mod tests;
 #[cfg(test)]
 #[path = "barras_cartoes_tests.rs"]
 mod barras_cartoes_tests;
+#[cfg(test)]
+#[path = "varredura_tests.rs"]
+mod varredura_tests;

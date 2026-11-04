@@ -106,6 +106,53 @@ impl Superficie {
         fill_rounded_rect(scene, r, m::LIST_RADIUS, fundo);
     }
 
+    /// O fundo de um painel que flutua sobre um documento (Live, Voting, Comments…): a lista de cartões,
+    /// com o raio e as duas sombras dela. Nele, [`Self::secao`] e [`Self::botao`].
+    pub fn moldura_de_painel(self, scene: &mut VectorScene, r: Rect) {
+        let Some(ink) = self.tinta() else {
+            return self.moldura_de_antes_sem_filete(scene, r);
+        };
+        let sombra = ink.color(ColorToken::KanbanListShadow);
+        for passo in [m::LIST_SHADOW_FAR, m::LIST_SHADOW_NEAR] {
+            crate::paint_flight::shadow(scene, r, m::LIST_RADIUS, sombra, passo);
+        }
+        let fundo = ink.color(ColorToken::KanbanList).with_alpha(1.0);
+        fill_rounded_rect(scene, r, m::LIST_RADIUS, fundo);
+    }
+
+    /// Um cartão dentro do painel; `None` no modo de antes, em que a secção tem o tom de quem chama.
+    pub fn secao(self, scene: &mut VectorScene, r: Rect) -> Option<()> {
+        let ink = self.tinta()?;
+        fill_rounded_rect(scene, r, m::CARD_RADIUS, ink.color(ColorToken::KanbanCard));
+        Some(())
+    }
+
+    /// Uma caixa de campo ou de botão sobre o painel, no tom do estado. Devolve a cor do texto.
+    pub fn botao(self, scene: &mut VectorScene, r: Rect, on: bool, hover: bool) -> Color {
+        let Some(ink) = self.tinta() else {
+            let radius = crate::paint::frame_radius(self.theme, Radius::Sm.px());
+            let (fundo, texto) = match (on, hover) {
+                (true, _) => (ColorToken::Accent, ColorToken::AccentFg),
+                (false, true) => (ColorToken::Bg3, ColorToken::Text1),
+                (false, false) => (ColorToken::Bg2, ColorToken::Text1),
+            };
+            fill_rounded_rect(scene, r, radius, resolve(fundo, self.theme));
+            return resolve(texto, self.theme);
+        };
+        let (fundo, texto) = match (on, hover) {
+            (true, _) => (ColorToken::KanbanBlueBold, ColorToken::AccentFg),
+            (false, true) => (ColorToken::CardFieldHover, ColorToken::KanbanCardFg),
+            (false, false) => (ColorToken::CardField, ColorToken::KanbanCardFg),
+        };
+        fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(fundo));
+        ink.color(texto)
+    }
+
+    fn moldura_de_antes_sem_filete(self, scene: &mut VectorScene, r: Rect) {
+        let radius = crate::paint::frame_radius(self.theme, Radius::Md.px());
+        fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, self.theme));
+    }
+
     /// Veste o corpo do diálogo: os widgets partilhados e `card_ink::tinta` pintam-se nos tons do
     /// cartão até o guarda morrer. No modo de antes, nada muda.
     #[must_use]

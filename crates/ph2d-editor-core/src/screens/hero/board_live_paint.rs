@@ -336,8 +336,11 @@ fn paint_panel(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &
     // Os cartões de cada caminho de ligação (e o das pessoas), por baixo das filas deles.
     let tone = crate::widget::section_cards::CardDepth::Section.fill(theme);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
+    let sup = crate::widget::lista_flutuante::Superficie::de(theme);
     for c in &cards {
-        fill_rounded_rect(scene, *c, radius, tone);
+        if sup.secao(scene, *c).is_none() {
+            fill_rounded_rect(scene, *c, radius, tone);
+        }
     }
     hero.documents.live_view.panel.sections = cards;
     // O título e o ×.
@@ -426,12 +429,17 @@ fn paint_row(
             );
         }
         Row::Code(code) => {
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Md.px()),
-                resolve(ColorToken::Bg2, theme),
-            );
+            let sup = crate::widget::lista_flutuante::Superficie::de(theme);
+            if sup.tinta().is_some() {
+                sup.botao(scene, r, false, false);
+            } else {
+                fill_rounded_rect(
+                    scene,
+                    r,
+                    crate::paint::frame_radius(theme, Radius::Md.px()),
+                    resolve(ColorToken::Bg2, theme),
+                );
+            }
             let fg = resolve(ColorToken::Text1, theme);
             paint_text_centered(ts, scene, code, r, TypeToken::Xl2.px(), fg);
         }

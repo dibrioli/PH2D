@@ -206,7 +206,7 @@ pub(crate) fn btn() -> f32 {
 }
 
 /// A largura do cartão e do painel, em botões.
-const CARD_BTNS: f32 = 8.0; // LITERAL-PX-OK: largura em botões (cabem −, +, ▶ e os três do canto)
+const CARD_BTNS: f32 = 9.0; // LITERAL-PX-OK: largura em botões («until private mode is turned off.» inteira)
 
 /// As filas que a busca ocupa no topo da área (o campo, as etiquetas e «n found»).
 const SEARCH_ROWS: f32 = 3.0; // LITERAL-PX-OK: filas da busca, em botões

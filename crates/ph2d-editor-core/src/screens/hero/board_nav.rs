@@ -486,6 +486,9 @@ pub(crate) fn panel(scene: &mut VectorScene, rects: &[Rect], theme: Theme) {
     }
     let p = Spacing::Xs.px();
     let bg = Rect::new(x0 - p, y0 - p, x1 - x0 + 2.0 * p, y1 - y0 + 2.0 * p);
+    if let Some(b) = crate::widget::cromo_barra::Barra::de(theme) {
+        return b.painel(scene, bg);
+    }
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, bg, radius, resolve(ColorToken::BgElev, theme));
 }
@@ -522,13 +525,18 @@ pub(crate) fn button_ink(
         store.button_state(id),
         Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    if on {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::AccentSoft, theme));
-    } else if hover {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
-    }
-    let fg = resolve(if on { ColorToken::Accent } else { rest }, theme);
+    let barra = crate::widget::cromo_barra::Barra::de(theme);
+    let fg = if let Some(b) = barra.filter(|_| rest == ColorToken::Text2) {
+        b.chip(scene, r, on, hover)
+    } else {
+        let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+        if on {
+            fill_rounded_rect(scene, r, radius, resolve(ColorToken::AccentSoft, theme));
+        } else if hover {
+            fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
+        }
+        resolve(if on { ColorToken::Accent } else { rest }, theme)
+    };
     let i = Spacing::Xs.px();
     let inner = Rect::new(r.x + i, r.y + i, r.w - 2.0 * i, r.h - 2.0 * i);
     paint_icon(scene, icon, inner, fg, StrokeToken::Default.px());

@@ -40,6 +40,8 @@ fn viewport() -> Rect {
 
 /// Quanta geometria a coluna emite ao pintar um balão de aviso neste tema.
 fn toast_segments(theme: Theme) -> u32 {
+    // Esta régua é a do painel de antes (`PH2D_CARDS=0`): em cartões os dois inquilinos vestem a lista.
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
     let mut q = ToastQueue::default();
     q.push(Toast::new("mensagem", ToastSeverity::Info));
     let mut text = TextSystem::new();
@@ -55,6 +57,8 @@ fn toast_segments(theme: Theme) -> u32 {
 
 /// O mesmo para a barra de trabalho, o outro inquilino da coluna.
 fn job_segments(theme: Theme) -> u32 {
+    // Esta régua é a do painel de antes (`PH2D_CARDS=0`): em cartões os dois inquilinos vestem a lista.
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
     // ⚠️ `new()`, e não `default()`: até esta wave o `derive(Default)` dava `cap = 0` e a fila
     //    descartava toda barra **em silêncio** — a 1.ª corrida deste gate pintou uma coluna vazia
     //    e acusou o pintor. A armadilha está curada; o gate dela vive em `progress/tests.rs`.

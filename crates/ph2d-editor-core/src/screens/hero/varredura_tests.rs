@@ -1,0 +1,202 @@
+//! A varredura final (`docs/CartoesUI/17_VARREDURA_FINAL.md`): o documento pára antes das duas listas, o
+//! chão cobre a cena, os painéis e o aviso vestem a superfície da lista. `PH2D_CARDS=0` dá o de antes.
+
+use crate::paint::{PaintCtx, fill_rounded_rect, resolve};
+use crate::screens::HeroLayout;
+use crate::toast::{Toast, ToastQueue};
+use crate::widget::card_ink::CardInk;
+use crate::widget::cromo_barra::Barra;
+use crate::widget::lista_flutuante::{Superficie, force_cromo_on_this_thread};
+use crate::zones::Rect;
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{Color, VectorScene};
+
+const TEMA: Theme = Theme::Dark;
+
+fn janela() -> Rect {
+    Rect::new(0.0, 0.0, 1930.0, 1040.0)
+}
+
+fn com_listas(esq: bool, dir: bool) -> HeroLayout {
+    let mut l = HeroLayout::for_viewport(janela());
+    l.docks.float_left = esq;
+    l.docks.float_right = dir;
+    l.float_lists = [
+        Rect::new(5.0, 100.0, 300.0, 400.0),
+        Rect::new(1630.0, 100.0, 295.0, 400.0),
+    ];
+    l
+}
+
+fn vezes_cor(scene: &VectorScene, cor: Color) -> usize {
+    let mut uma = VectorScene::new();
+    fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
+    let dados = uma.inner().encoding().draw_data.clone();
+    scene
+        .inner()
+        .encoding()
+        .draw_data
+        .windows(dados.len())
+        .filter(|w| *w == dados.as_slice())
+        .count()
+}
+
+#[test]
+fn o_documento_para_antes_das_duas_listas() {
+    let l = com_listas(true, true);
+    let a = crate::screens::hero::board_view::area(&l);
+    assert!(a.x >= 305.0, "a esquerda: {a:?}");
+    assert!(a.x + a.w <= 1630.0, "a direita: {a:?}");
+    assert!(a.w > 0.0);
+}
+
+#[test]
+fn sem_lista_flutuante_o_documento_fica_como_antes() {
+    let l = com_listas(false, false);
+    let a = l.clear_of_side_lists(l.draw_area);
+    assert_eq!(
+        (a.x, a.w),
+        (l.draw_area.x, l.draw_area.w),
+        "PH2D_CARDS=0 não usa as listas"
+    );
+}
+
+#[test]
+fn lista_fechada_devolve_a_largura() {
+    let mut l = com_listas(true, true);
+    l.float_lists[1].h = 0.0;
+    let a = l.clear_of_side_lists(l.draw_area);
+    assert_eq!(a.x + a.w, l.draw_area.x + l.draw_area.w);
+}
+
+#[test]
+fn o_chao_do_documento_cobre_ate_ao_fim_da_janela_so_em_cartoes() {
+    let l = com_listas(true, true);
+    let ponta = |cartao| {
+        force_cromo_on_this_thread(Some(cartao));
+        let mut s = VectorScene::new();
+        crate::screens::hero::canvas::paint_document_ground(&l, &mut s, TEMA);
+        force_cromo_on_this_thread(None);
+        s
+    };
+    let chao = {
+        force_cromo_on_this_thread(Some(true));
+        let cor = Barra::de(TEMA).expect("em cartões").chao().with_alpha(1.0);
+        force_cromo_on_this_thread(None);
+        cor
+    };
+    assert_eq!(vezes_cor(&ponta(true), chao), 1);
+    assert_eq!(vezes_cor(&ponta(false), chao), 0);
+}
+
+fn pinta_um_aviso(cartao: bool) -> VectorScene {
+    force_cromo_on_this_thread(Some(cartao));
+    let mut q = ToastQueue::new();
+    q.push(Toast::success("Added Macro"));
+    let (mut scene, mut text) = (VectorScene::new(), TextSystem::without_system_fonts());
+    let mut ctx = PaintCtx {
+        theme: TEMA,
+        viewport: janela(),
+        text: &mut text,
+    };
+    crate::paint::Paint::paint(&q, &mut scene, &mut ctx);
+    force_cromo_on_this_thread(None);
+    scene
+}
+
+#[test]
+fn o_aviso_veste_a_lista_e_perde_a_faixa_de_cor() {
+    let verde = resolve(ColorToken::Success, TEMA);
+    let velho = resolve(ColorToken::BgElev, TEMA);
+    let novo = CardInk::of_list(TEMA)
+        .color(ColorToken::KanbanList)
+        .with_alpha(1.0);
+    let (c, a) = (pinta_um_aviso(true), pinta_um_aviso(false));
+    assert_eq!(vezes_cor(&c, novo), 1, "corpo da lista");
+    assert_eq!(vezes_cor(&c, velho), 0, "sem o corpo de antes");
+    assert!(vezes_cor(&a, velho) >= 1, "PH2D_CARDS=0: o corpo de antes");
+    assert!(
+        vezes_cor(&a, verde) > vezes_cor(&c, verde),
+        "a faixa só no modo de antes"
+    );
+}
+
+#[test]
+fn o_botao_do_painel_tem_o_tom_do_cartao_e_o_de_antes_fora() {
+    let ink = CardInk::of_list(TEMA);
+    let r = Rect::new(0.0, 0.0, 100.0, 28.0);
+    let pinta = |cartao, on, hover| {
+        force_cromo_on_this_thread(Some(cartao));
+        let mut s = VectorScene::new();
+        let fg = Superficie::de(TEMA).botao(&mut s, r, on, hover);
+        force_cromo_on_this_thread(None);
+        (s, fg)
+    };
+    assert_eq!(
+        vezes_cor(&pinta(true, false, false).0, ink.color(ColorToken::CardField)),
+        1
+    );
+    assert_eq!(
+        vezes_cor(
+            &pinta(true, false, true).0,
+            ink.color(ColorToken::CardFieldHover)
+        ),
+        1
+    );
+    assert_eq!(
+        vezes_cor(
+            &pinta(true, true, false).0,
+            ink.color(ColorToken::KanbanBlueBold)
+        ),
+        1
+    );
+    assert_eq!(
+        vezes_cor(
+            &pinta(false, false, false).0,
+            resolve(ColorToken::Bg2, TEMA)
+        ),
+        1
+    );
+}
+
+#[test]
+fn o_painel_do_documento_e_a_lista_de_cartoes() {
+    let r = Rect::new(0.0, 0.0, 240.0, 200.0);
+    let pinta = |cartao| {
+        force_cromo_on_this_thread(Some(cartao));
+        let mut s = VectorScene::new();
+        Superficie::de(TEMA).moldura_de_painel(&mut s, r);
+        force_cromo_on_this_thread(None);
+        s
+    };
+    let lista = CardInk::of_list(TEMA)
+        .color(ColorToken::KanbanList)
+        .with_alpha(1.0);
+    assert_eq!(vezes_cor(&pinta(true), lista), 1);
+    assert_eq!(vezes_cor(&pinta(false), resolve(ColorToken::BgElev, TEMA)), 1);
+}
+
+#[test]
+fn a_barra_de_trabalho_veste_a_mesma_superficie_do_aviso() {
+    let pinta = |cartao| {
+        force_cromo_on_this_thread(Some(cartao));
+        let mut q = crate::progress::JobQueue::new();
+        q.push(crate::progress::Progress::new("Working"));
+        let (mut scene, mut text) = (VectorScene::new(), TextSystem::without_system_fonts());
+        let mut ctx = PaintCtx {
+            theme: TEMA,
+            viewport: janela(),
+            text: &mut text,
+        };
+        q.paint_below(0, &mut scene, &mut ctx);
+        force_cromo_on_this_thread(None);
+        scene
+    };
+    let novo = CardInk::of_list(TEMA)
+        .color(ColorToken::KanbanList)
+        .with_alpha(1.0);
+    assert_eq!(vezes_cor(&pinta(true), novo), 1);
+    assert_eq!(vezes_cor(&pinta(true), resolve(ColorToken::BgElev, TEMA)), 0);
+    assert!(vezes_cor(&pinta(false), resolve(ColorToken::BgElev, TEMA)) >= 1);
+}

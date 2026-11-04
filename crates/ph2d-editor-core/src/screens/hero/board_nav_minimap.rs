@@ -9,10 +9,10 @@
 
 use super::HeroScreen;
 use crate::documents::nav::{Cache, Map};
-use crate::paint::{fill_rounded_rect, resolve};
+use crate::paint::resolve;
 use crate::zones::Rect;
 use ph2d_board_model::{Board, Rgba};
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
 /// O tamanho do minimapa em passos de `Spacing::Xl4`: 4 × 3.
@@ -109,8 +109,7 @@ pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, 
     }
     let r = minimap_rect(area);
     live.nav.covers.push(r);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, r);
     let key = (board.doc.rev(), rect_bits(r));
     if live.nav.minimap_cache.as_ref().is_none_or(|c| c.key != key) {
         live.nav.minimap_cache = build(board, r, theme);

@@ -5,7 +5,7 @@
 use ph2d_board_model::{BoardId, Element, ElementId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 use super::super::super::super::HeroScreen;
@@ -15,9 +15,7 @@ use super::{Btn, Face, buttons, card};
 use crate::documents::fac::VotePanel;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, paint_text_elided, resolve,
-};
+use crate::paint::{paint_text, paint_text_centered, paint_text_elided, resolve};
 use crate::widget::ButtonState;
 use crate::zones::Rect;
 
@@ -292,7 +290,6 @@ pub(super) fn paint(
             } else {
                 toggle(&mut list, scene, ts, 2, *shown_on);
             }
-            let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
             for (k, (name, when)) in rows.iter().enumerate() {
                 let rr = wide(3 + k, 0, 1);
                 let id = row_node(k);
@@ -300,12 +297,8 @@ pub(super) fn paint(
                     store.button_state(id),
                     Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
                 );
-                let bg = if hover {
-                    ColorToken::Bg3
-                } else {
-                    ColorToken::Bg2
-                };
-                fill_rounded_rect(scene, rr, radius, resolve(bg, theme));
+                crate::widget::lista_flutuante::Superficie::de(theme)
+                    .botao(scene, rr, false, hover);
                 let (sm, ty) = (TypeToken::Sm.px(), label_y(3 + k));
                 // A data com a largura dela (a «2 d ago» saía «2 d a…»): o nome é que se corta.
                 let when_w = crate::paint::rect_for_label(ts.prefix_width(when, sm)) + pad;

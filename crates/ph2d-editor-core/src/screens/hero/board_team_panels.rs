@@ -11,7 +11,7 @@ use crate::zones::Rect;
 use ph2d_board_model::VersionId;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_vector::VectorScene;
 
 fn btn() -> f32 {
@@ -62,13 +62,7 @@ pub(super) fn paint(
 }
 
 pub(super) fn card(scene: &mut VectorScene, r: Rect, theme: ph2d_tokens::Theme) {
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    crate::paint::fill_rounded_rect(
-        scene,
-        r,
-        radius,
-        crate::paint::resolve(ColorToken::BgElev, theme),
-    );
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, r);
 }
 
 /// O fundo dos painéis: por cima da fila de botões de cima do canto.

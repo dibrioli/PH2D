@@ -432,26 +432,31 @@ fn track_rect(r: Rect) -> Rect {
 /// own — it is what makes a bar sit in the same stack as a toast.
 pub(crate) fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mut PaintCtx) {
     // Same body as a toast — same column, same surface, so the two read as one stack.
-    fill_rounded_rect(
-        scene,
-        r,
-        crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
-        resolve(ColorToken::BgElev, ctx.theme),
-    );
-    // ⭐ **Pela porta do tema** (wave 26): a barra de trabalho é o SEGUNDO inquilino desta coluna,
-    //    e traçava a mesma moldura crua a 1 px que o balão de aviso — as duas desenhavam num tema
-    //    moderno o contorno que a pele plana apagou no resto da casa. ⛔ E este ficheiro **nunca
-    //    foi varrido**: o censo da moldura olha `widget/`, `screens/hero/` e UM ficheiro escrito à
-    //    mão (`paint.rs`), e o vizinho dele nunca entrou.
-    crate::paint::stroke_frame(
-        scene,
-        r,
-        crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
-        ctx.theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        ph2d_tokens::StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, ctx.theme),
-    );
+    let sup = crate::widget::lista_flutuante::Superficie::de(ctx.theme);
+    if sup.tinta().is_some() {
+        sup.moldura_de_painel(scene, r);
+    } else {
+        fill_rounded_rect(
+            scene,
+            r,
+            crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
+            resolve(ColorToken::BgElev, ctx.theme),
+        );
+        // ⭐ **Pela porta do tema** (wave 26): a barra de trabalho é o SEGUNDO inquilino desta coluna,
+        //    e traçava a mesma moldura crua a 1 px que o balão de aviso — as duas desenhavam num tema
+        //    moderno o contorno que a pele plana apagou no resto da casa. ⛔ E este ficheiro **nunca
+        //    foi varrido**: o censo da moldura olha `widget/`, `screens/hero/` e UM ficheiro escrito à
+        //    mão (`paint.rs`), e o vizinho dele nunca entrou.
+        crate::paint::stroke_frame(
+            scene,
+            r,
+            crate::paint::frame_radius(ctx.theme, Radius::Md.px()),
+            ctx.theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            ph2d_tokens::StrokeToken::Thin.px(),
+            resolve(ColorToken::Border, ctx.theme),
+        );
+    }
 
     paint_text(
         ctx.text,

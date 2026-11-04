@@ -259,6 +259,9 @@ pub fn paint_hero_screen(
     // W11 do Kanban — o cartão que vira nota (com o moldador); a macro abre o painel em
     // `kanban_links::serve`.
     super::board_kanban_notes::run_pending(hero, text_system);
+    if hero.documents.surface_active().is_some() || hero.documents.active().is_some() {
+        super::canvas::paint_document_ground(&layout, scene, hero.theme);
+    }
     if hero.documents.surface_active().is_some() {
         // ⭐ Um documento de FAMÍLIA (o editor de scripts) é dono da área como o quadro: a cena fica
         //    por baixo, sem réguas, gizmos nem barras. Pintar e agarrar leem o MESMO rect.

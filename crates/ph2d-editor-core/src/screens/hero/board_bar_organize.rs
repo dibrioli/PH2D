@@ -346,8 +346,7 @@ pub(super) fn paint_notice(
     use super::super::board_alert::{banner, paint_lines};
     let text = ph2d_i18n::tr(key);
     let (r, split) = banner(text_system, (area, keep), text, 0.0);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, r);
     paint_lines(
         text_system,
         scene,

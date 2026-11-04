@@ -105,6 +105,18 @@ pub fn paint_top_band(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme
     scene.fill_rect(rect_to_vello(faixa), b.chao());
 }
 
+/// O chão de uma aba de documento, da faixa do topo ao fim da janela, por cima da cena: as listas e o
+/// documento flutuam nele, e a cena não aparece nas sobras à volta deles (`docs/CartoesUI/17`, 2).
+pub fn paint_document_ground(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    let Some(b) = crate::widget::cromo_barra::Barra::de(theme) else {
+        return;
+    };
+    let v = layout.viewport;
+    let topo = layout.tool_bar.y.min(layout.draw_area.y);
+    let chao = Rect::new(v.x, topo, v.w, (v.y + v.h - topo).max(0.0));
+    scene.fill_rect(rect_to_vello(chao), b.chao().with_alpha(1.0));
+}
+
 /// O fundo do desenho — ⚠️ **só em modo FIXTURA**; ver [`paint_window_ground`].
 pub fn paint_canvas_bg(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
     scene.fill_rect(

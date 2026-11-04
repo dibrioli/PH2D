@@ -251,21 +251,28 @@ impl Paint for ToastQueue {
 /// Um balão no cartão `r`, com o texto que a lei de leitura deu (`shown`).
 fn paint_toast(toast: &Toast, r: Rect, shown: &Shown, scene: &mut VectorScene, ctx: &mut PaintCtx) {
     use ph2d_tokens::{Radius, Spacing, StrokeToken};
-    let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
-    // Body uses BgElev so the toast lifts off the canvas
-    // independently of its severity tint; the severity color
-    // is reserved for the icon + accent stripe on the left.
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
-    // ⭐ **Pela porta do tema** (wave 26): a moldura do tema moderno é nenhuma em repouso.
-    crate::paint::stroke_frame(
-        scene,
-        r,
-        radius,
-        ctx.theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, ctx.theme),
-    );
+    let sup = crate::widget::lista_flutuante::Superficie::de(ctx.theme);
+    let cartao = sup.tinta().is_some();
+    if cartao {
+        // A superfície da lista; a severidade fica só no ícone (`docs/CartoesUI/17`, item 3).
+        sup.moldura_de_painel(scene, r);
+    } else {
+        let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
+        // Body uses BgElev so the toast lifts off the canvas
+        // independently of its severity tint; the severity color
+        // is reserved for the icon + accent stripe on the left.
+        fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, ctx.theme));
+        // ⭐ **Pela porta do tema** (wave 26): a moldura do tema moderno é nenhuma em repouso.
+        crate::paint::stroke_frame(
+            scene,
+            r,
+            radius,
+            ctx.theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            StrokeToken::Thin.px(),
+            resolve(ColorToken::Border, ctx.theme),
+        );
+    }
 
     let (severity_token, icon) = match toast.severity {
         ToastSeverity::Info => (ColorToken::Info, crate::icons::IconId::Info),
@@ -286,7 +293,9 @@ fn paint_toast(toast: &Toast, r: Rect, shown: &Shown, scene: &mut VectorScene, c
         Spacing::Xs.px(),
         r.h - inset * 2.0,
     );
-    scene.fill_rect(rect_to_vello(stripe), severity_color);
+    if !cartao {
+        scene.fill_rect(rect_to_vello(stripe), severity_color);
+    }
 
     // Ícone da severidade, depois da faixa, centrado na 1.ª linha do texto.
     let (text_y, meio_da_1a) = crate::toast_reading::text_y(r, shown);

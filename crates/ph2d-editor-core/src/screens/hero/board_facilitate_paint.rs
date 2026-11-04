@@ -197,6 +197,16 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
 
 /// O fundo de um cartão.
 fn card(scene: &mut VectorScene, r: Rect, theme: Theme, token: ColorToken) {
+    let sup = crate::widget::lista_flutuante::Superficie::de(theme);
+    if token == ColorToken::BgElev {
+        return sup.moldura_de_painel(scene, r);
+    }
+    // O cronómetro que acabou pisca no tom do token, por cima da moldura.
+    if sup.tinta().is_some() {
+        sup.moldura_de_painel(scene, r);
+        let radius = ph2d_card_stack::metrics::LIST_RADIUS;
+        return fill_rounded_rect(scene, r, radius, resolve(token, theme));
+    }
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(token, theme));
 }
@@ -219,23 +229,8 @@ fn buttons(
                     store.button_state(id),
                     Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
                 );
-                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-                let bg = if on {
-                    ColorToken::Accent
-                } else if hover {
-                    ColorToken::Bg3
-                } else {
-                    ColorToken::Bg2
-                };
-                fill_rounded_rect(scene, r, radius, resolve(bg, theme));
-                let fg = resolve(
-                    if on {
-                        ColorToken::AccentFg
-                    } else {
-                        ColorToken::Text1
-                    },
-                    theme,
-                );
+                let fg = crate::widget::lista_flutuante::Superficie::de(theme)
+                    .botao(scene, r, on, hover);
                 paint_text_centered(ts, scene, &label, r, TypeToken::Sm.px(), fg);
                 hit.register(id, r);
             }

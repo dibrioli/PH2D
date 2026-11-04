@@ -18,7 +18,7 @@ use ph2d_a11y::NodeId;
 use ph2d_board_model::{Board, Message, ThreadId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O lado de uma bolha e de um botão (K7: tamanho de INTERFACE, o de um botão da barra).
@@ -196,8 +196,7 @@ fn paint_card(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &m
     let y = (at[1] - s).min(area.y + area.h - m - h).max(area.y + m);
     let card = Rect::new(x, y, w, h);
     crate::screens::hero::board_nav::fit::float(&mut hero.documents.live.nav, card);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, card);
     // O fundo toma o clique (registado ANTES dos botões, que ganham por cima dele).
     hero.hit_index
         .register(node(Hit::Button(TeamButton::CardSurface)), card);
@@ -470,8 +469,7 @@ pub(super) fn paint_list(
     let shown = rows.len().saturating_sub(from).min(fit);
     let h = pad * 2.0 + (s + g) * (super::panels::HEAD_ROWS + shown.max(1)) as f32;
     let r = Rect::new(at.x, at.y, at.w, h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, r);
     hero.hit_index
         .register(node(Hit::Button(TeamButton::ListSurface)), r);
     let mut y = super::panels::header(
@@ -608,23 +606,7 @@ pub(super) fn text_button(
                 | crate::widget::ButtonState::Focused
         )
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    let bg = if on {
-        ColorToken::Accent
-    } else if hover {
-        ColorToken::Bg3
-    } else {
-        ColorToken::Bg2
-    };
-    fill_rounded_rect(scene, r, radius, resolve(bg, theme));
-    let fg = resolve(
-        if on {
-            ColorToken::AccentFg
-        } else {
-            ColorToken::Text1
-        },
-        theme,
-    );
+    let fg = crate::widget::lista_flutuante::Superficie::de(theme).botao(scene, r, on, hover);
     paint_text_centered(ts, scene, label, r, TypeToken::Sm.px(), fg);
     hit.register(id, r);
 }
@@ -649,8 +631,7 @@ pub fn paint_told(
     let h = Spacing::Xl2.px();
     let y = area.y + Spacing::Md.px() + h + Spacing::Xs.px();
     let r = Rect::new(area.x + (area.w - w) / 2.0, y, w, h);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, r);
     paint_text_centered(ts, scene, &text, r, font, resolve(ColorToken::Text1, theme));
     Some(r)
 }

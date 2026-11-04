@@ -5,12 +5,12 @@
 use super::HeroScreen;
 use crate::icons::IconId;
 use crate::interaction::WidgetEvent;
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::paint::{paint_text, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::{BoardOp, ElementId};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// A largura do painel em passos de `Spacing::Xl4`.
@@ -92,8 +92,7 @@ pub(super) fn paint(
         .collect();
     let p = panel_rect(area, frames.len());
     crate::screens::hero::board_nav::fit::cover(hero, p);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, p, radius, resolve(ColorToken::BgElev, theme));
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura_de_painel(scene, p);
     let (font, pad) = (TypeToken::Sm.px(), Spacing::Md.px());
     let text_y = |y: f32| y + (row_h() - font) / 2.0;
     let title = ph2d_i18n::tr("board.nav.frames_title");

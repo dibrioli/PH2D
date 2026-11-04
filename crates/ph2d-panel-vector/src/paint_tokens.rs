@@ -54,7 +54,7 @@ fn options(prop: u16) -> Vec<DropdownOption<usize>> {
 }
 
 /// A espessura da rachura, em px de TELA.
-const SLASH_W_PX: f32 = 2.0; // LITERAL-PX-OK: espessura de chrome, irmã do 1.0 do foco
+pub(crate) const SLASH_W_PX: f32 = 2.0; // LITERAL-PX-OK: espessura de chrome, irmã do 1.0 do foco
 
 impl BodyCtx<'_> {
     /// **A rachura sobre uma swatch cujo valor um token cobre.**

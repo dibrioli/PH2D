@@ -45,6 +45,7 @@ pub mod bars;
 pub mod cards;
 mod cards_avancado;
 mod cards_fx;
+mod cards_interface;
 mod cards_lado;
 mod cards_padrao;
 mod cards_ponto;

@@ -220,6 +220,28 @@ fn each_field_shows_the_document_value() {
     }
 }
 
+/// Passos do Blend e `t` do Morph vivem na barra, que a shell move: o campo segue-a.
+/// *Mutação: tirar a semente ⇒ vermelho.*
+#[test]
+fn blend_steps_and_morph_t_follow_their_bars() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_tool_vector::params::{blend_steps_from_track, blend_steps_to_track};
+    let mut mesa = Mesa::com(true, tudo);
+    let trilho = blend_steps_to_track(12);
+    mesa.host
+        .store_mut()
+        .set_slider_value(p::VECTOR_BLEND_STEPS, trilho);
+    mesa.host
+        .store_mut()
+        .set_slider_value(p::VECTOR_MORPH_T, 0.25);
+    mesa.assenta();
+    let tem = |id: NodeId| mesa.host.store().number_value(id).expect("campo");
+    let passos = blend_steps_from_track(f64::from(trilho));
+    assert_eq!(tem(t::VECTOR_BLEND_STEPS_NUM), f64::from(passos));
+    assert_eq!(passos, 12);
+    assert!((tem(t::VECTOR_MORPH_T_NUM) - 0.25).abs() < 1e-6);
+}
+
 /// Escrever um número dá o mesmo que no painel de antes.
 #[test]
 fn typing_sends_the_same_action_as_the_old_panel() {
@@ -325,6 +347,25 @@ fn the_lit_option_follows_the_document() {
     assert_ne!(pinta(&|| contorno(0, 0)), pinta(&|| contorno(0, 1)), "Side");
     assert_ne!(pinta(&|| vinculo(false)), pinta(&|| vinculo(true)), "Flip");
     assert_ne!(pinta(&|| gaiola(0)), pinta(&|| gaiola(1)), "Cage");
+    // Sempre UMA acesa: o tamanho do que se pinta não muda com a escolha. Sem isto, uma opção acesa
+    // sempre, ou nunca, continuava a dar pinturas diferentes.
+    let n = |semente: &dyn Fn()| pinta(semente).len();
+    assert_eq!(n(&|| gaiola(0)), n(&|| gaiola(1)), "Cage: uma acesa");
+    assert_eq!(
+        n(&|| contorno(0, 0)),
+        n(&|| contorno(1, 0)),
+        "Corner: uma acesa"
+    );
+    assert_eq!(
+        n(&|| contorno(0, 0)),
+        n(&|| contorno(0, 1)),
+        "Side: uma acesa"
+    );
+    assert_eq!(
+        n(&|| vinculo(false)),
+        n(&|| vinculo(true)),
+        "Flip: uma acesa"
+    );
 }
 
 /// A amostra pinta a cor do último anel, a do documento. *Mutação: cor fixa ⇒ vermelho.*
@@ -406,6 +447,11 @@ fn each_field_has_its_step_and_factory_value() {
     );
     assert_eq!(spec(p::VECTOR_PATTERNPATH_ROTATION_NUM).step, 1.0, "graus");
     assert_eq!(spec(p::VECTOR_PATTERNPATH_START_NUM).step, 0.01, "fração");
+    // A seta anda o passo do `populate`, que não é o do arrasto.
+    assert_eq!(spec(p::VECTOR_PATTERNPATH_OFFSET_NUM).step, 0.05);
+    assert_eq!(spec(p::VECTOR_PATTERNPATH_OFFSET_NUM).scrub, 0.01);
+    assert_eq!(spec(p::VECTOR_CONTOUR_OFFSET_NUM).step, 0.5);
+    assert_eq!(spec(p::VECTOR_CONTOUR_OFFSET_NUM).scrub, 0.1);
     assert_eq!(spec(p::VECTOR_CONTOUR_ACCEL_NUM).default, Some(1.0));
     assert_eq!(spec(p::VECTOR_PATTERNPATH_END_NUM).default, Some(1.0));
     assert_eq!(spec(t::VECTOR_ENVELOPE_BEND_NUM).default, Some(0.5));

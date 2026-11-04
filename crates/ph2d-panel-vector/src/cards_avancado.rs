@@ -137,7 +137,7 @@ fn botao<'a>(id: NodeId, text: &'a str) -> Cell<'a> {
     })
 }
 
-fn numero<'a>(id: NodeId, nome: &'a str, key: &'a [NodeId]) -> Cell<'a> {
+pub(crate) fn numero<'a>(id: NodeId, nome: &'a str, key: &'a [NodeId]) -> Cell<'a> {
     Cell::new(campo(id, Glyph::Text(corpo::letra_da_grandeza(nome))))
         .label(nome)
         .key(key)

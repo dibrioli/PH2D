@@ -30,6 +30,7 @@ mod g3_os_cartoes; // NovaUI G3: Effects, Filters, a rampa e o painel do traço 
 mod g4_os_cartoes; // NovaUI G4: Text, Font, Paragraph, Axes e Text on Path
 mod g5_os_cartoes; // NovaUI G5: Pattern x2, Brush, Connector, Vertex
 mod g6_os_cartoes; // NovaUI G6: os cinco membros do Advanced
+mod g7_os_cartoes; // NovaUI G7: Component, Layout e Widget
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
 mod popover_band;

@@ -65,6 +65,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.vector.paint_down" => "Move this paint down",
         "card.vector.close_settings" => "Close these settings",
         "card.vector.name_unit" => "{name} ({unit})",
+        "card.vector.widget.icon" => "Icon",
         "card.vector.unit.degrees" => "°",
         "card.vector.unit.times" => "×",
         "card.vector.unit.em" => "em",

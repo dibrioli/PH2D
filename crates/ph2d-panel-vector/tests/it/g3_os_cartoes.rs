@@ -987,6 +987,21 @@ fn the_slice_passes_the_compaction_census() {
     }
 }
 
+/// O painel à esquerda entra no censo: sem isto, o teste de cima passaria sem o medir.
+/// *Mutação: tirar `na_secao_de` de `cards_lado::flutua` ⇒ vermelho.*
+#[test]
+fn the_left_panel_is_measured_by_the_census() {
+    let mut mesa = Mesa::nova(true);
+    let linha = t::vector_fx_row_id(0);
+    mesa.abre(linha);
+    let esquerda_da_lista = mesa.rect(linha).expect("a linha").x;
+    let ((), c) = ph2d_editor_core::panel::cards::censo::grava(|| mesa.assenta());
+    assert!(
+        c.linhas.iter().any(|l| l.x + l.w <= esquerda_da_lista),
+        "o censo não viu o painel à esquerda"
+    );
+}
+
 /// Parâmetros do efeito dois a dois, e a caixa como 2.ª coluna (05 §4). Size + Smooth, Ridges + Bend.
 #[test]
 fn an_effect_shares_its_lines_and_its_checkbox() {

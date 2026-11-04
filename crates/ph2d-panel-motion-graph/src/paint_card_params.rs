@@ -301,7 +301,7 @@ pub(super) fn draw_card_params(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
             ctx.scene,
             track,
             TRACK_R * z,
-            resolve(ColorToken::Bg0, theme),
+            resolve(super::tinta_da_faixa(), theme),
         );
         let what = shown(p);
         // O NÍVEL, dentro da mesma faixa. ⚠️ Um param DIRIGIDO não desenha nível: o número vem

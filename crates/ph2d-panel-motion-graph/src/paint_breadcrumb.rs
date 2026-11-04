@@ -48,20 +48,15 @@ pub(crate) fn draw(
         // The LAST crumb is where you are — it is not a place to go, so it reads as a
         // label (no border) while the ones above it read as buttons.
         let here = i + 1 == titles.len();
-        fill_rounded_rect(
-            ctx.scene,
-            chip,
-            CRUMB_RADIUS,
-            resolve(
-                if here {
-                    ColorToken::Bg3
-                } else {
-                    ColorToken::Bg2
-                },
-                theme,
-            ),
-        );
-        if !here {
+        let cartao = crate::paint::em_cartoes();
+        let fundo = match (cartao, here) {
+            (true, true) => ColorToken::KanbanCardRaised,
+            (true, false) => ColorToken::KanbanList,
+            (false, true) => ColorToken::Bg3,
+            (false, false) => ColorToken::Bg2,
+        };
+        fill_rounded_rect(ctx.scene, chip, CRUMB_RADIUS, resolve(fundo, theme));
+        if !here && !cartao {
             // ⭐ Pela porta do TEMA: a migalha clicável é plana num tema moderno.
             ph2d_editor_core::paint::stroke_frame(
                 ctx.scene,

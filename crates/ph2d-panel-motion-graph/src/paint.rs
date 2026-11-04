@@ -159,6 +159,34 @@ const MENU_ROW_TEXT_Y: f32 = 3.0; // LITERAL-PX-OK: row label y-inset
 const MENU_ROW_SIZE: f32 = 13.0; // LITERAL-PX-OK: row label font size
 const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
 
+thread_local! {
+    /// `cards_on()` lido uma vez por quadro: um grafo pinta milhares de cartões.
+    static EM_CARTOES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O grafo deste quadro pinta-se em cartões? `PH2D_CARDS=0` = a tinta de antes.
+pub(crate) fn em_cartoes() -> bool {
+    EM_CARTOES.with(std::cell::Cell::get)
+}
+
+/// O corpo de um nó: a tinta do cartão. O cabeçalho continua a cor da categoria.
+pub(crate) fn tinta_do_corpo() -> ColorToken {
+    if em_cartoes() {
+        ColorToken::KanbanCard
+    } else {
+        ColorToken::Bg2
+    }
+}
+
+/// A faixa de um param no nó: a caixa do campo.
+pub(crate) fn tinta_da_faixa() -> ColorToken {
+    if em_cartoes() {
+        ColorToken::CardField
+    } else {
+        ColorToken::Bg0
+    }
+}
+
 /// **O frame do editor de grafo**, na ordem em que ele é montado: dobra os gestos deste frame
 /// no estado, publica a seleção, e então desenha — fundo e grade, backdrops, fios, cards,
 /// sockets — registrando os hits do menos prioritário ao mais (o último vence). Os overlays
@@ -170,6 +198,7 @@ const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
 /// nada sobre o que a função faz, e é pior que comentário nenhum na porta de entrada do
 /// painel — reescrito, não apagado.
 pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
+    EM_CARTOES.with(|c| c.set(ph2d_editor_core::panel::cards::ferramenta::cards_on()));
     let rect = ctx.layout.motion_graph;
     let theme = ctx.host.theme();
     let snap = current_snapshot();

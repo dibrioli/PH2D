@@ -48,26 +48,7 @@ pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect)
     let theme = ctx.host.theme();
     let mut g = geometria(slot);
     let lista = g.lista;
-    shadow(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanListShadow, theme),
-        m::LIST_SHADOW_FAR,
-    );
-    shadow(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanShadowNear, theme),
-        m::LIST_SHADOW_NEAR,
-    );
-    fill_rounded_rect(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanList, theme),
-    );
+    pinta_pilula(ctx, lista);
     let nome = title.to_uppercase();
     let tx = lista.x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X;
     let tracking = m::LIST_TITLE_PX * m::LIST_TITLE_TRACKING_EM * nome.chars().count() as f32;
@@ -94,6 +75,31 @@ pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect)
     g.cab.x = x;
     g.cab.w = (fim - x).max(0.0);
     g
+}
+
+/// Uma pílula flutuante: a tinta e a sombra da lista, sem título (a barra de um canvas).
+pub fn pinta_pilula(ctx: &mut PaintCtx, r: Rect) {
+    let theme = ctx.host.theme();
+    shadow(
+        ctx.scene,
+        r,
+        m::LIST_RADIUS,
+        resolve(ColorToken::KanbanListShadow, theme),
+        m::LIST_SHADOW_FAR,
+    );
+    shadow(
+        ctx.scene,
+        r,
+        m::LIST_RADIUS,
+        resolve(ColorToken::KanbanShadowNear, theme),
+        m::LIST_SHADOW_NEAR,
+    );
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        m::LIST_RADIUS,
+        resolve(ColorToken::KanbanList, theme),
+    );
 }
 
 /// Um ícone de uma fila: `id: None` = apagado, sem alvo nenhum (o gesto não existe agora).

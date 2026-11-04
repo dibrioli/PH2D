@@ -17,6 +17,10 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Theme};
 
+/// A pílula da barra em cartões; `PH2D_CARDS=0` pinta os chips soltos de baixo.
+#[path = "paint_chrome_cartoes.rs"]
+mod cartoes;
+
 // Divider line + toolbar chip metrics (graph-canvas chrome, not design tokens).
 const DIVIDER_LINE_W: f32 = 2.0; // LITERAL-PX-OK: divider line thickness
 const DIVIDER_HIT_HALF: f32 = 3.0; // LITERAL-PX-OK: divider grab-band half-thickness
@@ -211,6 +215,10 @@ pub(crate) fn draw_split_chrome(
     // split divider band, and the right is where a panned graph tends to spill.
     // The orientation chip matching the current split reads as active (Accent ring).
     let chips = chip_specs(state, vertical);
+    if crate::paint::em_cartoes() {
+        cartoes::draw(ctx, rect, theme, hits, &chips);
+        return;
+    }
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {
         let cx = rect.x + TOOLBAR_INSET + i as f32 * (CHIP_SIZE + CHIP_GAP);

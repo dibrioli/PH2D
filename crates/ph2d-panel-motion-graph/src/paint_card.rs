@@ -71,7 +71,7 @@ pub(super) fn draw_card(
         }
     }
 
-    fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::Bg2, theme));
+    fill_rounded_rect(ctx.scene, body, r, resolve(super::tinta_do_corpo(), theme));
     let header = Rect::new(sx, sy, w, geom::HEADER_H * view.zoom);
     fill_rounded_rect(ctx.scene, header, r, resolve(cat_token(n.category), theme));
     // ⭐ Pela porta do TEMA: o nó em repouso não tem borda num tema moderno (o `GraphNode` do

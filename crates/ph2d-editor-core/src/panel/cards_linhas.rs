@@ -174,8 +174,13 @@ impl<'s> CardCtx<'s> {
 
     /// A largura em que `c` mostra o conteúdo e o rótulo sem cortar.
     pub(super) fn pede(&mut self, c: &Cell<'_>) -> f32 {
+        let escolha = match c.widget {
+            Widget::Choice(segs) => self.escolha_pede(segs),
+            _ => 0.0,
+        };
         let ts = &mut *self.text_system;
         let corpo = match c.widget {
+            Widget::Choice(_) => escolha,
             Widget::Swatch { text, detach, .. } => {
                 let mut mede = |t: &str| ts.prefix_width(t, m::VALUE_PX);
                 colunas::caixa_da_cor(text, detach.is_some(), &mut mede)

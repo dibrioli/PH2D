@@ -24,10 +24,8 @@ use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
 ///
 /// `painter_layers`: as 220 são as linhas antigas dos corpos em captura (vão 3 contra 6), dívida do
 /// bloco H; `Texture + Dual brush` é o irmão. Medido com o trabalho da H5 na árvore.
-const PENDENTES: &[(&str, usize, usize, usize)] = &[
-    ("painter_layers", 1, 220, 0),
-    ("widget_gallery", 7, 1, 0),
-];
+const PENDENTES: &[(&str, usize, usize, usize)] =
+    &[("painter_layers", 1, 220, 0), ("widget_gallery", 7, 1, 0)];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.
 const POPULACAO: &[(&str, usize)] = &[
@@ -37,6 +35,8 @@ const POPULACAO: &[(&str, usize)] = &[
     ("painter_layers", 700),
     ("physics", 30),
     ("audio_editor", 10),
+    #[cfg(feature = "panel-flip-frames")]
+    ("flip_frames", 25),
 ];
 
 /// O que um painel acusa: as listas de frases das três regras.
@@ -97,7 +97,10 @@ fn censo_de_todos() -> BTreeMap<&'static str, Acusa> {
                 junta(acusa, &mede(&mut host, painel));
                 (arm.desarma)();
             }
-            for e in super::censo_estados::ESTADOS.iter().filter(|e| e.painel == id) {
+            for e in super::censo_estados::ESTADOS
+                .iter()
+                .filter(|e| e.painel == id)
+            {
                 let mut host = MockPanelHost::new();
                 (e.arma)();
                 painel.populate(host.store_mut());
@@ -159,7 +162,11 @@ fn o_zero_tem_populacao() {
     let tudo = censo_de_todos();
     for (painel, piso) in POPULACAO {
         let a = &tudo[painel];
-        assert!(a.linhas >= *piso, "{painel}: {} linhas contra {piso}", a.linhas);
+        assert!(
+            a.linhas >= *piso,
+            "{painel}: {} linhas contra {piso}",
+            a.linhas
+        );
     }
 }
 

@@ -17,7 +17,6 @@ pub(crate) fn host_em_metros() -> ph2d_ui_testkit::MockPanelHost {
 }
 
 mod a_caixa_do_contador_esta_viva;
-mod girar_e_espelhar_todo_objecto;
 mod a_faixa_media_do_dock_nao_corta_nomes;
 mod a_field_is_never_narrower_than_its_owner_declared;
 mod a_lista_de_resistencias_esta_viva;
@@ -50,6 +49,7 @@ mod every_form_row_reserves_the_animation_column;
 mod every_label_this_panel_paints_fits_its_column;
 mod every_painted_id_is_reachable;
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod girar_e_espelhar_todo_objecto;
 mod inspector_regression;
 mod inspector_regression_anchors;
 mod inspector_regression_sections;
@@ -63,6 +63,7 @@ mod nenhuma_seccao_pinta_o_proprio_aviso;
 mod no_row_paints_its_name_above_its_control;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
+mod o_corpo_fisico_em_pares;
 mod o_icone_da_hierarquia_traz_o_cartao;
 mod o_inspector_em_cartoes_por_tipo;
 mod o_losango_do_transform;

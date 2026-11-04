@@ -88,7 +88,10 @@ impl Item {
             Item::Icon(..) => ICON_W,
             // O nome inteiro, com o respiro (lei 7): «Additive» saía «Addit…» nos 62 px.
             Item::Toggle(_, t, _) => TOGGLE_W.max(ph2d_editor_core::paint::rect_for_label(
-                text_system.prefix_width(t, ph2d_editor_core::widget::panel_chrome::segmented_label_font()),
+                text_system.prefix_width(
+                    t,
+                    ph2d_editor_core::widget::panel_chrome::segmented_label_font(),
+                ),
             )),
             Item::Number(..) => NUM_W,
             Item::Label(t) => {
@@ -252,7 +255,7 @@ pub(crate) fn plan(
     //    o censo dela não a via. *Um `Spacing::Xs` escrito à mão passa em todo gate desta casa e
     //    continua fora do ritmo.*
     let gap = ph2d_tokens::control_gap_px();
-    let row_gap = ph2d_tokens::control_gap_px();
+    let row_gap = vao_entre_filas(ph2d_tokens::control_gap_px());
 
     let mut out = Vec::with_capacity(items.len());
     let mut x = left;
@@ -295,7 +298,16 @@ pub(crate) fn rows(
 /// A altura total de uma barra de `rows` linhas.
 pub(crate) fn bar_height(rows: u32, row_h: f32) -> f32 {
     let n = rows.max(1) as f32;
-    n * row_h + (n - 1.0) * Spacing::Xs.px()
+    n * row_h + (n - 1.0) * vao_entre_filas(Spacing::Xs.px())
+}
+
+/// O vão entre as filas da barra: num cartão, o da grelha (lei 3 de 05 §4, medido 3 contra 6); fora, `antes`.
+fn vao_entre_filas(antes: f32) -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ph2d_card_stack::metrics::FIELD_ROW_GAP
+    } else {
+        antes
+    }
 }
 
 #[cfg(test)]

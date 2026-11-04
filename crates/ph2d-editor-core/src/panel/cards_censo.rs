@@ -54,7 +54,6 @@ thread_local! {
     static CAPTURA: Cell<u64> = const { Cell::new(0) };
 }
 
-
 /// Corre `f` e devolve o que os cartões pintaram.
 pub fn grava<R>(f: impl FnOnce() -> R) -> (R, Censo) {
     GRAVACAO.with(|g| *g.borrow_mut() = Some(Censo::default()));
@@ -105,9 +104,8 @@ pub(crate) fn entra_na_tinta() {
 
 /// A secção das linhas que se anotam agora: a do corpo, ou a da captura em curso.
 fn secao_da_linha() -> Option<NodeId> {
-    secao_atual().or_else(|| {
-        crate::widget::card_ink::card_body().map(|_| NodeId(CAPTURA.with(Cell::get)))
-    })
+    secao_atual()
+        .or_else(|| crate::widget::card_ink::card_body().map(|_| NodeId(CAPTURA.with(Cell::get))))
 }
 
 fn anota(
@@ -219,7 +217,7 @@ pub(crate) fn texto(texto: &str, pede: f32, largura: f32) {
 }
 
 /// Um botão pintado à mão num corpo: o texto, e a fronteira dele como uma linha (lei 3).
-pub(crate) fn fora_da_linha(texto_do_botao: &str, pede: f32, r: crate::zones::Rect) {
+pub fn fora_da_linha(texto_do_botao: &str, pede: f32, r: crate::zones::Rect) {
     texto(texto_do_botao, pede, r.w);
     linha((r.x, r.w), r.y, r.y + r.h, || {
         vec![CelulaMedida {

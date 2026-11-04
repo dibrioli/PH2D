@@ -9,8 +9,8 @@
 #[path = "cards_corpo_campos.rs"]
 mod campos;
 pub use campos::{
-    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, colunas_iguais, facts, fields_in, swatch_grid,
-    swatch_in, swatch_strip,
+    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, colunas_iguais, facts, fields_in,
+    swatch_grid, swatch_in, swatch_strip,
 };
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
@@ -92,8 +92,7 @@ pub fn fields(
     step: f64,
 ) -> f32 {
     if let [id] = ids {
-        let texto =
-            unidade.map_or_else(|| rotulo.to_owned(), |u| format!("{rotulo} ({u})"));
+        let texto = unidade.map_or_else(|| rotulo.to_owned(), |u| format!("{rotulo} ({u})"));
         let letra = match glifo(rotulo, eixos, 1, 0) {
             Glyph::Text(t) => t,
             _ => "",
@@ -245,6 +244,23 @@ pub fn choices(
         usado += need;
     }
     linhas.push(&segs[ini..]);
+    if linhas.len() == 1
+        && segs.len() == compacta::ESCOLHA_CURTA_MAX
+        && !rotulo.is_empty()
+        && let Some(fim) = compacta::pede_escolha(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            (x, w, y),
+            rotulo,
+            ids,
+            segs,
+        )
+    {
+        return fim;
+    }
     let mut c = ctx(scene, text_system, store, hit_index, ink, x, w);
     let mut y = y;
     for (k, l) in linhas.into_iter().enumerate() {

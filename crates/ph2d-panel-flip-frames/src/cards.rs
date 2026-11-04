@@ -69,7 +69,10 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx, snap: &FlipS
     let barra = Rect::new(r.x, r.y, r.w, ROW_H_PX);
     let filas = crate::toolbar_plan::rows(barra, ROW_H_PX, snap, ctx.text_system);
     let barra_h = crate::toolbar_plan::bar_height(filas, ROW_H_PX) + Spacing::Sm.px();
-    let aberto = crate::paint_toolbar::paint(ctx, tema, barra, snap);
+    // A barra pinta-se fora da lista, com o `PaintCtx`: o censo só a vê sob o id do cartão.
+    let aberto = ph2d_editor_core::panel::cards::censo::na_secao_de(ids::FLIP_STRIP_SEC, || {
+        crate::paint_toolbar::paint(ctx, tema, barra, snap)
+    });
     let celulas_y = r.y + barra_h;
     let celulas = Rect::new(r.x, celulas_y, r.w, (r.h - barra_h).max(0.0));
     crate::paint_cells::paint(state, ctx, tema, celulas, snap);

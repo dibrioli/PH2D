@@ -89,17 +89,48 @@ fn the_view_rows_of_the_camera_share_the_line() {
     let fora = rolado_ate(&mut h, pids::INSP_CAMERA_OUTSIDE[0]);
     let vista = rolado_ate(&mut h, pids::INSP_CAMERA_VIEW[0]);
     let centro = |r: ph2d_editor_core::zones::Rect| r.y + r.h * 0.5;
-    assert!((centro(frame) - centro(icone)).abs() < 0.5, "{frame:?} × {icone:?}");
+    assert!(
+        (centro(frame) - centro(icone)).abs() < 0.5,
+        "{frame:?} × {icone:?}"
+    );
     assert!(icone.x > frame.x + frame.w, "{frame:?} × {icone:?}");
-    assert!((centro(fora) - centro(vista)).abs() < 0.5, "{fora:?} × {vista:?}");
+    assert!(
+        (centro(fora) - centro(vista)).abs() < 0.5,
+        "{fora:?} × {vista:?}"
+    );
     assert!(vista.x > fora.x + fora.w, "{fora:?} × {vista:?}");
     let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| pinta(&mut h, 1));
     for nome in ["Always", "Selected", "Normal", "Dimmed", "Free", "Follows"] {
         assert!(
-            medidos.iter().filter(|e| e.texto == nome).all(|e| e.coube()),
+            medidos
+                .iter()
+                .filter(|e| e.texto == nome)
+                .all(|e| e.coube()),
             "{nome:?} saiu cortado"
         );
     }
+    desarma_tudo();
+}
+
+/// Foto `r4_script`: o nome do ficheiro saía duas vezes, no campo e no chip. O chip diz o que faz.
+/// *Mutação: o chip do cartão com o escolhido marcado ⇒ vermelho.*
+#[test]
+fn the_script_card_says_the_file_name_once() {
+    let info = script_armado();
+    let nome = info.source.clone();
+    let mut biblioteca = info.clone();
+    biblioteca.library = vec![nome.clone(), "outro.luau".to_owned()];
+    insp::set_current_inspector_script(Some(biblioteca));
+    let mut h = hero_com_aberto(ph2d_editor_core::ids::INSP_LIVE_SCRIPT_SECTION);
+    let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| pinta(&mut h, 1));
+    let vezes = medidos.iter().filter(|e| e.texto == nome).count();
+    assert!(vezes <= 1, "{nome} pintado {vezes} vezes");
+    assert!(
+        medidos
+            .iter()
+            .any(|e| e.texto == ph2d_i18n::tr("panel.inspector.script.choose_a_project_script_u")),
+        "o chip não diz o que faz"
+    );
     desarma_tudo();
 }
 

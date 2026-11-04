@@ -63,6 +63,12 @@ pub const ESTADOS: &[Estado] = &[
         arma: || ph2d_panel_physics::set_current_physics(Some(Default::default())),
         desarma: || ph2d_panel_physics::set_current_physics(None),
     },
+    #[cfg(feature = "panel-flip-frames")]
+    Estado {
+        painel: "flip_frames",
+        arma: tira::com_camada,
+        desarma: tira::limpa,
+    },
     #[cfg(feature = "panel-audio-editor")]
     Estado {
         painel: "audio_editor",
@@ -70,6 +76,23 @@ pub const ESTADOS: &[Estado] = &[
         desarma: audio::limpa,
     },
 ];
+
+#[cfg(feature = "panel-flip-frames")]
+mod tira {
+    use ph2d_panel_flip_frames::{FlipStripSnapshot, set_current_flip_strip};
+
+    pub fn com_camada() {
+        set_current_flip_strip(FlipStripSnapshot {
+            has_layer: true,
+            layer_name: "Ink".to_owned(),
+            ..Default::default()
+        });
+    }
+
+    pub fn limpa() {
+        set_current_flip_strip(FlipStripSnapshot::default());
+    }
+}
 
 #[cfg(feature = "panel-vector")]
 mod vector {

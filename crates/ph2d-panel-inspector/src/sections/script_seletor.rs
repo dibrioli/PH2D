@@ -79,7 +79,15 @@ pub(super) fn seletor(
         store.get(ids::INSP_SCRIPT_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let dd = chip(info, aberto).visual(store.dropdown_visual(ids::INSP_SCRIPT_PICK));
+    // No cartão a linha de cima já diz o nome (foto r4_script: `bob.luau` duas vezes): o chip diz o que faz.
+    let dd = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        Dropdown::new(ids::INSP_SCRIPT_PICK, "", opcoes_do_seletor(info))
+            .placeholder(tr("panel.inspector.script.choose_a_project_script_u"))
+            .open(aberto)
+    } else {
+        chip(info, aberto)
+    }
+    .visual(store.dropdown_visual(ids::INSP_SCRIPT_PICK));
     paint_dropdown_chip(&dd, r, scene, text_system, theme);
     if aberto {
         crate::state_popovers::set_pending_script_enum(Some((LINHA_DO_SELETOR, r)));

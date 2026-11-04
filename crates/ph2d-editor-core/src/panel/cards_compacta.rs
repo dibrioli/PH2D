@@ -9,6 +9,7 @@
 use super::censo::{self, CelulaMedida};
 use super::corpo::ctx as ctx_de_fora;
 use super::{CardCtx, Cell, Seg, Widget, rotulos};
+use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::CheckboxValue;
 use crate::widget::card_field::{CardFieldSpec, Glyph};
@@ -78,7 +79,7 @@ impl CardCtx<'_> {
     }
 
     /// A largura em que os segmentos cabem numa linha, sem ícones ao lado das palavras.
-    fn escolha_pede(&mut self, segs: &[Seg<'_>]) -> f32 {
+    pub(super) fn escolha_pede(&mut self, segs: &[Seg<'_>]) -> f32 {
         let soma: f32 = segs.iter().map(|s| self.seg_need(s, false).0).sum();
         soma + m::SEG_PAD * (segs.len() + 1) as f32
     }
@@ -175,18 +176,24 @@ fn filas_equilibradas(pedidos: &[f32], w: f32) -> Vec<usize> {
     filas_gulosas(pedidos, cabe)
 }
 
-/// A lei 1: número, amostra + código, caixa de marcar, chip e facto curtos.
+/// A lei 1: número, amostra + código, caixa de marcar, chip, facto e escolha de duas opções curtos.
+/// Com 3+ opções de texto a lei 2 dá-lhe a linha inteira. Uma escolha sem nome é a fila de uma grelha
+/// que quebrou (os cinco modos do Flip), não um controlo com vizinho.
 fn curta(c: &Cell<'_>) -> bool {
-    matches!(
-        c.widget,
+    match c.widget {
+        Widget::Choice(segs) => c.label.is_some() && segs.len() <= ESCOLHA_CURTA_MAX,
         Widget::Field { .. }
-            | Widget::FieldFace { .. }
-            | Widget::Swatch { .. }
-            | Widget::Check { .. }
-            | Widget::Dropdown { .. }
-            | Widget::Readout { .. }
-    )
+        | Widget::FieldFace { .. }
+        | Widget::Swatch { .. }
+        | Widget::Check { .. }
+        | Widget::Dropdown { .. }
+        | Widget::Readout { .. } => true,
+        _ => false,
+    }
 }
+
+/// Quantas opções de texto uma escolha curta tem (lei 2 de 05 §4).
+pub(super) const ESCOLHA_CURTA_MAX: usize = 2;
 
 fn nome_da_celula(c: &Cell<'_>) -> String {
     if let Some(l) = c.label {
@@ -231,11 +238,35 @@ enum Curto {
         rotulo: String,
         texto: String,
     },
+    Escolha {
+        rotulo: String,
+        ids: Vec<NodeId>,
+        opcoes: Vec<(NodeId, Option<IconId>, String, bool)>,
+    },
 }
 
 impl Curto {
-    fn celula(&self) -> Cell<'_> {
+    /// Os segmentos de uma escolha, para [`Self::celula`]; vazio nas outras.
+    fn segs(&self) -> Vec<Seg<'_>> {
         match self {
+            Self::Escolha { opcoes, .. } => opcoes
+                .iter()
+                .map(|(id, icon, text, on)| Seg {
+                    id: *id,
+                    icon: *icon,
+                    text,
+                    on: *on,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn celula<'a>(&'a self, segs: &'a [Seg<'a>]) -> Cell<'a> {
+        match self {
+            Self::Escolha { rotulo, ids, .. } => {
+                Cell::new(Widget::Choice(segs)).label(rotulo).key(ids)
+            }
             Self::Numero {
                 rotulo,
                 letra,
@@ -285,7 +316,8 @@ impl Curto {
             Self::Marca { .. } => y + m::FIELD_ROW_GAP + m::FIELD_H,
             Self::Numero { rotulo, .. }
             | Self::Amostra { rotulo, .. }
-            | Self::Fato { rotulo, .. } => {
+            | Self::Fato { rotulo, .. }
+            | Self::Escolha { rotulo, .. } => {
                 let reserva = if matches!(self, Self::Fato { .. }) {
                     0.0
                 } else {
@@ -354,7 +386,7 @@ pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f3
             e.x,
             e.w,
         )
-        .row_inteira(&[e.curto.celula()], e.y);
+        .row_inteira(&[e.curto.celula(&e.curto.segs())], e.y);
     }
     fim
 }
@@ -386,11 +418,13 @@ fn pede(
         let mesma_coluna = (e.x - x).abs() < 0.5 && (e.w - w).abs() < 0.5;
         let vizinho = y >= e.fim - 0.5 && y <= e.fim + m::LABEL_TOP + m::FIELD_ROW_GAP;
         let mut c = ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w);
-        if mesma_coluna && vizinho && c.tudo_cabe(&[e.curto.celula(), novo.celula()]) {
+        let (sa, sb) = (e.curto.segs(), novo.segs());
+        let par = [e.curto.celula(&sa), novo.celula(&sb)];
+        if mesma_coluna && vizinho && c.tudo_cabe(&par) {
             marca_spec(store, &novo);
-            return Some(c.row_inteira(&[e.curto.celula(), novo.celula()], e.y));
+            return Some(c.row_inteira(&par, e.y));
         }
-        c.row_inteira(&[e.curto.celula()], e.y);
+        c.row_inteira(&par[..1], e.y);
     }
     let fim = novo.fundo_sozinho(ts, w, y);
     FLUXO.with(|g| {
@@ -472,6 +506,29 @@ pub(super) fn pede_marca(
         rotulo: label.com_texto(""),
         value,
         off,
+    })
+}
+
+/// Uma escolha de duas opções no fluxo.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn pede_escolha(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    store: &WidgetStore,
+    hit: &mut HitIndex,
+    ink: CardInk,
+    (x, w, y): (f32, f32, f32),
+    rotulo: &str,
+    ids: &[NodeId],
+    segs: &[Seg<'_>],
+) -> Option<f32> {
+    pede(scene, ts, store, hit, ink, x, w, y, || Curto::Escolha {
+        rotulo: rotulo.to_owned(),
+        ids: ids.to_vec(),
+        opcoes: segs
+            .iter()
+            .map(|s| (s.id, s.icon, s.text.to_owned(), s.on))
+            .collect(),
     })
 }
 

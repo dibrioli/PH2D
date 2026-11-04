@@ -1,5 +1,6 @@
 use super::*;
 use crate::panel::cards::censo;
+use crate::panel::cards::corpo;
 use crate::property_row::cartao;
 use crate::widget::card_field::Glyph;
 use ph2d_tokens::Theme;
@@ -253,4 +254,146 @@ fn a_captured_body_is_measured_as_its_own_section() {
     assert_eq!(c.linhas.len(), 3);
     assert!(c.linhas.iter().all(|l| l.em_captura));
     assert_eq!(c.linhas_grudadas().len(), 1, "{:?}", c.linhas);
+}
+
+fn duas_opcoes<'a>(a: NodeId, b: NodeId) -> [Seg<'a>; 2] {
+    [
+        Seg {
+            id: a,
+            icon: None,
+            text: "Off",
+            on: true,
+        },
+        Seg {
+            id: b,
+            icon: None,
+            text: "On",
+            on: false,
+        },
+    ]
+}
+
+/// ⭐ Foto `r4_physics_body`: Trigger + One-Way e Mass + Density desciam um por linha. Uma escolha de duas
+/// opções é curta: divide a linha com a vizinha, e com um número. *Mutação: `corpo::choices` sem o pedido.*
+#[test]
+fn a_two_option_choice_shares_the_line_in_the_flow() {
+    let mut f = mesa();
+    corre_fluxo(&mut f, 257.0, |c, y| {
+        let (a, b) = (duas_opcoes(A, B), duas_opcoes(C, NodeId(0x4b_0004)));
+        let (k1, k2) = ([A, B], [C, NodeId(0x4b_0004)]);
+        let y = corpo::choices(
+            c.scene,
+            c.text_system,
+            c.store,
+            c.hit_index,
+            c.ink,
+            c.x,
+            c.w,
+            y,
+            "Trigger",
+            &k1,
+            &a,
+        );
+        corpo::choices(
+            c.scene,
+            c.text_system,
+            c.store,
+            c.hit_index,
+            c.ink,
+            c.x,
+            c.w,
+            y,
+            "One-Way",
+            &k2,
+            &b,
+        )
+    });
+    let (ra, rc) = (f.hit.rect_for(A).unwrap(), f.hit.rect_for(C).unwrap());
+    assert_eq!(ra.y, rc.y, "as duas escolhas na mesma linha");
+    assert!(rc.x > ra.x + ra.w);
+}
+
+/// ⭐ Lei 2: com três opções de texto a escolha fica com a linha inteira, e a seguinte começa depois.
+/// *Mutação: `linhas.len() == 1` sem o `ESCOLHA_CURTA_MAX`.*
+#[test]
+fn a_three_option_choice_keeps_its_line() {
+    let mut f = mesa();
+    corre_fluxo(&mut f, 257.0, |c, y| {
+        let tres = [
+            Seg {
+                id: A,
+                icon: None,
+                text: "Ball",
+                on: true,
+            },
+            Seg {
+                id: B,
+                icon: None,
+                text: "Box",
+                on: false,
+            },
+            Seg {
+                id: NodeId(0x4b_0005),
+                icon: None,
+                text: "Pill",
+                on: false,
+            },
+        ];
+        let (dois, k1, k2) = (
+            duas_opcoes(C, NodeId(0x4b_0004)),
+            [A, B, NodeId(0x4b_0005)],
+            [C, NodeId(0x4b_0004)],
+        );
+        let y = corpo::choices(
+            c.scene,
+            c.text_system,
+            c.store,
+            c.hit_index,
+            c.ink,
+            c.x,
+            c.w,
+            y,
+            "Shape",
+            &k1,
+            &tres,
+        );
+        corpo::choices(
+            c.scene,
+            c.text_system,
+            c.store,
+            c.hit_index,
+            c.ink,
+            c.x,
+            c.w,
+            y,
+            "One-Way",
+            &k2,
+            &dois,
+        )
+    });
+    assert!(f.hit.rect_for(C).unwrap().y > f.hit.rect_for(A).unwrap().y);
+}
+
+/// ⭐ O censo lê a escolha de duas opções como curta, e a fila sem nome de uma grelha como longa.
+/// *Mutação: `curta` sem o braço de `Choice` ⇒ o par separado passa calado.*
+#[test]
+fn the_census_counts_a_two_option_choice_as_short_only_with_a_name() {
+    let medir = |rotulo: bool| {
+        let mut f = mesa();
+        censo::na_secao(Some(A));
+        let (_, c) = censo::grava(|| {
+            let mut k = ctx(&mut f, 257.0);
+            let (s1, s2) = (duas_opcoes(A, B), duas_opcoes(C, NodeId(0x4b_0004)));
+            let celula = |s, nome| {
+                let cel = Cell::new(Widget::Choice(s));
+                if rotulo { cel.label(nome) } else { cel }
+            };
+            let y = k.row_inteira(&[celula(&s1, "Trigger")], 0.0);
+            k.row_inteira(&[celula(&s2, "One-Way")], y);
+        });
+        censo::na_secao(None);
+        c.irmaos_separados().len()
+    };
+    assert_eq!(medir(true), 1, "a escolha com nome é curta");
+    assert_eq!(medir(false), 0, "a fila de uma grelha não tem vizinho");
 }

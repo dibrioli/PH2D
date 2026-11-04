@@ -280,14 +280,11 @@ pub(crate) fn camera(ch: Choices) -> CardDef<'static> {
                 &ch,
                 c.store,
             );
-            let y = c.row(
-                &[Cell::new(dropdown(g::CAM_FORMAT, &formatos))
-                    .label(tr("panel.inspector.camera.format"))],
-                y,
-            );
             let quadro = segs([g::CAM_FRAME_ALWAYS, g::CAM_FRAME_SELECTED], &ch, c.store);
-            let y = c.row(
-                &[Cell::new(Widget::Choice(&quadro)).label(tr("panel.inspector.camera.frame"))],
+            let y = c.pair(
+                Cell::new(dropdown(g::CAM_FORMAT, &formatos))
+                    .label(tr("panel.inspector.camera.format")),
+                Cell::new(Widget::Choice(&quadro)).label(tr("panel.inspector.camera.frame")),
                 y,
             );
             let y = c.row(

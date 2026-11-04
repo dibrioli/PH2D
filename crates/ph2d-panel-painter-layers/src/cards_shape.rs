@@ -3,9 +3,11 @@
 //! nos pintores deles, capturados: registam `CurvePoint` e leem a cor pelo `PaintCtx`.
 
 use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
-use crate::cards_linhas::{Item, aberta, botoes, fila, grupo, grupo_inicial, numero, par_xy};
+use crate::cards_linhas::{
+    Item, aberta, botoes, fila, filete, grupo, grupo_inicial, numero, par_xy,
+};
 use crate::paint_wetpaint::Numero;
-use crate::{esmaecer, number_field as nf, paint, paint_brush, ponta_linhas, state};
+use crate::{esmaecer, number_field as nf, paint_brush, ponta_linhas, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::panel::PaintCtx;
@@ -413,14 +415,6 @@ fn todos(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
     n
 }
 
-/// Os ids que são `Button` no store: o pintor de antes é que os registava, ao pintar.
-const BOTOES: [NodeId; 4] = [
-    pids::PAINTER_SHAPE_USE_LAYERS,
-    pids::PAINTER_SHAPE_HOSE_ADD,
-    pids::PAINTER_SHAPE_HOSE_CLEAR,
-    pids::PAINTER_DUAL_IMAGE,
-];
-
 /// Com o store MUTÁVEL, antes de pintar.
 pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     if !presente(b) {
@@ -429,9 +423,6 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     let store = ctx.host.store_mut();
     let numeros = todos(b, b);
     crate::cards_wet::arma_numeros(store, &numeros, &todos(b, &paint_brush::FALLBACK_BRUSH));
-    for id in BOTOES {
-        paint::register_button(store, id);
-    }
     for id in [
         pids::PAINTER_SHAPE_WATERCOLOR_AUTO,
         pids::PAINTER_BRUSH_FALLOFF,
@@ -570,7 +561,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
             }],
             y,
         );
-        if b.watercolor_shape_auto {
+        if automatica(&b) {
             return y;
         }
     }
@@ -583,6 +574,6 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     }
     y = grupo(c, "panel.painter_layers.taper.taper", y);
     y = taper_e_pegada(c, &b, p, y);
-    y = grupo(c, "card.painter.shape.source", y);
+    y = filete(c, y);
     textura(c, &b, p, y)
 }

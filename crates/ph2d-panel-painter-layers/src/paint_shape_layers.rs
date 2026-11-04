@@ -26,7 +26,7 @@ use ph2d_tool_painter::{BlendMode, BrushSettings, MAX_BLEND_MODES};
 
 const SWATCH_W: f32 = ROW_H_PX; // LITERAL-PX-OK: per-layer colour box — SQUARE (Enio 2026-06-29)
 const BLEND_LABEL_W: f32 = 38.0; // LITERAL-PX-OK: "Blend" text label column (second row)
-const OPACITY_W: f32 = 48.0; // LITERAL-PX-OK: per-layer opacity number box width
+const OPACITY_W: f32 = 56.0; // LITERAL-PX-OK: per-layer opacity number box width
 const SHAPE_BLEND_POPOVER_W: f32 = 132.0; // LITERAL-PX-OK: open blend list width (long mode names fit one line)
 const OPACITY_PCT: f32 = 100.0; // LITERAL-PX-OK: opacity shown/edited as 0..100 percent (not a design value)
 

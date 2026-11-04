@@ -121,10 +121,16 @@ pub(crate) fn numero(
 
 /// A linha de grupo: um filete e o nome. A lei é «nunca um 2.º título», por isso o tom é o dos rótulos.
 pub(crate) fn grupo(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
-    let filete = Rect::new(c.x, y + m::CARD_HEAD_BOTTOM, c.w, m::FIELD_BORDER);
+    let fim = filete(c, y);
+    c.hint(tr(chave), fim)
+}
+
+/// Só o filete: o grupo cujo nome já é o rótulo da 1.ª linha dele. Devolve o fundo.
+pub(crate) fn filete(c: &mut CardCtx<'_>, y: f32) -> f32 {
+    let r = Rect::new(c.x, y + m::CARD_HEAD_BOTTOM, c.w, m::FIELD_BORDER);
     let cor = c.ink.color(ColorToken::CardField);
-    fill_rounded_rect(c.scene, filete, 0.0, cor);
-    c.hint(tr(chave), filete.y + filete.h)
+    fill_rounded_rect(c.scene, r, 0.0, cor);
+    r.y + r.h
 }
 
 /// O grupo que abre o corpo: por cima dele já está o cabeçalho, e o filete sobrava.
@@ -187,9 +193,15 @@ pub(crate) fn fila(c: &mut CardCtx<'_>, itens: &[Item], y: f32) -> f32 {
     let mut resto = itens;
     while !resto.is_empty() {
         let vivos = resto.iter().take_while(|i| !inerte(i)).count();
-        let cells: Vec<Cell<'_>> = resto[..vivos].iter().map(Item::cell).collect();
+        // Um número ímpar de vivos antes de um inerte: o último faz par com ele, em vez de ficar sozinho.
+        let corrida = if vivos < resto.len() && vivos % 2 == 1 {
+            vivos - 1
+        } else {
+            vivos
+        };
+        let cells: Vec<Cell<'_>> = resto[..corrida].iter().map(Item::cell).collect();
         y = c.compact(&cells, y);
-        resto = &resto[vivos..];
+        resto = &resto[corrida..];
         if !resto.is_empty() {
             let n = resto.len().min(2);
             y = em_pares(c, &resto[..n], y, |c, item, y| {

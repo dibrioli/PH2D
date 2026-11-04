@@ -14,7 +14,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.painter.watercolor.drying_time" => "Drying Time (s)",
         "card.painter.impasto.tool" => "Tool",
         "card.painter.shape.angle" => "Angle (°)",
-        "card.painter.shape.source" => "Texture",
         "card.painter.impasto.angle" => "Angle (°)",
         "card.painter.impasto.elevation" => "Elevation (°)",
         "card.painter.wet.wet_tip" => "Wet the whole canvas",

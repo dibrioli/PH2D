@@ -7,7 +7,7 @@ use crate::cards_linhas::{Item, botoes, fila, grupo, numero};
 use crate::paint_ramp_widget::{RampIds, RampView, paint_ramp_body, ramp_body_height};
 use crate::paint_shape_ramp::{Corpo, falloff_ramp_ids, pinta_corpo, shape_ramp_ids};
 use crate::paint_wetpaint::Numero;
-use crate::{esmaecer, number_field as nf, paint, paint_brush, state};
+use crate::{esmaecer, number_field as nf, paint_brush, state};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
@@ -225,7 +225,6 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
         &numeros(b, b),
         &numeros(b, &paint_brush::FALLBACK_BRUSH),
     );
-    paint::register_button(store, SOBE);
     if textura_inerte() && store.picker_target() == Some(ids.swatch) {
         store.set_picker_target(None);
     }

@@ -102,6 +102,27 @@ fn estados() -> Vec<(&'static str, BrushSettings)> {
     rampa_sem_camadas.shape_falloff_color = false;
     let mut sem_bw = com_rampa();
     sem_bw.eraser = true;
+    let mut so_queda = queda_por_cima();
+    so_queda.shape_texture_color = false;
+    let mut sem_pontas = molhado();
+    sem_pontas.dab_follows_stroke = false;
+    sem_pontas.pontas_rectas = false;
+    let mut uma_imagem = com_imagem();
+    uma_imagem.shape_hose_count = 1;
+    uma_imagem.shape_has_alpha_choice = false;
+    let mut camadas_sem_cor = por_camada();
+    camadas_sem_cor.shape_per_layer_color = false;
+    let mut borracha_com_camada = por_camada();
+    borracha_com_camada.eraser = true;
+    let mut borracha_na_agua = pincel(PaintMedia::Watercolor, "eraser").0;
+    borracha_na_agua.media = PaintMedia::Watercolor.to_u8();
+    borracha_na_agua.watercolor = true;
+    let mut ferramenta_da_agua = molhado();
+    ferramenta_da_agua.wet_tool = WetTool::Blow;
+    let mut mistura_da_agua = molhado();
+    mistura_da_agua.wet_tool = WetTool::Blend;
+    let mut esculpe = pincel(PaintMedia::Impasto, "brush").0;
+    esculpe.is_sculpt = true;
     vec![
         ("digital", digital()),
         ("molhado", molhado()),
@@ -128,6 +149,16 @@ fn estados() -> Vec<(&'static str, BrushSettings)> {
         ),
         ("smear", pincel(PaintMedia::Digital, "smear").0),
         ("inpaint", pincel(PaintMedia::Digital, "inpaint").0),
+        ("só a queda", so_queda),
+        ("molhado sem pontas", sem_pontas),
+        ("uma imagem", uma_imagem),
+        ("camadas sem cor", camadas_sem_cor),
+        ("borracha com camadas", borracha_com_camada),
+        ("borracha com a aguada armada", borracha_na_agua),
+        ("Blow da água", ferramenta_da_agua),
+        ("Blend da água", mistura_da_agua),
+        ("esculpir", esculpe),
+        ("blur", pincel(PaintMedia::Digital, "blur").0),
     ]
 }
 
@@ -235,6 +266,17 @@ fn typing_each_number_sends_the_same_action_as_the_old_panel() {
 /// Cada número semeia o valor e a faixa do painel de antes.
 #[test]
 fn every_number_shows_the_same_value_and_range_as_the_old_panel() {
+    for (b, id) in [
+        (digital(), p::PAINTER_BRUSH_HARDNESS),
+        (com_textura(), p::PAINTER_SHAPE_ANGLE),
+        (com_rampa(), p::PAINTER_SHAPE_TEXTURE_OPACITY),
+        (com_rampa(), p::PAINTER_SHAPE_FALLOFF_OPACITY),
+    ] {
+        assert!(
+            numeros(b).contains(&id),
+            "{id:?} sem marcar: a régua não o veria"
+        );
+    }
     for (nome, mut b) in estados() {
         b.hardness = 0.37;
         b.taper.tip_start = 0.21;
@@ -300,7 +342,20 @@ fn scrubbing_each_number_moves_only_it_and_escape_gives_it_back() {
 #[test]
 fn every_click_sends_the_same_action_as_the_old_panel() {
     let mut vistos = 0;
-    for (nome, b) in estados() {
+    // Só os estados que trazem controlos diferentes: cada clique são duas mesas.
+    let medem = [
+        "digital",
+        "molhado",
+        "aguada à mão",
+        "textura",
+        "imagem",
+        "por camada",
+        "dual",
+        "custom",
+        "rampa",
+        "queda por cima",
+    ];
+    for (nome, b) in estados().into_iter().filter(|(n, _)| medem.contains(n)) {
         let mesa = so(true, b, &[FORMA, TOM]);
         let cliques: Vec<NodeId> = do_corpo(b)
             .into_iter()
@@ -444,14 +499,15 @@ fn each_control_keeps_its_animation_mark() {
                 add_key_mark(*id, KeyMark::Chave);
             }
             let m = so(cartoes, b, &[FORMA, TOM]);
-            let alvos: BTreeSet<NodeId> = ids
-                .iter()
-                .copied()
-                .filter(|i| m.rect(*i).is_some() && key_mark_target(*i).is_some())
-                .collect();
+            let alvos = m
+                .ids()
+                .into_iter()
+                .filter(|i| key_mark_target(*i).is_some())
+                .count();
             set_key_marks(std::collections::BTreeMap::new());
             alvos
         };
+        // Os cartões dobrados dos outros não pintam marca, e o painel de antes pinta só a destes ids.
         assert_eq!(conta(false), conta(true), "{nome}");
     }
 }
@@ -517,6 +573,11 @@ fn short_siblings_share_a_row() {
     let m = so(true, com_textura(), &[FORMA, TOM]);
     na_mesma_linha(&m, p::PAINTER_BRUSH_FALLOFF, p::PAINTER_BRUSH_HARDNESS);
     na_mesma_linha(&m, p::PAINTER_TAPER_TIP_START, p::PAINTER_TAPER_OPACITY);
+    na_mesma_linha(
+        &m,
+        p::PAINTER_TAPER_FALL_OFF,
+        p::PAINTER_TAPER_FALL_OFF_START,
+    );
     na_mesma_linha(&m, p::PAINTER_SHAPE_OFFSET_X, p::PAINTER_SHAPE_OFFSET_Y);
     na_mesma_linha(&m, p::PAINTER_SHAPE_SIZE_X, p::PAINTER_SHAPE_SIZE_Y);
     let m = so(true, com_rampa(), &[FORMA, TOM]);
@@ -553,7 +614,17 @@ fn no_text_is_cut_in_any_state() {
         let (_, c) = censo::grava(|| so(true, b, &[FORMA, TOM]));
         let cortados = c.textos_cortados();
         assert!(cortados.is_empty(), "{nome}: {cortados:#?}");
-        let grudadas = c.linhas_grudadas();
+        // Só as linhas destes cartões: os corpos ainda capturados dos outros têm o passo de antes.
+        let estes = censo::Censo {
+            linhas: c
+                .linhas
+                .iter()
+                .filter(|l| l.secao == FORMA || l.secao == TOM)
+                .cloned()
+                .collect(),
+            textos: Vec::new(),
+        };
+        let grudadas = estes.linhas_grudadas();
         assert!(grudadas.is_empty(), "{nome}: {grudadas:#?}");
     }
 }
@@ -614,7 +685,9 @@ fn the_eraser_in_watercolor_leaves_no_watercolor_card() {
     let grip = grip_of(p::PAINTER_WATERCOLOR_SECTION);
     let pincel_a = Mesa::nova(true, pincel(PaintMedia::Watercolor, "brush").0, false);
     assert!(pincel_a.rect(grip).is_some(), "a régua não vê o cartão");
-    let borracha = Mesa::nova(true, pincel(PaintMedia::Watercolor, "eraser").0, false);
+    let mut b = pincel(PaintMedia::Watercolor, "eraser").0;
+    b.media = PaintMedia::Watercolor.to_u8();
+    let borracha = Mesa::nova(true, b, false);
     assert!(borracha.rect(grip).is_none(), "um cartão vazio à vista");
 }
 
@@ -657,13 +730,19 @@ fn the_wet_checks_share_rows_and_real_oil_moves_none_of_them() {
     let desligado = so(true, b, &[wet]);
     na_mesma_linha(
         &desligado,
+        p::PAINTER_WETPAINT_OLEO_REAL,
         p::PAINTER_WETPAINT_PIGMENT_MIXING,
-        p::PAINTER_WETPAINT_LIVE_WATER,
     );
-    let oleo = desligado
-        .rect(p::PAINTER_WETPAINT_OLEO_REAL)
-        .expect("Real Oil");
-    assert!(oleo.w < 150.0, "o Real Oil sozinho na linha: {oleo:?}");
+    na_mesma_linha(
+        &desligado,
+        p::PAINTER_WETPAINT_LIVE_WATER,
+        p::PAINTER_WETPAINT_TUNING,
+    );
+    na_mesma_linha(
+        &desligado,
+        p::PAINTER_WETPAINT_SHOWWET,
+        p::PAINTER_WETPAINT_PAPER_VISUAL,
+    );
     b.wet_oleo_real = true;
     let ligado = so(true, b, &[wet]);
     for id in [

@@ -1,15 +1,14 @@
 //! Os corpos do painel Painter já em linhas de cartão (`docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, e o
 //! valor continua a vir do instantâneo do pincel. O id de cada caixa continua `Button` e emite `Click`.
+//! Nenhum destes ids tem linha esmaecida (`Dependente`): o gate `no_native_id_has_a_dimmed_law` avisa quando tiver.
 
-use crate::{esmaecer, number_field, paint_brush, paint_pigment, state};
+use crate::{number_field, paint_brush, paint_pigment, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget, corpo as linhas, ferramenta};
-use ph2d_editor_core::property_row::inativa::alfa_inativo;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
-use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VectorScene, VelloBlend};
 
 type Corpo = fn(&mut CardCtx<'_>, f32) -> f32;
 
@@ -58,36 +57,6 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     }
 }
 
-/// A linha cuja lei diz «agora não age» pinta-se esmaecida, como no painel de antes. A dica já a pôs o
-/// pintor antigo, na captura da secção.
-fn fila(
-    c: &mut CardCtx<'_>,
-    ids: &[NodeId],
-    y: f32,
-    pinta: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
-) -> f32 {
-    if esmaecer::dica(ids).is_none() {
-        return pinta(c, y);
-    }
-    let mut parte = VectorScene::new();
-    std::mem::swap(c.scene, &mut parte);
-    let fim = pinta(c, y);
-    std::mem::swap(c.scene, &mut parte);
-    let forma = RoundedRect::new(
-        f64::from(c.x),
-        f64::from(y),
-        f64::from(c.x + c.w),
-        f64::from(fim),
-        0.0,
-    );
-    let normal = VelloBlend::new(Mix::Normal, Compose::SrcOver);
-    c.scene
-        .push_layer_shape(normal, alfa_inativo(c.ink.theme), Affine::IDENTITY, &forma);
-    c.scene.inner_mut().append(parte.inner(), None);
-    c.scene.pop_layer();
-    fim
-}
-
 fn campo(id: NodeId, rotulo: &str) -> Cell<'_> {
     Cell::new(Widget::Field {
         id,
@@ -97,17 +66,17 @@ fn campo(id: NodeId, rotulo: &str) -> Cell<'_> {
 }
 
 fn mixing(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    let id = pids::PAINTER_WATERCOLOR_MIX;
-    fila(c, &[id], y, |c, y| {
-        c.row(
-            &[campo(id, tr("panel.painter_layers.watercolor.pigment"))],
-            y,
-        )
-    })
+    c.row(
+        &[campo(
+            pids::PAINTER_WATERCOLOR_MIX,
+            tr("panel.painter_layers.watercolor.pigment"),
+        )],
+        y,
+    )
 }
 
 fn caixa(c: &mut CardCtx<'_>, id: NodeId, chave: &'static str, on: bool, y: f32) -> f32 {
-    fila(c, &[id], y, |c, y| ferramenta::caixa(c, id, chave, on, y))
+    ferramenta::caixa(c, id, chave, on, y)
 }
 
 fn tiling(c: &mut CardCtx<'_>, y: f32) -> f32 {

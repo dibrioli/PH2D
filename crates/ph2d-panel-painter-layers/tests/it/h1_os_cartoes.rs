@@ -562,3 +562,124 @@ fn cards_off_paints_the_old_body() {
     assert!(mesa.rect(p::PAINTER_BRUSH_SYMMETRY_RESET).is_some());
     assert_eq!(mesa.host.store().floating_panel_rects().count(), 0);
 }
+
+/// A linha esmaecida ainda não chegou aos nativos: o dia em que um destes ids ganhar uma lei, o corpo tem de a pintar.
+#[test]
+fn no_native_id_has_a_dimmed_law() {
+    let nativos = [
+        p::PAINTER_WATERCOLOR_MIX,
+        p::PAINTER_BRUSH_SYMMETRY_USE,
+        p::PAINTER_BRUSH_SYMMETRY_CIRCULAR,
+        p::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP,
+        p::PAINTER_BRUSH_SYMMETRY_AXIS_X,
+        p::PAINTER_BRUSH_SYMMETRY_AXIS_Y,
+        p::PAINTER_BRUSH_SYMMETRY_AXIS_CUSTOM,
+        p::PAINTER_BRUSH_SYMMETRY_PICK_CENTER,
+        p::PAINTER_BRUSH_SYMMETRY_DRAW_LINE,
+        p::PAINTER_BRUSH_TILING_X,
+        p::PAINTER_BRUSH_TILING_Y,
+        p::PAINTER_BRUSH_REPEAT_IMAGE,
+    ];
+    let leis = ph2d_tool_painter::Dependente::TODOS.len();
+    assert!(leis > 5, "a tabela das leis encolheu: {leis}");
+    for id in nativos {
+        for d in ph2d_tool_painter::Dependente::TODOS {
+            assert!(
+                !d.cobre(id),
+                "{id:?} ganhou a lei {d:?}: pinte-a no corpo nativo"
+            );
+        }
+    }
+}
+
+/// Cada caixa nativa mostra o SEU valor: trocar qual está ligada muda o desenho.
+#[test]
+fn each_native_box_shows_its_own_value() {
+    let desenho = |x: bool, y: bool, repete: bool, simetria: bool| {
+        let mut b = FALLBACK_BRUSH;
+        b.tiling = [x, y];
+        b.repeat_image = repete;
+        b.symmetry_enabled = simetria;
+        let mut mesa = Mesa::nova(true, b, false);
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        h.paint_draw_data::<PainterLayersPanel>(st, COLUNA)
+    };
+    let base = desenho(false, false, false, false);
+    let x = desenho(true, false, false, false);
+    let y = desenho(false, true, false, false);
+    let repete = desenho(false, false, true, false);
+    assert_ne!(base, x, "Tiling X não se vê");
+    assert_ne!(base, y, "Tiling Y não se vê");
+    assert_ne!(x, y, "X e Y desenham o mesmo");
+    assert_ne!(base, repete, "Repeat Image não se vê");
+    assert_ne!(
+        base,
+        desenho(false, false, false, true),
+        "Use Symmetry não se vê"
+    );
+}
+
+/// O Segments semeia-se do pincel: o campo nativo não tem barra que o leve.
+#[test]
+fn the_segments_field_shows_the_brush_value() {
+    let mut brush = FALLBACK_BRUSH;
+    brush.symmetry_enabled = true;
+    brush.symmetry_circular = true;
+    brush.symmetry_segments = 11;
+    let mesa = Mesa::nova(true, brush, false);
+    let chip = p::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP;
+    assert_eq!(mesa.host.store().number_value(chip), Some(11.0));
+}
+
+/// Deform é dono do corpo inteiro, num cartão: os ids dele continuam lá, e nada do pincel.
+#[test]
+fn deform_owns_the_whole_body_in_one_card() {
+    let mut brush = FALLBACK_BRUSH;
+    brush.is_deform = true;
+    let antes = Mesa::nova(false, brush, false).ids();
+    let mesa = Mesa::nova(true, brush, false);
+    let agora = mesa.ids();
+    let faltam: Vec<_> = antes
+        .iter()
+        .filter(|i| !agora.contains(i) && !saiu_de_proposito(**i))
+        .collect();
+    assert!(faltam.is_empty(), "sumiram {faltam:?}");
+    assert!(agora.contains(&grip_of(p::PAINTER_CARD_EXCLUSIVO)));
+    assert!(!agora.contains(&p::PAINTER_BRUSH_SYNC));
+}
+
+/// A vista Layers fecha o seletor da cor do pincel, como no painel de antes.
+#[test]
+fn the_layers_view_closes_the_brush_colour_picker() {
+    let mut mesa = Mesa::nova(true, FALLBACK_BRUSH, true);
+    mesa.host
+        .store_mut()
+        .set_picker_target(Some(core_ids::PAINTER_COLOR_THUMB));
+    mesa.quadro();
+    assert_eq!(mesa.host.store().picker_target(), None);
+}
+
+/// A medição: as duas pinturas intercaladas, o mínimo de cada, gravado no ficheiro de `PH2D_CUSTO_TXT`.
+#[test]
+#[ignore = "mede: --ignored, em --profile smoke"]
+fn custo_por_quadro_das_duas_caras() {
+    let (brush, _) = pincel(PaintMedia::WetPaint, "brush");
+    let mut velho = Mesa::nova(false, brush, false);
+    let mut novo = Mesa::nova(true, brush, false);
+    let (mut a, mut b) = (u128::MAX, u128::MAX);
+    for _ in 0..30 {
+        force_cards_on_this_thread(Some(false));
+        let t = std::time::Instant::now();
+        velho.quadro();
+        a = a.min(t.elapsed().as_micros());
+        force_cards_on_this_thread(Some(true));
+        let t = std::time::Instant::now();
+        novo.quadro();
+        b = b.min(t.elapsed().as_micros());
+    }
+    let linha = format!("cartoes {b} us · antes {a} us\n");
+    if let Ok(f) = std::env::var("PH2D_CUSTO_TXT") {
+        std::fs::write(f, &linha).expect("grava");
+    }
+    println!("{linha}");
+}

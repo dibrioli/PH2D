@@ -19,7 +19,7 @@ use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
 /// A dica do primeiro dos `ids` que a ferramenta diz inerte, com o instantâneo publicado AGORA.
-pub(crate) fn dica(ids: &[NodeId]) -> Option<&'static str> {
+fn dica(ids: &[NodeId]) -> Option<&'static str> {
     let inercias = crate::state::current_inercias();
     ids.iter().find_map(|id| inercias.dica_de(*id))
 }

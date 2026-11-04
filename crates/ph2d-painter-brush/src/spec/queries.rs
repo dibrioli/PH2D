@@ -619,12 +619,22 @@ impl BrushSpec {
     /// editable [`Self::custom_falloff`] profile; every other preset uses its formula.
     #[must_use]
     pub fn falloff_weight(&self, t: f32) -> f32 {
+        self.falloff_weight_passo(t, 1.0 / self.clamped_radius())
+    }
+
+    /// [`Self::falloff_weight`] com o lado `passo` do píxel em raios, para quem assa uma máscara de outra resolução:
+    /// a curva Custom lê-se pela área dele ([`crate::FalloffCurve::weight_area`]), o resto não o usa.
+    #[must_use]
+    pub fn falloff_weight_passo(&self, t: f32, passo: f32) -> f32 {
         let h = self.dureza_do_dab();
         if h >= 1.0 {
             return if t < 1.0 { 1.0 } else { 0.0 };
         }
         let remapped = ((t - h) / (1.0 - h)).clamp(0.0, 1.0);
         match self.falloff {
+            Falloff::Custom if crate::texture::pela_area::ligada() => {
+                self.custom_falloff.weight_area(remapped, passo / (1.0 - h))
+            }
             Falloff::Custom => self.custom_falloff.weight(remapped),
             preset => preset.weight(remapped),
         }

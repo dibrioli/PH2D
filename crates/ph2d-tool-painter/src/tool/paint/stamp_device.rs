@@ -90,6 +90,8 @@ pub fn eligible(brush: &BrushSpec) -> bool {
         && brush.dab_quina == 0.0
         // A orla em PÍXEIS (J3): a dureza é de CADA dab (`dureza_do_dab`), a tabela do traço é de uma.
         && brush.borda_px <= 0.0
+        // A curva Custom lê-se pela área do píxel de CADA dab (`weight_area`): a tabela do traço é de um raio só.
+        && !matches!(brush.falloff, ph2d_painter_brush::Falloff::Custom)
 }
 
 /// A tabela que sobe ao device — **preenchida com as funções que o produto usa**, na ordem que ele

@@ -154,6 +154,55 @@ impl FalloffCurve {
         eval_falloff_curve(self.points(), t.max(0.0))
     }
 
+    /// ⭐ A MÉDIA da curva no píxel: a janela `dt` centrada em `t` (`dt` = o lado do píxel em raios). Uma crista mais
+    /// estreita que um píxel, lida num ponto, acende e apaga pelo aro (o Bokeh, 04/11). Simpson por troço entre pontos
+    /// de controlo (exacto na cúbica); `0` depois do aro. Onde a média difere menos que 2 níveis da amostra no centro
+    /// fica a amostra, ao bit: a curva suave (Burn, Dodge) não muda.
+    #[must_use]
+    pub fn weight_area(&self, t: f32, dt: f32) -> f32 {
+        const QUASE_IGUAL: f32 = 1.0 / 128.0;
+        let centro = self.weight(t);
+        if t >= 1.0 || dt <= 0.0 {
+            return centro;
+        }
+        let (a, b) = (t - 0.5 * dt, t + 0.5 * dt);
+        // Atalho: a janela é ≤ 1/16 do troço e não tem ponto, logo a média difere da amostra < 2 níveis (o miolo de um
+        // dab grande, a máscara de 1024²: 2,6× → 1,15× no custo).
+        let (mut antes, mut depois) = (0.0f32, 1.0f32);
+        let mut tem_ponto = false;
+        for p in self.points() {
+            tem_ponto |= p.x > a && p.x < b;
+            if p.x <= a {
+                antes = p.x;
+            } else if p.x >= b {
+                depois = depois.min(p.x);
+            }
+        }
+        if !tem_ponto && b < 1.0 && dt * 16.0 <= depois - antes {
+            return centro;
+        }
+        let ate = b.min(1.0);
+        let mut soma = 0.0;
+        let mut de = a;
+        let simpson = |p: f32, q: f32| {
+            let n = |x: f32| eval_falloff_curve(self.points(), x.max(0.0));
+            (q - p) * (n(p) + 4.0 * n(0.5 * (p + q)) + n(q)) / 6.0
+        };
+        for p in self.points() {
+            if p.x > de && p.x < ate {
+                soma += simpson(de, p.x);
+                de = p.x;
+            }
+        }
+        soma += simpson(de, ate);
+        let media = (soma / dt).clamp(0.0, 1.0);
+        if (media - centro).abs() < QUASE_IGUAL {
+            centro
+        } else {
+            media
+        }
+    }
+
     /// Move control point `id` to `(x, y)` — clamped to `[0,1]²` only, NOT
     /// between its neighbours, then the points re-sort by `x`. Dragging a point
     /// past another therefore reshapes the curve; the `id` keeps the dragged

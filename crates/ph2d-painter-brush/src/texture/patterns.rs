@@ -68,7 +68,7 @@ pub(super) fn sample_kind_t(
         TextureKind::Gradient => gradient(u, k),
         TextureKind::Grain => grain_t(u, v, k, pu, pv),
         TextureKind::Crosshatch => crosshatch(u, v, k),
-        TextureKind::Dots => dots_t(u, v, k, pu, pv),
+        TextureKind::Dots => dots_t(u, v, k, pu, pv, 0.0),
         TextureKind::Grid => grid(u, v, k),
         TextureKind::Bricks => bricks(u, v, k),
         TextureKind::Waves => waves(u, v, k),
@@ -95,6 +95,24 @@ pub(super) fn sample_kind_t(
         },
     };
     apply_tone(raw, params[0], params[1])
+}
+
+/// [`sample_kind_t`] sabendo a largura `fw` de um píxel da tela em coordenadas da textura: os Dots leem a borda pela
+/// ÁREA dele ([`dots_t`]); os outros kinds, e `fw = 0`, são a amostra no centro ao bit.
+#[must_use]
+pub(super) fn sample_kind_px(
+    kind: TextureKind,
+    tex: [f32; 2],
+    params: [f32; super::MAX_TEX_PARAMS],
+    image: Option<&ImageMask>,
+    period: [i32; 2],
+    fw: f32,
+) -> f32 {
+    if kind == TextureKind::Dots && fw > 0.0 {
+        let raw = dots_t(tex[0], tex[1], &params[2..], period[0], period[1], fw);
+        return apply_tone(raw, params[0], params[1]);
+    }
+    sample_kind_t(kind, tex, params, image, period)
 }
 
 /// Fill `out` (RGBA8, `w`×`h`, row-major) with a live preview of texture `kind` shaped by
@@ -486,7 +504,9 @@ fn crosshatch(u: f32, v: f32, k: &[f32]) -> f32 {
 /// **Dots** (halftone): a round dot per tile. `Radius` = dot size, `Softness` = edge, `Randomness` = jitter.
 /// The `Randomness` jitter hashes each cell, so seamless tiling needs the hash wrapped at integer period
 /// `(pu, pv)` cells (`analytic_needs_hash_wrap`); `(0, 0)` = no wrap ⇒ byte-identical to the plain field.
-fn dots_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
+/// `fw` = a largura de um píxel em células: a fracção do píxel dentro do disco (uma rampa de um píxel na borda, nunca
+/// mais que a área do ponto); `0` = o degrau num ponto. O Halftone tem raio 2,7 px: o degrau eram pontos em blocos.
+fn dots_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32, fw: f32) -> f32 {
     let rand = knob(k, 2);
     let (cu, cv) = ((u + 0.5).floor(), (v + 0.5).floor());
     // The jitter hash wraps per axis so cell `p` reuses cell `0`'s offset (the second read swaps the axes,
@@ -497,7 +517,14 @@ fn dots_t(u: f32, v: f32, k: &[f32], pu: i32, pv: i32) -> f32 {
     let d = (du * du + dv * dv).sqrt();
     let r = (0.12 + knob(k, 0) * 0.46).max(0.02);
     let edge = (1.0 - (d / r).min(1.0)).max(0.0);
-    lerp(f32::from(d < r), smoothstep(edge), knob(k, 1)) // Softness: hard disk ↔ soft
+    let disco = if fw > 0.0 {
+        ((r - d) / fw + 0.5)
+            .clamp(0.0, 1.0)
+            .min(std::f32::consts::PI * r * r / (fw * fw))
+    } else {
+        f32::from(d < r)
+    };
+    lerp(disco, smoothstep(edge), knob(k, 1)) // Softness: hard disk ↔ soft
 }
 
 /// **Grid**: thin lattice lines (mesh / graph-paper). `Thickness` = line width, `Frequency` = cell count.

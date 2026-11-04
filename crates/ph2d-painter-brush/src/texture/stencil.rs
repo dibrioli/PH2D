@@ -10,7 +10,7 @@ use super::{
 
 /// Procedural tiles the **Stencil** rect spans per axis, so the pattern reads (one tile would be a
 /// flat cell). Density is fixed; the rect's on-canvas size is the brush's [`TextureSettings::stencil_size`].
-const STENCIL_TILES: f32 = 4.0;
+pub(super) const STENCIL_TILES: f32 = 4.0;
 
 /// The Stencil rect's centre + half-extent (canvas px) + rotation unit vector. [`TextureSettings::stencil_offset`]
 /// maps `[-1, 1]` onto the canvas span (centre at `0`); [`TextureSettings::stencil_size`] is the

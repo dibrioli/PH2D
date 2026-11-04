@@ -532,6 +532,16 @@ O Fast dry encolhe a bbox e torna a leitura visível. **Errada era a via de raiz
 `o_fast_dry_de_raiz_e_o_do_instantaneo` (visto vermelho a 58 texels antes da cura, com controlo de que o Fast dry age). A troca da
 `bancada_da_agua` por instantâneos (−30 % de CPU, medido pela Aceleracao) fica por fazer: só teste, fora deste bug.
 
+## Bug #59 (FECHADO 04/11, os pincéis à espera do dono) — o que é mais fino que um píxel lia-se num ponto: aro do Bokeh «pixelado», pontos do Halftone em blocos
+
+**Sintoma (smoke):** o aro do Bokeh aos tracinhos; os pontos do Halftone quadrados, «não suaves».
+**Mecanismo:** o falloff Custom e os Dots amostravam-se no CENTRO do píxel. A crista do Bokeh tinha 0,05 do raio (a raio 12, 0,6 px), logo o aro acendia e apagava pelo ângulo; o ponto do Halftone tem raio 2 px e o degrau `d < r` decidia cada píxel por inteiro. O caminho do Bokeh NÃO é a máscara assada (`render_stamp_mask`): pincel sem Shape nem grão vai à rota por píxel, em banda.
+**Medido** (degrau entre vizinhos, na tinta inteira): Halftone r40 mediana **0,57 → 0,29**; aro fino r12 q90 **0,59 → 0,37**.
+**Cura:** `FalloffCurve::weight_area` (a média da curva no píxel, Simpson por troço) e `dots_t(fw)` (a fracção do píxel dentro do disco), com a largura do píxel em cada espaço em `texture/pela_area.rs`. A curva Custom sai do lote do dispositivo (`stamp_device::eligible`): a tabela dele é de um raio só. E o Bokeh ganhou a curva que o dono desenhou.
+**O portão que estava verde:** `cada_carimbo_se_reconhece_pela_foto` mede manchas, não a borda. Agora: `a_borda_pela_area::*`, com o braço sem a cura no mesmo processo.
+**Custo** (mesmo processo, intercalado, mínimo de 16, smoke, load ~10): Halftone 1,02×; Bokeh 1,74× a r25 (0,73 ms num traço de 120 movimentos), 1,28× a r150; máscara Custom 1024² 14,3 → 16,6 ms.
+**Muda na fábrica:** só Bokeh e Halftone (77 presets varridos, `sonda_quem_a_cura_muda`). **Por fazer:** outros padrões com degrau (`Bricks`) continuam num ponto: nenhum preset de fábrica os usa; a pré-visualização do grão no painel também lê os Dots num ponto.
+
 ## Bug #58 (FECHADO 04/11, os pincéis à espera do dono) — o motor pinta outro byte conforme a `libm` do sistema: o `atan2f` da glibc
 
 **Decisão do dono (04/11): o mesmo traço dá o mesmo byte em qualquer computador.** Cura: a folha `ph2d-det-math` (`DetMath`, `det_sin`,

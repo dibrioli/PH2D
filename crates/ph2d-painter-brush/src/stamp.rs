@@ -159,11 +159,11 @@ pub fn render_stamp_mask(
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_ramp_lut);
                     let t = footprint.falloff_t(u, v);
-                    spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+                    spec.compose_shape_silhouette(sv, spec.falloff_weight_passo(t, passo))
                 }
                 None => {
                     let t = footprint.falloff_t(u, v);
-                    spec.falloff_weight(t)
+                    spec.falloff_weight_passo(t, passo)
                 }
             };
             // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it

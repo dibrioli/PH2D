@@ -86,7 +86,8 @@ pub fn sample_tiled_rot_wrapped(
     } else {
         [0, 0]
     };
-    patterns::sample_kind_t(s.kind, tex, s.params, image, period).clamp(0.0, 1.0)
+    let fw = pela_area::largura_tiled(s);
+    patterns::sample_kind_px(s.kind, tex, s.params, image, period, fw).clamp(0.0, 1.0)
 }
 
 /// The lattice wrap period in whole cells for one axis: the sprite span `period_px` expressed in `rel`

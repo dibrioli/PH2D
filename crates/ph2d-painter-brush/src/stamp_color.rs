@@ -301,7 +301,7 @@ pub fn render_ramp_color_stamp(
                         shape_image,
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_tone_lut);
-                    let queda = spec.falloff_weight(t);
+                    let queda = spec.falloff_weight_passo(t, inv * reach);
                     let w = if recorta {
                         spec.compose_shape_silhouette(sv, queda)
                     } else {
@@ -309,7 +309,7 @@ pub fn render_ramp_color_stamp(
                     };
                     (w, le_forma.then_some(sv))
                 }
-                None => (spec.falloff_weight(t), None),
+                None => (spec.falloff_weight_passo(t, inv * reach), None),
             };
             // The FILM, on the silhouette (see `render_stamp_mask`) — the per-layer-colour tip is a
             // pigment path like any other, so the rule binds it too.

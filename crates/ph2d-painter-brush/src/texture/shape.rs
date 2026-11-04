@@ -205,7 +205,8 @@ pub fn sample_shape(
     {
         return area_do_pixel(s, b, [sx, sy], img, em);
     }
-    shape_value(s, b, em([0.0, 0.0]), [sx, sy], image)
+    let fw = super::pela_area::largura_no_dab(s, b, radius);
+    shape_value_px(s, b, em([0.0, 0.0]), [sx, sy], image, fw)
 }
 
 /// ⭐ [`sample_shape_silhouette_unit`] numa grelha de píxeis: `passo` = o lado de UM píxel da tela em unidades do
@@ -232,7 +233,10 @@ pub fn sample_shape_silhouette_unit_px(
             b.footprint.apply([u + o[0] * passo, v + o[1] * passo])
         });
     }
-    sample_shape_silhouette_unit(s, b, u, v, image)
+    if s.kind == TextureKind::Image {
+        return sample_shape_silhouette_unit(s, b, u, v, image);
+    }
+    super::sample_unit_px(s, b, u, v, passo, image)
 }
 
 /// O lado máximo da grelha de amostras por píxel de [`area_do_pixel`] (`8² = 64` toques bilineares). O recurso é o
@@ -380,6 +384,18 @@ fn shape_value(
     size: [f32; 2],
     image: Option<&ImageMask>,
 ) -> f32 {
+    shape_value_px(s, b, rel, size, image, 0.0)
+}
+
+/// [`shape_value`] sabendo a largura `fw` de um píxel em células ([`super::pela_area`]).
+fn shape_value_px(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    rel: [f32; 2],
+    size: [f32; 2],
+    image: Option<&ImageMask>,
+    fw: f32,
+) -> f32 {
     // Size scales AFTER the rotation (Blender's order) — see the note in `crate::texture::sample`.
     let tex = [
         (rel[0] * b.u[0] + rel[1] * b.u[1]) * size[0] + s.offset[0],
@@ -393,7 +409,8 @@ fn shape_value(
             .map(|img| sample_image_clamped(img, tex[0], tex[1]))
             .unwrap_or(0.0),
         TextureKind::None => 1.0, // not reached (the caller uses the falloff when Shape is inactive)
-        _ => super::patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0),
+        _ => super::patterns::sample_kind_px(s.kind, tex, s.params, image, [0, 0], fw)
+            .clamp(0.0, 1.0),
     }
 }
 

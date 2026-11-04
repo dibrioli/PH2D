@@ -11,6 +11,7 @@
 mod a_borracha_de_textura; // a Texture Eraser morde o grão à Strength 1 (25/10)
 mod a_caneta_deitada;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
+mod a_borda_pela_area; // Bokeh e Halftone: a borda pela área do píxel
 mod a_estrela_pequena; // o Stars pequeno sem degraus
 mod a_lei_da_tinta;
 mod a_luz_do_impasto_e_a_de_antes_da_poda;

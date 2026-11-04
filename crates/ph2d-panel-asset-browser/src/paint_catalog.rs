@@ -82,18 +82,18 @@ pub(crate) fn col_w(state: &AssetBrowserState, rect: Rect, pad: f32) -> f32 {
 }
 
 /// Uma linha da coluna, já derivada da taxonomia.
-struct Row {
-    pick: CatalogPick,
-    label: String,
-    depth: usize,
-    count: usize,
+pub(crate) struct Row {
+    pub(crate) pick: CatalogPick,
+    pub(crate) label: String,
+    pub(crate) depth: usize,
+    pub(crate) count: usize,
 }
 
 /// ⭐ **As linhas que a coluna desenha** — derivadas da árvore, com as duas fixas à cabeça.
 ///
 /// ⚠️ **`All` e `Unassigned` são LINHAS, e não estados escondidos num chip**: sem a segunda, um
 /// asset por arrumar fica inalcançável no dia em que existir um catálogo.
-fn rows(needle: &str) -> Vec<Row> {
+pub(crate) fn rows(needle: &str) -> Vec<Row> {
     with_catalogs(|t| {
         let mut out = vec![
             Row {

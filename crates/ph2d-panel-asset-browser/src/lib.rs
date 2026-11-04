@@ -28,6 +28,7 @@
 
 /// ⭐⭐ O QUE FICA POR BAIXO DA MINIATURA — a lei do fundo de um cartão, ver o cabeçalho de lá.
 pub mod card_backdrop;
+pub mod cards;
 mod event;
 mod event_catalog;
 pub mod ids;

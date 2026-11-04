@@ -6,7 +6,6 @@
 //! `vello` indexa o cache por `data.id()`; com o tecto de 512 células a 96² isso é ~18 MB de
 //! upload + repack por quadro. O `StableImage` guarda o id, e é o que faz o cache dele acertar.
 
-use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 
 thread_local! {
@@ -38,7 +37,7 @@ pub(crate) fn retain_painted(keys: &[ph2d_asset_index::AssetRef]) {
 /// ⚠️ **Nunca esticada:** uma tira 8:1 esticada num quadrado lê-se como outra forma, e a miniatura
 /// existe precisamente para se reconhecer a forma.
 pub(crate) fn paint_thumb(
-    ctx: &mut PaintCtx,
+    scene: &mut ph2d_vector::VectorScene,
     key: ph2d_asset_index::AssetRef,
     thumb: &ph2d_asset_index::Thumb,
     square: Rect,
@@ -66,7 +65,7 @@ pub(crate) fn paint_thumb(
     let (dw, dh) = (tw * s, th * s);
     let x0 = f64::from(square.x + inset + (bw - dw) * 0.5);
     let y0 = f64::from(square.y + inset + (bh - dh) * 0.5);
-    ctx.scene.draw_stable_image(
+    scene.draw_stable_image(
         &img,
         (x0, y0, x0 + f64::from(dw), y0 + f64::from(dh)),
         // Bilinear: uma miniatura é um render encolhido, e suavizar entre texels lê-se melhor que

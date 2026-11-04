@@ -97,6 +97,29 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
+    store.register(
+        ids::ASSET_SIZE_NUM,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: f64::from(crate::CELL_DEFAULT_PX),
+            buffer: String::new(),
+            caret: 0,
+            last_committed: f64::from(crate::CELL_DEFAULT_PX),
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped(
+        ids::ASSET_SIZE,
+        ids::ASSET_SIZE_NUM,
+        crate::CELL_MAX_PX - crate::CELL_MIN_PX,
+        crate::CELL_MIN_PX,
+    );
+    store.set_number_range(
+        ids::ASSET_SIZE_NUM,
+        f64::from(crate::CELL_MIN_PX),
+        f64::from(crate::CELL_MAX_PX),
+        1.0,
+    );
     // ⛔⛔ **O polegar da barra REGISTA-SE como `Plain`, e a auditoria apanhou-me a omiti-lo.**
     // Ele não tem estado próprio (o par visual sai do `scrollbar_visual_for`), mas sem uma entrada
     // no store o `is_focusable` do despachante é **falso** e o `pointer_down` nunca semeia o
@@ -112,7 +135,11 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
         InteractiveState::Plain,
     );
-    for id in [ids::ASSET_CATALOG_TOGGLE, ids::ASSET_CATALOG_NEW] {
+    for id in [
+        ids::ASSET_CATALOG_TOGGLE,
+        ids::ASSET_CATALOG_NEW,
+        ids::ASSET_KIND_BOX,
+    ] {
         store.register(
             id,
             InteractiveState::Button {

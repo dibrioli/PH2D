@@ -14,7 +14,7 @@ use ph2d_panel_asset_browser::{AssetBrowserPanel, PANEL_ID, ids};
 use ph2d_ui_testkit::MockPanelHost;
 
 fn open_host() -> (MockPanelHost, AssetBrowserState) {
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     host.set_panel_visible(PANEL_ID, true);
     (host, AssetBrowserState::default())
 }
@@ -25,7 +25,7 @@ fn open_host() -> (MockPanelHost, AssetBrowserState) {
 /// que é literalmente o estado em que o app estava antes desta wave.
 #[test]
 fn the_assets_pill_opens_and_closes_the_panel() {
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut st = AssetBrowserState::default();
     assert!(
         !host.panel_visible(PANEL_ID),
@@ -59,7 +59,7 @@ fn the_close_button_closes_the_panel() {
 /// teste) chegaria a eles.
 #[test]
 fn a_closed_panel_ignores_its_own_chips() {
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut st = AssetBrowserState::default();
     let before = st.sort;
     let out = host
@@ -249,7 +249,7 @@ fn changing_the_filter_returns_the_grid_to_the_top() {
 #[test]
 fn the_drag_and_resize_handles_are_blender_hits_pointing_at_this_panel() {
     use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState};
-    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let host = crate::corpo_de_antes();
     for (id, want) in [
         (ids::ASSET_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (ids::ASSET_RESIZE_HANDLE_BL, BlenderHitKind::ResizeHandleBl),
@@ -273,7 +273,7 @@ fn the_drag_and_resize_handles_are_blender_hits_pointing_at_this_panel() {
 /// pode agarrar.
 #[test]
 fn the_scrollbar_thumb_is_registered_so_the_drag_can_start() {
-    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let host = crate::corpo_de_antes();
     assert!(
         host.store()
             .get(ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID)

@@ -22,7 +22,7 @@ const HOUSE: AssetRef = AssetRef::Component { stable_id: 10 };
 const BARK: AssetRef = AssetRef::Texture { asset: [1; 32] };
 
 fn open_host() -> (MockPanelHost, AssetBrowserState) {
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     host.set_panel_visible(PANEL_ID, true);
     (host, AssetBrowserState::default())
 }

@@ -43,7 +43,7 @@ fn painted() -> Vec<AssetRef> {
 
 fn aberto_a_escolher() -> (MockPanelHost, AssetBrowserState) {
     publish();
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut st = AssetBrowserState::default();
     ph2d_panel_asset_browser::choose_image_for(SPRITE, "Hills".into());
     host.set_panel_visible(PANEL_ID, true);

@@ -4,6 +4,21 @@
 /// A tradução de uma chave dos cartões, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        "card.ceq.histogram" => "Histogram",
+        "card.ceq.auto" => "Auto",
+        "card.ceq.tone" => "Tone",
+        "card.ceq.color" => "Color",
+        "card.ceq.sharpen" => "Sharpen",
+        "card.ceq.local" => "Local Contrast",
+        "card.ceq.lut" => "Color Lookup",
+        "card.ceq.stylize" => "Stylize",
+        "card.ceq.exposure" => "Exposure (EV)",
+        "card.ceq.radius" => "Radius (px)",
+        "card.bgr.mask" => "Mask",
+        "card.bgr.colors" => "Background Colors",
+        "card.bgr.islands" => "Islands",
+        "card.bgr.protection" => "Protection",
+        "card.bgr.falloff" => "Falloff",
         "card.upscale.scale" => "Scale (\u{d7})",
         "card.equalize.target" => "Target",
         "card.equalize.size_from" => "Size from",
@@ -73,6 +88,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.menu.panel" => "Panel options",
         "card.menu.close" => "Close this panel",
         // O painel Physics: a unidade no rótulo (D13).
+        "card.tokens.mode" => "Mode",
+        "card.tokens.app_colors" => "App Colors",
+        "card.tokens.link" => "Follow another token: click here, then on the token to follow",
+        "card.tokens.formula" => "Write a formula for this value",
         "card.wet_tuning.texture_size_ref" => "Texture size reference (px)",
         "card.wet_tuning.reset_knob" => "Reset {knob}",
         "card.wet_tuning.reset_group" => "Reset all of {group}",

@@ -49,7 +49,7 @@ pub(super) fn paint_card(
     // ⭐⭐ **A miniatura por CIMA do fundo** (wave A6): uma imagem com alfa deixa ver o que está
     // atrás dela, e o que está atrás é o mesmo fundo em que o objecto pousa na tela.
     if let Some(t) = thumb_img {
-        crate::paint_thumb::paint_thumb(ctx, key, t, thumb, inset);
+        crate::paint_thumb::paint_thumb(ctx.scene, key, t, thumb, inset);
     } else if let Some(icon) = doc_icon(key) {
         // D17 — um documento não tem pixels: o ícone da família, no meio do quadrado.
         let side = thumb.w / 2.0;
@@ -109,7 +109,7 @@ pub(super) fn paint_card(
 }
 
 /// O ícone de um documento (D17): o do botão «Kanban» da barra do Quadro e o da apresentação.
-fn doc_icon(key: ph2d_asset_index::AssetRef) -> Option<ph2d_editor_core::icons::IconId> {
+pub(crate) fn doc_icon(key: ph2d_asset_index::AssetRef) -> Option<ph2d_editor_core::icons::IconId> {
     use ph2d_editor_core::icons::IconId;
     match key {
         ph2d_asset_index::AssetRef::Kanban { .. } => Some(IconId::LayoutGrid),

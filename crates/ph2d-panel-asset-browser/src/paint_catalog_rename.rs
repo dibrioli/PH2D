@@ -33,6 +33,30 @@ pub(crate) fn open(state: &mut AssetBrowserState, id: CatalogId) {
     state.renaming = Some(CatalogRename { id, opened: false });
 }
 
+fn seed_once(store: &mut WidgetStore, seed: &str) {
+    store.register(ids::ASSET_CATALOG_RENAME, seed_state(seed));
+    store.set_focus(Some(ids::ASSET_CATALOG_RENAME));
+    // O Esc aborta — quem o diz é o CAMPO, não uma lista de ids dentro do `dispatch_key`.
+    store.mark_cancel_on_escape(ids::ASSET_CATALOG_RENAME);
+}
+
+/// O mesmo arranque do campo para a linha de cartão, que o pinta com o `ListRow`: desiste se o catálogo
+/// desapareceu e semeia uma vez só.
+pub(crate) fn seed_for_cards(state: &mut AssetBrowserState, store: &mut WidgetStore) {
+    let Some(mut r) = state.renaming else {
+        return;
+    };
+    let Some(seed) = with_catalogs(|t| t.get(r.id).map(|c| c.label().to_string())) else {
+        abandon(state, store);
+        return;
+    };
+    if !r.opened {
+        seed_once(store, &seed);
+        r.opened = true;
+        state.renaming = Some(r);
+    }
+}
+
 /// Pinta o campo aberto (nada a fazer sem um).
 ///
 /// `row_y` é o topo da linha do catálogo neste quadro — **colhido mesmo para uma linha rolada
@@ -70,16 +94,7 @@ pub(crate) fn paint(
     // vez (re-semear a cada quadro apagaria o que o artista escreveu). O `register` que
     // SUBSTITUI é seguro porque este id não tem tabelas laterais (ver `ids`).
     if !r.opened {
-        ctx.host
-            .store_mut()
-            .register(ids::ASSET_CATALOG_RENAME, seed_state(&seed));
-        ctx.host
-            .store_mut()
-            .set_focus(Some(ids::ASSET_CATALOG_RENAME));
-        // O Esc aborta — quem o diz é o CAMPO, não uma lista de ids dentro do `dispatch_key`.
-        ctx.host
-            .store_mut()
-            .mark_cancel_on_escape(ids::ASSET_CATALOG_RENAME);
+        seed_once(ctx.host.store_mut(), &seed);
         r.opened = true;
         state.renaming = Some(r);
     }

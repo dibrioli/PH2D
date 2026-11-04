@@ -13,7 +13,7 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// O painel aberto, `doc` pintado na célula 0 e o menu `kind` já fechado (como o `pointer_down`).
 fn staged(doc: AssetRef, kind: ContextMenuKind) -> (MockPanelHost, AssetBrowserState) {
-    let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let mut host = crate::corpo_de_antes();
     host.set_panel_visible(PANEL_ID, true);
     probe_set_painted(vec![doc]);
     host.store_mut().open_context_menu(ContextMenuRequest {

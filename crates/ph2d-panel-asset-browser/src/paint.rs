@@ -32,6 +32,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
 
 mod card;
+pub(crate) use card::doc_icon;
 use card::paint_card;
 
 /// O estado do campo de busca — o mesmo idioma da Hierarquia.
@@ -159,6 +160,10 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
             );
         }
         store.set_panel_rect(ph2d_editor_core::ids::ASSET_PANEL, rect);
+    }
+    if crate::cards::cards_on() {
+        crate::cards::paint(state, ctx, rect);
+        return;
     }
     paint_chrome(ctx, rect);
     let controls_bottom = paint_controls(state, ctx, rect);

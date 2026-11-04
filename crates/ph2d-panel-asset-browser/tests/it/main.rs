@@ -7,8 +7,15 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod os_cartoes;
 mod seam;
 mod seam_choose;
 mod seam_doc_menu;
 mod seam_related;
 mod the_card_shows_the_canvas_behind_the_thumbnail;
+
+/// O corpo de antes (`PH2D_CARDS=0`): é ele que as varreduras antigas medem; os cartões têm `os_cartoes.rs`.
+fn corpo_de_antes() -> ph2d_ui_testkit::MockPanelHost {
+    ph2d_panel_asset_browser::cards::force_cards_on_this_thread(Some(false));
+    ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_asset_browser::AssetBrowserPanel>()
+}

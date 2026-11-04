@@ -21,6 +21,18 @@ pub const ASSET_RESIZE_HANDLE_BL: NodeId = hash_node_id("asset_browser.resize_bl
 /// O `X` do cabeçalho.
 pub const ASSET_CLOSE: NodeId = hash_node_id("asset_browser.close");
 
+/// Nova UI: os três cartões (ordem, dobra, tema e notas moram nestes ids).
+pub const ASSET_SEC_FIND: NodeId = hash_node_id("asset_browser.sec.find");
+pub const ASSET_SEC_CATALOGS: NodeId = hash_node_id("asset_browser.sec.catalogs");
+pub const ASSET_SEC_LIBRARY: NodeId = hash_node_id("asset_browser.sec.library");
+
+/// Nova UI: a caixa da lista suspensa das famílias (sete opções não cabem num segmentado estreito);
+/// cada opção é o `ASSET_KIND` de sempre.
+pub const ASSET_KIND_BOX: NodeId = hash_node_id("asset_browser.kind.box");
+
+/// Nova UI: o campo do tamanho da miniatura, ligado à barra `ASSET_SIZE`, que continua a avisar o painel.
+pub const ASSET_SIZE_NUM: NodeId = hash_node_id("asset_browser.size.num");
+
 /// **A busca da GRADE.**
 ///
 /// ⚠️ **A segunda busca — a dos CATÁLOGOS — não existe ainda, e a ausência é declarada:** ela só

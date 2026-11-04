@@ -339,6 +339,22 @@ impl MaterialCombine {
     pub fn is_neutral(self) -> bool {
         self == Self::default()
     }
+
+    /// **A forma que não tem atrito com nada**: atrito 0 + regra `Min`, que vence a `Average` de quem
+    /// toca. Sozinho, o atrito 0 ainda deixaria metade do da parede (`platform_wall_sem_atrito`).
+    #[must_use]
+    pub fn sem_atrito(shape: crate::ColliderShape) -> (crate::Collider, Self) {
+        let collider = crate::Collider {
+            shape,
+            friction: 0.0,
+            ..crate::Collider::default()
+        };
+        let regra = Self {
+            friction: CombineRule::Min,
+            ..Self::default()
+        };
+        (collider, regra)
+    }
 }
 
 impl SimComponent for MaterialCombine {}

@@ -109,14 +109,19 @@ pub(super) fn format_rows(
         tr("panel.inspector.camera.frame_selected"),
     ];
     let selected = u8::from(info.frame == ph2d_editor_core::CameraFrameShow::Selected);
-    let cur_y = super::rows::seg_row(
+    // Num cartão, os irmãos curtos dividem a linha: Frame + Icon Size, Outside + Editor View.
+    let cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let meia = (w - ph2d_card_stack::metrics::FIELD_GAP) * 0.5;
+    let (w_par, x_dir) = if cartao { (meia, x + w - meia) } else { (w, x) };
+    let topo = cur_y;
+    let fim_frame = super::rows::seg_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
         x,
-        w,
+        w_par,
         cur_y,
         TextKey::new(ROTULOS[2]),
         ids::INSP_CAMERA_FRAME_GROUP,
@@ -124,43 +129,56 @@ pub(super) fn format_rows(
         &labels,
         selected,
     );
-    let mut cur_y = super::rows::fields_row(
+    let fim_icone = super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
-        cur_y,
+        x_dir,
+        w_par,
+        if cartao { topo } else { fim_frame },
         TextKey::new(ROTULOS[3]),
         &[ids::INSP_CAMERA_ICON_SIZE],
         4.0, // LITERAL-PX-OK: passo de 4 px de tela
         Some(ph2d_editor_core::widget::Unit::Px),
         seccao,
     );
+    let mut cur_y = if cartao {
+        fim_frame.max(fim_icone)
+    } else {
+        fim_icone
+    };
     let ligado = [
         info.canvas.dim_outside,
         info.canvas.follows,
         info.canvas.preview,
     ];
-    for ((rotulo, grupo, opcoes, chaves), on) in VISTA.iter().zip(ligado) {
+    let topo_do_par = cur_y;
+    for (i, ((rotulo, grupo, opcoes, chaves), on)) in VISTA.iter().zip(ligado).enumerate() {
         let labels = chaves.map(tr);
-        cur_y = super::rows::seg_row(
+        // A 1.ª e a 2.ª vistas fazem par no cartão; a última fica sozinha.
+        let (xi, wi, yi) = match i {
+            0 if cartao => (x, w_par, topo_do_par),
+            1 if cartao => (x_dir, w_par, topo_do_par),
+            _ => (x, w, cur_y),
+        };
+        let fim = super::rows::seg_row(
             scene,
             text_system,
             theme,
             hit_index,
             store,
-            x,
-            w,
-            cur_y,
+            xi,
+            wi,
+            yi,
             TextKey::new(ROTULOS[*rotulo]),
             *grupo,
             opcoes,
             &labels,
             u8::from(on),
         );
+        cur_y = if cartao && i < 2 { cur_y.max(fim) } else { fim };
     }
     cur_y
 }

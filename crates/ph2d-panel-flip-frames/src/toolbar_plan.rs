@@ -86,7 +86,10 @@ impl Item {
     fn width(&self, text_system: &mut TextSystem, row_h: f32) -> Option<f32> {
         Some(match self {
             Item::Icon(..) => ICON_W,
-            Item::Toggle(..) => TOGGLE_W,
+            // O nome inteiro, com o respiro (lei 7): «Additive» saía «Addit…» nos 62 px.
+            Item::Toggle(_, t, _) => TOGGLE_W.max(ph2d_editor_core::paint::rect_for_label(
+                text_system.prefix_width(t, ph2d_editor_core::widget::panel_chrome::segmented_label_font()),
+            )),
             Item::Number(..) => NUM_W,
             Item::Label(t) => {
                 TypeToken::Sm.px() * GLYPH_W_RATIO * t.len() as f32 + Spacing::Xs.px()

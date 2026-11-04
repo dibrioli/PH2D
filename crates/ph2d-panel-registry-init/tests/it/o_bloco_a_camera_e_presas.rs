@@ -78,6 +78,31 @@ fn rolado_ate(h: &mut HeroScreen, id: NodeId) -> ph2d_editor_core::zones::Rect {
     panic!("{id:?} não está no cartão");
 }
 
+/// Foto `r4_camera`: Frame + Icon Size e Outside + Editor View são irmãos curtos, dividem a linha, e o
+/// texto dos botões cabe. *Mutação: `w_par = w` ⇒ vermelho.*
+#[test]
+fn the_view_rows_of_the_camera_share_the_line() {
+    camera(HEROI, "Camera", true);
+    let mut h = hero_com_aberto(CAMERA);
+    let frame = rolado_ate(&mut h, pids::INSP_CAMERA_FRAME[0]);
+    let icone = rolado_ate(&mut h, pids::INSP_CAMERA_ICON_SIZE);
+    let fora = rolado_ate(&mut h, pids::INSP_CAMERA_OUTSIDE[0]);
+    let vista = rolado_ate(&mut h, pids::INSP_CAMERA_VIEW[0]);
+    let centro = |r: ph2d_editor_core::zones::Rect| r.y + r.h * 0.5;
+    assert!((centro(frame) - centro(icone)).abs() < 0.5, "{frame:?} × {icone:?}");
+    assert!(icone.x > frame.x + frame.w, "{frame:?} × {icone:?}");
+    assert!((centro(fora) - centro(vista)).abs() < 0.5, "{fora:?} × {vista:?}");
+    assert!(vista.x > fora.x + fora.w, "{fora:?} × {vista:?}");
+    let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| pinta(&mut h, 1));
+    for nome in ["Always", "Selected", "Normal", "Dimmed", "Free", "Follows"] {
+        assert!(
+            medidos.iter().filter(|e| e.texto == nome).all(|e| e.coube()),
+            "{nome:?} saiu cortado"
+        );
+    }
+    desarma_tudo();
+}
+
 /// ⭐ 05 §8: o corpo do Camera é o do cartão. A lista e o alvo levam a caixa do cartão a toda a
 /// largura com o rótulo EM CIMA; o conta-gotas mora dentro da caixa do alvo; o par de caixas não
 /// corta o nome e a marca da esquerda fica colada ao nome dela, longe da caixa da direita.

@@ -213,3 +213,23 @@ fn cards_off_paints_the_old_body() {
     assert!(p.rect(ids::FLIP_STRIP_SEC).is_none());
     assert!(p.rect(ids::FLIP_PLAY).is_some());
 }
+
+/// Foto `r4_ghost`: «Additive» saía «Addit…». Lei 7: todo toggle da barra leva o nome inteiro, com o respiro.
+/// *Mutação: a largura de volta a `TOGGLE_W` ⇒ vermelho.*
+#[test]
+fn no_toggle_of_the_toolbar_cuts_its_name() {
+    let mesa = Palco::novo(true);
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for (id, chave) in [
+        (ids::FLIP_GHOST, "panel.flip_frames.toolbar.ghost"),
+        (ids::FLIP_KEY_PIN, "panel.flip_frames.toolbar.pin"),
+        (ids::FLIP_ADDITIVE, "panel.flip_frames.toolbar.additive"),
+    ] {
+        let r = mesa.rect(id).expect("o toggle da barra");
+        let nome = ph2d_i18n::tr(chave);
+        let pede = ph2d_editor_core::paint::rect_for_label(
+            ts.prefix_width(nome, ph2d_editor_core::widget::panel_chrome::segmented_label_font()),
+        );
+        assert!(r.w + 0.5 >= pede, "{nome}: {} contra {pede}", r.w);
+    }
+}

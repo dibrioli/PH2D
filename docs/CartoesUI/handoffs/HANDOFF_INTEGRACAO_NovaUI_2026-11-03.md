@@ -97,7 +97,11 @@ clippy em `ph2d-panel-wet-tuning/tests/it/seam.rs`, `ph2d-paint-tinta/tests/it/m
 
 ## 6. Prova de fecho
 
-`<preencher: suíte final / ship / CI_RUN pela janela principal>`. Antes das curas: 21 vermelhos (§2).
+Antes das curas: 21 vermelhos (§2). Na árvore final (`--workspace`, `ci-test`): **31 678 testes, 31 678 verdes**, 3 037 ignorados. Rodadas intermédias a vermelho: 5 (ver «Curas de 04/11») → 1 (`o_pen_down…`) → 1 (`ph2d-app-skeleton` 3 linhas acima do tecto, do `cargo fmt`) → 0.
+
+Do `ship.sh` saíram ainda: `fmt`, `clippy` (dois bins do spike não compilavam com o `bevy_ecs` 0.20 + 4 lints, nenhum `#[allow]`), `cargo-machete` (3 dependências removidas; `rustc-hash` ignorada no `wgpu-core` vendorizado), `typos` e o `cargo-deny` (`async-executor` 1.14.0 foi retirada do crates.io em 04/11 → 1.14.1).
+
+O relatório do CI: `CI_RUN`, no topo.
 
 ## 7. O que um merge destas linhas pode partir
 

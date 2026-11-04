@@ -249,3 +249,112 @@ fn a_pinned_card_list_shows_and_edits_its_own_object() {
     assert_eq!(alvos, [HEROI], "a opção do preso editou outro objecto");
     desarma_tudo();
 }
+
+/// ⭐ T29: toda linha de lista suspensa de um componente, no cartão, tem a caixa do cartão e deixa
+/// lugar à linha seguinte: nenhum outro alvo cai dentro da faixa do chip (o rótulo em cima desce o
+/// controlo, e quem avançava `y + passo` escrevia a linha seguinte por cima dele).
+/// *Mutação: `PropertyRow::fim` a devolver `y + passo` (control.y − rótulo).*
+#[test]
+fn every_list_row_in_a_card_leaves_room_for_the_next_row() {
+    let chips = [
+        (
+            "audio",
+            ids::INSP_LIVE_AUDIO_SECTION,
+            pids::INSP_AUDIO_BUS_PICK,
+        ),
+        ("camera", CAMERA, pids::INSP_CAMERA_FORMAT_PICK),
+        (
+            "action",
+            ids::INSP_LIVE_ACTION_SECTION,
+            pids::INSP_ACTION_VERB_PICK,
+        ),
+        (
+            "action_trigger",
+            ids::INSP_LIVE_TRIGGER_SECTION,
+            pids::INSP_TRIGGER_EDGE_PICK,
+        ),
+        (
+            "counter_watch",
+            ids::INSP_LIVE_WATCH_SECTION,
+            pids::INSP_WATCH_CMP_PICK,
+        ),
+        ("sequence", ids::INSP_LIVE_SEQ_SECTION, pids::INSP_SEQ_PICK),
+    ];
+    for (nome, sec, id) in chips {
+        super::o_inspector_armado::arma_tudo();
+        for (porta, desarma) in super::o_inspector_armado::PORTAS {
+            if !["name", "transform", nome].contains(porta) {
+                desarma();
+            }
+        }
+        let mut h = hero_com_aberto(sec);
+        let r = rolado_ate(&mut h, id);
+        assert!(
+            (r.h - m::FIELD_H).abs() < 0.5,
+            "{nome}: o chip não tem a altura da caixa do cartão: {r:?}"
+        );
+        let por_cima: Vec<_> = h
+            .hit_index
+            .iter_registrations()
+            .filter(|(o, q)| {
+                *o != id
+                    && q.h <= m::FIELD_H + 0.5
+                    && q.y > r.y + 0.5
+                    && q.y < r.y + r.h - 0.5
+                    && q.x < r.x + r.w
+                    && q.x + q.w > r.x
+            })
+            .collect();
+        assert!(
+            por_cima.is_empty(),
+            "{nome}: há alvos sobre o chip {r:?}: {por_cima:?}"
+        );
+    }
+    desarma_tudo();
+}
+
+/// ⭐ 05 §5 e §9, um censo: uma secção do Inspector não pede cor ao tema por fora da tinta do cartão
+/// (`resolve` lá é a [`card_ink::tinta`]), e `Checkbox::new` só sobrevive no ramo fora do cartão das
+/// três portas. *Cresceu? Passe a linha nova pela porta (`rows::caixa_row`, `rows::seg_row_misto`).*
+#[test]
+fn a_section_paints_through_the_card_ink() {
+    let pasta = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ph2d-panel-inspector/src/sections"
+    );
+    let mut crus = Vec::new();
+    let mut caixas = Vec::new();
+    let mut lidos = 0;
+    for f in std::fs::read_dir(pasta).expect("a pasta das secções") {
+        let p = f.expect("um ficheiro").path();
+        let Ok(fonte) = std::fs::read_to_string(&p) else {
+            continue;
+        };
+        lidos += 1;
+        let nome = p
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_owned();
+        let cortado = fonte.split("#[cfg(test)]").next().unwrap_or(&fonte);
+        // A moldura (T59) pede o degrau de subsecção do tema em que o cartão se pinta.
+        let tinta_propria = usize::from(nome == "rows_moldura.rs");
+        if cortado.matches("paint::resolve(").count() != tinta_propria {
+            crus.push(nome.clone());
+        }
+        if cortado.matches("Checkbox::new(").count() > 0 {
+            caixas.push(nome);
+        }
+    }
+    assert!(lidos > 50, "a régua leu {lidos} ficheiros: o caminho mudou");
+    assert!(
+        crus.is_empty(),
+        "cor pelo tema, por fora da tinta do cartão: {crus:?}"
+    );
+    caixas.sort();
+    assert_eq!(
+        caixas,
+        ["anchor_mount_row.rs", "rows_par.rs", "script_controlo.rs"],
+        "Checkbox::new fora das portas (rows::caixa_row)"
+    );
+}

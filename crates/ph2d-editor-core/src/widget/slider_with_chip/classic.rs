@@ -13,7 +13,7 @@
 
 use super::paint_number_chip;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{paint_text, resolve};
+use crate::paint::paint_text;
 use crate::widget::TextInputState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;

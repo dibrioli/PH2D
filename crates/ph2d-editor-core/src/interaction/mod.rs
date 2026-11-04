@@ -70,6 +70,25 @@ pub use drag::{
 pub use event::{DOUBLE_CLICK_WINDOW_NS, PanelRowDrop, PanelRowFamily, WidgetEvent};
 pub use hit::HitIndex;
 pub use press_slop::{PRESS_SLOP_PX, PressSlop};
+thread_local! {
+    /// Onde está a lista de estilos aberta e de quem é: o painel pinta, a pressão lê.
+    static CAPA_DOS_ESTILOS: std::cell::Cell<Option<(crate::zones::Rect, Option<u64>)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// A lista de estilos de cor abriu em `capa.0`, do sujeito `capa.1` (`None` = fechou).
+pub fn publica_capa_dos_estilos(capa: Option<(crate::zones::Rect, Option<u64>)>) {
+    CAPA_DOS_ESTILOS.with(|c| c.set(capa));
+}
+
+/// A pressão em `(x, y)` caiu na lista de estilos aberta? Devolve o sujeito dela.
+pub(crate) fn sujeito_da_capa_dos_estilos(x: f32, y: f32) -> Option<Option<u64>> {
+    CAPA_DOS_ESTILOS
+        .with(std::cell::Cell::get)
+        .filter(|(r, _)| r.contains(x, y))
+        .map(|(_, s)| s)
+}
+
 pub use state::{
     CardDrag, CardDrop, CardList, Ensaio, EstadosPresos, InteractiveState, LooseCard, LooseEdge,
     NamedPalette, NoteDrag, SECCOES_FIXAS, SectionDrag, TAB_DRAG_THRESHOLD_PX, TabDragAnchor,

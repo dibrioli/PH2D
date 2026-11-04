@@ -226,8 +226,8 @@ impl WidgetStore {
             return;
         }
         // C2: a lista de estilos e o seletor de cor são de quem os abriu, nunca do que está por baixo.
-        if crate::panel::cards::estilos::cobre(x, y) {
-            self.card_lists.press_subject = crate::panel::cards::estilos::sujeito_aberto();
+        if let Some(sujeito) = crate::interaction::sujeito_da_capa_dos_estilos(x, y) {
+            self.card_lists.press_subject = sujeito;
             return;
         }
         let no_seletor = self.picker_target().is_some()

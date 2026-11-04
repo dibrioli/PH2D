@@ -151,12 +151,6 @@ pub fn sujeito_aberto() -> Option<u64> {
     ABERTA_SUJEITO.with(Cell::get)
 }
 
-/// A pressão em `(x, y)` caiu na lista aberta ou no «Edit style»?
-#[must_use]
-pub fn cobre(x: f32, y: f32) -> bool {
-    ABERTA.with(Cell::get).is_some() && CAIXA.with(Cell::get).is_some_and(|r| r.contains(x, y))
-}
-
 /// A lista está aberta pelo ⠿ de `card`?
 #[must_use]
 pub fn aberta_em(card: NodeId) -> bool {
@@ -211,6 +205,7 @@ fn fecha() {
     ABERTA.with(|a| a.set(None));
     ABERTA_SUJEITO.with(|a| a.set(None));
     CAIXA.with(|c| c.set(None));
+    crate::interaction::publica_capa_dos_estilos(None);
     EDITA.with(|e| e.set(None));
 }
 
@@ -541,7 +536,9 @@ pub(super) fn paint_pending(
         w,
         h,
     );
-    CAIXA.with(|c| c.set(Some(Rect::new(caixa.x, caixa.y, caixa.w, pilha))));
+    let capa = Rect::new(caixa.x, caixa.y, caixa.w, pilha);
+    CAIXA.with(|c| c.set(Some(capa)));
+    crate::interaction::publica_capa_dos_estilos(Some((capa, ABERTA_SUJEITO.with(Cell::get))));
     fundo(scene, caixa, &ink);
     hit_index.register(FUNDO, caixa);
     titulo(
@@ -657,80 +654,9 @@ pub(super) fn paint_pending(
     }
 }
 
-fn fundo(scene: &mut VectorScene, r: Rect, ink: &CardInk) {
-    shadow(
-        scene,
-        r,
-        m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanListShadow),
-        m::LIST_SHADOW_FAR,
-    );
-    fill_rounded_rect(
-        scene,
-        r,
-        m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanCardRaised),
-    );
-}
-
-fn titulo(scene: &mut VectorScene, text_system: &mut TextSystem, ink: &CardInk, r: Rect, t: &str) {
-    crate::paint::paint_text_title_elided(
-        text_system,
-        scene,
-        t,
-        r.x + m::CARD_PAD_X,
-        r.y + (m::CARD_HEAD_H - m::CARD_TITLE_PX) * 0.5,
-        m::CARD_TITLE_PX,
-        r.w - m::CARD_PAD_X * 2.0 - m::HEAD_ICON_BOX,
-        ink.color(ColorToken::Text1),
-    );
-}
-
-fn amostra(scene: &mut VectorScene, r: Rect, c: [u8; 4], ink: &CardInk) {
-    fill_rounded_rect(
-        scene,
-        r,
-        m::SEG_RADIUS,
-        ph2d_vector::Color::from_rgba8(c[0], c[1], c[2], c[3]),
-    );
-    // FRAME-RAW-OK: o contorno da AMOSTRA de cor é a borda que a separa do cartão — a cor dela é a mensagem
-    crate::paint::stroke_rounded_rect(
-        scene,
-        r,
-        m::SEG_RADIUS,
-        m::FIELD_BORDER,
-        ink.color(ColorToken::Border),
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-fn icone(
-    scene: &mut VectorScene,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    ink: &CardInk,
-    b: Rect,
-    id: NodeId,
-    icon: IconId,
-) {
-    hit_index.register(id, b);
-    if store.hover_live(id) > 0.0 {
-        fill_rounded_rect(
-            scene,
-            b,
-            m::HEAD_ICON_RADIUS,
-            ink.color(ColorToken::CardFieldHover),
-        );
-    }
-    let g = m::HEAD_ICON_GLYPH;
-    paint_icon(
-        scene,
-        icon,
-        Rect::new(b.x + (b.w - g) * 0.5, b.y + (b.h - g) * 0.5, g, g),
-        ink.color(ColorToken::Text2),
-        StrokeToken::Default.px(),
-    );
-}
+#[path = "cards_estilos_pintura.rs"]
+mod pintura;
+use pintura::{amostra, fundo, icone, titulo};
 
 #[path = "cards_estilos_editor.rs"]
 mod editor;

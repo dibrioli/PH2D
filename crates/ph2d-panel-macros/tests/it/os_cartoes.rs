@@ -315,6 +315,7 @@ fn headers_fold_reorder_and_open_the_theme_menu() {
         .chain([
             ids::MACROS_CLOSE,
             ph2d_editor_core::panel::cards::list_menu_of(panel),
+            ph2d_editor_core::ids::grip_de(ids::MACROS_SEC_RECORD),
         ])
         .filter(|id| store.tooltip_for(*id).is_none())
         .collect();

@@ -332,6 +332,7 @@ fn every_mute_control_has_a_tooltip_and_data_families_are_born_folded() {
         .chain([
             ids::TOKENS_CLOSE,
             ph2d_editor_core::panel::cards::list_menu_of(panel),
+            ids::tokens_num_fx_id(0),
         ])
         .filter(|id| store.tooltip_for(*id).is_none())
         .collect();

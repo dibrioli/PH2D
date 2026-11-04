@@ -40,6 +40,7 @@ Fotos: [`bones_aprovada_x_portada.png`](../maquete/bones_aprovada_x_portada.png)
 ## 4 — O que precisa da linha do Inspector
 
 - **Cursor preso do campo** (`ph2d-cursor-preso`, `sync_cursor_preso`): vem de lá. Sem ela, o arrasto no ícone funciona mas o cursor não fica preso. Esperado até à integração.
+- ⚠️ **`shells/desktop/src/cursor_preso.rs` existe nas DUAS linhas (conflito add/add, de propósito): fica o da linha do Inspector, inteiro.** O daqui só traz a seta ↔ (§9) para o smoke desta linha. O `mod cursor_preso;` e as duas linhas em `despacho_metodos_janela_e_vetor.rs` foram escritos iguais aos de lá.
 - Os testes `o_bloco5_abertos` e `o_bloco7_duas_copias` chamam `publica_presos` **e** o Inspector: não compilam em nenhuma das duas linhas sozinha. Entram na integração. O mesmo para a metade Inspector de `toda_dica_dos_cartoes`; a metade Bones está em `o_smart_bone_em_cartoes`.
 - O número do nível `=9` e o `NIVEIS` só andam aqui.
 
@@ -74,3 +75,16 @@ O vermelho do segmento estreito e do título foi visto antes da cura (`nenhum_ro
 - Família 3 (mola do Kanban) e as cenas `PH2D_VEC_CARTOES_SMOKE`: fora desta linha.
 - Maquete sem par no produto: o olho no Angle Limit.
 - `CLAUDE.md` §5.1 não foi tocado: o integrador troca o link do módulo.
+
+## 9 — Smoke do dono (03/11): OK, com duas curas
+
+O dono aprovou o resto e achou duas coisas; as duas estão curadas e ele ainda não as reviu no app.
+
+1. **Arrastar no ícone de Segments não fazia nada.** Causa: o campo arrasta em contínuo (0,1 por px), o documento guarda inteiro e `semeia` repõe-no a cada quadro; a base do Move seguinte era esse valor, e o resíduo perdia-se (`round(round(v) + d) == round(v)`). O `as u8` ainda cortava: subir ficava preso e descer caía no 1.º px. **O IK Chain é a mesma família** e foi curado no mesmo bloco.
+   - Cura em `pointer_move.rs`: num campo de cartão a base é o acumulador enquanto o documento estiver a menos de um passo dele (só arredondou); além disso ele bateu num piso/tecto e a base volta ao valor, para a inversão não ter zona morta. Vale para todo campo de cartão, sem novo campo em `CardFieldSpec` (a linha do Inspector constrói-o). Campo contínuo: acumulador = valor.
+   - `knobs::apply` (Segments) e o Chain em `fase_bone_smart_and_knobs.rs` arredondam em vez de cortar. Efeito colateral: escrever `2.7` dá 3, não 2.
+2. **A seta ↔ sobre o ícone ou a letra não aparecia aqui.** `ew_resize_under` existia sem chamador nesta linha; quem a liga é a linha do Inspector. Trazida só a chamada, com mais uma condição: a seta fica a meio do arrasto (`pointer_lock_wanted`), porque aqui o cursor ainda não se esconde.
+
+Testes em `o_smart_bone_em_cartoes` (8/8): contagem nos dois sentidos e inversão no piso, Chain, Length a 1 por px, seta na pega e na letra e não no valor. **Antes da cura:** Segments ficava em 4 (esperado 12) e Chain em 2 (esperado 10). **Mutação, 5/5 a sangrar:** sem acumulador · acumulador sem o teste do piso · Segments a cortar · pega sem seta · seta também no valor.
+
+Verdes depois: clippy `-D warnings` em `panel-registry-init`, `app-skeleton`, `editor-core`, `host-desktop`; `the_shell_only_shrinks` (2); `architecture_workspace_file_loc_cap`; `no_magic_numeric`; `ph2d-editor-core cards` 20; `ph2d-panel-widget-gallery cartoes` 38; `nenhum_rotulo` 14; `o_cartao_solto` 14; `number_drag` 29. A prova da seta para na função que decide: **a troca do cursor na janela só se vê no app**.

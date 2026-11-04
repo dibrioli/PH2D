@@ -7,6 +7,7 @@
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
@@ -211,6 +212,169 @@ fn the_curve_tip_list_and_the_object_button_answer_a_click() {
         chegou_ao_barramento(&mut h, ids::VECTOR_BONE_SMART_PICK),
         "o botão Object não armou a escolha"
     );
+}
+
+fn ponteiro(h: &mut HeroScreen, kind: PointerKind, x: f32, y: f32) {
+    let arena = bumpalo::Bump::new();
+    let ev = PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind,
+        source: ph2d_host::PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    let evs: Vec<_> =
+        ph2d_editor_core::interaction::dispatch_pointer(&mut h.store, &h.hit_index, ev, &arena)
+            .to_vec();
+    for e in evs {
+        h.apply_event(e);
+    }
+}
+
+fn valor(h: &HeroScreen, id: NodeId) -> f64 {
+    match h.store.get(id) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        _ => panic!("{id:?} não é um campo numérico"),
+    }
+}
+
+/// Arrasta na pega de `id`: `doc` faz de documento (guarda a contagem inteira e devolve-a pela porta
+/// do painel), e a pintura entre dois Moves repõe o número, como cada quadro do app.
+struct Arrasto {
+    id: NodeId,
+    x: f32,
+    y: f32,
+}
+
+impl Arrasto {
+    fn comeca(h: &mut HeroScreen, id: NodeId) -> Self {
+        let r = rect(h, id);
+        let (x, y) = (r.x + 4.0, r.y + r.h * 0.5);
+        ponteiro(h, PointerKind::Down, x, y);
+        // O 1.º Move só atravessa o limiar: não muda o valor.
+        ponteiro(h, PointerKind::Move, x + 8.0, y);
+        Self { id, x: x + 8.0, y }
+    }
+
+    fn anda(&mut self, h: &mut HeroScreen, moves: usize, dx: f32, doc: &mut impl FnMut(f64)) {
+        for _ in 0..moves {
+            self.x += dx;
+            ponteiro(h, PointerKind::Move, self.x, self.y);
+            doc(valor(h, self.id));
+            pinta(h, 1);
+        }
+    }
+}
+
+/// O dono (03/11): arrastar no ícone de Segments não fazia nada. O documento guarda inteiro, o quadro
+/// devolve-o ao campo e o resíduo de cada Move (0,1 por px) perdia-se.
+/// *Mutação: a base do Move volta a ser o valor do campo ⇒ a contagem não sobe.*
+#[test]
+fn dragging_the_icon_of_a_count_field_walks_both_ways() {
+    use ph2d_skeleton::bend::{BoneSpec, segments_of};
+    let mut h = hero();
+    let mut osso = BoneSpec::straight(20.0, 1.0);
+    osso.segments = 4;
+    let lido = std::cell::Cell::new(4u8);
+    let mut doc = |v: f64| {
+        osso.segments = segments_of(v.round() as u8);
+        lido.set(osso.segments);
+        state::set_current_bone(Some(osso));
+    };
+    let mut a = Arrasto::comeca(&mut h, ids::VECTOR_BONE_SEGMENTS);
+    a.anda(&mut h, 40, 2.0, &mut doc);
+    assert_eq!(lido.get(), 12, "80 px a 0,1 por px: 4 + 8");
+    a.anda(&mut h, 40, -2.0, &mut doc);
+    assert_eq!(lido.get(), 4, "a volta desfaz");
+    // Para lá do piso e de volta: sem zona morta do tamanho do que se andou contra ele.
+    a.anda(&mut h, 60, -2.0, &mut doc);
+    assert_eq!(lido.get(), 1, "o piso");
+    a.anda(&mut h, 30, 2.0, &mut doc);
+    assert!(
+        lido.get() >= 4,
+        "a inversão no piso ficou presa: {}",
+        lido.get()
+    );
+    ponteiro(&mut h, PointerKind::Up, a.x, a.y);
+    state::set_current_bone(Some({
+        let mut o = BoneSpec::straight(20.0, 1.0);
+        o.segments = 4;
+        o
+    }));
+}
+
+/// O Chain do IK é a mesma família: o documento guarda uma contagem inteira.
+#[test]
+fn dragging_the_icon_of_the_ik_chain_walks_too() {
+    let mut h = hero();
+    let lido = std::cell::Cell::new(2u32);
+    let mut doc = |v: f64| {
+        let n = v.max(0.0).round();
+        lido.set(n as u32);
+        state::set_current_bone_ik(Some((1.0, 0.0, n, ph2d_skeleton::BendSide::default())));
+    };
+    let mut a = Arrasto::comeca(&mut h, ids::VECTOR_BONE_IK_CHAIN);
+    a.anda(&mut h, 40, 2.0, &mut doc);
+    assert_eq!(lido.get(), 10, "80 px a 0,1 por px: 2 + 8");
+    ponteiro(&mut h, PointerKind::Up, a.x, a.y);
+}
+
+/// O campo contínuo não muda: cada px anda um passo, como antes da cura da contagem.
+#[test]
+fn dragging_the_icon_of_a_continuous_field_still_walks_by_the_pixel() {
+    let mut h = hero();
+    let id = ids::VECTOR_BONE_LENGTH;
+    let antes = valor(&h, id);
+    let px_por_unidade = antes / 20.0;
+    let lido = std::cell::Cell::new(antes);
+    let mut doc = |v: f64| {
+        lido.set(v);
+        let osso = ph2d_skeleton::bend::BoneSpec {
+            segments: 4,
+            ..ph2d_skeleton::bend::BoneSpec::straight(v / px_por_unidade, 1.0)
+        };
+        state::set_current_bone(Some(osso));
+    };
+    let mut a = Arrasto::comeca(&mut h, id);
+    a.anda(&mut h, 10, 3.0, &mut doc);
+    ponteiro(&mut h, PointerKind::Up, a.x, a.y);
+    assert!(
+        (lido.get() - (antes + 30.0)).abs() < 1e-3,
+        "30 px a 1 por px: {antes} → {}",
+        lido.get()
+    );
+}
+
+/// O Figma: a seta ↔ sobre o ícone e sobre a letra; sobre o número, não.
+/// *Mutação: `on_handle` sempre falso ⇒ a pega não pede a seta.*
+#[test]
+fn the_arrow_shows_over_the_icon_and_the_letter_never_over_the_value() {
+    use ph2d_editor_core::widget::card_field::{ew_resize_under, painted_letter};
+    let mut h = hero();
+    // Em Auto as alças somem; autoradas, os campos da curva levam letra.
+    state::set_current_bone_handles(Some(0));
+    pinta(&mut h, 60);
+    assert!(
+        painted_letter(ids::VECTOR_BONE_CURVE_IN_Y).is_some(),
+        "fixtura: o campo da curva mostra uma letra"
+    );
+    for id in [ids::VECTOR_BONE_SEGMENTS, ids::VECTOR_BONE_CURVE_IN_Y] {
+        let r = rect(&h, id);
+        let (na_pega, no_valor) = (r.x + 4.0, r.x + r.w - 4.0);
+        let y = r.y + r.h * 0.5;
+        let (sob, caixa) = h.hit_index.hit_with_rect(na_pega, y).expect("a caixa");
+        assert_eq!(sob, id, "o ponteiro sobre a pega acha o campo");
+        assert!(
+            ew_resize_under(&h.store, id, caixa, na_pega),
+            "{id:?}: pega"
+        );
+        assert!(
+            !ew_resize_under(&h.store, id, caixa, no_valor),
+            "{id:?}: valor"
+        );
+    }
 }
 
 /// Todo ícone sem texto do Bones tem dica; controlo: ≥ 1 ícone declarado.

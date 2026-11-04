@@ -165,7 +165,7 @@ impl crate::App {
                 Some(ph2d_skeleton_live::goal::side_for_chain(
                     sim,
                     osso,
-                    v.max(0.0) as u32,
+                    v.max(0.0).round() as u32,
                 ))
             }
             _ => None,
@@ -185,7 +185,7 @@ impl crate::App {
                     clippy::cast_sign_loss,
                     reason = "o campo é f64 e a contagem de ossos é u32; o piso em 0 já corre acima"
                 )]
-                (IkKnob::Chain, Ancora::Ik(g)) => g.chain = v.max(0.0) as u32,
+                (IkKnob::Chain, Ancora::Ik(g)) => g.chain = v.max(0.0).round() as u32,
                 // ⭐⭐ **GRAUS na tela, RADIANOS no documento** — a mesma lei do limite da junta, e
                 // a conversão vive aqui, num sítio só. ⛔ **Sem piso nem tecto:** um desvio é um
                 // arco e dar a volta inteira é legítimo (apontar «para trás» é `180`), e a lei do

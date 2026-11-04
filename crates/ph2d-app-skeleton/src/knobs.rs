@@ -73,7 +73,7 @@ pub fn apply(bone: &mut Bone, knob: BoneKnob, v: f64) {
                 clippy::cast_sign_loss,
                 reason = "o `as u8` satura de propósito, e o `segments_of` é a porta do tecto"
             )]
-            let n = v as u8;
+            let n = v.round() as u8;
             bone.segments = ph2d_skeleton::bend::segments_of(n);
         }
         // ⚠️ As quatro alças NÃO têm piso nem tecto, e a ausência é a decisão: uma alça negativa

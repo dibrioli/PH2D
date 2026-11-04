@@ -259,7 +259,13 @@ pub(super) fn dispatch_move<'frame>(
             // o preciso (`DRAG_RANGE_PX_V` = 2500), um Move típico carrega ~0.15 de uma
             // contagem — nunca meia unidade. Elas acumulam num contínuo à parte; as caixas
             // contínuas continuam a ler o valor de volta, byte por byte como antes.
-            let base = if store.linked_slider_snap_integer(d.id) {
+            // ⭐ O campo de cartão não declara se é contagem: a menos de um passo do acumulador, o
+            // documento só arredondou (Segments) e o resíduo fica; além disso bateu num piso ou
+            // tecto dele, e a base volta ao valor para a inversão não ter zona morta.
+            let arredondou = store
+                .card_field(d.id)
+                .is_some_and(|s| (d.accum - current_value).abs() < s.step);
+            let base = if store.linked_slider_snap_integer(d.id) || arredondou {
                 d.accum
             } else {
                 current_value

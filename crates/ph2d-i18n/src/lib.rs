@@ -249,14 +249,18 @@ fn tr_ingles(key: &str) -> &'static str {
         static LIDAS: std::cell::RefCell<std::collections::BTreeMap<Box<str>, &'static str>> =
             const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
     }
-    LIDAS.with_borrow_mut(|lidas| {
-        if let Some(v) = lidas.get(key) {
-            return *v;
-        }
-        let v = tabela(key);
-        lidas.insert(key.into(), v);
-        v
-    })
+    // `try_with`: o Drop de outro `thread_local` pode perguntar depois de esta memória morrer, e aí responde a tabela.
+    LIDAS
+        .try_with(|lidas| {
+            let mut lidas = lidas.borrow_mut();
+            if let Some(v) = lidas.get(key) {
+                return *v;
+            }
+            let v = tabela(key);
+            lidas.insert(key.into(), v);
+            v
+        })
+        .unwrap_or_else(|_| tabela(key))
 }
 
 /// A tabela, tal como está escrita.

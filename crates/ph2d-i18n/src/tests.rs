@@ -37,3 +37,49 @@ fn unknown_key_returns_the_key_itself() {
     let leaked = tr("tool.nonexistent.foo");
     assert_eq!(leaked, "tool.nonexistent.foo");
 }
+
+/// A memória por fio responde pela chave INTEIRA: os prefixos e os prolongamentos de uma chave da tabela, lidos do
+/// mesmo buffer reusado, nas duas ordens, dizem o que a tabela diz.
+#[test]
+fn a_memoria_por_fio_responde_o_que_a_tabela_diz() {
+    let chaves = [
+        "panel.timeline.title",
+        "panel.timeline.titl",
+        "panel.timeline.title.x",
+        "panel.timeline.loop",
+        "panel.timeline",
+        "tool.nonexistent.foo",
+        "",
+    ];
+    std::thread::spawn(move || {
+        let mut buffer = String::new();
+        for k in chaves.iter().chain(chaves.iter().rev()) {
+            buffer.clear();
+            buffer.push_str(k);
+            assert_eq!(tr_ingles(&buffer), tabela(k), "{k:?}");
+        }
+    })
+    .join()
+    .expect("as respostas casam");
+}
+
+/// O `tr` responde no Drop de um `thread_local` registado antes da memória (os destrutores correm na ordem inversa): a
+/// memória já morreu, e um pânico ali aborta o processo.
+#[test]
+fn o_tr_responde_depois_de_a_memoria_do_fio_morrer() {
+    struct NoFim;
+    impl Drop for NoFim {
+        fn drop(&mut self) {
+            assert_eq!(tr("panel.timeline.title"), "Timeline");
+        }
+    }
+    thread_local! {
+        static FIM: NoFim = const { NoFim };
+    }
+    std::thread::spawn(|| {
+        FIM.with(|_| {});
+        assert_eq!(tr("edit.undo.label"), "Undo");
+    })
+    .join()
+    .expect("o fio acabou");
+}

@@ -18,8 +18,10 @@
 
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_tool_registry::hash_node_id;
@@ -284,17 +286,22 @@ pub fn paint(
 
     // ── Card: centred, sized to its content. ──
     let card = Rect::new(card_x, card_y, card_w, card_h);
-    let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        card,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = Superficie::de(theme);
+    if superficie.tinta().is_some() {
+        superficie.moldura_de_caixa(scene, card);
+    } else {
+        let radius = crate::paint::frame_radius(theme, Radius::Lg.px());
+        fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
+        crate::paint::stroke_frame(
+            scene,
+            card,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
     hit_index.register(CMD_PALETTE_CARD, card);
 
     // ── A banda do cabeçalho — título, busca, contagem, a caixa *Show all* e o X de fechar. Ela
@@ -336,7 +343,7 @@ pub fn paint(
             content_y,
             font,
             content_w,
-            resolve(ColorToken::Text2, theme),
+            superficie.cor(ColorToken::Text3),
         );
     } else {
         // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
@@ -357,6 +364,7 @@ pub fn paint(
                 settled_y,
                 *w,
                 crate::motion::cascade_rise(t, travels),
+                store.hot_id(),
             );
         }
     }
@@ -388,22 +396,30 @@ fn paint_card(
     oy: f32,
     card_w: f32,
     rise: f32,
+    hot: Option<NodeId>,
 ) {
     // ⚠️ `oy` é a posição ASSENTE — a que o dedo procura — e `dy` a que o olho vê durante a
     //    entrada. Tudo o que DESENHA lê `dy`; o único `register` deste corpo lê `oy`.
     let dy = oy + rise;
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     let card = Rect::new(ox, dy, card_w, cl.height);
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
-    crate::paint::stroke_frame(
-        scene,
-        card,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = Superficie::de(theme);
+    let ink = superficie.tinta();
+    if let Some(ink) = ink {
+        let fundo = ink.color(ColorToken::KanbanCard);
+        fill_rounded_rect(scene, card, m::CARD_RADIUS, fundo);
+    } else {
+        fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
+        crate::paint::stroke_frame(
+            scene,
+            card,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
 
     let cat_color = resolve(cl.color, theme);
     let sm = TypeToken::Sm.px();
@@ -443,27 +459,37 @@ fn paint_card(
                     dy + *y,
                     xs,
                     content_w,
-                    resolve(ColorToken::Text2, theme),
+                    superficie.cor(ColorToken::Text3),
                 );
             }
             Placed::Pill { rect, id, label } => {
                 let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
-                fill_rounded_rect(
-                    scene,
-                    r,
-                    crate::paint::frame_radius(theme, Radius::Sm.px()),
-                    resolve(ColorToken::Bg3, theme),
-                );
+                match ink {
+                    Some(ink) => {
+                        let tom = if hot == Some(*id) {
+                            ColorToken::CardFieldHover
+                        } else {
+                            ColorToken::CardField
+                        };
+                        fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(tom));
+                    }
+                    None => fill_rounded_rect(
+                        scene,
+                        r,
+                        crate::paint::frame_radius(theme, Radius::Sm.px()),
+                        resolve(ColorToken::Bg3, theme),
+                    ),
+                }
                 dot(scene, r.x + PILL_PAD_X + DOT_R, r.y + r.h * 0.5, cat_color);
                 paint_text(
                     ts,
                     scene,
                     label,
                     r.x + PILL_PAD_X + DOT_R * 2.0 + Spacing::Xs.px(),
-                    r.y + (r.h - xs) * 0.5,
+                    r.y + superficie.folga(r.h, xs),
                     xs,
                     r.w - PILL_PAD_X * 2.0 - DOT_R * 2.0,
-                    resolve(ColorToken::Text1, theme),
+                    superficie.cor(ColorToken::Text1),
                 );
                 // ⚠️ ASSENTE, nunca `r`: durante a entrada o cartão está 12 px abaixo, e um
                 //    clique apressado cairia na row de cima.

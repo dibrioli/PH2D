@@ -13,8 +13,10 @@
 use super::{CLOSE_W, HEADER_H, MIN_COL_W, PILL_H, PaletteModel};
 use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
@@ -63,16 +65,17 @@ pub(super) fn paint_header(
     font: f32,
 ) -> Rect {
     // ── Header band: title left, search box in the middle, count centre-right, close-X right. ──
+    let superficie = Superficie::de(theme);
     let title_w = ts.prefix_width(&model.title, font).min(content_w * 0.35); // LITERAL-PX-OK: FRAÇÃO da banda que o título pode tomar antes de ceder ao campo de busca
     paint_text(
         ts,
         scene,
         &model.title,
         content_x,
-        header_y + (HEADER_H - font) * 0.5,
+        header_y + superficie.folga(HEADER_H, font),
         font,
         title_w,
-        resolve(ColorToken::Text1, theme),
+        superficie.cor(ColorToken::Text1),
     );
     // ⚠️ **«items», e não «nodes».** O widget serve TRÊS paletas desde a F3 (nós do Motion,
     // comandos do `Ctrl+K`, componentes do `+`), e o substantivo estava colado à primeira — a
@@ -88,10 +91,10 @@ pub(super) fn paint_header(
         scene,
         &count_str,
         count_x,
-        header_y + (HEADER_H - TypeToken::Sm.px()) * 0.5,
+        header_y + superficie.folga(HEADER_H, TypeToken::Sm.px()),
         TypeToken::Sm.px(),
         count_w,
-        resolve(ColorToken::Text2, theme),
+        superficie.cor(ColorToken::Text3),
     );
 
     // ⭐ **A caixa da banda** (ADR-0166 / F3), à esquerda da contagem — e o que ela toma sai do
@@ -113,26 +116,31 @@ pub(super) fn paint_header(
     let sb_x = content_x + title_w + Spacing::Md.px();
     let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
     let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
-    let sb_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, sb, sb_radius, resolve(ColorToken::Bg3, theme));
-    crate::paint::stroke_frame(
-        scene,
-        sb,
-        sb_radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    if let Some(ink) = superficie.tinta() {
+        let fundo = ink.color(ColorToken::CardField);
+        fill_rounded_rect(scene, sb, m::FIELD_RADIUS, fundo);
+    } else {
+        let sb_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(scene, sb, sb_radius, resolve(ColorToken::Bg3, theme));
+        crate::paint::stroke_frame(
+            scene,
+            sb,
+            sb_radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
     let (search_text, search_color) = if query.is_empty() {
         (
             tr("chrome.palette.search"),
-            resolve(ColorToken::Text2, theme),
+            superficie.cor(ColorToken::Text3),
         )
     } else {
-        (query, resolve(ColorToken::Text1, theme))
+        (query, superficie.cor(ColorToken::Text1))
     };
-    let text_y = sb.y + (sb.h - sm) * 0.5;
+    let text_y = sb.y + superficie.folga(sb.h, sm);
     paint_text(
         ts,
         scene,
@@ -156,7 +164,7 @@ pub(super) fn paint_header(
                 sb.h - Spacing::Xs.px() * 2.0,
             ), // LITERAL-PX-OK: 1.5px text caret
             0.0,
-            resolve(ColorToken::Text1, theme),
+            superficie.cor(ColorToken::Text1),
         );
     }
     let close_rect = Rect::new(
@@ -165,6 +173,19 @@ pub(super) fn paint_header(
         CLOSE_W,
         CLOSE_W,
     );
+    if let Some(ink) = superficie.tinta() {
+        let lado = m::HEAD_ICON_GLYPH;
+        let icone = Rect::new(
+            close_rect.x + (CLOSE_W - lado) * 0.5,
+            close_rect.y + (CLOSE_W - lado) * 0.5,
+            lado,
+            lado,
+        );
+        let tinta = ink.color(ColorToken::Text2);
+        let traco = ph2d_tokens::StrokeToken::Default.px();
+        crate::paint::paint_icon(scene, crate::icons::IconId::Close, icone, tinta, traco);
+        return close_rect;
+    }
     paint_text(
         ts,
         scene,
@@ -201,6 +222,26 @@ fn paint_toggle(
     let total = BOX_W + Spacing::Xs.px() + label_w;
     let x = right_x - total;
     let box_rect = Rect::new(x, header_y + (HEADER_H - BOX_W) * 0.5, BOX_W, BOX_W);
+    let superficie = Superficie::de(theme);
+    if let Some(ink) = superficie.tinta() {
+        let caixa = crate::widget::checkbox::card_check_rect(x, header_y, HEADER_H);
+        crate::widget::checkbox::paint_card_check(scene, ink, caixa, t.on, false);
+        paint_text(
+            ts,
+            scene,
+            &t.label,
+            caixa.x + caixa.w + Spacing::Xs.px(),
+            header_y + superficie.folga(HEADER_H, sm),
+            sm,
+            label_w,
+            superficie.cor(ColorToken::Text1),
+        );
+        hit_index.register(
+            CMD_PALETTE_SHOW_ALL,
+            Rect::new(x, header_y, total, HEADER_H),
+        );
+        return total + Spacing::Md.px();
+    }
     let (bg, fg) = if t.on {
         (ColorToken::Accent, ColorToken::Text1)
     } else {

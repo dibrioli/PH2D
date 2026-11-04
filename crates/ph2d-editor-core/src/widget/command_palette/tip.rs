@@ -77,17 +77,22 @@ fn paint_card(
     let card_h = body_y + body_h + pad;
 
     let card = place(item, TIP_W, card_h, gap, viewport);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
-    crate::paint::stroke_frame(
-        scene,
-        card,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    if superficie.tinta().is_some() {
+        superficie.moldura_da_dica(scene, card);
+    } else {
+        let radius = crate::paint::frame_radius(theme, Radius::Md.px());
+        fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
+        crate::paint::stroke_frame(
+            scene,
+            card,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
     let frame = Rect::new(card.x + picture.x, card.y + picture.y, picture.w, picture.h);
     fill_rounded_rect(
         scene,

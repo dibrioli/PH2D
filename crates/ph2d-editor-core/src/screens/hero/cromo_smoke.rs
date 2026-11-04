@@ -17,7 +17,10 @@ fn cena(n: u32) -> Option<(Option<K>, Option<NodeId>)> {
         4 => (Some(K::MenuBarFile), Some(ids::CTX_MENU_SAVE)),
         5 => (Some(K::SettingsMenu), Some(ids::CTX_MENU_SETTINGS_UNIT)),
         6 => (Some(K::NewImageDialog), None),
-        7..=9 => (None, None),
+        7..=10 | 12 | 13 | 16 => (None, None),
+        11 => (Some(K::RenamePaletteDialog), None),
+        14 => (Some(K::ConfirmDeleteBoard { board: 1 }), None),
+        15 => (Some(K::SendToBoard { row: NodeId(1) }), None),
         _ => return None,
     })
 }
@@ -51,6 +54,18 @@ pub(super) fn aplica(store: &mut WidgetStore) {
             let (antes, depois) = ([230, 80, 80, 255], [80, 200, 120, 255]);
             let fantasmas = 0.3; // LITERAL-PX-OK: fração de fantasmas da cena de foto, não é geometria
             store.open_onion_modal(ANCORA.0, ANCORA.1, 0.5, fantasmas, fantasmas, antes, depois);
+        }
+        10 if store.context_menu().is_none() => store.open_sheet_size_dialog(1024),
+        12 if store.context_menu().is_none() => {
+            store.open_color_mode_dialog(crate::pixel_panel::NewSpriteMode::Rgba);
+        }
+        13 if store.context_menu().is_none() => {
+            let lona = crate::pixel_panel::PixelDialogKind::CanvasSize;
+            store.open_pixel_edit_dialog(lona, (32, 24));
+        }
+        16 if store.command_palette_model().is_none() => {
+            let hero = super::HeroScreen::new(NodeId(1));
+            store.open_command_palette(super::global_palette::build_global_model(&hero));
         }
         _ => {}
     }

@@ -447,3 +447,31 @@ fn the_action_bar_never_covers_the_tool_column() {
         }
     }
 }
+
+/// O flyout de um botão da 1.ª coluna abre à direita da ÚLTIMA: não tapa os botões da 2.ª.
+#[test]
+fn numa_coluna_partida_o_flyout_abre_a_direita_da_ultima() {
+    use crate::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+    let botao = |n: u64| BarButton {
+        id: NodeId(n),
+        face: BarFace::Icon(crate::icons::IconId::Close),
+        label: String::new(),
+        on: false,
+        family: BarFamily::Neutral,
+    };
+    let bars = ToolBars {
+        column: vec![(1..=30).map(botao).collect()],
+        flyout: Some((NodeId(1), vec![botao(100), botao(101)])),
+        ..ToolBars::default()
+    };
+    let baixa = Rect::new(20.0, 96.0, 960.0, 500.0);
+    let todos = tool_bars::placed(&bars, baixa, false, false);
+    let coluna = todos.iter().filter(|(b, _)| b.id.0 <= 30);
+    let direita = coluna.map(|(_, r)| r.x + r.w).fold(f32::MIN, f32::max);
+    let flyout: Vec<_> = todos.iter().filter(|(b, _)| b.id.0 >= 100).collect();
+    assert_eq!(flyout.len(), 2);
+    assert!(
+        flyout.iter().all(|(_, r)| r.x >= direita),
+        "o flyout tapa a coluna: {flyout:?} contra {direita}"
+    );
+}

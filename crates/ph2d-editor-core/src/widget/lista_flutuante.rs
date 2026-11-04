@@ -127,6 +127,17 @@ impl Superficie {
         );
     }
 
+    /// Do topo de uma caixa de altura `h` ao `y` de um texto a `px`: a porta do cartão; no modo de
+    /// antes, a conta de antes.
+    #[must_use]
+    pub fn folga(self, h: f32, px: f32) -> f32 {
+        if self.cartao {
+            crate::paint::folga_do_texto(h, px)
+        } else {
+            (h - px) * 0.5
+        }
+    }
+
     /// O realce da linha sob o rato.
     pub fn realce(self, scene: &mut VectorScene, r: Rect) {
         if let Some(ink) = self.tinta() {

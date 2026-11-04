@@ -68,7 +68,9 @@ tracker: «Fill e Stroke no Inspector e no Vector: quer manter nos dois?». O Tr
 | **G5 feita 04/11** | Tinta e pontos | Pattern ×2, Brush, Connector, Vertex; lei da compactação em G1–G4 | feita: `cards_padrao`, `cards_ponto` |
 | **G6 feita 04/11** | Advanced | Blend, Morph, Envelope, Pattern on Path, Contour | feita: `cards_avancado`; a pergunta do smoke fica |
 | **G7 feita 04/11** | Interface 1 | Component, Layout, Widget | feita: `cards_interface` |
-| G8 | Interface 2 + fim | States, Morph States; retirar o hospedeiro e a passagem de presença; censo «zero corpo antigo» | sinais |
+| **G8 feita 04/11** | Interface 2 + fim | States, Morph States; hospedeiro e sonda retirados; censo «zero corpo antigo» | feita: `cards_estados`, `cards_presenca`, `cards_avancado::membros` |
+
+**Painel fechado em cartões (04/11):** todo o corpo é nativo, e `PH2D_CARDS=0` é o único caminho que corre os pintores antigos. Partilhados por desenho, nos dois modos: as linhas de Fill & Stroke (F44/F45, `fill_stroke_rows`, `stroke_lines`) e a rampa dos filtros, que perguntam `card_body()`; o cabeçalho, a dobra, a ordem e as notas dos membros do Advanced, que são portas da fundação (`BodyCtx::corre`). A forma do Advanced continua pergunta para o smoke.
 
 Leis que nenhuma fatia desfaz: F43/F44/F45 (no cartão ganha a tinta e a moldura, não outro layout) · Offset Path, regras CAD e
 Boolean/Convert NÃO voltam ao painel · unidade no rótulo · marcas de animação: o `.key` usa os ids de `ph2d-app-vec/src/marcas*.rs`.

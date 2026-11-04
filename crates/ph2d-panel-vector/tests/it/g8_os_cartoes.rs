@@ -9,7 +9,7 @@ use super::g5_os_cartoes::sem_acusacao;
 use ph2d_a11y::NodeId;
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::cards::grip_of;
+use ph2d_editor_core::panel::cards::{censo, grip_of};
 use ph2d_editor_core::widget::key_mark::set_key_marks;
 use ph2d_panel_vector::ids as p;
 use ph2d_panel_vector::state::{
@@ -221,6 +221,24 @@ fn each_field_shows_the_document_value() {
     let mesa = na_interface(true, com_mola);
     assert!((tem(&mesa, p::VECTOR_STATE_STIFFNESS_NUM) - 20.0).abs() < 1e-6);
     assert!((tem(&mesa, p::VECTOR_STATE_DAMPING_NUM) - 0.5).abs() < 1e-6);
+}
+
+/// Cada número sabe o passo e o valor de fábrica dele. *Mutação: tirar `mark_card_field` ⇒ vermelho:* o
+/// campo marca-se sozinho ao pintar, sem fábrica, e o scrub continua a andar.
+#[test]
+fn the_numbers_know_their_factory_value() {
+    let mesa = na_interface(true, com_mola);
+    for (id, fabrica) in [
+        (p::VECTOR_STATE_STIFFNESS_NUM, 12.0),
+        (p::VECTOR_STATE_DAMPING_NUM, 1.0),
+    ] {
+        let spec = mesa.host.store().card_field(id).expect("marcado");
+        assert_eq!(spec.default, Some(fabrica), "{id:?}");
+    }
+    let mesa = na_interface(true, base);
+    let spec = mesa.host.store().card_field(p::VECTOR_STATE_DURATION_NUM);
+    let fabrica = f64::from(ph2d_tokens::Duration::Fast.secs());
+    assert_eq!(spec.expect("marcado").default, Some(fabrica));
 }
 
 /// Escrever dá o mesmo que no painel de antes.
@@ -853,5 +871,69 @@ fn the_icon_list_is_as_wide_as_the_card() {
         "lista {} sobre caixa {}",
         linha.w,
         caixa.w
+    );
+}
+
+/// Quantas frases o cartão `secao` escreve neste estado: uma linha sem células, no censo.
+fn frases(semente: fn(), secao: NodeId) -> usize {
+    let mut mesa = na_interface(true, semente);
+    let ((), censo) = censo::grava(|| mesa.assenta());
+    let mut topos: Vec<i32> = censo
+        .linhas
+        .iter()
+        .filter(|l| l.secao == secao && l.celulas.is_empty())
+        .map(|l| l.topo.round() as i32)
+        .collect();
+    topos.sort_unstable();
+    topos.dedup();
+    topos.len()
+}
+
+fn morph_com(rows: usize, can_make: usize) {
+    base();
+    let linha = |i: usize| MorphShapeRow {
+        to: format!("S{i}"),
+        when: String::new(),
+        live: false,
+    };
+    state::set_morph_states_state(Some(MorphStatesState {
+        rows: (0..rows).map(linha).collect(),
+        can_make,
+        ..maquina()
+    }));
+}
+
+/// ⭐ **As frases estão lá**: de quem são as poses, o que falta, como se sai e o que ficou de fora.
+/// *Mutação: tirar qualquer `c.hint` deste cartão ⇒ vermelho.*
+#[test]
+fn each_face_writes_its_sentences() {
+    let (st, mo) = (p::VECTOR_SECTION_STATES, p::VECTOR_SECTION_MORPH_STATES);
+    let sem_hospedeiro = || {
+        base();
+        state::set_ui_states_state(Some(UiStatesState {
+            host: None,
+            ..poses()
+        }));
+    };
+    assert_eq!(frases(base, st), 1, "de quem são as poses");
+    assert_eq!(frases(sem_hospedeiro, st), 2, "sem hospedeiro");
+    assert_eq!(
+        frases(em_preview, st),
+        3,
+        "dono, saída e o que está à vista"
+    );
+    assert_eq!(frases(base, mo), 0);
+    assert_eq!(frases(em_preview, mo), 1, "a saída do teclado");
+    assert_eq!(frases(para_criar, mo), 1, "a promessa do botão");
+    assert_eq!(frases(|| morph_com(0, 1), mo), 1, "formas a menos");
+    assert_eq!(
+        frases(|| morph_com(0, p::MAX_MORPH_STATES + 1), mo),
+        1,
+        "formas a mais"
+    );
+    assert_eq!(
+        frases(|| morph_com(p::MAX_MORPH_STATES + 1, 0), mo),
+        1,
+        "além do tecto"
     );
 }

@@ -64,7 +64,7 @@ tracker: «Fill e Stroke no Inspector e no Vector: quer manter nos dois?». O Tr
 | **G1** | Lista + abas + hospedeiro + `PH2D_CARDS=0` + Advanced + popovers e painéis laterais | Transform, Anchors, Snap, Frame, Clip | hospedeiro; catracas de abertura |
 | **G2 feita 04/11** | Aparência e tinta | Appearance, Fill & Stroke (F44/F45: mesmo layout, tinta e moldura), `paint_side`, Stroke settings | feita: `cards_tinta`, `cards_traco`, `cards_lado` |
 | **G3 feita 04/11** | Listas do Figma | Effects, Filters, `fx_side`, rampa; fora do plano: o painel do traço da barra ② | feita: `cards_fx`, `cards_lado::flutua` |
-| G4 | Texto | Text, Font, Paragraph, Axes, Text on Path | lista de fontes |
+| **G4 feita 04/11** | Texto | Text, Font, Paragraph, Axes, Text on Path; lista de fontes medida e abaixo das barras | feita: `cards_texto` |
 | G5 | Tinta e pontos | Pattern ×2, Brush, Connector, Vertex | baixo |
 | G6 | Advanced | Blend, Morph, Envelope, Pattern on Path, Contour | baixo; pergunta do smoke |
 | G7 | Interface 1 | Component, Layout, Widget | Layout: 16 |

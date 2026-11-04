@@ -110,7 +110,6 @@ fn prepara(store: &mut WidgetStore, snap: &TimelineViewSnapshot, view: BarView) 
             store.set_tooltip(id, ph2d_i18n::tr(chave));
         }
     }
-    store.mark_card_list_close(ph2d_editor_core::ids::TIMELINE_PANEL, ids::TIMELINE_CLOSE);
 }
 
 fn segs_das_abas<'a>(celulas: &'a [(ph2d_a11y::NodeId, String)], escolhida: usize) -> Vec<Seg<'a>> {
@@ -205,15 +204,25 @@ fn largura(c: &mut CardCtx<'_>, item: Item, snap: &TimelineViewSnapshot) -> f32 
         Item::ReverseKeys | Item::OnionSettings => banda::icones_w(1),
         Item::AddMarker => c.botao_w(ph2d_i18n::tr("panel.timeline.add_marker")),
         Item::TimeChip | Item::FrameChip | Item::LengthChip => {
-            c.campo_em_fila_w(rotulo_do_campo(item))
+            CardCtx::campo_em_fila_w(coluna_dos_numeros(c))
         }
         _ => c.marca_em_fila_w(rotulo(item)),
     }
 }
 
+/// A coluna partilhada dos três rótulos numéricos.
+fn coluna_dos_numeros(c: &mut CardCtx<'_>) -> f32 {
+    c.coluna_de_rotulos(&[
+        rotulo_do_campo(Item::TimeChip),
+        rotulo_do_campo(Item::FrameChip),
+        rotulo_do_campo(Item::LengthChip),
+    ])
+}
+
 fn numero(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, x: f32, y: f32) {
     let nome = rotulo_do_campo(item);
-    c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), x, y);
+    let col = coluna_dos_numeros(c);
+    c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), col, (x, y));
 }
 
 fn pinta_clips(

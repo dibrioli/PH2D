@@ -277,3 +277,18 @@ Testes: `h1_os_cartoes`, 22 + 1 de medição não corrido: inventário em 13 est
 Aberto: na linha 1 do Composite o nome «Blur» e «Brush» encostam-se no cartão mais estreito (no de antes já cortava, «Bru»), vai com H8. Sem foto nem gesto na janela: prévia fixada na faixa, voo, solto e popover (só mock). Corpos capturados têm a cara antiga. Por correr: `a_largura_de_fabrica_e_a_aprovada` e `a_miniatura_…` (código de pincel não mudou). `Cargo.lock` por commitar: outro agente tem-no em obra; falta-lhe `ph2d-card-stack` e `bumpalo` desta crate. Vermelho alheio: `a_marca_tem_a_altura_da_linha` (timeline, bloco I). Custo por quadro não medido.
 
 Contraprovas da fatia H1: **zero corridas**, por falta de prazo. A primeira coisa da H2: tirar dos corpos a repetição dos alvos, o `dy` deles, a guarda do scrub e a publicação das linhas, e ver vermelho.
+
+### Bloco I1 (04/11)
+
+Cromo da Timeline e do Motion Graph, plano em [14](14_CHROME_TIMELINE_MOTION.md). Mesmos ids e eventos, `PH2D_CARDS=0` dá o de antes. API nova: `panel/cards_banda.rs` (moldura sem cartão, pílula, campo, caixa, segmentos e ícones em fila); `card_field` lê `∞`. Decisões: sem cartão por dentro (o `paint_card_list` do Frames custa 80 px); rótulo do campo ao lado (em cima custa 23 px). A área de trabalho não mudou.
+
+**Altura das faixas (mock):** janela 1930: 116 → 126 px; 1600: 91 → 92; 1100: 0 → 0. Grafo: 0 px perdidos.
+
+**Curas fora do pedido:** o HUD cobria as filas da Timeline nos Nodes (`reserve_bottom_strip` saía cedo); a pílula do grafo sobe acima do HUD, que tapava 5 dos 9 chips nos dois modos. **Catracas:** `a_marca_tem_a_altura_da_linha` passou a reconhecer a moldura sem cartão pelo «…» (medido 28 contra 22 px). Nada subiu. `onde_comeca_o_valor` acusou a coluna dos números: curado com coluna comum.
+
+**Provas:** Timeline 15 testes de gesto (efeito igual ao de `PH2D_CARDS=0` em 26 controlos), Motion 5 testes novos. Contraprovas: 14 mutantes, todos vermelhos, mas **a corrida NÃO é limpa**: entre 13:27 e 13:29 outro agente correu o mesmo `mut.py` e mutou os mesmos ficheiros. «Sem fechar» sangrou em testes sem relação com ele. Repetir antes de contar; não houve prazo. Os mesmos testes sem mutante: 6 corridas seguidas verdes depois do incidente.
+
+**Fotos:** `i_timeline_keys_com_chaves`, `i_timeline_arrange`, `i_timeline_clips_lista_aberta`, `i_motion_barra_e_timeline`, `i_motion_nos_abertos_zoom3x` (nós abertos por patch temporário, ampliada 3×). As três primeiras são de antes da coluna comum dos números; a `i_motion_barra` já a mostra. **Não fotografado:** Graph Editor com curvas expandidas, `∞` na Dur (só teste do texto), migalhas dentro de um grupo (só clique). Pixel: painel próprio, fora deste bloco.
+
+**Aberto:** o «…» só oferece resets, sem efeito num painel sem cartões (controlo morto, por decidir) · régua, barra de rolagem e linhas de faixa na tinta antiga · popover no tom do Inspector. Vermelho alheio: `nenhuma_escolha_do_app_e_montada_a_mao` (exceção `painter_sidebar.toggle_dock`, Painter).
+

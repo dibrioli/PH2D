@@ -177,12 +177,7 @@ pub fn paint_field(
         (ph2d_i18n::tr("card.field.mixed"), ColorToken::Text3)
     } else {
         // T29: um passo inteiro não esconde a fração do valor (Friction 0.5 não se lê «0»).
-        // Um valor infinito (a Dur sem duração autorada) lê-se «∞», nunca «inf».
-        owned = if value.is_infinite() || (decimals(step) == 0 && value.fract().abs() > 1e-6) {
-            crate::widget::number_input::format_number(value)
-        } else {
-            format!("{value:.*}", decimals(step))
-        };
+        owned = texto_do_valor(value, step);
         (owned.as_str(), ColorToken::Text1)
     };
     let y = area.y + (area.h - m::VALUE_PX) * 0.5;
@@ -217,6 +212,25 @@ pub fn paint_field(
         fill_rounded_rect(scene, r, 0.0, ink.color(ColorToken::Accent));
     }
     scene.pop_layer();
+}
+
+/// O texto do valor em repouso. Um infinito (a Dur sem duração autorada) lê-se «∞», nunca «inf».
+fn texto_do_valor(value: f64, step: f64) -> String {
+    // T29: um passo inteiro não esconde a fração do valor (Friction 0.5 não se lê «0»).
+    if value.is_infinite() || (decimals(step) == 0 && value.fract().abs() > 1e-6) {
+        crate::widget::number_input::format_number(value)
+    } else {
+        format!("{value:.*}", decimals(step))
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn um_valor_infinito_le_se_infinito() {
+    assert!(!texto_do_valor(f64::INFINITY, 0.2).contains("inf"));
+    assert!(texto_do_valor(f64::INFINITY, 0.2).contains('\u{221e}'));
+    assert_eq!(texto_do_valor(4.0, 0.2), "4.00");
+    assert!(texto_do_valor(0.5, 1.0).starts_with("0.5"));
 }
 
 /// A pega: o glifo, ou a letra, centrados na célula.

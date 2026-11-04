@@ -28,7 +28,9 @@ Não muda: régua, faixas, curvas, costura de nomes, barra de rolagem, popovers,
 
 | Janela | Faixas antes (px) | Faixas depois (px) | Linhas a `ROW_H_PX` |
 |---|---:|---:|---:|
-| MEDIR | | | |
+| 1930 (banda 1253) | 116 | 126 | 5,3 → 5,7 |
+| 1600 (banda 923) | 91 | 92 | 4,1 → 4,2 |
+| 1100 (banda 423) | 0 | 0 | a barra enche a banda nos dois; arrasta-se a costura |
 
 ## Motion Graph: inventário
 

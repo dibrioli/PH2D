@@ -130,14 +130,30 @@ impl CardCtx<'_> {
         self.text_system.prefix_width(texto, px).ceil()
     }
 
-    /// A largura natural de [`Self::campo_em_fila`].
-    pub fn campo_em_fila_w(&mut self, rotulo: &str) -> f32 {
-        self.largura_do_texto(rotulo, m::LABEL_PX) + m::FIELD_GAP + CAMPO_W
+    /// A coluna de rótulos de uma família de campos: a do mais largo. Quando a barra estreita os
+    /// empilha, os valores arrancam no mesmo `x` (`onde_comeca_o_valor`).
+    pub fn coluna_de_rotulos(&mut self, rotulos: &[&str]) -> f32 {
+        rotulos
+            .iter()
+            .map(|r| self.largura_do_texto(r, m::LABEL_PX))
+            .fold(0.0, f32::max)
     }
 
-    /// O rótulo ao lado e a caixa do campo Figma, com a pega do scrub (`mark_card_field` antes).
-    pub fn campo_em_fila(&mut self, id: NodeId, rotulo: &str, glyph: Glyph<'_>, x: f32, y: f32) {
-        let tw = self.largura_do_texto(rotulo, m::LABEL_PX);
+    /// A largura de [`Self::campo_em_fila`] com a coluna `col`.
+    #[must_use]
+    pub fn campo_em_fila_w(col: f32) -> f32 {
+        col + m::FIELD_GAP + CAMPO_W
+    }
+
+    /// O rótulo ao lado, na coluna `col`, e a caixa do campo Figma (`mark_card_field` antes).
+    pub fn campo_em_fila(
+        &mut self,
+        id: NodeId,
+        rotulo: &str,
+        glyph: Glyph<'_>,
+        col: f32,
+        (x, y): (f32, f32),
+    ) {
         dicas::rotulo(id, rotulo);
         crate::paint::paint_text(
             self.text_system,
@@ -146,10 +162,10 @@ impl CardCtx<'_> {
             x,
             y + (m::FIELD_H - m::LABEL_PX) * 0.5,
             m::LABEL_PX,
-            tw,
+            col,
             self.ink.color(ColorToken::CardLabel),
         );
-        let r = Rect::new(x + tw + m::FIELD_GAP, y, CAMPO_W, m::FIELD_H);
+        let r = Rect::new(x + col + m::FIELD_GAP, y, CAMPO_W, m::FIELD_H);
         paint_field(
             self.scene,
             self.text_system,

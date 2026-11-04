@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**102 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **102** são handoffs (registro **morto**).
+**117 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **117** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -116,7 +116,22 @@
 | 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F36.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F36 (o que nasce sob a placa cheia renasce; arranque espera a placa; … |
 | 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F37.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F37 (o editor cabe numa placa com ~950 MiB livres: átlas sob demanda,… |
 | 2026-10-27 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F38.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-27_F38.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, onda F38 (a família «memória da placa» fechada), 27/10 |
-| 2026-10-28 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-28 — F28 a F39 (vocabulário do discreto · composto do balde · a l… |
+| 2026-10-28 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-28_F28_A_F39.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-28 — F28 a F39 (vocabulário do discreto · composto do balde · a l… |
+| 2026-10-30 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-30_F40.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-30_F40.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F40 (30/10) → F41 |
+| 2026-11-01 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F41.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F41.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F41 (01/11) → F42 |
+| 2026-11-01 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F42.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F42.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F42 (01/11) → F43 |
+| 2026-11-01 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F43.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F43.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F43 (01/11) → F44 |
+| 2026-11-01 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F44.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F44.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F44 (01/11) → F44b |
+| 2026-11-01 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F44c.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-01_F44c.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F44b + F44c (01/11) → F45 |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F46.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F46.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F46 (02/11): lados CAD pela curva |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F47.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F47.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F47 (02/11): «Above Effects» |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F48 (02/11): Expand e tools do painel sobre a pilha de tintas |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48b.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48b.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F48b (02/11): o Offset Path no padrão do Inspector |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48d.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F48d.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F48c+F48d (02/11): «In front» e o Offset Path como FERRAMENTA |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F49.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F49.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F49 (02/11): o Draw do vetor FICA ao escolher outras formas |
+| 2026-11-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F50.md](HANDOFF_CONTINUACAO_line_UIUX_2026-11-02_F50.md) | ⚠️ handoff (morto) | HANDOFF de continuação — line/UIUX, F50 (02/11): Boolean e Convert na barra de ações ④, à Figma |
+| 2026-11-02 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-11-02_F40_A_F45.md](HANDOFF_INTEGRACAO_line_UIUX_2026-11-02_F40_A_F45.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-11-02 — F40 a F45 (osso animável · Length que empurra · tipo por íco… |
+| 2026-11-02 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-11-02_F46_A_F50.md](HANDOFF_INTEGRACAO_line_UIUX_2026-11-02_F46_A_F50.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-11-02 — F46 a F50 (lados CAD pela curva · «Above Effects» · Offset P… |
 
 ---
 

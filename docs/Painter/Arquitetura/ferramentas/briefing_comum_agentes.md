@@ -12,6 +12,7 @@ Worktree: `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor`
 ### Como trabalhar
 - Inner loop: `bash scripts/cargo-check-narrow.sh ph2d-wet-paint`. Testes POR NOME: `bash scripts/cargo-test-narrow.sh ph2d-wet-paint <nome>` (exit 0 verde · 1 vermelho · 2 não compilou · 4 nome não casou). Tudo em `--profile smoke` (os scripts já o fazem). Nunca a crate inteira sem nome.
 - Há OUTROS 2 agentes a editar a mesma crate em paralelo, em ficheiros disjuntos. Se o `check` falhar num ficheiro que NÃO é seu, espere 1–2 min e repita; nunca edite o ficheiro de outro. Os seus paths são SÓ os listados na sua etapa (+ o ficheiro novo que criar + a linha `mod` que o declara).
+- Teste de pincel é alarme (`a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`): vermelho = «estes pincéis mudaram», e devolva a lista ao coordenador. ⛔ Nunca `PH2D_PINCEIS_APROVA=1` nem regerar tabelas de largura ([como se usa](../../../DevOps/PLANO_ACELERACAO_2026-11.md)).
 - Edite pela ferramenta Edit/Write (nunca `sed -i`/python que grava).
 - Prazo: 45 min. Ao fim, escreva um doc curto `docs/Painter/Arquitetura/E<n>_<nome>.md` (o que mudou com ficheiro:linha, fórmulas, a tabela de testes vermelho→verde com os números medidos, o que ficou aberto) e devolva: ficheiros tocados (lista exacta para o commit), testes corridos com o resultado, e o que ficou aberto.
 

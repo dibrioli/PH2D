@@ -1,5 +1,11 @@
 # PROMPT — continuação da refatoração do Painter (janela 13)
 
+> ⚠️ **Atualização de 03/11 — vale por cima do texto abaixo.** A janela 13 fechou: o FPS (J13 + J13b) e os vermelhos conhecidos estão
+> no `main`; confira o Smear Wet abaixo de r≈7 antes de o dar por curado. **Só retome depois da integração da UI e do CI** (ordem do dono).
+> Estado e o que falta: [README §Estado](README.md). ⛔ **Lei nova dos pincéis:** alarme barato + aprovação do dono, sem regerar
+> tabelas de largura; a lição do gerador com 64 G abaixo só vale para uma regeração que o dono peça
+> ([como se usa](../../DevOps/PLANO_ACELERACAO_2026-11.md)). O app do smoke compila-se na worktree da linha.
+
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor` · `pwd` · `git branch --show-current`
 (= `line/PainterWatercolor`) ANTES de ler. Base: o HEAD com o commit «handoff da janela 12». Se o integrador avisar que
 o main novo saiu (com ou sem o Painter), `git rebase main` primeiro.

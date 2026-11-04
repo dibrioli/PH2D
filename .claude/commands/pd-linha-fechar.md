@@ -30,6 +30,10 @@ NOME, provas de mutação, os portões que a mudança toca (por nome) e clippy/f
    - `arch_safe_clamp_only` e os arch-gates de shell que a mudança toca: por NOME (`cargo-test-narrow.sh <crate> <nome>`, descobertos por grep)
    - **por último, os testes do item e os portões que a mudança toca, por NOME** — ⛔ NÃO o
      `nextest-impacted.sh` nem a suíte completa: ficam para a integração (`/pd-integracao`)
+   - ⭐ mudou motor, preset ou pincel? Os alarmes `a_largura_de_fabrica_e_a_aprovada` e
+     `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`, por nome. Vermelho = «estes pincéis mudaram»: o relatório
+     `target/relatorio-pinceis/index.html` vai ao smoke, e só a aprovação do dono regrava
+     ([como se usa](../../docs/DevOps/PLANO_ACELERACAO_2026-11.md)). ⛔ Nada de tabelas de 40 tamanhos
    - auditoria com ≥2 lentes
 2. Corrija TODO ✗. Não escreva o handoff sobre árvore vermelha. ⭐ **Depois do conserto, re-corra SÓ
    o que falhou, por nome** (`cargo-test-narrow.sh <crate> <nome>`) — a suíte inteira é do integrador,

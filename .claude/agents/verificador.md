@@ -36,6 +36,9 @@ Regras do repositório que valem para si:
 - Teste que mede relógio ou alocações e reprova sem diff na crate dele: corra-o **sozinho 3×** com o
   `/proc/loadavg` impresso ao lado antes de o dar como defeito
   (`docs/DevOps/FLAKES_DE_CARGA.md`).
+- Alarme de pincel vermelho (`a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`):
+  devolva «estes pincéis mudaram» e o caminho `target/relatorio-pinceis/index.html`. A decisão é do dono: ⛔ nunca
+  `PH2D_PINCEIS_APROVA=1`, nunca regerar tabelas de largura.
 - Gates de GPU são `#[ignore]`: só contam corridos com `--ignored` e adaptador.
 - Diga sempre em que diretório (worktree) correu: `pwd` + `git branch --show-current`.
 

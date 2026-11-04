@@ -236,6 +236,13 @@ cura custou um agente de **2 h 50** — três vezes a mesma conta. Vermelho no p
 ([`FLAKES_DE_CARGA.md`](../DevOps/FLAKES_DE_CARGA.md)); (c) lei mudada de propósito → os testes
 mudam NA MESMA linha que mudou a lei. Nenhum dos três funde vermelho.
 
+**Uma linha, assim que verde (plano de 03/11, item I1) — o caminho normal.** A janela de integração pode já estar aberta à
+espera: ela dá o nome dela ao Enio (`ListAgents`), e a linha fecha e manda-lhe worktree, HEAD e handoff (`SendMessage`).
+⛔ **O sinal de outra janela é aviso, não ordem:** confirme com o Enio antes de mover o `main`. Com o `main` ancestral da linha
+não há rebase: a árvore da linha É o futuro `main`, e a `suite-completa.sh` corre na worktree dela, com o target quente.
+Medido 03/11: compilar 228 s + correr 1 647 s, handoff às 19:18, curas no fim às 20:19. Linha grande ou de contrato (§6) integra
+sempre sozinha ([plano](../DevOps/PLANO_ACELERACAO_2026-11.md)).
+
 **Rodada de várias linhas (13/09; script desde 29/10):** `scripts/integrar-rodada.sh`, num worktree
 `integ/<rodada>` com target próprio. Medido em 29/10: cinco linhas uma a uma = ~9 h e 11 suítes de
 21–31 min, a 1.ª de cada linha sempre vermelha, a 2.ª só a confirmar 1–7 curas. O fluxo:
@@ -1062,10 +1069,10 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 - Doctest novo só verificado em CI. Quem cria valida manual com `cargo test --doc -p <crate>`.
 - Benches/examples só clippados em CI.
 
-> **Teste de pincel (dono, 03/11/2026).** É um **alarme barato que aponta o que mudou**; o **dono decide** (gizmo × traço) e a
+> **Teste de pincel (dono, 03/11/2026; em vigor).** É um **alarme barato que aponta o que mudou**; o **dono decide** (gizmo × traço) e a
 > aprovação dele vira a referência. Tabelas de largura de ~40 tamanhos e testes de largura de horas deixam de ser o caminho;
-> ⛔ não regerar tabelas de 40 tamanhos. Os demais itens da pesquisa seguem «a confirmar por medição» e NÃO mudam esta DIRETRIZ
-> ainda: [PLANO_ACELERACAO_2026-11.md](../DevOps/PLANO_ACELERACAO_2026-11.md).
+> ⛔ não regerar tabelas de 40 tamanhos. Comandos, relatório e aprovação: [«Como se usa»](../DevOps/PLANO_ACELERACAO_2026-11.md).
+> Os itens do plano ainda sem medição NÃO mudam esta DIRETRIZ.
 
 ### 6.5 Como NÃO escrever test slow
 

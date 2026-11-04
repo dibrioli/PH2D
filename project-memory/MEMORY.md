@@ -130,7 +130,7 @@
 - ⭐⭐⭐ [Porta de tipo LARGO: uma cena ensina o idioma, não basta compilar](feedback_a_port_that_accepts_anything_still_teaches_what_you_plug_into_it.md)
 - ⭐⭐ [Partilhar um nó para igualar entradas torna o grafo ilegível](feedback_a_correct_property_can_cost_the_legibility_that_was_the_whole_point.md)
 - ⭐⭐ [**Dinâmica dos ciclos** do Motion: params no cartão; o smoke é o TUTORIAL em PDF](project_motion_cycle_dynamic.md)
-- [Perf do Painter (3)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
+- [Perf do Painter (5)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
 - 📚 [Arquitetura / norte / perf: mais (29) lições — caminho DERIVADO × do ARTISTA · ASSAR (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (19)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)

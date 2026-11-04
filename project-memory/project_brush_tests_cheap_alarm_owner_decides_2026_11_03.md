@@ -16,7 +16,7 @@ nova referência (modelo «blessing» do Blender/Skia Gold/`cargo insta review`)
 Rebelle, Procreate, Fresco) nem artigo que calibre o cursor pela tinta espalhada — todos desenham a
 pegada. O olho sozinho deixa passar deriva subtil, por isso o alarme fica.
 
-**How to apply:** não proponha regerar tabelas de 40 tamanhos nem teste de largura de horas; o próximo
-passo técnico é o P1/P2 do anexo da pesquisa (ajustar a reta contra as tabelas existentes; teste rápido
-3–4 tamanhos com prova de mutação; relatório antes/depois/diferença só dos pincéis que mudaram).
+**How to apply:** não proponha regerar tabelas de 40 tamanhos nem teste de largura de horas. Em vigor desde
+03/11 e aprovado no smoke do dono («muito sucesso»): comandos, relatório e aprovação em `docs/DevOps/PLANO_ACELERACAO_2026-11.md`
+§«Como se usa». A reta de P1 passou só em 34/55: não substitui as tabelas gravadas.
 Ver [[feedback-brush-method-owner-triage-and-simulate-before-building]].

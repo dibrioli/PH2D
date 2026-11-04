@@ -4,6 +4,13 @@
 > «Batched closing gate F13» de **39 min** e de um «Fix the 13 Luz2D red tests» de **2 h 50**. Cada número
 > abaixo tem a medição ao lado; o que foi medido e recusado está na tabela `⛔ Recusas MEDIDAS`.
 
+## 0. O que mudou em 03/11
+
+O maior custo medido na rodada 02/11c (>36 h) era regerar tabelas de largura de pincel: 20–40 min e 26–31 GB por pincel. Saiu
+do caminho: o teste de pincel é um alarme de 85–99 s, e quem decide é o dono ([como se usa](PLANO_ACELERACAO_2026-11.md)).
+Integrar passou a ser uma linha por vez (DIRETRIZ §1.5.3). As tabelas abaixo são a medição de 12–13/10 e continuam a valer para o
+resto dos portões.
+
 ## 1. Onde o tempo foi (12/10)
 
 | medida | número | fonte |

@@ -101,10 +101,14 @@ Novas crates: **`ph2d-painter-brush`** (engine pura) + **`ph2d-panel-painter-bru
 
 ---
 
-## Performance / GPU (2026-07-23 → 2026-07-25)
+## Performance / GPU (2026-07-23 → 2026-11-02; o mais novo primeiro)
 
 | Doc | O que tem |
 |---|---|
+| **[Arquitetura/J13_fps_do_real_oil.md](Arquitetura/J13_fps_do_real_oil.md)** | **O FPS do Real Oil (02/11, no `main`):** quadro parado com a água sobre o óleo de **72–82 ms → 16,5–17,0 ms**: a óptica do óleo saiu do fio da tela ([plano](Arquitetura/J13b_plano_otica_fora.md); `PH2D_WET_OTICA_FORA=0` volta atrás). Cena de medição: `PH2D_WETPAINT_SMOKE=3`. §5 = ⛔ recusas medidas (a cache da luz foi mais lenta que nenhuma cache). **Aberto:** o `max` de 35–78 ms nas fases de traço ([P8](Arquitetura/J13b_P8_pen_down.md)) |
+| **[49_realshader/R3_PINTAR_RELATORIO.md](49_realshader/R3_PINTAR_RELATORIO.md)** | A velocidade de pintar, antes × depois (31/10) |
+| **[49_realshader/PLACA_degrau6.md](49_realshader/PLACA_degrau6.md)** | A água na placa: submissões fatiadas (maior **93,3 → 22,6 ms** na Radeon, 31/10). ⛔ Nada corrido na NVIDIA: travou o PC do dono 2× |
+| **[49_realshader/MEDIDA_31_10_RODADA10.md](49_realshader/MEDIDA_31_10_RODADA10.md)** | ⛔ Recusa medida: planos mais estreitos na advecção, nenhuma variante passa a régua da cor |
 | **[25_avaliacao_gpu.md](25_avaliacao_gpu.md)** | O censo MEDIDO do módulo (4 modos, por-move e por-frame) · os 4 achados · as ondas 1/2/5a/5b/5c entregues · a proteção por-traço e o TETO (§13.11–13.13) |
 | **[26_plano_performance_procreate.md](26_plano_performance_procreate.md)** | **Pesquisa do Procreate + o plano que saiu dela, e o que a EXECUÇÃO mediu (§7)** — os 3 pilares (latência · tiles · compositor) e o que NÃO transfere (memória unificada × PCIe). ⚠️ **Executado 2026-07-25:** a frente dos TILES foi construída inteira e **REVERTIDA** (a grade não pode ser mais apertada do que lhe contam) · o relógio **EVENTO→FRAME** landou · e a sonda do **undo nasceu VERMELHA** (1.627 MB em 24 traços) |
 | **[43_a_pilha_do_composite_brush_ficou_rapida.md](43_a_pilha_do_composite_brush_ficou_rapida.md)** | **A pilha do Composite Brush ficou rápida (2026-09-23, `line/PainterWatercolor`, smoke do dono aprovado nas duas waves)**: de *«FPS cai para 1»* a *«mais que o dobro de desempenho»*. Wave 1: a tela compõe UMA vez por quadro (o custo era por píxel percorrido, não por evento; `×2,8`–`×3,6` num risco rápido). Wave 2: as passagens por pixel em linhas disjuntas + arredondamento sem o `roundf` de software + o `hypot` contra um tecto infinito (−35 % a −45 %, byte-idêntico). As réguas que mentiram (build de teste · `gdb` e threads), o amostrador versionado em `ferramentas/amostra_gdb.py`, a decisão do alvo de CPU (20–40 % sem código) e as recusas medidas. |

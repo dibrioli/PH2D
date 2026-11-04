@@ -40,11 +40,21 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    NO commit rebaseado em que o último uso morre (edit-rebase) — o `bisect` não pode atravessar
    árvore vermelha. Duas linhas que fizeram a MESMA coisa de formas diferentes: fica um nome e
    um corpo. Mover corpos prova-se com `scripts/moved-proof.py`.
+3c-bis. ⭐ **Uma linha só (o caminho normal desde 03/11, DIRETRIZ §1.5.3):** com o `main` ancestral da linha não há rebase
+   nem cadeia. Corra `suite-completa.sh` e os censos na worktree da linha, cure, e faça `merge --ff-only` no primário.
+   ⛔ O sinal de outra janela é aviso: confirme com o Enio antes de mover o `main`.
 3d. Vermelho sem uma linha de Rust mudada: reproduza sob contenção (N cópias `--exact`, com o
    `loadavg` ao lado) ANTES de culpar o commit ([`FLAKES_DE_CARGA.md`](../../docs/DevOps/FLAKES_DE_CARGA.md)).
    Promover um membro novo são DUAS escritas: a linha da tabela desse doc **e** o nome na faixa
    isolada do `.config/nextest.toml` (o gate `architecture_toda_flake_de_carga_corre_na_faixa_isolada`
-   exige as duas).
+   exige as duas). ⛔ Reprovou SOZINHO, mesmo uma vez? Não é carga, e a faixa não o cura: procure a régua (03/11, a RAM do
+   Dabber variava com as arenas do glibc). ⚠️ Corrida por nome sobrescreve `target/nextest/default/junit.xml`: não rode
+   `testes-lentos.py --regerar` depois dela, porque a lista perderia os lentos. A suíte verde regera sozinha.
+3e. ⭐ **Alarme de pincel vermelho** (`a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`,
+   `sem_glaze_cada_preset_de_fabrica_pinta_a_cena_de_antes`) é decisão do dono, não cura do integrador. Confira contra o que o
+   handoff diz que ele aprovou; o que sobrar vai a ele com o relatório `target/relatorio-pinceis/index.html`.
+   ⛔ Nunca `PH2D_PINCEIS_APROVA=1` sem ele. Conflito nas miniaturas ou em `larguras_aprovadas.tsv`: fica o lado da lei
+   vigente, nunca mistura ([como se usa](../../docs/DevOps/PLANO_ACELERACAO_2026-11.md)).
 4. Números que SOMAM entre linhas se CONTAM (PROJECT_SCHEMA, registro de componentes,
    número de ADR): o valor certo pode não estar em nenhum dos dois lados do conflito.
    ⭐ **O degrau do `PROJECT_SCHEMA` reconta-se por SCRIPT, não por juízo:**

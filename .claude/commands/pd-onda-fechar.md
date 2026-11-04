@@ -15,6 +15,10 @@ cadência de 5 commits por outra porta (CLAUDE.md §2, DIRETRIZ §6.2).
    - `PH2D_SUITE=onda bash scripts/ph2d-run.sh cargo clippy -p <cada crate que a onda tocou> --all-targets -- -D warnings`
 2. **Os testes da ONDA, por nome** — os que ela escreveu ou mudou:
    `bash scripts/cargo-test-narrow.sh <crate> <nome>` (gates de placa: `-- --ignored <nome>`; a vez da placa pede-se sozinha).
+2-bis. ⭐ **A onda mudou motor, preset ou pincel?** Os alarmes `a_largura_de_fabrica_e_a_aprovada` e
+   `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`, por nome. Vermelho = «estes pincéis mudaram»: o relatório
+   `target/relatorio-pinceis/index.html` vai ao smoke, e só a aprovação do dono regrava
+   ([como se usa](../../docs/DevOps/PLANO_ACELERACAO_2026-11.md)).
 3. **Nenhuma suíte aqui.** A completa (`suite-completa.sh`) e os pacotes impactados (`nextest-impacted.sh`)
    são do integrador (`/pd-integracao`); na linha, nem no fecho, só testes por nome.
 4. **O smoke do dono compilado** — o passo 6 do `/pd-linha-fechar`, igual.

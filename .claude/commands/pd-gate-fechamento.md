@@ -12,6 +12,7 @@ Fim de ONDA (a linha continua) não é isto: `/pd-onda-fechar`.
 3. `shells/desktop/tests/it/file_loc_caps.rs` + `arch_safe_clamp_only`
 4. os testes do item e os portões que a mudança toca, **por nome** (`cargo-test-narrow.sh <crate> <nome>`).
    ⛔ Nem `nextest-impacted.sh` nem `suite-completa.sh`/`ship.sh`: são do integrador (`/pd-integracao`).
+   Mudou motor, preset ou pincel: os alarmes do passo 1 do `/pd-linha-fechar`; o vermelho deles vai ao dono, nunca se regrava.
 5. auditoria ≥2 lentes
 
 Para reconferir durante o conserto, use `bash scripts/cargo-test-narrow.sh

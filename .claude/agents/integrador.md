@@ -26,8 +26,10 @@ O essencial:
   nunca por isenção nem subindo o número.
 - `bash scripts/censos-da-arvore-combinada.sh` antes do `foundational-integrate.sh`.
 - Pesado por `bash scripts/ph2d-run.sh`. Nunca `git push`, nunca `--force` no `main`.
+- Conflito em miniatura de pincel ou `larguras_aprovadas.tsv`: fica o lado da lei vigente, nunca mistura.
+  ⛔ Nunca `PH2D_PINCEIS_APROVA=1`: aprovar é do dono.
 - **Pare e devolva** (não decida): mesmo símbolo reescrito por duas linhas, contrato congelado (§6),
-  decisão de produto.
+  decisão de produto, alarme de pincel vermelho.
 
 Resposta: o que integrou (commits, sha do `main`), os contadores antes/depois, as curas feitas e
 **a lista do que precisa de decisão humana**.

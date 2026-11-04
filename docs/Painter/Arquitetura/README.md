@@ -24,10 +24,15 @@
 
 ## Estado
 
-> **Janela 5 fechada (01/11):** [HANDOFF_01_11_janela5.md](HANDOFF_01_11_janela5.md) (E10 no painel, lotes D/E, Paint type Water·Oil decidido) · continuar pelo prompt abaixo.
-
-> **Janela 1 fechada (31/10, noite):** [HANDOFF_31_10_noite.md](HANDOFF_31_10_noite.md) · continuar por
-> [PROMPT_CONTINUACAO_REFATORACAO.md](PROMPT_CONTINUACAO_REFATORACAO.md). A tabela abaixo é a de abertura.
+> **Estado a 03/11:** as etapas até a E10c e o FPS do Real Oil ([J13](J13_fps_do_real_oil.md)) estão no `main`.
+> ⚠️ **O produto ainda pinta pela lei `Velha`** (`LeiDaTinta`, `crates/ph2d-wet-paint/src/sim.rs`; a `Pigmento` só corre em testes):
+> a troca é a E12. **Falta:** E11 (a placa não lê o meio nem a pasta) · E12 · E13 · os outros 3 modos · a ajuda ilustrada (F5, só
+> maquete) · os ⚑ furos da E9 · crateras do Filbert/Flat Bristle · o chip de Dilution · os `max` de 35–78 ms do traço.
+> **Ordem do dono (03/11):** a refatoração volta depois da integração da UI e do CI. Último estado por janela:
+> [HANDOFF_02_11_janela12.md](HANDOFF_02_11_janela12.md) + [J13](J13_fps_do_real_oil.md). Testes de pincel: alarme barato
+> ([como se usa](../../DevOps/PLANO_ACELERACAO_2026-11.md)).
+>
+> Prompt de continuação: [PROMPT_CONTINUACAO_REFATORACAO.md](PROMPT_CONTINUACAO_REFATORACAO.md). A tabela abaixo é a de abertura, com F4 e F5 atualizadas.
 
 | fase | estado |
 |---|---|
@@ -35,5 +40,5 @@
 | F1 censo + mapa | feitos; matriz dos presets em curso |
 | F2 literatura | feita — lei única com prova + modelo `ferramentas/lei_unica.py` |
 | F3 ADR | ADR-0197 proposto |
-| F4 refatoração | por fazer |
-| F5 ajuda ilustrada | por fazer (maquete ao dono antes da 1.ª tela) |
+| F4 refatoração | em curso: até a E10c; falta E11–E13 e os outros 3 modos |
+| F5 ajuda ilustrada | só maquete, variante C aprovada (nada no app) |

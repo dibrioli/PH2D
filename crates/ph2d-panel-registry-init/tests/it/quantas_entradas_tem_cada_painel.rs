@@ -2770,7 +2770,12 @@ fn um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural() {
         };
         sozinhos += 1;
         let enche_a_fileira = (s.rect.x - ix).abs() < 1.0 && (s.rect.w - iw).abs() < 1.0;
-        if !enche_a_coluna(s) && !enche_a_fileira {
+        // Numa lista de cartões (NovaUI D2) o maior vizinho é a PEGA do cartão, e a fileira inteira é o
+        // corpo dele: a mesma caixa estrutural, menos o recuo `CARD_PAD_X` dos dois lados.
+        let pad = ph2d_card_stack::metrics::CARD_PAD_X;
+        let enche_o_cartao =
+            (s.rect.x - ix - pad).abs() < 1.0 && (s.rect.w - (iw - pad * 2.0)).abs() < 1.0;
+        if !enche_a_coluna(s) && !enche_a_fileira && !enche_o_cartao {
             maus.push(format!(
                 "  {} :: x={:.0} w={:.0} — não é a coluna do valor do painel (x={:?}, borda {:.0}) \
                  nem a fileira inteira (x={:.0} w={:.0})",

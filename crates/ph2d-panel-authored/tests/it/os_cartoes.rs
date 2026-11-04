@@ -134,6 +134,41 @@ fn a_header_folds_its_rows_only_and_a_row_still_answers() {
     assert!(mesa.rect(row).is_none(), "dobrado, a row sai do clique");
 }
 
+/// A row que o artista acabou de autorar nasce depois do `populate`: tem de responder no quadro seguinte.
+/// *Mutação: tirar o `adopt` do `cards::paint` ⇒ pintada e morta sob o dedo.*
+#[test]
+fn a_row_authored_after_the_populate_is_alive() {
+    let key = "novo_controlo".to_string();
+    let id = ids::authored_row_id(&key);
+    cards::force_cards_on_this_thread(Some(true));
+    let mut host = MockPanelHost::with_panel::<AuthoredPanel>();
+    host.set_panel_visible(<AuthoredPanel as ph2d_editor_core::panel::Panel>::ID, true);
+    assert!(host.store().get(id).is_none(), "o populate não a conhece");
+    rows::set_live_rows(Some(vec![Row {
+        kind: ph2d_editor_core::widget::WidgetKind::Button,
+        label: key.clone(),
+        key,
+        id,
+        rgba: None,
+        body: None,
+        icon: None,
+        icon_id: None,
+        options: Vec::new(),
+    }]));
+    let mut st = AuthoredPanelState;
+    let mut rects = Vec::new();
+    for _ in 0..60 {
+        rects = ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || host.paint::<AuthoredPanel>(&mut st, JANELA),
+        );
+    }
+    let viva = host.store().get(id).is_some();
+    rows::set_live_rows(None);
+    assert!(viva, "pintada e sem registo");
+    assert!(rects.iter().any(|(n, _)| *n == id));
+}
+
 /// A lista flutua: a faixa move-a, a alça redimensiona-a, e o «×» não se tapa.
 #[test]
 fn the_floating_list_keeps_its_handles() {

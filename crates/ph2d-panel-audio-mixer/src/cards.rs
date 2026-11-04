@@ -276,7 +276,7 @@ fn por_barramento(ids: &'static [NodeId; SUB_BUS_COUNT]) -> Vec<Cell<'static>> {
 fn cartao_de_reverb(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let y = c.check(
         crate::AMIX_REVERB,
-        tr("panel.audio_mixer.master.reverb"),
+        tr("card.common.enabled"),
         snapshot::reverb_on(),
         y,
     );
@@ -294,7 +294,7 @@ fn cartao_de_reverb(c: &mut CardCtx<'_>, y: f32) -> f32 {
 fn cartao_de_delay(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let y = c.check(
         crate::AMIX_DELAY,
-        tr("panel.audio_mixer.master.delay"),
+        tr("card.common.enabled"),
         snapshot::delay_on(),
         y,
     );
@@ -317,7 +317,7 @@ fn cartao_de_comp(c: &mut CardCtx<'_>, y: f32) -> f32 {
 fn cartao_de_ducking(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let y = c.check(
         crate::AMIX_DUCK,
-        tr("panel.audio_mixer.master.ducking"),
+        tr("card.common.enabled"),
         snapshot::ducking(),
         y,
     );

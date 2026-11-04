@@ -57,7 +57,12 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - **D1, Wet Paint:** janela flutuante mantida (título move, cantos redimensionam); a altura do canto é só tecto, porque a lista abraça o conteúdo. Rótulo que não cabe em duas linhas de meia coluna ganha a linha toda.
 - **D1, Design Tokens:** Mode e App Colors em cima, famílias e Scale dobradas ao abrir (paga a catraca). «Autorada» deixou de pintar o nome em acento: quem diz é o ↺ da linha. Quem segue outro na Scale diz «Follows x» por baixo.
 - **D1, Macros:** cartões Record, Steps, Step (só com etapa escolhida) e Library. Stop e Delete não são vermelhos: `Widget::Button` só tem normal e primário.
-- **D1, Grid Settings:** nove tipos em 3 × 3 de escolha, e não lista suspensa: cada um muda o que está abaixo, um clique, como antes. O *Snap* mora no cartão Target. Opacidade e Inspect ficam na linha de antes (ponte `legacy`).
+- **D1, Grid Settings:** nove tipos em 3 × 3 de escolha, e não lista suspensa: cada um muda o que está abaixo, um clique, como antes. O *Snap* mora no cartão Target. A opacidade fica na barra de antes (ponte `legacy`): não tem caixa nem id de campo.
+- **D2, Tags:** a árvore continua lista no cartão «All tags»; o «+ New» virou «+» no cabeçalho (dica «New tag», e a frase do vazio diz «Press +»); os verbos moram em «Selected tag», com «Delete (n tags, m objects)» em vermelho. A linha arrastada voa como o cartão do Kanban, coisa que o painel antigo não tinha (só largava).
+- **D2, Assets:** continua a flutuar no mesmo sítio, com as mesmas alças; três cartões (Find, Catalogs, Library). A coluna de catálogos virou cartão empilhado e nasce dobrado, com o catálogo escolhido no resumo: a grade ganha a largura toda. A família de 7 opções virou lista suspensa (receita: mais de 5 ⇒ lista), um clique a mais. As colunas da grade esticam até à largura do cartão: o tamanho pedido decide quantas cabem. A barra do tamanho virou campo «Thumbnail size (px)». A grade corta só pela janela, não pelo rect do painel, para um cartão solto no canvas continuar a pintar.
+- **D2, Audio Mixer:** a mesa fica em faixas verticais; cada faixa com fader, medidor, ganho, M/S, e por baixo as filas Pan, Tone e Low cut com rótulo (eram barras sem nome). As barras do rack viraram campos de 0 a 1, a fracção que já se lia. Reverb, Delay, Comp e Ducking nascem dobrados, com «On/Off» no resumo; a caixa de marcar lá dentro chama-se «Enabled». Os M/S acesos usam as cores de sempre; o medidor mantém as cores do sinal.
+- **D2, Authored UI:** só o cromo. Cada `SectionHeader` do artista é um cartão; as linhas seguem a pele dele. O programa não escreve palavra no painel: as linhas antes do 1.º cabeçalho vão num cartão com o nome da moldura, e o título aparece duas vezes.
+- **D2, Widget Lab:** só o cromo: uma lista com um cartão «Bench». O estudo mantém as cores dele porque mede as variantes antigas; passá-lo à tinta do cartão apagava o que ele compara.
 
 ## Registo por bloco
 
@@ -87,6 +92,21 @@ em cartões (com sprite o Inspector é o de antes): sem foto. Só Camera, Player
 Joint, Wheel, Constraints e o solto preso têm teste ou nada, não foto, e o tema próprio na lista só o teste viu. `paint_color_row`
 (só `color_tint`, de sprite) e a amostra de cor do script seguem na forma de hoje. O corpo de letra de `paint_text`/avisos segue o
 `Sm`: só a cor mudou. Dobra partilhada (05 §9) fora deste bloco. Sem clippy (fecho da linha) nem suíte.
+
+**Bloco D2 (04/11).** Tags, Assets, Audio Mixer, Authored UI, Widget Lab em cartões: `src/cards.rs` e `tests/it/os_cartoes.rs` em cada
+crate; `PH2D_CARDS=0` dá o corpo de antes (testes antigos forçam-no; foto vista de Authored e Lab). Commits `8907f74fef`, `b928ba8308`,
+`8585a5f09a`, `2628597fad` e o deste registo. API nova em `panel/cards_linhas_extra.rs`: `ListRow` + `list_row` + `list_row_flight`, `CardBar` +
+`bar`, `meter`, `tone_button`, `danger_button`, `problem`, `FloatHandles` + `paint_floating_list`; métricas `MIXER_*`, `BAR_*`. Testes
+por gesto real: Tags 12, Assets 13, Mixer 8 + 1 de largura, Authored 5, Lab 4. Contraprovas vistas vermelhas: sem `register_rows`, sem
+`set_asset_cells`, sem `link_slider_number_mapped`, «×» errado no Lab; o `adopt` do Authored SOBREVIVEU (o `populate` conhece as rows de fábrica) e deu
+`a_row_authored_after_the_populate_is_alive`. Catracas: `audio_mixer` abertura `1237 → 665`; `asset_browser` saiu de
+`PAINEIS_COM_ID_DERIVADO`; `um_seletor_de_cor_…` aprendeu o corpo do cartão; catraca de comandos verde sem mexer. A foto apanhou: «Master» cortado (a coluna de
+rótulos à esquerda comia 50 px, e `paint_text_centered` reserva respiro), polegar a invadir a faixa ao lado. Fotos: `maquete/d_tags.png`,
+`d_assets.png`, `d_assets_catalogos.png`, `d_audio_mixer.png`, `d_audio_mixer_aberto.png`, `d_authored.png`, `d_widget_lab.png` (estados por patch
+temporário e HOME semeado, receita). **Aberto:** o arrasto real de miniatura para o canvas é da shell, provado só até `is_asset_cell`; medidor com sinal e
+clip não fotografados (foto sem áudio); voo da linha, campo de renomear, lista suspensa aberta e faixas de relação/seletor provados por teste, sem foto (a tela virtual não aceita gesto);
+`PH2D_TAGS_SMOKE` levanta o Inspector de propósito, e o painel Tags fica na aba de trás. Vermelhos alheios por nome no fim: `no_magic_numeric` (bgremoval, color-equalization, upscale), censo de canais
+(`rows_par`, `INSP_VIS_*`), `a_marca_tem_a_altura_da_linha` (isenção `grid_snap`). Sem clippy nem suíte (fecho da linha).
 
 **Bloco D3 (04/11).** Padding, Upscale, Equalize Sizes, Background Removal e Color Equalization em cartões, commit `b787452494`:
 `src/cards.rs` e `tests/it/os_cartoes.rs` em cada crate; `populate`, `event` e `panel_seam!` intocados, salvo a caixa de lista do
@@ -119,4 +139,4 @@ o alfinete não se oferece no Physics (o mundo não tem sujeito); clippy fica pa
 
 ### Bloco D1 (04/11)
 
-Wet Paint, Design Tokens e Macros em cartões, cada um com `src/cards.rs` + `tests/it/os_cartoes.rs` (gesto real) e os mesmos ids. API nova: `Widget::Mark` (sinal colorido sem clique), `Widget::ButtonOff` (verbo apagado sem rect). Catracas medidas: comandos `wet_tuning 13 → 14`, `tokens 4 → 5` (só o «…»); abertura `tokens 2302 → 2012` (`2871` com a Scale aberta). Fotos: `maquete/d_wet_paint.png`, `d_tokens.png`, `d_macros.png`; cenas com patch temporário restaurado (Tuning aberto; etapas semeadas). **Aberto:** o Wet Paint e o Grid não têm cena de smoke que abra o painel.
+Wet Paint, Design Tokens, Macros e Grid Settings em cartões, cada um com `src/cards.rs` + `tests/it/os_cartoes.rs` (gesto real) e os mesmos ids. API nova: `Widget::Mark` (sinal colorido sem clique), `Widget::ButtonOff` (verbo apagado sem rect). Catracas medidas: comandos `wet_tuning 13 → 14`, `tokens 4 → 5` (só o «…»); abertura `tokens 2302 → 2012` (`2871` com a Scale aberta). Fotos: `maquete/d_wet_paint.png`, `d_tokens.png`, `d_macros.png`, `d_grid.png`; cenas com patch temporário restaurado (Tuning aberto; etapas semeadas). **Aberto:** o Wet Paint e o Grid não têm cena de smoke que abra o painel.

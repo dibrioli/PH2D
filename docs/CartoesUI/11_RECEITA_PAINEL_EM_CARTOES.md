@@ -40,6 +40,14 @@ Nasceu do bloco B (Physics, 04/11). Exemplo completo e testado: `crates/ph2d-pan
 | Dica que quebra | **novo** `c.hint(texto, y)`: devolve o fundo medido | nenhum |
 | Matriz triangular | **novo** `c.toggle_triangle(&ToggleTriangle { … }, y)`: legendas, arrasto que pinta, grupo composto | os das células |
 | Lista com muitas opções | `Widget::Dropdown` + `dropdown::declare(id)` em `prepare`; a caixa é `Button` só em cartões (`ph2d-panel-skeleton/src/seam.rs`, `lista`) | os de hoje |
+| Lista ou árvore | **novo** `c.list_row(&ListRow { depth, trailing, selected, edit, .. }, y)`: linhas coladas, recuo pela porta, campo de renomear por cima do nome (`ph2d-panel-tags/src/cards.rs`) | o da linha; registe e `set_panel_row_ids` em `prepare`, nunca no corpo |
+| Linha que se arrasta | `target`/`dim` no `ListRow` + `c.list_row_flight` no fim do corpo: voa inclinada, sem registar clique | o despacho de sempre (`panel_row_drag`) |
+| Grade de miniaturas | Pinte no corpo com `c.ink`, célula inteira é o alvo; publique ids e `set_asset_cells` em `prepare` e corte o que está fora da janela (`ph2d-panel-asset-browser/src/cards.rs`, `grelha`) | os de hoje |
+| Faixas de canal, barras mudas | **novo** `c.bar(&CardBar { id, value, vertical, ticks }, r)`, `c.meter(click, &meter, r)`, `c.tone_button(r, id, texto, on, tom)`; cada fila leva rótulo em cima (`ph2d-panel-audio-mixer/src/cards.rs`, `mesa`) | os de hoje; o store e o despacho são os do `Slider` |
+| Slider sem chip (0 a 1) | Crie o chip derivado (`chip_de`), `link_slider_number_mapped` + `set_number_range` no `populate`; `Field` com `.key(from_ref(&barra))` | a barra continua a avisar o painel |
+| Verbo destrutivo | **novo** `c.danger_button(id, texto, y)`; recusa da lei: `c.problem(texto, y)` | o de hoje |
+| Painel que FLUTUA | **novo** `paint_floating_list(ctx, panel, título, &cartões, rect, FloatHandles { .. })`: lista no rect de sempre, rect do painel e alças passam a ser os da lista | os de hoje |
+| Canvas de teste, pele do artista | Só o cromo: o corpo continua no pintor dele, com `c.ink.theme` (Authored, Widget Lab) | os de hoje |
 
 Linhas novas (`hint`, `check`, `toggle_triangle`) moram em `panel/cards_linhas_extra.rs`, porque a linha de `Widget` tem
 altura fixa de campo. Geometria nova: `ph2d_card_stack::metrics`; cor: `c.ink.color(token)`.
@@ -61,6 +69,11 @@ ferramenta ou de sessão não leva `.key` (D17).
 - **`type_keys_then_enter` não selecciona:** em caixa com `0` escrever `3` dá `30`. Use `type_into_number`.
 - **O corpo do cartão corre mais de uma vez por quadro** (voo, solto), noutro `HitIndex`: não ponha efeito de estado nele.
 - **Valor do preso:** um painel sem sujeito (Physics é o mundo) não precisa de `cards_presos`; o Bones precisa.
+- **Lista no corpo:** o corpo não tem store mutável e corre mais de uma vez. Registo de linhas, `set_painted_*` e `set_asset_cells` vão em `prepare`; lista aberta com rect do corpo vai por `Rc<RefCell>` e vale o 1.º passe (`ph2d-panel-authored/src/cards.rs`).
+- **Passos de seta:** `no_magic_numeric` lê os `cards.rs` dos painéis; a constante leva `// LITERAL-PX-OK: <domínio>`.
+- **`paint_text_centered` reserva respiro:** numa coluna de faixa ele cortou «Master» a 46 px. Meça e use `paint_text_elided`.
+- **O mock ignora uma largura menor do que a coluna dele:** a largura estreita prova-se com `CardCtx::flutuante` (`the_desk_fits_any_card_width…`).
+- **Foto de um painel sem cena:** semeie o HOME: `.ph2d/layout.txt` com `active=animation`, `[animation]`, `open.<id>=1`, `open.inspector=1` (o `open.` inverte o de fábrica), e `fotografa_cena.sh "HOME=<pasta> PH2D_NONE=1" 1930 1500 saida.png`. Em `active=vector` o painel Vector fica à frente.
 - **Agente em paralelo:** um `cargo test` em `registry-init` pode não compilar pelo WIP do outro. Espere e repita; não
   conserte o que não é seu. Em `zsh`, `$P` não divide palavras: use `bash -c`.
 
@@ -80,6 +93,8 @@ Em `ph2d-panel-registry-init --test it`:
   medido e comentado na tabela). Não é licença: qualquer outro acréscimo tem de ser explicado.
 - `quantas_entradas_tem_cada_painel::a_altura_de_abertura_de_um_painel_so_encolhe`: acusou `1370 contra 1317`; o cartão
   custa mais que a linha antiga. Cura: nascer dobrado (Debug), e escrever o número novo, que é exigido se descer (`1236`).
+- `quantas_entradas_tem_cada_painel::todo_painel_com_id_derivado_esta_nomeado`: ids derivados só em cartão dobrado somem da abertura, e a entrada do painel sai (Assets).
+- `quantas_entradas_tem_cada_painel::um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural`: agora sabe que a fileira inteira de um cartão é o corpo dele (Authored).
 - `a_marca_tem_a_altura_da_linha::toda_marca_booleana_tem_a_altura_de_uma_linha`: agora sabe que numa lista de cartões a
   caixa mede `FIELD_H`.
 

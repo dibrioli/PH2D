@@ -42,7 +42,44 @@ Prova de que `ci-test` não muda o determinismo: hash em `ci-test` == hash do `-
 
 ## Noite
 
-`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 6 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes: `PENDENTE-NOITE`. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
+`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 6 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes, 1.º ensaio sem as curas (41800231749): fatias 1 · 3 · 4 em 76 · 95 · 105 min; com as curas: `PENDENTE-NOITE`. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
+
+O job `testa` instala o que os testes pedem: `scripts/stylua-fetch.sh` (2.5.2), `scripts/luau-lsp-fetch.sh` (1.70.1) e o pacote `ttf-dejavu 2.37+18+g9b5d1b2f-8` do Arch, com sha256. As fixturas do Pixel Art foram corridas sobre esse pacote e o `DejaVuSans.ttf` do Ubuntu tem outros bytes (`ae7b7855…` × `6038a160…`).
+
+#### O que a noite NÃO vê e quem vê
+
+`default-filter` de `[profile.noite]`: tira 12 de 31 684 testes (`cargo nextest list --profile noite --workspace`, com e sem `--ignore-default-filter`). Os 12 continuam na suíte local da integração.
+
+| Teste | Por que o runner não mede | Medido | Quem vê |
+|---|---|---|---|
+| `presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` | ⚠️ **Defeito aberto** ([BUGS_painter #58](../Painter/BUGS_painter.md)): o `atan2f` da glibc 2.39 do runner dá outro byte que o da 2.44 daqui | 1 px em `Graphite 2H`; reproduzido aqui ao fnv interpondo a libm 2.39 | Integração local |
+| `os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria` | ⚠️ **Defeito aberto** ([BUGS_luz2d #8](../Luz2D/BUGS_luz2d.md)): depois da 1.ª recusa, a montagem seguinte falha por validação | `recusas [1155891825]`, 2/2 | Integração local (placa da casa, blocos de `desempenho`) |
+| `a_vista_renasce_com_os_mesmos_bits::a_vista_em_paginas_novas_renasce_sozinha_uma_vez` | ⚠️ **Defeito aberto** ([BUGS_luz2d #9](../Luz2D/BUGS_luz2d.md)): binding de 235 MB contra o limite de 128 MiB do lavapipe | `ConfigInvalida`, 2/2 | Integração local (placa da casa) |
+| `presets_de_fabrica::memoria::a_memoria_do_dabber_cabe` | O tecto é o `VmHWM` desta máquina + 5 %; causa no runner não isolada (candidata: o alocador da glibc 2.39) | Runner 324 MiB; aqui 305 e, a 4 núcleos, 309; tecto 322 | Integração local |
+| `o_custo_no_caminho_do_app::o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga` | Razão de relógios que precisa de núcleos: o ganho do paralelo a 4 vCPU não chega à barra de 1,5× | Runner 1,20×; aqui, a 4 núcleos, 1,37× e 1,44×, reprova também | Integração local (faixa isolada) |
+| `tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha` | Espera de 300 s escrita no teste; as medições vizinhas levam 13–25× mais no runner | 315 e 321 s; aqui 39,9 s a 4 núcleos | Integração local |
+| `a_leitura_da_borda_sem_desvio::a_leitura_da_borda_sem_desvio_nao_muda_um_bit` | Placa em CPU: morre no prazo | 1 800 s × 2 | Integração local (placa da casa) |
+| `a_luz_de_fora_nao_atravessa::a_cena_5_na_troca_de_oitava_segue_a_grade_esticada` | Idem | 1 800 s × 2 | Idem |
+| `a_luz_de_fora_nao_atravessa::a_descida_sem_o_t_nulo_nao_muda_um_bit` | Idem | 1 800 s × 2 | Idem |
+| `o_interior_do_opaco::o_rebote_nao_depende_da_oitava` | Idem: a 1.ª tentativa morreu | 1 800 s, depois 1 519 s | Idem |
+| `a_luz_de_fora_nao_atravessa::o_emissor_encostado_a_borda_segue_a_grade_esticada` | Idem: terminou a 89 % do prazo | 1 607 s | Idem |
+| `a_luz_de_fora_nao_atravessa::o_recorte_do_arquivo_nao_muda_um_bit` | Idem: acima de 1 000 s, sem a folga de 2× | 1 172 s | Idem |
+
+⚠️ `scripts/nextest-filtros-casam.py` só varre `filter =`, não `default-filter`: um termo morto aqui não reprova, e o teste volta a correr na noite. Conferido hoje pela contagem: os 12 termos tiram exatamente 12 testes.
+
+#### O prazo por teste
+
+`slow-timeout` da noite: 6 × 300 s = 1 800 s, 2,0× o pior teste que termina e fica. Medido nas fatias 1, 3 e 4; só vale no `[profile.noite]`.
+
+| Teste | s |
+|---|---|
+| `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_na_aquarela` (o pior que fica) | 892,8 |
+| `a_luz_de_fora_nao_atravessa::os_quadrantes_juntos_nao_mudam_um_bit` | 888,1 |
+| `macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao` | 842,4 |
+| `o_custo_do_miolo::o_custo_do_miolo_desce_com_a_base` | 805,5 |
+| `o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blow` | 796,5 |
+
+Custo do `terminate-after`: um teste que morre gasta 2 × 1 800 s de vaga (`retries = 1`). Os 3 mortos nas 2 tentativas e o que morreu na 1.ª somam 14 119 s, 28 % dos 50 219 s das três fatias; com os outros dois lentos, os 6 tirados por tempo somam 16 898 s (34 %). Por isso o que não cabe sai pelo filtro em vez de o prazo subir. O `ph2d-asset-cooker` fica fora desta regra e guarda os 120 s do `default` (máximo no runner 0,16 s): 11 tentativas a 1 800 s seriam 5,5 h por um ISPC pendurado.
 
 ### Testes lentos — causa medida (D)
 

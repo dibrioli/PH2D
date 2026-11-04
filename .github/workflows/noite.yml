@@ -82,6 +82,16 @@ jobs:
             sleep 5
           done
           sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers
+      # As versões fixadas pelo repo (cada script confere o sha256 do manifesto) e a DejaVu dos oráculos do Pixel Art.
+      # Tem de ser este pacote: as fixturas foram corridas sobre ele e o `DejaVuSans.ttf` do Ubuntu tem outros bytes.
+      - name: stylua, luau-lsp e as fontes dos oráculos
+        run: |
+          bash scripts/stylua-fetch.sh
+          bash scripts/luau-lsp-fetch.sh
+          curl -sSfL --retry 3 -o /tmp/dejavu.pkg.tar.zst \
+            'https://archive.archlinux.org/packages/t/ttf-dejavu/ttf-dejavu-2.37%2B18%2Bg9b5d1b2f-8-any.pkg.tar.zst'
+          echo 'd46da489e776dd3d74def85d6d613509db408e9de7a7e3445c63832fd3798e65  /tmp/dejavu.pkg.tar.zst' | sha256sum -c
+          sudo tar --zstd -xf /tmp/dejavu.pkg.tar.zst -C / usr/share/fonts/TTF
       - uses: dtolnay/rust-toolchain@1.99
       - name: Toolchain do rust-toolchain.toml
         run: rustup show active-toolchain || rustup show

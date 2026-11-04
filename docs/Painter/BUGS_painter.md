@@ -525,6 +525,21 @@ Medido em 04/11 (linha Aceleracao; `instantaneo()` entrou no censo do corpo da �
 Causa NÃO isolada; candidato: `planos.copia_sem_campo()` (a cópia perde um campo que a via de raiz mantém). Por fazer: isolar
 o campo, curar, e só então a `bancada_da_agua` ganha −30 % de CPU (medido). Não se afrouxe nenhum limite para esconder a diferença.
 
+## Bug #58 (ABERTO, produto) — o motor pinta outro byte conforme a `libm` do sistema: o `atan2f` da glibc
+
+Medido em 04/11 (linha Aceleracao). `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` reprovou na corrida da noite
+(run 41800231749, Ubuntu, glibc 2.39), nas 2 tentativas: `Graphite 2H`, 1 px, fnv `0x62150e7b7dd8e5b1 → 0x2b7fe456074e114e`; os
+outros pincéis ficam iguais. Aqui (glibc 2.44) o teste passa, também preso a 4 núcleos (`taskset -c 0-3`): não é o número de fios.
+
+**Reproduzido com o MESMO binário local**, interpondo por `LD_PRELOAD` a `libm.so.6` do `libc6_2.39-0ubuntu8.9`: o mesmo pincel, o
+mesmo pixel, o mesmo fnv. Trocando uma função de cada vez (44 nomes `f32`/`f64`), só o **`atan2f`** reproduz. O `f32::atan2` do Rust chama
+o da libc, e o binário daqui liga `atan2f@GLIBC_2.43`.
+
+Consequência: o byte do motor depende da glibc instalada. Atualizar a glibc desta máquina, ou correr noutro SO, pode acender o alarme
+do pincel sem nenhuma mudança de lei, e o mesmo traço não dá o mesmo byte entre máquinas. Por fazer: decidir se o byte do motor é lei
+entre máquinas e, se for, tirar o caminho do motor da `libm` do sistema. Nesta corrida só o `atan2f` mexeu; as outras funções também
+diferem entre as duas versões, só não mudaram nenhuma miniatura. Até lá a noite exclui o teste (`default-filter`); o alarme local continua a valer.
+
 ## Grain Colors esbranquiçadas (smoke 30/10) — medido: NÃO é defeito do motor
 
 `diag_grain_colors_no_papel_de_cor`: com as cores do dono (azul → amarelo em 0,304, RGB) cada célula guarda a cor exacta

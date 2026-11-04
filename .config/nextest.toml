@@ -169,15 +169,37 @@ path = "junit.xml"
 # A corrida da noite (`.github/workflows/noite.yml`): 4 vCPU por fatia, ¼ da fatia local; o prazo por teste
 # é do RUNNER e o número medido está em docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md §Noite.
 # Uma repetição só CLASSIFICA: o que passa à 2.ª vem como FLAKY no junit, nunca escondido.
+#
+# O `default-filter` tira só o que o runner não pode medir; tudo continua na suíte local da integração. Razão e
+# quem vê cada um: a tabela «o que a noite NÃO vê» do doc. Defeitos abertos: BUGS_painter #58, BUGS_luz2d #8 e #9.
 [profile.noite]
 fail-fast = false
 retries = 1
+default-filter = '''
+not (
+  test(=presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje)
+  | test(=presets_de_fabrica::memoria::a_memoria_do_dabber_cabe)
+  | test(=o_custo_no_caminho_do_app::o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga)
+  | test(=tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha)
+  | test(=os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria)
+  | test(=a_vista_renasce_com_os_mesmos_bits::a_vista_em_paginas_novas_renasce_sozinha_uma_vez)
+  | test(=a_leitura_da_borda_sem_desvio::a_leitura_da_borda_sem_desvio_nao_muda_um_bit)
+  | test(=a_luz_de_fora_nao_atravessa::a_cena_5_na_troca_de_oitava_segue_a_grade_esticada)
+  | test(=a_luz_de_fora_nao_atravessa::a_descida_sem_o_t_nulo_nao_muda_um_bit)
+  | test(=a_luz_de_fora_nao_atravessa::o_emissor_encostado_a_borda_segue_a_grade_esticada)
+  | test(=a_luz_de_fora_nao_atravessa::o_recorte_do_arquivo_nao_muda_um_bit)
+  | test(=o_interior_do_opaco::o_rebote_nao_depende_da_oitava)
+)
+'''
 
 [profile.noite.junit]
 path = "junit.xml"
 
+# Prazo no ubuntu-latest com lavapipe (run 41800231749): o pior teste que TERMINOU e fica na noite levou 892,8 s;
+# 6 × 300 s = 2,0× isso. Morrer aqui custa 2 × 1 800 s de vaga, por isso o que não cabe sai pelo filtro e o prazo não sobe.
+# O `ph2d-asset-cooker` guarda os 120 s do default: um ISPC pendurado × 11 tentativas seriam 5,5 h a 1 800 s.
 [[profile.noite.overrides]]
-filter = 'all()'
+filter = 'not package(ph2d-asset-cooker)'
 slow-timeout = { period = "300s", terminate-after = 6 }
 
 # ⭐ W5e (2026-10-11) — a LUZ 2D NA PLACA, limitada pela MEMÓRIA da placa (não pelo relógio): cada gate

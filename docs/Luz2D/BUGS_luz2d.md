@@ -266,3 +266,19 @@ Com eles o gate `a_luz_recua_quando_a_placa_recusa_a_memoria` (`os_tetos_da_plac
    recusa: a luz apaga sem recuar. A criação da textura falha sem que o erro chegue a nenhum dos dois escopos — o mecanismo é por medir.
    Até lá o gate pede os blocos de `desempenho` (`GpuContext::new_com_blocos`), a calibração em que nasceu — mede o recuo da luz,
    não o alocador; o editor corre com os pequenos.
+
+   04/11 (corrida da noite, run 41800231749, lavapipe): o mesmo gate reprova 2/2 COM os blocos de `desempenho`, logo os blocos grandes não
+   curam, só escondem na NVIDIA. `SemMemoria { bytes: 1155891825 }`, e a montagem seguinte falha por validação (`Queue::write_buffer`,
+   `luz2d/buf/jfa` inválido). Pista para o mecanismo: os `Out of Memory` chegam ao tratador GLOBAL (`[gpu-erro] #2`, `#3`), fora dos dois escopos.
+   A noite exclui o gate (`default-filter`); na placa da casa ele continua a correr.
+
+## 9. «A luz apaga numa placa que limita o binding a 128 MiB, sem recuar» (04/11, corrida da noite) — ABERTO
+
+`a_vista_em_paginas_novas_renasce_sozinha_uma_vez` reprova 2/2 no lavapipe (run 41800231749): `Alta quadro 0: ConfigInvalida("o dispositivo recusou a montagem")`.
+
+- **Medido:** `luz2d c2 holográfica`, binding 10, 235 143 168 bytes (grade 4992×2944, texel 1/512 m), e `luz2d c2 holográfica entorno`, binding 17,
+  163 480 832 bytes, contra `max_*_buffer_binding_size` 134 217 728. Esse valor é o mínimo que o Vulkan exige de uma placa, logo uma placa conforme pode parar aí.
+- **Mecanismo:** a `ph2d-light2d-gpu` não consulta este limite (a `ph2d-gpu-cook` consulta, `saidas.rs`). O erro é de validação, `Solver::novo_com` lê
+  `ConfigInvalida` e o governador nunca vê uma recusa: a luz apaga com o aviso em vez de engrossar a fina, que caberia.
+- **Por fazer:** tratar o limite como recusa (a luz recua). Não medi que placas reais o têm; na NVIDIA da casa o gate passa.
+- A noite exclui o gate (`default-filter`) até à cura.

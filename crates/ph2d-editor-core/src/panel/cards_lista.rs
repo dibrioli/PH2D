@@ -233,24 +233,28 @@ pub fn paint_card_list_top(
         m::LIST_RADIUS,
         resolve(ColorToken::KanbanList, theme),
     );
+    let nome = title.to_uppercase();
+    let vao = w
+        - m::LIST_PAD_X * 2.0
+        - m::HEAD_ICON_BOX
+            * (1.0
+                + f32::from(u8::from(
+                    footer.is_some_and(|f| f.at_top) || preso.is_some_and(|p| p.add.is_some()),
+                ))
+                + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some())));
+    let (corpo, tracking) = super::banda::titulo_que_cabe(ctx.text_system, &nome, vao);
     crate::paint::paint_text_title_elided_tracked(
         ctx.text_system,
         ctx.scene,
-        &title.to_uppercase(),
+        &nome,
         [
             x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X,
-            top_list + crate::paint::folga_do_texto(m::LIST_HEAD_H, m::LIST_TITLE_PX),
+            top_list + crate::paint::folga_do_texto(m::LIST_HEAD_H, corpo),
         ],
-        m::LIST_TITLE_PX,
-        w - m::LIST_PAD_X * 2.0
-            - m::HEAD_ICON_BOX
-                * (1.0
-                    + f32::from(u8::from(
-                        footer.is_some_and(|f| f.at_top) || preso.is_some_and(|p| p.add.is_some()),
-                    ))
-                    + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some()))),
+        corpo,
+        vao,
         resolve(ColorToken::KanbanListFg, theme),
-        m::LIST_TITLE_TRACKING_EM,
+        tracking,
     );
     // ⭐ D21: o ícone de menu do painel (Reset Positions · Reset Colors · Reset All).
     let do_cabecalho = footer.or(preso.and_then(|p| p.add).map(|(id, text)| Footer {

@@ -113,19 +113,61 @@ pub fn pinta_titulo_da_lista(
 ) -> f32 {
     let nome = title.to_uppercase();
     let tx = lista.x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X;
-    let tracking = m::LIST_TITLE_PX * m::LIST_TITLE_TRACKING_EM * nome.chars().count() as f32;
-    let tw = text.prefix_width(&nome, m::LIST_TITLE_PX) + tracking;
+    let (corpo, em) = titulo_que_cabe(text, &nome, max_w.max(0.0));
+    let tracking = corpo * em * nome.chars().count() as f32;
+    let tw = text.prefix_width(&nome, corpo) + tracking;
     crate::paint::paint_text_title_elided_tracked(
         text,
         scene,
         &nome,
-        [tx, lista.y + crate::paint::folga_do_texto(m::LIST_HEAD_H, m::LIST_TITLE_PX)],
-        m::LIST_TITLE_PX,
+        [
+            tx,
+            lista.y + crate::paint::folga_do_texto(m::LIST_HEAD_H, corpo),
+        ],
+        corpo,
         max_w.max(0.0),
         resolve(ColorToken::KanbanListFg, theme),
-        m::LIST_TITLE_TRACKING_EM,
+        em,
     );
     tw
+}
+
+/// O corpo e o espaçamento com que o título de uma lista cabe em `w`: numa coluna estreita ele perde
+/// primeiro o espaçamento e depois desce ao corpo do rótulo, antes de se cortar («COLOR EQUALIZATI…»).
+pub(crate) fn titulo_que_cabe(text: &mut TextSystem, nome: &str, w: f32) -> (f32, f32) {
+    let peso = ph2d_text::FontWeight::SEMI_BOLD;
+    let degraus = [
+        (m::LIST_TITLE_PX, m::LIST_TITLE_TRACKING_EM),
+        (m::LIST_TITLE_PX, 0.0),
+        (m::LABEL_PX, 0.0),
+    ];
+    degraus
+        .into_iter()
+        .find(|&(px, em)| crate::text_elide::coube_tracked(text, nome, px, w, (peso, em)))
+        .unwrap_or((m::LABEL_PX, 0.0))
+}
+
+#[cfg(test)]
+#[test]
+fn numa_coluna_estreita_o_titulo_desce_antes_de_se_cortar() {
+    let mut ts = TextSystem::without_system_fonts();
+    let nome = "COLOR EQUALIZATION";
+    assert_eq!(
+        titulo_que_cabe(&mut ts, nome, 400.0),
+        (m::LIST_TITLE_PX, m::LIST_TITLE_TRACKING_EM),
+        "com lugar, o título de sempre"
+    );
+    let cheio = ts.prefix_width(nome, m::LIST_TITLE_PX);
+    let (corpo, em) = titulo_que_cabe(&mut ts, nome, cheio - 1.0);
+    assert_eq!((corpo, em), (m::LABEL_PX, 0.0), "o último degrau");
+    let peso = ph2d_text::FontWeight::SEMI_BOLD;
+    assert!(crate::text_elide::coube_tracked(
+        &mut ts,
+        nome,
+        corpo,
+        cheio - 1.0,
+        (peso, em)
+    ));
 }
 
 /// Um verbo do cabeçalho de uma janela sem lista (a Preview): o ícone da lista, hover incluído, e o alvo `r`.

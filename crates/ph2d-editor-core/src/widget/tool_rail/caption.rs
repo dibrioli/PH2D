@@ -38,8 +38,9 @@ pub(super) fn paint_sub_label(
     }
 }
 
-/// A legenda em caixa normal nos cartões. Só as palavras; as siglas (`FK`, `CEQ`) ficam como são.
-const EM_CAIXA_NORMAL: [(&str, TextKey); 35] = [
+/// A legenda por extenso nos cartões, em caixa normal: nenhuma sigla inventada (`CEQ`, `UPSC`). O que
+/// o artista conhece por sigla (`FK`) fica como é.
+const EM_CAIXA_NORMAL: [(&str, TextKey); 49] = [
     ("MOVE", TextKey::new("chrome.rail.caption.move")),
     ("ROT", TextKey::new("chrome.rail.caption.rot")),
     ("SCALE", TextKey::new("chrome.rail.caption.scale")),
@@ -75,6 +76,20 @@ const EM_CAIXA_NORMAL: [(&str, TextKey); 35] = [
     ("CURVE", TextKey::new("chrome.rail.caption.curve")),
     ("DASH", TextKey::new("chrome.rail.caption.dash")),
     ("FREE", TextKey::new("chrome.rail.caption.free")),
+    ("BGRMV", TextKey::new("chrome.rail.caption.cutout")),
+    ("PAD", TextKey::new("chrome.rail.caption.padding")),
+    ("CEQ", TextKey::new("chrome.rail.caption.color")),
+    ("EQSZ", TextKey::new("chrome.rail.caption.equal")),
+    ("RASTR", TextKey::new("chrome.rail.caption.raster")),
+    ("UPSC", TextKey::new("chrome.rail.caption.upscale")),
+    ("PNTR", TextKey::new("chrome.rail.caption.paint")),
+    ("BLOW", TextKey::new("chrome.rail.caption.blow")),
+    ("LIQFY", TextKey::new("chrome.rail.caption.liquify")),
+    ("XFORM", TextKey::new("chrome.rail.caption.transform")),
+    ("INPNT", TextKey::new("chrome.rail.caption.inpaint")),
+    ("SEL", TextKey::new("chrome.rail.caption.select")),
+    ("ELLI", TextKey::new("chrome.rail.caption.ellipse")),
+    ("POLY", TextKey::new("chrome.rail.caption.polygon")),
 ];
 
 /// A legenda de `text` em cartões.
@@ -83,6 +98,16 @@ pub(super) fn em_caixa_normal(text: &str) -> &str {
         .iter()
         .find(|(cru, _)| *cru == text)
         .map_or(text, |(_, chave)| chave.tr())
+}
+
+#[cfg(test)]
+pub(super) fn nomes_por_extenso() -> impl Iterator<Item = &'static str> {
+    EM_CAIXA_NORMAL.iter().map(|(_, chave)| chave.tr())
+}
+
+#[cfg(test)]
+pub(super) fn fonte_de_recuo() -> f32 {
+    sub_label_font_px()
 }
 
 /// O corpo do rótulo do cartão, se ele couber em `w`; senão o de sempre, que a fila já garante.

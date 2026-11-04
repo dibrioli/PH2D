@@ -209,8 +209,33 @@ fn a_legenda_em_cartoes_e_em_caixa_normal() {
     assert_eq!(f("ROT"), "Rotate");
     assert_eq!(f("SQUAR"), "Square");
     assert_eq!(f("W"), "W");
-    assert_eq!(f("CEQ"), "CEQ", "uma sigla fica como é");
+    assert_eq!(f("CEQ"), "Color", "nenhuma sigla inventada");
+    assert_eq!(f("FK"), "FK", "a sigla que o artista conhece fica");
     assert_eq!(f("Corner round"), "Corner round");
+}
+
+/// Toda legenda por extenso cabe inteira no passo do menor chip, nas três fontes.
+#[test]
+fn toda_legenda_por_extenso_cabe_no_passo_do_chip() {
+    let mut text = TextSystem::without_system_fonts();
+    let mut store = crate::interaction::WidgetStore::default();
+    store.set_rail_button_size(RailButtonSize::Small);
+    let passo = RailButtonSize::Small.chip_px() + super::entry_gap_px();
+    let mut fora = Vec::new();
+    for font in ph2d_tokens::UiFont::ALL {
+        ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle {
+            font,
+            ..Default::default()
+        });
+        for nome in super::caption::nomes_por_extenso() {
+            let w = text.prefix_width(nome, super::caption::fonte_de_recuo());
+            if w > passo {
+                fora.push(format!("{font:?} {nome}: {w:.1} > {passo:.1}"));
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle::default());
+    assert!(fora.is_empty(), "{fora:#?}");
 }
 
 /// ⭐ F48d — um PULLDOWN com canal mede-se com a folga do losango: o chip que sobra depois de o

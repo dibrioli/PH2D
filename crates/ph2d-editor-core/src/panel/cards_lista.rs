@@ -13,11 +13,50 @@ pub fn paint_card_list_pinned(
     footer: Option<Footer<'_>>,
     pinned: &[CardDef<'_>],
 ) -> Rect {
+    paint_card_list_top(ctx, panel, title, cards, footer, pinned, None)
+}
+
+/// O que uma lista prende debaixo do título e não rola com os cartões (a busca da Hierarquia).
+#[derive(Copy, Clone)]
+pub struct ListTop<'a> {
+    /// A altura da faixa, sem o vão até aos cartões.
+    pub h: f32,
+    /// Pinta a faixa em `Rect` (a coluna dos cartões), na tinta da lista.
+    pub body: &'a dyn Fn(&mut CardCtx<'_>, Rect),
+    /// O «+» do cabeçalho da lista, sem pé: `(id, dica)`.
+    pub add: Option<(NodeId, &'a str)>,
+}
+
+/// A mão que arrasta a `y`, perto de uma borda da banda visível da lista, rola-a (05 §6).
+pub fn scroll_at_edge(store: &mut WidgetStore, panel: NodeId, y: f32, top: f32) {
+    rolagem::na_borda(store, panel, y, top);
+}
+
+/// [`paint_card_list_pinned`] com a faixa presa.
+pub fn paint_card_list_top(
+    ctx: &mut PaintCtx,
+    panel: NodeId,
+    title: &str,
+    cards: &[CardDef<'_>],
+    footer: Option<Footer<'_>>,
+    pinned: &[CardDef<'_>],
+    preso: Option<ListTop<'_>>,
+) -> Rect {
     let theme = ctx.host.theme();
     dicas::comeca(panel);
     let slot = ctx.slot;
-    let x = slot.x + m::LIST_MARGIN;
-    let w = (slot.w - m::LIST_MARGIN * 2.0).max(0.0);
+    let area = ctx.host.content_area().filter(|c| c.h > 0.0);
+    // D31, espelho: na coluna da esquerda a lista começa depois da régua vertical, que passa a morar
+    // na borda da janela. Fora da metade do encaixe não é a régua da coluna (a lista ainda não flutua).
+    let x0 = area.map_or(slot.x, |c| {
+        if c.x > slot.x && c.x < slot.x + slot.w * 0.5 {
+            c.x
+        } else {
+            slot.x
+        }
+    });
+    let x = x0 + m::LIST_MARGIN;
+    let w = (slot.x + slot.w - x - m::LIST_MARGIN).max(0.0);
     // A barra de opções da ferramenta atravessa a janela por cima dos painéis: a lista começa abaixo.
     let barra = ctx.layout.tool_bar;
     let topo = if barra.h > 0.0 {
@@ -26,13 +65,10 @@ pub fn paint_card_list_pinned(
         slot.y
     };
     // D31: e abaixo da régua de cima (a lista flutua sobre a área de desenho, D24).
-    let topo = ctx
-        .host
-        .content_area()
-        .filter(|c| c.h > 0.0)
-        .map_or(topo, |c| topo.max(c.y));
+    let topo = area.map_or(topo, |c| topo.max(c.y));
     let top_list = topo + m::LIST_MARGIN;
-    let body_top = top_list + m::LIST_HEAD_H;
+    let preso_h = preso.map_or(0.0, |p| p.h + m::LIST_TOP_GAP);
+    let body_top = top_list + m::LIST_HEAD_H + preso_h;
     let keys: Vec<NodeId> = cards.iter().map(|c| c.section).collect();
     let store = ctx.host.store_mut();
     let cw = rolagem::largura_dos_cartoes(store, panel, x, w);
@@ -170,7 +206,7 @@ pub fn paint_card_list_pinned(
         0.0
     };
     let content_h = placed.content_h + soltas_h + pe;
-    let natural = m::LIST_HEAD_H + content_h + m::LIST_PAD_BOTTOM;
+    let natural = m::LIST_HEAD_H + preso_h + content_h + m::LIST_PAD_BOTTOM;
     let tecto = slot.y + slot.h - top_list - m::LIST_MARGIN;
     let list_h = natural.min(tecto);
     let lista = Rect::new(x, top_list, w, list_h.max(m::LIST_HEAD_H));
@@ -209,19 +245,32 @@ pub fn paint_card_list_pinned(
         w - m::LIST_PAD_X * 2.0
             - m::HEAD_ICON_BOX
                 * (1.0
-                    + f32::from(u8::from(footer.is_some_and(|f| f.at_top)))
+                    + f32::from(u8::from(
+                        footer.is_some_and(|f| f.at_top) || preso.is_some_and(|p| p.add.is_some()),
+                    ))
                     + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some()))),
         resolve(ColorToken::KanbanListFg, theme),
         m::LIST_TITLE_TRACKING_EM,
     );
     // ⭐ D21: o ícone de menu do painel (Reset Positions · Reset Colors · Reset All).
+    let do_cabecalho = footer.or(preso.and_then(|p| p.add).map(|(id, text)| Footer {
+        id,
+        text,
+        at_top: true,
+    }));
     menu::pinta(
         ctx,
         panel,
         theme,
         Rect::new(x, top_list, w, m::LIST_HEAD_H),
-        footer,
+        do_cabecalho,
     );
+    if let Some(p) = preso {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        let ink = CardInk::of_list(theme);
+        let mut c = CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit_index, ink, cx, cw);
+        (p.body)(&mut c, Rect::new(cx, top_list + m::LIST_HEAD_H, cw, p.h));
+    }
 
     // ── Os cartões ── (T43: o corpo, e com ele a pista da barra, pára acima da margem do fundo)
     let clip = Rect::new(

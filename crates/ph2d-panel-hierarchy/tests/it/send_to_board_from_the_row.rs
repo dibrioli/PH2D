@@ -64,6 +64,7 @@ impl T {
     /// Uma cena com uma imagem e um esqueleto na Hierarquia, e dois quadros abertos (a aba da cena
     /// activa). A shell publica a lista das linhas que vão para um quadro: só a imagem.
     fn new() -> Self {
+        ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
         ph2d_editor_core::test_support::ensure_panel_registry();
         ensure_typed_registry();
         let mut hero = HeroScreen::new(NodeId(1));

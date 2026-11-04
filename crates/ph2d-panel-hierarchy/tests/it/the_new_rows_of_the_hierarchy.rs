@@ -65,6 +65,7 @@ fn heroi() -> HierarchyEntity {
 }
 
 fn host_with_heroi() -> (MockPanelHost, HierarchyState) {
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     ph2d_panel_hierarchy::sync_from_hierarchy(
         host.store_mut(),

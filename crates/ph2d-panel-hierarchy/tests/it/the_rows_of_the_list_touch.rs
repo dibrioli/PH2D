@@ -62,6 +62,7 @@ fn painted() -> (Vec<(ph2d_a11y::NodeId, Rect)>, Vec<ph2d_a11y::NodeId>) {
         .map(|(i, id)| (*id, entry(&format!("Object {i}"))))
         .collect();
     ph2d_panel_hierarchy::state::set_live_entries(Some(entries));
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     host.set_hierarchy_rows(&ordered);
     let mut state = HierarchyState::default();
@@ -181,6 +182,7 @@ fn painted_geometry(names: &[&str], query: &str) -> (u32, u32) {
         .map(|(id, n)| (*id, entry(n)))
         .collect();
     ph2d_panel_hierarchy::state::set_live_entries(Some(entries));
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     host.set_hierarchy_rows(&ordered);
     host.set_text(ph2d_panel_hierarchy::ids::HIER_SEARCH, query);

@@ -47,6 +47,7 @@ fn host() -> (MockPanelHost, HierarchyState) {
     heroi.content = vec![clips(&[(1, "andar"), (2, "pular")])];
     let mut cena = ph2d_panel_hierarchy::scene_entry();
     cena.content = vec![clips(&[(0, "Main")])];
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     host.set_panel_visible(PANEL_TIMELINE, false);
     ph2d_panel_hierarchy::sync_from_hierarchy(

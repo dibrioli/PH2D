@@ -346,7 +346,7 @@ pub fn paint_hero_screen(
             text_system,
         );
         // ① ④ as barras do módulo (D10), por cima da arte e dentro da área sem as réguas.
-        let content = hero.last_content;
+        let content = layout.clear_of_left_list(hero.last_content);
         super::float_bar::tool_bars::paint(hero, content, scene);
         super::float_bar::touch_mods::paint(hero, content, scene, text_system);
     }

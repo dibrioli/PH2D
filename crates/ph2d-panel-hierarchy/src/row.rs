@@ -2,10 +2,11 @@
 //! Ported from `ph2d_editor_core::screens::hero::hierarchy::row_painter`
 //! in Phase C.2; logic unchanged.
 
+use crate::row_ink::RowInk;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text};
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
 use ph2d_editor_core::zones::Rect;
@@ -50,8 +51,12 @@ fn paint_row_background(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: RowInk,
 ) {
+    // Num cartão o fundo é o da linha INTEIRA, recuo incluído: quem o pinta é o `cards.rs`.
+    let RowInk::Panel(theme) = ink else {
+        return;
+    };
     // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2): o objecto sob o ponteiro acende a
     // linha dele, venha o ponteiro do canvas ou desta mesma lista.
     //
@@ -121,20 +126,31 @@ pub(crate) fn row_inset_px() -> f32 {
     Spacing::Xxs.px()
 }
 
+/// Onde começa o nome numa linha em `row_x`: seta, ícone e os vãos deles.
+pub(crate) fn name_x(row_x: f32) -> f32 {
+    row_x
+        + row_inset_px()
+        + ph2d_tokens::tree_chevron_col_px()
+        + Spacing::Xxs.px()
+        + Spacing::Xl.px()
+        + ph2d_tokens::icon_label_gap_px()
+}
+
+/// Devolve onde o nome tem de acabar (o cacho da direita começa aí).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
-    theme: Theme,
+    ink: RowInk,
     row_id: Option<ph2d_a11y::NodeId>,
     mut hit_index: Option<&mut HitIndex>,
     has_children: bool,
     is_collapsed: bool,
     direct_match: bool,
-) {
-    paint_row_background(entity, rect, scene, theme);
+) -> f32 {
+    paint_row_background(entity, rect, scene, ink);
     // As DUAS medidas vêm de uma porta cada (wave 23) — antes eram cópias sincronizadas à mão
     // com `paint.rs`, e a que derivasse deslocava a linha de parentesco para fora da seta.
     let pad = row_inset_px();
@@ -156,7 +172,7 @@ pub(crate) fn paint_hierarchy_row(
             scene,
             chev_icon,
             chev_rect,
-            resolve(ColorToken::Text2, theme),
+            ink.color(ColorToken::Text2),
             StrokeToken::Default.px(),
         );
         if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
@@ -176,7 +192,7 @@ pub(crate) fn paint_hierarchy_row(
         scene,
         entity.icon,
         icon_rect,
-        resolve(icon_color, theme),
+        ink.color(icon_color),
         StrokeToken::Default.px(),
     );
     // Hit-register the entity icon as its own companion (2026-05-26):
@@ -206,7 +222,7 @@ pub(crate) fn paint_hierarchy_row(
             entity,
             rect,
             scene,
-            theme,
+            ink,
             row_id,
             hit_index.as_deref_mut(),
             right_x,
@@ -215,7 +231,7 @@ pub(crate) fn paint_hierarchy_row(
             entity,
             rect,
             scene,
-            theme,
+            ink,
             row_id,
             hit_index.as_deref_mut(),
             eye_size,
@@ -224,7 +240,7 @@ pub(crate) fn paint_hierarchy_row(
         );
     }
     right_x = crate::row_components::paint_component_icons(
-        entity, rect, scene, theme, row_id, hit_index, right_x,
+        entity, rect, scene, ink, row_id, hit_index, right_x,
     );
     if let Some(swatch) = entity.swatch {
         let sw = INLINE_ICON_PX;
@@ -235,7 +251,7 @@ pub(crate) fn paint_hierarchy_row(
             "",
             swatch,
         );
-        ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, theme);
+        ph2d_editor_core::widget::paint_color_swatch(&cs, sw_rect, scene, ink.theme());
         right_x -= sw + icon_cluster_gap;
     }
     if let Some(badge) = &entity.badge {
@@ -267,7 +283,7 @@ pub(crate) fn paint_hierarchy_row(
             badge_w,
             badge_h,
         );
-        paint_tag(&tag, badge_rect, scene, text_system, theme);
+        paint_tag(&tag, badge_rect, scene, text_system, ink.theme());
         right_x -= badge_w + icon_cluster_gap;
     }
 
@@ -284,13 +300,14 @@ pub(crate) fn paint_hierarchy_row(
     paint_row_name(
         scene,
         text_system,
-        theme,
+        ink,
         entity,
         rect,
         name_x,
         right_x,
         name_color,
     );
+    right_x - Spacing::Xxs.px()
 }
 
 /// ⭐ Um interruptor da linha (olho, grupo, cadeado) é pintável por arrasto — vertical (outras linhas)
@@ -327,7 +344,7 @@ fn paint_row_eye(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: RowInk,
     row_id: Option<ph2d_a11y::NodeId>,
     hit_index: Option<&mut HitIndex>,
     right_x: f32,
@@ -348,7 +365,7 @@ fn paint_row_eye(
         scene,
         eye_icon,
         eye_rect,
-        resolve(eye_color, theme),
+        ink.color(eye_color),
         StrokeToken::Default.px(),
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index) {
@@ -370,7 +387,7 @@ fn paint_row_locks(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: RowInk,
     row_id: Option<ph2d_a11y::NodeId>,
     mut hit_index: Option<&mut HitIndex>,
     eye_size: f32,
@@ -405,7 +422,7 @@ fn paint_row_locks(
         scene,
         group_icon,
         group_rect,
-        resolve(group_color, theme),
+        ink.color(group_color),
         StrokeToken::Default.px(),
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
@@ -443,7 +460,7 @@ fn paint_row_locks(
         scene,
         lock_icon,
         lock_rect,
-        resolve(lock_color, theme),
+        ink.color(lock_color),
         StrokeToken::Default.px(),
     );
     if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
@@ -482,7 +499,7 @@ fn paint_row_locks(
 fn paint_row_name(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
-    theme: Theme,
+    ink: RowInk,
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     name_x: f32,
@@ -513,10 +530,10 @@ fn paint_row_name(
         scene,
         &entity.name,
         name_x,
-        rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
+        rect.y + (rect.h - ink.name_px()) * 0.5,
+        ink.name_px(),
         name_w,
-        resolve(name_color, theme),
+        ink.color(name_color),
     );
     scene.pop_layer();
 }

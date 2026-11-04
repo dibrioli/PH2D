@@ -78,6 +78,21 @@ pub(crate) fn rows(
     out
 }
 
+/// O texto da caixa em cartões. «All» não conta as linhas: é o estado de quase todo quadro.
+pub(crate) fn chosen_label(
+    entries: &BTreeMap<NodeId, HierarchyEntity>,
+    chosen: Option<u8>,
+) -> String {
+    if chosen.is_none() {
+        return ph2d_i18n::tr("panel.hierarchy.filter.all").to_string();
+    }
+    rows(entries, chosen)
+        .into_iter()
+        .find(|(b, _)| *b == chosen)
+        .map(|(_, l)| l)
+        .unwrap_or_default()
+}
+
 fn dropdown(rows: &[(Option<u8>, String)], chosen: Option<u8>, open: bool) -> Dropdown<usize> {
     let options = rows
         .iter()

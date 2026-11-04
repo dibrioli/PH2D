@@ -17,6 +17,10 @@ pub const LIST_TITLE_TRACKING_EM: f32 = 0.06;
 /// A sombra de pairar da lista: `(dy, desfoque)` de cada camada.
 pub const LIST_SHADOW_FAR: (f64, f64) = (6.0, 18.0);
 pub const LIST_SHADOW_NEAR: (f64, f64) = (1.0, 2.0);
+/// O vão entre a faixa presa debaixo do título (a busca da Hierarquia) e os cartões.
+pub const LIST_TOP_GAP: f32 = 8.0;
+/// Quanto uma linha de árvore entra na margem do cartão: a árvore precisa da largura, o cartão fica com 4.
+pub const TREE_ROW_BLEED: f32 = 6.0;
 
 // ── O cartão (a secção) ──
 pub const CARD_RADIUS: f32 = 8.0;

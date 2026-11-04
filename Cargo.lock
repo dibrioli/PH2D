@@ -9676,7 +9676,9 @@ name = "ph2d-panel-flip"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-painter-effects",
@@ -9728,6 +9730,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-host",
@@ -9897,6 +9900,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
@@ -10061,9 +10065,11 @@ dependencies = [
 name = "ph2d-panel-vector"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-anim",
  "ph2d-blend-mode",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-fx-op",
  "ph2d-host",

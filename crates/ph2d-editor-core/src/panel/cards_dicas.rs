@@ -18,7 +18,7 @@ pub(super) fn comeca(panel: NodeId) {
     ICONES.with(|i| i.borrow_mut().remove(&panel));
 }
 
-pub(super) fn icone(id: NodeId) {
+pub fn icone(id: NodeId) {
     if let Some(p) = LISTA.with(Cell::get) {
         ICONES.with(|i| {
             i.borrow_mut().entry(p).or_default().insert(id);

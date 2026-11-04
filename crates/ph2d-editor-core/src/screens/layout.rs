@@ -442,7 +442,9 @@ impl HeroLayout {
         // ⚠️ E as DUAS metades encolhem juntas: o painel do grafo deteta a orientação por
         // `rect.x > center.x` e mede o arrasto do divisor contra `center + rect`, então narrar uma
         // só faria um split horizontal ler-se como vertical.
-        let band = Rect::new(area_x0, chrome_top, area_w, chrome_h);
+        // ⭐ D24: o grafo não passa por trás da lista da esquerda: pinta-se depois dela e tapá-la-ia.
+        let band_x0 = if docks.float_left { chrome_x0 } else { area_x0 };
+        let band = Rect::new(band_x0, chrome_top, (area_x1 - band_x0).max(0.0), chrome_h);
         let (center_viewport, motion_graph) = match split {
             CenterSplit::None => (canvas, Rect::new(band.x, band.y, 0.0, 0.0)),
             CenterSplit::Horizontal { t } => {

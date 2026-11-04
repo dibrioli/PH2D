@@ -31,6 +31,8 @@ pub struct HierarchyState {
     /// ⭐ O filtro ▾ por componente — o bit do [`ph2d_component_desc::ComponentSet`] escolhido, ou
     /// `None` = todos (doc ObjectsAndComponents 01 §13, F6).
     pub component_filter: Option<u8>,
+    /// Em cartões: a linha seleccionada que a lista já trouxe à vista.
+    pub(crate) revealed: Option<NodeId>,
 }
 
 thread_local! {
@@ -43,7 +45,7 @@ thread_local! {
     /// [`sync_from_hierarchy`] (ADR-0025 M14.4a). When `Some`,
     /// `paint_hierarchy` uses these instead of `fixture::hierarchy()`.
     pub(crate) static CURRENT_LIVE_ENTRIES: std::cell::RefCell<
-        Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>,
+        Option<std::rc::Rc<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>>,
     > = const { std::cell::RefCell::new(None) };
 
     /// Total component count across the live SimWorld, surfaced into
@@ -58,13 +60,19 @@ thread_local! {
 pub fn set_live_entries(
     entries: Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>,
 ) {
-    CURRENT_LIVE_ENTRIES.with(|c| *c.borrow_mut() = entries);
+    CURRENT_LIVE_ENTRIES.with(|c| *c.borrow_mut() = entries.map(std::rc::Rc::new));
 }
 
 /// Read a snapshot of the current live entity map (cloned). Returns
 /// `None` in fixture mode.
 pub fn current_live_entries() -> Option<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>
 {
+    CURRENT_LIVE_ENTRIES.with(|c| c.borrow().as_deref().cloned())
+}
+
+/// O mapa vivo sem o copiar: a pintura em cartões lê-o a cada quadro.
+pub(crate) fn live_entries_shared()
+-> Option<std::rc::Rc<std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>>> {
     CURRENT_LIVE_ENTRIES.with(|c| c.borrow().clone())
 }
 

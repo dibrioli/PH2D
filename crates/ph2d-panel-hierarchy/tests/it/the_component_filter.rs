@@ -46,6 +46,7 @@ fn linha(nome: &str, indent: u8, tem: &[u8]) -> HierarchyEntity {
 fn host() -> (MockPanelHost, HierarchyState) {
     let vida = bit("ph2d::physics::Health");
     let som = bit("ph2d::ecs::AudioSource2D");
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
     ph2d_panel_hierarchy::sync_from_hierarchy(
         host.store_mut(),

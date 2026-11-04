@@ -199,6 +199,20 @@ pub enum DockSide {
 }
 
 impl HeroLayout {
+    /// ⭐ D24: `area` sem o que está por baixo da lista da esquerda. O canvas passa por trás dela, mas
+    /// as barras do módulo e a área de um quadro têm de ficar à vista e ao alcance da mão.
+    #[must_use]
+    pub fn clear_of_left_list(&self, area: Rect) -> Rect {
+        let lista = self.float_lists[DockSide::Left as usize];
+        if !self.docks.float_left || lista.h <= 0.0 {
+            return area;
+        }
+        let x = area
+            .x
+            .max(lista.x + lista.w + ph2d_card_stack::metrics::LIST_MARGIN);
+        Rect::new(x, area.y, (area.x + area.w - x).max(0.0), area.h)
+    }
+
     /// **As duas colunas laterais, ORDENADAS POR `x`** — `(esquerda, direita)`.
     ///
     /// ⚠️ **Existe para o `mirrored` não ser uma inversão escrita à mão em cada chamador.** Sob

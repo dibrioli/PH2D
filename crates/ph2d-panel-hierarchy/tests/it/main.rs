@@ -14,6 +14,7 @@ mod hierarchy_context_menu;
 mod hierarchy_selection_by_identity;
 mod hierarchy_sync_round_trip;
 mod o_selo_de_uma_linha_cabe_no_selo;
+mod os_cartoes;
 mod seam;
 mod send_to_board_from_the_row;
 mod the_clips_of_an_animation;

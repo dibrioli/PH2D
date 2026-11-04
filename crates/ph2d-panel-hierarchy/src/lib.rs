@@ -17,6 +17,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cards;
 mod event;
 mod event_rows;
 mod filter;
@@ -25,6 +26,7 @@ mod paint;
 mod populate;
 mod row;
 mod row_components;
+mod row_ink;
 mod rows;
 mod search;
 pub mod state;

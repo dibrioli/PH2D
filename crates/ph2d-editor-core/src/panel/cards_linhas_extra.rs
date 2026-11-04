@@ -232,6 +232,11 @@ impl CardCtx<'_> {
         self.hit_index.register(click, r);
     }
 
+    /// Uma caixa de texto num rect dado (a busca e o renomear da árvore, que não têm a coluna de `row`).
+    pub fn text_box(&mut self, r: Rect, id: NodeId, placeholder: &str) {
+        self.text(r, id, placeholder);
+    }
+
     /// ⭐ Uma linha de lista ou árvore. Devolve o `y` seguinte, colado: as linhas tocam-se.
     pub fn list_row(&mut self, row: &ListRow<'_>, y: f32) -> f32 {
         self.first = false;
@@ -339,14 +344,26 @@ impl CardCtx<'_> {
             m::SEG_RADIUS,
             self.ink.color(ColorToken::KanbanCardRaised),
         );
+        let mut nome_x = m::SEG_INSET;
+        if let Some(icon) = row.icon {
+            let lado = m::SEG_TEXT_PX;
+            paint_icon(
+                &mut voo,
+                icon,
+                Rect::new(nome_x, (m::FIELD_H - lado) * 0.5, lado, lado),
+                self.ink.color(ColorToken::Text1),
+                StrokeToken::Default.px(),
+            );
+            nome_x += lado + m::SEG_ICON_GAP;
+        }
         paint_text_elided(
             self.text_system,
             &mut voo,
             row.label,
-            m::SEG_INSET,
+            nome_x,
             (m::FIELD_H - m::VALUE_PX) * 0.5,
             m::VALUE_PX,
-            (local.w - m::SEG_INSET * 2.0).max(0.0),
+            (local.w - nome_x - m::SEG_INSET).max(0.0),
             self.ink.color(ColorToken::Text1),
         );
         let pivo = ph2d_card_stack::flight_pivot(local.w, local.h);

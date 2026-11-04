@@ -9,6 +9,8 @@ use ph2d_tool_registry::hash_node_id;
 pub(super) const ROW_ID_MASK: u64 = (1u64 << 58) - 1;
 
 /// A raiz CENA ([`ph2d_editor_core::hier_rows::RowRole::Scene`]).
+/// A secção do cartão que leva a árvore (ordem, dobra, tema e notas vêm com ela).
+pub const HIER_SEC_TREE: NodeId = hash_node_id("hierarchy.sec.tree");
 pub const HIER_SCENE_ROW: NodeId = NodeId(hash_node_id("hier_scene_row").0 & ROW_ID_MASK);
 
 /// SplitMix64 — mistura estável de um `u64` (os ids sintéticos têm de sobreviver entre quadros).

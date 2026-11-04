@@ -180,7 +180,7 @@ mod solto;
 #[path = "cards_solto_some.rs"]
 pub mod solto_some;
 use cartao::{flight_shadow, paint_card, paint_card_with, shadow};
-pub use lista::paint_card_list_pinned;
+pub use lista::{ListTop, paint_card_list_pinned, paint_card_list_top, scroll_at_edge};
 pub use menu::{apply_list_menu_click, list_menu_of};
 
 /// O id da pega (o cabeçalho) de um cartão — o mesmo das secções de hoje.

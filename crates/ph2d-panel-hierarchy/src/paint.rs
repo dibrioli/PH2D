@@ -9,6 +9,7 @@
 
 use crate::HierarchyPanel;
 use crate::row::paint_hierarchy_row;
+use crate::row_ink::RowInk;
 use crate::search::compute_match_filter;
 use crate::state::{
     self, current_component_count, current_live_entries, set_last_hierarchy_content_h,
@@ -44,11 +45,15 @@ mod head;
 /// ícones de `Spacing::Xl` = **16 px** (o do objecto, o olho, o grupo e o cadeado). Em 22 sobram
 /// **3 px** acima e abaixo do mais alto — o mesmo ar que a linha de formulário dá ao seu controlo.
 /// ⛔ *Não é o token que decide se cabe; é o conteúdo, e ele foi contado.*
-const HIER_ROW_H: f32 = ROW_H_PX;
+pub(crate) const HIER_ROW_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(HierarchyPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(ids::HIER_PANEL);
+        return;
+    }
+    if crate::cards::cards_on() {
+        crate::cards::paint(state, ctx);
         return;
     }
     // ⭐⭐⭐ **O RECT PUBLICADO É O DO ENCAIXE, e quem o publica é o painel** — as duas metades do
@@ -90,7 +95,8 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
 }
 
 /// As linhas que o painel mostra: as do mundo, ou a fixtura sem mundo.
-fn entries_now() -> std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> {
+pub(crate) fn entries_now()
+-> std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::HierarchyEntity> {
     current_live_entries().unwrap_or_else(|| {
         fixture::hierarchy()
             .into_iter()
@@ -110,9 +116,9 @@ fn entries_now() -> std::collections::BTreeMap<ph2d_a11y::NodeId, fixture::Hiera
 /// `col_origin_x` é onde a coluna `0` começa (`rect.x + body_pad` no chamador): a única coisa que
 /// este desenho precisa de saber sobre o painel.
 #[allow(clippy::too_many_arguments)]
-fn paint_parentage_lines(
+pub(crate) fn paint_parentage_lines(
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: RowInk,
     row_rect: Rect,
     col_origin_x: f32,
     indent_px: f32,
@@ -138,7 +144,7 @@ fn paint_parentage_lines(
         // aparecem no fundo". Text3 reads as a soft chrome dim
         // (≈ same as the panel chevrons) so the relationship is
         // clear without competing with the row content.
-        let line_color = resolve(ColorToken::Text3, theme);
+        let line_color = ink.color(ColorToken::Text3);
         // Inter-row gap (set by `y += HIER_ROW_H + list_row_gap_px()`
         // below). Extend each vertical segment by this amount on the
         // bottom so it fuses with the next row's segment without a
@@ -234,12 +240,12 @@ fn row_depths(
 ///
 /// ⚠️ Saiu do corpo do painel para pagar, por CORTE, a linha que o marcador da wave 27 lhe
 /// acrescentou — *as tolerâncias encolhem, nunca crescem*.
-fn paint_drop_indicator(
+pub(crate) fn paint_drop_indicator(
     d: ph2d_editor_core::interaction::HierarchyDragState,
     row_rects: &[(ph2d_a11y::NodeId, Rect)],
     fallback: Rect,
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: RowInk,
 ) {
     for (id, rrect) in row_rects {
         if *id == d.dragged {
@@ -261,16 +267,16 @@ fn paint_drop_indicator(
                 *rrect,
                 Spacing::Sm.px(),
                 StrokeToken::Thick.px(),
-                resolve(ColorToken::Accent, theme),
+                ink.color(ColorToken::Accent),
             );
             return;
         } else {
             Rect::new(rrect.x, rrect.y + rrect.h - 1.0, rrect.w, 2.0)
         };
-        fill_rounded_rect(scene, bar, 1.0, resolve(ColorToken::Accent, theme));
+        fill_rounded_rect(scene, bar, 1.0, ink.color(ColorToken::Accent));
         return;
     }
-    fill_rounded_rect(scene, fallback, 1.0, resolve(ColorToken::Accent, theme));
+    fill_rounded_rect(scene, fallback, 1.0, ink.color(ColorToken::Accent));
 }
 
 fn paint_hierarchy_body(
@@ -417,7 +423,7 @@ fn paint_hierarchy_body(
             row_rect,
             scene,
             text_system,
-            theme,
+            RowInk::Panel(theme),
             Some(*id),
             Some(hit_index),
             has_children,
@@ -426,7 +432,7 @@ fn paint_hierarchy_body(
         );
         paint_parentage_lines(
             scene,
-            theme,
+            RowInk::Panel(theme),
             row_rect,
             rect.x + body_pad,
             indent_px,
@@ -458,7 +464,7 @@ fn paint_hierarchy_body(
     }
     if let Some(d) = dragging.filter(|_| store.hierarchy_drag_in_own_panel()) {
         let fallback = Rect::new(rect.x + body_pad, y - 1.0, row_w, 2.0);
-        paint_drop_indicator(d, &row_rects, fallback, scene, theme);
+        paint_drop_indicator(d, &row_rects, fallback, scene, RowInk::Panel(theme));
     }
     // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram
     // re-registadas aqui, no fim do quadro, para ganharem o z-order ao corpo; sem braço que as
@@ -506,7 +512,11 @@ fn paint_rename_input(
 
 /// ⭐ A linha viaja no arrasto (pinta-se apagada): é a agarrada, ou está seleccionada quando a
 /// agarrada também está — o mesmo critério do `hierarchy_reparent::quem_viaja` (F30 §F).
-fn row_rides_the_drag(is_dragged: bool, drag_carries_selection: bool, row_selected: bool) -> bool {
+pub(crate) fn row_rides_the_drag(
+    is_dragged: bool,
+    drag_carries_selection: bool,
+    row_selected: bool,
+) -> bool {
     is_dragged || (drag_carries_selection && row_selected)
 }
 

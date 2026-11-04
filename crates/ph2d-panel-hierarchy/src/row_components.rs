@@ -6,10 +6,10 @@
 
 use ph2d_editor_core::hier_rows::component_icon;
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{paint_icon, resolve};
+use ph2d_editor_core::paint::paint_icon;
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Spacing, StrokeToken, Theme};
+use ph2d_tokens::{ColorToken, INLINE_ICON_PX, Spacing, StrokeToken};
 use ph2d_vector::VectorScene;
 
 /// Pinta da direita para a esquerda a partir de `right_x` e devolve onde acabou.
@@ -17,21 +17,18 @@ pub(crate) fn paint_component_icons(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
-    theme: Theme,
+    ink: crate::row_ink::RowInk,
     row_id: Option<ph2d_a11y::NodeId>,
     mut hit_index: Option<&mut HitIndex>,
     mut right_x: f32,
 ) -> f32 {
     let size = INLINE_ICON_PX;
     let gap = Spacing::Xxs.px();
-    let color = resolve(
-        if entity.muted {
-            ColorToken::TextDisabled
-        } else {
-            ColorToken::Text3
-        },
-        theme,
-    );
+    let color = ink.color(if entity.muted {
+        ColorToken::TextDisabled
+    } else {
+        ColorToken::Text3
+    });
     for &category in entity.components.iter().rev() {
         let Some(icon) = component_icon(category) else {
             continue;

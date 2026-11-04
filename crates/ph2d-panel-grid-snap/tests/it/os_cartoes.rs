@@ -207,17 +207,31 @@ fn a_change_from_outside_reaches_the_boxes_and_the_next_click_starts_from_it() {
     let mut mesa = Mesa::nova();
     let celula0 = mesa.estado().square_cfg.cell_size;
     let celula = celula0 * 2.0;
-    let caixa0 = mesa.host.store().number_value(g::GS_CFG_CELL_SIZE).expect("caixa");
+    let caixa0 = mesa
+        .host
+        .store()
+        .number_value(g::GS_CFG_CELL_SIZE)
+        .expect("caixa");
     let (snap, vis) = (!mesa.estado().snap_enabled, !mesa.estado().show_overlay);
     {
         let s = mesa.host.grid_snap_state_mut();
         s.square_cfg.cell_size = celula;
+        s.snap_subdivisions = 7;
         s.snap_enabled = snap;
         s.show_overlay = vis;
     }
     mesa.assenta();
-    let caixa = mesa.host.store().number_value(g::GS_CFG_CELL_SIZE).expect("caixa");
+    let caixa = mesa
+        .host
+        .store()
+        .number_value(g::GS_CFG_CELL_SIZE)
+        .expect("caixa");
     assert!((caixa - caixa0 * 2.0).abs() < 1e-3, "{caixa} × {caixa0}");
+    // O que não é comprimento só tem esta porta (o de metros tem também a da unidade).
+    assert_eq!(
+        mesa.host.store().number_value(g::GS_CFG_SNAP_SUBDIVISIONS),
+        Some(7.0)
+    );
     mesa.clica(g::GS_SNAP_ENABLED);
     assert_eq!(mesa.estado().snap_enabled, !snap, "partiu do estado");
     mesa.clica(g::GS_SHOW_OVERLAY);

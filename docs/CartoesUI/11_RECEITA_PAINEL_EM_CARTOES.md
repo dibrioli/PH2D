@@ -133,6 +133,8 @@ Crate inteira do painel, uma vez, com `PH2D_SUITE="motivo: …"` (registo de pai
   lista aberta pinta-se depois dela (`adia_a_lista_suspensa`); medido: sem isto o `Reset` ficava por cima da opção.
 - **Sem cabeçalho de secção no painel de antes:** o id novo vai para `ids` da ferramenta (`UPS_SEC_SCALE`).
 - **Campo que mostra outra coisa que o pedido** (o EPX arredonda): `card_field::com_valores` no corpo, e a semente em `prepare`.
+- **Contador na frase:** `"{n} {n?object|objects}"` na tabela, pelo `tr_with`; nunca `{n} objects` nem `object(s)` (`no_sentence_counts_a_noun_without_its_singular`).
+- **Voo de várias linhas:** `c.list_rows_flight(&linhas, x, y)`; o voo pinta-se depois do recorte do cartão. Bloco alto (camada do Flip): o painel calcula o vão e a queda, família em `PanelRowFamily`, setas ficam.
 - **Painel sem ferramenta:** `PH2D_PANEL_SMOKE=wet_tuning|grid_snap` (na `panel_walk`; a tabela é `tool_activation::painel_do_smoke`).
 - **Abrir sem cena:** `PH2D_IMAGE_TOOL_SMOKE=padding|upscale|equalize_sizes|bgremoval|color_equalization`. Não há imagem: o
   `image_edit.mode_on` é o espelho do Edit de uma imagem, e o `mirror` em `ph2d-app-painter` é que respeita a variável.

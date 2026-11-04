@@ -88,10 +88,25 @@ pub fn paint_pending(ctx: &mut PaintCtx) {
     OPCOES.with(|o| *o.borrow_mut() = opts.iter().map(|(id, ..)| *id).collect());
     let conteudo = m::FIELD_H * opts.len() as f32 + m::SEG_PAD * 2.0;
     let visivel = conteudo.min(altura_das_janelinhas());
+    // A lista tem a largura do nome mais longo (foto `r2_lista_longa_antes_nomes_cortados`), não a da
+    // caixa, e fica dentro da janela.
+    let texto = opts
+        .iter()
+        .map(|(_, t, _)| {
+            ctx.text_system
+                .prefix_width_weighted(t, m::VALUE_PX, ph2d_text::FontWeight::MEDIUM)
+        })
+        .fold(0.0_f32, f32::max);
+    let medida = Rect::new(0.0, 0.0, r.w, visivel);
+    let barra = medida.w - crate::widget::scrollbar_track_rect(medida).x;
+    let janela = ctx.viewport;
+    let largura =
+        r.w.max((texto + m::FIELD_PAD_R * 2.0 + m::SEG_PAD * 2.0 + barra).ceil())
+            .min(janela.w);
     let caixa = Rect::new(
-        r.x,
+        r.x.min(janela.x + janela.w - largura).max(janela.x),
         sobe_para_caber(r.y + r.h + m::SEG_PAD, visivel),
-        r.w,
+        largura,
         visivel,
     );
     let max = (conteudo - visivel).max(0.0);

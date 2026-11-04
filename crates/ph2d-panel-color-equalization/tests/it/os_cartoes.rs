@@ -294,6 +294,39 @@ fn the_long_list_fits_a_low_window_scrolls_and_its_scrolled_option_answers() {
 }
 
 /// *A lista abre com a opção escolhida à vista, mesmo com ela a meio das 16.*
+/// Numa coluna estreita os nomes não se cortam: a lista alarga além da caixa e fica na janela.
+/// *Mutação: a largura de volta a `r.w` ⇒ «Cinem…», a foto `r2_lista_longa_antes_nomes_cortados`.*
+#[test]
+fn the_long_list_shows_whole_names_in_a_narrow_column() {
+    use ph2d_editor_core::zones::Rect;
+    let janela = Rect::new(0.0, 0.0, 340.0, 360.0);
+    let mut m = mesa(tudo());
+    assert!(dropdown::on_click(t::CEQ_LUT_1_DROPDOWN));
+    m.assenta_em(janela);
+    let (h, st) = (&mut m.host, &mut m.st);
+    let medidos = h.medindo_a_pintura::<ColorEqualizationPanel>(st, janela);
+    assert!(
+        medidos
+            .iter()
+            .any(|x| x.texto == "Cinematic" && x.pintado == x.texto),
+        "o nome saiu cortado: {:?}",
+        medidos
+            .iter()
+            .filter(|x| x.pintado != x.texto)
+            .map(|x| &x.pintado)
+            .collect::<Vec<_>>()
+    );
+    let (_, lista) = m.host.store().dropdown_popover().expect("publicada");
+    assert!(
+        lista.x >= 0.0 && lista.x + lista.w <= janela.w + 0.5,
+        "{lista:?}"
+    );
+    assert!(
+        dropdown::on_click(t::CEQ_LUT_1_DROPDOWN),
+        "fecha para o teste seguinte"
+    );
+}
+
 #[test]
 fn the_long_list_opens_with_the_chosen_option_in_view() {
     use ph2d_editor_core::zones::Rect;

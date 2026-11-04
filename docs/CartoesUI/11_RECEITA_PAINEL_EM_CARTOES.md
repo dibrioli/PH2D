@@ -41,7 +41,7 @@ grudado (botão incluído), uma grelha por cartão. Um campo por linha é defeit
 - `corpo::facts` (Storage + Source), `corpo::swatch_strip` (lei 6, sem código), `corpo::colunas_iguais` + `corpo::caixa_ao_lado_do_rotulo` (chip à esquerda, caixa à direita), `corpo::ROW_GAP` (grelha à mão). `caixa_do_botao` já traz o vão; quem pinta botão com `Rect` à mão soma `ROW_GAP`.
 - Rótulo de grupo: na célula sem rótulo o da esquerda continua; ele usa a largura do grupo, não da 1.ª coluna.
 
-**Portões:** `lei_da_compactacao` e `nenhum_texto_sai_do_botao` (`ph2d-panel-registry-init`), por pintura real pelo censo `panel::cards::censo`. `PENDENTES` só desce. Sonda com as frases: `cargo test -p ph2d-panel-registry-init --test it diag_a_tabela_da_compactacao -- --ignored --nocapture`. Não vê: chip pedido por `paint_label_row` (conta como longo), `aviso` e corpo em captura.
+**Portões:** `lei_da_compactacao` e `nenhum_texto_sai_do_botao` (`ph2d-panel-registry-init`), por pintura real pelo censo `panel::cards::censo`. `PENDENTES` só desce. Sonda com as frases: `cargo test -p ph2d-panel-registry-init --test it diag_a_tabela_da_compactacao -- --ignored --nocapture`. Vê a lista sob `paint_label_row`, o `aviso` (`censo::frase`) e o corpo em captura; estados em `censo_estados.rs`. Não vê: segmento como curto, nem tela própria.
 
 ## Que widget para que controlo
 

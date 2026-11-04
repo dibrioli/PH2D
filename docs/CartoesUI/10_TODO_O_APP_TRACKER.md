@@ -552,3 +552,33 @@ Portões por nome, verdes no fim, os mesmos que a G5 não correu: `no_magic_nume
 
 Fotos vistas: `maquete/g6_{1_advanced_tudo,2_advanced_sem_nada,3_brush_sem_arte_vertex_misto,4_lado_traco_compacto,5_lado_efeito_compacto}.png`, `g7_{1_layout_wrap_e_widget,2_layout_grade_recuo_each,3_prefab_armado_orfa}.png`, patch temporário restaurado. Pinos olhado, sem foto guardada. **As fotos g6_1 e g6_2 são anteriores à cura do Pick Shapes:** ele aparece como botão. Guardada sem a abrir: `g7_4_prefab_mestre.png`. Sem foto: Widget sem pele e tipo futuro, Pattern on Path com Pick, lista de ícones e de tokens abertas, rachura do token. Não visto no app, só no mock: scrub, Esc, clique, largura estreita.
 
+### Rodada R4 (04/11, parcial: o prazo acabou antes das contraprovas do item 5)
+
+Commits `3aa82cd025` (espelho), `615113d5b2` (camada das listas), `2e9e73ce22` (censo), `29e8171e62` (fotos e curas).
+
+**1. Censo.** Agora vê a lista sob `paint_label_row` (`censo::rotulo` + `controlo_curto`), o `aviso` (`censo::frase`) e o corpo em captura (`card_ink::com` fora de secção; `colunas_da_linha` anota a linha antiga). Estados semeados em `tests/it/censo_estados.rs`: Vector 6, Skeleton, Physics, Audio Editor (só a compactação os lê; `paineis_armados::TABELA` não mudou, para não mover as outras réguas). Teste `o_zero_tem_populacao` com pisos por painel.
+
+| painel | antes | agora | linhas |
+|---|---|---|---|
+| vector | 0 · 0 · 0 | 0 · 0 · 0 | 6 → 102 |
+| skeleton | 0 · 0 · 0 | 0 · 0 · 0, curado | 2 → 12 |
+| inspector | 0 · 0 · 0 | 0 · 0 · 0, curado | 404 → 453 |
+| painter_layers | 1 · 0 · 0 | **1 · 220 · 0, PENDENTE** | 52 → 745 (693 em captura) |
+| widget_gallery | 7 · 1 · 0 | 7 · 1 · 0 | 126 |
+
+**Para o dono do bloco H:** as 220 são linhas antigas em captura, vão 3 contra 6; o número move-se com a H5 (227 → 220 durante esta rodada) e `lei_da_compactacao` fica vermelho enquanto não for escrito. Mais `Texture + Dual brush`. As linhas capturadas só contam na regra da distância: não têm nome nem largura, logo não acusam irmãos nem texto cortado.
+
+**Vermelhos vistos** (censo com a cegueira curada, antes da cura do painel): Inspector 32 grudadas (`aviso` colado) e `When + Value`; Skeleton `Reach Strength + Curve Tip`; Painter 227. Curas: `aviso_em` usa o vão da grelha num cartão, Value divide a linha com When, Reach com Curve Tip, Remove do script com vão. **Mutantes por tirar a linha não correram:** `controlo_curto`, `frase`, `entra_na_tinta`, estado fora de `ESTADOS`.
+
+**2. Listas por cima.** `panel/camada_das_listas.rs`: `abre` no quadro do hero, `por_cima` nas portas (`paint_dropdown_popover_in_viewport`, `_scrolled`, `paint_popover_scrollbar`) e na lista à mão de «+ Track», `alvo` para os hits, `fecha` depois do HUD e do seletor, antes das dicas e menus. Varrido: fora da porta só havia `tracks::paint_add_track_popover`; `clamp_menu_to_viewport` não tem outro uso em painel. Testes `a_lista_aberta_fica_por_cima` (2, ordem real na cena gravada) e `camada_das_listas` (2). Foto `maquete/r4_timeline_track_aberto.png`: «Opacity» inteira por cima do HUD. **Fora da camada, não medido:** popovers por `paint_popover` (Code, Planner, date picker, `bars_control::paint_stroke_popover` do Vector). **Mutante não correu.** API nova: `VectorScene::is_recording`, `extend_record`, `bottom_hud_rect` público.
+
+**3. Espelho.** Física sem defeito: caixa e bola sob os três espelhos com a mesma trajetória, em bits (`ph2d-physics-ecs/tests/it/espelho_a_simular.rs`, 8). Lei do commit passou a `Transform::de_autoria`; `each_click_reaches_the_transform_of_the_object` vai do clique ao `Transform` (a codificação da shell está repetida no teste, a shell não corre). 7 de 7 contraprovas vermelhas. **Limite medido, não curado:** virar em Y já pousado com offset em Y põe o colisor sob o chão e o corpo cai (`y = -123`); não comparado com Unity/Godot. Por leitura, não medido: `Transform::compose` soma a rotação sob pai espelhado (desenho e física concordam).
+
+**4. Fotos vistas:** `maquete/r4_{camera,script,physics_body,grid_opacity,ghost,timeline_track_aberto}.png`. **A foto desmentiu o censo:** «Addit…» na tira de Frames (curado; `no_toggle_of_the_toolbar_cuts_its_name`; `flip_frames` continua com 0 linhas, cego); Camera, Frame + Icon Size e Outside + Editor View (curado; `the_view_rows_of_the_camera_share_the_line`). **Aberto, não curado:** Physics Body, Mass + Density, Trigger + One-Way e Wall Cling + vizinho descem um por linha; a causa é outra cegueira, o censo não conta segmento como curto. A foto corta o cartão em Grip/Belt. «Script» mostra `bob.luau` duas vezes.
+
+**5. NÃO FEITO, por prazo:** contraprovas da marca colada, do recorte do pedido em espera, de `note_card_key` fora e das guardas do sujeito do preso; teste ponta a ponta do `osso_do_gesto` (continua a ler o fonte; caminho previsto: `osso_do_gesto` + `ph2d_app_skeleton::knobs::apply_from_panel` num mundo real com A preso e B selecionado).
+
+**Decidido sem o dono:** estados semeados em tabela própria da compactação; a frase de aviso num cartão leva o vão da grelha em cima e nada em baixo.
+
+**Portões do briefing:** só `lei_da_compactacao` (com 220 escrito não recorrido depois da última escrita), `nenhum_texto_sai_do_botao`, `o_zero_tem_populacao` por nome. **Não corridos:** `no_magic_numeric`, `hr12_widgets_a11y`, `the_shell_only_shrinks`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango`, `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`, nem a catraca de altura do Inspector, que o vão novo do `aviso` pode acusar.
+

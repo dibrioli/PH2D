@@ -27,6 +27,9 @@ thread_local! {
     static ALTURAS: std::cell::RefCell<Alturas> = const { std::cell::RefCell::new(BTreeMap::new()) };
 }
 
+/// O olho e as duas setas, na linha da camada.
+const CELULAS_DE_ICONE: f32 = 3.0; // LITERAL-PX-OK: contagem de células, não é medida de UI
+
 pub(crate) fn recuo(depth: usize) -> f32 {
     depth as f32 * ph2d_tokens::list_indent_px()
 }
@@ -263,7 +266,7 @@ pub(crate) fn camada(c: &mut CardCtx<'_>, l: &Layer, lugar: Lugar, y: f32) -> f3
     }];
     let nome_id = w(PainterLayerWidget::Row);
     c.x = x + m::FIELD_H;
-    c.w = (largura - m::FIELD_H * 3.0).max(0.0);
+    c.w = (largura - m::FIELD_H * CELULAS_DE_ICONE).max(0.0);
     let mut nome = ListRow::new(nome_id, &l.name);
     nome.selected = lugar.ativa;
     nome.dim = lugar.voa || !l.visible;

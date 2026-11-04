@@ -1,0 +1,103 @@
+name: noite
+
+# A corrida COMPLETA da workspace, uma vez por dia sobre o `main` (PLANO_ACELERACAO item 4, I2).
+# O `spike.yml` cobre 26 pacotes; este cobre todos, no Linux, em software GPU (lavapipe).
+# Compila UMA vez, arquiva, e fatia em 4 jobs: o job gratuito de repo público tem 4 vCPU e 6 h.
+# Números e o que ela não vê (a placa real): docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md §Noite.
+on:
+  schedule:
+    - cron: "30 6 * * *" # 03:30 em Brasília
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_WARNINGS: deny
+  SOURCE_DATE_EPOCH: "1746662400"
+
+jobs:
+  compila:
+    name: compila e arquiva (ci-test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      # `target/ci-test` da workspace inteira tem 20 GB (medido 04/11) e o runner anuncia 14 GB livres.
+      - name: Abrir espaço em disco
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: dtolnay/rust-toolchain@1.99
+      - name: Toolchain do rust-toolchain.toml
+        run: rustup show active-toolchain || rustup show
+      - uses: ./.github/actions/cache-estavel
+        with:
+          shared-key: ubuntu-latest
+      - name: Dependências de sistema
+        run: |
+          for i in 1 2 3; do
+            sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
+            sleep 5
+          done
+          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev libfreetype-dev meson ninja-build nasm
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - name: Arquivar os binários de teste
+        run: |
+          cargo nextest archive --workspace --cargo-profile ci-test --locked --timings --archive-file noite.tar.zst
+          ls -la noite.tar.zst
+          df -h /
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noite-arquivo
+          path: noite.tar.zst
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: noite-timings
+          path: target/cargo-timings/cargo-timing.html
+          retention-days: 14
+          if-no-files-found: warn
+
+  testa:
+    name: testa ${{ matrix.fatia }}/4
+    needs: compila
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        fatia: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependências de sistema e GPU por software
+        run: |
+          for i in 1 2 3; do
+            sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
+            sleep 5
+          done
+          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers
+      - uses: dtolnay/rust-toolchain@1.99
+      - name: Toolchain do rust-toolchain.toml
+        run: rustup show active-toolchain || rustup show
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - uses: actions/download-artifact@v4
+        with:
+          name: noite-arquivo
+      - name: Correr a fatia
+        run: |
+          cargo nextest run --archive-file noite.tar.zst --workspace-remap . \
+            --profile noite --partition hash:${{ matrix.fatia }}/4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: noite-junit-${{ matrix.fatia }}
+          path: target/nextest/noite/junit.xml
+          retention-days: 14
+          if-no-files-found: warn

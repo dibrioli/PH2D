@@ -1,0 +1,30 @@
+name: cache-estavel
+description: >
+  Swatinem/rust-cache com a chave estável (só a toolchain pinada no hash) e o orçamento de cache
+  (salva só em cron ou à mão). Medição e porquê: docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md.
+inputs:
+  shared-key:
+    description: chave partilhada do rust-cache
+    required: true
+runs:
+  using: composite
+  steps:
+    # O rust-cache põe no hash TODAS as toolchains de `rustup toolchain list`, e a imagem do runner traz
+    # um `stable` que anda sozinho: em 29/10 Ubuntu e macOS deram `No cache found` só por isso.
+    - name: Deixar instalada só a toolchain pinada
+      shell: bash
+      run: |
+        pin="$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)"
+        [ -n "$pin" ] || { echo "rust-toolchain.toml sem channel" >&2; exit 1; }
+        rustup toolchain list | tr -d '\r' | cut -d' ' -f1 | while read -r t; do
+          case "$t" in
+            "$pin"-*) ;;
+            *) rustup toolchain uninstall "$t" ;;
+          esac
+        done
+        rustup toolchain list
+    # Salvar só em cron/à mão: 10,82 GB contra o limite de 10 GB, e 0,5–2,8 min por job a salvar.
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.shared-key }}
+        save-if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}

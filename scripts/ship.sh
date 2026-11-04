@@ -29,6 +29,10 @@ if [ "${PH2D_NA_PORTA:-0}" != "1" ]; then
 fi
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
+# `--so-estatico`: só o que não precisa de correr testes (o pré-voo do `suite-completa.sh`).
+_so_estatico=0
+[ "${1:-}" = "--so-estatico" ] && _so_estatico=1
+
 fail=0
 results=()
 
@@ -121,6 +125,14 @@ for _a in docs/archive/*/; do
     grep -q 'INDICE-DERIVADO' "${_a}README.md" 2>/dev/null || continue
     run "índice de $(basename "$_a") em dia" python3 scripts/archive-index.py "${_a%/}" --check
 done
+
+if [ "$_so_estatico" = 1 ]; then
+    printf '\n\033[1m── pré-voo estático ──\033[0m\n'
+    for r in "${results[@]}"; do printf '  %s\n' "$r"; done
+    exit "$fail"
+fi
+# A suíte chamada aqui não repete o pré-voo que acabou de correr.
+export PH2D_PREVOO=0
 
 # ── CI `test` job parity (nextest covers arch gates + cook-hash) ─────────
 # ⚠️ `CARGO_INCREMENTAL=0` nos DOIS: o perfil `ci-test` só roda em BATCH, então

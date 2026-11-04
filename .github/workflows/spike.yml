@@ -2,7 +2,7 @@ name: spike
 
 # Wave 10 / Etapa 0.4 — parallel feature-branch CI.
 # Triggers:
-#   push main/spike/**   → FULL run (lint + test matrix 3 OS, ~30-45min)
+#   push main/spike/**   → FULL run (lint AO LADO da matriz de 3 SO; números: docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md)
 #   push feat/**         → FAST subset (lint only, ~8-12min)
 #                           Matrix test job is gated to NOT run on feat/*.
 #                           Use a PR to main to get full matrix before merge.
@@ -18,6 +18,10 @@ on:
     branches: [main, "spike/**", "feat/**"]
   pull_request:
     branches: [main]
+  # Só o cron e o disparo à mão SALVAM o cache (`.github/actions/cache-estavel`).
+  schedule:
+    - cron: "0 5 * * *" # 02:00 em Brasília
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -53,20 +57,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      # Toolchain channel is PINNED to 1.99 (matches rust-toolchain.toml), not
-      # @stable. @stable rotates Swatinem/rust-cache's rustc-hash on every Rust
-      # release, busting every per-OS cache at once and forcing cold rebuilds —
-      # the 2026-06-30 stuck-cold Windows loop (run 28473978977). A fixed channel
-      # keeps the cache key stable across releases. Bump these `@1.99` refs in
-      # lockstep com o rust-toolchain.toml quando o pin se mover — e o gate
-      # `architecture_msrv_is_the_pinned_toolchain` obriga a MSRV a mover-se junto.
-      # ⚠️ São QUATRO (linhas 49, 235, 461, 628) e uma esquecida não dá erro: dá um
-      # job a medir outra toolchain, com a cache a rodar sozinha. 1.95 → 1.98 em
-      # 2026-08-29 (`docs/Atualizar Stack/`, bloco A).
+      # O canal está PINADO (o mesmo do rust-toolchain.toml): um `@stable` faria o job medir outra toolchain.
+      # ⚠️ Pinar NÃO estabiliza a chave do cache: o rust-cache põe no hash TODAS as toolchains instaladas, e
+      # quem corrige isso é `.github/actions/cache-estavel`. Os `@1.99` são TRÊS aqui (lint, test, bench),
+      # mais dois em `noite.yml` e o `miri.yml`; movem-se com o pin, e a MSRV com eles
+      # (`architecture_msrv_is_the_pinned_toolchain`).
       - uses: dtolnay/rust-toolchain@1.99
         with:
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-estavel
         with:
           shared-key: lint
 
@@ -191,7 +190,7 @@ jobs:
   test:
     name: ${{ matrix.os }} — workspace check + tests
     runs-on: ${{ matrix.os }}
-    needs: [lint]
+    # Sem `needs: lint`: o lint é 12 min e corre AO LADO (repo público: minutos não custam).
     # Wave 10 / Etapa 0.4 — skip on feat/** branches.
     # Feat branches get lint only (fast feedback ~8-12min).
     # Full matrix runs on PR-to-main and on push to main/spike.
@@ -309,7 +308,7 @@ jobs:
           Add-MpPreference -ExclusionProcess "cargo.exe"
           Add-MpPreference -ExclusionProcess "link.exe"
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-estavel
         with:
           shared-key: ${{ matrix.os }}
 
@@ -326,7 +325,7 @@ jobs:
             sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
             sleep 5
           done
-          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev
+          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev libfreetype-dev
 
       # ph2d-imageio-avif (W3.T4, ADR-0054 §5.18) builds dav1d + rav1e
       # from vendored source: meson+ninja compile dav1d, nasm assembles
@@ -436,7 +435,7 @@ jobs:
             -p ph2d-imageio-jxl \
             -p ph2d-imageio-svg \
             -p ph2d-imageio-registry-init \
-            --cargo-profile ci-test --locked
+            --cargo-profile ci-test --locked --timings
 
       # Doctests aren't covered by nextest. ph2d-ecs has the
       # `extract!` compile_fail proof that catches mutable-sim
@@ -449,13 +448,8 @@ jobs:
       - name: cargo check (workspace, --features bevy_ecs) --locked
         run: cargo check --workspace --locked --features ph2d-spike/bevy_ecs
 
-      - name: ph2d-bindgen drift check (HR-10 parity)
-        run: cargo run --release --locked -p ph2d-bindgen
-
       # Build (not run) the desktop shell — verifies winit + wgpu
-      # link cross-OS. Was `--release` before; switched to default
-      # because the step's purpose is link verification, not
-      # producing a distribution binary. Saved ~3-4 min on Windows.
+      # link cross-OS, no MESMO perfil `ci-test` do nextest: um perfil por job.
       #
       # ⛔⛔ **`-A linker_messages` — e não é silenciar um defeito nosso.** Em 2026-08-30 o job de
       # macOS reprovou aqui com um aviso do `ld` da Apple:
@@ -489,9 +483,19 @@ jobs:
       # duas têm a mesma forma: o portão local corre noutro sistema, com outro linker, e não pode
       # vê-las. *O `ship.sh` não substitui a matriz; ele só a antecipa onde partilham o alvo.*
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
-        run: cargo build --locked -p ph2d-host-desktop
+        run: cargo build --locked --profile ci-test --timings -p ph2d-host-desktop
         env:
           CARGO_BUILD_WARNINGS: warn
+
+      # O que faz cada job demorar, para o próximo corte (Servo faz o mesmo).
+      - name: Guardar os tempos de compilação
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-timings-${{ matrix.os }}
+          path: target/cargo-timings/
+          retention-days: 14
+          if-no-files-found: warn
 
       # Correctness fixtures only — no perf-gated benches in CI.
       # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,
@@ -502,90 +506,20 @@ jobs:
       # plan as M14+ infra work).
       - name: spike correctness fixtures (no ECS)
         run: |
-          cargo run --release --locked --bin hello_runner -p ph2d-spike
-          cargo run --release --locked --bin c13_migration -p ph2d-spike
+          cargo run --profile ci-test --locked --bin hello_runner -p ph2d-spike
+          cargo run --profile ci-test --locked --bin c13_migration -p ph2d-spike
 
       - name: spike correctness fixtures (with bevy_ecs)
         run: |
-          cargo run --release --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
-          cargo run --release --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
-          cargo run --release --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
-
-  # --------------------------------------------------------------------------
-  # Cross-platform replay determinism (HR-5). The whole point: hash equal on
-  # Linux, macOS, Windows.
-  # --------------------------------------------------------------------------
-  determinism:
-    name: ${{ matrix.os }} — C9 cross-platform replay hash
-    runs-on: ${{ matrix.os }}
-    needs: test
-    # ⚠️ O teto cobre o BUILD, não o run — e o comentário anterior media a coisa
-    # errada ("single binary run + hash capture; observed ~3-5 min", teto 15).
-    # O que ele descrevia são os TRÊS runs, que de fato são baratos e NÃO cresceram.
-    # Quem custa é a PRIMEIRA invocação do cargo, que paga a compilação inteira, e o
-    # preço dela é função de quanto o `rust-cache` acertou — coisa que este job não
-    # controla. Medido no windows-latest, mesmo job, dois dias seguidos:
-    #
-    #   passo                          31/07 (verde)   01/08 (cancelado)
-    #   rust-cache (restore)              1m51            1m34
-    #   C9 ECS  ← paga o BUILD            2m28           10m22    (4,2x)
-    #   physics C9                          51s             61s
-    #   physics-ECS C9 (bridge)           3m03           cortado aos 1m19
-    #   TOTAL                             9m00           15m -> parede
-    #
-    # A jornada de 7 linhas de 01/08 mexeu em crates suficientes para o cache
-    # restaurar menos, e o job bateu o teto NO MEIO do 3º hash — com tudo o mais
-    # do run verde. 45 é 3x o pior observado e metade do que o job `test` irmão já
-    # orça (90) para exatamente o mesmo build, no mesmo OS.
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.99
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: ${{ matrix.os }}
-
-      # c9_replay pulls ph2d-ecs → ph2d-asset → ph2d-imageio-avif →
-      # libavif-sys → libdav1d-sys, which builds dav1d from vendored source
-      # (meson+ninja) with nasm-assembled SIMD. The `test` job installs these
-      # and warms the cache; this job restores it, but a cache miss (seen on
-      # ubuntu) rebuilds the -sys crate and needs the tools present too.
-      # ⚠️ (13/10) E o fontconfig/freetype: o `physics_ecs_c9` LIGA-OS desde a W18 do Quadro
-      # (ph2d-ecs → ph2d-asset → ph2d-imageio-registry-init → ph2d-imageio-svg → parley 0.11 →
-      # fontique → yeslogic-fontconfig-sys) — sem eles o link falhou («unable to find library
-      # -lfontconfig / -lfreetype») só aqui; os outros jobs já os instalam pelo mesmo caminho.
-      - name: Install AVIF build tools (meson + ninja + nasm) + fontconfig
-        shell: bash
-        run: |
-          case "${{ runner.os }}" in
-            Linux)
-              for i in 1 2 3; do
-                sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
-                sleep 5
-              done
-              sudo apt-get install -y meson ninja-build nasm libfontconfig1-dev libfreetype-dev
-              ;;
-            macOS)
-              brew install meson ninja nasm
-              ;;
-            Windows)
-              choco install -y nasm ninja
-              python -m pip install --upgrade meson
-              # choco installs nasm to "C:\Program Files\NASM"; put it
-              # on PATH for the dav1d meson build.
-              echo "C:\\Program Files\\NASM" >> "$GITHUB_PATH"
-              ;;
-          esac
+          cargo run --profile ci-test --locked --bin c11_bevy --features bevy_ecs -p ph2d-spike
+          cargo run --profile ci-test --locked --bin c4_hot_reload --features bevy_ecs -p ph2d-spike
+          cargo run --profile ci-test --locked --bin c14_memory --features bevy_ecs -p ph2d-spike
 
       - name: Run C9 replay (ECS) and capture baseline hash
         id: replay
         shell: bash
         run: |
-          OUT=$(cargo run --release --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
+          OUT=$(cargo run --profile ci-test --locked --quiet --bin c9_replay --features bevy_ecs -p ph2d-spike)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^baseline hash: ' | awk '{print $3}')
           echo "Captured hash: $HASH"
@@ -608,7 +542,7 @@ jobs:
         id: physics_replay
         shell: bash
         run: |
-          OUT=$(cargo run --release --locked --quiet --bin ph2d_physics_c9 -p ph2d-physics)
+          OUT=$(cargo run --profile ci-test --locked --quiet --bin ph2d_physics_c9 -p ph2d-physics)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^physics-c9 hash: ' | awk '{print $3}')
           echo "Captured physics hash: $HASH"
@@ -630,7 +564,7 @@ jobs:
         id: physics_ecs_replay
         shell: bash
         run: |
-          OUT=$(cargo run --release --locked --quiet --bin physics_ecs_c9 -p ph2d-physics-ecs)
+          OUT=$(cargo run --profile ci-test --locked --quiet --bin physics_ecs_c9 -p ph2d-physics-ecs)
           echo "$OUT"
           HASH=$(echo "$OUT" | grep -E '^physics-ecs-c9 hash: ' | awk '{print $3}')
           echo "Captured physics-ecs hash: $HASH"
@@ -643,9 +577,14 @@ jobs:
           path: ${{ runner.temp }}/physics-ecs-c9-hash.txt
           if-no-files-found: error
 
+  # --------------------------------------------------------------------------
+  # Cross-platform replay determinism (HR-5): os passos C9 vivem no job `test`, no MESMO alvo `ci-test`.
+  # O hash em `ci-test` é o mesmo do `--release` antigo, nos três SO (prova em
+  # docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md §Perfil).
+  # --------------------------------------------------------------------------
   determinism-compare:
     name: C9 cross-platform comparison (ECS + physics)
-    needs: determinism
+    needs: test
     runs-on: ubuntu-latest
     # Pure artifact diff, no compile; observed <1 min.
     timeout-minutes: 5
@@ -716,7 +655,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.99
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/cache-estavel
         with:
           shared-key: bench
 

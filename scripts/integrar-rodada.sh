@@ -3,6 +3,7 @@
 # docs/DevOps/COMISSAO_VELOCIDADE_2026-10-29.md). Medido em 29/10: 5 linhas em série = ~9 h, 11 suítes
 # de 21–31 min; a 1.ª de cada linha sempre vermelha, a 2.ª inteira só confirmava 1–7 curas.
 #
+#   bash scripts/integrar-rodada.sh [-C <worktree>] linha                         # UMA linha com o main ancestral: sem rebase, a seguir suite/falhas/b2
 #   bash scripts/integrar-rodada.sh [-C <worktree>] cadeia <rodada> <linha>...   # rebase em CADEIA + check/censos/recontar por linha
 #   bash scripts/integrar-rodada.sh [-C <worktree>] suite                         # UMA suíte completa no tip
 #   bash scripts/integrar-rodada.sh [-C <worktree>] falhas [--bisecar]            # cada vermelho → a linha que o trouxe
@@ -100,8 +101,21 @@ cmd_cadeia() {
   echo "✓ cadeia verde ($(wc -l <"$EST/estado.tsv") linhas). Próximo: integrar-rodada.sh suite"
 }
 
+# ⭐ Uma linha só (o caminho normal desde 03/11): o `main` é ancestral, não há rebase nem cadeia; `linha` só
+# deixa o estado que `suite`, `falhas`, `b2` e `ff` leem. Reds de 04/11: 4 × ~28 min de suíte repetida.
+cmd_linha() {
+  local l; l="$(G branch --show-current)"
+  [ -n "$l" ] || { echo "✗ HEAD destacado: corra num ramo" >&2; exit 2; }
+  G merge-base --is-ancestor "$MAIN" HEAD || { echo "✗ $MAIN não é ancestral de $l: rebase primeiro, ou use «cadeia»" >&2; exit 2; }
+  rm -rf "$EST"; mkdir -p "$EST"
+  G rev-parse "$MAIN" >"$EST/inicio"; echo "$l" >"$EST/rodada"; echo "$l" >"$EST/ramo"
+  printf '1\t%s\t%s\t%s\t%s\tsem-rebase\t-\t-\t-\tverde\n' "$l" "$(G rev-parse "$MAIN")" "$(G rev-parse HEAD)" \
+    "$(G rev-list --count "$MAIN..HEAD")" >"$EST/estado.tsv"
+  echo "✓ linha $l sobre $MAIN ($(G rev-list --count "$MAIN..HEAD") commits). Próximo: integrar-rodada.sh suite"
+}
+
 cmd_suite() {
-  [ -s "$EST/estado.tsv" ] || { echo "✗ corra «cadeia» primeiro" >&2; exit 2; }
+  [ -s "$EST/estado.tsv" ] || { echo "✗ corra «linha» ou «cadeia» primeiro" >&2; exit 2; }
   local rc t0
   G rev-parse HEAD >"$EST/suite-sha"; G rev-parse 'HEAD^{tree}' >"$EST/suite-arvore"
   t0="$(agora)"
@@ -263,7 +277,7 @@ cmd_b2() {
 }
 
 cmd_ff() {
-  local r ramo prim; r="$(rodada)"; ramo="integ/$r"
+  local r ramo prim; r="$(rodada)"; ramo="$(cat "$EST/ramo" 2>/dev/null || echo "integ/$r")"
   [ -n "$r" ] || { echo "✗ sem rodada neste worktree" >&2; exit 2; }
   G merge-base --is-ancestor "$MAIN" "$ramo" || { echo "✗ $MAIN andou e não está em $ramo: re-corra a cadeia sobre ele" >&2; exit 1; }
   grep -q "^$(chave_da_arvore)	" "$REG" 2>/dev/null || { echo "✗ a árvore de $ramo NÃO está verde no registo ($REG): suite + b2 primeiro" >&2; exit 1; }
@@ -277,6 +291,7 @@ cmd_ff() {
 
 sub="${1:-}"; shift || true
 case "$sub" in
+  linha) cmd_linha "$@" ;;
   cadeia) cmd_cadeia "$@" ;;
   suite) cmd_suite "$@" ;;
   falhas) cmd_falhas "$@" ;;

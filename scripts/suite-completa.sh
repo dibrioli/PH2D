@@ -53,7 +53,7 @@ suite_arvore_head() {
 # ⚠️ Fora da chave só os botões de RECURSO da porta e o próprio forçar (o mesmo corte do nextest-impacted).
 suite_chave() {
   printf '%s\n%s\n%s\n%s\n' "$1" "$(rustc -vV 2>/dev/null)" "$2" \
-    "$(env | grep -E '^(PH2D_|CARGO_)' | grep -vE '^PH2D_(PORTAO_FORCAR|NA_PORTA|PRAZO|GPU|GPU_ESPERA|GPU_VEZ|GPU_FECHADURA|CPU_PCT|MEM_MAX|SUITE|SUITE_CADA|TEMPOS_LOG|SUITES_VERDES)=' | sort)" \
+    "$(env | grep -E '^(PH2D_|CARGO_)' | grep -vE '^PH2D_(PORTAO_FORCAR|PREVOO|NA_PORTA|PRAZO|GPU|GPU_ESPERA|GPU_VEZ|GPU_FECHADURA|CPU_PCT|MEM_MAX|SUITE|SUITE_CADA|TEMPOS_LOG|SUITES_VERDES)=' | sort)" \
     | sha256sum | cut -c1-32
 }
 _registo="${PH2D_SUITES_VERDES:-$(git rev-parse --git-common-dir)/ph2d-suites-verdes.tsv}"
@@ -84,6 +84,18 @@ fi
 
 # shellcheck source=scripts/tempos-teste-lib.sh
 source scripts/tempos-teste-lib.sh
+# ⭐ Pré-voo: o que reprova em segundos reprova ANTES da meia hora. Na integração de 04/11, 3 das 7 suítes
+# (87 min) vieram de fmt/typos/clippy/machete/deny achados depois de uma suíte verde. `PH2D_PREVOO=0` salta.
+if [ "${PH2D_PREVOO:-1}" != 0 ] && [ -f scripts/ship.sh ]; then
+  _tp="$(tt_agora)"; _lp="$(tt_load)"
+  bash scripts/ship.sh --so-estatico
+  _rp=$?
+  tt_registar prevoo workspace 0 0 "$(tt_dif "$_tp" "$(tt_agora)")" "$_lp" "$_rp"
+  if [ "$_rp" != 0 ]; then
+    echo "[suite-completa] ✗ o pré-voo estático reprovou — a suíte NÃO correu (cure as linhas ✗ acima)" >&2
+    exit 3
+  fi
+fi
 _tt="$(mktemp)"; _t0="$(tt_agora)"; _l0="$(tt_load)"
 # ⛔ Cada termo dos `filter =` do nextest.toml casa ≥ 1 teste real (29/10: um ficheiro partido mudou o nome
 # de um teste, o prazo de 10 min deixou de se lhe aplicar e ele morreu aos 180 s). A lista reaproveita a

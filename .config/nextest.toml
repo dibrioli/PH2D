@@ -166,6 +166,20 @@ fail-fast = false
 [profile.default.junit]
 path = "junit.xml"
 
+# A corrida da noite (`.github/workflows/noite.yml`): 4 vCPU por fatia, ¼ da fatia local; o prazo por teste
+# é do RUNNER e o número medido está em docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md §Noite.
+# Uma repetição só CLASSIFICA: o que passa à 2.ª vem como FLAKY no junit, nunca escondido.
+[profile.noite]
+fail-fast = false
+retries = 1
+
+[profile.noite.junit]
+path = "junit.xml"
+
+[[profile.noite.overrides]]
+filter = 'all()'
+slow-timeout = { period = "300s", terminate-after = 6 }
+
 # ⭐ W5e (2026-10-11) — a LUZ 2D NA PLACA, limitada pela MEMÓRIA da placa (não pelo relógio): cada gate
 # aloca 0,3–4 GB de VRAM (a 2160p, a recusa de memória do `os_tetos_da_placa`) e o solver nasce sob o
 # escopo `OutOfMemory`. Na suíte inteira em paralelo a placa RECUSOU (`SemMemoria`) 9 de 17 508 — com

@@ -149,7 +149,6 @@ impl<'a> Rotulo<'a> {
         }
     }
 
-
     /// Um nome composto (`tr_with`) para o campo `campo` do catálogo.
     #[must_use]
     pub fn de_campo(texto: &'a str, campo: TextKey) -> Self {
@@ -290,7 +289,8 @@ pub fn com_marcas_de<R>(pin: u64, f: impl FnOnce() -> R) -> R {
 /// `Animado` > `Livre`); `None` = nenhum tem canal.
 #[must_use]
 pub fn key_mark_of(fields: &[NodeId]) -> Option<KeyMark> {
-    let forte = |m: &BTreeMap<NodeId, KeyMark>| fields.iter().filter_map(|id| m.get(id).copied()).max();
+    let forte =
+        |m: &BTreeMap<NodeId, KeyMark>| fields.iter().filter_map(|id| m.get(id).copied()).max();
     match PINTANDO.with(Cell::get) {
         Some(pin) => DOS_PRESOS.with(|p| p.borrow().get(&pin).and_then(forte)),
         None => MARCAS.with(|m| forte(&m.borrow())),

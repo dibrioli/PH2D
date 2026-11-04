@@ -315,11 +315,20 @@ mod tests {
         let seam = l.dock_seam(DockSide::Right);
         let mut store = WidgetStore::default();
         let cartao = ph2d_a11y::NodeId(70);
-        store.detach_card(cartao, ph2d_a11y::NodeId(7), (seam.x - 100.0, seam.y), 300.0);
+        store.detach_card(
+            cartao,
+            ph2d_a11y::NodeId(7),
+            (seam.x - 100.0, seam.y),
+            300.0,
+        );
         store.set_loose_card_rect(cartao, Rect::new(seam.x - 100.0, seam.y, 300.0, seam.h));
         let mut scene = VectorScene::new();
         paint_float_seams(&l, &store, &mut scene, Theme::Dark);
-        assert_eq!(scene.inner().encoding().n_path_segments, 0, "a marca riscou o cartão");
+        assert_eq!(
+            scene.inner().encoding().n_path_segments,
+            0,
+            "a marca riscou o cartão"
+        );
     }
 
     /// ⭐ D24, espelho (bloco F): a lista da esquerda deixa o canvas ir à borda e a régua com ele; as

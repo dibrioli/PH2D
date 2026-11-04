@@ -229,7 +229,12 @@ pub fn paint_icon_button_in_group(
             );
             let radii = cell.radii(radius);
             if cell == super::GroupCell::ONLY {
-                fill_rounded_rect(scene, rect, radius, crate::widget::card_ink::tinta(ColorToken::BgElev, theme));
+                fill_rounded_rect(
+                    scene,
+                    rect,
+                    radius,
+                    crate::widget::card_ink::tinta(ColorToken::BgElev, theme),
+                );
             } else {
                 crate::paint::fill_rounded_rect_radii(
                     scene,

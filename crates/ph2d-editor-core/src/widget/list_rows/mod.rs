@@ -41,8 +41,10 @@ pub fn paint_row_stripe(
         return;
     }
     // No cartão a listra é o fundo DELE movido 5/255, nunca o do Inspector (05 §5).
-    let fundo = crate::widget::card_ink::card_body()
-        .map_or_else(|| base.resolve(theme), crate::widget::card_ink::CardInk::superficie);
+    let fundo = crate::widget::card_ink::card_body().map_or_else(
+        || base.resolve(theme),
+        crate::widget::card_ink::CardInk::superficie,
+    );
     let tint = ph2d_tokens::faint_row_bg(fundo);
     crate::paint::fill_rounded_rect(
         scene,

@@ -31,6 +31,8 @@ Nasceu do bloco B (Physics, 04/11). Exemplo completo e testado: `crates/ph2d-pan
 Antes de escrever o corpo, leia a lei em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md): irmãos curtos dividem a linha, nada
 grudado (botão incluído), uma grelha por cartão. Um campo por linha é defeito, salvo os casos da lei.
 
+**Micro-pesquisa antes de cada cartão:** veja como o Figma e o Rive fazem e registe em [16](16_REFERENCIAS_POR_CARTAO.md).
+
 ## Que widget para que controlo
 
 | Controlo de antes | No cartão | Id |

@@ -11,6 +11,9 @@ Tint Fill poderiam estar na mesma linha. É preciso estabelecer regras».
 
 A lei completa está em `docs/CartoesUI/05_ESPECIFICACAO_UI_COMPLETA.md` §4 (generaliza a T56).
 
+E, no mesmo smoke: «os agentes poderiam fazer micro pesquisas antes de mudar cada card, para ver como figma e Rive fazem»:
+regra em 05 §0, tabela em `docs/CartoesUI/16_REFERENCIAS_POR_CARTAO.md`.
+
 **Why:** a T56 só foi aplicada ao Physics Body; sem lei geral, cada agente empilhou um campo por linha, o painel cresceu
 e o resultado ficou espaçoso. Teste verde e foto «no padrão» não apanham isto: a pergunta tem de ser feita.
 

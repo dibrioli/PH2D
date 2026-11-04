@@ -288,12 +288,12 @@ pub fn paint_tool_hint_hud(
 
 #[cfg(test)]
 mod o_hud_cede_tests {
+    use super::{BottomHudStats, bar, cede_ao_vao};
     use super::{no_vao, vao_do_hud};
     use crate::interaction::WidgetStore;
     use crate::screens::layout::HeroLayout;
     use crate::zones::Rect;
     use ph2d_a11y::NodeId;
-    use super::{BottomHudStats, bar, cede_ao_vao};
 
     /// A largura que a pílula pede no app a 1200 px (a foto `b_physics_debug_dobrado_hud_por_cima.png`).
     const PILULA: f32 = 1036.0;
@@ -341,7 +341,11 @@ mod o_hud_cede_tests {
         assert!(pede > 0.0, "a medida precisa de fonte");
 
         let cabe = cede_ao_vao(inteira.clone(), pede + 1.0, &mut ts);
-        assert_eq!(cabe.segments.len(), inteira.segments.len(), "cabe: não tira nada");
+        assert_eq!(
+            cabe.segments.len(),
+            inteira.segments.len(),
+            "cabe: não tira nada"
+        );
 
         let vao = pede * 0.6;
         let cedeu = cede_ao_vao(inteira.clone(), vao, &mut ts);
@@ -351,8 +355,14 @@ mod o_hud_cede_tests {
             "as que ficam cabem INTEIRAS em {vao}"
         );
         let textos: Vec<_> = cedeu.segments.iter().map(|s| s.text.as_str()).collect();
-        assert_eq!(textos[0], inteira.segments[0].text, "o modo fica: {textos:?}");
-        assert!(textos.contains(&inteira.segments[1].text.as_str()), "o fps fica: {textos:?}");
+        assert_eq!(
+            textos[0], inteira.segments[0].text,
+            "o modo fica: {textos:?}"
+        );
+        assert!(
+            textos.contains(&inteira.segments[1].text.as_str()),
+            "o fps fica: {textos:?}"
+        );
         assert!(
             !textos.contains(&inteira.segments[2].text.as_str()),
             "o diagnóstico sai primeiro: {textos:?}"

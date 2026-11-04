@@ -578,7 +578,10 @@ mod tests {
             "o voo pintou-se dentro do recorte do cartão"
         );
         voo::pinta_os_voos(c.scene);
-        assert!(c.scene.inner().encoding().n_path_segments > antes, "o voo perdeu-se");
+        assert!(
+            c.scene.inner().encoding().n_path_segments > antes,
+            "o voo perdeu-se"
+        );
         let rects: Vec<(NodeId, Rect)> = f.hits.iter_registrations().collect();
         assert_eq!(rects.len(), 3, "duas linhas e um campo; o voo não regista");
         let campo = rects.iter().find(|(id, _)| *id == NodeId(3)).unwrap().1;

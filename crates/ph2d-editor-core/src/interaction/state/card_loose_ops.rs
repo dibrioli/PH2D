@@ -130,9 +130,7 @@ impl WidgetStore {
             .loose
             .keys()
             .filter_map(|k| self.panel_rect(loose_rect_of(*k)))
-            .any(|c| {
-                r.x < c.x + c.w && c.x < r.x + r.w && r.y < c.y + c.h && c.y < r.y + r.h
-            })
+            .any(|c| r.x < c.x + c.w && c.x < r.x + r.w && r.y < c.y + c.h && c.y < r.y + r.h)
     }
 
     /// Os cartões soltos de `panel`, do mais fundo ao de cima.

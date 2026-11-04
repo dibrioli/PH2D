@@ -25,6 +25,8 @@
 3. Complexidade que o Figma não resolve ⇒ **Rive** é a segunda referência mais importante.
 4. Ainda por resolver ⇒ **Inkscape, Godot e Unity** podem servir de referência.
 
+**Micro-pesquisa antes de cada cartão (dono 04/11):** antes de mudar um cartão, veja como o Figma e o Rive resolvem aquilo: 1 a 3 consultas à documentação oficial e a imagens públicas, poucos minutos. Registe uma linha em [16_REFERENCIAS_POR_CARTAO.md](16_REFERENCIAS_POR_CARTAO.md) (cartão · Figma · Rive · o que adotamos), e consulte-a antes, para não repetir. Sem referência clara: escolha pela ordem acima e registe a dúvida para o dono. Leis e decisões do dono mandam sobre a referência.
+
 Corolário (CLAUDE.md §0.9): outro app que já faz isto é ORÁCULO que se corre, não fonte que se lê;
 triagem de licença por artefacto primeiro. Alvo do dono: superar o Figma e a Godot (D8).
 

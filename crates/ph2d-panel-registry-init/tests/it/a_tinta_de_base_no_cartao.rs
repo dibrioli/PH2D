@@ -3,6 +3,7 @@
 #![cfg(feature = "panel-inspector")]
 
 use super::cartoes_mao::{InspectorPrivado, centro, clica, mao, pinta};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
@@ -582,4 +583,70 @@ fn a_linked_base_shows_the_style_name_and_detaches() {
         estilos::take_pedidos(),
         vec![estilos::Pedido::Soltar { camada: HEX_FILL }]
     );
+}
+
+/// ⭐ C3: na pilha, cada linha tem as marcas dela (a chave é por camada) e só a 1.ª repete os nomes; o
+/// clique no losango de uma linha de baixo pede essa linha.
+/// *Mutação: as marcas só com rótulo em `compoe`, ou `so_marcas` fora de `row` ⇒ a 2.ª linha sem alvo.*
+#[test]
+fn every_row_of_a_paint_stack_has_its_own_marks() {
+    use ph2d_editor_core::widget::key_mark;
+    let (mut h, _l) = hero();
+    forma(
+        [BasePaint::Shown, BasePaint::Shown],
+        vec![camada(true, VERDE, 1.0), camada(true, LARANJA, 0.5)],
+        Vec::new(),
+    );
+    pinta(&mut h, 12);
+    let linhas = [
+        (
+            vids::vector_paint_swatch_id(1),
+            vids::vector_paint_row_opacity_id(1),
+        ),
+        (
+            vids::vector_paint_swatch_id(0),
+            vids::vector_paint_row_opacity_id(0),
+        ),
+        (vids::VECTOR_FILL_SWATCH, vids::VECTOR_FILL_OPACITY_NUM),
+    ];
+    key_mark::set_key_marks(
+        linhas
+            .iter()
+            .flat_map(|(cor, op)| {
+                [
+                    (*cor, key_mark::KeyMark::Livre),
+                    (*op, key_mark::KeyMark::Livre),
+                ]
+            })
+            .collect(),
+    );
+    pinta(&mut h, 1);
+    let mut topos = Vec::new();
+    for (i, (cor, op)) in linhas.into_iter().enumerate() {
+        let caixa = h.hit_index.rect_for(cor).expect("a linha pintou-se");
+        for campo in [cor, op] {
+            let marca = h
+                .hit_index
+                .rect_for(key_mark::key_mark_id(campo))
+                .unwrap_or_else(|| panic!("a linha {i} sem a marca do campo {campo:?}"));
+            assert!(
+                marca.y + marca.h <= caixa.y && caixa.y - marca.y <= 2.0 * m::KEY_MARK_BOX,
+                "a marca da linha {i} não está logo acima dela: {marca:?} × {caixa:?}"
+            );
+        }
+        topos.push(caixa.y);
+    }
+    assert!(topos[0] < topos[1] && topos[1] < topos[2], "{topos:?}");
+    let passo = topos[2] - topos[1];
+    assert!(
+        (passo - (m::FIELD_H + m::FIELD_ROW_GAP + m::KEY_MARK_BOX)).abs() < 0.5,
+        "a linha sem nomes não é compacta: {passo}"
+    );
+    let marca = h
+        .hit_index
+        .rect_for(key_mark::key_mark_id(vids::VECTOR_FILL_SWATCH))
+        .expect("a marca da base");
+    mao(&mut h, PointerKind::Down, centro(marca));
+    let c = key_mark::take_key_mark_click().expect("o clique no losango da base");
+    assert_eq!(c.fields, vec![vids::VECTOR_FILL_SWATCH]);
 }

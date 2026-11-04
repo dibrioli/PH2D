@@ -39,6 +39,7 @@ pub fn dispatch_key<'frame>(
     if event.kind == KeyKind::Up {
         return events.into_bump_slice();
     }
+    store.note_card_key();
     // ⭐⭐ **A ESCUTA DO INPUT MAP VEM PRIMEIRO** — mas ⚠️ **este não é o topo da cadeia REAL**: a
     // shell tem ~20 `return` no `key_input` dela antes de chegar aqui, e é por isso que ela chama a
     // MESMA lei ([`crate::interaction::capture_if_listening`]) no topo do dela. Este ramo cobre o

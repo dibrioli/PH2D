@@ -133,6 +133,16 @@ pub fn selected_bone(sim: &SimWorld, selection: impl IntoIterator<Item = u64>) -
         .find(|&b| sim.world().get::<Bone>(Entity::from_bits(b)).is_some())
 }
 
+/// **De que osso são os pedidos do painel**: um gesto sobre um cartão PRESO a um osso é desse osso
+/// (T36, `preso` = `card_press_subject`, que também pode ser um objecto do Inspector); senão, da seleção.
+pub fn osso_do_gesto(
+    sim: &SimWorld,
+    preso: Option<u64>,
+    selection: impl IntoIterator<Item = u64>,
+) -> Option<u64> {
+    selected_bone(sim, preso).or_else(|| selected_bone(sim, selection))
+}
+
 /// **O segmento de MUNDO de um osso** — fixtura partilhada; `test-support` porque a shell a lê.
 #[cfg(any(test, feature = "test-support"))]
 pub fn test_segment(sim: &SimWorld, bits: u64) -> ([f64; 2], [f64; 2]) {
@@ -160,6 +170,10 @@ pub fn test_chain(sim: &mut SimWorld, n: usize) -> Vec<u64> {
 #[cfg(test)]
 #[path = "bone_gesture_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "bone_gesture_preso_tests.rs"]
+mod preso_tests;
 
 /// **A corrente alcança `goal`** — IK sobre a cadeia que acaba em `tip`, escrita pela mesma porta
 /// da rotação à mão (`pose(.., Body)`), do pai para o filho (cada `pose` lê o mundo do pai).

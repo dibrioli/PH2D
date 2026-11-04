@@ -45,6 +45,7 @@ impl crate::App {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
+        hero.store.note_card_key();
         let Some(evt) = ph2d_editor_core::interaction::capture_if_listening(&mut hero.store, k)
         else {
             return false;

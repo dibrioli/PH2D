@@ -55,17 +55,19 @@ fn compoe(c: &mut CardCtx<'_>, l: &Linha<'_>, rotulos: bool, y: f32) -> f32 {
         },
     ];
     let (k_cor, k_op) = ([l.amostra], [l.opacidade]);
+    // Toda linha tem a marca (a chave é por camada); o nome só na 1.ª, como o Figma.
     let mut cor = Cell::new(Widget::Swatch {
         id: l.amostra,
         rgba: l.cor,
         text: l.texto,
         edit: l.edita,
         detach: l.solta,
-    });
-    let mut op = Cell::new(field(l.opacidade, Glyph::Icon(IconId::CardOpacity)));
+    })
+    .key(&k_cor);
+    let mut op = Cell::new(field(l.opacidade, Glyph::Icon(IconId::CardOpacity))).key(&k_op);
     if rotulos {
-        cor = cor.label(tr("card.insp.color")).key(&k_cor);
-        op = op.label(tr("card.insp.opacity")).key(&k_op);
+        cor = cor.label(tr("card.insp.color"));
+        op = op.label(tr("card.insp.opacity"));
     }
     c.paint_line(cor, op, Cell::new(Widget::Bare(&botoes)), y)
 }

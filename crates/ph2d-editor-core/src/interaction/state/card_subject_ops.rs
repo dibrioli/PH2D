@@ -284,6 +284,25 @@ impl WidgetStore {
         self.card_lists.picker_subject
     }
 
+    /// Uma tecla sem campo em foco, sem lista nem seletor abertos e sem a mão a meio de um gesto é um
+    /// atalho: é da seleção, mesmo com a última pressão num cartão preso (05 §9).
+    pub fn note_card_key(&mut self) {
+        let lista = self.dropdown_popover().is_some_and(|(id, _)| {
+            matches!(
+                self.get(id),
+                Some(InteractiveState::Dropdown { open: true, .. })
+            )
+        });
+        let do_preso = self.focus_id.is_some()
+            || self.active_id().is_some()
+            || lista
+            || self.context_menu().is_some()
+            || self.picker_target().is_some();
+        if !do_preso {
+            self.card_lists.press_subject = None;
+        }
+    }
+
     /// O sujeito preso sobre o qual caiu a última pressão (`None` = os pedidos são da seleção).
     #[must_use]
     pub fn card_press_subject(&self) -> Option<u64> {

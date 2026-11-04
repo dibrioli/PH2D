@@ -69,14 +69,14 @@ impl crate::App {
         // pré-existentes flow pelo mesmo canal — anti-padrão Image Tools Bugs
         // §2.b fechado neste ponto da render loop.
         let mut pd = DrainOut {
-            // ⚠️ **O osso seleccionado lê-se AQUI, antes de o mundo ser emprestado mutável** — os
-            // verbos lá em baixo já seguram `sim`, e uma leitura de `self` no meio deles não
-            // compila. O valor é do QUADRO, e é o mesmo que o gesto e o overlay usam.
-            osso_selecionado: crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected()),
-            // ⭐ **A selecção CRUA, guardada aqui pela mesma razão que o `osso_selecionado`**: o
-            // `hero` é uma vista do `gfx`, e quem a lê lá em baixo (o *Bind* da 2.ª mídia) já o
-            // tem emprestado de outra maneira. *Ler o valor uma vez é o que torna a pergunta
-            // alcançável nos dois sítios.*
+            // ⚠️ Lê-se AQUI, antes de o mundo ser emprestado mutável. Num gesto sobre um cartão
+            // preso é o osso dele.
+            osso_selecionado: crate::bone_gesture::osso_do_gesto(
+                sim,
+                hero.store.card_press_subject(),
+                hero.gizmo.iter_selected(),
+            ),
+            // A selecção CRUA, aqui pela mesma razão: quem a lê lá em baixo já tem o `gfx` emprestado.
             selecao_bits: hero.gizmo.iter_selected().collect(),
             // BulkSelect (T2.0): the live selection (primary + extras),
             // captured before the drain so an Inspector sprite edit can

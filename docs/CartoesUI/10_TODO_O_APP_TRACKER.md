@@ -30,7 +30,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ⬜ |
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
-| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido) | ⬜ |
+| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | 🟨 G1 de 8 |
 | H | Painter | Respeita E10 (decisão do dono) | ⬜ |
 | I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ⬜ |
 | J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ⬜ |
@@ -66,6 +66,10 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - C1, cartão Object solto: tem cabeçalho sem título (o nome do objecto, o alfinete e o ×); na lista segue sem cabeçalho. Sem isto o alfinete caía em cima do olho.
 - C1, Material preso: escolher `Mix` tira o componente (lei de sempre, lido em `BlendFieldEdit`, não corrido); o cartão do preso passa a «Not available», como o da lista some. A rever no smoke.
 - C1, Object sem linha na Hierarquia: sem cadeado, como na lista.
+
+- **G, Vector: PERGUNTA para o smoke.** Fill e Stroke (e Appearance) aparecem no Inspector e no painel Vector, com os mesmos ids. Ficaram nos dois: F44/F45 são o aprovado, e só o Vector tem tipo, degradê, tracejado e pontas ([12](12_VECTOR_PLANO.md)). Quer manter nos dois?
+- **G, Vector: PERGUNTA para o smoke.** Advanced é um cartão com os cinco membros dentro, como subsecções. Figma não tem Advanced e a forma nova (Path Effects em lista) ainda não está decidida.
+- **G1:** as abas Drawing e Interface moram no cabeçalho da lista, no lugar do título, como F17 pedia: «VECTOR» não se escreve. Snap em 2 × 2 (Shapes, Path, Cross, Guides), sem marca de animação (ajuste de ferramenta). Rotação numa linha só, porque o Vector não tem os verbos que o Inspector põe ao lado. A secção por converter fica com o corpo de hoje dentro do cartão: até G8 há cartões com caras diferentes por dentro, nunca secção fora de cartão.
 
 ## Registo por bloco
 
@@ -164,3 +168,13 @@ Guarda do espalhamento + **Material, Ordering, Object, Appearance** presos, todo
 4. **Globais por objecto, ainda por resolver:** `OPEN`/`open_layer_index`, `LIGADOS` e `estilos::drena`, o seletor de cor (`HEX_PENDENTE`, `apply_picker`). A lista `estilos` tem o seu próprio rect: `note_card_press` só guarda a de `cards::dropdown` e a do store; a dos estilos tem de entrar na mesma guarda.
 5. **Só depois:** acrescentar `CARD_FILL`/`CARD_STROKE` a `DO_OBJECTO`, no mesmo commit da escrita. A cena 10 estende-se em `os_quatro` (`smoke_cartoes_inspector.rs`), e o gesto em `o_alfinete_dos_cartoes_c1::preso`.
 6. Decisão de produto aberta no plano 09: Fill preso com o seletor aberto, escolher outra forma. Recomendação registada: continua em A.
+
+**Bloco G, fatia 1 (04/11).** Plano em [12](12_VECTOR_PLANO.md) (30 entradas no corpo, não ~41). Todo o painel passou a cartões de uma vez, com `PH2D_CARDS=0` a dar o de antes (`crates/ph2d-panel-vector/src/cards.rs`). Corpos nativos: Transform, Snap, Constraints, Frame, Clip. O resto: hospedeiro com o cabeçalho absorvido, como os componentes do Inspector. **A sonda** (`sonda_da_seccao`): o pintor antigo corre só até ao cabeçalho, que responde «dobrada» e devolve título e «+»; assim a condição de cada secção continua a ser a única resposta, sem pintar duas vezes nem repetir predicados. O «+» de F43/F44 passou ao cabeçalho do cartão com o mesmo id; em `rows.rs`, um cabeçalho absorvido deixou de registar a pega e a acção por cima do título. Advanced corre pelo `corre()` de sempre, dentro de um cartão: ordem, tema e notas dos membros seguem iguais.
+
+Defeito apanhado: `seed_number_fields` re-semeava o Transform sem ver o scrub (que nos cartões não dá foco): a rotação relativa zerava e somava a mais. Curado para X, Y, W, H e R, com teste.
+
+Catracas: altura de abertura `219 → 250` (as mesmas três secções, Snap e Advanced dobradas, provado por `the_panel_opens_with_the_same_three_sections`; os 31 px são moldura e não há o que dobrar sem esconder Fill & Stroke). Piso de `onde_comeca_o_valor` `11 → 9` (cartão tem rótulo em cima, a população encolhe; `PISO_DE_LINHAS` não mudou). Saiu a excepção «vector · vector.tab.drawing» de `nenhum_nome_por_cima_do_controlo`, que o gate mandou apagar.
+
+Testes: `g1_os_cartoes`, 17, por gesto real; o clique em cada id de cada corpo nativo produz no barramento o MESMO que `PH2D_CARDS=0`. Crate inteira uma vez: 53 + 339 verdes. Contraprovas: 12 de 12 sangram (a 12.ª, «diferidos no slot», sobreviveu à 1.ª bateria e pediu o teste `the_left_panel_keeps_its_distance_from_the_list`). Não contraprovada: a guarda em `rows.rs`, porque mutar `editor-core` parava os outros agentes. Fotos vistas: `maquete/g_vector_{0_antes_cards_0,1_drawing,2_interface,3_painel_a_esquerda}.png`; nas 1 a 3 um patch temporário abriu os estados que a cena não semeia (a moldura, a âncora, a linha do Fill), já retirado.
+
+Não visto no app, só no mock: soltar um cartão no canvas, arrastar para reordenar, Esc a meio do scrub. Sem foto: a lista do «+» aberta. Corpos antigos nos cartões têm a cara de antes, e os do Advanced deixam a metade esquerda vazia (G6). Vermelhos vistos e alheios a esta fatia, todos em WIP ou blocos de outros agentes: `a_marca_tem_a_altura_da_linha` (`pixel_tools`), `um_seletor_de_cor_sozinho…` (`flip`), `todo_campo_pintado_com_losango…` (`ph2d-panel-inspector/src/sections/rows_par.rs`), `no_magic_numeric` (bgremoval, color-equalization, upscale). Próxima: G2, Appearance e Fill & Stroke.

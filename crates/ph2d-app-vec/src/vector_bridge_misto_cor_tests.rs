@@ -329,7 +329,6 @@ fn quadro_inteiro(q: &mut Quadro) {
 
 /// ⭐ D30, no despacho real, seletor aberto na amostra da base: abrir não solta; o estilo a repintar
 /// não solta e o seletor segue-o; a Opacity não solta; a cor à mão solta, e a forma fica com ela.
-/// *Mutação: `drena` sem levar a cor nova ao seletor da base ⇒ o quadro seguinte devolve a antiga.*
 #[test]
 fn a_cor_a_mao_solta_a_base_e_o_estilo_a_repintar_nao() {
     use ph2d_ecs::ItemId;

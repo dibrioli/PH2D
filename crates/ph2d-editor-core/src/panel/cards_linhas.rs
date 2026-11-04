@@ -95,6 +95,7 @@ impl<'s> CardCtx<'s> {
                     );
                 }
                 Widget::Bare(segs) => self.bare(r, segs),
+                Widget::ButtonOff { text } => self.button_off(r, text),
                 Widget::Mark { icon, tint } => {
                     let g = m::ICON_GLYPH;
                     paint_icon(
@@ -471,6 +472,26 @@ impl<'s> CardCtx<'s> {
                     .collect(),
             );
         }
+    }
+
+    fn button_off(&mut self, r: Rect, text: &str) {
+        fill_rounded_rect(
+            self.scene,
+            r,
+            m::FIELD_RADIUS,
+            self.ink.color(ColorToken::CardField),
+        );
+        let tw = self.text_system.prefix_width(text, m::VALUE_PX).min(r.w);
+        crate::paint::paint_text_elided(
+            self.text_system,
+            self.scene,
+            text,
+            r.x + (r.w - tw) * 0.5,
+            r.y + (r.h - m::VALUE_PX) * 0.5,
+            m::VALUE_PX,
+            r.w,
+            self.ink.color(ColorToken::CardLabel),
+        );
     }
 
     fn button(&mut self, r: Rect, id: NodeId, text: &str, primary: bool) {

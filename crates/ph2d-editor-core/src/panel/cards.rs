@@ -80,6 +80,8 @@ pub enum Widget<'a> {
     Text { id: NodeId, placeholder: &'a str },
     /// Um ícone fixo numa caixa quadrada (o tipo do objeto) — não é clicável.
     Badge(IconId),
+    /// Um botão APAGADO: o gesto não é possível agora, e sem clique (sem rect não há `Click`).
+    ButtonOff { text: &'a str },
     /// Um sinal numa cor: o ícone sem caixa e sem clique (a marca de contraste de um token), com a
     /// largura de um ícone. O que ele avisa está escrito noutro sítio do cartão.
     Mark { icon: IconId, tint: ColorToken },

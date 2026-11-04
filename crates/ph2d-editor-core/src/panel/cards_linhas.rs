@@ -144,6 +144,7 @@ impl<'s> CardCtx<'s> {
                     r,
                     (id, label),
                     (value, off),
+                    cells.len() > 1,
                 ),
             }
         }
@@ -224,7 +225,7 @@ impl<'s> CardCtx<'s> {
             open_fold: None,
         };
         let fim = f(&mut r, y);
-        censo::linha(y, fim, self.w, Vec::new);
+        censo::linha((self.x, self.w), y, fim, Vec::new);
         fim
     }
 

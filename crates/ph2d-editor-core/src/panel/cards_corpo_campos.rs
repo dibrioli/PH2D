@@ -14,6 +14,8 @@ use ph2d_vector::VectorScene;
 
 /// O corpo de letra dos rótulos de um cartão, para o rótulo que um corpo pinta à mão.
 pub const LABEL_PX: f32 = m::LABEL_PX;
+/// O vão entre duas linhas de um corpo, para a grelha que um corpo pinta à mão (lei 3).
+pub const ROW_GAP: f32 = m::FIELD_ROW_GAP;
 
 /// Campos Figma dentro de um rect que o chamador já arrumou, sem rótulo nem marca (a linha dele
 /// traz os dois). Com dois ids, as letras X e Y.
@@ -46,7 +48,10 @@ pub fn fields_in(
             })
         })
         .collect();
-    let _ = ctx(scene, text_system, store, hit_index, ink, r.x, r.w).row(&cells, r.y);
+    let mut c = ctx(scene, text_system, store, hit_index, ink, r.x, r.w);
+    // A caixa é a do rect dado: sem o vão de linha, que a linha do chamador já pagou.
+    c.first = true;
+    let _ = c.row(&cells, r.y);
 }
 
 /// Uma amostra com o código num rect que o chamador já arrumou, sem rótulo nem marca.
@@ -69,7 +74,9 @@ pub fn swatch_in(
         edit: None,
         detach: None,
     });
-    let _ = ctx(scene, text_system, store, hit_index, ink, r.x, r.w).row(&[cell], r.y);
+    let mut c = ctx(scene, text_system, store, hit_index, ink, r.x, r.w);
+    c.first = true;
+    let _ = c.row(&[cell], r.y);
 }
 
 /// Uma barra com chip, no cartão: o campo é o chip, a barra não se pinta e a marca é a dela, que é o
@@ -193,4 +200,73 @@ pub fn swatch_grid(
         y = c.row(&cells, y);
     }
     y
+}
+
+/// ⭐ **Factos só de leitura aos pares** (`(rótulo, valor)`, Storage + Source): dois a dois enquanto
+/// couberem, sem caixa, porque a caixa promete edição. Devolve o fundo.
+#[allow(clippy::too_many_arguments)]
+pub fn facts(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    fatos: &[(&str, &str)],
+) -> f32 {
+    let cells: Vec<Cell<'_>> = fatos
+        .iter()
+        .map(|&(rotulo, text)| Cell::new(Widget::Readout { text }).label(rotulo))
+        .collect();
+    ctx(scene, text_system, store, hit_index, ink, x, w).compact(&cells, y)
+}
+
+/// ⭐ **Lei 6, uma tira de amostras da mesma grandeza** (os quatro cantos): uma linha só, sem o código;
+/// a amostra abre o seletor, que o mostra. Um rótulo e uma marca para o grupo. Devolve o fundo.
+#[allow(clippy::too_many_arguments)]
+pub fn swatch_strip(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: &str,
+    amostras: &[(NodeId, Option<[u8; 4]>)],
+) -> f32 {
+    let ids: Vec<NodeId> = amostras.iter().map(|(id, _)| *id).collect();
+    let n = amostras.len();
+    let cells: Vec<Cell<'_>> = amostras
+        .iter()
+        .enumerate()
+        .map(|(i, &(id, rgba))| {
+            let cell = Cell::new(Widget::Swatch {
+                id,
+                rgba,
+                text: "",
+                edit: None,
+                detach: None,
+            });
+            let cell = if i == 0 { cell.label(rotulo) } else { cell };
+            if i + 1 == n { cell.key(&ids) } else { cell }
+        })
+        .collect();
+    ctx(scene, text_system, store, hit_index, ink, x, w).row(&cells, y)
+}
+
+/// As duas colunas iguais de uma linha do corpo: `[(x, w); 2]`, com o vão de `metrics`.
+#[must_use]
+pub fn colunas_iguais(x: f32, w: f32) -> [(f32, f32); 2] {
+    let meia = (w - m::FIELD_GAP) * 0.5;
+    [(x, meia), (x + meia + m::FIELD_GAP, meia)]
+}
+
+/// O `y` a pedir para uma caixa de marcar ficar ao lado da caixa de uma coluna com rótulo pedida em `y`.
+#[must_use]
+pub fn caixa_ao_lado_do_rotulo(y: f32) -> f32 {
+    y + m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM - m::FIELD_ROW_GAP
 }

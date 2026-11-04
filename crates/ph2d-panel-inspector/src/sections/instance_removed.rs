@@ -53,7 +53,7 @@ pub(crate) fn paint(
         let Some(&id) = ids::INSP_INSTANCE_RESTORE_PIECE.get(i) else {
             break;
         };
-        let host = Rect::new(at.tx, ty, at.tw, at.line);
+        let host = at.botao(ty);
         hit_index.register(id, host);
         // ⚠️ **O rótulo sai do MODELO** (`RemovedRow::label`), como o da escada do *Aplicar*:
         // escrever a frase num pintor põe a lei num sítio que nenhum gate de modelo alcança.

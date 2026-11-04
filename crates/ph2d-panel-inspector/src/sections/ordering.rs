@@ -400,6 +400,10 @@ pub(crate) fn paint_ordering_section(
     )
 }
 
+#[path = "ordering_cartao.rs"]
+mod cartao;
+use cartao::em_cartao;
+
 /// As linhas da §7 depois do Z Index: o cartão Ordering pinta o Z no campo dele e estas por baixo.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_ordering_rest(
@@ -458,6 +462,11 @@ pub(crate) fn paint_ordering_rest(
         };
     }
 
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return em_cartao(
+            scene, text_system, theme, hit_index, store, ink, x, w, yy, info, sec,
+        );
+    }
     yy = cb!(
         yy,
         ids::INSP_ORDER_Z_RELATIVE,

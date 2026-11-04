@@ -126,7 +126,12 @@ pub(super) fn region_grid(
         resolve(ColorToken::Text2, theme),
     );
     let grid_y = y + label_h;
-    let gap = Spacing::Xs.px();
+    // Num cartão a grelha tem o vão de toda linha (05 §4, lei 3).
+    let gap = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::corpo::ROW_GAP
+    } else {
+        Spacing::Xs.px()
+    };
     for (i, &(col, row)) in REGION_CELLS.iter().enumerate() {
         let id = ids::INSP_SLICE_REGION[i];
         let rect = Rect::new(

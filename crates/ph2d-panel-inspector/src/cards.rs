@@ -403,6 +403,9 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         ),
         (vids::VECTOR_ARRANGE_FLIP_H, "panel.vector.arrange.flip_h"),
         (vids::VECTOR_ARRANGE_FLIP_V, "panel.vector.arrange.flip_v"),
+        (ids::INSP_TRANSFORM_ROTATE_CW, "panel.vector.arrange.rotate_cw"),
+        (ids::INSP_TRANSFORM_FLIP_H, "panel.vector.arrange.flip_h"),
+        (ids::INSP_TRANSFORM_FLIP_V, "panel.vector.arrange.flip_v"),
     ] {
         if store.tooltip_for(id).is_none() {
             store.set_tooltip(id, tr(chave));

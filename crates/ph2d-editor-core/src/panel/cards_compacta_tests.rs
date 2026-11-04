@@ -73,11 +73,11 @@ fn a_short_pair_shares_the_line_in_equal_columns() {
 fn a_pair_stacks_when_the_column_is_narrow() {
     let mut f = mesa();
     let ((), censo) = censo::grava(|| {
-        ctx(&mut f, 130.0).pair(campo(A, "Emissive"), marca(B, "Show Behind Parent"), 0.0);
+        ctx(&mut f, 170.0).pair(campo(A, "Emissive"), marca(B, "Show Behind Parent"), 0.0);
     });
     let (ra, rb) = (f.hit.rect_for(A).unwrap(), f.hit.rect_for(B).unwrap());
     assert!(rb.y >= ra.y + ra.h, "{ra:?} {rb:?}");
-    assert_eq!(ra.w, 130.0);
+    assert_eq!(ra.w, 170.0);
     assert!(censo.textos_cortados().is_empty(), "{:?}", censo.textos);
 }
 

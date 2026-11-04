@@ -8,7 +8,10 @@
 
 #[path = "cards_corpo_campos.rs"]
 mod campos;
-pub use campos::{LABEL_PX, bar_field, fields_in, swatch_grid, swatch_in};
+pub use campos::{
+    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, colunas_iguais, facts, fields_in, swatch_grid,
+    swatch_in, swatch_strip,
+};
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
 use crate::interaction::{HitIndex, WidgetStore};
@@ -335,7 +338,7 @@ fn rotulo_em_cima(
     let (k, ly) = (m::KEY_MARK_BOX, y + m::LABEL_TOP);
     crate::widget::card_field::paint_label(scene, text_system, ink, x, ly, w - k, rotulo);
     let fundo = ly + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H;
-    censo::linha(ly, fundo, w, || {
+    censo::linha((x, w), ly, fundo, || {
         vec![censo::CelulaMedida {
             nome: rotulo.to_owned(),
             curta: false,
@@ -497,13 +500,14 @@ fn check_valor(
         r,
         (id, label),
         (valor, parada),
+        false,
     );
     if censo::ligado() {
         let pede = m::CHECK_BOX
             + m::CHECK_GAP
             + text_system.prefix_width(label.texto, m::VALUE_PX).ceil()
             + label.reserva_da_marca();
-        censo::linha(y, y + m::FIELD_H, w, || {
+        censo::linha((x, w), y, y + m::FIELD_H, || {
             vec![censo::CelulaMedida {
                 nome: label.texto.to_owned(),
                 curta: true,
@@ -525,6 +529,7 @@ pub(super) fn check_em(
     r: Rect,
     (id, label): (NodeId, Rotulo<'_>),
     (valor, parada): (CheckboxValue, bool),
+    colada: bool,
 ) {
     let (x, y, w, h) = (r.x, r.y, r.w, r.h);
     let (b, k) = (m::CHECK_BOX, label.reserva_da_marca());
@@ -551,7 +556,14 @@ pub(super) fn check_em(
             ColorToken::KanbanCardFg
         }),
     );
-    let dot = Rect::new(x + w - k, y + (h - k) * 0.5, k, k);
+    // Numa coluna de duas a marca anda com o nome: no fim ela encostava na vizinha e lia-se dela (05 §8).
+    let dx = if colada {
+        let tw = text_system.prefix_width(label.texto, m::VALUE_PX).ceil();
+        (tx + tw).min(x + w - k)
+    } else {
+        x + w - k
+    };
+    let dot = Rect::new(dx, y + (h - k) * 0.5, k, k);
     if let Some(alvo) =
         crate::widget::key_mark::paint_decorator_campo(scene, ink.theme, dot, &[id], label)
     {

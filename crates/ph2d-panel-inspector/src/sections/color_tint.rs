@@ -284,7 +284,9 @@ pub(crate) fn paint_color_tint_section(
     // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta. Num
     // cartão a linha da caixa já traz a marca dela.
     let (check_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
-    if ph2d_editor_core::widget::card_ink::card_body().is_none()
+    let no_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let check_w = if no_cartao { w } else { check_w };
+    if !no_cartao
         && let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
             scene,
             theme,
@@ -363,7 +365,7 @@ fn paint_per_corner_tab(
                 (id, (!misto).then(|| store.widget_color(id).unwrap_or(base)))
             })
             .collect();
-        let fim = ph2d_editor_core::panel::cards::corpo::swatch_grid(
+        let fim = ph2d_editor_core::panel::cards::corpo::swatch_strip(
             scene,
             text_system,
             store,
@@ -374,7 +376,6 @@ fn paint_per_corner_tab(
             y,
             tr("component.field.sprite_corner_tint.5"),
             &amostras,
-            2,
         );
         return paint_equalize(scene, text_system, theme, hit_index, store, x, w, fim);
     }

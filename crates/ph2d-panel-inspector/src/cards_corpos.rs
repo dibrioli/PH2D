@@ -98,8 +98,20 @@ fn objeto(store: &WidgetStore, visivel: bool) -> CardDef<'static> {
 }
 
 fn transform() -> CardDef<'static> {
-    // Rodar e inverter são verbos da forma vetorial: em outro objecto seriam um clique sem efeito.
-    let vetor = appearance::current_appearance().is_some();
+    // Na forma vetorial rodar e inverter mexem nos pontos; nos outros objectos, no Transform.
+    let (girar, flip_h, flip_v) = if appearance::current_appearance().is_some() {
+        (
+            vids::VECTOR_ARRANGE_ROTATE_CW,
+            vids::VECTOR_ARRANGE_FLIP_H,
+            vids::VECTOR_ARRANGE_FLIP_V,
+        )
+    } else {
+        (
+            ids::INSP_TRANSFORM_ROTATE_CW,
+            ids::INSP_TRANSFORM_FLIP_H,
+            ids::INSP_TRANSFORM_FLIP_V,
+        )
+    };
     CardDef {
         section: CARD_TRANSFORM,
         title: tr("card.insp.transform"),
@@ -142,19 +154,19 @@ fn transform() -> CardDef<'static> {
             );
             let giros = [
                 Seg {
-                    id: vids::VECTOR_ARRANGE_ROTATE_CW,
+                    id: girar,
                     icon: Some(IconId::RotateCw),
                     text: "",
                     on: false,
                 },
                 Seg {
-                    id: vids::VECTOR_ARRANGE_FLIP_H,
+                    id: flip_h,
                     icon: Some(IconId::FlipH),
                     text: "",
                     on: false,
                 },
                 Seg {
-                    id: vids::VECTOR_ARRANGE_FLIP_V,
+                    id: flip_v,
                     icon: Some(IconId::FlipV),
                     text: "",
                     on: false,
@@ -166,11 +178,7 @@ fn transform() -> CardDef<'static> {
             ))
             .label(rot)
             .key(ROT);
-            let y = if vetor {
-                c.row(&[rotacao, Cell::new(Widget::Bare(&giros))], y)
-            } else {
-                c.row(&[rotacao], y)
-            };
+            let y = c.row(&[rotacao, Cell::new(Widget::Bare(&giros))], y);
             let corrente = [Seg {
                 id: SCALE_LOCK,
                 icon: Some(IconId::Link),
@@ -341,11 +349,6 @@ fn ordering() -> Option<CardDef<'static>> {
         add: None,
         summary: resumo,
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
-            let y = c.full(
-                Some(tr("card.insp.z_index")),
-                field(ids::INSP_ORDER_Z_INDEX, Glyph::Text(tr("card.glyph.z"))),
-                y,
-            );
             crate::cards_objeto::resto_da_ordem(c, y, &o)
         })),
     })

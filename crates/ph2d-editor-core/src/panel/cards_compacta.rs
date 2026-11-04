@@ -139,7 +139,7 @@ impl CardCtx<'_> {
                 pede: self.pede(c),
             })
             .collect();
-        censo::linha(topo, fundo, self.w, || medidas);
+        censo::linha((self.x, self.w), topo, fundo, || medidas);
     }
 }
 
@@ -197,6 +197,10 @@ enum Curto {
         value: CheckboxValue,
         off: bool,
     },
+    Fato {
+        rotulo: String,
+        texto: String,
+    },
 }
 
 impl Curto {
@@ -240,14 +244,24 @@ impl Curto {
                 value: *value,
                 off: *off,
             }),
+            Self::Fato { rotulo, texto } => {
+                Cell::new(Widget::Readout { text: texto }).label(rotulo)
+            }
         }
     }
 
     fn fundo_sozinho(&self, ts: &mut TextSystem, w: f32, y: f32) -> f32 {
         match self {
             Self::Marca { .. } => y + m::FIELD_ROW_GAP + m::FIELD_H,
-            Self::Numero { rotulo, .. } | Self::Amostra { rotulo, .. } => {
-                let (_, duas) = rotulos::linhas(ts, rotulo, w - m::KEY_MARK_BOX);
+            Self::Numero { rotulo, .. }
+            | Self::Amostra { rotulo, .. }
+            | Self::Fato { rotulo, .. } => {
+                let reserva = if matches!(self, Self::Fato { .. }) {
+                    0.0
+                } else {
+                    m::KEY_MARK_BOX
+                };
+                let (_, duas) = rotulos::linhas(ts, rotulo, w - reserva);
                 let extra = if duas.is_some() {
                     m::LABEL_PX + m::LABEL_BOTTOM
                 } else {
@@ -261,13 +275,13 @@ impl Curto {
 
 struct Espera {
     curto: Curto,
+    x: f32,
+    w: f32,
     y: f32,
     fim: f32,
 }
 
 struct Fluxo {
-    x: f32,
-    w: f32,
     espera: Option<Espera>,
 }
 
@@ -275,20 +289,21 @@ thread_local! {
     static FLUXO: RefCell<Option<Fluxo>> = const { RefCell::new(None) };
 }
 
+/// Há um corpo a fluir: quem empilha por conta própria deixa o fluxo emparelhar.
+#[must_use]
+pub fn ativo() -> bool {
+    FLUXO.with(|g| g.borrow().is_some())
+}
+
 /// ⭐ **Corre o corpo `f` com os pedidos curtos a fluir** (ver o módulo). O que ficou à espera pinta-se
 /// no fim, recortado como a dobra da secção recorta o resto do corpo enquanto ela abre.
 pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f32 {
     FLUXO.with(|g| {
-        *g.borrow_mut() = Some(Fluxo {
-            x: c.x,
-            w: c.w,
-            espera: None,
-        });
+        *g.borrow_mut() = Some(Fluxo { espera: None });
     });
     let fim = f(c);
     let sobra = FLUXO.with(|g| g.borrow_mut().take()).and_then(|f| f.espera);
     if let Some(e) = sobra {
-        let (x, w) = (c.x, c.w);
         let aberto = censo::secao_atual().map_or(1.0, |s| c.store.section_open_live(s));
         let banda = censo::secao_atual()
             .filter(|_| aberto < 1.0)
@@ -300,7 +315,7 @@ pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f3
             }
         }
         marca_spec(c.store, &e.curto);
-        ctx_de_fora(c.scene, c.text_system, c.store, c.hit_index, c.ink, x, w)
+        ctx_de_fora(c.scene, c.text_system, c.store, c.hit_index, c.ink, e.x, e.w)
             .row_inteira(&[e.curto.celula()], e.y);
     }
     fim
@@ -312,8 +327,8 @@ fn marca_spec(store: &WidgetStore, c: &Curto) {
     }
 }
 
-/// O pedido entra no fluxo: devolve o fundo, ou `None` sem fluxo ou fora da largura do corpo (quem
-/// pede pinta como sempre).
+/// O pedido entra no fluxo: devolve o fundo, ou `None` sem fluxo (quem pede pinta como sempre). Só
+/// se juntam pedidos da mesma coluna: um grupo recuado emparelha dentro dele.
 #[allow(clippy::too_many_arguments)]
 fn pede(
     scene: &mut VectorScene,
@@ -326,17 +341,14 @@ fn pede(
     y: f32,
     novo: impl FnOnce() -> Curto,
 ) -> Option<f32> {
-    let antes = FLUXO.with(|g| {
-        let mut g = g.borrow_mut();
-        let f = g.as_mut()?;
-        ((f.x - x).abs() < 0.5 && (f.w - w).abs() < 0.5).then(|| f.espera.take())
-    })?;
+    let antes = FLUXO.with(|g| g.borrow_mut().as_mut().map(|f| f.espera.take()))?;
     let novo = novo();
     if let Some(e) = antes {
         marca_spec(store, &e.curto);
-        let mut c = ctx_de_fora(scene, ts, store, hit, ink, x, w);
-        let vizinho = y >= e.fim - 0.5 && y <= e.fim + m::LABEL_TOP;
-        if vizinho && c.tudo_cabe(&[e.curto.celula(), novo.celula()]) {
+        let mesma_coluna = (e.x - x).abs() < 0.5 && (e.w - w).abs() < 0.5;
+        let vizinho = y >= e.fim - 0.5 && y <= e.fim + m::LABEL_TOP + m::FIELD_ROW_GAP;
+        let mut c = ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w);
+        if mesma_coluna && vizinho && c.tudo_cabe(&[e.curto.celula(), novo.celula()]) {
             marca_spec(store, &novo);
             return Some(c.row_inteira(&[e.curto.celula(), novo.celula()], e.y));
         }
@@ -347,6 +359,8 @@ fn pede(
         if let Some(f) = g.borrow_mut().as_mut() {
             f.espera = Some(Espera {
                 curto: novo,
+                x,
+                w,
                 y,
                 fim,
             });
@@ -420,6 +434,28 @@ pub(super) fn pede_marca(
         rotulo: label.com_texto(""),
         value,
         off,
+    })
+}
+
+/// ⭐ Um facto só de leitura como vizinho no fluxo; sem fluxo, a linha dele. Devolve o fundo.
+#[allow(clippy::too_many_arguments)]
+pub fn fact(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    store: &WidgetStore,
+    hit: &mut HitIndex,
+    ink: CardInk,
+    (x, w, y): (f32, f32, f32),
+    rotulo: &str,
+    texto: &str,
+) -> f32 {
+    pede(scene, ts, store, hit, ink, x, w, y, || Curto::Fato {
+        rotulo: rotulo.to_owned(),
+        texto: texto.to_owned(),
+    })
+    .unwrap_or_else(|| {
+        let cell = Cell::new(Widget::Readout { text: texto }).label(rotulo);
+        ctx_de_fora(scene, ts, store, hit, ink, x, w).row_inteira(&[cell], y)
     })
 }
 

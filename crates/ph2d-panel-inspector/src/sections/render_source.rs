@@ -85,6 +85,7 @@ pub(crate) fn paint_render_source_section(
         cur_y,
         label_font,
         row_gap,
+        ph2d_editor_core::widget::card_ink::card_body().map(|ink| (ink, store, &mut *hit_index)),
     );
 
     // A amostragem de REGIÃO mora num irmão — ver [`paint_region_rows`].
@@ -335,6 +336,7 @@ fn paint_provenance(
     y: f32,
     label_font: f32,
     row_gap: f32,
+    cartao: Option<(ph2d_editor_core::widget::card_ink::CardInk, &WidgetStore, &mut HitIndex)>,
 ) -> f32 {
     // Cleaner phrasing — strategy name + key/id separated by middle dot (the only ASCII-safe
     // non-ASCII glyph allowed in UI strings; vide no_tofu_glyphs gate).
@@ -381,6 +383,29 @@ fn paint_provenance(
     //
     // ⚠️ **A coluna sai dos DOIS nomes do bloco**, senão a `Storage` e a `Source size` caem em `x`
     //    diferentes — a outra metade do mesmo report.
+    if let Some((ink, store, hit)) = cartao {
+        let tamanho = info.source_pixels.map(|(pw, ph)| {
+            tr_with(
+                "panel.inspector.render_source.size_px",
+                &[("pw", &pw), ("ph", &ph)],
+            )
+        });
+        let mut fatos = vec![(STORAGE_LABEL.tr(), detail.as_str())];
+        if let Some(t) = &tamanho {
+            fatos.push((SOURCE_SIZE_LABEL.tr(), t));
+        }
+        return ph2d_editor_core::panel::cards::corpo::facts(
+            scene,
+            text_system,
+            store,
+            hit,
+            ink,
+            x,
+            w,
+            y,
+            &fatos,
+        );
+    }
     let sec = seccao_do_render(text_system);
     let linha = ph2d_editor_core::property_row::paint_label_row(
         scene,

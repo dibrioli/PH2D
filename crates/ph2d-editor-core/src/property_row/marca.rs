@@ -131,6 +131,23 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     let gap = ph2d_tokens::Spacing::Sm.px();
     let meia = ((w - gap) * 0.5).max(1.0);
     let cartao = crate::widget::card_ink::card_body().is_some();
+    if cartao && crate::panel::cards::compacta::ativo() {
+        // O fluxo emparelha, em colunas iguais, e junta ao vizinho o que sobrar (05 §4).
+        return caixas.iter().fold(y, |yy, c| {
+            paint_check_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                yy,
+                *c,
+                seccao,
+            )
+        });
+    }
     let fonte = if cartao {
         ph2d_card_stack::metrics::VALUE_PX
     } else {
@@ -167,8 +184,10 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
                 // ⭐ No cartão a marca da esquerda anda com o nome dela: no fim da metade ela
                 // encostava na caixa da direita e lia-se como sendo dela (05 §8).
                 let esquerda = if cartao {
-                    let nome = text_system.prefix_width(caixas[i].1.texto, fonte);
-                    (nome + caixa_do_cartao).min(meia)
+                    // A borda de fora do nome: sem o `ceil` a medida igualava o orçamento e cortava
+                    // «Flip H» por arredondamento (foto do dono 04/11).
+                    let nome = text_system.prefix_width(caixas[i].1.texto, fonte).ceil();
+                    (nome + caixa_do_cartao + ph2d_card_stack::metrics::FIELD_BORDER).min(meia)
                 } else {
                     meia
                 };

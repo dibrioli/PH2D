@@ -121,17 +121,24 @@ fn com_corpo(
 /// (`SECCOES_FIXAS`), e o rótulo dela já diz o que é.
 fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
     sem_titulo(CARD_IMAGE, move |c, y| {
-        let fim = com_corpo(c, y, |t, theme, store, x, w, y| {
+        let ink = c.ink;
+        com_corpo(c, y, |t, theme, store, x, w, y| {
             let y = sections::paint_image_row(t.scene, t.text, theme, t.hit, x, w, y);
-            sections::image_use_rows::paint_image_use(
+            let y = sections::image_use_rows::paint_image_use(
                 t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
+            );
+            let (rotulo, texto) = tamanho(&info);
+            ph2d_editor_core::panel::cards::compacta::fact(
+                t.scene,
+                t.text,
+                store,
+                t.hit,
+                ink,
+                (x, w, y),
+                rotulo,
+                &texto,
             )
-        });
-        let (rotulo, texto) = tamanho(&info);
-        c.row(
-            &[Cell::new(Widget::Readout { text: &texto }).label(rotulo)],
-            fim,
-        )
+        })
     })
 }
 

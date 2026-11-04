@@ -356,6 +356,12 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
     if let WidgetEvent::Click(id) = ev
+        && let Some(info) = state::current_inspector_transform()
+        && crate::event_transform::giro_click(host, id, info)
+    {
+        return true;
+    }
+    if let WidgetEvent::Click(id) = ev
         && id == ids::INSP_TRANSFORM_RESET
         && let Some(info) = state::current_inspector_transform()
     {

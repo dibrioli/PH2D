@@ -39,6 +39,12 @@ pub const INSP_TRANSFORM_SKEW_Y: NodeId = hash_node_id("insp_transform_skew_y");
 
 /// Reset-to-Identity button in the Transform section header.
 pub const INSP_TRANSFORM_RESET: NodeId = hash_node_id("insp_transform_reset");
+/// Girar 90° o objecto que não é vetor (o vetor gira os pontos, pelo `VECTOR_ARRANGE_*`).
+pub const INSP_TRANSFORM_ROTATE_CW: NodeId = hash_node_id("insp_transform_rotate_cw");
+/// Espelhar na horizontal: o sinal de `scale.x`.
+pub const INSP_TRANSFORM_FLIP_H: NodeId = hash_node_id("insp_transform_flip_h");
+/// Espelhar na vertical: o sinal de `scale.y`.
+pub const INSP_TRANSFORM_FLIP_V: NodeId = hash_node_id("insp_transform_flip_v");
 
 // ── Inspector Visibility checkbox (M14.D) ───────────────────────────────────
 // Mirrors the Hierarchy eye toggle (M14.6A). Painted as a single row

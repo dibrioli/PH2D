@@ -84,3 +84,41 @@ pub(crate) fn commit_transform_edit(
         },
     ));
 }
+
+/// ⭐ **Girar 90° e espelhar o objecto que não é vetor** (dono 04/11): soma um quarto de volta à
+/// rotação, ou troca o sinal de `scale`, e publica UM `InspectorTransformEdit`, um passo de desfazer.
+/// A física lê o sinal: forma pelo valor absoluto, `offset` espelhado (`ph2d_physics_ecs::scale`).
+pub(crate) fn giro_click(
+    host: &mut dyn PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+    info: InspectorTransformInfo,
+) -> bool {
+    use crate::ids::{
+        INSP_TRANSFORM_FLIP_H, INSP_TRANSFORM_FLIP_V, INSP_TRANSFORM_ROT, INSP_TRANSFORM_ROTATE_CW,
+        INSP_TRANSFORM_SCALE_X, INSP_TRANSFORM_SCALE_Y,
+    };
+    let troca_sinal = |host: &mut dyn PanelHostInternal, campo, atual: f32| {
+        let v = host.store().number_value(campo).unwrap_or(f64::from(atual));
+        host.store_mut().set_number_value(campo, -v);
+    };
+    if id == INSP_TRANSFORM_ROTATE_CW {
+        let ang = host.project().display_angle;
+        let agora = host
+            .store()
+            .number_value(INSP_TRANSFORM_ROT)
+            .map_or(info.rotation_rad, |v| ang.to_radians(v as f32));
+        let volta = std::f32::consts::TAU;
+        let novo = (agora + std::f32::consts::FRAC_PI_2 + std::f32::consts::PI).rem_euclid(volta)
+            - std::f32::consts::PI;
+        host.store_mut()
+            .set_number_value(INSP_TRANSFORM_ROT, ang.from_radians_f64(f64::from(novo)));
+    } else if id == INSP_TRANSFORM_FLIP_H {
+        troca_sinal(host, INSP_TRANSFORM_SCALE_X, info.scale[0]);
+    } else if id == INSP_TRANSFORM_FLIP_V {
+        troca_sinal(host, INSP_TRANSFORM_SCALE_Y, info.scale[1]);
+    } else {
+        return false;
+    }
+    commit_transform_edit(host, info);
+    true
+}

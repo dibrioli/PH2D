@@ -22,6 +22,7 @@ pub struct LinhaMedida {
     pub secao: NodeId,
     pub topo: f32,
     pub fundo: f32,
+    pub x: f32,
     pub w: f32,
     pub celulas: Vec<CelulaMedida>,
 }
@@ -80,7 +81,12 @@ pub(crate) fn secao_atual() -> Option<NodeId> {
 }
 
 /// Anota uma linha do corpo do cartão corrente.
-pub(crate) fn linha(topo: f32, fundo: f32, w: f32, celulas: impl FnOnce() -> Vec<CelulaMedida>) {
+pub(crate) fn linha(
+    (x, w): (f32, f32),
+    topo: f32,
+    fundo: f32,
+    celulas: impl FnOnce() -> Vec<CelulaMedida>,
+) {
     let Some(secao) = secao_atual() else {
         return;
     };
@@ -90,6 +96,7 @@ pub(crate) fn linha(topo: f32, fundo: f32, w: f32, celulas: impl FnOnce() -> Vec
                 secao,
                 topo,
                 fundo,
+                x,
                 w,
                 celulas: celulas(),
             });
@@ -113,7 +120,7 @@ pub(crate) fn texto(texto: &str, pede: f32, largura: f32) {
 /// Um botão pintado à mão num corpo: o texto, e a fronteira dele como uma linha (lei 3).
 pub(crate) fn fora_da_linha(texto_do_botao: &str, pede: f32, r: crate::zones::Rect) {
     texto(texto_do_botao, pede, r.w);
-    linha(r.y, r.y + r.h, r.w, || {
+    linha((r.x, r.w), r.y, r.y + r.h, || {
         vec![CelulaMedida {
             nome: texto_do_botao.to_owned(),
             curta: false,
@@ -136,15 +143,12 @@ fn por_secao(censo: &Censo) -> Vec<(NodeId, Vec<LinhaMedida>)> {
         let mut juntas: Vec<LinhaMedida> = Vec::with_capacity(v.len());
         for l in v.drain(..) {
             match juntas.last_mut() {
-                Some(u) if (u.topo - l.topo).abs() < 1.0 => {
-                    // O corpo corre mais de uma vez: a mesma linha repetida não é uma 2.ª coluna.
-                    for c in l.celulas {
-                        if !u.celulas.contains(&c) {
-                            u.celulas.push(c);
-                        }
-                    }
+                Some(u) if mesma_linha(u, &l) => {
+                    u.celulas.extend(l.celulas);
                     u.fundo = u.fundo.max(l.fundo);
-                    u.w = u.w.max(l.w);
+                    let fim = (u.x + u.w).max(l.x + l.w);
+                    u.x = u.x.min(l.x);
+                    u.w = fim - u.x;
                 }
                 _ => juntas.push(l),
             }
@@ -152,6 +156,13 @@ fn por_secao(censo: &Censo) -> Vec<(NodeId, Vec<LinhaMedida>)> {
         *v = juntas;
     }
     secoes
+}
+
+/// Duas peças da mesma linha: lado a lado com as alturas cruzadas, ou uma dentro da banda da outra
+/// (o controlo que o chamador põe sob um rótulo).
+fn mesma_linha(a: &LinhaMedida, b: &LinhaMedida) -> bool {
+    let lado_a_lado = b.x >= a.x + a.w - 0.5 || a.x >= b.x + b.w - 0.5;
+    (lado_a_lado && b.topo < a.fundo) || (b.topo >= a.topo && b.fundo <= a.fundo + 0.5)
 }
 
 impl Censo {

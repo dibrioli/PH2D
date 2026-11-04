@@ -46,6 +46,15 @@ pub(crate) struct CardMetrics {
     pub(crate) font: f32,
     pub(crate) small: f32,
     pub(crate) line: f32,
+    /// O vão reservado no fim da linha de um botão.
+    pub(crate) vao: f32,
+}
+
+impl CardMetrics {
+    /// A caixa do botão de uma linha que começa em `ty`.
+    pub(crate) fn botao(&self, ty: f32) -> Rect {
+        Rect::new(self.tx, ty, self.tw, self.line - self.vao)
+    }
 }
 
 /// Pinta o cartão. Devolve o `y` de baixo.
@@ -64,6 +73,13 @@ pub(crate) fn paint_instance_card(
     let font = TypeToken::Base.px();
     let small = TypeToken::Sm.px();
     let line = font + Spacing::Xs.px();
+    // Num cartão os botões da lista têm o vão de toda linha (05 §4, lei 3).
+    let vao = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::corpo::ROW_GAP
+    } else {
+        0.0
+    };
+    let line = line + vao;
     // ⚠️ **A altura é MEDIDA antes de pintar**, e não somada enquanto se desenha: o fundo do cartão
     // tem de ser desenhado PRIMEIRO (senão cobre o texto), e por isso ele precisa de saber onde
     // acaba. *Um fundo pintado depois do conteúdo é o conteúdo apagado.*
@@ -116,6 +132,7 @@ pub(crate) fn paint_instance_card(
         font,
         small,
         line,
+        vao,
     };
     let list_h: f32 = info
         .overridden

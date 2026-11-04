@@ -133,6 +133,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.pixel.palette" => "Palette",
         "card.pixel.fg" => "Foreground",
         "card.pixel.bg" => "Background",
+        "card.insp.behind_parent" => "Behind Parent",
         "card.flip.size" => "Size (px)",
         "card.flip.strength" => "Strength (%)",
         "card.flip.opacity" => "Opacity (%)",

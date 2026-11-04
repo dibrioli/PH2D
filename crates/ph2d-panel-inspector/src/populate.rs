@@ -586,10 +586,17 @@ fn populate_transform_editor(store: &mut WidgetStore) {
             },
         );
     }
-    store.register(
+    for id in [
         crate::ids::INSP_TRANSFORM_RESET,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
+        crate::ids::INSP_TRANSFORM_ROTATE_CW,
+        crate::ids::INSP_TRANSFORM_FLIP_H,
+        crate::ids::INSP_TRANSFORM_FLIP_V,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }

@@ -129,7 +129,7 @@ pub(crate) fn paint(
     // ⭐ O gesto que larga TODAS — e ele **só aparece quando existem**: um botão permanentemente
     // inerte é ruído que o artista aprende a ignorar.
     if info.orphans() > 0 {
-        let host = Rect::new(at.tx, ty, at.tw, at.line);
+        let host = at.botao(ty);
         hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
         let button = Button::new(
             ids::INSP_INSTANCE_CLEAR_ORPHANS,

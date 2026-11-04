@@ -51,7 +51,7 @@ pub(crate) fn paint(
         let Some(&id) = ids::INSP_INSTANCE_APPLY_ADDED.get(i) else {
             break;
         };
-        let host = Rect::new(at.tx, ty, at.tw, at.line);
+        let host = at.botao(ty);
         hit_index.register(id, host);
         // ⚠️ **O rótulo sai do MODELO** (`AddedRow::label`), como o das duas irmãs: ele nomeia a
         // peça **e** a receita de destino, e com aninhamento essa receita não é a do topo do

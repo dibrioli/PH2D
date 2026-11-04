@@ -273,7 +273,7 @@ fn linha_de_marcar(
     let reset_id = ids::INSP_SCRIPT_RESET[i];
     let nome = tr("panel.inspector.script.reset");
     let reset_w = largura_do_botao(text_system, reset_id, nome).min(w);
-    let gap = Spacing::Xs.px();
+    let gap = ph2d_editor_core::panel::cards::corpo::ROW_GAP;
     let altura = ALTURA_DE_CAMPO;
     botao(
         scene,

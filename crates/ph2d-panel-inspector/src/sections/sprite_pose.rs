@@ -149,6 +149,46 @@ pub(crate) fn paint_sprite_pose_rows(
         ),
         sec,
     );
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        // Uma grandeza de duas componentes: um rótulo, X e Y lado a lado (dono 04/11).
+        cur_y = super::rows::par_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            Some((
+                tr("component.field.sprite.10"),
+                ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            )),
+            [
+                super::rows::Campo::new(
+                    eixo("panel.inspector.sprite_sheet.offset_x").as_str(),
+                    ids::INSP_SPRITE_OFFSET_X,
+                    None,
+                ),
+                super::rows::Campo::new(
+                    eixo("panel.inspector.sprite_sheet.offset_y").as_str(),
+                    ids::INSP_SPRITE_OFFSET_Y,
+                    None,
+                ),
+            ],
+        );
+        return paint_flip_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            sec,
+        );
+    }
     for (key, id) in [
         (
             "panel.inspector.sprite_sheet.offset_x",

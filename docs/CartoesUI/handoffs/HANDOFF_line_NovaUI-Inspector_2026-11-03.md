@@ -1,6 +1,6 @@
 # Handoff — linha `NovaUI-Inspector`: Inspector em cartões, estilos de cor do Vector, cola na shell (03/11/2026)
 
-Worktree `Worktrees/line-NovaUI-Inspector`, branch `line/NovaUI-Inspector`; último código `c83cbd1f1b`.
+Worktree `Worktrees/line-NovaUI-Inspector`, branch `line/NovaUI-Inspector`; último código `1a3954c56d`.
 Base: `line/NovaUI` `11b6952897`; merge-base com `main` = `3a3896a7ab`. **Não integrada, sem push.**
 Contagens: `git diff --stat 11b6952897 HEAD`. Curas do smoke de 03/11: §6.
 Leitor: a próxima LLM / o integrador. Plano-mãe: [06](../06_COMO_PORTAR_PARA_O_MAIN.md) §3 · galeria: [handoff GALERIA](HANDOFF_line_NovaUI_2026-11-03_GALERIA.md).
@@ -108,10 +108,10 @@ Sempre: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-NovaUI-Inspector`
 - **Alfinete em Object, Appearance, Fill, Stroke, Ordering e Material:** só DEPOIS da CI (Enio, 03/11). Plano com o
   tamanho medido, não construído: [09](../09_alfinete_nos_cartoes_PLANO.md).
 
-## 6 — Curas do smoke do dono (03/11), `ff66debfb3` + `c83cbd1f1b`
+## 6 — Curas do smoke do dono (03/11), `ff66debfb3` + `c83cbd1f1b` + `1a3954c56d`
 
 **Palavras dele:** «dropdown color styles não fecha sozinho ao clicar fora dele […] ícone de difícil visualização e
-entendimento devem ser um pouco maiores.» Nenhuma aprovada ainda: o smoke destes itens está com ele.
+entendimento devem ser um pouco maiores.» Smoke dele: passos 1–3 e 5–7 OK; o «Edit style» também, com a queixa abaixo.
 
 - **Mecanismo:** o fecho só corria no `Click(id)`. A pressão no vazio não gera `Click`, e no canvas os ramos da shell
   devolvem antes do `forward_to_hero`. Por isso a porta `HeroScreen::premido_fisico` →
@@ -131,6 +131,9 @@ entendimento devem ser um pouco maiores.» Nenhuma aprovada ainda: o smoke deste
 - **Mutações:** 16 de 16 a vermelho. Uma terceira sobrevivente (soltar o foco da busca) era código redundante e saiu.
 - **Limite honesto:** o caminho shell → porta prova-se por gate de fonte. O clique real no canvas não corre em
   `kwin --virtual` (XTest ignorado), logo é o smoke do dono que o prova.
+
+- **«A janelinha pode ficar fora do campo de visão» (smoke dele):** a lista, o «Edit style» e a lista suspensa sobem o que faltar para caber acima da faixa de estado (`sobe_para_caber`, limite publicado por `pinta_os_soltos`). Testes `*_stays_inside_the_window`; mutação a vermelho.
+- **«A nota é duplicada no painel; apagada, reaparece ao voltar» (smoke dele):** `passa_face` copiava a nota ao soltar e o original caía no «sobram» do fim do painel, porque a coluna pinta a linha-fantasma. Agora a nota MOVE-SE nos dois sentidos; tema e contorno continuam a nascer copiados (emenda do T63 em [01](../01_decisoes_do_dono.md)). ⚠️ O teste `each_loose_copy_keeps_its_own_theme_and_notes` mudou de números: (1,1,2) → (0,1,1), e (3,0) → (1,0). Teste `a_note_goes_with_the_card_and_is_never_left_behind`; mutação a vermelho. ⛔ Ainda sem o smoke dele.
 
 **Tectos que a linha tinha estourado sem o §3 os registar** (na fusão reprovariam; curados movendo, sem subir número):
 

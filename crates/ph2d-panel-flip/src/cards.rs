@@ -8,7 +8,9 @@ use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{
+    HierarchyDragState, InteractiveState, PanelRowFamily, WidgetStore,
+};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, aos_pares, caixas_aos_pares, campo, cartao, opcoes, prepara_numeros,
@@ -29,6 +31,7 @@ use ph2d_tool_flip::{
 #[path = "cards_camadas.rs"]
 mod camadas;
 use camadas::cartao_das_camadas;
+pub(crate) use camadas::toma_a_queda;
 #[path = "cards_pincel.rs"]
 mod pincel;
 use pincel::cartao_do_pincel;
@@ -131,6 +134,14 @@ pub(crate) fn prepare(
     for row in &layers.rows {
         prepara_camada(store, row);
     }
+    store.set_panel_row_ids(
+        PanelRowFamily::FlipLayer,
+        layers
+            .rows
+            .iter()
+            .map(|r| ids::flip_layer_widget_id(r.id, FlipLayerWidget::Row))
+            .collect(),
+    );
 }
 
 fn dica(store: &mut WidgetStore, id: NodeId, chave: &'static str) {

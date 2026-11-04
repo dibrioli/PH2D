@@ -35,7 +35,18 @@ pub(super) fn cartao_das_camadas(
             );
             // De cima para baixo; o índice 0 é o fundo, sem mistura (nada por baixo para misturar).
             let n = layers.rows.len();
-            for (i, row) in layers.rows.iter().enumerate().rev() {
+            let voo = na_mao(c.store, &layers);
+            let mut ordem: Vec<usize> = (0..n).rev().collect();
+            ordem.retain(|i| voo.is_none_or(|(k, _)| k != *i));
+            let vao = voo.map(|(k, d)| {
+                let vao = vao_da_queda(&layers, &ordem, y, d.cursor_y);
+                QUEDA.with(|q| q.set(Some(n - 1 - vao)));
+                (vao, altura_de(layers.rows[k].id))
+            });
+            for (pos, i) in ordem.iter().copied().enumerate() {
+                y = abre_o_vao(c, vao, pos, y);
+                let row = &layers.rows[i];
+                let topo = y;
                 y = camada(
                     c,
                     row,
@@ -45,10 +56,80 @@ pub(super) fn cartao_das_camadas(
                     renomeia == Some(row.id),
                     y,
                 );
+                ALTURAS.with(|a| a.borrow_mut().insert(row.id, y - topo));
+            }
+            y = abre_o_vao(c, vao, ordem.len(), y);
+            if let Some((k, d)) = voo {
+                let row = &layers.rows[k];
+                let linha = ListRow::new(
+                    ids::flip_layer_widget_id(row.id, FlipLayerWidget::Row),
+                    &row.name,
+                );
+                c.list_row_flight(
+                    &linha,
+                    d.cursor_x - (d.down_x - c.x),
+                    d.cursor_y - m::FIELD_H * 0.5,
+                );
             }
             y
         },
     )
+}
+
+thread_local! {
+    /// O índice onde a camada na mão cai agora: o que a queda aplica.
+    static QUEDA: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    /// A altura de cada bloco no último quadro: o vão tem a altura de quem voa.
+    static ALTURAS: std::cell::RefCell<std::collections::BTreeMap<u64, f32>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// A queda prevista: lê-se uma vez, ao largar.
+pub(crate) fn toma_a_queda() -> Option<usize> {
+    QUEDA.with(std::cell::Cell::take)
+}
+
+fn altura_de(camada: u64) -> f32 {
+    ALTURAS.with(|a| a.borrow().get(&camada).copied().unwrap_or(m::FIELD_H))
+}
+
+/// A camada que vai na mão: o índice dela em `rows` e o arrasto.
+fn na_mao(store: &WidgetStore, layers: &FlipLayersSnapshot) -> Option<(usize, HierarchyDragState)> {
+    let (familia, d) = store.panel_row_drag()?;
+    (familia == PanelRowFamily::FlipLayer && d.active).then_some(())?;
+    let k = layers
+        .rows
+        .iter()
+        .position(|r| ids::flip_layer_widget_id(r.id, FlipLayerWidget::Row) == d.dragged)?;
+    Some((k, d))
+}
+
+/// Em que posição das que ficam abre o vão: antes da 1.ª cujo meio está abaixo da mão.
+fn vao_da_queda(layers: &FlipLayersSnapshot, ordem: &[usize], topo: f32, mao: f32) -> usize {
+    let mut y = topo;
+    for (pos, i) in ordem.iter().enumerate() {
+        let h = altura_de(layers.rows[*i].id);
+        if mao < y + h * 0.5 {
+            return pos;
+        }
+        y += h;
+    }
+    ordem.len()
+}
+
+/// Em `pos == vao.0`, a marca de acento e o espaço de quem voa: a lei do cartão do Kanban.
+fn abre_o_vao(c: &mut CardCtx<'_>, vao: Option<(usize, f32)>, pos: usize, y: f32) -> f32 {
+    let Some((_, h)) = vao.filter(|(onde, _)| *onde == pos) else {
+        return y;
+    };
+    let marca = Rect::new(c.x, y, c.w, StrokeToken::Thick.px());
+    fill_rounded_rect(
+        c.scene,
+        marca,
+        marca.h * 0.5,
+        c.ink.color(ColorToken::Accent),
+    );
+    y + h
 }
 
 /// A seta desligada pinta-se apagada e não regista alvo (no-op, como no corpo de antes).

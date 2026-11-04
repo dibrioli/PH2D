@@ -173,6 +173,10 @@ pub fn apply_panel_event(
             }
         }
         PanelEvent::SetValue(id, v) => match decode_widget(flip, *target, *id) {
+            // O arrastar da linha (o painel calcula o índice onde ela caiu).
+            Some((layer, FlipLayerWidget::Row)) => flip
+                .object_mut(oid)
+                .is_some_and(|o| o.move_layer_to(layer, *v as usize)),
             Some((layer, FlipLayerWidget::Opacity)) => {
                 if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
                     l.opacity = (*v as f32).clamp(0.0, 1.0);
@@ -384,6 +388,37 @@ mod tests {
             .map(|l| l.id)
             .collect();
         assert_eq!(ids_now, vec![b, a]);
+    }
+
+    /// O arrastar da linha chega como `SetValue` na Row, e é UM passo só, a qualquer distância.
+    /// *Mutação: o braço fora ⇒ `false` e a ordem fica.*
+    #[test]
+    fn dragging_a_row_moves_the_layer_in_one_step() {
+        let (mut doc, a, b) = doc_2layers(); // [a, b]
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = FlipTarget::on(oid, None);
+        let mut aplica = |doc: &mut _, indice: f64| {
+            apply_panel_event(
+                &PanelEvent::SetValue(wid(a, FlipLayerWidget::Row), indice),
+                doc,
+                &mut active,
+                &ph2d_core::Playhead::default(),
+                false,
+            )
+        };
+        assert!(
+            !aplica(&mut doc, 0.0),
+            "no mesmo sítio não há passo de desfazer"
+        );
+        assert!(aplica(&mut doc, 1.0));
+        let agora: Vec<LayerId> = doc
+            .object(oid)
+            .unwrap()
+            .layers()
+            .iter()
+            .map(|l| l.id)
+            .collect();
+        assert_eq!(agora, vec![b, a]);
     }
 
     /// 🔴 **SelectOption na Row id renomeia a camada** (§4.C) — o consumidor real do

@@ -4,11 +4,12 @@
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::{PanelRowFamily, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{dicas, dropdown, ferramenta};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, key_mark_target, set_key_marks};
+use ph2d_host::PointerKind;
 use ph2d_painter_effects::MAX_BLEND_MODES;
 use ph2d_panel_flip::ids::{self, FlipLayerWidget as W};
 use ph2d_panel_flip::state::FlipPanelState;
@@ -313,6 +314,59 @@ fn the_layer_rows_forward_and_a_blocked_arrow_is_not_a_target() {
             .is_none(),
         "a do fundo não desce"
     );
+    me.prova_o_clique(ids::flip_layer_widget_id(FUNDO, W::MoveUp));
+}
+
+/// Arrastar o nome de uma camada: ela voa, as outras abrem o vão, e largar diz à shell o índice; as
+/// setas continuam. *Mutação: sem `set_panel_row_ids` não há arrasto; sem o voo, a geometria não sobe.*
+#[test]
+fn dragging_a_layer_flies_opens_the_gap_and_tells_the_shell_where_it_fell() {
+    let mut me = mesa(em(FlipMode::Draw));
+    let id_cima = da_camada(W::Row);
+    let id_fundo = ids::flip_layer_widget_id(FUNDO, W::Row);
+    let (cima, fundo) = (
+        me.rect(id_cima).expect("cima"),
+        me.rect(id_fundo).expect("fundo"),
+    );
+    assert!(cima.y < fundo.y, "a de cima pinta-se em cima");
+    let (x, y) = (cima.x + cima.w * 0.5, cima.y + cima.h * 0.5);
+    let abaixo_de_tudo = fundo.y + 400.0;
+    let ev = me.ponteiro(PointerKind::Down, x, y);
+    let _ = me.aplica(ev);
+    let ev = me.ponteiro(PointerKind::Move, x, abaixo_de_tudo);
+    let _ = me.aplica(ev);
+    me.assenta();
+    assert!(
+        me.host
+            .store()
+            .panel_row_drag()
+            .is_some_and(|(f, d)| f == PanelRowFamily::FlipLayer && d.active),
+        "o arrasto não começou"
+    );
+    assert!(
+        me.rect(id_cima).is_none(),
+        "o bloco voa: o lugar dele é o vão"
+    );
+    let (h, st) = (&mut me.host, &mut me.st);
+    let medidos = h.medindo_a_pintura::<FlipPanel>(
+        st,
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+    );
+    assert!(
+        medidos.iter().any(|m| m.texto == "Top"),
+        "o nome tem de ir na mão: {:?}",
+        medidos.iter().map(|m| &m.texto).collect::<Vec<_>>()
+    );
+    let ev = me.ponteiro(PointerKind::Up, x, abaixo_de_tudo);
+    let accoes = me.aplica(ev);
+    assert!(
+        accoes.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)) if *id == id_cima && *v == 0.0
+        )),
+        "largar abaixo de tudo é o fundo da pilha: {accoes:?}"
+    );
+    me.assenta();
     me.prova_o_clique(ids::flip_layer_widget_id(FUNDO, W::MoveUp));
 }
 

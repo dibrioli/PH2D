@@ -17,7 +17,7 @@ use crate::ids;
 use crate::ids::FlipLayerWidget;
 use crate::state::{FlipPanelState, LayerRename, current_layers};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::{InteractiveState, PanelRowFamily, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_effects::MAX_BLEND_MODES;
@@ -205,6 +205,21 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
+        // ── A linha arrastada: o painel sabe onde abriu o vão, a shell muda a ordem. ──
+        WidgetEvent::PanelRowReparent {
+            family: PanelRowFamily::FlipLayer,
+            dragged,
+            ..
+        } => {
+            if let Some(indice) = crate::cards::toma_a_queda() {
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                        dragged,
+                        indice as f64,
+                    )));
+            }
             true
         }
         // ── Close (X) → deactivate the tool. ──

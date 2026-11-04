@@ -119,6 +119,9 @@ pub enum WidgetEvent {
 pub enum PanelRowFamily {
     /// As camadas do Painter (W3 T3.8) — o `LayerStack` é da ferramenta.
     PainterLayer,
+    /// As camadas do Flip: a ordem é do objecto, e quem calcula o sítio é o próprio painel (cada
+    /// camada é um bloco alto, com a linha do nome em cima).
+    FlipLayer,
     /// ⭐ As tags do projecto (TOP-20 #9, W4b) — a `TagTree` é do documento.
     TagTree,
     /// Os pincéis no navegador de presets do Painter (23/10) — a ordem é do `estado.json` do artista.
@@ -141,7 +144,11 @@ impl PanelRowFamily {
     pub fn aninha(self) -> bool {
         !matches!(
             self,
-            Self::PainterPreset | Self::AnimRule | Self::PixelPalette | Self::VectorPaint
+            Self::PainterPreset
+                | Self::AnimRule
+                | Self::PixelPalette
+                | Self::VectorPaint
+                | Self::FlipLayer
         )
     }
 

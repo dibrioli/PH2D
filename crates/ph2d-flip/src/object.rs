@@ -140,6 +140,21 @@ impl FlipObject {
         true
     }
 
+    /// Leva a camada `id` ao índice `index` da ordem de z, de uma vez: o arrastar é um passo de
+    /// desfazer só. `false` se não existe ou já lá está.
+    pub fn move_layer_to(&mut self, id: LayerId, index: usize) -> bool {
+        let Some(de) = self.layer_index(id) else {
+            return false;
+        };
+        let para = index.min(self.layers.len() - 1);
+        if de == para {
+            return false;
+        }
+        let camada = self.layers.remove(de);
+        self.layers.insert(para, camada);
+        true
+    }
+
     /// **Duplica a camada `id`** (o "Duplicate Layer" do Painter/PS) — uma cópia
     /// INDEPENDENTE, inserida logo ACIMA da original, e devolve o id dela.
     ///

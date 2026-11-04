@@ -22,6 +22,7 @@
 - ⭐⭐ [Dono 04/11: cartão compacto como o Figma — irmãos dividem a linha, nada grudado, uma grelha](feedback_card_layout_is_compact_like_figma_2026_11_04.md)
 - ⭐⭐ [Dono 03/11: a Widget Gallery abre no painel lateral, ferramentas fictícias à Figma + casos reais + amostras do Rive](project_widget_gallery_figma_tools_real_cases_2026_11_03.md)
 - ⭐⭐ [Dono 03/11: teste de pincel = alarme BARATO que aponta o que mudou + o DONO decide (gizmo × traço); fim das tabelas de 40 tamanhos](project_brush_tests_cheap_alarm_owner_decides_2026_11_03.md)
+- ⭐⭐ [Dono 04/11: o mesmo traço dá o mesmo byte em qualquer computador; o motor não chama a matemática do sistema](project_same_stroke_same_byte_on_any_machine_2026_11_04.md)
 - ⭐⭐ [Dono 03/11: manter a cura da cobertura mas devolver o molhado antigo (Wet Round/Drip); Blend > círculo](project_coverage_cure_must_keep_the_old_wetness_2026_11_03.md)
 - ⭐⭐⭐ [Dono 31/10 noite: o Rebelle DEIXA de ser referência — o Painter busca a própria cara (física + consistência + olho do dono)](project_rebelle_no_longer_the_reference_2026_10_31.md) · antes: [superar o Rebelle](project_superar_rebelle_autonomous_2026_10_31.md) · [02/11: Wet Liner sem fio escuro; cena macro 1 fica](project_wet_liner_no_dark_edge_2026_11_02.md)
 - ⭐⭐⭐ [Dono 01/11: painel E10 — tools na barra vertical, secções comuns aos 4 modos, padrão do Inspector, avançado preservado; Body e sombra ficam](project_painter_panel_e10_owner_decisions_2026_11_01.md)

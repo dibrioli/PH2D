@@ -37,8 +37,8 @@ Não muda: régua, faixas, curvas, costura de nomes, barra de rolagem, popovers,
 | Antes | Depois |
 |---|---|
 | 9 chips soltos no canto, moldura `Bg2/Border` | uma pílula flutuante (tinta e sombra da lista), a fila de ícones do cartão; aceso = segmento aceso em vez de anel |
-| Migalhas `Bg2/Bg3` | a mesma pílula, segmentos de texto, tinta da lista |
-| Nó: corpo `Bg2`, raio 7, borda `Border` | corpo na tinta do cartão, raio `CARD_RADIUS`; cabeçalho da categoria fica; caixas dos params na tinta do campo |
+| Migalhas `Bg2/Bg3` | as mesmas caixas e `crumb_rect`, tinta da lista, sem borda |
+| Nó: corpo `Bg2`, raio 7, borda `Border` | corpo na tinta do cartão, raio 7 de sempre (a cápsula partilha-o); cabeçalho da categoria fica; caixas dos params na tinta do campo |
 
 Não muda: geometria dos nós, portas, fios, cápsula, véu, hits, divisor. Sem título nem barra: o grafo não perde altura (0 px).
 Legibilidade: o cabeçalho colorido por categoria e o contraste dos nomes de porta ficam; a régua é a foto ao zoom 1 e no fit.

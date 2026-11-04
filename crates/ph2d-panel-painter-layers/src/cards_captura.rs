@@ -105,16 +105,6 @@ impl Captura {
         c
     }
 
-    /// A altura do que pintou.
-    pub(crate) fn altura(&self) -> f32 {
-        self.fundo - self.y
-    }
-
-    /// O bloco pintou alguma coisa?
-    pub(crate) fn pintou(&self) -> bool {
-        self.fundo > self.y
-    }
-
     /// Repete a cena e os alvos em `y`, e devolve o fundo.
     pub(crate) fn repete(&self, c: &mut CardCtx<'_>, y: f32) -> f32 {
         let (dx, dy) = (c.x - self.x, y - self.y);

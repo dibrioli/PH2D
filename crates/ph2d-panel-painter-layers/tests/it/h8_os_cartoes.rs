@@ -547,7 +547,8 @@ fn a_bar_and_a_list_wear_their_animation_mark() {
 }
 
 /// A barra que a ferramenta diz inerte diz porquê, em Stroke, Pen e nestas peças.
-/// *Mutação: `tr_sem_dica`, `ab_sem_dica` ⇒ vermelho.*
+/// *Mutação: `tr_sem_dica` ⇒ vermelho. `ab_sem_dica` sobrevive e é equivalente: nenhum `Dependente` cobre as barras
+/// de `arma_barra` (Line, Composite, Inpaint, Deform, Selection, Sculpt), medido em `inercia.rs`.*
 #[test]
 fn an_inert_bar_says_why() {
     let mut vistas = 0;

@@ -4,12 +4,14 @@
 //! Secção convertida = corpo em [`crate::cards_nativos`]. Secção por converter = o corpo de hoje, capturado
 //! ([`crate::cards_captura`]). Em ambos o pintor antigo decide se a secção está à vista e dá o título.
 
-use crate::cards_captura::{Captura, coluna, y_de};
+use crate::cards_captura::coluna;
+use crate::cards_tela::{self, Tela};
+use crate::paint_texture::Previa;
 use crate::{
-    cards_aleatorio, cards_camadas, cards_caneta, cards_composto, cards_exclusivos, cards_ferramenta, cards_grao,
-    cards_impasto, cards_nativos, cards_papel, cards_shape, cards_shape_tom, cards_topo,
-    cards_traco, cards_watercolor, cards_wet, paint, paint_brush, paint_brush_top, preview_pino,
-    state,
+    cards_aleatorio, cards_camadas, cards_caneta, cards_composto, cards_exclusivos,
+    cards_ferramenta, cards_grao, cards_impasto, cards_nativos, cards_papel, cards_rampa,
+    cards_shape, cards_shape_tom, cards_topo, cards_traco, cards_watercolor, cards_wet, paint,
+    paint_brush, paint_brush_top, preview_pino, state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -65,21 +67,19 @@ enum Conteudo {
     /// Um corpo de `cards_nativos`, com o Reset dele.
     Nativo(Option<NodeId>),
     Linhas(Vec<cards_topo::Linha>),
-    Wet(Captura),
+    Wet,
     /// A prévia do Flow.
-    Watercolor(Captura),
+    Watercolor(Previa),
     Impasto,
-    /// Os gizmos, a prévia, as linhas de cada camada.
+    /// A prévia da forma.
     Forma(cards_shape::Pecas),
-    /// O editor de cada rampa.
-    Tom(cards_shape_tom::Pecas),
+    Tom,
     /// A prévia do padrão.
-    Papel(Option<Captura>),
-    /// A prévia, o editor da rampa, os dois títulos que dobram dentro do cartão.
+    Papel(Option<Previa>),
+    /// A prévia do padrão.
     Grao(cards_grao::Pecas),
     Aleatorio,
-    /// O título do Jitter, que dobra dentro do cartão.
-    Traco(Option<Captura>),
+    Traco,
     Caneta,
     Mascara,
     Deform,
@@ -95,22 +95,22 @@ impl Presente {
             | Conteudo::Mascara
             | Conteudo::Deform
             | Conteudo::Selecao => None,
-            Conteudo::Wet(_) => Some(pids::PAINTER_WETPAINT_RESET),
+            Conteudo::Wet => Some(pids::PAINTER_WETPAINT_RESET),
             Conteudo::Watercolor(_) => Some(pids::PAINTER_WATERCOLOR_RESET),
             Conteudo::Impasto => Some(pids::PAINTER_IMPASTO_RESET),
             Conteudo::Forma(_) => Some(pids::PAINTER_SHAPE_RESET),
-            Conteudo::Tom(_) => Some(cards_shape_tom::reset()),
+            Conteudo::Tom => Some(cards_shape_tom::reset()),
             Conteudo::Papel(_) => Some(pids::PAINTER_WATERCOLOR_PAPER_RESET),
             Conteudo::Grao(_) => Some(pids::PAINTER_BRUSH_TEXTURE_RESET),
             Conteudo::Aleatorio => Some(pids::PAINTER_BRUSH_RANDOMIZE_RESET),
-            Conteudo::Traco(_) => Some(pids::PAINTER_BRUSH_STROKE_RESET),
+            Conteudo::Traco => Some(pids::PAINTER_BRUSH_STROKE_RESET),
             Conteudo::Caneta => Some(pids::PAINTER_PEN_RESET),
         }
     }
 }
 
 /// Corre as secções do pincel, e fica com as que estão à vista.
-fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
+fn secoes_do_pincel(ctx: &mut PaintCtx) -> Vec<Presente> {
     let brush = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let (x, w) = coluna(ctx.slot);
     // Deform e Selection são donos do corpo inteiro, como no painel de antes.
@@ -134,10 +134,9 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
         .collect();
     let mut presentes = Vec::with_capacity(ids.len());
     for id in ids {
-        let ink = CardInk::of_card(ctx.host.store().section_theme(id), theme);
         if id == pids::PAINTER_CARD_TOPO || id == pids::PAINTER_CARD_BASICOS {
             let linhas = if id == pids::PAINTER_CARD_TOPO {
-                cards_topo::do_topo(ctx, ink, (x, w), brush)
+                cards_topo::do_topo(brush)
             } else {
                 cards_topo::dos_basicos(brush)
             };
@@ -165,7 +164,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_wet::titulo().to_owned(),
-                    conteudo: Conteudo::Wet(cards_wet::visor(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Wet,
                 });
             }
             continue;
@@ -175,12 +174,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_watercolor::titulo().to_owned(),
-                    conteudo: Conteudo::Watercolor(cards_watercolor::previa(
-                        ctx,
-                        ink,
-                        (x, w),
-                        brush,
-                    )),
+                    conteudo: Conteudo::Watercolor(cards_watercolor::previa(w, &brush)),
                 });
             }
             continue;
@@ -200,7 +194,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_shape::titulo().to_owned(),
-                    conteudo: Conteudo::Forma(cards_shape::pecas(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Forma(cards_shape::pecas(w, &brush)),
                 });
             }
             continue;
@@ -210,7 +204,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_shape_tom::titulo().to_owned(),
-                    conteudo: Conteudo::Tom(cards_shape_tom::pecas(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Tom,
                 });
             }
             continue;
@@ -220,7 +214,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_papel::titulo().to_owned(),
-                    conteudo: Conteudo::Papel(cards_papel::previa(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Papel(cards_papel::previa(w, &brush)),
                 });
             }
             continue;
@@ -230,7 +224,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_grao::titulo().to_owned(),
-                    conteudo: Conteudo::Grao(cards_grao::pecas(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Grao(cards_grao::pecas(w, &brush)),
                 });
             }
             continue;
@@ -250,12 +244,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_traco::titulo().to_owned(),
-                    conteudo: Conteudo::Traco(cards_traco::titulo_do_jitter(
-                        ctx,
-                        ink,
-                        (x, w),
-                        &brush,
-                    )),
+                    conteudo: Conteudo::Traco,
                 });
             }
             continue;
@@ -301,28 +290,16 @@ fn cartao_das_camadas(ctx: &mut PaintCtx, theme: Theme) -> Presente {
     }
 }
 
-/// A prévia presa pelo pino, na faixa: `None` onde o painel de antes também não a põe.
-fn previa_fixada(ctx: &mut PaintCtx, theme: Theme) -> Option<Captura> {
-    preview_pino::esquece();
+/// A altura da prévia presa pelo pino, na faixa: `None` onde o painel de antes também não a põe.
+fn previa_fixada(ctx: &PaintCtx) -> Option<f32> {
+    if !cards_topo::topo_a_voar(ctx.host.store()) {
+        preview_pino::esquece();
+    }
     let brush = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
-    if !preview_pino::preview_fixada(ctx.host.store())
-        || brush.is_deform
-        || brush.is_selection
-        || !preview_pino::ha_preview()
-    {
+    if !preview_pino::preview_fixada(ctx.host.store()) || brush.is_deform || brush.is_selection {
         return None;
     }
-    let (x, w) = coluna(ctx.slot);
-    let id = core_ids::PAINTER_LAYERS_PANEL;
-    let posicao = (x, y_de(id, ctx.slot.y));
-    let c = Captura::de(
-        ctx,
-        id,
-        CardInk::of_list(theme),
-        posicao,
-        |ctx, y| preview_pino::pinta(ctx, theme, x, w, y).unwrap_or(y),
-    );
-    c.pintou().then_some(c)
+    preview_pino::altura(coluna(ctx.slot).1)
 }
 
 fn pincel_atual() -> ph2d_tool_painter::BrushSettings {
@@ -342,9 +319,7 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Linhas(l)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_topo::corpo(c, l, y))
                 }
-                (None, Conteudo::Wet(visor)) => {
-                    Box::new(move |c: &mut CardCtx<'_>, y| cards_wet::corpo(c, visor, y))
-                }
+                (None, Conteudo::Wet) => Box::new(cards_wet::corpo),
                 (None, Conteudo::Watercolor(previa)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_watercolor::corpo(c, previa, y))
                 }
@@ -352,9 +327,7 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Forma(pecas)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_shape::corpo(c, pecas, y))
                 }
-                (None, Conteudo::Tom(pecas)) => {
-                    Box::new(move |c: &mut CardCtx<'_>, y| cards_shape_tom::corpo(c, pecas, y))
-                }
+                (None, Conteudo::Tom) => Box::new(cards_shape_tom::corpo),
                 (None, Conteudo::Papel(previa)) => Box::new(move |c: &mut CardCtx<'_>, y| {
                     cards_papel::corpo(c, previa.as_ref(), y)
                 }),
@@ -362,9 +335,7 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_grao::corpo(c, pecas, y))
                 }
                 (None, Conteudo::Aleatorio) => Box::new(cards_aleatorio::corpo),
-                (None, Conteudo::Traco(jitter)) => Box::new(move |c: &mut CardCtx<'_>, y| {
-                    cards_traco::corpo(c, jitter.as_ref(), y)
-                }),
+                (None, Conteudo::Traco) => Box::new(cards_traco::corpo),
                 (None, Conteudo::Caneta) => Box::new(cards_caneta::corpo),
                 (None, Conteudo::Mascara) => Box::new(|c: &mut CardCtx<'_>, y| {
                     cards_exclusivos::mascara(c, &pincel_atual(), y)
@@ -406,15 +377,11 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     if camadas && ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB) {
         ctx.host.store_mut().set_picker_target(None);
     }
-    let previa = if camadas {
-        None
-    } else {
-        previa_fixada(ctx, theme)
-    };
+    let previa = if camadas { None } else { previa_fixada(ctx) };
     let presentes = if camadas {
         vec![cartao_das_camadas(ctx, theme)]
     } else {
-        secoes_do_pincel(ctx, theme)
+        secoes_do_pincel(ctx)
     };
     let pincel = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     cards_nativos::prepare(ctx.host.store_mut());
@@ -426,6 +393,9 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_watercolor::prepare(ctx.host.store_mut(), &pincel);
         cards_impasto::prepare(ctx, &pincel);
         cards_shape::prepare(ctx, &pincel);
+        if cards_shape::presente(&pincel) {
+            cards_rampa::prepara_camadas(ctx, &pincel);
+        }
         cards_shape_tom::prepare(ctx, &pincel);
         cards_papel::prepare(ctx, &pincel);
         cards_grao::prepare(ctx, &pincel);
@@ -461,13 +431,15 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
             on: camadas,
         },
     ];
-    let previa_h = previa
-        .as_ref()
-        .map_or(0.0, |p| m::FIELD_ROW_GAP + p.altura());
+    let previa_h = previa.map_or(0.0, |h| m::FIELD_ROW_GAP + h);
+    let coluna_w = coluna(ctx.slot).1;
     let faixa = |c: &mut CardCtx<'_>, r: Rect| {
         let y = c.full(None, Widget::Choice(&modos), r.y);
-        if let Some(p) = &previa {
-            let _ = p.repete(c, y + m::FIELD_ROW_GAP);
+        if previa.is_some() {
+            // A largura da altura que a faixa reservou: a da coluna dos cartões.
+            let x = c.x;
+            let mut t = Tela::do_cartao(c);
+            let _ = preview_pino::na_tela(&mut t, x, coluna_w, y + m::FIELD_ROW_GAP);
         }
     };
     let preso = ListTop {
@@ -479,6 +451,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         let lista = cartoes(&presentes);
         paint_card_list_top(ctx, panel, titulo, &lista, None, &[], Some(preso));
     }
+    cards_tela::aplica(ctx.host.store_mut());
 
     let store = ctx.host.store();
     let conteudo = store.panel_content_h(panel).unwrap_or(0.0);
@@ -502,6 +475,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
             cards_watercolor::listas_abertas(ctx, &pincel);
             cards_shape::listas_abertas(ctx, &pincel);
             cards_shape_tom::listas_abertas(ctx, &pincel);
+            cards_rampa::camadas_abertas(ctx, &pincel);
             cards_papel::listas_abertas(ctx, &pincel);
             cards_grao::listas_abertas(ctx, &pincel);
             cards_traco::listas_abertas(ctx, &pincel);

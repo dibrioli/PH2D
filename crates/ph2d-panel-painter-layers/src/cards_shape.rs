@@ -2,17 +2,17 @@
 //! condições de `paint_shape_section`. Os gizmos (curva, Taper, Flatten), a prévia e as linhas de cada camada continuam
 //! nos pintores deles, capturados: registam `CurvePoint` e leem a cor pelo `PaintCtx`.
 
-use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
 use crate::cards_linhas::{
     Item, aberta, botoes, fila, filete, grupo, grupo_inicial, numero, par_xy,
 };
+use crate::cards_tela::Tela;
+use crate::paint_texture::Previa;
 use crate::paint_wetpaint::Numero;
 use crate::{esmaecer, number_field as nf, paint_brush, ponta_linhas, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::CardCtx;
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -21,7 +21,6 @@ use ph2d_tool_painter::{
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
 };
 
-const SECAO: NodeId = pids::PAINTER_SHAPE_SECTION;
 const UNIDADE: (f32, f32) = (0.0, 1.0);
 
 /// A resposta do `plano_do_corpo`: o Inpaint marca um disco, e não lê a silhueta.
@@ -56,51 +55,13 @@ fn linhas_por_camada(b: &BrushSettings) -> bool {
     b.shape_layer_count > 1 && b.le(LinhaDaFerramenta::CorPorCamada) && b.shape_per_layer_color
 }
 
-/// O que ainda pede o `PaintCtx`.
-pub(crate) struct Pecas {
-    curva: Option<Captura>,
-    taper: Option<Captura>,
-    pegada: Option<Captura>,
-    camadas: Option<Captura>,
-    previa: Option<Captura>,
-}
+/// O que se desenha uma vez por quadro: a prévia da forma.
+pub(crate) type Pecas = Option<Previa>;
 
-/// Corre as peças, uma vez por quadro, na posição do quadro anterior.
-pub(crate) fn pecas(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Pecas {
-    let topo = ctx.slot.y;
-    let tema = ink.theme;
-    let mut peca =
-        |n: u64, quer: bool, pinta: fn(&mut PaintCtx, _, f32, f32, f32, BrushSettings) -> f32| {
-            quer.then(|| {
-                let chave = chave_da_peca(SECAO, n);
-                let x = x_de(chave, x);
-                Captura::da_peca(ctx, chave, SECAO, ink, (x, y_de(chave, topo)), |ctx, y| {
-                    pinta(ctx, tema, x, w, y, brush)
-                })
-            })
-        };
-    let viva = !automatica(&brush);
-    let forma = le_a_forma(&brush) && viva;
-    Pecas {
-        curva: peca(
-            0,
-            forma && !imagem(&brush),
-            crate::paint_falloff::paint_falloff_curva,
-        ),
-        taper: peca(1, viva, crate::paint_taper::paint_taper_visor),
-        pegada: peca(2, viva, crate::paint_shape_dab::paint_shape_dab_canvas),
-        camadas: peca(
-            3,
-            forma && linhas_por_camada(&brush),
-            crate::paint_shape_layers::paint_linhas_por_camada,
-        ),
-        previa: peca(4, forma, crate::paint_shape::paint_shape_preview),
-    }
+/// A silhueta, se a forma está à vista.
+pub(crate) fn pecas(w: f32, brush: &BrushSettings) -> Pecas {
+    (le_a_forma(brush) && !automatica(brush))
+        .then(|| crate::paint_shape::previa_da_forma(w, *brush))
 }
 
 fn dureza(b: &BrushSettings) -> Numero {
@@ -457,30 +418,40 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
     }
 }
 
-pub(crate) fn repete(c: &mut CardCtx<'_>, peca: Option<&Captura>, y: f32) -> f32 {
-    peca.map_or(y, |p| p.repete(c, y + m::FIELD_ROW_GAP))
-}
-
 fn numeros_em_fila(c: &mut CardCtx<'_>, lista: Vec<Numero>, y: f32) -> f32 {
     let itens: Vec<Item> = lista.into_iter().map(Item::Num).collect();
     fila(c, &itens, y)
 }
 
-fn queda(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
+fn queda(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     let lista = Item::Lista {
         id: pids::PAINTER_BRUSH_FALLOFF,
         chave: "panel.painter_layers.shape.falloff",
         texto: tr(Falloff::from_u8(b.falloff).name_key()),
     };
     let y = fila(c, &[lista, Item::Num(dureza(b))], y);
-    repete(c, p.curva.as_ref(), y)
+    if !le_a_forma(b) || automatica(b) || imagem(b) {
+        return y;
+    }
+    let (x, w) = (c.x, c.w);
+    crate::paint_falloff::curva(&mut Tela::do_cartao(c), x, w, y + m::FIELD_ROW_GAP, *b)
 }
 
-fn taper_e_pegada(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
-    let y = repete(c, p.taper.as_ref(), y);
+fn taper_e_pegada(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
+    let viva = !automatica(b);
+    let (x, w) = (c.x, c.w);
+    let y = if viva {
+        crate::paint_taper::visor(&mut Tela::do_cartao(c), x, w, y + m::FIELD_ROW_GAP, *b)
+    } else {
+        y
+    };
     let y = numeros_em_fila(c, do_taper(b, b), y);
     let y = grupo(c, "panel.painter_layers.shape.flatten_and_rotate", y);
-    let y = repete(c, p.pegada.as_ref(), y);
+    let y = if viva {
+        crate::paint_shape_dab::gizmo(&mut Tela::do_cartao(c), x, w, y + m::FIELD_ROW_GAP, *b)
+    } else {
+        y
+    };
     fila(c, &da_pegada(b, b), y)
 }
 
@@ -495,7 +466,7 @@ fn textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
     let com_imagens = imagem(b) && b.shape_has_image;
     let entre = b.document_layer_count > 1
         || !da_cor_da_textura(b).is_empty()
-        || p.camadas.is_some()
+        || (le_a_forma(b) && !automatica(b) && linhas_por_camada(b))
         || com_imagens;
     // Sem nada entre elas, a fonte e o Dual brush dividem a linha.
     if !entre {
@@ -516,7 +487,9 @@ fn textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
         );
     }
     y = fila(c, &da_cor_da_textura(b), y);
-    y = repete(c, p.camadas.as_ref(), y);
+    if le_a_forma(b) && !automatica(b) && linhas_por_camada(b) {
+        y = crate::cards_rampa::linhas_por_camada(c, b, y);
+    }
     if com_imagens {
         let mut verbos = vec![(
             pids::PAINTER_SHAPE_HOSE_ADD,
@@ -550,7 +523,7 @@ fn fim_da_textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> 
             y,
         );
     }
-    y = repete(c, p.previa.as_ref(), y);
+    y = crate::cards_rampa::previa(c, p.as_ref(), y);
     if com_textura(b) {
         y = par_xy(c, "panel.painter_layers.shape.offset", OFFSET, y);
         y = par_xy(c, "panel.painter_layers.shape.size", TAMANHO, y);
@@ -578,13 +551,13 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     }
     if !le_a_forma(&b) {
         let y = grupo_inicial(c, "panel.painter_layers.taper.taper", y);
-        return taper_e_pegada(c, &b, p, y);
+        return taper_e_pegada(c, &b, y);
     }
     if !imagem(&b) {
-        y = queda(c, &b, p, y);
+        y = queda(c, &b, y);
     }
     y = grupo(c, "panel.painter_layers.taper.taper", y);
-    y = taper_e_pegada(c, &b, p, y);
+    y = taper_e_pegada(c, &b, y);
     y = filete(c, y);
     textura(c, &b, p, y)
 }

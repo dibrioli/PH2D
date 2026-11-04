@@ -263,11 +263,19 @@ fn every_number_shows_the_same_value_and_range_as_the_old_panel() {
             } else {
                 assert_eq!(s_v.number_value(id), s_n.number_value(id), "{nome}: {id:?}");
             }
-            assert_eq!(
-                s_v.number_range(id),
-                s_n.number_range(id),
-                "{nome}: faixa de {id:?}"
-            );
+            // O chip do stop não tinha faixa; o campo do cartão arrasta, e tem: 0..último stop, 0..1.
+            if ![
+                p::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
+                p::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
+            ]
+            .contains(&id)
+            {
+                assert_eq!(
+                    s_v.number_range(id),
+                    s_n.number_range(id),
+                    "{nome}: faixa de {id:?}"
+                );
+            }
         }
     }
 }
@@ -275,7 +283,15 @@ fn every_number_shows_the_same_value_and_range_as_the_old_panel() {
 #[test]
 fn scrubbing_each_number_moves_only_it_and_escape_gives_it_back() {
     for b in [com_papel(com_grao()), com_papel(molhado())] {
-        let ids = numeros(b);
+        // Os campos do stop têm prova própria (`h10`): a ferramenta recebe-os pelo editor da rampa.
+        let mut ids = numeros(b);
+        ids.retain(|i| {
+            ![
+                p::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
+                p::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
+            ]
+            .contains(i)
+        });
         assert!(ids.len() >= 15, "só {}", ids.len());
         for id in &ids {
             let le = |m: &Mesa, i: NodeId| m.host.store().number_value(i).expect("semeado");

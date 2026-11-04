@@ -44,6 +44,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Run the drying of the whole canvas fast, until it is dry"
         }
         "card.painter.wet.material" => "Material",
+        "card.painter.ramp.color_mode" => "Color mode",
+        "card.painter.ramp.interpolation" => "Interpolation",
+        "card.painter.ramp.stop" => "Stop",
+        "card.painter.ramp.position" => "Position",
+        "card.painter.ramp.color" => "Color",
+        "card.painter.ramp.add_tip" => "Add a color stop",
+        "card.painter.ramp.remove_tip" => "Remove the selected stop",
+        "card.painter.ramp.invert_tip" => "Flip the ramp end to end",
+        "card.painter.ramp.layer_opacity" => "Opacity (%)",
         "card.ceq.histogram" => "Histogram",
         "card.ceq.auto" => "Auto",
         "card.ceq.tone" => "Tone",

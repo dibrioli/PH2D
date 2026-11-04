@@ -2,7 +2,6 @@
 //! condições de `paint_stroke_section`. Cada barra vira a caixa ligada a ela: é a barra que continua a avisar o painel, e o
 //! chip mostra a mesma lei da pista. Spacing e Continuous ficam na mesma linha (E10). Capturado: só o título do Jitter.
 
-use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
 use crate::cards_linhas::{Item, aberta, botoes, escolha, fila, grupo};
 use crate::paint_stroke::{self, jitter_linhas};
 use crate::{cards_topo, esmaecer, number_field, paint_brush, state};
@@ -12,7 +11,6 @@ use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_editor_core::widget::card_field::CardFieldSpec;
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -20,7 +18,6 @@ use ph2d_tool_painter::{
     StrokeMethod,
 };
 
-const SECAO: NodeId = pids::PAINTER_BRUSH_STROKE_SECTION;
 const JITTER: NodeId = pids::PAINTER_BRUSH_JITTER_SECTION;
 
 /// Uma barra com o chip ligado, e a posição dela na pista.
@@ -271,33 +268,6 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
     }
 }
 
-/// O título do Jitter, na posição do quadro anterior: dobra dentro do cartão.
-pub(crate) fn titulo_do_jitter(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: &BrushSettings,
-) -> Option<Captura> {
-    metodo(brush).allows_jitter().then(|| {
-        let chave = chave_da_peca(SECAO, 0);
-        let topo = ctx.slot.y;
-        let tema = ink.theme;
-        let x = x_de(chave, x);
-        Captura::da_peca(ctx, chave, SECAO, ink, (x, y_de(chave, topo)), |ctx, y| {
-            let (y, dobra) = crate::paint_brush_top::paint_sub_section(
-                ctx,
-                tema,
-                x,
-                w,
-                y,
-                tr("panel.painter_layers.stroke.jitter.jitter"),
-                JITTER,
-            );
-            dobra.map_or(y, |d| crate::paint_brush_top::end_fold(ctx, d, y))
-        })
-    })
-}
-
 fn em_fila(c: &mut CardCtx<'_>, barras: &[Barra], y: f32) -> f32 {
     let itens: Vec<Item> = barras.iter().map(|b| b.item()).collect();
     fila(c, &itens, y)
@@ -386,7 +356,7 @@ fn da_figura(c: &mut CardCtx<'_>, b: &BrushSettings, m: StrokeMethod, y: f32) ->
 }
 
 /// O corpo.
-pub(crate) fn corpo(c: &mut CardCtx<'_>, titulo_do_jitter: Option<&Captura>, y: f32) -> f32 {
+pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let m = metodo(&b);
     let mut topo = vec![Item::Lista {
@@ -453,7 +423,13 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, titulo_do_jitter: Option<&Captura>, y: 
     }
     y = fila(c, &soltos, y);
     if m.allows_jitter() {
-        y = crate::cards_shape::repete(c, titulo_do_jitter, y);
+        y = crate::cards_rampa::titulo_que_dobra(
+            c,
+            JITTER,
+            "panel.painter_layers.stroke.jitter.jitter",
+            None,
+            y,
+        );
         if !c.store.is_collapsed(JITTER) {
             let mut itens = vec![Item::Lista {
                 id: pids::PAINTER_BRUSH_JITTER_UNIT,

@@ -2,7 +2,6 @@
 //! ids, mesmos eventos. Só a prévia dos presets entra capturada, como peça. As condições são as de `paint_brush::plano_do_corpo` e
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
-use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, marca, registra_lista};
 use crate::paint_wetpaint_presets_biblioteca as biblioteca;
 use crate::state_wet_presets::{self as st, VistaPresets};
@@ -15,7 +14,6 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo as linhas, ferramenta};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -98,65 +96,23 @@ pub(crate) enum Linha {
         composto: bool,
     },
     Composite,
-    Peca(Captura),
+    /// A prévia do pincel, se há quadro publicado e ela não está presa na faixa.
+    Previa,
     /// Um volume vivo do Wet Paint, pelo índice na tabela.
     Volume(usize),
     /// Duas linhas lado a lado.
     Par(Box<[Linha; 2]>),
 }
 
-/// O que as peças capturadas precisam de saber do cartão.
-struct Dono {
-    secao: NodeId,
-    ink: CardInk,
-    x: f32,
-    w: f32,
-    topo: f32,
-}
-
-impl Dono {
-    fn novo(ctx: &PaintCtx, secao: NodeId, ink: CardInk, x: f32, w: f32) -> Self {
-        Self {
-            secao,
-            ink,
-            x,
-            w,
-            topo: ctx.slot.y,
-        }
-    }
-
-    /// Corre `pintor` à parte. A chave é só a da memória da posição: nunca se regista.
-    fn peca(
-        &self,
-        ctx: &mut PaintCtx,
-        n: u64,
-        fora: &mut Vec<Linha>,
-        pintor: impl FnOnce(&mut PaintCtx, ph2d_tokens::Theme, f32, f32, f32) -> f32,
-    ) {
-        let chave = NodeId(self.secao.0.wrapping_add(n));
-        let (x, w, tema) = (x_de(chave, self.x), self.w, self.ink.theme);
-        let c = Captura::da_peca(
-            ctx,
-            chave,
-            self.secao,
-            self.ink,
-            (x, y_de(chave, self.topo)),
-            |ctx, y| pintor(ctx, tema, x, w, y),
-        );
-        if c.pintou() {
-            fora.push(Linha::Peca(c));
-        }
-    }
+/// O cartão do topo está a voar?
+pub(crate) fn topo_a_voar(store: &WidgetStore) -> bool {
+    store
+        .card_drag()
+        .is_some_and(|d| d.active && !d.loose && d.section == pids::PAINTER_CARD_TOPO)
 }
 
 /// As linhas do cartão sem título do topo.
-pub(crate) fn do_topo(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Vec<Linha> {
-    let dono = Dono::novo(ctx, pids::PAINTER_CARD_TOPO, ink, x, w);
+pub(crate) fn do_topo(brush: BrushSettings) -> Vec<Linha> {
     let vista = st::current_wet_presets();
     let mut l = Vec::new();
     let tem_modo = !brush.is_inpaint && brush.meios.count_ones() > 1;
@@ -169,9 +125,7 @@ pub(crate) fn do_topo(
             l.push(Linha::Favorito);
         }
     }
-    dono.peca(ctx, 1, &mut l, |ctx, tema, x, w, y| {
-        paint_wetpaint_presets::paint_preview(ctx, tema, x, w, y)
-    });
+    l.push(Linha::Previa);
     if vista.is_some() {
         l.push(Linha::Acoes);
     }
@@ -555,7 +509,20 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
         Linha::Inpaint => cards_ferramenta::inpaint(c, y),
         Linha::Traco { sobra, composto } => cards_ferramenta::linha(c, b, *sobra, *composto, y),
         Linha::Composite => cards_composto::corpo(c, b, y),
-        Linha::Peca(p) => p.repete(c, y + m::FIELD_ROW_GAP),
+        Linha::Previa => {
+            if crate::preview_pino::preview_fixada(c.store) {
+                return y;
+            }
+            let (x, w) = (c.x, c.w);
+            let voa = topo_a_voar(c.store);
+            let guardado = crate::preview_pino::rect_da_preview();
+            let mut t = crate::cards_tela::Tela::do_cartao(c);
+            let fim = crate::preview_pino::na_tela(&mut t, x, w, y + m::FIELD_ROW_GAP).unwrap_or(y);
+            if voa {
+                crate::preview_pino::lembra(guardado);
+            }
+            fim
+        }
         Linha::Volume(i) => {
             let volumes = paint_wetpaint_presets::numeros_dos_volumes(b, b);
             volumes

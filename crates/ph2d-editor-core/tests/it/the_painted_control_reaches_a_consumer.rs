@@ -159,12 +159,6 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
     // cabeçalho (§ *efeito confinado ao pintor*). Fica na catraca em vez de num
     // allowlist separado para que uma segunda ocorrência da mesma forma seja
     // lida como a familia que e', e nao como caso isolado.
-    (
-        "HIER_SEARCH",
-        "VIVO mas invisivel: a caixa de busca da Hierarquia. O proprio `paint.rs` le o texto \
-         (`store.get`) e filtra a arvore com `compute_match_filter` — o efeito nunca sai do \
-         pintor, e o termino desta regua e' sempre FORA dele.",
-    ),
     // ⚠️ **Segunda ocorrência da família do `HIER_SEARCH`, e por isso ela fica na catraca** — a
     // nota do cabeçalho pedia exactamente isto: que uma repetição fosse lida como família.
     // ⭐ Mas há uma diferença que vale a pena nomear: o `HIER_SEARCH` é invisível porque o efeito

@@ -55,9 +55,24 @@ pub(crate) fn esquece() {
     RECT_DA_PREVIEW.with(|c| c.set(None));
 }
 
+/// Devolve o rect guardado: o cartão a voar pinta noutro referencial, e o ecrã é o do quadro em que assentou.
+pub(crate) fn lembra(r: Option<Rect>) {
+    RECT_DA_PREVIEW.with(|c| c.set(r));
+}
+
 /// Há quadro publicado para mostrar?
 pub(crate) fn ha_preview() -> bool {
     st::current_wet_preview().is_some_and(|(_, w, _)| w > 0)
+}
+
+/// A altura da preview na largura `w`: `None` sem quadro publicado, ou numa ferramenta que não a mostra.
+pub(crate) fn altura(w: f32) -> Option<f32> {
+    if !a_ferramenta_a_mostra() {
+        return None;
+    }
+    st::current_wet_preview()
+        .filter(|(_, pw, _)| *pw > 0)
+        .map(|(_, pw, ph)| w * ph as f32 / pw as f32)
 }
 
 /// A ferramenta na mão mostra a preview? (dono 24/10: o Blur, o Smear, o Clone e a Máscara não a têm.)
@@ -71,6 +86,16 @@ fn a_ferramenta_a_mostra() -> bool {
 pub(crate) fn pinta(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> Option<f32> {
+    crate::cards_tela::no_ctx(ctx, theme, |t| na_tela(t, x, w, y))
+}
+
+/// A prévia numa tela: a do painel de antes ou a do cartão.
+pub(crate) fn na_tela(
+    ctx: &mut crate::cards_tela::Tela<'_>,
     x: f32,
     w: f32,
     y: f32,
@@ -94,7 +119,7 @@ pub(crate) fn pinta(
     );
     let r = Rect::new(x, y, w, alto);
     RECT_DA_PREVIEW.with(|c| c.set(Some(r)));
-    pinta_pino(ctx, theme, r);
+    pinta_pino(ctx, r);
     Some(y + alto)
 }
 
@@ -118,10 +143,11 @@ fn dica(fixada: bool) -> &'static str {
 }
 
 /// Pinta e regista o pino — o rect que se pinta é o que se clica.
-fn pinta_pino(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, preview: Rect) {
+fn pinta_pino(ctx: &mut crate::cards_tela::Tela<'_>, preview: Rect) {
+    let theme = ctx.theme;
     let r = rect_do_pino(preview);
-    let fixada = preview_fixada(ctx.host.store());
-    let (estado, t) = ctx.host.store().toggle_visual(PINO);
+    let fixada = preview_fixada(ctx.store);
+    let (estado, t) = ctx.store.toggle_visual(PINO);
     // Fixado = o glifo aceso (`Accent`), como um botão premido; desafixado segue o rato.
     let visual = if fixada {
         (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
@@ -143,8 +169,8 @@ fn pinta_pino(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, preview: Rect) {
         ctx.scene,
         theme,
     );
-    ctx.host.store_mut().set_tooltip(PINO, dica(fixada));
-    ctx.host.hit_index_mut().register(PINO, r);
+    ctx.depois(move |s| s.set_tooltip(PINO, dica(fixada)));
+    ctx.hit_index.register(PINO, r);
 }
 
 /// O nó de AccessKit do pino (HR-12): um botão de ALTERNAR com o estado `pressed` e a dica como nome.

@@ -6,8 +6,8 @@
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold,
-    paint_checkbox, paint_icon_button, paint_section_header, paint_slider_with_chip,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, paint_checkbox,
+    paint_icon_button, paint_section_header, paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;

@@ -9,7 +9,7 @@
 
 use crate::PaintCtx;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_circle, resolve, stroke_polyline};
+use ph2d_editor_core::paint::{fill_circle, stroke_polyline};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing};
 use ph2d_tool_painter::BrushSettings;
@@ -85,13 +85,25 @@ pub(crate) fn paint_tilt_dial(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
+    crate::cards_tela::no_ctx(ctx, theme, |t| visor(t, x, content_w, y, brush))
+}
+
+/// O visor numa tela: a do painel de antes ou a do cartão.
+pub(crate) fn visor(
+    ctx: &mut crate::cards_tela::Tela<'_>,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let tinta = ctx.tinta();
     let side = DIAL_PX.min(content_w);
     let canvas = Rect::new(x + (content_w - side) * 0.5, y, side, side);
     let (cx, cy) = (canvas.x + side * 0.5, canvas.y + side * 0.5);
     let r_max = side * 0.5 - DIAL_PAD_PX * (side / DIAL_PX);
-    let grid = resolve(ColorToken::Border, theme);
-    let accent = resolve(ColorToken::Accent, theme);
-    let idle = resolve(ColorToken::TextDisabled, theme);
+    let grid = tinta.cor(ColorToken::Border);
+    let accent = tinta.cor(ColorToken::Accent);
+    let idle = tinta.cor(ColorToken::TextDisabled);
     // The polar grid: 8 concentric rings × 12 spokes of 30°.
     let mut pts: Vec<(f32, f32)> = Vec::with_capacity(RING_SEGS + 1);
     for k in 1..=RINGS {
@@ -126,17 +138,18 @@ pub(crate) fn paint_tilt_dial(
     // the CurvePoint registration is refreshed per frame so the carried
     // canvas tracks panel resizes, and `populate.rs` registers the same id
     // (focusability — the wiring-parity law).
-    ctx.host.store_mut().register(
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
-        InteractiveState::CurvePoint {
-            parent: ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
-            channel: 0,
-            index: 0,
-            canvas,
-        },
-    );
-    ctx.host
-        .hit_index_mut()
+    ctx.depois(move |s| {
+        s.register(
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
+            InteractiveState::CurvePoint {
+                parent: ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,
+                channel: 0,
+                index: 0,
+                canvas,
+            },
+        );
+    });
+    ctx.hit_index
         .register(ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD, canvas);
     canvas.y + side
 }

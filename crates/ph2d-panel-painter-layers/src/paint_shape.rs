@@ -7,17 +7,14 @@
 use crate::paint_brush_rows::paint_dropdown_row;
 use crate::paint_brush_top::{end_fold, paint_checkbox_row, paint_collapsible_section};
 use crate::state;
-use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, render_shape_preview,
 };
-use ph2d_vector::ImageQuality;
 
 /// ⭐⭐ **A COLUNA DESTA SECÇÃO — uma só, e ela mora em [`crate::seccoes`].**
 ///
@@ -413,8 +410,17 @@ pub(crate) fn paint_shape_preview(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let ph = (content_w * 0.5).clamp(56.0, 120.0); // LITERAL-PX-OK: one-off preview-strip min/max height
-    let rect = Rect::new(x, y, content_w, ph);
+    let ph = crate::paint_texture::altura_do_preview(content_w);
+    previa_da_forma(content_w, brush).pinta(ctx.scene, theme, Rect::new(x, y, content_w, ph));
+    y + ph + ph2d_tokens::control_gap_px()
+}
+
+/// A silhueta desenhada para a faixa de largura `content_w`.
+pub(crate) fn previa_da_forma(
+    content_w: f32,
+    brush: BrushSettings,
+) -> crate::paint_texture::Previa {
+    let ph = crate::paint_texture::altura_do_preview(content_w);
     let bw = 140u32;
     let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
     let side = bh; // the silhouette is a square tip → render it `bh×bh`, centred horizontally
@@ -511,29 +517,11 @@ pub(crate) fn paint_shape_preview(
             buf[i..i + 4].copy_from_slice(&px4);
         }
     }
-    ctx.scene.draw_image_rgba(
-        &std::sync::Arc::new(buf),
-        bw,
-        bh,
-        (
-            rect.x as f64,
-            rect.y as f64,
-            (rect.x + rect.w) as f64,
-            (rect.y + rect.h) as f64,
-        ),
-        ImageQuality::Medium,
-    );
-    // ⭐ Pela porta do TEMA: a pré-visualização é plana num tema moderno.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    y + ph + ph2d_tokens::control_gap_px()
+    crate::paint_texture::Previa {
+        px: std::sync::Arc::new(buf),
+        w: bw,
+        h: bh,
+    }
 }
 
 /// The **Shape** ramp preview LUT (256-entry sRGB-straight RGBA, incl. the B&W filter), so the

@@ -64,6 +64,17 @@ pub(crate) fn paint_flow_preview(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
+    let ph = crate::paint_texture::altura_do_preview(w);
+    previa_do_flow(w, brush).pinta(
+        ctx.scene,
+        theme,
+        ph2d_editor_core::zones::Rect::new(x, y, w, ph),
+    );
+    y + ph + ph2d_tokens::control_gap_px()
+}
+
+/// O padrão do Flow desenhado para a faixa de largura `w`.
+pub(crate) fn previa_do_flow(w: f32, brush: &BrushSettings) -> crate::paint_texture::Previa {
     let kind = TextureKind::from_u8(brush.flow_kind);
     let imagem = (kind == TextureKind::Image)
         .then(state::current_brush_flow_image)
@@ -72,12 +83,8 @@ pub(crate) fn paint_flow_preview(
     let classico = move |buf: &mut [u8], bw: u32, bh: u32| {
         ph2d_tool_painter::render_classic_flow_preview(size, angulo, buf, bw, bh);
     };
-    crate::paint_texture::paint_texture_preview_com(
-        ctx,
-        theme,
-        x,
+    crate::paint_texture::previa_do_padrao(
         w,
-        y,
         flow_preview_view(brush),
         imagem,
         classic(brush).then_some(&classico as crate::paint_texture::Desenhista<'_>),

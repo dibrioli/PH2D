@@ -57,14 +57,26 @@ pub(crate) fn paint_shape_dab_canvas(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    crate::cards_tela::no_ctx(ctx, theme, |t| gizmo(t, x, content_w, y, brush))
+}
+
+/// O gizmo numa tela: a do painel de antes ou a do cartão.
+pub(crate) fn gizmo(
+    ctx: &mut crate::cards_tela::Tela<'_>,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let tinta = ctx.tinta();
     let size = GIZMO_PX.min(content_w.max(0.0));
     let gx = x + (content_w - size) * 0.5;
     let canvas = Rect::new(gx, y, size, size);
     let r = size * 0.5;
     let (cx, cy) = (gx + r, y + r);
 
-    let rim = resolve(ColorToken::Border, theme);
-    let axis = resolve(ColorToken::Bg3, theme);
+    let rim = tinta.cor(ColorToken::Border);
+    let axis = tinta.cor(ColorToken::Bg3);
     // Immobile template: the gray rim circle + the crossed axes.
     let circle: Vec<(f32, f32)> = (0..=SEGS)
         .map(|i| {
@@ -91,21 +103,15 @@ pub(crate) fn paint_shape_dab_canvas(
             (cx + r * p[0], cy + r * p[1])
         })
         .collect();
-    stroke_polyline(
-        ctx.scene,
-        &ellipse,
-        ELLIPSE_W,
-        resolve(ColorToken::Text1, theme),
-    );
+    stroke_polyline(ctx.scene, &ellipse, ELLIPSE_W, tinta.cor(ColorToken::Text1));
 
     // Handle positions: rotation on the rim (major-axis tip), flatten on the minor-axis tip.
     let rot_h = (cx + r * ca, cy + r * sa);
     let flat_h = (cx + minor * sa, cy - minor * ca);
 
     // Register the two handles as `CurvePoint`s (paint-time, factory ids) + their grab rects.
-    {
-        let store = ctx.host.store_mut();
-        for (ch, _) in [(0u8, flat_h), (1u8, rot_h)] {
+    ctx.depois(move |store| {
+        for ch in [0u8, 1u8] {
             store.register(
                 ph2d_tool_painter::ids::painter_brush_dab_handle_id(ch),
                 InteractiveState::CurvePoint {
@@ -116,9 +122,9 @@ pub(crate) fn paint_shape_dab_canvas(
                 },
             );
         }
-    }
+    });
     for (ch, (hx, hy)) in [(0u8, flat_h), (1u8, rot_h)] {
-        ctx.host.hit_index_mut().register(
+        ctx.hit_index.register(
             ph2d_tool_painter::ids::painter_brush_dab_handle_id(ch),
             Rect::new(hx - HANDLE_R, hy - HANDLE_R, HANDLE_R * 2.0, HANDLE_R * 2.0),
         );
@@ -130,16 +136,16 @@ pub(crate) fn paint_shape_dab_canvas(
         flat_h.0,
         flat_h.1,
         HANDLE_R,
-        resolve(ColorToken::Text2, theme),
+        tinta.cor(ColorToken::Text2),
     );
     fill_circle(
         ctx.scene,
         rot_h.0,
         rot_h.1,
         HANDLE_R,
-        resolve(ColorToken::Success, theme),
+        tinta.cor(ColorToken::Success),
     );
-    fill_circle(ctx.scene, cx, cy, DOT_R, resolve(ColorToken::Danger, theme));
+    fill_circle(ctx.scene, cx, cy, DOT_R, tinta.cor(ColorToken::Danger));
 
     y + size + ph2d_tokens::control_gap_px()
 }

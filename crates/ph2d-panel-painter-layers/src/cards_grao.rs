@@ -2,17 +2,17 @@
 //! condições de `paint_texture_section`. Capturados: a prévia, o editor da rampa e os dois títulos que dobram dentro do
 //! cartão (Grain Behavior e Grain Colors, este com o Reset dele). A Texture layer continua no pintor de antes.
 
-use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
-use crate::cards_linhas::{Item, fila, filete, grupo, numero, par_xy};
-use crate::paint_ramp_widget::paint_ramp_body;
+use crate::cards_linhas::{Item, com_lei, fila, filete, grupo, numero, par_xy};
+use crate::paint_texture::Previa;
 use crate::paint_texture_ramp::{grain_ramp_ids, vista_do_pincel};
 use crate::paint_wetpaint::Numero;
 use crate::{cards_shape, esmaecer, number_field as nf, paint_brush, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::CardCtx;
-use ph2d_editor_core::widget::card_ink::CardInk;
-use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::panel::TextKey;
+use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
+use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -20,7 +20,6 @@ use ph2d_tool_painter::{
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping,
 };
 
-const SECAO: NodeId = pids::PAINTER_BRUSH_TEXTURE_SECTION;
 const COMPORTAMENTO: NodeId = pids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION;
 const OFFSET: [NodeId; 2] = [
     pids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
@@ -80,87 +79,25 @@ fn stencil(b: &BrushSettings) -> bool {
     TextureMapping::from_u8(b.texture_mapping).is_stencil()
 }
 
-/// O que ainda pede o `PaintCtx`.
-pub(crate) struct Pecas {
-    previa: Option<Captura>,
-    comportamento: Option<Captura>,
-    rampa_titulo: Option<Captura>,
-    rampa: Option<Captura>,
+/// O que se desenha uma vez por quadro: a prévia do padrão.
+pub(crate) type Pecas = Option<Previa>;
+
+/// O padrão, se o Grain tem um próprio.
+pub(crate) fn pecas(w: f32, brush: &BrushSettings) -> Pecas {
+    proprio(brush).then(|| {
+        crate::paint_texture::previa_do_padrao(
+            w,
+            *brush,
+            state::current_brush_texture_image(),
+            None,
+            ph2d_tool_painter::BRUSH_RAMP_ALPHA,
+        )
+    })
 }
 
-/// Corre as peças, uma vez por quadro, na posição do quadro anterior.
-pub(crate) fn pecas(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Pecas {
-    let topo = ctx.slot.y;
-    let tema = ink.theme;
-    let ids = grain_ramp_ids();
-    let quer_rampa = com_o_fim(&brush)
-        && brush.texture_ramp_enabled
-        && !ctx.host.store().is_collapsed(ids.section);
-    let mut peca = |n: u64, quer: bool, pinta: &mut dyn FnMut(&mut PaintCtx, f32, f32) -> f32| {
-        quer.then(|| {
-            let chave = chave_da_peca(SECAO, n);
-            let x = x_de(chave, x);
-            Captura::da_peca(ctx, chave, SECAO, ink, (x, y_de(chave, topo)), |ctx, y| {
-                pinta(ctx, x, y)
-            })
-        })
-    };
-    let fim = com_o_fim(&brush);
-    let previa = peca(0, proprio(&brush), &mut |ctx, x, y| {
-        crate::paint_texture::paint_texture_preview(
-            ctx,
-            tema,
-            x,
-            w,
-            y,
-            brush,
-            state::current_brush_texture_image(),
-        )
-    });
-    let comportamento = peca(1, fim, &mut |ctx, x, y| {
-        let (y, dobra) = crate::paint_brush_top::paint_sub_section(
-            ctx,
-            tema,
-            x,
-            w,
-            y,
-            tr("panel.painter_layers.grain.behavior"),
-            COMPORTAMENTO,
-        );
-        dobra.map_or(y, |d| crate::paint_brush_top::end_fold(ctx, d, y))
-    });
-    let rampa_titulo = peca(2, fim, &mut |ctx, x, y| {
-        let (y, dobra) = crate::paint_brush_top::paint_collapsible_section(
-            ctx,
-            tema,
-            x,
-            w,
-            y,
-            tr("panel.painter_layers.grain.grain_colors"),
-            ids.section,
-            ids.reset,
-        );
-        dobra.map_or(y, |d| crate::paint_brush_top::end_fold(ctx, d, y))
-    });
-    let rampa = peca(3, quer_rampa, &mut |ctx, x, y| {
-        let vista = vista_do_pincel(&brush, None);
-        let h = crate::paint_ramp_widget::ramp_body_height(w, vista.bw_button);
-        let area = Rect::new(x, y, w, h);
-        esmaecer::talvez_esmaecido(ctx, tema, area, &[ids.enable], |ctx| {
-            paint_ramp_body(ctx, tema, x, w, y, &ids, vista)
-        })
-    });
-    Pecas {
-        previa,
-        comportamento,
-        rampa_titulo,
-        rampa,
-    }
+/// A rampa está à vista?
+fn quer_rampa(store: &ph2d_editor_core::interaction::WidgetStore, b: &BrushSettings) -> bool {
+    com_o_fim(b) && b.texture_ramp_enabled && !store.is_collapsed(grain_ramp_ids().section)
 }
 
 fn da_aguada(v: &BrushSettings) -> Numero {
@@ -267,6 +204,9 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     if !presente(b) {
         return;
     }
+    if quer_rampa(ctx.host.store(), b) {
+        crate::cards_rampa::prepara(ctx, &grain_ramp_ids(), vista_do_pincel(b, None));
+    }
     let store = ctx.host.store_mut();
     crate::cards_wet::arma_numeros(store, &todos(b, b), &todos(b, &paint_brush::FALLBACK_BRUSH));
     for id in [
@@ -283,6 +223,9 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
 
 /// Onde a caixa aberta ficou é o que a lista das opções precisa.
 pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
+    if quer_rampa(ctx.host.store(), b) {
+        crate::cards_rampa::listas_abertas(ctx, &grain_ramp_ids(), vista_do_pincel(b, None));
+    }
     let aberto = |ctx: &mut PaintCtx, id| {
         if crate::cards_linhas::aberta(ctx.host.store(), id) {
             ctx.host.hit_index_mut().rect_for(id)
@@ -308,26 +251,65 @@ fn do_carimbo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
 }
 
 /// A lei do grão e as cores: dois títulos que dobram dentro do cartão.
-fn fim(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
-    let mut y = cards_shape::repete(c, p.comportamento.as_ref(), y);
+fn fim(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
+    use crate::cards_rampa::titulo_que_dobra;
+    let mut y = titulo_que_dobra(
+        c,
+        COMPORTAMENTO,
+        "panel.painter_layers.grain.behavior",
+        None,
+        y,
+    );
     if !c.store.is_collapsed(COMPORTAMENTO) {
         y = fila(c, &cards_shape::da_ponta(CartaoDaPonta::Grao, b, b), y);
     }
     let ids = grain_ramp_ids();
-    y = cards_shape::repete(c, p.rampa_titulo.as_ref(), y);
+    y = titulo_que_dobra(
+        c,
+        ids.section,
+        "panel.painter_layers.grain.grain_colors",
+        Some(ids.reset),
+        y,
+    );
     if c.store.is_collapsed(ids.section) {
         return y;
     }
-    y = fila(
-        c,
-        &[Item::Caixa {
-            id: ids.enable,
-            chave: "panel.painter_layers.ramp.use_color_ramp",
-            on: b.texture_ramp_enabled,
-        }],
-        y,
+    let vista = vista_do_pincel(b, None);
+    let ligar = crate::cards_linhas::marca(
+        ids.enable,
+        "panel.painter_layers.ramp.use_color_ramp",
+        b.texture_ramp_enabled,
     );
-    cards_shape::repete(c, p.rampa.as_ref(), y)
+    let y = if b.texture_ramp_enabled {
+        // Preso (Smear, Blur, Clone, Borracha): o B&W fica apagado e sem alvo, como no painel de antes.
+        let bw = Cell::new(if vista.bw_locked {
+            Widget::ButtonOff {
+                text: tr("panel.painter_layers.ramp.bw"),
+            }
+        } else {
+            Widget::Check {
+                id: ids.bw,
+                label: Rotulo::vista(TextKey::new("panel.painter_layers.ramp.bw")),
+                value: if vista.bw {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                },
+                off: false,
+            }
+        });
+        com_lei(c, ids.enable, y, |c, y| c.pair(ligar, bw, y))
+    } else {
+        com_lei(c, ids.enable, y, |c, y| c.row(&[ligar], y))
+    };
+    if !b.texture_ramp_enabled {
+        return y;
+    }
+    if state::current_inercias().dica_de(ids.enable).is_some() {
+        crate::cards_rampa::com_veu(c, y, |c, y| crate::cards_rampa::corpo(c, &ids, vista, y))
+    } else {
+        crate::cards_rampa::corpo(c, &ids, vista, y)
+    }
 }
 
 /// O corpo.
@@ -355,7 +337,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     };
     if e_o_papel(&b) {
         y = fila(c, &[mesmo, Item::Num(profundidade(&b))], y);
-        return fim(c, &b, p, y);
+        return fim(c, &b, y);
     }
     let mut topo = Vec::with_capacity(2);
     if b.oferece_grain_same_as_paper() {
@@ -370,7 +352,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     if !proprio(&b) {
         return y;
     }
-    y = cards_shape::repete(c, p.previa.as_ref(), y);
+    y = crate::cards_rampa::previa(c, p.as_ref(), y);
     let mapping = TextureMapping::from_u8(b.texture_mapping);
     let mut linha = vec![Item::Lista {
         id: pids::PAINTER_BRUSH_TEXTURE_MAPPING,
@@ -401,5 +383,5 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
         .map(Item::Num),
     );
     y = fila(c, &resto, y);
-    fim(c, &b, p, y)
+    fim(c, &b, y)
 }

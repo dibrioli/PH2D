@@ -2,10 +2,10 @@
 //! mesmas condições (as tabelas são as de `paint_wetpaint`, que o painel de antes também lê). Só o visor do Tilt
 //! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
 
-use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{
     Item, aberta, botoes, com_lei, em_pares, fila, grupo, marca, registra_lista,
 };
+use crate::cards_tela::Tela;
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
 use crate::{
     esmaecer, number_field, paint_brush, paint_wetpaint_presets, paint_wetpaint_tilt, state,
@@ -16,7 +16,6 @@ use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo as linhas, ferramenta};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{BrushSettings, LinhaDaFerramenta};
@@ -66,22 +65,6 @@ pub(crate) fn presente(brush: &BrushSettings) -> bool {
 /// O título é o do painel de antes.
 pub(crate) fn titulo() -> &'static str {
     tr("panel.painter_layers.wetpaint.wet_paint")
-}
-
-/// O visor do Tilt à parte: é ele quem regista o `CurvePoint` no store, com a tela que o motor usa.
-pub(crate) fn visor(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Captura {
-    let secao = pids::PAINTER_WETPAINT_SECTION;
-    let chave = NodeId(secao.0.wrapping_add(1));
-    let topo = ctx.slot.y;
-    let (x, tema) = (x_de(chave, x), ink.theme);
-    Captura::da_peca(ctx, chave, secao, ink, (x, y_de(chave, topo)), |ctx, y| {
-        paint_wetpaint_tilt::paint_tilt_dial(ctx, tema, x, w, y, &brush)
-    })
 }
 
 /// Todos os números deste cartão neste estado, com as leis de `leis` e os valores de `valores`.
@@ -239,7 +222,7 @@ fn oleo_real(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
 }
 
 /// O corpo: pela ordem do painel de antes, com o que cabe aos pares.
-pub(crate) fn corpo(c: &mut CardCtx<'_>, visor: &Captura, y: f32) -> f32 {
+pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let pousa = b.le(LinhaDaFerramenta::DepositoMolhado);
     let y = numeros(c, &paint_wetpaint::numeros_da_grade(&b), y);
@@ -258,7 +241,8 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, visor: &Captura, y: f32) -> f32 {
         ),
         y,
     );
-    let y = visor.repete(c, y + m::FIELD_ROW_GAP);
+    let (x, w) = (c.x, c.w);
+    let y = paint_wetpaint_tilt::visor(&mut Tela::do_cartao(c), x, w, y + m::FIELD_ROW_GAP, &b);
     let borda = paint_wetpaint_tilt::numero_da_borda(&b);
     let quantos = if pousa { 2 } else { 1 };
     let mut y = em_pares(c, &[0, 1][..quantos], y, |c, i, y| {

@@ -142,6 +142,18 @@ pub(crate) fn paint_taper_visor(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    crate::cards_tela::no_ctx(ctx, theme, |t| visor(t, x, content_w, y, brush))
+}
+
+/// O visor numa tela: a do painel de antes ou a do cartão.
+pub(crate) fn visor(
+    ctx: &mut crate::cards_tela::Tela<'_>,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let tinta = ctx.tinta();
     // The inset is applied to the `canvas` the `CurvePoint` drag normalises against as well — insetting
     // only the DRAWING would put the dot somewhere the decoded value does not agree with, which is the
     // seed-vs-sample split this codebase keeps paying for.
@@ -154,13 +166,13 @@ pub(crate) fn paint_taper_visor(
         ctx.scene,
         &[(x, cy), (x + content_w, cy)],
         AXIS_W,
-        resolve(ColorToken::Bg3, theme),
+        tinta.cor(ColorToken::Bg3),
     );
 
     // The silhouette. `width` is asked with a nominal stroke of MAX_TAPER_DIAMETERS diameters, in the
     // widget's own units (diameter = 1), so the handle fraction and the drawn shape share one ruler.
     let taper = brush.taper;
-    let ink = resolve(ColorToken::Text1, theme);
+    let ink = tinta.cor(ColorToken::Text1);
     let total = MAX_TAPER_DIAMETERS;
     // A CAUDA (L5) só existe no Digital: nos outros meios a silhueta não a mostra (eles não a pintam).
     let cauda = ph2d_tool_painter::PaintMedia::from_u8(brush.media)
@@ -185,26 +197,22 @@ pub(crate) fn paint_taper_visor(
     // The head handle, at the fraction of the track its length occupies.
     let f_start = (taper.start / MAX_TAPER_DIAMETERS).clamp(0.0, 1.0);
     let hx = track_x + track_w * f_start;
-    ctx.host.store_mut().register(
-        painter_taper_handle_id(0),
-        InteractiveState::CurvePoint {
-            parent: ph2d_tool_painter::ids::PAINTER_TAPER_GIZMO,
-            channel: 0,
-            index: 0,
-            canvas,
-        },
-    );
-    ctx.host.hit_index_mut().register(
+    ctx.depois(move |s| {
+        s.register(
+            painter_taper_handle_id(0),
+            InteractiveState::CurvePoint {
+                parent: ph2d_tool_painter::ids::PAINTER_TAPER_GIZMO,
+                channel: 0,
+                index: 0,
+                canvas,
+            },
+        );
+    });
+    ctx.hit_index.register(
         painter_taper_handle_id(0),
         Rect::new(hx - GRAB_R, cy - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0),
     );
-    fill_circle(
-        ctx.scene,
-        hx,
-        cy,
-        HANDLE_R,
-        resolve(ColorToken::Accent, theme),
-    );
+    fill_circle(ctx.scene, hx, cy, HANDLE_R, tinta.cor(ColorToken::Accent));
     // ⭐ **A porta do vão entre controlos** (`3` px, ordem do dono de 2026-09-07): o que vem
     //   depois da curva é outro controlo, e o `Spacing::Sm` daqui era uma quinta resposta.
     y + CANVAS_H + ph2d_tokens::control_gap_px()

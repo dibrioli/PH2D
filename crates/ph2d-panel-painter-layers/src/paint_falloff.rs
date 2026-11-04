@@ -16,10 +16,11 @@
 //! stashes the normalized `(distance, strength)` on the store; `event.rs` drains
 //! it and forwards `PAINTER_BRUSH_FALLOFF_EDIT` to the tool.
 
+use crate::cards_tela::Tela;
 use crate::paint::register_button;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_polyline,
+    fill_circle, fill_rounded_rect, paint_text_centered, stroke_polyline,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
@@ -74,11 +75,25 @@ pub(crate) fn paint_falloff_curva(
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    crate::cards_tela::no_ctx(ctx, theme, |t| curva(t, x, content_w, y, brush))
+}
+
+/// A curva numa tela: a do painel de antes ou a do cartão.
+pub(crate) fn curva(
+    ctx: &mut Tela<'_>,
+    x: f32,
+    content_w: f32,
     mut y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    let theme = ctx.theme;
+    let tinta = ctx.tinta();
     let gap = Spacing::Xs.px();
     let is_custom = brush.falloff == Falloff::Custom.to_u8();
+    let fundo = ctx.fundo();
     // ── (Custom only) +/− point buttons, right-aligned above the canvas ──
     if is_custom {
         let add_rect = Rect::new(x + content_w - BTN_W * 2.0 - gap, y, BTN_W, ROW_H_PX);
@@ -99,7 +114,7 @@ pub(crate) fn paint_falloff_curva(
                 ctx.scene,
                 brect,
                 ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-                resolve(ColorToken::Bg2, theme),
+                fundo,
             );
             paint_text_centered(
                 ctx.text_system,
@@ -107,10 +122,10 @@ pub(crate) fn paint_falloff_curva(
                 label,
                 brect,
                 TypeToken::Base.px(),
-                resolve(ColorToken::Text1, theme),
+                tinta.cor(ColorToken::Text1),
             );
-            register_button(ctx.host.store_mut(), id);
-            ctx.host.hit_index_mut().register(id, brect);
+            ctx.depois(move |s| register_button(s, id));
+            ctx.hit_index.register(id, brect);
         }
         y += ph2d_tokens::row_pitch_px();
     }
@@ -119,12 +134,7 @@ pub(crate) fn paint_falloff_curva(
     let canvas = Rect::new(x, y, content_w.max(1.0), CANVAS_H);
     // ⭐ Raio e moldura pela porta do TEMA: o canvas é plano num tema moderno.
     let canvas_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(
-        ctx.scene,
-        canvas,
-        canvas_radius,
-        resolve(ColorToken::Bg2, theme),
-    );
+    fill_rounded_rect(ctx.scene, canvas, canvas_radius, fundo);
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         canvas,
@@ -132,9 +142,9 @@ pub(crate) fn paint_falloff_curva(
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         GRID_W,
-        resolve(ColorToken::TextDisabled, theme),
+        tinta.cor(ColorToken::TextDisabled),
     );
-    let grid = resolve(ColorToken::GridLine, theme);
+    let grid = tinta.cor(ColorToken::GridLine);
     for i in 1..GRID_DIVS {
         let f = i as f32 / GRID_DIVS as f32;
         let gx = canvas.x + f * canvas.w;
@@ -162,21 +172,18 @@ pub(crate) fn paint_falloff_curva(
         poly.push((canvas.x + t * canvas.w, canvas.y + (1.0 - w) * canvas.h));
     }
     // Accent while editable (Custom), muted for a read-only preset preview.
-    let curve_color = resolve(
-        if is_custom {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text2
-        },
-        theme,
-    );
+    let curve_color = tinta.cor(if is_custom {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text2
+    });
     stroke_polyline(ctx.scene, &poly, STROKE_W, curve_color);
 
     // ── (Custom only) draggable control points over the same canvas ──
     if is_custom {
-        let accent = resolve(ColorToken::Accent, theme);
-        let ring = resolve(ColorToken::TextDisabled, theme);
-        let fill = resolve(ColorToken::Text1, theme);
+        let accent = tinta.cor(ColorToken::Accent);
+        let ring = tinta.cor(ColorToken::TextDisabled);
+        let fill = tinta.cor(ColorToken::Text1);
         let selected = crate::state::selected_falloff_point();
         let n = (brush.falloff_len as usize).min(MAX_POINTS);
         let mut geom: Vec<(u8, f32, f32)> = Vec::with_capacity(n);
@@ -191,17 +198,19 @@ pub(crate) fn paint_falloff_curva(
             // Overwrite each frame so the carried `canvas` tracks panel resizes
             // (CurvePoint has no per-frame drag state — the result lands in the
             // store's `curve_point_drag` slot).
-            ctx.host.store_mut().register(
-                id,
-                InteractiveState::CurvePoint {
-                    parent: ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT,
-                    channel: 0,
-                    index: pid,
-                    canvas,
-                },
-            );
+            ctx.depois(move |s| {
+                s.register(
+                    id,
+                    InteractiveState::CurvePoint {
+                        parent: ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                        channel: 0,
+                        index: pid,
+                        canvas,
+                    },
+                );
+            });
             let grab = Rect::new(cx - GRAB_R, cy - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0);
-            ctx.host.hit_index_mut().register(id, grab);
+            ctx.hit_index.register(id, grab);
             // Selected point gets the accent ring; a Vector handle reads as a
             // diamond (sharp corner), an Auto handle as a round dot — mirror of
             // the Direct-Select vertex glyphs.
@@ -221,7 +230,7 @@ pub(crate) fn paint_falloff_curva(
 /// Paint one control-point handle: a ring under a fill dot. A `Vector` handle
 /// (sharp corner) is additionally marked with a diamond outline — mirror of the
 /// Direct-Select vertex glyphs (round = smooth, angular = corner).
-fn paint_handle(ctx: &mut PaintCtx, cx: f32, cy: f32, vector: bool, ring: Color, fill: Color) {
+fn paint_handle(ctx: &mut Tela<'_>, cx: f32, cy: f32, vector: bool, ring: Color, fill: Color) {
     fill_circle(ctx.scene, cx, cy, HANDLE_R + RING_W, ring);
     fill_circle(ctx.scene, cx, cy, HANDLE_R, fill);
     if vector {

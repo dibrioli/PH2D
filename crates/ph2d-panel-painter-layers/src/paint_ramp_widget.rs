@@ -25,9 +25,9 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{RampAlphaMode, RampColorMode, RampInterp};
 use ph2d_vector::Color;
 
-const BAR_H: f32 = 30.0; // LITERAL-PX-OK: gradient bar height
+pub(crate) const BAR_H: f32 = 30.0; // LITERAL-PX-OK: gradient bar height
 const STRIPS: usize = 64; // gradient-preview strip count
-const MARK_R: f32 = 6.0; // LITERAL-PX-OK: stop handle radius (colour-filled circle)
+pub(crate) const MARK_R: f32 = 6.0; // LITERAL-PX-OK: stop handle radius (colour-filled circle)
 const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: stroke width
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's pointer grab box
 const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
@@ -169,7 +169,7 @@ pub(crate) fn paint_ramp_body(
     y = paint_controls(ctx, theme, x, content_w, y, ids, view);
     // Gradient bar + a colour-filled draggable handle per stop.
     let bar = Rect::new(x, y, content_w, BAR_H);
-    paint_ramp_bar(ctx, theme, bar, ids, view, sel);
+    crate::cards_tela::no_ctx(ctx, theme, |t| paint_ramp_bar(t, bar, ids, view, sel));
     y += BAR_H + MARK_R + ph2d_tokens::control_gap_px();
     // Bottom row: editable index + position chips + the final-colour box (edits the selected stop).
     y = paint_ramp_bottom(ctx, theme, x, content_w, y, ids, view, sel);
@@ -341,14 +341,15 @@ pub(crate) fn icon_button(
 
 /// The gradient preview + a colour-filled circular handle per stop (selected one ringed accent). The
 /// strips desaturate when `view.bw` is on (the filter's preview); the handles keep their authored colour.
-fn paint_ramp_bar(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
+pub(crate) fn paint_ramp_bar(
+    ctx: &mut crate::cards_tela::Tela<'_>,
     bar: Rect,
     ids: &RampIds,
     view: RampView,
     sel: usize,
 ) {
+    let theme = ctx.theme;
+    let tinta = ctx.tinta();
     let strip_w = bar.w / STRIPS as f32;
     for i in 0..STRIPS {
         let t = (i as f32 + 0.5) / STRIPS as f32;
@@ -363,23 +364,26 @@ fn paint_ramp_bar(
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         OUTLINE_W,
-        resolve(ColorToken::Border, theme),
+        tinta.cor(ColorToken::Border),
     );
     let my = bar.y + bar.h;
     for (i, s) in view.stops.iter().enumerate() {
         let mx = bar.x + s[0].clamp(0.0, 1.0) * bar.w;
         let stop_id = s[5] as u8;
         let id = (ids.handle)(stop_id);
-        ctx.host.store_mut().register(
-            id,
-            InteractiveState::CurvePoint {
-                parent: ids.edit,
-                channel: 0,
-                index: stop_id,
-                canvas: bar,
-            },
-        );
-        ctx.host.hit_index_mut().register(
+        let parent = ids.edit;
+        ctx.depois(move |s| {
+            s.register(
+                id,
+                InteractiveState::CurvePoint {
+                    parent,
+                    channel: 0,
+                    index: stop_id,
+                    canvas: bar,
+                },
+            );
+        });
+        ctx.hit_index.register(
             id,
             Rect::new(mx - GRAB_R, my - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0),
         );
@@ -388,7 +392,7 @@ fn paint_ramp_bar(
         } else {
             ColorToken::Text1
         };
-        fill_circle(ctx.scene, mx, my, MARK_R, resolve(ring, theme));
+        fill_circle(ctx.scene, mx, my, MARK_R, tinta.cor(ring));
         fill_circle(ctx.scene, mx, my, MARK_R - OUTLINE_W, rgba_color(*s));
     }
 }

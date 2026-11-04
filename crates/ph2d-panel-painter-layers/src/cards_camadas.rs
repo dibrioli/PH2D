@@ -311,7 +311,8 @@ fn marca_da_largada(c: &mut CardCtx<'_>, linhas: &[(NodeId, Rect, bool)], d: Hie
 pub(crate) fn corpo(c: &mut CardCtx<'_>, pecas: &Pecas, y: f32) -> f32 {
     let Some(stack) = state::current_layers().filter(|s| !s.is_empty()) else {
         let y = verbos(c, y);
-        return c.hint(tr("panel.painter_layers.layers.no_layers"), y);
+        let y = c.hint(tr("panel.painter_layers.layers.no_layers"), y);
+        return aplicar(c, y);
     };
     let mut y = verbos(c, y);
     y = modificadores(c, &stack, y);
@@ -348,6 +349,10 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, pecas: &Pecas, y: f32) -> f32 {
             );
         }
     }
+    aplicar(c, y)
+}
+
+fn aplicar(c: &mut CardCtx<'_>, y: f32) -> f32 {
     c.row(
         &[Cell::new(Widget::Button {
             id: pids::PAINTER_APPLY,

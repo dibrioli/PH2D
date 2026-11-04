@@ -28,10 +28,10 @@ const SWATCH_W: f32 = ROW_H_PX; // LITERAL-PX-OK: per-layer colour box — SQUAR
 const BLEND_LABEL_W: f32 = 38.0; // LITERAL-PX-OK: "Blend" text label column (second row)
 const OPACITY_W: f32 = 56.0; // LITERAL-PX-OK: per-layer opacity number box width
 const SHAPE_BLEND_POPOVER_W: f32 = 132.0; // LITERAL-PX-OK: open blend list width (long mode names fit one line)
-const OPACITY_PCT: f32 = 100.0; // LITERAL-PX-OK: opacity shown/edited as 0..100 percent (not a design value)
+pub(crate) const OPACITY_PCT: f32 = 100.0; // LITERAL-PX-OK: opacity shown/edited as 0..100 percent (not a design value)
 
 /// sRGB 8-bit normalize for the picker round-trip.
-fn enc(v: f32) -> u8 {
+pub(crate) fn enc(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8 // LITERAL-PX-OK: sRGB 8-bit normalize
 }
 
@@ -379,7 +379,7 @@ pub(crate) fn paint_shape_blend_popover(
 
 /// When the picker targets layer `i`'s swatch, forward its live colour as `"i,r,g,b"` (u8) once it
 /// differs — the tool decodes it to `set_brush_shape_layer_color(i, rgb)`.
-fn layer_color_readback(ctx: &mut PaintCtx, swatch_id: NodeId, i: u8, cur: [f32; 3]) {
+pub(crate) fn layer_color_readback(ctx: &mut PaintCtx, swatch_id: NodeId, i: u8, cur: [f32; 3]) {
     if ctx.host.store().picker_target() != Some(swatch_id) {
         return;
     }

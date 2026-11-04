@@ -295,20 +295,32 @@ fn every_number_shows_the_same_value_and_range_as_the_old_panel() {
         for id in numeros(b) {
             let (s_v, s_n) = (velha.host.store(), nova.host.store());
             assert_eq!(s_v.number_value(id), s_n.number_value(id), "{nome}: {id:?}");
-            assert_eq!(
-                s_v.number_range(id),
-                s_n.number_range(id),
-                "{nome}: faixa de {id:?}"
-            );
+            // O chip do stop não tinha faixa; o campo do cartão arrasta, e tem: 0..último stop, 0..1.
+            if !STOPS.contains(&id) {
+                assert_eq!(
+                    s_v.number_range(id),
+                    s_n.number_range(id),
+                    "{nome}: faixa de {id:?}"
+                );
+            }
         }
     }
 }
+
+const STOPS: [NodeId; 4] = [
+    p::PAINTER_SHAPE_RAMP_STOP_INDEX,
+    p::PAINTER_SHAPE_RAMP_STOP_POS,
+    p::PAINTER_SHAPE_FALLOFF_RAMP_STOP_INDEX,
+    p::PAINTER_SHAPE_FALLOFF_RAMP_STOP_POS,
+];
 
 /// O scrub de cada número move só o seu campo, um quadro a meio não o puxa de volta, e o Esc devolve.
 #[test]
 fn scrubbing_each_number_moves_only_it_and_escape_gives_it_back() {
     for b in [molhado(), com_textura(), com_rampa()] {
-        let ids = numeros(b);
+        // Os campos do stop têm prova própria (`h10`): a ferramenta recebe-os pelo editor da rampa.
+        let mut ids = numeros(b);
+        ids.retain(|i| !STOPS.contains(i));
         assert!(ids.len() >= 6, "só {}", ids.len());
         for id in &ids {
             let le = |m: &Mesa, i: NodeId| m.host.store().number_value(i).expect("semeado");

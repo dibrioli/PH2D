@@ -412,7 +412,64 @@ pub(crate) fn paint_texture_preview_com(
     alpha: RampAlphaMode,
 ) -> f32 {
     let ph = altura_do_preview(content_w);
-    let rect = Rect::new(x, y, content_w, ph);
+    previa_do_padrao(content_w, brush, image, desenha, alpha).pinta(
+        ctx.scene,
+        theme,
+        Rect::new(x, y, content_w, ph),
+    );
+    y + ph + ph2d_tokens::control_gap_px()
+}
+
+/// Os pixéis de uma prévia, à parte de onde se pintam: o corpo de um cartão corre mais de uma vez por quadro, e o
+/// padrão só se desenha uma.
+pub(crate) struct Previa {
+    pub(crate) px: std::sync::Arc<Vec<u8>>,
+    pub(crate) w: u32,
+    pub(crate) h: u32,
+}
+
+impl Previa {
+    /// A imagem e a moldura.
+    pub(crate) fn pinta(
+        &self,
+        scene: &mut ph2d_vector::VectorScene,
+        theme: ph2d_tokens::Theme,
+        rect: Rect,
+    ) {
+        scene.draw_image_rgba(
+            &self.px,
+            self.w,
+            self.h,
+            (
+                rect.x as f64,
+                rect.y as f64,
+                (rect.x + rect.w) as f64,
+                (rect.y + rect.h) as f64,
+            ),
+            ImageQuality::Medium,
+        );
+        // ⭐ Pela porta do TEMA: a pré-visualização é plana num tema moderno.
+        ph2d_editor_core::paint::stroke_frame(
+            scene,
+            rect,
+            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
+}
+
+/// O padrão desenhado para a faixa de largura `content_w`.
+pub(crate) fn previa_do_padrao(
+    content_w: f32,
+    brush: BrushSettings,
+    image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
+    desenha: Option<Desenhista<'_>>,
+    alpha: RampAlphaMode,
+) -> Previa {
+    let ph = altura_do_preview(content_w);
     // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
     // the real `ColorRamp` + its Mode/Interpolation), so the preview is faithful to every ramp option
     // (Ease/Cardinal/B-Spline/Constant · RGB/HSV/HSL), alpha included. `None` → grayscale scalar.
@@ -494,29 +551,11 @@ pub(crate) fn paint_texture_preview_com(
             bh,
         );
     }
-    ctx.scene.draw_image_rgba(
-        &std::sync::Arc::new(buf),
-        bw,
-        bh,
-        (
-            rect.x as f64,
-            rect.y as f64,
-            (rect.x + rect.w) as f64,
-            (rect.y + rect.h) as f64,
-        ),
-        ImageQuality::Medium,
-    );
-    // ⭐ Pela porta do TEMA: a pré-visualização é plana num tema moderno.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        rect,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    y + ph + ph2d_tokens::control_gap_px()
+    Previa {
+        px: std::sync::Arc::new(buf),
+        w: bw,
+        h: bh,
+    }
 }
 
 /// The **Grain** ramp preview LUT (the same bake the tool paints with, incl. the B&W filter), so the

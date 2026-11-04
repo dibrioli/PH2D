@@ -1,15 +1,14 @@
 //! O cartão Paper em linhas de cartão (fatia H6, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos, as
 //! condições de `paint_paper_section`. Só a prévia do padrão continua no pintor dela, capturada.
 
-use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
 use crate::cards_linhas::{Item, fila, numero, par_xy, registra_lista};
+use crate::paint_texture::Previa;
 use crate::paint_watercolor_paper as papel;
 use crate::paint_wetpaint::Numero;
-use crate::{cards_shape, esmaecer, number_field as nf, paint_brush, state};
+use crate::{esmaecer, number_field as nf, paint_brush, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::CardCtx;
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -17,7 +16,6 @@ use ph2d_tool_painter::{
     TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
 };
 
-const SECAO: NodeId = pids::PAINTER_WATERCOLOR_PAPER_SECTION;
 const COR: NodeId = pids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
 const OFFSET: [NodeId; 2] = [
     pids::PAINTER_WATERCOLOR_PAPER_OFFSET_X,
@@ -43,28 +41,15 @@ fn tem_padrao(b: &BrushSettings) -> bool {
 }
 
 /// A prévia do padrão, na posição do quadro anterior.
-pub(crate) fn previa(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Option<Captura> {
-    tem_padrao(&brush).then(|| {
-        let chave = chave_da_peca(SECAO, 0);
-        let topo = ctx.slot.y;
-        let tema = ink.theme;
-        let x = x_de(chave, x);
-        Captura::da_peca(ctx, chave, SECAO, ink, (x, y_de(chave, topo)), |ctx, y| {
-            crate::paint_texture::paint_texture_preview(
-                ctx,
-                tema,
-                x,
-                w,
-                y,
-                papel::paper_preview_view(&brush),
-                state::current_brush_paper_image(),
-            )
-        })
+pub(crate) fn previa(w: f32, brush: &BrushSettings) -> Option<Previa> {
+    tem_padrao(brush).then(|| {
+        crate::paint_texture::previa_do_padrao(
+            w,
+            papel::paper_preview_view(brush),
+            state::current_brush_paper_image(),
+            None,
+            ph2d_tool_painter::BRUSH_RAMP_ALPHA,
+        )
     })
 }
 
@@ -207,7 +192,7 @@ fn em_fila(c: &mut CardCtx<'_>, lista: Vec<Numero>, y: f32) -> f32 {
 }
 
 /// O corpo.
-pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: Option<&Captura>, y: f32) -> f32 {
+pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: Option<&Previa>, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let topo = [
         Item::cor(c.store, COR, "panel.painter_layers.paper.color"),
@@ -222,7 +207,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: Option<&Captura>, y: f32) -> f3
     if !tem_padrao(&b) {
         return em_fila(c, do_fim(&b, &b), y);
     }
-    let y = cards_shape::repete(c, previa, y);
+    let y = crate::cards_rampa::previa(c, previa, y);
     let y = par_xy(c, "panel.painter_layers.paper.offset", OFFSET, y);
     let y = par_xy(c, "panel.painter_layers.paper.size", TAMANHO, y);
     let mut resto = vec![do_angulo(&b)];

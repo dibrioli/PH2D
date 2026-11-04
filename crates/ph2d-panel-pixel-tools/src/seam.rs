@@ -14,6 +14,18 @@ use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextIn
 use ph2d_i18n::tr;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // O cabeçalho de cada cartão dobra: é uma secção dobrável, o cânone do Physics e do Inspector.
+    store.mark_collapsible_section(ids::PIXEL_SEC_OPTIONS);
+    store.mark_collapsible_section(ids::PIXEL_SEC_BRUSHES);
+    store.mark_collapsible_section(ids::PIXEL_SEC_TRANSFORM);
+    store.mark_collapsible_section(ids::PIXEL_SEC_COLORS);
+    store.mark_collapsible_section(ids::PIXEL_SEC_LAYERS);
+    store.mark_collapsible_section(ids::PIXEL_SEC_PALETTE);
+    store.mark_collapsible_section(ids::PIXEL_SEC_PICKER);
+    store.mark_collapsible_section(ids::PIXEL_SEC_SYMMETRY);
+    store.mark_collapsible_section(ids::PIXEL_SEC_SELECT);
+    store.mark_collapsible_section(ids::PIXEL_SEC_EDIT);
+    store.mark_collapsible_section(ids::PIXEL_SEC_SPRITE);
     let botoes = ids::TOOLS.iter().map(|(_, id)| *id);
     let grupos = ids::GROUPS.iter().map(|(_, id)| *id);
     for id in botoes

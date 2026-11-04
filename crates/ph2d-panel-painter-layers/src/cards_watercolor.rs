@@ -1,20 +1,18 @@
 //! O cartão Watercolor em linhas de cartão (fatia H4, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos;
 //! as caixas de `card_frame` viram grupos. Só a prévia do Flow continua no pintor dela, capturada.
 
-use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{aberta, botoes, grupo, grupo_inicial, numero, registra_lista};
 use crate::cards_wet::{arma_numeros, campo_e_caixa, numeros};
+use crate::paint_texture::Previa;
 use crate::paint_wetpaint::Numero;
 use crate::{
     esmaecer, number_field as nf, paint_brush, paint_watercolor as pw,
     paint_watercolor_flow as flow, state,
 };
 use ph2d_a11y::NodeId;
-use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -37,19 +35,8 @@ pub(crate) fn titulo() -> &'static str {
 }
 
 /// A faixa da prévia do Flow: ela blita uma imagem e pede o `PaintCtx`.
-pub(crate) fn previa(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Captura {
-    let secao = pids::PAINTER_WATERCOLOR_SECTION;
-    let chave = NodeId(secao.0.wrapping_add(1));
-    let topo = ctx.slot.y;
-    let (x, tema) = (x_de(chave, x), ink.theme);
-    Captura::da_peca(ctx, chave, secao, ink, (x, y_de(chave, topo)), |ctx, y| {
-        flow::paint_flow_preview(ctx, tema, x, w, y, &brush)
-    })
+pub(crate) fn previa(w: f32, brush: &BrushSettings) -> Previa {
+    flow::previa_do_flow(w, brush)
 }
 
 fn da_lavagem(b: &BrushSettings) -> [Numero; 6] {
@@ -241,7 +228,7 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
 }
 
 /// O corpo, pela ordem do painel de antes: cada caixa é um grupo, e o que cabe aos pares divide a linha.
-pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: &Captura, y: f32) -> f32 {
+pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: &Previa, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     if !b.watercolor {
         return y;
@@ -258,7 +245,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: &Captura, y: f32) -> f32 {
         },
         y,
     );
-    let y = previa.repete(c, y + m::FIELD_ROW_GAP);
+    let y = crate::cards_rampa::previa(c, Some(previa), y);
     let y = numeros(c, &do_flow(&b), y);
     let suave = (
         pids::PAINTER_WATERCOLOR_SMOOTH_EDGES,

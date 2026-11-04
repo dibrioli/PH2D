@@ -51,7 +51,7 @@ fn strip_snapshot() -> FlipStripSnapshot {
 #[test]
 fn the_close_button_is_painted_registered_and_actually_closes_the_strip() {
     ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     let regs = host.paint::<FlipFramesPanel>(&mut state, VIEWPORT);
 

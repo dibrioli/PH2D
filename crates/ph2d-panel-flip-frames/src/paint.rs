@@ -46,6 +46,13 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     //
     // ⇒ o rect É `ctx.slot`. Uma faixa docada que se pinta maior do que a banda não é uma faixa
     // com mais conteúdo: é um painel por cima do desenho, que é a foto 2 da **D1**.
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ctx.host
+            .store_mut()
+            .set_panel_rect(ph2d_editor_core::ids::FLIP_STRIP_PANEL, ctx.slot);
+        crate::cards::paint(state, ctx, &snap);
+        return;
+    }
     let base: Rect = ctx.slot;
     // A barra QUEBRA em linhas quando a janela é estreita. ⚠️ O plano dela continua a ser medido
     // (as linhas decidem onde as células começam, mais abaixo) — o que mudou é que ele já não pode

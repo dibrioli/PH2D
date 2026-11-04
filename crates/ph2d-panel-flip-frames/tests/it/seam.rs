@@ -107,7 +107,7 @@ fn every_toolbar_button_reaches_the_bus() {
         ("tween fade", ids::FLIP_TWEEN_FADE),
     ];
     for (name, id) in buttons {
-        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut host = crate::host_de_antes();
         let mut state = FlipStripState::default();
         let outcome = host.apply_panel_event::<FlipFramesPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(
@@ -135,7 +135,7 @@ fn every_number_box_reaches_the_bus_with_its_value() {
         ("tween count", ids::FLIP_TWEEN_NUM, 5.0),
     ];
     for (name, id, value) in numbers {
-        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut host = crate::host_de_antes();
         let mut state = FlipStripState::default();
         host.set_number_value(id, value);
         let outcome =
@@ -169,7 +169,7 @@ fn every_number_box_reaches_the_bus_with_its_value() {
 /// segundo paint que drena o gesto.
 #[test]
 fn tapping_a_cell_reaches_the_bus_through_the_real_pointer() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
 
@@ -197,7 +197,7 @@ fn tapping_a_cell_reaches_the_bus_through_the_real_pointer() {
 /// rig de luz do Impasto com a suíte verde.
 #[test]
 fn dragging_a_cell_asks_the_document_to_move_the_key() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
     let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
@@ -227,7 +227,7 @@ fn dragging_a_cell_asks_the_document_to_move_the_key() {
 /// código morto: pintado, sobreposto e inalcançável.
 #[test]
 fn dragging_the_cells_edge_asks_for_the_exposure_instead() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
     let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
@@ -260,7 +260,7 @@ fn dragging_the_cells_edge_asks_for_the_exposure_instead() {
 /// `1.0`, não `8.0`.
 #[test]
 fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     // Vão exibido [0, 9): chaves 0 e 4 seguram 4 quadros, a última expõe 1.
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
@@ -317,7 +317,7 @@ fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
 /// que o shell decodifica, não a opção).
 #[test]
 fn picking_a_cycle_option_reaches_the_bus() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     let loop_mode = 2u8;
     let outcome = host.apply_panel_event::<FlipFramesPanel>(
@@ -348,7 +348,7 @@ fn picking_a_cycle_option_reaches_the_bus() {
 /// costura do evento continua intacta. São perguntas diferentes.
 #[test]
 fn every_toolbar_control_is_actually_painted() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
 
     // A tira só desenha os controles com uma camada viva — é o estado que o
@@ -436,7 +436,7 @@ fn every_toolbar_control_is_actually_painted() {
 /// Mutação que sangra: remover o `register(FLIP_SCRUB, lane)` de `paint_scrub_lane`.
 #[test]
 fn the_scrub_lane_is_painted_with_a_hittable_rect() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
         has_layer: true,
@@ -507,7 +507,7 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
 #[test]
 fn picking_a_tween_easing_reaches_the_bus_under_its_own_chip() {
     for preset in 0u8..4 {
-        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut host = crate::host_de_antes();
         let mut state = FlipStripState::default();
         let outcome = host.apply_panel_event::<FlipFramesPanel>(
             &mut state,
@@ -535,7 +535,7 @@ fn opening_one_dropdown_closes_the_other() {
         (ids::FLIP_CYCLE_DD, ids::FLIP_TWEEN_EASE_DD),
         (ids::FLIP_TWEEN_EASE_DD, ids::FLIP_CYCLE_DD),
     ] {
-        let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+        let mut host = crate::host_de_antes();
         let mut state = FlipStripState::default();
         // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
         // O chip é registrado pelo PAINT (é ele que sabe o rect), então o paint roda antes.
@@ -589,7 +589,7 @@ fn opening_one_dropdown_closes_the_other() {
 /// Então a pergunta é feita do único jeito que não se pode fingir: **clicando**.
 #[test]
 fn every_toolbar_button_answers_a_real_pointer() {
-    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = FlipStripState::default();
     ph2d_panel_flip_frames::set_current_flip_strip(strip_snapshot());
     let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);

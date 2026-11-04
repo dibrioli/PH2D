@@ -16,6 +16,9 @@ use ph2d_tool_registry::hash_node_id;
 /// Frame-strip close (X) button.
 pub const FLIP_STRIP_CLOSE: NodeId = hash_node_id("flip.strip.close");
 
+/// O cartão único da tira (`crate::cards`).
+pub const FLIP_STRIP_SEC: NodeId = hash_node_id("flip.strip.sec");
+
 /// **Scrub lane** (W7.3): the draggable ruler at the top of the strip that moves the
 /// playhead WITHOUT touching the multiframe selection — the standard split of every
 /// animation tool (the ruler scrubs, the cells select). A horizontal `Slider` drives

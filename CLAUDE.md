@@ -145,6 +145,10 @@ contexto*. As alavancas, por ordem:
   (`.config/testes-lentos.tsv`, gerado) · cada corrida grava compilar × correr (`python3 scripts/tempos-teste.py`).
   Ao fechar a linha: `bash scripts/agent-loop-profile.sh` (as réguas deste
   §2, com o alvo de cada uma) e `rm -rf target/*/incremental`.
+- ⭐ **Aceleração 04/11** ([pesquisa](docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md)): a suíte começa pelo pré-voo
+  estático (`PH2D_PREVOO=0` salta) · vermelho de uma linha só = `integrar-rodada.sh linha|suite|falhas|b2`, nunca outra suíte
+  inteira · CI salva cache só em cron/à mão: depois do push, `gh workflow run spike.yml --ref main` · `noite.yml` corre a
+  workspace inteira · teste paralelo por dentro: um pool rayon de um operário por fio.
 - **Comentário de código curto.** O porquê histórico (o que foi medido, o que foi recusado) vive no doc
   ou no handoff, com link; o código diz a lei. Medido: 29 % das linhas `.rs` são comentário, e cada
   leitura de código paga por elas.

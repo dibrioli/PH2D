@@ -544,7 +544,7 @@ H6: Paper, Grain, Randomize Color em linhas de cartão. H7: Stroke e Pen; o Pen 
 
 Testes: `h6_os_cartoes` e `h7_os_cartoes` por gesto real, inventário contra o painel de antes em 21 e 19 estados. Última corrida larga (cartões, seam, censos): 2 vermelhos, `the_preview_has_its_place` (régua antiga, atualizada e verde) e `the_captured_body_wears_the_card_ink`. **Este último ficou `#[ignore]`, é dívida: exigia o Stroke capturado; Máscara e Inpaint deram 0.** Contraprovas H6 e H7: **zero corridas**, o lote está em pasta temporária e não correu. Continuam por correr: `s_cor_sem_lei`, `t_ordem_fixa`, `filas_equilibradas`. `s_follow_sempre` é equivalente pela tabela: nenhuma ferramenta lista `Orientacao` em `NAO_LE`. Foi acrescentado o estado «smear com camadas» para `s_cor_sem_lei`.
 
-Catracas: `lei_da_compactacao` irmãos `1 → 0`. **Sobem, explicado na tabela:** altura de abertura `1637 → 1734` (rótulo em cima), piso de população `700 → 250` (254 medidas, linhas aos pares). **Grudadas (220) sem nova medição.**
+Catracas: `lei_da_compactacao` irmãos `1 → 0`. **Sobem, explicado na tabela:** altura de abertura `1637 → 1734` (rótulo em cima), piso de população `700 → 250` (254 medidas, linhas aos pares). Linhas grudadas `220 → 5`, as que restam em captura.
 
 Decidido sem o dono: ✕ e Save em texto («Delete», «Save»), porque o botão só de ícone não tinha lugar na grelha; o Save continua sem efeito, como antes (FUTURE). «New color» como rótulo da escolha Every Dab/Every Stroke. Hue, Saturation e Value numa linha. Samples mostra a pista (0.00), como antes.
 

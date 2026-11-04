@@ -22,10 +22,10 @@ use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
 
 /// `(painel, irmãos separados, linhas grudadas, textos cortados)`, medido em 04/11.
 ///
-/// `painter_layers`: as 220 são as linhas antigas dos corpos em captura (vão 3 contra 6), dívida do
+/// `painter_layers`: as 5 são as linhas antigas dos corpos em captura (vão 3 contra 6), dívida do
 /// bloco H; `Texture + Dual brush` é o irmão. Medido com o trabalho da H5 na árvore.
 const PENDENTES: &[(&str, usize, usize, usize)] =
-    &[("painter_layers", 0, 220, 0), ("widget_gallery", 7, 1, 0)];
+    &[("painter_layers", 0, 5, 0), ("widget_gallery", 7, 1, 0)];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.
 const POPULACAO: &[(&str, usize)] = &[

@@ -146,3 +146,17 @@ fn a_curve_drives_a_setting_and_a_save_keeps_the_authored_one() {
     assert_eq!(l.rot, Some([-1.0, 1.0]), "gravou a curva");
     FieldDrive::restore(&mut sim, &vivo);
 }
+
+/// O campo da força em cartão anima o MESMO canal que a barra: o losango dele diz a verdade.
+#[test]
+fn the_card_field_of_the_influence_is_the_same_channel_as_its_bar() {
+    use ph2d_app_constraints::marcas::canal_do_campo;
+    use ph2d_panel_inspector::ids::{INSP_CONSTRAINT_FORCA, INSP_CONSTRAINT_FORCA_CHIP};
+    let (sim, e, primeiro, segundo) = mundo();
+    let c = sim.world().get::<Constraints>(e).expect("a pilha");
+    for (k, id) in [(0, primeiro), (1, segundo)] {
+        let canal = Some(chave(FORCA, id));
+        assert_eq!(canal_do_campo(c, INSP_CONSTRAINT_FORCA[k]), canal);
+        assert_eq!(canal_do_campo(c, INSP_CONSTRAINT_FORCA_CHIP[k]), canal);
+    }
+}

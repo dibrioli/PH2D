@@ -650,3 +650,7 @@ Portões por nome, na árvore final: `h8_os_cartoes`, `h9_os_cartoes`, `a_largur
 ### Varredura final (04/11)
 
 Tabela, estado, próximos passos, provas e decisões em [17](17_VARREDURA_FINAL.md). Curados: documento em aba que passava por baixo do Inspector, cena atrás dele, avisos e barra de trabalho, painéis do Quadro, Planner, cartão Constraints. API nova: `HeroLayout::clear_of_side_lists`, `canvas::paint_document_ground`, `Superficie::{moldura_de_painel, secao, botao}`. Fotos `maquete/v_*`.
+
+### Varredura V2 (04/11)
+
+Tabela, o que falta, provas e decisões em [17](17_VARREDURA_FINAL.md). Curados: Influence em campo, opções do Private, balão do tutorial, Editor acima do HUD e título, aviso da 1.ª linha (mecanismo achado: mesmo pixel da barra), dica ilustrada, editor de animações e Region. Olhados sem cura: Comments, Frames, Minimap, janela Play, páginas de ajuda, Audio Editor, barra do Motion. Fotos `maquete/v2_*`. 13 mutantes, 13 sangraram. Falta: `paint_stroke_popover` fora da camada, e a proposta da Galeria para o dono.

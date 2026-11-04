@@ -32,6 +32,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn painted_host() -> (MockPanelHost, state::WetTuningPanelState) {
+    ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
     set_current_brush(Some(PainterTool::default().brush_settings()));
     let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
     let mut st = state::WetTuningPanelState;

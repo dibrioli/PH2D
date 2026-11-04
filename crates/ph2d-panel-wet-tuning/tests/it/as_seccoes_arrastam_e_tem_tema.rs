@@ -53,6 +53,7 @@ fn pintado() -> (
     state::WetTuningPanelState,
     Vec<(NodeId, Rect)>,
 ) {
+    ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
     host.set_panel_visible(WetTuningPanel::ID, true);
     let mut st = state::WetTuningPanelState;

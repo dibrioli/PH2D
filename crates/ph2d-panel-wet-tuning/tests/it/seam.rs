@@ -15,6 +15,7 @@ use ph2d_tool_painter::PainterTool;
 use ph2d_ui_testkit::MockPanelHost;
 
 fn host() -> (MockPanelHost, state::WetTuningPanelState) {
+    ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
     (
         MockPanelHost::with_panel::<WetTuningPanel>(),
         state::WetTuningPanelState,
@@ -219,6 +220,7 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
     // inteiro, aberto, passa dos `3 000` px.
     let viewport = Rect::new(0.0, 0.0, 1600.0, 4400.0);
     let paint_with = |brush: ph2d_tool_painter::BrushSettings| {
+        ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
         set_current_brush(Some(brush));
         let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
         host.set_panel_visible(WetTuningPanel::ID, true);

@@ -18,6 +18,7 @@
 //! is the tool's authored fact, and the bridge mirrors it every frame — a
 //! panel-local hide would fight the bridge and lose.
 
+pub mod cards;
 pub mod rows;
 pub mod state;
 

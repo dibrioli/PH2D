@@ -12,6 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # HR-15: every new panel string goes through `tr()` (the physics panel's rule
 # — the Inspector's hardcoded-English exception is NOT inherited).
@@ -34,6 +35,7 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # `PointerEvent` — the chrome seams drive REAL Down/Move/Up drags (title
 # band, corner grippers) through the same dispatcher the shell runs.
 ph2d-host = { path = "../ph2d-host" }
+bumpalo = { version = "3", features = ["collections"] }
 # `as_duas_caixas_cabem_na_coluna`: a régua é o sistema de texto REAL — medir um rótulo
 # noutro peso corta-o curto, e é o defeito que esta casa já pagou duas vezes.
 ph2d-text = { path = "../ph2d-text" }

@@ -4,6 +4,13 @@
 /// A tradução de uma chave dos cartões, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        "card.upscale.scale" => "Scale (\u{d7})",
+        "card.equalize.target" => "Target",
+        "card.equalize.size_from" => "Size from",
+        "card.equalize.fixed_size" => "Size (px)",
+        "card.equalize.offset" => "Offset (px)",
+        "card.equalize.result" => "Result",
+        "card.equalize.algorithm" => "Algorithm",
         "card.padding.edges" => "Edges",
         "card.padding.top" => "Top (px)",
         "card.padding.right" => "Right (px)",
@@ -78,7 +85,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.blast_impulse" => "Impulse (N\u{b7}s)",
         "card.physics.pull_force" => "Force (N)",
         "card.physics.layers" => "Layers that collide",
-        "card.physics.layer_cell" => "Layer {a} and layer {b}: click or drag to switch their collision",
+        "card.physics.layer_cell" => {
+            "Layer {a} and layer {b}: click or drag to switch their collision"
+        }
         "card.physics.scale" => "Scale (px/m)",
         "card.physics.bodies" => "Bodies",
         "card.menu.reset_order" => "Reset Positions",
@@ -135,6 +144,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.bones.curve_in" => "Curve in",
         "card.bones.curve_out" => "Curve out",
         "card.bones.along_in" => "Along in",
+        "card.assets.find" => "Find",
+        "card.assets.catalogs" => "Catalogs",
+        "card.assets.library" => "Library",
+        "card.assets.kind" => "Type",
+        "card.assets.sort" => "Sort by",
+        "card.assets.thumb_size" => "Thumbnail size (px)",
+        "card.assets.toggle_catalogs" => "Show or hide the catalogs",
+        "card.assets.new_catalog" => "New catalog",
+        "card.assets.clear_filter" => "Clear this filter",
+        "card.assets.cancel_choice" => "Cancel choosing an image",
         "card.tags.all" => "All tags",
         "card.tags.selected" => "Selected tag",
         "card.tags.new" => "New tag",

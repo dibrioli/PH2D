@@ -46,6 +46,7 @@ struct Mesa {
 
 impl Mesa {
     fn nova(t: &PainterTool) -> Self {
+        ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
         set_current_brush(Some(t.brush_settings()));
         let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
         host.set_panel_visible(WetTuningPanel::ID, true);

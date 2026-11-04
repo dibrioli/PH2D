@@ -70,6 +70,25 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(ids::WET_TUNING_PANEL, rect);
+    if crate::cards::cards_on() {
+        let store = ctx.host.store_mut();
+        crate::cards::prepare(store, &brush);
+        for row in rows::rows().iter().filter(|r| r.na_mao(&brush)) {
+            dica_da_inercia(store, &brush, row);
+        }
+        let cartoes = crate::cards::cards(&brush);
+        // A lista pinta-se no encaixe: aqui, o rect da janela que o artista moveu.
+        let encaixe = std::mem::replace(&mut ctx.slot, rect);
+        let lista = ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ids::WET_TUNING_PANEL,
+            WetTuningPanel::TITLE.tr(),
+            &cartoes,
+        );
+        ctx.slot = encaixe;
+        crate::cards::chrome(ctx, lista);
+        return;
+    }
     paint_panel_surface_floating(rect, ctx.scene, theme);
     let title_size = paint_panel_title(
         rect,
@@ -223,8 +242,23 @@ fn esmaece_se_inerte(
     row: &rows::TuneRow,
     area: Rect,
 ) {
+    dica_da_inercia(ctx.host.store_mut(), brush, row);
+    if brush.inercias.dica_de(row.slider).is_none() {
+        return;
+    }
+    let alfa = ph2d_editor_core::property_row::inativa::alfa_inativo(theme);
+    let veu = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Bg2, theme)
+        .multiply_alpha(1.0 - alfa);
+    ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, area, 0.0, veu);
+}
+
+/// A dica de uma linha inerte (o que a liga) no slider e no chip; acordada, a dica sai.
+fn dica_da_inercia(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    brush: &BrushSettings,
+    row: &rows::TuneRow,
+) {
     let dica = brush.inercias.dica_de(row.slider);
-    let store = ctx.host.store_mut();
     for id in [row.slider, row.chip] {
         match dica {
             Some(chave) => store.set_tooltip(id, tr(chave)),
@@ -237,13 +271,6 @@ fn esmaece_se_inerte(
             None => {}
         }
     }
-    if dica.is_none() {
-        return;
-    }
-    let alfa = ph2d_editor_core::property_row::inativa::alfa_inativo(theme);
-    let veu = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Bg2, theme)
-        .multiply_alpha(1.0 - alfa);
-    ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, area, 0.0, veu);
 }
 
 /// EXPERIMENTAL — the two K–M checkboxes + the note, in the section's theme.

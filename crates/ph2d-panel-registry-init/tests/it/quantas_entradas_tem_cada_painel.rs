@@ -2254,7 +2254,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 629 → 1 748` em 2026-11-04 (NovaUI H2, topo e básicos em linhas de cartão), e NÃO é secção a nascer aberta:
     //    as mesmas secções abrem. São os `+119 px` do rótulo EM CIMA (lei 05 §4) em Paint Mode, Preset, On switch, Blend,
     //    On empty e Color, já descontado Size e Flow dividirem a linha. Recolher esconderia os básicos do pincel.
-    ("painter_layers", 1748.0),
+    // ⬇️ `1 748 → 1 637` em 2026-11-04 (NovaUI H3): nascer dobrado não entrou, porque esconderia o que o dono pôs à
+    //    vista. Blend e On empty, Color e Flow, Accumulate e Wash partilham a linha.
+    ("painter_layers", 1637.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

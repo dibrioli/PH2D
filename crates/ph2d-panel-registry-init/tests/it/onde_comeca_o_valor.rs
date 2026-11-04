@@ -302,7 +302,7 @@ const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
     ),
     (
         "widget_gallery",
-        3,
+        1,
         "a galeria é um CATÁLOGO: cada amostra mostra o widget na largura dele, e alinhá-las \
          apagaria o que ela existe para mostrar",
     ),

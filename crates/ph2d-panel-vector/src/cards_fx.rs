@@ -295,7 +295,7 @@ fn linha(
         c.scene,
         nome,
         tx,
-        y + (h - m::VALUE_PX) * 0.5,
+        y + ph2d_editor_core::paint::folga_do_texto(h, m::VALUE_PX),
         m::VALUE_PX,
         (caixa.x + caixa.w - m::FIELD_PAD_R - tx).max(0.0),
         tinta,

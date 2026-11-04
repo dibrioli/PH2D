@@ -521,7 +521,7 @@ pub use vert_id::VertId;
 /// As regras de desenho técnico sobre `(path, VertId)` (W4.3).
 pub mod cad;
 pub mod estilos;
-pub use estilos::{ColorStyle, EstiloId};
+pub use estilos::{ColorStyle, EstiloId, LINHA_BASE_FILL, LINHA_BASE_STROKE, LINHAS_DA_PILHA};
 
 /// ⭐ **A versão do wire-format e a escada dela** — módulo irmão pelo tecto de LOC (o corte é por
 /// responsabilidade: aqui o MODELO, ali o número que diz que bytes ele escreve).

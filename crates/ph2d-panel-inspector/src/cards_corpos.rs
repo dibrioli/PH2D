@@ -17,6 +17,7 @@ use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::appearance::{self, Appearance, BasePaint};
 use ph2d_tool_vector::ids as vids;
+use ph2d_vec_scene::StackItem;
 
 /// ⭐ Os cartões do Inspector, pelo estado publicado (os que não valem não aparecem).
 pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
@@ -249,6 +250,22 @@ fn aparencia(a: &Appearance, visivel: bool) -> CardDef<'static> {
     }
 }
 
+/// A linha de cima de um cartão de tinta: a primeira que `cards_pilha::pilha` pinta. Uma base ausente
+/// não tem linha, e com estruturas diferentes na seleção só as bases as têm.
+fn linha_de_cima(a: &Appearance, fill: bool, base: Option<BasePaint>) -> Option<usize> {
+    let tem_base = base != Some(BasePaint::Absent);
+    a.stack().into_iter().rev().find_map(|it| match it {
+        StackItem::BaseFill if fill && tem_base => Some(ph2d_vec_scene::LINHA_BASE_FILL),
+        StackItem::BaseStroke if !fill && tem_base => Some(ph2d_vec_scene::LINHA_BASE_STROKE),
+        StackItem::Entry(i)
+            if !a.layers_differ && a.layers.get(i).is_some_and(|r| r.is_fill == fill) =>
+        {
+            Some(i)
+        }
+        _ => None,
+    })
+}
+
 /// Os cartões Fill e Stroke.
 fn tintas(a: &Appearance) -> Vec<CardDef<'static>> {
     let mut out = Vec::with_capacity(2);
@@ -276,10 +293,10 @@ fn tintas(a: &Appearance) -> Vec<CardDef<'static>> {
         } else {
             (a.layers.len() < ph2d_vec_scene::MAX_PAINT_LAYERS).then_some(add)
         };
-        // D28: o ⠿ abre os estilos de cor para a camada aberta deste tipo (senão a 1.ª dele).
+        // D28: o ⠿ abre os estilos de cor para a camada aberta deste tipo (senão a linha de cima).
         let camada = appearance::open_layer_index()
             .filter(|i| a.layers.get(*i).is_some_and(|r| r.is_fill == fill))
-            .or_else(|| a.layers.iter().position(|r| r.is_fill == fill));
+            .or_else(|| linha_de_cima(a, fill, base));
         let mut actions = Vec::new();
         if let Some(i) = camada {
             actions.push(HeadAction {

@@ -4,16 +4,27 @@
 
 use ph2d_ecs::ItemId;
 use ph2d_editor_core::panel::cards::estilos::{self as lista, Estilo, Pedido};
-use ph2d_vec_scene::{PaintEntry, Rgba8, VecPathId, VecScene};
+use ph2d_vec_scene::{
+    LINHA_BASE_FILL, LINHA_BASE_STROKE, LINHAS_DA_PILHA, Rgba8, VecPathId, VecScene,
+};
 
-/// Os usos `(forma, entrada)` da camada `camada` nas formas escolhidas (entradas sem id ficam de fora).
-fn usos(scene: &VecScene, sel: &[VecPathId], camada: usize) -> Vec<(VecPathId, ItemId)> {
+/// Os usos `(forma, item)` da linha `linha` (camada ou tinta de base) nas formas escolhidas que a têm.
+fn usos(scene: &VecScene, sel: &[VecPathId], linha: usize) -> Vec<(VecPathId, ItemId)> {
     sel.iter()
-        .filter_map(|id| {
-            let e = scene.path(*id)?.paints.get(camada)?;
-            (e.id != ItemId::NONE).then_some((*id, e.id))
-        })
+        .filter_map(|id| Some((*id, scene.path(*id)?.item_da_linha(linha)?)))
         .collect()
+}
+
+/// A linha cuja amostra o seletor partilhado está a editar (camada ou tinta de base).
+fn linha_do_seletor(store: &ph2d_editor_core::interaction::WidgetStore) -> Option<usize> {
+    let alvo = store.picker_target()?;
+    if alvo == ph2d_tool_vector::ids::VECTOR_FILL_SWATCH {
+        Some(LINHA_BASE_FILL)
+    } else if alvo == ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH {
+        Some(LINHA_BASE_STROKE)
+    } else {
+        super::layer_of_picker_target(store)
+    }
 }
 
 /// Aplica os pedidos da lista e publica a vista. Devolve se o DOCUMENTO mudou.
@@ -32,8 +43,7 @@ pub fn drena(
                 let Some(cor) = sel
                     .first()
                     .and_then(|id| scene.path(*id))
-                    .and_then(|p| p.paints.get(camada))
-                    .map(PaintEntry::swatch_color)
+                    .and_then(|p| p.cor_da_linha(camada))
                 else {
                     continue;
                 };
@@ -54,15 +64,14 @@ pub fn drena(
                 .fold(false, |m, u| scene.unlink_estilo(u) | m),
         };
     }
-    // O seletor aberto sobre uma camada que o estilo acabou de pintar segue a cor nova — senão o
+    // O seletor aberto sobre uma linha que o estilo acabou de pintar segue a cor nova — senão o
     // próximo quadro devolvia-lhe a antiga (e soltava-a).
     if mudou
-        && let Some(i) = super::layer_of_picker_target(store)
+        && let Some(i) = linha_do_seletor(store)
         && let Some(c) = sel
             .first()
             .and_then(|id| scene.path(*id))
-            .and_then(|p| p.paints.get(i))
-            .map(PaintEntry::swatch_color)
+            .and_then(|p| p.cor_da_linha(i))
     {
         store.set_blender_value(
             ph2d_editor_core::ids::INSP_BLENDER_PICKER,
@@ -88,9 +97,11 @@ fn publica(scene: &VecScene, sel: &[VecPathId]) {
         .first()
         .and_then(|id| scene.path(*id).map(|p| (*id, p)))
         .map(|(id, p)| {
-            p.paints
-                .iter()
-                .map(|e| scene.estilo_de((id, e.id)).map(|s| s.id))
+            (0..LINHAS_DA_PILHA)
+                .map(|i| {
+                    let item = p.item_da_linha(i)?;
+                    scene.estilo_de((id, item)).map(|s| s.id)
+                })
                 .collect()
         })
         .unwrap_or_default();

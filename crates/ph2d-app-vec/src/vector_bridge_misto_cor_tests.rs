@@ -318,3 +318,90 @@ mod pilha {
         );
     }
 }
+
+/// Um quadro inteiro do app: a ponte, o seletor na pilha e a lei das bases (`ids_da_pilha::passe`).
+fn quadro_inteiro(q: &mut Quadro) {
+    let sel = [q.vermelha];
+    q.quadro();
+    crate::paint_stack::apply_picker(&mut q.hero.store, &mut q.scene, &sel);
+    q.scene.solta_bases_mexidas();
+}
+
+/// ⭐ D30, no despacho real, seletor aberto na amostra da base: abrir não solta; o estilo a repintar
+/// não solta e o seletor segue-o; a Opacity não solta; a cor à mão solta, e a forma fica com ela.
+/// *Mutação: `drena` sem levar a cor nova ao seletor da base ⇒ o quadro seguinte devolve a antiga.*
+#[test]
+fn a_cor_a_mao_solta_a_base_e_o_estilo_a_repintar_nao() {
+    use ph2d_ecs::ItemId;
+    use ph2d_editor_core::panel::cards::estilos::{self as lista, Pedido};
+    const LARANJA: [u8; 4] = [0xE8, 0x74, 0x3B, 255];
+    for (amostra, item, linha) in [
+        (
+            ids::VECTOR_FILL_SWATCH,
+            ItemId::BASE_FILL,
+            ph2d_vec_scene::LINHA_BASE_FILL,
+        ),
+        (
+            ids::VECTOR_STROKE_SWATCH,
+            ItemId::BASE_STROKE,
+            ph2d_vec_scene::LINHA_BASE_STROKE,
+        ),
+    ] {
+        let mut q = Quadro::com(false);
+        let cor = |q: &Quadro| {
+            q.scene
+                .path(q.vermelha)
+                .and_then(|p| p.cor_da_linha(linha))
+                .expect("a base")
+        };
+        let uso = (q.vermelha, item);
+        let e = q.scene.add_estilo("Brand orange", rgba(LARANJA));
+        assert!(q.scene.link_estilo(uso, e));
+        q.hero.store.open_picker_on(amostra);
+        for _ in 0..3 {
+            quadro_inteiro(&mut q);
+        }
+        assert!(q.scene.estilo_de(uso).is_some(), "abrir o seletor soltou");
+        assert_eq!(cor(&q), rgba(LARANJA), "abrir o seletor carimbou");
+
+        // O estilo repinta com o seletor aberto: a forma e o seletor seguem-no, e fica ligada.
+        lista::pede(Pedido::Cor {
+            estilo: e,
+            rgba: VERDE,
+        });
+        for _ in 0..3 {
+            quadro_inteiro(&mut q);
+        }
+        assert!(
+            q.scene.estilo_de(uso).is_some(),
+            "o estilo a repintar soltou"
+        );
+        assert_eq!(cor(&q), rgba(VERDE), "o quadro seguinte devolveu a antiga");
+        let (visto, ..) = q.hero.store.blender_picker(INSP_BLENDER_PICKER).unwrap();
+        assert_eq!(visto.rgba, VERDE, "o seletor ficou na cor antiga");
+
+        // A alfa é a Opacity da linha: fica, e continua ligada.
+        let meia = [VERDE[0], VERDE[1], VERDE[2], 128];
+        let v = ColorValue::from_rgba8(meia[0], meia[1], meia[2], meia[3]);
+        q.hero.store.set_blender_value(INSP_BLENDER_PICKER, v);
+        for _ in 0..3 {
+            quadro_inteiro(&mut q);
+        }
+        assert_eq!(cor(&q), rgba(meia), "a alfa não chegou à base");
+        assert!(q.scene.estilo_de(uso).is_some(), "a Opacity soltou");
+
+        // A cor à mão solta, e o estilo deixa de a mexer.
+        let mao = [10, 20, 30, 255];
+        let v = ColorValue::from_rgba8(mao[0], mao[1], mao[2], mao[3]);
+        q.hero.store.set_blender_value(INSP_BLENDER_PICKER, v);
+        q.hero.store.note_colour_pick(INSP_BLENDER_PICKER);
+        for _ in 0..3 {
+            quadro_inteiro(&mut q);
+        }
+        assert_eq!(cor(&q), rgba(mao));
+        assert_eq!(q.scene.estilo_de(uso), None, "a cor à mão não soltou");
+        assert!(q.scene.set_estilo_color(e, rgba(LARANJA)));
+        assert_eq!(cor(&q), rgba(mao), "o estilo ainda mexe na solta");
+        q.hero.store.set_picker_target(None);
+    }
+}

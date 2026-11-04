@@ -114,8 +114,10 @@ pub fn publicar(sim: &mut SimWorld, scene: &VecScene) {
     sim.world_mut().insert_resource(IdsDoVetor(novo));
 }
 
-/// O passe inteiro: atribui e publica. Ver o cabeçalho do módulo.
+/// O passe inteiro: atribui e publica. Ver o cabeçalho do módulo. Também aqui, por correr antes da
+/// captura do undo, a lei da tinta de base ligada a um estilo: mexida, solta-se no passo da mexida.
 pub fn passe(sim: &mut SimWorld, scene: &mut VecScene) {
+    scene.solta_bases_mexidas();
     atribuir(sim, scene);
     publicar(sim, scene);
 }

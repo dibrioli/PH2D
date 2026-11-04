@@ -107,29 +107,25 @@ fn base_row(c: &mut CardCtx<'_>, fill: bool, rotulos: bool, y: f32) -> f32 {
     let misto = !snap.agrees(if fill { F::FILL_RGB } else { F::STROKE_RGB });
     let degrade = fill && appearance::base_fill_ramp().is_some();
     let codigo = hex(cor);
-    let texto = if misto {
-        tr("panel.vector.mixed")
-    } else if degrade {
-        tr("card.insp.gradient")
+    let i = if fill {
+        HEX_FILL_DE_BASE
     } else {
-        &codigo
+        HEX_STROKE_DE_BASE
+    };
+    // D30: ligada a um estilo, a base mostra o NOME dele e a corrente partida, como a camada.
+    let nome = estilos::ligado(i).map(|e| e.name);
+    let texto = match &nome {
+        Some(n) => n.as_str(),
+        None if misto => tr("panel.vector.mixed"),
+        None if degrade => tr("card.insp.gradient"),
+        None => &codigo,
     };
     let linha = Linha {
-        amostra: amostra_de(if fill {
-            HEX_FILL_DE_BASE
-        } else {
-            HEX_STROKE_DE_BASE
-        }),
+        amostra: amostra_de(i),
         cor: (!misto).then_some(cor),
         texto,
-        edita: (!misto && !degrade).then(|| {
-            hex_id(if fill {
-                HEX_FILL_DE_BASE
-            } else {
-                HEX_STROKE_DE_BASE
-            })
-        }),
-        solta: None,
+        edita: (nome.is_none() && !misto && !degrade).then(|| hex_id(i)),
+        solta: nome.is_some().then(|| estilos::solta_de(i)),
         opacidade: if fill {
             vids::VECTOR_FILL_OPACITY_NUM
         } else {

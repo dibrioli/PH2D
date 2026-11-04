@@ -18,7 +18,8 @@ pub struct Estilo {
     pub usos: usize,
 }
 
-/// O que a lista pede à cena (a `camada` é o índice da pilha nas formas escolhidas).
+/// O que a lista pede à cena (a `camada` é a linha nas formas escolhidas: o índice da pilha, ou uma
+/// tinta de base, `ph2d_vec_scene::LINHA_BASE_FILL`/`LINHA_BASE_STROKE`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Pedido {
     Aplicar { estilo: u32, camada: usize },
@@ -32,7 +33,7 @@ pub enum Pedido {
 
 thread_local! {
     static ESTILOS: RefCell<Vec<Estilo>> = const { RefCell::new(Vec::new()) };
-    /// O estilo de cada camada da forma mostrada (índice da pilha).
+    /// O estilo de cada linha da forma mostrada (camadas, depois as duas bases).
     static LIGADOS: RefCell<Vec<Option<u32>>> = const { RefCell::new(Vec::new()) };
     static PEDIDOS: RefCell<Vec<Pedido>> = const { RefCell::new(Vec::new()) };
     /// Os ⠿ declarados neste quadro: botão → (cartão, camada).
@@ -245,7 +246,7 @@ fn clique(store: &mut WidgetStore, id: NodeId) -> bool {
     if id == FUNDO {
         return true;
     }
-    if let Some(i) = (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|i| solta_de(*i) == id) {
+    if let Some(i) = (0..ph2d_vec_scene::LINHAS_DA_PILHA).find(|i| solta_de(*i) == id) {
         pede(Pedido::Soltar { camada: i });
         return true;
     }
@@ -345,7 +346,7 @@ pub(super) fn prepara(store: &mut WidgetStore) {
                 .map(|x| linha_de(x.id))
                 .collect::<Vec<_>>()
         }))
-        .chain((0..ph2d_vec_scene::MAX_PAINT_LAYERS).map(solta_de))
+        .chain((0..ph2d_vec_scene::LINHAS_DA_PILHA).map(solta_de))
         .collect();
     for id in botoes {
         store.register_if_absent(

@@ -4,7 +4,10 @@
 use super::drena;
 use ph2d_ecs::ItemId;
 use ph2d_editor_core::panel::cards::estilos::{self as lista, Pedido};
-use ph2d_vec_scene::{Paint, PaintEntry, Rgba8, VecPath, VecScene, VecVertex};
+use ph2d_vec_scene::{
+    LINHA_BASE_FILL, LINHA_BASE_STROKE, Paint, PaintEntry, Rgba8, StrokeSpec, VecPath, VecScene,
+    VecVertex,
+};
 
 const AZUL: Rgba8 = Rgba8::new(0x4C, 0x8D, 0xF0, 0xFF);
 const LARANJA: Rgba8 = Rgba8::new(0xE8, 0x74, 0x3B, 0xFF);
@@ -93,5 +96,84 @@ fn applying_detaching_and_deleting_keep_the_colour_law() {
         cor(&s, sel[1]),
         LARANJA,
         "apagar o estilo mudou a cor da camada"
+    );
+}
+
+/// Duas formas escolhidas com tintas de BASE (azuis, sem camada) e uma terceira sem base nenhuma.
+fn cena_de_base() -> (VecScene, Vec<u64>, u64) {
+    let mut scene = VecScene::default();
+    let mut forma = |base: bool| {
+        scene.push_path(VecPath {
+            verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            fill: base.then_some(Paint::Solid(AZUL)),
+            stroke: base.then(|| StrokeSpec::new(AZUL, 1.0)),
+            ..VecPath::default()
+        })
+    };
+    let sel = vec![forma(true), forma(true)];
+    let sem = forma(false);
+    (scene, sel, sem)
+}
+
+fn cor_base(s: &VecScene, id: u64, linha: usize) -> Option<Rgba8> {
+    s.path(id).unwrap().cor_da_linha(linha)
+}
+
+/// ⭐ A lista fala com as tintas de base pelo MESMO índice do Inspector: aplicar, criar e soltar.
+/// *Mutação: `drena` a tratar a linha só como camada ⇒ nada liga.*
+#[test]
+fn the_list_applies_creates_and_detaches_on_the_base_paints() {
+    let (mut s, sel, sem) = cena_de_base();
+    let mut store = ph2d_editor_core::WidgetStore::default();
+    let _ = lista::take_pedidos();
+
+    // Aplicar no Fill: as duas escolhidas; a sem base fica de fora e o Stroke não muda.
+    let id = s.add_estilo("Grass", LARANJA);
+    lista::pede(Pedido::Aplicar {
+        estilo: id,
+        camada: LINHA_BASE_FILL,
+    });
+    let mut todas = sel.clone();
+    todas.push(sem);
+    assert!(drena(&mut store, &mut s, &todas), "aplicar não gravou nada");
+    for f in &sel {
+        assert_eq!(cor_base(&s, *f, LINHA_BASE_FILL), Some(LARANJA));
+        assert_eq!(cor_base(&s, *f, LINHA_BASE_STROKE), Some(AZUL));
+    }
+    assert_eq!(
+        s.estilo_de((sem, ItemId::BASE_FILL)),
+        None,
+        "ligou uma base que não existe"
+    );
+    assert_eq!(lista::estilos()[0].usos, 2);
+    assert_eq!(lista::ligado(LINHA_BASE_FILL).map(|e| e.id), Some(id));
+    assert_eq!(lista::ligado(LINHA_BASE_STROKE), None);
+
+    // Criar no Stroke: o estilo nasce com a cor dele e liga as duas.
+    lista::pede(Pedido::Novo {
+        camada: LINHA_BASE_STROKE,
+        nome: "Line".into(),
+    });
+    assert!(drena(&mut store, &mut s, &sel));
+    let line = lista::estilos()[1].clone();
+    assert_eq!(line.rgba, [AZUL.r, AZUL.g, AZUL.b, AZUL.a]);
+    assert_eq!(
+        (line.usos, lista::ligado(LINHA_BASE_STROKE).map(|e| e.id)),
+        (2, Some(line.id))
+    );
+
+    // Soltar deixa a cor; soltar um não solta o outro.
+    lista::pede(Pedido::Soltar {
+        camada: LINHA_BASE_FILL,
+    });
+    assert!(drena(&mut store, &mut s, &sel));
+    assert_eq!(lista::ligado(LINHA_BASE_FILL), None);
+    assert_eq!(cor_base(&s, sel[0], LINHA_BASE_FILL), Some(LARANJA));
+    assert_eq!(
+        lista::ligado(LINHA_BASE_STROKE).map(|e| e.id),
+        Some(line.id)
     );
 }

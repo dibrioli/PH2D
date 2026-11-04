@@ -19,9 +19,23 @@ impl ItemId {
     /// Por atribuir.
     pub const NONE: ItemId = ItemId(0);
 
+    /// ⭐ **A tinta de BASE, como endereço de item** (estilos de cor, CartoesUI D30): o preenchimento
+    /// de um caminho não é um item da pilha, mas liga-se a um estilo como um. Só vale ao lado do
+    /// caminho, em `(path, ItemId)`; nenhuma `PaintEntry` o tem e o alocador nunca o entrega
+    /// (`StableIdCounter::aloca_item`, gate `o_alocador_nunca_entrega_um_id_reservado`).
+    pub const BASE_FILL: ItemId = ItemId(u32::MAX);
+    /// O traço de base (ver [`Self::BASE_FILL`]).
+    pub const BASE_STROKE: ItemId = ItemId(u32::MAX - 1);
+
     #[must_use]
     pub const fn is_none(self) -> bool {
         self.0 == 0
+    }
+
+    /// `true` ⇒ uma das tintas de base: um id que o alocador nunca entrega.
+    #[must_use]
+    pub const fn reservado(self) -> bool {
+        self.0 >= Self::BASE_STROKE.0
     }
 }
 

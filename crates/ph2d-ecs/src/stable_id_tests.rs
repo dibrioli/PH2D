@@ -270,3 +270,15 @@ fn os_bits_atravessam_o_respawn_pela_identidade() {
     );
     assert!(r.depois(&depois).is_empty(), "e sai da espera");
 }
+
+/// ⭐ As tintas de base (`ItemId::BASE_FILL`/`BASE_STROKE`) ligam-se a um estilo como `(path, ItemId)`:
+/// o alocador nunca as entrega — pára antes delas, como pára antes da Cena.
+#[test]
+fn o_alocador_nunca_entrega_um_id_reservado() {
+    let ultimo = u64::from(crate::ItemId::BASE_STROKE.0) - 1;
+    let mut c = StableIdCounter::default();
+    c.reconcile_at_least(ultimo);
+    assert_eq!(u64::from(c.aloca_item().0), ultimo, "o último livre");
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.aloca_item()));
+    assert!(r.is_err(), "o alocador entregou um id reservado: {r:?}");
+}

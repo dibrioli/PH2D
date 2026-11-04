@@ -443,3 +443,143 @@ fn the_seed_does_not_step_on_the_focused_box() {
     p.pinta();
     assert_eq!(hex_na_caixa(p.host.store(), HEX_FILL), "4C8DF0");
 }
+
+fn publica_um_estilo(ligados: Vec<Option<u32>>) {
+    estilos::publica(
+        vec![estilos::Estilo {
+            id: 7,
+            name: "Brand orange".into(),
+            rgba: [0xE8, 0x74, 0x3B, 255],
+            usos: 1,
+        }],
+        ligados,
+    );
+}
+
+/// ⭐ D28/D30: a forma de todo dia (só bases) tem o ⠿ nos DOIS cartões; o clique abre a lista e
+/// escolher pede o estilo para a BASE daquele cartão.
+/// *Mutação: o ⠿ só com camada ⇒ não se pinta.*
+#[test]
+fn a_shape_with_only_base_paints_has_the_styles_icon_in_both_cards() {
+    let (mut h, _l) = hero();
+    let _ = estilos::take_pedidos();
+    forma([BasePaint::Shown, BasePaint::Shown], Vec::new(), Vec::new());
+    publica_um_estilo(Vec::new());
+    pinta(&mut h, 6);
+    for (card, linha) in [(insp::CARD_FILL, HEX_FILL), (insp::CARD_STROKE, HEX_STROKE)] {
+        let botao = estilos::botao_de(card);
+        assert!(pintado(&h, botao), "o ⠿ do cartão {card:?} não se pintou");
+        clica(&mut h, botao);
+        assert!(
+            pintado(&h, estilos::MAIS),
+            "o clique no ⠿ não abriu a lista"
+        );
+        clica(&mut h, estilos::linha_de(7));
+        assert_eq!(
+            estilos::take_pedidos(),
+            vec![estilos::Pedido::Aplicar {
+                estilo: 7,
+                camada: linha
+            }],
+            "escolher não pediu a tinta de base"
+        );
+        assert!(!pintado(&h, estilos::linha_de(7)), "a lista não fechou");
+    }
+    // Sem tinta nem camada não há linha, e o ⠿ sai com ela.
+    forma(
+        [BasePaint::Absent, BasePaint::Shown],
+        Vec::new(),
+        Vec::new(),
+    );
+    pinta(&mut h, 6);
+    assert!(
+        !pintado(&h, estilos::botao_de(insp::CARD_FILL)),
+        "um cartão vazio mostra o ⠿"
+    );
+    assert!(pintado(&h, estilos::botao_de(insp::CARD_STROKE)));
+}
+
+/// O ⠿ vale para a linha de CIMA da pilha do cartão, salvo a camada aberta desse tipo.
+#[test]
+fn the_styles_icon_targets_the_open_layer_or_the_top_row() {
+    use StackItem::{BaseFill, BaseStroke, Entry};
+    let (mut h, _l) = hero();
+    let _ = estilos::take_pedidos();
+    publica_um_estilo(Vec::new());
+    let botao = estilos::botao_de(insp::CARD_FILL);
+    let escolhe = |h: &mut HeroScreen| {
+        pinta(h, 6);
+        clica(h, botao);
+        clica(h, estilos::linha_de(7));
+        match estilos::take_pedidos().as_slice() {
+            [estilos::Pedido::Aplicar { camada, .. }] => *camada,
+            o => panic!("escolher pediu {o:?}"),
+        }
+    };
+    let camadas = || vec![camada(true, VERDE, 1.0), camada(true, AZUL, 1.0)];
+    // A camada 1 por cima da base e da 0.
+    forma(
+        [BasePaint::Shown, BasePaint::Shown],
+        camadas(),
+        vec![BaseFill, BaseStroke, Entry(0), Entry(1)],
+    );
+    assert_eq!(escolhe(&mut h), 1, "a linha de cima é a camada do topo");
+    // A base por cima das camadas.
+    forma(
+        [BasePaint::Shown, BasePaint::Shown],
+        camadas(),
+        vec![Entry(0), Entry(1), BaseStroke, BaseFill],
+    );
+    assert_eq!(escolhe(&mut h), HEX_FILL, "a linha de cima é a base");
+    // A camada aberta manda.
+    appearance::set_open_layer(Some(0));
+    assert_eq!(escolhe(&mut h), 0, "a camada aberta perdeu");
+    appearance::set_open_layer(None);
+}
+
+/// ⭐ Maquete F: a base ligada mostra o NOME do estilo, a corrente partida solta-a e não há caixa de
+/// código (a da base solta volta). A dica da corrente é a da camada.
+#[test]
+fn a_linked_base_shows_the_style_name_and_detaches() {
+    let (mut h, _l) = hero();
+    let _ = estilos::take_pedidos();
+    forma([BasePaint::Shown, BasePaint::Shown], Vec::new(), Vec::new());
+    let mut ligados = vec![None; ph2d_vec_scene::LINHAS_DA_PILHA];
+    ligados[HEX_FILL] = Some(7);
+    publica_um_estilo(ligados);
+    let ((), medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| pinta(&mut h, 12));
+    assert!(
+        medidos
+            .iter()
+            .any(|m| m.texto == "Brand orange" && m.coube()),
+        "o nome do estilo não saiu inteiro na linha do Fill"
+    );
+    let solta = estilos::solta_de(HEX_FILL);
+    assert!(pintado(&h, solta), "a corrente partida não se pintou");
+    assert!(
+        !pintado(&h, estilos::solta_de(HEX_STROKE)),
+        "o Stroke solto tem corrente"
+    );
+    assert!(
+        !pintado(&h, insp::cards_hex_id(HEX_FILL)),
+        "a base ligada ainda oferece o código para editar"
+    );
+    assert!(
+        pintado(&h, insp::cards_hex_id(HEX_STROKE)),
+        "o Stroke solto perdeu o código"
+    );
+    assert_eq!(
+        h.store.tooltip_for(solta),
+        h.store.tooltip_for(estilos::solta_de(0)),
+        "a dica da corrente da base difere da da camada"
+    );
+    assert!(
+        h.store.tooltip_for(solta).is_some(),
+        "a corrente da base sem dica"
+    );
+    clica(&mut h, solta);
+    assert_eq!(
+        estilos::take_pedidos(),
+        vec![estilos::Pedido::Soltar { camada: HEX_FILL }]
+    );
+}

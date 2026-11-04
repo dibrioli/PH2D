@@ -244,8 +244,9 @@ impl VecViewState {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct VecClip {
     pub paths: Vec<VecPath>,
-    /// As camadas ligadas a um estilo de cor (D30): `(índice em paths, camada, estilo, nome do
-    /// estilo)`. A cópia colada volta a ligar-se — se o estilo ainda existe com o mesmo nome.
+    /// As linhas (camadas e tintas de base) ligadas a um estilo de cor (D30): `(índice em paths,
+    /// linha, estilo, nome do estilo)`. A cópia colada volta a ligar-se — se o estilo ainda existe
+    /// com o mesmo nome.
     pub ligacoes: Vec<(usize, ph2d_item_id::ItemId, crate::EstiloId, String)>,
 }
 
@@ -270,9 +271,14 @@ impl VecScene {
             .iter()
             .enumerate()
             .flat_map(|(i, p)| {
-                p.paints.iter().filter_map(move |e| {
-                    let st = self.estilo_de((p.id, e.id))?;
-                    Some((i, e.id, st.id, st.name.clone()))
+                let itens = p.paints.iter().map(|e| e.id);
+                let bases = [
+                    ph2d_item_id::ItemId::BASE_FILL,
+                    ph2d_item_id::ItemId::BASE_STROKE,
+                ];
+                itens.chain(bases).filter_map(move |item| {
+                    let st = self.estilo_de((p.id, item))?;
+                    Some((i, item, st.id, st.name.clone()))
                 })
             })
             .collect();

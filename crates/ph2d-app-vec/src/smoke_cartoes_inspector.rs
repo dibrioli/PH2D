@@ -4,8 +4,9 @@
 //! ferramenta Vector na mão e o Inspector à frente — a maquete C (`docs/CartoesUI/maquete/bones.png`)
 //! para a foto lado a lado. Nada anima: é para olhar e mexer. `=2`: o mesmo retângulo com um corpo
 //! físico (Rigid Body + Collider) e Vida — os cartões dos componentes. `=3`: os cinco ESTILOS DE COR
-//! da maquete E (D28/D30) no projeto, com o Fill ligado ao «Brand orange»; `=4`: o mesmo com a lista
-//! «Color styles» já aberta (a foto); `=5`: a lista e o «Edit style» do primeiro estilo (maquete G);
+//! da maquete E (D28/D30) no projeto, com a tinta de base do Fill ligada ao «Brand orange» (sem
+//! camada: a barra FILL de cima fica com a cor); `=4`: o mesmo com a lista «Color styles» já aberta
+//! (a foto); `=5`: a lista e o «Edit style» do primeiro estilo (maquete G);
 //! `=6`: corpo físico + Platform Player, com o cartão do Player ABERTO (T57–T59: arrastá-lo aberto
 //! para o canvas, rolá-lo solto, as subsecções e os pares) — e um 2.º objecto com Player («Player B»,
 //! outros números) para o alfinete (T61); `=7`: o 6 com o Player solto (semeado) preso ao «Player A»
@@ -16,7 +17,6 @@ use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_vec_scene::paint_stack::PaintEntry;
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, StrokeSpec, VecScene};
 
 use crate::state::VecState;
@@ -78,16 +78,10 @@ pub(crate) fn step(
             let com_componentes = modo == "2";
             for (i, &(f, b)) in formas.iter().rev().enumerate() {
                 if let Some(p) = scene.path_mut(f) {
-                    // A forma de todo dia: as tintas de BASE. Nas cenas dos estilos o Fill é uma
-                    // camada, que é o que se liga a um estilo.
-                    let estilos = matches!(modo.as_str(), "3" | "4" | "5");
-                    p.fill = (!estilos).then_some(Paint::Solid(FILL));
+                    // A forma de todo dia: as tintas de BASE, sem camada.
+                    p.fill = Some(Paint::Solid(FILL));
                     p.stroke = Some(StrokeSpec::new(STROKE, PESO));
-                    p.paints = if estilos {
-                        vec![PaintEntry::fill(Paint::Solid(FILL))]
-                    } else {
-                        Vec::new()
-                    };
+                    p.paints = Vec::new();
                 }
                 let Ok(mut e) = sim
                     .world_mut()
@@ -190,13 +184,7 @@ fn estilos_da_maquete(scene: &mut VecScene, forma: u64) {
             laranja = id;
         }
     }
-    if let Some(item) = scene
-        .path(forma)
-        .and_then(|p| p.paints.first())
-        .map(|e| e.id)
-    {
-        scene.link_estilo((forma, item), laranja);
-    }
+    scene.link_estilo((forma, ph2d_ecs::ItemId::BASE_FILL), laranja);
 }
 
 fn com_player() -> bool {

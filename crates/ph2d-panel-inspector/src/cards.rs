@@ -44,8 +44,8 @@ pub(crate) fn hex_layer(id: NodeId) -> Option<usize> {
 }
 
 /// As caixas de hex das duas tintas de base, depois das camadas.
-pub(crate) const HEX_FILL_DE_BASE: usize = ph2d_vec_scene::MAX_PAINT_LAYERS;
-pub(crate) const HEX_STROKE_DE_BASE: usize = HEX_FILL_DE_BASE + 1;
+pub(crate) const HEX_FILL_DE_BASE: usize = ph2d_vec_scene::LINHA_BASE_FILL;
+pub(crate) const HEX_STROKE_DE_BASE: usize = ph2d_vec_scene::LINHA_BASE_STROKE;
 
 /// A amostra da linha `i` (camada, ou tinta de base).
 #[must_use]
@@ -336,7 +336,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
             store.set_tooltip(b, tr("card.styles.open"));
         }
     }
-    for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
+    for i in 0..ph2d_vec_scene::LINHAS_DA_PILHA {
         let d = estilos::solta_de(i);
         if store.tooltip_for(d).is_none() {
             store.set_tooltip(d, tr("card.styles.detach"));

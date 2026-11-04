@@ -83,3 +83,28 @@ fn o_espelho_publica_so_a_forma_completa() {
     publicar(&mut sim, &scene);
     assert!(sim.world().resource::<IdsDoVetor>().0.is_empty());
 }
+
+/// ⭐ D30: a tinta de base que mudou de cor solta-se no passe de TODO quadro, antes da captura do
+/// undo: a cor e a ligação entram no MESMO passo, e Desfazer devolve as duas.
+#[test]
+fn o_passe_solta_a_base_mexida_e_nao_solta_a_que_o_estilo_pinta() {
+    let (mut sim, mut scene, _) = palco(Vec::new(), Vec::new());
+    let id = scene.paths()[0].id;
+    let cor = Rgba8::new(1, 2, 3, 255);
+    scene.path_mut(id).expect("forma").fill = Some(Paint::Solid(Rgba8::new(0, 0, 0, 255)));
+    let e = scene.add_estilo("Ink", cor);
+    assert!(scene.link_estilo((id, ItemId::BASE_FILL), e));
+    assert!(scene.set_estilo_color(e, Rgba8::new(9, 9, 9, 255)));
+    passe(&mut sim, &mut scene);
+    assert!(
+        scene.estilo_de((id, ItemId::BASE_FILL)).is_some(),
+        "o estilo a pintar soltou"
+    );
+    scene.path_mut(id).expect("forma").fill = Some(Paint::Solid(cor));
+    passe(&mut sim, &mut scene);
+    assert_eq!(
+        scene.estilo_de((id, ItemId::BASE_FILL)),
+        None,
+        "o passe não soltou"
+    );
+}

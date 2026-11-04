@@ -171,7 +171,11 @@ impl StableIdCounter {
     /// [`Self::reconcile_at_least`] contra o máximo dos ids que vê.
     pub fn aloca_item(&mut self) -> crate::ItemId {
         let id = self.take().0;
-        crate::ItemId(u32::try_from(id).expect("o contador passou os 32 bits de um id de item"))
+        let item = crate::ItemId(
+            u32::try_from(id).expect("o contador passou os 32 bits de um id de item"),
+        );
+        assert!(!item.reservado(), "o contador alcançou as tintas de base");
+        item
     }
 }
 

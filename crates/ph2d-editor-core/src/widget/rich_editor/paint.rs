@@ -309,10 +309,12 @@ pub fn paint_rich_editor(
     for b in &l.blocks {
         let inline = &doc.blocks()[b.index].inline;
         for s in inline.marks().iter().filter(|s| s.mark == Mark::Code) {
-            for r in l.range_rects(b, s.start, s.end) {
-                if let Some(ink) = ink_cartao {
+            if let Some(ink) = ink_cartao {
+                for r in l.hugging_rects(b, inline.text(), s.start, s.end) {
                     paint_inline_code_no_cartao(scene, b, r, ink);
-                } else {
+                }
+            } else {
+                for r in l.range_rects(b, s.start, s.end) {
                     fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
                 }
             }

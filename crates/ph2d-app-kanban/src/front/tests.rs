@@ -60,3 +60,33 @@ fn a_number_field_reads_as_written() {
     assert_eq!(number(3.0), "3");
     assert_eq!(number(2.5), "2.5");
 }
+
+/// O chip de rótulo tem a largura do nome: o orçamento nunca fica abaixo da medida. O controlo mostra
+/// que a subtracção de antes ficava (um ulp) em algum nome de alguma fonte.
+/// *Mutação: `chip_room` volta a `w − 2·respiro`.*
+#[test]
+fn a_label_chip_never_budgets_less_than_the_name_that_sized_it() {
+    use ph2d_tokens::{UiFont, UiTextStyle};
+    let mut ts = TextSystem::without_system_fonts();
+    let mut curtos_na_subtraccao = 0;
+    for font in UiFont::ALL {
+        ph2d_text::set_active_text_style(UiTextStyle {
+            font,
+            ..UiTextStyle::default()
+        });
+        for i in 0..200 {
+            let nome = format!("Priority {i}");
+            let medido = ts.prefix_width(&nome, m::SMALL_PX);
+            let w = chip_w(&mut ts, &nome);
+            assert!(chip_room(&mut ts, &nome, w) >= medido, "{font:?} {nome}");
+            if w - 2.0 * m::LABEL_PAD_X < medido {
+                curtos_na_subtraccao += 1;
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(UiTextStyle::default());
+    assert!(
+        curtos_na_subtraccao > 0,
+        "o controlo: a varredura apanha o ulp"
+    );
+}

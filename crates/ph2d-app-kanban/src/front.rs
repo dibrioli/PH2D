@@ -338,6 +338,13 @@ pub(crate) fn chip_w(ts: &mut TextSystem, name: &str) -> f32 {
     w.max(m::LABEL_MIN_W)
 }
 
+/// O orçamento do nome num chip de largura `w` ([`chip_w`]): nunca menos que o nome medido, porque
+/// `(medida + respiro) − respiro` perde um ulp e a elisão cortaria um nome que cabe.
+pub(crate) fn chip_room(ts: &mut TextSystem, name: &str, w: f32) -> f32 {
+    ts.prefix_width(name, m::SMALL_PX)
+        .max(w - 2.0 * m::LABEL_PAD_X)
+}
+
 /// As linhas que os chips ocupam, quebrando em `width`.
 pub(crate) fn chip_rows(widths: &[f32], width: f32) -> usize {
     let mut rows = usize::from(!widths.is_empty());

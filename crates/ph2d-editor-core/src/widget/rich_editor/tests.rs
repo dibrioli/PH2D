@@ -116,3 +116,40 @@ fn in_a_card_the_toolbar_fits_all_its_tools() {
         "o controlo: o painel não cabe nesta coluna"
     );
 }
+
+/// ⭐ A foto g6: o fundo do «inline code» esticava até ao espaço que se pendura no fim da linha. Num
+/// cartão cada linha visual tem o seu fundo, e ele acaba na última letra dela. *Mutação: voltar ao
+/// `range_rects` no `hugging_rects`.*
+#[test]
+fn in_a_card_a_wrapped_inline_code_background_hugs_each_visual_line() {
+    use super::layout::DocLayout;
+    use ph2d_richdoc::{Block, Caret, Inline, Mark, RichDoc};
+    let (antes, codigo) = ("Ship the text, ", "inline code that wraps at the column");
+    let mut linha = Inline::default();
+    linha.push(antes, &[]);
+    linha.push(codigo, &[Mark::Code]);
+    let doc = RichDoc::from_blocks(vec![Block::new(BlockKind::Paragraph, linha)]);
+    let mut ts = TextSystem::new();
+    let l = DocLayout::build_with(Regua::Cartao, &mut ts, &doc, (0.0, 0.0), W);
+    let b = &l.blocks[0];
+    let texto = doc.blocks()[0].inline.text();
+    let (s, e) = (antes.len(), antes.len() + codigo.len());
+
+    let justos = l.hugging_rects(b, texto, s, e);
+    let crus = l.range_rects(b, s, e);
+    assert!(justos.len() >= 2, "o troço quebra: {justos:?}");
+    assert_eq!(justos.len(), crus.len(), "um fundo por linha visual");
+    let mut pendurado = false;
+    for (line, (j, c)) in b.layout.lines().zip(justos.iter().zip(&crus)) {
+        let r = line.text_range();
+        let fim = r.start + texto[r.start..r.end.min(e)].trim_end().len();
+        let letra = l.caret_rect(Caret::new(0, fim)).x;
+        assert!(
+            (j.x + j.w - letra).abs() < 0.01,
+            "acaba na última letra da linha: {} × {letra}",
+            j.x + j.w
+        );
+        pendurado |= c.w > j.w;
+    }
+    assert!(pendurado, "o controlo: o rectângulo cru leva o espaço");
+}

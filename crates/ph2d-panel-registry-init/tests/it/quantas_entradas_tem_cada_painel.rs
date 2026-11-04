@@ -1255,6 +1255,10 @@ const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
         "wet_tuning",
         "ph2d_tool_painter::ids::wet_tuning_reset_id(key)",
     ),
+    (
+        "widget_gallery",
+        "cards_estilos::botao_de(card) — o ⠿ dos estilos de cor, um por cartão de cor (Fill, Stroke)",
+    ),
 ];
 
 #[test]

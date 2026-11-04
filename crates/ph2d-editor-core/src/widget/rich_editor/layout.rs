@@ -410,6 +410,22 @@ impl DocLayout {
             .collect()
     }
 
+    /// O fundo de um troço `s..e` de `text` num cartão: um rectângulo por linha visual, justo ao
+    /// texto dela. O espaço onde a linha quebra pendura-se depois da última letra e não é texto.
+    #[must_use]
+    pub fn hugging_rects(&self, b: &BlockBox, text: &str, s: usize, e: usize) -> Vec<Rect> {
+        let mut out = Vec::new();
+        for line in b.layout.lines() {
+            let r = line.text_range();
+            let (from, to) = (r.start.max(s), r.end.min(e));
+            if from < to {
+                let to = from + text[from..to].trim_end().len();
+                out.extend(self.range_rects(b, from, to));
+            }
+        }
+        out
+    }
+
     /// O item de checklist cujo visto está sob `(x, y)`.
     #[must_use]
     pub fn check_at(&self, x: f32, y: f32) -> Option<usize> {

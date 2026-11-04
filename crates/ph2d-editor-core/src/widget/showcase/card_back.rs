@@ -156,14 +156,99 @@ thread_local! {
 /// ⭐ A amostra das barras: uma caixa com as duas, a vertical e a horizontal da MESMA
 /// lei ([`AxisBar::of_theme`]), que se encontram no canto como numa vista que rola nos dois eixos.
 fn demo_bars(area: Rect) -> [AxisBar; 2] {
+    let canto = SCROLLBAR_W + Spacing::Xs.px();
+    let (altura, largura) = (area.h - canto, area.w - canto);
+    demo_bars_over(area, (3.0 * altura, 3.0 * largura)) // LITERAL-PX-OK: vitrine, três páginas
+}
+
+/// As duas barras sobre um conteúdo de `(altura, largura)`.
+fn demo_bars_over(area: Rect, (altura, largura): (f32, f32)) -> [AxisBar; 2] {
     let row = ph2d_tokens::ROW_H_PX;
     let canto = SCROLLBAR_W + Spacing::Xs.px();
     let v = Rect::new(area.x, area.y, area.w, area.h - canto);
     let h = Rect::new(area.x, area.y, area.w - canto, area.h);
     [
-        AxisBar::of_theme(v, false, (3.0 * v.h, v.h, row)), // LITERAL-PX-OK: vitrine, três alturas
-        AxisBar::of_theme(h, true, (3.0 * h.w, h.w, row)),  // LITERAL-PX-OK: vitrine, três larguras
+        AxisBar::of_theme(v, false, (altura, v.h, row)),
+        AxisBar::of_theme(h, true, (largura, h.w, row)),
     ]
+}
+
+/// As linhas de amostra: mais do que cabem na altura da caixa e mais largas do que ela, para as duas
+/// barras terem o que rolar.
+const DEMO_ROWS: [&str; 5] = [
+    "Backlog: sort the new requests by owner and priority",
+    "In progress: the card back in the new card language",
+    "Review: the scroll bars share one law on both axes",
+    "Waiting: the director approves the second pass",
+    "Done: the date picker fits its fields in the column",
+];
+
+/// O `(altura, largura)` das linhas: é sobre ele que as barras da amostra medem o polegar.
+fn demo_rows_content(text_system: &mut TextSystem) -> (f32, f32) {
+    let larga = DEMO_ROWS
+        .iter()
+        .map(|t| text_system.prefix_width(t, m::VALUE_PX))
+        .fold(0.0_f32, f32::max);
+    (
+        DEMO_ROWS.len() as f32 * ph2d_tokens::ROW_H_PX,
+        larga + 2.0 * m::FIELD_PAD_R,
+    )
+}
+
+/// As linhas da amostra das barras dentro de um cartão, recortadas à vista: o que sobra à direita e
+/// em baixo é o que as barras dizem que há para rolar.
+fn paint_demo_rows(
+    area: Rect,
+    ink: crate::widget::card_ink::CardInk,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+) {
+    let row = ph2d_tokens::ROW_H_PX;
+    let canto = SCROLLBAR_W + Spacing::Xs.px();
+    let view = Rect::new(area.x, area.y, area.w - canto, area.h - canto);
+    scene.push_clip(&rect_to_vello(view));
+    let mut y = view.y;
+    for texto in DEMO_ROWS {
+        let linha = text_system
+            .layout(texto, m::VALUE_PX, f32::INFINITY)
+            .height();
+        paint_text(
+            text_system,
+            scene,
+            texto,
+            view.x + m::FIELD_PAD_R,
+            y + (row - linha) * 0.5,
+            m::VALUE_PX,
+            f32::INFINITY,
+            ink.color(ColorToken::KanbanCardFg),
+        );
+        y += row;
+    }
+    scene.pop_layer();
+}
+
+/// A caixa das barras: no cartão com o fundo de campo e as linhas; na janela flutuante só as barras.
+fn paint_bar_sample(
+    area: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    if let Some(fundo) = crate::widget::card_ink::card_field_fill() {
+        crate::paint::fill_rounded_rect(scene, area, m::FIELD_RADIUS, fundo);
+    }
+    let visual = (ScrollbarState::Normal, crate::motion::SETTLED);
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        paint_demo_rows(area, ink, scene, text_system);
+        // As linhas pintam-se do princípio: as barras dizem isso mesmo, sobre o conteúdo real.
+        for bar in demo_bars_over(area, demo_rows_content(text_system)) {
+            bar.paint_themed(0.0, visual, scene, theme);
+        }
+        return;
+    }
+    for bar in demo_bars(area) {
+        bar.paint_themed(bar.visible, visual, scene, theme);
+    }
 }
 
 /// Pinta os três widgets a partir de `y`; devolve o fundo.
@@ -192,13 +277,7 @@ pub(super) fn paint_card_back_widgets(
 
     // As barras de um eixo: a da lista suspensa (vertical) e a do quadro do Kanban (horizontal).
     let area = Rect::new(x, y, w, 4.0 * ph2d_tokens::ROW_H_PX); // LITERAL-PX-OK: vitrine, quatro linhas à vista
-    if let Some(fundo) = crate::widget::card_ink::card_field_fill() {
-        crate::paint::fill_rounded_rect(scene, area, m::FIELD_RADIUS, fundo);
-    }
-    for bar in demo_bars(area) {
-        let visual = (ScrollbarState::Normal, crate::motion::SETTLED);
-        bar.paint_themed(bar.visible, visual, scene, theme);
-    }
+    paint_bar_sample(area, scene, text_system, theme);
     y += area.h + gap;
 
     EDITOR.with(|cell| {
@@ -263,6 +342,35 @@ mod tests {
             lado(v.arrow_tris_for_test()[0], |p| p.0),
             "as mesmas setas"
         );
+    }
+
+    /// A foto g6: a caixa das barras estava vazia, com duas barras a rolar nada. Num cartão ela tem
+    /// linhas pintadas, mais altas e mais largas do que a vista. *Mutação: tirar o `paint_demo_rows`.*
+    #[test]
+    fn the_scroll_sample_in_a_card_has_rows_taller_and_wider_than_its_view() {
+        let area_h = 4.0 * ph2d_tokens::ROW_H_PX; // LITERAL-PX-OK: teste, a caixa da amostra
+        let area = Rect::new(0.0, 0.0, ph2d_tokens::PANEL_MIN_W_PX, area_h);
+        let linhas = |ink: Option<CardInk>| {
+            let mut scene = VectorScene::new();
+            let mut text = TextSystem::without_system_fonts();
+            let mut pinta = || paint_bar_sample(area, &mut scene, &mut text, Theme::Dark);
+            match ink {
+                Some(ink) => com(ink, pinta),
+                None => pinta(),
+            }
+            scene.inner().encoding().resources.glyph_runs.len()
+        };
+        assert_eq!(linhas(None), 0, "fora de um cartão, só as barras");
+        assert_eq!(
+            linhas(Some(CardInk::of_list(Theme::Dark))),
+            DEMO_ROWS.len(),
+            "num cartão, uma corrida de letra por linha"
+        );
+
+        let mut text = TextSystem::without_system_fonts();
+        let [v, h] = demo_bars_over(area, demo_rows_content(&mut text));
+        assert!(v.content > v.visible, "há o que rolar na vertical");
+        assert!(h.content > h.visible, "há o que rolar na horizontal");
     }
 
     /// ⭐ A foto da galeria (03/11): a amostra pintava-se sempre com a moldura de foco e o cursor.

@@ -180,6 +180,43 @@ fn cena_campos() -> (Mesa, KanbanId, CardId) {
     (m, id, c)
 }
 
+/// O chip de uma linha leva o texto que o fez, qualquer que seja a largura dele: o corte de `1` ulp
+/// dependia de onde a medida da fonte caía (`Priority: Option 3` passava na Inter e não na Noto), logo
+/// o portão varre as fontes e as opções. *Mutação: `room` volta a ser o chip menos o respiro.*
+#[test]
+fn d14_a_chip_never_cuts_the_text_that_sized_it_in_any_font() {
+    use ph2d_editor_core::text_elide::elisao;
+    use ph2d_tokens::{UiFont, UiTextStyle};
+    let mut cortados = Vec::new();
+    for font in UiFont::ALL {
+        ph2d_text::set_active_text_style(UiTextStyle {
+            font,
+            ..UiTextStyle::default()
+        });
+        let (mut m, id, c) = cena_campos();
+        for i in 0..30 {
+            let shared = m.hero.documents.kanbans_shared();
+            let mut card = shared.borrow().get(id).expect("k").cards[&c].clone();
+            card.fields.insert(LISTA, FieldValue::Option(OptionId(i)));
+            card.meta.version += 1;
+            shared
+                .borrow_mut()
+                .apply(id, vec![KanbanOp::put(Record::Card(card.into()))]);
+            let ((), medidos) = elisao::medindo(|| m.pinta(&mut ph2d_vector::VectorScene::new()));
+            let pintou = medidos.iter().any(|x| x.texto.contains("Priority"));
+            assert!(pintou, "{font:?}: o chip da opção {i} foi pintado");
+            cortados.extend(
+                medidos
+                    .into_iter()
+                    .filter(|x| x.texto.contains("Priority") && !x.coube())
+                    .map(|x| format!("{font:?}: {} → {}", x.texto, x.pintado)),
+            );
+        }
+    }
+    ph2d_text::set_active_text_style(UiTextStyle::default());
+    assert_eq!(cortados, Vec::<String>::new());
+}
+
 #[test]
 fn d14_field_names_are_never_cut_while_they_fit() {
     use ph2d_editor_core::text_elide::elisao;

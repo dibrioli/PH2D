@@ -181,6 +181,10 @@ fn wrapped_h(ts: &mut TextSystem, text: &str, room: f32) -> f32 {
 pub(crate) struct FieldAt {
     pub rect: Rect,
     pub wraps: bool,
+    /// O orçamento do texto. Na linha única é a largura MEDIDA, nunca o chip menos o respiro: somar
+    /// e subtrair perde um ulp e a elisão cortava o nome que o chip foi feito para levar
+    /// (`Priority: Option 3` na Noto: `98,12399` para um texto de `98,124`).
+    pub room: f32,
 }
 
 /// ⭐ **Onde cai cada campo personalizado da frente** (a ALTURA e a PINTURA passam por aqui). O
@@ -192,15 +196,16 @@ pub(crate) fn place_fields(ts: &mut TextSystem, f: &Front, width: f32) -> (Vec<F
     let mut out = Vec::with_capacity(f.fields.len());
     for c in &f.fields {
         let pad = field_icon(c.check) + 2.0 * FIELD_PAD_X;
-        let one = ts.prefix_width(&c.text, m::SMALL_PX) + pad;
+        let text_w = ts.prefix_width(&c.text, m::SMALL_PX);
+        let one = text_w + pad;
         let wraps = one > width;
-        let (w, h) = if wraps {
+        let (w, h, room) = if wraps {
             let room = (width - pad).max(0.0);
             let line = wrapped_h(ts, "M", room);
             let text = wrapped_h(ts, &c.text, room);
-            (width, FIELD_H + (text - line).max(0.0))
+            (width, FIELD_H + (text - line).max(0.0), room)
         } else {
-            (one, FIELD_H)
+            (one, FIELD_H, text_w)
         };
         if x > 0.0 && x + w > width {
             x = 0.0;
@@ -210,6 +215,7 @@ pub(crate) fn place_fields(ts: &mut TextSystem, f: &Front, width: f32) -> (Vec<F
         out.push(FieldAt {
             rect: Rect::new(x, y, w, h),
             wraps,
+            room,
         });
         row_h = row_h.max(h);
         x += w + m::LABEL_GAP;

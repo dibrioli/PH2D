@@ -126,7 +126,7 @@ pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) -> Rect 
     let rect = paint_card_list_with(
         ctx,
         ids::GAL_PANEL,
-        tr("panel.widget_gallery.title"),
+        <crate::WidgetGalleryPanel as ph2d_editor_core::panel::Panel>::TITLE.tr(),
         &cards,
         None,
     );

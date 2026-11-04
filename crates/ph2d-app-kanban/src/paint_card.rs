@@ -222,6 +222,7 @@ fn labels(
         fill_rounded_rect(scene, chip, m::LABEL_RADIUS, fill);
         if text && !name.is_empty() {
             let ty = text_top(ts, y, row_h, m::SMALL_PX) - m::LABEL_TEXT_LIFT;
+            let room = front::chip_room(ts, name, w);
             paint_text_elided(
                 ts,
                 scene,
@@ -229,7 +230,7 @@ fn labels(
                 x + m::LABEL_PAD_X,
                 ty,
                 m::SMALL_PX,
-                w - 2.0 * m::LABEL_PAD_X,
+                room,
                 fg,
             );
         }
@@ -274,11 +275,10 @@ fn fields(
             tx += m::BADGE_ICON + m::BADGE_PAD;
         }
         let ty = text_top(ts, r.y, badges::FIELD_H, m::SMALL_PX);
-        let room = r.x + r.w - badges::FIELD_PAD_X - tx;
         if at.wraps {
-            paint_text_block(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+            paint_text_block(ts, scene, &chip.text, tx, ty, m::SMALL_PX, at.room, fg);
         } else {
-            paint_text_elided(ts, scene, &chip.text, tx, ty, m::SMALL_PX, room, fg);
+            paint_text_elided(ts, scene, &chip.text, tx, ty, m::SMALL_PX, at.room, fg);
         }
         seen.fields.push(chip.text.clone());
     }

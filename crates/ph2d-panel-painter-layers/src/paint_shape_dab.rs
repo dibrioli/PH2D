@@ -45,7 +45,18 @@ pub(crate) fn paint_shape_dab_gizmo(
         content_w,
         resolve(ColorToken::Text2, theme),
     );
-    let y = y + ROW_H_PX;
+    paint_shape_dab_canvas(ctx, theme, x, content_w, y + ROW_H_PX, brush)
+}
+
+/// O gizmo sem a linha do nome: no cartão o nome é o do grupo.
+pub(crate) fn paint_shape_dab_canvas(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
     let size = GIZMO_PX.min(content_w.max(0.0));
     let gx = x + (content_w - size) * 0.5;
     let canvas = Rect::new(gx, y, size, size);

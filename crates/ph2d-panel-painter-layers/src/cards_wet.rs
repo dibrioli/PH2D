@@ -3,7 +3,9 @@
 //! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, grupo, marca, registra_lista};
+use crate::cards_linhas::{
+    Item, aberta, botoes, com_lei, em_pares, fila, grupo, marca, registra_lista,
+};
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
 use crate::{
     esmaecer, number_field, paint_brush, paint_wetpaint_presets, paint_wetpaint_tilt, state,
@@ -138,16 +140,6 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
             store.set_tooltip(id, tr(dica));
         }
     }
-    registra_lista(
-        store,
-        pids::PAINTER_WETPAINT_MEDIUM,
-        usize::from(u8::from(b.wet_knobs.e_oleo())),
-    );
-    registra_lista(
-        store,
-        pids::PAINTER_WETPAINT_OLEO_AMBIENTE,
-        usize::from(b.wet_oleo_ambiente),
-    );
 }
 
 /// Depois da lista: onde a caixa aberta ficou é o que a lista das opções precisa.
@@ -193,20 +185,6 @@ pub(crate) fn caixa(
     com_lei(c, *id, y, |c, y| ferramenta::caixa(c, *id, chave, *on, y))
 }
 
-/// Duas por linha só se os nomes cabem inteiros (05 §4, T64); senão, uma por linha.
-fn caixas(c: &mut CardCtx<'_>, lista: &[(NodeId, &'static str, bool)], y: f32) -> f32 {
-    let meia = (c.w - m::FIELD_GAP) * 0.5;
-    let folga = m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX;
-    let cabem = lista
-        .iter()
-        .all(|(_, chave, _)| c.text_system.prefix_width(tr(chave), m::VALUE_PX) + folga <= meia);
-    if cabem {
-        em_pares(c, lista, y, caixa)
-    } else {
-        lista.iter().fold(y, |y, item| caixa(c, item, y))
-    }
-}
-
 /// Um campo e uma caixa de marcar irmã na mesma linha (05 §4): a fundação desce a caixa se o nome dela não cabe.
 pub(crate) fn campo_e_caixa(
     c: &mut CardCtx<'_>,
@@ -243,24 +221,14 @@ fn accoes_na_tela(c: &mut CardCtx<'_>, y: f32) -> f32 {
     botoes(c, &ACCOES.map(|(id, chave, _)| (id, tr(chave))), y)
 }
 
-/// Real Oil: a caixa e, com ela, os números da óptica, o Environment e o material. Óleo na tela mantém os números.
-fn oleo_real(c: &mut CardCtx<'_>, b: &BrushSettings, pousa: bool, y: f32) -> f32 {
-    let mut y = y;
-    if pousa {
-        y = caixa(
-            c,
-            &(
-                pids::PAINTER_WETPAINT_OLEO_REAL,
-                "panel.painter_layers.wetpaint.oleo_real",
-                b.wet_oleo_real,
-            ),
-            y,
-        );
-    }
+/// Os números do Real Oil, o Environment e o material, debaixo de todas as caixas: ligar a caixa não troca as outras
+/// de lugar. Óleo na tela mantém os números.
+fn oleo_real(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     let (optica, material) = oleo::numeros(b, b);
     if optica.is_empty() {
         return y;
     }
+    let y = grupo(c, "panel.painter_layers.wetpaint.oleo_real", y);
     let y = numeros(c, &optica, y);
     let y = lista(
         c,
@@ -332,29 +300,38 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, visor: &Captura, y: f32) -> f32 {
             b.wet_paper_visual,
         ));
     }
-    let y = caixas(c, &mostrar, y);
-    let y = oleo_real(c, &b, pousa, y);
-    let mut fim = Vec::new();
+    if pousa {
+        mostrar.push((
+            pids::PAINTER_WETPAINT_OLEO_REAL,
+            "panel.painter_layers.wetpaint.oleo_real",
+            b.wet_oleo_real,
+        ));
+    }
     if b.le(LinhaDaFerramenta::MisturaDoPigmento) {
-        fim.push((
+        mostrar.push((
             pids::PAINTER_WETPAINT_PIGMENT_MIXING,
             "panel.painter_layers.wetpaint.pigment_mixing",
             b.wet_km_mixing,
         ));
     }
     if b.le(LinhaDaFerramenta::AguaViva) {
-        fim.push((
+        mostrar.push((
             pids::PAINTER_WETPAINT_LIVE_WATER,
             "panel.painter_layers.wetpaint.live_water",
             b.wet_live_water,
         ));
     }
-    fim.push((
+    mostrar.push((
         pids::PAINTER_WETPAINT_TUNING,
         "panel.painter_layers.wetpaint.tuning",
         b.wet_tuning_open,
     ));
-    caixas(c, &fim, y)
+    let itens: Vec<Item> = mostrar
+        .into_iter()
+        .map(|(id, chave, on)| Item::Caixa { id, chave, on })
+        .collect();
+    let y = fila(c, &itens, y);
+    oleo_real(c, &b, y)
 }
 
 /// Os volumes do Wet Paint: o que o painel de antes semeava ao pintar, e os chips dos valores rápidos.

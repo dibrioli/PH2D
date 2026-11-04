@@ -6,8 +6,8 @@
 
 use crate::cards_captura::{Captura, coluna, y_de};
 use crate::{
-    cards_impasto, cards_nativos, cards_topo, cards_watercolor, cards_wet, paint, paint_brush,
-    paint_brush_top, preview_pino, state,
+    cards_impasto, cards_nativos, cards_shape, cards_shape_tom, cards_topo, cards_watercolor,
+    cards_wet, paint, paint_brush, paint_brush_top, preview_pino, state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -70,6 +70,10 @@ enum Conteudo {
     Watercolor(Captura),
     /// Os knobs do verbo Sculpt na mão.
     Impasto(Option<Captura>),
+    /// Os gizmos, a prévia, as linhas de cada camada.
+    Forma(cards_shape::Pecas),
+    /// O editor de cada rampa.
+    Tom(cards_shape_tom::Pecas),
 }
 
 impl Presente {
@@ -80,6 +84,8 @@ impl Presente {
             Conteudo::Wet(_) => Some(pids::PAINTER_WETPAINT_RESET),
             Conteudo::Watercolor(_) => Some(pids::PAINTER_WATERCOLOR_RESET),
             Conteudo::Impasto(_) => Some(pids::PAINTER_IMPASTO_RESET),
+            Conteudo::Forma(_) => Some(pids::PAINTER_SHAPE_RESET),
+            Conteudo::Tom(_) => Some(cards_shape_tom::reset()),
         }
     }
 }
@@ -167,6 +173,26 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                     id,
                     titulo: cards_impasto::titulo().to_owned(),
                     conteudo: Conteudo::Impasto(cards_impasto::escultura(ctx, ink, (x, w), brush)),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_SHAPE_SECTION {
+            if cards_shape::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_shape::titulo().to_owned(),
+                    conteudo: Conteudo::Forma(cards_shape::pecas(ctx, ink, (x, w), brush)),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_SHAPE_RAMP_SECTION {
+            if cards_shape_tom::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_shape_tom::titulo().to_owned(),
+                    conteudo: Conteudo::Tom(cards_shape_tom::pecas(ctx, ink, (x, w), brush)),
                 });
             }
             continue;
@@ -295,6 +321,12 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Impasto(esculpe)) => Box::new(move |c: &mut CardCtx<'_>, y| {
                     cards_impasto::corpo(c, esculpe.as_ref(), y)
                 }),
+                (None, Conteudo::Forma(pecas)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_shape::corpo(c, pecas, y))
+                }
+                (None, Conteudo::Tom(pecas)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_shape_tom::corpo(c, pecas, y))
+                }
             };
             CardDef {
                 section: p.id,
@@ -344,6 +376,8 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_wet::prepare(ctx.host.store_mut(), &pincel);
         cards_watercolor::prepare(ctx.host.store_mut(), &pincel);
         cards_impasto::prepare(ctx, &pincel);
+        cards_shape::prepare(ctx, &pincel);
+        cards_shape_tom::prepare(ctx, &pincel);
     }
     for p in &presentes {
         if let Some(id) = p.reset()
@@ -405,6 +439,8 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
             cards_topo::listas_abertas(ctx, &pincel);
             cards_wet::listas_abertas(ctx, &pincel);
             cards_watercolor::listas_abertas(ctx, &pincel);
+            cards_shape::listas_abertas(ctx, &pincel);
+            cards_shape_tom::listas_abertas(ctx, &pincel);
             paint::paint_brush_view_popovers(ctx, theme);
         }
     }

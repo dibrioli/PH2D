@@ -117,6 +117,19 @@ pub(crate) fn paint_shape_per_layer_color(
         // acima ja faz — o item de menu morto que este codebase mantem uma tabela por menu para evitar.
         return y;
     }
+    paint_linhas_por_camada(ctx, theme, x, content_w, y, brush)
+}
+
+/// As duas linhas de cada camada: a cor dela e o Blend com a opacidade.
+pub(crate) fn paint_linhas_por_camada(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let count = brush.shape_layer_count as usize;
     let n = count.min(brush.shape_layer_color_on.len());
     let gap = Spacing::Xs.px();
     for i in 0..n {

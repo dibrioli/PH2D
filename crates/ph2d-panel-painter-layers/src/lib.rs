@@ -48,6 +48,8 @@ mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão 
 mod cards_impasto;
 mod cards_linhas; // listas de caixa, linha esmaecida e pares, das linhas de cartão
 mod cards_nativos;
+mod cards_shape; // o cartão Shape: só os gizmos e a prévia continuam capturados
+mod cards_shape_tom; // o cartão Shape Color: só o editor da rampa continua capturado
 mod cards_topo; // os corpos já em linhas de cartão
 mod cards_watercolor;
 mod cards_wet; // o cartão Wet Paint em linhas de cartão

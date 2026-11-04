@@ -95,8 +95,53 @@ pub(crate) fn paint_taper_section(
         content_w,
         resolve(ColorToken::Text2, theme),
     );
-    let mut y = y + ROW_H_PX;
+    let mut y = paint_taper_visor(ctx, theme, x, content_w, y + ROW_H_PX, brush);
 
+    // ── The two numeric rows the head taper has ────────────────────────────────────────────────────
+    let sec = seccao(ctx);
+    let taper = brush.taper;
+    y = crate::number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.taper.tip"),
+        ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START,
+        taper.tip_start.clamp(0.0, 1.0),
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+        sec,
+    );
+    y = crate::number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr("panel.painter_layers.taper.opacity"),
+        ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY,
+        taper.opacity.clamp(0.0, 1.0),
+        0.0,
+        1.0,
+        crate::number_field::FINE_STEP,
+        2,
+        sec,
+    );
+    paint_fim_do_traco(ctx, theme, x, content_w, y, &brush, sec)
+}
+
+/// O desenho do traço e a pega: o que no cartão continua no pintor dele. Devolve o `y` seguinte.
+pub(crate) fn paint_taper_visor(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
     // The inset is applied to the `canvas` the `CurvePoint` drag normalises against as well — insetting
     // only the DRAWING would put the dot somewhere the decoded value does not agree with, which is the
     // seed-vs-sample split this codebase keeps paying for.
@@ -162,41 +207,7 @@ pub(crate) fn paint_taper_section(
     );
     // ⭐ **A porta do vão entre controlos** (`3` px, ordem do dono de 2026-09-07): o que vem
     //   depois da curva é outro controlo, e o `Spacing::Sm` daqui era uma quinta resposta.
-    y += CANVAS_H + ph2d_tokens::control_gap_px();
-
-    // ── The two numeric rows the head taper has ────────────────────────────────────────────────────
-    let sec = seccao(ctx);
-    y = crate::number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        tr("panel.painter_layers.taper.tip"),
-        ph2d_tool_painter::ids::PAINTER_TAPER_TIP_START,
-        taper.tip_start.clamp(0.0, 1.0),
-        0.0,
-        1.0,
-        crate::number_field::FINE_STEP,
-        2,
-        sec,
-    );
-    y = crate::number_field::paint_num_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        tr("panel.painter_layers.taper.opacity"),
-        ph2d_tool_painter::ids::PAINTER_TAPER_OPACITY,
-        taper.opacity.clamp(0.0, 1.0),
-        0.0,
-        1.0,
-        crate::number_field::FINE_STEP,
-        2,
-        sec,
-    );
-    paint_fim_do_traco(ctx, theme, x, content_w, y, &brush, sec)
+    y + CANVAS_H + ph2d_tokens::control_gap_px()
 }
 
 /// ⭐ **O FIM do traço** (L5): a cauda e a ponta dela (só no Digital — o plano do traço a re-pinta ao levantar;

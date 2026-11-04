@@ -132,6 +132,100 @@ pub(crate) fn grupo_inicial(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
     c.hint(tr(chave), y - m::FIELD_ROW_GAP)
 }
 
+/// Um controlo curto de uma fila: divide a linha com o vizinho, se os dois cabem inteiros.
+pub(crate) enum Item {
+    Num(Numero),
+    /// Lista sem marca de animação, como `paint_dropdown_row`.
+    Lista {
+        id: NodeId,
+        chave: &'static str,
+        texto: &'static str,
+    },
+    Caixa {
+        id: NodeId,
+        chave: &'static str,
+        on: bool,
+    },
+}
+
+impl Item {
+    fn id(&self) -> NodeId {
+        match self {
+            Self::Num(n) => n.id,
+            Self::Lista { id, .. } | Self::Caixa { id, .. } => *id,
+        }
+    }
+
+    fn cell(&self) -> Cell<'_> {
+        match self {
+            Self::Num(n) => {
+                let rotulo = tr(n.chave);
+                Cell::new(Widget::Field {
+                    id: n.id,
+                    glyph: Glyph::Text(linhas::letra_da_grandeza(rotulo)),
+                })
+                .label(rotulo)
+                .key(std::slice::from_ref(&n.id))
+            }
+            Self::Lista { id, chave, texto } => Cell::new(Widget::Dropdown {
+                id: *id,
+                text: texto,
+                options: &[],
+            })
+            .label(tr(chave)),
+            Self::Caixa { id, chave, on } => marca(*id, chave, *on),
+        }
+    }
+}
+
+/// Os itens dois a dois enquanto couberem (05 §4, leis 1 e 5). O que a ferramenta diz inerte fica esmaecido na sua
+/// metade, com o vizinho vivo.
+pub(crate) fn fila(c: &mut CardCtx<'_>, itens: &[Item], y: f32) -> f32 {
+    let inercias = state::current_inercias();
+    let inerte = |i: &Item| inercias.dica_de(i.id()).is_some();
+    let mut y = y;
+    let mut resto = itens;
+    while !resto.is_empty() {
+        let vivos = resto.iter().take_while(|i| !inerte(i)).count();
+        let cells: Vec<Cell<'_>> = resto[..vivos].iter().map(Item::cell).collect();
+        y = c.compact(&cells, y);
+        resto = &resto[vivos..];
+        if !resto.is_empty() {
+            let n = resto.len().min(2);
+            y = em_pares(c, &resto[..n], y, |c, item, y| {
+                com_lei(c, item.id(), y, |c, y| c.row(&[item.cell()], y))
+            });
+            resto = &resto[n..];
+        }
+    }
+    y
+}
+
+/// Dois números de UMA grandeza: um rótulo, as letras X e Y, uma marca para o par.
+pub(crate) fn par_xy(c: &mut CardCtx<'_>, chave: &str, ids: [NodeId; 2], y: f32) -> f32 {
+    let inerte = {
+        let i = state::current_inercias();
+        i.dica_de(ids[0]).is_some() || i.dica_de(ids[1]).is_some()
+    };
+    let cells = [
+        Cell::new(Widget::Field {
+            id: ids[0],
+            glyph: Glyph::Text(tr("card.glyph.x")),
+        })
+        .label(tr(chave)),
+        Cell::new(Widget::Field {
+            id: ids[1],
+            glyph: Glyph::Text(tr("card.glyph.y")),
+        })
+        .key(&ids),
+    ];
+    if inerte {
+        esmaecida(c, y, |c, y| c.row(&cells, y))
+    } else {
+        c.row(&cells, y)
+    }
+}
+
 /// O véu da opção que a ferramenta diz inerte: continua clicável, como a linha esmaecida.
 fn opcoes_inertes(c: &mut CardCtx<'_>, segs: &[Seg<'_>]) {
     let inercias = state::current_inercias();

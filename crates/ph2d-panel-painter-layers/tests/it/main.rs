@@ -27,6 +27,7 @@ mod h1_os_cartoes; // o painel em cartões: a lista, a captura e os corpos nativ
 mod h2_os_cartoes; // o topo e os básicos em linhas de cartão
 mod h3_os_cartoes;
 mod h4_os_cartoes; // o cartão Wet Paint em linhas de cartão
+mod h5_os_cartoes; // Shape e Shape Color em linhas de cartão, e as dívidas de H3 e H4
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
 mod o_flow_a_vista_e_o_flow_que_age; // o Flow à vista ⟺ a ferramenta no meio dela o lê (24/10)

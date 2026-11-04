@@ -23,7 +23,7 @@ use ph2d_tool_painter::{
 };
 
 /// The Shape ramp's fixed widget ids + state hooks (collapsible "Shape Color").
-fn shape_ramp_ids() -> RampIds {
+pub(crate) fn shape_ramp_ids() -> RampIds {
     RampIds {
         section: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_SECTION,
         reset: ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_RESET,
@@ -46,7 +46,7 @@ fn shape_ramp_ids() -> RampIds {
 
 /// The Falloff Color ramp's ids (prompt 38) — the section-level ids (section / reset / enable / B&W) are
 /// the Shape ramp's: the layer body paints none of them.
-fn falloff_ramp_ids() -> RampIds {
+pub(crate) fn falloff_ramp_ids() -> RampIds {
     use ph2d_tool_painter::ids as i;
     RampIds {
         mode: i::PAINTER_SHAPE_FALLOFF_RAMP_MODE,
@@ -210,13 +210,13 @@ pub(crate) fn paint_shape_ramp_section(
 }
 
 /// What a layer card's body paints: "Enabled", and when on its ramp editor + Opacity.
-struct Corpo<'a> {
-    id: ph2d_a11y::NodeId,
-    ligada: bool,
-    rids: RampIds,
-    view: RampView<'a>,
-    id_op: ph2d_a11y::NodeId,
-    opacidade: f32,
+pub(crate) struct Corpo<'a> {
+    pub(crate) id: ph2d_a11y::NodeId,
+    pub(crate) ligada: bool,
+    pub(crate) rids: RampIds,
+    pub(crate) view: RampView<'a>,
+    pub(crate) id_op: ph2d_a11y::NodeId,
+    pub(crate) opacidade: f32,
 }
 
 /// One layer card: its title, body, whether it is on top (the lower one carries "Move Up"), the Blend
@@ -296,7 +296,7 @@ fn paint_layer_card(
 }
 
 /// A layer card's body without the Blend, at `ry`; returns the next `ry`.
-fn pinta_corpo(
+pub(crate) fn pinta_corpo(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     ix: f32,

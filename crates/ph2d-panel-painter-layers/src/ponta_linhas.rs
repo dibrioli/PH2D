@@ -108,7 +108,7 @@ pub(crate) fn paint_linhas_da_ponta(
         let id = ids::PAINTER_PONTA_FIELDS[i];
         let opcoes = l.opcoes();
         if !opcoes.is_empty() {
-            let cur = (brush.ponta[i].round().max(0.0) as u8).min((opcoes.len() - 1) as u8);
+            let cur = opcao_atual(i, brush);
             let (ny, open) = crate::paint_brush_rows::paint_dropdown_row(
                 ctx,
                 theme,
@@ -144,6 +144,17 @@ pub(crate) fn paint_linhas_da_ponta(
         );
     }
     y
+}
+
+/// O menu da linha `i` abriu no cartão: o chip e a opção de agora.
+pub(crate) fn abre_lista(r: Rect, i: usize, cur: u8) {
+    PENDING_PONTA_DD.with(|p| p.set(Some((r, i, cur))));
+}
+
+/// A opção de agora de um menu da ponta.
+pub(crate) fn opcao_atual(i: usize, brush: &BrushSettings) -> u8 {
+    let n = LINHAS_DA_PONTA[i].opcoes().len().max(1);
+    (brush.ponta[i].round().max(0.0) as u8).min((n - 1) as u8)
 }
 
 /// O menu aberto de uma linha da ponta — pintado por cima do corpo, depois do clip (como os outros).
@@ -195,7 +206,7 @@ pub(crate) fn decode_hose_mode_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 }
 
 /// O índice da linha `l` na tabela da ponta.
-fn indice(l: LinhaDaPonta) -> usize {
+pub(crate) fn indice(l: LinhaDaPonta) -> usize {
     LINHAS_DA_PONTA.iter().position(|x| *x == l).unwrap_or(0)
 }
 
@@ -216,7 +227,7 @@ pub(crate) fn decode_dual_follow_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 
 /// A linha `i` pinta-se agora: as da ponta de N imagens só com duas imagens ou mais, e os pesos só das imagens que
 /// há e no sorteio (os outros modos não os leem).
-fn visivel(i: usize, brush: &BrushSettings) -> bool {
+pub(crate) fn visivel(i: usize, brush: &BrushSettings) -> bool {
     let n = usize::from(brush.shape_hose_count);
     let dual = brush.ponta[indice(LinhaDaPonta::DualMode)] > 0.0;
     let forma =

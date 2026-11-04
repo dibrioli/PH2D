@@ -49,11 +49,9 @@ pub(crate) fn paint_falloff_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let is_custom = brush.falloff == Falloff::Custom.to_u8();
     // A Hardness empurra a curva para a borda: à vista com o Falloff que ela muda (o preview da silhueta já a
     // aplica, `brush_dab_weight_at`).
-    let mut y = crate::card::card_row(
+    let y = crate::card::card_row(
         ctx,
         theme,
         x,
@@ -67,7 +65,20 @@ pub(crate) fn paint_falloff_section(
         crate::number_field::FINE_STEP,
         2,
     );
+    paint_falloff_curva(ctx, theme, x, content_w, y, brush)
+}
 
+/// A curva, sem a linha da Hardness: no cartão ela divide a linha com o Falloff.
+pub(crate) fn paint_falloff_curva(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let is_custom = brush.falloff == Falloff::Custom.to_u8();
     // ── (Custom only) +/− point buttons, right-aligned above the canvas ──
     if is_custom {
         let add_rect = Rect::new(x + content_w - BTN_W * 2.0 - gap, y, BTN_W, ROW_H_PX);

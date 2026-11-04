@@ -103,14 +103,11 @@ impl CardCtx<'_> {
         if self.escolha_pede(segs) <= self.w || segs.len() < 2 {
             return self.row_inteira(&[*c], y);
         }
+        let pedidos: Vec<f32> = segs.iter().map(|s| self.seg_need(s, false).0).collect();
         let mut y = y;
         let mut resto = segs;
         let mut primeira = true;
-        while !resto.is_empty() {
-            let n = (1..=resto.len())
-                .rev()
-                .find(|&n| self.escolha_pede(&resto[..n]) <= self.w)
-                .unwrap_or(1);
+        for n in filas_equilibradas(&pedidos, self.w) {
             let cell = if primeira {
                 Cell {
                     widget: Widget::Choice(&resto[..n]),
@@ -141,6 +138,41 @@ impl CardCtx<'_> {
             .collect();
         censo::linha((self.x, self.w), topo, fundo, || medidas);
     }
+}
+
+/// Quantos segmentos entram em cada fila à largura `w`, enchendo cada uma pela ordem.
+fn filas_gulosas(pedidos: &[f32], w: f32) -> Vec<usize> {
+    let mut filas = Vec::new();
+    let (mut n, mut soma) = (0, m::SEG_PAD);
+    for p in pedidos {
+        if n > 0 && soma + p + m::SEG_PAD > w {
+            filas.push(n);
+            (n, soma) = (0, m::SEG_PAD);
+        }
+        n += 1;
+        soma += p + m::SEG_PAD;
+    }
+    if n > 0 {
+        filas.push(n);
+    }
+    filas
+}
+
+/// O mesmo número de filas que a largura `w` dá, à menor largura que ainda o dá: nenhum segmento fica órfão na última
+/// (o `text-wrap: balance` do CSS). Medido na lista TOOL do Impasto: `4, 5, 1` passa a `4, 3, 3`.
+fn filas_equilibradas(pedidos: &[f32], w: f32) -> Vec<usize> {
+    const BISSECCOES: usize = 16;
+    let quantas = filas_gulosas(pedidos, w).len();
+    let (mut cabe, mut nao) = (w, 0.0_f32);
+    for _ in 0..BISSECCOES {
+        let meio = (cabe + nao) * 0.5;
+        if filas_gulosas(pedidos, meio).len() <= quantas {
+            cabe = meio;
+        } else {
+            nao = meio;
+        }
+    }
+    filas_gulosas(pedidos, cabe)
 }
 
 /// A lei 1: número, amostra + código, caixa de marcar, chip e facto curtos.

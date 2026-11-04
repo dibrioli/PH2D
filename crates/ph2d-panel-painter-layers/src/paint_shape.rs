@@ -405,7 +405,7 @@ pub(crate) fn shape_follow_options() -> Vec<DropdownOption<u8>> {
 /// Offset / Size edits in real time. `Image` shows the transformed imported tip; a procedural kind
 /// shows `falloff × pattern`. The square tip ([`-1, 1`]²) lights up over a dark checker, centred in the
 /// strip, with a border.
-fn paint_shape_preview(
+pub(crate) fn paint_shape_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,

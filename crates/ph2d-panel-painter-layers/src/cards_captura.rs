@@ -52,6 +52,12 @@ pub(crate) fn x_de(id: NodeId, de_outro_modo: f32) -> f32 {
     ONDE.with(|o| o.borrow().get(&id).map_or(de_outro_modo, |p| p.0))
 }
 
+/// A chave da peça `n` de uma secção, na memória da posição: fora da faixa dos ids, porque nunca é registada.
+pub(crate) fn chave_da_peca(secao: NodeId, n: u64) -> NodeId {
+    const FORA_DOS_IDS: u64 = 1 << 56;
+    NodeId(secao.0.wrapping_add(FORA_DOS_IDS).wrapping_add(n))
+}
+
 /// Um corpo pintado à parte, pronto a repetir.
 pub(crate) struct Captura {
     /// A chave da memória da posição: a secção, ou uma peça dela.

@@ -311,6 +311,13 @@ impl MockPanelHost {
         //    quadro abre num cartão recuado e deixava `1` pedido de `51`). E os dois correm como
         //    AQUECIMENTO ([`ph2d_editor_core::aquecimento`]): os censos que acumulam através
         //    da pintura (o balão, os avisos) não os contam.
+        //    ⛔ **O relógio é do arnês, não da parede** (2026-11-04): as alturas dos cartões animam por
+        //    mola com o `dt` do relógio, e a mesma árvore media `1`, `2` ou `3` colunas na galeria
+        //    conforme a carga. Os dois quadros de aquecimento correm com passo FIXO de `0,1 s` (o teto
+        //    do quadro real) e o medido com passo `0`: nenhuma mola lê a parede. (Esperar a mola
+        //    assentar de vez, em mais quadros, mudou o Inspector armado — `a_regua_separa_…` — e não
+        //    foi preciso: o número é o mesmo.)
+        const PASSO_DO_AQUECIMENTO_S: f64 = 0.1;
         for _ in 0..2 {
             let mut scene = VectorScene::new();
             let mut ctx = PaintCtx {
@@ -321,7 +328,11 @@ impl MockPanelHost {
                 scene: &mut scene,
                 text_system: &mut text_system,
             };
-            ph2d_editor_core::aquecimento::aquecendo_durante(|| painel.paint(&mut ctx));
+            ph2d_editor_core::aquecimento::aquecendo_durante(|| {
+                ph2d_editor_core::aquecimento::com_passo_fixo(PASSO_DO_AQUECIMENTO_S, || {
+                    painel.paint(&mut ctx);
+                });
+            });
             self.hit_index.clear_for_frame();
         }
         let mut scene = VectorScene::new();
@@ -334,7 +345,7 @@ impl MockPanelHost {
                 scene: &mut scene,
                 text_system: &mut text_system,
             };
-            painel.paint(&mut ctx);
+            ph2d_editor_core::aquecimento::com_passo_fixo(0.0, || painel.paint(&mut ctx));
         })
         .1
     }

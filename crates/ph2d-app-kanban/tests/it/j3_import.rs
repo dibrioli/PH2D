@@ -214,9 +214,12 @@ fn j3_import_export_sem_kanban_aberto_avisa() {
 fn caminhos_do_hero(m: &mut Mesa) -> u32 {
     use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
     let vp = ph2d_editor_core::zones::Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
-    let mut s = ph2d_vector::VectorScene::new();
-    paint_hero_screen(&mut m.hero, vp, &mut s, &mut m.ts);
-    s.inner().encoding().n_paths
+    // As molas dos cartões leem o relógio: o número assenta a passo fixo (`aquecimento.rs`).
+    ph2d_editor_core::aquecimento::assenta_e_mede(|| {
+        let mut s = ph2d_vector::VectorScene::new();
+        paint_hero_screen(&mut m.hero, vp, &mut s, &mut m.ts);
+        s.inner().encoding().n_paths
+    })
 }
 
 /// D9 (10.3) — o aviso «Exported … as CSV to …» pinta-se POR CIMA da aba do Kanban: os avisos não
@@ -238,12 +241,8 @@ fn j3_import_o_aviso_do_export_aparece_sobre_a_aba_do_kanban() {
         m.hero.documents.surface_active().is_some(),
         "a aba do Kanban continua activa"
     );
-    assert!(
-        m.hero
-            .documents
-            .told()
-            .is_some_and(|t| t.contains("lua.csv"))
-    );
+    let dito = m.hero.documents.told();
+    assert!(dito.is_some_and(|t| t.contains("lua.csv")));
     let depois = caminhos_do_hero(&mut m);
     assert!(
         depois > antes,

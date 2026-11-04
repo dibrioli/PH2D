@@ -35,8 +35,14 @@ fn assenta(h: &mut HeroScreen) {
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..60 {
         scene.reset();
-        ph2d_editor_core::screens::hero::paint_hero_screen(h, VIEWPORT, &mut scene, &mut text);
-        std::thread::sleep(std::time::Duration::from_millis(5));
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                ph2d_editor_core::screens::hero::paint_hero_screen(
+                    h, VIEWPORT, &mut scene, &mut text,
+                )
+            },
+        );
     }
 }
 
@@ -188,8 +194,14 @@ fn a_long_card_list_scrolls_under_the_wheel() {
     let mut pinta = |h: &mut HeroScreen| {
         for _ in 0..40 {
             scene.reset();
-            ph2d_editor_core::screens::hero::paint_hero_screen(h, BAIXA, &mut scene, &mut text);
-            std::thread::sleep(std::time::Duration::from_millis(5));
+            ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || {
+                    ph2d_editor_core::screens::hero::paint_hero_screen(
+                        h, BAIXA, &mut scene, &mut text,
+                    )
+                },
+            );
         }
     };
     pinta(&mut h);
@@ -257,8 +269,14 @@ fn the_scroll_bar_has_its_own_lane_beside_the_cards() {
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..40 {
         scene.reset();
-        ph2d_editor_core::screens::hero::paint_hero_screen(&mut h, BAIXA, &mut scene, &mut text);
-        std::thread::sleep(std::time::Duration::from_millis(5));
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                ph2d_editor_core::screens::hero::paint_hero_screen(
+                    &mut h, BAIXA, &mut scene, &mut text,
+                )
+            },
+        );
     }
     let barra = h
         .hit_index

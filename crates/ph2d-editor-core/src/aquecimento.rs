@@ -35,3 +35,45 @@ pub fn aquecendo_durante<R>(f: impl FnOnce() -> R) -> R {
     AQUECENDO.set(antes);
     r
 }
+
+thread_local! {
+    static PASSO_FIXO: Cell<Option<f64>> = const { Cell::new(None) };
+}
+
+/// O passo (s) de uma animação a mola neste quadro: o do relógio, salvo se o arnês o fixou.
+///
+/// ⛔ O relógio de parede NÃO pode decidir o que um censo mede: com a máquina carregada o quadro
+/// seguinte chega mais tarde, a mola da altura de um cartão avança mais, e o mesmo painel regista
+/// outras linhas (galeria: `1`, `2` ou `3` colunas na mesma árvore). Quem anima por mola lê o `dt`
+/// por aqui; o arnês fixa-o ([`com_passo_fixo`]) e o resultado deixa de depender de quando se corre.
+#[must_use]
+pub fn passo_do_quadro(relogio: f64) -> f64 {
+    PASSO_FIXO.get().unwrap_or(relogio)
+}
+
+/// Corre `f` com o passo fixo `dt` — reentrante (repõe o de fora).
+pub fn com_passo_fixo<R>(dt: f64, f: impl FnOnce() -> R) -> R {
+    let antes = PASSO_FIXO.replace(Some(dt));
+    let r = f();
+    PASSO_FIXO.set(antes);
+    r
+}
+
+/// O passo de um quadro a 60 Hz — o que um teste que pinta `n` quadros passa a `com_passo_fixo`:
+/// `n` quadros avançam `n × 16,7 ms` de mola, com a máquina rápida ou lenta.
+pub const PASSO_DE_QUADRO_S: f64 = 1.0 / 60.0;
+
+/// Mede `quadro` já ASSENTE: repete-o com passo fixo de `0,1 s` (o teto do quadro real) até duas
+/// medidas seguidas casarem (2 no mínimo, 60 no máximo) e devolve a medida a passo `0`. Os censos e
+/// os testes de pintura que comparam quadros usam-no em vez de dormir à espera da mola.
+pub fn assenta_e_mede<T: PartialEq>(mut quadro: impl FnMut() -> T) -> T {
+    let mut anterior: Option<T> = None;
+    for _ in 0..60 {
+        let n = com_passo_fixo(0.1, &mut quadro);
+        if anterior.as_ref() == Some(&n) {
+            break;
+        }
+        anterior = Some(n);
+    }
+    com_passo_fixo(0.0, quadro)
+}

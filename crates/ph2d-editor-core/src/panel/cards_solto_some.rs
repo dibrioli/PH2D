@@ -39,7 +39,9 @@ pub(super) fn passo(store: &WidgetStore) -> f32 {
         let dt = f
             .antes
             .replace(agora)
-            .map_or(0.0, |t| agora.duration_since(t).as_secs_f32().min(0.1));
+            .map_or(0.0, |t| agora.duration_since(t).as_secs_f64().min(0.1));
+        #[allow(clippy::cast_possible_truncation)]
+        let dt = crate::aquecimento::passo_do_quadro(dt) as f32;
         dt / m::LOOSE_FADE_S
     })
 }

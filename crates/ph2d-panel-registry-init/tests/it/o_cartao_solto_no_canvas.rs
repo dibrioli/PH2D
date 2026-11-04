@@ -23,8 +23,14 @@ pub(super) fn pinta(h: &mut HeroScreen, n: usize) {
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..n {
         scene.reset();
-        ph2d_editor_core::screens::hero::paint_hero_screen(h, VIEWPORT, &mut scene, &mut text);
-        std::thread::sleep(std::time::Duration::from_millis(5));
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                ph2d_editor_core::screens::hero::paint_hero_screen(
+                    h, VIEWPORT, &mut scene, &mut text,
+                )
+            },
+        );
     }
 }
 
@@ -334,8 +340,14 @@ fn dragging_a_card_to_the_bottom_edge_scrolls_the_list() {
     let mut pinta_baixa = |h: &mut HeroScreen, n: usize| {
         for _ in 0..n {
             scene.reset();
-            ph2d_editor_core::screens::hero::paint_hero_screen(h, BAIXA, &mut scene, &mut text);
-            std::thread::sleep(std::time::Duration::from_millis(5));
+            ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || {
+                    ph2d_editor_core::screens::hero::paint_hero_screen(
+                        h, BAIXA, &mut scene, &mut text,
+                    )
+                },
+            );
         }
     };
     pinta_baixa(&mut h, 40);

@@ -28,8 +28,14 @@ fn pinta(h: &mut HeroScreen, n: usize) {
     let mut text = TextSystem::without_system_fonts();
     for _ in 0..n {
         scene.reset();
-        ph2d_editor_core::screens::hero::paint_hero_screen(h, VIEWPORT, &mut scene, &mut text);
-        std::thread::sleep(std::time::Duration::from_millis(5));
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                ph2d_editor_core::screens::hero::paint_hero_screen(
+                    h, VIEWPORT, &mut scene, &mut text,
+                )
+            },
+        );
     }
 }
 

@@ -97,9 +97,10 @@ pub fn paint_card_list_pinned(
     let law = crate::motion::UiMotion::default().law(crate::motion::Role::Travel);
     let list = store.card_list_mut(panel);
     let now = std::time::Instant::now();
-    let dt = list
-        .last
-        .map_or(0.0, |t| now.duration_since(t).as_secs_f64().min(0.1));
+    let dt = crate::aquecimento::passo_do_quadro(
+        list.last
+            .map_or(0.0, |t| now.duration_since(t).as_secs_f64().min(0.1)),
+    );
     list.last = Some(now);
     let soltas_h = list.loose_notes_h;
     // A queda ANTES da disposição: o cartão assenta já no lugar novo, sem passar pelo velho.

@@ -567,6 +567,58 @@ fn typing_a_number_sends_the_same_as_the_old_panel() {
     }
 }
 
+/// O par de offset é uma grandeza: X e Y na mesma linha, mesmo com um número ímpar antes dele.
+/// *Mutação: juntar `soltos` e `offset` no mesmo `chunks` ⇒ vermelho.*
+#[test]
+fn the_offset_pair_stays_on_one_row() {
+    let mut mesa = Mesa::nova(true);
+    mesa.abre(p::filter_row_id(SOMBRA));
+    let x = mesa.rect(p::filter_offx_num_id(SOMBRA)).expect("X");
+    let y = mesa.rect(p::filter_offy_num_id(SOMBRA)).expect("Y");
+    assert!((x.y - y.y).abs() < 0.5, "{x:?} × {y:?}");
+    assert!(x.x + x.w <= y.x, "{x:?} × {y:?}");
+}
+
+/// Cada número traz o passo e o valor de fábrica dele: a seta e o duplo clique na pega leem-nos.
+/// *Mutação: tirar o `mark_card_field` de `prepare` ou de `prepara_numero` ⇒ vermelho.*
+#[test]
+fn each_field_declares_its_step_and_factory_value() {
+    let mesa = Mesa::nova(true);
+    let s = mesa.host.store();
+    let spec = |id: NodeId| {
+        s.card_field(id)
+            .unwrap_or_else(|| panic!("{id:?} sem marca"))
+    };
+    assert_eq!(spec(t::vector_fx_param_num_id(0, 2)).step, 1.0, "contagem");
+    assert!(spec(t::vector_fx_param_num_id(0, 3)).step < 1.0, "fração");
+    assert_eq!(spec(p::filter_hue_num_id(AJUSTE)).default, Some(0.0));
+    assert_eq!(spec(p::filter_opacity_num_id(RAMPA)).default, Some(1.0));
+    assert_eq!(spec(p::filter_offx_num_id(SOMBRA)).default, Some(0.0));
+    assert_eq!(spec(p::filter_radius_num_id(SOMBRA)).default, None);
+}
+
+/// F43: o olho à esquerda do «−», e o nome à esquerda dos dois.
+/// *Mutação: trocar `hide` e `remove` na linha ⇒ vermelho.*
+#[test]
+fn the_row_keeps_the_order_of_f43() {
+    let mesa = Mesa::nova(true);
+    for (linha, olho, menos) in [
+        (
+            t::vector_fx_row_id(0),
+            t::vector_fx_hide_id(0),
+            t::vector_fx_remove_id(0),
+        ),
+        (
+            p::filter_row_id(0),
+            p::filter_hide_id(0),
+            p::filter_remove_id(0),
+        ),
+    ] {
+        let [l, o, m] = [linha, olho, menos].map(|i| mesa.rect(i).expect("pintado"));
+        assert!(l.x + l.w <= o.x && o.x + o.w <= m.x, "{l:?} {o:?} {m:?}");
+    }
+}
+
 /// O que o campo mostra é o do documento, não o do trilho. *Mutação: tirar a semente ⇒ vermelho.*
 #[test]
 fn the_fields_show_the_document_value() {
@@ -818,11 +870,42 @@ fn the_popover_works_with_the_panel_tab_behind() {
         rects: Vec::new(),
     };
     let id = t::VECTOR_DASH_IDS[0];
+    state::set_current_appearance(Some(state::Appearance {
+        opacity: 1.0,
+        blend: ph2d_vec_scene::BlendMode::Normal,
+        layers: vec![state::PaintRow {
+            align: ph2d_vec_scene::StrokeAlign::Centre,
+            ramp: None,
+            is_fill: false,
+            color: [0x33, 0x66, 0xCC, 0xFF],
+            width: 2.0,
+            enabled: true,
+            opacity: 0.5,
+            blend: ph2d_vec_scene::BlendMode::Normal,
+            offset: [0.0, 0.0],
+            dilate: 0.0,
+            dilate_join: 0,
+            mixed: Default::default(),
+        }],
+        mixed_opacity: false,
+        mixed_blend: false,
+        layers_differ: false,
+        order: Vec::new(),
+    }));
     mesa.host.set_panel_visible(VectorPanel::ID, false);
     abre_o_traco(&mut mesa);
     assert!(mesa.host.store().card_field(id).is_some(), "não marcado");
     let ev = mesa.arrasta_a_pega(id, 40.0);
     assert!(ev.contains(&WidgetEvent::ValueChanged(id)), "{ev:?}");
+    // O que a linha do traço mostra é o da forma, e não o de fábrica.
+    assert_eq!(
+        mesa.host
+            .store()
+            .number_value(p::vector_paint_row_opacity_id(0)),
+        Some(50.0),
+        "sem semente com a aba atrás"
+    );
+    state::set_current_appearance(None);
 }
 
 /// O chip numérico da fila ② partilha o id com um campo de cartão, mas não tem pega: o clique à

@@ -529,7 +529,10 @@ fn filtro_props(
         .iter()
         .map(|n| (n.nome.as_str(), n.chip, n.barra))
         .collect();
-    for par in tabela.chunks(2) {
+    // O par de offset é UMA grandeza: fica junto, venha o que vier antes.
+    let par_de_offset = if k.offset_labels.is_some() { 2 } else { 0 };
+    let (soltos, offset) = tabela.split_at(tabela.len() - par_de_offset);
+    for par in soltos.chunks(2).chain(offset.chunks(2)) {
         y = fila(c, par, y);
     }
     y = cores(c, row, fx, k, y);

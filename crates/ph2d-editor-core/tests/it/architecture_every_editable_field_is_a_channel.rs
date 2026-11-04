@@ -1487,6 +1487,12 @@ const DIVIDA_CRATE: &[(&str, Classe, &str)] = &[
 /// [`PORTAS`] contavam, e um painel com um chip ou um olho e nenhuma porta passava sem lado.
 const SEM_COLUNA_FORA: &[(&str, &str, Classe, &str)] = &[
     (
+        "ph2d-panel-widget-gallery",
+        "controlos.rs::eye",
+        NaoAnimavel,
+        "a galeria é um catálogo: o olho de exemplo não escreve campo nenhum do projeto",
+    ),
+    (
         "ph2d-panel-hierarchy",
         "filter.rs::paint_chip",
         NaoAnimavel,

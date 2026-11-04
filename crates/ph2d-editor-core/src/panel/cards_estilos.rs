@@ -646,6 +646,7 @@ fn amostra(scene: &mut VectorScene, r: Rect, c: [u8; 4], ink: &CardInk) {
         m::SEG_RADIUS,
         ph2d_vector::Color::from_rgba8(c[0], c[1], c[2], c[3]),
     );
+    // FRAME-RAW-OK: o contorno da AMOSTRA de cor é a borda que a separa do cartão — a cor dela é a mensagem
     crate::paint::stroke_rounded_rect(
         scene,
         r,

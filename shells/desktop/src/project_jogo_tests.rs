@@ -75,7 +75,8 @@ fn um_v197_abre_com_o_formato_de_fabrica() {
     // A cena vetorial de um v197 é a v23 (sem as regras de CAD, que nasceram no 201): o postcard é a
     // concatenação dos campos, e a vazia viva acaba nos dois zeros das regras.
     let st = &f.state;
-    let vec_vivo = postcard::to_allocvec(&*st.vec).expect("serializa");
+    let vec_vivo = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&*st.vec))
+        .expect("serializa");
     assert_eq!(
         &vec_vivo[vec_vivo.len() - 2..],
         &[0, 0],

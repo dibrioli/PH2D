@@ -103,7 +103,7 @@ fn a_coluna_literal_de_antes_cortava_dois_nomes_ja_em_ingles() {
     //    literal de antes CORTA um nome em inglês, logo a lei que a substituiu é que a cura.
     assert_eq!(
         cortados,
-        vec!["Return"],
+        vec!["Depth", "Return"],
         "a fixtura desta wave é a coluna literal de 32 px a cortar um nome em inglês — se ela \
          deixar de o cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
     );

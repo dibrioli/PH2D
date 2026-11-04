@@ -266,6 +266,7 @@ pub fn paint_rich_editor(
             rect.h + m::SEG_INSET * 2.0,
         );
         let azul = ink.color(ColorToken::KanbanBlueBold);
+        // FRAME-RAW-OK: o anel de FOCO do editor rico no cartão
         stroke_rounded_rect(scene, f, m::FIELD_RADIUS, m::FIELD_BORDER, azul);
     } else if ed.editing {
         let state = TextInputState::Focused;

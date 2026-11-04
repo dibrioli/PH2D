@@ -220,6 +220,7 @@ pub(crate) fn pixel(ch: Choices) -> CardDef<'static> {
                 g::PX_BG
             };
             if let Some(r) = c.hit_index.rect_for(alvo) {
+                // FRAME-RAW-OK: o contorno marca a caixa-ALVO da paleta — a mensagem é «a próxima cor vai para aqui»
                 stroke_rounded_rect(
                     c.scene,
                     r,
@@ -265,6 +266,7 @@ fn paleta(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
         let r = Rect::new(c.x + col * (lado + gap), y + lin * (lado + gap), lado, lado);
         fill_rounded_rect(c.scene, r, m::SEG_RADIUS, c.ink.color(PALETTE_TOKENS[i]));
         if usize::from(ch.pick(Pick::PixelFg)) == i || usize::from(ch.pick(Pick::PixelBg)) == i {
+            // FRAME-RAW-OK: o contorno marca as cores ESCOLHIDAS (frente e fundo) na paleta
             stroke_rounded_rect(
                 c.scene,
                 r,

@@ -66,7 +66,8 @@ fn um_v210_abre_a_pele_sem_comprimento() {
         }));
     let ver = crate::project_schema::PROJECT_SCHEMA_TENDAO_SEM_COMPRIMENTO;
     let path = tmp_path(&format!("pele_v{ver}"));
-    std::fs::write(&path, postcard::to_allocvec(&(ver, &f)).expect("serializa")).expect("grava");
+    let bytes = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(ver, &f)));
+    std::fs::write(&path, bytes.expect("serializa")).expect("grava");
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     let (back, _) = lido.expect("aceite");

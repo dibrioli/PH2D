@@ -54,7 +54,8 @@ fn um_projecto_antigo_abre_com_a_mesa_no_padrao() {
         // A cena vetorial de um ficheiro destes é a v23 (sem as regras de CAD, que nasceram no 200): a vazia
         // viva acaba nos dois zeros das regras.
         let st = &f.state;
-        let vec_vivo = postcard::to_allocvec(&*st.vec).expect("serializa");
+        let vec_vivo = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&*st.vec))
+            .expect("serializa");
         let mut bytes = postcard::to_allocvec(&(ver, &st.world)).expect("serializa");
         bytes.extend_from_slice(&vec_vivo[..vec_vivo.len() - 2]);
         let resto = (&st.flip, &st.guides, &st.ui_states, &st.library, &st.tags);

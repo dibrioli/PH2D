@@ -177,6 +177,7 @@ fn campo(
     fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(fundo));
     let azul = ink.color(ColorToken::KanbanBlueBold);
     if editing {
+        // FRAME-RAW-OK: o anel de FOCO do campo de data em edição
         stroke_rounded_rect(scene, r, m::FIELD_RADIUS, m::FIELD_BORDER, azul);
     }
     let field = p.field(f);

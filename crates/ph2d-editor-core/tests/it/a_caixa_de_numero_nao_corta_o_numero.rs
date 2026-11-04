@@ -103,10 +103,12 @@ fn um_valor_longo_de_mais_continua_a_avisar_que_foi_cortado() {
 
 /// ⭐⭐ **Um número DECIMAL que não cabe perde CASAS, arredondado — nunca `…`** (escolha do dono,
 /// 2026-10-02). Era a fronteira desta caixa: `-0.500` (`36,1 px`) e `-141.881` (`42,6`) contra
-/// `32,0` saíam `-0.…`/`-141.…`; agora saem `-0.50` e `-141.9`, inteiros.
+/// `32,0` saíam `-0.…`/`-141.…`; agora saem `-0.50` e `-141.9`, inteiros. ⚠️ Com a Noto Sans de fábrica
+/// (D11, 03/11) o `-0.500` CABE nos `32,0` e já não perde casas: o caso de duas casas passou a ser o
+/// `-0.5000` (que perde uma, `-0.500`).
 #[test]
 fn um_decimal_que_nao_cabe_sai_arredondado_e_inteiro() {
-    for (display, esperado) in [("-0.500", "-0.50"), ("-141.881", "-141.9")] {
+    for (display, esperado) in [("-0.5000", "-0.500"), ("-141.881", "-141.9")] {
         let medidos = pinta(display);
         assert!(
             medidos.iter().all(|m| m.coube() && m.texto == esperado),

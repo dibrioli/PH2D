@@ -105,6 +105,13 @@ const DECLARED: &[(&str, &str, Kind, &str)] = &[
     ),
     (
         "widget/rich_editor/paint.rs",
+        "scene.fill_rect(rect_to_vello(line), ink.color(ColorToken::Border));",
+        Divider,
+        "a RÉGUA horizontal (`BlockKind::Rule`) do texto rico DENTRO do cartão — a mesma linha entre \
+         dois blocos, na tinta do cartão",
+    ),
+    (
+        "widget/rich_editor/paint.rs",
         "scene.fill_rect(rect_to_vello(line), resolve(ColorToken::Border, theme));",
         Divider,
         "a RÉGUA horizontal (`BlockKind::Rule`) que o autor pôs no texto rico — uma linha entre \

@@ -25,7 +25,13 @@ fn abre(ver: u32) -> Constraints {
             parent: None,
         }));
     let path = tmp_path(&format!("caixas_v{ver}"));
-    std::fs::write(&path, postcard::to_allocvec(&(ver, &f)).expect("serializa")).expect("grava");
+    // Um degrau antigo grava a cena sem os estilos de cor (v28); o vivo grava a de hoje.
+    let bytes = if ver <= crate::project_schema::PROJECT_SCHEMA_SEM_ESTILOS {
+        ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(ver, &f)))
+    } else {
+        postcard::to_allocvec(&(ver, &f))
+    };
+    std::fs::write(&path, bytes.expect("serializa")).expect("grava");
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     let (back, _) = lido.expect("aceite");

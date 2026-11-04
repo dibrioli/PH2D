@@ -41,10 +41,12 @@ fn a_v214_opens_without_sounds() {
             vec![7u8],
         ),
     );
-    let path = written(
-        "sons_v214",
-        &(crate::project_schema::PROJECT_SCHEMA_SEM_SONS, v214),
-    );
+    let path = ph2d_vec_scene::with_wire_layout(28, || {
+        written(
+            "sons_v214",
+            &(crate::project_schema::PROJECT_SCHEMA_SEM_SONS, v214),
+        )
+    });
     let lido = headless_app().read_project_file(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
     let (f, _) = lido.expect("um v214 é recusado");

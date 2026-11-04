@@ -123,6 +123,7 @@ pub fn notas_do_cartao(
 pub fn contorno_do_cartao(scene: &mut VectorScene, color_idx: u8, caixa: Rect, raio: f32) {
     let rgba = crate::widget::panel_chrome::highlighter_rgba(color_idx);
     let cor = ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette — a marca que o artista escolheu
+    // FRAME-RAW-OK: o contorno decorativo na cor que o artista escolheu é a mensagem (marca do cartão)
     crate::paint::stroke_rounded_rect(scene, caixa, raio, StrokeToken::Thick.px(), cor);
 }
 

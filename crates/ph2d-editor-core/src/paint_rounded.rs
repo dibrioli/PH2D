@@ -116,7 +116,6 @@ pub fn stroke_rounded_rect(
 }
 
 /// [`stroke_rounded_rect`] TRACEJADO (`dash` = traço, vão) — a linha-fantasma do cartão solto (C5).
-// FRAME-RAW-OK: e' a CASA do primitivo — o contorno tracejado e' definido aqui
 pub fn stroke_rounded_rect_dashed(
     scene: &mut VectorScene,
     rect: Rect,

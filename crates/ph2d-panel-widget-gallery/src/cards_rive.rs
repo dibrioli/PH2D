@@ -409,6 +409,7 @@ fn barra_do_gradiente(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
         } else {
             ColorToken::Text1
         };
+        // FRAME-RAW-OK: o contorno da PEGA diz qual paragem está escolhida (Accent) — a mensagem é o contorno
         stroke_rounded_rect(
             c.scene,
             pega,

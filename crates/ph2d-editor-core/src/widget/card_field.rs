@@ -149,6 +149,7 @@ pub fn paint_field(
     };
     fill_rounded_rect(scene, rect, m::FIELD_RADIUS, ink.color(fundo));
     if focused || scrubbing {
+        // FRAME-RAW-OK: o anel de FOCO do campo do cartão (a mensagem é «é este»)
         crate::paint::stroke_rounded_rect(
             scene,
             rect,

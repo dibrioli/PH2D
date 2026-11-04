@@ -210,8 +210,8 @@ fn run_seconds_block() -> &'static str {
         .expect("o snapshot tem de derivar os segundos de corrida GRAVADA");
     let rest = &SNAP[at..];
     let end = rest
-        .find("let inspector_player")
-        .expect("o bloco termina onde a §14 e' construida");
+        .find("let publica")
+        .expect("o bloco termina onde o Inspector publica a §14");
     &rest[..end]
 }
 

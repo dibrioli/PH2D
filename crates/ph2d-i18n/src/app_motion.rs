@@ -125,7 +125,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_lens.lut_bad_size" => "LUT: size {n} is outside 2-256",
         "app.motion.motion_lens.lut_bad_line" => "LUT: line {linha} is not R G B",
         "app.motion.motion_lens.lut_count" => "LUT: {lido}/{esperado} rows",
-        "app.motion.motion_filter.off_the_wire" => "Not wired to an Output: no effect",
+        "app.motion.motion_filter.off_the_wire" => "Not wired to an Output: idle",
         "app.motion.motion_filter.after_whole_layer" => "After Whole Layer: not per shape",
         "app.motion.motion_filter.outputs_land_differently" => "Blends differ: uses 1st Output's",
         "app.motion.motion_filter.each_shape_sees_the_vector_path_as_one" => {

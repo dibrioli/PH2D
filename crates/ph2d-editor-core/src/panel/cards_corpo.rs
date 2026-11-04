@@ -29,12 +29,14 @@ fn glifo(rotulo: &str, eixos: Eixos, n: usize, i: usize) -> Glyph<'_> {
     Glyph::Text(letra_da_grandeza(rotulo))
 }
 
+/// A tabela de onde [`letra_da_grandeza`] fatia a letra (um `&str` que vive sem alocar).
+const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 /// A letra de um campo só: a inicial, em maiúscula, da ÚLTIMA palavra do rótulo — a que nomeia a
 /// grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o `H` de «Half»; «Offset Y» ⇒ `Y`; o nome de
 /// um script, «jump_power» ⇒ `P`). A unidade entre parênteses não conta.
 #[must_use]
 pub fn letra_da_grandeza(rotulo: &str) -> &str {
-    const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let palavra = rotulo
         .split(|c: char| c.is_whitespace() || c == '_')
         .rev()

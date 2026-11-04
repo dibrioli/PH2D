@@ -95,7 +95,7 @@ pub(crate) fn card_frame_with(
     let h = fim - y + pad;
     moldura(scene, text_system, theme, Rect::new(x, y, w, h), title);
     scene.append_transformed(&cena, ph2d_vector::Affine::IDENTITY);
-    y + h + Spacing::Sm.px()
+    y + h + ph2d_tokens::control_gap_px()
 }
 
 /// O fundo, a borda e o título de uma moldura em `card`.

@@ -323,6 +323,7 @@ pub(super) fn pinta_soltos(
                 #[allow(clippy::cast_possible_truncation)]
                 let a = (1.0 - s / m::LOOSE_FLASH_S) as f32;
                 let o = m::CARD_OUTLINE_GAP;
+                // FRAME-RAW-OK: o lampejo que diz «o cartão acabou de pousar aqui» — o contorno é a mensagem
                 crate::paint::stroke_rounded_rect(
                     scene,
                     Rect::new(r.x - o, r.y - o, r.w + o * 2.0, h + o * 2.0),

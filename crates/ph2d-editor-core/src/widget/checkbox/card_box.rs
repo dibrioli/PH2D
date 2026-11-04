@@ -36,6 +36,7 @@ pub fn paint_card_check(scene: &mut VectorScene, ink: CardInk, caixa: Rect, on: 
         };
         fill_rounded_rect(scene, caixa, m::SEG_RADIUS, ink.color(fundo));
         let borda = ink.color(ColorToken::CardLabel);
+        // FRAME-RAW-OK: o quadradinho da caixa de marcar É o contorno (T64): sem ele a caixa desapareceria
         stroke_rounded_rect(scene, caixa, m::SEG_RADIUS, m::FIELD_BORDER, borda);
     }
 }

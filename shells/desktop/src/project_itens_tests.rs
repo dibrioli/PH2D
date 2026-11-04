@@ -168,7 +168,8 @@ fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
     let vivo = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&(206u32, &f)))
         .expect("serializa");
     drop(v196);
-    let cena_viva = postcard::to_allocvec(&*f.state.vec).expect("serializa");
+    let cena_viva = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&*f.state.vec))
+        .expect("serializa");
     let iguais = |w: &&[u8]| *w == cena_viva.as_slice();
     assert_eq!(vivo.windows(cena_viva.len()).filter(iguais).count(), 1);
     let at = vivo

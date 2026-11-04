@@ -42,14 +42,16 @@ fn unknown_key_returns_the_key_itself() {
 /// mesmo buffer reusado, nas duas ordens, dizem o que a tabela diz.
 #[test]
 fn a_memoria_por_fio_responde_o_que_a_tabela_diz() {
+    // Montadas em execução: o censo de cada painel lê literais e tomaria a chave truncada por chave usada.
+    let inteira = "panel.timeline.title";
     let chaves = [
-        "panel.timeline.title",
-        "panel.timeline.titl",
-        "panel.timeline.title.x",
-        "panel.timeline.loop",
-        "panel.timeline",
-        "tool.nonexistent.foo",
-        "",
+        inteira.to_string(),
+        inteira[..inteira.len() - 1].to_string(),
+        format!("{inteira}.x"),
+        "panel.timeline.loop".to_string(),
+        "panel.timeline".to_string(),
+        "tool.nonexistent.foo".to_string(),
+        String::new(),
     ];
     std::thread::spawn(move || {
         let mut buffer = String::new();

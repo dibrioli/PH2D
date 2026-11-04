@@ -33,8 +33,8 @@ use ph2d_tool_painter::BrushSettings;
 
 // Domain ranges, not design values — these are the physical bounds of the controls (degrees of arc, a
 // signed unit depth), so there is no token that could express them.
-const DEPTH_MIN: f32 = -1.0; // LITERAL-PX-OK: signed unit depth — negative carves
-const DEPTH_MAX: f32 = 1.0; // LITERAL-PX-OK: signed unit depth
+pub(crate) const DEPTH_MIN: f32 = -1.0; // LITERAL-PX-OK: signed unit depth — negative carves
+pub(crate) const DEPTH_MAX: f32 = 1.0; // LITERAL-PX-OK: signed unit depth
 pub(crate) const UNIT_MAX: f32 = 1.0; // LITERAL-PX-OK: 0..1 amount track
 pub(crate) const ANGLE_MAX_DEG: f32 = 360.0; // LITERAL-PX-OK: a full turn of azimuth
 /// O piso da elevação, LIDO de quem o aplica.
@@ -141,7 +141,7 @@ pub(crate) fn paint_impasto_section(
 /// Wire index of the Knife on the TOOL list — mirrors `ph2d_tool_painter`'s `IMPASTO_TOOL_KNIFE`
 /// (private module there, and `paint.rs` sits at its LOC cap; the seam gates click the real product,
 /// so a drift here goes red instead of silent).
-const TOOL_KNIFE: u8 = 1;
+pub(crate) const TOOL_KNIFE: u8 = 1;
 
 /// The **Sculpt** card: the selected verb's knob rows, framed. The verb itself is chosen on the TOOL
 /// radio above; this card shows (and edits) that verb's authored knobs — painted only with a sculpt

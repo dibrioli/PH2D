@@ -3,7 +3,7 @@
 //! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, registra_lista};
+use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, grupo, registra_lista};
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
 use crate::{
     esmaecer, number_field, paint_brush, paint_wetpaint_presets, paint_wetpaint_tilt, state,
@@ -103,13 +103,9 @@ fn todos_os_numeros(leis: &BrushSettings, valores: &BrushSettings) -> Vec<Numero
     n
 }
 
-/// Com o store MUTÁVEL, antes de pintar: o valor, a faixa, o passo, a fábrica, a dica da lei.
-pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
-    if !presente(b) {
-        return;
-    }
-    let fabrica = todos_os_numeros(b, &paint_brush::FALLBACK_BRUSH);
-    for (n, f) in todos_os_numeros(b, b).iter().zip(fabrica) {
+/// O valor, a faixa, o passo, a fábrica e a dica da lei de cada número.
+pub(crate) fn arma_numeros(store: &mut WidgetStore, numeros: &[Numero], fabrica: &[Numero]) {
+    for (n, f) in numeros.iter().zip(fabrica) {
         store.mark_card_field(
             n.id,
             CardFieldSpec {
@@ -121,6 +117,19 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
         number_field::arm_field(store, n.id, n.valor, n.min, n.max, n.passo, n.casas);
         let _ = esmaecer::poe_dica(store, &[n.id]);
     }
+}
+
+/// Com o store MUTÁVEL, antes de pintar.
+pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
+    if !presente(b) {
+        return;
+    }
+    let numeros = todos_os_numeros(b, b);
+    arma_numeros(
+        store,
+        &numeros,
+        &todos_os_numeros(b, &paint_brush::FALLBACK_BRUSH),
+    );
     for id in CAIXAS {
         let _ = esmaecer::poe_dica(store, &[id]);
     }
@@ -172,19 +181,15 @@ pub(crate) fn campo(c: &mut CardCtx<'_>, n: &Numero, y: f32) -> f32 {
     })
 }
 
-fn numeros(c: &mut CardCtx<'_>, lista: &[Numero], y: f32) -> f32 {
+pub(crate) fn numeros(c: &mut CardCtx<'_>, lista: &[Numero], y: f32) -> f32 {
     em_pares(c, lista, y, campo)
 }
 
-/// A linha de grupo: um filete e o nome. A lei é «nunca um 2.º título», por isso o tom é o dos rótulos.
-fn grupo(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
-    let filete = Rect::new(c.x, y + m::CARD_HEAD_BOTTOM, c.w, m::FIELD_BORDER);
-    let cor = c.ink.color(ColorToken::CardField);
-    fill_rounded_rect(c.scene, filete, 0.0, cor);
-    c.hint(tr(chave), filete.y + filete.h)
-}
-
-fn caixa(c: &mut CardCtx<'_>, (id, chave, on): &(NodeId, &'static str, bool), y: f32) -> f32 {
+pub(crate) fn caixa(
+    c: &mut CardCtx<'_>,
+    (id, chave, on): &(NodeId, &'static str, bool),
+    y: f32,
+) -> f32 {
     com_lei(c, *id, y, |c, y| ferramenta::caixa(c, *id, chave, *on, y))
 }
 
@@ -202,8 +207,32 @@ fn caixas(c: &mut CardCtx<'_>, lista: &[(NodeId, &'static str, bool)], y: f32) -
     }
 }
 
+/// Um campo e uma caixa de marcar irmã na mesma linha (05 §4): a caixa senta-se na altura do campo. Se o nome dela não
+/// cabe inteiro, desce.
+pub(crate) fn campo_e_caixa(
+    c: &mut CardCtx<'_>,
+    n: &Numero,
+    item: &(NodeId, &'static str, bool),
+    y: f32,
+) -> f32 {
+    let (x, w) = (c.x, c.w);
+    let meia = ((w - m::FIELD_GAP) * 0.5).max(0.0);
+    let folga = m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX;
+    if c.text_system.prefix_width(tr(item.1), m::VALUE_PX) + folga > meia {
+        let y = campo(c, n, y);
+        return caixa(c, item, y);
+    }
+    c.w = meia;
+    let fundo = campo(c, n, y);
+    c.x = x + meia + m::FIELD_GAP;
+    let _ = caixa(c, item, fundo - m::FIELD_H - m::FIELD_ROW_GAP);
+    c.x = x;
+    c.w = w;
+    fundo
+}
+
 /// Uma lista suspensa com a marca de animação de antes: Paint type e Environment.
-fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f32 {
+pub(crate) fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f32 {
     com_lei(c, id, y, |c, y| {
         let ids = [id];
         let cell = Cell::new(Widget::Dropdown {

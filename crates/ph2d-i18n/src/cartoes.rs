@@ -8,9 +8,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.painter.wet.thickness" => "Paint thickness",
         "card.painter.wet.pigment" => "Pigment and layers",
         "card.painter.wet.canvas" => "Whole canvas",
+        "card.painter.watercolor.bleed" => "Bleed (px)",
+        "card.painter.watercolor.ragged_edge" => "Ragged Edge (px)",
+        "card.painter.watercolor.flow_angle" => "Flow Angle (°)",
+        "card.painter.watercolor.drying_time" => "Drying Time (s)",
+        "card.painter.impasto.tool" => "Tool",
+        "card.painter.impasto.angle" => "Angle (°)",
+        "card.painter.impasto.elevation" => "Elevation (°)",
         "card.painter.wet.wet_tip" => "Wet the whole canvas",
         "card.painter.wet.dry_tip" => "Dry the whole canvas at once: the paint settles where it is",
-        "card.painter.wet.fast_dry_tip" => "Run the drying of the whole canvas fast, until it is dry",
+        "card.painter.wet.fast_dry_tip" => {
+            "Run the drying of the whole canvas fast, until it is dry"
+        }
         "card.painter.wet.material" => "Material",
         "card.ceq.histogram" => "Histogram",
         "card.ceq.auto" => "Auto",

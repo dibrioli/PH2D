@@ -45,9 +45,11 @@ mod card; // the titled row-box shared by the brush panel technique sections
 /// O painel em cartões (`docs/CartoesUI/13_PAINTER_PLANO.md`).
 pub mod cards;
 mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão repete-o
+mod cards_impasto;
 mod cards_linhas; // listas de caixa, linha esmaecida e pares, das linhas de cartão
 mod cards_nativos;
 mod cards_topo; // os corpos já em linhas de cartão
+mod cards_watercolor;
 mod cards_wet; // o cartão Wet Paint em linhas de cartão
 mod composite_picker;
 mod dropdown_popover;

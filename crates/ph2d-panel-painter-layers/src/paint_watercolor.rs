@@ -28,14 +28,14 @@ use ph2d_tool_painter::BrushSettings;
 
 /// Slider range bounds — the parameter domains (matching the tool's `set_brush_*` clamps), not design
 /// tokens. The `0..1` params (Charge / Dilution / …) use the allowlisted `0.0`/`1.0` inline.
-const EDGE_MAX: f32 = 8.0; // LITERAL-PX-OK: watercolor Edge-darkening gain range bound (parameter domain)
-const SPREAD_MIN: f32 = 1.0; // LITERAL-PX-OK: watercolor Bleed blur-radius min (px)
-const SPREAD_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Bleed blur-radius max (px; 48 so big brushes aren't capped dry)
-const DEPTH_MIN: f32 = 0.1; // LITERAL-PX-OK: Beer–Lambert optical-depth min (parameter domain)
-const DEPTH_MAX: f32 = 8.0; // LITERAL-PX-OK: Beer–Lambert optical-depth max (parameter domain)
-const WARP_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Ragged-Edge displacement max (px; range pair of SPREAD_MAX)
-const DRY_TIME_MIN: f32 = 2.0; // LITERAL-PX-OK: Drying-Time slider min (seconds; matches DRY_TIME_MIN_S clamp)
-const DRY_TIME_MAX: f32 = 60.0; // LITERAL-PX-OK: Drying-Time slider max (seconds; matches DRY_TIME_MAX_S clamp)
+pub(crate) const EDGE_MAX: f32 = 8.0; // LITERAL-PX-OK: watercolor Edge-darkening gain range bound (parameter domain)
+pub(crate) const SPREAD_MIN: f32 = 1.0; // LITERAL-PX-OK: watercolor Bleed blur-radius min (px)
+pub(crate) const SPREAD_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Bleed blur-radius max (px; 48 so big brushes aren't capped dry)
+pub(crate) const DEPTH_MIN: f32 = 0.1; // LITERAL-PX-OK: Beer–Lambert optical-depth min (parameter domain)
+pub(crate) const DEPTH_MAX: f32 = 8.0; // LITERAL-PX-OK: Beer–Lambert optical-depth max (parameter domain)
+pub(crate) const WARP_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Ragged-Edge displacement max (px; range pair of SPREAD_MAX)
+pub(crate) const DRY_TIME_MIN: f32 = 2.0; // LITERAL-PX-OK: Drying-Time slider min (seconds; matches DRY_TIME_MIN_S clamp)
+pub(crate) const DRY_TIME_MAX: f32 = 60.0; // LITERAL-PX-OK: Drying-Time slider max (seconds; matches DRY_TIME_MAX_S clamp)
 
 /// Paint the Watercolor section starting at `y`, returning the next `y`.
 pub(crate) fn paint_watercolor_section(

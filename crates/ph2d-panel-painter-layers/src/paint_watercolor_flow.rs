@@ -9,7 +9,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tool_painter::{BrushSettings, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN, TextureKind};
 
-const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: Flow Angle range (degrees)
+pub(crate) const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: Flow Angle range (degrees)
 
 /// Quantas linhas estas pintam — o `card_frame` dimensiona a moldura por este número: Flow · Size ·
 /// Angle · Paper Edge (o Classic é um padrão como os outros, com escala e direção — dono, 2026-10-02).
@@ -49,6 +49,42 @@ fn rotulo(k: TextureKind) -> &'static str {
     }
 }
 
+/// O nome do padrão de Flow escolhido.
+pub(crate) fn rotulo_do_flow(kind: u8) -> &'static str {
+    rotulo(TextureKind::from_u8(kind))
+}
+
+/// A pré-visualização: a faixa partilhada (como a do Shape, do Grain e do Paper); o Classic desenha-se pela porta do
+/// motor, `render_classic_flow_preview`.
+pub(crate) fn paint_flow_preview(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let kind = TextureKind::from_u8(brush.flow_kind);
+    let imagem = (kind == TextureKind::Image)
+        .then(state::current_brush_flow_image)
+        .flatten();
+    let (size, angulo) = (brush.flow_size, brush.flow_angle);
+    let classico = move |buf: &mut [u8], bw: u32, bh: u32| {
+        ph2d_tool_painter::render_classic_flow_preview(size, angulo, buf, bw, bh);
+    };
+    crate::paint_texture::paint_texture_preview_com(
+        ctx,
+        theme,
+        x,
+        w,
+        y,
+        flow_preview_view(brush),
+        imagem,
+        classic(brush).then_some(&classico as crate::paint_texture::Desenhista<'_>),
+        ph2d_tool_painter::BRUSH_RAMP_ALPHA, // a vista do Flow desliga a rampa
+    )
+}
+
 /// Pinta as linhas da forma da borda a partir de `y`; devolve o `y` seguinte.
 pub(crate) fn paint_flow_rows(
     ctx: &mut PaintCtx,
@@ -72,27 +108,7 @@ pub(crate) fn paint_flow_rows(
     if let Some(r) = open {
         state::set_pending_flow_kind_dd(Some((r, brush.flow_kind)));
     }
-    // ── A pré-visualização: a faixa partilhada (como a do Shape, do Grain e do Paper); o Classic
-    //    desenha-se pela porta do motor, `render_classic_flow_preview`. ──
-    let kind = TextureKind::from_u8(brush.flow_kind);
-    let imagem = (kind == TextureKind::Image)
-        .then(state::current_brush_flow_image)
-        .flatten();
-    let (size, angulo) = (brush.flow_size, brush.flow_angle);
-    let classico = move |buf: &mut [u8], bw: u32, bh: u32| {
-        ph2d_tool_painter::render_classic_flow_preview(size, angulo, buf, bw, bh);
-    };
-    y = crate::paint_texture::paint_texture_preview_com(
-        ctx,
-        theme,
-        x,
-        w,
-        y,
-        flow_preview_view(brush),
-        imagem,
-        classic(brush).then_some(&classico as crate::paint_texture::Desenhista<'_>),
-        ph2d_tool_painter::BRUSH_RAMP_ALPHA, // a vista do Flow desliga a rampa
-    );
+    y = paint_flow_preview(ctx, theme, x, w, y, brush);
     y = card_row(
         ctx,
         theme,

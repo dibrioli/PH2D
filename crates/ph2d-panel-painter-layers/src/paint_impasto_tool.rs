@@ -23,6 +23,20 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
+/// The ten names, in the order of `PAINTER_IMPASTO_TOOL_IDS`.
+pub(crate) const NOMES_DAS_FERRAMENTAS: [&str; 10] = [
+    "panel.painter_layers.impasto.deposit",
+    "panel.painter_layers.impasto.knife",
+    "panel.painter_layers.impasto.smooth",
+    "panel.painter_layers.impasto.sharpen",
+    "panel.painter_layers.impasto.flatten",
+    "panel.painter_layers.impasto.scrape",
+    "panel.painter_layers.impasto.fill",
+    "panel.painter_layers.impasto.chisel",
+    "panel.painter_layers.impasto.layer",
+    "panel.painter_layers.impasto.inflate",
+];
+
 /// The **Tool** card: ten chips, reflowing onto extra rows on a narrow panel.
 ///
 /// The card grows to fit its reflowed content rather than being sized by a fixed row count — a card sized
@@ -38,18 +52,7 @@ pub(crate) fn paint_tool_card(
 ) -> f32 {
     let card = Card::new(ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL)
         .title(tr("panel.painter_layers.impasto.card_tool"));
-    let labels = [
-        tr("panel.painter_layers.impasto.deposit"),
-        tr("panel.painter_layers.impasto.knife"),
-        tr("panel.painter_layers.impasto.smooth"),
-        tr("panel.painter_layers.impasto.sharpen"),
-        tr("panel.painter_layers.impasto.flatten"),
-        tr("panel.painter_layers.impasto.scrape"),
-        tr("panel.painter_layers.impasto.fill"),
-        tr("panel.painter_layers.impasto.chisel"),
-        tr("panel.painter_layers.impasto.layer"),
-        tr("panel.painter_layers.impasto.inflate"),
-    ];
+    let labels = NOMES_DAS_FERRAMENTAS.map(tr);
     let opts: Vec<SegmentedOption> = ph2d_tool_painter::ids::PAINTER_IMPASTO_TOOL_IDS
         .iter()
         .zip(labels)

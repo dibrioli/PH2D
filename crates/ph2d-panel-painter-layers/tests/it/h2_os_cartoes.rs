@@ -443,12 +443,19 @@ fn a_box_with_a_dimming_law_dims_and_keeps_working() {
                 "{id:?}: dica"
             );
             assert!(m.rect(id).is_some(), "{id:?} deixou de ter alvo");
+            // Só este cartão: a camada da linha esmaecida é o que acrescenta entradas.
+            m.so_abertos(&[p::PAINTER_CARD_BASICOS]);
             let (h, st) = (&mut m.host, &mut m.st);
             h.paint_draw_data::<ph2d_panel_painter_layers::PainterLayersPanel>(st, m.janela)
         };
         let viva = desenho(acesa, false);
         let morta = desenho(apagada, true);
-        assert_ne!(viva, morta, "{id:?} não esmaeceu");
+        assert!(
+            morta.len() > viva.len(),
+            "{id:?} não esmaeceu: {} × {}",
+            morta.len(),
+            viva.len()
+        );
     }
 }
 

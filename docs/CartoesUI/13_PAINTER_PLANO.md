@@ -58,7 +58,7 @@ corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou es
 | Fatia | Conteúdo | Risco |
 |---|---|---|
 | **H1** | Lista, faixa, captura, `PH2D_CARDS=0`, Layers hospedada, popovers. Nativos: Mixing, Symmetry, Tiling | alto: fundação |
-| H2 | Topo e básicos: Paint Mode, Preset (sem tocar nos volumes), Sync, Blend, Color, Size, Strength, Flow, Accumulate | médio; miniaturas |
+| H2 ✅ | Topo e básicos: Paint Mode, Preset (sem tocar nos volumes), Sync, Blend, Color, Size, Strength, Flow, Accumulate (`cards_topo.rs`). Peças ainda capturadas: prévia, volumes do Wet (→ H3), Clone, Inpaint, Line, Composite (→ H8) | médio; miniaturas |
 | H3 | Wet Paint (lei E10: Tilt e visor iguais, avançado preservado, Body e sombra ficam; Dilution ≠ Volume) | alto: 41 + Óleo |
 | H4 | Watercolor + Impasto: `card_frame` em grupos, rig de luz | médio |
 | H5 | Shape + Shape Tone: Falloff, rampa, camadas de forma, pontas, Taper | alto: curva e rampa |

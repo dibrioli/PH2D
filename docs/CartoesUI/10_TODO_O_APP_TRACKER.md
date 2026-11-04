@@ -26,7 +26,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 |---|---|---|---|
 | A | Dívidas do Inspector | Camera card ([05 §8](05_ESPECIFICACAO_UI_COMPLETA.md)), 2.ª metade do T29 (§9), popover no tom do cartão, caixas/listas do preso | ✅ |
 | B | Piloto + receita | Physics em cartões; [11_RECEITA](11_RECEITA_PAINEL_EM_CARTOES.md) nasce daqui | ✅ |
-| C | Alfinete | [Plano 09](09_alfinete_nos_cartoes_PLANO.md): Material, Ordering, Object → Appearance → Fill + Stroke | ⬜ |
+| C | Alfinete | [Plano 09](09_alfinete_nos_cartoes_PLANO.md): Material, Ordering, Object → Appearance → Fill + Stroke | ✅ (sobras na próxima limpeza) |
 | D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ✅ (contraprovas do D1 na rodada R) |
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
@@ -86,6 +86,20 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 ## Registo por bloco
 
 (cada bloco fechado acrescenta aqui: commits, fotos, testes, o que ficou aberto)
+
+**Censo A2 (04/11, antes de curar).** O ramo é `cards::active()`: `LIGADO && current_inspector_sprite().is_none()`, comentário «a sprite fica no de hoje». A sprite publica-se para toda entidade com `Sprite` + `Transform` (`snapshots_inspector_sprite.rs:147`), logo o tipo decide só por essa presença. O `cards()` só conhece Object, Transform, Appearance, Fill, Stroke, Ordering, Material; o resto vem de `cards_componentes::plano` (física + opcionais).
+
+| Selecção | Marcador | Pinta hoje | O que falta |
+|---|---|---|---|
+| Imagem/sprite | `Sprite` | **antigo** | tudo: Image, Use, Animation sob ela, Texture & Atlas, Color & Tint, 9-Slice, Sampling, Visibility |
+| Documento do Painter | `PaintedDoc` + `Sprite` (`project_painter.rs:66`) | **antigo** | o mesmo |
+| Forma vetorial, texto | `VecPathRef` | cartões | linhas abaixo |
+| Flip, Motion, Pixel, esqueleto/osso | sem `Sprite` | cartões | linhas abaixo; os giros |
+| Câmera, luz, som, macro, Empty, grupo | Transform + componente | cartões | linhas abaixo; os giros |
+| Multi-selecção mista | a primária decide | o da primária | a frase «a editar 1 de N» |
+| Nada selecionado | nenhum | cartões, lista **vazia** | a frase «Select an entity…» |
+
+Faltas em TODO tipo em cartões, medidas por leitura de `paint_inspector` × `cards()`: **Ordering** só mostra Z index, faltam Z relative, Show behind, Order in layer, Sorting layer, Y Sort e pontos, Sorting group, Sort at root, Top level. **Sampling**, **9-Slice** e os controlos de **Visibility** (publicados para quem tem o componente) não têm cartão. Os cartões de **cópia** e **propriedades** e a frase da selecção (`paint_top_cards`) não se pintam. Os **giros** (rodar, inverter) no Transform de quem não é vetor: `vec_flip_for_id` só serve a forma, controlo morto.
 
 **Bloco E (04/11).** Flip, Pixel e Frames em cartões, commits `21772a0937`, `f28bef813e`, `9994d86ed2`, `43449f82fa` e o de Frames. Testes por gesto: `ph2d-panel-flip` 52, `ph2d-panel-pixel-tools` 74, `ph2d-panel-flip-frames` 21, verdes; os gates antigos correm no corpo de `PH2D_CARDS=0` (`host_de_antes`). API nova: `CardCtx::bare` público, `Rotulo::vista_de`, `corpo::choices` sem ids e sem nome; `pixel_layer_row` pinta com `card_ink::tinta`, igual fora de um cartão. Fotos: `maquete/e_flip.png`, `e_frames.png`, `e_pixel.png`, `e_pixel_menus.png`. Nenhuma catraca mexida: Flip, Frames e Pixel não têm linha nas tabelas de `quantas_entradas_tem_cada_painel`. A caixa da cor sem campo de texto passa a abrir o seletor inteira (`Widget::Swatch`): era um alvo de 26 px numa caixa da largura da fileira, e `um_seletor_de_cor_sozinho…` acusou-a no Flip. `a_marca_tem_a_altura_da_linha` mede a lista assente: o 1.º quadro cortava uma marca do Pixel a 24,5 px. Fotos dos estados: `e_flip_fill.png`, `e_flip_colorize_edit_sculpt.png`. Aberto: a mão ainda não arrastou uma camada do Flip (só setas, como antes); o estado do seletor em Normal Map e o texto do Pixel só têm teste, sem foto.
 
@@ -343,3 +357,9 @@ Cromo da Timeline e do Motion Graph, plano em [14](14_CHROME_TIMELINE_MOTION.md)
 **Portões, por nome:** verdes `panel_files_under_loc_cap`, `architecture_widget_showcase_coverage`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`; `ph2d-i18n` inteiro; `cartoes|swatch` de Hierarchy, Flip, Tags, Mixer, Galeria (48). Foto `PH2D_GALLERY_SMOKE=1`: abre, sem nada torto, mas não mostra uma amostra sem campo. **Vermelho alheio:** `the_shell_only_shrinks`, `ph2d-app-vec` 93 656 contra 93 637, com WIP de outro agente na árvore (`vector_mode_listas.rs`, +33); a shell passou.
 **Censo do cromo:** [15](15_CHROME_CENSO.md), 9 fatias; nenhuma peça usa `CardInk`; o ecrã inicial não existe; Save/Export são do sistema.
 **Aberto:** Grid «Opacity» ainda é o slider antigo dentro do cartão (`c.legacy`), único caso visto; Frames «Ghost [1][1]» sem rótulo; Pixel mostra `#000000`, os outros `F0F0F5` (o teste de Pixel exige o `#`, ficou); `bars_control.rs` do Vector pode dizer «1 objects» no recurso (crate de outro agente); abas de encaixe cortam o nome a 1000 px («Inspec…»); a lista suspensa aberta tapa o título do painel na janela estreita; «Used by 1 layer» sem foto. Não olhadas: as `f_*` além da `ao_lado`, `b_physics_abertura` e `_debug`, `d_grid`, `d_wet_paint` (vi as novas `r2_*`).
+
+**Bloco H, fatia 2 (04/11).** Topo e Basics em linhas de cartão (`cards_topo.rs`), mesmos ids e eventos: Paint Mode, Preset, Favorite, Save, biblioteca, On switch, Sync, Blend, On empty, Color, Size, Strength, Flow, Accumulate, Wash, fio do Smear. As listas abrem o popover de sempre (o do Preset arrasta linhas). Ainda capturados, como peças: prévia, volumes do Wet (H3), Clone, Inpaint, Line, Composite (H8). Nenhum motor, preset ou pincel tocado. Fotos vistas: `maquete/h2_painter_{digital,wet,impasto_preset_ativo}.png` (a última com patch restaurado). `h_painter_watercolor.png` olhada: legível; a linha sob Flow Angle sai cortada (caixa de `n_rows`, vai com H4).
+
+Dívida da H1. Testes de pincel verdes (antes da H2, que não toca o motor). Custo por quadro, Wet, perfil smoke, intercalado, mínimo de 30: `3 955 µs` cartões × `3 913 µs` antes, `+42 µs`, sem cura. `Cargo.lock` já tem as entradas, sem diff. Contraprovas da H1: `23` mutantes, `7` vermelhos, `14` sobreviveram, `2` sem compilar (erro alheio). Com a lista parada o deslocamento é zero, por isso `h1_contraprovas.rs`. 2.ª rodada, 16 mutantes: `14` vermelhos; sobrevivem `h2_coluna_do_solto` (a largura do solto é igual à da lista no mock: a guarda fica sem prova) e `h2_sem_camada` (teste reforçado depois, mutante não recorrido). Não recorreram, por prazo: `h2_cor_sem_botao`, `coluna_nao_lembrada`, `reset_sem_dica`, `sem_previa_fixada`, `faixa_sem_altura_da_previa`, `sem_fantasma`, `alturas_nao_publicadas`, `segmentos_sem_guarda`; os testes novos deles estão verdes. Defeitos reais achados: num cartão solto a lista de um corpo capturado abria na coluna (cura em `dropdown_popover`: vale o rect de agora) e um solto mudava a coluna dos outros. Saíram da captura o gémeo sem uso e a guarda do 2.º passe.
+
+Catraca: altura de abertura `1 629 → 1 748` (rótulo em cima, mesmas secções). Sai de `FORA` a exceção das abas Brush/Layers, obsoleta desde a H1. Decidido sem o dono: Size e Strength dividem a linha, e Flow também quando cabe aos pares; o Save e a biblioteca em botões aos pares; «On empty» continua número 0/1, para não mudar o evento. Vermelhos alheios: `no_magic_numeric` (`context_menu_overlay_tests_cromo.rs`, `cromo_smoke.rs`) e `onde_comeca_o_valor` (8 contra piso 9; o Painter mede 1 coluna, a `timeline` mede 2). Sem foto nem gesto na janela: seletor de cor, popovers, solto, voo (só mock).

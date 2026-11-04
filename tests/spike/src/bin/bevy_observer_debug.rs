@@ -41,7 +41,7 @@ fn run_test<F: FnOnce(&mut World)>(label: &str, body: F) -> usize {
     let mut world = World::new();
     let counter = Arc::new(AtomicUsize::new(0));
     let cc = counter.clone();
-    world.add_observer(move |_: On<Remove, Health>| {
+    world.add_observer(move |_: On<Remove<Health>>| {
         cc.fetch_add(1, Ordering::SeqCst);
     });
     body(&mut world);

@@ -54,7 +54,7 @@ fn damage_sys(mut q: Query<&mut Health>) {
     }
 }
 
-fn on_remove_health(trigger: On<Remove, Health>) {
+fn on_remove_health(trigger: On<Remove<Health>>) {
     println!(
         "observer fired: entity {:?} lost Health",
         trigger.event().entity

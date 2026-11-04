@@ -8,8 +8,7 @@
 //!    ferramenta — e o controlo: no Pincel ela muda o traço (senão o gate mediria o vazio).
 
 use super::censo_dos_controlos::{
-    Bancada, Gesto, diferenca, em_paralelo, em_paralelo_largo, gestos_da, nome, nomes, risca,
-    risca_ou_nada,
+    Bancada, Gesto, diferenca, em_paralelo, gestos_da, nome, nomes, risca, risca_ou_nada,
 };
 use super::censo_ferramenta_x_linha::bancada_com;
 use ph2d_a11y::NodeId;
@@ -556,7 +555,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
         base: Vec<u8>,
         gs: Vec<Gesto>,
     }
-    let fs: Vec<DaFerramenta> = em_paralelo_largo(&da_agua, |(fio, f)| {
+    let fs: Vec<DaFerramenta> = em_paralelo(&da_agua, |(fio, f)| {
         let b = bancada_da_agua(fio, &Gesto::Nenhum, false);
         assert_eq!(
             b.tool.brush_settings().ferramenta(),
@@ -618,7 +617,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
         fila.push(Um::BaseBake(fi));
     }
     fila.extend(escondidos_do_pincel.iter().map(|&p| Um::DoPincel(p)));
-    let saidas = em_paralelo_largo(&fila, |t| match t {
+    let saidas = em_paralelo(&fila, |t| match t {
         Um::Age(fi, g) => {
             let fio = da_agua[*fi].0;
             UmSai::Age(
@@ -708,7 +707,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
                 .map(|&p| Dois::Escondido(fi, p)),
         );
     }
-    let saidas = em_paralelo_largo(&fila, |t| match t {
+    let saidas = em_paralelo(&fila, |t| match t {
         Dois::Redonda(fi, g) => {
             let base_r = base_redonda[*fi].as_ref().expect("medida na fila 1");
             diferenca(
@@ -758,7 +757,7 @@ fn cada_ferramenta_da_agua_so_ve_o_que_le(so: &str) {
         }
         inertes_nas_duas.push(v);
     }
-    let agem_no_pincel = em_paralelo_largo(&fila, |g| age_no_pincel(g));
+    let agem_no_pincel = em_paralelo(&fila, |g| age_no_pincel(g));
     let age_no_pincel_de: BTreeMap<*const Gesto, bool> = fila
         .iter()
         .map(|g| std::ptr::from_ref(*g))

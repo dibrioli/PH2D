@@ -65,6 +65,7 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery" }
+rayon = "1"
 
 [lints]
 workspace = true

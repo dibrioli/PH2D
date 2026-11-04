@@ -9832,6 +9832,7 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-ui-testkit",
  "ph2d-vector",
+ "rayon",
 ]
 
 [[package]]

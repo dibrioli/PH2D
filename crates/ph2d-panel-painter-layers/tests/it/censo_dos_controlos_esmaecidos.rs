@@ -104,7 +104,7 @@ fn a_linha_esmaecida_e_a_que_nao_age(so: PaintMedia) {
         /// Por alvo (na ordem da 1.ª aparição): os gestos dele, `(posição na tela, gesto)`.
         alvos: Vec<(NodeId, Vec<(usize, Gesto)>)>,
     }
-    let preparados: Vec<Option<Estado>> = em_paralelo_largo(&estados, |(media, armar)| {
+    let preparados: Vec<Option<Estado>> = em_paralelo(&estados, |(media, armar)| {
         let media = *media;
         let bancada =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Bancada::nova(media, armar)))
@@ -165,7 +165,7 @@ fn a_linha_esmaecida_e_a_que_nao_age(so: PaintMedia) {
         if fila.is_empty() {
             break;
         }
-        let medidas = em_paralelo_largo(&fila, |(e, _, _, g)| {
+        let medidas = em_paralelo(&fila, |(e, _, _, g)| {
             let (media, armar) = &estados[*e];
             let (px, entrega) = ensaio(*media, armar, g);
             let base = &preparados[*e].as_ref().expect("preparado").base;

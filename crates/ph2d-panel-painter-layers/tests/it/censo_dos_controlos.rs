@@ -649,43 +649,34 @@ pub(crate) fn gestos_da(b: Bancada) -> Vec<Gesto> {
     out
 }
 
-/// Corre `f` sobre cada item em [`FIOS`] threads e devolve os resultados NA ORDEM dos gestos.
+/// Corre `f` sobre cada item na largura da máquina (nunca menos que [`FIOS`]) e devolve os resultados NA ORDEM dos
+/// gestos. Os ensaios são independentes: cada um faz a sua ferramenta e o seu painel, e o instantâneo publicado ao
+/// painel (`set_current_brush`) é por THREAD.
 ///
-/// ⚠️ Os ensaios são independentes por construção — cada um faz a sua ferramenta e o seu painel, e o
-/// instantâneo publicado ao painel (`set_current_brush`) é por THREAD. O paralelo existe pelo Wet
-/// Paint: o ensaio dele DORME (a água anda ao relógio), e em série a exploração não cabia no prazo.
+/// ⭐ Cada fio é o ÚNICO operário de um pool do rayon próprio: o paralelo é este, por ensaio. Com o pool global, cada
+/// `par_iter` de uma tela de 128² ia a 32 operários a roubar trabalho (medido 04/11: metade do CPU deste censo).
 pub(crate) fn em_paralelo<I: Sync, T: Send>(gestos: &[I], f: impl Fn(&I) -> T + Sync) -> Vec<T> {
-    em_paralelo_com(FIOS, gestos, f)
-}
-
-/// O [`em_paralelo`] na largura da MÁQUINA (`available_parallelism`, nunca menos que [`FIOS`]) — para os censos
-/// que achatam (estado|ferramenta, gesto) numa só fila: o tecto é o dos núcleos, não o de 8 fios.
-pub(crate) fn em_paralelo_largo<I: Sync, T: Send>(
-    gestos: &[I],
-    f: impl Fn(&I) -> T + Sync,
-) -> Vec<T> {
-    let largura = std::thread::available_parallelism().map_or(FIOS, |n| n.get().max(FIOS));
-    em_paralelo_com(largura, gestos, f)
-}
-
-fn em_paralelo_com<I: Sync, T: Send>(
-    fios: usize,
-    gestos: &[I],
-    f: impl Fn(&I) -> T + Sync,
-) -> Vec<T> {
     use std::sync::atomic::{AtomicUsize, Ordering};
+    let fios = std::thread::available_parallelism().map_or(FIOS, |n| n.get().max(FIOS));
     let proximo = AtomicUsize::new(0);
     let saidas: Vec<std::sync::Mutex<Option<T>>> =
         gestos.iter().map(|_| std::sync::Mutex::new(None)).collect();
     std::thread::scope(|s| {
         for _ in 0..fios.min(gestos.len().max(1)) {
             s.spawn(|| {
-                loop {
-                    let k = proximo.fetch_add(1, Ordering::Relaxed);
-                    let Some(g) = gestos.get(k) else { break };
-                    let r = f(g);
-                    *saidas[k].lock().expect("sem envenenamento") = Some(r);
-                }
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(1)
+                    .use_current_thread()
+                    .build()
+                    .expect("o pool de um fio")
+                    .install(|| {
+                        loop {
+                            let k = proximo.fetch_add(1, Ordering::Relaxed);
+                            let Some(g) = gestos.get(k) else { break };
+                            let r = f(g);
+                            *saidas[k].lock().expect("sem envenenamento") = Some(r);
+                        }
+                    });
             });
         }
     });
@@ -699,7 +690,7 @@ fn em_paralelo_com<I: Sync, T: Send>(
         .collect()
 }
 
-/// Quantos ensaios correm ao mesmo tempo.
+/// O piso de fios de [`em_paralelo`] (uma máquina pequena ainda corre ensaios lado a lado).
 const FIOS: usize = 8;
 
 /// Quantos gestos de pré-condição o censo encadeia ao descer a estados revelados.

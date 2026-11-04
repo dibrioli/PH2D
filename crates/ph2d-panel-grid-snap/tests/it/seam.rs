@@ -27,6 +27,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// is resolved directly in `apply_click` (no value-set, no bus).
 #[test]
 fn kind_hex_click_reaches_grid_snap_state() {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut panel_state = GridSnapPanelState;
 
@@ -61,6 +62,7 @@ fn kind_hex_click_reaches_grid_snap_state() {
 /// Exercises the `ValueChanged` arm + the store→state slider read.
 #[test]
 fn opacity_slider_reaches_grid_snap_state() {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut panel_state = GridSnapPanelState;
 

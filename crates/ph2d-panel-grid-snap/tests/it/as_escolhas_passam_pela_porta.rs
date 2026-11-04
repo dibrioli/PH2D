@@ -27,6 +27,7 @@ const VIEWPORT: Rect = Rect {
 
 #[test]
 fn as_escolhas_com_nome_passam_pela_porta() {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut state = GridSnapPanelState;
     let (_, pintadas) = ph2d_editor_core::property_row::escolha::medindo(|| {
@@ -49,6 +50,7 @@ fn as_escolhas_com_nome_passam_pela_porta() {
 
 #[test]
 fn cada_peca_responde_onde_e_pintada() {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut state = GridSnapPanelState;
     // ⚠️ Rola até à peça quando ela está abaixo da dobra — ver `rolar_ate_ver`.

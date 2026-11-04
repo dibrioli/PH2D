@@ -17,6 +17,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cards;
 mod event;
 pub mod ids;
 mod layout;

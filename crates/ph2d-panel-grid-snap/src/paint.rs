@@ -99,6 +99,21 @@ pub(crate) fn paint(_state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
         sync_meter_inputs_to_display_unit_impl(&snap_state, store);
     }
 
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut(), &snap_state);
+        let cartoes = crate::cards::cards(&snap_state);
+        // A lista pinta-se no encaixe: aqui, o rect da janela que o artista moveu.
+        let encaixe = std::mem::replace(&mut ctx.slot, gs_rect);
+        let lista = ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ph2d_editor_core::ids::GS_PANEL,
+            GridSnapPanel::TITLE.tr(),
+            &cartoes,
+        );
+        ctx.slot = encaixe;
+        crate::cards::chrome(ctx, lista);
+        return;
+    }
     paint_body(ctx, gs_rect, &snap_state);
 }
 

@@ -33,6 +33,7 @@ fn cada_seccao_dobra_ao_clique_no_titulo() {
         ),
     ];
     for (nome, id) in cabecalhos {
+        ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
         let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
         let mut state = GridSnapPanelState;
         // ⚠️ Rola até ao título quando ele está abaixo da dobra — ver `rolar_ate_ver`.

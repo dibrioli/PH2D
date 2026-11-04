@@ -20,6 +20,8 @@ ph2d-grid        = { path = "../ph2d-grid" }
 # A tabela de strings (HR-15) — o painel deixou de escrever texto no fonte em 2026-09-16.
 ph2d-i18n        = { path = "../ph2d-i18n" }
 
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+
 [dev-dependencies]
 ph2d-host       = { path = "../ph2d-host" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

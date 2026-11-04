@@ -44,6 +44,7 @@ fn pointer(kind: PointerKind, button: PointerButton, x: f32, y: f32, t: u128) ->
 }
 
 fn pintado() -> (MockPanelHost, GridSnapPanelState, Vec<(NodeId, Rect)>) {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     // Uma janela flutuante ALTA — o corpo inteiro cabe e nada fica rolado para fora.
     host.set_grid_snap_panel_rect(Some(Rect::new(8.0, 8.0, 320.0, 3000.0)));

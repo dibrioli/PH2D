@@ -37,6 +37,7 @@ const VIEWPORT: Rect = Rect {
 
 #[test]
 fn the_grid_panel_offers_no_colour_it_cannot_deliver() {
+    ph2d_panel_grid_snap::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
     let mut st = GridSnapPanelState;
     let regs = host.paint::<GridSnapPanel>(&mut st, VIEWPORT);

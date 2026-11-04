@@ -242,8 +242,25 @@ pub fn tr_em(idioma: Idioma, key: &str) -> &'static str {
     }
 }
 
-/// A tabela, tal como está escrita.
+/// A tabela, com a resposta guardada por fio: ela é pura, e uma chave do fim da cadeia atravessa os `match` das 80 famílias
+/// a cada pintura (medido 04/11: 8 % do CPU dos censos do painel do Painter).
 fn tr_ingles(key: &str) -> &'static str {
+    thread_local! {
+        static LIDAS: std::cell::RefCell<std::collections::BTreeMap<Box<str>, &'static str>> =
+            const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+    }
+    LIDAS.with_borrow_mut(|lidas| {
+        if let Some(v) = lidas.get(key) {
+            return *v;
+        }
+        let v = tabela(key);
+        lidas.insert(key.into(), v);
+        v
+    })
+}
+
+/// A tabela, tal como está escrita.
+fn tabela(key: &str) -> &'static str {
     match key {
         // ── Vector panel (ADR-0108/0112) — section headers, tool modes and the
         // shape catalogue. The panel is a 17-section stack; every section title

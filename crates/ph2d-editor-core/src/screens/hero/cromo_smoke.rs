@@ -17,8 +17,7 @@ fn cena(n: u32) -> Option<(Option<K>, Option<NodeId>)> {
         4 => (Some(K::MenuBarFile), Some(ids::CTX_MENU_SAVE)),
         5 => (Some(K::SettingsMenu), Some(ids::CTX_MENU_SETTINGS_UNIT)),
         6 => (Some(K::NewImageDialog), None),
-        7 => (Some(K::NewSpriteDialog), None),
-        8 | 9 => (None, None),
+        7..=9 => (None, None),
         _ => return None,
     })
 }
@@ -45,6 +44,8 @@ pub(super) fn aplica(store: &mut WidgetStore) {
         });
     }
     match n {
+        // Pela porta do produto: é ela que semeia Width e Height (a foto `m8_new_sprite` lia «0»).
+        7 if store.context_menu().is_none() => store.open_new_sprite_dialog(),
         8 if store.fill_modal_pos().is_none() => store.open_fill_modal(ANCORA.0, ANCORA.1, 0.5),
         9 if store.onion_modal_pos().is_none() => {
             let (antes, depois) = ([230, 80, 80, 255], [80, 200, 120, 255]);

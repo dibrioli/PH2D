@@ -207,8 +207,14 @@ pub fn paint_slider_track(
 ) {
     let (state, t) = visual;
     let r = crate::paint::frame_radius(theme, Radius::Xs.px());
-    let bg = blend_on_hover_axis(state, t, ColorToken::Bg2, ColorToken::Bg3, theme)
-        .unwrap_or_else(|| resolve(track_tint(state), theme));
+    // Sobre um cartão, os tons do campo e o azul do botão de destaque (15_CHROME_CENSO, M8).
+    let cartao = crate::widget::card_ink::card_body();
+    let bg = match cartao {
+        Some(ink) if state == SliderState::Normal => ink.color(ColorToken::CardField),
+        Some(ink) => ink.color(ColorToken::CardFieldHover),
+        None => blend_on_hover_axis(state, t, ColorToken::Bg2, ColorToken::Bg3, theme)
+            .unwrap_or_else(|| resolve(track_tint(state), theme)),
+    };
     fill_rounded_rect(scene, track, r, bg);
     let v = value.clamp(0.0, 1.0);
     if v > 0.0 {
@@ -219,8 +225,13 @@ pub fn paint_slider_track(
                 Rect::new(track.x, track.y + track.h - h, track.w, h)
             }
         };
-        let fg = blend_on_hover_axis(state, t, ColorToken::Accent, ColorToken::AccentHover, theme)
-            .unwrap_or_else(|| resolve(fill_tint(state), theme));
+        let fg = cartao.map_or_else(
+            || {
+                blend_on_hover_axis(state, t, ColorToken::Accent, ColorToken::AccentHover, theme)
+                    .unwrap_or_else(|| resolve(fill_tint(state), theme))
+            },
+            |ink| ink.color(ColorToken::KanbanBlueBold),
+        );
         fill_rounded_rect(scene, filled, r, fg);
     }
 }

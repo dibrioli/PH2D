@@ -15,7 +15,11 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const HEADER_H: f32 = TypeToken::Xl3.px();
-const FOOTER_H: f32 = 56.0; // LITERAL-PX-OK: modal footer height (chrome-specific)
+
+/// O botão do rodapé com o respiro de cima e de baixo.
+fn footer_h() -> f32 {
+    Spacing::Xl3.px() + Spacing::Lg.px() * 2.0
+}
 
 #[derive(Clone, Debug)]
 pub struct Modal {
@@ -75,7 +79,7 @@ impl Modal {
             host.x + pad,
             host.y + HEADER_H + pad,
             (host.w - pad * 2.0).max(0.0),
-            (host.h - HEADER_H - FOOTER_H - pad * 2.0).max(0.0),
+            (host.h - HEADER_H - footer_h() - pad * 2.0).max(0.0),
         )
     }
 
@@ -84,7 +88,7 @@ impl Modal {
     }
 
     pub fn footer_rect(&self, host: Rect) -> Rect {
-        Rect::new(host.x, host.y + host.h - FOOTER_H, host.w, FOOTER_H)
+        Rect::new(host.x, host.y + host.h - footer_h(), host.w, footer_h())
     }
 
     pub fn close_rect(&self, host: Rect) -> Rect {
@@ -233,7 +237,8 @@ mod tests {
         let host = Rect::new(0.0, 0.0, 400.0, 300.0);
         let body = m.body_rect(host);
         assert!(body.y >= host.y + HEADER_H);
-        assert!(body.y + body.h <= host.y + host.h - FOOTER_H);
+        assert!(body.y + body.h <= host.y + host.h - footer_h());
+        assert_eq!(footer_h(), 56.0, "a altura de antes, agora derivada");
     }
 
     #[test]

@@ -203,6 +203,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.new_sprite.title" => "New Sprite",
         "pixel.new_sprite.width" => "Width",
         "pixel.new_sprite.height" => "Height",
+        "pixel.new_sprite.width_px" => "Width (px)",
+        "pixel.new_sprite.height_px" => "Height (px)",
         "pixel.new_sprite.color_mode" => "Color Mode",
         "pixel.new_sprite.mode.rgba" => "RGBA",
         "pixel.new_sprite.mode.gray" => "Grayscale",

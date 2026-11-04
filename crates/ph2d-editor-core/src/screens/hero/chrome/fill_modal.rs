@@ -113,7 +113,26 @@ pub fn paint_fill_adjust_modal(
     cy += row_h + gap;
 
     // ── Threshold slider (`0..1`; the tool maps it to a per-channel tolerance). ──
-    let slider_rect = Rect::new(inner_x, cy, inner_w, row_h);
+    // Em cartões, o rótulo à esquerda e a trilha no resto, como no Onion: a barra sozinha não dizia
+    // o que mede.
+    let (slider_x, slider_w) = if superficie.tinta().is_some() {
+        let rotulo = tr("chrome.fill.threshold");
+        paint_text(
+            text_system,
+            scene,
+            rotulo,
+            inner_x,
+            cy + (row_h - font) * 0.5,
+            font,
+            inner_w,
+            crate::widget::card_ink::tinta(ColorToken::Text1, theme),
+        );
+        let w = text_system.prefix_width(rotulo, font) + Spacing::Sm.px();
+        (inner_x + w, (inner_w - w).max(1.0))
+    } else {
+        (inner_x, inner_w)
+    };
+    let slider_rect = Rect::new(slider_x, cy, slider_w, row_h);
     hit_index.register(ids::PAINTER_FILL_MODAL_SLIDER, slider_rect);
     let sl_val = store
         .slider(ids::PAINTER_FILL_MODAL_SLIDER)

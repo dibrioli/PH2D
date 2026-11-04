@@ -24,7 +24,7 @@
 
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_text};
 use crate::screens::hero::HeroScreen;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
@@ -211,7 +211,7 @@ pub fn paint_onion_modal(
             theme,
             ph2d_tokens::visuals::Feel::Rest,
             1.0,
-            resolve(ColorToken::Border, theme),
+            superficie.cor(ColorToken::Border),
         );
         cy += row_h + gap;
     }

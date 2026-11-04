@@ -142,6 +142,139 @@ fn as_caixas_internas_vestem_a_superficie_sem_mover_alvo() {
     }
 }
 
+#[test]
+fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
+    let pinta = |on| {
+        force_cromo_on_this_thread(Some(on));
+        let mut store = WidgetStore::default();
+        store.set_tool_overflow(vec![crate::widget::ToolRailEntry::Glyph {
+            id: NodeId(77),
+            label: "Tool".to_string(),
+            path: ph2d_vector::BezPath::new(),
+            active: false,
+            sub: String::new(),
+        }]);
+        store.open_context_menu(ContextMenuRequest {
+            x: 40.0,
+            y: 60.0,
+            kind: K::ToolBarOverflow,
+        });
+        let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+        paint_context_menu_overlay(
+            &mut scene,
+            &mut TextSystem::without_system_fonts(),
+            TEMA,
+            &mut hits,
+            &store,
+            &ProjectSettings::default(),
+            &UiMotion::default(),
+            &crate::luz_edits::PreferenciaDaLuz::default(),
+            janela(),
+        );
+        force_cromo_on_this_thread(None);
+        (scene, hits.iter_registrations().collect::<Vec<_>>())
+    };
+    let ((novo, alvos_novos), (antigo, alvos_antigos)) = (pinta(true), pinta(false));
+    assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised));
+    assert!(!pinta_a_cor(&novo, ColorToken::BgElev));
+    assert!(pinta_a_cor(&antigo, ColorToken::BgElev));
+    assert!(!alvos_novos.is_empty(), "um transbordo sem alvos não prova nada");
+    assert_eq!(alvos_novos, alvos_antigos);
+}
+
+/// O New Sprite em cartões: mesmos ids, unidade no rótulo, e o Width mede a caixa do cartão.
+#[test]
+fn o_new_sprite_em_cartoes_regista_cada_controlo_e_leva_a_unidade_no_rotulo() {
+    let mut store = WidgetStore::default();
+    store.open_new_sprite_dialog();
+    force_cromo_on_this_thread(Some(true));
+    let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+    paint_context_menu_overlay(
+        &mut scene,
+        &mut TextSystem::without_system_fonts(),
+        TEMA,
+        &mut hits,
+        &store,
+        &ProjectSettings::default(),
+        &UiMotion::default(),
+        &crate::luz_edits::PreferenciaDaLuz::default(),
+        janela(),
+    );
+    force_cromo_on_this_thread(None);
+    let modos = ids::NEW_SPRITE_MODES.iter().map(|(_, id, _)| *id);
+    let fundos = ids::NEW_SPRITE_BGS.iter().map(|(_, id, _)| *id);
+    for id in modos
+        .chain(fundos)
+        .chain(ids::NEW_SPRITE_FIELDS)
+        .chain([ids::NEW_SPRITE_OK, ids::NEW_SPRITE_CANCEL])
+    {
+        assert!(hits.rect_for(id).is_some(), "{id:?} sem alvo");
+    }
+    let largura = hits.rect_for(ids::NEW_SPRITE_WIDTH).expect("Width");
+    assert_eq!(largura.h, ph2d_card_stack::metrics::FIELD_H);
+    assert!(store.card_field(ids::NEW_SPRITE_WIDTH).is_some());
+    assert_eq!(ph2d_i18n::tr("pixel.new_sprite.width_px"), "Width (px)");
+    assert_eq!(ph2d_i18n::tr("pixel.new_sprite.height_px"), "Height (px)");
+}
+
+/// O texto da dica não pode cortar-se na caixa que a mede: o defeito «Add ent…» (foto m1_dica).
+#[test]
+fn a_dica_em_cartoes_mostra_o_texto_inteiro_na_largura_do_texto() {
+    let mut text = TextSystem::without_system_fonts();
+    let msg = "Add entity";
+    let px = ph2d_tokens::TypeToken::Sm.px();
+    let w = text.prefix_width(msg, px);
+    assert!(w > 0.0, "sem fonte a largura não prova nada");
+    let glifos = |rect_w: f32, text: &mut TextSystem| {
+        force_cromo_on_this_thread(Some(true));
+        let mut scene = VectorScene::new();
+        paint_tooltip(
+            &Tooltip::new(NodeId(1), msg),
+            Rect::new(0.0, 0.0, rect_w, 24.0),
+            &mut scene,
+            text,
+            TEMA,
+        );
+        force_cromo_on_this_thread(None);
+        scene.inner().encoding().resources.glyphs.len()
+    };
+    let inteiro = glifos(w * 4.0, &mut text);
+    assert!(inteiro > 0);
+    assert_eq!(glifos(w, &mut text), inteiro, "a dica cortou o próprio texto");
+}
+
+/// A trilha do Fill começa depois do rótulo em cartões, e o modo de antes fica como era.
+#[test]
+fn o_fill_em_cartoes_tem_rotulo_e_a_trilha_nos_tons_do_cartao() {
+    let pinta = |on| {
+        force_cromo_on_this_thread(Some(on));
+        let mut store = WidgetStore::default();
+        store.open_fill_modal(100.0, 100.0, 0.5);
+        let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+        crate::screens::hero::chrome::paint_fill_adjust_modal(
+            &mut scene,
+            &mut TextSystem::without_system_fonts(),
+            TEMA,
+            &mut hits,
+            &store,
+            &crate::tether::Tether::default(),
+            janela(),
+        );
+        force_cromo_on_this_thread(None);
+        let r = hits.rect_for(ids::PAINTER_FILL_MODAL_SLIDER).expect("trilha");
+        (scene, r)
+    };
+    let ((novo, r_novo), (antigo, r_antigo)) = (pinta(true), pinta(false));
+    assert!(r_novo.x > r_antigo.x, "o rótulo mora à esquerda da trilha");
+    assert!(
+        (r_novo.x + r_novo.w - (r_antigo.x + r_antigo.w)).abs() < 0.01,
+        "a trilha acaba no mesmo sítio"
+    );
+    assert!(pinta_a_cor(&novo, ColorToken::CardField));
+    assert!(!pinta_a_cor(&novo, ColorToken::Bg2));
+    assert!(pinta_a_cor(&antigo, ColorToken::Bg2));
+}
+
 /// A barra de menus inteira num quadro, com File aberto.
 fn barra(on: bool) -> (VectorScene, HitIndex) {
     force_cromo_on_this_thread(Some(on));

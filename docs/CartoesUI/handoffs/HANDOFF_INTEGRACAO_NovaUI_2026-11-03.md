@@ -55,11 +55,34 @@ cartões, cartões do Bones. Decisões do dono: **T65** (NovaUI) e **T66** (Insp
   `as_duas_caixas_cabem…` ((245,1) → (245,0)), `nenhum_nome_de_barra_corta…`.
 - ⚠️ **MUDANÇA DE TEXTO DE PRODUTO**: `toda_queixa_de_cartao_cabe…` — a queixa `off_the_wire` agora diz
   `Not wired to an Output: idle` (era mais longa). Avisar o dono.
-- `dentro_de_um_troco…`: colunas declaradas da galeria 3 → 1 (BAIXADO, não levantado).
+- `dentro_de_um_troco…`: o `3 → 1` acima era um ESTADO TRANSITÓRIO da mola (ver «Cura 04/11 — relógio dos cartões»);
+  a declaração da galeria voltou a **3** (o valor do main) e a varredura mede 3 de forma determinística.
 - `a_altura_de_abertura…`: passa combinado; a catraca já subira com a NovaUI (inspector 1488 → 1507,
   Noto contra Inter; painter_layers 1593 → 1618, o nome quebra em vez de cortar).
 - **Flake de carga, NÃO promovido**: `o_pen_down_manda_a_agua_herdada_pela_divida` passa 3/3 sozinho
   (loadavg 42, 14, 9) e reprova a loadavg 54–190. Reconferir na suíte final.
+
+### Curas de 04/11 (`fix(integ 04/11)`, integrador sem o dono — critério: padrão-ouro)
+
+- **CLAUDE.md §5 = 14 517 > 14 000 bytes** (`o_claude_md_cabe_no_orcamento`): o main já estava a 13 995 (5 bytes de folga),
+  logo a entrada nova só cabe cortando narrativa de feature das vizinhas (Luz 2D, Quadro, Editor de scripts, Game Engine)
+  e a da própria CartoesUI; §5 = 13 994. O teto NÃO subiu. Commit `080a9c7a69`.
+- **Cura 04/11 — relógio dos cartões** (`f9c677db7d`): `cards_lista`/`cards_solto_some` avançam as molas com o `dt` do
+  relógio de parede. Efeitos: o censo da galeria media 1/2/3 colunas na MESMA árvore (conforme a carga); `j3_import_o_aviso…`
+  comparava duas pinturas do hero (190 vs 192 caminhos); 9 testes de cartões no hero (`a_tinta_de_base_no_cartao`,
+  `a_lista_de_cartoes_flutua_no_hero`, `os_estilos_de_cor`, `o_bloco11_tema_por_copia`…) dormiam 5 ms por quadro e
+  reprovam em máquina RÁPIDA (baseline sem a cura: 9 vermelhos a load ~15). Porta: `aquecimento::passo_do_quadro`/
+  `com_passo_fixo`/`assenta_e_mede`; o arnês (`ph2d-ui-testkit`) pinta os 2 quadros de aquecimento a 0,1 s e o medido a 0;
+  os testes do hero pintam a 1/60 s por quadro, sem `sleep`. Galeria: 3 colunas (idêntico ao main).
+  ⚠️ Esperar a mola assentar em mais quadros mudou o Inspector armado (`a_regua_separa_controlos…` 1001 > 954) — por isso o
+  arnês mantém os 2 quadros de antes.
+- **`a_pincelada_nova_a_cruzar…` (180 s)**: lenta por natureza — 161,8 s sozinho (lista gerada, 29/10), 170,0 s sozinho no
+  `ci-test` hoje; código idêntico ao main. Entrou no override `terminate-after = 10` das águas lentas (`.config/nextest.toml`).
+- ⚠️ **`o_pen_down_manda_a_agua_herdada_pela_divida` NÃO curado** — reproduzido em 04/11 junto dos vizinhos
+  (`package(ph2d-tool-painter) & test(wetpaint::)`, load 70–100: 17 vs 16 passos); 0/10 sozinho. Mecanismo: o `Up` devolve
+  o motor ao worker com `sim_should_run` verdadeiro e a dívida `acc` (teto 50 ms) já cheia; o teste exige que o
+  `bring_home` do `congela` ganhe a corrida contra UM passo (~25–35 ms). Cura certa: porta de teste que segure o
+  `hand_off_sim` até o `congela` (campo `cfg(test)` na `WetSession`).
 
 ## 5. Vermelhos fora dos diffs, NÃO curados
 

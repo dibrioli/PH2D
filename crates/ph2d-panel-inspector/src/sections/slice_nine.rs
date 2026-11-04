@@ -91,8 +91,6 @@ pub const TILE_MODE_LABELS: [TextKey; 2] = [
 
 /// A dica do Tile Mode: é aqui que mora a cura da emenda rente à borda.
 const WHOLE_HINT: TextKey = TextKey::new("panel.inspector.slice.whole_entire_tiles_so_the");
-/// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
-const NOTHING_LIT: usize = usize::MAX;
 
 /// Passo de scrub do tamanho alvo, em metros. Uma medida do MUNDO, não do desenho: um passo de
 /// um token de espaçamento não teria significado num campo em metros.

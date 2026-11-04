@@ -278,7 +278,7 @@ fn the_physics_body_card_puts_two_fields_per_row() {
     let mut info = super::o_inspector_armado::fisica_armada();
     info.kind_tag = 0; // Dynamic: as linhas da dinâmica pintam-se.
     ph2d_panel_inspector::set_current_inspector_physics(Some(info));
-    let h = hero_com_a_fisica_aberta();
+    let mut h = hero_com_a_fisica_aberta();
     lado_a_lado(
         &h,
         i::INSP_PHYS_HALF_X,
@@ -307,6 +307,11 @@ fn the_physics_body_card_puts_two_fields_per_row() {
         ["B", "F"],
         "Bounce | Friction",
     );
+    // A janela do teste mede 1800 px e a fixtura tem tudo armado: o resto do cartão vem rolado.
+    let painel = ph2d_editor_core::ids::INSP_PANEL;
+    h.store.set_panel_scroll(painel, 500.0);
+    h.store.set_panel_scroll_live(painel, 500.0);
+    pinta(&mut h);
     lado_a_lado(
         &h,
         i::INSP_PHYS_LINEAR_DAMPING,

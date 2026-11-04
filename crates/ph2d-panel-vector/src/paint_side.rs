@@ -2,6 +2,8 @@
 //! ([`crate::fx_side::side_panel`]) com três corpos: o preenchimento de BASE (tipo, degradê, token),
 //! uma camada EXTRA da pilha (largura, deslocamento, offset, mistura) e o «Stroke settings».
 //!
+//! Nos cartões (G2) a porta é [`crate::cards_lado::lado`], com os corpos de `cards_tinta`/`cards_traco`.
+//!
 //! Cada um é mantido aberto por um `Dropdown` (a caixa da linha, ou o ⚙ da linha fixa): o
 //! light-dismiss, a roda e o polegar vêm de graça. Uma linha que o corpo não pintou neste quadro
 //! (secção dobrada, seleção vazia) FECHA — senão o painel voltava sozinho ao reaparecer a linha.
@@ -10,6 +12,8 @@
 //! largura, o deslocamento e a mistura) passa a ser DERIVADA do `Dropdown` aberto, aqui, uma vez
 //! por quadro — duas verdades para «que camada está aberta?» divergiriam no primeiro clique fora.
 
+use crate::cards::cards_on;
+use crate::cards_lado::{Cabeca, lado};
 use crate::fx_side::{set_open, side_head, side_panel};
 use crate::paint_sections::fill_stroke::take_abertos;
 use crate::paint_sections::fill_stroke_list::shifted;
@@ -52,6 +56,34 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
             // ↑ sobe a camada na pilha à vista (F45: a vizinha pode ser a base); ↓ desce.
             let up = shifted(i, true).map(|_| ids::vector_paint_up_id(i));
             let down = shifted(i, false).map(|_| ids::vector_paint_down_id(i));
+            if cards_on() {
+                let cabeca = Cabeca {
+                    titulo: name,
+                    fecha: ids::VECTOR_PAINT_PROPS_CLOSE,
+                    desce: down,
+                    sobe: up,
+                };
+                let fill = row.is_fill;
+                lado(
+                    ctx,
+                    ids::vector_paint_row_id(i),
+                    ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+                    line,
+                    panel,
+                    theme,
+                    &cabeca,
+                    &mut |c, y| {
+                        let y = if fill {
+                            crate::cards_tinta::fill_props(c, y)
+                        } else {
+                            let y = crate::cards_traco::layer_position(c, &row, y);
+                            crate::cards_traco::stroke_settings(c, &snap, y)
+                        };
+                        crate::cards_traco::layer_props(c, &row, y)
+                    },
+                );
+                return;
+            }
             side_panel(
                 ctx,
                 ids::vector_paint_row_id(i),
@@ -79,6 +111,21 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
 /// O painel do preenchimento de base (tipo, degradê, token), se a linha dele está aberta.
 fn fill_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme) {
     match line {
+        Some(line) if cards_on() => lado(
+            ctx,
+            ids::VECTOR_FILL_ROW,
+            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+            line,
+            panel,
+            theme,
+            &Cabeca {
+                titulo: tr("panel.vector.section.fill"),
+                fecha: ids::VECTOR_FILL_PROPS_CLOSE,
+                desce: None,
+                sobe: None,
+            },
+            &mut |c, y| crate::cards_tinta::fill_props(c, y),
+        ),
         Some(line) => side_panel(
             ctx,
             ids::VECTOR_FILL_ROW,
@@ -105,6 +152,24 @@ fn fill_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme)
 /// O «Stroke settings» do traço de base, se a linha dele está aberta.
 fn stroke_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme) {
     match line {
+        Some(line) if cards_on() => {
+            let snap = state::current_snapshot();
+            lado(
+                ctx,
+                ids::VECTOR_STROKE_SETTINGS,
+                ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+                line,
+                panel,
+                theme,
+                &Cabeca {
+                    titulo: tr("panel.vector.stroke.settings"),
+                    fecha: ids::VECTOR_STROKE_PROPS_CLOSE,
+                    desce: None,
+                    sobe: None,
+                },
+                &mut |c, y| crate::cards_traco::stroke_settings(c, &snap, y),
+            );
+        }
         Some(line) => {
             let snap = state::current_snapshot();
             side_panel(

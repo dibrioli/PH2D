@@ -14,6 +14,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::PanelRowFamily;
 use ph2d_editor_core::paint::fill_rounded_rect;
+use ph2d_editor_core::widget::card_ink::card_body;
 use ph2d_tokens::{Radius, StrokeToken};
 use ph2d_vec_scene::{Place, StackItem};
 use std::cell::{Cell, RefCell};
@@ -104,7 +105,7 @@ impl BodyCtx<'_> {
         // Há sujeito: a pilha publicada, ou a resposta «tem traço?» (só com UMA forma selecionada).
         let live = a.is_some() || state::stroke_present().is_some();
         let open = live && is_open(self.store, menu);
-        let (mut y, collapsed) = self.section_header_with_action(
+        let (y, collapsed) = self.section_header_with_action(
             ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
             tr("panel.vector.section.fill_stroke"),
             y,
@@ -116,6 +117,14 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        self.fill_stroke_rows(snap, y)
+    }
+
+    /// As linhas da secção, sem o cabeçalho: o cartão (G2) tem o dele, com o «+» lá dentro.
+    pub(crate) fn fill_stroke_rows(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let a = state::current_appearance();
+        let live = a.is_some() || state::stroke_present().is_some();
+        let mut y = y;
         // F16: com o painel do traço aberto por baixo da barra ②, as linhas de traço moram LÁ neste
         // quadro — um id pintado em dois sítios faria o arrasto seguir o rect do outro.
         let na_barra = crate::bars::stroke_popover_open(self.store);
@@ -139,13 +148,44 @@ impl BodyCtx<'_> {
             })
             .collect();
         if differ {
-            y = self.hint_line(tr("panel.vector.appearance.mixed_layers"), y);
+            y = self.dica_da_lista(tr("panel.vector.appearance.mixed_layers"), y);
         }
         y = self.paint_rows(snap, &rows, live && !differ, y);
         if na_barra {
-            y = self.hint_line(tr("panel.vector.stroke.in_bar"), y);
+            y = self.dica_da_lista(tr("panel.vector.stroke.in_bar"), y);
         }
         y
+    }
+
+    /// Uma frase da lista: a dica do cartão, ou a de antes.
+    fn dica_da_lista(&mut self, texto: &str, y: f32) -> f32 {
+        let Some(ink) = card_body() else {
+            return self.hint_line(texto, y);
+        };
+        let fim = ph2d_editor_core::panel::cards::CardCtx::flutuante(
+            &mut *self.scene,
+            &mut *self.text_system,
+            self.store,
+            &mut *self.hit_index,
+            ink,
+            self.inner_x,
+            self.inner_w,
+        )
+        .hint(texto, y);
+        fim + self.row_gap
+    }
+
+    /// A caixa do «+» aberto, para o passe diferido (o cartão pinta-o no cabeçalho dele).
+    pub(crate) fn anota_o_menu(&mut self, ink: ph2d_editor_core::widget::card_ink::CardInk) {
+        let menu = ids::VECTOR_PAINT_ADD_MENU;
+        let live = state::current_appearance().is_some() || state::stroke_present().is_some();
+        if live
+            && is_open(self.store, menu)
+            && let Some(chip) = self.hit_index.rect_for(menu)
+        {
+            let _ = ph2d_editor_core::widget::card_ink::troca_popover(Some((menu, ink)));
+            PENDENTE.with(|p| p.borrow_mut().menu = Some(chip));
+        }
     }
 
     /// As linhas, com o arrasto activo pintado: as outras abrem o vão e a agarrada voa.
@@ -259,18 +299,25 @@ impl BodyCtx<'_> {
     /// acento na borda de CIMA dela — fora da linha que voa por cima do vão, sempre à vista.
     fn drop_mark(&mut self, y: f32, lh: f32) {
         let raio = ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px());
+        let ink = card_body();
         fill_rounded_rect(
             self.scene,
             Rect::new(self.inner_x, y, self.inner_w, lh),
             raio,
-            resolve(ColorToken::Bg3, self.theme),
+            ink.map_or_else(
+                || resolve(ColorToken::Bg3, self.theme),
+                |i| i.color(ColorToken::CardField),
+            ),
         );
         let h = StrokeToken::Thick.px();
         fill_rounded_rect(
             self.scene,
             Rect::new(self.inner_x, y - (self.row_gap + h) * 0.5, self.inner_w, h),
             raio,
-            resolve(ColorToken::Accent, self.theme),
+            ink.map_or_else(
+                || resolve(ColorToken::Accent, self.theme),
+                |i| i.color(ColorToken::KanbanBlueBold),
+            ),
         );
     }
 
@@ -290,7 +337,10 @@ impl BodyCtx<'_> {
             &mut local,
             caixa,
             ph2d_editor_core::paint::frame_radius(self.theme, Radius::Sm.px()),
-            resolve(ColorToken::Bg2, self.theme),
+            card_body().map_or_else(
+                || resolve(ColorToken::Bg2, self.theme),
+                |i| i.color(ColorToken::KanbanCardRaised),
+            ),
         );
         let mut b = BodyCtx {
             scene: &mut local,

@@ -24,7 +24,11 @@ use crate::paint_sections::fx_list::is_open;
 use crate::state::PaintRow;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::stroke_rounded_rect;
+use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
+use ph2d_editor_core::panel::cards::dicas;
+use ph2d_editor_core::widget::card_field::{self, Glyph};
+use ph2d_editor_core::widget::card_ink::{CardInk, card_body};
 use ph2d_editor_core::widget::{
     ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, NumberInput, SwatchSize, Unit,
     paint_color_swatch, paint_icon_button, paint_number_input_with_buffer, paint_swatch_or_mixed,
@@ -127,6 +131,25 @@ impl BodyCtx<'_> {
         unit: Unit,
         rect: Rect,
     ) {
+        if let Some(ink) = card_body() {
+            // O valor e o misto moram no store (`cards_tinta::prepare`): o campo do cartão lê-os lá.
+            let icone = if matches!(unit, Unit::Percent) {
+                IconId::CardOpacity
+            } else {
+                IconId::CardWeight
+            };
+            card_field::paint_field(
+                self.scene,
+                self.text_system,
+                ink,
+                self.store,
+                self.hit_index,
+                rect,
+                id,
+                Glyph::Icon(icone),
+            );
+            return;
+        }
         let (state, _, buffer, caret, anchor) =
             ph2d_editor_core::widget::showcase::read_number_input(self.store, id);
         let focused = self.store.focus_id() == Some(id);
@@ -149,6 +172,10 @@ impl BodyCtx<'_> {
 
     /// Um botão de ícone de uma coluna; `id = None` = apagado e sem alvo.
     fn column_button(&mut self, id: Option<NodeId>, icon: IconId, r: Rect, pressed: bool) {
+        if let Some(ink) = card_body() {
+            self.botao_do_cartao(ink, id, icon, r, pressed);
+            return;
+        }
         let visual = match id {
             Some(_) if pressed => (ButtonState::Pressed, 1.0),
             Some(id) => self.store.button_visual(id),
@@ -164,6 +191,83 @@ impl BodyCtx<'_> {
         );
         if let Some(id) = id {
             self.hit_index.register(id, r);
+        }
+    }
+
+    /// O mesmo botão, com a cara dos ícones soltos de um cartão (`CardCtx::bare`), na largura da coluna.
+    fn botao_do_cartao(
+        &mut self,
+        ink: CardInk,
+        id: Option<NodeId>,
+        icon: IconId,
+        r: Rect,
+        pressed: bool,
+    ) {
+        if let Some(id) = id {
+            self.hit_index.register(id, r);
+            dicas::icone(id);
+        }
+        if pressed || id.is_some_and(|i| self.store.hover_live(i) > 0.0) {
+            fill_rounded_rect(
+                self.scene,
+                r,
+                m::FIELD_RADIUS,
+                ink.color(ColorToken::CardFieldHover),
+            );
+        }
+        let tinta = match id {
+            None => ColorToken::CardLabel,
+            Some(_) if pressed => ColorToken::Text1,
+            Some(_) => ColorToken::Text2,
+        };
+        let g = m::ICON_GLYPH;
+        paint_icon(
+            self.scene,
+            icon,
+            Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g),
+            ink.color(tinta),
+            StrokeToken::Default.px(),
+        );
+    }
+
+    /// A caixa da cor no cartão: a caixa do campo e a amostra lá dentro (o `Widget::Swatch` do
+    /// Inspector, sem o código: F44c, a caixa é SÓ a cor). Num misto, o travessão da casa.
+    fn caixa_do_cartao(&mut self, ink: CardInk, l: &Linha<'_>, r: Rect) {
+        let hover = self.store.hover_live(l.swatch) > 0.0;
+        let fundo = if hover {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, ink.color(fundo));
+        let g = m::ICON_GLYPH;
+        let amostra = Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g);
+        if l.mixed_color {
+            paint_icon(
+                self.scene,
+                IconId::Minus,
+                amostra,
+                ink.color(ColorToken::CardLabel),
+                StrokeToken::Default.px(),
+            );
+        } else if let Some(ramp) = l.ramp {
+            self.ramp_swatch(amostra, ramp);
+        } else {
+            let [cr, cg, cb, ca] = l.color;
+            fill_rounded_rect(
+                self.scene,
+                amostra,
+                m::SEG_RADIUS,
+                ph2d_vector::Color::from_rgba8(cr, cg, cb, ca), // LITERAL-COLOR-OK: user-color: a tinta do artista
+            );
+            // FRAME-RAW-OK: o halo da amostra de cor: uma cor escura some no campo escuro sem ele.
+            stroke_rounded_rect(
+                self.scene,
+                amostra,
+                m::SEG_RADIUS,
+                StrokeToken::Thin.px(),
+                ink.color(ColorToken::Border),
+            );
         }
     }
 
@@ -190,7 +294,9 @@ impl BodyCtx<'_> {
         self.column_button(eye, olho, c.eye, false);
         self.column_button(l.minus, IconId::Minus, c.minus, false);
         let a11y = tr("panel.vector.appearance.layer_color");
-        if l.mixed_color {
+        if let Some(ink) = card_body() {
+            self.caixa_do_cartao(ink, l, caixa);
+        } else if l.mixed_color {
             paint_swatch_or_mixed(
                 caixa,
                 l.swatch,

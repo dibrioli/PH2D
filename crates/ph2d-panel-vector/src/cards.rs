@@ -9,6 +9,7 @@ use crate::paint_body_plan::corpo;
 use crate::paint_sections::{AcaoDoCabecalho, BodyCtx, sonda_da_seccao};
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
@@ -62,6 +63,7 @@ fn passo_do_comprimento() -> f64 {
 /// Com o store MUTÁVEL, antes de pintar. As sementes dos campos são as de sempre (`paint.rs`).
 pub(crate) fn prepare(store: &mut WidgetStore) {
     store.mark_card_list_close(core_ids::VECTOR_PANEL, core_ids::VECTOR_CLOSE);
+    crate::cards_tinta::prepare(store);
     let p = passo_do_comprimento();
     for id in [
         vids::VECTOR_TRANSFORM_X,
@@ -152,6 +154,9 @@ pub(crate) fn cards<'a>(
                 None if id == ids::VECTOR_SECTION_ADVANCED => {
                     Box::new(move |c: &mut CardCtx<'_>, y| avancado(c, snap, y))
                 }
+                None if id == vids::VECTOR_SECTION_FILL => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| fill_stroke(c, snap, y))
+                }
                 None => Box::new(move |c: &mut CardCtx<'_>, y| hospeda(c, snap, id, y)),
             };
             CardDef {
@@ -185,10 +190,35 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
         frame
     } else if id == vids::VECTOR_SECTION_CLIP {
         clip
+    } else if id == ids::VECTOR_SECTION_APPEARANCE {
+        crate::cards_tinta::appearance
     } else {
         return None;
     };
     Some(f)
+}
+
+/// ⭐ **As linhas de Fill & Stroke** (F44/F45): as MESMAS linhas, o mesmo arrasto pelo ⚙ e a mesma
+/// conta do vão; os primitivos da linha pintam-se com a cara do cartão sob a tinta dele.
+fn fill_stroke(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+    let mut b = BodyCtx {
+        scene: &mut *c.scene,
+        text_system: &mut *c.text_system,
+        store: c.store,
+        hit_index: &mut *c.hit_index,
+        theme: c.ink.theme,
+        inner_x: c.x,
+        inner_w: c.w,
+        row_h: m::FIELD_H,
+        row_gap: m::FIELD_ROW_GAP,
+        chip_w: number_input_min_w_px(),
+        font: m::VALUE_PX,
+        open_fold: None,
+    };
+    b.anota_o_menu(c.ink);
+    let fim = b.fill_stroke_rows(snap, y);
+    // A última linha não leva o vão de baixo: o cartão tem a folga dele.
+    if fim > y { fim - m::FIELD_ROW_GAP } else { y }
 }
 
 /// O corpo de hoje dentro do cartão: o cabeçalho absorvido fica por baixo do título do cartão.

@@ -51,6 +51,8 @@ fn range(gap: bool) -> (f64, f64) {
 pub(crate) fn seed(store: &mut WidgetStore) {
     let snap = state::current_snapshot();
     let focus = store.focus_id();
+    // Nos cartões o scrub na pega não dá foco: a mão também manda.
+    let mao = store.number_input_drag().map(|d| d.id);
     for (k, [d, g]) in snap.dash.iter().enumerate() {
         for (id, gap, v) in [
             (VECTOR_DASH_IDS[k], false, *d),
@@ -60,7 +62,7 @@ pub(crate) fn seed(store: &mut WidgetStore) {
             store.set_number_range(id, lo, hi, DASH_STEP);
             if !snap.agrees(ph2d_tool_vector::StyleFields::dash(k, gap)) {
                 store.blank_number_input(id);
-            } else if focus != Some(id) {
+            } else if focus != Some(id) && mao != Some(id) {
                 store.set_number_value(id, safe_clamp_f64(v, lo, hi));
             }
         }

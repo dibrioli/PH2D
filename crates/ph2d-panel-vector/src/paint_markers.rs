@@ -80,6 +80,8 @@ fn slot_i18n_key(slot: usize) -> &'static str {
 pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     let snap = state::current_snapshot();
     let focus = store.focus_id();
+    // Nos cartões o scrub na pega não dá foco: a mão também manda.
+    let mao = store.number_input_drag().map(|d| d.id);
     let [scale_start, scale_end] = snap.marker_scale;
     use ph2d_tool_vector::StyleFields as F;
     for (id, field, value, campo) in [
@@ -105,7 +107,7 @@ pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
         store.set_number_range(id, field.min, field.max, field.step);
         if !snap.agrees(campo) {
             store.blank_number_input(id);
-        } else if focus != Some(id) {
+        } else if focus != Some(id) && mao != Some(id) {
             store.set_number_value(id, shapes::clamp_to(field, value));
         }
     }

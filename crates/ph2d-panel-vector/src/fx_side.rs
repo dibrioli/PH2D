@@ -210,6 +210,21 @@ fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect
     }
 }
 
+/// O lugar de um painel à esquerda de `panel` (à direita, se não cabe), da largura dele, no topo da
+/// `line` e dentro de `region`: encolhe num ecrã baixo.
+pub(crate) fn side_rect(panel: Rect, line: Rect, content_h: f32, region: Rect) -> Rect {
+    let gap = Spacing::Sm.px();
+    let h = content_h.min(region.h);
+    let left = panel.x - gap - panel.w;
+    let x = if left >= region.x {
+        left
+    } else {
+        panel.x + panel.w + gap
+    };
+    let y = line.y.min(region.y + region.h - h).max(region.y);
+    Rect::new(x, y, panel.w, h)
+}
+
 /// ⭐ **Um painel à esquerda do Inspector**, no topo alinhado à `line` que o abriu (e dentro da
 /// região: encolhe e ROLA num ecrã baixo). Com o Inspector docado à esquerda, abre à direita dele.
 /// `id` é o `Dropdown` que o mantém aberto; `body` pinta os campos a partir do `y` e devolve o fim.
@@ -241,17 +256,9 @@ pub(crate) fn side_panel(
         body(&mut b, 0.0)
     };
     let region = ctx.layout.popover_region();
-    let gap = Spacing::Sm.px();
     let content_h = body_h + pad * 2.0;
-    let h = content_h.min(region.h);
-    let left = panel.x - gap - width;
-    let x = if left >= region.x {
-        left
-    } else {
-        panel.x + panel.w + gap
-    };
-    let y = line.y.min(region.y + region.h - h).max(region.y);
-    let rect = Rect::new(x, y, width, h);
+    let rect = side_rect(panel, line, content_h, region);
+    let h = rect.h;
     let max_scroll = (content_h - h).max(0.0);
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
     paint_panel_surface(rect, ctx.scene, theme);

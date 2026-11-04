@@ -219,7 +219,8 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
                 row.mixed.dilate,
             ),
         ] {
-            if store.focus_id() != Some(id) {
+            let mao = store.number_input_drag().map(|d| d.id) == Some(id);
+            if store.focus_id() != Some(id) && !mao {
                 store.set_number_value(id, v);
                 if misto {
                     store.blank_number_input(id);

@@ -17,7 +17,7 @@ use crate::paint_sections::{BodyCtx, label_col_w};
 use crate::state;
 
 /// O rótulo que o chip mostra: a chave do token, ou o travessão de *não preso*.
-fn chip_label(bound: Option<&str>) -> &str {
+pub(crate) fn chip_label(bound: Option<&str>) -> &str {
     bound.unwrap_or("—")
 }
 

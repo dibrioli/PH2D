@@ -175,7 +175,7 @@ mod vertex;
 /// A seção **Expand** (Outline Stroke · Offset Path · Power Stroke) — módulo irmão (teto de
 /// 600 LOC).
 #[path = "paint_expand.rs"]
-mod expand;
+pub(crate) mod expand;
 
 // F44: Fill e Stroke no layout do Figma (as linhas, a linha fixa do traço, o «Stroke settings»).
 #[path = "paint_fill_stroke.rs"]

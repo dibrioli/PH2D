@@ -3,9 +3,11 @@
 //! por ficheiro de painel, integ 02/11).
 
 use super::*;
+use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::widget::card_ink::card_body;
 
-/// A cor e os três botões (⚙ 👁 −) são quadrados `h`.
-const QUADRADOS: u8 = 4;
+/// Os três botões (⚙ 👁 −) têm a largura [`BodyCtx::botao_w`]; a cor é um quadrado `h`.
+const QUADRADOS: u8 = 3;
 /// Losangos há quatro (cor, Weight, %, olho).
 const LOSANGOS: u8 = 4;
 
@@ -45,8 +47,8 @@ impl BodyCtx<'_> {
         let Some(peso) = peso else {
             return false;
         };
-        let (h, mw) = (self.row_h, self.decorator_w());
-        let fixo = f32::from(QUADRADOS) * h + f32::from(LOSANGOS) * mw;
+        let (h, b, mw) = (self.row_h, self.botao_w(), self.decorator_w());
+        let fixo = h + f32::from(QUADRADOS) * b + f32::from(LOSANGOS) * mw;
         let pct_w = self.pct_w();
         let weight_w = self.weight_min_w(peso);
         self.inner_w < fixo + pct_w + weight_w
@@ -82,8 +84,19 @@ impl BodyCtx<'_> {
         }
     }
 
+    /// A largura de um botão da linha: a célula do cartão, ou o quadrado da linha de antes.
+    fn botao_w(&self) -> f32 {
+        if card_body().is_some() {
+            m::ICON_CELL
+        } else {
+            self.row_h
+        }
+    }
+
     fn decorator_w(&self) -> f32 {
-        if ph2d_editor_core::paint::ui_is_redesign() {
+        if card_body().is_some() {
+            m::KEY_MARK_BOX
+        } else if ph2d_editor_core::paint::ui_is_redesign() {
             ph2d_editor_core::widget::DECORATOR_W
         } else {
             0.0
@@ -98,14 +111,15 @@ impl BodyCtx<'_> {
         peso: Option<PesoValor>,
     ) -> Colunas {
         let h = self.row_h;
+        let b = self.botao_w();
         let mw = self.decorator_w();
         let dupla = self.linha_dupla(peso);
         let right = self.inner_x + self.inner_w;
         // Os três botões encostados (o glifo já tem a folga dele): a caixa do hex fica com a largura.
-        let minus = Rect::new(right - h, y, h, h);
+        let minus = Rect::new(right - b, y, b, h);
         let eye_key = Rect::new(minus.x - mw, y, mw, h);
-        let eye = Rect::new(eye_key.x - h, y, h, h);
-        let settings = Rect::new(eye.x - h, y, h, h);
+        let eye = Rect::new(eye_key.x - b, y, b, h);
+        let settings = Rect::new(eye.x - b, y, b, h);
         let pct_w = self.pct_w();
         let (y2, fim) = if dupla {
             (y + h + self.row_gap, right)
@@ -141,6 +155,9 @@ impl BodyCtx<'_> {
     /// acima do piso genérico dos números. É o que dá à caixa do hex a largura dos seis dígitos no
     /// Inspector estreito (o piso de `72 px` é do maior número da casa, e aqui o maior é `100`).
     fn pct_w(&mut self) -> f32 {
+        if card_body().is_some() {
+            return self.campo_do_cartao_w("100");
+        }
         self.campo_w(&format!("100{}", Unit::Percent.suffix()))
     }
 
@@ -149,6 +166,9 @@ impl BodyCtx<'_> {
     /// (`numero_que_cabe`), logo o que não pode faltar é o inteiro arredondado; a editar, o buffer
     /// inteiro; misto, nada.
     fn weight_min_w(&mut self, peso: PesoValor) -> f32 {
+        if card_body().is_some() {
+            return self.weight_do_cartao_w(peso);
+        }
         let editando = self.store.focus_id() == Some(peso.id);
         let maior = if editando {
             let (_, _, buffer, _, _) =
@@ -168,6 +188,25 @@ impl BodyCtx<'_> {
             ph2d_text::FontWeight::MEDIUM,
         ) + ph2d_editor_core::widget::field_pad_x()
             + ph2d_editor_core::widget::stepper_width(host)
+    }
+
+    /// O campo do cartão que mostra `texto` inteiro: a pega, o texto e a folga da direita.
+    fn campo_do_cartao_w(&mut self, texto: &str) -> f32 {
+        m::ICON_CELL + self.text_system.prefix_width(texto, m::VALUE_PX).ceil() + m::FIELD_PAD_R
+    }
+
+    /// O campo do Weight no cartão: pelo que ele MOSTRA agora (a casa decimal conta: nunca se corta).
+    fn weight_do_cartao_w(&mut self, peso: PesoValor) -> f32 {
+        let texto = if self.store.focus_id() == Some(peso.id) {
+            let (_, _, buffer, _, _) =
+                ph2d_editor_core::widget::showcase::read_number_input(self.store, peso.id);
+            buffer.to_string()
+        } else if peso.mixed {
+            tr("card.field.mixed").to_string()
+        } else {
+            ph2d_editor_core::widget::format_number(peso.px)
+        };
+        self.campo_do_cartao_w(&texto)
     }
 
     /// Um campo numérico que mostra `texto` inteiro: o texto, a folga dos dois bordos e o stepper.

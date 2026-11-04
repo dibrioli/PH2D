@@ -7,7 +7,7 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::params;
 
-const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
+pub(crate) const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
     (
         TextKey::new("panel.vector.expand.w_start"),
         crate::ids::VECTOR_EXPAND_W_START,
@@ -32,7 +32,7 @@ const SLIDERS: [(TextKey, ph2d_a11y::NodeId, ph2d_a11y::NodeId); 4] = [
 
 /// **Os quatro trilhos do perfil que estão na TELA** — o store quando o artista já tocou, o default
 /// da tool quando não. A fileira de perfis e os quatro sliders leem daqui.
-fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
+pub(crate) fn live_tracks(store: &ph2d_editor_core::interaction::WidgetStore) -> [f32; 4] {
     let fallback = params::preset_tracks(&params::WPROFILE_DEFAULT);
     let mut tracks = [0.0_f32; 4];
     for (i, (_, slider, _)) in SLIDERS.iter().enumerate() {

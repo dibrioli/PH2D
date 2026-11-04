@@ -43,6 +43,9 @@ pub use contour_params::{
 pub mod bars;
 /// O painel em cartões (`docs/CartoesUI/12_VECTOR_PLANO.md`).
 pub mod cards;
+mod cards_lado;
+mod cards_tinta;
+mod cards_traco;
 mod event;
 mod font_dropdown;
 mod fx_side;

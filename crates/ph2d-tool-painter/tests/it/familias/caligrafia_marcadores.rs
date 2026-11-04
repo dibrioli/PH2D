@@ -648,10 +648,7 @@ fn cada_letra_e_marcador_tem_a_sua_identidade() {
     );
     regra(
         dry.sobre_si > 1.22,
-        format!(
-            "Dry Marker: sobreposição {:.2} — não soma",
-            dry.sobre_si
-        ),
+        format!("Dry Marker: sobreposição {:.2} — não soma", dry.sobre_si),
     );
     // O Script: fino a subir (0,35 contra 1,00 do Hard Round) e a mão que treme sai lisa (0,96 px contra 2,72).
     regra(

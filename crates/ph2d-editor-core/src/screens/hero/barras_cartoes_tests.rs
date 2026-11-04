@@ -152,10 +152,11 @@ fn a_escolhida_e_a_ultima_a_recolher_ao_icone() {
         title: crate::panel::TextKey::new(title),
         icon: crate::icons::IconId::Inspector,
     };
+    // A escolhida no FIM: a recolha começa pela última, e ela tem de passar à frente.
     let occ = [
-        ocupante(1, "Color Equalization"),
-        ocupante(2, "Inspector"),
-        ocupante(3, "Vector"),
+        ocupante(1, "Inspector"),
+        ocupante(2, "Vector"),
+        ocupante(3, "Color Equalization"),
     ];
     let mut text = TextSystem::without_system_fonts();
     let naturais: Vec<f32> = occ
@@ -163,18 +164,18 @@ fn a_escolhida_e_a_ultima_a_recolher_ao_icone() {
         .map(|o| crate::screens::hero::slot_tabs_face::natural_w(o.title.tr(), &mut text))
         .collect();
     let piso = ph2d_tokens::ROW_H_PX;
-    let aperto = naturais[0] + piso * 2.0 + ph2d_tokens::Spacing::Xs.px() * 2.0;
+    let aperto = naturais[2] + piso * 2.0 + ph2d_tokens::Spacing::Xs.px() * 2.0;
     force_cromo_on_this_thread(Some(true));
     let bar = Rect::new(0.0, 0.0, aperto, 22.0);
-    let plano = tab_plan(&occ, Some(NodeId(1)), bar, &mut text).expect("cabe sem setas");
+    let plano = tab_plan(&occ, Some(NodeId(3)), bar, &mut text).expect("cabe sem setas");
     force_cromo_on_this_thread(None);
     assert_eq!(plano.hidden_after, 0);
     assert!(
-        (plano.widths[0] - naturais[0]).abs() < 0.01,
+        (plano.widths[2] - naturais[2]).abs() < 0.01,
         "{:?}",
         plano.widths
     );
-    assert_eq!(&plano.widths[1..], &[piso, piso]);
+    assert_eq!(&plano.widths[..2], &[piso, piso]);
 }
 
 fn fila() -> (ToolRail, Rect) {

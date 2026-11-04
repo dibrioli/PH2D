@@ -309,11 +309,8 @@ pub(crate) fn layer_props(c: &mut CardCtx<'_>, row: &state::PaintRow, y: f32) ->
         ids::VECTOR_PAINT_JOIN_ROUND,
         ids::VECTOR_PAINT_JOIN_BEVEL,
     ];
-    let (desloca, cresce) = if state::length_suffix() == "px" {
-        (tr("card.vector.shift_px"), tr("card.vector.grow_px"))
-    } else {
-        (tr("card.vector.shift_m"), tr("card.vector.grow_m"))
-    };
+    // Distâncias de MUNDO: não passam pela conversão do Transform, por isso sempre em metros.
+    let (desloca, cresce) = (tr("card.vector.shift_m"), tr("card.vector.grow_m"));
     let y = c.row(
         &[
             Cell::new(campo(XY[0], Glyph::Text(tr("card.glyph.x")))).label(desloca),

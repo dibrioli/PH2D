@@ -27,6 +27,7 @@ mod fill_chip_labels_fit;
 mod g1_os_cartoes; // NovaUI G1: a lista, as abas, o hospedeiro e os corpos nativos
 mod g2_os_cartoes; // NovaUI G2: Appearance, Fill & Stroke e os painéis à esquerda
 mod g3_os_cartoes; // NovaUI G3: Effects, Filters, a rampa e o painel do traço da barra
+mod g4_os_cartoes; // NovaUI G4: Text, Font, Paragraph, Axes e Text on Path
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
 mod popover_band;

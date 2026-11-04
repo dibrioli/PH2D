@@ -64,6 +64,7 @@ fn passo_do_comprimento() -> f64 {
 pub(crate) fn prepare(store: &mut WidgetStore) {
     store.mark_card_list_close(core_ids::VECTOR_PANEL, core_ids::VECTOR_CLOSE);
     crate::cards_tinta::prepare(store);
+    crate::cards_texto::prepare(store);
     let p = passo_do_comprimento();
     for id in [
         vids::VECTOR_TRANSFORM_X,
@@ -196,6 +197,16 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
         crate::cards_fx::effects
     } else if id == ids::VECTOR_SECTION_FILTERS {
         crate::cards_fx::filters
+    } else if id == vids::VECTOR_SECTION_TEXT {
+        crate::cards_texto::text
+    } else if id == vids::VECTOR_SECTION_FONT {
+        crate::cards_texto::font
+    } else if id == vids::VECTOR_SECTION_PARAGRAPH {
+        crate::cards_texto::paragraph
+    } else if id == vids::VECTOR_SECTION_AXES {
+        crate::cards_texto::axes
+    } else if id == ids::VECTOR_SECTION_TEXTPATH {
+        crate::cards_texto::textpath
     } else {
         return None;
     };
@@ -205,9 +216,7 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
 /// ⭐ **As linhas de Fill & Stroke** (F44/F45): as MESMAS linhas, o mesmo arrasto pelo ⚙ e a mesma
 /// conta do vão; os primitivos da linha pintam-se com a cara do cartão sob a tinta dele.
 fn fill_stroke(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-    let ink = c.ink;
     let mut b = linhas_do_cartao(c);
-    b.anota_o_menu(ink);
     let fim = b.fill_stroke_rows(snap, y);
     // A última linha não leva o vão de baixo: o cartão tem a folga dele.
     if fim > y { fim - m::FIELD_ROW_GAP } else { y }

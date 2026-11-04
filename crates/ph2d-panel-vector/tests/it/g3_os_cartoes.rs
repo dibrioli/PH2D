@@ -745,6 +745,37 @@ fn a_ramp_handle_drags_on_the_card_bar() {
     );
 }
 
+/// O punho responde já no quadro em que o painel abre: o passe de sementes corre ANTES de o painel
+/// publicar a barra, e nesse quadro só o registo de `fx_side` dá o punho ao store.
+/// *Mutação: tirar `register_ramp_handles` de `fx_side` ⇒ vermelho.*
+#[test]
+fn a_ramp_handle_answers_in_the_very_frame_the_panel_opens() {
+    let mut mesa = Mesa::nova(true);
+    mesa.clica(p::filter_row_id(RAMPA));
+    // Dois quadros: o 1.º pinta a linha aberta e anota-a; o 2.º abre o painel com a barra (`seed` ainda
+    // sem ela).
+    for _ in 0..2 {
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        mesa.rects = h.paint::<VectorPanel>(st, COLUNA);
+        if mesa
+            .rects
+            .iter()
+            .any(|(n, _)| *n == p::filter_stop_id(RAMPA, 1))
+        {
+            break;
+        }
+    }
+    let punho = mesa.rect(p::filter_stop_id(RAMPA, 1)).expect("o punho");
+    let (x, y) = (punho.x + punho.w * 0.5, punho.y + punho.h * 0.5);
+    let mut ev = mesa.ponteiro(PointerKind::Down, x, y);
+    ev.extend(mesa.ponteiro(PointerKind::Move, x + 30.0, y));
+    let accoes = mesa.aplica(ev);
+    assert!(
+        accoes.iter().any(|a| a.contains("\"4:1:")),
+        "o punho não ouviu no 1.º quadro: {accoes:?}"
+    );
+}
+
 /// A marca de animação de cada campo mora na barra, e a do olho na linha.
 /// *Mutação: tirar `.key` da fila ⇒ vermelho; tirar o `paint_decorator_for` da linha ⇒ vermelho.*
 #[test]

@@ -40,7 +40,7 @@ struct Numero {
 }
 
 /// O nome com a unidade no rótulo (a caixa só mostra o número).
-fn com_unidade(nome: &str, unidade: &str) -> String {
+pub(crate) fn com_unidade(nome: &str, unidade: &str) -> String {
     tr_with(
         "card.vector.name_unit",
         &[("name", &nome), ("unit", &unidade)],
@@ -49,7 +49,8 @@ fn com_unidade(nome: &str, unidade: &str) -> String {
 
 fn comprimento(nome: &str, ids: (NodeId, NodeId), valor: f64, fabrica: Option<f64>) -> Numero {
     Numero {
-        nome: com_unidade(nome, state::length_suffix()),
+        // Distância de MUNDO (`fase_selection_mirror_filters`): não passa pela conversão do Transform.
+        nome: com_unidade(nome, tr("card.vector.unit.metres")),
         chip: ids.1,
         barra: ids.0,
         valor,
@@ -377,7 +378,7 @@ pub(crate) fn props(c: &mut CardCtx<'_>, p: Pilha, row: usize, y: f32) -> f32 {
 
 /// Até dois números numa linha, com o rótulo e a marca de cada um. A marca é a da barra (os canais
 /// de `marcas*.rs` têm as duas), como no corpo de antes.
-fn fila(c: &mut CardCtx<'_>, par: &[(&str, NodeId, NodeId)], y: f32) -> f32 {
+pub(crate) fn fila(c: &mut CardCtx<'_>, par: &[(&str, NodeId, NodeId)], y: f32) -> f32 {
     let barras: Vec<[NodeId; 1]> = par.iter().map(|(_, _, b)| [*b]).collect();
     let cells: Vec<Cell<'_>> = par
         .iter()

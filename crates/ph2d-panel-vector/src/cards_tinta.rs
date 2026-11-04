@@ -46,20 +46,12 @@ pub(crate) fn semeia(store: &mut WidgetStore, id: NodeId, valor: f64, misto: boo
     }
 }
 
-/// O passo de um comprimento em mundo: 1 px, ou 1 cm no projecto em metros.
-fn passo_do_comprimento() -> f64 {
-    if state::length_suffix() == "px" {
-        1.0
-    } else {
-        PASSO_FINO
-    }
-}
-
 /// Com o store MUTÁVEL, antes de pintar: marcas, dicas e sementes das secções de G2.
 pub(crate) fn prepare(store: &mut WidgetStore) {
     use crate::paint_dashes::DASH_STEP;
     use ph2d_tool_vector::params;
-    let p = passo_do_comprimento();
+    // Shift e Grow são distâncias de MUNDO, em metros, qualquer que seja a unidade do projecto.
+    let p = PASSO_FINO;
     for (id, step, scrub, default) in [
         (ids::VECTOR_OBJ_OPACITY_NUM, 1.0, 1.0, Some(CEM_POR_CENTO)),
         (vids::VECTOR_FILL_OPACITY_NUM, 1.0, 1.0, Some(CEM_POR_CENTO)),
@@ -392,7 +384,12 @@ pub(crate) fn token(
     y
 }
 
-fn par_de_botoes(c: &mut CardCtx<'_>, a: (NodeId, &str), b: (NodeId, &str), y: f32) -> f32 {
+pub(crate) fn par_de_botoes(
+    c: &mut CardCtx<'_>,
+    a: (NodeId, &str),
+    b: (NodeId, &str),
+    y: f32,
+) -> f32 {
     c.row(
         &[
             Cell::new(Widget::Button {

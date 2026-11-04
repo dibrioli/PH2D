@@ -45,6 +45,7 @@ pub mod bars;
 pub mod cards;
 mod cards_fx;
 mod cards_lado;
+mod cards_texto;
 mod cards_tinta;
 mod cards_traco;
 mod event;

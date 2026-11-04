@@ -175,22 +175,6 @@ impl BodyCtx<'_> {
         fim + self.row_gap
     }
 
-    /// A caixa do «+» aberto, para o passe diferido (o cartão pinta-o no cabeçalho dele).
-    pub(crate) fn anota_o_menu(&mut self, ink: ph2d_editor_core::widget::card_ink::CardInk) {
-        let menu = ids::VECTOR_PAINT_ADD_MENU;
-        let live = state::current_appearance().is_some() || state::stroke_present().is_some();
-        if live
-            && is_open(self.store, menu)
-            && let Some(chip) = self.hit_index.rect_for(menu)
-        {
-            let _ = ph2d_editor_core::widget::card_ink::troca_popover(Some((menu, ink)));
-            // O «+» está no canto do cartão: a lista cresce para DENTRO, com a borda direita na dele.
-            let w = self.inner_w * 0.5;
-            let ancora = Rect::new(chip.x + chip.w - w, chip.y, w, chip.h);
-            PENDENTE.with(|p| p.borrow_mut().menu = Some(ancora));
-        }
-    }
-
     /// As linhas, com o arrasto activo pintado: as outras abrem o vão e a agarrada voa.
     fn paint_rows(
         &mut self,
@@ -369,12 +353,17 @@ impl BodyCtx<'_> {
 
 /// ⭐ **O passe diferido da lista**: regista os ⚙ arrastáveis deste quadro, pinta o menu do «+» e a
 /// linha que voa — por cima de todas as secções.
-pub(crate) fn deferred(ctx: &mut ph2d_editor_core::panel::PaintCtx, theme: Theme) {
+pub(crate) fn deferred(ctx: &mut ph2d_editor_core::panel::PaintCtx, panel: Rect, theme: Theme) {
     let p = PENDENTE.with(|p| std::mem::take(&mut *p.borrow_mut()));
     ctx.host
         .store_mut()
         .set_panel_row_ids(PanelRowFamily::VectorPaint, p.gears.into_iter().collect());
-    if let Some(chip) = p.menu {
+    let menu = if crate::cards::cards_on() {
+        ancora_no_cartao(ctx, panel, theme)
+    } else {
+        p.menu
+    };
+    if let Some(chip) = menu {
         paint_add_menu(ctx, chip, theme);
     }
     if let Some((local, r)) = p.voo {
@@ -388,6 +377,29 @@ pub(crate) fn deferred(ctx: &mut ph2d_editor_core::panel::PaintCtx, theme: Theme
             ph2d_editor_core::paint_flight::FLIGHT_TILT_DEG,
         );
     }
+}
+
+/// O «+» aberto no cabeçalho do cartão: a lista cresce para DENTRO, com a borda direita na dele, e leva
+/// a tinta do cartão. Lido aqui, não no corpo: um cartão dobrado não corre o corpo, e o «+» vive.
+fn ancora_no_cartao(
+    ctx: &mut ph2d_editor_core::panel::PaintCtx,
+    panel: Rect,
+    theme: Theme,
+) -> Option<Rect> {
+    let menu = ids::VECTOR_PAINT_ADD_MENU;
+    let live = state::current_appearance().is_some() || state::stroke_present().is_some();
+    if !live || !is_open(ctx.host.store(), menu) {
+        return None;
+    }
+    let chip = ctx.host.hit_index_mut().rect_for(menu)?;
+    let tema = ctx
+        .host
+        .store()
+        .section_theme(ph2d_tool_vector::ids::VECTOR_SECTION_FILL);
+    let tinta = ph2d_editor_core::widget::card_ink::CardInk::of_card(tema, theme);
+    let _ = ph2d_editor_core::widget::card_ink::troca_popover(Some((menu, tinta)));
+    let w = panel.w * 0.5;
+    Some(Rect::new(chip.x + chip.w - w, chip.y, w, chip.h))
 }
 
 /// As duas linhas do «+»: um preenchimento e um traço — a tinta de base, se a forma não a tem, senão

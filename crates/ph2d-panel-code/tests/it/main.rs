@@ -2,6 +2,7 @@
 //! Sem placa: pinta-se numa `VectorScene` e afirma-se pelos instrumentos do `CodeView`.
 
 mod a11y;
+mod a_caixa_fica_por_cima;
 mod clique;
 mod cronometro;
 mod estado;

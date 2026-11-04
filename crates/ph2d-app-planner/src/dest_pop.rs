@@ -8,6 +8,7 @@
 
 use ph2d_editor_core::doc_surface::{Key, KeyInput};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, stroke_rounded_rect};
+use ph2d_editor_core::panel::camada_das_listas::por_cima;
 use ph2d_editor_core::widget::{FieldKey, LineField, Popover, paint_popover};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -210,6 +211,10 @@ impl DestPop {
         ts: &mut TextSystem,
         theme: Theme,
     ) {
+        por_cima(scene, |scene| self.pinta(set, scene, ts, theme));
+    }
+
+    fn pinta(&self, set: &KanbanSet, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
         let (search, lines, seg, go) = self.layout(set);
         paint_popover(&Popover::new(crate::POP_NODE), self.rect, scene, theme);
         let x = search.x;

@@ -89,15 +89,50 @@ mod tests {
         let mut hits = HitIndex::new();
         abre(&scene);
         por_cima(&mut scene, |s| {
-            s.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 1.0, 1.0), ph2d_vector::Color::WHITE);
+            s.fill_rect(
+                ph2d_vector::Rect::new(0.0, 0.0, 1.0, 1.0),
+                ph2d_vector::Color::WHITE,
+            );
         });
         alvo(&mut hits, LISTA, r());
-        scene.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 2.0, 2.0), ph2d_vector::Color::BLACK);
+        scene.fill_rect(
+            ph2d_vector::Rect::new(0.0, 0.0, 2.0, 2.0),
+            ph2d_vector::Color::BLACK,
+        );
         hits.register(POR_CIMA, r());
-        assert_eq!(scene.take_record().len(), 1, "a lista saiu da cena do painel");
+        assert_eq!(
+            scene.take_record().len(),
+            1,
+            "a lista saiu da cena do painel"
+        );
         fecha(&mut scene, &mut hits);
         assert_eq!(scene.take_record().len(), 1, "a lista não voltou ao fechar");
         assert_eq!(hits.hit(5.0, 5.0), Some(LISTA));
+    }
+
+    /// R5: o seletor de datas (verso do cartão, Planner) passa pela porta.
+    /// *Mutação: `paint_date_picker` a pintar direto em `scene`.*
+    #[test]
+    fn o_seletor_de_datas_vai_para_a_camada() {
+        let mut scene = VectorScene::new();
+        scene.record();
+        let mut hits = HitIndex::new();
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let p = crate::widget::showcase::card_back::demo_date_picker(LISTA);
+        abre(&scene);
+        crate::widget::paint_date_picker(
+            &p,
+            Rect::new(0.0, 0.0, 300.0, 400.0),
+            &mut scene,
+            &mut ts,
+            ph2d_tokens::Theme::default(),
+        );
+        assert!(
+            scene.take_record().is_empty(),
+            "o seletor ficou na cena do painel"
+        );
+        fecha(&mut scene, &mut hits);
+        assert!(!scene.take_record().is_empty(), "o seletor perdeu-se");
     }
 
     /// Sem camada aberta, pinta-se direto: o painel sozinho e os modais continuam a ver a lista.
@@ -106,7 +141,10 @@ mod tests {
         let mut scene = VectorScene::new();
         scene.record();
         por_cima(&mut scene, |s| {
-            s.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 1.0, 1.0), ph2d_vector::Color::WHITE);
+            s.fill_rect(
+                ph2d_vector::Rect::new(0.0, 0.0, 1.0, 1.0),
+                ph2d_vector::Color::WHITE,
+            );
         });
         assert_eq!(scene.take_record().len(), 1);
     }

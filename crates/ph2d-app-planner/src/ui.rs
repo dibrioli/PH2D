@@ -245,6 +245,18 @@ pub(crate) fn bell_box(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
+    ph2d_editor_core::panel::camada_das_listas::por_cima(scene, |scene| {
+        pinta_a_caixa_do_sino(d, area, scene, ts, theme);
+    });
+}
+
+fn pinta_a_caixa_do_sino(
+    d: &mut PlannerDocs,
+    area: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) {
     let Some(bell) = d.probe_hit(Hit::Bell) else {
         return;
     };

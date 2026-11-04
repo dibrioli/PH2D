@@ -379,7 +379,9 @@ pub fn paint_rich_editor_menu(
 ) -> Option<Rect> {
     let (bar, _) = ed.regions(rect);
     let bar = bar.filter(|_| ed.style_menu_open)?;
-    Some(toolbar::paint_style_menu(ed, bar, scene, ts, theme))
+    Some(crate::panel::camada_das_listas::por_cima(scene, |scene| {
+        toolbar::paint_style_menu(ed, bar, scene, ts, theme)
+    }))
 }
 
 /// O id a11y da área do documento (para o chamador registar o alvo do clique).

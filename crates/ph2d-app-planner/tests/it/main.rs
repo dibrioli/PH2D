@@ -3,6 +3,7 @@
 //! DOCUMENTO (`hero.documents.kanbans()`). Cada quadro corre como a shell: o `frame` do Planner,
 //! `follow_surfaces`, pintar (a família Kanban não entra: as famílias não se conhecem).
 
+mod a_caixa_fica_por_cima;
 mod calendario;
 mod destino;
 mod fotos;

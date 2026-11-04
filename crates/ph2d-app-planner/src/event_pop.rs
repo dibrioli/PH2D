@@ -6,6 +6,7 @@
 
 use ph2d_editor_core::doc_surface::{Key, KeyInput};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, stroke_rounded_rect};
+use ph2d_editor_core::panel::camada_das_listas::por_cima;
 use ph2d_editor_core::widget::{
     DatePickerEvent, DatePickerLayout, FieldKey, LineField, Popover, paint_date_picker,
     paint_popover,
@@ -190,6 +191,10 @@ impl EventPop {
     }
 
     pub fn paint(&self, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
+        por_cima(scene, |scene| self.pinta(scene, ts, theme));
+    }
+
+    fn pinta(&self, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {
         let (title, dur, rep, picker) = self.rows();
         let frame = Rect::new(
             self.rect.x,

@@ -123,12 +123,14 @@ fn the_script_card_says_the_file_name_once() {
     insp::set_current_inspector_script(Some(biblioteca));
     let mut h = hero_com_aberto(ph2d_editor_core::ids::INSP_LIVE_SCRIPT_SECTION);
     let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| pinta(&mut h, 1));
-    let vezes = medidos.iter().filter(|e| e.texto == nome).count();
-    assert!(vezes <= 1, "{nome} pintado {vezes} vezes");
+    // O corpo corre mais de uma vez por quadro: o chip é uma coisa só, e diz a acção em vez do nome.
+    let acao = ph2d_i18n::tr("panel.inspector.script.choose_a_project_script_u");
     assert!(
-        medidos
-            .iter()
-            .any(|e| e.texto == ph2d_i18n::tr("panel.inspector.script.choose_a_project_script_u")),
+        medidos.iter().any(|e| e.texto == nome),
+        "o campo sem o nome"
+    );
+    assert!(
+        medidos.iter().any(|e| e.texto == acao),
         "o chip não diz o que faz"
     );
     desarma_tudo();

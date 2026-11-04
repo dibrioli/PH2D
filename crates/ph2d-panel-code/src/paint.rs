@@ -61,10 +61,13 @@ impl CodeView {
         self.paint_drop_caret(&frame, scene, &pal);
         scene.pop_layer();
         self.paint_gutter(&frame, scene, &pal);
-        self.paint_completion(&frame, scene, ts, &pal);
-        self.paint_hints(&frame, scene, ts, &pal);
-        self.paint_rename(&frame, scene, ts, &pal);
-        self.paint_drop_hint(&frame, scene, ts, &pal);
+        // O HUD de baixo pinta-se por cima da aba e não tem alvos: o que abre sobre o texto fica sobre ele.
+        ph2d_editor_core::panel::camada_das_listas::por_cima(scene, |scene| {
+            self.paint_completion(&frame, scene, ts, &pal);
+            self.paint_hints(&frame, scene, ts, &pal);
+            self.paint_rename(&frame, scene, ts, &pal);
+            self.paint_drop_hint(&frame, scene, ts, &pal);
+        });
         let head = frame.buffer.selection().primary().head;
         let k = (frame.buffer.revision(), head, self.tab);
         if self.status_col.is_none_or(|c| c.0 != k) {

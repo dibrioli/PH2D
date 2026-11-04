@@ -1,7 +1,8 @@
 # HANDOFF DE INTEGRAÇÃO — NovaUI + NovaUI-Inspector + NovaUI-Bones (03/11)
 
 > Integrador: a sessão que o dono nomeou em 03/11 («integre as linhas da UI nova no main»).
-> `TIP_MAIN` = `<preencher: tip do main depois do ff>` · `CI_RUN` = `<preencher: link da corrida do CI>`.
+> `TIP_MAIN` = `aa1b8df487` (a corrida 41791251163 foi cancelada por ordem do dono); enviado junto com a `line/Aceleracao` em
+> `c12143dcdf` · `CI_RUN` = <https://github.com/dibrioli/PH2D/actions/runs/41834068460> (`success`).
 > A `line/TrelloUITeste` ficou FORA (ensaio; ver [README](../README.md)).
 
 ## 1. O que entrou, em que ordem, e porquê

@@ -499,3 +499,121 @@ fn the_debug_card_is_born_folded_and_a_click_opens_it() {
         "o clique abriu e a semente não o fechou de novo"
     );
 }
+
+/// O botão direito no cabeçalho abre o menu do tema/contorno da secção, como no Bones.
+#[test]
+fn right_clicking_a_card_header_opens_its_theme_menu() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    let mut mesa = Mesa::nova(PhysicsSnapshot::default());
+    let r = mesa.rect(ids::PHYSICS_SEC_AIR).expect("cartão");
+    let ev = mesa.host.right_click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+    assert!(ultimo_mundo(&mesa.aplica(ev)).is_none());
+    let menu = mesa.host.store().context_menu().map(|c| c.kind);
+    assert!(
+        matches!(menu, Some(ContextMenuKind::SectionOutline { section }) if section == ids::PHYSICS_SEC_AIR),
+        "{menu:?}"
+    );
+}
+
+/// Arrastar o cartão para fora da coluna solta-o, e os ids do corpo continuam a responder lá.
+#[test]
+fn a_card_dragged_out_of_the_column_comes_loose_and_keeps_working() {
+    let panel = ph2d_editor_core::ids::PHYSICS_PANEL;
+    let coluna = Rect::new(1200.0, 0.0, 340.0, 1600.0);
+    cards::force_cards_on_this_thread(Some(true));
+    set_current_physics(Some(PhysicsSnapshot::default()));
+    let _ = drain_intents();
+    let mut host = MockPanelHost::with_panel::<PhysicsPanel>();
+    let mut st = PhysicsPanelState;
+    let mut pinta = |host: &mut MockPanelHost, n: usize| {
+        let mut r = Vec::new();
+        for _ in 0..n {
+            r = ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || host.paint::<PhysicsPanel>(&mut st, coluna),
+            );
+        }
+        r
+    };
+    let rects = pinta(&mut host, 60);
+    let cab = rects
+        .iter()
+        .rev()
+        .find(|(id, _)| *id == ids::PHYSICS_SEC_WORLD)
+        .expect("World")
+        .1;
+    let ev = |kind, x, y| PointerEvent {
+        kind,
+        x,
+        y,
+        button: PointerButton::Primary,
+        source: PointerSource::Mouse,
+        pressure: 1.0,
+        timestamp_ns: 0,
+    };
+    let (x0, y0) = (cab.x + 30.0, cab.y + m::CARD_HEAD_H * 0.5);
+    let _ = host.dispatch_pointer_event(ev(PointerKind::Down, x0, y0));
+    pinta(&mut host, 2);
+    for i in 1..=8 {
+        let t = i as f32 / 8.0;
+        let _ = host.dispatch_pointer_event(ev(PointerKind::Move, x0 - 800.0 * t, y0 + 200.0 * t));
+        pinta(&mut host, 2);
+    }
+    let _ = host.dispatch_pointer_event(ev(PointerKind::Up, x0 - 800.0, y0 + 200.0));
+    let rects = pinta(&mut host, 30);
+    assert!(
+        host.store().is_loose_in(ids::PHYSICS_SEC_WORLD, panel),
+        "o cartão não ficou solto"
+    );
+    let campo = rects
+        .iter()
+        .rev()
+        .find(|(id, _)| *id == ids::PHYSICS_GRAVITY_X_NUM)
+        .expect("o campo pinta-se no solto")
+        .1;
+    assert!(campo.x < coluna.x, "o campo saiu com o cartão: {campo:?}");
+    let (x, y) = (campo.x + m::ICON_CELL * 0.5, campo.y + campo.h * 0.5);
+    let mut evs = host.dispatch_pointer_event(ev(PointerKind::Down, x, y));
+    evs.extend(host.dispatch_pointer_event(ev(PointerKind::Move, x + 30.0, y)));
+    evs.extend(host.dispatch_pointer_event(ev(PointerKind::Move, x + 60.0, y)));
+    for e in evs {
+        host.apply_panel_event::<PhysicsPanel>(&mut st, e);
+    }
+    let got = ultimo_mundo(&drain_intents()).expect("o scrub do solto escreve no mundo");
+    assert!(got.gravity_x.abs() > 1e-4, "{}", got.gravity_x);
+}
+
+/// A lista mais alta que o encaixe rola; o que estava abaixo da dobra sobe e responde ao clique.
+#[test]
+fn a_list_taller_than_its_slot_scrolls_to_the_lower_cards() {
+    let baixa = Rect::new(0.0, 0.0, 340.0, 500.0);
+    cards::force_cards_on_this_thread(Some(true));
+    set_current_physics(Some(PhysicsSnapshot::default()));
+    let _ = drain_intents();
+    let mut host = MockPanelHost::with_panel::<PhysicsPanel>();
+    let mut st = PhysicsPanelState;
+    let mut pinta = |host: &mut MockPanelHost| {
+        let mut r = Vec::new();
+        for _ in 0..60 {
+            r = ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || host.paint::<PhysicsPanel>(&mut st, baixa),
+            );
+        }
+        r
+    };
+    let antes = pinta(&mut host);
+    let visivel = |rects: &[(NodeId, Rect)], id| {
+        rects
+            .iter()
+            .rev()
+            .find(|(n, r)| *n == id && r.w > 0.0 && r.h > 0.0 && r.y + r.h < baixa.h)
+            .map(|(_, r)| *r)
+    };
+    let alvo = ids::PHYSICS_SEC_DEBUG;
+    assert!(visivel(&antes, alvo).is_none(), "o Debug começa abaixo da dobra");
+    let _ = host.wheel_at(baixa.w * 0.5, baixa.h * 0.5, -3000.0);
+    let depois = pinta(&mut host);
+    let r = visivel(&depois, alvo).expect("rolou até ao Debug");
+    assert_eq!(host.hit_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5), Some(alvo));
+}

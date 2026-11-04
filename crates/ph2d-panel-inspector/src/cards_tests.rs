@@ -167,3 +167,45 @@ fn typing_a_hex_code_picks_that_colour_for_the_layer() {
     assert_eq!(h.store().colour_picks(picker), 1);
     appearance::set_current_appearance(None);
 }
+
+/// C1: o olho do cartão é o do objecto publicado, não a caixa da seleção (um preso escondido com a
+/// seleção visível). *Mutação: `visivel` a ler a caixa ⇒ o ícone do preso é o da seleção.*
+#[test]
+fn the_eye_of_the_card_is_of_the_published_object_not_of_the_selection_box() {
+    use ph2d_editor_core::IconId;
+    use ph2d_editor_core::screens::hero::{InspectorTransformInfo, InspectorVisibilityInfo};
+    let store = ph2d_editor_core::interaction::WidgetStore::with_capacity(8);
+    crate::state::set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: 3,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    crate::state::set_current_inspector_visibility(Some(InspectorVisibilityInfo {
+        entity_bits: 3,
+        visible: false,
+        mixed: false,
+    }));
+    ph2d_tool_vector::appearance::set_current_appearance(Some(
+        ph2d_tool_vector::appearance::Appearance {
+            opacity: 1.0,
+            blend: ph2d_vec_scene::BlendMode::Normal,
+            layers: Vec::new(),
+            mixed_opacity: false,
+            mixed_blend: false,
+            layers_differ: false,
+            order: Vec::new(),
+        },
+    ));
+    let defs = crate::cards::cards(&store);
+    let olho = defs
+        .iter()
+        .find(|c| c.section == super::CARD_APPEARANCE)
+        .and_then(|c| c.actions.first())
+        .map(|h| h.icon);
+    assert_eq!(olho, Some(IconId::EyeClosed));
+    ph2d_tool_vector::appearance::set_current_appearance(None);
+    crate::state::set_current_inspector_visibility(None);
+    crate::state::set_current_inspector_transform(None);
+}

@@ -242,6 +242,24 @@ const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo do valor (rad, fator), nã
 const PASSO_MEDIO: f64 = 0.1; // LITERAL-PX-OK: passo do valor (fator, px), não geometria
 const CEM_POR_CENTO: f64 = 100.0; // LITERAL-PX-OK: neutro de um campo em %, não geometria
 
+/// A dica do cadeado do objecto publicado (o id é o da linha dele na Hierarquia).
+pub(crate) fn dica_do_cadeado(store: &mut WidgetStore) {
+    if let Some((linha, _)) = crate::state::current_inspector_transform()
+        .and_then(|t| store.hierarchy_row_of_entity(t.entity_bits))
+    {
+        store.set_tooltip(core_ids::hier_lock_companion(linha), tr("card.insp.lock"));
+    }
+}
+
+/// O número da opacidade do objecto publicado, salvo com a mão nele. O painel Vector semeia o da
+/// seleção; esta é a semente do preso, no ensaio dele.
+pub(crate) fn semeia_a_opacidade(store: &mut WidgetStore) {
+    if let Some(a) = appearance::current_appearance() {
+        let pct = (f64::from(a.opacity) * CEM_POR_CENTO).round();
+        store.set_number_value(vids::VECTOR_OBJ_OPACITY_NUM, pct);
+    }
+}
+
 /// Marca os campos, declara as listas suspensas e semeia as dobras — com o store MUTÁVEL.
 pub(crate) fn prepare(store: &mut WidgetStore) {
     let p = pos_step();
@@ -295,11 +313,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     }
     dropdown::declare(DD_BLEND);
     dropdown::declare(DD_STROKE_ALIGN);
-    if let Some((linha, _)) = crate::state::current_inspector_transform()
-        .and_then(|t| store.hierarchy_row_of_entity(t.entity_bits))
-    {
-        store.set_tooltip(core_ids::hier_lock_companion(linha), tr("card.insp.lock"));
-    }
+    dica_do_cadeado(store);
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
         for id in [
             vids::vector_paint_row_opacity_id(i),

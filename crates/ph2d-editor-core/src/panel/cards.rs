@@ -297,6 +297,8 @@ pub mod dropdown {
         static CAIXAS: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
         /// As opções pintadas no último quadro: a pressão nelas não é «fora».
         static OPCOES: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
+        /// A caixa das opções pintada no último quadro.
+        static CAIXA: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
     }
 
     /// A pressão fora da caixa e das opções fecha a lista (a caixa decide no clique dela).
@@ -312,6 +314,15 @@ pub mod dropdown {
     #[must_use]
     pub fn open() -> Option<NodeId> {
         ABERTA.with(|a| *a.borrow())
+    }
+
+    /// A lista aberta cobre `(x, y)`? A opção que sai do solto ainda é do sujeito que a abriu.
+    #[must_use]
+    pub fn cobre(x: f32, y: f32) -> bool {
+        open().is_some()
+            && CAIXA
+                .with(std::cell::Cell::get)
+                .is_some_and(|r| r.contains(x, y))
     }
 
     pub fn stash(r: Rect, ink: CardInk, options: Vec<(NodeId, String, bool)>) {
@@ -354,6 +365,7 @@ pub mod dropdown {
         OPCOES.with(|o| *o.borrow_mut() = opts.iter().map(|(id, ..)| *id).collect());
         let h = m::FIELD_H * opts.len() as f32 + m::SEG_PAD * 2.0;
         let caixa = Rect::new(r.x, sobe_para_caber(r.y + r.h + m::SEG_PAD, h), r.w, h);
+        CAIXA.with(|c| c.set(Some(caixa)));
         shadow(
             scene,
             caixa,

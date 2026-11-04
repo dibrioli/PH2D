@@ -39,7 +39,7 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     // T61: o gesto num cartão PRESO corre com o retrato do objecto dele (os pedidos são dele).
-    let preso = host.store().card_press_subject();
+    let preso = host.store().card_event_subject(ev);
     crate::retrato::com_retrato(preso, || apply_event_do_retrato(state, host, ev))
 }
 

@@ -231,7 +231,7 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // Sem esta semente o campo mostrava o 100 de fábrica ao lado de uma forma a 30 %.
     if let Some(a) = state::current_appearance() {
         let id = crate::ids::VECTOR_OBJ_OPACITY_NUM;
-        if store.focus_id() != Some(id) {
+        if store.focus_id() != Some(id) && store.number_input_drag().map(|d| d.id) != Some(id) {
             // Inteiro, como o chip do Appearance o pinta (`0.3_f32 × 100` daria `30.000001`).
             store.set_number_value(id, (f64::from(a.opacity) * 100.0).round()); // LITERAL-PX-OK: fraction→percent for the opacity field
             if a.mixed_opacity {

@@ -596,3 +596,7 @@ impl crate::App {
 #[cfg(test)]
 #[path = "fase_bus_inspector_luz_tests.rs"]
 mod luz_tests;
+
+#[cfg(test)]
+#[path = "fase_bus_inspector_preso_tests.rs"]
+mod preso_tests;

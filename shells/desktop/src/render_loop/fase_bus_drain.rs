@@ -83,11 +83,9 @@ impl crate::App {
             // fan out to every selected sprite. Only allocated for a
             // MULTI-selection; single-select takes the empty path and the
             // edit's own `entity_bits` (no per-frame alloc — audit D-5).
-            inspector_selection: if hero.gizmo.selected_len() > 1 {
-                hero.gizmo.iter_selected().collect()
-            } else {
-                Vec::new()
-            },
+            inspector_selection: hero
+                .store
+                .card_fan_out(hero.gizmo.selected_len(), hero.gizmo.iter_selected()),
             ..DrainOut::default()
         };
         // ⚠️ **A fila sai do `HeroScreen` pela duração do dreno**: o `drain` emprestava-a, e os sub-drenos são

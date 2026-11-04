@@ -65,7 +65,8 @@ pub(super) fn paint_card_with(
     fill_rounded_rect(scene, r, m::CARD_RADIUS, ink.color(ColorToken::KanbanCard));
 
     // ── O cabeçalho = a pega (e o menu do botão direito da secção) ──
-    let sem_titulo = card.title.is_empty();
+    // O cartão Object não tem título na lista; solto, tem cabeçalho para o alfinete e o «×».
+    let sem_titulo = card.title.is_empty() && extra.acoes.is_empty();
     let head_h = if sem_titulo {
         m::CARD_PAD_TOP
     } else {

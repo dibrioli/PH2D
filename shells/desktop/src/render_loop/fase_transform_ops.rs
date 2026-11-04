@@ -70,7 +70,8 @@ impl crate::App {
         // um arrasto de slider não regista por quadro (um gesto em curso suprime a captura),
         // então a corrida inteira colapsa em UM passo ao soltar.
         {
-            let sel = crate::vec_paint_stack::ordered(&self.vec.pen);
+            let sel = crate::vec_paint_stack::alvos(&hero.store, &self.vec.pen, sim);
+            hero.store.end_card_edit_frame();
             if let Some(track) = pending_vec_opacity {
                 #[allow(clippy::cast_possible_truncation)]
                 crate::vec_appearance::set_opacity(vec_scene, &sel, track as f32);

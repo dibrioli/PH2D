@@ -5,7 +5,7 @@
 //! ([`ensaia`]), e o gesto que cai nele corre com ele instalado ([`com_gesto`]) — os pedidos levam o
 //! `entity_bits` do preso.
 
-use crate::cards::CARD_TRANSFORM;
+use crate::cards::{CARD_APPEARANCE, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_TRANSFORM};
 use crate::cards_componentes::{Abertas, Presente};
 use crate::paint_frame::LiveSnapshots;
 use crate::retrato::{Retrato, com_preso};
@@ -19,6 +19,15 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+
+/// Os cartões do objecto que se prendem: a escrita de cada um vai ao preso (`docs/CartoesUI/09`).
+const DO_OBJECTO: [NodeId; 5] = [
+    CARD_OBJECT,
+    CARD_TRANSFORM,
+    CARD_APPEARANCE,
+    CARD_ORDERING,
+    CARD_MATERIAL,
+];
 
 /// Um solto preso deste quadro: a instância, o objecto e o que o corpo do cartão empresta.
 pub(crate) struct Preso {
@@ -84,6 +93,7 @@ pub(crate) fn ensaia(inspector_state: &InspectorState, host: &mut dyn PanelHostI
             let n = host.bus().len();
             let ensaio = host.store_mut().abre_ensaio();
             crate::sync::semeia_tudo(&mut inspector_state.clone(), host, true, false);
+            crate::cards::semeia_a_opacidade(host.store_mut());
             let e = host.store_mut().fecha_ensaio(ensaio);
             host.bus_mut().truncate(n);
             e
@@ -104,7 +114,9 @@ pub(crate) fn monta(
     abertas: Abertas,
     presentes: &[Presente],
 ) -> Vec<Preso> {
-    store.mark_card_pinnable(CARD_TRANSFORM);
+    for c in DO_OBJECTO {
+        store.mark_card_pinnable(c);
+    }
     for p in presentes {
         store.mark_card_pinnable(p.id);
     }
@@ -115,7 +127,8 @@ pub(crate) fn monta(
         // `None` = ainda não publicado (ou o objecto saiu): a chave durável espera por ele.
         let Some((nome, componente)) = com_preso(pin, || {
             let nome = state::current_inspector_name().map(|n| n.name);
-            if secao == CARD_TRANSFORM {
+            if DO_OBJECTO.contains(&secao) {
+                crate::cards::dica_do_cadeado(store);
                 return (nome, Some(None));
             }
             let snaps = LiveSnapshots::fetch();
@@ -177,9 +190,9 @@ pub(crate) fn cards<'a>(
         });
         let Some(Some(mut d)) = def else { continue };
         d.section = p.k; // T54: o def é da INSTÂNCIA (`cards_solto::pinta_soltos` acha-o por ela)
-        d.body = d.body.map(|f| -> CardBody<'a> {
-            Box::new(move |c, y| corpo_do_preso(pin, y, || f(c, y)))
-        });
+        d.body = d
+            .body
+            .map(|f| -> CardBody<'a> { Box::new(move |c, y| corpo_do_preso(pin, y, || f(c, y))) });
         out.push(d);
     }
     out

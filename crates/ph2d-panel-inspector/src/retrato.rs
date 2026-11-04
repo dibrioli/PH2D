@@ -13,6 +13,7 @@ use ph2d_editor_core::{
     particles_edits, path_follow_edits, projectile_edits, ray_edits, script_edits, sequence_edits,
     shake_edits as sh, statemachine_edits, topdown_edits, tween_edits, vida_edits, weapon_edits,
 };
+use ph2d_tool_vector::appearance;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -130,6 +131,8 @@ retrato! {
     script: Option<script_edits::InspectorScriptInfo> =
         c::current_inspector_script(), c::set_current_inspector_script;
     slot: Option<SlotImage> = slot_image::atual(), slot_image::set_current_slot_image;
+    aparencia: Option<appearance::Appearance> =
+        appearance::current_appearance(), appearance::set_current_appearance;
 }
 
 thread_local! {

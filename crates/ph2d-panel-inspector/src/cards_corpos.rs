@@ -25,10 +25,8 @@ pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
     if crate::state::current_inspector_transform().is_none() {
         return out;
     }
-    let visivel = !matches!(
-        store.checkbox(ids::INSP_VISIBILITY_CHECK),
-        Some((_, ph2d_editor_core::widget::CheckboxValue::Unchecked))
-    );
+    // O olho do objecto publicado: o de um preso não é a caixa da seleção.
+    let visivel = crate::state::current_inspector_visibility().is_none_or(|v| v.mixed || v.visible);
     out.push(objeto(store, visivel));
     out.push(transform());
     if let Some(a) = appearance::current_appearance() {

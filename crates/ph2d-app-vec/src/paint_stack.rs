@@ -511,7 +511,10 @@ fn edit(
 pub mod estilos;
 #[path = "paint_stack_mixed.rs"]
 mod mixed;
-pub use mixed::{apply_picker, layers_differ, ordered, row_mixed, set_offset_axes, toggle};
+pub use mixed::{
+    alvos, aparencia_do_preso, apply_picker, layers_differ, ordered, row_mixed, set_offset_axes,
+    toggle,
+};
 
 #[cfg(test)]
 #[path = "paint_stack_tests.rs"]

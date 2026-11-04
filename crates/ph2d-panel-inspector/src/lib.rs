@@ -57,7 +57,10 @@ pub mod unidade_mundo;
 pub use event_physics::physics_edit_for;
 mod cards;
 /// Os cartões que levam a lista de estilos de cor (D28) — os testes do hero montado nomeiam-nos.
-pub use cards::{CARD_FILL, CARD_STROKE, CARD_TRANSFORM, hex_id as cards_hex_id, set_cards_on};
+pub use cards::{
+    CARD_APPEARANCE, CARD_FILL, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_STROKE,
+    CARD_TRANSFORM, DD_BLEND, hex_id as cards_hex_id, set_cards_on,
+};
 mod cards_componentes;
 mod cards_corpos;
 mod cards_pilha;

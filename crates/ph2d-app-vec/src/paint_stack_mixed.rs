@@ -3,9 +3,41 @@
 //! [`super`]: a ordem da seleção (o primário à frente), o «misto» por camada e as escritas que
 //! precisam do primário (o olho, um eixo do deslocamento, a cor pelo seletor).
 
+use ph2d_ecs::SimWorld;
+use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_tool_vector::StyleFields as F;
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{PaintEntry, PaintKind, Rgba8, VecPathId, VecScene};
+
+/// ⭐ C1 **As formas de um pedido de aparência:** a do cartão preso sob o gesto, ou a seleção.
+#[must_use]
+pub fn alvos(store: &WidgetStore, pen: &PenTool, sim: &SimWorld) -> Vec<VecPathId> {
+    let Some(bits) = store.card_edit_subject() else {
+        return ordered(pen);
+    };
+    ph2d_ecs::Entity::try_from_bits(bits)
+        .and_then(|e| sim.world().get::<ph2d_ecs::VecPathRef>(e))
+        .map(|r| r.0)
+        .into_iter()
+        .collect()
+}
+
+/// A aparência de UM objecto preso por um cartão solto (`None` = não é uma forma): a mesma porta da
+/// seleção, sem misto (um só).
+pub fn aparencia_do_preso(
+    bits: u64,
+    sim: &SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
+    store: &WidgetStore,
+    doc: ph2d_editor_core::DocPx,
+) -> Option<ph2d_panel_vector::state::Appearance> {
+    let e = ph2d_ecs::Entity::try_from_bits(bits)?;
+    let id = sim.world().get::<ph2d_ecs::VecPathRef>(e)?.0;
+    let mut vivo = ph2d_vec_scene::VecViewState::default();
+    crate::driven_style::live_layers(sim, map, store, &mut vivo);
+    super::published(scene, &[id], &vivo, doc)
+}
 
 /// **A seleção da pilha, com o PRIMÁRIO à frente** — a porta única de *«de quem é a pilha que o
 /// painel mostra?»*: o `published` lê o primeiro, e as escritas que comparam com o primário também.

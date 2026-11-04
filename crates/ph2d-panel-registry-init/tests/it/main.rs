@@ -25,6 +25,7 @@ mod nenhum_nome_por_cima_do_controlo;
 mod nenhum_rotulo_do_app_pinta_nada;
 mod o_alfinete_com_corda;
 mod o_alfinete_do_inspector;
+mod o_alfinete_dos_cartoes_c1;
 mod o_bloco11_tema_por_copia;
 mod o_bloco5_abertos;
 mod o_bloco7_duas_copias;

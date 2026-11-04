@@ -5,6 +5,7 @@
 
 use super::super::{InteractiveState, WidgetStore};
 use super::loose_rect_of;
+use crate::interaction::WidgetEvent;
 use ph2d_a11y::NodeId;
 
 /// O id do alfinete no cabeçalho do cartão solto.
@@ -221,6 +222,9 @@ impl WidgetStore {
         }) {
             return;
         }
+        if crate::panel::cards::dropdown::cobre(x, y) {
+            return;
+        }
         let mut topo: Option<(u32, NodeId, Option<u64>)> = None;
         for (k, c) in &self.card_lists.loose {
             if let Some(r) = self.panel_rects.get(&loose_rect_of(*k))
@@ -230,7 +234,13 @@ impl WidgetStore {
                 topo = Some((c.z, *k, c.pin));
             }
         }
-        self.card_lists.press_subject = topo.and_then(|(_, _, p)| p);
+        let antes = self.card_lists.press_subject;
+        let agora = topo.and_then(|(_, _, p)| p);
+        // C1: o campo em foco no preso faz o commit ao sair do foco, e é aqui que ele sai: é dele.
+        self.card_lists.blur_subject = antes
+            .filter(|_| antes != agora)
+            .and_then(|s| self.focus_id.map(|f| (f, s)));
+        self.card_lists.press_subject = agora;
         // T40: o gesto parte dos números do preso (o scrub e a edição leem o store já a seguir).
         if let Some((_, k, Some(_))) = topo {
             for (id, v) in self.pinned_values(k).to_vec() {
@@ -257,6 +267,46 @@ impl WidgetStore {
     #[must_use]
     pub fn card_press_subject(&self) -> Option<u64> {
         self.card_lists.press_subject
+    }
+
+    /// De quem é este evento: o commit do campo que sai do foco é do preso onde foi escrito, mesmo
+    /// que a pressão que o tirou de lá tenha caído noutro sítio.
+    #[must_use]
+    pub fn card_event_subject(&self, ev: WidgetEvent) -> Option<u64> {
+        match (self.card_lists.blur_subject, ev) {
+            (
+                Some((f, s)),
+                WidgetEvent::ValueChanged(id)
+                | WidgetEvent::TextChanged(id)
+                | WidgetEvent::Blur(id),
+            ) if f == id => Some(s),
+            _ => self.card_lists.press_subject,
+        }
+    }
+
+    /// O preso das edições deste quadro (`None` = são da seleção): o do commit que saiu do foco, ou
+    /// o da pressão. A guarda do espalhamento e a escolha das formas perguntam isto.
+    #[must_use]
+    pub fn card_edit_subject(&self) -> Option<u64> {
+        self.card_lists
+            .blur_subject
+            .map(|(_, s)| s)
+            .or(self.card_lists.press_subject)
+    }
+
+    /// Por onde uma edição do Inspector se espalha: os `n` da multi-seleção; num gesto de cartão
+    /// preso, por ninguém (a edição leva os `entity_bits` dele). Vazio = só o da edição.
+    pub fn card_fan_out(&self, n: usize, selecao: impl Iterator<Item = u64>) -> Vec<u64> {
+        if n > 1 && self.card_edit_subject().is_none() {
+            selecao.collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// O quadro acabou de aplicar as edições: o commit que saiu do foco já foi servido.
+    pub fn end_card_edit_frame(&mut self) {
+        self.card_lists.blur_subject = None;
     }
 }
 

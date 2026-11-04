@@ -4,7 +4,7 @@
 
 use super::agua_sobre_oleo_tests::preset;
 use super::otica_no_tique_tests::{
-    LADO, assenta, cena, confere_com_casa, ponto, quadros, sess, tique,
+    LADO, assenta, cena, confere_com_casa, congela, ponto, quadros, sess, tique,
 };
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
@@ -125,7 +125,12 @@ fn o_pen_down_manda_a_agua_herdada_pela_divida() {
         sess(&t).otica.pendente(),
         "premissa: a água herdada espera o pen-up (o motor fica em casa com o traço aberto)"
     );
+    // O motor fica em casa do `Up` ao `congela`: sem isso o worker dá um passo à chegada e a corrida
+    // contra o `bring_home` decide a premissa (17 contra 16 na suíte, load 70–100).
+    offthread::segura_a_entrega(true);
     let _ = t.on_canvas_pointer(ponto(l * X1, l * Y, PointerPhase::Up));
+    congela(&mut t);
+    offthread::segura_a_entrega(false);
     // A água pára já: só a dívida pode mostrar a região herdada (sem passo novo a cobri-la).
     assenta(&mut t);
     assert_eq!(

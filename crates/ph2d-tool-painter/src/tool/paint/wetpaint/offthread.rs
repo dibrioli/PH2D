@@ -366,6 +366,10 @@ impl super::WetSession {
     /// na W1f — a 4096² custava o pior quadro a pintar): a viagem é uma por QUADRO (o primeiro evento de ponteiro do quadro traz o motor, o tick
     /// devolve-o), não uma por dab. Com o port (sim pausada no traço) não há nada a ganhar.
     pub(in crate::tool::paint) fn hand_off_sim(&mut self) {
+        #[cfg(test)]
+        if SEGURA_A_ENTREGA.get() {
+            return;
+        }
         if !matches!(self.engine, EngineSlot::Here(_))
             || (self.stroke_open && !self.engine.sim.sim_while_painting)
         {
@@ -406,6 +410,19 @@ impl super::WetSession {
             r.entregou();
         }
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    static SEGURA_A_ENTREGA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Porta de TESTE: enquanto ligada, o motor NÃO vai ao worker. O worker deve a `acc` (teto 50 ms) ao
+/// relógio de parede e dá um passo logo à chegada — um teste que precisa da água parada entre um `Up`
+/// e o `congela` não pode apostar a corrida do `bring_home` contra esse passo.
+#[cfg(test)]
+pub(in crate::tool::paint) fn segura_a_entrega(ligada: bool) {
+    SEGURA_A_ENTREGA.set(ligada);
 }
 
 // ---------------------------------------------------------------------------

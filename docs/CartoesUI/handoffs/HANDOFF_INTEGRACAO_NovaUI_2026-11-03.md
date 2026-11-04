@@ -78,11 +78,11 @@ cartões, cartões do Bones. Decisões do dono: **T65** (NovaUI) e **T66** (Insp
   arnês mantém os 2 quadros de antes.
 - **`a_pincelada_nova_a_cruzar…` (180 s)**: lenta por natureza — 161,8 s sozinho (lista gerada, 29/10), 170,0 s sozinho no
   `ci-test` hoje; código idêntico ao main. Entrou no override `terminate-after = 10` das águas lentas (`.config/nextest.toml`).
-- ⚠️ **`o_pen_down_manda_a_agua_herdada_pela_divida` NÃO curado** — reproduzido em 04/11 junto dos vizinhos
-  (`package(ph2d-tool-painter) & test(wetpaint::)`, load 70–100: 17 vs 16 passos); 0/10 sozinho. Mecanismo: o `Up` devolve
-  o motor ao worker com `sim_should_run` verdadeiro e a dívida `acc` (teto 50 ms) já cheia; o teste exige que o
-  `bring_home` do `congela` ganhe a corrida contra UM passo (~25–35 ms). Cura certa: porta de teste que segure o
-  `hand_off_sim` até o `congela` (campo `cfg(test)` na `WetSession`).
+- **`o_pen_down_manda_a_agua_herdada_pela_divida`** — reproduzido em 04/11 junto dos vizinhos
+  (`package(ph2d-tool-painter) & test(wetpaint::)`, load 70–100: 17 vs 16 passos; 0/10 sozinho). Mecanismo: o `Up` devolve
+  o motor ao worker com `sim_should_run` verdadeiro e a dívida `acc` (teto 50 ms) já cheia; o teste exigia que o
+  `bring_home` do `congela` ganhasse a corrida contra UM passo (~25–35 ms). Cura: porta de teste
+  `offthread::segura_a_entrega` (`cfg(test)`) segura o `hand_off_sim` do `Up` ao `congela`; mesma corrida: 240/240.
 
 ## 5. Vermelhos fora dos diffs, NÃO curados
 

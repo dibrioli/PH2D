@@ -96,21 +96,23 @@ fn com_corpo(
     y: f32,
     f: impl FnOnce(&mut Tela<'_>, Theme, &WidgetStore, f32, f32, f32) -> f32,
 ) -> f32 {
-    let (store, theme, x, w) = (c.store, c.ink.theme, c.x, c.w);
-    let (scene, text, hit) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
-    section_cards::with_section_cards(scene, theme, y, |s| {
-        f(
-            &mut Tela {
-                scene: s,
-                text,
-                hit,
-            },
-            theme,
-            store,
-            x,
-            w,
-            y,
-        )
+    ph2d_editor_core::panel::cards::compacta::fluir(c, |c| {
+        let (store, theme, x, w) = (c.store, c.ink.theme, c.x, c.w);
+        let (scene, text, hit) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
+        section_cards::with_section_cards(scene, theme, y, |s| {
+            f(
+                &mut Tela {
+                    scene: s,
+                    text,
+                    hit,
+                },
+                theme,
+                store,
+                x,
+                w,
+                y,
+            )
+        })
     })
 }
 

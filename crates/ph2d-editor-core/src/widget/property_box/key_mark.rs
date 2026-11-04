@@ -140,6 +140,18 @@ impl Rotulo<'static> {
 }
 
 impl<'a> Rotulo<'a> {
+    /// O mesmo rótulo (a chave e a coluna dele) com outro texto.
+    #[must_use]
+    pub fn com_texto<'b>(&self, texto: &'b str) -> Rotulo<'b> {
+        Rotulo {
+            texto,
+            chave: self.chave,
+            por_campo: self.por_campo,
+            coluna: self.coluna,
+            eixos: self.eixos,
+        }
+    }
+
     /// [`Rotulo::vista`] com o nome já traduzido.
     #[must_use]
     pub fn vista_de(texto: &'a str) -> Self {

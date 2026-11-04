@@ -28,9 +28,10 @@ impl<'s> CardCtx<'s> {
         }
     }
 
-    /// ⭐ **Uma linha**: os rótulos (se algum) e os widgets lado a lado.
-    pub fn row(&mut self, cells: &[Cell<'_>], y: f32) -> f32 {
+    /// A linha tal como vem, sem descer nada (`row` e `compact` em `cards_compacta.rs`).
+    pub(super) fn row_inteira(&mut self, cells: &[Cell<'_>], y: f32) -> f32 {
         let rotulos = cells.iter().any(|c| c.label.is_some());
+        let marcas = !rotulos && cells.iter().any(|c| c.key.is_some());
         let mut y = if rotulos {
             y + m::LABEL_TOP
         } else if self.first {
@@ -39,6 +40,7 @@ impl<'s> CardCtx<'s> {
             y + m::FIELD_ROW_GAP
         };
         self.first = false;
+        let topo = y;
         let cols = self.columns(cells);
         let grupo = cells.iter().find_map(|c| c.label);
         for c in cells {
@@ -50,6 +52,8 @@ impl<'s> CardCtx<'s> {
         }
         if rotulos {
             y += rotulos::faixa(self, cells, &cols, y);
+        } else if marcas {
+            y += rotulos::so_marcas(self, cells, &cols, y);
         }
         for (c, (x, w)) in cells.iter().zip(&cols) {
             let r = Rect::new(*x, y, *w, m::FIELD_H);
@@ -126,8 +130,24 @@ impl<'s> CardCtx<'s> {
                     detach,
                 } => self.swatch(r, id, rgba, text, edit, detach),
                 Widget::Dropdown { id, text, options } => self.dropdown(r, id, text, options),
+                Widget::Check {
+                    id,
+                    label,
+                    value,
+                    off,
+                } => corpo::check_em(
+                    self.scene,
+                    self.text_system,
+                    self.store,
+                    self.hit_index,
+                    self.ink,
+                    r,
+                    (id, label),
+                    (value, off),
+                ),
             }
         }
+        self.anota_linha(cells, topo, y + m::FIELD_H);
         y + m::FIELD_H
     }
 
@@ -143,7 +163,7 @@ impl<'s> CardCtx<'s> {
         self.row(&[op, botoes], y)
     }
 
-    fn tudo_cabe(&mut self, cells: &[Cell<'_>]) -> bool {
+    pub(super) fn tudo_cabe(&mut self, cells: &[Cell<'_>]) -> bool {
         let cols = self.columns(cells);
         cells
             .iter()
@@ -152,7 +172,7 @@ impl<'s> CardCtx<'s> {
     }
 
     /// A largura em que `c` mostra o conteúdo e o rótulo sem cortar.
-    fn pede(&mut self, c: &Cell<'_>) -> f32 {
+    pub(super) fn pede(&mut self, c: &Cell<'_>) -> f32 {
         let ts = &mut *self.text_system;
         let corpo = match c.widget {
             Widget::Swatch { text, detach, .. } => {
@@ -160,6 +180,19 @@ impl<'s> CardCtx<'s> {
                 colunas::caixa_da_cor(text, detach.is_some(), &mut mede)
             }
             Widget::Field { .. } | Widget::FieldFace { .. } => m::FIELD_VALUE_MIN_W,
+            Widget::Button { text, .. } | Widget::ButtonOff { text } => {
+                ts.prefix_width(text, m::VALUE_PX).ceil() + m::BUTTON_TEXT_PAD * 2.0
+            }
+            Widget::Readout { text } => ts.prefix_width(text, m::VALUE_PX).ceil(),
+            Widget::Dropdown { text, .. } => {
+                ts.prefix_width(text, m::VALUE_PX).ceil() + m::ICON_CELL + m::FIELD_PAD_R
+            }
+            Widget::Check { label, .. } => {
+                m::CHECK_BOX
+                    + m::CHECK_GAP
+                    + ts.prefix_width(label.texto, m::VALUE_PX).ceil()
+                    + m::KEY_MARK_BOX
+            }
             _ => 0.0,
         };
         let rotulo = c.label.map_or(0.0, |l| {
@@ -190,7 +223,9 @@ impl<'s> CardCtx<'s> {
             font: m::VALUE_PX,
             open_fold: None,
         };
-        f(&mut r, y)
+        let fim = f(&mut r, y);
+        censo::linha(y, fim, self.w, Vec::new);
+        fim
     }
 
     /// Uma linha de um widget só a toda a largura, com rótulo opcional.
@@ -200,13 +235,13 @@ impl<'s> CardCtx<'s> {
         self.row(&[c], y)
     }
 
-    fn columns(&mut self, cells: &[Cell<'_>]) -> Vec<(f32, f32)> {
+    pub(super) fn columns(&mut self, cells: &[Cell<'_>]) -> Vec<(f32, f32)> {
         let ts = &mut *self.text_system;
         let mut mede = |t: &str| ts.prefix_width(t, m::VALUE_PX);
         colunas::colunas(self.x, self.w, cells, &mut mede)
     }
 
-    fn seg_need(&mut self, s: &Seg<'_>, com_icone: bool) -> (f32, bool) {
+    pub(super) fn seg_need(&mut self, s: &Seg<'_>, com_icone: bool) -> (f32, bool) {
         let tw = if s.text.is_empty() {
             0.0
         } else {
@@ -250,6 +285,9 @@ impl<'s> CardCtx<'s> {
             self.hit_index.register(s.id, sr);
             if s.text.is_empty() && s.icon.is_some() {
                 dicas::icone(s.id);
+            }
+            if !s.text.is_empty() && censo::ligado() {
+                censo::texto(s.text, self.seg_need(s, false).0, w);
             }
             let hover = self.store.hover_live(s.id) > 0.0;
             if s.on || hover {
@@ -488,6 +526,7 @@ impl<'s> CardCtx<'s> {
     }
 
     fn button_off(&mut self, r: Rect, text: &str) {
+        self.anota_botao(text, r.w);
         fill_rounded_rect(
             self.scene,
             r,
@@ -507,7 +546,16 @@ impl<'s> CardCtx<'s> {
         );
     }
 
+    /// O texto de um botão no censo da lei 7.
+    pub(super) fn anota_botao(&mut self, text: &str, w: f32) {
+        if censo::ligado() {
+            let tw = self.text_system.prefix_width(text, m::VALUE_PX);
+            censo::texto(text, tw + m::BUTTON_TEXT_PAD * 2.0, w);
+        }
+    }
+
     fn button(&mut self, r: Rect, id: NodeId, text: &str, primary: bool) {
+        self.anota_botao(text, r.w);
         self.hit_index.register(id, r);
         let hover = self.store.hover_live(id) > 0.0;
         let (fundo, tinta) = if primary {

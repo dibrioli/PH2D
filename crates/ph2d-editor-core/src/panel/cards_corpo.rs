@@ -10,7 +10,7 @@
 mod campos;
 pub use campos::{LABEL_PX, bar_field, fields_in, swatch_grid, swatch_in};
 
-use super::{CardCtx, Cell, Seg, Widget};
+use super::{CardCtx, Cell, Seg, Widget, censo, compacta};
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::CheckboxValue;
 use crate::widget::card_field::CardFieldSpec;
@@ -88,6 +88,33 @@ pub fn fields(
     ids: &[NodeId],
     step: f64,
 ) -> f32 {
+    if let [id] = ids {
+        let texto =
+            unidade.map_or_else(|| rotulo.to_owned(), |u| format!("{rotulo} ({u})"));
+        let letra = match glifo(rotulo, eixos, 1, 0) {
+            Glyph::Text(t) => t,
+            _ => "",
+        };
+        let spec = CardFieldSpec {
+            step,
+            scrub: step,
+            default: None,
+        };
+        if let Some(fim) = compacta::pede_numero(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            (x, w, y),
+            texto,
+            letra,
+            (*id, *id),
+            spec,
+        ) {
+            return fim;
+        }
+    }
     let col = Coluna {
         rotulo,
         eixos,
@@ -307,6 +334,14 @@ fn rotulo_em_cima(
 ) -> crate::widget::PropertyRow {
     let (k, ly) = (m::KEY_MARK_BOX, y + m::LABEL_TOP);
     crate::widget::card_field::paint_label(scene, text_system, ink, x, ly, w - k, rotulo);
+    let fundo = ly + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H;
+    censo::linha(ly, fundo, w, || {
+        vec![censo::CelulaMedida {
+            nome: rotulo.to_owned(),
+            curta: false,
+            pede: 0.0,
+        }]
+    });
     crate::widget::PropertyRow {
         label: Rect::new(x, ly, w - k, m::LABEL_PX),
         control: Rect::new(x, ly + m::LABEL_PX + m::LABEL_BOTTOM, w, m::FIELD_H),
@@ -437,9 +472,67 @@ fn check_valor(
     (id, label): (NodeId, Rotulo<'_>),
     (valor, parada): (CheckboxValue, bool),
 ) -> f32 {
-    let (h, b, k) = (m::FIELD_H, m::CHECK_BOX, m::KEY_MARK_BOX);
+    if let Some(fim) = compacta::pede_marca(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        (x, w, y),
+        id,
+        label,
+        valor,
+        parada,
+    ) {
+        return fim;
+    }
     let y = y + m::FIELD_ROW_GAP;
-    hit_index.register(id, Rect::new(x, y, w, h));
+    let r = Rect::new(x, y, w, m::FIELD_H);
+    check_em(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        r,
+        (id, label),
+        (valor, parada),
+    );
+    if censo::ligado() {
+        let pede = m::CHECK_BOX
+            + m::CHECK_GAP
+            + text_system.prefix_width(label.texto, m::VALUE_PX).ceil()
+            + m::KEY_MARK_BOX;
+        censo::linha(y, y + m::FIELD_H, w, || {
+            vec![censo::CelulaMedida {
+                nome: label.texto.to_owned(),
+                curta: true,
+                pede,
+            }]
+        });
+    }
+    y + m::FIELD_H
+}
+
+/// A caixa de marcar do cartão no rect `r`: o quadradinho, o nome e a marca de animação no fim.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn check_em(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    r: Rect,
+    (id, label): (NodeId, Rotulo<'_>),
+    (valor, parada): (CheckboxValue, bool),
+) {
+    let (x, y, w, h) = (r.x, r.y, r.w, r.h);
+    let (b, k) = (m::CHECK_BOX, m::KEY_MARK_BOX);
+    hit_index.register(id, r);
+    if censo::ligado() {
+        let tw = text_system.prefix_width(label.texto, m::VALUE_PX);
+        censo::texto(label.texto, b + m::CHECK_GAP + tw + k, w);
+    }
     let caixa = crate::widget::card_check_rect(x, y, h);
     let hover = !parada && store.hover_live(id) > 0.0;
     crate::widget::paint_card_check_value(scene, ink, caixa, valor, hover);
@@ -464,10 +557,9 @@ fn check_valor(
     {
         hit_index.register(alvo, dot);
     }
-    y + h
 }
 
-fn ctx<'s>(
+pub(super) fn ctx<'s>(
     scene: &'s mut VectorScene,
     text_system: &'s mut TextSystem,
     store: &'s WidgetStore,

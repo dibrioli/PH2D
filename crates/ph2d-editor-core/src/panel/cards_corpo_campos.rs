@@ -89,11 +89,26 @@ pub fn bar_field(
     bar: NodeId,
     spec: CardFieldSpec,
 ) -> f32 {
+    let letra = letra_da_grandeza(rotulo);
+    if let Some(fim) = super::compacta::pede_numero(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        (x, w, y),
+        rotulo.to_owned(),
+        letra,
+        (chip, bar),
+        spec,
+    ) {
+        return fim;
+    }
     store.mark_card_field_at_paint(chip, spec);
     let key = [bar];
     let cell = Cell::new(Widget::Field {
         id: chip,
-        glyph: Glyph::Text(letra_da_grandeza(rotulo)),
+        glyph: Glyph::Text(letra),
     })
     .label(rotulo)
     .key(&key);
@@ -127,6 +142,22 @@ pub fn swatch_grid(
             )
         })
         .collect();
+    if let ([(id, rgba)], [codigo]) = (amostras, codigos.as_slice())
+        && let Some(fim) = super::compacta::pede_amostra(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            (x, w, y),
+            rotulo,
+            *id,
+            *rgba,
+            codigo,
+        )
+    {
+        return fim;
+    }
     let mut c = ctx(scene, text_system, store, hit_index, ink, x, w);
     let mut y = y;
     for (l, (fila, textos)) in amostras

@@ -107,6 +107,7 @@ impl CardCtx<'_> {
             self.w,
             self.ink.color(cor),
         );
+        super::censo::linha(top, top + used, self.w, Vec::new);
         top + used
     }
 
@@ -116,6 +117,14 @@ impl CardCtx<'_> {
         self.first = false;
         let r = Rect::new(self.x, y, self.w, m::FIELD_H);
         self.hit_index.register(id, r);
+        self.anota_botao(text, r.w);
+        super::censo::linha(y, y + m::FIELD_H, self.w, || {
+            vec![super::censo::CelulaMedida {
+                nome: text.to_owned(),
+                curta: false,
+                pede: 0.0,
+            }]
+        });
         let fundo = if self.store.hover_live(id) > 0.0 {
             ColorToken::CardFieldHover
         } else {

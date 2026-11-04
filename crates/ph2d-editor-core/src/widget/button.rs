@@ -260,9 +260,16 @@ fn paint_card_button(
         _ => (ColorToken::CardField, ColorToken::Text1),
     };
     crate::paint::fill_rounded_rect(scene, rect, m::FIELD_RADIUS, ink.color(fundo));
-    let tw = text_system
-        .prefix_width(&button.label, m::VALUE_PX)
-        .min(rect.w);
+    let inteiro = text_system.prefix_width(&button.label, m::VALUE_PX);
+    let censo = crate::panel::cards::censo::ligado;
+    if censo() {
+        crate::panel::cards::censo::fora_da_linha(
+            &button.label,
+            inteiro + m::BUTTON_TEXT_PAD * 2.0,
+            rect,
+        );
+    }
+    let tw = inteiro.min(rect.w);
     crate::paint::paint_text_elided(
         text_system,
         scene,
@@ -285,6 +292,11 @@ pub fn paint_button(
 ) {
     if paint_card_button(button, rect, scene, text_system) {
         return;
+    }
+    if crate::panel::cards::censo::ligado() && !matches!(button.kind, ButtonKind::IconOnly { .. }) {
+        let t = text_system.prefix_width(&button.label, button.font_size());
+        let pede = t + ph2d_card_stack::metrics::BUTTON_TEXT_PAD * 2.0;
+        crate::panel::cards::censo::texto(&button.label, pede, rect.w);
     }
     let radius = button.radius(theme);
     // ⭐ As quatro quinas saem da POSIÇÃO no grupo (wave 20). Um botão sozinho devolve as quatro

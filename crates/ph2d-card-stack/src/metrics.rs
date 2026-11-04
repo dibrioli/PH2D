@@ -93,6 +93,8 @@ pub const SEG_TEXT_PX: f32 = 11.0;
 pub const SEG_ICON_GAP: f32 = 5.0;
 /// A folga de cada lado do conteúdo de um segmento (D32: a largura é a do conteúdo, não `1/n`).
 pub const SEG_INSET: f32 = 6.0;
+/// O respiro de cada lado do texto de um botão: texto + 2 × isto cabe na caixa, senão desce (05 §4.7).
+pub const BUTTON_TEXT_PAD: f32 = SEG_INSET;
 
 /// ⭐ **D32 — cada segmento tem a largura do que mostra** (dono 02/11: «Auto (…)» cortado ao lado
 /// de dois ícones com a mesma largura). `need` é a largura do conteúdo com folga e `fixo` marca o

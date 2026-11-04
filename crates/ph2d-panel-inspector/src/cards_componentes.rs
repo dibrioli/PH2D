@@ -258,36 +258,39 @@ pub(crate) fn cartao<'a>(
         add: None,
         summary: None,
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
-            let store = c.store;
-            let theme = c.ink.theme;
-            let mut a = abertas.get();
-            let y0 = y - cab_h;
-            let fim = {
-                let Some(t) = plano(store, c.x, c.w, &mut a, snaps)
-                    .into_tarefas()
-                    .into_iter()
-                    .find_map(|(i, t)| (i == id).then_some(t))
-                else {
-                    return y;
-                };
-                let (scene, text, hit) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
-                absorb_next_header(|| {
-                    section_cards::with_section_cards(scene, theme, y0, |s| {
-                        t(
-                            &mut Tela {
-                                scene: s,
-                                text,
-                                hit,
-                            },
-                            theme,
-                            y0,
-                        )
+            ph2d_editor_core::panel::cards::compacta::fluir(c, |c| {
+                let store = c.store;
+                let theme = c.ink.theme;
+                let mut a = abertas.get();
+                let y0 = y - cab_h;
+                let fim = {
+                    let Some(t) = plano(store, c.x, c.w, &mut a, snaps)
+                        .into_tarefas()
+                        .into_iter()
+                        .find_map(|(i, t)| (i == id).then_some(t))
+                    else {
+                        return y;
+                    };
+                    let (scene, text, hit) =
+                        (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
+                    absorb_next_header(|| {
+                        section_cards::with_section_cards(scene, theme, y0, |s| {
+                            t(
+                                &mut Tela {
+                                    scene: s,
+                                    text,
+                                    hit,
+                                },
+                                theme,
+                                y0,
+                            )
+                        })
                     })
-                })
-                .0
-            };
-            abertas.set(a);
-            fim.max(y)
+                    .0
+                };
+                abertas.set(a);
+                fim.max(y)
+            })
         })),
     }
 }

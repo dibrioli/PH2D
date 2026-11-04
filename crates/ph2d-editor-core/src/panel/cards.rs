@@ -100,6 +100,13 @@ pub enum Widget<'a> {
         /// D30: a camada ligada a um estilo mostra o NOME dele e a corrente partida (este id) solta-a.
         detach: Option<NodeId>,
     },
+    /// Uma caixa de marcar como célula (05 §4): a 2.ª coluna de um campo. `off` = parada.
+    Check {
+        id: NodeId,
+        label: crate::widget::key_mark::Rotulo<'a>,
+        value: crate::widget::CheckboxValue,
+        off: bool,
+    },
     /// Uma lista suspensa: a caixa com o valor e a seta; as opções abrem por baixo (por cima de tudo).
     Dropdown {
         id: NodeId,
@@ -156,8 +163,12 @@ pub struct CardCtx<'s> {
 pub mod banda;
 #[path = "cards_cartao.rs"]
 mod cartao;
+#[path = "cards_censo.rs"]
+pub mod censo;
 #[path = "cards_colunas.rs"]
 mod colunas;
+#[path = "cards_compacta.rs"]
+pub mod compacta;
 #[path = "cards_corpo.rs"]
 pub mod corpo;
 /// ⭐ A lista suspensa de um cartão: abre, cabe na janela, rola; ver o módulo.

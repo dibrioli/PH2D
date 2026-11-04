@@ -81,9 +81,12 @@ pub(in crate::panel) fn corpo(
                 w,
                 first: true,
             };
-            crate::widget::card_ink::com(ink, || {
+            super::censo::na_secao(Some(card.section));
+            let fim = crate::widget::card_ink::com(ink, || {
                 crate::property_row::cartao::com(super::corpo::LINHAS, || body(&mut c, y))
-            })
+            });
+            super::censo::na_secao(None);
+            fim
         };
         crate::widget::showcase::notes_chrome::notas_do_cartao(
             scene,

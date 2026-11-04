@@ -73,6 +73,29 @@ pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)
     extra + m::LABEL_PX + m::LABEL_BOTTOM
 }
 
+/// A faixa de uma linha sem nomes mas com marcas (as camadas de uma pilha abaixo da 1.ª): só a altura
+/// da marca, para não repetir «Color · Opacity» em cada camada.
+pub(super) fn so_marcas(
+    cx: &mut CardCtx<'_>,
+    cells: &[Cell<'_>],
+    cols: &[(f32, f32)],
+    y: f32,
+) -> f32 {
+    for (c, r) in cells.iter().zip(cols) {
+        if let Some(k) = c.key {
+            card_field::paint_key_mark(
+                cx.scene,
+                cx.ink,
+                cx.hit_index,
+                r.0 + r.1 - m::KEY_MARK_BOX * 0.5,
+                y + m::KEY_MARK_BOX * 0.5,
+                k,
+            );
+        }
+    }
+    m::KEY_MARK_BOX
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

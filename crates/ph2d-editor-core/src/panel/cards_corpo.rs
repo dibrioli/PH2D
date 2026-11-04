@@ -214,12 +214,14 @@ pub fn choices(
     let mut c = ctx(scene, text_system, store, hit_index, ink, x, w);
     let mut y = y;
     for (k, l) in linhas.into_iter().enumerate() {
-        let cell = Cell::new(Widget::Choice(l));
-        let cell = if k == 0 {
-            cell.label(rotulo).key(ids)
-        } else {
-            cell
-        };
+        let mut cell = Cell::new(Widget::Choice(l));
+        // Sem nome, a fila é o corpo do cartão (o título diz); sem ids, um ajuste que não anima (D17).
+        if k == 0 && !rotulo.is_empty() {
+            cell = cell.label(rotulo);
+        }
+        if k == 0 && !ids.is_empty() {
+            cell = cell.key(ids);
+        }
         y = c.row(&[cell], y);
     }
     y

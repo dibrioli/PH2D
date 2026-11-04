@@ -135,6 +135,16 @@ impl Rotulo<'static> {
 }
 
 impl<'a> Rotulo<'a> {
+    /// [`Rotulo::vista`] com o nome já traduzido.
+    #[must_use]
+    pub fn vista_de(texto: &'a str) -> Self {
+        Self {
+            coluna: false,
+            ..Self::from(texto)
+        }
+    }
+
+
     /// Um nome composto (`tr_with`) para o campo `campo` do catálogo.
     #[must_use]
     pub fn de_campo(texto: &'a str, campo: TextKey) -> Self {

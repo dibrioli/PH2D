@@ -126,7 +126,7 @@ impl Corpo<'_> {
         if !info.brushes.is_empty() {
             y = self.linha(tr("panel.pixel.brush.saved_title"), ColorToken::Text3, y);
         }
-        let side = ROW_H_PX;
+        let side = self.lado();
         let gap = Spacing::Xs.px();
         for (n, s) in info.brushes.iter().enumerate() {
             let mini = Rect::new(self.x, y, side, side);
@@ -147,7 +147,7 @@ impl Corpo<'_> {
                 self.scene,
                 mini,
                 StrokeToken::Hairline.px(),
-                resolve(ColorToken::Border, self.theme),
+                tinta(ColorToken::Border, self.theme),
             );
             let nome = rotulo_do_espaco(n);
             let nome = rotulo.map_or(nome.clone(), |r| format!("{nome} · {r}"));
@@ -155,9 +155,11 @@ impl Corpo<'_> {
             let icones = 2.0 * (side + gap);
             let r = Rect::new(x, y, (self.w - (x - self.x) - icones).max(1.0), side);
             let id = ids::brush_slot_id(n);
-            let b = Button::new(id, &nome).visual(self.store.button_visual(id));
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(id, r);
+            if !self.botao_no_cartao(r, id, &nome, false) {
+                let b = Button::new(id, &nome).visual(self.store.button_visual(id));
+                paint_button(&b, r, self.scene, self.text_system, self.theme);
+                self.hit_index.register(id, r);
+            }
             let cadeado = if s.locked {
                 IconId::LockKeyhole
             } else {
@@ -171,15 +173,17 @@ impl Corpo<'_> {
                 #[expect(clippy::cast_precision_loss, reason = "dois ícones")]
                 let ix = self.x + self.w - (2.0 - i as f32) * side - (1.0 - i as f32) * gap;
                 let ir = Rect::new(ix, y, side, side);
-                paint_icon_button(
-                    ir,
-                    IconGlyph::Builtin(icone),
-                    IconButtonStyle::Compact,
-                    self.store.button_visual(id),
-                    self.scene,
-                    self.theme,
-                );
-                self.hit_index.register(id, ir);
+                if !self.icone_no_cartao(ir, id, icone, false) {
+                    paint_icon_button(
+                        ir,
+                        IconGlyph::Builtin(icone),
+                        IconButtonStyle::Compact,
+                        self.store.button_visual(id),
+                        self.scene,
+                        self.theme,
+                    );
+                    self.hit_index.register(id, ir);
+                }
             }
             y += side + ph2d_tokens::control_gap_px();
         }
@@ -199,9 +203,11 @@ impl Corpo<'_> {
             } else {
                 self.store.button_visual(id)
             };
-            let b = Button::new(id, rotulo).visual(visual);
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(id, r);
+            if !self.botao_no_cartao(r, id, rotulo, premido) {
+                let b = Button::new(id, rotulo).visual(visual);
+                paint_button(&b, r, self.scene, self.text_system, self.theme);
+                self.hit_index.register(id, r);
+            }
         }
         y += side + ph2d_tokens::control_gap_px();
         if aberta {

@@ -19,7 +19,7 @@ pub(crate) fn blend_options() -> Vec<DropdownOption<PixelBlend>> {
 
 impl Corpo<'_> {
     pub(super) fn camadas(&mut self, info: &PixelPanelInfo, renaming: Option<u32>, y: f32) -> f32 {
-        let mut y = self.linha(tr("panel.pixel.layers"), ColorToken::Text3, y);
+        let mut y = self.titulo(tr("panel.pixel.layers"), y);
         for row in &info.layers {
             y = self.linha_camada(
                 row,
@@ -84,17 +84,18 @@ impl Corpo<'_> {
         if row.group {
             return self.bloco(tr("panel.pixel.layer.group_mode"), ColorToken::Text3, y);
         }
-        let r = property_row::caixa_do_controlo(self.x, self.w, y, sec);
-        paint_text(
-            self.text_system,
+        let r = property_row::paint_label_row(
             self.scene,
-            tr("panel.pixel.layer.mode"),
+            self.text_system,
+            self.theme,
             self.x,
-            y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
-            TypeToken::Sm.px(),
-            (r.x - self.x).max(1.0),
-            resolve(ColorToken::Text2, self.theme),
-        );
+            self.w,
+            y,
+            ROW_H_PX,
+            tr("panel.pixel.layer.mode"),
+            sec,
+        )
+        .control;
         let open = matches!(
             self.store.get(ids::LAYER_BLEND),
             Some(InteractiveState::Dropdown { open: true, .. })
@@ -108,7 +109,7 @@ impl Corpo<'_> {
         if open {
             self.blend_aberto = Some((r, row.blend));
         }
-        y += ROW_H_PX + ph2d_tokens::control_gap_px();
+        y = r.y + r.h + ph2d_tokens::control_gap_px();
         self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y)
     }
 }

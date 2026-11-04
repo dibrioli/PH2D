@@ -111,8 +111,14 @@ impl Corpo<'_> {
     /// A barra: «Palette · n selected» e os dois ícones à direita. Devolve o fundo da barra.
     pub(super) fn barra_da_paleta(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let n = info.selected.len().to_string();
-        let titulo = tr_with("panel.pixel.palette_selected", &[("n", &n)]);
-        let side = ROW_H_PX;
+        // Num cartão o título diz «Palette»: aqui só a selecção.
+        let chave = if self.cartao.is_some() {
+            "card.pixel.selected"
+        } else {
+            "panel.pixel.palette_selected"
+        };
+        let titulo = tr_with(chave, &[("n", &n)]);
+        let side = self.lado();
         let gap = Spacing::Xs.px();
         let menus = [MenuPaleta::Predefinicoes, MenuPaleta::Acoes];
         #[expect(clippy::cast_precision_loss, reason = "dois ícones")]
@@ -122,10 +128,10 @@ impl Corpo<'_> {
             self.scene,
             &titulo,
             self.x,
-            y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
+            y + (side - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             (self.w - icones_w).max(1.0),
-            resolve(ColorToken::Text3, self.theme),
+            tinta(ColorToken::Text3, self.theme),
         );
         for (i, menu) in menus.into_iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "dois ícones")]
@@ -141,15 +147,17 @@ impl Corpo<'_> {
             } else {
                 self.store.button_visual(id)
             };
-            paint_icon_button(
-                r,
-                IconGlyph::Builtin(menu.icone()),
-                IconButtonStyle::Compact,
-                visual,
-                self.scene,
-                self.theme,
-            );
-            self.hit_index.register(id, r);
+            if !self.icone_no_cartao(r, id, menu.icone(), open) {
+                paint_icon_button(
+                    r,
+                    IconGlyph::Builtin(menu.icone()),
+                    IconButtonStyle::Compact,
+                    visual,
+                    self.scene,
+                    self.theme,
+                );
+                self.hit_index.register(id, r);
+            }
             if open {
                 self.menu_aberto = Some((r, menu));
             }

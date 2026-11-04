@@ -20,6 +20,18 @@ pub use pincel::*;
 
 /// O `×` do cabeçalho.
 pub const PIXEL_CLOSE: NodeId = hash_node_id("pixel.close");
+// Os cartões do painel (`paint_cartoes.rs`).
+pub const PIXEL_SEC_OPTIONS: NodeId = hash_node_id("pixel.sec.options");
+pub const PIXEL_SEC_BRUSHES: NodeId = hash_node_id("pixel.sec.brushes");
+pub const PIXEL_SEC_TRANSFORM: NodeId = hash_node_id("pixel.sec.transform");
+pub const PIXEL_SEC_COLORS: NodeId = hash_node_id("pixel.sec.colors");
+pub const PIXEL_SEC_LAYERS: NodeId = hash_node_id("pixel.sec.layers");
+pub const PIXEL_SEC_PALETTE: NodeId = hash_node_id("pixel.sec.palette");
+pub const PIXEL_SEC_PICKER: NodeId = hash_node_id("pixel.sec.picker");
+pub const PIXEL_SEC_SYMMETRY: NodeId = hash_node_id("pixel.sec.symmetry");
+pub const PIXEL_SEC_SELECT: NodeId = hash_node_id("pixel.sec.select");
+pub const PIXEL_SEC_EDIT: NodeId = hash_node_id("pixel.sec.edit");
+pub const PIXEL_SEC_SPRITE: NodeId = hash_node_id("pixel.sec.sprite");
 /// As amostras de frente e de fundo: o chrome conhece-as (a família lê o seletor por elas).
 pub use ph2d_editor_core::ids::{PIXEL_BG, PIXEL_FG};
 /// **Trocar** frente e fundo (o `X` do Aseprite).

@@ -6,7 +6,6 @@ use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::pixel_panel::{PixelOptions, PixelPanelInfo, PixelRequest, PixelTool};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_pixel_tools::{PixelToolsPanel, PixelToolsPanelState, ids, set_current_pixel};
-use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport(w: f32) -> Rect {
     Rect {
@@ -19,7 +18,7 @@ fn viewport(w: f32) -> Rect {
 
 /// Pinta o painel com as opções `o` e carrega no meio de `id`.
 fn carrega(o: PixelOptions, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(PixelPanelInfo {
         editing: true,
@@ -81,7 +80,7 @@ fn each_text_option_clicked_in_the_panel_reaches_the_options() {
 /// uma linha pede as opções com essa fonte e fecha a lista.
 #[test]
 fn picking_a_row_of_the_font_dropdown_changes_the_font() {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     let fontes: Vec<String> = ["cozette", "tom-thumb", "unscii-8", "unscii-16", "Noto Sans"]
         .map(str::to_owned)
@@ -138,7 +137,7 @@ fn picking_a_row_of_the_font_dropdown_changes_the_font() {
 
 #[test]
 fn the_text_size_field_is_painted_with_the_tool() {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(PixelPanelInfo {
         editing: true,
@@ -153,7 +152,7 @@ fn the_text_size_field_is_painted_with_the_tool() {
 /// valor, não a do painel), inteiro, no chip do dropdown — acima do Size.
 #[test]
 fn the_font_name_sits_in_the_value_column_next_to_its_label() {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(PixelPanelInfo {
         editing: true,
@@ -195,7 +194,7 @@ fn the_font_list_fits_the_widest_painted_row_and_no_wider() {
     use ph2d_editor_core::pixel_panel::font_preview::{self, PixelFontPreview};
     use ph2d_editor_core::widget::popover_width_for;
     use ph2d_tokens::{ROW_H_PX, Spacing};
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     let fontes: Vec<String> = ["cozette", "tom-thumb", "x", "Noto Sans"]
         .map(str::to_owned)

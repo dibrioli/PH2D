@@ -67,7 +67,7 @@ struct Palco {
 impl Palco {
     fn novo(i: PixelPanelInfo) -> Self {
         let mut p = Self {
-            host: MockPanelHost::with_panel::<PixelToolsPanel>(),
+            host: crate::host_de_antes(),
             st: PixelToolsPanelState::default(),
             rects: Vec::new(),
         };

@@ -6,7 +6,6 @@ use ph2d_editor_core::pixel_panel::{PixelPanelInfo, PixelRequest, PixelSelector,
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_pixel_tools::{PixelToolsPanel, PixelToolsPanelState, ids, set_current_pixel};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -44,7 +43,7 @@ fn holding_and_moving_on_every_selector_part_follows_the_pointer_before_the_rele
         PixelSelector::NormalMap,
     ] {
         for (k, (area, _)) in ids::SELECTOR_AREAS.iter().enumerate() {
-            let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+            let mut host = crate::host_de_antes();
             let mut st = PixelToolsPanelState::default();
             let mut info = PixelPanelInfo {
                 editing: true,
@@ -107,7 +106,7 @@ fn dragging_the_brightness_bar_keeps_the_wheel_hue_with_a_lagging_snapshot() {
         PixelSelector::RybWheel,
         PixelSelector::NormalMap,
     ] {
-        let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PixelToolsPanelState::default();
         let mut info = PixelPanelInfo {
             editing: true,

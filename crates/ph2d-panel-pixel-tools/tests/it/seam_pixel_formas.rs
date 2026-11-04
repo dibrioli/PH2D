@@ -40,7 +40,7 @@ fn pinta(
     PixelToolsPanelState,
     Vec<(ph2d_a11y::NodeId, Rect)>,
 ) {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(i);
     let rects = host.paint::<PixelToolsPanel>(&mut st, VIEWPORT);

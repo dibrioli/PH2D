@@ -14,6 +14,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelInk, PixelPanelInfo, PixelTool};
 use ph2d_editor_core::property_row;
+use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::Seccao;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -36,6 +37,10 @@ const LADO: u32 = 256;
 
 #[path = "paint_camadas.rs"]
 mod camadas;
+#[path = "paint_cartoes.rs"]
+mod cartoes;
+#[path = "paint_cartoes_linhas.rs"]
+mod cartoes_linhas;
 #[path = "paint_fonte.rs"]
 pub(crate) mod fonte;
 #[path = "paint_formas.rs"]
@@ -62,22 +67,6 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(core_ids::PIXEL_PANEL, rect);
-    paint_panel_surface(rect, ctx.scene, theme);
-    let title_size = paint_panel_title(
-        rect,
-        PixelToolsPanel::TITLE.tr(),
-        PANEL_HEADER_CLOSE_RESERVE,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    paint_panel_close_button(
-        rect,
-        ids::PIXEL_CLOSE,
-        ctx.host.hit_index_mut(),
-        ctx.scene,
-        theme,
-    );
     let n = with_current(|i| if i.editing { i.palette.len() } else { 0 });
     seam::register_palette(ctx.host.store_mut(), n);
     let np = with_current(|i| if i.editing { i.presets.len() } else { 0 });
@@ -120,6 +109,26 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             store.set_number_value(id, v);
         }
     }
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        cartoes::pinta(st, ctx, renaming);
+        return;
+    }
+    paint_panel_surface(rect, ctx.scene, theme);
+    let title_size = paint_panel_title(
+        rect,
+        PixelToolsPanel::TITLE.tr(),
+        PANEL_HEADER_CLOSE_RESERVE,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    paint_panel_close_button(
+        rect,
+        ids::PIXEL_CLOSE,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
 
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
@@ -152,6 +161,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
             theme,
             x: inner_x,
             w: inner_w,
+            cartao: None,
             blend_aberto: None,
             menu_aberto: None,
             fonte_aberta: None,
@@ -198,6 +208,8 @@ struct Corpo<'a> {
     theme: Theme,
     x: f32,
     w: f32,
+    /// Dentro de um cartão: a tinta dele e o topo do corpo (a 1.ª linha não leva vão).
+    cartao: Option<(ph2d_editor_core::widget::card_ink::CardInk, f32)>,
     /// O menu do modo aberto: o chip e o modo actual (pinta-se depois, por cima).
     blend_aberto: Option<(Rect, ph2d_editor_core::pixel_panel::PixelBlend)>,
     /// O menu da barra da paleta aberto: o ícone e qual (pinta-se depois, por cima).
@@ -313,11 +325,21 @@ impl Corpo<'_> {
                     y,
                 );
             }
-            // A mão (dinâmica e corda) é do traço livre: só o Pencil e o Eraser.
-            let livre = matches!(t, PixelTool::Pencil | PixelTool::Eraser);
-            y = self.guardados(info, livre, sec, y);
+            y = self.guardados_da_mao(info, sec, y);
         }
-        y = self.opcoes_forma(info, sec, y);
+        self.opcoes_de_baixo(info, sec, y, true)
+    }
+
+    /// Os pincéis guardados: a mão (dinâmica e corda) é do traço livre, só o Pencil e o Eraser.
+    fn guardados_da_mao(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
+        let livre = matches!(info.tool, PixelTool::Pencil | PixelTool::Eraser);
+        self.guardados(info, livre, sec, y)
+    }
+
+    /// As opções abaixo dos pincéis guardados: formas, spray, balde, tinta e (`com_simetria`) a simetria.
+    fn opcoes_de_baixo(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32, com_simetria: bool) -> f32 {
+        let (o, t) = (info.options, info.tool);
+        let mut y = self.opcoes_forma(info, sec, y);
         if t == PixelTool::Spray {
             y = self.campo(tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH, sec, y);
             y = self.campo(tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED, sec, y);
@@ -373,32 +395,41 @@ impl Corpo<'_> {
                 y = self.bloco(tr("panel.pixel.ink.shading_hint"), ColorToken::Text3, y);
             }
         }
-        if t.paints() {
-            y = self.linha(tr("panel.pixel.symmetry"), ColorToken::Text3, y);
-            y = self.caixas(
-                &[
-                    (ids::SYM_H, tr("panel.pixel.sym_h"), o.sym_h),
-                    (ids::SYM_V, tr("panel.pixel.sym_v"), o.sym_v),
-                    (ids::SYM_D1, tr("panel.pixel.sym_d1"), o.sym_d1),
-                    (ids::SYM_D2, tr("panel.pixel.sym_d2"), o.sym_d2),
-                ],
-                sec,
-                y,
-            );
-            y = self.linha(tr("panel.pixel.tiled"), ColorToken::Text3, y);
-            y = self.caixas(
-                &[
-                    (ids::TILE_X, tr("panel.pixel.tile_x"), o.tile_x),
-                    (ids::TILE_Y, tr("panel.pixel.tile_y"), o.tile_y),
-                ],
-                sec,
-                y,
-            );
+        if com_simetria && t.paints() {
+            y = self.simetria(info, sec, y);
         }
         y
     }
 
+    /// A simetria e o ladrilho: valem para tudo o que pinta.
+    fn simetria(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
+        let o = info.options;
+        let mut y = self.titulo(tr("panel.pixel.symmetry"), y);
+        y = self.caixas(
+            &[
+                (ids::SYM_H, tr("panel.pixel.sym_h"), o.sym_h),
+                (ids::SYM_V, tr("panel.pixel.sym_v"), o.sym_v),
+                (ids::SYM_D1, tr("panel.pixel.sym_d1"), o.sym_d1),
+                (ids::SYM_D2, tr("panel.pixel.sym_d2"), o.sym_d2),
+            ],
+            sec,
+            y,
+        );
+        y = self.linha(tr("panel.pixel.tiled"), ColorToken::Text3, y);
+        self.caixas(
+            &[
+                (ids::TILE_X, tr("panel.pixel.tile_x"), o.tile_x),
+                (ids::TILE_Y, tr("panel.pixel.tile_y"), o.tile_y),
+            ],
+            sec,
+            y,
+        )
+    }
+
     fn campo(&mut self, nome: &str, id: NodeId, sec: Seccao, y: f32) -> f32 {
+        if self.cartao.is_some() {
+            return self.campos_no_cartao(&[(nome, id)], y);
+        }
         let (store, hit) = (self.store, &mut *self.hit_index);
         property_row::paint_field_row(
             self.scene,
@@ -419,6 +450,9 @@ impl Corpo<'_> {
     }
 
     fn escolha(&mut self, nome: &str, seg: &[(&str, bool, NodeId)], sec: Seccao, y: f32) -> f32 {
+        if self.cartao.is_some() {
+            return self.escolha_no_cartao(nome, seg, y);
+        }
         let (store, hit) = (self.store, &mut *self.hit_index);
         property_row::paint_choice_row(
             self.scene,
@@ -436,6 +470,9 @@ impl Corpo<'_> {
     }
 
     fn caixas(&mut self, cx: &[(NodeId, &str, bool)], sec: Seccao, y: f32) -> f32 {
+        if self.cartao.is_some() {
+            return self.caixas_no_cartao(cx, sec, y);
+        }
         let (store, hit) = (self.store, &mut *self.hit_index);
         property_row::paint_check_rows(
             self.scene,
@@ -453,6 +490,9 @@ impl Corpo<'_> {
 
     /// Frente e fundo (amostra + hex, uma linha cada) e o Trocar.
     fn cores(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        if self.cartao.is_some() {
+            return self.cores_no_cartao(info, y);
+        }
         let mut y = y;
         for (sid, c) in [(ids::PIXEL_FG, info.fg), (ids::PIXEL_BG, info.bg)] {
             let side = ROW_H_PX;
@@ -468,7 +508,7 @@ impl Corpo<'_> {
                 y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
                 TypeToken::Sm.px(),
                 (self.x + self.w - tx).max(1.0),
-                resolve(ColorToken::Text2, self.theme),
+                tinta(ColorToken::Text2, self.theme),
             );
             y += side + ph2d_tokens::control_gap_px();
         }
@@ -483,13 +523,8 @@ impl Corpo<'_> {
     /// O sprite: o *Color Mode…* e o *Replace Color* (frente → fundo, com tolerância).
     fn sprite(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.replace_tolerance")]);
-        let mut y = self.linha(tr("panel.pixel.sprite"), ColorToken::Text3, y);
-        let r = Rect::new(self.x, y, self.w, ROW_H_PX);
-        let b = Button::new(ids::COLOR_MODE, tr("panel.pixel.color_mode"))
-            .visual(self.store.button_visual(ids::COLOR_MODE));
-        paint_button(&b, r, self.scene, self.text_system, self.theme);
-        self.hit_index.register(ids::COLOR_MODE, r);
-        y += ROW_H_PX + ph2d_tokens::control_gap_px();
+        let y = self.titulo(tr("panel.pixel.sprite"), y);
+        let mut y = self.botoes(&[(ids::COLOR_MODE, "panel.pixel.color_mode")], y);
         y = self.menu_sprite(info, y);
         y = self.linha(tr("panel.pixel.replace"), ColorToken::Text3, y);
         y = self.bloco(tr("panel.pixel.replace_hint"), ColorToken::Text3, y);
@@ -503,71 +538,10 @@ impl Corpo<'_> {
         self.botoes(&acoes([trocar]), y)
     }
 
-    /// Uma fila de botões de largura igual — em par só quando os dois rótulos cabem INTEIROS na
-    /// metade; senão um por linha (nenhum rótulo cortado no degrau estreito do dock).
-    pub(super) fn botoes(&mut self, fila: &[(NodeId, &str)], y: f32) -> f32 {
-        let gap = Spacing::Xs.px();
-        #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-        let n = fila.len() as f32;
-        let bw = ((self.w - gap * (n - 1.0)) / n).max(1.0);
-        let fonte = Button::label_font_px();
-        let cabe = |ts: &mut TextSystem, key: &str| {
-            let pad = Button::new(NodeId(0), "").padding();
-            ts.prefix_width(tr(key), fonte) + 2.0 * pad <= bw
-        };
-        if fila.len() > 1 && !fila.iter().all(|(_, k)| cabe(self.text_system, k)) {
-            return fila
-                .iter()
-                .fold(y, |y, b| self.botoes(std::slice::from_ref(b), y));
-        }
-        // Sozinho e ainda maior que a largura toda (o «Despeckle (Median Filter)…» no piso da
-        // doca): o rótulo inteiro em duas linhas, nunca cortado.
-        if let [(id, key)] = fila
-            && !cabe(self.text_system, key)
-        {
-            let pad = Button::new(NodeId(0), "").padding();
-            let texto = tr(key);
-            let ts = &mut *self.text_system;
-            let partida = texto
-                .match_indices(' ')
-                .map(|(i, _)| (&texto[..i], &texto[i + 1..]))
-                .filter(|(a, b)| {
-                    ts.prefix_width(a, fonte) + 2.0 * pad <= bw
-                        && ts.prefix_width(b, fonte) + 2.0 * pad <= bw
-                })
-                .last();
-            if let Some((a, b)) = partida {
-                let r = Rect::new(self.x, y, bw, 2.0 * ROW_H_PX);
-                let botao = Button::new(*id, "").visual(self.store.button_visual(*id));
-                paint_button(&botao, r, self.scene, self.text_system, self.theme);
-                let cor = resolve(ColorToken::Text1, self.theme);
-                for (k, linha) in [a, b].into_iter().enumerate() {
-                    #[expect(clippy::cast_precision_loss, reason = "duas linhas")]
-                    let rl = Rect::new(self.x, y + k as f32 * ROW_H_PX, bw, ROW_H_PX);
-                    ph2d_editor_core::paint::paint_text_centered(
-                        self.text_system,
-                        self.scene,
-                        linha,
-                        rl,
-                        fonte,
-                        cor,
-                    );
-                }
-                self.hit_index.register(*id, r);
-                return y + 2.0 * ROW_H_PX + ph2d_tokens::control_gap_px();
-            }
-        }
-        for (i, (id, key)) in fila.iter().enumerate() {
-            #[expect(clippy::cast_precision_loss, reason = "≤ 2 botões")]
-            let r = Rect::new(self.x + i as f32 * (bw + gap), y, bw, ROW_H_PX);
-            let b = Button::new(*id, tr(key)).visual(self.store.button_visual(*id));
-            paint_button(&b, r, self.scene, self.text_system, self.theme);
-            self.hit_index.register(*id, r);
-        }
-        y + ROW_H_PX + ph2d_tokens::control_gap_px()
-    }
-
     fn linha(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+        if self.cartao.is_some() {
+            return self.legenda_no_cartao(texto, cor, y);
+        }
         paint_text(
             self.text_system,
             self.scene,
@@ -576,13 +550,16 @@ impl Corpo<'_> {
             y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             self.w.max(1.0),
-            resolve(cor, self.theme),
+            tinta(cor, self.theme),
         );
         y + ROW_H_PX
     }
 
     /// Uma frase que QUEBRA (nunca cortada).
     fn bloco(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+        if let Some(mut c) = self.cartao_ctx() {
+            return c.hint(texto, y);
+        }
         let topo = y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5;
         let alta = paint_text_block(
             self.text_system,
@@ -592,7 +569,7 @@ impl Corpo<'_> {
             topo,
             TypeToken::Sm.px(),
             self.w.max(1.0),
-            resolve(cor, self.theme),
+            tinta(cor, self.theme),
         );
         (topo + alta).max(y + ROW_H_PX)
     }

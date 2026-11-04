@@ -5,7 +5,7 @@
 
 use crate::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
 use crate::pixel_panel::PixelLayerRow;
 use crate::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use crate::zones::Rect;
@@ -89,7 +89,7 @@ impl LayerRowPainter<'_> {
             self.scene,
             icon,
             r,
-            resolve(cor, self.theme),
+            crate::widget::card_ink::tinta(cor, self.theme),
             StrokeToken::Default.px(),
         );
         self.hit_index.register(id, r);
@@ -114,7 +114,7 @@ impl LayerRowPainter<'_> {
                 self.scene,
                 r,
                 radius,
-                resolve(ColorToken::AccentSoft, self.theme),
+                crate::widget::card_ink::tinta(ColorToken::AccentSoft, self.theme),
             );
         }
         let recuo = f32::from(row.depth) * Spacing::Md.px();
@@ -207,7 +207,7 @@ impl LayerRowPainter<'_> {
                 y + (h - TypeToken::Sm.px()) * 0.5,
                 TypeToken::Sm.px(),
                 nome_r.w,
-                resolve(cor, self.theme),
+                crate::widget::card_ink::tinta(cor, self.theme),
             );
             self.hit_index
                 .register(id_of(PixelLayerWidget::Row), nome_r);

@@ -39,6 +39,10 @@ impl Corpo<'_> {
                 .map(|&(m, id)| (tr(m.label_key()), m == o.select_mode, id))
                 .collect();
             for par in modos.chunks(2) {
+                if self.cartao.is_some() {
+                    y = self.par_no_cartao(par, y);
+                    continue;
+                }
                 let r = Rect::new(self.x, y, self.w, ROW_H_PX);
                 let h = ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive(
                     r,
@@ -131,7 +135,7 @@ impl Corpo<'_> {
             .chain(NOMES.iter().map(|k| tr(k)))
             .collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
-        let mut y = self.linha(tr("panel.pixel.transform"), ColorToken::Text3, y);
+        let mut y = self.titulo(tr("panel.pixel.transform"), y);
         for (f, id, _) in ids::XFORM_FIELDS {
             y = self.campo(tr(f.label_key()), id, sec, y);
         }
@@ -145,8 +149,13 @@ impl Corpo<'_> {
 
     /// ⭐ **Os menus Select e Edit.**
     pub(super) fn menus_selecao(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        let y = self.menu_select(info, y);
+        self.menu_edit(info, y)
+    }
+
+    pub(super) fn menu_select(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let s = &ids::SELECT_ACTIONS;
-        let mut y = self.linha(tr("panel.pixel.select"), ColorToken::Text3, y);
+        let mut y = self.titulo(tr("panel.pixel.select"), y);
         let sel = info.has_selection;
         y = if sel {
             self.botoes(&[par(s, 0), par(s, 1)], y)
@@ -166,8 +175,13 @@ impl Corpo<'_> {
         } else {
             y = self.botoes(&[par(s, 8)], y);
         }
+        y
+    }
+
+    pub(super) fn menu_edit(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
+        let sel = info.has_selection;
         let e = &ids::EDIT_ACTIONS;
-        y = self.linha(tr("panel.pixel.edit"), ColorToken::Text3, y);
+        let mut y = self.titulo(tr("panel.pixel.edit"), y);
         if sel {
             y = self.botoes(&[par(e, 0), par(e, 1)], y);
             y = self.botoes(&[par(e, 2)], y);

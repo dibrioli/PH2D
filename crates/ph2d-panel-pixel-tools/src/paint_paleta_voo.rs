@@ -180,7 +180,7 @@ impl Corpo<'_> {
             self.scene,
             m,
             w * 0.5,
-            resolve(ColorToken::Accent, self.theme),
+            tinta(ColorToken::Accent, self.theme),
         );
         m
     }
@@ -188,7 +188,7 @@ impl Corpo<'_> {
     /// O vão: a célula onde o bloco vai cair, vazia.
     pub(super) fn vao(&mut self, r: Rect) {
         let radius = frame_radius(self.theme, Radius::Sm.px());
-        fill_rounded_rect(self.scene, r, radius, resolve(ColorToken::Bg2, self.theme));
+        fill_rounded_rect(self.scene, r, radius, tinta(ColorToken::Bg2, self.theme));
     }
 }
 

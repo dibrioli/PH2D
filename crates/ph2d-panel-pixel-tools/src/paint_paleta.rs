@@ -51,7 +51,7 @@ impl Corpo<'_> {
             );
             // A selecção (a rampa do Shading) leva o anel do acento.
             if info.selected.contains(&i) {
-                let anel = resolve(ColorToken::Accent, self.theme);
+                let anel = tinta(ColorToken::Accent, self.theme);
                 stroke_rect(self.scene, r, StrokeToken::Thick.px(), anel);
             }
         }
@@ -76,6 +76,10 @@ impl Corpo<'_> {
             y = self.botoes(&acoes([remap]), y);
         }
         if let Some(c) = info.anchor.and_then(|i| info.palette.get(i)) {
+            if self.cartao.is_some() {
+                y = self.ancora_no_cartao(*c, y);
+                return self.campo(tr("panel.pixel.palette_size"), ids::PALETTE_SIZE, sec, y);
+            }
             let side = ROW_H_PX;
             let r = Rect::new(self.x, y, side, side);
             let sw = ColorSwatch::new(ids::PIXEL_PAL_EDIT, "", *c);
@@ -91,7 +95,7 @@ impl Corpo<'_> {
                 y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
                 TypeToken::Sm.px(),
                 (self.x + self.w - tx).max(1.0),
-                resolve(ColorToken::Text2, self.theme),
+                tinta(ColorToken::Text2, self.theme),
             );
             y += side + ph2d_tokens::control_gap_px();
         }
@@ -114,7 +118,15 @@ impl Corpo<'_> {
             .zip(nomes)
             .map(|(&(m, id), nome)| (nome, m == modo, id))
             .collect();
-        let mut y = self.escolha(tr("panel.pixel.selector"), &modos, sec, y);
+        let nome = if self.cartao.is_some() {
+            ""
+        } else {
+            tr("panel.pixel.selector")
+        };
+        let mut y = self.escolha(nome, &modos, sec, y);
+        if self.cartao.is_some() {
+            y += ph2d_tokens::control_gap_px();
+        }
         let fg = info.fg;
         let v = &mut *self.seletor;
         // Uma cor que o seletor mandou NÃO reconstrói os parâmetros (eles são a verdade dela); só
@@ -217,7 +229,7 @@ impl Corpo<'_> {
             vista.y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             (vista.x + vista.w - tx).max(1.0),
-            resolve(ColorToken::Text2, self.theme),
+            tinta(ColorToken::Text2, self.theme),
         );
         y = vista.y + vista.h;
         y

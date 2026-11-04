@@ -27,17 +27,18 @@ fn dropdown(info: &PixelPanelInfo, open: bool) -> Dropdown<usize> {
 impl Corpo<'_> {
     /// «Font» à esquerda e o chip com o nome da fonte na coluna do valor.
     pub(super) fn chip_da_fonte(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
-        let r = property_row::caixa_do_controlo(self.x, self.w, y, sec);
-        paint_text(
-            self.text_system,
+        let r = property_row::paint_label_row(
             self.scene,
-            tr("panel.pixel.text.font"),
+            self.text_system,
+            self.theme,
             self.x,
-            y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
-            TypeToken::Sm.px(),
-            (r.x - self.x).max(1.0),
-            resolve(ColorToken::Text2, self.theme),
-        );
+            self.w,
+            y,
+            ROW_H_PX,
+            tr("panel.pixel.text.font"),
+            sec,
+        )
+        .control;
         let open = matches!(
             self.store.get(ids::TEXT_FONT_DD),
             Some(InteractiveState::Dropdown { open: true, .. })
@@ -61,7 +62,7 @@ impl Corpo<'_> {
         if open {
             self.fonte_aberta = Some(r);
         }
-        y + ROW_H_PX + ph2d_tokens::control_gap_px()
+        r.y + r.h + ph2d_tokens::control_gap_px()
     }
 }
 

@@ -9,7 +9,6 @@ use ph2d_editor_core::text_elide::elisao;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_panel_pixel_tools::{PixelToolsPanel, PixelToolsPanelState, ids, set_current_pixel};
-use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport(w: f32) -> Rect {
     Rect {
@@ -31,7 +30,7 @@ fn info(o: PixelOptions) -> PixelPanelInfo {
 
 /// Pinta o painel com as opções `o` na largura `w` e carrega no meio de `id`.
 fn carrega(o: PixelOptions, w: f32, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(info(o));
     let rects = host.paint::<PixelToolsPanel>(&mut st, viewport(w));
@@ -104,7 +103,7 @@ fn each_gradient_option_clicked_in_the_panel_reaches_the_options() {
 
 #[test]
 fn no_gradient_option_label_is_cut_at_the_minimum_dock_width() {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(info(PixelOptions::default()));
     let (rects, medidos) = elisao::medindo(|| {
@@ -168,7 +167,7 @@ fn no_gradient_option_label_is_cut_at_the_minimum_dock_width() {
 /// separa Linear|Radial da linha seguinte), nunca um cabeçalho vazio.
 #[test]
 fn the_dither_rows_stack_without_an_empty_band() {
-    let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+    let mut host = crate::host_de_antes();
     let mut st = PixelToolsPanelState::default();
     set_current_pixel(info(PixelOptions::default()));
     let rects = host.paint::<PixelToolsPanel>(&mut st, viewport(WidgetStore::DOCK_W_MIN));
@@ -201,7 +200,7 @@ fn the_gradient_panel_has_no_bucket_options() {
         ids::SAMPLE_VISIBLE,
     ];
     let pintados = |tool| {
-        let mut host = MockPanelHost::with_panel::<PixelToolsPanel>();
+        let mut host = crate::host_de_antes();
         let mut st = PixelToolsPanelState::default();
         set_current_pixel(PixelPanelInfo {
             tool,

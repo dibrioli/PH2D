@@ -36,7 +36,10 @@ macro_rules! linha {
 #[ignore = "medição: imprime std × det"]
 fn velocidade_std_x_det() {
     let u: Vec<f32> = (0..N).map(|i| (i as f32 + 0.5) / N as f32).collect();
-    let a: Vec<f32> = u.iter().map(|v| v * 6.28 - 3.14).collect();
+    let a: Vec<f32> = u
+        .iter()
+        .map(|v| v * std::f32::consts::TAU - std::f32::consts::PI)
+        .collect();
     let p: Vec<(f32, f32)> = u
         .iter()
         .map(|&v| (v * 40.0 - 20.0, 13.0 - v * 31.0))

@@ -1,7 +1,6 @@
 //! A CAUDA do plano do traço: planeá-la e re-pintá-la — filho de `traco_plano` por LOC.
 
 use super::*;
-use ph2d_det_math::DetMath as _;
 
 impl PainterTool {
     /// O plano da cauda: os lotes a re-carimbar, a janela que se limpa e a que muda.

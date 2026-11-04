@@ -445,7 +445,7 @@ fn no_relogio_real(t: &mut PainterTool, lw: u32, lh: u32) -> Vec<u8> {
         std::thread::sleep(quadro);
         k += 1;
         // Perguntar traz o motor para casa: só uma vez por segundo, como quem olha o relógio.
-        if k % 60 == 0 && t.wet_assentada() {
+        if k.is_multiple_of(60) && t.wet_assentada() {
             break;
         }
         assert!(

@@ -2,11 +2,11 @@
 //! a 512², um aluno no estado inicial.
 
 use super::sonda::{
-    MEIOS, Variante, cada_aluno, criterio_de, pinta, quadro, traca, trilha_no_meio, trinta,
+    MEIOS, Variante, assenta, cada_aluno, criterio_de, pinta, quadro, traca, trilha_no_meio, trinta,
 };
 use super::*;
 use crate::macro_track::roteiro::{self, CAUDA, SPLASH, grava_nos_meios, grava_pinceladas};
-use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_editor_core::tool::{PanelEvent, RasterEditTool, Tool};
 
 const LADO: u32 = 512;
 /// A entidade a que o tool no estado inicial liga o documento.
@@ -80,6 +80,33 @@ fn a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao() {
                 );
             },
         );
+    }
+}
+
+/// O [`assenta`] em blocos pinta, ao byte, o que pinta um quadro de cada vez, e na mesma idade. A razão de
+/// `a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao` compara o aluno na idade dele, logo não vê um bloco a mais ou a menos.
+#[test]
+fn o_assentar_em_blocos_e_o_por_quadro() {
+    for m in MEIOS {
+        let track = trilha_no_meio(m, &SPLASH[..1], 128);
+        let aluno = || {
+            let mut t = inicial::tool_no_inicial(&track.initial).expect("inicial");
+            pinta(&mut t, &SPLASH[0], 128.0);
+            t
+        };
+        let mut por_quadro = aluno();
+        let mut q = 0;
+        while q < base::QUADROS_ATE_ASSENTAR && !por_quadro.wet_assentada() {
+            quadro(&mut por_quadro);
+            q += 1;
+        }
+        let mut em_blocos = aluno();
+        assenta(&mut em_blocos);
+        assert!(
+            por_quadro.run_full().0 == em_blocos.run_full().0,
+            "{m:?}: a tela"
+        );
+        assert_eq!(idade(&por_quadro), idade(&em_blocos), "{m:?}: a idade");
     }
 }
 

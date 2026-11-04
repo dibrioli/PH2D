@@ -26,6 +26,7 @@ use crate::paint::{paint_text, resolve};
 use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
 use ph2d_board_model::{BoardId, KanbanId};
+use ph2d_card_stack::metrics as m;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -381,8 +382,54 @@ pub fn paint_confirm_delete(
     let lines: Vec<(&str, ColorToken)> = std::iter::once((title.as_str(), ColorToken::Text1))
         .chain(hint.lines().map(|l| (l, ColorToken::Text3)))
         .collect();
+    let botoes = |kanban: bool| {
+        [
+            (
+                ids::CTX_MENU_BOARD_DELETE_CANCEL,
+                tr("board.dialog.cancel"),
+                false,
+            ),
+            (
+                ids::CTX_MENU_BOARD_DELETE_CONFIRM,
+                tr(if kanban {
+                    "board.dialog.delete_kanban"
+                } else {
+                    "board.dialog.delete"
+                }),
+                true,
+            ),
+        ]
+    };
     let gap = Spacing::Xs.px();
     let w = super::context_menu_dialogs::DIALOG_W;
+    let molde = super::caixa_cartao::Molde {
+        largura: w,
+        titulo: &title,
+    };
+    let mut alvo = super::caixa_cartao::Alvo {
+        scene: &mut *scene,
+        text_system: &mut *text_system,
+        hit_index: &mut *hit_index,
+        store,
+        viewport,
+    };
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    if super::caixa_cartao::centrada(molde, cartao, &mut alvo, |c, y| {
+        let y = hint.lines().fold(y, |y, l| c.hint(l, y)) + m::FIELD_ROW_GAP;
+        let meia = (c.w - m::FIELD_GAP) * 0.5;
+        for (i, (id, label, danger)) in botoes(kanban).into_iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "dois botões")]
+            let x = c.x + i as f32 * (meia + m::FIELD_GAP);
+            let r = Rect::new(x, y, meia, m::FIELD_H);
+            c.hit_index.register(id, r);
+            let b = Button::new(id, label).visual(store.button_visual(id));
+            let b = if danger { b.danger() } else { b };
+            paint_button(&b, r, c.scene, c.text_system, theme);
+        }
+        y + m::FIELD_H
+    }) {
+        return;
+    }
     #[allow(clippy::cast_precision_loss)]
     let rows = (lines.len() + 1) as f32;
     let h = pad_y() * 2.0 + ROW_H * rows + gap * (rows - 1.0);
@@ -416,25 +463,7 @@ pub fn paint_confirm_delete(
     let bw = (inner_w - gap) * 0.5;
     let cancel = Rect::new(x, y, bw, ROW_H);
     let delete = Rect::new(x + bw + gap, y, bw, ROW_H);
-    let buttons = [
-        (
-            ids::CTX_MENU_BOARD_DELETE_CANCEL,
-            cancel,
-            tr("board.dialog.cancel"),
-            false,
-        ),
-        (
-            ids::CTX_MENU_BOARD_DELETE_CONFIRM,
-            delete,
-            tr(if kanban {
-                "board.dialog.delete_kanban"
-            } else {
-                "board.dialog.delete"
-            }),
-            true,
-        ),
-    ];
-    for (id, r, label, danger) in buttons {
+    for ((id, label, danger), r) in botoes(kanban).into_iter().zip([cancel, delete]) {
         hit_index.register(id, r);
         let b = Button::new(id, label).visual(store.button_visual(id));
         let b = if danger { b.danger() } else { b };

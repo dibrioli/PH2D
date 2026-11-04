@@ -5,13 +5,16 @@
 //! standard widget dispatch, and `dispatch::pointer`'s menu-close guard keeps the popover open while
 //! the user types into the field.
 
+use super::caixa_cartao as caixa;
 use super::context_menu_overlay::{ROW_H, pad_y};
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::paint_text;
+use crate::panel::cards::Widget;
 use crate::widget::{Button, TextInput, paint_button, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -49,6 +52,10 @@ pub(super) fn paint_palette_rename_dialog(
 /// quadro): duas perguntas parecidas devem PARECER-SE.
 pub(super) const DIALOG_W: f32 = 320.0; // LITERAL-PX-OK: dialog width (long key / prompt string)
 
+/// A largura em cartões das caixas com uma fila de tamanhos (New Image, Sheet Size): a do New Image de
+/// antes (sete de `46` px, seis vãos, as duas bordas).
+const DIALOG_LARGO: f32 = 370.0; // LITERAL-PX-OK: cabe «Textured paper» num quarto da fila
+
 /// The text/ids that distinguish one centered input dialog from another.
 struct CenteredInputDialog {
     title: &'static str,
@@ -78,6 +85,32 @@ fn paint_centered_input_dialog(
     store: &WidgetStore,
     viewport: Rect,
 ) {
+    let molde = caixa::Molde {
+        largura: DIALOG_W,
+        titulo: d.title,
+    };
+    let mut alvo = caixa::Alvo {
+        scene: &mut *scene,
+        text_system: &mut *text_system,
+        hit_index: &mut *hit_index,
+        store,
+        viewport,
+    };
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    if caixa::centrada(molde, cartao, &mut alvo, |c, y| {
+        let y = c.hint(d.hint, y);
+        let y = c.full(
+            None,
+            Widget::Text {
+                id: d.input_id,
+                placeholder: d.placeholder,
+            },
+            y + m::FIELD_ROW_GAP,
+        );
+        caixa::acao(c, d.button_id, d.button_label, y)
+    }) {
+        return;
+    }
     let menu_w = DIALOG_W;
     let field_h = 30.0_f32; // LITERAL-PX-OK: input height (matches scene-list search)
     let title_h = ROW_H;
@@ -212,6 +245,71 @@ pub(super) fn paint_new_image_dialog(
 ) {
     let row_h = ROW_H;
     let gap = Spacing::Xs.px();
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    if cartao.tinta().is_some() {
+        let tamanhos: Vec<(NodeId, String, bool)> = ids::CTX_MENU_NEW_IMAGE_SIZES
+            .iter()
+            .map(|(px, id)| (*id, px.to_string(), *px == store.new_image_size()))
+            .collect();
+        let linhas: Vec<_> = tamanhos
+            .iter()
+            .map(|(i, t, o)| (*i, t.as_str(), *o))
+            .collect();
+        let sel_bg = store.new_image_bg();
+        let bgs = [
+            (
+                ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT,
+                tr("chrome.dialog.transparent"),
+                sel_bg == 0,
+            ),
+            (
+                ids::CTX_MENU_NEW_IMAGE_BG_BLACK,
+                tr("chrome.dialog.black"),
+                sel_bg == 1,
+            ),
+            (
+                ids::CTX_MENU_NEW_IMAGE_BG_WHITE,
+                tr("chrome.dialog.white"),
+                sel_bg == 2,
+            ),
+            (
+                ids::CTX_MENU_NEW_IMAGE_BG_PAPER,
+                tr("chrome.dialog.textured_paper"),
+                sel_bg == ids::NEW_IMAGE_BG_PAPER,
+            ),
+        ];
+        let (segs_t, segs_f) = (caixa::segs(&linhas), caixa::segs(&bgs));
+        let molde = caixa::Molde {
+            largura: DIALOG_LARGO,
+            titulo: tr("chrome.dialog.new_image"),
+        };
+        let mut alvo = caixa::Alvo {
+            scene: &mut *scene,
+            text_system: &mut *text_system,
+            hit_index: &mut *hit_index,
+            store,
+            viewport,
+        };
+        caixa::centrada(molde, cartao, &mut alvo, |c, y| {
+            let y = c.full(
+                Some(tr("chrome.dialog.size_px")),
+                Widget::Choice(&segs_t),
+                y,
+            );
+            let y = c.full(
+                Some(tr("chrome.dialog.background")),
+                Widget::Choice(&segs_f),
+                y,
+            );
+            caixa::acao(
+                c,
+                ids::CTX_MENU_NEW_IMAGE_CREATE,
+                tr("chrome.dialog.create"),
+                y,
+            )
+        });
+        return;
+    }
     // ⚠️ A largura é DERIVADA da contagem de tamanhos, não um literal. Ela era `360.0` com o comentário
     // *"fits the 7 size buttons in one row"* — uma cerca cuja razão é a CONTAGEM, então acrescentar o
     // oitavo (4096) teria espremido cada botão de 45,7 para 39,5 px sem nada acender. Assim, a tabela em
@@ -364,6 +462,43 @@ pub(super) fn paint_sheet_size_dialog(
 ) {
     let row_h = ROW_H;
     let gap = Spacing::Xs.px();
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    if cartao.tinta().is_some() {
+        let tamanhos: Vec<(NodeId, String, bool)> = ids::CTX_MENU_SHEET_SIZES
+            .iter()
+            .map(|(px, id)| (*id, px.to_string(), *px == store.sheet_size()))
+            .collect();
+        let linhas: Vec<_> = tamanhos
+            .iter()
+            .map(|(i, t, o)| (*i, t.as_str(), *o))
+            .collect();
+        let segs = caixa::segs(&linhas);
+        let molde = caixa::Molde {
+            largura: DIALOG_LARGO,
+            titulo: tr("chrome.dialog.new_sheet"),
+        };
+        let mut alvo = caixa::Alvo {
+            scene: &mut *scene,
+            text_system: &mut *text_system,
+            hit_index: &mut *hit_index,
+            store,
+            viewport,
+        };
+        caixa::centrada(molde, cartao, &mut alvo, |c, y| {
+            let y = c.full(
+                Some(tr("chrome.dialog.resolution_px")),
+                Widget::Choice(&segs),
+                y,
+            );
+            caixa::acao(
+                c,
+                ids::CTX_MENU_SHEET_SIZE_CREATE,
+                tr("chrome.dialog.create_sheet"),
+                y,
+            )
+        });
+        return;
+    }
     // ⚠️ A largura é DERIVADA da contagem, como no irmão: acrescentar uma resolução à tabela
     // `ids::CTX_MENU_SHEET_SIZES` não pode espremer os botões existentes sem nada acender.
     const SIZE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: cabe "8192" no `TypeToken::Sm` com folga

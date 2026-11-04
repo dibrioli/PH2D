@@ -578,10 +578,12 @@ fn nenhum_rotulo_de_nenhum_dialogo_se_corta() {
         let mut e = Ecra::aberto(kind, (32, 24));
         let ((), medidos) = elisao::medindo(|| e.pinta());
         let mut vistos = Vec::new();
-        for md in medidos
-            .iter()
-            .filter(|md| esperados.contains(&md.texto.as_str()))
-        {
+        for md in medidos.iter() {
+            // Em cartões a unidade vai no rótulo: «Width (px)» é o «Width» da tabela.
+            let nome = md.texto.split(" (").next().unwrap_or(&md.texto);
+            if !esperados.contains(&nome) {
+                continue;
+            }
             assert!(
                 md.coube(),
                 "{kind:?}: «{}» cortado em «{}» ({:.1} px)",
@@ -589,7 +591,7 @@ fn nenhum_rotulo_de_nenhum_dialogo_se_corta() {
                 md.pintado,
                 md.largura
             );
-            vistos.push(md.texto.clone());
+            vistos.push(nome.to_owned());
         }
         for t in esperados {
             assert!(

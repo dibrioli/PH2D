@@ -423,7 +423,7 @@ pub fn paint_text_input_with_buffer(
             inner_y,
             font_size,
             f32::INFINITY,
-            resolve(ColorToken::Text3, theme),
+            crate::widget::card_ink::tinta(ColorToken::Text3, theme),
         );
     } else if !displayed.is_empty() {
         let color = if input.state == TextInputState::Disabled {

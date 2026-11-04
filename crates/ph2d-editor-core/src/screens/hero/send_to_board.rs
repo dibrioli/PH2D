@@ -25,6 +25,7 @@ use crate::widget::{ButtonState, TextInput, TextInputState, paint_text_input_wit
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_model::BoardId;
+use ph2d_card_stack::metrics as m;
 use ph2d_component_desc::ObjectKind;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -308,6 +309,60 @@ pub fn paint(
     };
     let (boards, more) = src.items(docs, query);
     let (search_key, new_key) = src.search_and_new();
+    let ativo = docs.active().filter(|_| !matches!(src, Source::Kanban(_)));
+    let molde = super::caixa_cartao::Molde {
+        largura: super::context_menu_dialogs::DIALOG_W,
+        titulo: tr(src.title()),
+    };
+    let mut alvo = super::caixa_cartao::Alvo {
+        scene: &mut *scene,
+        text_system: &mut *text_system,
+        hit_index: &mut *hit_index,
+        store,
+        viewport,
+    };
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    if super::caixa_cartao::centrada(molde, cartao, &mut alvo, |c, y| {
+        let busca = crate::panel::cards::Widget::Text {
+            id: ids::CTX_SEND_BOARD_SEARCH,
+            placeholder: tr(search_key),
+        };
+        let mut y = c.full(None, busca, y) + m::FIELD_ROW_GAP;
+        for (i, (b, name)) in boards.iter().enumerate() {
+            let linha = crate::panel::cards::linhas_extra::ListRow {
+                id: ids::CTX_SEND_BOARD_ROWS[i],
+                label: name,
+                depth: 0,
+                icon: None,
+                trailing: None,
+                selected: Some(BoardId(*b)) == ativo,
+                target: false,
+                dim: false,
+                edit: None,
+            };
+            y = c.list_row(&linha, y);
+        }
+        if boards.is_empty() {
+            y = c.hint(tr("chrome.no_matches"), y);
+        }
+        if more > 0 {
+            y = c.hint(
+                &tr_with("board.send.more", &[("count", &more.to_string())]),
+                y,
+            );
+        }
+        c.full(
+            None,
+            crate::panel::cards::Widget::Button {
+                id: ids::CTX_SEND_BOARD_NEW,
+                text: tr(new_key),
+                primary: false,
+            },
+            y + m::FIELD_ROW_GAP,
+        )
+    }) {
+        return;
+    }
     let gap = Spacing::Xs.px();
     // título · busca · quadros (≥ 1: a frase «nada casa») · «mais N» · risco · «New board».
     let list_rows = boards.len().max(1) + usize::from(more > 0);

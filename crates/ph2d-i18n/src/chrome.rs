@@ -50,8 +50,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.dialog.new_image" => "New Image",
         "chrome.dialog.new_sheet" => "New Sprite Sheet",
         "chrome.dialog.size" => "Size",
+        "chrome.dialog.size_px" => "Size (px)",
         "chrome.dialog.background" => "Background",
         "chrome.dialog.resolution" => "Resolution",
+        "chrome.dialog.resolution_px" => "Resolution (px)",
 
         "chrome.fill.title" => "Fill",
         "chrome.color.read_only" => "Read-only",

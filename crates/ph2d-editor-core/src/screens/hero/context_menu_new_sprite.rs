@@ -8,8 +8,8 @@ use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text, resolve};
-use crate::panel::cards::{CardCtx, Cell, Seg, Widget};
 use crate::panel::cards::ferramenta::campo;
+use crate::panel::cards::{CardCtx, Cell, Seg, Widget};
 use crate::panel::rows::RowCtx;
 use crate::widget::card_field::CardFieldSpec;
 use crate::widget::card_ink::CardInk;
@@ -40,7 +40,16 @@ pub(in crate::screens::hero) fn paint_new_sprite_dialog(
         // A altura sai da função que pinta, num ensaio descartável: uma conta só.
         let (cw, cx0) = (DIALOG_W - m::CARD_PAD_X * 2.0, m::CARD_PAD_X);
         let (mut ensaio, mut alvos) = (VectorScene::new(), HitIndex::default());
-        let fim = corpo_em_cartao(&mut ensaio, text_system, &mut alvos, store, ink, cx0, cw, 0.0);
+        let fim = corpo_em_cartao(
+            &mut ensaio,
+            text_system,
+            &mut alvos,
+            store,
+            ink,
+            cx0,
+            cw,
+            0.0,
+        );
         let total_h = fim + m::CARD_PAD_BOTTOM;
         let x = (viewport.x + (viewport.w - DIALOG_W) * 0.5).max(viewport.x);
         let y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);

@@ -5,11 +5,13 @@
 //! os três métodos, Cancel | OK. As filas saem das tabelas `ids::COLOR_MODE_*`, as mesmas que o
 //! despacho e o registo leem.
 
+use super::super::caixa_cartao as caixa;
 use super::super::context_menu_overlay::{ROW_H, pad_y};
 use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text, paint_text_elided, resolve};
+use crate::panel::cards::Widget;
 use crate::pixel_panel::{NewSpriteMode, PixelDither};
 use crate::widget::{Button, paint_button};
 use crate::zones::Rect;
@@ -32,6 +34,9 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
 ) {
     let choice = store.color_mode_choice();
     let current = store.color_mode_current();
+    if corpo_em_cartao(scene, text_system, theme, hit_index, store, viewport) {
+        return;
+    }
     let extra = match choice.target {
         NewSpriteMode::Indexed => 2 + ids::COLOR_MODE_DITHER_ROWS.len(),
         NewSpriteMode::Gray => 2,
@@ -157,6 +162,72 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
         let b = if accent { b.accent() } else { b };
         paint_button(&b, b_rect, f.scene, f.text_system, theme);
     }
+}
+
+/// O corpo em linhas de cartão; `false` no modo de antes.
+fn corpo_em_cartao(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) -> bool {
+    let choice = store.color_mode_choice();
+    let opt = |d: PixelDither| {
+        let (_, id, k) = ids::COLOR_MODE_DITHERS
+            .iter()
+            .find(|(x, ..)| *x == d)
+            .expect("todo dither está na tabela");
+        (*id, tr(k), d == choice.dither)
+    };
+    let alvos: Vec<_> = ids::COLOR_MODE_TARGETS
+        .iter()
+        .map(|(m, id, k)| (*id, tr(k), *m == choice.target))
+        .collect();
+    let largos = ids::COLOR_MODE_DITHER_WIDE.map(opt);
+    let filas = ids::COLOR_MODE_DITHER_ROWS.map(|(rotulo, ds)| (tr(rotulo), ds.map(opt)));
+    let metodos: Vec<_> = ids::COLOR_MODE_GRAYS
+        .iter()
+        .map(|(g, id, k)| (*id, tr(k), *g == choice.gray))
+        .collect();
+    let molde = caixa::Molde {
+        largura: DIALOG_W,
+        titulo: tr("pixel.color_mode.title"),
+    };
+    let mut alvo = caixa::Alvo {
+        scene,
+        text_system,
+        hit_index,
+        store,
+        viewport,
+    };
+    let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
+    caixa::centrada(molde, cartao, &mut alvo, |c, y| {
+        let escolha = |c: &mut crate::panel::cards::CardCtx<'_>, r, o: &[_], y| {
+            let segs = caixa::segs(o);
+            c.full(r, Widget::Choice(&segs), y)
+        };
+        let mut y = escolha(c, Some(tr("pixel.color_mode.target")), &alvos, y);
+        match choice.target {
+            NewSpriteMode::Indexed => {
+                y = escolha(c, Some(tr("pixel.color_mode.dithering")), &largos, y);
+                for (rotulo, ds) in &filas {
+                    y = escolha(c, Some(*rotulo), ds, y);
+                }
+            }
+            NewSpriteMode::Gray => {
+                y = escolha(c, Some(tr("pixel.color_mode.method")), &metodos, y);
+            }
+            NewSpriteMode::Rgba => {}
+        }
+        caixa::par(
+            c,
+            (ids::COLOR_MODE_CANCEL, tr("pixel.new_sprite.cancel")),
+            (ids::COLOR_MODE_OK, tr("pixel.new_sprite.ok")),
+            y,
+        )
+    })
 }
 
 struct Fila<'a> {

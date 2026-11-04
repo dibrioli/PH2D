@@ -10,11 +10,16 @@ use super::{DIALOG_W, paint_choice_button};
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text_elided, resolve};
+use crate::panel::cards::ferramenta::campo;
+use crate::panel::cards::{CardCtx, Widget};
 use crate::panel::rows::RowCtx;
 use crate::pixel_panel::{PixelDialogKind, PixelModify};
+use crate::widget::card_field::CardFieldSpec;
+use crate::widget::card_ink::CardInk;
 use crate::widget::{Button, Dropdown, DropdownOption, PaintedPopover, Unit, paint_button};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -76,7 +81,6 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     let d = store.pixel_edit_dialog();
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de filas, < 64")]
     let rows = rows_of(d.kind) as f32;
-    let gap = Spacing::Xs.px();
     let total_h = pad_y() * 2.0 + ROW_H * rows + ph2d_tokens::control_gap_px() * (rows - 1.0);
     let dialog_w = DIALOG_W;
     // Os de filtro encostam-se onde tapam menos o sprite e nunca a dica do fundo (as filas dela).
@@ -95,6 +99,29 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
     );
     let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
     let _tinta = superficie.veste();
+    let ink = superficie.tinta();
+    // Em cartões a altura sai do corpo, num ensaio descartável: rótulos em cima, campos aos pares.
+    let (pad_x, pad_topo) = ink.map_or((Spacing::Md.px(), pad_y()), |_| {
+        (m::CARD_PAD_X, m::CARD_PAD_TOP)
+    });
+    let rect = if ink.is_some() {
+        let (mut ensaio, mut alvos) = (VectorScene::new(), HitIndex::default());
+        let mut c = Caixa {
+            scene: &mut ensaio,
+            text_system: &mut *text_system,
+            theme,
+            hit_index: &mut alvos,
+            store,
+            x: pad_x,
+            w: dialog_w - pad_x * 2.0,
+            kernel_chip: None,
+            ink,
+        };
+        let h = corpo(&mut c, d, pad_topo) + m::CARD_PAD_BOTTOM;
+        crate::pixel_panel::place_dialog(view, (dialog_w, h), avoid, Spacing::Md.px(), hint_band)
+    } else {
+        rect
+    };
     superficie.moldura_de_caixa(scene, rect);
     let mut c = Caixa {
         scene,
@@ -102,11 +129,39 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
         theme,
         hit_index,
         store,
-        x: rect.x + Spacing::Md.px(),
-        w: rect.w - Spacing::Md.px() * 2.0,
+        x: rect.x + pad_x,
+        w: rect.w - pad_x * 2.0,
         kernel_chip: None,
+        ink,
     };
-    let mut y = rect.y + pad_y();
+    corpo(&mut c, d, rect.y + pad_topo);
+    // A lista aberta dos kernels por último: por cima dos botões, e os hits dela ganham.
+    if let Some(chip) = c
+        .kernel_chip
+        .filter(|_| store.pixel_filter_kernel_list_open())
+    {
+        let dd = kernel_dropdown(d.filter, true);
+        // A lista flutua sobre o canvas e a Timeline: fica dentro da janela com a moldura à vista.
+        let region = dd.region_in_whole_rows(chip, viewport, Spacing::Md.px());
+        let p = crate::panel::paint_dropdown_popover_scrolled_with_hits(
+            &dd,
+            chip,
+            region,
+            store,
+            c.scene,
+            c.text_system,
+            theme,
+            c.hit_index,
+        );
+        KERNEL_LIST.with(|k| k.set(Some(p)));
+    }
+}
+
+/// Título, as filas do diálogo e Cancel | OK. Devolve o fim do conteúdo.
+fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) -> f32 {
+    let gap = Spacing::Xs.px();
+    let store = c.store;
+    let theme = c.theme;
     let title = match d.kind {
         PixelDialogKind::ColorRange => "pixel.edit_dialog.color_range.title",
         PixelDialogKind::Modify(PixelModify::Expand) => "pixel.edit_dialog.modify.expand",
@@ -148,16 +203,18 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
             y = c.choices(&opts, y);
         }
         PixelDialogKind::CanvasSize => {
-            for (key, id) in [
-                ("pixel.edit_dialog.width", ids::PIXEL_EDIT_CANVAS_W),
-                ("pixel.edit_dialog.height", ids::PIXEL_EDIT_CANVAS_H),
-                ("pixel.edit_dialog.left", ids::PIXEL_EDIT_LEFT),
-                ("pixel.edit_dialog.top", ids::PIXEL_EDIT_TOP),
-                ("pixel.edit_dialog.right", ids::PIXEL_EDIT_RIGHT),
-                ("pixel.edit_dialog.bottom", ids::PIXEL_EDIT_BOTTOM),
-            ] {
-                y = c.field(key, id, Some(Unit::Px), y);
-            }
+            let px = Some(Unit::Px);
+            y = c.fields(
+                &[
+                    ("pixel.edit_dialog.width", ids::PIXEL_EDIT_CANVAS_W, px),
+                    ("pixel.edit_dialog.height", ids::PIXEL_EDIT_CANVAS_H, px),
+                    ("pixel.edit_dialog.left", ids::PIXEL_EDIT_LEFT, px),
+                    ("pixel.edit_dialog.top", ids::PIXEL_EDIT_TOP, px),
+                    ("pixel.edit_dialog.right", ids::PIXEL_EDIT_RIGHT, px),
+                    ("pixel.edit_dialog.bottom", ids::PIXEL_EDIT_BOTTOM, px),
+                ],
+                y,
+            );
             y = c.label("pixel.edit_dialog.anchor", y, ColorToken::Text3);
             for row in ids::PIXEL_EDIT_ANCHORS.chunks(3) {
                 let opts: Vec<_> = row
@@ -176,38 +233,32 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
                 )],
                 y,
             );
-            for (key, id, unit) in [
-                (
-                    "pixel.edit_dialog.width",
-                    ids::PIXEL_EDIT_SPRITE_W,
-                    Unit::Px,
-                ),
-                (
-                    "pixel.edit_dialog.height",
-                    ids::PIXEL_EDIT_SPRITE_H,
-                    Unit::Px,
-                ),
-                (
-                    "pixel.edit_dialog.width_scale",
-                    ids::PIXEL_EDIT_SPRITE_WPCT,
-                    Unit::Percent,
-                ),
-                (
-                    "pixel.edit_dialog.height_scale",
-                    ids::PIXEL_EDIT_SPRITE_HPCT,
-                    Unit::Percent,
-                ),
-            ] {
-                y = c.field(key, id, Some(unit), y);
-            }
+            let (px, pct) = (Some(Unit::Px), Some(Unit::Percent));
+            y = c.fields(
+                &[
+                    ("pixel.edit_dialog.width", ids::PIXEL_EDIT_SPRITE_W, px),
+                    ("pixel.edit_dialog.height", ids::PIXEL_EDIT_SPRITE_H, px),
+                    (
+                        "pixel.edit_dialog.width_scale",
+                        ids::PIXEL_EDIT_SPRITE_WPCT,
+                        pct,
+                    ),
+                    (
+                        "pixel.edit_dialog.height_scale",
+                        ids::PIXEL_EDIT_SPRITE_HPCT,
+                        pct,
+                    ),
+                ],
+                y,
+            );
             y = c.label("pixel.edit_dialog.interpolation", y, ColorToken::Text3);
             for (m, id, k) in ids::PIXEL_EDIT_METHODS {
                 y = c.choices(&[(id, tr(k), m == d.method)], y);
             }
         }
         k if k.is_filter() => {
-            y = adjust_rows(&mut c, d, y);
-            y = filter_rows(&mut c, d, y);
+            y = adjust_rows(c, d, y);
+            y = filter_rows(c, d, y);
         }
         _ => {}
     }
@@ -227,32 +278,13 @@ pub(in crate::screens::hero) fn paint_pixel_edit_dialog(
             true,
         ),
     ] {
-        let b_rect = Rect::new(x, y, half, ROW_H);
+        let b_rect = Rect::new(x, y, half, c.h());
         c.hit_index.register(id, b_rect);
         let b = Button::new(id, tr(key)).visual(store.button_visual(id));
         let b = if accent { b.accent() } else { b };
         paint_button(&b, b_rect, c.scene, c.text_system, theme);
     }
-    // A lista aberta dos kernels por último: por cima dos botões, e os hits dela ganham.
-    if let Some(chip) = c
-        .kernel_chip
-        .filter(|_| store.pixel_filter_kernel_list_open())
-    {
-        let dd = kernel_dropdown(d.filter, true);
-        // A lista flutua sobre o canvas e a Timeline: fica dentro da janela com a moldura à vista.
-        let region = dd.region_in_whole_rows(chip, viewport, Spacing::Md.px());
-        let p = crate::panel::paint_dropdown_popover_scrolled_with_hits(
-            &dd,
-            chip,
-            region,
-            store,
-            c.scene,
-            c.text_system,
-            theme,
-            c.hit_index,
-        );
-        KERNEL_LIST.with(|k| k.set(Some(p)));
-    }
+    y + c.h()
 }
 
 /// O dropdown dos kernels da Convolution Matrix: uma opção por nome publicado, na ordem do núcleo.
@@ -295,16 +327,12 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         y = c.choices(&opts, y);
     }
     if d.kind == PixelDialogKind::Despeckle {
-        y = c.field(
-            "pixel.edit_dialog.width",
-            ids::PIXEL_FILTER_MEDIAN_W,
-            Some(Unit::Px),
-            y,
-        );
-        y = c.field(
-            "pixel.edit_dialog.height",
-            ids::PIXEL_FILTER_MEDIAN_H,
-            Some(Unit::Px),
+        let px = Some(Unit::Px);
+        y = c.fields(
+            &[
+                ("pixel.edit_dialog.width", ids::PIXEL_FILTER_MEDIAN_W, px),
+                ("pixel.edit_dialog.height", ids::PIXEL_FILTER_MEDIAN_H, px),
+            ],
             y,
         );
     }
@@ -385,10 +413,8 @@ fn adjust_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         }
         _ => &[],
     };
-    for (key, id) in campos {
-        y = c.field(key, *id, None, y);
-    }
-    y
+    let linhas: Vec<_> = campos.iter().map(|(k, id)| (*k, *id, None)).collect();
+    c.fields(&linhas, y)
 }
 
 struct Caixa<'a> {
@@ -401,9 +427,72 @@ struct Caixa<'a> {
     w: f32,
     /// O chip do dropdown dos kernels, quando pintado (a lista aberta pinta-se no fim).
     kernel_chip: Option<Rect>,
+    /// A tinta do cartão: as filas pintam-se em linhas de cartão. `None` no modo de antes.
+    ink: Option<CardInk>,
 }
 
 impl Caixa<'_> {
+    /// A altura de uma fila.
+    fn h(&self) -> f32 {
+        if self.ink.is_some() {
+            m::FIELD_H
+        } else {
+            ROW_H
+        }
+    }
+
+    /// Da fila à seguinte.
+    fn pitch(&self) -> f32 {
+        if self.ink.is_some() {
+            m::FIELD_H + m::FIELD_ROW_GAP
+        } else {
+            ph2d_tokens::row_pitch_px()
+        }
+    }
+
+    /// Campos numéricos: em cartões, aos pares e com a unidade no rótulo.
+    fn fields(&mut self, lista: &[(&str, NodeId, Option<Unit>)], mut y: f32) -> f32 {
+        let Some(ink) = self.ink else {
+            for (key, id, unit) in lista {
+                y = self.field(key, *id, *unit, y);
+            }
+            return y;
+        };
+        for par in lista.chunks(2) {
+            let nomes: Vec<String> = par
+                .iter()
+                .map(|(key, _, unit)| match unit {
+                    Some(u) => format!("{} ({})", tr(key), u.suffix()),
+                    None => tr(key).to_owned(),
+                })
+                .collect();
+            let cells: Vec<_> = par
+                .iter()
+                .zip(&nomes)
+                .map(|((_, id, _), nome)| {
+                    let spec = CardFieldSpec {
+                        step: 1.0,
+                        scrub: 0.25, // LITERAL-PX-OK: unidades por px de arrasto, como no New Sprite
+                        default: None,
+                    };
+                    self.store.mark_card_field_at_paint(*id, spec);
+                    campo(*id, nome)
+                })
+                .collect();
+            let mut c = CardCtx::flutuante(
+                &mut *self.scene,
+                &mut *self.text_system,
+                self.store,
+                &mut *self.hit_index,
+                ink,
+                self.x,
+                self.w,
+            );
+            y = c.row(&cells, y) + m::FIELD_ROW_GAP;
+        }
+        y
+    }
+
     /// Convolution Matrix: «Kernel» e o chip do dropdown no resto da fila. Não na coluna do valor:
     /// ela tem 138 px e o nome mais largo pede 184 (`no_kernel_name_nor_label_…_is_cut`); nenhuma
     /// outra fila deste diálogo é rotulada, não há coluna a alinhar.
@@ -416,28 +505,51 @@ impl Caixa<'_> {
             self.scene,
             label,
             self.x,
-            y + (ROW_H - font) * 0.5,
+            y + (self.h() - font) * 0.5,
             font,
             label_w,
-            resolve(ColorToken::Text2, self.theme),
+            crate::widget::card_ink::tinta(ColorToken::Text2, self.theme),
         );
         let gap = Spacing::Md.px();
         let chip = Rect::new(
             self.x + label_w + gap,
             y,
             (self.w - label_w - gap).max(1.0),
-            ROW_H,
+            self.h(),
         );
         let dd = kernel_dropdown(f, self.store.pixel_filter_kernel_list_open())
             .visual(self.store.dropdown_visual(ids::PIXEL_FILTER_KERNEL));
         crate::widget::paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
         self.hit_index.register(ids::PIXEL_FILTER_KERNEL, chip);
         self.kernel_chip = Some(chip);
-        y + ph2d_tokens::row_pitch_px()
+        y + self.pitch()
     }
 
     /// Um rótulo numa fila só (elidido: o censo das elisões vê se coube).
     fn label(&mut self, key: &str, y: f32, token: ColorToken) -> f32 {
+        if let Some(ink) = self.ink {
+            // O título no corpo do valor; o rótulo no do cartão, colado à linha de baixo.
+            let (font, h, cor) = if token == ColorToken::Text1 {
+                (m::VALUE_PX, m::FIELD_H, ColorToken::KanbanCardFg)
+            } else {
+                (
+                    m::LABEL_PX,
+                    m::LABEL_PX + m::LABEL_BOTTOM,
+                    ColorToken::CardLabel,
+                )
+            };
+            paint_text_elided(
+                self.text_system,
+                self.scene,
+                tr(key),
+                self.x,
+                y + crate::paint::folga_do_texto(h, font),
+                font,
+                self.w,
+                ink.color(cor),
+            );
+            return y + h;
+        }
         let font = TypeToken::Sm.px();
         paint_text_elided(
             self.text_system,
@@ -472,6 +584,19 @@ impl Caixa<'_> {
 
     /// Uma fila de escolhas de largura igual: `(id, rótulo, escolhida)`.
     fn choices(&mut self, opts: &[(NodeId, &str, bool)], y: f32) -> f32 {
+        if let Some(ink) = self.ink {
+            let segs = super::super::caixa_cartao::segs(opts);
+            let mut c = CardCtx::flutuante(
+                &mut *self.scene,
+                &mut *self.text_system,
+                self.store,
+                &mut *self.hit_index,
+                ink,
+                self.x,
+                self.w,
+            );
+            return c.full(None, Widget::Choice(&segs), y) + m::FIELD_ROW_GAP;
+        }
         let gap = Spacing::Xs.px();
         #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]
         let n = opts.len() as f32;

@@ -29,6 +29,7 @@ use crate::screens::hero::HeroScreen;
 use crate::widget::{Button, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
@@ -125,9 +126,26 @@ pub fn paint_onion_modal(
     );
     let close_rect = Rect::new(close_x, cy, CLOSE_W, row_h);
     hit_index.register(ids::TIMELINE_ONION_MODAL_CLOSE, close_rect);
-    let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X")
-        .visual(store.button_visual(ids::TIMELINE_ONION_MODAL_CLOSE));
-    paint_button(&close, close_rect, scene, text_system, theme);
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        if store.hover_live(ids::TIMELINE_ONION_MODAL_CLOSE) > 0.0 {
+            let fundo = ink.color(ColorToken::CardFieldHover);
+            crate::paint::fill_rounded_rect(scene, close_rect, m::FIELD_RADIUS, fundo);
+        }
+        let lado = m::HEAD_ICON_GLYPH;
+        let icone = Rect::new(
+            close_rect.x + (close_rect.w - lado) * 0.5,
+            close_rect.y + (close_rect.h - lado) * 0.5,
+            lado,
+            lado,
+        );
+        let tinta = ink.color(ColorToken::Text2);
+        let traco = ph2d_tokens::StrokeToken::Default.px();
+        crate::paint::paint_icon(scene, crate::icons::IconId::Close, icone, tinta, traco);
+    } else {
+        let close = Button::new(ids::TIMELINE_ONION_MODAL_CLOSE, "X")
+            .visual(store.button_visual(ids::TIMELINE_ONION_MODAL_CLOSE));
+        paint_button(&close, close_rect, scene, text_system, theme);
+    }
     cy += row_h + gap;
 
     // ── Three sliders: Opacity, Ghosts Before, Ghosts After. Each row is a left label + a track

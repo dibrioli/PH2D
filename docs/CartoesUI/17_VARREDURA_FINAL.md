@@ -33,10 +33,10 @@ Custo: **P** até 30 min · **M** uma fatia · **G** mais de uma fatia. Ordem = 
 ## O que falta, por ordem
 
 1. **`paint_stroke_popover` do Vector fora da camada:** em cartões vai por `cards_lado::flutua`, que pinta na cena do painel e não passa por `camada_das_listas::por_cima`. Pode ficar por baixo de outro painel ou do HUD. Não curado nesta fatia: não medi um caso visível.
-2. **Biblioteca de presets do Wet Paint** (`paint_wetpaint_presets_biblioteca.rs`, `paint_popover`): usa `paint_dropdown_list`, fora da camada. É do Painter: só apontado.
+2. ✅ **Biblioteca de presets do Wet Paint** (H11). Medido: a lista já ia pela camada, porque `paint_dropdown_list` passa por `por_cima`. Fora dela estavam a barra do arrasto e a janela do Delete (`paint_popover`, `paint_dialogo`): a barra caía na cena do painel, por baixo da lista onde cai. Curados, com os alvos da janela por `alvo`. Por decidir: a linha arrastada dentro da lista mostra só a barra, não voa como o cartão do Kanban.
 3. **Item 13:** «+ Track ▾» com seta em letra.
 4. **`v2_dica.png`:** faixa escura no canto de baixo à direita, por trás do fim do HUD. Sem causa achada; não aparece nas outras cenas.
-5. **`quantas_entradas…a_altura_de_abertura`:** vermelho em `painter_layers` (1690 contra 1683), do agente em `ph2d-panel-painter-layers`, com a árvore suja dele.
+5. ✅ **`quantas_entradas…a_altura_de_abertura`:** `painter_layers` em `1670`, medido na H9.
 
 ## Proposta para o dono: Widget Gallery
 

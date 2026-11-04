@@ -36,16 +36,15 @@ com arrasto (`set_panel_row_ids`), `paint_rows*`, `paint_adjust/` (curva, degrad
 `CardCtx` da API têm rótulo em cima e medem a altura ao pintar. A API não tem esse nível, e a lei é «nunca um 2.º título» (05).
 
 **Decisão: FUNDIR, sem retirar agora.** Cada fatia troca as caixas da secção dela por um grupo dentro do cartão (`linha de grupo`
-da API) e as `card_row` por `Field`. `card.rs` e `seccoes.rs` ficam vivos só para `PH2D_CARDS=0` e para o corpo hospedado, e saem
-com o painel antigo. **Porquê não manter dois sistemas:** duas caixas, duas colunas e duas alturas é o defeito que `seccoes.rs` matou.
+da API) e as `card_row` por `Field`. `card.rs` e `seccoes.rs` ficam vivos só para `PH2D_CARDS=0`, e saem com o painel antigo. **Porquê não manter dois sistemas:** duas caixas, duas colunas e duas alturas é o defeito que `seccoes.rs` matou.
 **Porquê não fundir na 1.ª fatia:** `n_rows` fixo com linhas de altura medida sobrepõe; a conversão só serve secção a secção.
 
 ## Como o painel fica coerente a meio
 
 **Todo o painel vira lista na fatia 1**, como o Vector (12). O corpo antigo pede `PaintCtx` (`store_mut` 82×, `bus_mut` 36×) e o
-corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou estar solto. Por isso o hospedeiro é outro:
+corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou estar solto. Por isso o hospedeiro foi outro, até à H11:
 
-- **Captura:** antes da lista, cada secção corre UMA vez com o `PaintCtx` real, com cena e `HitIndex` próprios, na posição do quadro
+- **Captura (retirada na H11):** antes da lista, cada secção corre UMA vez com o `PaintCtx` real, com cena e `HitIndex` próprios, na posição do quadro
   anterior. Devolve fundo, título absorvido e Reset. O corpo do cartão só **repete**: cena transladada e alvos transladados.
 - Vale em voo, solto e rolagem; a altura é a do próprio quadro; popovers, gizmos e rects guardados não mudam de código.
 - O corpo capturado NÃO usa as linhas Figma (`cartao::com`), porque quebrariam as caixas de `n_rows`; usa só a tinta (`card_ink::com`).
@@ -65,9 +64,10 @@ corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou es
 | H6 ✅ | Paper + Grain + Randomize em linhas (`cards_papel.rs`, `cards_grao.rs`, `cards_aleatorio.rs`). Capturados: prévias, editor da rampa, títulos Grain Behavior e Grain Colors | médio; prensa do papel é controlo de pincel |
 | H7 ✅ | Stroke + Pen em linhas (`cards_traco.rs`, `cards_caneta.rs`; Spacing e Continuous juntos). Capturado: só o título do Jitter | médio: 43 + 25 |
 | H8 ✅ | Composite, Line, Clone, Inpaint, Mask, Deform, Selection, Sculpt em linhas (`cards_composto.rs`, `cards_ferramenta.rs`, `cards_exclusivos.rs`). Mixing, Symmetry e Tiling deixam de correr o corpo antigo. Capturada: a prévia do Flow | médio |
-| H9 parcial | Layers nativa (`cards_camadas.rs`, `cards_camadas_linha.rs`). Prévias, curva do Falloff, visor do Taper, gizmo Flatten, visor do Tilt, linhas por camada, editores de rampa e títulos que dobram pintam no corpo do cartão (`cards_tela.rs`, `cards_rampa.rs`). **Falta:** ver abaixo | alto |
+| H9 ✅ | Layers nativa (`cards_camadas.rs`, `cards_camadas_linha.rs`). Prévias, curva do Falloff, visor do Taper, gizmo Flatten, visor do Tilt, linhas por camada, editores de rampa e títulos que dobram pintam no corpo do cartão (`cards_tela.rs`, `cards_rampa.rs`) | alto |
+| H11 ✅ | Parâmetros de ajuste (`cards_ajustes.rs`: barras, curva, degradê, Levels, Mixer, Selective Color, Black & White) e editor da camada Texture (`cards_grao.rs`). Sai a captura | alto |
 
-**Painel NÃO fechado. O que resta capturado, e só isto:** parâmetros de ajuste (`paint_adjustment_params`: barras, curva, degradê, Levels, Mixer, Selective Color, Black & White) e o editor da camada Texture (`paint_texture_layer_editor`), ambos só na vista Layers (`cards_camadas::pecas`). A vista Brush já não corre o pintor antigo nem a captura. `Captura`, `PaintCtx` duplo, `card.rs` e `seccoes.rs` saem com esses dois.
+**✅ Painel FECHADO (H11, 04/11).** Nada capturado. `cards_captura.rs` e o `PaintCtx` duplo saíram. `card.rs`, `seccoes.rs` e os `paint_*` de corpo só correm com `PH2D_CARDS=0`: `cards::so_no_painel_de_antes` é a porta (em cartões, pânico nos testes), e saem com o painel antigo, por ordem do dono. A curva e a barra do degradê são a MESMA tela nas duas caras (`curva_na_tela`, `barra_na_tela`).
 
 **A receita dos widgets próprios:** o pintor recebe `Tela` (cena, texto, `&WidgetStore`, alvos, tinta), que vem do `CardCtx` ou do `PaintCtx` de `PH2D_CARDS=0`; o que escreve no store vai por `Tela::depois`, aplicado depois da lista; o resto corre no `prepare`. Pixéis de prévia desenham-se uma vez por quadro (`Previa`) e o corpo só os pousa.
 

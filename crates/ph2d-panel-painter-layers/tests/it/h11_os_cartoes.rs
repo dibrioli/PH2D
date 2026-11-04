@@ -5,7 +5,6 @@ use super::h1_os_cartoes::{Mesa, esc, valor_enviado};
 use super::h5_os_cartoes::sem_sobrepor;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::censo;
 use ph2d_host::PointerKind;
 use ph2d_panel_painter_layers::state::set_current_layers;
@@ -445,6 +444,42 @@ fn the_icon_only_buttons_and_the_color_letters_have_tips() {
         }
         set_current_layers(None);
     }
+}
+
+/// No Black & White, a Tint fica entre os pesos e a tinta que ela governa, como no painel de antes. Os números saem
+/// redondos: `0.65 * 100.0` apareceria `65.000`. *Mutação: tirar o `mirror_value` ⇒ vermelho.*
+#[test]
+fn black_and_white_keeps_the_tint_between_its_weights_and_shows_round_numbers() {
+    let (s, l) = com_ajuste(AdjustmentKind::BlackAndWhite);
+    let m = abre(true, s);
+    let tinta = m
+        .rect(painter_layer_widget_id(l.0, W::AdjToggle0))
+        .expect("a caixa");
+    let (_, ultimo_peso) = chips_de(l)[5];
+    let peso = m.rect(ultimo_peso).expect("o peso");
+    let valores: Vec<f64> = chips_de(l)
+        .iter()
+        .take(6)
+        .map(|(_, c)| m.host.store().number_value(*c).expect("o número"))
+        .collect();
+    set_current_layers(None);
+    assert!(tinta.y >= peso.y + peso.h, "{tinta:?} × {peso:?}");
+    for v in valores {
+        assert_eq!(v, v.round(), "não é um inteiro: {v}");
+    }
+}
+
+/// Só a camada Texture ATIVA abre o editor: os ids são fixos, e há uma instância.
+/// *Mutação: tirar a condição `stack.active() == Some(id)` ⇒ vermelho.*
+#[test]
+fn only_the_active_texture_layer_opens_the_editor() {
+    let (mut s, t) = com_textura(TextureKind::COUNT - 2, false);
+    let base = s.all_ids().find(|i| *i != t).expect("a base");
+    s.set_active(base);
+    let m = abre(true, s);
+    let tem = m.rect(p::PAINTER_BRUSH_TEXTURE_KIND).is_some();
+    set_current_layers(None);
+    assert!(!tem, "o editor abriu com outra camada ativa");
 }
 
 /// O que a camada acrescenta ao corpo, sem as linhas de camada, que têm dentro as células delas.

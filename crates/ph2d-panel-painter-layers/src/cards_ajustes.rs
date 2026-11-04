@@ -175,7 +175,12 @@ pub(crate) fn prepare(store: &mut WidgetStore, layer: u64, p: &AdjustmentParams)
         register_bare_slider(store, b.slider, b.pista);
         let chip = ligar_numero(store, b.slider, b.chip, b.numero);
         if chip != NodeId(0) {
-            arma_barra(store, [b.slider, chip], b.pista, b.fabrica, casas(b.numero));
+            let n = casas(b.numero);
+            arma_barra(store, [b.slider, chip], b.pista, b.fabrica, n);
+            // A pista é um `f32`: `0.65 * 100.0` apareceria `65.000` no campo.
+            let fator = 10_f32.powi(n as i32);
+            let mostrado = store.linked_chip_display(chip, b.pista);
+            crate::number_field::mirror_value(store, chip, (mostrado * fator).round() / fator, n);
         }
     }
     let toggles = ph2d_tool_painter::adjustment_toggle_params(p);

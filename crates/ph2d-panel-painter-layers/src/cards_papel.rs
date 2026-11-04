@@ -1,5 +1,5 @@
 //! O cartão Paper em linhas de cartão (fatia H6, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos, as
-//! condições de `paint_paper_section`. Só a prévia do padrão continua no pintor dela, capturada.
+//! condições de `paint_paper_section`.
 
 use crate::cards_linhas::{Item, fila, numero, par_xy, registra_lista};
 use crate::paint_texture::Previa;

@@ -117,7 +117,7 @@ fn opacidade(c: &Corpo<'_>, valor: f32) -> Numero {
     )
 }
 
-/// As opacidades à vista: as outras leem-se no capturado, e a da caixa inerte está no pintor dela.
+/// As opacidades à vista: a da caixa inerte não se arma.
 fn numeros(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
     if !l.shape_color_ramp_enabled {
         return Vec::new();

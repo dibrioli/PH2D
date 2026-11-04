@@ -1,5 +1,5 @@
 //! Os cartões do topo e dos básicos, em linhas de cartão (fatia H2, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos
-//! ids, mesmos eventos. Só a prévia dos presets entra capturada, como peça. As condições são as de `paint_brush::plano_do_corpo` e
+//! ids, mesmos eventos. As condições são as de `paint_brush::plano_do_corpo` e
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
 use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, marca, registra_lista};

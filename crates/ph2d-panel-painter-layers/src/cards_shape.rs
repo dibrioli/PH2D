@@ -1,6 +1,5 @@
 //! O cartão Shape em linhas de cartão (fatia H5, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos, as
-//! condições de `paint_shape_section`. Os gizmos (curva, Taper, Flatten), a prévia e as linhas de cada camada continuam
-//! nos pintores deles, capturados: registam `CurvePoint` e leem a cor pelo `PaintCtx`.
+//! condições de `paint_shape_section`. Os gizmos (curva, Taper, Flatten) pintam pela `Tela`.
 
 use crate::cards_linhas::{
     Item, aberta, botoes, fila, filete, grupo, grupo_inicial, numero, par_xy,

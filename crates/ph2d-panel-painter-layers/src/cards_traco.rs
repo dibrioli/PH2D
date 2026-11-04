@@ -1,6 +1,6 @@
 //! O cartão Stroke em linhas de cartão (fatia H7, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos, as
 //! condições de `paint_stroke_section`. Cada barra vira a caixa ligada a ela: é a barra que continua a avisar o painel, e o
-//! chip mostra a mesma lei da pista. Spacing e Continuous ficam na mesma linha (E10). Capturado: só o título do Jitter.
+//! chip mostra a mesma lei da pista. Spacing e Continuous ficam na mesma linha (E10).
 
 use crate::cards_linhas::{Item, aberta, botoes, escolha, fila, grupo};
 use crate::paint_stroke::{self, jitter_linhas};

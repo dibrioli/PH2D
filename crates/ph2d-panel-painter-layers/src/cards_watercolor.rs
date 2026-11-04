@@ -1,5 +1,5 @@
 //! O cartão Watercolor em linhas de cartão (fatia H4, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos;
-//! as caixas de `card_frame` viram grupos. Só a prévia do Flow continua no pintor dela, capturada.
+//! as caixas de `card_frame` viram grupos.
 
 use crate::cards_linhas::{aberta, botoes, grupo, grupo_inicial, numero, registra_lista};
 use crate::cards_wet::{arma_numeros, campo_e_caixa, numeros};

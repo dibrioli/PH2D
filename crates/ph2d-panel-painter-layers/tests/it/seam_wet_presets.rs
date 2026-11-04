@@ -543,3 +543,76 @@ fn arrastar_no_navegador_pede_a_ordem_nova() {
         );
     }
 }
+
+/// A janela do Delete e a barra do arrasto moram na camada das listas: na cena do painel, ficavam por baixo da
+/// lista onde a barra cai, e dos painéis pintados depois. *Mutação: tirar o `por_cima` ou o `alvo` ⇒ vermelho.*
+#[test]
+fn a_janela_do_delete_e_a_barra_do_arrasto_moram_na_camada_das_listas() {
+    use ph2d_editor_core::interaction::HitIndex;
+    use ph2d_editor_core::paint::resolve;
+    use ph2d_editor_core::panel::camada_das_listas as camada;
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    use ph2d_tokens::{ColorToken, Theme};
+    use ph2d_vector::VectorScene;
+
+    let [confirma, ..] = ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG;
+    let mut t = molhado();
+    let (mut host, mut st, rects) = novo(&t, Some(WASH));
+    let d = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE).expect("o Delete do Wash");
+    clica(&mut host, &mut st, &mut t, d);
+    camada::abre(&VectorScene::new());
+    let _ = painted(&t, &mut host, &mut st);
+    let (mut cena, mut alvos) = (VectorScene::new(), HitIndex::default());
+    camada::fecha(&mut cena, &mut alvos);
+    assert!(
+        alvos.rect_for(confirma).is_some(),
+        "a janela ficou fora da camada"
+    );
+    let rects = painted(&t, &mut host, &mut st);
+    let c = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_DELETE_DIALOG[1]).expect("o Cancel");
+    clica(&mut host, &mut st, &mut t, c);
+
+    let rects = painted(&t, &mut host, &mut st);
+    let chip = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).expect("a caixa");
+    clica(&mut host, &mut st, &mut t, chip);
+    let rects = painted(&t, &mut host, &mut st);
+    let de = rect_of(&rects, ids::painter_wetpaint_preset_option_id(2, WASH)).expect("o pincel");
+    let para = rect_of(&rects, ids::painter_wetpaint_preset_option_id(0, ROUND)).expect("o alvo");
+    let accent = resolve(ColorToken::Accent, Theme::default())
+        .premultiply()
+        .to_rgba8()
+        .to_u32();
+    let tintas = |host: &mut MockPanelHost, st: &mut PainterLayersPanelState| {
+        camada::abre(&VectorScene::new());
+        let n = host
+            .paint_draw_data::<PainterLayersPanel>(st, viewport())
+            .into_iter()
+            .filter(|c| *c == accent)
+            .count();
+        let (mut cena, mut alvos) = (VectorScene::new(), HitIndex::default());
+        camada::fecha(&mut cena, &mut alvos);
+        n
+    };
+    let parada = tintas(&mut host, &mut st);
+    let x = de.x + de.w * 0.5;
+    let ponteiro = |host: &mut MockPanelHost, kind, y| {
+        let _ = host.dispatch_pointer_event(PointerEvent {
+            kind,
+            x,
+            y,
+            button: PointerButton::Primary,
+            source: PointerSource::Mouse,
+            pressure: 1.0,
+            timestamp_ns: 0,
+        });
+    };
+    let y = de.y + de.h * 0.5;
+    ponteiro(&mut host, PointerKind::Down, y);
+    ponteiro(&mut host, PointerKind::Move, y - 8.0);
+    ponteiro(&mut host, PointerKind::Move, para.y + para.h * 0.25);
+    let a_arrastar = tintas(&mut host, &mut st);
+    let viva = host.store().panel_row_drag().is_some_and(|(_, d)| d.active);
+    ponteiro(&mut host, PointerKind::Up, para.y + para.h * 0.25);
+    assert!(viva, "o arrasto não pegou: a régua não mediu nada");
+    assert_eq!(parada, a_arrastar, "a barra caiu na cena do painel");
+}

@@ -1,6 +1,6 @@
 //! O cartão Wet Paint em linhas de cartão (fatia H3, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos,
-//! mesmas condições (as tabelas são as de `paint_wetpaint`, que o painel de antes também lê). Só o visor do Tilt
-//! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
+//! mesmas condições (as tabelas são as de `paint_wetpaint`, que o painel de antes também lê). O visor do Tilt
+//! é o de sempre, pela `Tela`: a lei E10 manda não o redesenhar.
 
 use crate::cards_linhas::{
     Item, aberta, botoes, com_lei, em_pares, fila, grupo, marca, registra_lista,

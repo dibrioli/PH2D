@@ -1,6 +1,5 @@
 //! O cartão Impasto em linhas de cartão (fatia H4, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos. As
-//! caixas viram grupos, a lista TOOL desce em linhas, e o rig de luz fica pela lâmpada escolhida. Os knobs do Sculpt
-//! continuam no pintor deles, capturados, até à fatia dele (H8).
+//! caixas viram grupos, a lista TOOL desce em linhas, e o rig de luz fica pela lâmpada escolhida.
 
 use crate::cards_linhas::{escolha, grupo, numero, numero_e_cor};
 use crate::cards_wet::{arma_numeros, caixa, campo, numeros};

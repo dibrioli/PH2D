@@ -13,7 +13,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{PanelRowDrop, PanelRowFamily, WidgetEvent};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_block, resolve};
 use ph2d_editor_core::panel::{
-    PaintCtx, PanelHostInternal, paint_dropdown_list, visible_option_bands,
+    PaintCtx, PanelHostInternal, camada_das_listas, paint_dropdown_list, visible_option_bands,
 };
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{Button, Dropdown, DropdownOption, Modal, paint_modal};
@@ -134,12 +134,15 @@ pub(crate) fn paint_popover(
             r.y + r.h
         };
         let h = crate::paint_rows::DROP_BAR_H;
-        fill_rounded_rect(
-            ctx.scene,
-            Rect::new(r.x, y - h * 0.5, r.w, h),
-            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-            resolve(ColorToken::Accent, theme),
-        );
+        // Na camada da lista: pintada na cena do painel, a barra ficava por baixo da lista onde ela cai.
+        camada_das_listas::por_cima(ctx.scene, |cena| {
+            fill_rounded_rect(
+                cena,
+                Rect::new(r.x, y - h * 0.5, r.w, h),
+                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
+                resolve(ColorToken::Accent, theme),
+            );
+        });
     }
 }
 
@@ -187,18 +190,21 @@ pub(crate) fn paint_dialogo(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
         Button::new(CANCELA, tr("panel.painter_layers.wetpaint.preset_cancel")),
         Button::new(CONFIRMA, tr("panel.painter_layers.wetpaint.preset_delete")).danger(),
     );
-    paint_modal(&modal, vp, card, ctx.scene, ctx.text_system, theme);
     let corpo = modal.body_rect(card);
-    let _ = paint_text_block(
-        ctx.text_system,
-        ctx.scene,
-        tr("panel.painter_layers.wetpaint.preset_delete_body"),
-        corpo.x,
-        corpo.y,
-        ph2d_tokens::TypeToken::Base.px(),
-        corpo.w,
-        resolve(ColorToken::Text2, theme),
-    );
+    let texto = &mut *ctx.text_system;
+    camada_das_listas::por_cima(ctx.scene, |cena| {
+        paint_modal(&modal, vp, card, cena, texto, theme);
+        let _ = paint_text_block(
+            texto,
+            cena,
+            tr("panel.painter_layers.wetpaint.preset_delete_body"),
+            corpo.x,
+            corpo.y,
+            ph2d_tokens::TypeToken::Base.px(),
+            corpo.w,
+            resolve(ColorToken::Text2, theme),
+        );
+    });
     let (cancel, confirm) = modal.button_rects(card);
     // Por ordem: o último registado ganha o clique.
     let alvos = [
@@ -210,7 +216,7 @@ pub(crate) fn paint_dialogo(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     ];
     let (_, hit) = ctx.host.store_and_hit_index_mut();
     for (id, r) in alvos {
-        hit.register(id, r);
+        camada_das_listas::alvo(hit, id, r);
     }
 }
 

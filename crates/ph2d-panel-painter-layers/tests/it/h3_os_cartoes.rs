@@ -445,6 +445,26 @@ fn the_tilt_dial_is_the_same_on_the_list_and_on_a_loose_card() {
     assert_eq!(velho, solto, "solto");
 }
 
+/// O que sobra de um par fica com a linha inteira, e a caixa cujo nome não cabe na metade não divide a linha.
+#[test]
+fn what_is_left_of_a_pair_takes_the_whole_line() {
+    let m = so_o_wet(true, com_oleo());
+    let r = |id| m.rect(id).expect("pintado");
+    let (par, sobra) = (
+        r(p::PAINTER_WETPAINT_COVER),
+        r(p::PAINTER_WETPAINT_WET_SOFTEN),
+    );
+    assert!((sobra.x - par.x).abs() < 0.5, "{sobra:?} × {par:?}");
+    assert!(sobra.w > 1.5 * par.w, "{sobra:?} × {par:?}");
+    let mistura = r(p::PAINTER_WETPAINT_PIGMENT_MIXING);
+    let viva = r(p::PAINTER_WETPAINT_LIVE_WATER);
+    assert!(
+        viva.y > mistura.y,
+        "a caixa do nome comprido dividiu a linha"
+    );
+    assert!(mistura.w > 1.5 * par.w, "{mistura:?}");
+}
+
 /// O Reset é o do cabeçalho, e o título é o de sempre.
 #[test]
 fn the_wet_card_keeps_its_reset_and_only_one() {

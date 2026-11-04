@@ -41,10 +41,11 @@ pub(crate) fn em_pares<T>(
     for par in itens.chunks(2) {
         let mut fundo = topo;
         for (i, item) in par.iter().enumerate() {
-            if par.len() == 2 {
-                c.x = x + i as f32 * (meia + m::FIELD_GAP);
-                c.w = meia;
-            }
+            (c.x, c.w) = if par.len() == 2 {
+                (x + i as f32 * (meia + m::FIELD_GAP), meia)
+            } else {
+                (x, w)
+            };
             fundo = fundo.max(pinta(c, item, topo));
         }
         topo = fundo;

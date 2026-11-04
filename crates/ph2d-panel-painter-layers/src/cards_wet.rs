@@ -179,8 +179,18 @@ fn caixa(c: &mut CardCtx<'_>, (id, chave, on): &(NodeId, &'static str, bool), y:
     com_lei(c, *id, y, |c, y| ferramenta::caixa(c, *id, chave, *on, y))
 }
 
+/// Duas por linha só se os nomes cabem inteiros (05 §4, T64); senão, uma por linha.
 fn caixas(c: &mut CardCtx<'_>, lista: &[(NodeId, &'static str, bool)], y: f32) -> f32 {
-    em_pares(c, lista, y, caixa)
+    let meia = (c.w - m::FIELD_GAP) * 0.5;
+    let folga = m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX;
+    let cabem = lista
+        .iter()
+        .all(|(_, chave, _)| c.text_system.prefix_width(tr(chave), m::VALUE_PX) + folga <= meia);
+    if cabem {
+        em_pares(c, lista, y, caixa)
+    } else {
+        lista.iter().fold(y, |y, item| caixa(c, item, y))
+    }
 }
 
 /// Uma lista suspensa com a marca de animação de antes: Paint type e Environment.

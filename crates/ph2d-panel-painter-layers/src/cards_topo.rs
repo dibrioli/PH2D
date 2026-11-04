@@ -82,7 +82,6 @@ pub(crate) enum Linha {
     Preset,
     Favorito,
     Acoes,
-    Biblioteca,
     Politica,
     Sync,
     Blend,
@@ -167,13 +166,14 @@ pub(crate) fn do_topo(
     });
     if vista.is_some() {
         l.push(Linha::Acoes);
-        l.push(Linha::Biblioteca);
     }
     if brush.wetpaint {
-        l.extend(
-            (0..paint_wetpaint_presets::numeros_dos_volumes(&brush, &brush).len())
-                .map(Linha::Volume),
-        );
+        // Size inteiro; Dilution e Volume, as duas grandezas da tinta, dividem a linha.
+        let n = paint_wetpaint_presets::numeros_dos_volumes(&brush, &brush).len();
+        let sozinhos = n % 2;
+        l.extend((0..sozinhos).map(Linha::Volume));
+        let pares = (sozinhos..n).step_by(2);
+        l.extend(pares.map(|i| Linha::Par(Box::new([Linha::Volume(i), Linha::Volume(i + 1)]))));
     }
     if vista.is_some() {
         l.push(Linha::Politica);
@@ -444,10 +444,11 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
                 y,
             )
         }
-        Linha::Acoes => vista.map_or(y, |v| botoes(c, &biblioteca::botoes_de_guardar(v), y)),
-        Linha::Biblioteca => {
-            vista.map_or(y, |v| botoes(c, &biblioteca::botoes_da_biblioteca(v), y))
-        }
+        Linha::Acoes => vista.map_or(y, |v| {
+            let mut todos = biblioteca::botoes_de_guardar(v);
+            todos.extend(biblioteca::botoes_da_biblioteca(v));
+            botoes(c, &todos, y)
+        }),
         Linha::Politica => lista(
             c,
             "panel.painter_layers.wetpaint.preset_policy",

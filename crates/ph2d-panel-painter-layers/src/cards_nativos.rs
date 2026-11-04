@@ -2,6 +2,7 @@
 //! valor continua a vir do instantâneo do pincel. O id de cada caixa continua `Button` e emite `Click`.
 //! Nenhum destes ids tem linha esmaecida (`Dependente`): o gate `no_native_id_has_a_dimmed_law` avisa quando tiver.
 
+use crate::cards_linhas::marca;
 use crate::{number_field, paint_brush, paint_pigment, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -81,18 +82,17 @@ fn caixa(c: &mut CardCtx<'_>, id: NodeId, chave: &'static str, on: bool, y: f32)
 
 fn tiling(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let b = pincel();
-    let y = caixa(
-        c,
-        pids::PAINTER_BRUSH_TILING_X,
-        "panel.painter_layers.stroke.tiling_x",
-        b.tiling[0],
-        y,
-    );
-    let y = caixa(
-        c,
-        pids::PAINTER_BRUSH_TILING_Y,
-        "panel.painter_layers.stroke.tiling_y",
-        b.tiling[1],
+    let y = c.pair(
+        marca(
+            pids::PAINTER_BRUSH_TILING_X,
+            "panel.painter_layers.stroke.tiling_x",
+            b.tiling[0],
+        ),
+        marca(
+            pids::PAINTER_BRUSH_TILING_Y,
+            "panel.painter_layers.stroke.tiling_y",
+            b.tiling[1],
+        ),
         y,
     );
     caixa(

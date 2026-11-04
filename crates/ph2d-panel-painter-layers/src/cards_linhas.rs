@@ -7,9 +7,12 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::fill_rounded_rect;
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget, corpo as linhas};
+use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::DropdownState;
 use ph2d_editor_core::widget::card_field::Glyph;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::ColorToken;
@@ -44,7 +47,13 @@ pub(crate) fn em_pares<T>(
     let (x, w) = (c.x, c.w);
     let meia = ((w - m::FIELD_GAP) * 0.5).max(0.0);
     let mut topo = y;
-    for par in itens.chunks(2) {
+    // Coluna estreita: o par desce, nunca corta o valor (05 §4, lei 5).
+    let por_linha = if meia < m::ICON_CELL + m::FIELD_VALUE_MIN_W {
+        1
+    } else {
+        2
+    };
+    for par in itens.chunks(por_linha) {
         let mut fundo = topo;
         for (i, item) in par.iter().enumerate() {
             (c.x, c.w) = if par.len() == 2 {
@@ -61,37 +70,32 @@ pub(crate) fn em_pares<T>(
     topo
 }
 
-/// Quantos por linha: o maior número em que toda largura pedida cabe na coluna (05 §4, lei 7). Pelo menos um.
-pub(crate) fn por_linha(w: f32, larguras: &[f32]) -> usize {
-    (1..=larguras.len())
-        .rev()
-        .find(|n| {
-            let vaos = m::FIELD_GAP * (*n as f32 - 1.0);
-            let coluna = (w - vaos) / *n as f32;
-            larguras.iter().all(|l| *l <= coluna)
+/// Botões de acção na mesma linha; a fundação desce o que não cabe inteiro (05 §4, lei 7).
+pub(crate) fn botoes<S: AsRef<str>>(c: &mut CardCtx<'_>, lista: &[(NodeId, S)], y: f32) -> f32 {
+    let cells: Vec<Cell<'_>> = lista
+        .iter()
+        .map(|(id, text)| {
+            Cell::new(Widget::Button {
+                id: *id,
+                text: text.as_ref(),
+                primary: false,
+            })
         })
-        .unwrap_or(1)
+        .collect();
+    c.row(&cells, y)
 }
 
-/// Botões de acção que nunca cortam o nome: se não cabem todos na linha, descem para mais linhas.
-pub(crate) fn botoes<S: AsRef<str>>(c: &mut CardCtx<'_>, lista: &[(NodeId, S)], y: f32) -> f32 {
-    let larguras: Vec<f32> = lista
-        .iter()
-        .map(|(_, t)| c.text_system.prefix_width(t.as_ref(), m::VALUE_PX) + 2.0 * m::FIELD_PAD_R)
-        .collect();
-    let n = por_linha(c.w, &larguras).max(1);
-    lista.chunks(n).fold(y, |y, fatia| {
-        let cells: Vec<Cell<'_>> = fatia
-            .iter()
-            .map(|(id, text)| {
-                Cell::new(Widget::Button {
-                    id: *id,
-                    text: text.as_ref(),
-                    primary: false,
-                })
-            })
-            .collect();
-        c.row(&cells, y)
+/// Uma caixa de marcar como célula de uma linha: a 2.ª coluna de um campo, ou o par de outra caixa.
+pub(crate) fn marca<'a>(id: NodeId, chave: &'static str, on: bool) -> Cell<'a> {
+    Cell::new(Widget::Check {
+        id,
+        label: Rotulo::vista(TextKey::new(chave)),
+        value: if on {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        },
+        off: false,
     })
 }
 
@@ -145,34 +149,11 @@ fn opcoes_inertes(c: &mut CardCtx<'_>, segs: &[Seg<'_>]) {
     }
 }
 
-/// Uma escolha com rótulo.
+/// Uma escolha com rótulo. Se é longa, a fundação desce-a em filas, sem cortar os nomes.
 pub(crate) fn escolha(c: &mut CardCtx<'_>, rotulo: &str, segs: &[Seg<'_>], y: f32) -> f32 {
     let fim = c.full(Some(rotulo), Widget::Choice(segs), y);
     opcoes_inertes(c, segs);
     fim
-}
-
-/// Uma escolha longa: desce em linhas de pílula, com o mesmo número por linha, em vez de cortar os nomes (lei 7).
-pub(crate) fn escolha_em_linhas(
-    c: &mut CardCtx<'_>,
-    rotulo: &str,
-    segs: &[Seg<'_>],
-    y: f32,
-) -> f32 {
-    let larguras: Vec<f32> = segs
-        .iter()
-        .map(|s| {
-            c.text_system.prefix_width(s.text, m::SEG_TEXT_PX) + 2.0 * m::SEG_INSET + m::SEG_PAD
-        })
-        .collect();
-    let n = por_linha(c.w - 2.0 * m::SEG_PAD, &larguras).max(1);
-    let mut y = y;
-    for (i, fatia) in segs.chunks(n).enumerate() {
-        let nome = (i == 0).then_some(rotulo);
-        y = c.full(nome, Widget::Choice(fatia), y);
-        opcoes_inertes(c, fatia);
-    }
-    y
 }
 
 /// Um número e a cor irmã na mesma linha (Wax + Wax Color, Intensity + Color).

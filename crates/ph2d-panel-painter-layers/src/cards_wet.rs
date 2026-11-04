@@ -3,7 +3,7 @@
 //! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, grupo, registra_lista};
+use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, grupo, marca, registra_lista};
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
 use crate::{
     esmaecer, number_field, paint_brush, paint_wetpaint_presets, paint_wetpaint_tilt, state,
@@ -207,28 +207,21 @@ fn caixas(c: &mut CardCtx<'_>, lista: &[(NodeId, &'static str, bool)], y: f32) -
     }
 }
 
-/// Um campo e uma caixa de marcar irmã na mesma linha (05 §4): a caixa senta-se na altura do campo. Se o nome dela não
-/// cabe inteiro, desce.
+/// Um campo e uma caixa de marcar irmã na mesma linha (05 §4): a fundação desce a caixa se o nome dela não cabe.
 pub(crate) fn campo_e_caixa(
     c: &mut CardCtx<'_>,
     n: &Numero,
-    item: &(NodeId, &'static str, bool),
+    &(id, chave, on): &(NodeId, &'static str, bool),
     y: f32,
 ) -> f32 {
-    let (x, w) = (c.x, c.w);
-    let meia = ((w - m::FIELD_GAP) * 0.5).max(0.0);
-    let folga = m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX;
-    if c.text_system.prefix_width(tr(item.1), m::VALUE_PX) + folga > meia {
-        let y = campo(c, n, y);
-        return caixa(c, item, y);
-    }
-    c.w = meia;
-    let fundo = campo(c, n, y);
-    c.x = x + meia + m::FIELD_GAP;
-    let _ = caixa(c, item, fundo - m::FIELD_H - m::FIELD_ROW_GAP);
-    c.x = x;
-    c.w = w;
-    fundo
+    let rotulo = tr(n.chave);
+    let campo = Cell::new(Widget::Field {
+        id: n.id,
+        glyph: Glyph::Text(linhas::letra_da_grandeza(rotulo)),
+    })
+    .label(rotulo)
+    .key(std::slice::from_ref(&n.id));
+    c.pair(campo, marca(id, chave, on), y)
 }
 
 /// Uma lista suspensa com a marca de animação de antes: Paint type e Environment.
@@ -302,16 +295,20 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, visor: &Captura, y: f32) -> f32 {
     );
     let y = visor.repete(c, y + m::FIELD_ROW_GAP);
     let borda = paint_wetpaint_tilt::numero_da_borda(&b);
-    let mut y = campo(c, &borda, y);
-    if pousa {
-        y = lista(
-            c,
-            "panel.painter_layers.wetpaint.paint_type",
-            pids::PAINTER_WETPAINT_MEDIUM,
-            tipo_de_tinta::nome(u8::from(b.wet_knobs.e_oleo())),
-            y,
-        );
-    }
+    let quantos = if pousa { 2 } else { 1 };
+    let mut y = em_pares(c, &[0, 1][..quantos], y, |c, i, y| {
+        if *i == 0 {
+            campo(c, &borda, y)
+        } else {
+            lista(
+                c,
+                "panel.painter_layers.wetpaint.paint_type",
+                pids::PAINTER_WETPAINT_MEDIUM,
+                tipo_de_tinta::nome(u8::from(b.wet_knobs.e_oleo())),
+                y,
+            )
+        }
+    });
     for (chave, grupo_de) in GRUPOS_DA_FISICA
         .into_iter()
         .zip(paint_wetpaint::numeros_da_fisica(&b, &b))

@@ -3,7 +3,7 @@
 //! continuam no pintor deles, capturados, até à fatia dele (H8).
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{escolha, escolha_em_linhas, grupo, numero, numero_e_cor};
+use crate::cards_linhas::{escolha, grupo, numero, numero_e_cor};
 use crate::cards_wet::{arma_numeros, caixa, campo, numeros};
 use crate::paint_wetpaint::Numero;
 use crate::{
@@ -266,7 +266,7 @@ fn ferramentas(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
             on: usize::from(b.impasto_tool) == i,
         })
         .collect();
-    escolha_em_linhas(c, tr("card.painter.impasto.tool"), &segs, y)
+    escolha(c, tr("card.painter.impasto.tool"), &segs, y)
 }
 
 fn origem_e_escrita(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {

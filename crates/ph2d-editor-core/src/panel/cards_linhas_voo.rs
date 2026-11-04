@@ -58,7 +58,7 @@ impl CardCtx<'_> {
                 &mut voo,
                 row.label,
                 nome_x,
-                topo + (m::FIELD_H - m::VALUE_PX) * 0.5,
+                topo + crate::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
                 m::VALUE_PX,
                 (local.w - nome_x - m::SEG_INSET).max(0.0),
                 self.ink.color(ColorToken::Text1),

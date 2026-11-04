@@ -298,6 +298,8 @@ pub(super) fn paint_style_menu(
     theme: Theme,
 ) -> Rect {
     let m = style_menu(bar, ts, &ed.labels.styles);
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
     paint_popover(
         &Popover::new(NodeId(ed.id.0.wrapping_add(2))),
         m,
@@ -321,7 +323,7 @@ pub(super) fn paint_style_menu(
             r.y + (r.h - line) * 0.5,
             size,
             r.w - pad,
-            resolve(ColorToken::Text1, theme),
+            superficie.cor(ColorToken::Text1),
             super::layout::font_weight(kind),
         );
     }

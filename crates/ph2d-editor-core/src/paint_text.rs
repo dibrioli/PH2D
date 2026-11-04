@@ -518,6 +518,17 @@ fn centrado(y: f32, font_size: f32) -> f32 {
     y - (ph2d_text::displayed_font_px(font_size) - font_size) * 0.5
 }
 
+/// ⭐⭐ **A distância do topo de uma caixa de altura `h` ao `y` que centra nela um texto a `font_size`**
+/// (`docs/CartoesUI/15_CHROME_CENSO.md`). A porta de todo texto de cartão: a conta `(h − font_size) / 2`
+/// tratava a linha como se medisse `font_size`, e a linha de base da Noto cai `1,07 em` abaixo do topo:
+/// o texto ficava `2,5` px abaixo do meio em qualquer altura (medido). O meio é o das maiúsculas; a
+/// última parcela desfaz o [`centrado`] do pintor.
+#[must_use]
+pub fn folga_do_texto(h: f32, font_size: f32) -> f32 {
+    let desenhado = ph2d_text::displayed_font_px(font_size);
+    h * 0.5 - ph2d_text::cap_centre_px(font_size) + (desenhado - font_size) * 0.5
+}
+
 // ⚠️ **Os três pintores de texto CORTADO vieram do `text_elide`** (auditoria A10, 2026-09-12): a lei
 // da reticência ([`crate::text_elide`]) fica em baixo, e quem PINTA mora com os outros pintores de
 // texto. Os corpos não mudaram uma linha — o `elide` passou a ser nomeado pelo módulo dele.

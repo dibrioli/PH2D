@@ -134,6 +134,8 @@ fn the_wave_three_painters_lose_exactly_their_frame() {
         ("status bar", |theme| {
             let mut scene = VectorScene::new();
             let mut text = TextSystem::without_system_fonts();
+            // Idem: em cartões a barra de estado é a superfície da lista (M7), sem filete nenhum.
+            ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
             let bar = StatusBar::new(NodeId(8), "Status", Vec::new());
             paint_status_bar(&bar, rect(), &mut scene, &mut text, theme);
             scene.inner().encoding().n_paths

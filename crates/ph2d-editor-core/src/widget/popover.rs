@@ -6,10 +6,9 @@
 //! announce this as anything specific — the *content* declares the
 //! role (Menu / Listbox / Tooltip / etc).
 
-use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::{ColorToken, Radius, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -31,17 +30,7 @@ impl Popover {
 }
 
 pub fn paint_popover(_popover: &Popover, rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    crate::widget::lista_flutuante::Superficie::de(theme).moldura(scene, rect);
 }
 
 /// Push a clip layer matching the popover's interior so any content

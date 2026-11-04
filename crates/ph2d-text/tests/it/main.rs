@@ -4,4 +4,5 @@
 //! do caminho dele (o doc-comment do gate irmão na shell e a medição 09 da UI).
 
 mod the_bundled_fonts_lose_only_an_inert_prep;
+mod the_cap_centre_sits_on_the_baseline_parley_lays_out;
 mod the_mono_font_is_ours;

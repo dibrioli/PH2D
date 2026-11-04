@@ -180,7 +180,7 @@ pub fn paint_field(
         owned = texto_do_valor(value, step);
         (owned.as_str(), ColorToken::Text1)
     };
-    let y = area.y + (area.h - m::VALUE_PX) * 0.5;
+    let y = area.y + crate::paint::folga_do_texto(area.h, m::VALUE_PX);
     let clip = ph2d_vector::Rect::new(
         f64::from(area.x),
         f64::from(rect.y),
@@ -259,7 +259,7 @@ fn paint_glyph(
                 scene,
                 t,
                 cell.x + (cell.w - w).max(0.0) * 0.5,
-                cell.y + (cell.h - m::LABEL_PX) * 0.5,
+                cell.y + crate::paint::folga_do_texto(cell.h, m::LABEL_PX),
                 m::LABEL_PX,
                 cell.w,
                 tinta,
@@ -302,7 +302,7 @@ pub fn paint_field_face(
         scene,
         text,
         area.x,
-        area.y + (area.h - m::VALUE_PX) * 0.5,
+        area.y + crate::paint::folga_do_texto(area.h, m::VALUE_PX),
         m::VALUE_PX,
         area.w,
         ink.color(ColorToken::Text1),

@@ -116,7 +116,7 @@ fn cabecalho(c: &mut CardCtx<'_>, h: &Cabeca<'_>, y: f32) -> f32 {
         c.text_system,
         c.scene,
         h.titulo,
-        [tx, hy + (m::CARD_HEAD_H - m::CARD_TITLE_PX) * 0.5],
+        [tx, hy + ph2d_editor_core::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX)],
         m::CARD_TITLE_PX,
         (ax - tx).max(0.0),
         c.ink.color(ColorToken::Text1),

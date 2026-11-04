@@ -186,7 +186,7 @@ pub(super) fn fantasma(
         scene,
         &texto,
         tx,
-        r.y + (r.h - m::LABEL_PX) * 0.5,
+        r.y + crate::paint::folga_do_texto(r.h, m::LABEL_PX),
         m::LABEL_PX,
         (r.x + r.w - m::CARD_PAD_X - tx).max(0.0),
         tinta,

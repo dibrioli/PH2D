@@ -182,7 +182,7 @@ fn campo(
     }
     let field = p.field(f);
     let tx = r.x + m::FIELD_PAD_R;
-    let ty = r.y + (r.h - m::VALUE_PX) * 0.5;
+    let ty = r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX);
     let tinta = ink.color(if on {
         ColorToken::KanbanCardFg
     } else {
@@ -219,7 +219,7 @@ pub(super) fn paint(
         scene,
         &lb.title,
         l.title.x,
-        l.title.y + (l.title.h - m::CARD_TITLE_PX) * 0.5,
+        l.title.y + crate::paint::folga_do_texto(l.title.h, m::CARD_TITLE_PX),
         m::CARD_TITLE_PX,
         l.title.w,
         ink.color(ColorToken::KanbanCardFg),

@@ -197,7 +197,7 @@ fn paint_card_no_cartao(
             scene,
             title,
             header.x + m::CARD_PAD_X,
-            header.y + (header.h - m::CARD_TITLE_PX) * 0.5,
+            header.y + crate::paint::folga_do_texto(header.h, m::CARD_TITLE_PX),
             m::CARD_TITLE_PX,
             (header.w - m::CARD_PAD_X * 2.0).max(0.0),
             ink.color(ColorToken::KanbanCardFg),

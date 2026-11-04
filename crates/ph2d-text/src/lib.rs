@@ -25,8 +25,8 @@ mod layout_cache;
 pub mod system;
 
 pub use bundled::{
-    HAND_FAMILY, MONO_FAMILY, active_text_style, displayed_font_px, inter_variable_ttf,
-    set_active_text_style, sfnt_checksum, without_prep_table,
+    HAND_FAMILY, MONO_FAMILY, active_text_style, cap_centre_px, displayed_font_px,
+    inter_variable_ttf, set_active_text_style, sfnt_checksum, without_prep_table,
 };
 pub use layout_cache::LAYOUT_CACHE_CAP;
 pub use parley::{FontContext, FontWeight, Layout, LayoutContext, PositionedLayoutItem};

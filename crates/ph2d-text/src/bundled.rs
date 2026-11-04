@@ -101,6 +101,39 @@ pub fn displayed_font_px(nominal: f32) -> f32 {
     nominal * active_text_style().size.scale()
 }
 
+/// A subida e a altura das maiúsculas de `bytes`, em `em`. A subida é a do skrifa (`typo` com
+/// `USE_TYPO_METRICS`, senão `hhea`).
+fn cap_metrics_em(bytes: &[u8]) -> Option<(f32, f32)> {
+    use read_fonts::tables::os2::SelectionFlags;
+    use read_fonts::{FontRef, TableProvider};
+    let f = FontRef::new(bytes).ok()?;
+    let upm = f32::from(f.head().ok()?.units_per_em());
+    let os2 = f.os2().ok()?;
+    let asc = if os2
+        .fs_selection()
+        .contains(SelectionFlags::USE_TYPO_METRICS)
+    {
+        os2.s_typo_ascender()
+    } else {
+        f.hhea().ok()?.ascender().to_i16()
+    };
+    Some((f32::from(asc) / upm, f32::from(os2.s_cap_height()?) / upm))
+}
+
+/// ⭐ **Do topo de um texto pedido a `nominal` ao meio das suas maiúsculas, em px, na fonte ativa.**
+/// O parley arredonda a subida, logo a linha de base cai num píxel inteiro abaixo do topo. Pura, sem
+/// `TextSystem`: centrar um texto numa caixa pede-a dentro dos argumentos do próprio pintor. O gate
+/// `the_cap_centre_sits_on_the_baseline_parley_lays_out` confere-a contra o layout, nas três fontes.
+#[must_use]
+pub fn cap_centre_px(nominal: f32) -> f32 {
+    static EM: OnceLock<[(f32, f32); UI_FONTS]> = OnceLock::new();
+    let em =
+        EM.get_or_init(|| BUNDLED.map(|(bytes, _)| cap_metrics_em(bytes).unwrap_or((1.0, 0.7))));
+    let (asc, cap) = em[active_text_style().font.index()];
+    let px = displayed_font_px(nominal);
+    (asc * px).round() - cap * px * 0.5
+}
+
 /// Regista as fontes EMBUTIDAS ([`BUNDLED`]) com o nome forçado e devolve a pilha de cada uma —
 /// `"<nome><cauda>"`, ou `"sans-serif"` quando o registo não produziu família (bytes rejeitados):
 /// o arranque nunca entra em pânico por causa de uma fonte.

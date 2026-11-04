@@ -113,7 +113,7 @@ pub(super) fn campo(
             scene,
             texto,
             r.x + m::FIELD_PAD_R,
-            r.y + (r.h - m::VALUE_PX) * 0.5,
+            r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX),
             m::VALUE_PX,
             (r.w - m::FIELD_PAD_R * 2.0).max(0.0),
             ink.color(cor),

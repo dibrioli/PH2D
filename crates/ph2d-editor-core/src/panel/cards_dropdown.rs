@@ -169,7 +169,7 @@ pub fn paint_pending(ctx: &mut PaintCtx) {
             scene,
             text,
             lr.x + m::FIELD_PAD_R,
-            lr.y + (lr.h - m::VALUE_PX) * 0.5,
+            lr.y + crate::paint::folga_do_texto(lr.h, m::VALUE_PX),
             m::VALUE_PX,
             lr.w - m::FIELD_PAD_R * 2.0,
             ink.color(ColorToken::Text1),

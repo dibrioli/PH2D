@@ -239,7 +239,7 @@ pub fn paint_card_list_top(
         &title.to_uppercase(),
         [
             x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X,
-            top_list + (m::LIST_HEAD_H - m::LIST_TITLE_PX) * 0.5,
+            top_list + crate::paint::folga_do_texto(m::LIST_HEAD_H, m::LIST_TITLE_PX),
         ],
         m::LIST_TITLE_PX,
         w - m::LIST_PAD_X * 2.0
@@ -384,7 +384,7 @@ pub fn paint_card_list_top(
             ctx.scene,
             f.text,
             fr.x + m::CARD_PAD_X + g + m::SEG_ICON_GAP,
-            fr.y + (fr.h - m::VALUE_PX) * 0.5,
+            fr.y + crate::paint::folga_do_texto(fr.h, m::VALUE_PX),
             m::VALUE_PX,
             fr.w,
             tinta,

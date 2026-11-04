@@ -137,7 +137,7 @@ impl CardCtx<'_> {
             self.scene,
             text,
             r.x + (r.w - tw) * 0.5,
-            r.y + (r.h - m::VALUE_PX) * 0.5,
+            r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX),
             m::VALUE_PX,
             r.w,
             self.ink.color(ColorToken::Danger),
@@ -162,7 +162,7 @@ impl CardCtx<'_> {
             self.scene,
             text,
             r.x + (r.w - tw) * 0.5,
-            r.y + (r.h - m::SEG_TEXT_PX) * 0.5,
+            r.y + crate::paint::folga_do_texto(r.h, m::SEG_TEXT_PX),
             m::SEG_TEXT_PX,
             r.w,
             self.ink.color(tinta),
@@ -281,7 +281,7 @@ impl CardCtx<'_> {
                 self.scene,
                 row.label,
                 x,
-                y + (m::FIELD_H - m::VALUE_PX) * 0.5,
+                y + crate::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
                 m::VALUE_PX,
                 nome_w,
                 tinta,
@@ -294,7 +294,7 @@ impl CardCtx<'_> {
                 self.scene,
                 t,
                 fim - tw,
-                y + (m::FIELD_H - m::LABEL_PX) * 0.5,
+                y + crate::paint::folga_do_texto(m::FIELD_H, m::LABEL_PX),
                 m::LABEL_PX,
                 tw + m::SEG_INSET,
                 self.ink.color(ColorToken::CardLabel),
@@ -384,7 +384,12 @@ impl CardCtx<'_> {
         }
         y += m::LABEL_PX + m::LABEL_BOTTOM;
         for i in 0..t.n {
-            self.legenda(&i.to_string(), self.x, y + (lado - m::LABEL_PX) * 0.5, lado);
+            self.legenda(
+                &i.to_string(),
+                self.x,
+                y + crate::paint::folga_do_texto(lado, m::LABEL_PX),
+                lado,
+            );
             for j in 0..=i {
                 let id = (t.id_of)(i, j);
                 let on = (t.on_of)(i, j);

@@ -547,7 +547,7 @@ pub(super) fn check_em(
         scene,
         label.texto,
         tx,
-        y + (h - m::VALUE_PX) * 0.5,
+        y + crate::paint::folga_do_texto(h, m::VALUE_PX),
         m::VALUE_PX,
         (x + w - tx - k).max(0.0),
         ink.color(if parada {

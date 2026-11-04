@@ -112,7 +112,7 @@ fn grupo(c: &mut CardCtx<'_>, ch: &Choices, text: &str, add: Option<NodeId>, y: 
     } else {
         y + m::FIELD_ROW_GAP + m::FIELD_H
     };
-    let ty = fundo - m::FIELD_H + (m::FIELD_H - m::LABEL_PX) * 0.5;
+    let ty = fundo - m::FIELD_H + ph2d_editor_core::paint::folga_do_texto(m::FIELD_H, m::LABEL_PX);
     card_field::paint_label(
         c.scene,
         c.text_system,

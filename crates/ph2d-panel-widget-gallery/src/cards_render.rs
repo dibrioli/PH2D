@@ -234,7 +234,7 @@ fn spinner(
 fn estado(c: &mut CardCtx<'_>, run: Corrida, l: &Pintado, y: f32) -> f32 {
     let y = y + m::LABEL_TOP;
     let linha = m::ICON_GLYPH;
-    let texto_y = y + (linha - m::VALUE_PX) * 0.5;
+    let texto_y = y + ph2d_editor_core::paint::folga_do_texto(linha, m::VALUE_PX);
     let mut x = c.x;
     if l.spinner {
         spinner(c.scene, Rect::new(x, y, linha, linha), run.passos, c.ink);
@@ -296,7 +296,7 @@ fn medidor(c: &mut CardCtx<'_>, run: Corrida, l: &Pintado, y: f32) -> f32 {
     .into_iter()
     .enumerate()
     {
-        let ly = y + (ALTURA_DO_MEDIDOR - m::LABEL_PX) * 0.5;
+        let ly = y + ph2d_editor_core::paint::folga_do_texto(ALTURA_DO_MEDIDOR, m::LABEL_PX);
         card_field::paint_label(c.scene, c.text_system, c.ink, c.x, ly, letra, nome);
         paint_level_channel_on_card(
             c.scene,

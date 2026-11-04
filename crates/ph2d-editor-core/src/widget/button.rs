@@ -275,7 +275,7 @@ fn paint_card_button(
         scene,
         &button.label,
         rect.x + (rect.w - tw) * 0.5,
-        rect.y + (rect.h - m::VALUE_PX) * 0.5,
+        rect.y + crate::paint::folga_do_texto(rect.h, m::VALUE_PX),
         m::VALUE_PX,
         rect.w,
         ink.color(tinta),

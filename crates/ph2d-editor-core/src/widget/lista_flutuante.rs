@@ -44,6 +44,15 @@ pub(crate) fn moldura_de_cartao(scene: &mut VectorScene, r: Rect, ink: CardInk) 
     );
 }
 
+/// A lista aberta de fora de um cartão veste os tons da lista de cartões até o guarda morrer; dentro
+/// de um cartão fica com a tinta dele. `PH2D_CARDS=0`: nada.
+pub(crate) fn veste_fora_de_cartao(theme: Theme) -> Option<crate::widget::card_ink::Publicada> {
+    crate::widget::card_ink::card_body()
+        .is_none()
+        .then(|| Superficie::de(theme).veste())
+        .flatten()
+}
+
 /// O tom em que uma peça flutuante do cromo se pinta, decidido uma vez por pintor.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Superficie {

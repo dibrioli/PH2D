@@ -143,7 +143,7 @@ pub(super) fn paint_left_label(
     row_h: f32,
 ) {
     if let Some(ink) = crate::widget::card_ink::card_body() {
-        let label_y = y + (row_h - m::LABEL_PX) * 0.5;
+        let label_y = y + crate::paint::folga_do_texto(row_h, m::LABEL_PX);
         crate::widget::card_field::paint_label(scene, text_system, ink, x, label_y, label_w, label);
         return;
     }

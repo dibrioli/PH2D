@@ -85,7 +85,7 @@ pub use icons_paint::{
 };
 pub(crate) use text::paint_text_weighted;
 pub use text::{
-    label_column_width, paint_text, paint_text_block, paint_text_block_spans, paint_text_elided,
+    folga_do_texto, label_column_width, paint_text, paint_text_block, paint_text_block_spans, paint_text_elided,
     paint_text_rotated_ccw, paint_text_title, paint_text_title_elided,
     paint_text_title_elided_tracked,
 };

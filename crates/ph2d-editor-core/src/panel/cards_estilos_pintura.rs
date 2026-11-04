@@ -30,7 +30,7 @@ pub(super) fn titulo(
         scene,
         t,
         r.x + m::CARD_PAD_X,
-        r.y + (m::CARD_HEAD_H - m::CARD_TITLE_PX) * 0.5,
+        r.y + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX),
         m::CARD_TITLE_PX,
         r.w - m::CARD_PAD_X * 2.0 - m::HEAD_ICON_BOX,
         ink.color(ColorToken::Text1),

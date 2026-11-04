@@ -197,7 +197,7 @@ fn corpo_em_cartao(
         scene,
         tr("pixel.new_sprite.title"),
         x,
-        titulo_y + (m::FIELD_H - m::VALUE_PX) * 0.5,
+        titulo_y + crate::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
         m::VALUE_PX,
         w,
         ink.color(ColorToken::KanbanCardFg),

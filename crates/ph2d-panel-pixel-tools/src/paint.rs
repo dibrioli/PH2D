@@ -14,8 +14,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::pixel_panel::{PixelBrushShape, PixelInk, PixelPanelInfo, PixelTool};
 use ph2d_editor_core::property_row;
-use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::Seccao;
+use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_surface, paint_panel_title,
@@ -236,10 +236,16 @@ fn acoes<const N: usize>(
 
 pub fn hex(c: [u8; 4]) -> String {
     let [r, g, b, a] = c;
-    if a == u8::MAX {
-        format!("#{r:02X}{g:02X}{b:02X}")
+    // Um formato só nos cartões: `F0F0F5`, como o Inspector e o Vector; `PH2D_CARDS=0` tem o de antes.
+    let cardinal = if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ""
     } else {
-        format!("#{r:02X}{g:02X}{b:02X}{a:02X}")
+        "#"
+    };
+    if a == u8::MAX {
+        format!("{cardinal}{r:02X}{g:02X}{b:02X}")
+    } else {
+        format!("{cardinal}{r:02X}{g:02X}{b:02X}{a:02X}")
     }
 }
 
@@ -337,7 +343,13 @@ impl Corpo<'_> {
     }
 
     /// As opções abaixo dos pincéis guardados: formas, spray, balde, tinta e (`com_simetria`) a simetria.
-    fn opcoes_de_baixo(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32, com_simetria: bool) -> f32 {
+    fn opcoes_de_baixo(
+        &mut self,
+        info: &PixelPanelInfo,
+        sec: Seccao,
+        y: f32,
+        com_simetria: bool,
+    ) -> f32 {
         let (o, t) = (info.options, info.tool);
         let mut y = self.opcoes_forma(info, sec, y);
         if t == PixelTool::Spray {

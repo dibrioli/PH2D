@@ -253,6 +253,12 @@ fn pinta_clips(
     }
 }
 
+/// O que a caixa da Dur lê, se não é o do store: sem duração autorada, ∞; o store fica com o finito, que é o
+/// que se edita.
+fn valor_lido_da_dur(snap: &TimelineViewSnapshot) -> Option<f64> {
+    (!snap.view_length_explicit).then_some(f64::INFINITY)
+}
+
 fn pinta(
     c: &mut CardCtx<'_>,
     item: Item,
@@ -310,11 +316,9 @@ fn pinta(
         Item::FrameChip => numero(c, item, TIMELINE_FRAME_NUM, x, y),
         Item::LengthChip => {
             let id = ids::TIMELINE_LENGTH_NUM;
-            if snap.view_length_explicit {
-                numero(c, item, id, x, y);
-            } else {
-                // Sem duração autorada a caixa lê ∞; o store fica com o finito, que é o que se edita.
-                card_field::com_valores(&[(id, f64::INFINITY)], || numero(c, item, id, x, y));
+            match valor_lido_da_dur(snap) {
+                Some(lido) => card_field::com_valores(&[(id, lido)], || numero(c, item, id, x, y)),
+                None => numero(c, item, id, x, y),
             }
         }
         _ => {
@@ -405,4 +409,19 @@ pub(crate) fn paint_bar(
 enum Peca {
     Item(Item),
     Autoplay,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐ Sem duração autorada a Dur lê ∞; com ela, o número. *Mutação: devolver sempre `None` ⇒ vermelho.*
+    #[test]
+    fn a_dur_le_infinito_so_sem_duracao_autorada() {
+        let mut snap = TimelineViewSnapshot::default();
+        snap.view_length_explicit = false;
+        assert_eq!(valor_lido_da_dur(&snap), Some(f64::INFINITY));
+        snap.view_length_explicit = true;
+        assert_eq!(valor_lido_da_dur(&snap), None);
+    }
 }

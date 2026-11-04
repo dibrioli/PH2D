@@ -223,10 +223,18 @@ fn o_x_fecha_o_painel() {
 }
 
 #[test]
-fn o_hex_e_o_do_aseprite() {
+fn o_hex_e_um_formato_so() {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    // Nos cartões, o do Inspector e do Vector: `F0F0F5`, sem cardinal, com o alfa quando há.
+    force_cards_on_this_thread(Some(true));
+    assert_eq!(ph2d_panel_pixel_tools::hex([255, 255, 255, 255]), "FFFFFF");
+    assert_eq!(ph2d_panel_pixel_tools::hex([0, 0, 0, 255]), "000000");
+    assert_eq!(ph2d_panel_pixel_tools::hex([1, 2, 3, 4]), "01020304");
+    // `PH2D_CARDS=0` é o painel de antes.
+    force_cards_on_this_thread(Some(false));
     assert_eq!(ph2d_panel_pixel_tools::hex([255, 255, 255, 255]), "#FFFFFF");
-    assert_eq!(ph2d_panel_pixel_tools::hex([0, 0, 0, 255]), "#000000");
     assert_eq!(ph2d_panel_pixel_tools::hex([1, 2, 3, 4]), "#01020304");
+    force_cards_on_this_thread(None);
 }
 
 /// P8: o balde é um botão de grupo com o Gradient (Shift+G) e o Blur/Jumble (R) outro; o flyout

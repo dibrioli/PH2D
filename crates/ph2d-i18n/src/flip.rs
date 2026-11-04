@@ -96,6 +96,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.flip_frames.toolbar.ease_in_out" => "Ease In-Out",
         "panel.flip_frames.toolbar.fps" => "FPS",
         "panel.flip_frames.toolbar.ghost" => "Ghost",
+        "panel.flip_frames.toolbar.ghost_before" => "Before",
+        "panel.flip_frames.toolbar.ghost_after" => "After",
         "panel.flip_frames.toolbar.pin" => "Pin",
         "panel.flip_frames.toolbar.auto" => "Auto",
         "panel.flip_frames.toolbar.falloff" => "Falloff",

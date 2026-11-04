@@ -163,6 +163,29 @@ fn nenhum_controlo_morre() {
     );
 }
 
+/// ⭐⭐ **Cada cartão pinta o corpo dele.** Só ele aberto (uma lista alta passa da janela, e o que passa não regista alvo).
+/// *Mutação: tirar um braço de `paint_corpo` ⇒ o id dessa secção fica sem rect.*
+#[test]
+fn cada_cartao_pinta_o_seu_corpo() {
+    let mut m0 = mesa(true);
+    for (seccao, id) in [
+        (AEDIT_SEC_TRANSPORT, AEDIT_LOAD),
+        (AEDIT_SEC_LOOP, AEDIT_LOOP_SET),
+        (AEDIT_SEC_EDIT, AEDIT_SPLIT),
+        (AEDIT_SEC_SPECTRAL, AEDIT_SPEC_VIEW),
+        (AEDIT_SEC_FX, AEDIT_FX_APPLY),
+        (AEDIT_SEC_MARKERS, AEDIT_MARK_ADD),
+        (AEDIT_SEC_VARIATIONS, AEDIT_VAR_ADD),
+        (AEDIT_SEC_DELIVERY, AEDIT_CODEC_NEXT),
+    ] {
+        for s in SECCOES {
+            m0.host.store_mut().set_collapsed(s, s != seccao);
+        }
+        m0.assenta_em(JANELA);
+        assert!(m0.rect(id).is_some(), "o cartão {seccao:?} não pintou {id:?}");
+    }
+}
+
 /// ⭐⭐ A barra do parâmetro é o `Slider` de sempre: o arrasto real muda-o e sai o mesmo evento.
 /// *Mutação: `vivo` ignorado ⇒ sem alvo.*
 #[test]

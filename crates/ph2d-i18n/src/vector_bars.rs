@@ -119,7 +119,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bar.symmetry" => "Symmetry",
         // ② a BARRA DE CONTROLE (F16, a do Illustrator): o nome, o traço e a opacidade.
         "panel.vector.bar.name.none" => "No selection",
-        "panel.vector.bar.name.many" => "{n} objects",
+        "panel.vector.bar.name.many" => "{n} {n?object|objects}",
         "panel.vector.bar.stroke_more" => "Stroke \u{25be}",
         "panel.vector.bar.stroke_options" => "Stroke options: ends, corners, dashes, arrowheads",
         "panel.vector.bar.profile" => "Width profile",

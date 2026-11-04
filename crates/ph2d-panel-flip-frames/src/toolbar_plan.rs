@@ -98,9 +98,34 @@ impl Item {
     }
 }
 
+/// A lista da barra; nos cartões, os dois números do Ghost dizem o que são (`PH2D_CARDS=0` tem a de antes).
+pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
+    let mut v = items_de_antes(snap);
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        for (id, chave) in [
+            (
+                ids::FLIP_GHOST_BEFORE_NUM,
+                "panel.flip_frames.toolbar.ghost_before",
+            ),
+            (
+                ids::FLIP_GHOST_AFTER_NUM,
+                "panel.flip_frames.toolbar.ghost_after",
+            ),
+        ] {
+            if let Some(i) = v
+                .iter()
+                .position(|it| matches!(it, Item::Number(n, _) if *n == id))
+            {
+                v.insert(i, Item::Label(tr(chave)));
+            }
+        }
+    }
+    v
+}
+
 /// **A sequência canônica da barra** — transporte · Ghost · autoria · ops de
 /// chave · tween · ciclo. É a única lista; medir e pintar leem esta.
-pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
+fn items_de_antes(snap: &FlipStripSnapshot) -> Vec<Item> {
     // A exposição da chave ATIVA (o que a caixa "Hold" edita).
     let hold = snap
         .current_key

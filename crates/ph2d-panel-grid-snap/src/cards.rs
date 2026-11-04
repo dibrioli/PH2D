@@ -12,6 +12,7 @@ use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
 use ph2d_editor_core::panel::{PaintCtx, TextKey};
 use ph2d_editor_core::project::DisplayUnit;
+use ph2d_editor_core::widget::TextInputState;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::panel_chrome::{
@@ -26,7 +27,6 @@ use ph2d_grid::staggered::StaggerParity;
 use ph2d_grid::tri::TriNeighborhood;
 use ph2d_i18n::{tr, tr_with};
 
-use crate::layout::ROW_H;
 use crate::paint_helpers::neighborhood_for_active_kind;
 use crate::state::{current_display_unit, length_unit, meters_to_display};
 
@@ -182,6 +182,7 @@ fn numeros(s: &GridSnapState) -> Vec<(NodeId, f64, bool)> {
 /// não se semeia.
 pub(crate) fn prepare(store: &mut WidgetStore, s: &GridSnapState) {
     store.mark_card_list_close(ph2d_editor_core::ids::GS_PANEL, g::GS_CLOSE);
+    prepara_opacidade(store, s);
     for (id, on) in [
         (g::GS_SNAP_ENABLED, s.snap_enabled),
         (g::GS_SHOW_OVERLAY, s.show_overlay),
@@ -213,6 +214,46 @@ pub(crate) fn prepare(store: &mut WidgetStore, s: &GridSnapState) {
         if arrastado != Some(id) && store.focus_id() != Some(id) {
             store.set_number_value(id, valor);
         }
+    }
+}
+
+/// O campo da opacidade em %: um chip derivado da barra, ligado a ela; quem avisa o painel continua a ser a barra.
+#[must_use]
+pub fn chip_da_opacidade() -> NodeId {
+    const SAL: u64 = 0x51C3_77A9_2E10_B64D;
+    NodeId(g::GS_OPACITY_SLIDER.0 ^ SAL)
+}
+
+const PCT: f32 = 100.0; // LITERAL-PX-OK: fração 0..1 mostrada em %, não medida de desenho
+
+fn prepara_opacidade(store: &mut WidgetStore, s: &GridSnapState) {
+    let chip = chip_da_opacidade();
+    if store.get(chip).is_none() {
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number_mapped_integer(g::GS_OPACITY_SLIDER, chip, PCT, 0.0);
+        store.set_number_range(chip, 0.0, f64::from(PCT), 1.0);
+    }
+    let fabrica = GridSnapState::default().opacity;
+    store.mark_card_field(
+        chip,
+        CardFieldSpec {
+            step: 1.0,
+            scrub: 1.0,
+            default: Some(f64::from((fabrica * PCT).round())),
+        },
+    );
+    if store.number_input_drag().map(|d| d.id) != Some(chip) && store.focus_id() != Some(chip) {
+        store.set_number_value(chip, f64::from((s.opacity * PCT).round()));
     }
 }
 
@@ -430,18 +471,13 @@ pub(crate) fn cards(s: &GridSnapState) -> Vec<CardDef<'_>> {
                     s.show_overlay,
                     y,
                 );
-                let y = c.legacy(y, |r, y| {
-                    crate::paint_rows::paint_opacity_slider_row(
-                        Rect::new(r.inner_x, y, r.inner_w, ROW_H),
-                        r.scene,
-                        r.text_system,
-                        r.theme,
-                        r.hit_index,
-                        r.store,
-                        s,
-                    );
-                    y + ROW_H
-                });
+                let y = c.row(
+                    &[campo(
+                        chip_da_opacidade(),
+                        tr("panel.grid_snap.rows.opacity_pct"),
+                    )],
+                    y,
+                );
                 escolha(
                     c,
                     Some(tr("panel.grid_snap.sections.layer")),

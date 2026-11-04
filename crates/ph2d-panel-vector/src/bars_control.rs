@@ -179,8 +179,8 @@ fn selection_name(sel: usize) -> String {
         0 => tr("panel.vector.bar.name.none").to_owned(),
         1 => crate::state::current_selection_name()
             .filter(|n| !n.is_empty())
-            .unwrap_or_else(|| tr("panel.vector.bar.name.many").replace("{n}", "1")),
-        n => tr("panel.vector.bar.name.many").replace("{n}", &n.to_string()),
+            .unwrap_or_else(|| ph2d_i18n::tr_with("panel.vector.bar.name.many", &[("n", &1)])),
+        n => ph2d_i18n::tr_with("panel.vector.bar.name.many", &[("n", &n)]),
     }
 }
 

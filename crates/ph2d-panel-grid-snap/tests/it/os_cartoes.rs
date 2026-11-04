@@ -123,7 +123,7 @@ fn every_kind_answers_a_click_and_every_id_is_painted_in_some_kind() {
         g::GS_CLOSE,
         g::GS_SNAP_ENABLED,
         g::GS_SHOW_OVERLAY,
-        g::GS_OPACITY_SLIDER,
+        ph2d_panel_grid_snap::cards::chip_da_opacidade(),
         g::GS_DRAG_HANDLE,
         g::GS_RESIZE_HANDLE,
         g::GS_RESIZE_HANDLE_BL,
@@ -197,6 +197,41 @@ fn scrubbing_and_typing_a_number_write_the_state() {
     let ev = mesa.host.type_into_number(g::GS_CFG_SNAP_SUBDIVISIONS, "3");
     mesa.aplica(ev);
     assert_eq!(mesa.estado().snap_subdivisions, 3);
+}
+
+/// ⭐ A Opacity é um campo em %, não a barra antiga: o scrub real escreve o estado pela barra de sempre, o Esc devolve, e
+/// escrever vale. *Mutações: sem `link_slider`; sem `mark_card_field`; a barra de volta no corpo.*
+#[test]
+fn opacity_is_a_percent_field_that_writes_the_state() {
+    let chip = ph2d_panel_grid_snap::cards::chip_da_opacidade();
+    let mut mesa = Mesa::nova();
+    assert!(
+        mesa.rect(g::GS_OPACITY_SLIDER).is_none(),
+        "a barra antiga no corpo"
+    );
+    let antes = mesa.estado().opacity;
+    assert_eq!(
+        mesa.host.store().number_value(chip),
+        Some(f64::from((antes * 100.0).round()))
+    );
+    let r = mesa.rect(chip).expect("campo");
+    assert_eq!(r.h, m::FIELD_H);
+    let (x, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
+    let mut ev = mesa.ponteiro(PointerKind::Down, x, y);
+    ev.extend(mesa.ponteiro(PointerKind::Move, x - 5.0, y));
+    ev.extend(mesa.ponteiro(PointerKind::Move, x - 10.0, y));
+    mesa.aplica(ev);
+    let depois = mesa.estado().opacity;
+    assert!(depois < antes - 0.01, "{antes} → {depois}");
+    let _ = mesa.ponteiro(PointerKind::Up, x - 10.0, y);
+    mesa.assenta();
+    let ev = mesa.host.type_into_number(chip, "40");
+    mesa.aplica(ev);
+    assert!(
+        (mesa.estado().opacity - 0.4).abs() < 1e-3,
+        "{}",
+        mesa.estado().opacity
+    );
 }
 
 /// O estado muda por fora (o menu Grid, o Desfazer): a caixa diz o número novo e os dois marcar dizem o

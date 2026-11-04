@@ -76,6 +76,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.grid_snap.rows.max_y" => "{bounds} max Y",
         "panel.grid_snap.rows.show_grid" => "Show grid",
         "panel.grid_snap.rows.opacity" => "Opacity",
+        "panel.grid_snap.rows.opacity_pct" => "Opacity (%)",
         // ph2d-migrar-texto:end
         _ => return None,
     })

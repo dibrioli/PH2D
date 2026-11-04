@@ -171,3 +171,7 @@ Rodada de 03/11 sobre a árvore de `60aaaa938d`.
 3. Deve acontecer: clicar «+»/«−» do Fill, arrastar a pega da curva em Interpolation, escolher uma paragem do
    Gradient. Tudo responde.
 4. Deu errado se: nomes cortados com «...», uma letra emprestada num campo, ou um cartão que não responde ao clique.
+
+## Smoke final do dono (03/11)
+
+Depois das curas de Dates, barras, Card back, Advanced e Render, em `dd76a4bfdb`: «Muito bom ! SMOke OK». Galeria APROVADA. As três linhas (`line/NovaUI`, `line/NovaUI-Inspector`, `line/NovaUI-Bones`) integram-se juntas, numa rodada só, por ordem do dono; a linha NÃO integra.

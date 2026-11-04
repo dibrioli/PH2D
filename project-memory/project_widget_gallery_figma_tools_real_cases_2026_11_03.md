@@ -16,3 +16,5 @@ abstrata não mostra se o cartão aguenta o caso real.
 **How to apply:** widget novo de cartão entra primeiro na galeria como ferramenta fictícia ou caso real, com
 os números de fábrica do código; o Rive só depois de nós e do Figma. Desenho em `docs/CartoesUI/08_galeria_em_cartoes.md`.
 Ver [[project_card_ui_reference_order_2026_11_02]].
+
+**Aprovada** no smoke do dono em 03/11 («Muito bom ! SMOke OK»): é a referência que os painéis seguintes copiam.

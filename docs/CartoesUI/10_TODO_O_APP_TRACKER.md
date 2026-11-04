@@ -220,6 +220,35 @@ Catracas: `the_shell_only_shrinks` e `…_every_app_crate_too` verdes (tecto nov
 - Tinta de base ligada a estilo com o seletor do preso: `solta_bases_mexidas` é a lei de sempre; sem teste no preso.
 - Sem clippy nem suíte (fecho da linha).
 
+### Bloco C3 (04/11)
+
+**O losango de um campo preso é do objecto dele, e o Auto Key grava-o.** Desenho, armadilhas, seletor e custo no [plano 09](09_alfinete_nos_cartoes_PLANO.md). Commit `22f2dee1a1`. `ph2d-app-vec-preso` passou a `shells/presos` (`ph2d-host-presos`): só a composição vê várias famílias.
+
+Por gesto real (`o_alfinete_fill_stroke_c2::losango_c3`, 9 testes; prende-se a A, B escolhido; A+B e B+C em `a_diamond_of_a_pinned_card_keys_only_…`):
+
+| Cartão preso | Losangos | Prova |
+|---|---|---|
+| Transform, Appearance, Fill, Stroke | 4, 2, 2, 6: todos gravam em A, mostram a chave de A, a vista da seleção não muda, desfazer tira | `every_diamond_of_every_pinned_card_…` |
+| Object, Ordering, Material | 0 solto = 0 preso | `pinning_a_card_neither_adds_nor_removes_diamonds` |
+| Player (componente) | 12 | `a_diamond_of_a_pinned_component_card_…` |
+| Osso no Bones | Length: mapa do osso preso, chave nele | `a_diamond_of_a_pinned_bone_card_…` |
+| Lista, com um preso aberto | da seleção | `a_diamond_of_the_docked_card_…` |
+| Auto Key | A em `populacao`, chave só em A, um desfazer | `an_edit_on_a_pinned_card_…` (shell) |
+| Seletor | sem alfinete fecha com clique fora (lista e solto); preso fica em A com o canvas e outra forma | `an_unpinned_picker_closes_…` |
+| `X` depois de pressão num preso | seletor da seleção | `the_x_shortcut_…` |
+| «+», Rename, Duplicate, Delete do estilo | «+»: cor de A, liga só A; acções não mexem em B e C | `the_new_style_of_…` |
+| «Not available» do Mix preso | **sem prova por texto**: o teste cobre o efeito (o cartão deixa de oferecer os modos, o alfinete fica) | `a_material_card_pinned_…` |
+
+**Na app real:** cena `PH2D_VEC_CARTOES_SMOKE=12` (clique pelo despacho real). Sonda temporária, retirada: `sujeito = A`, `AddKey` só com `entity = A`, 6 canais do Stroke. Foto vista: `maquete/c_losango_preso.png`: Stroke de Shape A com o losango cheio em Color, a cópia de Shape B com o ponto.
+
+**Contraprovas vistas vermelhas (2 lotes, tudo restaurado):** `c.sujeito = None`, guarda do seletor fora, `X` com `open_picker_on`, `com_marcas_de` fora do Inspector, `Novo` nas formas da seleção: 9 testes. `alvo_do_clique` sem o sujeito, seletor que nunca fecha, `com_marcas_de` fora do Bones: 5 testes. Pinos fora da `populacao`: 1 (shell). Verdes depois: `o_alfinete` 34 de 34 + o do osso; `the_shell_only_shrinks`, leis das camadas, `staleness`.
+
+**Aberto:**
+- Numa pilha com camada, só a 1.ª linha do Fill tem rótulo e losango; a da base fica sem marca visível (igual solto e preso; não mudou). A sonda mostrou a chave da base gravada em A sem nada a acender.
+- «Not available» do Mix preso: o texto não foi conferido por teste nem foto.
+- Mapa do Player com fixtura de bits falsos: o clique passa pela porta real, o `lidos` é do teste.
+- Sem clippy nem suíte (fecho da linha). O custo mediu 5 cartões em 2 objectos.
+
 **Bloco G, fatia 1 (04/11).** Plano em [12](12_VECTOR_PLANO.md) (30 entradas no corpo, não ~41). Todo o painel passou a cartões de uma vez, com `PH2D_CARDS=0` a dar o de antes (`crates/ph2d-panel-vector/src/cards.rs`). Corpos nativos: Transform, Snap, Constraints, Frame, Clip. O resto: hospedeiro com o cabeçalho absorvido, como os componentes do Inspector. **A sonda** (`sonda_da_seccao`): o pintor antigo corre só até ao cabeçalho, que responde «dobrada» e devolve título e «+»; assim a condição de cada secção continua a ser a única resposta, sem pintar duas vezes nem repetir predicados. O «+» de F43/F44 passou ao cabeçalho do cartão com o mesmo id; em `rows.rs`, um cabeçalho absorvido deixou de registar a pega e a acção por cima do título. Advanced corre pelo `corre()` de sempre, dentro de um cartão: ordem, tema e notas dos membros seguem iguais.
 
 Defeito apanhado: `seed_number_fields` re-semeava o Transform sem ver o scrub (que nos cartões não dá foco): a rotação relativa zerava e somava a mais. Curado para X, Y, W, H e R, com teste.
@@ -292,3 +321,14 @@ Cromo da Timeline e do Motion Graph, plano em [14](14_CHROME_TIMELINE_MOTION.md)
 
 **Aberto:** o «…» só oferece resets, sem efeito num painel sem cartões (controlo morto, por decidir) · régua, barra de rolagem e linhas de faixa na tinta antiga · popover no tom do Inspector. Vermelho alheio: `nenhuma_escolha_do_app_e_montada_a_mao` (exceção `painter_sidebar.toggle_dock`, Painter).
 
+
+### Rodada R2 (limpeza, 04/11)
+
+**Fotos olhadas** (`maquete/r2_*.png`; patch temporário no estado que a cena não semeia, já retirado). Abrem de verdade: `PH2D_PANEL_SMOKE=wet_tuning|grid_snap`. Confirmadas: solto no topo com o alfinete fora da barra; corda por cima do solto Target do Grid; voo da linha sem corte (`r2_voo_fora_do_recorte`). **O alfinete e o voo vistos parados: o clique continua provado só em teste.**
+**A foto desmentiu o verde do R, três vezes, curado:** HUD a ceder com `59 fps ·…` em todas as leituras (agora tira leituras inteiras, diagnóstico primeiro, `the_hud_drops_whole_readings_*`); lista suspensa que cabia mas lia «Cinem…» (largura do nome mais longo, dentro da janela, `the_long_list_shows_whole_names_*`, fotos antes e depois); ponto de alargar da lista por cima de um solto, com a costura a roubar-lhe o clique (`loose_card_covers`, `a_loose_card_over_the_edge_*`; **a guarda da shell em `dock_resize.rs` não tem teste, só leitura**).
+**Passeio B** (d_*, e_*, f_ao_lado, b_physics_todos): «Colour» → «Color» nos 40 valores da tabela; «Min size (px)»; «Fbk» → «Feedback»; «Add.» → «Additive» (**sem foto de depois**).
+**Curados, com teste por gesto:** contadores (`{n?um|outros}` em `tr_with`; 58 frases + 44 `(s)` em 27 ficheiros; catraca `no_sentence_counts_*`); tom do filtro All; voo fora do recorte, também no Tags; multisselecção no voo, «+n more» acima de 5; seleção em ramo recolhido abre o ramo uma vez; largar abaixo de lista curta, na coluna dela, é fim da raiz; Mixer partido (`cards.rs` 655 → 349 + `cards_mesa.rs`); arrastar camada do Flip, com vão, marca e voo, as setas ficam (família `FlipLayer`, `SetValue` na Row, `move_layer_to`, um passo de desfazer, **sem foto**: a cena só tem uma camada). Decisão minha: fim da raiz vale na coluna da lista, abaixo dela; ao lado continua a ser o canvas.
+**Contraprovas vistas vermelhas (12):** ramo, voo só da agarrada, «+n», tom, Flip ids/queda/vão/app, Wet `default`, Macros `mark_card_field`, Grid sincronia, Grid `set_number_value`. O Grid sobreviveu à 1.ª bateria: os campos em metros têm outra porta (`sync_meter_inputs_*`); sangrou com Subdivisions. Não mutadas: as de `editor-core` e `i18n` (voo no recorte, guarda de queda, HUD, costura, plural, largura da lista), para não parar os outros agentes; os testes delas foram só vistos verdes.
+**Portões, por nome:** verdes `panel_files_under_loc_cap`, `architecture_widget_showcase_coverage`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`; `ph2d-i18n` inteiro; `cartoes|swatch` de Hierarchy, Flip, Tags, Mixer, Galeria (48). Foto `PH2D_GALLERY_SMOKE=1`: abre, sem nada torto, mas não mostra uma amostra sem campo. **Vermelho alheio:** `the_shell_only_shrinks`, `ph2d-app-vec` 93 656 contra 93 637, com WIP de outro agente na árvore (`vector_mode_listas.rs`, +33); a shell passou.
+**Censo do cromo:** [15](15_CHROME_CENSO.md), 9 fatias; nenhuma peça usa `CardInk`; o ecrã inicial não existe; Save/Export são do sistema.
+**Aberto:** Grid «Opacity» ainda é o slider antigo dentro do cartão (`c.legacy`), único caso visto; Frames «Ghost [1][1]» sem rótulo; Pixel mostra `#000000`, os outros `F0F0F5` (o teste de Pixel exige o `#`, ficou); `bars_control.rs` do Vector pode dizer «1 objects» no recurso (crate de outro agente); abas de encaixe cortam o nome a 1000 px («Inspec…»); a lista suspensa aberta tapa o título do painel na janela estreita; «Used by 1 layer» sem foto. Não olhadas: as `f_*` além da `ao_lado`, `b_physics_abertura` e `_debug`, `d_grid`, `d_wet_paint` (vi as novas `r2_*`).

@@ -5,7 +5,7 @@ use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
 // ── Os cartões ──
-pub const CARD_IMAGE: NodeId = hash_node_id("gallery.real.card_image");
+pub const CARD_IMAGE_REAL: NodeId = hash_node_id("gallery.real.card_image");
 pub const CARD_RIGID_BODY: NodeId = hash_node_id("gallery.real.card_rigid_body");
 pub const CARD_COLLIDER: NodeId = hash_node_id("gallery.real.card_collider");
 pub const CARD_HEALTH: NodeId = hash_node_id("gallery.real.card_health");

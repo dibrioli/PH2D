@@ -296,6 +296,12 @@ const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[(
 /// troço — ela reprova aqui, porque a coluna é do PAINEL.
 const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
     (
+        "audio_editor",
+        2,
+        "sem clip o Stop é inerte e não regista alvo: o Loop, metade direita do par de botões, lê-se \
+         como valor; os parâmetros (Pitch, Gain) arrancam todos na mesma coluna",
+    ),
+    (
         "timeline",
         2,
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
@@ -433,4 +439,5 @@ fn dentro_de_um_troco_o_valor_arranca_numa_coluna_so() {
 /// Quantos painéis (armados contados à parte) arrancam numa coluna só — medido `11` em 2026-09-23.
 /// ⬇️ `9` em 2026-11-04 (NovaUI G1): em cartões o rótulo mora em cima, logo cada painel convertido sai
 /// desta população. Quem guarda a régua contra o vazio é o [`PISO_DE_LINHAS`], que não mudou.
-const COLUNA_UNICA_PISO: usize = 9;
+/// ⬇️ `5` em 2026-11-04 (NovaUI R3): a mesma razão, medido depois dos blocos I, G e H.
+const COLUNA_UNICA_PISO: usize = 5;

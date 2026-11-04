@@ -13,7 +13,7 @@ use ph2d_i18n::tr;
 
 pub(crate) fn image(ch: Choices) -> CardDef<'static> {
     card(
-        g::CARD_IMAGE,
+        g::CARD_IMAGE_REAL,
         tr("panel.widget_gallery.card.image"),
         Vec::new(),
         Box::new(move |c: &mut CardCtx<'_>, y| {

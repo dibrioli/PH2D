@@ -489,7 +489,6 @@ mod variant_axes_smoke;
 mod variant_flow_smoke;
 mod vec_anchor_edit;
 mod vec_app_bridge;
-pub(crate) use ph2d_app_vec::appearance as vec_appearance;
 mod vec_appearance_smoke;
 pub(crate) use ph2d_app_vec::bindings as vec_bindings;
 pub(crate) use ph2d_app_vec::blend as vec_blend;

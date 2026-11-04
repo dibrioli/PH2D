@@ -85,7 +85,7 @@ fn quadro_com(c: &mut Cena, armed: bool, edicao: Option<f32>) -> f32 {
     );
     if let Some(v) = edicao {
         let sel: Vec<_> = c.map.keys().copied().collect();
-        crate::vec_appearance::set_opacity(&mut c.scene, &sel, v);
+        ph2d_app_vec::appearance::set_opacity(&mut c.scene, &sel, v);
         crate::vec_driven_style::follow_the_hand(&mut c.sim, &c.map, &sel, v);
     }
     let tela = crate::vec_driven_style::resolve(&c.sim, &c.map)
@@ -215,7 +215,7 @@ fn cena_sem_track() -> Cena {
     let mut c = cena();
     c.st = TimelineState::new();
     let id = *c.map.keys().next().unwrap();
-    crate::vec_appearance::set_opacity(&mut c.scene, &[id], 0.4);
+    ph2d_app_vec::appearance::set_opacity(&mut c.scene, &[id], 0.4);
     c
 }
 

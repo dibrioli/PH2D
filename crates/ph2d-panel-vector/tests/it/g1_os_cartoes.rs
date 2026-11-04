@@ -660,15 +660,14 @@ fn the_left_panel_keeps_its_distance_from_the_list() {
             .click_at(linha.x + linha.w * 0.5, linha.y + linha.h * 0.5);
         mesa.aplica(ev);
         mesa.assenta();
-        let fecho = mesa
-            .rect(p::VECTOR_FILL_PROPS_CLOSE)
-            .expect("o fecho do painel");
+        // A moldura, e não o X: o X recua pela folga de cada cara (G2, a do cartão é menor).
+        let fundo = mesa.rect(core_ids::RAIL_BACKDROP).expect("o fundo do painel");
         let painel = mesa
             .host
             .store()
             .panel_rect(core_ids::VECTOR_PANEL)
             .expect("o rect");
-        painel.x - (fecho.x + fecho.w)
+        painel.x - (fundo.x + fundo.w)
     };
     let (novo, velho) = (vao(true), vao(false));
     assert!((novo - velho).abs() < 0.5, "cartões {novo} × antes {velho}");

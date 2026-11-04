@@ -6,10 +6,8 @@ use crate::cards_tinta::{aberto, campo, escolha, menu, seg, seg_icone, token};
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
 use ph2d_editor_core::widget::card_field::Glyph;
-use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_vector::ids as vids;
 use ph2d_tool_vector::{StrokeCap, StrokeJoin, StyleFields as F, VectorStyleSnapshot, params};
@@ -112,7 +110,7 @@ pub(crate) fn stroke_settings(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y
     if let Some(on) = state::stroke_above_effects() {
         y = c.check(
             crate::ids::VECTOR_STROKE_ABOVE_EFFECTS,
-            Rotulo::vista(TextKey::new("panel.vector.stroke.above_effects")),
+            tr("panel.vector.stroke.above_effects"),
             on,
             y,
         );

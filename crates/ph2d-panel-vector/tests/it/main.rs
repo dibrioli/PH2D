@@ -25,6 +25,7 @@ mod f48_offset_path_tool;
 mod f50_boolean_e_convert_na_barra; // F50: Boolean e Convert na ④, o raro no «⋯», sem chave Live // F48d: o Offset Path é uma ferramenta — opções na fila ②, Apply/Remove na ④
 mod fill_chip_labels_fit;
 mod g1_os_cartoes; // NovaUI G1: a lista, as abas, o hospedeiro e os corpos nativos
+mod g2_os_cartoes; // NovaUI G2: Appearance, Fill & Stroke e os painéis à esquerda
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
 mod popover_band;

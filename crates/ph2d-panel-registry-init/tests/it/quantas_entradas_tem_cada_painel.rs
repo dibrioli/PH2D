@@ -2196,7 +2196,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 488 → 1 507` em 2026-11-03 (NovaUI), e NÃO é secção a nascer aberta: a Noto Sans de fábrica
     //    (dono 01/11, D11) quebra uma legenda em mais uma linha. Medido pela sonda das duas fontes na
     //    mesma corrida: Inter `1 488`, Noto `1 507`.
-    ("inspector", 1507.0),
+    // ⬇️ `1 507 → 1 375` (plano GEF 22, 04/11; medido na árvore combinada): a secção Animation perdeu a
+    //    frase de «Who Picks», From/To, o «N frames» e um dos botões empilhados.
+    ("inspector", 1375.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.

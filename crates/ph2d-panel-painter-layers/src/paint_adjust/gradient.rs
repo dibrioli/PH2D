@@ -3,6 +3,7 @@
 //! redesenho, 2026-09-05) o fez passar o teto de LOC do painel.
 
 use super::*;
+use crate::cards_tela::Tela;
 
 /// IEC sRGB encode (linear-light `0..1` → display byte) for the Gradient Map
 /// preview, which samples the LINEAR `gradient_map_lut` the canvas uses.
@@ -65,7 +66,42 @@ pub(super) fn paint_gradient_map(
         ctx.host.hit_index_mut().register(id, brect);
     }
     y += ph2d_tokens::row_pitch_px();
+    y = crate::cards_tela::no_ctx(ctx, theme, |t| {
+        barra_na_tela(t, layer_id, params, selected, x, w, y)
+    }) + gap;
 
+    // ── Selected stop's RGB sliders ──
+    let sliders = ph2d_tool_painter::gradient_stop_color_params(g, selected);
+    y = paint_barras(
+        ctx,
+        theme,
+        layer_id,
+        &sliders,
+        &ph2d_tool_painter::gradient_stop_color_numbers(),
+        &adjust_nomes::chave_do_gradiente,
+        0..sliders.len(),
+        (x, w, y),
+    );
+
+    // ── Interpolation segment (Linear / Smooth) ──
+    paint_segment_rack(ctx, theme, layer_id, params, x, w, y)
+}
+
+/// A barra do degradê, com as pegas: a do painel de antes ou a do cartão. Devolve o fundo, com as pegas.
+pub(crate) fn barra_na_tela(
+    ctx: &mut Tela<'_>,
+    layer_id: u64,
+    params: &AdjustmentParams,
+    selected: usize,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let AdjustmentParams::GradientMap(g) = params else {
+        return y;
+    };
+    let theme = ctx.theme;
+    let tinta = ctx.tinta();
     // ── Preview bar (samples the LINEAR LUT the canvas uses) ──
     let bar = Rect::new(x, y, w.max(1.0), GRAD_BAR_H);
     let lut = ph2d_tool_painter::gradient_map_lut(g);
@@ -87,7 +123,7 @@ pub(super) fn paint_gradient_map(
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         1.0, // LITERAL-PX-OK: 1px hairline border
-        resolve(ColorToken::TextDisabled, theme),
+        tinta.cor(ColorToken::TextDisabled),
     );
 
     // ── Draggable stop handles on the bar's bottom edge ──
@@ -97,22 +133,24 @@ pub(super) fn paint_gradient_map(
         let id = painter_gradient_stop_id(layer_id, index as u8);
         let cx = bar.x + stop.offset.clamp(0.0, 1.0) * bar.w;
         // Overwrite each frame so the carried `canvas` (the bar) tracks resizes.
-        ctx.host.store_mut().register(
-            id,
-            InteractiveState::CurvePoint {
-                parent,
-                channel: 0,
-                index: index as u8,
-                canvas: bar,
-            },
-        );
+        ctx.depois(move |s| {
+            s.register(
+                id,
+                InteractiveState::CurvePoint {
+                    parent,
+                    channel: 0,
+                    index: index as u8,
+                    canvas: bar,
+                },
+            );
+        });
         let grab = Rect::new(
             cx - CURVE_GRAB_R,
             cy - CURVE_GRAB_R,
             CURVE_GRAB_R * 2.0,
             CURVE_GRAB_R * 2.0,
         );
-        ctx.host.hit_index_mut().register(id, grab);
+        ctx.hit_index.register(id, grab);
         // LITERAL-COLOR-OK: the stop's own color (data).
         let scol = ph2d_vector::Color::from_rgba8(stop.color[0], stop.color[1], stop.color[2], 255); // LITERAL-COLOR-OK: stop's own color (data)
         let ring = if index == selected {
@@ -120,24 +158,8 @@ pub(super) fn paint_gradient_map(
         } else {
             ColorToken::TextDisabled
         };
-        fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R + 1.5, resolve(ring, theme)); // LITERAL-PX-OK: 1.5px ring outline
+        fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R + 1.5, tinta.cor(ring)); // LITERAL-PX-OK: 1.5px ring outline
         fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R, scol);
     }
-    y += GRAD_BAR_H + GRAD_HANDLE_R + gap;
-
-    // ── Selected stop's RGB sliders ──
-    let sliders = ph2d_tool_painter::gradient_stop_color_params(g, selected);
-    y = paint_barras(
-        ctx,
-        theme,
-        layer_id,
-        &sliders,
-        &ph2d_tool_painter::gradient_stop_color_numbers(),
-        &adjust_nomes::chave_do_gradiente,
-        0..sliders.len(),
-        (x, w, y),
-    );
-
-    // ── Interpolation segment (Linear / Smooth) ──
-    paint_segment_rack(ctx, theme, layer_id, params, x, w, y)
+    y + GRAD_BAR_H + GRAD_HANDLE_R
 }

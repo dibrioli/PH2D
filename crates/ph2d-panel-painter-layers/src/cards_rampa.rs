@@ -24,7 +24,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_tool_painter::ids as pids;
-use ph2d_tool_painter::{BlendMode, BrushSettings, RampColorMode, RampInterp};
+use ph2d_tool_painter::{BlendMode, BrushSettings, RampAlphaMode, RampColorMode, RampInterp};
 use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
 /// Quantas linhas cabem no véu de uma rampa inerte: na coluna mais estreita, cada campo tem a sua.
@@ -128,6 +128,9 @@ pub(crate) fn prepara(ctx: &mut PaintCtx, ids: &RampIds, v: RampView<'_>) {
     store.set_tooltip(ids.reset, tr("panel.painter_layers.brush.reset_section"));
     registra_lista(store, ids.mode, usize::from(v.mode));
     registra_lista(store, ids.interp, usize::from(v.interp));
+    if let Some(a) = v.alpha {
+        registra_lista(store, a.id, usize::from(a.mode));
+    }
     let Some(s) = v.stops.get(sel.min(v.stops.len().saturating_sub(1))) else {
         return;
     };
@@ -191,6 +194,12 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, ids: &RampIds, v: RampView<'_>)
             guarda(Some((r, atual)));
         }
     }
+    if let Some(a) = v.alpha
+        && aberta(ctx.host.store(), a.id)
+        && let Some(r) = ctx.host.hit_index_mut().rect_for(a.id)
+    {
+        (a.set_pending)(Some((r, a.mode)));
+    }
 }
 
 /// Um número sem marca de animação: o stop escolhido é vista do painel, não uma propriedade do pincel.
@@ -232,6 +241,18 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, ids: &RampIds, v: RampView<'_>, y: f32)
         ],
         y,
     );
+    let y = match v.alpha {
+        Some(a) => fila(
+            c,
+            &[Item::Lista {
+                id: a.id,
+                chave: "card.painter.ramp.alpha",
+                texto: tr(RampAlphaMode::from_u8(a.mode).name_key()),
+            }],
+            y,
+        ),
+        None => y,
+    };
     let rgba = rgba_do_stop(*s);
     let codigo = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
     let botoes = [

@@ -3,6 +3,7 @@
 //! a porta da moldura do tema (wave 4 do redesenho, 2026-09-05) o fez passar o teto.
 
 use super::*;
+use crate::cards_tela::Tela;
 
 /// Bespoke Curves editor: a row of channel tabs (RGB/R/G/B) + add/remove-point
 /// buttons, over a canvas plotting the ACTIVE channel's tone curve with its FREE
@@ -78,17 +79,28 @@ pub(super) fn paint_curve_editor(
         ctx.host.hit_index_mut().register(id, brect);
     }
     y += ph2d_tokens::row_pitch_px();
+    let fim = crate::cards_tela::no_ctx(ctx, theme, |t| curva_na_tela(t, layer_id, c, x, w, y));
+    fim + gap
+}
 
+/// A tela da curva, com as pegas: a do painel de antes ou a do cartão. Devolve o fundo.
+pub(crate) fn curva_na_tela(
+    ctx: &mut Tela<'_>,
+    layer_id: u64,
+    c: &CurvesParams,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let theme = ctx.theme;
+    let tinta = ctx.tinta();
+    let channel = state::active_curve_channel(layer_id);
     // ── Canvas: the active channel's curve + draggable points ──
     let canvas = Rect::new(x, y, w.max(1.0), CURVE_CANVAS_H);
     // ⭐ Raio e moldura pela porta do TEMA: o canvas da curva é plano num tema moderno.
     let canvas_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(
-        ctx.scene,
-        canvas,
-        canvas_radius,
-        resolve(ColorToken::Bg2, theme),
-    );
+    let fundo = ctx.fundo();
+    fill_rounded_rect(ctx.scene, canvas, canvas_radius, fundo);
     ph2d_editor_core::paint::stroke_frame(
         ctx.scene,
         canvas,
@@ -96,11 +108,11 @@ pub(super) fn paint_curve_editor(
         theme,
         ph2d_tokens::visuals::Feel::Rest,
         1.0, // LITERAL-PX-OK: 1px hairline border
-        resolve(ColorToken::TextDisabled, theme),
+        tinta.cor(ColorToken::TextDisabled),
     );
     // Quarter grid + the identity diagonal (so a curve's deviation from no-op is
     // readable) — the canonical curve-editor backdrop, behind the curve.
-    let grid = resolve(ColorToken::GridLine, theme);
+    let grid = tinta.cor(ColorToken::GridLine);
     for i in 1..4 {
         let f = i as f32 / 4.0; // LITERAL-PX-OK: 4 grid divisions (curve editor thirds)
         let gx = canvas.x + f * canvas.w;
@@ -125,7 +137,7 @@ pub(super) fn paint_curve_editor(
             (canvas.x + canvas.w, canvas.y), // top-right (in 1 → out 1)
         ],
         CURVE_GRID_W,
-        resolve(ColorToken::GridAxis, theme),
+        tinta.cor(ColorToken::GridAxis),
     );
     let pts = match channel {
         1 => &c.points_r,
@@ -135,15 +147,12 @@ pub(super) fn paint_curve_editor(
     };
     // Tint the curve + handle rings by the active channel (master = accent), so
     // it's obvious which channel you're editing.
-    let curve_color = resolve(
-        match channel {
-            1 => ColorToken::CurveR,
-            2 => ColorToken::CurveG,
-            3 => ColorToken::CurveB,
-            _ => ColorToken::Accent,
-        },
-        theme,
-    );
+    let curve_color = tinta.cor(match channel {
+        1 => ColorToken::CurveR,
+        2 => ColorToken::CurveG,
+        3 => ColorToken::CurveB,
+        _ => ColorToken::Accent,
+    });
     // Plot the channel's own tone curve (the monotone spline the GPU also bakes)
     // as a smooth polyline through its sampled output.
     let samples = (canvas.w * 0.5).clamp(48.0, 256.0) as usize; // LITERAL-PX-OK: curve sample-count clamp
@@ -157,7 +166,7 @@ pub(super) fn paint_curve_editor(
 
     let parent = painter_curve_editor_id(layer_id);
     let ring = curve_color;
-    let fill = resolve(ColorToken::Text1, theme);
+    let fill = tinta.cor(ColorToken::Text1);
     for (index, pt) in pts.points.iter().enumerate().take(MAX_CURVE_POINTS) {
         let id = painter_curve_point_id(layer_id, channel, index as u8);
         let cx = canvas.x + pt[0].clamp(0.0, 1.0) * canvas.w;
@@ -165,27 +174,28 @@ pub(super) fn paint_curve_editor(
         // Overwrite each frame so the carried `canvas` (and active `channel`)
         // track panel resizes / tab switches (CurvePoint has no per-frame drag
         // state — the result lands in the store's `curve_point_drag` slot).
-        ctx.host.store_mut().register(
-            id,
-            InteractiveState::CurvePoint {
-                parent,
-                channel,
-                index: index as u8,
-                canvas,
-            },
-        );
+        ctx.depois(move |s| {
+            s.register(
+                id,
+                InteractiveState::CurvePoint {
+                    parent,
+                    channel,
+                    index: index as u8,
+                    canvas,
+                },
+            );
+        });
         let grab = Rect::new(
             cx - CURVE_GRAB_R,
             cy - CURVE_GRAB_R,
             CURVE_GRAB_R * 2.0,
             CURVE_GRAB_R * 2.0,
         );
-        ctx.host.hit_index_mut().register(id, grab);
+        ctx.hit_index.register(id, grab);
         // Ring + fill (no stroke-circle helper — a slightly larger ring circle
         // under the fill gives a 1.5px outline).
         fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R + 1.5, ring); // LITERAL-PX-OK: 1.5px ring outline
         fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R, fill);
     }
-    y += CURVE_CANVAS_H + gap;
-    y
+    y + CURVE_CANVAS_H
 }

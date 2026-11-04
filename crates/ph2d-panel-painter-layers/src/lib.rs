@@ -48,11 +48,11 @@ mod cards_aleatorio; // o cartão Randomize Color
 mod cards_camadas; // a vista Layers em linhas de cartão
 mod cards_camadas_linha; // uma camada dessa lista
 mod cards_caneta; // o cartão Pen, em três grupos
-mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão repete-o
+mod cards_ajustes; // os parâmetros de uma camada de ajuste em linhas de cartão
 mod cards_composto; // o Composite Brush em linhas de cartão
 mod cards_exclusivos; // Máscara, Deform e Selection em linhas de cartão
 mod cards_ferramenta; // Line, Clone, Inpaint e os verbos do Sculpt
-mod cards_grao; // o cartão Grain: prévia, rampa e títulos internos capturados
+mod cards_grao; // o cartão Grain, e o editor da camada Texture
 mod cards_impasto;
 mod cards_linhas; // listas de caixa, linha esmaecida e pares, das linhas de cartão
 mod cards_nativos;

@@ -351,7 +351,7 @@ fn typing_segments_sends_the_same_action_as_the_old_panel() {
 
 /// O corpo capturado: Paint Mode abre o popover debaixo da caixa, e a opção envia o mesmo.
 #[test]
-fn a_captured_dropdown_opens_under_its_chip_and_its_option_sends_the_same() {
+fn a_dropdown_opens_under_its_chip_and_its_option_sends_the_same() {
     let id = p::PAINTER_BRUSH_MEDIA;
     let opcao = p::painter_brush_media_option_id(1);
     let escolhe = |cartoes: bool| {
@@ -461,7 +461,7 @@ fn dragging_a_card_by_its_header_reorders_the_list() {
 
 /// Soltar fora da coluna: um corpo CAPTURADO continua vivo lá, com o id no sítio novo.
 #[test]
-fn a_captured_card_dragged_out_of_the_column_comes_loose_and_keeps_working() {
+fn a_card_dragged_out_of_the_column_comes_loose_and_keeps_working() {
     let mut mesa = Mesa::nova(true, FALLBACK_BRUSH, false);
     let sec = p::PAINTER_BRUSH_STROKE_SECTION;
     let id = core_ids::PAINTER_BRUSH_STROKE_METHOD;
@@ -490,7 +490,7 @@ fn a_captured_card_dragged_out_of_the_column_comes_loose_and_keeps_working() {
 
 /// Rolar leva os alvos capturados com a cena, no próprio quadro; e o que sai da janela não fica clicável.
 #[test]
-fn scrolling_moves_the_captured_targets_with_the_list() {
+fn scrolling_moves_the_targets_with_the_list() {
     let janela = Rect::new(0.0, 0.0, 1600.0, 700.0);
     let mut mesa = Mesa::na_janela(true, FALLBACK_BRUSH, false, janela);
     let id = p::PAINTER_BRUSH_BLEND;

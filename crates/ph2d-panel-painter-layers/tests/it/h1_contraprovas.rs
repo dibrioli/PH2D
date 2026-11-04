@@ -1,5 +1,5 @@
-//! O que as contraprovas da fatia H1 acusaram: mutantes da captura que os testes dela deixavam passar, porque com a
-//! lista parada o deslocamento é zero. Aqui a lista anda, o cartão solta-se e voa.
+//! O que as contraprovas da fatia H1 acusaram, com a lista parada o deslocamento é zero. Aqui a lista anda, o cartão
+//! solta-se e voa. A captura saiu na H11; os testes ficam, porque medem a lista.
 
 use super::h1_os_cartoes::Mesa;
 use ph2d_editor_core::aquecimento::{PASSO_DE_QUADRO_S, com_passo_fixo};
@@ -13,8 +13,7 @@ use ph2d_panel_painter_layers::{FALLBACK_BRUSH, PainterLayersPanel};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_painter::ids as p;
 
-/// O Stroke é nativo desde a H7, e o título do Jitter desde a H9: estes testes medem a lista. A captura só resta na vista
-/// Layers, que tem um cartão só, e por isso nada anda por cima dela.
+/// A captura saiu na H11: estes testes medem a lista, com um cartão que a H1 tinha capturado.
 const CAPTURADO: (ph2d_a11y::NodeId, ph2d_a11y::NodeId) = (
     p::PAINTER_BRUSH_STROKE_SECTION,
     core_ids::PAINTER_BRUSH_STROKE_METHOD,
@@ -109,7 +108,7 @@ fn a_loose_card_leaves_the_others_in_the_column() {
 
 /// A lista de um corpo capturado abre debaixo da caixa onde quer que o cartão esteja: um solto, no solto.
 #[test]
-fn a_loose_captured_list_opens_under_its_box() {
+fn a_loose_card_list_opens_under_its_box() {
     let id = CAPTURADO.1;
     let mut mesa = Mesa::nova(true, FALLBACK_BRUSH, false);
     solta_o_capturado(&mut mesa);
@@ -128,11 +127,9 @@ fn a_loose_captured_list_opens_under_its_box() {
     }
 }
 
-/// A tinta do cartão chega à peça capturada: com um tema só naquele cartão, as caixas dela usam-no. Medido em 04/11:
-/// Máscara deu 0 porque só tinha botões planos e amostras, sem caixa de cartão (legítimo; nativa desde a H8). O que resta
-/// capturado com caixas são os parâmetros de um ajuste.
+/// A tinta do cartão chega aos parâmetros de um ajuste: com um tema só naquele cartão, as caixas deles usam-no.
 #[test]
-fn the_captured_body_wears_the_card_ink() {
+fn an_adjustment_body_wears_the_card_ink() {
     let sec = p::PAINTER_CARD_CAMADAS;
     let mut pilha = ph2d_tool_painter::LayerStack::new();
     let _ = pilha.add_raster("Base", 8, 8).expect("a camada nasce");
@@ -161,7 +158,7 @@ fn the_captured_body_wears_the_card_ink() {
 
 /// Sob uma barra de rolagem, o corpo capturado acompanha a largura real da coluna.
 #[test]
-fn the_captured_body_keeps_the_column_of_the_native_ones() {
+fn a_body_keeps_the_column_under_a_scrollbar() {
     let (sec, id) = CAPTURADO;
     // A metade direita da linha: a borda dela é a da coluna.
     let nativo = p::PAINTER_BRUSH_BLEND_ON_EMPTY;

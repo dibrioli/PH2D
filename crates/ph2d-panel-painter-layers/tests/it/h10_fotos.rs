@@ -17,7 +17,7 @@ use ph2d_vector::VectorScene;
 
 const JANELA: Rect = Rect::new(0.0, 0.0, 1600.0, 2400.0);
 
-fn foto(gpu: &ph2d_gpu::GpuContext, dir: &str, nome: &str, m: &mut Mesa) {
+pub(super) fn foto(gpu: &ph2d_gpu::GpuContext, dir: &str, nome: &str, m: &mut Mesa) {
     let (w, h) = (JANELA.w as u32, JANELA.h as u32);
     let mut pass =
         ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (w, h)).unwrap();

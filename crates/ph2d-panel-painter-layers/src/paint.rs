@@ -230,6 +230,7 @@ pub(crate) fn paint_layers_popovers(
 /// key + `PAINTER_LAYERS_SCROLLBAR_ID`). The open dropdown popover is drained AFTER the clip is
 /// popped, so it floats unclipped over the rows.
 fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, header_bottom: f32) {
+    crate::cards::so_no_painel_de_antes();
     let body_top = paint_pinned_preview(ctx, theme, rect, header_bottom);
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);

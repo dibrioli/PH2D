@@ -1,6 +1,5 @@
 //! O cartão Grain em linhas de cartão (fatia H6, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos, as
-//! condições de `paint_texture_section`. Capturados: a prévia, o editor da rampa e os dois títulos que dobram dentro do
-//! cartão (Grain Behavior e Grain Colors, este com o Reset dele). A Texture layer continua no pintor de antes.
+//! condições de `paint_texture_section`. Daqui sai também o editor da camada Texture (H11), com os mesmos ids fixos.
 
 use crate::cards_linhas::{Item, com_lei, fila, filete, grupo, numero, par_xy};
 use crate::paint_texture::Previa;
@@ -263,8 +262,14 @@ fn fim(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     if !c.store.is_collapsed(COMPORTAMENTO) {
         y = fila(c, &cards_shape::da_ponta(CartaoDaPonta::Grao, b, b), y);
     }
+    cores(c, b, None, y)
+}
+
+/// As Grain Colors: o título que dobra e a rampa. Na camada Texture, com a lista Alpha.
+fn cores(c: &mut CardCtx<'_>, b: &BrushSettings, alpha: Option<u8>, y: f32) -> f32 {
+    use crate::cards_rampa::titulo_que_dobra;
     let ids = grain_ramp_ids();
-    y = titulo_que_dobra(
+    let y = titulo_que_dobra(
         c,
         ids.section,
         "panel.painter_layers.grain.grain_colors",
@@ -274,7 +279,7 @@ fn fim(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     if c.store.is_collapsed(ids.section) {
         return y;
     }
-    let vista = vista_do_pincel(b, None);
+    let vista = vista_do_pincel(b, alpha);
     let ligar = crate::cards_linhas::marca(
         ids.enable,
         "panel.painter_layers.ramp.use_color_ramp",
@@ -310,6 +315,96 @@ fn fim(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     } else {
         crate::cards_rampa::corpo(c, &ids, vista, y)
     }
+}
+
+/// Os números do editor da camada Texture: `l` diz o que está à vista, `v` dá os valores.
+fn numeros_da_camada(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
+    let mut n: Vec<Numero> = eixos(v.texture_offset, OFFSET, FAIXA_OFFSET, nf::FINE_STEP).into();
+    n.extend(eixos(v.texture_size, TAMANHO, FAIXA_TAMANHO, nf::SIZE_STEP));
+    n.extend(crate::cards_linhas::do_padrao(
+        kind(l),
+        &pids::PAINTER_BRUSH_TEXTURE_PARAMS,
+        &v.texture_params,
+    ));
+    n
+}
+
+/// A camada Texture ativa, com o store MUTÁVEL: `view` é a camada vestida de pincel (`brush_view_from_texture_layer`).
+pub(crate) fn prepara_da_camada(ctx: &mut PaintCtx, view: &BrushSettings, alpha: u8) {
+    if kind(view) == TextureKind::None {
+        return;
+    }
+    if view.texture_ramp_enabled && !ctx.host.store().is_collapsed(grain_ramp_ids().section) {
+        crate::cards_rampa::prepara(ctx, &grain_ramp_ids(), vista_do_pincel(view, Some(alpha)));
+    }
+    let store = ctx.host.store_mut();
+    crate::cards_wet::arma_numeros(
+        store,
+        &numeros_da_camada(view, view),
+        &numeros_da_camada(view, &paint_brush::FALLBACK_BRUSH),
+    );
+}
+
+/// As listas abertas do editor da camada Texture.
+pub(crate) fn listas_da_camada(ctx: &mut PaintCtx, view: &BrushSettings, alpha: u8) {
+    if kind(view) != TextureKind::None && view.texture_ramp_enabled {
+        crate::cards_rampa::listas_abertas(
+            ctx,
+            &grain_ramp_ids(),
+            vista_do_pincel(view, Some(alpha)),
+        );
+    }
+    let caixa = pids::PAINTER_BRUSH_TEXTURE_KIND;
+    if crate::cards_linhas::aberta(ctx.host.store(), caixa)
+        && let Some(r) = ctx.host.hit_index_mut().rect_for(caixa)
+    {
+        state::set_pending_brush_texture_kind_dd(Some((r, view.texture_kind)));
+    }
+}
+
+/// O padrão da camada, uma vez por quadro; com a lista Alpha dela, que a do pincel não tem.
+pub(crate) fn previa_da_camada(w: f32, view: &BrushSettings, alpha: u8) -> Option<Previa> {
+    (kind(view) != TextureKind::None).then(|| {
+        crate::paint_texture::previa_do_padrao(
+            w,
+            *view,
+            state::current_brush_texture_image(),
+            None,
+            ph2d_tool_painter::RampAlphaMode::from_u8(alpha),
+        )
+    })
+}
+
+/// O editor da camada Texture: o que a camada cobre inteira não tem Mapping, Rake, ângulo nem Depth.
+pub(crate) fn corpo_da_camada(
+    c: &mut CardCtx<'_>,
+    view: &BrushSettings,
+    alpha: u8,
+    previa: Option<&Previa>,
+    y: f32,
+) -> f32 {
+    let lista = [Item::Lista {
+        id: pids::PAINTER_BRUSH_TEXTURE_KIND,
+        chave: "panel.painter_layers.grain.grain",
+        texto: tr(kind(view).name_key()),
+    }];
+    let y = fila(c, &lista, y);
+    if kind(view) == TextureKind::None {
+        return y;
+    }
+    let y = crate::cards_rampa::previa(c, previa, y);
+    let y = par_xy(c, "panel.painter_layers.grain.offset", OFFSET, y);
+    let y = par_xy(c, "panel.painter_layers.grain.size", TAMANHO, y);
+    let padrao: Vec<Item> = crate::cards_linhas::do_padrao(
+        kind(view),
+        &pids::PAINTER_BRUSH_TEXTURE_PARAMS,
+        &view.texture_params,
+    )
+    .into_iter()
+    .map(Item::Num)
+    .collect();
+    let y = fila(c, &padrao, y);
+    cores(c, view, Some(alpha), y)
 }
 
 /// O corpo.

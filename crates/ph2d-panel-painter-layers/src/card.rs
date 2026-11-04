@@ -46,6 +46,7 @@ pub(crate) fn card_frame_com_extra(
     n_rows: usize,
     extra_h: f32,
 ) -> (f32, f32, f32, f32) {
+    crate::cards::so_no_painel_de_antes();
     let pad = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
     let title_h = font + Spacing::Sm.px();
@@ -130,6 +131,7 @@ pub(crate) fn card_row(
     step: f64,
     decimals: usize,
 ) -> f32 {
+    crate::cards::so_no_painel_de_antes();
     let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, chave);
     let nome = tr(chave);
     // O nome que não cabe e se parte ([`crate::duas_linhas`]): duas linhas na coluna, a caixa ao meio delas.

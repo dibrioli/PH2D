@@ -566,6 +566,7 @@ pub fn declaracao_da_chave(chave: &str) -> Option<&'static Declaracao> {
 /// ⚠️ **Uma chave de secção não declarada cai no rótulo dela sozinho** — nunca pior do que o
 /// default de antes — e o `debug_assert` acusa-a na suíte, que é onde ela tem de aparecer.
 pub(crate) fn seccao_da_chave(text_system: &mut TextSystem, chave: &str) -> Seccao {
+    crate::cards::so_no_painel_de_antes();
     let d = declaracao_da_chave(chave);
     debug_assert!(
         d.is_some(),

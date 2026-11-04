@@ -68,7 +68,7 @@ fn nome(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, label: &str, linha: &Prop
 /// ⚠️ **Liga a cada quadro, e é de propósito:** o id é por camada e por slot, a espécie de uma camada
 /// não muda, e a ligação é uma inserção idempotente. Ligar uma vez no `populate` é impossível — as
 /// camadas nascem depois dele.
-fn ligar_numero(
+pub(crate) fn ligar_numero(
     store: &mut WidgetStore,
     slider: ph2d_a11y::NodeId,
     chip: ph2d_a11y::NodeId,

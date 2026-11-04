@@ -1,13 +1,13 @@
 //! O cartão Layers em linhas de cartão (fatia H9, `docs/CartoesUI/13_PAINTER_PLANO.md`): as duas barras de verbos e, por
 //! camada, 👁 nome ↑ ↓, a mistura com a opacidade, o relevo e a máscara. Mesmos ids, mesmos eventos. A linha que voa é a
-//! da lista do Kanban; a largada continua a ser a do despacho (30/40/30 sobre o rect da linha). Capturados, como peças:
-//! os parâmetros de ajuste (curva, degradê, Levels) e o editor da camada Texture.
+//! da lista do Kanban; a largada continua a ser a do despacho (30/40/30 sobre o rect da linha). Debaixo da linha: os
+//! parâmetros de ajuste (`cards_ajustes`) e o editor da camada Texture ativa (`cards_grao`).
 
 use crate::cards_camadas_linha::{Lugar, camada, fracao_do_relevo, mascara, recuo};
-use crate::cards_captura::{Captura, chave_da_peca, x_de, y_de};
 use crate::cards_linhas::{aberta, registra_lista};
 use crate::paint_rows::register_bare_slider;
-use crate::{paint, state};
+use crate::paint_texture::{Previa, brush_view_from_texture_layer};
+use crate::{cards_ajustes, cards_grao, paint, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
@@ -16,92 +16,51 @@ use ph2d_editor_core::paint::{fill_rounded_rect, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::linhas_extra::ListRow;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget};
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
-use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
-use std::collections::{BTreeMap, BTreeSet};
+use ph2d_tool_painter::{BrushSettings, Layer, LayerId, LayerKind, LayerStack};
+use std::collections::BTreeSet;
 
-const SECAO: NodeId = pids::PAINTER_CARD_CAMADAS;
 /// A faixa de cada banda da largada: a de `find_painter_layer_drop`.
 const BANDA_DE_CIMA: f32 = 0.3; // LITERAL-PX-OK: fração da banda, não é medida de UI
 const BANDA_DE_BAIXO: f32 = 0.7; // LITERAL-PX-OK: fração da banda, não é medida de UI
-/// O que ainda pede o `PaintCtx`, por camada.
-pub(crate) type Pecas = BTreeMap<u64, Captura>;
+/// O que se desenha uma vez por quadro: a prévia da camada Texture ativa, a única com editor à vista.
+pub(crate) type Pecas = Option<Previa>;
 
-/// Corre `f` em cada camada à vista, com a profundidade.
-fn percorre(
-    stack: &LayerStack,
-    ids: &[LayerId],
-    depth: usize,
-    f: &mut dyn FnMut(LayerId, &Layer, usize, usize),
-) {
-    for (i, id) in ids.iter().enumerate() {
-        let Some(l) = stack.get(*id) else { continue };
-        f(*id, l, depth, i);
-        if let LayerKind::Group(g) = &l.kind
-            && !g.collapsed
-        {
-            percorre(stack, &g.children, depth + 1, f);
-        }
+/// A camada Texture ativa vestida de pincel, e a lista Alpha dela. Sem pincel publicado, não há editor.
+fn textura_ativa(stack: &LayerStack) -> Option<(BrushSettings, u8)> {
+    match &stack.get(stack.active()?)?.kind {
+        LayerKind::Texture(tex) => Some((
+            brush_view_from_texture_layer(state::current_brush()?, tex),
+            tex.ramp_alpha_mode,
+        )),
+        _ => None,
     }
 }
 
-/// Corre os pintores que pedem o `PaintCtx`, antes da lista.
-pub(crate) fn pecas(ctx: &mut PaintCtx, ink: CardInk, (x, w): (f32, f32)) -> Pecas {
-    let Some(stack) = state::current_layers().filter(|s| !s.is_empty()) else {
-        return BTreeMap::new();
-    };
-    let mut pedidos: Vec<(u64, LayerId, usize)> = Vec::new();
-    percorre(&stack, stack.root(), 0, &mut |id, l, depth, _| {
-        let tem = match &l.kind {
-            LayerKind::Adjustment(_) => true,
-            LayerKind::Texture(_) => stack.active() == Some(id),
-            _ => false,
-        };
-        if tem {
-            pedidos.push((id.0, id, depth));
-        }
-    });
-    let topo = ctx.slot.y;
-    let mut fora = BTreeMap::new();
-    for (n, id, depth) in pedidos {
-        let Some(l) = stack.get(id) else { continue };
-        let chave = chave_da_peca(SECAO, n);
-        let (px, tema) = (x_de(chave, x + recuo(depth + 1)), ink.theme);
-        let pw = (w - recuo(depth + 1)).max(0.0);
-        let captura = Captura::da_peca(
-            ctx,
-            chave,
-            SECAO,
-            ink,
-            (px, y_de(chave, topo)),
-            |ctx, y| match &l.kind {
-                LayerKind::Adjustment(adj) => crate::paint_adjust::paint_adjustment_params(
-                    ctx,
-                    tema,
-                    id.0,
-                    &adj.params,
-                    px,
-                    pw,
-                    y,
-                ),
-                LayerKind::Texture(tex) => {
-                    crate::paint_texture::paint_texture_layer_editor(ctx, tema, tex, px, pw, y)
-                }
-                _ => y,
-            },
-        );
-        fora.insert(n, captura);
-    }
-    fora
+/// A prévia, à largura da coluna.
+pub(crate) fn pecas(w: f32) -> Pecas {
+    let stack = state::current_layers()?;
+    let (view, alpha) = textura_ativa(&stack)?;
+    cards_grao::previa_da_camada(w, &view, alpha)
 }
 
 /// Com o store MUTÁVEL, antes de pintar: as linhas, as listas e as barras têm estado, e os ícones têm dica.
 pub(crate) fn prepare(ctx: &mut PaintCtx) {
+    if let Some(stack) = state::current_layers() {
+        if let Some((view, alpha)) = textura_ativa(&stack) {
+            cards_grao::prepara_da_camada(ctx, &view, alpha);
+        }
+        let store = ctx.host.store_mut();
+        for id in stack.all_ids() {
+            if let Some(LayerKind::Adjustment(adj)) = stack.get(id).map(|l| &l.kind) {
+                cards_ajustes::prepare(store, id.0, &adj.params);
+            }
+        }
+    }
     let store = ctx.host.store_mut();
     for (id, chave) in VERBOS {
         paint::register_button(store, id);
@@ -156,6 +115,9 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, (x, w): (f32, f32)) {
     let Some(stack) = state::current_layers() else {
         return;
     };
+    if let Some((view, alpha)) = textura_ativa(&stack) {
+        cards_grao::listas_da_camada(ctx, &view, alpha);
+    }
     let mut achou = false;
     for id in stack.all_ids() {
         let Some(l) = stack.get(id) else { continue };
@@ -363,6 +325,31 @@ fn aplicar(c: &mut CardCtx<'_>, y: f32) -> f32 {
     )
 }
 
+/// Os parâmetros que a camada tem, um nível abaixo dela.
+fn debaixo_da_linha(
+    c: &mut CardCtx<'_>,
+    stack: &LayerStack,
+    id: LayerId,
+    l: &Layer,
+    depth: usize,
+    previa: &Pecas,
+    y: f32,
+) -> f32 {
+    let (x, w) = (c.x, c.w);
+    let dentro = recuo(depth + 1);
+    (c.x, c.w) = (x + dentro, (w - dentro).max(0.0));
+    let fim = match &l.kind {
+        LayerKind::Adjustment(adj) => cards_ajustes::corpo(c, id.0, &adj.params, y),
+        LayerKind::Texture(_) if stack.active() == Some(id) => match textura_ativa(stack) {
+            Some((view, alpha)) => cards_grao::corpo_da_camada(c, &view, alpha, previa.as_ref(), y),
+            None => y,
+        },
+        _ => y,
+    };
+    (c.x, c.w) = (x, w);
+    fim
+}
+
 type Vista<'a> = (
     Option<LayerId>,
     &'a BTreeSet<LayerId>,
@@ -410,9 +397,7 @@ fn subarvore(
                 l.is_group(),
             ));
         }
-        if let Some(p) = pecas.get(&id.0) {
-            *y = p.repete(c, *y + m::FIELD_ROW_GAP);
-        }
+        *y = debaixo_da_linha(c, stack, id, l, depth, pecas, *y);
         if let Some(mk) = l.mask {
             *y = mascara(c, stack, mk, depth, *y);
         }

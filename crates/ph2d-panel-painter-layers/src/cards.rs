@@ -1,10 +1,9 @@
 //! ⭐⭐ **O painel Painter em CARTÕES** (`docs/CartoesUI/13_PAINTER_PLANO.md`): uma lista, com Brush/Layers numa
 //! faixa presa debaixo do título. Mesmos ids de secção e de controlo; `populate` e `event` não mudam.
 //!
-//! Secção convertida = corpo em [`crate::cards_nativos`]. Secção por converter = o corpo de hoje, capturado
-//! ([`crate::cards_captura`]). Em ambos o pintor antigo decide se a secção está à vista e dá o título.
+//! Nada do corpo antigo corre aqui: `paint.rs` só o chama com `PH2D_CARDS=0`, e `card.rs`, `seccoes.rs` e os
+//! `paint_*` de corpo pedem [`so_no_painel_de_antes`].
 
-use crate::cards_captura::coluna;
 use crate::cards_tela::{self, Tela};
 use crate::paint_texture::Previa;
 use crate::{
@@ -22,7 +21,6 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{
     CardBody, CardCtx, CardDef, HeadAction, ListTop, Seg, Widget, paint_card_list_top,
 };
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Theme;
@@ -53,6 +51,18 @@ pub fn force_cards_on_this_thread(on: Option<bool>) {
     FORCADO.with(|f| f.set(on));
 }
 
+/// A porta do corpo antigo: em cartões, chegar aqui é defeito. Nos testes, um pânico; no app, nada.
+#[inline]
+pub(crate) fn so_no_painel_de_antes() {
+    debug_assert!(!cards_on(), "o corpo antigo correu no caminho em cartões");
+}
+
+/// A coluna dos corpos, no encaixe do painel: `(x, w)`.
+pub(crate) fn coluna(slot: Rect) -> (f32, f32) {
+    let recuo = m::LIST_MARGIN + m::LIST_PAD_X + m::CARD_PAD_X;
+    (slot.x + recuo, (slot.w - 2.0 * recuo).max(0.0))
+}
+
 /// Um cartão à vista neste quadro.
 struct Presente {
     id: NodeId,
@@ -60,9 +70,9 @@ struct Presente {
     conteudo: Conteudo,
 }
 
-/// O corpo de hoje, capturado; as linhas do topo e dos básicos; o Wet Paint, com o visor do Tilt capturado.
+/// O corpo de cada cartão, com o que ele desenha uma vez por quadro.
 enum Conteudo {
-    /// Os ajustes e o editor da camada Texture.
+    /// A prévia da camada Texture ativa.
     Camadas(cards_camadas::Pecas),
     /// Um corpo de `cards_nativos`, com o Reset dele.
     Nativo(Option<NodeId>),
@@ -279,14 +289,12 @@ fn titulo_do_bloco(id: NodeId) -> String {
     }
 }
 
-/// A vista Layers: um cartão, com os ajustes e o editor da Texture capturados.
-fn cartao_das_camadas(ctx: &mut PaintCtx, theme: Theme) -> Presente {
-    let id = pids::PAINTER_CARD_CAMADAS;
-    let ink = CardInk::of_card(ctx.host.store().section_theme(id), theme);
+/// A vista Layers: um cartão.
+fn cartao_das_camadas(slot: Rect) -> Presente {
     Presente {
-        id,
+        id: pids::PAINTER_CARD_CAMADAS,
         titulo: tr("panel.painter_layers.layers.layers").to_owned(),
-        conteudo: Conteudo::Camadas(cards_camadas::pecas(ctx, ink, coluna(ctx.slot))),
+        conteudo: Conteudo::Camadas(cards_camadas::pecas(coluna(slot).1)),
     }
 }
 
@@ -379,7 +387,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     }
     let previa = if camadas { None } else { previa_fixada(ctx) };
     let presentes = if camadas {
-        vec![cartao_das_camadas(ctx, theme)]
+        vec![cartao_das_camadas(ctx.slot)]
     } else {
         secoes_do_pincel(ctx)
     };

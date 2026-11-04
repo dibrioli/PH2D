@@ -296,6 +296,7 @@ pub(crate) fn paint_texture_layer_editor(
     content_w: f32,
     y: f32,
 ) -> f32 {
+    crate::cards::so_no_painel_de_antes();
     let Some(view) = state::current_brush().map(|b| brush_view_from_texture_layer(b, tex)) else {
         return y;
     };

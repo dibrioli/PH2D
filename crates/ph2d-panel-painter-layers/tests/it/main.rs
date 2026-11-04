@@ -24,6 +24,8 @@ mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod h10_fotos; // os estados que a cena do app não semeia
 mod h10_os_cartoes; // o fim da H9: os widgets próprios no corpo do cartão, sem a captura
+mod h11_fotos; // as fotos e o custo por quadro do fecho
+mod h11_os_cartoes; // o fecho: ajustes e camada Texture em linhas de cartão
 mod h1_contraprovas; // os mutantes da captura que a H1 deixava passar
 mod h1_os_cartoes; // o painel em cartões: a lista, a captura e os corpos nativos (04/11)
 mod h2_os_cartoes; // o topo e os básicos em linhas de cartão

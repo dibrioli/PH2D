@@ -42,8 +42,11 @@ mod curve;
 mod gradient;
 /// As linhas da pilha: a barra é caixa única, o interruptor é linha de propriedade.
 mod linha;
+pub(crate) use curve::curva_na_tela;
 use curve::paint_curve_editor;
+pub(crate) use gradient::barra_na_tela;
 use gradient::paint_gradient_map;
+pub(crate) use linha::ligar_numero;
 use linha::{paint_barra, paint_toggle_row};
 
 const ADJ_TOGGLE_W: f32 = 34.0; // LITERAL-PX-OK: toggle-rack switch pill width
@@ -60,7 +63,10 @@ const GRAD_HANDLE_R: f32 = 5.0; // LITERAL-PX-OK: gradient stop-handle radius
 const MAX_GRADIENT_STOPS: usize = 16; // editor cap (matches the brush add_gradient_stop)
 
 /// Channel tab labels (index = channel: 0 = master/RGB, 1 = R, 2 = G, 3 = B).
-const CURVE_TAB_LABELS: [&str; 4] = ["RGB", "R", "G", "B"];
+pub(crate) const CURVE_TAB_LABELS: [&str; 4] = ["RGB", "R", "G", "B"];
+
+/// The Selective Color group tabs, by bucket.
+pub(crate) const SELCOLOR_TABS: [&str; 9] = ["R", "Y", "G", "C", "B", "M", "W", "N", "K"];
 
 /// The generic per-slot slider widget kind (≤8 slider params per adjustment).
 fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
@@ -93,7 +99,10 @@ fn chip_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
 }
 
 /// Os ids de uma barra da camada `layer_id`: o slider (que a ferramenta recebe) e o número.
-fn ids_da_barra(layer_id: u64, slot: usize) -> Option<(ph2d_a11y::NodeId, ph2d_a11y::NodeId)> {
+pub(crate) fn ids_da_barra(
+    layer_id: u64,
+    slot: usize,
+) -> Option<(ph2d_a11y::NodeId, ph2d_a11y::NodeId)> {
     Some((
         painter_layer_widget_id(layer_id, slot_kind(slot)?),
         painter_layer_widget_id(layer_id, chip_slot_kind(slot)?),
@@ -169,7 +178,7 @@ fn paint_interruptores(
 }
 
 /// The generic per-slot toggle widget kind (≤2 toggle params per adjustment).
-fn toggle_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
+pub(crate) fn toggle_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
     Some(match slot {
         0 => PainterLayerWidget::AdjToggle0,
         1 => PainterLayerWidget::AdjToggle1,
@@ -178,7 +187,7 @@ fn toggle_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
 }
 
 /// The per-option widget kind of the single segmented param (≤3 options).
-fn segment_slot_kind(option: usize) -> Option<PainterLayerWidget> {
+pub(crate) fn segment_slot_kind(option: usize) -> Option<PainterLayerWidget> {
     Some(match option {
         0 => PainterLayerWidget::AdjSegment0,
         1 => PainterLayerWidget::AdjSegment1,
@@ -202,6 +211,7 @@ pub(crate) fn paint_adjustment_params(
     w: f32,
     mut y: f32,
 ) -> f32 {
+    crate::cards::so_no_painel_de_antes();
     // Bespoke: Curves gets a curve canvas instead of the generic slider rack.
     if let AdjustmentParams::Curves(c) = params {
         return paint_curve_editor(ctx, theme, layer_id, c, x, w, y);
@@ -479,9 +489,8 @@ fn paint_selective_color(
     let font = TypeToken::Base.px();
     let active = state::active_selective_bucket(layer_id).min(8);
     // ── 9 color-group tabs (single-char labels span the width) ──
-    const TABS: [&str; 9] = ["R", "Y", "G", "C", "B", "M", "W", "N", "K"];
     let tab_w = w / 9.0; // LITERAL-PX-OK: 9 color-group tab count
-    for (bucket, label) in TABS.iter().enumerate() {
+    for (bucket, label) in SELCOLOR_TABS.iter().enumerate() {
         let trect = Rect::new(
             x + bucket as f32 * tab_w,
             y,

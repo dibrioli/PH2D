@@ -219,3 +219,32 @@ fn the_requests_of_a_gesture_on_a_pinned_card_are_of_its_bone() {
         "a tecla da shell deixou de largar o preso"
     );
 }
+
+/// ⭐ R5, ponta a ponta: com A preso e B selecionado, o gesto sobre o cartão preso escreve em A e B
+/// fica como estava. *Mutação: `osso_do_gesto` a ignorar `preso` ⇒ a escrita vai para B.*
+#[test]
+fn the_gesture_on_a_pinned_card_writes_the_pinned_bone_not_the_selected_one() {
+    use ph2d_app_skeleton::knobs::{BoneKnob, apply_from_panel};
+    use ph2d_ecs::{SimWorld, Transform};
+    use ph2d_skeleton_ecs::Bone;
+    use ph2d_skeleton_live::bone::osso_do_gesto;
+    let mut sim = SimWorld::default();
+    let mut osso = || {
+        sim.world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Bone {
+                    length: 10.0,
+                    ..Bone::default()
+                },
+            ))
+            .id()
+    };
+    let (a, b) = (osso(), osso());
+    let doc = ph2d_editor_core::DocPx::new(100.0);
+    let alvo = osso_do_gesto(&sim, Some(a.to_bits()), [b.to_bits()]).expect("é osso");
+    apply_from_panel(&mut sim, alvo, BoneKnob::Length, 2500.0, doc);
+    let comprimento = |e| sim.world().get::<Bone>(e).expect("é osso").length;
+    assert!((comprimento(a) - 25.0).abs() < 1e-4, "A {}", comprimento(a));
+    assert!((comprimento(b) - 10.0).abs() < 1e-4, "B {}", comprimento(b));
+}

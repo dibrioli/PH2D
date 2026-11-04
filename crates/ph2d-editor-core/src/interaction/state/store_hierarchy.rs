@@ -109,7 +109,14 @@ impl WidgetStore {
     #[must_use]
     pub fn hierarchy_drop_in_own_panel(&self, d: HierarchyDragState, x: f32, y: f32) -> bool {
         let here = self.panel_at(x, y);
-        here.is_some() && here == self.panel_at(d.down_x, d.down_y)
+        let dele = self.panel_at(d.down_x, d.down_y);
+        if here.is_some() {
+            return here == dele;
+        }
+        // Abaixo de uma lista que abraça o conteúdo, na coluna dela: ainda é o fim da raiz.
+        dele.filter(|p| self.is_floating_panel(*p))
+            .and_then(|p| self.panel_rect(p))
+            .is_some_and(|r| x >= r.x && x < r.x + r.w && y >= r.y + r.h)
     }
 
     pub fn end_hierarchy_drag(&mut self) -> Option<HierarchyDragState> {

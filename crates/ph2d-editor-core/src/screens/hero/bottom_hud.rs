@@ -83,9 +83,42 @@ pub fn paint_bottom_hud(
     store: &crate::interaction::WidgetStore,
     stats: BottomHudStats,
 ) {
-    let bar = bar(stats);
+    let bar = bar_que_cabe(stats, layout, store, text_system);
     let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
+}
+
+/// A ordem em que as leituras cedem quando a pílula não cabe no vão (índices de [`bar`]): as de
+/// diagnóstico antes das que dizem o que há na cena. Tirar uma leitura inteira diz a verdade;
+/// encurtar todas deixa a pílula cheia de `59 fps ·…`, que não se lê (foto `r2_wet_tuning_abre.png`).
+const CEDEM_POR_ORDEM: [usize; 7] = [2, 3, 7, 8, 4, 10, 5];
+
+/// A barra só com as leituras que cabem INTEIRAS no vão do HUD.
+fn bar_que_cabe(
+    stats: BottomHudStats,
+    layout: &HeroLayout,
+    store: &crate::interaction::WidgetStore,
+    text_system: &mut TextSystem,
+) -> StatusBar {
+    let (esq, dir) = vao_do_hud(layout, store);
+    cede_ao_vao(bar(stats), dir - esq, text_system)
+}
+
+fn cede_ao_vao(inteira: StatusBar, vao: f32, text_system: &mut TextSystem) -> StatusBar {
+    let mut barra = inteira.clone();
+    let mut sairam = 0;
+    while sairam < CEDEM_POR_ORDEM.len() && barra.preferred_width(text_system) > vao {
+        sairam += 1;
+        let fora = &CEDEM_POR_ORDEM[..sairam];
+        barra.segments = inteira
+            .segments
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !fora.contains(i))
+            .map(|(_, s)| s.clone())
+            .collect();
+    }
+    barra
 }
 
 /// Onde o HUD se pinta: centrado na JANELA, da largura que o texto pede (o canto do quadro desvia-se
@@ -260,6 +293,7 @@ mod o_hud_cede_tests {
     use crate::screens::layout::HeroLayout;
     use crate::zones::Rect;
     use ph2d_a11y::NodeId;
+    use super::{BottomHudStats, bar, cede_ao_vao};
 
     /// A largura que a pílula pede no app a 1200 px (a foto `b_physics_debug_dobrado_hud_por_cima.png`).
     const PILULA: f32 = 1036.0;
@@ -296,6 +330,33 @@ mod o_hud_cede_tests {
             .set_floating_panel_rect(NodeId(77), Rect::new(938.0, 100.0, 252.0, faixa.y - 100.0));
         let r = no_vao(PILULA, &layout, vao_do_hud(&layout, &so_alta));
         assert!((r.w - PILULA).abs() < 0.5, "{r:?}");
+    }
+
+    /// *Mutação: `cede_ao_vao` devolve a barra inteira ⇒ no vão apertado as leituras viram `…`.*
+    #[test]
+    fn the_hud_drops_whole_readings_rather_than_cutting_them() {
+        let mut ts = ph2d_text::TextSystem::new();
+        let inteira = bar(BottomHudStats::default());
+        let pede = inteira.preferred_width(&mut ts);
+        assert!(pede > 0.0, "a medida precisa de fonte");
+
+        let cabe = cede_ao_vao(inteira.clone(), pede + 1.0, &mut ts);
+        assert_eq!(cabe.segments.len(), inteira.segments.len(), "cabe: não tira nada");
+
+        let vao = pede * 0.6;
+        let cedeu = cede_ao_vao(inteira.clone(), vao, &mut ts);
+        assert!(cedeu.segments.len() < inteira.segments.len());
+        assert!(
+            cedeu.preferred_width(&mut ts) <= vao,
+            "as que ficam cabem INTEIRAS em {vao}"
+        );
+        let textos: Vec<_> = cedeu.segments.iter().map(|s| s.text.as_str()).collect();
+        assert_eq!(textos[0], inteira.segments[0].text, "o modo fica: {textos:?}");
+        assert!(textos.contains(&inteira.segments[1].text.as_str()), "o fps fica: {textos:?}");
+        assert!(
+            !textos.contains(&inteira.segments[2].text.as_str()),
+            "o diagnóstico sai primeiro: {textos:?}"
+        );
     }
 }
 

@@ -31,8 +31,13 @@ const ARROW_W: f32 = 2.0; // LITERAL-PX-OK: traço do chevron da alça, dentro d
 /// ⚠️ **Sem estado e sem hover.** A faixa diz *«há aqui uma coluna fechada»* e mais nada: um realce
 /// sob o dedo exigiria um id no `WidgetStore` e um estado que só existe enquanto a coluna não
 /// existe. O gesto de reabrir vive na shell, pela porta `dock_reopen_at`.
-pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
-    paint_float_seams(layout, scene, theme);
+pub fn paint_dock_reopen(
+    layout: &HeroLayout,
+    store: &crate::interaction::WidgetStore,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    paint_float_seams(layout, store, scene, theme);
     for side in [DockSide::Left, DockSide::Right] {
         let r = layout.dock_reopen(side);
         if r.w <= 0.0 || r.h <= 0.0 {
@@ -65,7 +70,12 @@ pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Th
 /// ⭐ D24 (CartoesUI): **o ponto de alargar na beirada de uma lista que flutua** — a costura de uma
 /// coluna livre com lista não tem borda de coluna a mostrá-la (o canvas passa por trás), logo a
 /// marca é pintada, a mesma da alça de reabrir, a meio da altura da lista.
-fn paint_float_seams(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+fn paint_float_seams(
+    layout: &HeroLayout,
+    store: &crate::interaction::WidgetStore,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
     for (side, flutua) in [
         (DockSide::Left, layout.docks.float_left),
         (DockSide::Right, layout.docks.float_right),
@@ -81,6 +91,9 @@ fn paint_float_seams(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme)
             ARROW_W,
             mark_h,
         );
+        if store.loose_card_covers(mark) {
+            continue;
+        }
         fill_rounded_rect(
             scene,
             mark,
@@ -193,6 +206,7 @@ pub fn reopen_for(hero: &mut HeroScreen, panel_node: NodeId) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::interaction::WidgetStore;
     use crate::screens::layout::{
         CenterSplit, ChromeBands, DockSides, HERO_VIEWPORT_H, HERO_VIEWPORT_W,
     };
@@ -214,7 +228,7 @@ mod tests {
         assert_eq!(l.dock_reopen(DockSide::Left).w, 0.0);
         assert_eq!(l.dock_reopen(DockSide::Right).w, 0.0);
         let mut scene = VectorScene::new();
-        paint_dock_reopen(&l, &mut scene, Theme::Dark);
+        paint_dock_reopen(&l, &WidgetStore::default(), &mut scene, Theme::Dark);
         assert_eq!(
             scene.inner().encoding().n_path_segments,
             0,
@@ -244,7 +258,7 @@ mod tests {
         );
 
         let mut scene = VectorScene::new();
-        paint_dock_reopen(&l, &mut scene, Theme::Dark);
+        paint_dock_reopen(&l, &WidgetStore::default(), &mut scene, Theme::Dark);
         assert!(
             scene.inner().encoding().n_path_segments > 0,
             "a alca nao pintou: num tablet ela seria invisivel, e o caminho de volta some"
@@ -281,11 +295,31 @@ mod tests {
             "agarrar a costura nao pode saltar a largura"
         );
         let mut scene = VectorScene::new();
-        paint_float_seams(&l, &mut scene, Theme::Dark);
+        paint_float_seams(&l, &WidgetStore::default(), &mut scene, Theme::Dark);
         assert!(
             scene.inner().encoding().n_path_segments > 0,
             "o ponto de alargar nao pintou"
         );
+    }
+
+    /// O cartão solto por cima da beirada da lista tapa o ponto de alargar (foto `r2_corda`: a marca
+    /// riscava o olho do cartão). *Mutação: sem `loose_card_covers` ⇒ o ponto pinta-se por cima.*
+    #[test]
+    fn a_loose_card_over_the_edge_hides_the_stretch_mark() {
+        let probe = layout(DockSides::BOTH);
+        let (lc, rc) = probe.side_columns();
+        let lista = Rect::new(rc.x + 8.0, rc.y + 8.0, rc.w - 16.0, 200.0);
+        let (docks, lists) = DockSides::NONE.with_floating(lc, rc, [lista]);
+        let mut l = layout(docks);
+        l.float_lists = lists;
+        let seam = l.dock_seam(DockSide::Right);
+        let mut store = WidgetStore::default();
+        let cartao = ph2d_a11y::NodeId(70);
+        store.detach_card(cartao, ph2d_a11y::NodeId(7), (seam.x - 100.0, seam.y), 300.0);
+        store.set_loose_card_rect(cartao, Rect::new(seam.x - 100.0, seam.y, 300.0, seam.h));
+        let mut scene = VectorScene::new();
+        paint_float_seams(&l, &store, &mut scene, Theme::Dark);
+        assert_eq!(scene.inner().encoding().n_path_segments, 0, "a marca riscou o cartão");
     }
 
     /// ⭐ D24, espelho (bloco F): a lista da esquerda deixa o canvas ir à borda e a régua com ele; as

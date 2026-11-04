@@ -473,6 +473,160 @@ fn a_selecao_de_fora_rola_ate_a_linha_e_a_de_dentro_nao() {
     );
 }
 
+/// Canvas escolhe um objecto dentro de um ramo recolhido: o ramo abre. Recolher depois com a mesma
+/// selecção fica recolhido. *Mutação: sem `abre_os_ramos` ⇒ a linha nunca aparece.*
+#[test]
+fn uma_selecao_em_ramo_recolhido_abre_o_ramo_uma_vez() {
+    let mut mesa = Mesa::nova(5);
+    let galo = core_ids::hier_expand_companion(id_de(0));
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(mesa.rect(id_de(1)).is_none(), "o filho está recolhido");
+    mesa.semeia(5, |m| {
+        if let Some(e) = m.get_mut(&id_de(1)) {
+            e.selected = true;
+        }
+    });
+    mesa.assenta();
+    assert!(mesa.rect(id_de(1)).is_some(), "o ramo não abriu");
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(
+        mesa.rect(id_de(1)).is_none(),
+        "recolher à mão reabriu sozinho"
+    );
+}
+
+/// Abaixo de uma lista curta, na coluna dela, largar é o fim da raiz; ao lado continua a ser o canvas.
+/// *Mutação: a guarda de `hierarchy_drop_in_own_panel` fora ⇒ não há reparent.*
+#[test]
+fn largar_abaixo_de_uma_lista_curta_vai_ao_fim_da_raiz() {
+    let mut mesa = Mesa::nova(5);
+    let de = mesa.centro(id_de(1));
+    let l = mesa.lista();
+    let abaixo = (l.x + l.w * 0.5, l.y + l.h + 60.0);
+    let _ = mesa.ponteiro(PointerKind::Down, de);
+    let _ = mesa.ponteiro(PointerKind::Move, abaixo);
+    assert!(mesa.host.store().hierarchy_drag_in_own_panel());
+    let ev = mesa.ponteiro(PointerKind::Up, abaixo);
+    assert!(
+        ev.iter().any(
+            |e| matches!(e, WidgetEvent::HierReparent { dragged, new_parent: None, .. }
+            if *dragged == id_de(1))
+        ),
+        "largar abaixo da lista não foi ao fim da raiz: {ev:?}"
+    );
+
+    let mut mesa = Mesa::nova(5);
+    let de = mesa.centro(id_de(1));
+    let l = mesa.lista();
+    let ao_lado = (l.x + l.w + 30.0, l.y + l.h + 60.0);
+    let _ = mesa.ponteiro(PointerKind::Down, de);
+    let _ = mesa.ponteiro(PointerKind::Move, ao_lado);
+    let ev = mesa.ponteiro(PointerKind::Up, ao_lado);
+    assert!(
+        !ev.iter()
+            .any(|e| matches!(e, WidgetEvent::HierReparent { .. })),
+        "fora da coluna é o canvas: {ev:?}"
+    );
+}
+
+fn textos(mesa: &mut Mesa) -> Vec<String> {
+    let (h, st) = (&mut mesa.host, &mut mesa.st);
+    h.medindo_a_pintura::<HierarchyPanel>(st, VIEW)
+        .into_iter()
+        .map(|m| m.texto)
+        .collect()
+}
+
+/// Agarrar uma linha de uma multisselecção mostra todas no voo; acima do tecto, «+n more».
+/// *Mutação: `leva_selecao` fora de `outras` ⇒ só a agarrada voa.*
+#[test]
+fn o_voo_de_uma_multisselecao_mostra_o_que_leva() {
+    let escolhe = |quantas: usize, m: &mut BTreeMap<NodeId, HierarchyEntity>| {
+        for i in 2..2 + quantas {
+            if let Some(e) = m.get_mut(&id_de(i)) {
+                e.selected = true;
+            }
+        }
+    };
+    let mut mesa = Mesa::com(12, |m| escolhe(3, m));
+    let (de, para) = (mesa.centro(id_de(3)), mesa.centro(id_de(8)));
+    let _ = mesa.ponteiro(PointerKind::Down, de);
+    let _ = mesa.ponteiro(PointerKind::Move, para);
+    let t = textos(&mut mesa);
+    let vezes = |nome: &str| t.iter().filter(|x| x.as_str() == nome).count();
+    assert_eq!(vezes("Object 3"), 2, "a agarrada: linha e voo. {t:?}");
+    assert_eq!(vezes("Object 2"), 2, "as escolhidas voam com ela. {t:?}");
+    assert_eq!(vezes("Object 4"), 2, "as escolhidas voam com ela. {t:?}");
+    assert_eq!(vezes("Object 5"), 1, "a não escolhida fica. {t:?}");
+
+    let mut mesa = Mesa::com(12, |m| escolhe(8, m));
+    let (de, para) = (mesa.centro(id_de(3)), mesa.centro(id_de(11)));
+    let _ = mesa.ponteiro(PointerKind::Down, de);
+    let _ = mesa.ponteiro(PointerKind::Move, para);
+    let t = textos(&mut mesa);
+    assert!(t.iter().any(|x| x == "+4 more"), "{t:?}");
+}
+
+/// A cor de preenchimento como o desenho a grava.
+fn palavra_da_cor(c: ph2d_vector::Color) -> u32 {
+    let mut s = ph2d_vector::VectorScene::new();
+    ph2d_editor_core::paint::fill_rounded_rect(&mut s, VIEW, 1.0, c);
+    s.inner().encoding().draw_data[0]
+}
+
+/// A lista aberta do filtro tem a superfície das do cartão, não a do Inspector de antes.
+/// *Mutação: sem o `card_ink::com` ⇒ sai `BgElev` e a moldura.*
+#[test]
+fn a_lista_do_filtro_tem_a_tinta_do_cartao() {
+    use ph2d_editor_core::panel::PanelHost;
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    use ph2d_tokens::ColorToken;
+    let mut mesa = Mesa::nova(6);
+    let theme = mesa.host.theme();
+    let tinta = CardInk::of_card(None, theme);
+    let do_cartao = palavra_da_cor(tinta.color(ColorToken::KanbanCardRaised).with_alpha(1.0));
+    let antes = mesa
+        .host
+        .paint_draw_data::<HierarchyPanel>(&mut mesa.st, VIEW);
+    let vezes = |d: &[u32]| d.iter().filter(|w| **w == do_cartao).count();
+    let (x, y) = mesa.centro(ids::HIER_FILTER_DD);
+    let ev = mesa.host.click_at(x, y);
+    let _ = mesa.aplica(ev);
+    mesa.pinta();
+    let aberta = mesa
+        .host
+        .paint_draw_data::<HierarchyPanel>(&mut mesa.st, VIEW);
+    assert!(
+        vezes(&aberta) > vezes(&antes),
+        "a superfície da lista não é a do cartão"
+    );
+    assert!(
+        !aberta.contains(&palavra_da_cor(
+            ph2d_editor_core::paint::resolve(ColorToken::BgElev, theme).with_alpha(1.0)
+        )),
+        "ainda tem a superfície do Inspector de antes"
+    );
+}
+
+/// «1 entity · 1 component», nunca «1 entities». *Mutação: `{entities} entities` de volta.*
+#[test]
+fn um_objecto_fala_no_singular() {
+    let mut mesa = Mesa::nova(1);
+    let t = textos(&mut mesa);
+    assert!(
+        t.iter().any(|x| x.starts_with("1 entity")),
+        "o contador: {t:?}"
+    );
+    let mut mesa = Mesa::nova(3);
+    let t = textos(&mut mesa);
+    assert!(
+        t.iter().any(|x| x.starts_with("3 entities")),
+        "o contador: {t:?}"
+    );
+}
+
 /// Escrever na busca filtra e o filtro abre pelos mesmos ids.
 #[test]
 fn a_busca_filtra_e_o_filtro_abre() {

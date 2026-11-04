@@ -447,6 +447,7 @@ pub fn paint_card_list_top(
         });
     }
     solto::pinta_os_soltos(ctx, panel, theme, canvas, cards, pinned);
+    super::linhas_extra::voo::pinta_os_voos(ctx.scene);
     rolagem.publish(ctx.host.store_mut());
     let list = ctx.host.store_mut().card_list_mut(panel);
     list.items = alturas;

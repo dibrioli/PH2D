@@ -212,18 +212,25 @@ fn traz_a_selecao(
     a: &Arvore,
     g: Geometria,
 ) {
-    let primeira = a.mostradas.iter().position(|l| {
+    let na_ordem = a.ordem.iter().position(|id| {
         a.entradas
-            .get(&l.id)
+            .get(id)
             .is_some_and(|e| e.selected && e.role == RowRole::Object)
     });
-    let id = primeira.map(|k| a.mostradas[k].id);
+    let id = na_ordem.map(|i| a.ordem[i]);
+    let primeira = a.mostradas.iter().position(|l| Some(l.id) == id);
     // Antes do 1.º quadro medido não há vista: a selecção do arranque espera por ela. O cartão solto
     // rola por dentro, não pela lista.
     let Some(visivel) = store.panel_visible_h(PAINEL) else {
         return;
     };
     if id == st.revealed || store.is_loose_in(ids::HIER_SEC_TREE, PAINEL) {
+        return;
+    }
+    // Num ramo recolhido abre-o agora e rola no quadro seguinte. Recolher depois com a mesma
+    // selecção não reabre: essa já se revelou.
+    if let (Some(i), None) = (na_ordem, primeira) {
+        abre_os_ramos(store, a, i);
         return;
     }
     st.revealed = id;
@@ -246,6 +253,21 @@ fn traz_a_selecao(
         .panel_content_h(PAINEL)
         .map_or(alvo, |c| (c - visivel).max(0.0));
     store.set_panel_scroll(PAINEL, alvo.clamp(0.0, max));
+}
+
+/// Abre os antepassados recolhidos da linha `i` da ordem inteira.
+fn abre_os_ramos(store: &mut WidgetStore, a: &Arvore, i: usize) {
+    let mut nivel = a.depths[i];
+    for j in (0..i).rev() {
+        if a.depths[j] >= nivel {
+            continue;
+        }
+        nivel = a.depths[j];
+        let id = a.ordem[j];
+        if store.is_hierarchy_collapsed(id) {
+            store.toggle_hierarchy_collapsed(id);
+        }
+    }
 }
 
 /// Todo ícone mudo da linha diz o que faz (T31). Só nas linhas à vista: é uma por quadro no pior caso.
@@ -377,19 +399,55 @@ fn arvore(c: &mut CardCtx<'_>, a: &Arvore, janela: (f32, f32), y0: f32) -> f32 {
     if let Some(d) = arrasto.filter(|_| c.store.hierarchy_drag_in_own_panel()) {
         let resto = Rect::new(x0, fim - 1.0, w, 2.0);
         crate::paint::paint_drop_indicator(d, &retas, resto, c.scene, tinta);
-        if let Some(e) = a.entradas.get(&d.dragged) {
-            let voa = ListRow {
-                icon: Some(e.icon),
-                ..ListRow::new(d.dragged, &e.name)
-            };
-            c.list_row_flight(
-                &voa,
-                d.cursor_x - (d.down_x - c.x),
-                d.cursor_y - m::FIELD_H * 0.5,
-            );
-        }
+        voa_o_que_vai_na_mao(c, a, d, leva_selecao);
     }
     fim
+}
+
+/// As linhas à vista no voo de uma multisselecção; as outras dizem-se por «+n more».
+const LINHAS_NO_VOO: usize = 5;
+
+/// O voo mostra o que vai na mão: a linha agarrada e, se ela está escolhida, as outras escolhidas.
+fn voa_o_que_vai_na_mao(
+    c: &mut CardCtx<'_>,
+    a: &Arvore,
+    d: ph2d_editor_core::interaction::HierarchyDragState,
+    leva_selecao: bool,
+) {
+    let Some(agarrada) = a.entradas.get(&d.dragged) else {
+        return;
+    };
+    let outras: Vec<&HierarchyEntity> = a
+        .ordem
+        .iter()
+        .filter(|id| leva_selecao && **id != d.dragged)
+        .filter_map(|id| a.entradas.get(id))
+        .filter(|e| e.selected && e.role == RowRole::Object)
+        .collect();
+    let total = outras.len() + 1;
+    let inteiras = if total > LINHAS_NO_VOO {
+        LINHAS_NO_VOO - 1
+    } else {
+        total
+    };
+    let mais = total - inteiras;
+    let resto = ph2d_i18n::tr_with("panel.hierarchy.flight_more", &[("n", &mais)]);
+    let mut linhas: Vec<ListRow<'_>> = std::iter::once(agarrada)
+        .chain(outras.iter().copied())
+        .take(inteiras)
+        .map(|e| ListRow {
+            icon: Some(e.icon),
+            ..ListRow::new(d.dragged, &e.name)
+        })
+        .collect();
+    if mais > 0 {
+        linhas.push(ListRow::new(d.dragged, &resto));
+    }
+    c.list_rows_flight(
+        &linhas,
+        d.cursor_x - (d.down_x - c.x),
+        d.cursor_y - m::FIELD_H * 0.5,
+    );
 }
 
 /// Para o censo das dicas: estes ícones não têm texto a explicá-los.
@@ -482,6 +540,10 @@ pub(crate) fn paint(st: &mut state::HierarchyState, ctx: &mut PaintCtx) {
     });
     if filter::is_open(ctx.host.store()) {
         let theme = ctx.host.theme();
-        filter::paint_popover(ctx, &a.entradas, escolhido, caixa.get(), theme);
+        // A lista aberta tem a cara das do cartão: a porta pinta-a assim dentro desta tinta.
+        let tinta = ph2d_editor_core::widget::card_ink::CardInk::of_card(None, theme);
+        ph2d_editor_core::widget::card_ink::com(tinta, || {
+            filter::paint_popover(ctx, &a.entradas, escolhido, caixa.get(), theme);
+        });
     }
 }

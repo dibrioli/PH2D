@@ -75,21 +75,20 @@ impl crate::App {
         if layout.dock_reopen_at((x, y)).is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
-        layout
-            .dock_seam_at((x, y))
-            .map(|_| winit::window::CursorIcon::EwResize)
+        self.seam_livre((x, y)).map(|_| winit::window::CursorIcon::EwResize)
+    }
+
+    /// A costura em `p`, se nenhum cartão solto está por cima dela.
+    fn seam_livre(&self, p: (f32, f32)) -> Option<ph2d_editor_core::screens::layout::DockSide> {
+        let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
+        let livre = !hero.store.loose_card_covers(ph2d_editor_core::zones::Rect::new(p.0, p.1, 0.0, 0.0));
+        hero.last_layout?.dock_seam_at(p).filter(|_| livre)
     }
 
     /// Press: começa o arrasto se o ponto estiver na costura. `true` = a tecla foi consumida.
     pub(crate) fn dock_seam_down(&mut self, x: f32, y: f32) -> bool {
         let (x, y) = self.ponto_do_chrome((x, y));
-        // ⭐⭐⭐ **A ALÇA vem PRIMEIRO** — ela e a costura nunca coexistem no mesmo lado (uma exige
-        //    a coluna aberta, a outra fechada), mas perguntar por ela primeiro deixa a lei escrita
-        //    numa ordem em vez de depender dessa exclusão continuar verdadeira.
-        //
-        // ⚠️ **Reabrir acontece no DOWN, não no clique**, e é isso que faz o mesmo gesto servir o
-        //    toque e o arrasto: um toque reabre a coluna na largura que ela tinha; um arrasto
-        //    reabre-a e continua a redimensioná-la, que é *puxar a borda de volta*.
+        // A alça vem primeiro e reabre no DOWN: um toque reabre, um arrasto reabre e redimensiona.
         if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y)))
             && self.open_column(side)
         {
@@ -98,7 +97,7 @@ impl crate::App {
             self.dock_seam_drag = Some(SeamDrag { side });
             return true;
         }
-        let Some(side) = self.hero_layout().and_then(|l| l.dock_seam_at((x, y))) else {
+        let Some(side) = self.seam_livre((x, y)) else {
             return false;
         };
         self.dock_seam_drag = Some(SeamDrag { side });

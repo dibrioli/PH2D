@@ -123,6 +123,18 @@ impl WidgetStore {
         self.card_lists.loose.keys().copied().collect()
     }
 
+    /// Algum cartão solto cobre `r`? A costura da coluna e a marca dela ficam debaixo dele.
+    #[must_use]
+    pub fn loose_card_covers(&self, r: Rect) -> bool {
+        self.card_lists
+            .loose
+            .keys()
+            .filter_map(|k| self.panel_rect(loose_rect_of(*k)))
+            .any(|c| {
+                r.x < c.x + c.w && c.x < r.x + r.w && r.y < c.y + c.h && c.y < r.y + r.h
+            })
+    }
+
     /// Os cartões soltos de `panel`, do mais fundo ao de cima.
     #[must_use]
     pub fn loose_cards_of(&self, panel: NodeId) -> Vec<(NodeId, LooseCard)> {

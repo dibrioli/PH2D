@@ -2,7 +2,7 @@
 //! de marcar pelo [`CardCtx`] e a grelha triangular de ligar/desligar (o mapa de colisão da Unity e
 //! da Godot). Não cabem em [`Widget`], cuja linha tem a altura de um campo.
 
-use super::{CardCtx, Cell, Widget, corpo, flight_shadow, rotulos};
+use super::{CardCtx, Cell, Widget, corpo, rotulos};
 use crate::icons::IconId;
 use crate::interaction::toggle_paint;
 use crate::paint::{
@@ -13,7 +13,9 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_tokens::{ColorToken, StrokeToken};
-use ph2d_vector::Affine;
+
+#[path = "cards_linhas_voo.rs"]
+pub(super) mod voo;
 
 /// A grelha triangular: a linha `i` tem `i + 1` células; `(i, j)` é UM facto sobre o par.
 pub struct ToggleTriangle<'a> {
@@ -332,48 +334,6 @@ impl CardCtx<'_> {
         }
     }
 
-    /// A linha que a mão leva: inclinada e com a sombra do voo do cartão (lei do arrastar, 05 §6),
-    /// sem registar clique. `(x, y)` é o topo esquerdo do fantasma.
-    pub fn list_row_flight(&mut self, row: &ListRow<'_>, x: f32, y: f32) {
-        let local = Rect::new(0.0, 0.0, self.w, m::FIELD_H);
-        let mut voo = ph2d_vector::VectorScene::new();
-        flight_shadow(&mut voo, self.ink.theme, local);
-        fill_rounded_rect(
-            &mut voo,
-            local,
-            m::SEG_RADIUS,
-            self.ink.color(ColorToken::KanbanCardRaised),
-        );
-        let mut nome_x = m::SEG_INSET;
-        if let Some(icon) = row.icon {
-            let lado = m::SEG_TEXT_PX;
-            paint_icon(
-                &mut voo,
-                icon,
-                Rect::new(nome_x, (m::FIELD_H - lado) * 0.5, lado, lado),
-                self.ink.color(ColorToken::Text1),
-                StrokeToken::Default.px(),
-            );
-            nome_x += lado + m::SEG_ICON_GAP;
-        }
-        paint_text_elided(
-            self.text_system,
-            &mut voo,
-            row.label,
-            nome_x,
-            (m::FIELD_H - m::VALUE_PX) * 0.5,
-            m::VALUE_PX,
-            (local.w - nome_x - m::SEG_INSET).max(0.0),
-            self.ink.color(ColorToken::Text1),
-        );
-        let pivo = ph2d_card_stack::flight_pivot(local.w, local.h);
-        let t = Affine::translate((f64::from(x), f64::from(y)))
-            * Affine::translate(pivo)
-            * Affine::rotate(ph2d_card_stack::FLIGHT_TILT_DEG.to_radians())
-            * Affine::translate((-pivo.0, -pivo.1));
-        self.scene.append_transformed(&voo, t);
-    }
-
     /// Uma caixa de marcar à Figma (T64), como 1.ª linha do corpo ou depois de outra. O que não anima
     /// (estado da vista) passa [`Rotulo::vista`] e não leva marca.
     pub fn check<'r>(&mut self, id: NodeId, label: impl Into<Rotulo<'r>>, on: bool, y: f32) -> f32 {
@@ -610,7 +570,15 @@ mod tests {
             a,
         );
         assert_eq!(b, a + m::FIELD_H, "entre linhas de lista não há vão");
+        let antes = c.scene.inner().encoding().n_path_segments;
         c.list_row_flight(&linha, 10.0, 10.0);
+        assert_eq!(
+            c.scene.inner().encoding().n_path_segments,
+            antes,
+            "o voo pintou-se dentro do recorte do cartão"
+        );
+        voo::pinta_os_voos(c.scene);
+        assert!(c.scene.inner().encoding().n_path_segments > antes, "o voo perdeu-se");
         let rects: Vec<(NodeId, Rect)> = f.hits.iter_registrations().collect();
         assert_eq!(rects.len(), 3, "duas linhas e um campo; o voo não regista");
         let campo = rects.iter().find(|(id, _)| *id == NodeId(3)).unwrap().1;

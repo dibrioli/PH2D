@@ -65,6 +65,20 @@ pub(crate) fn fileira_de_param(
     hit_index: &mut ClippedHits,
 ) -> f32 {
     let n = norm.clamp(0.0, 1.0);
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return crate::cards::fileira::fileira_no_cartao(
+            ink,
+            (x, y, w),
+            label,
+            n,
+            valor,
+            id,
+            vivo,
+            scene,
+            text_system,
+            hit_index,
+        );
+    }
     let slider_id = if vivo { id } else { NodeId(0) };
     let alto = hit_index.com_recorte(|store, hits| {
         ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive(

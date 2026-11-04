@@ -9,6 +9,7 @@ use crate::{PixelTimelinePanel, PixelTimelinePanelState, event, ids};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, rect_for_label, rect_to_vello, resolve};
+use ph2d_editor_core::panel::cards::banda;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelPanelInfo};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -38,16 +39,33 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(core_ids::PIXEL_TIMELINE_PANEL, rect);
-    paint_panel_surface(rect, ctx.scene, theme);
-    let title_size = paint_panel_title(
-        rect,
-        PixelTimelinePanel::TITLE.tr(),
-        PANEL_HEADER_CLOSE_RESERVE,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    paint_panel_close_button(rect, ids::CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let moldura = cartoes.then(|| {
+        ctx.host
+            .store_mut()
+            .mark_card_list_close(core_ids::PIXEL_TIMELINE_PANEL, ids::CLOSE);
+        banda::pinta_moldura(
+            ctx,
+            core_ids::PIXEL_TIMELINE_PANEL,
+            PixelTimelinePanel::TITLE.tr(),
+            rect,
+        )
+    });
+    let title_size = if cartoes {
+        0.0
+    } else {
+        paint_panel_surface(rect, ctx.scene, theme);
+        let t = paint_panel_title(
+            rect,
+            PixelTimelinePanel::TITLE.tr(),
+            PANEL_HEADER_CLOSE_RESERVE,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        paint_panel_close_button(rect, ids::CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+        t
+    };
 
     let info = current_pixel();
     event::register_frame(ctx.host.store_mut(), &info);
@@ -64,32 +82,48 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
 
     // ⭐ A barra mora na linha do TÍTULO, à direita dele (a banda de fábrica tem 240 px: cada linha
     // de barra a menos é uma camada a mais à vista); só o que não cabe desce para a linha seguinte.
-    let title_bottom = rect.y + PANEL_TITLE_BASELINE + title_size;
-    let inner = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        rect.y,
-        (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
-        // Em baixo só o vão pequeno: a banda de fábrica (240 px) mostra assim o cabeçalho, as tags
-        // e QUATRO camadas (medido na cena 8 a 1930×1040: as filas começam 102 px abaixo do topo
-        // do painel e o passo é 25 px; com o PANEL_HEAD_PAD em baixo cabiam três e meia).
-        (rect.h - Spacing::Sm.px()).max(0.0),
-    );
+    let title_bottom = match moldura {
+        Some(mol) => mol.corpo.y,
+        None => rect.y + PANEL_TITLE_BASELINE + title_size,
+    };
+    let inner = match moldura {
+        // Por cima do corpo, a tira do cabeçalho: a barra mora nela.
+        Some(mol) => Rect::new(
+            mol.corpo.x,
+            mol.lista.y,
+            mol.corpo.w,
+            mol.lista.h - banda::VAO_ATE_A_FOLHA,
+        ),
+        None => Rect::new(
+            rect.x + PANEL_HEAD_PAD,
+            rect.y,
+            (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
+            // Em baixo só o vão pequeno: a banda de fábrica (240 px) mostra assim o cabeçalho, as tags
+            // e QUATRO camadas (medido na cena 8 a 1930×1040: as filas começam 102 px abaixo do topo
+            // do painel e o passo é 25 px; com o PANEL_HEAD_PAD em baixo cabiam três e meia).
+            (rect.h - Spacing::Sm.px()).max(0.0),
+        ),
+    };
     ctx.scene.push_clip(&rect_to_vello(inner));
     ctx.host.hit_index_mut().push_clip(inner);
     st.direction_open = None;
     st.speed_open = None;
     if info.editing {
-        let titulo_w = ctx
-            .text_system
-            .prefix_width(PixelTimelinePanel::TITLE.tr(), title_size);
-        let linha = Rect::new(
-            inner.x + titulo_w + Spacing::Lg.px(),
-            rect.y + PANEL_TITLE_BASELINE + (title_size - ROW_H_PX) * 0.5,
-            (inner.w - titulo_w - Spacing::Lg.px() - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
-            ROW_H_PX,
-        );
-        let fundo = barra(st, ctx, &info, linha, inner);
-        let y = fundo.max(title_bottom) + Spacing::Sm.px();
+        let y = if let Some(mol) = moldura {
+            crate::barra_cartoes::paint(st, ctx, &info, mol.cab, mol.corpo)
+        } else {
+            let titulo_w = ctx
+                .text_system
+                .prefix_width(PixelTimelinePanel::TITLE.tr(), title_size);
+            let linha = Rect::new(
+                inner.x + titulo_w + Spacing::Lg.px(),
+                rect.y + PANEL_TITLE_BASELINE + (title_size - ROW_H_PX) * 0.5,
+                (inner.w - titulo_w - Spacing::Lg.px() - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
+                ROW_H_PX,
+            );
+            let fundo = barra(st, ctx, &info, linha, inner);
+            fundo.max(title_bottom) + Spacing::Sm.px()
+        };
         let body = Rect::new(inner.x, y, inner.w, (inner.y + inner.h - y).max(0.0));
         let gap = Spacing::Md.px();
         // As propriedades: até três colunas de painel (Frame · Cel · Tag) na metade da banda.
@@ -98,7 +132,14 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
         let grade = Rect::new(body.x, body.y, (body.w - props_w - gap).max(0.0), body.h);
         crate::paint_grid::paint(st, ctx, &info, grade);
         let props = Rect::new(body.x + body.w - props_w, body.y, props_w, body.h);
-        crate::paint_props::paint(st, ctx, &info, props, n);
+        let tinta = ph2d_editor_core::widget::card_ink::CardInk::of_list(theme);
+        if cartoes {
+            ph2d_editor_core::widget::card_ink::com(tinta, || {
+                crate::paint_props::paint(st, ctx, &info, props, n);
+            });
+        } else {
+            crate::paint_props::paint(st, ctx, &info, props, n);
+        }
     } else {
         paint_text(
             ctx.text_system,
@@ -124,6 +165,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
         .selected(cur)
         .open(true);
         let viewport = ctx.viewport;
+        lembra_o_tom(cartoes, dd.id, theme);
         ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
     }
     if let Some((chip, cur)) = st.speed_open {
@@ -135,12 +177,23 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
         .selected(cur)
         .open(true);
         let viewport = ctx.viewport;
+        lembra_o_tom(cartoes, dd.id, theme);
         ph2d_editor_core::panel::paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
     }
-    // Re-regista o X depois do corpo (o último registo vence).
-    ctx.host
-        .hit_index_mut()
-        .register(ids::CLOSE, panel_close_button_rect(rect));
+    // Re-regista o X depois do corpo (o último registo vence). Na moldura, o «×» está fora do corpo.
+    if !cartoes {
+        ctx.host
+            .hit_index_mut()
+            .register(ids::CLOSE, panel_close_button_rect(rect));
+    }
+}
+
+/// A lista aberta de um chip da moldura tem a cara do cartão.
+fn lembra_o_tom(cartoes: bool, id: ph2d_a11y::NodeId, theme: ph2d_tokens::Theme) {
+    if cartoes {
+        let ink = ph2d_editor_core::widget::card_ink::CardInk::of_list(theme);
+        let _ = ph2d_editor_core::widget::card_ink::troca_popover(Some((id, ink)));
+    }
 }
 
 /// Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.

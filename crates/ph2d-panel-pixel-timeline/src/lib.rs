@@ -13,6 +13,7 @@
 
 #![forbid(unsafe_code)]
 
+mod barra_cartoes;
 mod event;
 mod gestos;
 pub mod ids;

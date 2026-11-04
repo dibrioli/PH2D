@@ -5,12 +5,14 @@
 use crate::{PixelPreviewPanel, PixelPreviewPanelState, canal, ids};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
+use ph2d_editor_core::panel::cards::banda::{self, metrics as m};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_ADD_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface_floating, paint_panel_title, panel_drag_handle_rect,
-    panel_header_add_button_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_surface_floating, paint_panel_title, panel_close_button_rect,
+    panel_drag_handle_rect, panel_header_add_button_rect, panel_resize_handle_rect,
+    panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_editor_core::zones::Rect;
@@ -64,16 +66,31 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         store.set_panel_rect(node, rect);
     }
     let theme = ctx.host.theme();
-    paint_panel_surface_floating(rect, ctx.scene, theme);
-    let title_size = paint_panel_title(
-        rect,
-        PixelPreviewPanel::TITLE.tr(),
-        PANEL_HEADER_ADD_RESERVE,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    let header_h = PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let header_h = if cartoes {
+        banda::pinta_pilula(ctx, rect);
+        banda::pinta_titulo_da_lista(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            rect,
+            PixelPreviewPanel::TITLE.tr(),
+            rect.w - m::LIST_PAD_X * 2.0 - PANEL_HEADER_ADD_RESERVE,
+        );
+        // A imagem é o trabalho: o título não fica mais alto que o de antes (42 px, medido).
+        m::LIST_HEAD_H - m::SEG_PAD
+    } else {
+        paint_panel_surface_floating(rect, ctx.scene, theme);
+        let title_size = paint_panel_title(
+            rect,
+            PixelPreviewPanel::TITLE.tr(),
+            PANEL_HEADER_ADD_RESERVE,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px()
+    };
     let frame = canal::current();
 
     // A alça primeiro: o tocar e o `×` registam-se por cima dela (o último registo ganha).
@@ -85,23 +102,34 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     } else {
         IconId::Play
     };
-    let visual = ctx.host.store().button_visual(ids::PLAY);
-    paint_icon_button(
-        play,
-        IconGlyph::Builtin(icon),
-        IconButtonStyle::Compact,
-        visual,
-        ctx.scene,
-        theme,
-    );
-    ctx.host.hit_index_mut().register(ids::PLAY, play);
-    paint_panel_close_button(
-        rect,
-        ids::PREVIEW_CLOSE,
-        ctx.host.hit_index_mut(),
-        ctx.scene,
-        theme,
-    );
+    if cartoes {
+        // Na linha do título da lista: o `x` de sempre, o meio da altura dela.
+        let no_meio = |r: Rect| Rect {
+            y: rect.y + (m::LIST_HEAD_H - r.h) * 0.5,
+            ..r
+        };
+        banda::pinta_icone_de_cabecalho(ctx, ids::PLAY, icon, no_meio(play));
+        let x = no_meio(panel_close_button_rect(rect));
+        banda::pinta_icone_de_cabecalho(ctx, ids::PREVIEW_CLOSE, IconId::Close, x);
+    } else {
+        let visual = ctx.host.store().button_visual(ids::PLAY);
+        paint_icon_button(
+            play,
+            IconGlyph::Builtin(icon),
+            IconButtonStyle::Compact,
+            visual,
+            ctx.scene,
+            theme,
+        );
+        ctx.host.hit_index_mut().register(ids::PLAY, play);
+        paint_panel_close_button(
+            rect,
+            ids::PREVIEW_CLOSE,
+            ctx.host.hit_index_mut(),
+            ctx.scene,
+            theme,
+        );
+    }
     // As pegas dos dois cantos de baixo (as das outras janelas soltas): por cima do corpo.
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);

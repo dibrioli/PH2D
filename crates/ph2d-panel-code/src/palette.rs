@@ -40,6 +40,7 @@ pub(crate) struct Palette {
 impl Palette {
     pub fn new(theme: Theme) -> Self {
         let c = |t: ColorToken| resolve(t, theme);
+        let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
         Self {
             inks: Ink::ALL.map(|i| c(i.token())),
             bg: c(ColorToken::CodeBg),
@@ -64,8 +65,16 @@ impl Palette {
             pill_text: c(ColorToken::Text2),
             // A barra de estado assenta na raiz do documento, não dentro de um cartão: é ela a
             // superfície de nível de cartão, e o tom vem da porta.
-            status_bg: CardDepth::Section.fill(theme),
-            status_text: c(ColorToken::Text2),
+            status_bg: if cartoes {
+                c(ColorToken::KanbanList)
+            } else {
+                CardDepth::Section.fill(theme)
+            },
+            status_text: c(if cartoes {
+                ColorToken::CardLabel
+            } else {
+                ColorToken::Text2
+            }),
             success: c(ColorToken::Success),
             theme,
         }

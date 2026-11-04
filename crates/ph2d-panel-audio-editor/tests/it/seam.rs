@@ -41,7 +41,6 @@ use ph2d_panel_audio_editor::{
     take_add_variation_folder, take_load_variation_set, take_play_variation, take_remove_variation,
     take_save_variation_set, take_strategy_step, take_weight_step, variation_sel,
 };
-use ph2d_ui_testkit::MockPanelHost;
 
 /// The shell publishes the effect-kind table each frame; without it the rack has no
 /// kinds to cycle and no neutral point to seed a fresh stage with, so it stays inert.
@@ -67,7 +66,7 @@ fn fresh_rack() {
 /// Clicking Play must reach the play/pause transport intent through the seam.
 #[test]
 fn play_click_reaches_the_transport_intent() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
 
     // Drain any stale intent first (thread-local is per-test-thread but be safe).
@@ -89,7 +88,7 @@ fn play_click_reaches_the_transport_intent() {
 /// Stop + Load clicks must each reach their one-shot intent.
 #[test]
 fn stop_and_load_clicks_reach_their_intents() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_stop();
     let _ = take_load();
@@ -104,7 +103,7 @@ fn stop_and_load_clicks_reach_their_intents() {
 /// Edit-op clicks must arm the matching one-shot `AudioEditCmd` through the seam.
 #[test]
 fn edit_clicks_reach_the_edit_command() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
     set_has_selection(true); // Trim below is a range op; it needs one.
@@ -138,7 +137,7 @@ fn edit_clicks_reach_the_edit_command() {
 /// the 2026-07-09 audit, when disabled buttons still registered their hit rect.
 #[test]
 fn range_ops_refuse_to_fire_without_a_selection() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
 
@@ -174,7 +173,7 @@ fn range_ops_refuse_to_fire_without_a_selection() {
 /// auditioning an effect nobody asked for.
 #[test]
 fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
 
@@ -204,7 +203,7 @@ fn audition_starts_on_user_input_only_and_cancel_arms_its_command() {
 /// "untouched" while it is not.
 #[test]
 fn switching_kind_reseeds_the_stage_on_the_new_neutral_point() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
 
@@ -222,7 +221,7 @@ fn switching_kind_reseeds_the_stage_on_the_new_neutral_point() {
 /// defaults through the seam, leaving the rest of the chain alone.
 #[test]
 fn reset_returns_the_selected_stage_to_its_neutral_defaults() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
     let neutral = [1.0, 0.25, 0.0, 0.0]; // Low-Pass
@@ -242,7 +241,7 @@ fn reset_returns_the_selected_stage_to_its_neutral_defaults() {
 /// seam — a dead arrow leaves the panel painted, clickable and stuck on one effect.
 #[test]
 fn fx_selector_cycles_the_kind_and_wraps() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
 
@@ -263,7 +262,7 @@ fn fx_selector_cycles_the_kind_and_wraps() {
 /// drops the selected stage and keeps the selection inside the chain.
 #[test]
 fn add_and_remove_grow_and_shrink_the_chain_around_the_selection() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
     assert_eq!(fx_chain().len(), 1, "the rack always has a stage to edit");
@@ -297,7 +296,7 @@ fn add_and_remove_grow_and_shrink_the_chain_around_the_selection() {
 /// rows, so an unbounded Add would paint stages nobody can reach or click.
 #[test]
 fn add_stops_at_the_chain_capacity() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
 
@@ -313,7 +312,7 @@ fn add_stops_at_the_chain_capacity() {
 /// moving the same effect rather than swapping two others.
 #[test]
 fn reordering_moves_the_selected_stage_and_the_selection_follows() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
 
@@ -343,7 +342,7 @@ fn reordering_moves_the_selected_stage_and_the_selection_follows() {
 /// takes the stage out of the render **without dropping it** — the per-stage A/B.
 #[test]
 fn a_row_selects_its_stage_and_the_eye_bypasses_it_in_place() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
@@ -365,7 +364,7 @@ fn a_row_selects_its_stage_and_the_eye_bypasses_it_in_place() {
 /// releasing it must return exactly the chain that was there.
 #[test]
 fn global_bypass_keeps_the_chain_and_does_not_start_an_audition() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::ValueChanged(AEDIT_FX_P0));
@@ -390,7 +389,7 @@ fn global_bypass_keeps_the_chain_and_does_not_start_an_audition() {
 /// into the clip would double every effect on the next audition.
 #[test]
 fn reset_leaves_one_neutral_stage_and_releases_the_bypass() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     fresh_rack();
     host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_ADD));
@@ -409,7 +408,7 @@ fn reset_leaves_one_neutral_stage_and_releases_the_bypass() {
 /// The Loop toggle must flip the persistent looping flag through the seam.
 #[test]
 fn loop_click_toggles_looping() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
 
     let before = looping();
@@ -426,7 +425,7 @@ fn loop_click_toggles_looping() {
 /// a loop from a phantom range).
 #[test]
 fn loop_set_arms_only_with_a_selection() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_set_loop();
 
@@ -446,7 +445,7 @@ fn loop_set_arms_only_with_a_selection() {
 /// (NOT a destructive edit command). Batch LUFS is a folder op with its own one-shot.
 #[test]
 fn force_mono_toggle_and_batch_lufs_reach_their_intents() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
     let _ = take_toggle_mono();
@@ -475,7 +474,7 @@ fn force_mono_toggle_and_batch_lufs_reach_their_intents() {
 /// exist (the shell publishes the count) — the panel dims it and the seam refuses it.
 #[test]
 fn marker_add_fires_and_delete_needs_markers() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_add_marker();
     let _ = take_del_marker();
@@ -500,7 +499,7 @@ fn marker_add_fires_and_delete_needs_markers() {
 /// — the loop plays via Loop + Play.)
 #[test]
 fn loop_clear_needs_a_loop_then_wires_through() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_clear_loop();
 
@@ -520,7 +519,7 @@ fn loop_clear_needs_a_loop_then_wires_through() {
 /// chain itself (the shell owns the factory table).
 #[test]
 fn preset_selector_cycles_and_apply_arms_its_intent() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     set_preset_names(&["Voice Cleanup", "Telephone", "Master Bus"]);
     let _ = take_apply_preset();
@@ -550,7 +549,7 @@ fn preset_selector_cycles_and_apply_arms_its_intent() {
 /// leaves the button painted and the user's chain unsaveable.
 #[test]
 fn preset_save_and_load_arm_their_file_intents() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_save_preset();
     let _ = take_load_preset();
@@ -566,7 +565,7 @@ fn preset_save_and_load_arm_their_file_intents() {
 /// manifest); their clicks must reach the file/folder-picker one-shots.
 #[test]
 fn variation_add_and_load_arm_their_intents() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_add_variation();
     let _ = take_add_variation_folder();
@@ -598,7 +597,7 @@ fn variation_add_and_load_arm_their_intents() {
 /// them, and a dim being cosmetic, the seam refuses too).
 #[test]
 fn variation_play_remove_save_need_a_variation() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_play_variation();
     let _ = take_remove_variation();
@@ -627,7 +626,7 @@ fn variation_play_remove_save_need_a_variation() {
 /// to resolve Remove / Weight); the selection clamps to the published count.
 #[test]
 fn variation_row_click_selects_and_clamps() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     set_variation_names(&["a".into(), "b".into(), "c".into()]);
 
@@ -648,7 +647,7 @@ fn variation_row_click_selects_and_clamps() {
 /// browsing it must NOT arm any other one-shot.
 #[test]
 fn variation_strategy_selector_accumulates_steps() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_strategy_step();
     set_strategy_name("Shuffle");
@@ -677,7 +676,7 @@ fn variation_strategy_selector_accumulates_steps() {
 /// present (net doubling steps; positive = ×2, negative = ÷2).
 #[test]
 fn variation_weight_bumps_need_a_variation() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_weight_step();
 
@@ -707,7 +706,7 @@ fn variation_weight_bumps_need_a_variation() {
 /// through the seam (the shell reads them each frame to build the container jitter).
 #[test]
 fn variation_jitter_sliders_publish_their_positions() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
 
     host.set_slider_value(AEDIT_VAR_PITCH, 0.75);
@@ -741,7 +740,7 @@ fn variation_jitter_sliders_publish_their_positions() {
 /// per-branch.
 #[test]
 fn a_double_click_is_treated_as_a_click() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
     let _ = take_play_pause();
@@ -774,7 +773,7 @@ fn a_double_click_is_treated_as_a_click() {
 /// tool whose whole job is to tell you what you are about to ship.
 #[test]
 fn the_codec_selector_reaches_the_shell() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     // The shell publishes the table each frame; without it the selector cannot wrap.
     ph2d_panel_audio_editor::delivery_state::set_codec_info(4, "WAV 16-bit", false, "Quality");
@@ -802,7 +801,7 @@ fn the_codec_selector_reaches_the_shell() {
 /// into an index the shell would have to clamp.
 #[test]
 fn the_codec_selector_wraps() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     ph2d_panel_audio_editor::delivery_state::set_codec_info(4, "WAV 16-bit", false, "Quality");
 
@@ -828,7 +827,7 @@ fn the_codec_selector_wraps() {
 /// a file nobody is going to write.
 #[test]
 fn the_quality_slider_reaches_the_shell() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
 
     host.set_slider_value(ph2d_panel_audio_editor::AEDIT_OGG_QUALITY, 0.9);
@@ -854,7 +853,7 @@ fn the_quality_slider_reaches_the_shell() {
 /// the exact "painted but not wired" failure the panel gates exist to stop.
 #[test]
 fn every_section_header_is_registered_as_collapsible() {
-    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let host = crate::host_de_antes();
     for id in [
         ph2d_panel_audio_editor::AEDIT_SEC_TRANSPORT,
         ph2d_panel_audio_editor::AEDIT_SEC_EDIT,
@@ -875,7 +874,7 @@ fn every_section_header_is_registered_as_collapsible() {
 /// actually work in rather than on the whole wall.
 #[test]
 fn the_asset_prep_sections_start_folded() {
-    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let host = crate::host_de_antes();
     for (id, name) in [
         (ph2d_panel_audio_editor::AEDIT_SEC_LOOP, "Loop"),
         (ph2d_panel_audio_editor::AEDIT_SEC_MARKERS, "Markers"),
@@ -900,7 +899,7 @@ fn the_asset_prep_sections_start_folded() {
 /// nothing else here can be reached at all.
 #[test]
 fn the_view_toggle_flips_the_overlay() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let before = spectral_state::view();
 
@@ -926,7 +925,7 @@ fn the_view_toggle_flips_the_overlay() {
 /// made of an empty region, and `Denoise` with no profile is a tool aimed at nothing.
 #[test]
 fn the_spectral_tools_refuse_to_fire_without_what_they_need() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
 
@@ -973,7 +972,7 @@ fn the_spectral_tools_refuse_to_fire_without_what_they_need() {
 /// when the button is dead in both states ([[feedback_absence_gate_needs_a_presence_sibling]]).
 #[test]
 fn every_spectral_control_is_inert_while_an_ai_denoise_runs() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
 
@@ -1034,7 +1033,7 @@ fn every_spectral_control_is_inert_while_an_ai_denoise_runs() {
 /// whole clip when there is no selection, so an unguarded Learn would do exactly that.
 #[test]
 fn learn_refuses_without_a_selection() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
 
@@ -1060,7 +1059,7 @@ fn learn_refuses_without_a_selection() {
 /// nothing. (The gate that catches the fan-out's most common wiring miss.)
 #[test]
 fn every_spectral_control_is_registered() {
-    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let host = crate::host_de_antes();
     for (id, name) in [
         (AEDIT_SPEC_VIEW, "Spectrogram toggle"),
         (AEDIT_SPEC_REPAIR, "Repair"),
@@ -1082,7 +1081,7 @@ fn every_spectral_control_is_registered() {
 /// nothing, because nobody registered it in `populate`.)
 #[test]
 fn the_load_ir_button_asks_the_shell_for_a_room() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_load_ir();
 
@@ -1105,7 +1104,7 @@ fn the_load_ir_button_asks_the_shell_for_a_room() {
 /// seam that finally connects them, so it is the seam worth gating.
 #[test]
 fn the_enabled_toggle_reaches_the_shell() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_toggle_enabled();
 
@@ -1142,7 +1141,7 @@ fn the_enabled_toggle_reaches_the_shell() {
 /// their command through the seam, or the editor grows three buttons that lie.
 #[test]
 fn clipboard_clicks_reach_the_edit_command() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
     set_has_selection(true);
@@ -1169,7 +1168,7 @@ fn clipboard_clicks_reach_the_edit_command() {
 /// (`Export Pieces`, below). This gate is the difference, and it fails if they are ever rejoined.
 #[test]
 fn split_at_markers_is_an_edit_and_writes_no_files() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_export_pieces();
     let _ = take_edit_cmd();
@@ -1193,7 +1192,7 @@ fn split_at_markers_is_an_edit_and_writes_no_files() {
 /// to actually fire, exactly once.
 #[test]
 fn export_pieces_click_reaches_the_export_request() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_export_pieces();
 
@@ -1210,7 +1209,7 @@ fn export_pieces_click_reaches_the_export_request() {
 /// filesystem: the click arms a request and the shell picks the folder.
 #[test]
 fn export_set_click_reaches_the_export_request() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_export_set();
 
@@ -1227,7 +1226,7 @@ fn export_set_click_reaches_the_export_request() {
 /// that means nothing over the waveform.
 #[test]
 fn the_tool_buttons_are_a_group_with_no_off_state() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     tool_state::set_pieces(3); // Move needs somewhere to drop a piece
     tool_state::set_tool(EditTool::Select);
@@ -1249,7 +1248,7 @@ fn the_tool_buttons_are_a_group_with_no_off_state() {
 /// cosmetic: arming Move on an uncut clip is a mode the user cannot drag their way out of.
 #[test]
 fn move_cannot_be_armed_on_an_uncut_clip() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     tool_state::set_pieces(1); // uncut — one piece, nowhere to move it
     tool_state::set_tool(EditTool::Select);
@@ -1267,7 +1266,7 @@ fn move_cannot_be_armed_on_an_uncut_clip() {
 /// dialog, no filesystem).
 #[test]
 fn the_structure_buttons_arm_their_edit_commands() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     tool_state::set_pieces(2); // Clear Cuts refuses on an uncut clip
 
@@ -1311,7 +1310,7 @@ fn move_disarms_itself_when_the_last_cut_is_cleared() {
 /// the undo timeline.
 #[test]
 fn the_crossfade_bake_refuses_without_a_pre_roll() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut host = crate::host_de_antes();
     let mut state = AudioEditorState;
     let _ = take_edit_cmd();
 

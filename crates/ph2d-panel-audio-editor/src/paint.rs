@@ -55,6 +55,11 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AEDIT_PANEL, rect);
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        sync_widget_buffers(ctx);
+        crate::cards::paint(ctx);
+        return;
+    }
 
     // Opaque backing (the glass surface would bleed the canvas/panel behind it).
     fill_rounded_rect(
@@ -107,6 +112,29 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let scroll = area.scroll();
     let y = area.top();
 
+    sync_widget_buffers(ctx);
+    let body = monta_body(ctx);
+
+    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** — o par abre depois do `push_clip` da porta de
+    //    propósito (a cena estacionada leva o recorte aberto). É o livro que o TEMA por secção
+    //    recolore (`section_cards::retheme`); o cartão da última secção fecha-o o
+    //    `end_section_cards`, como sempre.
+    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, y);
+    let final_y = crate::paint_sections::paint_body(ctx, y, x, w, &body, body_rect, theme);
+    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
+
+    // Total scrollable height in body-local coords (undo the `- scroll` offset).
+    let content_h = (final_y + scroll) - body_top + bottom_pad;
+    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
+
+    // Re-register the close button last so body widgets can't shadow it.
+    ctx.host
+        .hit_index_mut()
+        .register(AEDIT_CLOSE, panel_close_button_rect(rect));
+}
+
+/// O retrato do quadro para o corpo: a shell, a dobra e o campo do nome, lidos antes dos empréstimos.
+pub(crate) fn monta_body(ctx: &PaintCtx) -> crate::paint_sections::Body {
     // Snapshot (shell → panel).
     let loaded = snapshot::loaded();
     let playing = snapshot::playing();
@@ -125,8 +153,6 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         )
     });
 
-    sync_widget_buffers(ctx);
-
     // Read the name field's live buffer for painting (cloned so the scene borrow
     // below is free of the store).
     // ⚠️ Lido AQUI, junto do estado: mais abaixo o `hit_index` já pegou o `ctx.host`
@@ -142,16 +168,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         _ => (TextInputState::Normal, String::new(), 0, None),
     };
 
-    // The body is a stack of collapsible SECTIONS — see `paint_sections`. Each section paints
-    // through a `ClippedHits` it builds from the context: anything scrolled past the body's
-    // top/bottom is hidden (the door) and, via `ClippedHits`, unclickable. ⚠️ O `ClippedHits`
-    // FICA: ele é mais estrito que o recorte da porta (larga INTEIRO o widget que cruza a borda,
-    // em vez de o aparar) e carrega o store que os pintores do corpo leem. Os dois recortes
-    // compõem. ⚠️ **O empréstimo CONJUNTO existe para isto**
-    // (`PanelHostInternal::store_and_hit_index_mut`, e o doc dele diz-o): sem ele o
-    // `hit_index_mut` tranca o host e o corpo fica sem forma de perguntar como um widget se pinta
-    // — que foi exactamente por que este painel nasceu inerte.
-    let body = crate::paint_sections::Body {
+    crate::paint_sections::Body {
         open,
         loaded,
         undo_ok,
@@ -171,23 +188,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
             caret: name_caret,
             anchor: name_anchor,
         },
-    };
-    // ⭐⭐ **O corpo pinta-se DENTRO de cartões** — o par abre depois do `push_clip` da porta de
-    //    propósito (a cena estacionada leva o recorte aberto). É o livro que o TEMA por secção
-    //    recolore (`section_cards::retheme`); o cartão da última secção fecha-o o
-    //    `end_section_cards`, como sempre.
-    ph2d_editor_core::widget::section_cards::begin_section_cards(ctx.scene, theme, y);
-    let final_y = crate::paint_sections::paint_body(ctx, y, x, w, &body, body_rect, theme);
-    ph2d_editor_core::widget::section_cards::end_section_cards(ctx.scene);
-
-    // Total scrollable height in body-local coords (undo the `- scroll` offset).
-    let content_h = (final_y + scroll) - body_top + bottom_pad;
-    ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
-
-    // Re-register the close button last so body widgets can't shadow it.
-    ctx.host
-        .hit_index_mut()
-        .register(AEDIT_CLOSE, panel_close_button_rect(rect));
+    }
 }
 
 /// Push shell-owned values into the widget buffers the shared dispatch also writes.
@@ -259,6 +260,9 @@ pub(crate) fn action_bg(
     enabled: bool,
     theme: Theme,
 ) -> VelloColor {
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return crate::cards::fundo_do_botao(ink, (rest, hot, press), v, enabled);
+    }
     let token = if !enabled {
         rest.resolve(theme)
     } else {
@@ -367,7 +371,7 @@ pub(crate) fn button_in_group(
         label,
         rect,
         TypeToken::Sm.px(),
-        resolve(fg, theme),
+        crate::cards::tom(fg, theme),
     );
     if enabled {
         hit_index.register(id, rect);
@@ -478,7 +482,7 @@ pub(crate) fn toggle_in_group(
         label,
         rect,
         TypeToken::Sm.px(),
-        resolve(fg, theme),
+        crate::cards::tom(fg, theme),
     );
     if enabled {
         hit_index.register(id, rect);

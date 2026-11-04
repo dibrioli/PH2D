@@ -12,3 +12,10 @@ mod nenhuma_fileira_fora_da_porta;
 mod no_dead_buttons;
 mod seam;
 mod the_audio_editor_asks_the_store_how_its_buttons_look;
+mod os_cartoes;
+
+/// O painel de `PH2D_CARDS=0`: os testes de antes descrevem esse corpo.
+pub(crate) fn host_de_antes() -> ph2d_ui_testkit::MockPanelHost {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
+    ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_audio_editor::AudioEditorPanel>()
+}

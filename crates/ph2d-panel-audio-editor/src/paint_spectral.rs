@@ -20,7 +20,7 @@ use crate::{
     AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_DENOISE_ML, AEDIT_SPEC_LEARN,
     AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, spectral_state,
 };
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::paint_text;
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -172,7 +172,7 @@ pub(crate) fn paint_spectral_section(
             y,
             label_h,
             w,
-            resolve(ColorToken::Text3, theme),
+            crate::cards::tom(ColorToken::Text3, theme),
         );
         y += text_system
             .layout(&status, label_h, w)

@@ -50,19 +50,14 @@ pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect)
     let mut g = geometria(slot);
     let lista = g.lista;
     pinta_pilula(ctx, lista);
-    let nome = title.to_uppercase();
     let tx = lista.x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X;
-    let tracking = m::LIST_TITLE_PX * m::LIST_TITLE_TRACKING_EM * nome.chars().count() as f32;
-    let tw = ctx.text_system.prefix_width(&nome, m::LIST_TITLE_PX) + tracking;
-    crate::paint::paint_text_title_elided_tracked(
-        ctx.text_system,
+    let tw = pinta_titulo_da_lista(
         ctx.scene,
-        &nome,
-        [tx, lista.y + (m::LIST_HEAD_H - m::LIST_TITLE_PX) * 0.5],
-        m::LIST_TITLE_PX,
-        (lista.w - m::LIST_PAD_X * 2.0 - m::HEAD_ICON_BOX).max(0.0),
-        resolve(ColorToken::KanbanListFg, theme),
-        m::LIST_TITLE_TRACKING_EM,
+        ctx.text_system,
+        theme,
+        lista,
+        title,
+        lista.w - m::LIST_PAD_X * 2.0 - m::HEAD_ICON_BOX,
     );
     menu::pinta_fecho(
         ctx,
@@ -80,25 +75,79 @@ pub fn pinta_moldura(ctx: &mut PaintCtx, panel: NodeId, title: &str, slot: Rect)
 /// Uma pílula flutuante: a tinta e a sombra da lista, sem título (a barra de um canvas).
 pub fn pinta_pilula(ctx: &mut PaintCtx, r: Rect) {
     let theme = ctx.host.theme();
+    pinta_pilula_na_cena(ctx.scene, theme, r);
+}
+
+/// [`pinta_pilula`] para quem só tem a cena (uma janela da shell).
+pub fn pinta_pilula_na_cena(scene: &mut VectorScene, theme: Theme, r: Rect) {
     shadow(
-        ctx.scene,
+        scene,
         r,
         m::LIST_RADIUS,
         resolve(ColorToken::KanbanListShadow, theme),
         m::LIST_SHADOW_FAR,
     );
     shadow(
-        ctx.scene,
+        scene,
         r,
         m::LIST_RADIUS,
         resolve(ColorToken::KanbanShadowNear, theme),
         m::LIST_SHADOW_NEAR,
     );
     fill_rounded_rect(
-        ctx.scene,
+        scene,
         r,
         m::LIST_RADIUS,
         resolve(ColorToken::KanbanList, theme),
+    );
+}
+
+/// O título da lista em `lista`, no tamanho, tinta e tracking dela. Devolve a largura pintada.
+pub fn pinta_titulo_da_lista(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    lista: Rect,
+    title: &str,
+    max_w: f32,
+) -> f32 {
+    let nome = title.to_uppercase();
+    let tx = lista.x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X;
+    let tracking = m::LIST_TITLE_PX * m::LIST_TITLE_TRACKING_EM * nome.chars().count() as f32;
+    let tw = text.prefix_width(&nome, m::LIST_TITLE_PX) + tracking;
+    crate::paint::paint_text_title_elided_tracked(
+        text,
+        scene,
+        &nome,
+        [tx, lista.y + (m::LIST_HEAD_H - m::LIST_TITLE_PX) * 0.5],
+        m::LIST_TITLE_PX,
+        max_w.max(0.0),
+        resolve(ColorToken::KanbanListFg, theme),
+        m::LIST_TITLE_TRACKING_EM,
+    );
+    tw
+}
+
+/// Um verbo do cabeçalho de uma janela sem lista (a Preview): o ícone da lista, hover incluído, e o alvo `r`.
+pub fn pinta_icone_de_cabecalho(ctx: &mut PaintCtx, id: NodeId, icon: IconId, r: Rect) {
+    let theme = ctx.host.theme();
+    if ctx.host.store().hover_live(id) > 0.0 {
+        fill_rounded_rect(
+            ctx.scene,
+            r,
+            m::HEAD_ICON_RADIUS,
+            resolve(ColorToken::CardFieldHover, theme),
+        );
+    }
+    ctx.host.hit_index_mut().register(id, r);
+    dicas::icone(id);
+    let g = m::HEAD_ICON_GLYPH;
+    paint_icon(
+        ctx.scene,
+        icon,
+        Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g),
+        resolve(ColorToken::KanbanListFg, theme),
+        StrokeToken::Default.px(),
     );
 }
 

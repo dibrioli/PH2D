@@ -40,6 +40,9 @@ pub(crate) struct Ui {
 
 impl Ui {
     pub fn new(theme: Theme) -> Self {
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            return Self::do_cartao(theme);
+        }
         let c = |t: ColorToken| resolve(t, theme);
         Self {
             // A barra assenta na raiz do documento, não dentro de um cartão: é a superfície de
@@ -59,6 +62,30 @@ impl Ui {
             error: c(ColorToken::Danger),
             warn: c(ColorToken::Warn),
             hover: c(ColorToken::Bg2),
+            theme,
+        }
+    }
+
+    /// A barra, a busca, o console e a lista na tinta do cartão. As cores que dizem um estado (erro, seleção,
+    /// cursor, foco) ficam: o texto do editor vive ao lado delas.
+    fn do_cartao(theme: Theme) -> Self {
+        let c = |t: ColorToken| resolve(t, theme);
+        Self {
+            bg: c(ColorToken::KanbanList),
+            border: c(ColorToken::KanbanSlot),
+            field: c(ColorToken::CardField),
+            field_edge: c(ColorToken::CardField),
+            focus: c(ColorToken::Accent),
+            button: c(ColorToken::CardField),
+            button_on: c(ColorToken::KanbanCardRaised),
+            text1: c(ColorToken::KanbanCardFg),
+            text2: c(ColorToken::CardLabel),
+            text3: c(ColorToken::CardLabel),
+            selection: c(ColorToken::Selection),
+            caret: c(ColorToken::Text1),
+            error: c(ColorToken::Danger),
+            warn: c(ColorToken::Warn),
+            hover: c(ColorToken::CardFieldHover),
             theme,
         }
     }
@@ -237,4 +264,32 @@ pub(crate) fn text_field(
     }
     scene.pop_layer();
     x0
+}
+
+#[cfg(test)]
+mod cromo_tests {
+    use super::*;
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+
+    /// ⭐ Nos cartões a barra sai da tinta da lista; com `PH2D_CARDS=0`, os tokens de sempre, e o estado
+    /// (erro, foco, seleção) não muda. *Mutação: tirar o ramo de `Ui::new` ⇒ vermelho.*
+    #[test]
+    fn a_barra_muda_de_tinta_so_nos_cartoes() {
+        let tema = Theme::Dark;
+        force_cards_on_this_thread(Some(false));
+        let antes = Ui::new(tema);
+        force_cards_on_this_thread(Some(true));
+        let novo = Ui::new(tema);
+        force_cards_on_this_thread(None);
+        assert_eq!(antes.field, resolve(ColorToken::CodeBg, tema));
+        assert_eq!(antes.button, resolve(ColorToken::Bg3, tema));
+        assert_eq!(novo.bg, resolve(ColorToken::KanbanList, tema));
+        assert_eq!(novo.field, resolve(ColorToken::CardField, tema));
+        assert_eq!(novo.button, resolve(ColorToken::CardField, tema));
+        assert_eq!(novo.text2, resolve(ColorToken::CardLabel, tema));
+        assert_eq!(novo.hover, resolve(ColorToken::CardFieldHover, tema));
+        assert_eq!(novo.error, antes.error);
+        assert_eq!(novo.focus, antes.focus);
+        assert_eq!(novo.selection, antes.selection);
+    }
 }

@@ -30,7 +30,7 @@ use ph2d_app_audio::editor::{overlay_pieces, overlay_spectrogram};
 
 const MIN_W: f32 = 260.0; // LITERAL-PX-OK: overlay default minimum width (chrome)
 const DEFAULT_H: f32 = 260.0; // LITERAL-PX-OK: overlay default height (chrome)
-const TOP_MARGIN: f32 = 72.0; // LITERAL-PX-OK: below the TopBar (chrome)
+const TOP_MARGIN: f32 = 100.0; // LITERAL-PX-OK: below the TopBar and the canvas ruler (chrome)
 const HEADER_H: f32 = 26.0; // LITERAL-PX-OK: overlay title-bar height (chrome)
 const RULER_H: f32 = 22.0; // LITERAL-PX-OK: time-ruler strip height (chrome; tall = clickable)
 /// Width reserved on the right for the docked Audio Editor panel (matches its
@@ -82,31 +82,15 @@ pub(super) fn draw_audio_overlay(
     hero.hit_index
         .register(ph2d_panel_audio_editor::ids::AUDIO_OVERLAY_PANEL, rect);
 
-    // Frame surface + corner dots.
-    fill_rounded_rect(
-        scene,
-        rect,
-        Radius::Sm.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-    ph2d_editor_core::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
+    // Frame + title: the panel crate owns the chrome.
+    let title = if spectral {
+        tr("shell.audio_overlay.audio_editor")
+    } else {
+        tr("shell.audio_overlay.audio_editor_waveform")
+    };
+    ph2d_panel_audio_editor::cards::moldura::pinta(scene, text, rect, title, theme);
     paint_panel_corner_dot(rect, scene, theme);
     paint_panel_corner_dot_bl(rect, scene, theme);
-
-    // Title bar.
-    let header = Rect::new(rect.x, rect.y, rect.w, HEADER_H);
-    paint_text_centered(
-        text,
-        scene,
-        if spectral {
-            tr("shell.audio_overlay.audio_editor")
-        } else {
-            tr("shell.audio_overlay.audio_editor_waveform")
-        },
-        header,
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
 
     // Layout: the time RULER sits at the TOP (like a timeline / DAW) — a darker,
     // taller strip the user clicks + drags to position the playhead — then the
@@ -295,7 +279,7 @@ fn draw_ruler(
         scene,
         ruler,
         Radius::Xs.px(),
-        resolve(ColorToken::Bg1, theme),
+        ph2d_panel_audio_editor::cards::moldura::fundo_da_regua(theme),
     );
     let dur = clip.duration_secs();
     let ticks = 5;
@@ -313,7 +297,7 @@ fn draw_ruler(
         );
         let secs = dur * frac as f64;
         let label = format!("{secs:.1}s");
-        let lw = 34.0; // LITERAL-PX-OK: tick label box width (chrome)
+        let lw = 48.0; // LITERAL-PX-OK: tick label box width (chrome)
         // Keep the whole label box inside the strip so the first/last don't spill.
         let lx = (x - lw * 0.5).clamp(ruler.x, (ruler.x + ruler.w - lw).max(ruler.x));
         paint_text_centered(
@@ -402,7 +386,7 @@ fn draw_markers(
     // Purple — a shell overlay may use literal colors (the `no_literal_color` gate
     // scans panels + editor-core, not the shell); mirrors the selection band.
     let col = ph2d_vector::Color::from_rgba8(198, 140, 246, 230);
-    let lw = 26.0; // LITERAL-PX-OK: marker label box width (chrome)
+    let lw = 64.0; // LITERAL-PX-OK: marker label box width (chrome)
     for (frame, name) in markers {
         let x = wave.x + (*frame as f32 / total as f32).clamp(0.0, 1.0) * wave.w;
         fill_rounded_rect(

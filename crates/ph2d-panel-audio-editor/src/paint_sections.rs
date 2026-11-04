@@ -36,8 +36,6 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-use crate::paint::ROW_H;
-
 /// Everything the body needs for one frame, bundled so the walk fits one arg list.
 pub(crate) struct Body {
     /// Fold state per section, in [`SECTIONS`] order: **o par** `(aberta?, t VIVO)`.
@@ -152,7 +150,7 @@ pub(crate) fn paint_body_em_serie(
 
 /// O rótulo e o resumo do cabeçalho da secção `id` — o resumo vive NO cabeçalho porque
 /// "Variations" e "3 clips" são um facto só, e uma secção dobrada ainda tem de dizer o que guarda.
-fn header_of(id: NodeId) -> (&'static str, Option<String>) {
+pub(crate) fn header_of(id: NodeId) -> (&'static str, Option<String>) {
     match id {
         AEDIT_SEC_LOOP => (
             tr("panel.audio_editor.transport.loop"),
@@ -219,35 +217,100 @@ fn paint_one(
     let Some(fold) = fold else {
         return y;
     };
+    let y = paint_corpo(id, y, x, w, b, scene, text_system, theme, hit_index);
+    end_fold(fold, y, scene, hit_index)
+}
+
+/// O corpo da secção `id`, sem cabeçalho nem dobra: o mesmo na lista antiga e no cartão.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_corpo(
+    id: NodeId,
+    y: f32,
+    x: f32,
+    w: f32,
+    b: &Body,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut ClippedHits,
+) -> f32 {
     let (ts, th) = (text_system, theme);
-    let y = match id {
+    match id {
         AEDIT_SEC_TRANSPORT => {
             paint_transport_section(y, x, w, b.transport, &b.name, scene, ts, th, hit_index)
         }
         AEDIT_SEC_LOOP => crate::paint_loop::paint_loop_section(
-            y, x, w, b.loaded, b.has_sel, ROW_H, scene, ts, th, hit_index,
+            y,
+            x,
+            w,
+            b.loaded,
+            b.has_sel,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
         ),
         AEDIT_SEC_EDIT => crate::paint_edit::paint_edit_section(
             y, x, w, b.loaded, b.undo_ok, b.redo_ok, b.has_sel, scene, ts, th, hit_index,
         ),
         AEDIT_SEC_SPECTRAL => crate::paint_spectral::paint_spectral_section(
-            y, x, w, b.loaded, b.has_sel, ROW_H, scene, ts, th, hit_index,
+            y,
+            x,
+            w,
+            b.loaded,
+            b.has_sel,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
         ),
-        AEDIT_SEC_FX => {
-            crate::paint_fx::paint_fx_section(y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index)
-        }
+        AEDIT_SEC_FX => crate::paint_fx::paint_fx_section(
+            y,
+            x,
+            w,
+            b.loaded,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
+        ),
         AEDIT_SEC_MARKERS => crate::paint_loop::paint_markers_section(
-            y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index,
+            y,
+            x,
+            w,
+            b.loaded,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
         ),
         AEDIT_SEC_VARIATIONS => crate::paint_variation::paint_variation_section(
-            y, x, w, ROW_H, scene, ts, th, hit_index,
+            y,
+            x,
+            w,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
         ),
         AEDIT_SEC_DELIVERY => crate::paint_delivery::paint_delivery_section(
-            y, x, w, b.loaded, ROW_H, scene, ts, th, hit_index,
+            y,
+            x,
+            w,
+            b.loaded,
+            crate::cards::fila(),
+            scene,
+            ts,
+            th,
+            hit_index,
         ),
         _ => y,
-    };
-    end_fold(fold, y, scene, hit_index)
+    }
 }
 
 /// Every collapsible section, in paint order. The fold state is read from the store as
@@ -302,7 +365,7 @@ fn paint_transport_section(
     // Clip name — an editable TextInput (mirror of the sprite name box). The widget
     // clips its own overflow to the field, so a long filename no longer wraps/crams
     // the header.
-    let name_h = TypeToken::Sm.px() + Spacing::Sm.px() * 2.0;
+    let name_h = crate::cards::altura_do_nome();
     let name_rect = Rect::new(x, y, w, name_h);
     hit_index.register(AEDIT_NAME, name_rect);
     let input = TextInput::new(AEDIT_NAME, "")
@@ -333,14 +396,14 @@ fn paint_transport_section(
         &time_line,
         Rect::new(x, y, w, TypeToken::Xs.px()),
         TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
+        crate::cards::tom(ColorToken::Text2, theme),
     );
     y += TypeToken::Xs.px() + ph2d_tokens::control_gap_px();
 
     // ⭐⭐ **As QUATRO fileiras do transporte são um corpo só** (`1 · 2 · 2 · 1`) — Enio,
     //    2026-09-06: *«na vertical ainda tem muito espaço ainda»*. Elas fazem a mesma coisa
     //    (comandar o clipe), logo encostam, e só os quatro cantos do BLOCO arredondam.
-    let block = block_cells(Rect::new(x, y, w, 0.0), &[1, 2, 2, 1], ROW_H);
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[1, 2, 2, 1], crate::cards::fila());
     // Transport: Play/Pause (full width toggle, active while playing).
     let play_label = if t.playing {
         tr("panel.audio_editor.transport.pause")
@@ -423,7 +486,7 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y + grid_height(4, ROW_H) + ph2d_tokens::control_gap_px()
+    y + grid_height(4, crate::cards::fila()) + ph2d_tokens::control_gap_px()
 }
 
 #[cfg(test)]

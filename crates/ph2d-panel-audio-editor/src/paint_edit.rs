@@ -9,7 +9,7 @@
 //! history / no selection / nothing on the clipboard / no cuts). Ends by delegating to the
 //! effects rack.
 
-use crate::paint::{ClippedHits, ROW_H, button_in_group, toggle_in_group};
+use crate::paint::{ClippedHits, button_in_group, toggle_in_group};
 use crate::tool_state::{self, EditTool};
 use crate::{
     AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT,
@@ -68,7 +68,7 @@ fn paint_toolbar(
     // ⭐⭐ **As três fileiras são UM bloco** — encostam na vertical como encostam na horizontal
     //    (a lei do Blender nas duas direcções). O dono, depois de ver só a metade horizontal:
     //    *«na vertical ainda tem muito espaço ainda»*.
-    let block = block_cells(Rect::new(x, y, w, 0.0), &[3, 3, 2], ROW_H);
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[3, 3, 2], crate::cards::fila());
     let seg = &block[0];
     for (i, (label, id, t, enabled)) in tools.into_iter().enumerate() {
         toggle_in_group(
@@ -136,7 +136,7 @@ fn paint_toolbar(
         theme,
         hit_index,
     );
-    y + grid_height(3, ROW_H) + ph2d_tokens::control_gap_px()
+    y + grid_height(3, crate::cards::fila()) + ph2d_tokens::control_gap_px()
 }
 
 /// The Edit ops block: the toolbar (tools · clipboard · structure), then whole-clip
@@ -201,7 +201,11 @@ pub(crate) fn paint_edit_section(
     ];
     // ⭐⭐ **As CINCO fileiras são um corpo só** — as quatro daqui mais a `Invert | Force Mono`
     //    logo abaixo: elas fazem a mesma coisa (agir sobre o clipe inteiro), logo encostam.
-    let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2, 2, 2, 2], ROW_H);
+    let block = block_cells(
+        Rect::new(x, y, w, 0.0),
+        &[2, 2, 2, 2, 2],
+        crate::cards::fila(),
+    );
     for (r, row) in rows.into_iter().enumerate() {
         let seg = &block[r];
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
@@ -247,7 +251,7 @@ pub(crate) fn paint_edit_section(
     //    (2026-09-07, 1.ª seta vermelha). ⛔ O censo da wave 19 não o via: ele procura a
     //    CAUDA de um pintor (uma expressão sem `;`) e esta fronteira é uma **instrução** a
     //    meio da função. *Um censo que conhece uma forma da mesma pergunta é cego às outras.*
-    y += grid_height(5, ROW_H) + ph2d_tokens::control_gap_px();
+    y += grid_height(5, crate::cards::fila()) + ph2d_tokens::control_gap_px();
 
     // Selection range ops — enabled only when a waveform selection exists (drag on the overlay
     // with the Select tool to make one). Cut/Copy/Paste used to live down here; they are basic
@@ -274,7 +278,7 @@ pub(crate) fn paint_edit_section(
             ),
         ],
     ];
-    let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2], ROW_H);
+    let block = block_cells(Rect::new(x, y, w, 0.0), &[2, 2], crate::cards::fila());
     for (r, row) in range_rows.into_iter().enumerate() {
         let seg = &block[r];
         for (i, (label, id, enabled)) in row.into_iter().enumerate() {
@@ -291,7 +295,7 @@ pub(crate) fn paint_edit_section(
             );
         }
     }
-    y += grid_height(2, ROW_H);
+    y += grid_height(2, crate::cards::fila());
     // The effects rack used to be painted from here. It is its own SECTION now
     // (`paint_sections`), so delegating to it as well drew the whole rack twice — and
     // since `HitIndex::hit` walks back-to-front, the copy up here was a ghost: painted,

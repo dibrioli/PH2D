@@ -10,7 +10,7 @@
 
 use crate::paint::{ClippedHits, button_in_group};
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::paint::{paint_text_centered, resolve};
+use ph2d_editor_core::paint::paint_text_centered;
 use ph2d_editor_core::widget::GroupCell;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -163,7 +163,7 @@ pub(crate) fn display_in_group(
             theme,
             ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         )),
-        resolve(ColorToken::Bg3, theme),
+        crate::cards::tom(ColorToken::Bg3, theme),
     );
     paint_text_centered(
         text_system,
@@ -171,7 +171,7 @@ pub(crate) fn display_in_group(
         label,
         rect,
         TypeToken::Sm.px(),
-        resolve(
+        crate::cards::tom(
             if enabled {
                 ColorToken::Text1
             } else {

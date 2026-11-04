@@ -17,19 +17,13 @@ use crate::{
     AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
     MAX_VARIATIONS, variation_state,
 };
-use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered};
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken, list_row_gap_px};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken, list_row_gap_px};
 use ph2d_vector::VectorScene;
-
-/// Width of the `◀` / `▶` strategy selector arrows (matches the effects selector).
-/// Height of one variation list row — **a linha do app** (wave 17). Ela escrevia `22.0` a
-/// mao, que por acaso era o valor do token: uma coincidencia nao e uma derivacao, e o proximo
-/// pedido de «mais compacto» deixava esta lista para tras.
-const VAR_ROW_H: f32 = ROW_H_PX;
 
 /// Paint the Variations section starting at `y`; returns the `y` below it. `row_h` is
 /// the shared button row height. Play/Remove/Weight need a variation to exist.
@@ -194,9 +188,9 @@ fn paint_var_list(
             text_system,
             scene,
             tr("panel.audio_editor.variations.add_clips_to_build_a_set"),
-            Rect::new(x, y, w, VAR_ROW_H),
+            Rect::new(x, y, w, crate::cards::fila()),
             TypeToken::Xs.px(),
-            resolve(ColorToken::Text2, theme),
+            crate::cards::tom(ColorToken::Text2, theme),
         );
         // ⚠️ **O MESMO fecho do braço cheio, abaixo.** Esta linha dizia `Sm` (6) e a outra `Xs`
         // (4): duas respostas à mesma pergunta — *quanto ar fica DEPOIS desta lista?* — na mesma
@@ -204,11 +198,11 @@ fn paint_var_list(
         // um grupo é a pergunta aberta nº 4 do handoff (o Godot dá `base·2` = 8); ⛔ escolhê-lo
         // aqui seria adivinhá-lo para uma lista só. O que esta wave faz é pôr as duas a dizer
         // o mesmo, para que a wave que o decidir mexa num sítio.
-        return y + VAR_ROW_H + Spacing::Xs.px();
+        return y + crate::cards::fila() + Spacing::Xs.px();
     }
     let sel = variation_state::variation_sel();
     for (i, name) in names.iter().enumerate().take(MAX_VARIATIONS) {
-        let rect = Rect::new(x, y, w, VAR_ROW_H);
+        let rect = Rect::new(x, y, w, crate::cards::fila());
         // ⭐⭐ Pela porta (wave 21). ⛔ **Esta era a mais desviada das quatro:** toda linha enchia
         //    `Bg3` (o repouso de um botão) e a escolhida enchia `Accent` CHEIO com texto invertido
         //    — uma lista inteira de botões, com um deles aceso. Hoje ela tem a listra da paridade
@@ -241,13 +235,13 @@ fn paint_var_list(
             scene,
             name,
             x + Spacing::Sm.px(),
-            y + (VAR_ROW_H - TypeToken::Xs.px()) * 0.5,
+            y + (crate::cards::fila() - TypeToken::Xs.px()) * 0.5,
             TypeToken::Xs.px(),
             (w - Spacing::Sm.px() * 2.0).max(1.0),
-            resolve(fg, theme),
+            crate::cards::tom(fg, theme),
         );
         hit_index.register(AEDIT_VAR_ROWS[i], rect);
-        y += VAR_ROW_H + list_row_gap_px();
+        y += crate::cards::fila() + list_row_gap_px();
     }
     y + ph2d_tokens::control_gap_px()
 }

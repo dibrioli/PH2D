@@ -15,6 +15,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cards;
 mod clipped_hits;
 pub mod delivery_state;
 mod event;

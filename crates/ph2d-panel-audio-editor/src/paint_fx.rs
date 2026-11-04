@@ -15,8 +15,7 @@
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
 use crate::paint::{
-    ARROW_W, ClippedHits, ROW_H, action_bg, button, button_in_group, display_in_group,
-    toggle_in_group,
+    ARROW_W, ClippedHits, action_bg, button, button_in_group, display_in_group, toggle_in_group,
 };
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
@@ -26,7 +25,7 @@ use crate::{
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered};
 use ph2d_editor_core::widget::{
     ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, paint_icon_button,
 };
@@ -35,11 +34,6 @@ use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
-
-/// A altura de uma linha da CADEIA — **a linha do app** (wave 21). Ela era
-/// `TypeToken::Sm + Spacing::Sm` (≈ 18 px), uma terceira resposta a *«que altura tem uma
-/// linha?»* que nenhum teste podia ver, porque estava certa sozinha.
-const CHAIN_ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
 /// Buttons in the chain action row (Add · Remove · Up · Down).
 const ACTION_BUTTONS: f32 = 4.0; // LITERAL-PX-OK: fixed count, divides the row width
@@ -111,7 +105,7 @@ fn icon_in_group(
         ctx.scene,
         icon,
         rect,
-        resolve(
+        crate::cards::tom(
             if enabled {
                 ColorToken::Text1
             } else {
@@ -325,7 +319,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
     if snapshot::fx_needs_ir() {
         let read = snapshot::fx_ir_readout();
         button(
-            Rect::new(x, y, w, ROW_H),
+            Rect::new(x, y, w, crate::cards::fila()),
             if read.is_empty() {
                 tr("panel.audio_editor.effects.load_ir")
             } else {
@@ -351,7 +345,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             },
             Rect::new(x, y, w, TypeToken::Xs.px()),
             TypeToken::Xs.px(),
-            resolve(
+            crate::cards::tom(
                 if read.is_empty() {
                     ColorToken::Warn
                 } else {
@@ -386,7 +380,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         y + (row_h - label_h) * 0.5,
         label_h,
         w,
-        resolve(ColorToken::Text2, ctx.theme),
+        crate::cards::tom(ColorToken::Text2, ctx.theme),
     );
     let actions = [
         (IconId::Add, loaded && count < MAX_FX_STAGES, AEDIT_FX_ADD),
@@ -412,7 +406,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
     //    app), o vão (zero, escrito como a ausência de um termo) e o realce (`Bg3`, o tom de um
     //    botão parado). ⚠️ **E ela não estava no censo de listas** — que é uma lista DECLARADA à
     //    mão: *uma superfície que ninguém declarou escapa a um censo por declaração.*
-    let stage_h = CHAIN_ROW_H;
+    let stage_h = crate::cards::fila();
     // A folga do cartão que envolve a secção: é até aí que a faixa de uma linha sangra.
     let bleed = Spacing::Xs.px();
     for i in 0..count.min(MAX_FX_STAGES) {
@@ -461,7 +455,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
             y + (stage_h - fs) * 0.5,
             fs,
             w,
-            resolve(tone, ctx.theme),
+            crate::cards::tom(tone, ctx.theme),
         );
         let eye = Rect::new(x + w - stage_h, y, stage_h, stage_h);
         let glyph = if enabled {

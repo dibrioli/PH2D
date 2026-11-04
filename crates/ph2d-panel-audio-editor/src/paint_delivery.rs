@@ -23,7 +23,7 @@ use crate::paint::{ClippedHits, button, stepper_row};
 use crate::{
     AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_EXPORT_SET, AEDIT_OGG_QUALITY, delivery_state,
 };
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::paint_text;
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -116,7 +116,7 @@ pub(crate) fn paint_delivery_section(
         y,
         w,
         label_h,
-        resolve(
+        crate::cards::tom(
             match (loaded, over) {
                 (false, _) => ColorToken::Text3,
                 (true, true) => ColorToken::Warn,
@@ -137,7 +137,7 @@ pub(crate) fn paint_delivery_section(
             y,
             w,
             label_h,
-            resolve(ColorToken::Warn, theme),
+            crate::cards::tom(ColorToken::Warn, theme),
             scene,
             text_system,
         ) + gap;
@@ -241,7 +241,7 @@ fn paint_shipping_targets(
                 y,
                 w,
                 label_h,
-                resolve(
+                crate::cards::tom(
                     if *frac > BUDGET_WARN_FRAC {
                         ColorToken::Warn
                     } else {

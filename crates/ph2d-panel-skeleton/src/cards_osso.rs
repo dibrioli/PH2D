@@ -164,8 +164,8 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                 if !auto {
                     const CIN: &[NodeId] = &[ids::VECTOR_BONE_CURVE_IN_Y];
                     const COUT: &[NodeId] = &[ids::VECTOR_BONE_CURVE_OUT_Y];
-                    const AIN: &[NodeId] = &[ids::VECTOR_BONE_CURVE_IN_X];
-                    const AOUT: &[NodeId] = &[ids::VECTOR_BONE_CURVE_OUT_X];
+                    const A_IN: &[NodeId] = &[ids::VECTOR_BONE_CURVE_IN_X];
+                    const A_OUT: &[NodeId] = &[ids::VECTOR_BONE_CURVE_OUT_X];
                     let (gi, go) = (tr("card.glyph.in"), tr("card.glyph.out"));
                     y = c.row(
                         &[
@@ -182,10 +182,10 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                         &[
                             Cell::new(field(ids::VECTOR_BONE_CURVE_IN_X, Glyph::Text(gi)))
                                 .label(tr("card.bones.along_in"))
-                                .key(AIN),
+                                .key(A_IN),
                             Cell::new(field(ids::VECTOR_BONE_CURVE_OUT_X, Glyph::Text(go)))
                                 .label(tr("card.bones.along_out"))
-                                .key(AOUT),
+                                .key(A_OUT),
                         ],
                         y,
                     );

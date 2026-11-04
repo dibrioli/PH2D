@@ -87,7 +87,7 @@ def mede(img, az, am):
 
 def main():
     raiz = sys.argv[1]
-    print(f"{'corrida':18} {'img':8} {'area':>7} {'furos':>5} {'furo_px':>7} {'picos/1e4':>9} {'pocos/1e4':>9} {'HP':>5} {'brancos':>7} {'%':>5} {'palidos':>7} {'palid_px':>8}")
+    print(f"{'corrida':18} {'img':8} {'area':>7} {'furos':>5} {'furo_px':>7} {'picos/1e4':>9} {'pocos/1e4':>9} {'HP':>5} {'brancos':>7} {'%':>5} {'palidos':>7} {'pal_px':>8}")
     for run in sorted(os.listdir(raiz)):
         d = os.path.join(raiz, run)
         if not os.path.exists(os.path.join(d, "azul.png")):

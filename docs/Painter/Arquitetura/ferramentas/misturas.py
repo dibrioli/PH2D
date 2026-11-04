@@ -183,13 +183,13 @@ def q8(c):
 def metricas(nome, f, rng):
     t = np.linspace(0, 1, 51)[:, None]
     m = {}
-    gam, gam_max, dip_max, nonmono, lama_min = 0, 0.0, 0.0, 0, 9.0
+    gama, gama_max, dip_max, nonmono, lama_min = 0, 0.0, 0.0, 0, 9.0
     ends_err = 0.0
     for par, (a, b) in PARES.items():
         g = f(a[None], b[None], t)
         fora = np.maximum(np.maximum(-g, g - 1), 0).max(axis=1)
-        gam += int((fora > 1e-3).sum())
-        gam_max = max(gam_max, float(fora.max()))
+        gama += int((fora > 1e-3).sum())
+        gama_max = max(gama_max, float(fora.max()))
         ends_err = max(ends_err, float(ok_de(g[0], a)), float(ok_de(g[-1], b)))
         y = lin2ok(s2l(np.clip(g, 0, 1)))[:, 0]
         ya, yb = y[0], y[-1]
@@ -200,8 +200,8 @@ def metricas(nome, f, rng):
         if par in CROMATICOS:
             c, _, _ = croma(g)
             lama_min = min(lama_min, float(c[25] / (0.5 * (c[0] + c[-1]))))
-    m["fora_de_gama_amostras"] = gam
-    m["fora_de_gama_max"] = gam_max
+    m["fora_de_gama_amostras"] = gama
+    m["fora_de_gama_max"] = gama_max
     m["extremos_dE"] = ends_err
     m["L_abaixo_do_mais_escuro_x100"] = dip_max
     m["pares_L_nao_monotona"] = nonmono

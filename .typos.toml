@@ -416,6 +416,12 @@ extend-ignore-identifiers-re = [
     # `05a_selec_frente_…` — o id de uma captura do oráculo I13 do CodeEditor (`selec` = «selecção»),
     # o mesmo no `corre.sh` que a tira e no `passos.txt` que ela gravou. Só o id inteiro se isenta.
     "^[0-9]+[a-z]?_selec_",
+    # `protocolos` — pt, plural de «protocolo», num comentário do guia da prova E do processo:
+    # *«Toda linha dos protocolos da linha que nomeia um…»*. O typos quer o inglês `protocols`.
+    "^protocolos$",
+    # `Unser` — o apelido de Michael Unser (pré-filtro recursivo da B-spline cúbica, 1991), citado em
+    # três comentários de `ph2d-wet-paint/src/oleo_vista.rs`. O typos lê `User`/`Under`.
+    "^Unser$",
 ]
 
 [default.extend-identifiers]
@@ -1175,4 +1181,17 @@ extend-exclude = [
     "docs/CodeEditor/ferramentas/oraculo_acabamento/saida/*.txt",
     "docs/CodeEditor/ferramentas/oraculo_i8b/corre.sh",
     "crates/ph2d-code-lsp/tests/it/fixtures/ganchos.luau",
+    # As FONTES bitmap de terceiros do Pixel Art (Unscii, Cozette, Tom Thumb; licenças ao lado):
+    # tabelas de glifos em hexadecimal (`04DED:…`, `uni1EDE`, `AFE0`) e o nome de quem as desenhou
+    # (`Ines`) — bytes de fonte, não texto nosso; o typos lê sílabas soltas. Verbatim, nunca editadas.
+    "crates/ph2d-pixel-text/fonts/**",
+    # Pixel Art (P-trial): as SAÍDAS gravadas dos oráculos — o mapa de glifos em ASCII (`CPY`, rótulo
+    # de célula) e as cores em hexadecimal (`ede997`) são o que o programa de outro escreveu;
+    # corrigi-los partiria os gates que as leem. Isenta-se o FICHEIRO, não a palavra (`CPY`/`ede`
+    # esconderiam um `CPU`/`edge` mal escrito no repo inteiro).
+    "crates/ph2d-pixel-core/tests/fixtures/oracle_trial_brush_pattern.json",
+    "crates/ph2d-pixel-core/tests/fixtures/oracle_trial_adjust.json",
+    # Os dois logs BRUTOS das cenas 40/41 do smoke (a linha 7 é um pedaço truncado de uma frase,
+    # `ue VOCE criar)`, gravado tal como o app o imprimiu).
+    "docs/UI_New_and_Simple/handoffs/img_F40/*.log",
 ]

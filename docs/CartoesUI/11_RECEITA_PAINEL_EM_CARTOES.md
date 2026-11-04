@@ -85,6 +85,9 @@ ferramenta ou de sessão não leva `.key` (D17).
 - **Testes antigos do painel:** uma `host_de_antes()` em `tests/it/main.rs` (`force_cards_on_this_thread(Some(false))`) e troca com `assert` de contagem; eles descrevem o corpo de `PH2D_CARDS=0`.
 - **Lista na coluna da esquerda:** começa depois da régua vertical; barra ou quadro que nasce na borda da área pede `layout.clear_of_left_list(area)`. Nos Nodes o grafo pára nas colunas.
 - **Id sintético de linha acima de `2^32`:** o companheiro (galo, olho) está morto no despacho, em silêncio; o galo da Cena e dos Clips esteve assim até ao bloco F.
+- **O mock liga o painel que pinta:** `MockPanelHost::with_panel` deixa `panel_visible` em `false`. Painel cujo `paint` começa por essa pergunta precisa de `host.set_panel_visible(P::ID, true)` antes do 1.º quadro (`ph2d-panel-tokens/tests/it/os_cartoes.rs`, `Mesa::nova`); sem isso não há rect nenhum para ler.
+- **Cartão muito alto engana o teste de reordenar:** o alvo do arrasto é `rb.y + rb.h * 2.0`, medido no vizinho. Com o vizinho aberto e alto, essa conta sai da coluna; dobre-o antes de medir (`host.set_collapsed(b, true)`, Tokens). O vizinho baixo do Macros dispensa a dobra.
+- **Lista suspensa longa:** a porta (`panel/cards_dropdown.rs`) já limita a lista ao canvas visível, rola por roda e polegar e abre com a escolhida à vista. O teste numa janela baixa é `Mesa::assenta_em(janela)`; o polegar só prova que não fecha passando por `cards::ao_premir`, que o `ponteiro` da mesa não chama.
 - **Agente em paralelo:** um `cargo test` em `registry-init` pode não compilar pelo WIP do outro. Espere e repita; não
   conserte o que não é seu. Em `zsh`, `$P` não divide palavras: use `bash -c`.
 
@@ -129,6 +132,7 @@ Crate inteira do painel, uma vez, com `PH2D_SUITE="motivo: …"` (registo de pai
   lista aberta pinta-se depois dela (`adia_a_lista_suspensa`); medido: sem isto o `Reset` ficava por cima da opção.
 - **Sem cabeçalho de secção no painel de antes:** o id novo vai para `ids` da ferramenta (`UPS_SEC_SCALE`).
 - **Campo que mostra outra coisa que o pedido** (o EPX arredonda): `card_field::com_valores` no corpo, e a semente em `prepare`.
+- **Painel sem ferramenta:** `PH2D_PANEL_SMOKE=wet_tuning|grid_snap` (na `panel_walk`; a tabela é `tool_activation::painel_do_smoke`).
 - **Abrir sem cena:** `PH2D_IMAGE_TOOL_SMOKE=padding|upscale|equalize_sizes|bgremoval|color_equalization`. Não há imagem: o
   `image_edit.mode_on` é o espelho do Edit de uma imagem, e o `mirror` em `ph2d-app-painter` é que respeita a variável.
 - **Corpos antigos nos testes:** quem pinta o painel e testa o corpo de antes pede `force_cards_on_this_thread(Some(false))`.
@@ -143,5 +147,5 @@ pede). A variável de ambiente passa: `PH2D_CARDS=0 PH2D_PRAZO=200 bash … ` fo
 - **Ver estados que a cena não semeia** (rádio noutra opção, célula desligada, cartão dobrado aberto): patch temporário em
   `cards()`, foto, restauro por script com `try/finally`, sem commit.
 - **Compare** com `maquete/bones.png` e `PH2D_VEC_BONE_SMOKE=8` lado a lado.
-- A `1200` de largura o HUD «EDIT · fps» passou por cima da lista (`maquete/b_physics_debug_dobrado_hud_por_cima.png`);
-  a `1930` não. Não é do painel; medido só no Physics.
+- O HUD «EDIT · fps» cede aos painéis que flutuam na faixa dele (`bottom_hud::vao_do_hud`, rodada R); a foto
+  `maquete/b_physics_debug_dobrado_hud_por_cima.png` é o antes.

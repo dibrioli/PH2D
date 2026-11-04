@@ -1,6 +1,17 @@
 //! O cursor preso do campo Figma: a lei vive em [`ph2d_cursor_preso`]; aqui, a composição.
 
+use ph2d_cursor_preso::CursorPreso;
+use std::cell::RefCell;
 use winit::dpi::PhysicalPosition;
+
+thread_local! {
+    /// Só esta composição lhe toca; na thread do laço de eventos, como a janela.
+    static PRESO: RefCell<CursorPreso> = RefCell::default();
+}
+
+fn preso<R>(f: impl FnOnce(&mut CursorPreso) -> R) -> R {
+    PRESO.with(|p| f(&mut p.borrow_mut()))
+}
 
 impl crate::App {
     /// Chamado depois de cada evento do ponteiro e do teclado.
@@ -11,7 +22,7 @@ impl crate::App {
         let Some(win) = self.window.clone() else {
             return;
         };
-        if let Some(p) = self.cursor_preso.sync(&win, quer, self.last_pointer) {
+        if let Some(p) = preso(|c| c.sync(&win, quer, self.last_pointer)) {
             self.last_pointer = p;
             self.last_cursor = p;
         }
@@ -22,7 +33,7 @@ impl crate::App {
         &mut self,
         pos: PhysicalPosition<f64>,
     ) -> Option<PhysicalPosition<f64>> {
-        self.cursor_preso.moved(self.window.as_deref(), pos)
+        preso(|c| c.moved(self.window.as_deref(), pos))
     }
 
     /// A tecla, e o cursor preso segue o que ela mudou.
@@ -36,7 +47,7 @@ impl crate::App {
         let winit::event::DeviceEvent::MouseMotion { delta } = event else {
             return;
         };
-        let Some((x, y)) = self.cursor_preso.raw(delta) else {
+        let Some((x, y)) = preso(|c| c.raw(delta)) else {
             return;
         };
         let b = self

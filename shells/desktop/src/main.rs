@@ -768,7 +768,6 @@ impl App {
             input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,
             held_button: None,
-            cursor_preso: Default::default(),
             eyedropper_dragging: false,
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),

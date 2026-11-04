@@ -6,6 +6,12 @@ inputs:
   shared-key:
     description: chave partilhada do rust-cache
     required: true
+  so-le:
+    description: >
+      'true' = nunca salva. A corrida da noite só lê: compilando outro conjunto de pacotes, o cache que ela
+      salvasse sob a mesma chave deixava o job de teste do Ubuntu 14 min mais lento (27,2 × 13,7, medido 04/11).
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -27,4 +33,4 @@ runs:
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: ${{ inputs.shared-key }}
-        save-if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        save-if: ${{ inputs.so-le != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}

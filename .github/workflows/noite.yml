@@ -33,6 +33,7 @@ jobs:
       - uses: ./.github/actions/cache-estavel
         with:
           shared-key: ubuntu-latest
+          so-le: 'true'
       - name: Dependências de sistema
         run: |
           for i in 1 2 3; do

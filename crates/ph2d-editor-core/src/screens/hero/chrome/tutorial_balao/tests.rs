@@ -52,6 +52,37 @@ fn centro(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
 
+/// Em cartões o balão veste a caixa da lista, sem o `BgElev` do painel de antes.
+#[test]
+fn o_balao_veste_a_caixa_da_lista_em_cartoes() {
+    use crate::widget::card_ink::CardInk;
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
+    let vezes = |cartao: bool| {
+        force_cromo_on_this_thread(Some(cartao));
+        let mut hero = HeroScreen::new(NodeId(1));
+        let theme = hero.theme;
+        let scene = quadro(&mut hero, &balao_de(liga(), vec![PORTA]));
+        force_cromo_on_this_thread(None);
+        let conta = |cor: ph2d_vector::Color| {
+            let mut uma = VectorScene::new();
+            fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
+            let dados = uma.inner().encoding().draw_data.clone();
+            let cena = scene.inner().encoding().draw_data.clone();
+            cena.windows(dados.len())
+                .filter(|w| *w == dados.as_slice())
+                .count()
+        };
+        let caixa = CardInk::of_list(theme)
+            .color(ColorToken::KanbanCardRaised)
+            .with_alpha(1.0);
+        (conta(caixa), conta(resolve(ColorToken::BgElev, theme)))
+    };
+    let (caixa, antigo) = vezes(true);
+    assert!(caixa > 0 && antigo == 0, "em cartões: {caixa} e {antigo}");
+    let (caixa, antigo) = vezes(false);
+    assert!(caixa == 0 && antigo > 0, "PH2D_CARDS=0: {caixa} e {antigo}");
+}
+
 #[test]
 fn o_cartao_fica_ao_lado_do_alvo_e_sem_alvo_no_canto() {
     let mut hero = HeroScreen::new(NodeId(1));

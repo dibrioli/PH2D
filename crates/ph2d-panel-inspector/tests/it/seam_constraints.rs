@@ -513,7 +513,7 @@ fn em_cartoes() -> (
 fn no_cartao_o_pick_divide_a_linha_com_o_nome_do_alvo() {
     let (rects, _) = em_cartoes();
     let pick = rect_de(&rects, ids::INSP_CONSTRAINT_ALVO[0]).expect("o Pick");
-    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA[0]).expect("a força");
+    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA_CHIP[0]).expect("a força");
     assert!(
         pick.w < forca.w / 2.0,
         "o verbo ao lado do nome, não a coluna toda: {pick:?} contra {forca:?}"
@@ -533,9 +533,89 @@ fn a_pilha_em_cartoes_nao_pinta_layout_antigo() {
         "layout antigo nas constraints: {velhos:#?}"
     );
     let num = rect_de(&rects, ids::INSP_CONSTRAINT_NUMERO[0][1]).expect("o Min do Limit Rotation");
-    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA[0]).expect("a força");
+    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA_CHIP[1]).expect("a força");
     assert!(
-        (num.x - forca.x).abs() <= 1.0,
-        "o rótulo em cima: a caixa começa na margem do cartão, {num:?} contra {forca:?}"
+        (num.y - forca.y).abs() <= 1.0 && forca.x + forca.w < num.x,
+        "Influence e Min dividem a linha (lei da compactação): {forca:?} contra {num:?}"
     );
+    assert!(
+        (num.w - forca.w).abs() <= 1.0,
+        "duas colunas iguais: {forca:?} contra {num:?}"
+    );
+}
+
+/// ⭐⭐ Em cartão a Influence é o campo de 0 a 100 %: a barra não se pinta, e o scrub na pega publica a
+/// força pela barra, com o id da linha. O Esc devolve.
+#[test]
+fn no_cartao_a_influence_e_um_campo_em_por_cento() {
+    use crate::o_inspector_em_cartoes_por_tipo::{abre_tudo, pinta as pinta_lista};
+    use ph2d_editor_core::widget::card_field::handle_rect;
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    ph2d_panel_inspector::set_cards_on(true);
+    crate::every_painted_id_is_reachable::publish_the_whole_sprite_scene();
+    set_current_inspector_constraints(Some(pilha()));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    abre_tudo(&mut host);
+    let _ = pinta_lista(&mut host, &mut state);
+    abre_tudo(&mut host);
+    let rects = pinta_lista(&mut host, &mut state);
+    let chip = ids::INSP_CONSTRAINT_FORCA_CHIP[1];
+    assert!(
+        rect_de(&rects, ids::INSP_CONSTRAINT_FORCA[1]).is_none(),
+        "a barra não se pinta no cartão"
+    );
+    assert_eq!(host.store().number_value(chip), Some(50.0), "0,5 é 50 %");
+    assert_eq!(
+        host.store()
+            .number_value(ids::INSP_CONSTRAINT_FORCA_CHIP[0]),
+        Some(100.0)
+    );
+    let pega = handle_rect(rect_de(&rects, chip).expect("o campo da força"));
+    let (x, y) = (pega.x + pega.w * 0.5, pega.y + pega.h * 0.5);
+    let mut ponteiro = |host: &mut MockPanelHost, kind, x| {
+        host.dispatch_pointer_event(PointerEvent {
+            kind,
+            x,
+            y,
+            button: PointerButton::Primary,
+            source: PointerSource::Mouse,
+            pressure: 1.0,
+            timestamp_ns: 0,
+        })
+    };
+    let mut evs = ponteiro(&mut host, PointerKind::Down, x);
+    evs.extend(ponteiro(&mut host, PointerKind::Move, x + 10.0));
+    evs.extend(ponteiro(&mut host, PointerKind::Move, x + 20.0));
+    let v_no_dedo = host.store().number_value(chip);
+    assert!(
+        v_no_dedo > Some(50.0),
+        "o scrub sobe o campo: {v_no_dedo:?}"
+    );
+    let voltou = host.esc_key();
+    assert!(
+        voltou.contains(&WidgetEvent::ValueChanged(ids::INSP_CONSTRAINT_FORCA[1])),
+        "o Esc avisa pela barra: {voltou:?}"
+    );
+    assert_eq!(host.store().number_value(chip), Some(50.0), "o Esc devolve");
+    let _ = ponteiro(&mut host, PointerKind::Up, x + 20.0);
+    let _ = host.drained_actions();
+    let mut evs = ponteiro(&mut host, PointerKind::Down, x);
+    evs.extend(ponteiro(&mut host, PointerKind::Move, x + 10.0));
+    evs.extend(ponteiro(&mut host, PointerKind::Move, x + 20.0));
+    evs.extend(ponteiro(&mut host, PointerKind::Up, x + 20.0));
+    assert!(
+        evs.contains(&WidgetEvent::ValueChanged(ids::INSP_CONSTRAINT_FORCA[1])),
+        "o campo avisa pela barra: {evs:?}"
+    );
+    aplica(&mut host, &mut state, evs);
+    let e = edicoes(host.drained_actions());
+    set_current_inspector_constraints(None);
+    crate::every_painted_id_is_reachable::clear_the_scene();
+    ph2d_panel_inspector::set_cards_on(false);
+    let Some(E::Forca(id, v)) = e.last() else {
+        panic!("o scrub não publicou a força: {e:?}");
+    };
+    assert_eq!(*id, 42);
+    assert!(*v > 0.5 && *v <= 1.0, "o scrub sobe a força: {v}");
 }

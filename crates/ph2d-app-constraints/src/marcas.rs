@@ -20,6 +20,7 @@ use ph2d_timeline::{Forca, Instante, PropKind, TimelineDoc, TimelineIntent};
 fn controlos(k: usize, it: &Item) -> Vec<(u16, NodeId)> {
     let mut out = vec![
         (FORCA, insp::INSP_CONSTRAINT_FORCA.get(k)),
+        (FORCA, insp::INSP_CONSTRAINT_FORCA_CHIP.get(k)),
         (LIGADA, insp::INSP_CONSTRAINT_LIGADA.get(k)),
     ];
     for (&campo, tabela) in campos::numeros(&it.kind)

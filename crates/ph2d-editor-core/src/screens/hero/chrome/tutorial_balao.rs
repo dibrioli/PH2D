@@ -137,17 +137,32 @@ pub fn paint_balao(
         );
     }
 
-    fill_rounded_rect(scene, r, raio, resolve(ColorToken::BgElev, theme));
-    // O balão pede a atenção do aluno: a moldura do foco (moderno) / o acento (clássico).
-    crate::paint::stroke_frame(
-        scene,
-        r,
-        raio,
-        theme,
-        ph2d_tokens::visuals::Feel::Focused,
-        StrokeToken::Default.px(),
-        acento,
-    );
+    let sup = crate::widget::lista_flutuante::Superficie::de(theme);
+    // Em cartões, a caixa da lista e os widgets no tom dela; o anel e o fio já pedem a atenção.
+    let _veste = sup.veste();
+    if sup.tinta().is_some() {
+        sup.moldura_de_caixa(scene, r);
+    } else {
+        fill_rounded_rect(scene, r, raio, resolve(ColorToken::BgElev, theme));
+        // O balão pede a atenção do aluno: a moldura do foco (moderno) / o acento (clássico).
+        crate::paint::stroke_frame(
+            scene,
+            r,
+            raio,
+            theme,
+            ph2d_tokens::visuals::Feel::Focused,
+            StrokeToken::Default.px(),
+            acento,
+        );
+    }
+    let cor = |t: ColorToken| match sup.tinta() {
+        Some(ink) => ink.color(match t {
+            ColorToken::Text1 => ColorToken::KanbanCardFg,
+            ColorToken::Text2 => ColorToken::CardLabel,
+            o => o,
+        }),
+        None => resolve(t, theme),
+    };
     // O cartão come os cliques que caem nele (o painel por baixo não os recebe).
     hero.hit_index.register(TUTORIAL_BALAO, r);
 
@@ -183,11 +198,11 @@ pub fn paint_balao(
         y + (ROW_H_PX - fonte) * 0.5,
         fonte,
         inner_w - amostra.unwrap_or(0.0),
-        resolve(ColorToken::Text1, theme),
+        cor(ColorToken::Text1),
     );
     y += ROW_H_PX + gap;
-    for (t, cor) in &blocos {
-        y += paint_text_block(ts, scene, t, x, y, fonte, inner_w, resolve(*cor, theme)) + gap;
+    for (t, token) in &blocos {
+        y += paint_text_block(ts, scene, t, x, y, fonte, inner_w, cor(*token)) + gap;
     }
 
     let bw = ((inner_w - gap) * 0.5).max(1.0);

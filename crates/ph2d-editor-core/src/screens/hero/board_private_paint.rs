@@ -11,6 +11,7 @@ use crate::documents::live::LiveRole;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text, paint_text_elided, resolve};
+use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_board_model::BoardId;
 use ph2d_i18n::{tr, tr_with};
@@ -121,6 +122,26 @@ pub(super) fn paint(
                 paint_text_elided(ts, scene, t, x0, label_y(i), TypeToken::Sm.px(), w, text2);
             }
             Line::Toggle(key, b, on) => {
+                // Em cartões, a caixa de marcar: à esquerda, com a linha inteira como alvo (T64).
+                let sup = crate::widget::lista_flutuante::Superficie::de(theme);
+                if let Some(ink) = sup.tinta() {
+                    use crate::widget::{card_check_rect, paint_card_check};
+                    use ph2d_card_stack::metrics as m;
+                    let id = fac_node(*b);
+                    let alvo = Rect::new(x0, row(i), right - x0, s);
+                    let caixa = card_check_rect(x0, row(i), s);
+                    let hover = matches!(
+                        store.button_state(id),
+                        Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
+                    );
+                    paint_card_check(scene, ink, caixa, *on, hover);
+                    let tx = caixa.x + caixa.w + m::CHECK_GAP;
+                    let w = (right - tx).max(0.0);
+                    let font = TypeToken::Sm.px();
+                    paint_text_elided(ts, scene, tr(key), tx, label_y(i), font, w, text2);
+                    hit.register(id, alvo);
+                    continue;
+                }
                 let w = r.w - 2.0 * s;
                 paint_text_elided(
                     ts,
@@ -246,6 +267,38 @@ mod tests {
     use super::*;
     use crate::documents::live::LiveRole;
     use ph2d_a11y::NodeId;
+
+    /// Em cartões a opção é a caixa de marcar: a linha inteira é o alvo e o `IconId::Circle` sai; fora
+    /// deles, o botão de ícone na ponta da linha.
+    #[test]
+    fn a_opcao_do_private_e_a_caixa_de_marcar_em_cartoes() {
+        use crate::widget::lista_flutuante::force_cromo_on_this_thread;
+        let pinta = |cartao: bool| {
+            force_cromo_on_this_thread(Some(cartao));
+            let mut hit = HitIndex::default();
+            let store = WidgetStore::default();
+            let mut scene = VectorScene::new();
+            let mut ts = TextSystem::without_system_fonts();
+            let at = Rect::new(0.0, 0.0, 300.0, 0.0);
+            let v = PrivateView::Setup(PrivateSetup::default());
+            paint(
+                &mut scene,
+                &mut ts,
+                &mut hit,
+                &store,
+                Theme::default(),
+                &v,
+                at,
+            );
+            force_cromo_on_this_thread(None);
+            hit
+        };
+        let id = fac_node(FacButton::PrivateAnonymous);
+        let r = pinta(true).rect_for(id).expect("a opção");
+        assert!(r.w > 200.0, "a linha inteira é o alvo: {r:?}");
+        let antes = pinta(false).rect_for(id).expect("a opção");
+        assert!(antes.w < 60.0, "PH2D_CARDS=0: o botão de ícone: {antes:?}");
+    }
 
     /// Fora de uma sessão o painel ensina a abrir o Live; numa sessão mas noutro quadro, diz que o
     /// modo é do quadro da sala (auditoria W12, interface F6).

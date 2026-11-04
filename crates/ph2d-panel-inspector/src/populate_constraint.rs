@@ -5,9 +5,13 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
+use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use ph2d_editor_core::widget::{
     CheckboxState, CheckboxValue, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
+
+/// A força é uma fração `0..1`, mostrada em %.
+const PCT: f32 = 100.0; // LITERAL-PX-OK: fração mostrada em %, não medida de desenho
 
 pub(crate) fn populate_constraint(store: &mut WidgetStore) {
     super::populate::register_button_ids(
@@ -70,7 +74,10 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
         );
     }
     // A partida é a força de um item novo (`1`); o `sync_constraint` semeia a do documento.
-    for id in ids::INSP_CONSTRAINT_FORCA {
+    for (id, chip) in ids::INSP_CONSTRAINT_FORCA
+        .into_iter()
+        .zip(ids::INSP_CONSTRAINT_FORCA_CHIP)
+    {
         store.register(
             id,
             InteractiveState::Slider {
@@ -79,5 +86,31 @@ pub(crate) fn populate_constraint(store: &mut WidgetStore) {
                 orientation: SliderOrientation::Horizontal,
             },
         );
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format_number(0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number_mapped(id, chip, PCT, 0.0);
+        store.set_number_range(chip, 0.0, f64::from(PCT), 1.0);
+        store.mark_card_field(
+            chip,
+            CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: Some(f64::from(PCT)),
+            },
+        );
     }
+}
+
+/// A fração `0..1` da força no campo do cartão, sem o resto do `f32` («65.000»).
+pub(crate) fn em_pct(forca: f32) -> f64 {
+    f64::from((forca * PCT).round())
 }

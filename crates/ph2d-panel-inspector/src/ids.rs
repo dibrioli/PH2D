@@ -33,6 +33,8 @@ pub use inspector_luz::*;
 /// Os ids do cartão CONSTRAINTS — ver o cabeçalho.
 mod inspector_constraint;
 pub use inspector_constraint::*;
+mod inspector_constraint_chip;
+pub use inspector_constraint_chip::INSP_CONSTRAINT_FORCA_CHIP;
 mod inspector_constraint_opcao;
 mod inspector_constraint_opcao_b;
 mod inspector_constraint_prop;

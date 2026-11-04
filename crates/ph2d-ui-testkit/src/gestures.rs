@@ -72,6 +72,18 @@ impl MockPanelHost {
         out
     }
 
+    /// Esc, pelo despacho real: desfaz o scrub a meio.
+    pub fn esc_key(&mut self) -> Vec<WidgetEvent> {
+        let arena = Bump::new();
+        let tecla = ph2d_host::KeyEvent {
+            keycode: 0x1B,
+            modifiers: ph2d_host::Modifiers::default(),
+            kind: ph2d_host::KeyKind::Down,
+            timestamp_ns: 0,
+        };
+        ph2d_editor_core::interaction::dispatch_key(&mut self.store, tecla, &arena).to_vec()
+    }
+
     /// **Drive a REAL pointer DRAG** from `(x0, y0)` to `(x1, y1)` — Down, Move, Up — through the same
     /// [`dispatch_pointer`] the shell runs.
     ///

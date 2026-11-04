@@ -73,6 +73,7 @@ mod color_tint;
 /// O cartão CONSTRAINTS — a pilha do objecto.
 pub(crate) mod constraint;
 mod constraint_add;
+mod constraint_alvo;
 mod constraint_cola;
 pub(crate) mod constraint_valor;
 pub(crate) mod counter_watch;

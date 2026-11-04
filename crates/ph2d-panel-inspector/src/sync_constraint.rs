@@ -20,10 +20,19 @@ pub(crate) fn sync(host: &mut dyn PanelHostInternal) {
         .zip(crate::ids::INSP_CONSTRAINT_LIGADA.iter())
         .enumerate()
     {
-        if !matches!(host.store().slider(forca), Some((SliderState::Dragging, _)))
+        // O campo da força em cartão: enquanto o dedo ou o teclado o seguram, a barra é dele.
+        let chip = crate::ids::INSP_CONSTRAINT_FORCA_CHIP[k];
+        let no_campo = host.store().focus_id() == Some(chip)
+            || host.store().number_input_drag().map(|d| d.id) == Some(chip);
+        if !no_campo
+            && !matches!(host.store().slider(forca), Some((SliderState::Dragging, _)))
             && let Some(InteractiveState::Slider { value, .. }) = host.store_mut().get_mut(forca)
         {
             *value = row.forca.clamp(0.0, 1.0);
+        }
+        if !no_campo {
+            let pct = crate::populate_constraint::em_pct(row.forca.clamp(0.0, 1.0));
+            host.store_mut().set_number_value(chip, pct);
         }
         for (n, tabela) in row
             .numeros

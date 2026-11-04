@@ -54,6 +54,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// ⚠️ `with_panel` RODA o `populate` — o `MockPanelHost::new()` o pula, e um gate escrito sobre ele
 /// fica verde com os widgets mortos sob o rato.
 fn host() -> (MockPanelHost, TokensPanelState) {
+    ph2d_panel_tokens::cards::force_cards_on_this_thread(Some(false));
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
     (h, TokensPanelState::default())

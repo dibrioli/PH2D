@@ -46,6 +46,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// `MockPanelHost::new()` o pula, e um gate escrito sobre ele fica verde com os widgets mortos sob
 /// o mouse (o defeito que a lista de dez ferramentas do impasto já pagou).
 fn host() -> (MockPanelHost, TokensPanelState) {
+    ph2d_panel_tokens::cards::force_cards_on_this_thread(Some(false));
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
     // As famílias de cor de DADO nascem dobradas (integ 02/11): estes gates medem TODA linha, então

@@ -17,7 +17,7 @@ use ph2d_tokens::{ColorToken, NumToken};
 /// min↔max, com a digitação a continuar a funcionar (que é porque esta classe de bug sobrevive a
 /// revisão). O `0.5` é o degrau mais fino que a escala de fábrica usa: `stroke.hairline` vale
 /// exactamente 0.5 px, e um passo maior tornaria o menor token da família inalcançável no arrasto.
-const PX_STEP: f64 = 0.5;
+pub(crate) const PX_STEP: f64 = 0.5;
 
 /// O teto da FAIXA DE ARRASTO — e ele **não é** o teto do valor.
 ///

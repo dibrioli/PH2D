@@ -8,6 +8,7 @@
 
 mod a_linha_de_token_e_uma_linha_de_lista;
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod os_cartoes;
 mod scale_ceiling;
 mod seam_tokens;
 mod seam_tokens_dtcg;

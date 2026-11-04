@@ -54,6 +54,21 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::TOKENS_PANEL, rect);
 
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut(), theme, state);
+        let cartoes = crate::cards::cards(theme, state);
+        ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ids::TOKENS_PANEL,
+            TokensPanel::TITLE.tr(),
+            &cartoes,
+        );
+        let store = ctx.host.store();
+        set_last_content_h(store.panel_content_h(ids::TOKENS_PANEL).unwrap_or(0.0));
+        set_last_visible_h(store.panel_visible_h(ids::TOKENS_PANEL).unwrap_or(0.0));
+        return;
+    }
+
     paint_panel_surface(rect, ctx.scene, theme);
     {
         let _hit_index = ctx.host.hit_index_mut();

@@ -1137,7 +1137,8 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     ("inspector", 101),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
-    ("tokens", 4),
+    // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).
+    ("tokens", 5),
     // ⛔ **`16`** comandos (eram 17 até a W1e tirar o grupo PAPER, 09/10; 14 → 16 a 11/10, ordem do dono:
     //    o RELEVO da tinta volta como a secção Relief — o reset do Emboss e o do grupo): a fábrica derivada
     //    dele vive noutra crate (`ph2d_tool_painter::ids::wet_tuning_reset_id`) — um *Reset* por botão.
@@ -2272,7 +2273,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `port`, `timeline`, `person`, `code`, `kanban`) são secções fixas semeadas RECOLHIDAS
     //    (`ph2d_panel_tokens::familias`). ⛔ «Recolher não se aplica» acima deixou de ser verdade:
     //    uma cor nova de uma família listada entra dobrada; uma família nova entra na tabela dela.
-    ("tokens", 2302.0),
+    // ⬇️ `2 302 → 2 012` em 2026-11-04 (NovaUI D1, em cartões), MEDIDO: a linha de cartão mede mais (`2 871`
+    //    com a Escala aberta), e a cura é a Escala nascer dobrada.
+    ("tokens", 2012.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

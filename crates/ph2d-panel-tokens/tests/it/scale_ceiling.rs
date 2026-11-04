@@ -51,6 +51,7 @@ const VIEWPORT: Rect = Rect {
 const MEASURE_VIEWPORT_H: f32 = 1.0e8;
 
 fn host() -> (MockPanelHost, TokensPanelState) {
+    ph2d_panel_tokens::cards::force_cards_on_this_thread(Some(false));
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
     (h, TokensPanelState::default())

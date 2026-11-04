@@ -49,6 +49,10 @@ pub const TOKENS_SEC_PERSON: NodeId = hash_node_id("tokens.sec.person");
 pub const TOKENS_SEC_CODE: NodeId = hash_node_id("tokens.sec.code");
 /// Ver [`TOKENS_SEC_NODE_CAT`].
 pub const TOKENS_SEC_KANBAN: NodeId = hash_node_id("tokens.sec.kanban");
+/// Os três cartões que só existem na lista de cartões: o modo, as cores do app e a escala.
+pub const TOKENS_SEC_MODE: NodeId = hash_node_id("tokens.sec.mode");
+pub const TOKENS_SEC_APP: NodeId = hash_node_id("tokens.sec.app");
+pub const TOKENS_SEC_SCALE: NodeId = hash_node_id("tokens.sec.scale");
 
 /// O **Reset** da linha `row` — devolve UM token à fábrica.
 #[must_use]

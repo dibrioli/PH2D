@@ -80,6 +80,7 @@ fn a_etiqueta_de_cor_e_o_quadrado_da_linha_no_mesmo_x_e_o_reset_e_um_icone() {
     )
     .unwrap();
 
+    ph2d_panel_tokens::cards::force_cards_on_this_thread(Some(false));
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
     // As famílias de cor de DADO nascem dobradas (integ 02/11); a régua mede TODA etiqueta, abertas.

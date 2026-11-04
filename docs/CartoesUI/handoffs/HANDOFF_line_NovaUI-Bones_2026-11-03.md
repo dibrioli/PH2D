@@ -78,7 +78,7 @@ O vermelho do segmento estreito e do título foi visto antes da cura (`nenhum_ro
 
 ## 9 — Smoke do dono (03/11): OK, com duas curas
 
-O dono aprovou o resto e achou duas coisas; as duas estão curadas e ele ainda não as reviu no app.
+O dono aprovou o resto e achou duas coisas. As duas foram curadas e **ele as aprovou no 2.º smoke (03/11)**.
 
 1. **Arrastar no ícone de Segments não fazia nada.** Causa: o campo arrasta em contínuo (0,1 por px), o documento guarda inteiro e `semeia` repõe-no a cada quadro; a base do Move seguinte era esse valor, e o resíduo perdia-se (`round(round(v) + d) == round(v)`). O `as u8` ainda cortava: subir ficava preso e descer caía no 1.º px. **O IK Chain é a mesma família** e foi curado no mesmo bloco.
    - Cura em `pointer_move.rs`: num campo de cartão a base é o acumulador enquanto o documento estiver a menos de um passo dele (só arredondou); além disso ele bateu num piso/tecto e a base volta ao valor, para a inversão não ter zona morta. Vale para todo campo de cartão, sem novo campo em `CardFieldSpec` (a linha do Inspector constrói-o). Campo contínuo: acumulador = valor.

@@ -69,6 +69,9 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - C1, cartão Object solto: tem cabeçalho sem título (o nome do objecto, o alfinete e o ×); na lista segue sem cabeçalho. Sem isto o alfinete caía em cima do olho.
 - C1, Material preso: escolher `Mix` tira o componente (lei de sempre, lido em `BlendFieldEdit`, não corrido); o cartão do preso passa a «Not available», como o da lista some. A rever no smoke.
 - C1, Object sem linha na Hierarquia: sem cadeado, como na lista.
+- C2, Fill preso a A com o seletor de cor aberto, escolher outra forma: o seletor CONTINUA em A, porque é para isso que existe o alfinete. Por isso o clique fora não o fecha: fecha pelo × ou abrindo outra amostra (o da seleção segue a fechar).
+- C2, o cartão preso só edita as tintas de base e a opacidade, olho e «–» das camadas, como o da lista. Tipo, degradê, padrão, tracejado, setas, reordenar e abrir camada continuam no painel Vector, sobre a seleção. O Weight de uma camada só aparece num traço que é só camada, a lei de sempre.
+- C2, o cartão Fill solto e preso sai da lista («Fill · on canvas», visto na foto): a seleção volta a ter Fill na lista só com a cópia T54.
 - F, Hierarchy: a lista flutua e o canvas passa por trás dela, como no Inspector. A régua vertical fica na borda da janela e a lista começa 5 px depois dela (espelho da D31); as barras do módulo saem de baixo da lista.
 - F, Hierarchy: busca e filtro presos debaixo do título, fora da rolagem (Figma, Godot): numa cena grande rolavam para longe. O «+» mora no cabeçalho da lista pelo mesmo motivo.
 - F, Hierarchy: um cartão só, cujo título é a contagem («18 entities · 128 components»). Linhas de 22 px, listra alternada mantida (pedido do dono, 06/09), fundo e clique na largura inteira da linha, recuo só no conteúdo.
@@ -179,6 +182,43 @@ Guarda do espalhamento + **Material, Ordering, Object, Appearance** presos, todo
 4. **Globais por objecto, ainda por resolver:** `OPEN`/`open_layer_index`, `LIGADOS` e `estilos::drena`, o seletor de cor (`HEX_PENDENTE`, `apply_picker`). A lista `estilos` tem o seu próprio rect: `note_card_press` só guarda a de `cards::dropdown` e a do store; a dos estilos tem de entrar na mesma guarda.
 5. **Só depois:** acrescentar `CARD_FILL`/`CARD_STROKE` a `DO_OBJECTO`, no mesmo commit da escrita. A cena 10 estende-se em `os_quatro` (`smoke_cartoes_inspector.rs`), e o gesto em `o_alfinete_dos_cartoes_c1::preso`.
 6. Decisão de produto aberta no plano 09: Fill preso com o seletor aberto, escolher outra forma. Recomendação registada: continua em A.
+
+### Bloco C2 (04/11)
+
+**Fill e Stroke presos.** Commits `ffd18494e9`, `a51c331530`. Crate nova `ph2d-app-vec-preso` (a `ph2d-app-vec` ficava 309 linhas acima do tecto; ficou em 93 623 de 93 637). Foto vista: `maquete/c_alfinete_fill_stroke.png` (cena `PH2D_VEC_CARTOES_SMOKE=11`: Fill e Stroke presos a Shape A e a Shape B, com B escolhido; cada cartão mostra as cores, o Weight, o Cap e o Join do seu).
+
+Por gesto real, com as portas reais do vetor (`o_alfinete_fill_stroke_c2`, 8 testes; prende-se a A; seleção B, B+C, A+B; A muda, B e C ficam byte a byte, a tool fica a da seleção):
+
+| Controlo | Prova |
+|---|---|
+| Cor (base Fill, base Stroke, camada) | `the_colour_picker_opened_…`: semente de A, escreve em A, continua em A com outra forma escolhida |
+| Hex (as três linhas) | `the_hex_typed_…`: fica em A, o seletor que ele abriu fecha ao chegar a cor |
+| Opacidade da base e da camada, olho, «–», «+» | `the_base_fill_row_…`, `the_layer_rows_…` |
+| Largura, Cap, Join, Position pela lista, olho, «–» do Stroke | `every_control_of_the_pinned_stroke_card_…` |
+| Largura de camada | `the_layer_rows_…`, num traço só de camada |
+| Estilos ⠿: abrir, aplicar, soltar | `the_colour_styles_…`: só A liga, a vista da seleção não herda |
+| Editar estilo («Edit style», Rename, Duplicate, Delete) | **sem prova nova**: são do estilo, não do objecto; aplicam-se a todas as formas ligadas |
+| Criar estilo («+») | **sem prova**: o pedido usa as mesmas formas do aplicar (lido, não corrido) |
+| Camada aberta independente | `the_layer_rows_…`, `every_control_…`: a aberta da seleção não muda e o Cap vai à base de A |
+| Dois soltos em objectos diferentes | `two_pinned_fill_cards_…`: número, seletor e ⠿ de cada um |
+| Degradê | `a_gradient_on_the_pinned_…`: a escolha não o esmaga |
+| Tipo de tinta, degradê como editor, pattern, tracejado, reordenar, abrir camada | **não existem no cartão** (lido em `cards_pilha.rs`); o retrato não leva o pattern |
+
+Desfazer: `a_pinned_fill_and_stroke_edit_…` (shell): verbos, olho e cor pelas portas, sobre `ProjectState`; repõe A, B intacto. **Não corrido na app real com o ponteiro real**, ao contrário do C1.
+
+Contraprovas vistas vermelhas: `alvo_do_gesto` fora (4), `seletor_na_base` fora (1), `aponta` a escrever na aberta (1), `devolve_o_estilo` fora (2), `semeia_as_linhas` fora do ensaio (1). Do C1: semente da opacidade no `prepare` fora, `opacity_blend_and_eye_…` vermelho; teste da shell de C1 verde de novo.
+
+Pedidos do C1: `Reset` do Transform preso é de A (`the_reset_of_the_pinned_transform_card_…`). `Mix` num Material preso tira o componente e o bloco deixa de se publicar (`mix_on_a_pinned_material_…`, shell); o cartão deixa de oferecer os modos e o alfinete fica (`a_material_card_pinned_…`). **O texto «Not available» no solto não foi testado.**
+
+Catracas: `the_shell_only_shrinks` e `…_every_app_crate_too` verdes (tecto novo `ph2d-app-vec-preso` 395).
+
+**Aberto:**
+- ⛔ **O losango de um campo preso é o da seleção**, e clicá-lo grava a chave na seleção (lido em `fase_autokey.rs`, não corrido; plano 09). Vale para todos os presos, desde o Transform.
+- Custo por quadro não medido com as tintas no retrato (plano 09 mediu só a aparência).
+- `press_subject` fica até à pressão seguinte: um atalho de teclado que autorasse estilo depois de um clique no preso iria ao preso. Nenhum achado; só leitura.
+- Um clique rápido duplo no olho vira `DoubleClick`, e o segundo não alterna. Vale para o painel de antes também (visto no teste).
+- Tinta de base ligada a estilo com o seletor do preso: `solta_bases_mexidas` é a lei de sempre; sem teste no preso.
+- Sem clippy nem suíte (fecho da linha).
 
 **Bloco G, fatia 1 (04/11).** Plano em [12](12_VECTOR_PLANO.md) (30 entradas no corpo, não ~41). Todo o painel passou a cartões de uma vez, com `PH2D_CARDS=0` a dar o de antes (`crates/ph2d-panel-vector/src/cards.rs`). Corpos nativos: Transform, Snap, Constraints, Frame, Clip. O resto: hospedeiro com o cabeçalho absorvido, como os componentes do Inspector. **A sonda** (`sonda_da_seccao`): o pintor antigo corre só até ao cabeçalho, que responde «dobrada» e devolve título e «+»; assim a condição de cada secção continua a ser a única resposta, sem pintar duas vezes nem repetir predicados. O «+» de F43/F44 passou ao cabeçalho do cartão com o mesmo id; em `rows.rs`, um cabeçalho absorvido deixou de registar a pega e a acção por cima do título. Advanced corre pelo `corre()` de sempre, dentro de um cartão: ordem, tema e notas dos membros seguem iguais.
 

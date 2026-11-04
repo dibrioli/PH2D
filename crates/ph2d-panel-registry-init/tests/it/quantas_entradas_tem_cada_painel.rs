@@ -2299,7 +2299,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `219 → 250` em 2026-11-04 (NovaUI G1), e NÃO é uma secção a nascer aberta: abre com as MESMAS
     //    três, Snap e Advanced dobradas (`g1_os_cartoes::the_panel_opens_with_the_same_three_sections`);
     //    os 31 px são a moldura dos cartões. A única a dobrar seria Fill & Stroke, a razão do painel.
-    ("vector", 250.0),
+    // ⬆️ `250 → 260` em 2026-11-04 (NovaUI G2): as MESMAS duas linhas de Fill & Stroke (a tinta e o traço
+    //    de base), agora com a altura de todo campo de cartão (`metrics::FIELD_H`). Sem secção nova a
+    //    abrir; dobrar Fill & Stroke esconderia a razão do painel.
+    ("vector", 260.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

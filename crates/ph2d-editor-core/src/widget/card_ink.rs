@@ -77,6 +77,8 @@ mod tests;
 
 thread_local! {
     static CORPO: std::cell::Cell<Option<CardInk>> = const { std::cell::Cell::new(None) };
+    static POPOVER: std::cell::Cell<Option<(ph2d_a11y::NodeId, CardInk)>> =
+        const { std::cell::Cell::new(None) };
 }
 
 /// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
@@ -89,6 +91,41 @@ pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
     }
     let _repoe = Repoe(CORPO.with(|c| c.replace(Some(ink))));
     f()
+}
+
+/// A lista suspensa aberta cujo chip se pintou dentro de um cartão: `(id, tinta)`. O popover pinta-se
+/// num passe diferido, fora do corpo do cartão, e é por aqui que leva a tinta dele (T25, 05 §4).
+pub(crate) fn lembra_popover(id: ph2d_a11y::NodeId, ink: CardInk) {
+    POPOVER.with(|c| c.set(Some((id, ink))));
+}
+
+/// A tinta do popover `id` — `None` se o chip dele não veio de um cartão.
+pub(crate) fn tinta_do_popover(id: ph2d_a11y::NodeId) -> Option<CardInk> {
+    POPOVER
+        .with(std::cell::Cell::take)
+        .filter(|(i, _)| *i == id)
+        .map(|(_, ink)| ink)
+}
+
+/// Troca a lembrança do popover (`None` = limpa) e devolve a que estava — o painel cuja lista pode ser
+/// de um cartão PRESO (T61) pergunta assim se o corpo dele abriu alguma.
+#[must_use]
+pub fn troca_popover(
+    novo: Option<(ph2d_a11y::NodeId, CardInk)>,
+) -> Option<(ph2d_a11y::NodeId, CardInk)> {
+    POPOVER.with(|c| c.replace(novo))
+}
+
+/// O papel de um token de lista aberta num cartão — os mesmos tons do popover T16 do cartão.
+pub(crate) const fn papel_no_popover(token: ColorToken) -> ColorToken {
+    match token {
+        ColorToken::BgElev => ColorToken::KanbanCardRaised,
+        ColorToken::Border => ColorToken::CardField,
+        ColorToken::Accent | ColorToken::Bg3 => ColorToken::CardFieldHover,
+        ColorToken::AccentFg | ColorToken::Text1 => ColorToken::KanbanCardFg,
+        ColorToken::Text2 | ColorToken::Text3 => ColorToken::CardLabel,
+        other => other,
+    }
 }
 
 /// O fundo de uma caixa de campo no cartão cujo corpo se pinta — `None` fora de um cartão.

@@ -8,7 +8,6 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorBlendInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
@@ -80,54 +79,28 @@ pub(crate) fn paint_material_blend_section(
         1,
         &[tr("component.field.blend_mode.1")],
     );
-    let blend_row = super::rows::property_label_row(
+    // ⚠️ **Nenhum aceso = «misto»**: cinco sprites com três blends não acendem «Mix» como se
+    // concordassem (auditoria `docs/Sprite_projeto/20` §3.3).
+    let nomes = BLEND_LABELS.map(TextKey::tr);
+    yy = super::rows::seg_row_misto(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         x,
         w,
         yy,
-        h,
-        tr("component.field.blend_mode.1"),
+        TextKey::new("component.field.blend_mode.1"),
+        (
+            core_ids::INSP_LIVE_BLEND_SECTION,
+            &ids::INSP_SAMPLE_BLEND,
+            &nomes,
+        ),
+        (!info.mixed.blend).then(|| usize::from(info.blend_tag).min(BLEND_LABELS.len() - 1)),
         sec,
+        row_gap,
     );
-    let seg = SegmentedAdaptive::new(
-        core_ids::INSP_LIVE_BLEND_SECTION,
-        tr("component.field.blend_mode.1"),
-        ids::INSP_SAMPLE_BLEND
-            .iter()
-            .zip(BLEND_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
-            .collect(),
-    )
-    // ⚠️ **Índice fora de alcance = nenhum aceso**, que é como este widget diz «misto». A flag
-    // era calculada pelo host (`inspector_ordering.rs`) e **deitada fora aqui**: cinco sprites com
-    // três blends diferentes acendiam «Mix» como se concordassem, ao lado de checkboxes que
-    // mostravam Indeterminate corretamente (auditoria `docs/Sprite_projeto/20` §3.3).
-    .selected(if info.mixed.blend {
-        usize::MAX
-    } else {
-        usize::from(info.blend_tag).min(BLEND_LABELS.len() - 1)
-    });
-    let seg_h = paint_segmented_adaptive(
-        &seg,
-        blend_row.control,
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene,
-        theme,
-        blend_row.dot,
-        &ids::INSP_SAMPLE_BLEND,
-        TextKey::new("component.field.blend_mode.1").into(),
-    ) {
-        hit_index.register(alvo, blend_row.dot);
-    }
-    yy += seg_h.max(h) + row_gap;
 
     // Material slot — read-only placeholder. The renderer is
     // fixed-function (no material / shader runtime yet, spec §3.10);

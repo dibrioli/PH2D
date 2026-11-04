@@ -368,6 +368,9 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
     if let Some(ink) = crate::widget::card_ink::card_body() {
         let texto = dd.selected_label().unwrap_or(&dd.placeholder);
         let aceso = dd.hover_t > 0.0 || dd.open;
+        if dd.open {
+            crate::widget::card_ink::lembra_popover(dd.id, ink);
+        }
         return card_chip::chip(scene, text_system, ink, rect, texto, aceso);
     }
     // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno, moldura só no foco.

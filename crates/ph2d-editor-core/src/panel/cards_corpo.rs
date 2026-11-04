@@ -8,6 +8,7 @@
 
 use super::{CardCtx, Cell, Seg, Widget};
 use crate::interaction::{HitIndex, WidgetStore};
+use crate::widget::CheckboxValue;
 use crate::widget::card_field::CardFieldSpec;
 use crate::widget::card_field::Glyph;
 use crate::widget::card_ink::CardInk;
@@ -231,7 +232,51 @@ pub(super) const LINHAS: crate::property_row::cartao::CardRows =
         fields,
         choices: choices_de_fora,
         check: check_de_fora,
+        text: text_de_fora,
+        label: rotulo_em_cima,
     };
+
+#[allow(clippy::too_many_arguments)]
+fn text_de_fora(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: Rotulo<'_>,
+    id: NodeId,
+    placeholder: &str,
+) -> f32 {
+    let ids = [id];
+    let cell = Cell::new(Widget::Text { id, placeholder })
+        .label(rotulo.texto)
+        .key(&ids);
+    ctx(scene, text_system, store, hit_index, ink, x, w).row(&[cell], y)
+}
+
+/// ⭐ O rótulo EM CIMA de um controlo que o chamador constrói (T29, os 11 `property_label_row`): as
+/// colunas devolvidas têm o controlo a toda a largura por baixo e a marca na linha do rótulo (D17).
+/// `control.y + control.h` é o fundo; fora de um cartão a mesma conta dá a linha de sempre.
+fn rotulo_em_cima(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: &str,
+) -> crate::widget::PropertyRow {
+    let (k, ly) = (m::KEY_MARK_BOX, y + m::LABEL_TOP);
+    crate::widget::card_field::paint_label(scene, text_system, ink, x, ly, w - k, rotulo);
+    crate::widget::PropertyRow {
+        label: Rect::new(x, ly, w - k, m::LABEL_PX),
+        control: Rect::new(x, ly + m::LABEL_PX + m::LABEL_BOTTOM, w, m::FIELD_H),
+        dot: Rect::new(x + w - k, ly + (m::LABEL_PX - k) * 0.5, k, k),
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 fn choices_de_fora(
@@ -283,9 +328,10 @@ fn check_de_fora(
     y: f32,
     id: NodeId,
     label: Rotulo<'_>,
-    on: bool,
+    valor: CheckboxValue,
+    parada: bool,
 ) -> f32 {
-    check(
+    check_valor(
         scene,
         text_system,
         store,
@@ -294,7 +340,8 @@ fn check_de_fora(
         x,
         w,
         y,
-        Marca { id, label, on },
+        (id, label),
+        (valor, parada),
     )
 }
 
@@ -321,26 +368,63 @@ pub fn check(
     y: f32,
     c: Marca<'_>,
 ) -> f32 {
+    let valor = if c.on {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    check_valor(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        x,
+        w,
+        y,
+        (c.id, c.label),
+        (valor, false),
+    )
+}
+
+/// [`check`] com o valor inteiro: «misto» (o traço) e parada (o estado desligado do `Checkbox`).
+#[allow(clippy::too_many_arguments)]
+fn check_valor(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    (id, label): (NodeId, Rotulo<'_>),
+    (valor, parada): (CheckboxValue, bool),
+) -> f32 {
     let (h, b, k) = (m::FIELD_H, m::CHECK_BOX, m::KEY_MARK_BOX);
     let y = y + m::FIELD_ROW_GAP;
-    hit_index.register(c.id, Rect::new(x, y, w, h));
+    hit_index.register(id, Rect::new(x, y, w, h));
     let caixa = crate::widget::card_check_rect(x, y, h);
-    let hover = store.hover_live(c.id) > 0.0;
-    crate::widget::paint_card_check(scene, ink, caixa, c.on, hover);
+    let hover = !parada && store.hover_live(id) > 0.0;
+    crate::widget::paint_card_check_value(scene, ink, caixa, valor, hover);
     let tx = x + b + m::CHECK_GAP;
     crate::paint::paint_text_elided(
         text_system,
         scene,
-        c.label.texto,
+        label.texto,
         tx,
         y + (h - m::VALUE_PX) * 0.5,
         m::VALUE_PX,
         (x + w - tx - k).max(0.0),
-        ink.color(ColorToken::KanbanCardFg),
+        ink.color(if parada {
+            ColorToken::CardLabel
+        } else {
+            ColorToken::KanbanCardFg
+        }),
     );
     let dot = Rect::new(x + w - k, y + (h - k) * 0.5, k, k);
     if let Some(alvo) =
-        crate::widget::key_mark::paint_decorator_campo(scene, ink.theme, dot, &[c.id], c.label)
+        crate::widget::key_mark::paint_decorator_campo(scene, ink.theme, dot, &[id], label)
     {
         hit_index.register(alvo, dot);
     }

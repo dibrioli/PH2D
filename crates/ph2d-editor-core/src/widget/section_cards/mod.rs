@@ -279,6 +279,11 @@ fn close_with(
     y: f32,
     depth: CardDepth,
 ) -> f32 {
+    // ⛔ No corpo de um cartão o cartão JÁ É a superfície (05 §8): uma chapa aqui cobria o título e
+    // as caixas com o tom do Inspector, de cima do corpo até à fronteira (Camera, Anchors).
+    if crate::widget::card_ink::card_body().is_some() {
+        return y;
+    }
     let Some((mut cards, parked)) = LEDGER.with(|l| l.borrow_mut().pop()) else {
         return crate::widget::showcase::paint_section_separator(scene, theme, x, w, y);
     };

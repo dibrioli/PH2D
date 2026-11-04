@@ -194,17 +194,34 @@ fn paint_list<T: Clone + PartialEq>(
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);
     let scroll = store.panel_scroll(dd.id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
-    paint_dropdown_popover_scrolled(
-        dd,
-        chip,
-        panel,
-        scroll,
-        store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(dd.id)),
-        scene,
-        text_system,
-        theme,
-        rows,
-    );
+    let barra = store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(dd.id));
+    // O chip veio de um cartão ⇒ a lista tem a cara dele, tema próprio incluído (T25, 05 §4).
+    match crate::widget::card_ink::tinta_do_popover(dd.id) {
+        Some(ink) => crate::widget::card_ink::com(ink, || {
+            paint_dropdown_popover_scrolled(
+                dd,
+                chip,
+                panel,
+                scroll,
+                barra,
+                scene,
+                text_system,
+                ink.theme,
+                rows,
+            );
+        }),
+        None => paint_dropdown_popover_scrolled(
+            dd,
+            chip,
+            panel,
+            scroll,
+            barra,
+            scene,
+            text_system,
+            theme,
+            rows,
+        ),
+    }
     for (id, band) in visible_option_bands(dd, chip, panel, scroll) {
         hit_index.register(id, band);
     }

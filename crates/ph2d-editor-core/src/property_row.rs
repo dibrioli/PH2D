@@ -66,6 +66,9 @@ pub fn paint_label_row(
     label: &str,
     seccao: Seccao,
 ) -> PropertyRow {
+    if let Some((ink, rows)) = cartao::card_rows() {
+        return (rows.label)(scene, text_system, ink, x, w, y, label);
+    }
     let row = colunas_da_linha(x, w, y, h, seccao.com_o_nome(text_system, label));
     let label_font = TypeToken::Sm.px();
     crate::widget::paint_property_label(
@@ -198,6 +201,17 @@ pub fn caixa_do_controlo(x: f32, w: f32, y: f32, seccao: Seccao) -> Rect {
     let (_, _, cw) =
         crate::widget::property_fields_layout(row.control.w, 1, ph2d_tokens::control_gap_px(), 0.0);
     Rect::new(row.control.x, row.control.y, cw, ROW_H_PX)
+}
+
+/// A caixa de uma linha de UM controlo JÁ pintada entre `y` e `fim`, para quem desenha por cima dela
+/// (o conta-gotas do alvo da câmera): num cartão ela é a `FIELD_H` que termina em `fim`.
+#[must_use]
+pub fn caixa_da_linha_pintada(x: f32, w: f32, y: f32, fim: f32, seccao: Seccao) -> Rect {
+    if crate::widget::card_ink::card_body().is_some() {
+        let h = ph2d_card_stack::metrics::FIELD_H;
+        return Rect::new(x, fim - h, w, h);
+    }
+    caixa_do_controlo(x, w, y, seccao)
 }
 
 /// ⭐⭐⭐ **A LINHA DE VÁRIAS COMPONENTES — o nome à ESQUERDA, as caixas na coluna do controlo.**
@@ -506,6 +520,22 @@ pub fn paint_text_row<'a>(
     // ⚠️ A geometria e o nome saem da MESMA `row_and_layout` das irmãs — não há aqui uma segunda
     //    conta de onde a coluna do nome acaba.
     let label = label.into();
+    if let Some((ink, rows)) = cartao::card_rows() {
+        let exemplo = input.placeholder.as_str();
+        return (rows.text)(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            label,
+            id,
+            exemplo,
+        );
+    }
     let (row, _, linhas, cw) =
         row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
     let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);

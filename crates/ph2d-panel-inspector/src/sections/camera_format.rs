@@ -187,8 +187,10 @@ fn format_row(
         .iter()
         .map(|o| text_system.prefix_width(&o.label, TypeToken::Base.px()))
         .fold(0.0_f32, f32::max);
+    // No cartão o rótulo vai sempre em cima e o chip enche a linha (05 §4).
+    let cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
     let cabe_ao_lado =
-        ph2d_editor_core::widget::dropdown_chip_width_for(mais_largo, ROW_H_PX) <= lado.w;
+        cartao || ph2d_editor_core::widget::dropdown_chip_width_for(mais_largo, ROW_H_PX) <= lado.w;
     let (rect, dot, fim) = if cabe_ao_lado {
         let linha = ph2d_editor_core::property_row::paint_label_row(
             scene,
@@ -201,10 +203,11 @@ fn format_row(
             tr(ROTULOS[0]),
             seccao,
         );
+        // O formato é do PROJECTO, não se anima: no cartão não leva marca (D17).
         (
             linha.control,
-            Some(linha.dot),
-            y + ph2d_tokens::row_pitch_px(),
+            (!cartao).then_some(linha.dot),
+            linha.control.y + linha.control.h.max(ph2d_tokens::row_pitch_px()),
         )
     } else {
         let font = TypeToken::Sm.px();

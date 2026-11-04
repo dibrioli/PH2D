@@ -118,6 +118,13 @@ fn linha(
     p: &InspectorScriptProp,
     seccao: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
+    // No cartão um booleano é a linha de marcar dele, com o nome à direita da caixa (T64).
+    if let (InspectorScriptValue::Bool(_), true) = (
+        &p.value,
+        ph2d_editor_core::widget::card_ink::card_body().is_some(),
+    ) {
+        return linha_de_marcar(scene, text_system, theme, hit_index, store, x, w, y, i, p);
+    }
     // ⭐⭐ **O nome fica À ESQUERDA do controlo, não por cima** (`line/UIUX`, report do dono de
     //    2026-09-14 e 15). ⚠️ A coluna é da SECÇÃO: os nomes vêm do script do artista, logo a
     //    lista mede-se do INFO — uma coluna derivada só desta linha saltaria de linha para linha.
@@ -134,6 +141,7 @@ fn linha(
     );
     ph2d_editor_core::widget::arrasto::e_propriedade_do_script();
     let row_y = row.control.y;
+    let altura = row.control.h;
     let gap = Spacing::Xs.px();
     let reset_w = largura_do_botao(
         text_system,
@@ -186,7 +194,7 @@ fn linha(
     }
     .max(0.0);
     let reset_w = reset_w.min(control_w);
-    let ctrl = Rect::new(row.control.x, row_y, ctrl_w, ALTURA_DE_CAMPO);
+    let ctrl = Rect::new(row.control.x, row_y, ctrl_w, altura);
     super::script_controlo::controlo(
         scene,
         text_system,
@@ -201,19 +209,9 @@ fn linha(
     );
     if p.own {
         let rect = if reset_desce {
-            Rect::new(
-                row.control.x,
-                row_y + ALTURA_DE_CAMPO + gap,
-                reset_w,
-                ALTURA_DE_CAMPO,
-            )
+            Rect::new(row.control.x, row_y + altura + gap, reset_w, altura)
         } else {
-            Rect::new(
-                row.control.x + ctrl_w + gap,
-                row_y,
-                reset_w,
-                ALTURA_DE_CAMPO,
-            )
+            Rect::new(row.control.x + ctrl_w + gap, row_y, reset_w, altura)
         };
         botao(
             scene,
@@ -228,11 +226,66 @@ fn linha(
     }
     // ⚠️ A altura conta a fileira que o refluxo de facto produziu — ver o bloco do `reset_desce`.
     let alturas = if reset_desce {
-        ALTURA_DE_CAMPO * 2.0 + gap
+        altura * 2.0 + gap
     } else {
-        ALTURA_DE_CAMPO
+        altura
     };
     row_y + alturas + Spacing::Sm.px()
+}
+
+/// A linha de um booleano dentro de um cartão: a marca (o valor vem do store, como a de hoje), e o
+/// `Reset` de um valor próprio por baixo dela.
+#[allow(clippy::too_many_arguments)]
+fn linha_de_marcar(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    i: usize,
+    p: &InspectorScriptProp,
+) -> f32 {
+    let id = ids::INSP_SCRIPT_BOOL[i];
+    let campos = [id];
+    key_mark::regista_canal(&campos, &p.canais);
+    let (_, valor) = store
+        .checkbox(id)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let sec = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &[p.name.as_str()]);
+    let fim = super::rows::caixa_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (id, p.name.as_str(), valor),
+        sec,
+    );
+    if !p.own {
+        return fim;
+    }
+    let reset_id = ids::INSP_SCRIPT_RESET[i];
+    let nome = tr("panel.inspector.script.reset");
+    let reset_w = largura_do_botao(text_system, reset_id, nome).min(w);
+    let gap = Spacing::Xs.px();
+    let altura = ALTURA_DE_CAMPO;
+    botao(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        Rect::new(x, fim + gap, reset_w, altura),
+        reset_id,
+        nome,
+    );
+    fim + gap + altura
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

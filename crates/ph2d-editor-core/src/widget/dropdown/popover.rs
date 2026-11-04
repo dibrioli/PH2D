@@ -63,6 +63,10 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
 /// `AccentSoft` is alpha 0x29 by design — fine for inline overlays,
 /// wrong for an opaque surface).
 pub fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        let c = ink.color(crate::widget::card_ink::papel_no_popover(token));
+        return c.with_alpha(1.0);
+    }
     let c = token.resolve(theme);
     ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF) // LITERAL-COLOR-OK: token-bridge with forced-opaque alpha (popover must occlude content behind it)
 }
@@ -121,6 +125,9 @@ pub type PopoverRowPainter<'a> = &'a mut dyn FnMut(&mut VectorScene, &mut TextSy
 /// **A moldura opaca de uma lista aberta** — uma só para a lista que rola e a que não rola.
 fn paint_popover_frame(scene: &mut VectorScene, panel: Rect, theme: Theme) {
     let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        return card_chip::moldura_da_lista(scene, panel, ink);
+    }
     fill_rounded_rect(
         scene,
         panel,
@@ -140,12 +147,11 @@ fn paint_popover_frame(scene: &mut VectorScene, panel: Rect, theme: Theme) {
 
 /// **O realce da linha vigente** — pintado pela lista por baixo de QUALQUER pintor de linha.
 pub fn paint_popover_row_highlight(scene: &mut VectorScene, rect: Rect, theme: Theme) {
-    fill_rounded_rect(
-        scene,
-        rect,
-        crate::paint::frame_radius(theme, Radius::Sm.px()),
-        opaque(ColorToken::Accent, theme),
+    let raio = crate::widget::card_ink::card_body().map_or_else(
+        || crate::paint::frame_radius(theme, Radius::Sm.px()),
+        |_| card_chip::RAIO_DA_LINHA,
     );
+    fill_rounded_rect(scene, rect, raio, opaque(ColorToken::Accent, theme));
 }
 
 /// **A linha com o FOCO do teclado, sem estar carregada** — uma tinta neutra um degrau acima do
@@ -189,6 +195,9 @@ fn paint_popover_row_default<T>(
     let (icon_rect, text_rect) = option_icon_split(row.rect, opt.icon.is_some());
     if let Some(icon) = opt.icon {
         paint_icon(scene, icon, icon_rect, fg, StrokeToken::Default.px());
+    }
+    if crate::widget::card_ink::card_body().is_some() {
+        return card_chip::texto_da_linha(scene, text_system, text_rect, &opt.label, fg);
     }
     paint_text_centered(
         text_system,

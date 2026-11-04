@@ -6,7 +6,7 @@
 
 use super::SectionHeader;
 use super::fold::paint_chevron;
-use crate::paint::{paint_text_title, resolve};
+use crate::paint::paint_text_title;
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
@@ -35,7 +35,7 @@ pub fn paint_group_header(
         scene,
         chev,
         header.fold_t(),
-        resolve(ColorToken::Text2, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text2, theme),
     );
     let label_x = rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
     paint_text_title(
@@ -46,6 +46,6 @@ pub fn paint_group_header(
         rect.y + (rect.h - font) * 0.5,
         font,
         (rect.x + rect.w - label_x).max(0.0),
-        resolve(ColorToken::Text1, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
 }

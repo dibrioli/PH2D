@@ -210,6 +210,14 @@ impl WidgetStore {
     /// ⭐ A pressão em `(x, y)`: caiu num cartão solto PRESO? Então os pedidos deste gesto são do
     /// sujeito dele; noutro sítio qualquer, da seleção.
     pub fn note_card_press(&mut self, x: f32, y: f32) {
+        // A lista aberta é do chip: a opção que sai para fora do solto continua a ser do sujeito
+        // da pressão que a abriu (bloco A, sem isto a escolha ia para a seleção).
+        if self
+            .dropdown_popover()
+            .is_some_and(|(_, r)| r.contains(x, y))
+        {
+            return;
+        }
         let mut topo: Option<(u32, NodeId, Option<u64>)> = None;
         for (k, c) in &self.card_lists.loose {
             if let Some(r) = self.panel_rects.get(&loose_rect_of(*k))

@@ -320,7 +320,6 @@ fn paint_mount_row(
     let gap = Spacing::Xs.px();
     let mounted = !info.mount_name.is_empty();
     let icons = if mounted { 2.0 } else { 1.0 };
-    let text_y = y + (h - font) * 0.5;
     let linha = super::rows::property_label_row(
         scene,
         text_system,
@@ -333,6 +332,8 @@ fn paint_mount_row(
         sec,
     );
     let (vx, vw) = (linha.control.x, linha.control.w);
+    let (cy, ch) = (linha.control.y, linha.control.h);
+    let text_y = cy + (ch - font) * 0.5;
     // "(scenery)" e não um vazio: *pregada no cenário* é uma resposta, e uma
     // lacuna onde devia haver um nome não é.
     paint_text(
@@ -358,7 +359,7 @@ fn paint_mount_row(
     );
     let mut bx = vx + vw - icon_w;
     if mounted {
-        let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
+        let brect = Rect::new(bx, cy + (ch - icon_w) * 0.5, icon_w, icon_w);
         paint_icon_button(
             brect,
             IconGlyph::Builtin(IconId::Trash),
@@ -370,7 +371,7 @@ fn paint_mount_row(
         hit_index.register(ids::INSP_WHEEL_UNMOUNT, brect);
         bx -= icon_w + gap;
     }
-    let brect = Rect::new(bx, y + (h - icon_w) * 0.5, icon_w, icon_w);
+    let brect = Rect::new(bx, cy + (ch - icon_w) * 0.5, icon_w, icon_w);
     paint_icon_button(
         brect,
         IconGlyph::Builtin(IconId::Eyedropper),
@@ -384,7 +385,7 @@ fn paint_mount_row(
         theme,
     );
     hit_index.register(ids::INSP_WHEEL_MOUNT_PICK, brect);
-    y + h
+    cy + ch
 }
 
 /// **A que corda esta roldana pertence** — o nome, um aviso quando ele não resolve,
@@ -420,7 +421,6 @@ fn paint_gear_readout(
     let h = ROW_H_PX;
     let font = TypeToken::Sm.px();
     let sec = seccao_dos_nomes(text_system);
-    let text_y = y + (h - font) * 0.5;
     let linha = super::rows::property_label_row(
         scene,
         text_system,
@@ -433,6 +433,8 @@ fn paint_gear_readout(
         sec,
     );
     let (vx, vw) = (linha.control.x, linha.control.w);
+    let (cy, ch) = (linha.control.y, linha.control.h);
+    let text_y = cy + (ch - font) * 0.5;
     // ⚠️ **O número vem da shell, que o tira da porta do MOTOR.** Uma conta aqui
     // seria a segunda resposta a *"o que estes dois raios compram?"*.
     let text = format!("{:.2} : 1", info.gear);
@@ -446,7 +448,7 @@ fn paint_gear_readout(
         vw,
         resolve(ColorToken::Text1, theme),
     );
-    y + h
+    cy + ch
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -466,7 +468,6 @@ fn paint_rope_row(
     let icon_w = (h * 0.82).min(w); // LITERAL-PX-OK: icon inset ratio (compact square in the row)
     let sec = seccao_dos_nomes(text_system);
     let gap = Spacing::Xs.px();
-    let text_y = y + (h - font) * 0.5;
     let linha = super::rows::property_label_row(
         scene,
         text_system,
@@ -479,6 +480,8 @@ fn paint_rope_row(
         sec,
     );
     let (vx, vw) = (linha.control.x, linha.control.w);
+    let (cy, ch) = (linha.control.y, linha.control.h);
+    let text_y = cy + (ch - font) * 0.5;
     paint_text(
         text_system,
         scene,
@@ -500,7 +503,7 @@ fn paint_rope_row(
             theme,
         ),
     );
-    let brect = Rect::new(vx + vw - icon_w, y + (h - icon_w) * 0.5, icon_w, icon_w);
+    let brect = Rect::new(vx + vw - icon_w, cy + (ch - icon_w) * 0.5, icon_w, icon_w);
     paint_icon_button(
         brect,
         IconGlyph::Builtin(IconId::Eyedropper),
@@ -514,5 +517,5 @@ fn paint_rope_row(
         theme,
     );
     hit_index.register(ids::INSP_WHEEL_ROPE_PICK, brect);
-    y + h
+    cy + ch
 }

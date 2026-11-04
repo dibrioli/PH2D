@@ -275,12 +275,13 @@ fn follow_body(
             .placeholder(tr("panel.inspector.camera.object_name")),
         seccao,
     );
-    let caixa = ph2d_editor_core::property_row::caixa_do_controlo(x, w, y_linha, seccao);
+    let caixa =
+        ph2d_editor_core::property_row::caixa_da_linha_pintada(x, w, y_linha, cur_y, seccao);
     let icon_w = (ROW_H_PX * 0.82).min(caixa.w); // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
-    let inset = (ROW_H_PX - icon_w) * 0.5;
+    let inset = (caixa.h - icon_w) * 0.5;
     let conta_gotas = Rect::new(
         caixa.x + caixa.w - icon_w - inset,
-        y_linha + inset,
+        caixa.y + inset,
         icon_w,
         icon_w,
     );

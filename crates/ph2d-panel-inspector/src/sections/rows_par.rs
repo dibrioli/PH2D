@@ -8,6 +8,131 @@ use ph2d_editor_core::panel::cards::corpo::{self, Coluna};
 use ph2d_editor_core::widget::Unit;
 use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 
+/// ⭐ **A escolha que sabe dizer «misto»** (`selected` `None` = nenhum aceso): o rótulo em cima e os
+/// segmentos do cartão, ou fora dele o nome à esquerda e o segmentado adaptativo. `vao` é o da secção.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn seg_row_misto<'a>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: impl Into<Rotulo<'a>>,
+    (grupo, opcoes, nomes): (NodeId, &[NodeId], &[&str]),
+    selected: Option<usize>,
+    sec: ph2d_editor_core::property_row::Seccao,
+    vao: f32,
+) -> f32 {
+    use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+    let rotulo = label.into();
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        let segs: Vec<ph2d_editor_core::panel::cards::Seg<'_>> = opcoes
+            .iter()
+            .zip(nomes)
+            .enumerate()
+            .map(|(i, (&id, &text))| ph2d_editor_core::panel::cards::Seg {
+                id,
+                icon: None,
+                text,
+                on: selected == Some(i),
+            })
+            .collect();
+        return corpo::choices(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            rotulo.texto,
+            opcoes,
+            &segs,
+        );
+    }
+    let h = ROW_H_PX;
+    let row =
+        super::rows::property_label_row(scene, text_system, theme, x, w, y, h, rotulo.texto, sec);
+    let seg = SegmentedAdaptive::new(
+        grupo,
+        rotulo.texto,
+        opcoes
+            .iter()
+            .zip(nomes)
+            .map(|(&id, &l)| SegmentedOption::new(id, l))
+            .collect(),
+    )
+    .selected(selected.unwrap_or(usize::MAX));
+    let seg_h = paint_segmented_adaptive(
+        &seg,
+        row.control,
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        scene, theme, row.dot, opcoes, rotulo,
+    ) {
+        hit_index.register(alvo, row.dot);
+    }
+    y + seg_h.max(h) + vao
+}
+
+/// ⭐ **A linha de marcar que sabe dizer «misto»** (T29, os `Checkbox::new` directos das secções): a
+/// do cartão (T64), ou fora dele a caixa de hoje com a coluna do losango pelo rótulo.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn caixa_row<'a>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    (id, label, valor): (NodeId, impl Into<Rotulo<'a>>, CheckboxValue),
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let rotulo = label.into();
+    if let Some((ink, rows)) = ph2d_editor_core::property_row::cartao::card_rows() {
+        return (rows.check)(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            id,
+            rotulo,
+            valor,
+            false,
+        );
+    }
+    let rect = Rect::new(x, y, w, ROW_H_PX);
+    hit_index.register(id, rect);
+    paint_checkbox(
+        &Checkbox::new(id, rotulo.texto)
+            .visual(store.checkbox_visual(id))
+            .coluna_de_fora()
+            .seccao(sec)
+            .value(valor),
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+    super::rows::coluna_da_caixa(scene, theme, hit_index, rect, id, rotulo);
+    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+}
+
 /// Um campo de uma linha de dois: o rótulo e a unidade de HOJE (os do Inspector clássico).
 pub(crate) struct Campo<'a> {
     pub rotulo: Rotulo<'a>,

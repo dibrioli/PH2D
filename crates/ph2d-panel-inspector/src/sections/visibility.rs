@@ -11,7 +11,6 @@ use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 use ph2d_editor_core::widget::section_cards::close_section;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
@@ -122,41 +121,23 @@ fn segmented_row<'a>(
     // ⚠️ **A coluna é da SECÇÃO** — ver [`seccao`].
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
-    let rotulo = label.into();
-    let label = rotulo.texto;
-    let h = ROW_H_PX;
-    // ⭐⭐ **O nome à ESQUERDA** (2026-09-15): esta porta é irmã da `rows::seg_row`, que já o fazia,
-    //    e a única diferença dela é poder dizer «misto» — não a disposição da linha.
-    let row = super::rows::property_label_row(scene, text_system, theme, x, w, y, h, label, sec);
-    // ⚠️ **`SegmentedAdaptive` e não `Tabs`, para poder dizer «misto».** O `Tabs::selected()`
-    // clampa (`idx.min(len-1)`), por isso é **incapaz** de renderizar «nenhum aceso» — e era isso
-    // que fazia estas duas rows acenderem o valor da primária como se toda a seleção concordasse,
-    // enquanto o host já calculava a divergência e a deitava fora
-    // (auditoria `docs/Sprite_projeto/20` §3.3).
-    let seg = SegmentedAdaptive::new(
-        NodeId(0),
-        label,
-        ids3.iter()
-            .zip(labels3)
-            .map(|(&id, l)| SegmentedOption::new(id, l))
-            .collect(),
-    )
-    .selected(selected.unwrap_or(usize::MAX));
-    let seg_h = paint_segmented_adaptive(
-        &seg,
-        row.control,
+    // ⚠️ **Nenhum aceso = «misto»** (`Tabs::selected()` clampa e não o sabe dizer; auditoria
+    // `docs/Sprite_projeto/20` §3.3).
+    super::rows::seg_row_misto(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
-    );
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene, theme, row.dot, &ids3, rotulo,
-    ) {
-        hit_index.register(alvo, row.dot);
-    }
-    y + seg_h.max(h) + ph2d_tokens::control_gap_px()
+        store,
+        x,
+        w,
+        y,
+        label,
+        (NodeId(0), &ids3, &labels3),
+        selected,
+        sec,
+        ph2d_tokens::control_gap_px(),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -288,31 +269,26 @@ pub(crate) fn paint_visibility_section(
 
     // Mask Source toggle — makes this sprite a Mask2D source (its silhouette
     // masks sibling VisibleInside/Outside responders).
-    let src_rect = Rect::new(x, yy, w, h);
-    hit_index.register(ids::INSP_VIS_MASK_SOURCE, src_rect);
-    let src_cb = Checkbox::new(
-        ids::INSP_VIS_MASK_SOURCE,
-        tr("panel.inspector.visibility.mask_source_mask2d"),
-    )
-    .visual(store.checkbox_visual(ids::INSP_VIS_MASK_SOURCE))
-    .coluna_de_fora()
-    .seccao(sec)
-    .value(if info.mask_source {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    });
-    paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
-    let ter = tr("panel.inspector.visibility.mask_source_mask2d");
-    super::rows::coluna_da_caixa(
+    yy = super::rows::caixa_row(
         scene,
+        text_system,
         theme,
         hit_index,
-        src_rect,
-        ids::INSP_VIS_MASK_SOURCE,
-        ter,
+        store,
+        x,
+        w,
+        yy,
+        (
+            ids::INSP_VIS_MASK_SOURCE,
+            tr("panel.inspector.visibility.mask_source_mask2d"),
+            if info.mask_source {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            },
+        ),
+        sec,
     );
-    yy += h + row_gap;
 
     yy = paint_enabler_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
 
@@ -337,36 +313,29 @@ fn paint_enabler_rows(
     y: f32,
     info: &InspectorVisibilitySectionInfo,
 ) -> f32 {
-    let h = ROW_H_PX;
-    let row_gap = ph2d_tokens::control_gap_px();
     let mut yy = y;
     let sec = seccao(text_system);
     // On-Screen Enabler toggle (presence of the component).
-    let on_rect = Rect::new(x, yy, w, h);
-    hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);
-    let on_cb = Checkbox::new(
-        ids::INSP_VIS_ON_SCREEN,
-        tr("panel.inspector.visibility.on_screen_enabler"),
-    )
-    .visual(store.checkbox_visual(ids::INSP_VIS_ON_SCREEN))
-    .coluna_de_fora()
-    .seccao(sec)
-    .value(if info.on_screen {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    });
-    paint_checkbox(&on_cb, on_rect, scene, text_system, theme);
-    let ter = tr("panel.inspector.visibility.on_screen_enabler");
-    super::rows::coluna_da_caixa(
+    yy = super::rows::caixa_row(
         scene,
+        text_system,
         theme,
         hit_index,
-        on_rect,
-        ids::INSP_VIS_ON_SCREEN,
-        ter,
+        store,
+        x,
+        w,
+        yy,
+        (
+            ids::INSP_VIS_ON_SCREEN,
+            tr("panel.inspector.visibility.on_screen_enabler"),
+            if info.on_screen {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            },
+        ),
+        sec,
     );
-    yy += h + row_gap;
 
     // Enabler Rect — canonical Rect2Editor (X/Y/W/H in one row), only
     // when the enabler is on.

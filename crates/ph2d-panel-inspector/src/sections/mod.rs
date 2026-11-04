@@ -29,10 +29,11 @@ pub(crate) use ph2d_a11y::NodeId;
 pub(crate) use ph2d_editor_core::icons::IconId;
 pub(crate) use ph2d_editor_core::ids as core_ids;
 pub(crate) use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-pub(crate) use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_block, resolve,
-};
+pub(crate) use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_block};
 pub(crate) use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
+/// ⭐ **`resolve` numa secção é a tinta do cartão** (`docs/CartoesUI/05` §5, T29): fora de um cartão o
+/// token no tema, ao bit; dentro, o tom do cartão que faz o mesmo papel. As secções não escolhem.
+pub(crate) use ph2d_editor_core::widget::card_ink::tinta as resolve;
 pub(crate) use ph2d_editor_core::widget::panel_chrome::{
     SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX,
 };

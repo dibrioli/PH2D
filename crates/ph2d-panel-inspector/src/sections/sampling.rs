@@ -20,7 +20,6 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSamplingInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
@@ -168,107 +167,54 @@ pub(crate) fn paint_sampling_section(
     // the text onto the buttons (smoke 2026-05-30).
 
     // Texture Filter — um segmento por variante de `FilterMode`, tags `0..=6` (vide FILTER_LABELS).
-    let filter_row = super::rows::property_label_row(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        yy,
-        h,
-        tr("component.field.texture_filter.1"),
-        sec,
-    );
-    // ⚠️ **Segmentado ADAPTATIVO, como o Blend Mode da §10** — sete opções não cabem numa fila de
-    // `Tabs` num painel estreito, e o adaptativo reflui. A alternativa (manter três abas) foi o que
-    // produziu o `.min(2)` que mentia.
-    let seg = SegmentedAdaptive::new(
-        core_ids::INSP_LIVE_SAMPLING_SECTION,
-        tr("component.field.texture_filter.1"),
-        // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
-        // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
-        // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
-        ids::INSP_SAMPLE_FILTER
-            .iter()
-            .zip(FILTER_LABELS)
-            .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l.tr())))
-            .collect(),
-    )
-    .selected(if info.mixed.filter {
-        NOTHING_LIT
-    } else {
-        filter_selected_index(info.filter_tag)
-    });
-    let seg_h = paint_segmented_adaptive(
-        &seg,
-        filter_row.control,
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    let filter_ids: Vec<NodeId> = ids::INSP_SAMPLE_FILTER
+    // ⚠️ O par `(id, rótulo)` forma-se ANTES de descartar o buraco, senão o rótulo `n+1` casa com o
+    // id `n` e o segmento passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
+    let (filter_ids, filter_names): (Vec<NodeId>, Vec<&str>) = ids::INSP_SAMPLE_FILTER
         .iter()
         .zip(FILTER_LABELS)
-        .filter_map(|(&id, label)| label.map(|_| id))
-        .collect();
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene,
-        theme,
-        filter_row.dot,
-        &filter_ids,
-        TextKey::new("component.field.texture_filter.1").into(),
-    ) {
-        hit_index.register(alvo, filter_row.dot);
-    }
-    yy += seg_h.max(h) + row_gap;
-
-    // Texture Repeat — Inherit / Disabled / Enabled / Mirror (0/1/2/3).
-    let repeat_row = super::rows::property_label_row(
+        .filter_map(|(&id, label)| label.map(|l| (id, l.tr())))
+        .unzip();
+    yy = super::rows::seg_row_misto(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         x,
         w,
         yy,
-        h,
-        tr("component.field.texture_repeat.1"),
+        TextKey::new("component.field.texture_filter.1"),
+        (
+            core_ids::INSP_LIVE_SAMPLING_SECTION,
+            &filter_ids,
+            &filter_names,
+        ),
+        (!info.mixed.filter).then(|| filter_selected_index(info.filter_tag)),
         sec,
+        row_gap,
     );
-    let repeat_seg = SegmentedAdaptive::new(
-        core_ids::INSP_LIVE_SAMPLING_SECTION,
-        tr("component.field.texture_repeat.1"),
-        ids::INSP_SAMPLE_REPEAT
-            .iter()
-            .zip(REPEAT_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
-            .collect(),
-    )
-    .selected(if info.mixed.repeat {
-        NOTHING_LIT
-    } else {
-        usize::from(info.repeat_tag).min(REPEAT_LABELS.len() - 1)
-    });
-    let repeat_h = paint_segmented_adaptive(
-        &repeat_seg,
-        repeat_row.control,
+
+    // Texture Repeat — Inherit / Disabled / Enabled / Mirror (0/1/2/3).
+    let repeat_names = REPEAT_LABELS.map(TextKey::tr);
+    yy = super::rows::seg_row_misto(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
+        store,
+        x,
+        w,
+        yy,
+        TextKey::new("component.field.texture_repeat.1"),
+        (
+            core_ids::INSP_LIVE_SAMPLING_SECTION,
+            &ids::INSP_SAMPLE_REPEAT,
+            &repeat_names,
+        ),
+        (!info.mixed.repeat).then(|| usize::from(info.repeat_tag).min(REPEAT_LABELS.len() - 1)),
+        sec,
+        row_gap,
     );
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene,
-        theme,
-        repeat_row.dot,
-        &ids::INSP_SAMPLE_REPEAT,
-        TextKey::new("component.field.texture_repeat.1").into(),
-    ) {
-        hit_index.register(alvo, repeat_row.dot);
-    }
-    yy += repeat_h.max(h) + row_gap;
 
     // UV tiling (scale > 1 tiles) + scroll (offset) — W3 UvTransform. The
     // repeat segmented above picks how the tiled UV wraps.

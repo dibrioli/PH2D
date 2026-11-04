@@ -47,3 +47,43 @@ pub fn chip(
         StrokeToken::Default.px(),
     );
 }
+
+/// O raio do realce de uma linha da lista aberta de um cartão.
+pub(super) const RAIO_DA_LINHA: f32 = m::SEG_RADIUS;
+
+/// O fundo da lista aberta de um chip de cartão — a da lista T16: a sombra dela, sem moldura.
+pub(super) fn moldura_da_lista(scene: &mut VectorScene, panel: Rect, ink: CardInk) {
+    crate::paint_flight::shadow(
+        scene,
+        panel,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::KanbanListShadow),
+        m::LIST_SHADOW_FAR,
+    );
+    crate::paint::fill_rounded_rect(
+        scene,
+        panel,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::KanbanCardRaised).with_alpha(1.0),
+    );
+}
+
+/// O nome de uma linha dessa lista: à esquerda, como a T16.
+pub(super) fn texto_da_linha(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    r: Rect,
+    texto: &str,
+    cor: ph2d_vector::Color,
+) {
+    crate::paint::paint_text(
+        text_system,
+        scene,
+        texto,
+        r.x + m::FIELD_PAD_R,
+        r.y + (r.h - m::VALUE_PX) * 0.5,
+        m::VALUE_PX,
+        (r.w - m::FIELD_PAD_R * 2.0).max(0.0),
+        cor,
+    );
+}

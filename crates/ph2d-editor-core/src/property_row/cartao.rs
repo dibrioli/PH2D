@@ -4,6 +4,7 @@
 //! injectada por quem chama, nunca um re-export).
 
 use crate::interaction::{HitIndex, WidgetStore};
+use crate::widget::CheckboxValue;
 use crate::widget::card_ink::CardInk;
 use crate::widget::key_mark::{Eixos, Rotulo};
 use ph2d_a11y::NodeId;
@@ -39,7 +40,7 @@ pub type ChoicesRow = fn(
     &str,
     &[(&str, bool, NodeId)],
 ) -> f32;
-/// Uma caixa de marcar à Figma pedida de fora do cartão: `(id, rótulo, marcada)`.
+/// Uma caixa de marcar à Figma pedida de fora do cartão: `(id, rótulo, valor, parada)`.
 pub type CheckRow = fn(
     &mut VectorScene,
     &mut TextSystem,
@@ -51,15 +52,42 @@ pub type CheckRow = fn(
     f32,
     NodeId,
     Rotulo<'_>,
+    CheckboxValue,
     bool,
 ) -> f32;
+/// Uma linha de texto pedida de fora do cartão: rótulo em cima, a caixa do cartão por baixo.
+pub type TextRow = fn(
+    &mut VectorScene,
+    &mut TextSystem,
+    &WidgetStore,
+    &mut HitIndex,
+    CardInk,
+    f32,
+    f32,
+    f32,
+    Rotulo<'_>,
+    NodeId,
+    &str,
+) -> f32;
+/// O rótulo em cima de um controlo que o chamador constrói: devolve as colunas da linha.
+pub type LabelRow = fn(
+    &mut VectorScene,
+    &mut TextSystem,
+    CardInk,
+    f32,
+    f32,
+    f32,
+    &str,
+) -> crate::widget::PropertyRow;
 
-/// As três linhas que o corpo de um cartão sabe pintar para o `property_row`.
+/// As linhas que o corpo de um cartão sabe pintar para o `property_row`.
 #[derive(Copy, Clone)]
 pub struct CardRows {
     pub fields: FieldsRow,
     pub choices: ChoicesRow,
     pub check: CheckRow,
+    pub text: TextRow,
+    pub label: LabelRow,
 }
 
 thread_local! {

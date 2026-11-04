@@ -143,7 +143,6 @@ fn paint_body_rows(
             info.pick_armed == 2,
         ),
     ] {
-        let text_y = yy + (h - label_font) * 0.5;
         let linha = super::rows::property_label_row(
             scene,
             text_system,
@@ -156,6 +155,8 @@ fn paint_body_rows(
             sec,
         );
         let (vx, vw) = (linha.control.x, linha.control.w);
+        let (cy, ch) = (linha.control.y, linha.control.h);
+        let text_y = cy + (ch - label_font) * 0.5;
         // ⚠️ **Num pino de MUNDO o lado B não é um nome que faltou** — ele é o
         // cenário, e dizer "(missing)" ali chamaria de quebrado um joint que
         // está segurando (W-JointWorld).
@@ -189,12 +190,12 @@ fn paint_body_rows(
         // que nenhum clique pode satisfazer. Não é dim: ele não existe (a lei do
         // botão-morto — *dimmed que despacha mente*).
         if world_b {
-            yy += h;
+            yy = cy + ch;
             continue;
         }
         // The eyedropper, right-aligned. Pressed (accent) while its pick is
         // ARMED, so the artist sees which end is waiting for a body click.
-        let brect = Rect::new(vx + vw - icon_w, yy + (h - icon_w) * 0.5, icon_w, icon_w);
+        let brect = Rect::new(vx + vw - icon_w, cy + (ch - icon_w) * 0.5, icon_w, icon_w);
         let state = if armed {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {
@@ -209,7 +210,7 @@ fn paint_body_rows(
             theme,
         );
         hit_index.register(id, brect);
-        yy += h;
+        yy = cy + ch;
     }
     yy
 }

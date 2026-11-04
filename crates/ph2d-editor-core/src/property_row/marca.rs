@@ -37,6 +37,11 @@ pub fn paint_check_row<'a>(
     let (id, label, on) = caixa;
     let label = label.into();
     if let Some((ink, rows)) = super::cartao::card_rows() {
+        let valor = if on {
+            crate::widget::CheckboxValue::Checked
+        } else {
+            crate::widget::CheckboxValue::Unchecked
+        };
         return (rows.check)(
             scene,
             text_system,
@@ -48,7 +53,8 @@ pub fn paint_check_row<'a>(
             y,
             id,
             label,
-            on,
+            valor,
+            false,
         );
     }
     let rect = Rect::new(x, y, w, ROW_H_PX);
@@ -130,10 +136,15 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     } else {
         TypeToken::Sm.px()
     };
-    // No cartão a marca é pequena (à Figma): o par cabe quando os dois nomes cabem ao lado dela.
+    // No cartão a marca é pequena (à Figma): o par cabe quando os dois nomes cabem ao lado dela e
+    // da coluna de animação (sem ela o nome da direita saía elidido, 05 §8).
+    let caixa_do_cartao = {
+        use ph2d_card_stack::metrics as m;
+        m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX
+    };
     let cabe = |meia: f32, quer: f32| {
         if cartao {
-            quer + ph2d_card_stack::metrics::CHECK_BOX + ph2d_card_stack::metrics::CHECK_GAP <= meia
+            quer + caixa_do_cartao <= meia
         } else {
             property_row_fits(meia, quer)
         }
@@ -153,6 +164,14 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
             Some(quer) if cabe(meia, quer) => {
                 let sec =
                     Seccao::medida(text_system, 1, &[caixas[i].1.texto, caixas[i + 1].1.texto]);
+                // ⭐ No cartão a marca da esquerda anda com o nome dela: no fim da metade ela
+                // encostava na caixa da direita e lia-se como sendo dela (05 §8).
+                let esquerda = if cartao {
+                    let nome = text_system.prefix_width(caixas[i].1.texto, fonte);
+                    (nome + caixa_do_cartao).min(meia)
+                } else {
+                    meia
+                };
                 paint_check_row(
                     scene,
                     text_system,
@@ -160,7 +179,7 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
                     hit_index,
                     store,
                     x,
-                    meia,
+                    esquerda,
                     cur_y,
                     caixas[i],
                     sec,

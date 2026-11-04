@@ -293,14 +293,31 @@ pub(crate) fn paint_visibility_rows(
         sec,
     );
     let id = ids::INSP_ANCHOR_VIS_RUNTIME;
+    let valor = if info.vis_at_runtime {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    if let Some((ink, rows)) = ph2d_editor_core::property_row::cartao::card_rows() {
+        return (rows.check)(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            cur_y,
+            id,
+            RUNTIME_BOX_LABEL.tr().into(),
+            valor,
+            true,
+        );
+    }
     let rect = Rect::new(x, cur_y, w, CHECK_H);
     hit_index.register(id, rect);
     let cb = Checkbox::new(id, RUNTIME_BOX_LABEL.tr())
-        .value(if info.vis_at_runtime {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        })
+        .value(valor)
         .seccao(sec)
         .state(CheckboxState::Disabled);
     paint_checkbox(&cb, rect, scene, text_system, theme);

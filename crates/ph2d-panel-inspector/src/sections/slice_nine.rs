@@ -18,7 +18,6 @@ use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::key_mark::Rotulo;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
@@ -121,51 +120,27 @@ fn tiled_rows(
 
     // ⭐⭐ **O nome à ESQUERDA, como as caixas numéricas desta mesma secção** (2026-09-15) — deixá-lo
     //    por cima aqui e ao lado três linhas abaixo **é** a queixa do dono, dentro de uma secção só.
-    let tm_row = super::rows::property_label_row(
+    let nomes = TILE_MODE_LABELS.map(TextKey::tr);
+    cur_y = super::rows::seg_row_misto(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
         x,
         w,
         cur_y,
-        ALTURA_DE_CAMPO,
-        tr("component.field.slice_nine.6"),
+        TextKey::new("component.field.slice_nine.6"),
+        (
+            core_ids::INSP_LIVE_SLICE_SECTION,
+            &ids::INSP_SLICE_TILE_MODE,
+            &nomes,
+        ),
+        (!info.mixed.tile_mode)
+            .then(|| usize::from(info.tile_mode_tag).min(TILE_MODE_LABELS.len() - 1)),
         sec,
+        Spacing::Sm.px(),
     );
-    let tm = SegmentedAdaptive::new(
-        core_ids::INSP_LIVE_SLICE_SECTION,
-        tr("component.field.slice_nine.6"),
-        ids::INSP_SLICE_TILE_MODE
-            .iter()
-            .zip(TILE_MODE_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label.tr()))
-            .collect(),
-    )
-    .selected(if info.mixed.tile_mode {
-        NOTHING_LIT
-    } else {
-        usize::from(info.tile_mode_tag).min(TILE_MODE_LABELS.len() - 1)
-    });
-    cur_y += paint_segmented_adaptive(
-        &tm,
-        tm_row.control,
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    )
-    .max(ALTURA_DE_CAMPO)
-        + Spacing::Sm.px();
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene,
-        theme,
-        tm_row.dot,
-        &ids::INSP_SLICE_TILE_MODE,
-        TextKey::new("component.field.slice_nine.6").into(),
-    ) {
-        hit_index.register(alvo, tm_row.dot);
-    }
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
@@ -246,7 +221,6 @@ pub(crate) fn paint_slice_section(
     // Ligá-la sem componente ANEXA-O — e continua inerte, porque as bordas nascem a zero e bordas
     // a zero colapsam no sprite de sempre. Desligá-la GUARDA os valores: uma caixa que perdesse
     // dados ao desmarcar não seria uma caixa.
-    let cb_h = ph2d_tokens::ROW_H_PX; // ⛔ era `18.0`, o MESMO literal em TREZE sitios: a linha de marcar e' uma linha de propriedade, e a altura dela e' a do app (report do dono 2026-09-15: a marca enchia a caixa toda)
     let on = info.present && info.draw_mode_tag == 1;
     let en_value = if info.mixed.enabled {
         CheckboxValue::Indeterminate
@@ -255,29 +229,23 @@ pub(crate) fn paint_slice_section(
     } else {
         CheckboxValue::Unchecked
     };
-    let en_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
-    paint_checkbox(
-        &Checkbox::new(ids::INSP_SLICE_ENABLE, tr("component.field.slice_nine.8"))
-            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
-            .value(en_value)
-            .seccao(seccao(text_system))
-            .coluna_de_fora(),
-        en_rect,
+    let sec = seccao(text_system);
+    cur_y = super::rows::caixa_row(
         scene,
         text_system,
         theme,
-    );
-    let enable = TextKey::new("component.field.slice_nine.8");
-    super::rows::coluna_da_caixa(
-        scene,
-        theme,
         hit_index,
-        en_rect,
-        ids::INSP_SLICE_ENABLE,
-        enable,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            ids::INSP_SLICE_ENABLE,
+            TextKey::new("component.field.slice_nine.8"),
+            en_value,
+        ),
+        sec,
     );
-    cur_y += cb_h + ph2d_tokens::control_gap_px();
 
     // Desligado: a seção não tem mais nada a mostrar. O «Remove» só aparece quando há de facto
     // autoria guardada para remover — sem componente, não há.
@@ -285,7 +253,6 @@ pub(crate) fn paint_slice_section(
         return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
     }
 
-    let sec = seccao(text_system);
     // Bordas, em pixels da fonte, na ordem do array: [L, T] e depois [R, B].
     cur_y = super::rows::fields_row(
         scene,
@@ -338,32 +305,22 @@ pub(crate) fn paint_slice_section(
     let (_, fc_value) = store
         .checkbox(ids::INSP_SLICE_FILL_CENTER)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
-    let fc_rect = Rect::new(x, cur_y, w, cb_h);
-    hit_index.register(ids::INSP_SLICE_FILL_CENTER, fc_rect);
-    paint_checkbox(
-        &Checkbox::new(
-            ids::INSP_SLICE_FILL_CENTER,
-            tr("component.field.slice_nine.5"),
-        )
-        .visual(store.checkbox_visual(ids::INSP_SLICE_FILL_CENTER))
-        .value(fc_value)
-        .seccao(sec)
-        .coluna_de_fora(),
-        fc_rect,
+    cur_y = super::rows::caixa_row(
         scene,
         text_system,
         theme,
-    );
-    let fill = TextKey::new("component.field.slice_nine.5");
-    super::rows::coluna_da_caixa(
-        scene,
-        theme,
         hit_index,
-        fc_rect,
-        ids::INSP_SLICE_FILL_CENTER,
-        fill,
+        store,
+        x,
+        w,
+        cur_y,
+        (
+            ids::INSP_SLICE_FILL_CENTER,
+            TextKey::new("component.field.slice_nine.5"),
+            fc_value,
+        ),
+        sec,
     );
-    cur_y += cb_h + ph2d_tokens::control_gap_px();
 
     // A grelha por-região e o Tile Mode valem nos DOIS modos de nove quads.
     //

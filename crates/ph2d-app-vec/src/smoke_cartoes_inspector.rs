@@ -10,7 +10,9 @@
 //! `=6`: corpo físico + Platform Player, com o cartão do Player ABERTO (T57–T59: arrastá-lo aberto
 //! para o canvas, rolá-lo solto, as subsecções e os pares) — e um 2.º objecto com Player («Player B»,
 //! outros números) para o alfinete (T61); `=7`: o 6 com o Player solto (semeado) preso ao «Player A»
-//! e o «Player B» escolhido (a foto do T61).
+//! e o «Player B» escolhido (a foto do T61); `=8`: um objecto Camera (Follow + Limits) escolhido, com o
+//! cartão Game Camera ABERTO e acima da dobra (05 §8); `=9`: o 8 com a lista «Game Format» aberta
+//! (a cara do popover num cartão, T25).
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
@@ -125,6 +127,18 @@ pub(crate) fn step(
             }
             ph2d_ecs::item_id::assign_missing_item_ids(sim.world_mut());
             crate::ids_da_pilha::passe(sim, scene);
+            if matches!(modo.as_str(), "8" | "9") {
+                let camara = camara_da_cena(sim, hero);
+                vec.pen.select_many(&[]);
+                hero.gizmo.replace_selection(Some(camara));
+                SEGUNDO[1].store(camara, Ordering::Relaxed);
+                hero.set_panel_visible("inspector", true);
+                go(4);
+                eprintln!(
+                    "[cartoes-smoke] O cartao Game Camera aberto: objecto Camera {camara:#x}."
+                );
+                return;
+            }
             if matches!(modo.as_str(), "3" | "4" | "5") {
                 estilos_da_maquete(scene, id);
             }
@@ -153,6 +167,15 @@ pub(crate) fn step(
             }
             if s == FIM - 1 && modo == "5" {
                 ph2d_editor_core::panel::cards::estilos::abre_o_editor_do_primeiro();
+            }
+            if s == FIM - 1 && modo == "9" {
+                abre_a_lista_do_formato(&mut hero.store);
+            }
+            if matches!(modo.as_str(), "8" | "9") {
+                // A forma que o desenho deixou escolhida devolve a seleção a cada quadro de arranque.
+                vec.pen.select_many(&[]);
+                hero.gizmo
+                    .replace_selection(Some(SEGUNDO[1].load(Ordering::Relaxed)));
             }
             let insp = ph2d_editor_core::panel::with_registry_opt(|reg| {
                 reg.panels()
@@ -185,6 +208,33 @@ fn estilos_da_maquete(scene: &mut VecScene, forma: u64) {
         }
     }
     scene.link_estilo((forma, ph2d_ecs::ItemId::BASE_FILL), laranja);
+}
+
+/// Cena 8: o objecto Camera como o menu Add o deixa (Follow + Limits), com o cartão aberto; os bits.
+fn camara_da_cena(sim: &mut SimWorld, hero: &mut HeroScreen) -> u64 {
+    use ph2d_ecs::{CameraFollow, CameraLimits, GameCamera, Name, Transform};
+    let e = sim.world_mut().spawn((
+        Name("Camera".to_owned()),
+        Transform::default(),
+        GameCamera::default(),
+        CameraFollow::default(),
+        CameraLimits::default(),
+    ));
+    let bits = e.id().to_bits();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    hero.store
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_CAMERA_SECTION, false);
+    bits
+}
+
+/// Cena 9: a lista do formato aberta, como o clique no chip a deixa.
+fn abre_a_lista_do_formato(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    use ph2d_editor_core::interaction::InteractiveState;
+    // O id de `ph2d-panel-inspector` (`INSP_CAMERA_FORMAT_PICK`), que esta crate não vê.
+    let chip = ph2d_editor_core::registry::hash_node_id("insp_camera_format_pick");
+    if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(chip) {
+        *open = true;
+    }
 }
 
 fn com_player() -> bool {

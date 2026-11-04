@@ -50,12 +50,12 @@ pub(super) fn paint_live_readout(
             scene,
             value,
             linha.control.x,
-            yy + (ROW_H_PX - font) * 0.5,
+            linha.control.y + (linha.control.h - font) * 0.5,
             font,
             linha.control.w,
             resolve(ColorToken::Text1, theme),
         );
-        yy += ROW_H_PX;
+        yy = linha.control.y + linha.control.h;
     };
 
     let Some(l) = live else {

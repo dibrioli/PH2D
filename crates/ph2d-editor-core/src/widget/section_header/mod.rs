@@ -140,6 +140,10 @@ pub fn paint_section_header(
     if absorve(&header.label, rect.h) {
         return;
     }
+    // Dentro de um cartão o título é o do cartão; uma subsecção é um GRUPO, nunca um 2.º título.
+    if crate::widget::card_ink::card_body().is_some() {
+        return grupo::paint_group_header(header, rect, scene, text_system, theme);
+    }
     // Collapsed sections get a darker background plate so the
     // visual hierarchy (open = transparent on panel; closed =
     // tinted) reads as "this block is folded". Centralized here so

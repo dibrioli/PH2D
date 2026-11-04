@@ -140,6 +140,19 @@ pub fn paint_bitmask_grid32(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        return paint_bitmask_grid32_on_card(
+            grid,
+            origin_x,
+            origin_y,
+            w,
+            cell_h,
+            scene,
+            text_system,
+            ink,
+            &|_| false,
+        );
+    }
     // ⭐ **As 32 células são UM controlo** (uma máscara), e era esta grelha que sozinha punha
     //    `32` comandos na dívida do Inspector — ver [`crate::widget::composto`].
     crate::widget::composto::grupo(grid.bit_ids);

@@ -44,7 +44,8 @@ targets = [
 ]
 
 [package.metadata.cargo-machete]
-ignored = ["cfg_aliases"]
+# rustc-hash: declarada por 30.0.1 a montante sem nenhum uso no source (vendor verbatim, ver VENDOR.md).
+ignored = ["cfg_aliases", "rustc-hash"]
 
 [features]
 angle = ["wgpu-core-deps-apple/angle"]

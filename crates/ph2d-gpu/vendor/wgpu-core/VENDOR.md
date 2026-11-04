@@ -19,6 +19,8 @@ The fix of gfx-rs/wgpu#10160 (*«fix(core): Clean up resources after failed init
 - `Cargo.toml` — `scopeguard = "1.2"` (as upstream), an empty `[workspace]`, and
   `unfulfilled_lint_expectations = "allow"`: as a path dependency `CARGO_BUILD_WARNINGS=deny` (CI) sees
   the `expect(unused)` of `lock/ranked.rs:83` that `--cap-lints allow` hides in the registry build.
+  Also `[package.metadata.cargo-machete] ignored += "rustc-hash"`: 30.0.1 declares it without using it, and
+  CI's `cargo machete` walks this folder (a verbatim copy keeps the dependency; the Cargo.lock stays as is).
 
 ## Why
 

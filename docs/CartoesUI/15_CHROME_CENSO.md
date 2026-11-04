@@ -31,7 +31,7 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 8. **M8 — Caixas de diálogo:** `modal.rs` e os `chrome/*_modal.rs`, corpo em cartão pelo `CardCtx::flutuante`. Foto: Fill, Onion, New Sprite.
 9. **M9 — Paleta de comandos:** olhar aberta primeiro; pode reduzir-se a M1.
 
-**Ordem:** M1 primeiro; as outras não dependem entre si, salvo M2 sobre M1. Antes de M3 a M7, pedir ao dono a referência de cada barra: o menu e as barras não têm maquete aprovada (só o painel tem). Sem a resposta, M1, M2, M8 e M9 podem seguir.
+**Ordem:** M1 primeiro; as outras não dependem entre si, salvo M2 sobre M1. O menu e as barras não têm maquete aprovada (só o painel tem): a referência segue a ordem que já é lei, e cada escolha fica em «Decisões tomadas sem o dono». Função e ordem das barras não mudam, só a pele.
 
 ## Estado das fatias (04/11)
 
@@ -39,24 +39,33 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 |---|---|---|---|
 | M1 | Feita | Porta `widget/lista_flutuante.rs` (`Superficie`: moldura, moldura da dica, moldura de caixa, realce, cor, veste; `cromo_em_cartoes`). Menu aberto, lista de cenas, transbordo da fila, `paint_context_menu` e dica. A lista suspensa do cartão passa pela mesma moldura | Nada |
 | M2 | Feita | Título do menu aberto ou sob o rato acende no tom do cartão. A lista e o Settings já vinham da M1 | A cor de fundo da barra (`Bg1`) fica para M3, com a referência do dono |
-| M8 | Parcial | Moldura de caixa e tinta do cartão em New Image, New Sprite, Sheet Size, Color Mode, Pixel Edit, Rename, Fill, Onion, Send to board, Confirm delete e `paint_modal` | Corpo em `CardCtx::flutuante`; `FOOTER_H` literal; ver «Aberto» |
-| M3–M7 | Não feitas | | Esperam a referência do dono para cada barra |
-| M9 | Não feita | | Olhar a paleta aberta |
+| M8 | Parcial | Moldura de caixa e tinta do cartão em New Image, New Sprite, Sheet Size, Color Mode, Pixel Edit, Rename, Fill, Onion, Send to board, Confirm delete e `paint_modal`. New Sprite em `CardCtx::flutuante`. Fill com rótulo. Trilha do `Slider` nos tons do cartão. `FOOTER_H` derivado de tokens (`56` px, igual) | Corpo em `CardCtx::flutuante` em New Image, Sheet Size, Color Mode, Pixel Edit, Rename, Send to board e Confirm delete; ver «Aberto» |
+| M3–M7 | Não feitas | | Pausa pedida pelo dono para o smoke (04/11). Nenhuma barra foi começada. A ordem de referência já é lei, não falta resposta dele: nossos painéis aprovados, Figma, Rive, Inkscape/Godot/Unity |
+| M9 | Não feita | | Pela mesma pausa. Olhar a paleta aberta |
 
-**Contraprovas (corrida interrompida pelo prazo):** sangraram moldura de lista ignorar o cartão, realce ignorar o cartão, forçar o modo não desligar, cor `Text2` antiga (só `lista_flutuante`). Por correr, com o teste novo das caixas: `Text3`, moldura de caixa, alvo do menu que se move, menu e lista de cenas sem moldura, transbordo sem moldura (sem teste próprio: a fila não semeia no mock), dica sem moldura, título aberto antigo, New Sprite sem moldura. A moldura da dica deu erro de compilação alheio. Uma 1.ª corrida destas ficou inválida: o teste da barra estava vermelho sem mutante.
+**Contraprovas da M1/M8 (04/11, 14 mutantes em 4 lotes, 14 sangraram):** `Text3`, moldura de caixa ignora o cartão, alvo do menu que se move, menu sem moldura, lista de cenas sem moldura, transbordo sem moldura, dica sem moldura, texto da dica pelo caminho antigo, título aberto antigo, New Sprite sem moldura, trilha antiga, Fill sem rótulo, unidade fora do rótulo, campo sem marca de cartão. O New Sprite sem moldura sobreviveu à 1.ª corrida (os segmentos escolhidos pintam o mesmo tom): o teste passou a contar `3` pinturas desse tom e sangrou. Restauro conferido por `git diff`. Duas corridas não contam: uma anterior, com o teste da barra vermelho sem mutante, e outra minha, cujo filtro `cromo_tests` não casava com o módulo (`context_menu_overlay_tests::cromo`) e só correu 2 testes. Esse filtro também escondeu dois vermelhos no commit `ecae7d59d5`, curados em `8f899dde78`: o HEAD intermédio tem esses dois testes vermelhos, e compila. Antes: moldura de lista ignorar o cartão, realce ignorar o cartão, forçar o modo não desligar, cor `Text2` antiga.
+
+**Portões por nome (04/11):** verdes `every_widget_file_wires_a11y` (`hr12_widgets_a11y`, 3), `the_shell_only_shrinks` (2: os 19 da C3 cabem na folga, nada a mover), `panel_files_under_loc_cap`, `todo_campo_pintado_com_losango`, `the_new_sprite_dialog` (4). **Vermelho alheio:** `no_magic_numeric` acusa só `number_chip.rs:275`, um `0.75` que perdeu o marcador `LITERAL-PX-OK` ao ser reformatado no WIP por commitar de outro agente. Nada commitado está vermelho nesse portão.
 
 **Interruptor:** `PH2D_CARDS=0` devolve o de antes em todas as peças acima. **Foto sem rato:** `PH2D_CROMO_SMOKE=<n>` (1 menu da Hierarchy, 2 dica, 3 lista de cenas, 4 File, 5 Settings, 6 New Image, 7 New Sprite, 8 Fill, 9 Onion), `screens/hero/cromo_smoke.rs`.
 
 **Aberto na M8, visto nas fotos `m8_*`:**
 
-- O botão do cartão a `22 px` de altura (`ROW_H`) tem o texto cerca de 2 px baixo. A conta é a do cartão, onde o botão mede `28 px`; a cura é a linha de `FIELD_H` que vem com o `CardCtx::flutuante`.
-- New Sprite: «0 px» dentro da caixa (a unidade devia estar no rótulo) e campos antigos.
-- Fill: o `Slider` sem rótulo visível e sem o idioma do campo. Onion: os mesmos sliders.
+- **Texto do cartão cerca de 2,5 px abaixo do centro, em qualquer altura.** A hipótese de que era só a `22 px` estava errada. Medido nas fotos: botão de `27` px (New Sprite), centro da caixa `598,0`, do texto `600,5`; botão de `22` px (New Image), `570,5` e `573,0`. A conta `(h - VALUE_PX) * 0.5` repete-se em cerca de 14 sítios do cartão, e os campos e segmentos parecem ter o mesmo desvio (a olho, numa foto ampliada). A `FIELD_H` não cura. Não mexi: move o texto de todos os painéis já aprovados, e o dono está a fazer smoke. Fica para um bloco só, com uma porta única e foto de vários painéis.
 - O campo de texto da lista de cenas ficou em `CardField`, mas o placeholder é o antigo.
+- Onion: o fechar continua um botão com a letra «X» escrita à mão, em vez de ícone.
+
+**Curado (04/11):** New Sprite: unidade no rótulo («Width (px)», «Height (px)»), campos e escolhas do cartão. O «0» da foto antiga era da cena de foto, que abria o menu sem semear; agora ela abre pela porta do produto e lê `32`. Fill e Onion: trilha nos tons do cartão, rótulo no Fill. Foto: `maquete/m8_new_sprite.png`, `m8_fill.png`, `m8_onion.png`. As de antes estão no commit `6536cbb6d7`.
 
 **Fora da M1 de propósito:** `widget/popover.rs` (seletor de data, editor rico) e a lista suspensa de fora de um cartão (`dropdown/popover.rs`) continuam na moldura de antes. As linhas dessas listas leem o token cru. Vão com a M6, que tem as listas da barra de opções.
 
-**Decisões tomadas sem o dono:** lista e dica em `KanbanCardRaised` com `FIELD_RADIUS` e a sombra da lista, sem filete (a lista suspensa aprovada). Caixa com `LIST_RADIUS` e as duas sombras da lista. Realce em `CardFieldHover`, como a lista suspensa. O título de menu aberto deixa o azul, para a barra não ter duas cores de estado. Nenhum alvo de clique muda de sítio.
+**Decisões tomadas sem o dono:** lista e dica em `KanbanCardRaised` com `FIELD_RADIUS` e a sombra da lista, sem filete (a lista suspensa aprovada). Caixa com `LIST_RADIUS` e as duas sombras da lista. Realce em `CardFieldHover`, como a lista suspensa. O título de menu aberto deixa o azul, para a barra não ter duas cores de estado. Nenhum alvo de clique muda de sítio, salvo os dois casos abaixo.
+
+**Decisões tomadas sem o dono (04/11, M8):**
+
+- New Sprite: Width e Height na mesma linha, com o rótulo por cima. A caixa ficou mais baixa e os controlos mudaram de sítio em cartões; os ids são os mesmos. `PH2D_CARDS=0` dá o de antes.
+- Fill: o rótulo «Threshold» à esquerda da trilha, como no Onion. A trilha encurta pela esquerda e acaba no mesmo sítio.
+- Fill e Onion **mantêm a barra**, em vez do campo numérico que a Física adotou. O cartão não tem barra própria, e estes valores são lidos da barra pela shell a cada quadro: trocar para campo faria a shell mudar, e ela não pode crescer. Preenchimento no azul do botão de destaque, trilha no tom do campo. O dono pode preferir o campo.
 
 **Correções a este censo, medidas no código:**
 

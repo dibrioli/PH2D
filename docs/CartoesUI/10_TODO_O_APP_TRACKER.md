@@ -382,7 +382,9 @@ Dívida da H1. Testes de pincel verdes (antes da H2, que não toca o motor). Cus
 
 Catraca: altura de abertura `1 629 → 1 748` (rótulo em cima, mesmas secções). Sai de `FORA` a exceção das abas Brush/Layers, obsoleta desde a H1. Decidido sem o dono: Size e Strength dividem a linha, e Flow também quando cabe aos pares; o Save e a biblioteca em botões aos pares; «On empty» continua número 0/1, para não mudar o evento. Vermelhos alheios: `no_magic_numeric` (`context_menu_overlay_tests_cromo.rs`, `cromo_smoke.rs`) e `onde_comeca_o_valor` (8 contra piso 9; o Painter mede 1 coluna, a `timeline` mede 2). Sem foto nem gesto na janela: seletor de cor, popovers, solto, voo (só mock).
 
-**Bloco M1, M2 e M8 parcial (04/11).** Porta `widget/lista_flutuante.rs`: menu, lista de cenas, transbordo, dica, título de menu aberto e as caixas internas na superfície da lista suspensa do cartão, sem mover alvo; `PH2D_CARDS=0` dá o de antes. Cena de foto `PH2D_CROMO_SMOKE=1..9`. Estado, aberto, contraprovas, decisões sem o dono e correções ao censo: [15](15_CHROME_CENSO.md). M3 a M7 esperam a referência do dono; M9 não foi olhada.
+**Bloco M1, M2 e M8 parcial (04/11).** Porta `widget/lista_flutuante.rs`: menu, lista de cenas, transbordo, dica, título de menu aberto e as caixas internas na superfície da lista suspensa do cartão, sem mover alvo; `PH2D_CARDS=0` dá o de antes. Cena de foto `PH2D_CROMO_SMOKE=1..9`. Estado, aberto, contraprovas, decisões sem o dono e correções ao censo: [15](15_CHROME_CENSO.md). M9 não foi olhada.
+
+**Bloco M, dívida da M1/M8 (04/11).** New Sprite em linhas de cartão, com a unidade no rótulo; Fill com rótulo; trilha do `Slider` nos tons do cartão; `FOOTER_H` derivado. Contraprovas: 14 mutantes, 14 sangraram, um deles só depois de reforçar o teste. O texto «2 px baixo» não é só a `22 px`: mede `2,5` px também no botão de `27`, e fica aberto para um bloco único. **M3 a M7 e M9 não foram começadas:** o dono pediu pausa para o smoke. Quando voltarem, não esperam resposta dele: a ordem de referência já é lei. Estado, portões, contraprovas, decisões sem o dono: [15](15_CHROME_CENSO.md).
 
 ### Bloco I2 (04/11)
 

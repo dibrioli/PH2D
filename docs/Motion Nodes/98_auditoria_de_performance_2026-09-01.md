@@ -184,6 +184,79 @@ costura auditada, **byte-idêntica ao serial** por construção (`collect` index
 **22 crates** já a usam. Retrofitar um nó é uma linha, quando o nó é um mapa puro. *A questão
 não é se dá; é que ninguém voltou.*
 
+### §4.0 — ⭐ Conferido e medido em 04/11: 2 curados, o resto recusado com número
+
+> A tabela acima é de 01/09 e **fica como estava**; o que vale hoje é esta secção. Sondas:
+> `sonda_par_build` (por nó, `crates/ph2d-node-registry-init/tests/it/sonda_par_build.rs`) e
+> `sonda_par_build_no_quadro` (o quadro do produto com a placa à espera dentro,
+> `crates/ph2d-app-motion/src/motion_par_build_quadro_probe.rs`). Variantes: pool de 1 fio × pool
+> da fatia (`16` fios sob o `ph2d-run.sh`), no mesmo processo, intercaladas, o mínimo com a mediana
+> ao lado. ⚠️ Máquina carregada por outras linhas: `load` na tabela; a régua é a razão dentro de cada
+> rodada, nunca o absoluto entre rodadas. ⛔ **A pool de `32` fios do produto não foi medida.**
+
+**O que mudou desde 01/09 e muda a pergunta:**
+
+1. **Registo hoje: `96` tipos com kernel, `44` sem** (lido do `NodeRegistry`; a tabela de cima
+   contava crates por `grep`). `motion.trail`, `.clone`, `.mirror`, `.duplicator`, `.slit_scan`,
+   `.strobe`, `fx.drop_shadow`, `fx.rgb_split` **ganharam kernel**: a placa dispensa-os.
+2. **O tecto por nó (`MAX_INSTANCIAS_POR_NO = 32 768`, ordem do dono em 22/09) cura o ponto 1 do
+   §4.2c:** o duplicator já não emite `16 777 216`, e o `motion.clone` também pára ali. ⇒ **`N` real
+   é `≤ 32 768`**; só `mirror` (`×2`) e `trail` (`×3`) entregam mais. A 1.ª rodada media `262 144`
+   e a cena de quadro «x9» dava os mesmos `32 761`: *essas linhas não existem no produto*.
+3. **A GPU por omissão NÃO dispensa um nó sem kernel na ponta.** A rota medida é
+   `CPU: fronteira sem estagio de GPU que despache`: **a cena inteira coze na CPU**, e o quadro
+   é quase só a `marcha`. Só por esta rota o custo destes nós pesa.
+
+**O quadro, grelha viva no tecto (`181² = 32 761`):**
+
+| cena (ms por quadro: 1 fio → pool, med. entre parênteses) | load `18,9→13,5` | load `10,5→7,1` | load `6,5→4,7` | código final, load `19,7` |
+|---|---:|---:|---:|---:|
+| referência: toda na placa | `0,271→0,167` | `0,145→0,102` | `0,110→0,104` | `0,104→0,082` |
+| ⭐ pele, 16 ossos | `11,93→1,83` (`16,7→9,1`) | `10,99→1,76` (`11,4→6,5`) | `9,06→1,07` (`11,2→3,2`) | `4,40→0,59` (`8,7→0,8`) |
+| ⭐ 2 expressões + make_point | `8,73→1,82` (`10,6→10,0`) | `4,74→2,01` (`9,5→3,1`) | `6,89→1,25` (`9,6→3,1`) | `2,97→0,63` (`5,9→0,8`) |
+| ⭐ cena `=34` no tecto (4 expressões) | `11,68→9,46` (`13,2→20,3`) | `12,05→4,55` (`16,5→9,9`) | `10,51→2,72` (`12,5→9,5`) | `4,71→1,46` (`10,2→2,0`) |
+| cena `=34` de fábrica (`64²`) | `1,03→0,91` | `0,66→0,87` | `0,82→0,86` | `0,56→0,57` (`1,07→1,06`) |
+
+⚠️ **Nenhuma cena de fábrica acelera:** a `=34` tem `64² = 4 096` linhas e a pele da cena `=120` tem
+`21`, abaixo do `PAR_THRESHOLD`. O ganho é de quem sobe a grelha.
+
+**Por nó, código final, load `19,6→19,5`, `1 fio → pool`, ms por tique:**
+
+| `N` | `rig.skin_deformer` (16 ossos) | `motion.expression` |
+|---:|---:|---:|
+| `1 024` (controlo: nada paraleliza) | `0,221→0,216` | `0,119→0,115` |
+| `8 192` | `1,622→0,207` (`7,8×`) | `0,931→0,118` (`7,9×`) |
+| `32 768` | `6,708→0,703` (`9,5×`) | `3,888→0,338` (`11,5×`) |
+
+**Prova do mesmo bit:** as `54` células da sonda (`18` nós × `3` `N`) dão a mesma impressão FNV do
+serial de ANTES da mudança, e o gate `par_build_bit_identico` (`crates/ph2d-node-registry-init`)
+compara pool de `1` × `8` a `N = 32 768`. Mutação vista vermelha nos dois nós: um contador partilhado
+no lugar do índice (`left ≠ right`). O `motion.expression` só é mapa porque `ph2d_expr::eval` lê o
+elemento, o `t` e os params; o `rig.skin_deformer` só lê os ossos.
+
+**Os recusados.** Critério: ganho de quadro `≥ 1 ms` a `32 761` no mínimo E mediana a melhorar
+(MEDIR_VELOCIDADE passo 4). Os três primeiros foram **aplicados, medidos e revertidos**:
+
+| nó | mapa puro? | `1 fio` a `32 768` | com `par_build`, no quadro | porquê |
+|---|---|---:|---|---|
+| `motion.randomize` | sim | `0,98` (posição), `1,56` (matiz) | `1,87→1,24` (med `2,36→2,52`), `2,47→1,48` (med `6,6→9,5`) | o controlo SEM `par_build` já dá `1,46→1,16`: quem ganha é a grelha e o oscilador a montante. ⚠️ O próximo da fila: por nó dava `2,8×`–`3,5×` |
+| `motion.step` | sim | `0,98` | `1,20→0,57` (med `1,61→1,27`), `1,49→1,03` (med `1,67→1,96`) | `< 1 ms`, e o controlo sem `par_build` dá `1,5×`: 4 colunas de um `Vec` de tuplos |
+| `motion.morph` | sim | `0,71` | `1,10→1,16` (med `1,35→2,17`), `1,08→0,77` (med `1,24→1,90`) | a mediana piora |
+| `motion.spline_wrap` | sim | `0,86` | não tentado | `< 1 ms` |
+| `motion.distribute_curve` | sim | `0,57` | não tentado | `< 1 ms` |
+| `motion.mixer` · `make_point` · `velocity` · `wave` | sim | `0,28` · `0,26` · `0,11` · `0,18` | não tentado | `≤ 1,7 %` de um quadro |
+| `motion.delay` | não: anel, `flat`/`unflat` | `1,81` | não tentado | cópia de memória, não cálculo |
+| `motion.sort` | não: a ordenação manda | `1,46` | não tentado | só as chaves seriam mapa |
+| `motion.scatter` | não: gerador `Pure` | `27,3` | não tentado | **memo**: a sonda muda a semente para o forçar; numa cena coze 1× |
+| `motion.trail` | não: anel por cópia | `7,67` (`98 304` linhas) | não tentado | tem kernel; na CPU só por trás de um nó sem kernel |
+| `motion.clone` · `mirror` | sim | `0,09` · `0,12` | não tentado | têm kernel e `≤ 0,7 %` |
+| `motion.duplicator` | sim | não medido | já tem `par_build` | tem kernel |
+| `source.object` · `util.reroute` · `source.table` · `source.shape` | sem laço caro por quadro (`Arc` ou memo) | não medido | — | lidos no código |
+| `rig.fabrik` · `ik_2bone` · `rubber_hose` · `skeleton` | não: cadeia de juntas | não medido | — | `N` = juntas, dezenas |
+| `motion.distribute_poisson` | não: rejeição em ordem | não medido | — | gerador em memo |
+
+⏳ **Fica por conferir do §4.2c:** o ponto 2 (a truncagem muda) não foi visto nesta passada.
+
 ### §4.1 — Os `O(N²)` da CPU, e por que estão certos
 
 `motion.boids` (`for i in 0..n { for j in 0..n }`), `motion.collide` e `motion.proximity`
@@ -252,7 +325,7 @@ declara `GpuKernel`** e era **serial** (um dos 41 do §4).
 **não 16×**, porque a lista de pares é `Vec<(usize,usize)>` de 16,7 M = **268 MB** percorrida
 quatro vezes: o nó é **limitado por largura de banda**, não por cálculo.
 
-⛔ **NÃO CURADO, e são dois:**
+⛔ **NÃO CURADO, e são dois** (04/11: o 1 está curado pelo tecto por nó, §4.0):
 1. **O tecto continua a custar 2,7 quadros.** `1 << 24` nomeia *«a multiplicação não pode
    estourar a alocação»* — um recurso REAL, mas **não o orçamento do quadro**, e nada guarda esse.
    ⛔ Baixar o número é decisão de produto: ele já trunca, e ver o ponto 2.
@@ -394,10 +467,10 @@ escreveu — está na escada que **ninguém escreveu como número**.
    composição**. Wave com desenho próprio (dois planos, um buffer; que significa a ORDEM dos
    sinks no device; o memo partilha a montante?). **Decisão do Enio.**
 2. ⚠️ **A rota tem de ser VISÍVEL** — barata, e torna as outras duas auto-diagnosticáveis.
-3. ⏳ **Os ~29 nós por-elemento seriais** — `par_build` já existe e é byte-idêntico; cada
-   retrofit precisa do seu próprio argumento (um nó que REDUZ ou muda contagem não entra).
-   Comece pelos que um jogo usa: `motion.trail`, `motion.duplicator`, `motion.clone`.
-4. ⏳ **Os 60 nós sem kernel** — cada um que ganhe um kernel encolhe a fronteira híbrida.
+3. ✅ **Os ~29 nós por-elemento seriais** — fechado em 04/11 (§4.0): `rig.skin_deformer` e
+   `motion.expression` curados; o resto recusado com a tabela. Reabra só com medição nova.
+4. ⏳ **Os nós sem kernel** (`44` tipos em 04/11, §4.0) — cada um que ganhe um kernel encolhe a
+   fronteira híbrida.
 5. ⏳ **As 3 cenas da escada nº 5** (`=24`, `=27`, `=34`): fronteira cujo único estágio de GPU é
    o `output` passa-through. Diagnosticar caso a caso.
 
@@ -414,3 +487,6 @@ escreveu — está na escada que **ninguém escreveu como número**.
 | *«pôr o fio do duplicator nos `points` é obviamente melhor»* | **Refutado e depois re-justificado**: a saída fica em **0 linhas**. Só se sustenta porque o selo ⚠ `MissingInput("shape")` já existia e aparece (§4.2b) |
 | *«32 tipos têm a porta 0 errada»* | **Não**: em quase todos a porta 0 é `in`/`in0`/`a` e está certa. O irmão claro é o `value.switch` (§4.2a). E a 1.ª contagem, **74**, media as portas de SAÍDA |
 | *«paralelizar o duplicator resolve o congelamento»* | **Não**: `3,0×`, e sobram `2,7` quadros. Ele é limitado por LARGURA DE BANDA (268 MB de pares), não por cálculo (§4.2c) |
+| *«`par_build` em todo mapa puro: é uma linha e é byte-idêntico»* (04/11) | **Não**: `motion.randomize`, `.step` e `.morph` foram aplicados e revertidos. Por nó dão até `3,5×`, mas no quadro o ganho não passa do controlo sem `par_build` (§4.0) |
+| *«a GPU por omissão já dispensa estes nós»* (04/11) | **Não**: um nó sem kernel na ponta põe a cena inteira na CPU (§4.0) |
+| *«medir a `262 144` linhas»* (04/11) | **Régua errada**: nenhum gerador passa de `32 768` desde 22/09, nem o duplicator (§4.0) |

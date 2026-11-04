@@ -10,15 +10,15 @@ use ph2d_nodegraph::cook::Cook;
 
 /// As linhas: acima do limiar, onde o caminho paralelo corre de facto.
 const N: usize = 32_768;
+const _: () = assert!(
+    N >= PAR_THRESHOLD,
+    "o gate tem de exercer o caminho paralelo"
+);
 /// Tiques por lado: o estado e o relógio têm de ser os mesmos.
 const TIQUES: usize = 5;
 
 /// Coze o caso `rotulo` nas duas pools; devolve as duas impressões e a primeira coluna `P`/`v`.
 fn os_dois_lados(rotulo: &str) -> (u64, u64, Vec<f32>) {
-    assert!(
-        N >= PAR_THRESHOLD,
-        "o gate tem de exercer o caminho paralelo"
-    );
     let caso = casos()
         .into_iter()
         .find(|c| c.rotulo == rotulo)

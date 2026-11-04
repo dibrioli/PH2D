@@ -82,6 +82,11 @@ pub(crate) fn paint(state: &mut WidgetLabState, ctx: &mut PaintCtx) {
     let app_look = ph2d_editor_core::paint::ui_look();
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     ph2d_editor_core::paint::set_slider_style(state.style);
+    if crate::cards::cards_on() {
+        crate::cards::paint(state, ctx, rect, (live_t, live_drag));
+        ph2d_editor_core::paint::set_ui_look(app_look);
+        return;
+    }
 
     paint_panel_surface_floating(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);

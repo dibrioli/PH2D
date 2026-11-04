@@ -94,7 +94,7 @@ fn paint(h: &mut MockPanelHost, hover: bool) -> Painted {
 
 fn host_with(body: Option<[u8; 4]>) -> MockPanelHost {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     rows::set_live_rows(Some(vec![row(body)]));
     h

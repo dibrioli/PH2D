@@ -75,6 +75,10 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     // apagar uma forma e criar outra de mesmo nome e mesmo tipo dá um controle que nasce na
     // posição do morto — o id é o hash do RÓTULO, e o `adopt` vê o discriminante bater.
     crate::populate::retire_vanished(ctx.host.store_mut());
+    if crate::cards::cards_on() {
+        crate::cards::paint(ctx, rect);
+        return;
+    }
 
     paint_panel_surface_floating(rect, ctx.scene, theme);
     // ⚠️ O título é o `Name` da moldura, e não uma chave de i18n: ele é dado AUTORADO. Passá-lo
@@ -159,13 +163,13 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
 ///
 /// ⚠️ Os campos são OWNED porque a row vive sob o `thread_local` da tabela viva (ver
 /// [`crate::rows::with_rows`]): uma referência não escapa da closure, e é o compilador que o diz.
-struct OpenList {
-    key: String,
-    options: Vec<String>,
-    selected: usize,
+pub(crate) struct OpenList {
+    pub(crate) key: String,
+    pub(crate) options: Vec<String>,
+    pub(crate) selected: usize,
     /// O retângulo do CHIP — a lista pende dele, e ele é onde a row de facto foi desenhada
     /// (rolagem já aplicada).
-    chip: Rect,
+    pub(crate) chip: Rect,
 }
 
 /// ⚠️ **A lista de um dropdown SEM opções não é pintada, e isso não é o mesmo caso da moldura
@@ -180,7 +184,7 @@ struct OpenList {
 /// mutação foi quem a desmentiu. O efeito dela é **só visual**, e o harness de painel deste repo
 /// lê retângulos de hit, nunca a cena. Ela fica por ser barata e correcta, **declarada** em vez de
 /// coberta — o precedente das defesas em camada que o ADR-0145 documentou em vez de gatear.
-fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
+pub(crate) fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
     if open.options.is_empty() {
         return;
     }

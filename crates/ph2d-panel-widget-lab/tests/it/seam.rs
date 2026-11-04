@@ -74,7 +74,7 @@ fn every_lab_control_moves_the_study() {
     ];
     let mut dead = Vec::new();
     for (name, id) in controls {
-        let mut host = MockPanelHost::with_panel::<WidgetLabPanel>();
+        let mut host = crate::corpo_de_antes();
         let mut state = WidgetLabState::default();
         let before = snapshot(&state);
         let outcome = host.apply_panel_event::<WidgetLabPanel>(&mut state, WidgetEvent::Click(id));
@@ -95,7 +95,7 @@ fn every_lab_control_moves_the_study() {
 /// vazia por vácuo. Um id que a bancada não conhece tem de ser IGNORADO e não mover nada.
 #[test]
 fn an_id_the_bench_does_not_know_moves_nothing() {
-    let mut host = MockPanelHost::with_panel::<WidgetLabPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = WidgetLabState::default();
     let before = snapshot(&state);
     let outcome =
@@ -115,7 +115,7 @@ fn an_id_the_bench_does_not_know_moves_nothing() {
 /// A linha do menu *Window* abre a bancada.
 #[test]
 fn the_window_menu_row_opens_the_bench() {
-    let mut host = MockPanelHost::with_panel::<WidgetLabPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = WidgetLabState::default();
     assert!(
         !host.panel_visible(WidgetLabPanel::ID),
@@ -135,7 +135,7 @@ fn the_window_menu_row_opens_the_bench() {
 /// E o X fecha-a.
 #[test]
 fn lab_close_click_flips_visibility_off() {
-    let mut host = MockPanelHost::with_panel::<WidgetLabPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = WidgetLabState::default();
     host.set_panel_visible(WidgetLabPanel::ID, true);
     let outcome = host.apply_panel_event::<WidgetLabPanel>(

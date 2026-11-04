@@ -58,7 +58,7 @@ fn long_list() -> (ph2d_a11y::NodeId, String) {
 }
 
 fn host_with_open_list(id: ph2d_a11y::NodeId) -> (MockPanelHost, AuthoredPanelState) {
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     h.store_mut().register(
         id,

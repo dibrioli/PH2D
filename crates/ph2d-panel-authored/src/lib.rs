@@ -35,6 +35,7 @@
 //! `generated::PANEL_ID` continua sendo emitido e **lido** (o gate do golden compilado o confere):
 //! ele é o slug, e é a identidade que a fatia multi-painel vai usar para nomear a crate.
 
+pub mod cards;
 pub mod generated;
 pub mod ids;
 mod paint;

@@ -69,7 +69,7 @@ fn click(h: &mut MockPanelHost, st: &mut AuthoredPanelState, r: Rect, t: u128) {
 /// rota do clique que decide se o índice fica cru.
 fn marked_third_then_shrunk(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelState) {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
     rows::set_live_rows(Some(vec![row("mode", kind, &["A", "B", "C"])]));

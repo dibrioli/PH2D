@@ -65,7 +65,7 @@ fn row(key: &str, kind: WidgetKind) -> rows::Row {
 /// produto não tem.
 fn worn_then_rekinded(kind: WidgetKind) -> (MockPanelHost, AuthoredPanelState) {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
     // 1. O artista aperta "Wear a Widget": a forma vira um Button, e o painel pinta-a.
@@ -141,7 +141,7 @@ fn a_checkbox_that_was_born_a_button_still_checks() {
 #[test]
 fn a_control_that_was_born_a_section_header_no_longer_folds() {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
     rows::set_live_rows(Some(vec![row("mine", WidgetKind::SectionHeader)]));
@@ -190,7 +190,7 @@ fn a_control_that_was_born_a_section_header_no_longer_folds() {
 #[test]
 fn a_control_that_was_born_a_colour_swatch_no_longer_opens_the_picker() {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
     let mut swatch = row("mine", WidgetKind::ColorSwatch);
@@ -249,7 +249,7 @@ fn every_control_kind_survives_being_born_a_button() {
             .get(ph2d_panel_authored::ids::authored_row_id("mine"));
         // O que este tipo PEDE, perguntado a um store limpo pelo mesmo caminho do produto.
         rows::set_live_rows(None);
-        let mut fresh = MockPanelHost::with_panel::<AuthoredPanel>();
+        let mut fresh = crate::corpo_de_antes();
         fresh.set_panel_visible(AuthoredPanel::ID, true);
         rows::set_live_rows(Some(vec![row("mine", kind)]));
         let mut st2 = AuthoredPanelState;
@@ -291,7 +291,7 @@ fn every_control_kind_survives_being_born_a_button() {
 #[test]
 fn a_row_that_died_does_not_leave_its_value_to_the_next_one_of_the_same_name() {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     let mut st = AuthoredPanelState;
 

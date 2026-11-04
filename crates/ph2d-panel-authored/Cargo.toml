@@ -37,6 +37,7 @@ ph2d-vector = { path = "../ph2d-vector" }
 # `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs` tem de trazer um
 # teste que dirige um WidgetEvent REAL.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 # O gesto REAL do seam (Down+Up) precisa do tipo de evento de ponteiro. Um `WidgetEvent::Click`
 # sintético prova a allowlist e PULA a checagem de focabilidade no store.
 ph2d-host = { path = "../ph2d-host" }

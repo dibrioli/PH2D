@@ -41,7 +41,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn host() -> (MockPanelHost, AuthoredPanelState) {
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     (h, AuthoredPanelState)
 }

@@ -13,15 +13,10 @@ use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, stroke_rounded_rect};
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
-use ph2d_editor_core::panel::cards::linhas_extra::ListRow;
-use ph2d_editor_core::panel::cards::{
-    CardCtx, CardDef, Cell, HeadAction, Seg, Widget, dropdown, paint_card_list,
-};
+use ph2d_editor_core::panel::cards::linhas_extra::{FloatHandles, ListRow, paint_floating_list};
+use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Widget, dropdown};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
-use ph2d_editor_core::widget::panel_chrome::{
-    paint_panel_corner_dot_bl, panel_drag_handle_rect, panel_resize_handle_rect_bl,
-};
 use ph2d_editor_core::widget::{ButtonState, card_ink::CardInk};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -29,7 +24,7 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 
 const PAINEL: NodeId = ph2d_editor_core::ids::ASSET_PANEL;
 /// A seta anda 4 px no tamanho da miniatura; a pega, 1 px por px da mão.
-const PASSO_DA_SETA: f64 = 4.0;
+const PASSO_DA_SETA: f64 = 4.0; // LITERAL-PX-OK: passo da seta no tamanho da miniatura (domínio da grade)
 
 thread_local! {
     static FORCADO: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
@@ -189,26 +184,19 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx, rect: Rec
     crate::state::set_last_visible_h(rect.h);
     let janela = (ctx.viewport.y, ctx.viewport.y + ctx.viewport.h);
     let cartoes = cards(state, linhas, grade, janela);
-    let encaixe = ctx.slot;
-    ctx.slot = rect;
-    let lista = paint_card_list(ctx, PAINEL, crate::AssetBrowserPanel::TITLE.tr(), &cartoes);
-    ctx.slot = encaixe;
+    let lista = paint_floating_list(
+        ctx,
+        PAINEL,
+        crate::AssetBrowserPanel::TITLE.tr(),
+        &cartoes,
+        rect,
+        FloatHandles {
+            drag: ids::ASSET_DRAG_HANDLE,
+            resize_br: None,
+            resize_bl: ids::ASSET_RESIZE_HANDLE_BL,
+        },
+    );
     crate::state::set_last_content_h(lista.h);
-    let store = ctx.host.store_mut();
-    store.set_panel_rect(PAINEL, lista);
-    let theme = ctx.host.theme();
-    paint_panel_corner_dot_bl(lista, ctx.scene, theme);
-    // O «…» e o «×» ficam à direita da faixa de arrasto.
-    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
-    let hit = ctx.host.hit_index_mut();
-    hit.register(
-        ids::ASSET_DRAG_HANDLE,
-        panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
-    );
-    hit.register(
-        ids::ASSET_RESIZE_HANDLE_BL,
-        panel_resize_handle_rect_bl(lista),
-    );
 }
 
 fn cards(

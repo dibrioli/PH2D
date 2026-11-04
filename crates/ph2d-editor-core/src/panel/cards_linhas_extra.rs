@@ -447,6 +447,46 @@ impl CardCtx<'_> {
     }
 }
 
+/// As alças de uma lista que flutua: o id de sempre de cada gesto do painel.
+#[derive(Copy, Clone, Debug)]
+pub struct FloatHandles {
+    pub drag: NodeId,
+    pub resize_br: Option<NodeId>,
+    pub resize_bl: NodeId,
+}
+
+/// ⭐ **A lista de um painel que FLUTUA** (Assets, Authored, Widget Lab): pinta no `rect` dele, a lista
+/// abraça o conteúdo, e o rect do painel e as alças passam a ser os da lista, senão a roda e o clique
+/// morreriam no vazio abaixo dela. O «…» e o «×» ficam à direita da faixa de arrasto.
+pub fn paint_floating_list(
+    ctx: &mut crate::panel::PaintCtx,
+    panel: NodeId,
+    title: &str,
+    cards: &[super::CardDef<'_>],
+    rect: Rect,
+    h: FloatHandles,
+) -> Rect {
+    use crate::widget::panel_chrome as chrome;
+    let encaixe = ctx.slot;
+    ctx.slot = rect;
+    let lista = super::paint_card_list(ctx, panel, title, cards);
+    ctx.slot = encaixe;
+    ctx.host.store_mut().set_panel_rect(panel, lista);
+    let theme = ctx.host.theme();
+    chrome::paint_panel_corner_dot_bl(lista, ctx.scene, theme);
+    let hit = ctx.host.hit_index_mut();
+    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
+    hit.register(
+        h.drag,
+        chrome::panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
+    );
+    if let Some(br) = h.resize_br {
+        hit.register(br, chrome::panel_resize_handle_rect(lista));
+    }
+    hit.register(h.resize_bl, chrome::panel_resize_handle_rect_bl(lista));
+    lista
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

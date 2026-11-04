@@ -38,6 +38,9 @@ use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 /// fecha, o interruptor continua aceso, e clicar nele não faz nada.
 pub const AUTHORED_CLOSE: NodeId = hash_node_id("authored.close");
 
+/// Nova UI: o cartão das rows antes do 1.º `SectionHeader` (os outros usam o id da própria row).
+pub const AUTHORED_SEC_TOP: NodeId = hash_node_id("authored.sec.top");
+
 /// Faixa de arraste do título (move o painel), parenteada a [`AUTHORED_PANEL`].
 pub const AUTHORED_DRAG_HANDLE: NodeId = hash_node_id("authored.drag_handle");
 

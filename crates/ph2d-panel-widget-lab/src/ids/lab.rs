@@ -27,6 +27,9 @@ pub const LAB_RESIZE_HANDLE_BL: NodeId = hash_node_id("lab_resize_handle_bl");
 
 pub const LAB_CLOSE: NodeId = hash_node_id("lab_close");
 
+/// Nova UI: o cartão do estudo.
+pub const LAB_SEC_BENCH: NodeId = hash_node_id("lab_sec_bench");
+
 // ── Os controlos da bancada ────────────────────────────────────────────────
 // ⚠️ Cada um destes tem de ser LIDO por alguém que decide, senão é um knob morto — a espécie
 // que o `CLAUDE.md` §5.0 descreve e que esta linha já apanhou uma vez. O consumidor de todos

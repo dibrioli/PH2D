@@ -86,7 +86,7 @@ fn key_id(k: &str) -> ph2d_a11y::NodeId {
 /// na ordem conveniente não contém o fenômeno que diz medir.
 fn host_with_two_sections() -> (MockPanelHost, AuthoredPanelState) {
     rows::set_live_rows(None);
-    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    let mut h = crate::corpo_de_antes();
     h.set_panel_visible(AuthoredPanel::ID, true);
     // Só AGORA o documento aparece — a ordem que o `render_loop` produz.
     rows::set_live_rows(Some(two_sections()));

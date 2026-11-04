@@ -22,7 +22,7 @@ pub mod moldura;
 /// O papel de cada token deste painel num cartão: a caixa do campo, o acento do cartão, o texto dele.
 const fn papel(token: ColorToken) -> ColorToken {
     match token {
-        ColorToken::Bg1 | ColorToken::Bg2 | ColorToken::Bg3 => ColorToken::CardField,
+        ColorToken::Bg2 | ColorToken::Bg3 => ColorToken::CardField,
         ColorToken::BgElev | ColorToken::AccentSoft => ColorToken::CardFieldHover,
         ColorToken::Accent | ColorToken::AccentHover | ColorToken::AccentPress => {
             ColorToken::KanbanBlueBold

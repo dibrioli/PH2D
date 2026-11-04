@@ -33,8 +33,8 @@ const NOT_INSIDE_A_SECTION: &[(&str, &str)] = &[
         "a celula de uma tira de filme e' CANVAS: ela nao vive dentro de um corpo com cartoes",
     ),
     (
-        "shells/desktop/src/render_loop/audio_overlay.rs",
-        "a camada de audio pinta-se SOBRE o desenho, fora de todo painel",
+        "crates/ph2d-panel-audio-editor/src/cards_moldura.rs",
+        "a camada de audio pinta-se SOBRE o desenho, fora de todo painel: a regua desceu da shell e a isencao viajou com ela",
     ),
 ];
 

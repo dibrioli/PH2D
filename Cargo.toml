@@ -241,6 +241,23 @@ incremental = false
 [profile.ci-test.package."*"]
 opt-level = 3
 
+# O miolo da pintura a 3 só no `ci-test`. Medido 04/11, ABABAB, `ph2d-tool-painter`: CPU −6 a −13 % nos testes
+# (`o_mostra_me` 66,6 → 57,9 s) por +3,5 % de compilação; os alarmes de pincel continuam verdes.
+[profile.ci-test.package.ph2d-wet-paint]
+opt-level = 3
+
+[profile.ci-test.package.ph2d-pigment]
+opt-level = 3
+
+[profile.ci-test.package.ph2d-tool-painter]
+opt-level = 3
+
+[profile.ci-test.package.ph2d-painter-brush]
+opt-level = 3
+
+[profile.ci-test.package.ph2d-color]
+opt-level = 3
+
 # ⚠️ Temporário: o wgpu-core 30.0.1 com o backport do gfx-rs/wgpu#10160 (a placa recusada ao abrir
 # entrava em pânico no wgpu-hal 30 em vez de devolver o erro). Sai quando o crates.io tiver uma
 # versão com o #10160 — `crates/ph2d-gpu/vendor/wgpu-core/VENDOR.md`.

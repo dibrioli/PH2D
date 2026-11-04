@@ -31,26 +31,13 @@ pub fn verb_for_id(id: ph2d_editor_core::NodeId) -> Option<BaseVerb> {
     .find_map(|(k, v)| (k == id).then_some(v))
 }
 
-/// C2: o gesto vai à forma do cartão preso sob ele; sem cartão, à selecionada.
-pub fn apply_no_alvo(
-    scene: &mut VecScene,
-    pen: &PenTool,
-    store: &ph2d_editor_core::interaction::WidgetStore,
-    sim: &ph2d_ecs::SimWorld,
-    verb: BaseVerb,
-) -> bool {
-    match crate::preso::alvo_do_gesto(store, sim) {
-        Some(id) => apply_em(scene, &[id], pen, verb),
-        None => apply(scene, pen, verb),
-    }
-}
-
 /// **Aplica o gesto** à forma selecionada. Devolve se o documento mudou.
 pub fn apply(scene: &mut VecScene, pen: &PenTool, verb: BaseVerb) -> bool {
     apply_em(scene, pen.selected_paths(), pen, verb)
 }
 
-fn apply_em(
+/// O gesto em `sel` (a selecionada, ou o objecto de um cartão preso).
+pub fn apply_em(
     scene: &mut VecScene,
     sel: &[ph2d_vec_scene::VecPathId],
     pen: &PenTool,

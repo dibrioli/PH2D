@@ -6317,6 +6317,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-vec-preso"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-vec",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-panel-vector",
+ "ph2d-tokens",
+ "ph2d-tool-vector",
+ "ph2d-vec-edit",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-arc-length"
 version = "0.0.0"
 
@@ -7346,6 +7361,7 @@ dependencies = [
  "ph2d-app-sprite-anim",
  "ph2d-app-text",
  "ph2d-app-vec",
+ "ph2d-app-vec-preso",
  "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-index",
@@ -9922,6 +9938,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-app-vec",
+ "ph2d-app-vec-preso",
  "ph2d-card-rope",
  "ph2d-card-stack",
  "ph2d-component-desc",

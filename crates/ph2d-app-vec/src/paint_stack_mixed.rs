@@ -9,34 +9,26 @@ use ph2d_tool_vector::StyleFields as F;
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{PaintEntry, PaintKind, Rgba8, VecPathId, VecScene};
 
+/// A forma de um objecto (`None` = não é uma forma, ou já saiu).
+#[must_use]
+pub fn forma(sim: &SimWorld, bits: u64) -> Option<VecPathId> {
+    let e = ph2d_ecs::Entity::try_from_bits(bits)?;
+    Some(sim.world().get::<ph2d_ecs::VecPathRef>(e)?.0)
+}
+
+/// A forma do cartão preso sob o gesto deste quadro (`None` = o gesto é da seleção).
+#[must_use]
+pub fn alvo_do_gesto(store: &WidgetStore, sim: &SimWorld) -> Option<VecPathId> {
+    forma(sim, store.card_edit_subject()?)
+}
+
 /// ⭐ C1 **As formas de um pedido de aparência:** a do cartão preso sob o gesto, ou a seleção.
 #[must_use]
 pub fn alvos(store: &WidgetStore, pen: &PenTool, sim: &SimWorld) -> Vec<VecPathId> {
-    let Some(bits) = store.card_edit_subject() else {
-        return ordered(pen);
-    };
-    ph2d_ecs::Entity::try_from_bits(bits)
-        .and_then(|e| sim.world().get::<ph2d_ecs::VecPathRef>(e))
-        .map(|r| r.0)
-        .into_iter()
-        .collect()
-}
-
-/// A aparência de UM objecto preso por um cartão solto (`None` = não é uma forma): a mesma porta da
-/// seleção, sem misto (um só).
-pub fn aparencia_do_preso(
-    bits: u64,
-    sim: &SimWorld,
-    scene: &ph2d_vec_scene::VecScene,
-    map: &ph2d_vec_entities::entities::VecEntityMap,
-    store: &WidgetStore,
-    doc: ph2d_editor_core::DocPx,
-) -> Option<ph2d_panel_vector::state::Appearance> {
-    let e = ph2d_ecs::Entity::try_from_bits(bits)?;
-    let id = sim.world().get::<ph2d_ecs::VecPathRef>(e)?.0;
-    let mut vivo = ph2d_vec_scene::VecViewState::default();
-    crate::driven_style::live_layers(sim, map, store, &mut vivo);
-    super::published(scene, &[id], &vivo, doc)
+    match store.card_edit_subject() {
+        Some(bits) => forma(sim, bits).into_iter().collect(),
+        None => ordered(pen),
+    }
 }
 
 /// **A seleção da pilha, com o PRIMÁRIO à frente** — a porta única de *«de quem é a pilha que o
@@ -173,25 +165,8 @@ pub fn apply_picker(
     pica(store, scene, sel) || estilos
 }
 
-/// C2: o quadro do seletor e dos estilos. Os pedidos da lista são do gesto, a vista dela é da seleção
-/// e o seletor de cor é de quem o abriu: um cartão preso continua no objecto dele.
-pub fn apply_no_quadro(
-    store: &mut ph2d_editor_core::interaction::WidgetStore,
-    scene: &mut VecScene,
-    pen: &PenTool,
-    sim: &SimWorld,
-) -> bool {
-    let (sel, mostrada) = (alvos(store, pen, sim), ordered(pen));
-    let seletor = store
-        .picker_subject()
-        .and_then(|b| crate::preso::forma(sim, b))
-        .map_or_else(|| mostrada.clone(), |id| vec![id]);
-    let estilos = super::estilos::drena_de(store, scene, &sel, &mostrada, &seletor);
-    pica(store, scene, &seletor) || estilos
-}
-
 /// A escolha do seletor sobre a amostra de uma camada (ver [`apply_picker`]).
-fn pica(
+pub fn pica(
     store: &mut ph2d_editor_core::interaction::WidgetStore,
     scene: &mut VecScene,
     sel: &[VecPathId],

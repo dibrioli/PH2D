@@ -129,6 +129,7 @@ ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-card-rope = { path = "../ph2d-card-rope" }
 # ⭐ Só para `o_alfinete_fill_stroke_c2`: o gesto do cartão preso chega à cena pelas portas reais do vetor.
 ph2d-app-vec = { path = "../ph2d-app-vec" }
+ph2d-app-vec-preso = { path = "../ph2d-app-vec-preso" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }

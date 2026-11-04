@@ -1,6 +1,6 @@
 # 09 — O alfinete nos cartões que ainda não o têm: plano com o tamanho medido (03/11/2026)
 
-Leitor: a LLM que construir isto. **Construído: guarda, Material, Ordering, Object, Appearance (bloco C1, 04/11). Falta: Fill e Stroke.** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
+Leitor: a LLM que construir isto. **Construído: guarda, Material, Ordering, Object, Appearance (bloco C1, 04/11), Fill e Stroke (bloco C2, 04/11). Aberto: o losango de um campo preso (fim deste documento).** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
 Pedido dele: «vários cards ainda não têm o alfinete». Foto: cartão Fill solto, cabeçalho ⠿ + ×, sem alfinete.
 
 Hoje só o Transform e os cartões de componente são presos (T47, T61): `store.mark_card_pinnable`, em
@@ -97,7 +97,17 @@ prende-se a A, escolhe-se B, edita-se no cartão, e A muda e B não. Com multi-s
 - **Com o Vector atrás do Inspector, a Opacity não era semeada:** a caixa ficava com a da forma anterior (só a foto mostrou). Cura: `semeia_a_opacidade` no `prepare`.
 - **Girar e espelhar do Transform preso** iam a `pen.selected()`. Cura: `alvos`, na `fase_node_and_arrange_verbs`.
 
-## Decisão de produto em aberto para o dono
+## O que o bloco C2 mediu (04/11)
 
-Um Fill preso a A com o seletor de cor aberto: escolher outra forma fecha o seletor ou continua em A? O Transform preso
-não tem essa pergunta. Recomendação: continua em A, porque é para isso que o alfinete existe. Perguntar quando a onda 4 começar.
+O plano previu mais do que o código pede. **O cartão só emite:** amostra e hex, opacidade, olho e «–» de cada linha, «+», Weight, Position, Cap, Join, ⠿ e corrente partida (lido em `cards_pilha.rs` e `cards_corpos.rs`). Tipo de tinta, gradiente, pattern, tracejado, setas, reordenar e abrir camada moram no painel Vector, onde a pressão não é de um preso; `set_kind` e `stroke_paint::apply` não precisam de rota. O pattern não entrou no retrato pela mesma razão: nenhum cartão o lê.
+
+- **Crate nova `ph2d-app-vec-preso`** (295 linhas): `ph2d-app-vec` ficava 309 acima do tecto com a parte por objecto (medido, 93 946 × 93 637); ficou em 93 623. Ela leva a publicação do retrato, o seletor do preso, `apply_no_alvo` e o bloco de aparência que saiu da shell; os verbos e a ponte são os de sempre.
+- **A tool é da seleção, e o cartão passa por ela.** Largura, opacidade, Cap, Join e Position chegam por `ToolPanelEvent`. O gesto do preso escreve os campos só em A e a tool volta ao molde no mesmo quadro (`devolve_o_estilo`); sem isso o próximo desenho herdava o estilo de A.
+- **`end_card_edit_frame` corria antes do dispatch:** o commit ao sair do foco chegava lá sem sujeito e a largura de A caía na seleção. Passou para depois.
+- **O seletor do preso não passa pela tool** (`seletor_na_base`): a leitura contínua dele reescreveria a tool a cada quadro.
+- **A amostra de uma camada só abria o seletor se o painel Vector tivesse sido pintado.** O cartão regista-a agora.
+- **Um clique fora fecha o seletor** (`pointer_down`); para a decisão do dono valer, o seletor do preso não fecha assim: fecha pelo ×, ou abrindo outra amostra.
+
+## O losango de um campo preso: DEFEITO ABERTO
+
+Lido em `fase_autokey.rs` e `key_mark.rs`, não corrido: o mapa `MARCAS` é um só e calcula-se com a seleção, e `take_key_mark_click` grava em `sel`. Num cartão preso o losango mostra o estado do objecto escolhido, e clicá-lo põe a chave nele. Vale para todos os presos, desde o Transform (T47). Cura: `Retrato` com as marcas de cada preso (`marcas(tl, ctx, &[A], …)`, com `ALVOS` a sobreviver à troca) e o clique com `sel = [preso]` + `Contexto` da forma dele. Não entrou no prazo do C2.

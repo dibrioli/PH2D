@@ -335,6 +335,7 @@ ph2d-vector = { path = "../../crates/ph2d-vector" }
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 # ⭐ A metade-shell da família `vec`, extraída em W2/L4 — a shell chama-a, ela nunca chama a shell.
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
+ph2d-app-vec-preso = { path = "../../crates/ph2d-app-vec-preso" }
 # *Add ▸ Text*: o texto nasce já escrito e filho do HUD.
 ph2d-app-text = { path = "../../crates/ph2d-app-text" }
 ph2d-system-fonts = { path = "../../crates/ph2d-system-fonts" }

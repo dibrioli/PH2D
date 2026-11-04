@@ -457,3 +457,51 @@ fn an_unpinned_card_fans_out_and_a_deleted_object_lets_go() {
     });
     assert_eq!(e, Some(B), "o cartão solto sem alfinete é da seleção");
 }
+
+/// ⭐ C2: o `Reset` do Transform preso é do objecto dele, com a seleção em qualquer sítio.
+#[test]
+fn the_reset_of_the_pinned_transform_card_is_of_its_object() {
+    for sel in SELECOES {
+        let mut h = preso(insp::CARD_TRANSFORM, sel);
+        let c = no_solto(&h, insp::CARD_TRANSFORM, pids::INSP_TRANSFORM_RESET);
+        drena(&mut h);
+        mao(&mut h, PointerKind::Down, c);
+        mao(&mut h, PointerKind::Up, c);
+        nao_se_espalha(&h, sel);
+        let feitos: Vec<u64> = drena(&mut h)
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::InspectorTransformEdit(i) => Some(i.entity_bits),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(feitos, [A], "{sel:?}");
+    }
+}
+
+/// ⭐ C2: sem o bloco do Material publicado, o cartão preso deixa de oferecer os modos e o alfinete
+/// fica, à espera do componente (o que `Mix` causa: ver a shell).
+#[test]
+fn a_material_card_pinned_to_an_object_without_the_component_offers_no_mode() {
+    let mut h = preso(CARD_MATERIAL, &[B]);
+    assert!(h.hit_index.rect_for(pids::INSP_SAMPLE_BLEND[1]).is_some());
+    for _ in 0..4 {
+        insp::com_cada_preso(&h.store.loose_pins_of(INSP_PANEL), |b| {
+            arma(b);
+            insp::set_current_inspector_blend(None);
+        });
+        arma(B);
+        insp::set_current_inspector_blend(None);
+        pinta(&mut h, 1);
+    }
+    assert!(
+        h.store
+            .loose_card(CARD_MATERIAL)
+            .is_some_and(|c| c.pin == Some(A)),
+        "o alfinete largou-se"
+    );
+    assert!(
+        h.hit_index.rect_for(pids::INSP_SAMPLE_BLEND[1]).is_none(),
+        "o cartão continua a oferecer os modos"
+    );
+}

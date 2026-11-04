@@ -58,7 +58,7 @@ impl crate::App {
         // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
         // tarde leria a ficha do quadro anterior.
         if let Some(v) = pending_stroke_present {
-            crate::vec_stroke_present::apply_no_alvo(vec_scene, &self.vec.pen, &hero.store, sim, v);
+            ph2d_app_vec_preso::apply_no_alvo(vec_scene, &self.vec.pen, &hero.store, sim, v);
         }
         hero.store.end_card_edit_frame();
         crate::vec_stroke_present::publish(vec_scene, &self.vec.pen);

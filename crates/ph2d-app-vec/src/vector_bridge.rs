@@ -18,15 +18,17 @@ mod fields;
 mod style;
 pub use fields::mixed_of;
 use fields::{fill_merge, restyle_path_fields};
-pub use fields::{pick_base, pick_merge};
+pub use fields::pick_merge;
 pub use fields::{restyle_slot_fields, row_fields};
 use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
-pub use style::{StrokeStyle, restyle_selected_strokes, seed_fill_from_paint};
+pub use style::{
+    StrokeStyle, apply_fill_colour, recolour_stroke_paint, restyle_selected_strokes,
+    seed_fill_from_paint,
+};
 use style::{
-    apply_fill_colour, note_style_seen, rgba, seed_style_from_selection, selected_grad_color,
-    set_selected_grad_color,
+    note_style_seen, rgba, seed_style_from_selection, selected_grad_color, set_selected_grad_color,
 };
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
@@ -206,8 +208,7 @@ pub fn dispatch(
     let target = hero.store.picker_target();
     let stroke_open = target == Some(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
     let fill_open = target == Some(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
-    let seletor_do_preso = crate::preso::seletor_na_base(&mut hero.store, scene, sim, tocou);
-    if !seletor_do_preso
+    if hero.store.picker_subject().is_none()
         && (stroke_open || fill_open)
         && let Some((value, _, _, _)) = hero
             .store
@@ -313,7 +314,7 @@ pub fn dispatch(
     // ⭐ **Os CAMPOS que o gesto mudou** (plano 31): cada forma selecionada recebe só esses.
     let authored = tool.take_authored();
     // ⭐ C2: o gesto de um cartão PRESO escreve só na forma dele, sempre na tinta de BASE.
-    let preso = crate::preso::alvo_do_gesto(&hero.store, sim).filter(|_| !authored.is_empty());
+    let preso = crate::paint_stack::alvo_do_gesto(&hero.store, sim).filter(|_| !authored.is_empty());
     let width_authored = authored.has(StyleFields::WIDTH);
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {
@@ -412,7 +413,7 @@ pub fn dispatch(
         }
     }
     // A tool é da seleção: o gesto do preso não fica nela (o próximo desenho herdava-o).
-    if let Some((id, m)) = preso.zip(crate::preso::molde()) {
+    if let Some((id, m)) = preso.zip(ph2d_tool_vector::appearance::molde_do_estilo()) {
         crate::bindings::note_alvo(id);
         style::devolve_o_estilo(tool, &mut hero.store, &m);
         seed_style_from_selection(tool, &mut hero.store, pen, scene, doc, grad_handle);
@@ -425,7 +426,7 @@ pub fn dispatch(
     // que é um empréstimo mútuo do registry; o resto do passo 5 mora no módulo irmão.
     let mixed = mixed_of(pen, scene);
     fields::blank_mixed_numbers(&mut hero.store, tool, mixed);
-    crate::preso::guarda_molde(tool.ui_snapshot());
+    ph2d_tool_vector::appearance::guarda_molde_do_estilo(tool.ui_snapshot());
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(ph2d_tool_vector::VectorStyleSnapshot {
             mixed,

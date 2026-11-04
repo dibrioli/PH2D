@@ -129,48 +129,6 @@ pub fn pick_merge(cur: Rgba8, new: Rgba8, campos: F) -> Rgba8 {
     m
 }
 
-/// C2: a cor do seletor na tinta de base de `path` — a lei de [`pick_merge`], cada canal só se o gesto
-/// o tocou. Uma base escondida é editada escondida; um degradê fica quieto. Devolve se mudou.
-pub fn pick_base(path: &mut VecPath, fill: bool, nova: Rgba8, tocou: bool) -> bool {
-    let campos = |cur: Rgba8| {
-        let mut f = F::NONE;
-        if tocou || (cur.r, cur.g, cur.b) != (nova.r, nova.g, nova.b) {
-            f |= F::FILL_RGB;
-        }
-        if cur.a != nova.a {
-            f |= F::FILL_A;
-        }
-        f
-    };
-    if fill {
-        let Some(c) = seed_fill_from_paint(path.base_fill()) else {
-            return false;
-        };
-        let cur = Rgba8::new(c[0], c[1], c[2], c[3]);
-        let m = pick_merge(cur, nova, campos(cur));
-        if m == cur {
-            return false;
-        }
-        let closed = path.closed;
-        let alvo = if path.fill_is_hidden() {
-            &mut path.fill_hidden
-        } else {
-            &mut path.fill
-        };
-        return super::style::apply_fill_colour(alvo, closed, m);
-    }
-    let Some(s) = path.slot_stroke_mut(PaintSlot::Base) else {
-        return false;
-    };
-    let cur = s.color();
-    let m = pick_merge(cur, nova, campos(cur));
-    if m == cur {
-        return false;
-    }
-    s.paint = recolour_stroke_paint(&s.paint, m);
-    true
-}
-
 /// ⭐ F44b — os campos do traço que são da LINHA fixa (cor, opacidade, Weight, Position): ficam na
 /// BASE seja qual for a linha aberta. O resto (pontas, junções, tracejado, setas) é o CORPO de
 /// ajustes, e segue o [`PaintSlot`] aberto.

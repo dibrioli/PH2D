@@ -7,7 +7,7 @@
 use super::cartoes_mao::{centro, clica, mao, pinta, solta};
 use super::o_bloco5_abertos::escolhe;
 use ph2d_app_vec::paint_stack::{join_code_for_id, stack_verb_for_id};
-use ph2d_app_vec::preso::{self, PedidosDaPilha};
+use ph2d_app_vec_preso::{self as preso, PedidosDaPilha};
 use ph2d_app_vec::stroke_present;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_editor_core::NodeId;
@@ -258,7 +258,7 @@ impl Mesa {
             &self.tiles,
         );
         if let Some(s) = base {
-            stroke_present::apply_no_alvo(&mut self.scene, &self.pen, &self.h.store, &self.sim, s);
+            preso::apply_no_alvo(&mut self.scene, &self.pen, &self.h.store, &self.sim, s);
         }
         self.h.store.end_card_edit_frame();
         stroke_present::publish(&self.scene, &self.pen);

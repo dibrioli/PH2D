@@ -90,7 +90,7 @@ impl StrokeStyle {
 
 /// **A cor `color` escrita DENTRO da tinta do traço** — a espécie da tinta sobrevive (ver o
 /// [`StrokeStyle::onto`]). A porta única da cor do traço, partilhada pelo escritor campo a campo.
-pub(super) fn recolour_stroke_paint(
+pub fn recolour_stroke_paint(
     old: &ph2d_vec_scene::StrokePaint,
     color: Rgba8,
 ) -> ph2d_vec_scene::StrokePaint {

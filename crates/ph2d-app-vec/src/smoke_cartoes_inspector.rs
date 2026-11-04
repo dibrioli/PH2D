@@ -13,7 +13,8 @@
 //! e o «Player B» escolhido (a foto do T61); `=8`: um objecto Camera (Follow + Limits) escolhido, com o
 //! cartão Game Camera ABERTO e acima da dobra (05 §8); `=9`: o 8 com a lista «Game Format» aberta
 //! (a cara do popover num cartão, T25); `=10`: dois retângulos, com Object, Appearance, Ordering e
-//! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1).
+//! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1);
+//! `=11`: dois retângulos de tintas diferentes, com Fill e Stroke soltos e presos a cada um, «Shape B» escolhido (C2).
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
@@ -106,7 +107,9 @@ pub(crate) fn step(
                 if dois_cartoes_presos() {
                     e.insert(ph2d_ecs::Name(["Shape A", "Shape B"][i].to_owned()));
                     e.insert(ph2d_ecs::BlendMode::Mix);
-                    if i == 0 {
+                    if i == 0 && modo == "11" {
+                        pinta_o_primeiro(scene, f);
+                    } else if i == 0 {
                         e.insert((ph2d_ecs::ZIndexOverride(5), ph2d_ecs::BlendMode::Add));
                         if let Some(p) = scene.path_mut(f) {
                             p.opacity = ph2d_vec_scene::Opacity::new(0.3);
@@ -189,6 +192,9 @@ pub(crate) fn step(
             if s == FIM - 2 && modo == "10" {
                 prende_os_quatro_e_escolhe_o_segundo(vec, hero);
             }
+            if modo == "11" {
+                fill_e_stroke_presos(s, vec, hero);
+            }
             if s == FIM - 1 && modo == "5" {
                 ph2d_editor_core::panel::cards::estilos::abre_o_editor_do_primeiro();
             }
@@ -268,7 +274,57 @@ fn com_player() -> bool {
 }
 
 fn dois_cartoes_presos() -> bool {
-    std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref() == Ok("10")
+    matches!(
+        std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref(),
+        Ok("10" | "11")
+    )
+}
+
+/// Cena 11: o «Shape A» com outro Fill, outro Stroke (8 px, pontas redondas) e uma camada.
+fn pinta_o_primeiro(scene: &mut VecScene, f: u64) {
+    if let Some(p) = scene.path_mut(f) {
+        p.fill = Some(Paint::Solid(Rgba8::new(0xE0, 0x50, 0x40, 255)));
+        let mut s = StrokeSpec::new(Rgba8::new(0xFF, 0xCC, 0x00, 255), 0.08);
+        s.cap = ph2d_vec_scene::LineCap::Round;
+        s.join = ph2d_vec_scene::LineJoin::Round;
+        p.stroke = Some(s);
+        p.paints = vec![ph2d_vec_scene::PaintEntry::fill(Paint::Solid(Rgba8::new(
+            0x40, 0xC0, 0x80, 128,
+        )))];
+    }
+}
+
+/// Cena 11: Fill e Stroke soltos e presos ao «Shape A»; escolhe-se o «Shape B» e prende-se outra cópia.
+fn fill_e_stroke_presos(s: u8, vec: &mut VecState, hero: &mut HeroScreen) {
+    use ph2d_editor_core::interaction::loose_instance_of;
+    use ph2d_editor_core::registry::hash_node_id as h;
+    let painel = ph2d_editor_core::ids::INSP_PANEL;
+    let [fill, stroke] = [h("cards.insp.fill"), h("cards.insp.stroke")];
+    match FIM - s {
+        10 => {
+            hero.store.detach_card(fill, painel, (280.0, 110.0), 300.0);
+            hero.store.detach_card(stroke, painel, (280.0, 290.0), 300.0);
+        }
+        8 => {
+            hero.store.toggle_loose_pin(fill);
+            hero.store.toggle_loose_pin(stroke);
+            let (f, b) = (
+                SEGUNDO[0].load(Ordering::Relaxed),
+                SEGUNDO[1].load(Ordering::Relaxed),
+            );
+            vec.pen.select_many(&[f]);
+            hero.gizmo.replace_selection(Some(b));
+        }
+        4 => {
+            hero.store.detach_card(fill, painel, (620.0, 110.0), 300.0);
+            hero.store.detach_card(stroke, painel, (620.0, 290.0), 300.0);
+        }
+        2 => {
+            hero.store.toggle_loose_pin(loose_instance_of(fill, 1));
+            hero.store.toggle_loose_pin(loose_instance_of(stroke, 1));
+        }
+        _ => {}
+    }
 }
 
 /// Os cartões da cena 10: os ids de `ph2d-panel-inspector`, que esta crate não vê, e onde ficam.

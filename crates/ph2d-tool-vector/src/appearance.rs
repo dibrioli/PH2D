@@ -197,6 +197,21 @@ pub fn pinned_row() -> Option<usize> {
     PINNED_ROW.with(Cell::get)
 }
 
+thread_local! {
+    /// O estilo da seleção no fim do último quadro: a tool volta a ele depois de um gesto num cartão
+    /// preso, e dá os campos de sessão (modo, forma) ao retrato de cada preso.
+    static MOLDE: Cell<Option<crate::VectorStyleSnapshot>> = const { Cell::new(None) };
+}
+
+pub fn guarda_molde_do_estilo(s: crate::VectorStyleSnapshot) {
+    MOLDE.with(|m| m.set(Some(s)));
+}
+
+#[must_use]
+pub fn molde_do_estilo() -> Option<crate::VectorStyleSnapshot> {
+    MOLDE.with(Cell::get)
+}
+
 /// ⭐ F45 — guarda a queda do arrasto pelo ⚙ (o painel), para o verbo `Move` a ler (a shell).
 pub fn set_paint_move(m: Option<(ph2d_vec_scene::StackItem, ph2d_vec_scene::Place)>) {
     PAINT_MOVE.with(|c| c.set(m));

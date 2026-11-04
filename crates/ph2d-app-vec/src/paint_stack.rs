@@ -512,7 +512,7 @@ pub mod estilos;
 #[path = "paint_stack_mixed.rs"]
 mod mixed;
 pub use mixed::{
-    alvos, aparencia_do_preso, apply_no_quadro, apply_picker, layers_differ, ordered, row_mixed,
+    alvo_do_gesto, alvos, apply_picker, forma, layers_differ, ordered, pica, row_mixed,
     set_offset_axes, toggle,
 };
 

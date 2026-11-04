@@ -187,7 +187,11 @@ fn the_census_accuses_a_lone_sibling_and_a_glued_line() {
         let mut c = ctx(&mut f, 257.0);
         let y = c.row_inteira(&[campo(A, "Tint")], 0.0);
         let y = c.row_inteira(&[campo(B, "Self Tint")], y);
-        censo::fora_da_linha("Equalize", 10.0, crate::zones::Rect::new(0.0, y, 257.0, 28.0));
+        censo::fora_da_linha(
+            "Equalize",
+            10.0,
+            crate::zones::Rect::new(0.0, y, 257.0, 28.0),
+        );
     });
     assert_eq!(mau.irmaos_separados().len(), 1, "{:?}", mau.linhas);
     assert_eq!(mau.linhas_grudadas().len(), 1, "{:?}", mau.linhas);

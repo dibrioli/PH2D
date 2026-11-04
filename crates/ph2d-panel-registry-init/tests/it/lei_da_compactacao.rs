@@ -13,8 +13,8 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_editor_core::panel::cards::censo::{self, Censo};
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::censo::{self, Censo};
 use ph2d_ui_testkit::MockPanelHost;
 
 use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
@@ -93,7 +93,11 @@ fn pendente(painel: &str) -> (usize, usize, usize) {
 /// A catraca: nem acima (defeito novo) nem abaixo (o número desceu e não foi escrito).
 fn confere(medir: impl Fn(&Acusa) -> &Vec<String>, de: impl Fn((usize, usize, usize)) -> usize) {
     let tudo = censo_de_todos();
-    assert!(tudo.len() > 10, "a varredura não mediu nada: {}", tudo.len());
+    assert!(
+        tudo.len() > 10,
+        "a varredura não mediu nada: {}",
+        tudo.len()
+    );
     let mut erros = Vec::new();
     for (painel, a) in &tudo {
         let lista = medir(a);
@@ -101,7 +105,9 @@ fn confere(medir: impl Fn(&Acusa) -> &Vec<String>, de: impl Fn((usize, usize, us
         if tem > pode {
             erros.push(format!("{painel}: {tem} contra {pode}: {lista:#?}"));
         } else if tem < pode {
-            erros.push(format!("{painel}: desceu para {tem}, escreva-o em PENDENTES"));
+            erros.push(format!(
+                "{painel}: desceu para {tem}, escreva-o em PENDENTES"
+            ));
         }
     }
     assert!(erros.is_empty(), "{}", erros.join("\n"));

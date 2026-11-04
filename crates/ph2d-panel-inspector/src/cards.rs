@@ -326,7 +326,14 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
             },
         );
     }
-    for id in [DD_BLEND, DD_STROKE_ALIGN, SCALE_LOCK] {
+    for id in [
+        DD_BLEND,
+        DD_STROKE_ALIGN,
+        SCALE_LOCK,
+        ids::INSP_TRANSFORM_ROTATE_CW,
+        ids::INSP_TRANSFORM_FLIP_H,
+        ids::INSP_TRANSFORM_FLIP_V,
+    ] {
         store.register_if_absent(
             id,
             InteractiveState::Button {

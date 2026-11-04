@@ -198,9 +198,7 @@ impl Censo {
             while i + 1 < v.len() {
                 let (a, b) = (&v[i], &v[i + 1]);
                 let meia = (a.w.min(b.w) - m::FIELD_GAP) * 0.5;
-                let cabe = |l: &LinhaMedida| {
-                    matches!(l.celulas.as_slice(), [c] if c.curta && c.pede <= meia)
-                };
+                let cabe = |l: &LinhaMedida| matches!(l.celulas.as_slice(), [c] if c.curta && c.pede <= meia);
                 let colados = b.topo - a.fundo <= m::LABEL_TOP + m::FIELD_ROW_GAP;
                 if colados && cabe(a) && cabe(b) {
                     out.push(format!("{} + {}", nome(a), nome(b)));

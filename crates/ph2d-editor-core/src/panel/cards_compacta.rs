@@ -165,11 +165,9 @@ fn nome_da_celula(c: &Cell<'_>) -> String {
         Widget::Button { text, .. } | Widget::ButtonOff { text } | Widget::Readout { text } => {
             text.to_owned()
         }
-        Widget::Choice(s) | Widget::Icons(s) | Widget::Bare(s) => s
-            .iter()
-            .map(|s| s.text)
-            .collect::<Vec<_>>()
-            .join("/"),
+        Widget::Choice(s) | Widget::Icons(s) | Widget::Bare(s) => {
+            s.iter().map(|s| s.text).collect::<Vec<_>>().join("/")
+        }
         _ => String::new(),
     }
 }
@@ -315,8 +313,16 @@ pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f3
             }
         }
         marca_spec(c.store, &e.curto);
-        ctx_de_fora(c.scene, c.text_system, c.store, c.hit_index, c.ink, e.x, e.w)
-            .row_inteira(&[e.curto.celula()], e.y);
+        ctx_de_fora(
+            c.scene,
+            c.text_system,
+            c.store,
+            c.hit_index,
+            c.ink,
+            e.x,
+            e.w,
+        )
+        .row_inteira(&[e.curto.celula()], e.y);
     }
     fim
 }

@@ -33,6 +33,16 @@ grudado (botão incluído), uma grelha por cartão. Um campo por linha é defeit
 
 **Micro-pesquisa antes de cada cartão:** veja como o Figma e o Rive fazem e registe em [16](16_REFERENCIAS_POR_CARTAO.md).
 
+**API da lei** (`panel/cards_compacta.rs`, `cards_corpo_campos.rs`):
+
+- `c.pair(a, b, y)` e `c.compact(&cells, y)`: curtos em duas colunas iguais; não cabendo, um por linha, sem cortar. `Widget::Check { id, label, value, off }` é a caixa como célula: alinha com a CAIXA do campo vizinho e a marca anda com o nome.
+- `c.row`: botão e segmento medem o texto (`BUTTON_TEXT_PAD` de cada lado) e o que não cabe desce de linha. Uma escolha quebra em filas, com o rótulo na 1.ª.
+- `compacta::fluir(c, |c| corpo)`: para o corpo que pinta por pedidos soltos (`property_row`, `corpo::fields`, `bar_field`, `swatch_grid` de 1, `corpo::check`, `compacta::fact`). Pedidos curtos seguidos da mesma coluna saem lado a lado; um salto no `y` separa. É o que deu a lei aos ~45 componentes do Inspector de uma vez: uma linha no painel.
+- `corpo::facts` (Storage + Source), `corpo::swatch_strip` (lei 6, sem código), `corpo::colunas_iguais` + `corpo::caixa_ao_lado_do_rotulo` (chip à esquerda, caixa à direita), `corpo::ROW_GAP` (grelha à mão). `caixa_do_botao` já traz o vão; quem pinta botão com `Rect` à mão soma `ROW_GAP`.
+- Rótulo de grupo: na célula sem rótulo o da esquerda continua; ele usa a largura do grupo, não da 1.ª coluna.
+
+**Portões:** `lei_da_compactacao` e `nenhum_texto_sai_do_botao` (`ph2d-panel-registry-init`), por pintura real pelo censo `panel::cards::censo`. `PENDENTES` só desce. Sonda com as frases: `cargo test -p ph2d-panel-registry-init --test it diag_a_tabela_da_compactacao -- --ignored --nocapture`. Não vê: chip pedido por `paint_label_row` (conta como longo), `aviso` e corpo em captura.
+
 ## Que widget para que controlo
 
 | Controlo de antes | No cartão | Id |

@@ -83,6 +83,11 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - **G, Vector: PERGUNTA para o smoke.** Advanced é um cartão com os cinco membros dentro, como subsecções. Figma não tem Advanced e a forma nova (Path Effects em lista) ainda não está decidida.
 - **G1:** as abas Drawing e Interface moram no cabeçalho da lista, no lugar do título, como F17 pedia: «VECTOR» não se escreve. Snap em 2 × 2 (Shapes, Path, Cross, Guides), sem marca de animação (ajuste de ferramenta). Rotação numa linha só, porque o Vector não tem os verbos que o Inspector põe ao lado. A secção por converter fica com o corpo de hoje dentro do cartão: até G8 há cartões com caras diferentes por dentro, nunca secção fora de cartão.
 
+- **Lei da compactação no Inspector (k):** Per-corner Tint em tira de quatro amostras, sem código: o código abre no clique (regra 6, sugestão a confirmar). Numa seleção com cantos diferentes a amostra fica vazia, sem «Mixed»: não cabe a palavra.
+- **k, Ordering:** a ordem é a da foto do dono (Z + Order in Layer, Sorting Layer + Top Level, Z as Relative + Behind Parent, Y-Sort + Sorting Group); o Sort Point e o Sort at Root descem para baixo do par. O nome no cartão encurtou para «Behind Parent», porque «Show Behind Parent» pedia 146 px contra 125 da coluna. `PH2D_CARDS=0` segue com o nome inteiro.
+- **k, Transform:** girar em outro objecto soma 90° e normaliza em −180°…180°; espelhar troca o sinal de `scale`. No vetor seguem os verbos que mexem nos pontos. Espelhar um objecto com filhos espelha os filhos, a lei da escala negativa de sempre. A rever no smoke.
+- **k, caixa numa coluna de duas:** a marca de animação anda com o nome; a caixa inteira da coluna é o alvo do clique.
+
 ## Considerações do dono no smoke de 04/11 (aplicar num bloco, quando ele der o sinal)
 
 Lei da compactação em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) + portão que reprova campo sozinho com vizinho que cabe e linhas grudadas. Casos que ele apontou:
@@ -491,3 +496,25 @@ Decidido sem o dono: `Numero` não virou tabela única para as duas caras em H4,
 **Decidido sem o dono:** faixa só de marcas, sem repetir «Color · Opacity» em cada camada; Skin fica como está; uma tecla com o ponteiro a meio de um gesto continua do preso (Shift a meio de um arrasto).
 
 **Portões, por nome:** verdes `no_magic_numeric`, `hr12_widgets_a11y`, `the_shell_only_shrinks`, `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`. **Vermelhos alheios** (o Inspector de `dc516941e2`/WIP): `panel_files_under_loc_cap` (`ph2d-panel-inspector/src/populate.rs` 602), `todo_campo_pintado_com_losango` (`ordering_cartao.rs` ×2, `sprite_pose.rs`).
+
+**Fatia k, lei da compactação na fundação e no Inspector (04/11).** Commits `0dc5ee2e5d`, `dc516941e2`, `5b71df9640` e o desta entrada. API na receita ([11](11_RECEITA_PAINEL_EM_CARTOES.md)). Fotos: `maquete/k_inspector_compacto.png` (Texture & Atlas, Color & Tint, Ordering abertos, patch temporário restaurado), `k_componentes_compactos.png`, `k_player_compacto.png`.
+
+Censo medido por pintura real, de fábrica e armado, gavetas abertas (irmãos separados · linhas grudadas · textos cortados, população ao lado):
+
+| painel | irmãos | grudadas | cortados | linhas · textos medidos |
+|---|---:|---:|---:|---|
+| inspector, à partida (só com a fundação) | 6 | 5 | 0 | 410 · 1293 |
+| inspector, agora | 0 | 0 | 0 | 404 · 1293 |
+| widget_gallery | 7 | 1 | 0 | 126 · 141 |
+| os outros 26 | 0 | 0 | 0 | de 0 (`hierarchy`, `motion_graph`, `flip_frames`) a 217 (`tokens`); `vector` só 7 linhas de fábrica |
+
+Sem a fundação o Inspector acusa 78 irmãos (contraprova abaixo): o fluxo é a cura principal. `PENDENTES` guarda só o `widget_gallery`. ⚠️ Zero em painel de população pequena não é aprovação: `vector` mede pouco sem documento, e as linhas de chip via `paint_label_row` contam como longas.
+
+Medido antes de ligar o espelho: `scaled_shape` usa o valor absoluto, `collider_offset` espelha pelo sinal e o `mirror` guarda o sinal (`ph2d-physics-ecs/src/scale.rs`; 16 testes `scale` verdes, 1 `flip`); o commit da shell escreve a escala sem clamp (`inspector_commits.rs:119`). Não foi corrido um sprite espelhado com corpo a simular, nem o gesto até ao mundo: o teste vai do clique ao `InspectorTransformEdit`.
+
+Contraprovas (5 de 5 vermelhas): fluxo desligado ⇒ `lei_da_compactacao` `78 contra 0`; botão sem vão ⇒ `22 contra 0`; botão que não desce ⇒ `buttons_that_do_not_fit_go_down_a_line`; sinal da escala e quarto de volta ⇒ `girar_e_espelhar`. Sem contraprova: a marca colada ao nome (`colada`) e o recorte do pedido à espera enquanto a secção abre.
+
+Testes antigos revistos: o de Camera lia a marca colada pelo rect da caixa e passa a ler duas colunas iguais; o do botão lia o Opacity a toda a largura; três testes do Inspector procuravam o cartão só na 1.ª janela e agora rolam até ele. O portão do losango ganhou `ordering_cartao.rs::em_cartao` e `sprite_pose.rs::paint_sprite_pose_rows`, os mesmos canais de antes noutro sítio. Verdes por nome: `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`, `no_magic_numeric`, `hr12_widgets_a11y`, `the_shell_only_shrinks`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango`.
+
+**Aberto:** galeria (7 · 1). Camera, Script e os outros cartões de componente passam no censo, mas sem foto com o cartão aberto; o Player foi fotografado até à dobra de `1800`. O `aviso` por baixo de Format fica colado ao segmento: o censo não o vê. Figma e Rive não confirmaram a grelha nas consultas (ver [16](16_REFERENCIAS_POR_CARTAO.md)).
+

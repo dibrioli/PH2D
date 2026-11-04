@@ -6,9 +6,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{PanelHost, PanelHostInternal};
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
-use ph2d_panel_inspector::{
-    InspectorPanel, InspectorState, ids, set_current_inspector_transform,
-};
+use ph2d_panel_inspector::{InspectorPanel, InspectorState, ids, set_current_inspector_transform};
 use ph2d_ui_testkit::MockPanelHost;
 
 fn objecto() -> InspectorTransformInfo {
@@ -28,8 +26,14 @@ fn mesa(i: &InspectorTransformInfo) -> (MockPanelHost, InspectorState) {
     let mut state = InspectorState::default();
     let (unidade, ppm) = (host.project().display_unit, host.project().pixels_per_meter);
     for (id, v) in [
-        (ids::INSP_TRANSFORM_POS_X, unidade.from_meters(i.translation[0], ppm)),
-        (ids::INSP_TRANSFORM_POS_Y, unidade.from_meters(i.translation[1], ppm)),
+        (
+            ids::INSP_TRANSFORM_POS_X,
+            unidade.from_meters(i.translation[0], ppm),
+        ),
+        (
+            ids::INSP_TRANSFORM_POS_Y,
+            unidade.from_meters(i.translation[1], ppm),
+        ),
         (ids::INSP_TRANSFORM_ROT, i.rotation_rad.to_degrees()),
         (ids::INSP_TRANSFORM_SCALE_X, i.scale[0]),
         (ids::INSP_TRANSFORM_SCALE_Y, i.scale[1]),
@@ -64,7 +68,10 @@ fn each_click_publishes_one_edit_with_only_its_channel_changed() {
     let base = objecto();
     let g = clica(ids::INSP_TRANSFORM_ROTATE_CW, base);
     assert_eq!(g.len(), 1, "um gesto, um passo de desfazer");
-    assert!((g[0].rotation_rad - std::f32::consts::FRAC_PI_2).abs() < 1e-3, "{g:?}");
+    assert!(
+        (g[0].rotation_rad - std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+        "{g:?}"
+    );
     assert_eq!(g[0].scale, base.scale);
 
     let h = clica(ids::INSP_TRANSFORM_FLIP_H, base);
@@ -103,4 +110,55 @@ fn without_an_object_the_verbs_are_silent() {
         WidgetEvent::Click(ids::INSP_TRANSFORM_FLIP_H),
     );
     assert!(host.drained_actions().is_empty());
+}
+
+/// ⭐ O gesto de verdade: num objecto sem vetor os três ícones pintam-se no cartão Transform, e o clique
+/// no rect pintado publica a edição. *Mutação: voltar a esconder os giros fora do vetor.*
+#[test]
+fn the_painted_icons_answer_a_real_click_on_a_non_vector_object() {
+    let base = objecto();
+    let (mut host, mut state) = mesa(&base);
+    ph2d_panel_inspector::set_cards_on(true);
+    let janela = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1366.0, 2000.0);
+    host.settle_section_folds();
+    let mut pintados = Vec::new();
+    for _ in 0..60 {
+        pintados = ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || host.paint::<InspectorPanel>(&mut state, janela),
+        );
+    }
+    let de = |id| {
+        pintados
+            .iter()
+            .rev()
+            .find(|(i, q)| *i == id && q.w > 0.0)
+            .map(|(_, q)| *q)
+    };
+    let r = de(ids::INSP_TRANSFORM_FLIP_H).expect("o espelho não se pintou");
+    assert!(
+        de(ids::INSP_TRANSFORM_ROTATE_CW).is_some() && de(ids::INSP_TRANSFORM_FLIP_V).is_some(),
+        "os outros dois verbos não se pintaram"
+    );
+    let _ = host.drained_actions();
+    let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert!(
+        evs.contains(&WidgetEvent::Click(ids::INSP_TRANSFORM_FLIP_H)),
+        "{evs:?}"
+    );
+    for e in evs {
+        host.apply_panel_event::<InspectorPanel>(&mut state, e);
+    }
+    let edits: Vec<_> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::InspectorTransformEdit(i) => Some(i),
+            _ => None,
+        })
+        .collect();
+    ph2d_panel_inspector::set_cards_on(false);
+    set_current_inspector_transform(None);
+    assert_eq!(edits.len(), 1, "{edits:?}");
+    assert_eq!(edits[0].scale, [-2.0, 3.0]);
 }

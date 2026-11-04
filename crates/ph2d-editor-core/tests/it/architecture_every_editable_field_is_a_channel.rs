@@ -527,6 +527,24 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/ordering_cartao.rs::em_cartao",
+        Canal,
+        &[
+            "component.field.z_as_relative.1",
+            "component.field.y_sort.1",
+            "component.field.sorting_group.1",
+        ],
+        "a tabela da secção, na arrumação do dono em cartão (05 §4)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/sprite_pose.rs::paint_sprite_pose_rows",
+        Canal,
+        &["component.field.sprite.10"],
+        "Offset em cartão: um rótulo, X e Y (05 §4); o catálogo é o da tabela da secção",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/ordering.rs::call",
         Canal,
         &[

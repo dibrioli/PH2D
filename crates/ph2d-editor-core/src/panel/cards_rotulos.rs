@@ -35,18 +35,32 @@ pub(super) fn reserva(c: &Cell<'_>) -> f32 {
     }
 }
 
+/// O rótulo da célula `i` é o do grupo: vai até à próxima célula com rótulo («Per-corner Tint» sobre
+/// quatro amostras, que numa coluna só quebrava), menos a marca que mora nesse troço.
+fn largura_do_rotulo(cells: &[Cell<'_>], cols: &[(f32, f32)], i: usize) -> f32 {
+    let fim = (i + 1..cells.len())
+        .find(|&j| cells[j].label.is_some())
+        .unwrap_or(cells.len());
+    let marca = cells[i..fim].iter().map(reserva).fold(0.0, f32::max);
+    let (x0, (xf, wf)) = (cols[i].0, cols[fim - 1]);
+    xf + wf - x0 - marca
+}
+
 /// Pinta os rótulos (e as marcas de animação) de uma linha a partir de `y`; devolve a altura da
 /// faixa, já com o `LABEL_BOTTOM`.
 pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)], y: f32) -> f32 {
+    let larguras: Vec<f32> = (0..cells.len())
+        .map(|i| largura_do_rotulo(cells, cols, i))
+        .collect();
     let quebras: Vec<_> = cells
         .iter()
-        .zip(cols)
-        .map(|(c, r)| c.label.map(|l| linhas(cx.text_system, l, r.1 - reserva(c))))
+        .zip(&larguras)
+        .map(|(c, w)| c.label.map(|l| linhas(cx.text_system, l, *w)))
         .collect();
     let duas = quebras.iter().flatten().any(|(_, b)| b.is_some());
     let extra = if duas { PASSO } else { 0.0 };
-    for ((c, r), q) in cells.iter().zip(cols).zip(&quebras) {
-        let w = r.1 - reserva(c);
+    for (i, ((c, r), q)) in cells.iter().zip(cols).zip(&quebras).enumerate() {
+        let w = larguras[i];
         match q {
             Some((a, Some(b))) => {
                 for (t, ty) in [(a, y), (b, y + PASSO)] {
@@ -99,6 +113,24 @@ pub(super) fn so_marcas(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ O rótulo do grupo tem a largura do grupo; sem isto «Per-corner Tint» quebrava sobre as amostras.
+    /// *Mutação: `fim = i + 1`.*
+    #[test]
+    fn a_group_label_spans_the_cells_up_to_the_next_label() {
+        use super::super::Widget;
+        let seg = |l: Option<&'static str>| {
+            let c = Cell::new(Widget::Readout { text: "" });
+            match l {
+                Some(t) => c.label(t),
+                None => c,
+            }
+        };
+        let cells = [seg(Some("A")), seg(None), seg(Some("B")), seg(None)];
+        let cols = [(0.0, 40.0), (46.0, 40.0), (92.0, 40.0), (138.0, 40.0)];
+        assert_eq!(largura_do_rotulo(&cells, &cols, 0), 86.0);
+        assert_eq!(largura_do_rotulo(&cells, &cols, 2), 86.0);
+    }
 
     /// ⭐ Maquete F: «Opacity (%)» numa coluna estreita quebra em «Opacity» / «(%)», inteiros.
     #[test]

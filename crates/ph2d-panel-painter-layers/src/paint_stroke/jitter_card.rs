@@ -139,7 +139,7 @@ pub(super) fn spray_count_track(count: u32) -> f32 {
 }
 
 /// Display name for a jitter-unit wire discriminant.
-pub(super) fn jitter_unit_name(u: u8) -> &'static str {
+pub(crate) fn jitter_unit_name(u: u8) -> &'static str {
     match JitterUnit::from_u8(u) {
         JitterUnit::Brush => tr("panel.painter_layers.stroke.jitter.brush"),
         JitterUnit::View => tr("panel.painter_layers.stroke.jitter.view"),

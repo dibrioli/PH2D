@@ -191,7 +191,7 @@ fn do_follow(l: &BrushSettings) -> Option<Item> {
 }
 
 /// As linhas da ponta do cartão `cartao` que estão à vista.
-fn da_ponta(cartao: CartaoDaPonta, l: &BrushSettings, v: &BrushSettings) -> Vec<Item> {
+pub(crate) fn da_ponta(cartao: CartaoDaPonta, l: &BrushSettings, v: &BrushSettings) -> Vec<Item> {
     ponta_linhas::linhas_do_cartao(cartao)
         .filter(|&i| ponta_linhas::visivel(i, l))
         .map(|i| {
@@ -348,18 +348,11 @@ fn da_moldura(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
             0,
         ));
         if !imagem(l) {
-            let specs = ph2d_tool_painter::param_specs(kind);
-            for (i, s) in specs.iter().enumerate() {
-                let e = ph2d_tool_painter::param_escala(kind, i);
-                n.push(numero(
-                    s.label,
-                    pids::PAINTER_SHAPE_PARAMS[i],
-                    e.mostra(v.shape_params[i]),
-                    (e.min, e.max),
-                    e.step,
-                    e.decimals(),
-                ));
-            }
+            n.extend(crate::cards_linhas::do_padrao(
+                kind,
+                &pids::PAINTER_SHAPE_PARAMS,
+                &v.shape_params,
+            ));
         }
     }
     if l.impasto_applies {
@@ -464,7 +457,7 @@ pub(crate) fn listas_abertas(ctx: &mut PaintCtx, b: &BrushSettings) {
     }
 }
 
-fn repete(c: &mut CardCtx<'_>, peca: Option<&Captura>, y: f32) -> f32 {
+pub(crate) fn repete(c: &mut CardCtx<'_>, peca: Option<&Captura>, y: f32) -> f32 {
     peca.map_or(y, |p| p.repete(c, y + m::FIELD_ROW_GAP))
 }
 
@@ -499,6 +492,18 @@ fn textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
         chave: "panel.painter_layers.shape.texture",
         texto: tr(kind.name_key()),
     };
+    let com_imagens = imagem(b) && b.shape_has_image;
+    let entre = b.document_layer_count > 1
+        || !da_cor_da_textura(b).is_empty()
+        || p.camadas.is_some()
+        || com_imagens;
+    // Sem nada entre elas, a fonte e o Dual brush dividem a linha.
+    if !entre {
+        let mut itens = vec![fonte];
+        itens.extend(da_ponta(CartaoDaPonta::Dual, b, b));
+        let y = fila(c, &itens, y);
+        return fim_da_textura(c, b, p, y);
+    }
     let mut y = fila(c, &[fonte], y);
     if b.document_layer_count > 1 {
         y = botoes(
@@ -512,7 +517,7 @@ fn textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
     }
     y = fila(c, &da_cor_da_textura(b), y);
     y = repete(c, p.camadas.as_ref(), y);
-    if imagem(b) && b.shape_has_image {
+    if com_imagens {
         let mut verbos = vec![(
             pids::PAINTER_SHAPE_HOSE_ADD,
             tr("panel.painter_ponta.hose_add"),
@@ -527,6 +532,12 @@ fn textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
         y = fila(c, &da_ponta(CartaoDaPonta::Forma, b, b), y);
     }
     y = fila(c, &da_ponta(CartaoDaPonta::Dual, b, b), y);
+    fim_da_textura(c, b, p, y)
+}
+
+/// A imagem da 2.ª ponta, a prévia e a moldura.
+fn fim_da_textura(c: &mut CardCtx<'_>, b: &BrushSettings, p: &Pecas, y: f32) -> f32 {
+    let mut y = y;
     let duas = ponta_linhas::indice(ph2d_tool_painter::LinhaDaPonta::DualMode);
     let forma = ponta_linhas::indice(ph2d_tool_painter::LinhaDaPonta::DualTip);
     if b.ponta[duas] > 0.0 && b.ponta[forma] as u8 == TextureKind::Image.to_u8() {

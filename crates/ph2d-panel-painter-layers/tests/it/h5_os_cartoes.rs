@@ -123,7 +123,13 @@ fn estados() -> Vec<(&'static str, BrushSettings)> {
     mistura_da_agua.wet_tool = WetTool::Blend;
     let mut esculpe = pincel(PaintMedia::Impasto, "brush").0;
     esculpe.is_sculpt = true;
+    // O Smear não lê a cor por camada: a caixa dela não se oferece, mesmo com camadas na ponta.
+    let mut smear_com_camadas = pincel(PaintMedia::Digital, "smear").0;
+    smear_com_camadas.shape_kind = TextureKind::Image.to_u8();
+    smear_com_camadas.shape_has_image = true;
+    smear_com_camadas.shape_layer_count = 2;
     vec![
+        ("smear com camadas", smear_com_camadas),
         ("digital", digital()),
         ("molhado", molhado()),
         ("impasto", pincel(PaintMedia::Impasto, "brush").0),
@@ -528,7 +534,7 @@ fn each_number_knows_its_factory_value() {
     }
 }
 
-fn sem_sobrepor(m: &Mesa, ids: &BTreeSet<NodeId>, nome: &str) {
+pub(super) fn sem_sobrepor(m: &Mesa, ids: &BTreeSet<NodeId>, nome: &str) {
     let rects: Vec<(NodeId, Rect)> = ids
         .iter()
         .filter(|id| {
@@ -559,7 +565,7 @@ fn no_control_of_these_cards_overlaps_another() {
     }
 }
 
-fn na_mesma_linha(m: &Mesa, a: NodeId, b: NodeId) {
+pub(super) fn na_mesma_linha(m: &Mesa, a: NodeId, b: NodeId) {
     let (ra, rb) = (m.rect(a).expect("a"), m.rect(b).expect("b"));
     assert!(
         (ra.y - rb.y).abs() < 0.5 && ra.x + ra.w <= rb.x,
@@ -636,7 +642,8 @@ fn the_preview_has_its_place() {
     let lista = m.rect(p::PAINTER_SHAPE_KIND).expect("a lista");
     let moldura = m.rect(p::PAINTER_SHAPE_OFFSET_X).expect("o Offset");
     let dual = m.rect(p::PAINTER_PONTA_FIELDS[14]).expect("o Dual brush");
-    assert!(dual.y > lista.y, "{lista:?} {dual:?}");
+    // Sem nada entre elas, a fonte e o Dual brush dividem a linha.
+    assert!((dual.y - lista.y).abs() < 0.5, "{lista:?} {dual:?}");
     assert!(moldura.y >= dual.y + dual.h + 56.0, "{dual:?} {moldura:?}");
 }
 

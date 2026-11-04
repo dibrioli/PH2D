@@ -25,14 +25,15 @@ use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
 /// `painter_layers`: as 220 são as linhas antigas dos corpos em captura (vão 3 contra 6), dívida do
 /// bloco H; `Texture + Dual brush` é o irmão. Medido com o trabalho da H5 na árvore.
 const PENDENTES: &[(&str, usize, usize, usize)] =
-    &[("painter_layers", 1, 220, 0), ("widget_gallery", 7, 1, 0)];
+    &[("painter_layers", 0, 220, 0), ("widget_gallery", 7, 1, 0)];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.
 const POPULACAO: &[(&str, usize)] = &[
     ("vector", 100),
     ("skeleton", 12),
     ("inspector", 400),
-    ("painter_layers", 700),
+    // 04/11, H6 e H7: Paper, Grain, Randomize, Stroke e Pen em linhas aos pares, de 700 para 254: menos linhas, os mesmos ids.
+    ("painter_layers", 250),
     ("physics", 30),
     ("audio_editor", 10),
     #[cfg(feature = "panel-flip-frames")]

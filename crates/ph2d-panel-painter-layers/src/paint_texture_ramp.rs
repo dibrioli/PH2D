@@ -16,7 +16,7 @@ use ph2d_tool_painter::ids::{
 use ph2d_tool_painter::{BrushSettings, RampAlphaMode, RampColorMode, RampInterp};
 
 /// The Grain ramp's fixed widget ids + state hooks (collapsible under "Grain Colors" / "Shape Color").
-fn grain_ramp_ids() -> RampIds {
+pub(crate) fn grain_ramp_ids() -> RampIds {
     RampIds {
         section: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         reset: ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
@@ -53,10 +53,16 @@ pub(crate) fn paint_texture_ramp_section(
     title: &str,
     layer_alpha: Option<u8>,
 ) -> f32 {
+    let view = vista_do_pincel(&brush, layer_alpha);
+    paint_color_ramp_section(ctx, theme, x, content_w, y, title, &grain_ramp_ids(), view)
+}
+
+/// A vista da rampa do Grain no instantâneo do pincel: o painel de antes e o cartão leem a mesma.
+pub(crate) fn vista_do_pincel(brush: &BrushSettings, layer_alpha: Option<u8>) -> RampView<'_> {
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
     // Smear/Blur/Clone/Eraser paint no colour → the ramp is a B&W coverage tone; force B&W checked + locked.
     let bw_locked = brush.paints_no_color() || brush.eraser || brush.is_mask;
-    let view = RampView {
+    RampView {
         bw_button: true,
         enabled: brush.texture_ramp_enabled,
         bw: brush.texture_ramp_bw || bw_locked,
@@ -70,8 +76,7 @@ pub(crate) fn paint_texture_ramp_section(
         }),
         stops: &brush.texture_ramp_stops[..count],
         selected_id: state::selected_ramp_stop(),
-    };
-    paint_color_ramp_section(ctx, theme, x, content_w, y, title, &grain_ramp_ids(), view)
+    }
 }
 
 /// Deferred paint of the Grain ramp's open Mode / Interpolation dropdown popovers, and of a Texture

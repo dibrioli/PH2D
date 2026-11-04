@@ -59,7 +59,7 @@ pub(crate) const ROTULOS: [&str; 23] = [
 ];
 
 /// As casas decimais de uma linha pelo passo dela (`1` → inteiros; `0,5` → uma; `0,01` → duas).
-fn casas(passo: f64) -> usize {
+pub(crate) fn casas(passo: f64) -> usize {
     (-passo.log10()).ceil().max(0.0) as usize
 }
 
@@ -144,7 +144,7 @@ pub(crate) fn paint_pen_section(
 }
 
 /// A ferramenta na mão lê a linha `id` do cartão? (Só duas dependem dela.)
-fn le_a_linha(brush: &BrushSettings, id: ph2d_a11y::NodeId) -> bool {
+pub(crate) fn le_a_linha(brush: &BrushSettings, id: ph2d_a11y::NodeId) -> bool {
     use ph2d_tool_painter::LinhaDaFerramenta as L;
     if id == ids::PAINTER_PEN_ROTATION {
         brush.le(L::Orientacao)
@@ -180,6 +180,23 @@ fn paint_rotation_row(
         PENDING_ROTATION_DD.with(|c| c.set(Some((r, cur))));
     }
     ny
+}
+
+/// O texto da opção de agora do menu da rotação.
+pub(crate) fn nome_da_rotacao(valor: f64) -> &'static str {
+    let cur = (valor.round() as u8).min(ids::PAINTER_PEN_ROTATION_COUNT - 1);
+    tr(ROTACOES[usize::from(cur)])
+}
+
+/// O menu da rotação abriu no cartão.
+pub(crate) fn abre_a_rotacao(r: Rect, valor: f64) {
+    let cur = (valor.round() as u8).min(ids::PAINTER_PEN_ROTATION_COUNT - 1);
+    PENDING_ROTATION_DD.with(|c| c.set(Some((r, cur))));
+}
+
+/// O menu do Reset abriu no cabeçalho do cartão.
+pub(crate) fn abre_o_reset(r: Rect, tem_preset: bool) {
+    PENDING_RESET_DD.with(|c| c.set(Some((r, tem_preset))));
 }
 
 /// As opções do menu do Reset: o neutro da app e o preset do pincel — apagada (visível, não alcançável) quando o

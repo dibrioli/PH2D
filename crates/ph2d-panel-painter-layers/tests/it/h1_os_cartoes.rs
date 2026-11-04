@@ -190,6 +190,8 @@ pub(super) fn saiu_de_proposito(id: NodeId) -> bool {
         || id == p::PAINTER_BRUSH_SIZE_SLIDER
         || id == p::PAINTER_BRUSH_STRENGTH_SLIDER
         || id == p::PAINTER_BRUSH_FLOW_SLIDER
+        || p::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
+        || super::h7_os_cartoes::BARRAS.contains(&id)
         || id == ph2d_editor_core::widget::PAINTER_LAYERS_SCROLLBAR_ID
 }
 

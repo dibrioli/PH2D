@@ -33,7 +33,7 @@ fn seccao_dos_extras(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Secc
 }
 
 /// Slider range bounds (parameter domains, not design tokens).
-const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: paper/granulation Angle range (degrees)
+pub(crate) const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: paper/granulation Angle range (degrees)
 
 /// Paint the **Paper** + **Granulation** canvas-anchored slots (substrate tooth + mineral settling).
 /// Paper: a kind picker + Size/Angle. Granulation: the amount, a "Same as Paper" checkbox, and — when
@@ -41,7 +41,7 @@ const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: paper/granulation Angle range (d
 /// Build a `BrushSettings` view whose **texture** (Grain) fields are overwritten from the **Paper** slot,
 /// so the shared [`crate::paint_texture::paint_texture_preview`] renders the paper pattern. The Color Ramp
 /// is forced off (the substrate is a grayscale height-field) — a paper ramp is a follow-up.
-fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
+pub(crate) fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
     let mut v = *brush;
     v.texture_kind = brush.paper_kind;
     v.texture_params = brush.paper_params;
@@ -358,7 +358,7 @@ fn paint_absorbency_row(
 }
 
 /// sRGB `f32` triple → 8-bit (mirror of `paint_brush::encode_rgb`, private there).
-fn encode_rgb3(c: [f32; 3]) -> [u8; 3] {
+pub(crate) fn encode_rgb3(c: [f32; 3]) -> [u8; 3] {
     [
         (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8, // LITERAL-PX-OK: sRGB 8-bit normalize
         (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8, // LITERAL-PX-OK: sRGB 8-bit normalize
@@ -368,7 +368,7 @@ fn encode_rgb3(c: [f32; 3]) -> [u8; 3] {
 
 /// When the shared Blender picker targets the paper-colour swatch, forward its live value to the
 /// tool as `SelectOption(id, "r,g,b")` — the exact `brush_color_readback` protocol, for the ground.
-fn paper_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
+pub(crate) fn paper_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
     let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
     if ctx.host.store().picker_target() != Some(id) {
         return;

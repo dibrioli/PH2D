@@ -44,12 +44,17 @@ pub use crate::esmaecer::e_dica_de_inercia;
 mod card; // the titled row-box shared by the brush panel technique sections
 /// O painel em cartões (`docs/CartoesUI/13_PAINTER_PLANO.md`).
 pub mod cards;
+mod cards_aleatorio; // o cartão Randomize Color
+mod cards_caneta; // o cartão Pen, em três grupos
 mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão repete-o
+mod cards_grao; // o cartão Grain: prévia, rampa e títulos internos capturados
 mod cards_impasto;
 mod cards_linhas; // listas de caixa, linha esmaecida e pares, das linhas de cartão
 mod cards_nativos;
+mod cards_papel; // o cartão Paper: só a prévia capturada
 mod cards_shape; // o cartão Shape: só os gizmos e a prévia continuam capturados
 mod cards_shape_tom; // o cartão Shape Color: só o editor da rampa continua capturado
+mod cards_traco; // o cartão Stroke: só o título do Jitter capturado
 mod cards_topo; // os corpos já em linhas de cartão
 mod cards_watercolor;
 mod cards_wet; // o cartão Wet Paint em linhas de cartão

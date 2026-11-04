@@ -2256,7 +2256,8 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    On empty e Color, já descontado Size e Flow dividirem a linha. Recolher esconderia os básicos do pincel.
     // ⬇️ `1 748 → 1 637` em 2026-11-04 (NovaUI H3): nascer dobrado não entrou, porque esconderia o que o dono pôs à
     //    vista. Blend e On empty, Color e Flow, Accumulate e Wash partilham a linha.
-    ("painter_layers", 1637.0),
+    // H6 e H7 (04/11): sobe de 1637 para 1734: Stroke e Randomize abrem com o rótulo em cima; mesmas secções abertas.
+    ("painter_layers", 1734.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

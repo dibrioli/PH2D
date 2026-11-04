@@ -6,8 +6,9 @@
 
 use crate::cards_captura::{Captura, coluna, y_de};
 use crate::{
-    cards_impasto, cards_nativos, cards_shape, cards_shape_tom, cards_topo, cards_watercolor,
-    cards_wet, paint, paint_brush, paint_brush_top, preview_pino, state,
+    cards_aleatorio, cards_caneta, cards_grao, cards_impasto, cards_nativos, cards_papel,
+    cards_shape, cards_shape_tom, cards_topo, cards_traco, cards_watercolor, cards_wet, paint,
+    paint_brush, paint_brush_top, preview_pino, state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -74,6 +75,14 @@ enum Conteudo {
     Forma(cards_shape::Pecas),
     /// O editor de cada rampa.
     Tom(cards_shape_tom::Pecas),
+    /// A prévia do padrão.
+    Papel(Option<Captura>),
+    /// A prévia, o editor da rampa, os dois títulos que dobram dentro do cartão.
+    Grao(cards_grao::Pecas),
+    Aleatorio,
+    /// O título do Jitter, que dobra dentro do cartão.
+    Traco(Option<Captura>),
+    Caneta,
 }
 
 impl Presente {
@@ -86,6 +95,11 @@ impl Presente {
             Conteudo::Impasto(_) => Some(pids::PAINTER_IMPASTO_RESET),
             Conteudo::Forma(_) => Some(pids::PAINTER_SHAPE_RESET),
             Conteudo::Tom(_) => Some(cards_shape_tom::reset()),
+            Conteudo::Papel(_) => Some(pids::PAINTER_WATERCOLOR_PAPER_RESET),
+            Conteudo::Grao(_) => Some(pids::PAINTER_BRUSH_TEXTURE_RESET),
+            Conteudo::Aleatorio => Some(pids::PAINTER_BRUSH_RANDOMIZE_RESET),
+            Conteudo::Traco(_) => Some(pids::PAINTER_BRUSH_STROKE_RESET),
+            Conteudo::Caneta => Some(pids::PAINTER_PEN_RESET),
         }
     }
 }
@@ -193,6 +207,61 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                     id,
                     titulo: cards_shape_tom::titulo().to_owned(),
                     conteudo: Conteudo::Tom(cards_shape_tom::pecas(ctx, ink, (x, w), brush)),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_WATERCOLOR_PAPER_SECTION {
+            if cards_papel::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_papel::titulo().to_owned(),
+                    conteudo: Conteudo::Papel(cards_papel::previa(ctx, ink, (x, w), brush)),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_BRUSH_TEXTURE_SECTION {
+            if cards_grao::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_grao::titulo().to_owned(),
+                    conteudo: Conteudo::Grao(cards_grao::pecas(ctx, ink, (x, w), brush)),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_BRUSH_RANDOMIZE_SECTION {
+            if cards_aleatorio::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_aleatorio::titulo().to_owned(),
+                    conteudo: Conteudo::Aleatorio,
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_BRUSH_STROKE_SECTION {
+            if cards_traco::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_traco::titulo().to_owned(),
+                    conteudo: Conteudo::Traco(cards_traco::titulo_do_jitter(
+                        ctx,
+                        ink,
+                        (x, w),
+                        &brush,
+                    )),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_PEN_SECTION {
+            if cards_caneta::presente(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: cards_caneta::titulo().to_owned(),
+                    conteudo: Conteudo::Caneta,
                 });
             }
             continue;
@@ -327,6 +396,17 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Tom(pecas)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_shape_tom::corpo(c, pecas, y))
                 }
+                (None, Conteudo::Papel(previa)) => Box::new(move |c: &mut CardCtx<'_>, y| {
+                    cards_papel::corpo(c, previa.as_ref(), y)
+                }),
+                (None, Conteudo::Grao(pecas)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_grao::corpo(c, pecas, y))
+                }
+                (None, Conteudo::Aleatorio) => Box::new(cards_aleatorio::corpo),
+                (None, Conteudo::Traco(jitter)) => Box::new(move |c: &mut CardCtx<'_>, y| {
+                    cards_traco::corpo(c, jitter.as_ref(), y)
+                }),
+                (None, Conteudo::Caneta) => Box::new(cards_caneta::corpo),
             };
             CardDef {
                 section: p.id,
@@ -378,6 +458,11 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_impasto::prepare(ctx, &pincel);
         cards_shape::prepare(ctx, &pincel);
         cards_shape_tom::prepare(ctx, &pincel);
+        cards_papel::prepare(ctx, &pincel);
+        cards_grao::prepare(ctx, &pincel);
+        cards_aleatorio::prepare(ctx, &pincel);
+        cards_traco::prepare(ctx, &pincel);
+        cards_caneta::prepare(ctx, &pincel);
     }
     for p in &presentes {
         if let Some(id) = p.reset()
@@ -441,6 +526,10 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
             cards_watercolor::listas_abertas(ctx, &pincel);
             cards_shape::listas_abertas(ctx, &pincel);
             cards_shape_tom::listas_abertas(ctx, &pincel);
+            cards_papel::listas_abertas(ctx, &pincel);
+            cards_grao::listas_abertas(ctx, &pincel);
+            cards_traco::listas_abertas(ctx, &pincel);
+            cards_caneta::listas_abertas(ctx, &pincel, coluna(ctx.slot));
             paint::paint_brush_view_popovers(ctx, theme);
         }
     }

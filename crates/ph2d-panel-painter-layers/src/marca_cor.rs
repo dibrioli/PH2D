@@ -32,19 +32,7 @@ pub(crate) fn paint_cor_da_mao(
         sw,
         rgb,
     );
-    // Read-back: o seletor escreve a escolha na cor da amostra; só se encaminha quando MUDA (senão cada quadro
-    // com o seletor aberto seria um passo de desfazer).
-    if open
-        && let Some(p) = ctx.host.store().widget_color(sw)
-        && rgb != [p[0], p[1], p[2]]
-    {
-        ctx.host
-            .bus_mut()
-            .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                sw,
-                format!("{},{},{}", p[0], p[1], p[2]),
-            )));
-    }
+    le_a_secundaria_de(ctx, rgb, open);
     let sec = crate::seccoes::seccao_da_chave(
         ctx.text_system,
         crate::paint_stroke::jitter_card::ROTULOS_DA_MARCA[0],
@@ -59,4 +47,36 @@ pub(crate) fn paint_cor_da_mao(
         CartaoDaMarca::Cor,
         sec,
     )
+}
+
+/// Read-back: o seletor escreve a escolha na cor da amostra; só se encaminha quando MUDA (senão cada quadro com o seletor
+/// aberto seria um passo de desfazer).
+fn le_a_secundaria_de(ctx: &mut PaintCtx, rgb: [u8; 3], open: bool) {
+    let sw = ids::PAINTER_MARCA_SECONDARY;
+    if open
+        && let Some(p) = ctx.host.store().widget_color(sw)
+        && rgb != [p[0], p[1], p[2]]
+    {
+        ctx.host
+            .bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                sw,
+                format!("{},{},{}", p[0], p[1], p[2]),
+            )));
+    }
+}
+
+/// O mesmo para o cartão: põe a cor na amostra, e encaminha a escolha do seletor.
+pub(crate) fn le_a_secundaria(ctx: &mut PaintCtx, brush: &BrushSettings) {
+    let sw = ids::PAINTER_MARCA_SECONDARY;
+    let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
+    let c = brush.marca_secundaria;
+    let rgb = [enc(c[0]), enc(c[1]), enc(c[2])];
+    let open = ctx.host.store().picker_target() == Some(sw);
+    le_a_secundaria_de(ctx, rgb, open);
+    if !open {
+        ctx.host
+            .store_mut()
+            .set_widget_color(sw, [rgb[0], rgb[1], rgb[2], u8::MAX]);
+    }
 }

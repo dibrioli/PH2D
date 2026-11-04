@@ -384,13 +384,13 @@ pub(crate) fn section_header(
 
 /// Map a count (`1..=BRUSH_COUNT_SLIDER_MAX`) onto the slider's `0..1` track. Inverse of the
 /// tool's `count_from_norm`.
-fn count_to_norm(n: u32) -> f32 {
+pub(crate) fn count_to_norm(n: u32) -> f32 {
     let span = (BRUSH_COUNT_SLIDER_MAX - 1) as f32;
     (n.saturating_sub(1) as f32 / span).clamp(0.0, 1.0)
 }
 
 /// Display name for a stroke-method wire discriminant.
-fn stroke_method_name(m: u8) -> &'static str {
+pub(crate) fn stroke_method_name(m: u8) -> &'static str {
     match StrokeMethod::from_u8(m) {
         StrokeMethod::Dots => tr("panel.painter_layers.stroke.dots"),
         StrokeMethod::Airbrush => tr("panel.painter_layers.stroke.airbrush"),

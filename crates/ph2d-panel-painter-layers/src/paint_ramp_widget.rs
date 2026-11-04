@@ -32,7 +32,7 @@ const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: stroke width
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's pointer grab box
 const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
 const POS_W: f32 = 70.0; // LITERAL-PX-OK: position chip width
-pub(crate) const BW_W: f32 = 42.0; // LITERAL-PX-OK: "B&W" toggle button width (wider than a square icon button)
+pub(crate) const BW_W: f32 = 48.0; // LITERAL-PX-OK: "B&W" toggle button width (wider than a square icon button)
 const DD_MIN_W: f32 = 56.0; // LITERAL-PX-OK: min usable width of one Mode/Interp dropdown chip
 
 /// The fixed-id widget set + per-instance state hooks for one Colour Ramp editor (Grain or Shape).

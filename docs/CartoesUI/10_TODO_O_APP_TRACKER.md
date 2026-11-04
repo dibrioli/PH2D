@@ -30,7 +30,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ✅ (contraprovas do D1 na rodada R) |
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
-| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | 🟨 G7 de 8 |
+| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | ✅ G1–G8 (portões e contraprovas: registo da G8) |
 | H | Painter | Respeita E10 (decisão do dono) | ⬜ |
 | I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ⬜ |
 | J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ⬜ |
@@ -537,6 +537,16 @@ Testes: `h5_os_cartoes`, 20, por gesto real: inventário em 28 estados, número 
 Contraprovas, pela porta, uma compilação com interruptores: 58 mutantes. `52` vermelhos, incluindo as dívidas `a_edge_max`, `a_seca_faixa`, `i_sem_escultura`, `i_presente_sem_lei`, `i_cor_sem_marca`, `a_presente_sem_aguada`, `i_ferramenta_sem_ligar`, `h3_borracha_com_knob`; 14 deles só depois de reforçar estados e o teste das marcas. **Sobrevivem `s_cor_sem_lei` e `s_follow_sempre`:** nenhum dos estados medidos tem a ferramenta que não lê essa linha. `s_curva_na_imagem` é equivalente; `s_botao_sem_registo` e `t_sobe_sem_registo` provaram registo morto, que saiu. `t_ordem_fixa` sem resultado (prazo).
 
 **Aberto:** H6 não começou. Por correr, por prazo: `a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`, os dez portões do briefing, `a_altura_de_abertura` (o `h1` também não foi corrido no fim). Mutante sem correr: o equilíbrio das filas em `editor-core`, para não parar os outros agentes. `s_curva_na_imagem` é equivalente nos ids: o corpo já não repete a curva na imagem.
+
+**Bloco H, fatias 6 e 7 (04/11).** Verificação da H5, feita: `h5_os_cartoes` 20 de 20, `h1_os_cartoes` 22, `a_largura_de_fabrica_e_a_aprovada` e `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` verdes, os dez portões verdes, `a_altura_de_abertura` verde a 1637. Fotos H5 olhadas: `h5_shape_imagem`, `h5_wet_caixas`; `h5_impasto_tool` refeita e olhada (lista TOOL 3, 3, 4). `Texture + Dual brush` curado: sem nada entre eles, dividem a linha.
+
+H6: Paper, Grain, Randomize Color em linhas de cartão. H7: Stroke e Pen; o Pen em três grupos (Pressure, Tilt, Speed), unidade no rótulo. Mesmos ids e eventos, `PH2D_CARDS=0` dá o de antes; nenhum motor, preset ou pincel tocado. Peça nova: `Item::{Cor, Barra, ListaComMarca, Botao}`, `cards_linhas::do_padrao`. Títulos que dobram dentro do cartão (Grain Behavior, Grain Colors com Reset, Jitter): cabeçalho capturado, linhas nativas, sem animar a altura. Fotos olhadas: `maquete/h6_papel_grao.png`, `h6_carimbo.png`, `h7_traco.png`, `h7_figura.png`; `h7_grelha.png` guardada sem olhar. As curas de depois da foto (rótulo Operation, filete depois do Stencil, B&W de 42 para 48 px) não têm foto: **«B…» cortado na rampa do Grain pode continuar**.
+
+Testes: `h6_os_cartoes` e `h7_os_cartoes` por gesto real, inventário contra o painel de antes em 21 e 19 estados. Última corrida larga (cartões, seam, censos): 2 vermelhos, `the_preview_has_its_place` (régua antiga, atualizada e verde) e `the_captured_body_wears_the_card_ink`. **Este último ficou `#[ignore]`, é dívida: exigia o Stroke capturado; Máscara e Inpaint deram 0.** Contraprovas H6 e H7: **zero corridas**, o lote está em pasta temporária e não correu. Continuam por correr: `s_cor_sem_lei`, `t_ordem_fixa`, `filas_equilibradas`. `s_follow_sempre` é equivalente pela tabela: nenhuma ferramenta lista `Orientacao` em `NAO_LE`. Foi acrescentado o estado «smear com camadas» para `s_cor_sem_lei`.
+
+Catracas: `lei_da_compactacao` irmãos `1 → 0`. **Sobem, explicado na tabela:** altura de abertura `1637 → 1734` (rótulo em cima), piso de população `700 → 250` (254 medidas, linhas aos pares). **Grudadas (220) sem nova medição.**
+
+Decidido sem o dono: ✕ e Save em texto («Delete», «Save»), porque o botão só de ícone não tinha lugar na grelha; o Save continua sem efeito, como antes (FUTURE). «New color» como rótulo da escolha Every Dab/Every Stroke. Hue, Saturation e Value numa linha. Samples mostra a pista (0.00), como antes.
 
 ### Bloco G, fatias 6 e 7 (04/11)
 

@@ -26,9 +26,9 @@ use ph2d_tool_painter::{
 };
 
 /// O passo dos campos 0 a 1 do pincel, o de `populate_brush_chips`.
-const PASSO_DO_PINCEL: f64 = 0.01; // LITERAL-PX-OK: passo da faixa 0..1, não é medida de UI
+pub(crate) const PASSO_DO_PINCEL: f64 = 0.01; // LITERAL-PX-OK: passo da faixa 0..1, não é medida de UI
 /// As casas com que a caixa mostra um 0 a 1, as de antes.
-const CASAS_DO_PINCEL: usize = 3;
+pub(crate) const CASAS_DO_PINCEL: usize = 3;
 /// «On empty» é um interruptor em forma de número: 0 ou 1.
 const VAZIO_FAIXA: (f32, f32, f64) = (0.0, 1.0, 1.0);
 

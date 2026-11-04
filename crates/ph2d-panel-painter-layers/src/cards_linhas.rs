@@ -119,6 +119,29 @@ pub(crate) fn numero(
     }
 }
 
+/// Os números de um padrão, na escala em que se mostram e se digitam.
+pub(crate) fn do_padrao(
+    kind: ph2d_tool_painter::TextureKind,
+    ids: &[NodeId],
+    valores: &[f32],
+) -> Vec<Numero> {
+    ph2d_tool_painter::param_specs(kind)
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let e = ph2d_tool_painter::param_escala(kind, i);
+            numero(
+                s.label,
+                ids[i],
+                e.mostra(valores[i]),
+                (e.min, e.max),
+                e.step,
+                e.decimals(),
+            )
+        })
+        .collect()
+}
+
 /// A linha de grupo: um filete e o nome. A lei é «nunca um 2.º título», por isso o tom é o dos rótulos.
 pub(crate) fn grupo(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
     let fim = filete(c, y);
@@ -152,14 +175,61 @@ pub(crate) enum Item {
         chave: &'static str,
         on: bool,
     },
+    /// Lista com a marca de animação do id, como `paint_dropdown_row_de_caixa`.
+    ListaComMarca {
+        id: NodeId,
+        chave: &'static str,
+        texto: &'static str,
+    },
+    /// Uma barra com o chip ligado: `[barra, chip]`. A caixa é o chip, e a barra continua a avisar o painel.
+    Barra {
+        chave: &'static str,
+        ids: [NodeId; 2],
+    },
+    /// Um verbo curto, irmão de um controlo.
+    Botao {
+        id: NodeId,
+        texto: &'static str,
+    },
+    /// Uma amostra com o código, na cor que o `prepare` pôs no store.
+    Cor {
+        id: NodeId,
+        chave: &'static str,
+        rgba: [u8; 4],
+        codigo: String,
+    },
 }
 
 impl Item {
+    pub(crate) fn cor(store: &WidgetStore, id: NodeId, chave: &'static str) -> Self {
+        let rgba = store.widget_color(id).unwrap_or([0, 0, 0, u8::MAX]);
+        Self::Cor {
+            id,
+            chave,
+            rgba,
+            codigo: format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]),
+        }
+    }
+
     fn id(&self) -> NodeId {
         match self {
             Self::Num(n) => n.id,
-            Self::Lista { id, .. } | Self::Caixa { id, .. } => *id,
+            Self::Barra { ids, .. } => ids[1],
+            Self::Lista { id, .. }
+            | Self::ListaComMarca { id, .. }
+            | Self::Botao { id, .. }
+            | Self::Caixa { id, .. }
+            | Self::Cor { id, .. } => *id,
         }
+    }
+
+    fn inerte(&self, inercias: &ph2d_tool_painter::Inercias) -> bool {
+        if let Self::Barra { ids, .. } = self
+            && inercias.dica_de(ids[0]).is_some()
+        {
+            return true;
+        }
+        inercias.dica_de(self.id()).is_some()
     }
 
     fn cell(&self) -> Cell<'_> {
@@ -179,7 +249,42 @@ impl Item {
                 options: &[],
             })
             .label(tr(chave)),
+            Self::ListaComMarca { id, chave, texto } => Cell::new(Widget::Dropdown {
+                id: *id,
+                text: texto,
+                options: &[],
+            })
+            .label(tr(chave))
+            .key(std::slice::from_ref(id)),
+            Self::Barra { chave, ids } => {
+                let rotulo = tr(chave);
+                Cell::new(Widget::Field {
+                    id: ids[1],
+                    glyph: Glyph::Text(linhas::letra_da_grandeza(rotulo)),
+                })
+                .label(rotulo)
+                .key(ids)
+            }
+            Self::Botao { id, texto } => Cell::new(Widget::Button {
+                id: *id,
+                text: texto,
+                primary: false,
+            }),
             Self::Caixa { id, chave, on } => marca(*id, chave, *on),
+            Self::Cor {
+                id,
+                chave,
+                rgba,
+                codigo,
+            } => Cell::new(Widget::Swatch {
+                id: *id,
+                rgba: Some(*rgba),
+                text: codigo,
+                edit: None,
+                detach: None,
+            })
+            .label(tr(chave))
+            .key(std::slice::from_ref(id)),
         }
     }
 }
@@ -188,7 +293,7 @@ impl Item {
 /// metade, com o vizinho vivo.
 pub(crate) fn fila(c: &mut CardCtx<'_>, itens: &[Item], y: f32) -> f32 {
     let inercias = state::current_inercias();
-    let inerte = |i: &Item| inercias.dica_de(i.id()).is_some();
+    let inerte = |i: &Item| i.inerte(&inercias);
     let mut y = y;
     let mut resto = itens;
     while !resto.is_empty() {

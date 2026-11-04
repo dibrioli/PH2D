@@ -45,16 +45,18 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     // `opaque(token)` forces alpha to 255 while keeping the token's
     // RGB so the color still tracks the theme.
     let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
-    paint_popover_frame(scene, panel, theme);
-    for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect_in(chip_rect, panel, i);
-        if opt.header {
-            paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
-            continue;
+    crate::panel::camada_das_listas::por_cima(scene, |scene| {
+        paint_popover_frame(scene, panel, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            let r = dd.option_rect_in(chip_rect, panel, i);
+            if opt.header {
+                paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
+                continue;
+            }
+            let row = PopoverRow::of(dd, opt, i, r);
+            paint_popover_row_default(scene, text_system, theme, row, opt);
         }
-        let row = PopoverRow::of(dd, opt, i, r);
-        paint_popover_row_default(scene, text_system, theme, row, opt);
-    }
+    });
     panel
 }
 
@@ -268,40 +270,42 @@ pub(crate) fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         return;
     }
     let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
-    paint_popover_frame(scene, panel, theme);
-    // Clip the rows to the panel so scrolled-out rows don't paint past the edges.
-    let clip = ph2d_vector::Rect::new(
-        panel.x as f64,
-        panel.y as f64,
-        (panel.x + panel.w) as f64,
-        (panel.y + panel.h) as f64,
-    );
-    scene.push_clip(&clip);
-    for (i, opt) in dd.options.iter().enumerate() {
-        let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
-        if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
-            continue; // fully scrolled out (the clip handles partials)
-        }
-        if opt.header {
-            paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
-            continue;
-        }
-        let row = PopoverRow::of(dd, opt, i, r);
-        match rows.as_mut() {
-            Some(paint_row) => {
-                if row.selected {
-                    paint_popover_row_highlight(scene, r, theme);
-                }
-                paint_row(scene, text_system, row);
+    crate::panel::camada_das_listas::por_cima(scene, |scene| {
+        paint_popover_frame(scene, panel, theme);
+        // Clip the rows to the panel so scrolled-out rows don't paint past the edges.
+        let clip = ph2d_vector::Rect::new(
+            panel.x as f64,
+            panel.y as f64,
+            (panel.x + panel.w) as f64,
+            (panel.y + panel.h) as f64,
+        );
+        scene.push_clip(&clip);
+        for (i, opt) in dd.options.iter().enumerate() {
+            let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
+            if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
+                continue; // fully scrolled out (the clip handles partials)
             }
-            None => paint_popover_row_default(scene, text_system, theme, row, opt),
+            if opt.header {
+                paint_popover_header_row(scene, text_system, theme, r, i, &opt.label);
+                continue;
+            }
+            let row = PopoverRow::of(dd, opt, i, r);
+            match rows.as_mut() {
+                Some(paint_row) => {
+                    if row.selected {
+                        paint_popover_row_highlight(scene, r, theme);
+                    }
+                    paint_row(scene, text_system, row);
+                }
+                None => paint_popover_row_default(scene, text_system, theme, row, opt),
+            }
         }
-    }
-    scene.pop_layer();
-    let content_h = dd.content_height(chip_rect.h);
-    if scrollbar::is_needed(content_h, panel.h) {
-        scrollbar::paint_scrollbar(panel, scroll, content_h, panel.h, scrollbar, scene, theme);
-    }
+        scene.pop_layer();
+        let content_h = dd.content_height(chip_rect.h);
+        if scrollbar::is_needed(content_h, panel.h) {
+            scrollbar::paint_scrollbar(panel, scroll, content_h, panel.h, scrollbar, scene, theme);
+        }
+    });
 }
 
 /// O que uma lista ROLADA pintou neste quadro ([`crate::panel::paint_dropdown_popover_scrolled_with_hits`])

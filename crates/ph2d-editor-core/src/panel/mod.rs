@@ -19,6 +19,7 @@
 //! - [`event_outcome`] — `EventOutcome::{Consumed, Ignored, Observed}`.
 
 /// ⭐⭐ A porta de uma lista de dropdown aberta que ROLA (pintura + hits + o que se publica).
+pub mod camada_das_listas;
 pub mod cards;
 pub mod dropdown_popover;
 pub mod erased;

@@ -132,6 +132,19 @@ impl VectorScene {
         self.rec.as_mut().map(std::mem::take).unwrap_or_default()
     }
 
+    /// A gravação está ligada.
+    #[must_use]
+    pub fn is_recording(&self) -> bool {
+        self.rec.is_some()
+    }
+
+    /// Junta ops gravadas noutra cena, se esta grava.
+    pub fn extend_record(&mut self, ops: Vec<DrawOp>) {
+        if let Some(r) = &mut self.rec {
+            r.extend(ops);
+        }
+    }
+
     pub(crate) fn rec(&mut self, op: impl FnOnce() -> DrawOp) {
         if let Some(r) = &mut self.rec {
             r.push(op());

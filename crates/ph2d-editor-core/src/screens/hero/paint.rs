@@ -215,6 +215,8 @@ pub fn paint_hero_screen(
         hero.store.end_scroll_frame();
         return;
     }
+    // Daqui ao fecho, depois do HUD e do seletor de cor, as listas abertas pintam-se à parte.
+    crate::panel::camada_das_listas::abre(scene);
     if hero.grid.view.is_none() {
         paint_canvas_bg(&layout, scene, hero.theme);
     }
@@ -534,6 +536,7 @@ pub fn paint_hero_screen(
             &hero.store,
         );
     }
+    crate::panel::camada_das_listas::fecha(scene, &mut hero.hit_index);
     // ⭐ As duas bolhas, por cima de todo o chrome — a dica AUTORADA de um widget, ou o balão de
     // uma palavra cortada quando ela se cala. A precedência mora com os dois pintores.
     topbar::paint_hover_overlays(

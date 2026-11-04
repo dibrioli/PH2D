@@ -20,7 +20,7 @@ pub(crate) use label::{prop_label, track_label_snap};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
-use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
 use ph2d_editor_core::widget::panel_chrome::clamp_menu_to_viewport;
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
@@ -125,39 +125,44 @@ pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: 
         ROW_H_PX * n,
         ctx.viewport,
     );
-    // ⭐ Raio e moldura pela porta do TEMA: a lista flutuante é plana num tema moderno.
-    let list_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(
-        ctx.scene,
-        list,
-        list_radius,
-        crate::folha_tinta::cor(ColorToken::BgElev, theme),
-    );
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        list,
-        list_radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        crate::folha_tinta::cor(ColorToken::Border, theme),
-    );
-    let mut y = list.y;
-    for (id, prop) in ids::ADDPROP_BUTTONS {
-        let r = Rect::new(list.x, y, list.w, ROW_H_PX);
-        y += ROW_H_PX;
-        // A linha tem de caber INTEIRA na tela. Meia linha desenhada na borda é uma oferta que o
-        // artista lê e não consegue apertar.
-        if r.y < ctx.viewport.y || r.y + r.h > ctx.viewport.y + ctx.viewport.h {
-            continue;
+    let viewport = ctx.viewport;
+    let (host, text_system) = (&mut *ctx.host, &mut *ctx.text_system);
+    // A lista desta tabela é pintada à mão: vai à camada das listas pela mesma porta das outras.
+    camada_das_listas::por_cima(ctx.scene, |scene| {
+        // ⭐ Raio e moldura pela porta do TEMA: a lista flutuante é plana num tema moderno.
+        let list_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(
+            scene,
+            list,
+            list_radius,
+            crate::folha_tinta::cor(ColorToken::BgElev, theme),
+        );
+        ph2d_editor_core::paint::stroke_frame(
+            scene,
+            list,
+            list_radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            StrokeToken::Thin.px(),
+            crate::folha_tinta::cor(ColorToken::Border, theme),
+        );
+        let mut y = list.y;
+        for (id, prop) in ids::ADDPROP_BUTTONS {
+            let r = Rect::new(list.x, y, list.w, ROW_H_PX);
+            y += ROW_H_PX;
+            // A linha tem de caber INTEIRA na tela. Meia linha desenhada na borda é uma oferta que o
+            // artista lê e não consegue apertar.
+            if r.y < viewport.y || r.y + r.h > viewport.y + viewport.h {
+                continue;
+            }
+            let state = host.store().button_visual(id);
+            let btn = Button::new(id, prop_label(prop)).visual(state);
+            crate::folha_tinta::no_tom(theme, || {
+                paint_button(&btn, r, scene, text_system, theme);
+            });
+            camada_das_listas::alvo(host.hit_index_mut(), id, r);
         }
-        let state = ctx.host.store().button_visual(id);
-        let btn = Button::new(id, prop_label(prop)).visual(state);
-        crate::folha_tinta::no_tom(theme, || {
-            paint_button(&btn, r, ctx.scene, ctx.text_system, theme);
-        });
-        ctx.host.hit_index_mut().register(id, r);
-    }
+    });
 }
 
 /// Paint one row per binding in `region`: the label (left `label_w` column) and

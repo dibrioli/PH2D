@@ -152,18 +152,23 @@ pub fn paint_popover_scrollbar(
     hit_index: &mut HitIndex,
 ) {
     let visual = store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(p.id));
-    if paint_scrollbar(
-        p.panel,
-        p.scroll,
-        p.content_h,
-        p.visible_h,
-        visual,
-        scene,
-        theme,
-    )
-    .is_some()
-    {
-        hit_index.register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(p.panel));
+    let pintou = super::camada_das_listas::por_cima(scene, |scene| {
+        paint_scrollbar(
+            p.panel,
+            p.scroll,
+            p.content_h,
+            p.visible_h,
+            visual,
+            scene,
+            theme,
+        )
+    });
+    if pintou.is_some() {
+        super::camada_das_listas::alvo(
+            hit_index,
+            DROPDOWN_SCROLLBAR_ID,
+            scrollbar_track_rect(p.panel),
+        );
     }
 }
 
@@ -223,10 +228,14 @@ fn paint_list<T: Clone + PartialEq>(
         ),
     }
     for (id, band) in visible_option_bands(dd, chip, panel, scroll) {
-        hit_index.register(id, band);
+        super::camada_das_listas::alvo(hit_index, id, band);
     }
     if scrollbar_is_needed(content_h, visible_h) {
-        hit_index.register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
+        super::camada_das_listas::alvo(
+            hit_index,
+            DROPDOWN_SCROLLBAR_ID,
+            scrollbar_track_rect(panel),
+        );
     }
     PaintedPopover {
         id: dd.id,

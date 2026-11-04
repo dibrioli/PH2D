@@ -67,6 +67,8 @@ const ROTULOS: &[&str] = &[
 /// noutra fonte (`13 px`) e com outro orçamento. Filtrar por texto sozinho misturaria as duas, e
 /// o gate leria a coluna das abas como sendo a dos toggles ⇒ o filtro casa texto **e** fonte.
 fn toggles_pintados() -> Vec<Medido> {
+    // A coluna partilhada é a da barra de `PH2D_CARDS=0`; em cartões cada caixa mede o seu nome.
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     set_current_timeline(Some(TimelineViewSnapshot {

@@ -68,6 +68,16 @@ const EXTRAP_MARK_MIN_W: f32 = 6.0; // LITERAL-PX-OK: skip a region too small to
 /// aligned with the ruler strip). The property list opens as an overlay popover
 /// (see [`paint_add_track_popover`], painted last).
 pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        crate::stack_add_header::botao_de_cartao(
+            ctx,
+            theme,
+            ids::TIMELINE_ADD_TRACK,
+            ph2d_i18n::tr("panel.timeline.add_track"),
+            header,
+        );
+        return;
+    }
     let state = ctx.host.store().button_visual(ids::TIMELINE_ADD_TRACK);
     let btn = Button::new(
         ids::TIMELINE_ADD_TRACK,

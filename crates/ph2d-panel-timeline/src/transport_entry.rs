@@ -14,7 +14,7 @@ use crate::ids::TIMELINE_CLIP_AUTOPLAY;
 pub(crate) const LABEL_KEY: &str = "panel.timeline.autoplay";
 
 /// O clipe em edição está marcado?
-fn ligado(snap: &TimelineViewSnapshot) -> bool {
+pub(crate) fn ligado(snap: &TimelineViewSnapshot) -> bool {
     snap.animation.entry == Some(snap.active_clip)
 }
 

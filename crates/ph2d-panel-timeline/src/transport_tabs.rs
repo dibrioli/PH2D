@@ -33,7 +33,7 @@ const TAB_W: f32 = 84.0; // LITERAL-PX-OK: one view tab's width
 /// container level of the trail, between Containers and Arrange. The ONE list the
 /// paint, the hit registration and the selection all walk, so a container tab cannot
 /// be painted at a column the click resolves to a different level.
-fn items(snap: &TimelineViewSnapshot) -> Vec<(ph2d_a11y::NodeId, String)> {
+pub(crate) fn items(snap: &TimelineViewSnapshot) -> Vec<(ph2d_a11y::NodeId, String)> {
     let mut out = vec![
         (
             ids::TIMELINE_TAB_KEYS,
@@ -72,7 +72,7 @@ fn crumb_count(snap: &TimelineViewSnapshot) -> usize {
 /// trail) the SELECTED cell is the innermost container tab, not "Containers" — that
 /// is what "the container tab is born checked" means. The Containers tab itself is
 /// the LIST, reached by tapping it (which pops the trail to the root).
-fn selected(tab: Tab, snap: &TimelineViewSnapshot) -> usize {
+pub(crate) fn selected(tab: Tab, snap: &TimelineViewSnapshot) -> usize {
     let k = crumb_count(snap);
     match tab {
         Tab::Keys => 0,

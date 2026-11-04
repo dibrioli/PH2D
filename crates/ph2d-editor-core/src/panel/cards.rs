@@ -151,6 +151,9 @@ pub struct CardCtx<'s> {
     first: bool,
 }
 
+/// ⭐ A moldura e os controlos em fila de um painel-banda (Timeline).
+#[path = "cards_banda.rs"]
+pub mod banda;
 #[path = "cards_cartao.rs"]
 mod cartao;
 #[path = "cards_colunas.rs"]

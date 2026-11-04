@@ -132,7 +132,14 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // The label column's floor depends on what it HOLDS — which is what the TAB
     // shows: a lane row carries controls a track row does not (`geom::min_label_w`).
     let min_label = geom::min_label_w(&snapshot, state.tab);
-    let time_x0 = geom::time_x(rect0, state.label_w, min_label);
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    // Nos cartões a folha mora no interior da moldura; as contas de `geom` servem-se dele.
+    let folha = if cartoes {
+        area_da_folha(rect0)
+    } else {
+        rect0
+    };
+    let time_x0 = geom::time_x(folha, state.label_w, min_label);
     crate::interact::process(state, ctx, rect0, time_x0, &snapshot);
 
     // Pass 2: a resize may have just moved the panel — paint from the new rect.
@@ -147,20 +154,39 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);
 
-    let title_size = paint_chrome(ctx, theme, rect);
-    let body = geom::body(rect, title_size);
-    // The transport now flows BESIDE the title and only spills to a row of its own
-    // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
-    let head_strip = geom::header_controls(rect, title_size);
-    let (after_transport, clip_dd_chip, anim_dd_chip) = transport::paint_bar(
-        ctx,
-        theme,
-        head_strip,
-        body,
-        &snapshot,
-        crate::transport_sources::bar_view(state, &snapshot),
-    );
-    let g = geom::resolve(rect, after_transport, state.label_w, min_label);
+    let (after_transport, clip_dd_chip, anim_dd_chip, body) = if cartoes {
+        let barra = crate::transport_sources::bar_view(state, &snapshot);
+        let store = ctx.host.store_mut();
+        store.mark_card_list_close(
+            ph2d_editor_core::ids::TIMELINE_PANEL,
+            crate::ids::TIMELINE_CLOSE,
+        );
+        let mol = ph2d_editor_core::panel::cards::banda::pinta_moldura(
+            ctx,
+            ph2d_editor_core::ids::TIMELINE_PANEL,
+            TimelinePanel::TITLE.tr(),
+            rect,
+        );
+        let (y, clip, anim) =
+            transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, &snapshot, barra);
+        (y, clip, anim, mol.corpo)
+    } else {
+        let title_size = paint_chrome(ctx, theme, rect);
+        let body = geom::body(rect, title_size);
+        // The transport now flows BESIDE the title and only spills to a row of its own
+        // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
+        let head_strip = geom::header_controls(rect, title_size);
+        let (y, clip, anim) = transport::paint_bar(
+            ctx,
+            theme,
+            head_strip,
+            body,
+            &snapshot,
+            crate::transport_sources::bar_view(state, &snapshot),
+        );
+        (y, clip, anim, body)
+    };
+    let g = geom::resolve(folha, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
     state.label_w = g.label_w;
@@ -417,6 +443,19 @@ fn paint_overlays(
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch
 /// streams their drag to `interact::apply_resize`. Invisible by design — the
 /// panel border is the affordance.
+/// O rect que, entrando nas contas de `geom` (que descontam `PANEL_HEAD_PAD` de cada lado e do
+/// fundo), dá o interior da moldura de cartões.
+fn area_da_folha(rect: Rect) -> Rect {
+    use ph2d_editor_core::panel::cards::banda;
+    let c = banda::geometria(rect).corpo;
+    Rect::new(
+        c.x - PANEL_HEAD_PAD,
+        rect.y,
+        c.w + PANEL_HEAD_PAD * 2.0,
+        c.y + c.h + PANEL_HEAD_PAD - rect.y,
+    )
+}
+
 /// The panel's shell: glass, corner dots, title, close button. Returns the title's
 /// size, which the body's geometry hangs off.
 ///

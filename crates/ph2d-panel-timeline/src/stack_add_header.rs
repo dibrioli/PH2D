@@ -61,12 +61,39 @@ pub(crate) fn add_kind(rows: Rows) -> Option<AddKind> {
     }
 }
 
+/// O botão de adicionar da faixa da coluna de nomes, com a cara do cartão e a altura da régua.
+pub(crate) fn botao_de_cartao(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    texto: &str,
+    r: Rect,
+) {
+    use ph2d_editor_core::panel::cards::CardCtx;
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    CardCtx::flutuante(
+        ctx.scene,
+        ctx.text_system,
+        store,
+        hit,
+        CardInk::of_list(theme),
+        r.x,
+        r.w,
+    )
+    .botao_em(id, texto, r);
+}
+
 /// Paint the lane area's ADD button across the label column's header strip.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect, rows: Rows) {
     let Some(kind) = add_kind(rows) else {
         return;
     };
     let (id, key) = kind.button();
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        botao_de_cartao(ctx, theme, id, ph2d_i18n::tr(key), header);
+        return;
+    }
     let st = ctx.host.store().button_visual(id);
     paint_button(
         &Button::new(id, ph2d_i18n::tr(key).to_string()).visual(st),

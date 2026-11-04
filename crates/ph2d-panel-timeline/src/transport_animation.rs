@@ -25,6 +25,15 @@ pub(crate) fn width(_snap: &TimelineViewSnapshot) -> f32 {
     ANIM_DD_W
 }
 
+/// O texto do chip fechado: a linha do dono em vista.
+pub(crate) fn chip_text(snap: &TimelineViewSnapshot) -> String {
+    options(snap)
+        .into_iter()
+        .nth(selected(snap))
+        .map(|o| o.label)
+        .unwrap_or_default()
+}
+
 /// O nome que o menu mostra: «Scene», o `Name` do objecto, ou o id curto de quem não tem nome.
 pub(crate) fn who(bits: u64, name: &str) -> String {
     if bits == SCENE {

@@ -517,6 +517,10 @@ use chips::{chip_w, labeled_chip, paint_length_chip};
 #[path = "transport_view.rs"]
 mod view_toggles;
 
+/// A mesma barra com os controlos da lista flutuante; `PH2D_CARDS=0` pinta a de cima.
+#[path = "transport_cartoes.rs"]
+pub(crate) mod cartoes;
+
 #[cfg(test)]
 #[path = "transport_playback_tests.rs"]
 mod playback_tests;

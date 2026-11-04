@@ -177,7 +177,8 @@ pub fn paint_field(
         (ph2d_i18n::tr("card.field.mixed"), ColorToken::Text3)
     } else {
         // T29: um passo inteiro não esconde a fração do valor (Friction 0.5 não se lê «0»).
-        owned = if decimals(step) == 0 && value.fract().abs() > 1e-6 {
+        // Um valor infinito (a Dur sem duração autorada) lê-se «∞», nunca «inf».
+        owned = if value.is_infinite() || (decimals(step) == 0 && value.fract().abs() > 1e-6) {
             crate::widget::number_input::format_number(value)
         } else {
             format!("{value:.*}", decimals(step))

@@ -13,7 +13,7 @@ use super::*;
 /// step by a frame (`1/fps`); a DURATION is coarser, so `1/fps` (≈0.04 s) produced
 /// the fiddly, "wrong-looking" values the report named (4.04, 4.08, …). A round
 /// 0.2 s keeps the authored duration on clean tenths.
-const DUR_STEP_SECONDS: f64 = 0.2; // LITERAL-PX-OK: 0.2 s stepper increment (a time value), not a UI px metric
+pub(super) const DUR_STEP_SECONDS: f64 = 0.2; // LITERAL-PX-OK: 0.2 s stepper increment (a time value), not a UI px metric
 
 /// A célula `[pad | nome | pad | chip]` de um chip numérico — o VALOR cai no mesmo `x` que o
 /// interruptor de um toggle ([`toggle_w`]), porque os dois começam por `pad + label_col + pad`.

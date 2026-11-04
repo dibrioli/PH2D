@@ -24,6 +24,7 @@ mod nesting_seam;
 mod o_lado_da_dobra_chega_a_lista;
 mod o_tempo_da_macro_chega_a_lista;
 mod one_door_names_the_channel;
+mod os_cartoes;
 mod seam;
 mod strip_ease_grip_seam;
 mod timeline_presets_menu_tests;

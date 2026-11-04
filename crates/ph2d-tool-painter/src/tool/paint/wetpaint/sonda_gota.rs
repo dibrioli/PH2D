@@ -131,9 +131,13 @@ pub(super) fn bancada_toda(
             ..ponto(x0 + 150.0)
         });
     }
-    for k in 0..30 * 60 {
+    let diag = std::env::var("PH2D_SONDA_DIAG").is_ok();
+    if !diag {
+        super::escorre_contorna_tests::ticks(&mut t, 30 * 60);
+    }
+    for k in 0..if diag { 30 * 60 } else { 0 } {
         t.on_tick(1000.0 / 60.0);
-        if std::env::var("PH2D_SONDA_DIAG").is_ok() && [0, 30, 120, 600, 1799].contains(&k) {
+        if [0, 30, 120, 600, 1799].contains(&k) {
             // A água do 1.º traço (x 60–210): a maior altura por linha, da orla para baixo.
             let s = t.paint.wetpaint.session.as_mut().expect("sessão");
             s.bring_home();

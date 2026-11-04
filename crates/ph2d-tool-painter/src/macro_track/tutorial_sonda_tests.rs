@@ -81,9 +81,11 @@ fn deslocada(p: &Pincelada, d: f32, lado: f32) -> Pincelada {
 /// «pintado» só cresce, logo o que o aluno alcança é o que ele tem com a água ASSENTADA (W7).
 pub(super) fn assenta(t: &mut PainterTool) -> u32 {
     let mut q = 0;
+    // Em blocos de 30 quadros (os mesmos 20 passos): ninguém lê a tela durante o assentar.
     while q < base::QUADROS_ATE_ASSENTAR && !t.wet_assentada() {
-        quadro(t);
-        q += 1;
+        drop(t.take_preview_arc());
+        t.on_tick(30.0 * DT_MS);
+        q += 30;
     }
     q
 }

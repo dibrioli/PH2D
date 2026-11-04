@@ -44,10 +44,65 @@ pub(super) fn grid(t: &PainterTool) -> &ph2d_wet_paint::grid::Grid {
         .grid
 }
 
-pub(super) fn ticks(t: &mut PainterTool, n: u32) {
-    for _ in 0..n {
-        t.on_tick(1000.0 / 60.0);
+impl PainterTool {
+    /// `n` quadros de 60 Hz sem ninguém ler a tela entre eles. No relógio fixo, em blocos de 30: um bloco dá os
+    /// mesmos 20 passos que 30 tiques e a tela compõe-se uma vez por bloco (prova: `o_tempo_em_blocos_e_o_por_quadro`).
+    /// Fora do relógio fixo, um tique por quadro.
+    pub(in crate::tool::paint) fn ticks_em_blocos(&mut self, n: impl TryInto<u32>) {
+        let n = n.try_into().ok().expect("quadros");
+        let bloco = if self.paint.wetpaint.relogio_fixo.is_some() {
+            30
+        } else {
+            1
+        };
+        for _ in 0..n / bloco {
+            #[expect(clippy::cast_precision_loss, reason = "1 ou 30")]
+            self.on_tick(bloco as f32 * (1000.0 / 60.0));
+        }
+        for _ in 0..n % bloco {
+            self.on_tick(1000.0 / 60.0);
+        }
     }
+}
+
+pub(in crate::tool::paint) fn ticks(t: &mut PainterTool, n: u32) {
+    t.ticks_em_blocos(n);
+}
+
+/// ⭐ Os blocos de [`PainterTool::ticks_em_blocos`] pintam, ao byte, o que pinta um tique por quadro: óleo e aguada, um
+/// número que não é múltiplo de 30, e um traço depois da espera (o que sobra da dívida do relógio).
+#[test]
+fn o_tempo_em_blocos_e_o_por_quadro() {
+    let cena = |blocos: bool| {
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+        t.set_paint_tool_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        let espera = |t: &mut PainterTool, n: u32| {
+            if blocos {
+                t.ticks_em_blocos(n);
+            } else {
+                for _ in 0..n {
+                    t.on_tick(1000.0 / 60.0);
+                }
+            }
+        };
+        t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+            .expect("o meio");
+        t.set_brush_size_px(30.0);
+        traco(&mut t, 40.0, 200.0, 90.0);
+        espera(&mut t, 301);
+        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Drip.ph2d-brush.png"))
+            .expect("a aguada");
+        t.set_brush_size_px(30.0);
+        traco(&mut t, 60.0, 180.0, 60.0);
+        espera(&mut t, 247);
+        traco(&mut t, 60.0, 180.0, 70.0);
+        espera(&mut t, 90);
+        t.run_full().0
+    };
+    let (por_quadro, em_blocos) = (cena(false), cena(true));
+    assert!(por_quadro == em_blocos, "os blocos mudaram a tela");
 }
 
 /// Um traço horizontal de `x0` a `x1` em `y`, 40 passos, um tick por passo.

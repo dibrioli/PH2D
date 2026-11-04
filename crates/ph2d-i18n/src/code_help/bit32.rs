@@ -4,10 +4,10 @@
 pub(super) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "code.help.bit32" => {
-            "Work with the single bits of whole numbers: flags, masks and packed colours."
+            "Work with the single bits of whole numbers: flags, masks and packed colors."
         }
         "code.help.bit32.about" => {
-            "Every function here treats numbers as 32-bit whole numbers without a sign, from 0 to 4294967295. Fractions are dropped and negative numbers wrap around to the top of that range, so `bit32.band(-1)` is 4294967295. Results are never negative.\n\nBits are counted from 0 (the lowest, worth 1) up to 31. A common use is keeping many on/off flags in one number, one bit each, or a colour's red, green and blue in 8 bits each. Writing numbers in hex such as `0xFF8800` makes the bits easier to see."
+            "Every function here treats numbers as 32-bit whole numbers without a sign, from 0 to 4294967295. Fractions are dropped and negative numbers wrap around to the top of that range, so `bit32.band(-1)` is 4294967295. Results are never negative.\n\nBits are counted from 0 (the lowest, worth 1) up to 31. A common use is keeping many on/off flags in one number, one bit each, or a color's red, green and blue in 8 bits each. Writing numbers in hex such as `0xFF8800` makes the bits easier to see."
         }
         "code.help.bit32.arshift" => {
             "Moves the bits right, filling the top with copies of the highest bit.\n\nFor numbers below 2147483648 it is the same as [bit32.rshift]. For a negative number it keeps it \"negative\" in 32 bits, but the result is still shown as a big positive number. A negative `disp` shifts left instead."
@@ -57,7 +57,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
         "code.help.bit32.countrz.n" => "The number to look at.",
         "code.help.bit32.countrz.returns" => "A count from 0 to 32.",
         "code.help.bit32.extract" => {
-            "Reads a group of bits out of a number, as a number of its own.\n\nThe group starts at bit `field` and is `width` bits wide (1 when left out). Use it to pull one channel out of a packed colour. The group must end at bit 31 or below, or the script stops with an error."
+            "Reads a group of bits out of a number, as a number of its own.\n\nThe group starts at bit `field` and is `width` bits wide (1 when left out). Use it to pull one channel out of a packed color. The group must end at bit 31 or below, or the script stops with an error."
         }
         "code.help.bit32.extract.n" => "The number to read from.",
         "code.help.bit32.extract.field" => "The lowest bit of the group, from 0 to 31.",
@@ -92,7 +92,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
         "code.help.bit32.rrotate.disp" => "How many places to move.",
         "code.help.bit32.rrotate.returns" => "The rotated number.",
         "code.help.bit32.rshift" => {
-            "Moves the bits right, filling the top with zeros.\n\nEach place halves the number and drops the remainder. Use it with [bit32.band] to read a packed part, such as the red of a colour: `bit32.rshift(colour, 16)`. A negative `disp` shifts left instead."
+            "Moves the bits right, filling the top with zeros.\n\nEach place halves the number and drops the remainder. Use it with [bit32.band] to read a packed part, such as the red of a color: `bit32.rshift(color, 16)`. A negative `disp` shifts left instead."
         }
         "code.help.bit32.rshift.x" => "The number to shift.",
         "code.help.bit32.rshift.disp" => "How many places to move.",

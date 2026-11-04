@@ -25,7 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.field.wait" => "Wait before",
         "panel.macros.field.size" => "Size",
         "panel.macros.field.value" => "Value",
-        "panel.macros.field.color" => "Colour",
+        "panel.macros.field.color" => "Color",
         "panel.macros.step.stroke" => "Stroke {n}",
         "panel.macros.step.fill" => "Fill {n}",
         "panel.macros.step.add" => "Add {nodes}",
@@ -99,7 +99,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.macros.error.moves_with_the_next" => {
             "In Motion a step moves with the ones after it: change its Wait in the MACROS panel."
         }
-        "panel.macros.error.not_a_stroke" => "Only a stroke has a colour and a size.",
+        "panel.macros.error.not_a_stroke" => "Only a stroke has a color and a size.",
         "panel.macros.error.not_a_value" => "Only a parameter step has a value.",
         "panel.macros.error.no_such_step" => "That step is no longer in the recording.",
         "panel.macros.error.unknown_name" => "This build has no {detail}.",
@@ -153,10 +153,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.macros.tutorial.medium" => "Pick {medium} in the Paint Mode dropdown.",
         "panel.macros.tutorial.paint" => {
-            "Paint over the marked area: fill most of it, with any colour and brush."
+            "Paint over the marked area: fill most of it, with any color and brush."
         }
         "panel.macros.tutorial.fill_colour" => {
-            "Pick this colour on the ringed C&F button: {colour} (click it, then type the code or \
+            "Pick this color on the ringed C&F button: {color} (click it, then type the code or \
              pick it by eye)."
         }
         "panel.macros.tutorial.fill_drop" => {

@@ -29,7 +29,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "node.group.burst" => "Burst",
         "node.group.aberration" => "Chromatic Aberration",
         "node.group.collision" => "Collision",
-        "node.group.colour" => "Colour",
+        "node.group.colour" => "Color",
         "node.group.corners" => "Corners",
         "node.group.curve" => "Curve",
         "node.group.decay" => "Decay",

@@ -464,7 +464,7 @@ fn tabela(key: &str) -> &'static str {
         //    fixava a ordem das palavras. O critério (`WCAG 2.2 AA 1.4.3`) entra como PEÇA — é o
         //    endereço de uma norma, não se traduz.
         "panel.tokens.contrast.line" => "{fg} on {bg} - {ratio}:1, need {min} ({criterion})",
-        "panel.tokens.swatch" => "Design token colour",
+        "panel.tokens.swatch" => "Design token color",
         // A família NUMÉRICA (plano UI/UX W4c.1) — a escala que se mede em px.
         // ⚠️ O cabeçalho diz a UNIDADE, e é o que separa esta lista da de cima: as duas listam
         // "tokens", e sem a unidade um chip com `8` ao lado de uma swatch não diz de que grandeza

@@ -45,7 +45,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The wash does not read the dab opacity"
         }
         "panel.painter_layers.inerte.color_owned_by_ramp" => {
-            "Acts when no Color Ramp or Texture Color paints the colour"
+            "Acts when no Color Ramp or Texture Color paints the color"
         }
         // O fim do traço (L5), o traço como uma camada (L8) e o modo sobre o vazio (L7).
         "panel.painter_layers.inerte.taper_end_length" => {
@@ -53,7 +53,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.painter_layers.inerte.fall_off_length" => "Acts with a Fall-off length",
         "panel.painter_layers.inerte.color_blend_mode" => {
-            "Acts with a colour Blend (Multiply, Color, Hue…)"
+            "Acts with a color Blend (Multiply, Color, Hue…)"
         }
         "panel.painter_layers.inerte.freehand_paint_stroke" => "Acts on a freehand paint stroke",
         // A profundidade do grão por dab (L9).
@@ -76,7 +76,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts with a Shape texture: a pattern or an image"
         }
         "panel.painter_layers.inerte.texture_colors_media" => {
-            "Acts in Digital and Impasto: Wet Paint and Watercolor paint the brush colour"
+            "Acts in Digital and Impasto: Wet Paint and Watercolor paint the brush color"
         }
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",

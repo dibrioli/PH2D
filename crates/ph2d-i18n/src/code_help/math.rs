@@ -161,7 +161,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
         "code.help.math.log10.returns" => "The power of 10 that gives `n`: 2 for 100, 3 for 1000.",
 
         "code.help.math.map" => {
-            "Converts a number from one range to another, keeping its place: halfway in stays halfway out.\n\nUse it to turn a slider from 0 to 1 into a colour from 0 to 255, or a mouse position into an angle. The output range may run backwards (`100` to `0`) to flip it.\n\nNote: the result is not kept inside the output range: 15 on a 0–10 range becomes 150 on 0–100. Use [math.clamp] on the result if needed. If `inmin` and `inmax` are equal, the answer is infinity or `nan`."
+            "Converts a number from one range to another, keeping its place: halfway in stays halfway out.\n\nUse it to turn a slider from 0 to 1 into a color from 0 to 255, or a mouse position into an angle. The output range may run backwards (`100` to `0`) to flip it.\n\nNote: the result is not kept inside the output range: 15 on a 0–10 range becomes 150 on 0–100. Use [math.clamp] on the result if needed. If `inmin` and `inmax` are equal, the answer is infinity or `nan`."
         }
         "code.help.math.map.x" => "The number to convert.",
         "code.help.math.map.inmin" => "The start of the range `x` comes from.",

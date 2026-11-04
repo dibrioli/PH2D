@@ -127,9 +127,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.shape.sticky_stack" => "Sticky note stack",
         "board.style.shape" => "Shape",
         "board.style.no_fill" => "No fill",
-        "board.style.fill" => "Fill colour",
+        "board.style.fill" => "Fill color",
         "board.style.no_stroke" => "No outline",
-        "board.style.stroke" => "Outline colour",
+        "board.style.stroke" => "Outline color",
         "board.style.width" => "Outline width",
         "board.style.dash" => "Line style",
         "board.style.sharp" => "Sharp corners",
@@ -140,7 +140,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.style.font" => "Text size",
         "board.tool.note" => "Sticky note (N) — click to place, or drag; type to write",
         "board.tool.stack" => "Sticky note stack — drag new notes off it",
-        "board.note.color" => "Note colour",
+        "board.note.color" => "Note color",
         "board.note.size" => "Note size",
         "board.note.square" => "Square note",
         "board.note.wide" => "Wide note",
@@ -153,8 +153,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.mark.i" => "I",
         "board.mark.u" => "U",
         "board.mark.s" => "S",
-        "board.text.auto_color" => "Text colour of the shape",
-        "board.text.color" => "Text colour",
+        "board.text.auto_color" => "Text color of the shape",
+        "board.text.color" => "Text color",
         "board.text.a" => "A",
         "board.font.s" => "S",
         "board.font.m" => "M",
@@ -304,7 +304,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.mind.l4" => {
             "4. Click the number next to «{node}»: the branch opens (Ctrl+Up folds it again)"
         }
-        "board.smoke.mind.l5" => "5. Drag «{node}» onto «{to}»: it moves there, with its colour",
+        "board.smoke.mind.l5" => "5. Drag «{node}» onto «{to}»: it moves there, with its color",
         "board.smoke.mind.l6" => {
             "6. Templates: the button under the mind map one, on the left bar — one click, a whole board"
         }

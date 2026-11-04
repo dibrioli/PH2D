@@ -69,10 +69,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.frames.bw" => "Black and white",
         "board.smoke.frames.svg" => "SVG",
         "board.smoke.frames.l1" => {
-            "1. Click a picture: the bar above it has the frame. Pick a colour (the crossed square = no frame), then the thickness and solid, dashed or dotted."
+            "1. Click a picture: the bar above it has the frame. Pick a color (the crossed square = no frame), then the thickness and solid, dashed or dotted."
         }
         "board.smoke.frames.l2" => {
-            "2. The half-black circle in the same bar turns the picture black and white. Click it again for the colours. Ctrl+Z takes it back."
+            "2. The half-black circle in the same bar turns the picture black and white. Click it again for the colors. Ctrl+Z takes it back."
         }
         "board.smoke.frames.l3" => {
             "3. With a framed picture selected, click Sketch on the toolbar: the frame is drawn by hand, like a shape."
@@ -142,7 +142,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "4. Click away from it: it keeps playing. Move the view until it is all out of sight: it pauses; bring it back: it plays"
         }
         "board.smoke.w20.l5" => {
-            "5. Select the video: the style bar has the border, its colour, width and dashes, the fill, the corners and opacity"
+            "5. Select the video: the style bar has the border, its color, width and dashes, the fill, the corners and opacity"
         }
         "board.smoke.w20.l6" => {
             "6. The border goes AROUND the picture, never over it (YouTube's rule); the fill only shows behind"

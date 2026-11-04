@@ -15,10 +15,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.wet_bloom" => "Wet bloom",
         "panel.painter_wet_cartao.tip_pickup" => "Tip pickup",
         "panel.painter_wet_cartao.wet_bloom_tip" => {
-            "Only acts when the brush enters WET paint of another colour: the wet paint opens around the stroke."
+            "Only acts when the brush enters WET paint of another color: the wet paint opens around the stroke."
         }
         "panel.painter_wet_cartao.tip_pickup_tip" => {
-            "Only acts when the brush enters WET paint of another colour: the tip picks it up and carries it along."
+            "Only acts when the brush enters WET paint of another color: the tip picks it up and carries it along."
         }
         // A água que re-molha e a tinta que se deixa dissolver (dono 30/10, J10).
         "panel.painter_wet_cartao.rewet" => "Re-wet",
@@ -40,15 +40,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.painter_wet_cartao.glaze" => "Glaze",
         "panel.painter_wet_cartao.glaze_tip" => {
-            "How much this paint filters the colour under it like a transparent layer, instead of covering it"
+            "How much this paint filters the color under it like a transparent layer, instead of covering it"
         }
         "panel.painter_wet_cartao.cover" => "Cover",
         "panel.painter_wet_cartao.cover_tip" => {
-            "How much this paint hides WET paint of another colour under it instead of mixing with it, like gouache"
+            "How much this paint hides WET paint of another color under it instead of mixing with it, like gouache"
         }
         "panel.painter_wet_cartao.dry_cover" => "Dry cover",
         "panel.painter_wet_cartao.dry_cover_tip" => {
-            "How much this paint hides DRY paint of another colour under it, like opaque gouache over a dried layer"
+            "How much this paint hides DRY paint of another color under it, like opaque gouache over a dried layer"
         }
         "panel.painter_wet_cartao.wet_soften" => "Wet soften",
         "panel.painter_wet_cartao.wet_soften_tip" => {
@@ -60,7 +60,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.absorbency" => "Absorbency",
         "panel.painter_wet_cartao.water_drag" => "Drag",
         "panel.painter_wet_cartao.water_drag_tip" => {
-            "How much the water carries the pigment it lifted along the stroke: the colour fades in the direction of the gesture"
+            "How much the water carries the pigment it lifted along the stroke: the color fades in the direction of the gesture"
         }
         // Os controlos de lei da E10 (`docs/Painter/Arquitetura/F3_controlos.md` §9).
         "panel.painter_wet_cartao.paint_type_tip" => {

@@ -104,12 +104,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // ④ o verbo de UMA forma dentro da booleana viva: a dica nomeia a forma de que fala.
         "panel.vector.bar.bool_shape" => "{shape} \u{00b7} {verb}",
-        "panel.vector.bar.fill" => "Fill colour",
-        "panel.vector.bar.stroke" => "Stroke colour",
+        "panel.vector.bar.fill" => "Fill color",
+        "panel.vector.bar.stroke" => "Stroke color",
         "panel.vector.bar.width" => "Stroke width",
         "panel.vector.bar.swap" => "Swap fill and stroke",
-        "panel.vector.bar.default" => "Default colours",
-        "panel.vector.bar.focus" => "Edit the other colour",
+        "panel.vector.bar.default" => "Default colors",
+        "panel.vector.bar.focus" => "Edit the other color",
         // ① F17 (dono 16/10): o interruptor da vista de interface, no fim da coluna.
         "panel.vector.bar.interface" => "Interface view \u{00b7} the panel shows the UI settings",
         // As ABAS do título do painel (F17) e o grupo recolhido do desenho raro.

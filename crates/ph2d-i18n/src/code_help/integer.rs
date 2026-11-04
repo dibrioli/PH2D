@@ -7,7 +7,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
             "Exact 64-bit whole numbers, kept as a type of their own beside ordinary numbers."
         }
         "code.help.integer.about" => {
-            "You rarely need this page. An ordinary number already holds every whole number exactly up to 9007199254740992 (2^53), which covers scores, frame counts, timers and positions. Reach for `integer` when a value must stay exact beyond that: very big counters, long IDs that arrive as text, or packing several small values (flags, colour channels) into the bits of one value.\n\nAn integer is not a number: `+`, `-`, `*`, `<`, `..` and the `math` functions all refuse it, and `integer.create(5) == 5` is `false`. Do the sums with [integer.add], [integer.mul] and friends, compare with [integer.lt] and its sisters, and only `==` works directly between two integers. Make one with [integer.create] or [integer.fromstring]; turn it back with [integer.tonumber] or `tostring`.\n\nNote: the sums never fail on overflow — they wrap around, so one past [integer.maxsigned] is [integer.minsigned]. And `print` rounds an integer bigger than 2^53 (`print(integer.maxsigned)` shows `9223372036854776000`), so print `tostring(x)` or `string.format(\"%d\", x)` to see every digit."
+            "You rarely need this page. An ordinary number already holds every whole number exactly up to 9007199254740992 (2^53), which covers scores, frame counts, timers and positions. Reach for `integer` when a value must stay exact beyond that: very big counters, long IDs that arrive as text, or packing several small values (flags, color channels) into the bits of one value.\n\nAn integer is not a number: `+`, `-`, `*`, `<`, `..` and the `math` functions all refuse it, and `integer.create(5) == 5` is `false`. Do the sums with [integer.add], [integer.mul] and friends, compare with [integer.lt] and its sisters, and only `==` works directly between two integers. Make one with [integer.create] or [integer.fromstring]; turn it back with [integer.tonumber] or `tostring`.\n\nNote: the sums never fail on overflow — they wrap around, so one past [integer.maxsigned] is [integer.minsigned]. And `print` rounds an integer bigger than 2^53 (`print(integer.maxsigned)` shows `9223372036854776000`), so print `tostring(x)` or `string.format(\"%d\", x)` to see every digit."
         }
 
         "code.help.integer.add" => {
@@ -104,7 +104,7 @@ pub(super) fn tr(key: &str) -> Option<&'static str> {
         "code.help.integer.div.returns" => "The whole part of the quotient.",
 
         "code.help.integer.extract" => {
-            "Reads a group of bits out of an integer, counting from bit 0 at the right.\n\nUse it to unpack values stored side by side, like the red, green and blue of a colour. Asking for bits outside 0–63 is an error."
+            "Reads a group of bits out of an integer, counting from bit 0 at the right.\n\nUse it to unpack values stored side by side, like the red, green and blue of a color. Asking for bits outside 0–63 is an error."
         }
         "code.help.integer.extract.value" => "The integer to read from.",
         "code.help.integer.extract.bitPosition" => "The first (lowest) bit to read, from 0 to 63.",

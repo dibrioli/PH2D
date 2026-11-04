@@ -35,7 +35,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.private.explain_2" => "until private mode is turned off.",
         "board.private.anonymous" => "Anonymous names",
         "board.private.anonymous_tip" => {
-            "Hide everyone's name and colour on cursors while private mode is on"
+            "Hide everyone's name and color on cursors while private mode is on"
         }
         "board.private.anyone_end" => "Allow anyone to turn off",
         "board.private.anyone_end_tip" => "Let anyone in the session reveal the notes",

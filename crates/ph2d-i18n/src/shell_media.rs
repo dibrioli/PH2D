@@ -25,7 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.forwarding.adobe_swatch_exchange" => "Adobe Swatch Exchange",
         "shell.forwarding.hex_list" => "Hex list",
         "shell.forwarding.gimp_palette" => "GIMP palette",
-        "shell.forwarding.colour_palette" => "Colour palette",
+        "shell.forwarding.colour_palette" => "Color palette",
         "shell.bgremoval.bg_removal_island_s_2" => {
             "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned, {spawn_failed} failed · Cmd+Z restores"
         }

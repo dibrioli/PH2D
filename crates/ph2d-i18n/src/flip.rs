@@ -99,7 +99,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.flip_frames.toolbar.pin" => "Pin",
         "panel.flip_frames.toolbar.auto" => "Auto",
         "panel.flip_frames.toolbar.falloff" => "Falloff",
-        "panel.flip_frames.toolbar.additive" => "Add.",
+        "panel.flip_frames.toolbar.additive" => "Additive",
         "panel.flip_frames.toolbar.tween" => "Tween",
         "panel.flip_frames.toolbar.fade" => "Fade",
         "panel.flip_frames.toolbar.pairs" => "Pairs",

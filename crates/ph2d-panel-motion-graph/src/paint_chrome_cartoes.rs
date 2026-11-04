@@ -12,15 +12,13 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::Theme;
 
-/// O rect da pílula, no canto de baixo à esquerda do grafo.
-pub(super) fn pilula(rect: Rect, n: usize) -> Rect {
+/// O rect da pílula, no canto de baixo à esquerda do grafo, acima da faixa do HUD: centrado na janela,
+/// ele tapava cinco dos nove chips (foto de 04/11), e o `layout` do painel ainda não sabe da timeline.
+pub(super) fn pilula(rect: Rect, n: usize, hud_h: f32) -> Rect {
     let h = m::FIELD_H + m::SEG_PAD * 2.0;
-    Rect::new(
-        rect.x + TOOLBAR_INSET,
-        rect.y + rect.h - TOOLBAR_INSET - h,
-        banda::icones_w(n) + m::SEG_PAD * 2.0,
-        h,
-    )
+    let w = banda::icones_w(n) + m::SEG_PAD * 2.0;
+    let y = rect.y + rect.h - TOOLBAR_INSET * 2.0 - hud_h - h;
+    Rect::new(rect.x + TOOLBAR_INSET, y.max(rect.y), w, h)
 }
 
 pub(super) fn draw(
@@ -30,7 +28,7 @@ pub(super) fn draw(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
     chips: &[(u16, IconId, bool)],
 ) {
-    let p = pilula(rect, chips.len());
+    let p = pilula(rect, chips.len(), ctx.layout.bottom_hud.h);
     banda::pinta_pilula(ctx, p);
     let icones: Vec<Icone> = chips
         .iter()

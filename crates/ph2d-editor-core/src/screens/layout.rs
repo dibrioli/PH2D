@@ -618,6 +618,8 @@ impl HeroLayout {
         if strip.w <= 0.0 || strip.h <= 0.0 {
             return;
         }
+        // A pílula do rodapé nunca cobre as filas da faixa, mesmo com a área acima do split dos Nodes.
+        self.bottom_hud.y = self.bottom_hud.y.min(strip.y - HUD_BOTTOM_PAD - self.bottom_hud.h);
         let area_bottom = self.draw_area.y + self.draw_area.h;
         if strip.y >= area_bottom {
             return; // a faixa está fora da área — nada a reclamar

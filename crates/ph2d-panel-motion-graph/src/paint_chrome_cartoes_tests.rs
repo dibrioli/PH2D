@@ -182,3 +182,23 @@ fn a_tinta_do_no_segue_o_interruptor() {
         ph2d_tokens::ColorToken::CardField
     );
 }
+
+/// ⭐ A pílula não fica por baixo do HUD: foto de 04/11, cinco chips tapados, nos dois modos. O HUD
+/// mede 34 e assenta a 8 do fundo do grafo. *Mutação: tirar o `hud_h` da conta ⇒ vermelho.*
+#[test]
+fn a_pilula_sobe_acima_da_faixa_do_hud() {
+    let grafo = Rect::new(312.0, 568.0, 1310.0, 200.0);
+    let hud_h = 34.0;
+    let topo_do_hud = grafo.y + grafo.h - 8.0 - hud_h;
+    let p = super::pilula(grafo, 9, hud_h);
+    assert!(
+        p.y + p.h <= topo_do_hud,
+        "a pílula fica debaixo do HUD: {p:?}"
+    );
+    let baixo = Rect::new(312.0, 568.0, 1310.0, 40.0);
+    assert_eq!(
+        super::pilula(baixo, 9, hud_h).y,
+        baixo.y,
+        "num grafo baixo não sai por cima"
+    );
+}

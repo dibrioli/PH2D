@@ -70,6 +70,7 @@
 use crate::dab::DirtyRect;
 use crate::height::HeightDab;
 use crate::spec::BrushSpec;
+use ph2d_det_math::DetMath as _;
 
 /// ⛔⛔⛔ **O TECTO DO TRANSPORTE — CONSTRUÍDO, MEDIDO e NÃO ADOPTADO.** Ele fica porque é o
 /// **instrumento da recusa**: sem ele, a medição que a rejeitou não é repetível.
@@ -200,7 +201,7 @@ pub fn accumulate_dab_smear(
     let reach = match arco {
         None => step[0].abs().max(step[1].abs()),
         Some(a) => {
-            let braco = (dab.center[0] - a.centro[0]).hypot(dab.center[1] - a.centro[1]);
+            let braco = (dab.center[0] - a.centro[0]).det_hypot(dab.center[1] - a.centro[1]);
             (braco + dab.radius) * a.dtheta.abs()
         }
     };
@@ -225,7 +226,7 @@ pub fn accumulate_dab_smear(
         let atras = match arco {
             None => [px - step[0] * add, py - step[1] * add],
             Some(a) => {
-                let (sn, cs) = (-a.dtheta * add).sin_cos();
+                let (sn, cs) = (-a.dtheta * add).det_sin_cos();
                 let (dx, dy) = (px - a.centro[0], py - a.centro[1]);
                 [
                     a.centro[0] + cs * dx - sn * dy,
@@ -249,7 +250,7 @@ pub fn accumulate_dab_smear(
         // `!= ∞` e não `is_finite()` de propósito: com `−∞` ou `NaN` o ramo corre como corria.
         let tecto = spec.radius_px * tecto_em_raios;
         if tecto != f32::INFINITY {
-            let m = d[0].hypot(d[1]);
+            let m = d[0].det_hypot(d[1]);
             if m > tecto {
                 let k = tecto / m;
                 d = [d[0] * k, d[1] * k];

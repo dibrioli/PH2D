@@ -7,6 +7,7 @@ use crate::falloff::Falloff;
 use crate::line_kind::LineKind;
 use crate::spec::BrushSpec;
 use crate::stroke::{Stroke, StrokePoint};
+use ph2d_det_math::DetMath as _;
 
 fn sp(kind: LineKind, radius: f32) -> BrushSpec {
     BrushSpec {
@@ -75,7 +76,7 @@ fn measure_the_gap_on_a_gesture_that_changes_speed() {
             }
             let mut worst = 0.0f32;
             for w in centres.windows(2) {
-                worst = worst.max((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]));
+                worst = worst.max((w[1][0] - w[0][0]).det_hypot(w[1][1] - w[0][1]));
             }
             let diam = 2.0 * radius;
             println!(
@@ -126,7 +127,7 @@ fn measure_the_throw_on_a_fast_arc() {
             for _ in 0..20 {
                 let m = 0.5 * (lo + hi);
                 let mid = [u[0] + v[0], u[1] + v[1]];
-                let l = mid[0].hypot(mid[1]);
+                let l = mid[0].det_hypot(mid[1]);
                 let mid = [mid[0] / l, mid[1] / l];
                 if t < m {
                     v = mid;
@@ -162,10 +163,11 @@ fn measure_the_throw_on_a_fast_arc() {
         }
         let mut worst = 0.0f32;
         for w in centres.windows(2) {
-            worst = worst.max((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]));
+            worst = worst.max((w[1][0] - w[0][0]).det_hypot(w[1][1] - w[0][1]));
         }
         #[allow(clippy::cast_precision_loss)]
-        let mean_r = centres.iter().map(|q| q[0].hypot(q[1])).sum::<f32>() / centres.len() as f32;
+        let mean_r =
+            centres.iter().map(|q| q[0].det_hypot(q[1])).sum::<f32>() / centres.len() as f32;
         println!(
             "{:>10}  {:>12.1} {:>12.2}  {:>12.1} {:>12}",
             if kind == LineKind::None {

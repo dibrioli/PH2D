@@ -10,6 +10,7 @@
 //! `m = 0` devolve o motor de antes ao bit (cada função devolve a entrada sem aritmética). Medido:
 //! `docs/Painter/Arquitetura/E10g_oleo_diluido.md`.
 
+use ph2d_det_math::DetMath as _;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// `η_óleo ÷ η_água` do diluente.
@@ -65,7 +66,7 @@ pub fn mobilidade(m: f64) -> f64 {
     if m <= 0.0 {
         return 1.0;
     }
-    medida(&PAPEL_ETA, ETA_OLEO).powf(-m.min(1.0))
+    medida(&PAPEL_ETA, ETA_OLEO).det_powf(-m.min(1.0))
 }
 
 /// O factor da perda linear do filme (evaporação + endurecimento): `(1−m) + m·ENDURECE`.
@@ -86,7 +87,7 @@ pub fn retencao(r: f64, m: f64) -> f64 {
     if m <= 0.0 {
         return r;
     }
-    r.powf(mobilidade(m).sqrt())
+    r.det_powf(mobilidade(m).sqrt())
 }
 
 /// O meio de uma célula que recebe tinta: a média pelo volume MOLHADO (o líquido + o pigmento em suspensão, em

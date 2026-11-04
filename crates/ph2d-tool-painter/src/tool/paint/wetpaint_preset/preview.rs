@@ -20,6 +20,7 @@ use super::super::watercolor_flow::MapaDoFluxo;
 use super::super::wetpaint::largura::LeiDaLargura;
 use crate::{LightRig, PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_painter_brush::{BrushSpec, Dynamics};
@@ -347,7 +348,7 @@ impl PainterTool {
 /// o que o pincel faz com a pressão (o tamanho, a opacidade, o grão da pressão), que a pressão fixa `1` do
 /// rato escondia no preview vivo (22/10).
 fn pressao(f: f32) -> f32 {
-    0.15 + 0.85 * (f * std::f32::consts::PI).sin()
+    0.15 + 0.85 * (f * std::f32::consts::PI).det_sin()
 }
 
 fn ponto(pos: [f32; 2], pressure: f32, phase: PointerPhase) -> CanvasPointer {
@@ -401,7 +402,7 @@ pub(super) fn pintar_miniatura(
     let em = |f: f32| {
         [
             x0 + (x1 - x0) * f,
-            cy + AMPLITUDE * (f * std::f32::consts::TAU).sin(),
+            cy + AMPLITUDE * (f * std::f32::consts::TAU).det_sin(),
         ]
     };
     let mut emite_se = |t: &mut PainterTool| {
@@ -588,7 +589,7 @@ pub(super) fn gesto_do_preview(
     let em = |f: f32| {
         [
             x0 + (x1 - x0) * f,
-            cy + amp * (f * std::f32::consts::TAU).sin(),
+            cy + amp * (f * std::f32::consts::TAU).det_sin(),
         ]
     };
     let mut emite_se = |t: &mut PainterTool| {

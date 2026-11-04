@@ -6,6 +6,7 @@
 //! [`LinearRgba::to_srgb`] to come back.
 
 use crate::LinearRgba;
+use ph2d_det_math::DetMath as _;
 
 /// sRGB-encoded RGBA, 8-bit per channel.
 ///
@@ -100,7 +101,7 @@ pub fn srgb_to_linear_unit(v: f32) -> f32 {
     if v <= 0.04045 {
         v / 12.92
     } else {
-        ((v + 0.055) / 1.055).powf(2.4)
+        ((v + 0.055) / 1.055).det_powf(2.4)
     }
 }
 
@@ -122,7 +123,7 @@ pub fn linear_to_srgb_unit(linear: f32) -> f32 {
     if v <= 0.003_130_8 {
         v * 12.92
     } else {
-        1.055 * v.powf(1.0 / 2.4) - 0.055
+        1.055 * v.det_powf(1.0 / 2.4) - 0.055
     }
 }
 

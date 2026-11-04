@@ -9,6 +9,7 @@ use crate::grid::Grid;
 use crate::grid::tinta::CelulaTinta;
 use crate::grid::tinta::pigmento::optica_celula;
 use crate::grid::tinta::pigmento::{ABERTO, FILME, LadoEspectral, srgb_0_255};
+use ph2d_det_math::DetMath as _;
 use ph2d_paint_tinta::{Espectro, Soma, transfere};
 use rayon::prelude::*;
 
@@ -208,7 +209,7 @@ pub fn cura(g: &mut Grid, dt_s: f32) {
             if c.aberto.v <= 0.0 || m <= 0.0 {
                 continue;
             }
-            c.o *= (-dt_s / tau(m)).exp();
+            c.o *= (-dt_s / tau(m)).det_exp();
             let i = ri * s + x;
             if c.o < O_FECHA && film[i] <= 0.0 && c.filme.v <= 0.0 {
                 fecha_celula(c, None, &mut tr[x]);
@@ -262,7 +263,7 @@ fn cura_com_pigmento(g: &mut Grid, dt_s: f32) {
         if c.aberto.v <= 0.0 || m <= 0.0 {
             continue;
         }
-        c.o *= (-dt_s / tau(m)).exp();
+        c.o *= (-dt_s / tau(m)).det_exp();
         if c.o < O_FECHA && film[i] <= 0.0 && c.filme.v <= 0.0 {
             fecha_celula(c, Some(l), &mut sett[i]);
         }

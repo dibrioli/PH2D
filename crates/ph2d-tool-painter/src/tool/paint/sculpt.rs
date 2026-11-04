@@ -23,6 +23,7 @@
 
 use super::Region;
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use std::sync::Arc;
 
 /// The number of sub-modes — the segmented control's option count; [`SculptMode::from_u8`] clamps to it.
@@ -354,7 +355,7 @@ impl SculptState {
         if !matches!(self.mode_enum(), SculptMode::Chisel) {
             return 0.0;
         }
-        let slope_px = self.chisel_angle_deg().to_radians().tan().max(0.0); // rise/run, both in PIXELS
+        let slope_px = self.chisel_angle_deg().to_radians().det_tan().max(0.0); // rise/run, both in PIXELS
         slope_px / super::impasto_light::DEPTH_UNIT_PX // …and back into paint-loads per texel
     }
 

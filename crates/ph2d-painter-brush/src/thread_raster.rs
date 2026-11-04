@@ -29,6 +29,7 @@
 
 use crate::solid;
 use crate::stroke::threads::Thread;
+use ph2d_det_math::DetMath as _;
 
 /// Com que tinta um feixe de fios é desenhado — a espessura e a opacidade, e mais nada.
 ///
@@ -130,7 +131,7 @@ fn quads(threads: &[Thread], width_px: f32, origin: [f32; 2]) -> Vec<Vec<[f32; 2
 /// pixel que ninguém distingue. O irmão que tem tampa é o TRAÇO, onde ela mede a espessura inteira.
 fn push_quad(out: &mut Vec<[f32; 2]>, t: Thread, half: f32, origin: [f32; 2]) -> bool {
     let d = [t[2] - t[0], t[3] - t[1]];
-    let len = d[0].hypot(d[1]);
+    let len = d[0].det_hypot(d[1]);
     if len <= f32::EPSILON || half <= 0.0 {
         return false;
     }

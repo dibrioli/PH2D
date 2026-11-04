@@ -14,6 +14,7 @@
 use crate::dynamics::Dynamics;
 use crate::spec::BrushSpec;
 use crate::stroke::{Dab, Stroke, StrokePoint};
+use ph2d_det_math::DetMath as _;
 
 /// Um quarto de círculo de raio `r`, amostrado em `n` pontos (o primeiro é o pen-down).
 ///
@@ -26,7 +27,7 @@ fn arc_path(r: f32, n: usize) -> Vec<[f32; 2]> {
             #[allow(clippy::cast_precision_loss)]
             let t = i as f32 / (n - 1) as f32;
             let a = t * std::f32::consts::FRAC_PI_2;
-            [c[0] + r * a.cos(), c[1] + r * a.sin()]
+            [c[0] + r * a.det_cos(), c[1] + r * a.det_sin()]
         })
         .collect()
 }
@@ -120,7 +121,7 @@ fn speed_table(spec: BrushSpec, stab_off: bool) {
         let path = arc_path(r, n);
         let mut d_ev = 0.0f64;
         for w in path.windows(2) {
-            d_ev += f64::from((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]));
+            d_ev += f64::from((w[1][0] - w[0][0]).det_hypot(w[1][1] - w[0][1]));
         }
         #[allow(clippy::cast_precision_loss)]
         let mean_ev = d_ev / (n - 1) as f64;
@@ -193,7 +194,7 @@ fn measure_how_many_threads_a_sketchy_would_emit() {
                 for i in 0..c.len() {
                     // `j < i - 1` — o vizinho imediato é o próprio traço.
                     for j in 0..i.saturating_sub(1) {
-                        let d = (c[i][0] - c[j][0]).hypot(c[i][1] - c[j][1]);
+                        let d = (c[i][0] - c[j][0]).det_hypot(c[i][1] - c[j][1]);
                         if d <= reach {
                             threads += 1;
                             total_len += f64::from(d);

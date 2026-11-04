@@ -13,6 +13,7 @@ use crate::falloff::Falloff;
 use crate::line_kind::{LineKind, RIBBON_DAMPING_MAX, RIBBON_DAMPING_MIN};
 use crate::spec::BrushSpec;
 use crate::stroke::{Stroke, StrokePoint};
+use ph2d_det_math::DetMath as _;
 
 fn spec(weight: f32, friction: f32, gravity: f32) -> BrushSpec {
     BrushSpec {
@@ -393,7 +394,7 @@ fn measure_where_the_ribbon_jumps() {
         #[allow(clippy::cast_precision_loss)]
         let t = i as f32 / 60.0;
         let x = 100.0 + t * 900.0;
-        let y = 300.0 + (t * 12.0).sin() * 160.0;
+        let y = 300.0 + (t * 12.0).det_sin() * 160.0;
         s.extend(
             StrokePoint {
                 pos: [x, y],
@@ -514,9 +515,9 @@ fn measure_a_real_gesture_for_spikes() {
             // 4 eventos por quadro, com a velocidade a variar entre quase-parada e rapida
             #[allow(clippy::cast_precision_loss)]
             for k in 0..4 {
-                t += 0.004 * (1.0 + (t * 3.0).sin().abs() * 6.0);
+                t += 0.004 * (1.0 + (t * 3.0).det_sin().abs() * 6.0);
                 let x = 200.0 + t * 300.0;
-                let y = 400.0 + (t * 5.0).sin() * 150.0 + (t * 13.0).cos() * 40.0;
+                let y = 400.0 + (t * 5.0).det_sin() * 150.0 + (t * 13.0).det_cos() * 40.0;
                 let _ = k;
                 s.extend(
                     StrokePoint {
@@ -530,7 +531,7 @@ fn measure_a_real_gesture_for_spikes() {
             out.clear();
             // dt com jitter, como um frame real
             #[allow(clippy::cast_precision_loss)]
-            let dt = 1.0 / 60.0 * (0.7 + 0.6 * ((i as f32) * 0.37).sin().abs());
+            let dt = 1.0 / 60.0 * (0.7 + 0.6 * ((i as f32) * 0.37).det_sin().abs());
             s.tick(dt, &mut out);
             scan(&out);
         }

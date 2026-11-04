@@ -5,6 +5,7 @@
 //! unit vector, so the result is bit-identical on every platform.
 
 use crate::texture::rotate_by_degrees;
+use ph2d_det_math::DetMath as _;
 
 /// Largest **Flatten** value: the minor axis shrinks to `1 - DAB_FLATTEN_MAX` of the major, never to
 /// zero (a true line would be degenerate / un-paintable).
@@ -341,7 +342,7 @@ impl FootprintDeform {
     /// A curva de nível `falloff_t = level` no parâmetro `t` — o [`Self::outline_at`] é `level = 1`, ao
     /// bit (`× 1` e `4 · 1` são exactos).
     fn level_outline_at(self, t: f32, level: f32) -> [f32; 2] {
-        let (sen, cos) = (t * std::f32::consts::TAU).sin_cos();
+        let (sen, cos) = (t * std::f32::consts::TAU).det_sin_cos();
         // A fronteira da quina na direcção `(cos, sen)` do referencial está a `raio_da_quina` (exacto).
         let q = self.raio_da_quina(cos, sen);
         let (sen, cos) = (sen * q, cos * q);
@@ -515,7 +516,7 @@ impl FootprintDeform {
         const ALCANCE: f32 = 1.2;
         for k in 0..DIRECCOES {
             let t = (k as f32) * std::f32::consts::TAU / (DIRECCOES as f32);
-            let (sen, cos) = t.sin_cos();
+            let (sen, cos) = t.det_sin_cos();
             let mut anterior = 0.0_f32;
             for j in 1..=PASSOS {
                 let s = ALCANCE * (j as f32) / (PASSOS as f32);

@@ -3,6 +3,7 @@
 //! traço, com o `prev` a dar a normal.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// O alcance da frente da água de [`apply_wet_push`], em raios do dab: o Water Soft do Rebelle (38 px de largura) deixa
 /// a orla a ~120–130 px do eixo do traço sobre a faixa molhada (`docs/Painter/Pinceis/fixtures/rebelle_mistura/WATER`:
@@ -40,7 +41,7 @@ pub fn apply_wet_push(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
 fn empurra(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let push = p.k(Knob::WaterPush);
     let (dx, dy) = (dab.x - prev[0], dab.y - prev[1]);
-    let passo = dx.hypot(dy);
+    let passo = dx.det_hypot(dy);
     if push <= 0.0 || passo < 1e-6 || dab.r <= 0.0 {
         return None;
     }
@@ -63,7 +64,7 @@ fn empurra(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<Touche
     // fase dos dabs da base — cura 02/11c). Só há para onde correr quando a água passa da pegada (sobre a tinta seca
     // a frente é a própria pegada).
     let meia = r.ceil() as i64;
-    let bebe = (-1.0 / (WATER_SPILL_RADII * r)).exp();
+    let bebe = (-1.0 / (WATER_SPILL_RADII * r)).det_exp();
     let frentes: Vec<[f64; 2]> = (-meia..=meia)
         .map(|k| {
             let (ax, ay) = (dab.x + k as f64 * tx, dab.y + k as f64 * ty);
@@ -131,9 +132,9 @@ fn empurra(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<Touche
             let w = if s.abs() <= r {
                 1.0
             } else {
-                (-(s.abs() - r) / (WATER_SPILL_RADII * r)).exp()
+                (-(s.abs() - r) / (WATER_SPILL_RADII * r)).det_exp()
             };
-            let parte = 1.0 - (1.0 - (push * w).min(1.0)).powf(expoente);
+            let parte = 1.0 - (1.0 - (push * w).min(1.0)).det_powf(expoente);
             let sinal = if lado == 1 { 1.0 } else { -1.0 };
             let m = f64::from(g.susp[i]) * parte;
             let mut levou = 0.0;
@@ -228,14 +229,14 @@ pub fn apply_dry_edge(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Op
 fn orla(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let e = p.k(Knob::DryerEdge);
     let (dx, dy) = (dab.x - prev[0], dab.y - prev[1]);
-    let passo = dx.hypot(dy);
+    let passo = dx.det_hypot(dy);
     if e <= 0.0 || passo < 1e-6 || dab.r <= 0.0 {
         return None;
     }
     let (tx, ty) = (dx / passo, dy / passo);
     let (nx, ny) = (-ty, tx);
     let r = dab.r;
-    let parte = 1.0 - (1.0 - e.min(1.0)).powf((passo / (2.0 * r)).min(1.0));
+    let parte = 1.0 - (1.0 - e.min(1.0)).det_powf((passo / (2.0 * r)).min(1.0));
     let delta = (DRYER_RING_RADII * r).max(2.0);
     let k = (DRYER_LEVEL_RADII * r).round().max(1.0) as i32;
     let rr = rect_around_nao_vazio(g, dab.x, dab.y, r + delta + f64::from(k) + 1.0)?;
@@ -245,7 +246,7 @@ fn orla(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRe
     for cy in rr.y0..=rr.y1 {
         for cx in rr.x0..=rr.x1 {
             let (ox, oy) = (f64::from(cx) - dab.x, f64::from(cy) - dab.y);
-            if ox.hypot(oy) > r {
+            if ox.det_hypot(oy) > r {
                 continue;
             }
             let i = cx as usize + cy as usize * g.s;

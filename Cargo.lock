@@ -5522,6 +5522,9 @@ dependencies = [
 [[package]]
 name = "ph2d-affine"
 version = "0.0.0"
+dependencies = [
+ "ph2d-det-math",
+]
 
 [[package]]
 name = "ph2d-anim"
@@ -6324,6 +6327,9 @@ version = "0.0.0"
 [[package]]
 name = "ph2d-arclen"
 version = "0.0.0"
+dependencies = [
+ "ph2d-det-math",
+]
 
 [[package]]
 name = "ph2d-aseprite"
@@ -6826,6 +6832,7 @@ name = "ph2d-color"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "ph2d-det-math",
  "ph2d-ease",
  "serde",
 ]
@@ -6921,6 +6928,13 @@ dependencies = [
 [[package]]
 name = "ph2d-curve"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-det-math"
+version = "0.0.0"
+dependencies = [
+ "libm",
+]
 
 [[package]]
 name = "ph2d-ease"
@@ -9535,6 +9549,7 @@ dependencies = [
 name = "ph2d-painter-brush"
 version = "0.0.0"
 dependencies = [
+ "ph2d-det-math",
  "ph2d-label-census",
  "ph2d-pen-law",
  "ph2d-pigment",
@@ -9548,6 +9563,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-blend-mode",
  "ph2d-color",
+ "ph2d-det-math",
  "postcard",
  "serde",
 ]
@@ -10251,6 +10267,9 @@ dependencies = [
 [[package]]
 name = "ph2d-pen-law"
 version = "0.0.0"
+dependencies = [
+ "ph2d-det-math",
+]
 
 [[package]]
 name = "ph2d-physics"
@@ -10632,6 +10651,7 @@ version = "0.0.0"
 name = "ph2d-symmetry"
 version = "0.0.0"
 dependencies = [
+ "ph2d-det-math",
  "serde",
 ]
 
@@ -10750,6 +10770,7 @@ dependencies = [
 name = "ph2d-tokens"
 version = "0.0.0"
 dependencies = [
+ "ph2d-det-math",
  "ph2d-label-census",
  "serde_json",
 ]
@@ -10894,6 +10915,7 @@ dependencies = [
  "ph2d-brush-presets",
  "ph2d-color",
  "ph2d-core",
+ "ph2d-det-math",
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-i18n",
@@ -11347,6 +11369,7 @@ name = "ph2d-wet-paint"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-det-math",
  "ph2d-paint-tinta",
  "ph2d-pigment",
  "rayon",

@@ -19,6 +19,7 @@
 //!   layer-system mask.
 
 use super::{PainterTool, Region};
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::{Dab, MaskCanvasOp};
 use std::sync::Arc;
@@ -645,7 +646,7 @@ pub(super) fn caixa_do_dab(d: &Dab, reach: f32) -> ([f32; 2], [f32; 2], f32) {
         1.0
     };
     let salto = d.ante.and_then(|a| a.salto).map_or(0.0, |j| {
-        j.desvio[0].hypot(j.desvio[1])
+        j.desvio[0].det_hypot(j.desvio[1])
             + j.alcance * if j.por_raio { k } else { 1.0 }
             + j.atraves * k
     });

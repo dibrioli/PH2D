@@ -2,6 +2,7 @@
 //! [`super`] por LOC.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// ⭐ **A água leva o SUSPENSO pelo traço** ([`Knob::WaterDrag`]): cada célula do carimbo manda a fracção
 /// `u = min(1, carimbo × WaterDrag)` do seu pigmento suspenso para `+ (dab − prev)`, repartida bilinear — a cor esbate
@@ -19,7 +20,7 @@ pub fn apply_water_drag(
     prev_y: f64,
 ) -> Option<TouchedRect> {
     // F4-2 E6b: a soma segue a massa (a caixa cobre a origem e o destino `+ (dab − prev)`).
-    let raio = dab.r + (dab.x - prev_x).hypot(dab.y - prev_y) + 2.0;
+    let raio = dab.r + (dab.x - prev_x).det_hypot(dab.y - prev_y) + 2.0;
     super::tinta::com_foto(g, p, (dab.x, dab.y, raio), |g| {
         arrasta(g, p, tex, dab, prev_x, prev_y)
     })
@@ -36,7 +37,7 @@ fn arrasta(
 ) -> Option<TouchedRect> {
     let force = p.k(Knob::WaterDrag);
     let (dx, dy) = (dab.x - prev_x, dab.y - prev_y);
-    if force <= 0.0 || dx.hypot(dy) < 1e-6 || dab.r <= 0.0 {
+    if force <= 0.0 || dx.det_hypot(dy) < 1e-6 || dab.r <= 0.0 {
         return None;
     }
     let clamp_i = dab.intensity.min(3.0);

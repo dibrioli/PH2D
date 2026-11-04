@@ -4,6 +4,7 @@
 //! `cargo test -p ph2d-tool-painter --profile smoke --lib medida_o_preview -- --ignored --nocapture`.
 use crate::{PaintMedia, PainterTool};
 use ph2d_brush_presets::Biblioteca;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use std::time::Instant;
@@ -51,7 +52,7 @@ fn medida_o_preview_ate_a_agua_parar() {
                 let em = |f: f32| {
                     [
                         x0 + (x1 - x0) * f,
-                        cy + amp * (f * std::f32::consts::TAU).sin(),
+                        cy + amp * (f * std::f32::consts::TAU).det_sin(),
                     ]
                 };
                 let t0 = Instant::now();
@@ -189,7 +190,7 @@ fn sonda_a_tela_escorre() {
                 let em = |f: f32| {
                     [
                         x0 + (x1 - x0) * f,
-                        cy + amp * (f * std::f32::consts::TAU).sin(),
+                        cy + amp * (f * std::f32::consts::TAU).det_sin(),
                     ]
                 };
                 t.on_canvas_pointer(ponto(em(0.0), PointerPhase::Down));

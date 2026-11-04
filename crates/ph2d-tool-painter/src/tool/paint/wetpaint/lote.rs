@@ -2,6 +2,7 @@
 //! `dab_route.rs`): o papel da sessão e o sub-passo da cápsula.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 impl PainterTool {
     /// O papel do artista dá o dente ao motor (W2.7), reconciliado por lote pela [`PaperKey`].
@@ -155,7 +156,7 @@ pub(super) fn acerta_o_lote(
     let gama = engine.tuning.get(Knob::EmbossSizeExp);
     engine.sim.relevo_do_tamanho = if gama > 0.0 {
         let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
-        (engine.tuning.get(Knob::EmbossSizeRef) / d).powf(gama)
+        (engine.tuning.get(Knob::EmbossSizeRef) / d).det_powf(gama)
     } else {
         1.0
     };
@@ -172,7 +173,7 @@ pub(super) fn escala_da_textura(
     let gama = engine.tuning.get(Knob::TextureSizeExp);
     if gama > 0.0 {
         let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
-        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama) as f32
+        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).det_powf(gama) as f32
     } else {
         1.0
     }
@@ -186,7 +187,7 @@ pub(super) fn escala_dos_fios(engine: &ph2d_wet_paint::painter::Engine, brush: &
     let gama = engine.tuning.get(Knob::BristleLaneSizeExp);
     if gama > 0.0 {
         let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
-        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama)
+        (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).det_powf(gama)
     } else {
         1.0
     }
@@ -227,7 +228,7 @@ pub(super) fn escala_atraves(
         return escala;
     }
     let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
-    (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).powf(gama) as f32
+    (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).det_powf(gama) as f32
 }
 
 /// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o depósito do Wet é
@@ -270,7 +271,7 @@ pub(super) fn penteia_o_relevo_do_dab(
     sil: ph2d_wet_paint::brush::CellFn<'_>,
     passos: f64,
 ) {
-    let (k0, k1) = f.faixa((meia[0].hypot(meia[1]) + 2.0) * px_cel);
+    let (k0, k1) = f.faixa((meia[0].det_hypot(meia[1]) + 2.0) * px_cel);
     let (k0, k1) = (k0 - 1, k1 + 1);
     let tabela: Vec<f64> = (k0..=k1)
         .map(|k| relevo.alvo_do_fio(k, f.ganho_do_fio(k), contacto))

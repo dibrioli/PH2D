@@ -2,6 +2,7 @@
 //! `medida_oleo_real.rs`, 29/10).
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// A cor final (sRGB, sobre o papel com a sombra do Óleo Real, como em [`grava_folha`]) e a cor SEM relevo
 /// de cada célula, com a cobertura: `(final, albedo, alfa)`.
@@ -407,7 +408,7 @@ pub(super) fn tela_da_borda(rel: &str, texturizado: bool, suave: f32) -> Vec<u8>
     let s = |x: f32| {
         [
             x,
-            320.0 - 50.0 * (std::f32::consts::TAU * (x - 60.0) / 330.0).sin(),
+            320.0 - 50.0 * (std::f32::consts::TAU * (x - 60.0) / 330.0).det_sin(),
         ]
     };
     t.on_canvas_pointer(ponto(s(60.0), PointerPhase::Down));

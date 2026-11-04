@@ -12,6 +12,7 @@ authors.workspace = true
 # As leis PURAS da mão no pincel, partilhadas pelas famílias que pintam (Painter, Pixel Art) sem que uma
 # dependa da outra — sem dependências: nada de SO, janela nem caneta (essas vivem no `ph2d-pen`).
 [dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
 
 [lints]
 workspace = true

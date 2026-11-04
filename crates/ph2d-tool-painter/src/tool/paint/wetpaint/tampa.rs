@@ -20,6 +20,7 @@
 //! O corte é anti-serrilhado por área (a rampa de 1 px de um semiplano), simétrica: a soma ao longo do traço é a
 //! do degrau. Gate: `tampa_tests`.
 
+use ph2d_det_math::DetMath as _;
 use ph2d_painter_brush::{BrushSpec, Dab};
 
 use super::session::Lane;
@@ -59,7 +60,7 @@ pub(super) struct Tampa {
 }
 
 fn unitario(v: [f32; 2]) -> Option<[f32; 2]> {
-    let n = v[0].hypot(v[1]);
+    let n = v[0].det_hypot(v[1]);
     (n > 1e-6).then(|| [v[0] / n, v[1] / n])
 }
 

@@ -25,6 +25,7 @@
 
 #![forbid(unsafe_code)]
 
+use ph2d_det_math::DetMath as _;
 use serde::{Deserialize, Serialize};
 
 /// Menos cópias radiais que a UI alcança — o mesmo `3` do Painter.
@@ -220,7 +221,7 @@ impl SymmetrySpec {
             SymmetryKind::MirrorX => [0.0, 1.0],
             SymmetryKind::MirrorY => [1.0, 0.0],
             SymmetryKind::Custom | SymmetryKind::Radial => {
-                let len = self.dir[0].hypot(self.dir[1]);
+                let len = self.dir[0].det_hypot(self.dir[1]);
                 if len < 1e-9 {
                     [0.0, 1.0]
                 } else {

@@ -4,6 +4,7 @@
 //! silhueta, grão, cor e a porta do motor que o pousa.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// O que [`super::dab_route`] apurou para o lote inteiro e cada dab lê (os nomes são os da rota).
 pub(super) struct LoteDoDab<'a> {
@@ -106,7 +107,7 @@ pub(super) fn pousa_o_dab(
     } else if let Some(&li) = sess.fecho.get(didx) {
         // Um dab virtual das pontas rectas: a lane é a que ele continua ([`super::tampa`]).
         let p = sess.lanes[li].pos;
-        let corda = (x - p[0]).hypot(y - p[1]);
+        let corda = (x - p[0]).det_hypot(y - p[1]);
         let caminho = super::tampa::passo_virtual(&sess.lanes[li], brush);
         super::rota_da_lane::anda_a_lane(sess, li, corda, caminho, wet_tool);
         (li, false)

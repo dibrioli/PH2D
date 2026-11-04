@@ -27,6 +27,7 @@
 //! (Stamp ABI offset 32..48); reordering breaks the shader.
 
 use bytemuck::{Pod, Zeroable};
+use ph2d_det_math::DetMath as _;
 
 use crate::LinearRgba;
 
@@ -185,7 +186,7 @@ impl OklabColor {
 /// det-painter` Q-fixed-point swap in a later wave, per ADR-0044 §2.5.1).
 #[inline]
 fn cbrt(x: f32) -> f32 {
-    x.cbrt()
+    x.det_cbrt()
 }
 
 #[cfg(test)]

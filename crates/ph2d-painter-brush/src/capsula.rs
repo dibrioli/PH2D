@@ -10,6 +10,7 @@
 //! trás sobre os mesmos sub-dabs (`dab/cor_capsula.rs`, lista 26 A9); o roteador só manda a cápsula com
 //! rampa ao núcleo por píxel (`stamp_dabs_ramped`), o único que a honra.
 
+use ph2d_det_math::DetMath as _;
 use std::cell::Cell;
 
 /// O tecto de sub-dabs por dab: o passo de um texel do ladrilho das cerdas dá a volta ao período
@@ -67,7 +68,7 @@ impl Capsula {
         let arco = if so_o_centro() {
             0.0
         } else {
-            -passo[0].hypot(passo[1])
+            -passo[0].det_hypot(passo[1])
         };
         let estado = Estado {
             raio: 1.0,
@@ -90,7 +91,7 @@ impl Capsula {
         if so_o_centro() {
             return self;
         }
-        let l = e.rotor[0].hypot(e.rotor[1]);
+        let l = e.rotor[0].det_hypot(e.rotor[1]);
         e.rotor = if !l.is_finite() || l < 1e-6 || (e.rotor[1].abs() <= 1e-6 && e.rotor[0] > 0.0) {
             [1.0, 0.0]
         } else {
@@ -127,7 +128,7 @@ impl Capsula {
         let rotor = (e.rotor != [1.0, 0.0] && k > 0)
             .then(|| {
                 let v = [1.0 + (e.rotor[0] - 1.0) * t, e.rotor[1] * t];
-                let l = v[0].hypot(v[1]);
+                let l = v[0].det_hypot(v[1]);
                 (l > 1e-6).then(|| [v[0] / l, v[1] / l])
             })
             .flatten();
@@ -362,7 +363,7 @@ impl Junta {
 /// paper.
 #[must_use]
 pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
-    let l = d.step[0].hypot(d.step[1]);
+    let l = d.step[0].det_hypot(d.step[1]);
     let a1 = d.arc_len;
     let a0 = d.ante.map_or(a1 - l, |a| a.arc_len);
     let comp = a1 - a0;
@@ -403,7 +404,7 @@ pub fn sub_dabs(d: &crate::Dab, sub_px: f32) -> Vec<crate::Dab> {
                 let lerp = |f: f32, b: f32| f + (b - f) * t;
                 let nlerp = |f: [f32; 2], b: [f32; 2]| {
                     let v = [lerp(f[0], b[0]), lerp(f[1], b[1])];
-                    let l = v[0].hypot(v[1]);
+                    let l = v[0].det_hypot(v[1]);
                     if l > 1e-6 { [v[0] / l, v[1] / l] } else { f }
                 };
                 s.radius_px = lerp(d.radius_px, b.radius_px);

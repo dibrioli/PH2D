@@ -8,6 +8,7 @@
 use crate::grid::Grid;
 use crate::par::{self, Rows};
 use crate::sim::Params;
+use ph2d_det_math::DetMath as _;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicU8, AtomicU32};
 
@@ -235,7 +236,7 @@ pub(crate) fn aplica(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
                 let col = cx as usize;
                 let wf = (f / super::ladeira_do_oleo::FILM_CHEIO).min(1.0);
                 let (ax, ay) = (k * ox * dif * wf, k * oy * dif * wf);
-                let rf_ = 0.5 * bx.hypot(by) * dif / f.max(0.05);
+                let rf_ = 0.5 * bx.det_hypot(by) * dif / f.max(0.05);
                 let freio = 1.0
                     + ka * match CHAO_ATRITO_P.load(Relaxed) {
                         1 => rf_,
@@ -252,9 +253,9 @@ pub(crate) fn aplica(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
                     m.n += 1;
                     m.gravidade += (gx * gx + gy * gy).sqrt() * f;
                     m.chao += (ax * ax + ay * ay).sqrt();
-                    m.declive += bx.hypot(by) * dif;
-                    m.ladeira += tx.clamp(-clamp, clamp).hypot(ty.clamp(-clamp, clamp)) / 4.0;
-                    m.ladeira_livre += tx.hypot(ty) / 4.0;
+                    m.declive += bx.det_hypot(by) * dif;
+                    m.ladeira += tx.clamp(-clamp, clamp).det_hypot(ty.clamp(-clamp, clamp)) / 4.0;
+                    m.ladeira_livre += tx.det_hypot(ty) / 4.0;
                     m.clamp_morde += u64::from(tx.abs() > clamp || ty.abs() > clamp);
                 }
             }

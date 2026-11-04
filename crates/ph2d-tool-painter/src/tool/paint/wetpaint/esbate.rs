@@ -24,6 +24,7 @@
 //!   centro da ponta, `1 + |e|` na borda da tampa) e a janela do rasto POUSA ao soltar (`ciclo.rs`): o fim redondo e
 //!   cheio do carvão e da cera do Rebelle, onde o nosso esmaecia num raio.
 
+use ph2d_det_math::DetMath as _;
 use ph2d_painter_brush::Dab;
 
 use super::session::Lane;
@@ -49,7 +50,7 @@ pub(super) fn carga_do_fecho(e: f32, d: f32, r: f32) -> f32 {
 }
 
 fn unitario(v: [f32; 2]) -> Option<[f32; 2]> {
-    let n = v[0].hypot(v[1]);
+    let n = v[0].det_hypot(v[1]);
     (n > 1e-6).then(|| [v[0] / n, v[1] / n])
 }
 

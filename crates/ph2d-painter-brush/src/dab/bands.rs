@@ -8,6 +8,7 @@ use super::*;
 use crate::ramp_alpha::{RampAlphaMode, RampIndex};
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
+use ph2d_det_math::DetMath as _;
 
 /// **Quantas visitas de texel uma thread precisa RECEBER para se pagar** — a razão medida entre o
 /// custo de ABRIR uma thread e o custo de VISITAR um texel.
@@ -376,7 +377,7 @@ pub(super) fn stamp_band(
             // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
             let c_cap = match (mask.is_some(), ctx.capsula) {
                 (true, Some(cap)) if ctx.flow < 1.0 => {
-                    1.0 - (1.0 - ctx.flow.max(0.0)).powf(1.0 / cap.n_do_passo() as f32)
+                    1.0 - (1.0 - ctx.flow.max(0.0)).det_powf(1.0 / cap.n_do_passo() as f32)
                 }
                 (true, _) => 1.0,
                 (false, _) => ctx.coverage,

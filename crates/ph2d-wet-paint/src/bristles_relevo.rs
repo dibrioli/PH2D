@@ -6,6 +6,7 @@
 //! degrau por fio é uma escada no traço inclinado. A altura é o campo [`crate::grid::Grid::altura`], que o emboss
 //! da tinta acende ([`LUZ`]). [`Relevo::NEUTRO`] (altura `0`) = o hospedeiro nem chama a lei.
 
+use ph2d_det_math::DetMath as _;
 const SEMENTE_TIPO: u32 = 0x6f69_0006;
 
 /// Quanto um dab puxa a altura de uma célula para o alvo do fio, por unidade de cobertura da silhueta: o
@@ -64,7 +65,7 @@ impl Relevo {
 /// mais alto que o seu alvo). O declive máximo é `π/2 · |b − a| ÷ a largura do fio`.
 #[must_use]
 pub fn entre(a: f64, b: f64, t: f64) -> f64 {
-    a + (b - a) * 0.5 * (1.0 - (std::f64::consts::PI * t.clamp(0.0, 1.0)).cos())
+    a + (b - a) * 0.5 * (1.0 - (std::f64::consts::PI * t.clamp(0.0, 1.0)).det_cos())
 }
 
 /// O passo de uma célula: a altura `h` puxada para o `alvo` pela cobertura `w` (`0..1`) da silhueta do dab, por
@@ -76,7 +77,7 @@ pub fn penteia(h: f32, alvo: f64, w: f64, passos: f64) -> f32 {
     let k = if passos == 1.0 {
         k1
     } else {
-        1.0 - (1.0 - k1).powf(passos.max(0.0))
+        1.0 - (1.0 - k1).det_powf(passos.max(0.0))
     };
     (f64::from(h) + k * (alvo - f64::from(h))) as f32
 }

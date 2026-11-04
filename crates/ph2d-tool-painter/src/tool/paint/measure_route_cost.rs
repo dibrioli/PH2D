@@ -11,6 +11,7 @@
 
 use super::PainterTool;
 use super::measure_impasto_cost::{cp, ms};
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, RasterEditTool};
 
 /// **Qual ROTA o lote toma — e quanto a rota custa.**
@@ -453,7 +454,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             (0..n)
                 .map(|i| {
                     let a = (i as f32) / (n as f32) * std::f32::consts::TAU;
-                    let (s, co) = (a.sin(), a.cos());
+                    let (s, co) = (a.det_sin(), a.det_cos());
                     dab_at([c + co * ring, c + s * ring], [-s, co], r)
                 })
                 .collect()

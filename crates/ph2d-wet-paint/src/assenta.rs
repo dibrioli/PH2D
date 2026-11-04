@@ -222,7 +222,7 @@ pub fn cor_e_alfa(e: Ecra, sc: [f64; 3], uc: [f64; 3], a_s: f64, a_f: f64) -> ([
 #[inline]
 fn tapa(e: Ecra, a_f: f64) -> f64 {
     match e {
-        Ecra::Cobre { esconde, .. } => 1.0 - (1.0 - a_f).powf(esconde),
+        Ecra::Cobre { esconde, .. } => 1.0 - ph2d_det_math::DetMath::det_powf(1.0 - a_f, esconde),
         _ => 0.0,
     }
 }

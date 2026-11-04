@@ -2,6 +2,7 @@
 //! lidos no render PLANO, sobre uma célula da sonda. A mesma tabela vive em
 //! `docs/Painter/Arquitetura/fotos/f0_varredura/resumo_f0.py` (a grelha inteira).
 use super::*;
+use ph2d_det_math::DetMath as _;
 use ph2d_wet_paint::sim::LeiDaTinta;
 
 /// sRGB `0..255` → Oklab (Ottosson 2020; as matrizes de `ph2d_paint_tinta::oklab`).
@@ -12,7 +13,7 @@ fn oklab(c: [f64; 3]) -> [f64; 3] {
         0.211_903_498_2 * l[0] + 0.680_699_545_1 * l[1] + 0.107_396_956_6 * l[2],
         0.088_302_461_9 * l[0] + 0.281_718_837_6 * l[1] + 0.629_978_700_5 * l[2],
     ]
-    .map(f64::cbrt);
+    .map(ph2d_det_math::DetMath::det_cbrt);
     [
         0.210_454_255_3 * lms[0] + 0.793_617_785 * lms[1] - 0.004_072_046_8 * lms[2],
         1.977_998_495_1 * lms[0] - 2.428_592_205 * lms[1] + 0.450_593_709_9 * lms[2],
@@ -38,7 +39,7 @@ fn srgb_to_linear(v: f64) -> f64 {
     if v <= 0.040_45 {
         v / 12.92
     } else {
-        ((v + 0.055) / 1.055).powf(2.4)
+        ((v + 0.055) / 1.055).det_powf(2.4)
     }
 }
 
@@ -46,7 +47,7 @@ fn linear_to_srgb(v: f64) -> f64 {
     if v <= 0.003_130_8 {
         12.92 * v
     } else {
-        1.055 * v.powf(1.0 / 2.4) - 0.055
+        1.055 * v.det_powf(1.0 / 2.4) - 0.055
     }
 }
 

@@ -18,6 +18,7 @@
 
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_painter_brush::blend_vazio::blend_over_pigment_modo;
 use ph2d_painter_brush::{BrushBlend, Dab};
 use rayon::prelude::*;
@@ -501,7 +502,7 @@ fn adensa(orig: &[Dab], j: &Janelas, passo: f32, flow: Option<f32>) -> (Vec<Dab>
 fn ralo(mut d: Dab, flow: f32, r: f32) -> Dab {
     let a = (d.coverage * flow).clamp(0.0, 1.0);
     if r < 1.0 && a > 0.0 && a < 1.0 {
-        d.coverage = ((1.0 - (1.0 - a).powf(r)) / flow).min(d.coverage);
+        d.coverage = ((1.0 - (1.0 - a).det_powf(r)) / flow).min(d.coverage);
     }
     d
 }

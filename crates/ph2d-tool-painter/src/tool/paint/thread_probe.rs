@@ -13,6 +13,7 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_brush::StrokeMethod;
 use ph2d_painter_brush::line_kind::{
@@ -42,7 +43,7 @@ fn spiral(density: f32, reach: f32, width: f32, radius: f32, turns: usize) -> (f
         // ⚠️ `cos`/`sin` aqui é de SONDA, não de produto: o HR-5 fala do caminho que pinta.
         let ang = u * (turns as f32) * std::f32::consts::TAU;
         let r = 20.0 + u * 180.0;
-        [c + r * ang.cos(), c + r * ang.sin()]
+        [c + r * ang.det_cos(), c + r * ang.det_sin()]
     };
     t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
     let mut total = 0.0f64;
@@ -129,7 +130,7 @@ fn wire_spiral(history: f32, width: f32, radius: f32, turns: usize) -> (f64, f64
         let u = i as f32 / steps as f32;
         let ang = u * (turns as f32) * std::f32::consts::TAU;
         let r = 20.0 + u * 180.0;
-        [c + r * ang.cos(), c + r * ang.sin()]
+        [c + r * ang.det_cos(), c + r * ang.det_sin()]
     };
     t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
     let mut total = 0.0f64;

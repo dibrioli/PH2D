@@ -4,6 +4,7 @@
 //! for the workspace LOC cap; re-exported there (`pub(super) use`) so existing paths stay stable.
 
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use ph2d_det_math::DetMath as _;
 use std::sync::OnceLock;
 
 // ── LUTs (built once; the ln/exp/pow run only here, never per pixel — HR-5) ──────────────────────────
@@ -40,7 +41,7 @@ pub(super) fn luts() -> &'static Luts {
         for i in 0..256 {
             let lin = srgb_to_linear_byte(i as u8);
             s2l[i] = lin;
-            lnl[i] = lin.max(1e-4).ln();
+            lnl[i] = lin.max(1e-4).det_ln();
         }
         let mut l2s = [0u8; L2S_N + 1];
         for (i, slot) in l2s.iter_mut().enumerate() {
@@ -48,11 +49,11 @@ pub(super) fn luts() -> &'static Luts {
         }
         let mut exp_neg = [0.0f32; EXP_N + 1];
         for (i, slot) in exp_neg.iter_mut().enumerate() {
-            *slot = (-(EXP_MAX * i as f32 / EXP_N as f32)).exp();
+            *slot = (-(EXP_MAX * i as f32 / EXP_N as f32)).det_exp();
         }
         let mut ln_mag = [0.0f32; EXP_N + 1];
         for (i, slot) in ln_mag.iter_mut().enumerate() {
-            *slot = -(i as f32 / EXP_N as f32).max(1e-4).ln();
+            *slot = -(i as f32 / EXP_N as f32).max(1e-4).det_ln();
         }
         Luts {
             s2l,

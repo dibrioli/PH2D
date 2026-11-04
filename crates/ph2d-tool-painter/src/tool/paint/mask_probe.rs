@@ -20,6 +20,7 @@
 //!       with `magick -size WxH -depth 8 gray:FILE out.png`).
 
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool, Tool,
 };
@@ -246,7 +247,7 @@ fn probe_mask_is_a_fact_of_the_path_not_the_polling() {
 pub(super) fn arc_stroke(t: &mut PainterTool, cx: f32, cy: f32, r: f32, steps: u32) {
     let at = |i: u32| {
         let a = std::f32::consts::FRAC_PI_2 * (i as f32) / (steps as f32);
-        [cx + r * a.cos(), cy + r * a.sin()]
+        [cx + r * a.det_cos(), cy + r * a.det_sin()]
     };
     t.on_canvas_pointer(cp(at(0), PointerPhase::Down));
     for i in 1..=steps {

@@ -517,15 +517,32 @@ do 1.º. A parede é binária (0/1), não uma tensão de cedência. Nos 12 óleo
 basta. Decisão de produto no smoke da E10 (o Body sai e os três escoam como as outras águas, ou fica como tensão de
 cedência somada à do meio); a pilha cura-se com essa decisão, nunca com um tecto.
 
-## Bug #57 (ABERTO, produto) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
+## Bug #57 (FECHADO 04/11) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
 
 Medido em 04/11 (linha Aceleracao; `instantaneo()` entrou no censo do corpo da água em `3258fd4c0e`): o mesmo traço
 `wet_water` com `PAINTER_WETPAINT_FASTDRY`, pintado de raiz e pintado a partir de `instantaneo()`, difere em **58 texels
 (Δmax 3)**; cada via é determinista (16/16). O `instantaneo()` é o do tocador de macro, logo o defeito é visível ao produto.
-Causa NÃO isolada; candidato: `planos.copia_sem_campo()` (a cópia perde um campo que a via de raiz mantém). Por fazer: isolar
-o campo, curar, e só então a `bancada_da_agua` ganha −30 % de CPU (medido). Não se afrouxe nenhum limite para esconder a diferença.
 
-## Bug #58 (ABERTO, produto) — o motor pinta outro byte conforme a `libm` do sistema: o `atan2f` da glibc
+**Causa (o candidato `copia_sem_campo` estava errado):** copiar o rascunho do solver para o instantâneo zera a diferença, e zerar
+só `uv` ou só `bt` devolve os 58 texels. O `outflow_rows` (rota por fases) varria `y ± alcance` até à grade inteira, mas o `prepare_rows`
+só escreve `by0..=by1`; fora da bbox a faixa viva fica de pé de propósito (`Grid::empty_bbox`) e o `uv`/`bt` são os de um passo velho.
+O Fast dry encolhe a bbox e torna a leitura visível. **Errada era a via de raiz**; a cópia, com o rascunho vazio, já dava o certo.
+
+**Cura:** o `outflow_rows` só lê `by0..=by1`, o limite que a rota fundida já tinha. Nenhuma miniatura nem largura muda. Gate:
+`o_fast_dry_de_raiz_e_o_do_instantaneo` (visto vermelho a 58 texels antes da cura, com controlo de que o Fast dry age). A troca da
+`bancada_da_agua` por instantâneos (−30 % de CPU, medido pela Aceleracao) fica por fazer: só teste, fora deste bug.
+
+## Bug #58 (FECHADO 04/11, os pincéis à espera do dono) — o motor pinta outro byte conforme a `libm` do sistema: o `atan2f` da glibc
+
+**Decisão do dono (04/11): o mesmo traço dá o mesmo byte em qualquer computador.** Cura: a folha `ph2d-det-math` (`DetMath`, `det_sin`,
+`det_powf`…, sobre o `libm` fixado) nas crates que decidem o byte do traço: 11 crates mais `ph2d-tokens/src/color_space.rs`.
+**Provas:** `scripts/prova-libm/prova.sh` corre os alarmes com uma libm que erra 1 ulp em tudo: 0 chamadas, 0 pincéis diferentes (antes
+da cura o alarme disparava e havia 128 sítios). Catraca barata: `o_motor_nao_chama_a_libm_do_sistema`.
+**Custo medido** (`std` × `det` intercalados no mesmo processo, mínimo de 14 rodadas, traços reais, load 13–30, logo só a ordem de grandeza):
+Dabber ×1,00 · Wet Wash ×1,10 · Graphite HB ×1,02 · Airbrush ×1,04 · Knife Oily ×1,02. Numa só função, `pow` chega a ×5,4 e `hypot` a ×4,2, sem
+efeito visível no traço. ⛔ Uma rodada a load 36 com 4 amostras deu Graphite ×1,65: ruído; a repetição deu 382 × 384 ms.
+**Fora da cura:** vetor, Quadro e `ph2d-grid`/`ph2d-warp-style`, que não decidem o byte do traço de pintura nos alarmes. Trocar a libm muda
+o byte de 40 miniaturas (larguras iguais): a regravação espera a aprovação do dono pelo relatório. O texto abaixo é o registo de abertura.
 
 Medido em 04/11 (linha Aceleracao). `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` reprovou na corrida da noite
 (run 41800231749, Ubuntu, glibc 2.39), nas 2 tentativas: `Graphite 2H`, 1 px, fnv `0x62150e7b7dd8e5b1 → 0x2b7fe456074e114e`; os

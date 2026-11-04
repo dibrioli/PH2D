@@ -10,6 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
 # A CASA ÚNICA do vocabulário de simetria de desenho. Ele vive em DOIS lugares do editor: o
 # documento o guarda num componente (`ph2d-ecs::VecSymmetry`) e o motor o consome ao produzir as
 # cópias (`ph2d-vec-scene::symmetry`). `ph2d-ecs` é fundação e `ph2d-vec-scene` é o modelo puro de

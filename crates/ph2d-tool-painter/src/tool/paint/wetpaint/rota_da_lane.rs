@@ -2,6 +2,7 @@
 //! contas por dab da rota (filho de [`super`], LOC cap, a partir de `dab_route.rs`).
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// The engine speaks sRGB **0..255** (its boot colour is `[50, 140, 210]` and the render
 /// writes plane values straight through `clamp_u8`); the dab stores sRGB 0..1. Passing the
@@ -27,7 +28,7 @@ pub(super) fn esmaece_fino(engine: &ph2d_wet_paint::painter::Engine, brush: &Bru
             .max(1.0);
         (2.0 * f64::from(brush.clamped_radius()) / r)
             .clamp(0.0, 1.0)
-            .powf(g)
+            .det_powf(g)
     } else {
         1.0
     }

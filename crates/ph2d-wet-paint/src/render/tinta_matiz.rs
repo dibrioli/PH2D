@@ -4,6 +4,7 @@
 
 use crate::grid::tinta::CelulaTinta;
 use crate::grid::tinta::pigmento::{ABERTO, FILME, LadoEspectral};
+use ph2d_det_math::DetMath as _;
 use ph2d_paint_tinta::oklab::{linear_para_oklab, oklab_para_linear};
 use ph2d_paint_tinta::{Bandas, Optica, camada, cor_pigmento};
 
@@ -61,14 +62,14 @@ pub(crate) fn prende_o_matiz(
     let Some(esc) = cor_escolhida(c, lado) else {
         return rw;
     };
-    let ce = esc[1].hypot(esc[2]);
+    let ce = esc[1].det_hypot(esc[2]);
     if ce < CROMA_MIN {
         return rw;
     }
     let dir = [esc[1] / ce, esc[2] / ce];
     let rp = camada(o, &Bandas([1.0; 3])).0.map(|r| r.clamp(0.0, 1.0));
     let lp = linear_para_oklab(rp);
-    let cp = croma_na_gama(lp[0], dir, lp[1].hypot(lp[2]));
+    let cp = croma_na_gama(lp[0], dir, lp[1].det_hypot(lp[2]));
     let preso = oklab_para_linear([lp[0], cp * dir[0], cp * dir[1]]).map(|r| r.clamp(0.0, 1.0));
     Bandas(core::array::from_fn(|b| {
         (rw.0[b] + g * (preso[b] - rp[b])).clamp(0.0, 1.0)
@@ -96,7 +97,7 @@ pub(crate) fn pilha_presa(
 pub(crate) fn desvio_de_matiz(srgb: [f32; 3], esc: [f32; 3]) -> f32 {
     use ph2d_paint_tinta::oklab::srgb_para_oklab;
     let q = srgb_para_oklab(srgb);
-    let d = (q[2].atan2(q[1]) - esc[2].atan2(esc[1])).to_degrees();
+    let d = (q[2].det_atan2(q[1]) - esc[2].det_atan2(esc[1])).to_degrees();
     let d = d.rem_euclid(360.0);
     d.min(360.0 - d)
 }

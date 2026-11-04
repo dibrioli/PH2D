@@ -8,6 +8,7 @@
 
 use super::mask_probe::{coverage, cp, cross_x, dump, vstroke};
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{
     CanvasPaintTool, PanelEvent, PointerPhase, RasterEditTool, Tool as _,
 };
@@ -348,7 +349,7 @@ fn probe_the_comb_on_the_boundary() {
 #[ignore]
 fn probe_the_comb_is_the_cross_stroke_buildup() {
     // A previsão, puramente aritmética: onde 1 − (1−k)^N = 0.5.
-    let k_for = |n: f32| 1.0 - 0.5_f32.powf(1.0 / n);
+    let k_for = |n: f32| 1.0 - 0.5_f32.det_powf(1.0 / n);
     let dk = k_for(2.0) - k_for(3.0);
     println!(
         "previsão: keep p/ N=2 é {:.4}, p/ N=3 é {:.4} => Δkeep {dk:.4}; com grad 0,0529/px (máscara \

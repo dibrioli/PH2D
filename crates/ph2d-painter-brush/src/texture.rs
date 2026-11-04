@@ -16,6 +16,7 @@
 //! angle (as in `stroke/ellipse.rs` / `stroke/polygon.rs`). **Angle** rotates `(1,0)` by repeated
 //! application of the baked 1° step [`DEG_STEP`]. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
+use ph2d_det_math::DetMath as _;
 mod bristles;
 mod kind;
 mod lei;
@@ -604,7 +605,7 @@ fn grao_de_imagem_pela_area(
         img.width.max(1) as f32 * 0.5,
         img.height.max(1) as f32 * 0.5,
     );
-    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
+    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).det_hypot((d[1] - t0[1]) * hh);
     let lado = |t: f32| {
         if t.is_finite() {
             (0.5 * t).ceil().clamp(1.0, shape::AREA_MAX)

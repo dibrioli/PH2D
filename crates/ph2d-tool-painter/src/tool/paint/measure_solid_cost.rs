@@ -18,6 +18,7 @@
 use super::measure_shape_system::{cp, tool};
 use crate::tool::PainterTool;
 use crate::tool::paint::media::PaintMedia;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
@@ -69,7 +70,10 @@ pub(super) fn solid_arc(
         let a = k as f32 * 0.11;
         // HR-5 não se aplica a uma sonda, mas manter o mesmo caminho para todas as configurações
         // importa: as tabelas têm de ser comparáveis entre si.
-        [orbit[0] + radius * a.cos(), orbit[1] + radius * a.sin()]
+        [
+            orbit[0] + radius * a.det_cos(),
+            orbit[1] + radius * a.det_sin(),
+        ]
     };
     t.on_canvas_pointer(cp(at(0), PointerPhase::Down));
     for k in 1..=steps {

@@ -55,7 +55,6 @@ O job `testa` instala o que os testes pedem: `scripts/stylua-fetch.sh` (2.5.2), 
 
 | Teste | Por que o runner não mede | Medido | Quem vê |
 |---|---|---|---|
-| `presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` | ⚠️ **Defeito aberto** ([BUGS_painter #58](../Painter/BUGS_painter.md)): o `atan2f` da glibc 2.39 do runner dá outro byte que o da 2.44 daqui | 1 px em `Graphite 2H`; reproduzido aqui ao fnv interpondo a libm 2.39 | Integração local |
 | `os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria` | ⚠️ **Defeito aberto** ([BUGS_luz2d #8](../Luz2D/BUGS_luz2d.md)): depois da 1.ª recusa, a montagem seguinte falha por validação | `recusas [1155891825]`, 2/2 | Integração local (placa da casa, blocos de `desempenho`) |
 | `a_vista_renasce_com_os_mesmos_bits::a_vista_em_paginas_novas_renasce_sozinha_uma_vez` | ⚠️ **Defeito aberto** ([BUGS_luz2d #9](../Luz2D/BUGS_luz2d.md)): binding de 235 MB contra o limite de 128 MiB do lavapipe | `ConfigInvalida`, 2/2 | Integração local (placa da casa) |
 | `presets_de_fabrica::memoria::a_memoria_do_dabber_cabe` | O tecto é o `VmHWM` desta máquina + 5 %; causa no runner não isolada (candidata: o alocador da glibc 2.39) | Runner 324 MiB; aqui 305 e, a 4 núcleos, 309; tecto 322 | Integração local |

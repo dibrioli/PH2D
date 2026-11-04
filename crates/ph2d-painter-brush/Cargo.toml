@@ -21,6 +21,7 @@ authors.workspace = true
 # byte texture-paint path, so no sRGB transfer is needed here).
 
 [dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
 # A corda (`pulled_string_step`): a lei pura partilhada com o Pixel Art.
 ph2d-pen-law = { path = "../ph2d-pen-law" }
 # ⚠️ **A EXCEÇÃO do `rayon`, e ela é ESTREITA** — ADR-0158, amparada no ADR-0109. Ela entra

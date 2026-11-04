@@ -26,6 +26,7 @@
 //! grandeza é a falha de duas-portas que este módulo já pagou quatro vezes.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// ⭐ **A velocidade da MÃO** (L12; J3 canetas 2.ª onda) — a que estreita a marca, medida no caminho do PONTEIRO
 /// (o Krita e o MyPaint medem a entrada), não no do traço: o estabilizador e a spline atrasam o traço no arranque, e
@@ -119,7 +120,7 @@ impl Stroke {
             (m.medida, m.quadro, m.caminho) = (m.caminho / dt, m.caminho, 0.0);
             let tau = self.dynamics.speed_lag_s;
             if tau > 0.0 {
-                m.filtrada += (m.medida - m.filtrada) * (1.0 - (-dt / tau).exp());
+                m.filtrada += (m.medida - m.filtrada) * (1.0 - (-dt / tau).det_exp());
                 m.medida = m.filtrada;
             }
         }

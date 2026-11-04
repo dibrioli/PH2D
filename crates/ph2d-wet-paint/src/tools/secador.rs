@@ -2,6 +2,7 @@
 //! `docs/Painter/Pinceis/exames/mistura.md` «Motor J6») — filho de [`super`] por LOC.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// O filme da célula que ainda tem água.
 const DRYER_WET_FILM: f32 = 0.01;
@@ -27,7 +28,7 @@ pub fn apply_dry_level(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> O
 fn nivela(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<TouchedRect> {
     let l = p.k(Knob::DryerLevel);
     let r = dab.r;
-    if l <= 0.0 || r <= 0.0 || (dab.x - prev[0]).hypot(dab.y - prev[1]) < 1e-6 {
+    if l <= 0.0 || r <= 0.0 || (dab.x - prev[0]).det_hypot(dab.y - prev[1]) < 1e-6 {
         return None;
     }
     let k = (l * r).round().max(1.0) as usize;
@@ -82,7 +83,8 @@ fn nivela(g: &mut Grid, p: &Params, dab: &Dab, prev: [f64; 2]) -> Option<Touched
     for y in 0..h {
         for x in 0..w {
             let (cx, cy) = ((x0 + x) as f64, (y0 + y) as f64);
-            if (cx - dab.x).hypot(cy - dab.y) > r || (cx - prev[0]).hypot(cy - prev[1]) <= r {
+            if (cx - dab.x).det_hypot(cy - dab.y) > r || (cx - prev[0]).det_hypot(cy - prev[1]) <= r
+            {
                 continue;
             }
             let i = idx(x, y);

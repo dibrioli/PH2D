@@ -3,6 +3,7 @@
 //! `spatial.rs` via `super::compute::*`). Split out of the former monolithic
 //! `compute.rs` (pure mechanical move).
 
+use ph2d_det_math::DetMath as _;
 // ─────────────────────── sRGB transfer (display space) ───────────────────
 //
 // Continuous f32 sRGB ↔ linear transfer (IEC 61966), for the kinds defined in
@@ -16,7 +17,7 @@ pub(crate) fn linear_to_srgb_f32(v: f32) -> f32 {
     if v <= 0.003_130_8 {
         v * 12.92
     } else {
-        1.055 * v.powf(1.0 / 2.4) - 0.055
+        1.055 * v.det_powf(1.0 / 2.4) - 0.055
     }
 }
 
@@ -27,7 +28,7 @@ pub(crate) fn srgb_to_linear_f32(v: f32) -> f32 {
     if v <= 0.040_45 {
         v / 12.92
     } else {
-        ((v + 0.055) / 1.055).powf(2.4)
+        ((v + 0.055) / 1.055).det_powf(2.4)
     }
 }
 

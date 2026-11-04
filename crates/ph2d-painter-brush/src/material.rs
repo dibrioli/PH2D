@@ -21,6 +21,7 @@
 //! what lets every existing gate stay green and makes "no material set ⇒ nothing moved" checkable. It
 //! falls out of the roughness mapping rather than being asserted: see [`Material::exponent`].
 
+use ph2d_det_math::DetMath as _;
 /// Specular exponent at **`roughness = 1`** — a broad, soft sheen (dry gouache, chalk). // CLAMP-OK
 const EXP_MATTE: f32 = 6.0;
 /// Specular exponent at **`roughness = 0`** — a tight, hard glint (wet varnish, fresh oil). // CLAMP-OK
@@ -151,7 +152,7 @@ impl Material {
     #[must_use]
     pub fn exponent(roughness: f32) -> f32 {
         let r = roughness.clamp(0.0, 1.0);
-        EXP_GLOSSY * (EXP_MATTE / EXP_GLOSSY).powf(r)
+        EXP_GLOSSY * (EXP_MATTE / EXP_GLOSSY).det_powf(r)
     }
 
     /// Which row of the specular LUT this roughness reads.
@@ -183,7 +184,7 @@ impl SpecLut {
                 let e = Material::exponent(level as f32 / (ROUGH_LEVELS - 1) as f32);
                 for i in 0..SPEC_LUT {
                     let x = i as f32 / (SPEC_LUT - 1) as f32;
-                    table[level * SPEC_LUT + i] = x.powf(e);
+                    table[level * SPEC_LUT + i] = x.det_powf(e);
                 }
             }
             SpecLut { table }

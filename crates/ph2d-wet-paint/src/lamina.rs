@@ -21,6 +21,7 @@
 
 use crate::painter::Engine;
 use crate::par::Rows;
+use ph2d_det_math::DetMath as _;
 
 /// A fracção da meia-largura (a partir da borda) onde a crista sobe — medida na folha F42 do Rebelle: o declive
 /// interior da borda ocupa 6 px de 45,5 (Knife Smooth 2) e 5–6 de 44 (Knife Smooth 3).
@@ -53,7 +54,7 @@ pub fn perfil(u: f64) -> f64 {
 /// A normal unitária ao rumo `rumo` (`None` sem rumo — o 1.º dab antes de o traço ter direcção).
 #[must_use]
 pub fn normal(rumo: [f64; 2]) -> Option<[f64; 2]> {
-    let n = rumo[0].hypot(rumo[1]);
+    let n = rumo[0].det_hypot(rumo[1]);
     (n > 1e-9).then(|| [-rumo[1] / n, rumo[0] / n])
 }
 

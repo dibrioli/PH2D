@@ -5,6 +5,7 @@
 //! the material bundle) stay in the parent; nothing here stores state.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 impl BrushSpec {
     /// Effective dab radius after clamping to the allocation cap.
@@ -398,7 +399,7 @@ impl BrushSpec {
     #[must_use]
     pub fn passo_ao_longo_px(&self, spacing: f32, dir: [f32; 2]) -> f32 {
         let v = self.footprint_deform().apply(dir);
-        let ao_longo = v[0].hypot(v[1]);
+        let ao_longo = v[0].det_hypot(v[1]);
         if ao_longo.is_finite() && ao_longo > 1e-4 {
             (self.passo_de(spacing) / ao_longo).max(1.0)
         } else {

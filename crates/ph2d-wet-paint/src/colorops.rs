@@ -12,6 +12,7 @@
 //! and interpolated with IEEE basic operations only: same cross-OS
 //! bit-identity, ~11x the speed. Read that module before touching it.
 
+use ph2d_det_math::DetMath as _;
 /// h in [0,360), s,v in [0,1] -> (r,g,b) 0..255 floats.
 pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> [f64; 3] {
     let c = v * s;
@@ -340,7 +341,7 @@ impl Perfil {
     #[inline]
     #[must_use]
     pub fn de_od(c: [f64; 3]) -> Self {
-        Perfil::de(c.map(|v| 255.0 + (v.max(1.0) / 255.0).min(1.0).ln()))
+        Perfil::de(c.map(|v| 255.0 + (v.max(1.0) / 255.0).min(1.0).det_ln()))
     }
 }
 

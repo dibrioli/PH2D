@@ -9,6 +9,7 @@
 //! `po = 0` (todo preset de hoje): nada se sorteia nem se aloca — o traço ao byte.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// O estado do pó de UM traço (zerado quando o traço abre).
 #[derive(Clone, Default)]
@@ -106,7 +107,7 @@ impl PainterTool {
                     let sy = grid_map::cell_subsample_px(cy, ratio, jj, aa_step);
                     for ii in 0..aa_n {
                         let sx = grid_map::cell_subsample_px(cx, ratio, ii, aa_step);
-                        acc += (r + 0.5 - (sx - c[0]).hypot(sy - c[1])).clamp(0.0, 1.0);
+                        acc += (r + 0.5 - (sx - c[0]).det_hypot(sy - c[1])).clamp(0.0, 1.0);
                     }
                 }
                 f64::from(acc * aa_inv)

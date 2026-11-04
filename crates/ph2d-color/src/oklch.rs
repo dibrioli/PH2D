@@ -10,6 +10,7 @@
 //! (the standard reference path).
 
 use crate::{LinearRgba, OklabColor, SrgbRgba};
+use ph2d_det_math::DetMath as _;
 
 /// A color in OKLCH coordinates.
 ///
@@ -46,7 +47,13 @@ impl OklchColor {
     #[must_use]
     pub fn to_linear(self) -> LinearRgba {
         let h_rad = self.h.to_radians();
-        OklabColor::new(self.l, self.c * h_rad.cos(), self.c * h_rad.sin(), self.a).to_linear()
+        OklabColor::new(
+            self.l,
+            self.c * h_rad.det_cos(),
+            self.c * h_rad.det_sin(),
+            self.a,
+        )
+        .to_linear()
     }
 
     /// Convert to sRGB byte form.

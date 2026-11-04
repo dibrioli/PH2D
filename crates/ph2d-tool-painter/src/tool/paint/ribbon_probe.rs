@@ -14,6 +14,7 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase, Tool};
 use ph2d_painter_brush::StrokeMethod;
 use ph2d_painter_brush::line_kind::LineKind;
@@ -140,7 +141,7 @@ fn probe_ribbon_look() {
         // O gesto da foto: uma onda que desacelera nos picos (a mao vira devagar).
         let pt = |u: f32| {
             let x = 80.0 + u * 860.0;
-            let y = 512.0 + (u * 18.0).sin() * 200.0;
+            let y = 512.0 + (u * 18.0).det_sin() * 200.0;
             [x, y]
         };
         // ⚠️ **O predicado do DEPÓSITO entra no relatório**, e não é enfeite: a faixa nasceu com o
@@ -156,7 +157,7 @@ fn probe_ribbon_look() {
             // ⚠️ **UM evento por quadro, com passo GROSSO** — um mouse de 125 Hz e uma mao rapida
             // andam 30-60 px por evento. A 1ª versao desta sonda andava 1,4 px, vinte vezes mais
             // fina que o produto, e nao continha o fenomeno.
-            u = (u + 0.012 * (0.15 + (u * 18.0).cos().abs())).min(1.0);
+            u = (u + 0.012 * (0.15 + (u * 18.0).det_cos().abs())).min(1.0);
             t.on_canvas_pointer(cp(pt(u), PointerPhase::Move));
             t.on_tick(dt * 1e3);
             frame += 1;
@@ -229,7 +230,7 @@ fn probe_ribbon_spike() {
         let mut t = tool(side, PaintMedia::Digital, 6.0);
         t.paint.brush.stroke_method = StrokeMethod::Space;
         t.paint.brush.line_kind = LineKind::Ribbon;
-        let pt = |u: f32| [80.0 + u * 880.0, 512.0 + (u * 16.0).sin() * 200.0];
+        let pt = |u: f32| [80.0 + u * 880.0, 512.0 + (u * 16.0).det_sin() * 200.0];
         // ⚠️ **VINTE E CINCO eventos, não cento e dez** — uma mão rápida a 60 Hz anda ~40 px por
         // evento, e a 1ª versão desta sonda andava 8. Com o gesto lento o atraso é pequeno, a faixa
         // quase não abre e a fixture **não continha o fenômeno**: a imagem saía limpa e teria

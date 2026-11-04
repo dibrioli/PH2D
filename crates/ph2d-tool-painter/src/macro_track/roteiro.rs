@@ -5,6 +5,7 @@
 
 use crate::PaintMedia;
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{
     CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, RasterEditTool, Tool,
 };
@@ -68,7 +69,7 @@ pub(crate) const SPLASH: [Pincelada; 4] = [
 
 pub(crate) fn ponto(p: &Pincelada, f: f32, lado: f32) -> [f32; 2] {
     let (dx, dy) = (p.ate[0] - p.de[0], p.ate[1] - p.de[1]);
-    let arco = p.curva * (std::f32::consts::PI * f).sin();
+    let arco = p.curva * (std::f32::consts::PI * f).det_sin();
     [
         lado * (p.de[0] + dx * f - dy * arco),
         lado * (p.de[1] + dy * f + dx * arco),

@@ -30,6 +30,7 @@ gpu = ["dep:ph2d-gpu", "ph2d-inpaint/gpu", "dep:ph2d-wet-gpu"]
 test-support = []
 
 [dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
 # ⭐ A tabela de strings (folha, ZERO dependências): os quatro MEIOS que esta crate publica são
 # pintados pelo `ph2d-panel-painter-layers`, e a fronteira entre os dois é cega ao HR-15.
 ph2d-i18n = { path = "../ph2d-i18n" }

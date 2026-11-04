@@ -19,6 +19,7 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_brush::StrokeMethod;
 
@@ -111,7 +112,7 @@ fn measure_what_a_solid_would_add() {
         for y in 0..sh {
             for x in 0..sw {
                 #[allow(clippy::cast_precision_loss)]
-                let d = (x as f32 - cx).hypot(y as f32 - cy);
+                let d = (x as f32 - cx).det_hypot(y as f32 - cy);
                 crisp[y * sw + x] = u8::from(d <= rr) * 255;
             }
         }
@@ -201,7 +202,7 @@ fn measure_how_many_levels_a_solid_edge_needs() {
                         let sx = x as f32 + (i as f32 + 0.5) / ss as f32;
                         #[allow(clippy::cast_precision_loss)]
                         let sy = y as f32 + (j as f32 + 0.5) / ss as f32;
-                        hits += u32::from((sx - cx).hypot(sy - cy) <= rr);
+                        hits += u32::from((sx - cx).det_hypot(sy - cy) <= rr);
                     }
                 }
                 #[allow(clippy::cast_precision_loss)]
@@ -247,7 +248,7 @@ fn measure_how_many_levels_a_solid_edge_needs() {
                 let a = i as f32 / 2048.0 * std::f32::consts::TAU;
                 #[allow(clippy::cast_precision_loss)]
                 let (cx, cy) = (W as f32 * 0.5, W as f32 * 0.5);
-                [cx + 300.0 * a.cos(), cy + 300.0 * a.sin()]
+                [cx + 300.0 * a.det_cos(), cy + 300.0 * a.det_sin()]
             })
             .collect();
         let t0 = std::time::Instant::now();

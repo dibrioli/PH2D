@@ -2,6 +2,7 @@
 //! e nivelamento) arrastada na diagonal por cima — a montagem dos portões da lâmina, pelo motor.
 
 use crate::painter::Engine;
+use ph2d_det_math::DetMath as _;
 
 pub const LADO: usize = 96;
 
@@ -22,7 +23,7 @@ pub fn faca() -> Engine {
     e.tuning.set(crate::tuning::Knob::KnifeLevel, 0.6);
     let (a, b) = ([16.0f64, 30.0f64], [80.0f64, 66.0f64]);
     let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
-    let n = dx.hypot(dy);
+    let n = dx.det_hypot(dy);
     let rumo = [dx / n, dy / n];
     for k in 0..=n as usize {
         let c = [a[0] + rumo[0] * k as f64, a[1] + rumo[1] * k as f64];
@@ -229,10 +230,10 @@ pub fn pico_da_celula(rgba: &[u8], w: usize, h: usize, s: usize) -> f64 {
         let (mut re, mut im) = (0.0, 0.0);
         for j in 0..n {
             let a = -2.0 * core::f64::consts::PI * (k * j) as f64 / n as f64;
-            re += sinal(j) * a.cos();
-            im += sinal(j) * a.sin();
+            re += sinal(j) * a.det_cos();
+            im += sinal(j) * a.det_sin();
         }
-        re.hypot(im)
+        re.det_hypot(im)
     };
     let razao = |linhas: usize, n: usize, at: &dyn Fn(usize, usize) -> f64| {
         let k0 = (n as f64 / s as f64).round() as usize;

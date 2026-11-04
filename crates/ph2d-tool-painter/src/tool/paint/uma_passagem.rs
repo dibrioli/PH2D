@@ -10,6 +10,7 @@
 //! taxa: `v = g·tecto·S`, exacto) ou `1 − (1 − v)^(ḡ/g)` (o Accumulate que empilha, Beer–Lambert). Sem grão, ou
 //! num mapa que o carimbo sorteia (Random) ou recorta (Stencil), o máximo de sempre.
 
+use ph2d_det_math::DetMath as _;
 use ph2d_painter_brush::Dab;
 use ph2d_painter_brush::texture::TextureMapping;
 
@@ -54,7 +55,7 @@ impl<T: Copy + PartialOrd> UmaPassagem<T> {
     pub(super) fn percorre(&mut self, dabs: &[Dab]) {
         for d in dabs {
             if let Some(u) = self.ultimo_centro {
-                self.percurso += (d.center[0] - u[0]).hypot(d.center[1] - u[1]);
+                self.percurso += (d.center[0] - u[0]).det_hypot(d.center[1] - u[1]);
             }
             self.ultimo_centro = Some(d.center);
             self.diametro = self.diametro.max(2.0 * d.radius_px);
@@ -123,7 +124,7 @@ impl crate::tool::PainterTool {
                 (u * LADO_DA_MEDIA_TILED, v * LADO_DA_MEDIA_TILED, 1.0)
             } else {
                 let (dx, dy) = ((2.0 * u - 1.0) * r, (2.0 * v - 1.0) * r);
-                let t = dx.hypot(dy) / r;
+                let t = dx.det_hypot(dy) / r;
                 if t >= 1.0 {
                     continue;
                 }
@@ -173,7 +174,7 @@ impl crate::tool::PainterTool {
             let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
             let (mut soma, mut peso) = (0.0f32, 0.0f32);
             for d in &p.dabs {
-                let t = (px - d.center[0]).hypot(py - d.center[1]) / d.radius_px.max(0.5);
+                let t = (px - d.center[0]).det_hypot(py - d.center[1]) / d.radius_px.max(0.5);
                 if t < 1.0 {
                     let k = b.falloff_weight(t);
                     soma += k * self.grao_do_dab(d, x, y);
@@ -187,7 +188,7 @@ impl crate::tool::PainterTool {
             let n = if linear {
                 v * razao
             } else {
-                1.0 - (1.0 - v.min(1.0)).powf(razao)
+                1.0 - (1.0 - v.min(1.0)).det_powf(razao)
             };
             melhor = Some(melhor.map_or(n, |m: f32| m.max(n)));
         }

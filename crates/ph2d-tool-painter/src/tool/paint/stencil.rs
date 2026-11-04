@@ -8,6 +8,7 @@
 //! The Stencil card's number boxes write the same `stencil_*` fields via [`PainterTool::route_brush_stencil_event`].
 
 use super::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::tool::{CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_painter_brush::{
     BrushSpec, ImageMask, TEX_ANGLE_MAX_DEG, render_stencil_preview, stencil_frame,
@@ -189,7 +190,7 @@ impl PainterTool {
         for (i, &c) in o.corners.iter().enumerate() {
             let d = dist(c, pos);
             if d > tol && d <= rot_tol && dist(o.center, pos) > dist(o.center, c) {
-                let grab_angle = (pos[1] - o.center[1]).atan2(pos[0] - o.center[0]);
+                let grab_angle = (pos[1] - o.center[1]).det_atan2(pos[0] - o.center[0]);
                 let start_deg = f32::from(self.paint.brush.texture.stencil_angle_deg);
                 self.paint.stencil_grab = Some(StencilGrab::Rotate {
                     corner: i as u8,
@@ -256,7 +257,7 @@ impl PainterTool {
                 ..
             } => {
                 // Add the pointer's angle delta (about the centre) to the angle at grab; wrap to `0..360`.
-                let cur = (pos[1] - center[1]).atan2(pos[0] - center[0]);
+                let cur = (pos[1] - center[1]).det_atan2(pos[0] - center[0]);
                 let delta_deg = (cur - grab_angle).to_degrees();
                 let target = (start_deg + delta_deg).rem_euclid(f32::from(TEX_ANGLE_MAX_DEG));
                 self.set_brush_stencil_angle(target);

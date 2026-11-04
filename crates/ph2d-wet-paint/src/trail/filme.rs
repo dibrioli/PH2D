@@ -13,6 +13,7 @@
 //! do de 40 (o Rebelle 0,98) — o peso do fino desfaz-se (`agua_do_dab`) e o passo deixa de contar.
 //! `0` = a soma de sempre, ao bit (o campo nem existe).
 
+use ph2d_det_math::DetMath as _;
 /// O máximo por célula do traço vivo (em unidades de depósito × dabs), da grade inteira; preguiçoso.
 #[derive(Clone, Default)]
 pub(crate) struct Filme {
@@ -53,7 +54,7 @@ impl Filme {
     /// Um dab em `(x, y)`: a direcção do traço até ele (a do anterior se ele não andou; `None` no 1.º).
     pub(crate) fn passo(&mut self, x: f64, y: f64) -> Option<(f64, f64)> {
         if let Some((ax, ay)) = self.ultimo {
-            let d = (x - ax).hypot(y - ay);
+            let d = (x - ax).det_hypot(y - ay);
             if d > 1e-6 {
                 self.tangente = Some(((x - ax) / d, (y - ay) / d));
             }

@@ -1,6 +1,7 @@
 //! A CAUDA do plano do traço: planeá-la e re-pintá-la — filho de `traco_plano` por LOC.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 impl PainterTool {
     /// O plano da cauda: os lotes a re-carimbar, a janela que se limpa e a que muda.
@@ -91,7 +92,7 @@ impl PainterTool {
                 pela_capsula && um_caminho && da_cauda(a) && da_cauda(x) && x.step == [0.0, 0.0]
             }) {
                 let p = [x.center[0] - a.center[0], x.center[1] - a.center[1]];
-                let dist = p[0].hypot(p[1]);
+                let dist = p[0].det_hypot(p[1]);
                 if dist > 0.0 && dist <= 1.5 * passo {
                     let mut ante = ph2d_painter_brush::Ante::de(&a);
                     if !a_ligado {

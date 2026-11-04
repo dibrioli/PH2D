@@ -16,6 +16,7 @@
 //! ⚠️ **A `ph2d-vec-scene` RE-EXPORTA este tipo**, então nenhum dos ~300 ficheiros que escrevem
 //! `ph2d_vec_scene::Xform` muda uma letra. Isto é uma mudança de DONO, não de API.
 
+use ph2d_det_math::DetMath as _;
 /// Afim 2D em coeficientes column-major `[a, b, c, d, e, f]` — o mesmo layout que
 /// `kurbo::Affine::new` e `GlobalTransform::affine()` consomem:
 ///
@@ -167,7 +168,7 @@ impl Xform {
             return Self([0.0, 0.0, 0.0, 0.0, e, f]);
         }
         let s = if det < 0.0 { -1.0 } else { 1.0 };
-        let (sin, cos) = (b - c * s).atan2(a + d * s).sin_cos();
+        let (sin, cos) = (b - c * s).det_atan2(a + d * s).det_sin_cos();
         Self([k * cos, k * sin, -k * sin * s, k * cos * s, e, f])
     }
 

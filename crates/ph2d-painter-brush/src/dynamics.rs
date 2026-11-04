@@ -6,6 +6,7 @@
 //! pressure 0 up to the full value at pressure 1. A mouse (no pressure) reports `1.0`, so dynamics
 //! are a no-op there.
 
+use ph2d_det_math::DetMath as _;
 /// Which brush channels respond to pen pressure, and how far they fall at zero pressure.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dynamics {
@@ -81,7 +82,7 @@ pub fn curve(pressure: f32, g: f32) -> f32 {
     if g == 1.0 || g.is_nan() || g <= 0.0 {
         pressure
     } else {
-        pressure.clamp(0.0, 1.0).powf(g)
+        pressure.clamp(0.0, 1.0).det_powf(g)
     }
 }
 
@@ -143,7 +144,7 @@ pub fn lei_da_velocidade(p: f32, v_px_s: f32) -> f32 {
     if p <= 0.0 || v_px_s <= VELOCIDADE_DE_REFERENCIA_PX_S || !v_px_s.is_finite() {
         return 1.0;
     }
-    (v_px_s / VELOCIDADE_DE_REFERENCIA_PX_S).powf(-p.min(VELOCIDADE_EXPOENTE_MAX))
+    (v_px_s / VELOCIDADE_DE_REFERENCIA_PX_S).det_powf(-p.min(VELOCIDADE_EXPOENTE_MAX))
 }
 
 impl Dynamics {
@@ -170,7 +171,7 @@ impl Dynamics {
             return 0.0;
         }
         let k = self.speed_hardness.min(DUREZA_DA_VELOCIDADE_MAX);
-        -k * ((DUREZA_GAMA_PX_S + v.max(0.0)) / DUREZA_GAMA_PX_S).ln()
+        -k * ((DUREZA_GAMA_PX_S + v.max(0.0)) / DUREZA_GAMA_PX_S).det_ln()
     }
 
     /// A dureza que a MÃO soma à do pincel neste dab (`≤ 0`): a da pressão `p` ([`Self::pressure_hardness`]) e a

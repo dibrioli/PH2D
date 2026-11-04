@@ -26,6 +26,7 @@ use super::{TouchedRect, Trail};
 use crate::grid::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
+use ph2d_det_math::DetMath as _;
 
 /// A água mínima de uma célula «molhada» (a de [`crate::tools`]).
 const MOLHADA: f32 = 0.01;
@@ -202,7 +203,7 @@ fn mais_perto(
             (a.x + ex * u, a.y + ey * u, tx, ty)
         };
         let (vx, vy) = (x - cx, y - cy);
-        let s = vx.hypot(vy);
+        let s = vx.det_hypot(vy);
         if s < melhor.0 {
             let uu = u.clamp(0.0, 1.0);
             let lado = usize::from(-vx * ty + vy * tx < 0.0);
@@ -230,7 +231,7 @@ impl Trail {
         let anterior = self.molhado.pontos.last().copied();
         let (de, t) = match (anterior, self.molhado.pendente) {
             (Some(a), _) => {
-                let passo = (x - a.x).hypot(y - a.y);
+                let passo = (x - a.x).det_hypot(y - a.y);
                 let t = if passo < 1e-6 {
                     (a.tx, a.ty)
                 } else {
@@ -239,7 +240,7 @@ impl Trail {
                 (Some((a, passo)), t)
             }
             (None, Some((px, py, pr))) => {
-                let passo = (x - px).hypot(y - py);
+                let passo = (x - px).det_hypot(y - py);
                 if passo < 1e-6 {
                     return;
                 }

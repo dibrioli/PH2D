@@ -12,6 +12,7 @@
 //! — [`RecorteNoWet`], na `wetpaint/dab_route`. A aguada e o Impasto não (`DualForaDoDigital`). No Digital arma
 //! também na borracha, no Blur, no Smear e no Clone ([`super::dual_ferramenta`]).
 
+use ph2d_det_math::DetMath as _;
 use std::mem::swap;
 use std::sync::Arc;
 
@@ -186,10 +187,10 @@ fn frente_no_arco(p: [f32; 2], rumo: [f32; 2], k: f32, l: f32) -> [f32; 2] {
     if kl.abs() < 1e-3 {
         return [p[0] + rumo[0] * l, p[1] + rumo[1] * l];
     }
-    let (t0, k) = (rumo[1].atan2(rumo[0]), kl / l);
+    let (t0, k) = (rumo[1].det_atan2(rumo[0]), kl / l);
     [
-        p[0] + ((t0 + kl).sin() - t0.sin()) / k,
-        p[1] - ((t0 + kl).cos() - t0.cos()) / k,
+        p[0] + ((t0 + kl).det_sin() - t0.det_sin()) / k,
+        p[1] - ((t0 + kl).det_cos() - t0.det_cos()) / k,
     ]
 }
 
@@ -255,13 +256,13 @@ impl PainterTool {
         let e = &mut self.paint.dual;
         let frente = primeira.clamped_radius();
         let passo = [p.pos[0] - e.ultimo[0], p.pos[1] - e.ultimo[1]];
-        let l = passo[0].hypot(passo[1]);
+        let l = passo[0].det_hypot(passo[1]);
         if l > 1e-3 {
             let novo = [passo[0] / l, passo[1] / l];
             if e.rumo != [0.0; 2] {
                 let giro = (e.rumo[0] * novo[1] - e.rumo[1] * novo[0])
-                    .atan2(e.rumo[0] * novo[0] + e.rumo[1] * novo[1]);
-                e.curva += (1.0 - (-l / (0.5 * frente)).exp()) * (giro / l - e.curva);
+                    .det_atan2(e.rumo[0] * novo[0] + e.rumo[1] * novo[1]);
+                e.curva += (1.0 - (-l / (0.5 * frente)).det_exp()) * (giro / l - e.curva);
             }
             e.rumo = novo;
         }

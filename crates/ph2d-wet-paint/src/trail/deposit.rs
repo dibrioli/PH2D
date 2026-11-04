@@ -35,6 +35,7 @@ use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::trail::Dab;
 use crate::tuning::Knob;
+use ph2d_det_math::DetMath as _;
 
 /// Com o pó a 1, a fracção das gotas que FALTAM num dab (uma em 20 cai).
 const POEIRA_MAXIMA: f64 = 0.95;
@@ -174,9 +175,9 @@ impl DepositLaw {
         // ⭐ A pressão leve desfaz em grão: a parte `k` da opacidade entra antes do portão (`opacidade^k`), o resto
         // (`opacidade^(1-k)`) depois — `k = 0` é a lei de sempre, ao bit.
         let opacidade_depois = if self.grao_da_pressao > 0.0 {
-            stamp *= self.opacidade.powf(self.grao_da_pressao);
-            cheio *= self.opacidade.powf(self.grao_da_pressao);
-            self.opacidade.powf(1.0 - self.grao_da_pressao)
+            stamp *= self.opacidade.det_powf(self.grao_da_pressao);
+            cheio *= self.opacidade.det_powf(self.grao_da_pressao);
+            self.opacidade.det_powf(1.0 - self.grao_da_pressao)
         } else {
             self.opacidade
         };

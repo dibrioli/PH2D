@@ -32,6 +32,7 @@
 //! ([`ph2d_painter_brush::TECTO_MEDIDO_E_RECUSADO_EM_RAIOS`]). As duas saídas continuam em
 //! tensão, e a escolha é do dono.
 
+use ph2d_det_math::DetMath as _;
 use ph2d_painter_brush::Arco;
 
 /// ⚠️ **O centro é DERIVADO, não construído com um sinal adivinhado.** Ele é a solução de
@@ -55,13 +56,13 @@ pub(super) fn osculador(
     raio_do_dab: f32,
 ) -> Option<Arco> {
     let a = anterior?;
-    let (na, np) = (a[0].hypot(a[1]), passo[0].hypot(passo[1]));
+    let (na, np) = (a[0].det_hypot(a[1]), passo[0].det_hypot(passo[1]));
     if !(na > 0.0 && np > 0.0) {
         return None;
     }
     let cruz = a[0] * passo[1] - a[1] * passo[0];
     let escalar = a[0] * passo[0] + a[1] * passo[1];
-    let dtheta = cruz.atan2(escalar);
+    let dtheta = cruz.det_atan2(escalar);
     if !dtheta.is_finite() || dtheta.abs() < ANGULO_MINIMO || dtheta.abs() >= FRAC_PI_2 {
         return None;
     }
@@ -73,7 +74,7 @@ pub(super) fn osculador(
     //     u = ½·(passo.x + k·passo.y,  passo.y − k·passo.x)   com  k = cot(dθ/2)
     //
     // cujo módulo é `|passo| / (2·sin(dθ/2))` — exactamente o circunraio.
-    let k = (dtheta * 0.5).tan();
+    let k = (dtheta * 0.5).det_tan();
     if k.abs() <= f32::EPSILON {
         return None;
     }
@@ -83,7 +84,7 @@ pub(super) fn osculador(
     if !(ux.is_finite() && uy.is_finite()) {
         return None;
     }
-    if ux.hypot(uy) < raio_do_dab {
+    if ux.det_hypot(uy) < raio_do_dab {
         return None;
     }
     Some(Arco {

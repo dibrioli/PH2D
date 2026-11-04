@@ -3,6 +3,7 @@
 //! mexe-se em passos iguais aos olhos. A conversão é a de referência do HSLuv (sRGB D65 ↔ CIELUV ↔ LCh, com
 //! o croma máximo do gamute para cada L e H), escrita da especificação pública.
 
+use ph2d_det_math::DetMath as _;
 const M: [[f64; 3]; 3] = [
     [
         3.240_969_941_904_521,
@@ -62,7 +63,7 @@ pub fn com_ruido(rgb: [f32; 3], d: [f64; 3]) -> [f32; 3] {
 pub fn rgb_para_hsluv(rgb: [f64; 3]) -> [f64; 3] {
     let lin = rgb.map(|c| {
         if c > 0.040_45 {
-            ((c + 0.055) / 1.055).powf(2.4)
+            ((c + 0.055) / 1.055).det_powf(2.4)
         } else {
             c / 12.92
         }
@@ -71,7 +72,7 @@ pub fn rgb_para_hsluv(rgb: [f64; 3]) -> [f64; 3] {
     let l = if y <= EPSILON {
         y * KAPPA
     } else {
-        116.0 * y.cbrt() - 16.0
+        116.0 * y.det_cbrt() - 16.0
     };
     if l < 1e-8 {
         return [0.0, 0.0, 0.0];
@@ -81,11 +82,11 @@ pub fn rgb_para_hsluv(rgb: [f64; 3]) -> [f64; 3] {
         13.0 * l * (4.0 * x / div - REF_U),
         13.0 * l * (9.0 * y / div - REF_V),
     );
-    let c = u.hypot(v);
+    let c = u.det_hypot(v);
     let h = if c < 1e-8 {
         0.0
     } else {
-        v.atan2(u).to_degrees().rem_euclid(360.0)
+        v.det_atan2(u).to_degrees().rem_euclid(360.0)
     };
     if l > 99.999_999_9 {
         return [h, 0.0, 100.0];
@@ -104,7 +105,7 @@ pub fn hsluv_para_rgb([h, s, l]: [f64; 3]) -> [f64; 3] {
     }
     let c = croma_maximo(l, h) / 100.0 * s;
     let hr = h.to_radians();
-    let (u, v) = (hr.cos() * c, hr.sin() * c);
+    let (u, v) = (hr.det_cos() * c, hr.det_sin() * c);
     let y = if l <= 8.0 {
         l / KAPPA
     } else {
@@ -117,7 +118,7 @@ pub fn hsluv_para_rgb([h, s, l]: [f64; 3]) -> [f64; 3] {
         if c <= 0.003_130_8 {
             12.92 * c
         } else {
-            1.055 * c.powf(1.0 / 2.4) - 0.055
+            1.055 * c.det_powf(1.0 / 2.4) - 0.055
         }
     })
 }
@@ -135,7 +136,7 @@ fn croma_maximo(l: f64, h: f64) -> f64 {
                 (838_422.0 * m3 + 769_860.0 * m2 + 731_718.0 * m1) * l * sub2 - 769_860.0 * t * l;
             let bottom = (632_260.0 * m3 - 126_452.0 * m2) * sub2 + 126_452.0 * t;
             let (slope, intercept) = (top1 / bottom, top2 / bottom);
-            let len = intercept / (hr.sin() - slope * hr.cos());
+            let len = intercept / (hr.det_sin() - slope * hr.det_cos());
             if len >= 0.0 {
                 min = min.min(len);
             }

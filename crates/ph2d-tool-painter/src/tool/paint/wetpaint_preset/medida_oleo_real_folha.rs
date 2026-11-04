@@ -2,13 +2,14 @@
 //! (partido de `medida_oleo_real.rs`, 29/10).
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 pub(super) const OW: u32 = 700;
 pub(super) const OH: u32 = 460;
 
 /// Uma pincelada de `a` a `z` com o passo de 3 px do `tracos.py`, e espera a água parar.
 pub(super) fn arrasta(t: &mut PainterTool, a: [f32; 2], z: [f32; 2]) -> u32 {
-    let n = ((z[0] - a[0]).hypot(z[1] - a[1]) / 3.0).ceil() as u32;
+    let n = ((z[0] - a[0]).det_hypot(z[1] - a[1]) / 3.0).ceil() as u32;
     t.on_canvas_pointer(ponto(a, PointerPhase::Down));
     for k in 1..=n {
         let f = k as f32 / n as f32;

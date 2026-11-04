@@ -9,6 +9,7 @@ use super::measure_shape_system::{cp, tool};
 use super::measure_solid_cost::{arm, solid_arc};
 use crate::tool::PainterTool;
 use crate::tool::paint::media::PaintMedia;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
@@ -119,7 +120,7 @@ fn measure_whether_the_fill_depends_on_the_event_rate() {
         #[allow(clippy::cast_precision_loss)]
         let f = k as f32 / n as f32;
         [
-            248.0 - 8.0 * (f * std::f32::consts::TAU).sin(),
+            248.0 - 8.0 * (f * std::f32::consts::TAU).det_sin(),
             40.0 + 170.0 * f,
         ]
     };
@@ -283,7 +284,7 @@ fn measure_that_every_line_kind_does_something_under_solid() {
             #[allow(clippy::cast_precision_loss)]
             let a = 0.9 + (k as f32) * 0.11;
             t.on_canvas_pointer(cp(
-                [c + 60.0 * a.cos(), c + 60.0 * a.sin()],
+                [c + 60.0 * a.det_cos(), c + 60.0 * a.det_sin()],
                 PointerPhase::Move,
             ));
         }

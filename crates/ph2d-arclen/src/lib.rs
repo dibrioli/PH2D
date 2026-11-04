@@ -45,6 +45,7 @@
 //! [ADR-0132]: ../../../docs/architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md
 //! [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 
+use ph2d_det_math::DetMath as _;
 /// Uma cúbica: `[P0, C1, C2, P3]`.
 pub type Cubic = [[f64; 2]; 4];
 
@@ -149,7 +150,7 @@ pub fn tangent_at(c: &Cubic, t: f64) -> Option<[f64; 2]> {
 pub fn turn_between(a: [f64; 2], b: [f64; 2]) -> f64 {
     let cruz = a[0].mul_add(b[1], -(a[1] * b[0]));
     let ponto = a[0].mul_add(b[0], a[1] * b[1]);
-    cruz.abs().atan2(ponto)
+    cruz.abs().det_atan2(ponto)
 }
 
 /// O versor de `v`, ou `None` se ele não tem comprimento que se meça.

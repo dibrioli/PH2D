@@ -50,6 +50,7 @@
 
 use super::compute::{em_luz, linear_to_srgb_f32};
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 #[path = "spatial_tonal.rs"]
 mod tonal; // Bloom + Shadows/Highlights (LOC cap: sibling module)
@@ -170,7 +171,7 @@ pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     let mut sum = 0.0f32;
     for i in 0..=half {
         let x = i as f32;
-        let g = (-(x * x) / two_sigma_sq).exp();
+        let g = (-(x * x) / two_sigma_sq).det_exp();
         weights.push(g);
         // Centre tap counts once; each ±i flank tap counts twice.
         sum += if i == 0 { g } else { 2.0 * g };
@@ -415,7 +416,7 @@ pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: Adjust
     let (weights, half) = motion_weights(p.distance);
     let wgt = weights[0]; // uniform box
     let half = half as i32;
-    let (sin, cos) = p.angle.sin_cos(); // direction (cos, sin)
+    let (sin, cos) = p.angle.det_sin_cos(); // direction (cos, sin)
     let src = acc.to_vec(); // premultiplied
     for y in 0..h {
         for x in 0..w {
@@ -574,7 +575,7 @@ fn fract(v: f32) -> f32 {
 /// `angle`. Deterministic per absolute coordinate → dirty-rect exact. Alpha kept.
 pub fn apply_halftone(p: &HalftoneParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     let cell = p.dot_size.max(1.0);
-    let (sin, cos) = p.angle.sin_cos();
+    let (sin, cos) = p.angle.det_sin_cos();
     let (white, black) = (1.0, 0.0);
     let (wu, hu) = (win.width as usize, win.height as usize);
     par_rows(acc, wu, hu, |y, out_row| {

@@ -22,6 +22,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
 
 [lints]
 workspace = true

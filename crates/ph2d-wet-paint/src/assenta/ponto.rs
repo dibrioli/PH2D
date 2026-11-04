@@ -7,6 +7,7 @@ use crate::colorops::{
     velatura_canal, velatura_k,
 };
 use crate::colorops::{ks_of_srgb255, reflectance_of_ks, srgb255_of_linear};
+use ph2d_det_math::DetMath as _;
 
 /// O `d` do tapar extra de [`Ecra::Cobre`]: a diferença de pigmento, `0` sob o Glaze se é a mesma tinta filtrada.
 #[inline]
@@ -83,7 +84,7 @@ fn la_molhada(la: f64, p: f64) -> f64 {
     if p == 1.0 {
         la
     } else {
-        1.0 - (1.0 - la).powf(p)
+        1.0 - (1.0 - la).det_powf(p)
     }
 }
 

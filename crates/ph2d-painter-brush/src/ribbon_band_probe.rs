@@ -11,6 +11,7 @@ use crate::falloff::Falloff;
 use crate::line_kind::LineKind;
 use crate::spec::BrushSpec;
 use crate::stroke::{Stroke, StrokePoint};
+use ph2d_det_math::DetMath as _;
 
 fn spec(weight: f32, friction: f32, gravity: f32) -> BrushSpec {
     BrushSpec {
@@ -96,7 +97,7 @@ fn measure_where_the_band_spikes_come_from() {
         let (mut out, mut buf, mut all) = (Vec::new(), Vec::new(), Vec::new());
         // A onda da foto: rápida, com inversões duras (é nelas que a fita PARA e reverte).
         let pt = |u: f32| StrokePoint {
-            pos: [80.0 + u * 900.0, 400.0 + (u * 16.0).sin() * 220.0],
+            pos: [80.0 + u * 900.0, 400.0 + (u * 16.0).det_sin() * 220.0],
             pressure: 1.0,
         };
         s.begin(pt(0.0), &mut out);
@@ -189,7 +190,7 @@ fn measure_which_phase_draws_the_spike() {
         // rodada em que o produto a desenhava.
         sp.stabilizer = 0.5;
         let pt = |u: f32| StrokePoint {
-            pos: [80.0 + u * 900.0, 400.0 + (u * 16.0).sin() * 220.0],
+            pos: [80.0 + u * 900.0, 400.0 + (u * 16.0).det_sin() * 220.0],
             pressure: 1.0,
         };
         // Três fases, medidas SEPARADAS: o gesto, a pausa com o botão preso, a cauda do pen-up.
@@ -292,10 +293,10 @@ fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
             let passo = if freando {
                 1.5
             } else {
-                45.0 * (0.06 + 0.94 * (x * k).cos().abs())
+                45.0 * (0.06 + 0.94 * (x * k).det_cos().abs())
             };
             x += passo;
-            let y = 400.0 + 180.0 * (x * k).sin();
+            let y = 400.0 + 180.0 * (x * k).det_sin();
             s.extend(
                 StrokePoint {
                     pos: [x, y],

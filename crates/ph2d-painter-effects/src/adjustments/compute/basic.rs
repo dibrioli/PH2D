@@ -9,6 +9,7 @@
 //! (Posterize, Threshold, Invert, Black & White) work on the values as they are.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// Exposure — defined in LIGHT (alpha preserved). A photographic
 /// exposure in stops (`exposure_ev`, a `2^ev` gain on linear light), then a
@@ -19,11 +20,11 @@ pub(crate) fn apply_exposure(p: &ExposureParams, acc: &mut [[f32; 4]]) {
     if p.exposure_ev == 0.0 && p.offset == 0.0 && p.gamma_correction == 0.0 {
         return;
     }
-    let gain = 2.0_f32.powf(p.exposure_ev);
+    let gain = 2.0_f32.det_powf(p.exposure_ev);
     let inv_gamma = 1.0 / (1.0 + p.gamma_correction).max(1e-3);
     // The whole chain — its boundary included — is a 1-D function of the input
     // channel: LUT it (the only `powf` left is the per-call table build).
-    let lut = build_lut_em_luz(|v| (v * gain + p.offset).max(0.0).powf(inv_gamma));
+    let lut = build_lut_em_luz(|v| (v * gain + p.offset).max(0.0).det_powf(inv_gamma));
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
             *ch = sample_lut(&lut, *ch);
@@ -200,7 +201,7 @@ pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]
     let tint = p.tint_color.filter(|_| p.tint_amount != 0.0);
     let (ta, tb) = match tint {
         Some(t) => {
-            let (s, c) = t.h.to_radians().sin_cos();
+            let (s, c) = t.h.to_radians().det_sin_cos();
             (t.c * c * p.tint_amount, t.c * s * p.tint_amount)
         }
         None => (0.0, 0.0),
@@ -268,7 +269,7 @@ pub(crate) fn apply_hsb(p: &HsbParams, acc: &mut [[f32; 4]]) {
         return;
     }
     let hue_rad = p.h * std::f32::consts::TAU; // turns → radians
-    let (hue_sin, hue_cos) = hue_rad.sin_cos();
+    let (hue_sin, hue_cos) = hue_rad.det_sin_cos();
     let chroma_scale = (1.0 + p.s).max(0.0); // -1 → 0 (gray), +1 → 2×
     for px in acc.iter_mut() {
         let [r, g, b] = em_luz(px);

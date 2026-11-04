@@ -171,14 +171,13 @@ path = "junit.xml"
 # Uma repetição só CLASSIFICA: o que passa à 2.ª vem como FLAKY no junit, nunca escondido.
 #
 # O `default-filter` tira só o que o runner não pode medir; tudo continua na suíte local da integração. Razão e
-# quem vê cada um: a tabela «o que a noite NÃO vê» do doc. Defeitos abertos: BUGS_painter #58, BUGS_luz2d #8 e #9.
+# quem vê cada um: a tabela «o que a noite NÃO vê» do doc. Defeitos abertos: BUGS_luz2d #8 e #9.
 [profile.noite]
 fail-fast = false
 retries = 1
 default-filter = '''
 not (
-  test(=presets_de_fabrica::portoes::a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje)
-  | test(=presets_de_fabrica::memoria::a_memoria_do_dabber_cabe)
+  test(=presets_de_fabrica::memoria::a_memoria_do_dabber_cabe)
   | test(=o_custo_no_caminho_do_app::o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga)
   | test(=tutorial_painter::mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha)
   | test(=os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria)

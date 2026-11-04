@@ -12,6 +12,7 @@ use crate::falloff::Falloff;
 use crate::line_kind::{LineKind, SKETCHY_DENSITY_MAX};
 use crate::spec::BrushSpec;
 use crate::stroke::{Stroke, StrokePoint};
+use ph2d_det_math::DetMath as _;
 
 fn sp(reach: f32, density: f32) -> BrushSpec {
     BrushSpec {
@@ -69,7 +70,7 @@ fn spiral(spec: BrushSpec, turns: usize) -> (usize, f32, f32, std::time::Duratio
     s.take_threads(&mut threads);
     for i in 1..=steps {
         let p = pt(i);
-        arc += (p[0] - prev[0]).hypot(p[1] - prev[1]);
+        arc += (p[0] - prev[0]).det_hypot(p[1] - prev[1]);
         prev = p;
         s.extend(
             StrokePoint {
@@ -81,7 +82,7 @@ fn spiral(spec: BrushSpec, turns: usize) -> (usize, f32, f32, std::time::Duratio
         dabs += out.len();
         s.take_threads(&mut threads);
         for t in &threads {
-            total_thread += (t[2] - t[0]).hypot(t[3] - t[1]);
+            total_thread += (t[2] - t[0]).det_hypot(t[3] - t[1]);
         }
     }
     (dabs, arc, total_thread, t0.elapsed())

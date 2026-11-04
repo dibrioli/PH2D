@@ -7,6 +7,7 @@ use super::{
     ImageMask, MAX_TEX_PARAMS, TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureKind,
     TextureMapping, TextureSettings,
 };
+use ph2d_det_math::DetMath as _;
 
 /// A borrowed **straight RGB** image (3 bytes per texel, row-major), aligned with a sibling [`ImageMask`]
 /// (same `width`/`height`). Supplied to the per-layer-colour real-colour path so a captured Shape layer
@@ -264,7 +265,7 @@ fn area_do_pixel(
         img.width.max(1) as f32 * 0.5,
         img.height.max(1) as f32 * 0.5,
     );
-    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).hypot((d[1] - t0[1]) * hh);
+    let texels = |d: [f32; 2]| ((d[0] - t0[0]) * hw).det_hypot((d[1] - t0[1]) * hh);
     let lado = |t: f32| {
         if t.is_finite() {
             (0.5 * t).ceil().clamp(1.0, AREA_MAX)

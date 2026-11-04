@@ -6,6 +6,7 @@
 //! ⭐ Cada lei tem o seu NEUTRO, e o neutro é a lei de antes ao bit: [`Pen::default`] não muda um único
 //! carimbo (o rato, `pressure 1` e `tilt [0, 0]`, idem com qualquer valor).
 
+use ph2d_det_math::DetMath as _;
 /// Para onde o carimbo aponta (o `brush_rotation_mode` do Rebelle, sem a rotação de barril — dono 08/10).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DabRotation {
@@ -154,8 +155,8 @@ impl DabTilt {
         );
         let (meio, raiz) = (0.5 * (a + d), (0.25 * (a - d) * (a - d) + b * b).sqrt());
         let (s1, s2) = ((meio + raiz).sqrt(), (meio - raiz).max(0.0).sqrt());
-        let ang = 0.5 * (2.0 * b).atan2(a - d);
-        (s1, [ang.cos(), ang.sin()], s2 / s1.max(1e-6))
+        let ang = 0.5 * (2.0 * b).det_atan2(a - d);
+        (s1, [ang.det_cos(), ang.det_sin()], s2 / s1.max(1e-6))
     }
 }
 
@@ -178,14 +179,14 @@ impl Tilt {
             (a.clamp(-1.0, 1.0) * 90.0)
                 .clamp(-89.9, 89.9)
                 .to_radians()
-                .tan()
+                .det_tan()
         };
         let (x, y) = (tan(tilt[0]), tan(tilt[1]));
-        let r = x.hypot(y);
+        let r = x.det_hypot(y);
         if r <= f32::EPSILON {
             return (0.0, [1.0, 0.0]);
         }
-        (r.atan().to_degrees(), [x / r, y / r])
+        (r.det_atan().to_degrees(), [x / r, y / r])
     }
 
     /// A quantidade `t` a um ângulo à vertical.
@@ -211,7 +212,7 @@ impl Tilt {
         if self.lag_px <= 0.0 {
             return tilt;
         }
-        let k = 1.0 - (-caminho.max(0.0) / self.lag_px).exp();
+        let k = 1.0 - (-caminho.max(0.0) / self.lag_px).det_exp();
         [
             prev[0] + (tilt[0] - prev[0]) * k,
             prev[1] + (tilt[1] - prev[1]) * k,

@@ -11,6 +11,7 @@
 //! campos privados do [`Stroke`] sem alargar visibilidade nenhuma.
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// Max dabs a single [`Stroke::walk_space`] may emit — a **BATENTE de MEMÓRIA**, irmão do
 /// `MAX_AIRBRUSH_DABS_PER_TICK` e escrito pelo mesmo motivo.
@@ -80,7 +81,7 @@ impl Stroke {
         // o traço aos bocados. *A lei é uma só, e nunca foi sobre a deformação da arte.*
         let ao_longo = {
             let v = self.spec.footprint_deform().apply(dir);
-            v[0].hypot(v[1])
+            v[0].det_hypot(v[1])
         };
         let base_step = self.spec.passo_ao_longo_px(self.spec.spacing, dir);
         // Smoothing length for the heading EMA, from the brush diameter (Krita's Fade is brush-relative).

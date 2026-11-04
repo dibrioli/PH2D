@@ -3,6 +3,7 @@
 //! (pure move).
 
 use super::*;
+use ph2d_det_math::DetMath as _;
 
 /// Photoshop-style Levels transfer in DISPLAY space: display input `s` (`0..=1`)
 /// → display output. Input black/white points clip+stretch the range, `gamma`
@@ -24,7 +25,7 @@ fn levels_transfer(s: f32, p: &LevelsParams) -> f32 {
     };
     // Midtone gamma (PS: out = t^(1/γ); γ > 1 brightens). Neutral γ = 1.
     let g = if p.gamma > 1e-3 {
-        t.powf(1.0 / p.gamma)
+        t.det_powf(1.0 / p.gamma)
     } else {
         t
     };
@@ -71,10 +72,10 @@ pub(crate) fn apply_levels(p: &LevelsParams, acc: &mut [[f32; 4]]) {
 /// Levels gamma ↔ slider: log-symmetric so the neutral γ=1 sits at the slider
 /// midpoint and the usable range is γ ∈ [0.1, 10].
 pub(crate) fn levels_gamma_to_slider(gamma: f32) -> f32 {
-    (gamma.max(1e-3).log10() / 2.0 + 0.5).clamp(0.0, 1.0)
+    (gamma.max(1e-3).det_log10() / 2.0 + 0.5).clamp(0.0, 1.0)
 }
 
 /// Inverse of [`levels_gamma_to_slider`].
 pub(crate) fn levels_slider_to_gamma(s: f32) -> f32 {
-    10.0_f32.powf((s.clamp(0.0, 1.0) - 0.5) * 2.0)
+    10.0_f32.det_powf((s.clamp(0.0, 1.0) - 0.5) * 2.0)
 }

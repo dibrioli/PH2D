@@ -7,6 +7,7 @@
 //! razão: as bandas.
 
 use super::{DepositGate, HeightDab, HeightFields, NO_GRAIN, derive_height, sweep_residual};
+use ph2d_det_math::DetMath as _;
 
 /// Tudo o que o laço de texel precisa saber sobre ESTE dab, resolvido uma vez — e o que uma banda
 /// recebe por referência compartilhada.
@@ -344,7 +345,7 @@ pub(super) struct SubPasso {
 impl SubPasso {
     pub(super) fn new(cap: crate::capsula::Capsula) -> Self {
         let v = cap.off(1);
-        let l = v[0].hypot(v[1]);
+        let l = v[0].det_hypot(v[1]);
         Self {
             cap,
             eixo: ([v[0] / l, v[1] / l], l),

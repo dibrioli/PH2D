@@ -20,6 +20,7 @@ use crate::solver::{
     smooth_velocity,
 };
 use crate::tuning::{KNOB_COUNT, Knob, Tuning};
+use ph2d_det_math::DetMath as _;
 
 pub const SIM_HZ: f64 = 40.0;
 
@@ -142,7 +143,7 @@ impl Params {
         if self.absorcao == ABSORCAO_NEUTRA {
             r
         } else {
-            r.powf(self.absorcao)
+            r.det_powf(self.absorcao)
         }
     }
 }

@@ -31,9 +31,9 @@ const AGUAS: [f64; 4] = [1.0, 0.7, 0.4, 0.2];
 /// sai o Over Oil: S 4/8), `3eb13d38db` (K-M ligado de fábrica: as seis), `7a4bc540b7` (E4: bancada None) e
 /// `e8f35b5710` (E10, a parede LevelingOwnStroke sai — Bug #56: bancada None).
 const ESPERADO: [(&str, Option<u8>, u64); 6] = [
-    ("S", None, 0xc1b1_d431_0763_a0bd),
-    ("S", Some(4), 0xedcb_6ccd_5e5f_c477),
-    ("S", Some(8), 0xe221_bbd6_7fd5_9e7c),
+    ("S", None, 0x4be5_bf10_fbce_2faf),
+    ("S", Some(4), 0x8bfb_b438_9466_63f5),
+    ("S", Some(8), 0x5cdb_a16f_ee13_2b96),
     ("bancada", None, 0x4ddc_87e6_57ab_af1e),
     ("bancada", Some(4), 0x5efd_b608_430e_d8aa),
     ("bancada", Some(8), 0x919c_4bf2_4ee7_5379),

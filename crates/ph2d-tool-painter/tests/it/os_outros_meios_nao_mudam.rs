@@ -7,6 +7,9 @@
 //! 1.º commit de produto da linha; as
 //! imagens estão em `docs/Painter/NewFeaturesWetPaint/fixtures/sonda_28/`. Um hash que muda aqui é um
 //! meio que não devia ter mudado: a cura é desfazer, nunca regravar o número.
+//!
+//! Única regravação (04/11, Bug #58, aprovada pelo dono): a troca para `ph2d-det-math` mudou 1 byte em 2 560 000 na
+//! Watercolor e 2 no Impasto, todos de 1 nível; com a libm do sistema na mesma árvore, os hashes antigos voltam.
 
 use super::exame_bancada::aquarela_neutra;
 use super::sonda_gestos::{fnv1a, pinta_cena, tela};
@@ -16,8 +19,8 @@ const SIZE: f32 = 28.0;
 
 const ESPERADO: [(&str, PaintMedia, u64); 3] = [
     ("digital", PaintMedia::Digital, 0x9b4c_55cf_f565_67bd),
-    ("watercolor", PaintMedia::Watercolor, 0xc4fd_b261_ca6e_97af),
-    ("impasto", PaintMedia::Impasto, 0xd6f7_2b02_2a53_0144),
+    ("watercolor", PaintMedia::Watercolor, 0x4de4_4b6b_ac9d_1c60),
+    ("impasto", PaintMedia::Impasto, 0x934d_7d75_f256_bb6c),
 ];
 
 #[test]

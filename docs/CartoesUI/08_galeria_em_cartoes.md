@@ -191,7 +191,7 @@ Export (acende «Exported»), dobrar um cartão, arrastar um cartão para outra 
 «Use» da Image, escrever na Target da Camera, «+»/«−» das regras, Water/Oil, Fire, os filhos do Solo, a pega da
 curva.
 
-Fotos em `maquete/`: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460, com `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito aberta) · `g4_galeria_casos_reais` (2700) · `g4b_…` (4250) · `g4c_…` (5100) · `g5_galeria_rive` (5950) · `g2_galeria_meio` (6950) · `g2b_galeria_meio` (7700) · `g3_galeria_fim` (9400) · `g6_dates_e_cardback` (8700: datas, barras e verso na lei do cartão, smoke 03/11), com
+Fotos em `maquete/`: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460, com `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito aberta) · `g4_galeria_casos_reais` (2700) · `g4b_…` (4250) · `g4c_…` (5100) · `g5_galeria_rive` (5950) · `g2_galeria_meio` (6950) · `g2b_galeria_meio` (7700) · `g3_galeria_fim` (9400) · `g6_dates_e_cardback` (9000: datas, barras com linhas de amostra e verso na lei do cartão, smoke 03/11) · `g7_advanced` (rolagem ao fim) · `g7b_render` (8120: parado × quadro 42), com
 `PH2D_GALLERY_SMOKE_SCROLL=<px>` a segurar a rolagem (o evento sintético não chega à sessão virtual).
 Os corpos de sempre pintam com a tinta do cartão publicada (`card_ink::com`): a janela flutuante
 (`PH2D_CARDS=0`) não publica nada e não muda. Dentro do corpo os de sempre seguem a lei do

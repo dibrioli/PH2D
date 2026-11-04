@@ -208,11 +208,9 @@ pub fn paint_card_list_pinned(
         m::LIST_TITLE_PX,
         w - m::LIST_PAD_X * 2.0
             - m::HEAD_ICON_BOX
-                * if footer.is_some_and(|f| f.at_top) {
-                    2.0
-                } else {
-                    1.0
-                },
+                * (1.0
+                    + f32::from(u8::from(footer.is_some_and(|f| f.at_top)))
+                    + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some()))),
         resolve(ColorToken::KanbanListFg, theme),
         m::LIST_TITLE_TRACKING_EM,
     );

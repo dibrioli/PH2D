@@ -23,6 +23,8 @@ fn viewport() -> Rect {
 }
 
 fn pintado() -> (MockPanelHost, PhysicsPanelState, Vec<(NodeId, Rect)>) {
+    // O corpo de antes (`PH2D_CARDS=0`); os cartões: `os_cartoes.rs`.
+    ph2d_panel_physics::cards::force_cards_on_this_thread(Some(false));
     set_current_physics(Some(PhysicsSnapshot::default()));
     let _ = ph2d_panel_physics::drain_intents();
     let mut host = MockPanelHost::with_panel::<PhysicsPanel>();

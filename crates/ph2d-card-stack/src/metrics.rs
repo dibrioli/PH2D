@@ -56,6 +56,9 @@ pub const FIELD_BORDER: f32 = 1.0;
 /// T64: a caixa de marcar à Figma (dono 02/11) — o quadradinho e o espaço até ao nome.
 pub const CHECK_BOX: f32 = 16.0;
 pub const CHECK_GAP: f32 = 8.0;
+/// A grelha triangular de ligar/desligar: a célula (encolhe com o cartão) e o vão.
+pub const GRID_CELL: f32 = 22.0;
+pub const GRID_GAP: f32 = 4.0;
 /// A célula do ícone — a PEGA do scrub (o arrasto nasce só aqui).
 pub const ICON_CELL: f32 = 26.0;
 /// O desenho do ícone nas caixas e segmentos: `14` da maquete + 30 % (dono 01/11, «os ícones

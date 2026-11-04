@@ -80,6 +80,9 @@ pub enum Widget<'a> {
     Text { id: NodeId, placeholder: &'a str },
     /// Um ícone fixo numa caixa quadrada (o tipo do objeto) — não é clicável.
     Badge(IconId),
+    /// Um FACTO só de leitura (a escala do projeto, quantos corpos há): o valor sem caixa, porque a
+    /// caixa promete edição. Não regista clique.
+    Readout { text: &'a str },
     /// Ícones soltos, sem caixa (👁 · 🔒, girar 90° · espelhar, a corrente) — um quadrado cada.
     Bare(&'a [Seg<'a>]),
     /// A amostra de cor + o código (Fill/Stroke, 02 §2.7): o clique na amostra abre o seletor; com
@@ -155,6 +158,8 @@ pub mod entra_sai;
 pub mod estilos;
 #[path = "cards_linhas.rs"]
 mod linhas;
+#[path = "cards_linhas_extra.rs"]
+pub mod linhas_extra;
 #[path = "cards_lista.rs"]
 mod lista;
 #[path = "cards_menu.rs"]

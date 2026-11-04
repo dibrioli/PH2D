@@ -24,6 +24,7 @@
 //! toggles). Second doors onto either would diverge, and the divergence would
 //! be visible.
 
+pub mod cards;
 pub mod ids;
 pub mod interact;
 mod paint;

@@ -65,6 +65,8 @@ fn arrange_run(
     recorded_run_seconds: f32,
     discarded_run_seconds: f32,
 ) -> (MockPanelHost, PhysicsPanelState) {
+    // Este ficheiro mede o corpo de antes (`PH2D_CARDS=0`); os cartões: `tests/it/os_cartoes.rs`.
+    ph2d_panel_physics::cards::force_cards_on_this_thread(Some(false));
     set_current_physics(Some(PhysicsSnapshot {
         settings,
         vivo: settings,

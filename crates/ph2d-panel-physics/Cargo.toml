@@ -31,6 +31,10 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # Os eventos de ponteiro REAIS (botão direito, arrasto da pega) do gate de costura das secções.
 ph2d-host = { path = "../ph2d-host" }
+# O Esc real a meio do scrub (`dispatch_key` pede a arena do quadro).
+bumpalo = { version = "3", features = ["collections"] }
+# A geometria do cartão (a pega do campo), nos testes do gesto.
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 
 [lints]
 workspace = true

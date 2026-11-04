@@ -52,6 +52,8 @@ pub struct CardLists {
     pub(super) sections: std::collections::BTreeSet<NodeId>,
     /// O ícone de menu ao lado do título de cada lista (D21): botão → (painel, rect do botão).
     pub(super) menus: BTreeMap<NodeId, (NodeId, crate::zones::Rect)>,
+    /// O «×» no cabeçalho da lista dos painéis que se fecham por ele: painel → id do fecho.
+    pub(super) closes: BTreeMap<NodeId, NodeId>,
     /// As linhas da lista de estilos de cor ABERTA (D28/D30): linha → estilo. A lista publica-as
     /// antes de pintar; o botão direito numa delas abre o menu dela sem o despacho ver o painel.
     pub(super) style_rows: BTreeMap<NodeId, u32>,
@@ -189,6 +191,17 @@ impl WidgetStore {
     /// Regista o ícone de menu de `panel` (a pintura, todo quadro).
     pub fn mark_card_list_menu(&mut self, button: NodeId, panel: NodeId, at: crate::zones::Rect) {
         self.card_lists.menus.insert(button, (panel, at));
+    }
+
+    /// Declara o «×» da lista de `panel`: o id do fecho que o painel já trata (`Click`).
+    pub fn mark_card_list_close(&mut self, panel: NodeId, close: NodeId) {
+        self.card_lists.closes.insert(panel, close);
+    }
+
+    /// O fecho declarado da lista de `panel`.
+    #[must_use]
+    pub fn card_list_close(&self, panel: NodeId) -> Option<NodeId> {
+        self.card_lists.closes.get(&panel).copied()
     }
 
     /// Publica as linhas da lista de estilos de cor aberta (vazia = fechada), todo quadro.

@@ -95,6 +95,18 @@ impl<'s> CardCtx<'s> {
                     );
                 }
                 Widget::Bare(segs) => self.bare(r, segs),
+                Widget::Readout { text } => {
+                    crate::paint::paint_text_elided(
+                        self.text_system,
+                        self.scene,
+                        text,
+                        r.x,
+                        r.y + (r.h - m::VALUE_PX) * 0.5,
+                        m::VALUE_PX,
+                        r.w,
+                        self.ink.color(ColorToken::Text1),
+                    );
+                }
                 Widget::Swatch {
                     id,
                     rgba,

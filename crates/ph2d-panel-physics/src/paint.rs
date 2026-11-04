@@ -42,6 +42,21 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(ids::PHYSICS_PANEL, rect);
 
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut(), &snapshot);
+        let cartoes = crate::cards::cards(&snapshot);
+        ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ids::PHYSICS_PANEL,
+            PhysicsPanel::TITLE.tr(),
+            &cartoes,
+        );
+        let store = ctx.host.store();
+        set_last_content_h(store.panel_content_h(ids::PHYSICS_PANEL).unwrap_or(0.0));
+        set_last_visible_h(store.panel_visible_h(ids::PHYSICS_PANEL).unwrap_or(0.0));
+        return;
+    }
+
     paint_panel_surface(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles. Reuse the Inspector ids because the

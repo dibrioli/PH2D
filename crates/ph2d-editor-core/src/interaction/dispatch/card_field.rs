@@ -64,6 +64,9 @@ pub(super) fn escape_scrub(store: &mut WidgetStore, events: &mut BumpVec<'_, Wid
     if d.crossed_threshold {
         super::apply_chip_value_with_mirror(store, d.id, d.start_value);
         events.push(WidgetEvent::ValueChanged(d.id));
+        // O painel que engole o evento do chip (Physics) só ouve a barra: sem isto o Esc mostrava o
+        // valor velho e o mundo ficava com o arrastado.
+        super::push_mirrored_slider_event(store, d.id, false, events);
     }
     true
 }

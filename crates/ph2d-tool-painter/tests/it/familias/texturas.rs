@@ -62,7 +62,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
         texturas: &[("shape", estrela)],
         ..ReceitaMeio::digital("Stamp", "Stamp", "Stars")
     },
-    // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO nítido (0,72) sobre um miolo
+    // K-4 — o BOKEH (Krita «z) Stamp Bokeh»): discos de luz espalhados, um ARO (0,62, largo e suave: dono 04/11) sobre um miolo
     // translúcido (0,20 — o perfil medido de um disco de 150 px), tamanhos muito variados; o tamanho pela pressão.
     // J4 «Motor J4»: o passo pelo diâmetro à pressão (o rasto de bolinhas); a pressão a crescer o disco pela curva
     // 1,5 (r10–r12: o Krita vai de pontinhos a discos grandes); sem micro-pontos (r12: «pontinhos escuros a mais»).
@@ -419,7 +419,8 @@ const IMAGEM_AREA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "l
 
 /// O perfil do disco de bokeh (x = a distância ao centro ÷ o raio): miolo 0,28 do aro, o aro a 0,95 e a queda
 /// em 1,5 % do raio — o disco de 150 px do Krita: 47 · 52–75 (o brilho de dentro) · 166 · 0 em 255.
-const ARO: &str = r#"[{"handle": "Vector", "id": 0, "x": 0.0, "y": 0.28}, {"handle": "Vector", "id": 1, "x": 0.92, "y": 0.31}, {"handle": "Vector", "id": 2, "x": 0.965, "y": 1.0}, {"handle": "Vector", "id": 3, "x": 0.99, "y": 0.6}, {"handle": "Vector", "id": 4, "x": 1.0, "y": 0.0}]"#;
+/// O perfil que o dono desenhou no smoke de 04/11 (a crista de ~0,25 do raio, em vez de 0,05 a 0,92–1): «suavizar um pouco».
+const ARO: &str = r#"[{"handle": "Vector", "id": 0, "x": 0.0, "y": 0.28}, {"handle": "Vector", "id": 1, "x": 0.756, "y": 0.31}, {"handle": "Vector", "id": 5, "x": 0.79, "y": 0.49}, {"handle": "Vector", "id": 2, "x": 0.852, "y": 0.62}, {"handle": "Vector", "id": 3, "x": 0.92, "y": 0.47}, {"handle": "Vector", "id": 4, "x": 1.0, "y": 0.0}]"#;
 
 // ── As imagens (nossas, procedurais: só polinómios e raízes — o mesmo byte em toda máquina) ──────────────────────
 
@@ -838,7 +839,10 @@ const FOTOS: [(&str, &str, f64, [Faixa; 2]); 6] = [
 /// O que faz a identidade de cada um: (faixa 0 = 40 px · 1 = 200 px, a medida). A estrela do Rebelle a 200 px é um
 /// QUADRADO (o carimbo dele ao tecto), fora; o salpico a 200 px parte-se em gotículas que a régua das manchas conta.
 /// Só os APROVADOS; as outras fotos da família ficam como IRMÃOS (a lei dos irmãos mede contra todas).
-const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
+///
+/// O Bokeh saiu daqui em 04/11: o aro largo que o dono desenhou no smoke manda mais que a foto do Krita (Pontos 4,2
+/// contra 21 ± 9,5 a 40 px). O que o vigia agora: `a_borda_pela_area`; a foto dele fica como irmã.
+const IDENTIDADE: [(&str, &[(usize, M)]); 2] = [
     (
         "Halftone",
         &[
@@ -849,10 +853,6 @@ const IDENTIDADE: [(&str, &[(usize, M)]); 3] = [
         ],
     ),
     ("Stars", &[(0, M::Gota), (0, M::Contraste), (0, M::CvArea)]),
-    (
-        "Bokeh",
-        &[(1, M::Contraste), (0, M::Pontos), (0, M::CvArea)],
-    ),
 ];
 
 /// ⭐ **Cada carimbo reconhece-se pela foto do seu oráculo** (J4, `docs/Painter/Pinceis/exames/texturas.md`): pintado

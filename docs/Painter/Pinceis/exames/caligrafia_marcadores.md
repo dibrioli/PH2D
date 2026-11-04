@@ -6,6 +6,12 @@
 > `_rebelle` = 2.º oráculo, 1.ª receita). Réguas, custo, mutação, a cena do tremor: [`caligrafia_marcadores/`](caligrafia_marcadores/).
 > 14 revisores cegos novos (05 §2; os «doc.» com a frase da identidade, BRIEFING §2.9).
 
+> **04/11 (smoke, dono):** o Marker Liner, e as receitas em estudo do Chisel e do Dry Marker, passam de Multiply a **Mix**.
+> O Multiply vinha de casar o Rebelle (21/10), que deixou de ser a referência; o Liner era o único marcador assim. Medido
+> em Mix, sobre papel branco: sobreposição 1,00 (o Multiply 1,30 na régua `sobre_si`); num laço que se cruza, verde 30 no
+> braço e no cruzamento a pressão 1 e 120 a pressão 0,5, ±1 nível ao longo do braço (`a_borda_pela_area::sonda_o_liner_em_mix`).
+> O que abaixo fala de Multiply no Liner é a história de 21/10.
+
 ## Resumo
 
 | # | pincel | veredito | porquê (o resto que dois revisores repetem) |

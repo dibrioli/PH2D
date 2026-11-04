@@ -33,6 +33,10 @@ nosso tomado pelo original 6/6, baixa). Custo p95 0,17 · 0,37 · 0,96 ms. Port�
 
 ## K-4 Bokeh — APROVADO
 
+> **04/11 (smoke, dono):** o aro é o que o dono desenhou (`(0,0.28) (0.756,0.31) (0.79,0.49) (0.852,0.62) (0.92,0.47) (1,0)`,
+> lido da foto dele), mais largo e suave. A foto do Krita deixa de o julgar: com esta curva Pontos a 40 px dá 4,2 contra
+> 21 ± 9,5, e o Bokeh saiu da `IDENTIDADE` de `cada_carimbo_se_reconhece_pela_foto`. Causa do defeito: BUGS_painter #59.
+
 - **Receita** (Digital): o aro por `custom_falloff` (miolo 0,28, aro 0,95), 3 por passo, **passo 0,75 pelo diâmetro à
   pressão**, partícula 0,6, `jitter_scale` 0,35, a pressão no tamanho pela curva 1,5 e na opacidade. Krita `z) Stamp Bokeh`.
 - **A lei que faltava** (r3–r6): na pressão baixa o Krita deixa um rasto DENSO de bolinhas — o passo segue o diâmetro do

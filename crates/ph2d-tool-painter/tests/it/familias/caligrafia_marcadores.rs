@@ -157,10 +157,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("dab_flatten", "0.55"),
             ("dab_angle_deg", "0"),
             ("dab_quina", "0.7"),
-            ("blend", r#""Multiply""#),
+            ("blend", r#""Mix""#),
             ("continuous_spacing", "true"),
-            // O Multiply compõe o traço como UMA camada (o plano do traço): não escurece a si mesmo, dois traços sim —
-            // o marcador do Rebelle. O tecto POR DAB: a tinta do traço pára na opacidade da mão.
+            // Mix (dono 04/11; o Multiply vinha do Rebelle, que deixou de ser a referência). O tecto POR DAB: a tinta do
+            // traço pára na opacidade da mão, e o traço não escurece a si mesmo.
             ("tecto_por_dab", "true"),
         ],
         mao: &[
@@ -192,7 +192,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
                 "taper",
                 r#"{"start":0.3,"tip_start":1.0,"opacity":1.0,"end":0.3,"tip_end":1.0}"#,
             ),
-            ("blend", r#""Multiply""#),
+            ("blend", r#""Mix""#),
             ("continuous_spacing", "true"),
         ],
         mao: &[
@@ -206,7 +206,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
     // E-4 — o marcador a ACABAR (Rebelle `Marker/Dry`): a ponta de bisel fixa de pé (L3: eixo a 100°, T 0,32·L; a 90° e
     // com a quina 0,8 as pontas saem rectas como as dele — a 100° saíam inclinadas), dabs soltos a 0,04, a
     // tinta que acaba de um lado da ponta (cheia em cima, nada em baixo — fixa na tela), translúcida; os dabs a fluxo
-    // baixo SOMAM dentro da camada do traço (o perfil é o do dab; sem a camada o Multiply escurecia o traço consigo até
+    // baixo SOMAM no traço (o perfil é o do dab; dono 04/11: Mix, como o Liner; o Multiply escurecia-o consigo até
     // ao azul-marinho) e a pressão leva a tinta. O tecto do Rebelle: a 200 px pinta 71 (o bisel de ~110).
     ReceitaMeio {
         pincel: &[
@@ -215,7 +215,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("dab_angle_deg", "90"),
             ("dab_quina", "0.8"),
             ("shape", PONTA_QUE_ACABA),
-            ("blend", r#""Multiply""#),
+            ("blend", r#""Mix""#),
             ("flow", "0.2"),
             ("continuous_spacing", "false"),
             ("spacing", "0.04"),
@@ -592,7 +592,7 @@ fn cada_letra_e_marcador_tem_a_sua_identidade() {
             bullet.sobre_si
         ),
     );
-    // O bisel deitado fixo na tela: o vertical 2,25 × o recto (contra o redondo 1,00) e a camada que multiplica (1,30).
+    // O bisel deitado na tela: o vertical 2,25 × o recto (redondo 1,00); o traço não escurece a si mesmo (Mix, 04/11: 1,00).
     regra(
         liner.de_pe > 1.6,
         format!(
@@ -601,9 +601,9 @@ fn cada_letra_e_marcador_tem_a_sua_identidade() {
         ),
     );
     regra(
-        liner.sobre_si > 1.17,
+        liner.sobre_si < 1.05,
         format!(
-            "Marker Liner: sobreposição {:.2} — não multiplica",
+            "Marker Liner: sobreposição {:.2} — escurece a si mesmo",
             liner.sobre_si
         ),
     );
@@ -630,8 +630,8 @@ fn cada_letra_e_marcador_tem_a_sua_identidade() {
             liner.entrada
         ),
     );
-    // A tinta que acaba de um lado (2,11 contra ~1,05), a ponta de pé (0,33 contra 1,00) e a camada que multiplica
-    // (1,43 contra a lâmina do Flat Block-in, 1,00, que tem a mesma ponta de pé).
+    // A tinta que acaba de um lado (2,11 contra ~1,05), a ponta de pé (0,33 contra 1,00) e os dabs a fluxo baixo que
+    // somam (Mix: 1,28 contra a lâmina do Flat Block-in, 1,00, que tem a mesma ponta de pé).
     regra(
         dry.cima_baixo > 1.58,
         format!(
@@ -649,7 +649,7 @@ fn cada_letra_e_marcador_tem_a_sua_identidade() {
     regra(
         dry.sobre_si > 1.22,
         format!(
-            "Dry Marker: sobreposição {:.2} — não multiplica",
+            "Dry Marker: sobreposição {:.2} — não soma",
             dry.sobre_si
         ),
     );

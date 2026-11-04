@@ -22,6 +22,20 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::any::Any;
 
+/// A aba pára acima do chrome que flutua na faixa de baixo (o HUD): a última linha e o Console ficam à
+/// vista. O chão do documento cobre o resto.
+fn acima_do_chrome(area: Rect, over: Option<Rect>) -> Rect {
+    match over {
+        Some(o) if o.y > area.y && o.y < area.y + area.h => Rect::new(
+            area.x,
+            area.y,
+            area.w,
+            o.y - ph2d_tokens::control_gap_px() - area.y,
+        ),
+        _ => area,
+    }
+}
+
 impl DocumentSurface for CodeDocs {
     fn tabs(&self) -> Vec<DocTab> {
         self.tab_ids()
@@ -50,6 +64,7 @@ impl DocumentSurface for CodeDocs {
         theme: &Theme,
     ) {
         self.pump();
+        let area = acima_do_chrome(area, self.over);
         self.area = area;
         let (list_r, doc_r) = self.split_area(area);
         let dirty: Vec<ScriptId> = self
@@ -70,6 +85,10 @@ impl DocumentSurface for CodeDocs {
             let lit = typing && blink_on(now, doc.last_input_ns, steady);
             doc.paint(doc_r, scene, text, theme, store, (lit, assist));
         }
+    }
+
+    fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
+        self.over = over;
     }
 
     fn pointer(
@@ -424,5 +443,30 @@ impl CodeDocs {
         } else {
             d.drop_hover(Some(at));
         }
+    }
+}
+
+#[cfg(test)]
+mod hud_tests {
+    use super::*;
+
+    /// A aba pára acima do HUD, e o rato lê a mesma área que a pintura.
+    #[test]
+    fn a_aba_para_acima_do_hud() {
+        let area = Rect::new(300.0, 20.0, 1300.0, 750.0);
+        let hud = Rect::new(460.0, 716.0, 1000.0, 34.0);
+        let mut docs = CodeDocs::default();
+        let mut scene = VectorScene::new();
+        let mut ts = TextSystem::without_system_fonts();
+        let theme = Theme::default();
+        docs.paint(1, area, &mut scene, &mut ts, &theme);
+        assert_eq!(docs.area.h, area.h, "nada a tapa: a área inteira");
+        docs.chrome_over(1, Some(hud));
+        docs.paint(1, area, &mut scene, &mut ts, &theme);
+        assert!(
+            docs.area.y + docs.area.h < hud.y,
+            "acima do HUD: {:?}",
+            docs.area
+        );
     }
 }

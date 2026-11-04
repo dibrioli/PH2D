@@ -141,18 +141,31 @@ impl ScriptListView {
         }
         let new = self.icon_button(scene, IconId::Plus, ListHit::New, toggle.x, y, &ui);
         let title = tr("code.list.title");
-        chrome::label(
-            scene,
-            ts,
-            title,
-            Rect::new(
-                area.x + gap,
-                y,
-                (new.x - gap - area.x - gap).max(0.0),
-                ROW_H_PX,
-            ),
-            &ui,
+        let caixa = Rect::new(
+            area.x + gap,
+            y,
+            (new.x - gap - area.x - gap).max(0.0),
+            ROW_H_PX,
         );
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            // O título da coluna no idioma da lista de cartões, como HIERARCHY e INSPECTOR.
+            use ph2d_editor_core::panel::cards::banda::metrics as m;
+            ph2d_editor_core::paint::paint_text_title_elided_tracked(
+                ts,
+                scene,
+                &title.to_uppercase(),
+                [
+                    caixa.x,
+                    caixa.y + ph2d_editor_core::paint::folga_do_texto(caixa.h, m::LIST_TITLE_PX),
+                ],
+                m::LIST_TITLE_PX,
+                caixa.w,
+                ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::KanbanListFg, *theme),
+                m::LIST_TITLE_TRACKING_EM,
+            );
+        } else {
+            chrome::label(scene, ts, title, caixa, &ui);
+        }
         let y = y + ROW_H_PX + gap;
         let field = Rect::new(area.x + gap, y, (area.w - gap * 2.0).max(0.0), ROW_H_PX);
         let focus = list.focus == Some(ListField::Filter);

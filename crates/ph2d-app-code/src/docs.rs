@@ -46,6 +46,8 @@ pub struct CodeDocs {
     pub(crate) focus: Option<u64>,
     /// A área da aba no último quadro (o rato pergunta por ela).
     pub(crate) area: Rect,
+    /// O chrome do hero que flutua sobre a faixa de baixo (o HUD).
+    pub(crate) over: Option<Rect>,
     /// E11: a lista de scripts do projeto, à esquerda.
     pub(crate) list: crate::list::ListState,
     /// O relógio do chrome (ns) e o «movimento reduzido» — o cursor pisca por eles.
@@ -107,6 +109,7 @@ impl Default for CodeDocs {
             consoles: BTreeMap::new(),
             focus: None,
             area: Rect::new(0.0, 0.0, 0.0, 0.0),
+            over: None,
             list: crate::list::ListState::default(),
             clock: (0, false),
             epoch: None,

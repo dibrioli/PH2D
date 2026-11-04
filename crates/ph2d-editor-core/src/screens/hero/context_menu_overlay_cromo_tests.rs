@@ -134,11 +134,21 @@ fn as_caixas_internas_vestem_a_superficie_sem_mover_alvo() {
         assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised), "{kind:?}");
         assert!(!pinta_a_cor(&novo, ColorToken::BgElev), "{kind:?}");
         assert!(pinta_a_cor(&antigo, ColorToken::BgElev), "{kind:?}");
-        assert_eq!(
-            alvos_novos.iter_registrations().collect::<Vec<_>>(),
-            alvos_antigos.iter_registrations().collect::<Vec<_>>(),
-            "{kind:?}"
+        let (novos, antigos): (Vec<_>, Vec<_>) = (
+            alvos_novos.iter_registrations().collect(),
+            alvos_antigos.iter_registrations().collect(),
         );
+        if kind == K::NewSpriteDialog {
+            // O corpo passou a linhas de cartão: os controlos são os mesmos, noutro sítio.
+            let so_ids = |v: &[(NodeId, Rect)]| {
+                let mut ids: Vec<_> = v.iter().map(|(id, _)| id.0).collect();
+                ids.sort_unstable();
+                ids
+            };
+            assert_eq!(so_ids(&novos), so_ids(&antigos));
+        } else {
+            assert_eq!(novos, antigos, "{kind:?}");
+        }
     }
 }
 
@@ -176,8 +186,11 @@ fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
     };
     let ((novo, alvos_novos), (antigo, alvos_antigos)) = (pinta(true), pinta(false));
     assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised));
-    assert!(!pinta_a_cor(&novo, ColorToken::BgElev));
-    assert!(pinta_a_cor(&antigo, ColorToken::BgElev));
+    // Os chips ainda pintam o próprio `BgElev` (barra vertical, M7): a moldura é o que muda a conta.
+    assert_eq!(
+        vezes_da_cor(&antigo, ColorToken::BgElev),
+        vezes_da_cor(&novo, ColorToken::BgElev) + 1,
+    );
     assert!(!alvos_novos.is_empty(), "um transbordo sem alvos não prova nada");
     assert_eq!(alvos_novos, alvos_antigos);
 }
@@ -210,11 +223,17 @@ fn o_new_sprite_em_cartoes_regista_cada_controlo_e_leva_a_unidade_no_rotulo() {
     {
         assert!(hits.rect_for(id).is_some(), "{id:?} sem alvo");
     }
+    // A caixa e os dois segmentos escolhidos: sem a moldura, os segmentos sozinhos davam verde.
+    assert_eq!(vezes_da_cor(&scene, ColorToken::KanbanCardRaised), 3);
     let largura = hits.rect_for(ids::NEW_SPRITE_WIDTH).expect("Width");
     assert_eq!(largura.h, ph2d_card_stack::metrics::FIELD_H);
-    assert!(store.card_field(ids::NEW_SPRITE_WIDTH).is_some());
-    assert_eq!(ph2d_i18n::tr("pixel.new_sprite.width_px"), "Width (px)");
-    assert_eq!(ph2d_i18n::tr("pixel.new_sprite.height_px"), "Height (px)");
+    for (id, nome) in [
+        (ids::NEW_SPRITE_WIDTH, "Width (px)"),
+        (ids::NEW_SPRITE_HEIGHT, "Height (px)"),
+    ] {
+        let dica = crate::panel::cards::dicas::field_hint(&store, id).expect("campo de cartão");
+        assert!(dica.contains(nome), "{dica}");
+    }
 }
 
 /// O texto da dica não pode cortar-se na caixa que a mede: o defeito «Add ent…» (foto m1_dica).

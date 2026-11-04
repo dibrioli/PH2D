@@ -17,7 +17,6 @@ const CRATES: [&str; 11] = [
     "ph2d-arclen",
     "ph2d-affine",
 ];
-const FICHEIROS: [&str; 1] = ["ph2d-tokens/src/color_space.rs"];
 const FUNCOES: [&str; 22] = [
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sin_cos", "sinh", "cosh", "tanh", "exp",
     "exp2", "exp_m1", "ln", "ln_1p", "log", "log2", "log10", "powf", "cbrt", "hypot",
@@ -82,7 +81,6 @@ fn o_motor_nao_chama_a_libm_do_sistema() {
     for c in CRATES {
         colhe(&raiz.join(c).join("src"), &mut fontes);
     }
-    fontes.extend(FICHEIROS.iter().map(|f| raiz.join(f)));
     assert!(
         fontes.len() > 300,
         "o censo varreu só {} ficheiros",

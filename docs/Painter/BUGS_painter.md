@@ -535,7 +535,7 @@ O Fast dry encolhe a bbox e torna a leitura visível. **Errada era a via de raiz
 ## Bug #58 (FECHADO 04/11, os pincéis à espera do dono) — o motor pinta outro byte conforme a `libm` do sistema: o `atan2f` da glibc
 
 **Decisão do dono (04/11): o mesmo traço dá o mesmo byte em qualquer computador.** Cura: a folha `ph2d-det-math` (`DetMath`, `det_sin`,
-`det_powf`…, sobre o `libm` fixado) nas crates que decidem o byte do traço: 11 crates mais `ph2d-tokens/src/color_space.rs`.
+`det_powf`…, sobre o `libm` fixado) nas crates que decidem o byte do traço: 11 crates (`ph2d-tokens` fica de fora: é folha sem dependências, com gate, e a prova mostra que o traço não a chama).
 **Provas:** `scripts/prova-libm/prova.sh` corre os alarmes com uma libm que erra 1 ulp em tudo: 0 chamadas, 0 pincéis diferentes (antes
 da cura o alarme disparava e havia 128 sítios). Catraca barata: `o_motor_nao_chama_a_libm_do_sistema`.
 **Custo medido** (`std` × `det` intercalados no mesmo processo, mínimo de 14 rodadas, traços reais, load 13–30, logo só a ordem de grandeza):

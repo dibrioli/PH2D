@@ -10770,7 +10770,6 @@ dependencies = [
 name = "ph2d-tokens"
 version = "0.0.0"
 dependencies = [
- "ph2d-det-math",
  "ph2d-label-census",
  "serde_json",
 ]

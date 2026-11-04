@@ -7,8 +7,6 @@
 //!
 //! Porte do algoritmo do Björn Ottosson (<https://bottosson.github.io/posts/oklab/>).
 
-use ph2d_det_math::DetMath as _;
-
 /// Convert OKLCH → sRGB 8-bit per Björn Ottosson's algorithm
 /// (https://bottosson.github.io/posts/oklab/). Out-of-gamut colors
 /// are clamped per channel.
@@ -30,8 +28,8 @@ pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
 pub fn oklch_to_linear_srgb(l: f64, c: f64, h_deg: f64) -> [f64; 3] {
     // OKLCH → OKLAB
     let h_rad = h_deg.to_radians();
-    let a = c * h_rad.det_cos();
-    let b = c * h_rad.det_sin();
+    let a = c * h_rad.cos();
+    let b = c * h_rad.sin();
 
     // OKLAB → linear LMS (cube)
     let l_ = l + 0.396_337_777_4 * a + 0.215_803_757_3 * b;
@@ -67,7 +65,7 @@ fn linear_to_srgb_byte(linear: f64) -> u8 {
     let srgb = if x <= 0.003_130_8 {
         12.92 * x
     } else {
-        1.055 * x.det_powf(1.0 / 2.4) - 0.055
+        1.055 * x.powf(1.0 / 2.4) - 0.055
     };
     (srgb.clamp(0.0, 1.0) * 255.0).round() as u8
 }
@@ -84,15 +82,15 @@ pub fn srgb_to_oklch(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
     let l = 0.412_221_470_8 * lr + 0.536_332_536_3 * lg + 0.051_445_992_9 * lb;
     let m = 0.211_903_498_2 * lr + 0.680_699_545_1 * lg + 0.107_396_956_6 * lb;
     let s = 0.088_302_461_9 * lr + 0.281_718_837_6 * lg + 0.629_978_700_5 * lb;
-    let l_ = l.det_cbrt();
-    let m_ = m.det_cbrt();
-    let s_ = s.det_cbrt();
+    let l_ = l.cbrt();
+    let m_ = m.cbrt();
+    let s_ = s.cbrt();
     // LMS → OKLAB
     let lab_l = 0.210_454_255_3 * l_ + 0.793_617_785_0 * m_ - 0.004_072_046_8 * s_;
     let lab_a = 1.977_998_495_1 * l_ - 2.428_592_205_0 * m_ + 0.450_593_709_9 * s_;
     let lab_b = 0.025_904_037_1 * l_ + 0.782_771_766_2 * m_ - 0.808_675_766_0 * s_;
     let c = (lab_a * lab_a + lab_b * lab_b).sqrt();
-    let mut h = lab_b.det_atan2(lab_a).to_degrees();
+    let mut h = lab_b.atan2(lab_a).to_degrees();
     if h < 0.0 {
         h += 360.0;
     }
@@ -104,6 +102,6 @@ fn srgb_byte_to_linear(channel: u8) -> f64 {
     if c <= 0.040_45 {
         c / 12.92
     } else {
-        ((c + 0.055) / 1.055).det_powf(2.4)
+        ((c + 0.055) / 1.055).powf(2.4)
     }
 }

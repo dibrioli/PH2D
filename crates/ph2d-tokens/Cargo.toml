@@ -20,7 +20,6 @@ build = "build.rs"
 # vazia (parser JSON ad-hoc; tokens.json tem schema estável de ~150 LOC).
 
 [dependencies]
-ph2d-det-math = { path = "../ph2d-det-math" }
 
 [build-dependencies]
 

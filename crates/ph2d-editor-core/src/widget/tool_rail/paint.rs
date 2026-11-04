@@ -116,6 +116,18 @@ pub fn paint_tool_rail_axis(
     travels: bool,
     axis: RailAxis,
 ) {
+    if let Some(barra) = crate::widget::cromo_barra::Barra::de(theme) {
+        return super::paint_cartao::paint_em_cartoes(
+            barra,
+            rail,
+            rect,
+            scene,
+            text_system,
+            theme,
+            store,
+            axis,
+        );
+    }
     let sub_font = sub_label_font_px();
     let slots = super::entry_rects(rail, rect, store.rail_button_size(), axis);
     for (slot, entry) in slots.iter().zip(rail.entries.iter()) {

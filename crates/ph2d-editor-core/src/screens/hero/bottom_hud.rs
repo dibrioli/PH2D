@@ -86,6 +86,17 @@ pub fn paint_bottom_hud(
     let bar = bar_que_cabe(stats, layout, store, text_system);
     let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
+    COLUNA_DO_MODULO.set(None);
+}
+
+thread_local! {
+    /// A coluna ① do módulo neste quadro (em cartões): o HUD cede-lhe como cede a uma lista (M7).
+    static COLUNA_DO_MODULO: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
+/// A coluna do módulo pintada neste quadro, antes do HUD; o HUD consome-a.
+pub(super) fn publica_coluna_do_modulo(r: Option<Rect>) {
+    COLUNA_DO_MODULO.set(r);
 }
 
 /// A ordem em que as leituras cedem quando a pílula não cabe no vão (índices de [`bar`]): as de
@@ -138,13 +149,14 @@ const MARGEM_DO_HUD: f32 = 20.0; // LITERAL-PX-OK: HUD viewport margin (chrome-s
 /// O vão horizontal que o HUD tem: a janela menos os painéis que flutuam na faixa dele. Quem está na
 /// metade esquerda aperta pela esquerda; quem está na direita, pela direita.
 fn vao_do_hud(layout: &HeroLayout, store: &crate::interaction::WidgetStore) -> (f32, f32) {
+    let coluna = COLUNA_DO_MODULO.get();
     let faixa = layout.bottom_hud;
     let meio = layout.viewport.x + layout.viewport.w * 0.5;
     let mut vao = (
         layout.viewport.x + MARGEM_DO_HUD,
         layout.viewport.x + layout.viewport.w - MARGEM_DO_HUD,
     );
-    for r in store.floating_panel_rects() {
+    for r in store.floating_panel_rects().chain(coluna) {
         if r.y >= faixa.y + faixa.h || r.y + r.h <= faixa.y {
             continue;
         }
@@ -284,6 +296,7 @@ pub fn paint_tool_hint_hud(
     let bar = StatusBar::new(NodeId(300), tr("chrome.hud.tool_hint"), segments);
     let rect = rect_of(&bar, layout, store, text_system);
     paint_status_bar(&bar, rect, scene, text_system, theme);
+    COLUNA_DO_MODULO.set(None);
 }
 
 #[cfg(test)]
@@ -299,6 +312,24 @@ mod o_hud_cede_tests {
     const PILULA: f32 = 1036.0;
 
     /// *Mutação: o `vao.1.min(..)` fora ⇒ o HUD pinta-se por cima da lista.*
+    #[test]
+    fn the_hud_gives_way_to_the_module_column_on_its_band() {
+        let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 1000.0, 800.0));
+        let store = WidgetStore::default();
+        let (esq_antes, _) = vao_do_hud(&layout, &store);
+        let faixa = layout.bottom_hud;
+        super::publica_coluna_do_modulo(Some(Rect::new(229.0, 100.0, 32.0, faixa.y + 40.0)));
+        let (esq, _) = vao_do_hud(&layout, &store);
+        assert!(esq > 261.0, "o vão começa depois da coluna: {esq}");
+        super::publica_coluna_do_modulo(Some(Rect::new(229.0, 100.0, 32.0, faixa.y - 110.0)));
+        assert_eq!(
+            vao_do_hud(&layout, &store).0,
+            esq_antes,
+            "a coluna acima da faixa não pesa"
+        );
+        super::publica_coluna_do_modulo(None);
+    }
+
     #[test]
     fn the_hud_gives_way_to_a_list_floating_on_its_band() {
         let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 1200.0, 1672.0));

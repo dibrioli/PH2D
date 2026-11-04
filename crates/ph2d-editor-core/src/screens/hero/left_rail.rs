@@ -442,12 +442,16 @@ fn paint_rail(
     // Register backdrop hit FIRST so chip hits (registered below by the chip
     // loop) win when overlapping (HitIndex walks back-to-front).
     hit_index.register(ids::RAIL_BACKDROP, bg_rect);
-    fill_rounded_rect(
-        scene,
-        bg_rect,
-        crate::paint::frame_radius(theme, Radius::Md.px()),
-        resolve(ColorToken::RailBg, theme),
-    );
+    if let Some(b) = crate::widget::cromo_barra::Barra::de(theme) {
+        b.painel(scene, bg_rect);
+    } else {
+        fill_rounded_rect(
+            scene,
+            bg_rect,
+            crate::paint::frame_radius(theme, Radius::Md.px()),
+            resolve(ColorToken::RailBg, theme),
+        );
+    }
     paint_tool_rail_t(
         &rail,
         rail_rect,
@@ -555,12 +559,16 @@ fn paint_rail_flyout(
         flyout_rect.w,
         flyout_rect.h + Spacing::Sm.px() * 2.0,
     );
-    fill_rounded_rect(
-        scene,
-        bg_rect,
-        crate::paint::frame_radius(theme, Radius::Md.px()),
-        resolve(ColorToken::RailBg, theme),
-    );
+    if let Some(b) = crate::widget::cromo_barra::Barra::de(theme) {
+        b.painel(scene, bg_rect);
+    } else {
+        fill_rounded_rect(
+            scene,
+            bg_rect,
+            crate::paint::frame_radius(theme, Radius::Md.px()),
+            resolve(ColorToken::RailBg, theme),
+        );
+    }
     paint_tool_rail_t(
         &rail,
         flyout_rect,

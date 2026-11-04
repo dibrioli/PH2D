@@ -256,6 +256,13 @@ pub fn number_with_key_mark(id: NodeId, slot: Rect) -> (Rect, Option<Rect>) {
     if !crate::paint::ui_is_redesign() || crate::widget::key_mark::key_mark_of(&[id]).is_none() {
         return (slot, None);
     }
+    if crate::widget::lista_flutuante::cromo_em_cartoes() {
+        // A lei do rótulo do cartão: a marca na linha da legenda, à direita; a caixa é o slot inteiro.
+        let lado = ph2d_card_stack::metrics::KEY_MARK_BOX;
+        let y = slot.y - LABEL_TO_CHIP_GAP_PX - LABEL_VISUAL_EXTENT_PX;
+        let marca = Rect::new(slot.x + slot.w - lado, y, lado, LABEL_VISUAL_EXTENT_PX);
+        return (slot, Some(marca));
+    }
     let w = crate::widget::DECORATOR_W.min(slot.w * 0.5);
     (
         Rect::new(slot.x, slot.y, slot.w - w, slot.h),

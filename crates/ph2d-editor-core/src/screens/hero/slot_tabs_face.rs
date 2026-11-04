@@ -96,14 +96,34 @@ pub struct TabFace {
 /// mesmo que encostá-lo ao recuo da esquerda; espremida, mantém-se equilibrado — que é o que o
 /// `TabBar` do modelo faz.
 pub fn face(r: Rect, title: &str, text_system: &mut TextSystem) -> TabFace {
+    let inteiro_ou_icone = crate::widget::lista_flutuante::cromo_em_cartoes();
+    face_com(r, title, text_system, inteiro_ou_icone)
+}
+
+/// A cara de uma aba cujo nome é do artista (documento): esse encurta, porque sem ele a aba não diz nada.
+pub fn face_elidida(r: Rect, title: &str, text_system: &mut TextSystem) -> TabFace {
+    face_com(r, title, text_system, false)
+}
+
+fn face_com(r: Rect, title: &str, text_system: &mut TextSystem, inteiro_ou_icone: bool) -> TabFace {
     let font = TypeToken::Sm.px();
     let ico = tab_icon_px();
     let budget = budget_of(r.w);
 
-    let shown = (budget > 0.0)
-        .then(|| crate::text_elide::fit(text_system, title, font, budget))
-        .filter(|s| keeps_a_letter(title, s))
-        .filter(|s| text_system.prefix_width(s, font) <= budget);
+    let shown = if inteiro_ou_icone {
+        // Só o ícone quando o nome não cabe inteiro; o balão do rato devolve o nome.
+        let inteiro = text_system.prefix_width(title, font) <= budget;
+        if !inteiro {
+            let _area = crate::text_elide::balao::Ambito::nova(r);
+            crate::text_elide::balao::corte(title);
+        }
+        inteiro.then(|| title.to_owned())
+    } else {
+        (budget > 0.0)
+            .then(|| crate::text_elide::fit(text_system, title, font, budget))
+            .filter(|s| keeps_a_letter(title, s))
+            .filter(|s| text_system.prefix_width(s, font) <= budget)
+    };
 
     let (text_w, text_h) = match &shown {
         Some(s) => {

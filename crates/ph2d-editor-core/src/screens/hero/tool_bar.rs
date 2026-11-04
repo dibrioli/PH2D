@@ -267,10 +267,9 @@ pub fn paint_tool_bar(
     // (a publicação do transbordo faz-se no `publish_overflow`, que o hero chama com `&mut store`)
     let size = store.rail_button_size();
     // A faixa inteira leva o fundo do trilho — é o mesmo chrome, deitado.
-    scene.fill_rect(
-        crate::paint::rect_to_vello(bar),
-        resolve(ColorToken::RailBg, theme),
-    );
+    let chao = crate::widget::cromo_barra::Barra::de(theme)
+        .map_or_else(|| resolve(ColorToken::RailBg, theme), |b| b.chao());
+    scene.fill_rect(crate::paint::rect_to_vello(bar), chao);
     let content = content_rect(bar);
     // ⚠️ **A fila é CORTADA pela própria faixa, no desenho E no hit.** Numa janela estreita (ou
     // com as duas colunas abertas) os chips passam do fim da área — e sem a blindagem eles
@@ -406,12 +405,16 @@ fn paint_flyout_below(
         flyout.w,
         flyout.h + Spacing::Sm.px() * 2.0,
     );
-    fill_rounded_rect(
-        scene,
-        bg,
-        crate::paint::frame_radius(theme, Radius::Md.px()),
-        resolve(ColorToken::RailBg, theme),
-    );
+    if let Some(b) = crate::widget::cromo_barra::Barra::de(theme) {
+        b.painel(scene, bg);
+    } else {
+        fill_rounded_rect(
+            scene,
+            bg,
+            crate::paint::frame_radius(theme, Radius::Md.px()),
+            resolve(ColorToken::RailBg, theme),
+        );
+    }
     paint_tool_rail_axis(
         &rail,
         flyout,

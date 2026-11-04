@@ -36,7 +36,7 @@ use crate::widget::property_box::{PropertyBox, PropertyBoxState, paint_property_
 mod classic;
 mod number_chip;
 use crate::zones::Rect;
-pub use number_chip::{paint_number_chip, paint_number_chip_flat};
+pub use number_chip::{paint_number_chip, paint_number_chip_do_cartao, paint_number_chip_flat};
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};

@@ -227,6 +227,7 @@ pub fn paint_hero_screen(
     // a decisão vive em [`super::grid_layer`] (report do dono de 2026-09-24: o `Behind` era um
     // `opacity × 0,4` e não punha a grade atrás de nada).
     super::grid_layer::paint_in_chrome(hero, &layout, scene);
+    super::canvas::paint_top_band(&layout, scene, hero.theme);
     // O rect que ESTE paint resolveu para as RÉGUAS, para quem trata ponteiro (o gesto da guia)
     // ler o mesmo retângulo — o irmão do `last_viewport`, e pelo mesmo motivo.
     //

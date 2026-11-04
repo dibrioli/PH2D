@@ -119,16 +119,21 @@ pub fn paint_status_bar(
 ) {
     // ⭐ A pílula é do CLÁSSICO: num tema moderno a barra é um rectângulo de raio 4 sem moldura.
     let radius = crate::paint::frame_radius(theme, Radius::Full.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    if superficie.tinta().is_some() {
+        superficie.moldura(scene, rect);
+    } else {
+        fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+        crate::paint::stroke_frame(
+            scene,
+            rect,
+            radius,
+            theme,
+            ph2d_tokens::visuals::Feel::Rest,
+            1.0,
+            resolve(ColorToken::Border, theme),
+        );
+    }
 
     if bar.segments.is_empty() {
         return;
@@ -144,10 +149,10 @@ pub fn paint_status_bar(
             // 1 px inner divider in Border color, full segment height
             // minus 6 px breathing room top/bottom.
             let div = Rect::new(x, rect.y + Spacing::Sm.px(), 1.0, rect.h - Spacing::Lg.px());
-            scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));
+            scene.fill_rect(rect_to_vello(div), superficie.cor(ColorToken::Border));
         }
         let fg_token = segment.tone.fg();
-        let fg = resolve(fg_token, theme);
+        let fg = superficie.cor(fg_token);
         let mut text_x = seg_rect.x + pad;
         if segment.leading_dot {
             let r = RAIO_DO_PONTO;

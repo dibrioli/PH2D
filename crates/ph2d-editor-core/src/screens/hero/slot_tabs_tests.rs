@@ -278,6 +278,8 @@ fn between_the_floor_and_the_full_name_a_tab_never_shows_a_useless_label() {
     let font = ph2d_tokens::TypeToken::Sm.px();
     let overhead = tab_pad_x() * 2.0 + tab_icon_px() + ph2d_tokens::icon_label_gap_px();
     let natural = tab_natural_w(title, &mut text);
+    // A lei de antes: em cartões o nome é inteiro ou nenhum (`barras_cartoes_tests`).
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
 
     let (mut with_label, mut without, mut useless_raw) = (0usize, 0usize, 0usize);
     let mut w = tab_floor_w();

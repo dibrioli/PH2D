@@ -369,7 +369,9 @@ pub fn paint_menu_bar(
     if bar.w <= 0.0 || bar.h <= 0.0 {
         return;
     }
-    scene.fill_rect(rect_to_vello(bar), resolve(ColorToken::Bg1, theme));
+    let chao = crate::widget::cromo_barra::Barra::de(theme)
+        .map_or_else(|| resolve(ColorToken::Bg1, theme), |b| b.chao());
+    scene.fill_rect(rect_to_vello(bar), chao);
     // ⛔⛔ **PRIMEIRO o fundo, e por isso ele PERDE para os títulos** — o `HitIndex` caminha de
     // trás para a frente, então o que se regista antes fica por baixo. Sem esta linha a barra
     // pinta 1366 px de opaco e deixa passar **86,9 %** deles para o desenho.

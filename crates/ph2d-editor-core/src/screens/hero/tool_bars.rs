@@ -169,6 +169,11 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
     let theme = hero.theme;
     let pinned = hero.store.selection_actions_pinned();
     let all = placed(&bars, area, pinned, hero.view.ui_mirrored);
+    if crate::widget::lista_flutuante::cromo_em_cartoes() {
+        let coluna = blocks(&bars, all.len())[0].clone();
+        let rects = all.get(coluna).unwrap_or_default().iter().map(|(_, r)| *r);
+        super::super::bottom_hud::publica_coluna_do_modulo(super::panel_of(rects));
+    }
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
     for b in blocks(&bars, all.len()) {
         if b.start < b.end && b.end <= all.len() {

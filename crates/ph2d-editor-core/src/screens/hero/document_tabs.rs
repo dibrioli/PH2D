@@ -57,7 +57,7 @@ pub fn surface_face(
     title: &str,
     text_system: &mut TextSystem,
 ) -> (Rect, Option<(String, f32, f32)>) {
-    let f = super::slot_tabs_face::face(tab, title, text_system);
+    let f = super::slot_tabs_face::face_elidida(tab, title, text_system);
     let Some((shown, _, y)) = f.label else {
         return (f.icon, None);
     };
@@ -314,41 +314,57 @@ pub fn paint(
         text_system,
     );
     let dragged = hero_docs.tab_drag.map(|d| Target::Board(d.board));
+    let barra = crate::widget::cromo_barra::Barra::de(theme);
+    if let (Some(b), Some(u)) = (
+        barra,
+        crate::widget::cromo_barra::uniao(
+            tabs.iter()
+                .filter(|(t, _)| *t != Target::New)
+                .map(|(_, r)| *r),
+        ),
+    ) {
+        b.pilula(scene, u);
+    }
     for &(t, r) in &tabs {
         if let (Target::Board(b), Some((_, buf))) =
             (t, editing.filter(|(e, _)| Target::Board(*e) == t))
         {
             debug_assert_eq!(Some(b), hero_docs.renaming);
+            let _veste = barra.map(|b| crate::widget::card_ink::publica(b.tinta()));
             paint_rename_field(r, buf, scene, text_system, theme, hit_index, store);
             continue;
         }
         let id = t.node();
         let is_on = t == active;
         let state = store.button_state(id).unwrap_or(ButtonState::Normal);
-        let bg = if is_on {
-            Some(ColorToken::AccentSoft)
-        } else if Some(t) == dragged
+        let hover = Some(t) == dragged
             || matches!(
                 state,
                 ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
-            )
-        {
-            Some(ColorToken::BgElev)
+            );
+        let fg = if let Some(b) = barra {
+            b.segmento(scene, r, is_on, hover)
         } else {
-            None
-        };
-        if let Some(bg) = bg {
-            let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-            fill_rounded_rect(scene, r, radius, resolve(bg, theme));
-        }
-        let fg = resolve(
-            if is_on {
-                ColorToken::Accent
+            let bg = if is_on {
+                Some(ColorToken::AccentSoft)
+            } else if hover {
+                Some(ColorToken::BgElev)
             } else {
-                ColorToken::Text2
-            },
-            theme,
-        );
+                None
+            };
+            if let Some(bg) = bg {
+                let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+                fill_rounded_rect(scene, r, radius, resolve(bg, theme));
+            }
+            resolve(
+                if is_on {
+                    ColorToken::Accent
+                } else {
+                    ColorToken::Text2
+                },
+                theme,
+            )
+        };
         match t {
             Target::Prev | Target::Next => {
                 let s = INLINE_ICON_PX;
@@ -407,14 +423,18 @@ pub fn paint(
                     store.button_state(cid),
                     Some(ButtonState::Hovered | ButtonState::Pressed)
                 );
-                let ink = resolve(
-                    if hot {
-                        ColorToken::Text1
-                    } else {
-                        ColorToken::Text3
-                    },
-                    theme,
-                );
+                let ink = match barra {
+                    Some(b) if !hot => b.rotulo(),
+                    Some(b) => b.texto(),
+                    None => resolve(
+                        if hot {
+                            ColorToken::Text1
+                        } else {
+                            ColorToken::Text3
+                        },
+                        theme,
+                    ),
+                };
                 paint_icon(scene, IconId::Close, close, ink, StrokeToken::Default.px());
                 hit_index.register(cid, close);
                 continue;

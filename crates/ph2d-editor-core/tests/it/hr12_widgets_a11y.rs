@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "cromo_barra.rs",
+        "os tons das barras do cromo; nao e' um controlo nem emite no' — a a11y e' a de quem a pinta (`tool_rail.rs`, `status_bar.rs`).",
+    ),
+    (
         "lista_flutuante.rs",
         "a moldura e os tons do que flutua no cromo; nao e' um controlo nem emite no' — a a11y e' a de quem a pinta (`context_menu.rs`, `tooltip.rs`).",
     ),
@@ -314,6 +318,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ),
     // Os dois irmãos do `paint.rs`, cortados pelo mesmo tecto (2026-10-02): a aritmética de onde
     // cada entrada cai e a tinta da legenda. Nenhum dos dois cria nó; o pai tem a árvore.
+    (
+        "tool_rail/paint_cartao.rs",
+        "paint only, the same entries in the card tones; parent owns the Toolbar a11y tree",
+    ),
     (
         "tool_rail/geometry.rs",
         "geometry only (where each entry lands); parent owns the Toolbar a11y tree",

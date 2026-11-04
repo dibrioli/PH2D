@@ -168,7 +168,9 @@ fn paint_smoke_minimal_rail() {
 #[test]
 fn o_chip_de_um_campo_com_canal_deixa_a_ponta_ao_losango() {
     use crate::widget::key_mark::{KeyMark, set_key_marks};
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
     crate::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
+    force_cromo_on_this_thread(Some(false));
     let slot = Rect::new(10.0, 0.0, 80.0, 24.0);
     let mut scene = VectorScene::new();
     set_key_marks(std::collections::BTreeMap::new());
@@ -188,7 +190,27 @@ fn o_chip_de_um_campo_com_canal_deixa_a_ponta_ao_losango() {
         "o chip entra no losango: {chip:?} × {d:?}"
     );
     assert!((d.x + d.w - (slot.x + slot.w)).abs() < 0.01);
+    // Em cartões a caixa é o slot inteiro e a marca sobe à linha da legenda, na mesma ponta.
+    force_cromo_on_this_thread(Some(true));
+    let (chip, losango) = number_with_key_mark(NodeId(6), slot);
+    let d = losango.expect("com canal há losango");
+    assert_eq!(chip, slot);
+    assert!(d.y + d.h <= slot.y, "a marca fica por cima da caixa: {d:?}");
+    assert!((d.x + d.w - (slot.x + slot.w)).abs() < 0.01);
+    force_cromo_on_this_thread(None);
     set_key_marks(std::collections::BTreeMap::new());
+}
+
+/// A legenda em caixa normal: as palavras da tabela; sigla e letra solta ficam.
+#[test]
+fn a_legenda_em_cartoes_e_em_caixa_normal() {
+    use super::caption::em_caixa_normal as f;
+    assert_eq!(f("MOVE"), "Move");
+    assert_eq!(f("ROT"), "Rotate");
+    assert_eq!(f("SQUAR"), "Square");
+    assert_eq!(f("W"), "W");
+    assert_eq!(f("CEQ"), "CEQ", "uma sigla fica como é");
+    assert_eq!(f("Corner round"), "Corner round");
 }
 
 /// ⭐ F48d — um PULLDOWN com canal mede-se com a folga do losango: o chip que sobra depois de o

@@ -69,6 +69,7 @@ pub fn paint_number_chip(
         text_system,
         theme,
         true,
+        true,
     );
 }
 
@@ -109,6 +110,60 @@ pub fn paint_number_chip_flat(
         text_system,
         theme,
         false,
+        true,
+    );
+}
+
+/// O chip sem caixa, com as setas só onde `setas` pede: numa barra em cartões elas aparecem sob o rato
+/// e o alvo delas é o de sempre.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_number_chip_do_cartao(
+    rect: Rect,
+    state: TextInputState,
+    value: f64,
+    display_override: Option<&str>,
+    buffer: Option<&str>,
+    mixed: bool,
+    caret: usize,
+    selection_anchor: Option<usize>,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    setas: bool,
+) {
+    paint_number_chip_inner(
+        rect,
+        state,
+        value,
+        display_override,
+        buffer,
+        mixed,
+        caret,
+        selection_anchor,
+        scene,
+        text_system,
+        theme,
+        false,
+        setas,
+    );
+}
+
+/// As setas de subir e descer na coluna que o despacho reserva.
+fn paint_setas(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let icon_color = crate::widget::card_ink::tinta(ColorToken::Text2, theme);
+    paint_icon(
+        scene,
+        IconId::ChevronUp,
+        stepper_up_rect(rect),
+        icon_color,
+        StrokeToken::Default.px(),
+    );
+    paint_icon(
+        scene,
+        IconId::ChevronDown,
+        stepper_down_rect(rect),
+        icon_color,
+        StrokeToken::Default.px(),
     );
 }
 
@@ -127,6 +182,7 @@ fn paint_number_chip_inner(
     text_system: &mut TextSystem,
     theme: Theme,
     draw_surface: bool,
+    setas: bool,
 ) {
     let focused = state == TextInputState::Focused;
     // ⭐ Raio e anel de foco pela porta do TEMA.
@@ -278,22 +334,8 @@ fn paint_number_chip_inner(
     }
     scene.pop_layer();
     // Stepper arrows (up + down) on the right edge — same column the
-    // dispatch carves for `apply_number_stepper_if_hit`. Color tracks the
-    // chip text color (Text2) — dimmer than the value text to keep the
-    // chip from looking busy.
-    let icon_color = crate::widget::card_ink::tinta(ColorToken::Text2, theme);
-    paint_icon(
-        scene,
-        IconId::ChevronUp,
-        stepper_up_rect(rect),
-        icon_color,
-        StrokeToken::Default.px(),
-    );
-    paint_icon(
-        scene,
-        IconId::ChevronDown,
-        stepper_down_rect(rect),
-        icon_color,
-        StrokeToken::Default.px(),
-    );
+    // dispatch carves for `apply_number_stepper_if_hit`.
+    if setas {
+        paint_setas(rect, scene, theme);
+    }
 }

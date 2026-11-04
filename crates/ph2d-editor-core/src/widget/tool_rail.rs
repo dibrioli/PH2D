@@ -452,6 +452,7 @@ mod caption;
 pub use caption::{paint_caption, sub_label_font_px};
 #[path = "tool_rail/paint.rs"]
 mod paint;
+mod paint_cartao;
 pub use paint::{paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t};
 
 #[cfg(test)]

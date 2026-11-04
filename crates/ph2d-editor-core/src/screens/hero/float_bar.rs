@@ -451,6 +451,9 @@ pub fn paint_panel(scene: &mut VectorScene, rects: impl IntoIterator<Item = Rect
     let Some(panel) = panel_of(rects) else {
         return;
     };
+    if let Some(b) = crate::widget::cromo_barra::Barra::de(theme) {
+        return b.painel(scene, panel);
+    }
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, panel, radius, resolve(ColorToken::BgElev, theme));
     crate::paint::stroke_frame(
@@ -499,6 +502,12 @@ pub fn paint_button(
         Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
     );
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    if let Some(barra) = crate::widget::cromo_barra::Barra::de(theme) {
+        let fg = barra.chip(scene, b.rect, b.on, hover);
+        hit_index.register(b.id, b.rect);
+        // A cor da família fica: é ela que agrupa a coluna. O escolhido lê-se no acento.
+        return if b.on { fg } else { resolve(b.tint, theme) };
+    }
     if b.on {
         fill_rounded_rect(
             scene,
@@ -584,7 +593,9 @@ pub fn paint_swatch(
             inner.w - 2.0 * k,
             inner.h - 2.0 * k,
         );
-        fill_rounded_rect(scene, hole, radius, resolve(ColorToken::BgElev, theme));
+        let furo = crate::widget::cromo_barra::Barra::de(theme)
+            .map_or_else(|| resolve(ColorToken::BgElev, theme), |b| b.chao());
+        fill_rounded_rect(scene, hole, radius, furo);
     }
 }
 

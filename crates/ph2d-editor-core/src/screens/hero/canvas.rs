@@ -85,11 +85,24 @@ pub fn paint_window_ground(layout: &HeroLayout, scene: &mut VectorScene, theme: 
         .path_elements(FLATTEN_TOL),
     );
     scene.push_clip_with_rule(&path, ph2d_vector::Fill::EvenOdd);
-    scene.fill_rect(
-        rect_to_vello(layout.viewport),
-        resolve(ColorToken::WindowGround, theme),
-    );
+    let chao = crate::widget::cromo_barra::Barra::de(theme)
+        .map_or_else(|| resolve(ColorToken::WindowGround, theme), |b| b.chao());
+    scene.fill_rect(rect_to_vello(layout.viewport), chao);
     scene.pop_layer();
+}
+
+/// A faixa das barras do topo, de ponta a ponta, por cima da grade e no chão das barras: em cartões as
+/// duas colunas flutuam abaixo dela, e sem isto a grade riscava o canto de cada coluna.
+pub fn paint_top_band(layout: &HeroLayout, scene: &mut VectorScene, theme: Theme) {
+    let Some(b) = crate::widget::cromo_barra::Barra::de(theme) else {
+        return;
+    };
+    let (top, fila) = (layout.top_bar, layout.tool_bar);
+    if fila.h <= 0.0 || (fila.y - (top.y + top.h)).abs() > f32::EPSILON {
+        return; // sem fila, ou com ela em baixo (`move_tool_bar_to_bottom`): nada a cobrir aqui
+    }
+    let faixa = Rect::new(layout.viewport.x, fila.y, layout.viewport.w, fila.h);
+    scene.fill_rect(rect_to_vello(faixa), b.chao());
 }
 
 /// O fundo do desenho — ⚠️ **só em modo FIXTURA**; ver [`paint_window_ground`].

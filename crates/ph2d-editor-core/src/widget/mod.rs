@@ -30,6 +30,7 @@ mod combobox;
 pub mod command_palette;
 pub mod composto;
 mod context_menu;
+pub mod cromo_barra;
 mod curve_editor;
 mod date_picker;
 mod divider;
@@ -250,10 +251,11 @@ pub use slider::{
     Slider, SliderOrientation, SliderState, TRACK_MAX_PX, paint_slider, paint_slider_track,
 };
 pub use slider_with_chip::{
-    DEFAULT_CHIP_W, DEFAULT_LABEL_W, default_chip_w, paint_number_chip, paint_slider_with_chip,
-    paint_slider_with_chip_layout, paint_slider_with_chip_layout_adaptive, slider_chip_value,
-    slider_with_chip_chip_rect, slider_with_chip_height, slider_with_chip_is_stacked,
-    slider_with_chip_label_rect, slider_with_chip_min_w,
+    DEFAULT_CHIP_W, DEFAULT_LABEL_W, default_chip_w, paint_number_chip,
+    paint_number_chip_do_cartao, paint_slider_with_chip, paint_slider_with_chip_layout,
+    paint_slider_with_chip_layout_adaptive, slider_chip_value, slider_with_chip_chip_rect,
+    slider_with_chip_height, slider_with_chip_is_stacked, slider_with_chip_label_rect,
+    slider_with_chip_min_w,
 };
 pub use spinner::{Spinner, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};

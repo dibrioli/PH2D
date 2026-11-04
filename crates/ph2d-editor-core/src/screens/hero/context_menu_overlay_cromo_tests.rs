@@ -186,11 +186,8 @@ fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
     };
     let ((novo, alvos_novos), (antigo, alvos_antigos)) = (pinta(true), pinta(false));
     assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised));
-    // Os chips ainda pintam o próprio `BgElev` (barra vertical, M7): a moldura é o que muda a conta.
-    assert_eq!(
-        vezes_da_cor(&antigo, ColorToken::BgElev),
-        vezes_da_cor(&novo, ColorToken::BgElev) + 1,
-    );
+    assert_eq!(vezes_da_cor(&novo, ColorToken::BgElev), 0);
+    assert!(vezes_da_cor(&antigo, ColorToken::BgElev) > 0);
     assert!(!alvos_novos.is_empty(), "um transbordo sem alvos não prova nada");
     assert_eq!(alvos_novos, alvos_antigos);
 }
@@ -325,11 +322,8 @@ fn o_titulo_do_menu_aberto_acende_no_tom_do_cartao_sem_mover_alvo() {
     let (novo, alvos_novos) = barra(true);
     assert!(pinta_a_cor(&novo, ColorToken::CardFieldHover));
     let (antigo, alvos_antigos) = barra(false);
-    // A aba de modo ativa também é `AccentSoft` (M3): o título aberto é o que muda a conta.
-    assert_eq!(
-        vezes_da_cor(&antigo, ColorToken::AccentSoft),
-        vezes_da_cor(&novo, ColorToken::AccentSoft) + 1,
-    );
+    assert_eq!(vezes_da_cor(&novo, ColorToken::AccentSoft), 0);
+    assert!(vezes_da_cor(&antigo, ColorToken::AccentSoft) > 0);
     assert_eq!(
         alvos_novos.iter_registrations().collect::<Vec<_>>(),
         alvos_antigos.iter_registrations().collect::<Vec<_>>(),

@@ -110,11 +110,30 @@ pub fn paint(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    for (l, r) in tab_rects(bar, menus_end_x, text_system) {
+    let barra = crate::widget::cromo_barra::Barra::de(theme);
+    let abas = tab_rects(bar, menus_end_x, text_system);
+    if let (Some(b), Some(u)) = (
+        barra,
+        crate::widget::cromo_barra::uniao(abas.iter().map(|(_, r)| *r)),
+    ) {
+        b.pilula(scene, u);
+    }
+    for (l, r) in abas {
         let is_on = l == active;
         let state = store
             .button_state(tab_node_id(l))
             .unwrap_or(ButtonState::Normal);
+        if let Some(b) = barra {
+            let hover = matches!(
+                state,
+                ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
+            );
+            let fg = b.segmento(scene, r, is_on, hover);
+            let titulo = l.spec().title.tr();
+            paint_text_centered(text_system, scene, titulo, r, TypeToken::Sm.px(), fg);
+            hit_index.register(tab_node_id(l), r);
+            continue;
+        }
         // ⚠️ **A aba ACTIVA fica fora do eixo do relógio**, pela mesma lei do chip activo do trilho:
         // *escolhida* não é uma quantidade — é o estado que diz *«a tela é esta»*.
         let bg = if is_on {
@@ -173,3 +192,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 #[cfg(test)]
 #[path = "layout_tabs_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "barras_cartoes_tests.rs"]
+mod barras_cartoes_tests;

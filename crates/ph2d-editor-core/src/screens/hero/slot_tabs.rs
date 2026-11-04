@@ -326,6 +326,31 @@ fn fitted_widths(natural: &[f32], inner: f32) -> Option<Vec<f32>> {
     Some(vec![floor; natural.len()])
 }
 
+/// Em cartões uma aba mostra o nome INTEIRO ou só o ícone (lei 7 de `docs/CartoesUI/05` §4), nunca o nome
+/// cortado: quem não cabe recolhe ao piso, a começar pela última, e a escolhida é a última a recolher.
+fn nome_inteiro_ou_icone(
+    natural: &[f32],
+    inner: f32,
+    escolhida: Option<usize>,
+) -> Option<Vec<f32>> {
+    let floor = tab_floor_w();
+    if natural.is_empty() || floor * natural.len() as f32 > inner {
+        return None;
+    }
+    let mut w = natural.to_vec();
+    let ordem = (0..w.len())
+        .rev()
+        .filter(|i| Some(*i) != escolhida)
+        .chain(escolhida);
+    for i in ordem {
+        if w.iter().sum::<f32>() <= inner {
+            break;
+        }
+        w[i] = floor;
+    }
+    Some(w)
+}
+
 /// ⭐ **A ÚNICA porta da geometria de uma fila de abas** — o pintor, o registo de hit e o despacho
 /// leem daqui.
 ///
@@ -431,11 +456,17 @@ pub fn tab_plan(
     }
     let widths = tab_widths(occ, text_system);
     let inset = Spacing::Xs.px() * 2.0;
+    let escolhida = front.and_then(|c| occ.iter().position(|o| o.node == c));
 
     // ⭐⭐⭐ **PRIMEIRO tenta-se dar aba a TODOS, na faixa INTEIRA** — ver [`fitted_widths`]. É esta
     // tentativa que decide se há setas: reservar-lhes espaço antes de saber se são precisas faria
     // uma fila que cabia deixar de caber por causa de uma saída que ela não usa.
-    if let Some(w) = fitted_widths(&widths, (bar.w - inset).max(0.0)) {
+    let cabe = if crate::widget::lista_flutuante::cromo_em_cartoes() {
+        nome_inteiro_ou_icone(&widths, (bar.w - inset).max(0.0), escolhida)
+    } else {
+        fitted_widths(&widths, (bar.w - inset).max(0.0))
+    };
+    if let Some(w) = cabe {
         return Some(TabPlan {
             start: 0,
             widths: w,
@@ -553,9 +584,11 @@ pub fn paint_slot_tabs(
         return;
     }
     let painted_for_dividers = painted.clone();
+    let barra = crate::widget::cromo_barra::Barra::de(theme);
     // ⚠️ **O chão é o da faixa INTEIRA**, e não o da parte que sobrou para as abas: as setas vivem
     //    dentro da fila, não ao lado dela.
-    scene.fill_rect(rect_to_vello(bar), resolve(tab_row_bg(), theme));
+    let chao = barra.map_or_else(|| resolve(tab_row_bg(), theme), |b| b.chao());
+    scene.fill_rect(rect_to_vello(bar), chao);
     super::slot_tabs_overflow::paint(
         bar,
         slot,
@@ -571,7 +604,9 @@ pub fn paint_slot_tabs(
         let state = store
             .button_state(tab_node_id(o.node))
             .unwrap_or(ButtonState::Normal);
-        if let Some(bg) = tab_bg(is_on, state) {
+        if let Some(b) = barra {
+            let _ = b.segmento(scene, r, is_on, state != ButtonState::Normal);
+        } else if let Some(bg) = tab_bg(is_on, state) {
             fill_rounded_rect_radii(scene, r, radii, resolve(bg, theme));
         }
         let fg = if is_on {
@@ -582,9 +617,12 @@ pub fn paint_slot_tabs(
         super::slot_tabs_face::paint(scene, text_system, r, o.icon, o.title.tr(), fg, theme);
         hit_index.register(tab_node_id(o.node), r);
     }
-    // ⚠️ **Depois das abas**, para a divisória não ficar por baixo do corpo da escolhida.
-    for d in tab_dividers(&painted_for_dividers, selected) {
-        scene.fill_rect(rect_to_vello(d), resolve(ColorToken::Border, theme));
+    // ⚠️ **Depois das abas**, para a divisória não ficar por baixo do corpo da escolhida. Em cartões as
+    // abas são segmentos, sem divisória.
+    if barra.is_none() {
+        for d in tab_dividers(&painted_for_dividers, selected) {
+            scene.fill_rect(rect_to_vello(d), resolve(ColorToken::Border, theme));
+        }
     }
 }
 

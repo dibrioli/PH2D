@@ -4,6 +4,7 @@
 //! Irmão por tecto de LOC do `paint.rs` (2026-10-02): a tinta do chip fica lá, a da legenda aqui.
 
 use super::*;
+use ph2d_i18n::TextKey;
 
 /// **O rótulo, no eixo em que este rail corre** — rodado à esquerda do chip numa coluna, direito
 /// por cima dele numa fila.
@@ -35,6 +36,132 @@ pub(super) fn paint_sub_label(
             paint_sub_label_above(text_system, scene, text, font_size, chip_rect, color)
         }
     }
+}
+
+/// A legenda em caixa normal nos cartões. Só as palavras; as siglas (`FK`, `CEQ`) ficam como são.
+const EM_CAIXA_NORMAL: [(&str, TextKey); 35] = [
+    ("MOVE", TextKey::new("chrome.rail.caption.move")),
+    ("ROT", TextKey::new("chrome.rail.caption.rot")),
+    ("SCALE", TextKey::new("chrome.rail.caption.scale")),
+    ("PIVOT", TextKey::new("chrome.rail.caption.pivot")),
+    ("SPACE", TextKey::new("chrome.rail.caption.space")),
+    ("VIEW", TextKey::new("chrome.rail.caption.view")),
+    ("UNDO", TextKey::new("chrome.rail.caption.undo")),
+    ("REDO", TextKey::new("chrome.rail.caption.redo")),
+    ("FILL", TextKey::new("chrome.rail.caption.fill")),
+    ("LINE", TextKey::new("chrome.rail.caption.line")),
+    ("PROFILE", TextKey::new("chrome.rail.caption.profile")),
+    ("TYPE", TextKey::new("chrome.rail.caption.type")),
+    ("OPACITY", TextKey::new("chrome.rail.caption.opacity")),
+    ("TRIM", TextKey::new("chrome.rail.caption.trim")),
+    ("SQUAR", TextKey::new("chrome.rail.caption.squar")),
+    ("BRUSH", TextKey::new("chrome.rail.caption.brush")),
+    ("PICK", TextKey::new("chrome.rail.caption.pick")),
+    ("BLEND", TextKey::new("chrome.rail.caption.blend")),
+    ("BLUR", TextKey::new("chrome.rail.caption.blur")),
+    ("CLONE", TextKey::new("chrome.rail.caption.clone")),
+    ("SMEAR", TextKey::new("chrome.rail.caption.smear")),
+    ("ERASE", TextKey::new("chrome.rail.caption.erase")),
+    ("SIZE", TextKey::new("chrome.rail.caption.size")),
+    ("MASK", TextKey::new("chrome.rail.caption.mask")),
+    ("SHAPE", TextKey::new("chrome.rail.caption.shape")),
+    ("TOOL", TextKey::new("chrome.rail.caption.tool")),
+    ("WET", TextKey::new("chrome.rail.caption.wet")),
+    ("DRY", TextKey::new("chrome.rail.caption.dry")),
+    ("MODE", TextKey::new("chrome.rail.caption.mode")),
+    ("MIX", TextKey::new("chrome.rail.caption.mix")),
+    ("GRID", TextKey::new("chrome.rail.caption.grid")),
+    ("EDIT", TextKey::new("chrome.rail.caption.edit")),
+    ("CURVE", TextKey::new("chrome.rail.caption.curve")),
+    ("DASH", TextKey::new("chrome.rail.caption.dash")),
+    ("FREE", TextKey::new("chrome.rail.caption.free")),
+];
+
+/// A legenda de `text` em cartões.
+pub(super) fn em_caixa_normal(text: &str) -> &str {
+    EM_CAIXA_NORMAL
+        .iter()
+        .find(|(cru, _)| *cru == text)
+        .map_or(text, |(_, chave)| chave.tr())
+}
+
+/// O corpo do rótulo do cartão, se ele couber em `w`; senão o de sempre, que a fila já garante.
+fn fonte_da_legenda(text_system: &mut TextSystem, text: &str, w: f32) -> f32 {
+    let cartao = ph2d_card_stack::metrics::LABEL_PX;
+    if text_system.prefix_width(text, cartao) <= w {
+        cartao
+    } else {
+        sub_label_font_px()
+    }
+}
+
+/// A legenda de um chip em cartões: em caixa normal, centrada por cima dele na fila; na coluna, a de
+/// sempre.
+pub(super) fn paint_sub_label_card(
+    barra: crate::widget::cromo_barra::Barra,
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    rail_left_x: f32,
+    chip_rect: Rect,
+    axis: RailAxis,
+) {
+    if axis == RailAxis::Vertical {
+        let font = sub_label_font_px();
+        let cor = barra.rotulo();
+        return paint_sub_label_vertical(
+            text_system,
+            scene,
+            text,
+            font,
+            rail_left_x,
+            chip_rect,
+            cor,
+        );
+    }
+    let nome = em_caixa_normal(text);
+    let vao = super::entry_gap_px();
+    let band = Rect::new(
+        chip_rect.x - vao * 0.5,
+        chip_rect.y - LABEL_TO_CHIP_GAP_PX - LABEL_VISUAL_EXTENT_PX,
+        chip_rect.w + vao,
+        LABEL_VISUAL_EXTENT_PX,
+    );
+    let font = fonte_da_legenda(text_system, nome, band.w);
+    paint_caption(text_system, scene, nome, band, font, barra.rotulo());
+}
+
+/// A legenda de um CAMPO em cartões: encostada à esquerda da caixa, como o rótulo de um cartão, com a
+/// marca de animação à direita dela na mesma linha ([`super::number_with_key_mark`]).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_field_caption(
+    barra: crate::widget::cromo_barra::Barra,
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    id: NodeId,
+    slot: Rect,
+    axis: RailAxis,
+    rail_left_x: f32,
+) {
+    if axis == RailAxis::Vertical || text.is_empty() {
+        return paint_sub_label_card(barra, text_system, scene, text, rail_left_x, slot, axis);
+    }
+    let nome = em_caixa_normal(text);
+    let marca = super::number_with_key_mark(id, slot).1;
+    let w = slot.w - marca.map_or(0.0, |d| d.w);
+    let font = fonte_da_legenda(text_system, nome, w);
+    let y = slot.y - LABEL_TO_CHIP_GAP_PX - LABEL_VISUAL_EXTENT_PX;
+    crate::paint::paint_text_elided(
+        text_system,
+        scene,
+        nome,
+        slot.x,
+        y + (LABEL_VISUAL_EXTENT_PX - font) * 0.5,
+        font,
+        w,
+        barra.rotulo(),
+    );
 }
 
 /// Helper — o rótulo direito, centrado POR CIMA do chip (a fila horizontal).

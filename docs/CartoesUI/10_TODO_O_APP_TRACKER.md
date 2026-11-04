@@ -48,6 +48,17 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - Um booleano de script no cartão é a linha de marcar com o nome à direita; o «Reset» desce para baixo dela.
 - Lista suspensa aberta de um chip de cartão: a cara da lista T16 (sombra da lista, sem moldura, nome à esquerda, realce no tom do hover), tema próprio incluído.
 
+- D3, ferramentas de imagem: `Reset`, `Cancel` e `Apply` numa faixa presa abaixo da lista, fora dos cartões: não se dobram, não se reordenam, não saem para o canvas. `Reset` em linha própria, para não ficar ao lado do `Apply`.
+- D3: os liga/desliga pintados como botão azul viraram caixas de marcar, mesmo os que armam um gesto no canvas (Pick colors, Add area, Protection brush); segue a ordem do dono na Física (um liga/desliga é um valor).
+- D3, nomes novos: Padding «Recenter pivot» (era «Pivot: Recenter/Keep» a trocar no botão), Equalize «Size from» e cartões Target/Result, Background Removal «Background Colors», «Protection brush», Color Equalization cartões Histogram · Auto · Tone · Color · Sharpen · Local Contrast · Color Lookup · Stylize.
+- D3, Color Equalization: Color Lookup e Stylize nascem dobrados (13 números e 4 listas não cabem); Background Removal: Detect subject vem antes de Pick colors, porque decide o que essa linha é.
+- D3: sem barras e sem o sinal «+» nos números (Temperature mostra `0.25`, não `+0.25`), como no resto dos cartões. Nenhum destes números leva marca de animação (ajuste de ferramenta, D17).
+
+- **D1, Wet Paint:** janela flutuante mantida (título move, cantos redimensionam); a altura do canto é só tecto, porque a lista abraça o conteúdo. Rótulo que não cabe em duas linhas de meia coluna ganha a linha toda.
+- **D1, Design Tokens:** Mode e App Colors em cima, famílias e Scale dobradas ao abrir (paga a catraca). «Autorada» deixou de pintar o nome em acento: quem diz é o ↺ da linha. Quem segue outro na Scale diz «Follows x» por baixo.
+- **D1, Macros:** cartões Record, Steps, Step (só com etapa escolhida) e Library. Stop e Delete não são vermelhos: `Widget::Button` só tem normal e primário.
+- **D1, Grid Settings:** nove tipos em 3 × 3 de escolha, e não lista suspensa: cada um muda o que está abaixo, um clique, como antes. O *Snap* mora no cartão Target. Opacidade e Inspect ficam na linha de antes (ponte `legacy`).
+
 ## Registo por bloco
 
 (cada bloco fechado acrescenta aqui: commits, fotos, testes, o que ficou aberto)
@@ -77,6 +88,21 @@ Joint, Wheel, Constraints e o solto preso têm teste ou nada, não foto, e o tem
 (só `color_tint`, de sprite) e a amostra de cor do script seguem na forma de hoje. O corpo de letra de `paint_text`/avisos segue o
 `Sm`: só a cor mudou. Dobra partilhada (05 §9) fora deste bloco. Sem clippy (fecho da linha) nem suíte.
 
+**Bloco D3 (04/11).** Padding, Upscale, Equalize Sizes, Background Removal e Color Equalization em cartões, commit `b787452494`:
+`src/cards.rs` e `tests/it/os_cartoes.rs` em cada crate; `populate`, `event` e `panel_seam!` intocados, salvo a caixa de lista do
+Color Equalization (`Button` só em cartões). `PanelEvent` e `Tool` não mudaram. Fundação: `panel/cards_ferramenta.rs` (faixa dos
+verbos, `prepara_numeros`, `campo`, `caixa`, `caixas_aos_pares`, `opcoes`, `cartao`), `ph2d_ui_testkit::mesa::Mesa<P>`. Abrir para a
+foto: `PH2D_IMAGE_TOOL_SMOKE=<id>`, no `image_edit_mode::mirror`; a shell não cresceu. Provas: inventário, scrub com Esc, escrita, cada
+caixa, opção e verbo, listas suspensas, dobra, faixa, corpo antigo; crate inteira verde nas cinco. 9 contraprovas vistas vermelhas (faixa
+fora do rect, lista suspensa por baixo da faixa, sem semente, `Dropdown` em cartões, sem `declare`, sem a lei `show`, pedido no lugar da
+entrega do EPX, amostra sem clique, Min px sempre escondido). Medido: a 1.ª versão pintava a faixa por cima da opção aberta. Catracas:
+nenhuma mexida; estes painéis não estão nas tabelas de `quantas_entradas_tem_cada_painel`. Fotos: `maquete/d_padding.png`,
+`d_upscale.png`, `d_equalize_sizes.png`, `d_bgremoval.png`, `d_color_equalization.png`, as três últimas com estados por patch
+temporário. **Aberto:** a lista suspensa do cartão não rola (LUT = 16 linhas, 448 px: cabe a 1040; numa janela muito baixa não, e o
+corpo antigo rolava); arrastar o número do EPX não foi visto em foto, só a semente em repouso; histograma cheio não fotografado (a
+foto corre sem imagem); gesto com imagem real na mão fica para o smoke. Vermelhos alheios vistos a meio: `audio_mixer` e `asset_browser`
+nas catracas de `quantas_entradas`, `rows_par` e `INSP_VIS_*` no censo de canais, `insp_camera_format_pick` em `node_id_collisions`.
+
 **Bloco B (04/11).** Physics em cartões: `ph2d-panel-physics/src/cards.rs`, 9 cartões, mesmos ids, `populate.rs` e `event.rs`
 intocados; `PH2D_CARDS=0` dá o corpo de antes (foto vista, `tests/seam.rs` 27/27 nesse caminho). Fundação: `Widget::Readout`;
 `CardCtx::hint`, `check`, `toggle_triangle` (`panel/cards_linhas_extra.rs`); «×» opcional da lista
@@ -90,3 +116,7 @@ vistas vermelhas: tirar o espelho do Esc, tirar o fecho da lista, tirar o grupo 
 verbo da fita), `b_physics_debug_dobrado_hud_por_cima.png`. Commits `2baa0f6bff`, `c4454ae705`, `03b4f5b3be`, `0eb72eac36` e o
 da receita. **Aberto:** o HUD «EDIT · fps» passa por cima da lista numa janela de 1200 px (visto no Physics, a 1930 não);
 o alfinete não se oferece no Physics (o mundo não tem sujeito); clippy fica para o fecho da linha.
+
+### Bloco D1 (04/11)
+
+Wet Paint, Design Tokens e Macros em cartões, cada um com `src/cards.rs` + `tests/it/os_cartoes.rs` (gesto real) e os mesmos ids. API nova: `Widget::Mark` (sinal colorido sem clique), `Widget::ButtonOff` (verbo apagado sem rect). Catracas medidas: comandos `wet_tuning 13 → 14`, `tokens 4 → 5` (só o «…»); abertura `tokens 2302 → 2012` (`2871` com a Scale aberta). Fotos: `maquete/d_wet_paint.png`, `d_tokens.png`, `d_macros.png`; cenas com patch temporário restaurado (Tuning aberto; etapas semeadas). **Aberto:** o Wet Paint e o Grid não têm cena de smoke que abra o painel.

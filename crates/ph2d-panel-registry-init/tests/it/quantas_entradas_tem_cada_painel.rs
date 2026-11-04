@@ -2334,7 +2334,8 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `set_collapsed_if_unchosen` de ninguém.
     // ⬇️ `1 237 → 665` em 2026-11-04 (NovaUI D2): a mesa em cartões; Reverb, Delay, Comp e Ducking nascem
     //    dobrados, com «On»/«Off» no resumo (`cards::prepare`). Medido pelo gate.
-    ("audio_mixer", 665.0),
+    // ⬇️ `665 → 637` em 2026-11-04 (NovaUI K2): Limiter + Loudness dividem a linha (lei da compactação).
+    ("audio_mixer", 637.0),
 ];
 
 #[test]

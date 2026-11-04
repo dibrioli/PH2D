@@ -7,7 +7,6 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
-use ph2d_editor_core::panel::cards::ferramenta::caixa_em_celula;
 use ph2d_editor_core::panel::cards::linhas_extra::ToggleTriangle;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
@@ -186,15 +185,20 @@ fn cartao_de_tabela(s: &'static rows::Section, snap: PhysicsSnapshot) -> CardDef
         if s.id == i::PHYSICS_SEC_WORLD {
             return gravidade(c, y);
         }
-        let mut cells: Vec<Cell<'static>> = Vec::with_capacity(s.rows.len() + 1);
+        let mut y = y;
         if s.id == i::PHYSICS_SEC_SLEEP {
-            cells.push(caixa_em_celula(
+            y = c.check(
                 crate::ids::PHYSICS_SLEEP_SPIN,
                 tr("panel.physics.sleep_enabled"),
                 snap.vivo.sleep_enabled(),
-            ));
+                y,
+            );
         }
-        cells.extend(s.rows.iter().map(|r| campo(&r.chip, r.label, true)));
+        let cells: Vec<Cell<'static>> = s
+            .rows
+            .iter()
+            .map(|r| campo(&r.chip, r.label, true))
+            .collect();
         aos_pares(c, &cells, y)
     })
 }

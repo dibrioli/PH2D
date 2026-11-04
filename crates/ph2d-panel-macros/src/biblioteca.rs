@@ -14,7 +14,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::macro_edits::{
     ErroDaMacroView, FamiliaDaMacro, MacroDaBibliotecaView, MacroPanelInfo,
 };
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::paint_text;
 use ph2d_editor_core::property_row::{abaixo_do_botao, caixa_do_botao};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, RowHighlight, TextInput, TextInputState, paint_button,
@@ -188,7 +188,13 @@ impl Corpo<'_> {
     }
 
     /// Uma macro da lista: o nome (ou o campo de renomear) e, por baixo, o detalhe.
-    fn entrada(&mut self, m: &MacroDaBibliotecaView, esta: bool, renomeando: bool, y: f32) -> f32 {
+    pub(crate) fn entrada(
+        &mut self,
+        m: &MacroDaBibliotecaView,
+        esta: bool,
+        renomeando: bool,
+        y: f32,
+    ) -> f32 {
         let id = ids::lib_row_id(&m.nome);
         let rect = Rect::new(self.x, y, self.w, ROW_H_PX * 2.0);
         paint_row_highlight(
@@ -221,14 +227,11 @@ impl Corpo<'_> {
                 y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
                 TypeToken::Sm.px(),
                 nome_w,
-                resolve(
-                    if esta {
-                        ColorToken::Text1
-                    } else {
-                        ColorToken::Text2
-                    },
-                    self.theme,
-                ),
+                self.cor(if esta {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::Text2
+                }),
             );
         }
         paint_text(
@@ -239,7 +242,7 @@ impl Corpo<'_> {
             y + ROW_H_PX + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             nome_w,
-            resolve(ColorToken::Text3, self.theme),
+            self.cor(ColorToken::Text3),
         );
         y + ROW_H_PX * 2.0
     }
@@ -271,7 +274,7 @@ impl Corpo<'_> {
 }
 
 /// A frase de um aviso: a chave traduzida, com o detalhe que ela cita.
-fn frase(a: &ErroDaMacroView) -> String {
+pub(crate) fn frase(a: &ErroDaMacroView) -> String {
     match &a.detalhe {
         Some(d) => tr_with(a.chave, &[("detail", d)]),
         None => tr(a.chave).to_owned(),

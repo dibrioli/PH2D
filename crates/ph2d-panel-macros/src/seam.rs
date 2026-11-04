@@ -393,10 +393,17 @@ pub(crate) fn semeia(st: &MacrosPanelState, host: &mut dyn PanelHostInternal) {
         return;
     };
     let store = host.store_mut();
+    // O campo que a mão arrasta não se semeia: o valor gravado puxava-o debaixo do gesto.
+    let arrastado = store.number_input_drag().map(|d| d.id);
+    if arrastado == Some(ids::MACROS_WAIT) {
+        return;
+    }
     store.set_number_value(ids::MACROS_WAIT, v.espera_s);
     match v.props {
         PropsDaEtapa::Pincelada { cor, tamanho_px } => {
-            store.set_number_value(ids::MACROS_SIZE, f64::from(tamanho_px));
+            if arrastado != Some(ids::MACROS_SIZE) {
+                store.set_number_value(ids::MACROS_SIZE, f64::from(tamanho_px));
+            }
             let gravada = [cor[0], cor[1], cor[2], 255];
             if store.picker_target() == Some(ids::MACROS_COLOR) {
                 if let Some(c) = store.widget_color(ids::MACROS_COLOR)
@@ -408,7 +415,11 @@ pub(crate) fn semeia(st: &MacrosPanelState, host: &mut dyn PanelHostInternal) {
                 store.set_widget_color(ids::MACROS_COLOR, gravada);
             }
         }
-        PropsDaEtapa::Param { valor } => store.set_number_value(ids::MACROS_VALUE, valor),
+        PropsDaEtapa::Param { valor } => {
+            if arrastado != Some(ids::MACROS_VALUE) {
+                store.set_number_value(ids::MACROS_VALUE, valor);
+            }
+        }
         PropsDaEtapa::Nenhuma => {}
     }
 }

@@ -13,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 mod biblioteca;
+pub mod cards;
 mod corpo;
 pub mod ids;
 pub mod nomes;

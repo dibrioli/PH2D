@@ -13,6 +13,7 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
+ph2d-card-stack  = { path = "../ph2d-card-stack" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
@@ -22,6 +23,7 @@ ph2d-vector      = { path = "../ph2d-vector" }
 [dev-dependencies]
 ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+ph2d-host = { path = "../ph2d-host" }
 
 [lints]
 workspace = true

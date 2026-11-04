@@ -76,6 +76,7 @@ pub(crate) struct Palco {
 
 impl Palco {
     pub(crate) fn novo(i: MacroPanelInfo) -> Self {
+        ph2d_panel_macros::cards::force_cards_on_this_thread(Some(false));
         let mut p = Self {
             host: MockPanelHost::with_panel::<MacrosPanel>(),
             st: MacrosPanelState::default(),

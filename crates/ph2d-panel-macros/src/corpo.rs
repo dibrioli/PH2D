@@ -29,9 +29,16 @@ pub(crate) struct Corpo<'a> {
     pub theme: Theme,
     pub x: f32,
     pub w: f32,
+    /// A tinta do cartão, quando o corpo se pinta dentro de um; sem ela, o tema do painel.
+    pub ink: Option<ph2d_editor_core::widget::card_ink::CardInk>,
 }
 
 impl Corpo<'_> {
+    pub(crate) fn cor(&self, t: ColorToken) -> ph2d_vector::Color {
+        self.ink
+            .map_or_else(|| resolve(t, self.theme), |k| k.color(t))
+    }
+
     pub(crate) fn tudo(&mut self, info: &MacroPanelInfo, st: &MacrosPanelState, y: f32) -> f32 {
         let y = self.atual(info, st, y);
         self.biblioteca(info, st, y + Spacing::Md.px())
@@ -111,23 +118,7 @@ impl Corpo<'_> {
         paint_button(&b, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         let y = y + ROW_H_PX + ph2d_tokens::control_gap_px();
-        let frase = match (
-            &info.objeto_macro,
-            info.armado,
-            info.gravando,
-            info.pode_gravar,
-        ) {
-            (Some(n), true, _, _) => tr_with("panel.macros.recording_into", &[("name", n)]),
-            (Some(n), false, _, _) => tr_with("panel.macros.ready_into", &[("name", n)]),
-            (None, _, Some(f), _) => {
-                tr_with("panel.macros.recording", &[("family", &nomes::familia(f))])
-            }
-            (None, _, None, Some(f)) => {
-                tr_with("panel.macros.ready", &[("family", &nomes::familia(f))])
-            }
-            (None, _, None, None) => String::new(),
-        };
-        let y = self.bloco(&frase, ColorToken::Text3, y);
+        let y = self.bloco(&frase_de_gravar(info), ColorToken::Text3, y);
         // A recusa da última tentativa (o Parar que não coube na animação) fica à vista.
         match info.recusa.filter(|_| info.armado || pode) {
             Some(k) => self.bloco(tr(k), ColorToken::Danger, y),
@@ -144,7 +135,7 @@ impl Corpo<'_> {
             y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5,
             TypeToken::Sm.px(),
             (self.w - Spacing::Sm.px() * 2.0).max(1.0),
-            resolve(cor, self.theme),
+            self.cor(cor),
         );
         y + ROW_H_PX
     }
@@ -160,14 +151,21 @@ impl Corpo<'_> {
             topo,
             TypeToken::Sm.px(),
             (self.w - Spacing::Sm.px() * 2.0).max(1.0),
-            resolve(cor, self.theme),
+            self.cor(cor),
         );
         y + ROW_H_PX + (topo + alta - (y + ROW_H_PX)).max(0.0)
     }
 
     /// Uma linha da lista: `n. nome` à esquerda, a amostra da cor (Painter) e o fim em segundos à
     /// direita.
-    fn etapa(&mut self, i: usize, e: &EtapaView, esta: bool, renomeando: bool, y: f32) -> f32 {
+    pub(crate) fn etapa(
+        &mut self,
+        i: usize,
+        e: &EtapaView,
+        esta: bool,
+        renomeando: bool,
+        y: f32,
+    ) -> f32 {
         let id = ids::row_id(e.trilha, e.k);
         let rect = Rect::new(self.x, y, self.w, ROW_H_PX);
         paint_row_highlight(
@@ -196,7 +194,7 @@ impl Corpo<'_> {
             texto_y,
             TypeToken::Sm.px(),
             tempo_w,
-            resolve(ColorToken::Text3, self.theme),
+            self.cor(ColorToken::Text3),
         );
         if let PropsDaEtapa::Pincelada { cor, .. } = e.props {
             let lado = TypeToken::Sm.px();
@@ -222,14 +220,11 @@ impl Corpo<'_> {
                 texto_y,
                 TypeToken::Sm.px(),
                 nome_w,
-                resolve(
-                    if esta {
-                        ColorToken::Text1
-                    } else {
-                        ColorToken::Text2
-                    },
-                    self.theme,
-                ),
+                self.cor(if esta {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::Text2
+                }),
             );
         }
         y + ROW_H_PX
@@ -320,7 +315,27 @@ fn cor_row(r: &mut RowCtx<'_>, cor: [u8; 3], y: f32) -> f32 {
     y + r.row_h + r.row_gap
 }
 
-fn escolhida(o: &MacroObjetoView, s: Escolhida) -> Option<&EtapaView> {
+/// O que o botão de gravar vai fazer (ou está a fazer).
+pub(crate) fn frase_de_gravar(info: &MacroPanelInfo) -> String {
+    match (
+        &info.objeto_macro,
+        info.armado,
+        info.gravando,
+        info.pode_gravar,
+    ) {
+        (Some(n), true, _, _) => tr_with("panel.macros.recording_into", &[("name", n)]),
+        (Some(n), false, _, _) => tr_with("panel.macros.ready_into", &[("name", n)]),
+        (None, _, Some(f), _) => {
+            tr_with("panel.macros.recording", &[("family", &nomes::familia(f))])
+        }
+        (None, _, None, Some(f)) => {
+            tr_with("panel.macros.ready", &[("family", &nomes::familia(f))])
+        }
+        (None, _, None, None) => String::new(),
+    }
+}
+
+pub(crate) fn escolhida(o: &MacroObjetoView, s: Escolhida) -> Option<&EtapaView> {
     (o.entity_bits == s.entity_bits)
         .then(|| o.etapas.iter().find(|e| e.trilha == s.trilha && e.k == s.k))
         .flatten()

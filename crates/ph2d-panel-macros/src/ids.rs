@@ -7,6 +7,11 @@
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
+/// Os cartões da lista (só existem em cartões): gravar, as etapas, a etapa escolhida, a biblioteca.
+pub const MACROS_SEC_RECORD: NodeId = hash_node_id("macros.sec.record");
+pub const MACROS_SEC_STEPS: NodeId = hash_node_id("macros.sec.steps");
+pub const MACROS_SEC_STEP: NodeId = hash_node_id("macros.sec.step");
+pub const MACROS_SEC_LIBRARY: NodeId = hash_node_id("macros.sec.library");
 /// O `×` do cabeçalho.
 pub const MACROS_CLOSE: NodeId = hash_node_id("macros.close");
 /// **Gravar** — arma a família que o painel diz.

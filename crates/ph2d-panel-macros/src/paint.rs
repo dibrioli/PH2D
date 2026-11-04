@@ -39,6 +39,33 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::MACROS_PANEL, rect);
+    let linhas: Vec<(usize, usize)> = state::with_current(|i| {
+        i.objeto
+            .iter()
+            .flat_map(|o| o.etapas.iter().map(|e| (e.trilha, e.k)))
+            .collect()
+    });
+    crate::seam::register_rows(ctx.host.store_mut(), &linhas);
+    let nomes: Vec<String> =
+        state::with_current(|i| i.biblioteca.iter().map(|m| m.nome.clone()).collect());
+    crate::seam::register_lib_rows(ctx.host.store_mut(), &nomes);
+    crate::seam::semeia(st, ctx.host);
+
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut());
+        let info = state::current_macros();
+        let cartoes = crate::cards::cards(&info, st);
+        ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ids::MACROS_PANEL,
+            MacrosPanel::TITLE.tr(),
+            &cartoes,
+        );
+        let h = ctx.host.store().panel_content_h(ids::MACROS_PANEL);
+        state::set_last_content_h(h.unwrap_or(0.0));
+        return;
+    }
+
     paint_panel_surface(rect, ctx.scene, theme);
     let title_size = paint_panel_title(
         rect,
@@ -55,18 +82,6 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
         ctx.scene,
         theme,
     );
-
-    let linhas: Vec<(usize, usize)> = state::with_current(|i| {
-        i.objeto
-            .iter()
-            .flat_map(|o| o.etapas.iter().map(|e| (e.trilha, e.k)))
-            .collect()
-    });
-    crate::seam::register_rows(ctx.host.store_mut(), &linhas);
-    let nomes: Vec<String> =
-        state::with_current(|i| i.biblioteca.iter().map(|m| m.nome.clone()).collect());
-    crate::seam::register_lib_rows(ctx.host.store_mut(), &nomes);
-    crate::seam::semeia(st, ctx.host);
 
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
@@ -90,6 +105,7 @@ pub(crate) fn paint(st: &mut MacrosPanelState, ctx: &mut PaintCtx) {
             theme,
             x: inner_x,
             w: inner_w,
+            ink: None,
         };
         let y = c.tudo(info, st, top);
         (y - top + PANEL_HEAD_PAD).max(0.0)

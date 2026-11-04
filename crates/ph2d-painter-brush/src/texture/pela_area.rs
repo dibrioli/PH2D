@@ -8,7 +8,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static SEM_AREA: AtomicBool = AtomicBool::new(false);
 
 /// Desliga a leitura pela área (Dots e falloff Custom). Só para gate e medição A×B
-/// ([MEDIR_VELOCIDADE](../../../../docs/DevOps/MEDIR_VELOCIDADE.md)): o global é do processo.
+/// ([MEDIR_VELOCIDADE](../../../../docs/DevOps/MEDIR_VELOCIDADE.md)). ⚠️ O global é do processo: um teste que o vira
+/// muda o que os vizinhos pintam, e por isso corre num processo seu.
 #[doc(hidden)]
 pub fn mede_sem_a_area(sem: bool) {
     SEM_AREA.store(sem, Ordering::Relaxed);

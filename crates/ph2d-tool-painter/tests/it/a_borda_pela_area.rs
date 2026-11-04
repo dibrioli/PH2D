@@ -1,5 +1,7 @@
 //! ⭐ **A borda pela ÁREA do píxel** (smoke 04/11: o aro do Bokeh «pixelado», os pontos do Halftone «não suaves»): o
-//! que é mais fino que um píxel não se lê num ponto. Os dois braços correm no MESMO processo (`mede_sem_a_area`).
+//! que é mais fino que um píxel não se lê num ponto. O braço sem a cura dos portões corre num processo filho: o
+//! interruptor (`mede_sem_a_area`) é global, e virá-lo aqui mudaria o que os testes vizinhos pintam (medido 04/11: o
+//! alarme da miniatura deixou de acusar o Halftone). Só as sondas ignoradas o viram em processo.
 //! `PH2D_RENDER_OUT=<pasta>` grava os PNG de antes e depois.
 
 use ph2d_brush_presets::{Biblioteca, Preset, escrever_textura_rgba};
@@ -12,7 +14,7 @@ use std::sync::Mutex;
 
 const W: usize = 360;
 const H: usize = 200;
-/// O interruptor é do processo: as corridas deste ficheiro não se cruzam.
+/// O interruptor é do processo: as sondas deste ficheiro não se cruzam.
 static VEZ: Mutex<()> = Mutex::new(());
 /// O aro de fábrica até 04/11: a crista de 0,05 do raio.
 const ARO_FINO: &str = r#"[{"handle": "Vector", "id": 0, "x": 0.0, "y": 0.28}, {"handle": "Vector", "id": 1, "x": 0.92, "y": 0.31}, {"handle": "Vector", "id": 2, "x": 0.965, "y": 1.0}, {"handle": "Vector", "id": 3, "x": 0.99, "y": 0.6}, {"handle": "Vector", "id": 4, "x": 1.0, "y": 0.0}]"#;
@@ -39,7 +41,9 @@ fn pinta(p: &Preset, raio: f32, sem_area: bool) -> Vec<u8> {
 }
 
 fn pinta_em(p: &Preset, raio: f32, sem_area: bool, pts: &[[f32; 2]], pressao: f32) -> Vec<u8> {
-    mede_sem_a_area(sem_area);
+    if sem_area {
+        mede_sem_a_area(true);
+    }
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_media(PaintMedia::Digital);
@@ -62,7 +66,9 @@ fn pinta_em(p: &Preset, raio: f32, sem_area: bool, pts: &[[f32; 2]], pressao: f3
         t.on_tick(1000.0 / 60.0);
     }
     let px = t.run_full().0;
-    mede_sem_a_area(false);
+    if sem_area {
+        mede_sem_a_area(false);
+    }
     px
 }
 
@@ -106,17 +112,54 @@ fn aro_fino() -> Preset {
     p
 }
 
+const OS_INTACTOS: [&str; 3] = ["Soft Round", "Stars", "Burn"];
+
+fn fnv(px: &[u8]) -> u64 {
+    px.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+/// O braço SEM a cura, sozinho no seu processo: imprime uma linha `braço <chave> <valor>` por medida.
+#[test]
+#[ignore = "o braço sem a cura: quem o chama é `sem_a_cura`"]
+fn braco_sem_a_cura() {
+    mede_sem_a_area(true);
+    let halftone = degraus(&pinta(&preset("Halftone"), 40.0, false));
+    println!("braço halftone {}", q(&halftone, 0.5));
+    let aro = degraus(&pinta(&aro_fino(), 12.0, false));
+    println!("braço aro {}", q(&aro, 0.9));
+    for nome in OS_INTACTOS {
+        println!("braço {nome} {}", fnv(&pinta(&preset(nome), 40.0, false)));
+    }
+}
+
+/// O valor de `chave` no braço sem a cura ([`braco_sem_a_cura`]).
+fn sem_a_cura(chave: &str) -> String {
+    let saida = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "a_borda_pela_area::braco_sem_a_cura",
+            "--ignored",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .output()
+        .unwrap();
+    let texto = String::from_utf8_lossy(&saida.stdout).into_owned();
+    let prefixo = format!("braço {chave} ");
+    texto
+        .lines()
+        .find_map(|l| l.split_once(&prefixo).map(|(_, v)| v.trim().to_owned()))
+        .unwrap_or_else(|| panic!("o braço não mediu {chave}: {texto}"))
+}
+
 /// ⭐ Os pontos do Halftone: a borda era um degrau num ponto (mediana 0,57 da tinta inteira entre vizinhos, os «pontos em
 /// bloco» da foto), e pela área é uma rampa (0,29). As fronteiras: o meio entre os dois braços, medido 04/11.
 #[test]
 fn os_pontos_do_halftone_tem_a_borda_gradual() {
-    let _vez = VEZ.lock().unwrap_or_else(|e| e.into_inner());
-    let p = preset("Halftone");
-    let (depois, antes) = (
-        degraus(&pinta(&p, 40.0, false)),
-        degraus(&pinta(&p, 40.0, true)),
-    );
-    let (q_d, q_a) = (q(&depois, 0.5), q(&antes, 0.5));
+    let q_d = q(&degraus(&pinta(&preset("Halftone"), 40.0, false)), 0.5);
+    let q_a: f32 = sem_a_cura("halftone").parse().unwrap();
     assert!(q_d < 0.42, "a borda do ponto salta {q_d:.3} entre vizinhos");
     assert!(
         q_a > 0.5,
@@ -128,13 +171,8 @@ fn os_pontos_do_halftone_tem_a_borda_gradual() {
 /// (q90) 0,59 num ponto, 0,37 pela área. Vale para qualquer curva que o artista desenhe, não só a de fábrica.
 #[test]
 fn o_aro_fino_do_bokeh_tem_a_borda_gradual() {
-    let _vez = VEZ.lock().unwrap_or_else(|e| e.into_inner());
-    let p = aro_fino();
-    let (depois, antes) = (
-        degraus(&pinta(&p, 12.0, false)),
-        degraus(&pinta(&p, 12.0, true)),
-    );
-    let (q_d, q_a) = (q(&depois, 0.9), q(&antes, 0.9));
+    let q_d = q(&degraus(&pinta(&aro_fino(), 12.0, false)), 0.9);
+    let q_a: f32 = sem_a_cura("aro").parse().unwrap();
     assert!(q_d < 0.48, "o aro salta {q_d:.3} entre vizinhos");
     assert!(
         q_a > 0.5,
@@ -145,7 +183,6 @@ fn o_aro_fino_do_bokeh_tem_a_borda_gradual() {
 /// O Bokeh de fábrica, com o aro largo que o dono desenhou, já não tem degrau de aro.
 #[test]
 fn o_bokeh_de_fabrica_tem_o_aro_suave() {
-    let _vez = VEZ.lock().unwrap_or_else(|e| e.into_inner());
     let d = degraus(&pinta(&preset("Bokeh"), 25.0, false));
     let q90 = q(&d, 0.9);
     assert!(q90 < 0.3, "o aro de fábrica salta {q90:.3} entre vizinhos");
@@ -154,13 +191,9 @@ fn o_bokeh_de_fabrica_tem_o_aro_suave() {
 /// Um pincel sem curva Custom e sem Dots não vê a cura, e a curva suave do Burn a tamanho normal também não.
 #[test]
 fn quem_nao_tem_crista_nao_muda() {
-    let _vez = VEZ.lock().unwrap_or_else(|e| e.into_inner());
-    for nome in ["Soft Round", "Stars", "Burn"] {
-        let p = preset(nome);
-        assert!(
-            pinta(&p, 40.0, false) == pinta(&p, 40.0, true),
-            "{nome} mudou"
-        );
+    for nome in OS_INTACTOS {
+        let hoje = fnv(&pinta(&preset(nome), 40.0, false)).to_string();
+        assert_eq!(hoje, sem_a_cura(nome), "{nome} mudou");
     }
 }
 

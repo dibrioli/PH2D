@@ -5,8 +5,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::cards::dicas;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::dicas;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_physics::state::{PhysicsPanelState, PhysicsSnapshot};
@@ -68,14 +68,15 @@ impl Mesa {
 
     fn aplica(&mut self, eventos: Vec<WidgetEvent>) -> Vec<PhysicsIntent> {
         for e in eventos {
-            self.host
-                .apply_panel_event::<PhysicsPanel>(&mut self.st, e);
+            self.host.apply_panel_event::<PhysicsPanel>(&mut self.st, e);
         }
         drain_intents()
     }
 
     fn clica(&mut self, id: NodeId) -> Vec<PhysicsIntent> {
-        let r = self.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado"));
+        let r = self
+            .rect(id)
+            .unwrap_or_else(|| panic!("{id:?} não pintado"));
         let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
         assert_eq!(self.host.hit_at(cx, cy), Some(id), "outro id no centro");
         let ev = self.host.click_at(cx, cy);
@@ -96,7 +97,9 @@ impl Mesa {
 
     /// O scrub real: premir na PEGA (a célula do ícone) e arrastar `dx`, sem largar.
     fn arrasta_a_pega(&mut self, chip: NodeId, dx: f32) -> Vec<WidgetEvent> {
-        let r = self.rect(chip).unwrap_or_else(|| panic!("{chip:?} não pintado"));
+        let r = self
+            .rect(chip)
+            .unwrap_or_else(|| panic!("{chip:?} não pintado"));
         let (x, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
         let mut ev = self.ponteiro(PointerKind::Down, x, y);
         ev.extend(self.ponteiro(PointerKind::Move, x + dx * 0.5, y));
@@ -106,7 +109,11 @@ impl Mesa {
 
     fn solta(&mut self, chip: NodeId, dx: f32) -> Vec<WidgetEvent> {
         let r = self.rect(chip).expect("pintado");
-        self.ponteiro(PointerKind::Up, r.x + m::ICON_CELL * 0.5 + dx, r.y + r.h * 0.5)
+        self.ponteiro(
+            PointerKind::Up,
+            r.x + m::ICON_CELL * 0.5 + dx,
+            r.y + r.h * 0.5,
+        )
     }
 }
 
@@ -198,7 +205,10 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
         .collect();
     assert!(mortos.is_empty(), "nunca pintados: {mortos:?}");
     for b in barras {
-        assert!(!pintados.contains(&b), "a barra {b:?} ainda se pinta no cartão");
+        assert!(
+            !pintados.contains(&b),
+            "a barra {b:?} ainda se pinta no cartão"
+        );
     }
 }
 
@@ -210,7 +220,11 @@ fn scrubbing_each_world_field_writes_its_setting_and_escape_gives_it_back() {
     for row in rows::rows() {
         let antes = PhysicsSettings::default();
         let mut mesa = Mesa::nova(mundo(antes, InteractionSettings::default()));
-        let dx = if (row.get)(&antes) >= row.max { -60.0 } else { 60.0 };
+        let dx = if (row.get)(&antes) >= row.max {
+            -60.0
+        } else {
+            60.0
+        };
         let ev = mesa.arrasta_a_pega(row.chip, dx);
         assert!(
             ev.contains(&WidgetEvent::ValueChanged(row.slider)),
@@ -261,7 +275,11 @@ fn typing_and_scrubbing_reach_the_tool_rows() {
             .find(|s| (row.shown)(s))
             .expect("a linha é alcançável");
         let mut mesa = Mesa::nova(mundo(PhysicsSettings::default(), it));
-        let dx = if (row.get)(&it) >= row.max { -60.0 } else { 60.0 };
+        let dx = if (row.get)(&it) >= row.max {
+            -60.0
+        } else {
+            60.0
+        };
         let ev = mesa.arrasta_a_pega(row.chip, dx);
         let intents = mesa.aplica(ev);
         let got = intents
@@ -311,7 +329,11 @@ fn every_choice_check_verb_and_cell_answers_a_real_click() {
     assert!(matches!(i[..], [PhysicsIntent::ToggleColliders]), "{i:?}");
     let i = mesa.clica(ids::PHYSICS_SLEEP_SPIN);
     let dorme = ultimo_mundo(&i).expect("o sono escreve").sleep_enabled();
-    assert_eq!(dorme, !base.vivo.sleep_enabled(), "a caixa vira o que se via");
+    assert_eq!(
+        dorme,
+        !base.vivo.sleep_enabled(),
+        "a caixa vira o que se via"
+    );
 
     let matriz = LayerMatrix::from_rows(base.vivo.layer_matrix);
     for a in 0..ph2d_physics_ecs::MAX_LAYERS {
@@ -381,7 +403,9 @@ fn every_header_folds_its_card_without_touching_the_world() {
     for id in rows::section_header_ids() {
         assert!(!mesa.host.store().is_collapsed(id));
         let r = mesa.rect(id).expect("o cabeçalho pinta-se");
-        let ev = mesa.host.click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+        let ev = mesa
+            .host
+            .click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
         let i = mesa.aplica(ev);
         assert!(i.is_empty(), "dobrar pediu {i:?}");
         assert!(mesa.host.store().is_collapsed(id), "{id:?} não dobrou");
@@ -440,7 +464,10 @@ fn every_mute_control_in_the_cards_has_a_tooltip() {
         .collect();
     assert!(mudos.is_empty(), "sem dica: {mudos:?}");
     let dica = dicas::field_hint(store, ids::PHYSICS_SLEEP_DELAY_NUM).expect("campo marcado");
-    assert!(dica.contains("(s)"), "a dica nomeia o campo com a unidade: {dica}");
+    assert!(
+        dica.contains("(s)"),
+        "a dica nomeia o campo com a unidade: {dica}"
+    );
 }
 
 /// `PH2D_CARDS=0`: o corpo de antes, com as barras pintadas e sem lista flutuante.
@@ -492,7 +519,9 @@ fn the_debug_card_is_born_folded_and_a_click_opens_it() {
     assert!(mesa.host.store().is_collapsed(ids::PHYSICS_SEC_DEBUG));
     assert!(mesa.rect(ids::PHYSICS_RESET_DEFAULTS).is_none());
     let r = mesa.rect(ids::PHYSICS_SEC_DEBUG).expect("cabeçalho");
-    let _ = mesa.host.click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+    let _ = mesa
+        .host
+        .click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
     mesa.assenta();
     assert!(
         mesa.rect(ids::PHYSICS_RESET_DEFAULTS).is_some(),
@@ -506,7 +535,9 @@ fn right_clicking_a_card_header_opens_its_theme_menu() {
     use ph2d_editor_core::interaction::ContextMenuKind;
     let mut mesa = Mesa::nova(PhysicsSnapshot::default());
     let r = mesa.rect(ids::PHYSICS_SEC_AIR).expect("cartão");
-    let ev = mesa.host.right_click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+    let ev = mesa
+        .host
+        .right_click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
     assert!(ultimo_mundo(&mesa.aplica(ev)).is_none());
     let menu = mesa.host.store().context_menu().map(|c| c.kind);
     assert!(
@@ -611,9 +642,43 @@ fn a_list_taller_than_its_slot_scrolls_to_the_lower_cards() {
             .map(|(_, r)| *r)
     };
     let alvo = ids::PHYSICS_SEC_DEBUG;
-    assert!(visivel(&antes, alvo).is_none(), "o Debug começa abaixo da dobra");
+    assert!(
+        visivel(&antes, alvo).is_none(),
+        "o Debug começa abaixo da dobra"
+    );
     let _ = host.wheel_at(baixa.w * 0.5, baixa.h * 0.5, -3000.0);
     let depois = pinta(&mut host);
     let r = visivel(&depois, alvo).expect("rolou até ao Debug");
-    assert_eq!(host.hit_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5), Some(alvo));
+    let _ = host.click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+    assert!(
+        !host.store().is_collapsed(alvo),
+        "o clique no cartão que subiu chega-lhe: o Debug nasce dobrado e abre"
+    );
+}
+
+/// O Auto Key: o que é canal do mundo mantém a marca clicável com o MESMO id; o que é de sessão ou
+/// da vista não a leva. *O id do chip é o que `ph2d_app_physics::marcas_mundo::CAMPOS` nomeia.*
+#[test]
+fn world_channels_keep_a_clickable_mark_and_session_settings_have_none() {
+    use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_target, set_key_marks};
+    let marca_de = |id: NodeId| -> bool {
+        set_key_marks(std::collections::BTreeMap::from([(id, KeyMark::Chave)]));
+        let mesa = Mesa::nova(PhysicsSnapshot::default());
+        let tem = mesa
+            .rects
+            .iter()
+            .filter_map(|(alvo, _)| key_mark_target(*alvo))
+            .any(|c| c.fields.contains(&id));
+        set_key_marks(std::collections::BTreeMap::new());
+        tem
+    };
+    let canais = rows::rows()
+        .map(|r| r.chip)
+        .chain([ids::PHYSICS_SLEEP_SPIN, ids::PHYSICS_LAYER_CELL[0]]);
+    for id in canais {
+        assert!(marca_de(id), "{id:?} perdeu a marca de animação no cartão");
+    }
+    for id in [ids::PHYSICS_HOLD_STIFFNESS_NUM, ids::PHYSICS_SHOW_COLLIDERS] {
+        assert!(!marca_de(id), "{id:?} não é canal e ganhou marca");
+    }
 }

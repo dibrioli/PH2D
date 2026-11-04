@@ -307,7 +307,11 @@ fn cartao_das_juntas(it: InteractionSettings) -> CardDef<'static> {
                     &nomes,
                     usize::from(it.ik_match_angle),
                 );
-                y = c.full(Some(tr("panel.physics.ik_angle")), Widget::Choice(&opcoes), y);
+                y = c.full(
+                    Some(tr("panel.physics.ik_angle")),
+                    Widget::Choice(&opcoes),
+                    y,
+                );
             }
             y = aos_pares(c, &numeros(&it, ISection::Joint), y);
             let y = c.hint(tr(dica_da_junta(it.joint)), y);

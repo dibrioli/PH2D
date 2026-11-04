@@ -84,12 +84,7 @@ impl CardCtx<'_> {
         }
         y += m::LABEL_PX + m::LABEL_BOTTOM;
         for i in 0..t.n {
-            self.legenda(
-                &i.to_string(),
-                self.x,
-                y + (lado - m::LABEL_PX) * 0.5,
-                lado,
-            );
+            self.legenda(&i.to_string(), self.x, y + (lado - m::LABEL_PX) * 0.5, lado);
             for j in 0..=i {
                 let id = (t.id_of)(i, j);
                 let on = (t.on_of)(i, j);
@@ -117,7 +112,9 @@ impl CardCtx<'_> {
             }
             y += passo;
         }
-        crate::widget::composto::grupo((0..t.n).flat_map(|i| (0..=i).map(move |j| (t.id_of)(i, j))));
+        crate::widget::composto::grupo(
+            (0..t.n).flat_map(|i| (0..=i).map(move |j| (t.id_of)(i, j))),
+        );
         y - m::GRID_GAP
     }
 
@@ -205,7 +202,10 @@ mod tests {
     #[test]
     fn a_readout_takes_no_click_and_a_hint_grows_when_it_wraps() {
         let mut f = mesa();
-        let fim = ctx(&mut f, 200.0).row(&[Cell::new(Widget::Readout { text: "120" }).label("Scale")], 0.0);
+        let fim = ctx(&mut f, 200.0).row(
+            &[Cell::new(Widget::Readout { text: "120" }).label("Scale")],
+            0.0,
+        );
         assert!(fim > m::FIELD_H);
         assert_eq!(f.hits.iter_registrations().count(), 0);
         let frase = "Paused: drag carries the whole rig, anchors included";

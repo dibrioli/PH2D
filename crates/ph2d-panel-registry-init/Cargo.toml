@@ -137,6 +137,7 @@ ph2d-app-skeleton = { path = "../ph2d-app-skeleton" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+ph2d-skeleton-live = { path = "../ph2d-skeleton-live" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }

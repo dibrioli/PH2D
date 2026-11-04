@@ -168,3 +168,41 @@ fn a_shortcut_after_a_press_on_a_pinned_card_is_of_the_selection() {
     tecla(&mut h);
     assert_eq!(h.store.card_press_subject(), Some(PRESO), "lista aberta");
 }
+
+/// ⭐ T36: um gesto sobre um cartão preso a um osso é desse osso; preso a um objecto que não é osso,
+/// da seleção. E a shell pergunta por esta porta: ela perdeu-a no porte da linha de teste, e o preso
+/// mostrava um osso e escrevia noutro. A shell lê-se no fonte (o dreno e a tecla não correm aqui).
+/// *Mutação: `preso` ignorado; o dreno com `selected_bone`; a tecla da shell sem `note_card_key`.*
+#[test]
+fn the_requests_of_a_gesture_on_a_pinned_card_are_of_its_bone() {
+    use ph2d_skeleton_live::bone::osso_do_gesto;
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let osso = |sim: &mut ph2d_ecs::SimWorld| {
+        let e = (
+            ph2d_ecs::Transform::default(),
+            ph2d_skeleton_ecs::Bone::default(),
+        );
+        sim.world_mut().spawn(e).id().to_bits()
+    };
+    let (a, b) = (osso(&mut sim), osso(&mut sim));
+    let objecto = sim
+        .world_mut()
+        .spawn(ph2d_ecs::Transform::default())
+        .id()
+        .to_bits();
+    assert_eq!(osso_do_gesto(&sim, Some(a), [b]), Some(a));
+    assert_eq!(osso_do_gesto(&sim, None, [b]), Some(b));
+    assert_eq!(osso_do_gesto(&sim, Some(objecto), [b]), Some(b));
+    assert_eq!(osso_do_gesto(&sim, Some(objecto), []), None);
+    let dreno = include_str!("../../../../shells/desktop/src/render_loop/fase_bus_drain.rs");
+    assert!(
+        dreno.contains("osso_selecionado: ph2d_skeleton_live::bone::osso_do_gesto("),
+        "o dreno da shell deixou de perguntar pelo preso"
+    );
+    let tecla =
+        include_str!("../../../../shells/desktop/src/input_dispatch/keyboard_bind_capture.rs");
+    assert!(
+        tecla.contains("hero.store.note_card_key();"),
+        "a tecla da shell deixou de largar o preso"
+    );
+}

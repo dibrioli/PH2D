@@ -9995,6 +9995,7 @@ dependencies = [
  "ph2d-panel-widget-lab",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
+ "ph2d-skeleton-live",
  "ph2d-symmetry",
  "ph2d-text",
  "ph2d-timeline",

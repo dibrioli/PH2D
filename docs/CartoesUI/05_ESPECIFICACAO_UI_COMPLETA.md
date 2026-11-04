@@ -165,7 +165,7 @@ Cura provável = fechar a 2.ª metade do T29 (§9) para a câmera, e fotografar 
 
 **Solto**: um solto colado ao topo do canvas tem o cabeçalho sob a barra de modos («Rail Backdrop» regista-se depois) — o alfinete não se clica ali · a corda só se pinta por cima dos soltos do SEU painel · iPad (T49).
 
-**Outros antigos**: dobra do cartão Tool não reproduzida · Skin não aparece com osso no Transform · listas de ações do Smart Bone e pop-ups de Tip de um cartão preso leem o osso em foco · atalho logo após clicar num cartão preso vai ao osso preso · Travamento com Scale X (repetir sem contenção de placa).
+**Outros antigos** (estado em [10](10_TODO_O_APP_TRACKER.md), bloco J): dobra do cartão Tool não reproduzida · Skin não aparece com osso no Transform (lei de hoje, igual em `PH2D_CARDS=0`) · Travamento com Scale X (repetir sem contenção de placa). Curados na R3: listas de um preso, atalho depois de clicar num preso.
 
 **Vermelhos que NÃO são desta linha** (a tratar na mudança definitiva): `ph2d-panel-inspector --test it` `seam_*` (134–139, instável) · `node_id_collisions::every_non_literal_hash_is_named` · 16 em `ph2d-editor-core --tests` e 16 em `ph2d-panel-skeleton/tests/seam.rs` (lista no handoff dos blocos 3–7) · censo `toast_reading` do `ph2d-app-kanban`.
 

@@ -71,7 +71,7 @@ impl crate::App {
         let mut pd = DrainOut {
             // ⚠️ Lê-se AQUI, antes de o mundo ser emprestado mutável. Num gesto sobre um cartão
             // preso é o osso dele.
-            osso_selecionado: crate::bone_gesture::osso_do_gesto(
+            osso_selecionado: ph2d_skeleton_live::bone::osso_do_gesto(
                 sim,
                 hero.store.card_press_subject(),
                 hero.gizmo.iter_selected(),

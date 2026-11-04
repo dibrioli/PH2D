@@ -137,3 +137,17 @@ pub fn limited(sim: &SimWorld, bone: Entity, rot: f64) -> f64 {
         .get::<ph2d_skeleton_ecs::BoneLimit>(bone)
         .map_or(rot, |l| ph2d_skeleton::clamp_to_limit(rot, l.min, l.max))
 }
+
+/// **De que osso são os pedidos do painel**: um gesto sobre um cartão PRESO a um osso é desse osso
+/// (T36, `preso` = `card_press_subject`, que também pode ser um objecto do Inspector); senão, o
+/// primeiro osso da seleção.
+pub fn osso_do_gesto(
+    sim: &SimWorld,
+    preso: Option<u64>,
+    selection: impl IntoIterator<Item = u64>,
+) -> Option<u64> {
+    preso
+        .into_iter()
+        .chain(selection)
+        .find(|&b| sim.world().get::<Bone>(Entity::from_bits(b)).is_some())
+}

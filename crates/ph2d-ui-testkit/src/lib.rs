@@ -57,6 +57,46 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
+thread_local! {
+    static TEXTO_DO_FIO: std::cell::Cell<Option<TextSystem>> = const { std::cell::Cell::new(None) };
+}
+
+/// O `TextSystem` do arnês: UM por fio, como o único do app. Registar as fontes e moldar cada texto a
+/// cada pintura era o custo do arnês; a cache de layouts devolve a mesma geometria (a chave é a identidade).
+/// Reentrante: quem pede com o do fio emprestado recebe um novo.
+struct TextoDoFio(Option<TextSystem>);
+
+impl TextoDoFio {
+    fn pega() -> Self {
+        Self(Some(
+            TEXTO_DO_FIO
+                .take()
+                .unwrap_or_else(TextSystem::without_system_fonts),
+        ))
+    }
+}
+
+impl std::ops::Deref for TextoDoFio {
+    type Target = TextSystem;
+    fn deref(&self) -> &TextSystem {
+        self.0.as_ref().expect("só o Drop o tira")
+    }
+}
+
+impl std::ops::DerefMut for TextoDoFio {
+    fn deref_mut(&mut self) -> &mut TextSystem {
+        self.0.as_mut().expect("só o Drop o tira")
+    }
+}
+
+impl Drop for TextoDoFio {
+    fn drop(&mut self) {
+        if !std::thread::panicking() {
+            TEXTO_DO_FIO.set(self.0.take());
+        }
+    }
+}
+
 /// One second of the synthetic pointer clock — the gap [`MockPanelHost::click_at`] leaves
 /// between clicks so the dispatcher never mistakes two of them for a double-click.
 const NANOS_PER_SECOND: u128 = 1_000_000_000;
@@ -303,7 +343,7 @@ impl MockPanelHost {
             ph2d_editor_core::screens::layout::CenterSplit::None,
             ph2d_editor_core::screens::layout::DockSides::BOTH,
         );
-        let mut text_system = TextSystem::without_system_fonts();
+        let mut text_system = TextoDoFio::pega();
         // ⭐⭐ **DOIS QUADROS DE AQUECIMENTO, sem medir** (2026-09-23). A coluna do valor é UMA por
         //    painel ([`ph2d_editor_core::widget::ColunaDoPainel`]): o 1.º quadro aprende a BASE, o
         //    2.º os pedidos de todas as secções, e o artista vê o 3.º em diante — é esse que as
@@ -376,7 +416,7 @@ impl MockPanelHost {
         self.hit_index.clear_for_frame();
         let layout = HeroLayout::for_viewport(viewport);
         let mut scene = VectorScene::new();
-        let mut text_system = TextSystem::without_system_fonts();
+        let mut text_system = TextoDoFio::pega();
         let mut ctx = PaintCtx {
             host: self,
             layout: &layout,
@@ -469,7 +509,7 @@ impl MockPanelHost {
         self.set_panel_visible(P::ID, true);
         self.hit_index.clear_for_frame();
         let mut scene = VectorScene::new();
-        let mut text_system = TextSystem::without_system_fonts();
+        let mut text_system = TextoDoFio::pega();
         {
             let mut ctx = PaintCtx {
                 host: self,
@@ -497,7 +537,7 @@ impl MockPanelHost {
         self.set_panel_visible(P::ID, true);
         self.hit_index.clear_for_frame();
         let mut scene = VectorScene::new();
-        let mut text_system = TextSystem::without_system_fonts();
+        let mut text_system = TextoDoFio::pega();
         {
             let mut ctx = PaintCtx {
                 host: self,
@@ -529,12 +569,12 @@ impl MockPanelHost {
         // `_with_text` — the variant the SHELL uses (it threads a live `TextSystem` so a click
         // into a text field lands the caret on the right glyph). A harness that dispatched the
         // no-text variant would be testing a path the app does not take.
-        let mut ts = TextSystem::without_system_fonts();
+        let mut ts = TextoDoFio::pega();
         ph2d_editor_core::interaction::dispatch_pointer_with_text(
             &mut self.store,
             &self.hit_index,
             event,
-            Some(&mut ts),
+            Some(&mut *ts),
             &arena,
         )
         .to_vec()

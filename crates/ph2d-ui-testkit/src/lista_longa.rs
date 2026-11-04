@@ -14,7 +14,6 @@ use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::widget::{DROPDOWN_SCROLLBAR_ID, DropdownState, ScrollbarState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
-use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
 
 /// Meio pixel de tolerância entre duas medidas do mesmo rect.
@@ -33,7 +32,7 @@ impl MockPanelHost {
         self.hit_index.clear_for_frame();
         let viewport = layout.viewport;
         let mut scene = VectorScene::new();
-        let mut text_system = TextSystem::without_system_fonts();
+        let mut text_system = super::TextoDoFio::pega();
         {
             let mut ctx = PaintCtx {
                 host: self,

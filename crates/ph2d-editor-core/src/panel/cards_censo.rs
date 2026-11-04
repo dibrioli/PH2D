@@ -75,6 +75,14 @@ pub(crate) fn na_secao(secao: Option<NodeId>) {
     }
 }
 
+/// Um corpo pintado fora da lista (o painel flutuante de um cartão) também conta, sob o id dele.
+pub fn na_secao_de<R>(secao: NodeId, f: impl FnOnce() -> R) -> R {
+    na_secao(Some(secao));
+    let r = f();
+    na_secao(None);
+    r
+}
+
 /// A secção do corpo que se está a pintar.
 pub(crate) fn secao_atual() -> Option<NodeId> {
     SECAO.with(Cell::get)

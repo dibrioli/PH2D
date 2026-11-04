@@ -501,6 +501,76 @@ fn the_hints_speak_only_where_they_have_a_subject() {
     }
 }
 
+/// O que se pinta muda só com o estado escolhido: a opção acesa sai do DOCUMENTO. Sem isto, nenhum rect
+/// distingue o segmento aceso. *Mutação: acender sempre o 1.º, ou todos ⇒ vermelho.*
+#[test]
+fn the_lit_option_follows_the_document() {
+    let pinta = |semente: &dyn Fn()| {
+        let mut mesa = Mesa::com(true, forma);
+        semente();
+        mesa.assenta();
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        h.paint_draw_data::<ph2d_panel_vector::VectorPanel>(st, super::g4_os_cartoes::COLUNA)
+    };
+    let padrao_com = |kind: u8, mode: u8| {
+        let linha = TexturePatternRow {
+            kind,
+            mode,
+            wrap_seam_visible: false,
+            ..padrao()
+        };
+        ph2d_panel_vector::set_current_texture_pattern(0, Some(linha));
+    };
+    assert_ne!(
+        pinta(&|| padrao_com(1, 0)),
+        pinta(&|| padrao_com(2, 0)),
+        "Tile"
+    );
+    assert_ne!(
+        pinta(&|| padrao_com(1, 0)),
+        pinta(&|| padrao_com(1, 1)),
+        "Repeat"
+    );
+    let no = |t| {
+        ph2d_panel_vector::set_selected_vertex_type(Some(VertexSel::Uniform(t)));
+    };
+    assert_ne!(
+        pinta(&|| no(VertexType::Corner)),
+        pinta(&|| no(VertexType::Smooth)),
+        "tipo do nó"
+    );
+    assert_ne!(
+        pinta(&|| no(VertexType::Smooth)),
+        pinta(&|| ph2d_panel_vector::set_selected_vertex_type(Some(VertexSel::Mixed))),
+        "seleção mista acende um"
+    );
+}
+
+/// O botão diz o estado da arte: escolher ou trocar. *Mutação: dizer sempre o mesmo ⇒ vermelho.*
+#[test]
+fn the_art_button_says_pick_or_change() {
+    for (tem, chave) in [
+        (true, "panel.vector.art.change_art"),
+        (false, "panel.vector.art.pick_art"),
+    ] {
+        let mut mesa = Mesa::com(true, forma);
+        ph2d_panel_vector::set_current_brush(Some(BrushRow {
+            has_art: tem,
+            spacing: 1.5,
+            scale: 2.5,
+            offset: -0.5,
+            rotation_deg: 45.0,
+            flip: false,
+        }));
+        let ((), c) = censo::grava(|| mesa.assenta());
+        let nome = ph2d_i18n::tr(chave);
+        assert!(
+            c.textos.iter().any(|t| t.texto == nome),
+            "«{nome}» não pintado"
+        );
+    }
+}
+
 /// A pintura que `f` faz passa nas três regras do censo da fundação (05 §4), numa coluna de dock.
 pub(crate) fn sem_acusacao(onde: &str, f: impl FnOnce()) {
     let ((), censo) = censo::grava(f);

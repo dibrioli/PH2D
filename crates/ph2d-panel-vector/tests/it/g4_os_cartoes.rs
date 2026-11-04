@@ -17,7 +17,7 @@ use ph2d_tool_vector::ids as t;
 use ph2d_ui_testkit::MockPanelHost;
 use ph2d_vec_text::TextAlign;
 
-const COLUNA: Rect = Rect {
+pub(crate) const COLUNA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1340.0,

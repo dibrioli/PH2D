@@ -9,7 +9,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, rect_to_vello};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::{CardCtx, dicas};
+use ph2d_editor_core::panel::cards::{CardCtx, censo, dicas};
 use ph2d_editor_core::widget::PaintedPopover;
 use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::zones::Rect;
@@ -211,7 +211,7 @@ pub(crate) fn flutua(
         );
         card_ink::com(ink, || {
             let y = abre(&mut c, rect.y - rolagem);
-            corpo(&mut c, y);
+            censo::na_secao_de(id, || corpo(&mut c, y));
         });
     }
     hit_index.pop_clip();

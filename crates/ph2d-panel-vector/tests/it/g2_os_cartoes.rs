@@ -780,6 +780,11 @@ fn the_blend_and_marker_menus_open_and_their_rows_answer() {
             t::vector_marker_option_id(1, 2),
         ),
         (
+            Some(p::VECTOR_FILL_ROW),
+            p::VECTOR_TOKEN_FILL,
+            p::vector_token_option_id(p::token_slot_of(p::VECTOR_TOKEN_FILL).unwrap().code, 1),
+        ),
+        (
             Some(p::VECTOR_STROKE_SETTINGS),
             p::VECTOR_TOKEN_STROKE,
             p::vector_token_option_id(p::token_slot_of(p::VECTOR_TOKEN_STROKE).unwrap().code, 1),

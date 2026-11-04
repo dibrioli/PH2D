@@ -121,7 +121,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // dizer aqui "the art was deleted" acusaria o artista de um estrago que ele nao fez.
         "panel.vector.texpat.art_not_chosen.hint" => {
             "Pick the art for this pattern: an image file with Source..., or a shape from your \
-             drawing with Use Shape..."
+             drawing with Use Art..."
         }
         "panel.vector.texpat.art_missing.hint" => {
             "The shape this pattern used as art was deleted, so it is painting its fallback \

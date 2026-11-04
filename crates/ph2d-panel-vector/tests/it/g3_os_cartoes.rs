@@ -986,3 +986,24 @@ fn the_slice_passes_the_compaction_census() {
         super::g5_os_cartoes::sem_acusacao(&format!("{linha:?}"), || mesa.assenta());
     }
 }
+
+/// Parâmetros do efeito dois a dois, e a caixa como 2.ª coluna (05 §4). Size + Smooth, Ridges + Bend.
+#[test]
+fn an_effect_shares_its_lines_and_its_checkbox() {
+    let mut mesa = Mesa::nova(true);
+    mesa.abre(t::vector_fx_row_id(1));
+    let r = |id: NodeId| mesa.rect(id).unwrap_or_else(|| panic!("{id:?}"));
+    let (size, caixa) = (
+        r(t::vector_fx_param_num_id(1, 0)),
+        r(t::vector_fx_toggle_id(1, 1)),
+    );
+    assert!(
+        size.y < caixa.y + caixa.h && caixa.y < size.y + size.h,
+        "{size:?} {caixa:?}"
+    );
+    let (a, b) = (
+        r(t::vector_fx_param_num_id(1, 2)),
+        r(t::vector_fx_param_num_id(1, 3)),
+    );
+    assert!((a.y - b.y).abs() < 1.0, "{a:?} {b:?}");
+}

@@ -201,9 +201,13 @@ slow-timeout = { period = "60s", terminate-after = 12 }
 # O gate que FORÇA a recusa de memória (`SemMemoria` a 2160p, ~1,1 GB pedidos) com outro gate da luz ao lado
 # vira falta de memória de VERDADE para a placa inteira (o atlas do renderer inválido, pânico do wgpu no
 # `get_mapped_range`) — ship de 12/10; sozinho 3/3 verde com 0,6 GB da placa em uso. Corre SOZINHO.
+# No FIM (`priority`): na sua vez de fila ele travava as vagas à espera de esvaziar. Medido 04/11, mesma compilação,
+# ABAB, `package(ph2d-app-light2d) | package(ph2d-app-macros)`: mínimo 285,7 → 251,7 s, e os 130 testes que arrancavam aos 210 s
+# passam a arrancar na 1.ª janela de 30 s (docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md).
 [[profile.default.overrides]]
 filter = 'test(=os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria)'
 threads-required = "num-test-threads"
+priority = -100
 
 # E o RESTO da luz na placa: na suíte inteira (dois por vez na placa, a CPU cheia) um gate custa mais de 2× o
 # que custa sozinho — `as_formas_redondas_nao_saem_em_facetas` 84,2 s sozinho, > 180 s no ship de 12/10. Tecto

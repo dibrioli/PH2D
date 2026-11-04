@@ -129,9 +129,9 @@ fn a_panel_that_does_not_declare_floating_never_reaches_the_drawing_area() {
     }
 
     assert!(
-        measured >= 10,
-        "só {measured} painéis ancorados publicaram rect — a varredura ficou vazia e passaria \
-         sobre nada"
+        measured + listas >= 10,
+        "só {measured} painéis ancorados e {listas} listas publicaram rect — a varredura ficou \
+         vazia e passaria sobre nada"
     );
     assert!(
         listas >= 1 || std::env::var("PH2D_CARDS").as_deref() == Ok("0"),

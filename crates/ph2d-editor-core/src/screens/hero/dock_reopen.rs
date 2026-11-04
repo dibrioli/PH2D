@@ -288,6 +288,60 @@ mod tests {
         );
     }
 
+    /// ⭐ D24, espelho (bloco F): a lista da esquerda deixa o canvas ir à borda e a régua com ele; as
+    /// barras do módulo saem de baixo dela; com o grafo, ele e o canvas acabam onde a lista não os tapa.
+    #[test]
+    fn a_floating_list_on_the_left_keeps_the_bars_and_the_graph_in_the_clear() {
+        let probe = layout(DockSides::BOTH);
+        let (lc, rc) = probe.side_columns();
+        let lista = Rect::new(lc.x + 25.0, lc.y + 8.0, lc.w - 30.0, 200.0);
+        let (docks, lists) = DockSides::NONE.with_floating(lc, rc, [lista]);
+        assert!(docks.float_left && !docks.left);
+        let mut l = layout(docks);
+        l.float_lists = lists;
+        assert_eq!(l.draw_area.x, lc.x, "o canvas passa por trás da lista");
+        let conteudo = crate::ruler::content(l.draw_area, true);
+        assert!(
+            conteudo.x > lc.x && conteudo.x < lista.x,
+            "a régua fica à esquerda da lista"
+        );
+        let livre = l.clear_of_left_list(conteudo);
+        assert!(
+            livre.x >= lista.x + lista.w,
+            "barra debaixo da lista: {livre:?}"
+        );
+        assert_eq!(livre.x + livre.w, conteudo.x + conteudo.w);
+        let seam = l.dock_seam(DockSide::Left);
+        assert_eq!((seam.y, seam.h), (lista.y, lista.h));
+        assert_eq!(l.dock_width_for(DockSide::Left, seam.x + seam.w), lc.w);
+
+        let com_grafo = HeroLayout::for_viewport_bands(
+            Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H),
+            false,
+            ChromeBands::DEFAULT,
+            CenterSplit::Horizontal { t: 0.5 },
+            docks,
+        );
+        assert!(
+            com_grafo.motion_graph.x >= lc.x + lc.w,
+            "grafo por baixo da lista"
+        );
+        assert_eq!(
+            com_grafo.draw_area.y + com_grafo.draw_area.h,
+            com_grafo.motion_graph.y,
+            "sobra um bloco de canvas vazio ao lado do grafo"
+        );
+        // Sem lista, a coluna vazia continua a dar a largura inteira ao grafo.
+        let sem = HeroLayout::for_viewport_bands(
+            Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H),
+            false,
+            ChromeBands::DEFAULT,
+            CenterSplit::Horizontal { t: 0.5 },
+            DockSides::NONE,
+        );
+        assert!(sem.motion_graph.x < lc.x + lc.w);
+    }
+
     /// ⛔ **A alça e a costura nunca respondem ao mesmo tempo** — uma exige a coluna aberta, a
     /// outra fechada. Se as duas respondessem, um toque seria ambíguo.
     #[test]

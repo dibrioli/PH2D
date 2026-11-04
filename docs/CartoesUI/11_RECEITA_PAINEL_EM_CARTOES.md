@@ -41,6 +41,8 @@ Nasceu do bloco B (Physics, 04/11). Exemplo completo e testado: `crates/ph2d-pan
 | Matriz triangular | **novo** `c.toggle_triangle(&ToggleTriangle { … }, y)`: legendas, arrasto que pinta, grupo composto | os das células |
 | Lista com muitas opções | `Widget::Dropdown` + `dropdown::declare(id)` em `prepare`; a caixa é `Button` só em cartões (`ph2d-panel-skeleton/src/seam.rs`, `lista`) | os de hoje |
 | Lista ou árvore | **novo** `c.list_row(&ListRow { depth, trailing, selected, edit, .. }, y)`: linhas coladas, recuo pela porta, campo de renomear por cima do nome (`ph2d-panel-tags/src/cards.rs`) | o da linha; registe e `set_panel_row_ids` em `prepare`, nunca no corpo |
+| Árvore grande (Hierarchy) | Corpo próprio com as linhas de altura `ROW_H`, recortado à janela, sem `list_row`: pinta só a faixa à vista e devolve o fundo da árvore inteira (`ph2d-panel-hierarchy/src/cards.rs`, `faixa`) | os de hoje |
+| Busca que não rola com a lista | **novo** `paint_card_list_top(.., Some(ListTop { h, body, add }))`: faixa presa debaixo do título e «+» no cabeçalho sem pé | os de hoje |
 | Linha que se arrasta | `target`/`dim` no `ListRow` + `c.list_row_flight` no fim do corpo: voa inclinada, sem registar clique | o despacho de sempre (`panel_row_drag`) |
 | Grade de miniaturas | Pinte no corpo com `c.ink`, célula inteira é o alvo; publique ids e `set_asset_cells` em `prepare` e corte o que está fora da janela (`ph2d-panel-asset-browser/src/cards.rs`, `grelha`) | os de hoje |
 | Faixas de canal, barras mudas | **novo** `c.bar(&CardBar { id, value, vertical, ticks }, r)`, `c.meter(click, &meter, r)`, `c.tone_button(r, id, texto, on, tom)`; cada fila leva rótulo em cima (`ph2d-panel-audio-mixer/src/cards.rs`, `mesa`) | os de hoje; o store e o despacho são os do `Slider` |
@@ -48,6 +50,9 @@ Nasceu do bloco B (Physics, 04/11). Exemplo completo e testado: `crates/ph2d-pan
 | Verbo destrutivo | **novo** `c.danger_button(id, texto, y)`; recusa da lei: `c.problem(texto, y)` | o de hoje |
 | Painel que FLUTUA | **novo** `paint_floating_list(ctx, panel, título, &cartões, rect, FloatHandles { .. })`: lista no rect de sempre, rect do painel e alças passam a ser os da lista | os de hoje |
 | Canvas de teste, pele do artista | Só o cromo: o corpo continua no pintor dele, com `c.ink.theme` (Authored, Widget Lab) | os de hoje |
+| Tira larga na banda de baixo | Só o cromo, cartão único: o corpo reserva a altura (banda menos o cromo), guarda o rect no 1.º passe e os pintores correm DEPOIS da lista, com o `PaintCtx` (`ph2d-panel-flip-frames/src/cards.rs`) | os de hoje |
+| Corpo grande já em `property_row` | Reaproveite o corpo: um `Corpo` montado a partir do `CardCtx`. `paint_choice_row` e `paint_check_rows` já se pintam no cartão, `paint_field_row` NÃO; o resto pergunta `self.cartao` (`ph2d-panel-pixel-tools/src/paint_cartoes*.rs`). Estado do corpo por `RefCell` | os de hoje |
+| Ajuste de ferramenta numa escolha ou caixa de fora | `corpo::choices(.., nome, &[], segs)`: sem ids não há marca, sem nome não há rótulo. Caixa: `Rotulo::vista_de(texto)`, a coluna fica vazia | os de hoje |
 
 Linhas novas (`hint`, `check`, `toggle_triangle`) moram em `panel/cards_linhas_extra.rs`, porque a linha de `Widget` tem
 altura fixa de campo. Geometria nova: `ph2d_card_stack::metrics`; cor: `c.ink.color(token)`.
@@ -74,6 +79,12 @@ ferramenta ou de sessão não leva `.key` (D17).
 - **`paint_text_centered` reserva respiro:** numa coluna de faixa ele cortou «Master» a 46 px. Meça e use `paint_text_elided`.
 - **O mock ignora uma largura menor do que a coluna dele:** a largura estreita prova-se com `CardCtx::flutuante` (`the_desk_fits_any_card_width…`).
 - **Foto de um painel sem cena:** semeie o HOME: `.ph2d/layout.txt` com `active=animation`, `[animation]`, `open.<id>=1`, `open.inspector=1` (o `open.` inverte o de fábrica), e `fotografa_cena.sh "HOME=<pasta> PH2D_NONE=1" 1930 1500 saida.png`. Em `active=vector` o painel Vector fica à frente.
+- **O `rustfmt` alarga:** um `cards.rs` de 500 linhas escritas saiu com 883 (Flip). `architecture_panel_loc_cap` corta a 600: meça depois do fmt e parta por cartão.
+- **A coluna do `Mesa` tem 2600 px:** numa lista mais alta, o que passa da janela não regista alvo, e um `if rect.is_none() { continue }` no teste esconde-o. Dobre os outros cartões e exija o rect (`so_aberto` no Pixel).
+- **Fração em %:** `0.65_f32 * 100.0` aparece «65.000» no campo. Arredonde o valor semeado (`pct` no Flip).
+- **Testes antigos do painel:** uma `host_de_antes()` em `tests/it/main.rs` (`force_cards_on_this_thread(Some(false))`) e troca com `assert` de contagem; eles descrevem o corpo de `PH2D_CARDS=0`.
+- **Lista na coluna da esquerda:** começa depois da régua vertical; barra ou quadro que nasce na borda da área pede `layout.clear_of_left_list(area)`. Nos Nodes o grafo pára nas colunas.
+- **Id sintético de linha acima de `2^32`:** o companheiro (galo, olho) está morto no despacho, em silêncio; o galo da Cena e dos Clips esteve assim até ao bloco F.
 - **Agente em paralelo:** um `cargo test` em `registry-init` pode não compilar pelo WIP do outro. Espere e repita; não
   conserte o que não é seu. Em `zsh`, `$P` não divide palavras: use `bash -c`.
 

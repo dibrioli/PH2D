@@ -442,9 +442,9 @@ impl HeroLayout {
         // ⚠️ E as DUAS metades encolhem juntas: o painel do grafo deteta a orientação por
         // `rect.x > center.x` e mede o arrasto do divisor contra `center + rect`, então narrar uma
         // só faria um split horizontal ler-se como vertical.
-        // ⭐ D24: o grafo não passa por trás da lista da esquerda: pinta-se depois dela e tapá-la-ia.
-        let band_x0 = if docks.float_left { chrome_x0 } else { area_x0 };
-        let band = Rect::new(band_x0, chrome_top, (area_x1 - band_x0).max(0.0), chrome_h);
+        // ⭐ D24: o grafo e o timeline dele param nas colunas, como a faixa do fundo: uma lista alta
+        // tapava-lhes as beiradas (o «×» do timeline, os botões do grafo).
+        let band = Rect::new(chrome_x0, chrome_top, chrome_w, chrome_h);
         let (center_viewport, motion_graph) = match split {
             CenterSplit::None => (canvas, Rect::new(band.x, band.y, 0.0, 0.0)),
             CenterSplit::Horizontal { t } => {
@@ -507,11 +507,19 @@ impl HeroLayout {
         // partilham coordenada. ⛔ Uma barra de ferramentas que atravessasse o ecrã passaria por
         // cima das colunas — que é o modelo que o trilho `x = 0` tinha, e o defeito que ele deu.
         let tool_bar = Rect::new(chrome_x0, chrome_top, chrome_w, tool_bar_h.min(chrome_h));
+        // ⭐ D24: com o grafo por baixo, o canvas que passa por trás de uma lista acaba onde a cena acaba
+        // (sem isto sobrava um bloco de canvas vazio debaixo da lista, à esquerda do grafo).
+        let draw_bottom = match split {
+            CenterSplit::Horizontal { .. } if docks.float_left || docks.float_right => {
+                center_viewport.y + center_viewport.h
+            }
+            _ => chrome_top + chrome_h,
+        };
         let draw_area = Rect::new(
             area_x0,
             chrome_top + tool_bar.h,
             area_w,
-            (chrome_h - tool_bar.h).max(0.0),
+            (draw_bottom - chrome_top - tool_bar.h).max(0.0),
         );
         // ⭐ A altura é a AUTORADA (a costura do topo escreve-a), apertada contra a banda de
         // chrome — numa janela baixa a faixa não pode ser mais alta do que o sítio onde vive.

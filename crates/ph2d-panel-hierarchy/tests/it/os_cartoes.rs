@@ -8,10 +8,11 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_component_desc::ComponentCategory;
 use ph2d_editor_core::action_bus::{EditorAction, HierRequest, SelectModifier};
-use ph2d_editor_core::hier_rows::RowRole;
+use ph2d_editor_core::hier_rows::{ContentGroup, ContentItem, ContentOpens, RowRole};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::dicas;
 use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
@@ -560,6 +561,94 @@ fn o_drop_de_asset_acha_a_linha_sob_o_cursor() {
     assert_eq!(mesa.host.hit_at(x, y), Some(id_de(2)));
     assert!(mesa.host.store().is_hierarchy_row(id_de(2)));
     assert!(!mesa.host.store().is_hierarchy_row(ids::HIER_SCENE_ROW));
+}
+
+/// Os Clips: o conteúdo nasce recolhido, o galo abre-o, e a linha do clip responde.
+#[test]
+fn o_conteudo_de_um_objecto_abre_pelo_galo() {
+    let mut mesa = Mesa::com(3, |m| {
+        if let Some(e) = m.get_mut(&id_de(2)) {
+            e.content = vec![ContentGroup {
+                label_key: "hier_rows.content.layers",
+                icon: IconId::Layers,
+                item_icon: IconId::Layer,
+                opens: ContentOpens::Mode(ObjectMode::Draw),
+                items: vec![ContentItem {
+                    key: 7,
+                    name: "Ink".into(),
+                    depth: 0,
+                    active: false,
+                }],
+            }];
+        }
+    });
+    let (grupo, item) = (
+        ids::hier_content_row(id_de(2), 0, None),
+        ids::hier_content_row(id_de(2), 0, Some(7)),
+    );
+    assert!(mesa.rect(grupo).is_some() && mesa.rect(item).is_none());
+    let galo = core_ids::hier_expand_companion(grupo);
+    assert!(
+        mesa.rect(galo).is_some(),
+        "o grupo de conteúdo perdeu o galo"
+    );
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(
+        mesa.rect(item).is_some(),
+        "o galo do grupo não abriu o conteúdo"
+    );
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(
+        mesa.rect(item).is_none(),
+        "o galo do grupo não fechou o conteúdo"
+    );
+    let _ = mesa.clica(grupo);
+    mesa.assenta();
+    assert!(
+        mesa.rect(item).is_some(),
+        "o clique no grupo não abriu o conteúdo"
+    );
+}
+
+/// O galo da raiz Cena recolhe a cena inteira (era um id acima da guarda dos companheiros).
+#[test]
+fn o_galo_da_cena_recolhe_tudo() {
+    let mut mesa = Mesa::nova(3);
+    let galo = core_ids::hier_expand_companion(ids::HIER_SCENE_ROW);
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(
+        mesa.rect(id_de(2)).is_none(),
+        "a Cena recolhida ainda mostra os objectos"
+    );
+    let _ = mesa.clica(galo);
+    mesa.assenta();
+    assert!(mesa.rect(id_de(2)).is_some());
+}
+
+/// O rato por cima acende a linha; a pintura muda (a contraprova é a linha em repouso).
+#[test]
+fn o_rato_por_cima_acende_a_linha() {
+    let mut mesa = Mesa::nova(4);
+    let repouso = mesa
+        .host
+        .paint_and_count_geometry::<HierarchyPanel>(&mut mesa.st, VIEW);
+    let p = mesa.centro(id_de(3));
+    let _ = mesa.ponteiro(PointerKind::Move, p);
+    assert_eq!(
+        mesa.host.store().hot_id(),
+        Some(id_de(3)),
+        "a linha não soube do rato"
+    );
+    let acesa = mesa
+        .host
+        .paint_and_count_geometry::<HierarchyPanel>(&mut mesa.st, VIEW);
+    assert!(
+        acesa.1 > repouso.1,
+        "o realce não pintou: {acesa:?} × {repouso:?}"
+    );
 }
 
 /// Todo ícone mudo pintado tem dica (T31).

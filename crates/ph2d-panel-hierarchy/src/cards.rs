@@ -218,13 +218,16 @@ fn traz_a_selecao(
             .is_some_and(|e| e.selected && e.role == RowRole::Object)
     });
     let id = primeira.map(|k| a.mostradas[k].id);
-    if id == st.revealed {
+    // Antes do 1.º quadro medido não há vista: a selecção do arranque espera por ela. O cartão solto
+    // rola por dentro, não pela lista.
+    let Some(visivel) = store.panel_visible_h(PAINEL) else {
+        return;
+    };
+    if id == st.revealed || store.is_loose_in(ids::HIER_SEC_TREE, PAINEL) {
         return;
     }
     st.revealed = id;
-    let (Some(k), Some(visivel)) = (primeira, store.panel_visible_h(PAINEL)) else {
-        return;
-    };
+    let Some(k) = primeira else { return };
     // Em coordenadas do conteúdo, onde a rolagem é o topo da vista.
     let origem = g.arvore - g.topo;
     let (cima, baixo) = (
@@ -271,12 +274,24 @@ fn dicas_da_linha(store: &mut WidgetStore, row: NodeId, e: Option<&HierarchyEnti
     }
 }
 
+/// O rato está sobre a linha ou sobre um dos ícones dela? (`hover_live` diz 1 a quem o relógio nunca viu.)
+fn sob_o_rato(store: &WidgetStore, id: NodeId) -> bool {
+    store.hot_id().is_some_and(|h| {
+        h == id
+            || core_ids::hier_expand_companion_to_row(h) == Some(id)
+            || core_ids::hier_eye_companion_to_row(h) == Some(id)
+            || core_ids::hier_lock_companion_to_row(h) == Some(id)
+            || core_ids::hier_group_companion_to_row(h) == Some(id)
+            || core_ids::hier_icon_companion_to_row(h) == Some(id)
+    })
+}
+
 /// O fundo de uma linha na largura inteira do cartão: à Kanban/Figma, sem moldura.
 fn fundo(c: &mut CardCtx<'_>, r: Rect, k: usize, e: &HierarchyEntity, id: NodeId) {
     paint_row_stripe(c.scene, r, c.ink.theme, ColorToken::KanbanCard, k);
     let tom = if e.selected {
         RowHighlight::Selected
-    } else if e.hovered || c.store.hover_live(id) > 0.0 {
+    } else if e.hovered || sob_o_rato(c.store, id) {
         RowHighlight::Hovered
     } else {
         RowHighlight::None
@@ -293,8 +308,8 @@ fn fundo(c: &mut CardCtx<'_>, r: Rect, k: usize, e: &HierarchyEntity, id: NodeId
 
 /// O corpo do cartão da árvore: pinta só o que cai em `janela` e devolve o fundo da árvore inteira.
 fn arvore(c: &mut CardCtx<'_>, a: &Arvore, janela: (f32, f32), y0: f32) -> f32 {
-    // O cartão que voa pinta-se noutra origem: essa não é a da lista.
-    if c.store.card_drag().is_none() {
+    // O cartão que voa ou anda solto pinta-se noutra origem: essa não é a da lista.
+    if c.store.card_drag().is_none() && !c.store.is_loose_in(ids::HIER_SEC_TREE, PAINEL) {
         GEOMETRIA.with(|g| {
             let mut v = g.get();
             v.arvore = y0 + c.store.panel_scroll(PAINEL).max(0.0);
@@ -396,7 +411,7 @@ fn marca_os_icones(row: NodeId, e: &HierarchyEntity, filhos: bool) {
 /// A caixa do filtro: a cara de uma lista suspensa do cartão. Abrir e escolher são os de sempre.
 fn caixa_do_filtro(c: &mut CardCtx<'_>, r: Rect, texto: &str) {
     c.hit_index.register(ids::HIER_FILTER_DD, r);
-    let tom = if c.store.hover_live(ids::HIER_FILTER_DD) > 0.0 {
+    let tom = if c.store.hot_id() == Some(ids::HIER_FILTER_DD) {
         ColorToken::CardFieldHover
     } else {
         ColorToken::CardField

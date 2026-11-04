@@ -5,6 +5,7 @@
 use super::{CardCtx, Cell, Widget, corpo, rotulos};
 use crate::interaction::toggle_paint;
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_block};
+use crate::widget::key_mark::Rotulo;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -42,8 +43,9 @@ impl CardCtx<'_> {
         top + used
     }
 
-    /// Uma caixa de marcar à Figma (T64), como 1.ª linha do corpo ou depois de outra.
-    pub fn check(&mut self, id: NodeId, label: &str, on: bool, y: f32) -> f32 {
+    /// Uma caixa de marcar à Figma (T64), como 1.ª linha do corpo ou depois de outra. O que não anima
+    /// (estado da vista) passa [`Rotulo::vista`] e não leva marca.
+    pub fn check<'r>(&mut self, id: NodeId, label: impl Into<Rotulo<'r>>, on: bool, y: f32) -> f32 {
         let y = if self.first { y - m::FIELD_ROW_GAP } else { y };
         self.first = false;
         corpo::check(

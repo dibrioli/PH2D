@@ -41,6 +41,8 @@ impl Mesa {
             st: PhysicsPanelState,
             rects: Vec::new(),
         };
+        // O Debug nasce dobrado; o inventário quer vê-lo aberto (a escolha do artista ganha à semente).
+        mesa.host.set_collapsed(ids::PHYSICS_SEC_DEBUG, false);
         mesa.assenta();
         mesa
     }
@@ -473,5 +475,27 @@ fn the_natural_order_of_the_cards_is_the_section_table() {
     assert_eq!(
         ph2d_panel_physics::state::last_painted_section_headers(),
         rows::section_header_ids().collect::<Vec<_>>()
+    );
+}
+
+/// O Debug nasce dobrado com o resumo, e a escolha do artista ganha à semente.
+#[test]
+fn the_debug_card_is_born_folded_and_a_click_opens_it() {
+    cards::force_cards_on_this_thread(Some(true));
+    set_current_physics(Some(PhysicsSnapshot::default()));
+    let mut mesa = Mesa {
+        host: MockPanelHost::with_panel::<PhysicsPanel>(),
+        st: PhysicsPanelState,
+        rects: Vec::new(),
+    };
+    mesa.assenta();
+    assert!(mesa.host.store().is_collapsed(ids::PHYSICS_SEC_DEBUG));
+    assert!(mesa.rect(ids::PHYSICS_RESET_DEFAULTS).is_none());
+    let r = mesa.rect(ids::PHYSICS_SEC_DEBUG).expect("cabeçalho");
+    let _ = mesa.host.click_at(r.x + r.w * 0.3, r.y + m::CARD_HEAD_H * 0.5);
+    mesa.assenta();
+    assert!(
+        mesa.rect(ids::PHYSICS_RESET_DEFAULTS).is_some(),
+        "o clique abriu e a semente não o fechou de novo"
     );
 }

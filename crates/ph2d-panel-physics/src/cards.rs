@@ -5,10 +5,12 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::linhas_extra::ToggleTriangle;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_physics_ecs::{
     HoldMode, InteractionSettings, InteractionTool, JointTool, LayerMatrix, MAX_LAYERS,
@@ -63,6 +65,9 @@ fn rotulo(chip: NodeId, plano: &'static str) -> &'static str {
 /// o vivo puxaria o valor debaixo do gesto.
 pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
     store.mark_card_list_close(ph2d_editor_core::ids::PHYSICS_PANEL, i::PHYSICS_CLOSE);
+    // O Debug nasce dobrado: é o que paga a catraca da altura de abertura (o cartão custa mais do que
+    // a linha de antes) e o que menos se abre, com o Reset lá dentro.
+    store.set_collapsed_if_unchosen(i::PHYSICS_SEC_DEBUG, true);
     let fabrica = PhysicsSettings::default();
     let arrastado = store.number_input_drag().map(|d| d.id);
     for row in rows::rows() {
@@ -337,11 +342,14 @@ fn cartao_de_debug(snap: PhysicsSnapshot) -> CardDef<'static> {
     cartao(
         i::PHYSICS_SEC_DEBUG,
         "panel.physics.section.debug",
-        None,
+        Some(tr_with(
+            "panel.physics.bodies_count",
+            &[("n", &snap.body_count.to_string())],
+        )),
         move |c, y| {
             let mut y = c.check(
                 i::PHYSICS_SHOW_COLLIDERS,
-                tr("panel.physics.show_colliders"),
+                Rotulo::vista(TextKey::new("panel.physics.show_colliders")),
                 snap.show_colliders,
                 y,
             );

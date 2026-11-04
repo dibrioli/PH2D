@@ -211,6 +211,8 @@ impl<'s> CardCtx<'s> {
     }
 
     fn choice(&mut self, r: Rect, segs: &[Seg<'_>]) {
+        // Uma escolha é UM valor, não N comandos: o censo das entradas lê-a como o `paint_choice_row`.
+        crate::widget::composto::grupo(segs.iter().map(|s| s.id));
         fill_rounded_rect(
             self.scene,
             r,

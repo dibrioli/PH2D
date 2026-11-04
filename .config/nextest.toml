@@ -186,21 +186,19 @@ not (
   | test(=a_leitura_da_borda_sem_desvio::a_leitura_da_borda_sem_desvio_nao_muda_um_bit)
   | test(=a_luz_de_fora_nao_atravessa::a_cena_5_na_troca_de_oitava_segue_a_grade_esticada)
   | test(=a_luz_de_fora_nao_atravessa::a_descida_sem_o_t_nulo_nao_muda_um_bit)
-  | test(=a_luz_de_fora_nao_atravessa::o_emissor_encostado_a_borda_segue_a_grade_esticada)
-  | test(=a_luz_de_fora_nao_atravessa::o_recorte_do_arquivo_nao_muda_um_bit)
-  | test(=o_interior_do_opaco::o_rebote_nao_depende_da_oitava)
+  | test(=a_luz_de_fora_nao_atravessa::o_nivel_0_por_um_cone_nao_muda_um_bit)
 )
 '''
 
 [profile.noite.junit]
 path = "junit.xml"
 
-# Prazo no ubuntu-latest com lavapipe (run 41800231749): o pior teste que TERMINOU e fica na noite levou 892,8 s;
-# 6 × 300 s = 2,0× isso. Morrer aqui custa 2 × 1 800 s de vaga, por isso o que não cabe sai pelo filtro e o prazo não sobe.
-# O `ph2d-asset-cooker` guarda os 120 s do default: um ISPC pendurado × 11 tentativas seriam 5,5 h a 1 800 s.
+# Prazo no ubuntu-latest com lavapipe (run 41800231749): o pior teste que TERMINOU levou 1 726,4 s, depois de morrer aos
+# 1 800 s na 1.ª tentativa; 8 × 300 s = 1,39× isso. Os 4 que morreram nas 2 tentativas saem pelo filtro.
+# O `ph2d-asset-cooker` guarda os 120 s do default: um ISPC pendurado × 11 tentativas seriam 7,3 h a 2 400 s.
 [[profile.noite.overrides]]
 filter = 'not package(ph2d-asset-cooker)'
-slow-timeout = { period = "300s", terminate-after = 6 }
+slow-timeout = { period = "300s", terminate-after = 8 }
 
 # ⭐ W5e (2026-10-11) — a LUZ 2D NA PLACA, limitada pela MEMÓRIA da placa (não pelo relógio): cada gate
 # aloca 0,3–4 GB de VRAM (a 2160p, a recusa de memória do `os_tetos_da_placa`) e o solver nasce sob o

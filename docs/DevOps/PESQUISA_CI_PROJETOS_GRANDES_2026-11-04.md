@@ -42,13 +42,13 @@ Prova de que `ci-test` não muda o determinismo: hash em `ci-test` == hash do `-
 
 ## Noite
 
-`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 6 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes, 1.º ensaio sem as curas (41800231749): fatias 1 · 3 · 4 em 76 · 95 · 105 min; com as curas: `PENDENTE-NOITE`. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
+`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 8 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes, 1.º ensaio sem as curas (41800231749): fatias 1 · 2 · 3 · 4 em 76 · 147 · 95 · 105 min; com as curas: `PENDENTE-NOITE`. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
 
 O job `testa` instala o que os testes pedem: `scripts/stylua-fetch.sh` (2.5.2), `scripts/luau-lsp-fetch.sh` (1.70.1) e o pacote `ttf-dejavu 2.37+18+g9b5d1b2f-8` do Arch, com sha256. As fixturas do Pixel Art foram corridas sobre esse pacote e o `DejaVuSans.ttf` do Ubuntu tem outros bytes (`ae7b7855…` × `6038a160…`).
 
 #### O que a noite NÃO vê e quem vê
 
-`default-filter` de `[profile.noite]`: tira 12 de 31 684 testes (`cargo nextest list --profile noite --workspace`, com e sem `--ignore-default-filter`). Os 12 continuam na suíte local da integração.
+`default-filter` de `[profile.noite]`: tira 10 de 31 684 testes (`cargo nextest list --profile noite --workspace`, com e sem `--ignore-default-filter`). Os 10 continuam na suíte local da integração.
 
 | Teste | Por que o runner não mede | Medido | Quem vê |
 |---|---|---|---|
@@ -61,25 +61,23 @@ O job `testa` instala o que os testes pedem: `scripts/stylua-fetch.sh` (2.5.2), 
 | `a_leitura_da_borda_sem_desvio::a_leitura_da_borda_sem_desvio_nao_muda_um_bit` | Placa em CPU: morre no prazo | 1 800 s × 2 | Integração local (placa da casa) |
 | `a_luz_de_fora_nao_atravessa::a_cena_5_na_troca_de_oitava_segue_a_grade_esticada` | Idem | 1 800 s × 2 | Idem |
 | `a_luz_de_fora_nao_atravessa::a_descida_sem_o_t_nulo_nao_muda_um_bit` | Idem | 1 800 s × 2 | Idem |
-| `o_interior_do_opaco::o_rebote_nao_depende_da_oitava` | Idem: a 1.ª tentativa morreu | 1 800 s, depois 1 519 s | Idem |
-| `a_luz_de_fora_nao_atravessa::o_emissor_encostado_a_borda_segue_a_grade_esticada` | Idem: terminou a 89 % do prazo | 1 607 s | Idem |
-| `a_luz_de_fora_nao_atravessa::o_recorte_do_arquivo_nao_muda_um_bit` | Idem: acima de 1 000 s, sem a folga de 2× | 1 172 s | Idem |
+| `a_luz_de_fora_nao_atravessa::o_nivel_0_por_um_cone_nao_muda_um_bit` | Idem | 1 800 s × 2 | Idem |
 
-⚠️ `scripts/nextest-filtros-casam.py` só varre `filter =`, não `default-filter`: um termo morto aqui não reprova, e o teste volta a correr na noite. Conferido hoje pela contagem: os 12 termos tiram exatamente 12 testes.
+⚠️ `scripts/nextest-filtros-casam.py` só varre `filter =`, não `default-filter`: um termo morto aqui não reprova, e o teste volta a correr na noite. Conferido hoje pela contagem: os 10 termos tiram exatamente 10 testes.
 
 #### O prazo por teste
 
-`slow-timeout` da noite: 6 × 300 s = 1 800 s, 2,0× o pior teste que termina e fica. Medido nas fatias 1, 3 e 4; só vale no `[profile.noite]`.
+`slow-timeout` da noite: 8 × 300 s = 2 400 s, 1,39× o pior teste que terminou. Medido nas 4 fatias; só vale no `[profile.noite]`.
 
 | Teste | s |
 |---|---|
-| `censo_dos_controlos::a_linha_esmaecida_e_a_que_nao_age_na_aquarela` (o pior que fica) | 892,8 |
-| `a_luz_de_fora_nao_atravessa::os_quadrantes_juntos_nao_mudam_um_bit` | 888,1 |
-| `macro_track::tutorial::tests::a_mao_torta_cumpre_o_pincel_fino_e_o_nada_nao` | 842,4 |
-| `o_custo_do_miolo::o_custo_do_miolo_desce_com_a_base` | 805,5 |
-| `o_painel_mostra_o_que_a_ferramenta_le::cada_ferramenta_da_agua_so_ve_o_que_le_blow` | 796,5 |
+| `as_formas_redondas::o_interior_com_o_rebote_nao_sai_em_riscos` (o pior que terminou; a 1.ª tentativa morreu aos 1 800) | 1 726,4 |
+| `a_luz_de_fora_nao_atravessa::o_emissor_encostado_a_borda_segue_a_grade_esticada` | 1 606,7 |
+| `o_interior_do_opaco::o_rebote_nao_depende_da_oitava` (a 1.ª tentativa morreu aos 1 800) | 1 519,0 |
+| `macro_track::tutorial::tests::o_aluno_exacto_cumpre_no_quadro_do_up` | 1 451,4 |
+| `o_rebote_de_fora_da_grade::o_rebote_chega_de_fora_da_grade` (a 1.ª tentativa morreu aos 1 800) | 1 405,7 |
 
-Custo do `terminate-after`: um teste que morre gasta 2 × 1 800 s de vaga (`retries = 1`). Os 3 mortos nas 2 tentativas e o que morreu na 1.ª somam 14 119 s, 28 % dos 50 219 s das três fatias; com os outros dois lentos, os 6 tirados por tempo somam 16 898 s (34 %). Por isso o que não cabe sai pelo filtro em vez de o prazo subir. O `ph2d-asset-cooker` fica fora desta regra e guarda os 120 s do `default` (máximo no runner 0,16 s): 11 tentativas a 1 800 s seriam 5,5 h por um ISPC pendurado.
+Custo do `terminate-after`, sobre os 76 769 s de vaga das 4 fatias: os 4 que morreram nas 2 tentativas gastaram 14 411 s (19 %) e as 3 primeiras tentativas mortas 5 401 s (7 %). Quem morre 2 vezes sai pelo filtro: a 2 400 s custaria 4 800 s de vaga por noite. Os 3 que morreram só na 1.ª ficam, porque terminam e medem o mesmo bit noutro dispositivo; se morrerem 2 vezes, entram no filtro. Tirar os 4 mortos alivia a fatia que os tinha, logo estes tempos são o teto esperado. Por confirmar na próxima corrida. O `ph2d-asset-cooker` fica fora desta regra e guarda os 120 s do `default` (máximo no runner 0,16 s): 11 tentativas a 2 400 s seriam 7,3 h por um ISPC pendurado.
 
 ### Testes lentos — causa medida (D)
 

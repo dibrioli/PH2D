@@ -169,6 +169,8 @@ ph2d-core = { path = "../ph2d-core" }
 # Só o gate dos NOMES: ele prova que a chave derivada do tipo RESOLVE a uma palavra, e
 # resolver é o que a tabela faz. A lib desta crate continua sem saber o que é texto de UI.
 ph2d-i18n = { path = "../ph2d-i18n" }
+# Só a sonda e o gate do `par_build`: a variante «um núcleo × todos» é a pool, em execução.
+rayon = "1"
 
 [lints]
 workspace = true

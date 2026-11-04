@@ -27,7 +27,7 @@
 mod parse;
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -161,18 +161,17 @@ impl NodeOp for MotionExpression {
         let input = ctx.input(0);
         let n = input.count().max(1);
         let v: Vec<f32> = match &parsed {
-            Ok(expr) => (0..n)
-                .map(|i| {
-                    let b = ElemBindings {
-                        stream: input,
-                        i,
-                        n,
-                        t,
-                        params: &params,
-                    };
-                    ph2d_expr::eval(expr, &b)
-                })
-                .collect(),
+            // Mapa puro: a fórmula só lê o seu elemento (doc 98 §4, medido 04/11).
+            Ok(expr) => par_build(n, |i| {
+                let b = ElemBindings {
+                    stream: input,
+                    i,
+                    n,
+                    t,
+                    params: &params,
+                };
+                ph2d_expr::eval(expr, &b)
+            }),
             // Parse error → a zero field (the editor badges the node).
             Err(_) => vec![0.0; n],
         };

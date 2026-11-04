@@ -99,6 +99,9 @@ pub use motion_param_rows::*;
 /// O RELÓGIO do ciclo 6 — placa × CPU no MESMO processo, pela porta do produto (doc 110 §14.1 (5)).
 #[cfg(test)]
 mod motion_ciclo6_relogio_probe;
+/// O `par_build` no quadro do produto: um núcleo × a pool (doc 98 §4).
+#[cfg(test)]
+mod motion_par_build_quadro_probe;
 /// ⭐ O COLISOR DECLARADO contra os DUPLICADORES — a ordem do dono de 2026-09-17 (doc 114 §12).
 #[cfg(test)]
 pub mod motion_colisor_duplicador_probe;

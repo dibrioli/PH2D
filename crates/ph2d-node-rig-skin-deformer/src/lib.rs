@@ -66,7 +66,7 @@
 //! bend angles a hose or a limb actually reaches, it does not show. `Effect::Pure`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -242,22 +242,21 @@ fn skin(input: &Stream, rest: &Stream, posed: &Stream, falloff: f32) -> Stream {
         return input.clone(); // no skeleton wired → an honest no-op
     }
     let pts = fk::positions(input);
-    let moved: Vec<[f32; 2]> = pts
-        .iter()
-        .map(|&p| {
-            let w = weights(p, &bones, falloff);
-            let mut out = [0.0f32, 0.0];
-            for (bone, wj) in bones.iter().zip(&w) {
-                // The point, in the bone's rest frame, replayed in its posed frame.
-                let v = [p[0] - bone.rest_origin[0], p[1] - bone.rest_origin[1]];
-                let (c, s) = (bone.turn[0], bone.turn[1]);
-                let r = [v[0] * c - v[1] * s, v[0] * s + v[1] * c];
-                out[0] += wj * (bone.posed_origin[0] + r[0]);
-                out[1] += wj * (bone.posed_origin[1] + r[1]);
-            }
-            out
-        })
-        .collect();
+    // Mapa puro: cada ponto só lê os ossos (doc 98 §4, medido 04/11).
+    let moved: Vec<[f32; 2]> = par_build(pts.len(), |i| {
+        let p = pts[i];
+        let w = weights(p, &bones, falloff);
+        let mut out = [0.0f32, 0.0];
+        for (bone, wj) in bones.iter().zip(&w) {
+            // The point, in the bone's rest frame, replayed in its posed frame.
+            let v = [p[0] - bone.rest_origin[0], p[1] - bone.rest_origin[1]];
+            let (c, s) = (bone.turn[0], bone.turn[1]);
+            let r = [v[0] * c - v[1] * s, v[0] * s + v[1] * c];
+            out[0] += wj * (bone.posed_origin[0] + r[0]);
+            out[1] += wj * (bone.posed_origin[1] + r[1]);
+        }
+        out
+    });
 
     let mut out = Stream::new(input.count());
     for (name, col) in input.columns() {

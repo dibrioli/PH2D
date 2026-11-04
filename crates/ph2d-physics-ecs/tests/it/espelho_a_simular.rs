@@ -239,7 +239,7 @@ fn a_body_under_a_mirrored_parent_simulates_where_it_is_drawn() {
 
 /// ⭐ Espelhar a meio da simulação (o personagem que vira de lado com o relógio a andar): o colisor
 /// muda de lado no corpo vivo, sem o recriar. Vira-se ainda no ar: virado já pousado, o colisor salta
-/// para baixo do chão e o corpo cai (medido: `y = -123`), como salta qualquer colisor teleportado.
+/// para baixo do chão e o corpo cai (medido: `y = -123`), a lei do teste seguinte.
 /// *Mutação: o `retune_body` sem `set_position_wrt_parent`.*
 #[test]
 fn flipping_with_the_clock_running_moves_the_collider_at_once() {
@@ -268,6 +268,58 @@ fn flipping_with_the_clock_running_moves_the_collider_at_once() {
         (depois.translation.y - 1.6).abs() < 0.05,
         "o colisor ficou do lado de antes: y={}",
         depois.translation.y
+    );
+}
+
+/// ⭐ R5, o limite medido contra o Godot 4.7.2 (`godot_espelho_em_repouso.txt`): pousado sobre chão fino,
+/// mudar o colisor para o outro lado da origem atravessa o chão, cá e lá. Virar em Y é esse mesmo salto.
+/// A diferença é da casa: o Godot apaga a escala do corpo (`corpo_scale_y` volta a 1 e o colisor fica),
+/// o PH2D guarda o sinal. *Mutação: curar o salto com um «levanta» automático ⇒ vermelho.*
+#[test]
+fn flipping_at_rest_over_a_thin_floor_falls_like_the_oracles_moved_collider() {
+    let oraculo = include_str!("godot_espelho_em_repouso.txt");
+    let origem_y = |caso: &str| -> f32 {
+        let linha = oraculo
+            .lines()
+            .find(|l| l.starts_with(caso) && l.contains("t+300"))
+            .expect("a linha do oráculo");
+        let valor = linha.split("origem_y=").nth(1).expect("origem_y");
+        valor.split_whitespace().next().unwrap().parse().unwrap()
+    };
+    assert!(origem_y("forma_pos_y") > 1000.0, "o Godot atravessa o chão");
+    assert!(
+        origem_y("corpo_scale_y") < 41.0,
+        "o Godot não mexe o colisor"
+    );
+    assert!(
+        oraculo.contains("corpo_scale_y  t+300 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0)")
+    );
+
+    let (mut sim, e) = cena(
+        BOLA,
+        [0.0, 1.0],
+        pose(Vec2::new(0.0, 6.0), Vec2::new(1.0, 1.0)),
+    );
+    let mut b = PhysicsBridge::new();
+    for tick in 1..=PASSOS {
+        b.dispatch(&mut sim, true, tick);
+    }
+    let pousado = le(&sim, e).translation.y;
+    assert!((pousado + 0.4).abs() < 0.05, "pousado em y={pousado}");
+    sim.world_mut().get_mut::<Transform>(e).unwrap().scale = Vec2::new(1.0, -1.0);
+    for tick in PASSOS + 1..=PASSOS * 2 {
+        b.dispatch(&mut sim, true, tick);
+    }
+    let depois = le(&sim, e);
+    assert!(
+        depois.translation.y < -10.0,
+        "atravessou? y={}",
+        depois.translation.y
+    );
+    assert_eq!(
+        depois.scale,
+        Vec2::new(1.0, -1.0),
+        "a física apagou o espelho"
     );
 }
 

@@ -1,0 +1,39 @@
+# Oráculo: Godot 4.7.2 stable (Arch, licença MIT, `pacman -Qi godot`), corrido em 2026-11-04 (R5).
+# Roteiro: docs/Physics/oraculos/godot_espelho_em_repouso.gd · `godot --headless --script … --fixed-fps 60`.
+# Cena: chão fino de 20 px, bola r = 50 px com o colisor 100 px acima da origem, rotação travada; pousa em 240 tiques e vira.
+# Y do Godot cresce para baixo: o chão está a y = 0 e origem_y maior = mais abaixo.
+corpo_scale_y pousado origem_y=40.300 forma_y=-59.700
+corpo_scale_y  t+  1 origem_y=40.572 forma_y=-59.428 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+corpo_scale_y  t+  2 origem_y=40.354 forma_y=-59.646 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+corpo_scale_y  t+ 10 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+corpo_scale_y  t+ 60 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+corpo_scale_y  t+120 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+corpo_scale_y  t+300 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global pousado origem_y=40.300 forma_y=-59.700
+transform_global  t+  1 origem_y=40.572 forma_y=-59.428 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global  t+  2 origem_y=40.354 forma_y=-59.646 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global  t+ 10 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global  t+ 60 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global  t+120 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+transform_global  t+300 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_scale_y pousado origem_y=40.300 forma_y=-59.700
+forma_scale_y  t+  1 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_scale_y  t+  2 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_scale_y  t+ 10 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_scale_y  t+ 60 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_scale_y  t+120 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_scale_y  t+300 origem_y=40.300 forma_y=-59.700 scale=(1.0, 1.0) forma_gscale=(1.0, -1.0)
+forma_pos_y pousado origem_y=40.300 forma_y=-59.700
+forma_pos_y  t+  1 origem_y=40.572 forma_y=140.572 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_pos_y  t+  2 origem_y=41.116 forma_y=141.116 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_pos_y  t+ 10 origem_y=55.198 forma_y=155.198 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_pos_y  t+ 60 origem_y=522.525 forma_y=622.525 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_pos_y  t+120 origem_y=1892.158 forma_y=1992.158 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+forma_pos_y  t+300 origem_y=10519.817 forma_y=10619.817 scale=(1.0, 1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y pousado origem_y=40.300 forma_y=-59.700
+pai_scale_y  t+  1 origem_y=40.572 forma_y=-59.428 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y  t+  2 origem_y=40.354 forma_y=-59.646 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y  t+ 10 origem_y=40.300 forma_y=-59.700 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y  t+ 60 origem_y=40.300 forma_y=-59.700 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y  t+120 origem_y=40.300 forma_y=-59.700 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)
+pai_scale_y  t+300 origem_y=40.300 forma_y=-59.700 scale=(1.0, -1.0) forma_gscale=(1.0, 1.0)

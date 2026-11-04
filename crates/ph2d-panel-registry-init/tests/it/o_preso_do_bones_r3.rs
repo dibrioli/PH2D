@@ -161,6 +161,19 @@ fn a_shortcut_after_a_press_on_a_pinned_card_is_of_the_selection() {
     tecla(&mut h);
     assert_eq!(h.store.card_press_subject(), Some(PRESO), "seletor aberto");
     h.store.set_picker_target(None);
+
+    h.store
+        .open_context_menu(ph2d_editor_core::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ph2d_editor_core::interaction::ContextMenuKind::CreateNote {
+                panel: CARD_SMART,
+                section: None,
+            },
+        });
+    tecla(&mut h);
+    assert_eq!(h.store.card_press_subject(), Some(PRESO), "menu aberto");
+    h.store.close_context_menu();
     pinta(&mut h, 2);
 
     abre(&mut h, CARD_SMART, skel::ids::VECTOR_BONE_SMART_CLIP);

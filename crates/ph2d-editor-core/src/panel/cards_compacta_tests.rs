@@ -426,3 +426,47 @@ fn what_waits_in_the_flow_stays_clipped_while_the_section_opens() {
     assert!(pinta_a(1.0), "aberto, o pedido pinta-se");
     assert!(!pinta_a(0.1), "a abrir, o que não cabe na banda não se vê");
 }
+
+/// Numa coluna de duas, a marca da caixa anda com o nome: no fim da coluna lia-se da vizinha (05 §8).
+/// *Mutação: `colada` sempre falso em `check_em` ⇒ vermelho.*
+#[test]
+fn the_mark_of_a_check_in_a_pair_walks_with_its_name() {
+    let mut f = mesa();
+    f.scene.record();
+    let celula = |id, chave| {
+        Cell::new(Widget::Check {
+            id,
+            label: Rotulo::from(ph2d_i18n::TextKey::new(chave)),
+            value: CheckboxValue::Unchecked,
+            off: false,
+        })
+    };
+    {
+        let mut c = ctx(&mut f, 257.0);
+        c.row_inteira(
+            &[celula(A, "card.bones.smart"), celula(B, "card.bones.ik")],
+            0.0,
+        );
+    }
+    let ra = f.hit.rect_for(A).unwrap();
+    let (fim, k) = (f64::from(ra.x + ra.w), f64::from(m::KEY_MARK_BOX));
+    let pontos: Vec<f64> = f
+        .scene
+        .take_record()
+        .into_iter()
+        .filter_map(|op| match op {
+            ph2d_vector::DrawOp::Fill { path, .. } => {
+                use ph2d_vector::Shape as _;
+                let b = path.bounding_box();
+                (b.width() <= k && b.height() <= k && b.x0 < fim && b.x0 > f64::from(ra.x))
+                    .then_some(b.x1)
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(!pontos.is_empty(), "a marca não se pintou");
+    assert!(
+        pontos.iter().all(|x| *x < fim - k),
+        "marca no fim da coluna: {pontos:?}, fim {fim}"
+    );
+}

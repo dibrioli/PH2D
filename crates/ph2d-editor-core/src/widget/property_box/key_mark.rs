@@ -152,6 +152,16 @@ impl<'a> Rotulo<'a> {
         }
     }
 
+    /// O espaço da marca de animação; o que é [`Rotulo::vista`] não leva marca e o nome fica com ele.
+    #[must_use]
+    pub fn reserva_da_marca(&self) -> f32 {
+        if self.coluna {
+            ph2d_card_stack::metrics::KEY_MARK_BOX
+        } else {
+            0.0
+        }
+    }
+
     /// [`Rotulo::vista`] com o nome já traduzido.
     #[must_use]
     pub fn vista_de(texto: &'a str) -> Self {

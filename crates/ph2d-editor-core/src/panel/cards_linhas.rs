@@ -191,7 +191,7 @@ impl<'s> CardCtx<'s> {
                 m::CHECK_BOX
                     + m::CHECK_GAP
                     + ts.prefix_width(label.texto, m::VALUE_PX).ceil()
-                    + m::KEY_MARK_BOX
+                    + label.reserva_da_marca()
             }
             _ => 0.0,
         };

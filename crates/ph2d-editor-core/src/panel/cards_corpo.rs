@@ -502,7 +502,7 @@ fn check_valor(
         let pede = m::CHECK_BOX
             + m::CHECK_GAP
             + text_system.prefix_width(label.texto, m::VALUE_PX).ceil()
-            + m::KEY_MARK_BOX;
+            + label.reserva_da_marca();
         censo::linha(y, y + m::FIELD_H, w, || {
             vec![censo::CelulaMedida {
                 nome: label.texto.to_owned(),
@@ -527,7 +527,7 @@ pub(super) fn check_em(
     (valor, parada): (CheckboxValue, bool),
 ) {
     let (x, y, w, h) = (r.x, r.y, r.w, r.h);
-    let (b, k) = (m::CHECK_BOX, m::KEY_MARK_BOX);
+    let (b, k) = (m::CHECK_BOX, label.reserva_da_marca());
     hit_index.register(id, r);
     if censo::ligado() {
         let tw = text_system.prefix_width(label.texto, m::VALUE_PX);

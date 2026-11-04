@@ -95,6 +95,16 @@ impl<'s> CardCtx<'s> {
                     );
                 }
                 Widget::Bare(segs) => self.bare(r, segs),
+                Widget::Mark { icon, tint } => {
+                    let g = m::ICON_GLYPH;
+                    paint_icon(
+                        self.scene,
+                        icon,
+                        Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g),
+                        self.ink.color(tint),
+                        StrokeToken::Default.px(),
+                    );
+                }
                 Widget::Readout { text } => {
                     crate::paint::paint_text_elided(
                         self.text_system,

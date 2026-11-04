@@ -80,6 +80,9 @@ pub enum Widget<'a> {
     Text { id: NodeId, placeholder: &'a str },
     /// Um ícone fixo numa caixa quadrada (o tipo do objeto) — não é clicável.
     Badge(IconId),
+    /// Um sinal numa cor: o ícone sem caixa e sem clique (a marca de contraste de um token), com a
+    /// largura de um ícone. O que ele avisa está escrito noutro sítio do cartão.
+    Mark { icon: IconId, tint: ColorToken },
     /// Um FACTO só de leitura (a escala do projeto, quantos corpos há): o valor sem caixa, porque a
     /// caixa promete edição. Não regista clique.
     Readout { text: &'a str },
@@ -156,6 +159,8 @@ pub mod corpo;
 pub mod entra_sai;
 #[path = "cards_estilos.rs"]
 pub mod estilos;
+#[path = "cards_ferramenta.rs"]
+pub mod ferramenta;
 #[path = "cards_linhas.rs"]
 mod linhas;
 #[path = "cards_linhas_extra.rs"]

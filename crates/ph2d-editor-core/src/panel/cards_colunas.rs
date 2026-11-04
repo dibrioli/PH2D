@@ -9,6 +9,7 @@ fn fixa(c: &Cell<'_>) -> Option<f32> {
     match c.widget {
         Widget::Icons(s) | Widget::Bare(s) => Some(m::FIELD_H * s.len() as f32),
         Widget::Badge(_) => Some(m::FIELD_H),
+        Widget::Mark { .. } => Some(m::ICON_CELL),
         _ => None,
     }
 }

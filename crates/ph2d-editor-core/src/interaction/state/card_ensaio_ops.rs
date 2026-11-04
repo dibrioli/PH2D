@@ -73,7 +73,7 @@ impl WidgetStore {
         self.focus_id = e.foco;
         self.number_input_drag = e.arrasto;
         self.active_id = e.ativo;
-        self.set_picker_target(e.seletor);
+        self.repoe_picker_target(e.seletor);
         EstadosPresos { estados, cores }
     }
 

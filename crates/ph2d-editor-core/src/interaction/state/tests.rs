@@ -553,6 +553,25 @@ fn opening_the_colour_picker_brings_the_panel_the_paint_uses_to_the_front() {
     );
 }
 
+/// O ensaio do cartão preso repõe o alvo do seletor sem que isso seja um gesto: o painel que o
+/// artista trouxe à frente fica à frente, e o pino fica. *Mutação: repor pela porta do gesto.*
+#[test]
+fn the_rehearsal_restores_the_picker_without_raising_it() {
+    let mut store = WidgetStore::with_capacity(4);
+    store.set_picker_target(Some(NodeId(7)));
+    store.set_picker_pinned(true);
+    store.bump_panel_z(NodeId(9_999));
+    let ensaio = store.abre_ensaio();
+    let _ = store.fecha_ensaio(ensaio);
+    assert_eq!(store.picker_target(), Some(NodeId(7)), "o alvo não voltou");
+    assert_eq!(
+        store.panel_z_order().last(),
+        Some(&NodeId(9_999)),
+        "o ensaio trouxe o seletor para a frente"
+    );
+    assert!(store.picker_pinned(), "o ensaio largou o pino");
+}
+
 /// ⭐ **Onde dois painéis se sobrepõem, o gesto vai ao que está POR CIMA — nunca ao de id menor.**
 ///
 /// ⛔ Até 2026-09-29 o `panel_at` percorria o `BTreeMap` pela ordem dos ids, logo sobre uma janela

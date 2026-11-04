@@ -616,7 +616,7 @@ impl WidgetStore {
     /// to hide the picker. The caller is responsible for seeding
     /// `widget_colors[target]` if it doesn't yet have a value.
     pub fn set_picker_target(&mut self, target: Option<NodeId>) {
-        self.picker_target = target;
+        self.repoe_picker_target(target);
         // Opening the picker → it's the most recently summoned panel.
         if target.is_some() {
             // A ordem guarda o seletor pelo id com que ele é registado e publicado
@@ -634,6 +634,12 @@ impl WidgetStore {
             // O pino vale para ESTA abertura: todo fecho desafixa (`picker_pin_ops`).
             self.picker_pinned = false;
         }
+    }
+
+    /// Repõe o alvo que já lá estava (o ensaio do cartão preso). Não é um gesto do artista: não sobe
+    /// o painel do seletor nem larga o pino, que é o que distingue isto de [`Self::set_picker_target`].
+    pub(super) fn repoe_picker_target(&mut self, target: Option<NodeId>) {
+        self.picker_target = target;
     }
 
     /// Read the current color of a color-target widget. Returns

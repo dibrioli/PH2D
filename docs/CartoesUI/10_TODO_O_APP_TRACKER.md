@@ -90,6 +90,7 @@ Lei da compactação em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) + portão que 
 - Color & Tint: Tint + Self Tint; Equalize Corners grudado; Opacity + Tint Fill; Per-corner numa linha (regra 6, sugestão a confirmar).
 - Ordering: Z index + Order in Layer; Sorting Layer + Top Level; Z as Relative + Show Behind Parent; Y-Sort + Sorting Group.
 - Texture & Atlas: Emissive + Centered; Offset um rótulo só, X e Y lado a lado; Storage + Source; «Flip…» cortado (é Flip H): defeito.
+- Transform: «o da galeria está mais completo»; medido: a única diferença são girar 90° e espelhar H/V, escondidos fora do vetor (`cards_corpos.rs:117`). Ligar para todo objeto via `InspectorTransformEdit` (rotação + π/2, sinal de `scale`); medir antes o sprite de escala negativa na física e no colisor.
 - Micro-pesquisa Figma e Rive antes de cada cartão: [05 §0](05_ESPECIFICACAO_UI_COMPLETA.md), tabela em [16](16_REFERENCIAS_POR_CARTAO.md).
 
 ## Registo por bloco

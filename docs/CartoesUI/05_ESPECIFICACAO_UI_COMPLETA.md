@@ -19,7 +19,8 @@
 ## 0 — Regra de referência (ordem vinculativa, dono 02/11)
 
 1. **Referência PRIMÁRIA somos NÓS**: os painéis/cartões cujo smoke o dono APROVOU nesta linha
-   (tabela §1). Antes de desenhar, olhe o que já foi aprovado (fotos em [`maquete/`](maquete/)) e repita-o.
+   (tabela §1) **e a Widget Gallery** (`PH2D_GALLERY_SMOKE=1`, aprovada 03/11; dono 04/11: «temos um widget gallery bem
+   desenhado. Ele também deve ser consultado»). Antes de desenhar, olhe o que já foi aprovado (fotos em [`maquete/`](maquete/)) e repita-o.
 2. **Figma** — para qualquer widget ainda não criado, consulte o Figma PRIMEIRO (layout, nomes das
    propriedades, o campo numérico com glifo, camadas empilháveis, estilos).
 3. Complexidade que o Figma não resolve ⇒ **Rive** é a segunda referência mais importante.

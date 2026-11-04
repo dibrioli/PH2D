@@ -401,3 +401,21 @@ Sobras da Timeline e do Motion, Audio Editor, Pixel Timeline e Preview, barra do
 **Portões, por nome:** `hr12_widgets_a11y`, `the_shell_only_shrinks`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango` verdes. `no_magic_numeric` vermelho em dois sítios: o meu (`cards_fileira.rs`), anotado e **não recorrido**; o outro `widget/slider_with_chip/number_chip.rs:275`, WIP alheio. **Não correram, por prazo:** `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`. Estes vão acusar o que mudou (Audio virou lista; «…» saiu da moldura): a primeira coisa a correr. `nome_tests` de `bars_control` escrito e não corrido.
 
 **Fica:** números das propriedades da Pixel Timeline com as setas antigas (`paint_field_row` não pinta no cartão). Corpo do Audio: mesmos pintores, recolor; sem scrub Figma, de propósito (valor é string do motor). Editor de scripts: raio dos botões da barra continua o do tema. Sem clippy nem suíte.
+
+### Rodada R3 (04/11, parcial: o dono pediu pausa para smoke)
+
+Só os portões. Commit `95e06d7f71`. **Curados:** `node_id_collisions::a_node_id_name_has_one_value` (`CARD_IMAGE` da galeria, de `36ca080b97`, valia outro id que o do Inspector: passou a `CARD_IMAGE_REAL`, o mesmo slug). `onde_comeca_o_valor`, dois vermelhos em série: Audio com 2 colunas e o piso.
+
+**Decisões tomadas sem o dono (técnicas):** o Audio entra em `COLUNAS_DECLARADAS_POR_PAINEL` com 2. Sem clip o Stop é inerte e não regista alvo, e o Loop, metade direita do par, lê-se como valor (x 141); Pitch e Gain estão na coluna 86. É excepção por igualdade, não cura da régua: quem carregar um clip na cena do censo terá de a rever. `COLUNA_UNICA_PISO` `9 → 5`, medido: `flip_frames`, `inspector (armado)`, `painter_layers`, `painter_layers (armado)`, `physics`; a razão é a da G1 (em cartões o rótulo mora em cima). O piso desceu e fica por conta do `PISO_DE_LINHAS`.
+
+**Vermelhos alheios, com WIP na árvore:** `no_magic_numeric` em `number_chip.rs:275` (M3–M7: o reformatar separou o `0.75` do `LITERAL-PX-OK`; o `HEAD` tem o comentário na linha). `a_altura_de_abertura_de_um_painel_so_encolhe`: `painter_layers` 1 637 contra 1 748. Atribuído à H3 por ter WIP lá, **não medido sem esse WIP**: quem fecha a H3 escreve o número ou confere. `panel_files_under_loc_cap` reprovou a `cards_topo.rs` com 672 durante a H3 (`HEAD`: 572) e na última corrida passou.
+
+**Verdes na última corrida, com o WIP dos outros:** os restantes de `quantas_entradas_tem_cada_painel` (inclui `um_seletor_de_cor_…`, `todo_painel_com_id_derivado_esta_nomeado`), `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`, `hr12_widgets_a11y` (com `every_widget_file_wires_a11y`), `the_foundation_modules_form_a_dag`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango`, `node_id_collisions`, `nenhum_layout_antigo_no_cartao`, `cada_clique_pede_o_mesmo`, `nome_tests` de `bars_control`. A dívida do `cards_fileira.rs` da I2 fica fechada: `no_magic_numeric` só acusa o `number_chip`.
+
+**Não feito, por ordem de pausa (nada começado, nenhuma foto `r3_`):**
+- **Bloco J, mola do Kanban:** só lido. O diff de `line/TrelloUITeste` (`4e648ec2b4..fb4d8ed237`) serve de guia: `Tilt`, `edge_depth`, `edge_scroll_px`, `slot_index`, `flight_pivot`, sombras em `ph2d-card-stack`; números iguais por leitura (4°, 64, 900). As molas 2D de listas e cartões ficam no Kanban. `paint_flight` do `editor-core` também repete as constantes. Falta a foto de `PH2D_KANBAN_SMOKE=1` antes de editar.
+- Mutante «Audio tira Delivery» e contraprova de `area_da_folha`, sem repetir.
+- Crate do Audio Editor inteira: a regra permite (`motivo: código movido entre crates`, a moldura saiu da shell); não correu.
+- Números da Pixel Timeline com as setas antigas (`paint_props.rs::campo`).
+- C3: na pilha, só a 1.ª linha tem a faixa com losango (`cards_pilha.rs::pilha`, `rotulos`; `cards_linhas.rs::row` só pinta a faixa se houver rótulo). Vale para a base e para toda camada abaixo da 1.ª. Sem decisão de desenho.
+- Fotos: Opacity do Grid, Ghost com rótulos, «+ Track» aberto, `i2_audio_editor` depois da cura do clique.

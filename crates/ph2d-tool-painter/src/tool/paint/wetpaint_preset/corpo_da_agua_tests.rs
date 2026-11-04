@@ -41,9 +41,8 @@ fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2], ultima: &mut Option<Vec<
     t.on_canvas_pointer(ponto(b, PointerPhase::Up));
 }
 
-/// As riscas molhadas com o Pincel da água, a ferramenta `tool` na mão com o carimbo de cerdas, `mexe` nela, e o
-/// traço dela por cima.
-fn ensaio(tool: WetTool, mexe: Option<(Knob, f64)>, traca: bool) -> Vec<u8> {
+/// As riscas molhadas com o Pincel da água (a tela de todos os ensaios) e o último quadro delas.
+fn riscas() -> (PainterTool, Option<Vec<u8>>) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
     t.set_paint_tool_mode("wet_paint");
@@ -54,6 +53,16 @@ fn ensaio(tool: WetTool, mexe: Option<(Knob, f64)>, traca: bool) -> Vec<u8> {
     for x in [20.0, 52.0, 84.0, 116.0, 148.0] {
         traco(&mut t, [x, -8.0], [x, 168.0], &mut ultima);
     }
+    (t, ultima)
+}
+
+/// Sobre as [`riscas`]: a ferramenta `tool` na mão com o carimbo de cerdas, `mexe` nela, e o traço dela por cima.
+fn ensaio(
+    (mut t, mut ultima): (PainterTool, Option<Vec<u8>>),
+    tool: WetTool,
+    mexe: Option<(Knob, f64)>,
+    traca: bool,
+) -> Vec<u8> {
     t.set_paint_tool_mode(tool.fio());
     t.paint.brush.radius_px = 14.0;
     t.paint.brush.shape = t.paint.wetpaint.knobs.cerdas_no_shape(t.paint.brush.shape);
@@ -122,6 +131,17 @@ fn o_corpo_de(tool: WetTool) {
             }
         }
     }
+    // As riscas são iguais em todos os ensaios: pintam-se uma vez, cada ensaio parte de um instantâneo.
+    let (tela, tela_ultima) = riscas();
+    let tela = std::sync::Mutex::new(tela);
+    let copia = || {
+        let t = tela
+            .lock()
+            .unwrap()
+            .instantaneo()
+            .expect("instantâneo das riscas");
+        (t, tela_ultima.clone())
+    };
     let proximo = std::sync::atomic::AtomicUsize::new(0);
     let saidas: Vec<std::sync::Mutex<Option<Vec<u8>>>> =
         casos.iter().map(|_| std::sync::Mutex::new(None)).collect();
@@ -134,7 +154,7 @@ fn o_corpo_de(tool: WetTool) {
                     let Some(&(tool, mexe, traca)) = casos.get(i) else {
                         return;
                     };
-                    *saidas[i].lock().unwrap() = Some(ensaio(tool, mexe, traca));
+                    *saidas[i].lock().unwrap() = Some(ensaio(copia(), tool, mexe, traca));
                 }
             });
         }
@@ -150,6 +170,12 @@ fn o_corpo_de(tool: WetTool) {
         difere(&r[i0], &r[i0 + 1]),
         0,
         "{tool:?}: a base não se repete"
+    );
+    // O instantâneo tem de valer as riscas pintadas de raiz.
+    assert_eq!(
+        difere(&r[i0], &ensaio(riscas(), tool, None, true)),
+        0,
+        "{tool:?}: o ensaio a partir do instantâneo não é o de raiz"
     );
     let mut corpo: Vec<Knob> = Vec::new();
     let mut da_tela_medida = false;

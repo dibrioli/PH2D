@@ -206,7 +206,7 @@ Por gesto real, com as portas reais do vetor (`o_alfinete_fill_stroke_c2`, 8 tes
 
 Desfazer: `a_pinned_fill_and_stroke_edit_…` (shell): verbos, olho e cor pelas portas, sobre `ProjectState`; repõe A, B intacto. **Não corrido na app real com o ponteiro real**, ao contrário do C1.
 
-Contraprovas vistas vermelhas: `alvo_do_gesto` fora (4), `seletor_na_base` fora (1), `aponta` a escrever na aberta (1), `devolve_o_estilo` fora (2), `semeia_as_linhas` fora do ensaio (1). Do C1: semente da opacidade no `prepare` fora, `opacity_blend_and_eye_…` vermelho; teste da shell de C1 verde de novo.
+Contraprovas vistas vermelhas: `alvo_do_gesto` fora (4), `seletor_na_base` fora (1), `aponta` a escrever na aberta (1), `devolve_o_estilo` fora (2), `semeia_as_linhas` fora do ensaio (1), `apply_no_alvo` sem o alvo (3), a vista da lista de estilos a seguir o gesto (1). Do C1: semente da opacidade no `prepare` fora, `opacity_blend_and_eye_…` vermelho; teste da shell de C1 verde de novo.
 
 Pedidos do C1: `Reset` do Transform preso é de A (`the_reset_of_the_pinned_transform_card_…`). `Mix` num Material preso tira o componente e o bloco deixa de se publicar (`mix_on_a_pinned_material_…`, shell); o cartão deixa de oferecer os modos e o alfinete fica (`a_material_card_pinned_…`). **O texto «Not available» no solto não foi testado.**
 

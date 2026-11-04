@@ -34,7 +34,10 @@ Base: `main` `aa1b8df487`; suíte de 04/11: 31 678 testes, 19 472 s somados, 1 7
 | macOS `test` + C9 | 18,0 + 7,0 | 17,1 |
 | lint | 9,5 | 4,5 (e já não está à frente) |
 | host desktop | 2,8–6,3 | 6,1–8,2 (piorou: `ci-test` é opt-1 na workspace; mais que compensado) |
-| Ubuntu com cache | — | `PENDENTE-UBUNTU` |
+| Ubuntu `test` + C9 | 13,7 + 5,3 | 15,4 (C9 dentro; com o cache semeado sem a noite; 41819356541) |
+| corrida inteira, mesmo código, ao mesmo tempo | 72 min (41808150361: CI antigo, sem cache válido em 2 de 3 SO) | 30 min (41819356541) |
+
+Suíte completa, código final, mesma máquina: **1 703 → 1 308 s (−23 %)** a 50 % de CPU (soma 19 472 → 16 107 s; ≥ 60 s: 68 testes 10 282 s → 63 testes 7 373 s; pré-voo 29 s quente, 146 s depois de edição). Na mesma árvore a `PH2D_CPU_PCT=100`: **831 s**, 31 684 de 31 684 verdes (−36 % contra 50 %).
 
 ## Perfil
 
@@ -42,7 +45,7 @@ Prova de que `ci-test` não muda o determinismo: hash em `ci-test` == hash do `-
 
 ## Noite
 
-`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 8 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes, 1.º ensaio sem as curas (41800231749): fatias 1 · 2 · 3 · 4 em 76 · 147 · 95 · 105 min; com as curas: `PENDENTE-NOITE`. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
+`.github/workflows/noite.yml`, cron `30 6 * * *`, workspace inteira, `nextest archive` + 4 fatias `hash:i/4`, perfil `[profile.noite]` em `.config/nextest.toml` (`retries = 1`, prazo por teste 8 × 300 s). Compilar e arquivar: 41 min (ubuntu-latest, 4 vCPU). Testes, 1.º ensaio sem as curas (41800231749): fatias 1 · 2 · 3 · 4 em 76 · 147 · 95 · 105 min; com as curas, só os 64 testes das famílias curadas: 41823562970, verde, zero repetições, compilar 34 min; a inteira é o 1.º cron. A noite só LÊ o cache (`so-le`). O nível lento continua na integração até a noite ter histórico. Não vê a placa real. O `nextest.toml` e o `noite.yml` apontam para esta secção.
 
 O job `testa` instala o que os testes pedem: `scripts/stylua-fetch.sh` (2.5.2), `scripts/luau-lsp-fetch.sh` (1.70.1) e o pacote `ttf-dejavu 2.37+18+g9b5d1b2f-8` do Arch, com sha256. As fixturas do Pixel Art foram corridas sobre esse pacote e o `DejaVuSans.ttf` do Ubuntu tem outros bytes (`ae7b7855…` × `6038a160…`).
 

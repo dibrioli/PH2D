@@ -10,6 +10,6 @@ metadata:
 - Corrida inteira 60–101 min → 27–30 min com cache (runs 41808153285, 41808157477). Sem cache nenhum: 43–58 min, o timeout 90 fica.
 - `noite.yml` (cron `30 6 * * *`, 4 fatias, só lê a cache) corre a workspace inteira; o nível lento fica na integração até a noite ter histórico.
 - A suíte começa pelo pré-voo estático (`PH2D_PREVOO=0` salta); vermelho de uma linha só = `falhas` + `b2`, nunca outra suíte inteira.
-- **Pendente do DONO:** teto de CPU 50 % → 100 % na suíte da integração sem smoke dele: −34 % medido (448,3 → 295,0 s). Nunca por omissão; `PH2D_CPU_PCT` reescreve a unidade da fatia, não se mede com outro agente na worktree.
+- **Pendente do DONO:** teto de CPU 50 % → 100 % na suíte da integração sem smoke dele: suíte inteira 1 308 → 831 s, verde (A×B intercalado 448,3 → 295,0 s). Nunca por omissão; `PH2D_CPU_PCT` reescreve a unidade da fatia, não se mede com outro agente na worktree.
 - Recusados medidos: `RAYON_NUM_THREADS=4` (+33 %), hakari (0 · 0 · 0 unidades), sccache (só bucket fora do GitHub).
 - Detalhe: `docs/DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md` §Resultado.

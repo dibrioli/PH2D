@@ -6,6 +6,8 @@
 
 ## 0. O que mudou em 04/11
 
+Suíte inteira: **1 703 → 1 308 s** a 50 % de CPU, e 831 s a `PH2D_CPU_PCT=100` (o teto é decisão do dono). CI: 60–101 → 27–30 min com cache.
+
 Os testes lentos foram curados na CAUSA, sem rebaixar nem renomear nenhum (parede por nome, mínimo): rayon sobre fios (pool
 de um operário por fio), `TextSystem` por fio, `ph2d_i18n::tr` com memória por fio, esperas em blocos de 30 quadros,
 `instantaneo()` nas riscas, `opt-level` 3 no miolo da pintura em `ci-test`. Ex.: `o_estado_inicial_leva_cada_controlo`

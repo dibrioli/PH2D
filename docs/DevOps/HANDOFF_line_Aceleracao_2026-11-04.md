@@ -50,9 +50,10 @@ Nenhum teste rebaixado nem renomeado; nenhum prazo mudou; mutações vistas verm
 - CI com cache: 41808153285 (30 min 02 s) e 41808157477 (27 min 23 s), verdes. Sem cache: 41800231668 (Ubuntu 43,2 · macOS 48,3 · Windows 58,1 min).
 - Guardas novos: `o_tempo_em_blocos_e_o_por_quadro` (2,1 s), `o_assentar_em_blocos_e_o_por_quadro` (3,0 s).
 - Prova de processo: `bash scripts/processo.prova.sh` (inclui `P.sh`).
-- `PENDENTE-SUITE` — suíte final da linha.
-- `PENDENTE-UBUNTU` — remedição do Ubuntu com cache.
-- `PENDENTE-NOITE` — primeira corrida de testes da noite.
+- Suíte final: 31 684 de 31 684, **1 307,8 s** a 50 % (base 1 703 s), árvore `e9818b7092`; forçada na mesma árvore a `PH2D_CPU_PCT=100`: **830,7 s**, verde. O `.config/testes-lentos.tsv` regerado é o da corrida a 50 %.
+- B2 usado de verdade na 1.ª suíte (1 vermelho, `every_key_of_this_crate_exists_on_both_sides`): 18 685 testes em 1 247 s, porque o `ph2d-i18n` está a montante de quase tudo; apanhou `o_flow_esta_a_vista_onde_age_e_so_ai` a 180 s, curado por pares em paralelo (42 → 1,3 s sozinho, 24 linhas iguais).
+- Ubuntu com cache certo: 15,4 min, corrida 30 min (41819356541); o CI antigo no mesmo código: 72 min (41808150361).
+- Noite: 1.º ensaio (41800231749) 53 vermelhos em 4 fatias de 76–147 min, todos triados; 43 curados por instalação e confirmados na curta 41823562970 (64 testes verdes, zero repetições, compilar 34 min); 10 no `default-filter`. ⚠️ A corrida INTEIRA com as curas ainda não correu: o 1.º cron é a prova, com os 3 flaky de prazo como os mais prováveis de reprovar.
 
 ## Smokes / comandos
 
@@ -66,10 +67,10 @@ Depois do ship: `gh workflow run spike.yml --ref main` (semente; a 1.ª corrida 
 
 ## ABERTO
 
-1. **Dono:** teto de CPU 50 % → 100 % só na suíte da integração sem smoke dele (−34 %). `PH2D_CPU_PCT` reescreve a unidade da fatia da linha: não se mede com outro agente na mesma worktree.
+1. **Dono:** teto de CPU 50 % → 100 % só na suíte da integração sem smoke dele (suíte inteira 1 308 → 831 s, −36 %; verde). `PH2D_CPU_PCT` reescreve a unidade da fatia da linha: não se mede com outro agente na mesma worktree.
 2. **Produto:** [Bug #57](../Painter/BUGS_painter.md) — `wet_water` + `PAINTER_WETPAINT_FASTDRY`, de raiz × `instantaneo()` difere em 58 texels (Δmax 3); causa não isolada (candidato `planos.copia_sem_campo()`). Curado, a `bancada_da_agua` ganha −30 % de CPU.
 3. Os 7 membros da faixa isolada com motivo «prazo» (`FLAKES_DE_CARGA.md:80-97`, 218 s dos 288 s) não foram medidos fora da faixa; os prazos por nome no `nextest.toml` podem baixar quando a suíte confirmar.
 4. Os `diag_*` / `oleo_diluido` por quadro.
 5. sccache externo: só com bucket fora do GitHub.
 6. [PLANO](PLANO_ACELERACAO_2026-11.md) C1, C3, C4; cortar o nível lento do laço de integração só depois de a noite ter histórico.
-7. Ubuntu com cache e testes da noite: ver `PENDENTE-*` acima.
+7. Bugs abertos: Painter #57 e #58 (o byte do motor depende da `atan2f` da glibc: atualizar a glibc pode acender o alarme de pincel), Luz2D #8 e #9.

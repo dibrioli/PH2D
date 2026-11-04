@@ -335,6 +335,8 @@ pub(super) fn dispatch_down<'frame>(
         event.button == ph2d_host::PointerButton::Primary
             && store.card_field(*id).is_some()
             && crate::widget::card_field::on_handle(*r, event.x)
+            // O chip da fila ② partilha o id com o campo do cartão, mas não tem pega.
+            && store.tool_row_slot(*id) != Some(*r)
     });
     let new_focus = match hit {
         Some((id, _)) if card_handle.is_none() && is_focusable(store, id) => Some(id),

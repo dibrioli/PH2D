@@ -2260,7 +2260,8 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬇️ `1 734 → 1 683` em 2026-11-04 (H8): Sync divide a linha do Paint Mode, Flow a do Line type, Method a de um Spacing só,
     //    Mixing e Tiling sem corpo antigo. Medido e recusado: nascer dobrado (esconde o que o dono pôs à vista); Method + Adjust
     //    Strength (separa Adjust do Spacing que ele corrige). Os `46 px` contra os 1 637 são o rótulo em cima do Stroke.
-    ("painter_layers", 1683.0),
+    // ⬇️ `1 683 → 1 670` em 2026-11-04 (fim da H9): os títulos que dobram são linha de grupo, sem o corpo antigo.
+    ("painter_layers", 1670.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

@@ -52,8 +52,8 @@ pub(crate) fn titulo_que_dobra(
     reset: Option<NodeId>,
     y: f32,
 ) -> f32 {
-    let topo = filete(c, y) + m::FIELD_ROW_GAP;
-    let h = m::ICON_CELL;
+    let topo = filete(c, y);
+    let h = m::HEAD_ICON_BOX;
     let lado = m::ICON_GLYPH;
     let centro = topo + (h - lado) * 0.5;
     let seta = Rect::new(c.x, centro, lado, lado);

@@ -13,16 +13,16 @@ use ph2d_panel_painter_layers::{FALLBACK_BRUSH, PainterLayersPanel};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_painter::ids as p;
 
-/// Desde a H7 o Stroke é nativo: estes testes medem a lista; o corpo capturado mede-se em `the_gizmos_follow_a_loose_card`
-/// (solto) e `each_list_opens_under_its_box…` da H6 (lista da rampa).
+/// O Stroke é nativo desde a H7, e o título do Jitter desde a H9: estes testes medem a lista. A captura só resta na vista
+/// Layers, que tem um cartão só, e por isso nada anda por cima dela.
 const CAPTURADO: (ph2d_a11y::NodeId, ph2d_a11y::NodeId) = (
     p::PAINTER_BRUSH_STROKE_SECTION,
     core_ids::PAINTER_BRUSH_STROKE_METHOD,
 );
 
-/// A lista anda: no MESMO quadro, os alvos capturados e a cena deles vão com o cabeçalho do cartão.
+/// A lista anda: no MESMO quadro, os alvos vão com o cabeçalho do cartão.
 #[test]
-fn the_captured_targets_and_scene_move_with_the_list_in_the_same_frame() {
+fn the_targets_move_with_the_list_in_the_same_frame() {
     let (sec, id) = CAPTURADO;
     let mut mesa = Mesa::nova(true, FALLBACK_BRUSH, false);
     let g0 = mesa.rect(grip_of(sec)).expect("a pega");
@@ -35,11 +35,11 @@ fn the_captured_targets_and_scene_move_with_the_list_in_the_same_frame() {
         .host
         .click_at(cima.x + cima.w * 0.5, cima.y + cima.h * 0.5);
     let _ = mesa.aplica(ev);
-    let (mut ultimo, mut moveu, mut com_cena) = (g0.y, 0, 0);
+    let (mut ultimo, mut moveu) = (g0.y, 0);
     for _ in 0..30 {
         let janela = mesa.janela;
         let (h, st) = (&mut mesa.host, &mut mesa.st);
-        let (rects, translacoes) = com_passo_fixo(PASSO_DE_QUADRO_S, || {
+        let (rects, _) = com_passo_fixo(PASSO_DE_QUADRO_S, || {
             h.paint_with_translations::<PainterLayersPanel>(st, janela)
         });
         mesa.rects = rects;
@@ -53,16 +53,9 @@ fn the_captured_targets_and_scene_move_with_the_list_in_the_same_frame() {
         ultimo = g.y;
         if dy.abs() > 0.5 {
             moveu += 1;
-            if translacoes
-                .iter()
-                .any(|t| t[0].abs() < 0.01 && (t[1] - dy).abs() < 0.01)
-            {
-                com_cena += 1;
-            }
         }
     }
     assert!(moveu > 0, "a lista não andou: a régua não mediu nada");
-    assert_eq!(com_cena, moveu, "a cena ficou para trás");
 }
 
 /// O Reset de uma secção mora só no cartão dela: um bloco sem Reset não herda o do vizinho, nem o do quadro anterior.

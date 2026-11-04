@@ -95,6 +95,15 @@ pub fn mirror(hero: &mut HeroScreen, is_image: impl Fn(u64) -> bool) {
         .mode
         .active()
         .is_some_and(|a| a.mode == ObjectMode::Edit && is_image(a.entity));
+    // `PH2D_IMAGE_TOOL_SMOKE`: o painel da ferramenta abre sem imagem, para a foto.
+    if let Some(tool_id) = ph2d_editor_core::tool_activation::ferramenta_do_smoke() {
+        static PEDIDA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        hero.image_edit.mode_on = true;
+        if !PEDIDA.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            hero.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::ActivateTool { tool_id });
+        }
+    }
 }
 
 #[cfg(test)]

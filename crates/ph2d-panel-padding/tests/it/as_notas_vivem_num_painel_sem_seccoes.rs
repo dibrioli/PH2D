@@ -31,6 +31,7 @@ fn rect_of(rects: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
 /// *Mutação: a porta de rolagem sem as notas do fim ⇒ o menu não abre e a nota nunca aparece.*
 #[test]
 fn o_padding_cria_e_pinta_uma_nota() {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<PaddingPanel>();
     let mut st = PaddingPanelState;
     let _ = host.paint::<PaddingPanel>(&mut st, viewport());

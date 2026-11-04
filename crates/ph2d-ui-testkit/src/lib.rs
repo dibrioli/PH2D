@@ -600,6 +600,7 @@ impl MockPanelHost {
 /// irmão — ver [`gestures`]. Saíram daqui na integração de 2026-09-04, quando a soma de duas
 /// linhas levou este ficheiro a `714 / 700`.
 mod gestures;
+pub mod mesa;
 
 /// ⭐⭐ **A prova de que uma lista de dropdown longa ROLA** — ver [`lista_longa`].
 mod lista_longa;

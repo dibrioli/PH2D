@@ -126,6 +126,22 @@ pub const CEQ_CANCEL: NodeId = hash_node_id("color_eq.cancel");
 /// the tool also runs this from `on_activate` so reopening the panel
 /// never inherits a previous session's slider state.
 pub const CEQ_RESET: NodeId = hash_node_id("color_eq.reset");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_HISTOGRAM: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.histogram");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_AUTO: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.auto");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_TONE: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.tone");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_COLOR: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.color");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_SHARPEN: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.sharpen");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_LOCAL: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.local");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_LUT: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.lut");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const CEQ_SEC_STYLIZE: NodeId = ph2d_tool_registry::hash_node_id("ceq.sec.stylize");
 
 // ── Phase 5 Posterize / Quantize ──────────────────────────────────
 // Posterize: dropdown chip (Off / 2 / 3 / 4 / 6 / 8 / 16) + dithering

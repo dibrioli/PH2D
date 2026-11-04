@@ -37,8 +37,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_tool_color_equalization::params::ColorEqualizationUiSnapshot;
 
-/// Height of the histogram overlay strip.
-const HISTOGRAM_H: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (histogram strip height)
+use crate::cards::HISTOGRAM_H;
 
 pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(ColorEqualizationPanel::ID) {
@@ -55,6 +54,24 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
     ctx.host
         .store_mut()
         .set_panel_rect(ph2d_editor_core::ids::CEQ_PANEL, rect);
+
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        use ph2d_editor_core::panel::cards::ferramenta::{alturas, pinta_lista};
+        crate::cards::prepare(ctx.host.store_mut(), &snapshot);
+        let cartoes = crate::cards::cards(&snapshot);
+        pinta_lista(
+            ctx,
+            ph2d_editor_core::ids::CEQ_PANEL,
+            ColorEqualizationPanel::TITLE.tr(),
+            &cartoes,
+            &crate::cards::verbos(),
+        );
+        let (conteudo, visivel) = alturas(ctx.host.store(), ph2d_editor_core::ids::CEQ_PANEL);
+        set_last_content_h(conteudo);
+        set_last_visible_h(visivel);
+        return;
+    }
+
     paint_panel_surface(rect, ctx.scene, theme);
     // BL resize gripper dot — sem isso o usuário não vê affordance
     // do BL handle (que já é hit-registrado abaixo). Enio 2026-05-26.
@@ -160,7 +177,13 @@ fn paint_body_sections(
     // ── Phase 2 histogram overlay ──────────────────────────────────
     let hist_rect = Rect::new(layout.inner_x, y, layout.inner_w, HISTOGRAM_H);
     state::with_current_histogram(|h| {
-        paint_histogram_overlay(hist_rect, h, scene, theme);
+        paint_histogram_overlay(
+            hist_rect,
+            h,
+            scene,
+            theme,
+            &crate::cards::tinta_do_tema(theme),
+        );
     });
     y += HISTOGRAM_H + layout.row_gap;
 

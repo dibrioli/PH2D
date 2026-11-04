@@ -65,14 +65,19 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_tool_color_equalization::ids::CEQ_POSTERIZE_DROPDOWN,
         ph2d_tool_color_equalization::ids::CEQ_QUANTIZE_DROPDOWN,
     ] {
-        store.register(
-            id,
+        // ⚠️ Nos cartões a lista abre pelo `Click`, e um `Dropdown` nunca o emitiria.
+        let especie = if crate::cards::em_cartoes() {
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            }
+        } else {
             InteractiveState::Dropdown {
                 state: DropdownState::Normal,
                 open: false,
                 selected_index: None,
-            },
-        );
+            }
+        };
+        store.register(id, especie);
     }
 
     // Dropdown option ids MUST be registered too — `dispatch::pointer`
@@ -290,6 +295,7 @@ mod tests {
 
     #[test]
     fn populate_registers_all_controls() {
+        ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
         let mut store = WidgetStore::with_capacity(48);
         populate(&mut store);
         for id in [

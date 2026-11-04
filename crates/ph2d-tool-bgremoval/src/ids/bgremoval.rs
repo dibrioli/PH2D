@@ -37,6 +37,14 @@ pub const BGR_APPLY: NodeId = hash_node_id("bgr_apply");
 /// The tool also runs this from `on_activate` so reopening the panel
 /// never inherits a previous session's slider/toggle state.
 pub const BGR_RESET: NodeId = hash_node_id("bgr_reset");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const BGR_SEC_MASK: NodeId = ph2d_tool_registry::hash_node_id("bgr.sec.mask");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const BGR_SEC_COLORS: NodeId = ph2d_tool_registry::hash_node_id("bgr.sec.colors");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const BGR_SEC_ISLANDS: NodeId = ph2d_tool_registry::hash_node_id("bgr.sec.islands");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const BGR_SEC_PROTECT: NodeId = ph2d_tool_registry::hash_node_id("bgr.sec.protect");
 
 /// Cancel button — abandons the preview and deactivates the tool
 /// (returns to the Inspector).

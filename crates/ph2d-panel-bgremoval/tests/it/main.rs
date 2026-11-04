@@ -7,5 +7,6 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod os_cartoes;
 mod seam;
 mod seam_show_mask_reachability;

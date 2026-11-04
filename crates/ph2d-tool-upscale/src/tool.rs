@@ -73,6 +73,8 @@ pub mod ids {
     pub const UPS_CANCEL: NodeId = super::NODE_CANCEL;
     /// Reset-all button — algorithm + scale back to defaults.
     pub const UPS_RESET: NodeId = super::NODE_RESET;
+    /// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+    pub const UPS_SEC_SCALE: NodeId = ph2d_tool_registry::hash_node_id("ups.sec.scale");
 }
 
 /// Editor Tool implementing the stateful Upscale feature.

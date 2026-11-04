@@ -6,7 +6,7 @@
 //! border) is drawn here too because the overlay is conceptually one
 //! atomic widget.
 
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 use ph2d_tool_color_equalization::algorithm::HistogramData;
@@ -31,10 +31,12 @@ pub(crate) fn paint_histogram_overlay(
     hist: Option<&HistogramData>,
     scene: &mut VectorScene,
     theme: Theme,
+    tinta: &dyn Fn(ColorToken) -> ph2d_vector::Color,
 ) {
-    // Backing surface — Bg2 + thin BorderStrong stroke.
-    let bg = resolve(ColorToken::Bg2, theme);
-    let border = resolve(ColorToken::BorderStrong, theme);
+    // Backing surface — Bg2 + thin BorderStrong stroke. A tinta é a do cartão, ou a do tema no corpo
+    // de antes (`docs/CartoesUI/05` §5: nenhuma cor do Inspector dentro de um cartão).
+    let bg = tinta(ColorToken::Bg2);
+    let border = tinta(ColorToken::BorderStrong);
     // ⭐ Raio e moldura pela porta do TEMA: o histograma é uma superfície plana num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, rect, radius, bg);
@@ -94,9 +96,9 @@ pub(crate) fn paint_histogram_overlay(
     let bar_w = inner.w / HISTOGRAM_BARS as f32;
     let bar_h_max = inner.h;
 
-    let r_color = resolve(ColorToken::Danger, theme);
-    let g_color = resolve(ColorToken::Success, theme);
-    let b_color = resolve(ColorToken::Info, theme);
+    let r_color = tinta(ColorToken::Danger);
+    let g_color = tinta(ColorToken::Success);
+    let b_color = tinta(ColorToken::Info);
     let alpha = 0.6_f32; // LITERAL-PX-OK: histogram bar alpha (visual blend, not a UI metric)
     let r_color = with_alpha(r_color, alpha);
     let g_color = with_alpha(g_color, alpha);
@@ -162,7 +164,13 @@ mod tests {
     fn the_histogram_surface_loses_exactly_its_frame_in_a_modern_theme() {
         let paths = |theme: Theme| {
             let mut scene = VectorScene::new();
-            paint_histogram_overlay(Rect::new(4.0, 4.0, 200.0, 80.0), None, &mut scene, theme);
+            paint_histogram_overlay(
+                Rect::new(4.0, 4.0, 200.0, 80.0),
+                None,
+                &mut scene,
+                theme,
+                &crate::cards::tinta_do_tema(theme),
+            );
             scene.inner().encoding().n_paths
         };
         let classic = paths(Theme::Forge);

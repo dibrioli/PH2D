@@ -51,6 +51,23 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(ph2d_editor_core::ids::BGR_PANEL, rect);
 
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        use ph2d_editor_core::panel::cards::ferramenta::{alturas, pinta_lista};
+        crate::cards::prepare(ctx.host.store_mut(), &snapshot);
+        let cartoes = crate::cards::cards(&snapshot);
+        pinta_lista(
+            ctx,
+            ph2d_editor_core::ids::BGR_PANEL,
+            BgRemovalPanel::TITLE.tr(),
+            &cartoes,
+            &crate::cards::verbos(),
+        );
+        let (conteudo, visivel) = alturas(ctx.host.store(), ph2d_editor_core::ids::BGR_PANEL);
+        set_last_content_h(conteudo);
+        set_last_visible_h(visivel);
+        return;
+    }
+
     // Dark-glass surface + corner accent.
     paint_panel_surface(rect, ctx.scene, theme);
 

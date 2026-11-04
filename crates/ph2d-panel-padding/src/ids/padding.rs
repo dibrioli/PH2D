@@ -8,3 +8,5 @@ use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
 pub const PAD_CANCEL: NodeId = hash_node_id("pad_cancel");
+/// O cartão dos quatro lados.
+pub const PAD_SEC_EDGES: NodeId = hash_node_id("pad.sec.edges");

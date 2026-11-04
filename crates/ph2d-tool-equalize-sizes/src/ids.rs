@@ -67,3 +67,7 @@ pub const EQS_CANCEL: NodeId = hash_node_id("eqsizes.cancel");
 /// Reset-all button — every param back to default. Also fires from
 /// the tool's `on_activate`.
 pub const EQS_RESET: NodeId = hash_node_id("eqsizes.reset");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const EQS_SEC_TARGET: NodeId = ph2d_tool_registry::hash_node_id("eqs.sec.target");
+/// Um cartão do painel (`docs/CartoesUI/11_RECEITA`).
+pub const EQS_SEC_RESULT: NodeId = ph2d_tool_registry::hash_node_id("eqs.sec.result");

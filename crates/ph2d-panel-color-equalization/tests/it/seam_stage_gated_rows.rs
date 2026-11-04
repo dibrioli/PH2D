@@ -57,6 +57,7 @@ const VIEWPORT: Rect = Rect {
 /// Paint the panel with `snapshot` and return the ids the artist can
 /// actually hit this frame.
 fn reachable(snapshot: ColorEqualizationUiSnapshot) -> Vec<ph2d_a11y::NodeId> {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<ColorEqualizationPanel>();
     let mut state = ColorEqualizationPanelState;
     ph2d_panel_color_equalization::set_current_snapshot(Some(snapshot));

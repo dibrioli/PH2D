@@ -21,6 +21,7 @@
 
 #![forbid(unsafe_code)]
 
+mod cards;
 mod event;
 mod paint;
 mod paint_sections;

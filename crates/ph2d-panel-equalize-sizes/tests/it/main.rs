@@ -8,4 +8,5 @@
 
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod layout_no_overlap;
+mod os_cartoes;
 mod seam;

@@ -8,5 +8,6 @@
 
 mod as_notas_vivem_num_painel_sem_seccoes; // notas em qualquer painel (2026-10-01)
 mod every_word_this_panel_shows_comes_from_the_string_table;
+mod os_cartoes;
 mod populate_mapped_link;
 mod seam;

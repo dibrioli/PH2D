@@ -21,6 +21,24 @@
 /// Os clusters cujos manifestos `Stateful` um pedido de activação pode pegar.
 const CLUSTERS: [&str; 4] = ["image_tools", "vector_tools", "motion_tools", "flip_tools"];
 
+/// `PH2D_IMAGE_TOOL_SMOKE=<id>`: a ferramenta de imagem que abre com o app, para ver o painel dela
+/// numa foto sem clicar. Sem cena: o painel não precisa de mundo para se mostrar.
+#[must_use]
+pub fn ferramenta_do_smoke() -> Option<&'static str> {
+    const FERRAMENTAS: [&str; 5] = [
+        "padding",
+        "upscale",
+        "equalize_sizes",
+        "bgremoval",
+        "color_equalization",
+    ];
+    static PEDIDA: std::sync::OnceLock<Option<&'static str>> = std::sync::OnceLock::new();
+    *PEDIDA.get_or_init(|| {
+        let pedida = std::env::var("PH2D_IMAGE_TOOL_SMOKE").ok()?;
+        FERRAMENTAS.into_iter().find(|f| *f == pedida)
+    })
+}
+
 /// **A resposta da lei a um pedido.** Ver o cabeçalho do módulo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActivationGate {

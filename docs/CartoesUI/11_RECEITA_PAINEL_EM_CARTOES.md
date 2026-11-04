@@ -89,6 +89,24 @@ Em `ph2d-editor-core --test it`: `architecture_every_editable_field_is_a_channel
 
 Crate inteira do painel, uma vez, com `PH2D_SUITE="motivo: …"` (registo de painel, Cargo.toml).
 
+## Painel com verbos Apply/Cancel (bloco D3, ferramentas de imagem)
+
+`panel/cards_ferramenta.rs` (`panel::cards::ferramenta`) e `ph2d_ui_testkit::mesa::Mesa<P>` são a forma comum: `cards_on`,
+`prepara_numeros`, `campo`, `caixa`, `opcoes`, `cartao`, `pinta_lista(ctx, panel, título, cartões, &Verbos)`. Modelo curto:
+`ph2d-panel-padding/src/cards.rs` + `tests/it/os_cartoes.rs`.
+
+- **Os verbos não são um cartão:** `Reset` e `Cancel | Apply` moram numa faixa presa abaixo da lista. Num cartão, o `Apply`
+  dobrava-se, reordenava-se e saía para o canvas. A faixa entra no rect flutuante do painel, senão o clique nela vai ao canvas.
+- **Liga/desliga pintado como botão vira caixa com o MESMO id:** `caixa()`. O id continua `Button` no store e emite `Click`:
+  `populate`, `event` e `PanelEvent` não mudam.
+- **Lista suspensa:** no `populate`, `Button` só em cartões (`cards_on()`), e `dropdown::declare` em `prepare`. Com a faixa, a
+  lista aberta pinta-se depois dela (`adia_a_lista_suspensa`); medido: sem isto o `Reset` ficava por cima da opção.
+- **Sem cabeçalho de secção no painel de antes:** o id novo vai para `ids` da ferramenta (`UPS_SEC_SCALE`).
+- **Campo que mostra outra coisa que o pedido** (o EPX arredonda): `card_field::com_valores` no corpo, e a semente em `prepare`.
+- **Abrir sem cena:** `PH2D_IMAGE_TOOL_SMOKE=padding|upscale|equalize_sizes|bgremoval|color_equalization`. Não há imagem: o
+  `image_edit.mode_on` é o espelho do Edit de uma imagem, e o `mirror` em `ph2d-app-painter` é que respeita a variável.
+- **Corpos antigos nos testes:** quem pinta o painel e testa o corpo de antes pede `force_cards_on_this_thread(Some(false))`.
+
 ## Fotografar
 
 `bash docs/Components/ferramentas/fotografa_cena.sh PH2D_X_SMOKE=n 1930 1040 saida.png`, à frente `PH2D_PRAZO=<s>` (o guarda

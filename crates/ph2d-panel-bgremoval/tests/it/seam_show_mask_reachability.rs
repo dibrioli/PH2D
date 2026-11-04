@@ -46,15 +46,23 @@ const VIEWPORT: Rect = Rect {
 /// Paint the panel with this snapshot and answer: was the Show-mask
 /// button registered in the hit index — i.e. can the artist reach it?
 fn row_is_reachable(snapshot: BgRemovalUiSnapshot) -> bool {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    set_current_bgremoval_snapshot(Some(snapshot));
+    force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<BgRemovalPanel>();
     let mut state = BgRemovalPanelState;
-    set_current_bgremoval_snapshot(Some(snapshot));
-    let hits = host.paint::<BgRemovalPanel>(&mut state, VIEWPORT);
-    let found = hits
+    let antes = host
+        .paint::<BgRemovalPanel>(&mut state, VIEWPORT)
         .iter()
         .any(|(id, _)| *id == ph2d_tool_bgremoval::ids::BGR_SHOW_MASK);
+    // Os cartões medem-se no quadro seguinte: a mesa pinta até assentarem.
+    force_cards_on_this_thread(Some(true));
+    let cartoes = ph2d_ui_testkit::mesa::Mesa::<BgRemovalPanel>::nova(BgRemovalPanelState)
+        .pintados()
+        .contains(&ph2d_tool_bgremoval::ids::BGR_SHOW_MASK);
     set_current_bgremoval_snapshot(None);
-    found
+    assert_eq!(antes, cartoes, "os dois corpos respondem o mesmo à lei");
+    antes
 }
 
 fn snapshot(armed: bool, has_mask: bool, show: bool) -> BgRemovalUiSnapshot {

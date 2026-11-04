@@ -426,7 +426,9 @@ pub(super) fn pinta_os_soltos(
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     super::estilos::stash_aberta(store, hit_index, theme, cards);
     super::estilos::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
-    super::dropdown::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+    if !super::ferramenta::adia_a_lista_suspensa() {
+        super::dropdown::paint_pending(ctx.scene, ctx.text_system, hit_index, store);
+    }
     publica(ctx.host.store_mut(), rects);
     super::solto_some::cordas(ctx.scene, ctx.host.store_mut(), panel, theme);
 }

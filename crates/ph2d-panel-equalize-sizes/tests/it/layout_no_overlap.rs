@@ -45,6 +45,7 @@ fn overlap_area(a: Rect, b: Rect) -> f32 {
 }
 
 fn painted_rects(mode: TargetMode, width: f32) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<EqualizeSizesPanel>();
     let mut state = EqualizeSizesPanelState;
     let snapshot = EqualizeSizesUiSnapshot {

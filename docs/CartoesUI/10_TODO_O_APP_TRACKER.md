@@ -580,5 +580,5 @@ Commits `3aa82cd025` (espelho), `615113d5b2` (camada das listas), `2e9e73ce22` (
 
 **Decidido sem o dono:** estados semeados em tabela própria da compactação; a frase de aviso num cartão leva o vão da grelha em cima e nada em baixo.
 
-**Portões do briefing:** só `lei_da_compactacao` (com 220 escrito não recorrido depois da última escrita), `nenhum_texto_sai_do_botao`, `o_zero_tem_populacao` por nome. **Não corridos:** `no_magic_numeric`, `hr12_widgets_a11y`, `the_shell_only_shrinks`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango`, `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`, nem a catraca de altura do Inspector, que o vão novo do `aviso` pode acusar.
+**Portões:** verdes por nome `lei_da_compactacao` (com o 220 escrito), `a_altura_de_abertura_de_um_painel_so_encolhe`, `nenhum_texto_sai_do_botao`, `o_zero_tem_populacao`. **Não corridos:** `no_magic_numeric`, `hr12_widgets_a11y`, `the_shell_only_shrinks`, `architecture_panel_loc_cap`, `todo_campo_pintado_com_losango`, o resto de `quantas_entradas_tem_cada_painel`, `nenhum_nome_por_cima_do_controlo`, `onde_comeca_o_valor`, `a_marca_tem_a_altura_da_linha`, `toda_dica_dos_cartoes`. Os testes antigos do Inspector que leem `aviso` e os do Bones com Reach não foram recorridos.
 

@@ -346,9 +346,16 @@ pub(crate) fn paint_script_section(
     );
     // O seletor dos scripts do projeto (E11), depois `Browse` | `Edit script` lado a lado (E3). Sem
     // script do projeto não há o que editar: o botão fica apagado e fora do índice.
+    // Num cartão, a distância da grelha (lei 3 de 05 §4); o campo de cima devolve o fundo dele, sem vão.
+    let vao = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::corpo::ROW_GAP
+    } else {
+        0.0
+    };
+    cur_y += vao;
     let r = Rect::new(x, cur_y, w, ALTURA_DE_CAMPO);
     super::script_seletor::seletor(scene, text_system, theme, hit_index, store, r, info);
-    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
+    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px().max(vao);
     let metade = (w - Spacing::Xs.px()) * 0.5;
     botao(
         scene,

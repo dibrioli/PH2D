@@ -128,3 +128,31 @@ fn the_bone_length_field_speaks_world_pixels() {
     let px = doc.of_world((ponta[0] - raiz[0]).hypot(ponta[1] - raiz[1]));
     assert!((px - 5000.0).abs() < 1e-2, "desenhado {px} px");
 }
+
+/// ⭐ R5, ponta a ponta: com A preso e B selecionado, o gesto sobre o cartão preso escreve em A e B
+/// fica como estava. *Mutação: `osso_do_gesto` a ignorar `preso` ⇒ a escrita vai para B.*
+#[test]
+fn the_gesture_on_a_pinned_card_writes_the_pinned_bone_not_the_selected_one() {
+    use super::apply_from_panel;
+    use ph2d_ecs::{SimWorld, Transform};
+    use ph2d_skeleton_live::bone::osso_do_gesto;
+    let mut sim = SimWorld::default();
+    let mut osso = || {
+        sim.world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Bone {
+                    length: 10.0,
+                    ..Bone::default()
+                },
+            ))
+            .id()
+    };
+    let (a, b) = (osso(), osso());
+    let doc = ph2d_editor_core::DocPx::new(100.0);
+    let alvo = osso_do_gesto(&sim, Some(a.to_bits()), [b.to_bits()]).expect("é osso");
+    apply_from_panel(&mut sim, alvo, BoneKnob::Length, 2500.0, doc);
+    let comprimento = |e| sim.world().get::<Bone>(e).expect("é osso").length;
+    assert!((comprimento(a) - 25.0).abs() < 1e-4, "A {}", comprimento(a));
+    assert!((comprimento(b) - 10.0).abs() < 1e-4, "B {}", comprimento(b));
+}

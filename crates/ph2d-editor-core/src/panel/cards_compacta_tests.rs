@@ -397,3 +397,32 @@ fn the_census_counts_a_two_option_choice_as_short_only_with_a_name() {
     assert_eq!(medir(true), 1, "a escolha com nome é curta");
     assert_eq!(medir(false), 0, "a fila de uma grelha não tem vizinho");
 }
+
+/// O aviso de um painel conta na distância entre linhas. *Mutação: `frase` sem a linha.*
+#[test]
+fn a_phrase_counts_for_the_distance_between_rows() {
+    censo::na_secao(Some(A));
+    let (_, c) = censo::grava(|| {
+        censo::frase((0.0, 100.0), 0.0, 10.0, "a");
+        censo::frase((0.0, 100.0), 11.0, 20.0, "b");
+    });
+    censo::na_secao(None);
+    assert_eq!(c.linhas_grudadas().len(), 1, "{:?}", c.linhas);
+}
+
+/// O corpo a abrir recorta o que passa da banda, e o pedido em espera pinta-se por fora do corpo:
+/// não pode saltar à vista antes da dobra. *Mutação: tirar o recorte de `fluir` ⇒ vermelho.*
+#[test]
+fn what_waits_in_the_flow_stays_clipped_while_the_section_opens() {
+    let pinta_a = |aberto: f32| {
+        let mut f = mesa();
+        f.store.set_section_open_live(A, aberto);
+        f.store.remember_section_body_h(A, 100.0);
+        censo::na_secao(Some(A));
+        corre_fluxo(&mut f, 257.0, |c, y| c.check(B, "Region", true, y));
+        censo::na_secao(None);
+        f.hit.rect_for(B).is_some()
+    };
+    assert!(pinta_a(1.0), "aberto, o pedido pinta-se");
+    assert!(!pinta_a(0.1), "a abrir, o que não cabe na banda não se vê");
+}

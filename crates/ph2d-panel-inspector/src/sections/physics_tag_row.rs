@@ -29,6 +29,12 @@ pub(super) fn signal_tag_row(
     signal_tag: Option<u64>,
     signal_tag_path: &str,
 ) -> f32 {
+    // Num cartão, a distância da grelha (foto r5_physics_body: colado a On Leave).
+    let y = y + if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::corpo::ROW_GAP
+    } else {
+        0.0
+    };
     let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
     let rect = Rect::new(x, y, control_w, ROW_H_PX);
     hit_index.register(ids::INSP_PHYS_SIGNAL_TAG, rect);

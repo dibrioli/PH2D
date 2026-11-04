@@ -121,6 +121,23 @@ fn number_row<'a>(
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let rotulo = label.into();
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return ph2d_editor_core::panel::cards::corpo::fields(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            rotulo.texto,
+            ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            None,
+            &[id],
+            1.0,
+        );
+    }
     // ⭐ **A coluna do rótulo deixou de ser um literal** (14/09): ela era `96 px` escritos aqui, e
     // a mesma pergunta tinha SEIS respostas no app (`96` · `78` · `84` · `76` · `72` · `150`).
     // ⛔ Uma largura fixa está errada por construção — a coluna docada é arrastável.
@@ -179,16 +196,16 @@ fn layer_row(
 ) -> f32 {
     // ⭐ Irmã da row acima: a coluna do rótulo sai da porta, e é a da SECÇÃO.
     let h = ROW_H_PX;
-    let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
-    ph2d_editor_core::widget::paint_property_label(
-        text_system,
+    let row = ph2d_editor_core::property_row::paint_label_row(
         scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        h,
         tr("component.field.sorting_layer.1"),
-        row.label.x,
-        row.label.y + (h - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
-        row.label.w,
-        label_color(theme),
+        sec,
     );
     let (dot, rect) = (row.dot, row.control);
     hit_index.register(ids::INSP_ORDER_SORTING_LAYER, rect);
@@ -221,7 +238,7 @@ fn layer_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    y + h + ph2d_tokens::control_gap_px()
+    row.fim(h + ph2d_tokens::control_gap_px())
 }
 
 /// Canonical dropdown options (value == label).
@@ -356,7 +373,47 @@ pub(crate) fn paint_ordering_section(
     ) else {
         return y + header_h;
     };
-    let mut yy = y + header_h;
+    // Z Index — the field IS the override (no separate toggle, Godot-
+    // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
+    // (= default, pure DFS / hierarchy order — `0` and absent sort
+    // identically). Z as Relative pairs with it.
+    let sec = seccao(text_system);
+    let yy = number_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y + header_h,
+        ids::INSP_ORDER_Z_INDEX,
+        TextKey::new("component.field.z_index.1"),
+        sec,
+    );
+    let yy = paint_ordering_rest(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    fold.finish(
+        store,
+        scene,
+        hit_index,
+        yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX,
+    )
+}
+
+/// As linhas da §7 depois do Z Index: o cartão Ordering pinta o Z no campo dele e estas por baixo.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_ordering_rest(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorOrderingInfo,
+) -> f32 {
+    let mut yy = y;
     let sec = seccao(text_system);
     let live =
         |store: &WidgetStore, id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v) {
@@ -401,15 +458,6 @@ pub(crate) fn paint_ordering_section(
         };
     }
 
-    // Z Index — the field IS the override (no separate toggle, Godot-
-    // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
-    // (= default, pure DFS / hierarchy order — `0` and absent sort
-    // identically). Z as Relative pairs with it.
-    yy = ni!(
-        yy,
-        ids::INSP_ORDER_Z_INDEX,
-        TextKey::new("component.field.z_index.1")
-    );
     yy = cb!(
         yy,
         ids::INSP_ORDER_Z_RELATIVE,
@@ -470,16 +518,9 @@ pub(crate) fn paint_ordering_section(
             TextKey::new("component.field.sorting_group.1")
         );
     }
-    yy = cb!(
+    cb!(
         yy,
         ids::INSP_ORDER_TOP_LEVEL,
         tr("component.top_level.name")
-    );
-
-    fold.finish(
-        store,
-        scene,
-        hit_index,
-        yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX,
     )
 }

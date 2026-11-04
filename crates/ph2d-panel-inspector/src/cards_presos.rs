@@ -61,8 +61,8 @@ thread_local! {
 fn corpo_do_preso<R>(pin: u64, y: R, f: impl FnOnce() -> R) -> R {
     use ph2d_editor_core::widget::card_ink::troca_popover;
     let antes = troca_popover(None);
-    let fim = ph2d_editor_core::widget::key_mark::com_marcas_de(pin, || com_preso(pin, f))
-        .unwrap_or(y);
+    let fim =
+        ph2d_editor_core::widget::key_mark::com_marcas_de(pin, || com_preso(pin, f)).unwrap_or(y);
     match troca_popover(None) {
         Some(aberta) => {
             SUJEITO_DA_LISTA.with(|s| s.set(Some(pin)));
@@ -127,7 +127,9 @@ pub(crate) fn monta(
         store.mark_card_pinnable(c);
     }
     for p in presentes {
-        store.mark_card_pinnable(p.id);
+        if !crate::cards_objeto::SEM_ALFINETE.contains(&p.id) {
+            store.mark_card_pinnable(p.id);
+        }
     }
     let mut out = Vec::new();
     for (k, solto) in store.loose_cards_of(ids::INSP_PANEL) {

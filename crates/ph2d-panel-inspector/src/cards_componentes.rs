@@ -68,8 +68,8 @@ impl Abertas {
     }
 }
 
-/// As secções de componente, pela ordem natural (a da paleta) — as mesmas chamadas do Inspector
-/// de hoje, sem as do núcleo e as da sprite (essas já são cartões, ou a sprite fica no de hoje).
+/// As secções de corpo de hoje, pela ordem natural: as da sprite, as partilhadas sem cartão próprio
+/// e os componentes (a paleta). O lugar na lista é o de `cards_objeto::tece`.
 fn plano<'a>(
     store: &'a WidgetStore,
     x: f32,
@@ -78,6 +78,25 @@ fn plano<'a>(
     snaps: &'a LiveSnapshots,
 ) -> Plano<'a> {
     let mut p = Plano::new();
+    crate::paint_frame_shared::push_sprite_sections(
+        &mut p,
+        store,
+        x,
+        w,
+        ROW_H_PX,
+        snaps.sprite_info.as_ref(),
+    );
+    crate::paint_frame_shared::push_shared_sections(
+        &mut p,
+        store,
+        x,
+        w,
+        ROW_H_PX,
+        snaps.slice_info.as_ref(),
+        None,
+        snaps.sampling_info.as_ref(),
+        None,
+    );
     crate::paint_frame::push_physics_sections(
         &mut p,
         store,

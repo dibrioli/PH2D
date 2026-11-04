@@ -68,7 +68,7 @@ const ENTITY: u64 = 0x5EED_1234;
 /// próprios seams (`seam_physics`/`seam_joint`/`seam_wheel`/`seam_player`) e varrê-las aqui faria
 /// este gate falhar por trabalho de outra linha — *um gate que acusa o vizinho é desligado tão
 /// depressa como um que acusa o legítimo*.
-fn publish_the_whole_sprite_scene() {
+pub(crate) fn publish_the_whole_sprite_scene() {
     set_current_inspector_sprite(Some(InspectorSpriteInfo {
         entity_bits: ENTITY,
         world_size: [1.0, 1.0],
@@ -245,7 +245,7 @@ fn publish_the_whole_sprite_scene() {
     }));
 }
 
-fn clear_the_scene() {
+pub(crate) fn clear_the_scene() {
     set_current_inspector_sprite(None);
     set_current_inspector_name(None);
     set_current_inspector_visibility(None);

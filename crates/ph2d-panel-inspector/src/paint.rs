@@ -73,13 +73,13 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             abertas.get(),
             &presentes,
         );
-        let mut cards: Vec<ph2d_editor_core::panel::cards::CardDef<'_>> = Vec::new();
-        cards.extend(crate::cards::cards(ctx.host.store()));
-        cards.extend(
-            presentes
-                .iter()
-                .map(|p| crate::cards_componentes::cartao(p, &abertas, &snaps)),
-        );
+        let mut cards =
+            crate::cards_objeto::tece(crate::cards::cards(ctx.host.store()), &presentes, |p| {
+                crate::cards_componentes::cartao(p, &abertas, &snaps)
+            });
+        if cards.is_empty() {
+            cards.push(crate::cards_objeto::vazio(ctx.host.selection().is_some()));
+        }
         let presos = crate::cards_presos::cards(&presos, ctx.host.store(), &abertas);
         ph2d_editor_core::panel::cards::paint_card_list_pinned(
             ctx,

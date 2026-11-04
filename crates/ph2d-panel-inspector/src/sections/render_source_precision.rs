@@ -93,17 +93,31 @@ pub(super) fn paint_precision_row(
         } else {
             tr("panel.inspector.render_source.rgba16_doubles_memory_and_forces")
         };
-        paint_text(
-            text_system,
-            scene,
-            consequence,
-            x,
-            cur_y,
-            label_font,
-            w,
-            resolve(ColorToken::Text2, theme),
-        );
-        cur_y += label_font;
+        // Num cartão a frase quebra: cortada a meio não diz a consequência (foto a2).
+        if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+            cur_y = super::rows::aviso(
+                scene,
+                text_system,
+                theme,
+                x,
+                w,
+                cur_y,
+                consequence,
+                ColorToken::Text2,
+            );
+        } else {
+            paint_text(
+                text_system,
+                scene,
+                consequence,
+                x,
+                cur_y,
+                label_font,
+                w,
+                resolve(ColorToken::Text2, theme),
+            );
+            cur_y += label_font;
+        }
     }
     cur_y + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
 }

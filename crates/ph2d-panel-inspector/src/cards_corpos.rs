@@ -28,6 +28,7 @@ pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
     // O olho do objecto publicado: o de um preso não é a caixa da seleção.
     let visivel = crate::state::current_inspector_visibility().is_none_or(|v| v.mixed || v.visible);
     out.push(objeto(store, visivel));
+    out.extend(crate::cards_objeto::do_topo());
     out.push(transform());
     if let Some(a) = appearance::current_appearance() {
         out.push(aparencia(&a, visivel));
@@ -43,6 +44,7 @@ fn objeto(store: &WidgetStore, visivel: bool) -> CardDef<'static> {
     // O cadeado é o da linha da Hierarquia (o MESMO id; sem linha, não há cadeado).
     let cadeado = crate::state::current_inspector_transform()
         .and_then(|t| store.hierarchy_row_of_entity(t.entity_bits));
+    let imagem = crate::state::current_inspector_sprite().is_some();
     CardDef {
         section: CARD_OBJECT,
         title: "",
@@ -52,6 +54,8 @@ fn objeto(store: &WidgetStore, visivel: bool) -> CardDef<'static> {
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             let tipo = if vector.is_some() {
                 IconId::CardPath
+            } else if imagem {
+                IconId::Image
             } else {
                 IconId::Layers
             };
@@ -77,7 +81,7 @@ fn objeto(store: &WidgetStore, visivel: bool) -> CardDef<'static> {
                     on: trancado,
                 });
             }
-            c.row(
+            let y = c.row(
                 &[
                     Cell::new(Widget::Badge(tipo)),
                     Cell::new(Widget::Text {
@@ -87,12 +91,15 @@ fn objeto(store: &WidgetStore, visivel: bool) -> CardDef<'static> {
                     Cell::new(Widget::Bare(&olho)),
                 ],
                 y,
-            )
+            );
+            crate::cards_objeto::frase_da_selecao(c, y)
         })),
     }
 }
 
 fn transform() -> CardDef<'static> {
+    // Rodar e inverter são verbos da forma vetorial: em outro objecto seriam um clique sem efeito.
+    let vetor = appearance::current_appearance().is_some();
     CardDef {
         section: CARD_TRANSFORM,
         title: tr("card.insp.transform"),
@@ -103,7 +110,7 @@ fn transform() -> CardDef<'static> {
         }],
         add: None,
         summary: None,
-        body: Some(Box::new(|c: &mut CardCtx<'_>, y| {
+        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             const POS: &[NodeId] = &[ids::INSP_TRANSFORM_POS_X, ids::INSP_TRANSFORM_POS_Y];
             const ROT: &[NodeId] = &[ids::INSP_TRANSFORM_ROT];
             const SCALE: &[NodeId] = &[ids::INSP_TRANSFORM_SCALE_X, ids::INSP_TRANSFORM_SCALE_Y];
@@ -153,18 +160,17 @@ fn transform() -> CardDef<'static> {
                     on: false,
                 },
             ];
-            let y = c.row(
-                &[
-                    Cell::new(field(
-                        ids::INSP_TRANSFORM_ROT,
-                        Glyph::Icon(IconId::CardAngle),
-                    ))
-                    .label(rot)
-                    .key(ROT),
-                    Cell::new(Widget::Bare(&giros)),
-                ],
-                y,
-            );
+            let rotacao = Cell::new(field(
+                ids::INSP_TRANSFORM_ROT,
+                Glyph::Icon(IconId::CardAngle),
+            ))
+            .label(rot)
+            .key(ROT);
+            let y = if vetor {
+                c.row(&[rotacao, Cell::new(Widget::Bare(&giros))], y)
+            } else {
+                c.row(&[rotacao], y)
+            };
             let corrente = [Seg {
                 id: SCALE_LOCK,
                 icon: Some(IconId::Link),
@@ -334,12 +340,13 @@ fn ordering() -> Option<CardDef<'static>> {
         actions: Vec::new(),
         add: None,
         summary: resumo,
-        body: Some(Box::new(|c: &mut CardCtx<'_>, y| {
-            c.full(
+        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
+            let y = c.full(
                 Some(tr("card.insp.z_index")),
                 field(ids::INSP_ORDER_Z_INDEX, Glyph::Text(tr("card.glyph.z"))),
                 y,
-            )
+            );
+            crate::cards_objeto::resto_da_ordem(c, y, &o)
         })),
     })
 }

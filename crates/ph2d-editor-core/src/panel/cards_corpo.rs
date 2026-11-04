@@ -148,6 +148,34 @@ pub fn columns(
     ctx(scene, text_system, store, hit_index, ink, x, w).row(&cells, y)
 }
 
+/// Uma barra com chip, no cartão: o campo é o chip, a barra não se pinta e a marca é a dela, que é o
+/// canal (receita 11, «Slider + chip ligado»). Devolve o fundo.
+#[allow(clippy::too_many_arguments)]
+pub fn bar_field(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: &str,
+    chip: NodeId,
+    bar: NodeId,
+    spec: CardFieldSpec,
+) -> f32 {
+    store.mark_card_field_at_paint(chip, spec);
+    let key = [bar];
+    let cell = Cell::new(Widget::Field {
+        id: chip,
+        glyph: Glyph::Text(letra_da_grandeza(rotulo)),
+    })
+    .label(rotulo)
+    .key(&key);
+    ctx(scene, text_system, store, hit_index, ink, x, w).row(&[cell], y)
+}
+
 /// Duas escolhas segmentadas lado a lado, cada uma com o seu rótulo (T56: «Freeze X» | «Freeze Y»)
 /// — `None` quando os segmentos de alguma não cabem em meia linha (o chamador pinta uma por linha).
 #[allow(clippy::too_many_arguments)]

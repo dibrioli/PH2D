@@ -606,9 +606,20 @@ pub fn paint_color_row<'a>(
     seccao: Seccao,
 ) -> f32 {
     let label = label.into();
-    let (row, _por_linha, linhas, cw) =
-        row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
-    let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
+    // Num cartão: rótulo em cima, a caixa da cor na largura do corpo (`Widget::Swatch`).
+    let (row, rect, fim) = if let Some((ink, rows)) = cartao::card_rows() {
+        let row = (rows.label)(scene, text_system, ink, x, w, y, label.texto);
+        let fim = row.fim(ROW_H_PX + ph2d_tokens::control_gap_px());
+        (row, row.control, fim)
+    } else {
+        let (row, _por_linha, linhas, cw) =
+            row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
+        (
+            row,
+            Rect::new(row.control.x, row.control.y, cw, ROW_H_PX),
+            y + ph2d_tokens::row_pitch_px() * linhas as f32,
+        )
+    };
     // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
     let rgba = (!mixed).then(|| store.widget_color(id).unwrap_or(fallback_rgba));
     let aberto = store.picker_target() == Some(id);
@@ -619,5 +630,5 @@ pub fn paint_color_row<'a>(
     {
         hit_index.register(alvo, row.dot);
     }
-    y + ph2d_tokens::row_pitch_px() * linhas as f32
+    fim
 }

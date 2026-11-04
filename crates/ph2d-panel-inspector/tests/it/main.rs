@@ -62,6 +62,7 @@ mod no_row_paints_its_name_above_its_control;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_icone_da_hierarquia_traz_o_cartao;
+mod o_inspector_em_cartoes_por_tipo;
 mod o_losango_do_transform;
 mod o_losango_dos_campos_novos;
 mod o_mais_do_topo_adiciona_componente;

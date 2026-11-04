@@ -60,6 +60,23 @@ fn number_row<'a>(
     // funções do Inspector que empilhavam o rótulo, gémea da `sections/rows::num_row`.
     let rotulo = label.into();
     let label = rotulo.texto;
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return ph2d_editor_core::panel::cards::corpo::fields(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            label,
+            ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            None,
+            &[id],
+            0.1, // LITERAL-PX-OK: cutoff/rect step
+        );
+    }
     let h = ROW_H_PX;
     let row = ph2d_editor_core::property_row::colunas_da_linha(x, w, y, h, sec);
     let label_font = TypeToken::Sm.px();

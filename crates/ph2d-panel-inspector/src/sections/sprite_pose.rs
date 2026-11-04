@@ -61,6 +61,23 @@ pub(super) fn number_row(
     label: ph2d_editor_core::widget::key_mark::Rotulo<'_>,
     id: NodeId,
 ) -> f32 {
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return ph2d_editor_core::panel::cards::corpo::fields(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            row_y,
+            label.texto,
+            ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+            None,
+            &[id],
+            1.0,
+        );
+    }
     let label_font = TypeToken::Sm.px();
     let field_h = ROW_H_PX;
     let colunas = ph2d_editor_core::property_row::colunas_da_linha(x, w, row_y, ROW_H_PX, sec);

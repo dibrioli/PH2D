@@ -27,6 +27,9 @@ use ph2d_i18n::tr;
 /// a Opacidade usa (armazenamento contínuo, leitura humana), e a razão é a mesma: um slider cujo
 /// curso fosse `0..64` daria ao artista 63/64 do percurso para valores que ele nunca usa. O
 /// mapeamento vive no [`crate::populate`], num sítio só.
+/// O passo do campo no cartão: o do chip (`populate.rs`, `set_number_range`).
+const PASSO_NO_CARTAO: f64 = 0.1; // LITERAL-PX-OK: passo da intensidade, não geometria
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_emissive_row(
     scene: &mut VectorScene,
@@ -38,6 +41,26 @@ pub(crate) fn paint_emissive_row(
     w: f32,
     cur_y: f32,
 ) -> f32 {
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        return ph2d_editor_core::panel::cards::corpo::bar_field(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            cur_y,
+            tr("component.field.sprite_emissive.1"),
+            ids::INSP_SPRITE_EMISSIVE_CHIP,
+            ids::INSP_SPRITE_EMISSIVE,
+            ph2d_editor_core::widget::card_field::CardFieldSpec {
+                step: PASSO_NO_CARTAO,
+                scrub: PASSO_NO_CARTAO,
+                default: Some(0.0),
+            },
+        );
+    }
     let (_, value) = store
         .slider(ids::INSP_SPRITE_EMISSIVE)
         .unwrap_or((SliderState::Normal, 0.0));

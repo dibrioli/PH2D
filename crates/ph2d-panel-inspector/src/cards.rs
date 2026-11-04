@@ -73,10 +73,10 @@ pub fn set_cards_on(on: bool) {
     LIGADO.with(|c| c.set(on));
 }
 
-/// O Inspector pinta-se em cartões? (a sprite fica no de hoje — as secções dela ainda não têm cartão).
+/// O Inspector pinta-se em cartões? Todo tipo de objecto: `PH2D_CARDS=0` é o único interruptor.
 #[must_use]
 pub(crate) fn active() -> bool {
-    LIGADO.with(std::cell::Cell::get) && crate::state::current_inspector_sprite().is_none()
+    LIGADO.with(std::cell::Cell::get)
 }
 
 thread_local! {

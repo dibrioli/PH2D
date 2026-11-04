@@ -299,11 +299,14 @@ pub(crate) fn push_optional_sections<'a>(
                 inner_w,
                 y,
                 header_h,
-                // Numa sprite a secção abre sob a linha Image (plano GEF 15 D2).
-                snaps
-                    .anim_info
-                    .as_ref()
-                    .filter(|_| snaps.sprite_info.is_none()),
+                // Numa sprite a secção abre sob a linha Image (plano GEF 15 D2); nos cartões, o
+                // cartão logo abaixo do da Image, e só no uso Animated.
+                snaps.anim_info.as_ref().filter(|_| {
+                    snaps
+                        .sprite_info
+                        .as_ref()
+                        .is_none_or(crate::cards_objeto::animacao_em_cartao)
+                }),
                 anim_selected,
             )
         },

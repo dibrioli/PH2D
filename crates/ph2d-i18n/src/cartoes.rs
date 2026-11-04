@@ -83,6 +83,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.join" => "Join",
         "card.insp.ordering" => "Ordering",
         "card.insp.z_index" => "Z index",
+        "card.insp.size_px" => "Size (px)",
+        "card.insp.size_m" => "Size (m)",
         "card.insp.material" => "Material & Blend",
         "card.insp.mode" => "Mode",
         "card.insp.add_component" => "Add component",

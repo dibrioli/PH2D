@@ -7,6 +7,8 @@ use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
+const OPACIDADE_CHEIA: f64 = 100.0; // LITERAL-PX-OK: neutro de um campo em %, não geometria
+
 /// Paint one labeled tint swatch (label left, swatch right) inside
 /// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in
 /// sync with the live `Sprite` channel by `sync.rs`), falling back to
@@ -228,23 +230,44 @@ pub(crate) fn paint_color_tint_section(
     );
     cur_y += row_gap;
 
-    // Opacity slider-with-chip.
-    let (_, op_value) = store
-        .slider(ids::INSP_SPRITE_OPACITY)
-        .unwrap_or((SliderState::Normal, 1.0));
-    let opacity_h = paint_slider_with_chip(
-        Rect::new(x, cur_y, w, field_h),
-        tr("component.field.sprite.7"),
-        op_value,
-        ids::INSP_SPRITE_OPACITY,
-        ids::INSP_SPRITE_OPACITY_CHIP,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    cur_y += opacity_h + row_gap;
+    // Opacity slider-with-chip; num cartão, o campo com a pega.
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        cur_y = ph2d_editor_core::panel::cards::corpo::bar_field(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            cur_y,
+            tr("card.insp.opacity"),
+            ids::INSP_SPRITE_OPACITY_CHIP,
+            ids::INSP_SPRITE_OPACITY,
+            ph2d_editor_core::widget::card_field::CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: Some(OPACIDADE_CHEIA),
+            },
+        );
+    } else {
+        let (_, op_value) = store
+            .slider(ids::INSP_SPRITE_OPACITY)
+            .unwrap_or((SliderState::Normal, 1.0));
+        let opacity_h = paint_slider_with_chip(
+            Rect::new(x, cur_y, w, field_h),
+            tr("component.field.sprite.7"),
+            op_value,
+            ids::INSP_SPRITE_OPACITY,
+            ids::INSP_SPRITE_OPACITY_CHIP,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        cur_y += opacity_h + row_gap;
+    }
 
     // Tint Fill silhouette toggle — **pela porta** (2026-09-15).
     //
@@ -258,15 +281,18 @@ pub(crate) fn paint_color_tint_section(
         1,
         &[tr("component.field.sprite.8")],
     );
-    // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta.
+    // A caixa fica na largura do controlo; a coluna do decorator leva o losango da silhueta. Num
+    // cartão a linha da caixa já traz a marca dela.
     let (check_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, cur_y, field_h);
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
-        scene,
-        theme,
-        dot,
-        &[ids::INSP_SPRITE_TINT_FILL],
-        TextKey::new("component.field.sprite.8").into(),
-    ) {
+    if ph2d_editor_core::widget::card_ink::card_body().is_none()
+        && let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+            scene,
+            theme,
+            dot,
+            &[ids::INSP_SPRITE_TINT_FILL],
+            TextKey::new("component.field.sprite.8").into(),
+        )
+    {
         hit_index.register(alvo, dot);
     }
     cur_y = ph2d_editor_core::property_row::paint_check_row(
@@ -322,19 +348,36 @@ fn paint_per_corner_tab(
     let gap = ph2d_tokens::control_gap_px();
     let sec = seccao_de_cores(text_system, &[tr("component.field.sprite_corner_tint.5")]);
     let alto = ph2d_tokens::ROW_H_PX * 2.0 + gap;
-    let row = ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
-    // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
-    let label_font = TypeToken::Sm.px();
-    ph2d_editor_core::widget::paint_property_label(
-        text_system,
-        scene,
-        tr("component.field.sprite_corner_tint.5"),
-        row.label.x,
-        row.label.y + (alto - label_font) * 0.5,
-        label_font,
-        row.label.w,
-        resolve(ColorToken::Text2, theme),
-    );
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let row = if em_cartao {
+        ph2d_editor_core::property_row::paint_label_row(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            alto,
+            tr("component.field.sprite_corner_tint.5"),
+            sec,
+        )
+    } else {
+        // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
+        let row =
+            ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
+        let label_font = TypeToken::Sm.px();
+        ph2d_editor_core::widget::paint_property_label(
+            text_system,
+            scene,
+            tr("component.field.sprite_corner_tint.5"),
+            row.label.x,
+            row.label.y + (alto - label_font) * 0.5,
+            label_font,
+            row.label.w,
+            resolve(ColorToken::Text2, theme),
+        );
+        row
+    };
     let cell_w = ((row.control.w - gap) * 0.5).max(1.0);
     let cell_h = ph2d_tokens::ROW_H_PX;
     let committed = sp
@@ -397,8 +440,7 @@ fn paint_per_corner_tab(
     ) {
         hit_index.register(alvo, row.dot);
     }
-    let grid_h = alto;
-    let mut cur_y = y + grid_h + Spacing::Sm.px();
+    let mut cur_y = row.control.y + alto + Spacing::Sm.px();
 
     // Equalize Corners — copies TL → the other three (spec §3.6).
     let eq_rect = ph2d_editor_core::property_row::caixa_do_botao(

@@ -681,3 +681,17 @@ Tabela, estado, próximos passos, provas e decisões em [17](17_VARREDURA_FINAL.
 ### Varredura V2 (04/11)
 
 Tabela, o que falta, provas e decisões em [17](17_VARREDURA_FINAL.md). Curados: Influence em campo, opções do Private, balão do tutorial, Editor acima do HUD e título, aviso da 1.ª linha (mecanismo achado: mesmo pixel da barra), dica ilustrada, editor de animações e Region. Olhados sem cura: Comments, Frames, Minimap, janela Play, páginas de ajuda, Audio Editor, barra do Motion. Fotos `maquete/v2_*`. 13 mutantes, 13 sangraram. Falta: `paint_stroke_popover` fora da camada, e a proposta da Galeria para o dono.
+
+### Curas da verificação final (04/11)
+
+**Ciclos da fundação.** `the_foundation_modules_form_a_dag` estava vermelho por dois ciclos, um mascarando o seguinte: widget → panel (12 referências) e property_row → panel (1). Descem para `widget`: `card_censo` (ex-`panel/cards_censo.rs`, `panel::cards::censo` é reexportação), a cena e o `por_cima` de `camada_das_listas` (`alvo` e `fecha`, que falam com o índice, ficam em `panel`, para não subir widget → interaction) e `card_ink::corpo_a_fluir`. Atrás do ciclo estava `widget → interaction` em 44 sobre 43: os testes do `tool_rail` escreviam o caminho quatro vezes; agora **41**, catraca descida. Teste novo `the_flow_is_visible_below_the_panel_only_while_the_body_runs`; contraprovas: fluxo nunca ligado e nunca desligado sangram, `guarda_alvo` fora sangra `a_lista_ganha_de_quem_pinta_depois_dela`. `controlo_curto` fora sobrevive a `lei_da_compactacao`: não é mudança desta cura, só o ficheiro mudou de sítio, e fica apontado.
+
+**Isenção do olho.** O canal do olho vive (`marcas.rs:326`, `marcas_vivos.rs:180`; `g3_os_cartoes::{every_click_sends_the_same_action_as_the_old_panel, the_animation_marks_stay}` verdes). Os nomes é que vêm por `Pilha::hide`, em `paint_fx_list.rs`: a isenção passa a nomear `cards_fx.rs::linha`.
+
+**`architecture_widget_mod_in_sync` vermelho, fora da lista pedida:** `censo_cartao`, `cromo_barra`, `lista_flutuante` eram `pub mod` sem entrada no `PUB_MODULE_OVERRIDE`. Entram, com os dois módulos novos.
+
+**`o_alfinete_fill_stroke_c2` (3 testes): o produto está certo, o teste assumia a geometria antiga.** Sonda: Fill preso em `y 273..418` (145 px), Stroke preso em `y 226..473` (247 px), ambos em `x 460`; o alvo do Fill existe, e no centro dele a mão acha o id homólogo do Stroke. O teste largava os dois no mesmo ponto, e desde a compactação o Stroke é mais alto que o Fill e cobre-o por inteiro. A cura é o teste largar o segundo 300 px ao lado (`solta_com_recuo`); as três escritas chegam a A, B e C ficam intactos, nas três seleções. Foto `maquete/z_alfinete_fill_stroke_presos.png` (cena 11): Fill e Stroke presos a A e a B, com todas as linhas. A cena só semeia camada de Fill; a linha de camada de Stroke é provada pelo teste, não pela foto.
+
+**Avisos.** Saem os do `number_input`, da shell (apelido `vec_appearance`, só de testes) e mais dez que a compilação mostrava em `ph2d-panel-{hierarchy,inspector,pixel-tools,flip,timeline}`.
+
+**Decisões tomadas sem o dono.** Dois cartões largados no mesmo ponto ficam um sobre o outro, como janelas: não se afasta nem se empilha sozinho.

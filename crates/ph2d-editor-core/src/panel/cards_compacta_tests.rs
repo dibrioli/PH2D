@@ -427,6 +427,23 @@ fn what_waits_in_the_flow_stays_clipped_while_the_section_opens() {
     assert!(!pinta_a(0.1), "a abrir, o que não cabe na banda não se vê");
 }
 
+/// `property_row` lê o fluxo por `corpo_a_fluir`, abaixo do `panel`: ligado só durante o corpo.
+/// *Mutação: `marca_fluxo(true)` a dizer falso ⇒ vermelho.*
+#[test]
+fn the_flow_is_visible_below_the_panel_only_while_the_body_runs() {
+    use crate::widget::card_ink::corpo_a_fluir;
+    let mut f = mesa();
+    assert!(!corpo_a_fluir());
+    let mut c = ctx(&mut f, 257.0);
+    let mut dentro = false;
+    let _ = fluir(&mut c, |_| {
+        dentro = corpo_a_fluir();
+        0.0
+    });
+    assert!(dentro, "o corpo corre com o fluxo ligado");
+    assert!(!corpo_a_fluir(), "o fluxo desliga ao sair do corpo");
+}
+
 /// Numa coluna de duas, a marca da caixa anda com o nome: no fim da coluna lia-se da vizinha (05 §8).
 /// *Mutação: `colada` sempre falso em `check_em` ⇒ vermelho.*
 #[test]

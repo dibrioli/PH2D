@@ -94,6 +94,15 @@ literal na pintura — HR-15: a geometria vive em `metrics`**):
 
 Lei de layout ([02 §2](02_especificacao.md)): **rótulo EM CIMA** (obrigatório se não for inteligível sozinho, D10) **com a unidade nele** («Length (px)», D13); um par de uma grandeza = um rótulo, letras de `Eixos` (X·Y, W·H, X·Y·W·H); duas coisas irmãs = dois rótulos sobre cada caixa (T56). Glifo de um campo só = a letra DECLARADA ou a inicial da ÚLTIMA palavra do rótulo.
 
+**Lei da compactação (dono 04/11: «O layout figma não é compacto? essa deve ser uma regra!»). Vale para todo cartão de todo painel:**
+
+1. **Irmãos que cabem dividem a linha.** Dois controlos curtos seguidos (número, amostra + código, caixa de marcar, chip curto) ficam na MESMA linha, em duas colunas iguais: Tint + Self Tint, Opacity + Tint Fill. Generaliza a T56. Uma caixa de marcar pode ser a 2.ª coluna de um campo.
+2. **Linha inteira só para quem precisa:** texto livre, nome longo, lista com opções longas, botão de acção, segmentado com 3+ opções de texto.
+3. **Nada grudado.** Toda fronteira entre linhas, botão incluído, tem o vão de `metrics` (`FIELD_ROW_GAP`). Linha de altura própria devolve o seu fundo real, e a seguinte começa depois dele.
+4. **Uma grelha por cartão.** As colunas das linhas de um cartão alinham entre si.
+5. **Largura é a única desculpa.** Se a coluna é estreita (iPad, D13), o par desce para duas linhas: nunca corta nome nem valor.
+6. Três ou mais amostras da mesma grandeza (Per-corner Tint) ficam numa linha só, sem código; o código abre no clique.
+
 | tipo | desenho |
 |---|---|
 | **Campo numérico Figma** | caixa `CardField` com glifo (ícone/letra) na `ICON_CELL` que é a pega do scrub; arrasto sem fim com cursor preso (`Locked`+movimento cru; reserva `Confined`+reposicionar; T12 medido); Shift ×10, Alt ×0,1 a meio sem salto; Esc devolve; duplo clique no ícone = fábrica; texto aceita contas e sufixo de unidade; ↑↓; «Mixed»; um gesto = um Desfazer; dois passos (setas × arrasto por px, T10) |

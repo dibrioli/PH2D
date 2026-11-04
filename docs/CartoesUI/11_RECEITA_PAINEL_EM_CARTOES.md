@@ -26,6 +26,11 @@ Nasceu do bloco B (Physics, 04/11). Exemplo completo e testado: `crates/ph2d-pan
    unidade; as outras reusam a chave antiga. Inglês, Plain English.
 8. **Testes** (ver abaixo), **foto**, **portões**, commit por caminho.
 
+## ⛔ Lei da compactação (dono 04/11)
+
+Antes de escrever o corpo, leia a lei em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md): irmãos curtos dividem a linha, nada
+grudado (botão incluído), uma grelha por cartão. Um campo por linha é defeito, salvo os casos da lei.
+
 ## Que widget para que controlo
 
 | Controlo de antes | No cartão | Id |

@@ -683,3 +683,36 @@ fn custo_por_quadro_das_duas_caras() {
     }
     println!("{linha}");
 }
+
+/// As mesmas secções abrem: os cartões não trocam o que o dono decidiu deixar recolhido.
+#[test]
+fn the_panel_opens_with_the_same_sections() {
+    let abre = |cartoes: bool| {
+        force_cards_on_this_thread(Some(cartoes));
+        set_current_brush(Some(FALLBACK_BRUSH));
+        set_current_dock_shows_layers(false);
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let mut r = Vec::new();
+        for _ in 0..40 {
+            r = ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || host.paint::<PainterLayersPanel>(&mut st, COLUNA),
+            );
+        }
+        r.into_iter()
+            .filter(|(_, r)| r.w > 0.0 && r.h > 0.0)
+            .map(|(i, _)| i)
+            .collect::<BTreeSet<NodeId>>()
+    };
+    let (antes, agora) = (abre(false), abre(true));
+    let faltam: Vec<_> = antes
+        .iter()
+        .filter(|i| !agora.contains(i) && !saiu_de_proposito(**i))
+        .collect();
+    assert!(faltam.is_empty(), "sumiram {faltam:?}");
+    // Dos corpos recolhidos, nada aparece: Randomize e Tiling continuam dobrados.
+    assert!(!agora.contains(&p::PAINTER_BRUSH_TILING_X));
+    assert!(!antes.contains(&p::PAINTER_BRUSH_TILING_X));
+    assert!(agora.contains(&p::PAINTER_BRUSH_SYNC));
+}

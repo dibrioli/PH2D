@@ -2248,7 +2248,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 593 → 1 618` em 2026-11-03 (NovaUI, `1787b8c3ba`), e NÃO é secção a nascer aberta: o nome
     //    que não cabe QUEBRA em vez de sair cortado, e a linha cresce um passo (`1 × ROW_H_PX`). Igual
     //    em Inter e em Noto. Encolher devolveria o corte (`nenhum_rotulo`: 5 → 0 no degrau estreito).
-    ("painter_layers", 1618.0),
+    // ⬆️ `1 618 → 1 629` em 2026-11-04 (NovaUI H1, a lista de cartões), e NÃO é secção a nascer aberta: as mesmas
+    //    secções abrem (`the_panel_opens_with_the_same_sections`); os `11 px` são a moldura dos cartões, descontados os
+    //    cabeçalhos antigos. Recolher esconderia o que o dono pôs à vista.
+    ("painter_layers", 1629.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):
@@ -2781,7 +2784,13 @@ fn um_seletor_de_cor_sozinho_na_fileira_ocupa_uma_caixa_estrutural() {
         let pad = ph2d_card_stack::metrics::CARD_PAD_X;
         let enche_o_cartao =
             (s.rect.x - ix - pad).abs() < 1.0 && (s.rect.w - (iw - pad * 2.0)).abs() < 1.0;
-        if !enche_a_coluna(s) && !enche_a_fileira && !enche_o_cartao {
+        // Um corpo capturado num cartão (Painter, H1) tem a coluna da SECÇÃO dele, dentro do recuo do cartão: acaba
+        // na borda dela e tem pelo menos a largura de uma caixa de número. Um quadrado de paleta não passa.
+        let enche_a_coluna_no_cartao = (s.rect.x + s.rect.w - caixa_direita(ix + pad, iw - pad * 2.0))
+            .abs()
+            < 1.0
+            && s.rect.w >= ph2d_editor_core::widget::number_input_min_w_px();
+        if !enche_a_coluna(s) && !enche_a_fileira && !enche_o_cartao && !enche_a_coluna_no_cartao {
             maus.push(format!(
                 "  {} :: x={:.0} w={:.0} — não é a coluna do valor do painel (x={:?}, borda {:.0}) \
                  nem a fileira inteira (x={:.0} w={:.0})",

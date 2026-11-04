@@ -2,7 +2,9 @@
 //! condições e popovers de `paint_stroke_settings`, `paint_dashes`, `paint_markers`, `paint_expand` e
 //! `paint_stack_rows`.
 
-use crate::cards_tinta::{aberto, campo, escolha, menu, seg, seg_icone, token};
+use crate::cards_tinta::{
+    aberto, campo, celula_de_token, escolha, popover_de_token, seg, seg_icone,
+};
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
@@ -118,20 +120,15 @@ pub(crate) fn stroke_settings(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y
     if let Some(b) = state::token_bindings()
         .filter(|_| state::stroke_present() == Some(true) && state::open_layer().is_none())
     {
-        y = token(
-            c,
-            "panel.vector.token.weight",
-            crate::ids::VECTOR_TOKEN_WIDTH,
-            b.width.as_deref(),
+        const PESO: &[NodeId] = &[crate::ids::VECTOR_TOKEN_WIDTH];
+        const COR: &[NodeId] = &[crate::ids::VECTOR_TOKEN_STROKE];
+        y = c.pair(
+            celula_de_token("panel.vector.token.weight", PESO, b.width.as_deref()),
+            celula_de_token("panel.vector.token.color", COR, b.stroke.as_deref()),
             y,
         );
-        y = token(
-            c,
-            "panel.vector.token.color",
-            crate::ids::VECTOR_TOKEN_STROKE,
-            b.stroke.as_deref(),
-            y,
-        );
+        popover_de_token(c, PESO[0]);
+        popover_de_token(c, COR[0]);
     }
     y = tracejado(c, snap, y);
     y = pontas(c, snap, y);
@@ -318,41 +315,43 @@ pub(crate) fn layer_props(c: &mut CardCtx<'_>, row: &state::PaintRow, y: f32) ->
         ],
         y,
     );
-    let mut y = c.row(
-        &[Cell::new(campo(GROW[0], Glyph::Icon(IconId::CardWeight)))
-            .label(cresce)
-            .key(GROW)],
-        y,
-    );
-    // A quina só com o offset armado: sem esquina a formar, três ícones que não mudam nada.
-    if row.dilate != 0.0 {
-        let j = |k: u8| !row.mixed.dilate_join && row.dilate_join == k;
-        let segs = [
-            seg_icone(QUINA[0], IconId::CardJoinMiter, j(0)),
-            seg_icone(QUINA[1], IconId::CardJoinRound, j(1)),
-            seg_icone(QUINA[2], IconId::CardJoinBevel, j(2)),
-        ];
-        y = c.row(
-            &[Cell::new(Widget::Choice(&segs))
-                .label(tr("panel.vector.paint.join"))
-                .key(QUINA)],
-            y,
-        );
-    }
+    let j = |k: u8| !row.mixed.dilate_join && row.dilate_join == k;
+    let segs = [
+        seg_icone(QUINA[0], IconId::CardJoinMiter, j(0)),
+        seg_icone(QUINA[1], IconId::CardJoinRound, j(1)),
+        seg_icone(QUINA[2], IconId::CardJoinBevel, j(2)),
+    ];
     let face = if row.mixed.blend {
         tr("panel.vector.mixed")
     } else {
         tr(row.blend.label_key())
     };
-    let (y, chip) = menu(
-        c,
-        crate::ids::VECTOR_PAINT_BLEND,
-        tr("panel.vector.paint.blend"),
-        face,
-        y,
+    const MISTURA: &[NodeId] = &[crate::ids::VECTOR_PAINT_BLEND];
+    let mut celulas = vec![
+        Cell::new(campo(GROW[0], Glyph::Icon(IconId::CardWeight)))
+            .label(cresce)
+            .key(GROW),
+    ];
+    // A quina só com o offset armado: sem esquina a formar, três ícones que não mudam nada.
+    if row.dilate != 0.0 {
+        celulas.push(
+            Cell::new(Widget::Choice(&segs))
+                .label(tr("panel.vector.paint.join"))
+                .key(QUINA),
+        );
+    }
+    celulas.push(
+        Cell::new(Widget::Dropdown {
+            id: MISTURA[0],
+            text: face,
+            options: &[],
+        })
+        .label(tr("panel.vector.paint.blend"))
+        .key(MISTURA),
     );
-    if chip.is_some() {
-        state::set_pending_paint_blend_dd(chip);
+    let y = c.compact(&celulas, y);
+    if let Some(chip) = aberto(c, MISTURA[0]) {
+        state::set_pending_paint_blend_dd(Some(chip));
     }
     y
 }

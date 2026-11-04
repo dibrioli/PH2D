@@ -315,23 +315,25 @@ fn transform(c: &mut CardCtx<'_>, y: f32) -> f32 {
         ],
         y,
     );
-    let mut y = c.row(
-        &[Cell::new(Widget::Field {
-            id: ROT[0],
-            glyph: Glyph::Icon(IconId::CardAngle),
-        })
-        .label(tr("card.insp.rotation_deg"))
-        .key(ROT)],
-        y,
-    );
-    if let Some(on) = state::resize_box() {
-        y = c.check(
-            crate::ids::VECTOR_TRANSFORM_RESIZE_BOX,
-            Rotulo::vista(TextKey::new("panel.vector.transform.resize_box")),
-            on,
+    let rotacao = Cell::new(Widget::Field {
+        id: ROT[0],
+        glyph: Glyph::Icon(IconId::CardAngle),
+    })
+    .label(tr("card.insp.rotation_deg"))
+    .key(ROT);
+    // A caixa é a 2.ª coluna do campo (05 §4).
+    let y = match state::resize_box() {
+        Some(on) => c.pair(
+            rotacao,
+            crate::cards_tinta::caixa(
+                crate::ids::VECTOR_TRANSFORM_RESIZE_BOX,
+                Rotulo::vista(TextKey::new("panel.vector.transform.resize_box")),
+                on,
+            ),
             y,
-        );
-    }
+        ),
+        None => c.row(&[rotacao], y),
+    };
     let centro = if state::pivot_edit_armed() {
         tr("panel.vector.transform.click_canvas_to_set_center")
     } else {

@@ -999,3 +999,53 @@ fn cards_off_paints_the_old_faces() {
     let fecho = mesa.rect(p::VECTOR_FILL_PROPS_CLOSE).expect("o X de antes");
     assert!((fecho.w - m::HEAD_ICON_BOX).abs() > 0.5, "{fecho:?}");
 }
+
+/// ⭐⭐ A lei da compactação (05 §4) nas linhas e nos painéis à esquerda, respeitando F44: os tokens do
+/// traço e a Angle com o token dividem a linha. *Mutação: separar um par ⇒ vermelho.*
+#[test]
+fn the_slice_passes_the_compaction_census() {
+    for (tipo, abrir, onde) in [
+        (FillKind::Linear, p::VECTOR_FILL_ROW, "Fill linear"),
+        (FillKind::MultiPoint, p::VECTOR_FILL_ROW, "Fill multi"),
+        (
+            FillKind::Solid,
+            p::VECTOR_STROKE_SETTINGS,
+            "Stroke settings",
+        ),
+        (FillKind::Solid, p::vector_paint_row_id(1), "camada"),
+    ] {
+        let mut mesa = Mesa::nova(true, tipo);
+        mesa.abre(abrir);
+        super::g5_os_cartoes::sem_acusacao(onde, || mesa.assenta());
+    }
+}
+
+#[test]
+fn siblings_share_the_line_in_the_left_panels() {
+    let r = |mesa: &Mesa, id: NodeId| mesa.rect(id).unwrap_or_else(|| panic!("{id:?}"));
+    let mut mesa = Mesa::nova(true, FillKind::Linear);
+    mesa.abre(p::VECTOR_FILL_ROW);
+    let (a, b) = (
+        r(&mesa, t::VECTOR_GRAD_ANGLE_NUM),
+        r(&mesa, p::VECTOR_TOKEN_FILL),
+    );
+    assert!((a.y - b.y).abs() < 1.0, "Angle e token: {a:?} {b:?}");
+    let mut mesa = Mesa::nova(true, FillKind::Solid);
+    mesa.abre(p::VECTOR_STROKE_SETTINGS);
+    let (a, b) = (
+        r(&mesa, p::VECTOR_TOKEN_WIDTH),
+        r(&mesa, p::VECTOR_TOKEN_STROKE),
+    );
+    assert!((a.y - b.y).abs() < 1.0, "os dois tokens: {a:?} {b:?}");
+    let mut mesa = Mesa::nova(true, FillKind::Solid);
+    mesa.abre(p::vector_paint_row_id(1));
+    let (a, b) = (
+        r(&mesa, p::VECTOR_PAINT_DILATE),
+        r(&mesa, p::VECTOR_PAINT_JOIN_MITER),
+    );
+    // O segmento senta-se dentro da pílula: mesma linha é sobrepor em y, não o mesmo y.
+    assert!(
+        a.y < b.y + b.h && b.y < a.y + a.h,
+        "Grow e a quina: {a:?} {b:?}"
+    );
+}

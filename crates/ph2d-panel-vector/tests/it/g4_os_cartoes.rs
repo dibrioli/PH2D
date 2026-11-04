@@ -574,3 +574,13 @@ fn the_plus_of_fill_and_stroke_opens_on_a_folded_card() {
     assert!(o.x + o.w <= lista.x + lista.w, "{o:?} × {lista:?}");
     assert!(!mesa.clica(p::VECTOR_STROKE_PRESENT).is_empty(), "mudo");
 }
+
+/// ⭐⭐ A lei da compactação (05 §4) no texto solto e no preso. Offset e Side tentam dividir a linha; a
+/// 300 px os dois lados não cabem inteiros na metade, e a escolha desce sem cortar nome.
+#[test]
+fn the_slice_passes_the_compaction_census() {
+    let mut mesa = Mesa::nova(true);
+    super::g5_os_cartoes::sem_acusacao("solto", || mesa.assenta());
+    let mut mesa = Mesa::presa(true);
+    super::g5_os_cartoes::sem_acusacao("preso", || mesa.assenta());
+}

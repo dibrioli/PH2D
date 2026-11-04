@@ -974,3 +974,15 @@ fn a_number_chip_of_the_bar_has_no_handle() {
     mesa.aplica(ev);
     assert_eq!(mesa.host.store().focus_id(), Some(id), "a fila não focou");
 }
+
+/// ⭐⭐ A lei da compactação (05 §4) em cada espécie de filtro e de efeito, à esquerda como F43 pede.
+#[test]
+fn the_slice_passes_the_compaction_census() {
+    let mut linhas = vec![t::vector_fx_row_id(0), t::vector_fx_row_id(1)];
+    linhas.extend([SOMBRA, RUIDO, AJUSTE, DUOTONE, RAMPA, CRESCE].map(p::filter_row_id));
+    for linha in linhas {
+        let mut mesa = Mesa::nova(true);
+        mesa.abre(linha);
+        super::g5_os_cartoes::sem_acusacao(&format!("{linha:?}"), || mesa.assenta());
+    }
+}

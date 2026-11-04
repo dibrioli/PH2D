@@ -8,8 +8,10 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget, corpo};
+use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::StyleFields as F;
@@ -366,7 +368,45 @@ fn token_do_fill(c: &mut CardCtx<'_>, y: f32) -> f32 {
     }
 }
 
-/// Uma linha de TOKEN (`paint_tokens`): a caixa e o popover de sempre, na cara do cartão.
+/// Uma caixa de marcar como célula: a 2.ª coluna de um campo, ou a metade de um par (05 §4).
+pub(crate) fn caixa<'a>(id: NodeId, label: Rotulo<'a>, on: bool) -> Cell<'a> {
+    Cell::new(Widget::Check {
+        id,
+        label,
+        value: if on {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        },
+        off: false,
+    })
+}
+
+/// A célula de um TOKEN (`paint_tokens`): a caixa de sempre, na cara do cartão. `key` = `[id]`.
+pub(crate) fn celula_de_token<'a>(
+    chave: &'static str,
+    key: &'a [NodeId],
+    bound: Option<&'a str>,
+) -> Cell<'a> {
+    Cell::new(Widget::Dropdown {
+        id: key[0],
+        text: crate::paint_tokens::chip_label(bound),
+        options: &[],
+    })
+    .label(tr(chave))
+    .key(key)
+}
+
+/// O popover do token `id`, se a caixa dele está aberta.
+pub(crate) fn popover_de_token(c: &mut CardCtx<'_>, id: NodeId) {
+    if let Some(slot) = ids::token_slot_of(id)
+        && let Some(chip) = aberto(c, id)
+    {
+        state::set_pending_token_dd(Some((slot.code, chip)));
+    }
+}
+
+/// Uma linha de TOKEN sozinha.
 pub(crate) fn token(
     c: &mut CardCtx<'_>,
     chave: &'static str,
@@ -374,13 +414,9 @@ pub(crate) fn token(
     bound: Option<&str>,
     y: f32,
 ) -> f32 {
-    let Some(slot) = ids::token_slot_of(id) else {
-        return y;
-    };
-    let (y, aberto) = menu(c, id, tr(chave), crate::paint_tokens::chip_label(bound), y);
-    if let Some(chip) = aberto {
-        state::set_pending_token_dd(Some((slot.code, chip)));
-    }
+    let k = [id];
+    let y = c.row(&[celula_de_token(chave, &k, bound)], y);
+    popover_de_token(c, id);
     y
 }
 
@@ -500,15 +536,24 @@ pub(crate) fn fill_props(c: &mut CardCtx<'_>, y: f32) -> f32 {
     }
     if kind == FillKind::Linear {
         const BARRA: &[NodeId] = &[crate::ids::VECTOR_GRAD_ANGLE];
-        y = c.row(
-            &[Cell::new(campo(
-                vids::VECTOR_GRAD_ANGLE_NUM,
-                Glyph::Icon(IconId::CardAngle),
-            ))
-            .label(tr("card.vector.angle_deg"))
-            .key(BARRA)],
+        const TOKEN: &[NodeId] = &[crate::ids::VECTOR_TOKEN_FILL];
+        let angulo = Cell::new(campo(
+            vids::VECTOR_GRAD_ANGLE_NUM,
+            Glyph::Icon(IconId::CardAngle),
+        ))
+        .label(tr("card.vector.angle_deg"))
+        .key(BARRA);
+        // Os dois curtos dividem a linha (05 §4); sem token, o Angle fica com ela.
+        let Some(b) = state::token_bindings().filter(|_| state::open_layer().is_none()) else {
+            return c.row(&[angulo], y);
+        };
+        let y = c.pair(
+            angulo,
+            celula_de_token("panel.vector.token", TOKEN, b.fill.as_deref()),
             y,
         );
+        popover_de_token(c, TOKEN[0]);
+        return y;
     }
     token_do_fill(c, y)
 }

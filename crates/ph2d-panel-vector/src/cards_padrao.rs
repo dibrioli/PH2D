@@ -3,14 +3,14 @@
 //! mesma lei: só a FASE (`Shift`) sai no `Clamp`, e o desfasamento só existe em Brick e Column.
 
 use crate::cards_fx::{com_unidade, fila};
-use crate::cards_tinta::{escolha, par_de_botoes, seg, semeia, spec};
+use crate::cards_tinta::{caixa, escolha, par_de_botoes, seg, semeia, spec};
 use crate::ids::TexPatKnob as K;
 use crate::paint_sections::texture_pattern::kid;
 use crate::state;
 use ph2d_a11y::NodeId;
-use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::panel::cards::{CardCtx, ferramenta};
+use ph2d_editor_core::panel::cards::CardCtx;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{TextKey, tr};
 
 const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento, o do `populate`
@@ -74,22 +74,6 @@ pub(crate) fn pattern_stroke(c: &mut CardCtx<'_>, y: f32) -> f32 {
 /// O par `(rótulo, chip, barra)` de `fila`.
 fn linha<'a>(nome: &'a str, slot: usize, num: K, barra: K) -> (&'a str, NodeId, NodeId) {
     (nome, kid(slot, num), kid(slot, barra))
-}
-
-/// Duas caixas numa linha só se os nomes cabem inteiros (05 §4, regra 5); senão, uma por linha.
-fn caixas(c: &mut CardCtx<'_>, lista: &[(NodeId, &'static str, bool)], y: f32) -> f32 {
-    let meia = (c.w - m::FIELD_GAP) * 0.5;
-    let folga = m::CHECK_BOX + m::CHECK_GAP + m::KEY_MARK_BOX;
-    let cabem = lista
-        .iter()
-        .all(|(_, chave, _)| c.text_system.prefix_width(tr(chave), m::VALUE_PX) + folga <= meia);
-    if cabem {
-        ferramenta::caixas_aos_pares(c, lista, y)
-    } else {
-        lista.iter().fold(y, |y, &(id, chave, on)| {
-            ferramenta::caixa(c, id, chave, on, y)
-        })
-    }
 }
 
 /// Compacto como o Figma (05 §4): a fileira da arte, o reticulado, e os números aos pares numa grelha.
@@ -164,20 +148,18 @@ fn pattern(c: &mut CardCtx<'_>, slot: usize, y: f32) -> f32 {
         ],
         y,
     );
-    y = caixas(
-        c,
-        &[
-            (
-                kid(slot, K::Lock),
-                "panel.vector.texpat.lock",
-                p.lock_aspect,
-            ),
-            (
-                kid(slot, K::GapLink),
-                "panel.vector.texpat.gap_link",
-                p.link_gap,
-            ),
-        ],
+    // Ajuste de sessão, sem canal: o corpo de antes também não os marcava. Descem se a coluna é estreita.
+    y = c.pair(
+        caixa(
+            kid(slot, K::Lock),
+            Rotulo::vista(TextKey::new("panel.vector.texpat.lock")),
+            p.lock_aspect,
+        ),
+        caixa(
+            kid(slot, K::GapLink),
+            Rotulo::vista(TextKey::new("panel.vector.texpat.gap_link")),
+            p.link_gap,
+        ),
         y,
     );
     if p.mode != CLAMP {

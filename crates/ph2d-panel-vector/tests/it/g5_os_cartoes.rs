@@ -8,6 +8,7 @@ use super::g4_os_cartoes::Mesa;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::cards::censo;
 use ph2d_editor_core::panel::cards::dicas::field_hint;
 use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, set_key_marks};
 use ph2d_panel_vector::ids::TexPatKnob as K;
@@ -497,5 +498,36 @@ fn the_hints_speak_only_where_they_have_a_subject() {
             medida(linha).0 > topo,
             "{art:?} sem a frase, por cima dos botões"
         );
+    }
+}
+
+/// A pintura que `f` faz passa nas três regras do censo da fundação (05 §4), numa coluna de dock.
+pub(crate) fn sem_acusacao(onde: &str, f: impl FnOnce()) {
+    let ((), censo) = censo::grava(f);
+    assert!(!censo.linhas.is_empty(), "{onde}: o censo não mediu nada");
+    let mais_larga = censo.linhas.iter().map(|l| l.w).fold(0.0, f32::max);
+    assert!(
+        mais_larga < 400.0,
+        "{onde}: a coluna não é a de um dock: {mais_larga}"
+    );
+    assert_eq!(censo.irmaos_separados(), Vec::<String>::new(), "{onde}");
+    assert_eq!(censo.linhas_grudadas(), Vec::<String>::new(), "{onde}");
+    assert_eq!(censo.textos_cortados(), Vec::<String>::new(), "{onde}");
+}
+
+/// ⭐⭐ **A lei da compactação sobre o estado que a varredura do registo não semeia**: os cartões só
+/// existem com pincel, conector, nó e padrão.
+#[test]
+fn the_slice_passes_the_compaction_census() {
+    for route in [0, 1, 2] {
+        let mut mesa = Mesa::com(true, forma);
+        ph2d_panel_vector::set_current_connector(Some(ConnectorSnapshot {
+            route,
+            jetty: 0.25,
+            spread: 0.5,
+            corner: 0.125,
+            curve: 0.75,
+        }));
+        sem_acusacao(&format!("rota {route}"), || mesa.assenta());
     }
 }

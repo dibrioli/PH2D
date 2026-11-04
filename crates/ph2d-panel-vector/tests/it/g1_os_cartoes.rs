@@ -661,7 +661,9 @@ fn the_left_panel_keeps_its_distance_from_the_list() {
         mesa.aplica(ev);
         mesa.assenta();
         // A moldura, e não o X: o X recua pela folga de cada cara (G2, a do cartão é menor).
-        let fundo = mesa.rect(core_ids::RAIL_BACKDROP).expect("o fundo do painel");
+        let fundo = mesa
+            .rect(core_ids::RAIL_BACKDROP)
+            .expect("o fundo do painel");
         let painel = mesa
             .host
             .store()
@@ -671,4 +673,24 @@ fn the_left_panel_keeps_its_distance_from_the_list() {
     };
     let (novo, velho) = (vao(true), vao(false));
     assert!((novo - velho).abs() < 0.5, "cartões {novo} × antes {velho}");
+}
+
+/// ⭐⭐ A lei da compactação (05 §4) nos corpos nativos da fatia. *Mutação: Rotation e Resize Box em
+/// duas linhas ⇒ vermelho.*
+#[test]
+fn the_slice_passes_the_compaction_census() {
+    let mut mesa = Mesa::nova(true);
+    super::g5_os_cartoes::sem_acusacao("Drawing", || mesa.assenta());
+    mesa.abre_interface();
+    super::g5_os_cartoes::sem_acusacao("Interface", || mesa.assenta());
+    mesa.abre_drawing();
+    let (a, b) = (
+        mesa.rect(p::VECTOR_TRANSFORM_R).expect("Rotation"),
+        mesa.rect(p::VECTOR_TRANSFORM_RESIZE_BOX)
+            .expect("Resize Box"),
+    );
+    assert!(
+        (a.y - b.y).abs() < 1.0,
+        "Rotation e Resize Box: {a:?} {b:?}"
+    );
 }

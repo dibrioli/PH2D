@@ -7,7 +7,7 @@
 //! preso a um caminho, Axes até `MAX_TEXT_VARIATION_AXES`.
 
 use crate::cards_fx::{com_unidade, fila};
-use crate::cards_tinta::{aberto, dica, escolha, par_de_botoes, seg, seg_icone, semeia, spec};
+use crate::cards_tinta::{aberto, dica, par_de_botoes, seg, seg_icone, semeia, spec};
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
@@ -298,21 +298,28 @@ pub(crate) fn textpath(c: &mut CardCtx<'_>, y: f32) -> f32 {
             y,
         );
     }
-    let y = fila(
-        c,
-        &[(
-            tr("panel.vector.textpath.offset"),
-            ids::VECTOR_TEXTPATH_OFFSET_NUM,
-            crate::ids::VECTOR_TEXTPATH_OFFSET,
-        )],
-        y,
-    );
+    const INICIO: &[NodeId] = &[crate::ids::VECTOR_TEXTPATH_OFFSET];
+    let inicio = tr("panel.vector.textpath.offset");
     let virado = state::flip();
     let lados = [
         seg(LADO[0], tr("panel.vector.textpath.this_side"), !virado),
         seg(LADO[1], tr("panel.vector.textpath.other_side"), virado),
     ];
-    let y = escolha(c, tr("panel.vector.textpath.side"), LADO, &lados, y);
+    // Dividem a linha; se a coluna não leva os dois lados por inteiro, a escolha desce (05 §4).
+    let y = c.row(
+        &[
+            Cell::new(Widget::Field {
+                id: ids::VECTOR_TEXTPATH_OFFSET_NUM,
+                glyph: Glyph::Text(corpo::letra_da_grandeza(inicio)),
+            })
+            .label(inicio)
+            .key(INICIO),
+            Cell::new(Widget::Choice(&lados))
+                .label(tr("panel.vector.textpath.side"))
+                .key(LADO),
+        ],
+        y,
+    );
     c.full(
         None,
         Widget::Button {

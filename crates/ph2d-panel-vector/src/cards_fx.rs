@@ -5,7 +5,7 @@
 //! O que cada linha oferece continua a ser resposta da tabela publicada pelo motor (`FilterKindView`,
 //! `FxParamView`), como em `paint_effects` e `paint_filters`.
 
-use crate::cards_tinta::{aberto, dica, escolha, seg, seg_icone, semeia, spec};
+use crate::cards_tinta::{aberto, caixa, dica, escolha, seg, seg_icone, semeia, spec};
 use crate::paint_sections::filters_ramp::{RAMP_BAR_H, RAMP_HANDLE_R, selected_stop};
 use crate::paint_sections::fx_list::{Pilha, anota_props, is_open};
 use crate::state;
@@ -399,29 +399,39 @@ fn efeito_props(c: &mut CardCtx<'_>, row: usize, fx: &state::FxRowView, y: f32) 
         state::FalloffRole::Inert => Some(tr("panel.vector.fx.falloff.inert")),
         state::FalloffRole::NotFalloff => None,
     };
-    let mut y = nota.map_or(y, |n| c.hint(n, y));
-    let mut par: Vec<(&str, NodeId, NodeId)> = Vec::new();
-    for (i, p) in fx.params.iter().enumerate().take(vids::MAX_FX_ROW_PARAMS) {
-        if p.toggle {
-            if !par.is_empty() {
-                y = fila(c, &par, y);
-                par.clear();
+    let y = nota.map_or(y, |n| c.hint(n, y));
+    let params: Vec<_> = fx
+        .params
+        .iter()
+        .enumerate()
+        .take(vids::MAX_FX_ROW_PARAMS)
+        .collect();
+    let barras: Vec<[NodeId; 1]> = params
+        .iter()
+        .map(|(i, _)| [vids::vector_fx_param_id(row, *i)])
+        .collect();
+    // Na ordem da tabela, dois a dois: a caixa é a 2.ª coluna de um número (05 §4).
+    let celulas: Vec<Cell<'_>> = params
+        .iter()
+        .zip(&barras)
+        .map(|((i, p), key)| {
+            if p.toggle {
+                // A caixa é um botão no store: emite `Click`, como o «Nome: On» de antes.
+                return caixa(
+                    vids::vector_fx_toggle_id(row, *i),
+                    p.name.into(),
+                    p.value >= 0.5,
+                );
             }
-            // A caixa é um botão no store: emite `Click`, como o «Nome: On» de antes.
-            y = c.check(vids::vector_fx_toggle_id(row, i), p.name, p.value >= 0.5, y);
-            continue;
-        }
-        par.push((
-            p.name,
-            vids::vector_fx_param_num_id(row, i),
-            vids::vector_fx_param_id(row, i),
-        ));
-        if par.len() == 2 {
-            y = fila(c, &par, y);
-            par.clear();
-        }
-    }
-    if par.is_empty() { y } else { fila(c, &par, y) }
+            Cell::new(Widget::Field {
+                id: vids::vector_fx_param_num_id(row, *i),
+                glyph: Glyph::Text(corpo::letra_da_grandeza(p.name)),
+            })
+            .label(p.name)
+            .key(key)
+        })
+        .collect();
+    c.compact(&celulas, y)
 }
 
 /// A amostra que abre o seletor: a caixa inteira, com o código dentro.
@@ -445,32 +455,6 @@ fn amostra<'a>(
 
 fn hex(c: [u8; 4]) -> String {
     format!("{:02X}{:02X}{:02X}", c[0], c[1], c[2])
-}
-
-fn cores(
-    c: &mut CardCtx<'_>,
-    row: usize,
-    fx: &fst::FilterRowView,
-    k: &fst::FilterKindView,
-    y: f32,
-) -> f32 {
-    let (ka, kb) = (
-        [crate::ids::filter_color_id(row)],
-        [crate::ids::filter_color_b_id(row)],
-    );
-    let (ca, cb) = (hex(fx.color), hex(fx.color_b));
-    let mut cells = Vec::new();
-    if let Some(l) = k.color_label {
-        cells.push(amostra(ka[0], fx.color, &ca, l, &ka));
-    }
-    if let Some(l) = k.color_b_label {
-        cells.push(amostra(kb[0], fx.color_b, &cb, l, &kb));
-    }
-    if cells.is_empty() {
-        y
-    } else {
-        c.row(&cells, y)
-    }
 }
 
 /// O trilho: o nome em cima, a barra com os punhos, e a cor do stop em foco com `+` e `−` ao lado.
@@ -526,35 +510,60 @@ fn filtro_props(
         y = escolha(c, tr("panel.vector.filter.mode"), &canal, &segs, y);
     }
     let numeros = numeros_do_degrau(row, fx, k);
-    let tabela: Vec<(&str, NodeId, NodeId)> = numeros
+    let barras: Vec<[NodeId; 1]> = numeros.iter().map(|n| [n.barra]).collect();
+    let celulas: Vec<Cell<'_>> = numeros
         .iter()
-        .map(|n| (n.nome.as_str(), n.chip, n.barra))
+        .zip(&barras)
+        .map(|(n, key)| {
+            let glyph = Glyph::Text(corpo::letra_da_grandeza(&n.nome));
+            Cell::new(Widget::Field { id: n.chip, glyph })
+                .label(&n.nome)
+                .key(key)
+        })
         .collect();
     // O par de offset é UMA grandeza: fica junto, venha o que vier antes.
     let par_de_offset = if k.offset_labels.is_some() { 2 } else { 0 };
-    let (soltos, offset) = tabela.split_at(tabela.len() - par_de_offset);
-    for par in soltos.chunks(2).chain(offset.chunks(2)) {
-        y = fila(c, par, y);
+    let (soltos, offset) = celulas.split_at(celulas.len() - par_de_offset);
+    let mut linhas = Vec::new();
+    grupo(&mut linhas, soltos);
+    if !offset.is_empty() {
+        y = pinta(c, &mut linhas, y);
+        y = c.row(offset, y);
     }
-    y = cores(c, row, fx, k, y);
+    let (ka, kb) = (
+        [crate::ids::filter_color_id(row)],
+        [crate::ids::filter_color_b_id(row)],
+    );
+    let (ca, cb) = (hex(fx.color), hex(fx.color_b));
+    let mut cores = Vec::new();
+    if let Some(l) = k.color_label {
+        cores.push(amostra(ka[0], fx.color, &ca, l, &ka));
+    }
+    if let Some(l) = k.color_b_label {
+        cores.push(amostra(kb[0], fx.color_b, &cb, l, &kb));
+    }
+    grupo(&mut linhas, &cores);
     if k.takes_ramp {
+        y = pinta(c, &mut linhas, y);
         y = rampa(c, row, fx, y);
     }
     // A força, e como ela encosta na que já está ali: a mesma linha do Appearance.
     let op = opacidade_do_degrau(row, fx);
-    let barras = [op.barra];
+    let forca = [op.barra];
     let campo = Cell::new(Widget::Field {
         id: op.chip,
         glyph: Glyph::Icon(IconId::CardOpacity),
     })
     .label(&op.nome)
-    .key(&barras);
+    .key(&forca);
     if !k.takes_blend {
-        return c.row(&[campo], y);
+        grupo(&mut linhas, &[campo]);
+        return pinta(c, &mut linhas, y);
     }
     let id = crate::ids::filter_blend_id(row);
     let chave = [id];
-    let y = c.row(
+    grupo(
+        &mut linhas,
         &[
             campo,
             Cell::new(Widget::Dropdown {
@@ -565,10 +574,25 @@ fn filtro_props(
             .label(tr("panel.vector.filter.blend"))
             .key(&chave),
         ],
-        y,
     );
+    let y = pinta(c, &mut linhas, y);
     if let Some(chip) = aberto(c, id) {
         state::set_pending_blend_dd(Some((row, chip)));
     }
     y
+}
+
+/// Parte um grupo em pares. Dois curtos sozinhos, um a seguir ao outro, dividem a linha (05 §4); um grupo
+/// de dois (as duas cores, a força e a mistura) nunca se separa.
+fn grupo<'a>(linhas: &mut Vec<Vec<Cell<'a>>>, celulas: &[Cell<'a>]) {
+    for par in celulas.chunks(2) {
+        match (linhas.last_mut(), par) {
+            (Some(u), [so]) if u.len() == 1 => u.push(*so),
+            _ => linhas.push(par.to_vec()),
+        }
+    }
+}
+
+fn pinta(c: &mut CardCtx<'_>, linhas: &mut Vec<Vec<Cell<'_>>>, y: f32) -> f32 {
+    linhas.drain(..).fold(y, |y, l| c.compact(&l, y))
 }

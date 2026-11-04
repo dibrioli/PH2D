@@ -251,12 +251,19 @@ pub(crate) fn dica_do_cadeado(store: &mut WidgetStore) {
     }
 }
 
-/// O número da opacidade do objecto publicado, salvo com a mão nele. O painel Vector semeia o da
-/// seleção; esta é a semente do preso, no ensaio dele.
+/// O número da opacidade do objecto publicado, salvo com a mão nele. O painel Vector também o semeia,
+/// mas só quando está à frente: atrás do Inspector o campo ficava com o da forma de antes (foto C1).
 pub(crate) fn semeia_a_opacidade(store: &mut WidgetStore) {
-    if let Some(a) = appearance::current_appearance() {
+    let id = vids::VECTOR_OBJ_OPACITY_NUM;
+    let mao = store.focus_id() == Some(id) || store.number_input_drag().map(|d| d.id) == Some(id);
+    if let Some(a) = appearance::current_appearance().filter(|_| !mao) {
         let pct = (f64::from(a.opacity) * CEM_POR_CENTO).round();
-        store.set_number_value(vids::VECTOR_OBJ_OPACITY_NUM, pct);
+        if store.number_value(id) != Some(pct) {
+            store.set_number_value(id, pct);
+        }
+        if a.mixed_opacity {
+            store.blank_number_input(id);
+        }
     }
 }
 
@@ -314,6 +321,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     dropdown::declare(DD_BLEND);
     dropdown::declare(DD_STROKE_ALIGN);
     dica_do_cadeado(store);
+    semeia_a_opacidade(store);
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
         for id in [
             vids::vector_paint_row_opacity_id(i),

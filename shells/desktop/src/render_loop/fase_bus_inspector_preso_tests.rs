@@ -112,6 +112,12 @@ fn a_pinned_card_edit_lands_on_its_object_only_and_the_undo_step_restores_it() {
             .map(|z| z.0)
     };
     assert_eq!((z(&sim, a), z(&sim, b), z(&sim, c)), (Some(7), None, None));
+    let modo = |sim: &SimWorld, bits: u64| {
+        sim.world()
+            .get::<ph2d_ecs::BlendMode>(Entity::from_bits(bits))
+            .map(|m| m.tag())
+    };
+    assert_eq!((modo(&sim, a), modo(&sim, b)), (Some(3), None));
     let op = |v: &VecScene, id| v.path(id).expect("a forma").opacity;
     assert_eq!(op(&vec, pa), Opacity::new(0.25));
     assert_eq!(op(&vec, pb), Opacity::new(1.0), "B não recebe");
@@ -129,6 +135,7 @@ fn a_pinned_card_edit_lands_on_its_object_only_and_the_undo_step_restores_it() {
     };
     let a2 = bits_de(&mut sim, "A");
     assert_eq!(z(&sim, a2), None, "o desfazer não repôs o Z de A");
+    assert_eq!(modo(&sim, a2), None, "o desfazer não repôs o modo de A");
     assert_eq!(
         op(&v2, pa),
         Opacity::new(1.0),

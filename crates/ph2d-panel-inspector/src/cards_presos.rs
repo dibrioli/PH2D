@@ -1,5 +1,6 @@
 //! ⭐ **T36/T44/T61 — os cartões soltos do Inspector presos a um objecto**
-//! (`docs/CartoesUI/01_decisoes_do_dono.md`): o Transform e TODO cartão de componente, por uma lei.
+//! (`docs/CartoesUI/01_decisoes_do_dono.md`): os cartões do objecto ([`DO_OBJECTO`]) e TODO cartão de
+//! componente, por uma lei.
 //! A shell publica o retrato de cada preso ([`crate::retrato`]); aqui o cartão preso constrói-se e
 //! pinta-se com esse retrato, as caixas dele são as que a semente da seleção escreveria com ele
 //! ([`ensaia`]), e o gesto que cai nele corre com ele instalado ([`com_gesto`]) — os pedidos levam o

@@ -1,6 +1,6 @@
 # 09 — O alfinete nos cartões que ainda não o têm: plano com o tamanho medido (03/11/2026)
 
-Leitor: a LLM que construir isto. **Não construído.** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
+Leitor: a LLM que construir isto. **Construído: guarda, Material, Ordering, Object, Appearance (bloco C1, 04/11). Falta: Fill e Stroke.** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
 Pedido dele: «vários cards ainda não têm o alfinete». Foto: cartão Fill solto, cabeçalho ⠿ + ×, sem alfinete.
 
 Hoje só o Transform e os cartões de componente são presos (T47, T61): `store.mark_card_pinnable`, em
@@ -62,11 +62,40 @@ medição.**
 Cada cartão: `mark_card_pinnable` só no commit em que a escrita já vai ao preso. O teste é o de `o_alfinete_do_inspector.rs`:
 prende-se a A, escolhe-se B, edita-se no cartão, e A muda e B não. Com multi-seleção também.
 
-## Por confirmar no começo (não verificado nesta medição)
+## As três perguntas, medidas (04/11, bloco C1)
 
-- Se a opacidade `VECTOR_OBJ_OPACITY_NUM` passa pelo `apply_event` do Inspector (`event.rs:42` lê o `press_subject`), ou só pelo painel Vector.
-- Se o undo dos aplicadores do Inspector depende da seleção. No caminho vetorial o registo é por diff do documento (`fase_transform_ops.rs:68-71`): deve servir, mas não foi corrido.
-- O `Retrato` guarda `CURRENT` sem copiar demais? Depende da medição do ponto 5.
+- **A opacidade passa pelo `apply_event` do Inspector? Não.** O campo do cartão é `VECTOR_OBJ_OPACITY_NUM`, ligado ao slider `VECTOR_OBJ_OPACITY` (`link_slider_number`): quem responde é o `apply_event` do painel Vector, que pede `ToolPanelEvent(SetValue(VECTOR_OBJ_OPACITY, track))`, sem `entity_bits`; a lista do Blend igual (`pick_object_blend`). O retrato não os alcança, por isso a escolha das formas é `paint_stack::alvos`. Teste: `opacity_blend_and_eye_of_the_pinned_appearance_card_are_of_its_object`.
+- **O undo depende da seleção? Não.** `ProjectState::capture` nem recebe a seleção, e os motivos de supressão de `motivo_da_supressao` também não a leem. Corrido na app real, com o ponteiro real (sonda temporária, cena 10, `PH2D_BONE_UNDO_PROBE` como molde, não commitada):
+
+  ```text
+  f=180 inicio, B escolhido       undo=0  B: material=0  A: material=1 Multiply
+  f=195 Material no preso         undo=1  B: material=0  A: material=3
+  f=206 Ctrl+Z                    undo=0  B: material=0  A: material=1
+  f=230 multi B+A, Material       undo=1  B: material=0  A: material=4
+  f=241 Ctrl+Z                    undo=0  B: material=0  A: material=1
+  f=262 multi B+A, Blend          undo=1  B: Normal      A: Darken
+  f=273 Ctrl+Z                    undo=0  B: Normal      A: Multiply
+  ```
+
+  Um passo por gesto, e o respawn do Ctrl+Z (os bits mudam) não solta o alfinete. Gate: `a_pinned_card_edit_lands_on_its_object_only_and_the_undo_step_restores_it` (shell).
+- **O `Retrato` com `CURRENT` custa? Não, nenhuma cura precisa.** Medido em `--profile smoke`, intercalado, o mínimo de 200 blocos, `load ~10`:
+
+  | Aparência no retrato | captura + clone + instala | `==` |
+  |---|---|---|
+  | nenhuma | 0,68 µs | 0,027 µs |
+  | 2 camadas | 0,71 µs | 0,034 µs |
+  | 16 camadas (o tecto) | 0,72 µs | 0,066 µs |
+
+  O retrato medido só tem a aparência preenchida: é o custo que ela acrescenta, não o de um retrato cheio.
+
+## Achados que o plano não tinha
+
+- **O commit ao sair do foco ia à seleção.** `note_card_press` corre antes de `depart_focus`: digitar no preso e clicar fora punha o número na seleção, em silêncio. Valia também para o Transform preso (T47) e para os cartões de componente. Cura: `card_event_subject`/`card_edit_subject`.
+- **A opção da lista de um cartão cai fora do rect do solto**, e a guarda de T25 só conhecia o `Dropdown` do store, não o `cards::dropdown`. Cura: `dropdown::cobre`.
+- **O cartão Object sem título:** o alfinete e o × caíam em cima do olho. Solto, ele tem cabeçalho.
+- **O olho lia a caixa da seleção** ao construir o def, fora da troca dos estados presos.
+- **Com o Vector atrás do Inspector, a Opacity não era semeada:** a caixa ficava com a da forma anterior (só a foto mostrou). Cura: `semeia_a_opacidade` no `prepare`.
+- **Girar e espelhar do Transform preso** iam a `pen.selected()`. Cura: `alvos`, na `fase_node_and_arrange_verbs`.
 
 ## Decisão de produto em aberto para o dono
 

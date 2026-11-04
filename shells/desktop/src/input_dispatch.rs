@@ -113,8 +113,8 @@ pub(crate) use despacho_vetor_gradiente::{
     apply_vec_set_fill_kind, apply_vec_set_grad_angle,
 };
 pub(crate) use despacho_vetor_ops::{
-    VecFillKind, apply_vec_delete_vertex, apply_vec_duplicate, apply_vec_fill_rule, apply_vec_flip,
-    apply_vec_rotate, apply_vec_toggle_closed, apply_vec_vertex_kind, duplicate_vec_paths,
+    VecFillKind, apply_vec_delete_vertex, apply_vec_duplicate, apply_vec_fill_rule,
+    apply_vec_toggle_closed, apply_vec_vertex_kind, duplicate_vec_paths,
     screen_offset_world, vec_bool_op_for_id, vec_fill_kind_for_id, vec_flip_for_id,
     vec_reorder_for_id, vec_rotate_for_id, vec_vertex_kind_for_id,
 };

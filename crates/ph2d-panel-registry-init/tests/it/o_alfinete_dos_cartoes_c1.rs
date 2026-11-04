@@ -117,7 +117,8 @@ fn preso(sec: NodeId, sel: &[u64]) -> HeroScreen {
     h.store.set_collapsed(CARD_ORDERING, false);
     h.store.set_collapsed(CARD_MATERIAL, false);
     // Os cartões de cima fechados: Ordering e Material ficam acima da dobra para a mão os apanhar.
-    h.store.set_collapsed(insp::CARD_TRANSFORM, true);
+    h.store
+        .set_collapsed(insp::CARD_TRANSFORM, sec != insp::CARD_TRANSFORM);
     h.store
         .set_collapsed(CARD_APPEARANCE, sec != CARD_APPEARANCE);
     pinta(&mut h, 30);
@@ -351,6 +352,9 @@ fn opacity_blend_and_eye_of_the_pinned_appearance_card_are_of_its_object() {
             _ => h.store.number_value(num).unwrap_or(-1.0),
         };
         assert_eq!(mostrada, 30.0, "{sel:?}: a Opacity do preso não é a de A");
+        // A foto C1: com o Vector atrás do Inspector, a caixa da seleção é a da forma escolhida.
+        let da_selecao = if sel[0] == A { 30.0 } else { 80.0 };
+        assert_eq!(h.store.number_value(num), Some(da_selecao), "{sel:?}");
         // Opacity digitada: a pressão fora dispara o commit, e ele é de A.
         digita(&mut h, CARD_APPEARANCE, num, "4");
         drena(&mut h);
@@ -404,6 +408,31 @@ fn opacity_blend_and_eye_of_the_pinned_appearance_card_are_of_its_object() {
             })
             .collect();
         assert_eq!(olho, [(A, true)], "{sel:?}");
+    }
+}
+
+/// Os botões de girar do Transform preso são dele: o pedido sai sem `entity_bits`, e a forma é a do
+/// sujeito (`paint_stack::alvos`, gate na shell). *Mutação: voltar a `pen.selected()` na shell.*
+#[test]
+fn rotate_and_flip_on_the_pinned_transform_are_of_its_object() {
+    for sel in SELECOES {
+        let mut h = preso(insp::CARD_TRANSFORM, sel);
+        for id in [
+            vids::VECTOR_ARRANGE_ROTATE_CW,
+            vids::VECTOR_ARRANGE_FLIP_H,
+            vids::VECTOR_ARRANGE_FLIP_V,
+        ] {
+            let c = no_solto(&h, insp::CARD_TRANSFORM, id);
+            drena(&mut h);
+            mao(&mut h, PointerKind::Down, c);
+            mao(&mut h, PointerKind::Up, c);
+            nao_se_espalha(&h, sel);
+            let pediu = drena(&mut h).into_iter().any(
+                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == id),
+            );
+            assert!(pediu, "{sel:?}: {id:?} não pediu nada");
+            quadros(&mut h, sel, 2);
+        }
     }
 }
 

@@ -32,7 +32,12 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx { sim, vec_scene, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            sim,
+            vec_scene,
+            hero_screen,
+            ..
+        } = FrameGfx::of(gfx);
         let NodeAndArrangeVerbsIntents {
             pending_vec_select_subpath,
             pending_vec_select_same,
@@ -146,11 +151,16 @@ impl crate::App {
         {
             ph2d_vec_entities::entities::zorder::reorder(sim, &self.vec.entities, sel, order);
         }
-        if let Some(axis) = pending_vec_flip {
-            crate::input_dispatch::apply_vec_flip(vec_scene, &self.vec.pen, axis);
+        // Os botões do Transform: a forma do cartão preso sob o gesto, ou a da seleção.
+        let alvo = hero_screen.as_ref().and_then(|h| {
+            let formas = crate::vec_paint_stack::alvos(&h.store, &self.vec.pen, sim);
+            formas.first().copied()
+        });
+        if let (Some(axis), Some(forma)) = (pending_vec_flip, alvo) {
+            vec_scene.flip_path(forma, axis);
         }
-        if let Some(dir) = pending_vec_rotate {
-            crate::input_dispatch::apply_vec_rotate(vec_scene, &self.vec.pen, dir);
+        if let (Some(dir), Some(forma)) = (pending_vec_rotate, alvo) {
+            vec_scene.rotate_path(forma, dir);
         }
     }
 }

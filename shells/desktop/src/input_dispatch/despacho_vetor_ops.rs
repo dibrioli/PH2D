@@ -172,20 +172,6 @@ pub(crate) fn vec_reorder_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_ve
     }
 }
 
-/// Mirror the SELECTED path (panel Arrange Flip buttons), recording ONE undo step
-/// iff it flipped. Free fn (mirror of [`apply_vec_fill_rule`]).
-pub(crate) fn apply_vec_flip(
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-    axis: ph2d_vec_scene::FlipAxis,
-) {
-    let Some(sel) = pen.selected() else {
-        eprintln!("[ph2d-vec] flip: nenhum path selecionado");
-        return;
-    };
-    scene.flip_path(sel, axis);
-}
-
 /// Map a Vector-panel Arrange Flip button `NodeId` to its [`ph2d_vec_scene::FlipAxis`]
 /// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
 pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_scene::FlipAxis> {
@@ -197,20 +183,6 @@ pub(crate) fn vec_flip_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec_s
     } else {
         None
     }
-}
-
-/// Rotate the SELECTED path 90° (panel Arrange Rotate buttons), recording ONE undo
-/// step iff it rotated. Free fn (mirror of [`apply_vec_fill_rule`]).
-pub(crate) fn apply_vec_rotate(
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-    dir: ph2d_vec_scene::Rotate90,
-) {
-    let Some(sel) = pen.selected() else {
-        eprintln!("[ph2d-vec] rotate: nenhum path selecionado");
-        return;
-    };
-    scene.rotate_path(sel, dir);
 }
 
 /// Map a Vector-panel Arrange Rotate button `NodeId` to its [`ph2d_vec_scene::Rotate90`]
@@ -227,8 +199,7 @@ pub(crate) fn vec_rotate_for_id(id: ph2d_editor_core::NodeId) -> Option<ph2d_vec
 }
 
 /// Toggle the SELECTED path between closed (loop) and open (ribbon) — panel
-/// Close/Open button — recording ONE undo step iff it flipped. Free fn (mirror of
-/// [`apply_vec_flip`]).
+/// Close/Open button — recording ONE undo step iff it flipped. Free fn.
 pub(crate) fn apply_vec_toggle_closed(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &mut ph2d_vec_edit::PenTool,

@@ -12,7 +12,8 @@
 //! outros números) para o alfinete (T61); `=7`: o 6 com o Player solto (semeado) preso ao «Player A»
 //! e o «Player B» escolhido (a foto do T61); `=8`: um objecto Camera (Follow + Limits) escolhido, com o
 //! cartão Game Camera ABERTO e acima da dobra (05 §8); `=9`: o 8 com a lista «Game Format» aberta
-//! (a cara do popover num cartão, T25).
+//! (a cara do popover num cartão, T25); `=10`: dois retângulos, com Object, Appearance, Ordering e
+//! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1).
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
@@ -56,7 +57,7 @@ pub(crate) fn step(
         }
         2 if hero.image_edit.active_tool_id == Some(crate::vector_mode::VECTOR) => {
             crate::vector_mode::draw_shape(vec, scene, ShapeKind::Rectangle, [0.0, 0.0], MEIO_LADO);
-            if com_player() {
+            if com_player() || dois_cartoes_presos() {
                 crate::vector_mode::draw_shape(
                     vec,
                     scene,
@@ -68,7 +69,11 @@ pub(crate) fn step(
             go(3);
         }
         3 => {
-            let n = if com_player() { 2 } else { 1 };
+            let n = if com_player() || dois_cartoes_presos() {
+                2
+            } else {
+                1
+            };
             let formas: Vec<(u64, u64)> = (scene.paths().iter().rev().take(n))
                 .filter_map(|p| Some((p.id, *vec.entities.get(&p.id)?)))
                 .collect();
@@ -97,6 +102,19 @@ pub(crate) fn step(
                         ph2d_physics_ecs::Collider::default(),
                         ph2d_physics_ecs::Health::default(),
                     ));
+                }
+                if dois_cartoes_presos() {
+                    e.insert(ph2d_ecs::Name(["Shape A", "Shape B"][i].to_owned()));
+                    e.insert(ph2d_ecs::BlendMode::Mix);
+                    if i == 0 {
+                        e.insert((ph2d_ecs::ZIndexOverride(5), ph2d_ecs::BlendMode::Add));
+                        if let Some(p) = scene.path_mut(f) {
+                            p.opacity = ph2d_vec_scene::Opacity::new(0.3);
+                            p.blend = ph2d_vec_scene::BlendMode::Multiply;
+                        }
+                    }
+                    SEGUNDO[0].store(f, Ordering::Relaxed);
+                    SEGUNDO[1].store(b, Ordering::Relaxed);
                 }
                 if com_player() {
                     let p = ph2d_physics_ecs::PlatformPlayer::default();
@@ -164,6 +182,12 @@ pub(crate) fn step(
             }
             if s == FIM - 2 && modo == "7" {
                 prende_e_escolhe_o_segundo(vec, hero);
+            }
+            if s == FIM - 4 && modo == "10" {
+                solta_os_quatro(hero);
+            }
+            if s == FIM - 2 && modo == "10" {
+                prende_os_quatro_e_escolhe_o_segundo(vec, hero);
             }
             if s == FIM - 1 && modo == "5" {
                 ph2d_editor_core::panel::cards::estilos::abre_o_editor_do_primeiro();
@@ -242,6 +266,43 @@ fn com_player() -> bool {
         std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref(),
         Ok("6" | "7")
     )
+}
+
+fn dois_cartoes_presos() -> bool {
+    std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref() == Ok("10")
+}
+
+/// Os cartões da cena 10: os ids de `ph2d-panel-inspector`, que esta crate não vê, e onde ficam.
+fn os_quatro() -> [(ph2d_editor_core::NodeId, (f32, f32)); 4] {
+    use ph2d_editor_core::registry::hash_node_id as h;
+    [
+        (h("cards.insp.object"), (280.0, 110.0)),
+        (h("cards.insp.appearance"), (280.0, 220.0)),
+        (h("cards.insp.ordering"), (620.0, 110.0)),
+        (h("cards.insp.material"), (620.0, 240.0)),
+    ]
+}
+
+/// Cena 10: os quatro no canvas, abertos.
+fn solta_os_quatro(hero: &mut HeroScreen) {
+    for (sec, at) in os_quatro() {
+        hero.store.set_collapsed(sec, false);
+        hero.store
+            .detach_card(sec, ph2d_editor_core::ids::INSP_PANEL, at, 300.0);
+    }
+}
+
+/// Cena 10: presos ao objecto escolhido («Shape A»), depois o «Shape B» escolhido.
+fn prende_os_quatro_e_escolhe_o_segundo(vec: &mut VecState, hero: &mut HeroScreen) {
+    for (sec, _) in os_quatro() {
+        hero.store.toggle_loose_pin(sec);
+    }
+    let (f, b) = (
+        SEGUNDO[0].load(Ordering::Relaxed),
+        SEGUNDO[1].load(Ordering::Relaxed),
+    );
+    vec.pen.select_many(&[f]);
+    hero.gizmo.replace_selection(Some(b));
 }
 
 /// Cena 7: o Player solto preso ao objecto escolhido («Player A»), depois o «Player B» escolhido.

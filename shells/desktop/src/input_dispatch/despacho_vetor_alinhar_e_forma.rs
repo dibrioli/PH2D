@@ -141,7 +141,7 @@ pub(crate) fn apply_vec_distribute(
 
 /// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
 /// relative scrub) about its bbox center, recording ONE undo step iff it turned.
-/// A zero delta is a no-op (no undo). Free fn (mirror of [`apply_vec_rotate`]).
+/// A zero delta is a no-op (no undo). Free fn.
 pub(crate) fn apply_vec_rotate_by(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
@@ -171,8 +171,7 @@ pub(crate) enum VecPathShapeOp {
 }
 
 /// Smooth / sharpen / simplify ALL vertices of the SELECTED path (panel Path
-/// buttons), recording ONE undo step iff it changed. Free fn (mirror of
-/// [`apply_vec_flip`]).
+/// buttons), recording ONE undo step iff it changed. Free fn.
 pub(crate) fn apply_vec_path_shape(
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,

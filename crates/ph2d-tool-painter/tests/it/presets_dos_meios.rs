@@ -47,11 +47,12 @@ static AQUARELA_NEUTRA: crate::exame_bancada::ReceitaDeMeio = crate::exame_banca
 };
 
 /// A cena `gestos` (a rampa 0→1 incluída) nos três meios antigos ANTES da L2 — `pressureSize 0,9` (o
-/// `size_min 0,1` de sempre), sem pressão na opacidade, a inclinação de pé. Medido em `0797d99072`.
+/// `size_min 0,1` de sempre), sem pressão na opacidade, a inclinação de pé. Medido em `0797d99072`. Regravado 04/11 por
+/// `4b74b57aaf` (Bug #58, a libm fixada): com a libm do sistema o HEAD dá os três de antes, e o pincel gravado casa o da mão.
 const NEUTRO_DE_HOJE: [(PaintMedia, u64); 3] = [
-    (PaintMedia::Digital, 0x84f5_0263_d09d_3843),
-    (PaintMedia::Watercolor, 0x2a62_0899_d312_8981),
-    (PaintMedia::Impasto, 0xf545_285d_938d_8abf),
+    (PaintMedia::Digital, 0x046b_d5b5_2cb4_cc4b),
+    (PaintMedia::Watercolor, 0xd401_4c3f_8984_2957),
+    (PaintMedia::Impasto, 0x1a2a_072a_28f3_93ef),
 ];
 
 /// ⭐ **O neutro da mão é o traço de hoje**: com a mão de fábrica, os três meios antigos pintam a cena da bateria

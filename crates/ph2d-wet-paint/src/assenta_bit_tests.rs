@@ -119,8 +119,9 @@ fn hash_das_secagens() -> u64 {
     h.0
 }
 
-/// Gravados em `47d8c1083e`, ANTES dos cortes (LADO · CANAL · MEMO · SALTA-LEVANTA).
-const HASH_PORTAS: u64 = 0x34a0_9a1b_154d_6de4;
+/// Gravados em `47d8c1083e`, ANTES dos cortes (LADO · CANAL · MEMO · SALTA-LEVANTA). As portas regravadas 04/11 por
+/// `4b74b57aaf` (Bug #58, a libm fixada): com a libm do sistema o HEAD dá o `0x34a0_9a1b_154d_6de4` de antes.
+const HASH_PORTAS: u64 = 0xa8f0_b6fd_e82f_886a;
 const HASH_SECAGENS: u64 = 0xfd8b_6ec6_311b_a0bd;
 
 #[test]

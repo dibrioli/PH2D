@@ -116,8 +116,9 @@ fn sem_po_o_fluxo_do_pincel_nao_anda() {
     // `44dd973d8a` (as pontas rectas, `0x228003c7971b6c4d`) e `fd73b349ca` (o halo de pó solto 4 · 2 px · 0,10 · 0,8 —
     // o `po` da partícula, não o `dust`); os motores de `5cd611289a` a HEAD pintam-no ao byte. Integração 02/11
     // (bisseção da linha PainterWatercolor): `3eb13d38db` (K-M ligado de fábrica, `0x682c82f7895ef767`) e `04944ad5a5`
-    // (E10 lote E: Real Oil na célula, K-M no invólucro) — commits da lei nova.
-    const ANTES: u64 = 0x93c4_ff9c_012f_1262;
+    // (E10 lote E: Real Oil na célula, K-M no invólucro) — commits da lei nova. 04/11: `4b74b57aaf` (Bug #58, a libm
+    // fixada); com a libm do sistema o HEAD pinta o `0x93c4_ff9c_012f_1262` de antes.
+    const ANTES: u64 = 0x3c76_d1a5_2cff_098d;
     let mut p = de_fabrica("Soft Pastel");
     let tex = p.parametros.brush.get_mut("texture").unwrap();
     tex["mapping"] = serde_json::json!("Random");

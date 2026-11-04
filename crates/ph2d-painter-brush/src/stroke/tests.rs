@@ -1825,7 +1825,8 @@ fn the_dab_carries_the_offset_that_made_its_colour() {
 }
 
 /// O pincel «a cada carimbo» é o de ANTES ao byte: a impressão digital dos carimbos (centro, raio,
-/// cobertura, cor, rotação) foi tirada no `348c81d206`, antes do `color_shift` existir.
+/// cobertura, cor, rotação) foi tirada no `348c81d206`, antes do `color_shift` existir. Regravada 04/11 por `4b74b57aaf`
+/// (Bug #58, a libm fixada): com a libm do sistema o HEAD dá o `0x6e2c_ccd1_5f9e_0cff` de antes.
 #[test]
 fn per_dab_randomize_is_byte_identical_to_before_the_scope() {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -1843,7 +1844,7 @@ fn per_dab_randomize_is_byte_identical_to_before_the_scope() {
     }
     assert_eq!(h, IMPRESSAO_ANTES, "impressão de hoje: {h:#x}");
 }
-const IMPRESSAO_ANTES: u64 = 0x6e2c_ccd1_5f9e_0cff;
+const IMPRESSAO_ANTES: u64 = 0xb317_337b_292a_8e34;
 
 /// ⭐ **O passo pelo diâmetro À PRESSÃO** (J4 `texturas`, [`BrushSpec::passo_pela_pressao`]): na rampa 0→1 com o
 /// tamanho pela pressão, a metade FRACA leva muitos mais dabs (os carimbos pequenos apertados, o rasto do Stamp

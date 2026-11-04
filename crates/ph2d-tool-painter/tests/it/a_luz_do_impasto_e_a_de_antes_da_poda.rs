@@ -21,10 +21,11 @@ const W: u32 = 64;
 const H: u32 = 64;
 
 /// `(shine, roughness, metallic, wax)` → o FNV-1a de 64 bits dos bytes iluminados.
-/// Gravado em `b1a6f9b07` (antes da poda) e nesta árvore, 2026-10-05: iguais.
+/// Gravado em `b1a6f9b07` (antes da poda) e nesta árvore, 2026-10-05: iguais. O metálico regravado 04/11 por `4b74b57aaf`
+/// (Bug #58, a libm fixada): com a libm do sistema o HEAD dá o `0x3028_785c_bfb8_db3b` de antes; os outros três não mudaram.
 const ESPERADO: [((f32, f32, f32, f32), u64); 4] = [
     ((0.5, 0.5, 0.0, 0.0), 0xf28a_10f8_733d_3acd),
-    ((0.8, 0.3, 1.0, 0.0), 0x3028_785c_bfb8_db3b),
+    ((0.8, 0.3, 1.0, 0.0), 0xc1fd_0258_0b15_65c8),
     ((0.6, 0.4, 0.0, 0.7), 0x7bc3_cf43_895c_fdf2),
     ((1.0, 0.1, 0.3, 0.2), 0xb21e_832e_cbf4_8329),
 ];

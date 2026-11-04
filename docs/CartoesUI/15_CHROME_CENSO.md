@@ -32,3 +32,36 @@ Só leitura (Rodada R2, 04/11): tokens contados nos ficheiros, caras olhadas nas
 9. **M9 — Paleta de comandos:** olhar aberta primeiro; pode reduzir-se a M1.
 
 **Ordem:** M1 primeiro; as outras não dependem entre si, salvo M2 sobre M1. Antes de M3 a M7, pedir ao dono a referência de cada barra: o menu e as barras não têm maquete aprovada (só o painel tem). Sem a resposta, M1, M2, M8 e M9 podem seguir.
+
+## Estado das fatias (04/11)
+
+| Fatia | Estado | O que entrou | O que falta |
+|---|---|---|---|
+| M1 | Feita | Porta `widget/lista_flutuante.rs` (`Superficie`: moldura, moldura da dica, moldura de caixa, realce, cor, veste; `cromo_em_cartoes`). Menu aberto, lista de cenas, transbordo da fila, `paint_context_menu` e dica. A lista suspensa do cartão passa pela mesma moldura | Nada |
+| M2 | Feita | Título do menu aberto ou sob o rato acende no tom do cartão. A lista e o Settings já vinham da M1 | A cor de fundo da barra (`Bg1`) fica para M3, com a referência do dono |
+| M8 | Parcial | Moldura de caixa e tinta do cartão em New Image, New Sprite, Sheet Size, Color Mode, Pixel Edit, Rename, Fill, Onion, Send to board, Confirm delete e `paint_modal` | Corpo em `CardCtx::flutuante`; `FOOTER_H` literal; ver «Aberto» |
+| M3–M7 | Não feitas | | Esperam a referência do dono para cada barra |
+| M9 | Não feita | | Olhar a paleta aberta |
+
+**Contraprovas (corrida interrompida pelo prazo):** sangraram moldura de lista ignorar o cartão, realce ignorar o cartão, forçar o modo não desligar, cor `Text2` antiga (só `lista_flutuante`). Por correr, com o teste novo das caixas: `Text3`, moldura de caixa, alvo do menu que se move, menu e lista de cenas sem moldura, transbordo sem moldura (sem teste próprio: a fila não semeia no mock), dica sem moldura, título aberto antigo, New Sprite sem moldura. A moldura da dica deu erro de compilação alheio. Uma 1.ª corrida destas ficou inválida: o teste da barra estava vermelho sem mutante.
+
+**Interruptor:** `PH2D_CARDS=0` devolve o de antes em todas as peças acima. **Foto sem rato:** `PH2D_CROMO_SMOKE=<n>` (1 menu da Hierarchy, 2 dica, 3 lista de cenas, 4 File, 5 Settings, 6 New Image, 7 New Sprite, 8 Fill, 9 Onion), `screens/hero/cromo_smoke.rs`.
+
+**Aberto na M8, visto nas fotos `m8_*`:**
+
+- O botão do cartão a `22 px` de altura (`ROW_H`) tem o texto cerca de 2 px baixo. A conta é a do cartão, onde o botão mede `28 px`; a cura é a linha de `FIELD_H` que vem com o `CardCtx::flutuante`.
+- New Sprite: «0 px» dentro da caixa (a unidade devia estar no rótulo) e campos antigos.
+- Fill: o `Slider` sem rótulo visível e sem o idioma do campo. Onion: os mesmos sliders.
+- O campo de texto da lista de cenas ficou em `CardField`, mas o placeholder é o antigo.
+
+**Fora da M1 de propósito:** `widget/popover.rs` (seletor de data, editor rico) e a lista suspensa de fora de um cartão (`dropdown/popover.rs`) continuam na moldura de antes. As linhas dessas listas leem o token cru. Vão com a M6, que tem as listas da barra de opções.
+
+**Decisões tomadas sem o dono:** lista e dica em `KanbanCardRaised` com `FIELD_RADIUS` e a sombra da lista, sem filete (a lista suspensa aprovada). Caixa com `LIST_RADIUS` e as duas sombras da lista. Realce em `CardFieldHover`, como a lista suspensa. O título de menu aberto deixa o azul, para a barra não ter duas cores de estado. Nenhum alvo de clique muda de sítio.
+
+**Correções a este censo, medidas no código:**
+
+- `widget/context_menu.rs` não tem chamador no produto, só o teste `the_modern_family_paints_fewer_frames`: o menu que se vê é o `context_menu_overlay.rs`.
+- A lista aberta não realçava em `AccentSoft`, e sim em `Bg2`; `AccentSoft` era só o título do menu aberto e a aba de modo (M3).
+- `file_menu.rs` e `chrome/settings_*.rs` são tabelas, sem tinta. `theme_menu.rs` só pinta as amostras de tema.
+- `chrome/new_image.rs`, `new_sprite.rs` e `sheet_size.rs` não têm moldura: quem pinta é `context_menu_dialogs.rs` e `context_menu_new_sprite.rs`. Faltavam na linha das caixas: `context_menu_color_mode.rs`, `context_menu_pixel_edit.rs`, `send_to_board.rs` e `document_tabs_menu.rs` (Confirm delete).
+- A dica cortava o próprio texto («Add entity» saía «Add ent…»), porque `paint_text_centered` reserva respiro. Curado em cartões; `PH2D_CARDS=0` continua igual.

@@ -119,6 +119,29 @@ fn a_lista_de_cenas_e_o_transbordo_vestem_a_mesma_superficie() {
     assert!(!pinta_a_cor(&cenas, ColorToken::BgElev));
 }
 
+#[test]
+fn as_caixas_internas_vestem_a_superficie_sem_mover_alvo() {
+    for kind in [
+        K::NewImageDialog,
+        K::NewSpriteDialog,
+        K::SheetSizeDialog,
+        K::PixelColorModeDialog,
+        K::PixelEditDialog,
+        K::RenamePaletteDialog,
+    ] {
+        let (novo, alvos_novos) = menu(kind, None, true);
+        let (antigo, alvos_antigos) = menu(kind, None, false);
+        assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised), "{kind:?}");
+        assert!(!pinta_a_cor(&novo, ColorToken::BgElev), "{kind:?}");
+        assert!(pinta_a_cor(&antigo, ColorToken::BgElev), "{kind:?}");
+        assert_eq!(
+            alvos_novos.iter_registrations().collect::<Vec<_>>(),
+            alvos_antigos.iter_registrations().collect::<Vec<_>>(),
+            "{kind:?}"
+        );
+    }
+}
+
 /// A barra de menus inteira num quadro, com File aberto.
 fn barra(on: bool) -> (VectorScene, HitIndex) {
     force_cromo_on_this_thread(Some(on));

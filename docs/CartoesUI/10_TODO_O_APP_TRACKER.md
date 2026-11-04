@@ -63,6 +63,9 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - **D2, Audio Mixer:** a mesa fica em faixas verticais; cada faixa com fader, medidor, ganho, M/S, e por baixo as filas Pan, Tone e Low cut com rótulo (eram barras sem nome). As barras do rack viraram campos de 0 a 1, a fracção que já se lia. Reverb, Delay, Comp e Ducking nascem dobrados, com «On/Off» no resumo; a caixa de marcar lá dentro chama-se «Enabled». Os M/S acesos usam as cores de sempre; o medidor mantém as cores do sinal.
 - **D2, Authored UI:** só o cromo. Cada `SectionHeader` do artista é um cartão; as linhas seguem a pele dele. O programa não escreve palavra no painel: as linhas antes do 1.º cabeçalho vão num cartão com o nome da moldura, e o título aparece duas vezes.
 - **D2, Widget Lab:** só o cromo: uma lista com um cartão «Bench». O estudo mantém as cores dele porque mede as variantes antigas; passá-lo à tinta do cartão apagava o que ele compara.
+- C1, cartão Object solto: tem cabeçalho sem título (o nome do objecto, o alfinete e o ×); na lista segue sem cabeçalho. Sem isto o alfinete caía em cima do olho.
+- C1, Material preso: escolher `Mix` tira o componente (lei de sempre, lido em `BlendFieldEdit`, não corrido); o cartão do preso passa a «Not available», como o da lista some. A rever no smoke.
+- C1, Object sem linha na Hierarquia: sem cadeado, como na lista.
 
 ## Registo por bloco
 
@@ -140,3 +143,24 @@ o alfinete não se oferece no Physics (o mundo não tem sujeito); clippy fica pa
 ### Bloco D1 (04/11)
 
 Wet Paint, Design Tokens, Macros e Grid Settings em cartões, cada um com `src/cards.rs` + `tests/it/os_cartoes.rs` (gesto real) e os mesmos ids. API nova: `Widget::Mark` (sinal colorido sem clique), `Widget::ButtonOff` (verbo apagado sem rect). Catracas medidas: comandos `wet_tuning 13 → 14`, `tokens 4 → 5` (só o «…»); abertura `tokens 2302 → 2012` (`2871` com a Scale aberta). Fotos: `maquete/d_wet_paint.png`, `d_tokens.png`, `d_macros.png`, `d_grid.png`; cenas com patch temporário restaurado (Tuning aberto; etapas semeadas). **Aberto:** o Wet Paint e o Grid não têm cena de smoke que abra o painel.
+
+### Bloco C1 (04/11)
+
+Guarda do espalhamento + **Material, Ordering, Object, Appearance** presos, todos os controlos ([plano 09](09_alfinete_nos_cartoes_PLANO.md), com as três perguntas medidas e os achados). Foto vista: `maquete/c_alfinete_presos.png` (cena `PH2D_VEC_CARTOES_SMOKE=10`: quatro soltos presos a A, 30 %/Multiply/Add/Z 5, com B escolhido a 100 %/Normal).
+
+- **Guarda:** `WidgetStore::card_fan_out`, pedida em `fase_bus_drain`; `card_edit_subject` diz de quem são as edições do quadro e `end_card_edit_frame` fecha-o (em `fase_transform_ops`).
+- **Provas por gesto** (`ph2d-panel-registry-init`, `o_alfinete_dos_cartoes_c1`; B, B+C, A+B): `every_material_mode_…`, `the_z_typed_…`, `name_eye_and_lock_…`, `opacity_blend_and_eye_…`, `rotate_and_flip_…`, `an_unpinned_card_fans_out_and_a_deleted_object_lets_go`. Do dreno ao mundo e ao passo de undo: `a_pinned_card_edit_lands_on_its_object_only_and_the_undo_step_restores_it` (shell). Ícone do olho: `the_eye_of_the_card_…` (`ph2d-panel-inspector`).
+- **Na app real, com o ponteiro real** (sonda temporária, não commitada, log no plano 09): Material e Blend no preso com B e com B+A: A muda, B não, um passo, Ctrl+Z repõe A; o alfinete sobrevive ao respawn do undo.
+- **Contraprovas vistas vermelhas:** tirar a guarda (4 testes), o sujeito do commit (2), a semente da opacidade (1), a aparência do retrato (1), `dropdown::cobre` (1), `card_event_subject` (1).
+- **Objecto apagado:** `ph2d_card_rope::chave::resolve` é genérica por solto; o teste cobre o efeito (`rebind_loose_pin(None)`: o gesto volta à seleção). A chave durável fica e o alfinete volta com o undo.
+- **Só na foto, sem teste:** o realce do modo no Material (`Add`, o de A) e o `Multiply` do Blend.
+- **Não provado, fora do C1:** a marca de animação (losango) de um campo preso e o `Reset` do Transform preso. Mix no Material preso a ver no smoke.
+
+**Para o agente de Fill e Stroke:**
+
+1. O `sel` de `fase_transform_ops` já é `alvos`: verbo, largura, deslocamento, opacidade e mistura da camada, dilate, join e `apply_picker` já vão ao preso quando há sujeito. Falta tudo o que passa por outro caminho: `set_kind`, `stroke_paint::apply`, as tintas de base.
+2. **Publicar:** `paint_stack::aparencia_do_preso` corre em `com_cada_preso`, em `fase_snapshots_publish`, e a aparência já está no `Retrato`. Falta no retrato: `BASE_PAINTS`, `BASE_FILL_RAMP`, `current_vector_style`, `STYLE`, o pattern. O custo de um `Vec` no retrato é desprezável (medido, plano 09).
+3. **Semente:** em `cards_presos::ensaia` falta correr `semeia_as_linhas` (hoje só `semeia_a_opacidade`); sem isso o hex e a opacidade da linha mostram os da seleção.
+4. **Globais por objecto, ainda por resolver:** `OPEN`/`open_layer_index`, `LIGADOS` e `estilos::drena`, o seletor de cor (`HEX_PENDENTE`, `apply_picker`). A lista `estilos` tem o seu próprio rect: `note_card_press` só guarda a de `cards::dropdown` e a do store; a dos estilos tem de entrar na mesma guarda.
+5. **Só depois:** acrescentar `CARD_FILL`/`CARD_STROKE` a `DO_OBJECTO`, no mesmo commit da escrita. A cena 10 estende-se em `os_quatro` (`smoke_cartoes_inspector.rs`), e o gesto em `o_alfinete_dos_cartoes_c1::preso`.
+6. Decisão de produto aberta no plano 09: Fill preso com o seletor aberto, escolher outra forma. Recomendação registada: continua em A.

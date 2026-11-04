@@ -61,7 +61,7 @@ pub(super) fn editor(
         campo(scene, text_system, hit_index, store, ink, caixa_txt, id);
         y += m::FIELD_H;
     }
-    let usos = ph2d_i18n::tr("card.styles.used_by").replace("{n}", &e.usos.to_string());
+    let usos = ph2d_i18n::tr_with("card.styles.used_by", &[("n", &e.usos)]);
     crate::paint::paint_text_elided(
         text_system,
         scene,

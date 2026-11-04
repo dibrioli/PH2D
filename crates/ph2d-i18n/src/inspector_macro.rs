@@ -22,7 +22,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.macro.empty" => "Nothing recorded yet.",
         "panel.inspector.macro.summary" => {
-            "{tracks} tracks \u{b7} {steps} steps \u{b7} {seconds} s"
+            "{tracks} {tracks?track|tracks} \u{b7} {steps} {steps?step|steps} \u{b7} {seconds} s"
         }
         "panel.inspector.macro.edit_steps" => "Edit steps\u{2026}",
         _ => return None,

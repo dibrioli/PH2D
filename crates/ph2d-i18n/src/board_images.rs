@@ -53,7 +53,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.style.flip_v" => "Flip vertical (Shift+V)",
         "board.style.crop" => "Crop (double-click or Enter)",
         "board.images.svg_texts" => {
-            "{count} part(s) of the text inside the SVG will not show ({what})"
+            "{count} {count?part|parts} of the text inside the SVG will not show ({what})"
         }
         "board.images.svg_fonts" => {
             "Fonts this computer does not have: {names} \u{2014} the SVG text uses a stand-in"

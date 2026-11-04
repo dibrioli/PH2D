@@ -12,8 +12,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.repeat" => "Repeat",
         "anim_editor.once" => "Once",
         "anim_editor.ping_pong" => "Ping-pong",
-        "anim_editor.cols" => "{n} cols",
-        "anim_editor.rows" => "{n} rows",
+        "anim_editor.cols" => "{n} {n?col|cols}",
+        "anim_editor.rows" => "{n} {n?row|rows}",
         // A grelha que a transparência da folha propõe, e o botão que a aplica.
         "anim_editor.looks_like" => "This sheet looks like {cols} \u{d7} {rows} cells.",
         "anim_editor.use_grid" => "Use",

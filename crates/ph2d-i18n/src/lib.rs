@@ -436,9 +436,10 @@ fn tabela(key: &str) -> &'static str {
         "panel.hierarchy.filter.all" => "All",
         "panel.hierarchy.filter.option" => "{name} \u{00b7} {count}",
         "panel.hierarchy.filter.animation" => "Animation",
-        "panel.hierarchy.count.entities" => "{entities} entities",
+        "panel.hierarchy.flight_more" => "+{n} more",
+        "panel.hierarchy.count.entities" => "{entities} {entities?entity|entities}",
         "panel.hierarchy.count.entities_components" => {
-            "{entities} entities \u{00b7} {components} components"
+            "{entities} {entities?entity|entities} \u{00b7} {components} {components?component|components}"
         }
         // ⚠️ A FORMA da linha de cabeçalho (o travessão e a ordem das peças) estava no `format!`
         //    do pintor — só as duas palavras vinham da tabela, e a gramática ficava no fonte.

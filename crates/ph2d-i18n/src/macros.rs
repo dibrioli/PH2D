@@ -17,7 +17,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Select an object with a macro \u{2014} or paint in Wet Paint, or edit a Motion object, \
              and press Record."
         }
-        "panel.macros.summary" => "{steps} steps \u{b7} {seconds} s",
+        "panel.macros.summary" => "{steps} {steps?step|steps} \u{b7} {seconds} s",
         "panel.macros.edited_since" => "Edited from step {n}",
         "panel.macros.rename" => "Rename",
         "panel.macros.delete_step" => "Delete step",

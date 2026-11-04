@@ -21,7 +21,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.livevote.refused" => {
             "That vote didn't count — a hidden note takes no new votes until it's revealed"
         }
-        "board.livevote.started" => "{name} started a vote — {n} votes each",
+        "board.livevote.started" => "{name} started a vote — {n} {n?vote|votes} each",
         // ── a barra e o painel do modo privado ──
         "board.fac.private" => {
             "Private mode — write notes nobody else reads until they're revealed"
@@ -85,8 +85,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.livevote.done_count" => "{done} of {people} done",
         "board.livevote.done_tip" => "I'm done — let the others know (you can still change votes)",
         "board.livevote.waiting" => "Done — waiting for the end",
-        "board.livevote.person" => "{name}: {n} votes",
-        "board.livevote.person_done" => "{name}: {n} votes · done",
+        "board.livevote.person" => "{name}: {n} {n?vote|votes}",
+        "board.livevote.person_done" => "{name}: {n} {n?vote|votes} · done",
         _ => return None,
     })
 }

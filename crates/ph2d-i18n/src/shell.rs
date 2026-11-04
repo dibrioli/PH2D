@@ -17,10 +17,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:begin
         "shell.asset_card_verbs.left_alone" => " \u{b7} {skipped} left alone",
         "shell.asset_card_verbs.name_s_used_more_than" => {
-            " \u{b7} {ambiguous} name(s) used more than once were skipped"
+            " \u{b7} {ambiguous} {ambiguous?name|names} used more than once were skipped"
         }
         "shell.asset_card_verbs.replaced_object_s_with" => {
-            "Replaced {done} object(s) with \u{201c}{name}\u{201d} \u{2014} {kept} override(s) kept"
+            "Replaced {done} {done?object|objects} with \u{201c}{name}\u{201d} \u{2014} {kept} {kept?override|overrides} kept"
         }
         "shell.asset_card_verbs.nothing_you_picked_is" => {
             "Nothing you picked is a copy of a prefab"
@@ -31,14 +31,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Pick the copy you want to replace first \u{2014} then choose this again"
         }
         "shell.asset_card_verbs.this_image_is_in_the" => {
-            "This image is in the library because {n} object(s) use it \u{2014} change those to remove it"
+            "This image is in the library because {n} {n?object|objects} use it \u{2014} change those to remove it"
         }
         "shell.asset_card_verbs.removed_from_library" => "Removed from library",
         "shell.asset_card_verbs.that_prefab_is_no" => "That prefab is no longer in the project",
         "shell.asset_card_verbs.an_image_is_not_a" => {
             "An image is not a prefab \u{2014} drop it on an object to change what it draws"
         }
-        "shell.asset_card_verbs.selected_object_s" => "Selected {n} object(s)",
+        "shell.asset_card_verbs.selected_object_s" => "Selected {n} {n?object|objects}",
         "shell.asset_card_verbs.nothing_is_using_this" => "Nothing is using this image",
         "shell.asset_card_verbs.no_copies_of_this" => "No copies of this prefab in the scene",
         "shell.asset_card_verbs.drop_an_image_on_an" => {
@@ -79,7 +79,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.image" => "Image",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
-        "shell.asset_index_build.pieces" => "{n} pieces",
+        "shell.asset_index_build.pieces" => "{n} {n?piece|pieces}",
         "shell.asset_index_build.n1_piece" => "1 piece",
         "shell.asset_index_build.component" => "Prefab {stable_id}",
         "shell.envelope_live.envelope" => "Envelope",
@@ -100,9 +100,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hier_group.right_click_on_one_of" => "Right-click on one of the selected objects",
         "shell.hier_group.nothing_in_the" => "Nothing in the selection is inside a group",
         "shell.hier_group.select_at_least_2" => "Select at least 2 objects to group",
-        "shell.hier_group.ungrouped_groups" => "Ungrouped {groups} groups",
+        "shell.hier_group.ungrouped_groups" => "Ungrouped {groups} {groups?group|groups}",
         "shell.hier_group.ungrouped" => "Ungrouped",
-        "shell.hier_group.grouped_objects" => "Grouped {members} objects",
+        "shell.hier_group.grouped_objects" => "Grouped {members} {members?object|objects}",
         "shell.init.ph2d_editor" => "PH2D — editor",
         "shell.init_subsystems.press_1_brush_2_move_3" => {
             "Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Mode, Ctrl+Space=Zen"
@@ -120,7 +120,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Select two or more objects to group"
         }
         "shell.despacho_metodos_janela_e_vetor.group" => "Group {sel}",
-        "shell.despacho_metodos_picks_e_arrastos.blast_bodies" => "Blast: {hit} bodies",
+        "shell.despacho_metodos_picks_e_arrastos.blast_bodies" => "Blast: {hit} {hit?body|bodies}",
         "shell.handlers_teclas_editor.timeline_hidden_l" => "Timeline hidden (L)",
         "shell.handlers_teclas_editor.timeline_shown_l" => "Timeline shown (L)",
         "shell.handlers_teclas_editor.timeline_pause" => "Timeline · pause",
@@ -188,7 +188,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.fase_bus_inspector.put_the_piece_back_it" => {
             "Put the piece back \u{2014} it returns as the prefab has it"
         }
-        "shell.fase_bus_inspector.cleared_unused" => "Cleared {n} unused override(s)",
+        "shell.fase_bus_inspector.cleared_unused" => "Cleared {n} unused {n?override|overrides}",
         "shell.fase_hierarchy_group_merge.merge_sprites_right" => {
             "Merge Sprites: right-click on one of the selected sprites"
         }
@@ -196,7 +196,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.fase_physics_edits.wheel_commit_failed" => "Wheel commit failed: {e}",
         "shell.fase_physics_edits.joint_commit_failed" => "Joint commit failed: {e}",
         "shell.fase_physics_join_rig_bake.baked_bodies_tracks" => {
-            "Baked {window} - {bodies} bodies, {tracks} tracks - now Kinematic"
+            "Baked {window} - {bodies} {bodies?body|bodies}, {tracks} {tracks?track|tracks} - now Kinematic"
         }
         "shell.fase_physics_join_rig_bake.nothing_to_bake" => "Nothing to bake: nothing moved",
         "shell.fase_physics_join_rig_bake.already_baked_the" => {
@@ -209,11 +209,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Cannot bake here: this clip does not play exactly once"
         }
         "shell.fase_physics_join_rig_bake.rigged_new_bodies_with" => {
-            "Rigged {bodies} new bodies with {joints} joints"
+            "Rigged {bodies} new {bodies?body|bodies} with {joints} {joints?joint|joints}"
         }
         "shell.fase_physics_join_rig_bake.rig_commit_failed" => "Rig commit failed: {e}",
         "shell.fase_physics_join_rig_bake.chained_bodies_with" => {
-            "Chained {made2} bodies with {made} joints"
+            "Chained {made2} {made2?body|bodies} with {made} {made?joint|joints}"
         }
         "shell.fase_recipe_and_asset_verbs.that_is_not_a_copy_of" => {
             "That is not a copy of a prefab"
@@ -222,10 +222,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "These prefabs are not related \u{2014} switching would lose every override"
         }
         "shell.fase_recipe_and_asset_verbs.switched_variant" => {
-            "Switched variant \u{2014} {overrides_kept} override(s) kept"
+            "Switched variant \u{2014} {overrides_kept} {overrides_kept?override|overrides} kept"
         }
         "shell.fase_recipe_and_asset_verbs.switched_variant_2" => {
-            "Switched variant \u{2014} {overrides_kept} override(s) kept, {dropped} piece(s) unused"
+            "Switched variant \u{2014} {overrides_kept} {overrides_kept?override|overrides} kept, {dropped} {dropped?piece|pieces} unused"
         }
         "shell.fase_recipe_and_asset_verbs.that_is_not_a_piece_of" => {
             "That is not a piece of a copy"
@@ -234,15 +234,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That piece came from the prefab \u{2014} it is already in it"
         }
         "shell.fase_recipe_and_asset_verbs.added_piece_s_to_every" => {
-            "Added {pieces} piece(s) to \u{201c}{name}\u{201d} \u{2014} every copy gets them"
+            "Added {pieces} {pieces?piece|pieces} to \u{201c}{name}\u{201d} \u{2014} every copy gets them"
         }
         "shell.fase_recipe_and_asset_verbs.the_prefab" => "the prefab",
         "shell.fase_recipe_and_asset_verbs.not_part_of_an" => "Not part of an instance",
         "shell.fase_recipe_and_asset_verbs.applied_change_s_to" => {
-            "Applied {changed} change(s) to \u{201c}{name}\u{201d}"
+            "Applied {changed} {changed?change|changes} to \u{201c}{name}\u{201d}"
         }
         "shell.fase_recipe_and_asset_verbs.applied_change_s_to_2" => {
-            "Applied {changed} change(s) to \u{201c}{name}\u{201d} \u{2014} {left} left (not part of it)"
+            "Applied {changed} {changed?change|changes} to \u{201c}{name}\u{201d} \u{2014} {left} left (not part of it)"
         }
         "shell.fase_recipe_and_asset_verbs.nothing_overridden" => "Nothing overridden here",
         "shell.fase_sheet_verbs.auto_arrange_select_a" => {
@@ -264,7 +264,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // `ph2d_skeleton_live::pose_de_repouso`. ⚠️ A palavra é **repouso** e não *«transformação
         // reposta»*: num osso as duas coisas não são a mesma, e foi essa confusão que mandou a arte
         // presa 26 unidades para longe.
-        "shell.hierarchy.bone_back_to_rest" => "{n} bone(s) back to their rest pose",
+        "shell.hierarchy.bone_back_to_rest" => "{n} {n?bone|bones} back to their rest pose",
         "shell.hierarchy.bone_has_no_rest" => {
             "This bone has no rest pose saved — use Set Rest Pose in the Skeleton panel"
         }
@@ -279,8 +279,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hierarchy_delete.deleted_removed_from" => {
             "Deleted {n} \u{2014} {r} removed from this copy only"
         }
-        "shell.hierarchy_delete.deleted_entities" => "Deleted {n} entities",
-        "shell.hierarchy_delete.removed_piece_s_from" => "Removed {r} piece(s) from this copy only",
+        "shell.hierarchy_delete.deleted_entities" => "Deleted {n} {n?entity|entities}",
+        "shell.hierarchy_delete.removed_piece_s_from" => "Removed {r} {r?piece|pieces} from this copy only",
         "shell.hierarchy_delete.removed_from_this_copy" => {
             "Removed from this copy \u{2014} the prefab still has it"
         }
@@ -405,11 +405,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.tokens_bridge_dtcg.unknown" => ", {unknown} unknown",
         "shell.tokens_bridge_dtcg.already_at_factory" => ", {at_factory} already at factory",
         "shell.tokens_bridge_dtcg.dtcg_imported_token_s" => {
-            "DTCG imported: {authored} token(s) authored"
+            "DTCG imported: {authored} {authored?token|tokens} authored"
         }
         "shell.tokens_bridge_dtcg.dtcg_import_failed" => "DTCG import failed: {e}",
         "shell.tokens_bridge_dtcg.dtcg_export_failed" => "DTCG export failed: {e}",
-        "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => "DTCG exported: {all} tokens to {path}",
+        "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => "DTCG exported: {all} {all?token|tokens} to {path}",
         "shell.tokens_bridge_dtcg.dtcg_tokens" => "DTCG tokens",
         "shell.texture_pattern_pick.image" => "Image",
         "shell.undo_app.sem_entrada_neste" => "sem entrada neste quadro",
@@ -431,17 +431,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.vec_component_general.it_is_already_a_copy" => "It is already a copy of that prefab",
         "shell.vec_component_general.piece_s_the_new_prefab" => {
-            " \u{b7} {dropped} piece(s) the new prefab does not have were removed"
+            " \u{b7} {dropped} {dropped?piece|pieces} the new prefab does not have were removed"
         }
         "shell.vec_component_general.now_a_copy_of_override" => {
-            "Now a copy of \u{201c}{name}\u{201d} \u{2014} {overrides_kept} override(s) kept"
+            "Now a copy of \u{201c}{name}\u{201d} \u{2014} {overrides_kept} {overrides_kept?override|overrides} kept"
         }
         "shell.vec_component_general.that_shape_is_not_a" => {
             "That shape is not a copy of a prefab \u{2014} click one, or the open prefab"
         }
         "shell.vec_component_general.that_is_not_a_copy_of" => "That is not a copy of a prefab",
         "shell.vec_component_general.reverted_override_s_to" => {
-            "Reverted {r} override(s) to the prefab"
+            "Reverted {r} {r?override|overrides} to the prefab"
         }
         "shell.vec_text.imported" => "Imported",
         "shell.vec_text.font_ttf_otf" => "Font (TTF / OTF)",

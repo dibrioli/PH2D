@@ -42,7 +42,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.motion.motion_bridge_edit.that_wire_cannot_land_there_the_node_was_added_u" => {
             "That wire cannot land there - the node was added unconnected"
         }
-        "app.motion.motion_bridge_fold.nodes" => "{inside} nodes",
+        "app.motion.motion_bridge_fold.nodes" => "{inside} {inside?node|nodes}",
         "app.motion.motion_bridge_heal.this_node_produces_data_nothing_downstream_consu" => {
             "This node produces data nothing downstream consumes, so it does nothing"
         }
@@ -155,7 +155,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "No reroute exists for this kind of wire"
         }
         "app.motion.motion_bridge_subgraph.name" => "Name",
-        "app.motion.motion_bridge_subgraph.group_nodes" => "Group ({inside} nodes)",
+        "app.motion.motion_bridge_subgraph.group_nodes" => "Group ({inside} {inside?node|nodes})",
         "app.motion.motion_bridge_subgraph.can_t_drive_that_would_make_a_loop" => {
             "Can't drive: that would make a loop"
         }

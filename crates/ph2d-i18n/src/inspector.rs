@@ -68,11 +68,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.instance.orphans_more" => {
             "+{left_out} without a button \u{2014} Clear removes those too"
         }
-        "panel.inspector.instance.clear_orphans" => "Clear {n} unused override(s)",
+        "panel.inspector.instance.clear_orphans" => "Clear {n} unused {n?override|overrides}",
         "panel.inspector.instance.removed_more" => {
             "+{left_out} more \u{2014} Revert on the copy puts every piece back"
         }
-        "panel.inspector.joint.paste_to" => "Paste to {targets} Joints",
+        "panel.inspector.joint.paste_to" => "Paste to {targets} {targets?Joint|Joints}",
         "panel.inspector.joint.add_wheel" => "Add Wheel ({n} on this rope)",
         "panel.inspector.joint.axis_min_unit" => "  Min",
         "panel.inspector.joint.axis_max_unit" => "  Max",
@@ -81,7 +81,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.more_shapes" => "+ {n} more shapes from children",
         "panel.inspector.physics.add_shape_to" => "Add Shape to {owner}",
         "panel.inspector.physics.chain_bodies" => "Chain {join_count} Selected Bodies",
-        "panel.inspector.physics.rig_parts" => "Rig {rig_parts} Parts from Hierarchy",
+        "panel.inspector.physics.rig_parts" => "Rig {rig_parts} {rig_parts?Part|Parts} from Hierarchy",
         "panel.inspector.physics.shape_of" => "Shape of {owner} \u{00b7} simulated as part of it",
         "panel.inspector.render_source.atlas_key" => "Atlas \u{00b7} key {key}",
         "panel.inspector.render_source.individual_texture" => {

@@ -83,7 +83,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This tool changes the image size or margins: the image is shown without the bone deformation, and Apply unbinds it from the bones."
         }
         "app.painter.skin_suspend.images_unbound_from_the_bones" => {
-            "The image size or margins changed: {soltas} image(s) unbound from the bones. Ctrl+Z brings the binding back."
+            "The image size or margins changed: {soltas} {soltas?image|images} unbound from the bones. Ctrl+Z brings the binding back."
         }
         // Os presets nos quatro meios (L1): um meio que este PH2D não conhece é recusado; um modo que o
         // meio não tem não se aplica.

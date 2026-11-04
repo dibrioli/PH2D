@@ -270,7 +270,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.open" => "Open",
         "chrome.menu.look" => "Look",
         "chrome.palette.search" => "Search",
-        "chrome.palette.n_items" => "{n} items",
+        "chrome.palette.n_items" => "{n} {n?item|items}",
         // ph2d-migrar-texto:end
         // ⭐ **O menu EDIT** — veio do `match` do pai em 2026-09-17 (tecto de LOC), e o
         // assunto é o desta tabela: a barra de menus.

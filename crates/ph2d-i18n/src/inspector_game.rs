@@ -274,7 +274,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Stopped: {msg} \u{2014} fix the script and save it."
         }
         "panel.inspector.script.values_kept_until_reload" => {
-            "{n} value(s) kept until the script loads again."
+            "{n} {n?value|values} kept until the script loads again."
         }
         "panel.inspector.statemachine.state_n" => "State {i}",
         "panel.inspector.tags.showing_of_type_to_narrow" => {
@@ -537,7 +537,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The depot is empty \u{2014} it has fired everything it had."
         }
         // ⭐ A LEITURA VIVA — quantas balas ela tem AGORA.
-        "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} rounds",
+        "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} {full?round|rounds}",
         "panel.inspector.weapon.reloading_u" => "Reloading\u{2026}",
         // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
         //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa

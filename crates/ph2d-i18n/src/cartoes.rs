@@ -168,7 +168,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.styles.edit_title" => "Edit style",
         "card.styles.name" => "Name",
         "card.styles.color" => "Color",
-        "card.styles.used_by" => "Used by {n} layers. All change.",
+        "card.styles.used_by" => "Used by {n} {n?layer|layers}. All change.",
         "card.styles.apply" => "Apply",
         "card.styles.edit" => "Edit style...",
         "card.styles.rename" => "Rename",

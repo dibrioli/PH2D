@@ -9,15 +9,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
         "shell.ase_import.frames_of_x_need_a_x" => {
-            "{frames} frames of {width}x{height} need a {sheet_w}x{sheet_h} sheet, and the limit is {MAX_SHEET_EDGE_PX}"
+            "{frames} {frames?frame|frames} of {width}x{height} need a {sheet_w}x{sheet_h} sheet, and the limit is {MAX_SHEET_EDGE_PX}"
         }
         "shell.ase_import.read" => "read: {e}",
         "shell.ase_import.tag_was_not_imported" => "tag \"{name}\" was not imported ({e_})",
         "shell.ase_import.the_file_has_no_tags" => {
-            "the file has no tags — one animation named \"{stem}\" covers all {frames} frames"
+            "the file has no tags — one animation named \"{stem}\" covers all {frames} {frames?frame|frames}"
         }
         "shell.ase_import.has_per_frame_timing" => {
-            "\"{t}\" has per-frame timing ({per_frame_ms} frames, {into}..{into2} ms) — the Frame ms field shows the \
+            "\"{t}\" has per-frame timing ({per_frame_ms} {per_frame_ms?frame|frames}, {into}..{into2} ms) — the Frame ms field shows the \
              most common one"
         }
         "shell.forwarding.palette" => "Palette",
@@ -27,10 +27,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.forwarding.gimp_palette" => "GIMP palette",
         "shell.forwarding.colour_palette" => "Colour palette",
         "shell.bgremoval.bg_removal_island_s_2" => {
-            "Bg Removal · {islands} island(s), {spawned} spawned, {spawn_failed} failed · Cmd+Z restores"
+            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned, {spawn_failed} failed · Cmd+Z restores"
         }
         "shell.bgremoval.bg_removal_island_s" => {
-            "Bg Removal · {islands} island(s), {spawned} spawned · Cmd+Z restores"
+            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned · Cmd+Z restores"
         }
         "shell.bgremoval.island_acquire_failed" => "Island {n} acquire failed: {e}",
         "shell.bgremoval.bg_removal_separate" => "Bg Removal · Separate Islands",
@@ -52,11 +52,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Equalize Sizes: target exceeds GPU texture limit ({max_dim} px max, would need {width} × {height} px)"
         }
         "shell.equalize_sizes.equalize_sizes_sprites" => {
-            "Equalize Sizes · {applied} sprites · Cmd+Z to undo"
+            "Equalize Sizes · {applied} {applied?sprite|sprites} · Cmd+Z to undo"
         }
         "shell.equalize_sizes.equalize_sizes_applied" => "Equalize Sizes applied · Cmd+Z to undo",
         "shell.equalize_sizes.equalize_sizes_sprite" => {
-            "Equalize Sizes · {applied} sprite(s), {skipped} skipped · Cmd+Z to undo"
+            "Equalize Sizes · {applied} {applied?sprite|sprites}, {skipped} skipped · Cmd+Z to undo"
         }
         "shell.equalize_sizes.equalize_sizes_nothing" => "Equalize Sizes: nothing to change",
         "shell.equalize_sizes.equalize_sizes_no" => {
@@ -102,7 +102,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.trim_transparency.trim" => "Trim",
         "shell.trim_transparency.trim_failed" => "Trim failed: {err}",
-        "shell.undo.sprites" => "{toast_done} · {label} ({n} sprites)",
+        "shell.undo.sprites" => "{toast_done} · {label} ({n} {n?sprite|sprites})",
         "shell.upscale.upscaled_px_cmd_z_to" => "Upscaled · {out_w} × {out_h} px · Cmd+Z to undo",
         "shell.upscale.upscale" => "Upscale",
         "shell.upscale.upscale_failed" => "Upscale failed: {err}",
@@ -111,7 +111,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.upscale.upscale_source" => "Upscale: source unavailable",
         "shell.sprite_merge.converted_sprite_s_to" => {
-            "Converted {downgraded} sprite(s) to RGBA8 — merging composites in 8-bit"
+            "Converted {downgraded} {downgraded?sprite|sprites} to RGBA8 — merging composites in 8-bit"
         }
         "shell.sprite_merge.merged_sprites" => "Merged {n_sources} sprites",
         "shell.sprite_merge.merged_sprites_skipped" => {
@@ -133,7 +133,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.texture_edit.image_tools_work_in_8" => "image tools work in 8-bit",
         "shell.texture_edit.converted_to_rgba8" => "Converted to RGBA8 — {because}",
         "shell.image_export.export_failed" => "Export failed: {e}",
-        "shell.image_export.exported_bytes" => "Exported: {picked} ({n} bytes)",
+        "shell.image_export.exported_bytes" => "Exported: {picked} ({n} {n?byte|bytes})",
         "shell.image_export.could_not_write" => "could not write {path}: {e}",
         "shell.image_export.exported_as_rgba8" => {
             "Exported as RGBA8 — .{extension} cannot carry 16-bit; try .exr or .hdr"
@@ -141,9 +141,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.image_export.no_exporter_for" => "no exporter for .{extension}",
         "shell.image_export.this_sprite_s_pixels" => "this sprite's pixels are unreadable",
         "shell.image_export.unknown_extension_try" => "unknown extension — try one of: {join}",
-        "shell.import_router.shapes" => "{name} ({shapes} shapes)",
+        "shell.import_router.shapes" => "{name} ({shapes} {shapes?shape|shapes})",
         "shell.import_router.frames_animations" => {
-            "{name} ({frames} frames, {animations} animations)"
+            "{name} ({frames} {frames?frame|frames}, {animations} {animations?animation|animations})"
         }
         "shell.import_router.unnamed" => "(unnamed)",
         "shell.import_router.images" => "Images",
@@ -158,12 +158,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Skipped {name}: not an image, an SVG drawing or an Aseprite file"
         }
         "shell.input_drop.sheet" => "Sheet {name}: {error}",
-        "shell.input_drop.sheet_sprites" => "Sheet {name}: {regions} sprites",
+        "shell.input_drop.sheet_sprites" => "Sheet {name}: {regions} {regions?sprite|sprites}",
         "shell.merge_layers.merged_into_layers" => {
-            "Merged into {made} layers — open the Painter on it to separate them again"
+            "Merged into {made} {made?layer|layers} — open the Painter on it to separate them again"
         }
         "shell.merge_layers.merged_into_of_layers" => {
-            "Merged into {made} of {layers} layers — the rest did not fit"
+            "Merged into {made} of {layers} {layers?layer|layers} — the rest did not fit"
         }
         "shell.merge_layers.merged_but_the_layered" => {
             "Merged, but the layered document could not be created (painter unavailable)"
@@ -181,7 +181,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.project_io.ph2d_project" => "PH2D project",
         "shell.project_io.ph2d_project_2" => "PH2D project (.{ext})",
-        "shell.project_load.project_loaded_2" => "Project loaded · {tracks} animation track(s)",
+        "shell.project_load.project_loaded_2" => "Project loaded · {tracks} animation {tracks?track|tracks}",
         "shell.project_load.project_loaded" => "Project loaded",
         "shell.project_load.project_refused_its_4" => {
             "Project refused: its sprite images are from another version ({e})"
@@ -239,7 +239,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.project_save.project_save_failed" => "Project save FAILED: {e}",
         "shell.project_save.project_saved_kb" => {
-            "Project saved · {bytes} KB · {n} animation track(s)"
+            "Project saved · {bytes} KB · {n} animation {n?track|tracks}"
         }
         "shell.audio_overlay.audio_editor_waveform" => "Audio Editor \u{00b7} Waveform",
         "shell.audio_overlay.audio_editor" => "Audio Editor \u{00b7} Spectrogram",
@@ -293,13 +293,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Can't make {token} follow {target}: that closes a loop at {at}"
         }
         "shell.sheet_bake.sheet_baked_pieces" => {
-            "Sheet baked: {regions} pieces share one {width}\u{00d7}{height} texture"
+            "Sheet baked: {regions} {regions?piece|pieces} share one {width}\u{00d7}{height} texture"
         }
         "shell.sheet_bake.bake_sheet_gpu_upload" => "Bake Sheet: GPU upload: {e}",
         "shell.sheet_bake.bake_sheet" => "Bake Sheet: {e}",
         "shell.sheet_bake.bake_sheet_this_sheet" => "Bake Sheet: this sheet has no pieces",
         "shell.sheet_bake.converted_piece_s_to" => {
-            "Converted {downgraded} piece(s) to RGBA8 — a sheet is one texture, and it is 8-bit"
+            "Converted {downgraded} {downgraded?piece|pieces} to RGBA8 — a sheet is one texture, and it is 8-bit"
         }
         "shell.sheet_bake.bake_sheet_select_a" => "Bake Sheet: select a sheet",
         "shell.sheet_bake.bake_sheet_fix_it" => {
@@ -319,9 +319,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.sheet_frame.sprite_sheet" => "Sprite Sheet",
         "shell.sheet_frame.sheet" => "Sheet: {e}",
         "shell.sheet_frame.sheet_pieces_packed" => {
-            "Sheet: {pieces} pieces packed into {size_px} \u{00d7} {size_px}"
+            "Sheet: {pieces} {pieces?piece|pieces} packed into {size_px} \u{00d7} {size_px}"
         }
-        "shell.sheet_frame.sheet_re_packed_pieces" => "Sheet re-packed: {moved} pieces",
+        "shell.sheet_frame.sheet_re_packed_pieces" => "Sheet re-packed: {moved} {moved?piece|pieces}",
         "shell.sheet_import.gpu_upload" => "GPU upload: {e}",
         "shell.sheet_import.the_metadata_declares" => "the metadata declares no frames",
         "shell.sheet_import.metadata_says_x_but_is" => {
@@ -337,7 +337,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.sheet_import.read" => "read: {e}",
         "shell.vec_svg_export.export_svg_failed" => "Export SVG FAILED: {e}",
         "shell.vec_svg_export.exported_shape_s_to" => {
-            "Exported {formas} shape(s) to {to_string_lossy}{extra}"
+            "Exported {formas} {formas?shape|shapes} to {to_string_lossy}{extra}"
         }
         "shell.vec_svg_export.approximated" => " ({aproximadas} approximated)",
         "shell.vec_svg_export.export_svg_the_drawing" => {

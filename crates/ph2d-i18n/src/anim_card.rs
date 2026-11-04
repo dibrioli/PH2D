@@ -19,7 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.open_editor_tip" => {
             "Open the animation editor: pick frames on the sheet, set their timing and how they loop."
         }
-        "panel.inspector.anim_card.frames" => "{n} frames",
+        "panel.inspector.anim_card.frames" => "{n} {n?frame|frames}",
         "panel.inspector.anim_card.who_picks" => "Who Picks",
         "panel.inspector.anim_card.me" => "Me",
         "panel.inspector.anim_card.script" => "Script",
@@ -64,7 +64,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.pause" => "\u{23F8}",
         "panel.inspector.anim_card.rewind_tip" => "Back to the first frame.",
         "panel.inspector.anim_card.playback" => "Playback",
-        "panel.inspector.anim_card.frames_chosen" => "{n} frames chosen in the editor",
+        "panel.inspector.anim_card.frames_chosen" => "{n} {n?frame|frames} chosen in the editor",
         "panel.inspector.anim_card.fps" => "Frames/s",
         "panel.inspector.anim_card.cycle" => "Cycle",
         "panel.inspector.anim_card.cycle_repeat" => "Repeat",

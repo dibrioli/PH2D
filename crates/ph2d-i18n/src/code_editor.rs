@@ -22,7 +22,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.status.strict" => "Strict types",
         // O contador de problemas (ícones e números) ao leitor de ecrã: o molde do VS Code 1.142.
         "code.status.counter" => "Errors: {errors}, Warnings: {warnings}",
-        "code.status.reloaded" => "Reloaded · {count} objects",
+        "code.status.reloaded" => "Reloaded · {count} {count?object|objects}",
         "code.status.reloaded_one" => "Reloaded · 1 object",
         "code.status.refused_line" => {
             "Not applied: error on line {line} — the previous version keeps running"
@@ -47,7 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.find.placeholder" => "Find",
         "code.find.replace_placeholder" => "Replace",
         "code.find.count" => "{current} of {total}",
-        "code.find.total" => "{total} results",
+        "code.find.total" => "{total} {total?result|results}",
         "code.find.total_one" => "1 result",
         "code.find.none" => "No results",
         "code.find.case" => "Aa",
@@ -58,7 +58,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.goto.placeholder" => "Line number",
         // O console da aba (E10).
         "code.console.title" => "Console",
-        "code.console.title_errors" => "Console · {count} errors",
+        "code.console.title_errors" => "Console · {count} {count?error|errors}",
         "code.console.title_errors_one" => "Console · 1 error",
         "code.console.clear" => "Clear",
         "code.console.empty" => "Nothing printed yet — print() from the script shows here",
@@ -163,10 +163,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.list.rename" => "Rename",
         "code.list.delete" => "Delete",
         "code.list.no_match" => "No script matches",
-        "code.list.users" => "{count} objects",
+        "code.list.users" => "{count} {count?object|objects}",
         "code.list.users_one" => "1 object",
         "code.list.in_use" => {
-            "\u{201c}{name}\u{201d} is used by {count} object(s) \u{2014} it was not deleted"
+            "\u{201c}{name}\u{201d} is used by {count} {count?object|objects} \u{2014} it was not deleted"
         }
         "code.list.show" => "Show the script list",
         "code.list.hide" => "Hide the script list",

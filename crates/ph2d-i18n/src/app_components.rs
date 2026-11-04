@@ -37,17 +37,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That is not a copy of a prefab \u{2014} pick one, or the prefab row"
         }
         "app.components.instance_revert.reverted_override_s_to_the_prefab" => {
-            "Reverted {r} override(s) to the prefab"
+            "Reverted {r} {r?override|overrides} to the prefab"
         }
         "app.components.instance_revert.reverted_change_s_position_kept" => {
-            "Reverted {r} change(s) — position kept"
+            "Reverted {r} {r?change|changes} — position kept"
         }
         "app.components.instance_revert.only_the_position_differs_it_stays_where_you_put" => {
             "Only the position differs — it stays where you put it"
         }
         "app.components.instance_revert.nothing_overridden_here" => "Nothing overridden here",
         "app.components.instance_revert.put_back_piece_s_and_reverted_change_s" => {
-            "Put back {pieces_back} piece(s) \u{2014} and reverted {r} change(s)"
+            "Put back {pieces_back} {pieces_back?piece|pieces} \u{2014} and reverted {r} {r?change|changes}"
         }
         "app.components.instance_revert.not_part_of_an_instance_nothing_to_revert" => {
             "Not part of an instance — nothing to revert"
@@ -61,11 +61,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "app.components.instance_verbs.not_part_of_an_instance" => "Not part of an instance",
         "app.components.instance_verbs.applied_change_s_to_the_prefab" => {
-            "Applied {n} change(s) to the prefab"
+            "Applied {n} {n?change|changes} to the prefab"
         }
         "app.components.instance_verbs.nothing_overridden_here" => "Nothing overridden here",
         "app.components.instance_verbs.detached_piece_s_from_the_prefab" => {
-            "Detached {n} piece(s) from the prefab"
+            "Detached {n} {n?piece|pieces} from the prefab"
         }
         "app.components.instance_verbs.not_a_prefab_pick_the_prefab_row" => {
             "Not a prefab — pick the prefab row"
@@ -93,7 +93,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:end
         // ADR-0188 §2 — the load imported loose script files into the project (the toast of the open).
         "app.components.script_project.copied_script_file_s_into_the_project" => {
-            "Copied {n} script file(s) into the project \u{2014} the loose files no longer change it"
+            "Copied {n} script {n?file|files} into the project \u{2014} the loose files no longer change it"
         }
         "app.components.script_project.found_in_the_app_working_folder_not_next_to_the_project" => {
             "{n} found in the app\u{2019}s working folder, not next to the project \u{2014} check they are the right ones"
@@ -118,7 +118,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "the copy would land inside its own master"
         }
         "app.components.script_project.script_file_s_not_found_the_script_card_names_them" => {
-            "{n} script file(s) not found \u{2014} the Script card names them"
+            "{n} script {n?file|files} not found \u{2014} the Script card names them"
         }
         // GEF 21 E2 — um som importado (Import… ou largado na janela) entra nos sons do projeto.
         "app.components.sound_project.added_to_the_project_sounds" => {
@@ -141,10 +141,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // GEF 21 E2 — o load copiou sons soltos para dentro do projeto (o toast do open).
         "app.components.sound_project.copied_sound_files_into_the_project" => {
-            "Copied {n} sound file(s) into the project \u{2014} moving the loose files no longer silences it"
+            "Copied {n} sound {n?file|files} into the project \u{2014} moving the loose files no longer silences it"
         }
         "app.components.sound_project.sound_files_not_found" => {
-            "{n} sound file(s) not found \u{2014} the Audio Source card names them"
+            "{n} sound {n?file|files} not found \u{2014} the Audio Source card names them"
         }
         // F30 — a cena `PH2D_AUTOKEY_SMOKE=35`.
         "app.components.autokey_smoke_cena.ground" => "Ground",

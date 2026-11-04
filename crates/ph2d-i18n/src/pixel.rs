@@ -282,7 +282,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.color_mode.gray.hsl" => "HSL",
         "pixel.color_mode.done" => "The sprite is now {mode}",
         "pixel.palette.file_kind" => "Palette",
-        "pixel.palette.loaded" => "Palette loaded: {n} colors",
+        "pixel.palette.loaded" => "Palette loaded: {n} {n?color|colors}",
         "pixel.palette.load_failed" => "This palette file could not be read: {e}",
         "pixel.palette.saved" => "Palette saved: {path}",
         "pixel.palette.save_failed" => "The palette could not be saved: {e}",

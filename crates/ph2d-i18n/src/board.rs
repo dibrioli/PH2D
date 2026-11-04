@@ -19,7 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Its lists and cards will be lost (Ctrl+Z brings it back)."
         }
         "board.dialog.delete_kanban_hint_boards" => {
-            "Its lists and cards will be lost (Ctrl+Z brings it back).\nIt also leaves the {n} board(s) that show it."
+            "Its lists and cards will be lost (Ctrl+Z brings it back).\nIt also leaves the {n} {n?board|boards} that show it."
         }
         "board.dialog.delete" => "Delete board",
         "board.dialog.delete_kanban" => "Delete Kanban",

@@ -133,7 +133,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "at" => "{day} at {time}",
         "ago.now" => "just now",
         "ago.min" => "{n} min ago",
-        "ago.hour" => "{n} hours ago",
+        "ago.hour" => "{n} {n?hour|hours} ago",
         "h.created" => "added this card to {list}",
         "h.converted" => "converted this card from a checklist item in {card}",
         "h.moved" => "moved this card from {from} to {to}",

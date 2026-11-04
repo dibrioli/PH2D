@@ -36,8 +36,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // `Boss` junto, e o artista só vê isso se o botão o disser ANTES de ser carregado — são
         // duas frases porque uma tag-folha não leva tags nenhumas.
         "panel.tags.verb.select" => "Select ({members})",
-        "panel.tags.verb.delete_subtree" => "Delete ({tags} tags, {objects} objects)",
-        "panel.tags.verb.delete" => "Delete ({objects} objects)",
+        "panel.tags.verb.delete_subtree" => "Delete ({tags} {tags?tag|tags}, {objects} {objects?object|objects})",
+        "panel.tags.verb.delete" => "Delete ({objects} {objects?object|objects})",
         // ⚠️ A frase do vazio NOMEIA o botão que a cura (`+ New`), e por isso ela é uma frase
         // inteira e não um fragmento: um *«Nenhuma tag»* solto não diz ao artista o que fazer.
         "panel.tags.empty" => "No tags yet. Press + New to make the first one.",

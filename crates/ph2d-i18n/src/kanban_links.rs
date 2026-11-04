@@ -16,7 +16,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "kanban.links.kind.board" => "Board",
         "kanban.links.kind.element" => "Board element",
         "kanban.links.span_frames" => "frames {from}\u{2013}{to}",
-        "kanban.links.cards_linking" => "{n} cards",
+        "kanban.links.cards_linking" => "{n} {n?card|cards}",
         "kanban.links.card_linking" => "1 card",
         "kanban.links.to_card" => "Convert to card",
         "kanban.links.to_card_title" => "Convert to card in\u{2026}",

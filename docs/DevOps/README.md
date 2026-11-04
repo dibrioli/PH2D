@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**20 arquivos** · **8** citados pelo `CLAUDE.md` (marcados **◆**) · **6** são handoffs (registro **morto**).
+**20 arquivos** · **9** citados pelo `CLAUDE.md` (marcados **◆**) · **6** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -29,7 +29,7 @@
 |   | [MEDICAO_P1_P4_LARGURA_2026-11-03.md](MEDICAO_P1_P4_LARGURA_2026-11-03.md) | — | Medição P1–P4 da largura do pincel — 03/11 |
 | ◆ | [MEDIR_VELOCIDADE.md](MEDIR_VELOCIDADE.md) | — | Medir velocidade sem esperar horas — a régua INTERCALADA |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |
-|   | [PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md) | pesquisa | Como os projetos grandes aceleram testes e CI — pesquisa e medição (04/11/2026) |
+| ◆ | [PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md) | pesquisa | Como os projetos grandes aceleram testes e CI — pesquisa e medição (04/11/2026) |
 |   | [PESQUISA_DESENVOLVIMENTO_RAPIDO_2026-11-03.md](PESQUISA_DESENVOLVIMENTO_RAPIDO_2026-11-03.md) | pesquisa | Medir menos, integrar mais cedo, reler menos |
 | ◆ | [PLANO_ACELERACAO_2026-11.md](PLANO_ACELERACAO_2026-11.md) | plano | PLANO_ACELERACAO_2026-11 — medir menos, integrar mais cedo, reler menos |
 |   | [PLANO_PARTIR_APP_MOTION.md](PLANO_PARTIR_APP_MOTION.md) | plano | Plano — partir `ph2d-app-motion` em crates por família (item M da comissão) |

@@ -175,10 +175,21 @@ fn colhe(
     saida: &mut Vec<Marca>,
 ) {
     let _ = host.medindo_a_pintura_do_registo(painel, viewport());
-    let registos = host.registos_da_ultima_pintura();
+    let mut registos = host.registos_da_ultima_pintura();
     let cartao = registos
         .iter()
         .any(|(nid, _)| host.store().is_card_section(*nid));
+    // Numa lista de cartões o 1.º quadro corta o corpo na mola das alturas: uma marca apanhada no
+    // corte mediu 24,5 px (Pixel). A régua é a altura da marca, por isso mede a lista assente.
+    if cartao {
+        for _ in 0..60 {
+            let _ = ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || host.medindo_a_pintura_do_registo(painel, viewport()),
+            );
+        }
+        registos = host.registos_da_ultima_pintura();
+    }
     for (nid, rect) in registos {
         // ⚠️ **As DUAS espécies de marca booleana**: o mesmo pintor serve `Checkbox` e `Toggle`
         //    ([`paint_boolean_mark`]), e medir só uma deixaria metade da população de fora.

@@ -84,7 +84,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 
 (cada bloco fechado acrescenta aqui: commits, fotos, testes, o que ficou aberto)
 
-BLOCO_E_AQUI
+**Bloco E (04/11).** Flip, Pixel e Frames em cartões, commits `21772a0937`, `f28bef813e`, `9994d86ed2`, `43449f82fa` e o de Frames. Testes por gesto: `ph2d-panel-flip` 52, `ph2d-panel-pixel-tools` 74, `ph2d-panel-flip-frames` 21, verdes; os gates antigos correm no corpo de `PH2D_CARDS=0` (`host_de_antes`). API nova: `CardCtx::bare` público, `Rotulo::vista_de`, `corpo::choices` sem ids e sem nome; `pixel_layer_row` pinta com `card_ink::tinta`, igual fora de um cartão. Fotos: `maquete/e_flip.png`, `e_frames.png`, `e_pixel.png`, `e_pixel_menus.png`. Nenhuma catraca mexida: Flip, Frames e Pixel não têm linha nas tabelas de `quantas_entradas_tem_cada_painel`. A caixa da cor sem campo de texto passa a abrir o seletor inteira (`Widget::Swatch`): era um alvo de 26 px numa caixa da largura da fileira, e `um_seletor_de_cor_sozinho…` acusou-a no Flip. `a_marca_tem_a_altura_da_linha` mede a lista assente: o 1.º quadro cortava uma marca do Pixel a 24,5 px. Fotos dos estados: `e_flip_fill.png`, `e_flip_colorize_edit_sculpt.png`. Aberto: a mão ainda não arrastou uma camada do Flip (só setas, como antes); o estado do seletor em Normal Map e o texto do Pixel só têm teste, sem foto.
 
 **Bloco A (04/11).** Mecanismo do Camera (a hipótese de 05 §8 estava errada): `close_section` dentro do corpo fechava uma chapa
 `Bg1` do topo do cabeçalho até à fronteira do Cull Mask, pintada DEPOIS do título, que cobria título e caixas (o mesmo em

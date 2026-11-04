@@ -429,8 +429,13 @@ impl<'s> CardCtx<'s> {
         });
         let g = m::ICON_GLYPH;
         let amostra = Rect::new(r.x + (m::ICON_CELL - g) * 0.5, r.y + (r.h - g) * 0.5, g, g);
-        self.hit_index
-            .register(id, Rect::new(r.x, r.y, m::ICON_CELL, r.h));
+        // Sem caixa de texto, o código não faz nada: a caixa inteira abre o seletor.
+        let alvo = if edit.is_some() {
+            Rect::new(r.x, r.y, m::ICON_CELL, r.h)
+        } else {
+            r
+        };
+        self.hit_index.register(id, alvo);
         if let Some(c) = rgba {
             fill_rounded_rect(
                 self.scene,

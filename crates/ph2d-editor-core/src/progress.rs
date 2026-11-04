@@ -434,7 +434,7 @@ pub(crate) fn paint_bar(p: &Progress, r: Rect, scene: &mut VectorScene, ctx: &mu
     // Same body as a toast — same column, same surface, so the two read as one stack.
     let sup = crate::widget::lista_flutuante::Superficie::de(ctx.theme);
     if sup.tinta().is_some() {
-        sup.moldura_de_painel(scene, r);
+        sup.moldura_de_caixa(scene, r);
     } else {
         fill_rounded_rect(
             scene,

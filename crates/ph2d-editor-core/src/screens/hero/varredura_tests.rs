@@ -112,10 +112,18 @@ fn o_aviso_veste_a_lista_e_perde_a_faixa_de_cor() {
     let verde = resolve(ColorToken::Success, TEMA);
     let velho = resolve(ColorToken::BgElev, TEMA);
     let novo = CardInk::of_list(TEMA)
+        .color(ColorToken::KanbanCardRaised)
+        .with_alpha(1.0);
+    let barra = CardInk::of_list(TEMA)
         .color(ColorToken::KanbanList)
         .with_alpha(1.0);
+    assert_ne!(
+        novo, barra,
+        "a 1.ª linha do aviso cai sobre a barra de cima"
+    );
     let (c, a) = (pinta_um_aviso(true), pinta_um_aviso(false));
-    assert_eq!(vezes_cor(&c, novo), 1, "corpo da lista");
+    assert_eq!(vezes_cor(&c, novo), 1, "corpo levantado");
+    assert_eq!(vezes_cor(&c, barra), 0, "nunca no tom da barra");
     assert_eq!(vezes_cor(&c, velho), 0, "sem o corpo de antes");
     assert!(vezes_cor(&a, velho) >= 1, "PH2D_CARDS=0: o corpo de antes");
     assert!(
@@ -202,7 +210,7 @@ fn a_barra_de_trabalho_veste_a_mesma_superficie_do_aviso() {
         scene
     };
     let novo = CardInk::of_list(TEMA)
-        .color(ColorToken::KanbanList)
+        .color(ColorToken::KanbanCardRaised)
         .with_alpha(1.0);
     assert_eq!(vezes_cor(&pinta(true), novo), 1);
     assert_eq!(

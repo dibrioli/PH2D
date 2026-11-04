@@ -254,8 +254,9 @@ fn paint_toast(toast: &Toast, r: Rect, shown: &Shown, scene: &mut VectorScene, c
     let sup = crate::widget::lista_flutuante::Superficie::de(ctx.theme);
     let cartao = sup.tinta().is_some();
     if cartao {
-        // A superfície da lista; a severidade fica só no ícone (`docs/CartoesUI/17`, item 3).
-        sup.moldura_de_painel(scene, r);
+        // Levantada: o tom da lista é o da barra de cima, e a 1.ª linha da coluna cai sobre ela.
+        // A severidade fica só no ícone (`docs/CartoesUI/17`, item 3).
+        sup.moldura_de_caixa(scene, r);
     } else {
         let radius = crate::paint::frame_radius(ctx.theme, Radius::Md.px());
         // Body uses BgElev so the toast lifts off the canvas

@@ -49,6 +49,12 @@ fn paint_card(
     let pad = Spacing::Lg.px();
     let gap = Spacing::Md.px();
     let inner_w = TIP_W - pad * 2.0;
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    // Em cartões, o texto e a moldura do desenho no tom da lista.
+    let cor = |antes: ColorToken, cartao: ColorToken| match superficie.tinta() {
+        Some(ink) => ink.color(cartao),
+        None => resolve(antes, theme),
+    };
 
     // ── O texto, em coordenadas do cartão, numa cena à parte. ──
     let mut text = VectorScene::new();
@@ -60,7 +66,7 @@ fn paint_card(
         pad,
         TypeToken::Sm.px(),
         inner_w,
-        resolve(ColorToken::Text1, theme),
+        cor(ColorToken::Text1, ColorToken::KanbanCardFg),
     );
     let picture = Rect::new(pad, pad + title_h + gap, inner_w, inner_w * PICTURE_ASPECT);
     let body_y = picture.y + picture.h + gap;
@@ -72,12 +78,11 @@ fn paint_card(
         body_y,
         TypeToken::Xs.px(),
         inner_w,
-        resolve(ColorToken::Text2, theme),
+        cor(ColorToken::Text2, ColorToken::CardLabel),
     );
     let card_h = body_y + body_h + pad;
 
     let card = place(item, TIP_W, card_h, gap, viewport);
-    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
     if superficie.tinta().is_some() {
         superficie.moldura_da_dica(scene, card);
     } else {
@@ -98,7 +103,7 @@ fn paint_card(
         scene,
         frame,
         crate::paint::frame_radius(theme, Radius::Sm.px()),
-        resolve(ColorToken::Bg3, theme),
+        cor(ColorToken::Bg3, ColorToken::CardField),
     );
     crate::widget::illustration::paint_illustration(scene, frame, tip.picture, theme);
     scene.append_transformed(

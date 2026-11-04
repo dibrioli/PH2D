@@ -3,7 +3,7 @@
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, registra_lista};
+use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, marca, registra_lista};
 use crate::paint_wetpaint_presets_biblioteca as biblioteca;
 use crate::state_wet_presets::{self as st, VistaPresets};
 use crate::{cards_composto, cards_ferramenta, cards_wet, number_field, paint_brush};
@@ -75,11 +75,13 @@ impl Numero {
 
 /// Uma linha de um destes cartões.
 pub(crate) enum Linha {
-    Modo,
+    /// `true` = Sync divide a linha com ela.
+    Modo(bool),
     Preset,
     Favorito,
     Acoes,
-    Politica,
+    /// `true` = Sync divide a linha com ela.
+    Politica(bool),
     Sync,
     Blend,
     Vazio,
@@ -157,8 +159,9 @@ pub(crate) fn do_topo(
     let dono = Dono::novo(ctx, pids::PAINTER_CARD_TOPO, ink, x, w);
     let vista = st::current_wet_presets();
     let mut l = Vec::new();
-    if !brush.is_inpaint && brush.meios.count_ones() > 1 {
-        l.push(Linha::Modo);
+    let tem_modo = !brush.is_inpaint && brush.meios.count_ones() > 1;
+    if tem_modo {
+        l.push(Linha::Modo(vista.is_none()));
     }
     if let Some(v) = vista.as_deref() {
         l.push(Linha::Preset);
@@ -181,16 +184,16 @@ pub(crate) fn do_topo(
         l.extend(pares.map(|i| Linha::Par(Box::new([Linha::Volume(i), Linha::Volume(i + 1)]))));
     }
     if vista.is_some() {
-        l.push(Linha::Politica);
+        l.push(Linha::Politica(true));
     }
-    l.push(Linha::Sync);
+    if vista.is_none() && !tem_modo {
+        l.push(Linha::Sync);
+    }
     l
 }
 
 /// As linhas do cartão Basics. Vazio = o cartão não está à vista.
-pub(crate) fn dos_basicos(
-    brush: BrushSettings,
-) -> Vec<Linha> {
+pub(crate) fn dos_basicos(brush: BrushSettings) -> Vec<Linha> {
     let mut l = Vec::new();
     let le_a_cor = brush.le(LinhaDaFerramenta::Cor);
     if le_a_cor && !brush.watercolor && brush.le(LinhaDaFerramenta::Blend) {
@@ -307,6 +310,10 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     for id in COM_LEI {
         let _ = crate::esmaecer::poe_dica(store, &[id]);
     }
+    store.set_tooltip(
+        pids::PAINTER_BRUSH_SYNC,
+        tr("panel.painter_layers.brush.sync_tools"),
+    );
 }
 
 /// Os ids destas linhas com linha esmaecida (`Dependente`): a lei é da ferramenta, e aqui só se pinta.
@@ -363,6 +370,32 @@ fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f
     )
 }
 
+/// Uma lista e o Sync, irmãos curtos na mesma linha.
+fn lista_e_sync(
+    c: &mut CardCtx<'_>,
+    b: &BrushSettings,
+    com_sync: bool,
+    (chave, id): (&str, NodeId),
+    texto: &str,
+    y: f32,
+) -> f32 {
+    if !com_sync {
+        return lista(c, chave, id, texto, y);
+    }
+    let celula = Cell::new(Widget::Dropdown {
+        id,
+        text: texto,
+        options: &[],
+    })
+    .label(tr(chave));
+    let sync = marca(
+        pids::PAINTER_BRUSH_SYNC,
+        "card.painter.brush.sync",
+        b.link_shared,
+    );
+    c.row(&[celula, sync], y)
+}
+
 fn numero_em_caixa(rotulo: &str, id: NodeId) -> Widget<'_> {
     Widget::Field {
         id,
@@ -415,10 +448,14 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
     let vista = st::current_wet_presets();
     let vista: Option<&VistaPresets> = vista.as_deref();
     match linha {
-        Linha::Modo => lista(
+        Linha::Modo(com_sync) => lista_e_sync(
             c,
-            "panel.painter_layers.brush.paint_mode",
-            pids::PAINTER_BRUSH_MEDIA,
+            b,
+            *com_sync,
+            (
+                "panel.painter_layers.brush.paint_mode",
+                pids::PAINTER_BRUSH_MEDIA,
+            ),
             tr(PaintMedia::from_u8(b.media).name_key()),
             y,
         ),
@@ -452,17 +489,21 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             todos.extend(biblioteca::botoes_da_biblioteca(v));
             botoes(c, &todos, y)
         }),
-        Linha::Politica => lista(
+        Linha::Politica(com_sync) => lista_e_sync(
             c,
-            "panel.painter_layers.wetpaint.preset_policy",
-            pids::PAINTER_WETPAINT_PRESET_POLICY,
+            b,
+            *com_sync,
+            (
+                "panel.painter_layers.wetpaint.preset_policy",
+                pids::PAINTER_WETPAINT_PRESET_POLICY,
+            ),
             paint_wetpaint_presets::nome_da_politica(vista.map_or(0, |v| v.politica)),
             y,
         ),
         Linha::Sync => ferramenta::caixa(
             c,
             pids::PAINTER_BRUSH_SYNC,
-            "panel.painter_layers.brush.sync_tools",
+            "card.painter.brush.sync",
             b.link_shared,
             y,
         ),

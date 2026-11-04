@@ -22,18 +22,18 @@ use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
 
 /// `(painel, irmãos separados, linhas grudadas, textos cortados)`, medido em 04/11.
 ///
-/// `painter_layers`: as 5 são as linhas antigas dos corpos em captura (vão 3 contra 6), dívida do
-/// bloco H; `Texture + Dual brush` é o irmão. Medido com o trabalho da H5 na árvore.
-const PENDENTES: &[(&str, usize, usize, usize)] =
-    &[("painter_layers", 0, 5, 0), ("widget_gallery", 7, 1, 0)];
+/// `painter_layers` saiu a 04/11 (H8): as 5 últimas linhas grudadas vinham de Mixing, Symmetry e Tiling, que corriam o
+/// corpo antigo só para saber se estavam à vista.
+const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 7, 1, 0)];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.
 const POPULACAO: &[(&str, usize)] = &[
     ("vector", 100),
     ("skeleton", 12),
     ("inspector", 400),
-    // 04/11, H6 e H7: Paper, Grain, Randomize, Stroke e Pen em linhas aos pares, de 700 para 254: menos linhas, os mesmos ids.
-    ("painter_layers", 250),
+    // 04/11, H8: 718 medidas com 12 estados semeados (`censo_estados`). Sem eles eram 138 em duas pinturas: o censo
+    // estava CEGO para Máscara, Deform, Selection e Layers, e o piso de 250 aceitava-o.
+    ("painter_layers", 700),
     ("physics", 30),
     ("audio_editor", 10),
     #[cfg(feature = "panel-flip-frames")]

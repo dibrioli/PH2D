@@ -2,7 +2,7 @@
 //! `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos. Qual verbo pinta qual número é a tabela de
 //! `paint_sculpt`, e o que a Line oferece é a de `line_barras`.
 
-use crate::cards_linhas::{Item, Pista, aberta, botoes, fila, marca, registra_lista};
+use crate::cards_linhas::{Item, Pista, aberta, botoes, fila, registra_lista};
 use crate::{line_barras, paint_line, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -167,6 +167,13 @@ pub(crate) fn linha(
     if let Some((chave, ids)) = sobra {
         itens.push(Item::Barra { chave, ids: *ids });
     }
+    if b.is_clone {
+        itens.push(Item::Caixa {
+            id: pids::PAINTER_BRUSH_CLONE_ALIGNED,
+            chave: "panel.painter_layers.clone.aligned",
+            on: b.clone_aligned,
+        });
+    }
     if b.le(LinhaDaFerramenta::Solido) {
         itens.push(Item::Caixa {
             id: pids::PAINTER_LINE_SOLID,
@@ -204,7 +211,7 @@ pub(crate) fn linha(
     fila(c, &itens, y)
 }
 
-/// O botão arma a amostragem e fica azul até o clique na tela; a dica só antes da 1.ª amostra.
+/// O botão arma a amostragem e fica azul até o clique na tela; a dica só antes da 1.ª amostra. Aligned vive na fila do traço, irmã curta.
 pub(crate) fn clone(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     let texto = if b.clone_sample_armed {
         tr("panel.painter_layers.clone.sample_hint")
@@ -213,19 +220,14 @@ pub(crate) fn clone(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     } else {
         tr("panel.painter_layers.clone.set_source")
     };
-    let cells = [
-        Cell::new(Widget::Button {
+    let y = c.row(
+        &[Cell::new(Widget::Button {
             id: pids::PAINTER_BRUSH_CLONE_SET_SOURCE,
             text: texto,
             primary: b.clone_sample_armed,
-        }),
-        marca(
-            pids::PAINTER_BRUSH_CLONE_ALIGNED,
-            "panel.painter_layers.clone.aligned",
-            b.clone_aligned,
-        ),
-    ];
-    let y = c.row(&cells, y);
+        })],
+        y,
+    );
     if b.clone_has_source {
         y
     } else {

@@ -64,8 +64,10 @@ corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou es
 | H5 ✅ | Shape + Shape Color em linhas (`cards_shape.rs`, `cards_shape_tom.rs`). Capturados: curva do Falloff, visor do Taper, gizmo Flatten, prévia, linhas por camada, editor da rampa (nunca redesenhados aqui) | alto: curva e rampa |
 | H6 ✅ | Paper + Grain + Randomize em linhas (`cards_papel.rs`, `cards_grao.rs`, `cards_aleatorio.rs`). Capturados: prévias, editor da rampa, títulos Grain Behavior e Grain Colors | médio; prensa do papel é controlo de pincel |
 | H7 ✅ | Stroke + Pen em linhas (`cards_traco.rs`, `cards_caneta.rs`; Spacing e Continuous juntos). Capturado: só o título do Jitter | médio: 43 + 25 |
-| H8 | Composite, Line, Clone, Inpaint, Mask, Deform, Selection, Sculpt | médio |
-| H9 | Layers nativa (`list_row`, voo, ajustes); retirar captura e `card.rs`; censo «zero corpo antigo» | alto |
+| H8 ✅ | Composite, Line, Clone, Inpaint, Mask, Deform, Selection, Sculpt em linhas (`cards_composto.rs`, `cards_ferramenta.rs`, `cards_exclusivos.rs`). Mixing, Symmetry e Tiling deixam de correr o corpo antigo. Capturada: a prévia do Flow | médio |
+| H9 parcial | Layers nativa (`cards_camadas.rs`, `cards_camadas_linha.rs`): verbos, modificadores, linha, mistura, opacidade, relevo, máscara, voo. **Falta:** ver abaixo | alto |
+
+**O que resta capturado (o `Captura::da_peca`, nada a nível de secção):** prévia dos presets; prévias do padrão (Paper, Grain, Shape, Flow); curva do Falloff; visor do Taper; gizmo Flatten; prévia da forma; linhas por camada da Shape; editor da rampa (Shape Color, Grain, Texture); títulos que dobram (Grain Behavior, Grain Colors, Jitter); visor do Tilt; parâmetros de ajuste (curva, degradê, Levels, barras); editor da camada Texture; prévia fixada na faixa. `card.rs` e `seccoes.rs` ficam vivos para `PH2D_CARDS=0` e para estas peças. A prévia só pede `scene` e `theme`: é a próxima a sair.
 
 Leis que nenhuma fatia desfaz: só pele, **nenhum motor, preset ou pincel muda** (por nome, `a_largura_de_fabrica_e_a_aprovada` e
 `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`) · E10 · Paper press é controlo do pincel · Paint type Water/Oil · Volume ≠

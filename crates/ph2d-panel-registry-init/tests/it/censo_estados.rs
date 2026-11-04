@@ -15,6 +15,78 @@ pub struct Estado {
 }
 
 pub const ESTADOS: &[Estado] = &[
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::molhado,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::aguada,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::impasto,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::mascara,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::deform,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::selecao,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::composto,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::esculpe,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::linha,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::clone,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::inpaint,
+        desarma: pintor::limpa,
+    },
+    #[cfg(feature = "panel-painter-layers")]
+    Estado {
+        painel: "painter_layers",
+        arma: pintor::camadas,
+        desarma: pintor::limpa,
+    },
     #[cfg(feature = "panel-vector")]
     Estado {
         painel: "vector",
@@ -285,5 +357,110 @@ mod audio {
         a::set_loaded(false);
         a::set_has_selection(false);
         a::set_can_undo(false);
+    }
+}
+
+/// O Painter de fábrica só mostra um meio: cada meio e cada ferramenta dona do corpo é população (medido em 04/11: 138
+/// linhas sem estes estados, em 2 pinturas, e Máscara, Deform, Selection e Layers não eram vistas).
+#[cfg(feature = "panel-painter-layers")]
+mod pintor {
+    use ph2d_panel_painter_layers::FALLBACK_BRUSH;
+    use ph2d_panel_painter_layers::state::{
+        set_current_brush, set_current_dock_shows_layers, set_current_layers,
+    };
+    use ph2d_tool_painter::{BrushSettings, LayerStack, LineKind, PaintMedia};
+
+    fn com(muda: impl FnOnce(&mut BrushSettings)) {
+        let mut b = FALLBACK_BRUSH;
+        muda(&mut b);
+        set_current_brush(Some(b));
+    }
+
+    pub fn molhado() {
+        com(|b| {
+            b.media = PaintMedia::WetPaint.to_u8();
+            b.wetpaint = true;
+        });
+    }
+
+    pub fn aguada() {
+        com(|b| {
+            b.media = PaintMedia::Watercolor.to_u8();
+            b.watercolor = true;
+            b.watercolor_active = true;
+        });
+    }
+
+    pub fn impasto() {
+        com(|b| {
+            b.media = PaintMedia::Impasto.to_u8();
+            b.impasto = true;
+            b.impasto_applies = true;
+        });
+    }
+
+    pub fn mascara() {
+        com(|b| b.is_mask = true);
+    }
+
+    pub fn deform() {
+        com(|b| {
+            b.is_deform = true;
+            b.deform_temperament = ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE;
+        });
+    }
+
+    pub fn selecao() {
+        com(|b| {
+            b.is_selection = true;
+            b.selection_edit = true;
+        });
+    }
+
+    pub fn composto() {
+        com(|b| {
+            b.composite_enabled = true;
+            b.composite_len = 3;
+            b.composite_ops[1] = 2;
+            b.composite_ops[2] = 3;
+        });
+    }
+
+    pub fn esculpe() {
+        com(|b| {
+            b.media = PaintMedia::Impasto.to_u8();
+            b.impasto = true;
+            b.impasto_applies = true;
+            b.is_sculpt = true;
+            b.sculpt_knob_family = 1;
+            b.sculpt_is_chisel = true;
+            b.sculpt_filters = true;
+        });
+    }
+
+    pub fn linha() {
+        com(|b| b.line_kind = LineKind::Sketchy.to_wire());
+    }
+
+    pub fn clone() {
+        com(|b| b.is_clone = true);
+    }
+
+    pub fn inpaint() {
+        com(|b| b.is_inpaint = true);
+    }
+
+    pub fn camadas() {
+        let mut s = LayerStack::new();
+        let _ = s.add_raster("Base", 8, 8);
+        let _ = s.add_raster("Top", 8, 8);
+        set_current_layers(Some(s));
+        set_current_dock_shows_layers(true);
+    }
+
+    pub fn limpa() {
+        set_current_brush(None);
+        set_current_layers(None);
+        set_current_dock_shows_layers(false);
     }
 }

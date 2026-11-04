@@ -238,3 +238,29 @@ fn nothing_overlaps_no_text_is_cut_and_no_row_sticks() {
     sem_sobrepor(&m3, &barras, "camadas");
     set_current_layers(None);
 }
+
+/// Um ajuste não aceita Mask, Clip, Lock nem Ref: os quatro apagados e sem alvo, como no painel de antes.
+/// *Mutação: `h_inelegivel_vivo` ⇒ vermelho.*
+#[test]
+fn an_adjustment_layer_has_no_modifiers() {
+    let alvos = |cartoes: bool| {
+        let mut s = pilha().0;
+        let adj = s
+            .add_adjustment(ph2d_tool_painter::AdjustmentKind::Bloom)
+            .expect("o ajuste nasce");
+        s.set_active(adj);
+        let m = abre(cartoes, s);
+        let r = [
+            p::PAINTER_LAYERS_MASK,
+            p::PAINTER_LAYERS_CLIP,
+            p::PAINTER_LAYERS_ALPHA_LOCK,
+            p::PAINTER_LAYERS_REFERENCE,
+            p::PAINTER_LAYERS_ADD,
+        ]
+        .map(|id| m.rect(id).is_some());
+        set_current_layers(None);
+        r
+    };
+    assert_eq!(alvos(false), alvos(true));
+    assert_eq!(alvos(true), [false, false, false, false, true]);
+}

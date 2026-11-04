@@ -409,11 +409,7 @@ fn short_siblings_share_a_row() {
         p::PAINTER_BRUSH_COMPOSITE_COLOR[0],
     );
     let cl = Mesa::nova(true, pincel(PaintMedia::Digital, "clone").0, false);
-    na_mesma_linha(
-        &cl,
-        p::PAINTER_BRUSH_CLONE_SET_SOURCE,
-        p::PAINTER_BRUSH_CLONE_ALIGNED,
-    );
+    na_mesma_linha(&cl, p::PAINTER_BRUSH_CLONE_ALIGNED, p::PAINTER_LINE_TYPE);
     let d = Mesa::nova(true, deform(DEFORM_TEMPERAMENT_RESHAPE, 0, false), false);
     na_mesma_linha(
         &d,
@@ -550,19 +546,26 @@ fn a_bar_and_a_list_wear_their_animation_mark() {
     }
 }
 
-/// A barra que a ferramenta diz inerte diz porquê. *Mutação: `tr_sem_dica` ⇒ vermelho.*
+/// A barra que a ferramenta diz inerte diz porquê, em Stroke, Pen e nestas peças.
+/// *Mutação: `tr_sem_dica`, `ab_sem_dica` ⇒ vermelho.*
 #[test]
 fn an_inert_bar_says_why() {
     let mut vistas = 0;
-    for (nome, b) in super::h7_os_cartoes::estados() {
+    let todas: Vec<NodeId> = super::h7_os_cartoes::BARRAS
+        .iter()
+        .copied()
+        .chain(barras())
+        .collect();
+    let estados_todos = super::h7_os_cartoes::estados().into_iter().chain(estados());
+    for (nome, b) in estados_todos {
         let m = Mesa::nova(true, b, false);
-        for barra in super::h7_os_cartoes::BARRAS {
-            let chip = m.host.store().linked_number(barra);
+        for barra in &todas {
+            let chip = m.host.store().linked_number(*barra);
             let a_vista = chip.is_some_and(|c| m.rect(c).is_some());
-            if !a_vista || b.inercias.dica_de(barra).is_none() {
+            if !a_vista || b.inercias.dica_de(*barra).is_none() {
                 continue;
             }
-            let dica = m.host.store().tooltip_for(barra);
+            let dica = m.host.store().tooltip_for(*barra);
             assert!(dica.is_some_and(|t| !t.is_empty()), "{nome}: {barra:?}");
             vistas += 1;
         }
@@ -633,3 +636,57 @@ fn in_each_medium_every_native_control_falls_on_a_row_the_census_saw() {
 
 /// Os alvos de tela própria e os resets do cabeçalho nos quatro meios: medido em 04/11; só desce.
 const TELAS_FORA_DO_CENSO: usize = 69;
+
+/// Mixing, Symmetry e Tiling aparecem onde apareciam, agora sem correr o corpo antigo.
+/// *Mutação: `n_sem_presenca` ⇒ vermelho.*
+#[test]
+fn the_native_sections_appear_where_the_old_panel_shows_them() {
+    use ph2d_editor_core::panel::cards::grip_of;
+    for (nome, b) in estados() {
+        let (velha, nova) = (Mesa::nova(false, b, false), Mesa::nova(true, b, false));
+        for sec in [
+            p::PAINTER_BRUSH_SYMMETRY_SECTION,
+            p::PAINTER_BRUSH_TILING_SECTION,
+        ] {
+            assert_eq!(
+                velha.rect(grip_of(sec)).is_some(),
+                nova.rect(grip_of(sec)).is_some(),
+                "{nome}: {sec:?}"
+            );
+        }
+        let mix = p::PAINTER_WATERCOLOR_MIX;
+        assert_eq!(
+            velha.rect(mix).is_some(),
+            nova.rect(mix).is_some(),
+            "{nome}: Mixing"
+        );
+    }
+}
+
+/// O que abre de fábrica, linha a linha: de onde sai a altura de abertura.
+#[test]
+#[ignore = "diagnóstico: imprime as linhas, não afirma nada"]
+fn diag_as_linhas_da_abertura() {
+    use ph2d_panel_painter_layers::PainterLayersPanel;
+    use ph2d_panel_painter_layers::cards::force_cards_on_this_thread;
+    use ph2d_panel_painter_layers::state::{
+        PainterLayersPanelState, set_current_brush, set_current_dock_shows_layers,
+    };
+    force_cards_on_this_thread(Some(true));
+    set_current_brush(None);
+    set_current_dock_shows_layers(false);
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let j = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 6000.0);
+    for _ in 0..30 {
+        let _ = host.paint::<PainterLayersPanel>(&mut st, j);
+    }
+    let (_, c) = censo::grava(|| host.paint::<PainterLayersPanel>(&mut st, j));
+    for l in &c.linhas {
+        let nomes: Vec<&str> = l.celulas.iter().map(|x| x.nome.as_str()).collect();
+        println!(
+            "{:6.0}..{:6.0} x {:5.0} w {:4.0} {nomes:?}",
+            l.topo, l.fundo, l.x, l.w
+        );
+    }
+}

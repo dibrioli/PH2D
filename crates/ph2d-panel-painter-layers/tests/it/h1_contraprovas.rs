@@ -240,7 +240,9 @@ fn the_list_publishes_its_heights() {
 #[test]
 fn a_dragged_layer_row_paints_its_ghost() {
     use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
-    let tinta = ph2d_editor_core::paint::resolve(ColorToken::Bg2, Theme::default())
+    // A linha que voa é a da lista: a superfície do cartão do Kanban (H9).
+    let tinta = CardInk::of_card(None, Theme::default())
+        .color(ColorToken::KanbanCardRaised)
         .premultiply()
         .to_rgba8()
         .to_u32();

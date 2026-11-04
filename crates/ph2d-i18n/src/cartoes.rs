@@ -19,6 +19,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.painter.stroke.operation" => "Operation",
         "card.painter.stroke.delete" => "Delete",
         "card.painter.line.type" => "Line type",
+        "card.painter.brush.sync" => "Sync tools",
         "card.painter.layers.relief" => "Relief depth",
         "card.painter.layers.relief_mode" => "Relief mode",
         "card.painter.sculpt.radius" => "Radius (px)",

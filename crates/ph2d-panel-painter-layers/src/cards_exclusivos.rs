@@ -2,7 +2,7 @@
 //! corpo do painel. Mesmos ids, mesmos eventos. As caixas de antes viram grupos; o que escolhe é escolha, o que age é
 //! botão.
 
-use crate::cards_linhas::{Pista, botoes, escolha, fila, filete, grupo};
+use crate::cards_linhas::{Item, Pista, botoes, escolha, fila, filete, grupo};
 use crate::paint_mask::OVERLAY_COLORS;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -157,7 +157,7 @@ fn seg(id: NodeId, chave: &str, on: bool) -> Seg<'static> {
 /// As cinco cores da tinta sobre a máscara: quadrados, porque a cor não tem código a mostrar aqui.
 fn cores_da_mascara(c: &mut CardCtx<'_>, escolhida: usize, y: f32) -> f32 {
     let lado = m::FIELD_H;
-    let topo = c.hint(tr("panel.painter_layers.mask.overlay_color"), y) + m::LABEL_BOTTOM;
+    let topo = c.hint(tr("panel.painter_layers.mask.overlay_color"), y) + m::FIELD_ROW_GAP;
     let tema = c.ink.theme;
     for (i, rgba) in OVERLAY_COLORS.iter().enumerate() {
         let id = pids::PAINTER_MASK_COLOR[i];
@@ -221,7 +221,9 @@ pub(crate) fn mascara(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
         .enumerate()
         .map(|(i, k)| (pids::PAINTER_MASK_OP[i], tr(k)))
         .collect();
-    let y = botoes(c, &acoes, y);
+    let (uma, outra) = acoes.split_at(acoes.len() / 2);
+    let y = botoes(c, uma, y);
+    let y = botoes(c, outra, y);
     let y = cores_da_mascara(c, usize::from(b.mask_overlay_color), y);
     c.row(
         &[Cell::new(Widget::Button {
@@ -287,22 +289,19 @@ fn liquify(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
         .enumerate()
         .map(|(i, (id, k))| seg(*id, k, usize::from(b.deform_mode) == i))
         .collect();
-    let mut y = escolha(c, tr("panel.painter_layers.deform.deform_mode"), &segs, y);
+    let y = escolha(c, tr("panel.painter_layers.deform.deform_mode"), &segs, y);
     let mut itens: Vec<_> = DEFORM_BASE.iter().map(Pista::item).collect();
     if b.deform_mode != RECONSTROI {
         itens.extend(DEFORM_CAMPO.iter().map(Pista::item));
     }
-    y = fila(c, &itens, y);
     if b.deform_layer_has_relief {
-        y = ferramenta::caixa(
-            c,
-            pids::PAINTER_DEFORM_RELIEF,
-            "panel.painter_layers.deform.affect_relief",
-            b.deform_affect_relief,
-            y,
-        );
+        itens.push(Item::Caixa {
+            id: pids::PAINTER_DEFORM_RELIEF,
+            chave: "panel.painter_layers.deform.affect_relief",
+            on: b.deform_affect_relief,
+        });
     }
-    y
+    fila(c, &itens, y)
 }
 
 pub(crate) fn deform(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {

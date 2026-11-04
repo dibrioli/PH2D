@@ -24,7 +24,8 @@
 2. **Figma** — para qualquer widget ainda não criado, consulte o Figma PRIMEIRO (layout, nomes das
    propriedades, o campo numérico com glifo, camadas empilháveis, estilos).
 3. Complexidade que o Figma não resolve ⇒ **Rive** é a segunda referência mais importante.
-4. Ainda por resolver ⇒ **Inkscape, Godot e Unity** podem servir de referência.
+4. Widget não óbvio que nem Figma nem Rive resolvem ⇒ **app profissional com UI premiada** (dono 04/11); cite o prémio e a fonte na [16](16_REFERENCIAS_POR_CARTAO.md).
+5. Ainda por resolver ⇒ **Inkscape, Godot e Unity** podem servir de referência.
 
 **Micro-pesquisa antes de cada cartão (dono 04/11):** antes de mudar um cartão, veja como o Figma e o Rive resolvem aquilo: 1 a 3 consultas à documentação oficial e a imagens públicas, poucos minutos. Registe uma linha em [16_REFERENCIAS_POR_CARTAO.md](16_REFERENCIAS_POR_CARTAO.md) (cartão · Figma · Rive · o que adotamos), e consulte-a antes, para não repetir. Sem referência clara: escolha pela ordem acima e registe a dúvida para o dono. Leis e decisões do dono mandam sobre a referência.
 
@@ -105,6 +106,7 @@ Lei de layout ([02 §2](02_especificacao.md)): **rótulo EM CIMA** (obrigatório
 4. **Uma grelha por cartão.** As colunas das linhas de um cartão alinham entre si.
 5. **Largura é a única desculpa.** Se a coluna é estreita (iPad, D13), o par desce para duas linhas: nunca corta nome nem valor.
 6. Três ou mais amostras da mesma grandeza (Per-corner Tint) ficam numa linha só, sem código; o código abre no clique.
+7. **Texto nunca extrapola nem é cortado em botão ou segmento** (dono 04/11, «Wet canv… Dry canv…»: «Botões com texto extrapolando as bordas. Precisa corrigir e evitar isso»). O texto cabe com o respiro de `metrics`; se não cabe, os botões descem para mais linhas, ou o nome encurta sem perder o sentido. Nunca «…» num botão.
 
 | tipo | desenho |
 |---|---|

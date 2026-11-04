@@ -6,6 +6,7 @@
 //! cada data e a leitura do que o artista escreveu são do chamador. Ele guarda o estado do
 //! painel e devolve [`DatePickerEvent`]s; o chamador responde com [`DatePicker::set_date`].
 
+mod cartao;
 mod field;
 mod paint;
 

@@ -1,12 +1,14 @@
 //! A disposição de um [`RichDoc`]: um layout do parley por bloco, com os estilos das marcas por
 //! intervalo. O MESMO layout pinta, mede e acha o caret (clique, setas, selecção).
 
+use crate::widget::card_ink;
 use crate::zones::Rect;
 use parley::{
     Affinity, Alignment, AlignmentOptions, Cursor, FontFamily, FontStyle, FontWeight, Layout,
     LayoutContext, LineHeight, OverflowWrap, Selection as PSelection, StyleProperty,
 };
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_richdoc::{BlockKind, Caret, Mark, RichDoc, Selection};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{FONT_MONO, LineHeight as LineToken, Spacing, StrokeToken, TypeToken};
@@ -38,6 +40,8 @@ pub enum Marker {
 pub struct BlockBox {
     pub index: usize,
     pub kind: BlockKind,
+    /// O tamanho da letra deste bloco, na régua em que se dispôs.
+    pub font: f32,
     /// A caixa inteira do bloco (fundo do código, barra da citação, régua).
     pub rect: Rect,
     /// A origem do texto.
@@ -83,14 +87,89 @@ pub fn font_px(kind: &BlockKind) -> f32 {
     ph2d_text::displayed_font_px(t.px())
 }
 
+/// ⭐⭐ **A régua do documento** (dono 03/11, «em cardback falta coerência»). `Painel` é a do Kanban,
+/// aprovada; `Cartao` (`docs/CartoesUI/05` §4): letra de valor do cartão, títulos em degraus da escala,
+/// e UMA coluna de marcadores — marca, número, ponto e citação com o texto no mesmo `x`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Regua {
+    Painel,
+    Cartao,
+}
+
+impl Regua {
+    /// A régua de quem se pinta aqui.
+    #[must_use]
+    pub fn daqui() -> Self {
+        if card_ink::card_body().is_some() {
+            Self::Cartao
+        } else {
+            Self::Painel
+        }
+    }
+
+    #[must_use]
+    pub fn font_px(self, kind: &BlockKind) -> f32 {
+        if self == Self::Painel {
+            return font_px(kind);
+        }
+        let t = match kind {
+            BlockKind::Heading(1) => TypeToken::Md,
+            BlockKind::Heading(2) => TypeToken::Base,
+            BlockKind::Code(_) => TypeToken::Xs,
+            _ => TypeToken::Sm,
+        };
+        ph2d_text::displayed_font_px(t.px())
+    }
+
+    /// A coluna dos marcadores (o texto de lista começa a seguir a ela).
+    #[must_use]
+    pub fn gutter(self) -> f32 {
+        match self {
+            Self::Painel => indent_step(),
+            Self::Cartao => m::CHECK_BOX + m::CHECK_GAP,
+        }
+    }
+
+    fn block_gap(self) -> f32 {
+        match self {
+            Self::Painel => block_gap(),
+            Self::Cartao => m::LABEL_BOTTOM,
+        }
+    }
+
+    fn heading_gap(self) -> f32 {
+        match self {
+            Self::Painel => Spacing::Sm.px(),
+            Self::Cartao => m::LABEL_BOTTOM,
+        }
+    }
+
+    /// `(folga x, folga y, recuo do texto)` de um bloco, e a altura da régua separadora em `rule`.
+    fn pad(self, kind: &BlockKind) -> (f32, f32, f32) {
+        match (self, kind) {
+            (Self::Painel, BlockKind::Code(_)) => (code_pad(), code_pad(), 0.0),
+            (Self::Painel, BlockKind::Quote) => (Spacing::Md.px(), 0.0, 0.0),
+            (Self::Cartao, BlockKind::Code(_)) => (m::FIELD_PAD_R, m::SEG_INSET, 0.0),
+            (Self::Cartao, BlockKind::Quote) => (0.0, 0.0, self.gutter()),
+            _ => (0.0, 0.0, 0.0),
+        }
+    }
+
+    fn rule_h(self) -> f32 {
+        match self {
+            Self::Painel => Spacing::Lg.px(),
+            Self::Cartao => m::LABEL_TOP * 2.0,
+        }
+    }
+}
+
 pub(super) fn line_ratio() -> f32 {
     LineToken::Normal.ratio()
 }
 
-fn shape(ts: &mut TextSystem, doc: &RichDoc, i: usize, max_w: f32) -> Layout<Ink> {
+fn shape(ts: &mut TextSystem, doc: &RichDoc, i: usize, max_w: f32, size: f32) -> Layout<Ink> {
     let b = &doc.blocks()[i];
     let text = b.inline.text();
-    let size = font_px(&b.kind);
     let (fcx, _, stack) = ts.contexts();
     let family = if b.kind.is_code() {
         Cow::Borrowed(FONT_MONO)
@@ -157,18 +236,29 @@ fn block_gap() -> f32 {
 impl DocLayout {
     /// Dispõe `doc` na largura `w`, com o topo em `(x, y)`.
     pub fn build(ts: &mut TextSystem, doc: &RichDoc, x: f32, y: f32, w: f32) -> Self {
+        Self::build_with(Regua::Painel, ts, doc, (x, y), w)
+    }
+
+    /// [`Self::build`] na régua `regua`.
+    pub fn build_with(
+        regua: Regua,
+        ts: &mut TextSystem,
+        doc: &RichDoc,
+        (x, y): (f32, f32),
+        w: f32,
+    ) -> Self {
         let mut blocks = Vec::with_capacity(doc.blocks().len());
         let mut cy = y;
         // A numeração de cada nível: recomeça quando outro tipo interrompe a lista.
         let mut numbers: Vec<usize> = Vec::new();
         for (i, b) in doc.blocks().iter().enumerate() {
             if i > 0 {
-                cy += block_gap();
+                cy += regua.block_gap();
                 if matches!(b.kind, BlockKind::Heading(_)) {
-                    cy += Spacing::Sm.px();
+                    cy += regua.heading_gap();
                 }
             }
-            let indent = b.indent as f32 * indent_step();
+            let indent = b.indent as f32 * regua.gutter();
             numbers.truncate(b.indent + 1);
             let marker = match b.kind {
                 BlockKind::Bullet => Marker::Bullet,
@@ -186,19 +276,15 @@ impl DocLayout {
             let gutter = if marker == Marker::None {
                 0.0
             } else {
-                indent_step()
+                regua.gutter()
             };
-            let (pad_x, pad_y) = match b.kind {
-                BlockKind::Code(_) => (code_pad(), code_pad()),
-                BlockKind::Quote => (Spacing::Md.px(), 0.0),
-                _ => (0.0, 0.0),
-            };
-            let text_x = x + indent + gutter + pad_x;
+            let (pad_x, pad_y, recuo) = regua.pad(&b.kind);
+            let text_x = x + indent + gutter + pad_x + recuo;
             let text_w = (x + w - text_x - pad_x).max(1.0);
-            let layout = shape(ts, doc, i, text_w);
-            let size = font_px(&b.kind);
+            let size = regua.font_px(&b.kind);
+            let layout = shape(ts, doc, i, text_w, size);
             let text_h = if b.kind == BlockKind::Rule {
-                Spacing::Lg.px()
+                regua.rule_h()
             } else {
                 layout.height().max(size * line_ratio())
             };
@@ -209,6 +295,7 @@ impl DocLayout {
             blocks.push(BlockBox {
                 index: i,
                 kind: b.kind.clone(),
+                font: size,
                 rect,
                 text_x,
                 text_y: cy + pad_y,
@@ -260,7 +347,7 @@ impl DocLayout {
             return Rect::new(0.0, 0.0, 0.0, 0.0);
         };
         let w = StrokeToken::Default.px();
-        let size = font_px(&b.kind);
+        let size = b.font;
         if b.kind == BlockKind::Rule {
             return Rect::new(b.text_x, b.rect.y, w, b.rect.h);
         }

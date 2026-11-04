@@ -8,11 +8,10 @@ mod tests;
 
 pub use axis_bar::{ArrowHold, AxisBar, BarGrab, HoldRepeat};
 
-use super::scrollbar::{ScrollbarState, thumb_color, track_rect};
+use super::scrollbar::ScrollbarState;
 use crate::math::safe_clamp;
-use crate::paint::resolve;
 use crate::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Theme};
+use ph2d_tokens::{ROW_H_PX, Theme};
 use ph2d_vector::VectorScene;
 
 /// A rolagem, o arrasto do polegar (`y` do carregar, rolagem de então) e a geometria do último
@@ -123,12 +122,9 @@ impl ScrollList {
             (None, true) => ScrollbarState::Hovered,
             _ => ScrollbarState::Normal,
         };
-        let bar = self.bar(track_rect(body));
-        let colors = (
-            resolve(ColorToken::Bg3, theme),
-            thumb_color((state, 1.0), theme),
-        );
-        bar.paint(self.scroll, colors, scene);
+        let extent = (self.content_h, self.view.h, ROW_H_PX);
+        let bar = AxisBar::of_theme(body, false, extent);
+        bar.paint_themed(self.scroll, (state, crate::motion::SETTLED), scene, theme);
         self.track = bar.needed().then_some(bar.track);
         self.track
     }

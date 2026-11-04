@@ -102,3 +102,24 @@ pub fn card_field_fill() -> Option<Color> {
 pub fn card_body() -> Option<CardInk> {
     CORPO.with(std::cell::Cell::get)
 }
+
+/// ⭐ **A cor de um widget partilhado** (`docs/CartoesUI` §5): fora de um cartão o token no `theme`,
+/// ao bit; dentro, o tom do cartão que faz o mesmo papel (texto, rótulo, acento, hover).
+#[must_use]
+pub fn tinta(token: ColorToken, theme: Theme) -> Color {
+    card_body().map_or_else(
+        || resolve(token, theme),
+        |ink| ink.color(papel_no_cartao(token)),
+    )
+}
+
+const fn papel_no_cartao(token: ColorToken) -> ColorToken {
+    match token {
+        ColorToken::Text1 => ColorToken::KanbanCardFg,
+        ColorToken::Text2 | ColorToken::Text3 => ColorToken::CardLabel,
+        ColorToken::Accent => ColorToken::KanbanBlueBold,
+        ColorToken::AccentFg => ColorToken::KanbanBtnOnFg,
+        ColorToken::Bg2 => ColorToken::CardFieldHover,
+        other => other,
+    }
+}

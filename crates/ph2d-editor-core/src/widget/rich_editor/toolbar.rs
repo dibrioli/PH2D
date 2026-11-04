@@ -1,10 +1,12 @@
 //! A barra de formatação compacta do [`super::RichEditor`] (a do Trello): «Aa», negrito, itálico,
 //! riscado, código, listas, checklist, citação, bloco de código, link, régua.
 
+use super::layout::Regua;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::widget::{Popover, paint_popover};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_richdoc::{BlockKind, Mark, RichDoc, Selection};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
@@ -126,10 +128,33 @@ pub fn button(bar: Rect, i: usize) -> Rect {
     Rect::new(x, bar.y, s, bar.h)
 }
 
-pub(super) fn hit(bar: Rect, x: f32, y: f32) -> Option<ToolbarHit> {
+/// A caixa do botão `i` numa barra do cartão: os doze cabem na coluna dele, em caixas iguais, até à
+/// da cabeça do cartão.
+fn button_no_cartao(bar: Rect, i: usize) -> Rect {
+    const GRUPOS: [usize; 3] = [1, 5, 10];
+    let grupos = GRUPOS.iter().filter(|g| i >= **g).count();
+    let folga = Spacing::Xxs.px();
+    let vaos = GRUPOS.len() as f32 * folga;
+    let s = ((bar.w - vaos) / RICH_TOOLS.len() as f32).min(m::HEAD_ICON_BOX);
+    Rect::new(
+        bar.x + i as f32 * s + grupos as f32 * folga,
+        bar.y,
+        s,
+        bar.h,
+    )
+}
+
+pub(super) fn button_de(regua: Regua, bar: Rect, i: usize) -> Rect {
+    match regua {
+        Regua::Painel => button(bar, i),
+        Regua::Cartao => button_no_cartao(bar, i),
+    }
+}
+
+pub(super) fn hit(bar: Rect, x: f32, y: f32, regua: Regua) -> Option<ToolbarHit> {
     (0..RICH_TOOLS.len())
         .find(|i| {
-            let r = button(bar, *i);
+            let r = button_de(regua, bar, *i);
             x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h && r.x + r.w <= bar.x + bar.w
         })
         .map(ToolbarHit)
@@ -193,6 +218,10 @@ pub(super) fn paint_toolbar(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
+    let regua = Regua::daqui();
+    if regua == Regua::Cartao {
+        return paint_toolbar_no_cartao(ed, bar, scene, ts);
+    }
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let doc = ed.doc();
     let sel = ed.selection();
@@ -221,6 +250,42 @@ pub(super) fn paint_toolbar(
             r.w,
             TypeToken::Sm.px(),
             resolve(ink, theme),
+        );
+    }
+}
+
+/// A barra na lei do `Widget::Bare` do cartão: sem caixa; o aceso e o pairado no hover dele.
+fn paint_toolbar_no_cartao(
+    ed: &super::RichEditor,
+    bar: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+) {
+    let Some(ink) = crate::widget::card_ink::card_body() else {
+        return;
+    };
+    let (doc, sel) = (ed.doc(), ed.selection());
+    let active = ed.editor.active_marks();
+    for (i, tool) in RICH_TOOLS.iter().enumerate() {
+        let r = button_no_cartao(bar, i);
+        let on = is_on(*tool, doc, sel, &active);
+        if on || ed.hover == Some(ToolbarHit(i)) {
+            let fundo = ink.color(ColorToken::CardFieldHover);
+            fill_rounded_rect(scene, r, m::FIELD_RADIUS, fundo);
+        }
+        let tom = if on {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        };
+        crate::paint::paint_text_centered_com_orcamento(
+            ts,
+            scene,
+            &ed.labels.tools[i],
+            r,
+            r.w,
+            m::SEG_TEXT_PX,
+            ink.color(tom),
         );
     }
 }

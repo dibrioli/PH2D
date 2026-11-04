@@ -5,10 +5,12 @@ use super::{CALENDAR_CELLS, CALENDAR_COLS, CALENDAR_ROWS, Calendar};
 use crate::icons::IconId;
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text_centered, paint_text_centered_com_orcamento,
-    paint_text_title, resolve, stroke_rounded_rect,
+    paint_text_title, stroke_rounded_rect,
 };
+use crate::widget::card_ink::{card_body, tinta};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -154,8 +156,13 @@ pub fn paint_calendar(
     theme: Theme,
 ) {
     let l = CalendarLayout::of(rect);
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    let hover_fill = resolve(ColorToken::Bg2, theme);
+    let no_cartao = card_body().is_some();
+    let radius = if no_cartao {
+        m::SEG_RADIUS
+    } else {
+        crate::paint::frame_radius(theme, Radius::Sm.px())
+    };
+    let hover_fill = tinta(ColorToken::Bg2, theme);
     let stroke = StrokeToken::Default.px();
     let icon_pad = Spacing::Xs.px();
 
@@ -173,7 +180,7 @@ pub fn paint_calendar(
             r.w - icon_pad * 2.0,
             r.h - icon_pad * 2.0,
         );
-        paint_icon(scene, icon, g, resolve(ColorToken::Text2, theme), stroke);
+        paint_icon(scene, icon, g, tinta(ColorToken::Text2, theme), stroke);
     }
     if cal.hover == Some(CalendarHit::Today) {
         fill_rounded_rect(scene, chip(l.today), radius, hover_fill);
@@ -183,10 +190,18 @@ pub fn paint_calendar(
         scene,
         &cal.today_label,
         l.today,
-        TypeToken::Sm.px(),
-        resolve(ColorToken::Accent, theme),
+        if no_cartao {
+            m::SEG_TEXT_PX
+        } else {
+            TypeToken::Sm.px()
+        },
+        tinta(ColorToken::Accent, theme),
     );
-    let tf = TypeToken::Base.px();
+    let tf = if no_cartao {
+        m::CARD_TITLE_PX
+    } else {
+        TypeToken::Base.px()
+    };
     paint_text_title(
         text_system,
         scene,
@@ -195,7 +210,7 @@ pub fn paint_calendar(
         l.title.y + (l.title.h - tf) * 0.5,
         tf,
         l.title.w,
-        resolve(ColorToken::Text1, theme),
+        tinta(ColorToken::Text1, theme),
     );
 
     // Os dias da semana.
@@ -213,7 +228,7 @@ pub fn paint_calendar(
             r,
             orcamento_da_celula(r),
             TypeToken::Xs.px(),
-            resolve(ColorToken::Text3, theme),
+            tinta(ColorToken::Text3, theme),
         );
     }
 
@@ -227,16 +242,16 @@ pub fn paint_calendar(
         if in_range && !selected {
             // A faixa do intervalo ocupa a célula inteira na horizontal: as pontas tocam-se.
             let band = Rect::new(r.x, c.y, r.w, c.h);
-            fill_rounded_rect(scene, band, 0.0, resolve(ColorToken::AccentSoft, theme));
+            fill_rounded_rect(scene, band, 0.0, tinta(ColorToken::AccentSoft, theme));
         }
         if selected {
-            fill_rounded_rect(scene, c, radius, resolve(ColorToken::Accent, theme));
+            fill_rounded_rect(scene, c, radius, tinta(ColorToken::Accent, theme));
         } else if cal.hover == Some(CalendarHit::Cell(i)) {
             fill_rounded_rect(scene, c, radius, hover_fill);
         }
         if cell.is_today && !selected {
             // FRAME-RAW-OK: o anel de HOJE — o contorno de acento é a marca do dia, não moldura
-            stroke_rounded_rect(scene, c, radius, stroke, resolve(ColorToken::Accent, theme));
+            stroke_rounded_rect(scene, c, radius, stroke, tinta(ColorToken::Accent, theme));
         }
         if cal.focused && cal.focus == Some(d) {
             // FRAME-RAW-OK: o ANEL DE FOCO do teclado na célula — vê-se em qualquer pele
@@ -245,7 +260,7 @@ pub fn paint_calendar(
                 r,
                 radius,
                 stroke * 2.0,
-                resolve(ColorToken::FocusRing, theme),
+                tinta(ColorToken::FocusRing, theme),
             );
         }
         let ink = if selected {
@@ -264,7 +279,7 @@ pub fn paint_calendar(
             r,
             orcamento_da_celula(r),
             TypeToken::Sm.px(),
-            resolve(ink, theme),
+            tinta(ink, theme),
         );
     }
 }

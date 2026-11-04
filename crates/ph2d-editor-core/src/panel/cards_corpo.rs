@@ -7,7 +7,6 @@
 //! —, campo Figma com glifo, segmentos pela largura do conteúdo). Fora de um cartão nada muda.
 
 use super::{CardCtx, Cell, Seg, Widget};
-use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::card_field::CardFieldSpec;
 use crate::widget::card_field::Glyph;
@@ -17,7 +16,7 @@ use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, StrokeToken};
+use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 /// O glifo da pega de um número: a letra da caixa numa linha de vários ([`Eixos`]: X · Y · Z · W,
@@ -323,29 +322,9 @@ pub fn check(
     let (h, b, k) = (m::FIELD_H, m::CHECK_BOX, m::KEY_MARK_BOX);
     let y = y + m::FIELD_ROW_GAP;
     hit_index.register(c.id, Rect::new(x, y, w, h));
-    let caixa = Rect::new(x, y + (h - b) * 0.5, b, b);
-    if c.on {
-        let fundo = ink.color(ColorToken::KanbanBlueBold);
-        crate::paint::fill_rounded_rect(scene, caixa, m::SEG_RADIUS, fundo);
-        let marca = ink.color(ColorToken::KanbanBtnOnFg);
-        crate::paint::paint_icon(
-            scene,
-            IconId::Check,
-            caixa,
-            marca,
-            StrokeToken::Default.px(),
-        );
-    } else {
-        let hover = store.hover_live(c.id) > 0.0;
-        let fundo = if hover {
-            ColorToken::CardFieldHover
-        } else {
-            ColorToken::CardField
-        };
-        crate::paint::fill_rounded_rect(scene, caixa, m::SEG_RADIUS, ink.color(fundo));
-        let borda = ink.color(ColorToken::CardLabel);
-        crate::paint::stroke_rounded_rect(scene, caixa, m::SEG_RADIUS, m::FIELD_BORDER, borda);
-    }
+    let caixa = crate::widget::card_check_rect(x, y, h);
+    let hover = store.hover_live(c.id) > 0.0;
+    crate::widget::paint_card_check(scene, ink, caixa, c.on, hover);
     let tx = x + b + m::CHECK_GAP;
     crate::paint::paint_text_elided(
         text_system,

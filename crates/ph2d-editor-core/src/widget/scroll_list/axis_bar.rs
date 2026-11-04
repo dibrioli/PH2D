@@ -1,12 +1,15 @@
 //! A [`AxisBar`] (a barra de um eixo, com setas) e a repetição da seta segura — a metade de
 //! GEOMETRIA e tinta do [`super`]; a rolagem que ela move é a [`super::ScrollList`].
 
-use super::super::scrollbar::{delta_for_drag, is_needed, thumb_rect};
+use super::super::scrollbar::{
+    ScrollbarState, delta_for_drag, is_needed, thumb_color, thumb_rect, track_rect,
+};
 use crate::hold_repeat::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
 use crate::math::safe_clamp;
-use crate::paint::fill_rounded_rect;
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::paint_shapes::fill_polygon;
 use crate::zones::Rect;
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::{Color, VectorScene};
 
 /// ⭐ **Uma barra de rolagem num EIXO**, sobre a calha que o chamador dispõe (a de cada lista e a do
@@ -89,6 +92,42 @@ pub(super) fn swap(r: Rect) -> Rect {
 }
 
 impl AxisBar {
+    /// ⭐⭐ **A barra do app num eixo, no FIM de `area`** (dono 03/11: a vertical é o padrão): a mesma
+    /// calha da [`track_rect`], a mesma espessura, com os eixos trocados quando é horizontal. Quem
+    /// quer outra espessura ou tinta é a barra própria do Kanban, nos dois eixos dela.
+    #[must_use]
+    pub fn of_theme(
+        area: Rect,
+        horizontal: bool,
+        (content, visible, step): (f32, f32, f32),
+    ) -> Self {
+        let track = if horizontal {
+            swap(track_rect(swap(area)))
+        } else {
+            track_rect(area)
+        };
+        Self {
+            track,
+            horizontal,
+            content,
+            visible,
+            arrows: true,
+            step,
+        }
+    }
+
+    /// ⭐ Pinta na tinta do app: a calha `Bg3` e o polegar de [`thumb_color`], em qualquer eixo.
+    pub fn paint_themed(
+        &self,
+        scroll: f32,
+        visual: (ScrollbarState, f32),
+        scene: &mut VectorScene,
+        theme: Theme,
+    ) {
+        let tones = (resolve(ColorToken::Bg3, theme), thumb_color(visual, theme));
+        self.paint(scroll, tones, scene);
+    }
+
     /// ⭐ A margem própria de uma barra no FIM de `area`, de través ao eixo (D17: a da lista à
     /// direita, a do quadro em baixo): `(margem, calha)`, a calha de espessura `bar` centrada na
     /// margem de `gutter`. A horizontal é a vertical deitada — as mesmas contas, eixos trocados.
@@ -277,6 +316,13 @@ impl AxisBar {
                 fill_polygon(scene, &tri, thumb);
             }
         }
+    }
+
+    /// Os triângulos das setas, para um teste de fora do módulo.
+    #[cfg(test)]
+    #[must_use]
+    pub fn arrow_tris_for_test(&self) -> [[(f32, f32); 3]; 2] {
+        self.arrow_tris()
     }
 
     /// Os dois triângulos das setas, encostados às pontas da calha (a ponta para fora).

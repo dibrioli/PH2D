@@ -6,7 +6,8 @@ use super::*;
 use crate::widget::{
     AxisBar, CALENDAR_CELLS, Calendar, CalendarCell, CalendarDate, CalendarLayout, DatePicker,
     DatePickerLabels, DatePickerLayout, DateSlot, Reminder, RichEditor, RichEditorLabels,
-    ScrollList, paint_calendar, paint_date_picker, paint_rich_editor, paint_rich_editor_menu,
+    SCROLLBAR_W, ScrollbarState, paint_calendar, paint_date_picker, paint_rich_editor,
+    paint_rich_editor_menu,
 };
 use ph2d_richdoc::{Block, BlockKind, Inline, Mark, RichDoc};
 use std::cell::RefCell;
@@ -152,6 +153,19 @@ thread_local! {
     static EDITOR: RefCell<Option<RichEditor>> = const { RefCell::new(None) };
 }
 
+/// ⭐ A amostra das barras: uma caixa com as duas, a vertical e a horizontal da MESMA
+/// lei ([`AxisBar::of_theme`]), que se encontram no canto como numa vista que rola nos dois eixos.
+fn demo_bars(area: Rect) -> [AxisBar; 2] {
+    let row = ph2d_tokens::ROW_H_PX;
+    let canto = SCROLLBAR_W + Spacing::Xs.px();
+    let v = Rect::new(area.x, area.y, area.w, area.h - canto);
+    let h = Rect::new(area.x, area.y, area.w - canto, area.h);
+    [
+        AxisBar::of_theme(v, false, (3.0 * v.h, v.h, row)), // LITERAL-PX-OK: vitrine, três alturas
+        AxisBar::of_theme(h, true, (3.0 * h.w, h.w, row)),  // LITERAL-PX-OK: vitrine, três larguras
+    ]
+}
+
 /// Pinta os três widgets a partir de `y`; devolve o fundo.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_card_back_widgets(
@@ -164,7 +178,7 @@ pub(super) fn paint_card_back_widgets(
     w: f32,
     y: f32,
 ) -> f32 {
-    let gap = Spacing::Lg.px();
+    let gap = super::encaixe::no_cartao(m::CARD_GAP, Spacing::Lg.px());
     let mut y = y + gap;
     let cal = demo_calendar(ids::INSP_SECTION_CARD);
     let ch = CalendarLayout::preferred_height();
@@ -172,32 +186,20 @@ pub(super) fn paint_card_back_widgets(
     y += ch + gap;
 
     let picker = demo_date_picker(ids::INSP_SECTION_CARD);
-    let ph = DatePickerLayout::preferred_height();
+    let ph = DatePickerLayout::preferred_height_of(&picker, w, text_system);
     paint_date_picker(&picker, Rect::new(x, y, w, ph), scene, text_system, theme);
     y += ph + gap;
 
     // As barras de um eixo: a da lista suspensa (vertical) e a do quadro do Kanban (horizontal).
-    let row = ph2d_tokens::ROW_H_PX;
-    let body = Rect::new(x, y, w, 3.0 * row); // LITERAL-PX-OK: vitrine, três linhas à vista
-    let mut list = ScrollList::default();
-    list.set(body, 9.0 * row); // LITERAL-PX-OK: vitrine, nove linhas de conteúdo
-    list.scroll_by(2.0 * row);
-    let _ = list.paint_bar(body, false, scene, theme);
-    y += body.h + gap;
-    let bar = AxisBar {
-        track: Rect::new(x, y, w, Spacing::Sm.px()),
-        horizontal: true,
-        content: 3.0 * w, // LITERAL-PX-OK: vitrine, conteúdo de três larguras
-        visible: w,
-        arrows: true,
-        step: row,
-    };
-    let colors = (
-        crate::paint::resolve(ColorToken::Bg3, theme),
-        crate::paint::resolve(ColorToken::BorderEmph, theme),
-    );
-    bar.paint(w, colors, scene);
-    y += bar.track.h + gap;
+    let area = Rect::new(x, y, w, 4.0 * ph2d_tokens::ROW_H_PX); // LITERAL-PX-OK: vitrine, quatro linhas à vista
+    if let Some(fundo) = crate::widget::card_ink::card_field_fill() {
+        crate::paint::fill_rounded_rect(scene, area, m::FIELD_RADIUS, fundo);
+    }
+    for bar in demo_bars(area) {
+        let visual = (ScrollbarState::Normal, crate::motion::SETTLED);
+        bar.paint_themed(bar.visible, visual, scene, theme);
+    }
+    y += area.h + gap;
 
     EDITOR.with(|cell| {
         let mut cell = cell.borrow_mut();
@@ -238,6 +240,29 @@ mod tests {
             0.0,
         );
         EDITOR.with(|c| c.borrow().as_ref().is_some_and(|e| e.editing))
+    }
+
+    /// ⭐⭐ O dono (03/11): «Slider Horizontal diferente do vertical que é o padrão». As duas da
+    /// amostra têm a mesma espessura, o mesmo polegar e as mesmas setas, com os eixos trocados.
+    /// *Mutação: a horizontal volta à calha de `Spacing::Sm`.*
+    #[test]
+    fn the_horizontal_bar_is_the_vertical_one_with_the_axes_swapped() {
+        let area = Rect::new(0.0, 0.0, 240.0, 120.0); // LITERAL-PX-OK: teste
+        let [v, h] = demo_bars(area);
+        assert!(!v.horizontal && h.horizontal);
+        assert_eq!(v.track.w, SCROLLBAR_W, "a vertical é o padrão");
+        assert_eq!(h.track.h, v.track.w, "a mesma espessura");
+        let (tv, th) = (v.thumb(v.visible), h.thumb(h.visible));
+        assert_eq!(th.h, tv.w, "o mesmo polegar de través");
+        let lado = |tri: [(f32, f32); 3], eixo: fn((f32, f32)) -> f32| {
+            let (a, b) = (eixo(tri[1]), eixo(tri[2]));
+            (a - b).abs()
+        };
+        assert_eq!(
+            lado(h.arrow_tris_for_test()[0], |p| p.1),
+            lado(v.arrow_tris_for_test()[0], |p| p.0),
+            "as mesmas setas"
+        );
     }
 
     /// ⭐ A foto da galeria (03/11): a amostra pintava-se sempre com a moldura de foco e o cursor.

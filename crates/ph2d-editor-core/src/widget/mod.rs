@@ -108,7 +108,10 @@ pub use calendar::{
 };
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
 // ⭐ A fileira que mede as PALAVRAS — irmã do `segment_rects`, que reparte em partes iguais.
-pub use checkbox::{CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, paint_checkbox};
+pub use checkbox::{
+    CHECKBOX_BOX_PX, Checkbox, CheckboxState, CheckboxValue, card_check_rect, paint_card_check,
+    paint_checkbox,
+};
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
 pub use color_swatch::{
     ColorSwatch, SwatchSize, SwatchState, paint_color_swatch, paint_mixed_swatch,

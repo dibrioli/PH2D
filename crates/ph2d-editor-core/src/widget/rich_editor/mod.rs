@@ -8,15 +8,18 @@
 mod keys;
 mod layout;
 mod paint;
+#[cfg(test)]
+mod tests;
 mod toolbar;
 
 pub use keys::{RichKeyOutcome, toolbar_node_id};
-pub use layout::{BlockBox, DocLayout, Ink, Marker, font_px, font_weight};
+pub use layout::{BlockBox, DocLayout, Ink, Marker, Regua, font_px, font_weight};
 pub use paint::{area_node_id, paint_rich_editor, paint_rich_editor_menu};
 pub use toolbar::{RICH_TOOLS, RichTool, TEXT_STYLES, button as toolbar_button, style_option};
 
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
+use ph2d_card_stack::metrics as m;
 use ph2d_host::Modifiers;
 use ph2d_richdoc::{Caret, Editor, Mark, RichDoc, Selection};
 use ph2d_text::TextSystem;
@@ -56,6 +59,7 @@ struct LayoutKey {
     version: u64,
     rect: [u32; 3],
     editing: bool,
+    regua: Regua,
 }
 
 pub struct RichEditor {
@@ -71,6 +75,8 @@ pub struct RichEditor {
     pub hover: Option<toolbar::ToolbarHit>,
     dragging: bool,
     version: u64,
+    /// A régua do último pintor ([`Regua::daqui`]): o clique, fora dele, responde na mesma.
+    regua: Regua,
     cache: Option<(LayoutKey, DocLayout)>,
 }
 
@@ -97,6 +103,7 @@ impl RichEditor {
             hover: None,
             dragging: false,
             version: 0,
+            regua: Regua::Painel,
             cache: None,
         }
     }
@@ -141,6 +148,9 @@ impl RichEditor {
     /// A barra (só em edição) e a área do documento dentro de `rect`.
     #[must_use]
     pub fn regions(&self, rect: Rect) -> (Option<Rect>, Rect) {
+        if self.regua == Regua::Cartao {
+            return self.regions_no_cartao(rect);
+        }
         let pad = Spacing::Md.px();
         let (bar, top) = if self.editing {
             let inset = Spacing::Xs.px();
@@ -163,6 +173,19 @@ impl RichEditor {
         (bar, doc)
     }
 
+    /// No cartão o texto fica na coluna do corpo: a moldura de foco sai para a folga dele, para o
+    /// foco não mover a letra. Em edição a barra vem por cima.
+    fn regions_no_cartao(&self, rect: Rect) -> (Option<Rect>, Rect) {
+        let (bar, top) = if self.editing {
+            let bar = Rect::new(rect.x, rect.y, rect.w, m::HEAD_ICON_BOX);
+            (Some(bar), bar.y + bar.h + m::LABEL_BOTTOM)
+        } else {
+            (None, rect.y)
+        };
+        let h = (rect.y + rect.h - top).max(0.0);
+        (bar, Rect::new(rect.x, top, rect.w, h))
+    }
+
     /// A disposição do documento em `rect` (guardada até o documento ou a caixa mudarem).
     pub fn layout(&mut self, ts: &mut TextSystem, rect: Rect) -> &DocLayout {
         let (_, d) = self.regions(rect);
@@ -170,9 +193,10 @@ impl RichEditor {
             version: self.version,
             rect: [d.x.to_bits(), d.y.to_bits(), d.w.to_bits()],
             editing: self.editing,
+            regua: self.regua,
         };
         if self.cache.as_ref().is_none_or(|(k, _)| *k != key) {
-            let l = DocLayout::build(ts, self.editor.doc(), d.x, d.y, d.w);
+            let l = DocLayout::build_with(self.regua, ts, self.editor.doc(), (d.x, d.y), d.w);
             self.cache = Some((key, l));
         }
         &self.cache.as_ref().expect("acabou de ser posta").1
@@ -180,10 +204,15 @@ impl RichEditor {
 
     /// A altura que o editor pede na largura `w`.
     pub fn preferred_height(&mut self, ts: &mut TextSystem, w: f32) -> f32 {
+        self.regua = Regua::daqui();
         let rect = Rect::new(0.0, 0.0, w, 0.0);
         let (_, d) = self.regions(rect);
         let h = self.layout(ts, rect).height;
-        d.y + h + Spacing::Md.px()
+        let fundo = match self.regua {
+            Regua::Painel => Spacing::Md.px(),
+            Regua::Cartao => 0.0,
+        };
+        d.y + h + fundo
     }
 
     /// Um clique. `clicks` = 1, 2 (palavra) ou 3 (bloco), como o sistema os conta.
@@ -208,7 +237,7 @@ impl RichEditor {
             return None;
         }
         if let Some(bar) = bar
-            && let Some(hit) = toolbar::hit(bar, x, y)
+            && let Some(hit) = toolbar::hit(bar, x, y, self.regua)
         {
             return self.apply_tool(RICH_TOOLS[hit.0]);
         }
@@ -267,7 +296,7 @@ impl RichEditor {
     /// O rato a passar pela barra: `true` quando o realce mudou.
     pub fn pointer_move(&mut self, rect: Rect, x: f32, y: f32) -> bool {
         let (bar, _) = self.regions(rect);
-        let h = bar.and_then(|b| toolbar::hit(b, x, y));
+        let h = bar.and_then(|b| toolbar::hit(b, x, y, self.regua));
         let changed = h != self.hover;
         self.hover = h;
         changed

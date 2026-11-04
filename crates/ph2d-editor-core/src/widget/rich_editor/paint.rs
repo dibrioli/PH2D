@@ -1,7 +1,7 @@
 //! A tinta do [`super::RichEditor`]: blocos (títulos, listas, checklist, citação, código,
 //! régua), marcas inline, selecção, caret, pré-edição e a barra.
 
-use super::layout::{BlockBox, Ink, Marker, indent_step};
+use super::layout::{BlockBox, Ink, Marker, Regua, indent_step};
 use super::{RichEditor, toolbar};
 use crate::icons::IconId;
 use crate::paint::{
@@ -9,9 +9,11 @@ use crate::paint::{
     stroke_rounded_rect,
 };
 use crate::widget::TextInputState;
+use crate::widget::card_ink::{card_body, tinta};
 use crate::zones::Rect;
 use parley::PositionedLayoutItem;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_richdoc::{BlockKind, Mark};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -24,7 +26,11 @@ fn ink(i: Ink, quote: bool, theme: Theme) -> ph2d_vector::Color {
         Ink::Body | Ink::Code if quote => ColorToken::Text2,
         Ink::Body | Ink::Code => ColorToken::Text1,
     };
-    resolve(t, theme)
+    // Num cartão a citação não se confunde com o item feito (esse é o tom do rótulo).
+    match card_body() {
+        Some(ink) if t == ColorToken::Text2 => ink.color(t),
+        _ => tinta(t, theme),
+    }
 }
 
 /// Os glifos de um bloco, com sublinhado e risco.
@@ -85,6 +91,9 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
 }
 
 fn paint_marker(scene: &mut VectorScene, ts: &mut TextSystem, b: &BlockBox, theme: Theme) {
+    if let Some(ink) = card_body() {
+        return paint_marker_no_cartao(scene, ts, b, ink);
+    }
     let r = b.marker_rect;
     let cy = r.y + r.h * 0.5;
     match b.marker {
@@ -142,8 +151,83 @@ fn paint_marker(scene: &mut VectorScene, ts: &mut TextSystem, b: &BlockBox, them
     }
 }
 
+/// Os marcadores na coluna `CHECK_BOX` do cartão: a caixa dele, o ponto e o número ao centro dela.
+fn paint_marker_no_cartao(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    b: &BlockBox,
+    ink: crate::widget::card_ink::CardInk,
+) {
+    let r = b.marker_rect;
+    let tom = ink.color(ColorToken::CardLabel);
+    match b.marker {
+        Marker::None => {}
+        Marker::Bullet => {
+            let cx = r.x + m::CHECK_BOX * 0.5;
+            fill_circle(scene, cx, r.y + r.h * 0.5, m::SEG_PAD, tom);
+        }
+        Marker::Number(n) => {
+            let coluna = Rect::new(r.x, r.y, m::CHECK_BOX, r.h);
+            let texto = format!("{n}.");
+            crate::paint::paint_text_centered_com_orcamento(
+                ts, scene, &texto, coluna, coluna.w, b.font, tom,
+            );
+        }
+        Marker::Check(v) => {
+            let caixa = crate::widget::checkbox::card_check_rect(r.x, r.y, r.h);
+            crate::widget::checkbox::paint_card_check(scene, ink, caixa, v, false);
+        }
+    }
+}
+
+/// Código sobre a caixa do cartão, citação com o traço fino na coluna, régua fina.
+fn paint_block_chrome_no_cartao(
+    scene: &mut VectorScene,
+    b: &BlockBox,
+    ink: crate::widget::card_ink::CardInk,
+) {
+    match b.kind {
+        BlockKind::Code(_) => {
+            let fundo = ink.color(ColorToken::CardField);
+            fill_rounded_rect(scene, b.rect, m::FIELD_RADIUS, fundo);
+        }
+        BlockKind::Quote => {
+            let t = Spacing::Xxs.px();
+            let bar = Rect::new(b.rect.x, b.rect.y, t, b.rect.h);
+            fill_rounded_rect(scene, bar, t * 0.5, ink.color(ColorToken::CardLabel));
+        }
+        BlockKind::Rule => {
+            let t = m::FIELD_BORDER;
+            let line = Rect::new(b.rect.x, b.rect.y + (b.rect.h - t) * 0.5, b.rect.w, t);
+            scene.fill_rect(rect_to_vello(line), ink.color(ColorToken::Border));
+        }
+        _ => {}
+    }
+}
+
+/// O código inline sobre a caixa do cartão, com um respiro de cada lado sem sair da coluna.
+fn paint_inline_code_no_cartao(
+    scene: &mut VectorScene,
+    b: &BlockBox,
+    r: Rect,
+    ink: crate::widget::card_ink::CardInk,
+) {
+    let x = (r.x - Spacing::Xxs.px()).max(b.rect.x);
+    let w = r.x + r.w + Spacing::Xxs.px() - x;
+    let raio = m::FIELD_RADIUS.min(r.h * 0.5);
+    fill_rounded_rect(
+        scene,
+        Rect::new(x, r.y, w, r.h),
+        raio,
+        ink.color(ColorToken::CardField),
+    );
+}
+
 /// Fundo do código, barra da citação, régua.
 fn paint_block_chrome(scene: &mut VectorScene, b: &BlockBox, theme: Theme) {
+    if let Some(ink) = card_body() {
+        return paint_block_chrome_no_cartao(scene, b, ink);
+    }
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     match b.kind {
         BlockKind::Code(_) => {
@@ -170,8 +254,20 @@ pub fn paint_rich_editor(
     theme: Theme,
 ) {
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    ed.regua = Regua::daqui();
     let (bar, area) = ed.regions(rect);
-    if ed.editing {
+    let ink_cartao = card_body();
+    if let (true, Some(ink)) = (ed.editing, ink_cartao) {
+        // A moldura de foco na folga do cartão (sem fundo: o código é que senta na caixa).
+        let f = Rect::new(
+            rect.x - m::SEG_INSET,
+            rect.y - m::SEG_INSET,
+            rect.w + m::SEG_INSET * 2.0,
+            rect.h + m::SEG_INSET * 2.0,
+        );
+        let azul = ink.color(ColorToken::KanbanBlueBold);
+        stroke_rounded_rect(scene, f, m::FIELD_RADIUS, m::FIELD_BORDER, azul);
+    } else if ed.editing {
         let state = TextInputState::Focused;
         fill_rounded_rect(
             scene,
@@ -199,6 +295,7 @@ pub fn paint_rich_editor(
     let preedit = ed.preedit.clone();
     let doc = ed.doc().clone();
     let placeholder = ed.labels.placeholder.clone();
+    let ed_regua = ed.regua;
     let l = ed.layout(ts, rect);
 
     for b in &l.blocks {
@@ -213,14 +310,18 @@ pub fn paint_rich_editor(
         let inline = &doc.blocks()[b.index].inline;
         for s in inline.marks().iter().filter(|s| s.mark == Mark::Code) {
             for r in l.range_rects(b, s.start, s.end) {
-                fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
+                if let Some(ink) = ink_cartao {
+                    paint_inline_code_no_cartao(scene, b, r, ink);
+                } else {
+                    fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
+                }
             }
         }
         paint_marker(scene, ts, b, theme);
         paint_glyphs(scene, b, inline.text(), theme);
     }
     if empty && !placeholder.is_empty() {
-        let f = super::layout::font_px(&BlockKind::Paragraph);
+        let f = ed_regua.font_px(&BlockKind::Paragraph);
         paint_text(
             ts,
             scene,
@@ -229,13 +330,17 @@ pub fn paint_rich_editor(
             area.y,
             f,
             area.w,
-            resolve(ColorToken::Text3, theme),
+            tinta(ColorToken::Text3, theme),
         );
     }
     if editing {
         let c = l.caret_rect(sel.head);
         if let Some(p) = preedit {
-            let f = TypeToken::Base.px();
+            let f = if ink_cartao.is_some() {
+                ed_regua.font_px(&BlockKind::Paragraph)
+            } else {
+                TypeToken::Base.px()
+            };
             paint_text(
                 ts,
                 scene,
@@ -244,16 +349,16 @@ pub fn paint_rich_editor(
                 c.y,
                 f,
                 area.x + area.w - c.x,
-                resolve(ColorToken::Text2, theme),
+                tinta(ColorToken::Text2, theme),
             );
             let w = ts.prefix_width(&p, f);
             let t = StrokeToken::Default.px();
             scene.fill_rect(
                 rect_to_vello(Rect::new(c.x, c.y + c.h - t, w, t)),
-                resolve(ColorToken::Text2, theme),
+                tinta(ColorToken::Text2, theme),
             );
         } else {
-            scene.fill_rect(rect_to_vello(c), resolve(ColorToken::Accent, theme));
+            scene.fill_rect(rect_to_vello(c), tinta(ColorToken::Accent, theme));
         }
     }
     scene.pop_layer();

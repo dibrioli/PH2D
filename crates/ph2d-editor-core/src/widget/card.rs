@@ -10,7 +10,11 @@ use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, Radius, Spacing, Theme, TypeToke
 use ph2d_vector::VectorScene;
 
 fn header_h() -> f32 {
-    Spacing::Xl3.px()
+    if crate::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::CARD_HEAD_H
+    } else {
+        Spacing::Xl3.px()
+    }
 }
 const FOOTER_H: f32 = ICON_BTN_SIZE_PX;
 
@@ -94,7 +98,11 @@ impl Card {
     pub fn body_rect(&self, host: Rect) -> Rect {
         let top = host.y + self.header_h_in(host);
         let bot = host.y + host.h - self.footer_h_in(host);
-        let pad = Spacing::Lg.px();
+        let pad = if crate::widget::card_ink::card_body().is_some() {
+            ph2d_card_stack::metrics::CARD_PAD_X
+        } else {
+            Spacing::Lg.px()
+        };
         Rect::new(
             host.x + pad,
             (top + pad).min(bot),
@@ -121,6 +129,9 @@ pub fn paint_card(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        return paint_card_no_cartao(card, rect, ink, scene, text_system);
+    }
     // ⭐ Raio e moldura pela porta do TEMA: o cartão de 12 px com contorno é do clássico; num
     //    tema moderno é uma superfície de raio 4 sem moldura (*«os cartões ainda desenham
     //    moldura»* — `pesquisa/07 §22.3`).
@@ -166,6 +177,31 @@ pub fn paint_card(
         let pad_x = Spacing::Md.px();
         let div_rect = Rect::new(rect.x + pad_x, footer.y, rect.w - pad_x * 2.0, 1.0);
         fill_rounded_rect(scene, div_rect, 0.5, resolve(ColorToken::Border, theme));
+    }
+}
+
+/// Um `Card` dentro de um cartão: a superfície acesa dele, o título na letra de título, sem filete.
+fn paint_card_no_cartao(
+    card: &Card,
+    rect: Rect,
+    ink: crate::widget::card_ink::CardInk,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+) {
+    use ph2d_card_stack::metrics as m;
+    let fundo = ink.color(ColorToken::KanbanCardRaised);
+    fill_rounded_rect(scene, rect, m::CARD_RADIUS, fundo);
+    if let (Some(header), Some(title)) = (card.header_rect(rect), &card.title) {
+        crate::paint::paint_text_title(
+            text_system,
+            scene,
+            title,
+            header.x + m::CARD_PAD_X,
+            header.y + (header.h - m::CARD_TITLE_PX) * 0.5,
+            m::CARD_TITLE_PX,
+            (header.w - m::CARD_PAD_X * 2.0).max(0.0),
+            ink.color(ColorToken::KanbanCardFg),
+        );
     }
 }
 

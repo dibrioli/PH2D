@@ -47,7 +47,10 @@ pub fn paint_card_body(
     w: f32,
     y: f32,
 ) -> f32 {
-    let card_h = 80.0_f32; // LITERAL-PX-OK: demo Card height (showcase-specific)
+    let card_h = super::encaixe::no_cartao(
+        m::CARD_HEAD_H + m::FIELD_H + m::CARD_PAD_BOTTOM,
+        80.0_f32, // LITERAL-PX-OK: demo Card height (showcase-specific)
+    );
     let r = Rect::new(x, y, w, card_h);
     let card = Card::new(NodeId(0)).title("Quick actions");
     paint_card(&card, r, scene, text_system, theme);
@@ -60,9 +63,9 @@ pub fn paint_card_body(
         "Card body slot — host content here.",
         body.x,
         body.y,
-        TypeToken::Xs.px(),
+        super::encaixe::no_cartao(m::LABEL_PX, TypeToken::Xs.px()),
         body.w,
-        resolve(ColorToken::Text2, theme),
+        crate::widget::card_ink::tinta(ColorToken::Text2, theme),
     );
     // Illustration — o desenho em DADOS de uma dica (o menu Add): um corpo, o chão, a seta do salto e
     // o contorno tracejado da colisão.

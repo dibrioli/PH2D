@@ -95,6 +95,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "a TINTA de um cartao (a cor de cada token no tema dele): nao pinta nem tem no' — cada widget do cartao emite o seu",
     ),
     (
+        "checkbox/card_box.rs",
+        "só a tinta da caixa de marcar do cartão; a linha ou o documento que a pinta declara o alvo",
+    ),
+    (
         "dropdown/card_chip.rs",
         "cara do chip DENTRO de um cartao (T29): o no' e' do Dropdown, que vive no mod.rs ao lado",
     ),

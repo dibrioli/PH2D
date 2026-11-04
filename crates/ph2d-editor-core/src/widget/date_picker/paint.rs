@@ -38,6 +38,8 @@ pub struct DatePickerLayout {
     pub due_label: Rect,
     pub due_check: Rect,
     pub due_field: Rect,
+    /// O rótulo da hora: só num cartão (duas coisas irmãs, dois rótulos); no Kanban, tamanho zero.
+    pub time_label: Rect,
     pub time_field: Rect,
     pub reminder_label: Rect,
     pub reminder: Rect,
@@ -57,7 +59,7 @@ fn label_h() -> f32 {
 }
 
 /// O menu do lembrete — a mesma lista para pintar e para escolher.
-fn reminder_menu(p: Option<&DatePicker>) -> Dropdown<Reminder> {
+pub(super) fn reminder_menu(p: Option<&DatePicker>) -> Dropdown<Reminder> {
     let options = Reminder::ALL
         .iter()
         .enumerate()
@@ -82,6 +84,16 @@ impl DatePickerLayout {
     #[must_use]
     pub fn preferred_height() -> f32 {
         Self::preferred_height_for(false)
+    }
+
+    /// ⭐ A altura que `p` pede a pintar-se aqui: a do cartão (mede os textos em `w`) ou a de sempre.
+    #[must_use]
+    pub fn preferred_height_of(p: &DatePicker, w: f32, ts: &mut TextSystem) -> f32 {
+        if crate::widget::card_ink::card_body().is_some() {
+            Self::preferred_height_in_card(p, w, ts)
+        } else {
+            Self::preferred_height_for(p.due_only)
+        }
     }
 
     /// A altura que o painel pede no modo `due_only` ([`DatePicker::due_only`]) ou completo.
@@ -167,6 +179,7 @@ impl DatePickerLayout {
             due_label,
             due_check,
             due_field,
+            time_label: none(y),
             time_field,
             reminder_label,
             reminder,
@@ -285,6 +298,9 @@ pub fn paint_date_picker(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
+    if let Some(ink) = crate::widget::card_ink::card_body() {
+        return super::cartao::paint(p, rect, ink, scene, ts, theme);
+    }
     let l = DatePickerLayout::of_picker(p, rect);
     paint_popover(&Popover::new(p.id), rect, scene, theme);
     let lb = &p.labels;

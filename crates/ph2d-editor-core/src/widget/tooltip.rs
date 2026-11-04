@@ -6,7 +6,7 @@
 //! help text.
 
 use super::lista_flutuante::Superficie;
-use crate::paint::paint_text_centered;
+use crate::paint::{paint_text_centered, paint_text_elided};
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
@@ -44,6 +44,21 @@ pub fn paint_tooltip(
 ) {
     let superficie = Superficie::de(theme);
     superficie.moldura_da_dica(scene, rect);
+    if superficie.tinta().is_some() {
+        // O `paint_text_centered` reserva respiro e cortava «Add entity» em «Add ent…» (foto m1_dica).
+        let px = TypeToken::Sm.px();
+        let w = text_system.prefix_width(&tip.message, px).min(rect.w);
+        return paint_text_elided(
+            text_system,
+            scene,
+            &tip.message,
+            rect.x + (rect.w - w) * 0.5,
+            rect.y + (rect.h - px) * 0.5,
+            px,
+            rect.w,
+            superficie.cor(ColorToken::Text1),
+        );
+    }
     paint_text_centered(
         text_system,
         scene,

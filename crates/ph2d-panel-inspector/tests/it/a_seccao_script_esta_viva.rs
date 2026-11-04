@@ -52,7 +52,7 @@ fn prop(name: &str, value: V, own: bool) -> InspectorScriptProp {
 
 /// A secção do «Bob (tall)» da cena de smoke: um número próprio, um por omissão, uma caixa, um
 /// texto e um órfão.
-fn info() -> InspectorScriptInfo {
+pub(crate) fn info() -> InspectorScriptInfo {
     InspectorScriptInfo {
         entity_bits: 0xB0B,
         source: "/x/bob.luau".into(),

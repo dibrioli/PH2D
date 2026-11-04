@@ -345,39 +345,55 @@ fn paint_per_corner_tab(
     //
     // ⚠️ **As quatro medem a ALTURA DE LINHA**, como a `Tint` e a `Self Tint` — a padronização que
     //    o mesmo report pediu —, e a largura sai da coluna a dividir por dois.
-    let gap = ph2d_tokens::control_gap_px();
-    let sec = seccao_de_cores(text_system, &[tr("component.field.sprite_corner_tint.5")]);
-    let alto = ph2d_tokens::ROW_H_PX * 2.0 + gap;
-    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
-    let row = if em_cartao {
-        ph2d_editor_core::property_row::paint_label_row(
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        // Num cartão: a mesma amostra do Fill, na grelha que mapeia os cantos do quad.
+        let committed = sp.map_or([[1.0, 1.0, 1.0, 1.0]; 4], |s| s.per_corner_tint);
+        let misto = sp.is_some_and(|s| s.mixed.per_corner);
+        let cantos = [
+            ids::INSP_SPRITE_CORNER_TL,
+            ids::INSP_SPRITE_CORNER_TR,
+            ids::INSP_SPRITE_CORNER_BL,
+            ids::INSP_SPRITE_CORNER_BR,
+        ];
+        let amostras: Vec<_> = cantos
+            .iter()
+            .zip(committed)
+            .map(|(&id, c)| {
+                let base = crate::state_tint::tint_f32_to_u8(c);
+                (id, (!misto).then(|| store.widget_color(id).unwrap_or(base)))
+            })
+            .collect();
+        let fim = ph2d_editor_core::panel::cards::corpo::swatch_grid(
             scene,
             text_system,
-            theme,
+            store,
+            hit_index,
+            ink,
             x,
             w,
             y,
-            alto,
             tr("component.field.sprite_corner_tint.5"),
-            sec,
-        )
-    } else {
-        // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
-        let row =
-            ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
-        let label_font = TypeToken::Sm.px();
-        ph2d_editor_core::widget::paint_property_label(
-            text_system,
-            scene,
-            tr("component.field.sprite_corner_tint.5"),
-            row.label.x,
-            row.label.y + (alto - label_font) * 0.5,
-            label_font,
-            row.label.w,
-            resolve(ColorToken::Text2, theme),
+            &amostras,
+            2,
         );
-        row
-    };
+        return paint_equalize(scene, text_system, theme, hit_index, store, x, w, fim);
+    }
+    let gap = ph2d_tokens::control_gap_px();
+    let sec = seccao_de_cores(text_system, &[tr("component.field.sprite_corner_tint.5")]);
+    let alto = ph2d_tokens::ROW_H_PX * 2.0 + gap;
+    // ⭐ O nome ao CENTRO do bloco — ele descreve as DUAS filas, não a de cima.
+    let row = ph2d_editor_core::widget::property_row_columns_for(x, w, y, alto, sec.nome_w(), None);
+    let label_font = TypeToken::Sm.px();
+    ph2d_editor_core::widget::paint_property_label(
+        text_system,
+        scene,
+        tr("component.field.sprite_corner_tint.5"),
+        row.label.x,
+        row.label.y + (alto - label_font) * 0.5,
+        label_font,
+        row.label.w,
+        resolve(ColorToken::Text2, theme),
+    );
     let cell_w = ((row.control.w - gap) * 0.5).max(1.0);
     let cell_h = ph2d_tokens::ROW_H_PX;
     let committed = sp
@@ -440,9 +456,22 @@ fn paint_per_corner_tab(
     ) {
         hit_index.register(alvo, row.dot);
     }
-    let mut cur_y = row.control.y + alto + Spacing::Sm.px();
+    let cur_y = row.control.y + alto + Spacing::Sm.px();
+    paint_equalize(scene, text_system, theme, hit_index, store, x, w, cur_y)
+}
 
-    // Equalize Corners — copies TL → the other three (spec §3.6).
+/// Equalize Corners — copies TL → the other three (spec §3.6).
+#[allow(clippy::too_many_arguments)]
+fn paint_equalize(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    cur_y: f32,
+) -> f32 {
     let eq_rect = ph2d_editor_core::property_row::caixa_do_botao(
         text_system,
         x,
@@ -459,6 +488,5 @@ fn paint_per_corner_tab(
     .kind(ButtonKind::Default)
     .visual(eq_state);
     paint_button(&eq, eq_rect, scene, text_system, theme);
-    cur_y = ph2d_editor_core::property_row::abaixo_do_botao(eq_rect);
-    cur_y
+    ph2d_editor_core::property_row::abaixo_do_botao(eq_rect)
 }

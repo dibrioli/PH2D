@@ -232,6 +232,50 @@ pub fn button_label_font() -> f32 {
     TypeToken::Base.px()
 }
 
+/// O botão de texto sozinho, no corpo de um cartão, tem a cara de `Widget::Button` (a mesma caixa e o
+/// mesmo texto do campo), nunca a faixa do painel de antes. Devolve se pintou.
+fn paint_card_button(
+    button: &Button,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+) -> bool {
+    use ph2d_card_stack::metrics as m;
+    let Some(ink) = crate::widget::card_ink::card_body() else {
+        return false;
+    };
+    if matches!(button.kind, ButtonKind::IconOnly { .. })
+        || button.cell != crate::widget::GroupCell::ONLY
+    {
+        return false;
+    }
+    let desligado = matches!(button.state, ButtonState::Disabled | ButtonState::Loading);
+    let aceso =
+        button.hover_t > 0.0 || matches!(button.state, ButtonState::Hovered | ButtonState::Pressed);
+    let (fundo, tinta) = match button.kind {
+        ButtonKind::Accent => (ColorToken::KanbanBlueBold, ColorToken::KanbanBtnOnFg),
+        ButtonKind::Danger if !desligado => (ColorToken::CardField, ColorToken::Danger),
+        _ if desligado => (ColorToken::CardField, ColorToken::CardLabel),
+        _ if aceso => (ColorToken::CardFieldHover, ColorToken::Text1),
+        _ => (ColorToken::CardField, ColorToken::Text1),
+    };
+    crate::paint::fill_rounded_rect(scene, rect, m::FIELD_RADIUS, ink.color(fundo));
+    let tw = text_system
+        .prefix_width(&button.label, m::VALUE_PX)
+        .min(rect.w);
+    crate::paint::paint_text_elided(
+        text_system,
+        scene,
+        &button.label,
+        rect.x + (rect.w - tw) * 0.5,
+        rect.y + (rect.h - m::VALUE_PX) * 0.5,
+        m::VALUE_PX,
+        rect.w,
+        ink.color(tinta),
+    );
+    true
+}
+
 pub fn paint_button(
     button: &Button,
     rect: Rect,
@@ -239,6 +283,9 @@ pub fn paint_button(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    if paint_card_button(button, rect, scene, text_system) {
+        return;
+    }
     let radius = button.radius(theme);
     // ⭐ As quatro quinas saem da POSIÇÃO no grupo (wave 20). Um botão sozinho devolve as quatro
     //    iguais ao `radius`, e o desenho é byte-idêntico ao de antes.

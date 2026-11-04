@@ -97,7 +97,7 @@ fn sprite(uso: InspectorImageUse) -> InspectorSpriteInfo {
     }
 }
 
-fn pinta(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<(NodeId, Rect)> {
+pub(crate) fn pinta(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<(NodeId, Rect)> {
     pinta_n(host, st, 60)
 }
 
@@ -113,7 +113,7 @@ fn pinta_n(host: &mut MockPanelHost, st: &mut InspectorState, n: usize) -> Vec<(
     r
 }
 
-fn chaves_da_lista(host: &mut MockPanelHost) -> Vec<NodeId> {
+pub(crate) fn chaves_da_lista(host: &mut MockPanelHost) -> Vec<NodeId> {
     host.store_mut()
         .card_list_mut(core_ids::INSP_PANEL)
         .items
@@ -375,7 +375,7 @@ fn os_cartoes_de_sprite_nascem_sem_alfinete() {
 }
 
 /// Tudo aberto, para o inventário: o que está dobrado não pinta.
-fn abre_tudo(host: &mut MockPanelHost) {
+pub(crate) fn abre_tudo(host: &mut MockPanelHost) {
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         core_ids::INSP_LIVE_COLOR_SECTION,
@@ -383,6 +383,7 @@ fn abre_tudo(host: &mut MockPanelHost) {
         core_ids::INSP_LIVE_SAMPLING_SECTION,
         core_ids::INSP_LIVE_ORDERING_SECTION,
         core_ids::INSP_LIVE_BLEND_SECTION,
+        core_ids::INSP_LIVE_SCRIPT_SECTION,
         core_ids::INSP_VIS_LAYER_HEADER,
         ph2d_panel_inspector::CARD_MATERIAL,
         CARD_ORDERING,

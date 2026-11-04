@@ -40,6 +40,9 @@ pub fn paint_property_label(
     col_w: f32,
     color: ph2d_vector::Color,
 ) {
+    crate::widget::censo_cartao::nota(|| {
+        crate::widget::censo_cartao::Velho::NomeAEsquerda(text.to_owned())
+    });
     if col_w <= 0.0 {
         return;
     }

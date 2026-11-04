@@ -84,6 +84,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.ordering" => "Ordering",
         "card.insp.z_index" => "Z index",
         "card.insp.size_px" => "Size (px)",
+        "card.insp.region_position_px" => "Region position (px)",
+        "card.insp.region_size_px" => "Region size (px)",
         "card.insp.size_m" => "Size (m)",
         "card.insp.material" => "Material & Blend",
         "card.insp.mode" => "Mode",

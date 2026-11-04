@@ -36,6 +36,10 @@ use ph2d_tokens::ROW_H_PX;
 /// uma pintura poria no censo um rótulo que não foi pintado ali.
 #[must_use]
 pub fn caixa_do_botao(text_system: &mut TextSystem, x: f32, w: f32, y: f32, rotulo: &str) -> Rect {
+    // Num cartão o botão é a largura do corpo, na altura de um campo.
+    if crate::widget::card_ink::card_body().is_some() {
+        return Rect::new(x, y, w, ph2d_card_stack::metrics::FIELD_H);
+    }
     let row = crate::widget::property_row_columns(x, w, y, ROW_H_PX);
     let largura = text_system.prefix_width_weighted(
         rotulo,

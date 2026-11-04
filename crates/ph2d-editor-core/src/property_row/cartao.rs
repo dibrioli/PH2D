@@ -80,10 +80,26 @@ pub type LabelRow = fn(
     &str,
 ) -> crate::widget::PropertyRow;
 
+/// A amostra com o código (como no Fill), rótulo em cima. Devolve o fundo.
+pub type SwatchRow = fn(
+    &mut VectorScene,
+    &mut TextSystem,
+    &WidgetStore,
+    &mut HitIndex,
+    CardInk,
+    f32,
+    f32,
+    f32,
+    Rotulo<'_>,
+    NodeId,
+    Option<[u8; 4]>,
+) -> f32;
+
 /// As linhas que o corpo de um cartão sabe pintar para o `property_row`.
 #[derive(Copy, Clone)]
 pub struct CardRows {
     pub fields: FieldsRow,
+    pub swatch: SwatchRow,
     pub choices: ChoicesRow,
     pub check: CheckRow,
     pub text: TextRow,

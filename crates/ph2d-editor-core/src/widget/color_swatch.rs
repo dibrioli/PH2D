@@ -335,6 +335,9 @@ pub fn paint_swatch_or_mixed(
     scene: &mut VectorScene,
     theme: Theme,
 ) {
+    crate::widget::censo_cartao::nota(|| {
+        crate::widget::censo_cartao::Velho::AmostraSemCodigo(a11y.to_owned())
+    });
     let Some(rgba) = rgba else {
         paint_mixed_swatch(rect, scene, theme);
         return;

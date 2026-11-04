@@ -3,7 +3,9 @@
 //! que cada TIPO pinta e a coluna do losango dela (F27 E).
 
 use super::*;
+use ph2d_editor_core::panel::cards::corpo;
 use ph2d_editor_core::script_edits::{InspectorScriptProp, InspectorScriptValue};
+use ph2d_editor_core::widget::card_ink;
 use ph2d_editor_core::widget::key_mark;
 use ph2d_editor_core::widget::{
     ColorSwatch, Dropdown, SwatchSize, paint_color_swatch, paint_dropdown_chip,
@@ -27,6 +29,50 @@ pub(super) fn campos_da_linha(i: usize, p: &InspectorScriptProp) -> Vec<NodeId> 
 
 /// ⭐⭐ **O CONTROLO de uma fileira — um por TIPO, e só esse.**
 ///
+/// Número, par e cor no corpo de um cartão: campos Figma e amostra com código. Devolve se pintou.
+fn controlo_no_cartao(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    ctrl: Rect,
+    i: usize,
+    p: &InspectorScriptProp,
+) -> bool {
+    let Some(ink) = card_ink::card_body() else {
+        return false;
+    };
+    let (num, par) = (
+        [ids::INSP_SCRIPT_NUM[i]],
+        [ids::INSP_SCRIPT_VEC2_X[i], ids::INSP_SCRIPT_VEC2_Y[i]],
+    );
+    let campos: &[NodeId] = match &p.value {
+        InspectorScriptValue::Number(_) => &num,
+        InspectorScriptValue::Vec2(_) => &par,
+        InspectorScriptValue::Color(c) => {
+            let id = ids::INSP_SCRIPT_COLOR[i];
+            let rgba = store
+                .widget_color(id)
+                .unwrap_or_else(|| crate::state_tint::cor_do_script(*c));
+            corpo::swatch_in(scene, text_system, store, hit_index, ink, ctrl, id, rgba);
+            return true;
+        }
+        _ => return false,
+    };
+    corpo::fields_in(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        ctrl,
+        &p.name,
+        campos,
+        p.step.unwrap_or(1.0),
+    );
+    true
+}
+
 /// ⚠️ **Saiu do [`linha`] pelo tecto de 200 LOC por função** quando a posição e a cor chegaram, e o
 /// corte é por RESPONSABILIDADE: a [`linha`] reparte a fileira (nome · controlo · `Reset` · o
 /// refluxo) e esta pinta **o que o tipo pede**. ⛔ Ela saiu **verbatim**, e é isso que a mantém
@@ -52,6 +98,9 @@ pub(super) fn controlo(
         && let Some(alvo) = key_mark::paint_decorator_for(scene, theme, dot, campos)
     {
         hit_index.register(alvo, dot);
+    }
+    if controlo_no_cartao(scene, text_system, hit_index, store, ctrl, i, p) {
+        return;
     }
     match &p.value {
         InspectorScriptValue::Number(_) => {

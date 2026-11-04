@@ -28,6 +28,10 @@ fn paint_region_num_cell(
     label_font: f32,
     theme: Theme,
 ) {
+    debug_assert!(
+        ph2d_editor_core::widget::card_ink::card_body().is_none(),
+        "num cartão a região pinta-se por corpo::fields"
+    );
     // ⚠️ Lido AQUI e não recebido: é um TOKEN, e o chamador não tem opinião sobre ele.
     let axis_w = Spacing::Lg.px(); // mini X/Y/W/H label column
     paint_text(
@@ -117,7 +121,50 @@ pub(super) fn paint_region_rows(
             sec,
         );
 
-        if matches!(re_value, CheckboxValue::Checked) {
+        if matches!(re_value, CheckboxValue::Checked)
+            && let Some(ink) = ph2d_editor_core::widget::card_ink::card_body()
+        {
+            // Num cartão: os dois pares em campos, a unidade no rótulo.
+            for (rotulo, eixos, par) in [
+                (
+                    "card.insp.region_position_px",
+                    ph2d_editor_core::widget::key_mark::Eixos::Xyzw,
+                    [ids::INSP_REGION_X, ids::INSP_REGION_Y],
+                ),
+                (
+                    "card.insp.region_size_px",
+                    ph2d_editor_core::widget::key_mark::Eixos::Tamanho,
+                    [ids::INSP_REGION_W, ids::INSP_REGION_H],
+                ),
+            ] {
+                cur_y = ph2d_editor_core::panel::cards::corpo::fields(
+                    scene,
+                    text_system,
+                    store,
+                    hit_index,
+                    ink,
+                    x,
+                    w,
+                    cur_y,
+                    tr(rotulo),
+                    eixos,
+                    None,
+                    &par,
+                    1.0,
+                );
+            }
+            cur_y = filter_clip_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                sec,
+            );
+        } else if matches!(re_value, CheckboxValue::Checked) {
             let field_h = ROW_H_PX;
             let cell_gap = Spacing::Md.px();
             let (region_w, region_dot) =
@@ -183,11 +230,7 @@ pub(super) fn paint_region_rows(
                 theme,
             );
             cur_y += field_h + row_gap;
-
-            let fc_value = store
-                .checkbox(ids::INSP_REGION_FILTER_CLIP)
-                .map_or(CheckboxValue::Checked, |(_, v)| v);
-            cur_y = ph2d_editor_core::property_row::paint_check_row(
+            cur_y = filter_clip_row(
                 scene,
                 text_system,
                 theme,
@@ -196,14 +239,42 @@ pub(super) fn paint_region_rows(
                 x,
                 w,
                 cur_y,
-                (
-                    ids::INSP_REGION_FILTER_CLIP,
-                    TextKey::new("component.field.sprite_region.2"),
-                    matches!(fc_value, CheckboxValue::Checked),
-                ),
                 sec,
             );
         }
     }
     cur_y
+}
+
+#[allow(clippy::too_many_arguments)]
+fn filter_clip_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    sec: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let fc_value = store
+        .checkbox(ids::INSP_REGION_FILTER_CLIP)
+        .map_or(CheckboxValue::Checked, |(_, v)| v);
+    ph2d_editor_core::property_row::paint_check_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        (
+            ids::INSP_REGION_FILTER_CLIP,
+            TextKey::new("component.field.sprite_region.2"),
+            matches!(fc_value, CheckboxValue::Checked),
+        ),
+        sec,
+    )
 }

@@ -8,6 +8,7 @@
 
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::widget::card_ink::tinta;
 use crate::widget::text_input::TextInputState;
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
@@ -293,6 +294,7 @@ pub fn paint_number_input_with_buffer(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    crate::widget::censo_cartao::nota_numero(input.id);
     // ⭐⭐⭐ **A superfície é a PORTA** ([`crate::widget::paint_field_surface`]) — o raio pelo tema,
     //    o fundo pelo `field_fill` e a moldura com o eixo do hover. ⛔ As quatro linhas viviam aqui
     //    e a LINHA DE MARCAR passou a precisar delas (2026-09-15): *uma segunda cópia divergiria no
@@ -376,7 +378,7 @@ pub fn paint_number_input_with_buffer(
             let sel_top = rect.y + Spacing::Md.px();
             let sel_bot = rect.y + rect.h - Spacing::Md.px();
             let sel_rect = Rect::new(sel_x, sel_top, sel_w, (sel_bot - sel_top).max(2.0));
-            fill_rounded_rect(scene, sel_rect, 1.0, crate::widget::card_ink::tinta(ColorToken::AccentSoft, theme));
+            fill_rounded_rect(scene, sel_rect, 1.0, tinta(ColorToken::AccentSoft, theme));
         }
     }
     paint_text(
@@ -455,7 +457,7 @@ pub fn paint_number_input_with_buffer(
             StrokeToken::Default.px(),
             (caret_bot - caret_top).max(2.0),
         );
-        fill_rounded_rect(scene, caret_rect, 0.75, crate::widget::card_ink::tinta(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
+        fill_rounded_rect(scene, caret_rect, 0.75, tinta(ColorToken::Accent, theme)); // LITERAL-PX-OK: caret half-width radius
     }
     scene.pop_layer();
 

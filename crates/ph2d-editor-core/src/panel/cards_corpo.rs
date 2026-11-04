@@ -6,6 +6,10 @@
 //! perguntam [`card_body`] e, quando há, pintam pela [`fields`]/[`choices`] (rótulo EM CIMA com a unidade nele — D13
 //! —, campo Figma com glifo, segmentos pela largura do conteúdo). Fora de um cartão nada muda.
 
+#[path = "cards_corpo_campos.rs"]
+mod campos;
+pub use campos::{LABEL_PX, bar_field, fields_in, swatch_grid, swatch_in};
+
 use super::{CardCtx, Cell, Seg, Widget};
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::CheckboxValue;
@@ -148,34 +152,6 @@ pub fn columns(
     ctx(scene, text_system, store, hit_index, ink, x, w).row(&cells, y)
 }
 
-/// Uma barra com chip, no cartão: o campo é o chip, a barra não se pinta e a marca é a dela, que é o
-/// canal (receita 11, «Slider + chip ligado»). Devolve o fundo.
-#[allow(clippy::too_many_arguments)]
-pub fn bar_field(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    store: &WidgetStore,
-    hit_index: &mut HitIndex,
-    ink: CardInk,
-    x: f32,
-    w: f32,
-    y: f32,
-    rotulo: &str,
-    chip: NodeId,
-    bar: NodeId,
-    spec: CardFieldSpec,
-) -> f32 {
-    store.mark_card_field_at_paint(chip, spec);
-    let key = [bar];
-    let cell = Cell::new(Widget::Field {
-        id: chip,
-        glyph: Glyph::Text(letra_da_grandeza(rotulo)),
-    })
-    .label(rotulo)
-    .key(&key);
-    ctx(scene, text_system, store, hit_index, ink, x, w).row(&[cell], y)
-}
-
 /// Duas escolhas segmentadas lado a lado, cada uma com o seu rótulo (T56: «Freeze X» | «Freeze Y»)
 /// — `None` quando os segmentos de alguma não cabem em meia linha (o chamador pinta uma por linha).
 #[allow(clippy::too_many_arguments)]
@@ -260,11 +236,41 @@ pub fn choices(
 pub(super) const LINHAS: crate::property_row::cartao::CardRows =
     crate::property_row::cartao::CardRows {
         fields,
+        swatch: swatch_de_fora,
         choices: choices_de_fora,
         check: check_de_fora,
         text: text_de_fora,
         label: rotulo_em_cima,
     };
+
+#[allow(clippy::too_many_arguments)]
+fn swatch_de_fora(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: Rotulo<'_>,
+    id: NodeId,
+    rgba: Option<[u8; 4]>,
+) -> f32 {
+    swatch_grid(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ink,
+        x,
+        w,
+        y,
+        rotulo.texto,
+        &[(id, rgba)],
+        1,
+    )
+}
 
 #[allow(clippy::too_many_arguments)]
 fn text_de_fora(

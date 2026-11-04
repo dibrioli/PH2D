@@ -606,22 +606,28 @@ pub fn paint_color_row<'a>(
     seccao: Seccao,
 ) -> f32 {
     let label = label.into();
-    // Num cartão: rótulo em cima, a caixa da cor na largura do corpo (`Widget::Swatch`).
-    let (row, rect, fim) = if let Some((ink, rows)) = cartao::card_rows() {
-        let row = (rows.label)(scene, text_system, ink, x, w, y, label.texto);
-        let fim = row.fim(ROW_H_PX + ph2d_tokens::control_gap_px());
-        (row, row.control, fim)
-    } else {
-        let (row, _por_linha, linhas, cw) =
-            row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
-        (
-            row,
-            Rect::new(row.control.x, row.control.y, cw, ROW_H_PX),
-            y + ph2d_tokens::row_pitch_px() * linhas as f32,
-        )
-    };
     // ⚠️ Quem resolve o valor é ESTE lado — ver o doc do `paint_swatch_or_mixed`.
     let rgba = (!mixed).then(|| store.widget_color(id).unwrap_or(fallback_rgba));
+    // Num cartão: rótulo em cima, amostra + código como no Fill.
+    if let Some((ink, rows)) = cartao::card_rows() {
+        return (rows.swatch)(
+            scene,
+            text_system,
+            store,
+            hit_index,
+            ink,
+            x,
+            w,
+            y,
+            label,
+            id,
+            rgba,
+        );
+    }
+    let (row, _por_linha, linhas, cw) =
+        row_and_layout(text_system, scene, theme, x, w, y, label.texto, 1, seccao);
+    let rect = Rect::new(row.control.x, row.control.y, cw, ROW_H_PX);
+    let fim = y + ph2d_tokens::row_pitch_px() * linhas as f32;
     let aberto = store.picker_target() == Some(id);
     crate::widget::paint_swatch_or_mixed(rect, id, label.texto, rgba, aberto, scene, theme);
     hit_index.register(id, rect);

@@ -22,6 +22,7 @@ mod calendar;
 mod card;
 pub mod card_field;
 pub mod card_ink;
+pub mod censo_cartao;
 mod checkbox;
 mod color_picker;
 mod color_swatch;

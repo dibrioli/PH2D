@@ -109,6 +109,12 @@ pub(super) fn region_grid(
     // por baixo da grelha) desfaz a leitura que o comentário deles defende por escrito.
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
+    // Num cartão, o corpo de letra dos outros rótulos.
+    let label_font = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::corpo::LABEL_PX
+    } else {
+        label_font
+    };
     paint_text(
         text_system,
         scene,

@@ -109,6 +109,9 @@ pub fn paint_slider_with_chip(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
+    crate::widget::censo_cartao::nota(|| {
+        crate::widget::censo_cartao::Velho::Barra(label.to_owned())
+    });
     paint_slider_with_chip_layout_adaptive(
         rect,
         label,

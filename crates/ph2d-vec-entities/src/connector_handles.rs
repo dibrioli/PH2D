@@ -142,11 +142,7 @@ pub fn resolve_drop(
 }
 
 /// O alvo de uma ponta presa, resolvido na cena (para a regra 2 acima).
-pub fn target_of(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    end: &ConnectorEnd,
-) -> Option<DropTarget> {
+pub fn target_of(scene: &VecScene, xforms: &VecXforms, end: &ConnectorEnd) -> Option<DropTarget> {
     let ConnectorEnd::Bound { target, .. } = end else {
         return None;
     };

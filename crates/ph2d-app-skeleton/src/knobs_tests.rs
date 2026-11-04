@@ -43,7 +43,10 @@ fn asking_for_more_segments_than_the_ceiling_stores_the_ceiling() {
     apply(&mut b, BoneKnob::Segments, -5.0);
     assert_eq!(b.segments, 1, "um osso com zero sub-ossos nao existe");
     apply(&mut b, BoneKnob::Segments, 3.6);
-    assert_eq!(b.segments, 4, "o campo arrasta num contínuo: arredonda, não corta");
+    assert_eq!(
+        b.segments, 4,
+        "o campo arrasta num contínuo: arredonda, não corta"
+    );
 }
 
 /// ⭐ **UM ID QUE NÃO É DO OSSO CAI FORA** — o controlo do [`of_id`]: sem ele, um braço `_ =>`

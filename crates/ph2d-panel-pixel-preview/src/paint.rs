@@ -95,7 +95,13 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         theme,
     );
     ctx.host.hit_index_mut().register(ids::PLAY, play);
-    paint_panel_close_button(rect, ids::PREVIEW_CLOSE, ctx.host.hit_index_mut(), ctx.scene, theme);
+    paint_panel_close_button(
+        rect,
+        ids::PREVIEW_CLOSE,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
     // As pegas dos dois cantos de baixo (as das outras janelas soltas): por cima do corpo.
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);

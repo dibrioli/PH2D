@@ -176,3 +176,39 @@ fn the_card_flips_left_and_rises_at_the_edges() {
     assert!(c.x >= left.x + left.w, "havia lugar à direita: {c:?}");
     assert_eq!(c.y, left.y, "alinha ao topo do item quando cabe");
 }
+
+/// Em cartões a moldura do desenho e o texto usam os tons da lista; `PH2D_CARDS=0`, os de antes.
+#[test]
+fn a_dica_veste_os_tons_da_lista() {
+    use crate::widget::card_ink::CardInk;
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
+    let tema = Theme::default();
+    let tip = PaletteTip {
+        id: with_tip(),
+        title: "Character".into(),
+        body: "The hero".into(),
+        picture: PICTURE,
+    };
+    let conta = |cartao: bool, cor: ph2d_vector::Color| {
+        force_cromo_on_this_thread(Some(cartao));
+        let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+        let item = Rect::new(100.0, 100.0, 80.0, 20.0);
+        let _ = paint_card(&mut scene, &mut ts, tema, &tip, item, VP);
+        force_cromo_on_this_thread(None);
+        let mut uma = VectorScene::new();
+        fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
+        let dados = uma.inner().encoding().draw_data.clone();
+        let cena = scene.inner().encoding().draw_data.clone();
+        cena.windows(dados.len())
+            .filter(|w| *w == dados.as_slice())
+            .count()
+    };
+    let moldura = CardInk::of_list(tema).color(ColorToken::CardField);
+    let antes = resolve(ColorToken::Bg3, tema);
+    assert_eq!(
+        conta(true, moldura),
+        1,
+        "a moldura do desenho na caixa do cartão"
+    );
+    assert_eq!(conta(false, antes), 1, "PH2D_CARDS=0: a de antes");
+}

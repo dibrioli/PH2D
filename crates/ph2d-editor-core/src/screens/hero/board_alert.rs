@@ -240,3 +240,43 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     true
 }
+
+#[cfg(test)]
+mod veste_tests {
+    use super::*;
+    use crate::widget::card_ink::CardInk;
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
+    use ph2d_vector::Color;
+
+    fn vezes(scene: &VectorScene, cor: Color) -> usize {
+        let mut uma = VectorScene::new();
+        crate::paint::fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
+        let dados = uma.inner().encoding().draw_data.clone();
+        let cena = scene.inner().encoding().draw_data.clone();
+        cena.windows(dados.len())
+            .filter(|w| *w == dados.as_slice())
+            .count()
+    }
+
+    /// O aviso de menção do Quadro é o painel da lista; `PH2D_CARDS=0`, a moldura de antes.
+    #[test]
+    fn o_aviso_de_mencao_veste_o_painel() {
+        let tema = Theme::default();
+        let area = Rect::new(0.0, 0.0, 1600.0, 900.0);
+        let pinta = |cartao| {
+            force_cromo_on_this_thread(Some(cartao));
+            let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+            hero.theme = tema;
+            hero.documents.live.alert = Some(Alert::new("Ana mentioned you".into(), None));
+            let (mut scene, mut text) = (VectorScene::new(), TextSystem::without_system_fonts());
+            paint(&mut hero, area, &mut scene, &mut text);
+            force_cromo_on_this_thread(None);
+            scene
+        };
+        let painel = CardInk::of_list(tema)
+            .color(ColorToken::KanbanList)
+            .with_alpha(1.0);
+        assert_eq!(vezes(&pinta(true), painel), 1, "o painel da lista");
+        assert_eq!(vezes(&pinta(false), painel), 0, "só em cartões");
+    }
+}

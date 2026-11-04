@@ -359,3 +359,49 @@ fn pinta_a_caixa_do_sino(
         y += m::NOTICE_H;
     }
 }
+
+#[cfg(test)]
+mod barra_tests {
+    use super::*;
+    use ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread;
+
+    fn vezes(scene: &VectorScene, cor: Color) -> usize {
+        let mut uma = VectorScene::new();
+        fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
+        let dados = uma.inner().encoding().draw_data.clone();
+        let cena = scene.inner().encoding().draw_data.clone();
+        cena.windows(dados.len())
+            .filter(|w| *w == dados.as_slice())
+            .count()
+    }
+
+    /// A vista escolhida é o segmento levantado em cartões, e o bloco de acento só no modo de antes.
+    #[test]
+    fn a_vista_escolhida_e_o_segmento_em_cartoes() {
+        let tema = Theme::default();
+        let pinta = |cartao, on| {
+            force_cromo_on_this_thread(Some(cartao));
+            let mut d = PlannerDocs::default();
+            let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+            let hit = (Hit::Mode(Mode::Calendar), on);
+            let _ = button(
+                &mut d,
+                &mut scene,
+                &mut ts,
+                tema,
+                (0.0, 0.0),
+                "Calendar",
+                hit,
+            );
+            force_cromo_on_this_thread(None);
+            scene
+        };
+        let acento = c(tema, T::Accent);
+        let segmento =
+            ph2d_editor_core::widget::card_ink::CardInk::of_list(tema).color(T::KanbanCardRaised);
+        assert_eq!(vezes(&pinta(true, true), segmento), 1);
+        assert_eq!(vezes(&pinta(true, true), acento), 0);
+        assert_eq!(vezes(&pinta(true, false), segmento), 0, "só a escolhida");
+        assert_eq!(vezes(&pinta(false, true), acento), 1, "PH2D_CARDS=0");
+    }
+}

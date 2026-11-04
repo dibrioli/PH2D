@@ -21,4 +21,10 @@ fn the_requests_of_a_gesture_on_a_pinned_card_are_of_its_bone() {
         dreno.contains("osso_selecionado: crate::bone_gesture::osso_do_gesto("),
         "o dreno da shell deixou de perguntar pelo preso"
     );
+    // A shell tem ~20 `return` antes do `dispatch_key`: um atalho larga o preso no topo do `key_input`.
+    let tecla = include_str!("../../../shells/desktop/src/input_dispatch/keyboard_bind_capture.rs");
+    assert!(
+        tecla.contains("hero.store.note_card_key();"),
+        "a tecla da shell deixou de largar o preso"
+    );
 }

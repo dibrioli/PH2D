@@ -30,7 +30,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ✅ (contraprovas do D1 na rodada R) |
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
-| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | 🟨 G4 de 8 |
+| G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | 🟨 G5 de 8 |
 | H | Painter | Respeita E10 (decisão do dono) | ⬜ |
 | I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ⬜ |
 | J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ⬜ |
@@ -349,6 +349,19 @@ Fotos vistas, depois das curas: `maquete/g4_{1_texto_solto,2_texto_e_caminho,3_p
 Fica: não visto no app, só no mock: scrub, Esc, escrever, clique em cada id, «+» dobrado, punho. Sem foto: Radius, Shift e Grow com o rótulo novo. A escolha de fonte com texto selecionado só foi lida no código (`fase_fonts.rs`), não corrida. Sem teste: a frase e a dica do cartão Text (só foto). `PH2D_CARDS=0`: o Offset do caminho não tem semente (lido no código; nos cartões o mesmo campo deu `0` com o documento em `0,25`, antes da cura), defeito antigo, deixado como estava. Lista do Pixel (`paint_fonte.rs`): usa o mesmo `resolve(row.ink())`; se abrir num cartão, tem o defeito (3); não medido, crate alheia.
 
 **G5 não feita: pausa do dono para smoke.** Eu já a tinha começado quando chegou a ordem: `cards_ponto.rs`, `cards_padrao.rs` e `g5_os_cartoes.rs`, ligados à árvore, nunca commitados. Saíram da árvore e os ganchos foram desfeitos. Rascunho em `/tmp/tmp.XI4iZHeWKV/g5_rascunho/` (pasta temporária, pode sumir), com `ganchos.diff`: 8 de 9 testes verdes e 1 vermelho por investigar (o scrub do denominador do Offset do padrão fica parado em 3), sem foto, sem contraprova, sem portões. Não conta como feito.
+
+**Bloco G, fatia 5 (04/11).** Pattern ×2, Brush, Connector e Vertex nativos (`cards_padrao.rs`, `cards_ponto.rs`). O rascunho valeu como base, e o vermelho dele era do teste: o Offset vai de 2 a 8 em 250 px, 40 px não chegam a meia unidade, e o inteiro fica em 3. O layout foi refeito pela lei da compactação. Micro-pesquisa em [16](16_REFERENCIAS_POR_CARTAO.md): Figma e Rive quase sem fonte para estes cartões, registado como dúvida.
+
+**Lei da compactação em G1–G4**, respeitando F43/F44: Rotation com Resize Box; os dois tokens do traço lado a lado; Angle com o token; Grow com a quina ou o Blend; parâmetros e caixas de efeito dois a dois; Offset e Side do texto no caminho tentam dividir a linha, mas a escolha não cabe a meia coluna e desce. Sem `vector` em `PENDENTES`. **A varredura do registo só mede o estado de fábrica**, por isso cada `gN_os_cartoes` passa o censo sobre os seus estados. Porta nova na fundação: `censo::na_secao_de`, para o censo medir os painéis à esquerda (`cards_lado::flutua`), que antes ficavam de fora.
+
+**Curas:** a dica do padrão nomeava «Use Shape...», um botão que já não existe: agora «Use Art...».
+
+Decisões tomadas sem o dono: Offset (1/n) sobe para ao lado de Angle, logo abaixo do reticulado; sem Offset, o Angle fica com a linha. Lock Aspect e Link Gaps lado a lado por baixo de Width/Height e Gap, em vez de um debaixo de cada par. Route (botão que cicla, um só id) divide a linha com o 1.º número da rota. Size e Spacing do pincel com «(×)»; os números do padrão com «(m)», «(%)», «(°)», «(1/n)». Jetty, Spread, Corner e Curve sem unidade: o catálogo declara-os `Ratio`.
+
+Testes: `g5_os_cartoes` por gesto real; a seguir à ronda, 90 verdes em `os_cartoes` (g1–g5). Contraprovas: 20 mutações, 14 sangram na 1.ª ronda; as 6 sobreviventes pediram testes novos (opção acesa por `paint_draw_data`, botão da arte pelo censo, token do Fill, efeito dois a dois) e sangram na 2.ª, mais 1 nova (Repeat aceso). A 1.ª tentativa, com `editor-core` em obras, deu exit 2 em 16 de 20 e não conta. **Sem contraprova válida:** tirar `na_secao_de` correu contra o filtro errado e sobreviveu; a prova indirecta é «filtro sem juntar sozinhos», que só existe no painel à esquerda e sangra no censo. Sem mutante: rótulos de G1–G4 e `Rotation + Resize Box` (o teste existe, não foi mutado).
+
+Fotos vistas, depois das curas: `maquete/g5_1_pattern_brush_connector.png`, `g5_2_rota_curva_e_vertex.png`, cena 45 com patch temporário já retirado (nenhuma das duas cenas tem estes cartões). Sem foto: Brush sem arte, Vertex misto, Connector reta, e nenhum painel à esquerda depois da compactação de G2 e G3 (só censo e posição). Não visto no app, só no mock: scrub, Esc, clique, largura estreita (a descida do par é da fundação, não testada aqui). **G6, G7 e G8 não feitas:** não sobraram 15 min.
+
 
 **Bloco H, fatia 1 (04/11).** Painel Painter em cartões, plano em [13](13_PAINTER_PLANO.md): 9 fatias, `card.rs` funde-se fatia a fatia e sai com o painel antigo. Toda a lista de uma vez, `PH2D_CARDS=0` dá o de antes (foto conferida). Brush/Layers numa faixa presa, com a prévia fixada; Reset no cabeçalho do cartão, mesmo id. Nativos: Mixing, Symmetry, Tiling. Resto: **captura** (`cards_captura.rs`): o pintor antigo corre uma vez com o `PaintCtx`, cena e alvos próprios; o corpo só repete, transladado. Vista Layers: um cartão capturado. Nenhum motor, preset ou pincel tocado.
 

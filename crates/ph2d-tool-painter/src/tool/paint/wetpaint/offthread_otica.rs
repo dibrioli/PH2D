@@ -26,6 +26,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Instant;
 
+/// O peso da média da cópia, aplicado a cada passo de água recusado: 48 ms voltam à folga em 4 passos, 190 ms em 11.
+const ENVELHECE_NA_RECUSA: f64 = 0.8;
+
 /// Caixa em células, `(x0, y0, x1, y1)` inclusiva, `1..=gw × 1..=gh`.
 pub(in crate::tool::paint::wetpaint) type CaixaCel = (usize, usize, usize, usize);
 
@@ -169,6 +172,7 @@ pub(super) struct DoWorker {
     espelho: Option<Box<Espelho>>,
     /// A média móvel do custo da cópia, ms — a folga que a regra do passo pede.
     copia_ms_ema: f64,
+    recusada_no_passo: u64,
 }
 
 fn trava<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -216,6 +220,7 @@ pub(super) fn par() -> (DoWorker, DoFioPrincipal) {
             ui,
             espelho: Some(Box::default()),
             copia_ms_ema: 0.0,
+            recusada_no_passo: 0,
         },
         DoFioPrincipal {
             correio,
@@ -245,7 +250,8 @@ pub(in crate::tool::paint::wetpaint) fn caixa_da_grade(
 
 impl DoWorker {
     /// O gancho do `worker_loop`, num passo FECHADO: serve o pedido se o espelho está aqui e a cópia cabe na folga
-    /// (`acc + cópia ≤ STEP_S`, ou a água não anda) — nenhum passo atrasa por causa da imagem.
+    /// (`acc + cópia ≤ STEP_S`, ou a água não anda). A previsão só anda quando a cópia corre: sem envelhecer na recusa,
+    /// uma cópia cara (a 1.ª é a tela inteira, 32 ms a 1080p) congelava a tela até a sessão acabar (Bug #60).
     pub(super) fn serve(&mut self, engine: &mut Engine, acc: f64, passos: u64) {
         if engine.sim.step_pending() {
             return;
@@ -253,9 +259,14 @@ impl DoWorker {
         if self.espelho.is_none() {
             self.espelho = self.volta.try_recv().ok();
         }
-        if self.espelho.is_none()
-            || (engine.sim_should_run() && acc + self.copia_ms_ema / 1000.0 > STEP_S)
-        {
+        if self.espelho.is_none() {
+            return;
+        }
+        if engine.sim_should_run() && acc + self.copia_ms_ema / 1000.0 > STEP_S {
+            if passos != self.recusada_no_passo {
+                self.recusada_no_passo = passos;
+                self.copia_ms_ema *= ENVELHECE_NA_RECUSA;
+            }
             return;
         }
         let Some(p) = trava(&self.correio).take() else {

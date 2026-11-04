@@ -417,3 +417,93 @@ fn sonda_custo_do_preview() {
         );
     }
 }
+
+/// O gesto do preview (`lw × lh`) no canto de `t`, no relógio de VERDADE (o worker e o compositor), a 60 Hz até a água
+/// assentar e mais 1 s para a imagem que estava no ar. Devolve o que o ecrã mostra.
+fn no_relogio_real(t: &mut PainterTool, lw: u32, lh: u32) -> Vec<u8> {
+    use std::time::{Duration, Instant};
+    let (x0, x1, cy, amp) = trajeto(t, lw, lh);
+    let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
+    let em = |f: f32| {
+        [
+            x0 + (x1 - x0) * f,
+            cy + amp * (f * std::f32::consts::TAU).det_sin(),
+        ]
+    };
+    t.on_canvas_pointer(ponto(em(0.0), pressao(0.0), PointerPhase::Down));
+    for k in 1..=n {
+        let f = k as f32 / n as f32;
+        t.on_canvas_pointer(ponto(em(f), pressao(f), PointerPhase::Move));
+        t.on_tick(TICK_MS);
+    }
+    t.on_canvas_pointer(ponto(em(1.0), pressao(1.0), PointerPhase::Up));
+    let quadro = Duration::from_micros(16_667);
+    let t0 = Instant::now();
+    let mut k = 0u32;
+    loop {
+        t.on_tick(1000.0 / 60.0);
+        std::thread::sleep(quadro);
+        k += 1;
+        // Perguntar traz o motor para casa: só uma vez por segundo, como quem olha o relógio.
+        if k % 60 == 0 && t.wet_assentada() {
+            break;
+        }
+        assert!(
+            t0.elapsed() < Duration::from_secs(120),
+            "a água não assentou"
+        );
+    }
+    for _ in 0..60 {
+        t.on_tick(1000.0 / 60.0);
+        std::thread::sleep(quadro);
+    }
+    t.take_preview_arc().expect("a tela").0.to_vec()
+}
+
+/// ⭐ **Bug #60: o preview e a tela GRANDE do Fan Brush concordam** (smoke 04/11: «no preview a tinta espalha, na pintura
+/// não»): o mesmo gesto no relógio de verdade, com o compositor, numa tela `4096×3072` (a 1.ª cópia para o espelho custa
+/// ~190 ms, o passo da água tem 25). O canto da tela, reduzido como o preview, é o último quadro do preview. Sem o
+/// `ENVELHECE_NA_RECUSA` a tela fica no traço do pen-up. O tempo é o da água: ~17 s de parede.
+#[test]
+fn o_fan_brush_pinta_na_tela_grande_o_que_o_preview_mostra() {
+    use ph2d_brush_presets::Biblioteca;
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let biblioteca = Biblioteca::carregar(&raiz, None);
+    let p = &biblioteca
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == "Fan Brush")
+        .expect("o pincel de fábrica")
+        .preset;
+    let arma = |w: u32, h: u32| {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+        t.set_paint_media(PaintMedia::WetPaint);
+        assert!(t.wet_preset_aplicar(p).is_empty());
+        t.set_brush_color_srgb8(AZUL);
+        t
+    };
+    let mut modelo = arma(64, 64);
+    modelo.set_wet_relogio_fixo(true);
+    let (lw, lh) = tela_do_preview(modelo.paint.brush.radius_px);
+    let mut preview = Vec::new();
+    assert!(pintar_preview(
+        &modelo.wet_preview_cena(),
+        &|| false,
+        &mut |px, _, _| preview = px.to_vec()
+    ));
+    let (w, h) = (4096u32, 3072u32);
+    let mut t = arma(w, h);
+    let tela = no_relogio_real(&mut t, lw, lh);
+    let mut canto = Vec::with_capacity((lw * lh * 4) as usize);
+    for y in 0..lh as usize {
+        let i = y * w as usize * 4;
+        canto.extend_from_slice(&tela[i..i + lw as usize * 4]);
+    }
+    let reduzido = reduz(&canto, lw, lh, LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW);
+    let n = diferentes(&reduzido, &preview);
+    assert_eq!(
+        n, 0,
+        "a tela grande e o preview do Fan Brush diferem em {n} bytes"
+    );
+}

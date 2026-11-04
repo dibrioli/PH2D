@@ -532,6 +532,16 @@ O Fast dry encolhe a bbox e torna a leitura visível. **Errada era a via de raiz
 `o_fast_dry_de_raiz_e_o_do_instantaneo` (visto vermelho a 58 texels antes da cura, com controlo de que o Fast dry age). A troca da
 `bancada_da_agua` por instantâneos (−30 % de CPU, medido pela Aceleracao) fica por fazer: só teste, fora deste bug.
 
+## Bug #60 (FECHADO 04/11) — a tela grande congela no traço do pen-up: a água corre e o ecrã não a mostra até a sessão acabar
+
+**Sintoma (smoke):** «Fan Brush: no preview a tinta espalha/molha um pouco o papel, na pintura não». O preview estava certo.
+**Mecanismo:** o `DoWorker::serve` do compositor da óptica (J13b, ligado em 02/11) só copia para o espelho se `acc + copia_ms_ema ≤ STEP_S` (25 ms) e a média só anda quando a cópia corre. A 1.ª cópia é a tela inteira; acima de 25 ms a média fica acima da folga e nunca mais desce: a 2.ª imagem fica no ar para sempre (`sim_should_run` é `!stroke_down`, verdadeiro mesmo com a água parada, logo a saída «a água não anda» não existe depois do Up). O motor corre certo; só o ecrã pára.
+**Medido** (smoke, Fan Brush, 22 s de água, relógio real): 1.ª cópia 13,9 ms a 1280×720 (a água aparece) · 31,8 ms a 1920×1080 · 48,6 ms a 2048×1536 · 190 ms a 4096×3072 (congela: 890 passos, 1–2 vistos, 0 px mudados; o recompor inteiro dá +18 % de área). As cópias seguintes custam 1–4 ms. O 2.º traço não descongela o 1.º; só o fim da sessão assa a água (13 408 → 16 063 px). `PH2D_WET_OTICA_FORA=0` não congela.
+**Cura:** cada passo recusado envelhece a previsão (`ENVELHECE_NA_RECUSA` = 0,8): 48 ms voltam à folga em 4 passos, 190 ms em 11. A água segue a ~40 passos/s em todos os tamanhos (2048×1536: 913 em 22,8 s; 4096×3072: 1 099 em 27,5 s).
+**O portão que estava verde:** `a_agua_pelo_compositor_e_a_tela_de_casa_ao_byte` corre numa tela pequena, onde a cópia cabe. Agora: `o_fan_brush_pinta_na_tela_grande_o_que_o_preview_mostra` (4096×3072, relógio real, ~17 s, o canto reduzido é o último quadro do preview AO BYTE; com `ENVELHECE_NA_RECUSA = 1` reprova em 26 535 bytes).
+**Muda:** só o relógio real em telas cuja 1.ª cópia passa de 25 ms; miniaturas e preview (relógio fixo, sem worker) ficam ao byte. O que volta a aparecer depois do Up (área nova / área no Up, censo de 55 presets a 1024×512): Water Brush 128 %, Blender Soft 113 %, Blender Hard 93 %, Blender Dots 68 %, Wet Drip 59 %, Smear Wet 37 %, Smear Spikey 29 %, Smear Soft 28 %, Wet Round 27 %, Smear Flat 26 %, Wet Flat 25 %, Gouache Flat 22 %, Dip Pen 21 %, Blender Textured 18 %, Fan Brush 18 %, Smear Shattered 15 %, Ink Brush 13 %, Wet Liner 7 %, Ink Bullet 6 %, abaixo disso Gouache Opaque, Wet Dry Brush, Marker Bullet, Marker Chisel, Broad Nib, Wet Wash. Lápis, pastéis, óleos, facas e aerógrafo: 0.
+**Por medir:** o tamanho exacto em que o perfil `release` passa de 25 ms (e sob carga 1280×720 pode passar); o custo de quadro numa tela ≥ 1080p com a água a aparecer.
+
 ## Bug #59 (FECHADO 04/11, os pincéis à espera do dono) — o que é mais fino que um píxel lia-se num ponto: aro do Bokeh «pixelado», pontos do Halftone em blocos
 
 **Sintoma (smoke):** o aro do Bokeh aos tracinhos; os pontos do Halftone quadrados, «não suaves».

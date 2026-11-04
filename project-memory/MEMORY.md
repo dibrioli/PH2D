@@ -45,6 +45,7 @@
 - ⭐⭐⭐ [Dono 01/11: aguada contra relevo alto — mistura na borda, escorre pelas laterais, senão empoça e transborda com volume](project_watery_paint_against_relief_owner_law_2026_11_01.md)
 - ⭐⭐ [Dono 31/10 noite: refatorar o Wet Paint por áreas (grandeza física, uma lei) + ajuda ilustrada estilo Fusion 360](project_wetpaint_refactor_and_illustrated_help_2026_10_31.md)
 - ⭐ [Dono 30/10: Quadros e Kanbans ficam no projeto até APAGAR e aparecem em Assets](project_boards_and_kanbans_live_in_the_project_assets_2026_10_30.md)
+- ⭐ [Dono 04/11: seção Animation simples como a Godot; overrides e Direction fora da vista; GEF não alinha ao visual novo por agora](project_animation_section_like_godot_2026_11_04.md)
 - ⭐ [Animação (25/10): UM cartão Animation + editor próprio; depois LISTA DE REGRAS «quando → animação»](project_animation_one_card_owner_decision_2026_10_25.md)
 - ⭐⭐ [Auto Key grava ABSOLUTAMENTE TUDO (19/10): cor, traço, pontos — não só transformações](project_autokey_records_everything_2026_10_19.md)
 - ⭐ [Apagar camada animada (25/10): a linha da timeline SOME junto e o Desfazer devolve as duas](project_a_deleted_animated_layer_takes_its_timeline_row_2026_10_25.md)

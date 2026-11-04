@@ -25,7 +25,6 @@ const PASSO_MEDIO: f64 = 0.1; // LITERAL-PX-OK: passo do valor (tamanho, fator),
 const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo do arrasto, no domínio do documento
 const PASSO_DO_PESO: f64 = 10.0; // LITERAL-PX-OK: passo da seta no eixo `wght` (100..900)
 const PASSOS_DO_EIXO: f64 = 40.0; // LITERAL-PX-OK: em quantos passos o arrasto atravessa o eixo, o do `seed_number_fields`
-const PASSO_DA_LARGURA: f64 = 1.0; // LITERAL-PX-OK: passo da seta na largura de quebra, em mundo
 
 /// Com o store MUTÁVEL, antes de pintar: as marcas e as dicas. As sementes são as de sempre (`paint.rs`).
 pub(crate) fn prepare(store: &mut WidgetStore) {
@@ -56,7 +55,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         ),
         (
             ids::VECTOR_TEXT_WRAP_W_NUM,
-            PASSO_DA_LARGURA,
+            PASSO_MEDIO,
             PASSO_MEDIO,
             DEFAULT_TEXT_WRAP,
         ),

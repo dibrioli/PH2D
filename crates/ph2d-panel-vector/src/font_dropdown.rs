@@ -17,8 +17,8 @@ use crate::ids;
 use crate::state;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
-use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow};
+use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list_measured};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow, resolve_opaque};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -49,7 +49,17 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
     if n > 0 {
         dd.select(selected_index());
     }
-    let region = ctx.layout.popover_region();
+    // A lista alta não sobe acima do topo do painel: as barras do topo pintam-se depois dela e tapavam-na.
+    let mut region = ctx.layout.popover_region();
+    if let Some(p) = ctx
+        .host
+        .store()
+        .panel_rect(ph2d_editor_core::ids::VECTOR_PANEL)
+    {
+        let fundo = region.y + region.h;
+        region.y = region.y.max(p.y);
+        region.h = (fundo - region.y).max(0.0);
+    }
     let mut linha = |scene: &mut VectorScene, text: &mut TextSystem, row: PopoverRow| {
         if n == 0 {
             paint_text_centered(
@@ -64,14 +74,44 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
             paint_row(scene, text, row, theme);
         }
     };
-    paint_dropdown_list(ctx, &dd, chip_rect, region, theme, Some(&mut linha));
+    let largura = largura_pintada(ctx.text_system, chip_rect.h);
+    paint_dropdown_list_measured(
+        ctx,
+        &dd,
+        chip_rect,
+        region,
+        theme,
+        Some(&mut linha),
+        largura,
+    );
+}
+
+/// A largura do nome mais largo COMO SE PINTA: no contorno dele, ou na fonte da interface se o contorno
+/// sai vazio. O rótulo da lista não serve: cada linha desenha-se noutra fonte.
+fn largura_pintada(text: &mut TextSystem, row_h: f32) -> f32 {
+    let px = f64::from(row_h) * GLYPH_PX_RATIO;
+    state::with_font_previews(|previews| {
+        previews.iter().fold(0.0_f32, |w, pv| {
+            let nome = if pv.outline.elements().is_empty() {
+                ph2d_editor_core::paint::label_column_width(
+                    text,
+                    TypeToken::Base.px(),
+                    [pv.display.as_str()],
+                )
+            } else {
+                (pv.advance_em * px) as f32
+            };
+            w.max(nome)
+        })
+    })
 }
 
 /// One visible family row: the name in its own outline (falling back to the UI font when the
 /// outline is empty). The selected highlight is the list's.
 fn paint_row(scene: &mut VectorScene, text_system: &mut TextSystem, row: PopoverRow, theme: Theme) {
     let r = row.rect;
-    let color = resolve(row.ink(), theme);
+    // `resolve_opaque` conhece a tinta do cartão: sobre o realce dele, o `AccentFg` a secas não se lia.
+    let color = resolve_opaque(row.ink(), theme);
     let pad = Spacing::Md.px();
     state::with_font_previews(|previews| {
         let Some(pv) = previews.get(row.index) else {
@@ -90,7 +130,15 @@ fn paint_row(scene: &mut VectorScene, text_system: &mut TextSystem, row: Popover
                 color,
             );
         } else {
+            // A lista não passa da janela: um nome mais largo do que ela corta-se na linha.
+            let cabe = (pv.advance_em * f64::from(r.h) * GLYPH_PX_RATIO) as f32 + pad <= r.w;
+            if !cabe {
+                scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(r));
+            }
             fill_name_outline(scene, pv, r, pad, color);
+            if !cabe {
+                scene.pop_layer();
+            }
         }
     });
 }

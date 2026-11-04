@@ -103,9 +103,7 @@ impl crate::App {
         // dela) SÓ quando o painel pede — i.e. na 1ª abertura do dropdown. Assim o
         // scan+parse das fontes do sistema é pago no open, nunca ao entrar no Text.
         #[cfg(feature = "panel-vector")]
-        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Text
-            && ph2d_panel_vector::take_want_font_previews()
-        {
+        if ph2d_panel_vector::take_want_font_previews() {
             ph2d_panel_vector::set_current_text_font_previews(
                 crate::vec_font_preview::build_previews(),
             );

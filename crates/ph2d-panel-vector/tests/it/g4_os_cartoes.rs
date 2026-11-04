@@ -276,6 +276,28 @@ fn the_font_box_opens_the_list_and_a_row_picks_and_closes() {
     assert_eq!(novo, grava(false));
 }
 
+/// A lista tem a largura do nome mais largo COMO SE PINTA, não a da caixa: cada família no contorno dela.
+/// *Mutação: voltar à porta sem a medida ⇒ vermelho.*
+#[test]
+fn the_font_list_is_as_wide_as_the_widest_painted_name() {
+    let mut mesa = Mesa::nova(true);
+    let mut longa = fonte("Fira Sans Compressed Extra Light");
+    longa.outline.move_to((0.0, 0.0));
+    longa.outline.line_to((30.0, 1.0));
+    longa.advance_em = 30.0;
+    ph2d_panel_vector::set_current_text_font_previews(vec![fonte("Inter"), longa]);
+    mesa.clica(p::VECTOR_TEXT_FONT_DD);
+    mesa.assenta();
+    let caixa = mesa.rect(p::VECTOR_TEXT_FONT_DD).expect("a caixa");
+    let linha = mesa
+        .rect(p::vector_text_font_option_id(1))
+        .expect("a linha");
+    assert!(
+        linha.w >= 30.0 * caixa.h * 0.62,
+        "{linha:?} × a caixa {caixa:?}"
+    );
+}
+
 /// ⭐ **Scrub de cada número**: o campo muda, a ferramenta ouve pela barra de sempre, a semente a meio
 /// não o puxa, e o Esc devolve. *Mutação: tirar o `mark_card_field` ⇒ vermelho.*
 #[test]
@@ -407,6 +429,10 @@ fn what_the_text_cannot_use_is_not_offered() {
     assert!(
         mesa.rect(p::vector_text_axis_id(n - 1)).is_some(),
         "o último"
+    );
+    assert!(
+        mesa.rect(p::vector_text_axis_id(n)).is_none(),
+        "acima do tecto"
     );
 }
 

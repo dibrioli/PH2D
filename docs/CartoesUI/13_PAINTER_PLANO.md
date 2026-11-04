@@ -61,7 +61,7 @@ corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou es
 | H2 ✅ | Topo e básicos: Paint Mode, Preset (sem tocar nos volumes), Sync, Blend, Color, Size, Strength, Flow, Accumulate (`cards_topo.rs`). Peças ainda capturadas: prévia, volumes do Wet (→ H3), Clone, Inpaint, Line, Composite (→ H8) | médio; miniaturas |
 | H3 ✅ | Wet Paint e volumes em linhas de cartão (`cards_wet.rs`; lei E10: Tilt e visor iguais, avançado preservado, Body e sombra ficam; Dilution ≠ Volume). Tabela `Numero` única para as duas caras. Só o visor do Tilt capturado | alto: 41 + Óleo |
 | H4 ✅ | Watercolor + Impasto em linhas (`cards_watercolor.rs`, `cards_impasto.rs`), rig por lâmpada. Capturados: prévia do Flow, knobs do Sculpt (→ H8) | médio |
-| H5 | Shape + Shape Tone: Falloff, rampa, camadas de forma, pontas, Taper | alto: curva e rampa |
+| H5 ✅ | Shape + Shape Color em linhas (`cards_shape.rs`, `cards_shape_tom.rs`). Capturados: curva do Falloff, visor do Taper, gizmo Flatten, prévia, linhas por camada, editor da rampa (nunca redesenhados aqui) | alto: curva e rampa |
 | H6 | Paper + Grain + Color Ramp + Randomize (marca) | médio; prensa do papel é controlo de pincel |
 | H7 | Stroke + Pen (Spacing/Continuous intactos; curvas) | médio: 43 + 25 |
 | H8 | Composite, Line, Clone, Inpaint, Mask, Deform, Selection, Sculpt | médio |

@@ -38,9 +38,6 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        if let Some(fim) = self.no_cartao(y, |c, y| crate::cards_avancado::blend(c, snap, y)) {
-            return fim;
-        }
         // **Pick Shapes** — entra no modo de escolher as formas na ORDEM de clique (acende quando
         // ativo). É um botão segmentado (não `action_button`) para poder realçar o estado do modo.
         let picking = snap.mode == DrawMode::PickBlend;
@@ -116,9 +113,6 @@ impl BodyCtx<'_> {
         );
         if collapsed {
             return y;
-        }
-        if let Some(fim) = self.no_cartao(y, crate::cards_avancado::morph) {
-            return fim;
         }
         let mut y = self.action_button(
             crate::ids::VECTOR_MORPH_RUN,

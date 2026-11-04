@@ -72,6 +72,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.vector.unit.metres" => "m",
         "card.vector.unit.one_over_n" => "1/n",
         "card.vector.unit.percent" => "%",
+        "card.vector.unit.seconds" => "s",
+        "card.vector.states.remove_signal" => "Remove this signal",
+        "card.vector.morph.play" => "Go to this shape now",
+        "card.vector.morph.disconnect" => {
+            "Take this shape out of the state machine; its drawing stays"
+        }
         "card.vector.font_family" => "Family",
         "card.vector.font_prev" => "Previous font",
         "card.vector.font_next" => "Next font",

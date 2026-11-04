@@ -213,10 +213,10 @@ fn easing_controls(store: &mut WidgetStore) {
 /// uma mola"*, e inventar um poria uma constante de física dentro do design system.
 const SPRING_STIFFNESS_MIN: f32 = 1.0;
 const SPRING_STIFFNESS_MAX: f32 = 60.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
-const SPRING_STIFFNESS_DEFAULT: f32 = 12.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
+pub(crate) const SPRING_STIFFNESS_DEFAULT: f32 = 12.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
 const SPRING_DAMPING_MIN: f32 = 0.1; // LITERAL-PX-OK: régua de FÍSICA, não de design
 const SPRING_DAMPING_MAX: f32 = 2.0;
-const SPRING_DAMPING_DEFAULT: f32 = 1.0;
+pub(crate) const SPRING_DAMPING_DEFAULT: f32 = 1.0;
 
 /// O default da duração — **o token do design system**, cujo doc diz literalmente *"button
 /// press, icon swap"*: a pergunta *"quanto tempo leva a reação de um controle neste app?"* já
@@ -225,7 +225,7 @@ const SPRING_DAMPING_DEFAULT: f32 = 1.0;
 /// ⚠️ O modelo (`ph2d_ui_state::DEFAULT_DURATION_S`) carrega o mesmo número porque ele precisa de
 /// responder `timing()` para um hospedeiro que ninguém autorou, e uma crate-folha de dados não
 /// depende do design system. O gate compara os dois.
-const STATE_DURATION_DEFAULT_S: f32 = ph2d_tokens::Duration::Fast.secs();
+pub(crate) const STATE_DURATION_DEFAULT_S: f32 = ph2d_tokens::Duration::Fast.secs();
 /// O teto do slider — o MESMO número do modelo (`ph2d_ui_state::MAX_DURATION_S`), com gate.
 const STATE_DURATION_MAX_S: f32 = 2.0;
 

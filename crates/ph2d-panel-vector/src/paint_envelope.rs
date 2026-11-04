@@ -37,9 +37,6 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        if let Some(fim) = self.no_cartao(y, crate::cards_avancado::envelope) {
-            return fim;
-        }
         y = self.action_button(
             crate::ids::VECTOR_ENVELOPE_RUN,
             tr("panel.vector.envelope.envelope"),

@@ -44,11 +44,13 @@ pub mod bars;
 /// O painel em cartões (`docs/CartoesUI/12_VECTOR_PLANO.md`).
 pub mod cards;
 mod cards_avancado;
+mod cards_estados;
 mod cards_fx;
 mod cards_interface;
 mod cards_lado;
 mod cards_padrao;
 mod cards_ponto;
+mod cards_presenca;
 mod cards_texto;
 mod cards_tinta;
 mod cards_traco;

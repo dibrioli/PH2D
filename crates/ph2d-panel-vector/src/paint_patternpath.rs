@@ -34,9 +34,6 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        if let Some(fim) = self.no_cartao(y, crate::cards_avancado::pattern_on_path) {
-            return fim;
-        }
         if !state::pp_linked() {
             // Duas portas para prender, por seleção. Com DOIS caminhos, a auto-ligação (o guia é o
             // de maior extensão). Com UM, o **Picker**: apertar arma e o clique seguinte escolhe o

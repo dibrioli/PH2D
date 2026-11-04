@@ -136,22 +136,6 @@ impl<'s> Seccoes<'s> {
             .collect()
     }
 
-    /// Cartões: tira da lista o pintor da secção `id`.
-    pub(crate) fn tira(&mut self, id: NodeId) -> Option<Tarefa<'s>> {
-        let i = self.itens.iter().position(|t| t.id == id)?;
-        Some(self.itens.swap_remove(i).tarefa)
-    }
-
-    /// Cartões: só os membros do grupo, já como entradas de topo ([`BodyCtx::corre`] pinta-os).
-    pub(crate) fn membros(mut self, grupo: NodeId) -> Self {
-        self.itens.retain(|i| i.membro_de == Some(grupo));
-        for i in &mut self.itens {
-            i.membro_de = None;
-        }
-        self.grupos.clear();
-        self
-    }
-
     /// Os ids, pela ordem natural — para os gates.
     #[cfg(test)]
     pub(crate) fn ids(&self) -> Vec<NodeId> {

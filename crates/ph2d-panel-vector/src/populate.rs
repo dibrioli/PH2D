@@ -47,7 +47,7 @@ mod pencil;
 pub(crate) mod anchors;
 /// Os quatro verbos da seção COMPONENT (plano UI/UX W5) — irmão pelo mesmo teto.
 #[path = "populate_components.rs"]
-mod components;
+pub(crate) mod components;
 /// Os controles da seção FRAME (plano UI/UX W0) — irmão pelo teto de LOC.
 #[path = "populate_frame.rs"]
 mod frame;

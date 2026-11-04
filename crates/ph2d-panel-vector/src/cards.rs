@@ -1,30 +1,27 @@
 //! ⭐⭐ **O painel Vector em CARTÕES** (`docs/CartoesUI/12_VECTOR_PLANO.md`): a lista inteira, com as
 //! abas no título. Mesmos ids de secção e de controlo; `populate` e `event` não mudam.
 //!
-//! Secção convertida = corpo nativo ([`nativo`]). Secção por converter = cartão com o corpo de hoje
-//! dentro e o cabeçalho absorvido ([`hospeda`], o mecanismo do Inspector). Quais estão à vista e com
-//! que título responde o próprio pintor antigo, sob a sonda ([`presentes`]).
+//! Toda secção tem corpo nativo ([`nativo`]); os pintores antigos só correm com `PH2D_CARDS=0`. Quais
+//! estão à vista e com que título responde a tabela ([`crate::cards_presenca`]).
 
-use crate::paint_body_plan::corpo;
-use crate::paint_sections::{AcaoDoCabecalho, BodyCtx, sonda_da_seccao};
+use crate::cards_presenca::Presente;
+use crate::paint_sections::BodyCtx;
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
+use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, Cell, HeadAction, Seg, Widget};
-use ph2d_editor_core::panel::{PaintCtx, TextKey};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
-use ph2d_editor_core::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
-use ph2d_editor_core::widget::{absorb_next_header, number_input_min_w_px, section_cards};
+use ph2d_editor_core::widget::{number_input_min_w_px, section_cards};
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::frames::DEVICE_PRESETS;
 use ph2d_tool_vector::ids as vids;
-use ph2d_vector::VectorScene;
 
 thread_local! {
     static FORCADO: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
@@ -42,13 +39,6 @@ pub fn cards_on() -> bool {
 #[doc(hidden)]
 pub fn force_cards_on_this_thread(on: Option<bool>) {
     FORCADO.with(|f| f.set(on));
-}
-
-/// Uma entrada de topo à vista neste quadro.
-pub(crate) struct Presente {
-    id: NodeId,
-    titulo: String,
-    acao: Option<AcaoDoCabecalho>,
 }
 
 fn comprimento_em_px() -> bool {
@@ -69,6 +59,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     crate::cards_padrao::prepare(store);
     crate::cards_avancado::prepare(store);
     crate::cards_interface::prepare(store);
+    crate::cards_estados::prepare(store);
     let p = passo_do_comprimento();
     for id in [
         vids::VECTOR_TRANSFORM_X,
@@ -94,57 +85,6 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     );
 }
 
-/// Corre cada pintor sob a sonda: pára no cabeçalho, ou nem lá chega.
-pub(crate) fn presentes(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    snap: &VectorStyleSnapshot,
-) -> Vec<Presente> {
-    let mut plano = corpo(snap);
-    let store = ctx.host.store();
-    let text = &mut *ctx.text_system;
-    let mut cena = VectorScene::new();
-    let mut hit = HitIndex::default();
-    plano
-        .de_topo_a_vista()
-        .into_iter()
-        .filter_map(|id| {
-            let t = plano.tira(id)?;
-            let (titulo, acao) = sonda_da_seccao(|| {
-                let mut b = body_ctx(&mut cena, &mut *text, store, &mut hit, theme, 0.0, 0.0);
-                let _ = t(&mut b, 0.0);
-            })?;
-            Some(Presente { id, titulo, acao })
-        })
-        .collect()
-}
-
-#[allow(clippy::too_many_arguments)]
-fn body_ctx<'a>(
-    scene: &'a mut VectorScene,
-    text_system: &'a mut ph2d_text::TextSystem,
-    store: &'a WidgetStore,
-    hit_index: &'a mut HitIndex,
-    theme: Theme,
-    inner_x: f32,
-    inner_w: f32,
-) -> BodyCtx<'a> {
-    BodyCtx {
-        scene,
-        text_system,
-        store,
-        hit_index,
-        theme,
-        inner_x,
-        inner_w,
-        row_h: ROW_H_PX,
-        row_gap: Spacing::Xs.px(),
-        chip_w: number_input_min_w_px(),
-        font: TypeToken::Base.px(),
-        open_fold: None,
-    }
-}
-
 /// ⭐ Os cartões do painel, pela ordem natural.
 pub(crate) fn cards<'a>(
     snap: &'a VectorStyleSnapshot,
@@ -152,7 +92,7 @@ pub(crate) fn cards<'a>(
 ) -> Vec<CardDef<'a>> {
     presentes
         .iter()
-        .map(|p| {
+        .filter_map(|p| {
             let id = p.id;
             let body: CardBody<'a> = match nativo(id) {
                 Some(f) => Box::new(f),
@@ -162,11 +102,11 @@ pub(crate) fn cards<'a>(
                 None if id == vids::VECTOR_SECTION_FILL => {
                     Box::new(move |c: &mut CardCtx<'_>, y| fill_stroke(c, snap, y))
                 }
-                None => Box::new(move |c: &mut CardCtx<'_>, y| hospeda(c, snap, id, y)),
+                None => return None,
             };
-            CardDef {
+            Some(CardDef {
                 section: id,
-                title: &p.titulo,
+                title: p.titulo,
                 // O «+» das listas do Figma (F43/F44) mora no cabeçalho do cartão, com o MESMO id.
                 actions: p
                     .acao
@@ -177,7 +117,7 @@ pub(crate) fn cards<'a>(
                 add: None,
                 summary: None,
                 body: Some(body),
-            }
+            })
         })
         .collect()
 }
@@ -227,6 +167,10 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
         crate::cards_interface::layout
     } else if id == ids::VECTOR_SECTION_WIDGET {
         crate::cards_interface::widget
+    } else if id == ids::VECTOR_SECTION_STATES {
+        crate::cards_estados::states
+    } else if id == ids::VECTOR_SECTION_MORPH_STATES {
+        crate::cards_estados::morph_states
     } else {
         return None;
     };
@@ -260,36 +204,28 @@ pub(crate) fn linhas_do_cartao<'a>(c: &'a mut CardCtx<'_>) -> BodyCtx<'a> {
     }
 }
 
-/// O corpo de hoje dentro do cartão: o cabeçalho absorvido fica por baixo do título do cartão.
-fn hospeda(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, id: NodeId, y: f32) -> f32 {
-    let Some(t) = corpo(snap).tira(id) else {
-        return y;
-    };
-    let y0 = y - ph2d_editor_core::panel::rows::section_header_h();
-    let (theme, x, w, store) = (c.ink.theme, c.x, c.w, c.store);
-    let (scene, text, hit) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
-    let fim = absorb_next_header(|| {
-        section_cards::with_section_cards(scene, theme, y0, |s| {
-            body_ctx(s, text, store, hit, theme, x, w).uma_seccao(y0, t)
-        })
-    })
-    .0;
-    // Corpo vazio (Filters sem filtro): o cartão fica só com o título.
-    if fim <= y + SECTION_LABEL_TO_CONTROL_PX {
-        y
-    } else {
-        fim
-    }
-}
-
-/// O grupo Advanced é UM cartão: os membros lá dentro, com a cara de grupo e a dobra de hoje. Um
-/// arrasto não tira um membro do grupo (F17).
+/// O grupo Advanced é UM cartão: os membros lá dentro, com a cara de grupo, a dobra e as notas pelas
+/// portas partilhadas, e o corpo nativo. Um arrasto não tira um membro do grupo (F17).
 fn avancado(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-    let membros = corpo(snap).membros(ids::VECTOR_SECTION_ADVANCED);
+    let membros = crate::cards_avancado::membros(snap, c.ink);
     let (theme, x, w, store) = (c.ink.theme, c.x, c.w, c.store);
-    let (scene, text, hit) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
-    section_cards::with_section_cards(scene, theme, y, |s| {
-        body_ctx(s, text, store, hit, theme, x, w).corre(membros, y)
+    let (scene, text_system, hit_index) = (&mut *c.scene, &mut *c.text_system, &mut *c.hit_index);
+    section_cards::with_section_cards(scene, theme, y, |scene| {
+        BodyCtx {
+            scene,
+            text_system,
+            store,
+            hit_index,
+            theme,
+            inner_x: x,
+            inner_w: w,
+            row_h: ROW_H_PX,
+            row_gap: Spacing::Xs.px(),
+            chip_w: number_input_min_w_px(),
+            font: TypeToken::Base.px(),
+            open_fold: None,
+        }
+        .corre(membros, y)
     })
 }
 

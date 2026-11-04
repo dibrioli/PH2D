@@ -387,7 +387,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             crate::ids::VECTOR_SECTIONS,
         );
         crate::cards::prepare(ctx.host.store_mut());
-        let presentes = crate::cards::presentes(ctx, theme, &snap);
+        let presentes = crate::cards_presenca::presentes(ctx.host.store(), &snap);
         let cartoes = crate::cards::cards(&snap, &presentes);
         let lista = ph2d_editor_core::panel::cards::paint_card_list(
             ctx,

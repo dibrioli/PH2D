@@ -257,29 +257,6 @@ pub(crate) fn aberto(c: &mut CardCtx<'_>, id: NodeId) -> Option<Rect> {
     c.hit_index.rect_for(id)
 }
 
-/// Uma linha `rótulo` + a caixa de um menu com a face `face`. A abertura é a do `Dropdown` de sempre:
-/// o despacho, o light-dismiss e as opções não mudam. Devolve o fundo e a caixa, se aberto.
-pub(crate) fn menu(
-    c: &mut CardCtx<'_>,
-    id: NodeId,
-    rotulo: &str,
-    face: &str,
-    y: f32,
-) -> (f32, Option<Rect>) {
-    let k = [id];
-    let y = c.row(
-        &[Cell::new(Widget::Dropdown {
-            id,
-            text: face,
-            options: &[],
-        })
-        .label(rotulo)
-        .key(&k)],
-        y,
-    );
-    (y, aberto(c, id))
-}
-
 /// Uma escolha segmentada que quebra quando não cabe.
 pub(crate) fn escolha(
     c: &mut CardCtx<'_>,

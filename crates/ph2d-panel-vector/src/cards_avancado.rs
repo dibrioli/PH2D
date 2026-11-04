@@ -1,25 +1,26 @@
-//! ⭐ **Os cinco membros do Advanced** (fatia G6, `docs/CartoesUI/12_VECTOR_PLANO.md`): Blend, Morph,
-//! Envelope, Pattern on Path e Contour. O cabeçalho e a dobra de cada um continuam nos pintores de
-//! sempre, dentro do grupo; só o corpo é nativo. Mesmos ids e eventos. O que aparece continua a ser
-//! resposta das mesmas perguntas: Expand e Release só com envelope, Bend só com preset, e por aí fora.
+//! ⭐ **Os cinco membros do Advanced** (fatias G6 e G8, `docs/CartoesUI/12_VECTOR_PLANO.md`): Blend,
+//! Morph, Envelope, Pattern on Path e Contour. O cabeçalho, a dobra, a ordem e as notas de cada um são
+//! as portas partilhadas ([`BodyCtx::corre`]); o corpo é nativo. Mesmos ids e eventos. O que aparece
+//! continua a ser resposta das mesmas perguntas: Expand e Release só com envelope, Bend só com preset.
 
 use crate::cards_fx::{com_unidade, fila};
+use crate::cards_presenca::{contorno_a_vista, padrao_em_caminho_a_vista};
 use crate::cards_tinta::{campo, escolha, par_de_botoes, seg, semeia, spec};
 use crate::contour_params::CONTOUR_STEPS_DEFAULT;
+use crate::paint_body_plan::{Onde, Seccoes};
 use crate::paint_sections::BodyCtx;
+use crate::section_scope as scope;
 use crate::state::contour as cst;
 use crate::{ids as p, state};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo};
 use ph2d_editor_core::widget::card_field::Glyph;
-use ph2d_editor_core::widget::card_ink;
+use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::ids as t;
-use ph2d_tool_vector::params::{
-    BLEND_STEPS_DEFAULT, DrawMode, MORPH_T_DEFAULT, blend_steps_from_track,
-};
+use ph2d_tool_vector::params::{BLEND_STEPS_DEFAULT, DrawMode, MORPH_T_DEFAULT};
 
 const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo do arrasto, no domínio do documento
 const POR_CENTO: f64 = 100.0; // LITERAL-PX-OK: fração -> percentual
@@ -29,13 +30,18 @@ const BEND_DE_FABRICA: f64 = 0.5; // LITERAL-PX-OK: `ph2d_ecs::ENVELOPE_DEFAULT_
 const PINS: u8 = 2;
 
 impl BodyCtx<'_> {
-    /// O corpo nativo, quando o pintor corre dentro de um cartão. `None` é o painel de antes.
-    pub(crate) fn no_cartao(
+    /// Um membro: o cabeçalho dele, dentro do cartão, e o corpo nativo na tinta do cartão.
+    fn membro(
         &mut self,
+        ink: CardInk,
+        (id, chave): (NodeId, &'static str),
         y: f32,
-        f: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
-    ) -> Option<f32> {
-        let ink = card_ink::card_body()?;
+        corpo: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
+    ) -> f32 {
+        let (y, dobrado) = self.section_header(id, tr(chave), y);
+        if dobrado {
+            return y;
+        }
         let mut c = CardCtx::flutuante(
             &mut *self.scene,
             &mut *self.text_system,
@@ -45,11 +51,53 @@ impl BodyCtx<'_> {
             self.inner_x,
             self.inner_w,
         );
-        Some(f(&mut c, y))
+        corpo(&mut c, y)
     }
 }
 
-/// Com o store MUTÁVEL, antes de pintar: as marcas e as sementes que o corpo antigo dava ao pintar. A
+/// ⭐ **Os membros do Advanced**, pela ordem natural de [`crate::paint_body_plan::corpo`], cada um com a
+/// pergunta de antes: Pattern on Path e Contour somem sem nada a oferecer.
+pub(crate) fn membros(snap: &VectorStyleSnapshot, ink: CardInk) -> Seccoes<'_> {
+    const BLEND: (NodeId, &str) = (t::VECTOR_SECTION_BLEND, "panel.vector.section.blend");
+    const MORPH: (NodeId, &str) = (t::VECTOR_SECTION_MORPH, "panel.vector.section.morph");
+    const ENVELOPE: (NodeId, &str) = (t::VECTOR_SECTION_ENVELOPE, "panel.vector.section.envelope");
+    const CAMINHO: (NodeId, &str) = (
+        p::VECTOR_SECTION_PATTERNPATH,
+        "panel.vector.section.patternpath",
+    );
+    const CONTORNO: (NodeId, &str) = (p::VECTOR_SECTION_CONTOUR, "panel.vector.section.contour");
+    let mut s = Seccoes::new();
+    s.seccao(BLEND.0, scope::ALWAYS, Onde::Drawing, move |b, y| {
+        b.membro(ink, BLEND, y, |c, y| blend(c, snap, y))
+    });
+    s.seccao(MORPH.0, scope::ALWAYS, Onde::Drawing, move |b, y| {
+        b.membro(ink, MORPH, y, morph)
+    });
+    s.seccao(
+        ENVELOPE.0,
+        scope::WHEN_SELECTED,
+        Onde::Drawing,
+        move |b, y| b.membro(ink, ENVELOPE, y, envelope),
+    );
+    s.seccao(CAMINHO.0, scope::ALWAYS, Onde::Drawing, move |b, y| {
+        if padrao_em_caminho_a_vista() {
+            b.membro(ink, CAMINHO, y, pattern_on_path)
+        } else {
+            y
+        }
+    });
+    s.seccao(CONTORNO.0, scope::ALWAYS, Onde::Drawing, move |b, y| {
+        if contorno_a_vista() {
+            b.membro(ink, CONTORNO, y, contour)
+        } else {
+            y
+        }
+    });
+    s
+}
+
+/// Com o store MUTÁVEL, antes de pintar: as marcas e as sementes do documento. Os passos do Blend e o
+/// `t` do Morph não são do documento: moram na barra, e a ligação barra-chip já os mantém iguais. A
 /// seta anda o passo que o `populate` registou, numa fonte só.
 pub(crate) fn prepare(store: &mut WidgetStore) {
     for (chip, scrub, fabrica) in [
@@ -87,15 +135,6 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
             .number_range(chip)
             .map_or(scrub, |(_, _, passo)| passo);
         store.mark_card_field(chip, spec(seta, scrub, fabrica));
-    }
-    let passos = store
-        .slider(p::VECTOR_BLEND_STEPS)
-        .map(|(_, v)| blend_steps_from_track(f64::from(v)));
-    if let Some(n) = passos {
-        semeia(store, t::VECTOR_BLEND_STEPS_NUM, f64::from(n), false);
-    }
-    if let Some((_, v)) = store.slider(p::VECTOR_MORPH_T) {
-        semeia(store, t::VECTOR_MORPH_T_NUM, f64::from(v), false);
     }
     if state::envelope_warp().is_some() {
         semeia(

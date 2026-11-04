@@ -3,7 +3,7 @@
 //! e na Borracha com o Sync (levantava 64/255). Cada par meio × ferramenta, sobre riscas secas (e molhadas no Wet
 //! Paint): o painel pinta a linha Flow, e Flow 1 → 0,05 muda o traço. Os dois têm de concordar.
 
-use super::censo_dos_controlos::{Bancada, Gesto, diferenca, risca, traco};
+use super::censo_dos_controlos::{Bancada, Gesto, diferenca, em_paralelo, risca, traco};
 use super::censo_ferramenta_x_linha::{FERRAMENTAS, bancada_com, molha, riscas};
 use ph2d_tool_painter::PaintMedia;
 use ph2d_tool_painter::ids::{PAINTER_BRUSH_FLOW_SLIDER, PAINTER_BRUSH_SYNC};
@@ -86,41 +86,45 @@ fn relevo_do_sculpt() -> (bool, usize) {
 
 #[test]
 fn o_flow_esta_a_vista_onde_age_e_so_ai() {
-    let mut medidas = Vec::new();
-    for meio in MEIOS {
-        for modo in FERRAMENTAS
-            .into_iter()
-            .chain(["knife", "inpaint", "composite"])
-        {
-            let Some(b) = bancada(modo, meio, false) else {
-                continue;
-            };
-            let a_vista = b.ids().contains(&PAINTER_BRUSH_FLOW_SLIDER);
-            let estados: &[bool] = if meio == PaintMedia::WetPaint {
-                &[false, true]
-            } else {
-                &[false]
-            };
-            // Um par sem traço na pré-visualização (o Inpaint no Wet Paint) não é desta pergunta.
-            let Ok(texels) = std::panic::catch_unwind(|| {
-                estados
-                    .iter()
-                    .map(|&molhado| {
-                        diferenca(
-                            &traco_com(modo, meio, molhado, 1.0),
-                            &traco_com(modo, meio, molhado, 0.05),
-                        )
-                        .0
-                    })
-                    .max()
-                    .unwrap_or(0)
-            }) else {
-                eprintln!("FLOW\t{meio:?}\t{modo}\tsem traço");
-                continue;
-            };
-            medidas.push((format!("{meio:?}/{modo}"), a_vista, texels));
-        }
-    }
+    let pares: Vec<(PaintMedia, &str)> = MEIOS
+        .into_iter()
+        .flat_map(|meio| {
+            FERRAMENTAS
+                .into_iter()
+                .chain(["knife", "inpaint", "composite"])
+                .map(move |modo| (meio, modo))
+        })
+        .collect();
+    let mut medidas: Vec<(String, bool, usize)> = em_paralelo(&pares, |&(meio, modo)| {
+        let b = bancada(modo, meio, false)?;
+        let a_vista = b.ids().contains(&PAINTER_BRUSH_FLOW_SLIDER);
+        let estados: &[bool] = if meio == PaintMedia::WetPaint {
+            &[false, true]
+        } else {
+            &[false]
+        };
+        // Um par sem traço na pré-visualização (o Inpaint no Wet Paint) não é desta pergunta.
+        let Ok(texels) = std::panic::catch_unwind(|| {
+            estados
+                .iter()
+                .map(|&molhado| {
+                    diferenca(
+                        &traco_com(modo, meio, molhado, 1.0),
+                        &traco_com(modo, meio, molhado, 0.05),
+                    )
+                    .0
+                })
+                .max()
+                .unwrap_or(0)
+        }) else {
+            eprintln!("FLOW\t{meio:?}\t{modo}\tsem traço");
+            return None;
+        };
+        Some((format!("{meio:?}/{modo}"), a_vista, texels))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
     let (a_vista, relevo) = relevo_do_sculpt();
     medidas.push(("Impasto/sculpt (relevo)".to_owned(), a_vista, relevo));
     let mut falhas = Vec::new();

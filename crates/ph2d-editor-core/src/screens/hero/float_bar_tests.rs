@@ -26,6 +26,38 @@ fn a_coluna_separa_os_grupos_e_nao_sobrepoe() {
     );
 }
 
+/// A 1000×800 (`15_CHROME_CENSO`, M7) as últimas ferramentas ficavam cortadas pela borda de baixo.
+#[test]
+fn numa_janela_baixa_a_coluna_parte_se_e_nenhum_botao_sai_da_area() {
+    let baixa = Rect::new(20.0, 96.0, 960.0, 676.0);
+    let grupos = [6, 4, 5, 3, 3, 3, 2];
+    let r = column_rects(baixa, &grupos);
+    assert_eq!(r.len(), 26, "nenhum botão some");
+    let fundo = baixa.y + baixa.h;
+    assert!(
+        r.iter().all(|b| b.y + b.h <= fundo),
+        "botão passa do fundo da área: {r:?}"
+    );
+    let colunas = r
+        .iter()
+        .map(|b| b.x.to_bits())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(colunas.len(), 2, "duas colunas: {r:?}");
+    for (i, a) in r.iter().enumerate() {
+        for b in &r[i + 1..] {
+            let longe =
+                a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+            assert!(longe, "sobrepostos: {a:?} {b:?}");
+        }
+    }
+    // Com lugar, fica como era: uma coluna só.
+    let alta = column_rects(Rect::new(0.0, 0.0, 960.0, 1200.0), &grupos);
+    assert!(
+        alta.iter().all(|b| b.x == alta[0].x),
+        "com lugar, uma coluna"
+    );
+}
+
 #[test]
 fn a_grelha_do_flyout_nunca_passa_do_fundo_da_area() {
     let a = area();

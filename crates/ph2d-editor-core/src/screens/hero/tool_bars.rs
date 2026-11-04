@@ -48,10 +48,12 @@ pub fn placed(
     let mut out = Vec::new();
     let sizes: Vec<usize> = bars.column.iter().map(Vec::len).collect();
     let col = column_rects(area, &sizes);
+    // O flyout abre à direita da ÚLTIMA coluna: o de um botão da 1.ª não tapa a 2.ª.
+    let direita = col.iter().map(|r| r.x).fold(f32::MIN, f32::max);
     let mut anchor = None;
     for (b, r) in bars.column.iter().flatten().zip(col) {
         if bars.flyout.as_ref().is_some_and(|(id, _)| *id == b.id) {
-            anchor = Some(r);
+            anchor = Some(Rect::new(direita, r.y, r.w, r.h));
         }
         out.push((b.clone(), r));
     }

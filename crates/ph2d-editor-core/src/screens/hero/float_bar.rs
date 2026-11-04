@@ -80,20 +80,31 @@ pub const ROW_MAX: usize = 8;
 
 /// ⭐ **A coluna**: um rectângulo por botão, de cima para baixo, encostada ao canto de cima à
 /// esquerda de `area`. `groups` são os tamanhos dos grupos, em ordem; entre dois grupos fica um
-/// [`group_sep`].
+/// [`group_sep`]. Numa janela baixa parte-se em colunas lado a lado, de alturas iguais, como a do
+/// Quadro: nenhum botão sai da área e nenhum fica cortado pela borda.
 #[must_use]
 pub fn column_rects(area: Rect, groups: &[usize]) -> Vec<Rect> {
-    let (s, g) = (button_px(), gap());
-    let x = area.x + Spacing::Md.px();
-    let mut y = area.y + Spacing::Md.px();
-    let mut out = Vec::with_capacity(groups.iter().sum());
-    for (gi, &n) in groups.iter().enumerate() {
-        if gi > 0 && n > 0 {
+    let (s, g, m) = (button_px(), gap(), Spacing::Md.px());
+    let n: usize = groups.iter().sum();
+    let cortes = groups.iter().filter(|&&k| k > 0).count().saturating_sub(1) as f32;
+    let util = area.h - 2.0 * m + g - cortes * (group_sep() - g);
+    let cabem = ((util / (s + g)).floor().max(1.0)) as usize;
+    let por_coluna = n.div_ceil(n.div_ceil(cabem).max(1)).max(1);
+    let (mut x, topo) = (area.x + m, area.y + m);
+    let (mut y, mut nesta) = (topo, 0);
+    let mut out = Vec::with_capacity(n);
+    for (gi, &k) in groups.iter().enumerate() {
+        if gi > 0 && k > 0 && nesta > 0 {
             y += group_sep() - g;
         }
-        for _ in 0..n {
+        for _ in 0..k {
+            if nesta == por_coluna {
+                x += s + g;
+                (y, nesta) = (topo, 0);
+            }
             out.push(Rect::new(x, y, s, s));
             y += s + g;
+            nesta += 1;
         }
     }
     out

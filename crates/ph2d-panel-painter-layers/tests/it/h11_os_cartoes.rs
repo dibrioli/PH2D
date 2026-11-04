@@ -469,6 +469,29 @@ fn black_and_white_keeps_the_tint_between_its_weights_and_shows_round_numbers() 
     }
 }
 
+/// O brilho e as sombras dizem porque o relevo fica: a frase ocupa o sítio dela, entre as barras e a linha de baixo.
+/// *Mutação: tirar o `hint` ⇒ vermelho.*
+#[test]
+fn a_tone_adjustment_says_why_the_relief_stays() {
+    let folga = |k| {
+        let (s, l) = com_ajuste(k);
+        let base = s.all_ids().find(|i| *i != l).expect("a base");
+        let m = abre(true, s);
+        let fim = chips_de(l)
+            .iter()
+            .filter_map(|(_, c)| m.rect(*c))
+            .map(|r| r.y + r.h)
+            .fold(0.0_f32, f32::max);
+        let linha = m
+            .rect(painter_layer_widget_id(base.0, W::Row))
+            .expect("a base");
+        set_current_layers(None);
+        linha.y - fim
+    };
+    let (com, sem) = (folga(AdjustmentKind::Bloom), folga(AdjustmentKind::Sharpen));
+    assert!(com > sem + 20.0, "sem frase: {com} × {sem}");
+}
+
 /// Só a camada Texture ATIVA abre o editor: os ids são fixos, e há uma instância.
 /// *Mutação: tirar a condição `stack.active() == Some(id)` ⇒ vermelho.*
 #[test]

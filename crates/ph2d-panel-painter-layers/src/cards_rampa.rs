@@ -128,9 +128,6 @@ pub(crate) fn prepara(ctx: &mut PaintCtx, ids: &RampIds, v: RampView<'_>) {
     store.set_tooltip(ids.reset, tr("panel.painter_layers.brush.reset_section"));
     registra_lista(store, ids.mode, usize::from(v.mode));
     registra_lista(store, ids.interp, usize::from(v.interp));
-    if let Some(a) = v.alpha {
-        registra_lista(store, a.id, usize::from(a.mode));
-    }
     let Some(s) = v.stops.get(sel.min(v.stops.len().saturating_sub(1))) else {
         return;
     };

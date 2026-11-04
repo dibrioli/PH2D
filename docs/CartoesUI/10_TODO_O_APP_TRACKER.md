@@ -31,7 +31,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
 | G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | ✅ G1–G8 (portões e contraprovas: registo da G8) |
-| H | Painter | Respeita E10 (decisão do dono) | ⬜ |
+| H | Painter | Respeita E10 (decisão do dono) | ✅ |
 | I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ⬜ |
 | J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ⬜ |
 
@@ -654,6 +654,25 @@ Inventário por estado (`no_id_of_the_old_panel_died`, ids antes → depois; o q
 Sobras: `n_sem_presenca`, `h_inelegivel_vivo` vermelhos. `ab_sem_dica` sobrevive: equivalente, nenhum `Dependente` cobre as barras de `arma_barra` (medido em `inercia.rs`); o comentário do teste dizia o contrário e foi corrigido. Lote novo, 5 mutantes, 5 vermelhos (`tela_sem_aplica`, `grao_sem_prepara`, `titulo_sem_alvo`, `camadas_sem_listas`, `inerte_com_clique`). Vermelho do Pixel: as 11 secções sem consumidor, curadas pelo cânone `mark_collapsible_section`; por baixo dele a catraca `HIER_SEARCH` estava obsoleta (a Hierarchy em cartões lê o id) e desceu. Achado pela corrida larga: Apply faltava com a pilha vazia. Altura `1683 → 1670`, medida.
 
 Decidido sem o dono: Stop e Position ganham faixa e arrasto (o chip de antes só aceitava digitação); B&W preso no Grain fica apagado e sem alvo; `+`, `−` e inverter em ícones, com dica; opacidade por camada com a unidade no rótulo. Fotos: `maquete/h10_*.png`, por `tests/it/h10_fotos.rs` (arnês fora da janela real). Aberto: a grade do visor do Tilt fica muito apagada na tinta do cartão (lei E10 manda não o redesenhar): pergunta ao dono.
+
+**Bloco H, fatia H11 (04/11): Painter fechado.** Parâmetros de ajuste em linhas de cartão (`cards_ajustes.rs`, 24 espécies pelas tabelas da crate de efeitos) e editor da camada Texture (`cards_grao.rs`). Saiu `cards_captura.rs` e o `PaintCtx` duplo. `card.rs`, `seccoes.rs` e os `paint_*` de corpo só correm com `PH2D_CARDS=0`: porta `cards::so_no_painel_de_antes`, que só morde em perfil de teste (`debug_assert`; em `smoke` está desligada, medido por um mutante que sobreviveu lá e sangrou no perfil de teste). Curva e barra do degradê: a mesma tela nas duas caras (`curva_na_tela`, `barra_na_tela`).
+
+Inventário por estado (`no_id_of_an_adjustment_or_texture_layer_died`, ids da camada, antes → depois): total `322 → 259`, zero mortos; o que falta é a barra que tem campo, onde o alvo passou a ser o campo ligado a ela. Ex.: HSB `10 → 7`, ColorBalance `14 → 11`, Curves `10 → 10`, GradientMap `16 → 13`. Cliques comparados com `PH2D_CARDS=0`: `108`, iguais. Campos arrastados: `63`, cada um escreve só a sua barra e o Esc devolve.
+
+Custo por quadro, variantes no mesmo processo, intercaladas, mínimo, perfil `smoke`, mock:
+
+| Estado | Cartões | Antes |
+|---|---|---|
+| Pincel digital | 617 µs | 1603 µs |
+| Pincel molhado | 1252 µs | 3858 µs |
+| 4 ajustes | 235 µs | 225 µs |
+| Camada Texture | 326 µs | 392 µs |
+
+Contraprovas: 18 mutantes, `15` vermelhos na 1.ª rodada. `aj_sem_nota`: teste novo, vermelho. `ra_sem_alpha_lista`: registo morto (o `populate` já o faz), saiu. `guarda_seccao`: sobreviveu em `smoke`, vermelho no perfil de teste. Fotos: `maquete/h11_*.png`; as `h10_*` regeradas e olhadas na versão final, `PH2D_CARDS=0` olhado (`h11_antes_ajustes`). Pela tabela do 17, nenhuma `v2_*` mostra o Painter: nada a refazer. Varredura: lista da biblioteca já ia pela camada; a barra do arrasto e a janela do Delete não, curadas (`17`, item 2).
+
+Portões e alarmes por nome, `smoke`: `502` verdes (`_os_cartoes`, seam e censos da crate, `ph2d-i18n`, os dez do briefing, `lei_da_compactacao`, `nenhum_texto_sai_do_botao`, `a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`). Perfil de teste, com a porta do corpo antigo ligada, os mesmos da crate: `428` verdes, `7` por prazo, sob `load` 46, sem nome registado (o filtro da saída os comeu), verdes em `smoke`. A altura de abertura continua `1670`: a pilha de fábrica não tem ajuste nem Texture. Catracas: nenhuma subiu.
+
+Decidido sem o dono: o Gamma do Levels é barra nua com o valor no rótulo, porque não é afim e não se escreve; Channel, Output, Color group e Tonal range ganham rótulo; as letras do Selective Color ganham dica com a cor; a última barra sem par divide a linha com a escolha curta; os parâmetros ficam um nível abaixo da camada, como no painel de antes. Por decidir: a linha arrastada na lista de presets não voa como o cartão do Kanban, só mostra a barra.
 
 ### Varredura final (04/11)
 

@@ -573,7 +573,7 @@ fn no_cartao_a_influence_e_um_campo_em_por_cento() {
     );
     let pega = handle_rect(rect_de(&rects, chip).expect("o campo da força"));
     let (x, y) = (pega.x + pega.w * 0.5, pega.y + pega.h * 0.5);
-    let mut ponteiro = |host: &mut MockPanelHost, kind, x| {
+    let ponteiro = |host: &mut MockPanelHost, kind, x| {
         host.dispatch_pointer_event(PointerEvent {
             kind,
             x,

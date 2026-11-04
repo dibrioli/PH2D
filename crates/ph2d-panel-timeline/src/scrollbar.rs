@@ -9,7 +9,7 @@
 //! Painted (and hit-registered) only while the rows actually overflow.
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     ScrollbarState, SliderOrientation, SliderState, scrollbar_thumb_color,

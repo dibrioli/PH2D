@@ -5,7 +5,6 @@
 
 use super::*;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, paint_card_list};
-use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use std::cell::RefCell;
 
 /// O que os corpos escrevem: o corpo não tem store mutável e corre mais de uma vez por quadro.

@@ -157,7 +157,6 @@ pub(crate) fn paint_sampling_section(
     };
     let mut yy = y + header_h;
     let sec = seccao(text_system);
-    let h = ROW_H_PX;
     // ⚠️ **O vão entre dois controlos é a porta `control_gap_px` (3 px)**, e não o
     //    `Spacing::Xs` (4) escrito à mão — ordem do dono, 2026-09-07. Esta secção é
     //    anterior à porta. Ver `every_stack_of_rows_asks_the_rhythm`.

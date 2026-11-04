@@ -78,6 +78,11 @@ pub(super) fn clica(h: &mut HeroScreen, id: ph2d_editor_core::NodeId) {
 
 /// Arrasta o cartão `secao` pelo título até ao canvas: ele fica SOLTO.
 pub(super) fn solta(h: &mut HeroScreen, secao: ph2d_editor_core::NodeId) {
+    solta_com_recuo(h, secao, 0.0);
+}
+
+/// [`solta`], largando `recuo` px à direita: dois cartões largados no mesmo ponto ficam um sobre o outro.
+pub(super) fn solta_com_recuo(h: &mut HeroScreen, secao: ph2d_editor_core::NodeId, recuo: f32) {
     let pega = h
         .hit_index
         .rect_for(ph2d_editor_core::ids::grip_de(secao))
@@ -86,7 +91,7 @@ pub(super) fn solta(h: &mut HeroScreen, secao: ph2d_editor_core::NodeId) {
     arrasta(
         h,
         (pega.x + 12.0, pega.y + pega.h * 0.5),
-        (canvas.x + canvas.w * 0.3, canvas.y + canvas.h * 0.3),
+        (canvas.x + canvas.w * 0.3 + recuo, canvas.y + canvas.h * 0.3),
     );
     assert!(
         h.store.loose_card(secao).is_some(),

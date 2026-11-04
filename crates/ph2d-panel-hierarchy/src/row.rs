@@ -11,9 +11,7 @@ use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::{Tag, TagState, TagTone, paint_tag};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Spacing, StrokeToken, Theme, TypeToken,
-};
+use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, INLINE_ICON_PX, Spacing, StrokeToken, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// **O TOM de cada selo de linha.** Porta única: o selo é um código, e o tom é o que o olho lê

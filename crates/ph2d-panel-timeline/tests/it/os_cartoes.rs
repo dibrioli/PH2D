@@ -4,7 +4,6 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::{dicas, ferramenta, list_menu_of};
 use ph2d_editor_core::tool::PanelEvent;

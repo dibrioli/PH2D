@@ -13,13 +13,6 @@ use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_cards_on, set_current_inspector_physics,
 };
 
-const JANELA: Rect = Rect {
-    x: 0.0,
-    y: 0.0,
-    w: 1930.0,
-    h: 2400.0,
-};
-
 fn palco() -> (
     ph2d_ui_testkit::MockPanelHost,
     InspectorState,

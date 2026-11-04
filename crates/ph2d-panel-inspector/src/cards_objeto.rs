@@ -8,7 +8,7 @@ use crate::sections;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
+use ph2d_editor_core::panel::cards::{CardCtx, CardDef};
 use ph2d_editor_core::project::DisplayUnit;
 use ph2d_editor_core::screens::hero::{InspectorOrderingInfo, InspectorSpriteInfo};
 use ph2d_editor_core::widget::section_cards;

@@ -268,7 +268,10 @@ fn a_diamond_of_a_pinned_card_keys_only_its_object_with_any_selection() {
         l.aplica(pedido);
         let b = |e: u64| l.st.doc.bindings().iter().any(|x| x.entity == e);
         assert!(b(m.bits[0]), "{sel:?}: A sem chave");
-        assert!(!b(m.bits[1]) && !b(m.bits[2]), "{sel:?}: a chave espalhou-se");
+        assert!(
+            !b(m.bits[1]) && !b(m.bits[2]),
+            "{sel:?}: a chave espalhou-se"
+        );
     }
 }
 
@@ -331,7 +334,10 @@ fn a_diamond_of_a_pinned_component_card_is_of_its_object() {
             _ => None,
         })
         .collect();
-    assert!(!donos.is_empty() && donos.iter().all(|e| *e == a), "{donos:x?}");
+    assert!(
+        !donos.is_empty() && donos.iter().all(|e| *e == a),
+        "{donos:x?}"
+    );
 }
 
 /// Um losango na lista, com um preso aberto, continua a ser da seleção.
@@ -469,8 +475,15 @@ fn the_x_shortcut_after_a_press_on_a_pinned_card_opens_the_selections_picker() {
         v::VECTOR_COLOUR_FOCUS,
     ));
     l.quadros(&mut m, 1);
-    assert!(m.h.store.picker_target().is_some(), "o X não abriu o seletor");
-    assert_eq!(m.h.store.picker_subject(), None, "o X abriu o seletor do preso");
+    assert!(
+        m.h.store.picker_target().is_some(),
+        "o X não abriu o seletor"
+    );
+    assert_eq!(
+        m.h.store.picker_subject(),
+        None,
+        "o X abriu o seletor do preso"
+    );
 }
 
 /// ⭐ Item 3: o «+» do estilo num cartão preso cria o estilo com a cor de A e liga só A; renomear,
@@ -495,11 +508,10 @@ fn novo_estilo_com(sel: &'static [usize]) {
         m.quadros(2);
         m.clica_em(k, estilos::botao_de(CARD_FILL));
         assert_eq!(estilos::sujeito_aberto(), Some(m.bits[0]));
-        let mais = m
-            .h
-            .hit_index
-            .rect_for(estilos::MAIS)
-            .expect("o «+» da lista");
+        let mais =
+            m.h.hit_index
+                .rect_for(estilos::MAIS)
+                .expect("o «+» da lista");
         let (b0, c0) = (m.forma(1), m.forma(2));
         mao(&mut m.h, PointerKind::Down, centro(mais));
         mao(&mut m.h, PointerKind::Up, centro(mais));
@@ -541,7 +553,11 @@ fn novo_estilo_com(sel: &'static [usize]) {
         estilos::pede(Pedido::Apagar { estilo: id });
         m.quadros(1);
         assert!(m.scene.estilos().iter().all(|e| e.id != id));
-        assert_eq!((m.forma(1), m.forma(2)), (b0, c0), "{sel:?}: as acções mexeram em B/C");
+        assert_eq!(
+            (m.forma(1), m.forma(2)),
+            (b0, c0),
+            "{sel:?}: as acções mexeram em B/C"
+        );
     }
 }
 

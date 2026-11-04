@@ -5,7 +5,6 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{PanelRowFamily, WidgetEvent};
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{dicas, dropdown, ferramenta};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, key_mark_target, set_key_marks};

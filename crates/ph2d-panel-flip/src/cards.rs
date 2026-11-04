@@ -13,7 +13,7 @@ use ph2d_editor_core::interaction::{
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::panel::cards::ferramenta::{
-    Numero, aos_pares, caixas_aos_pares, campo, cartao, opcoes, prepara_numeros,
+    Numero, aos_pares, caixas_aos_pares, campo, cartao, prepara_numeros,
 };
 use ph2d_editor_core::panel::cards::linhas_extra::ListRow;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget, dropdown};

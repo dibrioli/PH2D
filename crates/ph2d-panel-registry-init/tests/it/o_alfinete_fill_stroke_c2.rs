@@ -4,10 +4,9 @@
 //! na shell (`fase_bus_inspector_preso_tests.rs`). `Mesa::quadro` é a ordem de `fase_hero_frame`.
 #![cfg(all(feature = "panel-inspector", feature = "panel-hierarchy"))]
 
-use super::cartoes_mao::{centro, clica, mao, pinta, solta};
+use super::cartoes_mao::{centro, clica, mao, pinta, solta_com_recuo};
 use super::o_bloco5_abertos::escolhe;
 use ph2d_app_vec::paint_stack::{join_code_for_id, stack_verb_for_id};
-use ph2d_host_presos::{self as preso, PedidosDaPilha};
 use ph2d_app_vec::stroke_present;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_editor_core::NodeId;
@@ -22,6 +21,7 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::tool::{PanelEvent, ToolRegistry};
 use ph2d_editor_core::{DocPx, ToolId};
 use ph2d_host::PointerKind;
+use ph2d_host_presos::{self as preso, PedidosDaPilha};
 use ph2d_panel_inspector::{self as insp, CARD_FILL, CARD_STROKE, cards_hex_id};
 use ph2d_tool_vector::appearance;
 use ph2d_tool_vector::ids as v;
@@ -165,7 +165,8 @@ impl Mesa {
             self.quadros(3);
             loose_instance_of(sec, 1)
         } else {
-            solta(&mut self.h, sec);
+            // O traço é mais alto do que o preenchimento desde a compactação: no mesmo ponto, cobria-o.
+            solta_com_recuo(&mut self.h, sec, copias as f32 * 300.0);
             sec
         };
         assert_eq!(self.h.store.loose_cards_of(INSP_PANEL).len(), copias + 1);

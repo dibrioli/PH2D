@@ -62,6 +62,16 @@ fn o_pen_down_manda_a_agua_herdada_pela_divida() {
         .as_mut()
         .expect("sessao")
         .bring_home();
+    // Um passo que o `bring_home` interrompeu a meio (o worker anda sem ser servido: sob contenção o
+    // passo dura mais e o corte cai dentro dele) fecha-se no worker à próxima entrega, mesmo com a água
+    // parada (`in_flight` ignora o `sim_should_run`) e conta +1 — a premissa «o motor não andou» era
+    // decidida por onde o corte caía. Acaba-se aqui, no fio do teste: nenhum passo fica por fechar.
+    {
+        let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+        while s.engine.sim.step_pending() {
+            let _ = s.engine.step_stage();
+        }
+    }
     let t0 = Instant::now();
     while sess(&t).otica.pendente() {
         t.wet_recebe_imagens();

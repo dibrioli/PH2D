@@ -78,11 +78,16 @@ cartões, cartões do Bones. Decisões do dono: **T65** (NovaUI) e **T66** (Insp
   arnês mantém os 2 quadros de antes.
 - **`a_pincelada_nova_a_cruzar…` (180 s)**: lenta por natureza — 161,8 s sozinho (lista gerada, 29/10), 170,0 s sozinho no
   `ci-test` hoje; código idêntico ao main. Entrou no override `terminate-after = 10` das águas lentas (`.config/nextest.toml`).
-- **`o_pen_down_manda_a_agua_herdada_pela_divida`** — reproduzido em 04/11 junto dos vizinhos
-  (`package(ph2d-tool-painter) & test(wetpaint::)`, load 70–100: 17 vs 16 passos; 0/10 sozinho). Mecanismo: o `Up` devolve
-  o motor ao worker com `sim_should_run` verdadeiro e a dívida `acc` (teto 50 ms) já cheia; o teste exigia que o
-  `bring_home` do `congela` ganhasse a corrida contra UM passo (~25–35 ms). Cura: porta de teste
-  `offthread::segura_a_entrega` (`cfg(test)`) segura o `hand_off_sim` do `Up` ao `congela`; mesma corrida: 240/240.
+- **`o_pen_down_manda_a_agua_herdada_pela_divida`** (2.ª cura, a 1.ª não bastou: vermelho de novo na suíte `4fd399f8d3`,
+  20 vs 19, mesmo assert): mecanismo MEDIDO — o worker anda sem ser servido e o `bring_home` do teste interrompe-o numa
+  fronteira de estágio; se o corte cai DENTRO de um passo, o passo fica pendente (`sim.step_pending()`) e fecha-se no worker à
+  próxima entrega mesmo com a água parada (o laço do worker ignora o `sim_should_run` com passo em voo): +1 no contador
+  entre `passos` e o fim. Sozinho o corte quase nunca cai dentro (`pendente=false` em 6/6); sob contenção o passo dura
+  mais e cai. Reprodução DETERMINÍSTICA: forçar um `step_stage()` após o `bring_home` dava 18 vs 17 (`pendente=true`);
+  com a cura passa. Cura: o teste acaba o passo pendente no próprio fio (`while step_pending { step_stage }`). Não é perda
+  de água do produto: o passo em voo fecha-se por desenho. A porta `offthread::segura_a_entrega` (1.ª cura, `cfg(test)`)
+  fica, mas a corrida do `Up` que ela tapa NUNCA foi medida — o 17 vs 16 pré-cura era provavelmente este mesmo passo
+  pendente.
 
 ## 5. Vermelhos fora dos diffs, NÃO curados
 

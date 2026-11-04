@@ -27,7 +27,7 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | A | Dívidas do Inspector | Camera card ([05 §8](05_ESPECIFICACAO_UI_COMPLETA.md)), 2.ª metade do T29 (§9), popover no tom do cartão, caixas/listas do preso | ✅ |
 | B | Piloto + receita | Physics em cartões; [11_RECEITA](11_RECEITA_PAINEL_EM_CARTOES.md) nasce daqui | ✅ |
 | C | Alfinete | [Plano 09](09_alfinete_nos_cartoes_PLANO.md): Material, Ordering, Object → Appearance → Fill + Stroke | ⬜ |
-| D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ⬜ |
+| D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ✅ (contraprovas do D1 na rodada R) |
 | E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
 | F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
 | G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | 🟨 G1 de 8 |
@@ -37,6 +37,9 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 
 ## Decisões tomadas sem o dono (para ele confirmar no smoke)
 
+- **E, Flip:** cada modo só tem os seus cartões. O que era linha do modo mora no cartão Tool (Shape, Erase, Sculpt Brush, Reset shifts, Select); as ferramentas continuam em filas de três, porque «Colorize» não cabe num quinto da coluna. Self Overlap e Airbrush viraram caixas de marcar; a linha de camada é olho, cadeado, nome, setas, com a mistura e os números por baixo.
+- **E, Pixel:** cartões pela ordem de antes, salvo os pincéis guardados (saem das opções para «Saved Brushes») e a simetria (cartão próprio, depois do seletor). Select, Edit e Sprite nascem dobrados: são listas longas de verbos e a paleta fica mais acima. Os ajustes de ferramenta perderam o ponto de animação, que prometia uma animação que não existe (D17). As amostras de frente e fundo no cartão passam a abrir o seletor, como as da coluna; antes eram só de leitura. Sem redesenho da paleta, do seletor nem dos pincéis no computador.
+- **E, Frames:** só o cromo: a tira mede a largura da banda e a barra leva 25 controlos. Um cartão só, sem cabeçalho, porque dobrar ou reordenar um cartão único não diz nada. Medido a `1930 × 1040`, altura da célula: `98` no corpo de antes, `48` com cabeçalho de cartão, `78` sem; a costura do topo da banda devolve o resto. A barra e as células não mudaram de cara.
 - Physics, as barras somem nos cartões: o número muda arrastando o ícone (Figma), a barra só existe com `PH2D_CARDS=0`.
 - Physics, o cartão Debug nasce dobrado com o resumo «Bodies: n»: paga a altura de abertura, que em cartões subia 53 px.
 - Lista de cartões com «×»: fica na ponta e o «…» encosta-se a ele; só nos painéis que se fecham por ele (Physics). O Bones segue sem «×».
@@ -66,6 +69,12 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - C1, cartão Object solto: tem cabeçalho sem título (o nome do objecto, o alfinete e o ×); na lista segue sem cabeçalho. Sem isto o alfinete caía em cima do olho.
 - C1, Material preso: escolher `Mix` tira o componente (lei de sempre, lido em `BlendFieldEdit`, não corrido); o cartão do preso passa a «Not available», como o da lista some. A rever no smoke.
 - C1, Object sem linha na Hierarquia: sem cadeado, como na lista.
+- F, Hierarchy: a lista flutua e o canvas passa por trás dela, como no Inspector. A régua vertical fica na borda da janela e a lista começa 5 px depois dela (espelho da D31); as barras do módulo saem de baixo da lista.
+- F, Hierarchy: busca e filtro presos debaixo do título, fora da rolagem (Figma, Godot): numa cena grande rolavam para longe. O «+» mora no cabeçalho da lista pelo mesmo motivo.
+- F, Hierarchy: um cartão só, cujo título é a contagem («18 entities · 128 components»). Linhas de 22 px, listra alternada mantida (pedido do dono, 06/09), fundo e clique na largura inteira da linha, recuo só no conteúdo.
+- F, Hierarchy: arrastar linha = voo inclinado + a marca de sempre (barra antes/depois, contorno «dentro»). Sem vão a abrir: numa árvore a queda «dentro» não tem vão e a marca é a linha destacada que o dono pediu.
+- F, Hierarchy: selecção vinda de fora rola até à linha (não existia, nem no painel antigo); não abre ramos recolhidos: uma linha escondida fica escondida. Auto-scroll com a mão na borda (também novo).
+- F, Nodes: o grafo e o timeline dele param nas colunas, dos dois lados: uma lista alta tapava-lhes as beiradas. O canvas acaba onde a cena acaba.
 
 - **G, Vector: PERGUNTA para o smoke.** Fill e Stroke (e Appearance) aparecem no Inspector e no painel Vector, com os mesmos ids. Ficaram nos dois: F44/F45 são o aprovado, e só o Vector tem tipo, degradê, tracejado e pontas ([12](12_VECTOR_PLANO.md)). Quer manter nos dois?
 - **G, Vector: PERGUNTA para o smoke.** Advanced é um cartão com os cinco membros dentro, como subsecções. Figma não tem Advanced e a forma nova (Path Effects em lista) ainda não está decidida.
@@ -74,6 +83,8 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 ## Registo por bloco
 
 (cada bloco fechado acrescenta aqui: commits, fotos, testes, o que ficou aberto)
+
+BLOCO_E_AQUI
 
 **Bloco A (04/11).** Mecanismo do Camera (a hipótese de 05 §8 estava errada): `close_section` dentro do corpo fechava uma chapa
 `Bg1` do topo do cabeçalho até à fronteira do Cull Mask, pintada DEPOIS do título, que cobria título e caixas (o mesmo em
@@ -178,3 +189,21 @@ Catracas: altura de abertura `219 → 250` (as mesmas três secções, Snap e Ad
 Testes: `g1_os_cartoes`, 17, por gesto real; o clique em cada id de cada corpo nativo produz no barramento o MESMO que `PH2D_CARDS=0`. Crate inteira uma vez: 53 + 339 verdes. Contraprovas: 12 de 12 sangram (a 12.ª, «diferidos no slot», sobreviveu à 1.ª bateria e pediu o teste `the_left_panel_keeps_its_distance_from_the_list`). Não contraprovada: a guarda em `rows.rs`, porque mutar `editor-core` parava os outros agentes. Fotos vistas: `maquete/g_vector_{0_antes_cards_0,1_drawing,2_interface,3_painel_a_esquerda}.png`; nas 1 a 3 um patch temporário abriu os estados que a cena não semeia (a moldura, a âncora, a linha do Fill), já retirado.
 
 Não visto no app, só no mock: soltar um cartão no canvas, arrastar para reordenar, Esc a meio do scrub. Sem foto: a lista do «+» aberta. Corpos antigos nos cartões têm a cara de antes, e os do Advanced deixam a metade esquerda vazia (G6). Vermelhos vistos e alheios a esta fatia, todos em WIP ou blocos de outros agentes: `a_marca_tem_a_altura_da_linha` (`pixel_tools`), `um_seletor_de_cor_sozinho…` (`flip`), `todo_campo_pintado_com_losango…` (`ph2d-panel-inspector/src/sections/rows_par.rs`), `no_magic_numeric` (bgremoval, color-equalization, upscale). Próxima: G2, Appearance e Fill & Stroke.
+
+### Bloco F (04/11)
+
+Hierarchy em cartões: `ph2d-panel-hierarchy/src/cards.rs` + `row_ink.rs` + `tests/it/os_cartoes.rs`. Mesmos ids, `populate` e `event`; `PH2D_CARDS=0` pinta o painel de antes (foto conferida; testes antigos presos a ele por `force_cards_on_this_thread(Some(false))`).
+
+**Desempenho** (`custo_por_quadro_com_cinco_mil_linhas`, `--profile smoke`, as duas pinturas intercaladas no mesmo processo, mínimo de 30 cada, load ~3,7): cartões **860 e 868 µs** contra **117 812 e 120 456 µs** do painel de antes, que pintava e registava as 5 000 linhas e copiava o mapa todo a cada quadro. A cura: `faixa` recorta à janela, e o mapa vivo passou a `Rc` (`live_entries_shared`). Só a pintura do painel, em `MockPanelHost`: o `sync_from_hierarchy` da shell não entra na conta e é igual nos dois.
+
+**O canvas e a lista:** o canvas vai à borda da janela e a régua vertical fica lá; a lista começa 5 px depois dela. `clear_of_left_list` tira as barras do módulo e o quadro de baixo da lista (foto Vector). Nos Nodes, grafo e timeline param nas colunas, dos dois lados, e o canvas acaba onde a cena acaba (`a_floating_list_on_the_left_…`, foto). Clique dentro da lista é dela, abaixo e ao lado é do canvas (`panel_at`, teste). Largar uma linha abaixo de uma lista curta é queda no canvas, não «fim da raiz»: esse alvo são os ~18 px do fundo da lista.
+
+**Defeito antigo curado:** o galo da Cena e dos Clips estava morto sob o dedo, nos dois modos. Ids sintéticos com 58 bits contra a guarda `COMPANION_ROW_ID_MAX` de `2^32` no despacho: `ROW_ID_MASK` desceu a 32 bits (o clique no corpo do grupo funcionava e escondia-o). Novos também: selecção de fora rola até à linha; auto-scroll com a mão na borda. Nenhum dos dois existia no painel antigo.
+
+**Provas:** 21 testes de gesto em `os_cartoes.rs` + 1 de medição. Mutações: sem voo nem marca, sem trazer a selecção, sem auto-scroll e linha com altura de campo deram vermelho; pintar tudo não deu vermelho, deu `exit 143` (o prazo de 120 s em debug). `a_docked_panel_never_reaches` passou a contar `ancorados + listas`: a anti-vacuidade caía só porque os painéis viraram cartões.
+
+**API nova:** `paint_card_list_top` + `ListTop` (faixa presa, «+» sem pé), `scroll_at_edge`, `CardCtx::text_box`, `HeroLayout::clear_of_left_list`, `dicas::icone` pública, ícone em `list_row_flight`, `metrics::{LIST_TOP_GAP, TREE_ROW_BLEED}`. Catraca: nada subiu; `row.rs` ficou em 577 linhas (tecto 600) com a tinta em `row_ink.rs`; a shell não foi tocada.
+
+**Fotos:** `maquete/f_hierarchy_abertura.png`, `_muitos_com_componentes.png` (19 objectos, cena do jogo), `_ao_lado_do_inspector.png`, `_modo_vector.png`, `_modo_nodes.png`, `_voo_marca_filtro.png` (estados por patch temporário; a caixa de renomear aparece vazia porque o patch não semeia o texto). Flip e Draw olhados, sem foto guardada; Animate não olhado.
+
+**Aberto:** o voo da linha recorta-se na beirada do cartão (igual ao Tags). A lista suspensa do filtro continua no tom do Inspector (ABERTO de 05 §9). Selecção dentro de ramo recolhido não abre o ramo. Multisselecção a voar mostra só a linha agarrada. Vermelhos alheios vistos nos mesmos portões: `um_seletor_de_cor_…` (Flip), `panel_files_under_loc_cap` (Audio Mixer), `the_shell_only_shrinks` (`ph2d-app-vec`, 93 883 contra 93 637). Os gestos que dependem da shell (Ctrl+Z, drop de asset, Delete) não foram corridos na janela: o teste vai até ao rect e ao pedido no barramento.

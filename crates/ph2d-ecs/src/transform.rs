@@ -128,6 +128,24 @@ impl Transform {
         v.clamp(-Self::SKEW_LIMIT, Self::SKEW_LIMIT)
     }
 
+    /// ⭐ O `Transform` de uma edição de autoria (o commit do Inspector): a escala passa COM o sinal,
+    /// porque o espelho é uma escala negativa; só o skew se limita, nesta fronteira.
+    #[must_use]
+    pub fn de_autoria(
+        translation: [f32; 2],
+        rotation: f32,
+        scale: [f32; 2],
+        skew: [f32; 2],
+    ) -> Self {
+        Self {
+            translation: Vec2::new(translation[0], translation[1]),
+            rotation,
+            scale: Vec2::new(scale[0], scale[1]),
+            skew_x: Self::clamp_skew(skew[0]),
+            skew_y: Self::clamp_skew(skew[1]),
+        }
+    }
+
     /// Builder: set both skew axes (clamped) on a copy of `self`.
     /// Authoring entry point for the Inspector Skew X/Y sliders.
     #[inline]

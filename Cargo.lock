@@ -9775,6 +9775,8 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-anim",
  "ph2d-component-desc",
+ "ph2d-core",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-hud",
@@ -9791,6 +9793,7 @@ dependencies = [
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
+ "postcard",
 ]
 
 [[package]]

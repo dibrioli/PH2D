@@ -29,6 +29,7 @@ mod damping;
 mod deterministic;
 mod dominance;
 mod effector;
+mod espelho_a_simular;
 mod falls_and_settles;
 mod fk_gesture;
 mod fk_gesture_loop;

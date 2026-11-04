@@ -117,16 +117,12 @@ pub(super) fn dispatch(
     // governance, audit, conflict resolution all live one
     // level up from the producer.
     if let Some(info) = transform_edit {
-        let t = Transform {
-            translation: ph2d_core::Vec2::new(info.translation[0], info.translation[1]),
-            rotation: info.rotation_rad,
-            scale: ph2d_core::Vec2::new(info.scale[0], info.scale[1]),
-            // Skew authored via the Inspector Skew X/Y sliders (W2.T2.3).
-            // Clamp at this ECS-write boundary (the authoring setter per
-            // ADR-0025-amendment-1 §2.5) so tan() stays in its sane range.
-            skew_x: Transform::clamp_skew(info.skew_rad[0]),
-            skew_y: Transform::clamp_skew(info.skew_rad[1]),
-        };
+        let t = Transform::de_autoria(
+            info.translation,
+            info.rotation_rad,
+            info.scale,
+            info.skew_rad,
+        );
         match postcard::to_allocvec(&t) {
             Ok(data) => {
                 let push_res = editor_queue.push(EditorCommand::SetComponent {

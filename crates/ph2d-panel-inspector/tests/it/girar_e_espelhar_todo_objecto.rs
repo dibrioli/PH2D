@@ -112,6 +112,76 @@ fn without_an_object_the_verbs_are_silent() {
     assert!(host.drained_actions().is_empty());
 }
 
+/// Publica `edit` pelo mesmo caminho do commit da shell (`inspector_commits.rs`): codifica o `Transform`
+/// da edição, põe-no na fila de comandos e aplica-a ao mundo.
+fn commit(sim: &mut ph2d_ecs::SimWorld, edit: &InspectorTransformInfo) {
+    use ph2d_ecs::scene::{
+        ComponentRegistry, EditorCommand, EditorCommandQueue, apply_editor_commands,
+        register_ecs_components, stable_type_id,
+    };
+    let mut registo = ComponentRegistry::new();
+    register_ecs_components(&mut registo);
+    let fila = EditorCommandQueue::new();
+    let t = ph2d_ecs::Transform::de_autoria(
+        edit.translation,
+        edit.rotation_rad,
+        edit.scale,
+        edit.skew_rad,
+    );
+    fila.push(EditorCommand::SetComponent {
+        entity: edit.entity_bits,
+        type_id: stable_type_id("ph2d::ecs::Transform"),
+        data: postcard::to_allocvec(&t).unwrap(),
+    })
+    .unwrap();
+    apply_editor_commands(sim.world_mut(), &fila, &registo).unwrap();
+}
+
+/// ⭐ Do clique ao objecto: a rotação e o sinal da escala chegam ao `Transform` da entidade, a posição
+/// fica, e dois espelhos devolvem-no. Quem o publica não é o teste, é o painel.
+/// *Mutação: `Transform::de_autoria` com `abs` na escala; ou sem a rotação da edição.*
+#[test]
+fn each_click_reaches_the_transform_of_the_object() {
+    use ph2d_ecs::{SimWorld, Transform};
+    let mut sim = SimWorld::new();
+    let autorado = Transform {
+        translation: ph2d_core::Vec2::new(1.0, 2.0),
+        scale: ph2d_core::Vec2::new(2.0, 3.0),
+        ..Transform::default()
+    };
+    let e = sim.world_mut().spawn(autorado).id();
+    let info = InspectorTransformInfo {
+        entity_bits: e.to_bits(),
+        ..objecto()
+    };
+    let no_mundo = |sim: &SimWorld| *sim.world().get::<Transform>(e).unwrap();
+
+    let h = clica(ids::INSP_TRANSFORM_FLIP_H, info);
+    assert_eq!(h.len(), 1);
+    commit(&mut sim, &h[0]);
+    assert_eq!(no_mundo(&sim).scale, ph2d_core::Vec2::new(-2.0, 3.0));
+    assert_eq!(no_mundo(&sim).translation, autorado.translation);
+
+    let v = clica(ids::INSP_TRANSFORM_FLIP_V, h[0]);
+    commit(&mut sim, &v[0]);
+    assert_eq!(no_mundo(&sim).scale, ph2d_core::Vec2::new(-2.0, -3.0));
+
+    let g = clica(ids::INSP_TRANSFORM_ROTATE_CW, v[0]);
+    commit(&mut sim, &g[0]);
+    assert!(
+        (no_mundo(&sim).rotation - std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+        "{}",
+        no_mundo(&sim).rotation
+    );
+    assert_eq!(no_mundo(&sim).scale, ph2d_core::Vec2::new(-2.0, -3.0));
+
+    let volta = clica(ids::INSP_TRANSFORM_FLIP_V, g[0]);
+    let volta = clica(ids::INSP_TRANSFORM_FLIP_H, volta[0]);
+    commit(&mut sim, &volta[0]);
+    assert_eq!(no_mundo(&sim).scale, autorado.scale);
+    assert_eq!(no_mundo(&sim).translation, autorado.translation);
+}
+
 /// ⭐ O gesto de verdade: num objecto sem vetor os três ícones pintam-se no cartão Transform, e o clique
 /// no rect pintado publica a edição. *Mutação: voltar a esconder os giros fora do vetor.*
 #[test]

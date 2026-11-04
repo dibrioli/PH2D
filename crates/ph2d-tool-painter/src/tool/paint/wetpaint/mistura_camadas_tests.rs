@@ -208,9 +208,7 @@ fn serpentina() -> Vec<[f32; 2]> {
 }
 
 fn ticks(t: &mut PainterTool, n: usize) {
-    for _ in 0..n {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(n);
 }
 
 fn seca(t: &mut PainterTool) {

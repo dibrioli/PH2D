@@ -115,9 +115,7 @@ fn preset(b: &Biblioteca, nome: &str) -> ph2d_brush_presets::Preset {
 }
 
 fn ticks(t: &mut PainterTool, n: usize) {
-    for _ in 0..n {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(n);
 }
 
 fn traco(t: &mut PainterTool, pts: &[[f32; 2]]) {

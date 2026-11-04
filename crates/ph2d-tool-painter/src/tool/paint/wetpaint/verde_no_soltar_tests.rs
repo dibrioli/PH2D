@@ -41,9 +41,7 @@ fn cruzamento(c: &[u8]) -> [f64; 3] {
 }
 
 fn ticks(t: &mut PainterTool, n: usize) {
-    for _ in 0..n {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(n);
 }
 
 /// O claro seco (botão Dry), o escuro a cruzá-lo com `forca` × o pigmento do preset. Devolve o

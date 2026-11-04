@@ -64,9 +64,7 @@ pub(super) fn com_oleo_sobre(vertical: bool, papel: [u8; 3]) -> PainterTool {
     }
     let (x, y) = ponto(40);
     t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Up));
-    for _ in 0..120 {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(120);
     t
 }
 
@@ -458,9 +456,7 @@ pub(super) fn agua_que_sobe(folga: f32) -> (f64, usize, usize) {
         t.on_tick(1000.0 / 60.0);
     }
     t.on_canvas_pointer(ponteiro(200.0, y, PointerPhase::Up));
-    for _ in 0..600 {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(600);
     t.wet_bring_home();
     let g = &t
         .paint
@@ -569,9 +565,7 @@ pub(super) fn agua_que_sobe_de_lado(folga: f32) -> (f64, usize, usize) {
         t.on_tick(1000.0 / 60.0);
     }
     t.on_canvas_pointer(ponteiro(x, 120.0, PointerPhase::Up));
-    for _ in 0..600 {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(600);
     t.wet_bring_home();
     let g = &t
         .paint

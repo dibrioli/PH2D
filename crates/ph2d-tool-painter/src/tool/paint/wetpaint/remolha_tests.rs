@@ -48,9 +48,7 @@ fn oleo_azul(papel: [u8; 3], soluvel: f64) -> PainterTool {
         t.on_tick(1000.0 / 60.0);
     }
     t.on_canvas_pointer(ponteiro(200.0, 90.0, PointerPhase::Up));
-    for _ in 0..120 {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(120);
     t
 }
 
@@ -78,9 +76,7 @@ fn aguada(t: &mut PainterTool, dissolve: f64, arrasto: f64, oleo: bool, km: bool
 /// Acaba o traço da [`cena`] e deixa assentar.
 fn assenta(t: &mut PainterTool) {
     t.on_canvas_pointer(ponteiro(120.0, 142.0, PointerPhase::Up));
-    for _ in 0..600 {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(600);
 }
 
 /// O assentado AZUL debaixo da aguada (`x 108..132`, as linhas do óleo `78..102`) e o pigmento azul que saiu do óleo

@@ -11,9 +11,7 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase};
 use ph2d_wet_paint::tuning::Knob;
 
 fn tick(t: &mut PainterTool, n: usize) {
-    for _ in 0..n {
-        t.on_tick(1000.0 / 60.0);
-    }
+    t.ticks_em_blocos(n);
 }
 
 /// Um traço horizontal de `x0` a `x0 + 160` na linha `y`.

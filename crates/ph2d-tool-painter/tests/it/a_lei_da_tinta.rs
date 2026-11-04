@@ -389,6 +389,17 @@ fn quantil(v: &[f64], q: f64) -> f64 {
         .unwrap_or(f64::NAN)
 }
 
+/// `n` quadros de 60 Hz no relógio fixo, em blocos de 30: um bloco dá os mesmos 20 passos que 30 tiques e a tela
+/// compõe-se uma vez por bloco. Só para quem não lê a tela entre os quadros.
+fn espera_em_blocos(t: &mut ph2d_tool_painter::PainterTool, n: u32) {
+    for _ in 0..n / 30 {
+        t.on_tick(30.0 * (1000.0 / 60.0));
+    }
+    for _ in 0..n % 30 {
+        t.on_tick(1000.0 / 60.0);
+    }
+}
+
 /// A cena das camadas da MESMA tinta: `tracos` um a um, com `esperas[k − 1]` quadros de 60 Hz antes do traço `k`
 /// (a última repete-se) e `depois`
 /// quadros no fim; `le(t, k)` corre depois do traço `k` (e `k = n` no fim).
@@ -408,16 +419,12 @@ fn pinta_camadas(
     t.set_brush_color_srgb8(VERMELHO_DO_DONO);
     for (k, tr) in tracos.iter().enumerate() {
         if k > 0 {
-            for _ in 0..esperas[(k - 1).min(esperas.len() - 1)] {
-                t.on_tick(1000.0 / 60.0);
-            }
+            espera_em_blocos(&mut t, esperas[(k - 1).min(esperas.len() - 1)]);
         }
         gesto(&mut t, tr, 3.0, |_| 1.0);
         le(&mut t, k);
     }
-    for _ in 0..depois {
-        t.on_tick(1000.0 / 60.0);
-    }
+    espera_em_blocos(&mut t, depois);
     le(&mut t, tracos.len());
     t.run_full()
 }

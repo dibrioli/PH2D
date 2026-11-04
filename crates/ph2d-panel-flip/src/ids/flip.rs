@@ -13,6 +13,14 @@
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
+// Os cartões do painel (`crate::cards`).
+pub const FLIP_SEC_TOOL: NodeId = hash_node_id("flip.sec.tool");
+pub const FLIP_SEC_BRUSH: NodeId = hash_node_id("flip.sec.brush");
+pub const FLIP_SEC_COLOR: NodeId = hash_node_id("flip.sec.color");
+pub const FLIP_SEC_FILL: NodeId = hash_node_id("flip.sec.fill");
+pub const FLIP_SEC_COLORIZE: NodeId = hash_node_id("flip.sec.colorize");
+pub const FLIP_SEC_LAYERS: NodeId = hash_node_id("flip.sec.layers");
+
 /// Flip panel close (X) button.
 pub const FLIP_CLOSE: NodeId = hash_node_id("flip.close");
 

@@ -31,6 +31,7 @@ fn camada(id: u64, nome: &str) -> FlipLayerRow {
 /// olho ou do chip da mistura ⇒ o `expect` dispara.)
 #[test]
 fn cada_campo_da_camada_tem_o_seu_losango() {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     ph2d_editor_core::paint::set_ui_look(ph2d_tokens::UiLook::Redesign);
     let (fundo, cima) = (3u64, 4u64);
     ph2d_panel_flip::set_current_flip_layers(FlipLayersSnapshot {

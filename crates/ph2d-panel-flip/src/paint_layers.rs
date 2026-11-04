@@ -82,6 +82,38 @@ fn icon_button(ctx: &mut PaintCtx, theme: Theme, id: ph2d_a11y::NodeId, icon: Ic
     ctx.host.hit_index_mut().register(id, rect);
 }
 
+/// Seed + focus the inline rename field ONCE when a rename opens (§4.C) — re-seeding
+/// every frame would stomp the user's typing. If the target layer vanished (deleted /
+/// undo), abandon the rename rather than key a stale id. Mirror of the timeline marker
+/// rename. Done before the rows so their loop stays a read-only paint.
+pub(crate) fn seed_rename(
+    state: &mut FlipPanelState,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    snap: &FlipLayersSnapshot,
+) {
+    let Some(lr) = state.layer_rename.filter(|lr| !lr.opened) else {
+        return;
+    };
+    let Some(row) = snap.rows.iter().find(|r| r.id == lr.layer) else {
+        state.layer_rename = None;
+        return;
+    };
+    let name = row.name.clone();
+    let caret = name.len();
+    store.register(
+        ids::FLIP_LAYER_RENAME_INPUT,
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: name,
+            caret,
+            selection_anchor: None,
+        },
+    );
+    store.set_focus(Some(ids::FLIP_LAYER_RENAME_INPUT));
+    store.mark_cancel_on_escape(ids::FLIP_LAYER_RENAME_INPUT);
+    state.layer_rename = Some(LayerRename { opened: true, ..lr });
+}
+
 /// The Layers section: Add/Delete toolbar + one block per layer (top→bottom).
 /// Returns the advanced `y`. A single open blend dropdown is stashed into
 /// `pending` for the deferred popover pass.
@@ -94,36 +126,7 @@ pub(crate) fn layers_section(
     mut y: f32,
     pending: &mut Option<PendingBlend>,
 ) -> f32 {
-    // Seed + focus the inline rename field ONCE when a rename opens (§4.C) — re-seeding
-    // every frame would stomp the user's typing. If the target layer vanished (deleted /
-    // undo), abandon the rename rather than key a stale id. Mirror of the timeline marker
-    // rename. Done here (not per-row) so the row loop below stays a read-only paint.
-    if let Some(lr) = state.layer_rename
-        && !lr.opened
-    {
-        if let Some(row) = snap.rows.iter().find(|r| r.id == lr.layer) {
-            let name = row.name.clone();
-            let caret = name.len();
-            ctx.host.store_mut().register(
-                ids::FLIP_LAYER_RENAME_INPUT,
-                InteractiveState::TextInput {
-                    state: TextInputState::Focused,
-                    text: name,
-                    caret,
-                    selection_anchor: None,
-                },
-            );
-            ctx.host
-                .store_mut()
-                .set_focus(Some(ids::FLIP_LAYER_RENAME_INPUT));
-            ctx.host
-                .store_mut()
-                .mark_cancel_on_escape(ids::FLIP_LAYER_RENAME_INPUT);
-            state.layer_rename = Some(LayerRename { opened: true, ..lr });
-        } else {
-            state.layer_rename = None;
-        }
-    }
+    seed_rename(state, ctx.host.store_mut(), snap);
     let renaming = state.layer_rename.map(|lr| lr.layer);
     // Section label.
     let label_font = TypeToken::Sm.px();

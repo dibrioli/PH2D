@@ -42,6 +42,19 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(ph2d_editor_core::ids::FLIP_PANEL, rect);
 
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        crate::cards::prepare(state, ctx.host.store_mut(), &snap, &layers);
+        let renomeia = state.layer_rename.map(|lr| lr.layer);
+        let cartoes = crate::cards::cards(&snap, &layers, renomeia);
+        ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ph2d_editor_core::ids::FLIP_PANEL,
+            FlipPanel::TITLE.tr(),
+            &cartoes,
+        );
+        return;
+    }
+
     // Dark-glass surface + corner accents — identical chrome to the Inspector.
     paint_panel_surface(rect, ctx.scene, theme);
 

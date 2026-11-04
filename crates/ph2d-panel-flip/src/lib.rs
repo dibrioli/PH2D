@@ -25,6 +25,7 @@
 
 #![forbid(unsafe_code)]
 
+mod cards;
 mod event;
 pub mod ids;
 mod paint;

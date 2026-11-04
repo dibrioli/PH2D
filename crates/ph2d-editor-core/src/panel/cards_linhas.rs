@@ -351,7 +351,7 @@ impl<'s> CardCtx<'s> {
     }
 
     /// Ícones sem caixa: o aceso ganha o fundo do segmento ativo; o pairado, o do hover.
-    fn bare(&mut self, r: Rect, segs: &[Seg<'_>]) {
+    pub fn bare(&mut self, r: Rect, segs: &[Seg<'_>]) {
         for (i, s) in segs.iter().enumerate() {
             let b = Rect::new(r.x + m::FIELD_H * i as f32, r.y, m::FIELD_H, m::FIELD_H);
             self.hit_index.register(s.id, b);

@@ -19,11 +19,17 @@ use ph2d_panel_flip::{FlipLayerRow, FlipLayersSnapshot, FlipPanel, LayerRename, 
 use ph2d_tool_flip::{DOT_SPACING_MAX, FlipMode, FlipTool, WIDTH_MAX_PX};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// O corpo de antes (`PH2D_CARDS=0`): os cartões têm a prova deles em `os_cartoes.rs`.
+fn host_de_antes() -> MockPanelHost {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
+    MockPanelHost::with_panel::<FlipPanel>()
+}
+
 /// Drag the Size slider to its full end and prove the width reaches the tool —
 /// exercising every site from `populate` to `width_px()`.
 #[test]
 fn size_slider_drag_reaches_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
@@ -61,7 +67,7 @@ fn size_slider_drag_reaches_tool() {
 /// novo sem TODAS as pontas dropa o clique em silêncio; este teste dirige o evento REAL.
 #[test]
 fn colorize_bleed_slider_drag_reaches_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
@@ -97,7 +103,7 @@ fn colorize_bleed_slider_drag_reaches_tool() {
 /// o arrasto é dropado em silêncio (a lição do Spacing). Dirige o `ValueChanged` REAL de cada um.
 #[test]
 fn pressure_sliders_drag_reaches_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
@@ -142,7 +148,7 @@ fn pressure_sliders_drag_reaches_tool() {
 /// pulando exatamente a costura quebrada. Mutação que sangra: tirar `FLIP_DOT_SPACING` do arm.
 #[test]
 fn dot_spacing_slider_drag_reaches_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
@@ -176,7 +182,7 @@ fn dot_spacing_slider_drag_reaches_tool() {
 /// Clicking a tool button must switch the tool through the seam (Draw → Erase → Draw).
 #[test]
 fn draw_mode_button_switches_the_tool_mode() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert_eq!(tool.mode(), FlipMode::Draw, "fresh tool starts in Draw");
@@ -211,7 +217,7 @@ fn draw_mode_button_switches_the_tool_mode() {
 /// a lição do slider de Spacing que ficou de fora do arm).
 #[test]
 fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
 
     // (a) PINTADO + clicável no Draw.
@@ -279,7 +285,7 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
 /// Mutação que sangra: tirar `FLIP_CAP_FLAT` do arm de `event.rs` (o chip morre sob o mouse).
 #[test]
 fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
 
     // (a) PINTADO + clicável no Draw — as DUAS opções, senão o rádio tem um lado inalcançável.
@@ -359,7 +365,7 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
 /// que sangra: tirar `FLIP_AIRBRUSH` do arm de `event.rs` (o chip morre sob o mouse).
 #[test]
 fn the_airbrush_toggle_is_draw_only_and_forwards_to_the_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
 
     // (a) PINTADO + clicável no Draw.
@@ -450,7 +456,7 @@ fn every_mode_button_is_painted_and_clickable() {
         ),
         (ObjectMode::Edit, &["Select", "Sculpt"][..]),
     ] {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         let tools = FlipMode::tools_of(mode);
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
@@ -498,7 +504,7 @@ fn every_mode_button_is_painted_and_clickable() {
 /// escreve como o `flip_bridge` escreve.
 #[test]
 fn the_bucket_widgets_appear_only_in_fill_mode() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     // O **swatch de Fill NÃO está aqui**: ele é compartilhado com o modo Edit (W6), onde
     // recolore o miolo do traço selecionado — a cor da linha e a do miolo são dois
@@ -548,7 +554,7 @@ fn the_bucket_widgets_appear_only_in_fill_mode() {
 /// ausência (Draw) + presença-com-área (Colorize) que a DIRETIVA pede.
 #[test]
 fn the_colorize_widgets_appear_only_in_colorize_mode() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let colorize = [
         ids::FLIP_COLORIZE_SWATCH,
@@ -596,7 +602,7 @@ fn the_colorize_widgets_appear_only_in_colorize_mode() {
 #[test]
 fn every_number_box_has_a_registered_range() {
     use ph2d_editor_core::interaction::InteractiveState;
-    let host = MockPanelHost::with_panel::<FlipPanel>();
+    let host = host_de_antes();
     let store = host.store();
 
     let boxes = [
@@ -844,7 +850,7 @@ fn each_mode_shows_only_its_own_attributes() {
         "um modo NOVO nao tem caso nesta tabela — o gate modal esta cego para ele"
     );
     for (mode, expected, forbidden) in cases {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
@@ -905,7 +911,7 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         "um modo NOVO nao entrou nesta varredura — o gate ficaria cego para ele"
     );
     for (mode, want) in cases {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
@@ -936,7 +942,7 @@ fn every_sculpt_brush_button_selects_its_own_brush() {
         .iter()
         .zip(ReshapeKind::ALL)
     {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut panel_state = FlipPanelState::default();
         let mut tool = FlipTool::default();
 
@@ -964,7 +970,7 @@ fn every_sculpt_brush_button_selects_its_own_brush() {
 /// — o botão que "não existe" com todos os outros gates verdes, BUGS #8).
 #[test]
 fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
         mode: FlipMode::Reshape,
@@ -1004,7 +1010,7 @@ fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
 #[test]
 fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
     // (a) o seam: o clique chega e a tool muda.
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert!(!tool.draw_filled(), "o default e a linha simples");
@@ -1040,7 +1046,7 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
         (FlipMode::Reshape, false),
         (FlipMode::Edit, false),
     ] {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
@@ -1089,7 +1095,7 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
     );
 
     // (a) o seam: cada clique chega e a tool muda de domínio.
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert_eq!(tool.edit_domain(), EditDomain::Stroke, "o default e Stroke");
@@ -1112,7 +1118,7 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
     // pills são pintados (um id sem pintura é um domínio inalcançável pelo mouse).
     for mode in ph2d_tool_flip::FlipMode::ALL {
         let want = mode == FlipMode::Edit;
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
@@ -1139,7 +1145,7 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
 fn duplicate_layer_button_forwards_to_the_bus() {
     use ph2d_editor_core::tool::PanelEvent;
 
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let outcome =
         host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_LAYER_DUPLICATE));
@@ -1196,7 +1202,7 @@ fn one_layer(id: u64, name: &str) {
 fn double_clicking_a_layer_name_opens_the_rename() {
     let a = 7u64;
     one_layer(a, "Rough");
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
 
     let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
@@ -1224,7 +1230,7 @@ fn double_clicking_a_layer_name_opens_the_rename() {
 fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
     let a = 11u64;
     one_layer(a, "Rough");
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
 
@@ -1273,7 +1279,7 @@ fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
 fn the_multiplane_depth_slider_is_the_canonical_labeled_row() {
     let a = 9u64;
     one_layer(a, "A");
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let depth_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Depth);
     let depth_chip_id = ids::flip_layer_widget_id(a, FlipLayerWidget::DepthNum);
@@ -1335,7 +1341,7 @@ fn the_multiplane_depth_slider_is_the_canonical_labeled_row() {
 fn the_rename_field_owns_the_name_strip_while_renaming() {
     let a = 3u64;
     one_layer(a, "A");
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
 
@@ -1399,7 +1405,7 @@ fn the_link_toggles_reach_the_tool() {
         (ph2d_tool_flip::ids::FLIP_LINK_SIZE, "Size"),
         (ph2d_tool_flip::ids::FLIP_LINK_STRENGTH, "Strength"),
     ] {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         let mut tool = FlipTool::default();
         assert!(
@@ -1436,7 +1442,7 @@ fn the_link_toggles_reach_the_tool() {
 /// engolido) ou do `handle_panel_event` (chega e não escreve `erase_px`).
 #[test]
 fn the_unlinked_eraser_slider_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     tool.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
@@ -1481,7 +1487,7 @@ fn the_unlinked_eraser_slider_reaches_the_tool() {
 #[test]
 fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs() {
     // (a) LINKADO (o default): a linha é a do PINCEL.
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut st = FlipPanelState::default();
     ph2d_panel_flip::set_current_flip_style(Some(erase_snap(true, true)));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
@@ -1536,7 +1542,7 @@ fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs()
 fn the_link_toggles_live_only_in_erase_mode() {
     for mode in ph2d_tool_flip::FlipMode::ALL {
         let want = mode == FlipMode::Erase;
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
@@ -1578,7 +1584,7 @@ fn the_strength_row_lives_only_in_the_soft_eraser() {
         (EraseMode::Stroke, false),
     ];
     for (erase, want) in cases {
-        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut host = host_de_antes();
         let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode: FlipMode::Erase,
@@ -1623,7 +1629,7 @@ fn the_strength_row_lives_only_in_the_soft_eraser() {
 /// mostra um número e aplica outro.
 #[test]
 fn the_trap_slider_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut host = host_de_antes();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 

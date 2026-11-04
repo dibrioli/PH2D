@@ -60,8 +60,10 @@ impl WidgetStore {
     /// lê de volta (o `vector_bridge`) pintaria essa cor na amostra nova.
     pub fn open_picker_on(&mut self, id: ph2d_a11y::NodeId) {
         let seed = self.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+        let sujeito = self.card_edit_subject();
         self.set_widget_color(id, seed);
         self.set_picker_target(Some(id));
+        self.card_lists.picker_subject = sujeito;
         self.set_blender_value(
             crate::ids::INSP_BLENDER_PICKER,
             ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),

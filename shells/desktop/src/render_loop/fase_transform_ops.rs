@@ -63,71 +63,27 @@ impl crate::App {
         // chamador logo abaixo — o preset de dispositivo devolve **unidades de DOCUMENTO**
         // (`DevicePreset::size`, o aspecto do aparelho normalizado ao `LONG_SIDE`), que é dado
         // AUTORADO e não um número da face do artista: ele tem de atravessar intocado.
-        // ⭐⭐⭐ **A APARÊNCIA do objecto entra no DOCUMENTO** (estudo 42 item 2).
-        //
-        // ⚠️ **Escreve na selecção INTEIRA e lê do primário** — a lei desta janela, e a porta é
-        // uma só (`vec_appearance`). ⚠️ E o passo de undo sai de graça: o registo é por DIFF, e
-        // um arrasto de slider não regista por quadro (um gesto em curso suprime a captura),
-        // então a corrida inteira colapsa em UM passo ao soltar.
-        {
-            let sel = crate::vec_paint_stack::alvos(&hero.store, &self.vec.pen, sim);
-            hero.store.end_card_edit_frame();
-            if let Some(track) = pending_vec_opacity {
-                #[allow(clippy::cast_possible_truncation)]
-                crate::vec_appearance::set_opacity(vec_scene, &sel, track as f32);
-                // ⭐ E, numa forma que a timeline conduz, o valor que a TELA mostra (plano 34 D3):
-                // o auto-key vê a mão — armado grava, desarmado segura até o tempo mudar.
-                #[allow(clippy::cast_possible_truncation)]
-                crate::vec_driven_style::follow_the_hand(
-                    sim,
-                    &self.vec.entities,
-                    &sel,
-                    track as f32,
-                );
-            }
-            if let Some(code) = pending_vec_blend {
-                crate::vec_appearance::set_blend(vec_scene, &sel, code);
-            }
-            // ⭐⭐⭐ **E A PILHA** (item 4). ⚠️ O verbo primeiro, as propriedades depois: um
-            // clique em «apagar» e um arrasto de slider não chegam no mesmo frame, mas se
-            // chegassem, escrever numa camada que o verbo acabou de remover seria um `None`
-            // silencioso — e a ordem torna isso impossível de acontecer ao contrário.
-            if let Some(v) = pending_paint_verb {
-                crate::vec_paint_stack::apply(vec_scene, &sel, v);
-            }
-            // ⚠️ **O índice é o da camada ABERTA no painel**: sem ela não há sujeito.
-            // ⭐⭐⭐ **A COR de uma camada** — o seletor partilhado escreve nela (plano 32: a lei
-            // do Fill de base, campo a campo).
-            crate::vec_paint_stack::apply_picker(&mut hero.store, vec_scene, &sel);
-            if let Some(i) = ph2d_panel_vector::state::open_layer_index() {
-                if let Some(w) = pending_paint_width {
-                    let doc = ph2d_editor_core::DocPx::of(&hero.project);
-                    crate::vec_paint_stack::set_width(vec_scene, &sel, i, w, doc);
-                }
-                // ⭐ ONDE ela desenha (v21): só o eixo comitado, o outro fica o de cada forma.
-                crate::vec_paint_stack::set_offset_axes(
-                    vec_scene,
-                    &sel,
-                    i,
-                    pending_paint_dx,
-                    pending_paint_dy,
-                );
-                if let Some(t) = pending_paint_opacity {
-                    #[allow(clippy::cast_possible_truncation)]
-                    crate::vec_paint_stack::set_opacity(vec_scene, &sel, i, t as f32);
-                }
-                if let Some(code) = pending_paint_blend {
-                    crate::vec_paint_stack::set_blend(vec_scene, &sel, i, code);
-                }
-                if let Some(d) = pending_paint_dilate {
-                    crate::vec_paint_stack::set_dilate(vec_scene, &sel, i, d);
-                }
-            }
-            if let Some(j) = pending_paint_join {
-                let open = ph2d_panel_vector::state::open_layer_index();
-                crate::vec_paint_stack::set_chip(vec_scene, &sel, open, j);
-            }
-        }
+        // ⭐⭐⭐ **A APARÊNCIA do objecto entra no DOCUMENTO**: a do cartão preso sob o gesto, ou a seleção.
+        ph2d_app_vec::preso::aplica_pedidos(
+            &mut hero.store,
+            vec_scene,
+            &self.vec.pen,
+            sim,
+            &self.vec.entities,
+            ph2d_editor_core::DocPx::of(&hero.project),
+            ph2d_app_vec::preso::PedidosDaPilha {
+                vec_opacity: pending_vec_opacity,
+                vec_blend: pending_vec_blend,
+                verb: pending_paint_verb,
+                width: pending_paint_width,
+                dx: pending_paint_dx,
+                dy: pending_paint_dy,
+                dilate: pending_paint_dilate,
+                join: pending_paint_join,
+                opacity: pending_paint_opacity,
+                blend: pending_paint_blend,
+            },
+        );
         if let Some((field, target)) = pending_vec_transform {
             let target = ph2d_editor_core::LengthDisplay::of(&hero.project).to_world(target);
             crate::input_dispatch::apply_vec_transform(

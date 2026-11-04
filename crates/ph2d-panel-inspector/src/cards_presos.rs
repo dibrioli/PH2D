@@ -6,7 +6,10 @@
 //! ([`ensaia`]), e o gesto que cai nele corre com ele instalado ([`com_gesto`]) — os pedidos levam o
 //! `entity_bits` do preso.
 
-use crate::cards::{CARD_APPEARANCE, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_TRANSFORM};
+use crate::cards::{
+    CARD_APPEARANCE, CARD_FILL, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_STROKE,
+    CARD_TRANSFORM,
+};
 use crate::cards_componentes::{Abertas, Presente};
 use crate::paint_frame::LiveSnapshots;
 use crate::retrato::{Retrato, com_preso};
@@ -22,12 +25,14 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// Os cartões do objecto que se prendem: a escrita de cada um vai ao preso (`docs/CartoesUI/09`).
-const DO_OBJECTO: [NodeId; 5] = [
+const DO_OBJECTO: [NodeId; 7] = [
     CARD_OBJECT,
     CARD_TRANSFORM,
     CARD_APPEARANCE,
     CARD_ORDERING,
     CARD_MATERIAL,
+    CARD_FILL,
+    CARD_STROKE,
 ];
 
 /// Um solto preso deste quadro: a instância, o objecto e o que o corpo do cartão empresta.
@@ -95,6 +100,8 @@ pub(crate) fn ensaia(inspector_state: &InspectorState, host: &mut dyn PanelHostI
             let ensaio = host.store_mut().abre_ensaio();
             crate::sync::semeia_tudo(&mut inspector_state.clone(), host, true, false);
             crate::cards::semeia_a_opacidade(host.store_mut());
+            crate::cards::semeia_as_linhas(host.store_mut());
+            crate::cards::semeia_as_amostras(host.store_mut());
             let e = host.store_mut().fecha_ensaio(ensaio);
             host.bus_mut().truncate(n);
             e
@@ -185,9 +192,11 @@ pub(crate) fn cards<'a>(
             Some((presente, snaps)) => {
                 Some(crate::cards_componentes::cartao(presente, abertas, snaps))
             }
-            None => crate::cards::cards(store)
-                .into_iter()
-                .find(|c| c.section == p.secao),
+            None => ph2d_editor_core::panel::cards::estilos::declarando(pin, p.k, || {
+                crate::cards::cards(store)
+                    .into_iter()
+                    .find(|c| c.section == p.secao)
+            }),
         });
         let Some(Some(mut d)) = def else { continue };
         d.section = p.k; // T54: o def é da INSTÂNCIA (`cards_solto::pinta_soltos` acha-o por ela)

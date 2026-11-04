@@ -182,6 +182,21 @@ pub fn set_open_layer(i: Option<usize>) {
     OPEN.with(|c| c.set(i));
 }
 
+thread_local! {
+    /// C2: a linha de um cartão PRESO que o gesto aponta (o `OPEN` é da seleção e fica intocado).
+    static PINNED_ROW: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+/// O campo da linha `i` de um cartão preso foi editado: a escrita do quadro é nela, no objecto dele.
+pub fn set_pinned_row(i: usize) {
+    PINNED_ROW.with(|c| c.set(Some(i)));
+}
+
+#[must_use]
+pub fn pinned_row() -> Option<usize> {
+    PINNED_ROW.with(Cell::get)
+}
+
 /// ⭐ F45 — guarda a queda do arrasto pelo ⚙ (o painel), para o verbo `Move` a ler (a shell).
 pub fn set_paint_move(m: Option<(ph2d_vec_scene::StackItem, ph2d_vec_scene::Place)>) {
     PAINT_MOVE.with(|c| c.set(m));

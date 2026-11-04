@@ -79,6 +79,36 @@ pub struct VectorStyleSnapshot {
 }
 
 impl VectorStyleSnapshot {
+    /// C2: este estilo com as tintas de base de UMA forma (a de um cartão preso): nunca é misto.
+    /// `width_px` em px do documento, a unidade da tool (o clamp é o do `adopt_stroke`).
+    #[must_use]
+    pub fn da_forma(
+        mut self,
+        fill: Option<[u8; 4]>,
+        stroke: Option<&ph2d_vec_scene::StrokeSpec>,
+        width_px: f64,
+    ) -> Self {
+        self.mixed = crate::StyleFields::NONE;
+        if let Some(c) = fill {
+            self.fill = c;
+        }
+        if let Some(s) = stroke {
+            let c = s.color();
+            self.stroke = [c.r, c.g, c.b, c.a];
+            self.stroke_width_px =
+                width_px.clamp(crate::params::WIDTH_MIN_PX, crate::params::WIDTH_MAX_PX);
+            self.cap = s.cap.into();
+            self.join = s.join.into();
+            self.align = s.align;
+            self.dash = s.dash.map_or(crate::params::DASH_DEFAULT, |p| p.pairs);
+            self.marker_start = s.marker_start;
+            self.marker_end = s.marker_end;
+            self.marker_scale = [s.marker_scale_start, s.marker_scale_end];
+            self.marker_round = s.marker_round;
+        }
+        self
+    }
+
     /// O campo `f` tem UM valor na seleção — o painel pode mostrá-lo (senão pinta «misto»)?
     #[must_use]
     pub fn agrees(&self, f: crate::StyleFields) -> bool {

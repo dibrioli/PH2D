@@ -277,6 +277,7 @@ pub(super) fn dispatch_down<'frame>(
             && !is_color_target
             && !eyedropper_armed
             && !rename_dialog_open
+            && store.picker_subject().is_none()
         {
             store.set_picker_target(None);
         }

@@ -72,6 +72,8 @@ pub struct CardLists {
     pub(super) press_subject: Option<u64>,
     /// C1: o campo em foco que a última pressão tirou de um cartão preso, e o preso dele.
     pub(super) blur_subject: Option<(NodeId, u64)>,
+    /// C2: o objecto do cartão preso que abriu o seletor de cor (`None` = a seleção). Fica até ele fechar.
+    pub(super) picker_subject: Option<u64>,
     /// T41: de onde (ecrã) regressa cada solto devolvido à lista — a pintura consome-o e a mola parte daí.
     pub(super) arrivals: BTreeMap<NodeId, (f32, f32)>,
     /// T40: os números do sujeito PRESO de cada solto (o mesmo id mostra outro valor na lista).

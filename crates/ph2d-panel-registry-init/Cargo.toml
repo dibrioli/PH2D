@@ -127,6 +127,12 @@ ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 ph2d-card-stack = { path = "../ph2d-card-stack" }
 # ⭐ Só para `o_alfinete_do_inspector` (T53): a corda anda entre quadros como na shell (`anda_com`).
 ph2d-card-rope = { path = "../ph2d-card-rope" }
+# ⭐ Só para `o_alfinete_fill_stroke_c2`: o gesto do cartão preso chega à cena pelas portas reais do vetor.
+ph2d-app-vec = { path = "../ph2d-app-vec" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-vec-edit = { path = "../ph2d-vec-edit" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # ⭐ Só para a SONDA `diag_de_quem_sao_as_entradas_do_inspector`, que refaz o mapa
 #    `NodeId -> literal` a partir da fonte dos ids. ⛔ Sem isto ela teria de copiar o FNV-1a,

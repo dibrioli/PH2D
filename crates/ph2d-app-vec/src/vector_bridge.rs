@@ -17,8 +17,8 @@ mod fields;
 #[path = "vector_bridge_style.rs"]
 mod style;
 pub use fields::mixed_of;
-pub use fields::pick_merge;
 use fields::{fill_merge, restyle_path_fields};
+pub use fields::{pick_base, pick_merge};
 pub use fields::{restyle_slot_fields, row_fields};
 use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
@@ -206,7 +206,9 @@ pub fn dispatch(
     let target = hero.store.picker_target();
     let stroke_open = target == Some(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
     let fill_open = target == Some(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
-    if (stroke_open || fill_open)
+    let seletor_do_preso = crate::preso::seletor_na_base(&mut hero.store, scene, sim, tocou);
+    if !seletor_do_preso
+        && (stroke_open || fill_open)
         && let Some((value, _, _, _)) = hero
             .store
             .blender_picker(ph2d_editor_core::ids::INSP_BLENDER_PICKER)
@@ -310,6 +312,8 @@ pub fn dispatch(
     // passo de undo é o da fila GLOBAL, que regista por diff de estado.
     // ⭐ **Os CAMPOS que o gesto mudou** (plano 31): cada forma selecionada recebe só esses.
     let authored = tool.take_authored();
+    // ⭐ C2: o gesto de um cartão PRESO escreve só na forma dele, sempre na tinta de BASE.
+    let preso = crate::preso::alvo_do_gesto(&hero.store, sim).filter(|_| !authored.is_empty());
     let width_authored = authored.has(StyleFields::WIDTH);
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {
@@ -319,20 +323,27 @@ pub fn dispatch(
     // current fill (a stale handle after a kind switch resolves to `None` and falls
     // through to the solid-fill path). The picker recolours THIS slot.
     // ⭐ F44b: a linha aberta (base ou camada) — o corpo de ajustes edita a tinta DELA.
-    let slot = crate::paint_stack::open_slot();
+    let slot = match preso {
+        Some(_) => ph2d_vec_scene::PaintSlot::Base,
+        None => crate::paint_stack::open_slot(),
+    };
     let active_handle = grad_handle.filter(|&h| {
-        pen.selected()
-            .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-            .and_then(|p| p.slot_fill(slot))
-            .and_then(|f| selected_grad_color(f, h))
-            .is_some()
+        preso.is_none()
+            && pen
+                .selected()
+                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+                .and_then(|p| p.slot_fill(slot))
+                .and_then(|f| selected_grad_color(f, h))
+                .is_some()
     });
     if !authored.is_empty() {
         // Restyle EVERY selected path, not just the primary — a multi-selection
         // (marquee, Shift+click, or all the glyphs of a text block) restyles as one
         // (Enio 2026-07-11). A gradient-handle recolour is the one exception: the
         // handle addresses the PRIMARY path's fill slot, so it stays single-path.
-        let sel_ids: Vec<ph2d_vec_scene::VecPathId> = if active_handle.is_some() {
+        let sel_ids: Vec<ph2d_vec_scene::VecPathId> = if let Some(id) = preso {
+            vec![id]
+        } else if active_handle.is_some() {
             pen.selected().into_iter().collect()
         } else {
             pen.selected_paths().to_vec()
@@ -400,6 +411,13 @@ pub fn dispatch(
             }
         }
     }
+    // A tool é da seleção: o gesto do preso não fica nela (o próximo desenho herdava-o).
+    if let Some((id, m)) = preso.zip(crate::preso::molde()) {
+        crate::bindings::note_alvo(id);
+        style::devolve_o_estilo(tool, &mut hero.store, &m);
+        seed_style_from_selection(tool, &mut hero.store, pen, scene, doc, grad_handle);
+    }
+    let (stroke, fill) = (tool.stroke_rgba(), tool.fill_rgba());
     note_style_seen(pen, scene);
     // ── 5. **Publicar** — o que o painel mostra sobre a cena e a seleção.
     //
@@ -407,6 +425,7 @@ pub fn dispatch(
     // que é um empréstimo mútuo do registry; o resto do passo 5 mora no módulo irmão.
     let mixed = mixed_of(pen, scene);
     fields::blank_mixed_numbers(&mut hero.store, tool, mixed);
+    crate::preso::guarda_molde(tool.ui_snapshot());
     ph2d_panel_vector::set_current_vector_style(if vector_active {
         Some(ph2d_tool_vector::VectorStyleSnapshot {
             mixed,

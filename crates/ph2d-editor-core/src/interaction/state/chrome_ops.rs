@@ -617,6 +617,7 @@ impl WidgetStore {
     /// `widget_colors[target]` if it doesn't yet have a value.
     pub fn set_picker_target(&mut self, target: Option<NodeId>) {
         self.repoe_picker_target(target);
+        self.card_lists.picker_subject = None;
         // Opening the picker → it's the most recently summoned panel.
         if target.is_some() {
             // A ordem guarda o seletor pelo id com que ele é registado e publicado

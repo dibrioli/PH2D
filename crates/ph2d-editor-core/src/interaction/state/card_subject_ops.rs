@@ -222,9 +222,18 @@ impl WidgetStore {
         }) {
             return;
         }
-        if crate::panel::cards::dropdown::cobre(x, y) {
+        if self.card_dropdown_at(x, y) || self.context_menu().is_some() {
             return;
         }
+        // C2: a lista de estilos e o seletor de cor são de quem os abriu, nunca do que está por baixo.
+        if crate::panel::cards::estilos::cobre(x, y) {
+            self.card_lists.press_subject = crate::panel::cards::estilos::sujeito_aberto();
+            return;
+        }
+        let no_seletor = self.picker_target().is_some()
+            && self
+                .panel_rect(crate::ids::INSP_BLENDER_PICKER)
+                .is_some_and(|r| r.contains(x, y));
         let mut topo: Option<(u32, NodeId, Option<u64>)> = None;
         for (k, c) in &self.card_lists.loose {
             if let Some(r) = self.panel_rects.get(&loose_rect_of(*k))
@@ -234,8 +243,13 @@ impl WidgetStore {
                 topo = Some((c.z, *k, c.pin));
             }
         }
+        topo = topo.filter(|_| !no_seletor);
         let antes = self.card_lists.press_subject;
-        let agora = topo.and_then(|(_, _, p)| p);
+        let agora = if no_seletor {
+            self.card_lists.picker_subject
+        } else {
+            topo.and_then(|(_, _, p)| p)
+        };
         // C1: o campo em foco no preso faz o commit ao sair do foco, e é aqui que ele sai: é dele.
         self.card_lists.blur_subject = antes
             .filter(|_| antes != agora)
@@ -261,6 +275,13 @@ impl WidgetStore {
             .pinned_values
             .get(&section)
             .map_or(&[], Vec::as_slice)
+    }
+
+    /// C2: de quem é o seletor de cor aberto (`None` = da seleção). Quem o abriu num cartão preso
+    /// continua nele quando a seleção muda, e um clique fora não o fecha.
+    #[must_use]
+    pub fn picker_subject(&self) -> Option<u64> {
+        self.card_lists.picker_subject
     }
 
     /// O sujeito preso sobre o qual caiu a última pressão (`None` = os pedidos são da seleção).

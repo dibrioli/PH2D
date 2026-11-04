@@ -95,7 +95,7 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
         (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|&i| id == ids::vector_paint_row_opacity_id(i))
     {
         let pct = host.store().number_value(id).unwrap_or(100.0); // LITERAL-PX-OK: 100 % = opaca
-        crate::state::set_open_layer(Some(i));
+        aponta(host, ev, i);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
                 crate::ids::VECTOR_PAINT_OPACITY,
@@ -108,7 +108,7 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
         (0..ph2d_vec_scene::MAX_PAINT_LAYERS).find(|&i| id == ids::vector_paint_row_width_id(i))
     {
         let px = host.store().number_value(id).unwrap_or(0.0);
-        crate::state::set_open_layer(Some(i));
+        aponta(host, ev, i);
         host.bus_mut()
             .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
                 crate::ids::VECTOR_PAINT_WIDTH,
@@ -117,6 +117,15 @@ pub(super) fn value_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
         return Some(true);
     }
     None
+}
+
+/// A linha `i` é a do gesto: a camada aberta da seleção, ou (C2) a do cartão preso, sem tocar na dela.
+fn aponta(host: &dyn PanelHostInternal, ev: WidgetEvent, i: usize) {
+    if host.store().card_event_subject(ev).is_some() {
+        ph2d_tool_vector::appearance::set_pinned_row(i);
+    } else {
+        crate::state::set_open_layer(Some(i));
+    }
 }
 
 /// ⭐ F45 — **largou uma linha de Fill & Stroke arrastada pelo ⚙**: a queda é a que o vão mostrou

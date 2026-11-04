@@ -58,8 +58,9 @@ impl crate::App {
         // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
         // tarde leria a ficha do quadro anterior.
         if let Some(v) = pending_stroke_present {
-            crate::vec_stroke_present::apply(vec_scene, &self.vec.pen, v);
+            crate::vec_stroke_present::apply_no_alvo(vec_scene, &self.vec.pen, &hero.store, sim, v);
         }
+        hero.store.end_card_edit_frame();
         crate::vec_stroke_present::publish(vec_scene, &self.vec.pen);
         // ⭐ **A TINTA do traço** (plano 35, wave D) — publicada AQUI, ao lado da irmã, e não no
         // `vector_bridge`: o dreno acima pode ter acabado de dar ou tirar o traço, e uma

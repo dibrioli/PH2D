@@ -377,7 +377,7 @@ fn reseed_open_picker(
     swatch: ph2d_editor_core::NodeId,
     c: [u8; 4],
 ) {
-    if store.picker_target() == Some(swatch) {
+    if store.picker_target() == Some(swatch) && store.picker_subject().is_none() {
         store.set_blender_value(
             ph2d_editor_core::ids::INSP_BLENDER_PICKER,
             ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]),
@@ -492,6 +492,16 @@ fn adopted_stroke(
         align,
         ..corpo.clone()
     })
+}
+
+/// C2: a tool volta ao estilo da seleção depois de um gesto num cartão preso, e as rows com ela.
+pub fn devolve_o_estilo(
+    tool: &mut ph2d_tool_vector::VectorTool,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    molde: &ph2d_tool_vector::VectorStyleSnapshot,
+) {
+    tool.repoe_linha(molde);
+    reseed_style_sliders(store, tool);
 }
 
 /// As rows que pintam do STORE — sem isto o painel mostra o valor velho mesmo com a tool já

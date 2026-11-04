@@ -228,7 +228,6 @@ impl crate::App {
         }
         // T61: as secções tardias de cada objecto preso por um cartão solto, pelas mesmas portas.
         let pins: Vec<u64> = presos.iter().map(|p| p.bits).collect();
-        use ph2d_app_vec::paint_stack::aparencia_do_preso;
         let (entidades, doc) = (
             &self.vec.entities,
             ph2d_editor_core::DocPx::of(&hero.project),
@@ -238,8 +237,7 @@ impl crate::App {
             let s = tardios::Sessao::nova(um, playhead.is_playing(), &hero.input_map, motion);
             tardios::publica(sim, tags, script.as_ref(), particles, &s);
             let _ = ultimas(sim, um);
-            let a = aparencia_do_preso(b, sim, vec_scene, entidades, &hero.store, doc);
-            ph2d_panel_vector::state::set_current_appearance(a);
+            ph2d_app_vec::preso::publica(b, sim, vec_scene, entidades, &hero.store, doc);
         });
         Some(tool_preview_bits)
     }

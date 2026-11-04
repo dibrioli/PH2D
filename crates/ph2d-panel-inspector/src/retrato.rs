@@ -6,6 +6,7 @@
 
 use crate::slot_image::{self, SlotImage};
 use crate::{state as s, state_components as c};
+use ph2d_editor_core::panel::cards::estilos;
 use ph2d_editor_core::screens::hero as h;
 use ph2d_editor_core::{
     action_trigger_edits as at, constraint_edits as ce, counter_watch_edits as cw, hud_edits,
@@ -133,6 +134,13 @@ retrato! {
     slot: Option<SlotImage> = slot_image::atual(), slot_image::set_current_slot_image;
     aparencia: Option<appearance::Appearance> =
         appearance::current_appearance(), appearance::set_current_appearance;
+    base_paints: Option<[appearance::BasePaint; 2]> =
+        appearance::base_paints(), appearance::set_base_paints;
+    base_fill_ramp: Option<[[u8; 4]; 2]> =
+        appearance::base_fill_ramp(), appearance::set_base_fill_ramp;
+    estilo: Option<ph2d_tool_vector::VectorStyleSnapshot> =
+        appearance::current_vector_style(), appearance::set_current_vector_style;
+    ligados: Vec<Option<u32>> = estilos::ligados(), estilos::set_ligados;
 }
 
 thread_local! {

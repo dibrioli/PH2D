@@ -82,8 +82,9 @@ pub(crate) fn active() -> bool {
 thread_local! {
     static LIGADO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static PROPORCAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// O hex digitado à espera de a forma o mostrar: `(camada, cor, quadros)`; depois o seletor fecha.
-    static HEX_PENDENTE: std::cell::Cell<Option<(usize, [u8; 4], u8)>> =
+    /// O hex digitado à espera de a forma o mostrar: `(camada, cor, quadros, objecto preso)`; depois o
+    /// seletor fecha.
+    static HEX_PENDENTE: std::cell::Cell<Option<(usize, [u8; 4], u8, Option<u64>)>> =
         const { std::cell::Cell::new(None) };
 }
 
@@ -117,30 +118,44 @@ pub(crate) fn commit_hex(store: &mut WidgetStore, i: usize) -> bool {
         ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]),
     );
     store.note_colour_pick(picker);
-    HEX_PENDENTE.with(|p| p.set(Some((i, c, 0))));
+    let sujeito = store.picker_subject();
+    HEX_PENDENTE.with(|p| p.set(Some((i, c, 0, sujeito))));
     true
 }
 
 /// Fecha o seletor que o hex abriu, quando a forma já mostra a cor (ou o prazo acabou).
 fn fecha_seletor_do_hex(store: &mut WidgetStore) {
-    let Some((i, c, n)) = HEX_PENDENTE.with(std::cell::Cell::get) else {
+    let Some((i, c, n, sujeito)) = HEX_PENDENTE.with(std::cell::Cell::get) else {
         return;
     };
     let alvo = amostra_de(i);
-    let chegou = cor_de(i) == Some(c);
+    let chegou = crate::retrato::com_retrato(sujeito, || cor_de(i)) == Some(c);
     if store.picker_target() != Some(alvo) {
         HEX_PENDENTE.with(|p| p.set(None));
     } else if chegou || n >= HEX_QUADROS {
         store.set_picker_target(None);
         HEX_PENDENTE.with(|p| p.set(None));
     } else {
-        HEX_PENDENTE.with(|p| p.set(Some((i, c, n + 1))));
+        HEX_PENDENTE.with(|p| p.set(Some((i, c, n + 1, sujeito))));
+    }
+}
+
+/// C2: a amostra de cada linha na cor publicada: o seletor aberto no cartão preso semeia-se dela.
+pub(crate) fn semeia_as_amostras(store: &mut WidgetStore) {
+    if let Some(a) = appearance::current_appearance() {
+        for (i, r) in a.layers.iter().enumerate() {
+            store.set_widget_color(amostra_de(i), r.color);
+        }
+    }
+    if let Some(s) = appearance::current_vector_style() {
+        store.set_widget_color(amostra_de(HEX_FILL_DE_BASE), s.fill);
+        store.set_widget_color(amostra_de(HEX_STROKE_DE_BASE), s.stroke);
     }
 }
 
 /// O código e os números de cada linha de tinta: o que a forma mostra, salvo na caixa que a mão usa.
 /// O painel Vector lê-os do publicado ao pintar; o cartão lê as caixas.
-fn semeia_as_linhas(store: &mut WidgetStore) {
+pub(crate) fn semeia_as_linhas(store: &mut WidgetStore) {
     let pct = |alfa: u8| f64::from(alfa) * 100.0 / 255.0; // LITERAL-PX-OK: byte→percent
     let mut codigos = Vec::new();
     let mut numeros = Vec::new();
@@ -157,6 +172,7 @@ fn semeia_as_linhas(store: &mut WidgetStore) {
         codigos.push((hex_id(HEX_STROKE_DE_BASE), s.stroke));
         numeros.push((vids::VECTOR_FILL_OPACITY_NUM, pct(s.fill[3])));
         numeros.push((vids::VECTOR_STROKE_OPACITY_NUM, pct(s.stroke[3])));
+        numeros.push((vids::VECTOR_WIDTH_NUM, s.stroke_width_px));
     }
     let foco = store.focus_id();
     let mao = store.number_input_drag().map(|d| d.id);
@@ -323,6 +339,8 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     dica_do_cadeado(store);
     semeia_a_opacidade(store);
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
+        // C2: o cartão não depende do painel Vector para a amostra de uma camada abrir o seletor.
+        store.register_picker_swatch(vids::vector_paint_swatch_id(i));
         for id in [
             vids::vector_paint_row_opacity_id(i),
             vids::vector_paint_row_width_id(i),

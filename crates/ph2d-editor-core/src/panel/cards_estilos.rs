@@ -36,10 +36,16 @@ thread_local! {
     /// O estilo de cada linha da forma mostrada (camadas, depois as duas bases).
     static LIGADOS: RefCell<Vec<Option<u32>>> = const { RefCell::new(Vec::new()) };
     static PEDIDOS: RefCell<Vec<Pedido>> = const { RefCell::new(Vec::new()) };
-    /// Os ⠿ declarados neste quadro: botão → (cartão, camada).
-    static BOTOES: RefCell<Vec<(NodeId, NodeId, usize)>> = const { RefCell::new(Vec::new()) };
-    /// A lista aberta: o botão que a abriu.
+    /// Os ⠿ declarados neste quadro: botão → (cartão, camada, objecto preso do cartão).
+    static BOTOES: RefCell<Vec<(NodeId, NodeId, usize, Option<u64>)>> =
+        const { RefCell::new(Vec::new()) };
+    /// A lista aberta: o botão que a abriu, e o objecto preso desse cartão (`None` = a seleção).
     static ABERTA: Cell<Option<NodeId>> = const { Cell::new(None) };
+    static ABERTA_SUJEITO: Cell<Option<u64>> = const { Cell::new(None) };
+    /// C2: o solto preso que está a declarar os ⠿ agora: `(objecto, instância)`.
+    static DECLARANDO: Cell<Option<(u64, NodeId)>> = const { Cell::new(None) };
+    /// A caixa da lista (e do «Edit style») pintada no último quadro.
+    static CAIXA: Cell<Option<Rect>> = const { Cell::new(None) };
     /// O estilo no «Edit style»; `Some(0)` = o próximo que nascer (o «+»).
     static EDITA: Cell<Option<u32>> = const { Cell::new(None) };
     static MAIOR: Cell<u32> = const { Cell::new(0) };
@@ -91,6 +97,16 @@ pub fn estilos() -> Vec<Estilo> {
     ESTILOS.with(|e| e.borrow().clone())
 }
 
+/// O estilo de cada linha da forma mostrada (o retrato de um objecto preso guarda-os).
+#[must_use]
+pub fn ligados() -> Vec<Option<u32>> {
+    LIGADOS.with(|l| l.borrow().clone())
+}
+
+pub fn set_ligados(v: Vec<Option<u32>>) {
+    LIGADOS.with(|l| *l.borrow_mut() = v);
+}
+
 /// O estilo a que a camada `camada` da forma mostrada está ligada.
 #[must_use]
 pub fn ligado(camada: usize) -> Option<Estilo> {
@@ -110,24 +126,49 @@ pub fn take_pedidos() -> Vec<Pedido> {
 /// O cartão declara o ⠿ dele (ao montar-se) e a camada a que a lista se aplica.
 pub fn declare(card: NodeId, camada: usize) -> NodeId {
     let b = botao_de(card);
+    let (sujeito, instancia) = DECLARANDO
+        .with(Cell::get)
+        .map_or((None, card), |(s, k)| (Some(s), k));
     BOTOES.with(|v| {
         let mut v = v.borrow_mut();
-        v.retain(|(x, ..)| *x != b);
-        v.push((b, card, camada));
+        v.retain(|(x, c, ..)| !(*x == b && *c == instancia));
+        v.push((b, instancia, camada, sujeito));
     });
     b
+}
+
+/// `f` monta o cartão do solto `instancia`, preso a `sujeito`: os ⠿ que ele declara são dessa instância.
+pub fn declarando<R>(sujeito: u64, instancia: NodeId, f: impl FnOnce() -> R) -> R {
+    let antes = DECLARANDO.with(|d| d.replace(Some((sujeito, instancia))));
+    let out = f();
+    DECLARANDO.with(|d| d.set(antes));
+    out
+}
+
+/// De quem é a lista aberta (`None` = da seleção).
+#[must_use]
+pub fn sujeito_aberto() -> Option<u64> {
+    ABERTA_SUJEITO.with(Cell::get)
+}
+
+/// A pressão em `(x, y)` caiu na lista aberta ou no «Edit style»?
+#[must_use]
+pub fn cobre(x: f32, y: f32) -> bool {
+    ABERTA.with(Cell::get).is_some() && CAIXA.with(Cell::get).is_some_and(|r| r.contains(x, y))
 }
 
 /// A lista está aberta pelo ⠿ de `card`?
 #[must_use]
 pub fn aberta_em(card: NodeId) -> bool {
-    ABERTA.with(Cell::get) == Some(botao_de(card))
+    let sujeito = DECLARANDO.with(Cell::get).map(|(s, _)| s);
+    ABERTA.with(Cell::get) == Some(botao_de(card)) && ABERTA_SUJEITO.with(Cell::get) == sujeito
 }
 
 /// A cena de smoke (`PH2D_VEC_CARTOES_SMOKE=4`) abre a lista do primeiro ⠿ declarado (o do Fill).
 pub fn abre_o_primeiro() {
-    if let Some(b) = BOTOES.with(|v| v.borrow().first().map(|(b, ..)| *b)) {
+    if let Some((b, s)) = BOTOES.with(|v| v.borrow().first().map(|(b, _, _, s)| (*b, *s))) {
         ABERTA.with(|a| a.set(Some(b)));
+        ABERTA_SUJEITO.with(|a| a.set(s));
     }
 }
 
@@ -150,11 +191,12 @@ pub fn filtrados(busca: &str) -> Vec<Estilo> {
 
 fn camada_aberta() -> Option<(NodeId, usize)> {
     let b = ABERTA.with(Cell::get)?;
+    let s = ABERTA_SUJEITO.with(Cell::get);
     BOTOES.with(|v| {
         v.borrow()
             .iter()
-            .find(|(x, ..)| *x == b)
-            .map(|(_, c, i)| (*c, *i))
+            .find(|(x, _, _, y)| *x == b && *y == s)
+            .map(|(_, c, i, _)| (*c, *i))
     })
 }
 
@@ -167,6 +209,8 @@ pub fn estilo_da_linha(id: NodeId) -> Option<u32> {
 
 fn fecha() {
     ABERTA.with(|a| a.set(None));
+    ABERTA_SUJEITO.with(|a| a.set(None));
+    CAIXA.with(|c| c.set(None));
     EDITA.with(|e| e.set(None));
 }
 
@@ -228,7 +272,8 @@ fn clique(store: &mut WidgetStore, id: NodeId) -> bool {
         return true;
     }
     if BOTOES.with(|v| v.borrow().iter().any(|(b, ..)| *b == id)) {
-        let ja = ABERTA.with(Cell::get) == Some(id);
+        let sujeito = store.card_edit_subject();
+        let ja = ABERTA.with(Cell::get) == Some(id) && ABERTA_SUJEITO.with(Cell::get) == sujeito;
         fecha();
         // A busca recomeça vazia sempre que a lista abre ou fecha.
         if store.focus_id() == Some(BUSCA) {
@@ -240,6 +285,7 @@ fn clique(store: &mut WidgetStore, id: NodeId) -> bool {
         }
         if !ja {
             ABERTA.with(|a| a.set(Some(id)));
+            ABERTA_SUJEITO.with(|a| a.set(sujeito));
         }
         return true;
     }
@@ -495,6 +541,7 @@ pub(super) fn paint_pending(
         w,
         h,
     );
+    CAIXA.with(|c| c.set(Some(Rect::new(caixa.x, caixa.y, caixa.w, pilha))));
     fundo(scene, caixa, &ink);
     hit_index.register(FUNDO, caixa);
     titulo(

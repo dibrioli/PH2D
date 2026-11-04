@@ -253,6 +253,14 @@ thread_local! {
     /// mude de forma, e foi o par `(fill, stroke)` que teria de virar tripla na W4c.4 — a lista
     /// paralela que envelhece assim que um alvo novo entra num lado só.
     static AUTHORED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// C2: a forma do cartão preso que autorou (o token que se solta é o dela, não o da seleção).
+    static ALVO: std::cell::Cell<Option<ph2d_vec_scene::VecPathId>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// A autoria deste quadro é da forma de um cartão preso.
+pub fn note_alvo(id: ph2d_vec_scene::VecPathId) {
+    ALVO.with(|c| c.set(Some(id)));
 }
 
 /// A ponte drena os one-shots do tool aqui; o passe de aplicação os consome.
@@ -276,6 +284,8 @@ pub fn detach_on_authored(
     selected: &[ph2d_vec_scene::VecPathId],
 ) {
     let mask = AUTHORED.with(std::cell::Cell::take);
+    let alvo = ALVO.with(std::cell::Cell::take);
+    let selected = alvo.as_ref().map_or(selected, std::slice::from_ref);
     for &prop in BoundProp::ALL {
         if mask & (1 << (prop as u16)) != 0 {
             set_selected_binding(sim, map, selected, prop, None);

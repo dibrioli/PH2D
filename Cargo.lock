@@ -9921,9 +9921,11 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "ph2d-app-vec",
  "ph2d-card-rope",
  "ph2d-card-stack",
  "ph2d-component-desc",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
@@ -9968,6 +9970,9 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
+ "ph2d-vec-edit",
+ "ph2d-vec-entities",
+ "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",
 ]

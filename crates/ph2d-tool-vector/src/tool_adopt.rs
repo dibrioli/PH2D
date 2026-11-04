@@ -28,6 +28,17 @@ impl VectorTool {
         crate::shapes::clamp(k, &mut self.shape_values[k.as_u16() as usize]);
     }
 
+    /// C2: volta ao estilo da seleção depois de um gesto num cartão PRESO. O painel escreveu na tool a
+    /// cor, a largura ou a ponta do objecto preso; o próximo desenho não pode herdá-las.
+    pub fn repoe_linha(&mut self, s: &crate::VectorStyleSnapshot) {
+        self.stroke = s.stroke;
+        self.fill = s.fill;
+        self.stroke_width_px = s.stroke_width_px;
+        self.cap = s.cap;
+        self.join = s.join;
+        self.align = s.align;
+    }
+
     /// **ADOTA o preenchimento** de um caminho — irmão do [`Self::adopt_stroke`], e pela mesma
     /// razão: sem ele a swatch de Fill mostra a última cor autorada em vez da que está na tela.
     /// Alfa 0 é o *sem preenchimento*, a mesma convenção do caminho inverso na ponte.

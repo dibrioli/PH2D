@@ -31,13 +31,36 @@ pub fn verb_for_id(id: ph2d_editor_core::NodeId) -> Option<BaseVerb> {
     .find_map(|(k, v)| (k == id).then_some(v))
 }
 
+/// C2: o gesto vai à forma do cartão preso sob ele; sem cartão, à selecionada.
+pub fn apply_no_alvo(
+    scene: &mut VecScene,
+    pen: &PenTool,
+    store: &ph2d_editor_core::interaction::WidgetStore,
+    sim: &ph2d_ecs::SimWorld,
+    verb: BaseVerb,
+) -> bool {
+    match crate::preso::alvo_do_gesto(store, sim) {
+        Some(id) => apply_em(scene, &[id], pen, verb),
+        None => apply(scene, pen, verb),
+    }
+}
+
 /// **Aplica o gesto** à forma selecionada. Devolve se o documento mudou.
 pub fn apply(scene: &mut VecScene, pen: &PenTool, verb: BaseVerb) -> bool {
+    apply_em(scene, pen.selected_paths(), pen, verb)
+}
+
+fn apply_em(
+    scene: &mut VecScene,
+    sel: &[ph2d_vec_scene::VecPathId],
+    pen: &PenTool,
+    verb: BaseVerb,
+) -> bool {
     match verb {
-        BaseVerb::Stroke => toggle(scene, pen),
+        BaseVerb::Stroke => toggle_em(scene, sel, pen),
         BaseVerb::Fill => {
             let cor = pen.style().fill;
-            edit_one(scene, pen, |p| {
+            edit_one(scene, sel, |p| {
                 if p.base_fill().is_some() {
                     p.remove_base_fill()
                 } else {
@@ -46,19 +69,23 @@ pub fn apply(scene: &mut VecScene, pen: &PenTool, verb: BaseVerb) -> bool {
                 }
             })
         }
-        BaseVerb::FillEye => edit_one(scene, pen, |p| {
+        BaseVerb::FillEye => edit_one(scene, sel, |p| {
             let esconde = !p.fill_is_hidden();
             p.set_fill_hidden(esconde)
         }),
-        BaseVerb::StrokeEye => edit_one(scene, pen, |p| {
+        BaseVerb::StrokeEye => edit_one(scene, sel, |p| {
             let esconde = !p.stroke_is_hidden();
             p.set_stroke_hidden(esconde)
         }),
     }
 }
 
-fn edit_one(scene: &mut VecScene, pen: &PenTool, f: impl FnOnce(&mut VecPath) -> bool) -> bool {
-    let [id] = pen.selected_paths() else {
+fn edit_one(
+    scene: &mut VecScene,
+    sel: &[ph2d_vec_scene::VecPathId],
+    f: impl FnOnce(&mut VecPath) -> bool,
+) -> bool {
+    let [id] = sel else {
         return false;
     };
     scene.path_mut(*id).is_some_and(f)
@@ -67,15 +94,19 @@ fn edit_one(scene: &mut VecScene, pen: &PenTool, f: impl FnOnce(&mut VecPath) ->
 /// **O que o painel mostra das duas tintas de base** da forma selecionada (`None` sem resposta) —
 /// e as pontas do degradê da base, para a amostra.
 pub fn publish(scene: &VecScene, pen: &PenTool) {
+    publica_de(match pen.selected_paths() {
+        [id] => scene.path(*id),
+        _ => None,
+    });
+}
+
+/// O mesmo de UMA forma (a seleção, ou o objecto de um cartão preso).
+pub fn publica_de(p: Option<&VecPath>) {
     use ph2d_panel_vector::state::BasePaint;
     let de = |tem: bool, escondida: bool| match (tem, escondida) {
         (_, true) => BasePaint::Hidden,
         (true, false) => BasePaint::Shown,
         (false, false) => BasePaint::Absent,
-    };
-    let p = match pen.selected_paths() {
-        [id] => scene.path(*id),
-        _ => None,
     };
     ph2d_panel_vector::state::set_base_paints(p.map(|p| {
         [
@@ -126,7 +157,11 @@ pub fn selected_stroke_present(scene: &VecScene, pen: &PenTool) -> Option<bool> 
 /// estado invisível a envenenar o undo; guardá-la na shell seria estado de sessão que o save não
 /// leva.
 pub fn toggle(scene: &mut VecScene, pen: &PenTool) -> bool {
-    let [id] = pen.selected_paths() else {
+    toggle_em(scene, pen.selected_paths(), pen)
+}
+
+fn toggle_em(scene: &mut VecScene, sel: &[ph2d_vec_scene::VecPathId], pen: &PenTool) -> bool {
+    let [id] = sel else {
         return false;
     };
     let id = *id;

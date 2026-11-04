@@ -19,6 +19,18 @@ pub fn drena(
     scene: &mut VecScene,
     sel: &[VecPathId],
 ) -> bool {
+    drena_de(store, scene, sel, sel, sel)
+}
+
+/// C2: `sel` = as formas do gesto (a do cartão preso, se é dele) · `mostrada` = as da lista do Inspector,
+/// a seleção · `seletor` = as do seletor de cor aberto.
+pub fn drena_de(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    scene: &mut VecScene,
+    sel: &[VecPathId],
+    mostrada: &[VecPathId],
+    seletor: &[VecPathId],
+) -> bool {
     let mut mudou = false;
     for p in lista::take_pedidos() {
         mudou |= match p {
@@ -55,7 +67,7 @@ pub fn drena(
     // (`seed_style_from_selection`, a mão alheia), que também sabe da alça de degradê escolhida.
     if mudou
         && let Some(i) = super::layer_of_picker_target(store)
-        && let Some(c) = sel
+        && let Some(c) = seletor
             .first()
             .and_then(|id| scene.path(*id))
             .and_then(|p| p.cor_da_linha(i))
@@ -65,8 +77,21 @@ pub fn drena(
             ph2d_tokens::ColorValue::from_rgba8(c.r, c.g, c.b, c.a),
         );
     }
-    publica(scene, sel);
+    publica(scene, mostrada);
     mudou
+}
+
+/// O estilo de cada linha de UMA forma (camadas, depois as duas bases).
+#[must_use]
+pub fn ligados_de(scene: &VecScene, id: VecPathId) -> Vec<Option<u32>> {
+    scene.path(id).map_or_else(Vec::new, |p| {
+        (0..LINHAS_DA_PILHA)
+            .map(|i| {
+                let item = p.item_da_linha(i)?;
+                scene.estilo_de((id, item)).map(|s| s.id)
+            })
+            .collect()
+    })
 }
 
 fn publica(scene: &VecScene, sel: &[VecPathId]) {
@@ -82,15 +107,7 @@ fn publica(scene: &VecScene, sel: &[VecPathId]) {
         .collect();
     let ligados = sel
         .first()
-        .and_then(|id| scene.path(*id).map(|p| (*id, p)))
-        .map(|(id, p)| {
-            (0..LINHAS_DA_PILHA)
-                .map(|i| {
-                    let item = p.item_da_linha(i)?;
-                    scene.estilo_de((id, item)).map(|s| s.id)
-                })
-                .collect()
-        })
+        .map(|id| ligados_de(scene, *id))
         .unwrap_or_default();
     lista::publica(estilos, ligados);
 }

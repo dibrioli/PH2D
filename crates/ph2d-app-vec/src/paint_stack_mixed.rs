@@ -170,14 +170,40 @@ pub fn apply_picker(
     sel: &[VecPathId],
 ) -> bool {
     let estilos = super::estilos::drena(store, scene, sel);
+    pica(store, scene, sel) || estilos
+}
+
+/// C2: o quadro do seletor e dos estilos. Os pedidos da lista são do gesto, a vista dela é da seleção
+/// e o seletor de cor é de quem o abriu: um cartão preso continua no objecto dele.
+pub fn apply_no_quadro(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    scene: &mut VecScene,
+    pen: &PenTool,
+    sim: &SimWorld,
+) -> bool {
+    let (sel, mostrada) = (alvos(store, pen, sim), ordered(pen));
+    let seletor = store
+        .picker_subject()
+        .and_then(|b| crate::preso::forma(sim, b))
+        .map_or_else(|| mostrada.clone(), |id| vec![id]);
+    let estilos = super::estilos::drena_de(store, scene, &sel, &mostrada, &seletor);
+    pica(store, scene, &seletor) || estilos
+}
+
+/// A escolha do seletor sobre a amostra de uma camada (ver [`apply_picker`]).
+fn pica(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    scene: &mut VecScene,
+    sel: &[VecPathId],
+) -> bool {
     let picker = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
     let n = store.colour_picks(picker);
     let tocou = PICKS_SEEN.with(|c| c.replace(n)) != n;
     let Some(i) = super::layer_of_picker_target(store) else {
-        return estilos;
+        return false;
     };
     let Some((value, ..)) = store.blender_picker(picker) else {
-        return estilos;
+        return false;
     };
     let Some(prim) = sel
         .first()
@@ -185,7 +211,7 @@ pub fn apply_picker(
         .and_then(|p| p.paints.get(i))
         .map(PaintEntry::swatch_color)
     else {
-        return estilos;
+        return false;
     };
     let mut c = value.rgba;
     if tocou && c[3] == 0 {
@@ -204,7 +230,7 @@ pub fn apply_picker(
         campos |= F::FILL_A;
     }
     if campos.is_empty() {
-        return estilos;
+        return false;
     }
     let mut mudou = false;
     for id in sel {
@@ -220,5 +246,5 @@ pub fn apply_picker(
             mudou |= super::set_color(scene, &[*id], i, m);
         }
     }
-    mudou || estilos
+    mudou
 }

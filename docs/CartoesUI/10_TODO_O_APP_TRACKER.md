@@ -646,3 +646,7 @@ Fotos olhadas: `maquete/h8_{composto,mascara,deform,selecao,esculpe}.png`, `h9_c
 Decidido sem o dono: Set Source na linha dele e Aligned na fila do Line type; «Sync tools» no cartão (o texto longo foi para a dica) para dividir a linha; o sinal `+` do Offset e Depth saiu do número (o negativo mostra `-`); Radius, Smoothness e Angle com a unidade no rótulo.
 
 Portões por nome, na árvore final: `h8_os_cartoes`, `h9_os_cartoes`, `a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_…` (motor intacto), `panel_files_under_loc_cap`, `no_magic_numeric` (curado um `3.0`), `lei_da_compactacao`, `nenhum_texto_sai`, `o_zero_tem_populacao`, `onde_comeca_o_valor`, `the_shell_only_shrinks`. `a_altura_de_abertura` escrita com o número medido, a corrida com ele não se repetiu. **A corrida larga (`os_cartoes`, seam, censos) correu antes das últimas curas, 4 vermelhos, todos curados por nome depois; não se repetiu inteira, por prazo.**
+
+### Varredura final (04/11)
+
+Tabela, estado, próximos passos, provas e decisões em [17](17_VARREDURA_FINAL.md). Curados: documento em aba que passava por baixo do Inspector, cena atrás dele, avisos e barra de trabalho, painéis do Quadro, Planner, cartão Constraints. API nova: `HeroLayout::clear_of_side_lists`, `canvas::paint_document_ground`, `Superficie::{moldura_de_painel, secao, botao}`. Fotos `maquete/v_*`.

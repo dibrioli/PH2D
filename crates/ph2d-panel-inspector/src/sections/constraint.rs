@@ -88,6 +88,55 @@ fn alvo(
         Some(n) => (n, ColorToken::Text1),
         None => (tr(nada), ColorToken::Text3),
     };
+    let rotulo_pick = tr(if escolhendo {
+        "panel.inspector.constraint.picking"
+    } else {
+        "panel.inspector.constraint.pick"
+    });
+    // Em cartão, o nome numa caixa e o verbo ao lado, na mesma linha (lei da compactação).
+    if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
+        use ph2d_card_stack::metrics as m;
+        let c = linha.control;
+        let pick_w = text_system
+            .prefix_width_weighted(
+                rotulo_pick,
+                ph2d_editor_core::widget::Button::label_font_px(),
+                ph2d_text::FontWeight::MEDIUM,
+            )
+            .ceil()
+            + 2.0 * m::BUTTON_TEXT_PAD;
+        let caixa = Rect::new(c.x, c.y, (c.w - pick_w - m::FIELD_GAP).max(0.0), c.h);
+        let pick = Rect::new(caixa.x + caixa.w + m::FIELD_GAP, c.y, pick_w, c.h);
+        ph2d_editor_core::paint::fill_rounded_rect(
+            scene,
+            caixa,
+            m::FIELD_RADIUS,
+            ink.color(ColorToken::CardField),
+        );
+        ph2d_editor_core::paint::paint_text_elided(
+            text_system,
+            scene,
+            nome,
+            caixa.x + m::BUTTON_TEXT_PAD,
+            caixa.y + ph2d_editor_core::paint::folga_do_texto(caixa.h, font),
+            font,
+            (caixa.w - 2.0 * m::BUTTON_TEXT_PAD).max(0.0),
+            ink.color(if cor == ColorToken::Text1 {
+                ColorToken::KanbanCardFg
+            } else {
+                ColorToken::CardLabel
+            }),
+        );
+        hit_index.register(id, pick);
+        let botao = Button::new(id, rotulo_pick).kind(ButtonKind::Default);
+        let botao = if escolhendo {
+            botao.state(ButtonState::Pressed)
+        } else {
+            botao.visual(store.button_visual(id))
+        };
+        paint_button(&botao, pick, scene, text_system, theme);
+        return linha.fim(ph2d_tokens::row_pitch_px());
+    }
     paint_text(
         text_system,
         scene,
@@ -99,14 +148,9 @@ fn alvo(
         resolve(cor, theme),
     );
     let cur_y = linha.fim(ph2d_tokens::row_pitch_px());
-    let rotulo = tr(if escolhendo {
-        "panel.inspector.constraint.picking"
-    } else {
-        "panel.inspector.constraint.pick"
-    });
-    let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo);
+    let caixa = caixa_do_botao(text_system, x, w, cur_y, rotulo_pick);
     hit_index.register(id, caixa);
-    let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
+    let botao = Button::new(id, rotulo_pick).kind(ButtonKind::Default);
     let botao = if escolhendo {
         botao.state(ButtonState::Pressed)
     } else {
@@ -216,7 +260,8 @@ fn ajustes(
         };
         if let (Some(n), Some(ids_n)) = (n, ids::INSP_CONSTRAINT_NUMERO.get(j)) {
             let (unit, step) = crate::sync_constraint::unidade_e_passo(n.unidade);
-            cur_y = ph2d_editor_core::property_row::paint_field_row(
+            // A porta das várias componentes: em cartão, a linha do cartão com a unidade no rótulo.
+            cur_y = ph2d_editor_core::property_row::paint_fields_row(
                 scene,
                 text_system,
                 theme,
@@ -226,12 +271,11 @@ fn ajustes(
                 w,
                 cur_y,
                 TextKey::new(n.rotulo),
-                ids_n[k],
+                &[ids_n[k]],
                 step,
                 unit,
                 seccao,
-            )
-            .0;
+            );
         }
         let (Some(e), Some(ids_e)) = (e, ids::INSP_CONSTRAINT_OPCAO.get(j)) else {
             continue;
@@ -289,7 +333,12 @@ fn item(
     row: &InspectorConstraintRow,
     seccao: Seccao,
 ) -> f32 {
-    let font = TypeToken::Md.px();
+    // Em cartão o tipo é um grupo dentro do cartão, nunca um 2.º título.
+    let font = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        TypeToken::Sm.px()
+    } else {
+        TypeToken::Md.px()
+    };
     let tipo = TIPOS.get(usize::from(row.tipo)).map_or("", |c| tr(c));
     paint_text(
         text_system,

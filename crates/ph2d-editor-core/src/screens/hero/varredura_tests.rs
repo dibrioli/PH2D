@@ -22,6 +22,8 @@ fn com_listas(esq: bool, dir: bool) -> HeroLayout {
     let mut l = HeroLayout::for_viewport(janela());
     l.docks.float_left = esq;
     l.docks.float_right = dir;
+    // Com as listas a flutuar a área de desenho vai de ponta a ponta.
+    l.draw_area = Rect::new(0.0, 76.0, 1930.0, 964.0);
     l.float_lists = [
         Rect::new(5.0, 100.0, 300.0, 400.0),
         Rect::new(1630.0, 100.0, 295.0, 400.0),
@@ -134,7 +136,10 @@ fn o_botao_do_painel_tem_o_tom_do_cartao_e_o_de_antes_fora() {
         (s, fg)
     };
     assert_eq!(
-        vezes_cor(&pinta(true, false, false).0, ink.color(ColorToken::CardField)),
+        vezes_cor(
+            &pinta(true, false, false).0,
+            ink.color(ColorToken::CardField)
+        ),
         1
     );
     assert_eq!(
@@ -174,7 +179,10 @@ fn o_painel_do_documento_e_a_lista_de_cartoes() {
         .color(ColorToken::KanbanList)
         .with_alpha(1.0);
     assert_eq!(vezes_cor(&pinta(true), lista), 1);
-    assert_eq!(vezes_cor(&pinta(false), resolve(ColorToken::BgElev, TEMA)), 1);
+    assert_eq!(
+        vezes_cor(&pinta(false), resolve(ColorToken::BgElev, TEMA)),
+        1
+    );
 }
 
 #[test]
@@ -197,6 +205,72 @@ fn a_barra_de_trabalho_veste_a_mesma_superficie_do_aviso() {
         .color(ColorToken::KanbanList)
         .with_alpha(1.0);
     assert_eq!(vezes_cor(&pinta(true), novo), 1);
-    assert_eq!(vezes_cor(&pinta(true), resolve(ColorToken::BgElev, TEMA)), 0);
+    assert_eq!(
+        vezes_cor(&pinta(true), resolve(ColorToken::BgElev, TEMA)),
+        0
+    );
     assert!(vezes_cor(&pinta(false), resolve(ColorToken::BgElev, TEMA)) >= 1);
+}
+
+/// Um quadro de verdade, pelo pintor do ecrã. Dois quadros: o 2.º lê o que o 1.º mediu.
+fn pinta_um_quadro_com_layout(cartao: bool, live: bool) -> (VectorScene, HeroLayout) {
+    use crate::screens::hero::HeroScreen;
+    force_cromo_on_this_thread(Some(cartao));
+    let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+    hero.theme = TEMA;
+    let id = hero.documents.create("Board".into());
+    hero.documents.activate(Some(id));
+    hero.documents.live_view.panel.open = live;
+    let (mut scene, mut text) = (VectorScene::new(), TextSystem::without_system_fonts());
+    for _ in 0..2 {
+        scene = VectorScene::new();
+        crate::screens::hero::paint::paint_hero_screen(&mut hero, janela(), &mut scene, &mut text);
+    }
+    force_cromo_on_this_thread(None);
+    (scene, hero.last_layout.expect("pintou"))
+}
+
+fn pinta_um_quadro(cartao: bool, live: bool) -> VectorScene {
+    pinta_um_quadro_com_layout(cartao, live).0
+}
+
+/// O quadro do ecrã traz o rect do chão: a cor sozinha não prova, porque outros pintores a usam.
+#[test]
+fn abrir_um_documento_pinta_o_chao_por_cima_da_cena() {
+    let (scene, layout) = pinta_um_quadro_com_layout(true, false);
+    let mut so_chao = VectorScene::new();
+    force_cromo_on_this_thread(Some(true));
+    crate::screens::hero::canvas::paint_document_ground(&layout, &mut so_chao, TEMA);
+    force_cromo_on_this_thread(None);
+    let rect = so_chao.inner().encoding().path_data.clone();
+    assert!(!rect.is_empty());
+    let achados = scene
+        .inner()
+        .encoding()
+        .path_data
+        .windows(rect.len())
+        .filter(|w| *w == rect.as_slice())
+        .count();
+    assert_eq!(achados, 1, "o rect do chão no quadro do ecrã");
+}
+
+#[test]
+fn o_painel_live_e_os_botoes_dele_vestem_o_cartao() {
+    let ink = CardInk::of_list(TEMA);
+    let lista = ink.color(ColorToken::KanbanList).with_alpha(1.0);
+    let campo = ink.color(ColorToken::CardField);
+    let (aberto, fechado) = (pinta_um_quadro(true, true), pinta_um_quadro(true, false));
+    assert!(
+        vezes_cor(&aberto, lista) > vezes_cor(&fechado, lista),
+        "a moldura do painel"
+    );
+    assert!(
+        vezes_cor(&aberto, campo) > vezes_cor(&fechado, campo),
+        "os botões do painel"
+    );
+    let antes = pinta_um_quadro(false, true);
+    assert!(
+        vezes_cor(&antes, resolve(ColorToken::Bg2, TEMA)) >= 1,
+        "PH2D_CARDS=0: os de antes"
+    );
 }

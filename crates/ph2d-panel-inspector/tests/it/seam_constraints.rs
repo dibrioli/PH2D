@@ -484,3 +484,58 @@ fn the_value_cards_follow_dropdown_writes_the_chosen_property() {
         "o ▾ ficou aberto"
     );
 }
+
+/// A pilha pintada em cartões, sobre a cena da sprite, de cartões abertos. Devolve os rects e o que o
+/// censo do layout antigo gravou.
+fn em_cartoes() -> (
+    Vec<(ph2d_a11y::NodeId, Rect)>,
+    Vec<ph2d_editor_core::widget::censo_cartao::Velho>,
+) {
+    use crate::o_inspector_em_cartoes_por_tipo::{abre_tudo, pinta};
+    ph2d_panel_inspector::set_cards_on(true);
+    crate::every_painted_id_is_reachable::publish_the_whole_sprite_scene();
+    set_current_inspector_constraints(Some(pilha()));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    abre_tudo(&mut host);
+    let _ = pinta(&mut host, &mut state);
+    abre_tudo(&mut host);
+    let (rects, velhos) =
+        ph2d_editor_core::widget::censo_cartao::grava(|| pinta(&mut host, &mut state));
+    set_current_inspector_constraints(None);
+    crate::every_painted_id_is_reachable::clear_the_scene();
+    ph2d_panel_inspector::set_cards_on(false);
+    (rects, velhos)
+}
+
+/// Em cartão, «Pick» mora ao lado do nome do alvo, com o tamanho do texto; não é uma linha só dele.
+#[test]
+fn no_cartao_o_pick_divide_a_linha_com_o_nome_do_alvo() {
+    let (rects, _) = em_cartoes();
+    let pick = rect_de(&rects, ids::INSP_CONSTRAINT_ALVO[0]).expect("o Pick");
+    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA[0]).expect("a força");
+    assert!(
+        pick.w < forca.w / 2.0,
+        "o verbo ao lado do nome, não a coluna toda: {pick:?} contra {forca:?}"
+    );
+    assert!(
+        (pick.x + pick.w - (forca.x + forca.w)).abs() <= 1.0,
+        "o verbo encosta no fim da coluna: {pick:?} contra {forca:?}"
+    );
+}
+
+/// Em cartão, o número de um ajuste é o campo do cartão: rótulo em cima, unidade nele, sem setas.
+#[test]
+fn a_pilha_em_cartoes_nao_pinta_layout_antigo() {
+    let (rects, velhos) = em_cartoes();
+    assert!(
+        velhos.is_empty(),
+        "layout antigo nas constraints: {velhos:#?}"
+    );
+    let num = rect_de(&rects, ids::INSP_CONSTRAINT_NUMERO[0][1]).expect("o Min do Limit Rotation");
+    let forca = rect_de(&rects, ids::INSP_CONSTRAINT_FORCA[0]).expect("a força");
+    assert!(
+        (num.x - forca.x).abs() <= 1.0,
+        "o rótulo em cima: a caixa começa na margem do cartão, {num:?} contra {forca:?}"
+    );
+}

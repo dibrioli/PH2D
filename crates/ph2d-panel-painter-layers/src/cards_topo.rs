@@ -4,7 +4,7 @@
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, com_lei, em_pares, esmaecida, registra_lista};
+use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, registra_lista};
 use crate::paint_wetpaint_presets_biblioteca as biblioteca;
 use crate::state_wet_presets::{self as st, VistaPresets};
 use crate::{cards_wet, number_field, paint_brush};
@@ -358,22 +358,6 @@ fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f
         },
         y,
     )
-}
-
-fn botoes(c: &mut CardCtx<'_>, lista: &[(NodeId, String)], y: f32) -> f32 {
-    lista.chunks(2).fold(y, |y, par| {
-        let cells: Vec<Cell<'_>> = par
-            .iter()
-            .map(|(id, text)| {
-                Cell::new(Widget::Button {
-                    id: *id,
-                    text,
-                    primary: false,
-                })
-            })
-            .collect();
-        c.row(&cells, y)
-    })
 }
 
 fn numero_em_caixa(rotulo: &str, id: NodeId) -> Widget<'_> {

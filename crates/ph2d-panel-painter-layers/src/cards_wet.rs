@@ -3,7 +3,7 @@
 //! continua no pintor dele, capturado: a lei E10 manda não o redesenhar.
 
 use crate::cards_captura::{Captura, x_de, y_de};
-use crate::cards_linhas::{aberta, com_lei, em_pares, registra_lista};
+use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, registra_lista};
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
 use crate::{
     esmaecer, number_field, paint_brush, paint_wetpaint_presets, paint_wetpaint_tilt, state,
@@ -40,18 +40,22 @@ const CAIXAS: [NodeId; 7] = [
     pids::PAINTER_WETPAINT_TUNING,
 ];
 
-const ACCOES: [(NodeId, &str); 3] = [
+/// O nome curto, porque o grupo já diz «Whole canvas» (05 §4, lei 7); a dica diz o resto.
+const ACCOES: [(NodeId, &str, &str); 3] = [
     (
         pids::PAINTER_WETPAINT_WETCANVAS,
-        "panel.painter_layers.wetpaint.wet_canvas",
+        "panel.painter_layers.watercolor.wet",
+        "card.painter.wet.wet_tip",
     ),
     (
         pids::PAINTER_WETPAINT_DRYCANVAS,
-        "panel.painter_layers.wetpaint.dry_canvas",
+        "panel.painter_layers.watercolor.dry",
+        "card.painter.wet.dry_tip",
     ),
     (
         pids::PAINTER_WETPAINT_FASTDRY,
         "panel.painter_layers.wetpaint.fast_dry",
+        "card.painter.wet.fast_dry_tip",
     ),
 ];
 
@@ -117,8 +121,13 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
         number_field::arm_field(store, n.id, n.valor, n.min, n.max, n.passo, n.casas);
         let _ = esmaecer::poe_dica(store, &[n.id]);
     }
-    for id in CAIXAS.into_iter().chain(ACCOES.map(|a| a.0)) {
+    for id in CAIXAS {
         let _ = esmaecer::poe_dica(store, &[id]);
+    }
+    for (id, _, dica) in ACCOES {
+        if esmaecer::poe_dica(store, &[id]).is_none() {
+            store.set_tooltip(id, tr(dica));
+        }
     }
     registra_lista(
         store,
@@ -209,14 +218,7 @@ fn lista(c: &mut CardCtx<'_>, chave: &str, id: NodeId, texto: &str, y: f32) -> f
 }
 
 fn accoes_na_tela(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    let cells = ACCOES.map(|(id, chave)| {
-        Cell::new(Widget::Button {
-            id,
-            text: tr(chave),
-            primary: false,
-        })
-    });
-    c.row(&cells, y)
+    botoes(c, &ACCOES.map(|(id, chave, _)| (id, tr(chave))), y)
 }
 
 /// Real Oil: a caixa e, com ela, os números da óptica, o Environment e o material. Óleo na tela mantém os números.

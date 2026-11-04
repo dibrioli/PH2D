@@ -5,7 +5,7 @@ use crate::state;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::panel::cards::CardCtx;
+use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
 use ph2d_editor_core::widget::DropdownState;
 use ph2d_vector::{Affine, Compose, Mix, RoundedRect, VelloBlend};
 
@@ -53,6 +53,40 @@ pub(crate) fn em_pares<T>(
     c.x = x;
     c.w = w;
     topo
+}
+
+/// Quantos por linha: o maior número em que toda largura pedida cabe na coluna (05 §4, lei 7). Pelo menos um.
+pub(crate) fn por_linha(w: f32, larguras: &[f32]) -> usize {
+    (1..=larguras.len())
+        .rev()
+        .find(|n| {
+            let vaos = m::FIELD_GAP * (*n as f32 - 1.0);
+            let coluna = (w - vaos) / *n as f32;
+            larguras.iter().all(|l| *l <= coluna)
+        })
+        .unwrap_or(1)
+}
+
+/// Botões de acção que nunca cortam o nome: se não cabem todos na linha, descem para mais linhas.
+pub(crate) fn botoes<S: AsRef<str>>(c: &mut CardCtx<'_>, lista: &[(NodeId, S)], y: f32) -> f32 {
+    let larguras: Vec<f32> = lista
+        .iter()
+        .map(|(_, t)| c.text_system.prefix_width(t.as_ref(), m::VALUE_PX) + 2.0 * m::FIELD_PAD_R)
+        .collect();
+    let n = por_linha(c.w, &larguras).max(1);
+    lista.chunks(n).fold(y, |y, fatia| {
+        let cells: Vec<Cell<'_>> = fatia
+            .iter()
+            .map(|(id, text)| {
+                Cell::new(Widget::Button {
+                    id: *id,
+                    text: text.as_ref(),
+                    primary: false,
+                })
+            })
+            .collect();
+        c.row(&cells, y)
+    })
 }
 
 /// A altura de uma linha com rótulo, de sobra: a camada só recorta, nunca empurra.

@@ -242,6 +242,11 @@ espera: ela dá o nome dela ao Enio (`ListAgents`), e a linha fecha e manda-lhe 
 não há rebase: a árvore da linha É o futuro `main`, e a `suite-completa.sh` corre na worktree dela, com o target quente.
 Medido 03/11: compilar 228 s + correr 1 647 s, handoff às 19:18, curas no fim às 20:19. Linha grande ou de contrato (§6) integra
 sempre sozinha ([plano](../DevOps/PLANO_ACELERACAO_2026-11.md)).
+⭐ **Vermelho na suíte de uma linha só NÃO pede outra suíte inteira (04/11):** `integrar-rodada.sh linha` → `suite` → `falhas` →
+curas num bloco → `b2` → `merge --ff-only`. Na integração de 04/11 foram 4 reds × ~28 min de suíte repetida e zero entradas «B2 desde».
+Na 1.ª vez, confirme com uma suíte forçada (`PH2D_PORTAO_FORCAR=1`) que o B2 não divergiu. E a própria suíte começa pelo pré-voo
+estático (`ship.sh --so-estatico`): fmt, clippy, machete, deny, audit, typos, recontagens e índices reprovam antes de compilar os
+testes. Números: [pesquisa](../DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md).
 
 **Rodada de várias linhas (13/09; script desde 29/10):** `scripts/integrar-rodada.sh`, num worktree
 `integ/<rodada>` com target próprio. Medido em 29/10: cinco linhas uma a uma = ~9 h e 11 suítes de
@@ -1243,6 +1248,10 @@ O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entrega
 3. Organiza os checkpoints `--no-verify` do dia em commits limpos (squash se preciso).
 4. Push (§8.3) → babysit do CI (§8.4) até verde; em vermelho, fix + re-push até verde (escalona após 3 falhas do MESMO job).
 5. Reporta link da run verde ao Enio.
+6. **A semente (04/11):** o `spike.yml` só SALVA cache em `schedule`/`workflow_dispatch` (action `cache-estavel`), logo a 1.ª corrida
+   no `main` depois de mudar o pin ou o workflow é FRIA (até 43–58 min; timeout 90). Depois do push: `gh workflow run spike.yml --ref main`.
+   Com cache, a corrida inteira leva 27–30 min (60–101 min antes). `noite.yml` (cron `30 6 * * *`, 4 fatias, só lê a cache) corre a
+   workspace inteira; o nível lento continua na integração. Números: [pesquisa](../DevOps/PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md#resultado).
 
 ### 8.2 Smoke local — antes do push
 

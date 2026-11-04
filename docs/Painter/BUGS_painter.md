@@ -517,6 +517,14 @@ do 1.º. A parede é binária (0/1), não uma tensão de cedência. Nos 12 óleo
 basta. Decisão de produto no smoke da E10 (o Body sai e os três escoam como as outras águas, ou fica como tensão de
 cedência somada à do meio); a pilha cura-se com essa decisão, nunca com um tecto.
 
+## Bug #57 (ABERTO, produto) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
+
+Medido em 04/11 (linha Aceleracao; `instantaneo()` entrou no censo do corpo da água em `3258fd4c0e`): o mesmo traço
+`wet_water` com `PAINTER_WETPAINT_FASTDRY`, pintado de raiz e pintado a partir de `instantaneo()`, difere em **58 texels
+(Δmax 3)**; cada via é determinista (16/16). O `instantaneo()` é o do tocador de macro, logo o defeito é visível ao produto.
+Causa NÃO isolada; candidato: `planos.copia_sem_campo()` (a cópia perde um campo que a via de raiz mantém). Por fazer: isolar
+o campo, curar, e só então a `bancada_da_agua` ganha −30 % de CPU (medido). Não se afrouxe nenhum limite para esconder a diferença.
+
 ## Grain Colors esbranquiçadas (smoke 30/10) — medido: NÃO é defeito do motor
 
 `diag_grain_colors_no_papel_de_cor`: com as cores do dono (azul → amarelo em 0,304, RGB) cada célula guarda a cor exacta

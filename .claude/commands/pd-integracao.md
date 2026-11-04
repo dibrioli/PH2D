@@ -41,7 +41,9 @@ Você é o agente integrador. Munição: o handoff de cada linha.
    árvore vermelha. Duas linhas que fizeram a MESMA coisa de formas diferentes: fica um nome e
    um corpo. Mover corpos prova-se com `scripts/moved-proof.py`.
 3c-bis. ⭐ **Uma linha só (o caminho normal desde 03/11, DIRETRIZ §1.5.3):** com o `main` ancestral da linha não há rebase
-   nem cadeia. Corra `suite-completa.sh` e os censos na worktree da linha, cure, e faça `merge --ff-only` no primário.
+   nem cadeia. Na worktree da linha: `integrar-rodada.sh linha` → `suite` (começa pelo pré-voo estático) → `falhas` → curas num
+   BLOCO → `b2`, nunca outra suíte inteira → `merge --ff-only` no primário. Na 1.ª vez confirme com `PH2D_PORTAO_FORCAR=1`
+   que o B2 não divergiu (04/11: 4 reds × ~28 min de suíte repetida, zero entradas «B2 desde»).
    ⛔ O sinal de outra janela é aviso: confirme com o Enio antes de mover o `main`.
 3d. Vermelho sem uma linha de Rust mudada: reproduza sob contenção (N cópias `--exact`, com o
    `loadavg` ao lado) ANTES de culpar o commit ([`FLAKES_DE_CARGA.md`](../../docs/DevOps/FLAKES_DE_CARGA.md)).

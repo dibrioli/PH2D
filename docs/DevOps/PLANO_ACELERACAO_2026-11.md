@@ -40,11 +40,11 @@ gate nem texto de comando.
 | 1 | ~5 medições + reta por pincel, provado contra as tabelas existentes | P1, P3 | MEDIDO 03/11 — [medição](MEDICAO_P1_P4_LARGURA_2026-11-03.md); reta+5 pontos passa em 34/55, só; ferramentas e aguadas precisam de mais pontos. ⇒ A reta **não** substitui as tabelas gravadas |
 | 2 | Teste rápido de largura (3–4 tamanhos) no lugar do lento; relatório só do que mudou | P2, P4, P5, P6 | **EM VIGOR 03/11** — [medição](MEDICAO_P1_P4_LARGURA_2026-11-03.md), usado e aprovado no smoke do dono; ver «Como se usa» |
 | 3 | Integrar uma linha por vez, assim que verde | I1 | **EM USO 03/11** — DIRETRIZ §1.5.3. Uma amostra: handoff às 19:18, curas no fim às 20:19, uma suíte de 31 min. A rodada anterior (4 linhas, 02/11c) levou >36 h, a maior parte a regerar tabelas: não é A×B. Dono: «muito sucesso» |
-| 4 | Nível lento à noite sobre o `main` | I2, I4 | ADOTADO — a confirmar por medição (A×B do anexo) |
+| 4 | Nível lento à noite sobre o `main` | I2, I4 | `noite.yml` (cron `30 6 * * *`, 4 fatias, `[profile.noite]`) feito em 04/11; compilar+arquivar 41 min; testes `PENDENTE-NOITE`. O nível lento FICA na integração até a noite ter histórico — [pesquisa §Noite](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md#noite) |
 | 5 | Amostra do nível lento no fecho da linha | I3 | ADOTADO — a confirmar por medição (A×B do anexo) |
 | 6 | Teste afrouxado na integração só marcado e explicado | I5 | ADOTADO — a confirmar por medição (A×B do anexo) |
 | 7 | Sessões curtas, mecânico a modelo barato | L1–L4 | ADOTADO — a confirmar por medição (A×B do anexo) |
-| 8 | Compilação: polo longo, hakari, binários de teste, cache por árvore | C1–C4 (C5 = não fazer) | ADOTADO — a confirmar por medição (A×B do anexo) |
+| 8 | Compilação: polo longo, binários de teste, cache por árvore (**hakari fora**) | C1–C4 (C5 = não fazer) | Hakari RECUSADO: AUDITORIA 10/09 + remedido 04/11 (`check -p ph2d-host-desktop` ⇄ `--workspace --all-targets`: 0 · 0 · 0 unidades). C1, C3, C4 continuam em aberto |
 | 9 | Segundo anel no cursor (tinta molhada) | P7 (P8 opcional) | ADOTADO — a confirmar por medição; o dono decide no smoke |
 
 ## Ordem
@@ -53,5 +53,6 @@ gate nem texto de comando.
 2. ✓ **P4 / P2** — teste rápido de largura com **prova de mutação** + relatório antes/depois/diferença **só dos pincéis que
    mudaram**, para o dono aprovar (P5).
 3. ✓ **I1** — integrar uma linha por vez, assim que verde. Linha grande ou de contrato (§6) integra **sempre sozinha**.
-4. **A seguir:** I2–I5, C1–C4, L1–L4, P3, P6–P8, na ordem que a medição do passo anterior ditar. Medição segundo
+4. ✓ **04/11 (linha Aceleracao)** — pré-voo, B2 de uma linha, cache estável, grafo do CI, `noite.yml`, testes lentos curados na causa: [handoff](HANDOFF_line_Aceleracao_2026-11-04.md). Pendente do dono: teto de CPU 50 × 100 (−34 % medido).
+5. **A seguir:** I3–I5, C1, C3, C4, L1–L4, P3, P6–P8, na ordem que a medição do passo anterior ditar. Medição segundo
    [MEDIR_VELOCIDADE.md](MEDIR_VELOCIDADE.md) (mesmo processo, intercalado, o mínimo) e CLAUDE.md §0.10 (um lote).

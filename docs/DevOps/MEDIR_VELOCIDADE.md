@@ -38,6 +38,22 @@
 - A iGPU divide a memória com o CPU: carga MUITO alta (compilações pesadas) ainda soma tempo — o mínimo e a
   intercalação mantêm o «A contra B» justo, não o número absoluto.
 
+## §CI — A × B em corridas reais (04/11)
+
+1. Use um ramo `spike/*` e VÁRIAS pushes nele (cada push = uma corrida; A e B em paralelo, ≥ 3×, o mínimo por passo — o mesmo job varia 18–30 min).
+2. `save-if` desligado nas corridas de medição: medir não pode mudar a cache.
+3. A SEMENTE vem primeiro: a chave da cache muda quando o pin ou o workflow muda, e a 1.ª corrida é fria. Meça a segunda.
+4. As caches de 10 GB evacuam-se umas às outras (`gh api repos/dibrioli/PH2D/actions/cache/usage`): uma corrida de medição pode
+   expulsar a semente da outra. Confira `No cache found` e `Cache Size` em cada.
+5. Régua de passos: `python3 scripts/ci-passos.py` (mínimo por passo, `A:id B:id`).
+
+## Local sob carga (04/11)
+
+- A régua é o CPU (user+sys) do teste, não a parede: a parede soma a fila de outras linhas. Parede e CPU lado a lado, o mínimo.
+- Ocupação da suíte: `python3 scripts/junit-ocupacao.py <junit.xml>` (por janela, limiares, por binário) — mostra vagas paradas
+  (foi assim que se viu o bloqueio de 210 s da Luz 2D).
+- Dois perfis do nextest no mesmo ficheiro, mesma compilação, ABAB, o mínimo.
+
 ## Exemplo vivo
 
 `sonda_intercalada` ([`crates/ph2d-app-motion/src/motion_shape_placa_gpu_intercalada_tests.rs`](../../crates/ph2d-app-motion/src/motion_shape_placa_gpu_intercalada_tests.rs))

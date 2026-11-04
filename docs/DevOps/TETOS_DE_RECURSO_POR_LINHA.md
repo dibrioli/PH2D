@@ -227,6 +227,7 @@ e os de *«tem de passar»* valem tanto como os de *«recusado»*.
 | **`nice` / `--test-threads` / `-j`** | são por-processo; nenhum exprime *«esta LINHA ≤ 50 %»* |
 | **quota no `ph2d.slice` (todas as linhas juntas)** | seria um número que eu não medi — não consegui medir o smoke do dono (ele terminou antes). O **peso** (§2.1) responde à mesma preocupação **com** medição. ⏳ Fica aberto: medir de quantos núcleos um smoke precisa e decidir se o tecto global vale a pena. |
 | **`runner` no `.cargo/config.toml` do repo** | alcançaria TODO binário de teste sem depender de ninguém se lembrar — mas é global, atinge a CI (onde não há `systemd-run`) e o `CLAUDE.md` §2 já proíbe mexer ali pelo mesmo motivo (o linker). ⏳ **Decisão do Enio**, com o preço ao lado. |
+| **teto de CPU em 100 % por omissão** | A×B de 04/11 (ABCBCA, 354 testes, mesma compilação): `PH2D_CPU_PCT=50` 448,3 · 448,3 s; `=100` 295,0 · 296,3 s (−34 %, 1,52×). O teto de 50 % é ORDEM DO DONO (15/09, smokes dele): **decisão dele, pendente**. Opção: `=100` só na suíte da integração sem smoke do dono; o `CPUWeight=20` já cede ao smoke (+3 %, §2.1). ⚠️ `PH2D_CPU_PCT` reescreve a unidade da fatia da LINHA: não se mede com outro agente na mesma worktree (este A×B foi feito sozinho) |
 | **`IOWeight` na fatia** | não medido. Escrever um número sem o medir é o que o §0.0 chama palpite. ⏳ aberto |
 
 ---

@@ -56,11 +56,19 @@ O item «filtro de prazo do nextest morto» já foi feito em 29/10 (`scripts/nex
 
 ## ⛔ Medido e recusado — não reabrir
 
-Subir o tecto de CPU de 50 % por linha (custa ~3 %, `project_agent_time_split_2026_10_17`) · Cranelift ·
-`cargo-hakari`/workspace-hack (sem cascata) · `build-override` (145 → 146 s) · `-j` baixo · trocar o mold ·
+Subir o tecto de CPU de 50 % por linha (custa ~3 %, `project_agent_time_split_2026_10_17`) — ⚠️ **RE-MEDIDO 04/11:
+−34 % (448,3 → 295,0 s) na suíte; o «~3 %» media tempo de agente, não a suíte. Não adotado: o teto é ordem do dono, a
+decisão é dele** ([pesquisa §Resultado A4](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md#resultado)) · Cranelift ·
+`cargo-hakari`/workspace-hack (sem cascata; **remedido 04/11: 0 · 0 · 0 unidades**, recusa mantida) · `build-override` (145 → 146 s) · `-j` baixo · trocar o mold ·
 partilhar `CARGO_TARGET_DIR` entre worktrees (troca os `.rlib`) · `-Zshare-generics` · sccache no CI (HTTP 400,
-run 25840452466) · clippy a meio da linha · suíte completa na linha · baixar o `opt-level` do `ci-test`
+run 25840452466; **continua recusado**, com a ressalva da pesquisa: só um bucket fora do GitHub reabre, o limite de 10 GB é o bloqueio) · clippy a meio da linha · suíte completa na linha · baixar o `opt-level` do `ci-test`
 («baixar é silenciar o portão»). Recusado pelo DONO em 30/10: C e J.
+
+## Implementado 04/11 (linha `line/Aceleracao`)
+
+Pré-voo estático antes da suíte, B2 de uma linha, `priority` no gate da memória da placa (−12 %), cache estável do CI,
+grafo/perfil do CI (corrida inteira 60–101 → 27–30 min com cache), `noite.yml`, testes lentos curados na causa. Números,
+SHAs e abertos: [handoff](HANDOFF_line_Aceleracao_2026-11-04.md) · [pesquisa §Resultado](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md#resultado).
 
 ## Implementado (janela «Velocidade 2», 29/10)
 

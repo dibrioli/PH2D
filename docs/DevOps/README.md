@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**18 arquivos** · **8** citados pelo `CLAUDE.md` (marcados **◆**) · **5** são handoffs (registro **morto**).
+**20 arquivos** · **8** citados pelo `CLAUDE.md` (marcados **◆**) · **6** são handoffs (registro **morto**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -23,11 +23,13 @@
 |   | [HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md](HANDOFF_A_VEZ_DA_PLACA_2026-10-18.md) | ⚠️ handoff (morto) | Handoff — a vez da placa passa a ser de TODO uso (processo, 18/10) |
 |   | [HANDOFF_CONTINUACAO_line_Velocidade_2026-10-23_W1_A_W3.md](HANDOFF_CONTINUACAO_line_Velocidade_2026-10-23_W1_A_W3.md) | ⚠️ handoff (morto) | Continuação — `line/Velocidade`, W1–W3 feitas, falta a W4 (23/10) |
 |   | [HANDOFF_INTEGRACAO_line_Velocidade_2026-10-24_W1_A_W4.md](HANDOFF_INTEGRACAO_line_Velocidade_2026-10-24_W1_A_W4.md) | ⚠️ handoff (morto) | Handoff de integração — `line/Velocidade`, W1–W4 (24/10) |
+|   | [HANDOFF_line_Aceleracao_2026-11-04.md](HANDOFF_line_Aceleracao_2026-11-04.md) | ⚠️ handoff (morto) | linha `line/Aceleracao` (04/11/2026) |
 |   | [HANDOFF_linux_bootstrap.md](HANDOFF_linux_bootstrap.md) | ⚠️ handoff (morto) | bootstrap da máquina Linux (dev rápido) |
 |   | [HANDOFF_VELOCIDADE2_2026-10-29.md](HANDOFF_VELOCIDADE2_2026-10-29.md) | ⚠️ handoff (morto) | janela «Velocidade 2» (29/10/2026) |
 |   | [MEDICAO_P1_P4_LARGURA_2026-11-03.md](MEDICAO_P1_P4_LARGURA_2026-11-03.md) | — | Medição P1–P4 da largura do pincel — 03/11 |
 | ◆ | [MEDIR_VELOCIDADE.md](MEDIR_VELOCIDADE.md) | — | Medir velocidade sem esperar horas — a régua INTERCALADA |
 | ◆ | [MULTI_MACHINE_SETUP.md](MULTI_MACHINE_SETUP.md) | — | Multi-máquina — projeto idêntico em Mac · Linux · Windows |
+|   | [PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md) | pesquisa | Como os projetos grandes aceleram testes e CI — pesquisa e medição (04/11/2026) |
 |   | [PESQUISA_DESENVOLVIMENTO_RAPIDO_2026-11-03.md](PESQUISA_DESENVOLVIMENTO_RAPIDO_2026-11-03.md) | pesquisa | Medir menos, integrar mais cedo, reler menos |
 | ◆ | [PLANO_ACELERACAO_2026-11.md](PLANO_ACELERACAO_2026-11.md) | plano | PLANO_ACELERACAO_2026-11 — medir menos, integrar mais cedo, reler menos |
 |   | [PLANO_PARTIR_APP_MOTION.md](PLANO_PARTIR_APP_MOTION.md) | plano | Plano — partir `ph2d-app-motion` em crates por família (item M da comissão) |

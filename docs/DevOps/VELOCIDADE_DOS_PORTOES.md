@@ -4,7 +4,16 @@
 > «Batched closing gate F13» de **39 min** e de um «Fix the 13 Luz2D red tests» de **2 h 50**. Cada número
 > abaixo tem a medição ao lado; o que foi medido e recusado está na tabela `⛔ Recusas MEDIDAS`.
 
-## 0. O que mudou em 03/11
+## 0. O que mudou em 04/11
+
+Os testes lentos foram curados na CAUSA, sem rebaixar nem renomear nenhum (parede por nome, mínimo): rayon sobre fios (pool
+de um operário por fio), `TextSystem` por fio, `ph2d_i18n::tr` com memória por fio, esperas em blocos de 30 quadros,
+`instantaneo()` nas riscas, `opt-level` 3 no miolo da pintura em `ci-test`. Ex.: `o_estado_inicial_leva_cada_controlo`
+105,1 → 24,5 s; `a_mao_torta` 192,3 → 56,3 s. A suíte começa pelo pré-voo estático (`PH2D_PREVOO=0` salta) e o vermelho de uma
+linha só vai a `falhas` + `b2`. Tabelas, SHAs e abertos: [pesquisa §Resultado](PESQUISA_CI_PROJETOS_GRANDES_2026-11-04.md#resultado)
+· [handoff](HANDOFF_line_Aceleracao_2026-11-04.md).
+
+## 0.1. O que mudou em 03/11
 
 O maior custo medido na rodada 02/11c (>36 h) era regerar tabelas de largura de pincel: 20–40 min e 26–31 GB por pincel. Saiu
 do caminho: o teste de pincel é um alarme de 85–99 s, e quem decide é o dono ([como se usa](PLANO_ACELERACAO_2026-11.md)).
@@ -165,6 +174,8 @@ ESTA árvore era a dona da fechadura (amostra de 1 s do `.dono`). Load a 13–31
 
 | proposta | por que não |
 |---|---|
+| `RAYON_NUM_THREADS=4` para a suíte (04/11) | 595,9 · 595,5 s contra 448,3 s a 50 % de CPU (+33 %) e 1 timeout (`o_flow_esta_a_vista_onde_age_e_so_ai`) |
+| `assenta_e_mede`/`com_passo_fixo` como causa dos laços lentos (04/11) | 0,09 % do CPU; a causa era rayon sobre fios, `tr` e a composição por quadro de espera |
 | proibir os laços de espera dos agentes por hook | o tempo deles era a espera pelos testes; não poupa relógio |
 | produto `A x` paralelo dentro de cada canal | 20,6 → 19,3 s (6 %) com `thread::scope` por iteração |
 | cache do gabarito em DISCO entre corridas | um gabarito velho depois de mudar a lei é um oráculo que mente; a chave teria de incluir o código |

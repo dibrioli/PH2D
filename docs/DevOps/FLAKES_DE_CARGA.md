@@ -115,7 +115,9 @@ load 8–34 com ~7 GB da placa já tomados por outros programas; os 9 passaram s
 ⚠️ **Membro que a faixa de 2 não cura (12/10):** `os_tetos_da_placa::a_luz_recua_quando_a_placa_recusa_a_memoria`
 pede DE PROPÓSITO mais do que a placa dá; com outro gate da luz ao lado a recusa vira falta de memória de
 verdade para a placa inteira (o atlas do renderer inválido, pânico do wgpu). Sozinho 3/3 verde → corre
-SOZINHO (`threads-required = "num-test-threads"` no `nextest.toml`).
+SOZINHO (`threads-required = "num-test-threads"` no `nextest.toml`) e **NO FIM** (`priority = -100`, 04/11): na
+frente, pedia todas as vagas e deixava 2 de 16 ocupadas dos 30 s aos 210 s. ABAB, mesma compilação,
+`package(ph2d-app-light2d) | package(ph2d-app-macros)` (201 testes): mínimo 285,7 → 251,7 s (−12 %).
 
 ## Parece carga e não é: a memória do processo com as arenas do glibc (03/11)
 

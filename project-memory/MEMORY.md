@@ -88,6 +88,7 @@
 ## Ship / CI / integração
 - ⛔⛔ [Regra de BRIEFING sem medição é «confirmada» por quem a segue](feedback_an_unmeasured_rule_in_a_briefing_is_confirmed_by_the_agents_who_follow_it.md)
 - ⭐ [Placa onboard (23/10): Radeon corre 5 573/5 580 testes de placa, só a Luz 2D falha](project_onboard_radeon_runs_gpu_tests_2026_10_23.md) · ⭐ [dono 24/10: «mesmo bit» é POR PLACA](project_same_bit_law_is_per_device_2026_10_24.md)
+- ⭐ [CI 04/11: 27–30 min com cache · semente `gh workflow run spike.yml --ref main` após o push · teto de CPU 50 vs 100 é do DONO](project_ci_acceleration_2026_11_04.md)
 - ⛔ [A régua de uma linha é o MERGE-BASE, nunca o main a andar](feedback_the_ruler_is_the_merge_base_not_a_moving_main.md)
 - [Integração multi-linha (15) — ordem se MEDE](reference_topic_integration_discipline.md)
 - ⛔⛔⛔ [Partilhar `CARGO_TARGET_DIR` entre worktrees TROCA os `.rlib` — o erro acusa o código e a medição vale ZERO](feedback_sharing_a_target_dir_between_worktrees_corrupts_the_build.md)

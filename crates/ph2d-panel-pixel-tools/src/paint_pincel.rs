@@ -124,7 +124,7 @@ impl Corpo<'_> {
     ) -> f32 {
         let mut y = y;
         if !info.brushes.is_empty() {
-            y = self.linha(tr("panel.pixel.brush.saved_title"), ColorToken::Text3, y);
+            y = self.titulo(tr("panel.pixel.brush.saved_title"), y);
         }
         let side = self.lado();
         let gap = Spacing::Xs.px();

@@ -253,12 +253,13 @@ impl BodyCtx<'_> {
         } else if let Some(ramp) = l.ramp {
             self.ramp_swatch(amostra, ramp);
         } else {
-            let [cr, cg, cb, ca] = l.color;
-            fill_rounded_rect(
-                self.scene,
+            // O pintor da amostra de sempre: uma tinta translúcida mostra o xadrez por baixo.
+            let a11y = tr("panel.vector.appearance.layer_color");
+            paint_color_swatch(
+                &ColorSwatch::new(l.swatch, a11y, l.color).size(SwatchSize::Sm),
                 amostra,
-                m::SEG_RADIUS,
-                ph2d_vector::Color::from_rgba8(cr, cg, cb, ca), // LITERAL-COLOR-OK: user-color: a tinta do artista
+                self.scene,
+                self.theme,
             );
             // FRAME-RAW-OK: o halo da amostra de cor: uma cor escura some no campo escuro sem ele.
             stroke_rounded_rect(

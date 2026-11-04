@@ -84,7 +84,7 @@ fn cabecalho(c: &mut CardCtx<'_>, h: &Cabeca<'_>, y: f32) -> f32 {
     let hy = y + m::CARD_PAD_TOP;
     let by = hy + (m::CARD_HEAD_H - m::HEAD_ICON_BOX) * 0.5;
     let mut ax = c.x + c.w;
-    let mut caixa = |ax: &mut f32| {
+    let caixa = |ax: &mut f32| {
         *ax -= m::HEAD_ICON_BOX;
         Rect::new(*ax, by, m::HEAD_ICON_BOX, m::HEAD_ICON_BOX)
     };

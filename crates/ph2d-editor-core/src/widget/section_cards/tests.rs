@@ -332,3 +332,31 @@ fn in_black_the_card_is_not_the_panel_colour() {
         "o pintor dos cartoes pousou o preto do PAINEL — o report de 2026-09-30"
     );
 }
+
+/// ⭐ 05 §8: dentro do corpo de um cartão a fronteira de secção não pinta chapa (ela cobria o título
+/// e as caixas com o tom do Inspector); fora dele a mesma chamada fecha o cartão de sempre.
+/// *Mutação: tirar a guarda de `close_with` ⇒ 1 chapa dentro do cartão.*
+#[test]
+fn a_section_boundary_inside_a_card_body_paints_no_plate() {
+    use crate::widget::card_ink::{self, CardInk};
+    let tema = Theme::MODERN[0];
+    let chapas = |no_cartao: bool| {
+        let mut cena = VectorScene::new();
+        begin_section_cards(&mut cena, tema, 0.0);
+        let fim = if no_cartao {
+            card_ink::com(CardInk::of_list(tema), || {
+                close_section(&mut cena, tema, 0.0, 100.0, 80.0)
+            })
+        } else {
+            close_section(&mut cena, tema, 0.0, 100.0, 80.0)
+        };
+        (end_section_cards(&mut cena), fim)
+    };
+    assert_eq!(chapas(true), (0, 80.0), "chapa dentro do cartão");
+    let (fora, fim) = chapas(false);
+    assert_eq!(
+        fora, 1,
+        "o controlo: fora do cartão a fronteira fecha um cartão"
+    );
+    assert!(fim > 80.0);
+}

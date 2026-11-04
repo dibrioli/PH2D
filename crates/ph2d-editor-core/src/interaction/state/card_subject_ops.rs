@@ -3,7 +3,7 @@
 //! subtítulo e o ALFINETE prende-o a esse sujeito. O despacho anota sobre que cartão preso caiu a
 //! última pressão — é por aí que o app sabe que o pedido vem do sujeito preso e não da seleção.
 
-use super::super::WidgetStore;
+use super::super::{InteractiveState, WidgetStore};
 use super::loose_rect_of;
 use ph2d_a11y::NodeId;
 
@@ -212,10 +212,13 @@ impl WidgetStore {
     pub fn note_card_press(&mut self, x: f32, y: f32) {
         // A lista aberta é do chip: a opção que sai para fora do solto continua a ser do sujeito
         // da pressão que a abriu (bloco A, sem isto a escolha ia para a seleção).
-        if self
-            .dropdown_popover()
-            .is_some_and(|(_, r)| r.contains(x, y))
-        {
+        if self.dropdown_popover().is_some_and(|(id, r)| {
+            r.contains(x, y)
+                && matches!(
+                    self.get(id),
+                    Some(InteractiveState::Dropdown { open: true, .. })
+                )
+        }) {
             return;
         }
         let mut topo: Option<(u32, NodeId, Option<u64>)> = None;

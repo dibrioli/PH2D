@@ -669,38 +669,7 @@ fn arma_o_top20() {
         bus_labels: vec!["Master".to_string(), "Sfx".to_string()],
         selected_count: selecionados(),
     }));
-    insp::set_current_inspector_camera(Some(InspectorCameraInfo {
-        entity_bits: BITS,
-        camera: InspectorGameCamera {
-            height_world: 10.0,
-            offset: [0.0, 0.0],
-            priority: 0,
-            dolly: 0.0,
-            active: true,
-            cull_mask: u32::MAX,
-        },
-        follow: Some(InspectorCameraFollow {
-            target: "Hero".to_string(),
-            damping: [0.2, 0.2],
-            dead_zone: [0.5, 0.5],
-            lookahead: [1.0, 0.0],
-            offset: [0.0, 1.0],
-            target_found: true,
-        }),
-        limits: Some(InspectorCameraLimits {
-            min: [-20.0, -10.0],
-            max: [20.0, 10.0],
-            smaller_than_view: false,
-        }),
-        camera_count: 1,
-        is_active_camera: true,
-        preview_on: true,
-        selected_count: selecionados(),
-        format: ph2d_editor_core::GameFormat::default(),
-        frame: ph2d_editor_core::CameraFrameShow::Always,
-        icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
-        canvas: ph2d_editor_core::CameraCanvasView::default(),
-    }));
+    insp::set_current_inspector_camera(Some(camera_armada()));
     insp::set_current_inspector_factory(Some(InspectorFactoryInfo {
         entity_bits: BITS,
         factory: Some(InspectorFactory {
@@ -833,54 +802,7 @@ fn arma_o_top20() {
         alive: 7,
         selected_count: selecionados(),
     }));
-    insp::set_current_inspector_script(Some(InspectorScriptInfo {
-        entity_bits: BITS,
-        source: "bob.luau".to_string(),
-        status: InspectorScriptStatus::Ready,
-        props: vec![
-            InspectorScriptProp {
-                name: "speed".to_string(),
-                value: InspectorScriptValue::Number(2.0),
-                own: true,
-                options: Vec::new(),
-                min: Some(0.0),
-                max: Some(10.0),
-                step: Some(0.1),
-                canais: Vec::new(),
-            },
-            InspectorScriptProp {
-                name: "greeting".to_string(),
-                value: InspectorScriptValue::Text("hello".to_string()),
-                own: false,
-                options: Vec::new(),
-                min: None,
-                max: None,
-                step: None,
-                canais: Vec::new(),
-            },
-            InspectorScriptProp {
-                name: "chatty".to_string(),
-                value: InspectorScriptValue::Bool(true),
-                own: false,
-                options: Vec::new(),
-                min: None,
-                max: None,
-                step: None,
-                canais: Vec::new(),
-            },
-        ],
-        orphans: vec![InspectorScriptOrphan {
-            name: "legacy_speed".to_string(),
-            value: InspectorScriptValue::Number(1.0),
-            wants: PorqueOrfao::NaoDeclarado,
-        }],
-        kept: 1,
-        failure: None,
-        clock_playing: true,
-        also_physics: false,
-        selected_count: selecionados(),
-        library: vec!["bob.luau".to_string(), "outro.luau".to_string()],
-    }));
+    insp::set_current_inspector_script(Some(script_armado()));
     // ⭐⭐⭐ **AS NOVE PORTAS que a `line/components` acrescentou em 17–20/09.** Elas chegaram
     //    depois desta fixtura e o censo DERIVADO acusou-as na integração — que é exactamente
     //    para o que ele existe (*«a secção nº 29 chega, ninguém se lembra desta fixtura, e a
@@ -1627,4 +1549,92 @@ fn a_tabela_de_portas_cobre_todas_as_portas() {
         sobra.is_empty(),
         "estas entradas da `PORTAS` já não existem no painel: {sobra:?}"
     );
+}
+
+/// O snapshot que a [`arma_tudo`] publica nesta porta.
+pub fn camera_armada() -> InspectorCameraInfo {
+    InspectorCameraInfo {
+        entity_bits: BITS,
+        camera: InspectorGameCamera {
+            height_world: 10.0,
+            offset: [0.0, 0.0],
+            priority: 0,
+            dolly: 0.0,
+            active: true,
+            cull_mask: u32::MAX,
+        },
+        follow: Some(InspectorCameraFollow {
+            target: "Hero".to_string(),
+            damping: [0.2, 0.2],
+            dead_zone: [0.5, 0.5],
+            lookahead: [1.0, 0.0],
+            offset: [0.0, 1.0],
+            target_found: true,
+        }),
+        limits: Some(InspectorCameraLimits {
+            min: [-20.0, -10.0],
+            max: [20.0, 10.0],
+            smaller_than_view: false,
+        }),
+        camera_count: 1,
+        is_active_camera: true,
+        preview_on: true,
+        selected_count: selecionados(),
+        format: ph2d_editor_core::GameFormat::default(),
+        frame: ph2d_editor_core::CameraFrameShow::Always,
+        icon_px: ph2d_editor_core::game_format::CAMERA_ICON_PX,
+        canvas: ph2d_editor_core::CameraCanvasView::default(),
+    }
+}
+
+/// O snapshot que a [`arma_tudo`] publica nesta porta.
+pub fn script_armado() -> InspectorScriptInfo {
+    InspectorScriptInfo {
+        entity_bits: BITS,
+        source: "bob.luau".to_string(),
+        status: InspectorScriptStatus::Ready,
+        props: vec![
+            InspectorScriptProp {
+                name: "speed".to_string(),
+                value: InspectorScriptValue::Number(2.0),
+                own: true,
+                options: Vec::new(),
+                min: Some(0.0),
+                max: Some(10.0),
+                step: Some(0.1),
+                canais: Vec::new(),
+            },
+            InspectorScriptProp {
+                name: "greeting".to_string(),
+                value: InspectorScriptValue::Text("hello".to_string()),
+                own: false,
+                options: Vec::new(),
+                min: None,
+                max: None,
+                step: None,
+                canais: Vec::new(),
+            },
+            InspectorScriptProp {
+                name: "chatty".to_string(),
+                value: InspectorScriptValue::Bool(true),
+                own: false,
+                options: Vec::new(),
+                min: None,
+                max: None,
+                step: None,
+                canais: Vec::new(),
+            },
+        ],
+        orphans: vec![InspectorScriptOrphan {
+            name: "legacy_speed".to_string(),
+            value: InspectorScriptValue::Number(1.0),
+            wants: PorqueOrfao::NaoDeclarado,
+        }],
+        kept: 1,
+        failure: None,
+        clock_playing: true,
+        also_physics: false,
+        selected_count: selecionados(),
+        library: vec!["bob.luau".to_string(), "outro.luau".to_string()],
+    }
 }

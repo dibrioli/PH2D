@@ -94,3 +94,45 @@ fn a_field_inside_a_card_body_sits_on_the_card_and_outside_nothing_changes() {
         "a tinta vazou para fora do corpo"
     );
 }
+
+/// ⭐ T25, 05 §4: a lista aberta de um chip de cartão leva a tinta dele — tema próprio incluído —
+/// e só a do chip dela; fora de um cartão `opaque` é o token de sempre, ao bit.
+/// *Mutação: o `lembra_popover` fora ⇒ `None`; `opaque` sem a tinta ⇒ o tom do Inspector.*
+#[test]
+fn a_chip_list_in_a_card_takes_the_card_ink() {
+    use crate::widget::resolve_opaque as opaque;
+    use crate::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+    use crate::zones::Rect;
+    use ph2d_a11y::NodeId;
+    let lista = Theme::Dark;
+    let ink = CardInk::of_card(Some(Theme::PlumberRed), lista);
+    let (id, outro) = (NodeId(70), NodeId(71));
+    let dd = Dropdown::new(id, "", vec![DropdownOption::new(NodeId(72), 0_u8, "A")]).open(true);
+    let mut cena = ph2d_vector::VectorScene::new();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let r = Rect::new(0.0, 0.0, 100.0, 28.0);
+    paint_dropdown_chip(&dd, r, &mut cena, &mut ts, lista);
+    assert_eq!(tinta_do_popover(id), None, "chip fora do cartão não lembra");
+    com(ink, || {
+        paint_dropdown_chip(&dd, r, &mut cena, &mut ts, lista)
+    });
+    assert_eq!(
+        tinta_do_popover(outro),
+        None,
+        "a lista de outro chip não a leva"
+    );
+    com(ink, || {
+        paint_dropdown_chip(&dd, r, &mut cena, &mut ts, lista)
+    });
+    assert_eq!(tinta_do_popover(id), Some(ink));
+    assert_eq!(tinta_do_popover(id), None, "lê-se uma vez");
+    let fundo = ColorToken::BgElev;
+    let de_sempre = opaque(fundo, lista);
+    assert_eq!(rgb(de_sempre), rgb(resolve(fundo, lista)));
+    let no_cartao = com(ink, || opaque(fundo, lista));
+    assert_eq!(rgb(no_cartao), rgb(ink.color(ColorToken::KanbanCardRaised)));
+    assert!(
+        gap(de_sempre, no_cartao) > 0,
+        "o popover ficou no tom do Inspector"
+    );
+}

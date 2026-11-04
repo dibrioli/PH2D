@@ -38,6 +38,30 @@ thread_local! {
     /// 10, cena 7, perfil smoke: ~1 ms e ~0,6 ms por quadro e por cartão sem isto).
     static MEDIDOS: RefCell<BTreeMap<NodeId, Chave>> = RefCell::default();
     static MONTADOS: RefCell<BTreeMap<NodeId, Montado>> = RefCell::default();
+    /// O objecto do cartão preso cujo corpo abriu uma lista suspensa neste quadro.
+    static SUJEITO_DA_LISTA: Cell<Option<u64>> = const { Cell::new(None) };
+}
+
+/// O corpo de um cartão preso: com o retrato do objecto; se ele abriu uma lista, ela é desse objecto.
+fn corpo_do_preso<R>(pin: u64, y: R, f: impl FnOnce() -> R) -> R {
+    use ph2d_editor_core::widget::card_ink::troca_popover;
+    let antes = troca_popover(None);
+    let fim = com_preso(pin, f).unwrap_or(y);
+    match troca_popover(None) {
+        Some(aberta) => {
+            SUJEITO_DA_LISTA.with(|s| s.set(Some(pin)));
+            let _ = troca_popover(Some(aberta));
+        }
+        None => {
+            let _ = troca_popover(antes);
+        }
+    }
+    fim
+}
+
+/// O objecto da lista aberta deste quadro (`None` = a seleção); lê-se uma vez, no passe das listas.
+pub(crate) fn toma_sujeito_da_lista() -> Option<u64> {
+    SUJEITO_DA_LISTA.with(Cell::take)
 }
 
 /// As caixas de cada preso: a semente da seleção corrida com o retrato dele, num ensaio (o store,
@@ -154,7 +178,7 @@ pub(crate) fn cards<'a>(
         let Some(Some(mut d)) = def else { continue };
         d.section = p.k; // T54: o def é da INSTÂNCIA (`cards_solto::pinta_soltos` acha-o por ela)
         d.body = d.body.map(|f| -> CardBody<'a> {
-            Box::new(move |c, y| com_preso(pin, || f(c, y)).unwrap_or(y))
+            Box::new(move |c, y| corpo_do_preso(pin, y, || f(c, y)))
         });
         out.push(d);
     }

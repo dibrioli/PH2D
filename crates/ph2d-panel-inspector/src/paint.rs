@@ -102,14 +102,17 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         let theme = ctx.host.theme();
         let regiao = ctx.layout.popover_region();
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        crate::popovers::paint_deferred_popovers(
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            regiao,
-        );
+        // A lista de um cartão preso lê o objecto dele, não a seleção (05 §9).
+        crate::retrato::com_retrato(crate::cards_presos::toma_sujeito_da_lista(), || {
+            crate::popovers::paint_deferred_popovers(
+                ctx.scene,
+                ctx.text_system,
+                theme,
+                hit_index,
+                store,
+                regiao,
+            );
+        });
         if let Some(painted) = state_popovers::take_painted_popover() {
             ctx.host.store_mut().publish_dropdown_popover(painted);
         }

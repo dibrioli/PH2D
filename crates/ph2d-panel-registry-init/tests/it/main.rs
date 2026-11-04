@@ -30,6 +30,7 @@ mod o_bloco5_abertos;
 mod o_bloco7_duas_copias;
 mod o_bloco8_player_solto;
 mod o_bloco9_reset_e_alfinete;
+mod o_bloco_a_camera_e_presas;
 mod o_cadeado_do_cartao_objeto;
 mod o_cartao_solto_bloco4;
 mod o_cartao_solto_no_canvas;

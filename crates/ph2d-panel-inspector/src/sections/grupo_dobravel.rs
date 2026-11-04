@@ -52,6 +52,8 @@ pub(crate) fn grupo_dobravel(
     let header = SectionHeader::new(id, texto)
         .collapsible(!store.is_collapsed(id))
         .open_t(store.section_open_live(id));
+    // No cartão as linhas não trazem folga em baixo: o grupo pede-a em cima, como um rótulo.
+    let y = y + ph2d_editor_core::widget::card_ink::card_body().map_or(0.0, |_| Spacing::Sm.px());
     let rect = Rect::new(x, y, w, group_header_h());
     paint_group_header(&header, rect, scene, text_system, theme);
     hit_index.register(id, rect);

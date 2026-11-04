@@ -437,7 +437,11 @@ fn paint_card(
                     scene,
                     &label,
                     hx + DOT_R * 2.0 + Spacing::Xs.px(),
-                    hy,
+                    hy + if ink.is_some() {
+                        superficie.folga(sm, sm)
+                    } else {
+                        0.0
+                    },
                     sm,
                     content_w,
                     cat_color,

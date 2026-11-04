@@ -262,6 +262,9 @@ fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) 
         }
         _ => {}
     }
+    if c.ink.is_some() {
+        y += m::FIELD_ROW_GAP;
+    }
     // Cancel | OK — o OK à direita e acentuado (Enter), o Cancel à esquerda (Esc).
     let half = ((c.w - gap) * 0.5).max(1.0);
     for (id, key, x, accent) in [
@@ -444,7 +447,7 @@ impl Caixa<'_> {
     /// Da fila à seguinte.
     fn pitch(&self) -> f32 {
         if self.ink.is_some() {
-            m::FIELD_H + m::FIELD_ROW_GAP
+            m::FIELD_H
         } else {
             ph2d_tokens::row_pitch_px()
         }
@@ -488,7 +491,7 @@ impl Caixa<'_> {
                 self.x,
                 self.w,
             );
-            y = c.row(&cells, y) + m::FIELD_ROW_GAP;
+            y = c.row(&cells, y);
         }
         y
     }
@@ -532,11 +535,12 @@ impl Caixa<'_> {
             let (font, h, cor) = if token == ColorToken::Text1 {
                 (m::VALUE_PX, m::FIELD_H, ColorToken::KanbanCardFg)
             } else {
-                (
-                    m::LABEL_PX,
-                    m::LABEL_PX + m::LABEL_BOTTOM,
-                    ColorToken::CardLabel,
-                )
+                (m::LABEL_PX, m::LABEL_PX, ColorToken::CardLabel)
+            };
+            let y = if token == ColorToken::Text1 {
+                y
+            } else {
+                y + m::LABEL_TOP
             };
             paint_text_elided(
                 self.text_system,
@@ -595,7 +599,7 @@ impl Caixa<'_> {
                 self.x,
                 self.w,
             );
-            return c.full(None, Widget::Choice(&segs), y) + m::FIELD_ROW_GAP;
+            return c.full(None, Widget::Choice(&segs), y + m::FIELD_ROW_GAP);
         }
         let gap = Spacing::Xs.px();
         #[expect(clippy::cast_precision_loss, reason = "≤ 4 escolhas")]

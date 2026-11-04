@@ -140,6 +140,7 @@ fn a_panel_title_is_derived_from_its_id() {
     assert_eq!(humanise_panel_id("audio_editor"), "Audio Editor");
     assert_eq!(humanise_panel_id("wet_tuning"), "Wet Tuning");
     assert_eq!(humanise_panel_id("vector"), "Vector");
+    assert_eq!(humanise_panel_id("bgremoval"), "Background Removal");
     // ⚠️ O que a derivação não embeleza, PINADO: quem lhe der um título próprio um dia muda esta
     // linha de propósito, em vez de descobrir a feiura num screenshot.
     assert_eq!(humanise_panel_id("bgremoval"), "Bgremoval");

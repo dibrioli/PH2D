@@ -71,6 +71,10 @@ pub const GLOBAL_PALETTE_TITLE: TextKey = TextKey::new("chrome.palette.commands"
 /// `snake_case` → `Title Case`. Ver o doc-header: é uma DERIVAÇÃO do id, nunca uma tabela.
 #[must_use]
 pub fn humanise_panel_id(id: &str) -> String {
+    // O único que a derivação estraga («Bgremoval»): o id colou as duas palavras.
+    if id == "bgremoval" {
+        return tr("panel.bg_removal.title").to_owned();
+    }
     let mut out = String::with_capacity(id.len());
     for (i, word) in id.split('_').enumerate() {
         if i > 0 {

@@ -320,9 +320,6 @@ impl PainterTool {
                         || ed.added_point
                         || (ed.model.closed && ed.model.is_curve()))
             }),
-            // A curve with points exists whenever the point editor is editing (Curve / Free Hand, or a
-            // Ellipse/Polygon converted via Edit) — gates the Save-As-Object button.
-            has_drawn_curve: self.paint.curve.as_ref().is_some_and(|ed| ed.editing),
             space_attenuation: b.space_attenuation,
             continuous_spacing: b.continuous_spacing,
             accumulate: b.accumulate,

@@ -6,9 +6,10 @@
 
 use crate::cards_captura::{Captura, coluna, y_de};
 use crate::{
-    cards_aleatorio, cards_caneta, cards_grao, cards_impasto, cards_nativos, cards_papel,
-    cards_shape, cards_shape_tom, cards_topo, cards_traco, cards_watercolor, cards_wet, paint,
-    paint_brush, paint_brush_top, preview_pino, state,
+    cards_aleatorio, cards_camadas, cards_caneta, cards_composto, cards_exclusivos, cards_ferramenta, cards_grao,
+    cards_impasto, cards_nativos, cards_papel, cards_shape, cards_shape_tom, cards_topo,
+    cards_traco, cards_watercolor, cards_wet, paint, paint_brush, paint_brush_top, preview_pino,
+    state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -19,16 +20,11 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{
     CardBody, CardCtx, CardDef, HeadAction, ListTop, Seg, Widget, paint_card_list_top,
 };
-use ph2d_editor_core::panel::section_plan_ctx::TarefaCtx;
 use ph2d_editor_core::widget::card_ink::CardInk;
-use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::Theme;
 use ph2d_tool_painter::ids as pids;
-use std::collections::BTreeSet;
-
-pub(crate) use crate::cards_captura::declara_reset;
 
 /// Os cartões dos blocos sem título do corpo do pincel, pela ordem de `plano_do_corpo`.
 const BLOCOS: [NodeId; 3] = [
@@ -64,13 +60,15 @@ struct Presente {
 
 /// O corpo de hoje, capturado; as linhas do topo e dos básicos; o Wet Paint, com o visor do Tilt capturado.
 enum Conteudo {
-    Captura(Captura),
+    /// Os ajustes e o editor da camada Texture.
+    Camadas(cards_camadas::Pecas),
+    /// Um corpo de `cards_nativos`, com o Reset dele.
+    Nativo(Option<NodeId>),
     Linhas(Vec<cards_topo::Linha>),
     Wet(Captura),
     /// A prévia do Flow.
     Watercolor(Captura),
-    /// Os knobs do verbo Sculpt na mão.
-    Impasto(Option<Captura>),
+    Impasto,
     /// Os gizmos, a prévia, as linhas de cada camada.
     Forma(cards_shape::Pecas),
     /// O editor de cada rampa.
@@ -83,16 +81,23 @@ enum Conteudo {
     /// O título do Jitter, que dobra dentro do cartão.
     Traco(Option<Captura>),
     Caneta,
+    Mascara,
+    Deform,
+    Selecao,
 }
 
 impl Presente {
     fn reset(&self) -> Option<NodeId> {
         match &self.conteudo {
-            Conteudo::Captura(c) => c.reset,
-            Conteudo::Linhas(_) => None,
+            Conteudo::Nativo(r) => *r,
+            Conteudo::Linhas(_)
+            | Conteudo::Camadas(_)
+            | Conteudo::Mascara
+            | Conteudo::Deform
+            | Conteudo::Selecao => None,
             Conteudo::Wet(_) => Some(pids::PAINTER_WETPAINT_RESET),
             Conteudo::Watercolor(_) => Some(pids::PAINTER_WATERCOLOR_RESET),
-            Conteudo::Impasto(_) => Some(pids::PAINTER_IMPASTO_RESET),
+            Conteudo::Impasto => Some(pids::PAINTER_IMPASTO_RESET),
             Conteudo::Forma(_) => Some(pids::PAINTER_SHAPE_RESET),
             Conteudo::Tom(_) => Some(cards_shape_tom::reset()),
             Conteudo::Papel(_) => Some(pids::PAINTER_WATERCOLOR_PAPER_RESET),
@@ -109,49 +114,48 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
     let brush = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let (x, w) = coluna(ctx.slot);
     // Deform e Selection são donos do corpo inteiro, como no painel de antes.
-    let entradas: Vec<(NodeId, bool, TarefaCtx<'_>)> = if brush.is_deform {
-        vec![(
-            pids::PAINTER_CARD_EXCLUSIVO,
-            false,
-            Box::new(move |ctx, tema, y| {
-                crate::paint_deform::paint_deform_section(ctx, tema, x, w, y, brush)
-            }),
-        )]
-    } else if brush.is_selection {
-        vec![(
-            pids::PAINTER_CARD_EXCLUSIVO,
-            false,
-            Box::new(move |ctx, tema, y| {
-                crate::paint_selection::paint_selection_section(ctx, tema, x, w, y, brush)
-            }),
-        )]
-    } else {
-        paint_brush::prepara_a_cor(ctx, brush);
-        let mut blocos = BLOCOS.iter();
-        paint_brush::plano_do_corpo(x, w, brush)
-            .entradas()
-            .into_iter()
-            .filter_map(|(id, tarefa)| match id {
-                Some(id) => Some((id, true, tarefa)),
-                None => blocos.next().map(|b| (*b, false, tarefa)),
-            })
-            .collect()
-    };
-    let topo = ctx.slot.y;
-    let mut presentes = Vec::with_capacity(entradas.len());
-    for (id, absorve, tarefa) in entradas {
+    if brush.is_deform || brush.is_selection {
+        return vec![Presente {
+            id: pids::PAINTER_CARD_EXCLUSIVO,
+            titulo: paint_brush_top::header_title(false, Some(brush)).to_owned(),
+            conteudo: if brush.is_deform {
+                Conteudo::Deform
+            } else {
+                Conteudo::Selecao
+            },
+        }];
+    }
+    paint_brush::prepara_a_cor(ctx, brush);
+    let mut blocos = BLOCOS.iter();
+    let ids: Vec<NodeId> = paint_brush::plano_do_corpo(x, w, brush)
+        .entradas()
+        .into_iter()
+        .filter_map(|(id, _)| id.or_else(|| blocos.next().copied()))
+        .collect();
+    let mut presentes = Vec::with_capacity(ids.len());
+    for id in ids {
         let ink = CardInk::of_card(ctx.host.store().section_theme(id), theme);
         if id == pids::PAINTER_CARD_TOPO || id == pids::PAINTER_CARD_BASICOS {
             let linhas = if id == pids::PAINTER_CARD_TOPO {
                 cards_topo::do_topo(ctx, ink, (x, w), brush)
             } else {
-                cards_topo::dos_basicos(ctx, ink, (x, w), brush)
+                cards_topo::dos_basicos(brush)
             };
             if !linhas.is_empty() {
                 presentes.push(Presente {
                     id,
-                    titulo: titulo_do_bloco(id, &brush),
+                    titulo: titulo_do_bloco(id),
                     conteudo: Conteudo::Linhas(linhas),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_MASK_SECTION {
+            if brush.is_mask {
+                presentes.push(Presente {
+                    id,
+                    titulo: tr("panel.painter_layers.mask.mask").to_owned(),
+                    conteudo: Conteudo::Mascara,
                 });
             }
             continue;
@@ -186,7 +190,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
                 presentes.push(Presente {
                     id,
                     titulo: cards_impasto::titulo().to_owned(),
-                    conteudo: Conteudo::Impasto(cards_impasto::escultura(ctx, ink, (x, w), brush)),
+                    conteudo: Conteudo::Impasto,
                 });
             }
             continue;
@@ -266,21 +270,11 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
             }
             continue;
         }
-        let tema = ink.theme;
-        let posicao = (x, y_de(id, topo));
-        let captura = Captura::de(ctx, id, ink, posicao, absorve, |ctx, y| {
-            tarefa(ctx, tema, y)
-        });
-        let titulo = if absorve {
-            captura.titulo.clone()
-        } else {
-            captura.pintou().then(|| titulo_do_bloco(id, &brush))
-        };
-        if let Some(titulo) = titulo {
+        if let Some((titulo, reset)) = cards_nativos::presente(id, &brush) {
             presentes.push(Presente {
                 id,
                 titulo,
-                conteudo: Conteudo::Captura(captura),
+                conteudo: Conteudo::Nativo(reset),
             });
         }
     }
@@ -288,61 +282,24 @@ fn secoes_do_pincel(ctx: &mut PaintCtx, theme: Theme) -> Vec<Presente> {
 }
 
 /// O topo não tem título, como o cartão Object: o nome da ferramenta já está na lista.
-fn titulo_do_bloco(id: NodeId, brush: &ph2d_tool_painter::BrushSettings) -> String {
-    let chave = if id == pids::PAINTER_CARD_TOPO {
-        return String::new();
-    } else if id == pids::PAINTER_CARD_BASICOS {
-        "panel.painter_layers.brush.basics"
-    } else if id == pids::PAINTER_CARD_MIXING {
-        "panel.painter_layers.brush.mixing"
+fn titulo_do_bloco(id: NodeId) -> String {
+    if id == pids::PAINTER_CARD_TOPO {
+        String::new()
     } else {
-        return paint_brush_top::header_title(false, Some(*brush)).to_owned();
-    };
-    tr(chave).to_owned()
+        tr("panel.painter_layers.brush.basics").to_owned()
+    }
 }
 
-/// A vista Layers: um cartão, por agora com a cara de antes. Devolve-o com as linhas arrastáveis e o fantasma.
-fn cartao_das_camadas(ctx: &mut PaintCtx, theme: Theme) -> (Presente, Fileiras) {
-    let (x, w) = coluna(ctx.slot);
+/// A vista Layers: um cartão, com os ajustes e o editor da Texture capturados.
+fn cartao_das_camadas(ctx: &mut PaintCtx, theme: Theme) -> Presente {
     let id = pids::PAINTER_CARD_CAMADAS;
     let ink = CardInk::of_card(ctx.host.store().section_theme(id), theme);
-    let tema = ink.theme;
-    let mut linhas = BTreeSet::new();
-    let mut fantasma = None;
-    let posicao = (x, y_de(id, ctx.slot.y));
-    let captura = Captura::de(ctx, id, ink, posicao, false, |ctx, y| {
-        let fora = x - PANEL_HEAD_PAD;
-        let largo = w + 2.0 * PANEL_HEAD_PAD;
-        paint::paint_action_toolbar(ctx, Rect::new(fora, y, largo, paint::TOOLBAR_H), tema);
-        let y = y + paint::TOOLBAR_H;
-        paint::paint_modifier_toolbar(ctx, Rect::new(fora, y, largo, paint::TOOLBAR_H), tema);
-        let y = y + paint::TOOLBAR_H + Spacing::Xs.px();
-        let area = Rect::new(fora, y, largo, 0.0);
-        let (fim, ids, f) = crate::paint_layer_list::paint_layer_rows(ctx, tema, area, area, w, y);
-        linhas = ids;
-        fantasma = f;
-        let fim = fim + Spacing::Xs.px();
-        let apply = Rect::new(
-            x + w - paint::APPLY_BTN_W,
-            fim,
-            paint::APPLY_BTN_W,
-            ROW_H_PX,
-        );
-        paint::paint_apply_button(ctx, apply, tema);
-        fim + ROW_H_PX
-    });
-    (
-        Presente {
-            id,
-            titulo: tr("panel.painter_layers.layers.layers").to_owned(),
-            conteudo: Conteudo::Captura(captura),
-        },
-        (linhas, fantasma),
-    )
+    Presente {
+        id,
+        titulo: tr("panel.painter_layers.layers.layers").to_owned(),
+        conteudo: Conteudo::Camadas(cards_camadas::pecas(ctx, ink, coluna(ctx.slot))),
+    }
 }
-
-/// As linhas arrastáveis e o fantasma da que voa: `(nome, x, y)`.
-type Fileiras = (BTreeSet<NodeId>, Option<(String, f32, f32)>);
 
 /// A prévia presa pelo pino, na faixa: `None` onde o painel de antes também não a põe.
 fn previa_fixada(ctx: &mut PaintCtx, theme: Theme) -> Option<Captura> {
@@ -363,10 +320,13 @@ fn previa_fixada(ctx: &mut PaintCtx, theme: Theme) -> Option<Captura> {
         id,
         CardInk::of_list(theme),
         posicao,
-        false,
         |ctx, y| preview_pino::pinta(ctx, theme, x, w, y).unwrap_or(y),
     );
     c.pintou().then_some(c)
+}
+
+fn pincel_atual() -> ph2d_tool_painter::BrushSettings {
+    state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH)
 }
 
 fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
@@ -375,8 +335,9 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
         .map(|p| {
             let body: CardBody<'a> = match (cards_nativos::corpo(p.id), &p.conteudo) {
                 (Some(f), _) => Box::new(f),
-                (None, Conteudo::Captura(cap)) => {
-                    Box::new(move |c: &mut CardCtx<'_>, y| cap.repete(c, y))
+                (None, Conteudo::Nativo(_)) => Box::new(|_: &mut CardCtx<'_>, y| y),
+                (None, Conteudo::Camadas(pecas)) => {
+                    Box::new(move |c: &mut CardCtx<'_>, y| cards_camadas::corpo(c, pecas, y))
                 }
                 (None, Conteudo::Linhas(l)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_topo::corpo(c, l, y))
@@ -387,9 +348,7 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Watercolor(previa)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_watercolor::corpo(c, previa, y))
                 }
-                (None, Conteudo::Impasto(esculpe)) => Box::new(move |c: &mut CardCtx<'_>, y| {
-                    cards_impasto::corpo(c, esculpe.as_ref(), y)
-                }),
+                (None, Conteudo::Impasto) => Box::new(cards_impasto::corpo),
                 (None, Conteudo::Forma(pecas)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_shape::corpo(c, pecas, y))
                 }
@@ -407,6 +366,15 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                     cards_traco::corpo(c, jitter.as_ref(), y)
                 }),
                 (None, Conteudo::Caneta) => Box::new(cards_caneta::corpo),
+                (None, Conteudo::Mascara) => Box::new(|c: &mut CardCtx<'_>, y| {
+                    cards_exclusivos::mascara(c, &pincel_atual(), y)
+                }),
+                (None, Conteudo::Deform) => Box::new(|c: &mut CardCtx<'_>, y| {
+                    cards_exclusivos::deform(c, &pincel_atual(), y)
+                }),
+                (None, Conteudo::Selecao) => Box::new(|c: &mut CardCtx<'_>, y| {
+                    cards_exclusivos::selecao(c, &pincel_atual(), y)
+                }),
             };
             CardDef {
                 section: p.id,
@@ -443,15 +411,16 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     } else {
         previa_fixada(ctx, theme)
     };
-    let (presentes, fileiras) = if camadas {
-        let (p, f) = cartao_das_camadas(ctx, theme);
-        (vec![p], Some(f))
+    let presentes = if camadas {
+        vec![cartao_das_camadas(ctx, theme)]
     } else {
-        (secoes_do_pincel(ctx, theme), None)
+        secoes_do_pincel(ctx, theme)
     };
     let pincel = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     cards_nativos::prepare(ctx.host.store_mut());
-    if !camadas {
+    if camadas {
+        cards_camadas::prepare(ctx);
+    } else {
         cards_topo::prepare(ctx.host.store_mut(), &pincel);
         cards_wet::prepare(ctx.host.store_mut(), &pincel);
         cards_watercolor::prepare(ctx.host.store_mut(), &pincel);
@@ -463,6 +432,9 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_aleatorio::prepare(ctx, &pincel);
         cards_traco::prepare(ctx, &pincel);
         cards_caneta::prepare(ctx, &pincel);
+        cards_ferramenta::prepare(ctx, &pincel);
+        cards_composto::prepare(ctx, &pincel);
+        cards_exclusivos::prepare(ctx.host.store_mut(), &pincel);
     }
     for p in &presentes {
         if let Some(id) = p.reset()
@@ -513,15 +485,19 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
     let visivel = store.panel_visible_h(panel).unwrap_or(0.0);
     state::set_last_content_h(conteudo);
     state::set_last_visible_h(visivel);
-    match fileiras {
-        Some((linhas, fantasma)) => {
-            ctx.host
-                .store_mut()
-                .set_panel_row_ids(PanelRowFamily::PainterLayer, linhas);
-            paint::paint_layers_popovers(ctx, theme, fantasma);
+    match camadas {
+        true => {
+            ctx.host.store_mut().set_panel_row_ids(
+                PanelRowFamily::PainterLayer,
+                cards_camadas::linhas_arrastaveis(),
+            );
+            cards_camadas::listas_abertas(ctx, coluna(ctx.slot));
+            paint::paint_layers_popovers(ctx, theme, None);
         }
-        None => {
+        false => {
             cards_topo::listas_abertas(ctx, &pincel);
+            cards_ferramenta::listas_abertas(ctx, &pincel);
+            cards_composto::listas_abertas(ctx, &pincel);
             cards_wet::listas_abertas(ctx, &pincel);
             cards_watercolor::listas_abertas(ctx, &pincel);
             cards_shape::listas_abertas(ctx, &pincel);

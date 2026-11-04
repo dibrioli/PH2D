@@ -29,7 +29,7 @@ const BTN_MIN_W: f32 = 64.0; // LITERAL-PX-OK: mask button min column width
 
 /// The 5 overlay-tint colours (straight RGBA8): DARK gray (default) + fluorescent yellow / pink / green
 /// / orange — must mirror `ph2d-tool-painter`'s `mask_overlay_rgb`. Data colours, not chrome tokens.
-const OVERLAY_COLORS: [[u8; 4]; 5] = [
+pub(crate) const OVERLAY_COLORS: [[u8; 4]; 5] = [
     [51, 51, 51, 255],   // LITERAL-COLOR-OK: dark gray (default)
     [220, 255, 0, 255],  // LITERAL-COLOR-OK: fluorescent yellow
     [255, 42, 160, 255], // LITERAL-COLOR-OK: fluorescent pink
@@ -59,23 +59,17 @@ pub(crate) fn paint_mask_section(
         tr("panel.painter_layers.mask.mask"),
     );
     let header_rect = Rect::new(x, y, content_w, header_h);
-    // Num cartão, o título é o dele: aqui o cabeçalho só dá o nome, e o corpo começa no `y`.
-    let absorvido = ph2d_editor_core::widget::absorbing_next_header();
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         paint_section_header(&header, header_rect, scene, text_system, theme);
     }
-    let mut y = if absorvido {
-        y
-    } else {
-        crate::plano_corpo::regista(
-            ctx,
-            ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
-            header_rect,
-        );
-        y + header_h + Spacing::Xs.px()
-    };
+    crate::plano_corpo::regista(
+        ctx,
+        ph2d_tool_painter::ids::PAINTER_MASK_SECTION,
+        header_rect,
+    );
+    let mut y = y + header_h + Spacing::Xs.px();
     if collapsed {
         return y;
     }

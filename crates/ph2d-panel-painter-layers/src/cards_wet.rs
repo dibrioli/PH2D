@@ -13,14 +13,11 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo as linhas, ferramenta};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::ColorToken;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{BrushSettings, LinhaDaFerramenta};
 

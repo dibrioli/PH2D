@@ -252,17 +252,6 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     ] {
         let _ = esmaecer::poe_dica(store, &[id]);
     }
-    for id in [
-        pids::PAINTER_BRUSH_STROKE_APPLY,
-        pids::PAINTER_BRUSH_STROKE_APPLY_KEEP,
-        pids::PAINTER_BRUSH_STROKE_DELETE,
-        pids::PAINTER_BRUSH_STROKE_EDIT,
-        pids::PAINTER_BRUSH_STROKE_SIMPLIFY,
-        pids::PAINTER_BRUSH_STROKE_MERGE,
-        pids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-    ] {
-        crate::paint::register_button(store, id);
-    }
 }
 
 /// Onde a caixa aberta ficou é o que a lista das opções precisa.
@@ -423,11 +412,9 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, titulo_do_jitter: Option<&Captura>, y: 
             ));
         }
     }
-    if b.has_drawn_curve {
-        topo.push(Item::Botao {
-            id: pids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-            texto: tr("card.painter.stroke.save"),
-        });
+    // Um Spacing sem irmão divide a linha com o Method; com o Continuous, os dois ficam juntos (E10).
+    if topo.len() % 2 == 1 && espaco.len() == 1 {
+        topo.append(&mut espaco);
     }
     let mut y = fila(c, &topo, y);
     y = fila(c, &espaco, y);

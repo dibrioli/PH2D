@@ -68,12 +68,6 @@ pub const PAINTER_BRUSH_STROKE_BUTTONS: [NodeId; 6] = [
     PAINTER_BRUSH_STROKE_MERGE,
 ];
 
-/// "Save As Object" (floppy icon) beside the Stroke Method dropdown — shown only while a curve with points
-/// is drawn on the canvas. FUTURE (not wired yet): persist the drawn curve + the current Brush/Layer panel
-/// settings as a dynamic object that can be reloaded and even animated later.
-pub const PAINTER_BRUSH_STROKE_SAVE_OBJECT: NodeId =
-    hash_node_id("painter_brush.stroke_save_object");
-
 /// "Trim" checkbox: cut the offset spine's self-intersections. `Click` → `toggle_offset_trim`.
 pub const PAINTER_BRUSH_OFFSET_TRIM: NodeId = hash_node_id("painter_brush.offset_trim");
 

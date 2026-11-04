@@ -61,11 +61,10 @@ fn com_metodo(m: StrokeMethod) -> BrushSettings {
 fn figura(m: StrokeMethod) -> BrushSettings {
     let mut b = com_metodo(m);
     b.can_simplify = true;
-    b.has_drawn_curve = true;
     b
 }
 
-fn estados() -> Vec<(&'static str, BrushSettings)> {
+pub(super) fn estados() -> Vec<(&'static str, BrushSettings)> {
     vec![
         ("digital", digital()),
         ("molhado", pincel(PaintMedia::WetPaint, "brush").0),
@@ -173,7 +172,6 @@ fn stroke_and_pen_show_the_same_controls_as_the_old_panel() {
         p::PAINTER_BRUSH_STROKE_EDIT,
         p::PAINTER_BRUSH_STROKE_SIMPLIFY,
         p::PAINTER_BRUSH_STROKE_MERGE,
-        p::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         p::PAINTER_STROKE_OP_ADD,
         p::PAINTER_BRUSH_OFFSET_TRIM,
         p::PAINTER_BRUSH_JITTER_UNIT,
@@ -447,11 +445,6 @@ fn short_siblings_share_a_row() {
         &arco,
         p::PAINTER_BRUSH_STROKE_APPLY,
         p::PAINTER_BRUSH_STROKE_APPLY_KEEP,
-    );
-    na_mesma_linha(
-        &arco,
-        core_ids::PAINTER_BRUSH_STROKE_METHOD,
-        p::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
     );
 }
 

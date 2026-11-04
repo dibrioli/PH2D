@@ -165,7 +165,7 @@ pub(super) fn pincel(meio: PaintMedia, modo: &str) -> (BrushSettings, BTreeSet<N
     (b.tool.brush_settings(), b.ids().into_iter().collect())
 }
 
-const TODAS: &[NodeId] = &[
+pub(super) const TODAS: &[NodeId] = &[
     p::PAINTER_CARD_TOPO,
     p::PAINTER_CARD_BASICOS,
     p::PAINTER_CARD_MIXING,
@@ -192,6 +192,7 @@ pub(super) fn saiu_de_proposito(id: NodeId) -> bool {
         || id == p::PAINTER_BRUSH_FLOW_SLIDER
         || p::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
         || super::h7_os_cartoes::BARRAS.contains(&id)
+        || super::h8_os_cartoes::barras().contains(&id)
         || id == ph2d_editor_core::widget::PAINTER_LAYERS_SCROLLBAR_ID
 }
 

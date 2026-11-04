@@ -1,16 +1,13 @@
 //! Os cartões do topo e dos básicos, em linhas de cartão (fatia H2, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos
-//! ids, mesmos eventos. O que ainda é de outra fatia entra capturado, como peça: a prévia e Clone, Inpaint, Line e
-//! Composite (H8). As condições são as de `paint_brush::plano_do_corpo` e
+//! ids, mesmos eventos. Só a prévia dos presets entra capturada, como peça. As condições são as de `paint_brush::plano_do_corpo` e
 //! `paint_top_basics`, e `every_old_id_is_still_painted_in_each_tool_and_medium` confere-as em 13 estados.
 
 use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{aberta, botoes, com_lei, em_pares, esmaecida, registra_lista};
 use crate::paint_wetpaint_presets_biblioteca as biblioteca;
 use crate::state_wet_presets::{self as st, VistaPresets};
-use crate::{cards_wet, number_field, paint_brush};
-use crate::{
-    paint_clone, paint_composite, paint_inpaint, paint_line, paint_wetpaint_presets, state,
-};
+use crate::{cards_composto, cards_ferramenta, cards_wet, number_field, paint_brush};
+use crate::{paint_wetpaint_presets, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::ids as core_ids;
@@ -91,6 +88,14 @@ pub(crate) enum Linha {
     Accumulate,
     Wash,
     Fio,
+    Clone,
+    Inpaint,
+    /// A linha do traço, com o número que sobrou à frente e a caixa do Composite atrás: irmãos curtos.
+    Traco {
+        sobra: Option<(&'static str, &'static [NodeId; 2])>,
+        composto: bool,
+    },
+    Composite,
     Peca(Captura),
     /// Um volume vivo do Wet Paint, pelo índice na tabela.
     Volume(usize),
@@ -184,12 +189,8 @@ pub(crate) fn do_topo(
 
 /// As linhas do cartão Basics. Vazio = o cartão não está à vista.
 pub(crate) fn dos_basicos(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
     brush: BrushSettings,
 ) -> Vec<Linha> {
-    let dono = Dono::novo(ctx, pids::PAINTER_CARD_BASICOS, ink, x, w);
     let mut l = Vec::new();
     let le_a_cor = brush.le(LinhaDaFerramenta::Cor);
     if le_a_cor && !brush.watercolor && brush.le(LinhaDaFerramenta::Blend) {
@@ -221,24 +222,26 @@ pub(crate) fn dos_basicos(
             l.push(Linha::Cor);
         }
     }
+    // O número que sobra divide a fila da linha do traço, se nada se põe entre os dois.
+    let sobra = if !brush.is_clone && !brush.is_inpaint && numeros.len() % 2 == 1 {
+        numeros.pop()
+    } else {
+        None
+    };
     l.extend(numeros.chunks(2).map(|par| Linha::Numeros(par.to_vec())));
     if brush.is_clone {
-        dono.peca(ctx, 1, &mut l, |ctx, tema, x, w, y| {
-            paint_clone::paint_clone_card(ctx, tema, x, w, y, brush)
-        });
+        l.push(Linha::Clone);
     }
     if brush.is_inpaint {
-        dono.peca(ctx, 2, &mut l, |ctx, tema, x, w, y| {
-            paint_inpaint::paint_inpaint_card(ctx, tema, x, w, y, brush)
-        });
+        l.push(Linha::Inpaint);
     }
-    dono.peca(ctx, 3, &mut l, |ctx, tema, x, w, y| {
-        paint_line::paint_line_card(ctx, tema, x, w, y, brush)
+    let composto = brush.le(LinhaDaFerramenta::Composite) && brush.composite_offered();
+    l.push(Linha::Traco {
+        sobra: sobra.map(|n| n.dados()),
+        composto,
     });
-    if brush.le(LinhaDaFerramenta::Composite) && brush.composite_offered() {
-        dono.peca(ctx, 4, &mut l, |ctx, tema, x, w, y| {
-            paint_composite::paint_composite_card(ctx, tema, x, w, y, brush)
-        });
+    if composto {
+        l.push(Linha::Composite);
     }
     if brush.accumulate_offered() {
         l.push(Linha::Par(Box::new([Linha::Accumulate, Linha::Wash])));
@@ -507,6 +510,10 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             b.smear_fio,
             y,
         ),
+        Linha::Clone => cards_ferramenta::clone(c, b, y),
+        Linha::Inpaint => cards_ferramenta::inpaint(c, y),
+        Linha::Traco { sobra, composto } => cards_ferramenta::linha(c, b, *sobra, *composto, y),
+        Linha::Composite => cards_composto::corpo(c, b, y),
         Linha::Peca(p) => p.repete(c, y + m::FIELD_ROW_GAP),
         Linha::Volume(i) => {
             let volumes = paint_wetpaint_presets::numeros_dos_volumes(b, b);

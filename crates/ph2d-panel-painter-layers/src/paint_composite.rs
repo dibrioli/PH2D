@@ -69,7 +69,7 @@ const CLEAR_W: f32 = 16.0; // LITERAL-PX-OK: the clear-override button
 /// ⚠️ **A contagem é a do MOTOR** (`BrushSettings::composite_ops`), nunca um literal: a extensão de
 /// 2026-09-20 encontrou exactamente um `3` escrito à mão neste ficheiro, e ele teria deixado duas
 /// camadas sem fileira com o motor a correr as cinco.
-fn n_camadas(brush: &BrushSettings) -> usize {
+pub(crate) fn n_camadas(brush: &BrushSettings) -> usize {
     brush.composite_len.min(brush.composite_ops.len())
 }
 
@@ -160,17 +160,17 @@ fn caixa_de_valor(
 
 /// Esta operação deposita a cor do pincel? (o espelho do `CompositeOp::deposita_cor` do motor —
 /// ⚠️ o painel não vê o enum, e o gate `a_fileira_da_cor_so_existe_onde_a_cor_chega` ata os dois.)
-fn deposita_cor(op: u8) -> bool {
+pub(crate) fn deposita_cor(op: u8) -> bool {
     op == 0
 }
 
 /// Esta posição é uma BORRACHA? (o discriminante `3` do [`ph2d_tool_painter`] wire)
-fn apaga(op: u8) -> bool {
+pub(crate) fn apaga(op: u8) -> bool {
     op == 3
 }
 
 /// O nome do escopo `e` da borracha — a mesma forma do [`op_name`].
-fn escopo_name(e: u8) -> &'static str {
+pub(crate) fn escopo_name(e: u8) -> &'static str {
     match e {
         1 => tr("panel.painter_layers.composite.erase_stroke"),
         _ => tr("panel.painter_layers.composite.erase_image"),

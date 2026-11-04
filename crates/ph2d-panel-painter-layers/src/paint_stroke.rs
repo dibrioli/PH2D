@@ -16,9 +16,8 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, TypeToken};
 use ph2d_tool_painter::ids::painter_brush_stroke_method_option_id;
 use ph2d_tool_painter::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX, BrushSettings,
@@ -319,39 +318,17 @@ fn paint_method_row(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let show_save = brush.has_drawn_curve;
-    let save_sq = ROW_H_PX;
-    let save_gap = Spacing::Xs.px();
-    let dd_w = if show_save {
-        (content_w - save_sq - save_gap).max(0.0)
-    } else {
-        content_w
-    };
     let (ny, open) = paint_dropdown_row(
         ctx,
         theme,
         x,
-        dd_w,
+        content_w,
         y,
         "panel.painter_layers.stroke.method",
         core_ids::PAINTER_BRUSH_STROKE_METHOD,
         brush.stroke_method,
         stroke_method_name(brush.stroke_method),
     );
-    if show_save {
-        // FUTURE (not implemented yet — Enio 2026-06-28): this button will persist the drawn curve TOGETHER
-        // with the current Brush/Layer panel settings as a dynamic OBJECT, so the whole thing can be reloaded
-        // later and even animated. For now it only paints + shows a tooltip; clicking it is a deliberate
-        // no-op (no route in the tool) until the object format + reload/animation pipeline land.
-        let r = Rect::new(x + content_w - save_sq, y, save_sq, ROW_H_PX);
-        apply::paint_icon_button(
-            ctx,
-            theme,
-            r,
-            ph2d_editor_core::IconId::Save,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-        );
-    }
     if let Some(r) = open {
         state::set_pending_brush_stroke_method_dd(Some((r, brush.stroke_method)));
     }

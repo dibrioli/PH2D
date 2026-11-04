@@ -10,7 +10,6 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
-use ph2d_i18n::tr;
 
 pub fn populate(store: &mut WidgetStore) {
     register_chrome_buttons(store);
@@ -478,10 +477,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_STROKE_OP_OVERLAY,
         ph2d_tool_painter::ids::PAINTER_STROKE_OP_ADD,
         ph2d_tool_painter::ids::PAINTER_STROKE_OP_REMOVE,
-        // Save As Object (floppy) — shown beside the Method dropdown only while a curve is drawn. The
-        // action is not wired yet (clicking is a deliberate no-op); registering the slot gives it hover /
-        // press feedback + a tooltip now, and lets the future route deliver the Click without a re-register.
-        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
         ph2d_tool_painter::ids::PAINTER_BRUSH_TILING_RESET,
         // Watercolor section: the section reset + the Grain-section "Same as Paper" toggle + the Paper
         // section reset. (Pigment merged into the Mix slider; Paper Rake/Random dropped from the UI —
@@ -535,11 +530,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         );
     }
     crate::populate_wetpaint::register_wetpaint(store);
-    // Mouse-over hint for the (not-yet-wired) Save As Object button.
-    store.set_tooltip(
-        ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
-        tr("panel.painter_layers.layers.save_as_object"),
-    );
     crate::populate_dropdowns::register_dropdowns(store);
 }
 

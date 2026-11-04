@@ -22,7 +22,7 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken};
 use ph2d_tool_painter::{BrushSettings, LineKind};
 
 /// O nome de cada tipo, para o chip e para as opções do popover.
-fn kind_name(k: LineKind) -> &'static str {
+pub(crate) fn kind_name(k: LineKind) -> &'static str {
     match k {
         LineKind::None => tr("panel.painter_layers.line.none"),
         LineKind::Speed => tr("panel.painter_layers.line.speed"),
@@ -186,14 +186,14 @@ pub(crate) fn altura_das_linhas(kind: LineKind, row_w: f32) -> f32 {
 
 /// O checkbox de um tipo: `(id, CHAVE do rótulo, o valor)` — a chave, como a das barras
 /// ([`crate::line_barras::Barra`]), é traduzida por quem PINTA.
-type ParamCheckbox = (
+pub(crate) type ParamCheckbox = (
     ph2d_editor_core::NodeId,
     &'static str,
     fn(BrushSettings) -> bool,
 );
 
 /// O checkbox deste tipo, se houver.
-fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
+pub(crate) fn checkbox_of(kind: LineKind) -> Option<ParamCheckbox> {
     match kind {
         LineKind::Sketchy => Some((
             ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY,

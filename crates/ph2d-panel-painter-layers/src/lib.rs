@@ -45,7 +45,11 @@ mod card; // the titled row-box shared by the brush panel technique sections
 /// O painel em cartões (`docs/CartoesUI/13_PAINTER_PLANO.md`).
 pub mod cards;
 mod cards_aleatorio; // o cartão Randomize Color
+mod cards_camadas; // a vista Layers em linhas de cartão
 mod cards_caneta; // o cartão Pen, em três grupos
+mod cards_composto; // o Composite Brush em linhas de cartão
+mod cards_exclusivos; // Máscara, Deform e Selection em linhas de cartão
+mod cards_ferramenta; // Line, Clone, Inpaint e os verbos do Sculpt
 mod cards_captura; // o corpo antigo corre uma vez com o `PaintCtx` e o cartão repete-o
 mod cards_grao; // o cartão Grain: prévia, rampa e títulos internos capturados
 mod cards_impasto;

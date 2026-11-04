@@ -27,6 +27,36 @@ pub(crate) fn corpo(id: NodeId) -> Option<Corpo> {
     Some(f)
 }
 
+/// A secção convertida está à vista? O título e o Reset dela: as condições de `paint_brush_sections`.
+pub(crate) fn presente(
+    id: NodeId,
+    b: &ph2d_tool_painter::BrushSettings,
+) -> Option<(String, Option<NodeId>)> {
+    use ph2d_tool_painter::LinhaDaFerramenta as L;
+    let fora = !b.is_inpaint;
+    if id == pids::PAINTER_CARD_MIXING {
+        let gesto = !b.wetpaint || b.le(L::MisturaDoPigmento);
+        (fora && b.pigment_offered && gesto)
+            .then(|| (tr("panel.painter_layers.brush.mixing").to_owned(), None))
+    } else if id == pids::PAINTER_BRUSH_SYMMETRY_SECTION {
+        (fora && b.le(L::Simetria)).then(|| {
+            (
+                tr("panel.painter_layers.symmetry.symmetry").to_owned(),
+                Some(pids::PAINTER_BRUSH_SYMMETRY_RESET),
+            )
+        })
+    } else if id == pids::PAINTER_BRUSH_TILING_SECTION {
+        fora.then(|| {
+            (
+                tr("panel.painter_layers.stroke.tiling").to_owned(),
+                Some(pids::PAINTER_BRUSH_TILING_RESET),
+            )
+        })
+    } else {
+        None
+    }
+}
+
 fn pincel() -> ph2d_tool_painter::BrushSettings {
     state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH)
 }
@@ -43,6 +73,15 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
                 &paint_brush::FALLBACK_BRUSH,
             ))),
         },
+    );
+    number_field::arm_field(
+        store,
+        pids::PAINTER_WATERCOLOR_MIX,
+        paint_pigment::pigment_amount(&brush),
+        0.0,
+        1.0,
+        number_field::FINE_STEP,
+        2,
     );
     let segmentos = pids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP;
     store.mark_card_field(

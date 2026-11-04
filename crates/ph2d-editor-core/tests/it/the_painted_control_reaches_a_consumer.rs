@@ -142,12 +142,6 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
          `both_bars_swallow_every_pixel_they_paint`, que sangra se o `hit_index.register` sair. O \
          consumidor positivo (o gizmo 3D, via `CHROME_BACKDROPS`) saiu com o 3D (ADR-0179).",
     ),
-    (
-        "PAINTER_BRUSH_STROKE_SAVE_OBJECT",
-        "MORTO POR DECISAO, declarado no fonte: `paint_stroke.rs` diz *\"clicking it is a \
-         deliberate no-op (no route in the tool)\"* ate' o formato de objecto existir. Fica aqui \
-         para que o dia em que alguem o ligar apague esta linha.",
-    ),
     // ⚠️⚠️ **`INPUT_MAP_SURFACE` saiu daqui em 2026-08-30, e a história vale mais que a linha.**
     // Ele entrou como MORTO, foi RECLASSIFICADO como *vivo por um término que esta régua não tem*
     // — o término dele é a **AUSÊNCIA**: todo caminho de canvas do shell só corre com o índice de

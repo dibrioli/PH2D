@@ -161,6 +161,53 @@ pub(crate) fn grupo_inicial(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
     c.hint(tr(chave), y - m::FIELD_ROW_GAP)
 }
 
+/// O passo do chip e o número que ele mostra para a pista: a lei é a do store.
+pub(crate) fn arma_barra(
+    store: &mut WidgetStore,
+    [slider, chip]: [NodeId; 2],
+    pista: f32,
+    de_fabrica: f32,
+    casas: usize,
+) {
+    let passo = store
+        .number_range(chip)
+        .map_or(crate::cards_topo::PASSO_DO_PINCEL, |(_, _, s)| s);
+    let padrao = store.linked_chip_display(chip, de_fabrica);
+    store.mark_card_field(
+        chip,
+        ph2d_editor_core::widget::card_field::CardFieldSpec {
+            step: passo,
+            scrub: passo,
+            default: Some(f64::from(padrao)),
+        },
+    );
+    let mostrado = store.linked_chip_display(chip, pista);
+    crate::number_field::mirror_value(store, chip, mostrado, casas);
+    let _ = crate::esmaecer::poe_dica(store, &[slider, chip]);
+}
+
+/// Uma barra com o chip ligado, numa tabela: a pista lê-se do pincel e o número é o que o store projecta.
+pub(crate) struct Pista {
+    pub(crate) chave: &'static str,
+    pub(crate) ids: [NodeId; 2],
+    pub(crate) le: fn(&ph2d_tool_painter::BrushSettings) -> f32,
+    pub(crate) casas: usize,
+}
+
+impl Pista {
+    pub(crate) fn item(&self) -> Item {
+        Item::Barra {
+            chave: self.chave,
+            ids: self.ids,
+        }
+    }
+
+    pub(crate) fn arma(&self, store: &mut WidgetStore, b: &ph2d_tool_painter::BrushSettings) {
+        let fabrica = (self.le)(&crate::paint_brush::FALLBACK_BRUSH);
+        arma_barra(store, self.ids, (self.le)(b), fabrica, self.casas);
+    }
+}
+
 /// Um controlo curto de uma fila: divide a linha com o vizinho, se os dois cabem inteiros.
 pub(crate) enum Item {
     Num(Numero),
@@ -185,11 +232,6 @@ pub(crate) enum Item {
     Barra {
         chave: &'static str,
         ids: [NodeId; 2],
-    },
-    /// Um verbo curto, irmão de um controlo.
-    Botao {
-        id: NodeId,
-        texto: &'static str,
     },
     /// Uma amostra com o código, na cor que o `prepare` pôs no store.
     Cor {
@@ -217,7 +259,6 @@ impl Item {
             Self::Barra { ids, .. } => ids[1],
             Self::Lista { id, .. }
             | Self::ListaComMarca { id, .. }
-            | Self::Botao { id, .. }
             | Self::Caixa { id, .. }
             | Self::Cor { id, .. } => *id,
         }
@@ -232,7 +273,7 @@ impl Item {
         inercias.dica_de(self.id()).is_some()
     }
 
-    fn cell(&self) -> Cell<'_> {
+    pub(crate) fn cell(&self) -> Cell<'_> {
         match self {
             Self::Num(n) => {
                 let rotulo = tr(n.chave);
@@ -265,11 +306,6 @@ impl Item {
                 .label(rotulo)
                 .key(ids)
             }
-            Self::Botao { id, texto } => Cell::new(Widget::Button {
-                id: *id,
-                text: texto,
-                primary: false,
-            }),
             Self::Caixa { id, chave, on } => marca(*id, chave, *on),
             Self::Cor {
                 id,

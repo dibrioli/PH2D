@@ -2,21 +2,18 @@
 //! caixas viram grupos, a lista TOOL desce em linhas, e o rig de luz fica pela lâmpada escolhida. Os knobs do Sculpt
 //! continuam no pintor deles, capturados, até à fatia dele (H8).
 
-use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{escolha, grupo, numero, numero_e_cor};
 use crate::cards_wet::{arma_numeros, caixa, campo, numeros};
 use crate::paint_wetpaint::Numero;
 use crate::{
     esmaecer, number_field as nf, paint, paint_brush, paint_impasto as pi, paint_impasto_tool,
-    paint_sculpt, state,
+    state,
 };
 use ph2d_a11y::NodeId;
-use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{BrushSettings, PaintMedia};
@@ -46,30 +43,6 @@ pub(crate) fn presente(b: &BrushSettings) -> bool {
 
 pub(crate) fn titulo() -> &'static str {
     tr("panel.painter_layers.impasto.title")
-}
-
-/// Os knobs do verbo Sculpt na mão.
-pub(crate) fn escultura(
-    ctx: &mut PaintCtx,
-    ink: CardInk,
-    (x, w): (f32, f32),
-    brush: BrushSettings,
-) -> Option<Captura> {
-    if !brush.impasto || !brush.is_sculpt {
-        return None;
-    }
-    let secao = pids::PAINTER_IMPASTO_SECTION;
-    let chave = NodeId(secao.0.wrapping_add(1));
-    let topo = ctx.slot.y;
-    let (x, tema) = (x_de(chave, x), ink.theme);
-    Some(Captura::da_peca(
-        ctx,
-        chave,
-        secao,
-        ink,
-        (x, y_de(chave, topo)),
-        |ctx, y| paint_sculpt::paint_sculpt_rows(ctx, tema, x, w, y, brush),
-    ))
 }
 
 fn do_corpo(b: &BrushSettings) -> [Numero; 4] {
@@ -383,7 +356,7 @@ fn luz(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
 }
 
 /// O corpo, pela ordem das perguntas do painel de antes: o gesto, a ferramenta, o corpo, a faca, o material, a sala.
-pub(crate) fn corpo(c: &mut CardCtx<'_>, esculpe: Option<&Captura>, y: f32) -> f32 {
+pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     if !b.impasto {
         return y;
@@ -398,9 +371,9 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, esculpe: Option<&Captura>, y: f32) -> f
         y,
     );
     let mut y = ferramentas(c, &b, y);
-    if let Some(e) = esculpe {
+    if b.impasto && b.is_sculpt {
         y = grupo(c, "panel.painter_layers.impasto.sculpt", y);
-        y = e.repete(c, y + m::FIELD_ROW_GAP);
+        y = crate::cards_ferramenta::escultura(c, &b, y);
     }
     y = grupo(c, "panel.painter_layers.impasto.body", y);
     y = numeros(c, &do_corpo(&b), y);

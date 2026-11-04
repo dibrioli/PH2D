@@ -640,7 +640,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.no_canvas" => "no canvas",
         "panel.painter_layers.wetpaint.resolution" => "fluid {gw}x{gh} - flow {fw}x{fh}",
         "panel.painter_layers.wetpaint.tilt" => "Tilt",
-        "panel.painter_layers.layers.save_as_object" => "Save As Object",
         // ph2d-migrar-texto:end
         "panel.painter_layers.adjust.tone_not_relief" => {
             "The paint's relief stays as it is: this effect works on tones. Blur and Sharpen \

@@ -135,18 +135,22 @@ fn a_loose_captured_list_opens_under_its_box() {
     }
 }
 
-/// A tinta do cartão chega ao corpo capturado: com um tema só naquele cartão, as caixas dele usam-no.
+/// A tinta do cartão chega à peça capturada: com um tema só naquele cartão, as caixas dela usam-no. Medido em 04/11:
+/// Máscara deu 0 porque só tinha botões planos e amostras, sem caixa de cartão (legítimo; nativa desde a H8). O que resta
+/// capturado com caixas são os parâmetros de um ajuste.
 #[test]
-#[ignore = "dívida H7: o Stroke deixou de ser captura; achar outro corpo capturado com caixas de cartão (Máscara e Inpaint deram 0)"]
 fn the_captured_body_wears_the_card_ink() {
-    // O corpo inteiro da Máscara continua capturado, até à H8.
-    let sec = p::PAINTER_MASK_SECTION;
-    let mut pincel = FALLBACK_BRUSH;
-    pincel.is_mask = true;
-    let mut mesa = Mesa::nova(true, pincel, false);
+    let sec = p::PAINTER_CARD_CAMADAS;
+    let mut pilha = ph2d_tool_painter::LayerStack::new();
+    let _ = pilha.add_raster("Base", 8, 8).expect("a camada nasce");
+    let _ = pilha
+        .add_adjustment(ph2d_tool_painter::AdjustmentKind::Bloom)
+        .expect("o ajuste nasce");
+    let mut mesa = Mesa::nova(true, FALLBACK_BRUSH, true);
+    ph2d_panel_painter_layers::state::set_current_layers(Some(pilha));
     let tema = Theme::Workshop;
     mesa.host.store_mut().set_section_theme(sec, Some(tema));
-    mesa.so_abertos(&[sec]);
+    mesa.assenta();
     let tinta = CardInk::of_card(Some(tema), Theme::default())
         .color(ColorToken::CardField)
         .premultiply()
@@ -158,7 +162,8 @@ fn the_captured_body_wears_the_card_ink() {
         .into_iter()
         .filter(|c| *c == tinta)
         .count();
-    assert!(n >= 2, "as caixas do corpo não levam a tinta: {n}");
+    ph2d_panel_painter_layers::state::set_current_layers(None);
+    assert!(n >= 2, "as caixas da peça não levam a tinta: {n}");
 }
 
 /// Sob uma barra de rolagem, o corpo capturado acompanha a largura real da coluna.

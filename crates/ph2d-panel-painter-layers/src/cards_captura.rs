@@ -11,7 +11,6 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::CardCtx;
-use ph2d_editor_core::widget::absorb_next_header;
 use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::zones::Rect;
 use ph2d_vector::{Affine, VectorScene};
@@ -25,12 +24,6 @@ thread_local! {
     static ONDE: RefCell<Onde> = const { RefCell::new(BTreeMap::new()) };
     /// A coluna dos corpos no último quadro: `(x, w)`.
     static COLUNA: Cell<Option<(f32, f32)>> = const { Cell::new(None) };
-    static RESET: Cell<Option<NodeId>> = const { Cell::new(None) };
-}
-
-/// O Reset da secção que está a correr: passa ao cabeçalho do cartão, com o mesmo id.
-pub(crate) fn declara_reset(id: NodeId) {
-    RESET.with(|r| r.set(Some(id)));
 }
 
 /// A coluna do quadro anterior; sem ele, a do encaixe.
@@ -69,32 +62,22 @@ pub(crate) struct Captura {
     x: f32,
     y: f32,
     fundo: f32,
-    /// O título que o cabeçalho absorvido deu. `None` numa secção: ela não está à vista.
-    pub(crate) titulo: Option<String>,
-    pub(crate) reset: Option<NodeId>,
 }
 
 impl Captura {
-    /// Corre `pintor` com o `PaintCtx` real. `absorve`: o 1.º cabeçalho dá o título em vez de se pintar.
+    /// Corre `pintor` com o `PaintCtx` real.
     pub(crate) fn de(
         ctx: &mut PaintCtx,
         id: NodeId,
         ink: CardInk,
         (x, y): (f32, f32),
-        absorve: bool,
         pintor: impl FnOnce(&mut PaintCtx, f32) -> f32,
     ) -> Self {
         let mut cena = VectorScene::new();
         let mut alvos = HitIndex::default();
         std::mem::swap(ctx.scene, &mut cena);
         std::mem::swap(ctx.host.hit_index_mut(), &mut alvos);
-        RESET.with(|r| r.set(None));
-        let corre = |ctx: &mut PaintCtx| card_ink::com(ink, || pintor(ctx, y));
-        let (fundo, cabecalho) = if absorve {
-            absorb_next_header(|| corre(ctx))
-        } else {
-            (corre(ctx), None)
-        };
+        let fundo = card_ink::com(ink, || pintor(ctx, y));
         std::mem::swap(ctx.scene, &mut cena);
         std::mem::swap(ctx.host.hit_index_mut(), &mut alvos);
         Self {
@@ -105,8 +88,6 @@ impl Captura {
             x,
             y,
             fundo,
-            titulo: cabecalho.map(|c| c.0),
-            reset: RESET.with(Cell::get),
         }
     }
 
@@ -119,7 +100,7 @@ impl Captura {
         onde: (f32, f32),
         pintor: impl FnOnce(&mut PaintCtx, f32) -> f32,
     ) -> Self {
-        let mut c = Self::de(ctx, chave, ink, onde, false, pintor);
+        let mut c = Self::de(ctx, chave, ink, onde, pintor);
         c.secao = secao;
         c
     }

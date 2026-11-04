@@ -227,7 +227,7 @@ fn a_leitura_junta_uma_entrada_partida_em_duas_linhas() {
     // ⛔ E o CONTROLO: uma entrada de UMA linha continua inteira.
     let (_, _, _, curta) = todas
         .iter()
-        .find(|(_, _, chave, _)| chave == "panel.painter_layers.layers.save_as_object")
-        .expect("a chave do Save As Object existe");
-    assert_eq!(curta, "Save As Object");
+        .find(|(_, _, chave, _)| chave == "panel.painter_layers.composite.strength")
+        .expect("a chave da Strength existe");
+    assert_eq!(curta, "Strength");
 }

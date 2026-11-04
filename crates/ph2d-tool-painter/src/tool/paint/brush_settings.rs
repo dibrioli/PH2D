@@ -224,8 +224,6 @@ pub struct BrushSettings {
     pub offset_trim: bool,
     /// Whether the Simplify button shows: a curve is editing AND (Free Hand, or the user has added a point).
     pub can_simplify: bool,
-    /// A curve with points is being edited (Curve / Free Hand / converted shape) — gates the Save-As-Object button.
-    pub has_drawn_curve: bool,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Continuous Spacing** on/off (the Shape Bristles drag along each dab's step; doc 31 §4).

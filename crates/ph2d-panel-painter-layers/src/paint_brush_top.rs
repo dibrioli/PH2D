@@ -6,7 +6,7 @@
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold, absorbing_next_header,
+    Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionFold,
     paint_checkbox, paint_icon_button, paint_section_header, paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
@@ -139,15 +139,6 @@ pub(crate) fn paint_collapsible_section(
     //    livro do quadro se é do corpo — o que torna o título clicável para o menu de tema.
     let header = crate::plano_corpo::cabecalho(ctx, section_id, label).reserve_right(header_h);
     let header_rect = Rect::new(x, y, content_w, header_h);
-    // Num cartão, o título e o Reset moram no cabeçalho dele: aqui só se dá o nome e a dobra.
-    if absorbing_next_header() {
-        paint_section_header(&header, header_rect, ctx.scene, ctx.text_system, theme);
-        crate::cards::declara_reset(reset_id);
-        let scene = &mut *ctx.scene;
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        let fold = SectionFold::begin(store, section_id, x, content_w, y, scene, hit_index);
-        return (y, fold);
-    }
     let reset_state = ctx.host.store().button_visual(reset_id);
     {
         let scene = &mut *ctx.scene;

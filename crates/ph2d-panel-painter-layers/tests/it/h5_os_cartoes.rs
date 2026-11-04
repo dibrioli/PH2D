@@ -57,7 +57,7 @@ fn por_camada() -> BrushSettings {
     b
 }
 
-fn com_rampa() -> BrushSettings {
+pub(super) fn com_rampa() -> BrushSettings {
     let mut b = rampa_inerte();
     b.shape_kind = TextureKind::COUNT - 2;
     b.inercias = Inercias::NENHUMA;

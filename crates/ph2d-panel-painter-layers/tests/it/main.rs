@@ -30,6 +30,8 @@ mod h4_os_cartoes; // o cartão Wet Paint em linhas de cartão
 mod h5_os_cartoes; // Shape e Shape Color em linhas de cartão, e as dívidas de H3 e H4
 mod h6_os_cartoes; // Paper, Grain e Randomize Color em linhas de cartão
 mod h7_os_cartoes; // Stroke e Pen em linhas de cartão
+mod h8_os_cartoes; // Composite, Line, Clone, Inpaint, Mask, Deform, Selection, Sculpt
+mod h9_os_cartoes; // a vista Layers
 mod macro_estado_inicial; // o estado inicial de uma macro leva cada controlo do Wet Paint
 mod o_censo_so_encolhe; // o que muda o ajuste e não a tinta: esmaecido ou com motivo na lista
 mod o_flow_a_vista_e_o_flow_que_age; // o Flow à vista ⟺ a ferramenta no meio dela o lê (24/10)

@@ -18,7 +18,7 @@ pub(crate) const SEM_RECORTE: Rect = Rect {
     h: ALCANCE * 2.0,
 };
 /// Um quarto do maior `f32`: `x + w` não pode dar 0 (com `MIN + MAX` nenhum alvo cabia e nada se clicava).
-const ALCANCE: f32 = f32::MAX / 4.0;
+const ALCANCE: f32 = f32::MAX / 4.0; // LITERAL-PX-OK: fração do domínio do f32, não uma medida
 
 /// Uma fileira de parâmetro. `vivo = false` pinta e não regista, como no painel de antes.
 #[allow(clippy::too_many_arguments)]

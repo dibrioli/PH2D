@@ -461,3 +461,32 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod rotulo_tests {
+    use super::*;
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+
+    /// ⭐ Nos cartões cada número do Ghost tem o seu nome à frente; `PH2D_CARDS=0` é a lista de antes.
+    /// *Mutação: tirar o `insert` ⇒ vermelho.*
+    #[test]
+    fn os_numeros_do_ghost_tem_nome_so_nos_cartoes() {
+        let snap = FlipStripSnapshot::default();
+        let antes_de = |v: &[Item], id| {
+            let i = v
+                .iter()
+                .position(|it| matches!(it, Item::Number(n, _) if *n == id))
+                .expect("o número");
+            matches!(v[i - 1], Item::Label(_))
+        };
+        force_cards_on_this_thread(Some(true));
+        let v = items(&snap);
+        assert!(antes_de(&v, ids::FLIP_GHOST_BEFORE_NUM));
+        assert!(antes_de(&v, ids::FLIP_GHOST_AFTER_NUM));
+        force_cards_on_this_thread(Some(false));
+        let v = items(&snap);
+        assert!(!antes_de(&v, ids::FLIP_GHOST_BEFORE_NUM));
+        assert!(!antes_de(&v, ids::FLIP_GHOST_AFTER_NUM));
+        force_cards_on_this_thread(None);
+    }
+}

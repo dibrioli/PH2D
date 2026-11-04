@@ -518,3 +518,13 @@ pub(crate) fn body_ctx<'a>(
         open_fold: None,
     }
 }
+
+#[cfg(test)]
+mod nome_tests {
+    /// ⭐ Um objecto sem nome diz «1 object», e não «1 objects». *Mutação: a frase sem o marcador ⇒ vermelho.*
+    #[test]
+    fn um_objeto_no_singular() {
+        assert_eq!(super::selection_name(1), "1 object");
+        assert_eq!(super::selection_name(3), "3 objects");
+    }
+}

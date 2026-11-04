@@ -43,7 +43,24 @@ Não muda: régua, faixas, curvas, costura de nomes, barra de rolagem, popovers,
 Não muda: geometria dos nós, portas, fios, cápsula, véu, hits, divisor. Sem título nem barra: o grafo não perde altura (0 px).
 Legibilidade: o cabeçalho colorido por categoria e o contraste dos nomes de porta ficam; a régua é a foto ao zoom 1 e no fit.
 
-## Fica para a fatia seguinte, se não couber
+## Bloco I2: o que faltou aos painéis de desenho próprio
 
-Barra de rolagem da folha e régua na tinta do cartão · lista suspensa aberta no tom do cartão (ABERTO de 05 §9) · o que o
-«…» oferece: hoje só os três resets, sem efeito num painel sem cartões.
+| Painel | A área de trabalho (intocada) | O que mudou à volta | Altura (mock) |
+|---|---|---|---|
+| Timeline, sobras | folha, curvas | sem o «…»; régua, barra, zebra, costura e listas abertas na tinta do cartão (`folha_tinta.rs`) | 126 px, como na I1 |
+| Audio Editor | a onda, régua, seleção, cabeça (shell) | 8 secções = 8 cartões com o mesmo id, corpo pelos mesmos pintores (`cards.rs`, `cards_fileira.rs`); moldura da janela na crate do painel (`cards_moldura.rs`) | lista: rola; janela da onda a mesma |
+| Pixel Timeline | grelha camadas × frames | moldura sem cartão, barra em ícones, segmentos e chip (`barra_cartoes.rs`); propriedades na tinta do cartão | 6 linhas → 6; 1.ª linha 103 → 104 px |
+| Pixel Preview | a imagem | pílula, título e verbos da lista | título 42 → 42 px |
+| Editor de scripts | o texto, a calha | `chrome::Ui` e a barra de estado na tinta da lista: barra, busca, console, lista | 0 px |
+
+**O «…» saiu, não ganhou função.** As linhas dele repõem cartões, e a moldura sem cartão não tem nenhum. Resets de layout
+têm outra casa; inventar-lhe uma função só para o manter é o botão morto com outro nome. `pinta_moldura` é a única moldura
+sem cartão: toda lista com cartões conserva o menu. A catraca `a_marca` reconhece a moldura pelo «×».
+
+**A fileira de parâmetro do Áudio** não virou campo Figma: o valor é uma string do motor, com a curva de cada efeito
+(`fileira_de_param.rs`). No cartão: rótulo ao lado, `CardBar` com o id do `Slider`, leitura à direita.
+
+**Recusa medida:** `SEM_RECORTE` com `f32::MIN + f32::MAX` dá 0 e nenhum alvo cabe: a foto saía bonita e nada se clicava. Só
+o teste por gesto apanhou. A bateria foi corrida antes das fotos finais.
+
+**Fica:** os números das propriedades da Pixel Timeline continuam com as setas (`paint_field_row` não pinta no cartão).

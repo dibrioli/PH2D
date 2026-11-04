@@ -3,7 +3,7 @@
 
 use crate::cards_captura::{Captura, x_de, y_de};
 use crate::cards_linhas::{aberta, botoes, grupo, grupo_inicial, numero, registra_lista};
-use crate::cards_wet::{self, arma_numeros, campo_e_caixa, numeros};
+use crate::cards_wet::{arma_numeros, campo_e_caixa, numeros};
 use crate::paint_wetpaint::Numero;
 use crate::{
     esmaecer, number_field as nf, paint_brush, paint_watercolor as pw,
@@ -13,7 +13,7 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::CardCtx;
+use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
@@ -248,11 +248,14 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: &Captura, y: f32) -> f32 {
     }
     let y = grupo_inicial(c, "panel.painter_layers.watercolor.wash", y);
     let y = numeros(c, &da_lavagem(&b), y);
-    let y = cards_wet::lista(
-        c,
-        "panel.painter_layers.watercolor.flow",
-        FLOW,
-        flow::rotulo_do_flow(b.flow_kind),
+    // Sem marca de animação: o Flow nunca a teve (`each_control_keeps_its_animation_mark`).
+    let y = c.full(
+        Some(tr("panel.painter_layers.watercolor.flow")),
+        Widget::Dropdown {
+            id: FLOW,
+            text: flow::rotulo_do_flow(b.flow_kind),
+            options: &[],
+        },
         y,
     );
     let y = previa.repete(c, y + m::FIELD_ROW_GAP);

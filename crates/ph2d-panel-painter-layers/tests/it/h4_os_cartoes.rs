@@ -5,6 +5,8 @@
 use super::h1_os_cartoes::{Mesa, esc, pincel, valor_enviado};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::censo;
+use ph2d_editor_core::widget::key_mark::{KeyMark, add_key_mark, key_mark_target, set_key_marks};
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{BrushSettings, PaintMedia};
 use std::collections::BTreeSet;
@@ -85,6 +87,12 @@ fn universo() -> BTreeSet<NodeId> {
     u.extend(p::PAINTER_IMPASTO_TOOL_IDS);
     u.extend(CORES);
     u.insert(p::PAINTER_WATERCOLOR_FLOW_KIND);
+    u.extend([
+        p::PAINTER_SCULPT_OFFSET_CHIP,
+        p::PAINTER_SCULPT_ANGLE_CHIP,
+        p::PAINTER_SCULPT_RAKE,
+        p::PAINTER_SCULPT_FILTER,
+    ]);
     u
 }
 
@@ -94,9 +102,20 @@ fn estados() -> Vec<(&'static str, BrushSettings)> {
     esculpe.sculpt_knob_family = 1;
     esculpe.sculpt_is_chisel = true;
     esculpe.sculpt_filters = true;
+    let mut sem_relevo = impasto();
+    sem_relevo.impasto_section_applies = false;
     vec![
+        ("impasto que não age neste modo", sem_relevo),
         ("aguada", aguada()),
+        (
+            "borracha na aguada",
+            pincel(PaintMedia::Watercolor, "eraser").0,
+        ),
         ("impasto", impasto()),
+        (
+            "borracha no impasto",
+            pincel(PaintMedia::Impasto, "eraser").0,
+        ),
         ("faca e lâmpada 2", faca()),
         ("esculpir", esculpe),
     ]
@@ -268,6 +287,12 @@ fn no_row_of_the_watercolor_card_overlaps_another() {
             assert!(separados, "{a:?} por cima de {b:?}: {ra:?} {rb:?}");
         }
     }
+    let lista = m.rect(p::PAINTER_WATERCOLOR_FLOW_KIND).expect("a lista");
+    let tamanho = m.rect(p::PAINTER_WATERCOLOR_FLOW_SIZE).expect("Flow Size");
+    assert!(
+        tamanho.y >= lista.y + lista.h + 56.0,
+        "a prévia do Flow não tem lugar: {lista:?} {tamanho:?}"
+    );
     let angulo = m
         .rect(p::PAINTER_WATERCOLOR_FLOW_ANGLE)
         .expect("Flow Angle");
@@ -409,4 +434,109 @@ fn the_reset_of_each_section_lives_in_the_card_header() {
         assert!(!novo.is_empty(), "{id:?}: nada no barramento");
         assert_eq!(velho, novo, "{id:?}");
     }
+}
+
+/// Cada número semeia o valor do painel de antes, da lâmpada escolhida.
+#[test]
+fn every_number_shows_the_same_value_as_the_old_panel() {
+    let mut b = faca();
+    b.impasto_rig.lights[1].angle_deg = 77;
+    b.impasto_rig.lights[1].intensity = 1.5;
+    let mut a = aguada();
+    a.wet_pull = 0.37;
+    a.dry_time_s = 23.0;
+    for (secao, b, nosso) in [
+        (AGUA, a, numeros_da_agua()),
+        (IMPASTO, b, numeros_do_impasto()),
+    ] {
+        let (velha, nova) = (so(secao, false, b), so(secao, true, b));
+        for id in numeros_em(secao, b, &nosso) {
+            let (v, n) = (
+                velha.host.store().number_value(id),
+                nova.host.store().number_value(id),
+            );
+            assert_eq!(v, n, "{id:?}");
+            assert!(n.is_some(), "{id:?} sem semente");
+            assert_eq!(
+                velha.host.store().number_range(id),
+                nova.host.store().number_range(id),
+                "a faixa de {id:?}"
+            );
+        }
+    }
+}
+
+/// Os números, a lista e as cores levam a marca de animação de antes.
+#[test]
+fn each_control_keeps_its_animation_mark() {
+    let conta = |secao, b, cartoes: bool, ids: &[NodeId]| {
+        set_key_marks(std::collections::BTreeMap::new());
+        for id in ids {
+            add_key_mark(*id, KeyMark::Chave);
+        }
+        let m = so(secao, cartoes, b);
+        let alvos = m
+            .ids()
+            .into_iter()
+            .filter(|i| key_mark_target(*i).is_some())
+            .count();
+        set_key_marks(std::collections::BTreeMap::new());
+        alvos
+    };
+    let mut agua: Vec<NodeId> = numeros_da_agua().into_iter().collect();
+    agua.push(p::PAINTER_WATERCOLOR_FLOW_KIND);
+    let mut imp: Vec<NodeId> = numeros_do_impasto().into_iter().collect();
+    imp.extend(CORES);
+    for (secao, b, ids) in [(AGUA, aguada(), agua), (IMPASTO, faca(), imp)] {
+        let (velha, nova) = (conta(secao, b, false, &ids), conta(secao, b, true, &ids));
+        assert_eq!(velha, nova, "marcas de antes × de agora");
+        assert!(nova >= ids.len() - 1, "só {nova} para {}", ids.len());
+    }
+}
+
+/// A opção inerte (Grain sem textura) diz porquê, com a dica de antes, e continua a responder.
+#[test]
+fn the_inert_option_keeps_its_hint() {
+    let b = impasto();
+    let id = p::PAINTER_IMPASTO_SOURCE_GRAIN;
+    let (velha, nova) = (so(IMPASTO, false, b), so(IMPASTO, true, b));
+    assert_eq!(
+        velha.host.store().tooltip_for(id),
+        nova.host.store().tooltip_for(id)
+    );
+}
+
+/// O duplo clique do campo volta à fábrica do motor.
+#[test]
+fn each_number_knows_its_factory_value() {
+    let m = so(IMPASTO, true, impasto());
+    let f = m
+        .host
+        .store()
+        .card_field(p::PAINTER_IMPASTO_SHINE)
+        .expect("marcado")
+        .default;
+    let esperado = f64::from(ph2d_panel_painter_layers::FALLBACK_BRUSH.impasto_shine);
+    assert!((f.expect("fábrica") - esperado).abs() < 1e-6);
+}
+
+/// ⭐ A família da queixa do dono (05 §4, lei 7): em cada meio e ferramenta, nenhum botão, segmento ou caixa corta o texto.
+#[test]
+fn no_button_text_is_cut_in_any_medium_or_tool() {
+    let mut medidos = 0;
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        for modo in ["brush", "eraser"] {
+            let b = pincel(meio, modo).0;
+            let (_, c) = censo::grava(|| Mesa::nova(true, b, false));
+            let cortados = c.textos_cortados();
+            assert!(cortados.is_empty(), "{meio:?} {modo}: {cortados:#?}");
+            medidos += 1;
+        }
+    }
+    assert_eq!(medidos, 8);
 }

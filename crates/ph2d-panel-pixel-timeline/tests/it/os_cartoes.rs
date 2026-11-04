@@ -102,6 +102,31 @@ fn cada_controlo_pede_o_mesmo_que_o_painel_de_antes() {
     );
 }
 
+/// ⭐⭐ As propriedades do activo são campos de cartão: rótulo por cima, pega de arrastar, sem as setas
+/// de antes. O par Opacity + Z fica na mesma linha. *Mutação: voltar ao `paint_field_row` ⇒ vermelho.*
+#[test]
+fn os_numeros_das_propriedades_sao_campos_de_cartao() {
+    let novo = mesa(true);
+    for id in [ids::FRAME_DURATION, ids::CEL_OPACITY, ids::CEL_Z] {
+        assert!(novo.rect(id).is_some(), "{id:?} não pintado");
+        assert!(
+            novo.host.store().card_field(id).is_some(),
+            "{id:?} não é um campo de cartão"
+        );
+    }
+    let (op, z) = (
+        novo.rect(ids::CEL_OPACITY).expect("opacidade"),
+        novo.rect(ids::CEL_Z).expect("z"),
+    );
+    assert_eq!(op.y, z.y, "Opacity e Z dividem a linha");
+    assert!(op.x + op.w <= z.x, "colunas sem sobreposição");
+    let antes = mesa(false);
+    assert!(
+        antes.host.store().card_field(ids::CEL_Z).is_none(),
+        "PH2D_CARDS=0 fica com o corpo de antes"
+    );
+}
+
 /// Quantas camadas têm célula à vista: a régua desta banda.
 fn linhas_a_vista(m0: &Mesa<PixelTimelinePanel>) -> u32 {
     (1..=CAMADAS)

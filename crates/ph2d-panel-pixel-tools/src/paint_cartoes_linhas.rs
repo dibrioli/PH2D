@@ -83,6 +83,33 @@ impl Corpo<'_> {
         self.opcoes_de_baixo(info, sec, y, false)
     }
 
+    /// A caixa e o número que ela liga, na mesma linha enquanto couberem.
+    pub(super) fn caixa_e_campo(
+        &mut self,
+        caixa: (NodeId, &str, bool),
+        campo: (&str, NodeId),
+        y: f32,
+    ) -> f32 {
+        self.store.mark_card_field_at_paint(
+            campo.1,
+            CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: None,
+            },
+        );
+        let cx = caixa_em_celula(caixa.0, Rotulo::vista_de(caixa.1), caixa.2);
+        let nm = Cell::new(Widget::Field {
+            id: campo.1,
+            glyph: Glyph::Text(letra_da_grandeza(campo.0)),
+        })
+        .label(campo.0);
+        match self.cartao_ctx() {
+            Some(mut c) => c.pair(cx, nm, y),
+            None => y,
+        }
+    }
+
     /// Números e uma caixa, dois a dois enquanto couberem. Ajustes de ferramenta: sem marca (D17).
     fn campos_e_caixa(
         &mut self,
@@ -326,23 +353,34 @@ impl Corpo<'_> {
     }
 
     /// A cor da âncora com o *Edit color*: a amostra abre o seletor, o hex está no texto.
+    /// O tamanho da paleta divide a linha com ela quando os dois cabem.
     pub(super) fn ancora_no_cartao(&mut self, cor: [u8; 4], y: f32) -> f32 {
         let texto = tr_with("panel.pixel.edit_color", &[("hex", &hex(cor))]);
-        let y = self.topo(y);
+        let nome = tr("panel.pixel.palette_size");
+        self.store.mark_card_field_at_paint(
+            ids::PALETTE_SIZE,
+            CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: None,
+            },
+        );
+        let amostra = Cell::new(Widget::Swatch {
+            id: ids::PIXEL_PAL_EDIT,
+            rgba: Some(cor),
+            text: &texto,
+            edit: None,
+            detach: None,
+        });
+        let tamanho = Cell::new(Widget::Field {
+            id: ids::PALETTE_SIZE,
+            glyph: Glyph::Text(letra_da_grandeza(nome)),
+        })
+        .label(nome);
         let Some(mut c) = self.cartao_ctx() else {
             return y;
         };
-        c.full(
-            None,
-            Widget::Swatch {
-                id: ids::PIXEL_PAL_EDIT,
-                rgba: Some(cor),
-                text: &texto,
-                edit: None,
-                detach: None,
-            },
-            y,
-        )
+        c.pair(amostra, tamanho, y)
     }
 
     /// Uma fila de verbos: em par só quando os dois cabem inteiros na metade. `None` = o rótulo não
@@ -379,7 +417,11 @@ impl Corpo<'_> {
     }
 
     /// Os verbos de uma fila num cartão, na mesma linha se couberem; `None` fora de um cartão.
-    pub(super) fn verbos_no_cartao(&mut self, fila: &[(NodeId, &str, bool)], y: f32) -> Option<f32> {
+    pub(super) fn verbos_no_cartao(
+        &mut self,
+        fila: &[(NodeId, &str, bool)],
+        y: f32,
+    ) -> Option<f32> {
         let cells: Vec<Cell<'_>> = fila
             .iter()
             .map(|&(id, text, primary)| Cell::new(Widget::Button { id, text, primary }))

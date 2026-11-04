@@ -41,6 +41,21 @@ fn com_sujeito() -> BgRemovalUiSnapshot {
     }
 }
 
+/// ⭐ Lei da compactação: a caixa e o que ela liga dividem a linha, sem cruzar colunas.
+/// *Mutação: pintar um por linha ⇒ `y` diferente.*
+#[test]
+fn irmaos_curtos_dividem_a_linha() {
+    let m0 = mesa(tudo_ligado());
+    for (a, b) in [
+        (t::BGR_SEPARATE_ISLANDS, t::BGR_MIN_ISLAND_PX_NUM),
+        (t::BGR_AUTO_PROTECT_SUBJECT, t::BGR_EYEDROPPER),
+    ] {
+        let (ra, rb) = (m0.rect(a).expect("a"), m0.rect(b).expect("b"));
+        assert_eq!(ra.y, rb.y, "{a:?} e {b:?} na mesma linha");
+        assert!(ra.x + ra.w <= rb.x, "{a:?} e {b:?} sem sobreposição");
+    }
+}
+
 /// Tudo o que o corpo de antes pintava pinta-se em ALGUM estado; as barras nunca.
 #[test]
 fn every_id_of_the_old_panel_is_painted_in_some_state_and_no_bar_ever() {

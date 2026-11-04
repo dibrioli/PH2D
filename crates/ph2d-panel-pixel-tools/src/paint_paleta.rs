@@ -77,8 +77,7 @@ impl Corpo<'_> {
         }
         if let Some(c) = info.anchor.and_then(|i| info.palette.get(i)) {
             if self.cartao.is_some() {
-                y = self.ancora_no_cartao(*c, y);
-                return self.campo(tr("panel.pixel.palette_size"), ids::PALETTE_SIZE, sec, y);
+                return self.ancora_no_cartao(*c, y);
             }
             let side = ROW_H_PX;
             let r = Rect::new(self.x, y, side, side);

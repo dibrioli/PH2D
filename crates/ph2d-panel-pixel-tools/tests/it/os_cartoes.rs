@@ -186,6 +186,33 @@ fn o_tamanho_do_pincel_responde_a_pega_e_ao_esc() {
     assert_eq!(f64::from(o.size), antes, "o Esc não devolveu");
 }
 
+/// ⭐ O tamanho da paleta divide a linha com a cor da âncora, e continua vivo: a pega pede o mesmo id.
+/// *Mutação: tirar o campo de `ancora_no_cartao` ⇒ sem rect.*
+#[test]
+fn o_tamanho_da_paleta_vive_ao_lado_da_ancora() {
+    let mut me = mesa(info(PixelTool::Pencil));
+    so_aberto(&mut me, ids::PIXEL_SEC_PALETTE);
+    let (cor, tamanho) = (
+        me.rect(ids::PIXEL_PAL_EDIT).expect("âncora"),
+        me.rect(ids::PALETTE_SIZE)
+            .expect("o tamanho da paleta morreu"),
+    );
+    assert!(cor.x + cor.w <= tamanho.x, "sem sobreposição");
+    assert_eq!(cor.y, tamanho.y, "a mesma linha");
+    let antes = me
+        .host
+        .store()
+        .number_value(ids::PALETTE_SIZE)
+        .expect("semeado");
+    let ev = me.arrasta_a_pega(ids::PALETTE_SIZE, 40.0);
+    assert!(!ev.is_empty(), "a pega não respondeu");
+    assert_ne!(
+        me.host.store().number_value(ids::PALETTE_SIZE),
+        Some(antes),
+        "o número não mudou"
+    );
+}
+
 /// Ajuste de ferramenta não é canal (D17): nem o campo nem a escolha pintam a marca de animação.
 #[test]
 fn os_ajustes_da_ferramenta_nao_levam_marca() {

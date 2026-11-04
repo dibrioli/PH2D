@@ -3,6 +3,7 @@
 //! duplo clique = renomear) e o Solo —; as propriedades da activa (modo e opacidade); e as acções.
 
 use super::*;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::pixel_layer_row::LayerRowPainter;
 use ph2d_editor_core::pixel_panel::{PixelBlend, PixelLayerRow};
@@ -84,18 +85,26 @@ impl Corpo<'_> {
         if row.group {
             return self.bloco(tr("panel.pixel.layer.group_mode"), ColorToken::Text3, y);
         }
-        let r = property_row::paint_label_row(
-            self.scene,
-            self.text_system,
-            self.theme,
-            self.x,
-            self.w,
-            y,
-            ROW_H_PX,
-            tr("panel.pixel.layer.mode"),
-            sec,
-        )
-        .control;
+        let num_cartao = self.cartao.is_some();
+        let r = if num_cartao {
+            // Mode + Opacity dividem a linha: o chip é o de sempre, à largura de uma coluna.
+            let meia = ((self.w - m::FIELD_GAP) * 0.5).max(0.0);
+            let topo = self.legenda_no_cartao(tr("panel.pixel.layer.mode"), ColorToken::Text3, y);
+            Rect::new(self.x, topo + m::LABEL_BOTTOM, meia, m::FIELD_H)
+        } else {
+            property_row::paint_label_row(
+                self.scene,
+                self.text_system,
+                self.theme,
+                self.x,
+                self.w,
+                y,
+                ROW_H_PX,
+                tr("panel.pixel.layer.mode"),
+                sec,
+            )
+            .control
+        };
         let open = matches!(
             self.store.get(ids::LAYER_BLEND),
             Some(InteractiveState::Dropdown { open: true, .. })
@@ -108,6 +117,16 @@ impl Corpo<'_> {
         self.hit_index.register(ids::LAYER_BLEND, r);
         if open {
             self.blend_aberto = Some((r, row.blend));
+        }
+        if num_cartao {
+            let (x, w) = (self.x, self.w);
+            self.x = x + r.w + m::FIELD_GAP;
+            self.w = r.w;
+            let fim =
+                self.campos_no_cartao(&[(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY)], y);
+            self.x = x;
+            self.w = w;
+            return fim.max(r.y + r.h);
         }
         y = r.y + r.h + ph2d_tokens::control_gap_px();
         self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y)

@@ -35,6 +35,22 @@ fn grelha() -> EqualizeSizesUiSnapshot {
     }
 }
 
+/// ⭐ Lei da compactação: as duas caixas do Result dividem a linha. A caixa do Offset desce: não cabe
+/// na coluna (lei 5). *Mutação: um por linha ⇒ vermelho.*
+#[test]
+fn irmaos_curtos_dividem_a_linha() {
+    let m0 = mesa(fixo());
+    let (a, b) = (
+        m0.rect(t::EQS_UPSCALE_IF_SMALLER).expect("upscale"),
+        m0.rect(t::EQS_RASTERIZE_AFTER).expect("rasterize"),
+    );
+    assert_eq!(a.y, b.y, "Upscale e Rasterize na mesma linha");
+    assert!(a.x + a.w <= b.x, "sem sobreposição");
+    let m1 = mesa(grelha());
+    assert!(m1.rect(t::EQS_GRID_OFFSET_NUM).is_some(), "o Offset vive");
+    assert!(m1.rect(t::EQS_ARRANGE_ON_GRID).is_some(), "o Arrange vive");
+}
+
 /// Tudo o que o corpo de antes pintava pinta-se em ALGUM modo; a barra do Offset nunca.
 #[test]
 fn every_id_of_the_old_panel_is_painted_in_some_mode_and_the_bar_never() {

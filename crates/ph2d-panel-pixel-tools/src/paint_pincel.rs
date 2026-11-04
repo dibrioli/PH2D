@@ -33,22 +33,22 @@ impl Corpo<'_> {
     fn dinamica(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
         let mut y = y;
         let d = info.options.dynamics;
-        y = self.caixas(
-            &[(
-                ids::DYN_STABILIZER,
-                tr("panel.pixel.dynamics.stabilizer"),
-                d.stabilizer > 0,
-            )],
-            sec,
-            y,
+        let caixa = (
+            ids::DYN_STABILIZER,
+            tr("panel.pixel.dynamics.stabilizer"),
+            d.stabilizer > 0,
         );
-        if d.stabilizer > 0 {
-            y = self.campo(
-                tr("panel.pixel.dynamics.stabilizer_len"),
-                ids::DYN_STABILIZER_LEN,
-                sec,
-                y,
-            );
+        let comprimento = (
+            tr("panel.pixel.dynamics.stabilizer_len"),
+            ids::DYN_STABILIZER_LEN,
+        );
+        if d.stabilizer > 0 && self.cartao.is_some() {
+            y = self.caixa_e_campo(caixa, comprimento, y);
+        } else {
+            y = self.caixas(&[caixa], sec, y);
+            if d.stabilizer > 0 {
+                y = self.campo(comprimento.0, comprimento.1, sec, y);
+            }
         }
         for row in ids::DynRow::ALL {
             let actual = crate::seam_pincel::canal(&d, row).sensor;

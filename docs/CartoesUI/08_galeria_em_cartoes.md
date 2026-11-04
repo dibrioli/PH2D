@@ -88,12 +88,32 @@ hoje (`ids::INSP_SECTION_*`), para a ordem/tema em `sections.txt` sobreviverem. 
 | Switches | **Preferences** |
 | Lists | **Browser** |
 | Vector | **Pivot** |
-| Status | **Render** |
+| Status | **Render** — ⭐ no vocabulário desde 03/11 (`cards_render.rs`) |
 | Color (swatch) | **Tint** |
 | Actions | **History** |
 | Identity | **Collaborators** |
 | Card | **Comments** |
-| Inspector v2 (W6) | **Advanced** |
+| Inspector v2 (W6) | **Advanced** — ⭐ no vocabulário desde 03/11 (`cards_avancado.rs`) |
+
+**Smoke do dono 03/11:** *«Dates parece fora do novo padrão. Card advanced tb parece fora do novo padrão. Slider
+Horizontal diferente do vertical que é o padrão. Em cardback falta melhor coerência do design. Card Render poderia
+melhorar muito seu layout e widgets. Na dúvida ver como Figma e Rive fazem. Restante me agradou muito e o smoke do
+restante está OK».* Os corpos `paint_status_body` e `paint_inspector_w6_body` só valem em `PH2D_CARDS=0` (e mantêm os
+widgets à vista para o portão de cobertura); com cartões ligados:
+
+- **Advanced:** `Bounds (px)` X·Y e W·H, `Rotation (°)` com o ícone do ângulo, a grelha das 32 camadas nos tons do
+  cartão (`paint_bitmask_grid32_on_card`, aceso = acento), `Slice mode` na mesma pílula do Quality, `Metadata` à Figma
+  (o nome por cima; tipo + valor na mesma linha; «+» abre os tipos; «−» no fim) e `Custom properties` (chave + valor +
+  lixo). Na coluna estreita o valor desce para a linha de baixo, em vez de cortar (`nenhum_rotulo`). Nesting não
+  entrou: nenhuma entrada de exemplo pede filhos.
+- **Render:** `Format` + `Quality`; a linha de estado com o `%` à direita e a barra fina; `Output level` com os canais
+  L/R deitados (`paint_level_channel_on_card`) e a escala em dB, que é a mesma lei das zonas (`fraction_of_db`);
+  etiquetas `Preview`/`Ready`/`Hot reload` (`Rendering`, `Done`). `Render` corre uma corrida fictícia que anda um
+  passo por quadro pintado, sem relógio, e os testes contam-na; o `Cancel` só aparece quando há o que cancelar (à
+  vista em repouso seria um no-op). `Quality` decide os quadros (60/120/240); `Format`, o nome salvo.
+  `PH2D_GALLERY_SMOKE_RENDER=<quadro>` prende a corrida nesse quadro para a foto.
+
+Fotos: `maquete/g7_advanced.png` (rolagem ao fim) · `maquete/g7b_render.png` (rolagem 8120: parado × quadro 42).
 
 E o vocabulário do cartão (`CardCtx`): campo com glifo → Transform; par com marca → Position;
 `Widget::Choice` de ícones → Boolean, Cap, Join; `Widget::Icons` → grelha do Layout; `Widget::Bare` → Align,
@@ -171,7 +191,7 @@ Export (acende «Exported»), dobrar um cartão, arrastar um cartão para outra 
 «Use» da Image, escrever na Target da Camera, «+»/«−» das regras, Water/Oil, Fire, os filhos do Solo, a pega da
 curva.
 
-Fotos em `maquete/`: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460, com `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito aberta) · `g4_galeria_casos_reais` (2700) · `g4b_…` (4250) · `g4c_…` (5100) · `g5_galeria_rive` (5950) · `g2_galeria_meio` (6950) · `g2b_galeria_meio` (7700) · `g3_galeria_fim` (9400), com
+Fotos em `maquete/`: `g1_galeria_topo` · `g1b_galeria_ferramentas` (rolagem 1460, com `PH2D_GALLERY_SMOKE_SIDE=1`: a linha do efeito aberta) · `g4_galeria_casos_reais` (2700) · `g4b_…` (4250) · `g4c_…` (5100) · `g5_galeria_rive` (5950) · `g2_galeria_meio` (6950) · `g2b_galeria_meio` (7700) · `g3_galeria_fim` (9400) · `g6_dates_e_cardback` (8700: datas, barras e verso na lei do cartão, smoke 03/11), com
 `PH2D_GALLERY_SMOKE_SCROLL=<px>` a segurar a rolagem (o evento sintético não chega à sessão virtual).
 Os corpos de sempre pintam com a tinta do cartão publicada (`card_ink::com`): a janela flutuante
 (`PH2D_CARDS=0`) não publica nada e não muda. Dentro do corpo os de sempre seguem a lei do

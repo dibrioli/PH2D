@@ -13,7 +13,7 @@ use ph2d_tokens::ColorToken;
 
 /// Uma família dobrável: o prefixo da chave, o id do cabeçalho e a chave do rótulo.
 pub(crate) struct Familia {
-    pub(crate) prefixo: &'static str,
+    pub(crate) prefixos: &'static [&'static str],
     pub(crate) id: NodeId,
     pub(crate) rotulo: &'static str,
 }
@@ -21,37 +21,38 @@ pub(crate) struct Familia {
 /// As famílias de DADO, pela ordem em que aparecem na tabela.
 pub(crate) const FAMILIAS: [Familia; 7] = [
     Familia {
-        prefixo: "node-cat-",
+        prefixos: &["node-cat-"],
         id: crate::ids::TOKENS_SEC_NODE_CAT,
         rotulo: "panel.tokens.family.node_cat",
     },
     Familia {
-        prefixo: "obj-",
+        prefixos: &["obj-"],
         id: crate::ids::TOKENS_SEC_OBJ,
         rotulo: "panel.tokens.family.obj",
     },
     Familia {
-        prefixo: "port-",
+        prefixos: &["port-"],
         id: crate::ids::TOKENS_SEC_PORT,
         rotulo: "panel.tokens.family.port",
     },
     Familia {
-        prefixo: "timeline-",
+        prefixos: &["timeline-"],
         id: crate::ids::TOKENS_SEC_TIMELINE,
         rotulo: "panel.tokens.family.timeline",
     },
     Familia {
-        prefixo: "person-",
+        prefixos: &["person-"],
         id: crate::ids::TOKENS_SEC_PERSON,
         rotulo: "panel.tokens.family.person",
     },
     Familia {
-        prefixo: "code-",
+        prefixos: &["code-"],
         id: crate::ids::TOKENS_SEC_CODE,
         rotulo: "panel.tokens.family.code",
     },
     Familia {
-        prefixo: "kanban-",
+        // Os tons do campo dos Cartões UI (`card-*`) são os do cartão do Kanban, e vêm logo a seguir.
+        prefixos: &["kanban-", "card-"],
         id: crate::ids::TOKENS_SEC_KANBAN,
         rotulo: "panel.tokens.family.kanban",
     },
@@ -67,7 +68,9 @@ pub fn ids_das_familias() -> impl Iterator<Item = NodeId> {
 #[must_use]
 pub(crate) fn familia_de(token: ColorToken) -> Option<&'static Familia> {
     let k = token.key();
-    FAMILIAS.iter().find(|f| k.starts_with(f.prefixo))
+    FAMILIAS
+        .iter()
+        .find(|f| f.prefixos.iter().any(|p| k.starts_with(p)))
 }
 
 #[cfg(test)]
@@ -84,12 +87,12 @@ mod tests {
                 .filter(|(_, t)| familia_de(**t).is_some_and(|g| g.id == f.id))
                 .map(|(i, _)| i)
                 .collect();
-            assert!(!rows.is_empty(), "`{}` não casa nenhuma cor", f.prefixo);
+            assert!(!rows.is_empty(), "`{:?}` não casa nenhuma cor", f.prefixos);
             assert_eq!(
                 rows.last().unwrap() - rows[0] + 1,
                 rows.len(),
-                "`{}` está partida na tabela",
-                f.prefixo
+                "`{:?}` está partida na tabela",
+                f.prefixos
             );
         }
     }

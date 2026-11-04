@@ -2189,7 +2189,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    secção a nascer aberta: com `quantize` o parley 0.12 arredonda ascent/descent/leading antes de
     //    somar (como o Chrome) — Inter 12 px dá linha de `15` em vez de `14,53`. Medido antes × depois
     //    rect a rect: os mesmos 163 widgets, x/w/h idênticos, só os y passam a inteiros (`1 484,58 → 1 488`).
-    ("inspector", 1488.0),
+    // ⬆️ `1 488 → 1 507` em 2026-11-03 (NovaUI), e NÃO é secção a nascer aberta: a Noto Sans de fábrica
+    //    (dono 01/11, D11) quebra uma legenda em mais uma linha. Medido pela sonda das duas fontes na
+    //    mesma corrida: Inter `1 488`, Noto `1 507`.
+    ("inspector", 1507.0),
     // ⭐ `2 709 → 1 529`: as quatro secções que chegaram DEPOIS da decisão do dono nascem
     //    recolhidas. ⛔ Ele não cabe, e o que falta é DECISÃO: o `Texture` (`450`) e o `Stroke`
     //    (`368`) são dele, e com tudo recolhido o painel mediria `736`.
@@ -2234,7 +2237,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 568 → 1 593` em 2026-10-29 (J6 fecho), e NÃO é uma secção a nascer aberta: é a fileira **Same as Paper**
     //    do Grain (pedido do dono 28/10, commit `1d0ccb1524`; age no Digital — 3 724 texels no censo), `ROW_H_PX (25)`
     //    exactos, medidos pela porta deste gate. ⚠️ Recolher o Grain esconderia o controlo que o dono pediu.
-    ("painter_layers", 1593.0),
+    // ⬆️ `1 593 → 1 618` em 2026-11-03 (NovaUI, `1787b8c3ba`), e NÃO é secção a nascer aberta: o nome
+    //    que não cabe QUEBRA em vez de sair cortado, e a linha cresce um passo (`1 × ROW_H_PX`). Igual
+    //    em Inter e em Noto. Encolher devolveria o corte (`nenhum_rotulo`: 5 → 0 no degrau estreito).
+    ("painter_layers", 1618.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

@@ -302,7 +302,8 @@ mod tests {
     fn horizontal_fills_from_the_left_and_the_scale_matches_the_zones() {
         let t = Rect::new(10.0, 0.0, 100.0, 8.0);
         let verde = horizontal_segment(t, 0.0, ZONE_WARN, 0.3).expect("verde");
-        assert_eq!((verde.x, verde.w), (10.0, 30.0));
+        assert_eq!(verde.x, 10.0);
+        assert!((verde.w - 30.0).abs() < 1e-3);
         let ambar = horizontal_segment(t, ZONE_WARN, ZONE_DANGER, 0.6).expect("âmbar");
         assert_eq!(ambar.x, 60.0);
         assert!((ambar.w - 10.0).abs() < 1e-3);

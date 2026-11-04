@@ -3,7 +3,7 @@
 //! e as listas de propriedades do Figma e do Rive. O corpo antigo só vale em `PH2D_CARDS=0`.
 
 use crate::controlos::avancado::{META_ROWS, META_SWATCH, META_TYPES, PROP_ROWS};
-use crate::controlos::{card, dropdown, field, letra, num, seg_of, segs};
+use crate::controlos::{CAMPO_MIN, caixa_para, card, dropdown, field, letra, num, seg_of, segs};
 use crate::ids as g;
 use crate::state::Choices;
 use ph2d_a11y::NodeId;
@@ -125,48 +125,59 @@ fn grupo(c: &mut CardCtx<'_>, ch: &Choices, text: &str, add: Option<NodeId>, y: 
     fundo
 }
 
-/// Uma entrada: o nome por cima; o tipo e o valor lado a lado; o «−» no fim.
+/// Duas caixas e um ícone cabem numa linha, cada caixa com pelo menos `caixa`? Senão partem-se (à
+/// Figma: nada se corta na coluna estreita, censo `nenhum_rotulo`).
+fn cabem_lado_a_lado(c: &CardCtx<'_>, caixa: f32) -> bool {
+    c.w >= caixa * 2.0 + m::FIELD_H + m::FIELD_GAP * 2.0
+}
+
+/// A largura de uma caixa de texto para mostrar `text` inteiro.
+fn caixa_de_texto(c: &mut CardCtx<'_>, text: &str) -> f32 {
+    c.text_system.prefix_width(text, m::VALUE_PX).ceil() + m::FIELD_PAD_R * 2.0
+}
+
+/// Uma entrada: o nome por cima; o tipo e o valor lado a lado; o «−» no fim. Na coluna que não leva
+/// os dois, o valor desce para a linha de baixo, a toda a largura.
 fn meta_row(c: &mut CardCtx<'_>, ch: &Choices, i: usize, y: f32) -> f32 {
     let r = g::META[i];
     let tipos = segs(r.options, ch, c.store);
     let tipo = Cell::new(dropdown(r.kind, &tipos)).label(tr(META_KEYS[i]));
     let menos = segs([r.remove], ch, c.store);
     let menos = Cell::new(Widget::Bare(&menos));
-    match ch.pick(META_TYPES[i]) {
-        0 => {
-            let glifo = letra(tr("panel.widget_gallery.adv.type.float"));
-            c.row(&[tipo, Cell::new(field(r.number, glifo)), menos], y)
-        }
-        1 => c.row(
-            &[
-                tipo,
-                Cell::new(Widget::Text {
-                    id: r.text,
-                    placeholder: tr("panel.widget_gallery.adv.text_default"),
-                }),
-                menos,
-            ],
-            y,
+    let rgba = crate::valores::rgba(ch, META_SWATCH + i, c.ink);
+    let hex = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
+    let (valor, precisa) = match ch.pick(META_TYPES[i]) {
+        0 => (
+            field(r.number, letra(tr("panel.widget_gallery.adv.type.float"))),
+            CAMPO_MIN,
         ),
-        _ => {
-            let rgba = crate::valores::rgba(ch, META_SWATCH + i, c.ink);
-            let hex = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
-            c.row(
-                &[
-                    tipo,
-                    Cell::new(Widget::Swatch {
-                        id: r.swatch,
-                        rgba: Some(rgba),
-                        text: &hex,
-                        edit: None,
-                        detach: None,
-                    }),
-                    menos,
-                ],
-                y,
-            )
-        }
+        1 => (
+            Widget::Text {
+                id: r.text,
+                placeholder: tr("panel.widget_gallery.adv.text_default"),
+            },
+            caixa_de_texto(c, tr("panel.widget_gallery.adv.label_default")),
+        ),
+        _ => (
+            Widget::Swatch {
+                id: r.swatch,
+                rgba: Some(rgba),
+                text: &hex,
+                edit: None,
+                detach: None,
+            },
+            caixa_para(c, &hex),
+        ),
+    };
+    let chip = tipos
+        .iter()
+        .map(|s| caixa_para(c, s.text))
+        .fold(precisa, f32::max);
+    if cabem_lado_a_lado(c, chip) {
+        return c.row(&[tipo, Cell::new(valor), menos], y);
     }
+    let y = c.row(&[tipo, menos], y);
+    c.row(&[Cell::new(valor)], y)
 }
 
 fn metadata(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
@@ -186,24 +197,27 @@ fn propriedades(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
     let cheia = PROP_ROWS.iter().all(|f| ch.on(*f));
     let add = (!cheia).then_some(g::PROP_ADD);
     let mut y = grupo(c, ch, tr("chrome.sample.custom_properties"), add, y);
+    // O nome de fábrica mede a linha: a digitar, a linha não salta.
+    let caixa = caixa_de_texto(c, tr("panel.widget_gallery.adv.prop_key_default"));
     for (i, f) in PROP_ROWS.iter().enumerate() {
         if ch.on(*f) {
             let r = g::PROPS[i];
             let lixo = segs([r.remove], ch, c.store);
-            y = c.row(
-                &[
-                    Cell::new(Widget::Text {
-                        id: r.key,
-                        placeholder: tr("panel.widget_gallery.adv.prop_new_key"),
-                    }),
-                    Cell::new(Widget::Text {
-                        id: r.value,
-                        placeholder: tr("panel.widget_gallery.adv.prop_new_value"),
-                    }),
-                    Cell::new(Widget::Bare(&lixo)),
-                ],
-                y,
-            );
+            let lixo = Cell::new(Widget::Bare(&lixo));
+            let chave = Cell::new(Widget::Text {
+                id: r.key,
+                placeholder: tr("panel.widget_gallery.adv.prop_new_key"),
+            });
+            let valor = Cell::new(Widget::Text {
+                id: r.value,
+                placeholder: tr("panel.widget_gallery.adv.prop_new_value"),
+            });
+            y = if cabem_lado_a_lado(c, caixa) {
+                c.row(&[chave, valor, lixo], y)
+            } else {
+                let y = c.row(&[chave, lixo], y);
+                c.row(&[valor], y)
+            };
         }
     }
     y

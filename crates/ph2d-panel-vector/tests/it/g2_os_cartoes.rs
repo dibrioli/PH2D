@@ -735,6 +735,19 @@ fn the_plus_opens_the_menu_and_its_rows_answer() {
         let grava = |cartoes| {
             let mut mesa = Mesa::nova(cartoes, FillKind::Linear);
             mesa.abre(p::VECTOR_PAINT_ADD_MENU);
+            if cartoes {
+                // A lista cresce para dentro do cartão: o «+» está no canto dele.
+                let lista = mesa
+                    .host
+                    .store()
+                    .panel_rect(core_ids::VECTOR_PANEL)
+                    .unwrap();
+                let opcao = mesa.rect(linha).expect("a linha da lista");
+                assert!(
+                    opcao.x + opcao.w <= lista.x + lista.w,
+                    "{opcao:?} × {lista:?}"
+                );
+            }
             let accoes = mesa.clica(linha);
             mesa.assenta();
             assert_eq!(

@@ -196,6 +196,14 @@ fn every_id_of_the_slice_is_registered_and_painted_in_cards() {
         assert!(mesa.host.store().get(id).is_some(), "{id:?} sem registo");
         assert!(mesa.rect(id).is_some(), "{id:?} não pintado em Interface");
     }
+    // O nome vai com o id: Left à esquerda de Stretch, Top à esquerda de Stretch.
+    for (primeiro, ultimo) in [
+        (p::VECTOR_ANCHOR_H_START, p::VECTOR_ANCHOR_H_STRETCH),
+        (p::VECTOR_ANCHOR_V_START, p::VECTOR_ANCHOR_V_STRETCH),
+    ] {
+        let (a, b) = (mesa.rect(primeiro), mesa.rect(ultimo));
+        assert!(a.zip(b).is_some_and(|(a, b)| a.x < b.x), "{a:?} × {b:?}");
+    }
 }
 
 /// ⭐⭐ **Mesmo id, mesmo evento**: o clique real em cada opção e verbo produz no barramento exactamente
@@ -267,6 +275,13 @@ fn scrubbing_each_number_reaches_the_tool_and_escape_gives_it_back() {
         assert!(
             (v - antes).abs() > 1.0,
             "{id:?} não se moveu: {antes} → {v}"
+        );
+        // Um quadro a meio do gesto: a semente do documento não pode puxar o número de volta.
+        mesa.host.paint::<VectorPanel>(&mut mesa.st, COLUNA);
+        let no_campo = mesa.host.store().number_value(id).expect("campo");
+        assert!(
+            (no_campo - v).abs() < 1e-6,
+            "{id:?}: a semente puxou {v} → {no_campo}"
         );
         let arena = bumpalo::Bump::new();
         let esc = ph2d_host::KeyEvent {
@@ -630,4 +645,31 @@ fn the_fill_row_opens_left_of_the_list_and_the_plus_lives_in_the_title() {
         chip.x + chip.w <= lista.x,
         "o painel abre à ESQUERDA da lista: {chip:?} × {lista:?}"
     );
+}
+
+/// O painel à esquerda fica à MESMA distância da lista a que ficava do painel de antes.
+/// *Mutação: passar o rect do slot, e não o da lista, aos passes diferidos.*
+#[test]
+fn the_left_panel_keeps_its_distance_from_the_list() {
+    let vao = |cartoes: bool| {
+        forma_com_tinta();
+        let mut mesa = Mesa::nova(cartoes);
+        let linha = mesa.rect(p::VECTOR_FILL_ROW).expect("a caixa do Fill");
+        let ev = mesa
+            .host
+            .click_at(linha.x + linha.w * 0.5, linha.y + linha.h * 0.5);
+        mesa.aplica(ev);
+        mesa.assenta();
+        let fecho = mesa
+            .rect(p::VECTOR_FILL_PROPS_CLOSE)
+            .expect("o fecho do painel");
+        let painel = mesa
+            .host
+            .store()
+            .panel_rect(core_ids::VECTOR_PANEL)
+            .expect("o rect");
+        painel.x - (fecho.x + fecho.w)
+    };
+    let (novo, velho) = (vao(true), vao(false));
+    assert!((novo - velho).abs() < 0.5, "cartões {novo} × antes {velho}");
 }

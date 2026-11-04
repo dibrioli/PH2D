@@ -5,11 +5,12 @@
 //! `Role::Tooltip` so screen readers can announce it as auxiliary
 //! help text.
 
-use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+use super::lista_flutuante::Superficie;
+use crate::paint::paint_text_centered;
 use crate::zones::Rect;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -41,24 +42,15 @@ pub fn paint_tooltip(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg3, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = Superficie::de(theme);
+    superficie.moldura_da_dica(scene, rect);
     paint_text_centered(
         text_system,
         scene,
         &tip.message,
         rect,
         TypeToken::Sm.px(),
-        resolve(ColorToken::Text1, theme),
+        superficie.cor(ColorToken::Text1),
     );
 }
 

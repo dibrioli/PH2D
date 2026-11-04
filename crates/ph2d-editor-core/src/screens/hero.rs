@@ -29,6 +29,7 @@ pub mod chrome;
 pub mod color_picker_demo;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
+mod cromo_smoke;
 /// ⭐⭐⭐ **O interruptor de uma coluna** — fechar e reabrir como uma involução, e não como duas
 /// perguntas a factos diferentes.
 pub mod dock_columns;

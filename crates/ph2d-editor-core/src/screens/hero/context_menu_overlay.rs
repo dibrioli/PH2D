@@ -10,13 +10,12 @@ use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
+use crate::widget::lista_flutuante::Superficie;
 use crate::widget::{TextInput, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    ColorToken, INLINE_ICON_PX, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken,
-};
+use ph2d_tokens::{ColorToken, INLINE_ICON_PX, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Color as VelloColor, VectorScene};
 
 /// Standard context-menu width. Exported so cascade-opening handlers
@@ -193,18 +192,8 @@ pub fn paint_context_menu_overlay(
     let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
     let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
 
-    // Floating panel: BgElev fill + Border stroke + Md radius.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = Superficie::de(theme);
+    superficie.moldura(scene, rect);
 
     // Rows.
     let row_x = rect.x + Spacing::Xs.px();
@@ -226,7 +215,7 @@ pub fn paint_context_menu_overlay(
                 scene,
                 Rect::new(r.x, r.y + (h - 1.0) * 0.5, r.w, 1.0),
                 0.0,
-                resolve(ColorToken::Border, theme),
+                superficie.cor(ColorToken::Border),
             );
             continue;
         };
@@ -235,12 +224,7 @@ pub fn paint_context_menu_overlay(
         //   para engolir o clique ([`WidgetStore::menu_row_is_unavailable`]).
         let indisponivel = store.menu_row_is_unavailable(*id);
         if Some(*id) == store.hot_id() && !indisponivel {
-            fill_rounded_rect(
-                scene,
-                r,
-                crate::paint::frame_radius(theme, Radius::Sm.px()),
-                resolve(ColorToken::Bg2, theme),
-            );
+            superficie.realce(scene, r);
         }
         let pad_x = Spacing::Md.px();
         let icon_size = INLINE_ICON_PX;
@@ -263,7 +247,7 @@ pub fn paint_context_menu_overlay(
             scene.inner_mut().fill(
                 ph2d_vector::Fill::NonZero,
                 ph2d_vector::Affine::IDENTITY,
-                &ph2d_vector::Brush::Solid(resolve(ColorToken::Accent, theme)),
+                &ph2d_vector::Brush::Solid(superficie.cor(ColorToken::Accent)),
                 None,
                 &dot,
             );
@@ -301,7 +285,7 @@ pub fn paint_context_menu_overlay(
                 scene,
                 IconId::Add,
                 Rect::new(glyph_x, icon_y, icon_size, icon_size),
-                resolve(ColorToken::Text2, theme),
+                superficie.cor(ColorToken::Text2),
                 StrokeToken::Default.px(),
             );
         }
@@ -319,16 +303,13 @@ pub fn paint_context_menu_overlay(
             text_y,
             TypeToken::Sm.px(),
             (r.x + r.w - text_x - pad_x).max(0.0),
-            resolve(
-                if indisponivel {
-                    ColorToken::Text3
-                } else if is_current {
-                    ColorToken::Text1
-                } else {
-                    ColorToken::Text2
-                },
-                theme,
-            ),
+            superficie.cor(if indisponivel {
+                ColorToken::Text3
+            } else if is_current {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text2
+            }),
         );
         // Cascade indicator on the SettingsMenu rows — real
         // `IconId::ChevronRight` glyph at the right edge, replacing
@@ -340,7 +321,7 @@ pub fn paint_context_menu_overlay(
                 scene,
                 IconId::ChevronRight,
                 chev,
-                resolve(ColorToken::Text3, theme),
+                superficie.cor(ColorToken::Text3),
                 StrokeToken::Default.px(),
             );
         }
@@ -420,18 +401,8 @@ fn paint_scene_list(
     let total_h = pad_y() * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
     let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
 
-    // Floating panel surface.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    let superficie = Superficie::de(theme);
+    superficie.moldura(scene, rect);
 
     // Search input row.
     let inner_x = rect.x + Spacing::Xs.px();
@@ -441,16 +412,22 @@ fn paint_scene_list(
     let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
         .placeholder(tr("chrome.menu.search_scenes"))
         .visual((ti_state, store.hover_live(ids::CTX_SCENE_SEARCH)));
-    paint_text_input_with_buffer(
-        &ti,
-        Some(query),
-        Some(caret),
-        anchor,
-        search_rect,
-        scene,
-        text_system,
-        theme,
-    );
+    let pinta_busca = |scene: &mut VectorScene, text_system: &mut TextSystem| {
+        paint_text_input_with_buffer(
+            &ti,
+            Some(query),
+            Some(caret),
+            anchor,
+            search_rect,
+            scene,
+            text_system,
+            theme,
+        );
+    };
+    match superficie.tinta() {
+        Some(ink) => crate::widget::card_ink::com(ink, || pinta_busca(scene, text_system)),
+        None => pinta_busca(scene, text_system),
+    }
 
     // Result rows.
     let rows_y0 = search_rect.y + search_rect.h + Spacing::Xs.px();
@@ -466,7 +443,7 @@ fn paint_scene_list(
             r.y + (r.h - font) * 0.5,
             font,
             r.w - pad_x * 2.0,
-            resolve(ColorToken::Text3, theme),
+            superficie.cor(ColorToken::Text3),
         );
     } else {
         for (i, name) in filtered.iter().enumerate() {
@@ -474,12 +451,7 @@ fn paint_scene_list(
             let r = Rect::new(inner_x, rows_y0 + i as f32 * row_h, inner_w, row_h);
             hit_index.register(row_id, r);
             if Some(row_id) == store.hot_id() {
-                fill_rounded_rect(
-                    scene,
-                    r,
-                    crate::paint::frame_radius(theme, Radius::Sm.px()),
-                    resolve(ColorToken::Bg2, theme),
-                );
+                superficie.realce(scene, r);
             }
             // Highlight the currently-active scene with an accent
             // bullet so the user sees "this is what's loaded".
@@ -494,7 +466,7 @@ fn paint_scene_list(
                 scene.inner_mut().fill(
                     ph2d_vector::Fill::NonZero,
                     ph2d_vector::Affine::IDENTITY,
-                    &ph2d_vector::Brush::Solid(resolve(ColorToken::Accent, theme)),
+                    &ph2d_vector::Brush::Solid(superficie.cor(ColorToken::Accent)),
                     None,
                     &dot,
                 );
@@ -509,14 +481,11 @@ fn paint_scene_list(
                 text_y,
                 font,
                 r.w - (text_x - r.x) - pad_x,
-                resolve(
-                    if is_current {
-                        ColorToken::Text1
-                    } else {
-                        ColorToken::Text2
-                    },
-                    theme,
-                ),
+                superficie.cor(if is_current {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::Text2
+                }),
             );
             let _ = VelloColor::from_rgba8(0, 0, 0, 0); // LITERAL-COLOR-OK: import-keepalive no-op (keeps the VelloColor import live for conditional paths)
             let _ = IconId::Search; // keep IconId import in scope
@@ -575,17 +544,7 @@ fn paint_tool_bar_overflow(
         inner_h + pad * 2.0,
         viewport,
     );
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    Superficie::de(theme).moldura(scene, rect);
     let content = Rect::new(rect.x + pad, rect.y + pad, inner_w, inner_h);
     crate::widget::paint_tool_rail_axis(
         &rail,

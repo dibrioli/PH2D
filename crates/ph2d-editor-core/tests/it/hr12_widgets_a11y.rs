@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "lista_flutuante.rs",
+        "a moldura e os tons do que flutua no cromo; nao e' um controlo nem emite no' — a a11y e' a de quem a pinta (`context_menu.rs`, `tooltip.rs`).",
+    ),
+    (
         "showcase/encaixe.rs",
         "a lei responsiva dos corpos da galeria (doc CartoesUI/08): so' MEDE larguras e decide fileiras; nao emite no' — a a11y e' a dos widgets que os corpos pintam.",
     ),

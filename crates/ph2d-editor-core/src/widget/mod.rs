@@ -40,6 +40,7 @@ mod key_value_list;
 mod level_meter;
 mod list_item;
 mod list_rows;
+pub mod lista_flutuante;
 mod modal;
 mod number_input;
 mod numeric_input_with_unit;

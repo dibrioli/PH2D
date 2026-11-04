@@ -7,11 +7,10 @@
 
 use super::divider::{Divider, paint_divider};
 use super::list_item::{ListItem, ListItemState, paint_list_item};
-use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 #[derive(Clone, Debug)]
@@ -115,17 +114,7 @@ pub fn paint_context_menu(
     row_h: f32,
 ) {
     // ⭐ Raio e moldura pela porta do TEMA: o menu flutuante é plano num tema moderno.
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    super::lista_flutuante::Superficie::de(theme).moldura(scene, rect);
 
     let pad = Spacing::Md.px();
     let mut y = rect.y + pad;

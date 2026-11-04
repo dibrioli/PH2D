@@ -138,6 +138,7 @@ pub fn paint_hero_screen(
     // ⭐ **E para a ROLAGEM** (D9): as alturas e os donos de barra que este quadro publicar são os
     // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
     hero.store.begin_scroll_frame();
+    super::cromo_smoke::aplica(&mut hero.store);
     // A pré-edição do IME e o caret que a janela de candidatos segue ([`crate::ime`]).
     crate::ime::begin_frame(hero.store.focus_id(), hero.store.composition());
     // Publish the user-picked radius scale to the thread-local read

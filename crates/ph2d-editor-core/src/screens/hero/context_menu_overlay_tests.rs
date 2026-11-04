@@ -152,5 +152,8 @@ fn the_painter_reads_the_unavailable_door() {
         .join("\n");
     assert!(codigo.contains("store.menu_row_is_unavailable(*id)"));
     assert!(codigo.contains("&& !indisponivel"), "sem realce de hover");
-    assert!(codigo.contains("if indisponivel {\n                    ColorToken::Text3"));
+    assert!(codigo.contains("if indisponivel {\n                ColorToken::Text3"));
 }
+
+#[path = "context_menu_overlay_tests_cromo.rs"]
+mod cromo;

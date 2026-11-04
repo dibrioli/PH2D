@@ -141,6 +141,8 @@ fn the_wave_three_painters_lose_exactly_their_frame() {
         ("context menu", |theme| {
             let mut scene = VectorScene::new();
             let mut text = TextSystem::without_system_fonts();
+            // A lei dos temas é a da moldura de antes: em cartões o menu não traça filete nenhum.
+            ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(false));
             let menu = ContextMenu::new(NodeId(9), "Menu", Vec::new());
             paint_context_menu(&menu, rect(), &mut scene, &mut text, theme, 22.0);
             scene.inner().encoding().n_paths

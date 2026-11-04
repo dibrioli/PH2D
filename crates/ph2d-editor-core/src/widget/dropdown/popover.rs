@@ -126,7 +126,7 @@ pub type PopoverRowPainter<'a> = &'a mut dyn FnMut(&mut VectorScene, &mut TextSy
 fn paint_popover_frame(scene: &mut VectorScene, panel: Rect, theme: Theme) {
     let panel_radius = crate::paint::frame_radius(theme, Radius::Md.px());
     if let Some(ink) = crate::widget::card_ink::card_body() {
-        return card_chip::moldura_da_lista(scene, panel, ink);
+        return crate::widget::lista_flutuante::moldura_de_cartao(scene, panel, ink);
     }
     fill_rounded_rect(
         scene,

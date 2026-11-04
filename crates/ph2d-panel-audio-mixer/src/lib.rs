@@ -12,6 +12,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cards;
 mod event;
 mod fader;
 mod paint;
@@ -93,6 +94,9 @@ pub const AMIX_DUCK_KEY_BUS: [NodeId; SUB_BUS_COUNT] = [
 /// Collapsible section headers for the master-effect footer groups. Registered
 /// via `mark_collapsible_section` in `populate`; clicking a header folds its
 /// group (the dispatch toggles `is_collapsed`, so the panel needs no click arm).
+/// Nova UI: os dois cartões que eram blocos sem título (a saída e as faixas).
+pub const AMIX_SEC_OUTPUT: NodeId = hash_node_id("audio_mixer_sec_output");
+pub const AMIX_SEC_CHANNELS: NodeId = hash_node_id("audio_mixer_sec_channels");
 pub const AMIX_SEC_EQ: NodeId = hash_node_id("audio_mixer_sec_eq");
 pub const AMIX_SEC_REVERB: NodeId = hash_node_id("audio_mixer_sec_reverb");
 pub const AMIX_SEC_DELAY: NodeId = hash_node_id("audio_mixer_sec_delay");

@@ -26,7 +26,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// canonical visibility flag both ways.
 #[test]
 fn topbar_pill_click_toggles_visibility() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     assert!(
@@ -63,7 +63,7 @@ fn topbar_pill_click_toggles_visibility() {
 /// shell reads back to zero the engine's master gain).
 #[test]
 fn mute_click_toggles_master_muted() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = master_muted();
@@ -86,7 +86,7 @@ fn mute_click_toggles_master_muted() {
 /// publish the **dB-tapered** gain — not the raw position — as the master gain.
 #[test]
 fn fader_drag_publishes_tapered_master_gain() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     // A drag to 30% of the travel → the taper's gain for that position.
@@ -121,7 +121,7 @@ fn fader_drag_publishes_tapered_master_gain() {
 /// master low-pass filter.
 #[test]
 fn cutoff_drag_publishes_hz() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(AMIX_CUTOFF, 0.0);
@@ -141,7 +141,7 @@ fn cutoff_drag_publishes_hz() {
 /// high-pass. Mirror of the Cutoff seam with the ends flipped.
 #[test]
 fn lowcut_drag_publishes_hz() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(AMIX_LOWCUT, 1.0);
@@ -173,7 +173,7 @@ fn lowcut_drag_publishes_hz() {
 /// per-strip `SUB_FADER` arm routes to the right bus.
 #[test]
 fn sub_bus_fader_drag_publishes_that_bus_gain() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_FADER[0], 0.4);
@@ -203,7 +203,7 @@ fn sub_bus_fader_drag_publishes_that_bus_gain() {
 /// clears it. (`set_levels` is the shell→panel publish that also latches clip.)
 #[test]
 fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     // Clear any latch left on this thread, then publish a clipping peak.
@@ -238,7 +238,7 @@ fn clip_latches_on_over_unity_peak_and_meter_click_clears_it() {
 /// raw 0..1 value — both read by the shell to duck Music/SFX under the Voice bus.
 #[test]
 fn ducking_toggle_and_depth_publish() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = ducking();
@@ -267,7 +267,7 @@ fn ducking_toggle_and_depth_publish() {
 /// to an earlier one, which the old cycling button could only reach by going all the way round.
 #[test]
 fn duck_key_segment_chooses_its_own_bus() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     for i in [2, 0, 3, 1] {
@@ -293,7 +293,7 @@ fn duck_key_segment_chooses_its_own_bus() {
 /// registered it as the wrong kind.
 #[test]
 fn every_master_effect_control_answers_where_it_is_drawn() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
     // Every effect group open, so its body is painted.
     for sec in [
@@ -347,7 +347,7 @@ fn every_master_effect_control_answers_where_it_is_drawn() {
 /// (seconds), and a sub-bus Delay send publishes into its own slot only.
 #[test]
 fn delay_toggle_time_and_send_publish() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = delay_on();
@@ -389,7 +389,7 @@ fn delay_toggle_time_and_send_publish() {
 /// slot only — the shell maps it to compressor params. Others stay off.
 #[test]
 fn sub_bus_comp_drag_publishes_amount() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_COMP[0], 0.5);
@@ -413,7 +413,7 @@ fn sub_bus_comp_drag_publishes_amount() {
 /// 0..1 value — both read by the shell to drive the master reverb.
 #[test]
 fn reverb_toggle_and_size_publish() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = reverb_on();
@@ -446,7 +446,7 @@ fn reverb_toggle_and_size_publish() {
 /// engage/disengage the master soft-clip limiter.
 #[test]
 fn limiter_click_toggles_flag() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = limiter();
@@ -468,7 +468,7 @@ fn limiter_click_toggles_flag() {
 /// to start/stop the built-in test signal.
 #[test]
 fn play_test_click_toggles_flag() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = play_test();
@@ -490,7 +490,7 @@ fn play_test_click_toggles_flag() {
 /// the bottom) into that bus's slot only — the shell drives its low-pass filter.
 #[test]
 fn sub_bus_tone_drag_publishes_cutoff_hz() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_TONE[0], 0.0);
@@ -520,7 +520,7 @@ fn sub_bus_tone_drag_publishes_cutoff_hz() {
 /// ~20 Hz (off), proving the SUB_LOWCUT arm routes to the right bus.
 #[test]
 fn sub_bus_lowcut_drag_publishes_cutoff_hz() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_LOWCUT[0], 1.0);
@@ -550,7 +550,7 @@ fn sub_bus_lowcut_drag_publishes_cutoff_hz() {
 /// send. The others stay dry (0), proving the SUB_SEND arm routes per bus.
 #[test]
 fn sub_bus_send_drag_publishes_amount() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(SUB_SEND[0], 0.6);
@@ -580,7 +580,7 @@ fn sub_bus_send_drag_publishes_amount() {
 /// proving the EQ arm routes per band.
 #[test]
 fn eq_drag_publishes_position() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     host.set_slider_value(AMIX_EQ_LOW, 0.8);
@@ -609,7 +609,7 @@ fn eq_drag_publishes_position() {
 /// reads it back to mute the non-soloed buses).
 #[test]
 fn sub_bus_solo_click_toggles_only_that_bus() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = sub_soloed();
@@ -631,7 +631,7 @@ fn sub_bus_solo_click_toggles_only_that_bus() {
 /// right (1.0) publishes +1.0 into that bus's slot only.
 #[test]
 fn pan_sliders_publish_remapped_balance() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     // Master pan hard-left.
@@ -669,7 +669,7 @@ fn pan_sliders_publish_remapped_balance() {
 /// reads it back to zero that bus's gain).
 #[test]
 fn sub_bus_mute_click_toggles_only_that_bus() {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut state = AudioMixerState;
 
     let before = sub_muted();

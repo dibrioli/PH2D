@@ -1241,10 +1241,6 @@ fn a_carga_de_comandos_de_um_painel_so_encolhe() {
 /// painel e o `wet_tuning` desmentiu-a: os *Reset* dele nascem em `ph2d-tool-painter`.
 const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
     (
-        "asset_browser",
-        "asset_browser::ids — um botão por ficheiro da lista",
-    ),
-    (
         "authored",
         "authored.opt.{key}.{index} · authored.row.{key}",
     ),
@@ -2322,7 +2318,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
 
     //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
     //    `set_collapsed_if_unchosen` de ninguém.
-    ("audio_mixer", 1237.0),
+    // ⬇️ `1 237 → 665` em 2026-11-04 (NovaUI D2): a mesa em cartões; Reverb, Delay, Comp e Ducking nascem
+    //    dobrados, com «On»/«Off» no resumo (`cards::prepare`). Medido pelo gate.
+    ("audio_mixer", 665.0),
 ];
 
 #[test]

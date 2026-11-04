@@ -70,7 +70,7 @@ fn a_vista(rects: &[(NodeId, Rect)]) -> Vec<(NodeId, Rect)> {
 }
 
 fn pintado() -> (MockPanelHost, AudioMixerState, Vec<(NodeId, Rect)>) {
-    let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
+    let mut host = crate::corpo_de_antes();
     let mut st = AudioMixerState;
     let rects = host.paint::<AudioMixerPanel>(&mut st, VIEWPORT);
     (host, st, rects)

@@ -87,6 +87,17 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(AMIX_PANEL, rect);
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut());
+        let cartoes = crate::cards::cards(ctx.host.store());
+        ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            AMIX_PANEL,
+            AudioMixerPanel::TITLE.tr(),
+            &cartoes,
+        );
+        return;
+    }
 
     // Opaque backing: `paint_panel_surface` is 0.96-alpha "glass", so without
     // this the Inspector still painting behind the shared dock slot bleeds

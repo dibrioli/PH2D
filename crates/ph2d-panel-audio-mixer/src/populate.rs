@@ -14,6 +14,7 @@ use ph2d_editor_core::widget::{
 };
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    crate::cards::populate(store);
     populate_sections(store);
 
     // Header close (X) + every mute (Master + one per sub-bus) + every sub-bus

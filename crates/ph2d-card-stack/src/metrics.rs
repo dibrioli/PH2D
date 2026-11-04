@@ -58,6 +58,14 @@ pub const CHECK_BOX: f32 = 16.0;
 pub const CHECK_GAP: f32 = 8.0;
 /// A grelha triangular de ligar/desligar: a célula (encolhe com o cartão) e o vão.
 pub const GRID_CELL: f32 = 22.0;
+/// A mesa de som: faixa vertical (fader e medidor) e barra fina. Os números são os da mesa de antes.
+pub const MIXER_FADER_W: f32 = 22.0;
+pub const MIXER_METER_W: f32 = 14.0;
+pub const MIXER_STRIP_H: f32 = 116.0;
+pub const MIXER_BAR_H: f32 = 16.0;
+/// A barra do cartão: a pista e o polegar.
+pub const BAR_TRACK: f32 = 4.0;
+pub const BAR_THUMB: f32 = 10.0;
 pub const GRID_GAP: f32 = 4.0;
 /// A célula do ícone — a PEGA do scrub (o arrasto nasce só aqui).
 pub const ICON_CELL: f32 = 26.0;

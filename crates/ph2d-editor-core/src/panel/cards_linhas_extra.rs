@@ -51,6 +51,18 @@ pub struct ListRow<'a> {
     pub edit: Option<NodeId>,
 }
 
+/// Uma barra arrastável no tom do cartão: a mesa de som tem fileiras de barras onde um campo por
+/// faixa não caberia. O store é o de sempre (`InteractiveState::Slider`), o despacho também.
+#[derive(Copy, Clone, Debug)]
+pub struct CardBar<'a> {
+    pub id: NodeId,
+    /// A posição, de 0 a 1.
+    pub value: f32,
+    pub vertical: bool,
+    /// Riscos na pista, em posição de 0 a 1 (o 0 dB de um fader).
+    pub ticks: &'a [f32],
+}
+
 impl<'a> ListRow<'a> {
     /// Uma linha sem nada a mais: raiz, sem ícone, sem facto, em repouso.
     #[must_use]
@@ -120,6 +132,104 @@ impl CardCtx<'_> {
             self.ink.color(ColorToken::Danger),
         );
         y + m::FIELD_H
+    }
+
+    /// Um interruptor com a cor própria quando ligado (o `M` vermelho, o `S` âmbar). `r` é do chamador.
+    pub fn tone_button(&mut self, r: Rect, id: NodeId, text: &str, on: bool, tom: ColorToken) {
+        self.hit_index.register(id, r);
+        let (fundo, tinta) = if on {
+            (tom, ColorToken::KanbanBtnOnFg)
+        } else if self.store.hover_live(id) > 0.0 {
+            (ColorToken::CardFieldHover, ColorToken::Text1)
+        } else {
+            (ColorToken::CardField, ColorToken::Text1)
+        };
+        fill_rounded_rect(self.scene, r, m::SEG_RADIUS, self.ink.color(fundo));
+        let tw = self.text_system.prefix_width(text, m::SEG_TEXT_PX).min(r.w);
+        paint_text_elided(
+            self.text_system,
+            self.scene,
+            text,
+            r.x + (r.w - tw) * 0.5,
+            r.y + (r.h - m::SEG_TEXT_PX) * 0.5,
+            m::SEG_TEXT_PX,
+            r.w,
+            self.ink.color(tinta),
+        );
+    }
+
+    /// ⭐ Uma barra no tom do cartão: pista, cheio até ao valor, riscos e polegar. O alvo é `r` inteiro.
+    pub fn bar(&mut self, b: &CardBar<'_>, r: Rect) {
+        self.hit_index.register(b.id, r);
+        let v = b.value.clamp(0.0, 1.0);
+        let t = m::BAR_TRACK;
+        let (pista, cheio, polegar) = if b.vertical {
+            let x = r.x + (r.w - t) * 0.5;
+            // O polegar fica dentro do alvo: nos extremos não invade a vizinha.
+            let topo = r.y + m::BAR_THUMB * 0.5 + (r.h - m::BAR_THUMB) * (1.0 - v);
+            (
+                Rect::new(x, r.y, t, r.h),
+                Rect::new(x, topo, t, (r.y + r.h - topo).max(0.0)),
+                Rect::new(r.x, topo - m::BAR_THUMB * 0.5, r.w, m::BAR_THUMB),
+            )
+        } else {
+            let y = r.y + (r.h - t) * 0.5;
+            let fim = r.x + m::BAR_THUMB * 0.5 + (r.w - m::BAR_THUMB) * v;
+            (
+                Rect::new(r.x, y, r.w, t),
+                Rect::new(r.x, y, (fim - r.x).max(0.0), t),
+                Rect::new(
+                    fim - m::BAR_THUMB * 0.5,
+                    r.y + (r.h - m::BAR_THUMB) * 0.5,
+                    m::BAR_THUMB,
+                    m::BAR_THUMB,
+                ),
+            )
+        };
+        let raio = t * 0.5;
+        fill_rounded_rect(
+            self.scene,
+            pista,
+            raio,
+            self.ink.color(ColorToken::CardField),
+        );
+        fill_rounded_rect(self.scene, cheio, raio, self.ink.color(ColorToken::Accent));
+        for &tick in b.ticks {
+            let risco = if b.vertical {
+                Rect::new(
+                    r.x,
+                    r.y + r.h * (1.0 - tick),
+                    r.w,
+                    StrokeToken::Default.px(),
+                )
+            } else {
+                Rect::new(r.x + r.w * tick, r.y, StrokeToken::Default.px(), r.h)
+            };
+            fill_rounded_rect(
+                self.scene,
+                risco,
+                0.0,
+                self.ink.color(ColorToken::CardLabel),
+            );
+        }
+        let quente = self.store.hover_live(b.id) > 0.0;
+        fill_rounded_rect(
+            self.scene,
+            polegar,
+            m::SEG_RADIUS,
+            self.ink.color(if quente {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text2
+            }),
+        );
+    }
+
+    /// Um medidor de nível (as cores são as do sinal, verde a vermelho, e não do cartão). `click` é o
+    /// id de limpar o aviso de clip.
+    pub fn meter(&mut self, click: NodeId, meter: &crate::widget::LevelMeter, r: Rect) {
+        crate::widget::paint_level_meter(meter, r, self.scene, self.ink.theme);
+        self.hit_index.register(click, r);
     }
 
     /// ⭐ Uma linha de lista ou árvore. Devolve o `y` seguinte, colado: as linhas tocam-se.
@@ -455,6 +565,25 @@ mod tests {
             campo.x + campo.w < 200.0 - m::SEG_INSET,
             "tapou o facto: {campo:?}"
         );
+    }
+
+    /// A barra regista o alvo inteiro; o polegar acompanha o valor nos dois sentidos, e fica no sítio
+    /// onde o despacho lê o mesmo valor: de baixo para cima na vertical.
+    #[test]
+    fn a_bar_registers_its_whole_rect_and_paints_within_it() {
+        for vertical in [false, true] {
+            let mut f = mesa();
+            let mut c = ctx(&mut f, 200.0);
+            let r = Rect::new(4.0, 8.0, 40.0, 100.0);
+            let b = CardBar {
+                id: NodeId(1),
+                value: 0.5,
+                vertical,
+                ticks: &[0.25],
+            };
+            c.bar(&b, r);
+            assert_eq!(f.hits.iter_registrations().next(), Some((NodeId(1), r)));
+        }
     }
 
     /// A marca como 1.ª linha não abre vão; depois de outra linha, abre.

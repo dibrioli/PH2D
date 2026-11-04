@@ -65,6 +65,8 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     store.mark_card_list_close(core_ids::VECTOR_PANEL, core_ids::VECTOR_CLOSE);
     crate::cards_tinta::prepare(store);
     crate::cards_texto::prepare(store);
+    crate::cards_ponto::prepare(store);
+    crate::cards_padrao::prepare(store);
     let p = passo_do_comprimento();
     for id in [
         vids::VECTOR_TRANSFORM_X,
@@ -207,6 +209,16 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
         crate::cards_texto::axes
     } else if id == ids::VECTOR_SECTION_TEXTPATH {
         crate::cards_texto::textpath
+    } else if id == vids::VECTOR_SECTION_VERTEX {
+        crate::cards_ponto::vertex
+    } else if id == vids::VECTOR_SECTION_CONNECTOR {
+        crate::cards_ponto::connector_card
+    } else if id == ids::VECTOR_SECTION_BRUSH {
+        crate::cards_ponto::brush
+    } else if id == ids::VECTOR_SECTION_TEXPAT {
+        crate::cards_padrao::pattern_fill
+    } else if id == ids::VECTOR_SECTION_TEXPAT_STROKE {
+        crate::cards_padrao::pattern_stroke
     } else {
         return None;
     };

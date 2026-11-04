@@ -69,6 +69,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.vector.unit.times" => "×",
         "card.vector.unit.em" => "em",
         "card.vector.unit.metres" => "m",
+        "card.vector.unit.one_over_n" => "1/n",
+        "card.vector.unit.percent" => "%",
         "card.vector.font_family" => "Family",
         "card.vector.font_prev" => "Previous font",
         "card.vector.font_next" => "Next font",

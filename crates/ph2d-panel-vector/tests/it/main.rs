@@ -28,6 +28,7 @@ mod g1_os_cartoes; // NovaUI G1: a lista, as abas, o hospedeiro e os corpos nati
 mod g2_os_cartoes; // NovaUI G2: Appearance, Fill & Stroke e os painéis à esquerda
 mod g3_os_cartoes; // NovaUI G3: Effects, Filters, a rampa e o painel do traço da barra
 mod g4_os_cartoes; // NovaUI G4: Text, Font, Paragraph, Axes e Text on Path
+mod g5_os_cartoes; // NovaUI G5: Pattern x2, Brush, Connector, Vertex
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
 mod popover_band;

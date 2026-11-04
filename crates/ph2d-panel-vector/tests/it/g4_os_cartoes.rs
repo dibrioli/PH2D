@@ -62,16 +62,21 @@ fn texto() {
     set_key_marks(BTreeMap::new());
 }
 
-struct Mesa {
-    host: MockPanelHost,
-    st: VectorPanelState,
-    rects: Vec<(NodeId, Rect)>,
+pub(crate) struct Mesa {
+    pub(crate) host: MockPanelHost,
+    pub(crate) st: VectorPanelState,
+    pub(crate) rects: Vec<(NodeId, Rect)>,
 }
 
 impl Mesa {
-    fn nova(cartoes: bool) -> Self {
+    pub(crate) fn nova(cartoes: bool) -> Self {
+        Self::com(cartoes, texto)
+    }
+
+    /// A mesa com o estado que `semente` publica.
+    pub(crate) fn com(cartoes: bool, semente: fn()) -> Self {
         cards::force_cards_on_this_thread(Some(cartoes));
-        texto();
+        semente();
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         host.open_all_sections();
         let mut mesa = Self {
@@ -83,14 +88,14 @@ impl Mesa {
         mesa
     }
 
-    fn presa(cartoes: bool) -> Self {
+    pub(crate) fn presa(cartoes: bool) -> Self {
         let mut mesa = Self::nova(cartoes);
         ph2d_panel_vector::set_current_textpath(true, 0.25, false);
         mesa.assenta();
         mesa
     }
 
-    fn assenta(&mut self) {
+    pub(crate) fn assenta(&mut self) {
         for _ in 0..60 {
             ph2d_panel_vector::set_current_text_seed(Some([2.0, 700.0, 1.5, 0.1]));
             let (h, st) = (&mut self.host, &mut self.st);
@@ -101,7 +106,7 @@ impl Mesa {
         }
     }
 
-    fn rect(&self, id: NodeId) -> Option<Rect> {
+    pub(crate) fn rect(&self, id: NodeId) -> Option<Rect> {
         self.rects
             .iter()
             .rev()
@@ -109,7 +114,7 @@ impl Mesa {
             .map(|(_, r)| *r)
     }
 
-    fn aplica(&mut self, eventos: Vec<WidgetEvent>) -> Vec<String> {
+    pub(crate) fn aplica(&mut self, eventos: Vec<WidgetEvent>) -> Vec<String> {
         let _ = self.host.drained_actions();
         for e in eventos {
             self.host.apply_panel_event::<VectorPanel>(&mut self.st, e);
@@ -121,7 +126,7 @@ impl Mesa {
             .collect()
     }
 
-    fn clica(&mut self, id: NodeId) -> Vec<String> {
+    pub(crate) fn clica(&mut self, id: NodeId) -> Vec<String> {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não pintado"));
@@ -131,7 +136,7 @@ impl Mesa {
         self.aplica(ev)
     }
 
-    fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
+    pub(crate) fn ponteiro(&mut self, kind: PointerKind, x: f32, y: f32) -> Vec<WidgetEvent> {
         self.host.dispatch_pointer_event(PointerEvent {
             kind,
             x,
@@ -143,7 +148,7 @@ impl Mesa {
         })
     }
 
-    fn arrasta_a_pega(&mut self, id: NodeId, dx: f32) -> Vec<WidgetEvent> {
+    pub(crate) fn arrasta_a_pega(&mut self, id: NodeId, dx: f32) -> Vec<WidgetEvent> {
         let r = self
             .rect(id)
             .unwrap_or_else(|| panic!("{id:?} não pintado"));
@@ -154,7 +159,7 @@ impl Mesa {
         ev
     }
 
-    fn esc(&mut self) -> Vec<String> {
+    pub(crate) fn esc(&mut self) -> Vec<String> {
         let arena = bumpalo::Bump::new();
         let esc = ph2d_host::KeyEvent {
             keycode: 0x1B,

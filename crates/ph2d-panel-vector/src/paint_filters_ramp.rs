@@ -63,7 +63,6 @@ impl BodyCtx<'_> {
         let gap = self.row_gap;
         let mut py = y;
         // ── A fileira `+` / `−`, alinhada à direita ──
-        let n = usize::from(fx.stop_count).min(MAX_FILTER_STOPS);
         for (i, (id, glyph)) in [
             (ids::filter_stop_add_id(row), IconId::Plus),
             (ids::filter_stop_remove_id(row), IconId::Minus),

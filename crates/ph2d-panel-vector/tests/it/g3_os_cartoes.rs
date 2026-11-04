@@ -856,20 +856,22 @@ fn the_stroke_popover_of_the_bar_paints_real_handles() {
     );
 }
 
-/// Com a aba do painel atrás o traço abre na mesma: alguém tem de preparar os campos dele.
+/// Com a aba do painel atrás o traço abre na mesma: alguém tem de semear os campos do cartão dele. O
+/// mock força o painel visível; este caminho só existe no hero.
 /// *Mutação: tirar o `prepare` do ramo do painel escondido ⇒ vermelho.*
 #[test]
 fn the_popover_works_with_the_panel_tab_behind() {
+    use ph2d_editor_core::panel::{ErasedPanel, PanelRegistry};
+    use ph2d_editor_core::screens::hero::{HeroScreen, paint_hero_screen};
+    static INIT: std::sync::Once = std::sync::Once::new();
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    INIT.call_once(|| {
+        let mut reg = PanelRegistry::new_empty();
+        reg.push(ErasedPanel::new::<VectorPanel>());
+        let _ = ph2d_editor_core::panel::install_panel_registry(reg);
+    });
     cards::force_cards_on_this_thread(Some(true));
     forma();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    host.open_all_sections();
-    let mut mesa = Mesa {
-        host,
-        st: VectorPanelState,
-        rects: Vec::new(),
-    };
-    let id = t::VECTOR_DASH_IDS[0];
     state::set_current_appearance(Some(state::Appearance {
         opacity: 1.0,
         blend: ph2d_vec_scene::BlendMode::Normal,
@@ -892,16 +894,32 @@ fn the_popover_works_with_the_panel_tab_behind() {
         layers_differ: false,
         order: Vec::new(),
     }));
-    mesa.host.set_panel_visible(VectorPanel::ID, false);
-    abre_o_traco(&mut mesa);
-    assert!(mesa.host.store().card_field(id).is_some(), "não marcado");
-    let ev = mesa.arrasta_a_pega(id, 40.0);
-    assert!(ev.contains(&WidgetEvent::ValueChanged(id)), "{ev:?}");
-    // O que a linha do traço mostra é o da forma, e não o de fábrica.
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.panel_visibility.insert(VectorPanel::ID, false);
+    let janela = Rect::new(0.0, 0.0, 1920.0, 1080.0);
+    let mut pinta = |hero: &mut HeroScreen| {
+        let mut scene = ph2d_vector::VectorScene::new();
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        paint_hero_screen(hero, janela, &mut scene, &mut text);
+    };
+    pinta(&mut hero);
+    hero.store.set_tool_row_slots(vec![(
+        p::VECTOR_BAR_STROKE,
+        Rect::new(400.0, 40.0, 80.0, 24.0),
+    )]);
+    if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(p::VECTOR_BAR_STROKE)
+    {
+        *open = true;
+    }
+    pinta(&mut hero);
+    let dash = t::VECTOR_DASH_IDS[0];
+    assert!(
+        hero.hit_index.rect_for(dash).is_some(),
+        "o painel não abriu"
+    );
+    assert!(hero.store.card_field(dash).is_some(), "o campo sem marca");
     assert_eq!(
-        mesa.host
-            .store()
-            .number_value(p::vector_paint_row_opacity_id(0)),
+        hero.store.number_value(p::vector_paint_row_opacity_id(0)),
         Some(50.0),
         "sem semente com a aba atrás"
     );

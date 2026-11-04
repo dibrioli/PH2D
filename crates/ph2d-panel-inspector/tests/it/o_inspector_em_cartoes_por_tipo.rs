@@ -38,7 +38,7 @@ const JANELA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 4000.0,
+    h: 8000.0,
 };
 
 fn limpa() {

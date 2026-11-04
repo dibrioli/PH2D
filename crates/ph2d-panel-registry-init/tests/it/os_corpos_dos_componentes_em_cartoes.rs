@@ -16,7 +16,7 @@ const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 1800.0,
+    h: 2400.0,
 };
 
 fn pinta(h: &mut HeroScreen) {

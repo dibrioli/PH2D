@@ -13,7 +13,9 @@ use ph2d_ecs::{
     SpriteGrid, TextureRepeat, UvTransform, ZIndexOverride,
 };
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
-use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, CharacterAnimations, Collider, ColliderShape, CombineRule, MaterialCombine, RigidBody,
+};
 use ph2d_render::{
     FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE,
     HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
@@ -175,9 +177,16 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Re
         } else if entry == CHARACTER {
             anima(world, e)?;
             world.entity_mut(e).insert((
+                // Sem atrito contra parede: a regra Min vence a Average de quem ele toca, senão a
+                // parede ainda daria metade do atrito dela (`platform_wall_sem_atrito`).
                 Collider {
                     shape: CAPSULA,
+                    friction: 0.0,
                     ..Collider::default()
+                },
+                MaterialCombine {
+                    friction: CombineRule::Min,
+                    ..MaterialCombine::default()
                 },
                 CharacterAnimations::default(),
             ));

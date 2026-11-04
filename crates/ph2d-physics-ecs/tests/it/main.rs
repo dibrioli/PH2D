@@ -156,6 +156,7 @@ mod platform_tape;
 mod platform_walk;
 mod platform_wall;
 mod platform_wall_rig;
+mod platform_wall_sem_atrito;
 mod platform_water_scene;
 mod player_arc_pump;
 mod player_bridge_source;

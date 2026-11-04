@@ -109,6 +109,20 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
     assert_eq!(anims, &CharacterAnimations::default());
 }
 
+/// Dono 04/11: o personagem não tem atrito contra as paredes, e o Inspector mostra os dois valores.
+#[test]
+fn o_personagem_nasce_sem_atrito() {
+    let mut sim = SimWorld::new();
+    let e = nasce(CHARACTER, &mut sim);
+    let w = sim.world();
+    assert_eq!(w.get::<Collider>(e).map(|c| c.friction), Some(0.0));
+    assert_eq!(
+        w.get::<ph2d_physics_ecs::MaterialCombine>(e)
+            .map(|m| m.friction),
+        Some(ph2d_physics_ecs::CombineRule::Min)
+    );
+}
+
 /// Uma entrada de outra família não é desta: `None`, e nada nasce.
 #[test]
 fn entrada_alheia_nao_cria_nada() {

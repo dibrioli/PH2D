@@ -82,11 +82,12 @@ pub(crate) fn titulo_que_dobra(
         c.ink.color(ColorToken::CardLabel),
     );
     if let Some(r) = reset {
-        let caixa = Rect::new(c.x + c.w - h, topo, h, h);
+        let lado = m::HEAD_ICON_BOX;
+        let caixa = Rect::new(c.x + c.w - lado, topo + (h - lado) * 0.5, lado, lado);
         paint_icon_button(
             caixa,
             IconGlyph::Builtin(IconId::Reset),
-            IconButtonStyle::Plain,
+            IconButtonStyle::Compact,
             c.store.button_visual(r),
             c.scene,
             c.ink.theme,
@@ -236,20 +237,20 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, ids: &RampIds, v: RampView<'_>, y: f32)
     let botoes = [
         Seg {
             id: ids.add,
-            icon: None,
-            text: "+",
+            icon: Some(IconId::Plus),
+            text: "",
             on: false,
         },
         Seg {
             id: ids.remove,
-            icon: None,
-            text: "−",
+            icon: Some(IconId::Minus),
+            text: "",
             on: false,
         },
         Seg {
             id: ids.invert,
-            icon: None,
-            text: "I",
+            icon: Some(IconId::FlipH),
+            text: "",
             on: false,
         },
     ];

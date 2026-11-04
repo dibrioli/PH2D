@@ -287,7 +287,7 @@ impl<'s> CardCtx<'s> {
         }
     }
 
-    fn text(&mut self, r: Rect, id: NodeId, placeholder: &str) {
+    pub(super) fn text(&mut self, r: Rect, id: NodeId, placeholder: &str) {
         use crate::interaction::InteractiveState;
         use crate::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
         self.hit_index.register(id, r);

@@ -2,14 +2,18 @@
 //! de marcar pelo [`CardCtx`] e a grelha triangular de ligar/desligar (o mapa de colisão da Unity e
 //! da Godot). Não cabem em [`Widget`], cuja linha tem a altura de um campo.
 
-use super::{CardCtx, Cell, Widget, corpo, rotulos};
+use super::{CardCtx, Cell, Widget, corpo, flight_shadow, rotulos};
+use crate::icons::IconId;
 use crate::interaction::toggle_paint;
-use crate::paint::{fill_rounded_rect, paint_text, paint_text_block};
+use crate::paint::{
+    fill_rounded_rect, paint_icon, paint_text, paint_text_block, paint_text_elided,
+};
 use crate::widget::key_mark::Rotulo;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_tokens::{ColorToken, StrokeToken};
+use ph2d_vector::Affine;
 
 /// A grelha triangular: a linha `i` tem `i + 1` células; `(i, j)` é UM facto sobre o par.
 pub struct ToggleTriangle<'a> {
@@ -25,9 +29,58 @@ pub struct ToggleTriangle<'a> {
     pub on_of: &'a dyn Fn(usize, usize) -> bool,
 }
 
+/// Uma linha de lista ou árvore (Tags, catálogos de Assets): o painel que era uma lista continua a
+/// sê-lo, dentro de um cartão. As linhas tocam-se: não há vão entre elas.
+#[derive(Copy, Clone, Debug)]
+pub struct ListRow<'a> {
+    pub id: NodeId,
+    pub label: &'a str,
+    /// O nível na árvore: recua pela porta `list_indent_px`.
+    pub depth: usize,
+    /// Um ícone antes do nome.
+    pub icon: Option<IconId>,
+    /// O facto à direita (quantos pertencem), esmaecido.
+    pub trailing: Option<&'a str>,
+    /// A linha em mãos.
+    pub selected: bool,
+    /// Onde o arrasto em curso largaria.
+    pub target: bool,
+    /// A linha que está a voar: fica esmaecida no lugar.
+    pub dim: bool,
+    /// O campo de renomear por cima do nome (este id); o facto à direita continua à vista.
+    pub edit: Option<NodeId>,
+}
+
+impl<'a> ListRow<'a> {
+    /// Uma linha sem nada a mais: raiz, sem ícone, sem facto, em repouso.
+    #[must_use]
+    pub fn new(id: NodeId, label: &'a str) -> Self {
+        Self {
+            id,
+            label,
+            depth: 0,
+            icon: None,
+            trailing: None,
+            selected: false,
+            target: false,
+            dim: false,
+            edit: None,
+        }
+    }
+}
+
 impl CardCtx<'_> {
     /// Uma frase que explica o gesto: quebra na largura do cartão e devolve o fundo MEDIDO.
     pub fn hint(&mut self, text: &str, y: f32) -> f32 {
+        self.frase(text, ColorToken::CardLabel, y)
+    }
+
+    /// Uma recusa, na linha em que ela aconteceu: a frase da lei, na cor do perigo.
+    pub fn problem(&mut self, text: &str, y: f32) -> f32 {
+        self.frase(text, ColorToken::Danger, y)
+    }
+
+    fn frase(&mut self, text: &str, cor: ColorToken, y: f32) -> f32 {
         self.first = false;
         let top = y + m::FIELD_ROW_GAP;
         let used = paint_text_block(
@@ -38,9 +91,160 @@ impl CardCtx<'_> {
             top,
             m::LABEL_PX,
             self.w,
-            self.ink.color(ColorToken::CardLabel),
+            self.ink.color(cor),
         );
         top + used
+    }
+
+    /// Um botão destrutivo a toda a largura: o rótulo diz o tamanho do estrago, na cor do perigo.
+    pub fn danger_button(&mut self, id: NodeId, text: &str, y: f32) -> f32 {
+        let y = if self.first { y } else { y + m::FIELD_ROW_GAP };
+        self.first = false;
+        let r = Rect::new(self.x, y, self.w, m::FIELD_H);
+        self.hit_index.register(id, r);
+        let fundo = if self.store.hover_live(id) > 0.0 {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.ink.color(fundo));
+        let tw = self.text_system.prefix_width(text, m::VALUE_PX).min(r.w);
+        paint_text_elided(
+            self.text_system,
+            self.scene,
+            text,
+            r.x + (r.w - tw) * 0.5,
+            r.y + (r.h - m::VALUE_PX) * 0.5,
+            m::VALUE_PX,
+            r.w,
+            self.ink.color(ColorToken::Danger),
+        );
+        y + m::FIELD_H
+    }
+
+    /// ⭐ Uma linha de lista ou árvore. Devolve o `y` seguinte, colado: as linhas tocam-se.
+    pub fn list_row(&mut self, row: &ListRow<'_>, y: f32) -> f32 {
+        self.first = false;
+        let r = Rect::new(self.x, y, self.w, m::FIELD_H);
+        self.hit_index.register(row.id, r);
+        self.list_row_face(row, r);
+        if row.target {
+            // FRAME-RAW-OK: o alvo da largada, contornado no acento do cartão
+            crate::paint::stroke_rounded_rect(
+                self.scene,
+                r,
+                m::SEG_RADIUS,
+                StrokeToken::Default.px(),
+                self.ink.color(ColorToken::Accent),
+            );
+        }
+        let recuo = ph2d_tokens::list_indent_px() * row.depth as f32;
+        let x =
+            r.x + recuo + m::SEG_INSET + row.icon.map_or(0.0, |_| m::SEG_TEXT_PX + m::SEG_ICON_GAP);
+        let fim = r.x + r.w - m::SEG_INSET;
+        // A coluna do facto: reservada por inteiro, para os nomes não dançarem.
+        let reserva = row.trailing.map_or(0.0, |t| {
+            self.text_system.prefix_width(t, m::LABEL_PX) + m::SEG_INSET
+        });
+        let (nome_w, tinta) = ((fim - x - reserva).max(0.0), self.tinta_da_linha(row));
+        if let Some(edit) = row.edit {
+            self.text(Rect::new(x, y, nome_w, m::FIELD_H), edit, "");
+        } else {
+            paint_text_elided(
+                self.text_system,
+                self.scene,
+                row.label,
+                x,
+                y + (m::FIELD_H - m::VALUE_PX) * 0.5,
+                m::VALUE_PX,
+                nome_w,
+                tinta,
+            );
+        }
+        if let Some(t) = row.trailing {
+            let tw = self.text_system.prefix_width(t, m::LABEL_PX);
+            paint_text(
+                self.text_system,
+                self.scene,
+                t,
+                fim - tw,
+                y + (m::FIELD_H - m::LABEL_PX) * 0.5,
+                m::LABEL_PX,
+                tw + m::SEG_INSET,
+                self.ink.color(ColorToken::CardLabel),
+            );
+        }
+        y + m::FIELD_H
+    }
+
+    fn tinta_da_linha(&self, row: &ListRow<'_>) -> ph2d_vector::Color {
+        self.ink.color(if row.dim {
+            ColorToken::CardLabel
+        } else if row.selected {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        })
+    }
+
+    fn list_row_face(&mut self, row: &ListRow<'_>, r: Rect) {
+        let fundo = if row.selected {
+            Some(ColorToken::KanbanCardRaised)
+        } else if self.store.hover_live(row.id) > 0.0 {
+            Some(ColorToken::CardFieldHover)
+        } else {
+            None
+        };
+        if let Some(f) = fundo {
+            fill_rounded_rect(self.scene, r, m::SEG_RADIUS, self.ink.color(f));
+        }
+        if let Some(icon) = row.icon {
+            let lado = m::SEG_TEXT_PX;
+            let recuo = ph2d_tokens::list_indent_px() * row.depth as f32;
+            let tinta = self.tinta_da_linha(row);
+            paint_icon(
+                self.scene,
+                icon,
+                Rect::new(
+                    r.x + recuo + m::SEG_INSET,
+                    r.y + (r.h - lado) * 0.5,
+                    lado,
+                    lado,
+                ),
+                tinta,
+                StrokeToken::Default.px(),
+            );
+        }
+    }
+
+    /// A linha que a mão leva: inclinada e com a sombra do voo do cartão (lei do arrastar, 05 §6),
+    /// sem registar clique. `(x, y)` é o topo esquerdo do fantasma.
+    pub fn list_row_flight(&mut self, row: &ListRow<'_>, x: f32, y: f32) {
+        let local = Rect::new(0.0, 0.0, self.w, m::FIELD_H);
+        let mut voo = ph2d_vector::VectorScene::new();
+        flight_shadow(&mut voo, self.ink.theme, local);
+        fill_rounded_rect(
+            &mut voo,
+            local,
+            m::SEG_RADIUS,
+            self.ink.color(ColorToken::KanbanCardRaised),
+        );
+        paint_text_elided(
+            self.text_system,
+            &mut voo,
+            row.label,
+            m::SEG_INSET,
+            (m::FIELD_H - m::VALUE_PX) * 0.5,
+            m::VALUE_PX,
+            (local.w - m::SEG_INSET * 2.0).max(0.0),
+            self.ink.color(ColorToken::Text1),
+        );
+        let pivo = ph2d_card_stack::flight_pivot(local.w, local.h);
+        let t = Affine::translate((f64::from(x), f64::from(y)))
+            * Affine::translate(pivo)
+            * Affine::rotate(ph2d_card_stack::FLIGHT_TILT_DEG.to_radians())
+            * Affine::translate((-pivo.0, -pivo.1));
+        self.scene.append_transformed(&voo, t);
     }
 
     /// Uma caixa de marcar à Figma (T64), como 1.ª linha do corpo ou depois de outra. O que não anima
@@ -214,6 +418,42 @@ mod tests {
         assert!(
             estreita > larga,
             "a quebra tem de empurrar a linha seguinte: {estreita} × {larga}"
+        );
+    }
+
+    /// As linhas tocam-se, recuam pelo nível, registam o id; o campo de renomear fica por cima do
+    /// nome e deixa o facto à direita livre; o voo não regista clique.
+    #[test]
+    fn a_list_row_is_flush_indents_and_its_edit_box_spares_the_trailing_fact() {
+        let mut f = mesa();
+        let mut c = ctx(&mut f, 200.0);
+        let linha = ListRow {
+            trailing: Some("12"),
+            ..ListRow::new(NodeId(1), "Enemy")
+        };
+        let a = c.list_row(&linha, 0.0);
+        assert_eq!(a, m::FIELD_H);
+        let b = c.list_row(
+            &ListRow {
+                id: NodeId(2),
+                depth: 2,
+                edit: Some(NodeId(3)),
+                ..linha
+            },
+            a,
+        );
+        assert_eq!(b, a + m::FIELD_H, "entre linhas de lista não há vão");
+        c.list_row_flight(&linha, 10.0, 10.0);
+        let rects: Vec<(NodeId, Rect)> = f.hits.iter_registrations().collect();
+        assert_eq!(rects.len(), 3, "duas linhas e um campo; o voo não regista");
+        let campo = rects.iter().find(|(id, _)| *id == NodeId(3)).unwrap().1;
+        assert!(
+            (campo.x - (2.0 * ph2d_tokens::list_indent_px() + m::SEG_INSET)).abs() < 0.01,
+            "o campo recua com o nível: {campo:?}"
+        );
+        assert!(
+            campo.x + campo.w < 200.0 - m::SEG_INSET,
+            "tapou o facto: {campo:?}"
         );
     }
 

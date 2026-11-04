@@ -9987,6 +9987,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
@@ -10079,7 +10080,9 @@ dependencies = [
 name = "ph2d-panel-wet-tuning"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",

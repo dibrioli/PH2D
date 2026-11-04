@@ -26,6 +26,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod cards;
 pub mod ids;
 mod paint;
 mod rows;

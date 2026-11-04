@@ -37,6 +37,18 @@ pub(crate) fn paint(state: &mut TagsPanelState, ctx: &mut PaintCtx) {
     let rect: Rect = ctx.slot;
     let theme = ctx.host.theme();
     ctx.host.store_mut().set_panel_rect(ids::TAGS_PANEL, rect);
+    if crate::cards::cards_on() {
+        crate::cards::prepare(ctx.host.store_mut());
+        let cartoes = crate::cards::cards(state);
+        let lista = ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ids::TAGS_PANEL,
+            TagsPanel::TITLE.tr(),
+            &cartoes,
+        );
+        state::set_last_content_h(lista.h);
+        return;
+    }
     paint_panel_surface(rect, ctx.scene, theme);
 
     let title_size = paint_panel_title(

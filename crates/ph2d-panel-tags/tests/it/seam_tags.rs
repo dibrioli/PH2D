@@ -30,6 +30,12 @@ const ENEMY: u64 = 7;
 const FLYING: u64 = 8;
 const STATUE: u64 = 9;
 
+/// O corpo de antes (`PH2D_CARDS=0`): é ele que esta varredura mede; os cartões têm `os_cartoes.rs`.
+fn anfitriao() -> MockPanelHost {
+    ph2d_panel_tags::cards::force_cards_on_this_thread(Some(false));
+    MockPanelHost::with_panel::<TagsPanel>()
+}
+
 /// **A fixtura**: `Enemy (5)` › `Flying (3)`, e a raiz irmã `Statue (1)`.
 ///
 /// ⚠️ **Os ids NÃO são `1, 2, 3`** de propósito: um gate que confundisse o id da tag com o índice
@@ -73,7 +79,7 @@ fn palco(
     TagsPanelState,
     Vec<(ph2d_a11y::NodeId, Rect)>,
 ) {
-    let mut host = MockPanelHost::with_panel::<TagsPanel>();
+    let mut host = anfitriao();
     let mut state = TagsPanelState::default();
     set_current_tags(info);
     let rects = host.paint::<TagsPanel>(&mut state, VIEWPORT);
@@ -300,7 +306,7 @@ fn the_delete_button_is_as_wide_as_the_damage_it_names() {
 #[test]
 fn a_refusal_reaches_glyphs_on_its_own_row() {
     let limpo = {
-        let mut host = MockPanelHost::with_panel::<TagsPanel>();
+        let mut host = anfitriao();
         let mut state = TagsPanelState::default();
         set_current_tags(arvore());
         host.paint_and_count_geometry::<TagsPanel>(&mut state, VIEWPORT)
@@ -310,7 +316,7 @@ fn a_refusal_reaches_glyphs_on_its_own_row() {
     let com_queixa = {
         let mut info = arvore();
         info.problem = Some((FLYING, frase.to_string()));
-        let mut host = MockPanelHost::with_panel::<TagsPanel>();
+        let mut host = anfitriao();
         let mut state = TagsPanelState::default();
         set_current_tags(info);
         host.paint_and_count_geometry::<TagsPanel>(&mut state, VIEWPORT)
@@ -330,7 +336,7 @@ fn a_refusal_reaches_glyphs_on_its_own_row() {
 /// ⚠️ Medido em GLIFOS pela mesma razão do gate acima.
 #[test]
 fn an_empty_tree_says_the_gesture_that_fills_it() {
-    let mut host = MockPanelHost::with_panel::<TagsPanel>();
+    let mut host = anfitriao();
     let mut state = TagsPanelState::default();
     set_current_tags(TagsPanelInfo::default());
     let (glifos, _) = host.paint_and_count_geometry::<TagsPanel>(&mut state, VIEWPORT);

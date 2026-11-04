@@ -39,6 +39,12 @@ pub const TAGS_SELECT: NodeId = hash_node_id("tags.select");
 /// as outras» é uma área que muda de tamanho com a lista, e num painel cheio ela não existe.
 pub const TAGS_UNPARENT: NodeId = hash_node_id("tags.unparent");
 
+/// O cartão da árvore (nova UI): ordem, dobra, tema e notas moram neste id.
+pub const TAGS_SEC_TREE: NodeId = hash_node_id("tags.sec.tree");
+
+/// O cartão dos verbos da linha em mãos.
+pub const TAGS_SEC_SELECTED: NodeId = hash_node_id("tags.sec.selected");
+
 /// O campo de renomear, sobreposto à linha.
 pub const TAGS_RENAME_INPUT: NodeId = hash_node_id("tags.rename_input");
 

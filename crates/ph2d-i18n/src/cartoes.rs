@@ -4,6 +4,12 @@
 /// A tradução de uma chave dos cartões, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        "card.padding.edges" => "Edges",
+        "card.padding.top" => "Top (px)",
+        "card.padding.right" => "Right (px)",
+        "card.padding.bottom" => "Bottom (px)",
+        "card.padding.left" => "Left (px)",
+        "card.padding.recenter_pivot" => "Recenter pivot",
         "card.field.mixed" => "Mixed",
         "card.glyph.in" => "In",
         "card.glyph.out" => "Out",
@@ -60,6 +66,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.menu.panel" => "Panel options",
         "card.menu.close" => "Close this panel",
         // O painel Physics: a unidade no rótulo (D13).
+        "card.wet_tuning.texture_size_ref" => "Texture size reference (px)",
+        "card.wet_tuning.reset_knob" => "Reset {knob}",
+        "card.wet_tuning.reset_group" => "Reset all of {group}",
         "card.physics.gravity" => "Gravity (m/s\u{b2})",
         "card.physics.contact_hz" => "Contact (Hz)",
         "card.physics.sleep_speed" => "Speed (m/s)",
@@ -126,6 +135,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.bones.curve_in" => "Curve in",
         "card.bones.curve_out" => "Curve out",
         "card.bones.along_in" => "Along in",
+        "card.tags.all" => "All tags",
+        "card.tags.selected" => "Selected tag",
+        "card.tags.new" => "New tag",
+        "card.tags.empty" => "No tags yet. Press + to make the first one.",
+        "card.tags.pick_hint" => {
+            "Choose a tag to rename, select or delete it. Drag a tag onto another to nest it."
+        }
         "card.bones.along_out" => "Along out",
         "card.bones.min" => "Min (\u{b0})",
         "card.bones.max" => "Max (\u{b0})",

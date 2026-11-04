@@ -130,8 +130,8 @@ thread_local! {
     static CENA: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-/// `PH2D_VEC_CARTOES_SMOKE=12`: o despacho real recebe um clique no 1.º losango do Fill e do Stroke
-/// presos a A (a `fase_autokey` grava-o). Um quadro por cartão; sem a env, nada.
+/// `PH2D_VEC_CARTOES_SMOKE=12`: o despacho real recebe um clique no 1.º losango do Stroke preso a A (a
+/// `fase_autokey` grava-o); o da cópia presa a B fica no ponto. Sem a env, nada.
 pub fn cena(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     use ph2d_editor_core::interaction::{dispatch_pointer, loose_rect_of};
     use ph2d_editor_core::registry::hash_node_id as h;
@@ -139,7 +139,7 @@ pub fn cena(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     if std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref() != Ok("12") {
         return;
     }
-    let cartoes = [h("cards.insp.fill"), h("cards.insp.stroke")];
+    let cartoes = [h("cards.insp.stroke")];
     let n = CENA.with(std::cell::Cell::get);
     let Some(&sec) = cartoes.get(n) else {
         return;

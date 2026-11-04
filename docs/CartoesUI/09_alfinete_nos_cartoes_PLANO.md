@@ -1,6 +1,6 @@
 # 09 — O alfinete nos cartões que ainda não o têm: plano com o tamanho medido (03/11/2026)
 
-Leitor: a LLM que construir isto. **Construído: guarda, Material, Ordering, Object, Appearance (bloco C1, 04/11), Fill e Stroke (bloco C2, 04/11). Aberto: o losango de um campo preso (fim deste documento).** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
+Leitor: a LLM que construir isto. **Construído: guarda, Material, Ordering, Object, Appearance (bloco C1, 04/11), Fill e Stroke (bloco C2, 04/11), o losango de um campo preso e o custo medido (bloco C3, 04/11, fim deste documento).** Ordem do dono (03/11, por `ph2d-58`): só depois da CI.
 Pedido dele: «vários cards ainda não têm o alfinete». Foto: cartão Fill solto, cabeçalho ⠿ + ×, sem alfinete.
 
 Hoje só o Transform e os cartões de componente são presos (T47, T61): `store.mark_card_pinnable`, em
@@ -108,6 +108,25 @@ O plano previu mais do que o código pede. **O cartão só emite:** amostra e he
 - **A amostra de uma camada só abria o seletor se o painel Vector tivesse sido pintado.** O cartão regista-a agora.
 - **Um clique fora fecha o seletor** (`pointer_down`); para a decisão do dono valer, o seletor do preso não fecha assim: fecha pelo ×, ou abrindo outra amostra.
 
-## O losango de um campo preso: DEFEITO ABERTO
+## O losango de um campo preso: curado no bloco C3 (04/11)
 
-Lido em `fase_autokey.rs` e `key_mark.rs`, não corrido: o mapa `MARCAS` é um só e calcula-se com a seleção, e `take_key_mark_click` grava em `sel`. Num cartão preso o losango mostra o estado do objecto escolhido, e clicá-lo põe a chave nele. Vale para todos os presos, desde o Transform (T47). Cura: `Retrato` com as marcas de cada preso (`marcas(tl, ctx, &[A], …)`, com `ALVOS` a sobreviver à troca) e o clique com `sel = [preso]` + `Contexto` da forma dele. Não entrou no prazo do C2.
+**O defeito, medido:** com `alvo_do_clique` a ignorar o sujeito, `Transform …: a chave caiu noutro objecto ([fffffffd], B = fffffffd)`. Valia para todos os presos, desde T47.
+
+**Desenho, diferente do que aqui se propunha:** as marcas NÃO entraram no `Retrato`. Ele é a chave de `MEDIDOS` e `MONTADOS`: uma marca que muda (o tempo a andar) refaria o ensaio de cada preso. Ficam ao lado, em `key_mark`: `set_key_marks_dos_presos` e `com_marcas_de(pin, …)` à volta do corpo do cartão. Um preso ainda sem mapa não tem canal, nunca mostra o da seleção. O clique leva `sujeito` (a pressão, `pointer_down`); `losango::alvo_do_clique` escolhe alvo e `Contexto`. O `Contexto` do preso não tem camada aberta nem cota: são da seleção.
+
+**Duas armadilhas:** o mapa dos presos calcula-se ANTES de `set_key_marks`, que apaga os rótulos de que os campos de componente dependem (sem isto, o Player preso tinha 0 losangos). Cada preso entra na `populacao` do Auto Key: fora dela, a edição de A não gravava chave e a curva repunha o valor.
+
+**A crate:** `ph2d-app-vec-preso` passou a `shells/presos` (`ph2d-host-presos`). O losango vê vetor, componentes, constraints e osso, e família → família reprova `architecture_no_dependency_climbs_a_layer`; só a composição pode. A aresta `ph2d-app-vec-preso → ph2d-app-vec` já era dessa espécie, e a crate não estava no registo gerado (lido, não corrido antes da mudança: o `ph2d-editor-core` estava a ser editado). Depois: as leis das camadas, `the_shell_only_shrinks` e `staleness` verdes. ⚠️ A shell cresceu 19 linhas neste bloco (+89 −70, 57 delas o teste do Auto Key), dentro do tecto mas contra a lei: falta mover ou cortar.
+
+**O seletor de cor, medido:** a guarda do C2 só vale com `picker_subject`. Sem alfinete, na lista ou solto, um clique fora fecha como antes (teste). Achado: o `X` do vetor chama `open_picker_on`, que lê o sujeito da última pressão; depois de um clique num preso, o seletor da seleção nascia do preso, escrevia nele e não fechava. Cura: `open_picker_da_selecao`.
+
+## Custo por quadro com as tintas no retrato e 5 cartões presos (04/11, C3)
+
+`custo_por_quadro_de_cinco_presos`, `--profile smoke`, duas mesas no MESMO processo, intercaladas, o mínimo de 200 rondas, duas corridas, `load ~16`. Quadro inteiro da `Mesa` (publica, ensaia, pinta, dreno, ponte):
+
+| | sem presos | Fill, Stroke, Transform, Appearance, Material presos | diferença |
+|---|---|---|---|
+| quadro | 1,511 / 1,598 ms | 2,211 / 2,337 ms | **0,700 / 0,739 ms** |
+| só os mapas do losango | 0,132 / 0,141 ms | 0,277 / 0,291 ms | **0,145 / 0,150 ms** |
+
+Abaixo de ~1 ms: nenhuma cura. ⚠️ Os 5 cartões estão em **2 objectos** (a mesa tem 3, um escolhido): o mapa custa ~0,07 ms por objecto, logo 5 objectos dariam ~0,95 ms por conta, não por medição. O perfil `smoke` não é o `release` e a `Mesa` não é a app.

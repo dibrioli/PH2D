@@ -15,7 +15,7 @@
 //! (a cara do popover num cartão, T25); `=10`: dois retângulos, com Object, Appearance, Ordering e
 //! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1);
 //! `=11`: dois retângulos de tintas diferentes, com Fill e Stroke soltos e presos a cada um, «Shape B» escolhido (C2);
-//! `=12`: o 11 com o losango do Fill e do Stroke presos a A clicados a sério (`ph2d_host_presos::losango::cena`, C3).
+//! `=12`: o 11 com o losango do Stroke preso a A clicado a sério (`ph2d_host_presos::losango::cena`, C3).
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 

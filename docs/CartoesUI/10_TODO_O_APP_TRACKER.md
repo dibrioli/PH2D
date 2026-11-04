@@ -241,12 +241,13 @@ Por gesto real (`o_alfinete_fill_stroke_c2::losango_c3`, 9 testes; prende-se a A
 
 **Na app real:** cena `PH2D_VEC_CARTOES_SMOKE=12` (clique pelo despacho real). Sonda temporária, retirada: `sujeito = A`, `AddKey` só com `entity = A`, 6 canais do Stroke. Foto vista: `maquete/c_losango_preso.png`: Stroke de Shape A com o losango cheio em Color, a cópia de Shape B com o ponto.
 
-**Contraprovas vistas vermelhas (2 lotes, tudo restaurado):** `c.sujeito = None`, guarda do seletor fora, `X` com `open_picker_on`, `com_marcas_de` fora do Inspector, `Novo` nas formas da seleção: 9 testes. `alvo_do_clique` sem o sujeito, seletor que nunca fecha, `com_marcas_de` fora do Bones: 5 testes. Pinos fora da `populacao`: 1 (shell). Verdes depois: `o_alfinete` 34 de 34 + o do osso; `the_shell_only_shrinks`, leis das camadas, `staleness`.
+**Contraprovas vistas vermelhas (2 lotes, tudo restaurado):** `c.sujeito = None`, guarda do seletor fora, `X` com `open_picker_on`, `com_marcas_de` fora do Inspector, `Novo` nas formas da seleção: 9 testes. `alvo_do_clique` sem o sujeito, seletor que nunca fecha, `com_marcas_de` fora do Bones: 5 testes. Pinos fora da `populacao`: 1 (shell). Verdes depois, na árvore final: `o_alfinete` 34 (o do osso incluído), `preso` da shell 5; `the_shell_only_shrinks`, leis das camadas, `staleness`.
 
 **Aberto:**
 - Numa pilha com camada, só a 1.ª linha do Fill tem rótulo e losango; a da base fica sem marca visível (igual solto e preso; não mudou). A sonda mostrou a chave da base gravada em A sem nada a acender.
 - «Not available» do Mix preso: o texto não foi conferido por teste nem foto.
 - Mapa do Player com fixtura de bits falsos: o clique passa pela porta real, o `lidos` é do teste.
+- ⚠️ A shell cresceu 19 linhas (+89 −70, 57 de teste), dentro do tecto: falta mover ou cortar.
 - Sem clippy nem suíte (fecho da linha). O custo mediu 5 cartões em 2 objectos.
 
 **Bloco G, fatia 1 (04/11).** Plano em [12](12_VECTOR_PLANO.md) (30 entradas no corpo, não ~41). Todo o painel passou a cartões de uma vez, com `PH2D_CARDS=0` a dar o de antes (`crates/ph2d-panel-vector/src/cards.rs`). Corpos nativos: Transform, Snap, Constraints, Frame, Clip. O resto: hospedeiro com o cabeçalho absorvido, como os componentes do Inspector. **A sonda** (`sonda_da_seccao`): o pintor antigo corre só até ao cabeçalho, que responde «dobrada» e devolve título e «+»; assim a condição de cada secção continua a ser a única resposta, sem pintar duas vezes nem repetir predicados. O «+» de F43/F44 passou ao cabeçalho do cartão com o mesmo id; em `rows.rs`, um cabeçalho absorvido deixou de registar a pega e a acção por cima do título. Advanced corre pelo `corre()` de sempre, dentro de um cartão: ordem, tema e notas dos membros seguem iguais.

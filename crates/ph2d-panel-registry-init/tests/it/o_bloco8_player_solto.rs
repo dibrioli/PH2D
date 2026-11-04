@@ -35,6 +35,18 @@ pub(super) fn hero_com_aberto(sec: NodeId) -> HeroScreen {
         pinta(&mut h, 30);
     }
     assert!(!h.store.is_collapsed(sec), "o cartão {sec:?} não abriu");
+    // Os cartões de cima têm a altura deles: traz o título para dentro da janela.
+    let (painel, grip) = (
+        ph2d_editor_core::ids::INSP_PANEL,
+        ph2d_editor_core::ids::grip_de(sec),
+    );
+    let mut rolar = 0.0;
+    while h.hit_index.rect_for(grip).is_none() && rolar < 30_000.0 {
+        rolar += 100.0;
+        h.store.set_panel_scroll(painel, rolar);
+        h.store.set_panel_scroll_live(painel, rolar);
+        pinta(&mut h, 3);
+    }
     h
 }
 

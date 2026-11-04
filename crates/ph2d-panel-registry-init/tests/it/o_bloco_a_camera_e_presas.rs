@@ -64,7 +64,10 @@ fn rolado_ate(h: &mut HeroScreen, id: NodeId) -> ph2d_editor_core::zones::Rect {
     let painel = ids::INSP_PANEL;
     let mut rolar = 0.0;
     while rolar < 30_000.0 {
-        if let Some(r) = h.hit_index.rect_for(id) {
+        // Inteiro: a borda da janela recorta o rect, e um rect recortado não mede a caixa.
+        if let Some(r) = h.hit_index.rect_for(id)
+            && r.y + r.h + m::FIELD_H < h.last_layout.expect("houve um quadro").canvas.h
+        {
             return r;
         }
         rolar += 150.0;
@@ -116,8 +119,8 @@ fn the_camera_card_body_has_the_face_of_a_card() {
         "o par não partilha a linha"
     );
     assert!(
-        look.x - (active.x + active.w) > m::CHECK_GAP,
-        "a marca de Active encosta na caixa de Look Through: {active:?} × {look:?}"
+        (active.w - look.w).abs() < 0.5 && look.x - (active.x + active.w) >= m::FIELD_GAP - 0.5,
+        "o par não está em duas colunas iguais (05 §4): {active:?} × {look:?}"
     );
     for nome in ["Active", "Look Through"] {
         assert!(

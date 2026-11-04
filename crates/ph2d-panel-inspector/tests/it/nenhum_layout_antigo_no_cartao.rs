@@ -159,9 +159,10 @@ fn o_botao_no_cartao_tem_a_largura_do_corpo_e_a_altura_de_um_campo() {
     };
     let botao = de(ph2d_panel_inspector::ids::INSP_SPRITE_CORNER_EQUALIZE);
     let campo = de(ph2d_panel_inspector::ids::INSP_SPRITE_OPACITY_CHIP);
+    // Opacity divide a linha com Tint Fill (05 §4): o botão tem as duas colunas, o campo uma.
     assert!(
         (botao.x - campo.x).abs() < 0.5
-            && (botao.w - campo.w).abs() < 0.5
+            && botao.w > campo.w * 2.0
             && (botao.h - campo.h).abs() < 0.5,
         "botão {botao:?} × campo {campo:?}"
     );

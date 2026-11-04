@@ -69,6 +69,21 @@ fn every_component_section_becomes_a_card_with_its_body_inside() {
     }
     pinta(&mut h);
     let seccao = ph2d_editor_core::ids::INSP_LIVE_PHYSICS_SECTION;
+    // A física pode estar abaixo da janela: os cartões de cima têm a altura deles.
+    let mut rolar = 0.0;
+    while h
+        .hit_index
+        .rect_for(ph2d_editor_core::ids::grip_de(seccao))
+        .is_none()
+        && rolar < 30_000.0
+    {
+        rolar += 100.0;
+        h.store
+            .set_panel_scroll(ph2d_editor_core::ids::INSP_PANEL, rolar);
+        h.store
+            .set_panel_scroll_live(ph2d_editor_core::ids::INSP_PANEL, rolar);
+        pinta(&mut h);
+    }
     let titulo = h
         .hit_index
         .rect_for(ph2d_editor_core::ids::grip_de(seccao))
@@ -100,6 +115,14 @@ fn every_component_section_becomes_a_card_with_its_body_inside() {
         !h.store.is_collapsed(seccao),
         "o clique no título não abriu o cartão"
     );
+    while h.hit_index.rect_for(corpo).is_none() && rolar < 30_000.0 {
+        rolar += 100.0;
+        h.store
+            .set_panel_scroll(ph2d_editor_core::ids::INSP_PANEL, rolar);
+        h.store
+            .set_panel_scroll_live(ph2d_editor_core::ids::INSP_PANEL, rolar);
+        pinta(&mut h);
+    }
     let r = h
         .hit_index
         .rect_for(corpo)

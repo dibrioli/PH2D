@@ -1,8 +1,8 @@
 # Handoff — linha `NovaUI-Inspector`: Inspector em cartões, estilos de cor do Vector, cola na shell (03/11/2026)
 
-Worktree `Worktrees/line-NovaUI-Inspector`, branch `line/NovaUI-Inspector`, HEAD `6ae6677665`.
-Base: `line/NovaUI` `11b6952897`; merge-base com `main` = `3a3896a7ab`. 12 commits à frente da base,
-164 ficheiros, +8 831 −1 447 (`git diff --stat 11b6952897 HEAD`). **Não integrada, sem push.**
+Worktree `Worktrees/line-NovaUI-Inspector`, branch `line/NovaUI-Inspector`; último código `c83cbd1f1b`.
+Base: `line/NovaUI` `11b6952897`; merge-base com `main` = `3a3896a7ab`. **Não integrada, sem push.**
+Contagens: `git diff --stat 11b6952897 HEAD`. Curas do smoke de 03/11: §6.
 Leitor: a próxima LLM / o integrador. Plano-mãe: [06](../06_COMO_PORTAR_PARA_O_MAIN.md) §3 · galeria: [handoff GALERIA](HANDOFF_line_NovaUI_2026-11-03_GALERIA.md).
 
 > ⚠️ **O smoke do dono está EM CURSO.** Nada aqui está aprovado por ele; integrar não é aprovar.
@@ -49,8 +49,8 @@ de `ph2d-app-vec` para `ph2d-vec-boolean` (tecto da crate). `BasePaint`, ids da 
   `FieldFace` antigo apontava ao ⚙ do main.
 - **`CardCtx::paint_line`:** a lei da coluna estreita (cada caixa e rótulo cabem, senão duas linhas); a galeria usa-a.
 - **A base liga-se a estilos:** `ItemId::BASE_FILL` = `u32::MAX`, `BASE_STROKE` = `u32::MAX-1`, recusados por
-  `aloca_item`; `solta_bases_mexidas` no passe `ids_da_pilha::passe`, ANTES da captura do undo. Decisão a
-  confirmar pelo dono: o estilo manda só no RGB; a alfa é a Opacity da linha e mexer nela não solta.
+  `aloca_item`; `solta_bases_mexidas` no passe `ids_da_pilha::passe`, ANTES da captura do undo. **Decidido
+  (Enio, 03/11):** o estilo manda só na cor; a alfa é a Opacity da linha e mexer nela não solta.
 - **Lista de cartões e estilos:** a linha do ⠿ é a camada aberta desse tipo, senão a de cima.
 - **`smoke_bone.rs`/`bone_smoke_foco`** ficam os do main (`=8` = losango F40); a cena dos cartões do Bones é `=9`,
   na linha Bones.
@@ -60,8 +60,10 @@ de `ph2d-app-vec` para `ph2d-vec-boolean` (tecto da crate). `BasePaint`, ids da 
 
 **Colisão com `line/NovaUI-Bones` (ph2d-a4):** o único ficheiro tocado pelas duas é
 `shells/desktop/src/render_loop/fase_selection_mirror_bone_focus.rs`. Iguais nas duas: `let (win, cam)`,
-`chave::resolve`, a linha de `ph2d-card-rope` no `Cargo.toml`. Daqui: `anda(INSP)`. De lá: `publica_presos`,
-`anda(BONES)`, `publica_o_osso`. Ficam lá `fase_bus_drain` (`live_bone`), `fase_skeleton_verbs`, `vec_bone_smoke`, e
+`chave::resolve`, a linha de `ph2d-card-rope` no `Cargo.toml`. Daqui: `anda(INSP)`, agora em
+`anda_as_cordas_do_inspector` (§6). De lá: `publica_presos`, `anda(BONES)`, `publica_o_osso`. ⛔ A função está a
+≤ 200 linhas só com esta linha: somada ao Bones volta a passar do tecto (`fn_loc_caps`), e a cura é fazer o mesmo
+com o bloco de lá. Ficam lá `fase_bus_drain` (`live_bone`), `fase_skeleton_verbs`, `vec_bone_smoke`, e
 os testes `a_lista_de_cartoes_flutua_no_hero`, `o_alfinete_com_corda`, `o_cartao_solto_bloco4`,
 `o_cartao_solto_no_canvas`. Saíram daqui `every_pinned_loose_card_moves_with_another_class_and_its_tab_behind`
 (T55) e `two_ik_cards_pin_to_two_bones`, que pedem as duas linhas — confirme com o handoff do Bones.
@@ -102,4 +104,44 @@ Sempre: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-NovaUI-Inspector`
 - «Used by N layers» do «Edit style» conta também as bases.
 - Cura do cartão Camera (05 §8–§9, «se sobrar tempo»): não feita.
 - Docs 06 e 07 citam `FOTO_HOME_SEMENTE`, que não existe neste ramo: semeia-se com `HOME=...`.
-- Os dois vermelhos do §3 (herdados de `line/NovaUI`) e a decisão da alfa do estilo (§2) esperam o dono/integrador.
+- Os dois vermelhos do §3 (herdados de `line/NovaUI`) esperam o integrador.
+- **Alfinete em Object, Appearance, Fill, Stroke, Ordering e Material:** só DEPOIS da CI (Enio, 03/11). Plano com o
+  tamanho medido, não construído: [09](../09_alfinete_nos_cartoes_PLANO.md).
+
+## 6 — Curas do smoke do dono (03/11), `ff66debfb3` + `c83cbd1f1b`
+
+**Palavras dele:** «dropdown color styles não fecha sozinho ao clicar fora dele […] ícone de difícil visualização e
+entendimento devem ser um pouco maiores.» Nenhuma aprovada ainda: o smoke destes itens está com ele.
+
+- **Mecanismo:** o fecho só corria no `Click(id)`. A pressão no vazio não gera `Click`, e no canvas os ramos da shell
+  devolvem antes do `forward_to_hero`. Por isso a porta `HeroScreen::premido_fisico` →
+  `panel::cards::ao_premir` corre em `ramo_aperto_solta_teclado`, antes do primeiro `return` de `pointer_button`.
+- **Lei:** primário e direito fora fecham; o do meio não (é a mão da vista); um menu aberto decide a pressão (o Apply
+  precisa da camada); o ⠿ e a caixa ficam de fora, e o clique deles é que alterna. Fecha a lista de estilos, o
+  «Edit style» e a família: a lista suspensa do cartão (Blend, Position). O escrito sem Enter no «Edit style» grava-se.
+- ⚠️ **A pressão segue para o que está por baixo** (a lei de `dropdown::on_click`): clicar numa forma fecha a lista E
+  seleciona a forma. Figma-like; o dono pode pedir o contrário.
+- **Ícones:** `card-cap-*`/`card-join-*` passam à geometria do painel Vector (F44, smoke OK), com o chanfro do bevel
+  maior (`M2 22V12L12 2h10`; era indistinguível do redondo). `SEG_ICON_GLYPH` = 22 só para ícone SOZINHO num segmento:
+  desenho de 14,4 → 18 px, em todos os consumidores. ⚠️ O SVG `join-bevel` do painel Vector ficou como estava. Mantive os
+  `Card*` no `IconId`: apagá-los partiria a galeria de `line/NovaUI` na fusão. Foto:
+  [antes × depois](../maquete/inspector_portado/m_cap_join_antes_x_depois.png). Coluna de 220 px conferida.
+- **Testes** (`os_estilos_de_cor.rs`, clique real pela porta + despacho): `a_press_outside_*` (6) e
+  `the_shell_calls_the_press_door_before_any_canvas_branch`.
+- **Mutações:** 16 de 16 a vermelho. Uma terceira sobrevivente (soltar o foco da busca) era código redundante e saiu.
+- **Limite honesto:** o caminho shell → porta prova-se por gate de fonte. O clique real no canvas não corre em
+  `kwin --virtual` (XTest ignorado), logo é o smoke do dono que o prova.
+
+**Tectos que a linha tinha estourado sem o §3 os registar** (na fusão reprovariam; curados movendo, sem subir número):
+
+| Onde | Antes | Agora | Tecto | Como |
+|---|---|---|---|---|
+| `main.rs` | 1040 | 1024 | 1031 | `on_keyboard_preso`, `on_device_event`; comentário da math dos tokens cortado |
+| `App::new` | 202 | 200 | 200 | comentário numa linha e o campo abaixo; a entrada de `FN_OVERAGE_OK` saiu |
+| campos da `App` | 170 | 169 | 169 | `cursor_preso` virou `thread_local` de `cursor_preso.rs`, o único que lhe toca |
+| `input_dispatch.rs` | 605 | 592 | 600 | `on_cursor_moved` foi para `despacho_clique_prologo.rs` |
+| `fase_selection_mirror_bone_focus` | 206 | ≤ 200 | 200 | `anda_as_cordas_do_inspector` |
+| `fase_snapshots_publish` | 213 | ≤ 200 | 200 | `tardios::Sessao::nova` |
+
+E a ponte `on_cursor_moved` tinha um `return`, que o gate `the_mouse_and_the_pen_end_in_the_same_pointer_doors`
+proíbe: virou `if let`, mesma lei. ⚠️ Os tectos somam entre linhas: o integrador reconta `main.rs` e `App::new`.

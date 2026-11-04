@@ -935,3 +935,24 @@ fn o_carimbo_das_ferramentas_da_agua() {
     }
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
+
+/// Bug #57: o Fast dry encolhe a região da água; o passo seguinte não pode ler o rascunho do solver de um passo velho,
+/// que a cópia de um instantâneo não tem. Controlo: o Fast dry muda o traço (senão o teste mediria o vazio).
+#[test]
+fn o_fast_dry_de_raiz_e_o_do_instantaneo() {
+    let corre = |copia: bool, gesto: &Gesto| {
+        let mut b = bancada_da_agua("wet_water", &Gesto::Nenhum, false);
+        if copia {
+            b.tool = b.tool.instantaneo().expect("copia-se");
+        }
+        b.aplica(gesto, &mut super::censo_dos_controlos::Entrega::default());
+        risca(&mut b.tool)
+    };
+    let seca = Gesto::Clique(PAINTER_WETPAINT_FASTDRY);
+    let raiz = corre(false, &seca);
+    assert_eq!(diferenca(&raiz, &corre(true, &seca)), (0, 0, 0));
+    assert!(
+        diferenca(&raiz, &corre(false, &Gesto::Nenhum)).0 > 0,
+        "o Fast dry não mudou o traço"
+    );
+}

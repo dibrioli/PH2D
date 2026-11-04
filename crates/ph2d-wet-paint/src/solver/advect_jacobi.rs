@@ -432,8 +432,10 @@ fn outflow_rows(g: &mut Grid, p: &Params, mode: Rows) {
         uv, bt, outflow, ..
     } = scratch;
     let (uv, bt): (&[[f32; 2]], &[i8]) = (uv, bt);
+    // Só as linhas que o `prepare_rows` deste passo escreveu: fora da bbox a faixa viva fica de pé e o `uv`/`bt`
+    // são os de um passo velho (Bug #57). A rota fundida tem o mesmo limite.
     par::walk_rows(mode, &mut outflow[band], c.s, |ri, row| {
-        outflow_row(&c, c.by0 + ri as i32, row, uv, bt, 0, 1, c.gh);
+        outflow_row(&c, c.by0 + ri as i32, row, uv, bt, 0, c.by0, c.by1);
     });
 }
 

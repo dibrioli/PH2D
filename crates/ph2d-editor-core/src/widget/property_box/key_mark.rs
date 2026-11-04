@@ -6,7 +6,7 @@
 //! tempo cada campo mostra e em que estado ele está; o pintor da linha só sabe os ids dos campos
 //! que desenha. O mapa é o encontro dos dois, publicado uma vez por quadro.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 use ph2d_a11y::NodeId;
@@ -38,10 +38,15 @@ pub enum KeyMark {
 pub struct KeyMarkClick {
     /// Os campos da linha clicada (um losango por linha: `X`/`Y` partilham o seu).
     pub fields: Vec<NodeId>,
+    /// O objecto do cartão preso onde o losango foi clicado (`None` = a seleção).
+    pub sujeito: Option<u64>,
 }
 
 thread_local! {
     static MARCAS: RefCell<BTreeMap<NodeId, KeyMark>> = const { RefCell::new(BTreeMap::new()) };
+    /// C3 (`docs/CartoesUI/09`): o mapa de cada objecto preso, e de quem é o corpo a pintar agora.
+    static DOS_PRESOS: RefCell<BTreeMap<u64, BTreeMap<NodeId, KeyMark>>> = const { RefCell::new(BTreeMap::new()) };
+    static PINTANDO: Cell<Option<u64>> = const { Cell::new(None) };
     static ALVOS: RefCell<Vec<(NodeId, Vec<NodeId>)>> = const { RefCell::new(Vec::new()) };
     static PEDIDO: RefCell<Option<KeyMarkClick>> = const { RefCell::new(None) };
     static ROTULOS: RefCell<BTreeMap<NodeId, &'static str>> = const { RefCell::new(BTreeMap::new()) };
@@ -267,14 +272,29 @@ pub fn add_key_mark(field: NodeId, mark: KeyMark) {
     });
 }
 
+/// Publica o mapa de cada objecto preso por um cartão solto (uma vez por quadro).
+pub fn set_key_marks_dos_presos(marks: BTreeMap<u64, BTreeMap<NodeId, KeyMark>>) {
+    DOS_PRESOS.with(|m| *m.borrow_mut() = marks);
+}
+
+/// `f` a pintar o corpo do cartão preso a `pin`: cada losango dentro dele é o desse objecto. Um preso
+/// ainda sem mapa não tem canal: nunca mostra o da seleção.
+pub fn com_marcas_de<R>(pin: u64, f: impl FnOnce() -> R) -> R {
+    let antes = PINTANDO.with(|p| p.replace(Some(pin)));
+    let out = f();
+    PINTANDO.with(|p| p.set(antes));
+    out
+}
+
 /// O losango de uma linha com estes campos: o estado mais forte entre eles (`Mudado` > `Chave` >
 /// `Animado` > `Livre`); `None` = nenhum tem canal.
 #[must_use]
 pub fn key_mark_of(fields: &[NodeId]) -> Option<KeyMark> {
-    MARCAS.with(|m| {
-        let m = m.borrow();
-        fields.iter().filter_map(|id| m.get(id).copied()).max()
-    })
+    let forte = |m: &BTreeMap<NodeId, KeyMark>| fields.iter().filter_map(|id| m.get(id).copied()).max();
+    match PINTANDO.with(Cell::get) {
+        Some(pin) => DOS_PRESOS.with(|p| p.borrow().get(&pin).and_then(forte)),
+        None => MARCAS.with(|m| forte(&m.borrow())),
+    }
 }
 
 /// O losango cujo id de alvo é `id`, se foi pintado neste quadro: os campos da linha dele.
@@ -285,7 +305,10 @@ pub fn key_mark_target(id: NodeId) -> Option<KeyMarkClick> {
             .iter()
             .rev()
             .find(|(alvo, _)| *alvo == id)
-            .map(|(_, f)| KeyMarkClick { fields: f.clone() })
+            .map(|(_, f)| KeyMarkClick {
+                fields: f.clone(),
+                sujeito: None,
+            })
     })
 }
 

@@ -6317,21 +6317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-app-vec-preso"
-version = "0.0.0"
-dependencies = [
- "ph2d-app-vec",
- "ph2d-ecs",
- "ph2d-editor-core",
- "ph2d-panel-vector",
- "ph2d-tokens",
- "ph2d-tool-vector",
- "ph2d-vec-edit",
- "ph2d-vec-entities",
- "ph2d-vec-scene",
-]
-
-[[package]]
 name = "ph2d-arc-length"
 version = "0.0.0"
 
@@ -7361,7 +7346,6 @@ dependencies = [
  "ph2d-app-sprite-anim",
  "ph2d-app-text",
  "ph2d-app-vec",
- "ph2d-app-vec-preso",
  "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-index",
@@ -7388,6 +7372,7 @@ dependencies = [
  "ph2d-gpu-cook",
  "ph2d-guides",
  "ph2d-host",
+ "ph2d-host-presos",
  "ph2d-i18n",
  "ph2d-image-import",
  "ph2d-imageio",
@@ -7555,6 +7540,27 @@ dependencies = [
  "ph2d-vector",
  "serde_json",
  "winit",
+]
+
+[[package]]
+name = "ph2d-host-presos"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-app-components",
+ "ph2d-app-constraints",
+ "ph2d-app-skeleton",
+ "ph2d-app-vec",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-panel-vector",
+ "ph2d-timeline",
+ "ph2d-tokens",
+ "ph2d-tool-vector",
+ "ph2d-vec-edit",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
 ]
 
 [[package]]
@@ -9842,8 +9848,10 @@ dependencies = [
 name = "ph2d-panel-painter-layers"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "image",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",
@@ -9937,14 +9945,18 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "bumpalo",
+ "ph2d-anim",
+ "ph2d-app-components",
+ "ph2d-app-skeleton",
  "ph2d-app-vec",
- "ph2d-app-vec-preso",
  "ph2d-card-rope",
  "ph2d-card-stack",
  "ph2d-component-desc",
+ "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-host-presos",
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-painter-brush",
@@ -9980,8 +9992,10 @@ dependencies = [
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
  "ph2d-skeleton",
+ "ph2d-skeleton-ecs",
  "ph2d-symmetry",
  "ph2d-text",
+ "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-painter",
  "ph2d-tool-registry",

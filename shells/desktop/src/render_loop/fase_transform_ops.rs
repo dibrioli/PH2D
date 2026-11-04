@@ -64,14 +64,14 @@ impl crate::App {
         // (`DevicePreset::size`, o aspecto do aparelho normalizado ao `LONG_SIDE`), que é dado
         // AUTORADO e não um número da face do artista: ele tem de atravessar intocado.
         // ⭐⭐⭐ **A APARÊNCIA do objecto entra no DOCUMENTO**: a do cartão preso sob o gesto, ou a seleção.
-        ph2d_app_vec_preso::aplica_pedidos(
+        ph2d_host_presos::aplica_pedidos(
             &mut hero.store,
             vec_scene,
             &self.vec.pen,
             sim,
             &self.vec.entities,
             ph2d_editor_core::DocPx::of(&hero.project),
-            ph2d_app_vec_preso::PedidosDaPilha {
+            ph2d_host_presos::PedidosDaPilha {
                 vec_opacity: pending_vec_opacity,
                 vec_blend: pending_vec_blend,
                 verb: pending_paint_verb,

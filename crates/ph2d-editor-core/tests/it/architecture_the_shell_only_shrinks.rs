@@ -226,7 +226,6 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-sprite-anim", 8_352), // 8_189
     ("ph2d-app-text", 423), // 323 (GEF 21: Add ▸ Text, crate nova porque a ph2d-app-vec está no tecto)
     ("ph2d-app-vec", 93_637), // 91_801
-    ("ph2d-app-vec-preso", 395), // 295 (C2: Fill e Stroke do cartão preso, crate nova porque a ph2d-app-vec está no tecto)
 ];
 
 /// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell

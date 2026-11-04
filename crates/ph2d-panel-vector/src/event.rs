@@ -361,7 +361,7 @@ pub(crate) fn apply_event(
         // **`X` — o foco da cor** (D10): passa ao outro swatch e abre o seletor nele.
         WidgetEvent::Click(id) if id == tool_ids::VECTOR_COLOUR_FOCUS => {
             let swatch = crate::bars::toggle_focus();
-            host.store_mut().open_picker_on(swatch);
+            host.store_mut().open_picker_da_selecao(swatch);
             true
         }
         // ④ o Edit Shape (F7e): o lápis é do quadro, não da tool — o clique fica à espera dele.

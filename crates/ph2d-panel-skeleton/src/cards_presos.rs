@@ -42,7 +42,10 @@ pub(crate) fn cards(store: &mut WidgetStore) -> (Vec<CardDef<'static>>, Vec<Card
         let def = def.map(|mut d| {
             d.section = sec; // T54: o def é da INSTÂNCIA
             d.body = d.body.map(|f| -> CardBody<'static> {
-                Box::new(move |c, y| state::com_preso(pin, || f(c, y)).unwrap_or(y))
+                Box::new(move |c, y| {
+                    let marcas = ph2d_editor_core::widget::key_mark::com_marcas_de;
+                    marcas(pin, || state::com_preso(pin, || f(c, y))).unwrap_or(y)
+                })
             });
             d
         });

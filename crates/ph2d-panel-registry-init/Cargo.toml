@@ -129,7 +129,14 @@ ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-card-rope = { path = "../ph2d-card-rope" }
 # ⭐ Só para `o_alfinete_fill_stroke_c2`: o gesto do cartão preso chega à cena pelas portas reais do vetor.
 ph2d-app-vec = { path = "../ph2d-app-vec" }
-ph2d-app-vec-preso = { path = "../ph2d-app-vec-preso" }
+ph2d-host-presos = { path = "../../shells/presos" }
+# ⭐ Só para `o_alfinete_losango_c3`: a chave que o losango do cartão preso grava, e o desfazer.
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-app-components = { path = "../ph2d-app-components" }
+ph2d-app-skeleton = { path = "../ph2d-app-skeleton" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }

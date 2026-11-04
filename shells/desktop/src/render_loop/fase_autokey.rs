@@ -4,7 +4,6 @@
 use super::*;
 use ph2d_app_audio::marcas_mesa;
 use ph2d_app_physics::marcas_mundo;
-use ph2d_app_skeleton::canais_osso as marcas_osso;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -101,6 +100,8 @@ impl crate::App {
         let ctx = ph2d_app_vec::marcas::Contexto::do_painel(mostrada);
         let tl = &self.timeline.doc;
         let camada = ph2d_app_flip::marcas_camada::alvo(&self.flip_state, flip);
+        use ph2d_host_presos::losango;
+        losango::cena(hero);
         if let Some(c) = ph2d_editor_core::widget::key_mark::take_key_mark_click() {
             let lidos = |e| {
                 autokey_pass::campos_lidos(sim, e)
@@ -110,18 +111,9 @@ impl crate::App {
             };
             let k =
                 |e, p| timeline_bridge::chave_do_losango(mundo, &self.timeline, e, p, t_raw, solo);
+            let (ctx_c, alvo) = losango::alvo_do_clique(&c, sim, vec_scene, ctx, &sel);
             let mut intents =
-                ph2d_app_vec::marcas::clique(tl, ctx, &c.fields, &sel, inst, lidos, valor, k);
-            if intents.is_empty() {
-                intents = ph2d_app_components::marcas_inspector::clique(
-                    tl, &c.fields, &sel, inst, lidos, valor, k,
-                );
-            }
-            if intents.is_empty() {
-                intents = ph2d_app_constraints::marcas::clique(
-                    tl, &c.fields, sim, &sel, inst, lidos, valor, k,
-                );
-            }
+                losango::clique(tl, sim, ctx_c, &c.fields, &alvo, inst, lidos, valor, k);
             if intents.is_empty()
                 && let Some((e, obj)) = camada
             {
@@ -135,26 +127,19 @@ impl crate::App {
             if intents.is_empty() {
                 intents = marcas_mesa::clique(tl, &c.fields, sim.world(), inst, lidos, valor, k);
             }
-            if intents.is_empty() {
-                intents = marcas_osso::clique(tl, &c.fields, sim, &sel, inst, lidos, valor, k);
-            }
             self.timeline_intents.extend(intents);
         }
-        let mut marcas = ph2d_app_vec::marcas::marcas(tl, ctx, &sel, inst, valor);
-        marcas.extend(ph2d_app_components::marcas_inspector::marcas(
-            tl, &sel, inst, valor,
-        ));
+        let mut marcas = losango::marcas(tl, sim, ctx, &sel, inst, valor);
         if let Some((e, obj)) = camada {
             marcas.extend(ph2d_app_flip::marcas_camada::marcas(
                 tl, e, obj, inst, valor,
             ));
         }
-        marcas.extend(ph2d_app_constraints::marcas::marcas(
-            tl, sim, &sel, inst, valor,
-        ));
         marcas.extend(marcas_mundo::marcas(tl, sim.world(), inst, valor));
         marcas.extend(marcas_mesa::marcas(tl, sim.world(), inst, valor));
-        marcas.extend(marcas_osso::marcas(tl, sim, &sel, inst, valor));
+        // Antes do `set_key_marks`: ele apaga os rótulos pintados, de que os componentes dependem.
+        let pinos = losango::pinos(&hero.store);
+        losango::publica_marcas(tl, sim, vec_scene, &pinos, inst, valor);
         ph2d_editor_core::widget::key_mark::set_key_marks(marcas);
     }
 }

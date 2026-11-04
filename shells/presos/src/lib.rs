@@ -3,6 +3,8 @@
 //! cartão preso passa por ela para traduzir o id em campos, e ela volta ao molde no mesmo quadro
 //! (`ph2d_app_vec::vector_bridge::dispatch`).
 
+pub mod losango;
+
 use ph2d_app_vec::paint_stack::{self as pilha, alvo_do_gesto, forma};
 use ph2d_app_vec::stroke_present::{self, BaseVerb};
 use ph2d_app_vec::vector_bridge as ponte;

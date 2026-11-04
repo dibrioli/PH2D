@@ -98,9 +98,9 @@ fn a_pinned_fill_and_stroke_edit_lands_on_its_object_only_and_the_undo_step_rest
     let alvos = paint_stack::alvos(&store, &pen, &sim);
     paint_stack::apply(&mut vec, &alvos, StackVerb::Eye(0));
     paint_stack::apply(&mut vec, &alvos, StackVerb::AddStroke);
-    ph2d_app_vec_preso::apply_no_alvo(&mut vec, &pen, &store, &sim, BaseVerb::FillEye);
+    ph2d_host_presos::apply_no_alvo(&mut vec, &pen, &store, &sim, BaseVerb::FillEye);
     let forma = vec.path_mut(pa).expect("A");
-    assert!(ph2d_app_vec_preso::pick_base(
+    assert!(ph2d_host_presos::pick_base(
         forma,
         false,
         Rgba8::new(9, 9, 9, 255),

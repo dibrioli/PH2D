@@ -53,8 +53,9 @@ pub(super) fn dispatch_down<'frame>(
     let hit = hit_index.hit_with_rect(event.x, event.y);
     // ⭐ O LOSANGO de um campo (plano 35 §5): pedido à shell (gravar/apagar a chave), não ao campo.
     if let Some((id, _)) = hit
-        && let Some(c) = crate::widget::key_mark::key_mark_target(id)
+        && let Some(mut c) = crate::widget::key_mark::key_mark_target(id)
     {
+        c.sujeito = store.card_press_subject();
         crate::widget::key_mark::pedir(c);
         return;
     }

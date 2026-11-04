@@ -208,19 +208,10 @@ fn diff_each_sample(
                 t
             }
         });
-        // The diff's reference clock is the RAW `t_src` — the exact `f64` the
-        // apply sampled the curve at to write this pose — NOT the frame-snapped
-        // `t_e` a new key lands at, and NOT a `RationalTime` round-trip of it.
-        //
-        // Both mistakes have now been made. Snapping it (2026-07-11): pausing
-        // mid-play rests the playhead off-frame (sim dt 1/60 vs display frames
-        // 1/24) and `curve(t_raw) != curve(t_snap)`, so an untouched pose read as
-        // "dragged". Quantising it (2026-07-12): `RationalTime` rounds to the
-        // MICROSECOND, so scrubbing an animated object minted a key every frame —
-        // same failure, one thousandth the size, invisible to every test because a
-        // test scrubs to 0.5 and 0.5 round-trips exactly.
-        //
-        // Compare where you read. [[feedback_derived_coordinate_seed_must_match_sample]]
+        // The diff's reference clock is the RAW `t_src`, the exact `f64` the apply sampled — never the
+        // frame-snapped `t_e` (2026-07-11: pausing mid-play read as "dragged") nor a `RationalTime`
+        // round-trip (2026-07-12: a key per scrubbed frame). Compare where you read.
+        // [[feedback_derived_coordinate_seed_must_match_sample]]
         let t_diff = t_src;
         let base = ak
             .baseline
@@ -409,11 +400,8 @@ pub(crate) fn apply_samples(
     // The baseline still advances below regardless, so pausing mid-play never
     // misreads the settled pose as a jump.
     let playing = playhead.is_playing();
-    // ⛔⛔⛔ **E o RELÓGIO A ANDAR SEM TOCAR é o mesmo caso** (report do dono, 2026-09-17: *«ao
-    // arrastar o tempo na timeline cria keyframes em todos os quadros»* — medido, `12` chaves em
-    // `30` quadros de arrasto com a mão parada). O guarda acima raciocina sobre a CAUSA — *a
-    // animação conduz a pose, não o utilizador* — e depois pergunta pelo `is_playing()`, que é
-    // apenas uma das duas maneiras de o relógio andar. Ver [`AutokeyState::clock_t`].
+    // ⛔ E o RELÓGIO A ANDAR SEM TOCAR é o mesmo caso (report do dono, 17/09): ver
+    // [`AutokeyState::clock_t`].
     let clock_moved = ak.clock_t.is_some_and(|t0| t0 != playhead.time());
     // ⛔ **E a MÃO NA RÉGUA é o gesto em si** — ver [`AutokeyState::scrub_now`]. Com o Snap ligado
     // o `clock_moved` é falso no meio de um arrasto, e sem este guarda o passe voltava a capturar.
@@ -578,6 +566,9 @@ mod opacidade_vetor_tests;
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;
+#[cfg(test)]
+#[path = "autokey_preso_tests.rs"]
+mod preso_tests;
 #[cfg(test)]
 #[path = "autokey_refusal_tests.rs"]
 mod refusal_tests;

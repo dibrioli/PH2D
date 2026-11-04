@@ -70,6 +70,12 @@ impl WidgetStore {
         );
     }
 
+    /// O seletor de um atalho: é da seleção, mesmo com a última pressão num cartão preso (C3).
+    pub fn open_picker_da_selecao(&mut self, id: ph2d_a11y::NodeId) {
+        self.card_lists.press_subject = None;
+        self.open_picker_on(id);
+    }
+
     /// ⑤ Regista onde o ponteiro está (chamado pelo despacho de TODO evento de ponteiro).
     pub fn note_pointer(&mut self, x: f32, y: f32) {
         self.tool_bars.pointer = Some([x, y]);

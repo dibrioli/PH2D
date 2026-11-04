@@ -33,29 +33,13 @@ pub(super) fn sample_pose<'a>(
     pose
 }
 
-/// ⭐⭐⭐ **DE QUEM ESTE PASSE OLHA A POSE: a SELECÇÃO mais o que a MÃO segura.**
+/// ⭐⭐⭐ **DE QUEM ESTE PASSE OLHA A POSE:** a SELECÇÃO, o que a MÃO segura (`maos_do_quadro`: puxar a
+/// ponta de uma corrente dobra-a inteira, e agarrar um osso não o selecciona; report do dono, 14/09),
+/// o que a tool aponta (`AlvosDasFamilias`) e cada objecto PRESO por um cartão solto, sem repetidos.
 ///
-/// ⛔⛔ **A selecção sozinha perdia a pose que o artista acabou de fazer** (report do dono,
-/// 2026-09-14). Puxar a PONTA de uma corrente é cinemática inversa: a corrente **inteira** dobra —
-/// e agarrar um osso **não** o selecciona (o `despacho_clique_select` escreve `bone_pose` e
-/// devolve). Com a selecção sozinha, a animação ficava com **um osso** da pose e o resto perdia-se
-/// no primeiro instante em que o apply voltasse a escrever pelas curvas.
-///
-/// ⭐ **A população certa já era CALCULADA** — a [`super::super::timeline_bridge::maos_do_quadro`] nasceu
-/// na W8 para o apply *não* escrever por cima da mão, e é exactamente a mesma pergunta. *Uma porta
-/// com um consumidor só estava a metade do trabalho que sabia fazer.*
-///
-/// ⚠️ **Isto NÃO espalha chaves pelo esqueleto:** quem filtra é o DIFF do [`super::apply_samples`] — um
-/// osso cuja pose é a da curva não cunha nada. A mão diz *«olha também para estes»*, nunca
-/// *«cunha estes»*.
-///
-/// ⚠️ **A ordem é a da SELECÇÃO primeiro** (é o que o diff e a primeira recusa do quadro esperam), a
-/// mão a seguir, o que a tool aponta (`ph2d_ecs::AlvosDasFamilias`) por fim, **sem repetidos** — o osso agarrado costuma estar nas duas listas.
-///
-/// ⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08): a invariante do cabeçalho
-/// deste ficheiro exige que ninguém escreva pose **entre** o apply e este passe, e os passes do
-/// esqueleto (o osso inteligente, a âncora de IK) escrevem exactamente aí — a chave nasceria feita
-/// da saída do motor. *Pré-visualização não é autoria.*
+/// ⚠️ Isto não espalha chaves: quem filtra é o DIFF do [`super::apply_samples`]. A ordem é a da selecção
+/// primeiro (a primeira recusa do quadro). ⛔ Menos quem um MOTOR conduz: os passes do esqueleto
+/// escrevem entre o apply e este passe, e a chave nasceria da saída do motor (auditoria de 08/09).
 #[must_use]
 pub(crate) fn populacao(
     hero: &HeroScreen,
@@ -69,11 +53,13 @@ pub(crate) fn populacao(
     let alvos = alvos
         .into_iter()
         .flat_map(ph2d_ecs::AlvosDasFamilias::todas);
+    let pinos = ph2d_host_presos::losango::pinos(&hero.store);
     for e in hero
         .gizmo
         .iter_selected()
         .chain(maos.iter().copied())
         .chain(alvos)
+        .chain(pinos)
     {
         if !preview.drives(e) && !fora.contains(&e) {
             fora.push(e);

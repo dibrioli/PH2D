@@ -1,0 +1,35 @@
+[package]
+name = "ph2d-host-presos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+# ⭐ O cartão PRESO a um objecto (`docs/CartoesUI/09_alfinete_nos_cartoes_PLANO.md`, blocos C2 e C3): as tintas
+# dele e o losango de cada campo. Vê várias famílias juntas (vetor, componentes, constraints, osso), e isso só a
+# COMPOSIÇÃO pode (`architecture_no_dependency_climbs_a_layer`). Mora aqui e não em `shells/desktop` porque a
+# catraca `the_shell_only_shrinks` conta cada linha de lá; o precedente é `shells/game-scenes`.
+[dependencies]
+bumpalo = { version = "3", features = ["collections"] }
+ph2d-host = { path = "../../crates/ph2d-host" }
+ph2d-app-components = { path = "../../crates/ph2d-app-components" }
+ph2d-app-constraints = { path = "../../crates/ph2d-app-constraints" }
+ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton" }
+ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector" }
+ph2d-timeline = { path = "../../crates/ph2d-timeline" }
+ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
+ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
+ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
+
+[lints]
+workspace = true

@@ -35,6 +35,24 @@ fn linha(b: u64) -> NodeId {
 fn arma(b: u64) {
     let a = b == A;
     escolhe(b, if a { "Circle" } else { "Square" }, b as f32);
+    blocos(b, a);
+    appearance::set_current_appearance(Some(Appearance {
+        opacity: if a { 0.3 } else { 0.8 },
+        blend: if a {
+            BlendMode::Multiply
+        } else {
+            BlendMode::Normal
+        },
+        layers: Vec::new(),
+        mixed_opacity: false,
+        mixed_blend: false,
+        layers_differ: false,
+        order: Vec::new(),
+    }));
+}
+
+/// Ordering, Material e o olho de um objecto, como a shell os publica.
+pub(super) fn blocos(b: u64, a: bool) {
     insp::set_current_inspector_ordering(Some(InspectorOrderingInfo {
         entity_bits: b,
         z_index: a.then_some(5),
@@ -61,19 +79,6 @@ fn arma(b: u64) {
         entity_bits: b,
         visible: !a,
         mixed: false,
-    }));
-    appearance::set_current_appearance(Some(Appearance {
-        opacity: if a { 0.3 } else { 0.8 },
-        blend: if a {
-            BlendMode::Multiply
-        } else {
-            BlendMode::Normal
-        },
-        layers: Vec::new(),
-        mixed_opacity: false,
-        mixed_blend: false,
-        layers_differ: false,
-        order: Vec::new(),
     }));
 }
 

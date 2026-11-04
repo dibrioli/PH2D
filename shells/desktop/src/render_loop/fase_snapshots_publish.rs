@@ -237,7 +237,7 @@ impl crate::App {
             let s = tardios::Sessao::nova(um, playhead.is_playing(), &hero.input_map, motion);
             tardios::publica(sim, tags, script.as_ref(), particles, &s);
             let _ = ultimas(sim, um);
-            ph2d_app_vec_preso::publica(b, sim, vec_scene, entidades, &hero.store, doc);
+            ph2d_host_presos::publica(b, sim, vec_scene, entidades, &hero.store, doc);
         });
         Some(tool_preview_bits)
     }

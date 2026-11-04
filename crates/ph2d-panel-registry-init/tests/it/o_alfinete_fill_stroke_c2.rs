@@ -7,7 +7,7 @@
 use super::cartoes_mao::{centro, clica, mao, pinta, solta};
 use super::o_bloco5_abertos::escolhe;
 use ph2d_app_vec::paint_stack::{join_code_for_id, stack_verb_for_id};
-use ph2d_app_vec_preso::{self as preso, PedidosDaPilha};
+use ph2d_host_presos::{self as preso, PedidosDaPilha};
 use ph2d_app_vec::stroke_present;
 use ph2d_ecs::{Name, SimWorld, Transform, VecPathRef};
 use ph2d_editor_core::NodeId;
@@ -792,3 +792,6 @@ fn a_gradient_on_the_pinned_object_stays_quiet_under_the_picker() {
     m.escolhe_a_cor(NOVA);
     assert_eq!(m.a().base_fill(), Some(&grad), "o degradê foi esmagado");
 }
+
+#[path = "o_alfinete_losango_c3.rs"]
+mod losango_c3;

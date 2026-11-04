@@ -36,7 +36,10 @@ fn so_o_losango_pintado_e_alvo() {
     );
     assert_eq!(
         key_mark_target(key_mark_id(X)),
-        Some(KeyMarkClick { fields: vec![X] })
+        Some(KeyMarkClick {
+            fields: vec![X],
+            sujeito: None,
+        })
     );
     set_key_marks(BTreeMap::new());
     assert_eq!(

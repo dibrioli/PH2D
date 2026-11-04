@@ -14,7 +14,8 @@
 //! cartão Game Camera ABERTO e acima da dobra (05 §8); `=9`: o 8 com a lista «Game Format» aberta
 //! (a cara do popover num cartão, T25); `=10`: dois retângulos, com Object, Appearance, Ordering e
 //! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1);
-//! `=11`: dois retângulos de tintas diferentes, com Fill e Stroke soltos e presos a cada um, «Shape B» escolhido (C2).
+//! `=11`: dois retângulos de tintas diferentes, com Fill e Stroke soltos e presos a cada um, «Shape B» escolhido (C2);
+//! `=12`: o 11 com o losango do Fill e do Stroke presos a A clicados a sério (`ph2d_host_presos::losango::cena`, C3).
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
@@ -107,7 +108,7 @@ pub(crate) fn step(
                 if dois_cartoes_presos() {
                     e.insert(ph2d_ecs::Name(["Shape A", "Shape B"][i].to_owned()));
                     e.insert(ph2d_ecs::BlendMode::Mix);
-                    if i == 0 && modo == "11" {
+                    if i == 0 && (modo == "11" || modo == "12") {
                         pinta_o_primeiro(scene, f);
                     } else if i == 0 {
                         e.insert((ph2d_ecs::ZIndexOverride(5), ph2d_ecs::BlendMode::Add));
@@ -192,7 +193,7 @@ pub(crate) fn step(
             if s == FIM - 2 && modo == "10" {
                 prende_os_quatro_e_escolhe_o_segundo(vec, hero);
             }
-            if modo == "11" {
+            if modo == "11" || modo == "12" {
                 fill_e_stroke_presos(s, vec, hero);
             }
             if s == FIM - 1 && modo == "5" {
@@ -276,7 +277,7 @@ fn com_player() -> bool {
 fn dois_cartoes_presos() -> bool {
     matches!(
         std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref(),
-        Ok("10" | "11")
+        Ok("10" | "11" | "12")
     )
 }
 

@@ -241,3 +241,109 @@ fn a_rope_reels_in_when_the_card_docks_on_mouse_up() {
         "não acabou de recolher"
     );
 }
+
+/// ⭐ C3: o cartão do Bones preso a um osso, com outro em foco: o losango é o do osso dele e o clique
+/// grava nele. *Mutação: `com_marcas_de` fora do corpo do preso ⇒ mostra o mapa do foco.*
+#[test]
+fn a_diamond_of_a_pinned_bone_card_is_of_that_bone() {
+    use ph2d_editor_core::interaction::{dispatch_pointer, loose_rect_of};
+    use ph2d_editor_core::widget::key_mark::{self, KeyMark};
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind};
+    use ph2d_editor_core::ids as painel;
+    use std::collections::BTreeMap;
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let spawn = |sim: &mut ph2d_ecs::SimWorld| {
+        let e = (ph2d_ecs::Transform::default(), ph2d_skeleton_ecs::Bone::default());
+        sim.world_mut().spawn(e).id().to_bits()
+    };
+    let (preso, foco) = (spawn(&mut sim), spawn(&mut sim));
+    let mut h = hero_com_o_bones();
+    osso_em_foco(preso, "Bone A", 0.5);
+    pinta(&mut h, 20);
+    solta(&mut h, CARD_BONE);
+    clica(&mut h, loose_pin_of(CARD_BONE));
+    assert_eq!(h.store.loose_card(CARD_BONE).and_then(|c| c.pin), Some(preso));
+    let campo = painel::VECTOR_BONE_LENGTH;
+    let publica_com = |h: &mut ph2d_editor_core::screens::hero::HeroScreen, m: BTreeMap<_, _>, f| {
+        ph2d_panel_skeleton::publica_presos(&[preso], |b| osso_em_foco(b, "Bone A", 0.5));
+        osso_em_foco(foco, "Bone B", 0.25);
+        key_mark::set_key_marks(BTreeMap::from([(campo, f)]));
+        key_mark::set_key_marks_dos_presos(m);
+        pinta(h, 1);
+    };
+    // Só o foco tem mapa: o corpo do preso não o lê.
+    publica_com(&mut h, BTreeMap::new(), KeyMark::Chave);
+    let alvo = key_mark::key_mark_id(campo);
+    let solto = h.store.panel_rect(loose_rect_of(CARD_BONE)).expect("o solto");
+    let no_solto = |h: &ph2d_editor_core::screens::hero::HeroScreen| {
+        let mut y = solto.y;
+        while y < solto.y + solto.h {
+            let mut x = solto.x;
+            while x < solto.x + solto.w {
+                if h.hit_index.hit(x, y) == Some(alvo) {
+                    return Some((x, y));
+                }
+                x += 2.0;
+            }
+            y += 2.0;
+        }
+        None
+    };
+    assert!(no_solto(&h).is_none(), "o preso mostrou o losango do foco");
+    // O mapa do preso: o losango aparece, e o clique é do osso preso.
+    let dele = BTreeMap::from([(preso, BTreeMap::from([(campo, KeyMark::Livre)]))]);
+    publica_com(&mut h, dele, KeyMark::Livre);
+    let (x, y) = no_solto(&h).expect("o losango do preso");
+    let arena = bumpalo::Bump::new();
+    let ev = PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind: PointerKind::Down,
+        source: ph2d_host::PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    let _ = dispatch_pointer(&mut h.store, &h.hit_index, ev, &arena);
+    let c = key_mark::take_key_mark_click().expect("o clique no losango");
+    assert_eq!(c.sujeito, Some(preso));
+    let tl = ph2d_timeline::TimelineDoc::new();
+    let inst = ph2d_timeline::Instante {
+        t_cut: 0.0,
+        solo: true,
+    };
+    let ctx = ph2d_app_vec::marcas::Contexto::default();
+    let (ctx_c, alvo_c) =
+        ph2d_host_presos::losango::alvo_do_clique(&c, &sim, &ph2d_vec_scene::VecScene::new(), ctx, &[foco]);
+    assert_eq!(alvo_c, [preso]);
+    let pedido = ph2d_host_presos::losango::clique(
+        &tl,
+        &sim,
+        ctx_c,
+        &c.fields,
+        &alvo_c,
+        inst,
+        |_| match ph2d_app_skeleton::canais_osso::canal_do_campo(campo) {
+            Some(ph2d_timeline::PropKind::Field(k)) => vec![k],
+            _ => Vec::new(),
+        },
+        |_, _| Some(1.0),
+        |e, p| {
+            Some(ph2d_timeline::TimelineIntent::AddKey {
+                entity: e,
+                prop: p,
+                t: ph2d_anim::RationalTime::from_seconds(0.0),
+                value: ph2d_anim::AnimValue::Float(1.0),
+                interp: ph2d_anim::Interp::Linear,
+            })
+        },
+    );
+    let donos: Vec<u64> = pedido
+        .iter()
+        .filter_map(|i| match i {
+            ph2d_timeline::TimelineIntent::AddKey { entity, .. } => Some(*entity),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(donos, [preso], "a chave não foi ao osso preso");
+}

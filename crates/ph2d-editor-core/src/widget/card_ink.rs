@@ -101,6 +101,21 @@ impl Drop for Publicada {
     }
 }
 
+thread_local! {
+    static FLUINDO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Há um corpo a fluir (`panel::cards::compacta::fluir`): quem empilha por conta própria deixa o
+/// fluxo emparelhar.
+#[must_use]
+pub fn corpo_a_fluir() -> bool {
+    FLUINDO.with(std::cell::Cell::get)
+}
+
+pub(crate) fn marca_fluxo(ligado: bool) {
+    FLUINDO.with(|f| f.set(ligado));
+}
+
 /// Publica a tinta do cartão até o guarda morrer.
 pub fn publica(ink: CardInk) -> Publicada {
     Publicada(CORPO.with(|c| c.replace(Some(ink))))
@@ -108,7 +123,7 @@ pub fn publica(ink: CardInk) -> Publicada {
 
 /// Corre `f` com a tinta do cartão publicada; repõe a anterior no fim (também num pânico).
 pub fn com<R>(ink: CardInk, f: impl FnOnce() -> R) -> R {
-    crate::panel::cards::censo::entra_na_tinta();
+    crate::widget::card_censo::entra_na_tinta();
     let _repoe = publica(ink);
     f()
 }

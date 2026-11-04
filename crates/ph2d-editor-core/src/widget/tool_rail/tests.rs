@@ -1,4 +1,5 @@
 use super::*;
+use crate::interaction::WidgetStore;
 
 fn fixture() -> ToolRail {
     ToolRail::new(
@@ -112,7 +113,7 @@ fn paint_smoke_full_rail() {
     let rail = fixture();
     let size = RailButtonSize::default();
     let host = Rect::new(0.0, 0.0, tool_rail_width_px(), rail.preferred_height(size));
-    let store = crate::interaction::WidgetStore::with_capacity(0);
+    let store = WidgetStore::with_capacity(0);
     paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::Forge, &store);
 }
 
@@ -126,7 +127,7 @@ fn paint_smoke_swatch_entry() {
     );
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
-    let store = crate::interaction::WidgetStore::with_capacity(0);
+    let store = WidgetStore::with_capacity(0);
     let size = RailButtonSize::default();
     paint_tool_rail(
         &rail,
@@ -147,7 +148,7 @@ fn paint_smoke_minimal_rail() {
     );
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
-    let store = crate::interaction::WidgetStore::with_capacity(0);
+    let store = WidgetStore::with_capacity(0);
     let size = RailButtonSize::default();
     paint_tool_rail(
         &rail,
@@ -218,7 +219,7 @@ fn a_legenda_em_cartoes_e_em_caixa_normal() {
 #[test]
 fn toda_legenda_por_extenso_cabe_no_passo_do_chip() {
     let mut text = TextSystem::without_system_fonts();
-    let mut store = crate::interaction::WidgetStore::default();
+    let mut store = WidgetStore::default();
     store.set_rail_button_size(RailButtonSize::Small);
     let passo = RailButtonSize::Small.chip_px() + super::entry_gap_px();
     let mut fora = Vec::new();

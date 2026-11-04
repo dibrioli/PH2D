@@ -379,7 +379,7 @@ pub fn paint_rich_editor_menu(
 ) -> Option<Rect> {
     let (bar, _) = ed.regions(rect);
     let bar = bar.filter(|_| ed.style_menu_open)?;
-    Some(crate::panel::camada_das_listas::por_cima(scene, |scene| {
+    Some(crate::widget::camada_das_listas::por_cima(scene, |scene| {
         toolbar::paint_style_menu(ed, bar, scene, ts, theme)
     }))
 }

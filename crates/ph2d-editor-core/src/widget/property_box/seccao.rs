@@ -216,7 +216,7 @@ fn largura_em_duas_linhas(text_system: &mut TextSystem, nome: &str, fonte: f32) 
 /// nenhuma das duas estivesse «errada» sozinha. *Duas derivações da mesma coluna são duas colunas.*
 #[must_use]
 pub fn colunas_da_linha(x: f32, w: f32, y: f32, h: f32, seccao: Seccao) -> PropertyRow {
-    crate::panel::cards::censo::linha_antiga_em_captura((x, w), y, y + h);
+    crate::widget::card_censo::linha_antiga_em_captura((x, w), y, y + h);
     let gap = ph2d_tokens::control_gap_px();
     // ⭐⭐ **O que o CONTROLO precisa para não quebrar** — `n` caixas ao piso, com os vãos.
     let n = seccao.campos() as f32;

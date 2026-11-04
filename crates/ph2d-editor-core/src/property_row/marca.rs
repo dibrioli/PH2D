@@ -131,7 +131,7 @@ pub fn paint_check_rows<'a, L: Into<Rotulo<'a>> + Copy>(
     let gap = ph2d_tokens::Spacing::Sm.px();
     let meia = ((w - gap) * 0.5).max(1.0);
     let cartao = crate::widget::card_ink::card_body().is_some();
-    if cartao && crate::panel::cards::compacta::ativo() {
+    if cartao && crate::widget::card_ink::corpo_a_fluir() {
         // O fluxo emparelha, em colunas iguais, e junta ao vizinho o que sobrar (05 §4).
         return caixas.iter().fold(y, |yy, c| {
             paint_check_row(

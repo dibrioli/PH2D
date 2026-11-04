@@ -7,60 +7,22 @@
 //! Sem camada aberta (um painel pintado sozinho num teste, um modal já por cima) pinta-se direto na cena.
 
 use crate::interaction::HitIndex;
+pub use crate::widget::camada_das_listas::{abre, por_cima};
+use crate::widget::camada_das_listas::{guarda_alvo, tira};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_vector::{Affine, VectorScene};
-use std::cell::RefCell;
-
-struct Camada {
-    cena: VectorScene,
-    alvos: Vec<(NodeId, Rect)>,
-}
-
-thread_local! {
-    static CAMADA: RefCell<Option<Camada>> = const { RefCell::new(None) };
-}
-
-/// Abre a camada do quadro; o que sobrou de um quadro interrompido perde-se.
-pub fn abre(cena_do_quadro: &VectorScene) {
-    let mut cena = VectorScene::new();
-    if cena_do_quadro.is_recording() {
-        cena.record();
-    }
-    CAMADA.with(|c| {
-        *c.borrow_mut() = Some(Camada {
-            cena,
-            alvos: Vec::new(),
-        });
-    });
-}
-
-/// Pinta `f` na camada, se houver; senão em `scene`.
-pub fn por_cima<R>(scene: &mut VectorScene, f: impl FnOnce(&mut VectorScene) -> R) -> R {
-    match CAMADA.with(|c| c.borrow_mut().take()) {
-        None => f(scene),
-        Some(mut camada) => {
-            let r = f(&mut camada.cena);
-            CAMADA.with(|c| *c.borrow_mut() = Some(camada));
-            r
-        }
-    }
-}
 
 /// Regista o alvo de uma linha da lista: agora, para quem lê o índice no mesmo passe, e outra vez ao
 /// fechar, por cima do que se registou depois.
 pub fn alvo(hit_index: &mut HitIndex, id: NodeId, rect: Rect) {
     hit_index.register(id, rect);
-    CAMADA.with(|c| {
-        if let Some(camada) = c.borrow_mut().as_mut() {
-            camada.alvos.push((id, rect));
-        }
-    });
+    guarda_alvo(id, rect);
 }
 
 /// Cola a camada por cima de `scene`, e os alvos por cima do índice.
 pub fn fecha(scene: &mut VectorScene, hit_index: &mut HitIndex) {
-    let Some(mut camada) = CAMADA.with(|c| c.borrow_mut().take()) else {
+    let Some(mut camada) = tira() else {
         return;
     };
     scene.append_transformed(&camada.cena, Affine::IDENTITY);

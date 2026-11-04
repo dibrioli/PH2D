@@ -975,10 +975,10 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-vector",
-        "linha",
+        "cards_fx.rs::linha",
         Canal,
         &["vector_fx_hide_id", "filter_hide_id"],
-        "a mesma linha no cartão (G3, `cards_fx.rs`): o olho da pilha",
+        "a mesma linha no cartão (G3): o olho da pilha, por `Pilha::hide` em `paint_fx_list.rs`",
     ),
     (
         "ph2d-panel-vector",

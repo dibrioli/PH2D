@@ -29,11 +29,16 @@ pub const MOD_END: &str = "// <ph2d-widget-sync:end>";
 /// canonical list (today: panel_chrome + showcase). Adding a new public
 /// widget = append here (Coord-A decision — most widgets are private).
 const PUB_MODULE_OVERRIDE: &[&str] = &[
+    "camada_das_listas",
+    "card_censo",
     "card_field",
     "card_ink",
+    "censo_cartao",
     "command_palette",
     "composto",
+    "cromo_barra",
     "illustration",
+    "lista_flutuante",
     "panel_chrome",
     "scroll_area",
     "section_cards",

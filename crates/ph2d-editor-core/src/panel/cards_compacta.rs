@@ -351,19 +351,15 @@ thread_local! {
     static FLUXO: RefCell<Option<Fluxo>> = const { RefCell::new(None) };
 }
 
-/// Há um corpo a fluir: quem empilha por conta própria deixa o fluxo emparelhar.
-#[must_use]
-pub fn ativo() -> bool {
-    FLUXO.with(|g| g.borrow().is_some())
-}
-
 /// ⭐ **Corre o corpo `f` com os pedidos curtos a fluir** (ver o módulo). O que ficou à espera pinta-se
 /// no fim, recortado como a dobra da secção recorta o resto do corpo enquanto ela abre.
 pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f32 {
     FLUXO.with(|g| {
         *g.borrow_mut() = Some(Fluxo { espera: None });
     });
+    crate::widget::card_ink::marca_fluxo(true);
     let fim = f(c);
+    crate::widget::card_ink::marca_fluxo(false);
     let sobra = FLUXO.with(|g| g.borrow_mut().take()).and_then(|f| f.espera);
     if let Some(e) = sobra {
         let aberto = censo::secao_atual().map_or(1.0, |s| c.store.section_open_live(s));

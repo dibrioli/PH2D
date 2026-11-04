@@ -45,7 +45,7 @@ pub(crate) fn paint_dropdown_popover_in_viewport<T: Clone + PartialEq>(
     // `opaque(token)` forces alpha to 255 while keeping the token's
     // RGB so the color still tracks the theme.
     let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
-    crate::panel::camada_das_listas::por_cima(scene, |scene| {
+    crate::widget::camada_das_listas::por_cima(scene, |scene| {
         paint_popover_frame(scene, panel, theme);
         for (i, opt) in dd.options.iter().enumerate() {
             let r = dd.option_rect_in(chip_rect, panel, i);
@@ -270,7 +270,7 @@ pub(crate) fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         return;
     }
     let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
-    crate::panel::camada_das_listas::por_cima(scene, |scene| {
+    crate::widget::camada_das_listas::por_cima(scene, |scene| {
         paint_popover_frame(scene, panel, theme);
         // Clip the rows to the panel so scrolled-out rows don't paint past the edges.
         let clip = ph2d_vector::Rect::new(

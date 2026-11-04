@@ -298,7 +298,7 @@ pub fn paint_date_picker(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
-    crate::panel::camada_das_listas::por_cima(scene, |scene| pinta(p, rect, scene, ts, theme));
+    crate::widget::camada_das_listas::por_cima(scene, |scene| pinta(p, rect, scene, ts, theme));
 }
 
 fn pinta(p: &DatePicker, rect: Rect, scene: &mut VectorScene, ts: &mut TextSystem, theme: Theme) {

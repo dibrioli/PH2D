@@ -7,7 +7,7 @@
 //! [`NumberInput::down_rect`].
 
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve};
+use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
 use crate::widget::card_ink::tinta;
 use crate::widget::text_input::TextInputState;
 use crate::zones::Rect;

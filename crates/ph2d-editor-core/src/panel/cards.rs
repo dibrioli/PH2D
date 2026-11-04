@@ -163,8 +163,7 @@ pub struct CardCtx<'s> {
 pub mod banda;
 #[path = "cards_cartao.rs"]
 mod cartao;
-#[path = "cards_censo.rs"]
-pub mod censo;
+pub use crate::widget::card_censo as censo;
 #[path = "cards_colunas.rs"]
 mod colunas;
 #[path = "cards_compacta.rs"]

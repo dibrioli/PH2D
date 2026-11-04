@@ -10,6 +10,7 @@
 
 use crate::ids;
 use crate::state::Aba;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::paint::{fill_circle, resolve};
@@ -98,8 +99,24 @@ pub(crate) fn abas() -> Tabs {
 /// Pinta as abas no título e regista o alvo de cada uma. Chamado DEPOIS do corpo: o último a
 /// registar ganha o clique, e nenhum alvo do corpo pode ficar por cima da banda do título.
 pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
+    paint_in(ctx, tabs_rect(panel), theme);
+}
+
+/// Cartões: as abas no cabeçalho da lista, entre a margem e o «…» e o «×».
+pub(crate) fn paint_on_list(ctx: &mut PaintCtx, lista: Rect, theme: Theme) {
+    let x = lista.x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X;
+    let fim = lista.x + lista.w - m::LIST_PAD_X - m::HEAD_ICON_BOX * 2.0 - Spacing::Sm.px();
+    let r = Rect::new(
+        x,
+        lista.y + (m::LIST_HEAD_H - m::HEAD_ICON_BOX) * 0.5,
+        (fim - x).max(0.0),
+        m::HEAD_ICON_BOX,
+    );
+    paint_in(ctx, r, theme);
+}
+
+fn paint_in(ctx: &mut PaintCtx, r: Rect, theme: Theme) {
     let tabs = abas();
-    let r = tabs_rect(panel);
     let hot = ctx.host.store().hot_id();
     let hovered = tabs.items.iter().position(|t| hot == Some(t.id));
     paint_tabs_with_hover(&tabs, hovered, r, ctx.scene, ctx.text_system, theme);

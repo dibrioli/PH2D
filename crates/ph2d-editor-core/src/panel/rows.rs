@@ -141,9 +141,13 @@ impl RowCtx<'_> {
             header = header.reserve_right(header_h);
         }
         let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
+        // Cabeçalho absorvido: o cartão é o título, a pega e o dono da acção (CartoesUI T58).
+        let absorvido = crate::widget::absorbing_next_header();
         paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
-        super::section_plan::regista_cabecalho(self.hit_index, id, rect);
-        if let Some((aid, glyph, lit, live)) = action {
+        if !absorvido {
+            super::section_plan::regista_cabecalho(self.hit_index, id, rect);
+        }
+        if let Some((aid, glyph, lit, live)) = action.filter(|_| !absorvido) {
             let grip = crate::widget::section_grip::grip_slot_w_px();
             let r = Rect::new(rect.x + rect.w - grip - header_h, y, header_h, header_h);
             let visual = if !live {

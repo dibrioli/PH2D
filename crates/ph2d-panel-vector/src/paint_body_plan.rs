@@ -22,7 +22,7 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 /// Uma secção à espera: recebe o corpo e o `y`, e devolve o `y` seguinte.
-type Tarefa<'s> = Box<dyn for<'b> FnOnce(&mut BodyCtx<'b>, f32) -> f32 + 's>;
+pub(crate) type Tarefa<'s> = Box<dyn for<'b> FnOnce(&mut BodyCtx<'b>, f32) -> f32 + 's>;
 
 /// ⭐⭐ **De que ABA é uma secção** (F17, dono 16/10). Sem `Default`, como o [`Scope`]: escrever a
 /// aba é um acto, e uma secção nova tem de dizer onde vive.
@@ -112,6 +112,46 @@ impl<'s> Seccoes<'s> {
         self.a_declarar = None;
     }
 
+    /// O que a aba aberta e a seleção deixam à vista. Um grupo sem membro à vista sai (seria um
+    /// título que abre o nada).
+    fn retem_o_que_se_ve(&mut self) {
+        let aba = crate::state::aba();
+        let seleccao = crate::state::current_selection_count();
+        self.itens
+            .retain(|i| i.onde.mostra(aba) && i.scope.covers(seleccao));
+        let com_membros: Vec<NodeId> = self.itens.iter().filter_map(|i| i.membro_de).collect();
+        let grupos = &self.grupos;
+        self.itens
+            .retain(|i| !grupos.contains(&i.id) || com_membros.contains(&i.id));
+    }
+
+    /// Cartões: as entradas de topo à vista, pela ordem natural. O membro de um grupo mora no cartão
+    /// dele ([`Self::membros`]).
+    pub(crate) fn de_topo_a_vista(&mut self) -> Vec<NodeId> {
+        self.retem_o_que_se_ve();
+        self.itens
+            .iter()
+            .filter(|i| i.membro_de.is_none())
+            .map(|i| i.id)
+            .collect()
+    }
+
+    /// Cartões: tira da lista o pintor da secção `id`.
+    pub(crate) fn tira(&mut self, id: NodeId) -> Option<Tarefa<'s>> {
+        let i = self.itens.iter().position(|t| t.id == id)?;
+        Some(self.itens.swap_remove(i).tarefa)
+    }
+
+    /// Cartões: só os membros do grupo, já como entradas de topo ([`BodyCtx::corre`] pinta-os).
+    pub(crate) fn membros(mut self, grupo: NodeId) -> Self {
+        self.itens.retain(|i| i.membro_de == Some(grupo));
+        for i in &mut self.itens {
+            i.membro_de = None;
+        }
+        self.grupos.clear();
+        self
+    }
+
     /// Os ids, pela ordem natural — para os gates.
     #[cfg(test)]
     pub(crate) fn ids(&self) -> Vec<NodeId> {
@@ -141,18 +181,13 @@ impl BodyCtx<'_> {
     /// ⭐⭐ **Pinta as secções da ABA aberta pela ordem do artista**, cada uma no tema dela, e devolve
     /// o `y` depois da última. Durante um arrasto, a secção arrastada pinta-se à parte e é reusada
     /// como o FANTASMA que segue o cursor, pintado no fim por cima do corpo.
-    pub(crate) fn corre(&mut self, seccoes: Seccoes<'_>, mut y: f32) -> f32 {
+    pub(crate) fn corre(&mut self, mut seccoes: Seccoes<'_>, mut y: f32) -> f32 {
+        let natural: Vec<NodeId> = seccoes.itens.iter().map(|i| i.id).collect();
+        let ordem = section_plan::ordem(&natural, self.store);
+        seccoes.retem_o_que_se_ve();
         let Seccoes {
             mut itens, grupos, ..
         } = seccoes;
-        let natural: Vec<NodeId> = itens.iter().map(|i| i.id).collect();
-        let ordem = section_plan::ordem(&natural, self.store);
-        let aba = crate::state::aba();
-        let seleccao = crate::state::current_selection_count();
-        itens.retain(|i| i.onde.mostra(aba) && i.scope.covers(seleccao));
-        // Um grupo sem membro à vista não pinta o cabeçalho (seria um título que abre o nada).
-        let com_membros: Vec<NodeId> = itens.iter().filter_map(|i| i.membro_de).collect();
-        itens.retain(|i| !grupos.contains(&i.id) || com_membros.contains(&i.id));
         let mut passo = Passo {
             painel: self.theme,
             arrastada: self
@@ -267,7 +302,7 @@ impl BodyCtx<'_> {
     /// Uma secção: abre e fecha a dobra dela pela mesma porta. ⚠️ **LIMPA ANTES, e não é
     /// higiene:** uma secção condicional sai sem chamar o `section_header`, e sem isto ela herdaria
     /// a dobra da anterior — que já foi fechada.
-    fn uma_seccao(&mut self, y: f32, tarefa: Tarefa<'_>) -> f32 {
+    pub(crate) fn uma_seccao(&mut self, y: f32, tarefa: Tarefa<'_>) -> f32 {
         self.open_fold = None;
         let after = tarefa(self, y);
         self.close_fold(after)

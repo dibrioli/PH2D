@@ -44,6 +44,7 @@ fn publish_font(has_weight: bool, extra_axes: usize) {
 }
 
 fn painted(id: ph2d_a11y::NodeId) -> bool {
+    crate::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)

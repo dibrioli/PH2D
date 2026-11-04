@@ -24,6 +24,7 @@ mod f47_traco_sobre_filtros; // F47: «Above Effects» no ⚙ do traço
 mod f48_offset_path_tool;
 mod f50_boolean_e_convert_na_barra; // F50: Boolean e Convert na ④, o raro no «⋯», sem chave Live // F48d: o Offset Path é uma ferramenta — opções na fila ②, Apply/Remove na ④
 mod fill_chip_labels_fit;
+mod g1_os_cartoes; // NovaUI G1: a lista, as abas, o hospedeiro e os corpos nativos
 mod marker_rows;
 mod o_losango_do_chip_da_barra;
 mod popover_band;
@@ -72,6 +73,8 @@ mod the_panel_shows_what_the_tool_is_for;
 /// costura provam a FIAÇÃO de cada controlo (pintado ⇒ registado ⇒ despachado), não a dobra por
 /// omissão — essa tem gate próprio (`bars_and_folds::the_container_interaction_and_advanced_start_folded`).
 pub fn host_aberto() -> ph2d_ui_testkit::MockPanelHost {
+    // Estes provam os corpos de antes; os cartões têm os testes deles (`g1_os_cartoes`).
+    ph2d_panel_vector::cards::force_cards_on_this_thread(Some(false));
     let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_vector::VectorPanel>();
     h.open_all_sections();
     h

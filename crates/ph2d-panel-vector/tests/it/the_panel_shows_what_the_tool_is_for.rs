@@ -105,6 +105,7 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
 /// controles que ainda funcionam.*
 #[test]
 fn the_blend_and_morph_survive_an_empty_selection_because_picks_are_a_second_selection() {
+    ph2d_panel_vector::cards::force_cards_on_this_thread(Some(false));
     let mut hero = hero_with_vector_panel();
     // F17: as duas vivem no grupo ▸ Advanced, que nasce dobrado — a pergunta aqui é a SELEÇÃO.
     hero.store

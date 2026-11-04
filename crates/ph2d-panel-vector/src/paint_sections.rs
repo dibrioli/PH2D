@@ -186,6 +186,38 @@ pub mod fill_stroke_list;
 #[path = "paint_stroke_settings.rs"]
 mod stroke_settings;
 
+/// O botão de ícone de um cabeçalho: `(id, glifo, aceso, vivo)`.
+pub(crate) type AcaoDoCabecalho = (
+    ph2d_a11y::NodeId,
+    ph2d_editor_core::icons::IconId,
+    bool,
+    bool,
+);
+
+thread_local! {
+    /// `Some` = a pintar sob a sonda: o 1.º cabeçalho responde «dobrada» e deixa aqui o que é.
+    static SONDA: std::cell::RefCell<Option<Option<(String, Option<AcaoDoCabecalho>)>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn anota_na_sonda(label: &str, acao: Option<AcaoDoCabecalho>) -> bool {
+    SONDA.with(|s| match s.borrow_mut().as_mut() {
+        Some(slot) => {
+            *slot = Some((label.to_string(), acao));
+            true
+        }
+        None => false,
+    })
+}
+
+/// ⭐ **A secção está à vista? Com que título e que acção?** Corre o pintor dela só até ao cabeçalho:
+/// a condição dela continua a ser a ÚNICA resposta, e o corpo nem corre (cartões, `cards.rs`).
+pub(crate) fn sonda_da_seccao(pinta: impl FnOnce()) -> Option<(String, Option<AcaoDoCabecalho>)> {
+    SONDA.with(|s| *s.borrow_mut() = Some(None));
+    pinta();
+    SONDA.with(|s| s.borrow_mut().take().flatten())
+}
+
 /// A metade PURA do [`BodyCtx::live_track`] — sem cena, sem texto, sem painel. É ela que os gates
 /// dirigem: um `BodyCtx` exige uma `VectorScene` e um `TextSystem`, e a LEI não precisa de nenhum.
 pub(crate) fn live_track(store: &WidgetStore, id: ph2d_a11y::NodeId, from_doc: f32) -> f32 {
@@ -261,7 +293,24 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> (f32, bool) {
+        if anota_na_sonda(label, None) {
+            return (y + self.row_h, true);
+        }
         self.with_rows(|r| r.section_header(id, label, y))
+    }
+
+    /// O cabeçalho com o botão de ícone à direita (o «+» das listas do Figma, F43/F44).
+    pub(crate) fn section_header_with_action(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        label: &str,
+        y: f32,
+        action: AcaoDoCabecalho,
+    ) -> (f32, bool) {
+        if anota_na_sonda(label, Some(action)) {
+            return (y + self.row_h, true);
+        }
+        self.with_rows(|r| r.section_header_with_action(id, label, y, Some(action)))
     }
 
     /// **O corpo**: a lista NATURAL das secções ([`crate::paint_body_plan::corpo`]) pintada pela

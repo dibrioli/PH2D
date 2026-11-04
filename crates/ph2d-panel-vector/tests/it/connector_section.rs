@@ -72,6 +72,7 @@ fn connector_fields_painted(hero: &HeroScreen) -> [bool; 4] {
 /// do projeto; um controle que aparece sempre é uma UI que mente sobre o objeto selecionado.
 #[test]
 fn the_connector_section_is_painted_only_when_a_connector_is_selected() {
+    ph2d_panel_vector::cards::force_cards_on_this_thread(Some(false));
     let mut hero = hero_with_vector_panel();
 
     // 1. Sem conector selecionado (o caso comum: desenhando formas).

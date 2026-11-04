@@ -41,6 +41,8 @@ pub use contour_params::{
     steps_to_track as contour_steps_to_track,
 };
 pub mod bars;
+/// O painel em cartões (`docs/CartoesUI/12_VECTOR_PLANO.md`).
+pub mod cards;
 mod event;
 mod font_dropdown;
 mod fx_side;

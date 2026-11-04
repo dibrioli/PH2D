@@ -242,20 +242,24 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
     if let Some([tx, ty, tw, th]) = state::current_transform() {
         let focus = store.focus_id();
+        // Nos cartões o scrub na pega não dá foco: o arrasto também manda no campo.
+        let scrub = store.number_input_drag().map(|d| d.id);
         for (id, v) in [
             (ph2d_tool_vector::ids::VECTOR_TRANSFORM_X, tx),
             (ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y, ty),
             (ph2d_tool_vector::ids::VECTOR_TRANSFORM_W, tw),
             (ph2d_tool_vector::ids::VECTOR_TRANSFORM_H, th),
         ] {
-            if focus != Some(id) {
+            if focus != Some(id) && scrub != Some(id) {
                 store.set_number_value(id, v);
             }
         }
         // The Angle field is a RELATIVE scrub: seed it to 0 (and reset the
         // gesture accumulator) whenever it isn't being edited, so each new
         // drag/type starts from 0 and the shell rotates by the reported delta.
-        if focus != Some(crate::ids::VECTOR_TRANSFORM_R) {
+        if focus != Some(crate::ids::VECTOR_TRANSFORM_R)
+            && scrub != Some(crate::ids::VECTOR_TRANSFORM_R)
+        {
             store.set_number_value(crate::ids::VECTOR_TRANSFORM_R, 0.0);
             state::set_rot_last(0.0);
         }
@@ -368,6 +372,40 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         crate::paint_sections::mirror_signal_fields(ctx.host.store_mut(), &st.bindings);
     }
 
+    if crate::cards::cards_on() {
+        ctx.host.store_mut().adopt_natural_order(
+            ph2d_editor_core::ids::VECTOR_PANEL,
+            crate::paint_body_plan::VECTOR_ORDER_EPOCH,
+            crate::ids::VECTOR_SECTIONS,
+        );
+        crate::cards::prepare(ctx.host.store_mut());
+        let presentes = crate::cards::presentes(ctx, theme, &snap);
+        let cartoes = crate::cards::cards(&snap, &presentes);
+        let lista = ph2d_editor_core::panel::cards::paint_card_list(
+            ctx,
+            ph2d_editor_core::ids::VECTOR_PANEL,
+            "",
+            &cartoes,
+        );
+        drop(cartoes);
+        seed_and_publish(ctx.host.store_mut());
+        let store = ctx.host.store();
+        let content_h = store
+            .panel_content_h(ph2d_editor_core::ids::VECTOR_PANEL)
+            .unwrap_or(0.0);
+        let visible_h = store
+            .panel_visible_h(ph2d_editor_core::ids::VECTOR_PANEL)
+            .unwrap_or(0.0);
+        set_last_content_h(content_h);
+        set_last_visible_h(visible_h);
+        // Aba atrás, só os soltos: a lista tem largura zero e não há abas onde pôr.
+        if lista.w > 0.0 {
+            crate::paint_tabs::paint_on_list(ctx, lista, theme);
+        }
+        passes_diferidos(ctx, lista, theme);
+        return;
+    }
+
     // Dark-glass surface + corner accents — identical chrome to the Inspector /
     // Padding panels.
     paint_panel_surface(rect, ctx.scene, theme);
@@ -472,7 +510,12 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         panel_close_button_rect(rect),
     );
     crate::paint_tabs::paint(ctx, rect, theme);
+    passes_diferidos(ctx, rect, theme);
+}
 
+/// O que se pinta por cima do corpo e fora do recorte dele: os popovers e os painéis à esquerda de
+/// `rect`, o painel de sempre ou a lista de cartões.
+fn passes_diferidos(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
     // ② F16: o painel do traço e as listas que a barra de controle abre — ANTES dos popovers
     // diferidos abaixo, porque o das pontas pode nascer DENTRO do painel do traço.
     crate::bars::paint_bar_popovers(ctx, theme, rect.w);

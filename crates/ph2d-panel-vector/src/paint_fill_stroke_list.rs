@@ -104,14 +104,12 @@ impl BodyCtx<'_> {
         // Há sujeito: a pilha publicada, ou a resposta «tem traço?» (só com UMA forma selecionada).
         let live = a.is_some() || state::stroke_present().is_some();
         let open = live && is_open(self.store, menu);
-        let (mut y, collapsed) = self.with_rows(|rc| {
-            rc.section_header_with_action(
-                ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
-                tr("panel.vector.section.fill_stroke"),
-                y,
-                Some((menu, IconId::Plus, open, live)),
-            )
-        });
+        let (mut y, collapsed) = self.section_header_with_action(
+            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+            tr("panel.vector.section.fill_stroke"),
+            y,
+            (menu, IconId::Plus, open, live),
+        );
         if open && let Some(chip) = self.hit_index.rect_for(menu) {
             PENDENTE.with(|p| p.borrow_mut().menu = Some(chip));
         }

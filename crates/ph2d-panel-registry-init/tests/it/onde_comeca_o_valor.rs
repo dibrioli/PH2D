@@ -431,4 +431,6 @@ fn dentro_de_um_troco_o_valor_arranca_numa_coluna_so() {
 }
 
 /// Quantos painéis (armados contados à parte) arrancam numa coluna só — medido `11` em 2026-09-23.
-const COLUNA_UNICA_PISO: usize = 11;
+/// ⬇️ `9` em 2026-11-04 (NovaUI G1): em cartões o rótulo mora em cima, logo cada painel convertido sai
+/// desta população. Quem guarda a régua contra o vazio é o [`PISO_DE_LINHAS`], que não mudou.
+const COLUNA_UNICA_PISO: usize = 9;

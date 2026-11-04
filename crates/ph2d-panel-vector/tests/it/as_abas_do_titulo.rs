@@ -146,6 +146,7 @@ fn as_duas_portas_escrevem_a_mesma_aba() {
 /// *Mutação: pintar os membros pela ordem geral ⇒ o Blend sobe para junto do Fill.*
 #[test]
 fn o_grupo_avancado_dobra_os_sete_juntos() {
+    ph2d_panel_vector::cards::force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     host.store_mut().set_section_order(vec![
         t::VECTOR_SECTION_BLEND,

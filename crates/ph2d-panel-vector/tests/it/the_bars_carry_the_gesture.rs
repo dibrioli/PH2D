@@ -737,6 +737,7 @@ fn every_bar_button_reaches_the_panel_door() {
 /// o artista foi lá para elas; Figma: «Constraints abertas por omissão»).
 #[test]
 fn the_advanced_group_and_the_two_big_interface_sections_start_folded() {
+    ph2d_panel_vector::cards::force_cards_on_this_thread(Some(false));
     let host = ph2d_ui_testkit::MockPanelHost::with_panel::<VectorPanel>();
     for id in [
         p::VECTOR_SECTION_ADVANCED,

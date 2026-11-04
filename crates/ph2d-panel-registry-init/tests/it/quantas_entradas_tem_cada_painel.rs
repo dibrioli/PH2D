@@ -2296,7 +2296,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    leva o número que MOSTRA (dono 02/11, *«parte só quando precisa»*): na abertura o valor padrão
     //    cabe e a linha nasce numa fila. (Medir o MÁXIMO, `100`, dava `271` — a 2.ª fila em toda
     //    linha de traço; recusado pelo dono.) Medido pelo gate.
-    ("vector", 219.0),
+    // ⬆️ `219 → 250` em 2026-11-04 (NovaUI G1), e NÃO é uma secção a nascer aberta: abre com as MESMAS
+    //    três, Snap e Advanced dobradas (`g1_os_cartoes::the_panel_opens_with_the_same_three_sections`);
+    //    os 31 px são a moldura dos cartões. A única a dobrar seria Fill & Stroke, a razão do painel.
+    ("vector", 250.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

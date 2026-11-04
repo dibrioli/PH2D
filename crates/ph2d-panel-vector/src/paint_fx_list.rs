@@ -161,14 +161,12 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> (f32, bool) {
         let open = live && is_open(self.store, p.add_menu());
-        let r = self.with_rows(|rc| {
-            rc.section_header_with_action(
-                section,
-                label,
-                y,
-                Some((p.add_menu(), IconId::Plus, open, live)),
-            )
-        });
+        let r = self.section_header_with_action(
+            section,
+            label,
+            y,
+            (p.add_menu(), IconId::Plus, open, live),
+        );
         if open && let Some(chip) = self.hit_index.rect_for(p.add_menu()) {
             PENDENTES.with(|s| s.borrow_mut().menu[p.i()] = Some(chip));
         }

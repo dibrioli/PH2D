@@ -370,9 +370,8 @@ mod barra_tests {
         fill_rounded_rect(&mut uma, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, cor);
         let dados = uma.inner().encoding().draw_data.clone();
         let cena = scene.inner().encoding().draw_data.clone();
-        cena.windows(dados.len())
-            .filter(|w| *w == dados.as_slice())
-            .count()
+        let igual = |w: &&[_]| *w == dados.as_slice();
+        cena.windows(dados.len()).filter(igual).count()
     }
 
     /// A vista escolhida é o segmento levantado em cartões, e o bloco de acento só no modo de antes.
@@ -397,8 +396,8 @@ mod barra_tests {
             scene
         };
         let acento = c(tema, T::Accent);
-        let segmento =
-            ph2d_editor_core::widget::card_ink::CardInk::of_list(tema).color(T::KanbanCardRaised);
+        let lista = ph2d_editor_core::widget::card_ink::CardInk::of_list(tema);
+        let segmento = lista.color(T::KanbanCardRaised);
         assert_eq!(vezes(&pinta(true, true), segmento), 1);
         assert_eq!(vezes(&pinta(true, true), acento), 0);
         assert_eq!(vezes(&pinta(true, false), segmento), 0, "só a escolhida");

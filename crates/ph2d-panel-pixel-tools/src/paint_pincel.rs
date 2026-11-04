@@ -192,6 +192,13 @@ impl Corpo<'_> {
         if livre {
             fila.push((ids::DYNAMICS, tr("panel.pixel.dynamics"), aberta));
         }
+        if let Some(fim) = self.verbos_no_cartao(&fila, y) {
+            return if aberta {
+                self.dinamica(info, sec, fim)
+            } else {
+                fim
+            };
+        }
         // Um botão por fila, na largura toda: «Save Brush Here» não cabe em meia largura da doca.
         for (i, (id, rotulo, premido)) in fila.into_iter().enumerate() {
             if i > 0 {

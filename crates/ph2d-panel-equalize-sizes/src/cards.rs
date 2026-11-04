@@ -3,10 +3,12 @@
 
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::ferramenta::{
-    Numero, Verbos, caixa, campo, cartao, opcoes, prepara_numeros,
+    Numero, Verbos, caixa_em_celula, caixas_aos_pares, campo, cartao, opcoes, prepara_numeros,
 };
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::card_field::Glyph;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tool_equalize_sizes::ids as t;
 use ph2d_tool_equalize_sizes::params::{EqualizeSizesUiSnapshot, TargetMode, UpscaleAlgorithm};
@@ -55,8 +57,13 @@ fn da_grelha(c: &mut CardCtx<'_>, snap: &EqualizeSizesUiSnapshot, y: f32) -> f32
         &[("cell", &snap.grid_unit)],
     );
     let y = c.hint(&celula, y);
-    let y = c.row(
-        &[campo(t::EQS_GRID_OFFSET_NUM, tr("card.equalize.offset"))],
+    let y = c.pair(
+        campo(t::EQS_GRID_OFFSET_NUM, tr("card.equalize.offset")),
+        caixa_em_celula(
+            t::EQS_ARRANGE_ON_GRID,
+            Rotulo::vista(TextKey::new("panel.equalize_sizes.size.arrange_on_grid")),
+            snap.arrange_on_grid,
+        ),
         y,
     );
     let max_off = (snap.grid_unit / 2).max(1);
@@ -64,18 +71,11 @@ fn da_grelha(c: &mut CardCtx<'_>, snap: &EqualizeSizesUiSnapshot, y: f32) -> f32
         .grid_unit
         .saturating_sub(snap.grid_offset.min(max_off))
         .max(1);
-    let y = c.hint(
+    c.hint(
         &tr_with(
             "panel.equalize_sizes.size.final_size",
             &[("size", &final_dim)],
         ),
-        y,
-    );
-    caixa(
-        c,
-        t::EQS_ARRANGE_ON_GRID,
-        "panel.equalize_sizes.size.arrange_on_grid",
-        snap.arrange_on_grid,
         y,
     )
 }
@@ -117,11 +117,20 @@ fn cartao_do_resultado(snap: EqualizeSizesUiSnapshot) -> CardDef<'static> {
         tr("card.equalize.result"),
         None,
         move |c, y| {
-            let mut y = caixa(
+            let mut y = caixas_aos_pares(
                 c,
-                t::EQS_UPSCALE_IF_SMALLER,
-                "panel.equalize_sizes.size.upscale_if_smaller",
-                snap.upscale_if_smaller,
+                &[
+                    (
+                        t::EQS_UPSCALE_IF_SMALLER,
+                        "panel.equalize_sizes.size.upscale_if_smaller",
+                        snap.upscale_if_smaller,
+                    ),
+                    (
+                        t::EQS_RASTERIZE_AFTER,
+                        "panel.equalize_sizes.size.rasterize_after",
+                        snap.rasterize_after,
+                    ),
+                ],
                 y,
             );
             if snap.upscale_if_smaller {
@@ -144,13 +153,7 @@ fn cartao_do_resultado(snap: EqualizeSizesUiSnapshot) -> CardDef<'static> {
                     y,
                 );
             }
-            caixa(
-                c,
-                t::EQS_RASTERIZE_AFTER,
-                "panel.equalize_sizes.size.rasterize_after",
-                snap.rasterize_after,
-                y,
-            )
+            y
         },
     )
 }

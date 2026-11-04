@@ -18,7 +18,28 @@ fn origem(c: &mut CardCtx<'_>, y: f32) -> f32 {
 
 fn vizinhanca(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
     let label = Some(tr("panel.grid_snap.options.neighborhood"));
-    let segs = if s.kind == GridKind::Tri {
+    escolha(c, label, &segs_da_vizinhanca(s), y)
+}
+
+/// O tamanho da célula e a escolha curta que o acompanha; `row` desce a escolha se ela não couber.
+fn celula_e_escolha(
+    c: &mut CardCtx<'_>,
+    chave: &str,
+    (rotulo, segs): (&str, &[Seg<'_>]),
+    y: f32,
+) -> f32 {
+    let l = com_unidade(tr(chave));
+    c.row(
+        &[
+            campo(g::GS_CFG_CELL_SIZE, &l),
+            Cell::new(Widget::Choice(segs)).label(tr(rotulo)),
+        ],
+        y,
+    )
+}
+
+fn segs_da_vizinhanca(s: &GridSnapState) -> [Seg<'static>; 2] {
+    if s.kind == GridKind::Tri {
         let v = s.tri_cfg.neighborhood == TriNeighborhood::Vertex12;
         [
             seg(g::GS_CFG_TRI_EDGE3, "panel.grid_snap.options.edge3", !v),
@@ -42,13 +63,7 @@ fn vizinhanca(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
                 m8,
             ),
         ]
-    };
-    escolha(c, label, &segs, y)
-}
-
-fn celula(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
-    let l = com_unidade(tr(chave));
-    c.row(&[campo(g::GS_CFG_CELL_SIZE, &l)], y)
+    }
 }
 
 fn hex(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
@@ -57,18 +72,18 @@ fn hex(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
     } else {
         &s.hex_cfg
     };
-    let y = celula(c, "panel.grid_snap.kinds.cell_size", y);
-    let y = origem(c, y);
     let pontas = cfg.orientation == HexOrientation::Pointy;
-    let y = escolha(
+    let orientacao = [
+        seg(g::GS_CFG_HEX_POINTY, "panel.grid_snap.kinds.pointy", pontas),
+        seg(g::GS_CFG_HEX_FLAT, "panel.grid_snap.kinds.flat", !pontas),
+    ];
+    let y = celula_e_escolha(
         c,
-        Some(tr("panel.grid_snap.kinds.orientation")),
-        &[
-            seg(g::GS_CFG_HEX_POINTY, "panel.grid_snap.kinds.pointy", pontas),
-            seg(g::GS_CFG_HEX_FLAT, "panel.grid_snap.kinds.flat", !pontas),
-        ],
+        "panel.grid_snap.kinds.cell_size",
+        ("panel.grid_snap.kinds.orientation", &orientacao),
         y,
     );
+    let y = origem(c, y);
     let o = cfg.offset_variant;
     escolha(
         c,
@@ -139,32 +154,37 @@ pub(super) fn configuracao(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f3
             vizinhanca(c, s, y)
         }
         GridKind::StaggeredSquare => {
-            let y = celula(c, "panel.grid_snap.kinds.cell_size", y);
-            let y = origem(c, y);
             let impar = s.staggered_square_cfg.parity == StaggerParity::OddRows;
-            let y = escolha(
+            let paridade = [
+                seg(
+                    g::GS_CFG_STAGGER_PARITY_ODD,
+                    "panel.grid_snap.kinds.odd_rows",
+                    impar,
+                ),
+                seg(
+                    g::GS_CFG_STAGGER_PARITY_EVEN,
+                    "panel.grid_snap.kinds.even_rows",
+                    !impar,
+                ),
+            ];
+            let y = celula_e_escolha(
                 c,
-                Some(tr("panel.grid_snap.kinds.parity")),
-                &[
-                    seg(
-                        g::GS_CFG_STAGGER_PARITY_ODD,
-                        "panel.grid_snap.kinds.odd_rows",
-                        impar,
-                    ),
-                    seg(
-                        g::GS_CFG_STAGGER_PARITY_EVEN,
-                        "panel.grid_snap.kinds.even_rows",
-                        !impar,
-                    ),
-                ],
+                "panel.grid_snap.kinds.cell_size",
+                ("panel.grid_snap.kinds.parity", &paridade),
                 y,
             );
+            let y = origem(c, y);
             vizinhanca(c, s, y)
         }
         GridKind::Tri => {
-            let y = celula(c, "panel.grid_snap.kinds.edge_length", y);
-            let y = origem(c, y);
-            vizinhanca(c, s, y)
+            let vizinhos = segs_da_vizinhanca(s);
+            let y = celula_e_escolha(
+                c,
+                "panel.grid_snap.kinds.edge_length",
+                ("panel.grid_snap.options.neighborhood", &vizinhos),
+                y,
+            );
+            origem(c, y)
         }
         GridKind::Chunks => {
             let a = com_unidade(tr("panel.grid_snap.kinds.cell_size"));
@@ -235,13 +255,20 @@ pub(super) fn configuracao(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f3
                 y,
             );
             let y = c.row(
-                &[campo(
-                    g::GS_CFG_VORONOI_LLOYD_ITERS,
-                    tr("panel.grid_snap.bounded.lloyd_iters"),
-                )],
+                &[
+                    campo(
+                        g::GS_CFG_VORONOI_LLOYD_ITERS,
+                        tr("panel.grid_snap.bounded.lloyd_iters"),
+                    ),
+                    Cell::new(Widget::Button {
+                        id: g::GS_CFG_VORONOI_RESEED,
+                        text: tr("panel.grid_snap.bounded.reseed_next_rng"),
+                        primary: false,
+                    }),
+                ],
                 y,
             );
-            let y = caixa(
+            caixa(
                 c,
                 tr("panel.grid_snap.bounded.voronoi_bounds"),
                 [
@@ -250,15 +277,6 @@ pub(super) fn configuracao(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f3
                     g::GS_CFG_VORONOI_BOUNDS_MAX_X,
                     g::GS_CFG_VORONOI_BOUNDS_MAX_Y,
                 ],
-                y,
-            );
-            c.full(
-                None,
-                Widget::Button {
-                    id: g::GS_CFG_VORONOI_RESEED,
-                    text: tr("panel.grid_snap.bounded.reseed_next_rng"),
-                    primary: false,
-                },
                 y,
             )
         }

@@ -372,14 +372,17 @@ fn def<'a>(
 /// O que as duas sondas dizem da grelha, e as duas sondas (X e Y de uma grandeza: um rótulo).
 fn inspecao(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
     let i = ph2d_editor_core::grid_snap::inspect::snapshot(s);
-    let leitura = |c: &mut CardCtx<'_>, chave: &str, text: &str, y| {
-        c.full(Some(tr(chave)), Widget::Readout { text }, y)
+    let leitura = |chave: &'static str, text| {
+        Cell::new(Widget::Readout { text }).label(tr(chave))
     };
-    let mut y = leitura(c, "chrome.grid_snap.probe_a", &i.probe_a_label, y);
+    let mut y = c.pair(
+        leitura("chrome.grid_snap.probe_a", &i.probe_a_label),
+        leitura("chrome.grid_snap.probe_b", &i.probe_b_label),
+        y,
+    );
     if !i.probe_a_extra.is_empty() {
         y = c.hint(&i.probe_a_extra, y);
     }
-    y = leitura(c, "chrome.grid_snap.probe_b", &i.probe_b_label, y);
     let distancia = if i.distance == u32::MAX {
         tr("card.grid.not_available").to_string()
     } else {
@@ -471,27 +474,23 @@ pub(crate) fn cards(s: &GridSnapState) -> Vec<CardDef<'_>> {
                     s.show_overlay,
                     y,
                 );
-                let y = c.row(
-                    &[campo(
-                        chip_da_opacidade(),
-                        tr("panel.grid_snap.rows.opacity_pct"),
-                    )],
-                    y,
-                );
-                escolha(
-                    c,
-                    Some(tr("panel.grid_snap.sections.layer")),
+                let camada = [
+                    seg(
+                        g::GS_LAYER_IN_FRONT,
+                        "panel.grid_snap.sections.in_front",
+                        s.grid_in_front,
+                    ),
+                    seg(
+                        g::GS_LAYER_BEHIND,
+                        "panel.grid_snap.sections.behind",
+                        !s.grid_in_front,
+                    ),
+                ];
+                c.row(
                     &[
-                        seg(
-                            g::GS_LAYER_IN_FRONT,
-                            "panel.grid_snap.sections.in_front",
-                            s.grid_in_front,
-                        ),
-                        seg(
-                            g::GS_LAYER_BEHIND,
-                            "panel.grid_snap.sections.behind",
-                            !s.grid_in_front,
-                        ),
+                        campo(chip_da_opacidade(), tr("panel.grid_snap.rows.opacity_pct")),
+                        Cell::new(Widget::Choice(&camada))
+                            .label(tr("panel.grid_snap.sections.layer")),
                     ],
                     y,
                 )

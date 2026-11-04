@@ -4,6 +4,7 @@ use super::*;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
+use ph2d_editor_core::panel::cards::ferramenta::caixa_em_celula;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
@@ -60,28 +61,62 @@ impl Corpo<'_> {
                 .collect();
             y = self.escolha(tr("panel.pixel.tip"), &formas, sec, y);
             y = self.padrao(info, sec, y);
-            if info.pattern.is_none() {
-                y = self.campo(tr("panel.pixel.size"), ids::SIZE, sec, y);
-            }
-            if info.pattern.is_none() && o.shape != PixelBrushShape::Circle {
-                y = self.campo(tr("panel.pixel.angle"), ids::ANGLE, sec, y);
-            }
-            if matches!(
+            let perfeito = matches!(
                 info.tool,
                 PixelTool::Pencil | PixelTool::Eraser | PixelTool::Contour
-            ) {
-                y = self.caixas(
-                    &[(
-                        ids::PIXEL_PERFECT,
-                        tr("panel.pixel.pixel_perfect"),
-                        o.pixel_perfect,
-                    )],
-                    sec,
-                    y,
-                );
+            )
+            .then_some((
+                ids::PIXEL_PERFECT,
+                tr("panel.pixel.pixel_perfect"),
+                o.pixel_perfect,
+            ));
+            if info.pattern.is_none() {
+                let mut campos = vec![(tr("panel.pixel.size"), ids::SIZE)];
+                if o.shape != PixelBrushShape::Circle {
+                    campos.push((tr("panel.pixel.angle"), ids::ANGLE));
+                }
+                y = self.campos_e_caixa(&campos, perfeito, y);
+            } else if let Some(p) = perfeito {
+                y = self.caixas(&[p], sec, y);
             }
         }
         self.opcoes_de_baixo(info, sec, y, false)
+    }
+
+    /// Números e uma caixa, dois a dois enquanto couberem. Ajustes de ferramenta: sem marca (D17).
+    fn campos_e_caixa(
+        &mut self,
+        campos: &[(&str, NodeId)],
+        caixa: Option<(NodeId, &str, bool)>,
+        y: f32,
+    ) -> f32 {
+        for (_, id) in campos {
+            self.store.mark_card_field_at_paint(
+                *id,
+                CardFieldSpec {
+                    step: 1.0,
+                    scrub: 1.0,
+                    default: None,
+                },
+            );
+        }
+        let mut cells: Vec<Cell<'_>> = campos
+            .iter()
+            .map(|(nome, id)| {
+                Cell::new(Widget::Field {
+                    id: *id,
+                    glyph: Glyph::Text(letra_da_grandeza(nome)),
+                })
+                .label(nome)
+            })
+            .collect();
+        if let Some((id, nome, on)) = caixa {
+            cells.push(caixa_em_celula(id, Rotulo::vista_de(nome), on));
+        }
+        match self.cartao_ctx() {
+            Some(mut c) => c.compact(&cells, y),
+            None => y,
+        }
     }
 
     /// Uma legenda dentro do cartão, como o rótulo de um campo.
@@ -122,6 +157,65 @@ impl Corpo<'_> {
                 .label(nome)
             })
             .collect();
+        match self.cartao_ctx() {
+            Some(mut c) => c.row(&cells, y),
+            None => y,
+        }
+    }
+
+    /// Dois números irmãos: na mesma linha num cartão, um por linha na moldura de antes.
+    pub(super) fn dois_campos(
+        &mut self,
+        a: (&str, NodeId),
+        b: (&str, NodeId),
+        sec: Seccao,
+        y: f32,
+    ) -> f32 {
+        if self.cartao.is_some() {
+            return self.campos_no_cartao(&[a, b], y);
+        }
+        let y = self.campo(a.0, a.1, sec, y);
+        self.campo(b.0, b.1, sec, y)
+    }
+
+    /// Um número e uma escolha curta: na mesma linha num cartão, um por linha na moldura de antes.
+    pub(super) fn campo_e_escolha(
+        &mut self,
+        campo: (&str, NodeId),
+        escolha: (&str, &[(&str, bool, NodeId)]),
+        sec: Seccao,
+        y: f32,
+    ) -> f32 {
+        if self.cartao.is_none() {
+            let y = self.campo(campo.0, campo.1, sec, y);
+            return self.escolha(escolha.0, escolha.1, sec, y);
+        }
+        self.store.mark_card_field_at_paint(
+            campo.1,
+            CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: None,
+            },
+        );
+        let segs: Vec<Seg<'_>> = escolha
+            .1
+            .iter()
+            .map(|&(text, on, id)| Seg {
+                id,
+                icon: None,
+                text,
+                on,
+            })
+            .collect();
+        let cells = [
+            Cell::new(Widget::Field {
+                id: campo.1,
+                glyph: Glyph::Text(letra_da_grandeza(campo.0)),
+            })
+            .label(campo.0),
+            Cell::new(Widget::Choice(&segs)).label(escolha.0),
+        ];
         match self.cartao_ctx() {
             Some(mut c) => c.row(&cells, y),
             None => y,
@@ -282,6 +376,17 @@ impl Corpo<'_> {
             .collect();
         let mut c = self.cartao_ctx()?;
         Some(c.row(&cells, y))
+    }
+
+    /// Os verbos de uma fila num cartão, na mesma linha se couberem; `None` fora de um cartão.
+    pub(super) fn verbos_no_cartao(&mut self, fila: &[(NodeId, &str, bool)], y: f32) -> Option<f32> {
+        let cells: Vec<Cell<'_>> = fila
+            .iter()
+            .map(|&(id, text, primary)| Cell::new(Widget::Button { id, text, primary }))
+            .collect();
+        let topo = self.topo(y);
+        let mut c = self.cartao_ctx()?;
+        Some(c.row(&cells, topo))
     }
 
     /// Um verbo num rect dado (o nome de um pincel guardado). Devolve se o pintou.

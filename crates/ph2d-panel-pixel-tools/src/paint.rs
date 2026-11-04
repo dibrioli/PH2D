@@ -353,8 +353,12 @@ impl Corpo<'_> {
         let (o, t) = (info.options, info.tool);
         let mut y = self.opcoes_forma(info, sec, y);
         if t == PixelTool::Spray {
-            y = self.campo(tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH, sec, y);
-            y = self.campo(tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED, sec, y);
+            y = self.dois_campos(
+                (tr("panel.pixel.spray_width"), ids::SPRAY_WIDTH),
+                (tr("panel.pixel.spray_speed"), ids::SPRAY_SPEED),
+                sec,
+                y,
+            );
         }
         if t == PixelTool::Gradient {
             y = self.opcoes_gradiente(info, sec, y);
@@ -365,17 +369,21 @@ impl Corpo<'_> {
         // Só o balde: o Gradient pinta a selecção (ou o cel) inteira, sem contiguidade.
         if t == PixelTool::Bucket {
             y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);
-            y = self.campo(tr("panel.pixel.tolerance"), ids::TOLERANCE, sec, y);
+            let conn = [
+                (tr("panel.pixel.connect4"), !o.eight, ids::CONNECT_4),
+                (tr("panel.pixel.connect8"), o.eight, ids::CONNECT_8),
+            ];
+            y = self.campo_e_escolha(
+                (tr("panel.pixel.tolerance"), ids::TOLERANCE),
+                (tr("panel.pixel.connectivity"), &conn),
+                sec,
+                y,
+            );
             y = self.caixas(
                 &[(ids::CONTIGUOUS, tr("panel.pixel.contiguous"), o.contiguous)],
                 sec,
                 y,
             );
-            let conn = [
-                (tr("panel.pixel.connect4"), !o.eight, ids::CONNECT_4),
-                (tr("panel.pixel.connect8"), o.eight, ids::CONNECT_8),
-            ];
-            y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
             let amostra = [
                 (
                     tr("panel.pixel.sample.layer"),

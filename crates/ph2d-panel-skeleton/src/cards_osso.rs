@@ -131,19 +131,19 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                 ],
                 y,
             );
-            if state::envelope_manda() {
-                const STR: &[NodeId] = &[ids::VECTOR_BONE_STRENGTH];
-                y = c.row(
-                    &[Cell::new(field(
-                        ids::VECTOR_BONE_STRENGTH,
-                        Glyph::Icon(IconId::CardFlow),
-                    ))
-                    .label(tr("card.bones.reach"))
-                    .key(STR)],
-                    y,
-                );
-            }
+            const STR: &[NodeId] = &[ids::VECTOR_BONE_STRENGTH];
+            let alcance = state::envelope_manda().then(|| {
+                Cell::new(field(
+                    ids::VECTOR_BONE_STRENGTH,
+                    Glyph::Icon(IconId::CardFlow),
+                ))
+                .label(tr("card.bones.reach"))
+                .key(STR)
+            });
             let curvo = !osso.is_rigid() || ph2d_skeleton::bend::segments_of(osso.segments) > 1;
+            if !curvo && let Some(alcance) = alcance {
+                y = c.row(&[alcance], y);
+            }
             if curvo {
                 let auto = state::current_bone_handles() == Some(1);
                 let modos = [
@@ -160,7 +160,11 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                         on: auto,
                     },
                 ];
-                y = c.full(Some(tr("card.bones.handles")), Widget::Choice(&modos), y);
+                let alcas = Cell::new(Widget::Choice(&modos)).label(tr("card.bones.handles"));
+                y = match alcance {
+                    Some(alcance) => c.row(&[alcance, alcas], y),
+                    None => c.row(&[alcas], y),
+                };
                 if !auto {
                     const CIN: &[NodeId] = &[ids::VECTOR_BONE_CURVE_IN_Y];
                     const COUT: &[NodeId] = &[ids::VECTOR_BONE_CURVE_OUT_Y];

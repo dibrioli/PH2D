@@ -77,29 +77,35 @@ pub fn caixa(c: &mut CardCtx<'_>, id: NodeId, chave: &'static str, on: bool, y: 
     c.check(id, Rotulo::vista(crate::panel::TextKey::new(chave)), on, y)
 }
 
+/// A caixa de marcar como célula de uma linha (05 §4): a 2.ª coluna de um campo. O que não anima passa
+/// [`Rotulo::vista`].
+#[must_use]
+pub fn caixa_em_celula<'r>(id: NodeId, label: impl Into<Rotulo<'r>>, on: bool) -> Cell<'r> {
+    Cell::new(Widget::Check {
+        id,
+        label: label.into(),
+        value: if on {
+            crate::widget::CheckboxValue::Checked
+        } else {
+            crate::widget::CheckboxValue::Unchecked
+        },
+        off: false,
+    })
+}
+
 /// Caixas de nome curto, duas por linha (T64): `(id, chave, ligada)`.
 pub fn caixas_aos_pares(
     c: &mut CardCtx<'_>,
     caixas: &[(NodeId, &'static str, bool)],
     y: f32,
 ) -> f32 {
-    let (x, w) = (c.x, c.w);
-    let meia = ((w - m::FIELD_GAP) * 0.5).max(0.0);
-    // A 1.ª linha do corpo sobe o vão, e uma linha de duas caixas sobe-o uma vez, nas duas.
-    let mut topo = if c.first { y - m::FIELD_ROW_GAP } else { y };
-    c.first = false;
-    for par in caixas.chunks(2) {
-        let mut fundo = topo;
-        for (i, &(id, chave, on)) in par.iter().enumerate() {
-            c.x = x + i as f32 * (meia + m::FIELD_GAP);
-            c.w = meia;
-            fundo = caixa(c, id, chave, on, topo);
-        }
-        topo = fundo;
-    }
-    c.x = x;
-    c.w = w;
-    topo
+    let cells: Vec<Cell<'_>> = caixas
+        .iter()
+        .map(|&(id, chave, on)| {
+            caixa_em_celula(id, Rotulo::vista(crate::panel::TextKey::new(chave)), on)
+        })
+        .collect();
+    c.compact(&cells, y)
 }
 
 /// Duas células por linha, na ordem dada (T56).

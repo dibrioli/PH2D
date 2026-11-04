@@ -4,9 +4,12 @@
 
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::ferramenta::{
-    Numero, Verbos, aos_pares, caixa, campo, cartao, opcoes, prepara_numeros,
+    Numero, Verbos, aos_pares, caixa_em_celula, caixas_aos_pares, campo, cartao, opcoes,
+    prepara_numeros,
 };
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Widget};
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -126,19 +129,22 @@ fn cartao_das_cores(snap: BgRemovalUiSnapshot) -> CardDef<'static> {
         tr("card.bgr.colors"),
         None,
         move |c, y| {
-            let y = caixa(
-                c,
+            let detectar = (
                 t::BGR_AUTO_PROTECT_SUBJECT,
                 "panel.bg_removal.mask.detect_subject",
                 snap.auto_protect_subject,
-                y,
             );
             if snap.auto_protect_subject {
-                let y = caixa(
+                let y = caixas_aos_pares(
                     c,
-                    t::BGR_ADD_AREA,
-                    "panel.bg_removal.mask.add_area",
-                    snap.add_area_armed,
+                    &[
+                        detectar,
+                        (
+                            t::BGR_ADD_AREA,
+                            "panel.bg_removal.mask.add_area",
+                            snap.add_area_armed,
+                        ),
+                    ],
                     y,
                 );
                 if snap.has_force_remove_mask {
@@ -151,11 +157,16 @@ fn cartao_das_cores(snap: BgRemovalUiSnapshot) -> CardDef<'static> {
                 }
                 return y;
             }
-            let y = caixa(
+            let y = caixas_aos_pares(
                 c,
-                t::BGR_EYEDROPPER,
-                "panel.bg_removal.mask.pick_colors",
-                snap.eyedropper_armed,
+                &[
+                    detectar,
+                    (
+                        t::BGR_EYEDROPPER,
+                        "panel.bg_removal.mask.pick_colors",
+                        snap.eyedropper_armed,
+                    ),
+                ],
                 y,
             );
             amostras(c, &snap.extra_colors, y)
@@ -170,18 +181,16 @@ fn cartao_das_ilhas(snap: &BgRemovalUiSnapshot) -> CardDef<'static> {
         tr("card.bgr.islands"),
         None,
         move |c, y| {
-            let y = caixa(
-                c,
+            let cx = caixa_em_celula(
                 t::BGR_SEPARATE_ISLANDS,
-                "panel.bg_removal.mask.separate_islands",
+                Rotulo::vista(TextKey::new("panel.bg_removal.mask.separate_islands")),
                 separa,
-                y,
             );
             if separa {
                 let cell = campo(t::BGR_MIN_ISLAND_PX_NUM, tr("panel.bg_removal.mask.min_px"));
-                return c.row(&[cell], y);
+                return c.pair(cx, cell, y);
             }
-            y
+            c.row(&[cx], y)
         },
     )
 }
@@ -221,24 +230,21 @@ fn cartao_da_protecao(snap: BgRemovalUiSnapshot) -> CardDef<'static> {
         tr("card.bgr.protection"),
         None,
         move |c, y| {
-            let mut y = caixa(
-                c,
+            let mut caixas = vec![(
                 t::BGR_PROTECT,
                 "card.bgr.protect_brush",
                 snap.protect_brush_armed,
-                y,
-            );
-            if snap.protect_brush_armed {
-                y = pincel(c, &snap, y);
-            }
+            )];
             if snap.mask_overlay_toggle_is_reachable() {
-                y = caixa(
-                    c,
+                caixas.push((
                     t::BGR_SHOW_MASK,
                     "panel.bg_removal.mask.show_mask",
                     snap.show_mask,
-                    y,
-                );
+                ));
+            }
+            let mut y = caixas_aos_pares(c, &caixas, y);
+            if snap.protect_brush_armed {
+                y = pincel(c, &snap, y);
             }
             if snap.has_protect_mask {
                 y = verbo(

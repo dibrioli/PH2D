@@ -234,16 +234,27 @@ fn cartao_do_lut(snap: Snap) -> CardDef<'static> {
     })
 }
 
+/// Posterize e Quantize lado a lado (listas curtas), e o Dither de um e o outro em baixo.
 fn posterizar(c: &mut CardCtx<'_>, snap: &Snap, y: f32) -> f32 {
     let (linhas, nome) = lista(&posterize_options(), &snap.posterize_levels);
     let opcoes = segs(&linhas);
-    let mut y = c.full(
-        Some(tr("panel.color_eq.adjust.posterize")),
-        Widget::Dropdown {
-            id: t::CEQ_POSTERIZE_DROPDOWN,
-            text: &nome,
-            options: &opcoes,
-        },
+    let (linhas_q, nome_q) = lista(&quantize_options(), &snap.quantize_colors);
+    let opcoes_q = segs(&linhas_q);
+    let mut y = c.row(
+        &[
+            Cell::new(Widget::Dropdown {
+                id: t::CEQ_POSTERIZE_DROPDOWN,
+                text: &nome,
+                options: &opcoes,
+            })
+            .label(tr("panel.color_eq.adjust.posterize")),
+            Cell::new(Widget::Dropdown {
+                id: t::CEQ_QUANTIZE_DROPDOWN,
+                text: &nome_q,
+                options: &opcoes_q,
+            })
+            .label(tr("panel.color_eq.adjust.quantize")),
+        ],
         y,
     );
     // Sem Posterize não há etapa que o Dither modifique; sem Dither, nem força nem grão.
@@ -277,20 +288,7 @@ fn cartao_do_estilo(snap: Snap) -> CardDef<'static> {
         t::CEQ_SEC_STYLIZE,
         tr("card.ceq.stylize"),
         None,
-        move |c, y| {
-            let y = posterizar(c, &snap, y);
-            let (linhas, nome) = lista(&quantize_options(), &snap.quantize_colors);
-            let opcoes = segs(&linhas);
-            c.full(
-                Some(tr("panel.color_eq.adjust.quantize")),
-                Widget::Dropdown {
-                    id: t::CEQ_QUANTIZE_DROPDOWN,
-                    text: &nome,
-                    options: &opcoes,
-                },
-                y,
-            )
-        },
+        move |c, y| posterizar(c, &snap, y),
     )
 }
 

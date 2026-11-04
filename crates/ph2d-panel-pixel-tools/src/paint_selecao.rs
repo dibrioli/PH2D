@@ -58,21 +58,6 @@ impl Corpo<'_> {
             y = self.bloco(tr("panel.pixel.select.mods_hint"), ColorToken::Text3, y);
         }
         if t == PixelTool::MagicWand {
-            y = self.campo(
-                tr("panel.pixel.wand.tolerance"),
-                ids::WAND_TOLERANCE,
-                sec,
-                y,
-            );
-            y = self.caixas(
-                &[(
-                    ids::WAND_CONTIGUOUS,
-                    tr("panel.pixel.contiguous"),
-                    o.wand_contiguous,
-                )],
-                sec,
-                y,
-            );
             let conn = [
                 (
                     tr("panel.pixel.connect4"),
@@ -85,7 +70,21 @@ impl Corpo<'_> {
                     ids::WAND_CONNECT_8,
                 ),
             ];
-            y = self.escolha(tr("panel.pixel.connectivity"), &conn, sec, y);
+            y = self.campo_e_escolha(
+                (tr("panel.pixel.wand.tolerance"), ids::WAND_TOLERANCE),
+                (tr("panel.pixel.connectivity"), &conn),
+                sec,
+                y,
+            );
+            y = self.caixas(
+                &[(
+                    ids::WAND_CONTIGUOUS,
+                    tr("panel.pixel.contiguous"),
+                    o.wand_contiguous,
+                )],
+                sec,
+                y,
+            );
             let amostra = [
                 (
                     tr("panel.pixel.sample.layer"),
@@ -136,8 +135,14 @@ impl Corpo<'_> {
             .collect();
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let mut y = self.titulo(tr("panel.pixel.transform"), y);
-        for (f, id, _) in ids::XFORM_FIELDS {
-            y = self.campo(tr(f.label_key()), id, sec, y);
+        for par in ids::XFORM_FIELDS.chunks(2) {
+            y = match par {
+                [(a, ia, _), (b, ib, _)] => {
+                    self.dois_campos((tr(a.label_key()), *ia), (tr(b.label_key()), *ib), sec, y)
+                }
+                [(a, ia, _)] => self.campo(tr(a.label_key()), *ia, sec, y),
+                _ => y,
+            };
         }
         if !info.live_shape {
             y = self.amostragem(info.options.resample, sec, y);

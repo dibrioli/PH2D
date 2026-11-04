@@ -186,41 +186,37 @@ fn corpo_da_etapa(
         let apagar = botao(ids::MACROS_DELETE, tr("panel.macros.delete_step"));
         c.row(&[renomear, apagar], y)
     };
-    y = c.row(&[botao(ids::MACROS_HINT, tr("panel.macros.hint"))], y);
+    let balao = botao(ids::MACROS_HINT, tr("panel.macros.hint"));
     let espera = campo(ids::MACROS_WAIT, tr("card.macros.wait"));
     match e.props {
         PropsDaEtapa::Pincelada { cor, .. } => {
-            // O ColorDrop inunda pela cor: o tamanho do pincel não lhe chega.
-            if matches!(e.tipo, TipoDaEtapaView::Preenchimento(_)) {
-                y = c.row(&[espera], y);
-            } else {
-                y = c.row(
-                    &[espera, campo(ids::MACROS_SIZE, tr("card.macros.size"))],
-                    y,
-                );
-            }
+            y = c.row(&[balao, espera], y);
             let rgba = c
                 .store
                 .widget_color(ids::MACROS_COLOR)
                 .unwrap_or([cor[0], cor[1], cor[2], 255]);
             let codigo = format!("{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2]);
-            c.full(
-                Some(tr("panel.macros.field.color")),
-                Widget::Swatch {
-                    id: ids::MACROS_COLOR,
-                    rgba: Some(rgba),
-                    text: &codigo,
-                    edit: None,
-                    detach: None,
-                },
-                y,
-            )
+            let amostra = Cell::new(Widget::Swatch {
+                id: ids::MACROS_COLOR,
+                rgba: Some(rgba),
+                text: &codigo,
+                edit: None,
+                detach: None,
+            })
+            .label(tr("panel.macros.field.color"));
+            // O ColorDrop inunda pela cor: o tamanho do pincel não lhe chega.
+            if matches!(e.tipo, TipoDaEtapaView::Preenchimento(_)) {
+                c.row(&[amostra], y)
+            } else {
+                c.row(&[campo(ids::MACROS_SIZE, tr("card.macros.size")), amostra], y)
+            }
         }
         PropsDaEtapa::Param { .. } if e.familia == FamiliaDaMacro::Motion => {
+            y = c.row(&[balao], y);
             let valor = campo(ids::MACROS_VALUE, tr("panel.macros.field.value"));
             c.row(&[espera, valor], y)
         }
-        _ => c.row(&[espera], y),
+        _ => c.row(&[balao, espera], y),
     }
 }
 
@@ -251,10 +247,10 @@ fn corpo_da_biblioteca(
         &[
             v(ids::MACROS_LIB_SAVE, "panel.macros.lib.save"),
             v(ids::MACROS_LIB_SAVE_ASSET, "panel.macros.lib.save_asset"),
+            v(ids::MACROS_LIB_IMPORT, "panel.macros.lib.import"),
         ],
         y,
     );
-    y = c.row(&[v(ids::MACROS_LIB_IMPORT, "panel.macros.lib.import")], y);
     let mut p = corpo(c);
     if let Some(a) = &info.aviso {
         let cor = if aviso_e_erro(a.chave) {

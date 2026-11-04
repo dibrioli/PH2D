@@ -6,8 +6,12 @@ use crate::{PixelTimelinePanelState, event, ids};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
+use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
 use ph2d_editor_core::pixel_panel::{PixelCel, PixelDirection, PixelPanelInfo, PixelSpeed};
 use ph2d_editor_core::property_row;
+use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
+use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, Dropdown, DropdownOption, Seccao, Unit, paint_button, paint_dropdown_chip,
 };
@@ -149,17 +153,31 @@ pub(crate) fn paint(
         (k, Rect::new(c.x, y, c.w, c.h))
     };
 
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     let (k, c) = proxima(&mut ys);
     let constante = st.constante.is_some();
     let y = linha(ctx, c, &titulo_do_quadro(info, pos, constante), c.y);
-    let y = campo(ctx, c, nomes[0], ids::FRAME_DURATION, sec, y);
+    let y = if cartoes {
+        numeros_do_cartao(ctx, c, &[(tr("card.pixel.duration_ms"), ids::FRAME_DURATION)], y)
+    } else {
+        campo(ctx, c, nomes[0], ids::FRAME_DURATION, sec, y)
+    };
     let rotulo = tr("panel.pixel.timeline.constant_rate");
     ys[k] = botao(ctx, c, ids::CONSTANT_RATE, rotulo, constante, y);
     if tem_cel {
         let (k, c) = proxima(&mut ys);
         let y = linha(ctx, c, tr("panel.pixel.timeline.cel_props"), c.y);
-        let y = campo(ctx, c, nomes[1], ids::CEL_OPACITY, sec, y);
-        ys[k] = campo(ctx, c, nomes[2], ids::CEL_Z, sec, y);
+        ys[k] = if cartoes {
+            numeros_do_cartao(
+                ctx,
+                c,
+                &[(nomes[1], ids::CEL_OPACITY), (nomes[2], ids::CEL_Z)],
+                y,
+            )
+        } else {
+            let y = campo(ctx, c, nomes[1], ids::CEL_OPACITY, sec, y);
+            campo(ctx, c, nomes[2], ids::CEL_Z, sec, y)
+        };
     }
     if let Some(t) = tag {
         let (_, c) = proxima(&mut ys);
@@ -167,9 +185,22 @@ pub(crate) fn paint(
         let titulo = tr_with("panel.pixel.timeline.tag_props", &[("name", &tag.name)]);
         let y = linha(ctx, c, &titulo, c.y);
         let y = direcao(st, ctx, c, nomes[3], tag.direction, y);
-        let y = campo(ctx, c, nomes[4], ids::TAG_REPEAT, sec, y);
-        let y = campo(ctx, c, nomes[5], ids::TAG_FROM, sec, y);
-        let y = campo(ctx, c, nomes[6], ids::TAG_TO, sec, y);
+        let y = if cartoes {
+            numeros_do_cartao(
+                ctx,
+                c,
+                &[
+                    (nomes[4], ids::TAG_REPEAT),
+                    (nomes[5], ids::TAG_FROM),
+                    (nomes[6], ids::TAG_TO),
+                ],
+                y,
+            )
+        } else {
+            let y = campo(ctx, c, nomes[4], ids::TAG_REPEAT, sec, y);
+            let y = campo(ctx, c, nomes[5], ids::TAG_FROM, sec, y);
+            campo(ctx, c, nomes[6], ids::TAG_TO, sec, y)
+        };
         let rotulo = tr("panel.pixel.timeline.tag_delete");
         let _ = botao(ctx, c, ids::TAG_DELETE, rotulo, false, y);
     }
@@ -242,6 +273,46 @@ fn campo(
         sec,
     )
     .0
+}
+
+/// Números irmãos numa linha, na cara do cartão: rótulo por cima e pega de arrastar, sem setas.
+fn numeros_do_cartao(
+    ctx: &mut PaintCtx,
+    area: Rect,
+    campos: &[(&str, ph2d_a11y::NodeId)],
+    y: f32,
+) -> f32 {
+    let ink = CardInk::of_list(ctx.host.theme());
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    let cells: Vec<Cell<'_>> = campos
+        .iter()
+        .map(|&(nome, id)| {
+            store.mark_card_field_at_paint(
+                id,
+                CardFieldSpec {
+                    step: 1.0,
+                    scrub: 1.0,
+                    default: None,
+                },
+            );
+            Cell::new(Widget::Field {
+                id,
+                glyph: Glyph::Text(letra_da_grandeza(nome)),
+            })
+            .label(nome)
+        })
+        .collect();
+    CardCtx::flutuante(
+        ctx.scene,
+        ctx.text_system,
+        store,
+        hit,
+        ink,
+        area.x,
+        area.w,
+    )
+    .row(&cells, y)
+        + ph2d_tokens::control_gap_px()
 }
 
 /// O rótulo e o chip do menu da direcção (a lista abre por cima, no fim do quadro).

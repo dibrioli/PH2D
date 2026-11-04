@@ -508,18 +508,16 @@ fn cartao_do_colorize(s: FlipStyleSnapshot) -> CardDef<'static> {
         Some(hex(s.colorize_color)),
         move |c, y| {
             let codigo = hex(s.colorize_color);
-            let y = c.row(
-                &[amostra(
-                    ids::FLIP_COLORIZE_SWATCH,
-                    s.colorize_color,
-                    &codigo,
-                    tr("panel.flip.colorize.color"),
-                )],
-                y,
-            );
+            // Cor + Size, Trap + Bleed: a sobra de 3 números na linha da cor (lei 1).
             let y = aos_pares(
                 c,
                 &[
+                    amostra(
+                        ids::FLIP_COLORIZE_SWATCH,
+                        s.colorize_color,
+                        &codigo,
+                        tr("panel.flip.colorize.color"),
+                    ),
                     campo(ids::FLIP_SIZE_NUM, tr("card.flip.size")),
                     campo(ids::FLIP_TRAP_NUM, tr("card.flip.trap")),
                     campo(ids::FLIP_COLORIZE_BLEED_NUM, tr("card.flip.bleed")),

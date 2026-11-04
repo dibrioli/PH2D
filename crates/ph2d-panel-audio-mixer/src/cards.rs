@@ -16,6 +16,7 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
+use ph2d_editor_core::panel::cards::ferramenta::caixa_em_celula;
 use ph2d_editor_core::panel::cards::linhas_extra::CardBar;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
 use ph2d_editor_core::widget::LevelMeter;
@@ -227,7 +228,7 @@ const SILENCIO_LUFS: f32 = -70.0; // LITERAL-PX-OK: abaixo disto a loudness lê-
 
 fn cartao_de_saida(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let tocando = snapshot::play_test();
-    let mut y = c.full(
+    let y = c.full(
         None,
         Widget::Button {
             id: AMIX_PLAY,
@@ -240,20 +241,19 @@ fn cartao_de_saida(c: &mut CardCtx<'_>, y: f32) -> f32 {
         },
         y,
     );
-    y = c.check(
-        crate::AMIX_LIMITER,
-        tr("panel.audio_mixer.master.limiter"),
-        snapshot::limiter(),
-        y,
-    );
     let lufs = snapshot::loudness();
     let valor = if lufs <= SILENCIO_LUFS {
         tr("card.audio_mixer.silent").to_string()
     } else {
         format!("{lufs:.1}")
     };
-    c.row(
-        &[Cell::new(Widget::Readout { text: &valor }).label(tr("card.audio_mixer.loudness"))],
+    c.pair(
+        caixa_em_celula(
+            crate::AMIX_LIMITER,
+            tr("panel.audio_mixer.master.limiter"),
+            snapshot::limiter(),
+        ),
+        Cell::new(Widget::Readout { text: &valor }).label(tr("card.audio_mixer.loudness")),
         y,
     )
 }
@@ -318,10 +318,13 @@ fn cartao_de_comp(c: &mut CardCtx<'_>, y: f32) -> f32 {
 }
 
 fn cartao_de_ducking(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    let y = c.check(
-        crate::AMIX_DUCK,
-        tr("card.common.enabled"),
-        snapshot::ducking(),
+    let y = c.pair(
+        caixa_em_celula(
+            crate::AMIX_DUCK,
+            tr("card.common.enabled"),
+            snapshot::ducking(),
+        ),
+        campo(&AMIX_DUCK_DEPTH, tr("panel.audio_mixer.master.depth")),
         y,
     );
     let chave = snapshot::ducking_key();
@@ -333,16 +336,9 @@ fn cartao_de_ducking(c: &mut CardCtx<'_>, y: f32) -> f32 {
             on: i == chave,
         })
         .collect();
-    let y = c.full(
+    c.full(
         Some(tr("panel.audio_mixer.master.key")),
         Widget::Choice(&segs),
-        y,
-    );
-    c.row(
-        &[campo(
-            &AMIX_DUCK_DEPTH,
-            tr("panel.audio_mixer.master.depth"),
-        )],
         y,
     )
 }

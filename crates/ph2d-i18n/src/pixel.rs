@@ -106,6 +106,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.timeline.tag_from" => "From",
         "panel.pixel.timeline.tag_to" => "To",
         "panel.pixel.timeline.duration" => "Duration",
+        "card.pixel.duration_ms" => "Duration (ms)",
         "panel.pixel.timeline.cel_props" => "Cel",
         "panel.pixel.timeline.opacity" => "Opacity",
         "panel.pixel.timeline.z" => "Z-Index",

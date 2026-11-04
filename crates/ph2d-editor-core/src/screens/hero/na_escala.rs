@@ -124,6 +124,13 @@ impl HeroScreen {
             .map(|r| self.escala().rect_to_physical(r))
     }
 
+    /// A pressão fecha o que um cartão abriu, em qualquer sítio. ⛔ A shell chama isto ANTES dos
+    /// ramos do canvas: eles tomam a pressão e nunca chegam ao despacho.
+    pub fn premido_fisico(&mut self, mut event: ph2d_host::PointerEvent) {
+        (event.x, event.y) = self.escala().to_logical((event.x, event.y));
+        crate::panel::cards::ao_premir(&mut self.store, &self.hit_index, event);
+    }
+
     /// [`Self::handle_pointer_with_text`] para um evento FÍSICO.
     pub fn handle_pointer_fisico<'frame>(
         &mut self,

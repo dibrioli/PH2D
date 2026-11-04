@@ -238,6 +238,18 @@ struct Extra<'a> {
     rola: Option<solto::rola::Rola>,
 }
 
+/// ⭐ Premir fora fecha o que um cartão abriu (a lista suspensa, os estilos de cor). O botão do meio
+/// é a mão que move a vista: não fecha.
+pub fn ao_premir(store: &mut WidgetStore, hit_index: &HitIndex, event: ph2d_host::PointerEvent) {
+    if event.kind != ph2d_host::PointerKind::Down
+        || event.button == ph2d_host::PointerButton::Middle
+    {
+        return;
+    }
+    dropdown::ao_premir(hit_index, event.x, event.y);
+    estilos::ao_premir(store, hit_index, event.x, event.y);
+}
+
 /// ⭐ **A lista suspensa de um cartão** — qual está aberta (um clique na caixa abre/fecha; qualquer
 /// outro clique fecha) e as opções do quadro, pintadas por CIMA de tudo no fim da lista. Cada opção
 /// leva o id do painel dono: o clique nela é o `Click` que o `apply_event` dele já trata.
@@ -251,6 +263,18 @@ pub mod dropdown {
         static ABERTA: RefCell<Option<NodeId>> = const { RefCell::new(None) };
         static PENDENTE: RefCell<Option<Opcoes>> = const { RefCell::new(None) };
         static CAIXAS: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
+        /// As opções pintadas no último quadro: a pressão nelas não é «fora».
+        static OPCOES: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
+    }
+
+    /// A pressão fora da caixa e das opções fecha a lista (a caixa decide no clique dela).
+    pub(super) fn ao_premir(hit_index: &HitIndex, x: f32, y: f32) {
+        let dela = hit_index.hit_with_rect(x, y).is_some_and(|(id, _)| {
+            CAIXAS.with(|c| c.borrow().contains(&id)) || OPCOES.with(|o| o.borrow().contains(&id))
+        });
+        if !dela {
+            ABERTA.with(|a| *a.borrow_mut() = None);
+        }
     }
 
     #[must_use]
@@ -295,6 +319,7 @@ pub mod dropdown {
         let Some((r, ink, opts)) = PENDENTE.with(|p| p.borrow_mut().take()) else {
             return;
         };
+        OPCOES.with(|o| *o.borrow_mut() = opts.iter().map(|(id, ..)| *id).collect());
         let h = m::FIELD_H * opts.len() as f32 + m::SEG_PAD * 2.0;
         let caixa = Rect::new(r.x, r.y + r.h + m::SEG_PAD, r.w, h);
         shadow(

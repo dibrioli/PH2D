@@ -773,8 +773,7 @@ impl App {
             last_cursor: (0.0, 0.0),
             hovered_files: Vec::new(),
             pending_drops: Vec::new(),
-            frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on
-            // the first frame's measurement
+            frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on the first frame
             pivot_content_center: None,
             frame_resize_start: None,
             rubber_band: None,
@@ -930,9 +929,7 @@ impl ApplicationHandler for App {
         _id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        if let winit::event::DeviceEvent::MouseMotion { delta } = event {
-            self.on_device_motion(delta);
-        }
+        self.on_device_event(event);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
@@ -971,10 +968,7 @@ impl ApplicationHandler for App {
             WindowEvent::PinchGesture { delta, .. } => self.on_pinch_gesture(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
             WindowEvent::Touch(t) => self.on_touch(t),
-            WindowEvent::KeyboardInput { event, .. } => {
-                self.on_keyboard_input(event);
-                self.sync_cursor_preso();
-            }
+            WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_preso(event),
             WindowEvent::RedrawRequested => {
                 self.render_frame();
                 self.palco_janela(event_loop);
@@ -1013,18 +1007,9 @@ fn main() {
     // Os cartões do Inspector (`PH2D_CARDS=0` = a coluna clássica); na thread do laço de eventos.
     #[cfg(feature = "panel-inspector")]
     ph2d_panel_inspector::set_cards_on(std::env::var("PH2D_CARDS").as_deref() != Ok("0"));
-    // **A math dos tokens de design** (plano UI/UX W4c.3) — uma linha, e é a única.
-    //
-    // ⚠️ Ela vive AQUI e não dentro da `ph2d-tokens` por uma aresta MEDIDA: o parser arrasta
-    // `ph2d-expr` → `ph2d-nodegraph`, e a `ph2d-tokens` é a folha de que 44 widgets dependem — um
-    // botão de ícone passaria a compilar o motor de cozimento para saber de que cor é.
-    //
-    // ⚠️ E o modo de falha de a ESQUECER é o certo: o app compila, corre, e o painel simplesmente
-    // não OFERECE o botão de fórmula (`math_available()` é falso) — em vez de o oferecer e não
-    // fazer nada. É o padrão do `set_ml_available` do AI Denoise.
-    //
-    // ⚠️ Antes do `App::new()`, e na thread do laço de eventos: o host mora num `thread_local`, e
-    // quem pergunta por ele é o painel a pintar.
+    // **A math dos tokens de design** (plano UI/UX W4c.3). AQUI e não na `ph2d-tokens`: o parser arrasta
+    // `ph2d-expr` → `ph2d-nodegraph`, e ela é a folha de 44 widgets. Esquecê-la só esconde o botão de
+    // fórmula (`math_available()` falso). Antes do `App::new()` e nesta thread: o host é `thread_local`.
     ph2d_token_math::install();
     let event_loop = EventLoop::new().expect("create EventLoop");
     event_loop.set_control_flow(ControlFlow::Poll);

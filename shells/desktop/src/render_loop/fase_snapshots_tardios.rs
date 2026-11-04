@@ -43,6 +43,24 @@ pub(super) struct Sessao<'a> {
     pub(super) motion: &'a ph2d_app_motion::motion_state::MotionState,
 }
 
+impl<'a> Sessao<'a> {
+    /// `(escolhido, quantos)` é a seleção, ou o objecto preso por um cartão solto.
+    pub(super) fn nova(
+        (escolhido, quantos): (Option<u64>, usize),
+        a_correr: bool,
+        mapa: &'a ph2d_input::InputMap,
+        motion: &'a ph2d_app_motion::motion_state::MotionState,
+    ) -> Self {
+        Self {
+            escolhido,
+            quantos,
+            a_correr,
+            mapa,
+            motion,
+        }
+    }
+}
+
 pub(super) fn publica(
     sim: &mut SimWorld,
     tags: &ph2d_tags::TagTree,

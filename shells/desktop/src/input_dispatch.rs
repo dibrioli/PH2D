@@ -141,19 +141,6 @@ pub(crate) const PASTE_OFFSET_PX: f64 = 12.0;
 const HANDLE_HIT_PX: f64 = 12.0;
 
 impl App {
-    pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
-        let b = self
-            .held_button
-            .unwrap_or(ph2d_host::PointerButton::Primary);
-        // O cursor preso do campo Figma pode engolir ou deslocar o movimento (`cursor_preso`).
-        let Some(position) = self.cursor_moved_preso(position) else {
-            return;
-        };
-        let (x, y, t) = (position.x as f32, position.y as f32, Self::timestamp_ns());
-        self.pointer_moved(ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, b, t));
-        self.sync_cursor_preso();
-    }
-
     /// ⭐ A porta ÚNICA do movimento: o rato do winit e a caneta (`input_drop/caneta.rs`) acabam aqui.
     pub(crate) fn pointer_moved(&mut self, evt: PointerEvent) {
         ph2d_pen::porta::poe_tinta(&evt);
@@ -427,7 +414,7 @@ impl App {
             self.end_anchor_gizmo_drag();
         }
         self.ramo_arrasto_biblioteca(state, button);
-        self.ramo_aperto_solta_teclado(state);
+        self.ramo_aperto_solta_teclado(state, evt);
         // O rato do JOGO (itens 6–7): depois do blur e antes de todo ramo que devolve; com a cena a correr o clique na
         // cena é SÓ dele (`posse_do_jogo`).
         if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {

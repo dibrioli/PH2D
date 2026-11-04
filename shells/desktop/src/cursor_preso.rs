@@ -25,8 +25,17 @@ impl crate::App {
         self.cursor_preso.moved(self.window.as_deref(), pos)
     }
 
+    /// A tecla, e o cursor preso segue o que ela mudou.
+    pub(crate) fn on_keyboard_preso(&mut self, event: winit::event::KeyEvent) {
+        self.on_keyboard_input(event);
+        self.sync_cursor_preso();
+    }
+
     /// O movimento CRU (`DeviceEvent::MouseMotion`) — só conta com o cursor `Locked`.
-    pub(crate) fn on_device_motion(&mut self, delta: (f64, f64)) {
+    pub(crate) fn on_device_event(&mut self, event: winit::event::DeviceEvent) {
+        let winit::event::DeviceEvent::MouseMotion { delta } = event else {
+            return;
+        };
         let Some((x, y)) = self.cursor_preso.raw(delta) else {
             return;
         };

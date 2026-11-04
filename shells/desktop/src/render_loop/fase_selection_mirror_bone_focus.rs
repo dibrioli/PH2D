@@ -200,17 +200,25 @@ impl crate::App {
         }));
         publica_a_ancora(sim, osso_em_foco);
         ph2d_card_rope::chave::resolve(&mut hero.store, sim.world()); // T36: o alfinete durável
-        // T36/T44 no Inspector: o Transform de cada objecto preso e a corda até à origem dele.
         #[cfg(feature = "panel-inspector")]
-        {
-            use ph2d_card_rope::chave::origem;
-            use ph2d_editor_core::ids::INSP_PANEL as INSP;
-            let w = sim.world();
-            ph2d_card_rope::anda(&mut hero.store, INSP, |b| {
-                origem(w, b).map(|p| cam.world_to_screen(p, win))
-            });
-        }
+        anda_as_cordas_do_inspector(&mut hero.store, sim, &cam, win);
     }
+}
+
+/// T36/T44 no Inspector: o Transform de cada objecto preso e a corda até à origem dele.
+#[cfg(feature = "panel-inspector")]
+fn anda_as_cordas_do_inspector(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    sim: &ph2d_ecs::SimWorld,
+    cam: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+) {
+    use ph2d_card_rope::chave::origem;
+    use ph2d_editor_core::ids::INSP_PANEL as INSP;
+    let w = sim.world();
+    ph2d_card_rope::anda(store, INSP, |b| {
+        origem(w, b).map(|p| cam.world_to_screen(p, win))
+    });
 }
 
 /// A âncora do osso em foco no painel — a conta é da família (`goal::ancora_no_painel`).

@@ -206,19 +206,9 @@ impl crate::App {
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ **As secções que o `publish` NÃO pode calcular** (leem a VM, o relógio, as partículas
         // vivas — nada disso está no mundo) — na fase-filha, num ficheiro irmão (tecto de função).
-        tardios::publica(
-            sim,
-            tags,
-            script.as_ref(),
-            particles,
-            &tardios::Sessao {
-                escolhido: hero.gizmo.selection,
-                quantos: hero.gizmo.selected_len(),
-                a_correr: self.playhead.is_playing(),
-                mapa: &hero.input_map,
-                motion,
-            },
-        );
+        let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
+        let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, motion);
+        tardios::publica(sim, tags, script.as_ref(), particles, &s);
         let filed = self.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
@@ -233,23 +223,16 @@ impl crate::App {
             sequencia::publica(sim, timeline, playhead, b, n); // a cutscene (TOP-20 #19)
             recusa
         };
-        if let Some(m) = ultimas(sim, (hero.gizmo.selection, hero.gizmo.selected_len())) {
+        if let Some(m) = ultimas(sim, sel) {
             toasts.push(Toast::warning(m));
         }
         // T61: as secções tardias de cada objecto preso por um cartão solto, pelas mesmas portas.
         let pins: Vec<u64> = presos.iter().map(|p| p.bits).collect();
         ph2d_panel_inspector::com_cada_preso(&pins, |b| {
-            let (escolhido, quantos, a_correr) = (Some(b), 1, playhead.is_playing());
-            let mapa = &hero.input_map;
-            let s = tardios::Sessao {
-                escolhido,
-                quantos,
-                a_correr,
-                mapa,
-                motion,
-            };
+            let um = (Some(b), 1);
+            let s = tardios::Sessao::nova(um, playhead.is_playing(), &hero.input_map, motion);
             tardios::publica(sim, tags, script.as_ref(), particles, &s);
-            let _ = ultimas(sim, (escolhido, quantos));
+            let _ = ultimas(sim, um);
         });
         Some(tool_preview_bits)
     }

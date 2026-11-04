@@ -189,7 +189,7 @@ impl<'s> CardCtx<'s> {
         } else {
             self.text_system.prefix_width(s.text, m::SEG_TEXT_PX)
         };
-        let iw = if s.icon.is_some() { m::ICON_GLYPH } else { 0.0 };
+        let iw = glifo_do_segmento(s);
         let gap = if iw > 0.0 && tw > 0.0 {
             m::SEG_ICON_GAP
         } else {
@@ -241,7 +241,7 @@ impl<'s> CardCtx<'s> {
             } else {
                 self.text_system.prefix_width(s.text, m::SEG_TEXT_PX)
             };
-            let iw = if s.icon.is_some() { m::ICON_GLYPH } else { 0.0 };
+            let iw = glifo_do_segmento(s);
             let gap = if iw > 0.0 && tw > 0.0 {
                 m::SEG_ICON_GAP
             } else {
@@ -473,3 +473,12 @@ impl<'s> CardCtx<'s> {
 #[cfg(test)]
 #[path = "cards_linhas_tests.rs"]
 mod tests;
+
+/// O lado do ícone de um segmento: sozinho é maior, ao lado de um texto fica no tamanho do texto.
+fn glifo_do_segmento(s: &Seg<'_>) -> f32 {
+    match s.icon {
+        None => 0.0,
+        Some(_) if s.text.is_empty() => m::SEG_ICON_GLYPH,
+        Some(_) => m::ICON_GLYPH,
+    }
+}

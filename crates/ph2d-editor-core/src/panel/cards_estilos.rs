@@ -279,6 +279,29 @@ fn clique(store: &mut WidgetStore, id: NodeId) -> bool {
     false
 }
 
+/// É da lista ou do «Edit style»? A pressão aí não é «fora».
+fn da_lista(id: NodeId) -> bool {
+    [FUNDO, MAIS, BUSCA, NOME, HEX].contains(&id)
+        || ESTILOS.with(|e| e.borrow().iter().any(|x| linha_de(x.id) == id))
+}
+
+/// ⭐ A pressão FORA fecha a lista e o «Edit style»; o que estava escrito sem Enter grava-se. O ⠿ que
+/// a abriu fica de fora (o clique dele é que a fecha) e um menu aberto é quem decide a pressão.
+pub(super) fn ao_premir(store: &mut WidgetStore, hit_index: &HitIndex, x: f32, y: f32) {
+    let aberta = ABERTA.with(Cell::get);
+    if (aberta.is_none() && EDITA.with(Cell::get).is_none()) || store.context_menu().is_some() {
+        return;
+    }
+    let alvo = hit_index.hit_with_rect(x, y).map(|(id, _)| id);
+    if alvo.is_some_and(|id| Some(id) == aberta || da_lista(id)) {
+        return;
+    }
+    if let Some(id) = store.focus_id().filter(|f| *f == NOME || *f == HEX) {
+        on_event(store, WidgetEvent::Submit(id));
+    }
+    fecha();
+}
+
 /// As cinco linhas do menu do botão direito numa linha de estilo.
 fn menu(store: &mut WidgetStore, id: NodeId) -> bool {
     use crate::ids;

@@ -102,7 +102,24 @@ impl crate::App {
     }
 
     /// Um aperto fora do chrome solta o foco de teclado que um campo do painel segurava — antes de quem toma o aperto.
-    pub(super) fn ramo_aperto_solta_teclado(&mut self, state: ElementState) {
+    pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        let b = self
+            .held_button
+            .unwrap_or(ph2d_host::PointerButton::Primary);
+        // O cursor preso do campo Figma pode engolir ou deslocar o movimento (`cursor_preso`).
+        if let Some(position) = self.cursor_moved_preso(position) {
+            let (x, y, t) = (position.x as f32, position.y as f32, Self::timestamp_ns());
+            self.pointer_moved(ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, b, t));
+            self.sync_cursor_preso();
+        }
+    }
+
+    pub(super) fn ramo_aperto_solta_teclado(&mut self, state: ElementState, evt: PointerEvent) {
+        // A pressão fecha o que um cartão abriu, pelo mesmo motivo do teclado abaixo: no canvas ela
+        // é tomada antes de chegar ao despacho.
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            h.premido_fisico(evt);
+        }
         // ⭐⭐⭐ **UM APERTO NO CANVAS SOLTA O TECLADO QUE UM CAMPO DO PAINEL SEGURAVA.**
         //
         // ⛔ **Ele vem ANTES dos consumidores abaixo, e é aí que está a cura.** Eles — hoje a

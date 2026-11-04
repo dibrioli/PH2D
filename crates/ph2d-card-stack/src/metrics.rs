@@ -61,6 +61,9 @@ pub const ICON_CELL: f32 = 26.0;
 /// O desenho do ícone nas caixas e segmentos: `14` da maquete + 30 % (dono 01/11, «os ícones
 /// devem ser maiores um pouco»). Cabe na célula (`26`) e no segmento (`FIELD_H − 2·SEG_PAD = 24`).
 pub const ICON_GLYPH: f32 = 18.0;
+/// O ícone SOZINHO num segmento (Cap, Join…; dono 03/11, «difícil visualização»): o desenho passa de
+/// `14,4` a `18` px e ainda cabe no segmento (`24`).
+pub const SEG_ICON_GLYPH: f32 = 22.0;
 pub const VALUE_PX: f32 = 12.0;
 /// O mínimo de um campo de valor ao lado da caixa da cor: a célula do ícone (`26`) + a folga (`8`)
 /// e «100» a `VALUE_PX` (`20,6 px` medidos, 02/11). A caixa da cor cresce até ao NOME do estilo

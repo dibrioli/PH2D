@@ -44,6 +44,14 @@ impl Pilha {
         }
     }
 
+    /// A secção (o cartão) da pilha.
+    pub(crate) fn seccao(self) -> NodeId {
+        match self {
+            Self::Efeitos => tv::VECTOR_SECTION_EFFECTS,
+            Self::Filtros => ids::VECTOR_SECTION_FILTERS,
+        }
+    }
+
     /// O «+» do cabeçalho.
     pub(crate) fn add_menu(self) -> NodeId {
         match self {
@@ -148,6 +156,11 @@ thread_local! {
 /// Lê e limpa o que o corpo deixou neste quadro.
 pub(crate) fn take_pendentes() -> Pendentes {
     PENDENTES.with(|p| std::mem::take(&mut *p.borrow_mut()))
+}
+
+/// A linha aberta, vinda do corpo em cartão: a âncora do painel à esquerda.
+pub(crate) fn anota_props(p: Pilha, row: usize, line: Rect) {
+    PENDENTES.with(|s| s.borrow_mut().props[p.i()] = Some((row, line)));
 }
 
 impl BodyCtx<'_> {

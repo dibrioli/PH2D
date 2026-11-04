@@ -20,6 +20,7 @@ use crate::state::filters::RAMP_PREVIEW_N;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect};
+use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_i18n::tr;
 
 /// Altura da barra de preview da rampa.
@@ -77,6 +78,20 @@ impl BodyCtx<'_> {
             self.filter_icon(id, glyph, bx, py, self.row_h);
         }
         py += self.row_h + gap;
+        self.filter_ramp_bar(row, fx, py);
+        py += RAMP_BAR_H + RAMP_HANDLE_R + gap;
+        let (_, colour) = selected_stop(row, fx);
+        self.filter_color_swatch(
+            ids::filter_stop_color_id(row),
+            colour,
+            tr("panel.vector.filter.stop"),
+            py,
+        )
+    }
+
+    /// A barra de preview com os punhos, no topo `py`: a mesma na linha de antes e no cartão.
+    pub(crate) fn filter_ramp_bar(&mut self, row: usize, fx: &fst::FilterRowView, py: f32) {
+        let n = usize::from(fx.stop_count).min(MAX_FILTER_STOPS);
         // ── A barra: as fatias que a SHELL amostrou ──
         let bar = Rect::new(self.inner_x, py, self.inner_w.max(1.0), RAMP_BAR_H);
         #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
@@ -103,7 +118,7 @@ impl BodyCtx<'_> {
             self.theme,
             ph2d_tokens::visuals::Feel::Rest,
             1.0, // LITERAL-PX-OK: fio de 1 px, o mesmo do editor do Painter
-            resolve(ColorToken::Border, self.theme),
+            tinta(ColorToken::Border, self.theme),
         );
         // ── Os punhos, na borda de baixo da barra ──
         //
@@ -111,7 +126,7 @@ impl BodyCtx<'_> {
         // é imutável aqui), e ele tem de converter contra ESTE retângulo, não contra um que ele
         // re-derive.
         fst::set_ramp_bar(row, [bar.x, bar.y, bar.w, bar.h]);
-        let selected = usize::from(fst::selected_stop(row)).min(n.saturating_sub(1));
+        let (selected, _) = selected_stop(row, fx);
         let cy = bar.y + bar.h;
         for stop in 0..n {
             let id = ids::filter_stop_id(row, stop);
@@ -138,11 +153,10 @@ impl BodyCtx<'_> {
                 cx,
                 cy,
                 RAMP_HANDLE_R + 1.5, // LITERAL-PX-OK: o fio do anel
-                resolve(ring, self.theme),
+                tinta(ring, self.theme),
             );
             fill_circle(self.scene, cx, cy, RAMP_HANDLE_R, scol);
         }
-        py += RAMP_BAR_H + RAMP_HANDLE_R + gap;
         // ⚠️ **Diagnóstico atrás de env** — o report *"não posso mover os pontos de cor"* não
         // reproduz headless (o seam dirige o gesto real e chega ao barramento), então o que falta
         // medir é o que só o app vivo tem. Ele responde as DUAS perguntas de uma vez: os punhos
@@ -157,17 +171,17 @@ impl BodyCtx<'_> {
                 bar.x, bar.w, bar.y
             );
         }
-        // ── E a cor do stop escolhido, pela MESMA swatch/picker das duas pontas do Duotone ──
-        let colour = fx
-            .stop_colors
-            .get(selected)
-            .copied()
-            .unwrap_or([0, 0, 0, 255]);
-        self.filter_color_swatch(
-            ids::filter_stop_color_id(row),
-            colour,
-            tr("panel.vector.filter.stop"),
-            py,
-        )
     }
+}
+
+/// O stop em foco e a cor dele: é o que a swatch edita, na linha de antes e no cartão.
+pub(crate) fn selected_stop(row: usize, fx: &fst::FilterRowView) -> (usize, [u8; 4]) {
+    let n = usize::from(fx.stop_count).min(MAX_FILTER_STOPS);
+    let selected = usize::from(fst::selected_stop(row)).min(n.saturating_sub(1));
+    let colour = fx
+        .stop_colors
+        .get(selected)
+        .copied()
+        .unwrap_or([0, 0, 0, 255]);
+    (selected, colour)
 }

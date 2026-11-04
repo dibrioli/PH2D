@@ -345,6 +345,13 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         set_last_visible_h(0.0);
         // ② F16: o que a barra abre não depende do painel estar aberto — a barra é que é a porta.
         let theme = ctx.host.theme();
+        // Com a aba atrás ninguém preparou os campos do cartão que o painel do traço pinta.
+        if crate::cards::cards_on() && crate::bars::stroke_popover_open(ctx.host.store()) {
+            let store = ctx.host.store_mut();
+            crate::cards_tinta::prepare(store);
+            crate::paint_markers::seed(store);
+            crate::paint_dashes::seed(store);
+        }
         crate::bars::paint_bar_popovers(
             ctx,
             theme,

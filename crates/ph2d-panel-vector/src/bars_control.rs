@@ -390,6 +390,24 @@ fn stroke_rows(b: &mut BodyCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
 /// largura do painel docado: as linhas são as mesmas e leem-se iguais nos dois sítios.
 fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32) {
     let snap = crate::state::current_snapshot();
+    if crate::cards::cards_on() {
+        let region = ctx.layout.popover_region();
+        let bottom = ctx.host.store().tool_row_bottom();
+        crate::cards_lado::flutua(
+            ctx,
+            crate::ids::VECTOR_BAR_STROKE,
+            ph2d_tool_vector::ids::VECTOR_SECTION_FILL,
+            width,
+            theme,
+            &|conteudo| lugar_do_painel(chip, width, conteudo, region, bottom),
+            None,
+            &mut |c, y| {
+                let fim = crate::cards::linhas_do_cartao(c).stroke_lines(&snap, y, true);
+                crate::cards_traco::stroke_settings(c, &snap, fim)
+            },
+        );
+        return;
+    }
     let pad = PANEL_HEAD_PAD;
     let inner_w = (width - pad * 2.0).max(0.0);
     // A altura é a do corpo, medida numa passagem a seco (cena e hits descartáveis): o fundo tem de
@@ -409,25 +427,9 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
         stroke_rows(&mut b, &snap, 0.0)
     };
     let id = crate::ids::VECTOR_BAR_STROKE;
-    let region = ctx.layout.popover_region();
     let content_h = body_h + pad * 2.0;
-    let gap = Spacing::Xs.px();
-    let bottom = ctx.host.store().tool_row_bottom();
-    // O painel fica do lado do chip que a fila deixa e encolhe ao que sobra dele na região; o resto
-    // ROLA (um ecrã baixo transbordava as linhas por cima da arte e para fora da janela).
-    let room = if bottom {
-        chip.y - gap - region.y
-    } else {
-        region.y + region.h - (chip.y + chip.h + gap)
-    };
-    let h = content_h.min(room.max(0.0));
-    let x = chip.x.min(region.x + region.w - width).max(region.x);
-    let y = if bottom {
-        chip.y - gap - h
-    } else {
-        chip.y + chip.h + gap
-    };
-    let rect = Rect::new(x, y, width, h);
+    let rect = stroke_popover_rect(ctx, chip, width, content_h);
+    let h = rect.h;
     let max_scroll = (content_h - h).max(0.0);
     let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
     paint_panel_surface(rect, ctx.scene, theme);
@@ -465,6 +467,31 @@ fn paint_stroke_popover(ctx: &mut PaintCtx, theme: Theme, chip: Rect, width: f32
     };
     ph2d_editor_core::panel::paint_popover_scrollbar(&painted, store, ctx.scene, theme, hit_index);
     ctx.host.store_mut().publish_dropdown_popover(painted);
+}
+
+fn stroke_popover_rect(ctx: &PaintCtx, chip: Rect, width: f32, content_h: f32) -> Rect {
+    let region = ctx.layout.popover_region();
+    let bottom = ctx.host.store().tool_row_bottom();
+    lugar_do_painel(chip, width, content_h, region, bottom)
+}
+
+/// O painel fica do lado do chip que a fila deixa e encolhe ao que sobra dele na região; o resto ROLA
+/// (um ecrã baixo transbordava as linhas por cima da arte e para fora da janela).
+fn lugar_do_painel(chip: Rect, width: f32, content_h: f32, region: Rect, bottom: bool) -> Rect {
+    let gap = Spacing::Xs.px();
+    let room = if bottom {
+        chip.y - gap - region.y
+    } else {
+        region.y + region.h - (chip.y + chip.h + gap)
+    };
+    let h = content_h.min(room.max(0.0));
+    let x = chip.x.min(region.x + region.w - width).max(region.x);
+    let y = if bottom {
+        chip.y - gap - h
+    } else {
+        chip.y + chip.h + gap
+    };
+    Rect::new(x, y, width, h)
 }
 
 pub(crate) fn body_ctx<'a>(

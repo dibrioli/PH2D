@@ -154,7 +154,7 @@ pub(crate) mod filters;
 
 /// O **trilho da rampa** do card de Gradient Map — módulo irmão (teto de 600 LOC).
 #[path = "paint_filters_ramp.rs"]
-mod filters_ramp;
+pub(crate) mod filters_ramp;
 
 /// A **lei de mistura** de um degrau de filtro — módulo irmão (teto de 600 LOC).
 #[path = "paint_filters_blend.rs"]

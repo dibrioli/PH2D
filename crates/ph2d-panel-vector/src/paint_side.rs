@@ -58,6 +58,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
             let down = shifted(i, false).map(|_| ids::vector_paint_down_id(i));
             if cards_on() {
                 let cabeca = Cabeca {
+                    glifo: None,
                     titulo: name,
                     fecha: ids::VECTOR_PAINT_PROPS_CLOSE,
                     desce: down,
@@ -119,6 +120,7 @@ fn fill_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Theme)
             panel,
             theme,
             &Cabeca {
+                glifo: None,
                 titulo: tr("panel.vector.section.fill"),
                 fecha: ids::VECTOR_FILL_PROPS_CLOSE,
                 desce: None,
@@ -162,6 +164,7 @@ fn stroke_panel(ctx: &mut PaintCtx, line: Option<Rect>, panel: Rect, theme: Them
                 panel,
                 theme,
                 &Cabeca {
+                    glifo: None,
                     titulo: tr("panel.vector.stroke.settings"),
                     fecha: ids::VECTOR_STROKE_PROPS_CLOSE,
                     desce: None,

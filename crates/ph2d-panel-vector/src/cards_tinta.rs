@@ -20,7 +20,7 @@ const CEM_POR_CENTO: f64 = 100.0; // LITERAL-PX-OK: neutro de um campo em %, nã
 const PASSO_MEDIO: f64 = 0.1; // LITERAL-PX-OK: passo do valor (fator, px), não geometria
 const PASSO_FINO: f64 = 0.01; // LITERAL-PX-OK: passo do valor (fração), não geometria
 
-fn spec(step: f64, scrub: f64, default: Option<f64>) -> CardFieldSpec {
+pub(crate) fn spec(step: f64, scrub: f64, default: Option<f64>) -> CardFieldSpec {
     CardFieldSpec {
         step,
         scrub,
@@ -28,14 +28,14 @@ fn spec(step: f64, scrub: f64, default: Option<f64>) -> CardFieldSpec {
     }
 }
 
-fn dica(store: &mut WidgetStore, id: NodeId, chave: &'static str) {
+pub(crate) fn dica(store: &mut WidgetStore, id: NodeId, chave: &'static str) {
     if store.tooltip_for(id).is_none() {
         store.set_tooltip(id, tr(chave));
     }
 }
 
 /// Semeia o campo `id`, salvo com a mão nele (foco ou scrub).
-fn semeia(store: &mut WidgetStore, id: NodeId, valor: f64, misto: bool) {
+pub(crate) fn semeia(store: &mut WidgetStore, id: NodeId, valor: f64, misto: bool) {
     if store.focus_id() == Some(id) || store.number_input_drag().map(|d| d.id) == Some(id) {
         return;
     }
@@ -181,6 +181,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         dica(store, id, chave);
     }
     semeia_as_linhas(store);
+    crate::cards_fx::prepare(store);
 }
 
 /// O que o corpo antigo recebia ao pintar: as linhas da pilha e os números ligados a uma barra.

@@ -14,6 +14,7 @@
 //!  └──────────────────────────┘ └────────────────────────┘
 //! ```
 
+use crate::cards_lado::{Cabeca, lado};
 use crate::paint_sections::BodyCtx;
 use crate::paint_sections::fx_list::{Pilha, is_open, take_pendentes};
 use crate::state;
@@ -23,6 +24,7 @@ use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::card_ink;
 use ph2d_editor_core::widget::panel_chrome::{PANEL_HEAD_PAD, paint_panel_surface};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, PopoverRow};
 use ph2d_editor_core::zones::Rect;
@@ -34,7 +36,12 @@ use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
     let pend = take_pendentes();
     for (i, p) in Pilha::TODAS.into_iter().enumerate() {
-        if let Some(chip) = pend.menu[i] {
+        let menu = if crate::cards::cards_on() {
+            ancora_no_cartao(ctx, p, panel, theme)
+        } else {
+            pend.menu[i]
+        };
+        if let Some(chip) = menu {
             paint_menu(ctx, p, chip, theme);
         }
         match pend.props[i] {
@@ -42,6 +49,20 @@ pub(crate) fn paint(ctx: &mut PaintCtx, panel: Rect, theme: Theme) {
             None => close_rows(ctx.host.store_mut(), p),
         }
     }
+}
+
+/// O «+» aberto no cabeçalho do cartão: a lista cresce para DENTRO, com a borda direita na dele, e
+/// leva a tinta do cartão. Lido aqui, não no corpo: um cartão dobrado não corre o corpo, e o «+» vive.
+fn ancora_no_cartao(ctx: &mut PaintCtx, p: Pilha, panel: Rect, theme: Theme) -> Option<Rect> {
+    let id = p.add_menu();
+    if !is_open(ctx.host.store(), id) {
+        return None;
+    }
+    let chip = ctx.host.hit_index_mut().rect_for(id)?;
+    let tema = ctx.host.store().section_theme(p.seccao());
+    let _ = card_ink::troca_popover(Some((id, card_ink::CardInk::of_card(tema, theme))));
+    let w = panel.w * 0.5;
+    Some(Rect::new(chip.x + chip.w - w, chip.y, w, chip.h))
 }
 
 /// A lista do «+»: um tipo por linha, com o glifo dele — as linhas são os `Add <tipo>` de sempre.
@@ -84,7 +105,12 @@ fn paint_menu_row(
     theme: Theme,
 ) {
     let r = row.rect;
-    let ink = resolve(row.ink(), theme);
+    // Num cartão a linha pinta-se na tinta dele (o `opaque` da lista), senão no token de sempre.
+    let ink = if card_ink::card_body().is_some() {
+        card_ink::tinta(row.ink(), theme)
+    } else {
+        resolve(row.ink(), theme)
+    };
     let pad = Spacing::Md.px();
     let font = TypeToken::Base.px();
     let g = ph2d_editor_core::paint::icon_side_for_glyph(font).min(r.h);
@@ -173,11 +199,16 @@ pub(crate) fn side_head(
     y + h + ph2d_tokens::control_gap_px()
 }
 
+/// ↓ e ↑ da linha aberta, só onde mexem.
+fn setas(p: Pilha, row: usize) -> (Option<NodeId>, Option<NodeId>) {
+    let down = (row + 1 < p.len()).then(|| p.down(row));
+    let up = (row > 0).then(|| p.up(row));
+    (down, up)
+}
+
 /// O corpo do painel: o cabeçalho (glifo, nome, ↑ ↓ ✕) e os campos do tipo. Devolve o `y` final.
 fn body(b: &mut BodyCtx<'_>, p: Pilha, row: usize, glyph: IconId, name: &str, y: f32) -> f32 {
-    let total = p.len();
-    let down = (row + 1 < total).then(|| p.down(row));
-    let up = (row > 0).then(|| p.up(row));
+    let (down, up) = setas(p, row);
     let y = side_head(b, Some(glyph), name, p.close(), down, up, y);
     match p {
         Pilha::Efeitos => match state::stack().get(row) {
@@ -202,9 +233,29 @@ fn paint_props(ctx: &mut PaintCtx, p: Pilha, row: usize, line: Rect, panel: Rect
         close_rows(ctx.host.store_mut(), p);
         return;
     };
-    side_panel(ctx, p.row(row), line, panel, theme, &mut |b, y| {
-        body(b, p, row, glyph, name, y)
-    });
+    if crate::cards::cards_on() {
+        let (down, up) = setas(p, row);
+        lado(
+            ctx,
+            p.row(row),
+            p.seccao(),
+            line,
+            panel,
+            theme,
+            &Cabeca {
+                glifo: Some(glyph),
+                titulo: name,
+                fecha: p.close(),
+                desce: down,
+                sobe: up,
+            },
+            &mut |c, y| crate::cards_fx::props(c, p, row, y),
+        );
+    } else {
+        side_panel(ctx, p.row(row), line, panel, theme, &mut |b, y| {
+            body(b, p, row, glyph, name, y)
+        });
+    }
     if p == Pilha::Filtros {
         crate::paint::register_ramp_handles(ctx.host.store_mut(), row);
     }

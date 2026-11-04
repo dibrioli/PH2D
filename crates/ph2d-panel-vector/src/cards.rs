@@ -192,6 +192,10 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
         clip
     } else if id == ids::VECTOR_SECTION_APPEARANCE {
         crate::cards_tinta::appearance
+    } else if id == vids::VECTOR_SECTION_EFFECTS {
+        crate::cards_fx::effects
+    } else if id == ids::VECTOR_SECTION_FILTERS {
+        crate::cards_fx::filters
     } else {
         return None;
     };
@@ -201,7 +205,17 @@ fn nativo(id: NodeId) -> Option<CorpoNativo> {
 /// ⭐ **As linhas de Fill & Stroke** (F44/F45): as MESMAS linhas, o mesmo arrasto pelo ⚙ e a mesma
 /// conta do vão; os primitivos da linha pintam-se com a cara do cartão sob a tinta dele.
 fn fill_stroke(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-    let mut b = BodyCtx {
+    let ink = c.ink;
+    let mut b = linhas_do_cartao(c);
+    b.anota_o_menu(ink);
+    let fim = b.fill_stroke_rows(snap, y);
+    // A última linha não leva o vão de baixo: o cartão tem a folga dele.
+    if fim > y { fim - m::FIELD_ROW_GAP } else { y }
+}
+
+/// As linhas que se pintam pelo `BodyCtx` e perguntam `card_body()`, no passo e na largura do cartão.
+pub(crate) fn linhas_do_cartao<'a>(c: &'a mut CardCtx<'_>) -> BodyCtx<'a> {
+    BodyCtx {
         scene: &mut *c.scene,
         text_system: &mut *c.text_system,
         store: c.store,
@@ -214,11 +228,7 @@ fn fill_stroke(c: &mut CardCtx<'_>, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         chip_w: number_input_min_w_px(),
         font: m::VALUE_PX,
         open_fold: None,
-    };
-    b.anota_o_menu(c.ink);
-    let fim = b.fill_stroke_rows(snap, y);
-    // A última linha não leva o vão de baixo: o cartão tem a folga dele.
-    if fim > y { fim - m::FIELD_ROW_GAP } else { y }
+    }
 }
 
 /// O corpo de hoje dentro do cartão: o cabeçalho absorvido fica por baixo do título do cartão.

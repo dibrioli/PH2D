@@ -18,6 +18,8 @@ use ph2d_vector::{Affine, VectorScene};
 
 /// O cabeçalho: o nome, e da direita ✕ · ↓ · ↑ (as setas só onde mexem).
 pub(crate) struct Cabeca<'a> {
+    /// O glifo do tipo (F43: o efeito ou filtro aberto), à esquerda do nome.
+    pub glifo: Option<IconId>,
     pub titulo: &'a str,
     pub fecha: NodeId,
     pub desce: Option<NodeId>,
@@ -98,13 +100,25 @@ fn cabecalho(c: &mut CardCtx<'_>, h: &Cabeca<'_>, y: f32) -> f32 {
         let b = caixa(&mut ax);
         icone(c, id, IconId::ChevronUp, b);
     }
+    let mut tx = c.x;
+    if let Some(glifo) = h.glifo {
+        let g = m::ICON_GLYPH;
+        paint_icon(
+            c.scene,
+            glifo,
+            Rect::new(tx, hy + (m::CARD_HEAD_H - g) * 0.5, g, g),
+            c.ink.color(ColorToken::Text1),
+            StrokeToken::Default.px(),
+        );
+        tx += g + m::SEG_ICON_GAP;
+    }
     ph2d_editor_core::paint::paint_text_title_elided_tracked(
         c.text_system,
         c.scene,
         h.titulo,
-        [c.x, hy + (m::CARD_HEAD_H - m::CARD_TITLE_PX) * 0.5],
+        [tx, hy + (m::CARD_HEAD_H - m::CARD_TITLE_PX) * 0.5],
         m::CARD_TITLE_PX,
-        (ax - c.x).max(0.0),
+        (ax - tx).max(0.0),
         c.ink.color(ColorToken::Text1),
         0.0,
     );
@@ -125,8 +139,38 @@ pub(crate) fn lado(
     cabeca: &Cabeca<'_>,
     corpo: &mut dyn FnMut(&mut CardCtx<'_>, f32) -> f32,
 ) {
+    let region = ctx.layout.popover_region();
+    flutua(
+        ctx,
+        id,
+        seccao,
+        panel.w,
+        theme,
+        &|conteudo| side_rect(panel, line, conteudo, region),
+        Some(cabeca),
+        corpo,
+    );
+}
+
+/// ⭐ **Um cartão que flutua**, de largura `largura`, no rect que `onde` dá para a altura do conteúdo:
+/// encolhe e rola. Sem `cabeca` o corpo abre logo sob a folga do cartão (o painel do traço da barra).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn flutua(
+    ctx: &mut PaintCtx,
+    id: NodeId,
+    seccao: NodeId,
+    largura: f32,
+    theme: Theme,
+    onde: &dyn Fn(f32) -> Rect,
+    cabeca: Option<&Cabeca<'_>>,
+    corpo: &mut dyn FnMut(&mut CardCtx<'_>, f32) -> f32,
+) {
     let ink = CardInk::of_card(ctx.host.store().section_theme(seccao), theme);
-    let inner_w = (panel.w - m::CARD_PAD_X * 2.0).max(0.0);
+    let inner_w = (largura - m::CARD_PAD_X * 2.0).max(0.0);
+    let abre = |c: &mut CardCtx<'_>, y: f32| match cabeca {
+        Some(h) => cabecalho(c, h, y),
+        None => y + m::CARD_PAD_TOP,
+    };
     // A altura medida numa passagem a seco: o fundo pinta-se ANTES.
     let medida = {
         let mut scene = VectorScene::new();
@@ -141,13 +185,12 @@ pub(crate) fn lado(
             inner_w,
         );
         card_ink::com(ink, || {
-            let y = cabecalho(&mut c, cabeca, 0.0);
+            let y = abre(&mut c, 0.0);
             corpo(&mut c, y)
         })
     };
     let conteudo = medida + m::CARD_PAD_BOTTOM;
-    let region = ctx.layout.popover_region();
-    let rect = side_rect(panel, line, conteudo, region);
+    let rect = onde(conteudo);
     let max = (conteudo - rect.h).max(0.0);
     let rolagem = ctx.host.store().panel_scroll(id).clamp(0.0, max); // CLAMP-OK: 0.0 literal; max é uma extensão não negativa
     moldura(ctx.scene, ink, rect);
@@ -167,7 +210,7 @@ pub(crate) fn lado(
             inner_w,
         );
         card_ink::com(ink, || {
-            let y = cabecalho(&mut c, cabeca, rect.y - rolagem);
+            let y = abre(&mut c, rect.y - rolagem);
             corpo(&mut c, y);
         });
     }

@@ -308,7 +308,9 @@ const KNIFE_TEXTURED: Receita = Receita {
 
 const KNIFE_STAIN: Receita = Receita {
     nome: "Knife Stain",
-    pigment: 1200.0,
+    // Smoke 04/11: grão 1,0 cortava a tinta a 1 bit (estática de TV); 0,5 + carga fina = véu que deixa o grão aparecer.
+    pigment: 250.0,
+    hardness: 0.8,
     gate: 2.5,
     grao: None,
     extras: &[
@@ -328,7 +330,8 @@ const KNIFE_STAIN: Receita = Receita {
     ],
     pincel: &[
         ("dab_quina", "1.0"),
-        ("falloff", "\"Constant\""),
+        ("falloff", "\"Smooth\""),
+        ("grain_depth", "0.5"),
         ("jitter", "0.0"),
         ("texture", MANCHA_DO_STAIN),
     ],
@@ -337,7 +340,8 @@ const KNIFE_STAIN: Receita = Receita {
 
 const DABBER_4: Receita = Receita {
     nome: "Dabber 4",
-    achatado: Some((0.6, 90)),
+    // Smoke 04/11: achatado 0,6 afinava o traço vertical para metade; grão 1,0 + serra regular a cada 0,3 liam-se a ruído.
+    achatado: Some((0.3, 90)),
     extras: &[
         ("dabRotation", 0.0),
         ("textureSizeExp", 0.5),
@@ -348,7 +352,10 @@ const DABBER_4: Receita = Receita {
     ],
     pincel: &[
         ("jitter", "0.1"),
-        ("spacing", "0.3"),
+        ("jitter_spacing", "0.6"),
+        ("jitter_scale", "0.05"),
+        ("grain_depth", "0.9"),
+        ("spacing", "0.2"),
         ("continuous_spacing", "false"),
         ("texture", ESTUQUE_DO_DABBER_4),
     ],

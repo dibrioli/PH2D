@@ -418,8 +418,8 @@ fn a_receita_recusa_uma_mao_que_o_meio_nao_le() {
     });
 }
 
-/// Os aprovados cuja marca É o carimbo espaçado (Óleo Real W3, revisão cega): o Dabber 4 (Spacing 0,3 sem o
-/// Continuous — toques soltos de esponja, `W3_P_Dabber.md`). Com o Spacing 0,1 a marca dele vira faixa contínua: outro
+/// Os aprovados cuja marca É o carimbo espaçado (Óleo Real W3, revisão cega): o Dabber 4 (Spacing 0,2 irregular sem o
+/// Continuous — batidas soltas, `W3_P_Dabber.md`). Com o Spacing 0,1 a marca dele vira faixa contínua: outro
 /// pincel. (O Metallic Splats, 0,25, saiu da fábrica no smoke do dono 27/10 — `EM_ESTUDO_W2`.)
 const CARIMBOS_ESPACADOS: [&str; 1] = ["Dabber 4"];
 

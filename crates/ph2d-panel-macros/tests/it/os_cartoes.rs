@@ -261,6 +261,19 @@ fn the_chosen_step_opens_its_card_and_its_fields_ask_for_edits() {
     assert_eq!(mesa.host.store().picker_target(), Some(ids::MACROS_COLOR));
 }
 
+/// O campo de espera anda em centésimos e o tamanho em inteiros: o passo é da grandeza.
+/// *Mutação: sem `mark_card_field` ⇒ não há campo de cartão e o passo é o de fora.*
+#[test]
+fn each_field_of_a_step_declares_the_step_of_its_quantity() {
+    let mut mesa = Mesa::nova(com_biblioteca());
+    mesa.escolhe();
+    let store = mesa.host.store();
+    let passo = |id| store.card_field(id).map(|c| c.step);
+    assert_eq!(passo(ids::MACROS_SIZE), Some(1.0));
+    let espera = passo(ids::MACROS_WAIT).expect("a espera é campo de cartão");
+    assert!(espera < 1.0, "a espera anda em frações: {espera}");
+}
+
 /// Dobrar, reordenar e o botão direito no título; todo ícone mudo tem dica.
 #[test]
 fn headers_fold_reorder_and_open_the_theme_menu() {

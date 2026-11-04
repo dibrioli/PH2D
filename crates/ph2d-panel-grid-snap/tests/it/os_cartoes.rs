@@ -199,6 +199,31 @@ fn scrubbing_and_typing_a_number_write_the_state() {
     assert_eq!(mesa.estado().snap_subdivisions, 3);
 }
 
+/// O estado muda por fora (o menu Grid, o Desfazer): a caixa diz o número novo e os dois marcar dizem o
+/// que o estado diz, e o clique seguinte parte daí.
+/// *Mutações: sem `set_number_value`; sem a sincronia dos `Toggle`.*
+#[test]
+fn a_change_from_outside_reaches_the_boxes_and_the_next_click_starts_from_it() {
+    let mut mesa = Mesa::nova();
+    let celula0 = mesa.estado().square_cfg.cell_size;
+    let celula = celula0 * 2.0;
+    let caixa0 = mesa.host.store().number_value(g::GS_CFG_CELL_SIZE).expect("caixa");
+    let (snap, vis) = (!mesa.estado().snap_enabled, !mesa.estado().show_overlay);
+    {
+        let s = mesa.host.grid_snap_state_mut();
+        s.square_cfg.cell_size = celula;
+        s.snap_enabled = snap;
+        s.show_overlay = vis;
+    }
+    mesa.assenta();
+    let caixa = mesa.host.store().number_value(g::GS_CFG_CELL_SIZE).expect("caixa");
+    assert!((caixa - caixa0 * 2.0).abs() < 1e-3, "{caixa} × {caixa0}");
+    mesa.clica(g::GS_SNAP_ENABLED);
+    assert_eq!(mesa.estado().snap_enabled, !snap, "partiu do estado");
+    mesa.clica(g::GS_SHOW_OVERLAY);
+    assert_eq!(mesa.estado().show_overlay, !vis, "partiu do estado");
+}
+
 /// A faixa do título move a janela; a faixa não tapa o «×».
 #[test]
 fn the_floating_list_moves_by_its_title() {

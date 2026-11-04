@@ -235,6 +235,40 @@ fn scrubbing_each_knob_reaches_the_tool_and_escape_gives_it_back() {
     }
 }
 
+/// Duplo clique na pega volta ao valor de fábrica da linha. *Mutação: `default: None` no `prepare` ⇒
+/// o duplo clique não faz nada e o knob fica onde o scrub o deixou.*
+#[test]
+fn double_clicking_the_handle_gives_the_factory_value_back() {
+    let row = rows::rows()
+        .iter()
+        .find(|r| r.options.is_none())
+        .expect("um número")
+        .clone();
+    let mut mesa = Mesa::nova(ferramenta(dona(&row), true));
+    let ev = mesa.arrasta_a_pega(row.chip, 60.0);
+    mesa.entrega(ev);
+    let r = mesa.rect(row.chip).expect("campo");
+    let (x, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
+    let ev = mesa.ponteiro(PointerKind::Up, x + 60.0, y);
+    mesa.entrega(ev);
+    mesa.assenta();
+    let mexido = mesa.t.brush_settings().wet_knobs.knobs[row.knob];
+    assert!((mexido - row.default).abs() > 1e-4, "o scrub tem de o tirar da fábrica");
+    for _ in 0..2 {
+        let ev = mesa.ponteiro(PointerKind::Down, x, y);
+        mesa.entrega(ev);
+        let ev = mesa.ponteiro(PointerKind::Up, x, y);
+        mesa.entrega(ev);
+    }
+    let voltou = mesa.t.brush_settings().wet_knobs.knobs[row.knob];
+    assert!(
+        (voltou - row.default).abs() < 1e-4,
+        "`{}`: {voltou}, a fábrica é {}",
+        row.key,
+        row.default
+    );
+}
+
 /// O número escrito à mão chega ao knob.
 #[test]
 fn typing_a_number_reaches_the_tool() {

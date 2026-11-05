@@ -482,6 +482,55 @@ fn what_is_lit_follows_the_document() {
     );
 }
 
+/// O nome do papel à vista muda de TINTA. Com os quatro nomes iguais e os dois papéis gravados, a frase
+/// «Showing» é a mesma, e só a tinta do nome distingue qual está à vista: a frase escondia este mutante.
+/// *Mutação: `nome_do_papel` sem o ramo `vivo` ⇒ vermelho.*
+#[test]
+fn the_live_role_wears_its_ink_on_the_paper() {
+    let pinta = |vivo: usize| {
+        let mut mesa = na_interface(true, base);
+        state::set_ui_states_state(Some(UiStatesState {
+            role_labels: ["Same", "Same", "Same", "Same"].map(String::from),
+            live: Some(vivo),
+            ..poses()
+        }));
+        mesa.assenta();
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        h.paint_draw_data::<ph2d_panel_vector::VectorPanel>(st, COLUNA)
+    };
+    assert_ne!(pinta(0), pinta(1));
+}
+
+fn duas_formas(to: &str) {
+    base();
+    let linha = |to: &str| MorphShapeRow {
+        to: to.into(),
+        when: "jump".into(),
+        live: false,
+    };
+    state::set_morph_states_state(Some(MorphStatesState {
+        rows: vec![linha("Other"), linha(to)],
+        ..maquina()
+    }));
+}
+
+/// Um nome que não cabe na coluna sobe a rótulo: a tecla desce, em vez de o nome se cortar ao lado dela.
+/// *Mutação: `cabe` sempre verdadeiro ⇒ o nome fica na coluna, cortado, e a tecla não desce.*
+#[test]
+fn a_long_shape_name_pushes_the_key_below_its_label() {
+    let vao = |semente: fn()| {
+        let mesa = na_interface(true, semente);
+        let (primeira, segunda) = (
+            mesa.rect(p::morph_shape_key_button_id(0)).expect("a 1.ª"),
+            mesa.rect(p::morph_shape_key_button_id(1)).expect("a 2.ª"),
+        );
+        segunda.y - (primeira.y + primeira.h)
+    };
+    let curto = vao(|| duas_formas("Short"));
+    let longo = vao(|| duas_formas("A very long shape name that no column can hold"));
+    assert!(longo > curto, "o nome longo não subiu: {longo} × {curto}");
+}
+
 /// Os ícones mudos têm dica. *Mutação: tirar a `dica` ⇒ vermelho.*
 #[test]
 fn the_icon_verbs_explain_themselves() {

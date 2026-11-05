@@ -831,6 +831,30 @@ fn a_bound_shape_says_why_and_an_empty_stack_has_no_apply() {
     );
 }
 
+/// O «+» de Effects e de Filters só existe onde adiciona; na pilha cheia ou presa, não há clique mudo.
+/// *Mutação: `vivo` fixo em `true` em `acao_de` (cards_presenca) ⇒ vermelho.*
+#[test]
+fn the_plus_is_there_only_where_it_can_add() {
+    let mut mesa = Mesa::nova(true);
+    let efeitos = |preso: bool, n: usize| {
+        ph2d_panel_vector::set_current_effects(
+            true,
+            preso,
+            ph2d_vec_scene::effect::PathEffect::KINDS,
+            vec![efeito("Zig Zag"); n],
+        );
+    };
+    efeitos(false, 1);
+    mesa.assenta();
+    assert!(mesa.rect(t::VECTOR_FX_ADD_MENU).is_some(), "com lugar");
+    efeitos(false, t::MAX_FX_ROWS);
+    mesa.assenta();
+    assert!(mesa.rect(t::VECTOR_FX_ADD_MENU).is_none(), "cheia");
+    efeitos(true, 1);
+    mesa.assenta();
+    assert!(mesa.rect(t::VECTOR_FX_ADD_MENU).is_none(), "presa");
+}
+
 /// Abre o painel do traço pelo store (a barra pinta-se no hero; aqui só a âncora).
 fn abre_o_traco(mesa: &mut Mesa) {
     mesa.host.store_mut().set_tool_row_slots(vec![(

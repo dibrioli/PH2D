@@ -247,6 +247,19 @@ fn shift_com_um_eixo_a_zero_nao_inventa_proporcao() {
     );
     assert_eq!(t.scale[0], 0.0, "X fica: a mão não andou em X");
 
+    // A mão pega ao lado do pivô em X: essa razão é ruído e não pode mandar em Y.
+    // *Mutação: Shift sem a guarda dos zeros ⇒ Y sai 15.*
+    let d = agarra(p, RAIZ, MEIO, 0.0, [0.05, 1.5]);
+    let canto = GizmoDragState {
+        kind: GizmoDragKind::ScaleCorner {
+            dx_sign: 1.0,
+            dy_sign: 1.0,
+        },
+        ..d
+    };
+    let t = move_para(&canto, [0.5, 3.0], true);
+    perto(t.scale[1], 2.25, "Y não herda a razão de X");
+
     // A alça de cima com Shift, com X a zero: Y anda, X fica a zero, sem piso.
     let d = agarra(p, RAIZ, MEIO, 0.0, [0.0, 1.5]);
     assert!(matches!(d.kind, GizmoDragKind::ScaleEdge { axis: 1, .. }));

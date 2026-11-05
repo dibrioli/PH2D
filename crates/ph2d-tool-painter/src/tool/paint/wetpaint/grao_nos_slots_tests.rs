@@ -285,3 +285,46 @@ fn a_imagem_trocada_noutro_slot_nao_esvazia_o_pincel() {
     println!("pelo preset: massa {m:.3}");
     assert!((0.9..1.1).contains(&m), "pelo preset: massa {m:.3}×");
 }
+
+/// ⭐ **A2: a macro toca o Grain de imagem trocado com a mesma quantidade.** O estado guardava o pincel cru (`media: null`)
+/// por cima do congelado do preset, e a imagem não vai na macro (medido: 8,6 % da tinta).
+#[test]
+fn a_macro_toca_o_grain_de_imagem_trocado_ao_byte() {
+    let e = de_fabrica_ou_candidato("Wet Round");
+    let prepara = |t: &mut PainterTool, na_borracha: bool| {
+        t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+        t.set_paint_tool_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&e).is_empty());
+        t.wet_preset_aplicar_volumes(&e.parametros.volumes);
+        t.set_brush_size_px(40.0);
+        t.set_brush_color_srgb8([30, 60, 200]);
+        t.set_brush_texture_image(imagem_com_desenho(), 64, 64);
+        t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+        t.set_brush_texture_kind(1);
+        if na_borracha {
+            t.set_paint_tool_mode("eraser"); // o Pincel fica no slot `pinceis`
+        }
+    };
+    for na_borracha in [false, true] {
+        let mut vivo = PainterTool::default();
+        prepara(&mut vivo, na_borracha);
+        let (estado, texturas) = vivo.macro_estado();
+        let mut tocado = PainterTool::default();
+        tocado.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+        tocado
+            .macro_estado_aplica(&estado, texturas)
+            .expect("aplica");
+        for t in [&mut vivo, &mut tocado] {
+            t.set_paint_tool_mode("brush");
+            risca(t, 60.0, 70);
+        }
+        let m = le(&tocado)[0] / le(&vivo)[0];
+        println!("na borracha {na_borracha}: massa {m:.3}");
+        assert_eq!(
+            difs(&vivo, &tocado),
+            0,
+            "na borracha {na_borracha}: massa {m:.3}×"
+        );
+    }
+}

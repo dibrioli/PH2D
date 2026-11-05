@@ -41,11 +41,12 @@ impl PainterTool {
             "meio": self.paint_media().to_u8(),
             "modo": self.active_paint_mode_id(),
             "preset": preset,
-            "pincel": json::pincel_para_json(&p.brush, &campos),
+            // Congelados como no preset: a imagem de um Grain que já não é o aplicado não vai na macro.
+            "pincel": json::pincel_para_json(&self.pincel_a_gravar(), &campos),
             "pinceis": p
                 .brush_by_mode
                 .iter()
-                .map(|b| json::pincel_para_json(b, &campos))
+                .map(|b| json::pincel_para_json(&self.pincel_a_gravar_de(*b), &campos))
                 .collect::<Vec<_>>(),
             "ligados": p.link_shared_settings,
             "falloff_armado": p.falloff_armed,

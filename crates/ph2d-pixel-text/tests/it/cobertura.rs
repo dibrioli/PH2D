@@ -54,7 +54,7 @@ fn every_builtin_pixel_font_covers_its_own_name() {
 #[test]
 fn a_builtin_pixel_font_does_not_cover_a_letter_it_lacks() {
     let fonte = |n: &str| Fonte::new(TextStyle::new(FontChoice::Builtin(n.to_owned()), 1));
-    assert!(!fonte("tom-thumb").covers("日"), "tom-thumb não tem CJK");
+    assert!(!fonte("Tom Thumb").covers("日"), "Tom Thumb não tem CJK");
     for b in BUILTIN {
         assert!(!fonte(b.0).covers("a\u{10FFFD}"), "{}: plano privado", b.0);
     }

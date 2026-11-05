@@ -551,6 +551,9 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
     let size = so.size();
     if let Some(a) = &so.arrasto {
         (so.m, so.pivot) = a.m0.drag(a.p0, size, a.handle, (a.from, to), drag_opts(m));
+        if matches!(a.handle, Handle::Rotate) {
+            so.m = so.m.settle_turn(so.pivot);
+        }
     }
     app.toca(key);
     true

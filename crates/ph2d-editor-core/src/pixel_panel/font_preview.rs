@@ -6,27 +6,30 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-/// O nome de uma fonte rasterizado nela: `cover` tem `w·h` valores 0..=255, linha a linha.
+/// A altura de tinta que as linhas da lista procuram, para as 12 fontes se lerem do mesmo tamanho.
+pub const ALTURA_DA_PREVIA: f32 = 16.0;
+
+/// O nome de uma fonte rasterizado nela, recortado à tinta: `cover` tem `w·h` valores 0..=255.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PixelFontPreview {
     pub w: u32,
     pub h: u32,
     pub cover: Vec<u8>,
+    /// O tamanho nativo da fonte em px, que a linha mostra à direita (0 = não mostra).
+    pub native: u32,
 }
 
 impl PixelFontPreview {
-    /// **A escala da prévia numa linha de `row_h` px** — a maior INTEIRA (célula = quadrado inteiro
-    /// de ecrã) com que a tinta cabe na linha (`≥ 1`). Medido (02/11, linha `ROW_H_PX` = 22; gate
-    /// `every_pixel_font_preview_fills_the_list_row_at_an_integer_scale`), altura da tinta do nome:
+    /// **A escala da prévia numa linha de `row_h` px** — a INTEIRA (célula = quadrado inteiro de
+    /// ecrã) que leva a tinta para mais perto de [`ALTURA_DA_PREVIA`], sem passar da linha menos a
+    /// folga [`Spacing::Xs`] em cima e em baixo. Com a maior que coubesse, a Tom Thumb saía a 20 px
+    /// e pesada ao lado da Press Start a 14 (foto da cena 19, 05/11). Medido na linha de 28:
     ///
-    /// | fonte | tinta | antes (0,7 da linha) | agora |
+    /// | tinta | fontes | escala | px |
     /// |---|---|---|---|
-    /// | cozette | 8 | 1× = 8 px | 2× = 16 px |
-    /// | tom-thumb | 5 | 3× = 15 px | 4× = 20 px |
-    /// | unscii-8 | 8 | 1× = 8 px | 2× = 16 px |
-    /// | unscii-16 | 16 | 1× = 16 px | 1× = 16 px |
-    ///
-    /// Todas ≥ 16 px: a linha de 22 basta, não precisa de crescer.
+    /// | 5 | Micro 5, Silkscreen, Tom Thumb | 3× | 15 |
+    /// | 7–8 | Press Start 2P, Pixel Operator 8, Unscii 8 | 2× | 14–16 |
+    /// | 9–10 | Cozette, Departure Mono, Pixelify Sans, Pixel Operator, Unscii 16, VT323 | 2× | 18–20 |
     #[must_use]
     pub fn scale_in(&self, row_h: f32) -> f32 {
         if self.h == 0 {
@@ -34,7 +37,8 @@ impl PixelFontPreview {
         }
         #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
         let h = self.h as f32;
-        (row_h / h).floor().max(1.0)
+        let cabe = ((row_h - 2.0 * ph2d_tokens::Spacing::Xs.px()) / h).floor();
+        (ALTURA_DA_PREVIA / h).round().min(cabe).max(1.0)
     }
 }
 

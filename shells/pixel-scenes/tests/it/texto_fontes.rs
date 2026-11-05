@@ -10,7 +10,7 @@ use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::PixelRequest;
 use ph2d_editor_core::pixel_panel::font_preview;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_pixel_text::{BUILTIN, SYSTEM_MIN_PX, builtin_line_height};
+use ph2d_pixel_text::{BUILTIN, builtin_line_height};
 
 use crate::comum::born;
 
@@ -39,12 +39,10 @@ fn the_text_size_starts_valid_for_the_default_font() {
 }
 
 #[test]
-fn the_font_list_starts_with_the_pixel_fonts() {
+fn the_font_list_is_the_factory_list_and_nothing_else() {
     let todas = ph2d_app_pixel::texto::fontes();
     let fabrica: Vec<&str> = BUILTIN.iter().map(|b| b.0).collect();
-    assert_eq!(&todas[..BUILTIN.len()], fabrica.as_slice());
-    let pixel = ph2d_pixel_text::carimbo::pixel_popular_count(&todas);
-    assert!(pixel >= BUILTIN.len() && pixel <= todas.len());
+    assert_eq!(todas, fabrica, "dono, 05/11: só as 12");
 }
 
 #[test]
@@ -68,24 +66,6 @@ fn picking_a_pixel_font_snaps_the_size_to_a_multiple_of_its_line() {
 }
 
 #[test]
-fn picking_a_system_font_never_leaves_the_size_below_the_legible_minimum() {
-    let (mut app, sim, _cam, bits) = born();
-    let todas = ph2d_app_pixel::texto::fontes();
-    if todas.len() <= BUILTIN.len() {
-        return;
-    }
-    com(&mut app, &sim, bits, 0, 1);
-    com(&mut app, &sim, bits, BUILTIN.len(), 1);
-    assert_eq!(app.options.text_px, SYSTEM_MIN_PX);
-    com(&mut app, &sim, bits, BUILTIN.len(), SYSTEM_MIN_PX + 5);
-    assert_eq!(
-        app.options.text_px,
-        SYSTEM_MIN_PX + 5,
-        "acima do mínimo, livre"
-    );
-}
-
-#[test]
 fn the_dropdown_gets_each_font_name_drawn_in_that_font() {
     let (mut app, sim, _cam, bits) = born();
     app.tool = Tool::Text;
@@ -104,8 +84,8 @@ fn the_dropdown_gets_each_font_name_drawn_in_that_font() {
     }
 }
 
-/// P8c: a prévia de cada fonte de pixel na linha da lista (`ROW_H_PX`) sai na maior escala INTEIRA
-/// que cabe — nunca abaixo de metade da linha (o unscii-8 saía a 1× com a fração 0,7 de antes).
+/// A prévia de cada fonte na linha da lista sai numa escala INTEIRA, com a folga em cima e em baixo e
+/// com alturas próximas: as 12 lêem-se do mesmo tamanho (dono, 05/11).
 #[test]
 fn every_pixel_font_preview_fills_the_list_row_at_an_integer_scale() {
     let (mut app, sim, _cam, bits) = born();
@@ -114,7 +94,8 @@ fn every_pixel_font_preview_fills_the_list_row_at_an_integer_scale() {
         font_preview::want(b.0);
     }
     quadro(&mut app, &sim, bits);
-    let linha = ph2d_tokens::ROW_H_PX;
+    let linha = 28.0; // LITERAL-PX-OK: a linha da lista em cartões, medida na foto
+    let livre = linha - 2.0 * ph2d_tokens::Spacing::Xs.px();
     let mut tabela = String::new();
     let mut ok = true;
     for b in BUILTIN {
@@ -124,7 +105,7 @@ fn every_pixel_font_preview_fills_the_list_row_at_an_integer_scale() {
             #[expect(clippy::cast_precision_loss, reason = "altura de uma máscara de nome")]
             let h = p.h as f32;
             tabela.push_str(&format!("{} h={} s={s} → {}\n", b.0, p.h, s * h));
-            ok &= s == s.floor() && s * h <= linha && (s + 1.0) * h > linha && s * h * 2.0 > linha;
+            ok &= s == s.floor() && s * h <= livre && (10.0..=livre).contains(&(s * h));
         });
     }
     assert!(ok, "linha {linha}:\n{tabela}");

@@ -27,57 +27,112 @@ pub use win::{parse_fnt, parse_fon};
 
 use std::path::PathBuf;
 
-/// As fontes de pixel que vêm de fábrica (`fonts/`, sem um byte mudado; licenças em `fonts/README.md`).
-pub const BUILTIN: [(&str, &str, &[u8]); 4] = [
+/// **As 12 fontes do Text** (dono, 05/11: as mais usadas em pixel art, e só elas), em ordem
+/// alfabética: `(nome, ficheiro, bytes, em nativo)`. Sem um byte mudado; licenças em
+/// `fonts/README.md`. `em nativo` > 0 = contorno rasterizado nesse em e ampliado por um inteiro
+/// (medido em `fonts/README.md`, gate `tests/it/fabrica.rs`); 0 = bitmap.
+pub const BUILTIN: [(&str, &str, &[u8], u32); 12] = [
     (
-        "cozette",
+        "Cozette",
         "cozette.bdf",
         include_bytes!("../fonts/cozette.bdf"),
+        0,
     ),
     (
-        "tom-thumb",
+        "Departure Mono",
+        "DepartureMono-Regular.otf",
+        include_bytes!("../fonts/DepartureMono-Regular.otf"),
+        11,
+    ),
+    (
+        "Micro 5",
+        "Micro5-Regular.ttf",
+        include_bytes!("../fonts/Micro5-Regular.ttf"),
+        11,
+    ),
+    (
+        "Pixel Operator",
+        "PixelOperator.ttf",
+        include_bytes!("../fonts/PixelOperator.ttf"),
+        16,
+    ),
+    (
+        "Pixel Operator 8",
+        "PixelOperator8.ttf",
+        include_bytes!("../fonts/PixelOperator8.ttf"),
+        8,
+    ),
+    (
+        "Pixelify Sans",
+        "PixelifySans[wght].ttf",
+        include_bytes!("../fonts/PixelifySans[wght].ttf"),
+        10,
+    ),
+    (
+        "Press Start 2P",
+        "PressStart2P-Regular.ttf",
+        include_bytes!("../fonts/PressStart2P-Regular.ttf"),
+        8,
+    ),
+    (
+        "Silkscreen",
+        "Silkscreen-Regular.ttf",
+        include_bytes!("../fonts/Silkscreen-Regular.ttf"),
+        8,
+    ),
+    (
+        "Tom Thumb",
         "tom-thumb.bdf",
         include_bytes!("../fonts/tom-thumb.bdf"),
+        0,
     ),
     (
-        "unscii-8",
+        "Unscii 8",
         "unscii-8.hex",
         include_bytes!("../fonts/unscii-8.hex"),
+        0,
     ),
     (
-        "unscii-16",
+        "Unscii 16",
         "unscii-16.hex",
         include_bytes!("../fonts/unscii-16.hex"),
+        0,
+    ),
+    (
+        "VT323",
+        "VT323-Regular.ttf",
+        include_bytes!("../fonts/VT323-Regular.ttf"),
+        16,
     ),
 ];
 
-/// O menor tamanho legível de uma fonte do SISTEMA (px por em): o pior, entre as fontes comuns
-/// instaladas, a partir do qual `A-Z a-z 0-9` saem todos distintos com as omissões do Text
-/// (Antialias desligado, Hinting ligado). A régua: `tests/it/minimo_legivel.rs` (02/11):
-///
-/// | fonte | 1.º px sem colisão |   | fonte | 1.º px sem colisão |
-/// |---|---|---|---|---|
-/// | DejaVu Sans / Vera | 8 | | Liberation Sans | **12** |
-/// | DejaVu Sans Mono | 7 | | Liberation Mono | 9 |
-/// | DejaVu Serif | 8 | | Cantarell | **12** |
-/// | Noto Sans / Sans Mono | 11 | | Adwaita Sans | 11 |
-/// | Noto Serif | 10 | | Fira Sans | 10 |
-pub const SYSTEM_MIN_PX: u32 = 12;
+/// Os bytes e o em nativo de uma fonte de contorno de [`BUILTIN`] (`None` = bitmap ou desconhecida).
+#[must_use]
+pub fn builtin_outline(name: &str) -> Option<(&'static [u8], u32)> {
+    BUILTIN
+        .iter()
+        .find(|b| b.0 == name && b.3 > 0)
+        .map(|b| (b.2, b.3))
+}
 
-/// A altura NATIVA da linha da fonte de fábrica `i` (o tamanho dela é um múltiplo disto).
+/// A altura NATIVA da fonte de fábrica `i` (o tamanho dela é um múltiplo disto): a linha do bitmap,
+/// ou o em da grelha do contorno.
 #[must_use]
 pub fn builtin_line_height(i: usize) -> Option<u32> {
-    let f = builtin(BUILTIN.get(i)?.0).ok()?;
+    let b = BUILTIN.get(i)?;
+    if b.3 > 0 {
+        return Some(b.3);
+    }
+    let f = builtin(b.0).ok()?;
     u32::try_from(f.line_height().max(1)).ok()
 }
 
-/// O tamanho válido mais perto de `px` para a fonte `i` de [`carimbo::font_list`]: de fábrica, um
-/// múltiplo ≥ 1× da linha (`dir` > 0 arredonda para cima, < 0 para baixo, 0 para o mais perto); do
-/// sistema, nunca abaixo de [`SYSTEM_MIN_PX`].
+/// O tamanho válido mais perto de `px` para a fonte `i` de [`carimbo::font_list`]: um múltiplo ≥ 1×
+/// da altura nativa (`dir` > 0 arredonda para cima, < 0 para baixo, 0 para o mais perto).
 #[must_use]
 pub fn valid_px(i: usize, px: u32, dir: i32) -> u32 {
     let Some(lh) = builtin_line_height(i) else {
-        return px.max(SYSTEM_MIN_PX);
+        return px.max(1);
     };
     let k = match dir.signum() {
         1 => px.div_ceil(lh),
@@ -89,7 +144,7 @@ pub fn valid_px(i: usize, px: u32, dir: i32) -> u32 {
 
 /// Lê uma fonte de fábrica pelo nome.
 pub fn builtin(name: &str) -> Result<PixelFont, String> {
-    let (_, file, bytes) = BUILTIN
+    let (_, file, bytes, _) = BUILTIN
         .iter()
         .find(|b| b.0 == name)
         .ok_or_else(|| format!("fonte de fábrica desconhecida: {name}"))?;
@@ -151,7 +206,10 @@ pub struct TextMask {
 /// Que células acende `text` com `style`. Erro só quando a fonte não abre.
 pub fn rasterize(text: &str, style: &TextStyle) -> Result<TextMask, String> {
     match &style.font {
-        FontChoice::Builtin(name) => Ok(rasterize_pixel(&builtin(name)?, text, style)),
+        FontChoice::Builtin(name) => match builtin_outline(name) {
+            Some((data, nativo)) => fabrica_contorno(data, nativo, text, style),
+            None => Ok(rasterize_pixel(&builtin(name)?, text, style)),
+        },
         FontChoice::System(path, index) => {
             let data = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
             rasterize_outline(&data, *index, text, style)
@@ -202,6 +260,53 @@ pub fn rasterize_outline(
     text: &str,
     style: &TextStyle,
 ) -> Result<TextMask, String> {
+    contorno(data, index, text, style, true)
+}
+
+/// Um contorno de fábrica: rasterizado UMA vez no em nativo (sem hinting nem Antialias, e sem o
+/// corte da descida, que é da caixa do Aseprite e comia a perna do «g» na Micro 5), ampliado por um
+/// inteiro como o bitmap. Assim todo tamanho é o mesmo desenho, mesmo onde o contorno não cai
+/// exactamente na grelha (VT323, Pixelify Sans; medições em `fonts/README.md`).
+fn fabrica_contorno(
+    data: &[u8],
+    nativo: u32,
+    text: &str,
+    style: &TextStyle,
+) -> Result<TextMask, String> {
+    let base = TextStyle {
+        px: nativo,
+        hinting: false,
+        antialias: false,
+        ..style.clone()
+    };
+    let m = contorno(data, 0, text, &base, false)?;
+    let k = (style.px / nativo.max(1)).max(1);
+    let (w, h) = (m.w * k, m.h * k);
+    let mut cover = vec![0u8; (w * h) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            cover[(y * w + x) as usize] = m.cover[((y / k) * m.w + x / k) as usize];
+        }
+    }
+    let s = k as i32;
+    Ok(TextMask {
+        w,
+        h,
+        cover,
+        baseline: m.baseline * s,
+        origin_x: m.origin_x * s,
+        missing: m.missing,
+        notes: m.notes,
+    })
+}
+
+fn contorno(
+    data: &[u8],
+    index: u32,
+    text: &str,
+    style: &TextStyle,
+    corta_descida: bool,
+) -> Result<TextMask, String> {
     let face = outline::face(data, index)?;
     let m = outline::face_metrics(&face, style.px);
     let hint = style
@@ -242,7 +347,12 @@ pub fn rasterize_outline(
     // A caixa do Aseprite corta a última linha da descida quando o ascent arredonda para cima.
     let base = (lines - 1) * step + m.ascent;
     // Sem tinta nenhuma (só espaços, ou um glifo que some a este px) `ink` é `i32::MIN`.
-    let ink = (ink.saturating_sub(outline::box_bottom_cut(&face, style.px))).max(base.min(ink));
+    let corte = if corta_descida {
+        outline::box_bottom_cut(&face, style.px)
+    } else {
+        0
+    };
+    let ink = (ink.saturating_sub(corte)).max(base.min(ink));
     let y1 = ink.max(lines * step).max(y0);
     let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
     let mut cover = vec![0u8; (w * h) as usize];

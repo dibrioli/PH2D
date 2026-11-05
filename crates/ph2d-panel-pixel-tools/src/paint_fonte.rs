@@ -73,13 +73,35 @@ pub(crate) fn popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
         let Some(nome) = nomes.get(row.index) else {
             return;
         };
-        let cor = resolve(row.ink(), theme);
-        let feito = font_preview::with_preview(nome, |p| {
-            p.filter(|p| p.w > 0 && p.h > 0)
-                .map(|p| celulas(scene, p, row.rect, cor))
-                .is_some()
+        // Sobre o realce, como a linha de texto da lista: o `row.ink()` lia-se preto sobre escuro.
+        let tinta = if row.disabled {
+            ColorToken::TextDisabled
+        } else {
+            ColorToken::Text1
+        };
+        let cor = resolve(tinta, theme);
+        let nativo = font_preview::with_preview(nome, |p| {
+            p.filter(|p| p.w > 0 && p.h > 0).map(|p| {
+                celulas(scene, p, row.rect, cor);
+                p.native
+            })
         });
-        if !feito {
+        if let Some(px) = nativo.filter(|&px| px > 0) {
+            let rotulo = tamanho_nativo(px);
+            let tam = TypeToken::Sm.px();
+            let w = ph2d_editor_core::paint::label_column_width(text, tam, [rotulo.as_str()]);
+            paint_text(
+                text,
+                scene,
+                &rotulo,
+                row.rect.x + row.rect.w - Spacing::Md.px() - w,
+                row.rect.y + (row.rect.h - tam) * 0.5,
+                tam,
+                w,
+                resolve(ColorToken::Text3, theme),
+            );
+        }
+        if nativo.is_none() {
             font_preview::want(nome);
             let pad = Spacing::Md.px();
             paint_text(
@@ -115,14 +137,30 @@ pub(crate) fn popover(ctx: &mut PaintCtx, chip: Rect, theme: Theme) {
 pub fn largura_pintada(text: &mut TextSystem, nomes: &[String], row_h: f32) -> f32 {
     nomes.iter().fold(0.0_f32, |w, nome| {
         let previa = font_preview::with_preview(nome, |p| {
-            #[expect(clippy::cast_precision_loss, reason = "largura de uma máscara de nome")]
-            p.filter(|p| p.w > 0 && p.h > 0)
-                .map(|p| p.w as f32 * p.scale_in(row_h))
+            p.filter(|p| p.w > 0 && p.h > 0).map(|p| {
+                #[expect(clippy::cast_precision_loss, reason = "largura de uma máscara de nome")]
+                let nome_w = p.w as f32 * p.scale_in(row_h);
+                (nome_w, p.native)
+            })
+        })
+        .map(|(nome_w, px)| {
+            if px == 0 {
+                return nome_w;
+            }
+            let rotulo = tamanho_nativo(px);
+            let tam = TypeToken::Sm.px();
+            let w = ph2d_editor_core::paint::label_column_width(text, tam, [rotulo.as_str()]);
+            nome_w + Spacing::Lg.px() + w
         });
         w.max(previa.unwrap_or_else(|| {
             ph2d_editor_core::paint::label_column_width(text, TypeToken::Base.px(), [nome.as_str()])
         }))
     })
+}
+
+/// O tamanho nativo da fonte, à direita da linha: é com ele (e os múltiplos) que ela sai nítida.
+fn tamanho_nativo(px: u32) -> String {
+    ph2d_i18n::tr_with("panel.pixel.text.native_px", &[("n", &px.to_string())])
 }
 
 /// A máscara `p` na linha `r`: cada célula um quadrado inteiro de ecrã na maior escala inteira que

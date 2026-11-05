@@ -177,7 +177,6 @@ fn controlos_filtro(kind: PixelDialogKind) -> Vec<NodeId> {
         .iter()
         .map(|(_, id, _)| *id)
         .collect();
-    v.push(ids::PIXEL_FILTER_PREVIEW);
     if matches!(kind, PixelDialogKind::Despeckle | PixelDialogKind::Outline) {
         v.push(ids::PIXEL_FILTER_TILED);
     }
@@ -208,7 +207,7 @@ fn rotulos_filtro(kind: PixelDialogKind) -> Vec<&'static str> {
         .iter()
         .map(|(_, _, k)| *k)
         .collect();
-    v.push("pixel.filter_dialog.preview");
+    v.push("pixel.filter_dialog.apply");
     match kind {
         PixelDialogKind::Invert => v.push("pixel.filter_dialog.invert.title"),
         PixelDialogKind::Despeckle => v.extend([
@@ -519,7 +518,10 @@ fn cancel_e_esc_nao_armam_nada() {
 
 /// Os rótulos de cada diálogo (as chaves que o pintor mede).
 fn rotulos(kind: PixelDialogKind) -> Vec<&'static str> {
-    let mut v = vec!["pixel.new_sprite.ok", "pixel.new_sprite.cancel"];
+    let mut v = vec!["pixel.new_sprite.cancel"];
+    if !kind.is_filter() {
+        v.push("pixel.new_sprite.ok");
+    }
     match kind {
         PixelDialogKind::ColorRange => v.extend([
             "pixel.edit_dialog.color_range.title",
@@ -652,7 +654,7 @@ fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
         .hero
         .store
         .pixel_filter_preview()
-        .expect("Preview ligado por omissão");
+        .expect("o filtro aberto mostra-se em tempo real");
     e.carrega(ids::PIXEL_FILTER_PLACES[1].1);
     e.carrega(ids::PIXEL_FILTER_MATRICES[1].1);
     e.carrega(ids::PIXEL_FILTER_BACKGROUNDS[1].1);
@@ -668,13 +670,6 @@ fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
     };
     assert_ne!(antes, quer);
     assert_eq!(e.hero.store.pixel_filter_preview(), Some(quer));
-    e.carrega(ids::PIXEL_FILTER_PREVIEW);
-    assert_eq!(
-        e.hero.store.pixel_filter_preview(),
-        None,
-        "Preview desligado"
-    );
-    e.carrega(ids::PIXEL_FILTER_PREVIEW);
     e.carrega(ids::PIXEL_EDIT_OK);
     assert!(!e.aberto_ainda());
     assert_eq!(e.pedido(), Some(quer));
@@ -682,6 +677,17 @@ fn the_filter_dialogs_choices_reach_the_preview_and_the_ok() {
         e.hero.store.pixel_filter_preview(),
         None,
         "fechado não pré-visualiza"
+    );
+
+    // Dono, 05/11: em tempo real também a ESCREVER, antes do Enter.
+    let mut e = Ecra::aberto(PixelDialogKind::HueSaturation, (16, 16));
+    e.escreve(ids::PIXEL_FILTER_HUE, "40");
+    assert!(
+        matches!(
+            e.hero.store.pixel_filter_preview(),
+            Some(PixelDialogChoice::HueSaturation { hue: 40, .. })
+        ),
+        "o efeito acompanha cada tecla"
     );
 
     let mut e = Ecra::aberto(PixelDialogKind::Despeckle, (16, 16));

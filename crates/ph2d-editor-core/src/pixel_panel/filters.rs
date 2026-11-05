@@ -90,8 +90,6 @@ impl PixelCurve {
 /// As escolhas de um diálogo de filtro que não são campos numéricos (lembradas na sessão).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PixelFilterDialog {
-    /// O canvas mostra o resultado enquanto o diálogo está aberto (omissão: ligado).
-    pub preview: bool,
     pub channels: PixelChannels,
     /// Despeckle e Outline: a vizinhança dá a volta à imagem.
     pub tiled: bool,
@@ -123,10 +121,9 @@ pub struct PixelFilterDialog {
 }
 
 impl Default for PixelFilterDialog {
-    /// Os do Aseprite ao abrir pela 1.ª vez: Preview ligado, os quatro canais, 3×3, sem Tiled.
+    /// Os do Aseprite ao abrir pela 1.ª vez: os quatro canais, 3×3, sem Tiled.
     fn default() -> Self {
         Self {
-            preview: true,
             channels: [true; 4],
             tiled: false,
             place: PixelOutlinePlace::default(),

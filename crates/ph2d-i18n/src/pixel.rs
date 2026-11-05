@@ -137,15 +137,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.text" => "Text",
         "panel.pixel.text.font" => "Font",
         "panel.pixel.text.size" => "Size",
-        "panel.pixel.text.bold" => "Bold",
-        "panel.pixel.text.italic" => "Italic",
-        "panel.pixel.text.antialias" => "Antialias",
-        "panel.pixel.text.hinting" => "Hinting",
-        "panel.pixel.text.font_tip" => {
-            "The font of the text: a built-in pixel font or one installed on this computer"
-        }
+        "panel.pixel.text.native_px" => "{n} px",
+        "panel.pixel.text.font_tip" => "The font of the text",
         "panel.pixel.text.size_tip" => {
-            "Pixel font: how many times bigger. Installed font: pixels per em"
+            "Moves in whole steps of the font's own size, so the pixels stay sharp"
         }
         "pixel.text.refuse.font" => "This font could not be opened",
         "pixel.hint.hand" => "{tool}: drag to move the view · hold Space with any tool",

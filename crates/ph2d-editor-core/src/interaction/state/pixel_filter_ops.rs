@@ -53,10 +53,18 @@ impl WidgetStore {
             .collect()
     }
 
+    /// O número de um campo do filtro AGORA: o que se está a escrever, para o efeito acompanhar
+    /// cada tecla; enquanto não for um número («-»), o último que valeu.
+    fn filter_number(&self, id: NodeId) -> Option<f64> {
+        self.text(id)
+            .and_then(|b| b.trim().parse().ok())
+            .or_else(|| self.number_value(id))
+    }
+
     /// O valor inteiro do campo de Adjustments `k`, preso à faixa dele.
     fn adjust_value(&self, k: usize) -> i32 {
         let (_, id, lo, hi) = ids::PIXEL_FILTER_ADJUST_FIELDS[k];
-        let v = self.number_value(id).unwrap_or(0.0);
+        let v = self.filter_number(id).unwrap_or(0.0);
         let v = if v.is_finite() { v.round() } else { 0.0 };
         #[expect(
             clippy::cast_possible_truncation,
@@ -84,7 +92,7 @@ impl WidgetStore {
     }
 
     fn median_side(&self, id: NodeId, side: u32) -> u32 {
-        let v = self.number_value(id).unwrap_or(1.0);
+        let v = self.filter_number(id).unwrap_or(1.0);
         let v = if v.is_finite() { v.round() } else { 1.0 };
         #[expect(
             clippy::cast_possible_truncation,
@@ -151,16 +159,14 @@ impl WidgetStore {
         })
     }
 
-    /// O filtro aberto com Preview ligado: o pedido a pré-visualizar no canvas.
+    /// O filtro aberto: o pedido que o canvas mostra em tempo real (dono, 05/11: sem botão Preview).
     #[must_use]
     pub fn pixel_filter_preview(&self) -> Option<PixelDialogChoice> {
         let open = self
             .context_menu
             .as_ref()
             .is_some_and(|r| r.kind == crate::interaction::ContextMenuKind::PixelEditDialog);
-        (open && self.pixel.edit.filter.preview)
-            .then(|| self.pixel_filter_peek())
-            .flatten()
+        open.then(|| self.pixel_filter_peek()).flatten()
     }
 
     /// Lembra a janela da mediana para a próxima vez (no OK).
@@ -182,11 +188,6 @@ impl WidgetStore {
             } => f.adjust[2..].copy_from_slice(&[hue, saturation, lightness, alpha]),
             _ => {}
         }
-    }
-
-    pub fn toggle_pixel_filter_preview(&mut self) {
-        let f = &mut self.pixel.edit.filter;
-        f.preview = !f.preview;
     }
 
     /// O botão do alvo: «Selected» ↔ «All».

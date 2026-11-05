@@ -305,7 +305,7 @@ fn changing_the_size_with_the_box_open_redraws_the_preview() {
 }
 
 #[test]
-fn a_system_font_draws_and_previous_wraps_to_the_last_font() {
+fn an_outline_font_draws_and_previous_wraps_to_the_last_font() {
     let (mut app, sim, cam, bits) = born();
     let todas = ph2d_app_pixel::texto::fontes();
     let mut o = app.options;
@@ -316,18 +316,8 @@ fn a_system_font_draws_and_previous_wraps_to_the_last_font() {
         todas.len() - 1,
         "dá a volta"
     );
-    // Uma fonte do sistema (se a máquina tem alguma com «A»): o preview acende células.
-    let fabrica = ph2d_pixel_text::BUILTIN.len();
-    let Some(i) = (fabrica..todas.len()).find(|&i| {
-        let mut o = app.options;
-        o.text_font = u16::try_from(i).unwrap_or(0);
-        o.text_px = 16;
-        let f = ph2d_app_pixel::texto::estilo(&o);
-        f.place("A", (0, 0))
-            .is_some_and(|(m, _)| m.cover.contains(&u8::MAX))
-    }) else {
-        return;
-    };
+    // A última é a VT323, um contorno de 16 px: o preview acende células.
+    let i = todas.len() - 1;
     let mut o = app.options;
     o.text_font = u16::try_from(i).unwrap_or(0);
     o.text_px = 16;
@@ -374,112 +364,4 @@ fn escreve_nova_linha(app: &mut PixelApp, sim: &SimWorld, cam: &Camera2d, bits: 
     let ((_, _, _, h), (cx, cy, alto)) = app.text_box_frame().expect("moldura");
     assert_eq!((cx, cy), (2, 3 + alto), "Shift+Enter abre uma linha");
     assert_eq!(h, (2 * alto) as u32);
-}
-
-/// Preenche o rectângulo `a..=b` com `cor` (marquee + `F`), pelo caminho real, e larga a selecção.
-fn pinta_fundo(
-    app: &mut PixelApp,
-    sim: &SimWorld,
-    cam: &Camera2d,
-    bits: u64,
-    (a, b): ((i32, i32), (i32, i32)),
-    cor: [u8; 4],
-) {
-    app.tool = Tool::RectMarquee;
-    app.fg = cor;
-    let c = canvas(sim, cam, bits);
-    let m = Mods::default();
-    let (pa, pb) = (
-        at(app, sim, cam, bits, a.0, a.1),
-        at(app, sim, cam, bits, b.0, b.1),
-    );
-    assert_eq!(input::press(app, &c, pa, Button::Primary, m), Press::Done);
-    input::moved(app, &c, pb, m);
-    input::release(app);
-    tecla(app, sim, bits, KeyCode::KeyF, None);
-    pede(
-        app,
-        sim,
-        bits,
-        PixelRequest::Select(ph2d_editor_core::pixel_panel::PixelSelectAction::Deselect),
-    );
-}
-
-/// O texto solto com Antialias mistura-se com o fundo DO SÍTIO NOVO ao assentar: o fundo velho é
-/// azul, o novo verde; uma célula de cobertura parcial `c` sai `(c, 255 − c, 0)` opaca — nem azul
-/// (fundo velho), nem transparente (sem fundo), nem vermelho puro (limiar), nem com alfa errado.
-#[test]
-fn the_floating_text_blends_with_the_background_at_its_new_place_when_it_settles() {
-    let (mut app, sim, cam, bits) = born();
-    let todas = ph2d_app_pixel::texto::fontes();
-    let fabrica = ph2d_pixel_text::BUILTIN.len();
-    let mut o = app.options;
-    o.text_px = 16;
-    o.text_antialias = true;
-    let Some(i) = (fabrica..todas.len()).find(|&i| {
-        o.text_font = u16::try_from(i).unwrap_or(0);
-        let f = ph2d_app_pixel::texto::estilo(&o);
-        f.place("A", (0, 0)).is_some_and(|(m, _)| {
-            m.cover.iter().any(|&c| (128..255).contains(&c))
-                && m.cover.iter().any(|&c| c < 128 && c > 0)
-        })
-    }) else {
-        return; // sem fonte de sistema com cobertura parcial nesta máquina
-    };
-    o.text_font = u16::try_from(i).unwrap_or(0);
-    pede(&mut app, &sim, bits, PixelRequest::Options(Box::new(o)));
-    let (w, h) = {
-        let d = app.doc(chave(&sim, bits)).expect("doc");
-        (d.sprite.width() as i32, d.sprite.height() as i32)
-    };
-    let (azul, verde) = ([0, 0, 255, 255], [0, 255, 0, 255]);
-    let (dx, dy) = (12, 8);
-    pinta_fundo(&mut app, &sim, &cam, bits, ((0, 0), (dx - 1, h - 1)), azul);
-    pinta_fundo(&mut app, &sim, &cam, bits, ((dx, 0), (w - 1, h - 1)), verde);
-    assert_eq!(value(&app, &sim, bits, 0, 0), azul, "fundo velho ({w}x{h})");
-    assert_eq!(value(&app, &sim, bits, dx + 1, dy + 1), verde, "fundo novo");
-    app.tool = Tool::Text;
-    app.fg = RED;
-    click(&mut app, &sim, &cam, bits, (2, 2));
-    escreve(&mut app, &sim, bits, "A");
-    let celulas = previsto(&app, &sim, bits, "A", (2, 2));
-    tecla(&mut app, &sim, bits, KeyCode::Enter, None);
-    quadro(&mut app, &sim, bits);
-    assert!(app.floating(), "o 1.º Enter solta");
-    let n = celulas.len() as i32;
-    let meio = (
-        celulas.iter().map(|c| c.0).sum::<i32>() / n,
-        celulas.iter().map(|c| c.1).sum::<i32>() / n,
-    );
-    let c = canvas(&sim, &cam, bits);
-    let de = at(&app, &sim, &cam, bits, meio.0, meio.1);
-    let para = at(&app, &sim, &cam, bits, meio.0 + dx, meio.1 + dy);
-    assert_eq!(
-        input::press(&mut app, &c, de, Button::Primary, Mods::default()),
-        Press::Done
-    );
-    assert!(input::moved(&mut app, &c, para, Mods::default()));
-    assert!(input::release(&mut app));
-    tecla(&mut app, &sim, bits, KeyCode::Enter, None);
-    quadro(&mut app, &sim, bits);
-    assert!(!app.floating());
-    let (mut parcial_alto, mut parcial_baixo) = (false, false);
-    for &(x, y) in &celulas {
-        let v = value(&app, &sim, bits, x + dx, y + dy);
-        assert_eq!(v[3], 255, "opaca em ({x}, {y})");
-        assert_eq!(v[2], 0, "sem azul do fundo velho em ({x}, {y})");
-        if v == RED {
-            continue;
-        }
-        assert!(
-            (i32::from(v[0]) + i32::from(v[1]) - 255).abs() <= 1,
-            "{v:?} = c·vermelho + (1 − c)·verde"
-        );
-        parcial_alto |= v[0] >= 128;
-        parcial_baixo |= v[0] < 128;
-    }
-    assert!(
-        parcial_alto && parcial_baixo,
-        "há cobertura parcial dos dois lados de 128"
-    );
 }

@@ -44,6 +44,13 @@ impl Fonte {
                 let m = crate::outline::face_metrics(&face, self.style.px);
                 Some((m.ascent, m.ascent + m.descent))
             }
+            (FontChoice::Builtin(nome), _) if crate::builtin_outline(nome).is_some() => {
+                let (data, nativo) = crate::builtin_outline(nome)?;
+                let face = crate::outline::face(data, 0).ok()?;
+                let m = crate::outline::face_metrics(&face, nativo);
+                let k = (self.style.px / nativo.max(1)).max(1) as i32;
+                Some((m.ascent * k, (m.ascent + m.descent) * k))
+            }
             (FontChoice::Builtin(nome), _) => {
                 let p = crate::builtin(nome).ok()?;
                 let lh = p.line_height().max(1);
@@ -75,6 +82,10 @@ impl Fonte {
         match (&self.style.font, &self.dados) {
             (FontChoice::System(_, index), Some(data)) => {
                 crate::outline::covers(data, *index, texto)
+            }
+            (FontChoice::Builtin(nome), _) if crate::builtin_outline(nome).is_some() => {
+                crate::builtin_outline(nome)
+                    .is_some_and(|(d, _)| crate::outline::covers(d, 0, texto))
             }
             _ => crate::rasterize(texto, &self.style).is_ok_and(|m| m.missing.is_empty()),
         }
@@ -214,55 +225,10 @@ impl Editing {
     }
 }
 
-/// As famílias do sistema mais usadas em pixel art: as instaladas sobem para logo depois das de
-/// fábrica, nesta ordem (casam sem olhar a maiúsculas, espaços nem hífens).
-pub const PIXEL_POPULAR: [&str; 12] = [
-    "Press Start 2P",
-    "Silkscreen",
-    "VT323",
-    "Pixelify Sans",
-    "m5x7",
-    "m3x6",
-    "Monogram",
-    "Pixel Operator",
-    "PixelOperator",
-    "Terminus",
-    "Tamzen",
-    "Spleen",
-];
-
-fn chave(s: &str) -> String {
-    s.chars()
-        .filter(|c| c.is_alphanumeric())
-        .flat_map(char::to_lowercase)
-        .collect()
-}
-
-/// As fontes do Text, na ordem do índice: as de fábrica, as do sistema de [`PIXEL_POPULAR`] que
-/// existem (na ordem dela) e depois as restantes de `system` (na ordem do seletor do Vector).
+/// As fontes do Text, na ordem do índice: as 12 de [`crate::BUILTIN`] (dono, 05/11).
 #[must_use]
-pub fn font_list(system: impl IntoIterator<Item = String>) -> Vec<String> {
-    let mut resto: Vec<String> = system.into_iter().collect();
-    let mut v: Vec<String> = crate::BUILTIN.iter().map(|b| b.0.to_owned()).collect();
-    for p in PIXEL_POPULAR.map(chave) {
-        while let Some(k) = resto.iter().position(|f| chave(f) == p) {
-            v.push(resto.remove(k));
-        }
-    }
-    v.extend(resto);
-    v
-}
-
-/// Quantas das primeiras de [`font_list`] são de pixel (de fábrica ou de [`PIXEL_POPULAR`]).
-#[must_use]
-pub fn pixel_popular_count(list: &[String]) -> usize {
-    let pop = PIXEL_POPULAR.map(chave);
-    crate::BUILTIN.len()
-        + list
-            .iter()
-            .skip(crate::BUILTIN.len())
-            .take_while(|f| pop.contains(&chave(f)))
-            .count()
+pub fn font_list() -> Vec<String> {
+    crate::BUILTIN.iter().map(|b| b.0.to_owned()).collect()
 }
 
 /// O índice `i` numa lista de `n` (Previous/Next dão a volta: `u16::MAX` = a última).
@@ -273,23 +239,13 @@ pub fn wrap_index(i: u16, n: usize) -> u16 {
 }
 
 impl Fonte {
-    /// A fonte `i` de `list` ([`font_list`]) com o resto do estilo de `style`: de fábrica, ou a face
-    /// que `load(família, bold, italic)` devolve (sem ela, a 1.ª de fábrica).
+    /// A fonte `i` de [`font_list`] com o tamanho de `px` (fora da lista, a 1.ª).
     #[must_use]
-    pub fn pick(
-        i: u16,
-        list: &[String],
-        mut style: TextStyle,
-        load: impl FnOnce(&str, bool, bool) -> Option<(Vec<u8>, u32)>,
-    ) -> Self {
-        let i = usize::from(i);
-        let nome = crate::BUILTIN.get(i).map_or(crate::BUILTIN[0].0, |b| b.0);
-        style.font = FontChoice::Builtin(nome.to_owned());
-        let sistema = list.get(i).filter(|_| i >= crate::BUILTIN.len());
-        match sistema.and_then(|f| Some((f, load(f, style.bold, style.italic)?))) {
-            Some((f, (bytes, index))) => Self::with_bytes(style, f, bytes, index),
-            None => Self::new(style),
-        }
+    pub fn pick(i: u16, px: u32) -> Self {
+        let nome = crate::BUILTIN
+            .get(usize::from(i))
+            .map_or(crate::BUILTIN[0].0, |b| b.0);
+        Self::new(TextStyle::new(FontChoice::Builtin(nome.to_owned()), px))
     }
 
     /// As células que `texto` carimba com `fg`: a cobertura cheia é `fg`, a parcial (Antialias) é

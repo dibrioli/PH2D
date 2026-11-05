@@ -512,15 +512,15 @@ fn charsets_of_dfcharset() {
     assert_eq!(charset_to_unicode(2, 0xc0), 0xc0);
 }
 
-/// As quatro de fábrica abrem e escrevem; a conferência glifo a glifo contra a FreeType é a do MVP
+/// As quatro de bitmap abrem e escrevem; a conferência glifo a glifo contra a FreeType é a do MVP
 /// (`docs/Pixel Art/app/tests/font_oracle.py`, sobre estes MESMOS bytes).
 #[test]
 fn builtin_fonts_open_and_write() {
     for (name, lh) in [
-        ("cozette", 13),
-        ("tom-thumb", 6),
-        ("unscii-8", 8),
-        ("unscii-16", 16),
+        ("Cozette", 13),
+        ("Tom Thumb", 6),
+        ("Unscii 8", 8),
+        ("Unscii 16", 16),
     ] {
         let f = builtin(name).unwrap();
         assert_eq!(f.line_height(), lh, "{name}");

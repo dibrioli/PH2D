@@ -108,16 +108,12 @@ fn invert_previews_without_writing_and_ok_is_one_step_that_undo_restores() {
     let n = p.passos();
     p.pede(PixelRequest::Edit(E::Invert));
     assert_eq!(aberto(&p), Some(PixelDialogKind::Invert));
-    // Preview ligado por omissão: o canvas mostra o invertido, o documento não muda.
+    // Em tempo real: o canvas mostra o invertido, o documento não muda.
     assert_eq!(mostrado(&mut p, (102, 42)), [0, 255, 255, 255]);
-    assert_eq!(*p.sprite(), antes, "o Preview não grava");
+    assert_eq!(*p.sprite(), antes, "o efeito ao vivo não grava");
     // Um canal desligado (G) volta ao original no que se mostra.
     carrega(&mut p, ids::PIXEL_FILTER_CHANNELS[1].1);
     assert_eq!(mostrado(&mut p, (102, 42)), [0, 0, 255, 255]);
-    // Preview desligado: o canvas mostra o documento.
-    carrega(&mut p, ids::PIXEL_FILTER_PREVIEW);
-    assert_eq!(mostrado(&mut p, (102, 42)), RED);
-    carrega(&mut p, ids::PIXEL_FILTER_PREVIEW);
     carrega(&mut p, ids::PIXEL_EDIT_OK);
     assert_eq!(aberto(&p), None);
     assert_eq!(p.rgba(102, 42), [0, 0, 255, 255], "o OK grava o que se via");

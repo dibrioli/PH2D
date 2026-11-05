@@ -94,40 +94,11 @@ impl Corpo<'_> {
 }
 
 impl Corpo<'_> {
-    /// P8: as opções do Text — a fonte (o dropdown com pré-visualização), o tamanho, B, I,
-    /// Antialias e Hinting (as omissões do Aseprite). Mudar uma com a caixa aberta refaz o preview.
+    /// P8: as opções do Text — a fonte (o dropdown com pré-visualização) e o tamanho. Mudar uma com
+    /// a caixa aberta refaz o preview.
     pub(super) fn opcoes_texto(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
-        let o = info.options;
         let y = self.titulo(tr("panel.pixel.text"), y);
         let y = self.chip_da_fonte(info, sec, y);
-        let y = self.campo(tr("panel.pixel.text.size"), ids::TEXT_SIZE, sec, y);
-        let y = self.caixas(
-            &[
-                (ids::TEXT_BOLD, tr("panel.pixel.text.bold"), o.text_bold),
-                (
-                    ids::TEXT_ITALIC,
-                    tr("panel.pixel.text.italic"),
-                    o.text_italic,
-                ),
-            ],
-            sec,
-            y,
-        );
-        self.caixas(
-            &[
-                (
-                    ids::TEXT_ANTIALIAS,
-                    tr("panel.pixel.text.antialias"),
-                    o.text_antialias,
-                ),
-                (
-                    ids::TEXT_HINTING,
-                    tr("panel.pixel.text.hinting"),
-                    o.text_hinting,
-                ),
-            ],
-            sec,
-            y,
-        )
+        self.campo(tr("panel.pixel.text.size"), ids::TEXT_SIZE, sec, y)
     }
 }

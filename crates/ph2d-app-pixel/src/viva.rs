@@ -481,6 +481,9 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) 
             let size = (v.w, v.h);
             if let Some(v) = viva_mut(app) {
                 (v.m, v.pivot) = m0.drag(p0, size, handle, (from, to), drag_opts(m));
+                if matches!(handle, Handle::Rotate) {
+                    v.m = v.m.settle_turn(v.pivot);
+                }
             }
             app.reaviva();
         }

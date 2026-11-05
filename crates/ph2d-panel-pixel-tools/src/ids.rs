@@ -126,10 +126,6 @@ pub const GRADIENT_DITHERS: [(PixelGradientDither, NodeId, &str); 4] = [
 /// as quatro caixas.
 pub use ph2d_editor_core::ids::PIXEL_TEXT_FONT_DD as TEXT_FONT_DD;
 pub const TEXT_SIZE: NodeId = hash_node_id("pixel.opt.text.size");
-pub const TEXT_BOLD: NodeId = hash_node_id("pixel.opt.text.bold");
-pub const TEXT_ITALIC: NodeId = hash_node_id("pixel.opt.text.italic");
-pub const TEXT_ANTIALIAS: NodeId = hash_node_id("pixel.opt.text.antialias");
-pub const TEXT_HINTING: NodeId = hash_node_id("pixel.opt.text.hinting");
 pub const SYM_H: NodeId = hash_node_id("pixel.opt.sym_h");
 pub const SYM_V: NodeId = hash_node_id("pixel.opt.sym_v");
 pub const SYM_D1: NodeId = hash_node_id("pixel.opt.sym_d1");
@@ -170,7 +166,7 @@ pub const NUMBERS: [(NodeId, (f64, f64, f64)); 8] = [
 ];
 
 /// As caixas de marcar.
-pub const CHECKS: [NodeId; 15] = [
+pub const CHECKS: [NodeId; 11] = [
     WAND_CONTIGUOUS,
     GRADIENT_RAMP,
     AUTO_SELECT_LAYER,
@@ -182,10 +178,6 @@ pub const CHECKS: [NodeId; 15] = [
     SYM_D2,
     TILE_X,
     TILE_Y,
-    TEXT_BOLD,
-    TEXT_ITALIC,
-    TEXT_ANTIALIAS,
-    TEXT_HINTING,
 ];
 
 /// Os segmentos que não são a forma.

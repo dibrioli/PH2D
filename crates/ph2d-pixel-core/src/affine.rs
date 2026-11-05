@@ -12,6 +12,9 @@ use crate::transform::{Image, ROTSPRITE_SCALE, epx8, rot90ccw, rot90cw, rot180};
 const RAD: f64 = std::f64::consts::PI / 180.0;
 /// O passo do giro com Shift (graus absolutos).
 pub const ROT_SNAP_DEG: f64 = 15.0;
+/// A folga da mão ao voltar a um ângulo reto: 2° são 2,6 px de ecrã no canto de uma moldura de
+/// 150 px. Ângulos de 1° e 2° continuam a valer pelo campo da barra.
+pub const TURN_MAGNET_DEG: f64 = 2.5;
 /// O tecto da inclinação: a 90° a tangente não existe (a moldura vira uma reta).
 pub const MAX_SKEW_DEG: f64 = 89.0;
 
@@ -227,6 +230,29 @@ impl Affine {
             f: js_round(self.f),
             ..*self
         }
+    }
+
+    /// **O giro à mão assenta** (dono, 05/11: «rotacionar de volta tem de voltar ao original»): o
+    /// ângulo vai ao grau inteiro, o que a barra mostra, e a menos de [`TURN_MAGNET_DEG`] de um
+    /// múltiplo de 90° cola nele, onde a imagem sai sem reamostrar. O pivô fica onde está.
+    #[must_use]
+    pub fn settle_turn(&self, pivot: Pivot) -> Self {
+        let dec = self.decompose();
+        let reto = js_round(dec.rot / 90.0) * 90.0;
+        let rot = if (dec.rot - reto).abs() < TURN_MAGNET_DEG {
+            reto
+        } else {
+            js_round(dec.rot)
+        };
+        let lin = Self::compose(
+            Linear {
+                rot: wrap_deg(rot),
+                ..dec
+            },
+            0.0,
+            0.0,
+        );
+        self.keep_point(&lin, pivot.u, pivot.v)
     }
 
     /// A parte linear de `lin` com a origem escolhida para `(u, v)` ficar onde estava em `self`.

@@ -189,7 +189,7 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
 }
 
 /// Uma vez por quadro: acompanha o diálogo aberto. Recalcula só quando o pedido (ou as cores de
-/// que ele depende) muda; fechado ou com Preview desligado, larga a pré-visualização.
+/// que ele depende) muda; fechado, larga a pré-visualização.
 pub(crate) fn acompanha(app: &mut PixelApp, store: &WidgetStore) {
     let quer = store.pixel_filter_preview().zip(app.chave);
     let Some((pedido, key)) = quer else {

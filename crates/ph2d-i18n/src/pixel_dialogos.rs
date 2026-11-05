@@ -56,7 +56,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.filter_dialog.outline.title" => "Outline",
         "panel.pixel.edit.convolution" => "Convolution Matrix…",
         "pixel.filter_dialog.convolution.title" => "Convolution Matrix",
-        "pixel.filter_dialog.preview" => "Preview",
+        "pixel.filter_dialog.apply" => "Apply",
         "pixel.filter_dialog.tiled" => "Tiled",
         "pixel.filter_dialog.kernel" => "Kernel",
         "pixel.filter_dialog.target.selected" => "Selected",

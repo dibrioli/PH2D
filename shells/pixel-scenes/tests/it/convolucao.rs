@@ -69,7 +69,7 @@ fn convolution_opens_by_f9_and_menu_with_the_core_list_and_brightness_first() {
         "a lista é a do núcleo, na ordem"
     );
     assert_eq!(f.kernel, 0, "«brightness» escolhido ao abrir");
-    assert!(f.preview && !f.tiled, "Preview ligado, Tiled desligado");
+    assert!(!f.tiled, "Tiled desligado");
     // Os kernels são um DROPDOWN (dono 02/11), fechado ao abrir e com o escolhido.
     assert!(
         matches!(

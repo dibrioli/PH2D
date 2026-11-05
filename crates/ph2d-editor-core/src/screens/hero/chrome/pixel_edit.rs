@@ -52,12 +52,10 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     filter_click(hero, id)
 }
 
-/// P8: as escolhas dos diálogos de filtro (Preview, Tiled, canais, Outline).
+/// P8: as escolhas dos diálogos de filtro (alvo, Tiled, canais, Outline).
 fn filter_click(hero: &mut HeroScreen, id: ph2d_a11y::NodeId) -> bool {
     let s = &mut hero.store;
-    if id == ids::PIXEL_FILTER_PREVIEW {
-        s.toggle_pixel_filter_preview();
-    } else if id == ids::PIXEL_FILTER_TARGET {
+    if id == ids::PIXEL_FILTER_TARGET {
         s.toggle_pixel_filter_target();
     } else if id == ids::PIXEL_FILTER_TILED {
         s.toggle_pixel_filter_tiled();

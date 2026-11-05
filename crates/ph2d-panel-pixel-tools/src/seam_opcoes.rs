@@ -65,10 +65,6 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
         ids::SYM_D2 => &mut o.sym_d2,
         ids::TILE_X => &mut o.tile_x,
         ids::TILE_Y => &mut o.tile_y,
-        ids::TEXT_BOLD => &mut o.text_bold,
-        ids::TEXT_ITALIC => &mut o.text_italic,
-        ids::TEXT_ANTIALIAS => &mut o.text_antialias,
-        ids::TEXT_HINTING => &mut o.text_hinting,
         crate::seam_formas::SHAPE_FILL => &mut o.shape_fill,
         _ => return None,
     })

@@ -265,8 +265,14 @@ fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) 
     if c.ink.is_some() {
         y += m::FIELD_ROW_GAP;
     }
-    // Cancel | OK — o OK à direita e acentuado (Enter), o Cancel à esquerda (Esc).
+    // Cancel | OK — o OK à direita e acentuado (Enter), o Cancel à esquerda (Esc). Num filtro, que
+    // já se vê em tempo real, ele chama-se Apply (dono, 05/11).
     let half = ((c.w - gap) * 0.5).max(1.0);
+    let ok = if d.kind.is_filter() {
+        "pixel.filter_dialog.apply"
+    } else {
+        "pixel.new_sprite.ok"
+    };
     for (id, key, x, accent) in [
         (
             ids::PIXEL_EDIT_CANCEL,
@@ -274,12 +280,7 @@ fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) 
             c.x,
             false,
         ),
-        (
-            ids::PIXEL_EDIT_OK,
-            "pixel.new_sprite.ok",
-            c.x + half + gap,
-            true,
-        ),
+        (ids::PIXEL_EDIT_OK, ok, c.x + half + gap, true),
     ] {
         let b_rect = Rect::new(x, y, half, c.h());
         c.hit_index.register(id, b_rect);
@@ -358,19 +359,14 @@ fn filter_rows(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y:
         .map(|(k, id, key)| (*id, tr(key), f.channels[*k]))
         .collect();
     y = c.choices(&opts, y);
-    let preview = (
-        ids::PIXEL_FILTER_PREVIEW,
-        tr("pixel.filter_dialog.preview"),
-        f.preview,
-    );
-    // O alvo (o botão do Trial que alterna «Selected» → «All») vai na fila do Preview.
+    // O alvo (o botão do Trial que alterna «Selected» → «All»).
     let target = if f.all {
         "pixel.filter_dialog.target.all"
     } else {
         "pixel.filter_dialog.target.selected"
     };
     let target = (ids::PIXEL_FILTER_TARGET, tr(target), f.all);
-    c.choices(&[preview, target], y)
+    c.choices(&[target], y)
 }
 
 /// As filas próprias de Adjustments (P8): os campos de B/C e H/S, o modelo do H/S e a curva.

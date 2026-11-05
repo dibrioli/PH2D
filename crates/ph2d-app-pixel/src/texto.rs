@@ -6,7 +6,6 @@ use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::transform::{Floating, Image};
 use ph2d_pixel_core::{CelKey, Sprite, Stroke};
 use ph2d_pixel_text::carimbo::{self, Edit, Editing, Fonte};
-use ph2d_pixel_text::{FontChoice, TextStyle};
 use winit::keyboard::KeyCode;
 
 use crate::gesture::Mods;
@@ -27,20 +26,15 @@ pub(crate) struct Caixa {
     caret: (i32, i32, i32),
 }
 
-/// As fontes do Text: as de fábrica e as do sistema.
+/// As fontes do Text.
 #[must_use]
 pub fn fontes() -> Vec<String> {
-    carimbo::font_list(
-        ph2d_system_fonts::library::pickable_families()
-            .into_iter()
-            .flatten(),
-    )
+    carimbo::font_list()
 }
 
 /// As opções do Text depois de um pedido do painel (`antes` = as de antes): a fonte cai na lista e o
-/// tamanho salta para o válido dela — trocar de fonte vai para o mais perto (de pixel: um múltiplo
-/// da linha; do sistema: nunca abaixo de [`ph2d_pixel_text::SYSTEM_MIN_PX`]); mexer no tamanho de
-/// uma fonte de pixel anda um múltiplo inteiro no sentido do gesto.
+/// tamanho salta para o válido dela — trocar de fonte vai para o múltiplo mais perto da altura
+/// nativa; mexer no tamanho anda um múltiplo inteiro no sentido do gesto.
 pub fn normaliza(antes: &Options, o: &mut Options) {
     o.text_font = carimbo::wrap_index(o.text_font, fontes().len());
     let dir = if o.text_font == antes.text_font {
@@ -58,8 +52,7 @@ pub(crate) fn opcoes_iniciais() -> Options {
     o
 }
 
-/// O nome de cada fonte pedida pelo dropdown desenhado nela com o rasterizador do Pixel Art: as de
-/// fábrica no tamanho nativo; as do sistema a [`ph2d_pixel_text::SYSTEM_MIN_PX`] com Antialias.
+/// O nome de cada fonte pedida pelo dropdown desenhado nela, no tamanho nativo.
 pub(crate) fn publica_previas() {
     use ph2d_editor_core::pixel_panel::font_preview::{PixelFontPreview, publish, take_wanted};
     let pedidas = take_wanted();
@@ -72,25 +65,42 @@ pub(crate) fn publica_previas() {
             continue;
         };
         let px = ph2d_pixel_text::valid_px(i, 0, 1);
-        let mut style = TextStyle::new(FontChoice::Builtin(String::new()), px);
-        style.antialias = i >= ph2d_pixel_text::BUILTIN.len();
-        let face = ph2d_system_fonts::library::face_bytes;
-        let fonte = Fonte::pick(u16::try_from(i).unwrap_or(0), &lista, style, face);
-        // Sem as letras do nome (uma face de símbolos), a prévia vazia: a linha sai na fonte da UI.
+        let fonte = Fonte::pick(u16::try_from(i).unwrap_or(0), px);
         let m = fonte
             .covers(&nome)
             .then(|| fonte.place(&nome, (0, 0)).map(|m| m.0))
             .flatten()
             .unwrap_or_default();
+        let (w, h, cover) = recorta_a_tinta(&m);
         publish(
             nome,
             PixelFontPreview {
-                w: m.w,
-                h: m.h,
-                cover: m.cover,
+                w,
+                h,
+                cover,
+                native: px,
             },
         );
     }
+}
+
+/// A máscara só na caixa da tinta: a folga vem das métricas e fazia a Micro 5 parecer minúscula.
+fn recorta_a_tinta(m: &ph2d_pixel_text::TextMask) -> (u32, u32, Vec<u8>) {
+    let aceso = |x: u32, y: u32| m.cover[(y * m.w + x) as usize] != 0;
+    let xs = || (0..m.w).filter(|&x| (0..m.h).any(|y| aceso(x, y)));
+    let ys = || (0..m.h).filter(|&y| (0..m.w).any(|x| aceso(x, y)));
+    let (Some(x0), Some(x1), Some(y0), Some(y1)) =
+        (xs().next(), xs().last(), ys().next(), ys().last())
+    else {
+        return (0, 0, Vec::new());
+    };
+    let mut cover = Vec::with_capacity(((x1 - x0 + 1) * (y1 - y0 + 1)) as usize);
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            cover.push(m.cover[(y * m.w + x) as usize]);
+        }
+    }
+    (x1 - x0 + 1, y1 - y0 + 1, cover)
 }
 
 pub(crate) fn nome_da_fonte(i: u16) -> String {
@@ -100,11 +110,7 @@ pub(crate) fn nome_da_fonte(i: u16) -> String {
 /// O estilo das opções da mão.
 #[must_use]
 pub fn estilo(o: &Options) -> Fonte {
-    let mut style = TextStyle::new(FontChoice::Builtin(String::new()), o.text_px.max(1));
-    (style.bold, style.italic) = (o.text_bold, o.text_italic);
-    (style.antialias, style.hinting) = (o.text_antialias, o.text_hinting);
-    let face = ph2d_system_fonts::library::face_bytes;
-    Fonte::pick(o.text_font, &fontes(), style, face)
+    Fonte::pick(o.text_font, o.text_px.max(1))
 }
 
 /// As células que o texto carimba com `fg` sobre o cel `ck` (Antialias = por cima do que lá está).

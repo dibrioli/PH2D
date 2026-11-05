@@ -92,7 +92,6 @@ fn the_dialog_has_the_siblings_width_and_every_control_is_alive() {
         .collect();
     todos.extend([
         ids::PIXEL_FILTER_KERNEL,
-        ids::PIXEL_FILTER_PREVIEW,
         ids::PIXEL_FILTER_TILED,
         ids::PIXEL_EDIT_OK,
         ids::PIXEL_EDIT_CANCEL,
@@ -132,7 +131,7 @@ fn the_dialog_has_the_siblings_width_and_every_control_is_alive() {
     assert!((conv - caixa(&hue)).abs() < 0.5, "{conv} ≠ {}", caixa(&hue));
     let f = e.hero.store.pixel_edit_dialog().filter;
     assert_eq!(f.kernel, 0, "o 1.º escolhido ao abrir");
-    assert!(f.preview && !f.tiled);
+    assert!(!f.tiled);
 }
 
 #[test]
@@ -310,7 +309,7 @@ fn no_kernel_name_nor_label_of_the_convolution_dialog_is_cut() {
         "pixel.filter_dialog.convolution.title",
         "pixel.filter_dialog.kernel",
         "pixel.filter_dialog.tiled",
-        "pixel.filter_dialog.preview",
+        "pixel.filter_dialog.apply",
     ]
     .map(ph2d_i18n::tr);
     let ((), medidos) = elisao::medindo(|| e.pinta());

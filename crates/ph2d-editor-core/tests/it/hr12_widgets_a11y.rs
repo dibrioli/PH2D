@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "card_field/valor.rs",
+        "o texto do número e a amostra de cor de um campo; a semântica é a do card_field que os pinta",
+    ),
+    (
         "cromo_barra.rs",
         "os tons das barras do cromo; nao e' um controlo nem emite no' — a a11y e' a de quem a pinta (`tool_rail.rs`, `status_bar.rs`).",
     ),

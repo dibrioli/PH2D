@@ -103,7 +103,7 @@ fn repor(row: &TuneRow) -> [Seg<'static>; 1] {
 /// cobre a metade dela.
 fn numeros(c: &mut CardCtx<'_>, linhas: &[&'static TuneRow], brush: &BrushSettings, y: f32) -> f32 {
     // Dois campos com o seu repor só dividem a linha se o número couber (05 §4, lei 5).
-    let um_par = (m::FIELD_VALUE_MIN_W + m::ICON_CELL * 2.0) * 2.0 + m::FIELD_GAP * 3.0;
+    let um_par = (m::FIELD_VALUE_MIN_W + m::ICON_CELL * 2.0) * 2.0 + m::FIELD_GAP * 3.0; // LITERAL-PX-OK: dois campos, três vãos
     let por_fila = if c.w < um_par { 1 } else { 2 };
     linhas.chunks(por_fila).fold(y, |topo, par| {
         let repoes: Vec<[Seg<'static>; 1]> = par.iter().map(|r| repor(r)).collect();

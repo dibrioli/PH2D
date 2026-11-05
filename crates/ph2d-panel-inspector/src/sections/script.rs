@@ -288,9 +288,9 @@ fn linha_de_marcar(
     fim + gap + altura
 }
 
-/// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.
+/// O seletor dos scripts do projeto (E11), e `Browse` | `Edit script` lado a lado (E3). Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_script_section(
+fn seletor_e_botoes(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -298,52 +298,9 @@ pub(crate) fn paint_script_section(
     store: &WidgetStore,
     x: f32,
     w: f32,
-    y: f32,
+    mut cur_y: f32,
     info: &InspectorScriptInfo,
 ) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
-    let header = section_header(
-        store,
-        core_ids::INSP_LIVE_SCRIPT_SECTION,
-        tr("panel.inspector.script.script"),
-    );
-    let header_rect = Rect::new(x, y, w, header_h);
-    paint_section_header(&header, header_rect, scene, text_system, theme);
-    let Some(fold) = SectionFold::begin(
-        store,
-        core_ids::INSP_LIVE_SCRIPT_SECTION,
-        x,
-        w,
-        y + header_h,
-        scene,
-        hit_index,
-    ) else {
-        return y + header_h;
-    };
-    let mut cur_y = y + header_h;
-    // ── O FICHEIRO ───────────────────────────────────────────────────────────
-    let seccao_do_ficheiro = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[tr("panel.inspector.script.source_label")],
-    );
-    cur_y = super::anim_rows::text_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        // ⛔ O canal do ficheiro é o do SELETOR (o `ScriptId`): um canal, um losango (F27 F). O
-        // caminho por importar não é valor de canal; a coluna fica reservada e vazia.
-        key_mark::Rotulo::vista(TextKey::new("panel.inspector.script.source_label")),
-        ids::INSP_SCRIPT_SOURCE,
-        TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
-            .placeholder(tr("panel.inspector.script.script_name_u")),
-        seccao_do_ficheiro,
-    );
     // O seletor dos scripts do projeto (E11), depois `Browse` | `Edit script` lado a lado (E3). Sem
     // script do projeto não há o que editar: o botão fica apagado e fora do índice.
     // Num cartão, a distância da grelha (lei 3 de 05 §4); o campo de cima devolve o fundo dele, sem vão.
@@ -412,6 +369,76 @@ pub(crate) fn paint_script_section(
         } else {
             ph2d_tokens::control_gap_px()
         };
+    cur_y
+}
+
+/// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_script_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorScriptInfo,
+) -> f32 {
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: banda do cabeçalho
+    let header = section_header(
+        store,
+        core_ids::INSP_LIVE_SCRIPT_SECTION,
+        tr("panel.inspector.script.script"),
+    );
+    let header_rect = Rect::new(x, y, w, header_h);
+    paint_section_header(&header, header_rect, scene, text_system, theme);
+    let Some(fold) = SectionFold::begin(
+        store,
+        core_ids::INSP_LIVE_SCRIPT_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
+        return y + header_h;
+    };
+    let mut cur_y = y + header_h;
+    // ── O FICHEIRO ───────────────────────────────────────────────────────────
+    let seccao_do_ficheiro = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("panel.inspector.script.source_label")],
+    );
+    cur_y = super::anim_rows::text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        // ⛔ O canal do ficheiro é o do SELETOR (o `ScriptId`): um canal, um losango (F27 F). O
+        // caminho por importar não é valor de canal; a coluna fica reservada e vazia.
+        key_mark::Rotulo::vista(TextKey::new("panel.inspector.script.source_label")),
+        ids::INSP_SCRIPT_SOURCE,
+        TextInput::new(ids::INSP_SCRIPT_SOURCE, "")
+            .placeholder(tr("panel.inspector.script.script_name_u")),
+        seccao_do_ficheiro,
+    );
+    cur_y = seletor_e_botoes(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
     cur_y = super::script_avisos::avisos(scene, text_system, theme, x, w, cur_y, info);
 
     // ── OS NÚMEROS ───────────────────────────────────────────────────────────

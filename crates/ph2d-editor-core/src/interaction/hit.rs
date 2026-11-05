@@ -73,6 +73,7 @@ impl HitIndex {
             return;
         };
         self.rects.push((id, visible));
+        crate::widget::card_censo::pintou_controlo(id, visible);
     }
 
     /// ⭐⭐ **Regista o cabeçalho de uma secção que se ARRASTA e muda de TEMA** — o rect do

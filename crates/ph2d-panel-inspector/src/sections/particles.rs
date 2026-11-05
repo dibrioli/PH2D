@@ -134,20 +134,16 @@ fn titulo(
     y: f32,
     texto: &str,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
+    super::rows::titulo_de_grupo(
         scene,
-        texto,
+        text_system,
+        theme,
         x,
-        y,
-        font,
         w,
-        resolve(ColorToken::Text3, theme),
-    );
-    // ⚠️ **A cauda de um bloco tem UMA porta** — o que separa o título do que ele intitula é o
-    // mesmo degrau de sempre, e escrevê-lo aqui seria a quinta resposta a essa pergunta.
-    y + font + ph2d_tokens::control_gap_px()
+        y,
+        texto,
+        ColorToken::Text3,
+    )
 }
 
 /// ⭐⭐ **A coluna do nome desta secção — UMA, para as três espécies de linha.**

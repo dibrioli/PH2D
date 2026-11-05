@@ -68,6 +68,10 @@ pub fn caixa_do_botao(text_system: &mut TextSystem, x: f32, w: f32, y: f32, rotu
 /// respostas ao vão entre linhas nasceram* (`the_gap_between_two_rows_is_one_answer`).
 #[must_use]
 pub fn abaixo_do_botao(caixa: Rect) -> f32 {
+    // Num cartão, quem vem a seguir traz o vão dele (05 §4, ritmo): somar aqui dava `9` entre dois botões.
+    if crate::widget::card_ink::card_body().is_some() {
+        return caixa.y + caixa.h;
+    }
     caixa.y + caixa.h + ph2d_tokens::control_gap_px()
 }
 

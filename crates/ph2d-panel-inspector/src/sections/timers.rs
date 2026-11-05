@@ -79,6 +79,7 @@ fn list(
     info: &InspectorTimerInfo,
     selected: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     // ⭐⭐⭐ **AS DUAS COLUNAS DESTA LISTA SAEM DA LISTA, e antes eram DOIS literais.**
@@ -175,7 +176,7 @@ fn list(
     }
     // ⚠️ **A cauda da lista vem da PORTA** — o que separa dois controlos de uma secção é uma
     // pergunta que a casa já respondeu, e escrevê-la aqui seria a segunda resposta (há gate).
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões da lista, lado a lado. Devolve o `y` seguinte.
@@ -199,61 +200,20 @@ fn buttons(
     // (*o que fazer com a lista*), a mesma fileira, o traço de um pixel entre as duas peças.
     // ⛔ Dispô-las à mão com um vão pintaria duas peças separadas onde a casa junta, e há gate
     // (`no_panel_lays_a_button_row_out_by_hand`).
-    let n = usize::from(can_add) + usize::from(can_remove);
-    if n == 0 {
-        return y;
-    }
-    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas.
-    let rotulos: Vec<&str> = [
-        (can_add, tr("panel.inspector.timers.plus_add_timer")),
-        (can_remove, tr("panel.inspector.timers.x_remove_timer")),
-    ]
-    .into_iter()
-    .filter_map(|(ativo, l)| ativo.then_some(l))
-    .collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    if can_add {
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(ids::INSP_TIMER_ADD, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TIMER_ADD,
-                tr("panel.inspector.timers.plus_add_timer"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TIMER_ADD))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    if can_remove {
-        let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_TIMER_REMOVE, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TIMER_REMOVE,
-                tr("panel.inspector.timers.x_remove_timer"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TIMER_REMOVE))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (can_add, ids::INSP_TIMER_ADD, tr("panel.inspector.timers.plus_add_timer")),
+            (can_remove, ids::INSP_TIMER_REMOVE, tr("panel.inspector.timers.x_remove_timer")),
+        ],
+    )
 }
 
 /// O editor do timer aberto. Devolve o `y` seguinte.

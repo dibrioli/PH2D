@@ -108,6 +108,21 @@ Lei de layout ([02 §2](02_especificacao.md)): **rótulo EM CIMA** (obrigatório
 6. Três ou mais amostras da mesma grandeza (Per-corner Tint) ficam numa linha só, sem código; o código abre no clique.
 7. **Texto nunca extrapola nem é cortado em botão ou segmento** (dono 04/11, «Wet canv… Dry canv…»: «Botões com texto extrapolando as bordas. Precisa corrigir e evitar isso»). O texto cabe com o respiro de `metrics`; se não cabe, os botões descem para mais linhas, ou o nome encurta sem perder o sentido. Nunca «…» num botão.
 
+**Ritmo vertical (dono 04/11, foto do 9-Slice: «Veja como o espaçamento é ruim»). Um só ritmo em todo cartão, valores em `metrics` (`ph2d-card-stack`), medidos nos aprovados (Bones sem nenhuma fronteira fora; Widget Gallery: 64 das fronteiras até um rótulo a 8):**
+
+| Fronteira | Vão | Constante |
+|---|---|---|
+| rótulo → o seu controlo | 4 | `LABEL_BOTTOM` (+ `SEG_PAD` 2 no segmentado, cujo segmento é registado por dentro da pílula) |
+| controlo → rótulo seguinte | 8 | `LABEL_TOP` |
+| controlo → controlo sem rótulo (botão, caixa de marcar, fila de botões) | 6 | `FIELD_ROW_GAP` |
+| controlo → frase de ajuda | 6 | `FIELD_ROW_GAP` (a frase é uma linha, pela porta `rows::aviso`) |
+| frase → rótulo seguinte | 8 | `LABEL_TOP` |
+| frase → controlo ou frase | 6 | `FIELD_ROW_GAP` |
+| grupo → grupo (título de grupo dentro do cartão) | 14 | `GROUP_TOP` = `LABEL_TOP` + `FIELD_ROW_GAP` |
+| grade de células | célula `FIELD_H`, vão 6 | `FIELD_ROW_GAP` (grelha densa de 32: `GRID_CELL`/`GRID_GAP`) |
+
+Quem vem a seguir traz o vão dele: nenhuma linha soma vão ao próprio fundo. Portas: `caixa_do_botao`/`abaixo_do_botao`, `rows::fila_de_botoes`, `rows::caixa_do_chip`, `rows::rotulo_do_bloco`, `rows::titulo_de_grupo`, `rows::antes_da_lista`, `rows::aviso`. Fila de controlos lado a lado: mesmo topo, mesma altura (`FIELD_H`). Letra de campo: diz o que é (L·T, R·B; `Eixos::Letras`); preposição no fim não dá letra («Repath At» ⇒ R); nome não repete as letras («Size», nunca «Size X / Y»). Portão: `lei_do_ritmo` (por pintura real: `paint_text*` + `HitIndex::register`), `PENDENTES_RITMO` só desce. Tema da medida: `Dark`, o do arranque; no `Forge` de `MockPanelHost::new()` mede-se outro programa. Revisão por cartão: [18](18_REVISAO_DE_CAPRICHO.md).
+
 | tipo | desenho |
 |---|---|
 | **Campo numérico Figma** | caixa `CardField` com glifo (ícone/letra) na `ICON_CELL` que é a pega do scrub; arrasto sem fim com cursor preso (`Locked`+movimento cru; reserva `Confined`+reposicionar; T12 medido); Shift ×10, Alt ×0,1 a meio sem salto; Esc devolve; duplo clique no ícone = fábrica; texto aceita contas e sufixo de unidade; ↑↓; «Mixed»; um gesto = um Desfazer; dois passos (setas × arrasto por px, T10) |

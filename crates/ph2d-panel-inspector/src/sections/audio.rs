@@ -62,36 +62,21 @@ fn buttons(
     w: f32,
     y: f32,
 ) -> f32 {
-    let fila = [
-        (ids::INSP_AUDIO_BROWSE, tr("panel.inspector.audio.browse")),
-        (ids::INSP_AUDIO_PREVIEW, tr("panel.inspector.audio.preview")),
-        (ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
-    ];
-    // ⭐ A fileira mede as PALAVRAS — ver `segment_rects_for`.
-    let rotulos: Vec<&str> = fila.iter().map(|(_, l)| *l).collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    for (i, (id, label)) in fila.into_iter().enumerate() {
-        let Some(&(rect, group)) = seg.get(i) else {
-            continue;
-        };
-        hit_index.register(id, rect);
-        paint_button(
-            &Button::new(id, label)
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(id))
-                .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (true, ids::INSP_AUDIO_BROWSE, tr("panel.inspector.audio.browse")),
+            (true, ids::INSP_AUDIO_PREVIEW, tr("panel.inspector.audio.preview")),
+            (true, ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
+        ],
+    )
 }
 
 /// O seletor de barramento — um chip, como o do verbo. Devolve o `y` seguinte.

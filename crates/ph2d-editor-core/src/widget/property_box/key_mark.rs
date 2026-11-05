@@ -81,6 +81,8 @@ pub enum Eixos {
     Retangulo,
     /// Um campo só cuja letra o sítio DECLARA (T56: a regra da última palavra não serve).
     Letra(&'static str),
+    /// As letras de uma linha de vários campos que não são eixos (`L` · `T`, `R` · `B` das bordas).
+    Letras(&'static [&'static str]),
 }
 
 impl Eixos {
@@ -92,6 +94,7 @@ impl Eixos {
             Self::Tamanho => &["W", "H"],
             Self::Retangulo => &["X", "Y", "W", "H"],
             Self::Letra(l) => return if i == 0 { l } else { "" },
+            Self::Letras(l) => l,
         };
         l.get(i).copied().unwrap_or("")
     }

@@ -83,6 +83,134 @@ pub fn is_corner_cell(i: usize) -> bool {
 /// precisa**: o `Tiled` foi retirado, e agora a letra diz sempre o que a região faz.
 const REGION_LEGEND: TextKey = TextKey::new("panel.inspector.slice.corners_f_fixed_on_off");
 
+/// O nome da letra de uma célula, para a legenda ao lado da grade: uma fila por fila da grade.
+const LEGENDA: [TextKey; GRID] = [
+    TextKey::new("panel.inspector.slice.legend_fixed"),
+    TextKey::new("panel.inspector.slice.legend_stretch"),
+    TextKey::new("panel.inspector.slice.legend_mirror"),
+];
+
+/// A letra que uma célula mostra agora.
+fn letra_da_celula(i: usize, info: &InspectorSliceInfo) -> TextKey {
+    let tag = usize::from(info.tile_modes[i]);
+    if info.mixed.tile_modes {
+        MIXED_LETTER
+    } else if is_corner_cell(i) {
+        CORNER_LETTERS[usize::from(tag == 3)]
+    } else {
+        REGION_LETTERS[tag.min(REGION_LETTERS.len() - 1)]
+    }
+}
+
+/// A letra do miolo: ele mostra `-` e não age sem o `Fill Center`.
+fn letra_do_miolo(info: &InspectorSliceInfo) -> TextKey {
+    if !info.fill_center {
+        TextKey::new("panel.inspector.slice.letter_blank")
+    } else if info.mixed.tile_modes {
+        MIXED_LETTER
+    } else {
+        REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
+    }
+}
+
+/// ⭐ **A grade num cartão** (dono 04/11, foto do 9-Slice): células da altura de todo controlo com o vão
+/// de toda linha, a legenda ao lado, fila a fila, e os dois atalhos numa fila própria, nas colunas do cartão.
+#[allow(clippy::too_many_arguments)]
+fn grade_no_cartao(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorSliceInfo,
+) -> f32 {
+    use ph2d_card_stack::metrics as m;
+    let topo = super::rows::rotulo_do_bloco(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        tr("panel.inspector.slice.per_region_tiling"),
+    );
+    let passo = m::FIELD_H + m::FIELD_ROW_GAP;
+    let celula = |col: usize, row: usize| {
+        Rect::new(
+            x + passo * col as f32,
+            topo + passo * row as f32,
+            m::FIELD_H,
+            m::FIELD_H,
+        )
+    };
+    for (i, &(col, row)) in REGION_CELLS.iter().enumerate() {
+        let id = ids::INSP_SLICE_REGION[i];
+        let rect = celula(col, row);
+        hit_index.register(id, rect);
+        paint_button(
+            &Button::new(id, letra_da_celula(i, info).tr())
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(id)),
+            rect,
+            scene,
+            text_system,
+            theme,
+        );
+    }
+    let mid = celula(1, 1);
+    hit_index.register(ids::INSP_SLICE_CENTRE, mid);
+    paint_button(
+        &Button::new(ids::INSP_SLICE_CENTRE, letra_do_miolo(info).tr())
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_SLICE_CENTRE)),
+        mid,
+        scene,
+        text_system,
+        theme,
+    );
+    let lx = x + passo * GRID as f32 + m::FIELD_GAP;
+    let font = TypeToken::Sm.px();
+    for (row, chave) in LEGENDA.iter().enumerate() {
+        let c = celula(0, row);
+        paint_text(
+            text_system,
+            scene,
+            chave.tr(),
+            lx,
+            c.y + ph2d_editor_core::paint::folga_do_texto(c.h, font),
+            font,
+            (x + w - lx).max(0.0),
+            resolve(ColorToken::Text3, theme),
+        );
+    }
+    let fundo = topo + passo * GRID as f32 - m::FIELD_ROW_GAP;
+    super::rows::fila_de_botoes(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        fundo,
+        &[
+            (
+                true,
+                ids::INSP_SLICE_ALL_TILE,
+                tr("panel.inspector.slice.tile_all"),
+            ),
+            (
+                true,
+                ids::INSP_SLICE_ALL_STRETCH,
+                tr("panel.inspector.slice.stretch_all"),
+            ),
+        ],
+    )
+}
+
 /// A grelha 3×3 dos modos por-região. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn region_grid(
@@ -96,25 +224,13 @@ pub(super) fn region_grid(
     y: f32,
     info: &InspectorSliceInfo,
 ) -> f32 {
-    // ⛔⛔ **ESTA linha FICA com o nome POR CIMA, e é a ÚNICA do Inspector — com a medição ao lado.**
-    //
-    // A conversão de 2026-09-15 pôs o nome à esquerda em **todas** as outras; esta foi tentada e
-    // **revertida**, porque o controlo dela não é a grelha: é a grelha **mais os dois atalhos**,
-    // que vivem à direita dela e à altura dela de propósito (*«é o sítio em que eles se leem como
-    // “faz isto às nove”»*, escrito mais abaixo). O par pede `3 × 26 + 2 × 4` da grelha `+ 6` de vão
-    // `+ ~50` de botão = **`~144 px`**, e a coluna do controlo mede `0,5 × interior − 14` — ela só
-    // chega a `144` com o painel acima de **`336 px`**. ⛔ O dock do dono está em `273,3`.
-    //
-    // ⇒ §0.0: *o limite diz de que recurso é* — é a LARGURA, e a alternativa (empilhar os atalhos
-    // por baixo da grelha) desfaz a leitura que o comentário deles defende por escrito.
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        return grade_no_cartao(scene, text_system, theme, hit_index, store, x, w, y, info);
+    }
+    // ⛔⛔ Fora do cartão a linha fica com o nome por cima: o controlo é a grelha mais os dois atalhos,
+    // à direita dela, e a coluna do controlo só lhes chega com o painel acima de `336 px`.
     let label_font = TypeToken::Sm.px();
     let label_h = label_font + Spacing::Xs.px();
-    // Num cartão, o corpo de letra dos outros rótulos.
-    let label_font = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        ph2d_editor_core::panel::cards::corpo::LABEL_PX
-    } else {
-        label_font
-    };
     paint_text(
         text_system,
         scene,
@@ -126,12 +242,7 @@ pub(super) fn region_grid(
         resolve(ColorToken::Text2, theme),
     );
     let grid_y = y + label_h;
-    // Num cartão a grelha tem o vão de toda linha (05 §4, lei 3).
-    let gap = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        ph2d_editor_core::panel::cards::corpo::ROW_GAP
-    } else {
-        Spacing::Xs.px()
-    };
+    let gap = Spacing::Xs.px();
     for (i, &(col, row)) in REGION_CELLS.iter().enumerate() {
         let id = ids::INSP_SLICE_REGION[i];
         let rect = Rect::new(
@@ -142,15 +253,7 @@ pub(super) fn region_grid(
         );
         hit_index.register(id, rect);
         // Divergente na seleção: a célula não afirma modo nenhum.
-        let tag = usize::from(info.tile_modes[i]);
-        let letter = if info.mixed.tile_modes {
-            MIXED_LETTER
-        } else if is_corner_cell(i) {
-            // Um canto só tem duas posições, e é `F` — fixo — não `S`.
-            CORNER_LETTERS[usize::from(tag == 3)]
-        } else {
-            REGION_LETTERS[tag.min(REGION_LETTERS.len() - 1)]
-        };
+        let letter = letra_da_celula(i, info);
         let btn = Button::new(id, letter.tr())
             .kind(ButtonKind::Default)
             .visual(store.button_visual(id));
@@ -162,13 +265,7 @@ pub(super) fn region_grid(
     // manda nisso é o `Fill Center`, e duas portas para o mesmo estado divergem.
     let mid = Rect::new(x + CELL + gap, grid_y + CELL + gap, CELL, CELL);
     hit_index.register(ids::INSP_SLICE_CENTRE, mid);
-    let mid_letter = if !info.fill_center {
-        TextKey::new("panel.inspector.slice.letter_blank")
-    } else if info.mixed.tile_modes {
-        MIXED_LETTER
-    } else {
-        REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
-    };
+    let mid_letter = letra_do_miolo(info);
     paint_button(
         &Button::new(ids::INSP_SLICE_CENTRE, mid_letter.tr())
             .kind(ButtonKind::Default)

@@ -64,6 +64,7 @@ fn list(
     info: &InspectorActionInfo,
     selected: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     for (i, (row, &id)) in info
@@ -115,7 +116,7 @@ fn list(
         );
         cur_y += ROW_H;
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões da lista, **pela porta do grupo**. Devolve o `y` seguinte.
@@ -133,62 +134,20 @@ fn buttons(
 ) -> f32 {
     let can_add = info.rows.len() < crate::ids::INSP_ACTION_ROW.len();
     let can_remove = !info.rows.is_empty();
-    let n = usize::from(can_add) + usize::from(can_remove);
-    if n == 0 {
-        return y;
-    }
-    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas: com `+` escondido no
-    //    tecto, a fileira tem UMA peça e o rótulo dela é o único a medir.
-    let rotulos: Vec<&str> = [
-        (can_add, tr("panel.inspector.actions.plus_add_action")),
-        (can_remove, tr("panel.inspector.actions.x_remove_action")),
-    ]
-    .into_iter()
-    .filter_map(|(ativo, l)| ativo.then_some(l))
-    .collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    if can_add {
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(ids::INSP_ACTION_ADD, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_ACTION_ADD,
-                tr("panel.inspector.actions.plus_add_action"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ACTION_ADD))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    if can_remove {
-        let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_ACTION_REMOVE, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_ACTION_REMOVE,
-                tr("panel.inspector.actions.x_remove_action"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_ACTION_REMOVE))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (can_add, ids::INSP_ACTION_ADD, tr("panel.inspector.actions.plus_add_action")),
+            (can_remove, ids::INSP_ACTION_REMOVE, tr("panel.inspector.actions.x_remove_action")),
+        ],
+    )
 }
 
 /// **As opções do seletor do verbo** — uma por entrada de `SignalVerb::ALL`, na ordem dele.

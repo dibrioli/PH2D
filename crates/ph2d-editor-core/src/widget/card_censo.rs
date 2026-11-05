@@ -45,7 +45,13 @@ pub struct TextoMedido {
 pub struct Censo {
     pub linhas: Vec<LinhaMedida>,
     pub textos: Vec<TextoMedido>,
+    /// O que o corpo de cada cartão pintou, para a lei do ritmo ([`ritmo`]).
+    pub pecas: Vec<ritmo::Peca>,
 }
+
+#[path = "card_censo_ritmo.rs"]
+pub mod ritmo;
+pub(crate) use ritmo::{pintou_controlo, pintou_texto};
 
 thread_local! {
     static GRAVACAO: RefCell<Option<Censo>> = const { RefCell::new(None) };
@@ -76,6 +82,7 @@ pub(crate) fn na_secao(secao: Option<NodeId>) {
         GRAVACAO.with(|g| {
             if let Some(c) = g.borrow_mut().as_mut() {
                 c.linhas.retain(|l| l.secao != id);
+                c.pecas.retain(|p| p.secao != id);
             }
         });
     }
@@ -103,7 +110,7 @@ pub(crate) fn entra_na_tinta() {
 }
 
 /// A secção das linhas que se anotam agora: a do corpo, ou a da captura em curso.
-fn secao_da_linha() -> Option<NodeId> {
+pub(crate) fn secao_da_linha() -> Option<NodeId> {
     secao_atual()
         .or_else(|| crate::widget::card_ink::card_body().map(|_| NodeId(CAPTURA.with(Cell::get))))
 }

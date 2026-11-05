@@ -174,6 +174,10 @@ bumpalo = { version = "3", features = ["collections"] }
 ph2d-skeleton = { path = "../ph2d-skeleton" }
 # Só para `toda_dica_dos_cartoes`: a pilha Fill/Stroke publicada leva o `BlendMode` desta crate.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# Só para `q_fotos`: a foto de cada cartão do Inspector aberto, para olhar (05 §11b).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [lints]
 workspace = true

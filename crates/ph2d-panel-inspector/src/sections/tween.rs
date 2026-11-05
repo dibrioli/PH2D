@@ -33,6 +33,7 @@ fn list(
     info: &InspectorTweenInfo,
     selected: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     // ⚠️ **`zip` com o array de ids**: uma lista com mais tweens do que ids perde os excedentes em
@@ -90,7 +91,7 @@ fn list(
         cur_y += ROW_H;
     }
     // ⚠️ **A cauda da lista vem da PORTA** — há gate contra a segunda resposta.
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões da lista, lado a lado. Devolve o `y` seguinte.
@@ -110,65 +111,20 @@ fn buttons(
     // e não faz nada é o defeito que a DIRETIVA §2 nomeia.
     let can_add = info.rows.len() < crate::ids::INSP_TWEEN_ROW.len();
     let can_remove = !info.rows.is_empty();
-    let n = usize::from(can_add) + usize::from(can_remove);
-    if n == 0 {
-        return y;
-    }
-    // ⭐⭐ **`+ Add | x Remove` é UM par**, e por isso passa pela porta do grupo — há gate
-    // (`no_panel_lays_a_button_row_out_by_hand`).
-    // ⭐ **A fileira mede as PALAVRAS, nunca partes iguais** — `segment_rects_for` (a lei que a
-    //    `line/UIUX` fechou a ZERO em 2026-09-19). *Uma média não é um máximo: a fileira pode
-    //    caber inteira e cortar a peça mais larga na mesma.*
-    let mut rotulos: Vec<&str> = Vec::with_capacity(n);
-    if can_add {
-        rotulos.push(tr("panel.inspector.tween.plus_add_tween"));
-    }
-    if can_remove {
-        rotulos.push(tr("panel.inspector.tween.x_remove_tween"));
-    }
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    if can_add {
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(ids::INSP_TWEEN_ADD, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TWEEN_ADD,
-                tr("panel.inspector.tween.plus_add_tween"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TWEEN_ADD))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    if can_remove {
-        let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_TWEEN_REMOVE, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TWEEN_REMOVE,
-                tr("panel.inspector.tween.x_remove_tween"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TWEEN_REMOVE))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (can_add, ids::INSP_TWEEN_ADD, tr("panel.inspector.tween.plus_add_tween")),
+            (can_remove, ids::INSP_TWEEN_REMOVE, tr("panel.inspector.tween.x_remove_tween")),
+        ],
+    )
 }
 
 /// Pinta a secção. Devolve o `y` seguinte.

@@ -280,6 +280,45 @@ fn paint_text_spans(
     spans: &[(std::ops::Range<usize>, Color)],
     tracking_em: f32,
 ) -> f32 {
+    let alta = pinta_os_trechos(
+        text_system,
+        scene,
+        text,
+        [x, y],
+        font_size,
+        max_width,
+        color,
+        weight,
+        lines,
+        spans,
+        tracking_em,
+    );
+    if crate::widget::card_censo::ligado() {
+        let largura = text_system.prefix_width_weighted(text, font_size, weight);
+        crate::widget::card_censo::pintou_texto(
+            text,
+            [x, y, largura.min(max_width), alta.max(font_size)],
+            font_size,
+        );
+    }
+    alta
+}
+
+#[allow(clippy::too_many_arguments)]
+#[track_caller]
+fn pinta_os_trechos(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    [x, y]: [f32; 2],
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+    lines: Lines,
+    spans: &[(std::ops::Range<usize>, Color)],
+    tracking_em: f32,
+) -> f32 {
     // ⚠️ A elisão mede na espessura que ESTA função vai pintar, que é a lei que o `text_elide` já
     // pagou: cortar em `Medium` e pintar em `SemiBold` transborda na fronteira em que o corte
     // existe.

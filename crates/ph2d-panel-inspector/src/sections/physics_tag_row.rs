@@ -29,14 +29,7 @@ pub(super) fn signal_tag_row(
     signal_tag: Option<u64>,
     signal_tag_path: &str,
 ) -> f32 {
-    // Num cartão, a distância da grelha (foto r5_physics_body: colado a On Leave).
-    let y = y + if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        ph2d_editor_core::panel::cards::corpo::ROW_GAP
-    } else {
-        0.0
-    };
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H_PX);
-    let rect = Rect::new(x, y, control_w, ROW_H_PX);
+    let (rect, dot, depois) = super::rows::caixa_do_chip(x, w, y);
     hit_index.register(ids::INSP_PHYS_SIGNAL_TAG, rect);
     let open = matches!(
         store.get(ids::INSP_PHYS_SIGNAL_TAG),
@@ -66,7 +59,7 @@ pub(super) fn signal_tag_row(
     ) {
         hit_index.register(alvo, dot);
     }
-    let mut cur_y = y + ph2d_tokens::row_pitch_px();
+    let mut cur_y = depois;
 
     // ⛔ A tag foi apagada ⇒ a armadilha não grita com ninguém. ⚠️ Só com o id VIVO e o caminho
     // vazio: um filtro por escolher (`0`) passa todos e não é um defeito.

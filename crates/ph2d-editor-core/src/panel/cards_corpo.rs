@@ -40,16 +40,31 @@ fn glifo(rotulo: &str, eixos: Eixos, n: usize, i: usize) -> Glyph<'_> {
 /// A tabela de onde [`letra_da_grandeza`] fatia a letra (um `&str` que vive sem alocar).
 const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+/// As palavras que nunca dão a letra de um campo.
+const PREPOSICOES: [&str; 6] = ["at", "after", "on", "of", "per", "from"];
+
 /// A letra de um campo só: a inicial, em maiúscula, da ÚLTIMA palavra do rótulo — a que nomeia a
 /// grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o `H` de «Half»; «Offset Y» ⇒ `Y`; o nome de
 /// um script, «jump_power» ⇒ `P`). A unidade entre parênteses não conta.
 #[must_use]
 pub fn letra_da_grandeza(rotulo: &str) -> &str {
-    let palavra = rotulo
+    let mut palavras = rotulo
         .split(|c: char| c.is_whitespace() || c == '_')
-        .rev()
-        .find(|p| p.starts_with(char::is_alphanumeric))
-        .unwrap_or(rotulo);
+        .filter(|p| p.starts_with(char::is_alphanumeric));
+    let primeira = palavras.next().unwrap_or(rotulo);
+    // «H Frames» ⇒ `H`: uma letra sozinha à frente é a própria letra.
+    let palavra = if primeira.chars().count() == 1 {
+        primeira
+    } else {
+        // «Repath At» ⇒ `R`: uma preposição no fim não nomeia a grandeza.
+        let todas: Vec<&str> = std::iter::once(primeira).chain(palavras).collect();
+        todas
+            .iter()
+            .rev()
+            .find(|p| !PREPOSICOES.contains(&p.to_ascii_lowercase().as_str()))
+            .copied()
+            .unwrap_or(primeira)
+    };
     match palavra.chars().next() {
         Some(c) if c.is_ascii_lowercase() => {
             let i = usize::from(c as u8 - b'a');

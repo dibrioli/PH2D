@@ -47,7 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "No resistances \u{b7} every type hurts it normally."
         }
         "panel.inspector.vida.add_resistance" => "+ Add Resistance",
-        "panel.inspector.vida.x_remove_resistance" => "x Remove",
+        "panel.inspector.vida.x_remove_resistance" => "Remove",
         "panel.inspector.vida.resist_kind" => "Type",
         "panel.inspector.vida.resist_kind_hint" => "fire, ice, poison\u{2026}",
         "panel.inspector.vida.resist_rate" => "Rate",

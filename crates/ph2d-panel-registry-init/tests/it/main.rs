@@ -53,6 +53,7 @@ mod os_corpos_dos_componentes_em_cartoes;
 mod os_estilos_de_cor;
 mod os_soltos_no_topo_e_as_cordas;
 mod paineis_armados;
+mod q_fotos;
 mod quantas_entradas_tem_cada_painel;
 mod quantas_mensagens_o_painel_escreve;
 mod resetting_the_layout_puts_all_three_things_back;

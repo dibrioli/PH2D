@@ -232,7 +232,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.statemachine.initial_state" => "Initial state",
         "panel.inspector.statemachine.no_states_yet" => "No states yet.",
         "panel.inspector.statemachine.add_state" => "+ Add State",
-        "panel.inspector.statemachine.x_remove_state" => "x Remove State",
+        "panel.inspector.statemachine.x_remove_state" => "Remove State",
         "panel.inspector.statemachine.state_name_u" => "state name\u{2026}",
         "panel.inspector.statemachine.on_enter_signal_name" => "on enter: signal name",
         "panel.inspector.statemachine.on_exit_signal_name" => "on exit: signal name",
@@ -240,7 +240,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Dead end: no transition leaves this state."
         }
         "panel.inspector.statemachine.add_transition" => "+ Add Transition",
-        "panel.inspector.statemachine.x_remove_transition" => "x Remove Transition",
+        "panel.inspector.statemachine.x_remove_transition" => "Remove Transition",
         "panel.inspector.statemachine.from_state" => "From state",
         "panel.inspector.statemachine.to_state" => "To state",
         "panel.inspector.statemachine.on_signal_u" => "on signal\u{2026}",
@@ -320,7 +320,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.counter_watch.no_rules_yet" => "No rules yet",
         "panel.inspector.counter_watch.plus_add_rule" => "+ Add Rule",
-        "panel.inspector.counter_watch.x_remove_rule" => "x Remove Rule",
+        "panel.inspector.counter_watch.x_remove_rule" => "Remove Rule",
         "panel.inspector.counter_watch.counter_name" => "Counter name",
         "panel.inspector.counter_watch.compare" => "When",
         // ⛔ `at_most`/`at_least`/`exactly` foram APAGADAS em 2026-09-17 (ordem do dono: o chip
@@ -352,7 +352,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.trigger.title_count_broken" => "Trigger ({n}, {broken} broken)",
         "panel.inspector.trigger.no_triggers_yet" => "No triggers yet",
         "panel.inspector.trigger.plus_add_trigger" => "+ Add Trigger",
-        "panel.inspector.trigger.x_remove_trigger" => "x Remove Trigger",
+        "panel.inspector.trigger.x_remove_trigger" => "Remove Trigger",
         "panel.inspector.trigger.action_name" => "Action name",
         "panel.inspector.trigger.when" => "When",
         // ⚠️ **Estas TRÊS têm chave e as três da vigia não**, e a diferença não é estilo: `≤` é um
@@ -392,7 +392,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.tween.title_count" => "Tween ({n})",
         "panel.inspector.tween.no_tweens_yet" => "No tweens yet.",
         "panel.inspector.tween.plus_add_tween" => "+ Add Tween",
-        "panel.inspector.tween.x_remove_tween" => "x Remove Tween",
+        "panel.inspector.tween.x_remove_tween" => "Remove Tween",
         "panel.inspector.tween.channel" => "Channel",
         "panel.inspector.tween.from" => "From",
         "panel.inspector.tween.to" => "To",
@@ -448,7 +448,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.emitter.title_count" => "Shake Emitter ({n})",
         "panel.inspector.emitter.title_count_broken" => "Shake Emitter ({n}, {broken} swapped)",
         "panel.inspector.emitter.plus_add_source" => "+ Add Source",
-        "panel.inspector.emitter.x_remove_source" => "x Remove Source",
+        "panel.inspector.emitter.x_remove_source" => "Remove Source",
         "panel.inspector.emitter.signal_name_empty_mute" => "Signal name (empty = mute)…",
         "panel.inspector.emitter.unnamed" => "(unnamed)",
         "panel.inspector.emitter.mute" => "mute",

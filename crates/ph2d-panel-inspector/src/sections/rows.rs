@@ -189,6 +189,13 @@ mod moldura;
 pub(super) use moldura::card_frame_with;
 pub(crate) use moldura::card_pitch;
 
+#[path = "rows_ritmo.rs"]
+mod ritmo;
+pub(crate) use ritmo::{
+    antes_da_lista, caixa_do_chip, depois_da_lista, fila_de_botoes, rotulo_do_bloco,
+    titulo_de_grupo,
+};
+
 #[path = "rows_par.rs"]
 mod par;
 pub(super) use par::{Campo, Escolha, caixa_row, par_row, seg_par_row, seg_row_misto};

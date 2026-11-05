@@ -102,6 +102,7 @@ fn lista(
     info: &InspectorCounterWatchInfo,
     escolhida: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     for (i, (row, &id)) in info
@@ -165,7 +166,7 @@ fn lista(
         );
         cur_y += ROW_H;
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões da lista. Devolve o `y` seguinte.
@@ -184,63 +185,20 @@ fn botoes(
     // ⚠️ **O `+` DESAPARECE no tecto** e não fica cinzento a mentir — a lei das irmãs.
     let pode_juntar = info.rows.len() < crate::ids::INSP_WATCH_ROW.len();
     let pode_tirar = !info.rows.is_empty();
-    let n = usize::from(pode_juntar) + usize::from(pode_tirar);
-    if n == 0 {
-        return y;
-    }
-    // ⭐ **A fileira mede as PALAVRAS, nunca partes iguais** — `segment_rects_for` (a lei que a
-    //    `line/UIUX` fechou a ZERO em 2026-09-19). *Uma média não é um máximo: a fileira pode
-    //    caber inteira e cortar a peça mais larga na mesma.*
-    let mut rotulos: Vec<&str> = Vec::with_capacity(n);
-    if pode_juntar {
-        rotulos.push(tr("panel.inspector.counter_watch.plus_add_rule"));
-    }
-    if pode_tirar {
-        rotulos.push(tr("panel.inspector.counter_watch.x_remove_rule"));
-    }
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    if pode_juntar {
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(ids::INSP_WATCH_ADD, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_WATCH_ADD,
-                tr("panel.inspector.counter_watch.plus_add_rule"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_WATCH_ADD))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    if pode_tirar {
-        let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_WATCH_REMOVE, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_WATCH_REMOVE,
-                tr("panel.inspector.counter_watch.x_remove_rule"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_WATCH_REMOVE))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (pode_juntar, ids::INSP_WATCH_ADD, tr("panel.inspector.counter_watch.plus_add_rule")),
+            (pode_tirar, ids::INSP_WATCH_REMOVE, tr("panel.inspector.counter_watch.x_remove_rule")),
+        ],
+    )
 }
 
 /// A linha do chip da comparação. Devolve o `y` seguinte.
@@ -438,7 +396,6 @@ fn avisos(
     info: &InspectorCounterWatchInfo,
     row: &InspectorWatchRow,
 ) -> f32 {
-    let font = TypeToken::Sm.px();
     let mut cur_y = y;
     let (msg, cor) = if row.counter.trim().is_empty() {
         (
@@ -475,17 +432,7 @@ fn avisos(
         (None, ColorToken::Text3)
     };
     if let Some(m) = msg {
-        paint_text(
-            text_system,
-            scene,
-            &m,
-            x,
-            cur_y,
-            font,
-            w,
-            resolve(cor, theme),
-        );
-        cur_y += font + ph2d_tokens::control_gap_px();
+        cur_y = super::rows::aviso(scene, text_system, theme, x, w, cur_y, &m, cor);
     }
     cur_y
 }

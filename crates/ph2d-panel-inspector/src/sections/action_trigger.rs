@@ -91,6 +91,7 @@ fn lista(
     info: &InspectorActionTriggerInfo,
     escolhida: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     for (i, (row, &id)) in info
@@ -157,7 +158,7 @@ fn lista(
         );
         cur_y += ROW_H;
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões da lista. Devolve o `y` seguinte.
@@ -176,63 +177,20 @@ fn botoes(
     // ⚠️ **O `+` DESAPARECE no tecto** e não fica cinzento a mentir — a lei das irmãs.
     let pode_juntar = info.rows.len() < crate::ids::INSP_TRIGGER_ROW.len();
     let pode_tirar = !info.rows.is_empty();
-    let n = usize::from(pode_juntar) + usize::from(pode_tirar);
-    if n == 0 {
-        return y;
-    }
-    // ⭐ **A fileira mede as PALAVRAS, nunca partes iguais** — `segment_rects_for` (a lei que a
-    //    `line/UIUX` fechou a ZERO em 2026-09-19). *Uma média não é um máximo: a fileira pode
-    //    caber inteira e cortar a peça mais larga na mesma.*
-    let mut rotulos: Vec<&str> = Vec::with_capacity(n);
-    if pode_juntar {
-        rotulos.push(tr("panel.inspector.trigger.plus_add_trigger"));
-    }
-    if pode_tirar {
-        rotulos.push(tr("panel.inspector.trigger.x_remove_trigger"));
-    }
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    if pode_juntar {
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(ids::INSP_TRIGGER_ADD, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TRIGGER_ADD,
-                tr("panel.inspector.trigger.plus_add_trigger"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TRIGGER_ADD))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    if pode_tirar {
-        let (rect, group) = seg[cell];
-        hit_index.register(ids::INSP_TRIGGER_REMOVE, rect);
-        paint_button(
-            &Button::new(
-                ids::INSP_TRIGGER_REMOVE,
-                tr("panel.inspector.trigger.x_remove_trigger"),
-            )
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TRIGGER_REMOVE))
-            .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (pode_juntar, ids::INSP_TRIGGER_ADD, tr("panel.inspector.trigger.plus_add_trigger")),
+            (pode_tirar, ids::INSP_TRIGGER_REMOVE, tr("panel.inspector.trigger.x_remove_trigger")),
+        ],
+    )
 }
 
 /// A linha do chip da aresta. Devolve o `y` seguinte.

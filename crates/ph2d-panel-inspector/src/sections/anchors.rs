@@ -78,6 +78,7 @@ fn anchor_list(
     info: &InspectorAnchorInfo,
     selected: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     // ⚠️ `zip` com o array de ids: se a lista tiver mais âncoras do que ids (impossível
@@ -158,7 +159,7 @@ fn anchor_list(
         );
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// O editor da âncora selecionada. Devolve o `y` seguinte.
@@ -408,17 +409,17 @@ pub(crate) fn paint_anchors_section(
     if info.mount_pick_is_useful() {
         // O rótulo só existe quando há a OUTRA metade de que se distinguir. Sozinho, ele seria
         // ruído: uma seção com uma lista só não precisa de dizer de quem ela é.
-        paint_text(
-            text_system,
+        cur_y = super::rows::rotulo_do_bloco(
             scene,
-            tr("panel.inspector.anchors.this_object_s_anchors"),
+            text_system,
+            theme,
             x,
-            cur_y,
-            font,
             w,
-            resolve(ColorToken::Text3, theme),
+            cur_y,
+            tr("panel.inspector.anchors.this_object_s_anchors"),
         );
-        cur_y += font + ph2d_tokens::control_gap_px();
+        // O rótulo traz o vão até à lista; o da lista só existe sem rótulo.
+        cur_y -= super::rows::antes_da_lista(0.0);
     }
 
     if info.rows.is_empty() {

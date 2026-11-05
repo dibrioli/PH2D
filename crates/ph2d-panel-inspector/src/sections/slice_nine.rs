@@ -17,7 +17,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 
@@ -163,6 +163,18 @@ pub(super) fn hint(
     y: f32,
     text: &str,
 ) -> f32 {
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        return super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            text,
+            ColorToken::Text3,
+        ) - y;
+    }
     let h = paint_text_block(
         text_system,
         scene,
@@ -261,7 +273,8 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        Rotulo::de_campos(&bordas(BORDA_LT[0].key(), BORDA_LT[1].key()), &BORDA_LT),
+        Rotulo::de_campos(&bordas(BORDA_LT[0].key(), BORDA_LT[1].key()), &BORDA_LT)
+            .eixos(Eixos::Letras(&["L", "T"])),
         &[ids::INSP_SLICE_BORDER[0], ids::INSP_SLICE_BORDER[1]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -276,7 +289,8 @@ pub(crate) fn paint_slice_section(
         x,
         w,
         cur_y,
-        Rotulo::de_campos(&bordas(BORDA_RB[0].key(), BORDA_RB[1].key()), &BORDA_RB),
+        Rotulo::de_campos(&bordas(BORDA_RB[0].key(), BORDA_RB[1].key()), &BORDA_RB)
+            .eixos(Eixos::Letras(&["R", "B"])),
         &[ids::INSP_SLICE_BORDER[2], ids::INSP_SLICE_BORDER[3]],
         1.0,
         Some(ph2d_editor_core::widget::Unit::Px),
@@ -292,7 +306,7 @@ pub(crate) fn paint_slice_section(
         w,
         cur_y,
         Rotulo::de_campo(&tamanho(), TextKey::new("component.field.slice_nine.7"))
-            .eixos(ph2d_editor_core::widget::key_mark::Eixos::Tamanho),
+            .eixos(Eixos::Tamanho),
         &[ids::INSP_SLICE_SIZE[0], ids::INSP_SLICE_SIZE[1]],
         SIZE_STEP,
         Some(ph2d_editor_core::widget::Unit::Meters),

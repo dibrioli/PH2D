@@ -415,7 +415,16 @@ fn editor(
         w,
         resolve(ColorToken::Text2, theme),
     );
-    cur_y += font + ph2d_tokens::control_gap_px();
+    cur_y = super::rows::titulo_de_grupo(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.animation.signals_empty_silent"),
+        ColorToken::Text2,
+    );
     cur_y = text_row(
         scene,
         text_system,

@@ -161,6 +161,12 @@ pub(super) fn subtitle(
     text: &str,
 ) -> f32 {
     let font = TypeToken::Sm.px();
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let y = if em_cartao {
+        y + ph2d_card_stack::metrics::GROUP_TOP
+    } else {
+        y
+    };
     ph2d_editor_core::paint::paint_text_title(
         text_system,
         scene,
@@ -171,7 +177,11 @@ pub(super) fn subtitle(
         w,
         resolve(ColorToken::Text1, theme),
     );
-    y + font + ph2d_tokens::control_gap_px()
+    if em_cartao {
+        y + font + ph2d_card_stack::metrics::FIELD_ROW_GAP
+    } else {
+        y + font + ph2d_tokens::control_gap_px()
+    }
 }
 
 /// Um botão-ícone quadrado de uma fileira; o rótulo fica como nome acessível.

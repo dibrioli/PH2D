@@ -78,6 +78,7 @@ pub(super) fn lista(
     ids_linha: &[ph2d_a11y::NodeId],
     selected: usize,
 ) -> f32 {
+    let y = super::rows::antes_da_lista(y);
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
     for (i, ((texto, avisa), &id)) in linhas.iter().zip(ids_linha.iter()).enumerate() {
@@ -122,7 +123,7 @@ pub(super) fn lista(
         );
         cur_y += ROW_H;
     }
-    cur_y + ph2d_tokens::control_gap_px()
+    super::rows::depois_da_lista(cur_y)
 }
 
 /// Os dois botões de uma lista, **pela porta do grupo**.
@@ -141,43 +142,20 @@ pub(super) fn botoes(
     pode_add: bool,
     pode_remover: bool,
 ) -> f32 {
-    let n = usize::from(pode_add) + usize::from(pode_remover);
-    if n == 0 {
-        return y;
-    }
-    // ⭐ A fileira mede as PALAVRAS, e só as que de facto vão ser pintadas.
-    //    ⛔⛔ Medido em 2026-09-19: em partes iguais `x Remove Transition` recebia `118 px` e saía
-    //    `x Remove Transi…` com a fileira a caber inteira — *uma média não é um máximo*.
-    let rotulos: Vec<&str> = [(pode_add, add.1), (pode_remover, remove.1)]
-        .into_iter()
-        .filter_map(|(ativo, l)| ativo.then_some(l))
-        .collect();
-    let seg = ph2d_editor_core::widget::segment_rects_for(
-        Rect::new(x, y, w, ALTURA_DE_CAMPO),
-        &rotulos,
-        ph2d_editor_core::widget::button_label_font(),
+    super::rows::fila_de_botoes(
+        scene,
         text_system,
-    );
-    let mut cell = 0usize;
-    for (ativo, (id, rotulo)) in [(pode_add, add), (pode_remover, remove)] {
-        if !ativo {
-            continue;
-        }
-        let (rect, group) = seg[cell];
-        cell += 1;
-        hit_index.register(id, rect);
-        paint_button(
-            &Button::new(id, rotulo)
-                .kind(ButtonKind::Default)
-                .visual(store.button_visual(id))
-                .in_group(group),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    y + ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px()
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[
+            (pode_add, add.0, add.1),
+            (pode_remover, remove.0, remove.1),
+        ],
+    )
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

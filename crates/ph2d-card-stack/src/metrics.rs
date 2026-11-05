@@ -49,6 +49,8 @@ pub const LABEL_BOTTOM: f32 = 4.0;
 /// A marca de animação (ponto / losango) na linha do rótulo, à direita da caixa (D17c).
 pub const KEY_MARK_PX: f32 = 6.0;
 pub const KEY_MARK_BOX: f32 = 12.0;
+/// O vão acima do título de um grupo de linhas: o de um rótulo mais o de uma linha (05 §4, ritmo).
+pub const GROUP_TOP: f32 = LABEL_TOP + FIELD_ROW_GAP;
 
 // ── O campo ──
 pub const FIELD_H: f32 = 28.0;

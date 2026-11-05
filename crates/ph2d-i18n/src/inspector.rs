@@ -164,7 +164,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.actions.this_object" => "(this object)",
         "panel.inspector.actions.plus_add_action" => "+ Add Action",
-        "panel.inspector.actions.x_remove_action" => "x Remove Action",
+        "panel.inspector.actions.x_remove_action" => "Remove Action",
         "panel.inspector.actions.on_signal" => "on signal\u{2026}",
         "panel.inspector.actions.target_empty_this_object" => "target (empty = this object)",
         "panel.inspector.actions.timer_name_empty_all" => "timer name (empty = all)",
@@ -205,7 +205,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    descolaria a tabela do plano que a gerou.
         "panel.inspector.anchors.bounds_makes_it_a_slice" => "Bounds",
         "panel.inspector.anchors.center_makes_it_a_9" => "Center",
-        "panel.inspector.anchors.x_remove_anchor" => "x Remove Anchor",
+        "panel.inspector.anchors.x_remove_anchor" => "Remove Anchor",
         "panel.inspector.anchors.this_object_s_anchors" => "This object's anchors",
         "panel.inspector.anchors.no_anchors_on_this_sprite" => "No anchors on this sprite.",
         "panel.inspector.anchors.plus_add_anchor" => "+ Add Anchor",
@@ -462,8 +462,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.slice.continuous" => "Continuous",
         "panel.inspector.slice.whole" => "Whole",
         "panel.inspector.slice.whole_entire_tiles_so_the" => {
-            "Whole = entire tiles, so the last one meets the border. \
-                          Mirror always uses whole tiles."
+            "Whole fits entire tiles, so none is cut at the border."
         }
         "panel.inspector.sprite_sheet.offset_x" => "{offset} X",
         "panel.inspector.sprite_sheet.offset_y" => "{offset} Y",
@@ -472,7 +471,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Show the whole sheet on the canvas, around the sprite."
         }
         "panel.inspector.timers.plus_add_timer" => "+ Add Timer",
-        "panel.inspector.timers.x_remove_timer" => "x Remove Timer",
+        "panel.inspector.timers.x_remove_timer" => "Remove Timer",
         "panel.inspector.timers.timer_name" => "timer_name\u{2026}",
         "panel.inspector.timers.duration_seconds" => "Duration",
         "panel.inspector.timers.repeat" => "Repeat",
@@ -530,7 +529,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
                              M mirror, - blank."
         }
         "panel.inspector.slice.borders_pair" => "{a} / {b}",
-        "panel.inspector.slice.size_x_y_m_0" => "{size} X / Y",
+        "panel.inspector.slice.size_x_y_m_0" => "{size}",
+        "panel.inspector.slice.legend_fixed" => "F  Fixed   -  Blank",
+        "panel.inspector.slice.legend_stretch" => "S  Stretch   R  Repeat",
+        "panel.inspector.slice.legend_mirror" => "M  Mirror",
         "panel.inspector.slice.size_hint" => "0 = use the sprite size.",
         // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
         //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa

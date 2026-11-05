@@ -168,8 +168,7 @@ fn pick_row(
     no_objecto: &[InspectorTagRow],
     filtro: &str,
 ) -> f32 {
-    let (control_w, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, ROW_H);
-    let rect = Rect::new(x, y, control_w, ROW_H);
+    let (rect, dot, depois) = super::rows::caixa_do_chip(x, w, y);
     hit_index.register(crate::ids::INSP_TAGS_PICK, rect);
     let open = matches!(
         store.get(crate::ids::INSP_TAGS_PICK),
@@ -190,7 +189,7 @@ fn pick_row(
         crate::state_popovers::set_pending_tags_dd(Some(rect));
     }
     ph2d_editor_core::widget::paint_decorator_dot(scene, theme, dot);
-    y + ph2d_tokens::row_pitch_px()
+    depois
 }
 
 /// A secção inteira — cabeçalho, dobra e corpo. Devolve o `y` seguinte.

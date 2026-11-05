@@ -490,17 +490,13 @@ fn the_deposit_aa_adds_penumbra_where_saturation_does_not_eat_it() {
 /// no máximo, os bytes que divergem do oráculo estão todos num pixel com mancha E papel (`pa ≥ SS0` e
 /// `< SS0`) — ou um degrau de cor maior que `DEGRAU_MIN` — a menos do
 /// [`alcance`](super::smooth_edges::alcance) do raio; o resto fica igual; e há divergência. Voltar a `0` recompõe a
-/// tinta já pousada (é da TELA, D1 W3b): 0 bytes contra o oráculo.
+/// tinta pousada a `0` (é do traço, dono 04/11): 0 bytes contra o oráculo.
 #[test]
 fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
-    assert_eq!(
-        t.paint.wetpaint.smooth_edges,
-        super::SMOOTH_EDGES_DE_FABRICA,
-        "o de fábrica"
-    );
+    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "desligado de fábrica");
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         1.0
@@ -564,11 +560,14 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
         fora_da_silhueta, 0,
         "o Smooth Edges mexeu em {fora_da_silhueta} pixels longe da orla ({na_silhueta} nela)"
     );
+    // É do traço (dono 04/11): o desligado é a tinta pousada a 0.
+    let mut t = wet_tool(1);
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         0.0
     )));
     assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "o slider no zero");
+    stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
     let (pig, base) = (&sess.planos.pigment, &sess.base);

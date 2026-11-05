@@ -92,6 +92,9 @@ pub struct Grid {
     /// **A APARÊNCIA da tinta** (W3b, [`aparencia`]): os controlos do pincel que o ecrã lê, guardados no pouso. VAZIA
     /// (= NEUTRA) até o primeiro pincel fora da fábrica pintar.
     pub aparencia: Vec<aparencia::AparenciaCelula>,
+    /// O maior [`aparencia::AparenciaCelula::suave`] pousado aqui ([`aparencia::teto_do_suave`]): `0` = quem não usa o
+    /// Smooth Edges não paga nem a leitura do campo.
+    pub suave_teto: f32,
     /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
     /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
     pub oleo: Vec<oleo_celula::OleoCelula>,
@@ -288,6 +291,7 @@ impl Grid {
             vela: vec![0.0; n],
             material: Vec::new(),
             aparencia: Vec::new(),
+            suave_teto: 0.0,
             oleo: Vec::new(),
             oleo_real: false,
             oleo_antes: Vec::new(),

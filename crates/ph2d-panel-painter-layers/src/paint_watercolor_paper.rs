@@ -299,7 +299,7 @@ fn paint_tooth_row(
 }
 
 /// ── Smooth Edges (só o Wet Paint): da TELA (D1 do dono, 27/10: «para todo o papel, de todos os traços já pintados
-///    ou futuros») — amacia a silhueta de toda a tinta, a cor e, com o Óleo Real, o relevo. `0,12` de fábrica.
+///    ou futuros») — amacia a silhueta de toda a tinta, a cor e, com o Óleo Real, o relevo. `0` de fábrica.
 fn paint_smooth_edges_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

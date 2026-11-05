@@ -9,7 +9,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// A aparência da tinta de uma célula (20 B).
+/// A aparência da tinta de uma célula (24 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AparenciaCelula {
     /// [`Knob::PaperVisibility`] da tinta (o mestre do papel impresso nela).
@@ -25,6 +25,9 @@ pub struct AparenciaCelula {
     /// [`Knob::Opaque`] da tinta: a fracção com que o ecrã a prende ao segmento das duas tintas
     /// ([`crate::assenta::Ecra::com_opaca`]); `0` = a lei da aguarela.
     pub opaca: f32,
+    /// O **Smooth Edges** da tinta (`0..1`; dono 04/11: é do TRAÇO, cada pincel o seu): cada borda amacia pelo dela, na
+    /// cor e no relevo; mudar o controlo não recompõe o que já está pintado.
+    pub suave: f32,
 }
 
 impl AparenciaCelula {
@@ -35,6 +38,7 @@ impl AparenciaCelula {
         vidrado: 0.0,
         textura: 0.0,
         opaca: 0.0,
+        suave: 0.0,
     };
 }
 
@@ -53,6 +57,7 @@ pub fn do_pincel(p: &Params) -> AparenciaCelula {
         vidrado: p.vidrado,
         textura: p.textura,
         opaca: p.k(Knob::Opaque) as f32,
+        suave: p.suave,
     }
 }
 
@@ -77,6 +82,67 @@ pub fn opaca(campo: &[AparenciaCelula], i: usize) -> f32 {
     campo.get(i).map_or(0.0, |a| a.opaca)
 }
 
+/// Em quantos degraus a força se reparte ao AMACIAR (`raio = degrau ÷ 25 × 6 px`, 0,24 px por degrau): o valor pousado
+/// é contínuo (a mistura pela massa) e cada raio presente na região é um desfoque. O recurso é o quadro.
+pub const DEGRAUS_DO_SUAVE: u8 = 25;
+/// O raio do alisamento no máximo do controlo, px (medido na prancha de 10/10, `05` §4b).
+pub const SUAVE_RAIO_MAX_PX: f32 = 6.0;
+
+/// O degrau de uma força `0..1`.
+#[inline]
+#[must_use]
+pub fn degrau_do_suave(forca: f32) -> u8 {
+    (forca.clamp(0.0, 1.0) * f32::from(DEGRAUS_DO_SUAVE)).round() as u8
+}
+
+/// O raio do degrau `d`, px.
+#[inline]
+#[must_use]
+pub fn raio_do_degrau(d: u8) -> f32 {
+    f32::from(d) / f32::from(DEGRAUS_DO_SUAVE) * SUAVE_RAIO_MAX_PX
+}
+
+/// O Smooth Edges que se vê na célula `i`: o da camada de baixo com tinta e cada camada visível por cima pela cobertura
+/// dela (a lei do Gloss visto, `oleo_campo`); `0` sem tinta.
+#[must_use]
+pub fn suave_visto(camadas: &[(&Grid, bool)], i: usize) -> f32 {
+    let mut q: Option<f64> = None;
+    for &(g, visivel) in camadas {
+        if !visivel {
+            continue;
+        }
+        let m = f64::from(g.sett[i]) + f64::from(g.susp[i]);
+        if m > 0.0 {
+            let b = f64::from(da_celula(&g.aparencia, i).suave);
+            let alfa = crate::opacity::alpha_of_mass(m);
+            q = Some(q.map_or(b, |q| q + (b - q) * alfa));
+        }
+    }
+    q.unwrap_or(0.0) as f32
+}
+
+/// O maior Smooth Edges que as camadas visíveis já pousaram (`0` = ninguém: todo o caminho de antes, ao byte). É um
+/// tecto, só desce com a tela limpa: apagar uma tinta suave ainda tem de recompor a orla que ela deixou.
+#[must_use]
+pub fn teto_do_suave(camadas: &[(&Grid, bool)]) -> f32 {
+    camadas
+        .iter()
+        .filter(|&&(_, v)| v)
+        .fold(0.0, |t, &(g, _)| t.max(g.suave_teto))
+}
+
+/// O raio máximo, px, que o tecto pode dar a uma célula (o degrau arredonda): o alcance de uma mudança e a janela do
+/// campo lêem-no; `0` = o caminho de antes.
+#[must_use]
+pub fn raio_do_teto(camadas: &[(&Grid, bool)]) -> f32 {
+    raio_do_degrau(degrau_do_suave(teto_do_suave(camadas)))
+}
+
+/// As portas que reescrevem o campo inteiro (o instantâneo, o histórico) recontam o tecto: nunca o baixam.
+pub fn reconta_teto(g: &mut Grid) {
+    g.suave_teto = g.aparencia.iter().fold(g.suave_teto, |t, a| t.max(a.suave));
+}
+
 /// Pousa `v` de massa com a aparência `nova` sobre a célula `i`, que tinha `m_old` (susp + sett): a média pela massa
 /// (a lei do relevo); o papel limpo recebe a do pincel. Sem o campo, a tinta NEUTRA não o aloca.
 pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) {
@@ -86,6 +152,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
         }
         g.aparencia = vec![AparenciaCelula::NEUTRA; g.cells];
     }
+    g.suave_teto = g.suave_teto.max(nova.suave);
     let a = g.aparencia[i];
     if a != nova {
         g.aparencia[i] = if m_old > 0.0 {
@@ -97,6 +164,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
                 vidrado: m(a.vidrado, nova.vidrado),
                 textura: m(a.textura, nova.textura),
                 opaca: m(a.opaca, nova.opaca),
+                suave: m(a.suave, nova.suave),
             }
         } else {
             nova
@@ -107,6 +175,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
 /// Devolve a janela de um recorte (`linhas`); vazio = a grade não tinha o campo ⇒ a janela volta a NEUTRA.
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[AparenciaCelula]) {
     let (n, s) = (g.cells, g.s);
+    g.suave_teto = linhas.iter().fold(g.suave_teto, |t, a| t.max(a.suave));
     super::altura::restaura_campo(
         &mut g.aparencia,
         n,

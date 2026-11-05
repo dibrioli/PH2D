@@ -119,9 +119,8 @@ pub(crate) struct WetPaintState {
     /// ([`Self::textura_por_slot`]), como o Glaze.
     pub(super) paper_visual: bool,
     /// **Smooth Edges** (dono 09/10; intensidade `0..1` desde 10/10): a silhueta da mancha com meio-tom,
-    /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte; `1` = o
-    /// checkbox ligado de antes, ao byte; no meio, a cobertura da orla entre os dois. É da TELA (D1 W3b, cartão
-    /// Paper); com o Óleo Real amacia a silhueta no campo de altura (`oleo_real::amacia_a_silhueta`).
+    /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte. É do TRAÇO (dono
+    /// 04/11): pousa na célula (`grid::aparencia::suave`); na cor e no relevo (`oleo_real::amacia_a_silhueta`).
     pub(super) smooth_edges: f32,
     /// **Absorbency** (E10d2): a taxa com que o papel bebe a água do filme, em múltiplos da de fábrica
     /// (`Sim::absorcao`, [`ph2d_wet_paint::sim::ABSORCAO_NEUTRA`] = o motor de antes, ao bit). É da TELA (secção
@@ -224,7 +223,7 @@ impl Default for WetPaintState {
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
-            smooth_edges: SMOOTH_EDGES_DE_FABRICA,
+            smooth_edges: 0.0,
             absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
             oleo_real: None,
             oleo_na_tela: false,
@@ -426,6 +425,8 @@ mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união do
 mod por_quadro_tests;
 #[cfg(test)]
 mod sonda_r3_facas; // R3: células e ms da composição nas facas do oráculo 4K
+#[cfg(test)]
+mod suave_por_traco_tests; // o Smooth Edges pousa com a tinta: cada borda lê o seu (dono 04/11)
 mod veu; // o véu do Show-wet sobre o composite — filho por LOC // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula
 #[cfg(test)]
 pub(in crate::tool::paint) use oleo_plano::{
@@ -433,8 +434,6 @@ pub(in crate::tool::paint) use oleo_plano::{
 };
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
 mod mascara;
-/// O Smooth Edges da tela ao abrir (dono 04/11, Bug #62: a borda dura e pixelada; 0,12 foi o que ele testou).
-pub const SMOOTH_EDGES_DE_FABRICA: f32 = 0.12;
 
 mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (dono 09/10)
 #[cfg(test)]

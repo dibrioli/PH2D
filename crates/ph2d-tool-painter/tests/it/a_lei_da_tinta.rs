@@ -52,7 +52,6 @@ const CENAS: [(&str, bool, u64); 20] = [
 fn cena(preset: &str, obra: bool) -> u64 {
     let mut t = tela();
     t.set_wet_relogio_fixo(true);
-    t.set_wet_smooth_edges(0.0); // os hashes medem a lei da obra
     assert!(t.wet_preset_aplicar(&de_fabrica(preset)).is_empty());
     t.set_brush_size_px(RAIO_DA_CENA);
     if obra {

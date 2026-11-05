@@ -14,6 +14,7 @@ impl PainterTool {
             km_mixing: w.km_mixing,
             km_glaze: w.km_glaze,
             textura: w.paper_visual,
+            suave: w.smooth_edges,
             oleo: w.oleo_real.is_some(),
             pigment_mix: if self.paint.brush.pigment {
                 self.paint.brush.pigment_mix.clamp(0.0, 1.0)

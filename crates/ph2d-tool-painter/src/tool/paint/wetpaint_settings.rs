@@ -566,10 +566,7 @@ impl PainterTool {
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
-            // Da TELA (D1): a tinta pousada muda — a recomposição corre no tick, 1×/quadro (`oleo_no_quadro`).
-            if self.guarda_smooth_edges(v as f32) {
-                self.wet_recompoe_no_quadro();
-            }
+            self.set_wet_smooth_edges(v as f32);
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {

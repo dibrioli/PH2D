@@ -149,6 +149,7 @@ impl PainterTool {
                 Some(CaixasDaOtica {
                     caixa_cel: c.caixa_cel,
                     caixa_px: c.caixa_px,
+                    caixa_suave: c.caixa_suave,
                     sem_oleo: c.sem_oleo,
                 }),
                 c.veu,

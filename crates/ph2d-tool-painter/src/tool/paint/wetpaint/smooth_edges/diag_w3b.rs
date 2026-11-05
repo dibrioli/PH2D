@@ -17,6 +17,11 @@ const H: u32 = 200;
 /// Um traço quase horizontal (y 90 → 102) de 40 px do pincel de fábrica `nome`, Óleo Real ligado, Smooth Edges 0,
 /// numa tela 700 × 200 — e a água parada.
 fn um_traco(nome: &str, cold: bool) -> PainterTool {
+    um_traco_a(nome, cold, 0.0)
+}
+
+/// [`um_traco`] com o Smooth Edges `suave` pousado na tinta.
+fn um_traco_a(nome: &str, cold: bool, suave: f32) -> PainterTool {
     let (w, h) = (W, H);
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; (w * h * 4) as usize], w, h);
@@ -29,7 +34,7 @@ fn um_traco(nome: &str, cold: bool) -> PainterTool {
         t.set_substrate_depth(0.6);
     }
     t.set_wet_oleo_real_ligado(true);
-    t.set_wet_smooth_edges(0.0);
+    t.set_wet_smooth_edges(suave);
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([30, 70, 210]);
     let (a, z) = ([60.0f32, 90.0f32], [640.0f32, 102.0f32]);
@@ -133,17 +138,6 @@ fn a_orla_do_dabber_nao_tem_pontinhos_escuros_na_tela() {
     );
 }
 
-/// A varredura do tick até fechar (a do painel, `oleo_no_quadro`).
-fn varre(t: &mut PainterTool) -> usize {
-    let mut q = 0;
-    while t.oleo_por_compor() {
-        t.on_tick(0.0);
-        q += 1;
-        assert!(q < 10_000, "a varredura não fecha");
-    }
-    q
-}
-
 fn mexe(t: &mut PainterTool, v: f64) {
     t.handle_panel_event(ph2d_editor_core::tool::PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
@@ -151,12 +145,10 @@ fn mexe(t: &mut PainterTool, v: f64) {
     ));
 }
 
-/// ⭐ D1 W3b (dono 27/10: «Smooth Edges deve ser para todo o papel, de todos os traços já pintados ou futuros»):
-/// **o Smooth Edges é da TELA** — mexer nele muda a tinta JÁ pousada, com e sem o Óleo Real; os eventos do
-/// arrasto não recompõem (a varredura corre no tick, 1×/quadro); voltar a `0` é a tela de antes, ao bit (o
-/// raio está na chave do campo guardado).
+/// ⭐ Dono 04/11 (revoga a D1 de 27/10): **o Smooth Edges é do TRAÇO** — mexer no controlo não muda a tinta pousada, com
+/// e sem o Óleo Real, nem pede varredura.
 #[test]
-fn o_smooth_edges_e_da_tela_muda_a_tinta_antiga_no_quadro_e_volta_ao_bit() {
+fn o_smooth_edges_e_do_traco_e_nao_muda_a_tinta_antiga() {
     for oleo in [true, false] {
         let mut t = um_traco("Dabber", false);
         if !oleo {
@@ -166,41 +158,21 @@ fn o_smooth_edges_e_da_tela_muda_a_tinta_antiga_no_quadro_e_volta_ao_bit() {
         for v in [0.3, 0.6, 1.0] {
             mexe(&mut t, v);
         }
-        assert_eq!(
-            t.canvas_rgba.to_vec(),
-            a,
-            "óleo {oleo}: o evento recompôs a tela"
-        );
-        assert!(
-            t.oleo_por_compor(),
-            "óleo {oleo}: o Smooth Edges não pediu a varredura"
-        );
-        let quadros = varre(&mut t);
+        assert!(!t.oleo_por_compor(), "óleo {oleo}: pediu a varredura");
+        for _ in 0..4 {
+            t.on_tick(0.0);
+        }
         let mudou = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
-        println!(
-            "[smooth da tela] óleo {oleo}: {mudou} bytes da tinta antiga em {quadros} quadros"
-        );
-        assert!(
-            mudou > 0,
-            "óleo {oleo}: o Smooth Edges não mudou a tinta já pousada"
-        );
-        mexe(&mut t, 0.0);
-        varre(&mut t);
-        let resto = t.canvas_rgba.iter().zip(&a).filter(|(x, y)| x != y).count();
-        assert_eq!(
-            resto, 0,
-            "óleo {oleo}: voltar a 0 deixou {resto} bytes diferentes"
-        );
+        assert_eq!(mudou, 0, "óleo {oleo}: a tinta pousada mudou");
     }
 }
 
-/// ⭐ D1 W3b: **com o Óleo Real o Smooth Edges age no RELEVO** — a sombra que a tinta projecta no papel (que só o
-/// campo de altura decide) muda com ele. Controlo: a lei de antes (`so_na_cor`, só a cor) não a muda.
+/// ⭐ D1 W3b, que fica: **com o Óleo Real o Smooth Edges age no RELEVO** — a sombra que a tinta projecta no papel (que só
+/// o campo de altura decide) muda com o valor pousado. Controlo: a lei só da cor (`so_na_cor`) não a muda.
 #[test]
 fn com_o_oleo_o_smooth_edges_muda_a_sombra_no_papel() {
     for so_na_cor in [false, true] {
         super::so_na_cor::set(so_na_cor);
-        let mut t = um_traco("Dabber", false);
         let sombra = |t: &PainterTool| {
             t.paint
                 .wetpaint
@@ -211,9 +183,9 @@ fn com_o_oleo_o_smooth_edges_muda_a_sombra_no_papel() {
                 .sombra
                 .clone()
         };
-        let s0 = sombra(&t);
-        t.set_wet_smooth_edges(1.0);
-        let n = sombra(&t).iter().zip(&s0).filter(|(x, y)| x != y).count();
+        let s0 = sombra(&um_traco_a("Dabber", false, 0.0));
+        let s1 = sombra(&um_traco_a("Dabber", false, 1.0));
+        let n = s1.iter().zip(&s0).filter(|(x, y)| x != y).count();
         super::so_na_cor::set(false);
         println!(
             "[smooth no relevo] só na cor {so_na_cor}: {n} células da sombra no papel mudaram"
@@ -268,8 +240,7 @@ fn com_o_oleo_o_halo_do_smooth_edges_nao_tem_vaos_brancos() {
     let mut n = [0usize; 2];
     for (k, so) in [false, true].into_iter().enumerate() {
         super::so_na_cor::set(so);
-        let mut t = um_traco("Dabber", false);
-        t.set_wet_smooth_edges(1.0);
+        let mut t = um_traco_a("Dabber", false, 1.0);
         // A tela que se vê (com a luz do relevo): é nela que os vãos saltam.
         let mut px = t.run_full().0;
         t.apply_impasto_light(
@@ -300,8 +271,7 @@ fn com_o_oleo_o_halo_do_smooth_edges_nao_tem_vaos_brancos() {
 fn com_o_oleo_a_orla_da_tinta_e_a_do_campo() {
     let corre = |sem: bool| {
         super::sem_suave::set(sem);
-        let mut t = um_traco("Dabber", false);
-        t.set_wet_smooth_edges(1.0);
+        let t = um_traco_a("Dabber", false, 1.0);
         super::sem_suave::set(false);
         t
     };
@@ -364,9 +334,8 @@ fn medida_smooth_edges_relevo_folha() {
     let (w, h) = (W, H);
     for (nome, so) in [("antes", true), ("depois", false)] {
         super::so_na_cor::set(so);
-        let mut t = um_traco("Dabber", false);
         for s in [0.0f32, 0.5, 1.0] {
-            t.set_wet_smooth_edges(s);
+            let mut t = um_traco_a("Dabber", false, s);
             let mut px = t.run_full().0;
             t.apply_impasto_light(&mut px, crate::Region { x: 0, y: 0, w, h });
             let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();

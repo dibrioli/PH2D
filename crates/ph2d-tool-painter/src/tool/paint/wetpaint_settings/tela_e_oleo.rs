@@ -3,24 +3,15 @@
 use super::*;
 
 impl PainterTool {
-    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`). É da TELA (dono 27/10, D1: «para todo o
-    /// papel, de todos os traços já pintados ou futuros»; mora no cartão Paper): mudá-la recompõe a tela inteira.
+    /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`). É do TRAÇO (dono 04/11: «cada pincel deve ter
+    /// o seu»): vale para a tinta que se pousar daqui em diante; o que já está pintado não muda nem recompõe.
     pub fn set_wet_smooth_edges(&mut self, forca: f32) {
-        if self.guarda_smooth_edges(forca) {
-            self.wet_recomposite_full();
-        }
-    }
-
-    /// Guarda o Smooth Edges; `true` = mudou.
-    pub(in crate::tool::paint) fn guarda_smooth_edges(&mut self, forca: f32) -> bool {
         let forca = if forca.is_nan() {
             0.0
         } else {
             forca.clamp(0.0, 1.0)
         };
-        let muda = self.paint.wetpaint.smooth_edges != forca;
         self.paint.wetpaint.smooth_edges = forca;
-        muda
     }
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).

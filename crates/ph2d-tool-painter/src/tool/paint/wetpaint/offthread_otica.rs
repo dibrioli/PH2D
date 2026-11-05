@@ -73,6 +73,9 @@ pub(in crate::tool::paint::wetpaint) struct CaixasDaImagem {
     /// `None` = o plano ficou VAZIO (sem campo do óleo), como a óptica o deixa.
     pub(in crate::tool::paint::wetpaint) sombra: Option<Vec<u8>>,
     pub(in crate::tool::paint::wetpaint) grao: Option<Vec<u8>>,
+    /// O plano do Smooth Edges, na caixa dele (`None` = vazio, como a óptica o deixa).
+    pub(in crate::tool::paint::wetpaint) suave: Option<Vec<u8>>,
+    pub(in crate::tool::paint::wetpaint) caixa_suave: CaixaCel,
     pub(in crate::tool::paint::wetpaint) sem_oleo: SemOleo,
     pub(in crate::tool::paint::wetpaint) veu: Option<VeuDaCaixa>,
 }
@@ -111,13 +114,17 @@ impl Imagem {
         };
         let (gw, gh) = grade;
         cola(&mut planos.pigment, 4, gw, c.caixa_cel, &c.pigmento);
-        for (plano, caixa) in [(&mut planos.sombra, &c.sombra), (&mut planos.grao, &c.grao)] {
+        for (plano, caixa, onde) in [
+            (&mut planos.sombra, &c.sombra, c.caixa_cel),
+            (&mut planos.grao, &c.grao, c.caixa_cel),
+            (&mut planos.suave, &c.suave, c.caixa_suave),
+        ] {
             match caixa {
                 Some(b) => {
                     if plano.len() != gw * gh {
                         *plano = vec![0u8; gw * gh];
                     }
-                    cola(plano, 1, gw, c.caixa_cel, b);
+                    cola(plano, 1, gw, onde, b);
                 }
                 None if !plano.is_empty() => *plano = Vec::new(),
                 None => {}
@@ -386,6 +393,9 @@ fn caixas_da_imagem(
         pigmento: recorta(&planos.pigment, 4, gw, c.caixa_cel),
         sombra: corta(&planos.sombra),
         grao: corta(&planos.grao),
+        suave: (planos.suave.len() == gw * gh)
+            .then(|| recorta(&planos.suave, 1, gw, c.caixa_suave)),
+        caixa_suave: c.caixa_suave,
         sem_oleo: c.sem_oleo,
         veu,
     }

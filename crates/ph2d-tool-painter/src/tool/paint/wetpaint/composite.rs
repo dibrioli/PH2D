@@ -16,7 +16,6 @@ pub(super) struct AntesDaOtica {
         super::super::watercolor_accum::SplatGate,
     ),
     camada: Option<crate::layers::LayerId>,
-    raio: f32,
     linhas: Option<bool>,
     marca: Option<u64>,
     exata: bool,
@@ -82,8 +81,6 @@ impl PainterTool {
         let camada = self.layers.active().filter(|&id| !self.layers.is_mask(id));
         #[cfg(test)]
         let camada = camada.filter(|_| !self.sem_vidro);
-        // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`, px); `0` = desligado. É da TELA (D1 W3b).
-        let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
         // As linhas que o Smooth Edges procura dentro da tinta: as da GRAVIDADE (o eixo mais perto dela).
         let wp = &self.paint.wetpaint;
         let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
@@ -105,7 +102,6 @@ impl PainterTool {
             tela: (w, h),
             gates,
             camada,
-            raio,
             linhas,
             marca,
             exata,
@@ -175,14 +171,7 @@ impl PainterTool {
     ) {
         let (w, h) = antes.tela;
         let (gate_sel, gate_prot, gate_alock) = &antes.gates;
-        let (camada, raio, linhas, marca, exata) = (
-            antes.camada,
-            antes.raio,
-            antes.linhas,
-            antes.marca,
-            antes.exata,
-        );
-        let suave = raio > 0.0;
+        let (camada, linhas, marca, exata) = (antes.camada, antes.linhas, antes.marca, antes.exata);
         // O que a óptica escreve na ferramenta volta na saída.
         let oleo = saida.oleo;
         self.paint.wetpaint.oleo_na_tela = oleo.is_some();
@@ -201,6 +190,7 @@ impl PainterTool {
         let Some(super::composite_otica::CaixasDaOtica {
             caixa_cel,
             caixa_px: (px0, py0, px1, py1),
+            caixa_suave: _,
             sem_oleo,
         }) = saida.caixas
         else {
@@ -302,6 +292,7 @@ impl PainterTool {
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base, sombra) = (&sess.planos.pigment, &sess.base, &sess.planos.sombra);
         let grao_cel = &sess.planos.grao;
+        let plano_suave: &[u8] = &sess.planos.suave;
         let rr = usize::from(ratio);
         let modo = sess.blend;
         let base_da_marca = marca.map(|_| Arc::clone(&sess.base));
@@ -328,18 +319,37 @@ impl PainterTool {
         #[cfg(test)]
         let orla = orla || super::smooth_edges::so_na_cor::get();
         #[cfg(test)]
-        let suave = suave && !super::smooth_edges::sem_suave::get();
-        let suavizada = suave.then(|| {
-            super::smooth_edges::Suave::nova(
-                sampler,
-                (pigment, stride),
+        let plano_suave: &[u8] = if super::smooth_edges::sem_suave::get() {
+            &[]
+        } else {
+            plano_suave
+        };
+        let suavizada = super::smooth_edges::Suaves::nova(
+            sampler,
+            (pigment, stride),
+            (plano_suave, gw, gh),
+            (w, h),
+            (px0, py0, px1, py1),
+            rr,
+            linhas,
+            orla,
+        );
+        #[cfg(test)]
+        let suavizada = match super::smooth_edges::raio_escalar::get() {
+            Some(r) => Some(super::smooth_edges::Suaves::escalar(
+                super::smooth_edges::Suave::nova(
+                    sampler,
+                    (pigment, stride),
+                    (w, h),
+                    (px0, py0, px1, py1),
+                    r,
+                    linhas,
+                    orla,
+                ),
                 (w, h),
-                (px0, py0, px1, py1),
-                raio,
-                linhas,
-                orla,
-            )
-        });
+            )),
+            None => suavizada,
+        };
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
             .zip(vlinhas.into_par_iter())

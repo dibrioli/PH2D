@@ -111,6 +111,7 @@ impl crate::grid::Grid {
             vela,
             material,
             aparencia,
+            suave_teto: _,
             oleo,
             oleo_real: _,
             oleo_antes,

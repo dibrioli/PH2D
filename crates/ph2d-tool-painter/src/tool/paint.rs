@@ -138,7 +138,6 @@ pub(crate) use symmetry::SymmetryPick;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 mod wet_editable;
-pub(super) use wetpaint::SMOOTH_EDGES_DE_FABRICA;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod blend_vazio_settings; // a porta do painel do modo sobre o vazio (L7)

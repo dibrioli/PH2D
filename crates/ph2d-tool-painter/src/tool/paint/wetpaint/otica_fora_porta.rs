@@ -48,6 +48,7 @@ fn copia_a_caixa(
     de: &PlanosDaOtica,
     para: &mut PlanosDaOtica,
     (cx0, cy0, cx1, cy1): (usize, usize, usize, usize),
+    caixa_suave: (usize, usize, usize, usize),
     gw: usize,
     gh: usize,
 ) {
@@ -78,6 +79,7 @@ fn copia_a_caixa(
     plano(&de.pigment, &mut para.pigment, gw * gh, 4, caixa, gw);
     plano(&de.sombra, &mut para.sombra, gw * gh, 1, caixa, gw);
     plano(&de.grao, &mut para.grao, gw * gh, 1, caixa, gw);
+    plano(&de.suave, &mut para.suave, gw * gh, 1, caixa_suave, gw);
 }
 
 impl crate::PainterTool {
@@ -110,7 +112,14 @@ impl crate::PainterTool {
         // 1. O fio da tela copia as caixas para os planos da sessão.
         if let Some(c) = &saida.caixas {
             CAIXAS.with(|n| n.set(n.get() + 1));
-            copia_a_caixa(&p.trabalho, &mut sess.planos, c.caixa_cel, gw, gh);
+            copia_a_caixa(
+                &p.trabalho,
+                &mut sess.planos,
+                c.caixa_cel,
+                c.caixa_suave,
+                gw,
+                gh,
+            );
         }
         let ativa = sess.engine.active_layer;
         {

@@ -8,8 +8,8 @@ use ph2d_wet_paint::oleo_real::OleoReal;
 use ph2d_wet_paint::render::{PigmentVisual, RenderLayer};
 
 /// Os interruptores de teste que a óptica lê, capturados por quem a pede (um `thread_local!` não se vê noutra
-/// thread). Os que a óptica lê no fio da tela ficam ASSADOS no valor: `smooth_edges::so_na_cor` no `suave_px` do
-/// [`FactosDaOtica::oleo`], `grao_no_filme::sem_grao` no [`FactosDaOtica::tem_grao`].
+/// thread). Os que a óptica lê no fio da tela ficam ASSADOS no valor: `grao_no_filme::sem_grao` no
+/// [`FactosDaOtica::tem_grao`].
 #[cfg(test)]
 #[derive(Clone, Copy)]
 pub(super) struct InterruptoresDaOtica {
@@ -22,17 +22,17 @@ pub(super) struct InterruptoresDaOtica {
     /// [`super::oleo_plano::lei_da_caixa`] ligado ⇒ `Some(há cartão do Óleo Real)`, a decisão que substitui a das
     /// grades.
     pub(super) lei_da_caixa: Option<bool>,
+    /// [`super::smooth_edges::so_na_cor`]: o campo não vê o Smooth Edges.
+    pub(super) so_na_cor: bool,
 }
 
 /// O que a óptica sabe da ferramenta — sem empréstimo nenhum.
 #[derive(Clone, Copy)]
 pub(super) struct FactosDaOtica {
     pub(super) visual: PigmentVisual,
-    /// O raio do Smooth Edges, px (`0` = desligado).
-    pub(super) raio: f32,
     /// O Óleo Real adiado (`wetpaint.oleo_adiado`): a óptica do óleo não corre.
     pub(super) oleo_adiado: bool,
-    /// Os números do Óleo Real da TELA, já construídos (papel linear, `suave_px`, `dente_papel`).
+    /// Os números do Óleo Real da TELA, já construídos (papel linear, `dente_papel`; o `suave_px` é o tecto das grades).
     pub(super) oleo: OleoReal,
     /// Há dente do papel para assar na tinta (o `GraoNoFilme` existe, se houver óleo).
     pub(super) tem_grao: bool,
@@ -53,7 +53,17 @@ impl FactosDaOtica {
         let tem_oleo = !self.oleo_adiado && layers.iter().any(|l| l.visible && l.grid.oleo_real);
         #[cfg(test)]
         let tem_oleo = self.teste.lei_da_caixa.unwrap_or(tem_oleo);
-        tem_oleo.then_some(self.oleo)
+        tem_oleo.then(|| {
+            // O alcance e a janela do campo lêem o tecto; cada célula amacia pelo dela.
+            let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+            let mut o = self.oleo;
+            o.suave_px = f64::from(ph2d_wet_paint::grid::aparencia::raio_do_teto(&grades));
+            #[cfg(test)]
+            if self.teste.so_na_cor {
+                o.suave_px = 0.0;
+            }
+            o
+        })
     }
 }
 
@@ -76,19 +86,11 @@ impl crate::PainterTool {
             // O relevo da tinta é da tinta (dono 11/10): o knob Emboss decide, com ou sem papel.
             relevo: true,
         };
-        // O raio do Smooth Edges (o slider `0..1` × `RAIO_MAX`, px); `0` = desligado. É da TELA (D1 W3b).
-        let raio = self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX;
         // W3b: o papel do documento sob a tinta (a cor que a Transmission tinge) e o dente dele (o Relevo do papel).
         let mut o = self.paint.wetpaint.oleo_real_valores;
         o.papel = self.papel.map_or([1.0; 3], |p| {
             p.map(|c| ph2d_wet_paint::colorops::transfer::srgb255_to_linear(f64::from(c)))
         });
-        // D1 W3b: o Smooth Edges amacia a SILHUETA no campo — o relevo e a cobertura seguem o mesmo contorno.
-        o.suave_px = f64::from(raio);
-        #[cfg(test)]
-        if super::smooth_edges::so_na_cor::get() {
-            o.suave_px = 0.0;
-        }
         // U2 W3b: o Paper Relief morde no estado de fábrica (Relief do papel 0) — a textura do papel na tinta tem o
         // piso de profundidade [`super::grao_no_filme::RELIEF_NA_TINTA_MIN`].
         o.dente_papel = f64::from(
@@ -97,7 +99,6 @@ impl crate::PainterTool {
         );
         FactosDaOtica {
             visual,
-            raio,
             oleo_adiado: self.paint.wetpaint.oleo_adiado,
             oleo: o,
             tem_grao,
@@ -108,6 +109,7 @@ impl crate::PainterTool {
                 papel_liso_desligado: super::oleo_plano::desligado::get(),
                 lei_da_caixa: super::oleo_plano::lei_da_caixa::get()
                     .then(|| self.paint.wetpaint.oleo_real.is_some()),
+                so_na_cor: super::smooth_edges::so_na_cor::get(),
             },
         }
     }

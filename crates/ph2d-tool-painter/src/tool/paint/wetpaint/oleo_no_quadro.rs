@@ -49,7 +49,7 @@ pub(in crate::tool::paint) fn no_evento(sim: bool) {
 }
 
 impl PainterTool {
-    /// A porta do PAINEL: a óptica mudou (Real Oil, o Smooth Edges da tela) — a tela inteira recompõe-se nos próximos
+    /// A porta do PAINEL: a óptica mudou (Real Oil) — a tela inteira recompõe-se nos próximos
     /// quadros, com o último valor que houver então.
     pub(in crate::tool::paint) fn wet_recompoe_no_quadro(&mut self) {
         #[cfg(test)]
@@ -100,15 +100,14 @@ impl PainterTool {
         let (gw, gh) = sess.grid;
         let cursor = v.cursor.clamp(1, gh.max(1));
         // O alcance com que o composite alarga a faixa (o mesmo `alcance_na` que ele chama).
-        let suave_px = f64::from(self.paint.wetpaint.smooth_edges * super::smooth_edges::RAIO_MAX);
         let alcance = oleo.map_or(0, |mut o| {
-            o.suave_px = suave_px;
             let grades: Vec<_> = sess
                 .engine
                 .layers
                 .iter()
                 .map(|l| (&l.grid, l.visible))
                 .collect();
+            o.suave_px = f64::from(ph2d_wet_paint::grid::aparencia::raio_do_teto(&grades));
             let fim = (cursor + FAIXA_INICIAL).min(gh);
             ph2d_wet_paint::oleo_real::alcance_na(
                 &o,

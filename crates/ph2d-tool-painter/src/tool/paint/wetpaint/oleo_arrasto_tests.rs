@@ -12,11 +12,17 @@ const BRILHO: usize = 0;
 
 /// Uma tela `w × h` em Wet Paint com o Óleo Real ligado e dois traços que se cruzam, a água parada.
 fn tela(w: usize, h: usize) -> PainterTool {
+    tela_com(w, h, 0.0)
+}
+
+/// [`tela`] com o Smooth Edges `suave` pousado nos traços.
+fn tela_com(w: usize, h: usize, suave: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![240u8; w * h * 4], w as u32, h as u32);
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     t.set_wet_oleo_real_ligado(true);
+    t.set_wet_smooth_edges(suave);
     t.set_brush_size_px(14.0);
     let traco = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2], cor: [u8; 3]| {
         t.set_brush_color_srgb8(cor);
@@ -86,25 +92,23 @@ fn varre(t: &mut PainterTool) -> usize {
 fn arrastar_um_numero_do_oleo_recompoe_uma_vez_por_quadro() {
     let mut t = tela(160, 120);
     oleo_no_quadro::faixa_fixa(Some(usize::MAX));
-    for (nome, f) in [
-        ("Specular", arrasta as fn(&mut PainterTool, usize, f64)),
-        ("Smooth Edges", arrasta_suave),
-    ] {
-        let _ = contagem::take();
-        f(&mut t, 30, 0.2);
-        let (nos_eventos, ..) = contagem::take();
-        t.on_tick(0.0);
-        let (no_tick, ..) = contagem::take();
-        assert_eq!(
-            (nos_eventos, no_tick),
-            (0, 1),
-            "{nome}: 30 eventos de arrasto num quadro — (recomposições nos eventos, no tick)"
-        );
-        assert!(
-            !t.oleo_por_compor(),
-            "{nome}: a tela inteira cabia numa faixa"
-        );
-    }
+    let _ = contagem::take();
+    arrasta(&mut t, 30, 0.2);
+    let (nos_eventos, ..) = contagem::take();
+    t.on_tick(0.0);
+    let (no_tick, ..) = contagem::take();
+    assert_eq!(
+        (nos_eventos, no_tick),
+        (0, 1),
+        "30 eventos de arrasto num quadro — (recomposições nos eventos, no tick)"
+    );
+    assert!(!t.oleo_por_compor(), "a tela inteira cabia numa faixa");
+    // O Smooth Edges é do traço (dono 04/11): arrastá-lo não recompõe nada.
+    arrasta_suave(&mut t, 30, 0.2);
+    let (nos_eventos, ..) = contagem::take();
+    t.on_tick(0.0);
+    let (no_tick, ..) = contagem::take();
+    assert_eq!((nos_eventos, no_tick), (0, 0), "o Smooth Edges recompôs");
     oleo_no_quadro::faixa_fixa(None);
 }
 
@@ -113,15 +117,12 @@ fn arrastar_um_numero_do_oleo_recompoe_uma_vez_por_quadro() {
 /// faixa saltada tem de ficar mais longe que o alcance do óleo para a régua a ver.
 #[test]
 fn a_tela_depois_da_varredura_e_a_recomposicao_inteira_ao_byte() {
-    let mut a = tela(200, 640);
-    let mut b = tela(200, 640);
+    let mut a = tela_com(200, 640, 0.4);
+    let mut b = tela_com(200, 640, 0.4);
     assert_eq!(
         a.canvas_rgba, b.canvas_rgba,
         "as duas cenas nasceram diferentes"
     );
-    for t in [&mut a, &mut b] {
-        t.set_wet_smooth_edges(0.4);
-    }
     oleo_no_quadro::faixa_fixa(Some(7));
     arrasta(&mut a, 25, 0.1);
     for _ in 0..3 {

@@ -282,6 +282,87 @@ fn a_sombra_sem_furo_nao_escurece_a_celula_clara() {
 }
 
 /// A fixtura do Dabber com o Smooth Edges da tela de `px` (Estúdio).
+/// A grade `g` com o Smooth Edges `v(x)` pousado em cada célula (coluna `x`, `1..=w`).
+fn com_suave(g: &Grid, v: impl Fn(usize) -> f32) -> Grid {
+    let mut out = g.clone();
+    out.aparencia = vec![crate::grid::aparencia::AparenciaCelula::NEUTRA; g.cells];
+    for y in 1..=g.h {
+        for x in 1..=g.w {
+            out.aparencia[x + y * g.s].suave = v(x);
+            out.suave_teto = out.suave_teto.max(v(x));
+        }
+    }
+    out
+}
+
+/// Portão 5, na grade: **o relevo lê o valor da CÉLULA**: uma orla com 0,5 à esquerda e 0 à direita é, longe da junta,
+/// ao bit a orla toda a 0,5 e a orla toda a 0. A cobertura e as três alturas.
+#[test]
+fn o_relevo_le_o_smooth_edges_da_celula() {
+    let g = orla_dabber();
+    let (w, h, meio) = (g.w, g.h, g.w / 2);
+    let o = oleo_suave(3.0);
+    let campo = |g: &Grid| CampoAltura::de(&[(g, true)], &o, 1, 1, 1, w, h);
+    let misto = campo(&com_suave(&g, |x| if x <= meio { 0.5 } else { 0.0 }));
+    let (meio05, todo0) = (
+        campo(&com_suave(&g, |_| 0.5)),
+        campo(&com_suave(&g, |_| 0.0)),
+    );
+    let (mut esq, mut dir, mut efeito) = (0, 0, 0);
+    let igual = |a: &CampoAltura, b: &CampoAltura, x: usize, y: usize| {
+        let (xi, yi) = (x as isize, y as isize);
+        a.cobertura_da_borda(x, y) == b.cobertura_da_borda(x, y)
+            && a.at(xi, yi) == b.at(xi, yi)
+            && a.at_fina(xi, yi) == b.at_fina(xi, yi)
+            && a.at_sombra(xi, yi) == b.at_sombra(xi, yi)
+    };
+    for y in 1..=h {
+        for x in 1..=w {
+            if x + 12 < meio {
+                esq += usize::from(!igual(&misto, &meio05, x, y));
+                efeito += usize::from(!igual(&meio05, &todo0, x, y));
+            } else if x > meio + 12 {
+                dir += usize::from(!igual(&misto, &todo0, x, y));
+            }
+        }
+    }
+    println!("[relevo por célula] esquerda {esq} · direita {dir} · o efeito do 0,5 {efeito}");
+    assert!(efeito > 50, "a 0,5 o relevo não mudou ({efeito} células)");
+    assert_eq!(esq, 0, "o lado a 0,5 não leu o dele");
+    assert_eq!(dir, 0, "o lado a 0 não ficou o desligado");
+}
+
+/// Portão 4, na grade: **o instantâneo, o recorte e o espelho carregam o valor**; o tecto nunca desce (recompor a orla
+/// de uma tinta que saiu), só com a tela limpa.
+#[test]
+fn o_instantaneo_e_o_recorte_carregam_o_smooth_edges() {
+    use crate::grid::aparencia::{AparenciaCelula, pousa};
+    use crate::grid::{restore_grid, restore_grid_region, snapshot_grid, snapshot_grid_region};
+    let mut g = Grid::new(16, 16);
+    let forte = AparenciaCelula {
+        suave: 0.5,
+        ..AparenciaCelula::NEUTRA
+    };
+    let i = 5 + 5 * g.s;
+    pousa(&mut g, i, 0.0, forte, 1.0);
+    assert_eq!(g.suave_teto, 0.5, "o pouso não subiu o tecto");
+    let foto = snapshot_grid(&g);
+    let recorte = snapshot_grid_region(&g, 1, 1, 16, 16).expect("o recorte");
+    pousa(&mut g, i, 1.0, AparenciaCelula::NEUTRA, 3.0);
+    assert_eq!(g.aparencia[i].suave, 0.125, "a mistura não é pela massa");
+    restore_grid(&mut g, &foto);
+    assert_eq!(g.aparencia[i].suave, 0.5, "o instantâneo perdeu o valor");
+    pousa(&mut g, i, 1.0, AparenciaCelula::NEUTRA, 3.0);
+    restore_grid_region(&mut g, &recorte);
+    assert_eq!(g.aparencia[i].suave, 0.5, "o recorte perdeu o valor");
+    let mut limpa = Grid::new(16, 16);
+    restore_grid_region(&mut limpa, &recorte);
+    assert_eq!(limpa.suave_teto, 0.5, "o recorte não levou o tecto");
+    let mut limpa = Grid::new(16, 16);
+    restore_grid(&mut limpa, &foto);
+    assert_eq!(limpa.suave_teto, 0.5, "o instantâneo não levou o tecto");
+}
+
 fn oleo_suave(px: f64) -> OleoReal {
     OleoReal {
         ambiente: Ambiente::Estudio,
@@ -298,8 +379,9 @@ fn oleo_suave(px: f64) -> OleoReal {
 fn o_smooth_edges_da_tela_amacia_o_relevo_pela_mesma_silhueta() {
     let g = orla_dabber();
     let (w, h) = (g.w, g.h);
-    let campo = |px: f64| CampoAltura::de(&[(&g, true)], &oleo_suave(px), 1, 1, 1, w, h);
-    let (c0, c6) = (campo(0.0), campo(6.0));
+    let g6 = com_suave(&g, |_| 1.0);
+    let c0 = CampoAltura::de(&[(&g, true)], &oleo_suave(0.0), 1, 1, 1, w, h);
+    let c6 = CampoAltura::de(&[(&g6, true)], &oleo_suave(6.0), 1, 1, 1, w, h);
     let cob = |x: usize, y: usize| cobertura_da_celula(&[(&g, true)], x + y * g.s);
     let (mut borda, mut altura, mut fina, mut sombra, mut longe, mut fora) = (0, 0, 0, 0, 0, 0);
     let mut papel_sombra = 0;
@@ -406,6 +488,7 @@ fn medida_custo_do_smooth_edges_no_campo() {
     for _ in 0..9 {
         for (k, &r) in raios.iter().enumerate() {
             let o = oleo_suave(r);
+            let g = com_suave(&g, |_| (r / 6.0) as f32);
             let t = std::time::Instant::now();
             let c = CampoAltura::de_com(&EmSerie, &[(&g, true)], &o, 1, (1, 1, w, h));
             m[k] = m[k].min(t.elapsed().as_secs_f64());

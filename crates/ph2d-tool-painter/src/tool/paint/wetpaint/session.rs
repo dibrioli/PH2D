@@ -20,6 +20,8 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) km_glaze: bool,
     /// A **Paint Texture** (o papel impresso na tinta): do TRAÇO (dono 28/10), pousa na célula (`grid::aparencia`).
     pub(in crate::tool::paint) textura: bool,
+    /// O **Smooth Edges** (`0..1`): do TRAÇO (dono 04/11), pousa na célula (`grid::aparencia`).
+    pub(in crate::tool::paint) suave: f32,
     /// A caixa **Real Oil**: do TRAÇO (dono 28/10), pousa na célula (`grid::oleo_celula`).
     pub(in crate::tool::paint) oleo: bool,
     /// O **Tooth** do Paper (BUGS #32) — chega ao motor também no tique, para o papel do PRÓPRIO motor
@@ -42,6 +44,7 @@ impl WetEngineFacts {
         km_mixing: false,
         km_glaze: false,
         textura: false,
+        suave: 0.0,
         oleo: false,
         pigment_mix: 0.0,
         tooth: 1.0,
@@ -268,6 +271,9 @@ impl WetSession {
             // «Glaze layering»: camadas transparentes — do PINCEL (W3b): pousa na célula (`grid::aparencia`), e o
             // ecrã e as transferências verticais lêem o da célula; a tinta já pousada não muda.
             e.sim.camadas_transparentes = f.km_glaze;
+        }
+        if f.suave != a.suave {
+            e.sim.suave = f.suave;
         }
         if f.textura != a.textura {
             e.sim.textura = f.textura;

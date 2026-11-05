@@ -304,7 +304,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_tilt_spoke: 3,
     wet_show_wet: false,
     wet_paper_visual: false,
-    wet_smooth_edges: 0.12,
+    wet_smooth_edges: 0.0,
     wet_absorbency: ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY_FAIXA.1 as f32,
     // O Real Oil de fábrica: desligado, com os knobs de `OleoReal::default()` (o look aprovado).
     wet_oleo_real: false,

@@ -415,21 +415,33 @@ pub(crate) const MANCHA_DA_SILHUETA: f64 = 0.12;
 /// A folga da faixa da orla (a tenda de uns que não soma `1` ao bit).
 pub(super) const FOLGA_DA_ORLA: f64 = 1e-6;
 
-/// ⭐ **D1 W3b (smoke do dono 27/10: «Smooth Edges só atua na cor e não no relevo… deve ser para todo o papel»):
-/// o Smooth Edges da TELA amacia a SILHUETA antes do campo** (`oraculo/README.md` §Smooth Edges na tela). A
+/// ⭐ **D1 W3b (smoke do dono 27/10: «Smooth Edges só atua na cor e não no relevo»): o Smooth Edges amacia a SILHUETA
+/// antes do campo** (`oraculo/README.md` §Smooth Edges na tela), **pelo degrau da célula** (dono 04/11: é do traço). A
 /// cobertura depois do contorno sub-célula ([`borda_suave`], [`sem_entalhes`]) desfoca-se por uma tenda de raio `r`
 /// células (duas caixas de `r/2`, a lei do composite); na FAIXA da orla — onde a mancha (`≥ MANCHA_DA_SILHUETA`)
 /// desfocada pela mesma tenda não é nem `0` nem `1` — a célula COM pigmento cobre o desfocado. A cobertura e as três
 /// alturas vão × este factor, por isso a parede, a normal, os brilhos e a sombra no papel seguem a mesma silhueta que
-/// a cor. O miolo e o papel longe da orla ficam ao bit; o papel sem pigmento continua papel. `r = 0` = `borda`.
+/// a cor. O miolo e o papel longe da orla ficam ao bit; o papel sem pigmento continua papel. Degrau `0` = `borda`.
 pub(super) fn amacia_a_silhueta(
     rep: &impl Reparte,
     cob: &[f64],
     borda: Vec<f32>,
     (w, h): (usize, usize),
-    r: f64,
+    degraus: &[u8],
+    ratio: usize,
 ) -> Vec<f32> {
-    if r <= 0.0 {
+    // A caixa de cada degrau, células com tinta `(x0, y0, x1, y1)`.
+    let mut caixas = [None::<(usize, usize, usize, usize)>; 256];
+    for k in 0..w * h {
+        if cob[k] > 0.0 && degraus[k] > 0 {
+            let (x, y) = (k % w, k / w);
+            let c = &mut caixas[usize::from(degraus[k])];
+            *c = Some(c.map_or((x, y, x, y), |(a, b, e, f)| {
+                (a.min(x), b.min(y), e.max(x), f.max(y))
+            }));
+        }
+    }
+    if caixas.iter().all(Option::is_none) {
         return borda;
     }
     let depois: Vec<f64> = cob
@@ -441,17 +453,43 @@ pub(super) fn amacia_a_silhueta(
         .iter()
         .map(|&c| if c >= MANCHA_DA_SILHUETA { 1.0 } else { 0.0 })
         .collect();
-    let hh = 0.5 * r;
-    let tenda = |v: &[f64]| desfoca_frac(rep, &desfoca_frac(rep, v, w, h, hh), w, h, hh);
-    let (bm, bc) = (tenda(&mancha), tenda(&depois));
     let mut f = if borda.is_empty() {
         vec![1f32; w * h]
     } else {
         borda
     };
-    for k in 0..w * h {
-        if cob[k] > 0.0 && bm[k] > FOLGA_DA_ORLA && bm[k] < 1.0 - FOLGA_DA_ORLA {
-            f[k] = (bc[k].min(1.0) / cob[k]) as f32;
+    for (d, caixa) in caixas.iter().enumerate() {
+        let Some((x0, y0, x1, y1)) = *caixa else {
+            continue;
+        };
+        let r = f64::from(crate::grid::aparencia::raio_do_degrau(d as u8)) / ratio.max(1) as f64;
+        let hh = 0.5 * r;
+        // Só a caixa do degrau e a margem da tenda: a mais larga que a tenda lê, com a borda da tela repetida.
+        let m = exato::ceil(r) as usize + 2;
+        let (ax0, ay0) = (x0.saturating_sub(m), y0.saturating_sub(m));
+        let (ax1, ay1) = ((x1 + m).min(w - 1), (y1 + m).min(h - 1));
+        let (rw, rh) = (ax1 + 1 - ax0, ay1 + 1 - ay0);
+        let corta = |v: &[f64]| -> Vec<f64> {
+            let mut o = Vec::with_capacity(rw * rh);
+            for y in ay0..=ay1 {
+                o.extend_from_slice(&v[y * w + ax0..=y * w + ax1]);
+            }
+            o
+        };
+        let tenda = |v: &[f64]| desfoca_frac(rep, &desfoca_frac(rep, v, rw, rh, hh), rw, rh, hh);
+        let (bm, bc) = (tenda(&corta(&mancha)), tenda(&corta(&depois)));
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let k = y * w + x;
+                let q = (y - ay0) * rw + (x - ax0);
+                if usize::from(degraus[k]) == d
+                    && cob[k] > 0.0
+                    && bm[q] > FOLGA_DA_ORLA
+                    && bm[q] < 1.0 - FOLGA_DA_ORLA
+                {
+                    f[k] = (bc[q].min(1.0) / cob[k]) as f32;
+                }
+            }
         }
     }
     if f.iter().all(|&q| q == 1.0) {

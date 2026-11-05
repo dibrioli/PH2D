@@ -153,6 +153,7 @@ fn escalares(d: &mut Grid, g: &Grid) {
     (d.w, d.h, d.s, d.rows, d.cells) = (g.w, g.h, g.s, g.rows, g.cells);
     (d.oleo_real, d.flow, d.has_fluid, d.spans_enabled) =
         (g.oleo_real, g.flow, g.has_fluid, g.spans_enabled);
+    d.suave_teto = g.suave_teto;
     (d.bx0, d.by0, d.bx1, d.by1) = (g.bx0, g.by0, g.bx1, g.by1);
     (d.paper_preset, d.paper_sheet) = (g.paper_preset, g.paper_sheet);
 }
@@ -212,6 +213,7 @@ fn so_a_otica(g: &Grid) -> Grid {
         vela,
         material,
         aparencia,
+        suave_teto,
         oleo,
         oleo_real,
         oleo_antes: _,
@@ -264,6 +266,7 @@ fn so_a_otica(g: &Grid) -> Grid {
         vela: vela.clone(),
         material: material.clone(),
         aparencia: aparencia.clone(),
+        suave_teto: *suave_teto,
         oleo: oleo.clone(),
         oleo_real: *oleo_real,
         oleo_antes: Vec::new(),

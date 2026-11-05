@@ -279,14 +279,14 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         .engine
         .layers[0]
         .grid;
-    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 20);
+    assert_eq!(std::mem::size_of::<AparenciaCelula>(), 24);
     assert_eq!(
         g.bytes_retidos() - base,
-        20 * cells,
-        "o campo custa 20 B por célula"
+        24 * cells,
+        "o campo custa 24 B por célula"
     );
     eprintln!(
-        "APARENCIA: grade {} B/célula, campo +20 B/célula",
+        "APARENCIA: grade {} B/célula, campo +24 B/célula",
         base as f64 / cells as f64
     );
 }

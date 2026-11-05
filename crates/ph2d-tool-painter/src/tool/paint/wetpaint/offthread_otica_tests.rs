@@ -21,7 +21,6 @@ fn factos() -> FactosDaOtica {
             paper: false,
             relevo: true,
         },
-        raio: 3.0,
         oleo_adiado: false,
         oleo: OleoReal::default(),
         tem_grao: true,
@@ -30,6 +29,7 @@ fn factos() -> FactosDaOtica {
             sem_cache: false,
             papel_liso_desligado: false,
             lei_da_caixa: None,
+            so_na_cor: false,
         },
     }
 }

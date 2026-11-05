@@ -87,6 +87,8 @@ pub struct Params {
     pub vidrado: f32,
     /// A Paint Texture do pincel ([`Sim::textura`]): `1` = ligada. Pousa na célula ([`crate::grid::aparencia`]).
     pub textura: f32,
+    /// O Smooth Edges do pincel ([`Sim::suave`]), que pousa na célula ([`crate::grid::aparencia`]).
+    pub suave: f32,
     /// O **Real Oil** do pincel ([`Sim::oleo`]): `1` = ligado. Pousa na célula ([`crate::grid::oleo_celula`]).
     pub oleo: f32,
     /// [`Sim::semente_do_po`].
@@ -223,6 +225,9 @@ pub struct Sim {
     /// **A Paint Texture do pincel** (o papel impresso na tinta, dono 28/10: é do TRAÇO): pousa na célula
     /// ([`Params::textura`]); o composite imprime o papel só onde a célula o pede — mudá-la não muda a tinta pousada.
     pub textura: bool,
+    /// **O Smooth Edges do pincel** (`0..1`): pousa na célula ([`Params::suave`]); cada borda amacia pelo da tinta dela,
+    /// e mudá-lo não muda a tinta já pousada (dono 04/11).
+    pub suave: f32,
     /// **O Real Oil do pincel** (dono 28/10: é do TRAÇO): pousa na célula ([`Params::oleo`]); o composite corre a
     /// óptica do óleo onde a célula o tem — ligá-lo ou desligá-lo não muda a tinta pousada.
     pub oleo: bool,
@@ -317,6 +322,7 @@ impl Default for Sim {
             esconde: 1.0,
             camadas_transparentes: false,
             textura: false,
+            suave: 0.0,
             oleo: false,
             semente_do_po: 0,
             relevo_do_tamanho: 1.0,
@@ -439,6 +445,7 @@ impl Sim {
             },
             vidrado: if self.camadas_transparentes { 1.0 } else { 0.0 },
             textura: if self.textura { 1.0 } else { 0.0 },
+            suave: self.suave,
             oleo: if self.oleo { 1.0 } else { 0.0 },
             semente_do_po: self.semente_do_po,
             relevo_do_tamanho: self.relevo_do_tamanho,

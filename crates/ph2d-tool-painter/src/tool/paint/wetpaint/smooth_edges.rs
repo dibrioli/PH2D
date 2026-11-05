@@ -1,6 +1,7 @@
-//! **Smooth Edges do Wet Paint** (dono 09/10; a INTENSIDADE desde 10/10). O slider é o RAIO de um
-//! alisamento da MANCHA (`pa ≥ SS0`): [`Suave`]. O miolo longe da borda e o papel aberto ficam iguais ao
-//! byte; só a orla muda (forma mais lisa, borda com meio-tom). Nenhuma água nem pigmento se move: é
+//! **Smooth Edges do Wet Paint** (dono 09/10; a INTENSIDADE desde 10/10; **do TRAÇO desde 04/11**: «cada pincel deve
+//! ter o seu, assim não perde detalhes»). O valor é o RAIO de um alisamento da MANCHA (`pa ≥ SS0`): [`Suave`], um por
+//! raio presente na região ([`Suaves`]), e cada pixel lê o da tinta dele. O miolo longe da borda e o papel aberto
+//! ficam iguais ao byte; só a orla muda (forma mais lisa, borda com meio-tom). Nenhuma água nem pigmento se move: é
 //! aparência, como o Paper. `0` = o composite de antes, ao byte. O 1.º Smooth Edges (o 3×3 do Watercolor,
 //! `aa_coverage`) era fraco demais no máximo (smoke do dono 10/10) — o porquê e as medições: 05 §4b W1g.
 
@@ -58,8 +59,8 @@ pub(super) fn premul_do_pixel(
     }
 }
 
-/// O raio do alisamento no máximo do slider, px (medido na prancha de 10/10, 05 §4b).
-pub(super) const RAIO_MAX: f32 = 6.0;
+/// O raio do alisamento no máximo do valor, px (a constante é do motor: o relevo lê-a também).
+pub(super) const RAIO_MAX: f32 = ph2d_wet_paint::grid::aparencia::SUAVE_RAIO_MAX_PX;
 
 /// (Testes) `true` = a lei de ANTES da D1 W3b: com o Óleo Real o Smooth Edges só amacia a cor (o `Suave` com a
 /// orla), o campo não o vê — a variante «antes» da folha e o controlo da prova de mutação, no MESMO processo.
@@ -76,6 +77,25 @@ pub(in crate::tool::paint) mod so_na_cor {
     }
 
     pub(in crate::tool::paint) fn get() -> bool {
+        D.with(Cell::get)
+    }
+}
+
+/// (Testes) `Some(r)` = a lei de ANTES do dono 04/11, um só [`Suave`] de raio `r` na região inteira: a variante «antes»
+/// da régua de custo, no MESMO processo.
+#[cfg(test)]
+pub(in crate::tool::paint) mod raio_escalar {
+    use std::cell::Cell;
+
+    thread_local! {
+        static D: Cell<Option<f32>> = const { Cell::new(None) };
+    }
+
+    pub(in crate::tool::paint) fn set(v: Option<f32>) {
+        D.with(|c| c.set(v));
+    }
+
+    pub(in crate::tool::paint) fn get() -> Option<f32> {
         D.with(Cell::get)
     }
 }
@@ -433,14 +453,262 @@ impl Suave {
     }
 }
 
-/// O CUSTO do Smooth Edges no composite (§0.0: medir antes de aceitar), as duas variantes no MESMO processo,
-/// intercaladas, o MÍNIMO de cada: a tela inteira (o pior caso: o clique no checkbox recompõe tudo) e o
-/// retângulo de um traço (o quadro normal). `cargo test … --lib medida_do_smooth_edges -- --ignored --nocapture`.
+/// A caixa de cada degrau, `(x0, y0, x1, y1)`.
+type CaixasDosDegraus = Vec<Option<(usize, usize, usize, usize)>>;
+
+/// Conta a célula `(x, y)` na caixa do degrau `d` (o `0` não tem caixa).
+#[inline]
+fn alarga(c: &mut CaixasDosDegraus, d: u8, x: usize, y: usize) {
+    if d > 0 {
+        let c = &mut c[usize::from(d)];
+        *c = Some(c.map_or((x, y, x, y), |(p, q, r, s)| {
+            (p.min(x), q.min(y), r.max(x), s.max(y))
+        }));
+    }
+}
+
+fn junta(mut a: CaixasDosDegraus, b: CaixasDosDegraus) -> CaixasDosDegraus {
+    for (x, y) in a.iter_mut().zip(b) {
+        *x = match (*x, y) {
+            (Some((p, q, r, s)), Some((t, u, v, w))) => {
+                Some((p.min(t), q.min(u), r.max(v), s.max(w)))
+            }
+            (a, b) => a.or(b),
+        };
+    }
+    a
+}
+
+/// **O Smooth Edges de uma região, pelo valor de cada célula** (dono 04/11): um [`Suave`] por degrau presente, só na
+/// caixa dos píxeis desse degrau. A mancha de cada um é a de TODA a tinta (senão a tinta à volta de um traço a `0`
+/// ganhava uma orla falsa), por isso dois traços só se vêem ao alcance do raio; o resultado de um pixel não depende de
+/// mais nada da região. O papel e o véu sem mancha lêem o maior degrau cuja tinta os alcança.
+pub(super) struct Suaves {
+    x0: usize,
+    y0: usize,
+    cw: usize,
+    ch: usize,
+    rr: usize,
+    /// O degrau que cada célula da janela lê (`0` = o pigmento dela).
+    quem: Vec<u8>,
+    grupos: Vec<Option<Suave>>,
+}
+
+impl Suaves {
+    /// `None` = nenhuma tinta com Smooth Edges na região: o caminho de antes.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn nova(
+        sampler: SampleU,
+        (pigment, stride): (&[u8], usize),
+        (plano, gw, gh): (&[u8], usize, usize),
+        (w, h): (usize, usize),
+        (x0, y0, x1, y1): (usize, usize, usize, usize),
+        rr: usize,
+        linhas: Option<bool>,
+        orla: bool,
+    ) -> Option<Self> {
+        use ph2d_wet_paint::grid::aparencia::{DEGRAUS_DO_SUAVE, raio_do_degrau};
+        if plano.is_empty() {
+            return None;
+        }
+        // A janela em células (base 0) dos píxeis da região e do raio máximo à volta.
+        let a = alcance(RAIO_MAX);
+        let (cx0, cy0) = (x0.saturating_sub(a) / rr, y0.saturating_sub(a) / rr);
+        let (cx1, cy1) = (
+            ((x1 + a) / rr).min(gw.saturating_sub(1)),
+            ((y1 + a) / rr).min(gh.saturating_sub(1)),
+        );
+        let (cw, ch) = (cx1 + 1 - cx0, cy1 + 1 - cy0);
+        let n = usize::from(DEGRAUS_DO_SUAVE) + 1;
+        let g_stride = gw * 4;
+        let mut quem = vec![0u8; cw * ch];
+        let mut na_mancha = vec![false; cw * ch];
+        let caixa = quem
+            .par_chunks_mut(cw)
+            .zip(na_mancha.par_chunks_mut(cw))
+            .enumerate()
+            .map(|(j, (linha, mancha))| {
+                let y = cy0 + j;
+                let mut c = vec![None; n];
+                for (b, (q, m)) in linha.iter_mut().zip(mancha.iter_mut()).enumerate() {
+                    let x = cx0 + b;
+                    *m = f32::from(pigment[y * g_stride + x * 4 + 3]) / 255.0 >= SS0;
+                    if *m {
+                        *q = plano[y * gw + x];
+                        alarga(&mut c, *q, x, y);
+                    }
+                }
+                c
+            })
+            .reduce(|| vec![None; n], junta);
+        if caixa.iter().all(Option::is_none) {
+            return None;
+        }
+        // O papel lê o maior degrau cuja tinta o alcança: do maior para o menor, quem já leu fica.
+        for d in (1..n).rev() {
+            let Some((p, q, r, s)) = caixa[d] else {
+                continue;
+            };
+            let al = (raio_do_degrau(d as u8) / rr as f32).ceil() as usize + 1;
+            let (ax0, ay0) = (p.saturating_sub(al).max(cx0), q.saturating_sub(al).max(cy0));
+            let (ax1, ay1) = ((r + al).min(cx1), (s + al).min(cy1));
+            let bw = ax1 + 1 - ax0;
+            // A distância horizontal à tinta deste degrau, depois a vertical sobre ela.
+            let mut hz = vec![false; bw * (ay1 + 1 - ay0)];
+            hz.par_chunks_mut(bw).enumerate().for_each(|(j, linha)| {
+                let y = ay0 + j;
+                let e = |x: usize| {
+                    let i = (y - cy0) * cw + x - cx0;
+                    na_mancha[i] && plano[y * gw + x] == d as u8
+                };
+                let mut desde = usize::MAX;
+                for (b, v) in linha.iter_mut().enumerate() {
+                    desde = if e(ax0 + b) {
+                        0
+                    } else {
+                        desde.saturating_add(1)
+                    };
+                    *v = desde <= al;
+                }
+                desde = usize::MAX;
+                for (b, v) in linha.iter_mut().enumerate().rev() {
+                    desde = if e(ax0 + b) {
+                        0
+                    } else {
+                        desde.saturating_add(1)
+                    };
+                    *v |= desde <= al;
+                }
+            });
+            let bh = ay1 + 1 - ay0;
+            quem[(ay0 - cy0) * cw..(ay1 + 1 - cy0) * cw]
+                .par_chunks_mut(cw)
+                .enumerate()
+                .for_each(|(j, linha)| {
+                    let (l0, l1) = (j.saturating_sub(al), (j + al).min(bh - 1));
+                    let mancha = &na_mancha[(ay0 + j - cy0) * cw..(ay0 + j + 1 - cy0) * cw];
+                    for b in 0..bw {
+                        let x = ax0 - cx0 + b;
+                        if !mancha[x] && linha[x] == 0 && (l0..=l1).any(|l| hz[l * bw + b]) {
+                            linha[x] = d as u8;
+                        }
+                    }
+                });
+        }
+        // Um desfoque por degrau que alguma célula lê, só na caixa dos píxeis dele dentro da região.
+        let (lx0, ly0) = (x0 / rr, y0 / rr);
+        let (lx1, ly1) = (
+            (x1.saturating_sub(1) / rr).min(cx1),
+            (y1.saturating_sub(1) / rr).min(cy1),
+        );
+        let caixa_px = quem
+            .par_chunks(cw)
+            .enumerate()
+            .filter(|(j, _)| (ly0..=ly1).contains(&(cy0 + j)))
+            .map(|(j, linha)| {
+                let mut c = vec![None; n];
+                for x in lx0.max(cx0)..=lx1 {
+                    alarga(&mut c, linha[x - cx0], x, cy0 + j);
+                }
+                c
+            })
+            .reduce(|| vec![None; n], junta);
+        let grupos: Vec<Option<Suave>> = caixa_px
+            .iter()
+            .enumerate()
+            .map(|(d, c)| {
+                c.map(|(p, q, r, s)| {
+                    Suave::nova(
+                        sampler,
+                        (pigment, stride),
+                        (w, h),
+                        (
+                            (p * rr).max(x0),
+                            (q * rr).max(y0),
+                            ((r + 1) * rr).min(x1),
+                            ((s + 1) * rr).min(y1),
+                        ),
+                        raio_do_degrau(d as u8),
+                        linhas,
+                        orla,
+                    )
+                })
+            })
+            .collect();
+        Some(Self {
+            x0: cx0,
+            y0: cy0,
+            cw,
+            ch,
+            rr,
+            quem,
+            grupos,
+        })
+    }
+
+    /// (Testes) [`raio_escalar`]: toda a região lê um só [`Suave`].
+    #[cfg(test)]
+    pub(super) fn escalar(s: Suave, (w, h): (usize, usize)) -> Self {
+        Self {
+            x0: 0,
+            y0: 0,
+            cw: w,
+            ch: h,
+            rr: 1,
+            quem: vec![1; w * h],
+            grupos: vec![None, Some(s)],
+        }
+    }
+
+    /// O pigmento que o pixel `(px, py)` mostra, pelo degrau da tinta dele ([`Suave::aplica_com`]).
+    #[inline]
+    pub(super) fn aplica_com(
+        &self,
+        px: usize,
+        py: usize,
+        dele: ([f32; 3], f32),
+        orla: bool,
+    ) -> ([f32; 3], f32) {
+        let (cx, cy) = (
+            (px / self.rr).clamp(self.x0, self.x0 + self.cw - 1) - self.x0,
+            (py / self.rr).clamp(self.y0, self.y0 + self.ch - 1) - self.y0,
+        );
+        match self.quem[cy * self.cw + cx] {
+            0 => dele,
+            d => match &self.grupos[usize::from(d)] {
+                Some(s) => s.aplica_com(px, py, dele, orla),
+                None => dele,
+            },
+        }
+    }
+
+    /// [`Self::aplica_com`] com a orla com que se montaram.
+    #[inline]
+    pub(super) fn aplica(&self, px: usize, py: usize, dele: ([f32; 3], f32)) -> ([f32; 3], f32) {
+        let (cx, cy) = (
+            (px / self.rr).clamp(self.x0, self.x0 + self.cw - 1) - self.x0,
+            (py / self.rr).clamp(self.y0, self.y0 + self.ch - 1) - self.y0,
+        );
+        match self.quem[cy * self.cw + cx] {
+            0 => dele,
+            d => match &self.grupos[usize::from(d)] {
+                Some(s) => s.aplica(px, py, dele),
+                None => dele,
+            },
+        }
+    }
+}
+
+/// O CUSTO do Smooth Edges no composite (§0.0: medir antes de aceitar), as variantes no MESMO processo, intercaladas, o
+/// MÍNIMO de cada: a tela inteira (o pior caso) e o retângulo de um traço (o quadro normal). As tintas: `0` sem o campo
+/// (o caminho de antes), `0` com o campo alocado por outro controlo, `0,12` em tudo, e `0,5` coberto por um traço a `0`
+/// (a mistura pela massa: o pior número de degraus). `cargo test … --lib medida_do_smooth_edges -- --ignored --nocapture`.
 #[cfg(test)]
 mod medida {
     use crate::tool::PainterTool;
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
     use ph2d_painter_brush::{BrushSpec, Falloff};
+    use ph2d_wet_paint::tuning::Knob;
 
     fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
         CanvasPointer {
@@ -451,12 +719,20 @@ mod medida {
         }
     }
 
-    #[test]
-    #[ignore = "medida: o custo do Smooth Edges; corre-se à mão"]
-    fn medida_do_smooth_edges() {
-        const N: u32 = 4096;
+    fn traco(t: &mut PainterTool, y: f32, x0: f32) {
+        t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+        for k in 1..=60 {
+            t.on_canvas_pointer(cp(
+                [x0 + 30.0 * k as f32, y + 200.0 * (k as f32 / 9.0).sin()],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([x0 + 1800.0, y], PointerPhase::Up));
+    }
+
+    fn tela(n: u32, prepara: impl FnOnce(&mut PainterTool)) -> PainterTool {
         let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (N * N * 4) as usize], N, N);
+        t.set_source(vec![255u8; (n * n * 4) as usize], n, n);
         let b = BrushSpec {
             radius_px: 60.0,
             color: [0.1, 0.4, 0.9],
@@ -466,23 +742,60 @@ mod medida {
         t.paint.brush = b;
         t.paint.brush_by_mode.fill(b);
         t.set_paint_tool_mode("wetpaint");
+        prepara(&mut t);
+        t
+    }
+
+    #[test]
+    #[ignore = "medida: o custo do Smooth Edges; corre-se à mão"]
+    fn medida_do_smooth_edges() {
+        const N: u32 = 4096;
         let y = (N / 2) as f32;
-        t.on_canvas_pointer(cp([1000.0, y], PointerPhase::Down));
-        for k in 1..=60 {
-            t.on_canvas_pointer(cp(
-                [1000.0 + 30.0 * k as f32, y + 200.0 * (k as f32 / 9.0).sin()],
-                PointerPhase::Move,
-            ));
-        }
-        t.on_canvas_pointer(cp([2800.0, y], PointerPhase::Up));
-        let mut minimo = [[f64::MAX; 2]; 2]; // [tela, retângulo][desligado, ligado]
-        for _ in 0..7 {
-            for (k, suave) in [0.0f32, 1.0].into_iter().enumerate() {
-                t.paint.wetpaint.smooth_edges = suave;
-                for (q, rect) in [None, Some((1700, 1800, 2000, 2100))]
-                    .into_iter()
-                    .enumerate()
-                {
+        let mut cenas: Vec<(&str, PainterTool)> = vec![
+            (
+                "0, sem o campo",
+                tela(N, |t| {
+                    t.set_wet_smooth_edges(0.0);
+                    traco(t, y, 1000.0);
+                }),
+            ),
+            (
+                "0, com o campo",
+                tela(N, |t| {
+                    t.paint.wetpaint.knobs.set(Knob::PaperVisibility, 0.4);
+                    t.set_wet_smooth_edges(0.0);
+                    traco(t, y, 1000.0);
+                }),
+            ),
+            (
+                "0,12",
+                tela(N, |t| {
+                    t.set_wet_smooth_edges(0.12);
+                    traco(t, y, 1000.0);
+                }),
+            ),
+            (
+                "0,5 sob 0",
+                tela(N, |t| {
+                    t.set_wet_smooth_edges(0.5);
+                    traco(t, y, 1000.0);
+                    t.set_wet_smooth_edges(0.0);
+                    traco(t, y + 40.0, 1000.0);
+                }),
+            ),
+        ];
+        let v = cenas.len();
+        let mut minimo = vec![[f64::MAX; 2]; v + 1];
+        let rects = [None, Some((1700, 1800, 2000, 2100))];
+        let mut degraus = 0usize;
+        // A variante `v` (a última linha): a lei de ANTES a 0,12, um só `Suave` escalar sobre a tinta da cena «0, sem o
+        // campo» (`teto = 0`: sem o plano nem os degraus), o caminho inteiro de antes.
+        for rodada in 0..7 {
+            for k in 0..=v {
+                let variante = (k + rodada) % (v + 1);
+                super::raio_escalar::set((variante == v).then_some(0.72));
+                let (_, t) = &mut cenas[if variante == v { 0 } else { variante }];
+                for (q, rect) in rects.into_iter().enumerate() {
                     let sess = t.paint.wetpaint.session.as_mut().expect("sessão viva");
                     sess.bring_home();
                     match rect {
@@ -490,21 +803,36 @@ mod medida {
                         Some((x0, y0, x1, y1)) => sess.engine.merge_dirty(x0, y0, x1, y1),
                     }
                     let t0 = std::time::Instant::now();
-                    super::super::super::wetpaint::composite_for_measure(&mut t);
-                    minimo[q][k] = minimo[q][k].min(t0.elapsed().as_secs_f64() * 1e3);
+                    super::super::super::wetpaint::composite_for_measure(t);
+                    let ms = t0.elapsed().as_secs_f64() * 1e3;
+                    let m = &mut minimo[variante][q];
+                    *m = m.min(ms);
                 }
             }
         }
+        super::raio_escalar::set(None);
+        for (_, t) in &cenas {
+            let sess = t.paint.wetpaint.session.as_ref().expect("sessão viva");
+            let mut d = [false; 256];
+            sess.planos
+                .suave
+                .iter()
+                .for_each(|&x| d[usize::from(x)] = true);
+            degraus = degraus.max(d[1..].iter().filter(|&&x| x).count());
+        }
         let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-        for (q, nome) in ["tela 4096²", "retângulo 300²"].into_iter().enumerate() {
+        for (k, (nome, _)) in cenas.iter().enumerate() {
             println!(
-                "[smooth edges] {nome}: desligado {:.2} ms · ligado {:.2} ms ({:+.0} %) · load {}",
-                minimo[q][0],
-                minimo[q][1],
-                100.0 * (minimo[q][1] / minimo[q][0] - 1.0),
-                load.split_whitespace().next().unwrap_or("?")
+                "[smooth edges] {nome}: tela 4096² {:.2} ms · retângulo 300² {:.2} ms",
+                minimo[k][0], minimo[k][1]
             );
         }
+        println!(
+            "[smooth edges] ANTES a 0,12 (raio escalar): tela 4096² {:.2} ms · retângulo 300² {:.2} ms · até {degraus} degraus · load {}",
+            minimo[v][0],
+            minimo[v][1],
+            load.split_whitespace().next().unwrap_or("?")
+        );
     }
 }
 

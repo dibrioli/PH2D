@@ -52,7 +52,19 @@ impl CampoAltura {
         // §BUG-bordas: a cobertura com o contorno sub-célula — a parede e a cor caem no contorno LISO, não na escada.
         let borda = sem_entalhes(rep, &cob, borda_suave(rep, &cob, w, h), w, h);
         // D1 W3b: o Smooth Edges da tela amacia ESSA silhueta antes do campo — a cor e o relevo seguem a mesma.
-        let borda = amacia_a_silhueta(rep, &cob, borda, (w, h), r_suave);
+        let borda = if r_suave > 0.0 {
+            let degraus: Vec<u8> = (0..w * h)
+                .map(|k| {
+                    let i = (ax0 + k % w) + (ay0 + k / w) * g.s;
+                    crate::grid::aparencia::degrau_do_suave(crate::grid::aparencia::suave_visto(
+                        camadas, i,
+                    ))
+                })
+                .collect();
+            amacia_a_silhueta(rep, &cob, borda, (w, h), &degraus, ratio)
+        } else {
+            borda
+        };
         // A massa (antes do desfoque: o ombro da forma também segue o contorno) e as três alturas vão com ela.
         for (c, b) in cob.iter_mut().zip(&borda) {
             *c *= f64::from(*b);

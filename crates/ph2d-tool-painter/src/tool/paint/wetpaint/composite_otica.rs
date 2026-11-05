@@ -23,6 +23,9 @@ pub(super) struct PlanosDaOtica {
     /// W3b: o DENTE do papel que a tinta de cada célula mostra (`gw * gh`, `0..255`,
     /// [`ph2d_wet_paint::oleo_real::grao_do_papel`]) — VAZIO sem papel, sem luz ou sem Óleo Real.
     pub(super) grao: Vec<u8>,
+    /// O degrau do Smooth Edges que se vê em cada célula (`gw * gh`, `ph2d_wet_paint::grid::aparencia::degrau_do_suave`)
+    /// — VAZIO enquanto nenhuma tinta visível o pousou (quem não o usa não paga). O laço de píxel não toca no motor.
+    pub(super) suave: Vec<u8>,
     /// **O campo de altura do Óleo Real guardado por dependência** (W3, `oleo_real::CacheCampo`): a varredura do
     /// cartão (Specular, fenda, material sem Subsurface, Transparency) reusa-o enquanto as grades e a chave ficam.
     pub(super) campo_cache: Option<CacheCampo>,
@@ -43,6 +46,7 @@ impl PlanosDaOtica {
             pigment: self.pigment.clone(),
             sombra: self.sombra.clone(),
             grao: self.grao.clone(),
+            suave: self.suave.clone(),
             campo_cache: None,
         }
     }
@@ -87,6 +91,8 @@ pub(super) struct CaixasDaOtica {
     pub(super) caixa_cel: (usize, usize, usize, usize),
     /// A caixa em píxeis que o laço de baixo escreve (crescida pelo alcance do Smooth Edges).
     pub(super) caixa_px: (usize, usize, usize, usize),
+    /// A caixa em células do plano do Smooth Edges: a região em píxeis e o raio máximo à volta.
+    pub(super) caixa_suave: (usize, usize, usize, usize),
     pub(super) sem_oleo: super::composite_oleo::SemOleo,
 }
 
@@ -125,7 +131,12 @@ fn compoe_a_caixa(
     let (gw, gh) = e.grade;
     let ratio = e.ratio;
     let f = &e.factos;
-    let (raio, suave) = (f.raio, f.raio > 0.0);
+    // O Smooth Edges é da célula: a região cresce pelo TECTO das grades; cada pixel lê o da tinta dele.
+    let raio = {
+        let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+        ph2d_wet_paint::grid::aparencia::raio_do_teto(&grades)
+    };
+    let suave = raio > 0.0;
     let (visual, params) = (f.visual, &t.params);
     let (cx0, cy0, cx1, cy1) = t.caixa;
     #[cfg(test)]
@@ -313,6 +324,14 @@ fn compoe_a_caixa(
         atalho,
     );
     super::composite_oleo::grao_das_celulas(&mut planos.grao, &campo, f.tem_grao, caixa, (gw, gh));
+    let caixa_suave = plano_do_suave(
+        &mut planos.suave,
+        layers,
+        suave,
+        (px0, py0, px1, py1),
+        usize::from(ratio),
+        (gw, gh),
+    );
     let sem_oleo = super::composite_oleo::tinta_sem_oleo(
         layers,
         &campo,
@@ -342,6 +361,48 @@ fn compoe_a_caixa(
     Some(CaixasDaOtica {
         caixa_cel: (cx0, cy0, cx1, cy1),
         caixa_px: (px0, py0, px1, py1),
+        caixa_suave,
         sem_oleo,
     })
+}
+
+/// O degrau de cada célula nos píxeis da região e no raio máximo à volta (a tinta que os [`super::smooth_edges::Suaves`]
+/// lêem); devolve essa caixa em células, `1..=gw`. Ninguém com Smooth Edges: o plano fica vazio.
+fn plano_do_suave(
+    plano: &mut Vec<u8>,
+    layers: &[RenderLayer<'_>],
+    suave: bool,
+    (px0, py0, px1, py1): (usize, usize, usize, usize),
+    rr: usize,
+    (gw, gh): (usize, usize),
+) -> (usize, usize, usize, usize) {
+    let a = super::smooth_edges::alcance(super::smooth_edges::RAIO_MAX);
+    let caixa = (
+        px0.saturating_sub(a) / rr + 1,
+        py0.saturating_sub(a) / rr + 1,
+        ((px1 + a) / rr + 1).min(gw),
+        ((py1 + a) / rr + 1).min(gh),
+    );
+    if !suave {
+        *plano = Vec::new();
+        return caixa;
+    }
+    if plano.len() != gw * gh {
+        *plano = vec![0u8; gw * gh];
+    }
+    let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+    let s = layers[0].grid.s;
+    let (cx0, cy0, cx1, cy1) = caixa;
+    plano[(cy0 - 1) * gw..cy1 * gw]
+        .par_chunks_mut(gw)
+        .enumerate()
+        .for_each(|(k, linha)| {
+            let cy = cy0 + k;
+            for cx in cx0..=cx1 {
+                linha[cx - 1] = ph2d_wet_paint::grid::aparencia::degrau_do_suave(
+                    ph2d_wet_paint::grid::aparencia::suave_visto(&grades, cx + cy * s),
+                );
+            }
+        });
+    caixa
 }

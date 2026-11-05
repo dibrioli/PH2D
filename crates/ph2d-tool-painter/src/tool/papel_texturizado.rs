@@ -15,7 +15,6 @@ pub struct PapelPreset {
     pub offset: [f32; 2],
     pub size: [f32; 2],
     pub tooth: f32,
-    pub smooth_edges: f32,
     /// Os params do padrão (Cold Press: Contrast, Brightness).
     pub params: [f32; 2],
 }
@@ -30,7 +29,6 @@ pub const PAPEL_TEXTURIZADO: PapelPreset = PapelPreset {
     offset: [0.0, 0.0],
     size: [1.0, 1.0],
     tooth: 1.0,
-    smooth_edges: super::paint::SMOOTH_EDGES_DE_FABRICA,
     params: [0.5, 0.5],
 };
 
@@ -102,7 +100,6 @@ impl PainterTool {
         for (slot, v) in p.params.iter().enumerate() {
             self.set_brush_paper_param(slot, *v);
         }
-        self.set_wet_smooth_edges(p.smooth_edges);
         self.invalidate_composite();
     }
 }

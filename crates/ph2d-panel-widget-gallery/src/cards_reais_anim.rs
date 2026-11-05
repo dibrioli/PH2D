@@ -2,7 +2,7 @@
 //! UM cartão Animation com regras «quando → animação» (25/10); Paint type Water·Oil, um só Dilution, o
 //! Volume independente e o Paper press no painel do pincel (28/10, 31/10, 01/11).
 
-use crate::controlos::{caixa_para, card, dica, dropdown, head, marca, marca_cel, num, segs};
+use crate::controlos::{caixa_para, card, dica, dropdown, head, marca, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RULES};
 use ph2d_card_stack::metrics as m;
@@ -180,13 +180,14 @@ pub(crate) fn bones(ch: Choices) -> CardDef<'static> {
                     y,
                 );
             }
-            let y = c.row(
-                &[
-                    marca_cel(g::BO_SMART, "card.bones.smart", ch.on(Flag::BoneSmart)),
-                    marca_cel(g::BO_IK, "card.bones.ik", ch.on(Flag::BoneIk)),
-                ],
+            let y = marca(
+                c,
+                g::BO_SMART,
+                "card.bones.smart",
+                ch.on(Flag::BoneSmart),
                 y,
             );
+            let y = marca(c, g::BO_IK, "card.bones.ik", ch.on(Flag::BoneIk), y);
             if !ch.on(Flag::BoneIk) {
                 return y;
             }

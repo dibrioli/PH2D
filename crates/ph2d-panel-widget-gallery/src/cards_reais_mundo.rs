@@ -3,9 +3,7 @@
 //! família copia este. As decisões do dono: o seletor «Use» logo abaixo de Image, nunca checkbox
 //! (26/10); o alvo da câmera por arrastar, escrever ou conta-gotas, nunca lista (02/11).
 
-use crate::controlos::{
-    barra, card, dica, dropdown, field, marca, marca_cel, marca_vista, marca_vista_cel, num, segs,
-};
+use crate::controlos::{barra, card, dica, dropdown, field, marca, marca_vista, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick};
 use ph2d_editor_core::IconId;
@@ -316,19 +314,18 @@ pub(crate) fn camera(ch: Choices) -> CardDef<'static> {
                 ],
                 y,
             );
-            c.row(
-                &[
-                    marca_cel(
-                        g::CAM_ACTIVE,
-                        "component.field.camera_fields.3",
-                        ch.on(Flag::CamActive),
-                    ),
-                    marca_vista_cel(
-                        g::CAM_LOOK,
-                        "panel.widget_gallery.real.look_through",
-                        ch.on(Flag::CamLook),
-                    ),
-                ],
+            let y = marca(
+                c,
+                g::CAM_ACTIVE,
+                "component.field.camera_fields.3",
+                ch.on(Flag::CamActive),
+                y,
+            );
+            marca_vista(
+                c,
+                g::CAM_LOOK,
+                "panel.widget_gallery.real.look_through",
+                ch.on(Flag::CamLook),
                 y,
             )
         }),

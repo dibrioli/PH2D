@@ -10,10 +10,7 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::panel::TextKey;
-use ph2d_editor_core::panel::cards::{
-    CardBody, CardCtx, CardDef, Cell, HeadAction, Seg, Widget, corpo,
-};
-use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, HeadAction, Seg, Widget, corpo};
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::zones::Rect;
@@ -384,29 +381,6 @@ pub(crate) fn marca(c: &mut CardCtx<'_>, id: NodeId, key: &'static str, on: bool
             on,
         },
     )
-}
-
-/// A caixa de marcar como célula, para dividir a linha com um irmão (lei 1 de 05 §4).
-pub(crate) fn marca_cel(id: NodeId, key: &'static str, on: bool) -> Cell<'static> {
-    celula_de_marca(id, Rotulo::from(TextKey::new(key)), on)
-}
-
-/// [`marca_cel`] de estado da VISTA, sem ponto de animação.
-pub(crate) fn marca_vista_cel(id: NodeId, key: &'static str, on: bool) -> Cell<'static> {
-    celula_de_marca(id, Rotulo::vista(TextKey::new(key)), on)
-}
-
-fn celula_de_marca(id: NodeId, label: Rotulo<'static>, on: bool) -> Cell<'static> {
-    Cell::new(Widget::Check {
-        id,
-        label,
-        value: if on {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        },
-        off: false,
-    })
 }
 
 /// Uma caixa de marcar de estado da VISTA: a coluna da marca fica vazia (um ponto diria «isto anima»).

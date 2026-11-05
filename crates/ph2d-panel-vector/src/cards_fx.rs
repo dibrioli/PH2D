@@ -14,6 +14,7 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::math::safe_clamp_f64;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text_elided};
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo};
 use ph2d_editor_core::widget::card_field::Glyph;
@@ -153,7 +154,8 @@ fn passos_do_parametro(p: &state::FxParamView) -> (f64, f64) {
     if p.integer {
         (1.0, 1.0)
     } else {
-        let s = ((p.max - p.min) / SCRUB_PASSOS).clamp(SCRUB_FRACAO, SETA_FRACAO * 2.0);
+        let passo = (p.max - p.min) / SCRUB_PASSOS;
+        let s = safe_clamp_f64(passo, SCRUB_FRACAO, SETA_FRACAO * 2.0);
         (s, s)
     }
 }

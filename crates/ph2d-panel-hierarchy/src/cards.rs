@@ -13,6 +13,7 @@ use ph2d_editor_core::hier_rows::RowRole;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{WidgetStore, toggle_paint};
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text_elided};
 use ph2d_editor_core::panel::cards::linhas_extra::ListRow;
 use ph2d_editor_core::panel::cards::{
@@ -249,10 +250,15 @@ fn traz_a_selecao(
     } else {
         return;
     };
-    let max = store
-        .panel_content_h(PAINEL)
-        .map_or(alvo, |c| (c - visivel).max(0.0));
-    store.set_panel_scroll(PAINEL, alvo.clamp(0.0, max));
+    let rolagem = alvo_na_faixa(alvo, store.panel_content_h(PAINEL), visivel);
+    store.set_panel_scroll(PAINEL, rolagem);
+}
+
+/// O alvo em `[0, conteúdo - vista]`. Sem altura de conteúdo publicada não há tecto, só o chão: um alvo
+/// acima do topo da lista invertia a faixa do `clamp`, e isso é pânico.
+fn alvo_na_faixa(alvo: f32, conteudo: Option<f32>, visivel: f32) -> f32 {
+    let max = conteudo.map_or(alvo.max(0.0), |c| (c - visivel).max(0.0));
+    safe_clamp(alvo, 0.0, max)
 }
 
 /// Abre os antepassados recolhidos da linha `i` da ordem inteira.
@@ -545,5 +551,20 @@ pub(crate) fn paint(st: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         ph2d_editor_core::widget::card_ink::com(tinta, || {
             filter::paint_popover(ctx, &a.entradas, escolhido, caixa.get(), theme);
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::alvo_na_faixa;
+
+    /// ⭐ Sem conteúdo medido o tecto era o próprio alvo: um alvo negativo dava `clamp(0, negativo)`, pânico.
+    /// Com lista mais baixa que a vista (painel alto, poucas linhas) a faixa é `[0, 0]`.
+    #[test]
+    fn o_alvo_da_selecao_nunca_inverte_a_faixa() {
+        assert_eq!(alvo_na_faixa(-12.0, None, 300.0), 0.0);
+        assert_eq!(alvo_na_faixa(40.0, None, 300.0), 40.0);
+        assert_eq!(alvo_na_faixa(40.0, Some(100.0), 300.0), 0.0);
+        assert_eq!(alvo_na_faixa(900.0, Some(1000.0), 300.0), 700.0);
     }
 }

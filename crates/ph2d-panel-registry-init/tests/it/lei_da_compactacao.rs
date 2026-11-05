@@ -49,6 +49,23 @@ const POPULACAO: &[(&str, usize)] = &[
     ("flip_frames", 25),
 ];
 
+/// `(painel, textos, controlos, fronteiras)` que a lei do ritmo tem de ver, o piso. Medido em 05/11 por
+/// `diag_a_tabela_da_compactacao`, a ~5 % abaixo: vector 465/339/327 · skeleton 33/23/19 · inspector 1596/842/1233 ·
+/// painter_layers 2754/1172/1837 · physics 152/124/124 · audio_editor 175/67/148 · flip_frames 57/63/46 ·
+/// widget_gallery 568/334/455. O censo das linhas não vê estas peças: sem o ouvinte do texto em `grava`, o ritmo
+/// ficaria verde sobre zero textos e o piso de [`POPULACAO`] nem notava.
+const POPULACAO_RITMO: &[(&str, usize, usize, usize)] = &[
+    ("vector", 440, 320, 310),
+    ("skeleton", 31, 21, 18),
+    ("inspector", 1500, 800, 1170),
+    ("painter_layers", 2600, 1100, 1740),
+    ("physics", 144, 117, 117),
+    ("audio_editor", 166, 63, 140),
+    #[cfg(feature = "panel-flip-frames")]
+    ("flip_frames", 54, 59, 43),
+    ("widget_gallery", 540, 317, 432),
+];
+
 /// O que um painel acusa: as listas de frases das três regras.
 #[derive(Default)]
 struct Acusa {
@@ -62,9 +79,21 @@ struct Acusa {
     linhas: usize,
     textos: usize,
     capturadas: usize,
+    /// As peças que a lei do ritmo vê: o que o ouvinte do texto e o registo dos controlos lhe deram.
+    pecas_texto: usize,
+    pecas_controlo: usize,
+    fronteiras: usize,
 }
 
 fn junta(a: &mut Acusa, c: &Censo) {
+    let controlos = c
+        .pecas
+        .iter()
+        .filter(|p| p.especie == censo::ritmo::Especie::Controlo)
+        .count();
+    a.pecas_controlo += controlos;
+    a.pecas_texto += c.pecas.len() - controlos;
+    a.fronteiras += c.distancias().len();
     a.linhas += c.linhas.len();
     a.textos += c.textos.len();
     a.capturadas += c.linhas.iter().filter(|l| l.em_captura).count();
@@ -228,6 +257,17 @@ fn lei_do_ritmo() {
             ));
         }
     }
+    for (painel, textos, controlos, fronteiras) in POPULACAO_RITMO {
+        let a = &tudo[painel];
+        let medido = (a.pecas_texto, a.pecas_controlo, a.fronteiras);
+        if medido.0 < *textos || medido.1 < *controlos || medido.2 < *fronteiras {
+            erros.push(format!(
+                "{painel}: o ritmo mediu {medido:?} (textos, controlos, fronteiras) contra o piso \
+                 {:?}: o zero não vale, a pintura deixou de chegar ao censo",
+                (textos, controlos, fronteiras)
+            ));
+        }
+    }
     assert!(erros.is_empty(), "{}", erros.join("\n"));
 }
 
@@ -259,6 +299,10 @@ fn diag_a_tabela_da_compactacao() {
         for f in a.irmaos.iter().chain(&a.grudadas).chain(&a.cortados) {
             println!("    // {f}");
         }
+        println!(
+            "POPULACAO_RITMO (\"{painel}\", {}, {}, {}),",
+            a.pecas_texto, a.pecas_controlo, a.fronteiras
+        );
         println!("(\"{painel}\", {}),", a.ritmo.len());
         for f in &a.ritmo {
             println!("    RITMO {f}");

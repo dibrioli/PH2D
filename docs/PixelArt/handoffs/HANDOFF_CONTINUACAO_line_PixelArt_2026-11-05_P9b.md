@@ -80,3 +80,7 @@ Smoke do dono da cena 20. Depois: mutações, e `/pd-linha-fechar` só por decis
 
 - O que um merge pode partir: `MENU_BAR_FILE_ROWS`, `input_teclas.rs`, registo de painel (`registry-init`, `panel_ids.rs`, `every_panel_the_shell_drives`), MINOR do `PH2DPIXEL`, `smoke.rs` (cena 20) e o tecto de `ph2d-app-pixel`. Recontar os números pelo código, não por este texto.
 - `cargo-test-narrow.sh` esconde a mensagem do assert: `cargo test -p <crate> --test <nome>` por `ph2d-run.sh` a mostra.
+
+## Correção depois do 1.º smoke (dono: «Export As não abre»)
+
+As 5 linhas do menu File pintavam e não tinham `store.register`: Down+Up não dava `Click`, em silêncio. Faltavam em `hero/pre_populate.rs` (a lista ao lado de `CTX_MENU_EXPORT_SVG`). Os testes verdes chamavam `apply_event` direto e não viam isso. Gate novo, por ponteiro real na tela inteira: `ph2d-panel-registry-init`, `the_pixel_export_answers_a_real_pointer` (5 linhas do menu, verbos e listas das 3 janelas); vermelho visto antes da cura, com `Export SVG` de controlo. Corrido 3×, verde. ⚠️ A mola dos cartões corre no relógio: sem `aquecimento::com_passo_fixo` o teste dá rects velhos e oscila.

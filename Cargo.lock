@@ -10042,6 +10042,7 @@ dependencies = [
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
  "ph2d-pixel-core",
+ "ph2d-pixel-io",
  "ph2d-render",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",

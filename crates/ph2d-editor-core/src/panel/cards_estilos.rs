@@ -267,7 +267,9 @@ fn clique(store: &mut WidgetStore, id: NodeId) -> bool {
         return true;
     }
     if BOTOES.with(|v| v.borrow().iter().any(|(b, ..)| *b == id)) {
-        let sujeito = store.card_edit_subject();
+        // O ⠿ é de quem o clicou. O sujeito do commit que saiu do foco (a caixa de busca da outra
+        // cópia, por exemplo) é só desse commit.
+        let sujeito = store.card_press_subject();
         let ja = ABERTA.with(Cell::get) == Some(id) && ABERTA_SUJEITO.with(Cell::get) == sujeito;
         fecha();
         // A busca recomeça vazia sempre que a lista abre ou fecha.

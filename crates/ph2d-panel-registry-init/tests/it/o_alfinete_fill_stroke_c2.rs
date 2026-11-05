@@ -767,6 +767,42 @@ fn two_pinned_fill_cards_on_different_objects_edit_their_own() {
     assert_eq!(estilos::sujeito_aberto(), Some(m.bits[1]));
 }
 
+/// Com o foco num campo da cópia de A, premir a amostra da cópia de B abre o seletor de B, e o commit
+/// que saiu do foco continua a ser de A. *Mutação: `open_picker_on` lê `card_edit_subject` ⇒ o de A.*
+#[test]
+fn the_picker_belongs_to_the_pressed_card_even_with_a_focused_field_on_the_other() {
+    let mut m = Mesa::nova();
+    let um = m.prende(CARD_FILL, 0, &[2]);
+    let dois = m.prende(CARD_FILL, 1, &[2]);
+    let c = m.no_solto(um, v::VECTOR_FILL_OPACITY_NUM);
+    mao(&mut m.h, PointerKind::Down, c);
+    mao(&mut m.h, PointerKind::Up, c);
+    assert_eq!(m.h.store.focus_id(), Some(v::VECTOR_FILL_OPACITY_NUM));
+    m.clica_em(dois, v::VECTOR_FILL_SWATCH);
+    assert_eq!(m.h.store.picker_subject(), Some(m.bits[1]));
+}
+
+/// O mesmo para o ⠿: com o foco num campo da cópia de A, o clique no ⠿ da de B abre a lista de B, e o
+/// 2.º clique fecha-a. *Mutação: `clique` lê `card_edit_subject` ⇒ abre a lista de A.*
+#[test]
+fn the_styles_button_belongs_to_the_pressed_card_even_with_a_focused_field_on_the_other() {
+    let mut m = Mesa::nova();
+    let um = m.prende(CARD_FILL, 0, &[2]);
+    let dois = m.prende(CARD_FILL, 1, &[2]);
+    let c = m.no_solto(um, v::VECTOR_FILL_OPACITY_NUM);
+    mao(&mut m.h, PointerKind::Down, c);
+    mao(&mut m.h, PointerKind::Up, c);
+    assert_eq!(m.h.store.focus_id(), Some(v::VECTOR_FILL_OPACITY_NUM));
+    m.clica_em(dois, estilos::botao_de(CARD_FILL));
+    assert_eq!(estilos::sujeito_aberto(), Some(m.bits[1]));
+    m.clica_em(dois, estilos::botao_de(CARD_FILL));
+    assert_eq!(
+        estilos::sujeito_aberto(),
+        None,
+        "o 2.º clique no mesmo ⠿ fecha"
+    );
+}
+
 /// ⭐ Com a tinta de base de um preso em degradê, o cartão diz-lo e a escolha não o esmaga.
 #[test]
 fn a_gradient_on_the_pinned_object_stays_quiet_under_the_picker() {

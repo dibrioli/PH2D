@@ -60,7 +60,8 @@ impl WidgetStore {
     /// lê de volta (o `vector_bridge`) pintaria essa cor na amostra nova.
     pub fn open_picker_on(&mut self, id: ph2d_a11y::NodeId) {
         let seed = self.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
-        let sujeito = self.card_edit_subject();
+        // A amostra é de quem a premiu; o campo que perde o foco nessa pressão é só do commit dele.
+        let sujeito = self.card_press_subject();
         self.set_widget_color(id, seed);
         self.set_picker_target(Some(id));
         self.card_lists.picker_subject = sujeito;

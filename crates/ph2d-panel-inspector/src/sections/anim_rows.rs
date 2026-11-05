@@ -112,17 +112,14 @@ pub(crate) fn paint_add_remove(
             x + w - half,
         );
     }
-    // «Edit Animations…» à largura dos dois, para os três lerem como um bloco.
     let edit_y = ph2d_editor_core::property_row::abaixo_do_botao(add);
-    let edit = Rect::new(x, edit_y, w, ph2d_tokens::ROW_H_PX);
+    let rotulo = tr("panel.inspector.anim_card.open_editor");
+    let edit = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, edit_y, rotulo);
     hit_index.register(ids::INSP_ANIM_OPEN_EDITOR, edit);
     paint_button(
-        &Button::new(
-            ids::INSP_ANIM_OPEN_EDITOR,
-            tr("panel.inspector.anim_card.open_editor"),
-        )
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_ANIM_OPEN_EDITOR)),
+        &Button::new(ids::INSP_ANIM_OPEN_EDITOR, rotulo)
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_ANIM_OPEN_EDITOR)),
         edit,
         scene,
         text_system,

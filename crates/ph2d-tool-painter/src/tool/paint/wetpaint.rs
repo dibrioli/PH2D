@@ -505,6 +505,9 @@ mod agua_no_oleo_tests; // sonda J11: a água × o óleo seco (velocidade, disso
 #[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
 #[cfg(test)]
+mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
+mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
+#[cfg(test)]
 mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume
 #[cfg(test)]
 mod chao_forca_tests; // sonda J10: o chão como força no momento
@@ -555,9 +558,6 @@ mod showwet_tests;
 mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no miolo do óleo
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
-mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
-#[cfg(test)]
-mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
 #[cfg(test)]
 mod sonda_bordas_longe; // um traço novo longe não muda um byte do antigo (fotos do dono 05/11)
 #[cfg(test)]
@@ -584,6 +584,8 @@ mod sonda_papel_seco;
 mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (prompt 35)
 #[cfg(test)]
 mod sonda_presets;
+#[cfg(test)]
+mod sonda_relevo_negativo; // a tinta afundada no papel de alto relevo (Bug #71)
 #[cfg(test)]
 mod sonda_shape_casa; // W0 do plano 27: a tinta de cada tipo do Shape e as leis candidatas do #47 // o Wet Drip com as caixas K–M e a lei de antes (prompt 16, Fases B–E) // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10) // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)
 #[cfg(test)]

@@ -119,15 +119,24 @@ fn a_borracha_no_wet_apaga_a_tinta_antiga_de_cada_meio() {
         assert!(m.t.paint.wetpaint.session.is_some(), "{x:?}: sessão viva");
         m.trilho("eraser");
         m.apaga();
-        assert!(m.t.paint.wetpaint.session.is_some(), "{x:?}: a água continua");
+        assert!(
+            m.t.paint.wetpaint.session.is_some(),
+            "{x:?}: a água continua"
+        );
         let (depois, fora2, wet) = (
             tinta_em(&m.t.canvas_rgba, VELHO),
             tinta_em(&m.t.canvas_rgba, VELHO_FORA),
             tinta_em(&m.t.canvas_rgba, WET),
         );
-        assert!(depois < velho * 0.02, "{x:?}: a antiga {velho:.1} → {depois:.1}");
+        assert!(
+            depois < velho * 0.02,
+            "{x:?}: a antiga {velho:.1} → {depois:.1}"
+        );
         assert!(wet < 3.0, "{x:?}: a molhada ficou {wet:.1}");
-        assert!((fora2 - fora).abs() < 1e-9, "{x:?}: fora do círculo {fora:.1} → {fora2:.1}");
+        assert!(
+            (fora2 - fora).abs() < 1e-9,
+            "{x:?}: fora do círculo {fora:.1} → {fora2:.1}"
+        );
     }
 }
 
@@ -147,16 +156,25 @@ fn desfazer_a_borracha_no_wet_devolve_a_tinta_antiga() {
     m.t.paint.brush.strength = 1.0;
     m.risca([64.0, 20.0], [64.0, 108.0], 44);
     let apagada = tinta_em(&m.t.canvas_rgba, VELHO);
-    assert!(apagada < velho * 0.8, "a Borracha agiu: {velho:.1} → {apagada:.1}");
+    assert!(
+        apagada < velho * 0.8,
+        "a Borracha agiu: {velho:.1} → {apagada:.1}"
+    );
     assert!(m.t.undo_last(), "desfez");
     m.quadros(2);
     assert!(m.t.paint.wetpaint.session.is_some(), "a água continua viva");
     let voltou = tinta_em(&m.t.canvas_rgba, VELHO);
-    assert!((voltou - velho).abs() < 1e-9, "voltou {voltou:.1} de {velho:.1}");
+    assert!(
+        (voltou - velho).abs() < 1e-9,
+        "voltou {voltou:.1} de {velho:.1}"
+    );
     assert!(m.t.redo_last(), "refez");
     m.quadros(2);
     let de_novo = tinta_em(&m.t.canvas_rgba, VELHO);
-    assert!((de_novo - apagada).abs() < 1e-9, "refez {de_novo:.1} de {apagada:.1}");
+    assert!(
+        (de_novo - apagada).abs() < 1e-9,
+        "refez {de_novo:.1} de {apagada:.1}"
+    );
 }
 
 /// A selecção protege a tinta antiga como protege a molhada.
@@ -216,7 +234,10 @@ fn sonda_relevo_do_impasto_sob_a_borracha() {
     let mut c = std::sync::Arc::clone(&b);
     let t0 = std::time::Instant::now();
     std::sync::Arc::make_mut(&mut c)[0] = 1;
-    eprintln!("COPIA da base 4096×2560: {:.1} ms", t0.elapsed().as_secs_f64() * 1e3);
+    eprintln!(
+        "COPIA da base 4096×2560: {:.1} ms",
+        t0.elapsed().as_secs_f64() * 1e3
+    );
 }
 
 #[test]

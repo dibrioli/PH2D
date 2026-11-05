@@ -197,9 +197,7 @@ pub(crate) fn dry_cell(
         f64::from(borda)
     };
     let mut new_film = f * crate::meio::retencao(c.retention, m)
-        - c.evap_base
-            * ((1.0 - e) * borda + c.base_evaporation)
-            * crate::meio::evaporacao(m);
+        - c.evap_base * ((1.0 - e) * borda + c.base_evaporation) * crate::meio::evaporacao(m);
     if new_film < 0.0001 {
         new_film = 0.0;
     }

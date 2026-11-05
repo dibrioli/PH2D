@@ -171,6 +171,11 @@ impl<'a> Substrate<'a> {
         texture::contrasta(t, ganho_do_dente(self.rough)) * self.amp_px
     }
 
+    /// A meia altura do dente, nas cargas do [`Self::tooth_loads`] (Cold a Relief 1: média medida 0,0313 de 0..0,0625).
+    pub(super) fn meio_do_dente(&self) -> f32 {
+        self.amp_px * 0.5 / DEPTH_UNIT_PX
+    }
+
     /// A altura do dente **na unidade do plano de relevo da TINTA** — cargas, não pixels.
     ///
     /// ⚠️ **A conversão do consumidor entra AQUI, e é o ponto todo.** O buffer de altura da tinta é

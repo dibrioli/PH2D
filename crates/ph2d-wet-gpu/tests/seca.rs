@@ -344,5 +344,8 @@ fn a_borda_de_cada_celula_casa_com_a_cpu() {
         by,
         Rows::Serial,
     );
-    assert!(maxdif(&cpu.film, &uniforme.film) > 1e-3, "a cena não mede a borda");
+    assert!(
+        maxdif(&cpu.film, &uniforme.film) > 1e-3,
+        "a cena não mede a borda"
+    );
 }

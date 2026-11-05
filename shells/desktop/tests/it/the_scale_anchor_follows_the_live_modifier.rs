@@ -1,26 +1,8 @@
-//! **A âncora de escala é do FRAME, não do pen-down** — arch-gate sobre a costura que nenhum
-//! unit test alcança (irmão de `a_frames_handle_resizes_it_and_does_not_scale_it`).
-//!
-//! A LEI é gateada onde ela mora: `ph2d_editor_core::live_anchor` é pura e tem os seus gates de
-//! kernel (o centro é a translação de mundo da partida · soltar devolve o canto · premir e largar
-//! não acumula · Translate/Rotate/MovePivot passam · Global troca a regra e não o ponto). O que
-//! eles **não podem tocar** é a fiação: `advance_gizmo_drag` e o abridor de arrasto precisam de
-//! `App` + `HeroScreen` + janela. E é lá que vivem as três metades que decidem se o modificador é
-//! de facto vivo:
-//!
-//! 1. **A porta é chamada por movimento.** Sem ela a âncora volta a ser decidida no pen-down e
-//!    congelada — o defeito: o `Shift` vivo e o Ctrl morto, no mesmo gizmo.
-//! 2. **O resultado é LOCAL — o estado guardado continua a ser o CANTO.** Esta é a metade cara.
-//!    O canto é a única coisa que não se re-deriva depois do pen-down (só ali se sabe qual alça
-//!    foi pega); guardar o centro por cima dele apaga-o no primeiro frame com a tecla premida, e
-//!    soltá-la deixa de devolver o que quer que seja. Um gate que só afirmasse (1) ficaria VERDE
-//!    sobre isso — **e ficou**: foi o gate de kernel do retorno que apanhou esta versão minha.
-//! 3. **O pen-down guarda o canto, sempre.** Se ele guardar o centro quando a tecla já está
-//!    premida, (2) fica sem o que devolver: o gesto nasce sem canto.
-//!
-//! ⚠️ Nada aqui afirma distância em bytes nem vizinhança de linhas — a lição de
-//! `the_dispatch_is_handed_the_live_geometry` (2026-07-23) é que um proxy posicional expira na
-//! wave seguinte. O que se afirma é *qual pergunta é feita* e *onde a resposta pousa*.
+//! **A âncora de escala é do FRAME, não do pen-down**: arch-gate sobre a costura que nenhum unit test
+//! alcança. A lei é `ph2d_editor_core::live_anchor`, com gates de kernel; aqui, a fiação, que pede `App`
+//! + `HeroScreen` + janela: (1) a porta é chamada por movimento; (2) o resultado é LOCAL e o estado
+//! guardado continua a ser o CANTO, que não se re-deriva depois do pen-down; (3) o pen-down guarda o canto.
+//! Afirma-se qual pergunta é feita e onde a resposta pousa, nunca distância em bytes.
 
 fn drag_src() -> String {
     crate::input_text::gizmo_drag_file()
@@ -76,6 +58,11 @@ fn the_derived_anchor_is_never_written_back_over_the_authored_one() {
 #[test]
 fn the_pen_down_stores_the_corner_so_the_key_has_something_to_give_back() {
     let src = open_src();
+    // A porta antiga tem o argumento do centro: nenhum abridor a pode chamar, nem num ramo ao lado.
+    assert!(
+        !src.contains("ph2d_editor_core::anchor_pivot_world("),
+        "o despacho voltou a chamar `anchor_pivot_world`, que deixa o abridor pedir o CENTRO"
+    );
     let i = src
         .find("ph2d_editor_core::grip_pivot_world(")
         .expect("o abridor de arrasto nao calcula o pivo");

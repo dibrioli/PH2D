@@ -20,6 +20,20 @@ pub(super) struct AlvoDoClique {
     pub(super) is_keyed_translate: bool,
 }
 
+/// O pivô guardado no pen-down: o CANTO oposto à mão, sempre, mesmo com Ctrl premido. A âncora é viva
+/// (`live_anchor`) e o centro deriva-se da pose; o canto só se sabe aqui. Compõe o pai: filho de pai
+/// rodado não calcula o pivô como raiz. Lei: `shells/desktop/tests/it/the_scale_anchor_follows_the_live_modifier.rs`.
+pub(super) fn pivo_da_alca(
+    gkind: ph2d_editor_core::GizmoDragKind,
+    (anchor, half): ([f32; 2], [f32; 2]),
+    parent_world: ph2d_editor_core::TransformSnapshot,
+    snap: ph2d_editor_core::TransformSnapshot,
+    start_world: [f32; 2],
+) -> [f32; 2] {
+    let world_snap = ph2d_editor_core::compose_snapshot(parent_world, snap);
+    ph2d_editor_core::grip_pivot_world(gkind, anchor, half, world_snap, start_world)
+}
+
 impl crate::App {
     /// A alça (escala/rotação) de um alvo: a recusa do trancado, a pose de partida, o pivô e o grupo a semear.
     pub(super) fn ramo_gizmo_alca(
@@ -41,10 +55,8 @@ impl crate::App {
             let window_size =
                 crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
             let start_world = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-            // ⚠️ A semeadura do grupo saiu de DENTRO deste bloco (W-JG): ela
-            // precisa de `&mut gfx.sim` (o `jointed_group` monta queries) e o
-            // `t` abaixo empresta o mundo imutavelmente. Sem drag aberto não
-            // há grupo a semear, daí o sinalizador.
+            // A semeadura do grupo saiu deste bloco (W-JG): pede `&mut gfx.sim` e o `t` empresta
+            // o mundo. Sem drag aberto não há grupo a semear, daí o sinalizador.
             let mut opened_drag = false;
             if let Some(t) = gfx.sim.world().get::<Transform>(entity) {
                 let snap = ph2d_editor_core::TransformSnapshot {
@@ -52,33 +64,19 @@ impl crate::App {
                     rotation: t.rotation,
                     scale: [t.scale.x, t.scale.y],
                 };
-                // Enio 2026-05-26 fix: capture parent's world
-                // transform so compute_gizmo_transform can
-                // unrotate/unscale the delta before writing
-                // back to the entity's LOCAL Transform.
+                // O mundo do pai: compute_gizmo_transform desfaz nele o delta antes de escrever
+                // no Transform LOCAL.
                 let pw = ph2d_ecs::parent_world_transform(gfx.sim.world(), entity);
                 let parent_world = ph2d_editor_core::TransformSnapshot {
                     translation: [pw.translation.x, pw.translation.y],
                     rotation: pw.rotation,
                     scale: [pw.scale.x, pw.scale.y],
                 };
-                // ⚠️ **As DUAS metades.** O `.1` sozinho descartava o
-                // `anchor` — *onde a caixa está em relação ao pivô* — e
-                // `anchor_pivot_world` então fixava um ponto deslocado de
-                // `anchor ⊙ scale`. Ficou invisível enquanto toda caixa
-                // estava centrada no próprio pivô (o `settle_origins`
-                // garante isso para um path comum, e uma Live Shape nasce
-                // assim), e apareceu quando redimensionar uma moldura passou
-                // a deixá-la fora do centro: a borda oposta caminhava
-                // 150 → 162,5 → 175 em três arrastos.
+                // ⚠️ As DUAS metades: sem o `anchor`, o pivô desloca-se de `anchor ⊙ scale`
+                // e a borda oposta caminha numa moldura fora do centro.
                 let (sprite_anchor_intrinsic, sprite_half_intrinsic) =
                     gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity);
-                // Onda 2C: pivot world depends on target.
-                // PrimaryIndividual / ExtraIndividual use the
-                // sprite's own anchor (transforms local to it).
-                // Global overrides pivot to the global bbox
-                // center so group transforms rotate/scale every
-                // sprite around a single shared point.
+                // Individual: a âncora do objecto. Global: o centro da caixa do grupo.
                 let pivot = if let ph2d_editor_core::GizmoTarget::Global = effective_target
                     && let Some(gv) = hero.gizmo.global_view.as_ref()
                 {
@@ -87,38 +85,16 @@ impl crate::App {
                         (gv.bbox_min_world[1] + gv.bbox_max_world[1]) * 0.5,
                     ]
                 } else {
-                    // Composição parent×local pra que o
-                    // pivot world seja correto mesmo com pai
-                    // rotacionado/escalonado (Enio 2026-05-26
-                    // fix: child de pai rotacionado tinha
-                    // pivot calculado como root).
-                    let world_snap = ph2d_editor_core::compose_snapshot(parent_world, snap);
-                    // ⚠️ **O CANTO oposto, sempre — mesmo com Ctrl premido agora.**
-                    //
-                    // A âncora deste gizmo é VIVA (`ph2d_editor_core::live_anchor`, chamada
-                    // a cada movimento): o Ctrl deste frame é que decide se o ponto
-                    // fixo é o canto ou o centro. O centro é derivável da pose de
-                    // partida a qualquer momento; o CANTO não é derivável de nada
-                    // depois do pen-down, porque só aqui se sabe QUAL alça foi pega.
-                    // Guardar o centro aqui tornaria soltar o Ctrl no meio do arrasto
-                    // uma operação sem volta — e o modificador deixaria de ser vivo
-                    // justamente na direção em que o artista o larga.
-                    ph2d_editor_core::grip_pivot_world(
+                    pivo_da_alca(
                         gkind,
-                        sprite_anchor_intrinsic,
-                        sprite_half_intrinsic,
-                        world_snap,
+                        (sprite_anchor_intrinsic, sprite_half_intrinsic),
+                        parent_world,
+                        snap,
                         start_world,
                     )
                 };
-                // Onda 2 polish: capture the global view at
-                // drag start so snapshots::publish can keep
-                // the global gizmo's visual orientation /
-                // scale in lockstep with the live group
-                // transform (otherwise it would be the
-                // axis-aligned union of rotated sprites,
-                // which grows during rotation instead of
-                // rotating).
+                // A vista global da partida: o gizmo do grupo roda com ele, em vez de ser a
+                // união alinhada aos eixos, que cresceria ao rodar.
                 if matches!(effective_target, ph2d_editor_core::GizmoTarget::Global) {
                     hero.gizmo.global_view_start = hero.gizmo.global_view;
                 } else {
@@ -143,21 +119,9 @@ impl crate::App {
                 opened_drag = true;
             }
             if opened_drag {
-                // Onda 1 + 2C.4: snapshot every OTHER selected
-                // sprite's full start_transform so
-                // advance_gizmo_drag can apply translate /
-                // local-scale / local-rotate / global-scale /
-                // global-rotate to the whole group. Captured
-                // for ANY drag kind that touches multi-select
-                // (Translate / Scale / Rotate) so the math
-                // branches can fire uniformly later.
-                //
-                // W-JG: e, num Translate em repouso **com ALT**, o
-                // **rig articulado** do conjunto entra junto — a
-                // MESMA porta que o pick de canvas usa
-                // (`ph2d_app_physics::joint_rig_drag`), porque duas cópias da
-                // regra é como arrastar pela alça passaria a
-                // carregar a corrente e arrastar pelo corpo, não.
+                // A partida de cada OUTRO selecionado, para qualquer tipo de arrasto.
+                // W-JG: num Translate em repouso com ALT, o rig articulado entra junto, pela
+                // mesma porta do pick de canvas (`ph2d_app_physics::joint_rig_drag`).
                 let selected: Vec<u64> = hero.gizmo.iter_selected().collect();
                 let carry_reach = if matches!(gkind, ph2d_editor_core::GizmoDragKind::Translate)
                     && !self.playhead.is_playing()
@@ -245,10 +209,8 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
-            // TOOL_PIVOT begin: when the Pivot transform tool is
-            // the active radio selection and the click lands on
-            // the selected sprite (or its pivot dot), open a
-            // MovePivot drag instead of the pick / scale path.
+            // TOOL_PIVOT begin: with the Pivot tool active, a click on the selected sprite (or
+            // its pivot dot) opens a MovePivot drag instead of the pick / scale path.
             let pivot_tool_active = hero.store.button_state(ph2d_editor_core::ids::TOOL_PIVOT)
                 == Some(ph2d_editor_core::widget::ButtonState::Pressed);
             let mut began_pivot = false;
@@ -326,24 +288,9 @@ impl crate::App {
                     began_pivot = true;
                 }
             }
-            // Joint-anchor point handles: a Down on either dot opens the
-            // anchor drag (`ph2d_app_physics::joint_anchor_drag`) for that END. A
-            // joint has no sprite for the canvas-pick Translate path
-            // (`pick_sprites_at_world`) to resolve, so they are
-            // recognised HERE by hit id, before the generic handle path
-            // — the same shape as `began_pivot` and the Flip targets.
-            //
-            // ⚠️ Both ends run the SAME gesture, which is the point of
-            // W-J2: the A end used to open a generic `Translate` of the
-            // joint entity (its `Transform` used to BE the anchor), and
-            // body B has no `Transform` at all, so a Translate could
-            // never author it. One door writes both locals.
-            //
-            // ⚠️ **Which joint comes from the MAP, not the selection**
-            // (W-J2b): every joint publishes handles now, so the ids are
-            // keyed by entity bits and only the map the painter filled
-            // knows them. Reading the selection here would author the
-            // selected joint from a click on another one's dot.
+            // Joint-anchor handles: a Down on either dot opens the anchor drag for that END
+            // (`ph2d_app_physics::joint_anchor_drag`); one door writes both locals. Which joint
+            // comes from the painter's MAP, not the selection (W-J2b).
             let anchor_hit = hit_id.and_then(|id| {
                 ph2d_app_physics::overlay::point_gizmo::resolve_anchor_hit(
                     &hero.gizmo.point_hit_map,
@@ -369,14 +316,8 @@ impl crate::App {
                     // `self.gfx`, this is `self.physics.joint_anchor_drag`.
                     self.physics.joint_anchor_drag = opened;
                     began_joint_anchor = true;
-                    // **Grabbing a handle SELECTS its joint.** Half of
-                    // what "without selecting it in the Hierarchy" means
-                    // (Enio, 2026-07-25): the dot is now the way a joint
-                    // is reached at all, so the press that grabs it is
-                    // also the press that puts §12 (Physics Joint) on
-                    // screen — otherwise the artist drags an anchor
-                    // while the Inspector talks about something else.
-                    // Same two lines W-JointCreate uses after a Join.
+                    // **Grabbing a handle SELECTS its joint**: the press also puts §12 (Physics
+                    // Joint) on screen, the same two lines W-JointCreate uses after a Join.
                     hero.gizmo.selection = Some(joint.to_bits());
                     hero.gizmo.extra_selection.clear();
                 }
@@ -415,14 +356,8 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
-            // Onda 1 hotfix: Shift/Cmd in the canvas ALWAYS means
-            // selection-adjustment. Pre-empt the gizmo-handle /
-            // pivot-tool / canvas-pick cascade so a modifier
-            // click never accidentally opens a scale-handle drag
-            // (gizmo handles overlap the sprite bbox corners —
-            // bare Shift+click was landing on a handle and
-            // entering the `is_specific_handle` branch which
-            // bypasses the canvas pick where toggle lives).
+            // Shift/Cmd in the canvas ALWAYS means selection-adjustment: a modifier click
+            // never opens a scale-handle drag, even over a handle.
             let shift_held_early = self.modifiers.shift_key();
             let cmd_held_early = self.modifiers.super_key() || self.modifiers.control_key();
             if (shift_held_early || cmd_held_early)
@@ -484,12 +419,8 @@ impl crate::App {
             }
             let hit_id = hero.chrome_hit(evt.x, evt.y);
             let gizmo_kind = hit_id.and_then(ph2d_editor_core::gizmo_kind_for_id);
-            // Onda 2C: hit_map fills in for handles whose ids
-            // aren't canonical — extras + global. The primary
-            // keeps canonical IDs (matches the legacy
-            // `gizmo_kind_for_id` lookup above so the primary
-            // path runs unchanged when it's the only sprite
-            // selected).
+            // Onda 2C: hit_map fills in for handles with non-canonical ids (extras + global);
+            // the primary keeps canonical ids.
             let hit_map_entry: Option<ph2d_editor_core::GizmoHit> =
                 hit_id.and_then(|id| hero.gizmo.gizmo_hit_map.get(&id).copied());
             let effective_target = hit_map_entry
@@ -502,16 +433,9 @@ impl crate::App {
                     | Some(ph2d_editor_core::GizmoDragKind::ScaleEdge { .. })
                     | Some(ph2d_editor_core::GizmoDragKind::Rotate)
             );
-            // Enio 2026-07-10: uma forma vetorial ABERTA (linha/arco/pen aberto)
-            // tem bbox FINA — o interior "Translate" do gizmo de sprite colapsa
-            // e os handles de scale/rotate cobrem o traço inteiro, roubando o
-            // clique (o hit-walk é back-to-front, handles vencem). Resultado:
-            // arrastar a linha a ESCALAVA em vez de mover, e o snap-ao-mover
-            // (que só dispara num Translate) nunca rodava. Se o cursor está
-            // sobre o TRAÇO de uma forma vetorial aberta, o arrasto é um
-            // Translate dela: pula o branch de handle e cai no canvas-pick.
-            // Handles de quina FORA do traço (arco/linha diagonal) seguem
-            // escalando — a checagem é só do traço.
+            // Sobre o TRAÇO de uma forma vetorial aberta, o arrasto é Translate dela: a caixa
+            // fina daria as alças ao clique, e arrastar a linha a escalaria. Alças de quina
+            // fora do traço seguem escalando.
             let over_open_vec_stroke = {
                 let window_size = gfx.scene_window();
                 let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
@@ -556,21 +480,9 @@ impl crate::App {
                 )
                 .is_empty()
             };
-            // Also recognize Translate from a keyed bbox-interior
-            // hit — clicking the interior of an extra or the global
-            // gizmo should open a group translate via the
-            // `effective_target` route (the canvas-pick path below
-            // skips keyed ids since they aren't None / Translate /
-            // PIVOT canonical, so without this guard those clicks
-            // would fall through to nothing).
-            // Keyed Translate = click on the bbox interior of an
-            // extra or the global gizmo (whose interior IDs are
-            // hashed, so `gizmo_kind_for_id` doesn't recognise
-            // them). Treated as a multi-select translate
-            // through the canvas-pick branch below — that
-            // branch resolves the world position to a sprite
-            // via `pick_sprites_at_world` and opens a group
-            // translate drag.
+            // Keyed Translate = click on the bbox interior of an extra or the global gizmo (hashed
+            // ids, unknown to `gizmo_kind_for_id`). Treated as a multi-select translate through the
+            // canvas-pick branch below; without this guard those clicks fall through to nothing.
             let is_keyed_translate = hit_map_entry
                 .map(|h| matches!(h.kind, ph2d_editor_core::GizmoDragKind::Translate))
                 .unwrap_or(false);

@@ -89,6 +89,8 @@ mod keyboard_files;
 mod keyboard_hierarchy; // Delete/Ctrl+D sobre a linha da Hierarquia -- ver o doc do modulo
 mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> falloff
 mod keyboard_timeline;
+#[cfg(test)]
+mod o_pivo_da_alca_tests;
 pub(crate) mod painter_canvas_input;
 mod painter_canvas_keys;
 mod painter_canvas_mods;
